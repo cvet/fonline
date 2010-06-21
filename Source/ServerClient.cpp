@@ -590,11 +590,6 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	}
 
 	if(!ammo_round) ammo_round=1;
-	if(aim && ammo_round>1)
-	{
-		WriteLog(__FUNCTION__" - Aim and Burst mode on together, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
-		return false;
-	}
 
 	// Script events
 	bool event_result=(weap->GetId()?weap->EventAttack(cr,t_acl):false);
