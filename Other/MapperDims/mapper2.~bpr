@@ -1,0 +1,150 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!-- C++Builder XML Project -->
+<PROJECT>
+  <MACROS>
+    <VERSION value="BCB.05.03"/>
+    <PROJECT value="mapper2.exe"/>
+    <OBJFILES value="mapper2.obj main.obj map.obj tileset.obj lists.obj frmset.obj utilites.obj 
+      pbar.obj mdi.obj frame.obj datfile.obj objset.obj proset.obj pro.obj 
+      pal.obj config.obj script.obj unlzss\unlzss.obj cfile\cfile.obj log.obj 
+      msg.obj change.obj frameHeader.obj frmInven.obj frmObj.obj frmMiniMap.obj 
+      FormAskLevel.obj template.obj"/>
+    <RESFILES value="mapper2.res"/>
+    <IDLFILES value=""/>
+    <IDLGENFILES value=""/>
+    <DEFFILE value=""/>
+    <RESDEPEN value="$(RESFILES) main.dfm pbar.dfm mdi.dfm config.dfm change.dfm 
+      frameHeader.dfm frmInven.dfm frmObj.dfm frmMiniMap.dfm FormAskLevel.dfm"/>
+    <LIBFILES value="lib\zlib10.lib &quot;C:\Program Files\Borland\CBuilder5\Lib\PSDK\msimg32.lib&quot; 
+      &quot;C:\Program Files\Borland\CBuilder5\Lib\PSDK\ddraw.lib&quot; &quot;C:\Program Files\Borland\CBuilder5\Lib\PSDK\dxguid.lib&quot;"/>
+    <LIBRARIES value="vclx50.lib vcl50.lib"/>
+    <SPARELIBS value="vcl50.lib vclx50.lib"/>
+    <PACKAGES value="Vcl50.bpi Vclx50.bpi bcbsmp50.bpi Vcldb50.bpi vclado50.bpi ibsmp50.bpi 
+      VCLBDE50.bpi vcldbx50.bpi Qrpt50.bpi TeeUI50.bpi TeeDB50.bpi Tee50.bpi 
+      Dss50.bpi TeeQR50.bpi VCLIB50.bpi Vclmid50.bpi vclie50.bpi Inetdb50.bpi 
+      Inet50.bpi NMFast50.bpi webmid50.bpi bcbie50.bpi dclocx50.bpi 
+      bcb2kaxserver50.bpi VGAgp.bpi"/>
+    <PATHCPP value=".;unlzss;cfile"/>
+    <PATHPAS value=".;"/>
+    <PATHRC value=".;"/>
+    <PATHASM value=".;"/>
+    <DEBUGLIBPATH value="$(BCB)\lib\debug"/>
+    <RELEASELIBPATH value="$(BCB)\lib\release"/>
+    <LINKER value="ilink32"/>
+    <USERDEFINES value="_DEBUG"/>
+    <SYSDEFINES value="NO_STRICT"/>
+    <MAINSOURCE value="mapper2.cpp"/>
+    <INCLUDEPATH value="cfile;unlzss;&quot;C:\Program Files\Borland\CBuilder5\Projects\&quot;;graphics;&quot;C:\Program Files\Borland\CBuilder4\Projects\&quot;;$(BCB)\include;$(BCB)\include\vcl"/>
+    <LIBPATH value="cfile;unlzss;&quot;C:\Program Files\Borland\CBuilder5\Projects\&quot;;graphics;&quot;C:\Program Files\Borland\CBuilder4\Projects\&quot;;$(BCB)\Projects\Lib;$(BCB)\lib\obj;$(BCB)\lib"/>
+    <WARNINGS value="-w-par -w-8027 -w-8026"/>
+    <WARNOPTSTR value=""/>
+  </MACROS>
+  <OPTIONS>
+    <IDLCFLAGS value="-Icfile -Iunlzss -I&quot;C:\Program Files\Borland\CBuilder5\Projects\.&quot; 
+      -Igraphics -I&quot;C:\Program Files\Borland\CBuilder4\Projects\.&quot; 
+      -I$(BCB)\include -I$(BCB)\include\vcl -src_suffix cpp -D_DEBUG -boa"/>
+    <CFLAG1 value="-Od -H=&quot;C:\Program Files\Borland\CBuilder5\Projects\PreCompiled\vcl50.csm&quot; 
+      -Vx -Ve -X- -r- -a1 -b- -k -y -v -vi- -c -tW -tWM"/>
+    <PFLAGS value="-$Y+ -$W -$O- -v -JPHNE -M"/>
+    <RFLAGS value=""/>
+    <AFLAGS value="/mx /w2 /zi"/>
+    <LFLAGS value="-D&quot;&quot; -aa -Tpe -x -Gn -v"/>
+  </OPTIONS>
+  <LINKER>
+    <ALLOBJ value="c0w32.obj sysinit.obj $(OBJFILES)"/>
+    <ALLRES value="$(RESFILES)"/>
+    <ALLLIB value="$(LIBFILES) $(LIBRARIES) import32.lib cp32mt.lib"/>
+  </LINKER>
+  <IDEOPTIONS>
+[Version Info]
+IncludeVerInfo=0
+AutoIncBuild=0
+MajorVer=1
+MinorVer=0
+Release=0
+Build=0
+Debug=0
+PreRelease=0
+Special=0
+Private=0
+DLL=0
+Locale=1049
+CodePage=1251
+
+[Version Info Keys]
+CompanyName=
+FileDescription=
+FileVersion=1.0.0.0
+InternalName=
+LegalCopyright=
+LegalTrademarks=
+OriginalFilename=
+ProductName=
+ProductVersion=1.0.0.0
+Comments=
+
+[Excluded Packages]
+$(BCB)\Bin\dcl31w50.bpl=Delphi 1.0 Compatibility Components
+$(BCB)\Bin\bcbsmp50.bpl=Borland C++ Sample Components
+$(BCB)\Bin\dclado50.bpl=Borland ADO DB Components
+$(BCB)\Bin\dclbde50.bpl=Borland BDE DB Components
+$(BCB)\Bin\dclqrt50.bpl=QuickReport Components
+$(BCB)\Bin\dcltee50.bpl=TeeChart 5.0 Components
+$(BCB)\Bin\dcldss50.bpl=Borland Decision Cube Components
+$(BCB)\Bin\applet50.bpl=Borland Control Panel Applet Package
+$(BCB)\Bin\dcltqr50.bpl=TeeChart 5.0 for QuickReport Components Design Package
+$(BCB)\Bin\DCLIB50.bpl=InterBase Data Access Components
+$(BCB)\Bin\dclsmpedit50.bpl=Borland Editor Script Enhancements
+$(BCB)\Bin\dclmid50.bpl=Borland MIDAS Components
+$(BCB)\Bin\dclnet50.bpl=Borland Internet Components
+$(BCB)\Bin\DBWEBXPRT.BPL=Borland Web Wizard Package
+$(BCB)\Bin\DCLNMF50.bpl=NetMasters Fastnet Tools
+$(BCB)\Bin\dclwbm50.bpl=Borland InternetExpress Components
+$(BCB)\Bin\bcbie50.bpl=Borland C++Builder Internet Explorer 5 Components Package
+
+[HistoryLists\hlIncludePath]
+Count=3
+Item0=cfile;unlzss;C:\Program Files\Borland\CBuilder5\Projects\;graphics;C:\Program Files\Borland\CBuilder4\Projects\;$(BCB)\include;$(BCB)\include\vcl
+Item1=cfile;unlzss;C:\Program Files\Borland\CBuilder5\Projects;graphics;..\..\..\Program Files\Borland\CBuilder4\Projects;$(BCB)\include;$(BCB)\include\vcl
+Item2=graphics;..\..\..\Program Files\Borland\CBuilder4\Projects;$(BCB)\include;$(BCB)\include\vcl
+
+[HistoryLists\hlLibraryPath]
+Count=3
+Item0=cfile;unlzss;C:\Program Files\Borland\CBuilder5\Projects\;graphics;C:\Program Files\Borland\CBuilder4\Projects\;$(BCB)\Projects\Lib;$(BCB)\lib\obj;$(BCB)\lib
+Item1=cfile;unlzss;C:\Program Files\Borland\CBuilder5\Projects;graphics;..\..\..\Program Files\Borland\CBuilder4\Projects;$(BCB)\Projects\Lib;$(BCB)\lib\obj;$(BCB)\lib
+Item2=graphics;..\..\..\Program Files\Borland\CBuilder4\Projects;$(BCB)\Projects\Lib;$(BCB)\lib\obj;$(BCB)\lib
+
+[HistoryLists\hlDebugSourcePath]
+Count=1
+Item0=$(BCB)\source\vcl
+
+[HistoryLists\hlConditionals]
+Count=1
+Item0=_DEBUG
+
+[Debugging]
+DebugSourceDirs=$(BCB)\source\vcl
+
+[Parameters]
+RunParams=
+HostApplication=
+RemoteHost=
+RemotePath=
+RemoteDebug=0
+
+[Compiler]
+ShowInfoMsgs=0
+LinkDebugVcl=0
+LinkCGLIB=0
+
+[CORBA]
+AddServerUnit=1
+AddClientUnit=1
+PrecompiledHeaders=1
+
+[Language]
+ActiveLang=
+ProjectLang=
+RootDir=
+  </IDEOPTIONS>
+</PROJECT>

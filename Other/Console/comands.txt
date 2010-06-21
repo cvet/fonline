@@ -1,0 +1,7 @@
+#1 exit 		{exit from console}
+#2 connect              {connect to the server}
+#3 help                 {help system}
+#4 set			{set new variable's value}
+#5 show                 {show variable value}
+#6 disconnect		{disconnect server}
+#7 exec 		{execute string script}

@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2009.09.06 03:47:06.734.cpp,C:\Documents and Settings\Admin\Мои документы\RAD Studio\Projects\Unit1.cpp=E:\Repozes\code\UpdaterClient\UpdaterServer1.cpp</Transaction>
+    <Transaction>2009.09.06 03:47:06.734.h,C:\Documents and Settings\Admin\Мои документы\RAD Studio\Projects\Unit1.h=E:\Repozes\code\UpdaterClient\UpdaterServer1.h</Transaction>
+    <Transaction>2009.09.06 03:47:06.734.dfm,C:\Documents and Settings\Admin\Мои документы\RAD Studio\Projects\Unit1.dfm=E:\Repozes\code\UpdaterClient\UpdaterServer1.dfm</Transaction>
+    <Transaction>2009.09.06 03:47:20.093.cbproj,C:\Documents and Settings\Admin\Мои документы\RAD Studio\Projects\Project1.cbproj=E:\Repozes\code\UpdaterClient\UpdaterServer.cbproj</Transaction>
+    <Transaction>2009.09.06 03:48:12.937.cpp,E:\Repozes\code\UpdaterClient\UpdaterServer1.cpp=E:\Repozes\code\UpdaterClient\UpdaterServerForm.cpp</Transaction>
+    <Transaction>2009.09.06 03:48:12.937.h,E:\Repozes\code\UpdaterClient\UpdaterServer1.h=E:\Repozes\code\UpdaterClient\UpdaterServerForm.h</Transaction>
+    <Transaction>2009.09.06 03:48:12.937.dfm,E:\Repozes\code\UpdaterClient\UpdaterServer1.dfm=E:\Repozes\code\UpdaterClient\UpdaterServerForm.dfm</Transaction>
+    <Transaction>2009.09.06 04:35:21.171.cpp,E:\Repozes\code\UpdaterClient\Unit1.cpp=E:\Repozes\code\UpdaterClient\Common.cpp</Transaction>
+    <Transaction>2009.09.06 04:35:21.171.h,E:\Repozes\code\UpdaterClient\Unit1.h=E:\Repozes\code\UpdaterClient\Common.h</Transaction>
+    <Transaction>2009.09.07 18:26:51.546.h,E:\Repozes\code\include\zlib\crc32.h=</Transaction>
+  </Transactions>
+</BorlandProject>

@@ -1,0 +1,10 @@
+
+
+#define aa bb gggg
+#define bb cc
+#define gggg zzzzzzzzzzzzz
+
+void main()
+{
+	aa
+}

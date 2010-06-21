@@ -1,0 +1,35 @@
+
+float4 GroundPos = {0.0f, 0.0f, 0.0f, 0.0f};
+static const float CameraAngle = 25.7 * 3.141592654f / 180.0f;
+static const float CameraAngleCos = cos(CameraAngle);
+static const float CameraAngleSin = sin(CameraAngle);
+
+float4x4 MatrixWorld : WORLDMATRIX;
+float4x4 MatrixProj : VIEWPROJECTION;
+
+struct VS_INPUT_SHADOW
+{
+    float4  Pos             : POSITION;
+};
+
+struct VS_OUTPUT_SHADOW
+{
+    float4  Pos     : POSITION;
+    float4  Diffuse : COLOR;
+};
+
+VS_OUTPUT_SHADOW Main(VS_INPUT_SHADOW input)
+{
+    VS_OUTPUT_SHADOW   output;
+
+    float3 Pos = mul(input.Pos, MatrixWorld);
+	float d = (Pos.y - GroundPos.y) * CameraAngleCos - (Pos.z - GroundPos.z) * CameraAngleSin;
+	Pos.y -= d * CameraAngleCos;
+	Pos.z += d * CameraAngleSin;
+
+	output.Pos = mul(float4(Pos.xyz, 1.0f), MatrixProj);
+	output.Diffuse.xyz = 0.0f;
+	output.Diffuse.w = 1.0f;
+
+    return output;
+}

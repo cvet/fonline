@@ -1,0 +1,1681 @@
+Упрощенный лог старого репозитария. Убрал ненужные комиты типа "обновил таски (задачи)".
+
+
+Ревизия: 98
+Автор: cvet
+Дата: 21:06:17, 16 марта 2007 г.
+Сообщение:
+стабильная версия клиент-сервер
+----
+Добавлено : /FOstable/BinClient
+Добавлено : /FOstable/BinClient/FOnline.cfg
+Добавлено : /FOstable/BinClient/FOnline.exe
+Добавлено : /FOstable/BinClient/FOnline.log
+Добавлено : /FOstable/BinClient/Iface.cfg
+Добавлено : /FOstable/BinClient/data
+Добавлено : /FOstable/BinClient/data/art
+Добавлено : /FOstable/BinClient/data/art/critters
+Добавлено : /FOstable/BinClient/data/art/critters/critters.fol
+Добавлено : /FOstable/BinClient/data/art/intrface
+Добавлено : /FOstable/BinClient/data/art/intrface/barter.png
+Добавлено : /FOstable/BinClient/data/art/intrface/dlg_answ.png
+Добавлено : /FOstable/BinClient/data/art/intrface/dlg_cap.png
+Добавлено : /FOstable/BinClient/data/art/intrface/dlg_end.png
+Добавлено : /FOstable/BinClient/data/art/intrface/green_pix.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_brust.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_kick.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_null.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_punch.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_punch2.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_reload.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_sharp.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_single.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_throw.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_thrust.png
+Добавлено : /FOstable/BinClient/data/art/intrface/i_use.png
+Добавлено : /FOstable/BinClient/data/art/intrface/iface.png
+Добавлено : /FOstable/BinClient/data/art/intrface/login.png
+Добавлено : /FOstable/BinClient/data/art/intrface/none.png
+Добавлено : /FOstable/BinClient/data/art/intrface/options.png
+Добавлено : /FOstable/BinClient/data/art/intrface/panel.png
+Добавлено : /FOstable/BinClient/data/art/intrface/pickup.png
+Добавлено : /FOstable/BinClient/data/art/intrface/registr.png
+Добавлено : /FOstable/BinClient/data/art/intrface/skillbox.png
+Добавлено : /FOstable/BinClient/data/art/intrface/skillbox_sneak.png
+Добавлено : /FOstable/BinClient/data/art/misc
+Добавлено : /FOstable/BinClient/data/art/misc/adrop1.png
+Добавлено : /FOstable/BinClient/data/art/misc/adrop2.png
+Добавлено : /FOstable/BinClient/data/art/misc/adrop3.png
+Добавлено : /FOstable/BinClient/data/art/misc/adrop4.png
+Добавлено : /FOstable/BinClient/data/art/misc/adrop5.png
+Добавлено : /FOstable/BinClient/data/art/misc/adrop6.png
+Добавлено : /FOstable/BinClient/data/art/misc/adrop7.png
+Добавлено : /FOstable/BinClient/data/art/misc/drop.png
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_big_num.bmp
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_big_num.fnt
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_def.bmp
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_def.fnt
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_not_num.bmp
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_not_num.fnt
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_num.bmp
+Добавлено : /FOstable/BinClient/data/art/misc/fnt_num.fnt
+Добавлено : /FOstable/BinClient/data/art/misc/hex.frm
+Добавлено : /FOstable/BinClient/data/art/misc/hexb.frm
+Добавлено : /FOstable/BinClient/data/art/misc/hexb1.FRM
+Добавлено : /FOstable/BinClient/data/art/misc/hexred.frm
+Добавлено : /FOstable/BinClient/data/art/misc/tmapcirc.frm
+Добавлено : /FOstable/BinClient/data/art/misc/track1.png
+Добавлено : /FOstable/BinClient/data/art/misc/track2.png
+Добавлено : /FOstable/BinClient/data/art/splash
+Добавлено : /FOstable/BinClient/data/art/splash/dweller13.rix
+Добавлено : /FOstable/BinClient/data/art/splash/params.txt
+Добавлено : /FOstable/BinClient/data/maps
+Добавлено : /FOstable/BinClient/data/maps/11.map
+Добавлено : /FOstable/BinClient/data/maps/112.map
+Добавлено : /FOstable/BinClient/data/maps/12.map
+Добавлено : /FOstable/BinClient/data/objects
+Добавлено : /FOstable/BinClient/data/objects/10.st
+Добавлено : /FOstable/BinClient/data/objects/1301.st
+Добавлено : /FOstable/BinClient/data/objects/2016.st
+Добавлено : /FOstable/BinClient/data/objects/210.st
+Добавлено : /FOstable/BinClient/data/objects/7001.st
+Добавлено : /FOstable/BinClient/data/objects/all_obj.st
+Добавлено : /FOstable/BinClient/data/objects/info_objects.txt
+Добавлено : /FOstable/BinClient/data/objects/pic_inv.txt
+Добавлено : /FOstable/BinClient/data/objects/pic_use.txt
+Добавлено : /FOstable/BinClient/data/text
+Добавлено : /FOstable/BinClient/data/text/101.dlg
+Добавлено : /FOstable/BinClient/data/text/102.dlg
+Добавлено : /FOstable/BinClient/data/text/103.dlg
+Добавлено : /FOstable/BinClient/data/text/104.dlg
+Добавлено : /FOstable/BinClient/data/text/105.dlg
+Добавлено : /FOstable/BinClient/data/text/106.dlg
+Добавлено : /FOstable/BinClient/data/text/107.dlg
+Добавлено : /FOstable/BinServer
+Добавлено : /FOstable/BinServer/FOserv.log
+Добавлено : /FOstable/BinServer/FOservSVS.exe
+Добавлено : /FOstable/BinServer/dump.dat
+Добавлено : /FOstable/BinServer/foserv.cfg
+Добавлено : /FOstable/BinServer/libmySQL.dll
+
+
+Ревизия: 97
+Автор: cvet
+Дата: 20:14:33, 16 марта 2007 г.
+Сообщение:
+-проработан вывод текста.
+-добавлена возможность вывода разноцветного текста за один прием.
+-добавлена возможность выводить текст с нижней строки.
+-добавлено 3 нумерационных шрифта.
+-проработана работа с объектами. как в клиенте, так и в сервере.
+-возможность кидать/поднимать объекты.
+-возможность открывать/закрывать двери.
+-начал реализовывать использование навыков.
+-реализован навык Скрытность.
+-реализована работа с примитивами: точка, линия. без использования текстуры.
+-реализована миникарта.
+-реализован скиллбокс.
+-реализовано меню игры.
+-переделан алгоритм поиска траектории выстрела.
+-реализован дождь. требуется оптимизация.
+-переработан чат. общение игроков.
+-переделаны типы данных для координат (1b->2b) и заголовка к сетевым мессагам (2b->1b).
+-увеличена карта до 400х400.
+-проработано перемещение криттеров по карте, а именно теперь карта не компануется заново при перемещении.
+-также профикшен закономерный глюк при движении, когда криттер отрисовывается раньше чем преграда.
+-оптимизирован поиск тайла под мышкой.
+-добавлены поиски криттеров, объектов под мышкой.
+-доработан алгоритм поиска пути.
+-добавлена возмжность состовлять вписок действий чезена.
+-чезен при большом расстоянии подойдет к цели.
+-реализована блокировка экрана между скроллблокерами.
+-начат алгоритм выравнивания экрана по отношению к скроллблокерам. чтобы при загрузке карты экран не залезал за края скроллблокеров.
+-доработана функция загрузки анимаций.
+-добавлена новая структура для хранения анимаций.
+-переработаны алгоритмы перемещения криттеров. в клиенте и на сервере.
+-начата реализация перехода с карты на карту (локально).
+-вынесены в конфиг различные настройки по игре. в сервере и клиенте.
+-доработано ЛМеню (поп-ап).
+-переработан механизм управления чезеном.
+-доработан класс для работы с БД.
+-начата работа по слежению за читерсвом.
+-начаты работы по реализации класса для работы картами. на сервере.
+-добавлена возможность ведения лога в БД на сервере.
+-доработан механизм анимации криттеров.
+-оптимизирована функция подготовки буффера, где поверхности сортируются. производительность выросла значительно.
+-добавлена новая разрешающая способность 1280x1024.
+-реализован алгоритм "предсказаний" передвижения. теперь при большом пинге дерганий нет.
+-много мелких фиксов и исправлений.
+-и еще то, что не смог вспомнить...
+----
+Удалено : /Exper
+Изменено : /FOdev/BinClient/FOnline.cfg
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Изменено : /FOdev/BinClient/Iface.cfg
+Удалено : /FOdev/BinClient/commands.txt
+Удалено : /FOdev/BinClient/copyrights
+Добавлено : /FOdev/BinClient/data/art/intrface
+Добавлено : /FOdev/BinClient/data/art/intrface/barter.png
+Добавлено : /FOdev/BinClient/data/art/intrface/dlg_answ.png
+Добавлено : /FOdev/BinClient/data/art/intrface/dlg_cap.png
+Добавлено : /FOdev/BinClient/data/art/intrface/dlg_end.png
+Добавлено : /FOdev/BinClient/data/art/intrface/green_pix.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_brust.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_kick.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_null.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_punch.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_punch2.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_reload.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_sharp.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_single.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_throw.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_thrust.png
+Добавлено : /FOdev/BinClient/data/art/intrface/i_use.png
+Добавлено : /FOdev/BinClient/data/art/intrface/iface.png
+Добавлено : /FOdev/BinClient/data/art/intrface/login.png
+Добавлено : /FOdev/BinClient/data/art/intrface/none.png
+Добавлено : /FOdev/BinClient/data/art/intrface/options.png
+Добавлено : /FOdev/BinClient/data/art/intrface/panel.png
+Добавлено : /FOdev/BinClient/data/art/intrface/pickup.png
+Добавлено : /FOdev/BinClient/data/art/intrface/registr.png
+Добавлено : /FOdev/BinClient/data/art/intrface/skillbox.png
+Добавлено : /FOdev/BinClient/data/art/intrface/skillbox_sneak.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop1.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop2.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop3.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop4.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop5.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop6.png
+Добавлено : /FOdev/BinClient/data/art/misc/adrop7.png
+Добавлено : /FOdev/BinClient/data/art/misc/drop.png
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_big_num.bmp
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_big_num.fnt
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_def.bmp
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_def.fnt
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_not_num.bmp
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_not_num.fnt
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_num.bmp
+Добавлено : /FOdev/BinClient/data/art/misc/fnt_num.fnt
+Удалено : /FOdev/BinClient/data/art/misc/font.bmp
+Удалено : /FOdev/BinClient/data/art/misc/font.fnt
+Изменено : /FOdev/BinClient/data/art/misc/hexb.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/hexb1.FRM
+Удалено : /FOdev/BinClient/data/art/misc/iface
+Удалено : /FOdev/BinClient/data/art/misc/intrface.txt
+Добавлено : /FOdev/BinClient/data/art/misc/track1.png
+Добавлено : /FOdev/BinClient/data/art/misc/track2.png
+Удалено : /FOdev/BinClient/data/art/misc/worldmap.frm
+Удалено : /FOdev/BinClient/data/art/misc/worldmap1.frm
+Удалено : /FOdev/BinClient/data/art/misc/worldmap2.frm
+Удалено : /FOdev/BinClient/data/art/misc/worldmap3.frm
+Удалено : /FOdev/BinClient/data/art/misc/worldmap4.frm
+Добавлено : /FOdev/BinClient/data/art/splash/dweller13.rix
+Добавлено : /FOdev/BinClient/data/art/splash/params.txt
+Добавлено : /FOdev/BinClient/data/maps/112.map
+Добавлено : /FOdev/BinClient/data/objects
+Добавлено : /FOdev/BinClient/data/objects/10.st
+Добавлено : /FOdev/BinClient/data/objects/1301.st
+Добавлено : /FOdev/BinClient/data/objects/2016.st
+Добавлено : /FOdev/BinClient/data/objects/210.st
+Добавлено : /FOdev/BinClient/data/objects/7001.st
+Добавлено : /FOdev/BinClient/data/objects/all_obj.st
+Добавлено : /FOdev/BinClient/data/objects/info_objects.txt
+Добавлено : /FOdev/BinClient/data/objects/pic_inv.txt
+Добавлено : /FOdev/BinClient/data/objects/pic_use.txt
+Удалено : /FOdev/BinClient/info_objects.txt
+Удалено : /FOdev/BinClient/names_objects.txt
+Удалено : /FOdev/BinClient/objects
+Удалено : /FOdev/BinClient/pic_inv.txt
+Удалено : /FOdev/BinClient/pic_obj_g.txt
+Удалено : /FOdev/BinClient/pic_use.txt
+Удалено : /FOdev/BinClient/readme.txt
+Удалено : /FOdev/BinClient/st_obj.st
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Удалено : /FOdev/BinServer/copyrights
+Изменено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/foserv.cfg
+Изменено : /FOdev/BinServer/objects/10.st
+Изменено : /FOdev/BinServer/objects/1301.st
+Изменено : /FOdev/BinServer/objects/2016.st
+Изменено : /FOdev/BinServer/objects/210.st
+Добавлено : /FOdev/BinServer/objects/7001.st
+Изменено : /FOdev/BinServer/objects/all_obj.st
+Удалено : /FOdev/BinServer/setup.txt
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CFileMngr.h
+Изменено : /FOdev/Modding client/CFont.cpp
+Изменено : /FOdev/Modding client/CFont.h
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/FOnline.dsp
+Изменено : /FOdev/Modding client/SoundMngr.cpp
+Изменено : /FOdev/Modding client/SoundMngr.h
+Изменено : /FOdev/Modding client/common.cpp
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding client/keyb.cpp
+Изменено : /FOdev/Modding client/keyb.h
+Изменено : /FOdev/Modding client/main.cpp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/rs.aps
+Изменено : /FOdev/Modding client/rs.rc
+Изменено : /FOdev/Modding client/stdafx.h
+Изменено : /FOdev/Modding client/version.h
+Изменено : /FOdev/Modding server/BufMngr.cpp
+Изменено : /FOdev/Modding server/CFileMngr.cpp
+Изменено : /FOdev/Modding server/CFileMngr.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/FOserver.dsp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/SQL.h
+Изменено : /FOdev/Modding server/main.cpp
+Изменено : /FOdev/Modding server/main.h
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/stdafx.h
+Изменено : /FOdev/NPC_editor/NPC_edit.suo
+
+
+Ревизия: 96
+Автор: cvet
+Дата: 23:42:02, 5 февраля 2007 г.
+Сообщение:
+переделал перемещение.
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/stdafx.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/stdafx.h
+
+
+Ревизия: 95
+Автор: cvet
+Дата: 0:53:50, 5 февраля 2007 г.
+Сообщение:
+переделал концепт общения
+кароче вот первых три символа с которых может начинаться вся эта байда: “!”,”.”,”/”
+вот вторые:
+рус:кК  оО  эЭ  шШ  сС
+анг:sS mM eE  wW   $
+по порядку: кричать, орать, эмоция, шепет, социал
+заменена регистрация
+----
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/Iface.cfg
+Удалено : /FOdev/BinClient/data/art/misc/iface/regist0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/regist0.png
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 94
+Автор: cvet
+Дата: 22:51:06, 4 февраля 2007 г.
+Сообщение:
+профикшены баги/глюки/недочеты.
+изменена система согласования клиент-сервера по перемещению.
+четотам еще...
+----
+Изменено : /FOdev/BinClient/FOnline.cfg
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Удалено : /FOdev/BinClient/data/maps/1.map
+Добавлено : /FOdev/BinClient/data/maps/11.map
+Добавлено : /FOdev/BinClient/data/maps/12.map
+Удалено : /FOdev/BinClient/data/maps/2.map
+Удалено : /FOdev/BinClient/data/maps/3.map
+Удалено : /FOdev/BinClient/data/text/1.dlg
+Добавлено : /FOdev/BinClient/data/text/101.dlg
+Добавлено : /FOdev/BinClient/data/text/102.dlg
+Добавлено : /FOdev/BinClient/data/text/103.dlg
+Добавлено : /FOdev/BinClient/data/text/104.dlg
+Добавлено : /FOdev/BinClient/data/text/105.dlg
+Добавлено : /FOdev/BinClient/data/text/106.dlg
+Добавлено : /FOdev/BinClient/data/text/107.dlg
+Удалено : /FOdev/BinClient/data/text/2.dlg
+Удалено : /FOdev/BinClient/data/text/3.dlg
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/foserv.cfg
+Удалено : /FOdev/BinServer/maps/1.map
+Удалено : /FOdev/BinServer/maps/2.map
+Удалено : /FOdev/BinServer/maps/3.map
+Добавлено : /FOdev/BinServer/maps/data_maps.txt
+Добавлено : /FOdev/BinServer/maps/denbus1.map
+Добавлено : /FOdev/BinServer/maps/denbus2.map
+Добавлено : /FOdev/BinServer/npc/Butcher_Smit.npc
+Добавлено : /FOdev/BinServer/npc/CrazyMax.npc
+Добавлено : /FOdev/BinServer/npc/Doctor_Livsi.npc
+Добавлено : /FOdev/BinServer/npc/Fred.npc
+Добавлено : /FOdev/BinServer/npc/Starik.npc
+Добавлено : /FOdev/BinServer/npc/Trader_Djo.npc
+Изменено : /FOdev/BinServer/npc/barman_mo.npc
+Изменено : /FOdev/BinServer/npc/billy.npc
+Изменено : /FOdev/BinServer/npc/list_npc.npc
+Удалено : /FOdev/BinServer/npc/narik.npc
+Удалено : /FOdev/BinServer/st_obj.st
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/common.cpp
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding client/main.cpp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/stdafx.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/main.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/stdafx.h
+
+
+Ревизия: 93
+Автор: cvet
+Дата: 20:42:01, 1 февраля 2007 г.
+Сообщение:
+короче хз что писать. траффика небыло нормального исходящего долгое время.
+много перелапатил. ща даже боюсь вспоминать :)
+для того чтобы играла музыка надо кинуть из ориг фола папку sound в data.
+----
+Изменено : /FOdev/BinClient/FOnline.cfg
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Изменено : /FOdev/BinClient/Iface.cfg
+Удалено : /FOdev/BinClient/data/art/misc/iface/dialog_answ0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog_answ0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/dialog_begin0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog_begin0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/dialog_end0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog_end0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_brust0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_brust0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_kick0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_kick0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_null0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_null0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_punch0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_punch0.png
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_punch20.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_reload0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_reload0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_sharp0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_sharp0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_single0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_single0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_throw0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_throw0.png
+Удалено : /FOdev/BinClient/data/art/misc/iface/i_thrust0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_thrust0.png
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_use0.png
+Изменено : /FOdev/BinClient/data/maps/1.map
+Удалено : /FOdev/BinClient/data/maps/1.map.st
+Удалено : /FOdev/BinClient/data/maps/2.map.st
+Удалено : /FOdev/BinClient/data/maps/m1.map
+Добавлено : /FOdev/BinClient/objects
+Добавлено : /FOdev/BinClient/objects/10.st
+Добавлено : /FOdev/BinClient/objects/1301.st
+Добавлено : /FOdev/BinClient/objects/2016.st
+Добавлено : /FOdev/BinClient/objects/210.st
+Добавлено : /FOdev/BinClient/objects/all_obj.st
+Изменено : /FOdev/BinClient/pic_use.txt
+Добавлено : /FOdev/BinNPC_edit/NPC/Barman_Mo.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/Barman_Mo.npc
+Добавлено : /FOdev/BinNPC_edit/NPC/Starik.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/Starik.npc
+Добавлено : /FOdev/BinNPC_edit/NPC/Trader_Djo.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/Trader_Djo.npc
+Добавлено : /FOdev/BinNPC_edit/NPC/ded.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/ded.npc
+Добавлено : /FOdev/BinNPC_edit/NPC/primer_uznovaimosti.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/primer_uznovaimosti.npc
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/foserv.cfg
+Добавлено : /FOdev/BinServer/maps/1.map
+Удалено : /FOdev/BinServer/maps/1.st
+Добавлено : /FOdev/BinServer/maps/2.map
+Удалено : /FOdev/BinServer/maps/2.st
+Добавлено : /FOdev/BinServer/maps/3.map
+Добавлено : /FOdev/BinServer/objects
+Добавлено : /FOdev/BinServer/objects/10.st
+Добавлено : /FOdev/BinServer/objects/1301.st
+Добавлено : /FOdev/BinServer/objects/2016.st
+Добавлено : /FOdev/BinServer/objects/210.st
+Добавлено : /FOdev/BinServer/objects/all_obj.st
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/SoundMngr.cpp
+Добавлено : /FOdev/Modding client/bitmap1.bmp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/stdafx.h
+Добавлено : /FOdev/Modding server/CFileMngr.cpp
+Добавлено : /FOdev/Modding server/CFileMngr.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/FOserver.dsp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/SQL.h
+Изменено : /FOdev/Modding server/main.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/stdafx.h
+
+
+Ревизия: 92
+Автор: cvet
+Дата: 20:32:26, 19 января 2007 г.
+Сообщение:
++ клиент понимает звуки в формате ACM. Задействованы исходники ABel'я.
++ переместил зачачи в доки.
+----
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CFileMngr.h
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/FOnline.dsp
+Изменено : /FOdev/Modding client/SoundMngr.cpp
+Изменено : /FOdev/Modding client/SoundMngr.h
+Добавлено : /FOdev/Modding client/decomp_acm
+Добавлено : /FOdev/Modding client/decomp_acm/acmstrm.cpp
+Добавлено : /FOdev/Modding client/decomp_acm/acmstrm.h
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/rs.aps
+Удалено : /tasks.txt
+
+
+Ревизия: 90
+Автор: cvet
+Дата: 9:12:07, 14 января 2007 г.
+Сообщение:
+создал новый класс для работы с озвучкой (CSoundMngr) с использованием DirectSound. пока проигрывает только непожатый wav.
+----
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CFileMngr.h
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/FOnline.dsp
+Добавлено : /FOdev/Modding client/SoundMngr.cpp
+Добавлено : /FOdev/Modding client/SoundMngr.h
+Изменено : /FOdev/Modding client/stdafx.h
+
+
+Ревизия: 87
+Автор: cvet
+Дата: 7:29:15, 13 января 2007 г.
+Сообщение:
++ долгожданная загрузка альтернативной графики. bmp, jpg, png. CSpriteManager::LoadSpriteAlt
++ функция компановки и установления наличия файла. CFileMngr::GetFullPath
++ функция обратная CFileMngr::GetDWord() -> CFileMngr::GetRDWord() считывает данные в обратной последовательности
++ функция добавленная ранее, но не упомянутая CFileMngr::GetByte() считывает 1 байт
+----
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CFileMngr.h
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+
+
+Ревизия: 86
+Автор: cvet
+Дата: 1:42:46, 13 января 2007 г.
+Сообщение:
++ клиент форматирует текст от диалогов (#,%%,@pname@...)
++ сделал загрузку итемов на карту
++ сделал загрузку крыши (кнопки вкл/выкл прорисовку: 5-крыша, 6-тайлы,7-сценери,8-стены,9-итемы,0-криттеры)
++ поправил везде синтаксис. убрал пробелы "if ("->"if(","for ("->"for(","while ("->"while("
++ начал править НПЦ_едитор
++ мелочи
+----
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Изменено : /FOdev/BinClient/data/maps/1.map
+Изменено : /FOdev/BinClient/data/maps/2.map
+Добавлено : /FOdev/BinClient/data/maps/3.map
+Добавлено : /FOdev/BinClient/data/maps/m1.map
+Изменено : /FOdev/BinClient/data/text/1.dlg
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/npc/billy.npc
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/common.cpp
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding client/datfile.cpp
+Изменено : /FOdev/Modding client/main.cpp
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/NPC_editor/Form1.h
+Изменено : /FOdev/NPC_editor/NPC_edit.suo
+
+
+Ревизия: 85
+Автор: baster
+Дата: 0:22:43, 13 января 2007 г.
+Сообщение:
+Карта обновлена, на сеня пока все.
+----
+Изменено : /FOdev/BinClient/data/maps/Alphamaps/denbus1.map
+
+
+Ревизия: 84
+Автор: cvet
+Дата: 22:24:40, 12 января 2007 г.
+Сообщение:
+последняя часть mysql
+----
+Добавлено : .............. skip .............
+
+
+Ревизия: 83
+Автор: cvet
+Дата: 21:49:33, 12 января 2007 г.
+Сообщение:
+продолжаю докачивать mysql
+----
+Добавлено : /MySql/lib/debug
+Добавлено : /MySql/lib/debug/libmysql.dll
+Добавлено : /MySql/lib/debug/libmysql.lib
+Добавлено : /MySql/lib/debug/mysqlclient.lib
+Добавлено : /MySql/lib/debug/mysys.lib
+Добавлено : /MySql/lib/debug/regex.lib
+Добавлено : /MySql/lib/debug/strings.lib
+Добавлено : /MySql/lib/debug/zlib.lib
+
+
+Ревизия: 82
+Автор: cvet
+Дата: 7:00:23, 12 января 2007 г.
+Сообщение:
+клиент загружает флаги проходимости/простеливаемости из инфы карты.
+упростил немного загрузку графы для стен и сенери.
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /tasks.txt
+
+
+Ревизия: 81
+Автор: cvet
+Дата: 4:01:45, 12 января 2007 г.
+Сообщение:
+теперь клиент пропускает скрипты, итемы, криттеров, так же контейнера итемов, и также при дополнительных уровнях он загружает только первый, остальные секции тайлов пропускает. Короче все что мешает загрузке он пропускает.
+так что сейчас в клиент можно загружать все оригинальные карты фола - лишнее пропуститься.
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+
+
+Ревизия: 80
+Автор: baster
+Дата: 2:13:36, 12 января 2007 г.
+Сообщение:
+Карты Дена, пока обновлена карта первая города, промежуточная версия.
+----
+Добавлено : /FOdev/BinClient/data/maps/Alphamaps
+Добавлено : /FOdev/BinClient/data/maps/Alphamaps/denbus1.map
+Добавлено : /FOdev/BinClient/data/maps/Alphamaps/denbus2.map
+Добавлено : /FOdev/BinClient/data/maps/Alphamaps/denres1.map
+
+
+Ревизия: 79
+Автор: cvet
+Дата: 10:10:18, 11 января 2007 г.
+Сообщение:
+подкорректировал. убрал записи в лог.
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+
+
+Ревизия: 78
+Автор: cvet
+Дата: 5:48:48, 11 января 2007 г.
+Сообщение:
+разобрался с форматом карт. подправил прохождение секции скриптов, но проблема пока не решена до конца. в разных источниках по разному описывают структуру данных карты.
+добавил прохождение всех объектов в карте (кроме контейнеров). теперь при загрузке клиент не спотыкается о итемы и криттеров - теперь он их пропускает. Позже добавлю ввод их в игру.
+впредь буду вытаскивать всю инфомацию непосредственно из карты, без помощи сторонних тулз и извращений.
+----
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CFileMngr.h
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/common.h
+
+
+Ревизия: 77
+Автор: cvet
+Дата: 6:51:10, 10 января 2007 г.
+Сообщение:
+потиху заливаю новый mysql. долью на неделе.
+mysqladmin в топку. сейчас он не нужен.
+----
+Добавлено : /MySql/include
+Добавлено : /MySql/include/config-netware.h
+Добавлено : /MySql/include/config-os2.h
+Добавлено : /MySql/include/config-win.h
+Добавлено : /MySql/include/errmsg.h
+Добавлено : /MySql/include/libmysql.def
+Добавлено : /MySql/include/m_ctype.h
+Добавлено : /MySql/include/m_string.h
+Добавлено : /MySql/include/my_alloc.h
+Добавлено : /MySql/include/my_dbug.h
+Добавлено : /MySql/include/my_getopt.h
+Добавлено : /MySql/include/my_global.h
+Добавлено : /MySql/include/my_list.h
+Добавлено : /MySql/include/my_pthread.h
+Добавлено : /MySql/include/my_sys.h
+Добавлено : /MySql/include/mysql.h
+Добавлено : /MySql/include/mysql_com.h
+Добавлено : /MySql/include/mysql_embed.h
+Добавлено : /MySql/include/mysql_time.h
+Добавлено : /MySql/include/mysql_version.h
+Добавлено : /MySql/include/mysqld_ername.h
+Добавлено : /MySql/include/mysqld_error.h
+Добавлено : /MySql/include/raid.h
+Добавлено : /MySql/include/typelib.h
+Добавлено : /MySql/lib
+Добавлено : /MySql/lib/opt
+Добавлено : /MySql/lib/opt/libmysql.dll
+Добавлено : /MySql/lib/opt/libmysql.lib
+Добавлено : /MySql/lib/opt/mysqlclient.lib
+Добавлено : /MySql/lib/opt/mysys-max-nt.lib
+Добавлено : /MySql/lib/opt/mysys-max.lib
+Добавлено : /MySql/lib/opt/mysys-nt.lib
+Добавлено : /MySql/lib/opt/mysys.lib
+Добавлено : /MySql/lib/opt/regex.lib
+Добавлено : /MySql/lib/opt/strings.lib
+Добавлено : /MySql/lib/opt/zlib.lib
+Добавлено : /MySql/share
+Добавлено : /MySql/share/english
+Добавлено : /MySql/share/english/errmsg.sys
+Добавлено : /MySql/share/errmsg.txt
+
+
+Ревизия: 76
+Автор: cvet
+Дата: 4:46:13, 10 января 2007 г.
+Сообщение:
+перименовал NPC_edit в NPC_editor
+добавил маппер димса для его дальнейшей переделки под наши нужды
+----
+Добавлено :........... skip ............................
+
+
+Ревизия: 74
+Автор: cvet
+Дата: 4:01:29, 10 января 2007 г.
+Сообщение:
++реализована работа с собственными переменными нпц (работает напрямую с mysql, не держа в памяти переменные) как на условие так и на запись
++mysql обновлен до версии 5.0.27 (требовалась поддержка триггеров)
++начата реализация зон переходов (можно переходить с карты на карту став хексом ниже, потом обратно хексом выше)
++ну и как обычно много мелочи, которую под утро не могу вспомнить %)
+----
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Добавлено : /FOdev/BinClient/data/maps/1.map
+Добавлено : /FOdev/BinClient/data/maps/1.map.st
+Добавлено : /FOdev/BinClient/data/maps/2.map
+Добавлено : /FOdev/BinClient/data/maps/2.map.st
+Изменено : /FOdev/BinClient/data/text/1.dlg
+Добавлено : /FOdev/BinClient/data/text/3.dlg
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/libmySQL.dll
+Добавлено : /FOdev/BinServer/maps/2.st
+Изменено : /FOdev/BinServer/npc/billy.npc
+Изменено : /FOdev/BinServer/npc/list_npc.npc
+Добавлено : /FOdev/BinServer/npc/narik.npc
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/SQL.h
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/stdafx.h
+Изменено : /FOdev/NPC_edit/NPC_edit.suo
+
+
+Ревизия: 73
+Автор: cvet
+Дата: 2:47:06, 7 января 2007 г.
+Сообщение:
+сервер понимает условия и результаты статов, скиллов и перков. также преддиалоговые настройки.
+прфиксил поиск пути в клиенте.
+сейчас там 2 персонажа: бармен и билли. с билли толком не погоаоришь, требуються учить сервер понимать собственные переменные нпц.
+профиксена запись в скл нпц.
+созданы ассоциативные списки параметров.
+исправлены/добавлены некоторые вещи.
+----
+Удалено : /FOdev/BinClient/Dialogs.txt
+Изменено : /FOdev/BinClient/FOnline.cfg
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Добавлено : /FOdev/BinClient/data/text
+Добавлено : /FOdev/BinClient/data/text/1.dlg
+Добавлено : /FOdev/BinClient/data/text/2.dlg
+Изменено : /FOdev/BinClient/readme.txt
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/dump.dat
+Добавлено : /FOdev/BinServer/npc/barman_mo.npc
+Добавлено : /FOdev/BinServer/npc/billy.npc
+Удалено : /FOdev/BinServer/npc/ded.npc
+Изменено : /FOdev/BinServer/npc/list_npc.npc
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/stdafx.h
+
+
+Ревизия: 72
+Автор: cvet
+Дата: 6:19:22, 6 января 2007 г.
+Сообщение:
+обновленные исходники нпц_едитора.
+профиксен клиент.
+сервер потиху начинает понимать новые диалоги. пока без условий и результатов.
+сервер попрежнему обнуляет таблицы при старте - так пока надо!
+----
+Изменено : /FOdev/BinClient/Dialogs.txt
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinNPC_edit/комменты_примечания.txt
+Добавлено : /FOdev/BinNPC_edit/комменты_примечания2.txt
+Изменено : /FOdev/BinNPC_edit/FAQ.txt
+Изменено : /FOdev/BinNPC_edit/NPC_edit.exe
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/npc/ded.npc
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/NPC_edit/Edit_node.h
+Изменено : /FOdev/NPC_edit/Form1.h
+Изменено : /FOdev/NPC_edit/Form1.resx
+Изменено : /FOdev/NPC_edit/NPC_edit.suo
+Изменено : /FOdev/NPC_edit/stdafx.h
+Удалено : /MySql/data/new fonline
+
+
+Ревизия: 71
+Автор: cvet
+Дата: 18:23:03, 31 декабря 2006 г.
+Сообщение:
+фикс к предыдущему коммиту. были перепутаны обращения к координатам в hex_field
+----
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/Modding client/FEngine.cpp
+
+
+Ревизия: 69
+Автор: cvet
+Дата: 14:36:35, 31 декабря 2006 г.
+Сообщение:
++ графические файлы, + конфиг интерфейса. + также свежие билды.
+- предметы и действия, кроме движения отключил. надо доробатывать.
++ есть ЛМеню (из него пока работает только разговор с НПЦ).
++ диалоговое окно. его можно двигать также как инвентарь.
++ НПЦ_едитор. Но сервер пока понимает только диалоги созданные без условий.
+все остальное по аське.
+----
+Добавлено : /FOdev/BinClient/Dialogs.txt
+Изменено : /FOdev/BinClient/FOnline.cfg
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Изменено : /FOdev/BinClient/Iface.cfg
+Изменено : /FOdev/BinClient/copyrights
+Добавлено : /FOdev/BinClient/data/art/misc/iface/CANCELH0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/CANCELN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/LOOKH0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/LOOKN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/TALKH0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/TALKN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog_answ0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog_begin0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/dialog_end0.frm
+Изменено : /FOdev/BinClient/readme.txt
+Добавлено : /FOdev/BinNPC_edit
+Добавлено : /FOdev/BinNPC_edit/комменты_примечания.txt
+Добавлено : /FOdev/BinNPC_edit/Data
+Добавлено : /FOdev/BinNPC_edit/Data/perks1.rtf
+Добавлено : /FOdev/BinNPC_edit/Data/perks2.rtf
+Добавлено : /FOdev/BinNPC_edit/Data/skills1.rtf
+Добавлено : /FOdev/BinNPC_edit/Data/skills2.rtf
+Добавлено : /FOdev/BinNPC_edit/Data/stats1.rtf
+Добавлено : /FOdev/BinNPC_edit/Data/stats2.rtf
+Добавлено : /FOdev/BinNPC_edit/FAQ.txt
+Добавлено : /FOdev/BinNPC_edit/NPC
+Добавлено : /FOdev/BinNPC_edit/NPC/001.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/001.npc
+Добавлено : /FOdev/BinNPC_edit/NPC/111.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/111.npc
+Добавлено : /FOdev/BinNPC_edit/NPC/primer.dlg
+Добавлено : /FOdev/BinNPC_edit/NPC/primer.npc
+Добавлено : /FOdev/BinNPC_edit/NPC_edit.exe
+Изменено : /FOdev/BinServer/FOserv.log
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/npc/ded.npc
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Добавлено : /FOdev/NPC_edit/AssemblyInfo.cpp
+Добавлено : /FOdev/NPC_edit/Edit_node.cpp
+Добавлено : /FOdev/NPC_edit/Edit_node.h
+Добавлено : /FOdev/NPC_edit/Edit_node.resx
+Добавлено : /FOdev/NPC_edit/Edit_nodeA.cpp
+Добавлено : /FOdev/NPC_edit/Edit_nodeA.h
+Добавлено : /FOdev/NPC_edit/Edit_nodeA.resx
+Добавлено : /FOdev/NPC_edit/Form1.h
+Добавлено : /FOdev/NPC_edit/Form1.resx
+Добавлено : /FOdev/NPC_edit/NPC_edit.cpp
+Добавлено : /FOdev/NPC_edit/NPC_edit.sln
+Добавлено : /FOdev/NPC_edit/NPC_edit.suo
+Добавлено : /FOdev/NPC_edit/NPC_edit.vcproj
+Добавлено : /FOdev/NPC_edit/NPC_edit.vcproj.DREAM-6685EFD26.Admin.user
+Добавлено : /FOdev/NPC_edit/NPC_edit.vcproj.DREAM-F7F083467.Admin.user
+Добавлено : /FOdev/NPC_edit/ReadMe.txt
+Добавлено : /FOdev/NPC_edit/app.ico
+Добавлено : /FOdev/NPC_edit/app.rc
+Добавлено : /FOdev/NPC_edit/resource.h
+Добавлено : /FOdev/NPC_edit/stdafx.cpp
+Добавлено : /FOdev/NPC_edit/stdafx.h
+
+
+Ревизия: 68
+Автор: cvet
+Дата: 0:05:47, 29 декабря 2006 г.
+Сообщение:
+предварительный коммит. результат месячной работы (все кроме нпц_редактора - выложу позже). нехватает некоторых файлов для запуска билдов.
+----
+Изменено : /FOdev/BinClient/FOnline.cfg
+Добавлено : /FOdev/BinClient/FOnline.exe
+Удалено : /FOdev/BinClient/Path.cfg
+Добавлено : /FOdev/BinClient/data/maps/city2.map.st
+Удалено : /FOdev/BinClient/map1.st
+Изменено : /FOdev/BinServer/FOserv.log
+Добавлено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/BinServer/copyrights
+Добавлено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/foserv.cfg
+Добавлено : /FOdev/BinServer/npc
+Добавлено : /FOdev/BinServer/npc/ded.npc
+Добавлено : /FOdev/BinServer/npc/list_npc.npc
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Добавлено : /FOdev/Modding client/FEngine_Iface.cpp
+Изменено : /FOdev/Modding client/FOnline.dsp
+Изменено : /FOdev/Modding client/common.cpp
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/SQL.h
+Изменено : /FOdev/Modding server/main.cpp
+Изменено : /FOdev/Modding server/netproto.h
+Изменено : /FOdev/Modding server/rs.aps
+Изменено : /FOdev/Modding server/socials.cpp
+Добавлено : /FOdev/NPC_edit
+
+
+Ревизия: 67
+Автор: cvet
+Дата: 10:14:19, 25 ноября 2006 г.
+Сообщение:
+Новый класс SQL для работы с БД.
+Тест:
+полная запись игрока 0.5-0.6мс
+полное загрузка игрока 0.18-0.19мс
+----
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/FOserver.dsp
+Изменено : /FOdev/Modding server/SQL.cpp
+Изменено : /FOdev/Modding server/SQL.h
+Изменено : /FOdev/Modding server/foserv.cfg
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 65
+Автор: baster
+Дата: 19:10:38, 11 ноября 2006 г.
+Сообщение:
+ресурсники корректные
+----
+Изменено : /FOdev/Modding client/resource.h
+Изменено : /FOdev/Modding client/rs.aps
+Изменено : /FOdev/Modding client/rs.rc
+
+
+Ревизия: 64
+Автор: baster
+Дата: 19:05:33, 11 ноября 2006 г.
+Сообщение:
+последняя модификация в принципе можно делать начинать стабильный билд.
+----
+Удалено : /FOdev/BinServer/dump.dat
+Изменено : /FOdev/BinServer/st_obj.st
+
+
+Ревизия: 61
+Автор: cvet
+Дата: 13:48:11, 17 октября 2006 г.
+Сообщение:
+sql
+----
+Удалено : /MySql/data/fonline
+Добавлено : /MySql/data/new fonline
+Добавлено : /MySql/data/new fonline/allobj.MYD
+Добавлено : /MySql/data/new fonline/allobj.MYI
+Добавлено : /MySql/data/new fonline/allobj.frm
+Добавлено : /MySql/data/new fonline/allusers.MYD
+Добавлено : /MySql/data/new fonline/allusers.MYI
+Добавлено : /MySql/data/new fonline/allusers.frm
+Добавлено : /MySql/data/new fonline/socials.MYD
+Добавлено : /MySql/data/new fonline/socials.MYI
+Добавлено : /MySql/data/new fonline/socials.frm
+Добавлено : /MySql/data/new fonline/users.MYD
+Добавлено : /MySql/data/new fonline/users.MYI
+Добавлено : /MySql/data/new fonline/users.frm
+
+
+Ревизия: 60
+Автор: cvet
+Дата: 11:30:46, 17 октября 2006 г.
+Сообщение:
+надо опробовать сеть.
+----
+Изменено : /FOdev/BinClient/FOnline.cfg
+Удалено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinClient/FOnline.log
+Изменено : /FOdev/BinClient/data/art/critters/critters.fol
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_brust0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_kick0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_null0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_punch0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_reload0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_sharp0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_single0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_throw0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/i_thrust0.frm
+Изменено : /FOdev/BinClient/pic_use.txt
+Изменено : /FOdev/BinClient/st_obj.st
+Удалено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FOnline.dsp
+Изменено : /FOdev/Modding client/main.cpp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/resource.h
+Изменено : /FOdev/Modding client/rs.aps
+Изменено : /FOdev/Modding client/rs.rc
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 59
+Автор: cvet
+Дата: 17:54:25, 16 октября 2006 г.
+Сообщение:
+все 9 карт
+----
+Изменено : /Exper/CHexField.cpp
+Изменено : /Exper/CHexField.h
+
+
+Ревизия: 58
+Автор: baster
+Дата: 15:41:08, 16 октября 2006 г.
+Сообщение:
+Сшивание
+----
+Добавлено : /Exper/CHexField.cpp
+Добавлено : /Exper/CHexField.h
+
+
+Ревизия: 57
+Автор: baster
+Дата: 14:18:41, 16 октября 2006 г.
+Сообщение:
+Эксперименты с картами
+----
+Добавлено : /Exper
+
+
+Ревизия: 53
+Автор: cvet
+Дата: 13:52:43, 13 октября 2006 г.
+Сообщение:
+очередной фикс
+----
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 50
+Автор: cvet
+Дата: 22:22:44, 12 октября 2006 г.
+Сообщение:
+еще фикс
+----
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 49
+Автор: cvet
+Дата: 22:02:17, 12 октября 2006 г.
+Сообщение:
+
+----
+Изменено : /FOdev/Modding server/FOserv.cpp
+Добавлено : /MySql/data/fonline/users.MYD
+Добавлено : /MySql/data/fonline/users.MYI
+Добавлено : /MySql/data/fonline/users.frm
+
+
+Ревизия: 47
+Автор: baster
+Дата: 13:54:17, 12 октября 2006 г.
+Сообщение:
+комменты в основном, никаких измнений пока =)
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CHexField.h
+Изменено : /files.txt
+
+
+Ревизия: 46
+Автор: cvet
+Дата: 8:47:45, 12 октября 2006 г.
+Сообщение:
+все можешь уже пробовать нож брать в руки.... пока что больше сил нет делать.... буду спать
+----
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 45
+Автор: cvet
+Дата: 6:48:12, 12 октября 2006 г.
+Сообщение:
+заплаточка
+----
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 44
+Автор: cvet
+Дата: 6:04:07, 12 октября 2006 г.
+Сообщение:
+тут еще
+----
+Изменено : /Data/OBJECTS.doc
+Изменено : /Data/STATS.doc
+
+
+Ревизия: 43
+Автор: cvet
+Дата: 6:01:44, 12 октября 2006 г.
+Сообщение:
+ну что сказать - как обычно. глюки гарантированны
+----
+Изменено : /Data/Типы повреждений.doc
+Изменено : /Data/OBJECTS.doc
+Изменено : /Data/STATS.doc
+Изменено : /FOdev/BinServer/st_obj.st
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Удалено : /FOdev/Modding client/Debug
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Удалено : /FOdev/Modding client/Release
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/FOserver.dsp
+Удалено : /FOdev/Modding server/Release
+Добавлено : /FOdev/Modding server/SQL.cpp
+Добавлено : /FOdev/Modding server/SQL.h
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 42
+Автор: cvet
+Дата: 2:59:37, 11 октября 2006 г.
+Сообщение:
+все что в data закинешь в репозитарий теоретикам. концепцию для объектов вроде сочинил.
+----
+Добавлено : /Data/Типы повреждений.doc
+Добавлено : /Data/OBJECTS ON GROUND.doc
+Изменено : /Data/OBJECTS.doc
+Добавлено : /Data/PIC_INVENTORY.doc
+Добавлено : /Data/PIC_USE.doc
+Изменено : /Data/STATS.doc
+Добавлено : /Data/all_static_objects.txt
+Добавлено : /Data/info_objects.txt
+Добавлено : /Data/names_objects.txt
+Добавлено : /Data/pic_inv.txt
+Добавлено : /Data/pic_obj_g.txt
+Добавлено : /Data/pic_use.txt
+Добавлено : /FOdev/BinClient/info_objects.txt
+Добавлено : /FOdev/BinClient/names_objects.txt
+Добавлено : /FOdev/BinClient/pic_inv.txt
+Добавлено : /FOdev/BinClient/pic_obj_g.txt
+Добавлено : /FOdev/BinClient/pic_use.txt
+Добавлено : /FOdev/BinClient/st_obj.st
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/netproto.h
+
+
+Ревизия: 41
+Автор: cvet
+Дата: 3:16:09, 10 октября 2006 г.
+Сообщение:
+работаю.....
+----
+Изменено : /Data/OBJECTS.doc
+Изменено : /FOdev/BinClient/Iface.cfg
+Добавлено : /FOdev/BinClient/data/art/misc/hexred.frm
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 40
+Автор: cvet
+Дата: 6:41:37, 9 октября 2006 г.
+Сообщение:
+night build. как обычно с глюками скорее всего.
+----
+Изменено : /Data/OBJECTS.doc
+Изменено : /FOdev/BinClient/FOnline.exe
+Изменено : /FOdev/BinServer/FOservSVS.exe
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 39
+Автор: baster
+Дата: 10:17:53, 8 октября 2006 г.
+Сообщение:
+Мелочи, метка для зоны скриптов, основной момент который может вызывать ошибки при загрузке карт. Еще я пока в осномном буду править грамматику в сообщениях и комменты добавлять, будет полезно..
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+
+
+Ревизия: 35
+Автор: cvet
+Дата: 21:10:29, 7 октября 2006 г.
+Сообщение:
+ничего нового - обновил для продолжения работы завтра на работе.
+----
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/netproto.h
+
+
+Ревизия: 33
+Автор: baster
+Дата: 19:31:19, 7 октября 2006 г.
+Сообщение:
+Док по оружию
+----
+Добавлено : /Data/WEAPONS.doc
+
+
+Ревизия: 31
+Автор: cvet
+Дата: 18:13:15, 7 октября 2006 г.
+Сообщение:
+распиновка статов и предметов
+----
+Добавлено : /OBJECTS.doc
+Добавлено : /STATS.doc
+
+
+Ревизия: 26
+Автор: cvet
+Дата: 7:08:51, 7 октября 2006 г.
+Сообщение:
+фуух... ну че короче навел порядок в криттерс - поудалял все ненужное (почти все). теперь все давольно просто и понятно. короче если чел не умеет что то делать то вылетов не будет - те если прислали заявку на неправильную анимацию (или пакет битый), то ничего страшного не произойдет. если захочет бежать а анимации нету, то хрен - пойдет пешком. кстати сейчас они морды чешут когда ждешь и бег опять сделал и еще там увидишь кое что. кстати траблу одну надо переговорить.... короче дохрена чего сделал :)
+----
+Изменено : /FOdev/Modding client/CHexField.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/common.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+
+
+Ревизия: 25
+Автор: cvet
+Дата: 9:09:32, 6 октября 2006 г.
+Сообщение:
+заплатка
+----
+Изменено : /FOdev/Modding client/CFileMngr.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/main.cpp
+
+
+Ревизия: 24
+Автор: cvet
+Дата: 6:08:25, 6 октября 2006 г.
+Сообщение:
+короче дэн тут тааакая замута, что пиздец.... самому страшно :) короче все компилится, но не тестировано (так что глюки 99%). Просплюсь и буду глюки ловить. Итак суть такова: есть один большой трехуровневый массив указателей на CritFrames в него грузяться все возможные комбинации фрмок (если не получается из одного файла, то пробует из 6 направленных). и каждый криттерс берет просто из этого массива нужную фрмку, если ее нет, то вылетов не будет. минус пока один вижу - все фрмки будут скорее всего занимать много места в памяти, но другого выхода пока я не вижу т.к. при подгрузке в реальном времени доп. анимаций (смена броника, вхождение в твою зону нового игрока и смены им броника допустим) ведут к ОГРОМНЫМ тормозам. еще один хороший ПЛЮСИЩЕ - код для анимаций уменшился процентов на 80 (смотри сам - там почти все заккоментировано). при старой реализации мыб заколебались каждое действие объявлять (их более 100 для отдельного полноценного типа).... короче остальные ньюансы в аське...
+----
+Изменено : /FOdev/Modding client/CSpriteManager.cpp
+Изменено : /FOdev/Modding client/CSpriteManager.h
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/common.h
+
+
+Ревизия: 20
+Автор: cvet
+Дата: 3:00:59, 5 октября 2006 г.
+Сообщение:
+забыл кое что.... мелочи.....
+----
+Изменено : /FOdev/Modding client/FEngine.cpp
+
+
+Ревизия: 19
+Автор: cvet
+Дата: 2:52:26, 5 октября 2006 г.
+Сообщение:
+двигаемся дальше :) сервер уже реагирует на обман игрока по махинации с предметами. попробуй зайди в игру - нажми С - в инвентаре появиться ножик, но он создан локально в клиенте и попробуй взять в руки... ну это визуальные мелочи... работаем. кстати там два аккаунта (login, pass) = baster, friendly; kosh, kazak. заходи если хош по очереди...
+----
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/FOserver.dsp
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 18
+Автор: cvet
+Дата: 3:32:35, 4 октября 2006 г.
+Сообщение:
+короче все переделываю много по другому, дабы сократить в итоге код. чтоб небыл таким громоздким и в последствии менее глючным. до объектов рукой подать :)
+----
+Изменено : /FOdev/Modding client/Critter.cpp
+Изменено : /FOdev/Modding client/Critter.h
+Изменено : /FOdev/Modding client/FEngine.cpp
+Изменено : /FOdev/Modding client/FEngine.h
+Изменено : /FOdev/Modding client/FOnline.dsp
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 17
+Автор: cvet
+Дата: 6:41:02, 3 октября 2006 г.
+Сообщение:
+текущие работы
+----
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 15
+Автор: cvet
+Дата: 0:05:24, 3 октября 2006 г.
+Сообщение:
+последние бины
+----
+Добавлено : /FOdev/BinClient/FOnline.cfg
+Добавлено : /FOdev/BinClient/FOnline.exe
+Добавлено : /FOdev/BinClient/FOnline.log
+Добавлено : /FOdev/BinClient/Iface.cfg
+Добавлено : /FOdev/BinClient/Path.cfg
+Добавлено : /FOdev/BinClient/ReadMe Cvet 11092006.txt
+Добавлено : /FOdev/BinClient/commands.txt
+Добавлено : /FOdev/BinClient/copyrights
+Добавлено : /FOdev/BinClient/data
+Добавлено : /FOdev/BinClient/data/art
+Добавлено : /FOdev/BinClient/data/art/critters
+Добавлено : /FOdev/BinClient/data/art/critters/critters.fol
+Добавлено : /FOdev/BinClient/data/art/misc
+Добавлено : /FOdev/BinClient/data/art/misc/font.bmp
+Добавлено : /FOdev/BinClient/data/art/misc/font.fnt
+Добавлено : /FOdev/BinClient/data/art/misc/hex.frm
+Добавлено : /FOdev/BinClient/data/art/misc/hexb.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface
+Добавлено : /FOdev/BinClient/data/art/misc/iface/DNARWOFF0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/DNARWON0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/HLGRN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/HLRED0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/HLYEL0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVBOX0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVBUTDN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVDNDS0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVDNIN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVDNOUT0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVUPDS0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVUPIN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/INVUPOUT0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/MENUDOWN0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/MENUUP0.FRM
+Добавлено : /FOdev/BinClient/data/art/misc/iface/ifacen0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/login0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/panel0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/iface/regist0.frm
+Добавлено : /FOdev/BinClient/data/art/misc/intrface.txt
+Добавлено : /FOdev/BinClient/data/art/misc/tmapcirc.frm
+Добавлено : /FOdev/BinClient/data/art/misc/worldmap.frm
+Добавлено : /FOdev/BinClient/data/art/misc/worldmap1.frm
+Добавлено : /FOdev/BinClient/data/art/misc/worldmap2.frm
+Добавлено : /FOdev/BinClient/data/art/misc/worldmap3.frm
+Добавлено : /FOdev/BinClient/data/art/misc/worldmap4.frm
+Добавлено : /FOdev/BinClient/data/art/splash
+Добавлено : /FOdev/BinClient/data/maps
+Добавлено : /FOdev/BinClient/data/maps/city2.map
+Добавлено : /FOdev/BinClient/map1.st
+Добавлено : /FOdev/BinClient/readme.txt
+Добавлено : /FOdev/BinServer/FOserv.log
+Добавлено : /FOdev/BinServer/FOservSVS.exe
+Добавлено : /FOdev/BinServer/copyrights
+Добавлено : /FOdev/BinServer/dump.dat
+Добавлено : /FOdev/BinServer/foserv.cfg
+Добавлено : /FOdev/BinServer/libmySQL.dll
+Добавлено : /FOdev/BinServer/maps
+Добавлено : /FOdev/BinServer/maps/1.st
+Добавлено : /FOdev/BinServer/readme.txt
+Добавлено : /FOdev/BinServer/st_obj.st
+Добавлено : /FOdev/BinServer/start.bat
+Добавлено : /FOdev/BinServer/stop.bat
+
+
+Ревизия: 14
+Автор: cvet
+Дата: 18:35:29, 2 октября 2006 г.
+Сообщение:
+временное обновление
+----
+Изменено : /FOdev/Modding client/netproto.h
+Изменено : /FOdev/Modding client/stdafx.h
+Изменено : /FOdev/Modding server/FOServ.h
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/netproto.h
+
+
+Ревизия: 10
+Автор: cvet
+Дата: 20:36:23, 30 сентября 2006 г.
+Сообщение:
+
+----
+Изменено : /FOdev/Modding client/FOnline.dsp
+Удалено : /FOdev/Modding client/Iface.cfg
+Удалено : /FOdev/Modding client/InvBox.cfg
+Изменено : /FOdev/Modding server/FOserv.cpp
+Изменено : /FOdev/Modding server/FOserver.dsp
+
+
+Ревизия: 8
+Автор: baster
+Дата: 19:57:22, 30 сентября 2006 г.
+Сообщение:
+БД мускула три таблицы
+----
+Добавлено : /MySql
+Добавлено : /MySql/data
+Добавлено : /MySql/data/fonline
+Добавлено : /MySql/data/fonline/allobj.MYD
+Добавлено : /MySql/data/fonline/allobj.MYI
+Добавлено : /MySql/data/fonline/allobj.frm
+Добавлено : /MySql/data/fonline/allusers.MYD
+Добавлено : /MySql/data/fonline/allusers.MYI
+Добавлено : /MySql/data/fonline/allusers.frm
+Добавлено : /MySql/data/fonline/socials.MYD
+Добавлено : /MySql/data/fonline/socials.MYI
+Добавлено : /MySql/data/fonline/socials.frm
+Добавлено : /files.txt
+
+
+Ревизия: 7
+Автор: baster
+Дата: 12:43:17, 30 сентября 2006 г.
+Сообщение:
+Настроечные файлы конфиги, риадми и статика 08092006
+----
+Добавлено : /FOdev/Modding client/Iface.cfg
+Добавлено : /FOdev/Modding client/InvBox.cfg
+Добавлено : /FOdev/Modding client/commands.txt
+Добавлено : /FOdev/Modding client/readme.txt
+Добавлено : /FOdev/Modding server/map1.st
+Добавлено : /FOdev/Modding server/setup.txt
+Добавлено : /FOdev/Modding server/start.bat
+Добавлено : /FOdev/Modding server/stop.bat
+
+
+Ревизия: 5
+Автор: baster
+Дата: 18:27:53, 29 сентября 2006 г.
+Сообщение:
+Сервер и Клиент 29092006 от Антона
+----
+Добавлено : /FOdev/Modding client
+Добавлено : /FOdev/Modding client/BufMngr.cpp
+Добавлено : /FOdev/Modding client/BufMngr.h
+Добавлено : /FOdev/Modding client/CFileMngr.cpp
+Добавлено : /FOdev/Modding client/CFileMngr.h
+Добавлено : /FOdev/Modding client/CFont.cpp
+Добавлено : /FOdev/Modding client/CFont.h
+Добавлено : /FOdev/Modding client/CHexField.cpp
+Добавлено : /FOdev/Modding client/CHexField.h
+Добавлено : /FOdev/Modding client/CSpriteManager.cpp
+Добавлено : /FOdev/Modding client/CSpriteManager.h
+Добавлено : /FOdev/Modding client/Critter.cpp
+Добавлено : /FOdev/Modding client/Critter.h
+Добавлено : /FOdev/Modding client/Debug
+Добавлено : /FOdev/Modding client/FEngine.cpp
+Добавлено : /FOdev/Modding client/FEngine.h
+Добавлено : /FOdev/Modding client/FOnline.dsp
+Добавлено : /FOdev/Modding client/FOnline.dsw
+Добавлено : /FOdev/Modding client/Release
+Добавлено : /FOdev/Modding client/cfile
+Добавлено : /FOdev/Modding client/cfile/cfile.cpp
+Добавлено : /FOdev/Modding client/cfile/cfile.h
+Добавлено : /FOdev/Modding client/clean_up.bat
+Добавлено : /FOdev/Modding client/comlite.h
+Добавлено : /FOdev/Modding client/common.cpp
+Добавлено : /FOdev/Modding client/common.h
+Добавлено : /FOdev/Modding client/control.h
+Добавлено : /FOdev/Modding client/control.odl
+Добавлено : /FOdev/Modding client/datfile.cpp
+Добавлено : /FOdev/Modding client/datfile.h
+Добавлено : /FOdev/Modding client/fico.ico
+Добавлено : /FOdev/Modding client/frmload.h
+Добавлено : /FOdev/Modding client/getver.bat
+Добавлено : /FOdev/Modding client/keyb.cpp
+Добавлено : /FOdev/Modding client/keyb.h
+Добавлено : /FOdev/Modding client/main.cpp
+Добавлено : /FOdev/Modding client/netproto.h
+Добавлено : /FOdev/Modding client/resource.h
+Добавлено : /FOdev/Modding client/rs.aps
+Добавлено : /FOdev/Modding client/rs.rc
+Добавлено : /FOdev/Modding client/stdafx.cpp
+Добавлено : /FOdev/Modding client/stdafx.h
+Добавлено : /FOdev/Modding client/unlzss
+Добавлено : /FOdev/Modding client/unlzss/unlzss.cpp
+Добавлено : /FOdev/Modding client/unlzss/unlzss.h
+Добавлено : /FOdev/Modding client/version.h
+Добавлено : /FOdev/Modding client/zlib
+Добавлено : /FOdev/Modding client/zlib/adler32.c
+Добавлено : /FOdev/Modding client/zlib/compress.c
+Добавлено : /FOdev/Modding client/zlib/crc32.c
+Добавлено : /FOdev/Modding client/zlib/deflate.c
+Добавлено : /FOdev/Modding client/zlib/deflate.h
+Добавлено : /FOdev/Modding client/zlib/gzio.c
+Добавлено : /FOdev/Modding client/zlib/infblock.c
+Добавлено : /FOdev/Modding client/zlib/infblock.h
+Добавлено : /FOdev/Modding client/zlib/infcodes.c
+Добавлено : /FOdev/Modding client/zlib/infcodes.h
+Добавлено : /FOdev/Modding client/zlib/inffast.c
+Добавлено : /FOdev/Modding client/zlib/inffast.h
+Добавлено : /FOdev/Modding client/zlib/inffixed.h
+Добавлено : /FOdev/Modding client/zlib/inflate.c
+Добавлено : /FOdev/Modding client/zlib/inftrees.c
+Добавлено : /FOdev/Modding client/zlib/inftrees.h
+Добавлено : /FOdev/Modding client/zlib/infutil.c
+Добавлено : /FOdev/Modding client/zlib/infutil.h
+Добавлено : /FOdev/Modding client/zlib/maketree.c
+Добавлено : /FOdev/Modding client/zlib/trees.c
+Добавлено : /FOdev/Modding client/zlib/trees.h
+Добавлено : /FOdev/Modding client/zlib/uncompr.c
+Добавлено : /FOdev/Modding client/zlib/zconf.h
+Добавлено : /FOdev/Modding client/zlib/zlib.3
+Добавлено : /FOdev/Modding client/zlib/zlib.h
+Добавлено : /FOdev/Modding client/zlib/zlib.html
+Добавлено : /FOdev/Modding client/zlib/zutil.c
+Добавлено : /FOdev/Modding client/zlib/zutil.h
+Добавлено : /FOdev/Modding server
+Добавлено : /FOdev/Modding server/BufMngr.cpp
+Добавлено : /FOdev/Modding server/BufMngr.h
+Добавлено : /FOdev/Modding server/FOServ.h
+Добавлено : /FOdev/Modding server/FOserv.cpp
+Добавлено : /FOdev/Modding server/FOserver.dsp
+Добавлено : /FOdev/Modding server/FOserver.dsw
+Добавлено : /FOdev/Modding server/Release
+Добавлено : /FOdev/Modding server/clean_up.bat
+Добавлено : /FOdev/Modding server/foserv.cfg
+Добавлено : /FOdev/Modding server/libmySQL.dll
+Добавлено : /FOdev/Modding server/libmySQL.lib
+Добавлено : /FOdev/Modding server/main.cpp
+Добавлено : /FOdev/Modding server/main.h
+Добавлено : /FOdev/Modding server/netproto.h
+Добавлено : /FOdev/Modding server/resource.h
+Добавлено : /FOdev/Modding server/rs.aps
+Добавлено : /FOdev/Modding server/rs.rc
+Добавлено : /FOdev/Modding server/socials.cpp
+Добавлено : /FOdev/Modding server/socials.h
+Добавлено : /FOdev/Modding server/stdafx.cpp
+Добавлено : /FOdev/Modding server/stdafx.h
+Добавлено : /FOdev/Modding server/zlib
+Добавлено : /FOdev/Modding server/zlib/adler32.c
+Добавлено : /FOdev/Modding server/zlib/compress.c
+Добавлено : /FOdev/Modding server/zlib/crc32.c
+Добавлено : /FOdev/Modding server/zlib/deflate.c
+Добавлено : /FOdev/Modding server/zlib/deflate.h
+Добавлено : /FOdev/Modding server/zlib/gzio.c
+Добавлено : /FOdev/Modding server/zlib/infblock.c
+Добавлено : /FOdev/Modding server/zlib/infblock.h
+Добавлено : /FOdev/Modding server/zlib/infcodes.c
+Добавлено : /FOdev/Modding server/zlib/infcodes.h
+Добавлено : /FOdev/Modding server/zlib/inffast.c
+Добавлено : /FOdev/Modding server/zlib/inffast.h
+Добавлено : /FOdev/Modding server/zlib/inffixed.h
+Добавлено : /FOdev/Modding server/zlib/inflate.c
+Добавлено : /FOdev/Modding server/zlib/inftrees.c
+Добавлено : /FOdev/Modding server/zlib/inftrees.h
+Добавлено : /FOdev/Modding server/zlib/infutil.c
+Добавлено : /FOdev/Modding server/zlib/infutil.h
+Добавлено : /FOdev/Modding server/zlib/maketree.c
+Добавлено : /FOdev/Modding server/zlib/trees.c
+Добавлено : /FOdev/Modding server/zlib/trees.h
+Добавлено : /FOdev/Modding server/zlib/uncompr.c
+Добавлено : /FOdev/Modding server/zlib/zconf.h
+Добавлено : /FOdev/Modding server/zlib/zlib.3
+Добавлено : /FOdev/Modding server/zlib/zlib.h
+Добавлено : /FOdev/Modding server/zlib/zlib.html
+Добавлено : /FOdev/Modding server/zlib/zutil.c
+Добавлено : /FOdev/Modding server/zlib/zutil.h

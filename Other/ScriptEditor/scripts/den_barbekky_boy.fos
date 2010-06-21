@@ -1,0 +1,84 @@
+#include ".\scripts\_defines.fos"
+#include ".\scripts\_time_events.fos"
+
+
+//Даем имена событиям, чтобы не запутаться впредь
+#define EVENT_WHOM_RADIO		0
+#define EVENT_GOOD_MORNING		1
+
+//Инициализация нпц, происходит при вводе нпц в игру
+void init(Critter& npc, int first_time)
+{
+//Создаем событие, где мальчик зазывает покупать у него рации
+	TE_EveryHour_LogErr(npc,EVENT_WHOM_RADIO,Random(0,59),"den_barbekky_boy","Announcement");
+
+//Создаем событие, где мальчик приветсвует с добрым утром
+	TE_EveryDay_LogErr(npc,EVENT_GOOD_MORNING,8,0,"den_barbekky_boy","Announcement2");
+}
+
+//Предопределенная функция, срабатывает, когда у нпц воруют
+void on_steal(Critter& npc, Critter& thief, int steal)
+{
+//Иногда при удачном воровстве мальчик говорит Хмм
+	if(steal==TRUE && Random(0,5)==0) npc.Say(SAY_NORM,"Хмм..");
+}
+
+//Событие 1
+void Announcement(Critter& npc)
+{
+	npc.Say(SAY_NORM,"Рации, кому рации...");
+}
+
+//Событие 2
+void Announcement2(Critter& npc)
+{
+	npc.Say(SAY_NORM,"Утречко блин");
+}
+
+//Создание Хаммера. Ключ вручаем игроку.
+//Вызывается из диалога, в Результате.
+//При ошибке создания Хаммера диалоговая ветка отводится на №9 (GameForceDialog).
+//master - игрок
+//slave - нпц
+//Обойдемся одним игроком.
+void CreateHummer(Critter& master, Critter& slave, int val)
+{
+	int pos=Random(0,4);
+	int[] x={86,85,89,94,91};
+	int[] y={85,97,82,94,97};
+	
+	DWORD key_id=Random(10000,50000); //Генерация номера ключа
+
+	Object@ car=master.AddItemHex(x[pos],y[pos],PID_HUMMER1,1);
+	if(car==null)
+	{
+		GameForceDialog=9; //Перенаправляем на диалог №9
+		return;
+	}
+
+	car.m2_Val1=key_id;
+
+	Object@ key=master.AddItem(PID_KEY,1);
+	if(key!=null) key.k_DoorId=key_id;
+	else Log("den_bekky_boy::CreateHummer - Create key fail.");
+
+	master.DeleteItem(PID_BOTTLE_CAPS,10000);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

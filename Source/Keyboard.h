@@ -1,0 +1,27 @@
+#ifndef __KEYBOARD__
+#define __KEYBOARD__
+
+// Languages
+#define LANG_RUS (0)
+#define LANG_ENG (1)
+
+// Keyboard input flags
+#define KIF_NO_SPEC_SYMBOLS       (1)
+#define KIF_ONLY_NUMBERS          (4)
+
+namespace Keyb
+{
+extern int Lang;
+extern bool ShiftDwn;
+extern bool CtrlDwn;
+extern bool AltDwn;
+
+void InitKeyb();
+void ClearKeyb();
+void GetChar(BYTE dik, string& str, int* position, int max, int flags);
+void GetChar(BYTE dik, char* str, int* position, int max, int flags);
+void PuntoSwitch(char* str);
+void EraseInvalidChars(char* str, int flags);
+}
+
+#endif // __KEYBOARD__

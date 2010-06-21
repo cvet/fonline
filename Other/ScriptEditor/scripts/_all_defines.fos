@@ -1,0 +1,8 @@
+#ifndef __ALL_DEFINES__
+#define __ALL_DEFINES__
+
+#include ".\scripts\_defines.fos"
+#include ".\scripts\_time_events.fos"
+#include ".\scripts\_math.fos"
+
+#endif //__ALL_DEFINES__

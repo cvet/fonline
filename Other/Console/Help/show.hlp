@@ -1,0 +1,8 @@
+Show variables. Arguments:
+			host    - server's host
+			port    - server's port
+			server  - server's host:port
+			state   - current console state
+			clients - total cleints at current moment
+			script  - show result of string script statement
+				  this comand must have argument - script statement

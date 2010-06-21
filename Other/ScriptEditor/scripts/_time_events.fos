@@ -1,0 +1,55 @@
+#ifndef __TIME_EVENTS__
+#define __TIME_EVENTS__
+
+#define TE_EveryHour #(cr,num,minute,module,func) cr.CreateTimeEvent(num,0,0,0,minute,0,module,func)
+#define TE_EveryDay #(cr,num,hour,minute,module,func) cr.CreateTimeEvent(num,0,0,hour+1,minute,0,module,func)
+#define TE_EveryMonth #(cr,num,day,hour,minute,module,func) cr.CreateTimeEvent(num,0,day,hour+1,minute,0,module,func)
+#define TE_EveryYear #(cr,num,month,day,hour,minute,module,func) cr.CreateTimeEvent(num,month,day,hour+1,minute,0,module,func)
+#define TE_ChangeModule #(cr,num,module) cr.ChangeTimeEventA(num,module,"")
+#define TE_ChangeFunc #(cr,num,func) cr.ChangeTimeEventA(num,"",func)
+#define TE_ChangeMinute #(cr,num,minute) cr.ChangeTimeEventB(num,0,0,0,minute)
+#define TE_ChangeHour #(cr,num,hour) cr.ChangeTimeEventB(num,0,0,hour+1,-1)
+#define TE_ChangeDay #(cr,num,day) cr.ChangeTimeEventB(num,0,day,0,-1)
+#define TE_ChangeMonth #(cr,num,month) cr.ChangeTimeEventB(num,month,0,0,-1)
+#define TE_ChangeLoop #(cr,num,loop) cr.ChangeTimeEventC(num,loop)
+#define TE_Erase #(cr,num) cr.EraseTimeEvent(num)
+
+void TE_LogError(int err)
+{
+	switch(err)
+	{
+//CreateTimeEvent
+	case -1: Log("Event already exist."); break;
+	case -2: Log("Loop period less zero."); break;
+	case -3: Log("Module name is empty."); break;
+	case -4: Log("Function name is empty."); break;
+	case -5: Log("Bad number of minute."); break;
+	case -6: Log("Function not found."); break;
+//ChangeTimeEventA
+	case -20: Log("Module name and func name is empty."); break;
+	case -21: Log("Time event not find."); break;
+	case -22: Log("Function not find."); break;
+//ChangeTimeEventB
+	case -40: Log("Time event not find."); break;
+//ChangeTimeEventC
+	case -60: Log("Time event not find."); break;
+//Erase event
+	case -80: Log("Time event not find."); break;
+	default: Log("Unknown error, num<"+err+">."); break;
+	}
+}
+
+#define TE_EveryHour_LogErr #(cr,num,minute,module,func) do{int err=cr.CreateTimeEvent(num,0,0,0,minute,0,module,func); if(err<0) TE_LogError(err);}while(false)
+#define TE_EveryDay_LogErr #(cr,num,hour,minute,module,func) do{int err=cr.CreateTimeEvent(num,0,0,hour+1,minute,0,module,func); if(err<0) TE_LogError(err);}while(false)
+#define TE_EveryMonth_LogErr #(cr,num,day,hour,minute,module,func) do{int err=cr.CreateTimeEvent(num,0,day,hour+1,minute,0,module,func); if(err<0) TE_LogError(err);}while(false)
+#define TE_EveryYear_LogErr #(cr,num,month,day,hour,minute,module,func) do{int err=cr.CreateTimeEvent(num,month,day,hour+1,minute,0,module,func); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeModule_LogErr #(cr,num,module) do{int err=cr.ChangeTimeEventA(num,module,""); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeFunc_LogErr #(cr,num,func) do{int err=cr.ChangeTimeEventA(num,"",func); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeMinute_LogErr #(cr,num,minute) do{int err=cr.ChangeTimeEventB(num,0,0,0,minute); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeHour_LogErr #(cr,num,hour) do{int err=cr.ChangeTimeEventB(num,0,0,hour+1,-1); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeDay_LogErr #(cr,num,day) do{int err=cr.ChangeTimeEventB(num,0,day,0,-1); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeMonth_LogErr #(cr,num,month) do{int err=cr.ChangeTimeEventB(num,month,0,0,-1); if(err<0) TE_LogError(err);}while(false)
+#define TE_ChangeLoop_LogErr #(cr,num,loop) do{int err=cr.ChangeTimeEventC(num,loop); if(err<0) TE_LogError(err);}while(false)
+#define TE_Erase_LogErr #(cr,num) do{int err=cr.EraseTimeEvent(num); if(err<0) TE_LogError(err);}while(false)
+
+#endif //__TIME_EVENTS__

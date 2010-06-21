@@ -1,0 +1,1600 @@
+Palette init ... OK.
+Load LST files ... OK.
+Create PRO structure ... OK.
+Create FRM structure ... OK.
+Load MSG files ... OK.
+DDraw create ... OK.
+Set DirectX cooperative level ... OK.
+Cannot open file "data\exit.frm"
+Cannot open file "data\sai.frm"
+Cannot open file "data\wall.frm"
+Cannot open file "data\obj.frm"
+Cannot open file "data\light.frm"
+Cannot open file "data\scr.frm"
+Cannot open file "data\self.frm"
+Load map "G:\FOnline\server\maps\denbus1.map".
+Need PRO file for ObjType = 5, ObjID = "12
+Loaded PRO file "proto\misc\00000012.pro" load 28 of 28 bytes.
+Need PRO file for ObjType = 5, ObjID = "21
+Loaded PRO file "proto\misc\00000021.pro" load 28 of 28 bytes.
+Need PRO file for ObjType = 5, ObjID = "17
+Loaded PRO file "proto\misc\00000017.pro" load 28 of 28 bytes.
+Need PRO file for ObjType = 2, ObjID = "49
+Loaded PRO file "proto\scenery\00000050.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "946
+Loaded PRO file "proto\scenery\00000947.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 5, ObjID = "19
+Loaded PRO file "proto\misc\00000019.pro" load 28 of 28 bytes.
+Need PRO file for ObjType = 2, ObjID = "945
+Loaded PRO file "proto\scenery\00000946.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "947
+Loaded PRO file "proto\scenery\00000948.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 5, ObjID = "23
+Loaded PRO file "proto\misc\00000023.pro" load 28 of 28 bytes.
+Need PRO file for ObjType = 2, ObjID = "105
+Loaded PRO file "proto\scenery\00000106.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "622
+Loaded PRO file "proto\walls\00000622.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "626
+Loaded PRO file "proto\walls\00000626.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "507
+Loaded PRO file "proto\walls\00000507.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "621
+Loaded PRO file "proto\walls\00000621.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "508
+Loaded PRO file "proto\walls\00000508.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "634
+Loaded PRO file "proto\walls\00000634.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "509
+Loaded PRO file "proto\walls\00000509.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "595
+Loaded PRO file "proto\walls\00000595.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "503
+Loaded PRO file "proto\walls\00000503.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "502
+Loaded PRO file "proto\walls\00000502.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "499
+Loaded PRO file "proto\walls\00000499.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "505
+Loaded PRO file "proto\walls\00000505.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "639
+Loaded PRO file "proto\walls\00000639.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "623
+Loaded PRO file "proto\walls\00000623.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "624
+Loaded PRO file "proto\walls\00000624.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "638
+Loaded PRO file "proto\walls\00000638.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1231
+Loaded PRO file "proto\walls\00001231.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1230
+Loaded PRO file "proto\walls\00001230.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "102
+Loaded PRO file "proto\scenery\00000103.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "1236
+Loaded PRO file "proto\walls\00001236.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "344
+Loaded PRO file "proto\scenery\00000345.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "110
+Loaded PRO file "proto\scenery\00000111.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "67
+Loaded PRO file "proto\scenery\00000068.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "4
+Loaded PRO file "proto\items\00000012.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 2, ObjID = "1
+Loaded PRO file "proto\scenery\00000024.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "803
+Loaded PRO file "proto\walls\00000803.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "801
+Loaded PRO file "proto\walls\00000801.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "805
+Loaded PRO file "proto\walls\00000805.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "804
+Loaded PRO file "proto\walls\00000804.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "808
+Loaded PRO file "proto\walls\00000808.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "810
+Loaded PRO file "proto\walls\00000810.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "809
+Loaded PRO file "proto\walls\00000809.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "811
+Loaded PRO file "proto\walls\00000811.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "807
+Loaded PRO file "proto\walls\00000807.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "104
+Loaded PRO file "proto\scenery\00000105.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "812
+Loaded PRO file "proto\walls\00000812.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "121
+Loaded PRO file "proto\scenery\00000122.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "123
+Loaded PRO file "proto\scenery\00000124.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "107
+Loaded PRO file "proto\scenery\00000108.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "108
+Loaded PRO file "proto\scenery\00000109.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "127
+Loaded PRO file "proto\scenery\00000128.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "106
+Loaded PRO file "proto\scenery\00000107.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "823
+Loaded PRO file "proto\walls\00000823.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "596
+Loaded PRO file "proto\scenery\00000597.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "817
+Loaded PRO file "proto\walls\00000817.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "54
+Loaded PRO file "proto\critters\00000054.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "259
+Loaded PRO file "proto\items\00000259.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 0, ObjID = "41
+Loaded PRO file "proto\items\00000041.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 3, ObjID = "818
+Loaded PRO file "proto\walls\00000818.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "125
+Loaded PRO file "proto\scenery\00000126.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "815
+Loaded PRO file "proto\walls\00000815.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "816
+Loaded PRO file "proto\walls\00000816.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "101
+Loaded PRO file "proto\scenery\00000102.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "55
+Loaded PRO file "proto\critters\00000055.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "103
+Loaded PRO file "proto\scenery\00000104.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "295
+Loaded PRO file "proto\scenery\00000296.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "311
+Loaded PRO file "proto\scenery\00000312.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "314
+Loaded PRO file "proto\scenery\00000315.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "589
+Loaded PRO file "proto\walls\00000589.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "591
+Loaded PRO file "proto\walls\00000591.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "587
+Loaded PRO file "proto\walls\00000587.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "590
+Loaded PRO file "proto\walls\00000590.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "586
+Loaded PRO file "proto\walls\00000586.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "588
+Loaded PRO file "proto\walls\00000588.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "593
+Loaded PRO file "proto\walls\00000593.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "644
+Loaded PRO file "proto\walls\00000644.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "609
+Loaded PRO file "proto\walls\00000609.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "592
+Loaded PRO file "proto\walls\00000592.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "645
+Loaded PRO file "proto\walls\00000645.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "1737
+Loaded PRO file "proto\scenery\00001738.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "1233
+Loaded PRO file "proto\walls\00001233.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "356
+Loaded PRO file "proto\scenery\00000357.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 2, ObjID = "466
+Loaded PRO file "proto\scenery\00000467.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "1237
+Loaded PRO file "proto\walls\00001237.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "194
+Loaded PRO file "proto\scenery\00000195.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "62
+Loaded PRO file "proto\items\00000062.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "49
+Loaded PRO file "proto\items\00000049.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 0, ObjID = "125
+Loaded PRO file "proto\items\00000125.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 2, ObjID = "227
+Loaded PRO file "proto\scenery\00000228.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "594
+Loaded PRO file "proto\walls\00000594.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "41
+Loaded PRO file "proto\critters\00000041.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "8
+Loaded PRO file "proto\items\00000004.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 2, ObjID = "451
+Loaded PRO file "proto\scenery\00000452.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "269
+Loaded PRO file "proto\scenery\00000270.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "67
+Loaded PRO file "proto\critters\00000067.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "230
+Loaded PRO file "proto\scenery\00000231.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "110
+Loaded PRO file "proto\items\00000110.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 2, ObjID = "680
+Loaded PRO file "proto\scenery\00000681.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "513
+Loaded PRO file "proto\walls\00000513.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "268
+Loaded PRO file "proto\scenery\00000269.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "613
+Loaded PRO file "proto\walls\00000613.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "583
+Loaded PRO file "proto\walls\00000583.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "960
+Loaded PRO file "proto\scenery\00000961.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "615
+Loaded PRO file "proto\walls\00000615.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "452
+Loaded PRO file "proto\scenery\00000453.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "66
+Loaded PRO file "proto\critters\00000066.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 1, ObjID = "64
+Loaded PRO file "proto\critters\00000064.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "511
+Loaded PRO file "proto\walls\00000511.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "67
+Loaded PRO file "proto\items\00000067.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 1, ObjID = "58
+Loaded PRO file "proto\critters\00000058.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "5
+Loaded PRO file "proto\items\00000009.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 2, ObjID = "235
+Loaded PRO file "proto\scenery\00000236.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "599
+Loaded PRO file "proto\walls\00000599.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "512
+Loaded PRO file "proto\walls\00000512.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "288
+Loaded PRO file "proto\walls\00000288.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "66
+Loaded PRO file "proto\scenery\00000067.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "575
+Loaded PRO file "proto\scenery\00000576.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "582
+Loaded PRO file "proto\walls\00000582.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "453
+Loaded PRO file "proto\scenery\00000454.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "141
+Loaded PRO file "proto\scenery\00000142.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "1738
+Loaded PRO file "proto\scenery\00001739.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "598
+Loaded PRO file "proto\walls\00000598.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "231
+Loaded PRO file "proto\scenery\00000232.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "3
+Loaded PRO file "proto\scenery\00000003.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "97
+Loaded PRO file "proto\scenery\00000098.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "959
+Loaded PRO file "proto\scenery\00000960.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "289
+Loaded PRO file "proto\walls\00000289.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "642
+Loaded PRO file "proto\walls\00000642.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "40
+Loaded PRO file "proto\critters\00000040.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "95
+Loaded PRO file "proto\items\00000095.pro" load 81 of 81 bytes.
+Need PRO file for ObjType = 0, ObjID = "94
+Loaded PRO file "proto\items\00000094.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 2, ObjID = "454
+Loaded PRO file "proto\scenery\00000455.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "417
+Loaded PRO file "proto\critters\00000417.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "641
+Loaded PRO file "proto\walls\00000641.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "98
+Loaded PRO file "proto\scenery\00000099.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "600
+Loaded PRO file "proto\walls\00000600.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "290
+Loaded PRO file "proto\walls\00000290.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "71
+Loaded PRO file "proto\items\00000071.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 2, ObjID = "209
+Loaded PRO file "proto\scenery\00000210.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "601
+Loaded PRO file "proto\walls\00000601.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "455
+Loaded PRO file "proto\scenery\00000456.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "46
+Loaded PRO file "proto\critters\00000046.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "291
+Loaded PRO file "proto\walls\00000291.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "208
+Loaded PRO file "proto\scenery\00000209.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "313
+Loaded PRO file "proto\scenery\00000314.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "59
+Loaded PRO file "proto\critters\00000059.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "467
+Loaded PRO file "proto\walls\00000467.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "54
+Loaded PRO file "proto\scenery\00000055.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "60
+Loaded PRO file "proto\critters\00000060.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "1238
+Loaded PRO file "proto\walls\00001238.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "50
+Loaded PRO file "proto\critters\00000050.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "19
+Loaded PRO file "proto\items\00000019.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 3, ObjID = "596
+Loaded PRO file "proto\walls\00000596.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "292
+Loaded PRO file "proto\walls\00000292.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "468
+Loaded PRO file "proto\walls\00000468.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "957
+Loaded PRO file "proto\scenery\00000958.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "597
+Loaded PRO file "proto\walls\00000597.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "112
+Loaded PRO file "proto\scenery\00000113.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "293
+Loaded PRO file "proto\walls\00000293.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "643
+Loaded PRO file "proto\walls\00000643.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "476
+Loaded PRO file "proto\walls\00000476.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "472
+Loaded PRO file "proto\walls\00000472.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "471
+Loaded PRO file "proto\walls\00000471.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "666
+Loaded PRO file "proto\scenery\00000667.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "1239
+Loaded PRO file "proto\walls\00001239.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "51
+Loaded PRO file "proto\critters\00000051.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "497
+Loaded PRO file "proto\scenery\00000498.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "211
+Loaded PRO file "proto\scenery\00000212.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "640
+Loaded PRO file "proto\walls\00000640.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "114
+Loaded PRO file "proto\scenery\00000115.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "294
+Loaded PRO file "proto\walls\00000294.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "128
+Loaded PRO file "proto\items\00000128.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 2, ObjID = "53
+Loaded PRO file "proto\scenery\00000054.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "475
+Loaded PRO file "proto\walls\00000475.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "117
+Loaded PRO file "proto\items\00000117.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 2, ObjID = "670
+Loaded PRO file "proto\scenery\00000671.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "4
+Loaded PRO file "proto\scenery\00000004.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "663
+Loaded PRO file "proto\scenery\00000664.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "106
+Loaded PRO file "proto\items\00000106.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 0, ObjID = "30
+Loaded PRO file "proto\items\00000030.pro" load 81 of 81 bytes.
+Need PRO file for ObjType = 2, ObjID = "312
+Loaded PRO file "proto\scenery\00000313.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "295
+Loaded PRO file "proto\walls\00000295.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "30
+Loaded PRO file "proto\critters\00000030.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "101
+Loaded PRO file "proto\items\00000101.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 2, ObjID = "498
+Loaded PRO file "proto\scenery\00000499.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "171
+Loaded PRO file "proto\items\00000171.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "170
+Loaded PRO file "proto\items\00000170.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 3, ObjID = "296
+Loaded PRO file "proto\walls\00000296.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "32
+Loaded PRO file "proto\critters\00000032.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 1, ObjID = "65
+Loaded PRO file "proto\critters\00000065.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "124
+Loaded PRO file "proto\items\00000124.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 2, ObjID = "676
+Loaded PRO file "proto\scenery\00000677.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "779
+Loaded PRO file "proto\scenery\00000780.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "820
+Loaded PRO file "proto\walls\00000820.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "297
+Loaded PRO file "proto\walls\00000297.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "253
+Loaded PRO file "proto\scenery\00000254.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "131
+Loaded PRO file "proto\critters\00000131.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "773
+Loaded PRO file "proto\scenery\00000774.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "298
+Loaded PRO file "proto\walls\00000298.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "255
+Loaded PRO file "proto\scenery\00000256.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "213
+Loaded PRO file "proto\scenery\00000214.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "299
+Loaded PRO file "proto\walls\00000299.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "300
+Loaded PRO file "proto\walls\00000300.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "958
+Loaded PRO file "proto\scenery\00000959.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "1081
+Loaded PRO file "proto\walls\00001081.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1235
+Loaded PRO file "proto\walls\00001235.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1234
+Loaded PRO file "proto\walls\00001234.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1232
+Loaded PRO file "proto\walls\00001232.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "501
+Loaded PRO file "proto\walls\00000501.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1241
+Loaded PRO file "proto\walls\00001241.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "954
+Loaded PRO file "proto\scenery\00000955.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "1240
+Loaded PRO file "proto\walls\00001240.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "1744
+Loaded PRO file "proto\scenery\00001745.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "1085
+Loaded PRO file "proto\walls\00001085.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "301
+Loaded PRO file "proto\walls\00000301.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "247
+Loaded PRO file "proto\items\00000247.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "271
+Loaded PRO file "proto\items\00000271.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 0, ObjID = "272
+Loaded PRO file "proto\items\00000272.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 0, ObjID = "284
+Loaded PRO file "proto\items\00000284.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 2, ObjID = "96
+Loaded PRO file "proto\scenery\00000097.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "302
+Loaded PRO file "proto\walls\00000302.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "303
+Loaded PRO file "proto\walls\00000303.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "304
+Loaded PRO file "proto\walls\00000304.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "323
+Loaded PRO file "proto\scenery\00000324.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "308
+Loaded PRO file "proto\walls\00000308.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "307
+Loaded PRO file "proto\walls\00000307.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "305
+Loaded PRO file "proto\walls\00000305.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "618
+Loaded PRO file "proto\walls\00000618.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "166
+Loaded PRO file "proto\items\00000166.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 2, ObjID = "1824
+Loaded PRO file "proto\scenery\00001825.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "510
+Loaded PRO file "proto\walls\00000510.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "309
+Loaded PRO file "proto\walls\00000309.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "306
+Loaded PRO file "proto\walls\00000306.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "571
+Loaded PRO file "proto\walls\00000571.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "567
+Loaded PRO file "proto\walls\00000567.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "570
+Loaded PRO file "proto\walls\00000570.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "281
+Loaded PRO file "proto\walls\00000281.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "188
+Loaded PRO file "proto\items\00000188.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "66
+Loaded PRO file "proto\items\00000066.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "146
+Loaded PRO file "proto\items\00000146.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 3, ObjID = "286
+Loaded PRO file "proto\walls\00000286.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "284
+Loaded PRO file "proto\walls\00000284.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "282
+Loaded PRO file "proto\walls\00000282.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 5, ObjID = "22
+Loaded PRO file "proto\misc\00000022.pro" load 28 of 28 bytes.
+Need PRO file for ObjType = 3, ObjID = "500
+Loaded PRO file "proto\walls\00000500.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "287
+Loaded PRO file "proto\walls\00000287.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "285
+Loaded PRO file "proto\walls\00000285.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "283
+Loaded PRO file "proto\walls\00000283.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "228
+Loaded PRO file "proto\scenery\00000229.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "961
+Loaded PRO file "proto\scenery\00000962.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 0, ObjID = "29
+Loaded PRO file "proto\items\00000029.pro" load 81 of 81 bytes.
+Need PRO file for ObjType = 1, ObjID = "209
+Loaded PRO file "proto\critters\00000209.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "821
+Loaded PRO file "proto\walls\00000821.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "257
+Loaded PRO file "proto\scenery\00000258.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "296
+Loaded PRO file "proto\scenery\00000297.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "51
+Loaded PRO file "proto\scenery\00000052.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "138
+Loaded PRO file "proto\walls\00000053.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "129
+Loaded PRO file "proto\walls\00000044.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "124
+Loaded PRO file "proto\walls\00000039.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "123
+Loaded PRO file "proto\walls\00000038.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "122
+Loaded PRO file "proto\walls\00000037.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "130
+Loaded PRO file "proto\walls\00000045.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "367
+Loaded PRO file "proto\walls\00000367.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "5
+Loaded PRO file "proto\scenery\00000005.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "318
+Loaded PRO file "proto\scenery\00000319.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "668
+Loaded PRO file "proto\scenery\00000669.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "1147
+Loaded PRO file "proto\scenery\00001148.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "250
+Loaded PRO file "proto\walls\00000250.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "189
+Loaded PRO file "proto\items\00000189.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "75
+Loaded PRO file "proto\items\00000075.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 0, ObjID = "295
+Loaded PRO file "proto\items\00000295.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 3, ObjID = "116
+Loaded PRO file "proto\walls\00000031.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "496
+Loaded PRO file "proto\walls\00000496.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "63
+Loaded PRO file "proto\items\00000063.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 3, ObjID = "120
+Loaded PRO file "proto\walls\00000035.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "948
+Loaded PRO file "proto\scenery\00000949.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "117
+Loaded PRO file "proto\walls\00000032.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "6
+Loaded PRO file "proto\scenery\00000006.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "261
+Loaded PRO file "proto\scenery\00000262.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "581
+Loaded PRO file "proto\walls\00000581.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "673
+Loaded PRO file "proto\scenery\00000674.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "659
+Loaded PRO file "proto\scenery\00000660.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "665
+Loaded PRO file "proto\scenery\00000666.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "289
+Loaded PRO file "proto\items\00000289.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 2, ObjID = "434
+Loaded PRO file "proto\scenery\00000435.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "118
+Loaded PRO file "proto\walls\00000033.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "73
+Loaded PRO file "proto\critters\00000073.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 3, ObjID = "495
+Loaded PRO file "proto\walls\00000495.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "579
+Loaded PRO file "proto\walls\00000579.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "45
+Loaded PRO file "proto\critters\00000045.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "100
+Loaded PRO file "proto\scenery\00000101.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "119
+Loaded PRO file "proto\walls\00000034.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "224
+Loaded PRO file "proto\scenery\00000225.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "675
+Loaded PRO file "proto\scenery\00000676.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "674
+Loaded PRO file "proto\scenery\00000675.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "95
+Loaded PRO file "proto\scenery\00000096.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "7
+Loaded PRO file "proto\scenery\00000007.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "580
+Loaded PRO file "proto\walls\00000580.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "99
+Loaded PRO file "proto\scenery\00000100.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "113
+Loaded PRO file "proto\walls\00000028.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "113
+Loaded PRO file "proto\scenery\00000114.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "578
+Loaded PRO file "proto\walls\00000578.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "134
+Loaded PRO file "proto\walls\00000049.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "256
+Loaded PRO file "proto\scenery\00000257.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "226
+Loaded PRO file "proto\scenery\00000227.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "490
+Loaded PRO file "proto\walls\00000490.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "258
+Loaded PRO file "proto\scenery\00000259.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "489
+Loaded PRO file "proto\walls\00000489.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "616
+Loaded PRO file "proto\walls\00000616.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "1086
+Loaded PRO file "proto\walls\00001086.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "139
+Loaded PRO file "proto\walls\00000054.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "103
+Loaded PRO file "proto\walls\00000018.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "102
+Loaded PRO file "proto\walls\00000017.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "105
+Loaded PRO file "proto\walls\00000020.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "361
+Loaded PRO file "proto\scenery\00000362.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "104
+Loaded PRO file "proto\walls\00000019.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "136
+Loaded PRO file "proto\walls\00000051.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "135
+Loaded PRO file "proto\walls\00000050.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "36
+Loaded PRO file "proto\critters\00000036.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "60
+Loaded PRO file "proto\items\00000060.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "20
+Loaded PRO file "proto\items\00000020.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 0, ObjID = "79
+Loaded PRO file "proto\items\00000079.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 0, ObjID = "102
+Loaded PRO file "proto\items\00000102.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 0, ObjID = "82
+Loaded PRO file "proto\items\00000082.pro" load 61 of 61 bytes.
+Need PRO file for ObjType = 1, ObjID = "220
+Loaded PRO file "proto\critters\00000220.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "118
+Loaded PRO file "proto\scenery\00000119.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "252
+Loaded PRO file "proto\scenery\00000253.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "286
+Loaded PRO file "proto\scenery\00000287.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "100
+Loaded PRO file "proto\items\00000100.pro" load 69 of 69 bytes.
+Need PRO file for ObjType = 3, ObjID = "310
+Loaded PRO file "proto\walls\00000310.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "1181
+Loaded PRO file "proto\scenery\00001182.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "311
+Loaded PRO file "proto\walls\00000311.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "619
+Loaded PRO file "proto\walls\00000619.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "1628
+Loaded PRO file "proto\scenery\00001629.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "312
+Loaded PRO file "proto\walls\00000312.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "152
+Loaded PRO file "proto\items\00000152.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "151
+Loaded PRO file "proto\items\00000151.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 2, ObjID = "678
+Loaded PRO file "proto\scenery\00000679.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "313
+Loaded PRO file "proto\walls\00000313.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "314
+Loaded PRO file "proto\walls\00000314.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "620
+Loaded PRO file "proto\walls\00000620.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "528
+Loaded PRO file "proto\walls\00000528.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "117
+Loaded PRO file "proto\scenery\00000118.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "315
+Loaded PRO file "proto\walls\00000315.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "494
+Loaded PRO file "proto\scenery\00000495.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "177
+Loaded PRO file "proto\items\00000177.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 2, ObjID = "1146
+Loaded PRO file "proto\scenery\00001147.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "814
+Loaded PRO file "proto\walls\00000814.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "254
+Loaded PRO file "proto\scenery\00000255.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "316
+Loaded PRO file "proto\walls\00000316.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "819
+Loaded PRO file "proto\walls\00000819.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "431
+Loaded PRO file "proto\scenery\00000432.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "317
+Loaded PRO file "proto\walls\00000317.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "155
+Loaded PRO file "proto\items\00000155.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 3, ObjID = "318
+Loaded PRO file "proto\walls\00000318.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "319
+Loaded PRO file "proto\walls\00000319.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "176
+Loaded PRO file "proto\items\00000176.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 1, ObjID = "35
+Loaded PRO file "proto\critters\00000035.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "7
+Loaded PRO file "proto\items\00000013.pro" load 122 of 122 bytes.
+Need PRO file for ObjType = 3, ObjID = "320
+Loaded PRO file "proto\walls\00000320.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "323
+Loaded PRO file "proto\walls\00000323.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "321
+Loaded PRO file "proto\walls\00000321.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "325
+Loaded PRO file "proto\walls\00000325.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "324
+Loaded PRO file "proto\walls\00000324.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "322
+Loaded PRO file "proto\walls\00000322.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "955
+Loaded PRO file "proto\scenery\00000956.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 2, ObjID = "109
+Loaded PRO file "proto\scenery\00000110.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 0, ObjID = "501
+Loaded PRO file "proto\items\00000501.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "246
+Loaded PRO file "proto\items\00000246.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 0, ObjID = "184
+Loaded PRO file "proto\items\00000184.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 3, ObjID = "342
+Loaded PRO file "proto\walls\00000342.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "340
+Loaded PRO file "proto\walls\00000340.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "338
+Loaded PRO file "proto\walls\00000338.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "336
+Loaded PRO file "proto\walls\00000336.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "334
+Loaded PRO file "proto\walls\00000334.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "332
+Loaded PRO file "proto\walls\00000332.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "330
+Loaded PRO file "proto\walls\00000330.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "328
+Loaded PRO file "proto\walls\00000328.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "326
+Loaded PRO file "proto\walls\00000326.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "677
+Loaded PRO file "proto\scenery\00000678.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "631
+Loaded PRO file "proto\walls\00000631.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "764
+Loaded PRO file "proto\walls\00000764.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "750
+Loaded PRO file "proto\walls\00000750.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "771
+Loaded PRO file "proto\walls\00000771.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "752
+Loaded PRO file "proto\walls\00000752.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "753
+Loaded PRO file "proto\walls\00000753.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "777
+Loaded PRO file "proto\walls\00000777.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "773
+Loaded PRO file "proto\walls\00000773.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "772
+Loaded PRO file "proto\walls\00000772.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "770
+Loaded PRO file "proto\walls\00000770.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "763
+Loaded PRO file "proto\walls\00000763.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "84
+Loaded PRO file "proto\scenery\00000085.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "341
+Loaded PRO file "proto\walls\00000341.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "339
+Loaded PRO file "proto\walls\00000339.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "337
+Loaded PRO file "proto\walls\00000337.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "335
+Loaded PRO file "proto\walls\00000335.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "333
+Loaded PRO file "proto\walls\00000333.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "331
+Loaded PRO file "proto\walls\00000331.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "329
+Loaded PRO file "proto\walls\00000329.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "327
+Loaded PRO file "proto\walls\00000327.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "94
+Loaded PRO file "proto\critters\00000094.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 0, ObjID = "61
+Loaded PRO file "proto\items\00000061.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 2, ObjID = "184
+Loaded PRO file "proto\scenery\00000185.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "39
+Loaded PRO file "proto\scenery\00000040.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "351
+Loaded PRO file "proto\walls\00000351.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "350
+Loaded PRO file "proto\walls\00000350.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "349
+Loaded PRO file "proto\walls\00000349.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "348
+Loaded PRO file "proto\walls\00000348.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "347
+Loaded PRO file "proto\walls\00000347.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "346
+Loaded PRO file "proto\walls\00000346.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "345
+Loaded PRO file "proto\walls\00000345.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "344
+Loaded PRO file "proto\walls\00000344.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "343
+Loaded PRO file "proto\walls\00000343.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "523
+Loaded PRO file "proto\walls\00000523.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "504
+Loaded PRO file "proto\walls\00000504.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "249
+Loaded PRO file "proto\scenery\00000250.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "757
+Loaded PRO file "proto\walls\00000757.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "765
+Loaded PRO file "proto\walls\00000765.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 0, ObjID = "310
+Loaded PRO file "proto\items\00000310.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 0, ObjID = "311
+Loaded PRO file "proto\items\00000311.pro" load 125 of 125 bytes.
+Need PRO file for ObjType = 3, ObjID = "769
+Loaded PRO file "proto\walls\00000769.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "766
+Loaded PRO file "proto\walls\00000766.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "1814
+Loaded PRO file "proto\scenery\00001815.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 1, ObjID = "258
+Loaded PRO file "proto\critters\00000258.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "378
+Loaded PRO file "proto\scenery\00000379.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "767
+Loaded PRO file "proto\walls\00000767.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "605
+Loaded PRO file "proto\scenery\00000606.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "798
+Loaded PRO file "proto\walls\00000798.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "768
+Loaded PRO file "proto\walls\00000768.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "324
+Loaded PRO file "proto\scenery\00000325.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "774
+Loaded PRO file "proto\scenery\00000775.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "154
+Loaded PRO file "proto\scenery\00000155.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 0, ObjID = "69
+Loaded PRO file "proto\items\00000069.pro" load 65 of 65 bytes.
+Need PRO file for ObjType = 2, ObjID = "317
+Loaded PRO file "proto\scenery\00000318.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "797
+Loaded PRO file "proto\walls\00000797.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "775
+Loaded PRO file "proto\scenery\00000776.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "776
+Loaded PRO file "proto\scenery\00000777.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "756
+Loaded PRO file "proto\walls\00000756.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "781
+Loaded PRO file "proto\walls\00000781.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "796
+Loaded PRO file "proto\walls\00000796.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "153
+Loaded PRO file "proto\scenery\00000154.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 3, ObjID = "795
+Loaded PRO file "proto\walls\00000795.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "774
+Loaded PRO file "proto\walls\00000774.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 3, ObjID = "778
+Loaded PRO file "proto\walls\00000778.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 1, ObjID = "190
+Loaded PRO file "proto\critters\00000190.pro" load 416 of 416 bytes.
+Need PRO file for ObjType = 2, ObjID = "956
+Loaded PRO file "proto\scenery\00000957.pro" load 49 of 49 bytes.
+Need PRO file for ObjType = 2, ObjID = "157
+Loaded PRO file "proto\scenery\00000158.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "270
+Loaded PRO file "proto\scenery\00000271.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "92
+Loaded PRO file "proto\scenery\00000093.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "890
+Loaded PRO file "proto\scenery\00000891.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 3, ObjID = "789
+Loaded PRO file "proto\walls\00000789.pro" load 36 of 36 bytes.
+Need PRO file for ObjType = 2, ObjID = "687
+Loaded PRO file "proto\scenery\00000688.pro" load 45 of 45 bytes.
+Need PRO file for ObjType = 2, ObjID = "287
+Loaded PRO file "proto\scenery\00000288.pro" load 45 of 45 bytes.
+Load FRM file "art\tiles\grid000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5006.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5007.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5004.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5005.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg2001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg2002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg3001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg3000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg2003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6004.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\capb000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6005.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edgs004.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6006.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg1003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg1002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road26.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb11.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6011.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg1000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg2000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road27.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb27.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg1001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg7002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg7001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road28.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb26.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb08.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road16.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road24.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road22.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg7000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edgs000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb40.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb32.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edgs003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb24.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road10.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road34.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road33.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6010.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4008.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6007.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4004.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb34.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb39.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road21.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road02.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road32.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6008.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4007.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4006.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb35.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb37.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road30.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road31.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg5008.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edgs001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg4005.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb25.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb44.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road23.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb41.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb33.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road25.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb23.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road38.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edgs002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg6009.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp049.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb17.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb09.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb12.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb22.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp028.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp027.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp024.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp023.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp020.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp019.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road19.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp051.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb16.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp029.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp037.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb29.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb28.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb20.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb21.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb30.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp018.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb02.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb05.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb38.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb36.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb01.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\edg7003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb10.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb06.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road29.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road13.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road11.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road17.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road18.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road39.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road12.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb13.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb43.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb42.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb15.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb14.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb48.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb52.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp073.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp072.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp071.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp070.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp075.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp074.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp042.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road37.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp076.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp069.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp119.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp157.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp094.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp164.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp077.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp033.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road35.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp161.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp080.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp081.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp082.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp083.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp079.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp078.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp100.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road14.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp155.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp122.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp160.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp121.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp030.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp158.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp088.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp156.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp089.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp090.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp154.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp091.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp153.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp087.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp086.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp085.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp095.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp098.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp097.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp099.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp096.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road15.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp189.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp190.frm   " directions: 1 frames: 1
+Load FRM file "art\tiles\tp011.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp104.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp105.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp106.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp107.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp103.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp102.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp188.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp092.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp093.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp162.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp159.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp183.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp112.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp111.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp110.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp163.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp109.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp116.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp114.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp113.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp115.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb19.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb18.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb54.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\jrt1000.frm " directions: 1 frames: 1
+Load FRM file "art\tiles\jrt1002.frm " directions: 1 frames: 1
+Load FRM file "art\tiles\jrt1001.frm " directions: 1 frames: 1
+Load FRM file "art\tiles\curb07.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm002.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk1000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk2000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm005.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm004.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk3000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm003.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\road20.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm008.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm007.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk3001.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm006.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp187.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\crbm009.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk5000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk7000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\plk6000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp131.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp130.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb53.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp101.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp084.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\fom1000.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\stlflr01.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\stlflr06.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp132.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\curb31.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp134.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp136.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp140.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp128.frm" directions: 1 frames: 1
+Load FRM file "art\tiles\tp045.frm" directions: 1 frames: 1
+Load FRM file "art\misc\block.frm" directions: 1 frames: 1
+Load FRM file "art\misc\ext2grd6.frm" directions: 1 frames: 1
+Load FRM file "art\misc\ext2grd2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\block.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\TREE8.FRM" directions: 1 frames: 1
+Load FRM file "art\misc\ext2grd4.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\TREE7.FRM" directions: 1 frames: 1
+Load FRM file "art\scenery\TREE9.FRM" directions: 1 frames: 1
+Load FRM file "art\misc\ext2grd8.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed04.frm" directions: 1 frames: 1
+Load FRM file "art\walls\block.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec132.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec013.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec014.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec140.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec015.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec103.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec009.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec008.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec003.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec011.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec145.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec129.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec130.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec144.frm" directions: 1 frames: 1
+Load FRM file "art\walls\necrn14.frm" directions: 1 frames: 1
+Load FRM file "art\walls\necrn13.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed01.frm" directions: 1 frames: 1
+Load FRM file "art\walls\necrn19.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed09.frm" directions: 1 frames: 1
+Load FRM file "art\items\knife.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\barrel.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence03.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence01.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence05.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence04.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence08.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence10.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence09.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence11.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence07.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed03.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence12.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed20.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed22.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed06.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed07.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed26.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed05.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence23.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\posts.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\fence17.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmlosraa.frm" directions: 6 frames: 10
+Load FRM file "art\items\bpack2.frm" directions: 1 frames: 1
+Load FRM file "art\items\bag.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence18.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed24.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence15.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence16.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tirs002.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nftrmpaa.frm" directions: 6 frames: 15
+Load FRM file "art\scenery\weed02.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\strlit5.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\trash1.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\trash4.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec097.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec099.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec095.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec098.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec094.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec096.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec101.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec150.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec117.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec100.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec151.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\SIGN40.FRM" directions: 1 frames: 1
+Load FRM file "art\walls\necrn16.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\stway.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\slmach2.frm " directions: 1 frames: 1
+Load FRM file "art\walls\necrn20.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\cola.frm" directions: 1 frames: 1
+Load FRM file "art\items\bokcas3.frm" directions: 1 frames: 1
+Load FRM file "art\items\beer.frm    " directions: 1 frames: 1
+Load FRM file "art\scenery\car4.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec102.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hfmetlha.frm" directions: 6 frames: 10
+Load FRM file "art\items\pistol.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\crptbl01.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\newsp5.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmbrlpaa.frm" directions: 6 frames: 12
+Load FRM file "art\scenery\chair2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss122.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\nec019.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\newsp4.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec121.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec091.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb07.frm" directions: 1 frames: 7
+Load FRM file "art\walls\nec123.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\crptbl02.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nfbrlpaa.frm" directions: 6 frames: 13
+Load FRM file "art\walls\nec017.frm" directions: 1 frames: 1
+Load FRM file "art\items\desk2.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmbsnpaa.frm" directions: 6 frames: 13
+Load FRM file "art\items\club.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\chair7.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec107.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec018.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw001.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tre1000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bush3.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\nec090.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\crptbl03.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\SIGN41.FRM" directions: 1 frames: 1
+Load FRM file "art\walls\nec106.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\chair3.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tbl2000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\char03.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb06.frm" directions: 1 frames: 7
+Load FRM file "art\walls\carw002.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec148.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hmmetlja.frm" directions: 6 frames: 15
+Load FRM file "art\items\ammo.frm" directions: 1 frames: 1
+Load FRM file "art\items\rifle.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\crptbl04.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmpeasaa.frm" directions: 6 frames: 13
+Load FRM file "art\walls\nec147.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\char04.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec108.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw003.frm" directions: 1 frames: 1
+Load FRM file "art\items\box2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bed4.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec109.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\crptbl05.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hmmetlha.frm" directions: 6 frames: 9
+Load FRM file "art\walls\carw004.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bed3.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\trash3.frm" directions: 1 frames: 1
+Load FRM file "art\walls\bar001.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\chr8000.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmpeasha.frm" directions: 6 frames: 9
+Load FRM file "art\walls\nec168.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nachldaa.frm" directions: 6 frames: 17
+Load FRM file "art\items\rock.frm" directions: 6 frames: 1
+Load FRM file "art\walls\nec104.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw005.frm" directions: 1 frames: 1
+Load FRM file "art\walls\bar002.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb04.frm" directions: 1 frames: 7
+Load FRM file "art\walls\nec105.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed11.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw006.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec149.frm" directions: 1 frames: 1
+Load FRM file "art\walls\bar010.frm" directions: 1 frames: 1
+Load FRM file "art\walls\bar006.frm" directions: 1 frames: 1
+Load FRM file "art\walls\bar005.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss108.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\nec169.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ltable5.frm " directions: 1 frames: 1
+Load FRM file "art\scenery\bed6.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec146.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed13.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw007.frm" directions: 1 frames: 1
+Load FRM file "art\items\footlkr1.frm" directions: 1 frames: 4
+Load FRM file "art\scenery\chr7000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\bar009.frm" directions: 1 frames: 1
+Load FRM file "art\items\flower.frm  " directions: 1 frames: 1
+Load FRM file "art\scenery\ss112.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\tbl1000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss105.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\trash2.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw008.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hmmaxxaa.frm" directions: 6 frames: 12
+Load FRM file "art\items\smalbox2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ltable6.frm " directions: 1 frames: 1
+Load FRM file "art\items\tbltop04.frm" directions: 1 frames: 1
+Load FRM file "art\items\tbltop03.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw009.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmmaxxaa.frm" directions: 6 frames: 12
+Load FRM file "art\scenery\ss118.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\bvs08.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\fence20.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw010.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\junk2.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hfmaxxaa.frm" directions: 6 frames: 18
+Load FRM file "art\scenery\bvs02.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\carw011.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\junk4.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bed8.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw012.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw013.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb05.frm" directions: 1 frames: 7
+Load FRM file "art\walls\cath20.frm  " directions: 1 frames: 1
+Load FRM file "art\walls\necrn18.frm" directions: 1 frames: 1
+Load FRM file "art\walls\necrn17.frm" directions: 1 frames: 1
+Load FRM file "art\walls\necrn15.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec006.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec171.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb01.frm" directions: 1 frames: 7
+Load FRM file "art\walls\nec170.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\SIGN47.FRM" directions: 1 frames: 1
+Load FRM file "art\walls\cath24.frm  " directions: 1 frames: 1
+Load FRM file "art\walls\carw014.frm" directions: 1 frames: 1
+Load FRM file "art\items\ABKSHLF2.FRM" directions: 1 frames: 1
+Load FRM file "art\items\brocflwr.frm" directions: 1 frames: 1
+Load FRM file "art\items\xander.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\char02.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw015.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw016.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw017.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\truck2.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw021.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw020.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw018.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec126.frm" directions: 1 frames: 1
+Load FRM file "art\items\medtbl06.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\STOVEB3.FRM" directions: 1 frames: 1
+Load FRM file "art\walls\nec016.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw022.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw019.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec079.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec075.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec078.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cargt031.frm" directions: 1 frames: 1
+Load FRM file "art\items\locker5.frm " directions: 1 frames: 4
+Load FRM file "art\items\desk1.frm" directions: 1 frames: 1
+Load FRM file "art\items\bkshlf2.frm " directions: 1 frames: 1
+Load FRM file "art\walls\cargt036.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cargt034.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cargt032.frm" directions: 1 frames: 1
+Load FRM file "art\misc\exitgrd7.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec004.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cargt037.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cargt035.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cargt033.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\car5.frm" directions: 1 frames: 1
+Load FRM file "art\misc\exitgrd2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb08.frm" directions: 1 frames: 7
+Load FRM file "art\critters\hmlthraa.frm" directions: 6 frames: 12
+Load FRM file "art\walls\fence21.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\mailbx.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\strlit6.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\chr5000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cni1000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jas1000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jaw1002.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jaw1001.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jaw1000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jas1001.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cni2008.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\brl1000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tree3.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss110.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\stelbar2.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jbs1002.frm" directions: 1 frames: 1
+Load FRM file "art\items\locker6.frm " directions: 1 frames: 4
+Load FRM file "art\walls\jbs2000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\inside4.frm" directions: 1 frames: 1
+Load FRM file "art\items\bokcas5.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jbs1000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\aybed1.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jbs2001.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\brl2000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\necdoor4.frm" directions: 1 frames: 4
+Load FRM file "art\walls\nec089.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss115.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\ss101.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\ss107.frm   " directions: 1 frames: 1
+Load FRM file "art\items\shovel1.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\drock7.frm  " directions: 1 frames: 1
+Load FRM file "art\walls\jbs2002.frm" directions: 1 frames: 1
+Load FRM file "art\critters\mahandaa.frm" directions: 6 frames: 9
+Load FRM file "art\walls\inside3.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec087.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nfmetlaa.frm" directions: 6 frames: 18
+Load FRM file "art\scenery\char06.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jbs2003.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\car1.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss117.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\ss116.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\char01.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tirs000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec088.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\char05.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jds2001.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed12.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec086.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cnx1001.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\junk5.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\car3.frm" directions: 1 frames: 1
+Load FRM file "art\walls\dorfrm2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\necdoor1.frm" directions: 1 frames: 4
+Load FRM file "art\walls\dorfrm1.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec124.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cath25.frm  " directions: 1 frames: 1
+Load FRM file "art\walls\cnx2000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jcs3003.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jcs3002.frm" directions: 1 frames: 1
+Load FRM file "art\walls\jcd1001.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\curtain.frm" directions: 1 frames: 8
+Load FRM file "art\walls\jcd1000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cnx1003.frm" directions: 1 frames: 1
+Load FRM file "art\walls\cnx1002.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hmmaxxha.frm" directions: 6 frames: 9
+Load FRM file "art\items\bokcas1.frm" directions: 1 frames: 1
+Load FRM file "art\items\flare.frm   " directions: 1 frames: 1
+Load FRM file "art\items\book.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed17.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\junk1.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\stop1.frm" directions: 1 frames: 1
+Load FRM file "art\items\bigbox2.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw023.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\HORSE3.FRM" directions: 1 frames: 1
+Load FRM file "art\walls\carw024.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec127.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\minect13.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw025.frm" directions: 1 frames: 1
+Load FRM file "art\items\wshelv2.frm " directions: 1 frames: 1
+Load FRM file "art\items\wshelv1.frm " directions: 1 frames: 1
+Load FRM file "art\scenery\ss120.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\carw026.frm" directions: 1 frames: 1
+Load FRM file "art\misc\exitgrd6.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw027.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec128.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec034.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\weed16.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw028.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hmmetlaa.frm" directions: 6 frames: 12
+Load FRM file "art\scenery\ltable2.frm " directions: 1 frames: 1
+Load FRM file "art\items\tbltop10.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\stelbar1.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence14.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\junk3.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw029.frm" directions: 1 frames: 1
+Load FRM file "art\walls\fence19.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\drock4.frm  " directions: 1 frames: 1
+Load FRM file "art\walls\carw030.frm" directions: 1 frames: 1
+Load FRM file "art\items\wshelv5.frm " directions: 1 frames: 1
+Load FRM file "art\walls\carw031.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw032.frm" directions: 1 frames: 1
+Load FRM file "art\items\tbltop09.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nfmaxxga.frm" directions: 6 frames: 11
+Load FRM file "art\items\spear.frm" directions: 6 frames: 1
+Load FRM file "art\walls\carw033.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw036.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw034.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw038.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw037.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw035.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\doorb02.frm" directions: 1 frames: 7
+Load FRM file "art\scenery\weed08.frm" directions: 1 frames: 1
+Load FRM file "art\items\safe.frm" directions: 1 frames: 11
+Load FRM file "art\items\ABKSHLF1.FRM" directions: 1 frames: 1
+Load FRM file "art\items\dskglow4.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw055.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw053.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw051.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw049.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw047.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw045.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw043.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw041.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw039.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\ss119.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\nec137.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st16000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st02000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st23000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st04000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st05000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st29000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st25000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st24000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st22000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st15000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bone03.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw054.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw052.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw050.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw048.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw046.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw044.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw042.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw040.frm" directions: 1 frames: 1
+Load FRM file "art\critters\nmniceaa.frm" directions: 6 frames: 12
+Load FRM file "art\items\bokcas2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\logo01.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\chr1000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw064.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw063.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw062.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw061.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw060.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw059.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw058.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw057.frm" directions: 1 frames: 1
+Load FRM file "art\walls\carw056.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec029.frm" directions: 1 frames: 1
+Load FRM file "art\walls\nec010.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\flamp6.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st09000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st17000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st21000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st18000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\coffin07.frm" directions: 1 frames: 1
+Load FRM file "art\critters\naghulaa.frm" directions: 6 frames: 12
+Load FRM file "art\scenery\rug3.frm    " directions: 1 frames: 1
+Load FRM file "art\walls\st19000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tblmetl2.frm" directions: 1 frames: 1
+Load FRM file "art\walls\steldor8.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st20000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\truck3.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bvs03.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\door04.frm" directions: 1 frames: 8
+Load FRM file "art\items\dresr2.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\tree2.frm" directions: 1 frames: 1
+Load FRM file "art\walls\steldor7.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\bvs04.frm   " directions: 1 frames: 1
+Load FRM file "art\scenery\bvs05.frm   " directions: 1 frames: 1
+Load FRM file "art\walls\st08000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st33000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\steldor6.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\door03.frm" directions: 1 frames: 8
+Load FRM file "art\walls\steldor5.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st26000.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st30000.frm" directions: 1 frames: 1
+Load FRM file "art\critters\hapowraa.frm" directions: 6 frames: 12
+Load FRM file "art\scenery\doorb03.frm" directions: 1 frames: 7
+Load FRM file "art\scenery\staff.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\newsp6.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\rock09.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\v13bones.frm" directions: 1 frames: 1
+Load FRM file "art\walls\st41000.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\browreck.frm" directions: 1 frames: 1
+Load FRM file "art\scenery\stop2.frm" directions: 1 frames: 1
+Attach DDraw primary surface ...
+Attach DDraw map surface ...
+Attach DDraw navigator surface ...
+Attach DDraw inventory surface ...
+Attach DDraw object editor surface ...

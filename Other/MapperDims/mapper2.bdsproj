@@ -1,0 +1,317 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<PersonalityInfo>
+		<Option>
+			<Option Name="Personality">CPlusPlusBuilder.Personality</Option>
+			<Option Name="ProjectType">CppVCLApplication</Option>
+			<Option Name="Version">1.0</Option>
+			<Option Name="GUID">{4E388A3F-17AA-4454-B33A-68C718A3D660}</Option>
+		</Option>
+	</PersonalityInfo>
+	<CPlusPlusBuilder.Personality>
+		<BCBPROJECT>
+      <project version="10.0">
+        <property category="build.config" name="active" value="0"/>
+        <property category="build.config" name="count" value="1"/>
+        <property category="build.config" name="excludedefaultforzero" value="0"/>
+        <property category="build.config.0" name="builddir" value="Debug"/>
+        <property category="build.config.0" name="key" value="Debug_Build"/>
+        <property category="build.config.0" name="name" value="Debug Build"/>
+        <property category="build.config.0" name="settings.win32b" value="default"/>
+        <property category="build.config.0" name="type" value="Toolset"/>
+        <property category="build.config.0" name="win32.win32b.builddir" value="."/>
+        <property category="build.config.1" name="key" value="Release_Build"/>
+        <property category="build.config.1" name="name" value="Release Build"/>
+        <property category="build.config.1" name="settings.win32b" value="default"/>
+        <property category="build.config.1" name="type" value="Toolset"/>
+        <property category="build.config.1" name="win32.win32b.builddir" value="."/>
+        <property category="build.node" name="libraries" value="vclx.lib vcl.lib rtl.lib"/>
+        <property category="build.node" name="name" value="mapper2.exe"/>
+        <property category="build.node" name="packages" value="rtl;vcl;vclx;bcbsmp;dbrtl;vcldb;adortl;ibsmp;bdertl;vcldbx;teeui;teedb;tee;dss;ibxpress;dsnap;vclie;inetdb;inet;webdsnap;bcbie;dclocx;bcboffice2k;VGAgp"/>
+        <property category="build.node" name="sparelibs" value="rtl.lib vcl.lib vclx.lib"/>
+        <property category="build.node" name="use_packages" value="0"/>
+        <property category="build.platform" name="active" value="win32"/>
+        <property category="build.platform" name="win32.Debug_Build.toolset" value="win32b"/>
+        <property category="build.platform" name="win32.Release_Build.toolset" value="win32b"/>
+        <property category="build.platform" name="win32.default" value="win32b"/>
+        <property category="build.platform" name="win32.enabled" value="1"/>
+        <property category="build.platform" name="win32.win32b.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.bcc32" name="option.D.arg.1" value="_DEBUG"/>
+        <property category="win32.Debug_Build.win32b.bcc32" name="option.D.arg.merge" value="1"/>
+        <property category="win32.Debug_Build.win32b.bcc32" name="option.D.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.bcc32" name="option.r.enabled" value="0"/>
+        <property category="win32.Debug_Build.win32b.dcc32" name="option.$D.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.dcc32" name="option.$O.enabled" value="0"/>
+        <property category="win32.Debug_Build.win32b.dcc32" name="option.D.arg.1" value="DEBUG"/>
+        <property category="win32.Debug_Build.win32b.dcc32" name="option.D.arg.merge" value="1"/>
+        <property category="win32.Debug_Build.win32b.dcc32" name="option.D.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.dcc32" name="option.V.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.ilink32" name="option.D.arg.merge" value="1"/>
+        <property category="win32.Debug_Build.win32b.ilink32" name="option.D.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.ilink32" name="option.L.arg.1" value="$(BDS)\lib\debug"/>
+        <property category="win32.Debug_Build.win32b.ilink32" name="option.L.arg.merge" value="1"/>
+        <property category="win32.Debug_Build.win32b.ilink32" name="option.L.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.tasm32" name="option.z.enabled" value="1"/>
+        <property category="win32.Debug_Build.win32b.tasm32" name="option.zd.enabled" value="0"/>
+        <property category="win32.Debug_Build.win32b.tasm32" name="option.zi.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.D.arg.1" value="NDEBUG"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.D.arg.merge" value="1"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.D.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.O2.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.k.enabled" value="0"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.r.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.bcc32" name="option.vi.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.dcc32" name="option.$D.enabled" value="0"/>
+        <property category="win32.Release_Build.win32b.dcc32" name="option.$O.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.dcc32" name="option.V.enabled" value="0"/>
+        <property category="win32.Release_Build.win32b.ilink32" name="option.L.arg.1" value="$(BDS)\lib\release"/>
+        <property category="win32.Release_Build.win32b.ilink32" name="option.L.arg.merge" value="1"/>
+        <property category="win32.Release_Build.win32b.ilink32" name="option.L.enabled" value="1"/>
+        <property category="win32.Release_Build.win32b.tasm32" name="option.z.enabled" value="0"/>
+        <property category="win32.Release_Build.win32b.tasm32" name="option.zd.enabled" value="0"/>
+        <property category="win32.Release_Build.win32b.tasm32" name="option.zi.enabled" value="0"/>
+        <property category="win32.Release_Build.win32b.tasm32" name="option.zn.enabled" value="1"/>
+        <optionset name="all_configurations">
+          <property category="node" name="displayname" value="All Configurations"/>
+          <property category="win32.*.win32b.bcc32" name="option.H=.arg.1" value="C:\Program Files\Borland\CBuilder5\Projects\PreCompiled\vcl100.csm"/>
+          <property category="win32.*.win32b.bcc32" name="option.H=.arg.merge" value="0"/>
+          <property category="win32.*.win32b.bcc32" name="option.H=.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.2" value="cfile"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.3" value="unlzss"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.4" value="C:\Program Files\Borland\CBuilder5\Projects\"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.5" value="graphics"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.6" value="C:\Program Files\Borland\CBuilder4\Projects\"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.7" value="$(BDS)\include"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.8" value="$(BDS)\include\vcl"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.9" value="$(BDS)\include\dinkumware"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.arg.merge" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.I.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.Od.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.Ve.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.Vx.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.X.enabled" value="0"/>
+          <property category="win32.*.win32b.bcc32" name="option.align-1.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.b.enabled" value="0"/>
+          <property category="win32.*.win32b.bcc32" name="option.k.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.noregistervars.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.sysdefines.arg.1" value="NO_STRICT"/>
+          <property category="win32.*.win32b.bcc32" name="option.sysdefines.arg.merge" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.sysdefines.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.tW.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.tWM.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.v.enabled" value="1"/>
+          <property category="win32.*.win32b.bcc32" name="option.vi.enabled" value="0"/>
+          <property category="win32.*.win32b.bcc32" name="option.winl.enabled" value="0"/>
+          <property category="win32.*.win32b.bcc32" name="option.y.enabled" value="1"/>
+          <property category="win32.*.win32b.brcc32" name="option.D.arg.1" value="_DEBUG"/>
+          <property category="win32.*.win32b.brcc32" name="option.D.arg.merge" value="1"/>
+          <property category="win32.*.win32b.brcc32" name="option.D.enabled" value="0"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.1" value="cfile"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.3" value="C:\Program Files\Borland\CBuilder5\Projects\"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.4" value="graphics"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.5" value="C:\Program Files\Borland\CBuilder4\Projects\"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.6" value="$(BDS)\include"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.7" value="$(BDS)\include\vcl"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.8" value="$(BDS)\include\dinkumware"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.arg.merge" value="1"/>
+          <property category="win32.*.win32b.brcc32" name="option.INCLUDEPATH.enabled" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.$.arg.1" value="Y+"/>
+          <property category="win32.*.win32b.dcc32" name="option.$.arg.2" value="W"/>
+          <property category="win32.*.win32b.dcc32" name="option.$.arg.merge" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.$.enabled" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.$O.enabled" value="0"/>
+          <property category="win32.*.win32b.dcc32" name="option.I.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.dcc32" name="option.I.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.dcc32" name="option.I.arg.3" value="cfile"/>
+          <property category="win32.*.win32b.dcc32" name="option.I.arg.merge" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.I.enabled" value="0"/>
+          <property category="win32.*.win32b.dcc32" name="option.O.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.dcc32" name="option.O.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.dcc32" name="option.O.arg.3" value="cfile"/>
+          <property category="win32.*.win32b.dcc32" name="option.O.arg.merge" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.O.enabled" value="0"/>
+          <property category="win32.*.win32b.dcc32" name="option.R.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.dcc32" name="option.R.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.dcc32" name="option.R.arg.3" value="cfile"/>
+          <property category="win32.*.win32b.dcc32" name="option.R.arg.merge" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.R.enabled" value="0"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.3" value="cfile"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.4" value=".\"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.5" value="$(BDS)\lib"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.6" value="$(BDS)\lib\obj"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.arg.merge" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="option.U.enabled" value="1"/>
+          <property category="win32.*.win32b.dcc32" name="param.filenames.merge" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.D.arg.1" value="_DEBUG"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.D.arg.merge" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.D.enabled" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.10" value="$(BDS)\include\vcl"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.2" value="cfile"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.3" value="unlzss"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.4" value="C:\Program"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.5" value="Files\Borland\CBuilder5\Projects\."/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.6" value="graphics"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.7" value="C:\Program"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.8" value="Files\Borland\CBuilder4\Projects\."/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.9" value="$(BDS)\include"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.arg.merge" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.I.enabled" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.boa.enabled" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.srcsuffix.arg" value="cpp"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.srcsuffix.arg.merge" value="1"/>
+          <property category="win32.*.win32b.idl2cpp" name="option.srcsuffix.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.D.arg" value="&quot;&quot;"/>
+          <property category="win32.*.win32b.ilink32" name="option.D.arg.merge" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.D.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.2" value="cfile"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.3" value="unlzss"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.4" value="C:\Program Files\Borland\CBuilder5\Projects\"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.5" value="graphics"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.6" value="C:\Program Files\Borland\CBuilder4\Projects\"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.7" value="$(BDS)\Projects\Lib"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.8" value="$(BDS)\lib\obj"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.9" value="$(BDS)\lib"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.arg.merge" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.L.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.Tpe.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.aa.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.dynamicrtl.enabled" value="0"/>
+          <property category="win32.*.win32b.ilink32" name="option.j.arg.1" value="..\include"/>
+          <property category="win32.*.win32b.ilink32" name="option.j.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.ilink32" name="option.j.arg.3" value="cfile"/>
+          <property category="win32.*.win32b.ilink32" name="option.j.arg.merge" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.j.enabled" value="0"/>
+          <property category="win32.*.win32b.ilink32" name="option.v.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="option.x.enabled" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="param.libfiles.1" value="$(LIBRARIES)"/>
+          <property category="win32.*.win32b.ilink32" name="param.libfiles.2" value="import32.lib"/>
+          <property category="win32.*.win32b.ilink32" name="param.libfiles.3" value="cp32mt.lib"/>
+          <property category="win32.*.win32b.ilink32" name="param.libfiles.merge" value="1"/>
+          <property category="win32.*.win32b.ilink32" name="param.objfiles.1" value="c0w32.obj"/>
+          <property category="win32.*.win32b.ilink32" name="param.objfiles.2" value="sysinit.obj"/>
+          <property category="win32.*.win32b.ilink32" name="param.objfiles.merge" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="option.d.arg.1" value="_DEBUG"/>
+          <property category="win32.*.win32b.tasm32" name="option.d.arg.merge" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="option.d.enabled" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.1" value="cfile"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.2" value="unlzss"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.3" value="C:\Program Files\Borland\CBuilder5\Projects\"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.4" value="graphics"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.5" value="C:\Program Files\Borland\CBuilder4\Projects\"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.6" value="$(BDS)\include"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.7" value="$(BDS)\include\vcl"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.8" value="$(BDS)\include\dinkumware"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.arg.merge" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="option.i.enabled" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="option.w2.enabled" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="option.zi.enabled" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="param.listfile.merge" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="param.objfile.merge" value="1"/>
+          <property category="win32.*.win32b.tasm32" name="param.xreffile.merge" value="1"/>
+        </optionset>
+      </project>
+      <FILELIST>
+        <FILE FILENAME="mapper2.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="mapper2" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="mapper2.res" CONTAINERID="ResTool" LOCALCOMMAND="" UNITNAME="mapper2" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="main.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="main" FORMNAME="frmEnv" DESIGNCLASS=""/>
+        <FILE FILENAME="map.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="map" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="tileset.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="tileset" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="lists.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="lists" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="frmset.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="frmset" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="utilites.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="utilites" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="pbar.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="pbar" FORMNAME="frmPBar" DESIGNCLASS=""/>
+        <FILE FILENAME="mdi.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="mdi" FORMNAME="frmMDI" DESIGNCLASS=""/>
+        <FILE FILENAME="frame.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="frame" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="datfile.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="datfile" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="objset.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="objset" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="proset.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="proset" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="pro.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="pro" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="lib\zlib10.lib" CONTAINERID="LibTool" LOCALCOMMAND="" UNITNAME="zlib10" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="pal.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="pal" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="config.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="config" FORMNAME="frmConfig" DESIGNCLASS=""/>
+        <FILE FILENAME="script.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="script" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="unlzss\unlzss.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="unlzss" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="cfile\cfile.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="cfile" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="log.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="log" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="msg.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="msg" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="change.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="change" FORMNAME="fmChange" DESIGNCLASS=""/>
+        <FILE FILENAME="frameHeader.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="frameHeader" FORMNAME="frmHdr" DESIGNCLASS="TFrame"/>
+        <FILE FILENAME="frmInven.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="frmInven" FORMNAME="frmInv" DESIGNCLASS="TFrame"/>
+        <FILE FILENAME="frmObj.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="frmObj" FORMNAME="frmObject" DESIGNCLASS="TFrame"/>
+        <FILE FILENAME="frmMiniMap.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="frmMiniMap" FORMNAME="frmMMap" DESIGNCLASS="TFrame"/>
+        <FILE FILENAME="FormAskLevel.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="FormAskLevel" FORMNAME="frmSelLevel" DESIGNCLASS=""/>
+        <FILE FILENAME="template.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="template" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="lib\ddraw.lib" CONTAINERID="LibTool" LOCALCOMMAND="" UNITNAME="ddraw" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="lib\dxguid.lib" CONTAINERID="LibTool" LOCALCOMMAND="" UNITNAME="dxguid" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="lib\msimg32.lib" CONTAINERID="LibTool" LOCALCOMMAND="" UNITNAME="msimg32" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="..\include\FOText.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="FOText" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="..\include\Object.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="Object" FORMNAME="" DESIGNCLASS=""/>
+        <FILE FILENAME="..\include\ObjMngr.cpp" CONTAINERID="CCompiler" LOCALCOMMAND="" UNITNAME="ObjMngr" FORMNAME="" DESIGNCLASS=""/>
+      </FILELIST>
+      <IDEOPTIONS>
+        <VersionInfo>
+          <VersionInfo Name="IncludeVerInfo">False</VersionInfo>
+          <VersionInfo Name="AutoIncBuild">False</VersionInfo>
+          <VersionInfo Name="MajorVer">1</VersionInfo>
+          <VersionInfo Name="MinorVer">0</VersionInfo>
+          <VersionInfo Name="Release">0</VersionInfo>
+          <VersionInfo Name="Build">0</VersionInfo>
+          <VersionInfo Name="Debug">False</VersionInfo>
+          <VersionInfo Name="PreRelease">False</VersionInfo>
+          <VersionInfo Name="Special">False</VersionInfo>
+          <VersionInfo Name="Private">False</VersionInfo>
+          <VersionInfo Name="DLL">False</VersionInfo>
+          <VersionInfo Name="Locale">1049</VersionInfo>
+          <VersionInfo Name="CodePage">1251</VersionInfo>
+        </VersionInfo>
+        <VersionInfoKeys>
+          <VersionInfoKeys Name="CompanyName"></VersionInfoKeys>
+          <VersionInfoKeys Name="FileDescription"></VersionInfoKeys>
+          <VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys>
+          <VersionInfoKeys Name="InternalName"></VersionInfoKeys>
+          <VersionInfoKeys Name="LegalCopyright"></VersionInfoKeys>
+          <VersionInfoKeys Name="LegalTrademarks"></VersionInfoKeys>
+          <VersionInfoKeys Name="OriginalFilename"></VersionInfoKeys>
+          <VersionInfoKeys Name="ProductName"></VersionInfoKeys>
+          <VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
+          <VersionInfoKeys Name="Comments"></VersionInfoKeys>
+        </VersionInfoKeys>
+        <Debugging>
+          <Debugging Name="DebugSourceDirs"></Debugging>
+        </Debugging>
+        <Parameters>
+          <Parameters Name="RunParams"></Parameters>
+          <Parameters Name="Launcher"></Parameters>
+          <Parameters Name="UseLauncher">False</Parameters>
+          <Parameters Name="DebugCWD"></Parameters>
+          <Parameters Name="HostApplication"></Parameters>
+          <Parameters Name="RemoteHost"></Parameters>
+          <Parameters Name="RemotePath"></Parameters>
+          <Parameters Name="RemoteParams"></Parameters>
+          <Parameters Name="RemoteLauncher"></Parameters>
+          <Parameters Name="UseRemoteLauncher">False</Parameters>
+          <Parameters Name="RemoteCWD"></Parameters>
+          <Parameters Name="RemoteDebug">False</Parameters>
+          <Parameters Name="Debug Symbols Search Path"></Parameters>
+          <Parameters Name="LoadAllSymbols">True</Parameters>
+          <Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
+        </Parameters>
+        <Linker>
+          <Linker Name="LibPrefix"></Linker>
+          <Linker Name="LibSuffix"></Linker>
+          <Linker Name="LibVersion"></Linker>
+        </Linker>
+      </IDEOPTIONS>
+    </BCBPROJECT>
+		<Source>
+			<Source Name="MainSource">mapper2.cpp</Source>
+		</Source>
+		<buildevents/>
+	</CPlusPlusBuilder.Personality>
+</BorlandProject>

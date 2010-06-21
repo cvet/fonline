@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2008.09.08 18:21:16.890.cpp,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Unit1.cpp=G:\Repozes\code\WorldManager\WorldManager.cpp</Transaction>
+    <Transaction>2008.09.08 18:21:16.890.h,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Unit1.h=G:\Repozes\code\WorldManager\WorldManager.h</Transaction>
+    <Transaction>2008.09.08 18:21:16.890.dfm,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Unit1.dfm=G:\Repozes\code\WorldManager\WorldManager.dfm</Transaction>
+    <Transaction>2008.09.08 18:22:28.890.cbproj,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Project1.cbproj=G:\Repozes\code\WorldManager\FOWorldManager.cbproj</Transaction>
+  </Transactions>
+</BorlandProject>

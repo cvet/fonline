@@ -1,0 +1,59 @@
+#include ".\scripts\_defines.fos"
+
+
+//Time Events names
+#define EVENT_UPDATE_ITEMS		0
+
+void init(Critter& npc, BOOL first_time)
+{
+	int res=npc.CreateTimeEvent(EVENT_UPDATE_ITEMS,-1,-1,8,0,0,"trader","UpdateInv");
+	if(ERROR(res)) Log("Time event error <"+res+">");
+
+	if(first_time==TRUE)
+	{
+		npc.AddItem(29,Random(1000,1500));
+		npc.AddItem(31,Random(1000,1500));
+		npc.AddItem(32,Random(1000,1500));
+		npc.AddItem(33,Random(1000,1500));
+		npc.AddItem(34,Random(1000,1500));
+		npc.AddItem(35,Random(1000,1500));
+		npc.AddItem(36,Random(1000,1500));
+		npc.AddItem(37,Random(50,75));
+		npc.AddItem(38,Random(1000,1500));
+		npc.AddItem(39,Random(1000,1500));
+		npc.AddItem(40,Random(100,150));
+		npc.AddItem(95,Random(1000,1500));
+		npc.AddItem(144,Random(50,75));
+		npc.AddItem(163,Random(1000,1500));
+		npc.AddItem(357,Random(1000,1500));
+		npc.AddItem(358,Random(1000,1500));
+		npc.AddItem(359,Random(1000,1500));
+		npc.AddItem(360,Random(1000,1500));
+		npc.AddItem(361,Random(1000,1500));
+		npc.AddItem(363,Random(1000,1500));	
+	}
+}
+
+void UpdateInv(Critter& npc)
+{
+	if(npc.CountItem(29)<1000) npc.AddItem(29,Random(100,300));
+	if(npc.CountItem(31)<1000) npc.AddItem(31,Random(100,300));
+	if(npc.CountItem(32)<1000) npc.AddItem(32,Random(100,300));
+	if(npc.CountItem(33)<1000) npc.AddItem(33,Random(100,300));
+	if(npc.CountItem(34)<1000) npc.AddItem(34,Random(100,300));
+	if(npc.CountItem(35)<1000) npc.AddItem(35,Random(100,300));
+	if(npc.CountItem(36)<1000) npc.AddItem(36,Random(100,300));
+	if(npc.CountItem(37)<50) npc.AddItem(37,Random(10,30));
+	if(npc.CountItem(38)<1000) npc.AddItem(38,Random(100,300));
+	if(npc.CountItem(39)<1000) npc.AddItem(39,Random(100,300));
+	if(npc.CountItem(40)<100) npc.AddItem(40,Random(10,100));
+	if(npc.CountItem(95)<1000) npc.AddItem(95,Random(100,300));
+	if(npc.CountItem(144)<50) npc.AddItem(144,Random(10,30));
+	if(npc.CountItem(163)<1000) npc.AddItem(163,Random(100,300));
+	if(npc.CountItem(357)<1000) npc.AddItem(357,Random(100,300));
+	if(npc.CountItem(358)<1000) npc.AddItem(358,Random(100,300));
+	if(npc.CountItem(359)<1000) npc.AddItem(359,Random(100,300));
+	if(npc.CountItem(360)<1000) npc.AddItem(360,Random(100,300));
+	if(npc.CountItem(361)<1000) npc.AddItem(361,Random(100,300));
+	if(npc.CountItem(363)<1000) npc.AddItem(363,Random(100,300));
+}

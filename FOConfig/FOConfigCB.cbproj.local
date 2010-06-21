@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2008.09.06 00:29:53.734.cpp,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Unit1.cpp=G:\Repozes\code\FOConfigCB\FOConfig.cpp</Transaction>
+    <Transaction>2008.09.06 00:29:53.734.h,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Unit1.h=G:\Repozes\code\FOConfigCB\FOConfig.h</Transaction>
+    <Transaction>2008.09.06 00:29:53.734.dfm,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Unit1.dfm=G:\Repozes\code\FOConfigCB\FOConfig.dfm</Transaction>
+    <Transaction>2008.09.06 00:34:31.140.cbproj,C:\Documents and Settings\cvet\Мои документы\RAD Studio\Projects\Project1.cbproj=G:\Repozes\code\FOConfigCB\FOConfigCB.cbproj</Transaction>
+  </Transactions>
+</BorlandProject>

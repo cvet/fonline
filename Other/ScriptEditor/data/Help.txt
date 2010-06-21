@@ -1,0 +1,7 @@
+*Общая информация@Общая информация по скриптингу.rtf
+*Скриптовые функции@ScriptFunc.rtf
+*Типы данных@Types.rtf
+*Глобальные переменные и функции@Global Vars Functions.rtf
+*Криттер@Class_Critter.rtf
+*Объект@Class_Object.rtf
+*Прототип объекта@Class_ProtoObject.rtf

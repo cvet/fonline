@@ -1,0 +1,45 @@
+
+sampler SpriteTex;
+
+float WidthStep;
+float HeightStep;
+float4 SpriteBorders;
+float3 SpriteBordersHeight;
+float4 ContourColor;
+float ContourColorOffs;
+
+struct PS_INPUT
+{
+	float2 TexPos : TEXCOORD0;
+};
+
+struct PS_OUTPUT
+{
+	float4 Diffuse : COLOR0;
+};
+
+PS_OUTPUT Main(PS_INPUT input)
+{
+	PS_OUTPUT output=(PS_OUTPUT)0;
+
+	if(tex2D(SpriteTex,input.TexPos).a==0.0f)
+	{
+		if((input.TexPos.x-WidthStep>SpriteBorders[0] && tex2D(SpriteTex,float2(input.TexPos.x-WidthStep,input.TexPos.y)).a!=0.0f)
+		|| (input.TexPos.x+WidthStep<SpriteBorders[2] && tex2D(SpriteTex,float2(input.TexPos.x+WidthStep,input.TexPos.y)).a!=0.0f)
+		|| (input.TexPos.y-HeightStep>SpriteBorders[1] && tex2D(SpriteTex,float2(input.TexPos.x,input.TexPos.y-HeightStep)).a!=0.0f)
+		|| (input.TexPos.y+HeightStep<SpriteBorders[3] && tex2D(SpriteTex,float2(input.TexPos.x,input.TexPos.y+HeightStep)).a!=0.0f))
+		{
+			output.Diffuse=ContourColor;
+			if(input.TexPos.y>=SpriteBordersHeight[0] && input.TexPos.y<=SpriteBordersHeight[1])
+			{
+				float v=(input.TexPos.y-SpriteBordersHeight[0])/SpriteBordersHeight[2]+ContourColorOffs;
+				if(v>1.0f) v=2.0f-v;
+				else if(v<0.0f) v=-v;
+				output.Diffuse.rgb+=v*0.60f-0.30f;
+				output.Diffuse.rgb=saturate(output.Diffuse.rgb);
+			}
+		}
+	}
+
+	return output;
+}

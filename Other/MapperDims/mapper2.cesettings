@@ -1,0 +1,17 @@
+[General]
+UseProjectExternals=0
+SynchronizeContextBar=1
+SynchronizeContextBarSpeed=1
+SynchronizeContextBarModeIdle=1
+
+[Browse History]
+Count=2
+bh0=CScript,1,1,1,1
+bh1=CTileSet.SetFloor,3,1,5,1
+
+[Class Filters]
+Count=0
+
+[Exclude From Parsing]
+Count=0
+

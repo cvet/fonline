@@ -1,0 +1,10 @@
+#
+# Scripts list
+#
+# Enabled, Num, Name, Desc
+#
+
+$ 1	dialog                # Functions using in Npc dialogs
+$ 104	den_barbekky_boy      # Den, Bar Bekky, Boy
+
+$ 2010	trader                # Trader

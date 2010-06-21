@@ -1,0 +1,34 @@
+Ћќ√ пишетс€ в файл console.log
+Welcome to the FOnline console!
+Load config from C:\MyProjects\Fonline\Console\Console.cfg
+Server address is 127.0.0.1:4000
+»нициализаци€ сокетов
+»нициализаци€ модул€ zlib
+»нициализаци€ модул€ zlib завершена успешно
+»нициализаци€ сокетов завершена успешно. socket = 1956
+»нициализаци€ лексического анализатора
+«агружен словарь на 7 команд
+»нициализаци€ лексического анализатора завершена успешно
+Ќачало основного цикла
+Type help to get help
+
+> show script aaa
+распакована лексема show
+распакована лексема script
+распакована лексема aaa
+script: aaa
+Connection with server is NULL. Command was not sent
+> show host
+распакована лексема show
+распакована лексема host
+	 server host: 127.0.0.1
+> exec lalala
+распакована лексема exec
+распакована лексема lalala
+script: lalala
+Connection with server is NULL. Command was not sent
+> exit
+распакована лексема exit
+exiting ....
+«авершение основного цикла
+«авершение работы лога

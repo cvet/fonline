@@ -1,0 +1,30 @@
+#include ".\scripts\_defines.fos"
+
+
+//Demands
+
+int IsToHeal(Critter& master, Critter& slave, int val)
+{
+	if( master.Hp < master.MaxHp ) return TRUE;
+	return FALSE;
+}
+
+int IsLocationVisible(Critter& master, Critter& slave, int val)
+{
+	if( master.IsKnownLoc( uint16(val) ) != FALSE ) return TRUE;
+	return FALSE;
+}
+
+
+//Results
+
+void ToHeal(Critter& master, Critter& slave, int val)
+{
+	master.Hp = master.MaxHp;
+	master.SendParam( 1, 35 ); //TYPE_STAT, ST_CURRENT_HP
+}
+
+void ShowLocation(Critter& master, Critter& slave, int val)
+{
+	master.SetKnownLoc( uint16(val) );
+}

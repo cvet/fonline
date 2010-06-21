@@ -1,0 +1,86 @@
+#FontStyle:
+#0 - REGULAR
+#1 - BOLD
+#2 - ITALIC
+#4 - UNDERLINE
+#8 - STRIKEOUT
+#
+#Combine styles:
+#BOLD + ITALIC => 1 + 2 = 3
+#FontStyle=6
+#BOLD + STRIKEOUT + UNDERLINE => 1 + 8 + 4 = 13
+#FontStyle=26
+
+#Color in hex
+#0xAARRGGBB
+
+[DEFAULT]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFF000000
+FontSize=10
+
+[COMMENTS]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFF10A010
+FontSize=10
+
+Char1=/
+Char2=/
+
+[STRING]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFF600000
+FontSize=10
+
+Char="
+
+[DIGIT]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFF555555
+FontSize=10
+
+[LEXEMS_0]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFF0000FF
+FontSize=10
+
+Words=Critter Object ProtoObject #include #define #ifdef #ifndef #endif #pragma and any bool BOOL break case cast class const continue default do double else false float for from if import in inout int interface int8 int16 int32 int64 DWORD WORD BYTE UINT long short char unsigned string not null or out return switch this true uint uint8 uint16 uint32 uint64 void while xor MIN MAX POW2 POW3
+
+[LEXEMS_1]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFFAAAA00
+FontSize=10
+
+Words=Id BaseType HexX HexY WorldX WorldY Ori Look Cond CondExt Flags Strenght Perception Endurance Charisma Intellect Agility Luck MaxHp MaxCond ArmorClass MeleeDamage WeaponDamage CarryWeight Sequence HealingRrate CriticalChance MaxCritical IngureAbsorb LaserAbsorb FireAbsorb PlasmaAbsorb ElectroAbsorb EmpAbsorb BlastAbsorb IngureResist LaserResist FireResist PlasmaResist ElectroResist EmpResist BlastResist RadiationResistance PoisonResistance Age Gender Hp PoisoningLevel RadiationLevel CurrentStandart SmallGuns BigGuns EnergyWeapons Unarmed MeleeWeapons Throwing FirstAid Doctor Sneak Lockpick Steal Traps Science Repair Speech Barter Gambling Outdoorsman NameId InfoId InfoExtId TimeShow TimeHide DistanceLight IntensityLight Passed Raked Transparent CanUse CanPickUp CanUseOnSmth Hidden Weight Size TwoHands PicMap PicInv Sound LiveTime Cost Material TypeMale TypeMaleExt TypeFemale TypeFemaleExt TimeMove TimeRun AC DrNormal DrLaser DrFire DrPlasma DrElectro DrEmp DrExplode DtNormal DtLaser DtFire DtPlasma DtElectro DtEmp DtExplode ArmPerk ContSize ContFlags Stat1 Stat2 Stat3 Amount1Stat1 Amount1Stat2 Amount1Stat3 Duration1 Amount2Stat1 Amount2Stat2 Amount2Stat3 Duration2 Amount3Stat1 Amount3Stat2 Amount3Stat3 AddictionRate WEffect WOnset WeapAnim TimeActiv TimeUnactiv VolumeHolder Caliber VolumeHolderExt CaliberExt CriticalFailture CountAttack paSkill paDmgType paNumHolder paTextPic paDmgMin paDmgMax paMaxDist paEffDist paAnim paTime paAim paRound paRemoveWeap paSound saSkill saDmgType saNumHolder saTextPic saDmgMin saDmgMax saMaxDist saEffDist saAnim saTime saAim saRound saRemoveWeap saSound taSkill taDmgType taNumHolder taTextPic taDmgMin taDmgMax taMaxDist taEffDist taAnim taTime taAim taRound taRemoveWeap taSound StartCount Caliber AcMod DrMod DmgMult DmgDiv Id proto TimeWear LastTick BrokenInfo Accessory Map HexX HexY CritId CritSlot ContId AmmoPid AmmoCount AmmoPidExt AmmoCountExt Count MiscCount KeyDoorId DoorId ToMapId ToHexX ToHexY ToDir
+
+[LEXEMS_2]
+FontName=Courier New
+FontStyle=1
+FontColor=0xFF000000
+FontSize=10
+
+Words=Log Random Attack MoveToDir MoveToHex MoveRandom Say SetDir GetType GetProtoId IsKnownLoc SetKnownLoc SendParam SendMessage CreateTimeEvent ChangeTimeEventA ChangeTimeEventB ChangeTimeEventC EraseTimeEvent GetMap GetProtoMap IsBusy IsFree Wait
+
+[LEXEMS_3]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFFFF0000
+FontSize=10
+
+Words=NONE NULL FALSE TRUE OK ERROR SAY_NORM SAY_SHOUT SAY_EMOTE SAY_WHISP SAY_SOCIAL SAY_RADIO ACT_NULL ACT_SHOW_OBJ ACT_HIDE_OBJ ACT_ACTIVATE_OBJ ACT_DACTIVATE_OBJ ACT_USE_OBJ ACT_CHANGE_ARM ACT_DEFEAT ACT_DEFEAT_MISS ACT_DEFEAT_FRONT ACT_DEFEAT_REAR ACT_DEFEAT_KO_FRONT ACT_DEFEAT_KO_REAR ACT_REFRESH ACT_DEAD ACT_CR_DEAD ACT_DISCONNECT ACT_DROP_OBJ ACT_PICK_OBJ_UP ACT_PICK_OBJ_DOWN COND_LIFE COND_LIFE_NONE COND_LIFE_ACTWEAP COND_LIFE_USEOBJ COND_LIFE_OFFLINE COND_KNOCK_OUT COND_KO_UP COND_KO_DOWN COND_DEAD COND_DEAD_NORMAL_UP COND_DEAD_NORMAL_DOWN COND_DEAD_CR_NORMAL_UP COND_DEAD_BRUST COND_DEAD_CR_BRUST COND_DEAD_LASER COND_DEAD_FIRE COND_DEAD_PLASMA COND_DEAD_ELECTR COND_DEAD_EMP COND_DEAD_EXPLODE COND_NOT_IN_GAME GENDER_MALE GENDER_FEMALE OBJ_ARMOR OBJ_CONTAINER OBJ_DRUG OBJ_WEAPON OBJ_AMMO OBJ_MISC OBJ_KEY OBJ_DOOR OBJ_CRAFTING OBJ_GRID ACCESSORY_CRIT ACCESSORY_HEX ACCESSORY_CONT DAMAGE_NORMAL DAMAGE_LASER DAMAGE_FIRE DAMAGE_PLASMA DAMAGE_ELECTR DAMAGE_EMP DAMAGE_EXPLODE MESSAGE_TO_VISIBLE_ME MESSAGE_TO_IAM_VISIBLE MESSAGE_TO_ALL_ON_MAP VALID NOT_VALID
+
+[LEXEMS_4]
+FontName=Courier New
+FontStyle=0
+FontColor=0xFF007A7A
+FontSize=10
+
+Words=GameYear GameMonth GameDay GameHour GameMinute GameTimeMultiplier GameForceDialog
+
+[LEXEMS_N] ...etc

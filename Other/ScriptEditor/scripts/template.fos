@@ -1,0 +1,26 @@
+//Файл, где прописаны основные макросы
+//#include ".\scripts\_flags.fos"
+
+//Математические макросы
+//#include ".\scripts\_math.fos"
+
+
+//Зарезервированные скриптовые функции
+//Описание смотрите в Help
+
+//void init(Critter& npc, int first_time){}
+//void dead(Critter& npc){}
+//void idle(Critter& npc){}
+//void on_add_critter(Critter& npc, Critter& crit){}
+//void on_remove_critter(Critter& npc, Critter& crit){}
+//void on_load_map(Critter& npc){}
+//void on_add_object_on_map(Critter& npc, Object& obj){}
+//void on_change_object_on_map(Critter& npc, Object& obj){}
+//void on_remove_object_from_map(Critter& npc, Object& obj){}
+//void on_add_object(Critter& npc, Object& obj){}
+//void on_remove_object(Critter& npc, Object& obj){}
+//void on_wear_object(Critter& npc, Object& obj){}
+//void on_param(Critter& npc, uint type, uint value){}
+//void on_attack(Critter& npc, Critter& attacker){}
+//void on_steal(Critter& npc, Critter& thief, int steal){}
+//void on_message(Critter& cr, int num){}

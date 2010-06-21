@@ -1,0 +1,6 @@
+@.dlgt
+G:\FOnline\server\text\russ\
+G:\Repozes\server\server\text\russ\
+@.dlgt
+G:\FOnline\server\text\engl\
+G:\Repozes\server\server\text\engl\

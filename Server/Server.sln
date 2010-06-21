@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Server", "Server.vcproj", "{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		App Lite Release|Win32 = App Lite Release|Win32
+		App MaxOptimize|Win32 = App MaxOptimize|Win32
+		App Release|Win32 = App Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}.App Lite Release|Win32.ActiveCfg = App Lite Release|Win32
+		{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}.App Lite Release|Win32.Build.0 = App Lite Release|Win32
+		{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}.App MaxOptimize|Win32.ActiveCfg = App MaxOptimize|Win32
+		{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}.App MaxOptimize|Win32.Build.0 = App MaxOptimize|Win32
+		{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}.App Release|Win32.ActiveCfg = App Release|Win32
+		{E1F18FE3-7514-4C31-BC3B-5FED921CEEEB}.App Release|Win32.Build.0 = App Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

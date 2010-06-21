@@ -1,0 +1,353 @@
+#ifndef __DEFINES__
+#define __DEFINES__
+
+#define NULL                      (0)
+#define NONE                      (0)
+#define FALSE                     (0)
+#define TRUE                      (1)
+
+#define OK #(a)                   ((a)>=0)
+#define ERROR #(a)                ((a)<0)
+
+#define VALID #(ptr)              ((ptr)!=null)
+#define NOT_VALID #(ptr)          ((ptr)==null)
+
+#define MIN #(a,b)                (((a)<(b))?(a):(b))
+#define MAX #(a,b)                (((a)>(b))?(a):(b))
+#define POW2 #(a)                 ((a)*(a))
+#define POW3 #(a)                 ((a)*(a)*(a))
+
+//Data types
+#define BOOL                      int32
+#define DWORD                     uint32
+#define WORD                      uint16
+#define BYTE                      uint8
+#define long                      int32
+#define short                     int16
+#define char                      int8
+
+//Say types
+#define SAY_NORM                  (1)
+#define SAY_SHOUT                 (2)
+#define SAY_EMOTE                 (3)
+#define SAY_WHISP                 (4)
+#define SAY_SOCIAL                (5)
+#define SAY_RADIO                 (6)
+
+//Actions
+#define ACT_NULL                  1
+#define ACT_SHOW_OBJ              2
+#define ACT_HIDE_OBJ              3
+#define ACT_ACTIVATE_OBJ          4
+#define ACT_DACTIVATE_OBJ         5
+#define ACT_USE_OBJ               6
+#define ACT_CHANGE_ARM            7
+#define ACT_DEFEAT                8
+#define ACT_DEFEAT_MISS           1
+#define ACT_DEFEAT_FRONT          2
+#define ACT_DEFEAT_REAR           3
+#define ACT_DEFEAT_KO_FRONT       4
+#define ACT_DEFEAT_KO_REAR        5
+#define ACT_REFRESH               (9
+#define ACT_DEAD                  (10
+#define ACT_CR_DEAD               (11
+#define ACT_DISCONNECT            (12
+#define ACT_DROP_OBJ              (13
+#define ACT_PICK_OBJ_UP           (14
+#define ACT_PICK_OBJ_DOWN         (15
+
+//Critter conditions
+#define COND_LIFE                 (1)
+#define COND_LIFE_NONE            (1)
+#define COND_LIFE_ACTWEAP         (2)
+#define COND_LIFE_USEOBJ          (3)
+#define COND_LIFE_OFFLINE         (4)
+#define COND_KNOCK_OUT            (2)
+#define COND_KO_UP                (1)
+#define COND_KO_DOWN              (2)
+#define COND_DEAD                 (3)
+#define COND_DEAD_NORMAL_UP       (1)
+#define COND_DEAD_NORMAL_DOWN     (2)
+#define COND_DEAD_CR_NORMAL_UP    (3)
+#define COND_DEAD_BRUST           (4)
+#define COND_DEAD_CR_BRUST        (5)
+#define COND_DEAD_LASER           (6)
+#define COND_DEAD_FIRE            (7)
+#define COND_DEAD_PLASMA          (8)
+#define COND_DEAD_ELECTR          (9)
+#define COND_DEAD_EMP             (10)
+#define COND_DEAD_EXPLODE         (11)
+#define COND_NOT_IN_GAME          (4)
+
+//Gender
+#define GENDER_MALE               (0)
+#define GENDER_FEMALE             (1)
+
+//Objects types
+#define OBJ_ARMOR                 (1)
+#define OBJ_CONTAINER             (2)
+#define OBJ_DRUG                  (3)
+#define OBJ_WEAPON                (4)
+#define OBJ_AMMO                  (5)
+#define OBJ_MISC                  (6)
+#define OBJ_KEY                   (7)
+#define OBJ_DOOR                  (8)
+#define OBJ_CRAFTING              (9)
+#define OBJ_GRID                  (10)
+
+//Accessory
+#define ACCESSORY_CRIT            (1)
+#define ACCESSORY_HEX             (2)
+#define ACCESSORY_CONT            (3)
+
+//Damage types
+#define DAMAGE_NORMAL             (1)
+#define DAMAGE_LASER              (2)
+#define DAMAGE_FIRE               (3)
+#define DAMAGE_PLASMA             (4)
+#define DAMAGE_ELECTR             (5)
+#define DAMAGE_EMP                (6)
+#define DAMAGE_EXPLODE            (7)
+
+//In SendMessage
+#define MESSAGE_TO_VISIBLE_ME     (0)
+#define MESSAGE_TO_IAM_VISIBLE    (1)
+#define MESSAGE_TO_ALL_ON_MAP     (2)
+
+//Slots
+#define SLOT_INV                  (0)
+#define SLOT_HAND1                (1)
+#define SLOT_HAND2                (2)
+#define SLOT_ARMOR                (3)
+
+//Primary stats
+#define ST_STRENGHT               0 //{Сила}
+#define ST_PERCEPTION             1 //{Восприятие}
+#define ST_ENDURANCE              2 //{Выносливость}
+#define ST_CHARISMA               3 //{Обаяние}
+#define ST_INTELLECT              4 //{Ум}
+#define ST_AGILITY                5 //{Координация}
+#define ST_LUCK                   6 //{Удача}
+//Secondary stats
+#define ST_MAX_LIFE               7 //{Макс. Баллы Жизни}
+#define ST_MAX_COND               8 //{Максимальная кондиция}
+#define ST_ARMOR_CLASS            9 //{Класс Брони}
+#define ST_MELEE_DAMAGE           10 //{Вред невооруженный}
+#define ST_WEAPON_DAMAGE          11 //{Вред оружием}
+#define ST_CARRY_WEIGHT           12 //{Макс. груз}
+#define ST_SEQUENCE               13 //{Реакция}
+#define ST_HEALING_RATE           14 //{Лечения}
+#define ST_CRITICAL_CHANCE        15 //{Шанс критический.}
+#define ST_MAX_CRITICAL           16 //{Максимальный критический}
+#define ST_INGURE_ABSORB          17 //{Порог Ранения}
+#define ST_LASER_ABSORB           18 //{Порог Повреждения лазером}
+#define ST_FIRE_ABSORB            19 //{Порог Повреждения Огнем}
+#define ST_PLASMA_ABSORB          20 //{Порог Повреждения Плазмой}
+#define ST_ELECTRO_ABSORB         21 //{Порог Повреждения Электричеством}
+#define ST_EMP_ABSORB             22 //{Порог повреждения EMP}
+#define ST_BLAST_ABSORB           23 //{Порог Повреждения при Взрыве}
+#define ST_INGURE_RESIST          24 //{Сопротивляемость Ранению}
+#define ST_LASER_RESIST           25 //{Сопротивляемость Ранению Лазером}
+#define ST_FIRE_RESIST            26 //{Сопротивляемость Ранению Огнем}
+#define ST_PLASMA_RESIST          27 //{Сопротивляемость Ранению Плазмой}
+#define ST_ELECTRO_RESIST         28 //{Сопротивляемость Ранению Электричеством}
+#define ST_EMP_RESIST             29 //{Сопротивляемость Ранению EMP}
+#define ST_BLAST_RESIST           30 //{Сопротивляемость Ранению при Взрыве}
+#define ST_RADIATION_RESISTANCE   31 //{Сопротивляемость Радиации}
+#define ST_POISON_RESISTANCE      32 //{Сопротивляемость Ядам}
+#define ST_AGE                    33 //{Возраст}
+#define ST_GENDER                 34 //{Род}
+#define ST_CURRENT_HP             35 //{Текущие Баллы жизни}
+#define ST_POISONING_LEVEL        36 //{Текущий Уровень Ядов}
+#define ST_RADIATION_LEVEL        37 //{Текущий Уровень Радиации}
+#define ST_CURRENT_STANDART       38 //{Текущая кондиция}
+#define ST_EXPERIENCE             39 //{Экспа}
+#define ST_LEVEL                  40 //{Уровень}
+#define ST_UNSPENT_SKILL_POINTS   41 //{Осталось очков навыков}
+#define ST_UNSPENT_PERKS          42 //{Осталось не взятых перков}
+#define ST_KARMA                  43 //{Карма}
+
+//Skills
+#define SK_SMALL_GUNS             0 //{Мелкое Оружие}
+#define SK_BIG_GUNS               1 //{Крупное Оружие}
+#define SK_ENERGY_WEAPONS         2 //{Энергетическое Оружие}
+#define SK_UNARMED                3 //{Не вооружен}
+#define SK_MELEE_WEAPONS          4 //{Холодное Оружие}
+#define SK_THROWING               5 //{Бросок}
+#define SK_FIRST_AID              6 //{Помощь}
+#define SK_DOCTOR                 7 //{Врач}
+#define SK_SNEAK                  8 //{Крадучесть}
+#define SK_LOCKPICK               9 //{Взломщик}
+#define SK_STEAL                  10 //{Красть}
+#define SK_TRAPS                  11 //{Ловушки}
+#define SK_SCIENCE                12 //{Наука}
+#define SK_REPAIR                 13 //{Ремонт}
+#define SK_SPEECH                 14 //{Речь}
+#define SK_BARTER                 15 //{Обмен} Действует на НПС
+#define SK_GAMBLING               16 //{Играть} Действует на НПС
+#define SK_OUTDOORSMAN            17 //{Знаток Внешнего Мира}
+
+//Traits
+#define PE_FAST_METABOLISM        0 //{Обмен Веществ}
+#define PE_BRUISER                1 //{Бугай}
+#define PE_SMALL_FRAME            2 //{Коротышка}
+#define PE_ONE_HANDER             3 //{Однорукий}
+#define PE_FINESSE                4 //{Искусный}
+#define PE_KAMIKAZE               5 //{Камикадзе}
+#define PE_HEAVY_HANDED           6 //{Тяжелая Рука}
+#define PE_FAST_SHOT              7 //{Быстрый Выстрел}
+#define PE_BLOODY_MESS            8 //{Кровавое Месиво}
+#define PE_JINXED                 9 //{Несчастливый}
+#define PE_GOOD_NATURED           10 //{Добродушный}
+#define PE_CHEM_RELIANT           11 //{Привыкание}
+#define PE_CHEM_RESISTANT         12 //{Устойчивый}
+#define PE_NIGHT_PERSON           13 //{Сексапильность}  # was: Night Person
+#define PE_SKILLED                14 //{Умелый}
+#define PE_GIFTED                 15 //{Одаренный}
+//Perks
+#define PE_AWARENESS              16 //{Осведомленность}
+#define PE_A_MELEE_ATT            17 //{Доп. рукопашная атака}
+#define PE_A_MELEE_DAM            18 //{Доп. урон в рукопашную}
+#define PE_A_MOVE                 19 //{Доп. движение}
+#define PE_A_DAM                  20 //{Доп. повреждение}
+#define PE_A_SPEED                21 //{Доп. скорость выстрелов}
+#define PE_PASS_FRONT             22 //{Пропустить вперед}
+#define PE_RAPID_HEAL             23 //{Быстрое лечение}
+#define PE_MORE_CRIT_DAM          24 //{Больше критических выстрелов}
+#define PE_NIGHT_SIGHT            25 //{Ночное видение}
+#define PE_PRESENCE               26 //{Присутствие}
+#define PE_RES_NUKLEAR            27 //{Сопротивление радиации}
+#define PE_ENDURENCE              28 //{Выносливость}
+#define PE_STR_BACK               29 //{Сильная спина}
+#define PE_MARKSMAN               30 //{Меткий стрелок}
+#define PE_STEALHING              31 //{Бесшумный бег}
+#define PE_LIFEFULL               32 //{Живучий}
+#define PE_MERCHANT               33 //{Умелый продавец}
+#define PE_FORMED                 34 //{Образованный}
+#define PE_HEALER                 35 //{Лекарь}
+#define PE_TR_DIGGER              36 //{Кладоискатель}
+#define PE_BEST_HITS              37 //{Лучшие удары}
+#define PE_COMPASION              38 //{Сочувствие}
+#define PE_KILLER                 39 //{Убийца}
+#define PE_SNIPER                 40 //{Снайпер}
+#define PE_SILENT_DEATH           41 //{Безмолвная Смерть}
+#define PE_C_FIGHTER              42 //{Цикличный Боец}
+#define PE_MIND_BLOCK             43 //{Блокировка сознания}
+#define PE_PROLONGATION_LIFE      44 //{Продление жизни}
+#define PE_RECOURCEFULNESS        45 //{Изворотливость}
+#define PE_SNAKE_EATER            46 //{Пожиратель змей}
+#define PE_REPEARER               47 //{Ремонтник}
+#define PE_MEDIC                  48 //{Медик}
+#define PE_SKILLED_THIEF          49 //{Умелый Вор}
+#define PE_SPEAKER                50 //{Спикер}
+#define PE_GUTCHER                51 //{Взяли!}
+#define PE_FRIENDLY_FOE           52 //{}
+#define PE_PICK_POCKER            53 //{Карманник}
+#define PE_GHOST                  54 //{Призрак}
+#define PE_CHAR_CULT              55 //{Культ личности}
+#define PE_THIFER                 56 //{Воришка}
+#define PE_DISCOVER               57 //{Исследователь}
+#define PE_THE_PURETY             58 //{Сама Чистота}
+#define PE_OVERROAD               59 //{Проходчик}
+#define PE_ANIMAL_FRIENDSHIP      60 //{Друг Животных}
+#define PE_SCOUT                  61 //{Скаут}
+#define PE_MIST_CHAR              62 //{Таинственный Незнакомец}
+#define PE_RANGER                 63 //{Рейнджер}
+#define PE_PICK_POCKET_2          64 //{Карманник}
+#define PE_INTERLOCUTER           65 //{Собеседник}
+#define PE_NOVICE                 66 //{Способный Ученик}
+#define PE_PRIME_SKILL            67 //{Основное умение!}
+#define PE_MUTATION               68 //{Мутация!}
+#define PE_NARC_NUKACOLA          69 //{Пристрастие к NukaCola}			DRUG EFFECT
+#define PE_NARC_BUFFOUT           70 //{Пристрастие к Буфауту}			DRUG EFFECT
+#define PE_NARC_MENTAT            71 //{Пристрастие к Ментату}			DRUG EFFECT
+#define PE_NARC_PSYHO             72 //{Пристрастие к Психо}				DRUG EFFECT
+#define PE_NARC_RADAWAY           73 //{Пристрастие РэдЭвей}				DRUG EFFECT
+#define PE_DISTANT_WEAP           74 //{Дальнобойное оружие}
+#define PE_ACCURARY_WEAP          75 //{Точное оружие}
+#define PE_PENETRATION_WEAP       76 //{Проникающее оружие}
+#define PE_KILLER_WEAP            77 //{Убойное Оружие}
+#define PE_ENERGY_ARMOR           78 //{Энергетическая Броня}
+#define PE_BATTLE_ARMOR           79 //{Боевая Броня}
+#define PE_WEAP_RANGE             80 //{Дальнобойность}
+#define PE_RAPID_RELOAD           81 //{Быстрая перезарядка}
+#define PE_NIGHT_SPYGLASS         82 //{Оружие с ночным видением}
+#define PE_FLAMER                 83 //{Огнемет}
+#define PE_APA_I                  84 //{Улучшенная Броня I}
+#define PE_APA_II                 85 //{Улучшенная Броня II}
+#define PE_FORCEAGE               86 //{Больше скорости}
+#define PE_DEADLY_NARC            87 //{Трагическое Пристрастие}			DRUG EFFECT
+#define PE_CHARMOLEANCE           88 //{Харизма }
+#define PE_GEKK_SKINER            89 //{Выделка Геков}
+#define PE_SKIN_ARMOR             90 //{Кожа-броня}
+#define PE_A_SKIN_ARMOR           91 //{Усиленная кожа- броня.}
+#define PE_SUPER_ARMOR            92 //{Супер броня}
+#define PE_A_SUPER_ARMOR          93 //{Усиленная Супер броня}
+#define PE_VAULT_INOCUL           94 //{Прививка Волта}
+#define PE_ADRENALIN_RUSH         95 //{Прилив адреналина}
+#define PE_CAREFULL               96 //{Осторожность}
+#define PE_INTELEGENCE            97 //{Понимание}
+#define PE_PYROKASY               98 //{Подрывник}
+#define PE_DUDE                   99 //{Игрок}
+#define PE_A_STR                  100 //{Больше силы}
+#define PE_A_PER                  101 //{Больше восприятия}
+#define PE_A_END                  102 //{Больше выносливости}
+#define PE_A_CHA                  103 //{Больше обаяния}
+#define PE_A_INT                  104 //{Больше ума}
+#define PE_A_AGL                  105 //{Больше ловкости}
+#define PE_A_LUC                  106 //{Больше удачи}
+#define PE_PURERER                107 //{Сама невинность}
+#define PE_IMAG                   108 //{Немедленно}
+#define PE_EVASION                109 //{Уклонение}
+#define PE_DROSHKADRAT            110 //{Специалист по Кама- Сутре}
+#define PE_KARMA_GLOW             111 //{Свечение Кармы}
+#define PE_SILENT_STEPS           112 //{Легкие Шаги}
+#define PE_ANATOMY                113 //{Анатомия}
+#define PE_CHAMER                 114 //{Притягательная личность}
+#define PE_ORATOR                 115 //{Оратор}
+#define PE_PACKER                 116 //{Кладовщик}
+#define PE_EDD_GAYAN_MANIAC       117 //{Маньяк- убийца}
+#define PE_FAST_REGENERATION      118 //{Быстрое выздоровление}
+#define PE_VENDOR                 119 //{Продавец}
+#define PE_STONE_WALL             120 //{Каменная стена}
+#define PE_THIEF_AGAIN            121 //{Вор}
+#define PE_WEAPON_SKILL           122 //{Владение оружием}
+#define PE_MAKE_VAULT             123 //{Подготовка Волта}
+#define PE_ALC_BUFF_1             124 //{Алкоголь увеличил баллы жизни}
+#define PE_ALC_BUFF_2             125 //{Алкоголь увеличил баллы жизни}
+#define PE_ALC_RAIS_1             126 //{Алкоголь уменьшил баллы жизни}
+#define PE_ALC_RAIS_2             127 //{Алкоголь уменьшил баллы жизни II}
+#define PE_AUTODOC_BUFF_1         128 //{Автодок повысил баллы жизни}
+#define PE_AUTODOC_BUFF_2         129 //{Автодок повысил баллы жизни II}
+#define PE_AUTODOC_RAIS_1         130 //{Автодок понизил баллы жизни}
+#define PE_AUTODOC_RAIS_2         131 //{Автодок понизил баллы жизни II}
+#define PE_EXCREMENT_EXPEDITOR    132 //{Добротный Дермогон}
+#define PE_WEAPON_ENHANCED        133 //{Оружие усиленной убойной силы}
+#define PE_UNLUCK                 134 //{Несчастливый}
+#define PE_BOOKWORM               135 //{Книголюб (Книжный червь)}
+
+//Critter damages
+#define PE_DAMAGE_POISONED        200 //{Отравлен}
+#define PE_DAMAGE_RADIATED        201 //{Облучен}
+#define PE_DAMAGE_EYE             202 //{Повреждены глаза}
+#define PE_DAMAGE_RIGHT_ARM       203 //{Повреждена правая рука}
+#define PE_DAMAGE_LEFT_ARM        204 //{Повреждена левая рука}
+#define PE_DAMAGE_RIGHT_LEG       205 //{Повреждена правая нога}
+#define PE_DAMAGE_LEFT_LEG        206 //{Повреждена левая нога}
+#define PE_DMGRESERVED1           207 //{damage reserved}
+#define PE_DMGRESERVED2           208 //{damage reserved}
+#define PE_DMGRESERVED3           209 //{damage reserved}
+
+//Tag skills
+#define PE_TAG_SKILL1             210 //{Отличительная способнасть 1}
+#define PE_TAG_SKILL2             211 //{Отличительная способнасть 2}
+#define PE_TAG_SKILL3             212 //{Отличительная способнасть 3}
+
+//Modes
+#define PE_HIDE_MODE              215 //{Состояние скрытности (выкл/вкл)}
+
+
+//Items pids
+#include ".\scripts\ITEMPID.H"
+
+#endif //__DEFINES__
