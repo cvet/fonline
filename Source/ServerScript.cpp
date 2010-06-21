@@ -3040,20 +3040,34 @@ Critter* FOServer::SScriptFunc::Map_GetNpc(Map* map, int npc_role, int find_type
 	return map->GetNpc(npc_role,find_type,skip_count);
 }
 
-DWORD FOServer::SScriptFunc::Map_CountEntire(Map* map, BYTE entire_num)
+DWORD FOServer::SScriptFunc::Map_CountEntire(Map* map, int entire_num)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return map->Proto->CountEntire(entire_num);
 }
 
-bool FOServer::SScriptFunc::Map_GetEntireCoords(Map* map, BYTE entire, DWORD skip, WORD& hx, WORD& hy)
+bool FOServer::SScriptFunc::Map_GetEntireCoords(Map* map, int entire, DWORD skip, WORD& hx, WORD& hy)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ProtoMap::MapEntire* e=map->Proto->GetEntire(entire,skip);
-	if(!e) SCRIPT_ERROR_R0("Entire not found.");
+	if(!e) return false; //SCRIPT_ERROR_R0("Entire not found.");
 	hx=e->HexX;
 	hy=e->HexY;
 	return true;
+}
+
+bool FOServer::SScriptFunc::Map_GetNearEntireCoords(Map* map, int& entire, WORD& hx, WORD& hy)
+{
+	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	ProtoMap::MapEntire* near_entire=map->Proto->GetEntireNear(entire,hx,hy);
+	if(near_entire)
+	{
+		entire=near_entire->Number;
+		hx=near_entire->HexX;
+		hy=near_entire->HexY;
+		return true;
+	}
+	return false;
 }
 
 bool FOServer::SScriptFunc::Map_IsHexPassed(Map* map, WORD hex_x, WORD hex_y)

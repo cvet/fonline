@@ -238,7 +238,7 @@ public:
 	MapEntire* GetEntire(DWORD num, DWORD skip);
 	MapEntire* GetEntireRandom(DWORD num);
 	MapEntire* GetEntireNear(DWORD num, WORD hx, WORD hy);
-	MapEntire* GetEntireNear(DWORD num, BYTE num_ext, WORD hx, WORD hy);
+	MapEntire* GetEntireNear(DWORD num, DWORD num_ext, WORD hx, WORD hy);
 	void GetEntires(DWORD num, EntiresVec& entires);
 
 private:

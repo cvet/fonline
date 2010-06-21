@@ -1540,6 +1540,8 @@ bool ProtoMap::IsMapFile(const char* fname)
 #ifdef FONLINE_SERVER
 DWORD ProtoMap::CountEntire(DWORD num)
 {
+	if(num==-1) return mapEntires.size();
+
 	DWORD result=0;
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
@@ -1552,7 +1554,7 @@ ProtoMap::MapEntire* ProtoMap::GetEntire(DWORD num, DWORD skip)
 {
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
-		if(mapEntires[i].Number==num)
+		if(num==-1 || mapEntires[i].Number==num)
 		{
 			if(!skip) return &mapEntires[i];
 			else skip--;
@@ -1567,11 +1569,10 @@ ProtoMap::MapEntire* ProtoMap::GetEntireRandom(DWORD num)
 	vector<MapEntire*> entires;
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
-		if(mapEntires[i].Number==num) entires.push_back(&mapEntires[i]);
+		if(num==-1 || mapEntires[i].Number==num) entires.push_back(&mapEntires[i]);
 	}
 
 	if(entires.empty()) return NULL;
-
 	return entires[Random(0,entires.size()-1)];
 }
 
@@ -1582,7 +1583,7 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, WORD hx, WORD hy)
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
-		if(entire.Number==num)
+		if(num==-1 || entire.Number==num)
 		{
 			int dist=DistGame(hx,hy,entire.HexX,entire.HexY);
 			if(!near_entire || dist<last_dist)
@@ -1595,14 +1596,14 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, WORD hx, WORD hy)
 	return near_entire;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, BYTE num_ext, WORD hx, WORD hy)
+ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, DWORD num_ext, WORD hx, WORD hy)
 {
 	MapEntire* near_entire=NULL;
 	int last_dist;
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
-		if(entire.Number==num || entire.Number==num_ext)
+		if(num==-1 || num_ext==-1 || entire.Number==num || entire.Number==num_ext)
 		{
 			int dist=DistGame(hx,hy,entire.HexX,entire.HexY);
 			if(!near_entire || dist<last_dist)
@@ -1620,7 +1621,7 @@ void ProtoMap::GetEntires(DWORD num, EntiresVec& entires)
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
-		if(entire.Number==num) entires.push_back(entire);
+		if(num==-1 || entire.Number==num) entires.push_back(entire);
 	}
 }
 
