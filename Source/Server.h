@@ -512,6 +512,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static DWORD Map_GetNpcCount(Map* map, int npc_role, int find_type);
 		static Critter* Map_GetNpc(Map* map, int npc_role, int find_type, DWORD skip_count);
 		static DWORD Map_CountEntire(Map* map, int entire_num);
+		static DWORD Map_GetEntires(Map* map, int entire, asIScriptArray* entires, asIScriptArray* hx, asIScriptArray* hy);
 		static bool Map_GetEntireCoords(Map* map, int entire_num, DWORD skip, WORD& hx, WORD& hy);
 		static bool Map_GetNearEntireCoords(Map* map, int& entire, WORD& hx, WORD& hy);
 		static bool Map_IsHexPassed(Map* map, WORD hex_x, WORD hex_y);

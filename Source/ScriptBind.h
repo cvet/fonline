@@ -658,8 +658,9 @@
 	if(engine->RegisterObjectMethod("Map","uint GetNpcCount(int npcRole, int findType) const",asFUNCTION(BIND_CLASS Map_GetNpcCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","Critter@+ GetNpc(int npcRole, int findType, uint skipCount) const",asFUNCTION(BIND_CLASS Map_GetNpc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","uint CountEntire(int entire) const",asFUNCTION(BIND_CLASS Map_CountEntire),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","uint GetEntires(int entire, uint[]@+ entires, uint16[]@+ hexX, uint16[]@+ hexY) const",asFUNCTION(BIND_CLASS Map_GetEntires),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool GetEntireCoords(int entire, uint skip, uint16& hexX, uint16& hexY) const",asFUNCTION(BIND_CLASS Map_GetEntireCoords),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Map","bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY) const",asFUNCTION(BIND_CLASS Map_GetEntireCoords),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY) const",asFUNCTION(BIND_CLASS Map_GetNearEntireCoords),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool IsHexPassed(uint16 hexX, uint16 hexY) const",asFUNCTION(BIND_CLASS Map_IsHexPassed),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool IsHexRaked(uint16 hexX, uint16 hexY) const",asFUNCTION(BIND_CLASS Map_IsHexRaked),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void SetText(uint16 hexX, uint16 hexY, uint color, string& text)",asFUNCTION(BIND_CLASS Map_SetText),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

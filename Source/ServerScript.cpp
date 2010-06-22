@@ -3039,6 +3039,33 @@ DWORD FOServer::SScriptFunc::Map_CountEntire(Map* map, int entire_num)
 	return map->Proto->CountEntire(entire_num);
 }
 
+DWORD FOServer::SScriptFunc::Map_GetEntires(Map* map, int entire, asIScriptArray* entires, asIScriptArray* hx, asIScriptArray* hy)
+{
+	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	ProtoMap::EntiresVec entires_;
+	map->Proto->GetEntires(entire,entires_);
+	if(entires_.empty()) return 0;
+	if(entires)
+	{
+		size_t size=entires->GetElementCount();
+		entires->Resize(size+entires_.size());
+		for(size_t i=0,j=entires_.size();i<j;i++) *(int*)entires->GetElementPointer(size+i)=entires_[i].Number;
+	}
+	if(hx)
+	{
+		size_t size=hx->GetElementCount();
+		entires->Resize(size+entires_.size());
+		for(size_t i=0,j=entires_.size();i<j;i++) *(WORD*)hx->GetElementPointer(size+i)=entires_[i].HexX;
+	}
+	if(hy)
+	{
+		size_t size=hy->GetElementCount();
+		entires->Resize(size+entires_.size());
+		for(size_t i=0,j=entires_.size();i<j;i++) *(WORD*)hy->GetElementPointer(size+i)=entires_[i].HexY;
+	}
+	return entires_.size();
+}
+
 bool FOServer::SScriptFunc::Map_GetEntireCoords(Map* map, int entire, DWORD skip, WORD& hx, WORD& hy)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
