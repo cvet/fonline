@@ -3054,13 +3054,13 @@ DWORD FOServer::SScriptFunc::Map_GetEntires(Map* map, int entire, asIScriptArray
 	if(hx)
 	{
 		size_t size=hx->GetElementCount();
-		entires->Resize(size+entires_.size());
+		hx->Resize(size+entires_.size());
 		for(size_t i=0,j=entires_.size();i<j;i++) *(WORD*)hx->GetElementPointer(size+i)=entires_[i].HexX;
 	}
 	if(hy)
 	{
 		size_t size=hy->GetElementCount();
-		entires->Resize(size+entires_.size());
+		hy->Resize(size+entires_.size());
 		for(size_t i=0,j=entires_.size();i<j;i++) *(WORD*)hy->GetElementPointer(size+i)=entires_[i].HexY;
 	}
 	return entires_.size();
