@@ -2569,7 +2569,8 @@ bool Critter::CheckMyTurn(Map* map)
 void Critter::SetTimeout(int timeout, DWORD game_minutes)
 {
 	ChangeParam(timeout);
-	Data.Params[timeout]=GameOpt.FullMinute+game_minutes;
+	if(game_minutes) Data.Params[timeout]=GameOpt.FullMinute+game_minutes;
+	else Data.Params[timeout]=0;
 }
 
 bool Critter::IsTransferTimeouts(bool send)
