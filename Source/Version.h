@@ -1,8 +1,8 @@
 #ifndef __VERSION__
 #define __VERSION__
 
-#define SERVER_VERSION              0x00000312 // server_0312
-#define CLIENT_VERSION              0x00000217 // client_0217
+#define SERVER_VERSION              0x00000313 // server_0313
+#define CLIENT_VERSION              0x00000218 // client_0218
 #define MAPPER_VERSION              0x00000087 // mapper_0087
 #define SINGLE_VERSION              0x00000001 // single_0001
 

@@ -400,11 +400,7 @@ void FOServer::SScriptFunc::Item_SetCount(Item* item, DWORD count)
 	if(count==0) SCRIPT_ERROR_R("Count arg is zero.");
 	if(item->GetCount()==count) return;
 	item->Count_Set(count);
-	if(item->Accessory==ITEM_ACCESSORY_CRITTER)
-	{
-		Critter* cr=CrMngr.GetCritter(item->ACC_CRITTER.Id);
-		if(cr) cr->Send_AddItem(item);
-	}
+	ItemMngr.NotifyChangeItem(item);
 }
 
 DWORD FOServer::SScriptFunc::Item_GetCost(Item* item)
@@ -470,6 +466,7 @@ bool FOServer::SScriptFunc::Item_ChangeProto(Item* item, WORD pid)
 		cr->Send_EraseItem(item);
 		item->Proto=proto_item;
 		cr->Send_AddItem(item);
+		cr->SendAA_MoveItem(item,ACTION_REFRESH,0);
 	}
 	else if(item->Accessory==ITEM_ACCESSORY_HEX)
 	{
@@ -673,6 +670,7 @@ void FOServer::SScriptFunc::Item_set_Flags(Item* item, DWORD value)
 			{
 				if(FLAG(value,ITEM_HIDDEN)) cr->Send_EraseItem(item);
 				else cr->Send_AddItem(item);
+				cr->SendAA_MoveItem(item,ACTION_REFRESH,0);
 			}
 		}
 	}
@@ -713,11 +711,7 @@ void FOServer::SScriptFunc::Item_set_Flags(Item* item, DWORD value)
 	}
 
 	// Update data
-	if(old!=value)
-	{
-		if(!map) map=MapMngr.GetMap(item->ACC_HEX.MapId);
-		if(map) map->ChangeDataItem(item);
-	}
+	if(old!=value) ItemMngr.NotifyChangeItem(item);
 }
 
 DWORD FOServer::SScriptFunc::Item_get_Flags(Item* item)
@@ -1507,8 +1501,7 @@ bool FOServer::SScriptFunc::Crit_MoveItem(Critter* cr, DWORD item_id, DWORD coun
 	if(item->ACC_CRITTER.Slot==to_slot) return true;//SCRIPT_ERROR_R0("To slot arg is equal of current item slot.");
 	if(count>item->GetCount()) SCRIPT_ERROR_R0("Item count arg is greater than items count.");
 	bool result=cr->MoveItem(item->ACC_CRITTER.Slot,to_slot,item_id,count);
-	if(!result) SCRIPT_ERROR_R0("Fail to move item.");
-	if(cr->IsPlayer()) cr->Send_AddItem(item);
+	if(!result) return false; //SCRIPT_ERROR_R0("Fail to move item.");
 	return true;
 }
 

@@ -331,6 +331,7 @@ public:
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
 	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
+	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item);
 	void Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);
@@ -350,6 +351,7 @@ public:
 	void SendAA_Action(int action, int action_ext, Item* item);
 	void SendA_Knockout(bool face_up, WORD knock_hx, WORD knock_hy);
 	void SendAA_MoveItem(Item* item, BYTE action, BYTE prev_slot);
+	void SendAA_ItemData(Item* item);
 	void SendAA_Animate(DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
 	void SendA_GlobalInfo(GlobalMapGroup* group, BYTE info_flags);
 	void SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsafe_text);
@@ -588,6 +590,7 @@ public:
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
 	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
+	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item);
 	void Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);

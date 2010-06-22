@@ -1038,7 +1038,7 @@ void ItemManager::NotifyChangeItem(Item* item)
 	case ITEM_ACCESSORY_CRITTER:
 		{
 			Critter* cr=CrMngr.GetCritter(item->ACC_CRITTER.Id);
-			if(cr) cr->Send_AddItem(item);
+			if(cr) cr->SendAA_ItemData(item);
 		}
 		break;
 	case ITEM_ACCESSORY_HEX:
@@ -1206,7 +1206,7 @@ Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
 		if(item->IsGrouped())
 		{
 			item->Count_Add(count);
-			cr->Send_AddItem(item);
+			cr->SendAA_ItemData(item);
 			result=item;
 		}
 		else
@@ -1268,7 +1268,7 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 		}
 		else
 		{
-			cr->Send_AddItem(item);
+			cr->SendAA_ItemData(item);
 			if(erased_items)
 			{
 				item=ItemMngr.CreateItem(pid,count);
@@ -1323,8 +1323,8 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 
 		item->Count_Sub(count);
 		item_->Count_Add(count);
-		from_cr->Send_AddItem(item);
-		to_cr->Send_AddItem(item_);
+		from_cr->SendAA_ItemData(item);
+		to_cr->SendAA_ItemData(item_);
 	}
 	else
 	{
@@ -1362,7 +1362,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 
 		item->Count_Sub(count);
 		item_->Count_Add(count);
-		from_cr->Send_AddItem(item);
+		from_cr->SendAA_ItemData(item);
 	}
 	else
 	{
@@ -1399,7 +1399,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 
 		item->Count_Sub(count);
 		item_->Count_Add(count);
-		to_cr->Send_AddItem(item_);
+		to_cr->SendAA_ItemData(item_);
 	}
 	else
 	{

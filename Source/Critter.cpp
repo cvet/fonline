@@ -807,7 +807,7 @@ void Critter::AddItem(Item*& item, bool send)
 			item_already->Count_Add(item->GetCount());
 			ItemMngr.ItemToGarbage(item,0x8);
 			item=item_already;
-			if(send) Send_AddItem(item);
+			if(send) SendAA_ItemData(item);
 			return;
 		}
 	}
@@ -1109,6 +1109,8 @@ bool Critter::MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count)
 		if(!full_drop)
 		{
 			item->Count_Sub(count);
+			if(item->ACC_CRITTER.Slot!=SLOT_INV) SendAA_ItemData(item);
+
 			if(GetMap())
 			{
 				Item* item_=ItemMngr.CreateItem(item->GetProtoId(),count);
@@ -1287,9 +1289,9 @@ void Critter::ToDead(BYTE dead_type, bool send_all)
 	Data.CondExt=dead_type;
 
 	Item* item=ItemSlotMain;
-	if(item->GetId() && MoveItem(SLOT_HAND1,SLOT_INV,item->GetId(),item->GetCount())) Send_AddItem(item);
+	if(item->GetId()) MoveItem(SLOT_HAND1,SLOT_INV,item->GetId(),item->GetCount());
 	item=ItemSlotExt;
-	if(item->GetId() && MoveItem(SLOT_HAND2,SLOT_INV,item->GetId(),item->GetCount())) Send_AddItem(item);
+	if(item->GetId()) MoveItem(SLOT_HAND2,SLOT_INV,item->GetId(),item->GetCount());
 	//if(ItemSlotArmor->GetId()) MoveItem(SLOT_ARMOR,SLOT_INV,ItemSlotArmor->GetId(),ItemSlotArmor->GetCount());
 
 	if(send_all)
@@ -1942,6 +1944,7 @@ void Critter::Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WOR
 void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item){if(IsPlayer()) ((Client*)this)->Send_Action(from_cr,action,action_ext,item);}
 void Critter::Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy){if(IsPlayer()) ((Client*)this)->Send_Knockout(from_cr,face_up,knock_hx,knock_hy);}
 void Critter::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot){if(IsPlayer()) ((Client*)this)->Send_MoveItem(from_cr,item,action,prev_slot);}
+void Critter::Send_ItemData(Critter* from_cr, BYTE slot, Item* item){if(IsPlayer()) ((Client*)this)->Send_ItemData(from_cr,slot,item);}
 void Critter::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play){if(IsPlayer()) ((Client*)this)->Send_Animate(from_cr,anim1,anim2,item,clear_sequence,delay_play);}
 void Critter::Send_CombatResult(DWORD* combat_res, DWORD len){if(IsPlayer()) ((Client*)this)->Send_CombatResult(combat_res,len);}
 void Critter::Send_Quest(DWORD num){if(IsPlayer()) ((Client*)this)->Send_Quest(num);}
@@ -2019,6 +2022,34 @@ void Critter::SendAA_MoveItem(Item* item, BYTE action, BYTE prev_slot)
 	{
 		Critter* cr=*it;
 		if(cr->IsPlayer()) cr->Send_MoveItem(this,item,action,prev_slot);
+	}
+}
+
+void Critter::SendAA_ItemData(Item* item)
+{
+	if(IsPlayer()) Send_AddItem(item);
+
+	BYTE slot=item->ACC_CRITTER.Slot;
+	if(!VisCr.empty() && slot!=SLOT_INV && SlotEnabled[slot] && SlotDataSendEnabled[slot])
+	{
+		int condition_index=SlotDataSendConditionIndex[slot];
+		if(condition_index==-1)
+		{
+			for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+			{
+				Critter* cr=*it;
+				if(cr->IsPlayer()) cr->Send_ItemData(this,slot,item);
+			}
+		}
+		else
+		{
+			for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+			{
+				Critter* cr=*it;
+				if(cr->IsPlayer() && (cr->Data.Params[condition_index]&SlotDataSendConditionMask[slot])!=0)
+					cr->Send_ItemData(this,slot,item);
+			}
+		}
 	}
 }
 
@@ -2997,6 +3028,18 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 
 	// Lexems
 	for(BYTE i=0;i<slots_data_count;i++) if(SlotEnabledCacheData[i]->PLexems) Send_ItemLexems(SlotEnabledCacheData[i]);
+}
+
+void Client::Send_ItemData(Critter* from_cr, BYTE slot, Item* item)
+{
+	if(IsSendDisabled() || IsOffline()) return;
+
+	BOUT_BEGIN(this);
+	Bout << NETMSG_CRITTER_ITEM_DATA;
+	Bout << from_cr->GetId();
+	Bout << slot;
+	Bout.Push((char*)&item->Data,sizeof(item->Data));
+	BOUT_END(this);
 }
 
 void Client::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play)

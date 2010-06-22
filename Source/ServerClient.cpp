@@ -3220,7 +3220,7 @@ void FOServer::Process_Radio(Client* cl)
 	RadioAddPlayer(cl,channel);
 	cl->Send_TextMsg(cl,STR_RADIO_CHAN_CHANGED,SAY_NETMSG,TEXTMSG_GAME);
 
-	cl->Send_AddItem(radio);
+	cl->SendAA_ItemData(radio);
 }
 
 void FOServer::Process_SetUserHoloStr(Client* cl)
@@ -3279,7 +3279,7 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 	cl->Send_UserHoloStr(STR_HOLO_INFO_NAME_(holo_id),title,title_len);
 	cl->Send_UserHoloStr(STR_HOLO_INFO_DESC_(holo_id),text,text_len);
 	holodisk->HolodiskSetNum(holo_id);
-	cl->Send_AddItem(holodisk);
+	cl->SendAA_ItemData(holodisk);
 	cl->Send_TextMsg(cl,STR_HOLO_WRITE_SUCC,SAY_NETMSG,TEXTMSG_HOLO);
 }
 

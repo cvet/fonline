@@ -282,6 +282,7 @@ bool BufferManager::NeedProcess()
 	case NETMSG_SOME_ITEM:					return (NETMSG_SOME_ITEM_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_CRITTER_ACTION:				return (NETMSG_CRITTER_ACTION_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_CRITTER_KNOCKOUT:			return (NETMSG_CRITTER_KNOCKOUT_SIZE+bufReadPos<=bufEndPos);
+	case NETMSG_CRITTER_ITEM_DATA:			return (NETMSG_CRITTER_ITEM_DATA_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_CRITTER_ANIMATE:			return (NETMSG_CRITTER_ANIMATE_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_EFFECT:						return (NETMSG_EFFECT_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_FLY_EFFECT:					return (NETMSG_FLY_EFFECT_SIZE+bufReadPos<=bufEndPos);
@@ -414,6 +415,7 @@ void BufferManager::SkipMsg(MSGTYPE msg)
 	case NETMSG_SOME_ITEM:					bufReadPos+=NETMSG_SOME_ITEM_SIZE; return;
 	case NETMSG_CRITTER_ACTION:				bufReadPos+=NETMSG_CRITTER_ACTION_SIZE; return;
 	case NETMSG_CRITTER_KNOCKOUT:			bufReadPos+=NETMSG_CRITTER_KNOCKOUT_SIZE; return;
+	case NETMSG_CRITTER_ITEM_DATA:			bufReadPos+=NETMSG_CRITTER_ITEM_DATA_SIZE; return;
 	case NETMSG_CRITTER_ANIMATE:			bufReadPos+=NETMSG_CRITTER_ANIMATE_SIZE; return;
 	case NETMSG_EFFECT:						bufReadPos+=NETMSG_EFFECT_SIZE; return;
 	case NETMSG_FLY_EFFECT:					bufReadPos+=NETMSG_FLY_EFFECT_SIZE; return;
@@ -547,6 +549,7 @@ void BufferManager::SeekValidMsg()
 		case NETMSG_SOME_ITEM:
 		case NETMSG_CRITTER_ACTION:
 		case NETMSG_CRITTER_KNOCKOUT:
+		case NETMSG_CRITTER_ITEM_DATA:
 		case NETMSG_CRITTER_MOVE_ITEM:
 		case NETMSG_CRITTER_ANIMATE:
 		case NETMSG_EFFECT:

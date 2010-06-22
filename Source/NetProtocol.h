@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF068) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF069) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -658,7 +658,17 @@ sizeof(bool)+sizeof(WORD)+sizeof(WORD))
 //
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_ANIMATE      MAKE_NETMSG_HEADER(94)
+#define NETMSG_CRITTER_ITEM_DATA    MAKE_NETMSG_HEADER(94)
+#define NETMSG_CRITTER_ITEM_DATA_SIZE (sizeof(MSGTYPE)+sizeof(DWORD)+\
+sizeof(BYTE)+92/*ItemData*/)
+//////////////////////////////////////////////////////////////////////////
+// Item data changed
+// DWORD crid
+// BYTE slot
+// Item::ItemData data
+//////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_CRITTER_ANIMATE      MAKE_NETMSG_HEADER(95)
 #define NETMSG_CRITTER_ANIMATE_SIZE	(sizeof(MSGTYPE)+sizeof(DWORD)*3+\
 sizeof(bool)+sizeof(bool)*2)
 //////////////////////////////////////////////////////////////////////////
@@ -672,12 +682,12 @@ sizeof(bool)+sizeof(bool)*2)
 // bool delay_play
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_COMBAT_RESULTS       MAKE_NETMSG_HEADER(95)
+#define NETMSG_COMBAT_RESULTS       MAKE_NETMSG_HEADER(96)
 //////////////////////////////////////////////////////////////////////////
 //
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_EFFECT				MAKE_NETMSG_HEADER(96)
+#define NETMSG_EFFECT				MAKE_NETMSG_HEADER(97)
 #define NETMSG_EFFECT_SIZE			(sizeof(MSGTYPE)+sizeof(WORD)*4)
 //////////////////////////////////////////////////////////////////////////
 // explode
@@ -688,7 +698,7 @@ sizeof(bool)+sizeof(bool)*2)
 // WORD radius
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_FLY_EFFECT			MAKE_NETMSG_HEADER(97)
+#define NETMSG_FLY_EFFECT			MAKE_NETMSG_HEADER(98)
 #define NETMSG_FLY_EFFECT_SIZE		(sizeof(MSGTYPE)+sizeof(WORD)+\
 sizeof(DWORD)*2+sizeof(WORD)*4)
 //////////////////////////////////////////////////////////////////////////

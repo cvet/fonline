@@ -2357,6 +2357,9 @@ void FOClient::NetProcess()
 		case NETMSG_CRITTER_MOVE_ITEM:
 			Net_OnCritterMoveItem();
 			break;
+		case NETMSG_CRITTER_ITEM_DATA:
+			Net_OnCritterItemData();
+			break;
 		case NETMSG_CRITTER_ANIMATE:
 			Net_OnCritterAnimate();
 			break;
@@ -4485,6 +4488,22 @@ void FOClient::Net_OnCritterMoveItem()
 	}
 
 	if(action==ACTION_SHOW_ITEM || action==ACTION_REFRESH) cr->Action(action,prev_slot,is_item?&SomeItem:NULL,false);
+}
+
+void FOClient::Net_OnCritterItemData()
+{
+	DWORD crid;
+	BYTE slot;
+	Item::ItemData data;
+	Bin >> crid;
+	Bin >> slot;
+	Bin.Pop((char*)&data,sizeof(data));
+
+	CritterCl* cr=GetCritter(crid);
+	if(!cr) return;
+
+	Item* item=cr->GetItemSlot(slot);
+	if(item) item->Data=data;
 }
 
 void FOClient::Net_OnCritterAnimate()
