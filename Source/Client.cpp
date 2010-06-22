@@ -4810,7 +4810,7 @@ void FOClient::Net_OnChosenParam()
 			{
 				CritterCl* cr=HexMngr.GetField(hx,hy).Crit;
 				if(Chosen==cr) break;
-				if(Chosen->IsLife() && cr) EraseCritter(cr->GetId());
+				if(!Chosen->IsDead() && cr) EraseCritter(cr->GetId());
 				HexMngr.RemoveCrit(Chosen);
 				Chosen->HexX=hx;
 				Chosen->HexY=hy;
