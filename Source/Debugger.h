@@ -25,8 +25,9 @@
 #define MEMORY_ITEM          (9)
 #define MEMORY_DIALOG        (10)
 #define MEMORY_SAVE_DATA     (11)
-#define MEMORY_SCRIPT_STRING (12)
-#define MEMORY_ANGEL_SCRIPT  (13)
+#define MEMORY_ANY_DATA      (12)
+#define MEMORY_SCRIPT_STRING (13)
+#define MEMORY_ANGEL_SCRIPT  (14)
 
 
 namespace Debugger

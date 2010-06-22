@@ -3750,7 +3750,7 @@ bool FOServer::SScriptFunc::Global_SetAnyData(CScriptString& name, asIScriptArra
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
 	DWORD data_size_bytes=data.GetElementCount()*data.GetElementSize();
 	if(data_size_bytes>ANY_DATA_MAX_SIZE) SCRIPT_ERROR_R0("Data size is greather than maximum");
-	return Self->SetAnyData(name.c_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
+	return Self->SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
 }
 
 bool FOServer::SScriptFunc::Global_SetAnyDataSize(CScriptString& name, asIScriptArray& data, DWORD data_size)
@@ -3760,14 +3760,14 @@ bool FOServer::SScriptFunc::Global_SetAnyDataSize(CScriptString& name, asIScript
 	DWORD data_size_bytes=data_size*element_size;
 	DWORD real_data_size_bytes=data.GetElementCount()*element_size;
 	if(real_data_size_bytes<data_size_bytes) SCRIPT_ERROR_R0("Array length is less than data size in bytes arg.");
-	return Self->SetAnyData(name.c_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
+	return Self->SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
 }
 
 bool FOServer::SScriptFunc::Global_GetAnyData(CScriptString& name, asIScriptArray& data)
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
 	DWORD length;
-	BYTE* buf=Self->GetAnyData(name.c_str(),length);
+	BYTE* buf=Self->GetAnyData(name.c_std_str(),length);
 	if(!buf) return false; // SCRIPT_ERROR_R0("Data not found.");
 	if(!length)
 	{
@@ -3783,13 +3783,13 @@ bool FOServer::SScriptFunc::Global_GetAnyData(CScriptString& name, asIScriptArra
 bool FOServer::SScriptFunc::Global_IsAnyData(CScriptString& name)
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
-	return Self->IsAnyData(name.c_str());
+	return Self->IsAnyData(name.c_std_str());
 }
 
 void FOServer::SScriptFunc::Global_EraseAnyData(CScriptString& name)
 {
 	if(!name.length()) SCRIPT_ERROR_R("Name arg length is zero.");
-	Self->EraseAnyData(name.c_str());
+	Self->EraseAnyData(name.c_std_str());
 }
 
 void FOServer::SScriptFunc::Global_ArrayPushBackInteger(asIScriptArray* arr, void* value)

@@ -138,10 +138,10 @@ typedef map<string,ByteVec,less<string>>::value_type AnyDataMapVal;
 	AnyDataMap AnyData;
 	void SaveAnyDataFile();
 	void LoadAnyDataFile(FILE* f);
-	bool SetAnyData(const char* name, const BYTE* data, DWORD data_size);
-	BYTE* GetAnyData(const char* name, DWORD& length);
-	bool IsAnyData(const char* name);
-	void EraseAnyData(const char* name);
+	bool SetAnyData(const string& name, const BYTE* data, DWORD data_size);
+	BYTE* GetAnyData(const string& name, DWORD& length);
+	bool IsAnyData(const string& name);
+	void EraseAnyData(const string& name);
 	string GetAnyDataStatistics();
 
 	// Scripting

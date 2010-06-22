@@ -75,7 +75,7 @@ void Debugger::ShowLags(int num_block, double lag_to_show)
 }
 
 
-#define MAX_MEM_NODES          (14)
+#define MAX_MEM_NODES          (15)
 struct MemNode
 {
 	__int64 AllocMem;
@@ -98,6 +98,7 @@ const char* MemBlockNames[MAX_MEM_NODES]=
 	{"Items        "},
 	{"Dialogs      "},
 	{"Save data    "},
+	{"Any data     "},
 	{"Script string"},
 	{"Angel Script "},
 };

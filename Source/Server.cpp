@@ -4544,10 +4544,11 @@ void FOServer::LoadAnyDataFile(FILE* f)
 			memcpy(&data_[0],data.Get(),data_len);
 		}
 		AnyData.insert(AnyDataMapVal(name_,data_));
+		MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
 	}
 }
 
-bool FOServer::SetAnyData(const char* name, const BYTE* data, DWORD data_size)
+bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 {
 	AnyDataMapIt it=AnyData.find(name);
 	if(it==AnyData.end())
@@ -4556,32 +4557,35 @@ bool FOServer::SetAnyData(const char* name, const BYTE* data, DWORD data_size)
 		data_.resize(data_size);
 		memcpy(&data_[0],data,data_size);
 		AnyData.insert(AnyDataMapVal(name,data_));
+		MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
 	}
 	else
 	{
 		ByteVec& data_=(*it).second;
+		MEMORY_PROCESS(MEMORY_ANY_DATA,-(int)data_.capacity());
 		data_.resize(data_size);
 		memcpy(&data_[0],data,data_size);
+		MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
 	}
 	return true;
 }
 
-BYTE* FOServer::GetAnyData(const char* name, DWORD& length)
+BYTE* FOServer::GetAnyData(const string& name, DWORD& length)
 {
 	AnyDataMapIt it=AnyData.find(name);
 	if(it==AnyData.end()) return NULL;
 	ByteVec& data=(*it).second;
 	length=data.size();
-	return length?&data[0]:(BYTE*)name; // If length == 0 than return dummy ptr
+	return length?&data[0]:(BYTE*)1; // If length == 0 than return dummy ptr
 }
 
-bool FOServer::IsAnyData(const char* name)
+bool FOServer::IsAnyData(const string& name)
 {
 	AnyDataMapIt it=AnyData.find(name);
 	return it!=AnyData.end();
 }
 
-void FOServer::EraseAnyData(const char* name)
+void FOServer::EraseAnyData(const string& name)
 {
 	AnyData.erase(name);
 }
