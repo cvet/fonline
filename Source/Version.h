@@ -2,7 +2,7 @@
 #define __VERSION__
 
 #define SERVER_VERSION              0x00000315 // server_0315
-#define CLIENT_VERSION              0x00000218 // client_0218
+#define CLIENT_VERSION              0x00000219 // client_0219
 #define MAPPER_VERSION              0x00000087 // mapper_0087
 #define SINGLE_VERSION              0x00000001 // single_0001
 

@@ -3835,7 +3835,7 @@ void FOClient::LMenuStayOff()
 	if(TargetSmth.IsCritter())
 	{
 		CritterCl* cr=GetCritter(TargetSmth.GetId());
-		if(cr && cr->SprDrawValid && cr->SprDraw->Effect==Sprite::ContourYellow)
+		if(cr && cr->SprDrawValid && cr->SprDraw->Contour==Sprite::ContourYellow)
 			cr->SprDraw->Contour=Sprite::ContourNone;
 	}
 	TargetSmth.Clear();
