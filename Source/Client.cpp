@@ -1037,7 +1037,8 @@ label_TryChangeLang:
 			case DIK_PRIOR: ProcessMouseWheel(1); Timer::StartAccelerator(ACCELERATE_PAGE_UP); break;
 			case DIK_NEXT: ProcessMouseWheel(-1); Timer::StartAccelerator(ACCELERATE_PAGE_DOWN); break;
 #ifdef DEV_VESRION
-			case DIK_F11: SprMngr.SaveSufaces(); break;
+			//case DIK_F11: SprMngr.SaveSufaces(); break;
+			case DIK_F11: HexMngr.SwitchShowRain(); break;
 #endif
 			case DIK_ESCAPE: TryExit(); break;
 			default:
@@ -5340,7 +5341,6 @@ void FOClient::Net_OnGameInfo()
 	HexMngr.SetWeather(time,rain);
 	SetDayTime(true);
 	IsTurnBased=turn_based;
-	TurnBasedTime=0;
 	if(!IsTurnBased) HexMngr.SetCritterContour(0,Sprite::ContourNone);
 	NoLogOut=no_log_out;
 }
@@ -7041,13 +7041,15 @@ void FOClient::CrittersProcess()
 	}
 	if(Chosen->GetAp()>Chosen->GetParam(ST_ACTION_POINTS)) Chosen->Params[ST_CURRENT_AP]=Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER;
 
-	if(!Chosen->IsLife())
+	if(ChosenAction.empty()) return;
+
+	if(!Chosen->IsLife() || (IsTurnBased && !IsTurnBasedMyTurn()))
 	{
 		ChosenAction.clear();
+		Chosen->AnimateStay();
 		return;
 	}
 
-	if(ChosenAction.empty()) return;
 	ActionEvent act=ChosenAction[0];
 #define CHECK_NEED_AP(need_ap) {if(IsTurnBased && !IsTurnBasedMyTurn()) break; if(Chosen->GetParam(ST_ACTION_POINTS)<(int)(need_ap)){AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,need_ap)); break;} if(Chosen->GetAp()<(int)(need_ap)){if(IsTurnBased){if(Chosen->GetAp()) AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,need_ap)); break;} else return;}}
 #define CHECK_NEED_REAL_AP(need_ap) {if(IsTurnBased && !IsTurnBasedMyTurn()) break; if(Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER<(int)(need_ap)){AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,(need_ap)/AP_DIVIDER)); break;} if(Chosen->GetRealAp()<(int)(need_ap)){if(IsTurnBased){if(Chosen->GetRealAp()) AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,(need_ap)/AP_DIVIDER)); break;} else return;}}

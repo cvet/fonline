@@ -3189,7 +3189,7 @@ void FOServer::Process_Dir(Client* cl)
 	cl->Bin >> dir;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	if(!cl->GetMap() || dir>5 || cl->GetDir()==dir || cl->IsTurnBased() || cl->IsTalking())
+	if(!cl->GetMap() || dir>5 || cl->GetDir()==dir || cl->IsTalking() || !cl->CheckMyTurn(NULL))
 	{
 		cl->Send_Dir(cl);
 		return;

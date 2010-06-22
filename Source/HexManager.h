@@ -358,7 +358,7 @@ public:
 	// Rain
 private:
 	DropVec rainData;
-	int showRain;
+	int rainCapacity;
 	WORD picRainDrop;
 	WORD picRainDropA[7];
 	Sprites roofRainTree;

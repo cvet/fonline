@@ -21,28 +21,6 @@ const char* ItemEventFuncName[ITEM_EVENT_MAX]=
 };
 
 /************************************************************************/
-/* ProtoItem                                                            */
-/************************************************************************/
-
-bool ProtoItem::IsCanPickUp()
-{
-	switch(Type)
-	{
-	case ITEM_TYPE_ARMOR:
-	case ITEM_TYPE_DRUG:
-	case ITEM_TYPE_WEAPON:
-	case ITEM_TYPE_AMMO:
-	case ITEM_TYPE_MISC:
-	case ITEM_TYPE_KEY: return true;
-	case ITEM_TYPE_MISC_EX:
-	case ITEM_TYPE_CONTAINER: return FLAG(Flags,ITEM_CAN_PICKUP);
-	default: break;
-	}
-
-	return false;
-}
-
-/************************************************************************/
 /* Item                                                                 */
 /************************************************************************/
 
@@ -413,23 +391,6 @@ void Item::SetRate(BYTE rate)
 	}
 	Data.Rate=rate;
 	if(IsWeapon()) WeapRefreshProtoUse();
-}
-
-bool Item::IsCanPickUp()
-{
-	switch(GetType())
-	{
-	case ITEM_TYPE_ARMOR:
-	case ITEM_TYPE_DRUG:
-	case ITEM_TYPE_WEAPON:
-	case ITEM_TYPE_AMMO:
-	case ITEM_TYPE_MISC:
-	case ITEM_TYPE_KEY: return true;
-	case ITEM_TYPE_MISC_EX:
-	case ITEM_TYPE_CONTAINER: return FLAG(Data.Flags,ITEM_CAN_PICKUP);
-	default: break;
-	}
-	return false;
 }
 
 DWORD Item::GetCost1st()

@@ -50,7 +50,7 @@ public:
 	bool IsAnimated(){return isAnimated;}
 	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid.Type==GRID_EXITGRID);} // Proto->CanLook
 	bool IsCanUse(){return IsItem() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_USE));}
-	bool IsDrawContour(){return /*IsFocused && */IsItem() && !Proto->IsDoor() && !IsNoHighlight() && !IsBadItem();}
+	bool IsDrawContour(){return /*IsFocused && */IsItem() && !IsNoHighlight() && !IsBadItem();}
 	bool IsTransparent(){int t=Proto->TransType; return t==TRANS_GLASS || t==TRANS_STEAM || t==TRANS_ENERGY || t==TRANS_RED;}
 	void RefreshAnim();
 	void SetEffects(Sprite* prep);

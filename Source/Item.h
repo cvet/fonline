@@ -411,7 +411,7 @@ public:
 
 	bool LockerIsNoOpen(){if(IsDoor()) return Door.IsNoOpen; if(IsContainer()) return Container.IsNoOpen; return false;}
 	bool LockerIsChangeble(){if(IsDoor()) return true; if(IsContainer()) return Container.Changeble!=0; return false;}
-	bool IsCanPickUp();
+	bool IsCanPickUp(){return FLAG(Flags,ITEM_CAN_PICKUP);}
 	bool IsGrouped(){return IsDrug() || IsAmmo() || IsMisc() || (IsWeapon() && WeapIsGrouped());}
 	bool IsWeared(){return Type==ITEM_TYPE_ARMOR || (Type==ITEM_TYPE_WEAPON && WeapIsWeared());}
 
@@ -635,7 +635,7 @@ public:
 	bool IsRaked(){return FLAG(Data.Flags,ITEM_SHOOT_THRU);}
 	bool IsFlat(){return FLAG(Data.Flags,ITEM_FLAT);}
 	bool IsHidden(){return FLAG(Data.Flags,ITEM_HIDDEN);}
-	bool IsCanPickUp();
+	bool IsCanPickUp(){return FLAG(Data.Flags,ITEM_CAN_PICKUP);}
 	bool IsCanTalk(){return FLAG(Data.Flags,ITEM_CAN_TALK);}
 	bool IsCanUse(){return FLAG(Data.Flags,ITEM_CAN_USE);}
 	bool IsCanUseOnSmth(){return FLAG(Data.Flags,ITEM_CAN_USE_ON_SMTH);}

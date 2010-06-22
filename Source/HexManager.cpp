@@ -106,8 +106,8 @@ HexManager::HexManager()
 	tileCntPrep=0;
 	sprMngr=NULL;
 	isShowHex=false;
-	showRain=false;
 	roofSkip=false;
+	rainCapacity=0;
 	chosenId=0;
 	critterContourCrId=0;
 	crittersContour=Sprite::ContourNone;
@@ -597,7 +597,7 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 
 void HexManager::ProcessRain()
 {
-	if(!showRain) return;
+	if(!rainCapacity) return;
 
 	static DWORD last_tick=Timer::FastTick();
 	DWORD delta=Timer::FastTick()-last_tick;
@@ -787,9 +787,9 @@ void HexManager::RebuildMap(int rx, int ry)
 			}
 
 			// Rain
-			if(showRain)
+			if(rainCapacity)
 			{
-				if(showRain>=Random(0,255) && x>=wRight-1 && x<=(wVisible-wLeft+1) && ty>=hTop-2 && ty<=hVisible)
+				if(rainCapacity>=Random(0,255) && x>=wRight-1 && x<=(wVisible-wLeft+1) && ty>=hTop-2 && ty<=hVisible)
 				{
 					int rofx=nx;
 					int rofy=ny;
@@ -1381,7 +1381,7 @@ void HexManager::SetSkipRoof(int hx, int hy)
 	if(roofSkip!=GetField(hx,hy).RoofNum)
 	{
 		roofSkip=GetField(hx,hy).RoofNum;
-		if(showRain) RefreshMap();
+		if(rainCapacity) RefreshMap();
 		else RebuildRoof();
 	}
 }
@@ -1448,14 +1448,14 @@ void HexManager::SwitchShowHex()
 
 void HexManager::SwitchShowRain()
 {
-	showRain=showRain?0:255;
+	rainCapacity=(rainCapacity?0:255);
 	RefreshMap();
 }
 
 void HexManager::SetWeather(int time, BYTE rain)
 {
 	curMapTime=time;
-	showRain=rain;
+	rainCapacity=rain;
 }
 
 bool HexManager::ResizeField(WORD w, WORD h)
@@ -1623,7 +1623,7 @@ void HexManager::DrawMap()
 	if(OptShowRoof)
 	{
 		sprMngr->DrawTreeCntr(roofTree,false,true,0,-1);
-		if(showRain) sprMngr->DrawTreeCntr(roofRainTree,false,false,0,-1);
+		if(rainCapacity) sprMngr->DrawTreeCntr(roofRainTree,false,false,0,-1);
 	}
 
 	// Contours
