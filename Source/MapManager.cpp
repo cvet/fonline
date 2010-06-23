@@ -1462,10 +1462,10 @@ void MapManager::GM_GiveRule(Critter* cr, Critter* new_rule)
 
 	for(CrVecIt it=new_rule->GroupSelf->CritMove.begin(),end=new_rule->GroupSelf->CritMove.end();it!=end;++it)
 	{
-		Critter* cr=*it;
-		cr->GroupMove=new_rule->GroupSelf;
-		cr->Send_CritterParam(cr,OTHER_FLAGS,cr->Flags);
-		cr->Send_CritterParam(new_rule,OTHER_FLAGS,new_rule->Flags);
+		Critter* cr_=*it;
+		cr_->GroupMove=new_rule->GroupSelf;
+		cr_->Send_CritterParam(cr,OTHER_FLAGS,cr->Flags);
+		cr_->Send_CritterParam(new_rule,OTHER_FLAGS,new_rule->Flags);
 	}
 }
 
