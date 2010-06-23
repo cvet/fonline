@@ -887,6 +887,10 @@ void Critter::EraseItem(Item* item, bool send)
 		return;
 	}
 
+	ItemPtrVecIt it=std::find(invItems.begin(),invItems.end(),item);
+	if(it!=invItems.end()) invItems.erase(it);
+	else WriteLog(__FUNCTION__" - Item not found, id<%u>, pid<%u>, critter<%s>.\n",item->GetId(),item->GetProtoId(),GetInfo());
+
 	if(!GetMap() && GroupMove && GroupMove->CarId==item->GetId())
 	{
 		GroupMove->CarId=0;
@@ -897,10 +901,6 @@ void Critter::EraseItem(Item* item, bool send)
 	TakeDefaultItem(item->ACC_CRITTER.Slot);
 	if(send) Send_EraseItem(item);
 	if(item->ACC_CRITTER.Slot!=SLOT_INV) SendAA_MoveItem(item,ACTION_REFRESH,0);
-
-	ItemPtrVecIt it=std::find(invItems.begin(),invItems.end(),item);
-	if(it!=invItems.end()) invItems.erase(it);
-	else WriteLog(__FUNCTION__" - Item not found, id<%u>, pid<%u>, critter<%s>.\n",item->GetId(),item->GetProtoId(),GetInfo());
 
 	BYTE from_slot=item->ACC_CRITTER.Slot;
 	item->ACC_CRITTER.Slot=SLOT_GROUND;
