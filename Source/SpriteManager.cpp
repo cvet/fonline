@@ -1463,9 +1463,6 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 		((BYTE*)&_color3)[3]=alpha;
 	}
 
-	// Sort surfaces
-	dtree.SortBySurfaces();
-
 	// Draw
 	for(SpriteVecIt it=dtree.Begin(),end=dtree.End();it!=end;++it)
 	{
@@ -2207,6 +2204,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 					contour_spr.Effect=Sprite::FlashCustom;
 					contour_spr.ContourColor=spr->ContourColor;
 				}
+				return true;
 			}
 		}
 

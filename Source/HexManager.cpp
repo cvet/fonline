@@ -1315,20 +1315,23 @@ void HexManager::RebuildTiles()
 			if(f.SelTile)
 			{
 				if(IsVisible(f.SelTile,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
-					ttree.AddSprite(0,f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.SelTile,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
+					ttree.AddSprite(HEX_POS(hx,hy),f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.SelTile,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
 				continue;
 			}
 #endif
 
 			if(f.TileId && IsVisible(f.TileId,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
-				ttree.AddSprite(0,f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.TileId,NULL,NULL,NULL,NULL,NULL,NULL);
+				ttree.AddSprite(HEX_POS(hx,hy),f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.TileId,NULL,NULL,NULL,NULL,NULL,NULL);
 		}
 		y2+=wVisible;
 	}
 
+	// Sort
+	ttree.SortBySurfaces();
+	ttree.SortByMapPos();
+
 	tileCntPrep=ttree.Size();
 	sprMngr->PrepareBuffer(ttree,tileVB,tilePrepSurf,true,TILE_ALPHA);
-	ttree.Clear();
 }
 
 void HexManager::RebuildRoof()
@@ -1356,7 +1359,7 @@ void HexManager::RebuildRoof()
 				{
 					if(IsVisible(f.SelRoof,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
 					{
-						Sprite& spr=roofTree.AddSprite(0,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.SelRoof,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
+						Sprite& spr=roofTree.AddSprite(HEX_POS(hx,hy),f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.SelRoof,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
 						spr.Egg=Sprite::EggAlways;
 					}
 					continue;
@@ -1365,12 +1368,16 @@ void HexManager::RebuildRoof()
 
 			if(f.RoofId && (!roofSkip || roofSkip!=f.RoofNum) && IsVisible(f.RoofId,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
 			{
-				Sprite& spr=roofTree.AddSprite(0,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.RoofId,NULL,NULL,NULL,&ROOF_ALPHA,NULL,NULL);
+				Sprite& spr=roofTree.AddSprite(HEX_POS(hx,hy),f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.RoofId,NULL,NULL,NULL,&ROOF_ALPHA,NULL,NULL);
 				spr.Egg=Sprite::EggAlways;
 			}
 		}
 		y2+=wVisible;
 	}
+
+	// Sort
+	roofTree.SortBySurfaces();
+	roofTree.SortByMapPos();
 }
 
 void HexManager::SetSkipRoof(int hx, int hy)

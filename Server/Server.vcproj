@@ -2781,6 +2781,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\CritterData.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\CritterManager.cpp"
 				>
 			</File>
@@ -2897,10 +2901,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\HexManager.h"
-				>
-			</File>
-			<File
 				RelativePath="..\Source\Item.cpp"
 				>
 			</File>
@@ -2970,10 +2970,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\ProtoMap.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\CritterData.h"
 				>
 			</File>
 			<File
