@@ -95,7 +95,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(bool)==1);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
-	STATIC_ASSERT(sizeof(ScenToSend)==24);
+	STATIC_ASSERT(sizeof(ScenToSend)==28);
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	GET_UID0(UID0);
 

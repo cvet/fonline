@@ -2867,7 +2867,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(Npc,Reserved)==9800);
 	STATIC_ASSERT(offsetof(MapObject,RunTime.RefCounter)==244);
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);
-	STATIC_ASSERT(offsetof(ScenToSend,PicMap)==22);
+	STATIC_ASSERT(offsetof(ScenToSend,PicMapHash)==24);
 	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==320);
 	STATIC_ASSERT(offsetof(Map,RefCounter)==766);
 	STATIC_ASSERT(offsetof(GlobalMapZone,Reserved)==20);
@@ -2888,7 +2888,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(IntPair)==8);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(MapObject)==MAP_OBJECT_SIZE+sizeof(MapObject::_RunTime));
-	STATIC_ASSERT(sizeof(ScenToSend)==24);
+	STATIC_ASSERT(sizeof(ScenToSend)==28);
 	STATIC_ASSERT(sizeof(NpcBagItem)==16);
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);

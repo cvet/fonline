@@ -410,7 +410,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Client map
 #define SERVER_MAP_EXT			".map"
-#define CLIENT_MAP_FORMAT_VER	(2)
+#define CLIENT_MAP_FORMAT_VER	(3)
 
 // Coordinates
 #define MAXHEX_DEF              (200)
@@ -882,7 +882,7 @@ struct ScoreType
 /* ScenToSend                                                           */
 /************************************************************************/
 
-struct ScenToSend // 24 bytes
+struct ScenToSend // 28 bytes
 {
 	WORD ProtoId;
 	BYTE Flags;
@@ -899,13 +899,18 @@ struct ScenToSend // 24 bytes
 	BYTE AnimStayBegin;
 	BYTE AnimStayEnd;
 	WORD AnimWait;
-	WORD PicMap;
+	WORD Reserved;
+	DWORD PicMapHash;
 };
-
 typedef vector<ScenToSend> ScenToSendVec;
 
+// Flags
 #define SCEN_CAN_USE                (0x01)
 #define SCEN_CAN_TALK               (0x02)
+
+/************************************************************************/
+/* Animations                                                           */
+/************************************************************************/
 
 // BA - В нокдауне (падает назад) 
 // BB - В нокдауне (падает вперед) 

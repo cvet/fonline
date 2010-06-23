@@ -3,8 +3,6 @@
 #include "Common.h"
 #include "ResourceManager.h"
 
-#pragma MESSAGE("Add supporting of InfoOffset for scenery.")
-
 AnyFrames* ItemHex::DefaultAnim=NULL;
 
 ItemHex::ItemHex(DWORD id, ProtoItem* pobj, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y):

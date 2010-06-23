@@ -3016,6 +3016,8 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 	ItemHex* scenery=new ItemHex(scen_id,proto_item,NULL,hx,hy,0,scen.OffsetX,scen.OffsetY,&GetField(hx,hy).ScrX,&GetField(hx,hy).ScrY);
 	scenery->ScenFlags=scen.Flags;
 
+	// Mapper additional parameters
+	if(scen.InfoOffset) scenery->Data.Info=scen.InfoOffset;
 	if(scen.AnimStayBegin || scen.AnimStayEnd)
 	{
 		SETFLAG(scenery->Data.Flags,ITEM_SHOW_ANIM);
@@ -3026,11 +3028,15 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 		scenery->Data.AnimStay[1]=scen.AnimStayEnd;
 		scenery->Data.AnimHide[0]=scen.AnimStayBegin;
 		scenery->Data.AnimHide[1]=scen.AnimStayEnd;
-		scenery->Data.AnimWaitBase=scen.AnimWait;
+	}
+	if(scen.AnimWait) scenery->Data.AnimWaitBase=scen.AnimWait;
+	if(scen.PicMapHash)
+	{
+		scenery->Data.PicMapHash=scen.PicMapHash;
+		scenery->RefreshAnim();
 	}
 
 	PushItem(scenery);
-
 	if(!scenery->IsHidden() && scenery->Proto->TransVal<0xFF) ProcessHexBorders(scenery->Anim->GetSprId(0),scen.OffsetX,scen.OffsetY);
 	return true;
 }

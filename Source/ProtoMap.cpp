@@ -1304,6 +1304,11 @@ bool ProtoMap::Refresh()
 				cur_wall.LightRadius=mobj.LightRadius;
 				cur_wall.LightFlags=mobj.LightDirOff|((mobj.LightDay&3)<<6);
 				cur_wall.LightIntensity=mobj.LightIntensity;
+				cur_wall.InfoOffset=mobj.MScenery.InfoOffset;
+				cur_wall.AnimStayBegin=mobj.MScenery.AnimStayBegin;
+				cur_wall.AnimStayEnd=mobj.MScenery.AnimStayEnd;
+				cur_wall.AnimWait=mobj.MScenery.AnimWait;
+				cur_wall.PicMapHash=mobj.MScenery.PicMapHash;
 
 				WallsToSend.push_back(cur_wall);
 			}
@@ -1391,6 +1396,11 @@ bool ProtoMap::Refresh()
 				cur_scen.LightRadius=mobj.LightRadius;
 				cur_scen.LightFlags=mobj.LightDirOff|((mobj.LightDay&3)<<6);
 				cur_scen.LightIntensity=mobj.LightIntensity;
+				cur_scen.InfoOffset=mobj.MScenery.InfoOffset;
+				cur_scen.AnimStayBegin=mobj.MScenery.AnimStayBegin;
+				cur_scen.AnimStayEnd=mobj.MScenery.AnimStayEnd;
+				cur_scen.AnimWait=mobj.MScenery.AnimWait;
+				cur_scen.PicMapHash=mobj.MScenery.PicMapHash;
 
 				SceneriesToSend.push_back(cur_scen);
 			}

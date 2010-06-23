@@ -287,7 +287,8 @@ bool Map::Generate()
 
 		if(!item->GetCount()) item->Count_Set(1);
 
-		// Set frames
+		// Mapper additional parameters
+		if(mobj.MItem.InfoOffset) item->Data.Info=mobj.MItem.InfoOffset;
 		if(mobj.MItem.AnimStayBegin || mobj.MItem.AnimStayEnd)
 		{
 			SETFLAG(item->Data.Flags,ITEM_SHOW_ANIM);
@@ -299,6 +300,8 @@ bool Map::Generate()
 			item->Data.AnimHide[0]=mobj.MItem.AnimStayBegin;
 			item->Data.AnimHide[1]=mobj.MItem.AnimStayEnd;
 		}
+		if(mobj.MItem.AnimWait) item->Data.AnimWaitBase=mobj.MItem.AnimWait;
+		if(mobj.MItem.PicMapHash) item->Data.PicMapHash=mobj.MItem.PicMapHash;
 
 		// Parse script
 		char script[MAX_SCRIPT_NAME*2+1]={0};
