@@ -1356,6 +1356,11 @@ void FOClient::CollectContItems()
 			if(it_!=BarterCont1oInit.end())
 			{
 				Item& item_=*it_;
+
+				DWORD count=item_.GetCount();
+				item_.Data=item.Data;
+				item_.Count_Set(count);
+
 				if(item.IsGrouped()) item.Count_Sub(item_.GetCount());
 				if(!item.IsGrouped() || !item.GetCount())
 				{

@@ -1387,6 +1387,7 @@ void SpriteManager::PrepareSquare(PointVec& points, FLTRECT& r, DWORD color)
 	points.push_back(PrepPoint(r.R,r.B,color,NULL,NULL));
 }
 
+#pragma MESSAGE("Optimize: prerender to texture.")
 bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, OneSurfVec& surfaces, bool sort_surf, BYTE alpha)
 {
 	SAFEREL(vbuf);
