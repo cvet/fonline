@@ -1066,7 +1066,14 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 		case GRID_LADDERBOT:
 		case GRID_LADDERTOP:
 		case GRID_ELEVATOR:
-			MapMngr.TryTransitCrGrid(cr,map,hx,hy,false);
+			{
+				Item pick_item;
+				pick_item.Id=DWORD(-1);
+				pick_item.Init(proto);
+				cr->SendAA_Action(ACTION_PICK_ITEM,0,&pick_item);
+
+				MapMngr.TryTransitCrGrid(cr,map,hx,hy,false);
+			}
 			break;
 		default:
 			break;
