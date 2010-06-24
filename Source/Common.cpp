@@ -1004,7 +1004,13 @@ void FileLogger::Write(const char* fmt, ...)
 
 void StringCopy(char* to, size_t size, const char* from)
 {
-	if(!to || !from) return;
+	if(!to) return;
+	
+	if(!from)
+	{
+		to[0]=0;
+		return;
+	}
 
 	size_t from_len=strlen(from);
 	if(!from_len)

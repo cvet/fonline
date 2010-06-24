@@ -128,6 +128,8 @@ public:
 #ifdef FONLINE_MAPPER
 		ProtoMap* FromMap;
 		DWORD MapObjId;
+		char PicMapName[64];
+		char PicInvName[64];
 #endif
 #ifdef FONLINE_SERVER
 		int BindScriptId;
@@ -193,7 +195,9 @@ private:
 	bool ReadTiles(int version);
 	bool ReadObjects(int version);
 	bool LoadTextFormat(const char* buf);
+#ifdef FONLINE_MAPPER
 	void SaveTextFormat(FileManager* fm);
+#endif
 
 #ifdef FONLINE_SERVER
 public:

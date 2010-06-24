@@ -1600,10 +1600,7 @@ void FOMapper::ObjDraw()
 	if(IntMode==INT_MODE_INCONT && InContObject) o=InContObject;
 
 	ProtoItem* proto=NULL;
-	if(o->MapObjType!=MAP_OBJECT_CRITTER)
-	{
-		proto=ItemMngr.GetProtoItem(o->ProtoId);
-	}
+	if(o->MapObjType!=MAP_OBJECT_CRITTER) proto=ItemMngr.GetProtoItem(o->ProtoId);
 
 	int w=ObjWWork[2]-ObjWWork[0];
 	int h=ObjWWork[3]-ObjWWork[1];
@@ -1615,13 +1612,13 @@ void FOMapper::ObjDraw()
 
 	if(proto)
 	{
-		DWORD spr_id=ResMngr.GetSprId(proto->PicMapHash);
+		DWORD spr_id=ResMngr.GetSprId(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMapHash);
 		if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 		SprMngr.DrawSpriteSize(spr_id,x+w-ProtoWidth,y,ProtoWidth,ProtoWidth,false,true);
 
 		if(proto->IsItem())
 		{
-			AnyFrames* anim=ResMngr.GetInvAnim(proto->PicInvHash);
+			AnyFrames* anim=ResMngr.GetInvAnim(o->MItem.PicInvHash?o->MItem.PicInvHash:proto->PicInvHash);
 			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),x+w-ProtoWidth,y+ProtoWidth,ProtoWidth,ProtoWidth,false,true);
 		}
 	}
@@ -1668,10 +1665,8 @@ void FOMapper::ObjDraw()
 	}
 	else if(so.MapItem && proto)
 	{
-		DWORD pic_map=(o->MScenery.PicMapHash?o->MScenery.PicMapHash:proto->PicMapHash);
-		DWORD pic_inv=(o->MScenery.PicInvHash?o->MScenery.PicInvHash:proto->PicInvHash);
-		DRAW_COMPONENT_TEXT("PicMap",ResMngr.GetName(pic_map),true);                    // 0
-		DRAW_COMPONENT_TEXT("PicInv",ResMngr.GetName(pic_inv),true);                    // 1
+		DRAW_COMPONENT_TEXT("PicMap",ResMngr.GetName(proto->PicMapHash),true);          // 0
+		DRAW_COMPONENT_TEXT("PicInv",ResMngr.GetName(proto->PicInvHash),true);          // 1
 	}
 
 	if(o->MapObjType==MAP_OBJECT_CRITTER) DRAW_COMPONENT_TEXT("MapObjType","Critter",true); // 2
@@ -1702,103 +1697,98 @@ void FOMapper::ObjDraw()
 			}
 		}
 	}
-	else if(o->MapObjType==MAP_OBJECT_ITEM)
+	else if(o->MapObjType==MAP_OBJECT_ITEM || o->MapObjType==MAP_OBJECT_SCENERY)
 	{
 		DRAW_COMPONENT("OffsetX",o->MItem.OffsetX,false,false);                          // 14
 		DRAW_COMPONENT("OffsetY",o->MItem.OffsetY,false,false);                          // 15
 		DRAW_COMPONENT("AnimStayBegin",o->MItem.AnimStayBegin,true,false);               // 16
 		DRAW_COMPONENT("AnimStayEnd",o->MItem.AnimStayEnd,true,false);                   // 17
 		DRAW_COMPONENT("AnimWaitTime",o->MItem.AnimWait,true,false);                     // 18
-		DRAW_COMPONENT("PicMapHash",o->MItem.PicMapHash,true,false);                     // 19
-		DRAW_COMPONENT("PicInvHash",o->MItem.PicInvHash,true,false);                     // 20
+		DRAW_COMPONENT_TEXT("PicMap",o->RunTime.PicMapName,false);                       // 19
+		DRAW_COMPONENT_TEXT("PicInv",o->RunTime.PicInvName,false);                       // 20
 		DRAW_COMPONENT("InfoOffset",o->MItem.InfoOffset,true,false);                     // 21
-		DRAW_COMPONENT("TrapValue",o->MItem.TrapValue,false,false);                      // 22
-		DRAW_COMPONENT("Value0",o->MItem.Val[0],false,false);                            // 23
-		DRAW_COMPONENT("Value1",o->MItem.Val[1],false,false);                            // 24
-		DRAW_COMPONENT("Value2",o->MItem.Val[2],false,false);                            // 25
-		DRAW_COMPONENT("Value3",o->MItem.Val[3],false,false);                            // 26
-		DRAW_COMPONENT("Value4",o->MItem.Val[4],false,false);                            // 27
 
-		switch(proto->GetType())
+		if(o->MapObjType==MAP_OBJECT_ITEM)
 		{
-		case ITEM_TYPE_ARMOR:
-			DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false);     // 28
-			DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false);     // 29
-			DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false);     // 30
-			break;
-		case ITEM_TYPE_WEAPON:
-			if(proto->WeapIsGrouped())
+			DRAW_COMPONENT("TrapValue",o->MItem.TrapValue,false,false);                      // 22
+			DRAW_COMPONENT("Value0",o->MItem.Val[0],false,false);                            // 23
+			DRAW_COMPONENT("Value1",o->MItem.Val[1],false,false);                            // 24
+			DRAW_COMPONENT("Value2",o->MItem.Val[2],false,false);                            // 25
+			DRAW_COMPONENT("Value3",o->MItem.Val[3],false,false);                            // 26
+			DRAW_COMPONENT("Value4",o->MItem.Val[4],false,false);                            // 27
+
+			switch(proto->GetType())
 			{
-				DRAW_COMPONENT("Count",o->MItem.Count,true,false);                       // 28
-			}
-			else if(proto->WeapIsWeared())
-			{
-				DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false); // 28
-				DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false); // 29
-				DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false); // 30
-				if(proto->Weapon.VolHolder)
+			case ITEM_TYPE_ARMOR:
+				DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false);     // 28
+				DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false);     // 29
+				DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false);     // 30
+				break;
+			case ITEM_TYPE_WEAPON:
+				if(proto->WeapIsGrouped())
 				{
-					DRAW_COMPONENT("AmmoPid",o->MItem.AmmoPid,true,false);               // 31
-					DRAW_COMPONENT("AmmoCount",o->MItem.AmmoCount,true,false);           // 32
+					DRAW_COMPONENT("Count",o->MItem.Count,true,false);                       // 28
 				}
+				else if(proto->WeapIsWeared())
+				{
+					DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false); // 28
+					DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false); // 29
+					DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false); // 30
+					if(proto->Weapon.VolHolder)
+					{
+						DRAW_COMPONENT("AmmoPid",o->MItem.AmmoPid,true,false);               // 31
+						DRAW_COMPONENT("AmmoCount",o->MItem.AmmoCount,true,false);           // 32
+					}
+				}
+				break;
+			case ITEM_TYPE_DRUG:
+			case ITEM_TYPE_AMMO:
+			case ITEM_TYPE_MISC:
+				DRAW_COMPONENT("Count",o->MItem.Count,true,false);                           // 28
+				break;
+			case ITEM_TYPE_KEY:
+				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 28
+				break;
+			case ITEM_TYPE_CONTAINER:
+			case ITEM_TYPE_DOOR:
+				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 28
+				DRAW_COMPONENT("LockerCondition",o->MItem.LockerCondition,true,false);       // 29
+				DRAW_COMPONENT("LockerComplexity",o->MItem.LockerComplexity,true,false);     // 30
+				break;
+			default:
+				break;
 			}
-			break;
-		case ITEM_TYPE_DRUG:
-		case ITEM_TYPE_AMMO:
-		case ITEM_TYPE_MISC:
-			DRAW_COMPONENT("Count",o->MItem.Count,true,false);                           // 28
-			break;
-		case ITEM_TYPE_KEY:
-			DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 28
-			break;
-		case ITEM_TYPE_CONTAINER:
-		case ITEM_TYPE_DOOR:
-			DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 28
-			DRAW_COMPONENT("LockerCondition",o->MItem.LockerCondition,true,false);       // 29
-			DRAW_COMPONENT("LockerComplexity",o->MItem.LockerComplexity,true,false);     // 30
-			break;
-		default:
-			break;
 		}
-	}
-	else if(o->MapObjType==MAP_OBJECT_SCENERY)
-	{
-		DRAW_COMPONENT("OffsetX",o->MScenery.OffsetX,false,false);                       // 14
-		DRAW_COMPONENT("OffsetY",o->MScenery.OffsetY,false,false);                       // 15
-		DRAW_COMPONENT("AnimBegin",o->MScenery.AnimStayBegin,true,false);                // 16
-		DRAW_COMPONENT("AnimEnd",o->MScenery.AnimStayEnd,true,false);                    // 17
-		DRAW_COMPONENT("AnimWaitTime",o->MScenery.AnimWait,true,false);                  // 18
-		DRAW_COMPONENT("PicMapHash",o->MScenery.PicMapHash,true,false);                  // 19
-		DRAW_COMPONENT("PicInvHash",o->MScenery.PicInvHash,true,false);                  // 20
-		DRAW_COMPONENT("InfoOffset",o->MScenery.InfoOffset,true,false);                  // 21
-
-		if(proto->GetType()==ITEM_TYPE_GRID)
+		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			DRAW_COMPONENT("ToMapPid",o->MScenery.ToMapPid,true,false);                  // 22
-			if(o->ProtoId==SP_GRID_ENTIRE)
-				DRAW_COMPONENT("EntireNumber",o->MScenery.ToEntire,true,false);          // 23
-			else
-				DRAW_COMPONENT("ToEntire",o->MScenery.ToEntire,true,false);              // 23
-			DRAW_COMPONENT("ToMapX",o->MScenery.ToMapX,true,false);                      // 24
-			DRAW_COMPONENT("ToMapY",o->MScenery.ToMapY,true,false);                      // 25
-			DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 26
-		}
-		else if(proto->GetType()==ITEM_TYPE_GENERIC)
-		{
-			DRAW_COMPONENT("ParamsCount",o->MScenery.ParamsCount,true,false);            // 22
-			DRAW_COMPONENT("Parameter0",o->MScenery.Param[0],false,false);               // 23
-			DRAW_COMPONENT("Parameter1",o->MScenery.Param[1],false,false);               // 24
-			DRAW_COMPONENT("Parameter2",o->MScenery.Param[2],false,false);               // 25
-			DRAW_COMPONENT("Parameter3",o->MScenery.Param[3],false,false);               // 26
-			DRAW_COMPONENT("Parameter4",o->MScenery.Param[4],false,false);               // 27
-			if(o->ProtoId==SP_SCEN_TRIGGER)
+			if(proto->GetType()==ITEM_TYPE_GRID)
 			{
-				DRAW_COMPONENT("TriggerNum",o->MScenery.TriggerNum,true,false);          // 28
+				DRAW_COMPONENT("ToMapPid",o->MScenery.ToMapPid,true,false);                  // 22
+				if(o->ProtoId==SP_GRID_ENTIRE)
+					DRAW_COMPONENT("EntireNumber",o->MScenery.ToEntire,true,false);          // 23
+				else
+					DRAW_COMPONENT("ToEntire",o->MScenery.ToEntire,true,false);              // 23
+				DRAW_COMPONENT("ToMapX",o->MScenery.ToMapX,true,false);                      // 24
+				DRAW_COMPONENT("ToMapY",o->MScenery.ToMapY,true,false);                      // 25
+				DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 26
 			}
-			else
+			else if(proto->GetType()==ITEM_TYPE_GENERIC)
 			{
-				DRAW_COMPONENT("CanUse",o->MScenery.CanUse,true,false);                  // 28
-				DRAW_COMPONENT("CanTalk",o->MScenery.CanTalk,true,false);                // 29
+				DRAW_COMPONENT("ParamsCount",o->MScenery.ParamsCount,true,false);            // 22
+				DRAW_COMPONENT("Parameter0",o->MScenery.Param[0],false,false);               // 23
+				DRAW_COMPONENT("Parameter1",o->MScenery.Param[1],false,false);               // 24
+				DRAW_COMPONENT("Parameter2",o->MScenery.Param[2],false,false);               // 25
+				DRAW_COMPONENT("Parameter3",o->MScenery.Param[3],false,false);               // 26
+				DRAW_COMPONENT("Parameter4",o->MScenery.Param[4],false,false);               // 27
+				if(o->ProtoId==SP_SCEN_TRIGGER)
+				{
+					DRAW_COMPONENT("TriggerNum",o->MScenery.TriggerNum,true,false);          // 28
+				}
+				else
+				{
+					DRAW_COMPONENT("CanUse",o->MScenery.CanUse,true,false);                  // 28
+					DRAW_COMPONENT("CanTalk",o->MScenery.CanTalk,true,false);                // 29
+				}
 			}
 		}
 	}
@@ -1896,11 +1886,19 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 		break;
 	case 19:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
-		else val_dw=&o->MItem.PicMapHash;
+		else
+		{
+			Keyb::GetChar(dik,o->RunTime.PicMapName,NULL,sizeof(o->RunTime.PicMapName),KIF_NO_SPEC_SYMBOLS);
+			return;
+		}
 		break;
 	case 20:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
-		else val_dw=&o->MItem.PicInvHash;
+		else
+		{
+			Keyb::GetChar(dik,o->RunTime.PicInvName,NULL,sizeof(o->RunTime.PicInvName),KIF_NO_SPEC_SYMBOLS);
+			return;
+		}
 		break;
 	case 21:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
@@ -4148,11 +4146,13 @@ void FOMapper::SScriptFunc::MapperObject_set_FuncName(MapObject& mobj, CScriptSt
 
 BYTE FOMapper::SScriptFunc::MapperObject_get_Critter_Cond(MapObject& mobj)
 {
+	if(!mobj.MapObjType!=MAP_OBJECT_CRITTER) SCRIPT_ERROR_R0("Map object is not critter.");
 	return mobj.MCritter.Cond;
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond(MapObject& mobj, BYTE value)
 {
+	if(!mobj.MapObjType!=MAP_OBJECT_CRITTER) SCRIPT_ERROR_R("Map object is not critter.");
 	if(!mobj.RunTime.FromMap) return;
 	if(value<COND_LIFE || value>COND_DEAD) return;
 	if(mobj.MCritter.Cond==COND_DEAD && value!=COND_LIFE)
@@ -4164,6 +4164,32 @@ void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond(MapObject& mobj, BYTE 
 		}
 	}
 	mobj.MCritter.Cond=value;
+}
+
+CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap(MapObject& mobj)
+{
+	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_RX("Map object is not item or scenery.",new CScriptString(""));
+	return new CScriptString(mobj.RunTime.PicMapName);
+}
+
+void FOMapper::SScriptFunc::MapperObject_set_PicMap(MapObject& mobj, CScriptString* str)
+{
+	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_R("Map object is not item or scenery.");
+	StringCopy(mobj.RunTime.PicMapName,str->c_str());
+	mobj.MItem.PicMapHash=Str::GetHash(mobj.RunTime.PicMapName);
+}
+
+CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv(MapObject& mobj)
+{
+	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_RX("Map object is not item or scenery.",new CScriptString(""));
+	return new CScriptString(mobj.RunTime.PicInvName);
+}
+
+void FOMapper::SScriptFunc::MapperObject_set_PicInv(MapObject& mobj, CScriptString* str)
+{
+	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_R("Map object is not item or scenery.");
+	StringCopy(mobj.RunTime.PicInvName,str->c_str());
+	mobj.MItem.PicInvHash=Str::GetHash(mobj.RunTime.PicInvName);
 }
 
 void FOMapper::SScriptFunc::MapperObject_Update(MapObject& mobj)

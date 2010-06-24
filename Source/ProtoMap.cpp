@@ -6,6 +6,10 @@
 #include "Version.h"
 #include <strstream>
 
+#ifdef FONLINE_MAPPER
+#include "ResourceManager.h"
+#endif
+
 #define F1_MAP_VERSION			0x13000000
 #define F2_MAP_VERSION			0x14000000
 #define FO_MAP_VERSION_V1		0xF0000000
@@ -515,6 +519,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 				if(field=="Version") Header.Version=(ivalue<<20);
 				if(field=="MaxHexX") Header.MaxHexX=ivalue;
 				if(field=="MaxHexY") Header.MaxHexY=ivalue;
+				if(field=="CenterX") Header.CenterX=ivalue;
+				if(field=="CenterY") Header.CenterY=ivalue;
 				if(field=="PlayersLimit") Header.PlayersLimit=ivalue;
 				if(field=="Time") Header.Time=ivalue;
 				if(field=="NoLogOut") Header.NoLogOut=(ivalue!=0);
@@ -656,65 +662,75 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						else if(field=="Critter_ParamValue13") mobj.MCritter.ParamValue[13]=ivalue;
 						else if(field=="Critter_ParamValue14") mobj.MCritter.ParamValue[14]=ivalue;
 					}
-					// Item
-					else if(mobj.MapObjType==MAP_OBJECT_ITEM)
+					// Item/Scenery
+					else if(mobj.MapObjType==MAP_OBJECT_ITEM || mobj.MapObjType==MAP_OBJECT_SCENERY)
 					{
-						if(field=="Item_OffsetX") mobj.MItem.OffsetX=ivalue;
-						else if(field=="Item_OffsetY") mobj.MItem.OffsetY=ivalue;
-						else if(field=="Item_AnimStayBegin") mobj.MItem.AnimStayBegin=ivalue;
-						else if(field=="Item_AnimStayEnd") mobj.MItem.AnimStayEnd=ivalue;
-						else if(field=="Item_AnimWait") mobj.MItem.AnimWait=ivalue;
-						else if(field=="Item_PicMapHash") mobj.MItem.PicMapHash=ivalue;
-						else if(field=="Item_PicInvHash") mobj.MItem.PicInvHash=ivalue;
-						else if(field=="Item_InfoOffset") mobj.MItem.InfoOffset=ivalue;
-						else if(field=="Item_Count") mobj.MItem.Count=ivalue;
-						else if(field=="Item_DeteorationFlags") mobj.MItem.DeteorationFlags=ivalue;
-						else if(field=="Item_DeteorationCount") mobj.MItem.DeteorationCount=ivalue;
-						else if(field=="Item_DeteorationValue") mobj.MItem.DeteorationValue=ivalue;
-						else if(field=="Item_InContainer") mobj.MItem.InContainer=(ivalue!=0);
-						else if(field=="Item_ItemSlot") mobj.MItem.ItemSlot=ivalue;
-						else if(field=="Item_AmmoPid") mobj.MItem.AmmoPid=ivalue;
-						else if(field=="Item_AmmoCount") mobj.MItem.AmmoCount=ivalue;
-						else if(field=="Item_LockerDoorId") mobj.MItem.LockerDoorId=ivalue;
-						else if(field=="Item_LockerCondition") mobj.MItem.LockerCondition=ivalue;
-						else if(field=="Item_LockerComplexity") mobj.MItem.LockerComplexity=ivalue;
-						else if(field=="Item_TrapValue") mobj.MItem.TrapValue=ivalue;
-						else if(field=="Item_Val0") mobj.MItem.Val[0]=ivalue;
-						else if(field=="Item_Val1") mobj.MItem.Val[1]=ivalue;
-						else if(field=="Item_Val2") mobj.MItem.Val[2]=ivalue;
-						else if(field=="Item_Val3") mobj.MItem.Val[3]=ivalue;
-						else if(field=="Item_Val4") mobj.MItem.Val[4]=ivalue;
-						else if(field=="Item_Val5") mobj.MItem.Val[5]=ivalue;
-						else if(field=="Item_Val6") mobj.MItem.Val[6]=ivalue;
-						else if(field=="Item_Val7") mobj.MItem.Val[7]=ivalue;
-						else if(field=="Item_Val8") mobj.MItem.Val[8]=ivalue;
-						else if(field=="Item_Val9") mobj.MItem.Val[9]=ivalue;
-					}
-					// Scenery
-					else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
-					{
-						if(field=="Scenery_OffsetX") mobj.MScenery.OffsetX=ivalue;
-						else if(field=="Scenery_OffsetY") mobj.MScenery.OffsetY=ivalue;
-						else if(field=="Scenery_AnimStayBegin") mobj.MScenery.AnimStayBegin=ivalue;
-						else if(field=="Scenery_AnimStayEnd") mobj.MScenery.AnimStayEnd=ivalue;
-						else if(field=="Scenery_AnimWait") mobj.MScenery.AnimWait=ivalue;
-						else if(field=="Scenery_PicMapHash") mobj.MScenery.PicMapHash=ivalue;
-						else if(field=="Scenery_PicInvHash") mobj.MScenery.PicInvHash=ivalue;
-						else if(field=="Scenery_InfoOffset") mobj.MScenery.InfoOffset=ivalue;
-						else if(field=="Scenery_CanUse") mobj.MScenery.CanUse=(ivalue!=0);
-						else if(field=="Scenery_CanTalk") mobj.MScenery.CanTalk=(ivalue!=0);
-						else if(field=="Scenery_TriggerNum") mobj.MScenery.TriggerNum=ivalue;
-						else if(field=="Scenery_ParamsCount") mobj.MScenery.ParamsCount=ivalue;
-						else if(field=="Scenery_Param0") mobj.MScenery.Param[0]=ivalue;
-						else if(field=="Scenery_Param1") mobj.MScenery.Param[1]=ivalue;
-						else if(field=="Scenery_Param2") mobj.MScenery.Param[2]=ivalue;
-						else if(field=="Scenery_Param3") mobj.MScenery.Param[3]=ivalue;
-						else if(field=="Scenery_Param4") mobj.MScenery.Param[4]=ivalue;
-						else if(field=="Scenery_ToMapPid") mobj.MScenery.ToMapPid=ivalue;
-						else if(field=="Scenery_ToEntire") mobj.MScenery.ToEntire=ivalue;
-						else if(field=="Scenery_ToMapX") mobj.MScenery.ToMapX=ivalue;
-						else if(field=="Scenery_ToMapY") mobj.MScenery.ToMapY=ivalue;
-						else if(field=="Scenery_ToDir") mobj.MScenery.ToDir=ivalue;
+						// Shared parameters
+						if(field=="OffsetX") mobj.MItem.OffsetX=ivalue;
+						else if(field=="OffsetY") mobj.MItem.OffsetY=ivalue;
+						else if(field=="AnimStayBegin") mobj.MItem.AnimStayBegin=ivalue;
+						else if(field=="AnimStayEnd") mobj.MItem.AnimStayEnd=ivalue;
+						else if(field=="AnimWait") mobj.MItem.AnimWait=ivalue;
+						else if(field=="PicMapName")
+						{
+#ifdef FONLINE_MAPPER
+							StringCopy(mobj.RunTime.PicMapName,value.c_str());
+#endif
+							mobj.MItem.PicMapHash=Str::GetHash(value.c_str());
+						}
+						else if(field=="PicInvName")
+						{
+#ifdef FONLINE_MAPPER
+							StringCopy(mobj.RunTime.PicInvName,value.c_str());
+#endif
+							mobj.MItem.PicInvHash=Str::GetHash(value.c_str());
+						}
+						else if(field=="InfoOffset") mobj.MItem.InfoOffset=ivalue;
+						// Item
+						else if(mobj.MapObjType==MAP_OBJECT_ITEM)
+						{
+							if(field=="Item_InfoOffset") mobj.MItem.InfoOffset=ivalue;
+							else if(field=="Item_Count") mobj.MItem.Count=ivalue;
+							else if(field=="Item_DeteorationFlags") mobj.MItem.DeteorationFlags=ivalue;
+							else if(field=="Item_DeteorationCount") mobj.MItem.DeteorationCount=ivalue;
+							else if(field=="Item_DeteorationValue") mobj.MItem.DeteorationValue=ivalue;
+							else if(field=="Item_InContainer") mobj.MItem.InContainer=(ivalue!=0);
+							else if(field=="Item_ItemSlot") mobj.MItem.ItemSlot=ivalue;
+							else if(field=="Item_AmmoPid") mobj.MItem.AmmoPid=ivalue;
+							else if(field=="Item_AmmoCount") mobj.MItem.AmmoCount=ivalue;
+							else if(field=="Item_LockerDoorId") mobj.MItem.LockerDoorId=ivalue;
+							else if(field=="Item_LockerCondition") mobj.MItem.LockerCondition=ivalue;
+							else if(field=="Item_LockerComplexity") mobj.MItem.LockerComplexity=ivalue;
+							else if(field=="Item_TrapValue") mobj.MItem.TrapValue=ivalue;
+							else if(field=="Item_Val0") mobj.MItem.Val[0]=ivalue;
+							else if(field=="Item_Val1") mobj.MItem.Val[1]=ivalue;
+							else if(field=="Item_Val2") mobj.MItem.Val[2]=ivalue;
+							else if(field=="Item_Val3") mobj.MItem.Val[3]=ivalue;
+							else if(field=="Item_Val4") mobj.MItem.Val[4]=ivalue;
+							else if(field=="Item_Val5") mobj.MItem.Val[5]=ivalue;
+							else if(field=="Item_Val6") mobj.MItem.Val[6]=ivalue;
+							else if(field=="Item_Val7") mobj.MItem.Val[7]=ivalue;
+							else if(field=="Item_Val8") mobj.MItem.Val[8]=ivalue;
+							else if(field=="Item_Val9") mobj.MItem.Val[9]=ivalue;
+						}
+						// Scenery
+						else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
+						{
+							if(field=="Scenery_CanUse") mobj.MScenery.CanUse=(ivalue!=0);
+							else if(field=="Scenery_CanTalk") mobj.MScenery.CanTalk=(ivalue!=0);
+							else if(field=="Scenery_TriggerNum") mobj.MScenery.TriggerNum=ivalue;
+							else if(field=="Scenery_ParamsCount") mobj.MScenery.ParamsCount=ivalue;
+							else if(field=="Scenery_Param0") mobj.MScenery.Param[0]=ivalue;
+							else if(field=="Scenery_Param1") mobj.MScenery.Param[1]=ivalue;
+							else if(field=="Scenery_Param2") mobj.MScenery.Param[2]=ivalue;
+							else if(field=="Scenery_Param3") mobj.MScenery.Param[3]=ivalue;
+							else if(field=="Scenery_Param4") mobj.MScenery.Param[4]=ivalue;
+							else if(field=="Scenery_ToMapPid") mobj.MScenery.ToMapPid=ivalue;
+							else if(field=="Scenery_ToEntire") mobj.MScenery.ToEntire=ivalue;
+							else if(field=="Scenery_ToMapX") mobj.MScenery.ToMapX=ivalue;
+							else if(field=="Scenery_ToMapY") mobj.MScenery.ToMapY=ivalue;
+							else if(field=="Scenery_ToDir") mobj.MScenery.ToDir=ivalue;
+						}
 					}
 				}
 			}
@@ -725,6 +741,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 	return true;
 }
 
+#ifdef FONLINE_MAPPER
 void ProtoMap::SaveTextFormat(FileManager* fm)
 {
 	// Header
@@ -732,6 +749,8 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 	fm->SetStr("%-20s %d\n","Version",FO_MAP_VERSION_V9>>20);
 	fm->SetStr("%-20s %d\n","MaxHexX",Header.MaxHexX);
 	fm->SetStr("%-20s %d\n","MaxHexY",Header.MaxHexY);
+	fm->SetStr("%-20s %d\n","CenterX",Header.CenterX);
+	fm->SetStr("%-20s %d\n","CenterY",Header.CenterY);
 	fm->SetStr("%-20s %d\n","PlayersLimit",Header.PlayersLimit);
 	fm->SetStr("%-20s %d\n","Time",Header.Time);
 	fm->SetStr("%-20s %d\n","DayTime0",Header.DayTime[0]);
@@ -816,69 +835,65 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			}
 		}
 		// Item
-		else if(mobj.MapObjType==MAP_OBJECT_ITEM)
+		else if(mobj.MapObjType==MAP_OBJECT_ITEM || mobj.MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(mobj.MItem.OffsetX) fm->SetStr("%-20s %d\n","Item_OffsetX",mobj.MItem.OffsetX);
-			if(mobj.MItem.OffsetY) fm->SetStr("%-20s %d\n","Item_OffsetY",mobj.MItem.OffsetY);
-			if(mobj.MItem.AnimStayBegin) fm->SetStr("%-20s %d\n","Item_AnimStayBegin",mobj.MItem.AnimStayBegin);
-			if(mobj.MItem.AnimStayEnd) fm->SetStr("%-20s %d\n","Item_AnimStayEnd",mobj.MItem.AnimStayEnd);
-			if(mobj.MItem.AnimWait) fm->SetStr("%-20s %d\n","Item_AnimWait",mobj.MItem.AnimWait);
-			if(mobj.MItem.PicMapHash) fm->SetStr("%-20s %d\n","Item_PicMapHash",mobj.MItem.PicMapHash);
-			if(mobj.MItem.PicInvHash) fm->SetStr("%-20s %d\n","Item_PicInvHash",mobj.MItem.PicInvHash);
-			if(mobj.MItem.InfoOffset) fm->SetStr("%-20s %d\n","Item_InfoOffset",mobj.MItem.InfoOffset);
-			if(mobj.MItem.Count) fm->SetStr("%-20s %d\n","Item_Count",mobj.MItem.Count);
-			if(mobj.MItem.DeteorationFlags) fm->SetStr("%-20s %d\n","Item_DeteorationFlags",mobj.MItem.DeteorationFlags);
-			if(mobj.MItem.DeteorationCount) fm->SetStr("%-20s %d\n","Item_DeteorationCount",mobj.MItem.DeteorationCount);
-			if(mobj.MItem.DeteorationValue) fm->SetStr("%-20s %d\n","Item_DeteorationValue",mobj.MItem.DeteorationValue);
-			if(mobj.MItem.InContainer) fm->SetStr("%-20s %d\n","Item_InContainer",mobj.MItem.InContainer);
-			if(mobj.MItem.ItemSlot) fm->SetStr("%-20s %d\n","Item_ItemSlot",mobj.MItem.ItemSlot);
-			if(mobj.MItem.AmmoPid) fm->SetStr("%-20s %d\n","Item_AmmoPid",mobj.MItem.AmmoPid);
-			if(mobj.MItem.AmmoCount) fm->SetStr("%-20s %d\n","Item_AmmoCount",mobj.MItem.AmmoCount);
-			if(mobj.MItem.LockerDoorId) fm->SetStr("%-20s %d\n","Item_LockerDoorId",mobj.MItem.LockerDoorId);
-			if(mobj.MItem.LockerCondition) fm->SetStr("%-20s %d\n","Item_LockerCondition",mobj.MItem.LockerCondition);
-			if(mobj.MItem.LockerComplexity) fm->SetStr("%-20s %d\n","Item_LockerComplexity",mobj.MItem.LockerComplexity);
-			if(mobj.MItem.TrapValue) fm->SetStr("%-20s %d\n","Item_TrapValue",mobj.MItem.TrapValue);
-			if(mobj.MItem.Val[0]) fm->SetStr("%-20s %d\n","Item_Val0",mobj.MItem.Val[0]);
-			if(mobj.MItem.Val[1]) fm->SetStr("%-20s %d\n","Item_Val1",mobj.MItem.Val[1]);
-			if(mobj.MItem.Val[2]) fm->SetStr("%-20s %d\n","Item_Val2",mobj.MItem.Val[2]);
-			if(mobj.MItem.Val[3]) fm->SetStr("%-20s %d\n","Item_Val3",mobj.MItem.Val[3]);
-			if(mobj.MItem.Val[4]) fm->SetStr("%-20s %d\n","Item_Val4",mobj.MItem.Val[4]);
-			if(mobj.MItem.Val[5]) fm->SetStr("%-20s %d\n","Item_Val5",mobj.MItem.Val[5]);
-			if(mobj.MItem.Val[6]) fm->SetStr("%-20s %d\n","Item_Val6",mobj.MItem.Val[6]);
-			if(mobj.MItem.Val[7]) fm->SetStr("%-20s %d\n","Item_Val7",mobj.MItem.Val[7]);
-			if(mobj.MItem.Val[8]) fm->SetStr("%-20s %d\n","Item_Val8",mobj.MItem.Val[8]);
-			if(mobj.MItem.Val[9]) fm->SetStr("%-20s %d\n","Item_Val9",mobj.MItem.Val[9]);
-		}
-		// Scenery
-		else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
-		{
-			if(mobj.MScenery.OffsetX) fm->SetStr("%-20s %d\n","Scenery_OffsetX",mobj.MScenery.OffsetX);
-			if(mobj.MScenery.OffsetY) fm->SetStr("%-20s %d\n","Scenery_OffsetY",mobj.MScenery.OffsetY);
-			if(mobj.MScenery.AnimStayBegin) fm->SetStr("%-20s %d\n","Scenery_AnimStayBegin",mobj.MScenery.AnimStayBegin);
-			if(mobj.MScenery.AnimStayEnd) fm->SetStr("%-20s %d\n","Scenery_AnimStayEnd",mobj.MScenery.AnimStayEnd);
-			if(mobj.MScenery.AnimWait) fm->SetStr("%-20s %d\n","Scenery_AnimWait",mobj.MScenery.AnimWait);
-			if(mobj.MScenery.PicMapHash) fm->SetStr("%-20s %d\n","Scenery_PicMapHash",mobj.MScenery.PicMapHash);
-			if(mobj.MScenery.PicInvHash) fm->SetStr("%-20s %d\n","Scenery_PicInvHash",mobj.MScenery.PicInvHash);
-			if(mobj.MScenery.InfoOffset) fm->SetStr("%-20s %d\n","Scenery_InfoOffset",mobj.MScenery.InfoOffset);
-			if(mobj.MScenery.CanUse) fm->SetStr("%-20s %d\n","Scenery_CanUse",mobj.MScenery.CanUse);
-			if(mobj.MScenery.CanTalk) fm->SetStr("%-20s %d\n","Scenery_CanTalk",mobj.MScenery.CanTalk);
-			if(mobj.MScenery.TriggerNum) fm->SetStr("%-20s %d\n","Scenery_TriggerNum",mobj.MScenery.TriggerNum);
-			if(mobj.MScenery.ParamsCount) fm->SetStr("%-20s %d\n","Scenery_ParamsCount",mobj.MScenery.ParamsCount);
-			if(mobj.MScenery.Param[0]) fm->SetStr("%-20s %d\n","Scenery_Param0",mobj.MScenery.Param[0]);
-			if(mobj.MScenery.Param[1]) fm->SetStr("%-20s %d\n","Scenery_Param1",mobj.MScenery.Param[1]);
-			if(mobj.MScenery.Param[2]) fm->SetStr("%-20s %d\n","Scenery_Param2",mobj.MScenery.Param[2]);
-			if(mobj.MScenery.Param[3]) fm->SetStr("%-20s %d\n","Scenery_Param3",mobj.MScenery.Param[3]);
-			if(mobj.MScenery.Param[4]) fm->SetStr("%-20s %d\n","Scenery_Param4",mobj.MScenery.Param[4]);
-			if(mobj.MScenery.ToMapPid) fm->SetStr("%-20s %d\n","Scenery_ToMapPid",mobj.MScenery.ToMapPid);
-			if(mobj.MScenery.ToEntire) fm->SetStr("%-20s %d\n","Scenery_ToEntire",mobj.MScenery.ToEntire);
-			if(mobj.MScenery.ToMapX) fm->SetStr("%-20s %d\n","Scenery_ToMapX",mobj.MScenery.ToMapX);
-			if(mobj.MScenery.ToMapY) fm->SetStr("%-20s %d\n","Scenery_ToMapY",mobj.MScenery.ToMapY);
-			if(mobj.MScenery.ToDir) fm->SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
+			if(mobj.MItem.OffsetX) fm->SetStr("%-20s %d\n","OffsetX",mobj.MItem.OffsetX);
+			if(mobj.MItem.OffsetY) fm->SetStr("%-20s %d\n","OffsetY",mobj.MItem.OffsetY);
+			if(mobj.MItem.AnimStayBegin) fm->SetStr("%-20s %d\n","AnimStayBegin",mobj.MItem.AnimStayBegin);
+			if(mobj.MItem.AnimStayEnd) fm->SetStr("%-20s %d\n","AnimStayEnd",mobj.MItem.AnimStayEnd);
+			if(mobj.MItem.AnimWait) fm->SetStr("%-20s %d\n","AnimWait",mobj.MItem.AnimWait);
+			if(mobj.RunTime.PicMapName[0]) fm->SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
+			if(mobj.RunTime.PicInvName[0]) fm->SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
+			if(mobj.MItem.InfoOffset) fm->SetStr("%-20s %d\n","InfoOffset",mobj.MItem.InfoOffset);
+			if(mobj.MapObjType==MAP_OBJECT_ITEM)
+			{
+				if(mobj.MItem.Count) fm->SetStr("%-20s %d\n","Item_Count",mobj.MItem.Count);
+				if(mobj.MItem.DeteorationFlags) fm->SetStr("%-20s %d\n","Item_DeteorationFlags",mobj.MItem.DeteorationFlags);
+				if(mobj.MItem.DeteorationCount) fm->SetStr("%-20s %d\n","Item_DeteorationCount",mobj.MItem.DeteorationCount);
+				if(mobj.MItem.DeteorationValue) fm->SetStr("%-20s %d\n","Item_DeteorationValue",mobj.MItem.DeteorationValue);
+				if(mobj.MItem.InContainer) fm->SetStr("%-20s %d\n","Item_InContainer",mobj.MItem.InContainer);
+				if(mobj.MItem.ItemSlot) fm->SetStr("%-20s %d\n","Item_ItemSlot",mobj.MItem.ItemSlot);
+				if(mobj.MItem.AmmoPid) fm->SetStr("%-20s %d\n","Item_AmmoPid",mobj.MItem.AmmoPid);
+				if(mobj.MItem.AmmoCount) fm->SetStr("%-20s %d\n","Item_AmmoCount",mobj.MItem.AmmoCount);
+				if(mobj.MItem.LockerDoorId) fm->SetStr("%-20s %d\n","Item_LockerDoorId",mobj.MItem.LockerDoorId);
+				if(mobj.MItem.LockerCondition) fm->SetStr("%-20s %d\n","Item_LockerCondition",mobj.MItem.LockerCondition);
+				if(mobj.MItem.LockerComplexity) fm->SetStr("%-20s %d\n","Item_LockerComplexity",mobj.MItem.LockerComplexity);
+				if(mobj.MItem.TrapValue) fm->SetStr("%-20s %d\n","Item_TrapValue",mobj.MItem.TrapValue);
+				if(mobj.MItem.Val[0]) fm->SetStr("%-20s %d\n","Item_Val0",mobj.MItem.Val[0]);
+				if(mobj.MItem.Val[1]) fm->SetStr("%-20s %d\n","Item_Val1",mobj.MItem.Val[1]);
+				if(mobj.MItem.Val[2]) fm->SetStr("%-20s %d\n","Item_Val2",mobj.MItem.Val[2]);
+				if(mobj.MItem.Val[3]) fm->SetStr("%-20s %d\n","Item_Val3",mobj.MItem.Val[3]);
+				if(mobj.MItem.Val[4]) fm->SetStr("%-20s %d\n","Item_Val4",mobj.MItem.Val[4]);
+				if(mobj.MItem.Val[5]) fm->SetStr("%-20s %d\n","Item_Val5",mobj.MItem.Val[5]);
+				if(mobj.MItem.Val[6]) fm->SetStr("%-20s %d\n","Item_Val6",mobj.MItem.Val[6]);
+				if(mobj.MItem.Val[7]) fm->SetStr("%-20s %d\n","Item_Val7",mobj.MItem.Val[7]);
+				if(mobj.MItem.Val[8]) fm->SetStr("%-20s %d\n","Item_Val8",mobj.MItem.Val[8]);
+				if(mobj.MItem.Val[9]) fm->SetStr("%-20s %d\n","Item_Val9",mobj.MItem.Val[9]);
+			}
+			// Scenery
+			else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
+			{
+				if(mobj.MScenery.CanUse) fm->SetStr("%-20s %d\n","Scenery_CanUse",mobj.MScenery.CanUse);
+				if(mobj.MScenery.CanTalk) fm->SetStr("%-20s %d\n","Scenery_CanTalk",mobj.MScenery.CanTalk);
+				if(mobj.MScenery.TriggerNum) fm->SetStr("%-20s %d\n","Scenery_TriggerNum",mobj.MScenery.TriggerNum);
+				if(mobj.MScenery.ParamsCount) fm->SetStr("%-20s %d\n","Scenery_ParamsCount",mobj.MScenery.ParamsCount);
+				if(mobj.MScenery.Param[0]) fm->SetStr("%-20s %d\n","Scenery_Param0",mobj.MScenery.Param[0]);
+				if(mobj.MScenery.Param[1]) fm->SetStr("%-20s %d\n","Scenery_Param1",mobj.MScenery.Param[1]);
+				if(mobj.MScenery.Param[2]) fm->SetStr("%-20s %d\n","Scenery_Param2",mobj.MScenery.Param[2]);
+				if(mobj.MScenery.Param[3]) fm->SetStr("%-20s %d\n","Scenery_Param3",mobj.MScenery.Param[3]);
+				if(mobj.MScenery.Param[4]) fm->SetStr("%-20s %d\n","Scenery_Param4",mobj.MScenery.Param[4]);
+				if(mobj.MScenery.ToMapPid) fm->SetStr("%-20s %d\n","Scenery_ToMapPid",mobj.MScenery.ToMapPid);
+				if(mobj.MScenery.ToEntire) fm->SetStr("%-20s %d\n","Scenery_ToEntire",mobj.MScenery.ToEntire);
+				if(mobj.MScenery.ToMapX) fm->SetStr("%-20s %d\n","Scenery_ToMapX",mobj.MScenery.ToMapX);
+				if(mobj.MScenery.ToMapY) fm->SetStr("%-20s %d\n","Scenery_ToMapY",mobj.MScenery.ToMapY);
+				if(mobj.MScenery.ToDir) fm->SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
+			}
 		}
 		fm->SetStr("\n");
 	}
 	fm->SetStr("\n");
 }
+#endif
 
 #ifdef FONLINE_SERVER
 bool ProtoMap::LoadCache(FileManager* fm)
@@ -1435,7 +1450,16 @@ bool ProtoMap::Refresh()
 #endif
 
 #ifdef FONLINE_MAPPER
-	for(int i=0,j=MObjects.size();i<j;i++) MObjects[i]->RunTime.FromMap=this;
+	for(int i=0,j=MObjects.size();i<j;i++)
+	{
+		MapObject* mobj=MObjects[i];
+		mobj->RunTime.FromMap=this;
+		if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
+		{
+			if(mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[0]) StringCopy(mobj->RunTime.PicMapName,ResMngr.GetName(mobj->MItem.PicMapHash));
+			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) StringCopy(mobj->RunTime.PicInvName,ResMngr.GetName(mobj->MItem.PicInvHash));
+		}
+	}
 #endif
 	return true;
 }

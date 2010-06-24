@@ -9,8 +9,8 @@ namespace Keyb
 		bool IsAviable;
 		char Rus,RusShift,Eng,EngShift;
 		bool operator==(const char& ch){return Rus==ch || RusShift==ch || Eng==ch || EngShift==ch;}
-		KeybData(char arus,char as_rus,char aeng,char as_eng){IsAviable=true;Rus=arus;RusShift=as_rus;Eng=aeng;EngShift=as_eng;}
-		KeybData(){IsAviable=false;Rus='x';RusShift='x';Eng='x';EngShift='x';}
+		KeybData(char rus, char rus_shift, char eng, char eng_shift){IsAviable=true; Rus=rus; RusShift=rus_shift; Eng=eng; EngShift=eng_shift;}
+		KeybData(){IsAviable=false; Rus='x'; RusShift='x'; Eng='x'; EngShift='x';}
 	};
 	typedef vector<KeybData> KeybDataVec;
 	typedef vector<KeybData>::iterator KeybDataVecIt;
@@ -92,6 +92,7 @@ void Keyb::InitKeyb()
 	Data[DIK_RETURN]=		KeybData('\n','\n','\n','\n');
 	Data[DIK_NUMPADENTER]=	KeybData('\n','\n','\n','\n');
 	Data[DIK_TAB]=			KeybData('\t','\t','\t','\t');
+	Data[DIK_BACKSLASH]=	KeybData('\\','\\','\\','\\');
 }
 
 void Keyb::ClearKeyb()

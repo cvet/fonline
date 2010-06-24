@@ -1304,15 +1304,18 @@
 	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue12",offsetof(MapObject,MCritter.ParamValue[12]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue13",offsetof(MapObject,MCritter.ParamValue[13]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue14",offsetof(MapObject,MCritter.ParamValue[14]))<0) BIND_ERROR;
+	// Item/critter shared parameters
+	if(engine->RegisterObjectProperty("MapperObject","int16 OffsetX",offsetof(MapObject,MItem.OffsetX))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","int16 OffsetY",offsetof(MapObject,MItem.OffsetY))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 AnimStayBegin",offsetof(MapObject,MItem.AnimStayBegin))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 AnimStayEnd",offsetof(MapObject,MItem.AnimStayEnd))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint16 AnimWait",offsetof(MapObject,MItem.AnimWait))<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","string@ get_PicMap() const",asFUNCTION(BIND_CLASS MapperObject_get_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","void set_PicMap(string@ name)",asFUNCTION(BIND_CLASS MapperObject_set_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","string@ get_PicInv() const",asFUNCTION(BIND_CLASS MapperObject_get_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","void set_PicInv(string@ name)",asFUNCTION(BIND_CLASS MapperObject_set_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 InfoOffset",offsetof(MapObject,MItem.InfoOffset))<0) BIND_ERROR;
 	// Item
-	if(engine->RegisterObjectProperty("MapperObject","int16 Item_OffsetX",offsetof(MapObject,MItem.OffsetX))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Item_OffsetY",offsetof(MapObject,MItem.OffsetY))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_AnimStayBegin",offsetof(MapObject,MItem.AnimStayBegin))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_AnimStayEnd",offsetof(MapObject,MItem.AnimStayEnd))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint16 Item_AnimWait",offsetof(MapObject,MItem.AnimWait))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint Item_PicMap",offsetof(MapObject,MItem.PicMapHash))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint Item_PicInv",offsetof(MapObject,MItem.PicInvHash))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_InfoOffset",offsetof(MapObject,MItem.InfoOffset))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint Item_Count",offsetof(MapObject,MItem.Count))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_DeteorationFlags",offsetof(MapObject,MItem.DeteorationFlags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_DeteorationCount",offsetof(MapObject,MItem.DeteorationCount))<0) BIND_ERROR;
@@ -1336,14 +1339,6 @@
 	if(engine->RegisterObjectProperty("MapperObject","int Item_Val8",offsetof(MapObject,MItem.Val[8]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int Item_Val9",offsetof(MapObject,MItem.Val[9]))<0) BIND_ERROR;
 	// Scenery
-	if(engine->RegisterObjectProperty("MapperObject","int16 Scenery_OffsetX",offsetof(MapObject,MScenery.OffsetX))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Scenery_OffsetY",offsetof(MapObject,MScenery.OffsetY))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_AnimStayBegin",offsetof(MapObject,MScenery.AnimStayBegin))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_AnimStayEnd",offsetof(MapObject,MScenery.AnimStayEnd))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint16 Scenery_AnimWait",offsetof(MapObject,MScenery.AnimWait))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint Scenery_PicMap",offsetof(MapObject,MScenery.PicMapHash))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint Scenery_PicInv",offsetof(MapObject,MScenery.PicInvHash))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_InfoOffset",offsetof(MapObject,MScenery.InfoOffset))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","bool Scenery_CanUse",offsetof(MapObject,MScenery.CanUse))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","bool Scenery_CanTalk",offsetof(MapObject,MScenery.CanTalk))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint Scenery_TriggerNum",offsetof(MapObject,MScenery.TriggerNum))<0) BIND_ERROR;

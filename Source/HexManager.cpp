@@ -3385,7 +3385,6 @@ void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 		item->Data.AnimStay[1]=mobj->MItem.AnimStayEnd;
 		item->Data.AnimHide[0]=mobj->MItem.AnimStayBegin;
 		item->Data.AnimHide[1]=mobj->MItem.AnimStayEnd;
-		item->Data.AnimWaitBase=mobj->MItem.AnimWait;
 	}
 	else
 	{
@@ -3396,18 +3395,27 @@ void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 		item->Data.AnimStay[1]=item->Proto->AnimStay[1];
 		item->Data.AnimHide[0]=item->Proto->AnimHide[0];
 		item->Data.AnimHide[1]=item->Proto->AnimHide[1];
-		item->Data.AnimWaitBase=item->Proto->AnimWaitBase;
 	}
+
+	if(mobj->MItem.AnimWait) item->Data.AnimWaitBase=mobj->MItem.AnimWait;
+	else item->Data.AnimWaitBase=item->Proto->AnimWaitBase;
+
 	item->Data.LightIntensity=mobj->LightIntensity;
 	item->Data.LightColor=mobj->LightRGB;
 	item->Data.LightFlags=(mobj->LightDirOff|((mobj->LightDay&3)<<6));
 	item->Data.LightRadius=mobj->LightRadius;
+
+	mobj->MItem.PicMapHash=(mobj->RunTime.PicMapName[0]?Str::GetHash(mobj->RunTime.PicMapName):0);
+	mobj->MItem.PicInvHash=(mobj->RunTime.PicInvName[0]?Str::GetHash(mobj->RunTime.PicInvName):0);
 	item->Data.PicMapHash=mobj->MItem.PicMapHash;
 	item->Data.PicInvHash=mobj->MItem.PicInvHash;
+
 	item->Data.Info=mobj->MItem.InfoOffset;
 	item->StartScrX=mobj->MItem.OffsetX;
 	item->StartScrY=mobj->MItem.OffsetY;
+
 	if(item->IsHasLocker()) item->Data.Locker.Condition=mobj->MItem.LockerCondition;
+
 	item->RefreshAnim();
 }
 
