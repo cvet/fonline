@@ -762,6 +762,7 @@ public:
 
 	// Light
 	bool IsLight(){return Data.LightIntensity!=0 || Proto->IntensityLight!=0;}
+	DWORD LightGetHash(){if(!IsLight()) return 0; if(Data.LightIntensity) return Crypt.Crc32((BYTE*)&Data.LightIntensity,7); return (DWORD)Proto;}
 	int LightGetIntensity(){return Data.LightIntensity?Data.LightIntensity:(Proto->IntensityLight>100?50:Proto->IntensityLight);}
 	int LightGetRadius(){return Data.LightIntensity?Data.LightRadius:Proto->DistanceLight;}
 	int LightGetFlags(){return Data.LightIntensity?Data.LightFlags:0;}

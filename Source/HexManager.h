@@ -306,6 +306,7 @@ public:
 
 	// Light
 private:
+	bool requestRebuildLight;
 	BYTE* hexLight;
 	int lightPointsCount;
 	PointVecVec lightPoints;
@@ -320,13 +321,14 @@ private:
 	void TraceLight(WORD from_hx, WORD from_hy, WORD& hx, WORD& hy, int dist, DWORD inten);
 	void ParseLightTriangleFan(LightSource& ls);
 	void ParseLight(WORD hx, WORD hy, int dist, DWORD inten, DWORD flags);
+	void RealRebuildLight();
+	void CollectLightSources();
 
 public:
 	void ClearHexLight(){ZeroMemory(hexLight,maxHexX*maxHexY*sizeof(BYTE)*3);}
 	BYTE* GetLightHex(WORD hx, WORD hy){return &hexLight[hy*maxHexX*3+hx*3];}
-	void RebuildLight();
+	void RebuildLight(){requestRebuildLight=true;}
 	LightSourceVec& GetLights(){return lightSources;}
-	void CollectLightSources();
 
 	// Tiles, roof
 private:

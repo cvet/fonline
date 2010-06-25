@@ -2365,7 +2365,10 @@ void FOClient::NetProcess()
 			Net_OnCritterMoveItem();
 			break;
 		case NETMSG_CRITTER_ITEM_DATA:
-			Net_OnCritterItemData();
+			Net_OnCritterItemData(true);
+			break;
+		case NETMSG_CRITTER_ITEM_DATA_HALF:
+			Net_OnCritterItemData(false);
 			break;
 		case NETMSG_CRITTER_ANIMATE:
 			Net_OnCritterAnimate();
@@ -4416,18 +4419,23 @@ void FOClient::Net_OnCritterMoveItem()
 	// Slot items
 	ByteVec slots_pid_slot;
 	WordVec slots_pid_pid;
+	vector<Item::ItemData> slots_pid_data;
 	BYTE slots_pid_count;
 	Bin >> slots_pid_count;
 	for(BYTE i=0;i<slots_pid_count;i++)
 	{
 		BYTE slot;
 		WORD pid;
+		Item::ItemData data;
+		ZeroMemory(&data,sizeof(data));
 		Bin >> slot;
 		Bin >> pid;
+		Bin.Pop((char*)&data.LightIntensity,7);
 		slots_pid_slot.push_back(slot);
 		slots_pid_pid.push_back(pid);
+		slots_pid_data.push_back(data);
 	}
-	
+
 	ByteVec slots_data_slot;
 	DwordVec slots_data_id;
 	WordVec slots_data_pid;
@@ -4459,6 +4467,13 @@ void FOClient::Net_OnCritterMoveItem()
 
 	if(cr!=Chosen)
 	{
+		__int64 prev_hash_sum=0;
+		for(ItemPtrMapIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
+		{
+			Item* item=(*it).second;
+			prev_hash_sum+=item->LightGetHash();
+		}
+
 		cr->EraseAllItems();
 		cr->DefItemSlotMain.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
 		cr->DefItemSlotExt.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
@@ -4474,6 +4489,7 @@ void FOClient::Net_OnCritterMoveItem()
 				item->Id=id--;
 				item->Init(proto_item);
 				item->Count_Set(1);
+				item->Data=slots_pid_data[i];
 				item->ACC_CRITTER.Slot=slots_pid_slot[i];
 				cr->AddItem(item);
 			}
@@ -4492,25 +4508,40 @@ void FOClient::Net_OnCritterMoveItem()
 				cr->AddItem(item);
 			}
 		}
+
+		__int64 hash_sum=0;
+		for(ItemPtrMapIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
+		{
+			Item* item=(*it).second;
+			hash_sum+=item->LightGetHash();
+		}
+		if(hash_sum!=prev_hash_sum) HexMngr.RebuildLight();
 	}
 
 	if(action==ACTION_SHOW_ITEM || action==ACTION_REFRESH) cr->Action(action,prev_slot,is_item?&SomeItem:NULL,false);
 }
 
-void FOClient::Net_OnCritterItemData()
+void FOClient::Net_OnCritterItemData(bool full)
 {
 	DWORD crid;
 	BYTE slot;
 	Item::ItemData data;
+	ZeroMemory(&data,sizeof(data));
 	Bin >> crid;
 	Bin >> slot;
-	Bin.Pop((char*)&data,sizeof(data));
+	if(full) Bin.Pop((char*)&data,sizeof(data));
+	else Bin.Pop((char*)&data.LightIntensity,7);
 
 	CritterCl* cr=GetCritter(crid);
 	if(!cr) return;
 
 	Item* item=cr->GetItemSlot(slot);
-	if(item) item->Data=data;
+	if(item)
+	{
+		DWORD light_hash=item->LightGetHash();
+		item->Data=data;
+		if(item->LightGetHash()!=light_hash) HexMngr.RebuildLight();
+	}
 }
 
 void FOClient::Net_OnCritterAnimate()
@@ -4839,7 +4870,11 @@ void FOClient::Net_OnChosenParam()
 
 void FOClient::Net_OnChosenClearItems()
 {
-	if(Chosen) Chosen->EraseAllItems();
+	if(Chosen)
+	{
+		if(Chosen->IsHaveLightSources()) HexMngr.RebuildLight();
+		Chosen->EraseAllItems();
+	}
 	CollectContItems();
 }
 
@@ -4853,11 +4888,15 @@ void FOClient::Net_OnChosenAddItem()
 	Bin >> slot;
 
 	Item* item=NULL;
+	BYTE prev_slot=SLOT_INV;
+	DWORD prev_light_hash=0;
 	if(Chosen)
 	{
 		item=Chosen->GetItem(item_id);
 		if(item)
 		{
+			prev_slot=item->ACC_CRITTER.Slot;
+			prev_light_hash=item->LightGetHash();
 			Chosen->EraseItem(item,false);
 			item=NULL;
 		}
@@ -4873,7 +4912,7 @@ void FOClient::Net_OnChosenAddItem()
 
 	if(!item) 
 	{
-		WriteLog(__FUNCTION__" - Can't create itemm, pid<%u>.\n",pid);
+		WriteLog(__FUNCTION__" - Can't create item, pid<%u>.\n",pid);
 		Bin.Pop(sizeof(item->Data));
 		return;
 	}
@@ -4890,7 +4929,8 @@ void FOClient::Net_OnChosenAddItem()
 		Script::RunPrepared();
 	}
 
-	if(slot==SLOT_HAND1) RebuildLookBorders=true;
+	if(slot==SLOT_HAND1 || prev_slot==SLOT_HAND1) RebuildLookBorders=true;
+	if(item->LightGetHash()!=prev_light_hash && (slot!=SLOT_INV || prev_slot!=SLOT_INV)) HexMngr.RebuildLight();
 	if(item->IsHidden()) Chosen->EraseItem(item,true);
 	CollectContItems();
 }
@@ -4919,6 +4959,7 @@ void FOClient::Net_OnChosenEraseItem()
 		Script::RunPrepared();
 	}
 
+	if(item->IsLight() && item->ACC_CRITTER.Slot!=SLOT_INV) HexMngr.RebuildLight();
 	Chosen->EraseItem(item,true);
 	CollectContItems();
 }
@@ -7481,6 +7522,7 @@ label_EndMove:
 			BYTE from_slot=item->ACC_CRITTER.Slot;
 			if(from_slot==to_slot) break;
 			bool is_castling=(from_slot==SLOT_HAND1 && to_slot==SLOT_HAND2) || (from_slot==SLOT_HAND2 && to_slot==SLOT_HAND1);
+			bool is_light=item->IsLight();
 
 			if(to_slot!=SLOT_GROUND)
 			{
@@ -7516,6 +7558,7 @@ label_EndMove:
 				}
 
 				if(to_slot==SLOT_HAND1 || from_slot==SLOT_HAND1) RebuildLookBorders=true;
+				if(is_light && (to_slot==SLOT_INV || (from_slot==SLOT_INV && to_slot!=SLOT_GROUND))) HexMngr.RebuildLight();
 
 				Net_SendChangeItem(ap_cost,item_id,from_slot,to_slot,item_count);
 				Chosen->SubAp(ap_cost);

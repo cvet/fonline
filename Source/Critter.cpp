@@ -1944,7 +1944,7 @@ void Critter::Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WOR
 void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item){if(IsPlayer()) ((Client*)this)->Send_Action(from_cr,action,action_ext,item);}
 void Critter::Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy){if(IsPlayer()) ((Client*)this)->Send_Knockout(from_cr,face_up,knock_hx,knock_hy);}
 void Critter::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot){if(IsPlayer()) ((Client*)this)->Send_MoveItem(from_cr,item,action,prev_slot);}
-void Critter::Send_ItemData(Critter* from_cr, BYTE slot, Item* item){if(IsPlayer()) ((Client*)this)->Send_ItemData(from_cr,slot,item);}
+void Critter::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool full){if(IsPlayer()) ((Client*)this)->Send_ItemData(from_cr,slot,item,full);}
 void Critter::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play){if(IsPlayer()) ((Client*)this)->Send_Animate(from_cr,anim1,anim2,item,clear_sequence,delay_play);}
 void Critter::Send_CombatResult(DWORD* combat_res, DWORD len){if(IsPlayer()) ((Client*)this)->Send_CombatResult(combat_res,len);}
 void Critter::Send_Quest(DWORD num){if(IsPlayer()) ((Client*)this)->Send_Quest(num);}
@@ -2030,24 +2030,43 @@ void Critter::SendAA_ItemData(Item* item)
 	if(IsPlayer()) Send_AddItem(item);
 
 	BYTE slot=item->ACC_CRITTER.Slot;
-	if(!VisCr.empty() && slot!=SLOT_INV && SlotEnabled[slot] && SlotDataSendEnabled[slot])
+	if(!VisCr.empty() && slot!=SLOT_INV && SlotEnabled[slot])
 	{
-		int condition_index=SlotDataSendConditionIndex[slot];
-		if(condition_index==-1)
+		if(SlotDataSendEnabled[slot])
 		{
-			for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+			int condition_index=SlotDataSendConditionIndex[slot];
+			if(condition_index==-1)
 			{
-				Critter* cr=*it;
-				if(cr->IsPlayer()) cr->Send_ItemData(this,slot,item);
+				// Send all data
+				for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+				{
+					Critter* cr=*it;
+					if(cr->IsPlayer()) cr->Send_ItemData(this,slot,item,true);
+				}
+			}
+			else
+			{
+				// Send all data if condition passably, else send half
+				for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+				{
+					Critter* cr=*it;
+					if(cr->IsPlayer())
+					{
+						if((cr->Data.Params[condition_index]&SlotDataSendConditionMask[slot])!=0)
+							cr->Send_ItemData(this,slot,item,true);
+						else
+							cr->Send_ItemData(this,slot,item,false);
+					}
+				}
 			}
 		}
 		else
 		{
+			// Send half data
 			for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 			{
 				Critter* cr=*it;
-				if(cr->IsPlayer() && (cr->Data.Params[condition_index]&SlotDataSendConditionMask[slot])!=0)
-					cr->Send_ItemData(this,slot,item);
+				if(cr->IsPlayer()) cr->Send_ItemData(this,slot,item,false);
 			}
 		}
 	}
@@ -2997,7 +3016,7 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 			}
 		}
 	}
-	msg_len+=sizeof(slots_pid_count)+(sizeof(BYTE)+sizeof(WORD))*slots_pid_count;
+	msg_len+=sizeof(slots_pid_count)+(sizeof(BYTE)+sizeof(WORD)+7)*slots_pid_count;
 	msg_len+=sizeof(slots_data_count)+(sizeof(BYTE)+sizeof(DWORD)+sizeof(WORD)+sizeof(Item::ItemData))*slots_data_count;
 
 	BOUT_BEGIN(this);
@@ -3015,6 +3034,7 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 		Item* item_=SlotEnabledCachePid[i];
 		Bout << item_->ACC_CRITTER.Slot;
 		Bout << item_->GetProtoId();
+		Bout.Push((char*)&item_->Data.LightIntensity,7); // Only light
 	}
 	Bout << slots_data_count;
 	for(BYTE i=0;i<slots_data_count;i++)
@@ -3031,16 +3051,30 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 	for(BYTE i=0;i<slots_data_count;i++) if(SlotEnabledCacheData[i]->PLexems) Send_ItemLexems(SlotEnabledCacheData[i]);
 }
 
-void Client::Send_ItemData(Critter* from_cr, BYTE slot, Item* item)
+void Client::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool full)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 
-	BOUT_BEGIN(this);
-	Bout << NETMSG_CRITTER_ITEM_DATA;
-	Bout << from_cr->GetId();
-	Bout << slot;
-	Bout.Push((char*)&item->Data,sizeof(item->Data));
-	BOUT_END(this);
+	if(full)
+	{
+		// Send full item data
+		BOUT_BEGIN(this);
+		Bout << NETMSG_CRITTER_ITEM_DATA;
+		Bout << from_cr->GetId();
+		Bout << slot;
+		Bout.Push((char*)&item->Data,sizeof(item->Data));
+		BOUT_END(this);
+	}
+	else
+	{
+		// Send only light
+		BOUT_BEGIN(this);
+		Bout << NETMSG_CRITTER_ITEM_DATA_HALF;
+		Bout << from_cr->GetId();
+		Bout << slot;
+		Bout.Push((char*)&item->Data.LightIntensity,7);
+		BOUT_END(this);
+	}
 }
 
 void Client::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play)

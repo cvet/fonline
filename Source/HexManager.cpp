@@ -124,6 +124,7 @@ HexManager::HexManager()
 	cursorX=0;
 	cursorY=0;
 	ZeroMemory((void*)&AutoScroll,sizeof(AutoScroll));
+	requestRebuildLight=false;
 	lightPointsCount=0;
 	SpritesCanDrawMap=false;
 	dayTime[0]=300; dayTime[1]=600;  dayTime[2]=1140; dayTime[3]=1380;
@@ -341,12 +342,7 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 			item->SetEffects(&spr);
 		}
 
-		if(item->IsLight()) RebuildLight();
-		else if(!item->IsLightThru())
-		{
-			CritterCl* chosen=GetChosen();
-			if(chosen && CheckDist(chosen->GetHexX(),chosen->GetHexY(),item->GetHexX(),item->GetHexY(),4)) RebuildLight();
-		}
+		if(item->IsLight() || !item->IsLightThru()) RebuildLight();
 	}
 
 	return true;
@@ -371,7 +367,7 @@ void HexManager::ChangeItem(DWORD id, const Item::ItemData& data)
 	}
 
 	CritterCl* chosen=GetChosen();
-	if(item->IsLight() || (chosen && CheckDist(chosen->GetHexX(),chosen->GetHexY(),item->GetHexX(),item->GetHexY(),4))) RebuildLight();
+	if(item->IsLight() || FLAG(old_data.Flags,ITEM_LIGHT_THRU)!=FLAG(data.Flags,ITEM_LIGHT_THRU)) RebuildLight();
 	GetField(item->GetHexX(),item->GetHexY()).ProcessCache();
 }
 
@@ -407,12 +403,7 @@ ItemHexVecIt HexManager::DeleteItem(ItemHex* item, bool with_delete /* = true */
 	if(it!=hexItems.end()) it=hexItems.erase(it);
 	GetField(hx,hy).EraseItem(item);
 
-	if(item->IsLight()) RebuildLight();
-	else if(!item->IsLightThru())
-	{
-		CritterCl* chosen=GetChosen();
-		if(chosen && CheckDist(chosen->GetHexX(),chosen->GetHexY(),item->GetHexX(),item->GetHexY(),4)) RebuildLight();
-	}
+	if(item->IsLight() || !item->IsLightThru()) RebuildLight();
 
 	if(with_delete) item->Release();
 	return it;
@@ -722,7 +713,8 @@ void HexManager::RebuildMap(int rx, int ry)
 	}
 
 	// Light
-	RebuildLight();
+	RealRebuildLight();
+	requestRebuildLight=false;
 
 	// Tiles, roof
 	RebuildTiles();
@@ -1203,7 +1195,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 	}
 }
 
-void HexManager::RebuildLight()
+void HexManager::RealRebuildLight()
 {
 	lightPointsCount=0;
 	lightSoftPoints.clear();
@@ -1224,22 +1216,6 @@ void HexManager::RebuildLight()
 	//		(int)ls.HexY<LightMinHy-(int)ls.Radius || (int)ls.HexY>LightMaxHy+(int)ls.Radius) continue;
 		ParseLightTriangleFan(ls);
 	}
-
-#ifdef FONLINE_CLIENT
-	// Chosen light
-	CritterCl* chosen=GetChosen();
-	if(chosen && chosen->Visible) ParseLightTriangleFan(LightSource(chosen->GetHexX(),chosen->GetHexY(),0,4,MAX_LIGHT_VALUE/4,0));
-
-	/*for(CritMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
-	{
-		CritterCl* cr=(*it).second;
-		if(cr->IsChosen())
-		{
-			if(cr->Visible) ParseLightTriangleFan(LightSource(cr->GetHexX(),cr->GetHexY(),0,4,MAX_LIGHT_VALUE/4,0));
-			break;
-		}
-	}*/
-#endif // FONLINE_CLIENT
 }
 
 void HexManager::CollectLightSources()
@@ -1249,18 +1225,63 @@ void HexManager::CollectLightSources()
 #ifdef FONLINE_MAPPER
 	if(!CurProtoMap) return;
 
-	for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+	for(MapObjectPtrVecIt it=CurProtoMap->MObjects.begin(),end=CurProtoMap->MObjects.end();it!=end;++it)
 	{
-		MapObject* o=CurProtoMap->MObjects[i];
-		if(o->LightIntensity && !(o->MapObjType==MAP_OBJECT_ITEM && o->MItem.InContainer))
+		MapObject* o=*it;
+		if(o->MapObjType==MAP_OBJECT_CRITTER || !o->LightIntensity) continue;
+
+		bool allow_light=false;
+		if(o->MapObjType==MAP_OBJECT_ITEM && o->MItem.InContainer && o->MItem.ItemSlot!=SLOT_INV)
+		{
+			for(MapObjectPtrVecIt it_=CurProtoMap->MObjects.begin(),end_=CurProtoMap->MObjects.end();it_!=end_;++it_)
+			{
+				MapObject* oo=*it_;
+				if(oo->MapObjType==MAP_OBJECT_CRITTER && oo->MapX==o->MapX && oo->MapY==o->MapY)
+				{
+					allow_light=true;
+					break;
+				}
+			}
+		}
+		else if(o->LightIntensity && !(o->MapObjType==MAP_OBJECT_ITEM && o->MItem.InContainer))
+		{
+			allow_light=true;
+		}
+
+		if(allow_light)
 			lightSources.push_back(LightSource(o->MapX,o->MapY,o->LightRGB,o->LightRadius,o->LightIntensity,o->LightDirOff|((o->LightDay&3)<<6)));
 	}
 #else
+	if(!IsMapLoaded()) return;
+
+	// Scenery
 	lightSources=lightSourcesScen;
+
+	// Items on ground
 	for(ItemHexVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
 		ItemHex* item=(*it);
 		if(item->IsItem() && item->IsLight()) lightSources.push_back(LightSource(item->GetHexX(),item->GetHexY(),item->LightGetColor(),item->LightGetRadius(),item->LightGetIntensity(),item->LightGetFlags()));
+	}
+
+	// Items in critters slots
+	for(CritMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
+	{
+		CritterCl* cr=(*it).second;
+		bool added=false;
+		for(ItemPtrMapIt it_=cr->InvItems.begin(),end_=cr->InvItems.end();it_!=end_;++it_)
+		{
+			Item* item=(*it_).second;
+			if(item->IsLight() && item->ACC_CRITTER.Slot!=SLOT_INV)
+			{
+				lightSources.push_back(LightSource(cr->GetHexX(),cr->GetHexY(),item->LightGetColor(),item->LightGetRadius(),item->LightGetIntensity(),item->LightGetFlags()));
+				added=true;
+			}
+		}
+
+		// Default chosen light
+		if(cr->IsChosen() && !added)
+			lightSources.push_back(LightSource(cr->GetHexX(),cr->GetHexY(),0,4,MAX_LIGHT_VALUE/4,0));
 	}
 #endif
 }
@@ -1606,6 +1627,13 @@ void HexManager::GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y)
 
 void HexManager::DrawMap()
 {
+	// Rebuild light
+	if(requestRebuildLight)
+	{
+		RealRebuildLight();
+		requestRebuildLight=false;
+	}
+
 	// Tiles
 	if(OptShowTile) sprMngr->DrawPrepared(tileVB,tilePrepSurf,tileCntPrep);
 	sprMngr->DrawTreeCntr(mainTree,false,false,0,0);
@@ -2010,7 +2038,7 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 		cr->HexY=hy;
 		SetCrit(cr);
 
-		if(cr->IsChosen() && cr->Visible) RebuildLight();
+		if(cr->IsChosen() || cr->IsHaveLightSources()) RebuildLight();
 		return true;
 	}
 
@@ -2055,7 +2083,7 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 	GetField(old_hx,old_hy).Crit=NULL;
 	f.Crit=cr;
 
-	if(cr->IsChosen() && cr->Visible) RebuildLight();
+	if(cr->IsChosen() || cr->IsHaveLightSources()) RebuildLight();
 	if(cr->SprDrawValid)  cr->SprDraw->Unvalidate();
 
 	if(GetHexToDraw(hx,hy) && cr->Visible)

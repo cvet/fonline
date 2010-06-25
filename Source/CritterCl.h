@@ -200,6 +200,7 @@ public:
 	int GetFreeWeight();
 	int GetFreeVolume();
 	Item* GetRadio();
+	bool IsHaveLightSources();
 
 	// Moving
 	bool IsRunning;

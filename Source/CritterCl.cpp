@@ -1478,6 +1478,16 @@ Item* CritterCl::GetRadio()
 	return NULL;
 }
 
+bool CritterCl::IsHaveLightSources()
+{
+	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	{
+		Item* item=(*it).second;
+		if(item->IsLight()) return true;
+	}
+	return false;
+}
+
 DWORD CritterCl::GetCrType()
 {
 	return BaseType;

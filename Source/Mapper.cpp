@@ -1255,6 +1255,8 @@ void FOMapper::MainLoop()
 				{
 					cr->MoveSteps.clear();
 				}
+
+				HexMngr.RebuildLight();
 			}
 		}
 
@@ -1800,6 +1802,8 @@ void FOMapper::ObjKeyDown(BYTE dik)
 	if(ConsoleEdit) return;
 	if(SelectedObj.empty()) return;
 
+	HexMngr.RebuildLight();
+
 	if(IntMode==INT_MODE_INCONT && InContObject)
 	{
 		ObjKeyDownA(InContObject,dik);
@@ -1821,7 +1825,6 @@ void FOMapper::ObjKeyDown(BYTE dik)
 			else if(SelectedObj[i].IsNpc()) HexMngr.AffectCritter(o2,SelectedObj[i].MapNpc);
 		}
 	}
-	HexMngr.RebuildLight();
 }
 
 void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
@@ -2332,6 +2335,7 @@ void FOMapper::IntLMouseDown()
 					SelectedObj[0].MapNpc->DefItemSlotMain.Init(pitem_main?pitem_main:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
 					SelectedObj[0].MapNpc->AnimateStay();
 				}
+				HexMngr.RebuildLight();
 			}
 		}
 		else if(IntMode==INT_MODE_LIST)
