@@ -3837,8 +3837,8 @@ void FOServer::AddClientSaveData(Client* cl)
 
 	ClientSaveData& csd=ClientsSaveData[ClientsSaveDataCount];
 	csd.Id=cl->GetId();
-	StringCopy(csd.Name,cl->Name);
-	StringCopy(csd.Password,cl->Pass);
+	memcpy(csd.Name,cl->Name,sizeof(csd.Name));
+	memcpy(csd.Password,cl->Pass,sizeof(csd.Password));
 	memcpy(&csd.Data,&cl->Data,sizeof(cl->Data));
 	memcpy(&csd.DataExt,cl->GetDataExt(),sizeof(CritDataExt));
 	csd.TimeEvents=cl->CrTimeEvents;

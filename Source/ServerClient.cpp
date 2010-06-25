@@ -1329,12 +1329,15 @@ void FOServer::Process_CreateClient(Client* cl)
 	}
 
 	// Name
-	cl->Bin.Pop(cl->Name,MAX_NAME);
-	cl->Name[MAX_NAME]=0;
+	char name[MAX_NAME+1];
+	cl->Bin.Pop(name,MAX_NAME);
+	name[MAX_NAME]=0;
+	StringCopy(cl->Name,name);
 
 	// Password
-	cl->Bin.Pop(cl->Pass,MAX_NAME);
-	cl->Pass[MAX_NAME]=0;
+	cl->Bin.Pop(name,MAX_NAME);
+	name[MAX_NAME]=0;
+	StringCopy(cl->Pass,name);
 
 	// Receive params
 	WORD params_count=0;
@@ -1568,11 +1571,14 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	cl->Bin >> uid[4];
 
 	// Login, password
-	cl->Bin.Pop(cl->Name,MAX_NAME);
-	cl->Name[MAX_NAME]='\0';
+	char name[MAX_NAME+1];
+	cl->Bin.Pop(name,MAX_NAME);
+	name[MAX_NAME]=0;
+	StringCopy(cl->Name,name);
 	cl->Bin >> uid[1];
-	cl->Bin.Pop(cl->Pass,MAX_NAME);
-	cl->Pass[MAX_NAME]='\0';
+	cl->Bin.Pop(name,MAX_NAME);
+	name[MAX_NAME]=0;
+	StringCopy(cl->Pass,name);
 
 	// Bin hashes
 	DWORD msg_language;
