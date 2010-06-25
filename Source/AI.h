@@ -179,9 +179,8 @@ extern NpcAIMngr AIMngr;
 #define REASON_TARGET_DISAPPEARED   (39)
 #define REASON_USE_ITEM_NOT_FOUND   (40)
 #define REASON_GAG_CRITTER          (41)
-#define REASON_GAG_DOOR             (42)
-#define REASON_GAG_ITEM             (43)
-#define REASON_NO_UNARMED           (44)
+#define REASON_GAG_ITEM             (42)
+#define REASON_NO_UNARMED           (43)
 	// Run
 #define REASON_ATTACK_TARGET        (50)
 #define REASON_ATTACK_WEAPON        (51)

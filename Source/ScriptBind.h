@@ -79,10 +79,12 @@
 	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTExplode",offsetof(ProtoItem,Armor.DTExplode))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Armor_Perk",offsetof(ProtoItem,Armor.Perk))<0) BIND_ERROR;
 
+	// Door
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockMove",offsetof(ProtoItem,Door.NoBlockMove))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockShoot",offsetof(ProtoItem,Door.NoBlockShoot))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockLight",offsetof(ProtoItem,Door.NoBlockLight))<0) BIND_ERROR;
+
 	// Container
-//	if(engine->RegisterObjectProperty("ProtoItem","const uint ContSize",offsetof(ProtoItem,Container.Size))<0) BIND_ERROR;
-//	if(engine->RegisterObjectProperty("ProtoItem","const int ContCannotPickUp",offsetof(ProtoItem,Container.CannotPickUp))<0) BIND_ERROR;
-//	if(engine->RegisterObjectProperty("ProtoItem","const int ContMagicHandsGrnd",offsetof(ProtoItem,Container.MagicHandsGrnd))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const bool Container_IsChangeble",offsetof(ProtoItem,Container.Changeble))<0) BIND_ERROR;
 
 	// Weapon
@@ -353,6 +355,8 @@
 //	if(engine->RegisterObjectMethod("Item","void set_WeaponAmmoCount(uint16 val)",asFUNCTION(BIND_CLASS Item_set_WeaponAmmoCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","uint16 get_WeaponAmmoCount() const",asFUNCTION(BIND_CLASS Item_get_WeaponAmmoCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	// Locker
+	if(engine->RegisterObjectMethod("Item","bool LockerOpen()",asFUNCTION(BIND_CLASS Item_LockerOpen),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Item","bool LockerClose()",asFUNCTION(BIND_CLASS Item_LockerClose),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint LockerId",offsetof(Item,Data.Locker.DoorId))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_LockerId(uint val)",asFUNCTION(BIND_CLASS Item_set_LockerId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","uint get_LockerId() const",asFUNCTION(BIND_CLASS Item_get_LockerId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -668,8 +672,6 @@
 	if(engine->RegisterObjectMethod("Map","void SetTextMsg(uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum, string& lexems)",asFUNCTION(BIND_CLASS Map_SetTextMsgLex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void RunEffect(uint16 effectPid, uint16 hexX, uint16 hexY, uint16 radius)",asFUNCTION(BIND_CLASS Map_RunEffect),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void RunFlyEffect(uint16 effectPid, Critter@+ fromCr, Critter@+ toCr, uint16 fromX, uint16 fromY, uint16 toX, uint16 toY)",asFUNCTION(BIND_CLASS Map_RunFlyEffect),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Map","bool OpenDoor(Item& door)",asFUNCTION(BIND_CLASS Map_OpenDoor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Map","bool CloseDoor(Item& door)",asFUNCTION(BIND_CLASS Map_CloseDoor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool CheckPlaceForCar(uint16 hexX, uint16 hexY, uint16 protoCar) const",asFUNCTION(BIND_CLASS Map_CheckPlaceForCar),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void BlockHex(uint16 hexX, uint16 hexY, bool full)",asFUNCTION(BIND_CLASS Map_BlockHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void UnblockHex(uint16 hexX, uint16 hexY)",asFUNCTION(BIND_CLASS Map_UnblockHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

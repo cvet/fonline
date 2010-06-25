@@ -215,6 +215,8 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static void Item_Update(Item* item);
 		static void Item_Animate(Item* item, BYTE from_frm, BYTE to_frm);
 		static void Item_SetLexems(Item* item, CScriptString* lexems);
+		static bool Item_LockerOpen(Item* item);
+		static bool Item_LockerClose(Item* item);
 		static bool Item_IsCar(Item* item);
 		static Item* Item_CarGetBag(Item* item, int num_bag);
 
@@ -522,8 +524,6 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static void Map_SetTextMsgLex(Map* map, WORD hex_x, WORD hex_y, DWORD color, WORD text_msg, DWORD str_num, CScriptString& lexems);
 		static void Map_RunEffect(Map* map, WORD eff_pid, WORD hx, WORD hy, DWORD radius);
 		static void Map_RunFlyEffect(Map* map, WORD eff_pid, Critter* from_cr, Critter* to_cr, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
-		static bool Map_OpenDoor(Map* map, Item* door);
-		static bool Map_CloseDoor(Map* map, Item* door);
 		static bool Map_CheckPlaceForCar(Map* map, WORD hx, WORD hy, WORD pid);
 		static void Map_BlockHex(Map* map, WORD hx, WORD hy, bool full);
 		static void Map_UnblockHex(Map* map, WORD hx, WORD hy);

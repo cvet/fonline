@@ -97,7 +97,6 @@ struct PathFindData
 	bool CheckGagItems;
 	Critter* TraceCr;
 	Critter* GagCritter;
-	Item* GagDoor;
 	Item* GagItem;
 
 	void Clear(){ZeroMemory(this,sizeof(PathFindData));MoveParams=0xFFFF;}

@@ -1514,6 +1514,7 @@ typedef vector<FixDrawComponent*> FixDrawComponentVec;
 	bool IsTurnBasedMyTurn(){return IsTurnBased && Timer::FastTick()<TurnBasedTime && Chosen && Chosen->GetAllAp()>0;}
 	DWORD GetTurnBasedMyTime(){return TurnBasedTime-Timer::FastTick();}
 
+	bool RebuildLookBorders;
 	bool DrawLookBorders,DrawShootBorders;
 	PointVec LookBorders,ShootBorders;
 	void LookBordersPrepare();

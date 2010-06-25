@@ -66,6 +66,12 @@ void Item::Init(ProtoItem* proto)
 		if(IsHolodisk()) Data.Holodisk.Number=Random(1,42);
 #endif
 		break;
+	case ITEM_TYPE_DOOR:
+		SETFLAG(Data.Flags,ITEM_GAG);
+		if(!Proto->Door.NoBlockMove) UNSETFLAG(Data.Flags,ITEM_NO_BLOCK);
+		if(!Proto->Door.NoBlockShoot) UNSETFLAG(Data.Flags,ITEM_SHOOT_THRU);
+		if(!Proto->Door.NoBlockLight) UNSETFLAG(Data.Flags,ITEM_LIGHT_THRU);
+		break;
 	default:
 		break;
 	}

@@ -373,6 +373,9 @@ public:
 		{
 			DWORD WalkThru;
 			bool IsNoOpen;
+			bool NoBlockMove;
+			bool NoBlockShoot;
+			bool NoBlockLight;
 		} Door;
 
 		struct
@@ -409,7 +412,6 @@ public:
 	bool IsGeneric(){return Type==ITEM_TYPE_GENERIC;}
 	bool IsCar(){return Type==ITEM_TYPE_MISC_EX && MiscEx.IsCar;}
 
-	bool LockerIsNoOpen(){if(IsDoor()) return Door.IsNoOpen; if(IsContainer()) return Container.IsNoOpen; return false;}
 	bool LockerIsChangeble(){if(IsDoor()) return true; if(IsContainer()) return Container.Changeble!=0; return false;}
 	bool IsCanPickUp(){return FLAG(Flags,ITEM_CAN_PICKUP);}
 	bool IsGrouped(){return IsDrug() || IsAmmo() || IsMisc() || (IsWeapon() && WeapIsGrouped());}
@@ -741,12 +743,7 @@ public:
 	DWORD LockerDoorId(){return Data.Locker.DoorId;}
 	bool LockerIsOpen(){return FLAG(Data.Locker.Condition,LOCKER_ISOPEN);}
 	bool LockerIsClose(){return !LockerIsOpen();}
-	bool LockerIsNeedKey(){return Data.Locker.DoorId && !FLAG(Data.Locker.Condition,LOCKER_BROKEN);}
-	bool LockerIsLock(){return LockerIsClose() && LockerIsNeedKey();}
-	bool LockerIsNoOpen(){return Proto->LockerIsNoOpen() || FLAG(Data.Locker.Condition,LOCKER_NOOPEN);}
 	bool LockerIsChangeble(){return Proto->LockerIsChangeble();}
-	void LockerToOpen(){SETFLAG(Data.Locker.Condition,LOCKER_ISOPEN);}
-	void LockerToClose(){UNSETFLAG(Data.Locker.Condition,LOCKER_ISOPEN);}
 	int LockerComplexity(){return Data.Locker.Complexity;}
 
 	// Ammo

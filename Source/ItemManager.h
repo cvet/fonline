@@ -65,7 +65,7 @@ private:
 
 public:
 	void SaveAllItemsFile(void(*save_func)(void*,size_t));
-	bool LoadAllItemsFile(FILE* f);
+	bool LoadAllItemsFile(FILE* f, int version);
 	bool CheckProtoFunctions();
 	void RunInitScriptItems();
 

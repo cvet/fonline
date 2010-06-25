@@ -143,7 +143,6 @@ public:
 	bool IsHexPassed(WORD hx, WORD hy);
 	bool IsHexRaked(WORD hx, WORD hy);
 	bool IsHexItem(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_ITEM);}
-	bool IsHexDoor(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_DOOR);}
 	bool IsHexTrigger(WORD hx, WORD hy){return FLAG(Proto->HexFlags[hy*GetMaxHexX()+hx],FH_TRIGGER);}
 	bool IsHexTrap(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_WALK_ITEM);}
 	bool IsHexCritter(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_CRITTER|FH_DEAD_CRITTER);}

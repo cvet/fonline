@@ -803,7 +803,7 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 	}
 }
 
-bool ItemManager::LoadAllItemsFile(FILE* f)
+bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 {
 	WriteLog("Load items...");
 
@@ -853,6 +853,18 @@ bool ItemManager::LoadAllItemsFile(FILE* f)
 		item->ACC_BUFFER.Buffer[1]=acc1;
 		item->Data=data;
 		if(lexems[0]) item->SetLexems(lexems);
+
+		if(version==WORLD_SAVE_V6 && item->IsDoor())
+		{
+			bool is_open=FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
+			if(is_open || item->Proto->Door.NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+			else UNSETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+			if(is_open || item->Proto->Door.NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+			else UNSETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+			if(is_open || item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+			else UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+			SETFLAG(item->Data.Flags,ITEM_GAG);
+		}
 	}
 	if(errors) return false;
 

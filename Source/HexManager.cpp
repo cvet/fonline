@@ -82,12 +82,6 @@ void Field::ProcessCache()
 			if(pid==SP_WALL_BLOCK || pid==SP_WALL_BLOCK_LIGHT) IsWall=true;
 			else if(pid==SP_GRID_EXITGRID) IsExitGrid=true;
 		}
-		if(item->IsDoor() && item->LockerIsClose())
-		{
-			IsNotPassed=true;
-			IsNotRaked=true;
-			IsNoLight=true;
-		}
 		if(!item->IsPassed()) IsNotPassed=true;
 		if(!item->IsRaked()) IsNotRaked=true;
 		if(pid==SP_MISC_SCRBLOCK) ScrollBlock=true;

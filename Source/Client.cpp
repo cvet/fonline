@@ -298,6 +298,7 @@ bool FOClient::Init(HWND hwnd)
 	ScreenMirrorTexture=NULL;
 	ScreenMirrorEndTick=0;
 	ScreenMirrorStart=false;
+	RebuildLookBorders=false;
 	DrawLookBorders=false;
 	DrawShootBorders=false;
 	LookBorders.clear();
@@ -563,6 +564,11 @@ void FOClient::LookBordersPrepare()
 
 void FOClient::LookBordersDraw()
 {
+	if(RebuildLookBorders)
+	{
+		LookBordersPrepare();
+		RebuildLookBorders=false;
+	}
 	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,true);
 	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,true);
 }
@@ -1059,8 +1065,8 @@ label_TryChangeLang:
 					}
 				case DIK_F: if(GetActiveScreen()==SCREEN__FIX_BOY) {TryExit(); continue;} break;
 				case DIK_I: if(GetActiveScreen()==SCREEN__INVENTORY) {TryExit(); continue;} break;
-				case DIK_Q: DrawLookBorders=!DrawLookBorders; LookBordersPrepare(); break;
-				case DIK_W: DrawShootBorders=!DrawShootBorders; LookBordersPrepare(); break;
+				case DIK_Q: DrawLookBorders=!DrawLookBorders; RebuildLookBorders=true; break;
+				case DIK_W: DrawShootBorders=!DrawShootBorders; RebuildLookBorders=true; break;
 				default: break;
 				}
 			}
@@ -4642,7 +4648,7 @@ void FOClient::Net_OnCritterXY()
 			//SetAction(CHOSEN_NONE);
 			MoveDirs.clear();
 			Chosen->MoveSteps.clear();
-			LookBordersPrepare();
+			RebuildLookBorders=true;
 		}
 	}
 
@@ -4680,6 +4686,9 @@ void FOClient::Net_OnChosenParams()
 
 	// Animate
 	if(!Chosen->IsAnim()) Chosen->AnimateStay();
+
+	// Refresh borders
+	RebuildLookBorders=true;
 
 	WriteLog("Complete.\n");
 }
@@ -4825,6 +4834,7 @@ void FOClient::Net_OnChosenParam()
 	}
 
 	if(IsScreenPresent(SCREEN__CHARACTER)) ChaPrepareSwitch();
+	RebuildLookBorders=true; // Maybe changed some parameter influencing on look borders
 }
 
 void FOClient::Net_OnChosenClearItems()
@@ -4880,7 +4890,7 @@ void FOClient::Net_OnChosenAddItem()
 		Script::RunPrepared();
 	}
 
-	if(slot==SLOT_HAND1) LookBordersPrepare();
+	if(slot==SLOT_HAND1) RebuildLookBorders=true;
 	if(item->IsHidden()) Chosen->EraseItem(item,true);
 	CollectContItems();
 }
@@ -4951,6 +4961,9 @@ void FOClient::Net_OnAddItemOnMap()
 		Script::SetArgObject(item);
 		Script::RunPrepared();
 	}
+
+	// Refresh borders
+	if(item && !item->IsRaked()) RebuildLookBorders=true;
 }
 
 void FOClient::Net_OnChangeItemOnMap()
@@ -4960,9 +4973,11 @@ void FOClient::Net_OnChangeItemOnMap()
 	Bin >> item_id;
 	Bin.Pop((char*)&data,sizeof(data));
 
+	Item* item=HexMngr.GetItemById(item_id);
+	bool is_raked=(item && item->IsRaked());
+
 	HexMngr.ChangeItem(item_id,data);
 
-	Item* item=HexMngr.GetItemById(item_id);
 	if(item && Script::PrepareContext(ClientFunctions.ItemMapChanged,CALL_FUNC_STR,"Game"))
 	{
 		Item* prev_state=new Item(*item);
@@ -4973,6 +4988,9 @@ void FOClient::Net_OnChangeItemOnMap()
 		Script::RunPrepared();
 		prev_state->Release();
 	}
+
+	// Refresh borders
+	if(item && is_raked!=item->IsRaked()) RebuildLookBorders=true;
 }
 
 void FOClient::Net_OnEraseItemFromMap()
@@ -4985,11 +5003,14 @@ void FOClient::Net_OnEraseItemFromMap()
 	HexMngr.FinishItem(item_id,is_deleted);
 
 	Item* item=HexMngr.GetItemById(item_id);
-	if(Script::PrepareContext(ClientFunctions.ItemMapOut,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapOut,CALL_FUNC_STR,"Game"))
 	{
 		Script::SetArgObject(item);
 		Script::RunPrepared();
 	}
+
+	// Refresh borders
+	if(item && !item->IsRaked()) RebuildLookBorders=true;
 }
 
 void FOClient::Net_OnAnimateItem()
@@ -5427,6 +5448,8 @@ void FOClient::Net_OnLoadMap()
 	HexMngr.SetWeather(map_time,map_rain);
 	SetDayTime(true);
 	Net_SendLoadMapOk();
+	LookBorders.clear();
+	ShootBorders.clear();
 	if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(pid_map));
 	else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(pid_map)));
 	WriteLog("Local map loaded.\n");
@@ -7202,7 +7225,7 @@ label_EndMove:
 				}
 				Chosen->ApRegenerationTick=0;
 				HexMngr.SetCursorPos(CurX,CurY,Keyb::CtrlDwn,true);
-				LookBordersPrepare();
+				RebuildLookBorders=true;
 			}
 
 			// Send about move
@@ -7492,7 +7515,7 @@ label_EndMove:
 					CollectContItems();
 				}
 
-				if(to_slot==SLOT_HAND1 || from_slot==SLOT_HAND1) LookBordersPrepare();
+				if(to_slot==SLOT_HAND1 || from_slot==SLOT_HAND1) RebuildLookBorders=true;
 
 				Net_SendChangeItem(ap_cost,item_id,from_slot,to_slot,item_count);
 				Chosen->SubAp(ap_cost);

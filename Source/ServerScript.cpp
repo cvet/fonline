@@ -576,6 +576,81 @@ void FOServer::SScriptFunc::Item_SetLexems(Item* item, CScriptString* lexems)
 	}
 }
 
+bool FOServer::SScriptFunc::Item_LockerOpen(Item* item)
+{
+	if(item->IsNotValid) SCRIPT_ERROR_R0("Door arg nullptr.");
+	if(!item->IsHasLocker()) SCRIPT_ERROR_R0("Door item is no have locker.");
+	if(!item->LockerIsChangeble()) SCRIPT_ERROR_R0("Door is not changeble.");
+	if(item->LockerIsOpen()) return true;
+	SETFLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
+	if(item->IsDoor())
+	{
+		bool recache_block=false;
+		bool recache_shoot=false;
+		if(!item->Proto->Door.NoBlockMove)
+		{
+			SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+			recache_block=true;
+		}
+		if(!item->Proto->Door.NoBlockShoot)
+		{
+			SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+			recache_shoot=true;
+		}
+		if(!item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+
+		if(item->Accessory==ITEM_ACCESSORY_HEX && (recache_block || recache_shoot))
+		{
+			Map* map=MapMngr.GetMap(item->ACC_HEX.MapId);
+			if(map)
+			{
+				if(recache_block && recache_shoot) map->RecacheHexBlockShoot(item->ACC_HEX.HexX,item->ACC_HEX.HexY);
+				else if(recache_block) map->RecacheHexBlock(item->ACC_HEX.HexX,item->ACC_HEX.HexY);
+				else if(recache_shoot) map->RecacheHexShoot(item->ACC_HEX.HexX,item->ACC_HEX.HexY);
+			}
+		}
+	}
+	ItemMngr.NotifyChangeItem(item);
+	return true;
+}
+
+bool FOServer::SScriptFunc::Item_LockerClose(Item* item)
+{
+	if(item->IsNotValid) SCRIPT_ERROR_R0("Door arg nullptr.");
+	if(!item->IsHasLocker()) SCRIPT_ERROR_R0("Door item is no have locker.");
+	if(!item->LockerIsChangeble()) SCRIPT_ERROR_R0("Door is not changeble.");
+	if(item->LockerIsClose()) return true;
+	UNSETFLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
+	if(item->IsDoor())
+	{
+		bool recache_block=false;
+		bool recache_shoot=false;
+		if(!item->Proto->Door.NoBlockMove)
+		{
+			UNSETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+			recache_block=true;
+		}
+		if(!item->Proto->Door.NoBlockShoot)
+		{
+			UNSETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+			recache_shoot=true;
+		}
+		if(!item->Proto->Door.NoBlockLight) UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+
+		if(item->Accessory==ITEM_ACCESSORY_HEX && (recache_block || recache_shoot))
+		{
+			Map* map=MapMngr.GetMap(item->ACC_HEX.MapId);
+			if(map)
+			{
+				if(recache_block) map->SetHexFlag(item->ACC_HEX.HexX,item->ACC_HEX.HexY,FH_BLOCK_ITEM);
+				if(recache_shoot) map->SetHexFlag(item->ACC_HEX.HexX,item->ACC_HEX.HexY,FH_NRAKE_ITEM);
+			}
+		}
+	}
+	ItemMngr.NotifyChangeItem(item);
+	return true;
+}
+
 bool FOServer::SScriptFunc::Item_IsCar(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
@@ -3144,30 +3219,6 @@ void FOServer::SScriptFunc::Map_RunFlyEffect(Map* map, WORD eff_pid, Critter* fr
 	DWORD from_crid=(from_cr?from_cr->GetId():0);
 	DWORD to_crid=(to_cr?to_cr->GetId():0);
 	map->SendFlyEffect(eff_pid,from_crid,to_crid,from_hx,from_hy,to_hx,to_hy);
-}
-
-bool FOServer::SScriptFunc::Map_OpenDoor(Map* map, Item* door)
-{
-	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	if(door->IsNotValid) SCRIPT_ERROR_R0("Door arg nullptr.");
-	if(!door->IsHasLocker()) SCRIPT_ERROR_R0("Door item is no have locker.");
-	if(!door->LockerIsChangeble()) SCRIPT_ERROR_R0("Door is not changeble.");
-	if(door->LockerIsOpen()) return true;
-	door->LockerToOpen();
-	ItemMngr.NotifyChangeItem(door);
-	return true;
-}
-
-bool FOServer::SScriptFunc::Map_CloseDoor(Map* map, Item* door)
-{
-	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	if(door->IsNotValid) SCRIPT_ERROR_R0("Door arg nullptr.");
-	if(!door->IsHasLocker()) SCRIPT_ERROR_R0("Door item is no have locker.");
-	if(!door->LockerIsChangeble()) SCRIPT_ERROR_R0("Door is not changeble.");
-	if(door->LockerIsClose()) return true;
-	door->LockerToClose();
-	ItemMngr.NotifyChangeItem(door);
-	return true;
 }
 
 bool FOServer::SScriptFunc::Map_CheckPlaceForCar(Map* map, WORD hx, WORD hy, WORD pid)

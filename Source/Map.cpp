@@ -275,6 +275,12 @@ bool Map::Generate()
 			item->Data.Locker.DoorId=mobj.MItem.LockerDoorId;
 			item->Data.Locker.Condition=mobj.MItem.LockerCondition;
 			item->Data.Locker.Complexity=mobj.MItem.LockerComplexity;
+			if(FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN))
+			{
+				if(!item->Proto->Door.NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+				if(!item->Proto->Door.NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+				if(!item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+			}
 			break;
 		case ITEM_TYPE_CONTAINER:
 			item->Data.Locker.DoorId=mobj.MItem.LockerDoorId;
@@ -604,14 +610,11 @@ void Map::SetItem(Item* item, WORD hx, WORD hy)
 	HexItems.push_back(item);
 	SetHexFlag(hx,hy,FH_ITEM);
 
-	if(item->GetType()==ITEM_TYPE_DOOR) SetHexFlag(hx,hy,FH_DOOR);
-	else
-	{
-		if(!item->IsPassed()) SetHexFlag(hx,hy,FH_BLOCK_ITEM);
-		if(!item->IsRaked()) SetHexFlag(hx,hy,FH_NRAKE_ITEM);
-		if(item->IsGag()) SetHexFlag(hx,hy,FH_GAG_ITEM);
-		if(item->IsCar()) PlaceCarBlocks(hx,hy,item->Proto);
-	}
+	if(!item->IsPassed()) SetHexFlag(hx,hy,FH_BLOCK_ITEM);
+	if(!item->IsRaked()) SetHexFlag(hx,hy,FH_NRAKE_ITEM);
+	if(item->IsGag()) SetHexFlag(hx,hy,FH_GAG_ITEM);
+	if(item->IsCar()) PlaceCarBlocks(hx,hy,item->Proto);
+
 	if(item->FuncId[ITEM_EVENT_WALK]>0) SetHexFlag(hx,hy,FH_WALK_ITEM);
 	if(item->IsGeck()) MapLocation->GeckCount++;
 }
@@ -643,14 +646,10 @@ void Map::EraseItem(DWORD item_id, bool send_all)
 	item->Accessory=0xd1;
 
 	if(item->IsGeck()) MapLocation->GeckCount--;
-	if(item->IsDoor()) UnSetHexFlag(hx,hy,FH_DOOR);
-	else
-	{
-		if(!item->IsPassed() && !item->IsRaked()) RecacheHexBlockShoot(hx,hy);
-		else if(!item->IsPassed()) RecacheHexBlock(hx,hy);
-		else if(!item->IsRaked()) RecacheHexShoot(hx,hy);
-		if(item->IsCar()) ReplaceCarBlocks(hx,hy,item->Proto);
-	}
+	if(!item->IsPassed() && !item->IsRaked()) RecacheHexBlockShoot(hx,hy);
+	else if(!item->IsPassed()) RecacheHexBlock(hx,hy);
+	else if(!item->IsRaked()) RecacheHexShoot(hx,hy);
+	if(item->IsCar()) ReplaceCarBlocks(hx,hy,item->Proto);
 
 	if(send_all)
 	{
@@ -912,21 +911,11 @@ void Map::UnSetHexFlag(WORD hx, WORD hy, BYTE flag)
 
 bool Map::IsHexPassed(WORD hx, WORD hy)
 {
-	if(IsHexDoor(hx,hy))
-	{
-		Item* door=GetItemDoor(hx,hy);
-		if(door && door->LockerIsClose()) return false;
-	}
 	return !FLAG(GetHexFlags(hx,hy),FH_NOWAY);
 }
 
 bool Map::IsHexRaked(WORD hx, WORD hy)
 {
-	if(IsHexDoor(hx,hy))
-	{
-		Item* door=GetItemDoor(hx,hy);
-		if(door && door->LockerIsClose()) return false;
-	}
 	return !FLAG(GetHexFlags(hx,hy),FH_NOSHOOT);
 }
 

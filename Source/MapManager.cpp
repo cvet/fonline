@@ -2087,15 +2087,6 @@ label_FindOk:
 			break;
 		}
 
-		if(map->IsHexDoor(ps.HexX,ps.HexY))
-		{
-			Item* door=map->GetItemDoor(ps.HexX,ps.HexY);
-			if(!door || door->LockerIsOpen()) continue;
-			pfd.GagDoor=door;
-			path.resize(i);
-			break;
-		}
-
 		if(check_gag_items && map->IsHexGag(ps.HexX,ps.HexY))
 		{
 			Item* item=map->GetItemGag(ps.HexX,ps.HexY);
@@ -2118,7 +2109,7 @@ label_FindOk:
 		for(int i=0,j=path.size();i<j;i++)
 		{
 			PathStep& ps=path[i];
-			if(map->IsHexDoor(ps.HexX,ps.HexY))
+			if(map->IsHexGag(ps.HexX,ps.HexY))
 			{
 				trace_seq[i+2-2]+=1;
 				trace_seq[i+2-1]+=2;
@@ -2156,11 +2147,11 @@ label_FindOk:
 			}
 		}
 
-		if(!trace_ok && !pfd.GagDoor && !pfd.GagCritter) return FPATH_TRACE_FAIL;
+		if(!trace_ok && !pfd.GagItem && !pfd.GagCritter) return FPATH_TRACE_FAIL;
 label_TraceOk:
 		if(trace_ok)
 		{
-			pfd.GagDoor=NULL;
+			pfd.GagItem=NULL;
 			pfd.GagCritter=NULL;
 		}
 	}

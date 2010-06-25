@@ -225,13 +225,6 @@ void FOServer::ProcessAI(Npc* npc)
 				return;
 			}
 
-			if(pfd.GagDoor)
-			{
-				plane->IsMove=false;
-				npc->NextPlane(REASON_GAG_DOOR,NULL,pfd.GagDoor);
-				return;
-			}
-
 			if(pfd.GagItem)
 			{
 				plane->IsMove=false;
@@ -752,7 +745,7 @@ void FOServer::ProcessAI(Npc* npc)
 			bool is_run=plane->Pick.IsRun;
 
 			Item* item=map->GetItemHex(hx,hy,pid,NULL); // Cheat
-			if(!item ||  (item->IsDoor() && (to_open?item->LockerIsOpen():item->LockerIsClose())))
+			if(!item || (item->IsDoor() && (to_open?item->LockerIsOpen():item->LockerIsClose())))
 			{
 				npc->NextPlane(REASON_SUCCESS);
 				break;

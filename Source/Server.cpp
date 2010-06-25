@@ -3763,7 +3763,8 @@ bool FOServer::LoadWorld()
 
 	DWORD version=0;
 	fread(&version,sizeof(version),1,f);
-	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 && version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6)
+	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 &&
+		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7)
 	{
 		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
@@ -3777,13 +3778,13 @@ bool FOServer::LoadWorld()
 	}
 	if(!MapMngr.LoadAllLocationsAndMapsFile(f)) return false;
 	if(!CrMngr.LoadCrittersFile(f)) return false;
-	if(!ItemMngr.LoadAllItemsFile(f)) return false;
+	if(!ItemMngr.LoadAllItemsFile(f,version)) return false;
 	if(!VarMngr.LoadVarsDataFile(f)) return false;
 	LoadHoloInfoFile(f);
 	LoadAnyDataFile(f);
 	LoadTimeEventsFile(f);
 	LoadGameInfoFile(f,version);
-	if(version>=WORLD_SAVE_V3) LoadScriptFunctionsFile(f);
+	LoadScriptFunctionsFile(f);
 	DWORD version_=0;
 	fread(&version_,sizeof(version_),1,f);
 	if(version!=version_)
