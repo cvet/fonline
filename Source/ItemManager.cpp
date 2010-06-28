@@ -884,6 +884,8 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 		item->Data=data;
 		if(lexems[0]) item->SetLexems(lexems);
 
+		AddItemStatistics(pid,item->GetCount());
+
 		if(version==WORLD_SAVE_V6 && item->IsDoor())
 		{
 			bool is_open=FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
