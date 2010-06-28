@@ -2934,6 +2934,8 @@ void FOMapper::SelectAdd(MapObject* mobj)
 		}
 		else if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
 		{
+			if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer) return;
+
 			ItemHex* item=HexMngr.GetItemById(mobj->RunTime.MapObjId);
 			if(item)
 			{
@@ -2959,6 +2961,8 @@ void FOMapper::SelectErase(MapObject* mobj)
 {
 	if(mobj->RunTime.FromMap==CurProtoMap)
 	{
+		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer) return;
+
 		for(size_t i=0,j=SelectedObj.size();i<j;i++)
 		{
 			SelMapObj& sobj=SelectedObj[i];
@@ -4624,6 +4628,20 @@ void FOMapper::SScriptFunc::Global_SelectObjects(asIScriptArray& objects, bool s
 			else Self->SelectErase(mobj);
 		}
 	}
+}
+
+MapObject* FOMapper::SScriptFunc::Global_GetSelectedObject()
+{
+	return Self->SelectedObj.size()?Self->SelectedObj[0].MapObj:NULL;
+}
+
+DWORD FOMapper::SScriptFunc::Global_GetSelectedObjects(asIScriptArray* objects)
+{
+	MapObjectPtrVec objects_;
+	objects_.reserve(Self->SelectedObj.size());
+	for(size_t i=0,j=Self->SelectedObj.size();i<j;i++) objects_.push_back(Self->SelectedObj[i].MapObj);
+	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
+	return objects_.size();
 }
 
 CScriptString* FOMapper::SScriptFunc::Global_GetLastError()

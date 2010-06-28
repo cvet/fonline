@@ -1387,6 +1387,8 @@
 	if(engine->RegisterGlobalFunction("void DeleteObjects(MapperObject@[]& objects)",asFUNCTION(BIND_CLASS Global_DeleteObjects),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SelectObject(MapperObject@+ obj, bool set)",asFUNCTION(BIND_CLASS Global_SelectObject),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SelectObjects(MapperObject@[]& objects, bool set)",asFUNCTION(BIND_CLASS Global_SelectObjects),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("MapperObject@+ GetSelectedObject() const",asFUNCTION(BIND_CLASS Global_GetSelectedObject),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetSelectedObjects(MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS Global_GetSelectedObjects),asCALL_CDECL)<0) BIND_ERROR;
 #endif
 
 #if /*defined(BIND_CLIENT) || */defined(BIND_MAPPER)

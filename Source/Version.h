@@ -3,10 +3,10 @@
 
 #define SERVER_VERSION              0x00000321 // server_0321
 #define CLIENT_VERSION              0x00000225 // client_0225
-#define MAPPER_VERSION              0x00000090 // mapper_0090
+#define MAPPER_VERSION              0x00000091 // mapper_0091
 #define SINGLE_VERSION              0x00000001 // single_0001
 
-#define MAPPER_VERSION_STR          "v.1.21.12"
+#define MAPPER_VERSION_STR          "v.1.21.13"
 #define OBJECT_EDITOR_VERSION_STR   "v.2.12.1"
 
 #define MAJORNO 0

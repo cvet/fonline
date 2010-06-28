@@ -410,6 +410,8 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static void Global_DeleteObjects(asIScriptArray& objects);
 		static void Global_SelectObject(MapObject* mobj, bool set);
 		static void Global_SelectObjects(asIScriptArray& objects, bool set);
+		static MapObject* Global_GetSelectedObject();
+		static DWORD Global_GetSelectedObjects(asIScriptArray* objects);
 		static ProtoItem* Global_GetProtoItem(WORD proto_id);
 		static bool Global_LoadDat(CScriptString& dat_name);
 		static void Global_MoveScreen(WORD hx, WORD hy, DWORD speed);
