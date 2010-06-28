@@ -27,10 +27,10 @@ public:
 	BYTE Dir;
 	// BYTE[3]
 
-	DWORD LightRGB;
+	DWORD LightColor;
 	BYTE LightDay;
 	BYTE LightDirOff;
-	BYTE LightRadius;
+	BYTE LightDistance;
 	char LightIntensity;
 
 	char ScriptName[MAPOBJ_SCRIPT_NAME+1];

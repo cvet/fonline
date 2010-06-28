@@ -30,11 +30,10 @@
 	if(engine->RegisterObjectMethod("ProtoItem","bool Container_IsGroundLevel() const",asMETHOD(ProtoItem,Container_IsGroundLevel),asCALL_THISCALL)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectProperty("ProtoItem","const uint Flags",offsetof(ProtoItem,Flags))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 LightType",offsetof(ProtoItem,LightType))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 DistanceLight",offsetof(ProtoItem,DistanceLight))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint IntensityLight",offsetof(ProtoItem,IntensityLight))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 TransType",offsetof(ProtoItem,TransType))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 TransVal",offsetof(ProtoItem,TransVal))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Corner",offsetof(ProtoItem,Corner))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 LightDistance",offsetof(ProtoItem,LightDistance))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint LightIntensity",offsetof(ProtoItem,LightIntensity))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint LightColor",offsetof(ProtoItem,LightColor))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint Weight",offsetof(ProtoItem,Weight))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Volume",offsetof(ProtoItem,Volume))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint PicMap",offsetof(ProtoItem,PicMapHash))<0) BIND_ERROR;
@@ -329,9 +328,9 @@
 	if(engine->RegisterObjectProperty("Item","int8 LightIntensity",offsetof(Item,Data.LightIntensity))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_LightIntensity(int8 val)",asFUNCTION(BIND_CLASS Item_set_LightIntensity),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","int8 get_LightIntensity() const",asFUNCTION(BIND_CLASS Item_get_LightIntensity),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("Item","uint8 LightRadius",offsetof(Item,Data.LightRadius))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LightRadius(uint8 val)",asFUNCTION(BIND_CLASS Item_set_LightRadius),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_LightRadius() const",asFUNCTION(BIND_CLASS Item_get_LightRadius),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint8 LightDistance",offsetof(Item,Data.LightDistance))<0) BIND_ERROR;
+//	if(engine->RegisterObjectMethod("Item","void set_LightDistance(uint8 val)",asFUNCTION(BIND_CLASS Item_set_LightDistance),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+//	if(engine->RegisterObjectMethod("Item","uint8 get_LightDistance() const",asFUNCTION(BIND_CLASS Item_get_LightDistance),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 LightFlags",offsetof(Item,Data.LightFlags))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_LightFlags(uint8 val)",asFUNCTION(BIND_CLASS Item_set_LightFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","uint8 get_LightFlags() const",asFUNCTION(BIND_CLASS Item_get_LightFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -928,7 +927,7 @@
 	if(engine->RegisterObjectProperty("ItemCl","const int Val8",offsetof(Item,Data.ScriptValues[8]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const int Val9",offsetof(Item,Data.ScriptValues[9]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const int8 LightIntensity",offsetof(Item,Data.LightIntensity))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ItemCl","const uint8 LightRadius",offsetof(Item,Data.LightRadius))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint8 LightDistance",offsetof(Item,Data.LightDistance))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint8 LightFlags",offsetof(Item,Data.LightFlags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint LightColor",offsetof(Item,Data.LightColor))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const int16 TrapValue",offsetof(Item,Data.TrapValue))<0) BIND_ERROR;
@@ -1259,10 +1258,10 @@
 	if(engine->RegisterObjectProperty("MapperObject","const uint16 MapX",offsetof(MapObject,MapX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","const uint16 MapY",offsetof(MapObject,MapY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Dir",offsetof(MapObject,Dir))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint LightRGB",offsetof(MapObject,LightRGB))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint LightColor",offsetof(MapObject,LightColor))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 LightDay",offsetof(MapObject,LightDay))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 LightDirOff",offsetof(MapObject,LightDirOff))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 LightRadius",offsetof(MapObject,LightRadius))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 LightDistance",offsetof(MapObject,LightDistance))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int8 LightIntensity",offsetof(MapObject,LightIntensity))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int UserData0",offsetof(MapObject,UserData[0]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int UserData1",offsetof(MapObject,UserData[1]))<0) BIND_ERROR;

@@ -148,7 +148,7 @@ bool FOMapper::Init(HWND wnd)
 	// Prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("_item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("__item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
@@ -1681,8 +1681,8 @@ void FOMapper::ObjDraw()
 	DRAW_COMPONENT_TEXT("ScriptName",o->ScriptName,false);                              // 7
 	DRAW_COMPONENT_TEXT("FuncName",o->FuncName,false);                                  // 8
 	DRAW_COMPONENT("LightIntensity",o->LightIntensity,false,false);                     // 9
-	DRAW_COMPONENT("LightRadius",o->LightRadius,true,false);                            // 10
-	DRAW_COMPONENT("LightColor",o->LightRGB,true,false);                                // 11
+	DRAW_COMPONENT("LightDistance",o->LightDistance,true,false);                        // 10
+	DRAW_COMPONENT("LightColor",o->LightColor,true,false);                              // 11
 	DRAW_COMPONENT("LightDirOff",o->LightDirOff,true,false);                            // 12
 	DRAW_COMPONENT("LightDay",o->LightDay,true,false);                                  // 13
 
@@ -1862,8 +1862,8 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 	case 7: Keyb::GetChar(dik,o->ScriptName,NULL,MAPOBJ_SCRIPT_NAME,KIF_NO_SPEC_SYMBOLS); return;
 	case 8: Keyb::GetChar(dik,o->FuncName,NULL,MAPOBJ_SCRIPT_NAME,KIF_NO_SPEC_SYMBOLS); return;
 	case 9: val_c=&o->LightIntensity; break;
-	case 10: val_b=&o->LightRadius; break;
-	case 11: val_dw=&o->LightRGB; break;
+	case 10: val_b=&o->LightDistance; break;
+	case 11: val_dw=&o->LightColor; break;
 	case 12: val_b=&o->LightDirOff; break;
 	case 13: val_b=&o->LightDay; break;
 
@@ -3175,8 +3175,8 @@ void FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont)
 		mobj->ProtoId=pid;
 		mobj->MapX=hx;
 		mobj->MapY=hy;
-		mobj->LightRadius=proto_item->DistanceLight;
-		mobj->LightIntensity=(proto_item->IntensityLight<=100?proto_item->IntensityLight:50);
+		mobj->LightDistance=proto_item->LightDistance;
+		mobj->LightIntensity=proto_item->LightIntensity;
 		if(in_cont) mobj->MItem.InContainer=in_cont;
 		CurProtoMap->MObjects.push_back(mobj);
 
@@ -5014,26 +5014,22 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 
 	if(proto_item) // Copy from void ItemHex::SetEffects(Sprite* prep);
 	{
-		switch(proto_item->TransType)
+		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
 		{
-		case TRANS_EGG: break;
-		case TRANS_GLASS: spr.Effect=Sprite::Glass; break;
-		case TRANS_STEAM: spr.Effect=Sprite::Steam; break;
-		case TRANS_ENERGY: spr.Effect=Sprite::Energy; break;
-		case TRANS_RED: spr.Effect=Sprite::Red; break;
-		default: break;
+			spr.Alpha=((BYTE*)&proto_item->LightColor)+3;
+			spr.Color=proto_item->LightColor&0xFFFFFF;
 		}
 
-		if(is_flat || proto_item->TransType!=TRANS_EGG) spr.Egg=Sprite::EggNone;
+		if(is_flat || proto_item->DisableEgg) spr.Egg=Sprite::EggNone;
 		else
 		{
-			switch(proto_item->LightType)
+			switch(proto_item->Corner)
 			{
-			case LIGHT_SOUTH: spr.Egg=Sprite::EggXorY;
-			case LIGHT_NORTH: spr.Egg=Sprite::EggXandY;
-			case LIGHT_EAST_WEST:
-			case LIGHT_WEST: spr.Egg=Sprite::EggY;
-			default: spr.Egg=Sprite::EggX; // LIGHT_NORTH_SOUTH, LIGHT_EAST
+			case CORNER_SOUTH: spr.Egg=Sprite::EggXorY;
+			case CORNER_NORTH: spr.Egg=Sprite::EggXandY;
+			case CORNER_EAST_WEST:
+			case CORNER_WEST: spr.Egg=Sprite::EggY;
+			default: spr.Egg=Sprite::EggX; // CORNER_NORTH_SOUTH, CORNER_EAST
 			}
 		}
 

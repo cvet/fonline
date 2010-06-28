@@ -73,9 +73,10 @@ Sprite& Sprites::PutSprite(size_t index, DWORD map_pos, int x, int y, DWORD id, 
 	spr->ValidCallback=callback;
 	if(callback) *callback=true;
 	spr->Egg=Sprite::EggNone;
-	spr->Effect=Sprite::None;
 	spr->Contour=Sprite::ContourNone;
 	spr->ContourColor=0;
+	spr->Color=0;
+	spr->FlashMask=0;
 	return *spr;
 }
 
@@ -1687,12 +1688,14 @@ bool SpriteManager::DrawTreeCntr(Sprites& dtree, bool collect_contours, bool use
 		// Check borders
 		if(x/ZOOM>modeWidth || (x+si->Width)/ZOOM<0 || y/ZOOM>modeHeight || (y+si->Height)/ZOOM<0) continue;
 
-		// Set color
-		DWORD cur_color=baseColor;
-		if(spr->Alpha)
-		{
-			((BYTE*)&cur_color)[3]=*spr->Alpha;
-		}
+		// Base color
+		DWORD cur_color;
+		if(spr->Color)
+			cur_color=(spr->Color|0xFF000000);
+		else
+			cur_color=baseColor;
+
+		// Light
 		if(spr->Light)
 		{
 			int lr=*spr->Light;
@@ -1701,73 +1704,54 @@ bool SpriteManager::DrawTreeCntr(Sprites& dtree, bool collect_contours, bool use
 			BYTE& r=((BYTE*)&cur_color)[2];
 			BYTE& g=((BYTE*)&cur_color)[1];
 			BYTE& b=((BYTE*)&cur_color)[0];
-			int ir=int(r)+lr;
-			int ig=int(g)+lg;
-			int ib=int(b)+lb;
-			if(ir>255) ir=255;
-			if(ig>255) ig=255;
-			if(ib>255) ib=255;
+			int ir=(int)r+lr;
+			int ig=(int)g+lg;
+			int ib=(int)b+lb;
+			if(ir>0xFF) ir=0xFF;
+			if(ig>0xFF) ig=0xFF;
+			if(ib>0xFF) ib=0xFF;
 			r=ir;
 			g=ig;
 			b=ib;
 		}
 
-		// Process effects
-		if(spr->Effect)
+		// Alpha
+		if(spr->Alpha)
 		{
-			switch(spr->Effect)
+			((BYTE*)&cur_color)[3]=*spr->Alpha;
+		}
+
+		// Process flashing
+		if(spr->FlashMask)
+		{
+			static int cnt=0;
+			static DWORD tick=cur_tick+100;
+			static bool add=true;
+			if(cur_tick>=tick)
 			{
-			case Sprite::None:
-				break;
-			case Sprite::Steam:
+				cnt+=(add?10:-10);
+				if(cnt>40)
 				{
-					((BYTE*)&cur_color)[2]=255;
-					((BYTE*)&cur_color)[1]=255;
-					((BYTE*)&cur_color)[0]=255;
+					cnt=40;
+					add=false;
 				}
-				break;
-			case Sprite::Energy:
+				else if(cnt<-40)
 				{
-					((BYTE*)&cur_color)[2]=255;
-					((BYTE*)&cur_color)[1]=255;
-					((BYTE*)&cur_color)[0]=0;
+					cnt=-40;
+					add=true;
 				}
-				break;
-			case Sprite::Red:
-				{
-					((BYTE*)&cur_color)[2]=255;
-					((BYTE*)&cur_color)[1]=0;
-					((BYTE*)&cur_color)[0]=0;
-				}
-				break;
-			case Sprite::FlashRed:
-			case Sprite::FlashCustom:
-				{
-					static int cnt=0;
-					static DWORD tick=cur_tick+100;
-					static bool add=true;
-					if(cur_tick>=tick)
-					{
-						cnt+=(add?10:-10);
-						if(cnt>40) {cnt=40;add=false;}
-						else if(cnt<-40) {cnt=-40;add=true;}
-						tick=cur_tick+100;
-					}
-					int r=((spr->ContourColor>>16)&0xFF)+cnt;
-					int g=((spr->ContourColor>>8)&0xFF)+cnt;
-					int b=(spr->ContourColor&0xFF)+cnt;
-					r=CLAMP(r,0,0xFF);
-					g=CLAMP(g,0,0xFF);
-					b=CLAMP(b,0,0xFF);
-					((BYTE*)&cur_color)[2]=r;
-					((BYTE*)&cur_color)[1]=g;
-					((BYTE*)&cur_color)[0]=b;
-					if(spr->Effect==Sprite::FlashRed) cur_color&=0xFFFF0000;
-				}
-				break;
-			default:
-				break;
+				tick=cur_tick+100;
 			}
+			int r=((cur_color>>16)&0xFF)+cnt;
+			int g=((cur_color>>8)&0xFF)+cnt;
+			int b=(cur_color&0xFF)+cnt;
+			r=CLAMP(r,0,0xFF);
+			g=CLAMP(g,0,0xFF);
+			b=CLAMP(b,0,0xFF);
+			((BYTE*)&cur_color)[2]=r;
+			((BYTE*)&cur_color)[1]=g;
+			((BYTE*)&cur_color)[0]=b;
+			cur_color&=spr->FlashMask;
 		}
 
 		// 3d model
@@ -2198,12 +2182,13 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 			if(contour_id)
 			{
 				Sprite& contour_spr=spriteContours.AddSprite(0,spr->ScrX,spr->ScrY,contour_id,NULL,spr->OffsX,spr->OffsY,NULL,NULL,NULL);
-				if(spr->Contour==Sprite::ContourRed) contour_spr.Effect=Sprite::FlashRed;
-				else if(spr->Contour==Sprite::ContourYellow) contour_spr.Effect=Sprite::Energy;
+				contour_spr.Color=0xFFAFAFAF;
+				if(spr->Contour==Sprite::ContourRed) contour_spr.FlashMask=0xFFFF0000;
+				else if(spr->Contour==Sprite::ContourYellow) contour_spr.FlashMask=0xFFFFFF00;
 				else
 				{
-					contour_spr.Effect=Sprite::FlashCustom;
-					contour_spr.ContourColor=spr->ContourColor;
+					contour_spr.FlashMask=0xFFFFFFFF;
+					contour_spr.Color=spr->ContourColor;
 				}
 				return true;
 			}

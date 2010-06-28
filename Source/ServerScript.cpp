@@ -2743,6 +2743,7 @@ Item* FOServer::SScriptFunc::Map_AddItem(Map* map, WORD hx, WORD hy, WORD proto_
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
 	if(!proto_item) SCRIPT_ERROR_R0("Invalid proto id arg.");
 	if(proto_item->IsCar() && !map->IsPlaceForCar(hx,hy,proto_item)) SCRIPT_ERROR_R0("No place for car.");
+	if(!count) count=1;
 	return Self->CreateItemOnHex(map,hx,hy,proto_id,count);
 }
 

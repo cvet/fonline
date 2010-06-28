@@ -158,8 +158,6 @@ private: System::Windows::Forms::TextBox^  txtMisc2CarBlocks;
 private: System::Windows::Forms::Label^  label109;
 private: System::Windows::Forms::NumericUpDown^  numMisc2SV3;
 private: System::Windows::Forms::NumericUpDown^  numMisc2SV2;
-	private: System::Windows::Forms::RadioButton^  rbTransEgg;
-
 	private: System::Windows::Forms::Label^  label110;
 	private: System::Windows::Forms::TextBox^  txtMisc2CarBag2;
 	private: System::Windows::Forms::Label^  label112;
@@ -167,63 +165,21 @@ private: System::Windows::Forms::NumericUpDown^  numMisc2SV2;
 	private: System::Windows::Forms::Label^  label111;
 private: System::Windows::Forms::CheckBox^  cbContIsNoOpen;
 private: System::Windows::Forms::CheckBox^  cbDoorIsNoOpen;
-
-
-
-
-
-
-private: System::Windows::Forms::GroupBox^  groupBox6;
-
-private: System::Windows::Forms::NumericUpDown^  numAnimWaitRndMax;
-
-
-private: System::Windows::Forms::NumericUpDown^  numAnimWaitRndMin;
-
-private: System::Windows::Forms::Label^  label113;
-private: System::Windows::Forms::NumericUpDown^  numAnimWaitBase;
-
-
-private: System::Windows::Forms::CheckBox^  cbShowAnim;
 private: System::Windows::Forms::CheckBox^  cbWeapIsNeedAct;
 private: System::Windows::Forms::NumericUpDown^  nWeapTAdmgmax;
 private: System::Windows::Forms::NumericUpDown^  nWeapTAround;
 private: System::Windows::Forms::RadioButton^  rbMisc2CarWater;
 private: System::Windows::Forms::RadioButton^  rbMisc2CarGround;
-
-
 private: System::Windows::Forms::RadioButton^  rbMisc2CarFly;
-private: System::Windows::Forms::Label^  label74;
-private: System::Windows::Forms::Label^  label59;
-private: System::Windows::Forms::Label^  label45;
-private: System::Windows::Forms::NumericUpDown^  numHideAnim1;
-
-private: System::Windows::Forms::NumericUpDown^  numHideAnim0;
-
-private: System::Windows::Forms::NumericUpDown^  numShowAnim1;
-
-private: System::Windows::Forms::NumericUpDown^  numShowAnim0;
-
-private: System::Windows::Forms::NumericUpDown^  numStayAnim1;
-
-private: System::Windows::Forms::NumericUpDown^  numStayAnim0;
-
-private: System::Windows::Forms::CheckBox^  cbShowAnimExt;
-private: System::Windows::Forms::RadioButton^  rbTransRed;
 private: System::Windows::Forms::GroupBox^  groupBox7;
-
-
 private: System::Windows::Forms::CheckBox^  cbHasTimer;
 private: System::Windows::Forms::CheckBox^  cbBadItem;
 private: System::Windows::Forms::CheckBox^  checkBox1;
 private: System::Windows::Forms::NumericUpDown^  numDrawPosOffsY;
-
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarRunToBreak;
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarFuelTank;
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarCritCapacity;
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarWearConsumption;
-
-
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarNegotiability;
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarSpeed;
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarFuelConsumption;
@@ -234,43 +190,26 @@ private: System::Windows::Forms::Label^  label114;
 private: System::Windows::Forms::Label^  label101;
 private: System::Windows::Forms::Label^  label84;
 private: System::Windows::Forms::Label^  label11;
-private: System::Windows::Forms::GroupBox^  groupBox8;
-
 private: System::Windows::Forms::CheckBox^  cbAlwaysView;
 private: System::Windows::Forms::Label^  label103;
-
-
 private: System::Windows::Forms::CheckBox^  cbGekk;
 private: System::Windows::Forms::CheckBox^  cbWeapUnarmed;
-
 private: System::Windows::Forms::Label^  label119;
 private: System::Windows::Forms::Label^  label118;
 private: System::Windows::Forms::NumericUpDown^  numWeapMinLevel;
 private: System::Windows::Forms::NumericUpDown^  numWeapUnarmedTree;
-
 private: System::Windows::Forms::Label^  label120;
 private: System::Windows::Forms::NumericUpDown^  numWeapMinUnarmed;
 private: System::Windows::Forms::NumericUpDown^  numWeapUnarmedPriory;
 private: System::Windows::Forms::Label^  label121;
 private: System::Windows::Forms::NumericUpDown^  numWeapUnarmedCritBonus;
 private: System::Windows::Forms::CheckBox^  cbWeapArmorPiercing;
-private: System::Windows::Forms::RadioButton^  rbLightSouth;
-private: System::Windows::Forms::RadioButton^  rbLightEast;
-private: System::Windows::Forms::RadioButton^  rbLightNorth;
-private: System::Windows::Forms::RadioButton^  rbLightWest;
-private: System::Windows::Forms::RadioButton^  rbLightWestEast;
-private: System::Windows::Forms::RadioButton^  rbLightNorthSouth;
-private: System::Windows::Forms::Label^  label2;
-private: System::Windows::Forms::Label^  label3;
-private: System::Windows::Forms::TextBox^  txtScriptFunc;
-private: System::Windows::Forms::TextBox^  txtScriptModule;
 private: System::Windows::Forms::Label^  label10;
 private: System::Windows::Forms::NumericUpDown^  numMisc2CarEntire;
 private: System::Windows::Forms::TextBox^  textBox2;
 private: System::Windows::Forms::TextBox^  textBox1;
 private: System::Windows::Forms::Button^  bSaveList;
 private: System::Windows::Forms::Button^  bLoad;
-
 private: System::Windows::Forms::TabPage^  tDrug;
 private: System::Windows::Forms::ComboBox^  cmbLog;
 private: System::Windows::Forms::Label^  label32;
@@ -281,6 +220,62 @@ private: System::Windows::Forms::TextBox^  txtPicMap;
 private: System::Windows::Forms::TextBox^  txtWeapPApic;
 private: System::Windows::Forms::TextBox^  textBox3;
 private: System::Windows::Forms::TextBox^  txtWeapTApic;
+private: System::Windows::Forms::NumericUpDown^  numRed;
+private: System::Windows::Forms::Label^  label35;
+private: System::Windows::Forms::Label^  label34;
+private: System::Windows::Forms::Label^  label33;
+private: System::Windows::Forms::NumericUpDown^  numBlue;
+private: System::Windows::Forms::NumericUpDown^  numGreen;
+private: System::Windows::Forms::TabPage^  tabPage3;
+private: System::Windows::Forms::GroupBox^  groupBox8;
+private: System::Windows::Forms::Label^  label3;
+private: System::Windows::Forms::Label^  label2;
+private: System::Windows::Forms::TextBox^  txtScriptFunc;
+private: System::Windows::Forms::TextBox^  txtScriptModule;
+private: System::Windows::Forms::GroupBox^  groupBox6;
+private: System::Windows::Forms::Label^  label74;
+private: System::Windows::Forms::Label^  label59;
+private: System::Windows::Forms::Label^  label45;
+private: System::Windows::Forms::NumericUpDown^  numHideAnim1;
+private: System::Windows::Forms::NumericUpDown^  numHideAnim0;
+private: System::Windows::Forms::NumericUpDown^  numShowAnim1;
+private: System::Windows::Forms::NumericUpDown^  numShowAnim0;
+private: System::Windows::Forms::NumericUpDown^  numStayAnim1;
+private: System::Windows::Forms::NumericUpDown^  numStayAnim0;
+private: System::Windows::Forms::CheckBox^  cbShowAnimExt;
+private: System::Windows::Forms::NumericUpDown^  numAnimWaitRndMax;
+private: System::Windows::Forms::NumericUpDown^  numAnimWaitRndMin;
+private: System::Windows::Forms::Label^  label113;
+private: System::Windows::Forms::NumericUpDown^  numAnimWaitBase;
+private: System::Windows::Forms::CheckBox^  cbShowAnim;
+private: System::Windows::Forms::CheckBox^  cbNoHighlight;
+private: System::Windows::Forms::CheckBox^  cbCached;
+private: System::Windows::Forms::CheckBox^  cbGag;
+private: System::Windows::Forms::CheckBox^  cbNoSteal;
+private: System::Windows::Forms::CheckBox^  cbNoLoot;
+private: System::Windows::Forms::CheckBox^  cbTrap;
+private: System::Windows::Forms::CheckBox^  cbNoLightInfluence;
+private: System::Windows::Forms::GroupBox^  groupBox10;
+private: System::Windows::Forms::CheckBox^  cbDisableEgg;
+private: System::Windows::Forms::GroupBox^  groupBox11;
+private: System::Windows::Forms::CheckBox^  cbLight;
+private: System::Windows::Forms::CheckBox^  checkBox2;
+private: System::Windows::Forms::Label^  label36;
+private: System::Windows::Forms::RadioButton^  rbLightSouth;
+private: System::Windows::Forms::RadioButton^  rbLightEast;
+private: System::Windows::Forms::RadioButton^  rbLightNorth;
+private: System::Windows::Forms::RadioButton^  rbLightWest;
+private: System::Windows::Forms::RadioButton^  rbLightWestEast;
+private: System::Windows::Forms::RadioButton^  rbLightNorthSouth;
+private: System::Windows::Forms::CheckBox^  cbColorizing;
+private: System::Windows::Forms::CheckBox^  cbLightInverse;
+private: System::Windows::Forms::CheckBox^  cbLightGlobal;
+private: System::Windows::Forms::CheckBox^  cbDisableDir0;
+private: System::Windows::Forms::CheckBox^  cbDisableDir1;
+private: System::Windows::Forms::CheckBox^  cbDisableDir2;
+private: System::Windows::Forms::CheckBox^  cbDisableDir3;
+private: System::Windows::Forms::CheckBox^  cbDisableDir5;
+private: System::Windows::Forms::CheckBox^  cbDisableDir4;
 
 		 RichTextBox^ RtbIfaceLst;
 
@@ -309,9 +304,6 @@ private: System::Windows::Forms::TextBox^  txtWeapTApic;
 	private: System::Windows::Forms::RichTextBox^  txtInfo;
 	private: System::Windows::Forms::TextBox^  txtName;
 	private: System::Windows::Forms::Label^  label1;
-
-
-
 	private: System::Windows::Forms::Label^  label4;
 	private: System::Windows::Forms::Label^  label5;
 	private: System::Windows::Forms::Label^  label7;
@@ -319,14 +311,11 @@ private: System::Windows::Forms::TextBox^  txtWeapTApic;
 	private: System::Windows::Forms::GroupBox^  gmMoveFlags;
 	private: System::Windows::Forms::CheckBox^  cbNoBlock;
 	private: System::Windows::Forms::GroupBox^  gbAlpha;
-	private: System::Windows::Forms::RadioButton^  rbTransNone;
 	private: System::Windows::Forms::GroupBox^  gbActionFlags;
 	private: System::Windows::Forms::CheckBox^  cbCanUseOnSmtn;
 	private: System::Windows::Forms::CheckBox^  cbCanUse;
 	private: System::Windows::Forms::CheckBox^  cbCanPickUp;
-	private: System::Windows::Forms::NumericUpDown^  numTransAlpha;
-
-
+private: System::Windows::Forms::NumericUpDown^  numAlpha;
 	private: System::Windows::Forms::NumericUpDown^  nLightDist;
 	private: System::Windows::Forms::NumericUpDown^  nLightInt;
 	private: System::Windows::Forms::CheckBox^  cbHidden;
@@ -343,16 +332,12 @@ private: System::Windows::Forms::TextBox^  txtWeapTApic;
 	private: System::Windows::Forms::RadioButton^  rbPlastic;
 	private: System::Windows::Forms::RadioButton^  rbMetal;
 	private: System::Windows::Forms::RadioButton^  rbGlass;
-
-
 	private: System::Windows::Forms::NumericUpDown^  nArmTypeFemale;
 	private: System::Windows::Forms::NumericUpDown^  nArmTypeMale;
 	private: System::Windows::Forms::Label^  label19;
 	private: System::Windows::Forms::Label^  label18;
 	private: System::Windows::Forms::Label^  label14;
 	private: System::Windows::Forms::Label^  label12;
-
-
 	private: System::Windows::Forms::Label^  label6;
 	private: System::Windows::Forms::NumericUpDown^  nArmDRnorm;
 	private: System::Windows::Forms::NumericUpDown^  nArmPerk;
@@ -383,31 +368,11 @@ private: System::Windows::Forms::TextBox^  txtWeapTApic;
 	private: System::Windows::Forms::Label^  label30;
 	private: System::Windows::Forms::NumericUpDown^  nArmDTnorm;
 	private: System::Windows::Forms::Label^  label31;
-
-
 	private: System::Windows::Forms::NumericUpDown^  nContSize;
-
-
-
-
-
-
-
-
-
-
-
-
-
 	private: System::Windows::Forms::Label^  label46;
-
 	private: System::Windows::Forms::Label^  label44;
-
-
-
 	private: System::Windows::Forms::Label^  label40;
 private: System::Windows::Forms::TabControl^  txtWeapSApic;
-
 	private: System::Windows::Forms::TabPage^  tabPage11;
 	private: System::Windows::Forms::TabPage^  tabPage12;
 	private: System::Windows::Forms::TabPage^  tabPage13;
@@ -427,10 +392,6 @@ private: System::Windows::Forms::NumericUpDown^  nWeapPAEffect;
 	private: System::Windows::Forms::Label^  label61;
 	private: System::Windows::Forms::NumericUpDown^  nWeapPAround;
 	private: System::Windows::Forms::Label^  label60;
-
-
-
-
 	private: System::Windows::Forms::ComboBox^  cmbWeapPAtypeattack;
 	private: System::Windows::Forms::Label^  label58;
 	private: System::Windows::Forms::NumericUpDown^  nWeapPAskill;
@@ -450,10 +411,6 @@ private: System::Windows::Forms::NumericUpDown^  nWeapSAEffect;
 	private: System::Windows::Forms::Label^  label72;
 	private: System::Windows::Forms::NumericUpDown^  nWeapSAround;
 	private: System::Windows::Forms::Label^  label73;
-
-
-
-
 	private: System::Windows::Forms::ComboBox^  cmbWeapSAtypeattack;
 	private: System::Windows::Forms::Label^  label75;
 	private: System::Windows::Forms::NumericUpDown^  nWeapSAskill;
@@ -464,7 +421,6 @@ private: System::Windows::Forms::NumericUpDown^  nWeapTAEffect;
 	private: System::Windows::Forms::Label^  label77;
 	private: System::Windows::Forms::Label^  label78;
 	private: System::Windows::Forms::NumericUpDown^  nWeapTAdmgmin;
-
 	private: System::Windows::Forms::Label^  label79;
 	private: System::Windows::Forms::Label^  label80;
 	private: System::Windows::Forms::NumericUpDown^  nWeapTAanim2;
@@ -475,40 +431,24 @@ private: System::Windows::Forms::Label^  label41;
 private: System::Windows::Forms::Label^  label42;
 private: System::Windows::Forms::Label^  label43;
 	private: System::Windows::Forms::Label^  label82;
-
 	private: System::Windows::Forms::Label^  label83;
-
-
-
-
 	private: System::Windows::Forms::ComboBox^  cmbWeapTAtypeattack;
 	private: System::Windows::Forms::Label^  label85;
 	private: System::Windows::Forms::NumericUpDown^  nWeapTAskill;
 	private: System::Windows::Forms::Label^  label86;
 	private: System::Windows::Forms::CheckBox^  cbWeapTA;
 	private: System::Windows::Forms::NumericUpDown^  nWeapCrFail;
-
-
 	private: System::Windows::Forms::NumericUpDown^  nWeapCaliber;
 	private: System::Windows::Forms::NumericUpDown^  nWeapHolder;
-
-
 	private: System::Windows::Forms::NumericUpDown^  nWeapAnim1;
 	private: System::Windows::Forms::Label^  label89;
 	private: System::Windows::Forms::NumericUpDown^  nAmmoCaliber;
 	private: System::Windows::Forms::NumericUpDown^  nAmmoSCount;
-
 	private: System::Windows::Forms::Label^  label87;
 	private: System::Windows::Forms::Label^  label88;
 	private: System::Windows::Forms::Button^  bSave;
 	private: System::Windows::Forms::Label^  label90;
 	private: System::Windows::Forms::NumericUpDown^  nPid;
-
-
-
-
-
-
 	private: System::Windows::Forms::CheckBox^  cbWeapPA;
 	private: System::Windows::Forms::NumericUpDown^  nWeapPAtime;
 	private: System::Windows::Forms::Label^  label100;
@@ -516,28 +456,13 @@ private: System::Windows::Forms::Label^  label43;
 	private: System::Windows::Forms::Label^  label53;
 	private: System::Windows::Forms::NumericUpDown^  nWeapTAtime;
 	private: System::Windows::Forms::Label^  label54;
-
-
-
-
 private: System::Windows::Forms::Label^  label55;
 private: System::Windows::Forms::Label^  label91;
-
-
 private: System::Windows::Forms::CheckBox^  cbFix;
-
 private: System::Windows::Forms::ListBox^  lbList;
 private: System::Windows::Forms::TabPage^  tGeneric;
 private: System::Windows::Forms::Button^  bAdd;
-
-private: System::Windows::Forms::RadioButton^  rbTransEnergy;
-private: System::Windows::Forms::RadioButton^  rbTransSteam;
-private: System::Windows::Forms::RadioButton^  rbTransGlass;
-private: System::Windows::Forms::RadioButton^  rbTransWall;
 private: System::Windows::Forms::GroupBox^  groupBox1;
-
-private: System::Windows::Forms::CheckBox^  cbNoHighlight;
-private: System::Windows::Forms::CheckBox^  cbLight;
 private: System::Windows::Forms::Label^  label92;
 private: System::Windows::Forms::CheckBox^  cbBigGun;
 private: System::Windows::Forms::CheckBox^  cbTwoHands;
@@ -552,10 +477,8 @@ private: System::Windows::Forms::TabControl^  tabControl1;
 private: System::Windows::Forms::TabPage^  tabPage1;
 private: System::Windows::Forms::TabPage^  tabPage2;
 private: System::Windows::Forms::TabPage^  tMiscEx;
-
 private: System::Windows::Forms::CheckBox^  cbShowArmor;
 private: System::Windows::Forms::CheckBox^  cbShowMiscEx;
-
 private: System::Windows::Forms::CheckBox^  cbShowMisc;
 private: System::Windows::Forms::CheckBox^  cbShowAmmo;
 private: System::Windows::Forms::CheckBox^  cbShowWeapon;
@@ -565,10 +488,6 @@ private: System::Windows::Forms::CheckBox^  cbShowGrid;
 private: System::Windows::Forms::CheckBox^  cbShowDoor;
 private: System::Windows::Forms::CheckBox^  cbShowContainer;
 private: System::Windows::Forms::CheckBox^  cbShowKey;
-
-
-
-
 	private:
 		/// <summary>
 		/// Required designer variable.
@@ -657,6 +576,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label44 = (gcnew System::Windows::Forms::Label());
 			this->label46 = (gcnew System::Windows::Forms::Label());
 			this->tabPage11 = (gcnew System::Windows::Forms::TabPage());
+			this->txtWeapPApic = (gcnew System::Windows::Forms::TextBox());
 			this->label41 = (gcnew System::Windows::Forms::Label());
 			this->txtWeapPASoundId = (gcnew System::Windows::Forms::TextBox());
 			this->label104 = (gcnew System::Windows::Forms::Label());
@@ -683,6 +603,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label57 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapPA = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage12 = (gcnew System::Windows::Forms::TabPage());
+			this->textBox3 = (gcnew System::Windows::Forms::TextBox());
 			this->label42 = (gcnew System::Windows::Forms::Label());
 			this->txtWeapSASoundId = (gcnew System::Windows::Forms::TextBox());
 			this->label106 = (gcnew System::Windows::Forms::Label());
@@ -709,6 +630,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label76 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapSA = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage13 = (gcnew System::Windows::Forms::TabPage());
+			this->txtWeapTApic = (gcnew System::Windows::Forms::TextBox());
 			this->label43 = (gcnew System::Windows::Forms::Label());
 			this->txtWeapTASoundId = (gcnew System::Windows::Forms::TextBox());
 			this->label107 = (gcnew System::Windows::Forms::Label());
@@ -812,6 +734,8 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label7 = (gcnew System::Windows::Forms::Label());
 			this->label8 = (gcnew System::Windows::Forms::Label());
 			this->gmMoveFlags = (gcnew System::Windows::Forms::GroupBox());
+			this->cbCached = (gcnew System::Windows::Forms::CheckBox());
+			this->cbGag = (gcnew System::Windows::Forms::CheckBox());
 			this->cbBigGun = (gcnew System::Windows::Forms::CheckBox());
 			this->cbTwoHands = (gcnew System::Windows::Forms::CheckBox());
 			this->cbWallTransEnd = (gcnew System::Windows::Forms::CheckBox());
@@ -822,16 +746,21 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbHidden = (gcnew System::Windows::Forms::CheckBox());
 			this->cbFlat = (gcnew System::Windows::Forms::CheckBox());
 			this->gbAlpha = (gcnew System::Windows::Forms::GroupBox());
-			this->rbTransRed = (gcnew System::Windows::Forms::RadioButton());
+			this->cbColorizing = (gcnew System::Windows::Forms::CheckBox());
+			this->label35 = (gcnew System::Windows::Forms::Label());
+			this->label34 = (gcnew System::Windows::Forms::Label());
+			this->label33 = (gcnew System::Windows::Forms::Label());
+			this->numBlue = (gcnew System::Windows::Forms::NumericUpDown());
+			this->numGreen = (gcnew System::Windows::Forms::NumericUpDown());
+			this->numRed = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label110 = (gcnew System::Windows::Forms::Label());
-			this->rbTransEgg = (gcnew System::Windows::Forms::RadioButton());
-			this->rbTransEnergy = (gcnew System::Windows::Forms::RadioButton());
-			this->rbTransSteam = (gcnew System::Windows::Forms::RadioButton());
-			this->rbTransGlass = (gcnew System::Windows::Forms::RadioButton());
-			this->rbTransWall = (gcnew System::Windows::Forms::RadioButton());
-			this->numTransAlpha = (gcnew System::Windows::Forms::NumericUpDown());
-			this->rbTransNone = (gcnew System::Windows::Forms::RadioButton());
+			this->numAlpha = (gcnew System::Windows::Forms::NumericUpDown());
 			this->gbActionFlags = (gcnew System::Windows::Forms::GroupBox());
+			this->cbNoSteal = (gcnew System::Windows::Forms::CheckBox());
+			this->cbNoLoot = (gcnew System::Windows::Forms::CheckBox());
+			this->cbTrap = (gcnew System::Windows::Forms::CheckBox());
+			this->cbNoLightInfluence = (gcnew System::Windows::Forms::CheckBox());
+			this->cbNoHighlight = (gcnew System::Windows::Forms::CheckBox());
 			this->cbGekk = (gcnew System::Windows::Forms::CheckBox());
 			this->cbAlwaysView = (gcnew System::Windows::Forms::CheckBox());
 			this->cbBadItem = (gcnew System::Windows::Forms::CheckBox());
@@ -865,15 +794,15 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->lbList = (gcnew System::Windows::Forms::ListBox());
 			this->bAdd = (gcnew System::Windows::Forms::Button());
 			this->groupBox1 = (gcnew System::Windows::Forms::GroupBox());
-			this->rbLightSouth = (gcnew System::Windows::Forms::RadioButton());
-			this->rbLightEast = (gcnew System::Windows::Forms::RadioButton());
-			this->rbLightNorth = (gcnew System::Windows::Forms::RadioButton());
-			this->rbLightWest = (gcnew System::Windows::Forms::RadioButton());
-			this->rbLightWestEast = (gcnew System::Windows::Forms::RadioButton());
-			this->rbLightNorthSouth = (gcnew System::Windows::Forms::RadioButton());
-			this->cbNoHighlight = (gcnew System::Windows::Forms::CheckBox());
+			this->cbDisableDir4 = (gcnew System::Windows::Forms::CheckBox());
+			this->cbDisableDir5 = (gcnew System::Windows::Forms::CheckBox());
+			this->cbDisableDir3 = (gcnew System::Windows::Forms::CheckBox());
+			this->cbDisableDir2 = (gcnew System::Windows::Forms::CheckBox());
+			this->cbDisableDir1 = (gcnew System::Windows::Forms::CheckBox());
+			this->cbDisableDir0 = (gcnew System::Windows::Forms::CheckBox());
+			this->cbLightGlobal = (gcnew System::Windows::Forms::CheckBox());
+			this->cbLightInverse = (gcnew System::Windows::Forms::CheckBox());
 			this->cbLight = (gcnew System::Windows::Forms::CheckBox());
-			this->label92 = (gcnew System::Windows::Forms::Label());
 			this->groupBox2 = (gcnew System::Windows::Forms::GroupBox());
 			this->tabControl1 = (gcnew System::Windows::Forms::TabControl());
 			this->tabPage1 = (gcnew System::Windows::Forms::TabPage());
@@ -896,15 +825,27 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbShowDrug = (gcnew System::Windows::Forms::CheckBox());
 			this->cbShowArmor = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage2 = (gcnew System::Windows::Forms::TabPage());
+			this->groupBox11 = (gcnew System::Windows::Forms::GroupBox());
+			this->rbLightSouth = (gcnew System::Windows::Forms::RadioButton());
+			this->rbLightEast = (gcnew System::Windows::Forms::RadioButton());
+			this->rbLightNorth = (gcnew System::Windows::Forms::RadioButton());
+			this->rbLightWest = (gcnew System::Windows::Forms::RadioButton());
+			this->rbLightWestEast = (gcnew System::Windows::Forms::RadioButton());
+			this->rbLightNorthSouth = (gcnew System::Windows::Forms::RadioButton());
+			this->groupBox10 = (gcnew System::Windows::Forms::GroupBox());
+			this->cbDisableEgg = (gcnew System::Windows::Forms::CheckBox());
 			this->groupBox9 = (gcnew System::Windows::Forms::GroupBox());
 			this->numSlot = (gcnew System::Windows::Forms::NumericUpDown());
+			this->groupBox7 = (gcnew System::Windows::Forms::GroupBox());
+			this->numDrawPosOffsY = (gcnew System::Windows::Forms::NumericUpDown());
+			this->groupBox4 = (gcnew System::Windows::Forms::GroupBox());
+			this->txtSoundId = (gcnew System::Windows::Forms::TextBox());
+			this->tabPage3 = (gcnew System::Windows::Forms::TabPage());
 			this->groupBox8 = (gcnew System::Windows::Forms::GroupBox());
 			this->label3 = (gcnew System::Windows::Forms::Label());
 			this->label2 = (gcnew System::Windows::Forms::Label());
 			this->txtScriptFunc = (gcnew System::Windows::Forms::TextBox());
 			this->txtScriptModule = (gcnew System::Windows::Forms::TextBox());
-			this->groupBox7 = (gcnew System::Windows::Forms::GroupBox());
-			this->numDrawPosOffsY = (gcnew System::Windows::Forms::NumericUpDown());
 			this->groupBox6 = (gcnew System::Windows::Forms::GroupBox());
 			this->label74 = (gcnew System::Windows::Forms::Label());
 			this->label59 = (gcnew System::Windows::Forms::Label());
@@ -921,12 +862,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label113 = (gcnew System::Windows::Forms::Label());
 			this->numAnimWaitBase = (gcnew System::Windows::Forms::NumericUpDown());
 			this->cbShowAnim = (gcnew System::Windows::Forms::CheckBox());
-			this->groupBox4 = (gcnew System::Windows::Forms::GroupBox());
-			this->txtSoundId = (gcnew System::Windows::Forms::TextBox());
 			this->cmbLog = (gcnew System::Windows::Forms::ComboBox());
-			this->txtWeapPApic = (gcnew System::Windows::Forms::TextBox());
-			this->textBox3 = (gcnew System::Windows::Forms::TextBox());
-			this->txtWeapTApic = (gcnew System::Windows::Forms::TextBox());
 			this->tcType->SuspendLayout();
 			this->tArmor->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nArmDTexpl))->BeginInit();
@@ -1018,7 +954,10 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox3->SuspendLayout();
 			this->gmMoveFlags->SuspendLayout();
 			this->gbAlpha->SuspendLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numTransAlpha))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numBlue))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numGreen))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numRed))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAlpha))->BeginInit();
 			this->gbActionFlags->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nLightDist))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nLightInt))->BeginInit();
@@ -1032,11 +971,15 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabControl1->SuspendLayout();
 			this->tabPage1->SuspendLayout();
 			this->tabPage2->SuspendLayout();
+			this->groupBox11->SuspendLayout();
+			this->groupBox10->SuspendLayout();
 			this->groupBox9->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numSlot))->BeginInit();
-			this->groupBox8->SuspendLayout();
 			this->groupBox7->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawPosOffsY))->BeginInit();
+			this->groupBox4->SuspendLayout();
+			this->tabPage3->SuspendLayout();
+			this->groupBox8->SuspendLayout();
 			this->groupBox6->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numHideAnim1))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numHideAnim0))->BeginInit();
@@ -1047,7 +990,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMax))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMin))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitBase))->BeginInit();
-			this->groupBox4->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// tcType
@@ -1809,6 +1751,13 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage11->Text = L"Attack 1";
 			this->tabPage11->UseVisualStyleBackColor = true;
 			// 
+			// txtWeapPApic
+			// 
+			this->txtWeapPApic->Location = System::Drawing::Point(288, 21);
+			this->txtWeapPApic->Name = L"txtWeapPApic";
+			this->txtWeapPApic->Size = System::Drawing::Size(144, 20);
+			this->txtWeapPApic->TabIndex = 61;
+			// 
 			// label41
 			// 
 			this->label41->AutoSize = true;
@@ -2071,6 +2020,13 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage12->Text = L"Attack 2";
 			this->tabPage12->UseVisualStyleBackColor = true;
 			// 
+			// textBox3
+			// 
+			this->textBox3->Location = System::Drawing::Point(288, 21);
+			this->textBox3->Name = L"textBox3";
+			this->textBox3->Size = System::Drawing::Size(144, 20);
+			this->textBox3->TabIndex = 62;
+			// 
 			// label42
 			// 
 			this->label42->AutoSize = true;
@@ -2331,6 +2287,13 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage13->TabIndex = 2;
 			this->tabPage13->Text = L"Attack 3";
 			this->tabPage13->UseVisualStyleBackColor = true;
+			// 
+			// txtWeapTApic
+			// 
+			this->txtWeapTApic->Location = System::Drawing::Point(288, 21);
+			this->txtWeapTApic->Name = L"txtWeapTApic";
+			this->txtWeapTApic->Size = System::Drawing::Size(144, 20);
+			this->txtWeapTApic->TabIndex = 62;
 			// 
 			// label43
 			// 
@@ -3290,20 +3253,20 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// label4
 			// 
 			this->label4->AutoSize = true;
-			this->label4->Location = System::Drawing::Point(3, 44);
+			this->label4->Location = System::Drawing::Point(2, 84);
 			this->label4->Name = L"label4";
-			this->label4->Size = System::Drawing::Size(55, 13);
+			this->label4->Size = System::Drawing::Size(95, 13);
 			this->label4->TabIndex = 11;
-			this->label4->Text = L"Distantion";
+			this->label4->Text = L"Distantion (hexes)";
 			// 
 			// label5
 			// 
 			this->label5->AutoSize = true;
-			this->label5->Location = System::Drawing::Point(2, 80);
+			this->label5->Location = System::Drawing::Point(2, 44);
 			this->label5->Name = L"label5";
-			this->label5->Size = System::Drawing::Size(50, 13);
+			this->label5->Size = System::Drawing::Size(93, 13);
 			this->label5->TabIndex = 12;
-			this->label5->Text = L"Intensity";
+			this->label5->Text = L"Intensity (0..100)";
 			// 
 			// label7
 			// 
@@ -3325,6 +3288,8 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// gmMoveFlags
 			// 
+			this->gmMoveFlags->Controls->Add(this->cbCached);
+			this->gmMoveFlags->Controls->Add(this->cbGag);
 			this->gmMoveFlags->Controls->Add(this->cbBigGun);
 			this->gmMoveFlags->Controls->Add(this->cbTwoHands);
 			this->gmMoveFlags->Controls->Add(this->cbWallTransEnd);
@@ -3334,17 +3299,38 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->gmMoveFlags->Controls->Add(this->cbNoBlock);
 			this->gmMoveFlags->Controls->Add(this->cbHidden);
 			this->gmMoveFlags->Controls->Add(this->cbFlat);
-			this->gmMoveFlags->Location = System::Drawing::Point(305, 9);
+			this->gmMoveFlags->Location = System::Drawing::Point(304, 9);
 			this->gmMoveFlags->Name = L"gmMoveFlags";
-			this->gmMoveFlags->Size = System::Drawing::Size(107, 162);
+			this->gmMoveFlags->Size = System::Drawing::Size(119, 249);
 			this->gmMoveFlags->TabIndex = 23;
 			this->gmMoveFlags->TabStop = false;
 			this->gmMoveFlags->Text = L"Flags";
 			// 
+			// cbCached
+			// 
+			this->cbCached->AutoSize = true;
+			this->cbCached->Location = System::Drawing::Point(6, 219);
+			this->cbCached->Name = L"cbCached";
+			this->cbCached->Size = System::Drawing::Size(62, 17);
+			this->cbCached->TabIndex = 28;
+			this->cbCached->Text = L"Cached";
+			this->cbCached->UseVisualStyleBackColor = true;
+			this->cbCached->Visible = false;
+			// 
+			// cbGag
+			// 
+			this->cbGag->AutoSize = true;
+			this->cbGag->Location = System::Drawing::Point(6, 141);
+			this->cbGag->Name = L"cbGag";
+			this->cbGag->Size = System::Drawing::Size(45, 17);
+			this->cbGag->TabIndex = 27;
+			this->cbGag->Text = L"Gag";
+			this->cbGag->UseVisualStyleBackColor = true;
+			// 
 			// cbBigGun
 			// 
 			this->cbBigGun->AutoSize = true;
-			this->cbBigGun->Location = System::Drawing::Point(6, 142);
+			this->cbBigGun->Location = System::Drawing::Point(6, 126);
 			this->cbBigGun->Name = L"cbBigGun";
 			this->cbBigGun->Size = System::Drawing::Size(59, 17);
 			this->cbBigGun->TabIndex = 26;
@@ -3354,7 +3340,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// cbTwoHands
 			// 
 			this->cbTwoHands->AutoSize = true;
-			this->cbTwoHands->Location = System::Drawing::Point(6, 126);
+			this->cbTwoHands->Location = System::Drawing::Point(6, 111);
 			this->cbTwoHands->Name = L"cbTwoHands";
 			this->cbTwoHands->Size = System::Drawing::Size(76, 17);
 			this->cbTwoHands->TabIndex = 25;
@@ -3364,12 +3350,13 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// cbWallTransEnd
 			// 
 			this->cbWallTransEnd->AutoSize = true;
-			this->cbWallTransEnd->Location = System::Drawing::Point(6, 111);
+			this->cbWallTransEnd->Location = System::Drawing::Point(6, 203);
 			this->cbWallTransEnd->Name = L"cbWallTransEnd";
 			this->cbWallTransEnd->Size = System::Drawing::Size(91, 17);
 			this->cbWallTransEnd->TabIndex = 24;
 			this->cbWallTransEnd->Text = L"WallTransEnd";
 			this->cbWallTransEnd->UseVisualStyleBackColor = true;
+			this->cbWallTransEnd->Visible = false;
 			// 
 			// cbLightThru
 			// 
@@ -3406,9 +3393,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbNoBlock->AutoSize = true;
 			this->cbNoBlock->Location = System::Drawing::Point(6, 48);
 			this->cbNoBlock->Name = L"cbNoBlock";
-			this->cbNoBlock->Size = System::Drawing::Size(66, 17);
+			this->cbNoBlock->Size = System::Drawing::Size(63, 17);
 			this->cbNoBlock->TabIndex = 20;
-			this->cbNoBlock->Text = L"No Block";
+			this->cbNoBlock->Text = L"NoBlock";
 			this->cbNoBlock->UseVisualStyleBackColor = true;
 			// 
 			// cbHidden
@@ -3433,113 +3420,108 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// gbAlpha
 			// 
-			this->gbAlpha->Controls->Add(this->rbTransRed);
+			this->gbAlpha->Controls->Add(this->cbColorizing);
+			this->gbAlpha->Controls->Add(this->label35);
+			this->gbAlpha->Controls->Add(this->label34);
+			this->gbAlpha->Controls->Add(this->label33);
+			this->gbAlpha->Controls->Add(this->numBlue);
+			this->gbAlpha->Controls->Add(this->numGreen);
+			this->gbAlpha->Controls->Add(this->numRed);
 			this->gbAlpha->Controls->Add(this->label110);
-			this->gbAlpha->Controls->Add(this->rbTransEgg);
-			this->gbAlpha->Controls->Add(this->rbTransEnergy);
-			this->gbAlpha->Controls->Add(this->rbTransSteam);
-			this->gbAlpha->Controls->Add(this->rbTransGlass);
-			this->gbAlpha->Controls->Add(this->rbTransWall);
-			this->gbAlpha->Controls->Add(this->numTransAlpha);
-			this->gbAlpha->Controls->Add(this->rbTransNone);
-			this->gbAlpha->Location = System::Drawing::Point(418, 10);
+			this->gbAlpha->Controls->Add(this->numAlpha);
+			this->gbAlpha->Location = System::Drawing::Point(548, 9);
 			this->gbAlpha->Name = L"gbAlpha";
-			this->gbAlpha->Size = System::Drawing::Size(103, 161);
+			this->gbAlpha->Size = System::Drawing::Size(106, 138);
 			this->gbAlpha->TabIndex = 24;
 			this->gbAlpha->TabStop = false;
-			this->gbAlpha->Text = L"Transparent";
+			this->gbAlpha->Text = L"Color (0..255)";
 			// 
-			// rbTransRed
+			// cbColorizing
 			// 
-			this->rbTransRed->AutoSize = true;
-			this->rbTransRed->Location = System::Drawing::Point(6, 113);
-			this->rbTransRed->Name = L"rbTransRed";
-			this->rbTransRed->Size = System::Drawing::Size(44, 17);
-			this->rbTransRed->TabIndex = 12;
-			this->rbTransRed->Text = L"Red";
-			this->rbTransRed->UseVisualStyleBackColor = true;
+			this->cbColorizing->AutoSize = true;
+			this->cbColorizing->Location = System::Drawing::Point(8, 18);
+			this->cbColorizing->Name = L"cbColorizing";
+			this->cbColorizing->Size = System::Drawing::Size(64, 17);
+			this->cbColorizing->TabIndex = 30;
+			this->cbColorizing->Text = L"Colorize";
+			this->cbColorizing->UseVisualStyleBackColor = true;
+			// 
+			// label35
+			// 
+			this->label35->AutoSize = true;
+			this->label35->Location = System::Drawing::Point(8, 86);
+			this->label35->Name = L"label35";
+			this->label35->Size = System::Drawing::Size(27, 13);
+			this->label35->TabIndex = 17;
+			this->label35->Text = L"Blue";
+			// 
+			// label34
+			// 
+			this->label34->AutoSize = true;
+			this->label34->Location = System::Drawing::Point(7, 66);
+			this->label34->Name = L"label34";
+			this->label34->Size = System::Drawing::Size(36, 13);
+			this->label34->TabIndex = 16;
+			this->label34->Text = L"Green";
+			// 
+			// label33
+			// 
+			this->label33->AutoSize = true;
+			this->label33->Location = System::Drawing::Point(7, 47);
+			this->label33->Name = L"label33";
+			this->label33->Size = System::Drawing::Size(26, 13);
+			this->label33->TabIndex = 15;
+			this->label33->Text = L"Red";
+			// 
+			// numBlue
+			// 
+			this->numBlue->Location = System::Drawing::Point(47, 85);
+			this->numBlue->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {255, 0, 0, 0});
+			this->numBlue->Name = L"numBlue";
+			this->numBlue->Size = System::Drawing::Size(53, 20);
+			this->numBlue->TabIndex = 14;
+			// 
+			// numGreen
+			// 
+			this->numGreen->Location = System::Drawing::Point(47, 64);
+			this->numGreen->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {255, 0, 0, 0});
+			this->numGreen->Name = L"numGreen";
+			this->numGreen->Size = System::Drawing::Size(53, 20);
+			this->numGreen->TabIndex = 13;
+			// 
+			// numRed
+			// 
+			this->numRed->Location = System::Drawing::Point(47, 43);
+			this->numRed->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {255, 0, 0, 0});
+			this->numRed->Name = L"numRed";
+			this->numRed->Size = System::Drawing::Size(53, 20);
+			this->numRed->TabIndex = 12;
 			// 
 			// label110
 			// 
 			this->label110->AutoSize = true;
-			this->label110->Location = System::Drawing::Point(6, 133);
+			this->label110->Location = System::Drawing::Point(7, 106);
 			this->label110->Name = L"label110";
 			this->label110->Size = System::Drawing::Size(34, 13);
 			this->label110->TabIndex = 11;
 			this->label110->Text = L"Alpha";
 			// 
-			// rbTransEgg
+			// numAlpha
 			// 
-			this->rbTransEgg->AutoSize = true;
-			this->rbTransEgg->Checked = true;
-			this->rbTransEgg->Location = System::Drawing::Point(6, 15);
-			this->rbTransEgg->Name = L"rbTransEgg";
-			this->rbTransEgg->Size = System::Drawing::Size(43, 17);
-			this->rbTransEgg->TabIndex = 10;
-			this->rbTransEgg->TabStop = true;
-			this->rbTransEgg->Text = L"Egg";
-			this->rbTransEgg->UseVisualStyleBackColor = true;
-			// 
-			// rbTransEnergy
-			// 
-			this->rbTransEnergy->AutoSize = true;
-			this->rbTransEnergy->Location = System::Drawing::Point(6, 98);
-			this->rbTransEnergy->Name = L"rbTransEnergy";
-			this->rbTransEnergy->Size = System::Drawing::Size(59, 17);
-			this->rbTransEnergy->TabIndex = 8;
-			this->rbTransEnergy->Text = L"Energy";
-			this->rbTransEnergy->UseVisualStyleBackColor = true;
-			// 
-			// rbTransSteam
-			// 
-			this->rbTransSteam->AutoSize = true;
-			this->rbTransSteam->Location = System::Drawing::Point(6, 82);
-			this->rbTransSteam->Name = L"rbTransSteam";
-			this->rbTransSteam->Size = System::Drawing::Size(55, 17);
-			this->rbTransSteam->TabIndex = 7;
-			this->rbTransSteam->Text = L"Steam";
-			this->rbTransSteam->UseVisualStyleBackColor = true;
-			// 
-			// rbTransGlass
-			// 
-			this->rbTransGlass->AutoSize = true;
-			this->rbTransGlass->Location = System::Drawing::Point(6, 65);
-			this->rbTransGlass->Name = L"rbTransGlass";
-			this->rbTransGlass->Size = System::Drawing::Size(50, 17);
-			this->rbTransGlass->TabIndex = 6;
-			this->rbTransGlass->Text = L"Glass";
-			this->rbTransGlass->UseVisualStyleBackColor = true;
-			// 
-			// rbTransWall
-			// 
-			this->rbTransWall->AutoSize = true;
-			this->rbTransWall->Location = System::Drawing::Point(6, 48);
-			this->rbTransWall->Name = L"rbTransWall";
-			this->rbTransWall->Size = System::Drawing::Size(45, 17);
-			this->rbTransWall->TabIndex = 5;
-			this->rbTransWall->Text = L"Wall";
-			this->rbTransWall->UseVisualStyleBackColor = true;
-			// 
-			// numTransAlpha
-			// 
-			this->numTransAlpha->Location = System::Drawing::Point(46, 131);
-			this->numTransAlpha->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {255, 0, 0, 0});
-			this->numTransAlpha->Name = L"numTransAlpha";
-			this->numTransAlpha->Size = System::Drawing::Size(53, 20);
-			this->numTransAlpha->TabIndex = 4;
-			// 
-			// rbTransNone
-			// 
-			this->rbTransNone->AutoSize = true;
-			this->rbTransNone->Location = System::Drawing::Point(6, 31);
-			this->rbTransNone->Name = L"rbTransNone";
-			this->rbTransNone->Size = System::Drawing::Size(50, 17);
-			this->rbTransNone->TabIndex = 0;
-			this->rbTransNone->Text = L"None";
-			this->rbTransNone->UseVisualStyleBackColor = true;
+			this->numAlpha->Location = System::Drawing::Point(47, 106);
+			this->numAlpha->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {255, 0, 0, 0});
+			this->numAlpha->Name = L"numAlpha";
+			this->numAlpha->Size = System::Drawing::Size(53, 20);
+			this->numAlpha->TabIndex = 4;
+			this->numAlpha->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) {255, 0, 0, 0});
 			// 
 			// gbActionFlags
 			// 
+			this->gbActionFlags->Controls->Add(this->cbNoSteal);
+			this->gbActionFlags->Controls->Add(this->cbNoLoot);
+			this->gbActionFlags->Controls->Add(this->cbTrap);
+			this->gbActionFlags->Controls->Add(this->cbNoLightInfluence);
+			this->gbActionFlags->Controls->Add(this->cbNoHighlight);
 			this->gbActionFlags->Controls->Add(this->cbGekk);
 			this->gbActionFlags->Controls->Add(this->cbAlwaysView);
 			this->gbActionFlags->Controls->Add(this->cbBadItem);
@@ -3549,12 +3531,62 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->gbActionFlags->Controls->Add(this->cbCanUseOnSmtn);
 			this->gbActionFlags->Controls->Add(this->cbCanUse);
 			this->gbActionFlags->Controls->Add(this->cbCanPickUp);
-			this->gbActionFlags->Location = System::Drawing::Point(182, 9);
+			this->gbActionFlags->Location = System::Drawing::Point(186, 9);
 			this->gbActionFlags->Name = L"gbActionFlags";
-			this->gbActionFlags->Size = System::Drawing::Size(119, 162);
+			this->gbActionFlags->Size = System::Drawing::Size(112, 249);
 			this->gbActionFlags->TabIndex = 25;
 			this->gbActionFlags->TabStop = false;
 			this->gbActionFlags->Text = L"Flags";
+			// 
+			// cbNoSteal
+			// 
+			this->cbNoSteal->AutoSize = true;
+			this->cbNoSteal->Location = System::Drawing::Point(6, 219);
+			this->cbNoSteal->Name = L"cbNoSteal";
+			this->cbNoSteal->Size = System::Drawing::Size(63, 17);
+			this->cbNoSteal->TabIndex = 38;
+			this->cbNoSteal->Text = L"NoSteal";
+			this->cbNoSteal->UseVisualStyleBackColor = true;
+			// 
+			// cbNoLoot
+			// 
+			this->cbNoLoot->AutoSize = true;
+			this->cbNoLoot->Location = System::Drawing::Point(6, 203);
+			this->cbNoLoot->Name = L"cbNoLoot";
+			this->cbNoLoot->Size = System::Drawing::Size(60, 17);
+			this->cbNoLoot->TabIndex = 37;
+			this->cbNoLoot->Text = L"NoLoot";
+			this->cbNoLoot->UseVisualStyleBackColor = true;
+			// 
+			// cbTrap
+			// 
+			this->cbTrap->AutoSize = true;
+			this->cbTrap->Location = System::Drawing::Point(6, 171);
+			this->cbTrap->Name = L"cbTrap";
+			this->cbTrap->Size = System::Drawing::Size(48, 17);
+			this->cbTrap->TabIndex = 35;
+			this->cbTrap->Text = L"Trap";
+			this->cbTrap->UseVisualStyleBackColor = true;
+			// 
+			// cbNoLightInfluence
+			// 
+			this->cbNoLightInfluence->AutoSize = true;
+			this->cbNoLightInfluence->Location = System::Drawing::Point(6, 187);
+			this->cbNoLightInfluence->Name = L"cbNoLightInfluence";
+			this->cbNoLightInfluence->Size = System::Drawing::Size(107, 17);
+			this->cbNoLightInfluence->TabIndex = 36;
+			this->cbNoLightInfluence->Text = L"NoLightInfluence";
+			this->cbNoLightInfluence->UseVisualStyleBackColor = true;
+			// 
+			// cbNoHighlight
+			// 
+			this->cbNoHighlight->AutoSize = true;
+			this->cbNoHighlight->Location = System::Drawing::Point(6, 156);
+			this->cbNoHighlight->Name = L"cbNoHighlight";
+			this->cbNoHighlight->Size = System::Drawing::Size(78, 17);
+			this->cbNoHighlight->TabIndex = 34;
+			this->cbNoHighlight->Text = L"NoContour";
+			this->cbNoHighlight->UseVisualStyleBackColor = true;
 			// 
 			// cbGekk
 			// 
@@ -3571,9 +3603,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbAlwaysView->AutoSize = true;
 			this->cbAlwaysView->Location = System::Drawing::Point(6, 126);
 			this->cbAlwaysView->Name = L"cbAlwaysView";
-			this->cbAlwaysView->Size = System::Drawing::Size(85, 17);
+			this->cbAlwaysView->Size = System::Drawing::Size(82, 17);
 			this->cbAlwaysView->TabIndex = 7;
-			this->cbAlwaysView->Text = L"Always View";
+			this->cbAlwaysView->Text = L"AlwaysView";
 			this->cbAlwaysView->UseVisualStyleBackColor = true;
 			// 
 			// cbBadItem
@@ -3581,9 +3613,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbBadItem->AutoSize = true;
 			this->cbBadItem->Location = System::Drawing::Point(6, 111);
 			this->cbBadItem->Name = L"cbBadItem";
-			this->cbBadItem->Size = System::Drawing::Size(69, 17);
+			this->cbBadItem->Size = System::Drawing::Size(66, 17);
 			this->cbBadItem->TabIndex = 6;
-			this->cbBadItem->Text = L"Bad Item";
+			this->cbBadItem->Text = L"BadItem";
 			this->cbBadItem->UseVisualStyleBackColor = true;
 			// 
 			// cbHasTimer
@@ -3591,9 +3623,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbHasTimer->AutoSize = true;
 			this->cbHasTimer->Location = System::Drawing::Point(6, 95);
 			this->cbHasTimer->Name = L"cbHasTimer";
-			this->cbHasTimer->Size = System::Drawing::Size(73, 17);
+			this->cbHasTimer->Size = System::Drawing::Size(70, 17);
 			this->cbHasTimer->TabIndex = 5;
-			this->cbHasTimer->Text = L"Has Timer";
+			this->cbHasTimer->Text = L"HasTimer";
 			this->cbHasTimer->UseVisualStyleBackColor = true;
 			// 
 			// cbCanLook
@@ -3601,9 +3633,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbCanLook->AutoSize = true;
 			this->cbCanLook->Location = System::Drawing::Point(6, 62);
 			this->cbCanLook->Name = L"cbCanLook";
-			this->cbCanLook->Size = System::Drawing::Size(70, 17);
+			this->cbCanLook->Size = System::Drawing::Size(67, 17);
 			this->cbCanLook->TabIndex = 4;
-			this->cbCanLook->Text = L"Can Look";
+			this->cbCanLook->Text = L"CanLook";
 			this->cbCanLook->UseVisualStyleBackColor = true;
 			// 
 			// cbCanTalk
@@ -3611,9 +3643,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbCanTalk->AutoSize = true;
 			this->cbCanTalk->Location = System::Drawing::Point(6, 79);
 			this->cbCanTalk->Name = L"cbCanTalk";
-			this->cbCanTalk->Size = System::Drawing::Size(67, 17);
+			this->cbCanTalk->Size = System::Drawing::Size(64, 17);
 			this->cbCanTalk->TabIndex = 3;
-			this->cbCanTalk->Text = L"Can Talk";
+			this->cbCanTalk->Text = L"CanTalk";
 			this->cbCanTalk->UseVisualStyleBackColor = true;
 			// 
 			// cbCanUseOnSmtn
@@ -3621,9 +3653,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbCanUseOnSmtn->AutoSize = true;
 			this->cbCanUseOnSmtn->Location = System::Drawing::Point(6, 46);
 			this->cbCanUseOnSmtn->Name = L"cbCanUseOnSmtn";
-			this->cbCanUseOnSmtn->Size = System::Drawing::Size(110, 17);
+			this->cbCanUseOnSmtn->Size = System::Drawing::Size(101, 17);
 			this->cbCanUseOnSmtn->TabIndex = 2;
-			this->cbCanUseOnSmtn->Text = L"Can Use On Smth";
+			this->cbCanUseOnSmtn->Text = L"CanUseOnSmth";
 			this->cbCanUseOnSmtn->UseVisualStyleBackColor = true;
 			// 
 			// cbCanUse
@@ -3631,9 +3663,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbCanUse->AutoSize = true;
 			this->cbCanUse->Location = System::Drawing::Point(6, 14);
 			this->cbCanUse->Name = L"cbCanUse";
-			this->cbCanUse->Size = System::Drawing::Size(66, 17);
+			this->cbCanUse->Size = System::Drawing::Size(63, 17);
 			this->cbCanUse->TabIndex = 1;
-			this->cbCanUse->Text = L"Can Use";
+			this->cbCanUse->Text = L"CanUse";
 			this->cbCanUse->UseVisualStyleBackColor = true;
 			// 
 			// cbCanPickUp
@@ -3641,21 +3673,21 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbCanPickUp->AutoSize = true;
 			this->cbCanPickUp->Location = System::Drawing::Point(6, 30);
 			this->cbCanPickUp->Name = L"cbCanPickUp";
-			this->cbCanPickUp->Size = System::Drawing::Size(82, 17);
+			this->cbCanPickUp->Size = System::Drawing::Size(76, 17);
 			this->cbCanPickUp->TabIndex = 0;
-			this->cbCanPickUp->Text = L"Can Pick Up";
+			this->cbCanPickUp->Text = L"CanPickUp";
 			this->cbCanPickUp->UseVisualStyleBackColor = true;
 			// 
 			// nLightDist
 			// 
-			this->nLightDist->Location = System::Drawing::Point(9, 58);
+			this->nLightDist->Location = System::Drawing::Point(9, 100);
 			this->nLightDist->Name = L"nLightDist";
 			this->nLightDist->Size = System::Drawing::Size(67, 20);
 			this->nLightDist->TabIndex = 28;
 			// 
 			// nLightInt
 			// 
-			this->nLightInt->Location = System::Drawing::Point(9, 95);
+			this->nLightInt->Location = System::Drawing::Point(9, 60);
 			this->nLightInt->Name = L"nLightInt";
 			this->nLightInt->Size = System::Drawing::Size(67, 20);
 			this->nLightInt->TabIndex = 29;
@@ -3703,9 +3735,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->gbMaterial->Controls->Add(this->rbPlastic);
 			this->gbMaterial->Controls->Add(this->rbMetal);
 			this->gbMaterial->Controls->Add(this->rbGlass);
-			this->gbMaterial->Location = System::Drawing::Point(194, 174);
+			this->gbMaterial->Location = System::Drawing::Point(429, 177);
 			this->gbMaterial->Name = L"gbMaterial";
-			this->gbMaterial->Size = System::Drawing::Size(137, 87);
+			this->gbMaterial->Size = System::Drawing::Size(129, 81);
 			this->gbMaterial->TabIndex = 42;
 			this->gbMaterial->TabStop = false;
 			this->gbMaterial->Text = L"Material";
@@ -3713,7 +3745,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbLeather
 			// 
 			this->rbLeather->AutoSize = true;
-			this->rbLeather->Location = System::Drawing::Point(71, 66);
+			this->rbLeather->Location = System::Drawing::Point(64, 60);
 			this->rbLeather->Name = L"rbLeather";
 			this->rbLeather->Size = System::Drawing::Size(62, 17);
 			this->rbLeather->TabIndex = 7;
@@ -3723,7 +3755,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbCement
 			// 
 			this->rbCement->AutoSize = true;
-			this->rbCement->Location = System::Drawing::Point(71, 51);
+			this->rbCement->Location = System::Drawing::Point(64, 45);
 			this->rbCement->Name = L"rbCement";
 			this->rbCement->Size = System::Drawing::Size(62, 17);
 			this->rbCement->TabIndex = 6;
@@ -3733,7 +3765,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbStone
 			// 
 			this->rbStone->AutoSize = true;
-			this->rbStone->Location = System::Drawing::Point(71, 35);
+			this->rbStone->Location = System::Drawing::Point(64, 29);
 			this->rbStone->Name = L"rbStone";
 			this->rbStone->Size = System::Drawing::Size(53, 17);
 			this->rbStone->TabIndex = 5;
@@ -3743,7 +3775,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbDirt
 			// 
 			this->rbDirt->AutoSize = true;
-			this->rbDirt->Location = System::Drawing::Point(71, 19);
+			this->rbDirt->Location = System::Drawing::Point(64, 13);
 			this->rbDirt->Name = L"rbDirt";
 			this->rbDirt->Size = System::Drawing::Size(42, 17);
 			this->rbDirt->TabIndex = 4;
@@ -3754,7 +3786,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbWood
 			// 
 			this->rbWood->AutoSize = true;
-			this->rbWood->Location = System::Drawing::Point(6, 66);
+			this->rbWood->Location = System::Drawing::Point(6, 60);
 			this->rbWood->Name = L"rbWood";
 			this->rbWood->Size = System::Drawing::Size(53, 17);
 			this->rbWood->TabIndex = 3;
@@ -3764,7 +3796,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbPlastic
 			// 
 			this->rbPlastic->AutoSize = true;
-			this->rbPlastic->Location = System::Drawing::Point(6, 51);
+			this->rbPlastic->Location = System::Drawing::Point(6, 45);
 			this->rbPlastic->Name = L"rbPlastic";
 			this->rbPlastic->Size = System::Drawing::Size(55, 17);
 			this->rbPlastic->TabIndex = 2;
@@ -3775,7 +3807,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			this->rbMetal->AutoSize = true;
 			this->rbMetal->Checked = true;
-			this->rbMetal->Location = System::Drawing::Point(6, 35);
+			this->rbMetal->Location = System::Drawing::Point(6, 29);
 			this->rbMetal->Name = L"rbMetal";
 			this->rbMetal->Size = System::Drawing::Size(51, 17);
 			this->rbMetal->TabIndex = 1;
@@ -3786,7 +3818,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// rbGlass
 			// 
 			this->rbGlass->AutoSize = true;
-			this->rbGlass->Location = System::Drawing::Point(6, 19);
+			this->rbGlass->Location = System::Drawing::Point(6, 13);
 			this->rbGlass->Name = L"rbGlass";
 			this->rbGlass->Size = System::Drawing::Size(50, 17);
 			this->rbGlass->TabIndex = 0;
@@ -3872,116 +3904,115 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// groupBox1
 			// 
-			this->groupBox1->Controls->Add(this->rbLightSouth);
-			this->groupBox1->Controls->Add(this->rbLightEast);
-			this->groupBox1->Controls->Add(this->rbLightNorth);
-			this->groupBox1->Controls->Add(this->rbLightWest);
-			this->groupBox1->Controls->Add(this->rbLightWestEast);
-			this->groupBox1->Controls->Add(this->rbLightNorthSouth);
-			this->groupBox1->Controls->Add(this->cbNoHighlight);
+			this->groupBox1->Controls->Add(this->cbDisableDir4);
+			this->groupBox1->Controls->Add(this->cbDisableDir5);
+			this->groupBox1->Controls->Add(this->cbDisableDir3);
+			this->groupBox1->Controls->Add(this->cbDisableDir2);
+			this->groupBox1->Controls->Add(this->cbDisableDir1);
+			this->groupBox1->Controls->Add(this->cbDisableDir0);
+			this->groupBox1->Controls->Add(this->cbLightGlobal);
+			this->groupBox1->Controls->Add(this->cbLightInverse);
 			this->groupBox1->Controls->Add(this->cbLight);
-			this->groupBox1->Controls->Add(this->label92);
 			this->groupBox1->Controls->Add(this->label4);
 			this->groupBox1->Controls->Add(this->label5);
 			this->groupBox1->Controls->Add(this->nLightDist);
 			this->groupBox1->Controls->Add(this->nLightInt);
-			this->groupBox1->Location = System::Drawing::Point(6, 131);
+			this->groupBox1->Location = System::Drawing::Point(6, 88);
 			this->groupBox1->Name = L"groupBox1";
-			this->groupBox1->Size = System::Drawing::Size(176, 127);
+			this->groupBox1->Size = System::Drawing::Size(176, 170);
 			this->groupBox1->TabIndex = 56;
 			this->groupBox1->TabStop = false;
-			this->groupBox1->Text = L"Light";
+			this->groupBox1->Text = L"Light (color taked from Color)";
 			// 
-			// rbLightSouth
+			// cbDisableDir4
 			// 
-			this->rbLightSouth->AutoSize = true;
-			this->rbLightSouth->Location = System::Drawing::Point(94, 100);
-			this->rbLightSouth->Name = L"rbLightSouth";
-			this->rbLightSouth->Size = System::Drawing::Size(53, 17);
-			this->rbLightSouth->TabIndex = 39;
-			this->rbLightSouth->Text = L"South";
-			this->rbLightSouth->UseVisualStyleBackColor = true;
+			this->cbDisableDir4->AutoSize = true;
+			this->cbDisableDir4->Location = System::Drawing::Point(95, 129);
+			this->cbDisableDir4->Name = L"cbDisableDir4";
+			this->cbDisableDir4->Size = System::Drawing::Size(79, 17);
+			this->cbDisableDir4->TabIndex = 49;
+			this->cbDisableDir4->Text = L"DisableDir4";
+			this->cbDisableDir4->UseVisualStyleBackColor = true;
 			// 
-			// rbLightEast
+			// cbDisableDir5
 			// 
-			this->rbLightEast->AutoSize = true;
-			this->rbLightEast->Location = System::Drawing::Point(94, 85);
-			this->rbLightEast->Name = L"rbLightEast";
-			this->rbLightEast->Size = System::Drawing::Size(46, 17);
-			this->rbLightEast->TabIndex = 38;
-			this->rbLightEast->Text = L"East";
-			this->rbLightEast->UseVisualStyleBackColor = true;
+			this->cbDisableDir5->AutoSize = true;
+			this->cbDisableDir5->Location = System::Drawing::Point(95, 145);
+			this->cbDisableDir5->Name = L"cbDisableDir5";
+			this->cbDisableDir5->Size = System::Drawing::Size(79, 17);
+			this->cbDisableDir5->TabIndex = 48;
+			this->cbDisableDir5->Text = L"DisableDir5";
+			this->cbDisableDir5->UseVisualStyleBackColor = true;
 			// 
-			// rbLightNorth
+			// cbDisableDir3
 			// 
-			this->rbLightNorth->AutoSize = true;
-			this->rbLightNorth->Location = System::Drawing::Point(94, 70);
-			this->rbLightNorth->Name = L"rbLightNorth";
-			this->rbLightNorth->Size = System::Drawing::Size(52, 17);
-			this->rbLightNorth->TabIndex = 37;
-			this->rbLightNorth->Text = L"North";
-			this->rbLightNorth->UseVisualStyleBackColor = true;
+			this->cbDisableDir3->AutoSize = true;
+			this->cbDisableDir3->Location = System::Drawing::Point(95, 112);
+			this->cbDisableDir3->Name = L"cbDisableDir3";
+			this->cbDisableDir3->Size = System::Drawing::Size(79, 17);
+			this->cbDisableDir3->TabIndex = 47;
+			this->cbDisableDir3->Text = L"DisableDir3";
+			this->cbDisableDir3->UseVisualStyleBackColor = true;
 			// 
-			// rbLightWest
+			// cbDisableDir2
 			// 
-			this->rbLightWest->AutoSize = true;
-			this->rbLightWest->Location = System::Drawing::Point(94, 55);
-			this->rbLightWest->Name = L"rbLightWest";
-			this->rbLightWest->Size = System::Drawing::Size(50, 17);
-			this->rbLightWest->TabIndex = 36;
-			this->rbLightWest->Text = L"West";
-			this->rbLightWest->UseVisualStyleBackColor = true;
+			this->cbDisableDir2->AutoSize = true;
+			this->cbDisableDir2->Location = System::Drawing::Point(95, 96);
+			this->cbDisableDir2->Name = L"cbDisableDir2";
+			this->cbDisableDir2->Size = System::Drawing::Size(79, 17);
+			this->cbDisableDir2->TabIndex = 46;
+			this->cbDisableDir2->Text = L"DisableDir2";
+			this->cbDisableDir2->UseVisualStyleBackColor = true;
 			// 
-			// rbLightWestEast
+			// cbDisableDir1
 			// 
-			this->rbLightWestEast->AutoSize = true;
-			this->rbLightWestEast->Location = System::Drawing::Point(94, 40);
-			this->rbLightWestEast->Name = L"rbLightWestEast";
-			this->rbLightWestEast->Size = System::Drawing::Size(75, 17);
-			this->rbLightWestEast->TabIndex = 35;
-			this->rbLightWestEast->Text = L"West/East";
-			this->rbLightWestEast->UseVisualStyleBackColor = true;
+			this->cbDisableDir1->AutoSize = true;
+			this->cbDisableDir1->Location = System::Drawing::Point(95, 80);
+			this->cbDisableDir1->Name = L"cbDisableDir1";
+			this->cbDisableDir1->Size = System::Drawing::Size(79, 17);
+			this->cbDisableDir1->TabIndex = 45;
+			this->cbDisableDir1->Text = L"DisableDir1";
+			this->cbDisableDir1->UseVisualStyleBackColor = true;
 			// 
-			// rbLightNorthSouth
+			// cbDisableDir0
 			// 
-			this->rbLightNorthSouth->AutoSize = true;
-			this->rbLightNorthSouth->Checked = true;
-			this->rbLightNorthSouth->Location = System::Drawing::Point(94, 25);
-			this->rbLightNorthSouth->Name = L"rbLightNorthSouth";
-			this->rbLightNorthSouth->Size = System::Drawing::Size(84, 17);
-			this->rbLightNorthSouth->TabIndex = 34;
-			this->rbLightNorthSouth->TabStop = true;
-			this->rbLightNorthSouth->Text = L"North/South";
-			this->rbLightNorthSouth->UseVisualStyleBackColor = true;
+			this->cbDisableDir0->AutoSize = true;
+			this->cbDisableDir0->Location = System::Drawing::Point(95, 64);
+			this->cbDisableDir0->Name = L"cbDisableDir0";
+			this->cbDisableDir0->Size = System::Drawing::Size(79, 17);
+			this->cbDisableDir0->TabIndex = 44;
+			this->cbDisableDir0->Text = L"DisableDir0";
+			this->cbDisableDir0->UseVisualStyleBackColor = true;
 			// 
-			// cbNoHighlight
+			// cbLightGlobal
 			// 
-			this->cbNoHighlight->AutoSize = true;
-			this->cbNoHighlight->Location = System::Drawing::Point(6, 13);
-			this->cbNoHighlight->Name = L"cbNoHighlight";
-			this->cbNoHighlight->Size = System::Drawing::Size(79, 17);
-			this->cbNoHighlight->TabIndex = 33;
-			this->cbNoHighlight->Text = L"No contour";
-			this->cbNoHighlight->UseVisualStyleBackColor = true;
+			this->cbLightGlobal->AutoSize = true;
+			this->cbLightGlobal->Location = System::Drawing::Point(101, 38);
+			this->cbLightGlobal->Name = L"cbLightGlobal";
+			this->cbLightGlobal->Size = System::Drawing::Size(55, 17);
+			this->cbLightGlobal->TabIndex = 43;
+			this->cbLightGlobal->Text = L"Global";
+			this->cbLightGlobal->UseVisualStyleBackColor = true;
+			// 
+			// cbLightInverse
+			// 
+			this->cbLightInverse->AutoSize = true;
+			this->cbLightInverse->Location = System::Drawing::Point(101, 22);
+			this->cbLightInverse->Name = L"cbLightInverse";
+			this->cbLightInverse->Size = System::Drawing::Size(63, 17);
+			this->cbLightInverse->TabIndex = 42;
+			this->cbLightInverse->Text = L"Inverse";
+			this->cbLightInverse->UseVisualStyleBackColor = true;
 			// 
 			// cbLight
 			// 
 			this->cbLight->AutoSize = true;
-			this->cbLight->Location = System::Drawing::Point(6, 30);
+			this->cbLight->Location = System::Drawing::Point(11, 20);
 			this->cbLight->Name = L"cbLight";
-			this->cbLight->Size = System::Drawing::Size(74, 17);
-			this->cbLight->TabIndex = 32;
-			this->cbLight->Text = L"Allow light";
+			this->cbLight->Size = System::Drawing::Size(49, 17);
+			this->cbLight->TabIndex = 40;
+			this->cbLight->Text = L"Light";
 			this->cbLight->UseVisualStyleBackColor = true;
-			// 
-			// label92
-			// 
-			this->label92->AutoSize = true;
-			this->label92->Location = System::Drawing::Point(93, 13);
-			this->label92->Name = L"label92";
-			this->label92->Size = System::Drawing::Size(40, 13);
-			this->label92->TabIndex = 31;
-			this->label92->Text = L"Corner";
 			// 
 			// groupBox2
 			// 
@@ -4002,6 +4033,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			this->tabControl1->Controls->Add(this->tabPage1);
 			this->tabControl1->Controls->Add(this->tabPage2);
+			this->tabControl1->Controls->Add(this->tabPage3);
 			this->tabControl1->Location = System::Drawing::Point(12, 12);
 			this->tabControl1->Name = L"tabControl1";
 			this->tabControl1->SelectedIndex = 0;
@@ -4258,10 +4290,10 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// tabPage2
 			// 
+			this->tabPage2->Controls->Add(this->groupBox11);
+			this->tabPage2->Controls->Add(this->groupBox10);
 			this->tabPage2->Controls->Add(this->groupBox9);
-			this->tabPage2->Controls->Add(this->groupBox8);
 			this->tabPage2->Controls->Add(this->groupBox7);
-			this->tabPage2->Controls->Add(this->groupBox6);
 			this->tabPage2->Controls->Add(this->groupBox4);
 			this->tabPage2->Controls->Add(this->groupBox2);
 			this->tabPage2->Controls->Add(this->gmMoveFlags);
@@ -4278,10 +4310,107 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage2->UseVisualStyleBackColor = true;
 			this->tabPage2->Click += gcnew System::EventHandler(this, &Form1::tabPage2_Click);
 			// 
+			// groupBox11
+			// 
+			this->groupBox11->Controls->Add(this->rbLightSouth);
+			this->groupBox11->Controls->Add(this->rbLightEast);
+			this->groupBox11->Controls->Add(this->rbLightNorth);
+			this->groupBox11->Controls->Add(this->rbLightWest);
+			this->groupBox11->Controls->Add(this->rbLightWestEast);
+			this->groupBox11->Controls->Add(this->rbLightNorthSouth);
+			this->groupBox11->Location = System::Drawing::Point(429, 55);
+			this->groupBox11->Name = L"groupBox11";
+			this->groupBox11->Size = System::Drawing::Size(113, 116);
+			this->groupBox11->TabIndex = 64;
+			this->groupBox11->TabStop = false;
+			this->groupBox11->Text = L"Corner";
+			// 
+			// rbLightSouth
+			// 
+			this->rbLightSouth->AutoSize = true;
+			this->rbLightSouth->Location = System::Drawing::Point(14, 90);
+			this->rbLightSouth->Name = L"rbLightSouth";
+			this->rbLightSouth->Size = System::Drawing::Size(53, 17);
+			this->rbLightSouth->TabIndex = 45;
+			this->rbLightSouth->Text = L"South";
+			this->rbLightSouth->UseVisualStyleBackColor = true;
+			// 
+			// rbLightEast
+			// 
+			this->rbLightEast->AutoSize = true;
+			this->rbLightEast->Location = System::Drawing::Point(14, 75);
+			this->rbLightEast->Name = L"rbLightEast";
+			this->rbLightEast->Size = System::Drawing::Size(46, 17);
+			this->rbLightEast->TabIndex = 44;
+			this->rbLightEast->Text = L"East";
+			this->rbLightEast->UseVisualStyleBackColor = true;
+			// 
+			// rbLightNorth
+			// 
+			this->rbLightNorth->AutoSize = true;
+			this->rbLightNorth->Location = System::Drawing::Point(14, 60);
+			this->rbLightNorth->Name = L"rbLightNorth";
+			this->rbLightNorth->Size = System::Drawing::Size(52, 17);
+			this->rbLightNorth->TabIndex = 43;
+			this->rbLightNorth->Text = L"North";
+			this->rbLightNorth->UseVisualStyleBackColor = true;
+			// 
+			// rbLightWest
+			// 
+			this->rbLightWest->AutoSize = true;
+			this->rbLightWest->Location = System::Drawing::Point(14, 45);
+			this->rbLightWest->Name = L"rbLightWest";
+			this->rbLightWest->Size = System::Drawing::Size(50, 17);
+			this->rbLightWest->TabIndex = 42;
+			this->rbLightWest->Text = L"West";
+			this->rbLightWest->UseVisualStyleBackColor = true;
+			// 
+			// rbLightWestEast
+			// 
+			this->rbLightWestEast->AutoSize = true;
+			this->rbLightWestEast->Location = System::Drawing::Point(14, 30);
+			this->rbLightWestEast->Name = L"rbLightWestEast";
+			this->rbLightWestEast->Size = System::Drawing::Size(75, 17);
+			this->rbLightWestEast->TabIndex = 41;
+			this->rbLightWestEast->Text = L"West/East";
+			this->rbLightWestEast->UseVisualStyleBackColor = true;
+			// 
+			// rbLightNorthSouth
+			// 
+			this->rbLightNorthSouth->AutoSize = true;
+			this->rbLightNorthSouth->Checked = true;
+			this->rbLightNorthSouth->Location = System::Drawing::Point(14, 15);
+			this->rbLightNorthSouth->Name = L"rbLightNorthSouth";
+			this->rbLightNorthSouth->Size = System::Drawing::Size(84, 17);
+			this->rbLightNorthSouth->TabIndex = 40;
+			this->rbLightNorthSouth->TabStop = true;
+			this->rbLightNorthSouth->Text = L"North/South";
+			this->rbLightNorthSouth->UseVisualStyleBackColor = true;
+			// 
+			// groupBox10
+			// 
+			this->groupBox10->Controls->Add(this->cbDisableEgg);
+			this->groupBox10->Location = System::Drawing::Point(429, 9);
+			this->groupBox10->Name = L"groupBox10";
+			this->groupBox10->Size = System::Drawing::Size(113, 45);
+			this->groupBox10->TabIndex = 63;
+			this->groupBox10->TabStop = false;
+			this->groupBox10->Text = L"Transparent egg";
+			// 
+			// cbDisableEgg
+			// 
+			this->cbDisableEgg->AutoSize = true;
+			this->cbDisableEgg->Location = System::Drawing::Point(7, 19);
+			this->cbDisableEgg->Name = L"cbDisableEgg";
+			this->cbDisableEgg->Size = System::Drawing::Size(78, 17);
+			this->cbDisableEgg->TabIndex = 29;
+			this->cbDisableEgg->Text = L"DisableEgg";
+			this->cbDisableEgg->UseVisualStyleBackColor = true;
+			// 
 			// groupBox9
 			// 
 			this->groupBox9->Controls->Add(this->numSlot);
-			this->groupBox9->Location = System::Drawing::Point(6, 90);
+			this->groupBox9->Location = System::Drawing::Point(602, 147);
 			this->groupBox9->Name = L"groupBox9";
 			this->groupBox9->Size = System::Drawing::Size(52, 36);
 			this->groupBox9->TabIndex = 62;
@@ -4296,16 +4425,63 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->numSlot->Size = System::Drawing::Size(37, 20);
 			this->numSlot->TabIndex = 0;
 			// 
+			// groupBox7
+			// 
+			this->groupBox7->Controls->Add(this->numDrawPosOffsY);
+			this->groupBox7->Location = System::Drawing::Point(602, 222);
+			this->groupBox7->Name = L"groupBox7";
+			this->groupBox7->Size = System::Drawing::Size(52, 36);
+			this->groupBox7->TabIndex = 60;
+			this->groupBox7->TabStop = false;
+			this->groupBox7->Text = L"DrawY";
+			// 
+			// numDrawPosOffsY
+			// 
+			this->numDrawPosOffsY->Location = System::Drawing::Point(8, 13);
+			this->numDrawPosOffsY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {100000, 0, 0, 0});
+			this->numDrawPosOffsY->Name = L"numDrawPosOffsY";
+			this->numDrawPosOffsY->Size = System::Drawing::Size(37, 20);
+			this->numDrawPosOffsY->TabIndex = 3;
+			// 
+			// groupBox4
+			// 
+			this->groupBox4->Controls->Add(this->txtSoundId);
+			this->groupBox4->Location = System::Drawing::Point(602, 184);
+			this->groupBox4->Name = L"groupBox4";
+			this->groupBox4->Size = System::Drawing::Size(52, 36);
+			this->groupBox4->TabIndex = 58;
+			this->groupBox4->TabStop = false;
+			this->groupBox4->Text = L"Sound";
+			// 
+			// txtSoundId
+			// 
+			this->txtSoundId->Location = System::Drawing::Point(5, 11);
+			this->txtSoundId->MaxLength = 1;
+			this->txtSoundId->Name = L"txtSoundId";
+			this->txtSoundId->Size = System::Drawing::Size(42, 20);
+			this->txtSoundId->TabIndex = 1;
+			// 
+			// tabPage3
+			// 
+			this->tabPage3->Controls->Add(this->groupBox8);
+			this->tabPage3->Controls->Add(this->groupBox6);
+			this->tabPage3->Location = System::Drawing::Point(4, 22);
+			this->tabPage3->Name = L"tabPage3";
+			this->tabPage3->Size = System::Drawing::Size(660, 264);
+			this->tabPage3->TabIndex = 2;
+			this->tabPage3->Text = L"More ext info";
+			this->tabPage3->UseVisualStyleBackColor = true;
+			// 
 			// groupBox8
 			// 
 			this->groupBox8->Controls->Add(this->label3);
 			this->groupBox8->Controls->Add(this->label2);
 			this->groupBox8->Controls->Add(this->txtScriptFunc);
 			this->groupBox8->Controls->Add(this->txtScriptModule);
-			this->groupBox8->Location = System::Drawing::Point(337, 174);
+			this->groupBox8->Location = System::Drawing::Point(9, 7);
 			this->groupBox8->Name = L"groupBox8";
-			this->groupBox8->Size = System::Drawing::Size(182, 87);
-			this->groupBox8->TabIndex = 61;
+			this->groupBox8->Size = System::Drawing::Size(223, 95);
+			this->groupBox8->TabIndex = 63;
 			this->groupBox8->TabStop = false;
 			this->groupBox8->Text = L"Script";
 			// 
@@ -4331,33 +4507,15 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			this->txtScriptFunc->Location = System::Drawing::Point(6, 61);
 			this->txtScriptFunc->Name = L"txtScriptFunc";
-			this->txtScriptFunc->Size = System::Drawing::Size(170, 20);
+			this->txtScriptFunc->Size = System::Drawing::Size(210, 20);
 			this->txtScriptFunc->TabIndex = 1;
 			// 
 			// txtScriptModule
 			// 
 			this->txtScriptModule->Location = System::Drawing::Point(6, 27);
 			this->txtScriptModule->Name = L"txtScriptModule";
-			this->txtScriptModule->Size = System::Drawing::Size(170, 20);
+			this->txtScriptModule->Size = System::Drawing::Size(210, 20);
 			this->txtScriptModule->TabIndex = 0;
-			// 
-			// groupBox7
-			// 
-			this->groupBox7->Controls->Add(this->numDrawPosOffsY);
-			this->groupBox7->Location = System::Drawing::Point(122, 90);
-			this->groupBox7->Name = L"groupBox7";
-			this->groupBox7->Size = System::Drawing::Size(52, 36);
-			this->groupBox7->TabIndex = 60;
-			this->groupBox7->TabStop = false;
-			this->groupBox7->Text = L"DrawY";
-			// 
-			// numDrawPosOffsY
-			// 
-			this->numDrawPosOffsY->Location = System::Drawing::Point(8, 13);
-			this->numDrawPosOffsY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {100000, 0, 0, 0});
-			this->numDrawPosOffsY->Name = L"numDrawPosOffsY";
-			this->numDrawPosOffsY->Size = System::Drawing::Size(37, 20);
-			this->numDrawPosOffsY->TabIndex = 3;
 			// 
 			// groupBox6
 			// 
@@ -4376,39 +4534,39 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox6->Controls->Add(this->label113);
 			this->groupBox6->Controls->Add(this->numAnimWaitBase);
 			this->groupBox6->Controls->Add(this->cbShowAnim);
-			this->groupBox6->Location = System::Drawing::Point(523, 10);
+			this->groupBox6->Location = System::Drawing::Point(513, 7);
 			this->groupBox6->Name = L"groupBox6";
-			this->groupBox6->Size = System::Drawing::Size(131, 251);
-			this->groupBox6->TabIndex = 59;
+			this->groupBox6->Size = System::Drawing::Size(144, 251);
+			this->groupBox6->TabIndex = 62;
 			this->groupBox6->TabStop = false;
 			this->groupBox6->Text = L"Animation";
 			// 
 			// label74
 			// 
 			this->label74->AutoSize = true;
-			this->label74->Location = System::Drawing::Point(40, 196);
+			this->label74->Location = System::Drawing::Point(27, 196);
 			this->label74->Name = L"label74";
-			this->label74->Size = System::Drawing::Size(28, 13);
+			this->label74->Size = System::Drawing::Size(64, 13);
 			this->label74->TabIndex = 15;
-			this->label74->Text = L"Hide";
+			this->label74->Text = L"Hide frames";
 			// 
 			// label59
 			// 
 			this->label59->AutoSize = true;
-			this->label59->Location = System::Drawing::Point(40, 160);
+			this->label59->Location = System::Drawing::Point(25, 160);
 			this->label59->Name = L"label59";
-			this->label59->Size = System::Drawing::Size(33, 13);
+			this->label59->Size = System::Drawing::Size(69, 13);
 			this->label59->TabIndex = 14;
-			this->label59->Text = L"Show";
+			this->label59->Text = L"Show frames";
 			// 
 			// label45
 			// 
 			this->label45->AutoSize = true;
-			this->label45->Location = System::Drawing::Point(40, 121);
+			this->label45->Location = System::Drawing::Point(25, 121);
 			this->label45->Name = L"label45";
-			this->label45->Size = System::Drawing::Size(29, 13);
+			this->label45->Size = System::Drawing::Size(65, 13);
 			this->label45->TabIndex = 13;
-			this->label45->Text = L"Stay";
+			this->label45->Text = L"Stay frames";
 			// 
 			// numHideAnim1
 			// 
@@ -4461,7 +4619,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// cbShowAnimExt
 			// 
 			this->cbShowAnimExt->AutoSize = true;
-			this->cbShowAnimExt->Location = System::Drawing::Point(6, 101);
+			this->cbShowAnimExt->Location = System::Drawing::Point(11, 104);
 			this->cbShowAnimExt->Name = L"cbShowAnimExt";
 			this->cbShowAnimExt->Size = System::Drawing::Size(91, 17);
 			this->cbShowAnimExt->TabIndex = 6;
@@ -4470,7 +4628,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// numAnimWaitRndMax
 			// 
-			this->numAnimWaitRndMax->Location = System::Drawing::Point(84, 75);
+			this->numAnimWaitRndMax->Location = System::Drawing::Point(95, 75);
 			this->numAnimWaitRndMax->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {65000, 0, 0, 0});
 			this->numAnimWaitRndMax->Name = L"numAnimWaitRndMax";
 			this->numAnimWaitRndMax->Size = System::Drawing::Size(44, 20);
@@ -4478,7 +4636,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// numAnimWaitRndMin
 			// 
-			this->numAnimWaitRndMin->Location = System::Drawing::Point(43, 75);
+			this->numAnimWaitRndMin->Location = System::Drawing::Point(50, 75);
 			this->numAnimWaitRndMin->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {65000, 0, 0, 0});
 			this->numAnimWaitRndMin->Name = L"numAnimWaitRndMin";
 			this->numAnimWaitRndMin->Size = System::Drawing::Size(44, 20);
@@ -4487,7 +4645,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// label113
 			// 
 			this->label113->AutoSize = true;
-			this->label113->Location = System::Drawing::Point(6, 35);
+			this->label113->Location = System::Drawing::Point(14, 35);
 			this->label113->Name = L"label113";
 			this->label113->Size = System::Drawing::Size(125, 39);
 			this->label113->TabIndex = 2;
@@ -4495,7 +4653,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// numAnimWaitBase
 			// 
-			this->numAnimWaitBase->Location = System::Drawing::Point(2, 75);
+			this->numAnimWaitBase->Location = System::Drawing::Point(5, 75);
 			this->numAnimWaitBase->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {65000, 0, 0, 0});
 			this->numAnimWaitBase->Name = L"numAnimWaitBase";
 			this->numAnimWaitBase->Size = System::Drawing::Size(44, 20);
@@ -4504,30 +4662,12 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// cbShowAnim
 			// 
 			this->cbShowAnim->AutoSize = true;
-			this->cbShowAnim->Location = System::Drawing::Point(6, 15);
+			this->cbShowAnim->Location = System::Drawing::Point(10, 17);
 			this->cbShowAnim->Name = L"cbShowAnim";
 			this->cbShowAnim->Size = System::Drawing::Size(75, 17);
 			this->cbShowAnim->TabIndex = 0;
 			this->cbShowAnim->Text = L"ShowAnim";
 			this->cbShowAnim->UseVisualStyleBackColor = true;
-			// 
-			// groupBox4
-			// 
-			this->groupBox4->Controls->Add(this->txtSoundId);
-			this->groupBox4->Location = System::Drawing::Point(64, 90);
-			this->groupBox4->Name = L"groupBox4";
-			this->groupBox4->Size = System::Drawing::Size(52, 36);
-			this->groupBox4->TabIndex = 58;
-			this->groupBox4->TabStop = false;
-			this->groupBox4->Text = L"Sound";
-			// 
-			// txtSoundId
-			// 
-			this->txtSoundId->Location = System::Drawing::Point(5, 11);
-			this->txtSoundId->MaxLength = 1;
-			this->txtSoundId->Name = L"txtSoundId";
-			this->txtSoundId->Size = System::Drawing::Size(42, 20);
-			this->txtSoundId->TabIndex = 1;
 			// 
 			// cmbLog
 			// 
@@ -4537,27 +4677,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cmbLog->Name = L"cmbLog";
 			this->cmbLog->Size = System::Drawing::Size(668, 21);
 			this->cmbLog->TabIndex = 47;
-			// 
-			// txtWeapPApic
-			// 
-			this->txtWeapPApic->Location = System::Drawing::Point(288, 21);
-			this->txtWeapPApic->Name = L"txtWeapPApic";
-			this->txtWeapPApic->Size = System::Drawing::Size(144, 20);
-			this->txtWeapPApic->TabIndex = 61;
-			// 
-			// textBox3
-			// 
-			this->textBox3->Location = System::Drawing::Point(288, 21);
-			this->textBox3->Name = L"textBox3";
-			this->textBox3->Size = System::Drawing::Size(144, 20);
-			this->textBox3->TabIndex = 62;
-			// 
-			// txtWeapTApic
-			// 
-			this->txtWeapTApic->Location = System::Drawing::Point(288, 21);
-			this->txtWeapTApic->Name = L"txtWeapTApic";
-			this->txtWeapTApic->Size = System::Drawing::Size(144, 20);
-			this->txtWeapTApic->TabIndex = 62;
 			// 
 			// Form1
 			// 
@@ -4679,7 +4798,10 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->gmMoveFlags->PerformLayout();
 			this->gbAlpha->ResumeLayout(false);
 			this->gbAlpha->PerformLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numTransAlpha))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numBlue))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numGreen))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numRed))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAlpha))->EndInit();
 			this->gbActionFlags->ResumeLayout(false);
 			this->gbActionFlags->PerformLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nLightDist))->EndInit();
@@ -4698,12 +4820,19 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage1->ResumeLayout(false);
 			this->tabPage1->PerformLayout();
 			this->tabPage2->ResumeLayout(false);
+			this->groupBox11->ResumeLayout(false);
+			this->groupBox11->PerformLayout();
+			this->groupBox10->ResumeLayout(false);
+			this->groupBox10->PerformLayout();
 			this->groupBox9->ResumeLayout(false);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numSlot))->EndInit();
-			this->groupBox8->ResumeLayout(false);
-			this->groupBox8->PerformLayout();
 			this->groupBox7->ResumeLayout(false);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawPosOffsY))->EndInit();
+			this->groupBox4->ResumeLayout(false);
+			this->groupBox4->PerformLayout();
+			this->tabPage3->ResumeLayout(false);
+			this->groupBox8->ResumeLayout(false);
+			this->groupBox8->PerformLayout();
 			this->groupBox6->ResumeLayout(false);
 			this->groupBox6->PerformLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numHideAnim1))->EndInit();
@@ -4715,8 +4844,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMax))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMin))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitBase))->EndInit();
-			this->groupBox4->ResumeLayout(false);
-			this->groupBox4->PerformLayout();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -5047,21 +5174,37 @@ void ShowObject(ProtoItem* proto)
 
 	// Light
 	cbLight->Checked=FLAG(proto->Flags,ITEM_LIGHT);
-	cbNoHighlight->Checked=FLAG(proto->Flags,ITEM_NO_HIGHLIGHT);
-	nLightDist->Value=(UINT)proto->DistanceLight;
-	nLightInt->Value=(UINT)(proto->IntensityLight>100?50:proto->IntensityLight);
-	switch(proto->LightType)
+	cbColorizing->Checked=FLAG(proto->Flags,ITEM_COLORIZE);
+	nLightDist->Value=(UINT)proto->LightDistance;
+	nLightInt->Value=(UINT)(proto->LightIntensity>100?50:proto->LightIntensity);
+	numAlpha->Value=(UINT)(proto->LightColor>>24)&0xFF;
+	numRed->Value=(UINT)(proto->LightColor>>16)&0xFF;
+	numGreen->Value=(UINT)(proto->LightColor>>8)&0xFF;
+	numBlue->Value=(UINT)(proto->LightColor)&0xFF;
+	cbDisableDir0->Checked=FLAG(proto->LightFlags,LIGHT_DISABLE_DIR(0));
+	cbDisableDir1->Checked=FLAG(proto->LightFlags,LIGHT_DISABLE_DIR(1));
+	cbDisableDir2->Checked=FLAG(proto->LightFlags,LIGHT_DISABLE_DIR(2));
+	cbDisableDir3->Checked=FLAG(proto->LightFlags,LIGHT_DISABLE_DIR(3));
+	cbDisableDir4->Checked=FLAG(proto->LightFlags,LIGHT_DISABLE_DIR(4));
+	cbDisableDir5->Checked=FLAG(proto->LightFlags,LIGHT_DISABLE_DIR(5));
+	cbLightGlobal->Checked=FLAG(proto->LightFlags,LIGHT_GLOBAL);
+	cbLightInverse->Checked=FLAG(proto->LightFlags,LIGHT_INVERSE);
+
+	switch(proto->Corner)
 	{
 	default:
-	case LIGHT_NORTH_SOUTH: rbLightNorthSouth->Checked=true; break;
-	case LIGHT_WEST: rbLightWest->Checked=true; break;
-	case LIGHT_EAST: rbLightEast->Checked=true; break;
-	case LIGHT_SOUTH: rbLightSouth->Checked=true; break;
-	case LIGHT_NORTH: rbLightNorth->Checked=true; break;
-	case LIGHT_EAST_WEST: rbLightWestEast->Checked=true; break;
+	case CORNER_NORTH_SOUTH: rbLightNorthSouth->Checked=true; break;
+	case CORNER_WEST: rbLightWest->Checked=true; break;
+	case CORNER_EAST: rbLightEast->Checked=true; break;
+	case CORNER_SOUTH: rbLightSouth->Checked=true; break;
+	case CORNER_NORTH: rbLightNorth->Checked=true; break;
+	case CORNER_EAST_WEST: rbLightWestEast->Checked=true; break;
 	}
 
+	cbDisableEgg->Checked=proto->DisableEgg;
+
 	// Flags
+	cbNoHighlight->Checked=FLAG(proto->Flags,ITEM_NO_HIGHLIGHT);
 	cbHidden->Checked=FLAG(proto->Flags,ITEM_HIDDEN);
 	cbFlat->Checked=FLAG(proto->Flags,ITEM_FLAT);
 	cbNoBlock->Checked=FLAG(proto->Flags,ITEM_NO_BLOCK);
@@ -5073,20 +5216,12 @@ void ShowObject(ProtoItem* proto)
 	cbBigGun->Checked=FLAG(proto->Flags,ITEM_BIG_GUN);
 	cbAlwaysView->Checked=FLAG(proto->Flags,ITEM_ALWAYS_VIEW);
 	cbGekk->Checked=FLAG(proto->Flags,ITEM_GECK);
-
-	// Transparent
-	switch(proto->TransType)
-	{
-	default: rbTransEgg->Checked=true; break;
-	case TRANS_NONE: rbTransNone->Checked=true; break;
-	case TRANS_WALL: rbTransWall->Checked=true; break;
-	case TRANS_GLASS: rbTransGlass->Checked=true; break;
-	case TRANS_STEAM: rbTransSteam->Checked=true; break;
-	case TRANS_ENERGY: rbTransEnergy->Checked=true; break;
-	case TRANS_RED: rbTransRed->Checked=true; break;
-	}
-
-	numTransAlpha->Value=(UINT)proto->TransVal;
+	cbTrap->Checked=FLAG(proto->Flags,ITEM_TRAP);
+	cbNoLightInfluence->Checked=FLAG(proto->Flags,ITEM_NO_LIGHT_INFLUENCE);
+	cbNoLoot->Checked=FLAG(proto->Flags,ITEM_NO_LOOT);
+	cbNoSteal->Checked=FLAG(proto->Flags,ITEM_NO_STEAL);
+	cbGag->Checked=FLAG(proto->Flags,ITEM_GAG);
+	cbCached->Checked=FLAG(proto->Flags,ITEM_CACHED);
 
 	// Action Flags
 	cbCanUse->Checked=FLAG(proto->Flags,ITEM_CAN_USE);
@@ -5336,18 +5471,37 @@ ProtoItem* CompileObject()
 
 	// Light
 	if(cbLight->Checked) proto->Flags|=ITEM_LIGHT;
-	if(cbNoHighlight->Checked) proto->Flags|=ITEM_NO_HIGHLIGHT;
-	proto->DistanceLight=(UINT)nLightDist->Value;
-	proto->IntensityLight=(UINT)nLightInt->Value;
+	if(cbColorizing->Checked) proto->Flags|=ITEM_COLORIZE;
+	proto->LightDistance=(UINT)nLightDist->Value;
+	proto->LightIntensity=(UINT)nLightInt->Value;
+	proto->LightColor=((UINT)numAlpha->Value<<24)|((UINT)numRed->Value<<16)|((UINT)numGreen->Value<<8)|((UINT)numBlue->Value);
 
-	if(rbLightWest->Checked==true) proto->LightType=LIGHT_WEST;
-	else if(rbLightEast->Checked==true) proto->LightType=LIGHT_EAST;
-	else if(rbLightSouth->Checked==true) proto->LightType=LIGHT_SOUTH;
-	else if(rbLightNorth->Checked==true) proto->LightType=LIGHT_NORTH;
-	else if(rbLightWestEast->Checked==true) proto->LightType=LIGHT_EAST_WEST;
-	else proto->LightType=LIGHT_NORTH_SOUTH;
+	if(rbLightWest->Checked==true) proto->Corner=CORNER_WEST;
+	else if(rbLightEast->Checked==true) proto->Corner=CORNER_EAST;
+	else if(rbLightSouth->Checked==true) proto->Corner=CORNER_SOUTH;
+	else if(rbLightNorth->Checked==true) proto->Corner=CORNER_NORTH;
+	else if(rbLightWestEast->Checked==true) proto->Corner=CORNER_EAST_WEST;
+	else proto->Corner=CORNER_NORTH_SOUTH;
+	
+	nLightDist->Value=(UINT)proto->LightDistance;
+	nLightInt->Value=(UINT)(proto->LightIntensity>100?50:proto->LightIntensity);
+	numAlpha->Value=(UINT)(proto->LightColor>>24)&0xFF;
+	numRed->Value=(UINT)(proto->LightColor>>16)&0xFF;
+	numGreen->Value=(UINT)(proto->LightColor>>8)&0xFF;
+	numBlue->Value=(UINT)(proto->LightColor)&0xFF;
+	if(cbDisableDir0->Checked) proto->LightFlags|=LIGHT_DISABLE_DIR(0);
+	if(cbDisableDir1->Checked) proto->LightFlags|=LIGHT_DISABLE_DIR(1);
+	if(cbDisableDir2->Checked) proto->LightFlags|=LIGHT_DISABLE_DIR(2);
+	if(cbDisableDir3->Checked) proto->LightFlags|=LIGHT_DISABLE_DIR(3);
+	if(cbDisableDir4->Checked) proto->LightFlags|=LIGHT_DISABLE_DIR(4);
+	if(cbDisableDir5->Checked) proto->LightFlags|=LIGHT_DISABLE_DIR(5);
+	if(cbLightGlobal->Checked) proto->LightFlags|=LIGHT_GLOBAL;
+	if(cbLightInverse->Checked) proto->LightFlags|=LIGHT_INVERSE;
+
+	proto->DisableEgg=cbDisableEgg->Checked;
 
 	// Flags
+	if(cbNoHighlight->Checked) proto->Flags|=ITEM_NO_HIGHLIGHT;
 	if(cbHidden->Checked) proto->Flags|=ITEM_HIDDEN;
 	if(cbFlat->Checked) proto->Flags|=ITEM_FLAT;
 	if(cbNoBlock->Checked) proto->Flags|=ITEM_NO_BLOCK;
@@ -5359,17 +5513,12 @@ ProtoItem* CompileObject()
 	if(cbBigGun->Checked) proto->Flags|=ITEM_BIG_GUN;
 	if(cbAlwaysView->Checked) proto->Flags|=ITEM_ALWAYS_VIEW;
 	if(cbGekk->Checked) proto->Flags|=ITEM_GECK;
-
-	// Transparent
-	proto->TransType=0;
-	if(rbTransNone->Checked==true) proto->TransType=TRANS_NONE;
-	else if(rbTransWall->Checked==true) proto->TransType=TRANS_WALL;
-	else if(rbTransGlass->Checked==true) proto->TransType=TRANS_GLASS;
-	else if(rbTransSteam->Checked==true) proto->TransType=TRANS_STEAM;
-	else if(rbTransEnergy->Checked==true) proto->TransType=TRANS_ENERGY;
-	else if(rbTransRed->Checked==true) proto->TransType=TRANS_RED;
-
-	proto->TransVal=(UINT)numTransAlpha->Value;
+	if(cbTrap->Checked) proto->Flags|=ITEM_TRAP;
+	if(cbNoLightInfluence->Checked) proto->Flags|=ITEM_NO_LIGHT_INFLUENCE;
+	if(cbNoLoot->Checked) proto->Flags|=ITEM_NO_LOOT;
+	if(cbNoSteal->Checked) proto->Flags|=ITEM_NO_STEAL;
+	if(cbGag->Checked) proto->Flags|=ITEM_GAG;
+	if(cbCached->Checked) proto->Flags|=ITEM_CACHED;
 
 	// Action Flags
 	if(cbCanUse->Checked) proto->Flags|=ITEM_CAN_USE;

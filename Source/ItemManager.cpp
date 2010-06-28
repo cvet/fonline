@@ -147,12 +147,42 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	}
 
 	SERIALIZE_PROTO(Slot,0);
-	SERIALIZE_PROTO(LightType,0);
-	SERIALIZE_PROTO(DistanceLight,0);
-	SERIALIZE_PROTO(IntensityLight,0);
+	SERIALIZE_PROTO(Corner,0);
+	SERIALIZE_PROTO(LightDistance,0);
+	SERIALIZE_PROTO(LightIntensity,0);
+	SERIALIZE_PROTO(LightColor,0);
+	SERIALIZE_PROTO(LightFlags,0);
 	SERIALIZE_PROTO(Flags,0);
-	SERIALIZE_PROTO(TransType,0);
-	SERIALIZE_PROTO(TransVal,0);
+	SERIALIZE_PROTOB(DisableEgg,0);
+
+	if(!save && txtFile.IsKey(PROTO_APP,"TransType")) // Deprecated
+	{
+		int alpha=GetProtoValue("TransVal");
+		int trans=GetProtoValue("TransType");
+		int corner=GetProtoValue("LightType");
+
+		if(trans!=0) proto_item.DisableEgg=true; // Egg
+		else proto_item.DisableEgg=false;
+
+		proto_item.LightColor=0;
+		if(trans==3) proto_item.LightColor=0x7F000000; // Glass
+		else if(trans==4) proto_item.LightColor=0x6FFFFFFF; // Steam
+		else if(trans==5) proto_item.LightColor=0x7FFFFF00; // Energy
+		else if(trans==6) proto_item.LightColor=0x7FFF0000; // Red
+		else proto_item.LightColor=((0xFF-CLAMP(alpha,0,0xFF))<<24);
+
+		if(corner==0x80) proto_item.Corner=CORNER_WEST;
+		else if(corner==0x40) proto_item.Corner=CORNER_EAST;
+		else if(corner==0x20) proto_item.Corner=CORNER_SOUTH;
+		else if(corner==0x10) proto_item.Corner=CORNER_NORTH;
+		else if(corner==0x08) proto_item.Corner=CORNER_EAST_WEST;
+		else proto_item.Corner=CORNER_NORTH_SOUTH;
+
+		SERIALIZE_PROTO_(DistanceLight,LightDistance,0);
+		SERIALIZE_PROTO_(IntensityLight,LightIntensity,0);
+		if(proto_item.LightIntensity) SETFLAG(proto_item.Flags,ITEM_LIGHT);
+	}
+
 	SERIALIZE_PROTO(Weight,0);
 	SERIALIZE_PROTO(Volume,0);
 	SERIALIZE_PROTO(SoundId,0);
@@ -839,7 +869,7 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 			lexems[lex_len]=0;
 		}
 
-		Item* item=CreateItem(pid,1,id);
+		Item* item=CreateItem(pid,0,id);
 		if(!item)
 		{
 			WriteLog("Create item error id<%u>, pid<%u>.\n",id,pid);
@@ -931,12 +961,42 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 
 	gameItems.insert(ItemPtrMapVal(item->Id,item));
 
-	if(!item_id && protoScript[pid]) // Only for new items
+	if(!item_id && count && protoScript[pid]) // Only for new items
 	{
 		item->ParseScript(protoScript[pid],true);
 		if(item->IsNotValid) return NULL;
 	}
 	return item;
+}
+
+Item* ItemManager::SplitItem(Item* item, DWORD count)
+{
+	if(!item->IsGrouped())
+	{
+		WriteLog(__FUNCTION__" - Splitted item is not grouped, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
+		return NULL;
+	}
+
+	DWORD item_count=item->GetCount();
+	if(!count || count>=item_count)
+	{
+		WriteLog(__FUNCTION__" - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n",item->GetId(),item->GetProtoId(),item_count,count);
+		return NULL;
+	}
+
+	Item* new_item=CreateItem(item->GetProtoId(),0); // Ignore init script
+	if(!new_item)
+	{
+		WriteLog(__FUNCTION__" - Create item fail, pid<%u>, count<%u>.\n",item->GetProtoId(),count);
+		return NULL;
+	}
+
+	item->Count_Sub(count);
+	new_item->Data=item->Data;
+	new_item->Data.Count=0;
+	new_item->Count_Add(count);
+	if(item->PLexems) new_item->SetLexems(item->PLexems);
+	return new_item;
 }
 
 Item* ItemManager::GetItem(DWORD item_id)
@@ -1103,10 +1163,12 @@ void ItemManager::MoveItem(Item* item, DWORD count, Critter* to_cr)
 	}
 	else
 	{
-		item->Count_Sub(count);
-		NotifyChangeItem(item);
-		Item* item_=ItemMngr.CreateItem(item->GetProtoId(),count);
-		if(item_) to_cr->AddItem(item_,true);
+		Item* item_=ItemMngr.SplitItem(item,count);
+		if(item_)
+		{
+			NotifyChangeItem(item);
+			to_cr->AddItem(item_,true);
+		}
 	}
 }
 
@@ -1121,10 +1183,12 @@ void ItemManager::MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WOR
 	}
 	else
 	{
-		item->Count_Sub(count);
-		NotifyChangeItem(item);
-		Item* item_=ItemMngr.CreateItem(item->GetProtoId(),count);
-		if(item_) to_map->AddItem(item_,to_hx,to_hy,true);
+		Item* item_=ItemMngr.SplitItem(item,count);
+		if(item_)
+		{
+			NotifyChangeItem(item);
+			to_map->AddItem(item_,to_hx,to_hy,true);
+		}
 	}
 }
 
@@ -1139,10 +1203,12 @@ void ItemManager::MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_i
 	}
 	else
 	{
-		item->Count_Sub(count);
-		NotifyChangeItem(item);
-		Item* item_=ItemMngr.CreateItem(item->GetProtoId(),count);
-		if(item_) to_cont->ContAddItem(item_,stack_id);
+		Item* item_=ItemMngr.SplitItem(item,count);
+		if(item_)
+		{
+			NotifyChangeItem(item);
+			to_cont->ContAddItem(item_,stack_id);
+		}
 	}
 }
 
@@ -1270,9 +1336,7 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 
 	if(item->IsGrouped())
 	{
-		item->Count_Sub(count);
-
-		if(!item->GetCount())
+		if(count>=item->GetCount())
 		{
 			cr->EraseItem(item,true);
 			if(!erased_items) ItemMngr.ItemToGarbage(item,0x1);
@@ -1280,12 +1344,16 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 		}
 		else
 		{
-			cr->SendAA_ItemData(item);
 			if(erased_items)
 			{
-				item=ItemMngr.CreateItem(pid,count);
-				if(item) erased_items->push_back(item);
+				Item* item_=ItemMngr.SplitItem(item,count);
+				if(item_) erased_items->push_back(item_);
 			}
+			else
+			{
+				item->Count_Sub(count);
+			}
+			cr->SendAA_ItemData(item);
 		}
 	}
 	else
@@ -1323,7 +1391,7 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 		Item* item_=to_cr->GetItemByPid(item->GetProtoId());
 		if(!item_)
 		{
-			item_=ItemMngr.CreateItem(item->GetProtoId(),0);
+			item_=ItemMngr.CreateItem(item->GetProtoId(),1);
 			if(!item_)
 			{
 				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
@@ -1334,7 +1402,7 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 		}
 
 		item->Count_Sub(count);
-		item_->Count_Add(count);
+		item_->Count_Add(count-1);
 		from_cr->SendAA_ItemData(item);
 		to_cr->SendAA_ItemData(item_);
 	}
@@ -1361,7 +1429,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 		Item* item_=to_cont->ContGetItemByPid(item->GetProtoId(),stack_id);
 		if(!item_)
 		{
-			item_=ItemMngr.CreateItem(item->GetProtoId(),0);
+			item_=ItemMngr.CreateItem(item->GetProtoId(),1);
 			if(!item_)
 			{
 				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
@@ -1373,7 +1441,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 		}
 
 		item->Count_Sub(count);
-		item_->Count_Add(count);
+		item_->Count_Add(count-1);
 		from_cr->SendAA_ItemData(item);
 	}
 	else
@@ -1399,7 +1467,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 		Item* item_=to_cr->GetItemByPid(item->GetProtoId());
 		if(!item_)
 		{
-			item_=ItemMngr.CreateItem(item->GetProtoId(),0);
+			item_=ItemMngr.CreateItem(item->GetProtoId(),1);
 			if(!item_)
 			{
 				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
@@ -1410,7 +1478,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 		}
 
 		item->Count_Sub(count);
-		item_->Count_Add(count);
+		item_->Count_Add(count-1);
 		to_cr->SendAA_ItemData(item_);
 	}
 	else

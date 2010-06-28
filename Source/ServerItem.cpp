@@ -8,7 +8,7 @@
 Item* FOServer::CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count)
 {
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
-	if(!proto_item) return NULL;
+	if(!proto_item || !count) return NULL;
 
 	if(proto_item->IsCar() && !map->IsPlaceForCar(hx,hy,proto_item)) return NULL;
 

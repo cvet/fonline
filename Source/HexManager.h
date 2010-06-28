@@ -102,7 +102,7 @@ struct Field
 	bool IsExitGrid;
 	bool IsNotPassed;
 	bool IsNotRaked;
-	BYTE LightType;
+	BYTE Corner;
 	bool IsNoLight;
 	BYTE LightValues[3];
 

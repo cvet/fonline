@@ -70,6 +70,7 @@ public:
 	void RunInitScriptItems();
 
 	Item* CreateItem(WORD pid, DWORD count, DWORD item_id = 0);
+	Item* SplitItem(Item* item, DWORD count);
 	Item* GetItem(DWORD item_id);
 	void EraseItem(DWORD item_id);
 	void FullEraseItemIt(ItemPtrMapIt& it);

@@ -220,7 +220,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define STEAL_EXP_TICK          (30000)
 
 // Proto maps
-#define VERSION_PROTOTYPE_MAP	(1)
 #define MAP_PROTO_EXT			".map"
 #define MAX_PROTO_MAPS          (10000)
 
@@ -411,7 +410,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Client map
 #define SERVER_MAP_EXT			".map"
-#define CLIENT_MAP_FORMAT_VER	(3)
+#define CLIENT_MAP_FORMAT_VER	(4)
 
 // Coordinates
 #define MAXHEX_DEF              (200)
@@ -887,20 +886,19 @@ struct ScenToSend // 28 bytes
 {
 	WORD ProtoId;
 	BYTE Flags;
-	BYTE LightR;
+	BYTE Reserved;
 	WORD MapX;
 	WORD MapY;
 	short OffsetX;
 	short OffsetY;
-	WORD LightGB;
-	BYTE LightRadius;
+	DWORD LightColor;
+	BYTE LightDistance;
 	BYTE LightFlags;
 	char LightIntensity;
 	BYTE InfoOffset;
 	BYTE AnimStayBegin;
 	BYTE AnimStayEnd;
 	WORD AnimWait;
-	WORD Reserved;
 	DWORD PicMapHash;
 };
 typedef vector<ScenToSend> ScenToSendVec;

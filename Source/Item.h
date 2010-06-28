@@ -20,11 +20,7 @@ class MapObject;
 #define ITEM_EVENT_MAX                (8)
 extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 
-/************************************************************************/
-/* Prototypes info                                                      */
-/************************************************************************/
-
-#define VERSION_PROTOTYPE_ITEM      (5)
+// Prototypes
 #define MAX_ITEM_PROTOTYPES         (12000)
 #define PROTO_ITEM_DEFAULT_EXT      ".pro"
 #define PROTO_ITEM_FILENAME         "proto.fopro_"
@@ -36,7 +32,6 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define F2_TYPE_WALLS               (3)
 #define F2_TYPE_TILES               (4)
 #define F2_TYPE_MISC                (5)
-
 #define F2_ARMOR					(0)
 #define F2_CONTAINER				(1)
 #define F2_DRUG						(2)
@@ -44,14 +39,12 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define F2_AMMO						(4)
 #define F2_MISCITEM					(5)
 #define F2_KEY						(6)
-
 #define F2_PORTAL					(0)
 #define F2_STAIRS					(1)
 #define F2_ELEVATOR					(2)
 #define F2_LADDERBOTTOM				(3)
 #define F2_LADDERTOP				(4)
 #define F2_GENERICSCENERY			(5)
-
 #define F2_EXITGRID					(0)
 #define F2_GENERICMISC				(1)
 
@@ -100,17 +93,16 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define USE_THIRD                   (2)
 #define USE_RELOAD                  (3)
 #define USE_USE                     (4)
-
 #define MAX_USES					(3)
 #define USE_NONE                    (15)
 
-// Light type
-#define LIGHT_NORTH_SOUTH			(0x00) // 0x00000000 - North/South    2
-#define LIGHT_WEST					(0x80) // 0x80000000 - West Corner    4
-#define LIGHT_EAST					(0x40) // 0x40000000 - East Corner    1
-#define LIGHT_SOUTH					(0x20) // 0x20000000 - South Corner   3
-#define LIGHT_NORTH					(0x10) // 0x10000000 - North Corner   0
-#define LIGHT_EAST_WEST				(0x08) // 0x08000000 - East/West      5
+// Corner type
+#define CORNER_NORTH_SOUTH          (0)
+#define CORNER_WEST                 (1)
+#define CORNER_EAST                 (2)
+#define CORNER_SOUTH                (3)
+#define CORNER_NORTH                (4)
+#define CORNER_EAST_WEST            (5)
 
 // Flags
 #define ITEM_HIDDEN                 (0x00000001)
@@ -128,28 +120,20 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define ITEM_NO_HIGHLIGHT           (0x00001000)
 #define ITEM_SHOW_ANIM              (0x00002000)
 #define ITEM_SHOW_ANIM_EXT          (0x00004000)
-#define ITEM_LIGHT                  (0x00008000)
 #define ITEM_GECK                   (0x00010000)
 #define ITEM_TRAP                   (0x00020000)
 #define ITEM_NO_LIGHT_INFLUENCE     (0x00040000)
 #define ITEM_NO_LOOT                (0x00080000)
 #define ITEM_NO_STEAL               (0x00100000)
 #define ITEM_GAG                    (0x00200000)
+#define ITEM_LIGHT                  (0x00400000)
+#define ITEM_COLORIZE               (0x00800000)
 #define ITEM_CAN_USE_ON_SMTH        (0x01000000)
 #define ITEM_CAN_LOOK               (0x02000000)
 #define ITEM_CAN_TALK               (0x04000000)
 #define ITEM_CAN_PICKUP             (0x08000000)
 #define ITEM_CAN_USE                (0x10000000)
 #define ITEM_CACHED                 (0x80000000)
-
-// Transparent
-#define TRANS_EGG                   (0)
-#define TRANS_NONE                  (1)
-#define TRANS_WALL                  (2)
-#define TRANS_GLASS                 (3)
-#define TRANS_STEAM                 (4)
-#define TRANS_ENERGY                (5)
-#define TRANS_RED                   (6)
 
 // Material
 #define MATERIAL_GLASS				(0)
@@ -161,15 +145,10 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define MATERIAL_CEMENT				(6)
 #define MATERIAL_LEATHER			(7)
 
-/************************************************************************/
-/* Broken info                                                          */
-/************************************************************************/
-
-// Main
+// Broken info
 #define WEAR_MAX					(30000)
 #define BROKEN_MAX					(10)
-
-// Flags
+	// Flags
 #define BI_LOWBROKEN				(0x01)
 #define BI_NORMBROKEN				(0x02)
 #define BI_HIGHBROKEN				(0x04)
@@ -179,25 +158,23 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define BI_SERVICE_EXT				(0x20)
 #define BI_ETERNAL					(0x40)
 
-/************************************************************************/
-/* Offsets by original pids                                             */
-/************************************************************************/
-
+// Offsets by original pids
 #define F2PROTO_OFFSET_ITEM			(0)
 #define F2PROTO_OFFSET_SCENERY		(2000)
 #define F2PROTO_OFFSET_MISC			(4000)
 #define F2PROTO_OFFSET_WALL			(5000)
 #define F2PROTO_OFFSET_TILE			(8000)
-
 #define MISC_MAX					(200)
 
-/************************************************************************/
-/* Car                                                                  */
-/************************************************************************/
-
+// Car
 #define CAR_MAX_BLOCKS              (80)
 #define CAR_MAX_BAG_POSITION        (12)
 #define CAR_MAX_BAGS                (3)
+
+// Light flags
+#define LIGHT_DISABLE_DIR(dir)       (1<<CLAMP(dir,0,5))
+#define LIGHT_GLOBAL                 (0x40)
+#define LIGHT_INVERSE                (0x80)
 
 /************************************************************************/
 /* ProtoItem                                                         */
@@ -209,29 +186,22 @@ public:
 	WORD Pid;
 	BYTE Type;
 	BYTE Slot;
-
-	// Light
-	BYTE LightType;
-	BYTE DistanceLight;
-	int IntensityLight;
-
-	// Flags
 	DWORD Flags;
-
-	// Transparent
-	BYTE TransType;
-	BYTE TransVal;
+	BYTE Corner;
+	bool DisableEgg;
 	DWORD PicMapHash;
 	DWORD PicInvHash;
 	DWORD Weight;
-	BYTE Volume;
-	WORD PicMapDeprecated;
-	WORD PicInvDeprecated;
-	BYTE SoundId;
+	DWORD Volume;
 	DWORD Cost;
+	BYTE SoundId;
 	BYTE Material;
 
-	// Animation
+	BYTE LightFlags;
+	BYTE LightDistance;
+	char LightIntensity;
+	DWORD LightColor;
+
 	WORD AnimWaitBase;
 	WORD AnimWaitRndMin;
 	WORD AnimWaitRndMax;
@@ -527,7 +497,7 @@ public:
 		DWORD Flags;
 		BYTE Rate;
 		char LightIntensity;
-		BYTE LightRadius;
+		BYTE LightDistance;
 		BYTE LightFlags;
 		DWORD LightColor;
 		WORD ScriptId;
@@ -760,13 +730,18 @@ public:
 	// Misc
 	bool IsMisc(){return Proto->IsMisc();}
 
+	// Colorize
+	bool IsColorize(){return FLAG(Data.Flags,ITEM_COLORIZE);}
+	DWORD GetColor(){return (Data.LightColor?Data.LightColor:Proto->LightColor)&0xFFFFFF;}
+	BYTE GetAlpha(){return (Data.LightColor?Data.LightColor:Proto->LightColor)>>24;}
+
 	// Light
-	bool IsLight(){return Data.LightIntensity!=0 || Proto->IntensityLight!=0;}
+	bool IsLight(){return FLAG(Data.Flags,ITEM_LIGHT);}
 	DWORD LightGetHash(){if(!IsLight()) return 0; if(Data.LightIntensity) return Crypt.Crc32((BYTE*)&Data.LightIntensity,7); return (DWORD)Proto;}
-	int LightGetIntensity(){return Data.LightIntensity?Data.LightIntensity:(Proto->IntensityLight>100?50:Proto->IntensityLight);}
-	int LightGetRadius(){return Data.LightIntensity?Data.LightRadius:Proto->DistanceLight;}
-	int LightGetFlags(){return Data.LightIntensity?Data.LightFlags:0;}
-	DWORD LightGetColor(){return Data.LightIntensity?Data.LightColor:0;}
+	int LightGetIntensity(){return Data.LightIntensity?Data.LightIntensity:Proto->LightIntensity;}
+	int LightGetDistance(){return Data.LightDistance?Data.LightDistance:Proto->LightDistance;}
+	int LightGetFlags(){return Data.LightFlags?Data.LightFlags:Proto->LightFlags;}
+	DWORD LightGetColor(){return (Data.LightColor?Data.LightColor:Proto->LightColor)&0xFFFFFF;}
 
 /************************************************************************/
 /* MiscEx SUBTYPES METHODS                                               */

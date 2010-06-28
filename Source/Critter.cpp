@@ -1108,21 +1108,21 @@ bool Critter::MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count)
 		bool full_drop=(!item->IsGrouped() || count>=item->GetCount());
 		if(!full_drop)
 		{
-			item->Count_Sub(count);
-			if(item->ACC_CRITTER.Slot!=SLOT_INV) SendAA_ItemData(item);
-
 			if(GetMap())
 			{
-				Item* item_=ItemMngr.CreateItem(item->GetProtoId(),count);
+				Item* item_=ItemMngr.SplitItem(item,count);
 				if(!item_)
 				{
 					Send_AddItem(item); // Refresh
 					return false;
 				}
+				SendAA_ItemData(item);
 				item=item_;
 			}
 			else
 			{
+				item->Count_Sub(count);
+				SendAA_ItemData(item);
 				item=NULL;
 			}
 		}

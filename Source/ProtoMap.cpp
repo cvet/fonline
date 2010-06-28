@@ -64,7 +64,7 @@ public:
 	BYTE Reserved5;
 	BYTE LightDay;
 	BYTE LightDirOff;
-	BYTE LightRadius;
+	BYTE LightDistance;
 	int LightIntensity;
 
 	int BindScriptId; // For script bind in runtime
@@ -365,10 +365,10 @@ bool ProtoMap::ReadObjects(int version)
 			obj_v6.MapX=obj_v5.MapX;
 			obj_v6.MapY=obj_v5.MapY;
 			obj_v6.Dir=obj_v5.Dir;
-			obj_v6.LightRGB=obj_v5.LightRGB;
+			obj_v6.LightColor=obj_v5.LightRGB;
 			obj_v6.LightDay=obj_v5.LightDay;
 			obj_v6.LightDirOff=obj_v5.LightDirOff;
-			obj_v6.LightRadius=obj_v5.LightRadius;
+			obj_v6.LightDistance=obj_v5.LightDistance;
 			obj_v6.LightIntensity=(obj_v5.LightIntensity>100?50:(obj_v5.LightIntensity<-100?-50:obj_v5.LightIntensity));
 			StringCopy(obj_v6.ScriptName,obj_v5.ScriptName);
 			StringCopy(obj_v6.FuncName,obj_v5.FuncName);
@@ -609,10 +609,10 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					else if(field=="MapX") mobj.MapX=ivalue;
 					else if(field=="MapY") mobj.MapY=ivalue;
 					else if(field=="Dir") mobj.Dir=ivalue;
-					else if(field=="LightRGB") mobj.LightRGB=ivalue;
+					else if(field=="LightColor") mobj.LightColor=ivalue;
 					else if(field=="LightDay") mobj.LightDay=ivalue;
 					else if(field=="LightDirOff") mobj.LightDirOff=ivalue;
-					else if(field=="LightRadius") mobj.LightRadius=ivalue;
+					else if(field=="LightDistance") mobj.LightDistance=ivalue;
 					else if(field=="LightIntensity") mobj.LightIntensity=ivalue;
 					else if(field=="ScriptName") StringCopy(mobj.ScriptName,value.c_str());
 					else if(field=="FuncName") StringCopy(mobj.FuncName,value.c_str());
@@ -796,10 +796,10 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		if(mobj.MapX) fm->SetStr("%-20s %d\n","MapX",mobj.MapX);
 		if(mobj.MapY) fm->SetStr("%-20s %d\n","MapY",mobj.MapY);
 		if(mobj.Dir) fm->SetStr("%-20s %d\n","Dir",mobj.Dir);
-		if(mobj.LightRGB) fm->SetStr("%-20s %d\n","LightRGB",mobj.LightRGB);
+		if(mobj.LightColor) fm->SetStr("%-20s %d\n","LightColor",mobj.LightColor);
 		if(mobj.LightDay) fm->SetStr("%-20s %d\n","LightDay",mobj.LightDay);
 		if(mobj.LightDirOff) fm->SetStr("%-20s %d\n","LightDirOff",mobj.LightDirOff);
-		if(mobj.LightRadius) fm->SetStr("%-20s %d\n","LightRadius",mobj.LightRadius);
+		if(mobj.LightDistance) fm->SetStr("%-20s %d\n","LightDistance",mobj.LightDistance);
 		if(mobj.LightIntensity) fm->SetStr("%-20s %d\n","LightIntensity",mobj.LightIntensity);
 		if(mobj.ScriptName[0]) fm->SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
 		if(mobj.FuncName[0]) fm->SetStr("%-20s %s\n","FuncName",mobj.FuncName);
@@ -1314,9 +1314,8 @@ bool ProtoMap::Refresh()
 				cur_wall.MapY=mobj.MapY;
 				cur_wall.OffsetX=mobj.MScenery.OffsetX;
 				cur_wall.OffsetY=mobj.MScenery.OffsetY;
-				cur_wall.LightR=(mobj.LightRGB>>16)&0xFF;
-				cur_wall.LightGB=mobj.LightRGB&0xFFFF;
-				cur_wall.LightRadius=mobj.LightRadius;
+				cur_wall.LightColor=mobj.LightColor;
+				cur_wall.LightDistance=mobj.LightDistance;
 				cur_wall.LightFlags=mobj.LightDirOff|((mobj.LightDay&3)<<6);
 				cur_wall.LightIntensity=mobj.LightIntensity;
 				cur_wall.InfoOffset=mobj.MScenery.InfoOffset;
@@ -1406,9 +1405,8 @@ bool ProtoMap::Refresh()
 				cur_scen.MapY=mobj.MapY;
 				cur_scen.OffsetX=mobj.MScenery.OffsetX;
 				cur_scen.OffsetY=mobj.MScenery.OffsetY;
-				cur_scen.LightR=(mobj.LightRGB>>16)&0xFF;
-				cur_scen.LightGB=mobj.LightRGB&0xFFFF;
-				cur_scen.LightRadius=mobj.LightRadius;
+				cur_scen.LightColor=mobj.LightColor;
+				cur_scen.LightDistance=mobj.LightDistance;
 				cur_scen.LightFlags=mobj.LightDirOff|((mobj.LightDay&3)<<6);
 				cur_scen.LightIntensity=mobj.LightIntensity;
 				cur_scen.InfoOffset=mobj.MScenery.InfoOffset;

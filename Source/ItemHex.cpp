@@ -22,21 +22,7 @@ SprDrawValid(false)
 	RefreshAnim();
 	if(IsShowAnim()) isAnimated=true;
 	animNextTick=Timer::FastTick()+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
-
 	SetFade(true);
-
-	switch(Proto->TransType)
-	{
-	case TRANS_EGG:
-	case TRANS_NONE:
-	case TRANS_WALL: maxAlpha=0xFF; break;
-	case TRANS_GLASS: maxAlpha=0x7F; break;
-	case TRANS_STEAM: maxAlpha=0x6F; break;
-	case TRANS_ENERGY: maxAlpha=0x7F; break;
-	case TRANS_RED: maxAlpha=0x7F; break;
-	default: break;
-	}
-	if(Proto->TransVal) maxAlpha=0xFF-Proto->TransVal;
 }
 
 void ItemHex::Finish()
@@ -175,32 +161,30 @@ void ItemHex::RefreshAnim()
 	}
 }
 
-void ItemHex::SetEffects(Sprite* prep)
+void ItemHex::SetSprite(Sprite* spr)
 {
-	switch(Proto->TransType)
+	if(spr) SprDraw=spr;
+	if(SprDraw)
 	{
-	case TRANS_EGG: break;
-	case TRANS_GLASS: prep->Effect=Sprite::Glass; break;
-	case TRANS_STEAM: prep->Effect=Sprite::Steam; break;
-	case TRANS_ENERGY: prep->Effect=Sprite::Energy; break;
-	case TRANS_RED: prep->Effect=Sprite::Red; break;
-	default: break;
+		maxAlpha=(IsColorize()?GetAlpha():0xFF);
+		SprDraw->Color=(IsColorize()?GetColor():0);
+		SprDraw->Egg=GetEggType();
+		if(IsBadItem()) SprDraw->Contour=Sprite::ContourRed;
 	}
-	prep->Egg=GetEggType();
-	if(IsBadItem()) prep->Contour=Sprite::ContourRed;
 }
 
 Sprite::EggType ItemHex::GetEggType()
 {
-	if(IsFlat() || Proto->TransType!=TRANS_EGG) return Sprite::EggNone;
-	switch(Proto->LightType)
+	if(Proto->DisableEgg || IsFlat()) return Sprite::EggNone;
+	switch(Proto->Corner)
 	{
-	case LIGHT_SOUTH: return Sprite::EggXorY;
-	case LIGHT_NORTH: return Sprite::EggXandY;
-	case LIGHT_EAST_WEST:
-	case LIGHT_WEST: return Sprite::EggY;
-	default: return Sprite::EggX; // LIGHT_NORTH_SOUTH, LIGHT_EAST
+	case CORNER_SOUTH: return Sprite::EggXorY;
+	case CORNER_NORTH: return Sprite::EggXandY;
+	case CORNER_EAST_WEST:
+	case CORNER_WEST: return Sprite::EggY;
+	default: return Sprite::EggX; // CORNER_NORTH_SOUTH, CORNER_EAST
 	}
+	return Sprite::EggNone;
 }
 
 void ItemHex::StartAnimate()

@@ -51,9 +51,10 @@ public:
 	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid.Type==GRID_EXITGRID);} // Proto->CanLook
 	bool IsCanUse(){return IsItem() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_USE));}
 	bool IsDrawContour(){return /*IsFocused && */IsItem() && !IsNoHighlight() && !IsBadItem();}
-	bool IsTransparent(){int t=Proto->TransType; return t==TRANS_GLASS || t==TRANS_STEAM || t==TRANS_ENERGY || t==TRANS_RED;}
+	bool IsTransparent(){return maxAlpha<0xFF;}
+	bool IsFullyTransparent(){return maxAlpha==0;}
 	void RefreshAnim();
-	void SetEffects(Sprite* prep);
+	void SetSprite(Sprite* spr);
 	Sprite::EggType GetEggType();
 
 	// Finish

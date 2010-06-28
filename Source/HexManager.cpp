@@ -31,7 +31,7 @@ void Field::Clear()
 	IsWallTransp=false;
 	IsScen=false;
 	IsExitGrid=false;
-	LightType=0;
+	Corner=0;
 	IsNotPassed=false;
 	IsNotRaked=false;
 	IsNoLight=false;
@@ -60,7 +60,7 @@ void Field::ProcessCache()
 	IsWallTransp=false;
 	IsScen=false;
 	IsExitGrid=false;
-	LightType=0;
+	Corner=0;
 	IsNotPassed=(Crit!=NULL);
 	IsNotRaked=false;
 	IsNoLight=false;
@@ -73,7 +73,7 @@ void Field::ProcessCache()
 		{
 			IsWall=true;
 			IsWallTransp=item->IsLightThru();
-			LightType=item->Proto->LightType;
+			Corner=item->Proto->Corner;
 			if(pid==SP_SCEN_IBLOCK) IsWallSAI=true;
 		}
 		else if(item->IsScenOrGrid())
@@ -333,13 +333,12 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 	else
 	{
 		// Draw
-		if(GetHexToDraw(hx,hy) && !item->IsHidden() &&  item->Proto->TransVal<0xFF)
+		if(GetHexToDraw(hx,hy) && !item->IsHidden() && !item->IsFullyTransparent())
 		{
 			Sprite& spr=mainTree.InsertSprite(item->IsFlat()?DRAW_ORDER_ITEM_FLAT(item->IsScenOrGrid()):DRAW_ORDER_ITEM(item->GetPos()),
 				f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,
 				!item->IsNoLightInfluence()?GetLightHex(hx,hy):NULL,&item->SprDrawValid);
-			item->SprDraw=&spr;
-			item->SetEffects(&spr);
+			item->SetSprite(&spr);
 		}
 
 		if(item->IsLight() || !item->IsLightThru()) RebuildLight();
@@ -366,6 +365,7 @@ void HexManager::ChangeItem(DWORD id, const Item::ItemData& data)
 		if(FLAG(old_cond,LOCKER_ISOPEN) && !FLAG(new_cond,LOCKER_ISOPEN)) item->SetAnimFromEnd();
 	}
 
+	item->SetSprite(NULL); // Refresh
 	CritterCl* chosen=GetChosen();
 	if(item->IsLight() || FLAG(old_data.Flags,ITEM_LIGHT_THRU)!=FLAG(data.Flags,ITEM_LIGHT_THRU)) RebuildLight();
 	GetField(item->GetHexX(),item->GetHexY()).ProcessCache();
@@ -809,7 +809,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					ItemHex* item=*it;
 
 #ifdef FONLINE_CLIENT
-					if(item->IsHidden() || item->Proto->TransVal==0xFF) continue;
+					if(item->IsHidden() || item->IsFullyTransparent()) continue;
 					if(item->IsScenOrGrid() && !OptShowScen) continue;
 					if(item->IsItem() && !OptShowItem) continue;
 					if(item->IsWall() && !OptShowWall) continue;
@@ -825,8 +825,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					Sprite& spr=mainTree.AddSprite(item->IsFlat()?DRAW_ORDER_ITEM_FLAT(item->IsScenOrGrid()):DRAW_ORDER_ITEM(item->GetPos()),
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,
 						(item->IsNoLightInfluence() || (item->IsFlat() && item->IsScenOrGrid()))?NULL:GetLightHex(nx,ny),&item->SprDrawValid);
-					item->SprDraw=&spr;
-					item->SetEffects(&spr);
+					item->SetSprite(&spr);
 				}
 			}
 
@@ -921,10 +920,10 @@ void HexManager::MarkLightEndNeighbor(WORD hx, WORD hy, bool north_south, DWORD 
 	Field& f=GetField(hx,hy);
 	if(f.IsWall)
 	{
-		int lt=f.LightType;
-		if((north_south && (lt==LIGHT_NORTH_SOUTH || lt==LIGHT_NORTH || lt==LIGHT_WEST))
-		|| (!north_south && (lt==LIGHT_EAST_WEST || lt==LIGHT_EAST))
-		|| lt==LIGHT_SOUTH)
+		int lt=f.Corner;
+		if((north_south && (lt==CORNER_NORTH_SOUTH || lt==CORNER_NORTH || lt==CORNER_WEST))
+		|| (!north_south && (lt==CORNER_EAST_WEST || lt==CORNER_EAST))
+		|| lt==CORNER_SOUTH)
 		{
 			BYTE* p=GetLightHex(hx,hy);
 			int light_full=inten*MAX_LIGHT_HEX/MAX_LIGHT_VALUE*LightCapacity/100;
@@ -953,7 +952,7 @@ void HexManager::MarkLightEnd(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy
 	if(f.IsWall)
 	{
 		is_wall=true;
-		if(f.LightType==LIGHT_NORTH_SOUTH || f.LightType==LIGHT_NORTH || f.LightType==LIGHT_WEST) north_south=true;
+		if(f.Corner==CORNER_NORTH_SOUTH || f.Corner==CORNER_NORTH || f.Corner==CORNER_WEST) north_south=true;
 	}
 
 	int dir=GetFarDir(from_hx,from_hy,to_hx,to_hy);
@@ -991,7 +990,7 @@ void HexManager::MarkLightStep(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_h
 	Field& f=GetField(to_hx,to_hy);
 	if(f.IsWallTransp)
 	{
-		bool north_south=(f.LightType==LIGHT_NORTH_SOUTH || f.LightType==LIGHT_NORTH || f.LightType==LIGHT_WEST);
+		bool north_south=(f.Corner==CORNER_NORTH_SOUTH || f.Corner==CORNER_NORTH || f.Corner==CORNER_WEST);
 		int dir=GetFarDir(from_hx,from_hy,to_hx,to_hy);
 		if(dir==0 || (north_south && dir==1) || (!north_south && (dir==4 || dir==5))) MarkLight(to_hx,to_hy,inten);
 	}
@@ -1089,7 +1088,6 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 {
 	WORD hx=ls.HexX;
 	WORD hy=ls.HexY;
-	BYTE dir_off=ls.Flags&63;
 	// Distantion
 	int dist=ls.Radius;
 	if(dist<1) dist=1;
@@ -1097,10 +1095,10 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 	int inten=ABS(ls.Intensity);
 	if(inten>100) inten=50;
 	inten*=100;
-	if(ls.Flags&0x40) GetColorDay(GetMapDayTime(),GetMapDayColor(),GetDayTime(),&LightCapacity);
+	if(FLAG(ls.Flags,LIGHT_GLOBAL)) GetColorDay(GetMapDayTime(),GetMapDayColor(),GetDayTime(),&LightCapacity);
 	else if(ls.Intensity>=0) GetColorDay(GetMapDayTime(),GetMapDayColor(),GetMapTime(),&LightCapacity);
 	else LightCapacity=100;
-	if(ls.Flags&0x80) LightCapacity=100-LightCapacity;
+	if(FLAG(ls.Flags,LIGHT_INVERSE)) LightCapacity=100-LightCapacity;
 	// Color
 	DWORD color=ls.ColorRGB;
 	if(color==0) color=0xFFFFFF;
@@ -1149,7 +1147,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 
 			WORD hx_=CLAMP(hx_far,0,maxHexX-1);
 			WORD hy_=CLAMP(hy_far,0,maxHexY-1);
-			if(j>=0 && (dir_off>>i)&1)
+			if(j>=0 && FLAG(ls.Flags,LIGHT_DISABLE_DIR(i)))
 			{
 				hx_=hx;
 				hy_=hy;
@@ -1249,7 +1247,7 @@ void HexManager::CollectLightSources()
 		}
 
 		if(allow_light)
-			lightSources.push_back(LightSource(o->MapX,o->MapY,o->LightRGB,o->LightRadius,o->LightIntensity,o->LightDirOff|((o->LightDay&3)<<6)));
+			lightSources.push_back(LightSource(o->MapX,o->MapY,o->LightColor,o->LightDistance,o->LightIntensity,o->LightDirOff|((o->LightDay&3)<<6)));
 	}
 #else
 	if(!IsMapLoaded()) return;
@@ -1261,7 +1259,7 @@ void HexManager::CollectLightSources()
 	for(ItemHexVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
 		ItemHex* item=(*it);
-		if(item->IsItem() && item->IsLight()) lightSources.push_back(LightSource(item->GetHexX(),item->GetHexY(),item->LightGetColor(),item->LightGetRadius(),item->LightGetIntensity(),item->LightGetFlags()));
+		if(item->IsItem() && item->IsLight()) lightSources.push_back(LightSource(item->GetHexX(),item->GetHexY(),item->LightGetColor(),item->LightGetDistance(),item->LightGetIntensity(),item->LightGetFlags()));
 	}
 
 	// Items in critters slots
@@ -1274,7 +1272,7 @@ void HexManager::CollectLightSources()
 			Item* item=(*it_).second;
 			if(item->IsLight() && item->ACC_CRITTER.Slot!=SLOT_INV)
 			{
-				lightSources.push_back(LightSource(cr->GetHexX(),cr->GetHexY(),item->LightGetColor(),item->LightGetRadius(),item->LightGetIntensity(),item->LightGetFlags()));
+				lightSources.push_back(LightSource(cr->GetHexX(),cr->GetHexY(),item->LightGetColor(),item->LightGetDistance(),item->LightGetIntensity(),item->LightGetFlags()));
 				added=true;
 			}
 		}
@@ -2177,7 +2175,7 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 		if(item->IsFinishing()) continue;
 
 #ifdef FONLINE_CLIENT
-		if(item->IsHidden() || item->Proto->TransVal==0xFF) continue;
+		if(item->IsHidden() || item->IsFullyTransparent()) continue;
 		if(item->IsScenOrGrid() && !OptShowScen) continue;
 		if(item->IsItem() && !OptShowItem) continue;
 		if(item->IsWall() && !OptShowWall) continue;
@@ -3037,8 +3035,6 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 		return false;
 	}
 
-	if(scen.LightIntensity) lightSourcesScen.push_back(LightSource(hx,hy,((DWORD)scen.LightR<<16)|scen.LightGB,scen.LightRadius,scen.LightIntensity,scen.LightFlags));
-
 	static DWORD scen_id=0;
 	scen_id--;
 
@@ -3046,6 +3042,10 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 	scenery->ScenFlags=scen.Flags;
 
 	// Mapper additional parameters
+	scenery->Data.LightIntensity=scen.LightIntensity;
+	scenery->Data.LightDistance=scen.LightDistance;
+	scenery->Data.LightColor=scen.LightColor;
+	scenery->Data.LightFlags=scen.LightFlags;
 	if(scen.InfoOffset) scenery->Data.Info=scen.InfoOffset;
 	if(scen.AnimStayBegin || scen.AnimStayEnd)
 	{
@@ -3065,8 +3065,11 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 		scenery->RefreshAnim();
 	}
 
+	if(scenery->IsLight())
+		lightSourcesScen.push_back(LightSource(hx,hy,scenery->LightGetColor(),scenery->LightGetDistance(),scenery->LightGetIntensity(),scenery->LightGetFlags()));
+
 	PushItem(scenery);
-	if(!scenery->IsHidden() && scenery->Proto->TransVal<0xFF) ProcessHexBorders(scenery->Anim->GetSprId(0),scen.OffsetX,scen.OffsetY);
+	if(!scenery->IsHidden() && !scenery->IsFullyTransparent()) ProcessHexBorders(scenery->Anim->GetSprId(0),scen.OffsetX,scen.OffsetY);
 	return true;
 }
 
@@ -3157,9 +3160,8 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			s.MapY=o->MapY;
 			s.OffsetX=o->MScenery.OffsetX;
 			s.OffsetY=o->MScenery.OffsetY;
-			s.LightR=(o->LightRGB>>16)&0xFF;
-			s.LightGB=o->LightRGB&0xFFFF;
-			s.LightRadius=o->LightRadius;
+			s.LightColor=o->LightColor;
+			s.LightDistance=o->LightDistance;
 			s.LightFlags=o->LightDirOff|((o->LightDay&3)<<6);
 			s.LightIntensity=o->LightIntensity;
 
@@ -3423,9 +3425,9 @@ void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 	else item->Data.AnimWaitBase=item->Proto->AnimWaitBase;
 
 	item->Data.LightIntensity=mobj->LightIntensity;
-	item->Data.LightColor=mobj->LightRGB;
+	item->Data.LightColor=mobj->LightColor;
 	item->Data.LightFlags=(mobj->LightDirOff|((mobj->LightDay&3)<<6));
-	item->Data.LightRadius=mobj->LightRadius;
+	item->Data.LightDistance=mobj->LightDistance;
 
 	mobj->MItem.PicMapHash=(mobj->RunTime.PicMapName[0]?Str::GetHash(mobj->RunTime.PicMapName):0);
 	mobj->MItem.PicInvHash=(mobj->RunTime.PicInvName[0]?Str::GetHash(mobj->RunTime.PicInvName):0);

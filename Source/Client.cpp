@@ -260,7 +260,7 @@ bool FOClient::Init(HWND hwnd)
 	// Item prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("_item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("__item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
@@ -6583,7 +6583,7 @@ void FOClient::Net_OnProtoItemData()
 		return;
 	}
 
-	Crypt.SetCache("_item_protos",proto_data,len);
+	Crypt.SetCache("__item_protos",proto_data,len);
 	delete[] proto_data;
 }
 
@@ -10152,26 +10152,22 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 
 	if(proto_item) // Copy from void ItemHex::SetEffects(Sprite* prep);
 	{
-		switch(proto_item->TransType)
+		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
 		{
-		case TRANS_EGG: break;
-		case TRANS_GLASS: spr.Effect=Sprite::Glass; break;
-		case TRANS_STEAM: spr.Effect=Sprite::Steam; break;
-		case TRANS_ENERGY: spr.Effect=Sprite::Energy; break;
-		case TRANS_RED: spr.Effect=Sprite::Red; break;
-		default: break;
+			spr.Alpha=((BYTE*)&proto_item->LightColor)+3;
+			spr.Color=proto_item->LightColor&0xFFFFFF;
 		}
 
-		if(is_flat || proto_item->TransType!=TRANS_EGG) spr.Egg=Sprite::EggNone;
+		if(is_flat || proto_item->DisableEgg) spr.Egg=Sprite::EggNone;
 		else
 		{
-			switch(proto_item->LightType)
+			switch(proto_item->Corner)
 			{
-			case LIGHT_SOUTH: spr.Egg=Sprite::EggXorY;
-			case LIGHT_NORTH: spr.Egg=Sprite::EggXandY;
-			case LIGHT_EAST_WEST:
-			case LIGHT_WEST: spr.Egg=Sprite::EggY;
-			default: spr.Egg=Sprite::EggX; // LIGHT_NORTH_SOUTH, LIGHT_EAST
+			case CORNER_SOUTH: spr.Egg=Sprite::EggXorY;
+			case CORNER_NORTH: spr.Egg=Sprite::EggXandY;
+			case CORNER_EAST_WEST:
+			case CORNER_WEST: spr.Egg=Sprite::EggY;
+			default: spr.Egg=Sprite::EggX; // CORNER_NORTH_SOUTH, CORNER_EAST
 			}
 		}
 
