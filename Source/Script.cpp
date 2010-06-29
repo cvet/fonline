@@ -357,6 +357,10 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 		ptr=(size_t*)GetProcAddress(dll,"ASEngine");
 		if(ptr) *ptr=(size_t)Engine;
 
+		// Register functions
+		ptr=(size_t*)GetProcAddress(dll,"WriteLog");
+		if(ptr) *ptr=(size_t)&WriteLog;
+
 		// Call init function
 		typedef void(*DllMainEx)();
 		DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
