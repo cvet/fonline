@@ -151,6 +151,35 @@ bool PragmaCallbackCrData(const char* text)
 	return true;
 }
 
+HMODULE LoadDynamicLibrary(const char* dll_name)
+{
+	// Load dynamic library
+	char dll_name_[256];
+	//StringCopy(dll_name_,ScriptsPath.c_str());
+	//StringAppend(dll_name_,dll_name);
+	HMODULE dll=LoadLibrary(dll_name);
+	if(!dll) return NULL;
+
+	// Register global function and vars
+	static StringSet alreadyLoadedDll;
+	if(!alreadyLoadedDll.count(dll_name))
+	{
+		// Register variables
+		//size_t* ptr=(size_t*)GetProcAddress(dll,"GameOpt");
+		//if(ptr) *ptr=(size_t)&GameOpt;
+		size_t* ptr=(size_t*)GetProcAddress(dll,"ASEngine");
+		if(ptr) *ptr=(size_t)Engine;
+
+		// Call init function
+		typedef void(*DllMainEx)();
+		DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
+		if(func) (*func)();
+
+		alreadyLoadedDll.insert(dll_name);
+	}
+	return dll;
+}
+
 class BindFuncPragmaCallback : public Preprocessor::PragmaCallback
 {
 private:
@@ -181,7 +210,7 @@ public:
 			return;
 		}
 
-		HMODULE dll=LoadLibrary(dll_name.c_str());
+		HMODULE dll=LoadDynamicLibrary(dll_name.c_str());
 		if(!dll)
 		{
 			printf("Error in bindfunc pragma<%s>, dll not found, error<%u>.\n",instance.text.c_str(),GetLastError());
