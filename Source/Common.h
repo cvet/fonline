@@ -126,65 +126,29 @@ bool CheckUserPass(const char* str);
 #define PATH_LOG_FILE		".\\"
 #define PATH_SCREENS_FILE	".\\"
 
-#ifdef DX8RENDER
-	#define DIRECTINPUT_VERSION 0x0800
-	#include "Dx8/d3dx8.h"
-	#include "Dx8/dinput.h"
-	#include "Dx8/dxerr8.h"
-	#include "Dx8/dsound.h"
-	#include "Dx8/DShow.h"
-	#pragma comment(lib,"8_d3dx8.lib")
-	#pragma comment(lib,"8_d3d8.lib")
-	#pragma comment(lib,"8_dinput8.lib")
-	#pragma comment(lib,"8_dxguid.lib")
-	#pragma comment(lib,"8_dxerr8.lib")
-	#pragma comment(lib,"8_dsound.lib")
-	#pragma comment(lib,"8_Strmiids.lib")
-	#pragma comment(lib,"8_Quartz.lib")
-	#pragma comment(lib,"8_d3dxof.lib")
-	typedef LPDIRECT3D8 LPDIRECT3D;
-	typedef LPDIRECT3DDEVICE8 LPDIRECT3DDEVICE;
-	typedef LPDIRECT3DTEXTURE8 LPDIRECT3DTEXTURE;
-	typedef LPDIRECT3DSURFACE8 LPDIRECT3DSURFACE;
-	typedef LPDIRECT3DVERTEXBUFFER8 LPDIRECT3DVERTEXBUFFER;
-	typedef LPDIRECT3DINDEXBUFFER8 LPDIRECT3DINDEXBUFFER;
-	typedef D3DMATERIAL8 D3DMATERIAL;
-	#define DXGetErrorString DXGetErrorString8
-	#define Direct3DCreate Direct3DCreate8
-#elif DX9RENDER
-	#define DIRECTINPUT_VERSION 0x0800
-	#include "Dx9/d3dx9.h"
-	#include "Dx9/dinput.h"
-	#include "Dx9/dxerr.h"
-	#include "Dx9/dsound.h"
-	#include "Dx8/DShow.h"
-	#pragma comment(lib,"9_d3dx9.lib")
-	#pragma comment(lib,"9_d3d9.lib")
-	#pragma comment(lib,"9_dinput8.lib")
-	#pragma comment(lib,"9_dxguid.lib")
-	#pragma comment(lib,"9_dxerr.lib")
-	#pragma comment(lib,"9_dsound.lib")
-	#pragma comment(lib,"8_Strmiids.lib")
-	#pragma comment(lib,"8_Quartz.lib")
-	#pragma comment(lib,"9_d3dxof.lib")
-	typedef LPDIRECT3D9 LPDIRECT3D;
-	typedef LPDIRECT3DDEVICE9 LPDIRECT3DDEVICE;
-	typedef LPDIRECT3DTEXTURE9 LPDIRECT3DTEXTURE;
-	typedef LPDIRECT3DSURFACE9 LPDIRECT3DSURFACE;
-	typedef LPDIRECT3DVERTEXBUFFER9 LPDIRECT3DVERTEXBUFFER;
-	typedef LPDIRECT3DINDEXBUFFER9 LPDIRECT3DINDEXBUFFER;
-	typedef D3DMATERIAL9 D3DMATERIAL;
-	#define Direct3DCreate Direct3DCreate9
-#elif OGLRENDER
-	#include "Gl/gl.h"
-	#include "Gl/glu.h"
-	#include "Gl/glaux.h"
-	#pragma comment(lib,"gl_glaux.lib")
-	#pragma comment(lib,"gl_opengl32.lib")
-	#pragma comment(lib,"gl_glu32.lib")
-#else
-	#error Unknown render. Please type DX8RENDER or DX9RENDER or OGLRENDER.
-#endif
+#define DIRECTINPUT_VERSION 0x0800
+#include "Dx9/d3dx9.h"
+#include "Dx9/dinput.h"
+#include "Dx9/dxerr.h"
+#include "Dx9/dsound.h"
+#include "Dx8/DShow.h"
+#pragma comment(lib,"9_d3dx9.lib")
+#pragma comment(lib,"9_d3d9.lib")
+#pragma comment(lib,"9_dinput8.lib")
+#pragma comment(lib,"9_dxguid.lib")
+#pragma comment(lib,"9_dxerr.lib")
+#pragma comment(lib,"9_dsound.lib")
+#pragma comment(lib,"8_strmiids.lib")
+#pragma comment(lib,"8_quartz.lib")
+#pragma comment(lib,"9_d3dxof.lib")
+typedef LPDIRECT3D9 LPDIRECT3D;
+typedef LPDIRECT3DDEVICE9 LPDIRECT3DDEVICE;
+typedef LPDIRECT3DTEXTURE9 LPDIRECT3DTEXTURE;
+typedef LPDIRECT3DSURFACE9 LPDIRECT3DSURFACE;
+typedef LPDIRECT3DVERTEXBUFFER9 LPDIRECT3DVERTEXBUFFER;
+typedef LPDIRECT3DINDEXBUFFER9 LPDIRECT3DINDEXBUFFER;
+typedef D3DMATERIAL9 D3DMATERIAL;
+#define Direct3DCreate Direct3DCreate9
 
 extern bool CmnQuit;
 extern int CmnScrOx;

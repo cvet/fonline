@@ -843,7 +843,7 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessScreenEffectMirror()
 {
-#ifdef DX8RENDER
+/*
 	if(ScreenMirrorStart)
 	{
 		ScreenQuake(10,1000);
@@ -921,7 +921,7 @@ void FOClient::ProcessScreenEffectMirror()
 			SprMngr.GetDevice()->SetVertexShader(D3DFVF_MYVERTEX);
 		}
 	}
-#endif
+*/
 }
 
 void FOClient::ParseKeyboard()
@@ -8325,11 +8325,7 @@ bool FOClient::SaveScreenshot()
 	if(!SprMngr.IsInit()) return false;
 
 	LPDIRECT3DSURFACE surf=NULL;
-#ifdef DX8RENDER
-	if(FAILED(SprMngr.GetDevice()->GetBackBuffer(0,D3DBACKBUFFER_TYPE_MONO,&surf))) return false;
-#elif DX9RENDER
 	if(FAILED(SprMngr.GetDevice()->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&surf))) return false;
-#endif
 
 	SYSTEMTIME sys_time;
 	GetLocalTime(&sys_time);
@@ -8338,22 +8334,13 @@ bool FOClient::SaveScreenshot()
 	sprintf(screen_path,"%sscreen_%02d-%02d-%d_%02d-%02d-%02d.",PATH_SCREENS_FILE,
 		sys_time.wDay,sys_time.wMonth,sys_time.wYear,
 		sys_time.wHour,sys_time.wMinute,sys_time.wSecond);
-
-#ifdef DX8RENDER
-	StringAppend(screen_path,"bmp");
-	if(FAILED(D3DXSaveSurfaceToFile(screen_path,D3DXIFF_BMP,surf,NULL,NULL)))
-	{
-		surf->Release();
-		return false;
-	}
-#elif DX9RENDER
 	StringAppend(screen_path,"jpg");
+
 	if(FAILED(D3DXSaveSurfaceToFile(screen_path,D3DXIFF_JPG,surf,NULL,NULL)))
 	{
 		surf->Release();
 		return false;
 	}
-#endif
 
 	surf->Release();
 	return true;	

@@ -230,12 +230,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	presentParams.BackBufferWidth=params.ScreenWidth;
 	presentParams.BackBufferHeight=params.ScreenHeight;
 	presentParams.BackBufferFormat=D3DFMT_X8R8G8B8;
-
-#ifdef DX8RENDER
-	if(!params.VSync) presentParams.FullScreen_PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
-#elif DX9RENDER
 	if(!params.VSync) presentParams.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
-#endif
 
 	presentParams.MultiSampleType=(D3DMULTISAMPLE_TYPE)params.MultiSampling;
 	if(params.MultiSampling<0)
@@ -337,18 +332,10 @@ bool SpriteManager::InitBuffers()
 	SAFEREL(contours3dSurf);
 
 	// Vertex buffer
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->CreateVertexBuffer(flushSprCnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&pVB));
-#elif DX9RENDER
 	D3D_HR(dxDevice->CreateVertexBuffer(flushSprCnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&pVB,NULL));
-#endif
 
 	// Index buffer
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->CreateIndexBuffer(flushSprCnt*6*sizeof(WORD),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB));
-#elif DX9RENDER
 	D3D_HR(dxDevice->CreateIndexBuffer(flushSprCnt*6*sizeof(WORD),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
-#endif
 
 	WORD* ind=new WORD[6*flushSprCnt];
 	if(!ind) return false;
@@ -363,25 +350,15 @@ bool SpriteManager::InitBuffers()
 	}
 
 	void* buf;
-#ifdef DX8RENDER
-	D3D_HR(pIB->Lock(0,0,(BYTE**)&buf,0));
-#elif DX9RENDER
 	D3D_HR(pIB->Lock(0,0,(void**)&buf,0));
-#endif
 	memcpy(buf,ind,flushSprCnt*6*sizeof(WORD));
 	D3D_HR(pIB->Unlock());
 	delete[] ind;
 
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->SetIndices(pIB,0));
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,sizeof(MYVERTEX)));
-	D3D_HR(dxDevice->SetVertexShader(D3DFVF_MYVERTEX));
-#elif DX9RENDER
 	D3D_HR(dxDevice->SetIndices(pIB));
 	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
 	D3D_HR(dxDevice->SetVertexShader(NULL));
 	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
-#endif
 
 	waitBuf=new MYVERTEX[flushSprCnt*4];
 	if(!waitBuf) return false;
@@ -413,15 +390,9 @@ bool SpriteManager::InitRenderStates()
 //	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL));
 //	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHAREF,100));
 
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_MIPFILTER,D3DTEXF_NONE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_MINFILTER,D3DTEXF_LINEAR)); // Zoom Out
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
-#elif DX9RENDER
 	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
 	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR)); // Zoom Out
 	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
-#endif
 
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,  D3DTOP_MODULATE2X));
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLORARG1,D3DTA_TEXTURE));
@@ -550,11 +521,7 @@ Surface* SpriteManager::CreateNewSurf(WORD w, WORD h)
 	while(h<hh) h*=2;
 
 	LPDIRECT3DTEXTURE tex=NULL;
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->CreateTexture(w,h,1,0,TEX_FRMT,D3DPOOL_MANAGED,&tex));
-#elif DX9RENDER
 	D3D_HR(dxDevice->CreateTexture(w,h,1,0,TEX_FRMT,D3DPOOL_MANAGED,&tex,NULL));
-#endif
 
 	Surface* surf=new Surface();
 	surf->Type=SurfType;
@@ -651,13 +618,8 @@ void SpriteManager::SaveSufaces()
 		LPDIRECT3DSURFACE s;
 		surf->Texture->GetSurfaceLevel(0,&s);
 		sprintf(name,"%s%d_%d_%ux%u.",path,surf->Type,cnt,surf->Width,surf->Height);
-#ifdef DX8RENDER
-		StringAppend(name,"bmp");
-		D3DXSaveSurfaceToFile(name,D3DXIFF_BMP,s,NULL,NULL);
-#elif DX9RENDER
 		StringAppend(name,"png");
 		D3DXSaveSurfaceToFile(name,D3DXIFF_PNG,s,NULL,NULL);
-#endif
 		s->Release();
 		cnt++;
 	}
@@ -714,12 +676,7 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 	{
 		// Try load image
 		LPDIRECT3DSURFACE src_surf;
-#ifdef DX8RENDER
-		D3D_HR(dxDevice->CreateImageSurface(w,h,TEX_FRMT,&src_surf));
-#elif DX9RENDER
 		D3D_HR(dxDevice->CreateOffscreenPlainSurface(w,h,TEX_FRMT,D3DPOOL_SCRATCH,&src_surf,NULL));
-#endif
-
 		D3D_HR(D3DXLoadSurfaceFromFileInMemory(src_surf,NULL,NULL,data,size,NULL,D3DX_FILTER_NONE,D3DCOLOR_XRGB(0,0,0xFF),NULL)); //D3DX_DEFAULT need???
 		RECT src_r={0,0,w,h};
 		D3DLOCKED_RECT rsrc,rdst;
@@ -1222,11 +1179,7 @@ bool SpriteManager::Flush()
 
 	void* pBuffer;
 	int mulpos=4*curSprCnt;
-#ifdef DX8RENDER
-	D3D_HR(pVB->Lock(0,sizeof(MYVERTEX)*mulpos,(BYTE**)&pBuffer,D3DLOCK_DISCARD));
-#elif DX9RENDER
 	D3D_HR(pVB->Lock(0,sizeof(MYVERTEX)*mulpos,(void**)&pBuffer,D3DLOCK_DISCARD));
-#endif
 	memcpy(pBuffer,waitBuf,sizeof(MYVERTEX)*mulpos);
 	D3D_HR(pVB->Unlock());
 
@@ -1237,11 +1190,7 @@ bool SpriteManager::Flush()
 		for(OneSurfVecIt iv=callVec.begin(),end=callVec.end();iv!=end;++iv)
 		{
 			D3D_HR(dxDevice->SetTexture(0,(*iv)->Surface));
-#ifdef DX8RENDER
-			D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,mulpos,rpos,2*(*iv)->SprCount));
-#elif DX9RENDER
 			D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,mulpos,rpos,2*(*iv)->SprCount));
-#endif
 			rpos+=6*(*iv)->SprCount;
 			delete (*iv);
 		}
@@ -1252,11 +1201,7 @@ bool SpriteManager::Flush()
 	}
 	else
 	{
-#ifdef DX8RENDER
-		D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,mulpos,0,2*curSprCnt));
-#elif DX9RENDER
 		D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,mulpos,0,2*curSprCnt));
-#endif
 	}
 
 	curSprCnt=0;
@@ -1399,11 +1344,7 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 	if(!cnt) return true;
 
 	// Create vertex buffer
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->CreateVertexBuffer(cnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&vbuf));
-#elif DX9RENDER
 	D3D_HR(dxDevice->CreateVertexBuffer(cnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&vbuf,NULL));
-#endif
 
 	DWORD need_size=cnt*6*sizeof(WORD);
 	D3DINDEXBUFFER_DESC ibdesc;
@@ -1412,11 +1353,8 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 	{
 		SAFEREL(pIB);
 		// Create index buffer
-#ifdef DX8RENDER
-		D3D_HR(dxDevice->CreateIndexBuffer(need_size,D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB));
-#elif DX9RENDER
 		D3D_HR(dxDevice->CreateIndexBuffer(need_size,D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
-#endif
+
 		WORD* indices=new WORD[6*cnt];
 		if(!indices) return false;
 		for(DWORD i=0;i<cnt;i++)
@@ -1430,20 +1368,12 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 		}
 
 		void* ptr;
-#ifdef DX8RENDER
-		D3D_HR(pIB->Lock(0,0,(BYTE**)&ptr,0));
-#elif DX9RENDER
 		D3D_HR(pIB->Lock(0,0,(void**)&ptr,0));
-#endif
 		memcpy(ptr,indices,need_size);
 		D3D_HR(pIB->Unlock());
 		delete[] indices;
 
-#ifdef DX8RENDER
-		D3D_HR(dxDevice->SetIndices(pIB,0));
-#elif DX9RENDER
 		D3D_HR(dxDevice->SetIndices(pIB));
-#endif
 	}
 
 	WORD mulpos=0;
@@ -1540,11 +1470,7 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 	}
 
 	void* ptr;
-#ifdef DX8RENDER
-	D3D_HR(vbuf->Lock(0,sizeof(MYVERTEX)*mulpos,(BYTE**)&ptr,D3DLOCK_DISCARD));
-#elif DX9RENDER
 	D3D_HR(vbuf->Lock(0,sizeof(MYVERTEX)*mulpos,(void**)&ptr,D3DLOCK_DISCARD));
-#endif
 	memcpy(ptr,local_vbuf,sizeof(MYVERTEX)*mulpos);
 	D3D_HR(vbuf->Unlock());
 	SAFEDELA(local_vbuf);
@@ -1557,30 +1483,18 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DVERTEXBUFFER& vbuf, OneSurfVec& surfa
 	if(!cnt) return true;
 	Flush();
 
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->SetStreamSource(0,vbuf,sizeof(MYVERTEX)));
-#elif DX9RENDER
 	D3D_HR(dxDevice->SetStreamSource(0,vbuf,0,sizeof(MYVERTEX)));
-#endif
 
 	WORD rpos=0;
 	for(OneSurfVecIt it=surfaces.begin(),end=surfaces.end();it!=end;++it)
 	{
 		OneSurface* surf=*it;
 		D3D_HR(dxDevice->SetTexture(0,surf->Surface));
-#ifdef DX8RENDER
-		D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,cnt*4,rpos,2*surf->SprCount));
-#elif DX9RENDER
 		D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,cnt*4,rpos,2*surf->SprCount));
-#endif
 		rpos+=6*surf->SprCount;
 	}
 
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,sizeof(MYVERTEX)));
-#elif DX9RENDER
 	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
-#endif
 	return true;
 }
 
@@ -2015,18 +1929,10 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 	int count=points.size();
 	LPDIRECT3DVERTEXBUFFER vb;
 #pragma MESSAGE("Create vertex buffer once, not per draw.")
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->CreateVertexBuffer(count*sizeof(MYVERTEX_PRIMITIVE),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX_PRIMITIVE,D3DPOOL_DEFAULT,&vb));
-#elif DX9RENDER
 	D3D_HR(dxDevice->CreateVertexBuffer(count*sizeof(MYVERTEX_PRIMITIVE),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX_PRIMITIVE,D3DPOOL_DEFAULT,&vb,NULL));
-#endif
 
 	void* vertices;
-#ifdef DX8RENDER
-	D3D_HR(vb->Lock(0,count*sizeof(MYVERTEX_PRIMITIVE),(BYTE**)&vertices,D3DLOCK_DISCARD));
-#elif DX9RENDER
 	D3D_HR(vb->Lock(0,count*sizeof(MYVERTEX_PRIMITIVE),(void**)&vertices,D3DLOCK_DISCARD));
-#endif
 
 	DWORD cur=0;
 	for(PointVecIt it=points.begin(),end=points.end();it!=end;++it)
@@ -2050,14 +1956,9 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 
 	D3D_HR(vb->Unlock());
 
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->SetStreamSource(0,vb,sizeof(MYVERTEX_PRIMITIVE)));
-	D3D_HR(dxDevice->SetVertexShader(D3DFVF_MYVERTEX_PRIMITIVE));
-#elif DX9RENDER
 	D3D_HR(dxDevice->SetStreamSource(0,vb,0,sizeof(MYVERTEX_PRIMITIVE)));
 	D3D_HR(dxDevice->SetVertexShader(NULL));
 	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX_PRIMITIVE));
-#endif
 
 	switch(prim)
 	{
@@ -2080,14 +1981,9 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 
 	SAFEREL(vb);
-#ifdef DX8RENDER
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,sizeof(MYVERTEX)));
-	D3D_HR(dxDevice->SetVertexShader(D3DFVF_MYVERTEX));
-#elif DX9RENDER
 	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
 	D3D_HR(dxDevice->SetVertexShader(NULL));
 	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
-#endif
 	return true;
 }
 

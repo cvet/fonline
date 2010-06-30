@@ -19,112 +19,6 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="ReleaseDx8|Win32"
-			OutputDirectory=".\ReleaseDx8"
-			IntermediateDirectory=".\ReleaseDx8"
-			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			WholeProgramOptimization="0"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="true"
-				SuppressStartupBanner="true"
-				TargetEnvironment="1"
-				TypeLibraryName=".\Release/FOnline.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				InlineFunctionExpansion="1"
-				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;FONLINE_CLIENT;DX8RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
-				StringPooling="true"
-				ExceptionHandling="1"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\ReleaseDx8/FOnline.pch"
-				AssemblerOutput="2"
-				AssemblerListingLocation=".\ReleaseDx8/"
-				ObjectFile=".\ReleaseDx8/"
-				ProgramDataBaseFileName=".\ReleaseDx8/"
-				BrowseInformation="1"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1049"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\client\FOnlineDx8.exe"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				GenerateManifest="false"
-				IgnoreDefaultLibraryNames=""
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\ReleaseDx8/FOnline.pdb"
-				GenerateMapFile="true"
-				MapFileName=".\ReleaseDx8/FOnline.map"
-				SubSystem="2"
-				LinkTimeCodeGeneration="0"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-				SuppressStartupBanner="true"
-				OutputFile=".\ReleaseDx8/FOnline.bsc"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
 			Name="ReleaseDx8|x64"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
@@ -219,103 +113,6 @@
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
 				OutputFile=".\ReleaseDx8/FOnline.bsc"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="DebugDx8|Win32"
-			OutputDirectory=".\Debug"
-			IntermediateDirectory=".\Debug"
-			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="true"
-				SuppressStartupBanner="true"
-				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/FOnline.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				PreprocessorDefinitions="FONLINE_CLIENT;DX8RENDER;WIN32;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE"
-				RuntimeLibrary="0"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Debug/FOnline.pch"
-				AssemblerOutput="2"
-				AssemblerListingLocation=".\Debug/"
-				ObjectFile=".\Debug/"
-				ProgramDataBaseFileName=".\Debug/"
-				BrowseInformation="1"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1049"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\client\FOnlineDbg.exe"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				GenerateManifest="false"
-				IgnoreDefaultLibraryNames=""
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/FOnline.pdb"
-				GenerateMapFile="true"
-				SubSystem="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-				SuppressStartupBanner="true"
-				OutputFile=".\Debug/FOnline.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -425,7 +222,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="ReleaseDx9|Win32"
+			Name="Release|Win32"
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
@@ -461,7 +258,7 @@
 				InlineFunctionExpansion="1"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				StringPooling="true"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -529,7 +326,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="ReleaseDx9|x64"
+			Name="Release|x64"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
@@ -607,110 +404,6 @@
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-				SuppressStartupBanner="true"
-				OutputFile=".\ReleaseDx9/FOnline.bsc"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="ReleaseOGL|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="true"
-				SuppressStartupBanner="true"
-				TargetEnvironment="1"
-				TypeLibraryName=".\Release/FOnline.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				InlineFunctionExpansion="1"
-				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;FONLINE_CLIENT;OGLRENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
-				StringPooling="true"
-				ExceptionHandling="1"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\ReleaseDx9/FOnline.pch"
-				AssemblerOutput="2"
-				AssemblerListingLocation=".\ReleaseDx9/"
-				ObjectFile=".\ReleaseDx9/"
-				ProgramDataBaseFileName=".\ReleaseDx9/"
-				BrowseInformation="1"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1049"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\client\FOnlineDx9.exe"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				GenerateManifest="false"
-				IgnoreDefaultLibraryNames=""
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\ReleaseDx9/FOnline.pdb"
-				GenerateMapFile="true"
-				MapFileName=".\ReleaseDx9/FOnline.map"
-				SubSystem="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -841,7 +534,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="DebugDx9|Win32"
+			Name="Debug|Win32"
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
@@ -877,7 +570,7 @@
 				InlineFunctionExpansion="0"
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO"
+				PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -950,7 +643,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="DebugDx9|x64"
+			Name="Debug|x64"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
@@ -1094,23 +787,7 @@
 				RelativePath="..\Source\zlib\adler32.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1126,7 +803,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1134,15 +811,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1158,7 +827,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1167,7 +836,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1180,23 +849,7 @@
 				RelativePath="..\Source\zlib\compress.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1212,7 +865,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1220,15 +873,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1244,7 +889,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1253,7 +898,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1266,23 +911,7 @@
 				RelativePath="..\Source\zlib\crc32.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1298,7 +927,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1306,15 +935,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1330,7 +951,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1339,7 +960,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1356,23 +977,7 @@
 				RelativePath="..\Source\zlib\deflate.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1388,7 +993,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1396,15 +1001,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1420,7 +1017,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1429,7 +1026,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1446,23 +1043,7 @@
 				RelativePath="..\Source\zlib\example.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1478,7 +1059,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1486,15 +1067,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1510,7 +1083,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1519,7 +1092,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1532,23 +1105,7 @@
 				RelativePath="..\Source\zlib\gzio.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1564,7 +1121,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1572,15 +1129,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1596,7 +1145,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1605,7 +1154,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1618,23 +1167,7 @@
 				RelativePath="..\Source\zlib\infback.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1650,7 +1183,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1658,15 +1191,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1682,7 +1207,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1691,7 +1216,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1704,23 +1229,7 @@
 				RelativePath="..\Source\zlib\inffast.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1736,7 +1245,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1744,15 +1253,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1768,7 +1269,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1777,7 +1278,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1798,23 +1299,7 @@
 				RelativePath="..\Source\zlib\inflate.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1830,7 +1315,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1838,15 +1323,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1862,7 +1339,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1871,7 +1348,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1888,23 +1365,7 @@
 				RelativePath="..\Source\zlib\inftrees.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1920,7 +1381,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1928,15 +1389,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1952,7 +1405,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1961,7 +1414,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1978,23 +1431,7 @@
 				RelativePath="..\Source\zlib\trees.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2010,7 +1447,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2018,15 +1455,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2042,7 +1471,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2051,7 +1480,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2068,23 +1497,7 @@
 				RelativePath="..\Source\zlib\uncompr.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2100,7 +1513,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2108,15 +1521,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2132,7 +1537,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2141,7 +1546,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2166,23 +1571,7 @@
 				RelativePath="..\Source\zlib\zutil.c"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2198,7 +1587,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2206,15 +1595,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2230,7 +1611,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2239,7 +1620,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2260,23 +1641,7 @@
 				RelativePath="..\Source\Acm\acmstrm.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2285,15 +1650,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseOGL|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2361,23 +1718,7 @@
 				RelativePath="..\Source\Common.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2393,7 +1734,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2401,15 +1742,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2425,7 +1758,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2433,7 +1766,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2473,23 +1806,7 @@
 				RelativePath="..\Source\Crypt.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2505,7 +1822,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2513,15 +1830,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2537,7 +1846,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2545,7 +1854,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2565,7 +1874,7 @@
 				RelativePath="..\Source\Debugger.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2573,31 +1882,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseDx9|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2621,30 +1906,12 @@
 				RelativePath="..\Source\Exception.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-						UsePrecompiledHeader="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
 						PreprocessorDefinitions=""
 						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-						UsePrecompiledHeader="2"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -2657,7 +1924,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2666,21 +1933,12 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
 						PreprocessorDefinitions=""
 						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-						UsePrecompiledHeader="2"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -2693,7 +1951,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2702,7 +1960,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2771,23 +2029,7 @@
 				RelativePath="..\Source\Log.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2803,7 +2045,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2811,15 +2053,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2835,7 +2069,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2843,7 +2077,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2919,7 +2153,7 @@
 				RelativePath="..\Source\StdAfx.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2927,31 +2161,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseDx9|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2975,27 +2185,11 @@
 				RelativePath="..\Source\Timer.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -3007,7 +2201,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3015,19 +2209,11 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -3039,7 +2225,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3047,7 +2233,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3079,23 +2265,7 @@
 				RelativePath="..\Source\AngelScript\as_arrayobject.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3111,7 +2281,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3119,15 +2289,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3143,7 +2305,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3151,7 +2313,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3167,23 +2329,7 @@
 				RelativePath="..\Source\AngelScript\as_atomic.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3199,7 +2345,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3207,15 +2353,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3231,7 +2369,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3239,7 +2377,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3255,23 +2393,7 @@
 				RelativePath="..\Source\AngelScript\as_builder.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3287,7 +2409,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3295,15 +2417,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3319,7 +2433,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3327,7 +2441,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3343,23 +2457,7 @@
 				RelativePath="..\Source\AngelScript\as_bytecode.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3375,7 +2473,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3383,15 +2481,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3407,7 +2497,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3415,7 +2505,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3435,23 +2525,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3467,7 +2541,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3475,15 +2549,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3499,7 +2565,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3507,7 +2573,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3523,23 +2589,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_mips.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3555,7 +2605,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3563,15 +2613,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3587,7 +2629,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3595,7 +2637,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3607,23 +2649,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_ppc.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3639,7 +2665,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3647,15 +2673,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3671,7 +2689,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3679,7 +2697,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3691,23 +2709,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_ppc_64.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3723,7 +2725,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3731,15 +2733,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3755,7 +2749,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3763,7 +2757,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3775,23 +2769,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_sh4.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3807,7 +2785,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3815,15 +2793,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3839,7 +2809,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3847,7 +2817,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3859,23 +2829,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_x64_gcc.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3891,7 +2845,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3899,15 +2853,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3923,7 +2869,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3931,7 +2877,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3943,23 +2889,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_x86.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3975,7 +2905,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -3983,15 +2913,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4007,7 +2929,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4015,7 +2937,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4027,23 +2949,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_xenon.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4059,7 +2965,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4067,15 +2973,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4091,7 +2989,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4099,7 +2997,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4111,23 +3009,7 @@
 				RelativePath="..\Source\AngelScript\as_compiler.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4143,7 +3025,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4151,15 +3033,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4175,7 +3049,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4183,7 +3057,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4203,23 +3077,7 @@
 				RelativePath="..\Source\AngelScript\as_configgroup.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4235,7 +3093,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4243,15 +3101,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4267,7 +3117,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4275,7 +3125,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4291,23 +3141,7 @@
 				RelativePath="..\Source\AngelScript\as_context.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4323,7 +3157,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4331,15 +3165,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4355,7 +3181,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4363,7 +3189,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4383,23 +3209,7 @@
 				RelativePath="..\Source\AngelScript\as_datatype.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4415,7 +3225,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4423,15 +3233,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4447,7 +3249,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4455,7 +3257,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4475,23 +3277,7 @@
 				RelativePath="..\Source\AngelScript\as_gc.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4507,7 +3293,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4515,15 +3301,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4539,7 +3317,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4547,7 +3325,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4563,23 +3341,7 @@
 				RelativePath="..\Source\AngelScript\as_generic.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4595,7 +3357,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4603,15 +3365,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4627,7 +3381,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4635,7 +3389,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4651,23 +3405,7 @@
 				RelativePath="..\Source\AngelScript\as_globalproperty.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4683,7 +3421,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4691,15 +3429,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4715,7 +3445,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4723,7 +3453,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4739,23 +3469,7 @@
 				RelativePath="..\Source\AngelScript\as_memory.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4771,7 +3485,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4779,15 +3493,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4803,7 +3509,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4811,7 +3517,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4827,23 +3533,7 @@
 				RelativePath="..\Source\AngelScript\as_module.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4859,7 +3549,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4867,15 +3557,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4891,7 +3573,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4899,7 +3581,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4915,23 +3597,7 @@
 				RelativePath="..\Source\AngelScript\as_objecttype.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4947,7 +3613,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4955,15 +3621,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4979,7 +3637,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -4987,7 +3645,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5003,23 +3661,7 @@
 				RelativePath="..\Source\AngelScript\as_outputbuffer.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5035,7 +3677,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5043,15 +3685,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5067,7 +3701,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5075,7 +3709,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5091,23 +3725,7 @@
 				RelativePath="..\Source\AngelScript\as_parser.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5123,7 +3741,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5131,15 +3749,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5155,7 +3765,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5163,7 +3773,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5183,23 +3793,7 @@
 				RelativePath="..\Source\AngelScript\as_restore.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5215,7 +3809,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5223,15 +3817,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5247,7 +3833,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5255,7 +3841,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5271,23 +3857,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptcode.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5303,7 +3873,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5311,15 +3881,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5335,7 +3897,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5343,7 +3905,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5359,23 +3921,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptengine.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5391,7 +3937,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5399,15 +3945,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5423,7 +3961,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5431,7 +3969,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5447,23 +3985,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptfunction.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5479,7 +4001,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5487,15 +4009,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5511,7 +4025,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5519,7 +4033,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5535,23 +4049,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptnode.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5567,7 +4065,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5575,15 +4073,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5599,7 +4089,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5607,7 +4097,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5623,23 +4113,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptobject.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5655,7 +4129,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5663,15 +4137,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5687,7 +4153,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5695,7 +4161,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5711,23 +4177,7 @@
 				RelativePath="..\Source\AngelScript\as_string.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5743,7 +4193,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5751,15 +4201,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5775,7 +4217,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5783,7 +4225,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5799,23 +4241,7 @@
 				RelativePath="..\Source\AngelScript\as_string_util.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5831,7 +4257,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5839,15 +4265,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5863,7 +4281,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5871,7 +4289,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5891,23 +4309,7 @@
 				RelativePath="..\Source\AngelScript\as_thread.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5923,7 +4325,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5931,15 +4333,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5955,7 +4349,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5963,7 +4357,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -5983,23 +4377,7 @@
 				RelativePath="..\Source\AngelScript\as_tokenizer.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6015,7 +4393,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6023,15 +4401,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6047,7 +4417,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6055,7 +4425,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6071,23 +4441,7 @@
 				RelativePath="..\Source\AngelScript\as_typeinfo.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6103,7 +4457,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6111,15 +4465,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6135,7 +4481,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6143,7 +4489,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6159,23 +4505,7 @@
 				RelativePath="..\Source\AngelScript\as_variablescope.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6191,7 +4521,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6199,15 +4529,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6223,7 +4545,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6231,7 +4553,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6247,23 +4569,7 @@
 				RelativePath="..\Source\AngelScript\scriptany.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6279,7 +4585,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6287,15 +4593,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6311,7 +4609,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6319,7 +4617,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6335,23 +4633,7 @@
 				RelativePath="..\Source\AngelScript\scriptarray.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6367,7 +4649,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6375,15 +4657,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6399,7 +4673,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6407,7 +4681,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6423,23 +4697,7 @@
 				RelativePath="..\Source\AngelScript\scriptdictionary.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6455,7 +4713,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6463,15 +4721,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6487,7 +4737,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6495,7 +4745,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6511,23 +4761,7 @@
 				RelativePath="..\Source\AngelScript\scriptfile.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6543,7 +4777,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6551,15 +4785,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6575,7 +4801,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6583,7 +4809,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6599,23 +4825,7 @@
 				RelativePath="..\Source\AngelScript\scriptmath.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6631,7 +4841,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6639,15 +4849,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6663,7 +4865,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6671,7 +4873,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6687,23 +4889,7 @@
 				RelativePath="..\Source\AngelScript\scriptmath3d.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6719,7 +4905,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6727,15 +4913,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6751,7 +4929,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6759,7 +4937,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6775,23 +4953,7 @@
 				RelativePath="..\Source\AngelScript\scriptstring.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6807,7 +4969,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6815,15 +4977,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6839,7 +4993,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6847,7 +5001,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6863,23 +5017,7 @@
 				RelativePath="..\Source\AngelScript\scriptstring_utils.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6895,7 +5033,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6903,15 +5041,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6927,7 +5057,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6935,7 +5065,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -6954,23 +5084,7 @@
 					RelativePath="..\Source\AngelScript\Preprocessor\lex.cpp"
 					>
 					<FileConfiguration
-						Name="ReleaseDx8|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
 						Name="ReleaseDx8|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="DebugDx8|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -6986,7 +5100,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="ReleaseDx9|Win32"
+						Name="Release|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -6994,15 +5108,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="ReleaseDx9|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="ReleaseOGL|Win32"
+						Name="Release|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7018,7 +5124,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="DebugDx9|Win32"
+						Name="Debug|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7026,7 +5132,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="DebugDx9|x64"
+						Name="Debug|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7042,23 +5148,7 @@
 					RelativePath="..\Source\AngelScript\Preprocessor\lexem_list.cpp"
 					>
 					<FileConfiguration
-						Name="ReleaseDx8|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
 						Name="ReleaseDx8|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="DebugDx8|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7074,7 +5164,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="ReleaseDx9|Win32"
+						Name="Release|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7082,15 +5172,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="ReleaseDx9|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="ReleaseOGL|Win32"
+						Name="Release|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7106,7 +5188,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="DebugDx9|Win32"
+						Name="Debug|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7114,7 +5196,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="DebugDx9|x64"
+						Name="Debug|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7138,23 +5220,7 @@
 					RelativePath="..\Source\AngelScript\Preprocessor\preprocess.cpp"
 					>
 					<FileConfiguration
-						Name="ReleaseDx8|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
 						Name="ReleaseDx8|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="DebugDx8|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7170,7 +5236,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="ReleaseDx9|Win32"
+						Name="Release|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7178,15 +5244,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="ReleaseDx9|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="ReleaseOGL|Win32"
+						Name="Release|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7202,7 +5260,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="DebugDx9|Win32"
+						Name="Debug|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7210,7 +5268,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="DebugDx9|x64"
+						Name="Debug|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -7235,23 +5293,7 @@
 				RelativePath="..\Source\datfile\cfile.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7267,7 +5309,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7275,15 +5317,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7299,7 +5333,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7307,7 +5341,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7323,23 +5357,7 @@
 				RelativePath="..\Source\datfile\datfile.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7355,7 +5373,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7363,15 +5381,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7387,7 +5397,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7395,7 +5405,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7411,23 +5421,7 @@
 				RelativePath="..\Source\datfile\unlzss.cpp"
 				>
 				<FileConfiguration
-					Name="ReleaseDx8|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="ReleaseDx8|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugDx8|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7443,7 +5437,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7451,15 +5445,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="ReleaseDx9|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseOGL|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7475,7 +5461,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|Win32"
+					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -7483,7 +5469,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="DebugDx9|x64"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
