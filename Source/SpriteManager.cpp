@@ -176,7 +176,8 @@ void Sprites::SortByMapPos()
 /************************************************************************/
 
 SpriteManager::SpriteManager(): isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
-dxDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),PreRestore(NULL),PostRestore(NULL),
+dxDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),vbPoints(NULL),vbPointsSize(0),
+PreRestore(NULL),PostRestore(NULL),
 drawOffsetX(NULL),drawOffsetY(NULL),baseTexture(0),
 eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
 contoursTexture(NULL),contoursTextureSurf(NULL),contours3dSurf(NULL),contoursMidTexture(NULL),contoursMidTextureSurf(NULL),
@@ -446,6 +447,7 @@ void SpriteManager::Clear()
 	SAFEREL(pVB);
 	SAFEREL(pIB);
 	SAFEDELA(waitBuf);
+	SAFEREL(vbPoints);
 	SAFEREL(dxDevice);
 	SAFEREL(contours3dSurf);
 	SAFEREL(contoursTextureSurf);
@@ -467,6 +469,7 @@ bool SpriteManager::Restore()
 	// Release resources
 	SAFEREL(pVB);
 	SAFEREL(pIB);
+	SAFEREL(vbPoints);
 	SAFEREL(contoursTexture);
 	SAFEREL(contoursTextureSurf);
 	SAFEREL(contoursMidTexture);
@@ -1926,40 +1929,40 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 	if(points.empty()) return true;
 	Flush();
 
-	int count=points.size();
-	LPDIRECT3DVERTEXBUFFER vb;
-#pragma MESSAGE("Create vertex buffer once, not per draw.")
-	D3D_HR(dxDevice->CreateVertexBuffer(count*sizeof(MYVERTEX_PRIMITIVE),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX_PRIMITIVE,D3DPOOL_DEFAULT,&vb,NULL));
+	int count=(int)points.size();
 
-	void* vertices;
-	D3D_HR(vb->Lock(0,count*sizeof(MYVERTEX_PRIMITIVE),(void**)&vertices,D3DLOCK_DISCARD));
-
-	DWORD cur=0;
-	for(PointVecIt it=points.begin(),end=points.end();it!=end;++it)
+	// Create or resize vertex buffer
+	if(!vbPoints || count>vbPointsSize)
 	{
-		PrepPoint& point=(*it);
-		MYVERTEX_PRIMITIVE* vertex=(MYVERTEX_PRIMITIVE*)vertices+cur;
+		SAFEREL(vbPoints);
+		vbPointsSize=0;
+		D3D_HR(dxDevice->CreateVertexBuffer(count*sizeof(MYVERTEX_PRIMITIVE),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX_PRIMITIVE,D3DPOOL_DEFAULT,&vbPoints,NULL));
+		vbPointsSize=count;
+	}
+
+	// Copy data
+	void* vertices;
+	D3D_HR(vbPoints->Lock(0,count*sizeof(MYVERTEX_PRIMITIVE),(void**)&vertices,D3DLOCK_DISCARD));
+	for(size_t i=0,j=points.size();i<j;i++)
+	{
+		PrepPoint& point=points[i];
+		MYVERTEX_PRIMITIVE* vertex=(MYVERTEX_PRIMITIVE*)vertices+i;
 		vertex->x=(float)point.PointX;
 		vertex->y=(float)point.PointY;
-		if(point.PointOffsX) vertex->x+=*point.PointOffsX;
-		if(point.PointOffsY) vertex->y+=*point.PointOffsY;
+		if(point.PointOffsX) vertex->x+=(float)*point.PointOffsX;
+		if(point.PointOffsY) vertex->y+=(float)*point.PointOffsY;
 		if(with_zoom)
 		{
 			vertex->x/=ZOOM;
 			vertex->y/=ZOOM;
 		}
 		vertex->Diffuse=point.PointColor;
-		vertex->z=0;
-		vertex->rhw=1;
-		cur++;
+		vertex->z=0.0f;
+		vertex->rhw=1.0f;
 	}
+	D3D_HR(vbPoints->Unlock());
 
-	D3D_HR(vb->Unlock());
-
-	D3D_HR(dxDevice->SetStreamSource(0,vb,0,sizeof(MYVERTEX_PRIMITIVE)));
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX_PRIMITIVE));
-
+	// Calculate primitive count
 	switch(prim)
 	{
 	case D3DPT_POINTLIST: break;
@@ -1970,17 +1973,19 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 	case D3DPT_TRIANGLEFAN: count-=2; break;
 	default: break;
 	}
-	if(count<=0)
-	{
-		SAFEREL(vb);
-		return false;
-	}
+	if(count<=0) return false;
 
+	// Prepare
+	D3D_HR(dxDevice->SetStreamSource(0,vbPoints,0,sizeof(MYVERTEX_PRIMITIVE)));
+	D3D_HR(dxDevice->SetVertexShader(NULL));
+	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX_PRIMITIVE));
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
-	D3D_HR(dxDevice->DrawPrimitive(prim,0,count));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 
-	SAFEREL(vb);
+	// Draw
+	D3D_HR(dxDevice->DrawPrimitive(prim,0,count));
+
+	// Restore
+	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
 	D3D_HR(dxDevice->SetVertexShader(NULL));
 	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
