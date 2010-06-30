@@ -164,7 +164,7 @@ void ItemHex::RefreshAnim()
 void ItemHex::SetSprite(Sprite* spr)
 {
 	if(spr) SprDraw=spr;
-	if(SprDraw)
+	if(SprDrawValid)
 	{
 		maxAlpha=(IsColorize()?GetAlpha():0xFF);
 		SprDraw->Color=(IsColorize()?GetColor():0);
