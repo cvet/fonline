@@ -3065,7 +3065,7 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 		scenery->RefreshAnim();
 	}
 
-	if(scenery->IsLight())
+	if(scenery->IsLight() || scen.LightIntensity)
 		lightSourcesScen.push_back(LightSource(hx,hy,scenery->LightGetColor(),scenery->LightGetDistance(),scenery->LightGetIntensity(),scenery->LightGetFlags()));
 
 	PushItem(scenery);
