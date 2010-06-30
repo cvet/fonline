@@ -362,9 +362,9 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 		if(ptr) *ptr=(size_t)&WriteLog;
 
 		// Call init function
-		typedef void(*DllMainEx)();
+		typedef void(*DllMainEx)(bool);
 		DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
-		if(func) (*func)();
+		if(func) (*func)(false);
 
 		alreadyLoadedDll.insert(dll_name_);
 	}

@@ -154,9 +154,6 @@ bool PragmaCallbackCrData(const char* text)
 HMODULE LoadDynamicLibrary(const char* dll_name)
 {
 	// Load dynamic library
-	char dll_name_[256];
-	//StringCopy(dll_name_,ScriptsPath.c_str());
-	//StringAppend(dll_name_,dll_name);
 	HMODULE dll=LoadLibrary(dll_name);
 	if(!dll) return NULL;
 
@@ -164,16 +161,14 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 	static StringSet alreadyLoadedDll;
 	if(!alreadyLoadedDll.count(dll_name))
 	{
-		// Register variables
-		//size_t* ptr=(size_t*)GetProcAddress(dll,"GameOpt");
-		//if(ptr) *ptr=(size_t)&GameOpt;
+		// Register AS engine
 		size_t* ptr=(size_t*)GetProcAddress(dll,"ASEngine");
 		if(ptr) *ptr=(size_t)Engine;
 
 		// Call init function
-		typedef void(*DllMainEx)();
+		typedef void(*DllMainEx)(bool);
 		DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
-		if(func) (*func)();
+		if(func) (*func)(true);
 
 		alreadyLoadedDll.insert(dll_name);
 	}
