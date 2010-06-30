@@ -179,8 +179,15 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 		else proto_item.Corner=CORNER_NORTH_SOUTH;
 
 		SERIALIZE_PROTO_(DistanceLight,LightDistance,0);
-		SERIALIZE_PROTO_(IntensityLight,LightIntensity,0);
-		if(proto_item.LightIntensity) SETFLAG(proto_item.Flags,ITEM_LIGHT);
+		int inten=GetProtoValue("IntensityLight");
+		if(inten<0 || inten>100) inten=50;
+		proto_item.LightIntensity=inten;
+		if(proto_item.LightIntensity || proto_item.LightDistance)
+		{
+			SETFLAG(proto_item.Flags,ITEM_LIGHT);
+			if(!proto_item.LightIntensity) proto_item.LightIntensity=50;
+			if(!proto_item.LightDistance) proto_item.LightDistance=1;
+		}
 	}
 
 	SERIALIZE_PROTO(Weight,0);
@@ -886,16 +893,20 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 
 		AddItemStatistics(pid,item->GetCount());
 
-		if(version==WORLD_SAVE_V6 && item->IsDoor())
+		if(version==WORLD_SAVE_V6)
 		{
-			bool is_open=FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
-			if(is_open || item->Proto->Door.NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
-			else UNSETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
-			if(is_open || item->Proto->Door.NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
-			else UNSETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
-			if(is_open || item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
-			else UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
-			SETFLAG(item->Data.Flags,ITEM_GAG);
+			if(item->IsDoor())
+			{
+				bool is_open=FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
+				if(is_open || item->Proto->Door.NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+				else UNSETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+				if(is_open || item->Proto->Door.NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+				else UNSETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+				if(is_open || item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+				else UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+				SETFLAG(item->Data.Flags,ITEM_GAG);
+			}
+			if(item->Data.LightIntensity || item->Proto->LightIntensity) SETFLAG(item->Data.Flags,ITEM_LIGHT);
 		}
 	}
 	if(errors) return false;

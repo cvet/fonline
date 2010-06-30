@@ -70,11 +70,11 @@ struct LightSource
 	WORD HexX;
 	WORD HexY;
 	DWORD ColorRGB;
-	BYTE Radius;
+	BYTE Distance;
 	BYTE Flags;
 	int Intensity;
 
-	LightSource(WORD hx, WORD hy, DWORD color, BYTE radius, int inten, BYTE flags):HexX(hx),HexY(hy),ColorRGB(color),Intensity(inten),Radius(radius),Flags(flags){}
+	LightSource(WORD hx, WORD hy, DWORD color, BYTE distance, int inten, BYTE flags):HexX(hx),HexY(hy),ColorRGB(color),Intensity(inten),Distance(distance),Flags(flags){}
 };
 typedef vector<LightSource> LightSourceVec;
 typedef vector<LightSource>::iterator LightSourceVecIt;

@@ -1088,8 +1088,8 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 {
 	WORD hx=ls.HexX;
 	WORD hy=ls.HexY;
-	// Distantion
-	int dist=ls.Radius;
+	// Distance
+	int dist=ls.Distance;
 	if(dist<1) dist=1;
 	// Intensity
 	int inten=ABS(ls.Intensity);
@@ -1210,8 +1210,8 @@ void HexManager::RealRebuildLight()
 	for(LightSourceVecIt it=lightSources.begin(),end=lightSources.end();it!=end;++it)
 	{
 		LightSource& ls=(*it);
-	//	if( (int)ls.HexX<LightMinHx-(int)ls.Radius || (int)ls.HexX>LightMaxHx+(int)ls.Radius ||
-	//		(int)ls.HexY<LightMinHy-(int)ls.Radius || (int)ls.HexY>LightMaxHy+(int)ls.Radius) continue;
+	//	if( (int)ls.HexX<LightMinHx-(int)ls.Distance || (int)ls.HexX>LightMaxHx+(int)ls.Distance ||
+	//		(int)ls.HexY<LightMinHy-(int)ls.Distance || (int)ls.HexY>LightMaxHy+(int)ls.Distance) continue;
 		ParseLightTriangleFan(ls);
 	}
 }
