@@ -1263,7 +1263,7 @@ bool SpriteManager::Flush()
 	return true;
 }
 
-bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */, BYTE alpha /* = 0 */)
+bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */)
 {
 	if(!id) return false;
 
@@ -1281,8 +1281,6 @@ bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */, BY
 	int mulpos=curSprCnt*4;
 
 	if(!color) color=COLOR_IFACE;
-	if(alpha) color=COLOR_CHANGE_ALPHA(color,alpha);
-	else color|=0xFF000000; // Make opaque
 
 	waitBuf[mulpos].x=x-0.5f;
 	waitBuf[mulpos].y=y+si->Height-0.5f;
@@ -1313,7 +1311,7 @@ bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */, BY
 	return true;
 }
 
-bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, bool stretch_up, bool center, DWORD color /* = 0 */, BYTE alpha /* = 0 */)
+bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, bool stretch_up, bool center, DWORD color /* = 0 */)
 {
 	if(!id) return false;
 
@@ -1349,8 +1347,6 @@ bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, boo
 	int mulpos=curSprCnt*4;
 
 	if(!color) color=COLOR_IFACE;
-	if(alpha) color=COLOR_CHANGE_ALPHA(color,alpha);
-	else color|=0xFF000000; // Make opaque
 
 	waitBuf[mulpos].x=x-0.5f;
 	waitBuf[mulpos].y=y+hf-0.5f;

@@ -745,7 +745,7 @@ public:
 	bool IsColorize(){return FLAG(Data.Flags,ITEM_COLORIZE);}
 	DWORD GetColor(){return (Data.LightColor?Data.LightColor:Proto->LightColor)&0xFFFFFF;}
 	BYTE GetAlpha(){return (Data.LightColor?Data.LightColor:Proto->LightColor)>>24;}
-	DWORD GetInvColor(){return FLAG(Data.Flags,ITEM_COLORIZE_INV)?GetColor():0;}
+	DWORD GetInvColor(){return FLAG(Data.Flags,ITEM_COLORIZE_INV)?(Data.LightColor?Data.LightColor:Proto->LightColor):0;}
 
 	// Light
 	bool IsLight(){return FLAG(Data.Flags,ITEM_LIGHT);}
