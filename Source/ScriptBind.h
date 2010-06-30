@@ -633,7 +633,7 @@
 	if(engine->RegisterObjectMethod("Map","int GetData(uint index) const",asFUNCTION(BIND_CLASS Map_GetData),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","Item@+ AddItem(uint16 hexX, uint16 hexY, uint16 protoId, uint count)",asFUNCTION(BIND_CLASS Map_AddItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Map","Item@+ AddItemFromScenery(uint16 hexX, uint16 hexY, uint16 protoId)",asFUNCTION(BIND_CLASS Map_AddItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Map","Item@+ GetItem(uint objectId) const",asFUNCTION(BIND_CLASS Map_GetItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","Item@+ GetItem(uint itemId) const",asFUNCTION(BIND_CLASS Map_GetItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","Item@+ GetItem(uint16 hexX, uint16 hexY, uint16 protoId) const",asFUNCTION(BIND_CLASS Map_GetItemHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","uint GetItems(uint16 hexX, uint16 hexY, Item@[]@+ items) const",asFUNCTION(BIND_CLASS Map_GetItemsHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","uint GetItems(uint16 hexX, uint16 hexY, uint radius, uint16 protoId, Item@[]@+ items) const",asFUNCTION(BIND_CLASS Map_GetItemsHexEx),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

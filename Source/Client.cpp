@@ -6225,7 +6225,7 @@ void FOClient::Net_OnShowScreen()
 	switch(screen_type)
 	{
 	case SHOW_SCREEN_TIMER:
-		TimerStart(0,ResMngr.GetInvSprId(param));
+		TimerStart(0,ResMngr.GetInvSprId(param),0);
 		break;
 	case SHOW_SCREEN_DIALOGBOX:
 		ShowScreen(SCREEN__DIALOGBOX);

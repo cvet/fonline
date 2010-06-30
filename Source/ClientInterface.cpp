@@ -797,6 +797,7 @@ int FOClient::InitIface()
 	SplitX=(MODE_WIDTH-SplitWMain.W())/2;
 	SplitY=(MODE_HEIGHT-SplitWMain.H())/2;
 	SplitItemPic=0;
+	SplitItemColor=0;
 	SplitParentScreen=SCREEN_NONE;
 
 	// Timer
@@ -815,6 +816,7 @@ int FOClient::InitIface()
 	TimerX=(MODE_WIDTH-TimerWMain.W())/2;
 	TimerY=(MODE_HEIGHT-TimerWMain.H())/2;
 	TimerItemPic=0;
+	TimerItemColor=0;
 
 	// FixBoy
 	IfaceLoadRect(FixWMain,"FixWMain");
@@ -1306,7 +1308,7 @@ void FOClient::ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont
 		if(i>=scroll && i<scroll+pos.H()/height)
 		{
 			AnyFrames* anim=ResMngr.GetInvAnim(item.GetPicInv());
-			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),pos.L,pos.T+(i2*height),pos.W(),height,false,true);
+			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),pos.L,pos.T+(i2*height),pos.W(),height,false,true,item.GetInvColor());
 			i2++;
 		}
 		i++;
@@ -1469,21 +1471,21 @@ void FOClient::InvDraw()
 	if(Chosen->ItemSlotMain->GetId() && (IsCurMode(CUR_DEFAULT) || IfaceHold!=IFACE_INV_SLOT1))
 	{
 		AnyFrames* anim=ResMngr.GetInvAnim(Chosen->ItemSlotMain->GetPicInv());
-		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot1[0]+InvX,InvWSlot1[1]+InvY,InvWSlot1.W(),InvWSlot1.H(),false,true);
+		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot1[0]+InvX,InvWSlot1[1]+InvY,InvWSlot1.W(),InvWSlot1.H(),false,true,Chosen->ItemSlotMain->GetInvColor());
 	}
 
 	// Slot Extra
 	if(Chosen->ItemSlotExt->GetId() && (IsCurMode(CUR_DEFAULT) || IfaceHold!=IFACE_INV_SLOT2))
 	{
 		AnyFrames* anim=ResMngr.GetInvAnim(Chosen->ItemSlotExt->GetPicInv());
-		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot2[0]+InvX,InvWSlot2[1]+InvY,InvWSlot2.W(),InvWSlot2.H(),false,true);
+		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot2[0]+InvX,InvWSlot2[1]+InvY,InvWSlot2.W(),InvWSlot2.H(),false,true,Chosen->ItemSlotExt->GetInvColor());
 	}
 
 	// Slot Armor
 	if(Chosen->ItemSlotArmor->GetId() && (IsCurMode(CUR_DEFAULT) || IfaceHold!=IFACE_INV_ARMOR))
 	{
 		AnyFrames* anim=ResMngr.GetInvAnim(Chosen->ItemSlotArmor->GetPicInv());
-		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWArmor[0]+InvX,InvWArmor[1]+InvY,InvWArmor.W(),InvWArmor.H(),false,true);
+		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWArmor[0]+InvX,InvWArmor[1]+InvY,InvWArmor.W(),InvWArmor.H(),false,true,Chosen->ItemSlotArmor->GetInvColor());
 	}
 
 	// Extended slots
@@ -1495,7 +1497,7 @@ void FOClient::InvDraw()
 		if(!item || (!IsCurMode(CUR_DEFAULT) && IfaceHold==IFACE_INV_SLOTS_EXT && item->GetId()==InvHoldId)) continue;
 		AnyFrames* anim=ResMngr.GetInvAnim(item->GetPicInv());
 		if(!anim) continue;
-		SprMngr.DrawSpriteSize(anim->GetCurSprId(),se.Rect[0]+InvX,se.Rect[1]+InvY,se.Rect.W(),se.Rect.H(),false,true);
+		SprMngr.DrawSpriteSize(anim->GetCurSprId(),se.Rect[0]+InvX,se.Rect[1]+InvY,se.Rect.W(),se.Rect.H(),false,true,item->GetInvColor());
 	}
 
 	// Radio
@@ -1696,7 +1698,7 @@ void FOClient::InvLMouseUp()
 			// Split
 			if(to_slot==SLOT_GROUND && item->IsGrouped() && item->GetCount()>1)
 			{
-				SplitStart(item->GetId(),to_slot,1,1,item->GetCount(),ResMngr.GetInvSprId(item->GetPicInv()));
+				SplitStart(item,to_slot);
 				return;
 			}
 			// Without split
@@ -2429,7 +2431,7 @@ void FOClient::IntDraw()
 			ResMngr.GetInvSprId(Chosen->ItemSlotMain->GetPicInv()),
 			IntBItem[0]+item_offsx,IntBItem[1]+item_offsy,
 			IntBItem[2]-IntBItem[0],IntBItem[3]-IntBItem[1],
-			false,true);
+			false,true,Chosen->ItemSlotMain->GetInvColor());
 	}
 
 	// Use
@@ -2632,7 +2634,7 @@ void FOClient::IntLMouseUp()
 		else if(Chosen->GetUse()==USE_USE && Chosen->ItemSlotMain->IsCanUse())
 		{
 			if(!Chosen->ItemSlotMain->IsHasTimer()) SetAction(CHOSEN_USE_ITEM,Chosen->ItemSlotMain->GetId(),0,TARGET_SELF,0,USE_USE);
-			else TimerStart(Chosen->ItemSlotMain->GetId(),ResMngr.GetInvSprId(Chosen->ItemSlotMain->GetPicInv()));
+			else TimerStart(Chosen->ItemSlotMain->GetId(),ResMngr.GetInvSprId(Chosen->ItemSlotMain->GetPicInv()),Chosen->ItemSlotMain->GetInvColor());
 		}
 	}
 	else if(IfaceHold==IFACE_INT_ADDMESS && IsCurInRect(IntBAddMess))
@@ -3289,7 +3291,7 @@ void FOClient::DlgLMouseUp(bool is_dialog)
 				{
 					Item& item=*it;
 					if(item.GetCount()>1)
-						SplitStart(BarterHoldId,IFACE_BARTER_CONT1,1,1,item.GetCount(),ResMngr.GetInvSprId(item.GetPicInv()));
+						SplitStart(&item,IFACE_BARTER_CONT1);
 					else
 						BarterTransfer(BarterHoldId,IFACE_BARTER_CONT1,item.GetCount());
 				}
@@ -3304,7 +3306,7 @@ void FOClient::DlgLMouseUp(bool is_dialog)
 				{
 					Item& item=*it;
 					if(item.GetCount()>1)
-						SplitStart(BarterHoldId,IFACE_BARTER_CONT2,1,1,item.GetCount(),ResMngr.GetInvSprId(item.GetPicInv()));
+						SplitStart(&item,IFACE_BARTER_CONT2);
 					else
 						BarterTransfer(BarterHoldId,IFACE_BARTER_CONT2,item.GetCount());
 				}
@@ -3319,7 +3321,7 @@ void FOClient::DlgLMouseUp(bool is_dialog)
 				{
 					Item& item=*it;
 					if(item.GetCount()>1)
-						SplitStart(BarterHoldId,IFACE_BARTER_CONT1O,1,1,item.GetCount(),ResMngr.GetInvSprId(item.GetPicInv()));
+						SplitStart(&item,IFACE_BARTER_CONT1O);
 					else
 						BarterTransfer(BarterHoldId,IFACE_BARTER_CONT1O,item.GetCount());
 				}
@@ -3334,7 +3336,7 @@ void FOClient::DlgLMouseUp(bool is_dialog)
 				{
 					Item& item=*it;
 					if(item.GetCount()>1)
-						SplitStart(BarterHoldId,IFACE_BARTER_CONT2O,1,1,item.GetCount(),ResMngr.GetInvSprId(item.GetPicInv()));
+						SplitStart(&item,IFACE_BARTER_CONT2O);
 					else
 						BarterTransfer(BarterHoldId,IFACE_BARTER_CONT2O,item.GetCount());
 				}
@@ -4518,7 +4520,7 @@ void FOClient::LMenuMouseUp()
 				if(!cont_item) break;
 				if(!Chosen->IsLife() || !Chosen->IsFree()) break;
 				if(cont_item->IsGrouped() && cont_item->GetCount()>1)
-					SplitStart(cont_item->GetId(),0xFF|(TargetSmth.GetParam()<<16),1,1,cont_item->GetCount(),ResMngr.GetInvSprId(cont_item->GetPicInv()));
+					SplitStart(cont_item,0xFF|(TargetSmth.GetParam()<<16));
 				else
 					AddActionBack(CHOSEN_MOVE_ITEM,cont_item->GetId(),cont_item->GetCount(),0xFF,TargetSmth.GetParam());
 				break;
@@ -4528,7 +4530,7 @@ void FOClient::LMenuMouseUp()
 				break;
 			case LMENU_NODE_USE:
 				if(!inv_item) break;
-				if(inv_item->IsHasTimer()) TimerStart(inv_item->GetId(),ResMngr.GetInvSprId(inv_item->GetPicInv()));
+				if(inv_item->IsHasTimer()) TimerStart(inv_item->GetId(),ResMngr.GetInvSprId(inv_item->GetPicInv()),inv_item->GetInvColor());
 				else SetAction(CHOSEN_USE_ITEM,inv_item->GetId(),0,TARGET_SELF,0,USE_USE);
 				break;
 			case LMENU_NODE_SKILL:
@@ -7906,7 +7908,7 @@ void FOClient::PupLMouseUp()
 			{
 				Item& item=*it;
 				if(item.GetCount()>1)
-					SplitStart(PupHoldId,IFACE_PUP_CONT2,1,1,item.GetCount(),ResMngr.GetInvSprId(item.GetPicInv()));
+					SplitStart(&item,IFACE_PUP_CONT2);
 				else
 					SetAction(CHOSEN_MOVE_ITEM_CONT,PupHoldId,IFACE_PUP_CONT2,1);
 			}
@@ -7921,7 +7923,7 @@ void FOClient::PupLMouseUp()
 			{
 				Item& item=*it;
 				if(item.GetCount()>1)
-					SplitStart(PupHoldId,IFACE_PUP_CONT1,1,1,item.GetCount(),ResMngr.GetInvSprId(item.GetPicInv()));
+					SplitStart(&item,IFACE_PUP_CONT1);
 				else
 					SetAction(CHOSEN_MOVE_ITEM_CONT,PupHoldId,IFACE_PUP_CONT1,1);
 			}
@@ -8224,7 +8226,7 @@ void FOClient::CurDraw()
 				if(!(si=SprMngr.GetSpriteInfo(spr_id))) return;
 				x=CurX-(si->Width/2)+si->OffsX;
 				y=CurY-(si->Height/2)+si->OffsY;
-				SprMngr.DrawSprite(spr_id,x,y);
+				SprMngr.DrawSprite(spr_id,x,y,item->GetInvColor());
 			}
 			else
 			{
@@ -8260,7 +8262,7 @@ DrawCurHand:
 				if(!(si=SprMngr.GetSpriteInfo(spr_id))) goto DrawCurHand;
 				x=CurX-(si->Width/2)+si->OffsX;
 				y=CurY-(si->Height/2)+si->OffsY;
-				SprMngr.DrawSprite(spr_id,x,y);
+				SprMngr.DrawSprite(spr_id,x,y,item->GetInvColor());
 			}
 			else goto DrawCurHand;
 		}
@@ -8276,7 +8278,7 @@ DrawCurHand:
 					if(!(si=SprMngr.GetSpriteInfo(spr_id))) return;
 					x=CurX-(si->Width/2)+si->OffsX;
 					y=CurY-(si->Height/2)+si->OffsY;
-					SprMngr.DrawSprite(spr_id,x,y);
+					SprMngr.DrawSprite(spr_id,x,y,item->GetInvColor());
 				}
 			}
 		}
@@ -8690,17 +8692,16 @@ void FOClient::WaitDraw()
 //******************************************************************************************************************************
 //==============================================================================================================================
 
-void FOClient::SplitStart(DWORD item_id, int to_cont, int cur_val, int min_val, int max_val, DWORD pic)
+void FOClient::SplitStart(Item* item, int to_cont)
 {
-	if(min_val>max_val || cur_val<min_val || cur_val>max_val) return;
-
-	SplitItemId=item_id;
+	SplitItemId=item->GetId();
 	SplitCont=to_cont;
-	SplitValue=cur_val;
-	SplitMinValue=min_val;
-	SplitMaxValue=max_val;
+	SplitValue=1;
+	SplitMinValue=1;
+	SplitMaxValue=item->GetCount();
 	SplitValueKeyPressed=false;
-	SplitItemPic=pic;
+	SplitItemPic=ResMngr.GetInvSprId(item->GetPicInv());
+	SplitItemColor=item->GetInvColor();
 	SplitParentScreen=GetActiveScreen();
 
 	ShowScreen(SCREEN__SPLIT);
@@ -8754,7 +8755,7 @@ void FOClient::SplitDraw()
 	default: break;
 	}
 
-	if(SplitItemPic) SprMngr.DrawSpriteSize(SplitItemPic,SplitWItem[0]+SplitX,SplitWItem[1]+SplitY,SplitWItem[2]-SplitWItem[0],SplitWItem[3]-SplitWItem[1],false,true);
+	if(SplitItemPic) SprMngr.DrawSpriteSize(SplitItemPic,SplitWItem[0]+SplitX,SplitWItem[1]+SplitY,SplitWItem[2]-SplitWItem[0],SplitWItem[3]-SplitWItem[1],false,true,SplitItemColor);
 
 	SprMngr.DrawStr(INTRECT(SplitWTitle,SplitX,SplitY),MsgGame->GetStr(STR_SPLIT_TITLE),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(INTRECT(SplitBAll,SplitX,SplitY-(IfaceHold==IFACE_SPLIT_ALL?1:0)),MsgGame->GetStr(STR_SPLIT_ALL),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
@@ -8889,11 +8890,12 @@ void FOClient::SplitMouseMove()
 //******************************************************************************************************************************
 //==============================================================================================================================
 
-void FOClient::TimerStart(DWORD item_id, DWORD pic)
+void FOClient::TimerStart(DWORD item_id, DWORD pic, DWORD pic_color)
 {
 	TimerItemId=item_id;
 	TimerValue=TIMER_MIN_VALUE;
 	TimerItemPic=pic;
+	TimerItemColor=pic_color;
 
 	ShowScreen(SCREEN__TIMER);
 }
@@ -8924,7 +8926,7 @@ void FOClient::TimerDraw()
 	default: break;
 	}
 
-	if(TimerItemPic) SprMngr.DrawSpriteSize(TimerItemPic,TimerWItem[0]+TimerX,TimerWItem[1]+TimerY,TimerWItem[2]-TimerWItem[0],TimerWItem[3]-TimerWItem[1],false,true);
+	if(TimerItemPic) SprMngr.DrawSpriteSize(TimerItemPic,TimerWItem[0]+TimerX,TimerWItem[1]+TimerY,TimerWItem[2]-TimerWItem[0],TimerWItem[3]-TimerWItem[1],false,true,TimerItemColor);
 	SprMngr.Flush();
 
 	SprMngr.DrawStr(INTRECT(TimerWTitle,TimerX,TimerY),MsgGame->GetStr(STR_TIMER_TITLE),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);

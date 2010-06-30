@@ -120,14 +120,15 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define ITEM_NO_HIGHLIGHT           (0x00001000)
 #define ITEM_SHOW_ANIM              (0x00002000)
 #define ITEM_SHOW_ANIM_EXT          (0x00004000)
+#define ITEM_LIGHT                  (0x00008000)
 #define ITEM_GECK                   (0x00010000)
 #define ITEM_TRAP                   (0x00020000)
 #define ITEM_NO_LIGHT_INFLUENCE     (0x00040000)
 #define ITEM_NO_LOOT                (0x00080000)
 #define ITEM_NO_STEAL               (0x00100000)
 #define ITEM_GAG                    (0x00200000)
-#define ITEM_LIGHT                  (0x00400000)
-#define ITEM_COLORIZE               (0x00800000)
+#define ITEM_COLORIZE               (0x00400000)
+#define ITEM_COLORIZE_INV           (0x00800000)
 #define ITEM_CAN_USE_ON_SMTH        (0x01000000)
 #define ITEM_CAN_LOOK               (0x02000000)
 #define ITEM_CAN_TALK               (0x04000000)
@@ -744,6 +745,7 @@ public:
 	bool IsColorize(){return FLAG(Data.Flags,ITEM_COLORIZE);}
 	DWORD GetColor(){return (Data.LightColor?Data.LightColor:Proto->LightColor)&0xFFFFFF;}
 	BYTE GetAlpha(){return (Data.LightColor?Data.LightColor:Proto->LightColor)>>24;}
+	DWORD GetInvColor(){return FLAG(Data.Flags,ITEM_COLORIZE_INV)?GetColor():0;}
 
 	// Light
 	bool IsLight(){return FLAG(Data.Flags,ITEM_LIGHT);}

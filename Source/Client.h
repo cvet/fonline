@@ -1347,7 +1347,7 @@ typedef vector<SwitchElement> SwitchElementVec;
 /************************************************************************/
 #define MAX_SPLIT_VALUE        (100000)
 
-	DWORD SplitMainPic,SplitPBUpDn,SplitPBDnDn,SplitPBAllDn,SplitPBDoneDn,SplitPBCancelDn,SplitItemPic;
+	DWORD SplitMainPic,SplitPBUpDn,SplitPBDnDn,SplitPBAllDn,SplitPBDoneDn,SplitPBCancelDn,SplitItemPic,SplitItemColor;
 	int SplitX,SplitY;
 	int SplitVectX,SplitVectY;
 	INTRECT SplitWMain,SplitWTitle,SplitWItem,SplitBUp,SplitBDown,SplitBAll,SplitWValue,SplitBDone,SplitBCancel;
@@ -1356,7 +1356,7 @@ typedef vector<SwitchElement> SwitchElementVec;
 	bool SplitValueKeyPressed;
 	int SplitParentScreen;
 
-	void SplitStart(DWORD item_id, int to_cont, int cur_val, int min_val, int max_val, DWORD pic);
+	void SplitStart(Item* item, int to_cont);
 	void SplitClose(bool change);
 	void SplitDraw();
 	void SplitKeyDown(BYTE dik);
@@ -1370,14 +1370,14 @@ typedef vector<SwitchElement> SwitchElementVec;
 #define TIMER_MIN_VALUE       (1)
 #define TIMER_MAX_VALUE       (599)
 
-	DWORD TimerMainPic,TimerBUpPicDown,TimerBDownPicDown,TimerBDonePicDown,TimerBCancelPicDown,TimerItemPic;
+	DWORD TimerMainPic,TimerBUpPicDown,TimerBDownPicDown,TimerBDonePicDown,TimerBCancelPicDown,TimerItemPic,TimerItemColor;
 	int TimerX,TimerY;
 	int TimerVectX,TimerVectY;
 	INTRECT TimerWMain,TimerWTitle,TimerWItem,TimerBUp,TimerBDown,TimerWValue,TimerBDone,TimerBCancel;
 	int TimerValue;
 	DWORD TimerItemId;
 
-	void TimerStart(DWORD item_id, DWORD pic);
+	void TimerStart(DWORD item_id, DWORD pic, DWORD pic_color);
 	void TimerClose(bool done);
 	void TimerDraw();
 	void TimerKeyDown(BYTE dik);
