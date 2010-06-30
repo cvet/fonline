@@ -130,8 +130,8 @@ public:
 	IntVec ParamsChanged;
 	int ParamLocked;
 	static bool SlotEnabled[0x100];
-	static Item* SlotEnabledCachePid[0x100];
 	static Item* SlotEnabledCacheData[0x100];
+	static Item* SlotEnabledCacheDataExt[0x100];
 
 	CritDataExt* GetDataExt();
 	void SetMaps(DWORD map_id, WORD map_pid){Data.MapId=map_id;Data.MapPid=map_pid;}
@@ -331,7 +331,7 @@ public:
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
 	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
-	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool full);
+	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data);
 	void Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);
@@ -590,7 +590,7 @@ public:
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
 	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
-	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool full);
+	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data);
 	void Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);

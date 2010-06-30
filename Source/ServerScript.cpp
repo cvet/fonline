@@ -4342,6 +4342,25 @@ CScriptString* FOServer::SScriptFunc::Global_GetScriptName(DWORD script_id)
 	return new CScriptString(Script::GetScriptFuncName(script_id));
 }
 
+asIScriptArray* FOServer::SScriptFunc::Global_GetItemDataMask(int mask_type)
+{
+	if(mask_type<0 || mask_type>=ITEM_DATA_MASK_MAX) SCRIPT_ERROR_R0("Invalid mask type arg.");
+	asIScriptArray* result=Script::CreateArray("int8[]");
+	if(!result) return NULL;
+	CharVec mask;
+	for(size_t i=0;i<sizeof(Item::ItemData);i++) mask.push_back(Item::ItemData::SendMask[mask_type][i]);
+	Script::AppendVectorToArray(mask,result);
+	return result;
+}
+
+bool FOServer::SScriptFunc::Global_SetItemDataMask(int mask_type, asIScriptArray& mask)
+{
+	if(mask_type<0 || mask_type>=ITEM_DATA_MASK_MAX) SCRIPT_ERROR_R0("Invalid mask type arg.");
+	if(mask.GetElementCount()!=sizeof(Item::ItemData)) SCRIPT_ERROR_R0("Invalid mask size.");
+	for(size_t i=0;i<sizeof(Item::ItemData);i++) Item::ItemData::SendMask[mask_type][i]=*(char*)mask.GetElementPointer(i);
+	return true;
+}
+
 void FOServer::SScriptFunc::Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds)
 {
 	SYSTEMTIME cur_time;

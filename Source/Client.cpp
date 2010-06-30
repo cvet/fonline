@@ -2365,10 +2365,7 @@ void FOClient::NetProcess()
 			Net_OnCritterMoveItem();
 			break;
 		case NETMSG_CRITTER_ITEM_DATA:
-			Net_OnCritterItemData(true);
-			break;
-		case NETMSG_CRITTER_ITEM_DATA_HALF:
-			Net_OnCritterItemData(false);
+			Net_OnCritterItemData();
 			break;
 		case NETMSG_CRITTER_ANIMATE:
 			Net_OnCritterAnimate();
@@ -4417,25 +4414,6 @@ void FOClient::Net_OnCritterMoveItem()
 	Bin >> is_item;
 
 	// Slot items
-	ByteVec slots_pid_slot;
-	WordVec slots_pid_pid;
-	vector<Item::ItemData> slots_pid_data;
-	BYTE slots_pid_count;
-	Bin >> slots_pid_count;
-	for(BYTE i=0;i<slots_pid_count;i++)
-	{
-		BYTE slot;
-		WORD pid;
-		Item::ItemData data;
-		ZeroMemory(&data,sizeof(data));
-		Bin >> slot;
-		Bin >> pid;
-		Bin.Pop((char*)&data.LightIntensity,7);
-		slots_pid_slot.push_back(slot);
-		slots_pid_pid.push_back(pid);
-		slots_pid_data.push_back(data);
-	}
-
 	ByteVec slots_data_slot;
 	DwordVec slots_data_id;
 	WordVec slots_data_pid;
@@ -4479,22 +4457,6 @@ void FOClient::Net_OnCritterMoveItem()
 		cr->DefItemSlotExt.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
 		cr->DefItemSlotArmor.Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 
-		for(BYTE i=0;i<slots_pid_count;i++)
-		{
-			static DWORD id=0xF0000000;
-			ProtoItem* proto_item=ItemMngr.GetProtoItem(slots_pid_pid[i]);
-			if(proto_item)
-			{
-				Item* item=new Item();
-				item->Id=id--;
-				item->Init(proto_item);
-				item->Count_Set(1);
-				item->Data=slots_pid_data[i];
-				item->ACC_CRITTER.Slot=slots_pid_slot[i];
-				cr->AddItem(item);
-			}
-		}
-
 		for(BYTE i=0;i<slots_data_count;i++)
 		{
 			ProtoItem* proto_item=ItemMngr.GetProtoItem(slots_data_pid[i]);
@@ -4521,7 +4483,7 @@ void FOClient::Net_OnCritterMoveItem()
 	if(action==ACTION_SHOW_ITEM || action==ACTION_REFRESH) cr->Action(action,prev_slot,is_item?&SomeItem:NULL,false);
 }
 
-void FOClient::Net_OnCritterItemData(bool full)
+void FOClient::Net_OnCritterItemData()
 {
 	DWORD crid;
 	BYTE slot;
@@ -4529,8 +4491,7 @@ void FOClient::Net_OnCritterItemData(bool full)
 	ZeroMemory(&data,sizeof(data));
 	Bin >> crid;
 	Bin >> slot;
-	if(full) Bin.Pop((char*)&data,sizeof(data));
-	else Bin.Pop((char*)&data.LightIntensity,7);
+	Bin.Pop((char*)&data,sizeof(data));
 
 	CritterCl* cr=GetCritter(crid);
 	if(!cr) return;

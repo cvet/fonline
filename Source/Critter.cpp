@@ -73,8 +73,8 @@ DWORD Critter::ParametersMin[MAX_PARAMETERS_ARRAYS]={0};
 DWORD Critter::ParametersMax[MAX_PARAMETERS_ARRAYS]={MAX_PARAMS-1};
 bool Critter::ParametersOffset[MAX_PARAMETERS_ARRAYS]={false};
 bool Critter::SlotEnabled[0x100]={true,true,true,true,false};
-Item* Critter::SlotEnabledCachePid[0x100]={NULL};
 Item* Critter::SlotEnabledCacheData[0x100]={NULL};
+Item* Critter::SlotEnabledCacheDataExt[0x100]={NULL};
 
 Critter::Critter():
 CritterIsNpc(false),RefCounter(1),IsNotValid(false),NameStrRefCounter(0x80000000),
@@ -1944,7 +1944,7 @@ void Critter::Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WOR
 void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item){if(IsPlayer()) ((Client*)this)->Send_Action(from_cr,action,action_ext,item);}
 void Critter::Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy){if(IsPlayer()) ((Client*)this)->Send_Knockout(from_cr,face_up,knock_hx,knock_hy);}
 void Critter::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot){if(IsPlayer()) ((Client*)this)->Send_MoveItem(from_cr,item,action,prev_slot);}
-void Critter::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool full){if(IsPlayer()) ((Client*)this)->Send_ItemData(from_cr,slot,item,full);}
+void Critter::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data){if(IsPlayer()) ((Client*)this)->Send_ItemData(from_cr,slot,item,ext_data);}
 void Critter::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play){if(IsPlayer()) ((Client*)this)->Send_Animate(from_cr,anim1,anim2,item,clear_sequence,delay_play);}
 void Critter::Send_CombatResult(DWORD* combat_res, DWORD len){if(IsPlayer()) ((Client*)this)->Send_CombatResult(combat_res,len);}
 void Critter::Send_Quest(DWORD num){if(IsPlayer()) ((Client*)this)->Send_Quest(num);}
@@ -2994,8 +2994,8 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 	MSGTYPE msg=NETMSG_CRITTER_MOVE_ITEM;
 	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(DWORD)+sizeof(action)+sizeof(prev_slot)+sizeof(bool);
 
-	BYTE slots_pid_count=0;
 	BYTE slots_data_count=0;
+	BYTE slots_data_ext_count=0;
 	ItemPtrVec& inv=from_cr->GetInventory();
 	for(ItemPtrVecIt it=inv.begin(),end=inv.end();it!=end;++it)
 	{
@@ -3006,18 +3006,17 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 			if(SlotDataSendEnabled[item_->ACC_CRITTER.Slot] &&
 				(condition_index==-1 || (Data.Params[condition_index]&SlotDataSendConditionMask[item_->ACC_CRITTER.Slot])!=0))
 			{
-				SlotEnabledCacheData[slots_data_count]=item_;
-				slots_data_count++;
+				SlotEnabledCacheDataExt[slots_data_ext_count]=item_;
+				slots_data_ext_count++;
 			}
 			else
 			{
-				SlotEnabledCachePid[slots_pid_count]=item_;
-				slots_pid_count++;
+				SlotEnabledCacheData[slots_data_count]=item_;
+				slots_data_count++;
 			}
 		}
 	}
-	msg_len+=sizeof(slots_pid_count)+(sizeof(BYTE)+sizeof(WORD)+7)*slots_pid_count;
-	msg_len+=sizeof(slots_data_count)+(sizeof(BYTE)+sizeof(DWORD)+sizeof(WORD)+sizeof(Item::ItemData))*slots_data_count;
+	msg_len+=sizeof(BYTE)+(sizeof(BYTE)+sizeof(DWORD)+sizeof(WORD)+sizeof(Item::ItemData))*(slots_data_count+slots_data_ext_count);
 
 	BOUT_BEGIN(this);
 	Bout << NETMSG_CRITTER_MOVE_ITEM;
@@ -3028,53 +3027,40 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 	Bout << (bool)(item?true:false);
 
 	// Slots
-	Bout << slots_pid_count;
-	for(BYTE i=0;i<slots_pid_count;i++)
-	{
-		Item* item_=SlotEnabledCachePid[i];
-		Bout << item_->ACC_CRITTER.Slot;
-		Bout << item_->GetProtoId();
-		Bout.Push((char*)&item_->Data.LightIntensity,7); // Only light
-	}
-	Bout << slots_data_count;
+	Bout << (BYTE)slots_data_count+slots_data_ext_count;
 	for(BYTE i=0;i<slots_data_count;i++)
 	{
 		Item* item_=SlotEnabledCacheData[i];
 		Bout << item_->ACC_CRITTER.Slot;
 		Bout << item_->GetId();
 		Bout << item_->GetProtoId();
-		Bout.Push((char*)&item_->Data,sizeof(item_->Data));
+		Bout.Push((char*)&item_->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CRITTER],sizeof(item_->Data));
+	}
+	for(BYTE i=0;i<slots_data_ext_count;i++)
+	{
+		Item* item_=SlotEnabledCacheDataExt[i];
+		Bout << item_->ACC_CRITTER.Slot;
+		Bout << item_->GetId();
+		Bout << item_->GetProtoId();
+		Bout.Push((char*)&item_->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CRITTER_EXT],sizeof(item_->Data));
 	}
 	BOUT_END(this);
 
 	// Lexems
 	for(BYTE i=0;i<slots_data_count;i++) if(SlotEnabledCacheData[i]->PLexems) Send_ItemLexems(SlotEnabledCacheData[i]);
+	for(BYTE i=0;i<slots_data_ext_count;i++) if(SlotEnabledCacheDataExt[i]->PLexems) Send_ItemLexems(SlotEnabledCacheDataExt[i]);
 }
 
-void Client::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool full)
+void Client::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 
-	if(full)
-	{
-		// Send full item data
-		BOUT_BEGIN(this);
-		Bout << NETMSG_CRITTER_ITEM_DATA;
-		Bout << from_cr->GetId();
-		Bout << slot;
-		Bout.Push((char*)&item->Data,sizeof(item->Data));
-		BOUT_END(this);
-	}
-	else
-	{
-		// Send only light
-		BOUT_BEGIN(this);
-		Bout << NETMSG_CRITTER_ITEM_DATA_HALF;
-		Bout << from_cr->GetId();
-		Bout << slot;
-		Bout.Push((char*)&item->Data.LightIntensity,7);
-		BOUT_END(this);
-	}
+	BOUT_BEGIN(this);
+	Bout << NETMSG_CRITTER_ITEM_DATA;
+	Bout << from_cr->GetId();
+	Bout << slot;
+	Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ext_data?ITEM_DATA_MASK_CRITTER_EXT:ITEM_DATA_MASK_CRITTER],sizeof(item->Data));
+	BOUT_END(this);
 }
 
 void Client::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play)
@@ -3107,7 +3093,7 @@ void Client::Send_AddItemOnMap(Item* item)
 	Bout << item->ACC_HEX.HexX;
 	Bout << item->ACC_HEX.HexY;
 	Bout << is_added;
-	Bout.Push((char*)&item->Data,sizeof(item->Data));
+	Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_MAP],sizeof(item->Data));
 	BOUT_END(this);
 
 	if(item->PLexems) Send_ItemLexems(item);
@@ -3120,7 +3106,7 @@ void Client::Send_ChangeItemOnMap(Item* item)
 	BOUT_BEGIN(this);
 	Bout << NETMSG_CHANGE_ITEM_ON_MAP;
 	Bout << item->GetId();
-	Bout.Push((char*)&item->Data,sizeof(item->Data));
+	Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_MAP],sizeof(item->Data));
 	BOUT_END(this);
 
 	if(item->PLexems) Send_ItemLexems(item);
@@ -3159,7 +3145,7 @@ void Client::Send_AddItem(Item* item)
 	Bout << item->GetId();
 	Bout << item->GetProtoId();
 	Bout << item->ACC_CRITTER.Slot;
-	Bout.Push((char*)&item->Data,sizeof(item->Data));
+	Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CHOSEN],sizeof(item->Data));
 	BOUT_END(this);
 
 	if(item->PLexems) Send_ItemLexems(item);
@@ -3222,7 +3208,7 @@ void Client::Send_ContainerInfo(Item* item_cont, BYTE transfer_type, bool open_s
 		Item* item=*it;
 		Bout << item->GetId();
 		Bout << item->GetProtoId();
-		Bout.Push((char*)&item->Data,sizeof(item->Data));
+		Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CONTAINER],sizeof(item->Data));
 	}
 	BOUT_END(this);
 
@@ -3269,7 +3255,7 @@ void Client::Send_ContainerInfo(Critter* cr_cont, BYTE transfer_type, bool open_
 		Item* item=*it;
 		Bout << item->GetId();
 		Bout << item->GetProtoId();
-		Bout.Push((char*)&item->Data,sizeof(item->Data));
+		Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CONTAINER],sizeof(item->Data));
 	}
 	BOUT_END(this);
 
@@ -3830,7 +3816,7 @@ void Client::Send_PlayersBarterSetHide(Item* item, DWORD count)
 	Bout << item->GetId();
 	Bout << item->GetProtoId();
 	Bout << count;
-	Bout.Push((char*)&item->Data,sizeof(item->Data));
+	Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CONTAINER],sizeof(item->Data));
 	BOUT_END(this);
 
 	if(item->PLexems) Send_ItemLexems(item);
@@ -3966,7 +3952,7 @@ void Client::Send_SomeItem(Item* item)
 	Bout << item->GetId();
 	Bout << item->GetProtoId();
 	Bout << item->ACC_CRITTER.Slot;
-	Bout.Push((char*)&item->Data,sizeof(item->Data));
+	Bout.Push((char*)&item->Data,Item::ItemData::SendMask[ITEM_DATA_MASK_CRITTER],sizeof(item->Data));
 	BOUT_END(this);
 }
 

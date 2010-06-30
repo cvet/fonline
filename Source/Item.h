@@ -172,9 +172,17 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define CAR_MAX_BAGS                (3)
 
 // Light flags
-#define LIGHT_DISABLE_DIR(dir)       (1<<CLAMP(dir,0,5))
-#define LIGHT_GLOBAL                 (0x40)
-#define LIGHT_INVERSE                (0x80)
+#define LIGHT_DISABLE_DIR(dir)      (1<<CLAMP(dir,0,5))
+#define LIGHT_GLOBAL                (0x40)
+#define LIGHT_INVERSE               (0x80)
+
+// Item data masks
+#define ITEM_DATA_MASK_CHOSEN       (0)
+#define ITEM_DATA_MASK_CRITTER      (1)
+#define ITEM_DATA_MASK_CRITTER_EXT  (2)
+#define ITEM_DATA_MASK_CONTAINER    (3)
+#define ITEM_DATA_MASK_MAP          (4)
+#define ITEM_DATA_MASK_MAX          (5)
 
 /************************************************************************/
 /* ProtoItem                                                         */
@@ -485,6 +493,8 @@ public:
 
 	struct ItemData // 92, NetProto.h
 	{
+		static char SendMask[ITEM_DATA_MASK_MAX][92];
+
 		WORD SortValue;
 		BYTE Info;
 		BYTE Reserved0;
@@ -737,7 +747,7 @@ public:
 
 	// Light
 	bool IsLight(){return FLAG(Data.Flags,ITEM_LIGHT);}
-	DWORD LightGetHash(){if(!IsLight()) return 0; if(Data.LightIntensity) return Crypt.Crc32((BYTE*)&Data.LightIntensity,7); return (DWORD)Proto;}
+	DWORD LightGetHash(){if(!IsLight()) return 0; if(Data.LightIntensity) return Crypt.Crc32((BYTE*)&Data.LightIntensity,7)+FLAG(Data.Flags,ITEM_LIGHT); return (DWORD)Proto;}
 	int LightGetIntensity(){return Data.LightIntensity?Data.LightIntensity:Proto->LightIntensity;}
 	int LightGetDistance(){return Data.LightDistance?Data.LightDistance:Proto->LightDistance;}
 	int LightGetFlags(){return Data.LightFlags?Data.LightFlags:Proto->LightFlags;}

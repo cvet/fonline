@@ -20,6 +20,22 @@ const char* ItemEventFuncName[ITEM_EVENT_MAX]=
 	{"void %s(Item&,Critter&,bool,uint8)"}, // ITEM_EVENT_WALK
 };
 
+// Item default send data mask
+char Item::ItemData::SendMask[ITEM_DATA_MASK_MAX][92]=
+{
+	// SortValue Info Reserved0 PicMapHash   PicInvHash   AnimWaitBase AnimStay[2] AnimShow[2] AnimHide[2] Flags        Rate LightIntensity LightDistance LightFlags LightColor   ScriptId TrapValue Count        Cost         ScriptValues[10]                                                                 Shared data 8 bytes
+	// ITEM_DATA_MASK_CHOSEN                                                                                           ITEM_DATA_MASK_CHOSEN                                                                                                ITEM_DATA_MASK_CHOSEN                                                                                              
+	{  -1,-1,     -1,    0,     -1,-1,-1,-1, -1,-1,-1,-1,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,    -1,-1,-1,-1, -1,-1,-1,-1, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, -1,-1,-1,-1,-1,-1,-1,-1, },
+	// ITEM_DATA_MASK_CRITTER                                                                                          ITEM_DATA_MASK_CRITTER                                                                                               ITEM_DATA_MASK_CRITTER                                                                        
+	{    0,0,     -1,    0,         0,0,0,0,     0,0,0,0,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,        0,0,0,0,     0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,         0,0,0,0,0,0,0,0, },
+	// ITEM_DATA_MASK_CRITTER_EXT                                                                                      ITEM_DATA_MASK_CRITTER_EXT                                                                                           ITEM_DATA_MASK_CRITTER_EXT                                                                    
+	{    0,0,     -1,    0,         0,0,0,0,     0,0,0,0,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,    -1,-1,-1,-1,     0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, -1,-1,-1,-1,-1,-1,-1,-1, },
+	// ITEM_DATA_MASK_CONTAINER                                                                                        ITEM_DATA_MASK_CONTAINER                                                                                             ITEM_DATA_MASK_CONTAINER                                                                      
+	{  -1,-1,     -1,    0,         0,0,0,0, -1,-1,-1,-1,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,    -1,-1,-1,-1, -1,-1,-1,-1, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, -1,-1,-1,-1,-1,-1,-1,-1, },
+	// ITEM_DATA_MASK_MAP                                                                                              ITEM_DATA_MASK_MAP                                                                                                   ITEM_DATA_MASK_MAP                                                                            
+	{  -1,-1,     -1,    0,     -1,-1,-1,-1,     0,0,0,0,    -1,-1,     -1,-1,      -1,-1,      -1,-1,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,        0,0,0,0,     0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,         0,0,0,0,0,0,0,0, },
+};
+
 /************************************************************************/
 /* Item                                                                 */
 /************************************************************************/

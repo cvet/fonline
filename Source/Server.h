@@ -624,6 +624,8 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static DWORD Global_GetAllLocations(WORD pid, asIScriptArray* locations);
 		static DWORD Global_GetScriptId(CScriptString& script_name, CScriptString& func_decl);
 		static CScriptString* Global_GetScriptName(DWORD script_id);
+		static asIScriptArray* Global_GetItemDataMask(int mask_type);
+		static bool Global_SetItemDataMask(int mask_type, asIScriptArray& mask);
 		static DWORD Global_GetTick(){return Timer::FastTick();}
 		static void Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds);
 		static bool Global_SetParameterGetBehaviour(DWORD index, CScriptString& func_name);

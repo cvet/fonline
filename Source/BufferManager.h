@@ -23,6 +23,7 @@ public:
 	void Reset();
 	void LockReset();
 	void Push(const char* buf, DWORD len);
+	void Push(const char* buf, const char* mask, DWORD len);
 	void Pop(char* buf, DWORD len);
 	void Pop(DWORD len);
 	void GrowBuf(DWORD len);

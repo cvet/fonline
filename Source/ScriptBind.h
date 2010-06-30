@@ -821,6 +821,8 @@
 	if(engine->RegisterGlobalFunction("uint GetAllLocations(uint16 pid, Location@[]@+ locations) const",asFUNCTION(BIND_CLASS Global_GetAllLocations),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetScriptId(string& scriptName, string& funcDeclaration) const",asFUNCTION(BIND_CLASS Global_GetScriptId),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetScriptName(uint scriptId) const",asFUNCTION(BIND_CLASS Global_GetScriptName),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("int8[]@ GetItemDataMask(int maskType) const",asFUNCTION(BIND_CLASS Global_GetItemDataMask),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool SetItemDataMask(int maskType, int8[]& mask)",asFUNCTION(BIND_CLASS Global_SetItemDataMask),asCALL_CDECL)<0) BIND_ERROR;
 #endif
 
 #ifdef BIND_CLIENT

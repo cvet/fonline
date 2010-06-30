@@ -668,17 +668,7 @@ sizeof(BYTE)+92/*ItemData*/)
 // Item::ItemData data
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_ITEM_DATA_HALF MAKE_NETMSG_HEADER(95)
-#define NETMSG_CRITTER_ITEM_DATA_HALF_SIZE (sizeof(MSGTYPE)+sizeof(DWORD)+\
-sizeof(BYTE)+7/*Only light data*/)
-//////////////////////////////////////////////////////////////////////////
-// Item data changed
-// DWORD crid
-// BYTE slot
-// BYTE light_data[7]
-//////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_CRITTER_ANIMATE      MAKE_NETMSG_HEADER(96)
+#define NETMSG_CRITTER_ANIMATE      MAKE_NETMSG_HEADER(95)
 #define NETMSG_CRITTER_ANIMATE_SIZE	(sizeof(MSGTYPE)+sizeof(DWORD)*3+\
 sizeof(bool)+sizeof(bool)*2)
 //////////////////////////////////////////////////////////////////////////
@@ -692,12 +682,12 @@ sizeof(bool)+sizeof(bool)*2)
 // bool delay_play
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_COMBAT_RESULTS       MAKE_NETMSG_HEADER(97)
+#define NETMSG_COMBAT_RESULTS       MAKE_NETMSG_HEADER(96)
 //////////////////////////////////////////////////////////////////////////
 //
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_EFFECT				MAKE_NETMSG_HEADER(98)
+#define NETMSG_EFFECT				MAKE_NETMSG_HEADER(97)
 #define NETMSG_EFFECT_SIZE			(sizeof(MSGTYPE)+sizeof(WORD)*4)
 //////////////////////////////////////////////////////////////////////////
 // explode
@@ -708,7 +698,7 @@ sizeof(bool)+sizeof(bool)*2)
 // WORD radius
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_FLY_EFFECT			MAKE_NETMSG_HEADER(99)
+#define NETMSG_FLY_EFFECT			MAKE_NETMSG_HEADER(98)
 #define NETMSG_FLY_EFFECT_SIZE		(sizeof(MSGTYPE)+sizeof(WORD)+\
 sizeof(DWORD)*2+sizeof(WORD)*4)
 //////////////////////////////////////////////////////////////////////////

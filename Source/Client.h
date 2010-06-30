@@ -162,7 +162,7 @@ public:
 	void Net_OnCritterAction();
 	void Net_OnCritterKnockout();
 	void Net_OnCritterMoveItem();
-	void Net_OnCritterItemData(bool full);
+	void Net_OnCritterItemData();
 	void Net_OnCritterAnimate();
 	void Net_OnCritterParam();
 	void Net_OnCheckUID1();
