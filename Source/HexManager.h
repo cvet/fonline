@@ -332,6 +332,8 @@ public:
 
 	// Tiles, roof
 private:
+	bool reprepareTiles;
+	Sprites tilesTree;
 	LPDIRECT3DSURFACE tileSurf;
 	int roofSkip;
 	Sprites roofTree;

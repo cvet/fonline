@@ -523,6 +523,7 @@ bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, DWORD color, int 
 	D3D_HR(dxDevice->SetRenderTarget(0,surf));
 	D3D_HR(dxDevice->Clear(0,NULL,flags,color,z,stencil));
 	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
+	old_rt->Release();
 	return true;
 }
 
@@ -1359,9 +1360,11 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE& surf, BYTE 
 	}
 
 	// Set new render target
-	LPDIRECT3DSURFACE old_rt;
+	LPDIRECT3DSURFACE old_rt=NULL,old_ds=NULL;
 	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
 	D3D_HR(dxDevice->SetRenderTarget(0,surf));
+	D3D_HR(dxDevice->SetDepthStencilSurface(NULL));
 
 	// Draw
 	OneSurface* lc=NULL;
@@ -1427,6 +1430,9 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE& surf, BYTE 
 
 	// Restore render target
 	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
+	D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
+	old_rt->Release();
+	old_ds->Release();
 	return true;
 }
 
@@ -1443,15 +1449,11 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 	src.top=oy;
 	src.right=ox+modeWidth;
 	src.bottom=oy+modeHeight;
-	RECT dst;
-	dst.left=0;
-	dst.top=0;
-	dst.right=modeWidth;
-	dst.bottom=modeHeight;
 
 	LPDIRECT3DSURFACE backbuf=NULL;
 	D3D_HR(dxDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));
-	D3D_HR(dxDevice->StretchRect(surf,&src,backbuf,&dst,D3DTEXF_NONE));
+	D3D_HR(dxDevice->StretchRect(surf,&src,backbuf,NULL,D3DTEXF_NONE));
+	backbuf->Release();
 	return true;
 }
 

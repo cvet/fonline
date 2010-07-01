@@ -96,6 +96,7 @@ void Field::ProcessCache()
 HexManager::HexManager()
 {
 	viewField=NULL;
+	reprepareTiles=false;
 	tileSurf=NULL;
 	sprMngr=NULL;
 	isShowHex=false;
@@ -1302,8 +1303,7 @@ void HexManager::RebuildTiles()
 {
 	if(!OptShowTile) return;
 
-	Sprites ttree;
-	ttree.Resize(VIEW_WIDTH*VIEW_HEIGHT);
+	tilesTree.Unvalidate();
 
 	int vpos;
 	int y2=0;
@@ -1325,28 +1325,28 @@ void HexManager::RebuildTiles()
 			if(f.SelTile)
 			{
 				if(IsVisible(f.SelTile,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
-					ttree.AddSprite(HEX_POS(hx,hy),f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.SelTile,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
+					tilesTree.AddSprite(HEX_POS(hx,hy),f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.SelTile,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
 				continue;
 			}
 #endif
 
 			if(f.TileId && IsVisible(f.TileId,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
-				ttree.AddSprite(HEX_POS(hx,hy),f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.TileId,NULL,NULL,NULL,NULL,NULL,NULL);
+				tilesTree.AddSprite(HEX_POS(hx,hy),f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.TileId,NULL,NULL,NULL,NULL,NULL,NULL);
 		}
 		y2+=wVisible;
 	}
 
 	// Sort
-	ttree.SortBySurfaces();
-	ttree.SortByMapPos();
-	if(OptScreenClear) sprMngr->ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100),D3DCLEAR_TARGET,1.0f,0);
-	sprMngr->PrepareBuffer(ttree,tileSurf,TILE_ALPHA);
+	tilesTree.SortBySurfaces();
+	tilesTree.SortByMapPos();
+	reprepareTiles=true;
 }
 
 void HexManager::RebuildRoof()
 {
-	roofTree.Unvalidate();
 	if(!OptShowRoof) return;
+
+	roofTree.Unvalidate();
 
 	int vpos;
 	int y2=0;
@@ -1630,7 +1630,16 @@ void HexManager::DrawMap()
 	}
 
 	// Tiles
-	if(OptShowTile) sprMngr->DrawPrepared(tileSurf);
+	if(OptShowTile)
+	{
+		if(reprepareTiles)
+		{
+			if(OptScreenClear) sprMngr->ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100),D3DCLEAR_TARGET,1.0f,0);
+			sprMngr->PrepareBuffer(tilesTree,tileSurf,TILE_ALPHA);
+			reprepareTiles=false;
+		}
+		sprMngr->DrawPrepared(tileSurf);
+	}
 
 	// Flat sprites
 	sprMngr->DrawTreeCntr(mainTree,false,false,0,0);
@@ -2856,7 +2865,6 @@ void HexManager::UnLoadMap()
 {
 	if(!IsMapLoaded()) return;
 
-	SAFEREL(tileSurf);
 	SAFEDELA(viewField);
 
 	hTop=0;
