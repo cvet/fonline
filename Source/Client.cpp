@@ -676,7 +676,7 @@ int FOClient::MainLoop()
 	}
 
 	// Render
-	if(!SprMngr.BeginScene(IsMainScreen(SCREEN_GAME)?(OptScreenClear?D3DCOLOR_XRGB(255,255,255):0):D3DCOLOR_XRGB(0,0,0))) return 0;
+	if(!SprMngr.BeginScene(IsMainScreen(SCREEN_GAME)?(OptScreenClear?D3DCOLOR_XRGB(100,100,100):0):D3DCOLOR_XRGB(0,0,0))) return 0;
 
 	ProcessScreenEffectQuake();
 	DrawIfaceLayer(0);
@@ -782,7 +782,6 @@ void FOClient::ScreenQuake(int noise, DWORD time)
 	CmnScrOx+=ScreenOffsX;
 	CmnScrOy+=ScreenOffsY;
 	ScreenOffsNextTick=Timer::FastTick()+30;
-	HexMngr.RebuildTiles();
 }
 
 void FOClient::ProcessScreenEffectFading()
@@ -837,7 +836,6 @@ void FOClient::ProcessScreenEffectQuake()
 		CmnScrOx+=ScreenOffsX;
 		CmnScrOy+=ScreenOffsY;
 		ScreenOffsNextTick=Timer::FastTick()+30;
-		HexMngr.RebuildTiles();
 	}
 }
 

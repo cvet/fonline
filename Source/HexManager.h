@@ -332,10 +332,7 @@ public:
 
 	// Tiles, roof
 private:
-	LPDIRECT3DVERTEXBUFFER tileVB;
-	OneSurfVec tilePrepSurf;
-	WORD tileCntPrep;
-	//DwordVec tileHuge;
+	LPDIRECT3DSURFACE tileSurf;
 	int roofSkip;
 	Sprites roofTree;
 	bool CheckTilesBorder(DWORD spr_id, bool is_roof);

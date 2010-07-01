@@ -44,6 +44,7 @@ bool FOMapper::Init(HWND wnd)
 
 	// Options
 	OptScrollCheck=false;
+	OptScreenClear=true;
 
 	// File manager
 	FileManager::SetDataPath(OptFoDataPath.c_str());
@@ -113,7 +114,7 @@ bool FOMapper::Init(HWND wnd)
 	// Resource manager
 	ResMngr.Refresh(&SprMngr);
 
-	if(SprMngr.BeginScene(D3DCOLOR_XRGB(0,0,0))) SprMngr.EndScene();
+	if(SprMngr.BeginScene(D3DCOLOR_XRGB(100,100,100))) SprMngr.EndScene();
 
 	int res=InitIface();
 	if(res!=0)

@@ -204,10 +204,14 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	curSprCnt=0;
 	PreRestore=params.PreRestoreFunc;
 	PostRestore=params.PostRestoreFunc;
-	drawOffsetX=params.DrawOffsetX;
-	drawOffsetY=params.DrawOffsetY;
 	modeWidth=params.ScreenWidth;
 	modeHeight=params.ScreenHeight;
+
+	static int dummy_offs=0;
+	drawOffsetX=params.DrawOffsetX;
+	if(!drawOffsetX) drawOffsetX=&dummy_offs;
+	drawOffsetY=params.DrawOffsetY;
+	if(!drawOffsetX) drawOffsetX=&dummy_offs;
 
 	direct3D=Direct3DCreate(D3D_SDK_VERSION);
 	if(!direct3D)
@@ -462,6 +466,24 @@ void SpriteManager::Clear()
 	WriteLog("Sprite manager finish complete.\n");
 }
 
+bool SpriteManager::BeginScene(DWORD clear_color)
+{
+	HRESULT hr=dxDevice->TestCooperativeLevel();
+	if(hr!=D3D_OK && (hr!=D3DERR_DEVICENOTRESET || !Restore())) return false;
+
+	if(clear_color) D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,clear_color,1.0f,0));
+	D3D_HR(dxDevice->BeginScene());
+	Animation3d::BeginScene();
+	return true;
+}
+
+void SpriteManager::EndScene()
+{
+	Flush();
+	dxDevice->EndScene();
+	dxDevice->Present(NULL,NULL,NULL,NULL);
+}
+
 bool SpriteManager::Restore()
 {
 	if(!isInit) return false;
@@ -492,22 +514,16 @@ bool SpriteManager::Restore()
 	return true;
 }
 
-bool SpriteManager::BeginScene(DWORD clear_color)
+bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, DWORD color, int flags, float z, DWORD stencil)
 {
-	HRESULT hr=dxDevice->TestCooperativeLevel();
-	if(hr!=D3D_OK && (hr!=D3DERR_DEVICENOTRESET || !Restore())) return false;
+	if(!surf) return true;
 
-	if(clear_color) D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,clear_color,1.0f,0));
-	D3D_HR(dxDevice->BeginScene());
-	Animation3d::BeginScene();
+	LPDIRECT3DSURFACE old_rt;
+	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(dxDevice->SetRenderTarget(0,surf));
+	D3D_HR(dxDevice->Clear(0,NULL,flags,color,z,stencil));
+	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
 	return true;
-}
-
-void SpriteManager::EndScene()
-{
-	Flush();
-	dxDevice->EndScene();
-	dxDevice->Present(NULL,NULL,NULL,NULL);
 }
 
 #define SURF_SPRITES_OFFS        (1)
@@ -1180,13 +1196,12 @@ bool SpriteManager::Flush()
 	if(!isInit) return false;
 	if(!curSprCnt) return true;
 
-	void* pBuffer;
+	void* ptr;
 	int mulpos=4*curSprCnt;
-	D3D_HR(pVB->Lock(0,sizeof(MYVERTEX)*mulpos,(void**)&pBuffer,D3DLOCK_DISCARD));
-	memcpy(pBuffer,waitBuf,sizeof(MYVERTEX)*mulpos);
+	D3D_HR(pVB->Lock(0,sizeof(MYVERTEX)*mulpos,(void**)&ptr,D3DLOCK_DISCARD));
+	memcpy(ptr,waitBuf,sizeof(MYVERTEX)*mulpos);
 	D3D_HR(pVB->Unlock());
 
-	//рисуем спрайты
 	if(!callVec.empty())
 	{
 		WORD rpos=0;
@@ -1254,8 +1269,7 @@ bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */)
 	waitBuf[mulpos].tv=si->SprRect.B;
 	waitBuf[mulpos].Diffuse=color;
 
-	curSprCnt++;
-	if(curSprCnt==flushSprCnt) Flush();
+	if(++curSprCnt==flushSprCnt) Flush();
 	return true;
 }
 
@@ -1320,8 +1334,7 @@ bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, boo
 	waitBuf[mulpos].tv=si->SprRect.B;
 	waitBuf[mulpos].Diffuse=color;
 
-	curSprCnt++;
-	if(curSprCnt==flushSprCnt) Flush();
+	if(++curSprCnt==flushSprCnt) Flush();
 	return true;
 }
 
@@ -1335,69 +1348,23 @@ void SpriteManager::PrepareSquare(PointVec& points, FLTRECT& r, DWORD color)
 	points.push_back(PrepPoint(r.R,r.B,color,NULL,NULL));
 }
 
-#pragma MESSAGE("Optimize: prerender to texture.")
-bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, OneSurfVec& surfaces, bool sort_surf, BYTE alpha)
+bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE& surf, BYTE alpha)
 {
-	SAFEREL(vbuf);
-	for(OneSurfVecIt it=surfaces.begin(),end=surfaces.end();it!=end;++it)
-		delete *it;
-	surfaces.clear();
+	if(!dtree.Size()) return true;
+	Flush();
 
-	DWORD cnt=dtree.Size();
-	if(!cnt) return true;
-
-	// Create vertex buffer
-	D3D_HR(dxDevice->CreateVertexBuffer(cnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&vbuf,NULL));
-
-	DWORD need_size=cnt*6*sizeof(WORD);
-	D3DINDEXBUFFER_DESC ibdesc;
-	if(pIB) D3D_HR(pIB->GetDesc(&ibdesc));
-	if(!pIB || ibdesc.Size<need_size)
+	if(!surf)
 	{
-		SAFEREL(pIB);
-		// Create index buffer
-		D3D_HR(dxDevice->CreateIndexBuffer(need_size,D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
-
-		WORD* indices=new WORD[6*cnt];
-		if(!indices) return false;
-		for(DWORD i=0;i<cnt;i++)
-		{
-			indices[6*i+0]=4*i+0;
-			indices[6*i+1]=4*i+1;
-			indices[6*i+2]=4*i+3;
-			indices[6*i+3]=4*i+1;
-			indices[6*i+4]=4*i+2;
-			indices[6*i+5]=4*i+3;
-		}
-
-		void* ptr;
-		D3D_HR(pIB->Lock(0,0,(void**)&ptr,0));
-		memcpy(ptr,indices,need_size);
-		D3D_HR(pIB->Unlock());
-		delete[] indices;
-
-		D3D_HR(dxDevice->SetIndices(pIB));
+		D3D_HR(dxDevice->CreateRenderTarget(modeWidth+64,modeHeight+48,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&surf,NULL));
 	}
 
-	WORD mulpos=0;
-	OneSurface* lc=NULL;
-	MYVERTEX* local_vbuf=new MYVERTEX[cnt*4];
-	if(!local_vbuf) return false;
-
-	DWORD _color0=baseColor;
-	DWORD _color1=baseColor;
-	DWORD _color2=baseColor;
-	DWORD _color3=baseColor;
-
-	if(alpha)
-	{
-		((BYTE*)&_color0)[3]=alpha;
-		((BYTE*)&_color1)[3]=alpha;
-		((BYTE*)&_color2)[3]=alpha;
-		((BYTE*)&_color3)[3]=alpha;
-	}
+	// Set new render target
+	LPDIRECT3DSURFACE old_rt;
+	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(dxDevice->SetRenderTarget(0,surf));
 
 	// Draw
+	OneSurface* lc=NULL;
 	for(SpriteVecIt it=dtree.Begin(),end=dtree.End();it!=end;++it)
 	{
 		Sprite* spr=*it;
@@ -1405,40 +1372,21 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 		SpriteInfo* si=sprData[spr->SprId];
 		if(!si) continue;
 
-		int x=spr->ScrX-si->Width/2+si->OffsX;
-		int y=spr->ScrY-si->Height+si->OffsY;
-		if(drawOffsetX) x+=*drawOffsetX;
-		if(drawOffsetY) y+=*drawOffsetY;
+		int x=spr->ScrX-si->Width/2+si->OffsX+32;
+		int y=spr->ScrY-si->Height+si->OffsY+24;
 		if(spr->OffsX) x+=*spr->OffsX;
 		if(spr->OffsY) y+=*spr->OffsY;
 
 		if(!lc || lc->Surface!=si->Surf->Texture)
 		{
 			lc=new OneSurface(si->Surf->Texture);
-			surfaces.push_back(lc);
+			callVec.push_back(lc);
 		}
 		else lc->SprCount++;
 
-		DWORD __color0=_color0;
-		DWORD __color1=_color1;
-		DWORD __color2=_color2;
-		DWORD __color3=_color3;
-
-		if(spr->Alpha)
-		{
-			((BYTE*)&__color0)[3]=*spr->Alpha;
-			((BYTE*)&__color1)[3]=*spr->Alpha;
-			((BYTE*)&__color2)[3]=*spr->Alpha;
-			((BYTE*)&__color3)[3]=*spr->Alpha;
-		}
-
-		/*if(spr->Light)
-		{
-			((BYTE*)&__color0)[3]=*(spr->Light+0);
-			((BYTE*)&__color1)[3]=*(spr->Light+1);
-			((BYTE*)&__color2)[3]=*(spr->Light+2);
-			((BYTE*)&__color3)[3]=*(spr->Light+3);
-		}*/
+		DWORD color=baseColor;
+		if(spr->Alpha) ((BYTE*)&color)[3]=*spr->Alpha;
+		else if(alpha) ((BYTE*)&color)[3]=alpha;
 
 		// Casts
 		float xf=float(x)/ZOOM-0.5f;
@@ -1447,57 +1395,58 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DVERTEXBUFFER& vbuf, 
 		float hf=float(si->Height)/ZOOM;
 
 		// Fill buffer
-		local_vbuf[mulpos].x=xf;
-		local_vbuf[mulpos].y=yf+hf;
-		local_vbuf[mulpos].tu=si->SprRect.L;
-		local_vbuf[mulpos].tv=si->SprRect.B;
-		local_vbuf[mulpos++].Diffuse=__color0;
+		int mulpos=curSprCnt*4;
 
-		local_vbuf[mulpos].x=xf;
-		local_vbuf[mulpos].y=yf;
-		local_vbuf[mulpos].tu=si->SprRect.L;
-		local_vbuf[mulpos].tv=si->SprRect.T;
-		local_vbuf[mulpos++].Diffuse=__color1;
+		waitBuf[mulpos].x=xf;
+		waitBuf[mulpos].y=yf+hf;
+		waitBuf[mulpos].tu=si->SprRect.L;
+		waitBuf[mulpos].tv=si->SprRect.B;
+		waitBuf[mulpos++].Diffuse=color;
 
-		local_vbuf[mulpos].x=xf+wf;
-		local_vbuf[mulpos].y=yf;
-		local_vbuf[mulpos].tu=si->SprRect.R;
-		local_vbuf[mulpos].tv=si->SprRect.T;
-		local_vbuf[mulpos++].Diffuse=__color2;
+		waitBuf[mulpos].x=xf;
+		waitBuf[mulpos].y=yf;
+		waitBuf[mulpos].tu=si->SprRect.L;
+		waitBuf[mulpos].tv=si->SprRect.T;
+		waitBuf[mulpos++].Diffuse=color;
 
-		local_vbuf[mulpos].x=xf+wf;
-		local_vbuf[mulpos].y=yf+hf;
-		local_vbuf[mulpos].tu=si->SprRect.R;
-		local_vbuf[mulpos].tv=si->SprRect.B;
-		local_vbuf[mulpos++].Diffuse=__color3;
+		waitBuf[mulpos].x=xf+wf;
+		waitBuf[mulpos].y=yf;
+		waitBuf[mulpos].tu=si->SprRect.R;
+		waitBuf[mulpos].tv=si->SprRect.T;
+		waitBuf[mulpos++].Diffuse=color;
+
+		waitBuf[mulpos].x=xf+wf;
+		waitBuf[mulpos].y=yf+hf;
+		waitBuf[mulpos].tu=si->SprRect.R;
+		waitBuf[mulpos].tv=si->SprRect.B;
+		waitBuf[mulpos++].Diffuse=color;
+
+		if(++curSprCnt==flushSprCnt) Flush();
 	}
+	Flush();
 
-	void* ptr;
-	D3D_HR(vbuf->Lock(0,sizeof(MYVERTEX)*mulpos,(void**)&ptr,D3DLOCK_DISCARD));
-	memcpy(ptr,local_vbuf,sizeof(MYVERTEX)*mulpos);
-	D3D_HR(vbuf->Unlock());
-	SAFEDELA(local_vbuf);
-
+	// Restore render target
+	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
 	return true;
 }
 
-bool SpriteManager::DrawPrepared(LPDIRECT3DVERTEXBUFFER& vbuf, OneSurfVec& surfaces, WORD cnt)
+bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 {
-	if(!cnt) return true;
+	if(!surf) return true;
 	Flush();
 
-	D3D_HR(dxDevice->SetStreamSource(0,vbuf,0,sizeof(MYVERTEX)));
+	int ox=int(32.0f/ZOOM);
+	int oy=int(24.0f/ZOOM);
 
-	WORD rpos=0;
-	for(OneSurfVecIt it=surfaces.begin(),end=surfaces.end();it!=end;++it)
-	{
-		OneSurface* surf=*it;
-		D3D_HR(dxDevice->SetTexture(0,surf->Surface));
-		D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,cnt*4,rpos,2*surf->SprCount));
-		rpos+=6*surf->SprCount;
-	}
+	RECT src;
+	src.left=ox+*drawOffsetX;
+	src.top=oy+*drawOffsetY;
+	src.right=ox+modeWidth+*drawOffsetX;
+	src.bottom=oy+modeHeight+*drawOffsetY;	
 
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+	LPDIRECT3DSURFACE backbuf=NULL;
+	D3D_HR(dxDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));
+	D3D_HR(dxDevice->StretchRect(surf,&src,backbuf,NULL,D3DTEXF_NONE));
 	return true;
 }
 
@@ -1577,8 +1526,8 @@ bool SpriteManager::DrawTreeCntr(Sprites& dtree, bool collect_contours, bool use
 
 	if(!eggValid) use_egg=false;
 	bool egg_trans=false;
-	int ex=eggX+(drawOffsetX?*drawOffsetX:0);
-	int ey=eggY+(drawOffsetY?*drawOffsetY:0);
+	int ex=eggX+*drawOffsetX;
+	int ey=eggY+*drawOffsetY;
 	DWORD cur_tick=Timer::FastTick();
 
 	for(SpriteVecIt it=dtree.Begin(),end=dtree.End();it!=end;++it)
@@ -1596,8 +1545,8 @@ bool SpriteManager::DrawTreeCntr(Sprites& dtree, bool collect_contours, bool use
 
 		int x=spr->ScrX-si->Width/2+si->OffsX;
 		int y=spr->ScrY-si->Height+si->OffsY;
-		if(drawOffsetX) x+=*drawOffsetX;
-		if(drawOffsetY) y+=*drawOffsetY;
+		x+=*drawOffsetX;
+		y+=*drawOffsetY;
 		if(spr->OffsX) x+=*spr->OffsX;
 		if(spr->OffsY) y+=*spr->OffsY;
 
@@ -1788,19 +1737,17 @@ bool SpriteManager::DrawTreeCntr(Sprites& dtree, bool collect_contours, bool use
 		waitBuf[mulpos].tv=si->SprRect.B;
 		waitBuf[mulpos++].Diffuse=cur_color;
 
-		curSprCnt++;
-
 		// Draw
-		if(curSprCnt==flushSprCnt) Flush();
+		if(++curSprCnt==flushSprCnt) Flush();
 
 		// Enable egg
 		/*if(spr->Egg==Sprite::EggMain && !eggEnable)
 		{
-		eggX=x+si->Width/2-sprEgg->Width/2;
-		eggY=y+si->Height/2-sprEgg->Height/2;
-		eggEnable=true;
-		eggValid=true;
-		eggPos=pos;
+			eggX=x+si->Width/2-sprEgg->Width/2;
+			eggY=y+si->Height/2-sprEgg->Height/2;
+			eggEnable=true;
+			eggValid=true;
+			eggPos=pos;
 		}*/
 	}
 
@@ -1893,8 +1840,8 @@ bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
 {
 	if(!eggValid) return false;
 
-	int ex=eggX+(drawOffsetX?*drawOffsetX:0);
-	int ey=eggY+(drawOffsetY?*drawOffsetY:0);
+	int ex=eggX+*drawOffsetX;
+	int ey=eggY+*drawOffsetY;
 	int ox=pix_x-ex/ZOOM;
 	int oy=pix_y-ey/ZOOM;
 
@@ -3101,8 +3048,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 			waitBuf[mulpos].tv=y2;
 			waitBuf[mulpos++].Diffuse=col;
 
-			curSprCnt++;
-			if(curSprCnt==flushSprCnt) Flush();
+			if(++curSprCnt==flushSprCnt) Flush();
 			curx+=font->Let[(BYTE)str_[i]].W+font->EmptyHor;
 			variable_space=true;
 		}

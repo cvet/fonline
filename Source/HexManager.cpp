@@ -96,8 +96,7 @@ void Field::ProcessCache()
 HexManager::HexManager()
 {
 	viewField=NULL;
-	tileVB=NULL;
-	tileCntPrep=0;
+	tileSurf=NULL;
 	sprMngr=NULL;
 	isShowHex=false;
 	roofSkip=false;
@@ -215,11 +214,7 @@ void HexManager::Clear()
 		for(int hy=0;hy<maxHexY;hy++)
 			GetField(hx,hy).Clear();
 
-	for(OneSurfVecIt it=tilePrepSurf.begin(),end=tilePrepSurf.end();it!=end;++it)
-		delete *it;
-	tilePrepSurf.clear();
-
-	SAFEREL(tileVB);
+	SAFEREL(tileSurf);
 	SAFEDELA(viewField);
 	ResizeField(0,0);
 
@@ -1297,15 +1292,9 @@ bool HexManager::CheckTilesBorder(DWORD spr_id, bool is_roof)
 
 void HexManager::RebuildTiles()
 {
+	if(!OptShowTile) return;
+
 	Sprites ttree;
-
-	if(!OptShowTile)
-	{
-		tileCntPrep=0;
-		sprMngr->PrepareBuffer(ttree,tileVB,tilePrepSurf,false,0);
-		return;
-	}
-
 	ttree.Resize(VIEW_WIDTH*VIEW_HEIGHT);
 
 	int vpos;
@@ -1342,9 +1331,8 @@ void HexManager::RebuildTiles()
 	// Sort
 	ttree.SortBySurfaces();
 	ttree.SortByMapPos();
-
-	tileCntPrep=ttree.Size();
-	sprMngr->PrepareBuffer(ttree,tileVB,tilePrepSurf,true,TILE_ALPHA);
+	if(OptScreenClear) sprMngr->ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100),D3DCLEAR_TARGET,1.0f,0);
+	sprMngr->PrepareBuffer(ttree,tileSurf,TILE_ALPHA);
 }
 
 void HexManager::RebuildRoof()
@@ -1565,8 +1553,8 @@ void HexManager::InitView(int cx, int cy)
 void HexManager::ChangeZoom(float offs)
 {
 	if(!IsMapLoaded()) return;
-	if(OptZoom+offs>10.0f) return;
-	if(OptZoom+offs<0.7f) return;
+	if(offs>0.0f && OptZoom>=10.0f) return;
+	if(offs<0.0f && OptZoom<=0.5f) return;
 
 #ifdef FONLINE_CLIENT
 	// Check screen blockers
@@ -1584,6 +1572,7 @@ void HexManager::ChangeZoom(float offs)
 #endif
 
 	OptZoom+=offs;
+	OptZoom=CLAMP(OptZoom,0.5f,10.0f);
 
 	hVisible=VIEW_HEIGHT+hTop+hBottom;
 	wVisible=VIEW_WIDTH+wLeft+wRight;
@@ -1633,17 +1622,19 @@ void HexManager::DrawMap()
 	}
 
 	// Tiles
-	if(OptShowTile) sprMngr->DrawPrepared(tileVB,tilePrepSurf,tileCntPrep);
+	if(OptShowTile) sprMngr->DrawPrepared(tileSurf);
+
+	// Flat sprites
 	sprMngr->DrawTreeCntr(mainTree,false,false,0,0);
 
 	// Light
 	for(int i=0;i<lightPointsCount;i++) sprMngr->DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,true);
 	sprMngr->DrawPoints(lightSoftPoints,D3DPT_TRIANGLELIST,true);
 
-	// Cursor Pre
+	// Cursor flat
 	DrawCursor(cursorPrePic);
 
-	// Items
+	// Sprites
 	sprMngr->DrawTreeCntr(mainTree,true,true,1,-1);
 
 	// Roof
@@ -1656,7 +1647,7 @@ void HexManager::DrawMap()
 	// Contours
 	sprMngr->DrawContours();
 
-	// Cursor Post
+	// Cursor
 	DrawCursor(cursorPostPic);
 	if(drawCursorX<0) DrawCursor(cursorXPic);
 	else if(drawCursorX>0) DrawCursor(Str::Format("%u",drawCursorX));
@@ -1806,12 +1797,7 @@ bool HexManager::Scroll()
 			else if(CmnScrOx<0 && ScrollCheck(-1,0)) CmnScrOx=0;
 			if(CmnScrOy>0 && ScrollCheck(0,-1)) CmnScrOy=0;
 			else if(CmnScrOy<0 && ScrollCheck(0,1)) CmnScrOy=0;
-			if(CmnScrOx!=old_ox || CmnScrOy!=old_oy) RebuildTiles();
 		}
-	}
-	else
-	{
-		RebuildTiles();
 	}
 	
 	return true;
@@ -1885,7 +1871,7 @@ void HexManager::ScrollToHex(int hx, int hy, double speed, bool can_stop)
 
 void HexManager::PreRestore()
 {
-	SAFEREL(tileVB);
+	SAFEREL(tileSurf);
 }
 
 void HexManager::PostRestore()
@@ -2862,7 +2848,7 @@ void HexManager::UnLoadMap()
 {
 	if(!IsMapLoaded()) return;
 
-	SAFEREL(tileVB);
+	SAFEREL(tileSurf);
 	SAFEDELA(viewField);
 
 	hTop=0;
