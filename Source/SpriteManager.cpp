@@ -1442,11 +1442,16 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 	src.left=ox;
 	src.top=oy;
 	src.right=ox+modeWidth;
-	src.bottom=oy+modeHeight;	
+	src.bottom=oy+modeHeight;
+	RECT dst;
+	dst.left=0;
+	dst.top=0;
+	dst.right=modeWidth;
+	dst.bottom=modeHeight;
 
 	LPDIRECT3DSURFACE backbuf=NULL;
 	D3D_HR(dxDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));
-	D3D_HR(dxDevice->StretchRect(surf,&src,backbuf,NULL,D3DTEXF_NONE));
+	D3D_HR(dxDevice->StretchRect(surf,&src,backbuf,&dst,D3DTEXF_NONE));
 	return true;
 }
 

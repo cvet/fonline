@@ -360,6 +360,7 @@ void HexManager::ChangeItem(DWORD id, const Item::ItemData& data)
 		if(FLAG(old_cond,LOCKER_ISOPEN) && !FLAG(new_cond,LOCKER_ISOPEN)) item->SetAnimFromEnd();
 	}
 
+	item->RefreshAlpha();
 	item->SetSprite(NULL); // Refresh
 	CritterCl* chosen=GetChosen();
 	if(item->IsLight() || FLAG(old_data.Flags,ITEM_LIGHT_THRU)!=FLAG(data.Flags,ITEM_LIGHT_THRU)) RebuildLight();
@@ -3035,6 +3036,7 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 	scenery->ScenFlags=scen.Flags;
 
 	// Mapper additional parameters
+	bool refresh_anim=false;
 	scenery->Data.LightIntensity=scen.LightIntensity;
 	scenery->Data.LightDistance=scen.LightDistance;
 	scenery->Data.LightColor=scen.LightColor;
@@ -3050,17 +3052,20 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 		scenery->Data.AnimStay[1]=scen.AnimStayEnd;
 		scenery->Data.AnimHide[0]=scen.AnimStayBegin;
 		scenery->Data.AnimHide[1]=scen.AnimStayEnd;
+		refresh_anim=true;
 	}
 	if(scen.AnimWait) scenery->Data.AnimWaitBase=scen.AnimWait;
 	if(scen.PicMapHash)
 	{
 		scenery->Data.PicMapHash=scen.PicMapHash;
-		scenery->RefreshAnim();
+		refresh_anim=true;
 	}
 
 	if(scenery->IsLight() || scen.LightIntensity)
 		lightSourcesScen.push_back(LightSource(hx,hy,scenery->LightGetColor(),scenery->LightGetDistance(),scenery->LightGetIntensity(),scenery->LightGetFlags()));
 
+	scenery->RefreshAlpha();
+	if(refresh_anim) scenery->RefreshAnim();
 	PushItem(scenery);
 	if(!scenery->IsHidden() && !scenery->IsFullyTransparent()) ProcessHexBorders(scenery->Anim->GetSprId(0),scen.OffsetX,scen.OffsetY);
 	return true;

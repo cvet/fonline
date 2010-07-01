@@ -40,7 +40,6 @@ private:
 	DWORD animNextTick;
 
 public:
-	void RestoreAlpha(){Alpha=maxAlpha;}
 	bool IsScenOrGrid(){return Proto->IsScen() || Proto->IsGrid();}
 	bool IsItem(){return Proto->IsItem();}
 	bool IsWall(){return Proto->IsWall();}
@@ -54,6 +53,8 @@ public:
 	bool IsTransparent(){return maxAlpha<0xFF;}
 	bool IsFullyTransparent(){return maxAlpha==0;}
 	void RefreshAnim();
+	void RestoreAlpha(){Alpha=maxAlpha;}
+	void RefreshAlpha(){maxAlpha=(IsColorize()?GetAlpha():0xFF);}
 	void SetSprite(Sprite* spr);
 	Sprite::EggType GetEggType();
 

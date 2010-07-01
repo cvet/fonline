@@ -106,6 +106,10 @@ void ItemHex::Process()
 		Alpha=(fadeUp==true?(fading_proc*0xFF)/100:((100-fading_proc)*0xFF)/100);
 		if(Alpha>maxAlpha) Alpha=maxAlpha;
 	}
+	else if(Alpha!=maxAlpha)
+	{
+		Alpha=maxAlpha;
+	}
 }
 
 void ItemHex::SetEffect(float sx, float sy, int dist)
@@ -122,7 +126,7 @@ void ItemHex::SetEffect(float sx, float sy, int dist)
 	isEffect=true;
 	// Check off fade
 	fading=false;
-	Alpha=0xFF;
+	Alpha=maxAlpha;
 }
 
 WordPair ItemHex::GetEffectStep()
@@ -166,7 +170,6 @@ void ItemHex::SetSprite(Sprite* spr)
 	if(spr) SprDraw=spr;
 	if(SprDrawValid)
 	{
-		maxAlpha=(IsColorize()?GetAlpha():0xFF);
 		SprDraw->Color=(IsColorize()?GetColor():0);
 		SprDraw->Egg=GetEggType();
 		if(IsBadItem()) SprDraw->Contour=Sprite::ContourRed;
