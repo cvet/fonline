@@ -170,6 +170,7 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 		else if(trans==5) proto_item.LightColor=0x7FFFFF00; // Energy
 		else if(trans==6) proto_item.LightColor=0x7FFF0000; // Red
 		else proto_item.LightColor=((0xFF-CLAMP(alpha,0,0xFF))<<24);
+		if(trans>=3 && trans<=6) SETFLAG(proto_item.Flags,ITEM_COLORIZE);
 
 		if(corner==0x80) proto_item.Corner=CORNER_WEST;
 		else if(corner==0x40) proto_item.Corner=CORNER_EAST;
@@ -907,6 +908,9 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 				SETFLAG(item->Data.Flags,ITEM_GAG);
 			}
 			if(item->Data.LightIntensity || item->Proto->LightIntensity) SETFLAG(item->Data.Flags,ITEM_LIGHT);
+			if(FLAG(item->Proto->Flags,ITEM_LIGHT)) SETFLAG(item->Data.Flags,ITEM_LIGHT);
+			if(FLAG(item->Proto->Flags,ITEM_COLORIZE)) SETFLAG(item->Data.Flags,ITEM_COLORIZE);
+			if(FLAG(item->Proto->Flags,ITEM_COLORIZE_INV)) SETFLAG(item->Data.Flags,ITEM_COLORIZE_INV);
 		}
 	}
 	if(errors) return false;
