@@ -860,9 +860,16 @@ void HexManager::RebuildMap(int rx, int ry)
 	mainTree.SortBySurfaces();
 	mainTree.SortByMapPos();
 
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
-	// Script map draw
+#ifdef FONLINE_MAPPER
 	if(MapperFunctions.RenderMap && Script::PrepareContext(MapperFunctions.RenderMap,CALL_FUNC_STR,"Game"))
+	{
+		SpritesCanDrawMap=true;
+		Script::RunPrepared();
+		SpritesCanDrawMap=false;
+	}
+#endif
+#ifdef FONLINE_CLIENT
+	if(Script::PrepareContext(ClientFunctions.RenderMap,CALL_FUNC_STR,"Game"))
 	{
 		SpritesCanDrawMap=true;
 		Script::RunPrepared();

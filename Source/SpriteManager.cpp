@@ -1435,14 +1435,14 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 	if(!surf) return true;
 	Flush();
 
-	int ox=int(32.0f/ZOOM);
-	int oy=int(24.0f/ZOOM);
+	int ox=(int)((float)(32-*drawOffsetX)/ZOOM);
+	int oy=(int)((float)(24-*drawOffsetY)/ZOOM);
 
 	RECT src;
-	src.left=ox+*drawOffsetX;
-	src.top=oy+*drawOffsetY;
-	src.right=ox+modeWidth+*drawOffsetX;
-	src.bottom=oy+modeHeight+*drawOffsetY;	
+	src.left=ox;
+	src.top=oy;
+	src.right=ox+modeWidth;
+	src.bottom=oy+modeHeight;	
 
 	LPDIRECT3DSURFACE backbuf=NULL;
 	D3D_HR(dxDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));

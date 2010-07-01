@@ -3027,7 +3027,7 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 	Bout << (bool)(item?true:false);
 
 	// Slots
-	Bout << (BYTE)slots_data_count+slots_data_ext_count;
+	Bout << (BYTE)(slots_data_count+slots_data_ext_count);
 	for(BYTE i=0;i<slots_data_count;i++)
 	{
 		Item* item_=SlotEnabledCacheData[i];

@@ -2538,6 +2538,7 @@ void FOClient::NetProcess()
 			break;
 
 		default:
+			if(OptDebugNet) AddMess(FOMB_GAME,Str::Format("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
 			WriteLog("Invalid msg<%u>. Seek valid.\n",msg);
 			Bin.MoveReadPos(sizeof(MSGTYPE));
 			Bin.SeekValidMsg();

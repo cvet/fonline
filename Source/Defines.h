@@ -416,7 +416,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define MAXHEX_DEF              (200)
 #define MAXHEX_MIN              (10)
 #define MAXHEX_MAX              (60000)
-#define HEX_POS(hx,hy)          ((hy)*MAXHEX_MAX*3+(hx)*3)
+#define HEX_POS(hx,hy)          ((hy)*MAXHEX_MAX*3+(hx)*3) // Todo: bad precision on big values
 #define HEX_X_POS(pos)          ((pos)%(MAXHEX_MAX*3)/3)
 #define HEX_Y_POS(pos)          ((pos)/(MAXHEX_MAX*3))
 
