@@ -116,7 +116,7 @@ public:
 	void Net_SendGetGameInfo();
 	void Net_SendGiveGlobalInfo(BYTE info_flags);
 	void Net_SendRuleGlobal(BYTE command, DWORD param1=0, DWORD param2=0);
-	void Net_SendGiveMeMap(WORD map_num, DWORD ver_tiles, DWORD ver_walls, DWORD ver_scen);
+	void Net_SendGiveMap(bool automap, WORD map_pid, DWORD loc_id, DWORD tiles_hash, DWORD walls_hash, DWORD scen_hash);
 	void Net_SendLoadMapOk();
 	void Net_SendCommand(char* str);
 	void Net_SendText(const char* send_str, BYTE how_say);
@@ -201,6 +201,7 @@ public:
 	void Net_OnHoloInfo();
 	void Net_OnScores();
 	void Net_OnUserHoloStr();
+	void Net_OnAutomapsInfo();
 	void Net_OnCheckUID4();
 	void Net_OnViewMap();
 
@@ -1182,10 +1183,12 @@ typedef vector<SwitchElement> SwitchElementVec;
 #define PIP__STATUS         (1)
 #define PIP__STATUS_QUESTS  (2)
 #define PIP__STATUS_SCORES  (3)
-//#define PIP__GAMES          (4)
+#define PIP__GAMES          (4)
 #define PIP__AUTOMAPS       (5)
-#define PIP__ARCHIVES       (6)
-#define PIP__ARCHIVES_INFO  (7)
+#define PIP__AUTOMAPS_LOC   (6)
+#define PIP__AUTOMAPS_MAP   (7)
+#define PIP__ARCHIVES       (8)
+#define PIP__ARCHIVES_INFO  (9)
 
 	DWORD PipPMain,PipPBStatusDn/*,PipPBGamesDn*/,PipPBAutomapsDn,PipPBArchivesDn,PipPBCloseDn,PipPWMonitor;
 	int PipX,PipY;
@@ -1196,6 +1199,7 @@ typedef vector<SwitchElement> SwitchElementVec;
 	void PipDraw();
 	void PipLMouseDown();
 	void PipLMouseUp();
+	void PipRMouseDown();
 	void PipMouseMove();
 
 	// Quests
@@ -1208,6 +1212,29 @@ typedef vector<SwitchElement> SwitchElementVec;
 	// Scores
 	DWORD ScoresNextUploadTick;
 	char BestScores[SCORES_MAX][SCORE_NAME_LEN];
+	// Automaps
+	struct Automap
+	{
+		DWORD LocId;
+		WORD LocPid;
+		string LocName;
+		WordVec MapPids;
+		StrVec MapNames;
+		size_t CurMap;
+
+		Automap():LocId(0),LocPid(0),CurMap(0){}
+		bool operator==(const DWORD id)const{return LocId==id;}
+	};
+typedef vector<Automap> AutomapVec;
+typedef vector<Automap>::iterator AutomapVecIt;
+	AutomapVec Automaps;
+	Automap AutomapSelected;
+	WordSet AutomapWaitPids;
+	WordSet AutomapReceivedPids;
+	PointVec AutomapPoints;
+	WORD AutomapCurMapPid;
+	float AutomapScrX,AutomapScrY;
+	float AutomapZoom;
 
 /************************************************************************/
 /* Aim                                                                  */
@@ -1805,9 +1832,10 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define IFACE_PIP_STATUS        (260)
 //#define IFACE_PIP_GAMES        (261)
 #define IFACE_PIP_AUTOMAPS      (262)
-#define IFACE_PIP_ARCHIVES      (263)
-#define IFACE_PIP_CLOSE         (264)
-#define IFACE_PIP_MAIN          (265)
+#define IFACE_PIP_AUTOMAPS_SCR  (263)
+#define IFACE_PIP_ARCHIVES      (264)
+#define IFACE_PIP_CLOSE         (265)
+#define IFACE_PIP_MAIN          (266)
 #define IFACE_AIM_CANCEL        (280)
 #define IFACE_AIM_HEAD          (281)
 #define IFACE_AIM_LARM          (282)

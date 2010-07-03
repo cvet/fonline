@@ -783,6 +783,8 @@ void FOServer::Process(ClientPtr& cl)
 	}
 	else if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_LOGINOK)
 	{
+#define CHECK_BUSY if(cl->IsBusy()) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
+
 		BIN_BEGIN(cl);
 		if(cl->Bin.IsEmpty()) cl->Bin.Reset();
 		cl->Bin.Refresh();
@@ -797,11 +799,13 @@ void FOServer::Process(ClientPtr& cl)
 				Process_Ping(cl);TIME_CHECKER;
 				BIN_END(cl);
 				break;
-			case NETMSG_SEND_GIVE_ME_MAP:
+			case NETMSG_SEND_GIVE_MAP:
+				CHECK_BUSY;
 				Process_GiveMap(cl);TIME_CHECKER;
 				BIN_END(cl);
 				break;
 			case NETMSG_SEND_LOAD_MAP_OK:
+				CHECK_BUSY;
 				Process_ParseToGame(cl);TIME_CHECKER;
 				BIN_END(cl);
 				break;
@@ -820,7 +824,6 @@ void FOServer::Process(ClientPtr& cl)
 	else if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_GAME)
 	{
 #define MESSAGES_PER_CYCLE         (5)
-#define CHECK_BUSY if(cl->IsBusy()) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
 #define CHECK_BUSY_AND_LIFE if(!cl->IsLife()) break; if(cl->IsBusy()) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
 #define CHECK_NO_GLOBAL if(!cl->GetMap()) break;
 #define CHECK_IS_GLOBAL if(cl->GetMap() || !cl->GroupMove) break;
@@ -1025,9 +1028,14 @@ void FOServer::Process(ClientPtr& cl)
 					BIN_END(cl);
 					continue;
 				}
-	//		case NETMSG_SEND_GIVE_ME_MAP:
-	//			Send_Map(acl,acl->info.map);
-	//			break;
+			case NETMSG_SEND_GIVE_MAP:
+				{
+					CHECK_BUSY;
+					Process_GiveMap(cl);TIME_CHECKER;
+					BIN_END(cl);
+					continue;
+				}
+				break;
 	//		case NETMSG_SEND_LOAD_MAP_OK:
 	//			Process_MapLoaded(acl);
 	//			break;
@@ -2871,7 +2879,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==320);
 	STATIC_ASSERT(offsetof(Map,RefCounter)==766);
 	STATIC_ASSERT(offsetof(GlobalMapZone,Reserved)==20);
-	STATIC_ASSERT(offsetof(ProtoLocation,GeckEnabled)==76);
+	STATIC_ASSERT(offsetof(ProtoLocation,GeckEnabled)==92);
 	STATIC_ASSERT(offsetof(Location,RefCounter)==286);
 
 	STATIC_ASSERT(sizeof(DWORD)==4);

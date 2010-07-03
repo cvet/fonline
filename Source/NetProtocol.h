@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF06F) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF070) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -875,7 +875,7 @@ sizeof(int)+sizeof(BYTE)+sizeof(DWORD)*3)
 
 #define NETMSG_MAP                  MAKE_NETMSG_HEADER(122)
 //////////////////////////////////////////////////////////////////////////
-// карта
+// Map data
 // DWORD msg_len
 // WORD pid_map
 // BYTE send_info (see Sendmap info in FOdefines.h)
@@ -891,12 +891,14 @@ sizeof(int)+sizeof(BYTE)+sizeof(DWORD)*3)
 //		ScenToSend (see ScenToSend in FOdefines.h)
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_GIVE_ME_MAP     MAKE_NETMSG_HEADER(123)
-#define NETMSG_SEND_GIVE_ME_MAP_SIZE (sizeof(MSGTYPE)+sizeof(WORD)+\
-sizeof(DWORD)*3)
+#define NETMSG_SEND_GIVE_MAP        MAKE_NETMSG_HEADER(123)
+#define NETMSG_SEND_GIVE_MAP_SIZE   (sizeof(MSGTYPE)+sizeof(bool)+sizeof(WORD)+\
+sizeof(DWORD)+sizeof(DWORD)*3)
 //////////////////////////////////////////////////////////////////////////
-// запрос на высылку карты
-// WORD pid_map
+// Request on map data, on map loading or for automap
+// bool automap
+// WORD map_pid
+// DWORD loc_id
 // DWORD ver_tiles
 // DWORD ver_walls
 // DWORD ver_scen
@@ -905,7 +907,7 @@ sizeof(DWORD)*3)
 #define NETMSG_SEND_LOAD_MAP_OK     MAKE_NETMSG_HEADER(124)
 #define NETMSG_SEND_LOAD_MAP_OK_SIZE (sizeof(MSGTYPE))
 //////////////////////////////////////////////////////////////////////////
-// сообщение о удачной загрузке карты
+// Message about successfully map loading
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SHOW_SCREEN          MAKE_NETMSG_HEADER(125)
@@ -1043,7 +1045,7 @@ sizeof(BYTE)+sizeof(WORD)+sizeof(DWORD))
 //////////////////////////////////////////////////////////////////////////
 
 //************************************************************************
-// QUEST, HOLO INFO
+// Quest, Holodisk info, Automaps info
 //************************************************************************
 
 #define NETMSG_QUEST                MAKE_NETMSG_HEADER(161)
@@ -1063,7 +1065,7 @@ sizeof(BYTE)+sizeof(WORD)+sizeof(DWORD))
 #define NETMSG_HOLO_INFO            MAKE_NETMSG_HEADER(163)
 //////////////////////////////////////////////////////////////////////////
 // DWORD msg_len
-// BYTE clear
+// bool clear
 // WORD offset
 // WORD num_count
 //	for num_count
@@ -1105,6 +1107,20 @@ sizeof(BYTE)+sizeof(WORD)+sizeof(DWORD))
 //////////////////////////////////////////////////////////////////////////
 // for SCORES_MAX
 //	char[MAX_NAME] client_name - without null-terminated character
+//////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_AUTOMAPS_INFO        MAKE_NETMSG_HEADER(170)
+//////////////////////////////////////////////////////////////////////////
+// Automaps information
+// DWORD msg_len
+// bool clear_list
+// WORD locations_count
+//  for locations_count
+//  DWORD location_id
+//  WORD location_pid
+//  WORD maps_count
+//   for maps_count
+//   WORD map_pid
 //////////////////////////////////////////////////////////////////////////
 
 #endif // __NET_PROTOCOL__

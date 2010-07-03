@@ -1949,7 +1949,8 @@ void Critter::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* ite
 void Critter::Send_CombatResult(DWORD* combat_res, DWORD len){if(IsPlayer()) ((Client*)this)->Send_CombatResult(combat_res,len);}
 void Critter::Send_Quest(DWORD num){if(IsPlayer()) ((Client*)this)->Send_Quest(num);}
 void Critter::Send_Quests(DwordVec& nums){if(IsPlayer()) ((Client*)this)->Send_Quests(nums);}
-void Critter::Send_HoloInfo(BYTE clear, WORD offset, WORD count){if(IsPlayer()) ((Client*)this)->Send_HoloInfo(clear,offset,count);}
+void Critter::Send_HoloInfo(bool clear, WORD offset, WORD count){if(IsPlayer()) ((Client*)this)->Send_HoloInfo(clear,offset,count);}
+void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc){if(IsPlayer()) ((Client*)this)->Send_AutomapsInfo(locs_vec,loc);}
 void Critter::Send_Follow(DWORD rule, BYTE follow_type, WORD map_pid, DWORD follow_wait){if(IsPlayer()) ((Client*)this)->Send_Follow(rule,follow_type,map_pid,follow_wait);}
 void Critter::Send_Effect(WORD eff_pid, WORD hx, WORD hy, WORD radius){if(IsPlayer()) ((Client*)this)->Send_Effect(eff_pid,hx,hy,radius);}
 void Critter::Send_FlyEffect(WORD eff_pid, DWORD from_crid, DWORD to_crid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy){if(IsPlayer()) ((Client*)this)->Send_FlyEffect(eff_pid,from_crid,to_crid,from_hx,from_hy,to_hx,to_hy);}
@@ -2233,19 +2234,20 @@ void Critter::SendA_ParamCheck(WORD num_param)
 
 void Critter::Send_AddAllItems()
 {
-	if(IsPlayer())
-	{
-		Client* cl=(Client*)this;
-		BOUT_BEGIN(cl);
-		cl->Bout << NETMSG_CLEAR_ITEMS;
-		BOUT_END(cl);
-	}
+	if(!IsPlayer()) return;
+
+	Client* cl=(Client*)this;
+	BOUT_BEGIN(cl);
+	cl->Bout << NETMSG_CLEAR_ITEMS;
+	BOUT_END(cl);
 
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it) Send_AddItem(*it);
 }
 
 void Critter::Send_AllQuests()
 {
+	if(!IsPlayer()) return;
+
 	VarsVec& vars=VarMngr.GetQuestVars();
 	DwordVec quests;
 	for(VarsVecIt it=vars.begin(),end=vars.end();it!=end;++it)
@@ -2254,6 +2256,24 @@ void Critter::Send_AllQuests()
 		if(var && var->GetMasterId()==GetId()) quests.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
 	}
 	Send_Quests(quests);
+}
+
+void Critter::Send_AllAutomapsInfo()
+{
+	if(!IsPlayer()) return;
+
+	CritDataExt* data_ext=GetDataExt();
+	if(!data_ext) return;
+
+	LocVec locs;
+	for(WORD i=0;i<data_ext->LocationsCount;i++)
+	{
+		DWORD loc_id=data_ext->LocationsId[i];
+		Location* loc=MapMngr.GetLocation(loc_id);
+		if(loc && loc->IsAutomaps()) locs.push_back(loc);
+	}
+
+	Send_AutomapsInfo(&locs,NULL);
 }
 
 void Critter::SendMessage(int num, int val, int to)
@@ -3679,7 +3699,7 @@ void Client::Send_Quests(DwordVec& nums)
 	BOUT_END(this);
 }
 
-void Client::Send_HoloInfo(BYTE clear, WORD offset, WORD count)
+void Client::Send_HoloInfo(bool clear, WORD offset, WORD count)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 	if(offset>=MAX_HOLO_INFO || count>MAX_HOLO_INFO || offset+count>MAX_HOLO_INFO) return;
@@ -3709,6 +3729,56 @@ void Client::Send_UserHoloStr(DWORD str_num, const char* text, WORD text_len)
 	Bout << text_len;
 	Bout.Push(text,text_len);
 	BOUT_END(this);
+}
+
+void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
+{
+	if(IsSendDisabled() || IsOffline()) return;
+
+	if(locs_vec)
+	{
+		LocVec* locs=(LocVec*)locs_vec;
+		DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(bool)+sizeof(WORD);
+		for(size_t i=0,j=locs->size();i<j;i++)
+		{
+			Location* loc_=(*locs)[i];
+			msg_len+=sizeof(DWORD)+sizeof(WORD)+sizeof(WORD)+sizeof(WORD)*loc_->GetAutomaps().size();
+		}
+
+		BOUT_BEGIN(this);
+		Bout << NETMSG_AUTOMAPS_INFO;
+		Bout << msg_len;
+		Bout << (bool)true; // Clear list
+		Bout << (WORD)locs->size();
+		for(size_t i=0,j=locs->size();i<j;i++)
+		{
+			Location* loc_=(*locs)[i];
+			WordVec& automaps=loc_->GetAutomaps();
+			Bout << loc_->GetId();
+			Bout << loc_->GetPid();
+			Bout << (WORD)automaps.size();
+			for(size_t k=0,l=automaps.size();k<l;k++) Bout << automaps[k];
+		}
+		BOUT_END(this);
+	}
+
+	if(loc)
+	{
+		WordVec& automaps=loc->GetAutomaps();
+		DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(bool)+sizeof(WORD)+
+			sizeof(DWORD)+sizeof(WORD)+sizeof(WORD)+sizeof(WORD)*automaps.size();
+
+		BOUT_BEGIN(this);
+		Bout << NETMSG_AUTOMAPS_INFO;
+		Bout << msg_len;
+		Bout << (bool)false; // Append this information
+		Bout << (WORD)1;
+		Bout << loc->GetId();
+		Bout << loc->GetPid();
+		Bout << (WORD)automaps.size();
+		for(size_t i=0,j=automaps.size();i<j;i++) Bout << automaps[i];
+		BOUT_END(this);
+	}
 }
 
 void Client::Send_Follow(DWORD rule, BYTE follow_type, WORD map_pid, DWORD follow_wait)

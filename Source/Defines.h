@@ -230,7 +230,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 // Sendmap info
 #define SENDMAP_TILES           BIN8(00000001)
 #define SENDMAP_WALLS           BIN8(00000010)
-#define SENDMAP_SCEN            BIN8(00000100)
+#define SENDMAP_SCENERY         BIN8(00000100)
+#define SENDMAP_AUTOMAP         BIN8(00001000)
 
 // Ping
 #define PING_PING               (0)

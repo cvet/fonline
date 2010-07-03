@@ -569,8 +569,8 @@ void FOClient::LookBordersDraw()
 		LookBordersPrepare();
 		RebuildLookBorders=false;
 	}
-	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,true);
-	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,true);
+	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,&OptZoom);
+	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,&OptZoom);
 }
 
 int FOClient::MainLoop()
@@ -1557,6 +1557,7 @@ void FOClient::ParseMouse()
 				case SCREEN__DIALOG: DlgRMouseDown(true); break;
 				case SCREEN__BARTER: DlgRMouseDown(false); break;
 				case SCREEN__PICKUP: PupRMouseDown(); break;
+				case SCREEN__PIP_BOY: PipRMouseDown(); break;
 				default: break;
 				}
 			}
@@ -1855,12 +1856,25 @@ void FOClient::ProcessMouseWheel(int data)
 	{
 		if(IsCurInRect(PipWMonitor,PipX,PipY))
 		{
-			int scroll=1;
-			if(Keyb::ShiftDwn) scroll=SprMngr.GetLinesCount(0,PipWMonitor.H(),NULL,FONT_DEF);
-			if(data>0) scroll=-scroll;
-			PipScroll[PipMode]+=scroll;
-			if(PipScroll[PipMode]<0) PipScroll[PipMode]=0;
-			//TODO: check maximum
+			if(PipMode!=PIP__AUTOMAPS_MAP)
+			{
+				int scroll=1;
+				if(Keyb::ShiftDwn) scroll=SprMngr.GetLinesCount(0,PipWMonitor.H(),NULL,FONT_DEF);
+				if(data>0) scroll=-scroll;
+				PipScroll[PipMode]+=scroll;
+				if(PipScroll[PipMode]<0) PipScroll[PipMode]=0;
+#pragma MESSAGE("Check maximums in PipBoy scrolling.")
+			}
+			else
+			{
+				float scr_x=((float)(PipWMonitor.CX()+PipX)-AutomapScrX)*AutomapZoom;
+				float scr_y=((float)(PipWMonitor.CY()+PipY)-AutomapScrY)*AutomapZoom;
+				if(data>0) AutomapZoom-=0.1f;
+				else AutomapZoom+=0.1f;
+				AutomapZoom=CLAMP(AutomapZoom,0.1f,10.0f);
+				AutomapScrX=(float)(PipWMonitor.CX()+PipX)-scr_x/AutomapZoom;
+				AutomapScrY=(float)(PipWMonitor.CY()+PipY)-scr_y/AutomapZoom;
+			}
 		}
 	}
 /************************************************************************/
@@ -2454,6 +2468,9 @@ void FOClient::NetProcess()
 			break;
 		case NETMSG_USER_HOLO_STR:
 			Net_OnUserHoloStr();
+			break;
+		case NETMSG_AUTOMAPS_INFO:
+			Net_OnAutomapsInfo();
 			break;
 		case NETMSG_CHECK_UID4:
 			Net_OnCheckUID4();
@@ -3533,13 +3550,15 @@ void FOClient::Net_SendGetGameInfo()
 	Bout << NETMSG_SEND_GET_INFO;
 }
 
-void FOClient::Net_SendGiveMeMap(WORD map_num, DWORD ver_tiles, DWORD ver_walls, DWORD ver_scen)
+void FOClient::Net_SendGiveMap(bool automap, WORD map_pid, DWORD loc_id, DWORD tiles_hash, DWORD walls_hash, DWORD scen_hash)
 {
-	Bout << NETMSG_SEND_GIVE_ME_MAP;
-	Bout << map_num;
-	Bout << ver_tiles;
-	Bout << ver_walls;
-	Bout << ver_scen;
+	Bout << NETMSG_SEND_GIVE_MAP;
+	Bout << automap;
+	Bout << map_pid;
+	Bout << loc_id;
+	Bout << tiles_hash;
+	Bout << walls_hash;
+	Bout << scen_hash;
 }
 
 void FOClient::Net_SendLoadMapOk()
@@ -5371,13 +5390,13 @@ void FOClient::Net_OnLoadMap()
 {
 	WriteLog("Change map...");
 
-	WORD pid_map;
+	WORD map_pid;
 	int map_time;
 	BYTE map_rain;
 	DWORD hash_tiles;
 	DWORD hash_walls;
 	DWORD hash_scen;
-	Bin >> pid_map;
+	Bin >> map_pid;
 	Bin >> map_time;
 	Bin >> map_rain;
 	Bin >> hash_tiles;
@@ -5401,7 +5420,7 @@ void FOClient::Net_OnLoadMap()
 
 	WriteLog("Free resources...");
 	ResMngr.FreeResources(RES_IFACE_EXT);
-	if(pid_map) // Free global map resources
+	if(map_pid) // Free global map resources
 	{
 		GmapFreeResources();
 	}
@@ -5416,13 +5435,13 @@ void FOClient::Net_OnLoadMap()
 	IsTurnBased=false;
 
 	// Global
-	if(!pid_map)
+	if(!map_pid)
 	{
 		GmapNullParams();
 		ShowMainScreen(SCREEN_GLOBAL_MAP);
 		Net_SendLoadMapOk();
-		if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(pid_map));
-		else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(pid_map)));
+		if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(map_pid));
+		else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(map_pid)));
 		WriteLog("Global map loaded.\n");
 		return;
 	}
@@ -5431,15 +5450,15 @@ void FOClient::Net_OnLoadMap()
 	DWORD hash_tiles_cl=0;
 	DWORD hash_walls_cl=0;
 	DWORD hash_scen_cl=0;
-	HexMngr.GetMapHash(pid_map,hash_tiles_cl,hash_walls_cl,hash_scen_cl);
+	HexMngr.GetMapHash(map_pid,hash_tiles_cl,hash_walls_cl,hash_scen_cl);
 
 	if(hash_tiles!=hash_tiles_cl || hash_walls!=hash_walls_cl || hash_scen!=hash_scen_cl)
 	{
-		Net_SendGiveMeMap(pid_map,hash_tiles_cl,hash_walls_cl,hash_scen_cl);
+		Net_SendGiveMap(false,map_pid,0,hash_tiles_cl,hash_walls_cl,hash_scen_cl);
 		return;
 	}
 
-	if(!HexMngr.LoadMap(pid_map))
+	if(!HexMngr.LoadMap(map_pid))
 	{
 		WriteLog("Disconnect.\n");
 		NetState=STATE_DISCONNECT;
@@ -5451,8 +5470,8 @@ void FOClient::Net_OnLoadMap()
 	Net_SendLoadMapOk();
 	LookBorders.clear();
 	ShootBorders.clear();
-	if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(pid_map));
-	else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(pid_map)));
+	if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(map_pid));
+	else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(map_pid)));
 	WriteLog("Local map loaded.\n");
 }
 
@@ -5461,19 +5480,21 @@ void FOClient::Net_OnMap()
 	WriteLog("Get map...");
 
 	DWORD msg_len;
-	WORD pid_map;
+	WORD map_pid;
 	WORD maxhx,maxhy;
 	BYTE send_info;
 	Bin >> msg_len;
-	Bin >> pid_map;
+	Bin >> map_pid;
 	Bin >> maxhx;
 	Bin >> maxhy;
 	Bin >> send_info;
 
-	WriteLog("%u...",pid_map);
+	WriteLog("%u...",map_pid);
+
+	bool automap=FLAG(send_info,SENDMAP_AUTOMAP);
 
 	char map_name[256];
-	sprintf(map_name,"map%u",pid_map);
+	sprintf(map_name,"map%u",map_pid);
 
 	bool tiles=false;
 	char* tiles_data=NULL;
@@ -5514,7 +5535,7 @@ void FOClient::Net_OnMap()
 		walls=true;
 	}
 
-	if(FLAG(send_info,SENDMAP_SCEN))
+	if(FLAG(send_info,SENDMAP_SCENERY))
 	{
 		WriteLog(" Scenery");
 		DWORD count_scen=0;
@@ -5600,7 +5621,7 @@ void FOClient::Net_OnMap()
 		fm.ClearOutBuf();
 
 		fm.SetBEDWord(CLIENT_MAP_FORMAT_VER);
-		fm.SetBEDWord(pid_map);
+		fm.SetBEDWord(map_pid);
 		fm.SetBEWord(maxhx);
 		fm.SetBEWord(maxhy);
 
@@ -5649,6 +5670,9 @@ void FOClient::Net_OnMap()
 	SAFEDELA(tiles_data);
 	SAFEDELA(walls_data);
 	SAFEDELA(scen_data);
+
+	AutomapWaitPids.erase(map_pid);
+	AutomapReceivedPids.insert(map_pid);
 
 	WriteLog("Map saved.\n");
 }
@@ -6580,13 +6604,13 @@ void FOClient::Net_OnQuest(bool many)
 		if(quest) AddMess(FOMB_GAME,quest->str.c_str());
 	}
 
-	WriteLog("Ok.\n");
+	WriteLog("Complete.\n");
 }
 
 void FOClient::Net_OnHoloInfo()
 {
 	DWORD msg_len;
-	BYTE clear;
+	bool clear;
 	WORD offset;
 	WORD count;
 	Bin >> msg_len;
@@ -6633,6 +6657,68 @@ void FOClient::Net_OnUserHoloStr()
 	if(MsgUserHolo->Count(str_num)) MsgUserHolo->EraseStr(str_num);
 	MsgUserHolo->AddStr(str_num,text);
 	MsgUserHolo->SaveMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(),FileMngr.GetPath(PT_TXT_GAME),USER_HOLO_TEXTMSG_FILE));
+}
+
+void FOClient::Net_OnAutomapsInfo()
+{
+	DWORD msg_len;
+	bool clear;
+	WORD locs_count;
+	Bin >> msg_len;
+	Bin >> clear;
+
+	if(clear)
+	{
+		Automaps.clear();
+		AutomapWaitPids.clear();
+		AutomapReceivedPids.clear();
+		AutomapPoints.clear();
+		AutomapCurMapPid=0;
+		AutomapScrX=0.0f;
+		AutomapScrY=0.0f;
+		AutomapZoom=1.0f;
+	}
+
+	Bin >> locs_count;
+	for(WORD i=0;i<locs_count;i++)
+	{
+		DWORD loc_id;
+		WORD loc_pid;
+		WORD maps_count;
+		Bin >> loc_id;
+		Bin >> loc_pid;
+		Bin >> maps_count;
+
+		AutomapVecIt it=std::find(Automaps.begin(),Automaps.end(),loc_id);
+
+		// Delete from collection
+		if(!maps_count)
+		{
+			if(it!=Automaps.end()) Automaps.erase(it);
+		}
+		// Add or modify
+		else
+		{
+			Automap amap;
+			amap.LocId=loc_id;
+			amap.LocPid=loc_pid;
+			amap.LocName=MsgGM->GetStr(STR_GM_NAME_(loc_pid));
+
+			for(WORD j=0;j<maps_count;j++)
+			{
+				WORD map_pid;
+				Bin >> map_pid;
+
+				amap.MapPids.push_back(map_pid);
+				amap.MapNames.push_back(MsgGM->GetStr(STR_MAP_NAME_(map_pid)));
+			}
+
+			if(it!=Automaps.end()) *it=amap;
+			else Automaps.push_back(amap);
+		}
+	}
+
+	CHECK_IN_BUFF_ERROR;
 }
 
 void FOClient::Net_OnCheckUID4()
@@ -10074,7 +10160,7 @@ void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, asIScriptAr
 		//pp.PointOffsY=NULL;
 	}
 
-	Self->SprMngr.DrawPoints(points,prim,false);
+	Self->SprMngr.DrawPoints(points,prim);
 }
 
 void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy)

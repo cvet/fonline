@@ -2064,6 +2064,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 void FOServer::Process_ParseToGame(Client* cl)
 {
 	if(!cl->GetId() || !CrMngr.GetPlayer(cl->GetId())) return;
+	cl->SetBreakTime(GameOpt.Breaktime);
 
 #ifdef DEV_VESRION
 	cl->Access=ACCESS_IMPLEMENTOR;
@@ -2107,6 +2108,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 		}
 		cl->Send_AllQuests();
 		cl->Send_HoloInfo(true,0,cl->Data.HoloInfoCount);
+		cl->Send_AllAutomapsInfo();
 		if(cl->Talk.TalkType!=TALK_NONE)
 		{
 			cl->ProcessTalk(true);
@@ -2133,6 +2135,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 	cl->Send_AddAllItems();
 	cl->Send_AllQuests();
 	cl->Send_HoloInfo(true,0,cl->Data.HoloInfoCount);
+	cl->Send_AllAutomapsInfo();
 	// Send current critters and items
 	for(CrVecIt it=cl->VisCrSelf.begin(),end=cl->VisCrSelf.end();it!=end;++it) cl->Send_AddCritter(*it);
 	for(DwordSetIt it=cl->VisItem.begin(),end=cl->VisItem.end();it!=end;++it)
@@ -2161,25 +2164,27 @@ void FOServer::Process_ParseToGame(Client* cl)
 
 void FOServer::Process_GiveMap(Client* cl)
 {
-	WORD pid_map;
+	bool automap;
+	WORD map_pid;
+	DWORD loc_id;
 	DWORD hash_tiles;
 	DWORD hash_walls;
 	DWORD hash_scen;
 
-	cl->Bin >> pid_map;
+	cl->Bin >> automap;
+	cl->Bin >> map_pid;
+	cl->Bin >> loc_id;
 	cl->Bin >> hash_tiles;
 	cl->Bin >> hash_walls;
 	cl->Bin >> hash_scen;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	if(Timer::FastTick()<cl->LastSendedMapTick+5000)
-	{
-		//WriteLog(__FUNCTION__" - Brute force detected, client<%s>.\n",cl->GetInfo());
-		//return;
-	}
-	cl->LastSendedMapTick=Timer::FastTick();
+	DWORD tick=Timer::FastTick();
+	if(tick-cl->LastSendedMapTick<GameOpt.Breaktime*3) cl->SetBreakTime(GameOpt.Breaktime*3);
+	else cl->SetBreakTime(GameOpt.Breaktime);
+	cl->LastSendedMapTick=tick;
 
-	ProtoMap* pmap=MapMngr.GetProtoMap(pid_map);
+	ProtoMap* pmap=MapMngr.GetProtoMap(map_pid);
 	if(!pmap)
 	{
 		WriteLog(__FUNCTION__" - Map prototype not found, client<%s>.\n",cl->GetInfo());
@@ -2187,37 +2192,64 @@ void FOServer::Process_GiveMap(Client* cl)
 		return;
 	}
 
-	if(pid_map!=cl->GetProtoMap() && cl->ViewMapPid!=pid_map)// && !FLAG(cl->access,ACCESS_IMPLEMENTOR))
+	if(!automap && map_pid!=cl->GetProtoMap() && cl->ViewMapPid!=map_pid)
 	{
 		WriteLog(__FUNCTION__" - Request for loading incorrect map, client<%s>.\n",cl->GetInfo());
 		return;
 	}
 
-	MSGTYPE msg=NETMSG_MAP;
+	if(automap)
+	{
+		if(!cl->CheckKnownLocById(loc_id))
+		{
+			WriteLog(__FUNCTION__" - Request for loading unknown automap, client<%s>.\n",cl->GetInfo());
+			return;
+		}
+
+		Location* loc=MapMngr.GetLocation(loc_id);
+		if(!loc || !loc->IsAutomap(map_pid))
+		{
+			WriteLog(__FUNCTION__" - Request for loading incorrect automap, client<%s>.\n",cl->GetInfo());
+			return;
+		}
+	}
+
 	BYTE send_info=0;
 	if(pmap->HashTiles!=hash_tiles) SETFLAG(send_info,SENDMAP_TILES);
 	if(pmap->HashWalls!=hash_walls) SETFLAG(send_info,SENDMAP_WALLS);
-	if(pmap->HashScen!=hash_scen) SETFLAG(send_info,SENDMAP_SCEN);
+	if(pmap->HashScen!=hash_scen) SETFLAG(send_info,SENDMAP_SCENERY);
+	if(automap) SETFLAG(send_info,SENDMAP_AUTOMAP);
 
+	Send_MapData(cl,pmap,send_info);
+
+	if(!automap)
+	{
+		Map* map=NULL;
+		if(cl->ViewMapId) map=MapMngr.GetMap(cl->ViewMapId);
+		cl->Send_LoadMap(map);
+	}
+}
+
+void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
+{
+	MSGTYPE msg=NETMSG_MAP;
+	WORD map_pid=pmap->GetPid();
 	WORD maxhx=pmap->Header.MaxHexX;
 	WORD maxhy=pmap->Header.MaxHexY;
-	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(pid_map)+sizeof(maxhx)+sizeof(maxhy)+sizeof(send_info);
+	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(map_pid)+sizeof(maxhx)+sizeof(maxhy)+sizeof(send_info);
 
 	if(FLAG(send_info,SENDMAP_TILES))
 		msg_len+=sizeof(DWORD)+pmap->GetTilesSize();
 	if(FLAG(send_info,SENDMAP_WALLS))
 		msg_len+=sizeof(DWORD)+pmap->WallsToSend.size()*sizeof(ScenToSend);
-	if(FLAG(send_info,SENDMAP_SCEN))
+	if(FLAG(send_info,SENDMAP_SCENERY))
 		msg_len+=sizeof(DWORD)+pmap->SceneriesToSend.size()*sizeof(ScenToSend);
 
-//	WriteLog("Hash=%u\n",msg_len);
-//	WriteLog("walls=%u\n",pmap->WallToSend.size()*sizeof(_WallToSend));
-//	WriteLog("scen=%u\n",pmap->ScenToSend.size()*sizeof(ScenToSend));
 	// Header
 	BOUT_BEGIN(cl);
 	cl->Bout << msg;
 	cl->Bout << msg_len;
-	cl->Bout << pid_map;
+	cl->Bout << map_pid;
 	cl->Bout << maxhx;
 	cl->Bout << maxhy;
 	cl->Bout << send_info;
@@ -2238,17 +2270,13 @@ void FOServer::Process_GiveMap(Client* cl)
 	}
 
 	// Scenery
-	if(FLAG(send_info,SENDMAP_SCEN))
+	if(FLAG(send_info,SENDMAP_SCENERY))
 	{
 		cl->Bout << (DWORD)pmap->SceneriesToSend.size();
 		if(pmap->SceneriesToSend.size())
 			cl->Bout.Push((char*)&pmap->SceneriesToSend[0],pmap->SceneriesToSend.size()*sizeof(ScenToSend));
 	}
 	BOUT_END(cl);
-
-	Map* map=NULL;
-	if(cl->ViewMapId) map=MapMngr.GetMap(cl->ViewMapId);
-	cl->Send_LoadMap(map);
 }
 
 void FOServer::Process_Move(Client* cl)
@@ -4066,7 +4094,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		WriteLog(__FUNCTION__" - Unknown command<%u>, from client<%s>.\n",cl->GetInfo());
 		break;
 	}
-	cl->SetBreakTime(1000);
+	cl->SetBreakTime(GameOpt.Breaktime);
 }
 
 

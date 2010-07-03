@@ -336,7 +336,8 @@ public:
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);
 	void Send_Quests(DwordVec& nums);
-	void Send_HoloInfo(BYTE clear, WORD offset, WORD count);
+	void Send_HoloInfo(bool clear, WORD offset, WORD count);
+	void Send_AutomapsInfo(void* locs_vec, Location* loc);
 	void Send_Follow(DWORD rule, BYTE follow_type, WORD map_pid, DWORD follow_wait);
 	void Send_Effect(WORD eff_pid, WORD hx, WORD hy, WORD radius);
 	void Send_FlyEffect(WORD eff_pid, DWORD from_crid, DWORD to_crid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
@@ -363,8 +364,11 @@ public:
 	void SendA_FlyEffect(CrVec& crits, WORD eff_pid, Critter* cr1, Critter* cr2);
 	void SendA_ParamOther(WORD num_param, int val);
 	void SendA_ParamCheck(WORD num_param);
+
+	// Chosen data
 	void Send_AddAllItems();
 	void Send_AllQuests();
+	void Send_AllAutomapsInfo();
 
 public:
 	bool IsPlayer(){return !CritterIsNpc;}
@@ -595,7 +599,8 @@ public:
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);
 	void Send_Quests(DwordVec& nums);
-	void Send_HoloInfo(BYTE clear, WORD offset, WORD count);
+	void Send_HoloInfo(bool clear, WORD offset, WORD count);
+	void Send_AutomapsInfo(void* locs_vec, Location* loc);
 	void Send_Follow(DWORD rule, BYTE follow_type, WORD map_pid, DWORD follow_wait);
 	void Send_Effect(WORD eff_pid, WORD hx, WORD hy, WORD radius);
 	void Send_FlyEffect(WORD eff_pid, DWORD from_crid, DWORD to_crid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);

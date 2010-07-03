@@ -193,9 +193,10 @@ private:
 public:
 	bool IsMapLoaded(){return hexField!=NULL;}
 	WORD GetCurPidMap(){return curPidMap;}
-	bool LoadMap(WORD pid_map);
+	bool LoadMap(WORD map_pid);
 	void UnLoadMap();
-	void GetMapHash(WORD pid_map, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen);
+	void GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen);
+	bool GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy);
 	bool ParseScenery(ScenToSend& scen);
 	int GetDayTime();
 	int GetMapTime();

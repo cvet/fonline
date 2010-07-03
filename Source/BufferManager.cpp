@@ -309,7 +309,7 @@ bool BufferManager::NeedProcess()
 	case NETMSG_GAME_INFO:					return (NETMSG_GAME_INFO_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_COMBAT:				return (NETMSG_SEND_COMBAT_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_LOADMAP:					return (NETMSG_LOADMAP_SIZE+bufReadPos<=bufEndPos);
-	case NETMSG_SEND_GIVE_ME_MAP:			return (NETMSG_SEND_GIVE_ME_MAP_SIZE+bufReadPos<=bufEndPos);
+	case NETMSG_SEND_GIVE_MAP:				return (NETMSG_SEND_GIVE_MAP_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_LOAD_MAP_OK:			return (NETMSG_SEND_LOAD_MAP_OK_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SHOW_SCREEN:				return (NETMSG_SHOW_SCREEN_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_SCREEN_ANSWER:			return (NETMSG_SEND_SCREEN_ANSWER_SIZE+bufReadPos<=bufEndPos);
@@ -366,6 +366,7 @@ bool BufferManager::NeedProcess()
 	case NETMSG_HOLO_INFO:
 	case NETMSG_SEND_SET_USER_HOLO_STR:
 	case NETMSG_USER_HOLO_STR:
+	case NETMSG_AUTOMAPS_INFO:
 		return (msg_len+bufReadPos<=bufEndPos);
 	default:
 		// Unknown message
@@ -442,7 +443,7 @@ void BufferManager::SkipMsg(MSGTYPE msg)
 	case NETMSG_GAME_INFO:					bufReadPos+=NETMSG_GAME_INFO_SIZE; return;
 	case NETMSG_SEND_COMBAT:				bufReadPos+=NETMSG_SEND_COMBAT_SIZE; return;
 	case NETMSG_LOADMAP:					bufReadPos+=NETMSG_LOADMAP_SIZE; return;
-	case NETMSG_SEND_GIVE_ME_MAP:			bufReadPos+=NETMSG_SEND_GIVE_ME_MAP_SIZE; return;
+	case NETMSG_SEND_GIVE_MAP:				bufReadPos+=NETMSG_SEND_GIVE_MAP_SIZE; return;
 	case NETMSG_SEND_LOAD_MAP_OK:			bufReadPos+=NETMSG_SEND_LOAD_MAP_OK_SIZE; return;
 	case NETMSG_SHOW_SCREEN:				bufReadPos+=NETMSG_SHOW_SCREEN_SIZE; return;
 	case NETMSG_SEND_SCREEN_ANSWER:			bufReadPos+=NETMSG_SEND_SCREEN_ANSWER_SIZE; return;
@@ -492,6 +493,7 @@ void BufferManager::SkipMsg(MSGTYPE msg)
 	case NETMSG_HOLO_INFO:
 	case NETMSG_SEND_SET_USER_HOLO_STR:
 	case NETMSG_USER_HOLO_STR:
+	case NETMSG_AUTOMAPS_INFO:
 		{
 			//Changeable Size
 			DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(msg));
@@ -577,7 +579,7 @@ void BufferManager::SeekValidMsg()
 		case NETMSG_GAME_INFO:
 		case NETMSG_SEND_COMBAT:
 		case NETMSG_LOADMAP:
-		case NETMSG_SEND_GIVE_ME_MAP:
+		case NETMSG_SEND_GIVE_MAP:
 		case NETMSG_SEND_LOAD_MAP_OK:
 		case NETMSG_SHOW_SCREEN:
 		case NETMSG_SEND_SCREEN_ANSWER:
@@ -616,6 +618,7 @@ void BufferManager::SeekValidMsg()
 		case NETMSG_HOLO_INFO:
 		case NETMSG_SEND_SET_USER_HOLO_STR:
 		case NETMSG_USER_HOLO_STR:
+		case NETMSG_AUTOMAPS_INFO:
 			return;
 		default:
 			bufReadPos++;

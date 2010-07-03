@@ -1408,20 +1408,23 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 		Item* item_=to_cr->GetItemByPid(item->GetProtoId());
 		if(!item_)
 		{
-			item_=ItemMngr.CreateItem(item->GetProtoId(),1);
+			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
 				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
-			to_cr->AddItem(item_,false);
+			to_cr->AddItem(item_,true);
+		}
+		else
+		{
+			item_->Count_Add(count);
+			to_cr->SendAA_ItemData(item_);
 		}
 
 		item->Count_Sub(count);
-		item_->Count_Add(count-1);
 		from_cr->SendAA_ItemData(item);
-		to_cr->SendAA_ItemData(item_);
 	}
 	else
 	{
@@ -1446,7 +1449,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 		Item* item_=to_cont->ContGetItemByPid(item->GetProtoId(),stack_id);
 		if(!item_)
 		{
-			item_=ItemMngr.CreateItem(item->GetProtoId(),1);
+			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
 				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
@@ -1456,9 +1459,12 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 			item_->ACC_CONTAINER.SpecialId=stack_id;
 			to_cont->ContSetItem(item_);
 		}
+		else
+		{
+			item_->Count_Add(count);
+		}
 
 		item->Count_Sub(count);
-		item_->Count_Add(count-1);
 		from_cr->SendAA_ItemData(item);
 	}
 	else
@@ -1484,19 +1490,22 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 		Item* item_=to_cr->GetItemByPid(item->GetProtoId());
 		if(!item_)
 		{
-			item_=ItemMngr.CreateItem(item->GetProtoId(),1);
+			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
 				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
-			to_cr->AddItem(item_,false);
+			to_cr->AddItem(item_,true);
+		}
+		else
+		{
+			item_->Count_Add(count);
+			to_cr->SendAA_ItemData(item_);
 		}
 
 		item->Count_Sub(count);
-		item_->Count_Add(count-1);
-		to_cr->SendAA_ItemData(item_);
 	}
 	else
 	{

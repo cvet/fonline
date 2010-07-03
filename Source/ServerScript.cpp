@@ -1784,8 +1784,11 @@ bool FOServer::SScriptFunc::Cl_SetKnownLoc(Critter* cl, bool by_id, DWORD loc_nu
 	Client* cl_=(Client*)cl;
 	Location* loc=(by_id?MapMngr.GetLocation(loc_num):MapMngr.GetLocationByPid((WORD)loc_num,0));
 	if(!loc) SCRIPT_ERROR_R0("Location not found.");
+
 	cl_->AddKnownLoc(loc->GetId());
+	if(loc->IsAutomaps()) cl_->Send_AutomapsInfo(NULL,loc);
 	if(!cl_->GetMap()) cl_->Send_GlobalLocation(loc,true);
+
 	int zx=GM_ZONE(loc->Data.WX);
 	int zy=GM_ZONE(loc->Data.WY);
 	if(cl_->GMapFog.Get2Bit(zx,zy)==GM_FOG_FULL)
@@ -1800,10 +1803,12 @@ bool FOServer::SScriptFunc::Cl_UnsetKnownLoc(Critter* cl, bool by_id, DWORD loc_
 {
 	if(cl->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!cl->IsPlayer()) SCRIPT_ERROR_R0("Critter is not player.");
+
 	Client* cl_=(Client*)cl;
 	Location* loc=(by_id?MapMngr.GetLocation(loc_num):MapMngr.GetLocationByPid((WORD)loc_num,0));
 	if(!loc) SCRIPT_ERROR_R0("Location not found.");
 	if(!cl_->CheckKnownLocById(loc->GetId())) SCRIPT_ERROR_R0("Player is not know this location.");
+
 	cl_->EraseKnownLoc(loc->GetId());
 	if(!cl_->GetMap()) cl_->Send_GlobalLocation(loc,false);
 	return true;
@@ -1815,6 +1820,7 @@ void FOServer::SScriptFunc::Cl_SetFog(Critter* cl, WORD zone_x, WORD zone_y, int
 	if(!cl->IsPlayer()) SCRIPT_ERROR_R("Critter is not player.");
 	if(zone_x>=GameOpt.GlobalMapWidth || zone_y>=GameOpt.GlobalMapHeight) SCRIPT_ERROR_R("Invalid world map pos arg.");
 	if(fog<GM_FOG_FULL || fog>GM_FOG_NONE) SCRIPT_ERROR_R("Invalid fog arg.");
+
 	Client* cl_=(Client*)cl;
 	cl_->GetDataExt(); // Generate ext data
 	cl_->GMapFog.Set2Bit(zone_x,zone_y,fog);
@@ -1826,6 +1832,7 @@ int FOServer::SScriptFunc::Cl_GetFog(Critter* cl, WORD zone_x, WORD zone_y)
 	if(cl->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!cl->IsPlayer()) SCRIPT_ERROR_R0("Critter is not player.");
 	if(zone_x>=GameOpt.GlobalMapWidth || zone_y>=GameOpt.GlobalMapHeight) SCRIPT_ERROR_R0("Invalid world map pos arg.");
+
 	Client* cl_=(Client*)cl;
 	cl_->GetDataExt(); // Generate ext data
 	return cl_->GMapFog.Get2Bit(zone_x,zone_y);
@@ -3685,6 +3692,8 @@ DWORD FOServer::SScriptFunc::Global_CreateLocation(WORD loc_pid, WORD wx, WORD w
 			Client* cl=(Client*)cr;
 			cl->AddKnownLoc(loc->GetId());
 			if(!cl->GetMap()) cl->Send_GlobalLocation(loc,true);
+			if(loc->IsAutomaps()) cl->Send_AutomapsInfo(NULL,loc);
+
 			WORD zx=GM_ZONE(loc->Data.WX);
 			WORD zy=GM_ZONE(loc->Data.WY);
 			if(cl->GMapFog.Get2Bit(zx,zy)==GM_FOG_FULL)
@@ -4159,6 +4168,7 @@ void SwapCrittersRefreshClient(Client* cl, Map* map, Map* prev_map)
 		cl->Send_AddAllItems();
 		cl->Send_AllQuests();
 		cl->Send_HoloInfo(true,0,cl->Data.HoloInfoCount);
+		cl->Send_AllAutomapsInfo();
 
 		if(map->IsTurnBasedOn)
 		{

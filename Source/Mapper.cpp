@@ -4990,7 +4990,7 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, asIScriptAr
 		//pp.PointOffsY=NULL;
 	}
 
-	Self->SprMngr.DrawPoints(points,prim,false);
+	Self->SprMngr.DrawPoints(points,prim);
 }
 
 void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy)

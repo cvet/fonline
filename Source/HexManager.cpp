@@ -1645,8 +1645,8 @@ void HexManager::DrawMap()
 	sprMngr->DrawTreeCntr(mainTree,false,false,0,0);
 
 	// Light
-	for(int i=0;i<lightPointsCount;i++) sprMngr->DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,true);
-	sprMngr->DrawPoints(lightSoftPoints,D3DPT_TRIANGLELIST,true);
+	for(int i=0;i<lightPointsCount;i++) sprMngr->DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&OptZoom);
+	sprMngr->DrawPoints(lightSoftPoints,D3DPT_TRIANGLELIST,&OptZoom);
 
 	// Cursor flat
 	DrawCursor(cursorPrePic);
@@ -2629,13 +2629,13 @@ void HexManager::FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps)
 	}
 }
 
-bool HexManager::LoadMap(WORD pid_map)
+bool HexManager::LoadMap(WORD map_pid)
 {
 	WriteLog("Load FO map...");
 	UnLoadMap();
 
 	char map_name[256];
-	sprintf(map_name,"map%u",pid_map);
+	sprintf(map_name,"map%u",map_pid);
 
 	DWORD cache_len;
 	BYTE* cache=Crypt.GetCache(map_name,cache_len);
@@ -2674,7 +2674,7 @@ bool HexManager::LoadMap(WORD pid_map)
 		return false;
 	}
 
-	if(fm.GetBEDWord()!=pid_map)
+	if(fm.GetBEDWord()!=map_pid)
 	{
 		WriteLog("Pid Map != Name Map.\n");
 		return false;
@@ -2777,10 +2777,8 @@ bool HexManager::LoadMap(WORD pid_map)
 	curHashWalls=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),walls_len,curHashWalls);
 
-	while(walls_count)
+	for(DWORD i=0;i<walls_count;i++)
 	{
-		walls_count--;
-
 		ScenToSend cur_wall;
 		ZeroMemory(&cur_wall,sizeof(cur_wall));
 
@@ -2804,10 +2802,8 @@ bool HexManager::LoadMap(WORD pid_map)
 	curHashScen=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),scen_len,curHashScen);
 
-	while(scen_count)
+	for(DWORD i=0;i<scen_count;i++)
 	{
-		scen_count--;
-
 		ScenToSend cur_scen;
 		ZeroMemory(&cur_scen,sizeof(cur_scen));
 
@@ -2854,7 +2850,7 @@ bool HexManager::LoadMap(WORD pid_map)
 	viewField=new ViewField[hVisible*wVisible];
 
 	// Finish
-	curPidMap=pid_map;
+	curPidMap=map_pid;
 	curMapTime=-1;
 	AutoScroll.Active=false;
 	WriteLog("Load FO map success.\n");
@@ -2904,15 +2900,15 @@ void HexManager::UnLoadMap()
 	critterContour=Sprite::ContourNone;
 }
 
-void HexManager::GetMapHash(WORD pid_map, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen)
+void HexManager::GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen)
 {
-	WriteLog("Get hash of map, pid<%u>...",pid_map);
+	WriteLog("Get hash of map, pid<%u>...",map_pid);
 
 	hash_tiles=0;
 	hash_walls=0;
 	hash_scen=0;
 
-	if(pid_map==curPidMap)
+	if(map_pid==curPidMap)
 	{
 		hash_tiles=curHashTiles;
 		hash_walls=curHashWalls;
@@ -2923,7 +2919,7 @@ void HexManager::GetMapHash(WORD pid_map, DWORD& hash_tiles, DWORD& hash_walls, 
 	}
 
 	char map_name[256];
-	sprintf(map_name,"map%u",pid_map);
+	sprintf(map_name,"map%u",map_pid);
 
 	DWORD cache_len;
 	BYTE* cache=Crypt.GetCache(map_name,cache_len);
@@ -2960,7 +2956,7 @@ void HexManager::GetMapHash(WORD pid_map, DWORD& hash_tiles, DWORD& hash_walls, 
 		return;
 	}
 
-	if(fmMap.GetBEDWord()!=pid_map)
+	if(fmMap.GetBEDWord()!=map_pid)
 	{
 		WriteLog("Invalid proto number.\n");
 		fmMap.UnloadFile();
@@ -3015,7 +3011,72 @@ void HexManager::GetMapHash(WORD pid_map, DWORD& hash_tiles, DWORD& hash_walls, 
 
 	fmMap.UnloadFile();
 	WriteLog("Hashes: tiles<%u>, walls<%u>, scenery<%u>.\n",hash_tiles,hash_walls,hash_scen);
+}
 
+bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy)
+{
+	char map_name[256];
+	sprintf(map_name,"map%u",map_pid);
+
+	DWORD cache_len;
+	BYTE* cache=Crypt.GetCache(map_name,cache_len);
+	if(!cache) return false;
+
+	FileManager fm;
+	if(!fm.LoadStream(cache,cache_len))
+	{
+		delete[] cache;
+		return false;
+	}
+	delete[] cache;
+
+	DWORD buf_len=fm.GetFsize();
+	BYTE* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
+	if(!buf) return false;
+
+	if(!fm.LoadStream(buf,buf_len))
+	{
+		delete[] buf;
+		return false;
+	}
+	delete[] buf;
+
+	if(fm.GetBEDWord()!=CLIENT_MAP_FORMAT_VER) return false;
+
+	fm.GetBEDWord();
+	maxhx=fm.GetBEWord();
+	maxhy=fm.GetBEWord();
+	fm.GetBEDWord();
+	fm.GetBEDWord();
+	fm.GetBEDWord();
+	DWORD walls_count=fm.GetBEDWord();
+	DWORD scen_count=fm.GetBEDWord();
+	DWORD tiles_len=fm.GetBEDWord();
+	DWORD walls_len=fm.GetBEDWord();
+
+	items.reserve(walls_count+scen_count);
+
+	// Walls
+	fm.SetCurPos(0x2C+tiles_len);
+	for(DWORD i=0;i<walls_count+scen_count;i++)
+	{
+		if(i==walls_count) fm.SetCurPos(0x2C+tiles_len+walls_len);
+		ScenToSend scenwall;
+		if(!fm.CopyMem(&scenwall,sizeof(scenwall))) return false;
+
+		ProtoItem* proto_item=ItemMngr.GetProtoItem(scenwall.ProtoId);
+		if(proto_item)
+		{
+			Item item;
+			item.Init(proto_item);
+			item.Accessory=ITEM_ACCESSORY_HEX;
+			item.ACC_HEX.HexX=scenwall.MapX;
+			item.ACC_HEX.HexY=scenwall.MapY;
+			items.push_back(item);
+		}
+	}
+
+	return true;
 }
 
 bool HexManager::ParseScenery(ScenToSend& scen)

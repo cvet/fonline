@@ -688,6 +688,14 @@ int FOClient::InitIface()
 	ZeroMemory(HoloInfo,sizeof(HoloInfo));
 	ScoresNextUploadTick=0;
 	ZeroMemory(BestScores,sizeof(BestScores));
+	Automaps.clear();
+	AutomapWaitPids.clear();
+	AutomapReceivedPids.clear();
+	AutomapPoints.clear();
+	AutomapCurMapPid=0;
+	AutomapScrX=0.0f;
+	AutomapScrY=0.0f;
+	AutomapZoom=1.0f;
 
 	// Aim
 	IfaceLoadRect(AimWMain,"AimWMain");
@@ -5898,20 +5906,18 @@ void FOClient::GmapChangeZoom(float offs)
 	if(OptZoomGmap+offs>2.0f) return;
 	if(OptZoomGmap+offs<0.2f) return;
 
-	float scr_x=float((GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapMapScrX)*ZOOM_GMAP;
-	float scr_y=float((GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapMapScrY)*ZOOM_GMAP;
-	//float scr_x=float(CurX-GmapMapScrX)*ZOOM;
-	//float scr_y=float(CurY-GmapMapScrY)*ZOOM;
+	float scr_x=(float)(GmapWMap.CX()-GmapMapScrX)*ZOOM_GMAP;
+	float scr_y=(float)(GmapWMap.CY()-GmapMapScrY)*ZOOM_GMAP;
 
 	OptZoomGmap+=offs;
 
-	GmapMapScrX=float((GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0])-scr_x/ZOOM_GMAP;
-	GmapMapScrY=float((GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1])-scr_y/ZOOM_GMAP;
+	GmapMapScrX=(float)GmapWMap.CX()-scr_x/ZOOM_GMAP;
+	GmapMapScrY=(float)GmapWMap.CY()-scr_y/ZOOM_GMAP;
 
 	GMAP_CHECK_MAPSCR;
 
-	if(GmapMapScrX>GmapWMap[0] || GmapMapScrY>GmapWMap[1] ||
-	   GmapMapScrX<GmapWMap[2]-GM_MAXX/ZOOM_GMAP || GmapMapScrY<GmapWMap[3]-GM_MAXY/ZOOM_GMAP) GmapChangeZoom(-offs);
+	if(GmapMapScrX>GmapWMap.L || GmapMapScrY>GmapWMap.T ||
+	   GmapMapScrX<GmapWMap.R-GM_MAXX/ZOOM_GMAP || GmapMapScrY<GmapWMap.B-GM_MAXY/ZOOM_GMAP) GmapChangeZoom(-offs);
 }
 
 Item* FOClient::GmapGetCar()
@@ -7413,7 +7419,97 @@ void FOClient::PipDraw()
 //	case PIP__GAMES:
 //		break;
 	case PIP__AUTOMAPS:
-		PIP_DRAW_TEXT(FmtGameText(STR_PIP_MAPS),FT_CENTERX,COLOR_TEXT_DGREEN); scr++;
+		{
+			PIP_DRAW_TEXT(FmtGameText(STR_PIP_MAPS),FT_CENTERX,COLOR_TEXT_DGREEN);
+			scr+=2;
+			for(size_t i=0,j=Automaps.size();i<j;i++)
+			{
+				Automap& amap=Automaps[i];
+				PIP_DRAW_TEXT(amap.LocName.c_str(),FT_CENTERX,COLOR_TEXT); scr++;
+
+				for(size_t k=0,l=amap.MapNames.size();k<l;k++)
+				{
+					PIP_DRAW_TEXT(amap.MapNames[k].c_str(),FT_CENTERX,COLOR_TEXT_GREEN); scr++;
+				}
+				scr++;
+			}
+		}
+		break;
+	case PIP__AUTOMAPS_LOC:
+		{
+			SprMngr.DrawStr(INTRECT(PipWMonitor,PipX,PipY),MsgGM->GetStr(STR_GM_INFO_(AutomapSelected.LocPid)),FT_COLORIZE|FT_SKIPLINES(PipScroll[PipMode])|FT_ALIGN);
+		}
+		break;
+	case PIP__AUTOMAPS_MAP:
+		{
+			WORD map_pid=AutomapSelected.MapPids[AutomapSelected.CurMap];
+			const char* map_name=AutomapSelected.MapNames[AutomapSelected.CurMap].c_str();
+
+			scr=0;
+			PIP_DRAW_TEXT(map_name,FT_CENTERX,COLOR_TEXT_GREEN);
+			scr+=2;
+
+			// Draw already builded minimap
+			if(map_pid==AutomapCurMapPid)
+			{
+				FLTRECT stencil;
+				stencil(PipWMonitor.L+PipX,PipWMonitor.T+PipY,PipWMonitor.R+PipX,PipWMonitor.B+PipY);
+				FLTPOINT offset;
+				offset(AutomapScrX,AutomapScrY);
+				SprMngr.DrawPoints(AutomapPoints,D3DPT_LINELIST,&AutomapZoom,&stencil,&offset);
+				break;
+			}
+
+			// Check wait of data
+			if(AutomapWaitPids.count(map_pid))
+			{
+				PIP_DRAW_TEXT(MsgGame->GetStr(STR_AUTOMAP_LOADING),FT_CENTERX,COLOR_TEXT);
+				break;
+			}
+
+			// Try load map
+			WORD maxhx,maxhy;
+			ItemVec items;
+			if(!HexMngr.GetMapData(map_pid,items,maxhx,maxhy))
+			{
+				// Check for already received
+				if(AutomapReceivedPids.count(map_pid))
+				{
+					PIP_DRAW_TEXT(MsgGame->GetStr(STR_AUTOMAP_LOADING_ERROR),FT_CENTERX,COLOR_TEXT);
+					break;
+				}
+
+				Net_SendGiveMap(true,map_pid,AutomapSelected.LocId,0,0,0);
+				AutomapWaitPids.insert(map_pid);
+				break;
+			}
+
+			// Build minimap
+			AutomapPoints.clear();
+			AutomapScrX=PipX-maxhx*2/2+PipWMonitor.W()/2;
+			AutomapScrY=PipY-maxhy*2/2+PipWMonitor.H()/2;
+			for(ItemVecIt it=items.begin(),end=items.end();it!=end;++it)
+			{
+				Item& item=*it;
+				WORD pid=item.GetProtoId();
+				if(pid==SP_SCEN_IBLOCK || pid==SP_MISC_SCRBLOCK) continue;
+
+				DWORD color;
+				if(pid==SP_GRID_EXITGRID) color=0x3FFF7F00;
+				else if(item.Proto->IsWall()) color=0xFF00FF00;
+				else if(item.Proto->IsScen()) color=0x7F00FF00;
+				else if(item.Proto->IsGrid()) color=0x7F00FF00;
+				else continue;
+
+				int x=PipWMonitor.L+maxhx*2-item.ACC_HEX.HexX*2;
+				int y=PipWMonitor.T+item.ACC_HEX.HexY*2;
+
+				AutomapPoints.push_back(PrepPoint(x,y,color));
+				AutomapPoints.push_back(PrepPoint(x+1,y+1,color));
+			}
+			AutomapCurMapPid=map_pid;
+			AutomapZoom=1.0f;
+		}
 		break;
 	case PIP__ARCHIVES:
 		{
@@ -7431,7 +7527,9 @@ void FOClient::PipDraw()
 		}
 		break;
 	case PIP__ARCHIVES_INFO:
-		SprMngr.DrawStr(INTRECT(PipWMonitor,PipX,PipY),GetHoloText(STR_HOLO_INFO_DESC_(PipInfoNum)),FT_COLORIZE|FT_SKIPLINES(PipScroll[PipMode])|FT_ALIGN);
+		{
+			SprMngr.DrawStr(INTRECT(PipWMonitor,PipX,PipY),GetHoloText(STR_HOLO_INFO_DESC_(PipInfoNum)),FT_COLORIZE|FT_SKIPLINES(PipScroll[PipMode])|FT_ALIGN);
+		}
 		break;
 	default:
 		break;
@@ -7500,21 +7598,55 @@ void FOClient::PipLMouseDown()
 				}
 			}
 			break;
-		case PIP__STATUS_QUESTS:
-			PipMode=PIP__STATUS;
-			break;
-		case PIP__STATUS_SCORES:
-			PipMode=PIP__STATUS;
-			break;
 //		case PIP__GAMES:
+//			PipMode=PIP__STATUS;
 //			break;
+		case PIP__AUTOMAPS:
+			{
+				scr+=2;
+				for(size_t i=0,j=Automaps.size();i<j;i++)
+				{
+					Automap& amap=Automaps[i];
+
+					if(scr>=0 && IsCurInRect(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h),PipX,PipY))
+					{
+						PipMode=PIP__AUTOMAPS_LOC;
+						AutomapSelected=amap;
+						PipScroll[PipMode]=0;
+						break;
+					}
+					scr++;
+
+					for(size_t k=0,l=amap.MapNames.size();k<l;k++)
+					{
+						if(scr>=0 && IsCurInRect(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h),PipX,PipY))
+						{
+							PipMode=PIP__AUTOMAPS_MAP;
+							AutomapSelected=amap;
+							AutomapSelected.CurMap=k;
+							PipScroll[PipMode]=0;
+							i=j;
+							break;
+						}
+						scr++;
+					}
+					scr++;
+				}
+			}
+			break;
+		case PIP__AUTOMAPS_MAP:
+			{
+				PipVectX=CurX-AutomapScrX;
+				PipVectY=CurY-AutomapScrY;
+				IfaceHold=IFACE_PIP_AUTOMAPS_SCR;
+			}
+			break;
 		case PIP__ARCHIVES:
 			{
 				scr+=1;
 				for(int i=0;i<MAX_HOLO_INFO;i++)
 				{
-					if(scr<0) continue;
-					if(IsCurInRect(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h),PipX,PipY))
+					if(scr>=0 && IsCurInRect(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h),PipX,PipY))
 					{
 						PipInfoNum=HoloInfo[scr-1+PipScroll[PipMode]];
 						if(!PipInfoNum) break;
@@ -7525,9 +7657,6 @@ void FOClient::PipLMouseDown()
 					scr++;
 				}
 			}
-			break;
-		case PIP__ARCHIVES_INFO:
-			PipMode=PIP__ARCHIVES;
 			break;
 		default:
 			break;
@@ -7572,10 +7701,39 @@ void FOClient::PipLMouseUp()
 	IfaceHold=IFACE_NONE;
 }
 
+void FOClient::PipRMouseDown()
+{
+	if(IsCurInRect(PipWMonitor,PipX,PipY))
+	{
+		switch(PipMode)
+		{
+		case PIP__STATUS_QUESTS:
+			PipMode=PIP__STATUS;
+			break;
+		case PIP__STATUS_SCORES:
+			PipMode=PIP__STATUS;
+			break;
+		case PIP__AUTOMAPS_LOC:
+			PipMode=PIP__AUTOMAPS;
+			break;
+		case PIP__AUTOMAPS_MAP:
+			PipMode=PIP__AUTOMAPS;
+			break;
+		case PIP__ARCHIVES_INFO:
+			PipMode=PIP__ARCHIVES;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 void FOClient::PipMouseMove()
 {
 	if(IfaceHold==IFACE_PIP_MAIN)
 	{
+		AutomapScrX-=(float)PipX;
+		AutomapScrY-=(float)PipY;
 		PipX=CurX-PipVectX;
 		PipY=CurY-PipVectY;
 
@@ -7583,6 +7741,13 @@ void FOClient::PipMouseMove()
 		if(PipX+PipWMain[2]>MODE_WIDTH) PipX=MODE_WIDTH-PipWMain[2];
 		if(PipY<0) PipY=0;
 		if(PipY+PipWMain[3]>MODE_HEIGHT) PipY=MODE_HEIGHT-PipWMain[3];
+		AutomapScrX+=(float)PipX;
+		AutomapScrY+=(float)PipY;
+	}
+	else if(IfaceHold==IFACE_PIP_AUTOMAPS_SCR)
+	{
+		AutomapScrX=CurX-PipVectX;
+		AutomapScrY=CurY-PipVectY;
 	}
 }
 

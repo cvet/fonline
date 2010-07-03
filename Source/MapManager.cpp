@@ -224,9 +224,17 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 	while(true)
 	{
 		sprintf(key2,"map_%u",cur_map);
-		city_txt.GetStr(key1,key2,"end",res);
+		if(!city_txt.GetStr(key1,key2,"",res)) break;
+		size_t len=strlen(res);
+		if(!len) break;
 
-		if(!_stricmp(res,"end")) break;
+		bool is_automap=false;
+		if(res[len-1]=='*')
+		{
+			if(len==1) break;
+			is_automap=true;
+			res[len-1]=0;
+		}
 
 		StrWordMapIt it=pmapsLoaded.find(string(res));
 		if(it==pmapsLoaded.end())
@@ -236,6 +244,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 		}
 
 		ploc.ProtoMapPids.push_back((*it).second);
+		if(is_automap) ploc.AutomapsPids.push_back((*it).second);
 		cur_map++;
 	}
 
@@ -1283,6 +1292,7 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 						if(loc->IsVisible() && !cl->CheckKnownLocById(loc->GetId()))
 						{
 							cl->AddKnownLoc(loc->GetId());
+							if(loc->IsAutomaps()) cl->Send_AutomapsInfo(NULL,loc);
 							cl->Send_GlobalLocation(loc,true);
 						}
 					}
@@ -2248,7 +2258,11 @@ bool MapManager::TryTransitCrGrid(Critter* cr, Map* map, WORD hx, WORD hy, bool 
 	BYTE dir=0;
 
 	if(!loc->GetTransit(map,id_map,hx,hy,dir)) return false;
-	if(loc->IsVisible() && cr->IsPlayer()) ((Client*)cr)->AddKnownLoc(loc->GetId());
+	if(loc->IsVisible() && cr->IsPlayer())
+	{
+		((Client*)cr)->AddKnownLoc(loc->GetId());
+		if(loc->IsAutomaps()) cr->Send_AutomapsInfo(NULL,loc);
+	}
 	cr->SetTimeout(TO_TRANSFER,0);
 	cr->SetTimeout(TO_BATTLE,0);
 

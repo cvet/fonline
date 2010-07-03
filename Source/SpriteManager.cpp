@@ -1878,12 +1878,42 @@ bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
 	return false;
 }
 
-bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool with_zoom)
+bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* zoom /* = NULL */, FLTRECT* stencil /* = NULL */, FLTPOINT* offset /* = NULL */)
 {
 	if(points.empty()) return true;
 	Flush();
 
 	int count=(int)points.size();
+
+	// Draw stencil quad
+	if(stencil)
+	{
+		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILENABLE,TRUE));
+		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
+		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
+		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILREF,1));
+
+		struct Vertex
+		{
+			FLOAT x,y,z,rhw;
+			DWORD diffuse;
+		} vb[6]=
+		{
+			{stencil->L-0.5f,stencil->B-0.5f,1.0f,1.0f,-1},
+			{stencil->L-0.5f,stencil->T-0.5f,1.0f,1.0f,-1},
+			{stencil->R-0.5f,stencil->B-0.5f,1.0f,1.0f,-1},
+			{stencil->L-0.5f,stencil->T-0.5f,1.0f,1.0f,-1},
+			{stencil->R-0.5f,stencil->T-0.5f,1.0f,1.0f,-1},
+			{stencil->R-0.5f,stencil->B-0.5f,1.0f,1.0f,-1},
+		};
+
+		D3D_HR(dxDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
+		D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_STENCIL,0,1.0f,0));
+		D3D_HR(dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
+
+		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NOTEQUAL));
+		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILREF,0));
+	}
 
 	// Create or resize vertex buffer
 	if(!vbPoints || count>vbPointsSize)
@@ -1905,10 +1935,15 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 		vertex->y=(float)point.PointY;
 		if(point.PointOffsX) vertex->x+=(float)*point.PointOffsX;
 		if(point.PointOffsY) vertex->y+=(float)*point.PointOffsY;
-		if(with_zoom)
+		if(zoom)
 		{
-			vertex->x/=ZOOM;
-			vertex->y/=ZOOM;
+			vertex->x/=*zoom;
+			vertex->y/=*zoom;
+		}
+		if(offset)
+		{
+			vertex->x+=offset->X;
+			vertex->y+=offset->Y;
 		}
 		vertex->Diffuse=point.PointColor;
 		vertex->z=0.0f;
@@ -1939,6 +1974,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, bool wit
 	D3D_HR(dxDevice->DrawPrimitive(prim,0,count));
 
 	// Restore
+	if(stencil) D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
 	D3D_HR(dxDevice->SetVertexShader(NULL));

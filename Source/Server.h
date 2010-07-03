@@ -60,7 +60,7 @@ public:
 	void Process_Command(Client* cl);
 	void Process_Dialog(Client* cl, bool is_say);
 	void Process_Barter(Client* cl);
-	void Process_GiveMap(Client* pl);
+	void Process_GiveMap(Client* cl);
 	void Process_Radio(Client* cl); //with send
 	void Process_SetUserHoloStr(Client* cl);
 	void Process_GetUserHoloStr(Client* cl); //with send
@@ -75,6 +75,7 @@ public:
 	void Process_RunServerScript(Client* cl);
 	void Process_KarmaVoting(Client* cl);
 
+	void Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info);
 	void Send_MsgData(Client* cl, DWORD lang, WORD num_msg, FOMsg& data_msg);
 	void Send_ProtoItemData(Client* cl, BYTE type, ProtoItemVec& data, DWORD data_hash);
 

@@ -241,6 +241,7 @@ public:
 
 	WORD MaxCopy;
 	WordVec ProtoMapPids;
+	WordVec AutomapsPids;
 	DwordPairVec Entrance;
 	int ScriptBindId;
 
@@ -292,6 +293,9 @@ public:
 	MapVec& GetMaps(){return locMaps;}
 	Map* GetMap(DWORD count);
 	bool GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& ori);
+	bool IsAutomaps(){return !Proto->AutomapsPids.empty();}
+	bool IsAutomap(WORD map_pid){return std::find(Proto->AutomapsPids.begin(),Proto->AutomapsPids.end(),map_pid)!=Proto->AutomapsPids.end();}
+	WordVec& GetAutomaps(){return Proto->AutomapsPids;}
 
 	bool IsNoCrit();
 	bool IsNoPlayer();
