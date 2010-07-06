@@ -172,15 +172,6 @@ extern bool OptShowFast;
 extern bool CmnShowPlayerNames;
 extern bool CmnShowNpcNames;
 extern bool CmnShowCritId;
-extern float OptZoom;
-extern float OptZoomGmap;
-
-#ifdef FONLINE_CLIENT
-#define ZOOM 1
-#define ZOOM_GMAP OptZoomGmap
-#else
-#define ZOOM OptZoom
-#endif
 
 extern bool OptShowGroups;
 extern bool OptHelpInfo;

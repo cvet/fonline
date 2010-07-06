@@ -666,14 +666,14 @@ void HexManager::DrawCursor(DWORD spr_id)
 	if(OptHideCursor || !isShowCursor) return;
 	SpriteInfo* si=sprMngr->GetSpriteInfo(spr_id);
 	if(!si) return;
-	sprMngr->DrawSpriteSize(spr_id,(cursorX+CmnScrOx)/ZOOM,(cursorY+CmnScrOy)/ZOOM,si->Width/ZOOM,si->Height/ZOOM,true,false);
+	sprMngr->DrawSpriteSize(spr_id,(cursorX+CmnScrOx)/SpritesZoom,(cursorY+CmnScrOy)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
 }
 
 void HexManager::DrawCursor(const char* text)
 {
 	if(OptHideCursor || !isShowCursor) return;
-	int x=(cursorX+CmnScrOx)/ZOOM;
-	int y=(cursorY+CmnScrOy)/ZOOM;
+	int x=(cursorX+CmnScrOx)/SpritesZoom;
+	int y=(cursorY+CmnScrOy)/SpritesZoom;
 	sprMngr->DrawStr(INTRECT(x,y,x+32,y+16),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
 }
 
@@ -1427,7 +1427,7 @@ bool HexManager::IsVisible(DWORD spr_id, int ox, int oy)
 	int bottom=oy+si->OffsY+SCROLL_OY;
 	int left=ox+si->OffsX-si->Width/2-SCROLL_OX;
 	int right=ox+si->OffsX+si->Width/2+SCROLL_OX;
-	return !(top>MODE_HEIGHT*ZOOM || bottom<0 || left>MODE_WIDTH*ZOOM || right<0);
+	return !(top>MODE_HEIGHT*SpritesZoom || bottom<0 || left>MODE_WIDTH*SpritesZoom || right<0);
 }
 
 bool HexManager::ProcessHexBorders(DWORD spr_id, int ox, int oy)
@@ -1542,7 +1542,7 @@ void HexManager::InitView(int cx, int cy)
 		for(int i=0;i<wVisible;i++)
 		{
 			vpos=y2+i;
-			viewField[vpos].ScrX=MODE_WIDTH*ZOOM-x;
+			viewField[vpos].ScrX=MODE_WIDTH*SpritesZoom-x;
 			viewField[vpos].ScrY=y;
 		//	viewField[vpos].HexX=(hx>=0 && hx<maxHexX?hx:0xFFFF);
 		//	viewField[vpos].HexY=(hy>=0 && hy<maxHexY?hy:0xFFFF);
@@ -1561,16 +1561,16 @@ void HexManager::InitView(int cx, int cy)
 void HexManager::ChangeZoom(float offs)
 {
 	if(!IsMapLoaded()) return;
-	if(offs>0.0f && OptZoom>=10.0f) return;
-	if(offs<0.0f && OptZoom<=0.5f) return;
+	if(offs>0.0f && SpritesZoom>=min(SpritesZoomMax,MAX_ZOOM)) return;
+	if(offs<0.0f && SpritesZoom<=max(SpritesZoomMin,MIN_ZOOM)) return;
 
 #ifdef FONLINE_CLIENT
 	// Check screen blockers
 	if(offs>0)
 	{
-		for(int x=-3;x<4;x++)
+		for(int x=-3;x<=3;x++)
 		{
-			for(int y=-3;y<4;y++)
+			for(int y=-3;y<=3;y++)
 			{
 				if(!x && !y) continue;
 				if(ScrollCheck(x,y)) return;
@@ -1579,8 +1579,17 @@ void HexManager::ChangeZoom(float offs)
 	}
 #endif
 
-	OptZoom+=offs;
-	OptZoom=CLAMP(OptZoom,0.5f,10.0f);
+	if(offs!=0.0f)
+	{
+		float old_val=SpritesZoom;
+		SpritesZoom+=offs;
+		SpritesZoom=CLAMP(SpritesZoom,max(SpritesZoomMin,MIN_ZOOM),min(SpritesZoomMax,MAX_ZOOM));
+		if((old_val<1.0f && SpritesZoom>1.0f) || (old_val>1.0f && SpritesZoom<1.0f)) SpritesZoom=1.0f;
+	}
+	else
+	{
+		SpritesZoom=1.0f;
+	}
 
 	hVisible=VIEW_HEIGHT+hTop+hBottom;
 	wVisible=VIEW_WIDTH+wLeft+wRight;
@@ -1616,8 +1625,8 @@ void HexManager::GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y)
 
 //	x+=center_hex.ScrX+CmnScrOx;
 //	y+=center_hex.ScrY+CmnScrOy;
-//	x/=ZOOM;
-//	y/=ZOOM;
+//	x/=SpritesZoom;
+//	y/=SpritesZoom;
 }
 
 void HexManager::DrawMap()
@@ -1634,7 +1643,7 @@ void HexManager::DrawMap()
 	{
 		if(reprepareTiles)
 		{
-			if(OptScreenClear) sprMngr->ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100),D3DCLEAR_TARGET,1.0f,0);
+			if(OptScreenClear) sprMngr->ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100));
 			sprMngr->PrepareBuffer(tilesTree,tileSurf,TILE_ALPHA);
 			reprepareTiles=false;
 		}
@@ -1642,23 +1651,23 @@ void HexManager::DrawMap()
 	}
 
 	// Flat sprites
-	sprMngr->DrawTreeCntr(mainTree,false,false,0,0);
+	sprMngr->DrawSprites(mainTree,false,false,0,0);
 
 	// Light
-	for(int i=0;i<lightPointsCount;i++) sprMngr->DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&OptZoom);
-	sprMngr->DrawPoints(lightSoftPoints,D3DPT_TRIANGLELIST,&OptZoom);
+	for(int i=0;i<lightPointsCount;i++) sprMngr->DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&SpritesZoom);
+	sprMngr->DrawPoints(lightSoftPoints,D3DPT_TRIANGLELIST,&SpritesZoom);
 
 	// Cursor flat
 	DrawCursor(cursorPrePic);
 
 	// Sprites
-	sprMngr->DrawTreeCntr(mainTree,true,true,1,-1);
+	sprMngr->DrawSprites(mainTree,true,true,1,-1);
 
 	// Roof
 	if(OptShowRoof)
 	{
-		sprMngr->DrawTreeCntr(roofTree,false,true,0,-1);
-		if(rainCapacity) sprMngr->DrawTreeCntr(roofRainTree,false,false,0,-1);
+		sprMngr->DrawSprites(roofTree,false,true,0,-1);
+		if(rainCapacity) sprMngr->DrawSprites(roofRainTree,false,false,0,-1);
 	}
 
 	// Contours
@@ -1744,8 +1753,8 @@ bool HexManager::Scroll()
 		if(CmnDiMdown || CmnDiDown) yscroll-=1;
 		if(!xscroll && !yscroll) return false;
 
-		scr_ox+=xscroll*OptScrollStep;
-		scr_oy+=yscroll*(OptScrollStep*75/100);
+		scr_ox+=xscroll*OptScrollStep*SpritesZoom;
+		scr_oy+=yscroll*(OptScrollStep*75/100)*SpritesZoom;
 	}
 
 	if(OptScrollCheck)
@@ -2127,13 +2136,13 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 		{
 			vpos=y2+tx;
 
-			int x_=viewField[vpos].ScrX/ZOOM;
-			int y_=viewField[vpos].ScrY/ZOOM;
+			int x_=viewField[vpos].ScrX/SpritesZoom;
+			int y_=viewField[vpos].ScrY/SpritesZoom;
 
 			if(x<=x_) continue;
-			if(x>x_+32/ZOOM) continue;
+			if(x>x_+32/SpritesZoom) continue;
 			if(y<=y_) continue;
-			if(y>y_+16/ZOOM) continue;
+			if(y>y_+16/SpritesZoom) continue;
 
 			hx=viewField[vpos].HexX;
 			hy=viewField[vpos].HexY;
@@ -2194,10 +2203,10 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 		SpriteInfo* sprinf=sprMngr->GetSpriteInfo(item->SprId);
 		if(!sprinf) continue;
 
-		int l=(*item->HexScrX+item->ScrX+sprinf->OffsX+16+CmnScrOx-sprinf->Width/2)/ZOOM;
-		int r=(*item->HexScrX+item->ScrX+sprinf->OffsX+16+CmnScrOx+sprinf->Width/2)/ZOOM;
-		int t=(*item->HexScrY+item->ScrY+sprinf->OffsY+6+CmnScrOy-sprinf->Height)/ZOOM;
-		int b=(*item->HexScrY+item->ScrY+sprinf->OffsY+6+CmnScrOy)/ZOOM;
+		int l=(*item->HexScrX+item->ScrX+sprinf->OffsX+16+CmnScrOx-sprinf->Width/2)/SpritesZoom;
+		int r=(*item->HexScrX+item->ScrX+sprinf->OffsX+16+CmnScrOx+sprinf->Width/2)/SpritesZoom;
+		int t=(*item->HexScrY+item->ScrY+sprinf->OffsY+6+CmnScrOy-sprinf->Height)/SpritesZoom;
+		int b=(*item->HexScrY+item->ScrY+sprinf->OffsY+6+CmnScrOy)/SpritesZoom;
 
 		if(x>=l && x<=r && y>=t && y<=b && sprMngr->IsPixNoTransp(item->SprId,x-l,y-t))
 		{
@@ -2253,9 +2262,9 @@ CritterCl* HexManager::GetCritterPixel(int x, int y, bool ignor_mode)
 			continue;
 		}
 
-		if(x>=(cr->DRect.L+CmnScrOx)/ZOOM && x<=(cr->DRect.R+CmnScrOx)/ZOOM &&
-		   y>=(cr->DRect.T+CmnScrOy)/ZOOM && y<=(cr->DRect.B+CmnScrOy)/ZOOM &&
-			sprMngr->IsPixNoTransp(cr->SprId,x-(cr->DRect.L+CmnScrOx)/ZOOM,y-(cr->DRect.T+CmnScrOy)/ZOOM))
+		if(x>=(cr->DRect.L+CmnScrOx)/SpritesZoom && x<=(cr->DRect.R+CmnScrOx)/SpritesZoom &&
+		   y>=(cr->DRect.T+CmnScrOy)/SpritesZoom && y<=(cr->DRect.B+CmnScrOy)/SpritesZoom &&
+			sprMngr->IsPixNoTransp(cr->SprId,x-(cr->DRect.L+CmnScrOx)/SpritesZoom,y-(cr->DRect.T+CmnScrOy)/SpritesZoom))
 		{
 			crits.push_back(cr);
 		}

@@ -38,7 +38,6 @@ public:
 	FOClient();
 	bool Active;
 	DWORD* UID1;
-	DWORD GetRandomSplash();
 
 	int ShowScreenType;
 	DWORD ShowScreenParam;
@@ -905,6 +904,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	INTRECT GmapBInv,GmapBMenu,GmapBCha,GmapBPip,GmapBFix;
 	PointVec GmapMapCutOff;
 	bool GmapIsProc;
+	float GmapZoom;
 
 	void GmapNullParams();
 	void GmapProcess();
@@ -921,9 +921,11 @@ typedef vector<MapText>::iterator MapTextVecIt;
 
 	// Relief
 	C4BitMask* GmapRelief;
+
 	// Mask
 	C2BitMask GmapFog;
 	PointVec GmapFogPix;
+
 	// Locations
 	struct GmapLocation
 	{
@@ -939,6 +941,7 @@ typedef vector<GmapLocation> GmapLocationVec;
 typedef vector<GmapLocation>::iterator GmapLocationVecIt;
 	GmapLocationVec GmapLoc;
 	GmapLocation GmapTownLoc;
+
 	// Trace
 	IntPairVec GmapTrace;
 

@@ -15,9 +15,11 @@ extern int Lang;
 extern bool ShiftDwn;
 extern bool CtrlDwn;
 extern bool AltDwn;
+extern bool KeyPressed[0x100];
 
 void InitKeyb();
 void ClearKeyb();
+void Lost();
 void GetChar(BYTE dik, string& str, int* position, int max, int flags);
 void GetChar(BYTE dik, char* str, int* position, int max, int flags);
 void PuntoSwitch(char* str);

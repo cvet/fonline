@@ -789,7 +789,7 @@ label_TryChangeLang:
 			case DIK_DELETE: SelectDelete(); break;
 			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=60; ProcessGameTime();} break;
 			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=60; ProcessGameTime();} break;
-			case DIK_TAB: SelectType=(SelectType==SELECT_TYPE_OLD)?SELECT_TYPE_NEW:SELECT_TYPE_OLD; break;
+			case DIK_TAB: SelectType=(SelectType==SELECT_TYPE_OLD?SELECT_TYPE_NEW:SELECT_TYPE_OLD); break;
 			default: break;
 			}
 		}
@@ -1313,8 +1313,8 @@ void FOMapper::MainLoop()
 				int procent=Procent(t.Tick,tick-t.StartTick);
 				INTRECT r=AverageFlexRect(t.Rect,t.EndRect,procent);
 				Field& f=HexMngr.GetField(t.HexX,t.HexY);
-				int x=(f.ScrX+32/2+CmnScrOx)/ZOOM-100-(t.Rect.L-r.L);
-				int y=(f.ScrY+12/2-t.Rect.H()-(t.Rect.T-r.T)+CmnScrOy)/ZOOM-70;
+				int x=(f.ScrX+32/2+CmnScrOx)/SpritesZoom-100-(t.Rect.L-r.L);
+				int y=(f.ScrY+12/2-t.Rect.H()-(t.Rect.T-r.T)+CmnScrOy)/SpritesZoom-70;
 				DWORD color=t.Color;
 				if(t.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
 				SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),t.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
@@ -3363,7 +3363,7 @@ void FOMapper::CurDraw()
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+16+CmnScrOx)/ZOOM,(y+CmnScrOy+6)/ZOOM,si->Width/ZOOM,si->Height/ZOOM,true,false);
+			SprMngr.DrawSpriteSize(spr_id,(x+16+CmnScrOx)/SpritesZoom,(y+CmnScrOy+6)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
 		}
 		else if(IsTileMode() && TilesPictures.size())
 		{
@@ -3382,7 +3382,7 @@ void FOMapper::CurDraw()
 			y=y-6+32;
 			if(DrawRoof) y-=98;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+16+CmnScrOx)/ZOOM,(y+CmnScrOy+6)/ZOOM,si->Width/ZOOM,si->Height/ZOOM,true,false);
+			SprMngr.DrawSpriteSize(spr_id,(x+16+CmnScrOx)/SpritesZoom,(y+CmnScrOy+6)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
 		}
 		else if(IsCritMode() && NpcProtos.size())
 		{
@@ -3397,7 +3397,7 @@ void FOMapper::CurDraw()
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+CmnScrOx+16)/ZOOM,(y+CmnScrOy+6)/ZOOM,si->Width/ZOOM,si->Height/ZOOM,true,false);
+			SprMngr.DrawSpriteSize(spr_id,(x+CmnScrOx+16)/SpritesZoom,(y+CmnScrOy+6)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
 		}
 		else
 		{
@@ -4856,8 +4856,8 @@ bool FOMapper::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
 		x+=CmnScrOx;
 		y+=CmnScrOy;
-		x/=ZOOM;
-		y/=ZOOM;
+		x/=SpritesZoom;
+		y/=SpritesZoom;
 		return true;
 	}
 	return false;
@@ -5111,7 +5111,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 			anim->SetScale(sx,sy,sz);
 			anim->SetSpeed(speed);
 			anim->SetAnimation(anim1,anim2,DrawCritter3dLayers,0);
-			Self->SprMngr.Draw3d(x,y,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
+			Self->SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
 		}
 	}
 }

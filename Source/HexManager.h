@@ -36,8 +36,8 @@ const BYTE FP_ALREADY_HERE			=4;
 
 #define TILE_ALPHA	(0xFF)
 #define ROOF_ALPHA	(OptRoofAlpha)
-#define VIEW_WIDTH  ((int)((MODE_WIDTH/32+((MODE_WIDTH%32)?1:0))*ZOOM))
-#define VIEW_HEIGHT ((int)((MODE_HEIGHT/12+((MODE_HEIGHT%12)?1:0))*ZOOM))
+#define VIEW_WIDTH  ((int)((MODE_WIDTH/32+((MODE_WIDTH%32)?1:0))*SpritesZoom))
+#define VIEW_HEIGHT ((int)((MODE_HEIGHT/12+((MODE_HEIGHT%12)?1:0))*SpritesZoom))
 #define HEX_WIDTH   (32)
 #define HEX_HEIGHT  (12)
 #define SCROLL_OX   (32)

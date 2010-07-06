@@ -20,6 +20,7 @@ SprDrawValid(false)
 	if(data) Data=*data;
 
 	RefreshAnim();
+	RefreshAlpha();
 	if(IsShowAnim()) isAnimated=true;
 	animNextTick=Timer::FastTick()+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
 	SetFade(true);
@@ -105,10 +106,6 @@ void ItemHex::Process()
 
 		Alpha=(fadeUp==true?(fading_proc*0xFF)/100:((100-fading_proc)*0xFF)/100);
 		if(Alpha>maxAlpha) Alpha=maxAlpha;
-	}
-	else if(Alpha!=maxAlpha)
-	{
-		Alpha=maxAlpha;
 	}
 }
 

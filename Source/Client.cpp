@@ -569,8 +569,8 @@ void FOClient::LookBordersDraw()
 		LookBordersPrepare();
 		RebuildLookBorders=false;
 	}
-	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,&OptZoom);
-	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,&OptZoom);
+	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,&SpritesZoom);
+	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,&SpritesZoom);
 }
 
 int FOClient::MainLoop()
@@ -930,9 +930,7 @@ void FOClient::ParseKeyboard()
 	{
 		Keyboard->Acquire();
 		Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); //Clear buffer
-		Keyb::CtrlDwn=false;
-		Keyb::AltDwn=false;
-		Keyb::ShiftDwn=false;
+		Keyb::Lost();
 		Timer::StartAccelerator(ACCELERATE_NONE);
 		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
 		return;
@@ -970,6 +968,9 @@ void FOClient::ParseKeyboard()
 			Script::SetArgByte(dikup);
 			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 		}
+
+		Keyb::KeyPressed[dikup]=false;
+		Keyb::KeyPressed[dikdw]=true;
 
 		if(dikdw==DIK_RCONTROL || dikdw==DIK_LCONTROL)
 		{
@@ -1018,14 +1019,14 @@ label_TryChangeLang:
 			case DIK_F4: IntVisible=!IntVisible; MessBoxGenerate(); break;
 			case DIK_F5: IntAddMess=!IntAddMess; MessBoxGenerate(); break;
 			case DIK_F6: CmnShowPlayerNames=!CmnShowPlayerNames; break;
-#ifdef DEV_VESRION
-			case DIK_F7: CmnShowNpcNames=!CmnShowNpcNames; break;
-#endif
+
+			case DIK_F7: if(OptDebugInfo) CmnShowNpcNames=!CmnShowNpcNames; break;
+
 			case DIK_F8: OptMouseScroll=!OptMouseScroll; CmnDiMright=false; CmnDiMleft=false; CmnDiMdown=false; CmnDiMup=false; break;
-#ifdef DEV_VESRION
-			case DIK_F9: HexMngr.SwitchShowTrack(); break;
-			case DIK_F10: HexMngr.SwitchShowHex(); break;
-#endif
+
+			case DIK_F9: if(OptDebugInfo) HexMngr.SwitchShowTrack(); break;
+			case DIK_F10: if(OptDebugInfo) HexMngr.SwitchShowHex(); break;
+
 				// Volume buttons
 			case DIK_VOLUMEUP:
 				SndMngr.SetSoundVolume(SndMngr.GetSoundVolume()+2);
@@ -1040,10 +1041,10 @@ label_TryChangeLang:
 				// Mouse wheel emulate
 			case DIK_PRIOR: ProcessMouseWheel(1); Timer::StartAccelerator(ACCELERATE_PAGE_UP); break;
 			case DIK_NEXT: ProcessMouseWheel(-1); Timer::StartAccelerator(ACCELERATE_PAGE_DOWN); break;
-#ifdef DEV_VESRION
-			//case DIK_F11: SprMngr.SaveSufaces(); break;
-			case DIK_F11: HexMngr.SwitchShowRain(); break;
-#endif
+
+			case DIK_F11: if(OptDebugInfo) SprMngr.SaveSufaces(); break;
+			//case DIK_F11: HexMngr.SwitchShowRain(); break;
+
 			case DIK_ESCAPE: TryExit(); break;
 			default:
 				break;
@@ -1365,6 +1366,7 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				if(!script_result && !OptDisableMouseEvents) HexMngr.ChangeZoom(0.0f);
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON3,
@@ -1725,9 +1727,9 @@ void FOClient::ProcessMouseWheel(int data)
 				else send=Chosen->NextRateItem(false);
 				if(send) Net_SendRateItem();
 			}
-			else
+			else if(Keyb::KeyPressed[DIK_Z])
 			{
-				//HexMngr.ChangeZoom(-(int)data/1000.0f);
+				HexMngr.ChangeZoom(-(int)data/3000.0f);
 			}
 		}
 		else if(IsMainScreen(SCREEN_GLOBAL_MAP))
@@ -5403,9 +5405,8 @@ void FOClient::Net_OnLoadMap()
 	Bin >> hash_walls;
 	Bin >> hash_scen;
 
-	OptZoom=1.0f;
-	OptZoomGmap=1.0f;
-	//HexMngr.ChangeZoom(-(OptZoom-1.0f));
+	SpritesZoom=1.0f;
+	GmapZoom=1.0f;
 
 	GameMapTexts.clear();
 	WriteLog("Unload map...");
@@ -10281,7 +10282,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 			anim->SetScale(sx,sy,sz);
 			anim->SetSpeed(speed);
 			anim->SetAnimation(anim1,anim2,DrawCritter3dLayers,0);
-			Self->SprMngr.Draw3d(x,y,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
+			Self->SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
 		}
 	}
 }
@@ -10373,8 +10374,8 @@ bool FOClient::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
 		x+=CmnScrOx;
 		y+=CmnScrOy;
-		x/=ZOOM;
-		y/=ZOOM;
+		x/=SpritesZoom;
+		y/=SpritesZoom;
 		return true;
 	}
 	return false;

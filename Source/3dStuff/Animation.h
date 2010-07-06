@@ -96,6 +96,7 @@ private:
 	float dirAngle;
 	DWORD sprId;
 	INTPOINT drawXY,bordersXY;
+	float drawScale;
 	D3DXVECTOR4 groundPos;
 	INTRECT baseBorders,fullBorders;
 	DWORD calcBordersTick;

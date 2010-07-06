@@ -18,27 +18,43 @@ struct PS_OUTPUT
 	float4 Diffuse : COLOR0;
 };
 
+bool CheckPixel(in float x, in float y, inout PS_INPUT input, inout PS_OUTPUT output)
+{
+	if(tex2D(SpriteTex,float2(x,y)).a!=0.0f)
+	{
+		output.Diffuse=ContourColor;
+		if(input.TexPos.y>=SpriteBordersHeight[0] && input.TexPos.y<=SpriteBordersHeight[1])
+		{
+			float v=(input.TexPos.y-SpriteBordersHeight[0])/SpriteBordersHeight[2]+ContourColorOffs;
+			if(v>1.0f) v=2.0f-v;
+			else if(v<0.0f) v=-v;
+			output.Diffuse.rgb+=v*0.60f-0.30f;
+			output.Diffuse.rgb=saturate(output.Diffuse.rgb);
+		}
+		return true;
+	}
+	return false;
+}
+
 PS_OUTPUT Main(PS_INPUT input)
 {
 	PS_OUTPUT output=(PS_OUTPUT)0;
+	
+	float l=input.TexPos.x-WidthStep;
+	float r=input.TexPos.x+WidthStep;
+	float t=input.TexPos.y-HeightStep;
+	float b=input.TexPos.y+HeightStep;
 
-	if(tex2D(SpriteTex,input.TexPos).a==0.0f)
+	if(l<SpriteBorders[0]) CheckPixel(r,input.TexPos.y,input,output);
+	else if(r>SpriteBorders[2]) CheckPixel(l,input.TexPos.y,input,output);
+	else if(t<SpriteBorders[1]) CheckPixel(input.TexPos.x,b,input,output);
+	else if(b>SpriteBorders[3]) CheckPixel(input.TexPos.x,t,input,output);
+	else if(tex2D(SpriteTex,input.TexPos).a==0.0f)
 	{
-		if((input.TexPos.x-WidthStep>SpriteBorders[0] && tex2D(SpriteTex,float2(input.TexPos.x-WidthStep,input.TexPos.y)).a!=0.0f)
-		|| (input.TexPos.x+WidthStep<SpriteBorders[2] && tex2D(SpriteTex,float2(input.TexPos.x+WidthStep,input.TexPos.y)).a!=0.0f)
-		|| (input.TexPos.y-HeightStep>SpriteBorders[1] && tex2D(SpriteTex,float2(input.TexPos.x,input.TexPos.y-HeightStep)).a!=0.0f)
-		|| (input.TexPos.y+HeightStep<SpriteBorders[3] && tex2D(SpriteTex,float2(input.TexPos.x,input.TexPos.y+HeightStep)).a!=0.0f))
-		{
-			output.Diffuse=ContourColor;
-			if(input.TexPos.y>=SpriteBordersHeight[0] && input.TexPos.y<=SpriteBordersHeight[1])
-			{
-				float v=(input.TexPos.y-SpriteBordersHeight[0])/SpriteBordersHeight[2]+ContourColorOffs;
-				if(v>1.0f) v=2.0f-v;
-				else if(v<0.0f) v=-v;
-				output.Diffuse.rgb+=v*0.60f-0.30f;
-				output.Diffuse.rgb=saturate(output.Diffuse.rgb);
-			}
-		}
+		CheckPixel(r,input.TexPos.y,input,output) ||
+		CheckPixel(l,input.TexPos.y,input,output) ||
+		CheckPixel(input.TexPos.x,t,input,output) ||
+		CheckPixel(input.TexPos.x,b,input,output);
 	}
 
 	return output;

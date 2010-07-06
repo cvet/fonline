@@ -1092,6 +1092,9 @@
 	if(engine->RegisterGlobalProperty("bool __DisableDrawScreens",&GameOpt.DisableDrawScreens)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __Animation3dSmoothTime",&GameOpt.Animation3dSmoothTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __Animation3dFPS",&GameOpt.Animation3dFPS)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __SpritesZoom",&SpritesZoom)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __SpritesZoomMin",&SpritesZoomMin)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __SpritesZoomMax",&SpritesZoomMax)) BIND_ERROR;
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)

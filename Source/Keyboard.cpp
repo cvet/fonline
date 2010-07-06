@@ -20,6 +20,7 @@ namespace Keyb
 	bool ShiftDwn=false;
 	bool CtrlDwn=false;
 	bool AltDwn=false;
+	bool KeyPressed[0x100]={0};
 }
 
 void Keyb::InitKeyb()
@@ -98,6 +99,14 @@ void Keyb::InitKeyb()
 void Keyb::ClearKeyb()
 {
 	Data.clear();
+}
+
+void Keyb::Lost()
+{
+	CtrlDwn=false;
+	AltDwn=false;
+	ShiftDwn=false;
+	ZeroMemory(KeyPressed,sizeof(KeyPressed));
 }
 
 void Keyb::GetChar(BYTE dik, string& str, int* position, int max, int flags)

@@ -1887,8 +1887,8 @@ void CritterCl::DrawTextOnHead()
 	if(SprDrawValid)
 	{
 		INTRECT tr=GetTextRect();
-		int x=(tr.L+tr.W()/2+CmnScrOx)/ZOOM-100;
-		int y=(tr.T+CmnScrOy)/ZOOM-70;
+		int x=(tr.L+tr.W()/2+CmnScrOx)/SpritesZoom-100;
+		int y=(tr.T+CmnScrOy)/SpritesZoom-70;
 		INTRECT r(x,y,x+200,y+70);
 
 		string str;

@@ -189,7 +189,7 @@ const char* Debugger::GetMemoryStatistics()
 			all_alloc+=node.AllocMem;
 			all_dealloc+=node.DeallocMem;
 		}
-		sprintf(buf,"Whole memory : %12I64d %12I64d %12I64d\n",all_alloc-all_dealloc,all_alloc,all_dealloc);
+		sprintf(buf,"Whole memory  : %12I64d %12I64d %12I64d\n",all_alloc-all_dealloc,all_alloc,all_dealloc);
 		result+=buf;
 	}
 

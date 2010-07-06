@@ -36,7 +36,7 @@ Animation3dVec Animation3d::generalAnimations;
 
 Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSets(0),
 currentTrack(0),lastTick(0),endTick(0),speedAdjust(1.0f),shadowDisabled(false),dirAngle(150.0f),sprId(0),
-calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),childChecker(true)
+drawScale(1.0f),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),childChecker(true)
 {
 	ZeroMemory(currentAnimation,sizeof(currentAnimation));
 	groundPos.z=FIXED_Z;
@@ -291,6 +291,9 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		Animation3d* child=*it;
 		child->SetAnimation(anim1,anim2,layers,flags);
 	}
+
+	// Calculate borders
+	SetupBorders();
 }
 
 bool Animation3d::IsAnimation(int anim1, int anim2)
@@ -336,7 +339,7 @@ bool Animation3d::IsIntersect(int x, int y)
 	ray_origin.z=MatrixViewInv._43;
 
 	// Main
-	FrameMove(0.0,drawXY.X,drawXY.Y,1.0f,true);
+	FrameMove(0.0,drawXY.X,drawXY.Y,drawScale,true);
 	if(IsIntersectFrame(animEntity->xFile->frameRoot,ray_origin,ray_dir)) return true;
 	// Childs
 	for(Animation3dVecIt it=childAnimations.begin(),end=childAnimations.end();it!=end;++it)
@@ -385,7 +388,7 @@ void Animation3d::SetupBorders()
 	FLTRECT borders(FLT_MAX,FLT_MAX,FLT_MIN,FLT_MIN);
 
 	// Root
-	FrameMove(0.0,drawXY.X,drawXY.Y,1.0f,true);
+	FrameMove(0.0,drawXY.X,drawXY.Y,drawScale,true);
 	SetupBordersFrame(animEntity->xFile->frameRoot,borders);
 	baseBorders.L=borders.L;
 	baseBorders.R=borders.R;
@@ -493,10 +496,10 @@ INTRECT Animation3d::GetFullBorders()
 {
 	ProcessBorders();
 	INTRECT result(fullBorders,drawXY.X-bordersXY.X,drawXY.Y-bordersXY.Y);
-	result.L-=CONTOURS_EXTRA_SIZE*3;
-	result.T-=CONTOURS_EXTRA_SIZE*4;
-	result.R+=CONTOURS_EXTRA_SIZE*3;
-	result.B+=CONTOURS_EXTRA_SIZE*2;
+	result.L-=CONTOURS_EXTRA_SIZE*3*drawScale;
+	result.T-=CONTOURS_EXTRA_SIZE*4*drawScale;
+	result.R+=CONTOURS_EXTRA_SIZE*3*drawScale;
+	result.B+=CONTOURS_EXTRA_SIZE*2*drawScale;
 	return result;
 }
 
@@ -632,7 +635,7 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE));
 	D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLORARG2,D3DTA_CURRENT));
 	D3D_HR(D3DDevice->SetRenderState(D3DRS_ZENABLE,TRUE));
-	D3D_HR(D3DDevice->Clear(0,NULL,D3DCLEAR_ZBUFFER,0,1.0f,0));
+	D3D_HR(D3DDevice->Clear(0,NULL,D3DCLEAR_ZBUFFER,0,0.99999f,0));
 
 	double elapsed=0.0f;
 	DWORD tick=Timer::FastTick();
@@ -664,9 +667,13 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 	D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLORARG2,D3DTA_DIFFUSE));
 
+	float old_scale=drawScale;
 	noDraw=false;
+	drawScale=scale;
 	drawXY.X=x;
 	drawXY.Y=y;
+
+	if(scale!=old_scale) SetupBorders();
 	return true;
 }
 
@@ -955,7 +962,7 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	if(!software_skinning && D3DCaps.VertexShaderVersion>=D3DVS_VERSION(2,0) && D3DCaps.MaxVertexBlendMatrices>=2) SkinningMethod=SKINNING_HLSL_SHADER;
 
 	// Projection matrix
-	D3DXMatrixPerspectiveFovLH(&MatrixProj,FOV,ASPECT,FIXED_Z-10.0f,FIXED_Z+10.0f);
+	D3DXMatrixPerspectiveFovLH(&MatrixProj,FOV,ASPECT,FIXED_Z-20.0f,FIXED_Z+20.0f);
 	D3D_HR(D3DDevice->SetTransform(D3DTS_PROJECTION,&MatrixProj));
 
 	// View matrix
