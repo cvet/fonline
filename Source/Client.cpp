@@ -1366,10 +1366,14 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
-				if(Keyb::KeyPressed[DIK_Z] && !script_result && !OptDisableMouseEvents)
+				if(!script_result && !OptDisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z])
 				{
-					HexMngr.ChangeZoom(0);
-					RebuildLookBorders=true;
+					int screen=GetActiveScreen();
+					if(IsMainScreen(SCREEN_GAME) && (screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW))
+					{
+						HexMngr.ChangeZoom(0);
+						RebuildLookBorders=true;
+					}
 				}
 			}
 		);
@@ -1704,7 +1708,7 @@ void FOClient::ProcessMouseWheel(int data)
 /************************************************************************/
 /* Local, global map zoom, global tabs scroll, mess box scroll          */
 /************************************************************************/
-	else if(screen==SCREEN_NONE)
+	else if(screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW)
 	{
 		INTRECT r=MessBoxCurRectDraw();
 		if(!r.IsZero() && IsCurInRect(r))
@@ -1731,7 +1735,8 @@ void FOClient::ProcessMouseWheel(int data)
 				else send=Chosen->NextRateItem(false);
 				if(send) Net_SendRateItem();
 			}
-			else if(Keyb::KeyPressed[DIK_Z] && data)
+
+			if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME))
 			{
 				HexMngr.ChangeZoom(data>0?-1:1);
 				RebuildLookBorders=true;
