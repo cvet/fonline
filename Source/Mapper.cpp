@@ -1106,7 +1106,7 @@ void FOMapper::ParseMouse()
 			}
 			else
 			{
-				HexMngr.ChangeZoom(-(int)didod[i].dwData/1000.0f);
+				if(didod[i].dwData) HexMngr.ChangeZoom((int)didod[i].dwData>0?-1:1);
 			}
 			continue;
 			);

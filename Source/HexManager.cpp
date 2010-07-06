@@ -1558,15 +1558,19 @@ void HexManager::InitView(int cx, int cy)
 	}
 }
 
-void HexManager::ChangeZoom(float offs)
+void HexManager::ChangeZoom(int zoom)
 {
 	if(!IsMapLoaded()) return;
-	if(offs>0.0f && SpritesZoom>=min(SpritesZoomMax,MAX_ZOOM)) return;
-	if(offs<0.0f && SpritesZoom<=max(SpritesZoomMin,MIN_ZOOM)) return;
 
-#ifdef FONLINE_CLIENT
+	if(!zoom && SpritesZoom==1.0f) return;
+	int init_zoom=zoom;
+	if(!zoom) zoom=(SpritesZoom>1.0f?-1:1);
+
+	if(zoom>0 && SpritesZoom>=min(SpritesZoomMax,MAX_ZOOM)) return;
+	if(zoom<0 && SpritesZoom<=max(SpritesZoomMin,MIN_ZOOM)) return;
+
 	// Check screen blockers
-	if(offs>0)
+	if(OptScrollCheck && zoom>0)
 	{
 		for(int x=-3;x<=3;x++)
 		{
@@ -1577,27 +1581,32 @@ void HexManager::ChangeZoom(float offs)
 			}
 		}
 	}
-#endif
 
-	if(offs!=0.0f)
+	float old_zoom=SpritesZoom;
+	int w=VIEW_WIDTH+(zoom>0?2:-2);
+	SpritesZoom=1.0f;
+	SpritesZoom=(float)w/(float)VIEW_WIDTH;
+
+	if(SpritesZoom<max(SpritesZoomMin,MIN_ZOOM))
 	{
-		float old_val=SpritesZoom;
-		SpritesZoom+=offs;
-		SpritesZoom=CLAMP(SpritesZoom,max(SpritesZoomMin,MIN_ZOOM),min(SpritesZoomMax,MAX_ZOOM));
-		if((old_val<1.0f && SpritesZoom>1.0f) || (old_val>1.0f && SpritesZoom<1.0f)) SpritesZoom=1.0f;
+		SpritesZoom=old_zoom;
+		SpritesZoomMin=old_zoom;
+		return;
 	}
-	else
+	if(SpritesZoom>min(SpritesZoomMax,MAX_ZOOM))
 	{
-		SpritesZoom=1.0f;
+		SpritesZoom=old_zoom;
+		SpritesZoomMax=old_zoom;
+		return;
 	}
 
-	hVisible=VIEW_HEIGHT+hTop+hBottom;
 	wVisible=VIEW_WIDTH+wLeft+wRight;
-
+	hVisible=VIEW_HEIGHT+hTop+hBottom;
 	delete[] viewField;
 	viewField=new ViewField[hVisible*wVisible];
-
 	RefreshMap();
+
+	if(init_zoom==0 && SpritesZoom!=1.0f) ChangeZoom(0);
 }
 
 void HexManager::GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y)

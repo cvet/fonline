@@ -219,7 +219,7 @@ private:
 	bool ProcessHexBorders(DWORD spr_id, int ox, int oy);
 
 public:
-	void ChangeZoom(float offs);
+	void ChangeZoom(int zoom); // <0 in, >0 out, 0 normalize
 	void GetScreenHexes(int& sx, int& sy){sx=screenHexX;sy=screenHexY;}
 	void GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
 	void GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y);
