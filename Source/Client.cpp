@@ -1366,7 +1366,11 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
-				if(Keyb::KeyPressed[DIK_Z] && !script_result && !OptDisableMouseEvents) HexMngr.ChangeZoom(0);
+				if(Keyb::KeyPressed[DIK_Z] && !script_result && !OptDisableMouseEvents)
+				{
+					HexMngr.ChangeZoom(0);
+					RebuildLookBorders=true;
+				}
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON3,
@@ -1727,9 +1731,10 @@ void FOClient::ProcessMouseWheel(int data)
 				else send=Chosen->NextRateItem(false);
 				if(send) Net_SendRateItem();
 			}
-			else if(Keyb::KeyPressed[DIK_Z])
+			else if(Keyb::KeyPressed[DIK_Z] && data)
 			{
-				if(data) HexMngr.ChangeZoom(data>0?-1:1);
+				HexMngr.ChangeZoom(data>0?-1:1);
+				RebuildLookBorders=true;
 			}
 		}
 		else if(IsMainScreen(SCREEN_GLOBAL_MAP))

@@ -429,7 +429,7 @@ bool SpriteManager::InitRenderStates()
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAOP , D3DTOP_MODULATE));
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
 	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAARG2,D3DTA_DIFFUSE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP , D3DTOP_SELECTARG2));
+	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP , D3DTOP_DISABLE));
 	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLORARG1,D3DTA_TEXTURE));
 	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLORARG2,D3DTA_CURRENT));
 	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_ALPHAOP , D3DTOP_MODULATE));
@@ -1404,7 +1404,7 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE& surf, BYTE 
 
 	if(!surf)
 	{
-		D3D_HR(dxDevice->CreateRenderTarget(modeWidth+64/MIN_ZOOM,modeHeight+48/MIN_ZOOM,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&surf,NULL));
+		D3D_HR(dxDevice->CreateRenderTarget(modeWidth+(int)(64.0f/MIN_ZOOM),modeHeight+(int)(48.0f/MIN_ZOOM),D3DFMT_X8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&surf,NULL));
 	}
 
 	// Set new render target
