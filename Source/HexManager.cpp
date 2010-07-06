@@ -1544,6 +1544,8 @@ void HexManager::InitView(int cx, int cy)
 			vpos=y2+i;
 			viewField[vpos].ScrX=MODE_WIDTH*SpritesZoom-x;
 			viewField[vpos].ScrY=y;
+			viewField[vpos].ScrXf=(float)viewField[vpos].ScrX;
+			viewField[vpos].ScrYf=(float)viewField[vpos].ScrY;
 		//	viewField[vpos].HexX=(hx>=0 && hx<maxHexX?hx:0xFFFF);
 		//	viewField[vpos].HexY=(hy>=0 && hy<maxHexY?hy:0xFFFF);
 			viewField[vpos].HexX=hx;
@@ -1561,16 +1563,12 @@ void HexManager::InitView(int cx, int cy)
 void HexManager::ChangeZoom(int zoom)
 {
 	if(!IsMapLoaded()) return;
-
 	if(!zoom && SpritesZoom==1.0f) return;
-	int init_zoom=zoom;
-	if(!zoom) zoom=(SpritesZoom>1.0f?-1:1);
-
 	if(zoom>0 && SpritesZoom>=min(SpritesZoomMax,MAX_ZOOM)) return;
 	if(zoom<0 && SpritesZoom<=max(SpritesZoomMin,MIN_ZOOM)) return;
 
 	// Check screen blockers
-	if(OptScrollCheck && zoom>0)
+	if(OptScrollCheck && (zoom>0 || (zoom==0 && SpritesZoom<1.0f)))
 	{
 		for(int x=-3;x<=3;x++)
 		{
@@ -1582,22 +1580,21 @@ void HexManager::ChangeZoom(int zoom)
 		}
 	}
 
-	float old_zoom=SpritesZoom;
-	int w=VIEW_WIDTH+(zoom>0?2:-2);
-	SpritesZoom=1.0f;
-	SpritesZoom=(float)w/(float)VIEW_WIDTH;
+	if(zoom || SpritesZoom<1.0f)
+	{
+		float old_zoom=SpritesZoom;
+		float w=MODE_WIDTH/32+((MODE_WIDTH%32)?1:0);
+		SpritesZoom=(w*SpritesZoom+(zoom>=0?2.0f:-2.0f))/w;
 
-	if(SpritesZoom<max(SpritesZoomMin,MIN_ZOOM))
-	{
-		SpritesZoom=old_zoom;
-		SpritesZoomMin=old_zoom;
-		return;
+		if(SpritesZoom<max(SpritesZoomMin,MIN_ZOOM) || SpritesZoom>min(SpritesZoomMax,MAX_ZOOM))
+		{
+			SpritesZoom=old_zoom;
+			return;
+		}
 	}
-	if(SpritesZoom>min(SpritesZoomMax,MAX_ZOOM))
+	else
 	{
-		SpritesZoom=old_zoom;
-		SpritesZoomMax=old_zoom;
-		return;
+		SpritesZoom=1.0f;
 	}
 
 	wVisible=VIEW_WIDTH+wLeft+wRight;
@@ -1606,7 +1603,7 @@ void HexManager::ChangeZoom(int zoom)
 	viewField=new ViewField[hVisible*wVisible];
 	RefreshMap();
 
-	if(init_zoom==0 && SpritesZoom!=1.0f) ChangeZoom(0);
+	if(zoom==0 && SpritesZoom!=1.0f) ChangeZoom(0);
 }
 
 void HexManager::GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y)
@@ -2136,6 +2133,10 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 {
 	if(!IsMapLoaded()) return false;
 
+	float xf=(float)x;
+	float yf=(float)y;
+	float ox=32.0f/SpritesZoom;
+	float oy=16.0f/SpritesZoom;
 	int y2=0;
 	int vpos=0;
 
@@ -2145,13 +2146,13 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 		{
 			vpos=y2+tx;
 
-			int x_=viewField[vpos].ScrX/SpritesZoom;
-			int y_=viewField[vpos].ScrY/SpritesZoom;
+			float x_=viewField[vpos].ScrXf/SpritesZoom;
+			float y_=viewField[vpos].ScrYf/SpritesZoom;
 
-			if(x<=x_) continue;
-			if(x>x_+32/SpritesZoom) continue;
-			if(y<=y_) continue;
-			if(y>y_+16/SpritesZoom) continue;
+			if(xf<=x_) continue;
+			if(xf>x_+ox) continue;
+			if(yf<=y_) continue;
+			if(yf>y_+oy) continue;
 
 			hx=viewField[vpos].HexX;
 			hy=viewField[vpos].HexY;

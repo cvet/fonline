@@ -57,8 +57,9 @@ struct ViewField
 {
 	int HexX,HexY;
 	int ScrX,ScrY;
+	float ScrXf,ScrYf;
 
-	ViewField():HexX(0),HexY(0),ScrX(0),ScrY(0){};
+	ViewField():HexX(0),HexY(0),ScrX(0),ScrY(0),ScrXf(0.0f),ScrYf(0.0f){};
 };
 
 /************************************************************************/
