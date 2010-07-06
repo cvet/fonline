@@ -1563,6 +1563,7 @@ void HexManager::InitView(int cx, int cy)
 void HexManager::ChangeZoom(int zoom)
 {
 	if(!IsMapLoaded()) return;
+	if(SpritesZoomMin==SpritesZoomMax) return;
 	if(!zoom && SpritesZoom==1.0f) return;
 	if(zoom>0 && SpritesZoom>=min(SpritesZoomMax,MAX_ZOOM)) return;
 	if(zoom<0 && SpritesZoom<=max(SpritesZoomMin,MIN_ZOOM)) return;

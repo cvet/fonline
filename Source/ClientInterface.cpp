@@ -2391,7 +2391,7 @@ void FOClient::GameRMouseUp()
 
 void FOClient::IntDraw()
 {
-	if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z])
+	if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && SpritesZoomMin!=SpritesZoomMax)
 	{
 		int screen=GetActiveScreen();
 		if(screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW)

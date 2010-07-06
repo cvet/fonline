@@ -1366,7 +1366,7 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
-				if(!script_result && !OptDisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z])
+				if(!script_result && !OptDisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z] && SpritesZoomMin!=SpritesZoomMax)
 				{
 					int screen=GetActiveScreen();
 					if(IsMainScreen(SCREEN_GAME) && (screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW))
@@ -1736,7 +1736,7 @@ void FOClient::ProcessMouseWheel(int data)
 				if(send) Net_SendRateItem();
 			}
 
-			if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME))
+			if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME) && SpritesZoomMin!=SpritesZoomMax)
 			{
 				HexMngr.ChangeZoom(data>0?-1:1);
 				RebuildLookBorders=true;
