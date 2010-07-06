@@ -1570,12 +1570,11 @@ void HexManager::ChangeZoom(int zoom)
 	// Check screen blockers
 	if(OptScrollCheck && (zoom>0 || (zoom==0 && SpritesZoom<1.0f)))
 	{
-		for(int x=-3;x<=3;x++)
+		for(int x=-1;x<=1;x++)
 		{
-			for(int y=-3;y<=3;y++)
+			for(int y=-1;y<=1;y++)
 			{
-				if(!x && !y) continue;
-				if(ScrollCheck(x,y)) return;
+				if((x || y) && ScrollCheck(x,y)) return;
 			}
 		}
 	}
@@ -1672,8 +1671,13 @@ void HexManager::DrawMap()
 	// Roof
 	if(OptShowRoof)
 	{
+		LPDIRECT3DDEVICE device=sprMngr->GetDevice();
+		device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT);
+		device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT);
 		sprMngr->DrawSprites(roofTree,false,true,0,-1);
 		if(rainCapacity) sprMngr->DrawSprites(roofRainTree,false,false,0,-1);
+		device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR);
+		device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR);
 	}
 
 	// Contours
@@ -1873,14 +1877,22 @@ bool HexManager::ScrollCheck(int xmod, int ymod)
 		(hTop+1)*wVisible+wRight+1, // Right top 2
 	};
 
-	// Up
-	if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true;
-	// Down
-	else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true;
-	// Left
-	if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true;
-	// Right
-	else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true;
+	if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true; // Up
+	else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true; // Down
+	if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true; // Left
+	else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true; // Right
+
+	// Add precise for zooming infelicity
+	if(SpritesZoom!=1.0f)
+	{
+		for(int i=0;i<4;i++) positions_left[i]--;
+		for(int i=0;i<4;i++) positions_right[i]++;
+
+		if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true; // Up
+		else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true; // Down
+		if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true; // Left
+		else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true; // Right
+	}
 	return false;
 }
 

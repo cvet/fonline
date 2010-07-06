@@ -2392,7 +2392,7 @@ void FOClient::GameRMouseUp()
 void FOClient::IntDraw()
 {
 	if(Keyb::KeyPressed[DIK_Z])
-		SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),Str::Format("ZOOM %d %%",(int)(SpritesZoom*100.0f)),FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_BIG);
+		SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),Str::Format("ZOOM %d %%",(int)(1.0f/SpritesZoom*100.0f)),FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_BIG);
 
 	if(!Chosen || !IntVisible) return;
 
