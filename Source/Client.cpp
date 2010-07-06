@@ -1366,7 +1366,7 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
-				if(!script_result && !OptDisableMouseEvents) HexMngr.ChangeZoom(0);
+				if(Keyb::KeyPressed[DIK_Z] && !script_result && !OptDisableMouseEvents) HexMngr.ChangeZoom(0);
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON3,
