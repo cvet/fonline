@@ -1074,10 +1074,9 @@ label_TryChangeLang:
 		{
 			switch(dikdw)
 			{
-#ifdef DEV_VESRION
-			case DIK_F6: if(Keyb::CtrlDwn) CmnShowCritId=!CmnShowCritId; break;
-			case DIK_F7: if(Keyb::CtrlDwn) CmnShowCritId=!CmnShowCritId; break;
-#endif
+			case DIK_F6: if(OptDebugInfo && Keyb::CtrlDwn) CmnShowCritId=!CmnShowCritId; break;
+			case DIK_F7: if(OptDebugInfo && Keyb::CtrlDwn) CmnShowCritId=!CmnShowCritId; break;
+
 				// Num Pad
 			case DIK_EQUALS:
 			case DIK_ADD:

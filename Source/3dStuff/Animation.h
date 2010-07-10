@@ -9,8 +9,6 @@
 #include <common.h>
 
 #define FOV                        (D3DX_PI/64.0f)
-#define FIXED_Z                    (OptFixedZ*((float)ModeHeight/600.0f))
-#define ASPECT                     ((float)ModeWidth/ModeHeight)
 #define BORDERS_GROW               (3)
 #define LAYERS3D_COUNT             (30)
 
@@ -149,8 +147,10 @@ public:
 	INTPOINT GetBordersPivot();
 	INTRECT GetBaseBorders();
 	INTRECT GetFullBorders();
+	INTRECT GetExtraBorders();
 
 	static bool StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning);
+	static bool SetScreenSize(int width, int height);
 	static void Finish();
 	static void BeginScene();
 	static void PreRestore();

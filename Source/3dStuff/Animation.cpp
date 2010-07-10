@@ -16,6 +16,8 @@
 LPDIRECT3DDEVICE9 D3DDevice=NULL;
 D3DCAPS9 D3DCaps;
 int ModeWidth=0,ModeHeight=0;
+float AspectRatio=0.0f;
+float FixedZ=0.0f;
 D3DLIGHT9 GlobalLight;
 D3DXMATRIX MatrixProj,MatrixView,MatrixViewInv,MatrixEmpty;
 double MoveTransitionTime=0.25;
@@ -36,10 +38,9 @@ Animation3dVec Animation3d::generalAnimations;
 
 Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSets(0),
 currentTrack(0),lastTick(0),endTick(0),speedAdjust(1.0f),shadowDisabled(false),dirAngle(150.0f),sprId(0),
-drawScale(1.0f),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),childChecker(true)
+drawScale(0.0f),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),childChecker(true)
 {
 	ZeroMemory(currentAnimation,sizeof(currentAnimation));
-	groundPos.z=FIXED_Z;
 	groundPos.w=1.0f;
 	D3DXMatrixRotationX(&matRot,-25.7f*D3DX_PI/180.0f);
 	D3DXMatrixIdentity(&matScale);
@@ -321,7 +322,7 @@ bool Animation3d::IsAnimationPlaying()
 bool Animation3d::IsIntersect(int x, int y)
 {
 	if(noDraw) return false;
-	INTRECT borders=GetFullBorders();
+	INTRECT borders=GetExtraBorders();
 	if(x<borders.L || x>borders.R || y<borders.T || y>borders.B) return false;
 
 	D3DXVECTOR3 v;
@@ -493,6 +494,12 @@ INTRECT Animation3d::GetBaseBorders()
 }
 
 INTRECT Animation3d::GetFullBorders()
+{
+	ProcessBorders();
+	return INTRECT(fullBorders,drawXY.X-bordersXY.X,drawXY.Y-bordersXY.Y);
+}
+
+INTRECT Animation3d::GetExtraBorders()
 {
 	ProcessBorders();
 	INTRECT result(fullBorders,drawXY.X-bordersXY.X,drawXY.Y-bordersXY.Y);
@@ -692,6 +699,7 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 		parentMatrix=mat_rot_y*matRot*mat_scale*matScale*mat_scale2*mat_trans;
 		groundPos.x=p3d.X;
 		groundPos.y=p3d.Y;
+		groundPos.z=FixedZ;
 	}
 
 	// Advance the time and set in the controller
@@ -799,8 +807,8 @@ void Animation3d::BuildShadowVolume(D3DXFRAME_EXTENDED* frame)
 	while(mesh_container)
 	{
 		LPD3DXMESH mesh=(mesh_container->pSkinInfo?mesh_container->exSkinMesh:mesh_container->MeshData.pMesh);
-//		ShadowVolume.BuildShadowVolume(mesh,D3DXVECTOR3(0.0f,sinf(75.7f)*FIXED_Z,-cosf(75.7f)*FIXED_Z),!mesh_container->pSkinInfo?frame->exCombinedTransformationMatrix:MatrixEmpty);
-//		D3DXVECTOR3 look(0.0f,sinf(25.7f)*FIXED_Z,-cosf(25.7f)*FIXED_Z);
+//		ShadowVolume.BuildShadowVolume(mesh,D3DXVECTOR3(0.0f,sinf(75.7f)*FixedZ,-cosf(75.7f)*FixedZ),!mesh_container->pSkinInfo?frame->exCombinedTransformationMatrix:MatrixEmpty);
+//		D3DXVECTOR3 look(0.0f,sinf(25.7f)*FixedZ,-cosf(25.7f)*FixedZ);
 //		D3DXVec3Normalize(&look,&look);
 		ShadowVolume.BuildShadowVolume(mesh,D3DXVECTOR3(0.0f,0.0f,1.0f),!mesh_container->pSkinInfo?frame->exCombinedTransformationMatrix:MatrixEmpty);
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
@@ -954,25 +962,13 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	D3D_HR(D3DDevice->GetRenderTarget(0,&backbuf));
 	D3D_HR(backbuf->GetDesc(&backbuf_desc));
 	SAFEREL(backbuf);
-	ModeWidth=backbuf_desc.Width;
-	ModeHeight=backbuf_desc.Height;
+	if(!SetScreenSize(backbuf_desc.Width,backbuf_desc.Height)) return false;
 
 	// Get skinning method
 	SkinningMethod=SKINNING_SOFTWARE;
 	if(!software_skinning && D3DCaps.VertexShaderVersion>=D3DVS_VERSION(2,0) && D3DCaps.MaxVertexBlendMatrices>=2) SkinningMethod=SKINNING_HLSL_SHADER;
 
-	// Projection matrix
-	D3DXMatrixPerspectiveFovLH(&MatrixProj,FOV,ASPECT,FIXED_Z-20.0f,FIXED_Z+20.0f);
-	D3D_HR(D3DDevice->SetTransform(D3DTS_PROJECTION,&MatrixProj));
-
-	// View matrix
-	//D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,sinf(25.7f)*FIXED_Z,-cosf(25.7f)*FIXED_Z),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
-	D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,0.0f,-FIXED_Z),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
-	D3D_HR(D3DDevice->SetTransform(D3DTS_VIEW,&MatrixView));
-	D3DXMatrixInverse(&MatrixViewInv,NULL,&MatrixView);
-
-	// Other
-	D3D_HR(D3DDevice->GetViewport(&ViewPort));
+	// Identity matrix
 	D3DXMatrixIdentity(&MatrixEmpty);
 
 	// Create a directional light
@@ -981,7 +977,7 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	GlobalLight.Diffuse.a=1.0f;
 	// Direction for our light - it must be normalized - pointing down and along z
 	D3DXVec3Normalize((D3DXVECTOR3*)&GlobalLight.Direction,&D3DXVECTOR3(0.0f,0.0f,1.0f));
-	//GlobalLight.Position=D3DXVECTOR3(0.0f,sinf(25.7f)*FIXED_Z,-cosf(25.7f)*FIXED_Z);
+	//GlobalLight.Position=D3DXVECTOR3(0.0f,sinf(25.7f)*FixedZ,-cosf(25.7f)*FixedZ);
 	D3D_HR(D3DDevice->LightEnable(0,TRUE));
 	// Plus some non directional ambient lighting
 	//D3D_HR(D3DDevice->SetRenderState(D3DRS_AMBIENT,D3DCOLOR_XRGB(80,80,80)));
@@ -1012,6 +1008,31 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 		AnimDelay=1000/GameOpt.Animation3dFPS;
 		MoveTransitionTime=0.001;
 	}
+
+	return true;
+}
+
+bool Animation3d::SetScreenSize(int width, int height)
+{
+	ModeWidth=width;
+	ModeHeight=height;
+
+	// Aspect ratio, z
+	AspectRatio=(float)ModeWidth/ModeHeight;
+	FixedZ=OptFixedZ*((float)ModeHeight/600.0f);
+
+	// Projection matrix
+	D3DXMatrixPerspectiveFovLH(&MatrixProj,FOV,AspectRatio,FixedZ-20.0f,FixedZ+20.0f);
+	D3D_HR(D3DDevice->SetTransform(D3DTS_PROJECTION,&MatrixProj));
+
+	// View matrix
+	//D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,sinf(25.7f)*FixedZ,-cosf(25.7f)*FixedZ),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
+	D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,0.0f,-FixedZ),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
+	D3D_HR(D3DDevice->SetTransform(D3DTS_VIEW,&MatrixView));
+	D3DXMatrixInverse(&MatrixViewInv,NULL,&MatrixView);
+
+	// View port
+	D3D_HR(D3DDevice->GetViewport(&ViewPort));
 
 	return true;
 }
@@ -1104,8 +1125,8 @@ FLTPOINT Animation3d::Convert2dTo3d(int x, int y)
 {
 	float xf=(float)x/(ModeWidth/2);
 	float yf=(float)y/(ModeHeight/2);
-	float dx=FIXED_Z*tanf(FOV*0.5f)*(xf-1.0f)*ASPECT;
-	float dy=FIXED_Z*tanf(FOV*0.5f)*(1.0f-yf);
+	float dx=FixedZ*tanf(FOV*0.5f)*(xf-1.0f)*AspectRatio;
+	float dy=FixedZ*tanf(FOV*0.5f)*(1.0f-yf);
 	return FLTPOINT(dx,dy);
 }
 
@@ -1113,7 +1134,7 @@ INTPOINT Animation3d::Convert3dTo2d(float x, float y)
 {
 	D3DXVECTOR3 coords;
 	D3DXMATRIX mat=MatrixEmpty;
-	D3DXVec3Project(&coords,&D3DXVECTOR3(x,y,FIXED_Z),&ViewPort,&MatrixProj,&MatrixView,&MatrixEmpty);
+	D3DXVec3Project(&coords,&D3DXVECTOR3(x,y,FixedZ),&ViewPort,&MatrixProj,&MatrixView,&MatrixEmpty);
 	return INTPOINT(coords.x,coords.y);
 }
 

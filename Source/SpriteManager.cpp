@@ -18,6 +18,8 @@ float SpritesZoomMin=MIN_ZOOM;
 #define SPRITES_POOL_GROW_SIZE    (10000)
 #define SPRITES_RESIZE_COUNT      (100)
 
+#define SURF_POINT(lr,x,y)        *((DWORD*)((BYTE*)lr.pBits+lr.Pitch*(y)+(x)*4))
+
 #ifdef SPRITE_STROKE
 #define SURF_SPRITES_OFFS         (2)
 #else
@@ -184,12 +186,14 @@ void Sprites::SortByMapPos()
 /* Sprite manager                                                       */
 /************************************************************************/
 
-SpriteManager::SpriteManager(): isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
+SpriteManager::SpriteManager():
+isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
+spr3dRT(NULL),spr3dDS(NULL),spr3dSurfWidth(256),spr3dSurfHeight(256),sceneBeginned(false),
 dxDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),vbPoints(NULL),vbPointsSize(0),
 PreRestore(NULL),PostRestore(NULL),
 drawOffsetX(NULL),drawOffsetY(NULL),baseTexture(0),
 eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
-contoursTexture(NULL),contoursTextureSurf(NULL),contours3dSurf(NULL),contoursMidTexture(NULL),contoursMidTextureSurf(NULL),
+contoursTexture(NULL),contoursTextureSurf(NULL),contoursMidTexture(NULL),contoursMidTextureSurf(NULL),contours3dRT(NULL),
 contoursPS(NULL),contoursCT(NULL),contoursAdded(false),
 modeWidth(0),modeHeight(0)
 {
@@ -351,6 +355,8 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 
 bool SpriteManager::InitBuffers()
 {
+	SAFEREL(spr3dRT);
+	SAFEREL(spr3dDS);
 	SAFEDELA(waitBuf);
 	SAFEREL(pVB);
 	SAFEREL(pIB);
@@ -358,7 +364,7 @@ bool SpriteManager::InitBuffers()
 	SAFEREL(contoursTextureSurf);
 	SAFEREL(contoursMidTexture);
 	SAFEREL(contoursMidTextureSurf);
-	SAFEREL(contours3dSurf);
+	SAFEREL(contours3dRT);
 
 	// Vertex buffer
 	D3D_HR(dxDevice->CreateVertexBuffer(flushSprCnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&pVB,NULL));
@@ -396,12 +402,15 @@ bool SpriteManager::InitBuffers()
 	{
 		// Contours render target
 		D3D_HR(direct3D->CheckDepthStencilMatch(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,D3DFMT_X8R8G8B8,D3DFMT_A8R8G8B8,D3DFMT_D24S8));
-		D3D_HR(dxDevice->CreateRenderTarget(modeWidth,modeHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&contours3dSurf,NULL));
 		D3D_HR(D3DXCreateTexture(dxDevice,modeWidth,modeHeight,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&contoursTexture));
 		D3D_HR(contoursTexture->GetSurfaceLevel(0,&contoursTextureSurf));
 		D3D_HR(D3DXCreateTexture(dxDevice,modeWidth,modeHeight,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&contoursMidTexture));
 		D3D_HR(contoursMidTexture->GetSurfaceLevel(0,&contoursMidTextureSurf));
+		D3D_HR(dxDevice->CreateRenderTarget(modeWidth,modeHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&contours3dRT,NULL));
 	}
+
+	D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dRT,NULL));
+	D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dDS,NULL));
 	return true;
 }
 
@@ -472,16 +481,18 @@ void SpriteManager::Clear()
 	callVec.clear();
 
 	Animation3d::Finish();
+	SAFEREL(spr3dRT);
+	SAFEREL(spr3dDS);
 	SAFEREL(pVB);
 	SAFEREL(pIB);
 	SAFEDELA(waitBuf);
 	SAFEREL(vbPoints);
 	SAFEREL(dxDevice);
-	SAFEREL(contours3dSurf);
 	SAFEREL(contoursTextureSurf);
 	SAFEREL(contoursTexture);
 	SAFEREL(contoursMidTextureSurf);
 	SAFEREL(contoursMidTexture);
+	SAFEREL(contours3dRT);
 	SAFEREL(contoursCT);
 	SAFEREL(contoursPS);
 	SAFEREL(direct3D);
@@ -497,6 +508,7 @@ bool SpriteManager::BeginScene(DWORD clear_color)
 
 	if(clear_color) D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,clear_color,1.0f,0));
 	D3D_HR(dxDevice->BeginScene());
+	sceneBeginned=true;
 	Animation3d::BeginScene();
 	return true;
 }
@@ -505,6 +517,7 @@ void SpriteManager::EndScene()
 {
 	Flush();
 	dxDevice->EndScene();
+	sceneBeginned=false;
 	dxDevice->Present(NULL,NULL,NULL,NULL);
 }
 
@@ -513,6 +526,8 @@ bool SpriteManager::Restore()
 	if(!isInit) return false;
 
 	// Release resources
+	SAFEREL(spr3dRT);
+	SAFEREL(spr3dDS);
 	SAFEREL(pVB);
 	SAFEREL(pIB);
 	SAFEREL(vbPoints);
@@ -520,7 +535,7 @@ bool SpriteManager::Restore()
 	SAFEREL(contoursTextureSurf);
 	SAFEREL(contoursMidTexture);
 	SAFEREL(contoursMidTextureSurf);
-	SAFEREL(contours3dSurf);
+	SAFEREL(contours3dRT);
 	Animation3d::PreRestore();
 	if(PreRestore) (*PreRestore)();
 
@@ -748,11 +763,10 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 	}
 
 #ifdef SPRITE_STROKE
-#define SURF_POINT(x,y) (*((DWORD*)((BYTE*)rdst.pBits+rdst.Pitch*(y)+(x)*4)))
-	for(int i=0;i<h+2;i++) SURF_POINT(0,i)=SURF_POINT(1,i); // Left
-	for(int i=0;i<h+2;i++) SURF_POINT(w+1,i)=SURF_POINT(w,i); // Right
-	for(int i=0;i<w+2;i++) SURF_POINT(i,0)=SURF_POINT(i,1); // Top
-	for(int i=0;i<w+2;i++) SURF_POINT(i,h+1)=SURF_POINT(i,h); // Bottom
+	for(int i=0;i<h+2;i++) SURF_POINT(rdst,0,i)=SURF_POINT(rdst,1,i); // Left
+	for(int i=0;i<h+2;i++) SURF_POINT(rdst,w+1,i)=SURF_POINT(rdst,w,i); // Right
+	for(int i=0;i<w+2;i++) SURF_POINT(rdst,i,0)=SURF_POINT(rdst,i,1); // Top
+	for(int i=0;i<w+2;i++) SURF_POINT(rdst,i,h+1)=SURF_POINT(rdst,i,h); // Bottom
 #endif
 
 	D3D_HR(dst_surf->UnlockRect());
@@ -805,7 +819,7 @@ DWORD SpriteManager::ReloadSprite(DWORD spr_id, const char* fname, int path_type
 	return spr_id;
 }
 
-DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** ppInfo)
+DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** pp_info)
 {
 	if(!isInit) return 0;
 	if(!fname || !fname[0]) return 0;
@@ -820,10 +834,17 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** p
 		return 0;
 	}
 
-	if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
-		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type,ppInfo);
+	if(!_stricmp(ext,"x") || !_stricmp(ext,"fo3d"))
+	{
+		DWORD spr_id;
+		if(!LoadSprite3d(fname,path_type,spr_id,pp_info)) return false;
+		return spr_id;
+	}
 
-	SpriteInfo* lpinf=new SpriteInfo;
+	if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
+		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type,pp_info);
+
+	SpriteInfo* si=new SpriteInfo();
 
 	short offs_x, offs_y;
 	fileMngr.SetCurPos(0xA);
@@ -831,8 +852,8 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** p
 	fileMngr.SetCurPos(0x16);
 	offs_y=fileMngr.GetBEWord();
 
-	lpinf->OffsX=offs_x;
-	lpinf->OffsY=offs_y;
+	si->OffsX=offs_x;
+	si->OffsY=offs_y;
 
 	fileMngr.SetCurPos(0x3E);
 	WORD w=fileMngr.GetBEWord();
@@ -850,14 +871,14 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** p
 	for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fileMngr.GetByte()];
 
 	// Fill
-	DWORD result=FillSurfaceFromMemory(lpinf,data,size);
+	DWORD result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
 	fileMngr.UnloadFile();
-	if(ppInfo && result) (*ppInfo)=lpinf;
+	if(pp_info && result) *pp_info=si;
 	return result;
 }
 
-DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo** ppInfo)
+DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo** pp_info)
 {
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
@@ -876,7 +897,7 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo*
 		if(!is_frm) return 0;
 		short ox=fofrm.GetInt("offs_x",0);
 		short oy=fofrm.GetInt("offs_y",0);
-		DWORD spr_id=LoadSprite(fname2,path_type,ppInfo);
+		DWORD spr_id=LoadSprite(fname2,path_type,pp_info);
 		if(!spr_id) return 0;
 		SpriteInfo* si=GetSpriteInfo(spr_id);
 		si->OffsX+=ox;
@@ -889,23 +910,84 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo*
 	}
 
 	// Dx8, Dx9: .bmp, .dds, .dib, .hdr, .jpg, .pfm, .png, .ppm, .tga
-	SpriteInfo* lpinf=new SpriteInfo;
-	lpinf->OffsX=0;
-	lpinf->OffsY=0;
+	SpriteInfo* si=new SpriteInfo();
+	si->OffsX=0;
+	si->OffsY=0;
 
-	DWORD result=FillSurfaceFromMemory(lpinf,fileMngr.GetBuf(),fileMngr.GetFsize());
+	DWORD result=FillSurfaceFromMemory(si,fileMngr.GetBuf(),fileMngr.GetFsize());
 	fileMngr.UnloadFile();
-	if(ppInfo && result) (*ppInfo)=lpinf;
+	if(pp_info && result) *pp_info=si;
 	return result;
 }
 
-DWORD SpriteManager::LoadRix(const char *fname, int path_type)
+bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id, SpriteInfo** pp_info)
+{
+	Animation3d* anim3d=Load3dAnimation(fname,path_type,pp_info);
+	if(!anim3d) return false;
+
+	// Render
+	LPDIRECT3DSURFACE old_rt=NULL,old_ds=NULL;
+	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
+	D3D_HR(dxDevice->SetDepthStencilSurface(spr3dDS));
+	D3D_HR(dxDevice->SetRenderTarget(0,spr3dRT));
+	if(!sceneBeginned) D3D_HR(dxDevice->BeginScene());
+
+	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,1.0f,0));
+	Animation3d::SetScreenSize(spr3dSurfWidth,spr3dSurfHeight);
+	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
+	Animation3d::SetScreenSize(modeWidth,modeHeight);
+
+	if(!sceneBeginned) D3D_HR(dxDevice->EndScene());
+	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
+	D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
+	old_rt->Release();
+	old_ds->Release();
+
+	// Calculate sprite borders
+	INTRECT r=anim3d->GetFullBorders();
+	RECT r_={r.L+BORDERS_GROW-1,r.T+BORDERS_GROW-1,r.R-BORDERS_GROW+1,r.B-BORDERS_GROW+1};
+
+	// Grow surfaces while sprite not fitted in it
+	if(r_.left<0 || r_.right>=spr3dSurfWidth || r_.top<0 || r_.bottom>=spr3dSurfHeight)
+	{
+ 		if(r_.left<0 || r_.right>=spr3dSurfWidth) spr3dSurfWidth*=2;
+ 		if(r_.top<0 || r_.bottom>=spr3dSurfHeight) spr3dSurfHeight*=2;
+		SAFEREL(spr3dRT);
+		SAFEREL(spr3dDS);
+		D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dRT,NULL));
+		D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dDS,NULL));
+		return LoadSprite3d(fname,path_type,spr_id,pp_info);
+	}
+
+	// Copy to system memory
+	D3DLOCKED_RECT lr;
+	D3D_HR(spr3dRT->LockRect(&lr,&r_,D3DLOCK_READONLY));
+	DWORD w=r_.right-r_.left;
+	DWORD h=r_.bottom-r_.top;
+	DWORD size=12+h*w*4;
+	BYTE* data=new BYTE[size];
+	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+	*((DWORD*)data+1)=w;
+	*((DWORD*)data+2)=h;
+	for(int i=0;i<h;i++) memcpy(data+12+w*4*i,(BYTE*)lr.pBits+lr.Pitch*i,w*4);
+	D3D_HR(spr3dRT->UnlockRect());
+
+	// Fill from memory
+	SpriteInfo* si=new SpriteInfo();
+	DWORD result=FillSurfaceFromMemory(si,data,size);
+	if(pp_info && result) *pp_info=si;
+	spr_id=result;
+	return true;
+}
+
+DWORD SpriteManager::LoadRix(const char* fname, int path_type)
 {
 	if(!isInit) return 0;
 	if(!fname || !fname[0]) return 0;
 	if(!fileMngr.LoadFile(fname,path_type)) return 0;
 
-	SpriteInfo* lpinf=new SpriteInfo;
+	SpriteInfo* si=new SpriteInfo();
 	fileMngr.SetCurPos(0x4);
 	WORD w;fileMngr.CopyMem(&w,2);
 	WORD h;fileMngr.CopyMem(&h,2);
@@ -929,7 +1011,7 @@ DWORD SpriteManager::LoadRix(const char *fname, int path_type)
 		*(ptr+i)=D3DCOLOR_XRGB(r,g,b);
 	}
 
-	DWORD result=FillSurfaceFromMemory(lpinf,data,size);
+	DWORD result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
 	fileMngr.UnloadFile();
 	return result;
@@ -1219,9 +1301,9 @@ AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_typ
 	return anim.Release();
 }
 
-Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type)
+Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type, SpriteInfo** pp_info /* = NULL */)
 {
-	if(!fileMngr.LoadFile(fname,path_type)) return false;
+	if(!fileMngr.LoadFile(fname,path_type)) return NULL;
 	fileMngr.UnloadFile();
 
 	// Fill data
@@ -1237,6 +1319,7 @@ Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type)
 	// Cross links
 	anim3d->SetSprId(index);
 	si->Anim3d=anim3d;
+	if(pp_info) *pp_info=si;
 	return anim3d;
 }
 
@@ -1281,6 +1364,13 @@ bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */)
 
 	SpriteInfo* si=sprData[id];
 	if(!si) return false;
+
+	if(si->Anim3d)
+	{
+		Flush();
+		Draw3d(x,y,1.0f,si->Anim3d,NULL,color);
+		return true;
+	}
 
 	if(curTexture!=si->Surf->Texture)
 	{
@@ -1329,8 +1419,8 @@ bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, boo
 	SpriteInfo* si=sprData[id];
 	if(!si) return false;
 
-	float w_real=(float)si->Width; //Cast
-	float h_real=(float)si->Height; //Cast
+	float w_real=(float)si->Width;
+	float h_real=(float)si->Height;
 	float wf=w_real;
 	float hf=h_real;
 	float k=min(w/w_real,h/h_real);
@@ -1345,6 +1435,13 @@ bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, boo
 	{
 		x+=(w-wf)/2.0f;
 		y+=(h-hf)/2.0f;
+	}
+
+	if(si->Anim3d)
+	{
+		Flush();
+		Draw3d(x,y,k,si->Anim3d,NULL,color);
+		return true;
 	}
 
 	if(curTexture!=si->Surf->Texture)
@@ -1614,7 +1711,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		else
 		{
 			// Todo: check 3d borders
-//			INTRECT fb=si->Anim3d->GetFullBorders();
+//			INTRECT fb=si->Anim3d->GetExtraBorders();
 //			if(x/SpritesZoom>modeWidth || (x+si->Width)/SpritesZoom<0 || y/SpritesZoom>modeHeight || (y+si->Height)/SpritesZoom<0) continue;
 		}
 
@@ -1704,9 +1801,9 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			// Debug borders
 			if(OptDebugInfo)
 			{
-				INTRECT fb=si->Anim3d->GetFullBorders();
+				INTRECT eb=si->Anim3d->GetExtraBorders();
 				INTRECT bb=si->Anim3d->GetBaseBorders();
-				PrepareSquare(borders,FLTRECT(fb.L,fb.T,fb.R,fb.B),0x5f750075);
+				PrepareSquare(borders,FLTRECT(eb.L,eb.T,eb.R,eb.B),0x5f750075);
 				PrepareSquare(borders,FLTRECT(bb.L,bb.T,bb.R,bb.B),0x5f757575);
 			}
 			continue;
@@ -2155,7 +2252,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 
 	// Shader contour
 	Animation3d* anim3d=si->Anim3d;
-	INTRECT borders=(anim3d?anim3d->GetFullBorders():INTRECT(x-1,y-1,x+si->Width+1,y+si->Height+1));
+	INTRECT borders=(anim3d?anim3d->GetExtraBorders():INTRECT(x-1,y-1,x+si->Width+1,y+si->Height+1));
 	LPDIRECT3DTEXTURE texture=(anim3d?contoursMidTexture:si->Surf->Texture);
 	float ws,hs;
 	FLTRECT tuv,tuvh;
@@ -2245,7 +2342,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		// Render to contours texture
 		LPDIRECT3DSURFACE old_rt;
 		D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-		D3D_HR(dxDevice->SetRenderTarget(0,contours3dSurf));
+		D3D_HR(dxDevice->SetRenderTarget(0,contours3dRT));
 
 		D3D_HR(dxDevice->SetRenderState(D3DRS_ZENABLE,TRUE));
 		D3D_HR(dxDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_NOTEQUAL));
@@ -2277,7 +2374,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 
 		// Copy to mid surface
 		RECT r={borders.L-1,borders.T-1,borders.R+1,borders.B+1};
-		D3D_HR(dxDevice->StretchRect(contours3dSurf,&r,contoursMidTextureSurf,&r,D3DTEXF_NONE));
+		D3D_HR(dxDevice->StretchRect(contours3dRT,&r,contoursMidTextureSurf,&r,D3DTEXF_NONE));
 	}
 
 	// Calculate contour color
@@ -2415,7 +2512,6 @@ DWORD SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
 	return result;
 }
 
-#define GET_SURF_POINT(x,y) *((DWORD*)((BYTE*)r.pBits+r.Pitch*(y)+(x)*4))
 #define SET_IMAGE_POINT(x,y) *(buf+(y)*buf_w+(x))=color
 void SpriteManager::WriteContour4(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DWORD w, DWORD h, DWORD color)
 {
@@ -2423,12 +2519,12 @@ void SpriteManager::WriteContour4(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DW
 	{
 		for(DWORD x=0;x<w;x++)
 		{
-			DWORD p=GET_SURF_POINT(x,y);
+			DWORD p=SURF_POINT(r,x,y);
 			if(!p) continue;
-			if(!x || !GET_SURF_POINT(x-1,y)) SET_IMAGE_POINT(x-1,y);
-			if(x==w-1 || !GET_SURF_POINT(x+1,y)) SET_IMAGE_POINT(x+1,y);
-			if(!y || !GET_SURF_POINT(x,y-1)) SET_IMAGE_POINT(x,y-1);
-			if(y==h-1 || !GET_SURF_POINT(x,y+1)) SET_IMAGE_POINT(x,y+1);
+			if(!x || !SURF_POINT(r,x-1,y)) SET_IMAGE_POINT(x-1,y);
+			if(x==w-1 || !SURF_POINT(r,x+1,y)) SET_IMAGE_POINT(x+1,y);
+			if(!y || !SURF_POINT(r,x,y-1)) SET_IMAGE_POINT(x,y-1);
+			if(y==h-1 || !SURF_POINT(r,x,y+1)) SET_IMAGE_POINT(x,y+1);
 		}
 	}
 }
@@ -2439,16 +2535,16 @@ void SpriteManager::WriteContour8(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DW
 	{
 		for(DWORD x=0;x<w;x++)
 		{
-			DWORD p=GET_SURF_POINT(x,y);
+			DWORD p=SURF_POINT(r,x,y);
 			if(!p) continue;
-			if(!x || !GET_SURF_POINT(x-1,y)) SET_IMAGE_POINT(x-1,y);
-			if(x==w-1 || !GET_SURF_POINT(x+1,y)) SET_IMAGE_POINT(x+1,y);
-			if(!y || !GET_SURF_POINT(x,y-1)) SET_IMAGE_POINT(x,y-1);
-			if(y==h-1 || !GET_SURF_POINT(x,y+1)) SET_IMAGE_POINT(x,y+1);
-			if((!x && !y) || !GET_SURF_POINT(x-1,y-1)) SET_IMAGE_POINT(x-1,y-1);
-			if((x==w-1 && !y) || !GET_SURF_POINT(x+1,y-1)) SET_IMAGE_POINT(x+1,y-1);
-			if((x==w-1 && y==h-1) || !GET_SURF_POINT(x+1,y+1)) SET_IMAGE_POINT(x+1,y+1);
-			if((y==h-1 && !x) || !GET_SURF_POINT(x-1,y+1)) SET_IMAGE_POINT(x-1,y+1);
+			if(!x || !SURF_POINT(r,x-1,y)) SET_IMAGE_POINT(x-1,y);
+			if(x==w-1 || !SURF_POINT(r,x+1,y)) SET_IMAGE_POINT(x+1,y);
+			if(!y || !SURF_POINT(r,x,y-1)) SET_IMAGE_POINT(x,y-1);
+			if(y==h-1 || !SURF_POINT(r,x,y+1)) SET_IMAGE_POINT(x,y+1);
+			if((!x && !y) || !SURF_POINT(r,x-1,y-1)) SET_IMAGE_POINT(x-1,y-1);
+			if((x==w-1 && !y) || !SURF_POINT(r,x+1,y-1)) SET_IMAGE_POINT(x+1,y-1);
+			if((x==w-1 && y==h-1) || !SURF_POINT(r,x+1,y+1)) SET_IMAGE_POINT(x+1,y+1);
+			if((y==h-1 && !x) || !SURF_POINT(r,x-1,y+1)) SET_IMAGE_POINT(x-1,y+1);
 		}
 	}
 }

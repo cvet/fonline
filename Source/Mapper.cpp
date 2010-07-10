@@ -785,7 +785,6 @@ label_TryChangeLang:
 			case DIK_F9: ObjVisible=!ObjVisible; break;
 			case DIK_F10: HexMngr.SwitchShowHex(); break;
 			case DIK_F11: HexMngr.SwitchShowRain(); break;
-			//case DIK_F11: SprMngr.SaveSufaces(); break;
 			case DIK_DELETE: SelectDelete(); break;
 			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=60; ProcessGameTime();} break;
 			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=60; ProcessGameTime();} break;
@@ -800,6 +799,7 @@ label_TryChangeLang:
 			{
 			case DIK_F7: IntFix=!IntFix; break;
 			case DIK_F9: ObjFix=!ObjFix; break;
+			case DIK_F11: SprMngr.SaveSufaces(); break;
 			case DIK_ESCAPE: DestroyWindow(Wnd); break;
 			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=1; ProcessGameTime();} break;
 			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=1; ProcessGameTime();} break;
@@ -1371,6 +1371,8 @@ void FOMapper::RefreshTiles()
 	formats.push_back("png");
 	formats.push_back("ppm");
 	formats.push_back("tga");
+	formats.push_back("x");
+	formats.push_back("fo3d");
 
 	StrVec tiles;
 	FileManager::GetFolderFileNames(PT_ART_TILES,NULL,tiles);

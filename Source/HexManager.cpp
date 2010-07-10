@@ -2223,13 +2223,19 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 		if(ignorePids.count(item->GetProtoId())) continue;
 #endif
 
-		SpriteInfo* sprinf=sprMngr->GetSpriteInfo(item->SprId);
-		if(!sprinf) continue;
+		SpriteInfo* si=sprMngr->GetSpriteInfo(item->SprId);
+		if(!si) continue;
 
-		int l=(*item->HexScrX+item->ScrX+sprinf->OffsX+16+CmnScrOx-sprinf->Width/2)/SpritesZoom;
-		int r=(*item->HexScrX+item->ScrX+sprinf->OffsX+16+CmnScrOx+sprinf->Width/2)/SpritesZoom;
-		int t=(*item->HexScrY+item->ScrY+sprinf->OffsY+6+CmnScrOy-sprinf->Height)/SpritesZoom;
-		int b=(*item->HexScrY+item->ScrY+sprinf->OffsY+6+CmnScrOy)/SpritesZoom;
+		if(si->Anim3d)
+		{
+			if(si->Anim3d->IsIntersect(x,y)) pix_item.push_back(item);
+			continue;
+		}
+
+		int l=(*item->HexScrX+item->ScrX+si->OffsX+16+CmnScrOx-si->Width/2)/SpritesZoom;
+		int r=(*item->HexScrX+item->ScrX+si->OffsX+16+CmnScrOx+si->Width/2)/SpritesZoom;
+		int t=(*item->HexScrY+item->ScrY+si->OffsY+6+CmnScrOy-si->Height)/SpritesZoom;
+		int b=(*item->HexScrY+item->ScrY+si->OffsY+6+CmnScrOy)/SpritesZoom;
 
 		if(x>=l && x<=r && y>=t && y<=b && sprMngr->IsPixNoTransp(item->SprId,x-l,y-t))
 		{
@@ -2286,7 +2292,7 @@ CritterCl* HexManager::GetCritterPixel(int x, int y, bool ignor_mode)
 		}
 
 		if(x>=(cr->DRect.L+CmnScrOx)/SpritesZoom && x<=(cr->DRect.R+CmnScrOx)/SpritesZoom &&
-		   y>=(cr->DRect.T+CmnScrOy)/SpritesZoom && y<=(cr->DRect.B+CmnScrOy)/SpritesZoom &&
+			y>=(cr->DRect.T+CmnScrOy)/SpritesZoom && y<=(cr->DRect.B+CmnScrOy)/SpritesZoom &&
 			sprMngr->IsPixNoTransp(cr->SprId,x-(cr->DRect.L+CmnScrOx)/SpritesZoom,y-(cr->DRect.T+CmnScrOy)/SpritesZoom))
 		{
 			crits.push_back(cr);
