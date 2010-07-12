@@ -1812,7 +1812,7 @@ INTRECT CritterCl::GetTextRect()
 		if(Anim3d)
 		{
 			SprMngr->GetDrawCntrRect(SprDraw,&textRect);
-			textRect(-CmnScrOx,BORDERS_GROW-CmnScrOy);
+			textRect(-CmnScrOx,-CmnScrOy-3);
 		}
 		return textRect;
 	}

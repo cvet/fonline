@@ -8,8 +8,6 @@
 #include <FlexRect.h>
 #include <common.h>
 
-#define FOV                        (D3DX_PI/64.0f)
-#define BORDERS_GROW               (3)
 #define LAYERS3D_COUNT             (30)
 
 #define ANIMATION_STAY             (0x01)
@@ -96,6 +94,7 @@ private:
 	INTPOINT drawXY,bordersXY;
 	float drawScale;
 	D3DXVECTOR4 groundPos;
+	bool bordersDisabled;
 	INTRECT baseBorders,fullBorders;
 	DWORD calcBordersTick;
 	bool noDraw;
@@ -116,9 +115,8 @@ private:
 	void UpdateFrameMatrices(const D3DXFRAME* frame_base, const D3DXMATRIX* parent_matrix);
 	void BuildShadowVolume(D3DXFRAME_EXTENDED* frame);
 	bool DrawFrame(LPD3DXFRAME frame, bool with_shadow);
-	bool DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, ID3DXEffect* effect, const char* technique);
+	bool DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, ID3DXEffect* effect, D3DXHANDLE technique);
 	bool IsIntersectFrame(LPD3DXFRAME frame, const D3DXVECTOR3& ray_origin, const D3DXVECTOR3& ray_dir);
-	void SetupBorders();
 	bool SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders);
 	void ProcessBorders();
 	double GetSpeed();
@@ -137,14 +135,17 @@ public:
 	void SetRotation(float rx, float ry, float rz);
 	void SetScale(float sx, float sy, float sz);
 	void SetSpeed(float speed);
-	void DisableShadow();
+	void EnableShadow(bool enabled){shadowDisabled=!enabled;}
 	bool Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color);
 	void SetDrawPos(int x, int y){drawXY.X=x; drawXY.Y=y;}
 	bool IsAnimationPlaying();
 	bool IsIntersect(int x, int y);
 	void SetSprId(DWORD value){sprId=value;}
 	DWORD GetSprId(){return sprId;}
-	INTPOINT GetBordersPivot();
+	void EnableSetupBorders(bool enabled){bordersDisabled=!enabled;}
+	void SetupBorders();
+	INTPOINT GetBaseBordersPivot();
+	INTPOINT GetFullBordersPivot();
 	INTRECT GetBaseBorders();
 	INTRECT GetFullBorders();
 	INTRECT GetExtraBorders();

@@ -6,7 +6,7 @@
 #include "Common.h"
 #include "Text.h"
 
-#define D3D_HR(expr)      {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s>.\n",(char*)DXGetErrorString(hr__)); return 0;}}
+#define D3D_HR(expr)            {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s>.\n",(char*)DXGetErrorString(hr__)); return 0;}}
 
 #define CONTOURS_EXTRA_SIZE     (20)
 
@@ -16,7 +16,6 @@
 LPDIRECT3DDEVICE9 D3DDevice=NULL;
 D3DCAPS9 D3DCaps;
 int ModeWidth=0,ModeHeight=0;
-float AspectRatio=0.0f;
 float FixedZ=0.0f;
 D3DLIGHT9 GlobalLight;
 D3DXMATRIX MatrixProj,MatrixView,MatrixViewInv,MatrixEmpty;
@@ -27,7 +26,7 @@ ShadowVolumeCreator ShadowVolume;
 D3DXMATRIX* BoneMatrices=NULL;
 DWORD MaxBones=0;
 int SkinningMethod=SKINNING_SOFTWARE;
-ID3DXEffect* EffectMain=NULL;
+EffectEx* EffectMain=NULL;
 DWORD AnimDelay=0;
 
 /************************************************************************/
@@ -38,7 +37,8 @@ Animation3dVec Animation3d::generalAnimations;
 
 Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSets(0),
 currentTrack(0),lastTick(0),endTick(0),speedAdjust(1.0f),shadowDisabled(false),dirAngle(150.0f),sprId(0),
-drawScale(0.0f),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),childChecker(true)
+drawScale(0.0f),bordersDisabled(false),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),
+childChecker(true)
 {
 	ZeroMemory(currentAnimation,sizeof(currentAnimation));
 	groundPos.w=1.0f;
@@ -325,19 +325,9 @@ bool Animation3d::IsIntersect(int x, int y)
 	INTRECT borders=GetExtraBorders();
 	if(x<borders.L || x>borders.R || y<borders.T || y>borders.B) return false;
 
-	D3DXVECTOR3 v;
-	v.x=(((2.0f*float(x))/ModeWidth)-1)/MatrixProj._11;
-	v.y=-(((2.0f*float(y))/ModeHeight)-1)/MatrixProj._22;
-	v.z=1.0f;
-
-	// Transform the screen space pick ray into 3D space
 	D3DXVECTOR3 ray_origin,ray_dir;
-	ray_dir.x=v.x*MatrixViewInv._11+v.y*MatrixViewInv._21+v.z*MatrixViewInv._31;
-	ray_dir.y=v.x*MatrixViewInv._12+v.y*MatrixViewInv._22+v.z*MatrixViewInv._32;
-	ray_dir.z=v.x*MatrixViewInv._13+v.y*MatrixViewInv._23+v.z*MatrixViewInv._33;
-	ray_origin.x=MatrixViewInv._41;
-	ray_origin.y=MatrixViewInv._42;
-	ray_origin.z=MatrixViewInv._43;
+	D3DXVec3Unproject(&ray_origin,&D3DXVECTOR3(x,y,0.0f),&ViewPort,&MatrixProj,&MatrixView,&MatrixEmpty);
+	D3DXVec3Unproject(&ray_dir,&D3DXVECTOR3(x,y,FixedZ),&ViewPort,&MatrixProj,&MatrixView,&MatrixEmpty);
 
 	// Main
 	FrameMove(0.0,drawXY.X,drawXY.Y,drawScale,true);
@@ -379,13 +369,15 @@ bool Animation3d::IsIntersectFrame(LPD3DXFRAME frame, const D3DXVECTOR3& ray_ori
 	}
 
 	// Recurse for siblings
-	if(frame->pFrameSibling!=NULL && IsIntersectFrame(frame->pFrameSibling,ray_origin,ray_dir)) return true;
-	if(frame->pFrameFirstChild!=NULL && IsIntersectFrame(frame->pFrameFirstChild,ray_origin,ray_dir)) return true;
+	if(frame->pFrameSibling && IsIntersectFrame(frame->pFrameSibling,ray_origin,ray_dir)) return true;
+	if(frame->pFrameFirstChild && IsIntersectFrame(frame->pFrameFirstChild,ray_origin,ray_dir)) return true;
 	return false;
 }
 
 void Animation3d::SetupBorders()
 {
+	if(bordersDisabled) return;
+
 	FLTRECT borders(FLT_MAX,FLT_MAX,FLT_MIN,FLT_MIN);
 
 	// Root
@@ -411,15 +403,15 @@ void Animation3d::SetupBorders()
 	fullBorders.B=borders.B;
 	bordersXY=drawXY;
 
-	// Grow borders on 3 pixels (breathe approximation)
-	baseBorders.L-=BORDERS_GROW;
-	baseBorders.R+=BORDERS_GROW;
-	baseBorders.T-=BORDERS_GROW;
-	baseBorders.B+=BORDERS_GROW;
-	fullBorders.L-=BORDERS_GROW;
-	fullBorders.R+=BORDERS_GROW;
-	fullBorders.T-=BORDERS_GROW;
-	fullBorders.B+=BORDERS_GROW;
+	// Grow borders on 1 pixel
+	baseBorders.L--;
+	baseBorders.R++;
+	baseBorders.T--;
+	baseBorders.B++;
+	fullBorders.L--;
+	fullBorders.R++;
+	fullBorders.T--;
+	fullBorders.B++;
 }
 
 bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
@@ -440,35 +432,34 @@ bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
 		DWORD v_size=mesh->GetNumBytesPerVertex();
 		for(DWORD i=0,j=mesh->GetNumVertices();i<j;i++)
 		{
+			// Get 3d coords
 			float x=*(float*)data;
 			float y=*(float*)(data+sizeof(float));
 			float z=*(float*)(data+sizeof(float)*2);
 
+			// Get 2d coords
 			D3DXVECTOR3 coords;
 			D3DXVec3Project(&coords,&D3DXVECTOR3(x,y,z),&ViewPort,&MatrixProj,&MatrixView,mesh_container_ex->pSkinInfo?&MatrixEmpty:&frame_ex->exCombinedTransformationMatrix);
-		//	WriteLog("%d) %f %f %f\n",i,coords.x,coords.y,coords.z);
 
-		//	if(x<borders.L) borders.L=x;
-		//	if(x>borders.R) borders.R=x;
-		//	if(y>borders.T) borders.T=y;
-		//	if(y<borders.B) borders.B=y;
+			// Check borders
 			if(coords.x<borders.L) borders.L=coords.x;
 			if(coords.x>borders.R) borders.R=coords.x;
 			if(coords.y<borders.T) borders.T=coords.y;
 			if(coords.y>borders.B) borders.B=coords.y;
 
+			// Go to next vertex
 			data+=v_size;
 		}
 
 		D3D_HR(v->Unlock());
-		//D3D_HR(v->Release());
 
+		// Go to next mesh
 		mesh_container=mesh_container->pNextMeshContainer;
 	}
 
 	// Recurse for siblings
-	if(frame->pFrameSibling!=NULL) SetupBordersFrame(frame->pFrameSibling,borders);
-	if(frame->pFrameFirstChild!=NULL) SetupBordersFrame(frame->pFrameFirstChild,borders);
+	if(frame->pFrameSibling) SetupBordersFrame(frame->pFrameSibling,borders);
+	if(frame->pFrameFirstChild) SetupBordersFrame(frame->pFrameFirstChild,borders);
 	return true;
 }
 
@@ -481,10 +472,16 @@ void Animation3d::ProcessBorders()
 	}
 }
 
-INTPOINT Animation3d::GetBordersPivot()
+INTPOINT Animation3d::GetBaseBordersPivot()
 {
 	ProcessBorders();
 	return INTPOINT(bordersXY.X-baseBorders.L,bordersXY.Y-baseBorders.T);
+}
+
+INTPOINT Animation3d::GetFullBordersPivot()
+{
+	ProcessBorders();
+	return INTPOINT(bordersXY.X-fullBorders.L,bordersXY.Y-fullBorders.T);
 }
 
 INTRECT Animation3d::GetBaseBorders()
@@ -588,11 +585,6 @@ void Animation3d::SetSpeed(float speed)
 	speedAdjust=speed;
 }
 
-void Animation3d::DisableShadow()
-{
-	shadowDisabled=true;
-}
-
 bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 {
 	// Apply stencil
@@ -633,9 +625,6 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	GlobalLight.Diffuse.g=CLAMP(GlobalLight.Diffuse.g,0.0f,1.0f);
 	GlobalLight.Diffuse.b=0.3f+((color)&0xFF)/255.0f;
 	GlobalLight.Diffuse.b=CLAMP(GlobalLight.Diffuse.b,0.0f,1.0f);
-	D3D_HR(D3DDevice->SetLight(0,&GlobalLight));
-	if(EffectMain) EffectMain->SetVector("LightDiffuse",&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a));
-	else D3DDevice->SetLight(0,&GlobalLight);
 
 	// Move & Draw
 	//D3D_HR(D3DDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
@@ -814,11 +803,10 @@ void Animation3d::BuildShadowVolume(D3DXFRAME_EXTENDED* frame)
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	if(frame->pFrameSibling!=NULL) BuildShadowVolume((D3DXFRAME_EXTENDED*)frame->pFrameSibling);
-	if(frame->pFrameFirstChild!=NULL) BuildShadowVolume((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild);
+	if(frame->pFrameSibling) BuildShadowVolume((D3DXFRAME_EXTENDED*)frame->pFrameSibling);
+	if(frame->pFrameFirstChild) BuildShadowVolume((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild);
 }
 
-#pragma MESSAGE("Optimize 3d draw - bind constants.")
 // Called to render a frame in the hierarchy
 bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 {
@@ -835,14 +823,14 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 
 		if(mesh_container_ex->exSkinMeshBlended)
 		{
-			ID3DXEffect* effect=(mesh_container_ex->exEffect?mesh_container_ex->exEffect:EffectMain);
-			D3DXHANDLE effect_params=(mesh_container_ex->exEffect?mesh_container_ex->exEffectParams:NULL);
+			EffectEx* effect=(mesh_container_ex->exEffect?mesh_container_ex->exEffect:EffectMain);
 			LPD3DXBONECOMBINATION bone_comb=(LPD3DXBONECOMBINATION)mesh_container_ex->exBoneCombinationBuf->GetBufferPointer();
 			D3DXMATRIX matrix;
 
-			if(effect_params) effect->ApplyParameterBlock(effect_params);
-			D3D_HR(effect->SetMatrix("ProjMatrix",&MatrixProj));
-			D3D_HR(effect->SetVector("GroundPos",&groundPos));
+			if(effect->EffectParams) effect->Effect->ApplyParameterBlock(effect->EffectParams);
+			D3D_HR(effect->Effect->SetMatrix(effect->ProjMatrix,&MatrixProj));
+			D3D_HR(effect->Effect->SetVector(effect->GroundPos,&groundPos));
+			D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
 
 			for(DWORD i=0,j=mesh_container_ex->exNumAttributeGroups;i<j;i++)
 			{
@@ -860,7 +848,7 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 					}
 				}
 
-				D3D_HR(effect->SetMatrixArray("WorldMatrices",BoneMatrices,mesh_container_ex->exNumPaletteEntries));
+				D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,BoneMatrices,mesh_container_ex->exNumPaletteEntries));
 
 				// Sum of all ambient and emissive contribution
 				D3DMATERIAL9& material=mesh_container_ex->exMaterials[attr_id];
@@ -868,37 +856,38 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				//D3DXColorModulate(&amb_emm,&D3DXCOLOR(material.Ambient),&D3DXCOLOR(0.25f,0.25f,0.25f,1.0f));
 				//amb_emm+=D3DXCOLOR(material.Emissive);
 				//D3D_HR(effect->SetVector("MaterialAmbient",(D3DXVECTOR4*)&amb_emm));
-				D3D_HR(effect->SetVector("MaterialDiffuse",(D3DXVECTOR4*)&material.Diffuse));
+				D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&material.Diffuse));
 
 				// Setup the material of the mesh subset - REMEMBER to use the original pre-skinning attribute id to get the correct material id
 				D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[attr_id]));
 
-				// Set CurNumBones to select the correct vertex shader for the number of bones
-				D3D_HR(effect->SetInt("CurNumBones",mesh_container_ex->exNumInfl-1));
+				// Set NumBones to select the correct vertex shader for the number of bones
+				D3D_HR(effect->Effect->SetInt(effect->NumBones,mesh_container_ex->exNumInfl-1));
 
 				// Start the effect now all parameters have been updated
-				DrawMeshEffect(mesh_container_ex->exSkinMeshBlended,i,effect,with_shadow?"SkinWithShadow":"Skin");
+				DrawMeshEffect(mesh_container_ex->exSkinMeshBlended,i,effect->Effect,with_shadow?effect->TechniqueSkinWithShadow:effect->TechniqueSkin);
 			}
 		}
 		else
 		{
 			// Select the mesh to draw, if there is skin then use the skinned mesh else the normal one
 			LPD3DXMESH draw_mesh=(mesh_container_ex->pSkinInfo?mesh_container_ex->exSkinMesh:mesh_container_ex->MeshData.pMesh);
-			ID3DXEffect* effect=(mesh_container_ex->exEffect?mesh_container_ex->exEffect:EffectMain);
-			D3DXHANDLE effect_params=(mesh_container_ex->exEffect?mesh_container_ex->exEffectParams:NULL);
+			EffectEx* effect=(mesh_container_ex->exEffect?mesh_container_ex->exEffect:EffectMain);
 
 			if(effect)
 			{
-				if(effect_params) effect->ApplyParameterBlock(effect_params);
-				D3D_HR(effect->SetMatrix("ProjMatrix",&MatrixProj));
-				D3D_HR(effect->SetVector("GroundPos",&groundPos));
+				if(effect->EffectParams) effect->Effect->ApplyParameterBlock(effect->EffectParams);
+				D3D_HR(effect->Effect->SetMatrix(effect->ProjMatrix,&MatrixProj));
+				D3D_HR(effect->Effect->SetVector(effect->GroundPos,&groundPos));
 				D3DXMATRIX wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty)*MatrixView;
-				D3D_HR(effect->SetMatrixArray("WorldMatrices",&wmatrix,1));
+				D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,&wmatrix,1));
+				D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
 			}
 			else
 			{
 				D3DXMATRIX& wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty);
 				D3D_HR(D3DDevice->SetTransform(D3DTS_WORLD,&wmatrix));
+				D3D_HR(D3DDevice->SetLight(0,&GlobalLight));
 			}
 
 			// Loop through all the materials in the mesh rendering each subset
@@ -908,9 +897,9 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 
 				if(effect)
 				{
-					D3D_HR(effect->SetVector("MaterialDiffuse",(D3DXVECTOR4*)&mesh_container_ex->exMaterials[i].Diffuse));
+					D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&mesh_container_ex->exMaterials[i].Diffuse));
 					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]));
-					DrawMeshEffect(draw_mesh,i,effect,with_shadow?"SimpleWithShadow":"Simple");
+					DrawMeshEffect(draw_mesh,i,effect->Effect,with_shadow?effect->TechniqueSimpleWithShadow:effect->TechniqueSimple);
 				}
 				else
 				{
@@ -927,13 +916,13 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 	}
 
 	// Recurse for siblings
-	if(frame->pFrameSibling!=NULL) DrawFrame(frame->pFrameSibling,with_shadow);
+	if(frame->pFrameSibling) DrawFrame(frame->pFrameSibling,with_shadow);
 	// Recurse for children
-	if(frame->pFrameFirstChild!=NULL) DrawFrame(frame->pFrameFirstChild,with_shadow);
+	if(frame->pFrameFirstChild) DrawFrame(frame->pFrameFirstChild,with_shadow);
 	return true;
 }
 
-bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, ID3DXEffect* effect, const char* technique)
+bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, ID3DXEffect* effect, D3DXHANDLE technique)
 {
 	D3D_HR(effect->SetTechnique(technique));
 	UINT passes;
@@ -985,8 +974,9 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	// Create skinning effect
 	if(SkinningMethod==SKINNING_HLSL_SHADER)
 	{
+		ID3DXEffect* effect=NULL;
 		ID3DXBuffer* errors=NULL;
-		HRESULT hr=D3DXCreateEffectFromResource(D3DDevice,NULL,MAKEINTRESOURCE(IDR_EFFECT_SKINNING),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&EffectMain,&errors);
+		HRESULT hr=D3DXCreateEffectFromResource(D3DDevice,NULL,MAKEINTRESOURCE(IDR_EFFECT_SKINNING),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors);
 		if(FAILED(hr))
 		{
 			if(errors) WriteLog(__FUNCTION__" - Create effect messages:\n<\n%s>\n",errors->GetBufferPointer());
@@ -994,6 +984,8 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 			SkinningMethod=SKINNING_SOFTWARE;
 		}
 		SAFEREL(errors);
+
+		EffectMain=new EffectEx(effect);
 	}
 
 	// FPS & Smooth
@@ -1014,19 +1006,17 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 
 bool Animation3d::SetScreenSize(int width, int height)
 {
+	// Build orthogonal projection
 	ModeWidth=width;
 	ModeHeight=height;
+	FixedZ=500.0f;
 
-	// Aspect ratio, z
-	AspectRatio=(float)ModeWidth/ModeHeight;
-	FixedZ=OptFixedZ*((float)ModeHeight/600.0f);
-
-	// Projection matrix
-	D3DXMatrixPerspectiveFovLH(&MatrixProj,FOV,AspectRatio,FixedZ-20.0f,FixedZ+20.0f);
+	// Projection
+	float k=(float)ModeHeight/768.0f;
+	D3DXMatrixOrthoLH(&MatrixProj,18.65f*k*(float)ModeWidth/ModeHeight,18.65f*k,0.0f,FixedZ*2);
 	D3D_HR(D3DDevice->SetTransform(D3DTS_PROJECTION,&MatrixProj));
 
-	// View matrix
-	//D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,sinf(25.7f)*FixedZ,-cosf(25.7f)*FixedZ),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
+	// View
 	D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,0.0f,-FixedZ),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
 	D3D_HR(D3DDevice->SetTransform(D3DTS_VIEW,&MatrixView));
 	D3DXMatrixInverse(&MatrixViewInv,NULL,&MatrixView);
@@ -1043,7 +1033,7 @@ void Animation3d::Finish()
 	Animation3dEntity::allEntities.clear();
 	for(Animation3dXFileVecIt it=Animation3dXFile::xFiles.begin(),end=Animation3dXFile::xFiles.end();it!=end;++it) delete *it;
 	Animation3dXFile::xFiles.clear();
-	SAFEREL(EffectMain);
+	SAFEDEL(EffectMain);
 	SAFEDELA(BoneMatrices);
 	MaxBones=0;
 	for(AnimTextureVecIt it=Animation3dXFile::Textures.begin(),end=Animation3dXFile::Textures.end();it!=end;++it)
@@ -1060,9 +1050,10 @@ void Animation3d::BeginScene()
 	for(Animation3dVecIt it=generalAnimations.begin(),end=generalAnimations.end();it!=end;++it) (*it)->noDraw=true;
 }
 
+#pragma MESSAGE("Release all other need stuff.")
 void Animation3d::PreRestore()
 {
-	SAFEREL(EffectMain);
+	SAFEDEL(EffectMain);
 }
 
 Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_child)
@@ -1123,17 +1114,14 @@ void Animation3d::AnimateFaster()
 
 FLTPOINT Animation3d::Convert2dTo3d(int x, int y)
 {
-	float xf=(float)x/(ModeWidth/2);
-	float yf=(float)y/(ModeHeight/2);
-	float dx=FixedZ*tanf(FOV*0.5f)*(xf-1.0f)*AspectRatio;
-	float dy=FixedZ*tanf(FOV*0.5f)*(1.0f-yf);
-	return FLTPOINT(dx,dy);
+	D3DXVECTOR3 coords;
+	D3DXVec3Unproject(&coords,&D3DXVECTOR3(x,y,FixedZ),&ViewPort,&MatrixProj,&MatrixView,&MatrixEmpty);
+	return FLTPOINT(coords.x,coords.y);
 }
 
 INTPOINT Animation3d::Convert3dTo2d(float x, float y)
 {
 	D3DXVECTOR3 coords;
-	D3DXMATRIX mat=MatrixEmpty;
 	D3DXVec3Project(&coords,&D3DXVECTOR3(x,y,FixedZ),&ViewPort,&MatrixProj,&MatrixView,&MatrixEmpty);
 	return INTPOINT(coords.x,coords.y);
 }
@@ -1745,15 +1733,15 @@ void Animation3dXFile::SetupFacesCount(D3DXFRAME_EXTENDED* frame, DWORD& count)
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	if(frame->pFrameSibling!=NULL) SetupFacesCount((D3DXFRAME_EXTENDED*)frame->pFrameSibling,count);
-	if(frame->pFrameFirstChild!=NULL) SetupFacesCount((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild,count);
+	if(frame->pFrameSibling) SetupFacesCount((D3DXFRAME_EXTENDED*)frame->pFrameSibling,count);
+	if(frame->pFrameFirstChild) SetupFacesCount((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild,count);
 }
 
 void Animation3dXFile::SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationController* anim_controller)
 {
 	if(frame->Name && frame->Name[0]) anim_controller->RegisterAnimationOutput(frame->Name,&frame->TransformationMatrix,NULL,NULL,NULL);
-	if(frame->pFrameSibling!=NULL) SetupAnimationOutput(frame->pFrameSibling,anim_controller);
-	if(frame->pFrameFirstChild!=NULL) SetupAnimationOutput(frame->pFrameFirstChild,anim_controller);
+	if(frame->pFrameSibling) SetupAnimationOutput(frame->pFrameSibling,anim_controller);
+	if(frame->pFrameFirstChild) SetupAnimationOutput(frame->pFrameFirstChild,anim_controller);
 }
 
 AnimTextureVec Animation3dXFile::Textures;

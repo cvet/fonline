@@ -3,7 +3,7 @@
 //
 
 // Bones
-int CurNumBones = 2;
+int NumBones = 2;
 float4 GroundPos = {0.0f, 0.0f, 0.0f, 0.0f};
 static const float CameraAngle = 25.7 * 3.141592654f / 180.0f;
 static const float CameraAngleCos = cos(CameraAngle);
@@ -104,7 +104,7 @@ VS_OUTPUT_SHADOW VSSimpleShadow(VS_SIMPLE_INPUT_SHADOW input)
     return output;
 }
 
-VS_OUTPUT VSSkinNormal(VS_SKIN_INPUT input, uniform int NumBones)
+VS_OUTPUT VSSkinNormal(VS_SKIN_INPUT input, uniform int bones)
 {
     VS_OUTPUT   output;
     float3      Pos = 0.0f;
@@ -120,7 +120,7 @@ VS_OUTPUT VSSkinNormal(VS_SKIN_INPUT input, uniform int NumBones)
 
     // Calculate the pos/normal using the "normal" weights 
     // and accumulate the weights to calculate the last weight
-    for (int iBone = 0; iBone < NumBones-1; iBone++)
+    for (int iBone = 0; iBone < bones-1; iBone++)
     {
         LastWeight = LastWeight + BlendWeightsArray[iBone];
         Pos += mul(input.Pos, WorldMatrices[IndexArray[iBone]]) * BlendWeightsArray[iBone];
@@ -129,8 +129,8 @@ VS_OUTPUT VSSkinNormal(VS_SKIN_INPUT input, uniform int NumBones)
     LastWeight = 1.0f - LastWeight; 
 
     // Now that we have the calculated weight, add in the final influence
-    Pos += (mul(input.Pos, WorldMatrices[IndexArray[NumBones-1]]) * LastWeight);
-    Normal += (mul(input.Normal, WorldMatrices[IndexArray[NumBones-1]]) * LastWeight); 
+    Pos += (mul(input.Pos, WorldMatrices[IndexArray[bones-1]]) * LastWeight);
+    Normal += (mul(input.Normal, WorldMatrices[IndexArray[bones-1]]) * LastWeight); 
     
     // Transform position from world space into view and then projection space
     output.Pos = mul(float4(Pos.xyz, 1.0f), ProjMatrix);
@@ -149,7 +149,7 @@ VS_OUTPUT VSSkinNormal(VS_SKIN_INPUT input, uniform int NumBones)
     return output;
 }
 
-VS_OUTPUT_SHADOW VSSkinShadow(VS_SKIN_INPUT_SHADOW input, uniform int NumBones)
+VS_OUTPUT_SHADOW VSSkinShadow(VS_SKIN_INPUT_SHADOW input, uniform int bones)
 {
     VS_OUTPUT_SHADOW   output;
     float3             Pos = 0.0f;
@@ -164,13 +164,13 @@ VS_OUTPUT_SHADOW VSSkinShadow(VS_SKIN_INPUT_SHADOW input, uniform int NumBones)
 
     // Calculate the pos using the "normal" weights 
     // and accumulate the weights to calculate the last weight
-    for (int iBone = 0; iBone < NumBones-1; iBone++)
+    for (int iBone = 0; iBone < bones-1; iBone++)
     {
         LastWeight = LastWeight + BlendWeightsArray[iBone];
         Pos += mul(input.Pos, WorldMatrices[IndexArray[iBone]]) * BlendWeightsArray[iBone];
     }
     LastWeight = 1.0f - LastWeight;
-	Pos += (mul(input.Pos, WorldMatrices[IndexArray[NumBones-1]]) * LastWeight);
+	Pos += (mul(input.Pos, WorldMatrices[IndexArray[bones-1]]) * LastWeight);
 
 	float d = (Pos.y - GroundPos.y) * CameraAngleCos - (Pos.z - GroundPos.z) * CameraAngleSin;
 	Pos.y -= d * CameraAngleCos;
@@ -212,12 +212,12 @@ technique SimpleWithShadow
 }
 technique Skin
 {
-	pass p0{ VertexShader=(VSArray[2+CurNumBones]); }
+	pass p0{ VertexShader=(VSArray[2+NumBones]); }
 }
 technique SkinWithShadow
 {
-	pass p0{ VertexShader=(VSArray[2+CurNumBones+4]); }
-	pass p1{ VertexShader=(VSArray[2+CurNumBones]); }
+	pass p0{ VertexShader=(VSArray[2+NumBones+4]); }
+	pass p1{ VertexShader=(VSArray[2+NumBones]); }
 }
 
 

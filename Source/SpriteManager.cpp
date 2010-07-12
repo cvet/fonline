@@ -188,7 +188,7 @@ void Sprites::SortByMapPos()
 
 SpriteManager::SpriteManager():
 isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
-spr3dRT(NULL),spr3dDS(NULL),spr3dSurfWidth(256),spr3dSurfHeight(256),sceneBeginned(false),
+spr3dRT(NULL),spr3dRTEx(NULL),spr3dDS(NULL),spr3dRTData(NULL),spr3dSurfWidth(256),spr3dSurfHeight(256),sceneBeginned(false),
 dxDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),vbPoints(NULL),vbPointsSize(0),
 PreRestore(NULL),PostRestore(NULL),
 drawOffsetX(NULL),drawOffsetY(NULL),baseTexture(0),
@@ -356,7 +356,9 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 bool SpriteManager::InitBuffers()
 {
 	SAFEREL(spr3dRT);
+	SAFEREL(spr3dRTEx);
 	SAFEREL(spr3dDS);
+	SAFEREL(spr3dRTData);
 	SAFEDELA(waitBuf);
 	SAFEREL(pVB);
 	SAFEREL(pIB);
@@ -409,8 +411,13 @@ bool SpriteManager::InitBuffers()
 		D3D_HR(dxDevice->CreateRenderTarget(modeWidth,modeHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&contours3dRT,NULL));
 	}
 
-	D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dRT,NULL));
-	D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dDS,NULL));
+	// 3d models prerendering
+	D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&spr3dRT,NULL));
+	if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
+		D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&spr3dRTEx,NULL));
+	D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,TRUE,&spr3dDS,NULL));
+	D3D_HR(dxDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
+
 	return true;
 }
 
@@ -418,6 +425,7 @@ bool SpriteManager::InitRenderStates()
 {
 	D3D_HR(dxDevice->SetRenderState(D3DRS_LIGHTING,FALSE));
 	D3D_HR(dxDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
+	D3D_HR(dxDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
 	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
 	D3D_HR(dxDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
 	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE));
@@ -482,7 +490,9 @@ void SpriteManager::Clear()
 
 	Animation3d::Finish();
 	SAFEREL(spr3dRT);
+	SAFEREL(spr3dRTEx);
 	SAFEREL(spr3dDS);
+	SAFEREL(spr3dRTData);
 	SAFEREL(pVB);
 	SAFEREL(pIB);
 	SAFEDELA(waitBuf);
@@ -527,7 +537,9 @@ bool SpriteManager::Restore()
 
 	// Release resources
 	SAFEREL(spr3dRT);
+	SAFEREL(spr3dRTEx);
 	SAFEREL(spr3dDS);
+	SAFEREL(spr3dRTData);
 	SAFEREL(pVB);
 	SAFEREL(pIB);
 	SAFEREL(vbPoints);
@@ -926,43 +938,68 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 	if(!anim3d) return false;
 
 	// Render
+	if(!sceneBeginned) D3D_HR(dxDevice->BeginScene());
 	LPDIRECT3DSURFACE old_rt=NULL,old_ds=NULL;
 	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
 	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
 	D3D_HR(dxDevice->SetDepthStencilSurface(spr3dDS));
 	D3D_HR(dxDevice->SetRenderTarget(0,spr3dRT));
-	if(!sceneBeginned) D3D_HR(dxDevice->BeginScene());
 
 	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,1.0f,0));
 	Animation3d::SetScreenSize(spr3dSurfWidth,spr3dSurfHeight);
+	anim3d->EnableSetupBorders(false);
+	anim3d->SetDir(3);
 	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
+	anim3d->EnableSetupBorders(true);
+	anim3d->SetupBorders();
 	Animation3d::SetScreenSize(modeWidth,modeHeight);
 
-	if(!sceneBeginned) D3D_HR(dxDevice->EndScene());
 	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
 	D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
 	old_rt->Release();
 	old_ds->Release();
+	if(!sceneBeginned) D3D_HR(dxDevice->EndScene());
 
 	// Calculate sprite borders
 	INTRECT r=anim3d->GetFullBorders();
-	RECT r_={r.L+BORDERS_GROW-1,r.T+BORDERS_GROW-1,r.R-BORDERS_GROW+1,r.B-BORDERS_GROW+1};
+	RECT r_={r.L,r.T,r.R,r.B};
 
 	// Grow surfaces while sprite not fitted in it
 	if(r_.left<0 || r_.right>=spr3dSurfWidth || r_.top<0 || r_.bottom>=spr3dSurfHeight)
 	{
+		// Grow x2
  		if(r_.left<0 || r_.right>=spr3dSurfWidth) spr3dSurfWidth*=2;
  		if(r_.top<0 || r_.bottom>=spr3dSurfHeight) spr3dSurfHeight*=2;
+
+		// Recreate
 		SAFEREL(spr3dRT);
+		SAFEREL(spr3dRTEx);
 		SAFEREL(spr3dDS);
-		D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dRT,NULL));
-		D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,D3DMULTISAMPLE_NONE,0,TRUE,&spr3dDS,NULL));
+		SAFEREL(spr3dRTData);
+		D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&spr3dRT,NULL));
+		if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
+			D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&spr3dRTEx,NULL));
+		D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,TRUE,&spr3dDS,NULL));
+		D3D_HR(dxDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
+
+		// Try load again
 		return LoadSprite3d(fname,path_type,spr_id,pp_info);
+	}
+
+	// Get render target data
+	if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
+	{
+		D3D_HR(dxDevice->StretchRect(spr3dRT,&r_,spr3dRTEx,&r_,D3DTEXF_NONE));
+		D3D_HR(dxDevice->GetRenderTargetData(spr3dRTEx,spr3dRTData));
+	}
+	else
+	{
+		D3D_HR(dxDevice->GetRenderTargetData(spr3dRT,spr3dRTData));
 	}
 
 	// Copy to system memory
 	D3DLOCKED_RECT lr;
-	D3D_HR(spr3dRT->LockRect(&lr,&r_,D3DLOCK_READONLY));
+	D3D_HR(spr3dRTData->LockRect(&lr,&r_,D3DLOCK_READONLY));
 	DWORD w=r_.right-r_.left;
 	DWORD h=r_.bottom-r_.top;
 	DWORD size=12+h*w*4;
@@ -971,10 +1008,14 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 	*((DWORD*)data+1)=w;
 	*((DWORD*)data+2)=h;
 	for(int i=0;i<h;i++) memcpy(data+12+w*4*i,(BYTE*)lr.pBits+lr.Pitch*i,w*4);
-	D3D_HR(spr3dRT->UnlockRect());
+	D3D_HR(spr3dRTData->UnlockRect());
 
 	// Fill from memory
 	SpriteInfo* si=new SpriteInfo();
+	INTPOINT p=anim3d->GetFullBordersPivot();
+	si->OffsX=r.W()/2-p.X;
+	si->OffsY=r.H()-p.Y;
+
 	DWORD result=FillSurfaceFromMemory(si,data,size);
 	if(pp_info && result) *pp_info=si;
 	spr_id=result;
@@ -2164,7 +2205,7 @@ bool SpriteManager::Draw3dSize(FLTRECT rect, bool stretch_up, bool center, Anima
 {
 	Flush();
 
-	INTPOINT xy=anim3d->GetBordersPivot();
+	INTPOINT xy=anim3d->GetBaseBordersPivot();
 	INTRECT borders=anim3d->GetBaseBorders();
 	float w_real=(float)borders.W();
 	float h_real=(float)borders.H();

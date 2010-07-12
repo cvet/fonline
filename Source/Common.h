@@ -230,7 +230,6 @@ extern bool OptDisableMouseEvents;
 extern bool OptDisableKeyboardEvents;
 extern string OptPlayerOffAppendix;
 extern int OptCombatMessagesType;
-extern float OptFixedZ;
 extern string OptMapperCache;
 
 //extern bool OptWeightFount;

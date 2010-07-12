@@ -5084,7 +5084,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 				DrawCritter3dFailToLoad[instance]=1;
 				return;
 			}
-			anim->DisableShadow();
+			anim->EnableShadow(false);
 		}
 
 		if(anim)

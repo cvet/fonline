@@ -377,7 +377,6 @@ bool OptDisableMouseEvents=false;
 bool OptDisableKeyboardEvents=false;
 string OptPlayerOffAppendix="_off";
 int OptCombatMessagesType=0;
-float OptFixedZ=330.0f;
 string OptMapperCache="default";
 
 DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light)
@@ -545,7 +544,6 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Animation3dSmoothTime,"-Animation3dSmoothTime");
 	GETOPTIONS_CHECK(GameOpt.Animation3dSmoothTime,0,10000,250);
 
-	GETOPTIONS_CMD_LINE_INT(OptFixedZ,"-FixedZ");
 	GETOPTIONS_CMD_LINE_BOOL(OptHelpInfo,"-HelpInfo");
 	GETOPTIONS_CMD_LINE_BOOL(OptDebugInfo,"-DebugInfo");
 	GETOPTIONS_CMD_LINE_BOOL(OptDebugNet,"-DebugNet");

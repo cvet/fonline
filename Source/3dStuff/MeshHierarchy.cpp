@@ -158,10 +158,11 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 	{
 		if(fileMngr.LoadFile(effectInstances->pEffectFilename,PT_ART_EFFECTS))
 		{
+			ID3DXEffect* effect=NULL;
 			ID3DXBuffer* errors=NULL;
-			if(SUCCEEDED(D3DXCreateEffect(pd3dDevice,fileMngr.GetBuf(),fileMngr.GetFsize(),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&newMeshContainer->exEffect,&errors)))
+			if(SUCCEEDED(D3DXCreateEffect(pd3dDevice,fileMngr.GetBuf(),fileMngr.GetFsize(),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
 			{
-				ID3DXEffect* effect=newMeshContainer->exEffect;
+				newMeshContainer->exEffect=new EffectEx(effect);
 				effect->BeginParameterBlock();
 				for(DWORD d=0;d<newMeshContainer->pEffects->NumDefaults;d++)
 				{
@@ -179,7 +180,7 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 					default: break;
 					}
 				}
-				newMeshContainer->exEffectParams=effect->EndParameterBlock();
+				newMeshContainer->exEffect->EffectParams=effect->EndParameterBlock();
 			}
 			else
 			{
@@ -240,12 +241,8 @@ HRESULT CMeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBa
 	SAFEREL(mesh_container->pSkinInfo);
 	// Release blend mesh
 	SAFEREL(mesh_container->exSkinMeshBlended);
-	// Release effect
-	if(mesh_container->exEffect)
-	{
-		if(mesh_container->exEffectParams) mesh_container->exEffect->DeleteParameterBlock(mesh_container->exEffectParams);
-		SAFEREL(mesh_container->exEffect);
-	}
+	// Delete effect
+	SAFEDEL(mesh_container->exEffect);
 	// Finally delete the mesh container itself
 	SAFEDEL(mesh_container);
     return S_OK;
