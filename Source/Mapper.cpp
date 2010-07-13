@@ -1643,9 +1643,9 @@ void FOMapper::ObjDraw()
 		if((cnst)==true) col=COLOR_TEXT_WHITE;\
 		StringCopy(str_,name);\
 		StringAppend(str_,"....................................................");\
-		SprMngr.DrawStr(INTRECT(INTRECT(x,y,x+w/2,y+h),0,0),str_,FT_NOBREAK,col);\
+		SprMngr.DrawStr(INTRECT(INTRECT(x,y,x+w/3,y+h),0,0),str_,FT_NOBREAK,col);\
 		(unsign==true)?sprintf(str_,"%u (0x%0X)",val,val):sprintf(str_,"%d (0x%0X)",val,val);\
-		SprMngr.DrawStr(INTRECT(INTRECT(x+w/2,y,x+w,y+h),0,0),str_,FT_NOBREAK,col);\
+		SprMngr.DrawStr(INTRECT(INTRECT(x+w/3,y,x+w,y+h),0,0),str_,FT_NOBREAK,col);\
 		y+=step;\
 	}while(0)
 #define DRAW_COMPONENT_TEXT(name,text,cnst) \
@@ -1656,9 +1656,9 @@ void FOMapper::ObjDraw()
 		if((cnst)==true) col=COLOR_TEXT_WHITE;\
 		StringCopy(str_,name);\
 		StringAppend(str_,"....................................................");\
-		SprMngr.DrawStr(INTRECT(INTRECT(x,y,x+w/2,y+h),0,0),str_,FT_NOBREAK,col);\
+		SprMngr.DrawStr(INTRECT(INTRECT(x,y,x+w/3,y+h),0,0),str_,FT_NOBREAK,col);\
 		StringCopy(str_,text?text:"");\
-		SprMngr.DrawStr(INTRECT(INTRECT(x+w/2,y,x+w,y+h),0,0),str_,FT_NOBREAK,col);\
+		SprMngr.DrawStr(INTRECT(INTRECT(x+w/3,y,x+w,y+h),0,0),str_,FT_NOBREAK,col);\
 		y+=step;\
 	}while(0)
 //====================================================================================

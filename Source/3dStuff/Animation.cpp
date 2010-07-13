@@ -1084,7 +1084,7 @@ Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_
 		// Set default textures
 		for(DWORD k=0;k<mopt.SubsetsCount;k++)
 		{
-			mopt.DefaultTexSubsets[k]=entity->xFile->GetTexture(mesh->exTexturesNames[k]);
+			mopt.DefaultTexSubsets[k]=(mesh->exTexturesNames[k]?entity->xFile->GetTexture(mesh->exTexturesNames[k]):NULL);
 			mopt.TexSubsets[k]=mopt.DefaultTexSubsets[k];
 		}
 	}
@@ -1752,15 +1752,27 @@ IDirect3DTexture9* Animation3dXFile::GetTexture(const char* tex_name)
 {
 	if(tex_name)
 	{
+		// Try find already loaded texture
 		for(AnimTextureVecIt it=Textures.begin(),end=Textures.end();it!=end;++it)
 		{
 			AnimTexture* tex=*it;
 			if(!_stricmp(tex->Name,tex_name)) return tex->Data;
 		}
 
-		IDirect3DTexture9* tex;
+		// First try load from textures folder
 		FileManager fm;
-		if(fm.LoadFile(tex_name,PT_ART_TEXTURES) && SUCCEEDED(D3DXCreateTextureFromFileInMemory(D3DDevice,fm.GetBuf(),fm.GetFsize(),&tex)))
+		if(!fm.LoadFile(tex_name,PT_ART_TEXTURES))
+		{
+			// After try load from file folder
+			char path[MAX_FOPATH];
+			FileManager::ExtractPath(fileName.c_str(),path);
+			StringAppend(path,tex_name);
+			fm.LoadFile(path,pathType);
+		}
+
+		// Create texture
+		IDirect3DTexture9* tex=NULL;
+		if(fm.IsLoaded() && SUCCEEDED(D3DXCreateTextureFromFileInMemory(D3DDevice,fm.GetBuf(),fm.GetFsize(),&tex)))
 		{
 			Textures.push_back(new AnimTexture(Str::DuplicateString(tex_name),tex));
 			return tex;
