@@ -5531,7 +5531,7 @@ void FOClient::GmapDraw()
 	Item* car=GmapGetCar();
 	if(car)
 	{
-		SprMngr.DrawSpriteSize(ResMngr.GetSprId(car->GetPicMap()),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
+		SprMngr.DrawSpriteSize(ResMngr.GetSprId(car->GetPicMap(),car->Proto->Dir),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
 		SprMngr.DrawStr(GmapWCar,FmtItemLook(car,ITEM_LOOK_WM_CAR),FT_CENTERX|FT_BOTTOM,COLOR_TEXT,FONT_DEF);
 	}
 
@@ -7950,7 +7950,7 @@ void FOClient::PupDraw()
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(PupContPid);
 		if(proto_item)
 		{
-			DWORD spr_id=ResMngr.GetSprId(proto_item->PicMapHash);
+			DWORD spr_id=ResMngr.GetSprId(proto_item->PicMapHash,proto_item->Dir);
 			if(spr_id) SprMngr.DrawSpriteSize(spr_id,PupWInfo[0]+PupX,PupWInfo[1]+PupY,PupWInfo.W(),PupWInfo.H(),false,true);
 		}
 	}

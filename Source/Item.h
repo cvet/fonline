@@ -198,6 +198,7 @@ public:
 	DWORD Flags;
 	BYTE Corner;
 	bool DisableEgg;
+	short Dir;
 	DWORD PicMapHash;
 	DWORD PicInvHash;
 	DWORD Weight;

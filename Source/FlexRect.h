@@ -14,8 +14,8 @@ struct FlexRect
 	FlexRect& operator=(const FlexRect& fr){L=fr.L; T=fr.T; R=fr.R; B=fr.B; return *this;}
 	void Clear(){L=0; T=0; R=0; B=0;}
 	bool IsZero(){return !L && !T && !R && !B;}
-	Ty W(){return R-L;}
-	Ty H(){return B-T;}
+	Ty W(){return R-L+1;}
+	Ty H(){return B-T+1;}
 	Ty CX(){return L+W()/2;}
 	Ty CY(){return T+H()/2;}
 

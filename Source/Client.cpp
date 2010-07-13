@@ -95,7 +95,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(bool)==1);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
-	STATIC_ASSERT(sizeof(ScenToSend)==28);
+	STATIC_ASSERT(sizeof(ScenToSend)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	GET_UID0(UID0);
 
@@ -5500,8 +5500,6 @@ void FOClient::Net_OnMap()
 	Bin >> send_info;
 
 	WriteLog("%u...",map_pid);
-
-	bool automap=FLAG(send_info,SENDMAP_AUTOMAP);
 
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);

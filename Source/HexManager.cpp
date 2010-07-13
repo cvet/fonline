@@ -312,7 +312,7 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 
 	// Parse
 	Field& f=GetField(hx,hy);
-	ItemHex* item=new ItemHex(id,proto,data,hx,hy,0,0,0,&f.ScrX,&f.ScrY);
+	ItemHex* item=new ItemHex(id,proto,data,hx,hy,proto->Dir,0,0,&f.ScrX,&f.ScrY);
 	if(is_added) item->SetShowAnim();
 	PushItem(item);
 
@@ -2775,7 +2775,7 @@ bool HexManager::LoadMap(WORD map_pid)
 
 			if(tile)
 			{
-				DWORD id=ResMngr.GetSprId(tile);
+				DWORD id=ResMngr.GetSprId(tile,0);
 				if(id)
 				{
 					f.TileId=id;
@@ -2785,7 +2785,7 @@ bool HexManager::LoadMap(WORD map_pid)
 
 			if(roof)
 			{
-				DWORD id=ResMngr.GetSprId(roof);
+				DWORD id=ResMngr.GetSprId(roof,0);
 				if(id)
 				{
 					f.RoofId=id;
@@ -3139,7 +3139,7 @@ bool HexManager::ParseScenery(ScenToSend& scen)
 	static DWORD scen_id=0;
 	scen_id--;
 
-	ItemHex* scenery=new ItemHex(scen_id,proto_item,NULL,hx,hy,0,scen.OffsetX,scen.OffsetY,&GetField(hx,hy).ScrX,&GetField(hx,hy).ScrY);
+	ItemHex* scenery=new ItemHex(scen_id,proto_item,NULL,hx,hy,scen.Dir,scen.OffsetX,scen.OffsetY,&GetField(hx,hy).ScrX,&GetField(hx,hy).ScrY);
 	scenery->ScenFlags=scen.Flags;
 
 	// Mapper additional parameters
@@ -3226,7 +3226,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 			if(tile)
 			{
-				DWORD id=ResMngr.GetSprId(tile);
+				DWORD id=ResMngr.GetSprId(tile,0);
 				if(id)
 				{
 					GetField(tx*2,ty*2).TileId=id;
@@ -3236,7 +3236,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 			if(roof)
 			{
-				DWORD id=ResMngr.GetSprId(roof);
+				DWORD id=ResMngr.GetSprId(roof,0);
 				if(id)
 				{
 					GetField(tx*2,ty*2).RoofId=id;
@@ -3260,6 +3260,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 		if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			ScenToSend s;
+			ZeroMemory(&s,sizeof(s));
 			s.ProtoId=o->ProtoId;
 			s.MapX=o->MapX;
 			s.MapY=o->MapY;
@@ -3269,6 +3270,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			s.LightDistance=o->LightDistance;
 			s.LightFlags=o->LightDirOff|((o->LightDay&3)<<6);
 			s.LightIntensity=o->LightIntensity;
+			s.Dir=o->Dir;
 
 			if(!ParseScenery(s))
 			{
@@ -3388,7 +3390,7 @@ void HexManager::ParseSelTiles()
 
 void HexManager::SetTile(WORD hx, WORD hy, DWORD name_hash, bool is_roof)
 {
-	DWORD spr_id=ResMngr.GetSprId(name_hash);
+	DWORD spr_id=ResMngr.GetSprId(name_hash,0);
 	if(is_roof)
 	{
 		GetField(hx,hy).RoofId=spr_id;
@@ -3538,6 +3540,7 @@ void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 	mobj->MItem.PicInvHash=(mobj->RunTime.PicInvName[0]?Str::GetHash(mobj->RunTime.PicInvName):0);
 	item->Data.PicMapHash=mobj->MItem.PicMapHash;
 	item->Data.PicInvHash=mobj->MItem.PicInvHash;
+	item->Dir=mobj->Dir;
 
 	item->Data.Info=mobj->MItem.InfoOffset;
 	item->StartScrX=mobj->MItem.OffsetX;

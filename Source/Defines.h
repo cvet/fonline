@@ -231,7 +231,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define SENDMAP_TILES           BIN8(00000001)
 #define SENDMAP_WALLS           BIN8(00000010)
 #define SENDMAP_SCENERY         BIN8(00000100)
-#define SENDMAP_AUTOMAP         BIN8(00001000)
 
 // Ping
 #define PING_PING               (0)
@@ -411,7 +410,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Client map
 #define SERVER_MAP_EXT			".map"
-#define CLIENT_MAP_FORMAT_VER	(4)
+#define CLIENT_MAP_FORMAT_VER	(5)
 
 // Coordinates
 #define MAXHEX_DEF              (200)
@@ -883,11 +882,11 @@ struct ScoreType
 /* ScenToSend                                                           */
 /************************************************************************/
 
-struct ScenToSend // 28 bytes
+struct ScenToSend // 32 bytes
 {
 	WORD ProtoId;
 	BYTE Flags;
-	BYTE Reserved;
+	BYTE Reserved0;
 	WORD MapX;
 	WORD MapY;
 	short OffsetX;
@@ -901,6 +900,8 @@ struct ScenToSend // 28 bytes
 	BYTE AnimStayEnd;
 	WORD AnimWait;
 	DWORD PicMapHash;
+	short Dir;
+	WORD Reserved1;
 };
 typedef vector<ScenToSend> ScenToSendVec;
 

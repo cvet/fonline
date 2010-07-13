@@ -25,9 +25,9 @@ struct LoadedAnim
 	AnyFrames* Anim;
 	LoadedAnim(int res_type, AnyFrames* anim):ResType(res_type),Anim(anim){}
 };
-typedef map<__int64,LoadedAnim,less<DWORD>> LoadedAnimMap;
-typedef map<__int64,LoadedAnim,less<DWORD>>::iterator LoadedAnimMapIt;
-typedef map<__int64,LoadedAnim,less<DWORD>>::value_type LoadedAnimMapVal;
+typedef map<DWORD,LoadedAnim,less<DWORD>> LoadedAnimMap;
+typedef map<DWORD,LoadedAnim,less<DWORD>>::iterator LoadedAnimMapIt;
+typedef map<DWORD,LoadedAnim,less<DWORD>>::value_type LoadedAnimMapVal;
 
 
 class ResourceManager
@@ -51,9 +51,9 @@ public:
 
 	const char* GetName(DWORD name_hash);
 
-	DWORD GetSprId(DWORD name_hash);
-	SpriteInfo* GetSprInfo(DWORD name_hash);
-	AnyFrames* GetAnim(DWORD name_hash, BYTE dir);
+	DWORD GetSprId(DWORD name_hash, int dir);
+	SpriteInfo* GetSprInfo(DWORD name_hash, int dir);
+	AnyFrames* GetAnim(DWORD name_hash, int dir);
 
 	DWORD GetIfaceSprId(DWORD name_hash);
 	DWORD GetInvSprId(DWORD name_hash);

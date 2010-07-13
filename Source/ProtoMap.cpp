@@ -1312,6 +1312,7 @@ bool ProtoMap::Refresh()
 				cur_wall.ProtoId=mobj.ProtoId;
 				cur_wall.MapX=mobj.MapX;
 				cur_wall.MapY=mobj.MapY;
+				cur_wall.Dir=mobj.Dir;
 				cur_wall.OffsetX=mobj.MScenery.OffsetX;
 				cur_wall.OffsetY=mobj.MScenery.OffsetY;
 				cur_wall.LightColor=mobj.LightColor;
@@ -1403,6 +1404,7 @@ bool ProtoMap::Refresh()
 				cur_scen.ProtoId=mobj.ProtoId;
 				cur_scen.MapX=mobj.MapX;
 				cur_scen.MapY=mobj.MapY;
+				cur_scen.Dir=mobj.Dir;
 				cur_scen.OffsetX=mobj.MScenery.OffsetX;
 				cur_scen.OffsetY=mobj.MScenery.OffsetY;
 				cur_scen.LightColor=mobj.LightColor;

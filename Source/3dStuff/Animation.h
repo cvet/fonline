@@ -27,6 +27,8 @@ typedef vector<D3DXMESHCONTAINER_EXTENDED*> MeshContainerVec;
 typedef vector<D3DXMESHCONTAINER_EXTENDED*>::iterator MeshContainerVecIt;
 typedef vector<D3DXFRAME_EXTENDED*> FrameVec;
 typedef vector<D3DXFRAME_EXTENDED*>::iterator FrameVecIt;
+typedef vector<D3DXVECTOR3> Vector3Vec;
+typedef vector<D3DXVECTOR3>::iterator Vector3VecIt;
 typedef vector<D3DXMATRIX> MatrixVec;
 typedef vector<D3DXMATRIX>::iterator MatrixVecIt;
 class AnimTexture;
@@ -97,6 +99,7 @@ private:
 	bool bordersDisabled;
 	INTRECT baseBorders,fullBorders;
 	DWORD calcBordersTick;
+	Vector3Vec bordersResult;
 	bool noDraw;
 	MeshOptionsVec meshOpt;
 
@@ -132,6 +135,7 @@ public:
 	int GetAnim1();
 	int GetAnim2();
 	void SetDir(int dir);
+	void SetDirAngle(int dir_angle);
 	void SetRotation(float rx, float ry, float rz);
 	void SetScale(float sx, float sy, float sz);
 	void SetSpeed(float speed);

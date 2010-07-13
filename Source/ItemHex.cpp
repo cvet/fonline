@@ -144,11 +144,12 @@ void ItemHex::SetFade(bool fade_up)
 
 void ItemHex::RefreshAnim()
 {
+	int dir=GetDir();
 	DWORD name_hash=Proto->PicMapHash;
 	if(Data.PicMapHash) name_hash=Data.PicMapHash;
 	Anim=NULL;
-	if(name_hash) Anim=ResMngr.GetAnim(name_hash,Dir);
-	if(name_hash && !Anim && Dir) Anim=ResMngr.GetAnim(name_hash,0);
+	if(name_hash) Anim=ResMngr.GetAnim(name_hash,dir);
+	if(name_hash && !Anim && dir) Anim=ResMngr.GetAnim(name_hash,0);
 	if(!Anim) Anim=DefaultAnim;
 
 	SetStayAnim();

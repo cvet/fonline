@@ -24,8 +24,8 @@ public:
 	WORD ProtoId;
 	WORD MapX;
 	WORD MapY;
-	BYTE Dir;
-	// BYTE[3]
+	short Dir;
+	// BYTE[2]
 
 	DWORD LightColor;
 	BYTE LightDay;

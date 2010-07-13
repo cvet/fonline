@@ -336,14 +336,16 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	eggX=0;
 	eggY=0;
 
-	if(!LoadSprite("egg.png",PT_ART_MISC,&sprEgg))
+	DWORD egg_spr_id=LoadSprite("egg.png",PT_ART_MISC,0);
+	if(!egg_spr_id)
 	{
 		WriteLog("Load sprite egg fail.\n");
 		isInit=false;
 		return false;
 	}
+	sprEgg=GetSpriteInfo(egg_spr_id);
 
-	eggSurfWidth=(float)surfList[0]->Width;
+	eggSurfWidth=(float)surfList[0]->Width; // First added surface
 	eggSurfHeight=(float)surfList[0]->Height;
 	eggSprWidth=sprEgg->Width;
 	eggSprHeight=sprEgg->Height;
@@ -810,7 +812,7 @@ DWORD SpriteManager::ReloadSprite(DWORD spr_id, const char* fname, int path_type
 	SpriteInfo* si=(spr_id?GetSpriteInfo(spr_id):NULL);
 	if(!si)
 	{
-		spr_id=LoadSprite(fname,path_type,NULL);
+		spr_id=LoadSprite(fname,path_type);
 	}
 	else
 	{
@@ -822,7 +824,7 @@ DWORD SpriteManager::ReloadSprite(DWORD spr_id, const char* fname, int path_type
 				delete surf;
 				surfList.erase(it);
 				SAFEDEL(sprData[spr_id]);
-				spr_id=LoadSprite(fname,path_type,NULL);
+				spr_id=LoadSprite(fname,path_type);
 				break;
 			}
 		}
@@ -831,7 +833,7 @@ DWORD SpriteManager::ReloadSprite(DWORD spr_id, const char* fname, int path_type
 	return spr_id;
 }
 
-DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** pp_info)
+DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0 */)
 {
 	if(!isInit) return 0;
 	if(!fname || !fname[0]) return 0;
@@ -846,15 +848,9 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** p
 		return 0;
 	}
 
-	if(!_stricmp(ext,"x") || !_stricmp(ext,"fo3d"))
-	{
-		DWORD spr_id;
-		if(!LoadSprite3d(fname,path_type,spr_id,pp_info)) return false;
-		return spr_id;
-	}
-
-	if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
-		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type,pp_info);
+	if(!_stricmp(ext,"x") || !_stricmp(ext,"fo3d")) return LoadSprite3d(fname,path_type,dir);
+	else if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
+		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type);
 
 	SpriteInfo* si=new SpriteInfo();
 
@@ -886,11 +882,10 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, SpriteInfo** p
 	DWORD result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
 	fileMngr.UnloadFile();
-	if(pp_info && result) *pp_info=si;
 	return result;
 }
 
-DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo** pp_info)
+DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 {
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
@@ -909,7 +904,7 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo*
 		if(!is_frm) return 0;
 		short ox=fofrm.GetInt("offs_x",0);
 		short oy=fofrm.GetInt("offs_y",0);
-		DWORD spr_id=LoadSprite(fname2,path_type,pp_info);
+		DWORD spr_id=LoadSprite(fname2,path_type);
 		if(!spr_id) return 0;
 		SpriteInfo* si=GetSpriteInfo(spr_id);
 		si->OffsX+=ox;
@@ -928,13 +923,12 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type, SpriteInfo*
 
 	DWORD result=FillSurfaceFromMemory(si,fileMngr.GetBuf(),fileMngr.GetFsize());
 	fileMngr.UnloadFile();
-	if(pp_info && result) *pp_info=si;
 	return result;
 }
 
-bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id, SpriteInfo** pp_info)
+DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 {
-	Animation3d* anim3d=Load3dAnimation(fname,path_type,pp_info);
+	Animation3d* anim3d=Load3dAnimation(fname,path_type);
 	if(!anim3d) return false;
 
 	// Render
@@ -948,8 +942,12 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,1.0f,0));
 	Animation3d::SetScreenSize(spr3dSurfWidth,spr3dSurfHeight);
 	anim3d->EnableSetupBorders(false);
-	anim3d->SetDir(3);
+
+	if(dir<0 || dir>5) anim3d->SetDirAngle(dir);
+	else anim3d->SetDir(dir);
+
 	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
+
 	anim3d->EnableSetupBorders(true);
 	anim3d->SetupBorders();
 	Animation3d::SetScreenSize(modeWidth,modeHeight);
@@ -962,14 +960,14 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 
 	// Calculate sprite borders
 	INTRECT r=anim3d->GetFullBorders();
-	RECT r_={r.L,r.T,r.R,r.B};
+	RECT r_={r.L,r.T,r.R+1,r.B+1};
 
 	// Grow surfaces while sprite not fitted in it
-	if(r_.left<0 || r_.right>=spr3dSurfWidth || r_.top<0 || r_.bottom>=spr3dSurfHeight)
+	if(r.L<0 || r.R>=spr3dSurfWidth || r.T<0 || r.B>=spr3dSurfHeight)
 	{
 		// Grow x2
- 		if(r_.left<0 || r_.right>=spr3dSurfWidth) spr3dSurfWidth*=2;
- 		if(r_.top<0 || r_.bottom>=spr3dSurfHeight) spr3dSurfHeight*=2;
+ 		if(r.L<0 || r.R>=spr3dSurfWidth) spr3dSurfWidth*=2;
+ 		if(r.T<0 || r.B>=spr3dSurfHeight) spr3dSurfHeight*=2;
 
 		// Recreate
 		SAFEREL(spr3dRT);
@@ -983,7 +981,7 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 		D3D_HR(dxDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
 
 		// Try load again
-		return LoadSprite3d(fname,path_type,spr_id,pp_info);
+		return LoadSprite3d(fname,path_type,dir);
 	}
 
 	// Get render target data
@@ -1000,8 +998,8 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 	// Copy to system memory
 	D3DLOCKED_RECT lr;
 	D3D_HR(spr3dRTData->LockRect(&lr,&r_,D3DLOCK_READONLY));
-	DWORD w=r_.right-r_.left;
-	DWORD h=r_.bottom-r_.top;
+	DWORD w=r.W();
+	DWORD h=r.H();
 	DWORD size=12+h*w*4;
 	BYTE* data=new BYTE[size];
 	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
@@ -1015,11 +1013,9 @@ bool SpriteManager::LoadSprite3d(const char* fname, int path_type, DWORD& spr_id
 	INTPOINT p=anim3d->GetFullBordersPivot();
 	si->OffsX=r.W()/2-p.X;
 	si->OffsY=r.H()-p.Y;
-
 	DWORD result=FillSurfaceFromMemory(si,data,size);
-	if(pp_info && result) *pp_info=si;
-	spr_id=result;
-	return true;
+	delete[] data;
+	return result;
 }
 
 DWORD SpriteManager::LoadRix(const char* fname, int path_type)
@@ -1069,13 +1065,17 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		return NULL;
 	}
 
-	if(!_stricmp(ext,"fofrm")) return LoadAnyAnimationFofrm(fname,path_type,dir);
-	else if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
-		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadAnyAnimationOneSpr(fname,path_type,dir);
+	if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
+		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5"))
+	{
+		if(!_stricmp(ext,"fofrm")) return LoadAnyAnimationFofrm(fname,path_type,dir);
+		return LoadAnyAnimationOneSpr(fname,path_type,dir);
+	}
 
+	if(dir<0 || dir>5) return NULL;
 	if(!fileMngr.LoadFile(fname,path_type)) return NULL;
 
-	AnyFrames* anim=new AnyFrames();
+	AnyFrames* anim=new(nothrow) AnyFrames();
 	if(!anim)
 	{
 		WriteLog(__FUNCTION__" - Memory allocation fail.\n");
@@ -1107,9 +1107,15 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 	if(!anim->NextY) return NULL;
 
 	fileMngr.SetCurPos(0x22+dir*4);
-	DWORD cur_ptr=0x3E+fileMngr.GetBEDWord();
+	DWORD offset=0x3E+fileMngr.GetBEDWord();
 
-	int animPixType=0;
+	if(offset==0x3E && dir)
+	{
+		delete anim;
+		return NULL;
+	}
+
+	int anim_pix_type=0;
 	// 0x00 - None
 	// 0x01 - Slime, 229 - 232, 4
 	// 0x02 - Monitors, 233 - 237, 5
@@ -1117,13 +1123,13 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 	// 0x08 - FireFast, 243 - 247, 5
 	// 0x10 - Shoreline, 248 - 253, 6
 	// 0x20 - BlinkingRed, 254, parse on 15 frames
-	const BYTE BlinkingRedVals[10]={254,210,165,120,75,45,90,135,180,225};
+	const BYTE blinking_red_vals[10]={254,210,165,120,75,45,90,135,180,225};
 
 	for(int frm=0;frm<frm_num;frm++)
 	{
 		SpriteInfo* si=new SpriteInfo(); // TODO: Memory leak
 		if(!si) return NULL;
-		fileMngr.SetCurPos(cur_ptr);
+		fileMngr.SetCurPos(offset);
 		WORD w=fileMngr.GetBEWord();
 		WORD h=fileMngr.GetBEWord();
 
@@ -1149,9 +1155,9 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		*((DWORD*)data+2)=h;
 		DWORD* ptr=(DWORD*)data+3;
 		DWORD* palette=(DWORD*)FoPalette;
-		fileMngr.SetCurPos(cur_ptr+12);
+		fileMngr.SetCurPos(offset+12);
 
-		if(!animPixType)
+		if(!anim_pix_type)
 		{
 			for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fileMngr.GetByte()];
 		}
@@ -1169,7 +1175,7 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 					else if(index>=248 && index<=253) {index-=frm%6; if(index<248) index+=6;}
 					else
 					{
-						*(ptr+i)=D3DCOLOR_XRGB(BlinkingRedVals[frm%10],0,0);
+						*(ptr+i)=D3DCOLOR_XRGB(blinking_red_vals[frm%10],0,0);
 						continue;
 					}
 				}
@@ -1180,35 +1186,35 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		// Check for animate pixels
 		if(!frm && anim_pix)
 		{
-			fileMngr.SetCurPos(cur_ptr+12);
+			fileMngr.SetCurPos(offset+12);
 			for(int i=0,j=w*h;i<j;i++)
 			{
 				BYTE index=fileMngr.GetByte();
 				if(index<229 || index==255) continue;
-				if(index>=229 && index<=232) animPixType|=0x01;
-				else if(index>=233 && index<=237) animPixType|=0x02;
-				else if(index>=238 && index<=242) animPixType|=0x04;
-				else if(index>=243 && index<=247) animPixType|=0x08;
-				else if(index>=248 && index<=253) animPixType|=0x10;
-				else animPixType|=0x20;
+				if(index>=229 && index<=232) anim_pix_type|=0x01;
+				else if(index>=233 && index<=237) anim_pix_type|=0x02;
+				else if(index>=238 && index<=242) anim_pix_type|=0x04;
+				else if(index>=243 && index<=247) anim_pix_type|=0x08;
+				else if(index>=248 && index<=253) anim_pix_type|=0x10;
+				else anim_pix_type|=0x20;
 			}
 
-			if(animPixType&0x01) anim->Ticks=200;
-			if(animPixType&0x04) anim->Ticks=200;
-			if(animPixType&0x10) anim->Ticks=200;
-			if(animPixType&0x08) anim->Ticks=142;
-			if(animPixType&0x02) anim->Ticks=100;
-			if(animPixType&0x20) anim->Ticks=100;
+			if(anim_pix_type&0x01) anim->Ticks=200;
+			if(anim_pix_type&0x04) anim->Ticks=200;
+			if(anim_pix_type&0x10) anim->Ticks=200;
+			if(anim_pix_type&0x08) anim->Ticks=142;
+			if(anim_pix_type&0x02) anim->Ticks=100;
+			if(anim_pix_type&0x20) anim->Ticks=100;
 
-			if(animPixType)
+			if(anim_pix_type)
 			{
 				int divs[4]; divs[0]=1; divs[1]=1; divs[2]=1; divs[3]=1;
-				if(animPixType&0x01) divs[0]=4;
-				if(animPixType&0x02) divs[1]=5;
-				if(animPixType&0x04) divs[1]=5;
-				if(animPixType&0x08) divs[1]=5;
-				if(animPixType&0x10) divs[2]=6;
-				if(animPixType&0x20) divs[3]=10;
+				if(anim_pix_type&0x01) divs[0]=4;
+				if(anim_pix_type&0x02) divs[1]=5;
+				if(anim_pix_type&0x04) divs[1]=5;
+				if(anim_pix_type&0x08) divs[1]=5;
+				if(anim_pix_type&0x10) divs[2]=6;
+				if(anim_pix_type&0x20) divs[3]=10;
 
 				frm_num=4;
 				for(int i=0;i<4;i++)
@@ -1236,7 +1242,7 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 			}
 		}
 
-		if(!animPixType) cur_ptr+=w*h+12;
+		if(!anim_pix_type) offset+=w*h+12;
 
 		DWORD result=FillSurfaceFromMemory(si,data,size);
 		delete[] data;
@@ -1305,8 +1311,9 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 			(frm!=0 || !iniFile.GetStr(no_app?NULL:dir_str,Str::Format("frm",frm),"",frm_name))) return NULL;
 
 		SpriteInfo* spr_inf;
-		DWORD spr_id=LoadSprite(frm_fname,path_type,&spr_inf);
+		DWORD spr_id=LoadSprite(frm_fname,path_type);
 		if(!spr_id) return NULL;
+		spr_inf=GetSpriteInfo(spr_id);
 
 		spr_inf->OffsX+=anim->OffsX;
 		spr_inf->OffsY+=anim->OffsY;
@@ -1319,11 +1326,11 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 
 AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_type, int dir)
 {
-	DWORD spr_id=LoadSprite(fname,path_type,NULL);
+	DWORD spr_id=LoadSprite(fname,path_type,dir);
 	if(!spr_id) return NULL;
 
-	AutoPtr<AnyFrames> anim(new AnyFrames());
-	if(!anim.IsValid())
+	AnyFrames* anim=new(nothrow) AnyFrames();
+	if(!anim)
 	{
 		WriteLog(__FUNCTION__" - Memory allocation fail.\n");
 		return NULL;
@@ -1339,10 +1346,10 @@ AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_typ
 	anim->NextX[0]=0;
 	anim->NextY=new short[1];
 	anim->NextY[0]=0;
-	return anim.Release();
+	return anim;
 }
 
-Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type, SpriteInfo** pp_info /* = NULL */)
+Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type)
 {
 	if(!fileMngr.LoadFile(fname,path_type)) return NULL;
 	fileMngr.UnloadFile();
@@ -1360,7 +1367,6 @@ Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type, Sp
 	// Cross links
 	anim3d->SetSprId(index);
 	si->Anim3d=anim3d;
-	if(pp_info) *pp_info=si;
 	return anim3d;
 }
 
@@ -3128,7 +3134,6 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	if(fi.LinesAll>FONT_MAX_LINES)
 	{
 		fi.IsError=true;
-		WriteLog("===%u\n",fi.LinesAll);
 		return;
 	}
 

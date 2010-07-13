@@ -1461,7 +1461,7 @@ void FOMapper::IntDraw()
 		for(;i<j;i++,x+=w)
 		{
 			ProtoItem* proto_item=&(*CurItemProtos)[i];
-			DWORD spr_id=ResMngr.GetSprId(proto_item->PicMapHash);
+			DWORD spr_id=ResMngr.GetSprId(proto_item->PicMapHash,proto_item->Dir);
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
@@ -1492,7 +1492,7 @@ void FOMapper::IntDraw()
 
 		for(;i<j;i++,x+=w)
 		{
-			DWORD spr_id=ResMngr.GetSprId(TilesPictures[i]);
+			DWORD spr_id=ResMngr.GetSprId(TilesPictures[i],0);
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
@@ -1617,7 +1617,7 @@ void FOMapper::ObjDraw()
 
 	if(proto)
 	{
-		DWORD spr_id=ResMngr.GetSprId(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMapHash);
+		DWORD spr_id=ResMngr.GetSprId(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMapHash,o->Dir);
 		if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 		SprMngr.DrawSpriteSize(spr_id,x+w-ProtoWidth,y,ProtoWidth,ProtoWidth,false,true);
 
@@ -1680,7 +1680,7 @@ void FOMapper::ObjDraw()
 	DRAW_COMPONENT("ProtoId",o->ProtoId,true,true);                                     // 3
 	DRAW_COMPONENT("MapX",o->MapX,true,true);                                           // 4
 	DRAW_COMPONENT("MapY",o->MapY,true,true);                                           // 5
-	DRAW_COMPONENT("Dir",o->Dir,true,true);                                             // 6
+	DRAW_COMPONENT("Dir",o->Dir,false,o->MapObjType==MAP_OBJECT_CRITTER);               // 6
 	DRAW_COMPONENT_TEXT("ScriptName",o->ScriptName,false);                              // 7
 	DRAW_COMPONENT_TEXT("FuncName",o->FuncName,false);                                  // 8
 	DRAW_COMPONENT("LightIntensity",o->LightIntensity,false,false);                     // 9
@@ -1862,6 +1862,7 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 
 	switch(ObjCurLine)
 	{
+	case 6: if(o->MapObjType!=MAP_OBJECT_CRITTER) val_s=&o->Dir; break;
 	case 7: Keyb::GetChar(dik,o->ScriptName,NULL,MAPOBJ_SCRIPT_NAME,KIF_NO_SPEC_SYMBOLS); return;
 	case 8: Keyb::GetChar(dik,o->FuncName,NULL,MAPOBJ_SCRIPT_NAME,KIF_NO_SPEC_SYMBOLS); return;
 	case 9: val_c=&o->LightIntensity; break;
@@ -2886,7 +2887,7 @@ void FOMapper::SelectAddTile(WORD tx, WORD ty, DWORD name_hash, bool is_roof, bo
 		if(t->TileX==tx && t->TileY==ty && t->IsRoof==is_roof) return;
 	}
 
-	DWORD spr_id=ResMngr.GetSprId(name_hash);
+	DWORD spr_id=ResMngr.GetSprId(name_hash,0);
 	if(!spr_id) return;
 
 	if(!is_roof)
@@ -3098,7 +3099,7 @@ void FOMapper::SelectMove(int vect_hx, int vect_hy)
 				is_clear=true;
 			}
 
-			DWORD spr_id=ResMngr.GetSprId(t->PicId);
+			DWORD spr_id=ResMngr.GetSprId(t->PicId,0);
 
 			if(!t->IsRoof) HexMngr.GetField(new_tx*2,new_ty*2).SelTile=spr_id;
 			else HexMngr.GetField(new_tx*2,new_ty*2).SelRoof=spr_id;
@@ -3178,6 +3179,7 @@ void FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont)
 		mobj->ProtoId=pid;
 		mobj->MapX=hx;
 		mobj->MapY=hy;
+		mobj->Dir=proto_item->Dir;
 		mobj->LightDistance=proto_item->LightDistance;
 		mobj->LightIntensity=proto_item->LightIntensity;
 		if(in_cont) mobj->MItem.InContainer=in_cont;
@@ -3355,7 +3357,8 @@ void FOMapper::CurDraw()
 	case CUR_MODE_DRAW:
 		if(IsObjectMode() && (*CurItemProtos).size())
 		{
-			spr_id=ResMngr.GetSprId((*CurItemProtos)[CurProto[IntMode]].PicMapHash);
+			ProtoItem& proto_item=(*CurItemProtos)[CurProto[IntMode]];
+			spr_id=ResMngr.GetSprId(proto_item.PicMapHash,proto_item.Dir);
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			WORD hx,hy;
@@ -3369,7 +3372,7 @@ void FOMapper::CurDraw()
 		}
 		else if(IsTileMode() && TilesPictures.size())
 		{
-			spr_id=ResMngr.GetSprId(TilesPictures[CurProto[IntMode]]);
+			spr_id=ResMngr.GetSprId(TilesPictures[CurProto[IntMode]],0);
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			WORD hx,hy;

@@ -2896,7 +2896,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(IntPair)==8);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(MapObject)==MAP_OBJECT_SIZE+sizeof(MapObject::_RunTime));
-	STATIC_ASSERT(sizeof(ScenToSend)==28);
+	STATIC_ASSERT(sizeof(ScenToSend)==32);
 	STATIC_ASSERT(sizeof(NpcBagItem)==16);
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);

@@ -128,25 +128,25 @@ void ResourceManager::FreeResources(int type)
 	}
 }
 
-DWORD ResourceManager::GetSprId(DWORD name_hash)
+DWORD ResourceManager::GetSprId(DWORD name_hash, int dir)
 {
 	if(!name_hash) return 0;
-	AnyFrames* anim=GetAnim(name_hash,0);
+	AnyFrames* anim=GetAnim(name_hash,dir);
 	if(!anim) return 0;
 	return anim->GetSprId(0);
 }
 
-SpriteInfo* ResourceManager::GetSprInfo(DWORD name_hash)
+SpriteInfo* ResourceManager::GetSprInfo(DWORD name_hash, int dir)
 {
-	DWORD id=GetSprId(name_hash);
+	DWORD id=GetSprId(name_hash,dir);
 	return id?sprMngr->GetSpriteInfo(id):NULL;
 }
 
-AnyFrames* ResourceManager::GetAnim(DWORD name_hash, BYTE dir)
+AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir)
 {
 	int res_type=(sprMngr->SurfType==RES_NONE?RES_ITEMS:sprMngr->SurfType);
 	sprMngr->SurfType=RES_NONE;
-	__int64 id=(__int64(dir)<<32)|name_hash;
+	DWORD id=name_hash+dir;
 	LoadedAnimMapIt it=loadedAnims.find(id);
 	if(it!=loadedAnims.end()) return (*it).second.Anim;
 
@@ -161,12 +161,12 @@ AnyFrames* ResourceManager::GetAnim(DWORD name_hash, BYTE dir)
 	return anim;
 }
 
-DWORD ResourceManager::GetIfaceSprId(DWORD name_hash){sprMngr->SurfType=RES_IFACE; return GetSprId(name_hash);}
-DWORD ResourceManager::GetInvSprId(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprId(name_hash);}
-DWORD ResourceManager::GetSkDxSprId(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprId(name_hash);}
-SpriteInfo* ResourceManager::GetIfaceSprInfo(DWORD name_hash){sprMngr->SurfType=RES_IFACE; return GetSprInfo(name_hash);}
-SpriteInfo* ResourceManager::GetInvSprInfo(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprInfo(name_hash);}
-SpriteInfo* ResourceManager::GetSkDxSprInfo(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprInfo(name_hash);}
+DWORD ResourceManager::GetIfaceSprId(DWORD name_hash){sprMngr->SurfType=RES_IFACE; return GetSprId(name_hash,0);}
+DWORD ResourceManager::GetInvSprId(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprId(name_hash,0);}
+DWORD ResourceManager::GetSkDxSprId(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprId(name_hash,0);}
+SpriteInfo* ResourceManager::GetIfaceSprInfo(DWORD name_hash){sprMngr->SurfType=RES_IFACE; return GetSprInfo(name_hash,0);}
+SpriteInfo* ResourceManager::GetInvSprInfo(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprInfo(name_hash,0);}
+SpriteInfo* ResourceManager::GetSkDxSprInfo(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetSprInfo(name_hash,0);}
 AnyFrames* ResourceManager::GetIfaceAnim(DWORD name_hash){sprMngr->SurfType=RES_IFACE; return GetAnim(name_hash,0);}
 AnyFrames* ResourceManager::GetInvAnim(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetAnim(name_hash,0);}
 

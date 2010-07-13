@@ -403,15 +403,15 @@ void Animation3d::SetupBorders()
 	fullBorders.B=borders.B;
 	bordersXY=drawXY;
 
-	// Grow borders on 1 pixel
-	baseBorders.L--;
-	baseBorders.R++;
-	baseBorders.T--;
-	baseBorders.B++;
-	fullBorders.L--;
-	fullBorders.R++;
-	fullBorders.T--;
-	fullBorders.B++;
+	// Grow borders
+	baseBorders.L-=1;
+	baseBorders.R+=2;
+	baseBorders.T-=1;
+	baseBorders.B+=2;
+	fullBorders.L-=1;
+	fullBorders.R+=2;
+	fullBorders.T-=1;
+	fullBorders.B+=2;
 }
 
 bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
@@ -424,34 +424,27 @@ bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
 		D3DXMESHCONTAINER_EXTENDED* mesh_container_ex=(D3DXMESHCONTAINER_EXTENDED*)mesh_container;
 		LPD3DXMESH mesh=(mesh_container_ex->pSkinInfo?mesh_container_ex->exSkinMesh:mesh_container_ex->MeshData.pMesh);
 
+		DWORD v_size=mesh->GetNumBytesPerVertex();
+		DWORD count=mesh->GetNumVertices();
+		if(bordersResult.size()<count) bordersResult.resize(count);
+
 		LPDIRECT3DVERTEXBUFFER v;
 		BYTE* data;
 		D3D_HR(mesh->GetVertexBuffer(&v));
 		D3D_HR(v->Lock(0,0,(void**)&data,D3DLOCK_READONLY));
-
-		DWORD v_size=mesh->GetNumBytesPerVertex();
-		for(DWORD i=0,j=mesh->GetNumVertices();i<j;i++)
-		{
-			// Get 3d coords
-			float x=*(float*)data;
-			float y=*(float*)(data+sizeof(float));
-			float z=*(float*)(data+sizeof(float)*2);
-
-			// Get 2d coords
-			D3DXVECTOR3 coords;
-			D3DXVec3Project(&coords,&D3DXVECTOR3(x,y,z),&ViewPort,&MatrixProj,&MatrixView,mesh_container_ex->pSkinInfo?&MatrixEmpty:&frame_ex->exCombinedTransformationMatrix);
-
-			// Check borders
-			if(coords.x<borders.L) borders.L=coords.x;
-			if(coords.x>borders.R) borders.R=coords.x;
-			if(coords.y<borders.T) borders.T=coords.y;
-			if(coords.y>borders.B) borders.B=coords.y;
-
-			// Go to next vertex
-			data+=v_size;
-		}
-
+		D3DXVec3ProjectArray(&bordersResult[0],sizeof(D3DXVECTOR3),(D3DXVECTOR3*)data,v_size,
+			&ViewPort,&MatrixProj,&MatrixView,mesh_container_ex->pSkinInfo?&MatrixEmpty:&frame_ex->exCombinedTransformationMatrix,
+			count);
 		D3D_HR(v->Unlock());
+
+		for(DWORD i=0;i<count;i++)
+		{
+			D3DXVECTOR3& vec=bordersResult[i];
+			if(vec.x<borders.L) borders.L=vec.x;
+			if(vec.x>borders.R) borders.R=vec.x;
+			if(vec.y<borders.T) borders.T=vec.y;
+			if(vec.y>borders.B) borders.B=vec.y;
+		}
 
 		// Go to next mesh
 		mesh_container=mesh_container->pNextMeshContainer;
@@ -563,6 +556,16 @@ void Animation3d::SetTexture(const char* tex_name, int subset)
 void Animation3d::SetDir(int dir)
 {
 	float angle=150-dir*60;
+	if(angle!=dirAngle)
+	{
+		dirAngle=angle;
+		SetupBorders();
+	}
+}
+
+void Animation3d::SetDirAngle(int dir_angle)
+{
+	float angle=dir_angle;
 	if(angle!=dirAngle)
 	{
 		dirAngle=angle;

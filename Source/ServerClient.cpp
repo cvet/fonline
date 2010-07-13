@@ -2218,7 +2218,6 @@ void FOServer::Process_GiveMap(Client* cl)
 	if(pmap->HashTiles!=hash_tiles) SETFLAG(send_info,SENDMAP_TILES);
 	if(pmap->HashWalls!=hash_walls) SETFLAG(send_info,SENDMAP_WALLS);
 	if(pmap->HashScen!=hash_scen) SETFLAG(send_info,SENDMAP_SCENERY);
-	if(automap) SETFLAG(send_info,SENDMAP_AUTOMAP);
 
 	Send_MapData(cl,pmap,send_info);
 

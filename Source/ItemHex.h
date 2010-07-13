@@ -45,6 +45,7 @@ public:
 	bool IsWall(){return Proto->IsWall();}
 	WORD GetHexX(){return HexX;}
 	WORD GetHexY(){return HexY;}
+	int GetDir(){return Dir;}
 	DWORD GetPos(){return HEX_POS(HexX,HexY+Proto->DrawPosOffsY);}
 	bool IsAnimated(){return isAnimated;}
 	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid.Type==GRID_EXITGRID);} // Proto->CanLook
