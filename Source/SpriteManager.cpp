@@ -897,18 +897,21 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 
 	if(!_stricmp(ext,"fofrm"))
 	{
-		char fname2[128];
 		IniParser fofrm;
 		fofrm.LoadFile(fileMngr.GetBuf(),fileMngr.GetFsize());
-		bool is_frm=(fofrm.GetStr("frm","",fname2) || fofrm.GetStr("frm_0","",fname2) || fofrm.GetStr("dir_0","frm_0","",fname2));
+
+		char frm_fname[MAX_FOPATH];
+		FileManager::ExtractPath(fname,frm_fname);
+		char* frm_name=frm_fname+strlen(frm_fname);
+		bool is_frm=(fofrm.GetStr("frm","",frm_name) || fofrm.GetStr("frm_0","",frm_name) || fofrm.GetStr("dir_0","frm_0","",frm_name));
 		if(!is_frm) return 0;
-		short ox=fofrm.GetInt("offs_x",0);
-		short oy=fofrm.GetInt("offs_y",0);
-		DWORD spr_id=LoadSprite(fname2,path_type);
+
+		DWORD spr_id=LoadSprite(frm_fname,path_type);
 		if(!spr_id) return 0;
+
 		SpriteInfo* si=GetSpriteInfo(spr_id);
-		si->OffsX+=ox;
-		si->OffsY+=oy;
+		si->OffsX+=fofrm.GetInt("offs_x",0);
+		si->OffsY+=fofrm.GetInt("offs_y",0);
 		return spr_id;
 	}
 	else if(!_stricmp(ext,"rix"))
@@ -938,16 +941,13 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
 	D3D_HR(dxDevice->SetDepthStencilSurface(spr3dDS));
 	D3D_HR(dxDevice->SetRenderTarget(0,spr3dRT));
-
 	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,1.0f,0));
+
 	Animation3d::SetScreenSize(spr3dSurfWidth,spr3dSurfHeight);
 	anim3d->EnableSetupBorders(false);
-
 	if(dir<0 || dir>5) anim3d->SetDirAngle(dir);
 	else anim3d->SetDir(dir);
-
 	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
-
 	anim3d->EnableSetupBorders(true);
 	anim3d->SetupBorders();
 	Animation3d::SetScreenSize(modeWidth,modeHeight);
@@ -1310,13 +1310,12 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 		if(!iniFile.GetStr(no_app?NULL:dir_str,Str::Format("frm_%d",frm),"",frm_name) &&
 			(frm!=0 || !iniFile.GetStr(no_app?NULL:dir_str,Str::Format("frm",frm),"",frm_name))) return NULL;
 
-		SpriteInfo* spr_inf;
 		DWORD spr_id=LoadSprite(frm_fname,path_type);
 		if(!spr_id) return NULL;
-		spr_inf=GetSpriteInfo(spr_id);
 
-		spr_inf->OffsX+=anim->OffsX;
-		spr_inf->OffsY+=anim->OffsY;
+		SpriteInfo* si=GetSpriteInfo(spr_id);
+		si->OffsX+=anim->OffsX;
+		si->OffsY+=anim->OffsY;
 		anim->Ind[frm]=spr_id;
 	}
 

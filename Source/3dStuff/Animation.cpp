@@ -1172,8 +1172,8 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		}
 		fo3d.CacheKeys();
 
-		// Load x file
-		char xfname[256];
+		// Get x file name
+		char xfname[MAX_FOPATH];
 		if(!fo3d.GetStr("xfile","",xfname) || !xfname[0])
 		{
 			WriteLog(__FUNCTION__" - 'xfile' section not found in file<%s>.\n",name);
@@ -1181,9 +1181,25 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		}
 		ProcessTemplateDefines(xfname,def);
 
-		char anim_xfname[256];
+		// Get animation file name
+		char anim_xfname[MAX_FOPATH];
 		if(fo3d.GetStr("animation","",anim_xfname) && anim_xfname[0]) ProcessTemplateDefines(anim_xfname,def);
 
+		// Process pathes
+		char name_path[MAX_FOPATH];
+		FileManager::ExtractPath(name,name_path);
+		if(name_path[0])
+		{
+			char tmp[MAX_FOPATH];
+			StringCopy(tmp,xfname);
+			StringCopy(xfname,name_path);
+			StringAppend(xfname,tmp);
+			StringCopy(tmp,anim_xfname);
+			StringCopy(anim_xfname,name_path);
+			StringAppend(anim_xfname,tmp);
+		}
+
+		// Load x file
 		Animation3dXFile* xfile=Animation3dXFile::GetXFile(xfname,anim_xfname[0]?anim_xfname:NULL,path_type);
 		if(!xfile) return false;
 
@@ -1192,7 +1208,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		pathType=path_type;
 		xFile=xfile;
 		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
-		
+
 		// Indexing frames                          ||||||
 		static char frm_ind[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		//                     012345678901234567890123456
