@@ -900,7 +900,7 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 		char fname2[128];
 		IniParser fofrm;
 		fofrm.LoadFile(fileMngr.GetBuf(),fileMngr.GetFsize());
-		bool is_frm=(fofrm.GetStr("frm","",fname2) || fofrm.GetStr("frm_0","",fname2) ||	fofrm.GetStr("dir_0","frm_0","",fname2));
+		bool is_frm=(fofrm.GetStr("frm","",fname2) || fofrm.GetStr("frm_0","",fname2) || fofrm.GetStr("dir_0","frm_0","",fname2));
 		if(!is_frm) return 0;
 		short ox=fofrm.GetInt("offs_x",0);
 		short oy=fofrm.GetInt("offs_y",0);

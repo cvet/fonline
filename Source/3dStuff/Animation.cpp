@@ -1148,8 +1148,11 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 	FileManager fm;
 	if(!fm.LoadFile(name,path_type)) return false;
 
+	const char* ext=FileManager::GetExtension(name);
+	if(!ext) return false;
+
 	// Load fonline 3d file
-	if(strstr(name,".fo3d"))
+	if(!_stricmp(ext,"fo3d"))
 	{
 		char* big_buf=Str::GetBigBuf();
 
@@ -1300,7 +1303,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 	//	if(Str::IsCachedKey("rotate_z")) scaleValue=float(Str::GetInt("scale",1000))/1000.0f;
 	}
 	// Load just x file
-	else
+	else if(!_stricmp(ext,"x"))
 	{
 		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,NULL,path_type);
 		if(!xfile) return false;
@@ -1311,13 +1314,18 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		xFile=xfile;
 		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
 	}
+	else
+	{
+		WriteLog(__FUNCTION__" - Unknown file format, name<%s>.\n",name);
+		return false;
+	}
 
 	return true;
 }
 
 void Animation3dEntity::ProcessTemplateDefines(char* str, StrVec& def)
 {
-	for(size_t i=1,j=def.size();i<j-1;i+=2)
+	for(int i=1,j=(int)def.size();i<j-1;i+=2)
 	{
 		const char* from=def[i].c_str();
 		const char* to=def[i+1].c_str();
