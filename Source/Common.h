@@ -43,17 +43,16 @@ using namespace std;
 #include "Exception.h"
 #include "FlexRect.h"
 
-#define random(a) ((int)(__int64(rand())*__int64(a)/(__int64(RAND_MAX)+1)))
-
 #define ___MSG1(x) #x
 #define ___MSG0(x) ___MSG1(x)
 #define MESSAGE(desc) message(__FILE__ "(" ___MSG0(__LINE__) "):" #desc)
 
-#define SAFEREL(x) {if(x) (x)->Release();(x)=NULL;}
-#define SAFEDEL(x) {if(x) delete (x);(x)=NULL;}
+#define SAFEREL(x)  {if(x) (x)->Release();(x)=NULL;}
+#define SAFEDEL(x)  {if(x) delete (x);(x)=NULL;}
 #define SAFEDELA(x) {if(x) delete[] (x);(x)=NULL;}
 
 #define STATIC_ASSERT(a) {static int arr[(a)?1:-1];}
+#define D3D_HR(expr)     {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s - %s>.\n",DXGetErrorString(hr__),DXGetErrorDescription(hr__)); return 0;}}
 
 #define PI_FLOAT       (3.14159265f)
 #define PIBY2_FLOAT    (1.5707963f)
@@ -629,6 +628,7 @@ void StringCopy(char* to, size_t size, const char* from);
 template<int Size> inline void StringCopy(char (&to)[Size], const char* from){return StringCopy(to,Size,from);}
 void StringAppend(char* to, size_t size, const char* from);
 template<int Size> inline void StringAppend(char (&to)[Size], const char* from){return StringAppend(to,Size,from);}
+char* StringDuplicate(const char* str);
 
 /************************************************************************/
 /*                                                                      */

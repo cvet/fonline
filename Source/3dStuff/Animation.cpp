@@ -1,12 +1,9 @@
 #include "StdAfx.h"
 #include "Animation.h"
-#include "3dStuff\Utility.h"
-#include "3dStuff\MeshHierarchy.h"
-#include "3dStuff\ShadowVolume.h"
+#include "Loader.h"
+#include "ShadowVolume.h"
 #include "Common.h"
 #include "Text.h"
-
-#define D3D_HR(expr)            {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s>.\n",(char*)DXGetErrorString(hr__)); return 0;}}
 
 #define CONTOURS_EXTRA_SIZE     (20)
 
@@ -987,8 +984,7 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 			SkinningMethod=SKINNING_SOFTWARE;
 		}
 		SAFEREL(errors);
-
-		EffectMain=new EffectEx(effect);
+		if(effect) EffectMain=new(nothrow) EffectEx(effect);
 	}
 
 	// FPS & Smooth
@@ -1074,9 +1070,9 @@ Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_
 		MeshOptions& mopt=anim3d->meshOpt[i];
 		mopt.MeshPtr=mesh;
 		mopt.SubsetsCount=mesh->NumMaterials;
-		mopt.DisabledSubsets=new bool[mesh->NumMaterials];
-		mopt.TexSubsets=new IDirect3DTexture9*[mesh->NumMaterials];
-		mopt.DefaultTexSubsets=new IDirect3DTexture9*[mesh->NumMaterials];
+		mopt.DisabledSubsets=new(nothrow) bool[mesh->NumMaterials];
+		mopt.TexSubsets=new(nothrow) IDirect3DTexture9*[mesh->NumMaterials];
+		mopt.DefaultTexSubsets=new(nothrow) IDirect3DTexture9*[mesh->NumMaterials];
 		ZeroMemory(mopt.DisabledSubsets,mesh->NumMaterials*sizeof(bool));
 		ZeroMemory(mopt.TexSubsets,mesh->NumMaterials*sizeof(IDirect3DTexture9*));
 		ZeroMemory(mopt.DefaultTexSubsets,mesh->NumMaterials*sizeof(IDirect3DTexture9*));
@@ -1194,9 +1190,12 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 			StringCopy(tmp,xfname);
 			StringCopy(xfname,name_path);
 			StringAppend(xfname,tmp);
-			StringCopy(tmp,anim_xfname);
-			StringCopy(anim_xfname,name_path);
-			StringAppend(anim_xfname,tmp);
+			if(anim_xfname[0])
+			{
+				StringCopy(tmp,anim_xfname);
+				StringCopy(anim_xfname,name_path);
+				StringAppend(anim_xfname,tmp);
+			}
 		}
 
 		// Load x file
@@ -1319,7 +1318,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 	//	if(Str::IsCachedKey("rotate_z")) scaleValue=float(Str::GetInt("scale",1000))/1000.0f;
 	}
 	// Load just x file
-	else if(!_stricmp(ext,"x"))
+	else
 	{
 		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,NULL,path_type);
 		if(!xfile) return false;
@@ -1329,11 +1328,6 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		pathType=path_type;
 		xFile=xfile;
 		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
-	}
-	else
-	{
-		WriteLog(__FUNCTION__" - Unknown file format, name<%s>.\n",name);
-		return false;
 	}
 
 	return true;
@@ -1459,7 +1453,7 @@ int Animation3dEntity::GetAnimationIndex(int anim1, int anim2)
 Animation3d* Animation3dEntity::CloneAnimation()
 {
 	// Create instance
-	Animation3d* a3d=new Animation3d();
+	Animation3d* a3d=new(nothrow) Animation3d();
 	if(!a3d) return NULL;
 
 	a3d->animEntity=this;
@@ -1500,7 +1494,7 @@ Animation3dEntity* Animation3dEntity::GetEntity(const char* name, int path_type)
 	// Create new instance
 	if(!entity)
 	{
-		entity=new Animation3dEntity();
+		entity=new(nothrow) Animation3dEntity();
 		if(!entity || !entity->Load(name,path_type))
 		{
 			SAFEDEL(entity);
@@ -1525,13 +1519,8 @@ animController(NULL),facesCount(0)
 
 Animation3dXFile::~Animation3dXFile()
 {
-	if(frameRoot)
-	{
-		// Create a mesh hierarchy class to control the removal of memory for the frame hierarchy
-		CMeshHierarchy mem_allocator;
-		D3DXFrameDestroy(frameRoot,&mem_allocator);
-		frameRoot=NULL;
-	}
+	Loader3d::Free(frameRoot);
+	frameRoot=NULL;
 	SAFEREL(animController);
 }
 
@@ -1561,22 +1550,9 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 			return NULL;
 		}
 
-		// This is the function that does all the .x file loading. We provide a pointer to an instance of our 
-		// memory allocator class to handle memory allocation during the frame and mesh loading
-		//double dtime=Timer::AccurateTick();
-		CMeshHierarchy mem_allocator;
-		//CXLoader loader;
-		LPD3DXFRAME frame_root=NULL;
+		// Load
 		ID3DXAnimationController* anim_controller=NULL;
-		HRESULT hr=D3DXLoadMeshHierarchyFromXInMemory(fm.GetBuf(),fm.GetFsize(),D3DXMESH_MANAGED,D3DDevice,&mem_allocator,NULL,&frame_root,anim_xfile?NULL:&anim_controller);
-		fm.UnloadFile();
-		if(hr!=D3D_OK)
-		{
-			WriteLog(__FUNCTION__" - Can't load X file hierarchy from<%s>, error<%s>.\n",xname,DXGetErrorString(hr));
-			return NULL;
-		}
-		//WriteLog("XFile<%s> loaded, time<%g>.\n",xname,Timer::AccurateTick()-dtime);
-
+		D3DXFRAME* frame_root=Loader3d::Load(D3DDevice,xname,path_type,anim_xfile?NULL:&anim_controller);
 		if(!frame_root)
 		{
 			WriteLog(__FUNCTION__" - X file<%s> not contain any frames.\n",xname);
@@ -1584,7 +1560,7 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 			return NULL;
 		}
 
-		xfile=new Animation3dXFile();
+		xfile=new(nothrow) Animation3dXFile();
 		if(!xfile)
 		{
 			WriteLog(__FUNCTION__" - Allocation fail, x file<%s>.\n",xname);
@@ -1675,7 +1651,7 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 					D3DXMESHOPT_VERTEXCACHE|D3DXMESH_MANAGED,
 					mesh_container->exNumPaletteEntries,
 					mesh_container->pAdjacency,
-					NULL, NULL, NULL,
+					NULL,NULL,NULL,
 					&mesh_container->exNumInfl,
 					&mesh_container->exNumAttributeGroups,
 					&mesh_container->exBoneCombinationBuf,
@@ -1734,7 +1710,7 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 
 				// Allocate space for blend matrices
 				SAFEDELA(BoneMatrices);
-				BoneMatrices=new D3DXMATRIX[MaxBones];
+				BoneMatrices=new(nothrow) D3DXMATRIX[MaxBones];
 				if(!BoneMatrices) return false;
 				ZeroMemory(BoneMatrices,sizeof(D3DXMATRIX)*MaxBones);
 			}

@@ -77,6 +77,8 @@ typedef vector<string> StrVec;
 typedef vector<string>::iterator StrVecIt;
 typedef vector<char*> PCharVec;
 typedef vector<BYTE*> PByteVec;
+typedef vector<float> FloatVec;
+typedef vector<float>::iterator FloatVecIt;
 
 typedef set<BYTE> ByteSet;
 typedef set<BYTE>::iterator ByteSetIt;
@@ -410,7 +412,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Client map
 #define SERVER_MAP_EXT			".map"
-#define CLIENT_MAP_FORMAT_VER	(5)
+#define CLIENT_MAP_FORMAT_VER	(6)
 
 // Coordinates
 #define MAXHEX_DEF              (200)

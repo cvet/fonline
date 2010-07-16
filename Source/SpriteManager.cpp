@@ -13,7 +13,6 @@ float SpritesZoomMin=MIN_ZOOM;
 #define SPRITE_STROKE // For correct zooming linear interpolation
 
 #define TEX_FRMT                  D3DFMT_A8R8G8B8
-#define D3D_HR(expr)              {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s>.\n",(char*)DXGetErrorString(hr__)); return 0;}}
 #define SPR_BUFFER_COUNT          (10000)
 #define SPRITES_POOL_GROW_SIZE    (10000)
 #define SPRITES_RESIZE_COUNT      (100)
@@ -189,7 +188,7 @@ void Sprites::SortByMapPos()
 SpriteManager::SpriteManager():
 isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
 spr3dRT(NULL),spr3dRTEx(NULL),spr3dDS(NULL),spr3dRTData(NULL),spr3dSurfWidth(256),spr3dSurfHeight(256),sceneBeginned(false),
-dxDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),vbPoints(NULL),vbPointsSize(0),
+d3dDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),vbPoints(NULL),vbPointsSize(0),
 PreRestore(NULL),PostRestore(NULL),
 drawOffsetX(NULL),drawOffsetY(NULL),baseTexture(0),
 eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
@@ -286,7 +285,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	int vproc=(!params.SoftwareSkinning && deviceCaps.DevCaps&D3DDEVCAPS_HWTRANSFORMANDLIGHT && deviceCaps.VertexShaderVersion>=D3DPS_VERSION(1,1) &&
 		deviceCaps.MaxVertexBlendMatrices>=2?D3DCREATE_HARDWARE_VERTEXPROCESSING:D3DCREATE_SOFTWARE_VERTEXPROCESSING);
 
-	D3D_HR(direct3D->CreateDevice(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,params.WndHeader,vproc,&presentParams,&dxDevice));
+	D3D_HR(direct3D->CreateDevice(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,params.WndHeader,vproc,&presentParams,&d3dDevice));
 
 	// Contours
 	if(deviceCaps.PixelShaderVersion>=D3DPS_VERSION(2,0))
@@ -296,7 +295,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		HRESULT hr=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",0,&shader,&errors,&contoursCT);
 		if(SUCCEEDED(hr))
 		{
-			hr=dxDevice->CreatePixelShader((DWORD*)shader->GetBufferPointer(),&contoursPS);
+			hr=d3dDevice->CreatePixelShader((DWORD*)shader->GetBufferPointer(),&contoursPS);
 			shader->Release();
 			if(FAILED(hr))
 			{
@@ -322,7 +321,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		}
 	}
 
-	if(!Animation3d::StartUp(dxDevice,params.SoftwareSkinning)) return false;
+	if(!Animation3d::StartUp(d3dDevice,params.SoftwareSkinning)) return false;
 	if(!InitRenderStates()) return false;
 	if(!InitBuffers()) return false;
 
@@ -350,7 +349,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	eggSprWidth=sprEgg->Width;
 	eggSprHeight=sprEgg->Height;
 
-	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(0,0,0),1.0f,0));
+	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(0,0,0),1.0f,0));
 	WriteLog("Sprite manager initialization complete.\n");
 	return true;
 }
@@ -371,10 +370,10 @@ bool SpriteManager::InitBuffers()
 	SAFEREL(contours3dRT);
 
 	// Vertex buffer
-	D3D_HR(dxDevice->CreateVertexBuffer(flushSprCnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&pVB,NULL));
+	D3D_HR(d3dDevice->CreateVertexBuffer(flushSprCnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&pVB,NULL));
 
 	// Index buffer
-	D3D_HR(dxDevice->CreateIndexBuffer(flushSprCnt*6*sizeof(WORD),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
+	D3D_HR(d3dDevice->CreateIndexBuffer(flushSprCnt*6*sizeof(WORD),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
 
 	WORD* ind=new WORD[6*flushSprCnt];
 	if(!ind) return false;
@@ -394,10 +393,10 @@ bool SpriteManager::InitBuffers()
 	D3D_HR(pIB->Unlock());
 	delete[] ind;
 
-	D3D_HR(dxDevice->SetIndices(pIB));
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
+	D3D_HR(d3dDevice->SetIndices(pIB));
+	D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+	D3D_HR(d3dDevice->SetVertexShader(NULL));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
 
 	waitBuf=new MYVERTEX[flushSprCnt*4];
 	if(!waitBuf) return false;
@@ -406,76 +405,76 @@ bool SpriteManager::InitBuffers()
 	{
 		// Contours render target
 		D3D_HR(direct3D->CheckDepthStencilMatch(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,D3DFMT_X8R8G8B8,D3DFMT_A8R8G8B8,D3DFMT_D24S8));
-		D3D_HR(D3DXCreateTexture(dxDevice,modeWidth,modeHeight,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&contoursTexture));
+		D3D_HR(D3DXCreateTexture(d3dDevice,modeWidth,modeHeight,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&contoursTexture));
 		D3D_HR(contoursTexture->GetSurfaceLevel(0,&contoursTextureSurf));
-		D3D_HR(D3DXCreateTexture(dxDevice,modeWidth,modeHeight,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&contoursMidTexture));
+		D3D_HR(D3DXCreateTexture(d3dDevice,modeWidth,modeHeight,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&contoursMidTexture));
 		D3D_HR(contoursMidTexture->GetSurfaceLevel(0,&contoursMidTextureSurf));
-		D3D_HR(dxDevice->CreateRenderTarget(modeWidth,modeHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&contours3dRT,NULL));
+		D3D_HR(d3dDevice->CreateRenderTarget(modeWidth,modeHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&contours3dRT,NULL));
 	}
 
 	// 3d models prerendering
-	D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&spr3dRT,NULL));
+	D3D_HR(d3dDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&spr3dRT,NULL));
 	if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
-		D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&spr3dRTEx,NULL));
-	D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,TRUE,&spr3dDS,NULL));
-	D3D_HR(dxDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
+		D3D_HR(d3dDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&spr3dRTEx,NULL));
+	D3D_HR(d3dDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,TRUE,&spr3dDS,NULL));
+	D3D_HR(d3dDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
 
 	return true;
 }
 
 bool SpriteManager::InitRenderStates()
 {
-	D3D_HR(dxDevice->SetRenderState(D3DRS_LIGHTING,FALSE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_LIGHTING,FALSE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA));
 
-//	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE));
-//	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL));
-//	D3D_HR(dxDevice->SetRenderState(D3DRS_ALPHAREF,100));
+//	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE));
+//	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL));
+//	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHAREF,100));
 
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR)); // Zoom Out
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR)); // Zoom Out
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
 
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,  D3DTOP_MODULATE2X));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLORARG1,D3DTA_TEXTURE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLORARG2,D3DTA_DIFFUSE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAOP , D3DTOP_MODULATE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAARG2,D3DTA_DIFFUSE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP , D3DTOP_DISABLE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLORARG1,D3DTA_TEXTURE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLORARG2,D3DTA_CURRENT));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_ALPHAOP , D3DTOP_MODULATE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_ALPHAARG2,D3DTA_CURRENT));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,  D3DTOP_MODULATE2X));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLORARG1,D3DTA_TEXTURE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLORARG2,D3DTA_DIFFUSE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_ALPHAOP , D3DTOP_MODULATE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_ALPHAARG2,D3DTA_DIFFUSE));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP , D3DTOP_DISABLE));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLORARG1,D3DTA_TEXTURE));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLORARG2,D3DTA_CURRENT));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_ALPHAOP , D3DTOP_MODULATE));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_ALPHAARG2,D3DTA_CURRENT));
 
-	D3D_HR(dxDevice->SetRenderState(D3DRS_LIGHTING,TRUE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_DITHERENABLE,TRUE));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_SPECULARENABLE,FALSE));
-	//D3D_HR(dxDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_CCW));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_AMBIENT,D3DCOLOR_XRGB(80,80,80)));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_NORMALIZENORMALS,TRUE));
-	/*D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,  D3DTOP_MODULATE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLORARG1,D3DTA_TEXTURE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLORARG2,D3DTA_CURRENT));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAOP,  D3DTOP_MODULATE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_ALPHAARG2,D3DTA_DIFFUSE));
-	D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP , D3DTOP_DISABLE));*/
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_LIGHTING,TRUE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_DITHERENABLE,TRUE));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_SPECULARENABLE,FALSE));
+	//D3D_HR(d3dDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_CCW));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_AMBIENT,D3DCOLOR_XRGB(80,80,80)));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_NORMALIZENORMALS,TRUE));
+	/*D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,  D3DTOP_MODULATE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLORARG1,D3DTA_TEXTURE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLORARG2,D3DTA_CURRENT));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_ALPHAOP,  D3DTOP_MODULATE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_ALPHAARG1,D3DTA_TEXTURE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_ALPHAARG2,D3DTA_DIFFUSE));
+	D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP , D3DTOP_DISABLE));*/
 
 	// Stencil
-	/*	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_ALWAYS));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILMASK,0xFFFFFFFF));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILWRITEMASK,0xFFFFFFFF));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILZFAIL,D3DSTENCILOP_KEEP));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_KEEP));
-	D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILPASS,D3DSTENCILOP_REPLACE));*/
+	/*	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_ALWAYS));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILMASK,0xFFFFFFFF));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILWRITEMASK,0xFFFFFFFF));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILZFAIL,D3DSTENCILOP_KEEP));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_KEEP));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILPASS,D3DSTENCILOP_REPLACE));*/
 	return true;
 }
 
@@ -499,7 +498,7 @@ void SpriteManager::Clear()
 	SAFEREL(pIB);
 	SAFEDELA(waitBuf);
 	SAFEREL(vbPoints);
-	SAFEREL(dxDevice);
+	SAFEREL(d3dDevice);
 	SAFEREL(contoursTextureSurf);
 	SAFEREL(contoursTexture);
 	SAFEREL(contoursMidTextureSurf);
@@ -515,11 +514,11 @@ void SpriteManager::Clear()
 
 bool SpriteManager::BeginScene(DWORD clear_color)
 {
-	HRESULT hr=dxDevice->TestCooperativeLevel();
+	HRESULT hr=d3dDevice->TestCooperativeLevel();
 	if(hr!=D3D_OK && (hr!=D3DERR_DEVICENOTRESET || !Restore())) return false;
 
-	if(clear_color) D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,clear_color,1.0f,0));
-	D3D_HR(dxDevice->BeginScene());
+	if(clear_color) D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,clear_color,1.0f,0));
+	D3D_HR(d3dDevice->BeginScene());
 	sceneBeginned=true;
 	Animation3d::BeginScene();
 	return true;
@@ -528,9 +527,9 @@ bool SpriteManager::BeginScene(DWORD clear_color)
 void SpriteManager::EndScene()
 {
 	Flush();
-	dxDevice->EndScene();
+	d3dDevice->EndScene();
 	sceneBeginned=false;
-	dxDevice->Present(NULL,NULL,NULL,NULL);
+	d3dDevice->Present(NULL,NULL,NULL,NULL);
 }
 
 bool SpriteManager::Restore()
@@ -554,15 +553,22 @@ bool SpriteManager::Restore()
 	if(PreRestore) (*PreRestore)();
 
 	// Reset device
-	D3D_HR(dxDevice->Reset(&presentParams));
-	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(0,0,0),1.0f,0));
+	D3D_HR(d3dDevice->Reset(&presentParams));
+	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(0,0,0),1.0f,0));
 
 	// Create resources
 	if(!InitRenderStates()) return false;
 	if(!InitBuffers()) return false;
 	if(PostRestore) (*PostRestore)();
-	if(!Animation3d::StartUp(dxDevice,mngrParams.SoftwareSkinning)) return false;
+	if(!Animation3d::StartUp(d3dDevice,mngrParams.SoftwareSkinning)) return false;
 
+	return true;
+}
+
+bool SpriteManager::CreateRenderTarget(LPDIRECT3DSURFACE& surf, int w, int h)
+{
+	SAFEREL(surf);
+	D3D_HR(d3dDevice->CreateRenderTarget(w,h,D3DFMT_X8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&surf,NULL));
 	return true;
 }
 
@@ -571,13 +577,13 @@ bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, DWORD color)
 	if(!surf) return true;
 
 	LPDIRECT3DSURFACE old_rt=NULL,old_ds=NULL;
-	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
-	D3D_HR(dxDevice->SetDepthStencilSurface(NULL));
-	D3D_HR(dxDevice->SetRenderTarget(0,surf));
-	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,color,1.0f,0));
-	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
-	D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
+	D3D_HR(d3dDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(d3dDevice->GetDepthStencilSurface(&old_ds));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(NULL));
+	D3D_HR(d3dDevice->SetRenderTarget(0,surf));
+	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,color,1.0f,0));
+	D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(old_ds));
 	old_rt->Release();
 	old_ds->Release();
 	return true;
@@ -596,7 +602,7 @@ Surface* SpriteManager::CreateNewSurf(int w, int h)
 	while(h<hh) h*=2;
 
 	LPDIRECT3DTEXTURE tex=NULL;
-	D3D_HR(dxDevice->CreateTexture(w,h,1,0,TEX_FRMT,D3DPOOL_MANAGED,&tex,NULL));
+	D3D_HR(d3dDevice->CreateTexture(w,h,1,0,TEX_FRMT,D3DPOOL_MANAGED,&tex,NULL));
 
 	Surface* surf=new Surface();
 	surf->Type=SurfType;
@@ -756,7 +762,7 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 	{
 		// Try load image
 		LPDIRECT3DSURFACE src_surf;
-		D3D_HR(dxDevice->CreateOffscreenPlainSurface(w,h,TEX_FRMT,D3DPOOL_SCRATCH,&src_surf,NULL));
+		D3D_HR(d3dDevice->CreateOffscreenPlainSurface(w,h,TEX_FRMT,D3DPOOL_SCRATCH,&src_surf,NULL));
 		D3D_HR(D3DXLoadSurfaceFromFileInMemory(src_surf,NULL,NULL,data,size,NULL,D3DX_FILTER_NONE,D3DCOLOR_XRGB(0,0,0xFF),NULL));
 		D3DLOCKED_RECT rsrc;
 		RECT src_r={0,0,w,h};
@@ -848,7 +854,7 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 		return 0;
 	}
 
-	if(!_stricmp(ext,"x") || !_stricmp(ext,"fo3d")) return LoadSprite3d(fname,path_type,dir);
+	if(!_stricmp(ext,"x") || !_stricmp(ext,"3ds") || !_stricmp(ext,"fo3d")) return LoadSprite3d(fname,path_type,dir);
 	else if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
 		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type);
 
@@ -935,13 +941,13 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 	if(!anim3d) return false;
 
 	// Render
-	if(!sceneBeginned) D3D_HR(dxDevice->BeginScene());
+	if(!sceneBeginned) D3D_HR(d3dDevice->BeginScene());
 	LPDIRECT3DSURFACE old_rt=NULL,old_ds=NULL;
-	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
-	D3D_HR(dxDevice->SetDepthStencilSurface(spr3dDS));
-	D3D_HR(dxDevice->SetRenderTarget(0,spr3dRT));
-	D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,1.0f,0));
+	D3D_HR(d3dDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(d3dDevice->GetDepthStencilSurface(&old_ds));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(spr3dDS));
+	D3D_HR(d3dDevice->SetRenderTarget(0,spr3dRT));
+	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,1.0f,0));
 
 	Animation3d::SetScreenSize(spr3dSurfWidth,spr3dSurfHeight);
 	anim3d->EnableSetupBorders(false);
@@ -952,11 +958,11 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 	anim3d->SetupBorders();
 	Animation3d::SetScreenSize(modeWidth,modeHeight);
 
-	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
-	D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
+	D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(old_ds));
 	old_rt->Release();
 	old_ds->Release();
-	if(!sceneBeginned) D3D_HR(dxDevice->EndScene());
+	if(!sceneBeginned) D3D_HR(d3dDevice->EndScene());
 
 	// Calculate sprite borders
 	INTRECT r=anim3d->GetFullBorders();
@@ -974,11 +980,11 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 		SAFEREL(spr3dRTEx);
 		SAFEREL(spr3dDS);
 		SAFEREL(spr3dRTData);
-		D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&spr3dRT,NULL));
+		D3D_HR(d3dDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&spr3dRT,NULL));
 		if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
-			D3D_HR(dxDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&spr3dRTEx,NULL));
-		D3D_HR(dxDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,TRUE,&spr3dDS,NULL));
-		D3D_HR(dxDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
+			D3D_HR(d3dDevice->CreateRenderTarget(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&spr3dRTEx,NULL));
+		D3D_HR(d3dDevice->CreateDepthStencilSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_D24S8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,TRUE,&spr3dDS,NULL));
+		D3D_HR(d3dDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
 
 		// Try load again
 		return LoadSprite3d(fname,path_type,dir);
@@ -987,12 +993,12 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 	// Get render target data
 	if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
 	{
-		D3D_HR(dxDevice->StretchRect(spr3dRT,&r_,spr3dRTEx,&r_,D3DTEXF_NONE));
-		D3D_HR(dxDevice->GetRenderTargetData(spr3dRTEx,spr3dRTData));
+		D3D_HR(d3dDevice->StretchRect(spr3dRT,&r_,spr3dRTEx,&r_,D3DTEXF_NONE));
+		D3D_HR(d3dDevice->GetRenderTargetData(spr3dRTEx,spr3dRTData));
 	}
 	else
 	{
-		D3D_HR(dxDevice->GetRenderTargetData(spr3dRT,spr3dRTData));
+		D3D_HR(d3dDevice->GetRenderTargetData(spr3dRT,spr3dRTData));
 	}
 
 	// Copy to system memory
@@ -1385,8 +1391,8 @@ bool SpriteManager::Flush()
 		WORD rpos=0;
 		for(OneSurfVecIt iv=callVec.begin(),end=callVec.end();iv!=end;++iv)
 		{
-			D3D_HR(dxDevice->SetTexture(0,(*iv)->Surface));
-			D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,mulpos,rpos,2*(*iv)->SprCount));
+			D3D_HR(d3dDevice->SetTexture(0,(*iv)->Surface));
+			D3D_HR(d3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,mulpos,rpos,2*(*iv)->SprCount));
 			rpos+=6*(*iv)->SprCount;
 			delete (*iv);
 		}
@@ -1397,7 +1403,7 @@ bool SpriteManager::Flush()
 	}
 	else
 	{
-		D3D_HR(dxDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,mulpos,0,2*curSprCnt));
+		D3D_HR(d3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,mulpos,0,2*curSprCnt));
 	}
 
 	curSprCnt=0;
@@ -1540,24 +1546,20 @@ void SpriteManager::PrepareSquare(PointVec& points, FLTRECT& r, DWORD color)
 	points.push_back(PrepPoint(r.R,r.B,color,NULL,NULL));
 }
 
-bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE& surf, BYTE alpha)
+bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE alpha)
 {
 	if(!dtree.Size()) return true;
+	if(!surf) return false;
 	Flush();
-
-	if(!surf)
-	{
-		D3D_HR(dxDevice->CreateRenderTarget(modeWidth+(int)(64.0f/MIN_ZOOM),modeHeight+(int)(48.0f/MIN_ZOOM),D3DFMT_X8R8G8B8,presentParams.MultiSampleType,presentParams.MultiSampleQuality,FALSE,&surf,NULL));
-	}
 
 	// Set new render target
 	LPDIRECT3DSURFACE old_rt=NULL,old_ds=NULL;
-	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-	D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
-	D3D_HR(dxDevice->SetDepthStencilSurface(NULL));
-	D3D_HR(dxDevice->SetRenderTarget(0,surf));
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));
+	D3D_HR(d3dDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(d3dDevice->GetDepthStencilSurface(&old_ds));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(NULL));
+	D3D_HR(d3dDevice->SetRenderTarget(0,surf));
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));
 
 	// Draw
 	OneSurface* lc=NULL;
@@ -1622,10 +1624,10 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE& surf, BYTE 
 	Flush();
 
 	// Restore render target
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR));
-	D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));
-	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
-	D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR));
+	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));
+	D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(old_ds));
 	old_rt->Release();
 	old_ds->Release();
 	return true;
@@ -1641,8 +1643,8 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 	RECT src={ox,oy,ox+modeWidth,oy+modeHeight};
 
 	LPDIRECT3DSURFACE backbuf=NULL;
-	D3D_HR(dxDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));
-	D3D_HR(dxDevice->StretchRect(surf,&src,backbuf,NULL,D3DTEXF_NONE));
+	D3D_HR(d3dDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));
+	D3D_HR(d3dDevice->StretchRect(surf,&src,backbuf,NULL,D3DTEXF_NONE));
 	backbuf->Release();
 	return true;
 }
@@ -1727,7 +1729,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 	int ey=eggY+*drawOffsetY;
 	DWORD cur_tick=Timer::FastTick();
 
-	if(use_egg) D3D_HR(dxDevice->SetTexture(1,sprEgg->Surf->Texture)); // Transparent egg
+	if(use_egg) D3D_HR(d3dDevice->SetTexture(1,sprEgg->Surf->Texture)); // Transparent egg
 
 	for(SpriteVecIt it=dtree.Begin(),end=dtree.End();it!=end;++it)
 	{
@@ -1834,7 +1836,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			Flush();
 			if(egg_trans)
 			{
-				D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
+				D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
 				egg_trans=false;
 			}
 
@@ -1870,7 +1872,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 				if(!egg_trans)
 				{
 					Flush();
-					D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_SELECTARG2));
+					D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_SELECTARG2));
 					egg_trans=true;
 				}
 
@@ -1901,7 +1903,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		if(!egg_added && egg_trans)
 		{
 			Flush();
-			D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
+			D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
 			egg_trans=false;
 		}
 
@@ -1965,8 +1967,8 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 	}
 
 	Flush();
-	if(egg_trans) D3D_HR(dxDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
-	if(use_egg) D3D_HR(dxDevice->SetTexture(1,NULL)); // Transparent egg
+	if(egg_trans) D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
+	if(use_egg) D3D_HR(d3dDevice->SetTexture(1,NULL)); // Transparent egg
 
 	if(OptDebugInfo) DrawPoints(borders,D3DPT_TRIANGLELIST);
 	return true;
@@ -1984,7 +1986,7 @@ bool SpriteManager::IsPixNoTransp(DWORD spr_id, int offs_x, int offs_y, bool wit
 		/*if(!si->Anim3d->GetDrawIndex()) return false;
 
 		IDirect3DSurface9* zstencil;
-		D3D_HR(dxDevice->GetDepthStencilSurface(&zstencil));
+		D3D_HR(d3dDevice->GetDepthStencilSurface(&zstencil));
 
 		D3DSURFACE_DESC sDesc;
 		D3D_HR(zstencil->GetDesc(&sDesc));
@@ -2095,10 +2097,10 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	// Draw stencil quad
 	if(stencil)
 	{
-		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILENABLE,TRUE));
-		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
-		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
-		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILREF,1));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILENABLE,TRUE));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILREF,1));
 
 		struct Vertex
 		{
@@ -2114,12 +2116,12 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 			{stencil->R-0.5f,stencil->B-0.5f,1.0f,1.0f,-1},
 		};
 
-		D3D_HR(dxDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
-		D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_STENCIL,0,1.0f,0));
-		D3D_HR(dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
+		D3D_HR(d3dDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
+		D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_STENCIL,0,1.0f,0));
+		D3D_HR(d3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
 
-		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NOTEQUAL));
-		D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILREF,0));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NOTEQUAL));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILREF,0));
 	}
 
 	// Create or resize vertex buffer
@@ -2127,7 +2129,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	{
 		SAFEREL(vbPoints);
 		vbPointsSize=0;
-		D3D_HR(dxDevice->CreateVertexBuffer(count*sizeof(MYVERTEX_PRIMITIVE),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX_PRIMITIVE,D3DPOOL_DEFAULT,&vbPoints,NULL));
+		D3D_HR(d3dDevice->CreateVertexBuffer(count*sizeof(MYVERTEX_PRIMITIVE),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX_PRIMITIVE,D3DPOOL_DEFAULT,&vbPoints,NULL));
 		vbPointsSize=count;
 	}
 
@@ -2172,20 +2174,20 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	if(count<=0) return false;
 
 	// Prepare
-	D3D_HR(dxDevice->SetStreamSource(0,vbPoints,0,sizeof(MYVERTEX_PRIMITIVE)));
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX_PRIMITIVE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
+	D3D_HR(d3dDevice->SetStreamSource(0,vbPoints,0,sizeof(MYVERTEX_PRIMITIVE)));
+	D3D_HR(d3dDevice->SetVertexShader(NULL));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX_PRIMITIVE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
 
 	// Draw
-	D3D_HR(dxDevice->DrawPrimitive(prim,0,count));
+	D3D_HR(d3dDevice->DrawPrimitive(prim,0,count));
 
 	// Restore
-	if(stencil) D3D_HR(dxDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
+	if(stencil) D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
+	D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+	D3D_HR(d3dDevice->SetVertexShader(NULL));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
 	return true;
 }
 
@@ -2198,11 +2200,11 @@ bool SpriteManager::Draw3d(int x, int y, float scale, Animation3d* anim3d, FLTRE
 	anim3d->Draw(x,y,scale,stencil,color);
 
 	// Restore 2d stream
-	D3D_HR(dxDevice->SetIndices(pIB));
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetPixelShader(NULL));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
+	D3D_HR(d3dDevice->SetIndices(pIB));
+	D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+	D3D_HR(d3dDevice->SetVertexShader(NULL));
+	D3D_HR(d3dDevice->SetPixelShader(NULL));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
 	return true;
 }
 
@@ -2225,11 +2227,11 @@ bool SpriteManager::Draw3dSize(FLTRECT rect, bool stretch_up, bool center, Anima
 	anim3d->Draw(rect.L+(float)xy.X*scale,rect.T+(float)xy.Y*scale,scale,stencil,color);
 
 	// Restore 2d stream
-	D3D_HR(dxDevice->SetIndices(pIB));
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetPixelShader(NULL));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
+	D3D_HR(d3dDevice->SetIndices(pIB));
+	D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+	D3D_HR(d3dDevice->SetVertexShader(NULL));
+	D3D_HR(d3dDevice->SetPixelShader(NULL));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
 	return true;
 }
 
@@ -2237,9 +2239,9 @@ bool SpriteManager::DrawContours()
 {
 	if(contoursPS && contoursAdded)
 	{
-		D3D_HR(dxDevice->SetTexture(0,contoursTexture));
-		D3D_HR(dxDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));
-		D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
+		D3D_HR(d3dDevice->SetTexture(0,contoursTexture));
+		D3D_HR(d3dDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));
+		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
 
 		struct Vertex
 		{
@@ -2255,17 +2257,17 @@ bool SpriteManager::DrawContours()
 			{(float)modeWidth-0.5f ,(float)modeHeight-0.5f ,0.0f,1.0f,1.0f,1.0f},
 		};
 
-		D3D_HR(dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
-		D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
-		D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
-		D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
+		D3D_HR(d3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
+		D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+		D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
+		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 		contoursAdded=false;
 	}
 	else if(spriteContours.Size())
 	{
-		D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT)); // Zoom In
+		D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT)); // Zoom In
 		DrawSprites(spriteContours,false,false,0,-1);
-		D3D_HR(dxDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
+		D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
 		spriteContours.Unvalidate();
 	}
 	return true;
@@ -2317,13 +2319,13 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		else
 		{
 			LPDIRECT3DSURFACE old_rt,old_ds;
-			D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-			D3D_HR(dxDevice->GetDepthStencilSurface(&old_ds));
-			D3D_HR(dxDevice->SetDepthStencilSurface(NULL));
-			D3D_HR(dxDevice->SetRenderTarget(0,contoursMidTextureSurf));
-			D3D_HR(dxDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));
-			D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
-			D3D_HR(dxDevice->SetTexture(0,si->Surf->Texture));
+			D3D_HR(d3dDevice->GetRenderTarget(0,&old_rt));
+			D3D_HR(d3dDevice->GetDepthStencilSurface(&old_ds));
+			D3D_HR(d3dDevice->SetDepthStencilSurface(NULL));
+			D3D_HR(d3dDevice->SetRenderTarget(0,contoursMidTextureSurf));
+			D3D_HR(d3dDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));
+			D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
+			D3D_HR(d3dDevice->SetTexture(0,si->Surf->Texture));
 
 			borders(x/SpritesZoom,y/SpritesZoom,(x+si->Width)/SpritesZoom,(y+si->Height)/SpritesZoom);
 			struct Vertex
@@ -2346,11 +2348,11 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 			borders.B++;
 
 			D3DRECT clear_r={borders.L-1,borders.T-1,borders.R+1,borders.B+1};
-			D3D_HR(dxDevice->Clear(1,&clear_r,D3DCLEAR_TARGET,0,1.0f,0));
-			D3D_HR(dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
+			D3D_HR(d3dDevice->Clear(1,&clear_r,D3DCLEAR_TARGET,0,1.0f,0));
+			D3D_HR(d3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
 
-			D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
-			D3D_HR(dxDevice->SetDepthStencilSurface(old_ds));
+			D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
+			D3D_HR(d3dDevice->SetDepthStencilSurface(old_ds));
 			old_rt->Release();
 			old_ds->Release();
 
@@ -2387,13 +2389,13 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 
 		// Render to contours texture
 		LPDIRECT3DSURFACE old_rt;
-		D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-		D3D_HR(dxDevice->SetRenderTarget(0,contours3dRT));
+		D3D_HR(d3dDevice->GetRenderTarget(0,&old_rt));
+		D3D_HR(d3dDevice->SetRenderTarget(0,contours3dRT));
 
-		D3D_HR(dxDevice->SetRenderState(D3DRS_ZENABLE,TRUE));
-		D3D_HR(dxDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_NOTEQUAL));
-		D3D_HR(dxDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
-		D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG2));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZENABLE,TRUE));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_NOTEQUAL));
+		D3D_HR(d3dDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
+		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG2));
 
 		struct Vertex
 		{
@@ -2410,17 +2412,17 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		};
 
 		D3DRECT clear_r={borders.L-2,borders.T-2,borders.R+2,borders.B+2};
-		D3D_HR(dxDevice->Clear(1,&clear_r,D3DCLEAR_TARGET,0,1.0f,0));
-		D3D_HR(dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
+		D3D_HR(d3dDevice->Clear(1,&clear_r,D3DCLEAR_TARGET,0,1.0f,0));
+		D3D_HR(d3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
 
-		D3D_HR(dxDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
-		D3D_HR(dxDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
-		D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
+		D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
 		old_rt->Release();
 
 		// Copy to mid surface
 		RECT r={borders.L-1,borders.T-1,borders.R+1,borders.B+1};
-		D3D_HR(dxDevice->StretchRect(contours3dRT,&r,contoursMidTextureSurf,&r,D3DTEXF_NONE));
+		D3D_HR(d3dDevice->StretchRect(contours3dRT,&r,contoursMidTextureSurf,&r,D3DTEXF_NONE));
 	}
 
 	// Calculate contour color
@@ -2447,25 +2449,25 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 
 	// Draw contour
 	LPDIRECT3DSURFACE ds;
-	D3D_HR(dxDevice->GetDepthStencilSurface(&ds));
-	D3D_HR(dxDevice->SetDepthStencilSurface(NULL));
+	D3D_HR(d3dDevice->GetDepthStencilSurface(&ds));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(NULL));
 	LPDIRECT3DSURFACE old_rt;
-	D3D_HR(dxDevice->GetRenderTarget(0,&old_rt));
-	D3D_HR(dxDevice->SetRenderTarget(0,contoursTextureSurf));
-	D3D_HR(dxDevice->SetTexture(0,texture));
-	D3D_HR(dxDevice->SetPixelShader(contoursPS));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
+	D3D_HR(d3dDevice->GetRenderTarget(0,&old_rt));
+	D3D_HR(d3dDevice->SetRenderTarget(0,contoursTextureSurf));
+	D3D_HR(d3dDevice->SetTexture(0,texture));
+	D3D_HR(d3dDevice->SetPixelShader(contoursPS));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
 
-	if(contoursConstWidthStep) D3D_HR(contoursCT->SetFloat(dxDevice,contoursConstWidthStep,ws));
-	if(contoursConstHeightStep) D3D_HR(contoursCT->SetFloat(dxDevice,contoursConstHeightStep,hs));
+	if(contoursConstWidthStep) D3D_HR(contoursCT->SetFloat(d3dDevice,contoursConstWidthStep,ws));
+	if(contoursConstHeightStep) D3D_HR(contoursCT->SetFloat(d3dDevice,contoursConstHeightStep,hs));
 	float sb[4]={tuv.L,tuv.T,tuv.R,tuv.B};
-	if(contoursConstSpriteBorders) D3D_HR(contoursCT->SetFloatArray(dxDevice,contoursConstSpriteBorders,sb,4));
+	if(contoursConstSpriteBorders) D3D_HR(contoursCT->SetFloatArray(d3dDevice,contoursConstSpriteBorders,sb,4));
 	float sbh[3]={tuvh.T,tuvh.B,tuvh.B-tuvh.T};
-	if(contoursConstSpriteBordersHeight) D3D_HR(contoursCT->SetFloatArray(dxDevice,contoursConstSpriteBordersHeight,sbh,3));
+	if(contoursConstSpriteBordersHeight) D3D_HR(contoursCT->SetFloatArray(d3dDevice,contoursConstSpriteBordersHeight,sbh,3));
 	float cc[4]={float((contour_color>>16)&0xFF)/255.0f,float((contour_color>>8)&0xFF)/255.0f,float((contour_color)&0xFF)/255.0f,float((contour_color>>24)&0xFF)/255.0f};
-	if(contoursConstContourColor) D3D_HR(contoursCT->SetFloatArray(dxDevice,contoursConstContourColor,cc,4));
-	if(contoursConstContourColorOffs) D3D_HR(contoursCT->SetFloat(dxDevice,contoursConstContourColorOffs,color_offs));
+	if(contoursConstContourColor) D3D_HR(contoursCT->SetFloatArray(d3dDevice,contoursConstContourColor,cc,4));
+	if(contoursConstContourColorOffs) D3D_HR(contoursCT->SetFloat(d3dDevice,contoursConstContourColorOffs,color_offs));
 
 	struct Vertex
 	{
@@ -2481,26 +2483,26 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		{(float)borders.R-0.5f,(float)borders.B-0.5f,0.0f,1.0f,tuv.R,tuv.B},
 	};
 
-	if(!contoursAdded) D3D_HR(dxDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,0.9f,0));
-	D3D_HR(dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
+	if(!contoursAdded) D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,0,0.9f,0));
+	D3D_HR(d3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
 
 	// Restore 2d stream
-	D3D_HR(dxDevice->SetDepthStencilSurface(ds));
+	D3D_HR(d3dDevice->SetDepthStencilSurface(ds));
 	ds->Release();
-	D3D_HR(dxDevice->SetRenderTarget(0,old_rt));
+	D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
 	old_rt->Release();
-	D3D_HR(dxDevice->SetVertexShader(NULL));
-	D3D_HR(dxDevice->SetPixelShader(NULL));
-	D3D_HR(dxDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
-	D3D_HR(dxDevice->SetFVF(D3DFVF_MYVERTEX));
-	D3D_HR(dxDevice->SetIndices(pIB));
-	D3D_HR(dxDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
+	D3D_HR(d3dDevice->SetVertexShader(NULL));
+	D3D_HR(d3dDevice->SetPixelShader(NULL));
+	D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
+	D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
+	D3D_HR(d3dDevice->SetIndices(pIB));
+	D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
 	contoursAdded=true;
 
 // 	if(anim3d)
 // 	{
 // 		LPDIRECT3DSURFACE surf=NULL;
-// 		if(FAILED(dxDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&surf))) return false;
+// 		if(FAILED(d3dDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&surf))) return false;
 // 		D3DXSaveSurfaceToFile(".\\someBack.png",D3DXIFF_PNG,surf,NULL,NULL);
 // 		D3DXSaveSurfaceToFile(".\\someZ.png",D3DXIFF_PNG,contours3dSurf,NULL,NULL);
 // 		D3DXSaveSurfaceToFile(".\\someMid.png",D3DXIFF_PNG,contoursMidTextureSurf,NULL,NULL);
@@ -2743,7 +2745,7 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	}
 
 	LPDIRECT3DTEXTURE image=NULL;
-	D3D_HR(D3DXCreateTextureFromFileInMemoryEx(dxDevice,fileMngr.GetBuf(),fileMngr.GetFsize(),D3DX_DEFAULT,D3DX_DEFAULT,1,0,
+	D3D_HR(D3DXCreateTextureFromFileInMemoryEx(d3dDevice,fileMngr.GetBuf(),fileMngr.GetFsize(),D3DX_DEFAULT,D3DX_DEFAULT,1,0,
 		D3DFMT_UNKNOWN,D3DPOOL_MANAGED,D3DX_DEFAULT,D3DX_DEFAULT,D3DCOLOR_ARGB(255,0,0,0),NULL,NULL,&image));
 
 	D3DLOCKED_RECT lr;
@@ -2807,14 +2809,14 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	SAFEREL(image);
 
 	// Create texture
-	D3D_HR(D3DXCreateTexture(dxDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurf));
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurf));
 	D3D_HR(font.FontSurf->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	WriteContour8((DWORD*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
 	D3D_HR(font.FontSurf->UnlockRect(0));
 
 	// Create bordered texture
-	D3D_HR(D3DXCreateTexture(dxDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurfBordered));
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurfBordered));
 	D3D_HR(font.FontSurfBordered->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	D3D_HR(font.FontSurfBordered->UnlockRect(0));
@@ -2920,7 +2922,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	}
 
 	// Create texture
-	D3D_HR(D3DXCreateTexture(dxDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurf));
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurf));
 	D3DLOCKED_RECT lr;
 	D3D_HR(font.FontSurf->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
@@ -2928,7 +2930,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	D3D_HR(font.FontSurf->UnlockRect(0));
 
 	// Create bordered texture
-	D3D_HR(D3DXCreateTexture(dxDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurfBordered));
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurfBordered));
 	D3D_HR(font.FontSurfBordered->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	D3D_HR(font.FontSurfBordered->UnlockRect(0));
@@ -3276,7 +3278,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 	lastCall=NULL;
 	curTexture=NULL;
 
-	D3D_HR(dxDevice->SetTexture(0,FLAG(flags,FT_BORDERED)?font->FontSurfBordered:font->FontSurf));
+	D3D_HR(d3dDevice->SetTexture(0,FLAG(flags,FT_BORDERED)?font->FontSurfBordered:font->FontSurf));
 
 	if(FLAG(flags,FT_COLORIZE))
 	{

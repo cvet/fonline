@@ -2160,7 +2160,7 @@ void FOClient::NetDisconnect()
 		BytesRealReceive);
 
 	SetCurMode(CUR_DEFAULT);
-	HexMngr.UnLoadMap();
+	HexMngr.UnloadMap();
 	ClearCritters();
 	QuestMngr.Clear();
 	Bin.Reset();
@@ -5419,7 +5419,7 @@ void FOClient::Net_OnLoadMap()
 
 	GameMapTexts.clear();
 	WriteLog("Unload map...");
-	HexMngr.UnLoadMap();
+	HexMngr.UnloadMap();
 	WriteLog("Clear sounds...");
 	SndMngr.ClearSounds();
 	SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
@@ -5578,9 +5578,8 @@ void FOClient::Net_OnMap()
 			{
 				fm.SetCurPos(0x04); // Skip pid
 				fm.GetBEDWord(); // Skip max hx/hy
-				// Reserved
-				fm.GetBEDWord();
-				fm.GetBEDWord();
+				fm.GetBEDWord(); // Reserved
+				fm.GetBEDWord(); // Reserved
 
 				fm.SetCurPos(0x20);
 				DWORD old_tiles_len=fm.GetBEDWord();
@@ -5632,10 +5631,8 @@ void FOClient::Net_OnMap()
 		fm.SetBEDWord(map_pid);
 		fm.SetBEWord(maxhx);
 		fm.SetBEWord(maxhy);
-
-		DWORD reserved=0xAABBCCDD;
-		fm.SetBEDWord(reserved);
-		fm.SetBEDWord(reserved);
+		fm.SetBEDWord(0);
+		fm.SetBEDWord(0);
 
 		fm.SetBEDWord(tiles_len/sizeof(DWORD)/2);
 		fm.SetBEDWord(walls_len/sizeof(ScenToSend));

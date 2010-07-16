@@ -2,39 +2,24 @@
 #define __MESH_HIERARHY__
 
 #include "MeshStructures.h"
-#include <FileManager.h>
 
-class CMeshHierarchy : public ID3DXAllocateHierarchy
+class MeshHierarchy : public ID3DXAllocateHierarchy
 {
-private:
-	FileManager fileMngr;
-
 public:
-
     // Callback to create a D3DXFRAME extended object and initialize it
-    STDMETHOD( CreateFrame )(LPCSTR Name, LPD3DXFRAME *retNewFrame);
+    STDMETHOD( CreateFrame )(LPCSTR Name, LPD3DXFRAME* retNewFrame);
 
     // Callback to create a D3DXMESHCONTAINER extended object and initialize it
-    STDMETHOD( CreateMeshContainer )(LPCSTR Name, CONST D3DXMESHDATA * meshData, 
-                            CONST D3DXMATERIAL * materials, CONST D3DXEFFECTINSTANCE * effectInstances,
-                            DWORD numMaterials, CONST DWORD * adjacency, LPD3DXSKININFO skinInfo, 
-                            LPD3DXMESHCONTAINER * retNewMeshContainer);
+    STDMETHOD( CreateMeshContainer )(LPCSTR Name, CONST D3DXMESHDATA* meshData, 
+                            CONST D3DXMATERIAL* materials, CONST D3DXEFFECTINSTANCE* effectInstances,
+                            DWORD numMaterials, CONST DWORD* adjacency, LPD3DXSKININFO skinInfo, 
+                            LPD3DXMESHCONTAINER* retNewMeshContainer);
 
     // Callback to release a D3DXFRAME extended object
     STDMETHOD( DestroyFrame )(LPD3DXFRAME frameToFree);
 
     // Callback to release a D3DXMESHCONTAINER extended object
     STDMETHOD( DestroyMeshContainer )(LPD3DXMESHCONTAINER meshContainerToFree);
-};
-
-class CXLoader : public ID3DXLoadUserData
-{
-public:
-	STDMETHOD(LoadTopLevelData)(LPD3DXFILEDATA pXofChildData);
-
-	STDMETHOD(LoadFrameChildData)(LPD3DXFRAME pFrame, LPD3DXFILEDATA pXofChildData);
-
-	STDMETHOD(LoadMeshChildData)(LPD3DXMESHCONTAINER pMeshContainer, LPD3DXFILEDATA pXofChildData);
 };
 
 #endif // __MESH_HIERARHY__

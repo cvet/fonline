@@ -909,6 +909,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\3dStuff\Loader.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dStuff\Loader.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\3dStuff\MeshHierarchy.cpp"
 				>
 			</File>
@@ -921,11 +929,35 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Utility.cpp"
+				RelativePath="..\Source\3dStuff\Terrain.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Utility.h"
+				RelativePath="..\Source\3dStuff\Terrain.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dStuff\TerrainGrid.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\3dStuff\TerrainGrid.h"
 				>
 			</File>
 		</Filter>

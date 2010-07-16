@@ -190,7 +190,7 @@ void Keyb::GetChar(BYTE dik, char* str, int* position, int max, int flags)
 		HANDLE h=GetClipboardData(CF_OEMTEXT);
 		if(h)
 		{
-			char* cb=_strdup((char*)h);
+			char* cb=StringDuplicate((char*)h);
 			if(!cb) return;
 			OemToChar(cb,cb);
 			EraseInvalidChars(cb,flags);
@@ -205,7 +205,7 @@ void Keyb::GetChar(BYTE dik, char* str, int* position, int max, int flags)
 			buf[posit+cb_len+(len-posit)]=0;
 			StringCopy(str,max+1,buf);
 			delete[] buf;
-			free(cb);
+			delete[] cb;
 
 			posit+=cb_len;
 		}

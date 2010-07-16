@@ -717,7 +717,7 @@ void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 
 DWORD FOMsg::AddStr(const char* str)
 {
-	DWORD i=10000000+random(8999)*10000+random(9999);
+	DWORD i=Random(10000000,99999999);
 	if(strData.count(i)) return AddStr(str);
 	AddStr(i,str);
 	return i;
@@ -730,10 +730,9 @@ const char* FOMsg::GetStr(DWORD num)
 
 	switch(str_count)
 	{
-	case 0: return (*strData.begin()).second.c_str(); //give FOMSG_ERRNUM
+	case 0: return (*strData.begin()).second.c_str(); // give FOMSG_ERRNUM
 	case 1: break;
-	default:
-		for(int i=random(str_count);i;--i) ++it;
+	default: for(int i=0,j=Random(0,str_count);i<j;i++) ++it; break;
 	}
 
 	return (*it).second.c_str();
@@ -744,7 +743,7 @@ const char* FOMsg::GetStr(DWORD num, DWORD skip)
 	DWORD str_count=strData.count(num);
 	StringMulMapIt it=strData.find(num);
 
-	if(skip>=str_count) return (*strData.begin()).second.c_str(); //give FOMSG_ERRNUM
+	if(skip>=str_count) return (*strData.begin()).second.c_str(); // give FOMSG_ERRNUM
 	for(int i=0;i<skip;i++) ++it;
 
 	return (*it).second.c_str();
@@ -773,8 +772,7 @@ int FOMsg::GetInt(DWORD num)
 	{
 	case 0: return -1;
 	case 1: break;
-	default:
-		for(int i=random(str_count);i;--i) ++it;
+	default: for(int i=0,j=Random(0,str_count);i<j;i++) ++it; break;
 	}
 	
 	return atoi((*it).second.c_str());

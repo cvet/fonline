@@ -392,6 +392,8 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static void MapperMap_SetTileHash(ProtoMap& pmap, WORD tx, WORD ty, bool roof, DWORD pic_hash);
 		static CScriptString* MapperMap_GetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof);
 		static void MapperMap_SetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof, CScriptString* pic_name);
+		static CScriptString* MapperMap_GetTerrainName(ProtoMap& pmap, WORD tx, WORD ty);
+		static void MapperMap_SetTerrainName(ProtoMap& pmap, WORD tx, WORD ty, CScriptString* terrain_name);
 		static DWORD MapperMap_GetDayTime(ProtoMap& pmap, DWORD day_part);
 		static void MapperMap_SetDayTime(ProtoMap& pmap, DWORD day_part, DWORD time);
 		static void MapperMap_GetDayColor(ProtoMap& pmap, DWORD day_part, BYTE& r, BYTE& g, BYTE& b);

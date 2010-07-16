@@ -141,7 +141,7 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 		char script_func[MAX_SCRIPT_NAME+1];
 		if(txtFile.GetStr(PROTO_APP,"ScriptModule","",script_module) && script_module[0] &&
 			txtFile.GetStr(PROTO_APP,"ScriptFunc","",script_func) && script_func[0])
-			protoScript[proto_item.Pid]=_strdup(Str::Format("%s@%s",script_module,script_func));
+			protoScript[proto_item.Pid]=StringDuplicate(Str::Format("%s@%s",script_module,script_func));
 #endif
 
 	}

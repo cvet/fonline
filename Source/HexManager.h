@@ -12,22 +12,22 @@
 #include "ProtoMap.h"
 #endif
 
+class Terrain;
+typedef vector<Terrain*> TerrainVec;
+typedef vector<Terrain*>::iterator TerrainVecIt;
+
 #define DRAW_ORDER_HEX(pos)         ((pos)+0)
 #define DRAW_ORDER_CRIT_DEAD(pos)   (1)
 #define DRAW_ORDER_ITEM_FLAT(scen)  ((scen)?0:2)
 #define DRAW_ORDER_ITEM(pos)        ((pos)+1)
 #define DRAW_ORDER_CRIT(pos)        ((pos)+2)
 
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-const int FINDPATH_MAX_PATH			=600;
-const BYTE FP_ERROR					=0;
-const BYTE FP_OK					=1;
-const BYTE FP_DEADLOCK				=2;
-const BYTE FP_TOOFAR				=3;
-const BYTE FP_ALREADY_HERE			=4;
+#define FINDPATH_MAX_PATH           (600)
+#define FP_ERROR                    (0)
+#define FP_OK                       (1)
+#define FP_DEADLOCK                 (2)
+#define FP_TOOFAR                   (3)
+#define FP_ALREADY_HERE             (4)
 
 #define FINDTARGET_BARRIER          (-1)
 #define FINDTARGET_TOOFAR           (-2)
@@ -110,6 +110,8 @@ struct Field
 #ifdef FONLINE_MAPPER
 	DWORD SelTile;
 	DWORD SelRoof;
+	DWORD TerrainId;
+	DWORD SelTerrain;
 #endif
 
 	void Clear();
@@ -195,7 +197,7 @@ public:
 	bool IsMapLoaded(){return hexField!=NULL;}
 	WORD GetCurPidMap(){return curPidMap;}
 	bool LoadMap(WORD map_pid);
-	void UnLoadMap();
+	void UnloadMap();
 	void GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen);
 	bool GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy);
 	bool ParseScenery(ScenToSend& scen);
@@ -339,7 +341,10 @@ private:
 	LPDIRECT3DSURFACE tileSurf;
 	int roofSkip;
 	Sprites roofTree;
+	TerrainVec tilesTerrain;
+
 	bool CheckTilesBorder(DWORD spr_id, bool is_roof);
+	bool AddTerrain(DWORD name_hash, int hx, int hy);
 
 public:
 	void RebuildTiles();
@@ -395,9 +400,11 @@ public:
 
 	// Selected tile, roof
 public:
-	void ClearSelTiles(){for(DWORD i=0,j=maxHexX*maxHexY;i<j;i++) {hexField[i].SelTile=0; hexField[i].SelRoof=0;}}
+	void ClearSelTiles(){for(DWORD i=0,j=maxHexX*maxHexY;i<j;i++) {hexField[i].SelTile=0; hexField[i].SelRoof=0; hexField[i].SelTerrain=0;}}
 	void ParseSelTiles();
 	void SetTile(WORD hx, WORD hy, DWORD name_hash, bool is_roof);
+	void SetTerrain(WORD hx, WORD hy, DWORD name_hash);
+	void RebuildTerrain();
 
 	// Ignore pids to draw
 private:

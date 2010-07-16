@@ -38,7 +38,7 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 	if(!folders_done)
 	{
 		StrVec file_names;
-		FileManager::GetFolderFileNames(PT_ART,NULL,file_names);
+		FileManager::GetFolderFileNames(PT_CLIENT_DATA,NULL,file_names);
 		AddNamesHash(file_names);
 
 		StrVec splashes;
@@ -59,7 +59,7 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 		if(std::find(processedDats.begin(),processedDats.end(),dat)==processedDats.end())
 		{
 			StrVec file_names;
-			dat->GetFileNames(FileManager::GetPath(PT_ART),NULL,file_names);
+			dat->GetFileNames(FileManager::GetPath(PT_CLIENT_DATA),NULL,file_names);
 			AddNamesHash(file_names);
 
 			StrVec splashes;

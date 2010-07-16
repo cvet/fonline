@@ -1372,6 +1372,7 @@ void FOMapper::RefreshTiles()
 	formats.push_back("ppm");
 	formats.push_back("tga");
 	formats.push_back("x");
+	formats.push_back("3ds");
 	formats.push_back("fo3d");
 
 	StrVec tiles;
@@ -2887,6 +2888,8 @@ void FOMapper::SelectAddTile(WORD tx, WORD ty, DWORD name_hash, bool is_roof, bo
 		if(t->TileX==tx && t->TileY==ty && t->IsRoof==is_roof) return;
 	}
 
+	if(HexMngr.GetField(tx*2,ty*2).TerrainId) return;
+
 	DWORD spr_id=ResMngr.GetSprId(name_hash,0);
 	if(!spr_id) return;
 
@@ -3200,6 +3203,12 @@ void FOMapper::ParseTile(DWORD name_hash, WORD hx, WORD hy)
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return;
 
 	SelectClear();
+
+	if(HexMngr.GetField(hx,hy).TerrainId)
+	{
+		HexMngr.GetField(hx,hy).TerrainId=0;
+		HexMngr.RebuildTerrain();
+	}
 
 	if(hx%2) hx--;
 	if(hy%2) hy--;
@@ -3800,7 +3809,7 @@ void FOMapper::ParseCommand(const char* cmd)
 
 			if(LoadedProtoMaps.empty())
 			{
-				HexMngr.UnLoadMap();
+				HexMngr.UnloadMap();
 				return;
 			}
 
@@ -3896,7 +3905,7 @@ void FOMapper::ParseCommand(const char* cmd)
 				return;
 			}
 			SelectClear();
-			HexMngr.UnLoadMap();
+			HexMngr.UnloadMap();
 			WORD old_maxhx=CurProtoMap->Header.MaxHexX;
 			WORD old_maxhy=CurProtoMap->Header.MaxHexY;
 			maxhx=CLAMP(maxhx,MAXHEX_MIN,MAXHEX_MAX);
@@ -4358,7 +4367,7 @@ void FOMapper::SScriptFunc::MapperMap_UpdateObjects(ProtoMap& pmap)
 
 void FOMapper::SScriptFunc::MapperMap_Resize(ProtoMap& pmap, WORD width, WORD height)
 {
-	if(Self->CurProtoMap==&pmap) Self->HexMngr.UnLoadMap();
+	if(Self->CurProtoMap==&pmap) Self->HexMngr.UnloadMap();
 
 	int maxhx=CLAMP(width,MAXHEX_MIN,MAXHEX_MAX);
 	int maxhy=CLAMP(height,MAXHEX_MIN,MAXHEX_MAX);;
@@ -4417,14 +4426,18 @@ void FOMapper::SScriptFunc::MapperMap_SetTileHash(ProtoMap& pmap, WORD tx, WORD 
 {
 	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R("Invalid tile x arg.");
 	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R("Invalid tile y arg.");
-	if(roof) pmap.SetRoof(tx,ty,pic_hash);
-	pmap.SetTile(tx,ty,pic_hash);
+	if(Self->CurProtoMap==&pmap) Self->HexMngr.SetTile(tx*2,ty*2,pic_hash,roof);
+	else
+	{
+		if(roof) pmap.SetRoof(tx,ty,pic_hash);
+		else pmap.SetTile(tx,ty,pic_hash);
+	}
 }
 
 CScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof)
 {
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R0("Invalid tile x arg.");
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R0("Invalid tile y arg.");
+	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_RX("Invalid tile x arg.",new CScriptString(""));
+	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_RX("Invalid tile y arg.",new CScriptString(""));
 	DWORD hash=(roof?pmap.GetRoof(tx,ty):pmap.GetTile(tx,ty));
 	const char* name=ResMngr.GetName(hash);
 	return new CScriptString(name?name:"");
@@ -4434,9 +4447,35 @@ void FOMapper::SScriptFunc::MapperMap_SetTileName(ProtoMap& pmap, WORD tx, WORD 
 {
 	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R("Invalid tile x arg.");
 	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R("Invalid tile y arg.");
-	DWORD hash=Str::GetHash(pic_name?pic_name->c_str():NULL);
-	if(roof) pmap.SetRoof(tx,ty,hash);
-	pmap.SetTile(tx,ty,hash);
+	DWORD hash=Str::GetHash(pic_name && pic_name->length()?pic_name->c_str():NULL);
+	if(Self->CurProtoMap==&pmap) Self->HexMngr.SetTile(tx*2,ty*2,hash,roof);
+	else
+	{
+		if(roof) pmap.SetRoof(tx,ty,hash);
+		else pmap.SetTile(tx,ty,hash);
+	}
+}
+
+CScriptString* FOMapper::SScriptFunc::MapperMap_GetTerrainName(ProtoMap& pmap, WORD tx, WORD ty)
+{
+	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_RX("Invalid tile x arg.",new CScriptString(""));
+	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_RX("Invalid tile y arg.",new CScriptString(""));
+	if(pmap.GetRoof(tx,ty)!=0xAAAAAAAA) return new CScriptString("");
+	const char* name=ResMngr.GetName(pmap.GetTile(tx,ty));
+	return new CScriptString(name?name:"");
+}
+
+void FOMapper::SScriptFunc::MapperMap_SetTerrainName(ProtoMap& pmap, WORD tx, WORD ty, CScriptString* terrain_name)
+{
+	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R("Invalid tile x arg.");
+	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R("Invalid tile y arg.");
+	DWORD hash=Str::GetHash(terrain_name && terrain_name->length()?terrain_name->c_str():NULL);
+	if(Self->CurProtoMap==&pmap) Self->HexMngr.SetTerrain(tx*2,ty*2,hash);
+	else
+	{
+		pmap.SetRoof(tx,ty,hash?0xAAAAAAAA:0);
+		pmap.SetTile(tx,ty,hash);
+	}
 }
 
 DWORD FOMapper::SScriptFunc::MapperMap_GetDayTime(ProtoMap& pmap, DWORD day_part)
@@ -4530,7 +4569,7 @@ void FOMapper::SScriptFunc::Global_UnloadMap(ProtoMap* pmap)
 	if(it!=Self->LoadedProtoMaps.end()) Self->LoadedProtoMaps.erase(it);
 	if(pmap==Self->CurProtoMap)
 	{
-		Self->HexMngr.UnLoadMap();
+		Self->HexMngr.UnloadMap();
 		Self->SelectedObj.clear();
 		SAFEREL(Self->CurProtoMap);
 	}

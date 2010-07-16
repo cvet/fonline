@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "HexManager.h"
 #include "ResourceManager.h"
+#include "3dStuff\Terrain.h"
 
 #ifdef FONLINE_MAPPER
 #include "CritterData.h"
@@ -35,6 +36,13 @@ void Field::Clear()
 	IsNotPassed=false;
 	IsNotRaked=false;
 	IsNoLight=false;
+
+#ifdef FINLINE_MAPPER
+	SelTile=0;
+	SelRoof=0;
+	TerrainId=0;;
+	SelTettain=0;
+#endif
 }
 
 void Field::AddItem(ItemHex* item)
@@ -168,6 +176,12 @@ bool HexManager::Init(SpriteManager* sm)
 	ClearSelTiles();
 	CurProtoMap=NULL;
 #endif
+
+	if(!sprMngr->CreateRenderTarget(tileSurf,MODE_WIDTH+(int)(64.0f/MIN_ZOOM),MODE_HEIGHT+(int)(48.0f/MIN_ZOOM)))
+	{
+		WriteLog("Can't create tiles surface, width<%d>, height<%d>.\n",MODE_WIDTH+(int)(64.0f/MIN_ZOOM),MODE_HEIGHT+(int)(48.0f/MIN_ZOOM));
+		return false;
+	}
 
 	WriteLog("Hex field initialization success.\n");
 	return true;
@@ -601,8 +615,8 @@ void HexManager::ProcessRain()
 			{
 				cur_drop->CurSprId=picRainDrop;
 				cur_drop->DropCnt=0;
-				cur_drop->OffsX=random(10)-random(10);
-				cur_drop->OffsY=(100+random(100))*-1;
+				cur_drop->OffsX=Random(-10,10);
+				cur_drop->OffsY=-100-Random(0,100);
 			}
 		}
 	}
@@ -781,7 +795,7 @@ void HexManager::RebuildMap(int rx, int ry)
 
 					if(GetField(rofx,rofy).RoofId<2)
 					{
-						Drop* new_drop=new Drop(picRainDrop,random(10)-random(10),-random(200),0);
+						Drop* new_drop=new Drop(picRainDrop,Random(-10,10),-Random(0,200),0);
 						rainData.push_back(new_drop);
 
 						mainTree.AddSprite(DRAW_ORDER_HEX(f.Pos),f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
@@ -789,7 +803,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					}
 					else if(!roofSkip || roofSkip!=GetField(rofx,rofy).RoofNum)
 					{
-						Drop* new_drop=new Drop(picRainDrop,random(10)-random(10),-(100+random(100)),-100);
+						Drop* new_drop=new Drop(picRainDrop,Random(-10,10),-100-Random(0,100),-100);
 						rainData.push_back(new_drop);
 
 						mainTree.AddSprite(DRAW_ORDER_HEX(f.Pos),f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
@@ -1299,6 +1313,18 @@ bool HexManager::CheckTilesBorder(DWORD spr_id, bool is_roof)
 	return ProcessHexBorders(spr_id,ox,oy);
 }
 
+bool HexManager::AddTerrain(DWORD name_hash, int hx, int hy)
+{
+	Terrain* terrain=new(nothrow) Terrain(sprMngr->GetDevice(),hx,hy,ResMngr.GetName(name_hash));
+	if(terrain && !terrain->IsError())
+	{
+		tilesTerrain.push_back(terrain);
+		return true;
+	}
+	delete terrain;
+	return false;
+}
+
 void HexManager::RebuildTiles()
 {
 	if(!OptShowTile) return;
@@ -1322,6 +1348,8 @@ void HexManager::RebuildTiles()
 			Field& f=GetField(hx,hy);
 
 #ifdef FONLINE_MAPPER
+			if(f.TerrainId || f.SelTerrain) continue;
+
 			if(f.SelTile)
 			{
 				if(IsVisible(f.SelTile,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
@@ -1364,15 +1392,17 @@ void HexManager::RebuildRoof()
 			Field& f=GetField(hx,hy);
 
 #ifdef FONLINE_MAPPER
-				if(f.SelRoof)
+			if(f.TerrainId || f.SelTerrain) continue;
+
+			if(f.SelRoof)
+			{
+				if(IsVisible(f.SelRoof,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
 				{
-					if(IsVisible(f.SelRoof,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
-					{
-						Sprite& spr=roofTree.AddSprite(HEX_POS(hx,hy),f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.SelRoof,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
-						spr.Egg=Sprite::EggAlways;
-					}
-					continue;
+					Sprite& spr=roofTree.AddSprite(HEX_POS(hx,hy),f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.SelRoof,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL,NULL);
+					spr.Egg=Sprite::EggAlways;
 				}
+				continue;
+			}
 #endif
 
 			if(f.RoofId && (!roofSkip || roofSkip!=f.RoofNum) && IsVisible(f.RoofId,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
@@ -1546,8 +1576,6 @@ void HexManager::InitView(int cx, int cy)
 			viewField[vpos].ScrY=y;
 			viewField[vpos].ScrXf=(float)viewField[vpos].ScrX;
 			viewField[vpos].ScrYf=(float)viewField[vpos].ScrY;
-		//	viewField[vpos].HexX=(hx>=0 && hx<maxHexX?hx:0xFFFF);
-		//	viewField[vpos].HexY=(hy>=0 && hy<maxHexY?hy:0xFFFF);
 			viewField[vpos].HexX=hx;
 			viewField[vpos].HexY=hy;
 
@@ -1610,13 +1638,16 @@ void HexManager::GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, in
 {
 	int dx=to_hx-from_hx;
 	int dy=to_hy-from_hy;
-	int xc=(dx+(min(from_hx,to_hx)%2?(dx<0?-1:1):0))/2;
-	x=dx*32;
-	x-=xc*16;
-	x-=dy*16;
-	x=-x;
+	x=dy*16-dx*32;
 	y=dy*12;
-	y+=xc*12;
+	if(from_hx%2)
+	{
+		if(dx>0) dx++;
+	}
+	else if(dx<0) dx--;
+	dx/=2;
+	x+=16*dx;
+	y+=12*dx;
 }
 
 void HexManager::GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y)
@@ -1649,8 +1680,22 @@ void HexManager::DrawMap()
 	{
 		if(reprepareTiles)
 		{
+			// Clear
 			if(OptScreenClear) sprMngr->ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100));
+
+			// Draw terrain
+			for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it)
+			{
+				Terrain* terrain=*it;
+				int x,y;
+				GetHexCurrentPosition(terrain->GetHexX(),terrain->GetHexY(),x,y);
+				terrain->Draw(tileSurf,NULL,x+33,y+20,SpritesZoom);
+			}
+
+			// Draw simple tiles
 			sprMngr->PrepareBuffer(tilesTree,tileSurf,TILE_ALPHA);
+
+			// Done
 			reprepareTiles=false;
 		}
 		sprMngr->DrawPrepared(tileSurf);
@@ -1917,10 +1962,13 @@ void HexManager::ScrollToHex(int hx, int hy, double speed, bool can_stop)
 void HexManager::PreRestore()
 {
 	SAFEREL(tileSurf);
+	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) (*it)->PreRestore();
 }
 
 void HexManager::PostRestore()
 {
+	sprMngr->CreateRenderTarget(tileSurf,MODE_WIDTH+(int)(64.0f/MIN_ZOOM),MODE_HEIGHT+(int)(48.0f/MIN_ZOOM));
+	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) (*it)->PostRestore();
 	RefreshMap();
 }
 
@@ -2670,7 +2718,7 @@ void HexManager::FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps)
 bool HexManager::LoadMap(WORD map_pid)
 {
 	WriteLog("Load FO map...");
-	UnLoadMap();
+	UnloadMap();
 
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);
@@ -2773,23 +2821,35 @@ bool HexManager::LoadMap(WORD map_pid)
 			f.TileId=0;
 			f.RoofId=0;
 
-			if(tile)
+			// Terrain
+			if(roof==0xAAAAAAAA)
 			{
-				DWORD id=ResMngr.GetSprId(tile,0);
-				if(id)
+				if(tile && !AddTerrain(tile,tx*2,ty*2))
 				{
-					f.TileId=id;
-					CheckTilesBorder(id,false);
+					const char* name=ResMngr.GetName(tile);
+					WriteLog("Unable to load terrain map, name<%s>, hash<%u>.\n",name?name:"unknown",tile);
 				}
 			}
-
-			if(roof)
+			// Simple tiles
+			else
 			{
-				DWORD id=ResMngr.GetSprId(roof,0);
-				if(id)
+				if(tile)
 				{
-					f.RoofId=id;
-					CheckTilesBorder(id,true);
+					DWORD id=ResMngr.GetSprId(tile,0);
+					if(id)
+					{
+						f.TileId=id;
+						CheckTilesBorder(id,false);
+					}
+				}
+				if(roof)
+				{
+					DWORD id=ResMngr.GetSprId(roof,0);
+					if(id)
+					{
+						f.RoofId=id;
+						CheckTilesBorder(id,true);
+					}
 				}
 			}
 		}
@@ -2895,7 +2955,7 @@ bool HexManager::LoadMap(WORD map_pid)
 	return true;
 }
 
-void HexManager::UnLoadMap()
+void HexManager::UnloadMap()
 {
 	if(!IsMapLoaded()) return;
 
@@ -2936,6 +2996,9 @@ void HexManager::UnLoadMap()
 
 	crittersContour=Sprite::ContourNone;
 	critterContour=Sprite::ContourNone;
+
+	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) delete *it;
+	tilesTerrain.clear();
 }
 
 void HexManager::GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen)
@@ -3204,7 +3267,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 {
 	WriteLog("Create map from prototype.\n");
 
-	UnLoadMap();
+	UnloadMap();
 	CurProtoMap=NULL;
 
 	if(!ResizeField(pmap.Header.MaxHexX,pmap.Header.MaxHexY))
@@ -3224,27 +3287,36 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			DWORD tile=pmap.GetTile(tx,ty);
 			DWORD roof=pmap.GetRoof(tx,ty);
 
-			if(tile)
+			// Terrain
+			if(roof==0xAAAAAAAA)
 			{
-				DWORD id=ResMngr.GetSprId(tile,0);
-				if(id)
-				{
-					GetField(tx*2,ty*2).TileId=id;
-					CheckTilesBorder(id,false);
-				}
+				GetField(tx*2,ty*2).TerrainId=tile;
 			}
-
-			if(roof)
+			// Simple tiles
+			else
 			{
-				DWORD id=ResMngr.GetSprId(roof,0);
-				if(id)
+				if(tile)
 				{
-					GetField(tx*2,ty*2).RoofId=id;
-					CheckTilesBorder(id,true);
+					DWORD id=ResMngr.GetSprId(tile,0);
+					if(id)
+					{
+						GetField(tx*2,ty*2).TileId=id;
+						CheckTilesBorder(id,false);
+					}
+				}
+				if(roof)
+				{
+					DWORD id=ResMngr.GetSprId(roof,0);
+					if(id)
+					{
+						GetField(tx*2,ty*2).RoofId=id;
+						CheckTilesBorder(id,true);
+					}
 				}
 			}
 		}
 	}
+	RebuildTerrain();
 
 	// Objects
 	DWORD cur_id=0;
@@ -3359,6 +3431,7 @@ bool HexManager::GetProtoMap(ProtoMap& pmap)
 void HexManager::ParseSelTiles()
 {
 	bool borders_changed=false;
+	bool terrain_changed=false;
 	for(int tx=0,ex=maxHexX/2;tx<ex;tx++)
 	{
 		for(int ty=0,ey=maxHexY/2;ty<ey;ty++)
@@ -3374,10 +3447,20 @@ void HexManager::ParseSelTiles()
 				f.RoofId=f.SelRoof;
 				borders_changed=CheckTilesBorder(f.SelRoof,true);
 			}
+			if(f.SelTerrain)
+			{
+				f.TerrainId=f.SelTerrain;
+				terrain_changed=true;
+			}
 		}
 	}
 
 	ClearSelTiles();
+
+	if(terrain_changed)
+	{
+		RebuildTerrain();
+	}
 	if(borders_changed)
 	{
 		hVisible=VIEW_HEIGHT+hTop+hBottom;
@@ -3386,30 +3469,68 @@ void HexManager::ParseSelTiles()
 		viewField=new ViewField[hVisible*wVisible];
 		RefreshMap();
 	}
+	if(terrain_changed || borders_changed)
+	{
+		RefreshMap();
+	}
 }
 
 void HexManager::SetTile(WORD hx, WORD hy, DWORD name_hash, bool is_roof)
 {
+	Field& f=GetField(hx,hy);
+
 	DWORD spr_id=ResMngr.GetSprId(name_hash,0);
 	if(is_roof)
 	{
-		GetField(hx,hy).RoofId=spr_id;
+		f.RoofId=spr_id;
 		CurProtoMap->SetRoof(hx/2,hy/2,name_hash);
 	}
 	else
 	{
-		GetField(hx,hy).TileId=spr_id;
+		f.TileId=spr_id;
 		CurProtoMap->SetTile(hx/2,hy/2,name_hash);
 	}
-
 	if(spr_id && CheckTilesBorder(spr_id,is_roof))
 	{
 		hVisible=VIEW_HEIGHT+hTop+hBottom;
 		wVisible=VIEW_WIDTH+wLeft+wRight;
 		delete[] viewField;
 		viewField=new ViewField[hVisible*wVisible];
+		RefreshMap();
 	}
-	RefreshMap();
+	else
+	{
+		if(is_roof) RebuildRoof();
+		else RebuildTiles();
+	}
+}
+
+void HexManager::SetTerrain(WORD hx, WORD hy, DWORD name_hash)
+{
+	Field& f=GetField(hx,hy);
+	f.TerrainId=name_hash;
+	CurProtoMap->SetRoof(hx/2,hy/2,name_hash?0xAAAAAAAA:0);
+	CurProtoMap->SetTile(hx/2,hy/2,name_hash);
+	RebuildTerrain();
+	RebuildTiles();
+	RebuildRoof();
+}
+
+void HexManager::RebuildTerrain()
+{
+	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) delete *it;
+	tilesTerrain.clear();
+
+	for(int tx=0;tx<maxHexX/2;tx++)
+	{
+		for(int ty=0;ty<maxHexY/2;ty++)
+		{
+			Field& f=GetField(tx*2,ty*2);
+			if(f.TerrainId) AddTerrain(f.TerrainId,tx*2,ty*2);
+			if(f.SelTerrain) AddTerrain(f.SelTerrain,tx*2,ty*2);
+		}
+	}
+	reprepareTiles=true;
 }
 
 void HexManager::AddFastPid(WORD pid)

@@ -14,7 +14,7 @@ char PathLst[][50]=
 	"art\\tiles\\",
 	"art\\walls\\",
 	"art\\textures\\",     // 10
-	"art\\effects\\",
+	"effects\\",
 	"maps\\",
 	"proto\\items\\",
 	"proto\\misc\\",
@@ -30,7 +30,7 @@ char PathLst[][50]=
 	"video\\",
 	"scripts\\",
 	"art\\",
-	"",
+	"terrain\\",
 	"",
 	"",
 	"data\\",              // 30
@@ -290,12 +290,12 @@ bool FileManager::LoadStream(BYTE* stream, DWORD length)
 
 void FileManager::SetCurPos(DWORD pos)
 {
-	if(pos<fileSize) curPos=pos;
+	curPos=pos;
 }
 
 void FileManager::GoForward(DWORD offs)
 {
-	if((curPos+offs)<fileSize) curPos+=offs;
+	curPos+=offs;
 }
 
 bool FileManager::GetLine(char* str, DWORD len)
@@ -350,7 +350,7 @@ WORD FileManager::GetBEWord()
 {
 	if(curPos+sizeof(WORD)>fileSize) return 0;
 	WORD res=0;
-	BYTE *cres=(BYTE*)&res;
+	BYTE* cres=(BYTE*)&res;
 	cres[1]=fileBuf[curPos++];
 	cres[0]=fileBuf[curPos++];
 	return res;
@@ -360,7 +360,7 @@ WORD FileManager::GetLEWord()
 {
 	if(curPos+sizeof(WORD)>fileSize) return 0;
 	WORD res=0;
-	BYTE *cres=(BYTE*)&res;
+	BYTE* cres=(BYTE*)&res;
 	cres[0]=fileBuf[curPos++];
 	cres[1]=fileBuf[curPos++];
 	return res;
@@ -370,7 +370,7 @@ DWORD FileManager::GetBEDWord()
 {
 	if(curPos+sizeof(DWORD)>fileSize) return 0;
 	DWORD res=0;
-	BYTE *cres=(BYTE*)&res;
+	BYTE* cres=(BYTE*)&res;
 	for(int i=3;i>=0;i--) cres[i]=fileBuf[curPos++];
 	return res;
 }
@@ -379,7 +379,7 @@ DWORD FileManager::GetLEDWord()
 {
 	if(curPos+sizeof(DWORD)>fileSize) return 0;
 	DWORD res=0;
-	BYTE *cres=(BYTE*)&res;
+	BYTE* cres=(BYTE*)&res;
 	for(int i=0;i<=3;i++) cres[i]=fileBuf[curPos++];
 	return res;
 }
@@ -388,8 +388,26 @@ DWORD FileManager::GetLE3Bytes()
 {
 	if(curPos+sizeof(BYTE)*3>fileSize) return 0;
 	DWORD res=0;
-	BYTE *cres=(BYTE*)&res;
+	BYTE* cres=(BYTE*)&res;
 	for(int i=0;i<=2;i++) cres[i]=fileBuf[curPos++];
+	return res;
+}
+
+float FileManager::GetBEFloat()
+{
+	if(curPos+sizeof(float)>fileSize) return 0.0f;
+	float res;
+	BYTE* cres=(BYTE*)&res;
+	for(int i=3;i>=0;i--) cres[i]=fileBuf[curPos++];
+	return res;
+}
+
+float FileManager::GetLEFloat()
+{
+	if(curPos+sizeof(float)>fileSize) return 0.0f;
+	float res;
+	BYTE* cres=(BYTE*)&res;
+	for(int i=0;i<=3;i++) cres[i]=fileBuf[curPos++];
 	return res;
 }
 
@@ -623,6 +641,7 @@ void FileManager::ExtractPath(const char* fname, char* path)
 
 const char* FileManager::GetExtension(const char* fname)
 {
+	if(!fname) return NULL;
 	const char* last_dot=NULL;
 	for(;*fname;fname++) if(*fname=='.') last_dot=fname;
 	if(!last_dot) return NULL;

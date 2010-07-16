@@ -18,7 +18,7 @@
 #define PT_ART_TILES        (8)
 #define PT_ART_WALLS        (9)
 #define PT_ART_TEXTURES     (10)
-#define PT_ART_EFFECTS      (11)
+#define PT_EFFECTS          (11)
 #define PT_MAPS             (12)
 #define PT_PRO_ITEMS        (13)
 #define PT_PRO_MISC         (14)
@@ -34,6 +34,7 @@
 #define PT_VIDEO            (24)
 #define PT_SCRIPTS          (25)
 #define PT_ART              (26)
+#define PT_TERRAIN          (27)
 
 #define PT_SERVER_DATA      (30)
 
@@ -64,6 +65,8 @@ public:
 	DWORD GetBEDWord();
 	DWORD GetLEDWord();
 	DWORD GetLE3Bytes();
+	float GetBEFloat();
+	float GetLEFloat();
 	int GetNum();
 
 	void ClearOutBuf();

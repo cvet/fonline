@@ -1,5 +1,5 @@
-#ifndef __3D_STUFF_H__
-#define __3D_STUFF_H__
+#ifndef __3D_STUFF__
+#define __3D_STUFF__
 // Some code used from http://www.toymaker.info/Games/html/load_x_hierarchy.html
 
 #include <Timer.h>
@@ -230,5 +230,5 @@ public:
 	~Animation3dXFile();
 };
 
-#endif // __3D_STUFF_H__
+#endif // __3D_STUFF__
 

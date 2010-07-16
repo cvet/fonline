@@ -1372,6 +1372,8 @@
 	if(engine->RegisterObjectMethod("MapperMap","void SetTile(uint16 tileX, uint16 tileY, bool roof, uint picHash)",asFUNCTION(BIND_CLASS MapperMap_SetTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","string@ GetTileName(uint16 tileX, uint16 tileY, bool roof) const",asFUNCTION(BIND_CLASS MapperMap_GetTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void SetTileName(uint16 tileX, uint16 tileY, bool roof, string@+ picName)",asFUNCTION(BIND_CLASS MapperMap_SetTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","string@ GetTerrainName(uint16 tileX, uint16 tileY) const",asFUNCTION(BIND_CLASS MapperMap_GetTerrainName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void SetTerrainName(uint16 tileX, uint16 tileY, string@+ terrainName)",asFUNCTION(BIND_CLASS MapperMap_SetTerrainName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","uint GetDayTime(uint dayPart) const",asFUNCTION(BIND_CLASS MapperMap_GetDayTime),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void SetDayTime(uint dayPart, uint time)",asFUNCTION(BIND_CLASS MapperMap_SetDayTime),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b) const",asFUNCTION(BIND_CLASS MapperMap_GetDayColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

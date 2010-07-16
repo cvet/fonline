@@ -12,7 +12,7 @@
 
 int Random(int minimum, int maximum)
 {
-	return minimum+random(maximum-minimum+1);
+	return minimum+((int)(__int64(rand())*__int64(maximum-minimum+1)/(__int64(RAND_MAX)+1)));
 }
 
 int Procent(int full, int peace)
@@ -1050,6 +1050,17 @@ void StringAppend(char* to, size_t size, const char* from)
 		memcpy(ptr,from,from_len);
 		ptr[from_len]=0;
 	}
+}
+
+char* StringDuplicate(const char* str)
+{
+	if(!str) return NULL;
+	size_t len=strlen(str);
+	char* dup=new(nothrow) char[len+1];
+	if(!dup) return NULL;
+	if(len) memcpy(dup,str,len);
+	dup[len]=0;
+	return dup;
 }
 
 /************************************************************************/

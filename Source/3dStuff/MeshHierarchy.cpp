@@ -1,14 +1,14 @@
 #include "StdAfx.h"
 #include "MeshHierarchy.h"
-#include "Utility.h"
+#include <FileManager.h>
 
-HRESULT CMeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
+HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
 {
 	// Always a good idea to initialise a return pointer before proceeding
-	*retNewFrame = 0;
+	*retNewFrame=0;
 
 	// Create a new frame using the derived version of the structure
-    D3DXFRAME_EXTENDED *newFrame = new D3DXFRAME_EXTENDED;
+    D3DXFRAME_EXTENDED *newFrame=new D3DXFRAME_EXTENDED;
 	ZeroMemory(newFrame,sizeof(D3DXFRAME_EXTENDED));
 
 	// Now fill in the data members in the frame structure
@@ -17,17 +17,17 @@ HRESULT CMeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
     D3DXMatrixIdentity(&newFrame->TransformationMatrix);
     D3DXMatrixIdentity(&newFrame->exCombinedTransformationMatrix);
 
-	newFrame->pMeshContainer = 0;
-    newFrame->pFrameSibling = 0;
-    newFrame->pFrameFirstChild = 0;
+	newFrame->pMeshContainer=0;
+    newFrame->pFrameSibling=0;
+    newFrame->pFrameFirstChild=0;
 
 	// Assign the return pointer to our newly created frame
-    *retNewFrame = newFrame;
+    *retNewFrame=newFrame;
 	
 	// The frame name (note: may be 0 or zero length)
-	if (Name && strlen(Name))
+	if(Name && strlen(Name))
 	{
-		newFrame->Name=Utility3d::DuplicateCharString(Name);	
+		newFrame->Name=StringDuplicate(Name);	
 //		Utility3d::DebugString("Added frame: "+ToString(Name));
 	}
 	else
@@ -37,13 +37,13 @@ HRESULT CMeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
     return S_OK;
 }
 
-HRESULT CMeshHierarchy::CreateMeshContainer(
+HRESULT MeshHierarchy::CreateMeshContainer(
     LPCSTR Name,
-    CONST D3DXMESHDATA *meshData,
-    CONST D3DXMATERIAL *materials,
-    CONST D3DXEFFECTINSTANCE *effectInstances,
+    CONST D3DXMESHDATA* meshData,
+    CONST D3DXMATERIAL* materials,
+    CONST D3DXEFFECTINSTANCE* effectInstances,
     DWORD numMaterials,
-    CONST DWORD *adjacency,
+    CONST DWORD* adjacency,
     LPD3DXSKININFO pSkinInfo,
     LPD3DXMESHCONTAINER* retNewMeshContainer)
 {
@@ -53,12 +53,12 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 	ZeroMemory(newMeshContainer, sizeof(D3DXMESHCONTAINER_EXTENDED));
 
 	// Always a good idea to initialise return pointer before proceeding
-	*retNewMeshContainer = 0;
+	*retNewMeshContainer=0;
 
 	// The mesh name (may be 0) needs copying over
-	if (Name && strlen(Name))
+	if(Name && strlen(Name))
 	{
-		newMeshContainer->Name=Utility3d::DuplicateCharString(Name);
+		newMeshContainer->Name=StringDuplicate(Name);
 //		Utility3d::DebugString("Added mesh: "+ToString(Name));
 	}
 	else
@@ -67,7 +67,7 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 	}
 
 	// The mesh type (D3DXMESHTYPE_MESH, D3DXMESHTYPE_PMESH or D3DXMESHTYPE_PATCHMESH)
-	if (meshData->Type!=D3DXMESHTYPE_MESH)
+	if(meshData->Type!=D3DXMESHTYPE_MESH)
 	{
 		// This demo does not handle mesh types other than the standard
 		// Other types are D3DXMESHTYPE_PMESH (progressive mesh) and D3DXMESHTYPE_PATCHMESH (patch mesh)
@@ -75,15 +75,16 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 		return E_FAIL;
 	}
 
-	newMeshContainer->MeshData.Type = D3DXMESHTYPE_MESH;
+	newMeshContainer->MeshData.Type=D3DXMESHTYPE_MESH;
 	
 	// Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
-	DWORD dwFaces = meshData->pMesh->GetNumFaces();
-	newMeshContainer->pAdjacency = new DWORD[dwFaces*3];
-	memcpy(newMeshContainer->pAdjacency, adjacency, sizeof(DWORD) * dwFaces*3);
-	
+	DWORD dwFaces=meshData->pMesh->GetNumFaces();
+	newMeshContainer->pAdjacency=new DWORD[dwFaces*3];
+	if(adjacency) memcpy(newMeshContainer->pAdjacency, adjacency, sizeof(DWORD)*dwFaces*3);
+	else meshData->pMesh->GenerateAdjacency(0.0000125f,newMeshContainer->pAdjacency);
+
 	// Get the Direct3D device, luckily this is held in the mesh itself (Note: must release it when done with it)
-	LPDIRECT3DDEVICE9 pd3dDevice = 0;
+	LPDIRECT3DDEVICE9 pd3dDevice=0;
 	meshData->pMesh->GetDevice(&pd3dDevice);
 
 	// Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
@@ -100,7 +101,7 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 		// Load all the textures and copy the materials over		
 		for(DWORD i=0;i<numMaterials;i++)
 		{
-			newMeshContainer->exTexturesNames[i]=Utility3d::DuplicateCharString(materials[i].pTextureFilename);
+			newMeshContainer->exTexturesNames[i]=StringDuplicate(materials[i].pTextureFilename);
 			newMeshContainer->exMaterials[i]=materials[i].MatD3D;
 		}
 	}
@@ -120,33 +121,33 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 	if(pSkinInfo)
 	{
 		// save off the SkinInfo
-	    newMeshContainer->pSkinInfo = pSkinInfo;
+	    newMeshContainer->pSkinInfo=pSkinInfo;
 	    pSkinInfo->AddRef();
 
 	    // Need an array of offset matrices to move the vertices from the figure space to the bone's space
-	    UINT numBones = pSkinInfo->GetNumBones();
-	    newMeshContainer->exBoneOffsets = new D3DXMATRIX[numBones];
+	    UINT numBones=pSkinInfo->GetNumBones();
+	    newMeshContainer->exBoneOffsets=new D3DXMATRIX[numBones];
 
 		// Create the arrays for the bones and the frame matrices
-		newMeshContainer->exFrameCombinedMatrixPointer = new D3DXMATRIX*[numBones];
+		newMeshContainer->exFrameCombinedMatrixPointer=new D3DXMATRIX*[numBones];
 		ZeroMemory(newMeshContainer->exFrameCombinedMatrixPointer,sizeof(D3DXMATRIX*)*numBones);
 
 	    // get each of the bone offset matrices so that we don't need to get them later
-	    for (UINT i = 0; i < numBones; i++)
-	        newMeshContainer->exBoneOffsets[i] = *(newMeshContainer->pSkinInfo->GetBoneOffsetMatrix(i));
+	    for (UINT i=0; i < numBones; i++)
+	        newMeshContainer->exBoneOffsets[i]=*(newMeshContainer->pSkinInfo->GetBoneOffsetMatrix(i));
 
 //		Utility3d::DebugString("Mesh has skinning info.\n Number of bones is: "+ToString(numBones));
         // Note: in the Microsoft samples a GenerateSkinnedMesh function is called here in order to prepare
 		// the skinned mesh data for optimial hardware acceleration. As mentioned in the notes this sample
 		// does not do hardware skinning but instead uses software skinning.
 	}
-	else	
+	else
 	{
 		// No skin info so 0 all the pointers
-		newMeshContainer->pSkinInfo = 0;
-		newMeshContainer->exBoneOffsets = 0;
-		newMeshContainer->exSkinMesh = 0;
-		newMeshContainer->exFrameCombinedMatrixPointer = 0;
+		newMeshContainer->pSkinInfo=0;
+		newMeshContainer->exBoneOffsets=0;
+		newMeshContainer->exSkinMesh=0;
+		newMeshContainer->exFrameCombinedMatrixPointer=0;
 	}
 
 	// When we got the device we caused an internal reference count to be incremented
@@ -154,13 +155,14 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 	pd3dDevice->Release();
 
 	// The mesh may contain a reference to an effect file
-	if (effectInstances && effectInstances->pEffectFilename)
+	if(effectInstances && effectInstances->pEffectFilename)
 	{
-		if(fileMngr.LoadFile(effectInstances->pEffectFilename,PT_ART_EFFECTS))
+		FileManager fm;
+		if(fm.LoadFile(effectInstances->pEffectFilename,PT_EFFECTS)) // Todo: add search from mesh folder
 		{
 			ID3DXEffect* effect=NULL;
 			ID3DXBuffer* errors=NULL;
-			if(SUCCEEDED(D3DXCreateEffect(pd3dDevice,fileMngr.GetBuf(),fileMngr.GetFsize(),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
+			if(SUCCEEDED(D3DXCreateEffect(pd3dDevice,fm.GetBuf(),fm.GetFsize(),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
 			{
 				newMeshContainer->exEffect=new EffectEx(effect);
 				effect->BeginParameterBlock();
@@ -184,33 +186,34 @@ HRESULT CMeshHierarchy::CreateMeshContainer(
 			}
 			else
 			{
-				Utility3d::DebugString("Could not load effect: "+ToString(effectInstances->pEffectFilename)+ToString("errors: ")+ToString(errors->GetBufferPointer()));
+				WriteLog(__FUNCTION__" - Could not load effect<%s>, errors<%s>.\n",effectInstances->pEffectFilename,errors->GetBufferPointer());
 				errors->Release();
 			}
 		}
 		else
-			Utility3d::DebugString("Could not find effect: "+ToString(effectInstances->pEffectFilename));
+		{
+			WriteLog(__FUNCTION__" - Could not find effect<%s>.\n",effectInstances->pEffectFilename);
+		}
 	}
-	
+
 	// Set the output mesh container pointer to our newly created one
-	*retNewMeshContainer = newMeshContainer;    
+	*retNewMeshContainer=newMeshContainer;    
 
 	return S_OK;
 }
 
-HRESULT CMeshHierarchy::DestroyFrame(LPD3DXFRAME frameToFree) 
+HRESULT MeshHierarchy::DestroyFrame(LPD3DXFRAME frameToFree) 
 {
 	// Convert to our extended type. OK to do this as we know for sure it is:
-	D3DXFRAME_EXTENDED *frame = (D3DXFRAME_EXTENDED*)frameToFree;
+	D3DXFRAME_EXTENDED* frame=(D3DXFRAME_EXTENDED*)frameToFree;
 
-	if (frame->Name)
-		delete []frame->Name;
+	SAFEDELA(frame->Name);
 	delete frame;
 
     return S_OK; 
 }
 
-HRESULT CMeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBase)
+HRESULT MeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBase)
 {
 	// Convert to our extended type. OK as we know for sure it is:
     D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)meshContainerBase;
@@ -246,20 +249,4 @@ HRESULT CMeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBa
 	// Finally delete the mesh container itself
 	SAFEDEL(mesh_container);
     return S_OK;
-}
-
-
-HRESULT CXLoader::LoadTopLevelData(LPD3DXFILEDATA pXofChildData)
-{
-	return S_OK;
-}
-
-HRESULT CXLoader::LoadFrameChildData(LPD3DXFRAME pFrame, LPD3DXFILEDATA pXofChildData)
-{
-	return S_OK;
-}
-
-HRESULT CXLoader::LoadMeshChildData(LPD3DXMESHCONTAINER pMeshContainer, LPD3DXFILEDATA pXofChildData)
-{
-	return S_OK;
 }
