@@ -17,7 +17,7 @@
 #define PT_ART_SPLASH       (7)
 #define PT_ART_TILES        (8)
 #define PT_ART_WALLS        (9)
-#define PT_ART_TEXTURES     (10)
+#define PT_TEXTURES         (10)
 #define PT_EFFECTS          (11)
 #define PT_MAPS             (12)
 #define PT_PRO_ITEMS        (13)

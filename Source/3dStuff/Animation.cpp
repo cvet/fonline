@@ -1761,7 +1761,7 @@ IDirect3DTexture9* Animation3dXFile::GetTexture(const char* tex_name)
 
 		// First try load from textures folder
 		FileManager fm;
-		if(!fm.LoadFile(tex_name,PT_ART_TEXTURES))
+		if(!fm.LoadFile(tex_name,PT_TEXTURES))
 		{
 			// After try load from file folder
 			char path[MAX_FOPATH];

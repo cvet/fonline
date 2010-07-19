@@ -1,5 +1,5 @@
-#ifndef __PROTO_NPC__
-#define __PROTO_NPC__
+#ifndef __CRITTER_DATA__
+#define __CRITTER_DATA__
 
 #include "Item.h"
 #include "FileManager.h"
@@ -85,4 +85,4 @@ struct CritDataExt
 	DWORD Reserved25[100];
 };
 
-#endif // __PROTO_NPC__
+#endif // __CRITTER_DATA__

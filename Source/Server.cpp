@@ -1818,7 +1818,7 @@ void FOServer::Process_Command(Client* cl)
 			else if(!strcmp(name_access,"tester") && std::find(AccessTester.begin(),AccessTester.end(),pasw_access)!=AccessTester.end()) cl->Access=ACCESS_TESTER;
 			else if(!strcmp(name_access,"moder") && std::find(AccessModer.begin(),AccessModer.end(),pasw_access)!=AccessModer.end()) cl->Access=ACCESS_MODER;
 			else if(!strcmp(name_access,"admin") && std::find(AccessAdmin.begin(),AccessAdmin.end(),pasw_access)!=AccessAdmin.end()) cl->Access=ACCESS_ADMIN;
-			else if(ImplemPasw && name_access[0]=='i' && name_access[2]=='i' && name_access[1]=='i' && !strcmp(&ImplemPasw[149],pasw_access)) cl->Access=ACCESS_IMPLEMENTOR;
+		//	else if(ImplemPasw && name_access[0]=='i' && name_access[2]=='i' && name_access[1]=='i' && !strcmp(&ImplemPasw[149],pasw_access)) cl->Access=ACCESS_IMPLEMENTOR;
 			else
 			{
 				cl->Send_Text(cl,"Access denied.",SAY_NETMSG);

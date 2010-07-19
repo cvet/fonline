@@ -96,7 +96,7 @@ void* Terrain::FileOpen(const char* fname, int folder)
 	int path_type=PT_CLIENT_DATA;
 	if(folder==FOLDER_TERRAIN) path_type=PT_CLIENT_DATA; // PT_TERRAIN
 	else if(folder==FOLDER_EFFECT) path_type=PT_EFFECTS;
-	else if(folder==FOLDER_TEXTURE) path_type=PT_ART_TEXTURES;
+	else if(folder==FOLDER_TEXTURE) path_type=PT_TEXTURES;
 
 	if(!fm->LoadFile(fname,path_type))
 	{
@@ -141,7 +141,7 @@ bool Terrain::SaveData(const char* fname, int folder, void* buffer, size_t size)
 	int path_type=PT_CLIENT_DATA;
 	if(folder==FOLDER_TERRAIN) path_type=PT_TERRAIN;
 	else if(folder==FOLDER_EFFECT) path_type=PT_EFFECTS;
-	else if(folder==FOLDER_TEXTURE) path_type=PT_ART_TEXTURES;
+	else if(folder==FOLDER_TEXTURE) path_type=PT_TEXTURES;
 
 	FileManager fm;
 	fm.SetData(buffer,size);

@@ -13,7 +13,7 @@ char PathLst[][50]=
 	"art\\splash\\",
 	"art\\tiles\\",
 	"art\\walls\\",
-	"art\\textures\\",     // 10
+	"textures\\",          // 10
 	"effects\\",
 	"maps\\",
 	"proto\\items\\",
