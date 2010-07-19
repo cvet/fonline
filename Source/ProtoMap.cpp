@@ -10,17 +10,17 @@
 #include "ResourceManager.h"
 #endif
 
-#define F1_MAP_VERSION			0x13000000
-#define F2_MAP_VERSION			0x14000000
-#define FO_MAP_VERSION_V1		0xF0000000
-#define FO_MAP_VERSION_V2		0xFA000000
-#define FO_MAP_VERSION_V3		0xFB000000
-#define FO_MAP_VERSION_V4		0xFC000000
-#define FO_MAP_VERSION_V5		0xFD000000
-#define FO_MAP_VERSION_V6		0xFE000000
-#define FO_MAP_VERSION_V7		0xFF000000
-#define FO_MAP_VERSION_V8		0xFF100000
-#define FO_MAP_VERSION_V9		0xFF200000
+#define F1_MAP_VERSION          (0x13000000)
+#define F2_MAP_VERSION          (0x14000000)
+#define FO_MAP_VERSION_V1       (0xF0000000)
+#define FO_MAP_VERSION_V2       (0xFA000000)
+#define FO_MAP_VERSION_V3       (0xFB000000)
+#define FO_MAP_VERSION_V4       (0xFC000000)
+#define FO_MAP_VERSION_V5       (0xFD000000)
+#define FO_MAP_VERSION_V6       (0xFE000000)
+#define FO_MAP_VERSION_V7       (0xFF000000)
+#define FO_MAP_VERSION_V8       (0xFF100000)
+#define FO_MAP_VERSION_V9       (0xFF200000)
 
 #define APP_HEADER              "Header"
 #define APP_TILES               "Tiles"
@@ -556,14 +556,22 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 	if(tiles_str)
 	{
 		istrstream istr(tiles_str);
+		string type,name;
 		while(!istr.eof() && !istr.fail())
 		{
-			DWORD roof,tx,ty,pic;
-			istr >> roof >> tx >> ty >> pic;
+			DWORD tx,ty;
+			istr >> type >> tx >> ty >> name;
 			if(!istr.fail() && tx>=0 && tx<Header.MaxHexX/2 && ty>=0 && ty<Header.MaxHexY/2)
 			{
-				if(!roof) Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=pic;
-				else Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=pic;
+				if(type=="tile") Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=Str::GetHash(name.c_str());
+				else if(type=="roof") Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=Str::GetHash(name.c_str());
+				else if(type=="terrain")
+				{
+					Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=0xAAAAAAAA;
+					Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=Str::GetHash(name.c_str());
+				}
+				else if(type=="0") Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=(DWORD)_atoi64(name.c_str()); // Deprecated
+				else if(type=="1") Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=(DWORD)_atoi64(name.c_str()); // Deprecated
 			}
 		}
 		delete[] tiles_str;
@@ -779,8 +787,27 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		{
 			DWORD tile=GetTile(x,y);
 			DWORD roof=GetRoof(x,y);
-			if(tile) fm->SetStr("0 %-4d %-4d %u\n",x,y,tile);
-			if(roof) fm->SetStr("1 %-4d %-4d %u\n",x,y,roof);
+
+			// Terrain
+			if(roof==0xAAAAAAAA)
+			{
+				const char* name=ResMngr.GetName(tile);
+				if(name) fm->SetStr("%-10s %-4d %-4d %s\n","terrain",x,y,name);
+			}
+			// Simple tiles
+			else
+			{
+				if(tile)
+				{
+					const char* name=ResMngr.GetName(tile);
+					if(name) fm->SetStr("%-10s %-4d %-4d %s\n","tile",x,y,name);
+				}
+				if(roof)
+				{
+					const char* name=ResMngr.GetName(roof);
+					if(name) fm->SetStr("%-10s %-4d %-4d %s\n","roof",x,y,name);
+				}
+			}
 		}
 	}
 	fm->SetStr("\n");

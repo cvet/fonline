@@ -70,8 +70,7 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 		float Diffuse[3];
 		float Specular[3];
 	};
-	static vector<Material3ds> materials;
-	materials.clear();
+	vector<Material3ds> materials;
 
 	class Mesh3ds
 	{
@@ -91,8 +90,7 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 		vector<Subset> Subsets;
 		Mesh3ds(){Name[0]=0;IsTriangularMesh=false;}
 	};
-	static vector<Mesh3ds> meshes;
-	meshes.clear();
+	vector<Mesh3ds> meshes;
 
 	float* cur_color=NULL;
 	while(!fm.IsEOF())
@@ -330,13 +328,13 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 			D3D_HR(dxmesh.pMesh->UnlockAttributeBuffer());
 
 			// Normals smoothing
-			DWORD* adjacency=new DWORD[mesh.Faces.size()];
-			dxmesh.pMesh->GenerateAdjacency(0.0000125f,adjacency);
-			D3D_HR(D3DXComputeNormals(dxmesh.pMesh,adjacency));
+			DwordVec adjacency;
+			adjacency.resize(mesh.Faces.size());
+			dxmesh.pMesh->GenerateAdjacency(0.0000125f,&adjacency[0]);
+			D3D_HR(D3DXComputeNormals(dxmesh.pMesh,&adjacency[0]));
 
 			// Create container
-			D3D_HR(memAllocator.CreateMeshContainer(mesh.Name,&dxmesh,&dxmaterials[0],NULL,dxmaterials.size(),adjacency,NULL,&frame->pMeshContainer));
-			delete[] adjacency;
+			D3D_HR(memAllocator.CreateMeshContainer(mesh.Name,&dxmesh,&dxmaterials[0],NULL,dxmaterials.size(),&adjacency[0],NULL,&frame->pMeshContainer));
 		}
 	}
 

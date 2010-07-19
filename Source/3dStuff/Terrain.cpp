@@ -108,9 +108,12 @@ void* Terrain::FileOpen(const char* fname, int folder)
 
 void Terrain::FileClose(void*& file)
 {
-	FileManager* fm=(FileManager*)file;
-	delete fm;
-	file=NULL;
+	if(file)
+	{
+		FileManager* fm=(FileManager*)file;
+		delete fm;
+		file=NULL;
+	}
 }
 
 size_t Terrain::FileRead(void* file, void* buffer, size_t size)
