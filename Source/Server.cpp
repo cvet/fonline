@@ -2151,10 +2151,10 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			IniParser city_txt;
-			if(!city_txt.LoadFile(Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_MAPS))))
+			if(!city_txt.LoadFile(Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS))))
 			{
 				cl->Send_Text(cl,"Locations.cfg not found.",SAY_NETMSG);
-				WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_MAPS)));
+				WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
 				break;
 			}
 
@@ -2203,10 +2203,10 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			IniParser maps_txt;
-			if(!maps_txt.LoadFile(Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_MAPS))))
+			if(!maps_txt.LoadFile(Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_SERVER_MAPS))))
 			{
 				cl->Send_Text(cl,"Maps.cfg not found.",SAY_NETMSG);
-				WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_MAPS)));
+				WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
 				break;
 			}
 
@@ -2286,7 +2286,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!FileMngr.LoadFile(Str::Format("%s%s",dlg_name,DIALOG_FILE_EXT),PT_DIALOGS))
+			if(!FileMngr.LoadFile(Str::Format("%s%s",dlg_name,DIALOG_FILE_EXT),PT_SERVER_DIALOGS))
 			{
 				cl->Send_Text(cl,"File not found.",SAY_NETMSG);
 				WriteLog("File<%s> not found.\n",dlg_name);
@@ -2863,16 +2863,19 @@ bool FOServer::Init()
 #endif
 
 	// Check the sizes of struct and classes
-	STATIC_ASSERT(offsetof(ProtoItem,Weapon.Weapon_Aim)==182);
-	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
-	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
-	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==84);
-	STATIC_ASSERT(offsetof(GlobalMapGroup,EncounterForce)==84);
+#ifndef FONLINE_SINGLE
 	STATIC_ASSERT(offsetof(Item,PLexems)==128);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
 	STATIC_ASSERT(offsetof(Critter,RefCounter)==9768);
 	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9836);
 	STATIC_ASSERT(offsetof(Npc,Reserved)==9800);
+#endif
+
+	STATIC_ASSERT(offsetof(ProtoItem,Weapon.Weapon_Aim)==182);
+	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
+	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
+	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==84);
+	STATIC_ASSERT(offsetof(GlobalMapGroup,EncounterForce)==84);
 	STATIC_ASSERT(offsetof(MapObject,RunTime.RefCounter)==244);
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);
 	STATIC_ASSERT(offsetof(ScenToSend,PicMapHash)==24);
@@ -2927,10 +2930,10 @@ bool FOServer::Init()
 	}
 
 	// Generic
-	FileManager::SetDataPath(".\\"); // File manager
+	FileManager::SetDataPath(".\\",true); // File manager
 	FONames::GenerateFoNames(PT_SERVER_DATA); // Generate name of defines
 	if(!InitScriptSystem()) goto label_Error; // Script system
-	if(!InitLangPacks(LangPacks)) goto label_Error; // Langpacks
+	if(!InitLangPacks(LangPacks)) goto label_Error; // Language packs
 	if(!InitLangScript(LangPacks)) goto label_Error; // Client scripts
 	if(!LoadClientsData()) goto label_Error;
 	ConnectedClients.clear();
@@ -2947,7 +2950,7 @@ bool FOServer::Init()
 	if(!ItemMngr.Init()) goto label_Error; // Item manager
 	if(!CrMngr.Init()) goto label_Error; // Critter manager
 	if(!MapMngr.Init()) goto label_Error; // Map manager
-	if(!VarMngr.Init(FileManager::GetFullPath("",PT_SCRIPTS))) goto label_Error; // Var Manager (only before dialog manager!)
+	if(!VarMngr.Init(FileManager::GetFullPath("",PT_SERVER_SCRIPTS))) goto label_Error; // Var Manager (only before dialog manager!)
 	if(!DlgMngr.LoadDialogs(DIALOGS_PATH,DIALOGS_LST_NAME)) goto label_Error; // Dialog manager
 	if(!InitLangPacksDialogs(LangPacks)) goto label_Error; // Create FONPC.MSG, FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
 	if(!InitCrafts(LangPacks)) goto label_Error; // MrFixit
@@ -2972,7 +2975,7 @@ bool FOServer::Init()
 	ItemMngr.RunInitScriptItems(); // Init scripts for maps
 
 	// Try generate world if not exist
-	if(!MapMngr.GenerateWorld("GenerateWorld.cfg",PT_MAPS)) goto label_Error;
+	if(!MapMngr.GenerateWorld("GenerateWorld.cfg",PT_SERVER_MAPS)) goto label_Error;
 
 	// End of initialization
 	Statistics.BytesSend=0;
@@ -3167,7 +3170,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 		}
 
 		LanguagePack lang;
-		if(!lang.Init(Str::Format("%s%s",FileMngr.GetDataPath(),FileMngr.GetPath(PT_TXT_GAME)),*(DWORD*)&lang_name))
+		if(!lang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_SERVER_TEXTS),FileMngr.GetPath(PT_SERVER_TEXTS)),*(DWORD*)&lang_name))
 		{
 			WriteLog("Unable to init Language pack<%u>.\n",cur_lang);
 			return false;
@@ -3251,10 +3254,10 @@ void FOServer::FinishLangPacks()
 #pragma MESSAGE("Send bytecode, not preprocessed scripts.")
 bool FOServer::InitLangScript(LangPackVec& lang_packs)
 {
-	FILE* f=fopen(FileManager::GetFullPath(SCRIPTS_LST,PT_SCRIPTS),"rt");
+	FILE* f=fopen(FileManager::GetFullPath(SCRIPTS_LST,PT_SERVER_SCRIPTS),"rt");
 	if(!f)
 	{
-		WriteLog(__FUNCTION__" - File not found<%s>.\n",FileManager::GetFullPath(SCRIPTS_LST,PT_SCRIPTS));
+		WriteLog(__FUNCTION__" - File not found<%s>.\n",FileManager::GetFullPath(SCRIPTS_LST,PT_SERVER_SCRIPTS));
 		return false;
 	}
 

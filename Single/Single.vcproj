@@ -55,7 +55,7 @@
 				InlineFunctionExpansion="1"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;FONLINE_SINGLE;FONLINE_CLIENT;FONLINE_SERVER;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;FONLINE_SINGLE;FONLINE_CLIENT;FONLINE_SERVER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				StringPooling="true"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -263,7 +263,7 @@
 				InlineFunctionExpansion="0"
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_SINGLE;FONLINE_CLIENT;FONLINE_SERVER;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO"
+				PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_SINGLE;FONLINE_CLIENT;FONLINE_SERVER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -3111,6 +3111,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\3dStuff\Loader.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dStuff\Loader.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\3dStuff\MeshHierarchy.cpp"
 				>
 			</File>
@@ -3127,17 +3135,37 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Utility.cpp"
+				RelativePath="..\Source\3dStuff\Terrain.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Utility.h"
+				RelativePath="..\Source\3dStuff\Terrain.h"
 				>
 			</File>
-		</Filter>
-		<Filter
-			Name="Server"
-			>
+			<File
+				RelativePath="..\Source\3dStuff\TerrainGrid.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\3dStuff\TerrainGrid.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Single"
@@ -3204,6 +3232,10 @@
 			</File>
 			<File
 				RelativePath="..\Source\CritterCl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\CritterData.h"
 				>
 			</File>
 			<File
@@ -3379,10 +3411,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\CritterData.h"
-				>
-			</File>
-			<File
 				RelativePath="..\Source\QuestManager.h"
 				>
 			</File>
@@ -3494,10 +3522,6 @@
 				RelativePath="..\Source\Version.h"
 				>
 			</File>
-		</Filter>
-		<Filter
-			Name="Client"
-			>
 		</Filter>
 	</Files>
 	<Globals>

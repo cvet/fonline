@@ -573,7 +573,7 @@ bool ItemManager::LoadProtos()
 	WriteLog("Loading items prototypes...\n");
 
 	FileManager fm;
-	if(!fm.LoadFile("items.lst",PT_PRO_ITEMS))
+	if(!fm.LoadFile("items.lst",PT_SERVER_PRO_ITEMS))
 	{
 		WriteLog("Can't open \"items.lst\".\n");
 		return false;
@@ -594,7 +594,7 @@ bool ItemManager::LoadProtos()
 	ClearProtos();
 	for(int i=0;i<count;i++)
 	{
-		if(LoadProtos(item_protos,FileManager::GetFullPath(fnames[i].c_str(),PT_PRO_ITEMS)))
+		if(LoadProtos(item_protos,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS)))
 		{
 			ParseProtos(item_protos);
 			loaded+=item_protos.size();

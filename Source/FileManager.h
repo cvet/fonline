@@ -5,38 +5,38 @@
 #include "Log.h"
 #include "DatFile\datfile.h"
 
-#define OUT_BUF_START_SIZE	 0x100
+// Client and mapper paths
+#define PT_ROOT                (0)
+#define PT_ART                 (1)
+#define PT_ART_CRITTERS        (2)
+#define PT_ART_INTRFACE        (3)
+#define PT_ART_INVEN           (4)
+#define PT_ART_ITEMS           (5)
+#define PT_ART_MISC            (6)
+#define PT_ART_SCENERY         (7)
+#define PT_ART_SKILLDEX        (8)
+#define PT_ART_SPLASH          (9)
+#define PT_ART_TILES           (10)
+#define PT_ART_WALLS           (11)
+#define PT_TEXTURES            (12)
+#define PT_EFFECTS             (13)
+#define PT_MAPS                (14)
+#define PT_TERRAIN             (15)
+#define PT_SND_MUSIC           (16)
+#define PT_SND_SFX             (17)
+#define PT_SCRIPTS             (18)
+#define PT_VIDEO               (19)
+#define PT_TEXTS               (20)
 
-#define PT_ART_CRITTERS     (0)
-#define PT_ART_INTRFACE     (1)
-#define PT_ART_INVEN        (2)
-#define PT_ART_ITEMS        (3)
-#define PT_ART_MISC         (4)
-#define PT_ART_SCENERY      (5)
-#define PT_ART_SKILLDEX     (6)
-#define PT_ART_SPLASH       (7)
-#define PT_ART_TILES        (8)
-#define PT_ART_WALLS        (9)
-#define PT_TEXTURES         (10)
-#define PT_EFFECTS          (11)
-#define PT_MAPS             (12)
-#define PT_PRO_ITEMS        (13)
-#define PT_PRO_MISC         (14)
-#define PT_PRO_SCENERY      (15)
-#define PT_PRO_TILES        (16)
-#define PT_PRO_WALLS        (17)
-#define PT_PRO_CRIT         (18)
-#define PT_SND_MUSIC        (19)
-#define PT_SND_SFX          (20)
-#define PT_TXT_GAME         (21)
-#define PT_CLIENT_DATA      (22)
-#define PT_DIALOGS          (23)
-#define PT_VIDEO            (24)
-#define PT_SCRIPTS          (25)
-#define PT_ART              (26)
-#define PT_TERRAIN          (27)
-
-#define PT_SERVER_DATA      (30)
+// Server paths
+#define PT_SERVER_ROOT         (30)
+#define PT_SERVER_DATA         (31)
+#define PT_SERVER_TEXTS        (32)
+#define PT_SERVER_DIALOGS      (33)
+#define PT_SERVER_MAPS         (34)
+#define PT_SERVER_PRO_ITEMS    (35)
+#define PT_SERVER_PRO_CRITTERS (36)
+#define PT_SERVER_SCRIPTS      (37)
 
 extern char PathLst[][50];
 #define PATH_LIST_COUNT     (50)
@@ -44,7 +44,7 @@ extern char PathLst[][50];
 class FileManager
 {
 public:
-	static void SetDataPath(const char* data_path);
+	static void SetDataPath(const char* data_path, bool server_path);
 	static bool LoadDat(const char* path);
 	static void EndOfWork();
 
@@ -87,7 +87,7 @@ public:
 	static const char* GetFullPath(const char* fname, int path_type);
 	static void GetFullPath(const char* fname, int path_type, char* get_path);
 	static const char* GetPath(int path_type);
-	static const char* GetDataPath(){return dataPath;}
+	static const char* GetDataPath(int path_type){return path_type<PT_SERVER_ROOT?dataPath:dataPathServer;}
 	static void FormatPath(char* path);
 	static void ExtractPath(const char* fname, char* path);
 	static const char* GetExtension(const char* fname);
@@ -109,7 +109,8 @@ public:
 	~FileManager(){UnloadFile(); ClearOutBuf();}
 
 private:
-	static char dataPath[1024];
+	static char dataPath[MAX_FOPATH];
+	static char dataPathServer[MAX_FOPATH];
 	static TDatFilePtrVec datFiles;
 
 	DWORD fileSize;

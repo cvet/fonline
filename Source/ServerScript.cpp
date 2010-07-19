@@ -76,7 +76,7 @@ bool FOServer::InitScriptSystem()
 		WriteLog("Script System Init fail.\n");
 		return false;
 	}
-	Script::SetScriptsPath(FileManager::GetFullPath("",PT_SCRIPTS));
+	Script::SetScriptsPath(FileManager::GetFullPath("",PT_SERVER_SCRIPTS));
 
 	// Bind vars and functions, look bind.h
 	asIScriptEngine* engine=Script::GetEngine();
@@ -87,7 +87,7 @@ bool FOServer::InitScriptSystem()
 
 	// Get config file
 	FileManager scripts_cfg;
-	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SCRIPTS);
+	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS);
 	if(!scripts_cfg.IsLoaded())
 	{
 		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);

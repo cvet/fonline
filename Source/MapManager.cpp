@@ -171,9 +171,9 @@ bool MapManager::LoadLocationsProtos()
 	WriteLog("Load locations prototypes...\n");
 
 	IniParser city_txt;
-	if(!city_txt.LoadFile(Str::Format("%sLocations.cfg",fm.GetPath(PT_MAPS))))
+	if(!city_txt.LoadFile(Str::Format("%sLocations.cfg",fm.GetPath(PT_SERVER_MAPS))))
 	{
-		WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",fm.GetPath(PT_MAPS)));
+		WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",fm.GetPath(PT_SERVER_MAPS)));
 		return false;
 	}
 
@@ -322,9 +322,9 @@ bool MapManager::LoadMapsProtos()
 	WriteLog("Load maps prototypes...\n");
 
 	IniParser maps_txt;
-	if(!maps_txt.LoadFile(Str::Format("%sMaps.cfg",fm.GetPath(PT_MAPS))))
+	if(!maps_txt.LoadFile(Str::Format("%sMaps.cfg",fm.GetPath(PT_SERVER_MAPS))))
 	{
-		WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",fm.GetPath(PT_MAPS)));
+		WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",fm.GetPath(PT_SERVER_MAPS)));
 		return false;
 	}
 
@@ -372,7 +372,7 @@ bool MapManager::LoadMapProto(IniParser& maps_txt, ProtoMap& pmap, WORD pid)
 	sprintf(key1,"Map %u",pid);
 	maps_txt.GetStr(key1,"map_name","",map_name);
 
-	if(!pmap.Init(pid,map_name,PT_MAPS))
+	if(!pmap.Init(pid,map_name,PT_SERVER_MAPS))
 	{
 		WriteLog(__FUNCTION__" - Proto map init fail, pid<%u>, name<%s>.\n",pid,map_name);
 		return false;
@@ -869,7 +869,7 @@ bool MapManager::RefreshGmMask(const char* mask_path)
 
 	WriteLog("<%s>",mask_path);
 
-	if(!fm.LoadFile(mask_path,PT_MAPS)) WriteLog("Global map mask file not found.\n");
+	if(!fm.LoadFile(mask_path,PT_SERVER_MAPS)) WriteLog("Global map mask file not found.\n");
 	else if(fm.GetLEWord()!=0x4D42) WriteLog("Invalid file format of global map mask.\n");
 	else
 	{

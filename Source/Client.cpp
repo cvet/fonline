@@ -105,7 +105,7 @@ bool FOClient::Init(HWND hwnd)
 	if(!InitDInput()) return false;
 
 	// File manager
-	FileManager::SetDataPath(OptFoDataPath.c_str());
+	FileManager::SetDataPath(OptFoDataPath.c_str(),false);
 	if(!FileManager::LoadDat(OptMasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online",MB_OK);
@@ -123,12 +123,12 @@ bool FOClient::Init(HWND hwnd)
 	}
 
 	// Cache
-	if(!Crypt.SetCacheTable(Str::Format("%sdefault.cache",FileMngr.GetDataPath())))
+	if(!Crypt.SetCacheTable(Str::Format("%sdefault.cache",FileMngr.GetDataPath(PT_ROOT))))
 	{
 		WriteLog(__FUNCTION__" - Can't set default cache.\n");
 		return false;
 	}
-	if(!strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(),OptHost.c_str(),OptPort)))
+	if(!strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_ROOT),OptHost.c_str(),OptPort)))
 	{
 		WriteLog(__FUNCTION__" - Can't set new cache.\n");
 		return false;
@@ -192,7 +192,7 @@ bool FOClient::Init(HWND hwnd)
 	if(strlen(lang_name)<4) StringCopy(lang_name,DEFAULT_LANGUAGE);
 	Str::Lwr(lang_name);
 
-	CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(),FileMngr.GetPath(PT_TXT_GAME)),*(DWORD*)&lang_name);
+	CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS)),*(DWORD*)&lang_name);
 
 	MsgText  =&CurLang.Msg[TEXTMSG_TEXT];
 	MsgDlg   =&CurLang.Msg[TEXTMSG_DLG];
@@ -205,7 +205,7 @@ bool FOClient::Init(HWND hwnd)
 	MsgCraft =&CurLang.Msg[TEXTMSG_CRAFT];
 	MsgInternal=&CurLang.Msg[TEXTMSG_INTERNAL];
 	MsgUserHolo=new FOMsg;
-	MsgUserHolo->LoadMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(),FileMngr.GetPath(PT_TXT_GAME),USER_HOLO_TEXTMSG_FILE));
+	MsgUserHolo->LoadMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS),USER_HOLO_TEXTMSG_FILE));
 
 	// CritterCl types
 	CritType::InitFromMsg(MsgInternal);
@@ -241,7 +241,7 @@ bool FOClient::Init(HWND hwnd)
 	ReloadScripts();
 
 	// Names
-	FONames::GenerateFoNames(PT_CLIENT_DATA);
+	FONames::GenerateFoNames(PT_ROOT);
 
 	// Load interface
 	int res=InitIface();
@@ -6520,7 +6520,7 @@ void FOClient::Net_OnMsgData()
 		}
 
 		// Names
-		FONames::GenerateFoNames(PT_CLIENT_DATA);
+		FONames::GenerateFoNames(PT_ROOT);
 
 		// Reload interface
 		if(int res=InitIface())
@@ -6661,7 +6661,7 @@ void FOClient::Net_OnUserHoloStr()
 
 	if(MsgUserHolo->Count(str_num)) MsgUserHolo->EraseStr(str_num);
 	MsgUserHolo->AddStr(str_num,text);
-	MsgUserHolo->SaveMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(),FileMngr.GetPath(PT_TXT_GAME),USER_HOLO_TEXTMSG_FILE));
+	MsgUserHolo->SaveMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS),USER_HOLO_TEXTMSG_FILE));
 }
 
 void FOClient::Net_OnAutomapsInfo()
@@ -9667,7 +9667,7 @@ bool FOClient::SScriptFunc::Global_LoadDat(CScriptString& dat_name)
 	if(FileManager::LoadDat(dat_name.c_str()))
 	{
 		ResMngr.Refresh(NULL);
-		FONames::GenerateFoNames(PT_CLIENT_DATA);
+		FONames::GenerateFoNames(PT_ROOT);
 		return true;
 	}
 	return false;

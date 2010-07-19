@@ -1,9 +1,14 @@
 #include "StdAfx.h"
 #include "FileManager.h"
 
+#define OUT_BUF_START_SIZE	 (0x100)
+
 char PathLst[][50]=
 {
-	"art\\critters\\",     // 0
+	// Client and mapper paths
+	"",
+	"art\\",
+	"art\\critters\\",
 	"art\\intrface\\",
 	"art\\inven\\",
 	"art\\items\\",
@@ -13,58 +18,52 @@ char PathLst[][50]=
 	"art\\splash\\",
 	"art\\tiles\\",
 	"art\\walls\\",
-	"textures\\",          // 10
+	"textures\\",
 	"effects\\",
 	"maps\\",
-	"proto\\items\\",
-	"proto\\misc\\",
-	"proto\\scenery\\",
-	"proto\\tiles\\",
-	"proto\\walls\\",
-	"proto\\critters\\",
+	"terrain\\",
 	"sound\\music\\",
-	"sound\\sfx\\",        // 20
+	"sound\\sfx\\",
+	"scripts\\",
+	"video\\",
 	"text\\",
 	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+
+	// Server paths
+	"",
+	"data\\",
+	"text\\",
 	"dialogs\\",
-	"video\\",
+	"maps\\",
+	"proto\\items\\",
+	"proto\\critters\\",
 	"scripts\\",
-	"art\\",
-	"terrain\\",
-	"",
-	"",
-	"data\\",              // 30
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",                    // 40
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
 };
 
 TDatFilePtrVec FileManager::datFiles;
-char FileManager::dataPath[1024]={0};
+char FileManager::dataPath[MAX_FOPATH]={".\\"};
+char FileManager::dataPathServer[MAX_FOPATH]={".\\"};
 
 
-void FileManager::SetDataPath(const char* data_path)
+void FileManager::SetDataPath(const char* data_path, bool server_path)
 {
+	char* path=(server_path?dataPathServer:dataPath);
 	if(data_path)
 	{
-		StringCopy(dataPath,data_path);
-		if(dataPath[strlen(dataPath)-1]!='\\') StringAppend(dataPath,"\\");
+		StringCopy(path,MAX_FOPATH,data_path);
+		if(path[strlen(path)-1]!='\\') StringAppend(path,MAX_FOPATH,"\\");
+	}
+	else
+	{
+		StringCopy(path,MAX_FOPATH,".\\");
 	}
 }
 
@@ -100,7 +99,6 @@ void FileManager::EndOfWork()
 {
 	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it) delete *it;
 	datFiles.clear();
-	ZeroMemory(dataPath,sizeof(dataPath));
 }
 
 void FileManager::UnloadFile()
@@ -160,7 +158,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 		StringCopy(short_path,PathLst[path_type]);
 		StringAppend(short_path,fname);
 		FormatPath(short_path);
-		StringCopy(full_path,dataPath);
+		StringCopy(full_path,GetDataPath(path_type));
 		StringAppend(full_path,short_path);
 	}
 	else
@@ -482,7 +480,7 @@ bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 		StringCopy(fpath,fname);
 	else
 	{
-		StringCopy(fpath,dataPath);
+		StringCopy(fpath,GetDataPath(path_type));
 		StringAppend(fpath,PathLst[path_type]);
 		StringAppend(fpath,fname);
 	}
@@ -581,7 +579,7 @@ void FileManager::SetLEDWord(DWORD data)
 const char* FileManager::GetFullPath(const char* fname, int path_type)
 {
 	static char buf[2048];
-	StringCopy(buf,dataPath);
+	StringCopy(buf,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(buf,PathLst[path_type]);
 	if(fname) StringAppend(buf,fname);
 	return buf;
@@ -590,7 +588,7 @@ const char* FileManager::GetFullPath(const char* fname, int path_type)
 void FileManager::GetFullPath(const char* fname, int path_type, char* get_path)
 {
 	if(!get_path) return;
-	StringCopy(get_path,MAX_FOPATH,dataPath);
+	StringCopy(get_path,MAX_FOPATH,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(get_path,MAX_FOPATH,PathLst[path_type]);
 	if(fname) StringAppend(get_path,MAX_FOPATH,fname);
 }
