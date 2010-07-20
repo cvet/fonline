@@ -1814,16 +1814,52 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!strcmp(name_access,"client") && std::find(AccessClient.begin(),AccessClient.end(),pasw_access)!=AccessClient.end()) cl->Access=ACCESS_CLIENT;
-			else if(!strcmp(name_access,"tester") && std::find(AccessTester.begin(),AccessTester.end(),pasw_access)!=AccessTester.end()) cl->Access=ACCESS_TESTER;
-			else if(!strcmp(name_access,"moder") && std::find(AccessModer.begin(),AccessModer.end(),pasw_access)!=AccessModer.end()) cl->Access=ACCESS_MODER;
-			else if(!strcmp(name_access,"admin") && std::find(AccessAdmin.begin(),AccessAdmin.end(),pasw_access)!=AccessAdmin.end()) cl->Access=ACCESS_ADMIN;
-		//	else if(ImplemPasw && name_access[0]=='i' && name_access[2]=='i' && name_access[1]=='i' && !strcmp(&ImplemPasw[149],pasw_access)) cl->Access=ACCESS_IMPLEMENTOR;
-			else
+			bool allow=true;
+			BYTE wanted_access = BYTE(-1);
+
+			if(!strcmp(name_access,"client") && std::find(AccessClient.begin(),AccessClient.end(),pasw_access)!=AccessClient.end()) wanted_access=ACCESS_CLIENT;
+			else if(!strcmp(name_access,"tester") && std::find(AccessTester.begin(),AccessTester.end(),pasw_access)!=AccessTester.end()) wanted_access=ACCESS_TESTER;
+			else if(!strcmp(name_access,"moder") && std::find(AccessModer.begin(),AccessModer.end(),pasw_access)!=AccessModer.end()) wanted_access=ACCESS_MODER;
+			else if(!strcmp(name_access,"admin") && std::find(AccessAdmin.begin(),AccessAdmin.end(),pasw_access)!=AccessAdmin.end()) wanted_access=ACCESS_ADMIN;
+		//	else if(ImplemPasw && name_access[0]=='i' && name_access[2]=='i' && name_access[1]=='i' && !strcmp(&ImplemPasw[149],pasw_access)) wanted_access=ACCESS_IMPLEMENTOR;
+			else allow=false;
+
+			if(allow && Script::PrepareContext(ServerFunctions.PlayerGetAccess,CALL_FUNC_STR,cl->Name))
+			{
+				CScriptString* pass=new CScriptString(pasw_access);
+				Script::SetArgObject(cl);
+				BYTE script_wanted_access=BYTE(-1);
+				switch(wanted_access)
+				{
+					case ACCESS_IMPLEMENTOR:
+						script_wanted_access=4;
+						break;
+					case ACCESS_ADMIN:
+						script_wanted_access=3;
+						break;
+					case ACCESS_MODER:
+						script_wanted_access=2;
+						break;
+					case ACCESS_TESTER:
+						script_wanted_access=1;
+						break;
+					case ACCESS_CLIENT:
+					default:
+						script_wanted_access=0;
+				}
+				Script::SetArgByte(script_wanted_access);
+				Script::SetArgObject(pass);
+				if(!Script::RunPrepared() || !Script::GetReturnedBool()) allow=false;
+				pass->Release();
+			}
+
+			if(!allow)
 			{
 				cl->Send_Text(cl,"Access denied.",SAY_NETMSG);
 				break;
 			}
+
+			cl->Access=wanted_access;
 
 			cl->Send_Text(cl,"Access changed.",SAY_NETMSG);
 			if(cl->Access==ACCESS_IMPLEMENTOR)

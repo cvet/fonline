@@ -376,6 +376,7 @@ struct ServerScriptFunctions
 	int WorldSave;
 	int PlayerRegistration;
 	int PlayerLogin;
+	int PlayerGetAccess;
 } extern ServerFunctions;
 
 #endif
