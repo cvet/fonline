@@ -1814,21 +1814,17 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			bool allow=true;
-			BYTE wanted_access = BYTE(-1);
-
+			int wanted_access=-1;
 			if(!strcmp(name_access,"client") && std::find(AccessClient.begin(),AccessClient.end(),pasw_access)!=AccessClient.end()) wanted_access=ACCESS_CLIENT;
 			else if(!strcmp(name_access,"tester") && std::find(AccessTester.begin(),AccessTester.end(),pasw_access)!=AccessTester.end()) wanted_access=ACCESS_TESTER;
 			else if(!strcmp(name_access,"moder") && std::find(AccessModer.begin(),AccessModer.end(),pasw_access)!=AccessModer.end()) wanted_access=ACCESS_MODER;
 			else if(!strcmp(name_access,"admin") && std::find(AccessAdmin.begin(),AccessAdmin.end(),pasw_access)!=AccessAdmin.end()) wanted_access=ACCESS_ADMIN;
 		//	else if(ImplemPasw && name_access[0]=='i' && name_access[2]=='i' && name_access[1]=='i' && !strcmp(&ImplemPasw[149],pasw_access)) wanted_access=ACCESS_IMPLEMENTOR;
-			else allow=false;
 
-			if(allow && Script::PrepareContext(ServerFunctions.PlayerGetAccess,CALL_FUNC_STR,cl->Name))
+			bool allow=false;
+			if(wanted_access!=-1 && Script::PrepareContext(ServerFunctions.PlayerGetAccess,CALL_FUNC_STR,cl->GetInfo()))
 			{
-				CScriptString* pass=new CScriptString(pasw_access);
-				Script::SetArgObject(cl);
-				BYTE script_wanted_access=BYTE(-1);
+				int script_wanted_access=-1;
 				switch(wanted_access)
 				{
 					case ACCESS_IMPLEMENTOR:
@@ -1846,10 +1842,14 @@ void FOServer::Process_Command(Client* cl)
 					case ACCESS_CLIENT:
 					default:
 						script_wanted_access=0;
+						break;
 				}
-				Script::SetArgByte(script_wanted_access);
+
+				CScriptString* pass=new CScriptString(pasw_access);
+				Script::SetArgObject(cl);
+				Script::SetArgDword(script_wanted_access);
 				Script::SetArgObject(pass);
-				if(!Script::RunPrepared() || !Script::GetReturnedBool()) allow=false;
+				if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
 				pass->Release();
 			}
 
@@ -1860,8 +1860,8 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			cl->Access=wanted_access;
-
 			cl->Send_Text(cl,"Access changed.",SAY_NETMSG);
+
 			if(cl->Access==ACCESS_IMPLEMENTOR)
 			{
 				ShowUIDError=true;
@@ -2187,7 +2187,7 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			IniParser city_txt;
-			if(!city_txt.LoadFile(Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS))))
+			if(!city_txt.LoadFile("Locations.cfg",PT_SERVER_MAPS))
 			{
 				cl->Send_Text(cl,"Locations.cfg not found.",SAY_NETMSG);
 				WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
@@ -2239,7 +2239,7 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			IniParser maps_txt;
-			if(!maps_txt.LoadFile(Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_SERVER_MAPS))))
+			if(!maps_txt.LoadFile("Maps.cfg",PT_SERVER_MAPS))
 			{
 				cl->Send_Text(cl,"Maps.cfg not found.",SAY_NETMSG);
 				WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
@@ -2876,7 +2876,7 @@ bool FOServer::Init()
 	Active=0;
 
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE);
+	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
 	WriteLog("***   Starting initialization   ****\n");
 	/*WriteLog("FOServer<%u>.\n",sizeof(FOServer));
@@ -3181,7 +3181,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 	WriteLog("Loading language packs...\n");
 
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE);
+	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	int cur_lang=0;
 
 	while(true)
@@ -3505,7 +3505,7 @@ void FOServer::LoadBans()
 	Banned.clear();
 	Banned.reserve(1000);
 	IniParser bans_txt;
-	if(!bans_txt.LoadFile(BANS_FNAME_ACTIVE))
+	if(!bans_txt.LoadFile(BANS_FNAME_ACTIVE,PT_SERVER_BANS))
 	{
 		WriteLog(__FUNCTION__" - Can't open file<%s>.\n",BANS_FNAME_ACTIVE);
 		return;

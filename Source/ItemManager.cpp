@@ -605,12 +605,12 @@ bool ItemManager::LoadProtos()
 	return true;
 }
 
-bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* full_path)
+bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 {
 	protos.clear();
-	if(!txtFile.LoadFile(full_path))
+	if(!txtFile.LoadFile(fname,PT_SERVER_ROOT))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",full_path);
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",fname);
 		return false;
 	}
 
@@ -623,7 +623,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* full_path)
 
 	if(protos.empty())
 	{
-		WriteLog(__FUNCTION__" - Proto items not found<%s>.\n",full_path);
+		WriteLog(__FUNCTION__" - Proto items not found<%s>.\n",fname);
 		return false;
 	}
 	return true;

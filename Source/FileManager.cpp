@@ -46,6 +46,7 @@ char PathLst[][50]=
 	"proto\\items\\",
 	"proto\\critters\\",
 	"scripts\\",
+	"save\\bans\\",
 };
 
 TDatFilePtrVec FileManager::datFiles;
@@ -106,6 +107,15 @@ void FileManager::UnloadFile()
 	SAFEDELA(fileBuf);
 	fileSize=0;
 	curPos=0;
+}
+
+BYTE* FileManager::ReleaseBuffer()
+{
+	BYTE* tmp=fileBuf;
+	fileBuf=NULL;
+	fileSize=0;
+	curPos=0;
+	return tmp;
 }
 
 void FileManager::LoadSimple(HANDLE h_file)

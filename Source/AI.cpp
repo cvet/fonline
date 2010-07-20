@@ -114,15 +114,12 @@ bool NpcAIMngr::LoadNpcBags()
 {
 	WriteLog("Find bags...\n");
 
-	FileManager file;
-	if(!file.LoadFile(BAGS_FILE_NAME,PT_SERVER_DATA))
+	IniParser bags_txt;
+	if(!bags_txt.LoadFile(BAGS_FILE_NAME,PT_SERVER_DATA))
 	{
 		WriteLog("<%s> not found.\n",FileManager::GetFullPath(BAGS_FILE_NAME,PT_SERVER_DATA));
 		return false;
 	}
-
-	IniParser bags_txt;
-	if(!bags_txt.LoadFile(file.GetBuf(),file.GetFsize())) return false;
 
 	int end_bag=bags_txt.GetInt("end_bag",-1);
 	int bag_count=0;

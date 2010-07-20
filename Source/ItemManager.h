@@ -36,7 +36,7 @@ public:
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR)
 	bool LoadProtos();
-	bool LoadProtos(ProtoItemVec& protos, const char* full_path);
+	bool LoadProtos(ProtoItemVec& protos, const char* fname);
 #endif
 
 #ifdef FONLINE_OBJECT_EDITOR

@@ -128,10 +128,10 @@ public:
 	IniParser();
 	~IniParser();
 	bool IsLoaded();
-	bool LoadFile(const char* fname);
-	bool LoadFile(const BYTE* buf, DWORD len);
-	bool AppendToBegin(const BYTE* buf, DWORD len);
-	bool AppendToEnd(const BYTE* buf, DWORD len);
+	bool LoadFile(const char* fname, int path_type);
+	bool LoadFilePtr(const char* buf, DWORD len);
+	bool AppendToBegin(const char* fname, int path_type);
+	bool AppendToEnd(const char* fname, int path_type);
 	void UnloadFile();
 	char* GetBuffer();
 	int GetInt(const char* app_name, const char* key_name, int def_val);

@@ -53,20 +53,13 @@ void FOClient::IfaceFreeResources()
 
 bool FOClient::InitIfaceIni()
 {
-	FileManager fm;
-
-	if(!fm.LoadFile("default.ini",PT_ART_INTRFACE))
+	if(!IfaceIni.LoadFile("default.ini",PT_ART_INTRFACE))
 	{
 		WriteLog(__FUNCTION__" - File \"default.ini\" not found.\n");
 		return false;
 	}
 
-	if(!IfaceIni.LoadFile(fm.GetBuf(),fm.GetFsize()))
-	{
-		WriteLog(__FUNCTION__" - Load default.ini from memory fail.\n");
-		return false;
-	}
-
+	FileManager fm;
 	if(!fm.LoadFile("resolutions.lst",PT_ART_INTRFACE))
 	{
 		WriteLog(__FUNCTION__" - File \"resolutions.lst\" not found.\n");
@@ -88,12 +81,10 @@ bool FOClient::InitIfaceIni()
 			if((GameOpt.UserInterface==fname || !_stricmp("default",fname)) && MODE_WIDTH>=w && MODE_HEIGHT>=h)
 			{
 				sprintf(line,"%s%ux%u.ini",fname,w,h);
-				FileManager fm;
-				if(fm.LoadFile(line,PT_ART_INTRFACE)) IfaceIni.AppendToBegin(fm.GetBuf(),fm.GetFsize());
+				IfaceIni.AppendToBegin(line,PT_ART_INTRFACE);
 			}
 		}
 	}
-	fm.UnloadFile();
 
 	return true;
 }

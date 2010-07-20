@@ -89,7 +89,7 @@ bool CritterManager::LoadProtos()
 	for(int i=0,k=fnames.size();i<k;i++)
 	{
 		const char* fname=fnames[i].c_str();
-		if(protos_txt.LoadFile(FileManager::GetFullPath(fname,PT_SERVER_PRO_CRITTERS)))
+		if(protos_txt.LoadFile(fname,PT_SERVER_PRO_CRITTERS))
 		{
 			while(protos_txt.GotoNextApp(CRPROTO_APP))
 			{

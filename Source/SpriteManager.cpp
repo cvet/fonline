@@ -844,12 +844,9 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 	if(!isInit) return 0;
 	if(!fname || !fname[0]) return 0;
 
-	if(!fileMngr.LoadFile(fname,path_type)) return 0;
-
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
 	{
-		fileMngr.UnloadFile();
 		WriteLog(__FUNCTION__" - Extension not found, file<%s>.\n",fname);
 		return 0;
 	}
@@ -858,20 +855,23 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 	else if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
 		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type);
 
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return 0;
+
 	SpriteInfo* si=new SpriteInfo();
 
 	short offs_x, offs_y;
-	fileMngr.SetCurPos(0xA);
-	offs_x=fileMngr.GetBEWord();
-	fileMngr.SetCurPos(0x16);
-	offs_y=fileMngr.GetBEWord();
+	fm.SetCurPos(0xA);
+	offs_x=fm.GetBEWord();
+	fm.SetCurPos(0x16);
+	offs_y=fm.GetBEWord();
 
 	si->OffsX=offs_x;
 	si->OffsY=offs_y;
 
-	fileMngr.SetCurPos(0x3E);
-	WORD w=fileMngr.GetBEWord();
-	WORD h=fileMngr.GetBEWord();
+	fm.SetCurPos(0x3E);
+	WORD w=fm.GetBEWord();
+	WORD h=fm.GetBEWord();
 
 	// Create FOnline fast format
 	DWORD size=12+h*w*4;
@@ -881,13 +881,12 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 	*((DWORD*)data+2)=h;
 	DWORD* ptr=(DWORD*)data+3;
 	DWORD* palette=(DWORD*)FoPalette;
-	fileMngr.SetCurPos(0x4A);
-	for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fileMngr.GetByte()];
+	fm.SetCurPos(0x4A);
+	for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fm.GetByte()];
 
 	// Fill
 	DWORD result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
-	fileMngr.UnloadFile();
 	return result;
 }
 
@@ -896,15 +895,14 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
 	{
-		fileMngr.UnloadFile();
-		WriteLog(__FUNCTION__" - Unknown extension of file <%s>.\n",fname);
+		WriteLog(__FUNCTION__" - Unknown extension of file<%s>.\n",fname);
 		return 0;
 	}
 
 	if(!_stricmp(ext,"fofrm"))
 	{
 		IniParser fofrm;
-		fofrm.LoadFile(fileMngr.GetBuf(),fileMngr.GetFsize());
+		fofrm.LoadFile(fname,path_type);
 
 		char frm_fname[MAX_FOPATH];
 		FileManager::ExtractPath(fname,frm_fname);
@@ -926,12 +924,14 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 	}
 
 	// Dx8, Dx9: .bmp, .dds, .dib, .hdr, .jpg, .pfm, .png, .ppm, .tga
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return 0;
+
 	SpriteInfo* si=new SpriteInfo();
 	si->OffsX=0;
 	si->OffsY=0;
 
-	DWORD result=FillSurfaceFromMemory(si,fileMngr.GetBuf(),fileMngr.GetFsize());
-	fileMngr.UnloadFile();
+	DWORD result=FillSurfaceFromMemory(si,fm.GetBuf(),fm.GetFsize());
 	return result;
 }
 
@@ -1028,12 +1028,14 @@ DWORD SpriteManager::LoadRix(const char* fname, int path_type)
 {
 	if(!isInit) return 0;
 	if(!fname || !fname[0]) return 0;
-	if(!fileMngr.LoadFile(fname,path_type)) return 0;
+
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return 0;
 
 	SpriteInfo* si=new SpriteInfo();
-	fileMngr.SetCurPos(0x4);
-	WORD w;fileMngr.CopyMem(&w,2);
-	WORD h;fileMngr.CopyMem(&h,2);
+	fm.SetCurPos(0x4);
+	WORD w;fm.CopyMem(&w,2);
+	WORD h;fm.CopyMem(&h,2);
 
 	// Create FOnline fast format
 	DWORD size=12+h*w*4;
@@ -1042,12 +1044,12 @@ DWORD SpriteManager::LoadRix(const char* fname, int path_type)
 	*((DWORD*)data+1)=w;
 	*((DWORD*)data+2)=h;
 	DWORD* ptr=(DWORD*)data+3;
-	fileMngr.SetCurPos(0xA);
-	BYTE* palette=fileMngr.GetCurBuf();
-	fileMngr.SetCurPos(0xA+256*3);
+	fm.SetCurPos(0xA);
+	BYTE* palette=fm.GetCurBuf();
+	fm.SetCurPos(0xA+256*3);
 	for(int i=0,j=w*h;i<j;i++)
 	{
-		DWORD index=fileMngr.GetByte();
+		DWORD index=fm.GetByte();
 		DWORD r=*(palette+index*3+0)*4;
 		DWORD g=*(palette+index*3+1)*4;
 		DWORD b=*(palette+index*3+2)*4;
@@ -1056,7 +1058,6 @@ DWORD SpriteManager::LoadRix(const char* fname, int path_type)
 
 	DWORD result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
-	fileMngr.UnloadFile();
 	return result;
 }
 
@@ -1079,7 +1080,9 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 	}
 
 	if(dir<0 || dir>5) return NULL;
-	if(!fileMngr.LoadFile(fname,path_type)) return NULL;
+
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return NULL;
 
 	AnyFrames* anim=new(nothrow) AnyFrames();
 	if(!anim)
@@ -1088,18 +1091,18 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		return NULL;
 	}
 
-	fileMngr.SetCurPos(0x4);
-	WORD frm_fps=fileMngr.GetBEWord();
+	fm.SetCurPos(0x4);
+	WORD frm_fps=fm.GetBEWord();
 	if(!frm_fps) frm_fps=10;
 
-	fileMngr.SetCurPos(0x8);
-	WORD frm_num=fileMngr.GetBEWord();
+	fm.SetCurPos(0x8);
+	WORD frm_num=fm.GetBEWord();
 
-	fileMngr.SetCurPos(0xA+dir*2);
-	short offs_x=fileMngr.GetBEWord();
+	fm.SetCurPos(0xA+dir*2);
+	short offs_x=fm.GetBEWord();
 	anim->OffsX=offs_x;
-	fileMngr.SetCurPos(0x16+dir*2);
-	short offs_y=fileMngr.GetBEWord();
+	fm.SetCurPos(0x16+dir*2);
+	short offs_y=fm.GetBEWord();
 	anim->OffsY=offs_y;
 
 	anim->CntFrm=frm_num; 
@@ -1112,8 +1115,8 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 	anim->NextY=new short[frm_num];
 	if(!anim->NextY) return NULL;
 
-	fileMngr.SetCurPos(0x22+dir*4);
-	DWORD offset=0x3E+fileMngr.GetBEDWord();
+	fm.SetCurPos(0x22+dir*4);
+	DWORD offset=0x3E+fm.GetBEDWord();
 
 	if(offset==0x3E && dir)
 	{
@@ -1135,17 +1138,17 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 	{
 		SpriteInfo* si=new SpriteInfo(); // TODO: Memory leak
 		if(!si) return NULL;
-		fileMngr.SetCurPos(offset);
-		WORD w=fileMngr.GetBEWord();
-		WORD h=fileMngr.GetBEWord();
+		fm.SetCurPos(offset);
+		WORD w=fm.GetBEWord();
+		WORD h=fm.GetBEWord();
 
-		fileMngr.GoForward(4); // Frame size
+		fm.GoForward(4); // Frame size
 
 		si->OffsX=offs_x;
 		si->OffsY=offs_y;
 
-		anim->NextX[frm]=fileMngr.GetBEWord();
-		anim->NextY[frm]=fileMngr.GetBEWord();
+		anim->NextX[frm]=fm.GetBEWord();
+		anim->NextY[frm]=fm.GetBEWord();
 
 		// Create FOnline fast format
 		DWORD size=12+h*w*4;
@@ -1161,17 +1164,17 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		*((DWORD*)data+2)=h;
 		DWORD* ptr=(DWORD*)data+3;
 		DWORD* palette=(DWORD*)FoPalette;
-		fileMngr.SetCurPos(offset+12);
+		fm.SetCurPos(offset+12);
 
 		if(!anim_pix_type)
 		{
-			for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fileMngr.GetByte()];
+			for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fm.GetByte()];
 		}
 		else
 		{
 			for(int i=0,j=w*h;i<j;i++)
 			{
-				BYTE index=fileMngr.GetByte();
+				BYTE index=fm.GetByte();
 				if(index>=229 && index<255)
 				{
 					if(index>=229 && index<=232) {index-=frm%4; if(index<229) index+=4;}
@@ -1192,10 +1195,10 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		// Check for animate pixels
 		if(!frm && anim_pix)
 		{
-			fileMngr.SetCurPos(offset+12);
+			fm.SetCurPos(offset+12);
 			for(int i=0,j=w*h;i<j;i++)
 			{
-				BYTE index=fileMngr.GetByte();
+				BYTE index=fm.GetByte();
 				if(index<229 || index==255) continue;
 				if(index>=229 && index<=232) anim_pix_type|=0x01;
 				else if(index>=233 && index<=237) anim_pix_type|=0x02;
@@ -1260,20 +1263,18 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		anim->Ind[frm]=result;
 	}
 
-	fileMngr.UnloadFile();
 	return anim;
 }
 
 AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type, int dir)
 {
-	if(!fileMngr.LoadFile(fname,path_type)) return NULL;
-	if(!iniFile.LoadFile(fileMngr.GetBuf(),fileMngr.GetFsize())) return NULL;
-	fileMngr.UnloadFile();
+	IniParser fofrm;
+	if(!fofrm.LoadFile(fname,path_type)) return NULL;
 
-	WORD frm_fps=iniFile.GetInt("fps",0);
+	WORD frm_fps=fofrm.GetInt("fps",0);
 	if(!frm_fps) frm_fps=10;
 
-	WORD frm_num=iniFile.GetInt("count",0);
+	WORD frm_num=fofrm.GetInt("count",0);
 	if(!frm_num) frm_num=1;
 
 	AutoPtr<AnyFrames> anim(new AnyFrames());
@@ -1283,8 +1284,8 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 		return NULL;
 	}
 
-	anim->OffsX=iniFile.GetInt("offs_x",0);
-	anim->OffsY=iniFile.GetInt("offs_y",0);
+	anim->OffsX=fofrm.GetInt("offs_x",0);
+	anim->OffsY=fofrm.GetInt("offs_y",0);
 	anim->CntFrm=frm_num;
 	anim->Ticks=1000/frm_fps*frm_num;
 	anim->Ind=new DWORD[frm_num];
@@ -1296,12 +1297,12 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 
 	char dir_str[16];
 	sprintf(dir_str,"dir_%d",dir);
-	bool no_app=(dir==0 && !iniFile.IsApp("dir_0"));
+	bool no_app=(dir==0 && !fofrm.IsApp("dir_0"));
 
 	if(!no_app)
 	{
-		anim->OffsX=iniFile.GetInt(dir_str,"offs_x",anim->OffsX);
-		anim->OffsY=iniFile.GetInt(dir_str,"offs_y",anim->OffsY);
+		anim->OffsX=fofrm.GetInt(dir_str,"offs_x",anim->OffsX);
+		anim->OffsY=fofrm.GetInt(dir_str,"offs_y",anim->OffsY);
 	}
 
 	char frm_fname[MAX_FOPATH];
@@ -1310,11 +1311,11 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 
 	for(int frm=0;frm<frm_num;frm++)
 	{
-		anim->NextX[frm]=iniFile.GetInt(no_app?NULL:dir_str,Str::Format("next_x_%d",frm),0);
-		anim->NextY[frm]=iniFile.GetInt(no_app?NULL:dir_str,Str::Format("next_y_%d",frm),0);
+		anim->NextX[frm]=fofrm.GetInt(no_app?NULL:dir_str,Str::Format("next_x_%d",frm),0);
+		anim->NextY[frm]=fofrm.GetInt(no_app?NULL:dir_str,Str::Format("next_y_%d",frm),0);
 
-		if(!iniFile.GetStr(no_app?NULL:dir_str,Str::Format("frm_%d",frm),"",frm_name) &&
-			(frm!=0 || !iniFile.GetStr(no_app?NULL:dir_str,Str::Format("frm",frm),"",frm_name))) return NULL;
+		if(!fofrm.GetStr(no_app?NULL:dir_str,Str::Format("frm_%d",frm),"",frm_name) &&
+			(frm!=0 || !fofrm.GetStr(no_app?NULL:dir_str,Str::Format("frm",frm),"",frm_name))) return NULL;
 
 		DWORD spr_id=LoadSprite(frm_fname,path_type);
 		if(!spr_id) return NULL;
@@ -1325,7 +1326,6 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 		anim->Ind[frm]=spr_id;
 	}
 
-	iniFile.UnloadFile();
 	return anim.Release();
 }
 
@@ -1356,9 +1356,6 @@ AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_typ
 
 Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type)
 {
-	if(!fileMngr.LoadFile(fname,path_type)) return NULL;
-	fileMngr.UnloadFile();
-
 	// Fill data
 	Animation3d* anim3d=Animation3d::GetAnimation(fname,path_type,false);
 	if(!anim3d) return NULL;
@@ -2737,7 +2734,8 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	}
 	ZeroMemory(data,tex_w*tex_h*4);
 
-	if(!fileMngr.LoadFile(Str::Format("%s.bmp",font_name),PT_ART_MISC))
+	FileManager fm;
+	if(!fm.LoadFile(Str::Format("%s.bmp",font_name),PT_ART_MISC))
 	{
 		WriteLog(__FUNCTION__" - File <%s> not found.\n",Str::Format("%s.bmp",font_name));
 		delete[] data;
@@ -2745,13 +2743,13 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	}
 
 	LPDIRECT3DTEXTURE image=NULL;
-	D3D_HR(D3DXCreateTextureFromFileInMemoryEx(d3dDevice,fileMngr.GetBuf(),fileMngr.GetFsize(),D3DX_DEFAULT,D3DX_DEFAULT,1,0,
+	D3D_HR(D3DXCreateTextureFromFileInMemoryEx(d3dDevice,fm.GetBuf(),fm.GetFsize(),D3DX_DEFAULT,D3DX_DEFAULT,1,0,
 		D3DFMT_UNKNOWN,D3DPOOL_MANAGED,D3DX_DEFAULT,D3DX_DEFAULT,D3DCOLOR_ARGB(255,0,0,0),NULL,NULL,&image));
 
 	D3DLOCKED_RECT lr;
 	D3D_HR(image->LockRect(0,&lr,NULL,D3DLOCK_READONLY));
 
-	if(!fileMngr.LoadFile(Str::Format("%s.fnt",font_name),PT_ART_MISC))
+	if(!fm.LoadFile(Str::Format("%s.fnt",font_name),PT_ART_MISC))
 	{
 		WriteLog(__FUNCTION__" - File <%s> not found.\n",Str::Format("%s.fnt",font_name));
 		delete[] data;
@@ -2759,11 +2757,11 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 		return false;
 	}
 
-	font.EmptyHor=fileMngr.GetBEDWord();
-	font.EmptyVer=fileMngr.GetBEDWord();
-	font.MaxLettHeight=fileMngr.GetBEDWord();
-	font.SpaceWidth=fileMngr.GetBEDWord();
-	if(!fileMngr.CopyMem(font.Let,sizeof(Letter)*256))
+	font.EmptyHor=fm.GetBEDWord();
+	font.EmptyVer=fm.GetBEDWord();
+	font.MaxLettHeight=fm.GetBEDWord();
+	font.SpaceWidth=fm.GetBEDWord();
+	if(!fm.CopyMem(font.Let,sizeof(Letter)*256))
 	{
 		WriteLog(__FUNCTION__" - Incorrect size in <%s> file.\n",Str::Format("%s.fnt",font_name));
 		delete[] data;
@@ -2821,7 +2819,6 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	D3D_HR(font.FontSurfBordered->UnlockRect(0));
 	delete[] data;
-	fileMngr.UnloadFile();
 	return true;
 }
 
@@ -2838,14 +2835,15 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	}
 	Font& font=Fonts[index];
 
-	if(!fileMngr.LoadFile(font_name,PT_ART_MISC))
+	FileManager fm;
+	if(!fm.LoadFile(font_name,PT_ART_MISC))
 	{
 		WriteLog(__FUNCTION__" - File <%s> not found.\n",font_name);
 		return false;
 	}
 
 	// Check signature
-	DWORD sign=fileMngr.GetBEDWord();
+	DWORD sign=fm.GetBEDWord();
 	if(sign!=MAKEFOURCC('F','F','A','A'))
 	{
 		WriteLog(__FUNCTION__" - Signature AAFF not found.\n");
@@ -2854,16 +2852,16 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 
 	// Read params
 	// Максимальная высота изображения символа, включая надстрочные и подстрочные элементы.
-	font.MaxLettHeight=fileMngr.GetBEWord();
+	font.MaxLettHeight=fm.GetBEWord();
 	// Горизонтальный зазор.
 	// Зазор (в пикселах) между соседними изображениями символов.
-	font.EmptyHor=fileMngr.GetBEWord();
+	font.EmptyHor=fm.GetBEWord();
 	// Ширина пробела.
 	// Ширина символа 'Пробел'.
-	font.SpaceWidth=fileMngr.GetBEWord();
+	font.SpaceWidth=fm.GetBEWord();
 	// Вертикальный зазор.
 	// Зазор (в пикселах) между двумя строками символов.
-	font.EmptyVer=fileMngr.GetBEWord();
+	font.EmptyVer=fm.GetBEWord();
 
 	// Write font image
 	const DWORD pix_light[9]={0x22808080,0x44808080,0x66808080,0x88808080,0xAA808080,0xDD808080,0xFF808080,0xFF808080,0xFF808080};
@@ -2874,7 +2872,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 		return false;
 	}
 	ZeroMemory(data,tex_w*tex_h*4);
-	BYTE* begin_buf=fileMngr.GetBuf();
+	BYTE* begin_buf=fm.GetBuf();
 	int cur_x=0;
 	int cur_y=0;
 
@@ -2882,9 +2880,9 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	{
 		Letter& l=font.Let[i];
 
-		l.W=fileMngr.GetBEWord();
-		l.H=fileMngr.GetBEWord();
-		DWORD offs=fileMngr.GetBEDWord();
+		l.W=fm.GetBEWord();
+		l.H=fm.GetBEWord();
+		DWORD offs=fm.GetBEDWord();
 		l.OffsH=-(font.MaxLettHeight-l.H);
 
 		if(cur_x+l.W+2>=tex_w)
@@ -2935,7 +2933,6 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	D3D_HR(font.FontSurfBordered->UnlockRect(0));
 	delete[] data;
-	fileMngr.UnloadFile();
 	return true;
 }
 

@@ -37,6 +37,7 @@
 #define PT_SERVER_PRO_ITEMS    (35)
 #define PT_SERVER_PRO_CRITTERS (36)
 #define PT_SERVER_SCRIPTS      (37)
+#define PT_SERVER_BANS         (38)
 
 extern char PathLst[][50];
 #define PATH_LIST_COUNT     (50)
@@ -52,6 +53,7 @@ public:
 	bool LoadFile(const char* full_path);
 	bool LoadStream(BYTE* stream, DWORD length);
 	void UnloadFile();
+	BYTE* ReleaseBuffer();
 
 	void SetCurPos(DWORD pos);
 	void GoForward(DWORD offs);

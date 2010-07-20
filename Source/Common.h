@@ -98,7 +98,7 @@ bool CheckUserPass(const char* str);
 
 #define MODE_WIDTH				(OptScreenWidth)
 #define MODE_HEIGHT				(OptScreenHeight)
-#define CLIENT_CONFIG_FILE      ".\\FOnline.cfg"
+#define CLIENT_CONFIG_FILE      "FOnline.cfg"
 #define CFG_FILE_APP_NAME       "Game Options"
 #define WM_FLASH_WINDOW			(WM_USER+1) // Chat notification
 #define DI_BUF_SIZE             (64)
@@ -305,7 +305,7 @@ struct MapperScriptFunctions
 #include <richedit.h>
 #include "Script.h"
 
-#define SERVER_CONFIG_FILE      ".\\FOserv.cfg"
+#define SERVER_CONFIG_FILE      "FOserv.cfg"
 #define ITEMS_STATISTICS
 //#define FOSERVER_DUMP
 #define RADIO_SAFE

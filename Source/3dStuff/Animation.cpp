@@ -1141,9 +1141,6 @@ Animation3dEntity::~Animation3dEntity()
 
 bool Animation3dEntity::Load(const char* name, int path_type)
 {
-	FileManager fm;
-	if(!fm.LoadFile(name,path_type)) return false;
-
 	const char* ext=FileManager::GetExtension(name);
 	if(!ext) return false;
 
@@ -1154,8 +1151,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 
 		// Load main fo3d file
 		IniParser fo3d;
-		if(!fo3d.LoadFile(fm.GetBuf(),fm.GetFsize())) return false;
-		fm.UnloadFile();
+		if(!fo3d.LoadFile(name,path_type)) return false;
 
 		// Load template and parse it
 		StrVec def;
@@ -1163,7 +1159,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		if(fo3d.GetStr("template","",template_str))
 		{
 			Str::ParseLine(template_str,' ',def,Str::ParseLineDummy);
-			if(fm.LoadFile(def[0].c_str(),path_type)) fo3d.AppendToEnd(fm.GetBuf(),fm.GetFsize());
+			fo3d.AppendToEnd(def[0].c_str(),path_type);
 			for(size_t i=1,j=def.size();i<j-1;i+=2) def[i]=string("%").append(def[i]).append("%");
 		}
 		fo3d.CacheKeys();

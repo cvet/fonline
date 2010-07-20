@@ -337,47 +337,43 @@ bool IniParser::IsLoaded()
 	return bufPtr!=NULL;
 }
 
-bool IniParser::LoadFile(const char* fname)
+bool IniParser::LoadFile(const char* fname, int path_type)
 {
 	UnloadFile();
 
-	FILE* f=NULL;
-	if(fopen_s(&f,fname,"rb")) return false;
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return false;
 
-	__int64 flen;
-	if(fseek(f,0,SEEK_END)) return false;
-	if(fgetpos(f,&flen)) return false;
-	if(fseek(f,0,SEEK_SET)) return false;
-
-	bufPtr=new char[flen+1];
-	if(!bufPtr) return false;
-
-	fread(bufPtr,sizeof(char),flen,f);
-	fclose(f);
-
-	bufPtr[flen]='\0';
-	bufLen=flen;
+	bufLen=fm.GetFsize();
+	bufPtr=(char*)fm.ReleaseBuffer();
 	return true;
 }
 
-bool IniParser::LoadFile(const BYTE* buf, DWORD len)
+bool IniParser::LoadFilePtr(const char* buf, DWORD len)
 {
 	UnloadFile();
+
 	bufPtr=new char[len+1];
 	if(!bufPtr) return false;
+
 	memcpy(bufPtr,buf,len);
 	bufPtr[len]='\0';
 	bufLen=len;
 	return true;
 }
 
-bool IniParser::AppendToBegin(const BYTE* buf, DWORD len)
+bool IniParser::AppendToBegin(const char* fname, int path_type)
 {
-	if(!bufPtr) return false;
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return false;
+	DWORD len=fm.GetFsize();
+	char* buf=(char*)fm.ReleaseBuffer();
+
 	char* grow_buf=new char[bufLen+len+1];
 	memcpy(grow_buf,buf,len);
 	memcpy(grow_buf+len,bufPtr,bufLen);
 	grow_buf[bufLen+len]='\0';
+
 	SAFEDELA(bufPtr);
 	bufPtr=grow_buf;
 	bufLen+=len;
@@ -386,13 +382,18 @@ bool IniParser::AppendToBegin(const BYTE* buf, DWORD len)
 	return true;
 }
 
-bool IniParser::AppendToEnd(const BYTE* buf, DWORD len)
+bool IniParser::AppendToEnd(const char* fname, int path_type)
 {
-	if(!bufPtr) return false;
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return false;
+	DWORD len=fm.GetFsize();
+	char* buf=(char*)fm.ReleaseBuffer();
+
 	char* grow_buf=new char[bufLen+len+1];
 	memcpy(grow_buf,bufPtr,bufLen);
 	memcpy(grow_buf+bufLen,buf,len);
 	grow_buf[bufLen+len]='\0';
+
 	SAFEDELA(bufPtr);
 	bufPtr=grow_buf;
 	bufLen+=len;
@@ -531,8 +532,8 @@ int IniParser::GetInt(const char* key_name, int def_val)
 bool IniParser::GetStr(const char* app_name, const char* key_name, const char* def_val, char* ret_buf, char end /* = 0 */)
 {
 	// Check
-	if(!bufPtr) return false;
 	if(!ret_buf) return false;
+	if(!bufPtr) goto label_DefVal;
 
 	// Get pos
 	DWORD iter=0;

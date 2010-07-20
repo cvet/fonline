@@ -781,8 +781,8 @@ typedef vector<ClientSaveData> ClientSaveDataVec;
 	StrVec AccessClient,AccessTester,AccessModer,AccessAdmin;
 
 	// Banned
-#define BANS_FNAME_ACTIVE         ".\\save\\bans\\active.txt"
-#define BANS_FNAME_EXPIRED        ".\\save\\bans\\expired.txt"
+#define BANS_FNAME_ACTIVE         "active.txt"
+#define BANS_FNAME_EXPIRED        "expired.txt"
 	struct ClientBanned
 	{
 		SYSTEMTIME BeginTime;

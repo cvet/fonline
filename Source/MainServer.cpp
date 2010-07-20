@@ -29,7 +29,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	LoadLibrary("RICHED32.dll"); // Riched20.dll
 
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE);
+	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
 	hDlg=CreateDialog(hInstance,MAKEINTRESOURCE(IDD_DLG),NULL,DlgProc);
 	int wx=cfg.GetInt("PositionX",0);

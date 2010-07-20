@@ -190,7 +190,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, DWORD id, const char* d
 	}
 
 	IniParser fodlg;
-	if(!fodlg.LoadFile((BYTE*)data,strlen(data)))
+	if(!fodlg.LoadFilePtr(data,strlen(data)))
 	{
 		AddError("Internal error.");
 		return NULL;

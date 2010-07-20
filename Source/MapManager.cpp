@@ -171,7 +171,7 @@ bool MapManager::LoadLocationsProtos()
 	WriteLog("Load locations prototypes...\n");
 
 	IniParser city_txt;
-	if(!city_txt.LoadFile(Str::Format("%sLocations.cfg",fm.GetPath(PT_SERVER_MAPS))))
+	if(!city_txt.LoadFile("Locations.cfg",PT_SERVER_MAPS))
 	{
 		WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",fm.GetPath(PT_SERVER_MAPS)));
 		return false;
@@ -322,7 +322,7 @@ bool MapManager::LoadMapsProtos()
 	WriteLog("Load maps prototypes...\n");
 
 	IniParser maps_txt;
-	if(!maps_txt.LoadFile(Str::Format("%sMaps.cfg",fm.GetPath(PT_SERVER_MAPS))))
+	if(!maps_txt.LoadFile("Maps.cfg",PT_SERVER_MAPS))
 	{
 		WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",fm.GetPath(PT_SERVER_MAPS)));
 		return false;

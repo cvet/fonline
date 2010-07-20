@@ -500,7 +500,7 @@ bool ProtoMap::ReadObjects(int version)
 bool ProtoMap::LoadTextFormat(const char* buf)
 {
 	IniParser map_ini;
-	map_ini.LoadFile((BYTE*)buf,strlen(buf));
+	map_ini.LoadFilePtr(buf,strlen(buf));
 
 	// Header
 	ZeroMemory(&Header,sizeof(Header));
@@ -1591,7 +1591,7 @@ bool ProtoMap::IsMapFile(const char* fname)
 	{
 		// Check text format
 		IniParser txt;
-		if(!txt.LoadFile(fname)) return false;
+		if(!txt.LoadFile(fname,PT_MAPS)) return false;
 		return txt.IsApp(APP_HEADER) && txt.IsApp(APP_TILES) && txt.IsApp(APP_OBJECTS);
 	}
 	return false;

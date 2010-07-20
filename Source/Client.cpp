@@ -182,14 +182,16 @@ bool FOClient::Init(HWND hwnd)
 	SprMngr.SetDefaultFont(FONT_DEF,COLOR_TEXT);
 
 	// Sound manager
+	IniParser cfg;
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
 	SndMngr.Init(Wnd);
-	SndMngr.SetSoundVolume(GetPrivateProfileInt(CFG_FILE_APP_NAME,"SoundVolume",100,CLIENT_CONFIG_FILE));
-	SndMngr.SetMusicVolume(GetPrivateProfileInt(CFG_FILE_APP_NAME,"MusicVolume",100,CLIENT_CONFIG_FILE));
+	SndMngr.SetSoundVolume(cfg.GetInt(CFG_FILE_APP_NAME,"SoundVolume",100));
+	SndMngr.SetMusicVolume(cfg.GetInt(CFG_FILE_APP_NAME,"MusicVolume",100));
 
 	// Language Packs
-	char lang_name[5];
-	GetPrivateProfileString(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name,5,CLIENT_CONFIG_FILE);
-	if(strlen(lang_name)<4) StringCopy(lang_name,DEFAULT_LANGUAGE);
+	char lang_name[MAX_FOTEXT];
+	cfg.GetStr(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name);
+	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
 	Str::Lwr(lang_name);
 
 	CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS)),*(DWORD*)&lang_name);
@@ -6649,7 +6651,7 @@ void FOClient::Net_OnUserHoloStr()
 
 	if(text_len>USER_HOLO_MAX_LEN)
 	{
-		WriteLog(__FUNCTION__" - Text length greather than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
+		WriteLog(__FUNCTION__" - Text length greater than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
