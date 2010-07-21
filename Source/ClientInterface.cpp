@@ -1389,23 +1389,23 @@ void FOClient::ProcessItemsCollection(int collection, ItemVec& init_items, ItemV
 	result=init_items;
 	if(result.empty()) return;
 
-	if(Script::PrepareContext(ClientFunctions.ItemsCollection,CALL_FUNC_STR,"Game"))
+	if(ClientScript.PrepareContext(ClientFunctions.ItemsCollection,CALL_FUNC_STR,"Game"))
 	{
-		asIScriptArray* arr=Script::CreateArray("ItemCl@[]");
+		asIScriptArray* arr=ClientScript.CreateArray("ItemCl@[]");
 		if(arr)
 		{
 			ItemPtrVec items_ptr;
 			items_ptr.reserve(init_items.size());
 			for(ItemVecIt it=init_items.begin(),end=init_items.end();it!=end;++it) items_ptr.push_back((*it).Clone());
-			Script::AppendVectorToArray(items_ptr,arr);
+			ClientScript.AppendVectorToArray(items_ptr,arr);
 
-			Script::SetArgDword(collection);
-			Script::SetArgObject(arr);
-			if(Script::RunPrepared())
+			ClientScript.SetArgDword(collection);
+			ClientScript.SetArgObject(arr);
+			if(ClientScript.RunPrepared())
 			{
 				items_ptr.clear();
 				result.clear();
-				Script::AssignScriptArrayInVector(items_ptr,arr);
+				ClientScript.AssignScriptArrayInVector(items_ptr,arr);
 				for(ItemPtrVecIt it=items_ptr.begin(),end=items_ptr.end();it!=end;++it)
 				{
 					Item* item=*it;
@@ -3650,13 +3650,13 @@ void FOClient::ContainerCalcInfo(ItemVec& cont, DWORD& cost, DWORD& weigth, DWOR
 			if(GameOpt.CustomItemCost)
 			{
 				CritterCl* npc=GetCritter(PupContId);
-				if(Chosen && npc && Script::PrepareContext(ClientFunctions.ItemCost,CALL_FUNC_STR,Chosen->GetInfo()))
+				if(Chosen && npc && ClientScript.PrepareContext(ClientFunctions.ItemCost,CALL_FUNC_STR,Chosen->GetInfo()))
 				{
-					Script::SetArgObject(&item);
-					Script::SetArgObject(Chosen);
-					Script::SetArgObject(npc);
-					Script::SetArgBool(sell);
-					if(Script::RunPrepared()) cost_=Script::GetReturnedDword();
+					ClientScript.SetArgObject(&item);
+					ClientScript.SetArgObject(Chosen);
+					ClientScript.SetArgObject(npc);
+					ClientScript.SetArgBool(sell);
+					if(ClientScript.RunPrepared()) cost_=ClientScript.GetReturnedDword();
 				}
 			}
 			else
@@ -3782,20 +3782,20 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 						else StringCopy(tag,CurLang.Msg[msg_type].GetStr(str_num));
 					}
 				}
-				// Script
+				// ScriptABCDEF
 				else if(strlen(tag)>7 && tag[0]=='s' && tag[1]=='c' && tag[2]=='r' && tag[3]=='i' && tag[4]=='p' && tag[5]=='t' && tag[6]==' ')
 				{
 					char func_name[256];
 					Str::CopyWord(func_name,&tag[7],'$',false);
-					int bind_id=Script::Bind("client_main",func_name,"string %s(string&)",true);
+					int bind_id=ClientScript.Bind("client_main",func_name,"string %s(string&)",true);
 					StringCopy(tag,"<script function not found>");
-					if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
+					if(bind_id>0 && ClientScript.PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
 					{
 						CScriptString* script_lexems=new CScriptString(lexems);
-						Script::SetArgObject(script_lexems);
-						if(Script::RunPrepared())
+						ClientScript.SetArgObject(script_lexems);
+						if(ClientScript.RunPrepared())
 						{
-							CScriptString* result=(CScriptString*)Script::GetReturnedObject();
+							CScriptString* result=(CScriptString*)ClientScript.GetReturnedObject();
 							if(result)
 							{
 								StringCopy(tag,result->c_str());
@@ -4686,13 +4686,13 @@ int FOClient::GetActiveScreen(IntVec** screens /* = NULL */)
 	static IntVec active_screens;
 	active_screens.clear();
 
-	if(Script::PrepareContext(ClientFunctions.GetActiveScreens,CALL_FUNC_STR,"Game"))
+	if(ClientScript.PrepareContext(ClientFunctions.GetActiveScreens,CALL_FUNC_STR,"Game"))
 	{
-		asIScriptArray* arr=Script::CreateArray("int[]");
+		asIScriptArray* arr=ClientScript.CreateArray("int[]");
 		if(arr)
 		{
-			Script::SetArgObject(arr);
-			if(Script::RunPrepared()) Script::AssignScriptArrayInVector(active_screens,arr);
+			ClientScript.SetArgObject(arr);
+			if(ClientScript.RunPrepared()) ClientScript.AssignScriptArrayInVector(active_screens,arr);
 			arr->Release();
 		}
 	}
@@ -4941,14 +4941,14 @@ void FOClient::HideScreen(int screen, int p0, int p1, int p2)
 
 void FOClient::RunScreenScript(bool show, int screen, int p0, int p1, int p2)
 {
-	if(Script::PrepareContext(ClientFunctions.ScreenChange,CALL_FUNC_STR,"Game"))
+	if(ClientScript.PrepareContext(ClientFunctions.ScreenChange,CALL_FUNC_STR,"Game"))
 	{
-		Script::SetArgBool(show);
-		Script::SetArgDword(screen);
-		Script::SetArgDword(p0);
-		Script::SetArgDword(p1);
-		Script::SetArgDword(p2);
-		Script::RunPrepared();
+		ClientScript.SetArgBool(show);
+		ClientScript.SetArgDword(screen);
+		ClientScript.SetArgDword(p0);
+		ClientScript.SetArgDword(p1);
+		ClientScript.SetArgDword(p2);
+		ClientScript.RunPrepared();
 	}
 }
 
@@ -7112,11 +7112,11 @@ void FOClient::PerkPrepare()
 
 	for(int i=PERK_BEGIN;i<=PERK_END;i++)
 	{
-		if(Script::PrepareContext(ClientFunctions.PerkCheck,CALL_FUNC_STR,"Perk"))
+		if(ClientScript.PrepareContext(ClientFunctions.PerkCheck,CALL_FUNC_STR,"Perk"))
 		{
-			Script::SetArgObject(Chosen);
-			Script::SetArgDword(i-(GameOpt.AbsoluteOffsets?0:PERK_BEGIN));
-			if(Script::RunPrepared() && Script::GetReturnedBool()) PerkCollection.push_back(i);
+			ClientScript.SetArgObject(Chosen);
+			ClientScript.SetArgDword(i-(GameOpt.AbsoluteOffsets?0:PERK_BEGIN));
+			if(ClientScript.RunPrepared() && ClientScript.GetReturnedBool()) PerkCollection.push_back(i);
 		}
 	}
 }
@@ -8671,12 +8671,12 @@ void FOClient::ElevatorGenerate(DWORD param)
 	ElevatorStartLevel=0;
 	ElevatorCurrentLevel=0;
 
-	if(!Script::PrepareContext(ClientFunctions.GetElevator,CALL_FUNC_STR,"Game")) return;
-	asIScriptArray* arr=Script::CreateArray("int[]");
+	if(!ClientScript.PrepareContext(ClientFunctions.GetElevator,CALL_FUNC_STR,"Game")) return;
+	asIScriptArray* arr=ClientScript.CreateArray("int[]");
 	if(!arr) return;
-	Script::SetArgDword(param);
-	Script::SetArgObject(arr);
-	if(!Script::RunPrepared() || !Script::GetReturnedBool())
+	ClientScript.SetArgDword(param);
+	ClientScript.SetArgObject(arr);
+	if(!ClientScript.RunPrepared() || !ClientScript.GetReturnedBool())
 	{
 		arr->Release();
 		return;

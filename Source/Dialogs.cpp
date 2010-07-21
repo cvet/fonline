@@ -1,86 +1,80 @@
 #include "StdAfx.h"
 #include "Dialogs.h"
 #include "Names.h"
+#include "FileManager.h"
+#include <strstream>
 
 DialogManager DlgMngr;
 
-bool DialogManager::LoadDialogs(const char* path, const char* list_name)
+bool DialogManager::LoadDialogs(const char* list_name)
 {
 	WriteLog("Load Dialogs...");
 
-	if(!path || !list_name)
+	if(!list_name)
 	{
-		WriteLog("Null ptr path or list name\n");
+		WriteLog("List name nullptr.\n");
 		return false;
 	}
 
-	char full_path[2048];
-	StringCopy(full_path,path);
-	strcat(full_path,list_name);
+	WriteLog("from list<%s>.\n",list_name);
 
-	WriteLog("from list<%s>.\n",full_path);
-
-	FILE* file=fopen(full_path,"rb");
-	if(!file)
+	FileManager lst;
+	if(!lst.LoadFile(list_name,PT_SERVER_DIALOGS))
 	{
-		WriteLog("Error - Open file failed\n");
+		WriteLog("File not found.\n");
 		return false;
 	}
 
-	DialogPack* pack;
-	DWORD dlg_num;
-	char dlg_name[128];
-	DWORD dlg_len;
-	char* dlg_buffer=new char[MAX_DLG_LEN_IN_BYTES+1];
+	istrstream str((char*)lst.GetBuf());
 	int dlg_count=0;
 	int dlg_loaded=0;
-	char ch=0;
-
-	//FILE* fw=fopen("dlgs.fos","wt");
-
-	while(!feof(file))
+	while(!str.eof())
 	{
-		if(fscanf(file,"%c",&ch)!=1) break;
+		char ch;
+		str >> ch;
 		if(ch!='$') continue;
 
 		dlg_count++;
 
-		if(fscanf(file,"%u%s",&dlg_num,dlg_name)!=2)
+		DWORD dlg_num;
+		str >> dlg_num;
+		if(str.fail())
 		{
-			WriteLog("Unable to read num and name dialog file name.\n");
+			WriteLog("Unable to read number of dialog.\n");
 			continue;
 		}
 
-		//fprintf(fw,"#define DIALOG_%-40s(%d)\n",dlg_name,dlg_num);
+		char dlg_name[128];
+		str >> dlg_name;
+		if(str.fail())
+		{
+			WriteLog("Unable to read name of dialog.\n");
+			continue;
+		}
 
 		if(DialogsPacks.count(dlg_num))
 		{
-			WriteLog("Dialogs num is already parse.\n");
+			WriteLog("Dialog number is already parse.\n");
 			continue;
 		}
 
-		StringCopy(full_path,path);
-		strcat(full_path,dlg_name);
-		strcat(full_path,DIALOG_FILE_EXT);
+		char name[256];
+		StringCopy(name,dlg_name);
+		StringAppend(name,DIALOG_FILE_EXT);
 
-		FILE* fdlg=fopen(full_path,"rb");
-		if(!fdlg)
+		FileManager fdlg;
+		if(!fdlg.LoadFile(name,PT_SERVER_DIALOGS))
 		{
-			WriteLog("Unable to open dialog file, num<%u>, path<%s>.\n",dlg_num,dlg_name);
+			WriteLog("Unable to open dialog file, number<%u>, name<%s>.\n",dlg_num,name);
 			continue;
 		}
 
-		dlg_len=fread(dlg_buffer,sizeof(char),MAX_DLG_LEN_IN_BYTES-1,fdlg);
-		dlg_buffer[dlg_len]=0;
-
-		if(!(pack=ParseDialog(dlg_name,dlg_num,dlg_buffer))) 
+		DialogPack* pack=ParseDialog(dlg_name,dlg_num,(char*)fdlg.GetBuf());
+		if(!pack) 
 		{
 			WriteLog("Unable to parse dialog, num<%u>, path<%s>.\n",dlg_num,dlg_name);
-			fclose(fdlg);
 			continue;
 		}
-
-		fclose(fdlg);
 
 		if(!AddDialogs(pack))
 		{
@@ -91,9 +85,6 @@ bool DialogManager::LoadDialogs(const char* path, const char* list_name)
 		dlg_loaded++;
 	}
 
-	fclose(file);
-	//fclose(fw);
-	SAFEDELA(dlg_buffer);
 	WriteLog("Loading dialogs finish, loaded<%u/%u>.\n",dlg_loaded,dlg_count);
 	return dlg_count==dlg_loaded;
 }
@@ -103,7 +94,7 @@ void DialogManager::SaveList(const char* list_path, const char* list_name)
 	if(!list_path || !list_name) return;
 	char full_path[1024];
 	StringCopy(full_path,list_path);
-	strcat(full_path,list_name);
+	StringAppend(full_path,list_name);
 
 	FILE* f;
 	if(!(f=fopen(full_path,"wt"))) return;
@@ -565,8 +556,8 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 
 #ifdef FONLINE_SERVER
 			// Bind function
-#define BIND_D_FUNC(params) {id=Script::Bind(name,"bool %s(Critter&,Critter@"params,false);}
-#define BIND_R_FUNC(params) {id=Script::Bind(name,"void %s(Critter&,Critter@"params,false);}
+#define BIND_D_FUNC(params) {id=ServerScript.Bind(name,"bool %s(Critter&,Critter@"params,false);}
+#define BIND_R_FUNC(params) {id=ServerScript.Bind(name,"void %s(Critter&,Critter@"params,false);}
 			switch(values_count)
 			{
 			case 1: if(is_demand) BIND_D_FUNC(",int)") else BIND_R_FUNC(",int)") break;
@@ -655,7 +646,7 @@ int DialogManager::GetNotAnswerAction(const char * str)
 		return NOT_ANSWER_BEGIN_BATTLE;
 #ifdef FONLINE_SERVER
 	else
-		return Script::Bind(str,"void %s(Critter&,Critter@,string@)",false); //Bind function
+		return ServerScript.Bind(str,"void %s(Critter&,Critter@,string@)",false); //Bind function
 #endif // FONLINE_SERVER
 
 	return -1;

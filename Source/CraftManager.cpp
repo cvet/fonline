@@ -667,7 +667,7 @@ bool CraftManager::AddCraft(DWORD num, const char* str)
 #ifdef FONLINE_SERVER
 	if(craft->Script.length())
 	{
-		craft->ScriptBindId=Script::Bind(craft->Script.c_str(),"int %s(Critter&, int)",false);
+		craft->ScriptBindId=ServerScript.Bind(craft->Script.c_str(),"int %s(Critter&, int)",false);
 		if(!craft->ScriptBindId)
 		{
 			delete craft;
@@ -720,11 +720,11 @@ bool CraftManager::IsShowCraft(Critter* cr, DWORD num)
 	DWORD flags=0xFFFFFFFF;
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return false;
-		Script::SetArgObject(cr);
-		Script::SetArgDword(FIXBOY_LIST);
-		if(!Script::RunPrepared()) return false;
-		flags=Script::GetReturnedDword();
+		if(!ServerScript.PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return false;
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgDword(FIXBOY_LIST);
+		if(!ServerScript.RunPrepared()) return false;
+		flags=ServerScript.GetReturnedDword();
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) return false;
@@ -932,11 +932,11 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 	DWORD flags=0xFFFFFFFF;
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return CRAFT_RESULT_FAIL;
-		Script::SetArgObject(cr);
-		Script::SetArgDword(FIXBOY_BUTTON);
-		if(!Script::RunPrepared()) return CRAFT_RESULT_FAIL;
-		flags=Script::GetReturnedDword();
+		if(!ServerScript.PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return CRAFT_RESULT_FAIL;
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgDword(FIXBOY_BUTTON);
+		if(!ServerScript.RunPrepared()) return CRAFT_RESULT_FAIL;
+		flags=ServerScript.GetReturnedDword();
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;
@@ -948,11 +948,11 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return CRAFT_RESULT_FAIL;
-		Script::SetArgObject(cr);
-		Script::SetArgDword(FIXBOY_CRAFT);
-		if(!Script::RunPrepared()) return CRAFT_RESULT_FAIL;
-		flags=Script::GetReturnedDword();
+		if(!ServerScript.PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return CRAFT_RESULT_FAIL;
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgDword(FIXBOY_CRAFT);
+		if(!ServerScript.RunPrepared()) return CRAFT_RESULT_FAIL;
+		flags=ServerScript.GetReturnedDword();
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;
@@ -1008,20 +1008,20 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 			}
 		}
 
-		if(crafted.size() && Script::PrepareContext(ServerFunctions.ItemsCrafted,CALL_FUNC_STR,cr->GetInfo()))
+		if(crafted.size() && ServerScript.PrepareContext(ServerFunctions.ItemsCrafted,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			asIScriptArray* crafted_=Script::CreateArray("Item@[]");
-			asIScriptArray* crafted_count_=Script::CreateArray("uint[]");
-			asIScriptArray* sub_items_=Script::CreateArray("Item@[]");
-			Script::AppendVectorToArrayRef(crafted,crafted_);
-			Script::AppendVectorToArray(crafted_count,crafted_count_);
-			Script::AppendVectorToArrayRef(sub_items,sub_items_);
+			asIScriptArray* crafted_=ServerScript.CreateArray("Item@[]");
+			asIScriptArray* crafted_count_=ServerScript.CreateArray("uint[]");
+			asIScriptArray* sub_items_=ServerScript.CreateArray("Item@[]");
+			ServerScript.AppendVectorToArrayRef(crafted,crafted_);
+			ServerScript.AppendVectorToArray(crafted_count,crafted_count_);
+			ServerScript.AppendVectorToArrayRef(sub_items,sub_items_);
 
-			Script::SetArgObject(crafted_);
-			Script::SetArgObject(crafted_count_);
-			Script::SetArgObject(sub_items_);
-			Script::SetArgObject(cr);
-			Script::RunPrepared();
+			ServerScript.SetArgObject(crafted_);
+			ServerScript.SetArgObject(crafted_count_);
+			ServerScript.SetArgObject(sub_items_);
+			ServerScript.SetArgObject(cr);
+			ServerScript.RunPrepared();
 
 			crafted_->Release();
 			crafted_count_->Release();

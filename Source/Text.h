@@ -218,18 +218,18 @@ typedef vector<FOMsg*> FOMsgVec;
 class LanguagePack
 {
 public:
-	DWORD Name;
-	char Zero;
-	string Path;
+	union
+	{
+		DWORD Name;
+		char NameStr[5];
+	};
+
 	FOMsg Msg[TEXTMSG_COUNT];
 
-	bool Init(const char* path, DWORD name);
-	void ChangeName(DWORD new_name);
+	bool Init(const char* name);
 	int LoadAll();
-	const char* GetName();
-	const char* GetPath();
 
-	LanguagePack():Name(0),Zero(0){}
+	LanguagePack(){Name=0;}
 	bool operator==(const DWORD& r){return Name==r;}
 };
 

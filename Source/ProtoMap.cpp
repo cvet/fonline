@@ -1092,9 +1092,9 @@ void ProtoMap::BindSceneryScript(MapObject* mobj)
 //============================================================
 #define BIND_SCENERY_FUNC(params) \
 	if(mobj->ProtoId!=SP_SCEN_TRIGGER) \
-		mobj->RunTime.BindScriptId=Script::Bind(mobj->ScriptName,mobj->FuncName,"bool %s(Critter&,Scenery&,int,Item@"params,false); \
+		mobj->RunTime.BindScriptId=ServerScript.Bind(mobj->ScriptName,mobj->FuncName,"bool %s(Critter&,Scenery&,int,Item@"params,false); \
 	else \
-		mobj->RunTime.BindScriptId=Script::Bind(mobj->ScriptName,mobj->FuncName,"void %s(Critter&,Scenery&,bool,uint8"params,false)
+		mobj->RunTime.BindScriptId=ServerScript.Bind(mobj->ScriptName,mobj->FuncName,"void %s(Critter&,Scenery&,bool,uint8"params,false)
 //============================================================
 
 	switch(mobj->MScenery.ParamsCount)
@@ -1397,7 +1397,7 @@ bool ProtoMap::Refresh()
 					{
 						char script_module[MAX_SCRIPT_NAME+1];
 						char script_func[MAX_SCRIPT_NAME+1];
-						if(Script::ReparseScriptName(script,script_module,script_func))
+						if(ServerScript.ReparseScriptName(script,script_module,script_func))
 						{
 							StringCopy(mobj.ScriptName,script_module);
 							StringCopy(mobj.FuncName,script_func);

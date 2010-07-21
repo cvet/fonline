@@ -38,7 +38,7 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 	if(!folders_done)
 	{
 		StrVec file_names;
-		FileManager::GetFolderFileNames(PT_ROOT,NULL,file_names);
+		FileManager::GetFolderFileNames(PT_DATA,NULL,file_names);
 		AddNamesHash(file_names);
 
 		StrVec splashes;
@@ -59,7 +59,7 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 		if(std::find(processedDats.begin(),processedDats.end(),dat)==processedDats.end())
 		{
 			StrVec file_names;
-			dat->GetFileNames(FileManager::GetPath(PT_ROOT),NULL,file_names);
+			dat->GetFileNames(FileManager::GetPath(PT_DATA),NULL,file_names);
 			AddNamesHash(file_names);
 
 			StrVec splashes;
@@ -154,7 +154,7 @@ AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir)
 	const char* fname=GetName(name_hash);
 	if(!fname) return NULL;
 	sprMngr->SurfType=res_type;
-	AnyFrames* anim=sprMngr->LoadAnyAnimation(fname,PT_ROOT,true,dir);
+	AnyFrames* anim=sprMngr->LoadAnyAnimation(fname,PT_DATA,true,dir);
 	sprMngr->SurfType=RES_NONE;
 	if(!anim) return NULL;
 	loadedAnims.insert(LoadedAnimMapVal(id,LoadedAnim(res_type,anim)));
@@ -225,7 +225,7 @@ DWORD ResourceManager::GetRandomSplash()
 	int rnd=Random(0,splashNames.size()-1);
 	static DWORD splash=0;
 	sprMngr->SurfType=RES_SPLASH;
-	splash=sprMngr->ReloadSprite(splash,splashNames[rnd].c_str(),PT_ROOT);
+	splash=sprMngr->ReloadSprite(splash,splashNames[rnd].c_str(),PT_DATA);
 	sprMngr->SurfType=RES_NONE;
 	return splash;
 }

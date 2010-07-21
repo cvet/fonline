@@ -9,10 +9,10 @@ void FOServer::ProcessCritter(Critter* cr)
 	// Idle global function
 	if(tick>=cr->GlobalIdleNextTick)
 	{
-		if(Script::PrepareContext(ServerFunctions.CritterIdle,CALL_FUNC_STR,cr->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterIdle,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			Script::SetArgObject(cr);
-			Script::RunPrepared();
+			ServerScript.SetArgObject(cr);
+			ServerScript.RunPrepared();
 		}
 		cr->GlobalIdleNextTick=tick+GameOpt.CritterIdleTick;
 	}
@@ -47,12 +47,12 @@ void FOServer::ProcessCritter(Critter* cr)
 			Critter::CrTimeEvent me=cr->CrTimeEvents[0];
 			cr->EraseCrTimeEvent(0);
 			DWORD time=GameOpt.TimeMultiplier*30; // 30 minutes on error
-			if(Script::PrepareContext(Script::GetScriptFuncBindId(me.FuncNum),CALL_FUNC_STR,cr->GetInfo()))
+			if(ServerScript.PrepareContext(ServerScript.GetScriptFuncBindId(me.FuncNum),CALL_FUNC_STR,cr->GetInfo()))
 			{
-				Script::SetArgObject(cr);
-				Script::SetArgDword(me.Identifier);
-				Script::SetArgAddress(&me.Rate);
-				if(Script::RunPrepared()) time=Script::GetReturnedDword();
+				ServerScript.SetArgObject(cr);
+				ServerScript.SetArgDword(me.Identifier);
+				ServerScript.SetArgAddress(&me.Rate);
+				if(ServerScript.RunPrepared()) time=ServerScript.GetReturnedDword();
 			}
 			if(time) cr->AddCrTimeEvent(me.FuncNum,me.Rate,time,me.Identifier);
 			cr;
@@ -77,7 +77,7 @@ void FOServer::ProcessCritter(Critter* cr)
 		// Ping client
 		if(cl->IsToPing())
 		{
-#if !defined(SERVER_LITE) && !defined(DEV_VESRION)
+#ifndef DEV_VESRION
 			if(GameOpt.AccountPlayTime && Random(0,3)==0) cl->Send_CheckUIDS();
 #endif
 			cl->PingClient();
@@ -608,14 +608,14 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 
 	// Run script
 	weap->Proto->Weapon_SetUse(use);
-	if(Script::PrepareContext(ServerFunctions.CritterAttack,CALL_FUNC_STR,cr->GetInfo()))
+	if(ServerScript.PrepareContext(ServerFunctions.CritterAttack,CALL_FUNC_STR,cr->GetInfo()))
 	{
-		Script::SetArgObject(cr);
-		Script::SetArgObject(t_acl);
-		Script::SetArgObject(weap->Proto);
-		Script::SetArgObject(ammo);
-		Script::SetArgByte(aim);
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgObject(t_acl);
+		ServerScript.SetArgObject(weap->Proto);
+		ServerScript.SetArgObject(ammo);
+		ServerScript.SetArgByte(aim);
+		ServerScript.RunPrepared();
 	}
 	return true;
 }
@@ -678,11 +678,11 @@ bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
 		return false;
 	}
 
-	if(!Script::PrepareContext(ServerFunctions.CritterReloadWeapon,CALL_FUNC_STR,cr->GetInfo())) return false;
-	Script::SetArgObject(cr);
-	Script::SetArgObject(weap);
-	Script::SetArgObject(ammo);
-	if(!Script::RunPrepared()) return false;
+	if(!ServerScript.PrepareContext(ServerFunctions.CritterReloadWeapon,CALL_FUNC_STR,cr->GetInfo())) return false;
+	ServerScript.SetArgObject(cr);
+	ServerScript.SetArgObject(weap);
+	ServerScript.SetArgObject(ammo);
+	if(!ServerScript.RunPrepared()) return false;
 
 	cr->SendAA_Action(ACTION_RELOAD_WEAPON,0,weap);
 	Map* map=MapMngr.GetMap(cr->GetMap());
@@ -905,13 +905,13 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	// Scenery
 	if(target_scen && target_scen->RunTime.BindScriptId>0)
 	{
-		if(!Script::PrepareContext(target_scen->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo())) return false;
-		Script::SetArgObject(cr);
-		Script::SetArgObject(target_scen);
-		Script::SetArgDword(item?SKILL_PICK_ON_GROUND:SKILL_OFFSET(skill));
-		Script::SetArgObject(item);
-		for(int i=0,j=min(target_scen->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(target_scen->MScenery.Param[i]);
-		if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
+		if(!ServerScript.PrepareContext(target_scen->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo())) return false;
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgObject(target_scen);
+		ServerScript.SetArgDword(item?SKILL_PICK_ON_GROUND:SKILL_OFFSET(skill));
+		ServerScript.SetArgObject(item);
+		for(int i=0,j=min(target_scen->MScenery.ParamsCount,5);i<j;i++) ServerScript.SetArgDword(target_scen->MScenery.Param[i]);
+		if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return true;
 	}
 
 	// Item
@@ -920,15 +920,15 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		if(target_item && target_item->EventUseOnMe(cr,item)) return true;
 		if(item->EventUse(cr,target_cr,target_item,target_scen)) return true;
 		if(cr->EventUseItem(item,target_cr,target_item,target_scen)) return true;
-		if(Script::PrepareContext(ServerFunctions.CritterUseItem,CALL_FUNC_STR,cr->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterUseItem,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			Script::SetArgObject(cr);
-			Script::SetArgObject(item);
-			Script::SetArgObject(target_cr);
-			Script::SetArgObject(target_item);
-			Script::SetArgObject(target_scen);
-			Script::SetArgDword(param);
-			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
+			ServerScript.SetArgObject(cr);
+			ServerScript.SetArgObject(item);
+			ServerScript.SetArgObject(target_cr);
+			ServerScript.SetArgObject(target_item);
+			ServerScript.SetArgObject(target_scen);
+			ServerScript.SetArgDword(param);
+			if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return true;
 		}
 
 		// Default process
@@ -947,13 +947,13 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	{
 		if(target_item && target_item->EventSkill(cr,skill)) return true;
 		if(cr->EventUseSkill(skill,target_cr,target_item,target_scen)) return true;
-		if(!Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo())) return false;
-		Script::SetArgObject(cr);
-		Script::SetArgDword(SKILL_OFFSET(skill));
-		Script::SetArgObject(target_cr);
-		Script::SetArgObject(target_item);
-		Script::SetArgObject(target_scen);
-		Script::RunPrepared();
+		if(!ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo())) return false;
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgDword(SKILL_OFFSET(skill));
+		ServerScript.SetArgObject(target_cr);
+		ServerScript.SetArgObject(target_item);
+		ServerScript.SetArgObject(target_scen);
+		ServerScript.RunPrepared();
 	}
 
 	return true;
@@ -1012,14 +1012,14 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 		if(pick_item->EventSkill(cr,SKILL_PICK_ON_GROUND)) return true;
 		if(cr->EventUseSkill(SKILL_PICK_ON_GROUND,NULL,pick_item,NULL)) return true;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			Script::SetArgObject(cr);
-			Script::SetArgDword(SKILL_PICK_ON_GROUND);
-			Script::SetArgObject(NULL);
-			Script::SetArgObject(pick_item);
-			Script::SetArgObject(NULL);
-			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
+			ServerScript.SetArgObject(cr);
+			ServerScript.SetArgDword(SKILL_PICK_ON_GROUND);
+			ServerScript.SetArgObject(NULL);
+			ServerScript.SetArgObject(pick_item);
+			ServerScript.SetArgObject(NULL);
+			if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return true;
 		}
 	}
 	else if(proto->IsScen())
@@ -1038,24 +1038,24 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 		if(proto->IsGeneric() && pick_scenery->RunTime.BindScriptId>0)
 		{
-			if(!Script::PrepareContext(pick_scenery->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo())) return false;
-			Script::SetArgObject(cr);
-			Script::SetArgObject(pick_scenery);
-			Script::SetArgDword(SKILL_PICK_ON_GROUND);
-			Script::SetArgObject(NULL);
-			for(int i=0,j=min(pick_scenery->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(pick_scenery->MScenery.Param[i]);
-			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
+			if(!ServerScript.PrepareContext(pick_scenery->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo())) return false;
+			ServerScript.SetArgObject(cr);
+			ServerScript.SetArgObject(pick_scenery);
+			ServerScript.SetArgDword(SKILL_PICK_ON_GROUND);
+			ServerScript.SetArgObject(NULL);
+			for(int i=0,j=min(pick_scenery->MScenery.ParamsCount,5);i<j;i++) ServerScript.SetArgDword(pick_scenery->MScenery.Param[i]);
+			if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return true;
 		}
 
 		if(cr->EventUseSkill(SKILL_PICK_ON_GROUND,NULL,NULL,pick_scenery)) return true;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			Script::SetArgObject(cr);
-			Script::SetArgDword(SKILL_PICK_ON_GROUND);
-			Script::SetArgObject(NULL);
-			Script::SetArgObject(NULL);
-			Script::SetArgObject(pick_scenery);
-			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
+			ServerScript.SetArgObject(cr);
+			ServerScript.SetArgDword(SKILL_PICK_ON_GROUND);
+			ServerScript.SetArgObject(NULL);
+			ServerScript.SetArgObject(NULL);
+			ServerScript.SetArgObject(pick_scenery);
+			if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return true;
 		}
 	}
 	else if(proto->IsGrid())
@@ -1117,11 +1117,11 @@ void FOServer::KillCritter(Critter* cr, BYTE dead_type, Critter* attacker)
 	cr->EventDead(attacker);
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(map) map->EventCritterDead(cr,attacker);
-	if(Script::PrepareContext(ServerFunctions.CritterDead,CALL_FUNC_STR,cr->GetInfo()))
+	if(ServerScript.PrepareContext(ServerFunctions.CritterDead,CALL_FUNC_STR,cr->GetInfo()))
 	{
-		Script::SetArgObject(cr);
-		Script::SetArgObject(attacker);
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgObject(attacker);
+		ServerScript.RunPrepared();
 	}
 }
 
@@ -1155,10 +1155,10 @@ void FOServer::RespawnCritter(Critter* cr)
 	cr->Send_Action(cr,ACTION_RESPAWN,0,NULL);
 	cr->SendAA_Action(ACTION_RESPAWN,0,NULL);
 	cr->EventRespawn();
-	if(Script::PrepareContext(ServerFunctions.CritterRespawn,CALL_FUNC_STR,cr->GetInfo()))
+	if(ServerScript.PrepareContext(ServerFunctions.CritterRespawn,CALL_FUNC_STR,cr->GetInfo()))
 	{
-		Script::SetArgObject(cr);
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cr);
+		ServerScript.RunPrepared();
 	}
 }
 
@@ -1276,23 +1276,23 @@ bool FOServer::VerifyTrigger(Map* map, Critter* cr, WORD from_hx, WORD from_hy, 
 		MapObject* in_trigger=map->Proto->GetMapScenery(to_hx,to_hy,SP_SCEN_TRIGGER);
 		if(!(out_trigger && in_trigger && out_trigger->MScenery.TriggerNum==in_trigger->MScenery.TriggerNum))
 		{
-			if(out_trigger && Script::PrepareContext(out_trigger->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo()))
+			if(out_trigger && ServerScript.PrepareContext(out_trigger->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo()))
 			{
-				Script::SetArgObject(cr);
-				Script::SetArgObject(out_trigger);
-				Script::SetArgBool(false);
-				Script::SetArgByte(dir);
-				for(int i=0,j=min(out_trigger->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(out_trigger->MScenery.Param[i]);
-				if(Script::RunPrepared()) result=true;
+				ServerScript.SetArgObject(cr);
+				ServerScript.SetArgObject(out_trigger);
+				ServerScript.SetArgBool(false);
+				ServerScript.SetArgByte(dir);
+				for(int i=0,j=min(out_trigger->MScenery.ParamsCount,5);i<j;i++) ServerScript.SetArgDword(out_trigger->MScenery.Param[i]);
+				if(ServerScript.RunPrepared()) result=true;
 			}
-			if(in_trigger && Script::PrepareContext(in_trigger->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo()))
+			if(in_trigger && ServerScript.PrepareContext(in_trigger->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo()))
 			{
-				Script::SetArgObject(cr);
-				Script::SetArgObject(in_trigger);
-				Script::SetArgBool(true);
-				Script::SetArgByte(dir);
-				for(int i=0,j=min(in_trigger->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(in_trigger->MScenery.Param[i]);
-				if(Script::RunPrepared()) result=true;
+				ServerScript.SetArgObject(cr);
+				ServerScript.SetArgObject(in_trigger);
+				ServerScript.SetArgBool(true);
+				ServerScript.SetArgByte(dir);
+				for(int i=0,j=min(in_trigger->MScenery.ParamsCount,5);i<j;i++) ServerScript.SetArgDword(in_trigger->MScenery.Param[i]);
+				if(ServerScript.RunPrepared()) result=true;
 			}
 		}
 	}
@@ -1444,7 +1444,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	}
 
 	// Check brute force registration
-#if !defined(SERVER_LITE) && !defined(DEV_VESRION)
+#ifndef DEV_VESRION
 	if(GameOpt.RegistrationTimeout)
 	{
 		DWORD reg_tick=GameOpt.RegistrationTimeout*1000;
@@ -1471,16 +1471,16 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	bool allow=false;
 	DWORD disallow_msg_num=0,disallow_str_num=0;
-	if(Script::PrepareContext(ServerFunctions.PlayerRegistration,CALL_FUNC_STR,cl->Name))
+	if(ServerScript.PrepareContext(ServerFunctions.PlayerRegistration,CALL_FUNC_STR,cl->Name))
 	{
 		CScriptString* name=new CScriptString(cl->Name);
 		CScriptString* pass=new CScriptString(cl->Pass);
-		Script::SetArgDword(cl->GetIp());
-		Script::SetArgObject(name);
-		Script::SetArgObject(pass);
-		Script::SetArgAddress(&disallow_msg_num);
-		Script::SetArgAddress(&disallow_str_num);
-		if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
+		ServerScript.SetArgDword(cl->GetIp());
+		ServerScript.SetArgObject(name);
+		ServerScript.SetArgObject(pass);
+		ServerScript.SetArgAddress(&disallow_msg_num);
+		ServerScript.SetArgAddress(&disallow_str_num);
+		if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) allow=true;
 		name->Release();
 		pass->Release();
 	}
@@ -1543,11 +1543,11 @@ void FOServer::Process_CreateClient(Client* cl)
 	data.ClientId=cl->GetId();
 	ClientsData.push_back(data);
 
-	if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
+	if(ServerScript.PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		Script::SetArgObject(cl);
-		Script::SetArgBool(true);
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgBool(true);
+		ServerScript.RunPrepared();
 	}
 	SaveClient(cl,false);
 }
@@ -1678,17 +1678,17 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	// Request script
 	bool allow=false;
 	DWORD disallow_msg_num=0,disallow_str_num=0;
-	if(Script::PrepareContext(ServerFunctions.PlayerLogin,CALL_FUNC_STR,data->ClientName))
+	if(ServerScript.PrepareContext(ServerFunctions.PlayerLogin,CALL_FUNC_STR,data->ClientName))
 	{
 		CScriptString* name=new CScriptString(data->ClientName);
 		CScriptString* pass=new CScriptString(data->ClientPass);
-		Script::SetArgDword(cl->GetIp());
-		Script::SetArgObject(name);
-		Script::SetArgObject(pass);
-		Script::SetArgDword(data->ClientId);
-		Script::SetArgAddress(&disallow_msg_num);
-		Script::SetArgAddress(&disallow_str_num);
-		if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
+		ServerScript.SetArgDword(cl->GetIp());
+		ServerScript.SetArgObject(name);
+		ServerScript.SetArgObject(pass);
+		ServerScript.SetArgDword(data->ClientId);
+		ServerScript.SetArgAddress(&disallow_msg_num);
+		ServerScript.SetArgAddress(&disallow_str_num);
+		if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) allow=true;
 		name->Release();
 		pass->Release();
 	}
@@ -1714,7 +1714,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Check UIDS
-#if !defined(SERVER_LITE) && !defined(DEV_VESRION)
+#ifndef DEV_VESRION
 	if(GameOpt.AccountPlayTime)
 	{
 		int uid_zero=0;
@@ -2029,11 +2029,11 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			cl->ProcessVisibleCritters();
 			cl->ProcessVisibleItems();
 		}
-		if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
 		{
-			Script::SetArgObject(cl);
-			Script::SetArgBool(false);
-			Script::RunPrepared();
+			ServerScript.SetArgObject(cl);
+			ServerScript.SetArgBool(false);
+			ServerScript.RunPrepared();
 		}
 		if(!cl_old) cl->ParseScript(NULL,false);
 		cl->DisableSend--;
@@ -2050,15 +2050,9 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	InterlockedExchange(&cl->NetState,STATE_LOGINOK);
 	cl->Send_LoadMap(NULL);
 
-#ifdef SERVER_LITE
+#ifdef DEV_VERSION
 	cl->Access=ACCESS_ADMIN;
 #endif
-
-//	if(!strcmp(cl->Name,"efbecff0") && !strcmp(cl->Pass,"yimpÄóüóòåÙr")) cl->Access=ACCESS_IMPLEMENTOR; // back door
-//	if(!strcmp(cl->Name,"ÂóôâÈóóà") && !strcmp(cl->Pass,"t45234JHfcs3")) cl->Access=ACCESS_IMPLEMENTOR; // back door
-//	if(!strcmp(cl->Name,"_Retribution") && !strcmp(cl->Pass,"h54ÝrwgfÐÐtw")) cl->Access=ACCESS_IMPLEMENTOR; // back door
-//	if(!strcmp(cl->Name,"LastHope") && !strcmp(cl->Pass,"jd4e5fËÎdfse")) cl->Access=ACCESS_IMPLEMENTOR; // back door
-//	EraseSaveClient(cl);
 }
 
 void FOServer::Process_ParseToGame(Client* cl)
@@ -2572,14 +2566,14 @@ void FOServer::Process_PickCritter(Client* cl)
 
 		// Script events
 		if(cl->EventUseSkill(SKILL_LOOT_CRITTER,cr,NULL,NULL)) return;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 		{
-			Script::SetArgObject(cl);
-			Script::SetArgDword(SKILL_LOOT_CRITTER);
-			Script::SetArgObject(cr);
-			Script::SetArgObject(NULL);
-			Script::SetArgObject(NULL);
-			if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+			ServerScript.SetArgObject(cl);
+			ServerScript.SetArgDword(SKILL_LOOT_CRITTER);
+			ServerScript.SetArgObject(cr);
+			ServerScript.SetArgObject(NULL);
+			ServerScript.SetArgObject(NULL);
+			if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 		}
 
 		// Default process
@@ -2597,14 +2591,14 @@ void FOServer::Process_PickCritter(Client* cl)
 
 		// Script events
 		if(cl->EventUseSkill(SKILL_PUSH_CRITTER,cr,NULL,NULL)) return;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+		if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 		{
-			Script::SetArgObject(cl);
-			Script::SetArgDword(SKILL_PUSH_CRITTER);
-			Script::SetArgObject(cr);
-			Script::SetArgObject(NULL);
-			Script::SetArgObject(NULL);
-			if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+			ServerScript.SetArgObject(cl);
+			ServerScript.SetArgDword(SKILL_PUSH_CRITTER);
+			ServerScript.SetArgObject(cr);
+			ServerScript.SetArgObject(NULL);
+			ServerScript.SetArgObject(NULL);
+			if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 		}
 		break;
 	default:
@@ -2770,14 +2764,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_TAKE_CONT)) return;
 				if(cl->EventUseSkill(SKILL_TAKE_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
-					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_CONT);
-					Script::SetArgObject(NULL);
-					Script::SetArgObject(item);
-					Script::SetArgObject(NULL);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+					ServerScript.SetArgObject(cl);
+					ServerScript.SetArgDword(SKILL_TAKE_CONT);
+					ServerScript.SetArgObject(NULL);
+					ServerScript.SetArgObject(item);
+					ServerScript.SetArgObject(NULL);
+					if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 				}
 
 				// Transfer
@@ -2823,14 +2817,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(cont->EventSkill(cl,SKILL_TAKE_ALL_CONT)) return;
 				if(cl->EventUseSkill(SKILL_TAKE_ALL_CONT,NULL,cont,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
-					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_ALL_CONT);
-					Script::SetArgObject(NULL);
-					Script::SetArgObject(cont);
-					Script::SetArgObject(NULL);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+					ServerScript.SetArgObject(cl);
+					ServerScript.SetArgDword(SKILL_TAKE_ALL_CONT);
+					ServerScript.SetArgObject(NULL);
+					ServerScript.SetArgObject(cont);
+					ServerScript.SetArgObject(NULL);
+					if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 				}
 
 				// Transfer
@@ -2886,14 +2880,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_PUT_CONT)) return;
 				if(cl->EventUseSkill(SKILL_PUT_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
-					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_PUT_CONT);
-					Script::SetArgObject(NULL);
-					Script::SetArgObject(item);
-					Script::SetArgObject(NULL);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+					ServerScript.SetArgObject(cl);
+					ServerScript.SetArgDword(SKILL_PUT_CONT);
+					ServerScript.SetArgObject(NULL);
+					ServerScript.SetArgObject(item);
+					ServerScript.SetArgObject(NULL);
+					if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 				}
 
 				// Transfer
@@ -3043,14 +3037,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_TAKE_CONT)) return;
 				if(cl->EventUseSkill(SKILL_TAKE_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
-					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_CONT);
-					Script::SetArgObject(NULL);
-					Script::SetArgObject(item);
-					Script::SetArgObject(NULL);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+					ServerScript.SetArgObject(cl);
+					ServerScript.SetArgDword(SKILL_TAKE_CONT);
+					ServerScript.SetArgObject(NULL);
+					ServerScript.SetArgObject(item);
+					ServerScript.SetArgObject(NULL);
+					if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 				}
 
 				// Transfer
@@ -3097,14 +3091,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Script events
 				if(cl->EventUseSkill(SKILL_TAKE_ALL_CONT,cr,NULL,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
-					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_ALL_CONT);
-					Script::SetArgObject(cr);
-					Script::SetArgObject(NULL);
-					Script::SetArgObject(NULL);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+					ServerScript.SetArgObject(cl);
+					ServerScript.SetArgDword(SKILL_TAKE_ALL_CONT);
+					ServerScript.SetArgObject(cr);
+					ServerScript.SetArgObject(NULL);
+					ServerScript.SetArgObject(NULL);
+					if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 				}
 
 				// Transfer
@@ -3175,14 +3169,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_PUT_CONT)) return;
 				if(cl->EventUseSkill(SKILL_PUT_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(ServerScript.PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
-					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_PUT_CONT);
-					Script::SetArgObject(NULL);
-					Script::SetArgObject(item);
-					Script::SetArgObject(NULL);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) return;
+					ServerScript.SetArgObject(cl);
+					ServerScript.SetArgDword(SKILL_PUT_CONT);
+					ServerScript.SetArgObject(NULL);
+					ServerScript.SetArgObject(item);
+					ServerScript.SetArgObject(NULL);
+					if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) return;
 				}
 
 				// Transfer
@@ -3367,24 +3361,24 @@ void FOServer::Process_LevelUp(Client* cl)
 	for(int i=0;i<count_skill_up;i++)
 	{
 		if(skills[i*2]>=SKILL_BEGIN && skills[i*2]<=SKILL_END && skills[i*2+1] && cl->GetParam(ST_UNSPENT_SKILL_POINTS)>0
-		&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
+		&& ServerScript.PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
 		{
-			Script::SetArgObject(cl);
-			Script::SetArgDword(SKILL_OFFSET(skills[i*2]));
-			Script::SetArgDword(skills[i*2+1]);
-			Script::SetArgDword(-1);
-			Script::RunPrepared();
+			ServerScript.SetArgObject(cl);
+			ServerScript.SetArgDword(SKILL_OFFSET(skills[i*2]));
+			ServerScript.SetArgDword(skills[i*2+1]);
+			ServerScript.SetArgDword(-1);
+			ServerScript.RunPrepared();
 		}
 	}
 
 	if(perk_up>=PERK_BEGIN && perk_up<=PERK_END && cl->GetParam(ST_UNSPENT_PERKS)>0
-	&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
+	&& ServerScript.PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		Script::SetArgObject(cl);
-		Script::SetArgDword(-1);
-		Script::SetArgDword(0);
-		Script::SetArgDword(PERK_OFFSET(perk_up));
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgDword(-1);
+		ServerScript.SetArgDword(0);
+		ServerScript.SetArgDword(PERK_OFFSET(perk_up));
+		ServerScript.RunPrepared();
 	}
 
 	cl->Send_Param(ST_UNSPENT_SKILL_POINTS);
@@ -3456,7 +3450,7 @@ void FOServer::Process_Ping(Client* cl)
 	}
 	else if(ping==PING_UID_FAIL)
 	{
-#if !defined(SERVER_LITE) && !defined(DEV_VESRION)
+#ifndef DEV_VESRION
 		ClientData* data=GetClientData(cl->GetId());
 		if(data)
 		{
@@ -3712,12 +3706,12 @@ void FOServer::Process_ScreenAnswer(Client* cl)
 	int bind_id=cl->ScreenCallbackBindId;
 	cl->ScreenCallbackBindId=0;
 
-	if(!Script::PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo())) return;
-	Script::SetArgObject(cl);
-	Script::SetArgDword(answer_i);
+	if(!ServerScript.PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo())) return;
+	ServerScript.SetArgObject(cl);
+	ServerScript.SetArgDword(answer_i);
 	CScriptString* lexems=new CScriptString(answer_s);
-	Script::SetArgObject(lexems);
-	Script::RunPrepared();
+	ServerScript.SetArgObject(lexems);
+	ServerScript.RunPrepared();
 	lexems->Release();
 }
 
@@ -3787,7 +3781,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 
 	char module_name[MAX_SCRIPT_NAME+1]={0};
 	char func_name[MAX_SCRIPT_NAME+1]={0};
-	Script::ReparseScriptName(script_name,module_name,func_name);
+	ServerScript.ReparseScriptName(script_name,module_name,func_name);
 
 	if(unsafe && (strlen(func_name)<=7 || strncmp(func_name,"unsafe_",7))) // Check unsafe_ prefix
 	{
@@ -3810,7 +3804,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 	cl->Bin >> p4size;
 	if(p4size)
 	{
-		p4=Script::CreateArray("int[]");
+		p4=ServerScript.CreateArray("int[]");
 		if(p4)
 		{
 			p4->Resize(p4size);
@@ -3820,16 +3814,16 @@ void FOServer::Process_RunServerScript(Client* cl)
 
 	CHECK_IN_BUFF_ERROR(cl);
 
-	int bind_id=Script::Bind(module_name,func_name,"void %s(Critter&,int,int,int,string@,int[]@)",true);
-	if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo()))
+	int bind_id=ServerScript.Bind(module_name,func_name,"void %s(Critter&,int,int,int,string@,int[]@)",true);
+	if(bind_id>0 && ServerScript.PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		Script::SetArgObject(cl);
-		Script::SetArgDword(p0);
-		Script::SetArgDword(p1);
-		Script::SetArgDword(p2);
-		Script::SetArgObject(p3);
-		Script::SetArgObject(p4);
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgDword(p0);
+		ServerScript.SetArgDword(p1);
+		ServerScript.SetArgDword(p2);
+		ServerScript.SetArgObject(p3);
+		ServerScript.SetArgObject(p4);
+		ServerScript.RunPrepared();
 	}
 
 	if(p3) p3->Release();
@@ -3855,12 +3849,12 @@ void FOServer::Process_KarmaVoting(Client* cl)
 		return;
 	}
 
-	if(Script::PrepareContext(ServerFunctions.KarmaVoting,CALL_FUNC_STR,cl->GetInfo()))
+	if(ServerScript.PrepareContext(ServerFunctions.KarmaVoting,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		Script::SetArgObject(cl);
-		Script::SetArgObject(cr);
-		Script::SetArgBool(is_up);
-		Script::RunPrepared();
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgObject(cr);
+		ServerScript.SetArgBool(is_up);
+		ServerScript.RunPrepared();
 	}
 }
 

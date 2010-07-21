@@ -182,10 +182,10 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 	struct SScriptFunc
 	{
-#define SCRIPT_ERROR(error) do{SScriptFunc::ScriptLastError=error; Script::LogError(__FUNCTION__", "error);}while(0)
-#define SCRIPT_ERROR_RX(error,x) do{SScriptFunc::ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return x;}while(0)
-#define SCRIPT_ERROR_R(error) do{SScriptFunc::ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return;}while(0)
-#define SCRIPT_ERROR_R0(error) do{SScriptFunc::ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return 0;}while(0)
+#define SCRIPT_ERROR(error) do{SScriptFunc::ScriptLastError=error; ServerScript.LogError(__FUNCTION__", "error);}while(0)
+#define SCRIPT_ERROR_RX(error,x) do{SScriptFunc::ScriptLastError=error; ServerScript.LogError(__FUNCTION__", "error); return x;}while(0)
+#define SCRIPT_ERROR_R(error) do{SScriptFunc::ScriptLastError=error; ServerScript.LogError(__FUNCTION__", "error); return;}while(0)
+#define SCRIPT_ERROR_R0(error) do{SScriptFunc::ScriptLastError=error; ServerScript.LogError(__FUNCTION__", "error); return 0;}while(0)
 		static string ScriptLastError;
 		static CScriptString* Global_GetLastError();
 

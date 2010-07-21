@@ -136,7 +136,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	SetDlgItemText(hDlg,IDC_SCRIPT_DEBUG,"Script debug info");
 	SetDlgItemText(hDlg,IDC_STOP,"Start server");
 
-	Script::SetLogDebugInfo(true);
+	ServerScript.SetLogDebugInfo(true);
 	LogWithTime(cfg.GetInt("LoggingTime",1)==0?false:true);
 
 	SendMessage(GetDlgItem(hDlg,IDC_AUTOUPDATE),BM_SETCHECK,BST_UNCHECKED,0);
@@ -452,7 +452,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			LogWithTime(SendMessage(GetDlgItem(hDlg,IDC_LOGGING_TIME),BM_GETCHECK,0,0)==BST_CHECKED?true:false);
 			break;
 		case IDC_SCRIPT_DEBUG:
-			Script::SetLogDebugInfo(SendMessage((HWND)lParam,BM_GETCHECK,0,0)==BST_CHECKED);
+			ServerScript.SetLogDebugInfo(SendMessage((HWND)lParam,BM_GETCHECK,0,0)==BST_CHECKED);
 			break;
 		case IDC_SAVE_WORLD:
 			if(Serv.IsInit()) Serv.SaveWorldNextTick=Timer::FastTick();

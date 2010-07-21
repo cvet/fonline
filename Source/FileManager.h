@@ -7,37 +7,39 @@
 
 // Client and mapper paths
 #define PT_ROOT                (0)
-#define PT_ART                 (1)
-#define PT_ART_CRITTERS        (2)
-#define PT_ART_INTRFACE        (3)
-#define PT_ART_INVEN           (4)
-#define PT_ART_ITEMS           (5)
-#define PT_ART_MISC            (6)
-#define PT_ART_SCENERY         (7)
-#define PT_ART_SKILLDEX        (8)
-#define PT_ART_SPLASH          (9)
-#define PT_ART_TILES           (10)
-#define PT_ART_WALLS           (11)
-#define PT_TEXTURES            (12)
-#define PT_EFFECTS             (13)
-#define PT_MAPS                (14)
-#define PT_TERRAIN             (15)
-#define PT_SND_MUSIC           (16)
-#define PT_SND_SFX             (17)
-#define PT_SCRIPTS             (18)
-#define PT_VIDEO               (19)
-#define PT_TEXTS               (20)
+#define PT_DATA                (1)
+#define PT_ART                 (2)
+#define PT_ART_CRITTERS        (3)
+#define PT_ART_INTRFACE        (4)
+#define PT_ART_INVEN           (5)
+#define PT_ART_ITEMS           (6)
+#define PT_ART_MISC            (7)
+#define PT_ART_SCENERY         (8)
+#define PT_ART_SKILLDEX        (9)
+#define PT_ART_SPLASH          (10)
+#define PT_ART_TILES           (11)
+#define PT_ART_WALLS           (12)
+#define PT_TEXTURES            (13)
+#define PT_EFFECTS             (14)
+#define PT_MAPS                (15)
+#define PT_TERRAIN             (16)
+#define PT_SND_MUSIC           (17)
+#define PT_SND_SFX             (18)
+#define PT_SCRIPTS             (19)
+#define PT_VIDEO               (20)
+#define PT_TEXTS               (21)
 
 // Server paths
 #define PT_SERVER_ROOT         (30)
 #define PT_SERVER_DATA         (31)
-#define PT_SERVER_TEXTS        (32)
-#define PT_SERVER_DIALOGS      (33)
-#define PT_SERVER_MAPS         (34)
-#define PT_SERVER_PRO_ITEMS    (35)
-#define PT_SERVER_PRO_CRITTERS (36)
-#define PT_SERVER_SCRIPTS      (37)
-#define PT_SERVER_BANS         (38)
+#define PT_SERVER_DATA_DATA    (32)
+#define PT_SERVER_TEXTS        (33)
+#define PT_SERVER_DIALOGS      (34)
+#define PT_SERVER_MAPS         (35)
+#define PT_SERVER_PRO_ITEMS    (36)
+#define PT_SERVER_PRO_CRITTERS (37)
+#define PT_SERVER_SCRIPTS      (38)
+#define PT_SERVER_BANS         (39)
 
 extern char PathLst[][50];
 #define PATH_LIST_COUNT     (50)
@@ -89,7 +91,7 @@ public:
 	static const char* GetFullPath(const char* fname, int path_type);
 	static void GetFullPath(const char* fname, int path_type, char* get_path);
 	static const char* GetPath(int path_type);
-	static const char* GetDataPath(int path_type){return path_type<PT_SERVER_ROOT?dataPath:dataPathServer;}
+	static const char* GetDataPath(int path_type);
 	static void FormatPath(char* path);
 	static void ExtractPath(const char* fname, char* path);
 	static const char* GetExtension(const char* fname);

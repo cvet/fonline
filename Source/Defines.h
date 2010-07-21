@@ -446,7 +446,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define DIALOG_BARTER_MIN_TIME  (30000)
 #define DIALOG_TALK_MIN_TIME    (30000)
 #define DIALOGS_LST_NAME		"dialogs.lst"
-#define DIALOGS_PATH			".\\dialogs\\"
 #define MAX_SCRIPT_NAME			(64)
 #define SCRIPTS_LST             "scripts.cfg"
 #define MAX_START_SPECIAL		(40)

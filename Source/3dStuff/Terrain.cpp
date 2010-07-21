@@ -93,8 +93,8 @@ void* Terrain::FileOpen(const char* fname, int folder)
 	FileManager* fm=new(nothrow) FileManager();
 	if(!fm) return NULL;
 
-	int path_type=PT_ROOT;
-	if(folder==FOLDER_TERRAIN) path_type=PT_ROOT; // PT_TERRAIN
+	int path_type=PT_DATA;
+	if(folder==FOLDER_TERRAIN) path_type=PT_DATA; // PT_TERRAIN
 	else if(folder==FOLDER_EFFECT) path_type=PT_EFFECTS;
 	else if(folder==FOLDER_TEXTURE) path_type=PT_TEXTURES;
 
@@ -141,7 +141,7 @@ __int64 Terrain::FileGetTimeWrite(void* file)
 
 bool Terrain::SaveData(const char* fname, int folder, void* buffer, size_t size)
 {
-	int path_type=PT_ROOT;
+	int path_type=PT_DATA;
 	if(folder==FOLDER_TERRAIN) path_type=PT_TERRAIN;
 	else if(folder==FOLDER_EFFECT) path_type=PT_EFFECTS;
 	else if(folder==FOLDER_TEXTURE) path_type=PT_TEXTURES;

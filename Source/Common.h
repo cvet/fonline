@@ -110,8 +110,13 @@ bool CheckUserPass(const char* str);
 #ifdef FONLINE_CLIENT
 	#include "ResourceClient.h"
 	#define WINDOW_CLASS_NAME   "FOnline"
-	#define WINDOW_NAME         "Fallout Online"
 	#define CFG_DEF_INT_FILE    "default800x600.ini"
+
+	#ifndef FONLINE_SINGLE
+		#define WINDOW_NAME     "FOnline"
+	#else
+		#define WINDOW_NAME     "FOnline Single Player"
+	#endif
 #else
 	#include "ResourceMapper.h"
 	#define WINDOW_CLASS_NAME   "FOnline Mapper"
@@ -193,6 +198,7 @@ extern string OptMasterPath;
 extern string OptCritterPath;
 extern string OptFoPatchPath;
 extern string OptFoDataPath;
+extern string OptFoDataPathServer;
 extern string OptHost;
 extern DWORD OptPort;
 extern DWORD OptProxyType;

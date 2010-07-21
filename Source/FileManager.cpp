@@ -6,6 +6,7 @@
 char PathLst[][50]=
 {
 	// Client and mapper paths
+	".\\",
 	"",
 	"art\\",
 	"art\\critters\\",
@@ -35,9 +36,9 @@ char PathLst[][50]=
 	"",
 	"",
 	"",
-	"",
 
 	// Server paths
+	".\\",
 	"",
 	"data\\",
 	"text\\",
@@ -607,6 +608,12 @@ const char* FileManager::GetPath(int path_type)
 {
 	static const char any[]="error";
 	return (DWORD)path_type>=PATH_LIST_COUNT?any:PathLst[path_type];
+}
+
+const char* FileManager::GetDataPath(int path_type)
+{
+	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return PathLst[PT_ROOT];
+	return path_type<PT_SERVER_ROOT?dataPath:dataPathServer;
 }
 
 void FileManager::FormatPath(char* path)

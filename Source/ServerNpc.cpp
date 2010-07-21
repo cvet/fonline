@@ -317,10 +317,10 @@ void FOServer::ProcessAI(Npc* npc)
 			}
 			else if(bind_id>0)
 			{
-				if(Script::PrepareContext(bind_id,CALL_FUNC_STR,npc->GetInfo()))
+				if(ServerScript.PrepareContext(bind_id,CALL_FUNC_STR,npc->GetInfo()))
 				{
-					Script::SetArgObject(npc);
-					Script::RunPrepared();
+					ServerScript.SetArgObject(npc);
+					ServerScript.RunPrepared();
 				}
 				plane->Misc.ScriptBindId=0;
 			}
@@ -1349,14 +1349,14 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 
 	// Get lexems
 	cl->Talk.Lexems.clear();
-	if(cl->Talk.CurDialog.DlgScript>NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext(cl->Talk.CurDialog.DlgScript,CALL_FUNC_STR,cl->GetInfo()))
+	if(cl->Talk.CurDialog.DlgScript>NOT_ANSWER_BEGIN_BATTLE && ServerScript.PrepareContext(cl->Talk.CurDialog.DlgScript,CALL_FUNC_STR,cl->GetInfo()))
 	{
 		CScriptString* lexems=new CScriptString;
-		Script::SetArgObject(cl);
-		Script::SetArgObject(npc);
-		Script::SetArgObject(lexems);
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgObject(npc);
+		ServerScript.SetArgObject(lexems);
 		cl->Talk.Locked=true;
-		if(Script::RunPrepared() && lexems->length()<=MAX_DLG_LEXEMS_TEXT) cl->Talk.Lexems=lexems->c_str();
+		if(ServerScript.RunPrepared() && lexems->length()<=MAX_DLG_LEXEMS_TEXT) cl->Talk.Lexems=lexems->c_str();
 		else cl->Talk.Lexems="";
 		cl->Talk.Locked=false;
 		lexems->Release();
@@ -1480,13 +1480,13 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 			// cl->Send_Text(cl,Str::Format("You say<%s>.",str),SAY_NETMSG);
 			if(cur_dialog->DlgScript<=NOT_ANSWER_BEGIN_BATTLE) return;
 			CScriptString* str_=new CScriptString(str);
-			if(!Script::PrepareContext(cur_dialog->DlgScript,CALL_FUNC_STR,cl->GetInfo())) return;
-			Script::SetArgObject(cl);
-			Script::SetArgObject(npc);
-			Script::SetArgObject(str_);
+			if(!ServerScript.PrepareContext(cur_dialog->DlgScript,CALL_FUNC_STR,cl->GetInfo())) return;
+			ServerScript.SetArgObject(cl);
+			ServerScript.SetArgObject(npc);
+			ServerScript.SetArgObject(str_);
 			GameOpt.ForceDialog=0;
 			cl->Talk.Locked=true;
-			Script::RunPrepared();
+			ServerScript.RunPrepared();
 			cl->Talk.Locked=false;
 			str_->Release();
 			if(GameOpt.ForceDialog)
@@ -1622,14 +1622,14 @@ label_Barter:
 
 	// Get lexems
 	cl->Talk.Lexems.clear();
-	if(cl->Talk.CurDialog.DlgScript>NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext(cl->Talk.CurDialog.DlgScript,CALL_FUNC_STR,cl->GetInfo()))
+	if(cl->Talk.CurDialog.DlgScript>NOT_ANSWER_BEGIN_BATTLE && ServerScript.PrepareContext(cl->Talk.CurDialog.DlgScript,CALL_FUNC_STR,cl->GetInfo()))
 	{
 		CScriptString* lexems=new CScriptString;
-		Script::SetArgObject(cl);
-		Script::SetArgObject(npc);
-		Script::SetArgObject(lexems);
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgObject(npc);
+		ServerScript.SetArgObject(lexems);
 		cl->Talk.Locked=true;
-		if(Script::RunPrepared() && lexems->length()<=MAX_DLG_LEXEMS_TEXT) cl->Talk.Lexems=lexems->c_str();
+		if(ServerScript.RunPrepared() && lexems->length()<=MAX_DLG_LEXEMS_TEXT) cl->Talk.Lexems=lexems->c_str();
 		else cl->Talk.Lexems="";
 		cl->Talk.Locked=false;
 		lexems->Release();
@@ -1813,13 +1813,13 @@ void FOServer::Process_Barter(Client* cl)
 		DWORD base_cost=item->GetCost1st();
 		if(GameOpt.CustomItemCost)
 		{
-			if(Script::PrepareContext(ServerFunctions.ItemCost,CALL_FUNC_STR,cl->GetInfo()))
+			if(ServerScript.PrepareContext(ServerFunctions.ItemCost,CALL_FUNC_STR,cl->GetInfo()))
 			{
-				Script::SetArgObject(item);
-				Script::SetArgObject(cl);
-				Script::SetArgObject(npc);
-				Script::SetArgBool(true);
-				if(Script::RunPrepared()) base_cost=Script::GetReturnedDword();
+				ServerScript.SetArgObject(item);
+				ServerScript.SetArgObject(cl);
+				ServerScript.SetArgObject(npc);
+				ServerScript.SetArgBool(true);
+				if(ServerScript.RunPrepared()) base_cost=ServerScript.GetReturnedDword();
 			}
 		}
 		else
@@ -1861,13 +1861,13 @@ void FOServer::Process_Barter(Client* cl)
 		DWORD base_cost=item->GetCost1st();
 		if(GameOpt.CustomItemCost)
 		{
-			if(Script::PrepareContext(ServerFunctions.ItemCost,CALL_FUNC_STR,cl->GetInfo()))
+			if(ServerScript.PrepareContext(ServerFunctions.ItemCost,CALL_FUNC_STR,cl->GetInfo()))
 			{
-				Script::SetArgObject(item);
-				Script::SetArgObject(cl);
-				Script::SetArgObject(npc);
-				Script::SetArgBool(false);
-				if(Script::RunPrepared()) base_cost=Script::GetReturnedDword();
+				ServerScript.SetArgObject(item);
+				ServerScript.SetArgObject(cl);
+				ServerScript.SetArgObject(npc);
+				ServerScript.SetArgBool(false);
+				if(ServerScript.RunPrepared()) base_cost=ServerScript.GetReturnedDword();
 			}
 		}
 		else
@@ -1909,24 +1909,24 @@ void FOServer::Process_Barter(Client* cl)
 
 	// Barter script
 	bool result=false;
-	if(Script::PrepareContext(ServerFunctions.ItemsBarter,CALL_FUNC_STR,cl->GetInfo()))
+	if(ServerScript.PrepareContext(ServerFunctions.ItemsBarter,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		asIScriptArray* sale_items_=Script::CreateArray("Item@[]");
-		asIScriptArray* sale_items_count_=Script::CreateArray("uint[]");
-		asIScriptArray* buy_items_=Script::CreateArray("Item@[]");
-		asIScriptArray* buy_items_count_=Script::CreateArray("uint[]");
-		Script::AppendVectorToArrayRef(sale_items,sale_items_);
-		Script::AppendVectorToArray(sale_item_count,sale_items_count_);
-		Script::AppendVectorToArrayRef(buy_items,buy_items_);
-		Script::AppendVectorToArray(buy_item_count,buy_items_count_);
+		asIScriptArray* sale_items_=ServerScript.CreateArray("Item@[]");
+		asIScriptArray* sale_items_count_=ServerScript.CreateArray("uint[]");
+		asIScriptArray* buy_items_=ServerScript.CreateArray("Item@[]");
+		asIScriptArray* buy_items_count_=ServerScript.CreateArray("uint[]");
+		ServerScript.AppendVectorToArrayRef(sale_items,sale_items_);
+		ServerScript.AppendVectorToArray(sale_item_count,sale_items_count_);
+		ServerScript.AppendVectorToArrayRef(buy_items,buy_items_);
+		ServerScript.AppendVectorToArray(buy_item_count,buy_items_count_);
 
-		Script::SetArgObject(sale_items_);
-		Script::SetArgObject(sale_items_count_);
-		Script::SetArgObject(buy_items_);
-		Script::SetArgObject(buy_items_count_);
-		Script::SetArgObject(cl);
-		Script::SetArgObject(npc);
-		if(Script::RunPrepared()) result=Script::GetReturnedBool();
+		ServerScript.SetArgObject(sale_items_);
+		ServerScript.SetArgObject(sale_items_count_);
+		ServerScript.SetArgObject(buy_items_);
+		ServerScript.SetArgObject(buy_items_count_);
+		ServerScript.SetArgObject(cl);
+		ServerScript.SetArgObject(npc);
+		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
 
 		sale_items_->Release();
 		sale_items_count_->Release();

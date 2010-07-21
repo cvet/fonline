@@ -1067,6 +1067,7 @@
 	if(engine->RegisterGlobalProperty("string __CritterPath",&OptCritterPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __FoPatchPath",&OptFoPatchPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __FoDataPath",&OptFoDataPath)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("string __FoDataPathServer",&OptFoDataPathServer)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __Host",&OptHost)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __Port",&OptPort)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __ProxyType",&OptProxyType)) BIND_ERROR;

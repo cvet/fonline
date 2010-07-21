@@ -173,7 +173,7 @@ public:
 	StrDWordMap DlgPacksNames;
 	string LastErrors;
 
-	bool LoadDialogs(const char* path, const char* list_name);
+	bool LoadDialogs(const char* list_name);
 	void SaveList(const char* path, const char* list_name);
 	void Finish();
 

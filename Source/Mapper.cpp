@@ -47,7 +47,8 @@ bool FOMapper::Init(HWND wnd)
 	OptScreenClear=true;
 
 	// File manager
-	FileManager::SetDataPath(OptFoDataPath.c_str());
+	FileManager::SetDataPath(OptFoDataPath.c_str(),false);
+	FileManager::SetDataPath(OptFoDataPathServer.c_str(),true);
 	if(!FileManager::LoadDat(OptMasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online Mapper",MB_OK);
@@ -65,7 +66,7 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Cache
-	const char* cache_str=Str::Format("%s%s.cache",FileMngr.GetDataPath(),OptMapperCache.c_str());
+	const char* cache_str=Str::Format("%s%s.cache",FileMngr.GetDataPath(PT_DATA),OptMapperCache.c_str());
 	if(!Crypt.SetCacheTable(cache_str))
 	{
 		WriteLog(__FUNCTION__" - Can't set cache<%s>.\n",cache_str);
@@ -104,9 +105,7 @@ bool FOMapper::Init(HWND wnd)
 	CritterCl::SprMngr=&SprMngr;
 
 	// Names
-//	char fonames_path[512];
-//	GetPrivateProfileString(CFG_FILE_APP_NAME,"FONamesPath",".\\data\\",fonames_path,sizeof(fonames_path),CLIENT_CONFIG_FILE);
-	FONames::GenerateFoNames(PT_CLIENT_DATA);
+	FONames::GenerateFoNames(PT_DATA);
 
 	// Input
 	if(!InitDI()) return false;
@@ -124,11 +123,12 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Language Packs
-	char lang_name[5];
-	GetPrivateProfileString(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name,5,CLIENT_CONFIG_FILE);
-	if(strlen(lang_name)<4) StringCopy(lang_name,DEFAULT_LANGUAGE);
-
-	if(!CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(),FileMngr.GetPath(PT_TXT_GAME)),*(DWORD*)&lang_name)) return false;
+	char lang_name[MAX_FOTEXT];
+	IniParser cfg;
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	cfg.GetStr(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name);
+	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
+	if(!CurLang.Init(lang_name)) return false;
 
 	MsgText=&CurLang.Msg[TEXTMSG_TEXT];
 	MsgDlg=&CurLang.Msg[TEXTMSG_DLG];
@@ -265,16 +265,13 @@ int FOMapper::InitIface()
 	char key[256];
 	int i;
 
-	GetPrivateProfileString(CFG_FILE_APP_NAME,"Iface_mapper",CFG_DEF_INT_FILE,int_file,256,CLIENT_CONFIG_FILE);
-	if(!FileMngr.LoadFile(int_file,PT_ART_INTRFACE))
-	{
-		WriteLog("File <%d> not found.\n");
-		return __LINE__;
-	}
+	IniParser cfg;
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	cfg.GetStr(CFG_FILE_APP_NAME,"Iface_mapper",CFG_DEF_INT_FILE,int_file);
 
-	if(!ini.LoadFile(FileMngr.GetBuf(),FileMngr.GetFsize()))
+	if(!ini.LoadFile(int_file,PT_ART_INTRFACE))
 	{
-		WriteLog("File load from memory error.\n");
+		WriteLog("File<%s> not found.\n",int_file);
 		return __LINE__;
 	}
 
@@ -720,7 +717,7 @@ void FOMapper::ParseKeyboard()
 		Keyb::CtrlDwn=false;
 		Keyb::AltDwn=false;
 		Keyb::ShiftDwn=false;
-		if(MapperFunctions.InputLost && Script::PrepareContext(MapperFunctions.InputLost,__FUNCTION__,"Mapper")) Script::RunPrepared();
+		if(MapperFunctions.InputLost && MapperScript.PrepareContext(MapperFunctions.InputLost,__FUNCTION__,"Mapper")) MapperScript.RunPrepared();
 		return;
 	}
 
@@ -730,15 +727,15 @@ void FOMapper::ParseKeyboard()
 		BYTE dikup=(!(didod[i].dwData&0x80)?didod[i].dwOfs:0);
 
 		bool script_result=false;
-		if(dikdw && MapperFunctions.KeyDown && Script::PrepareContext(MapperFunctions.KeyDown,__FUNCTION__,"Mapper"))
+		if(dikdw && MapperFunctions.KeyDown && MapperScript.PrepareContext(MapperFunctions.KeyDown,__FUNCTION__,"Mapper"))
 		{
-			Script::SetArgByte(dikdw);
-			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+			MapperScript.SetArgByte(dikdw);
+			if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 		}
-		if(dikup && MapperFunctions.KeyUp && Script::PrepareContext(MapperFunctions.KeyUp,__FUNCTION__,"Mapper"))
+		if(dikup && MapperFunctions.KeyUp && MapperScript.PrepareContext(MapperFunctions.KeyUp,__FUNCTION__,"Mapper"))
 		{
-			Script::SetArgByte(dikup);
-			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+			MapperScript.SetArgByte(dikup);
+			if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 		}
 
 		if(dikdw==DIK_RCONTROL || dikdw==DIK_LCONTROL)
@@ -895,7 +892,7 @@ void FOMapper::ParseMouse()
 	if(Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0)!=DI_OK)
 	{
 		Mouse->Acquire();
-		if(MapperFunctions.InputLost && Script::PrepareContext(MapperFunctions.InputLost,__FUNCTION__,"Mapper")) Script::RunPrepared();
+		if(MapperFunctions.InputLost && MapperScript.PrepareContext(MapperFunctions.InputLost,__FUNCTION__,"Mapper")) MapperScript.RunPrepared();
 		return;
 	}
 
@@ -912,11 +909,11 @@ void FOMapper::ParseMouse()
 
 			IntMouseMove();
 
-			if(MapperFunctions.MouseMove && Script::PrepareContext(MapperFunctions.MouseMove,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseMove && MapperScript.PrepareContext(MapperFunctions.MouseMove,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(CurX);
-				Script::SetArgDword(CurY);
-				Script::RunPrepared();
+				MapperScript.SetArgDword(CurX);
+				MapperScript.SetArgDword(CurY);
+				MapperScript.RunPrepared();
 			}
 		}
 	}
@@ -935,122 +932,122 @@ void FOMapper::ParseMouse()
 		// Scripts
 		bool script_result=false;
 		DI_ONMOUSE( DIMOFS_Z,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON0,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_LEFT);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_LEFT);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON0,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_LEFT);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_LEFT);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON1,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_RIGHT);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_RIGHT);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON1,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_RIGHT);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_RIGHT);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON2,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_MIDDLE);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON2,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_MIDDLE);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON3,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT0);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT0);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON3,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT0);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT0);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON4,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT1);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT1);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON4,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT1);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT1);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON5,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT2);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT2);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON5,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT2);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT2);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON6,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT3);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT3);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON6,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT3);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT3);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON7,
-			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseDown && MapperScript.PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT4);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT4);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON7,
-			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
+			if(MapperFunctions.MouseUp && MapperScript.PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT4);
-				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
+				MapperScript.SetArgDword(MOUSE_CLICK_EXT4);
+				if(MapperScript.RunPrepared()) script_result=MapperScript.GetReturnedBool();
 			}
 		);
 		if(script_result || OptDisableMouseEvents) continue;
@@ -1151,11 +1148,11 @@ void FOMapper::ParseMouse()
 
 		IntMouseMove();
 
-		if(MapperFunctions.MouseMove && Script::PrepareContext(MapperFunctions.MouseMove,__FUNCTION__,"Mapper"))
+		if(MapperFunctions.MouseMove && MapperScript.PrepareContext(MapperFunctions.MouseMove,__FUNCTION__,"Mapper"))
 		{
-			Script::SetArgDword(CurX);
-			Script::SetArgDword(CurY);
-			Script::RunPrepared();
+			MapperScript.SetArgDword(CurX);
+			MapperScript.SetArgDword(CurY);
+			MapperScript.RunPrepared();
 		}
 	}
 
@@ -1202,7 +1199,7 @@ void FOMapper::MainLoop()
 	if(MapperFunctions.Loop && Timer::FastTick()>=next_call)
 	{
 		DWORD wait_tick=60000;
-		if(Script::PrepareContext(MapperFunctions.Loop,__FUNCTION__,"Mapper") && Script::RunPrepared()) wait_tick=Script::GetReturnedDword();
+		if(MapperScript.PrepareContext(MapperFunctions.Loop,__FUNCTION__,"Mapper") && MapperScript.RunPrepared()) wait_tick=MapperScript.GetReturnedDword();
 		next_call=Timer::FastTick()+wait_tick;
 	}
 
@@ -3555,11 +3552,11 @@ void FOMapper::ConsoleKeyDown(BYTE dik)
 				ConsoleHistoryCur=ConsoleHistory.size();
 
 				bool process_command=true;
-				if(MapperFunctions.ConsoleMessage && Script::PrepareContext(MapperFunctions.ConsoleMessage,__FUNCTION__,"Mapper"))
+				if(MapperFunctions.ConsoleMessage && MapperScript.PrepareContext(MapperFunctions.ConsoleMessage,__FUNCTION__,"Mapper"))
 				{
 					CScriptString* sstr=new CScriptString(ConsoleStr);
-					Script::SetArgObject(sstr);
-					if(Script::RunPrepared() && Script::GetReturnedBool()) process_command=false;
+					MapperScript.SetArgObject(sstr);
+					if(MapperScript.RunPrepared() && MapperScript.GetReturnedBool()) process_command=false;
 					StringCopy(ConsoleStr,sstr->c_str());
 					sstr->Release();
 				}
@@ -3708,17 +3705,17 @@ void FOMapper::ParseCommand(const char* cmd)
 		// Reparse module
 		int bind_id;
 		if(strstr(func_name,"@"))
-			bind_id=Script::Bind(func_name,"string %s(string)",true);
+			bind_id=MapperScript.Bind(func_name,"string %s(string)",true);
 		else
-			bind_id=Script::Bind("mapper_main",func_name,"string %s(string)",true);
+			bind_id=MapperScript.Bind("mapper_main",func_name,"string %s(string)",true);
 
-		if(bind_id>0 && Script::PrepareContext(bind_id,__FUNCTION__,"Mapper"))
+		if(bind_id>0 && MapperScript.PrepareContext(bind_id,__FUNCTION__,"Mapper"))
 		{
 			CScriptString* sstr=new CScriptString(str);
-			Script::SetArgObject(sstr);
-			if(Script::RunPrepared())
+			MapperScript.SetArgObject(sstr);
+			if(MapperScript.RunPrepared())
 			{
-				CScriptString* sstr_=(CScriptString*)Script::GetReturnedObject();
+				CScriptString* sstr_=(CScriptString*)MapperScript.GetReturnedObject();
 				AddMessFormat(Str::Format("Result: %s",sstr_->c_str()));
 				sstr_->Release();
 			}
@@ -4074,21 +4071,21 @@ void FOMapper::InitScriptSystem()
 	WriteLog("Script system initialization...\n");
 
 	// Init
-	if(!Script::Init(false,NULL))
+	if(!MapperScript.Init(false,NULL))
 	{
 		WriteLog("Script system initialization fail.\n");
 		return;
 	}
 
 	// Bind vars and functions, look bind.h
-	asIScriptEngine* engine=Script::GetEngine();
+	asIScriptEngine* engine=MapperScript.GetEngine();
 #define BIND_MAPPER
 #define BIND_CLASS FOMapper::SScriptFunc::
 #define BIND_ERROR do{WriteLog(__FUNCTION__" - Bind error, line<%d>.\n",__LINE__);}while(0)
 #include <ScriptBind.h>
 
 	// Load scripts
-	Script::SetScriptsPath(FileManager::GetFullPath("",PT_SCRIPTS));
+	MapperScript.SetScriptsPath(FileManager::GetFullPath("",PT_SCRIPTS));
 
 	// Get config file
 	FileManager scripts_cfg;
@@ -4100,9 +4097,9 @@ void FOMapper::InitScriptSystem()
 	}
 
 	// Load script modules
-	Script::Undefine(NULL);
-	Script::Define("__MAPPER");
-	Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"mapper",GameOpt.SkipScriptBinaries);
+	MapperScript.Undefine(NULL);
+	MapperScript.Define("__MAPPER");
+	MapperScript.ReloadScripts((char*)scripts_cfg.GetBuf(),"mapper",GameOpt.SkipScriptBinaries);
 
 	// Bind game functions
 	ReservedScriptFunction BindGameFunc[]={
@@ -4118,33 +4115,33 @@ void FOMapper::InitScriptSystem()
 		{&MapperFunctions.KeyUp,"key_up","bool %s(uint8)"},
 		{&MapperFunctions.InputLost,"input_lost","void %s()"},
 	};
-	Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"mapper",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]));
+	MapperScript.BindReservedFunctions((char*)scripts_cfg.GetBuf(),"mapper",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]));
 
-	if(MapperFunctions.Start && Script::PrepareContext(MapperFunctions.Start,__FUNCTION__,"Mapper")) Script::RunPrepared();
+	if(MapperFunctions.Start && MapperScript.PrepareContext(MapperFunctions.Start,__FUNCTION__,"Mapper")) MapperScript.RunPrepared();
 	WriteLog("Script system initialization complete.\n");
 }
 
 void FOMapper::FinishScriptSystem()
 {
-	Script::Finish();
+	MapperScript.Finish();
 	ZeroMemory(&MapperFunctions,sizeof(MapperFunctions));
 }
 
 void FOMapper::DrawIfaceLayer(DWORD layer)
 {
-	if(MapperFunctions.RenderIface && Script::PrepareContext(MapperFunctions.RenderIface,__FUNCTION__,"Mapper"))
+	if(MapperFunctions.RenderIface && MapperScript.PrepareContext(MapperFunctions.RenderIface,__FUNCTION__,"Mapper"))
 	{
 		SpritesCanDraw=true;
-		Script::SetArgDword(layer);
-		Script::RunPrepared();
+		MapperScript.SetArgDword(layer);
+		MapperScript.RunPrepared();
 		SpritesCanDraw=false;
 	}
 }
 
-#define SCRIPT_ERROR(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error);}while(0)
-#define SCRIPT_ERROR_RX(error,x) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return x;}while(0)
-#define SCRIPT_ERROR_R(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return;}while(0)
-#define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return 0;}while(0)
+#define SCRIPT_ERROR(error) do{ScriptLastError=error; MapperScript.LogError(__FUNCTION__", "error);}while(0)
+#define SCRIPT_ERROR_RX(error,x) do{ScriptLastError=error; MapperScript.LogError(__FUNCTION__", "error); return x;}while(0)
+#define SCRIPT_ERROR_R(error) do{ScriptLastError=error; MapperScript.LogError(__FUNCTION__", "error); return;}while(0)
+#define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; MapperScript.LogError(__FUNCTION__", "error); return 0;}while(0)
 static string ScriptLastError;
 
 CScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName(MapObject& mobj)
@@ -4251,7 +4248,7 @@ DWORD FOMapper::SScriptFunc::MapperObject_GetChilds(MapObject& mobj, asIScriptAr
 		if(mobj_->MapObjType==MAP_OBJECT_ITEM && mobj_->MapX==mobj.MapX && mobj_->MapY==mobj.MapY && mobj_->MItem.InContainer)
 			objects_.push_back(mobj_);
 	}
-	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
+	if(objects) MapperScript.AppendVectorToArrayRef(objects_,objects);
 	return objects_.size();
 }
 
@@ -4352,7 +4349,7 @@ DWORD FOMapper::SScriptFunc::MapperMap_GetObjects(ProtoMap& pmap, WORD hx, WORD 
 {
 	MapObjectPtrVec objects_;
 	Self->FindMapObjects(pmap,hx,hy,radius,mobj_type,pid,objects_);
-	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
+	if(objects) MapperScript.AppendVectorToArrayRef(objects_,objects);
 	return objects_.size();
 }
 
@@ -4538,7 +4535,7 @@ DWORD FOMapper::SScriptFunc::Global_GetFastPrototypes(asIScriptArray* pids)
 {
 	WordVec pids_;
 	for(size_t i=0,j=Self->FastItemProto.size();i<j;i++) pids_.push_back(Self->FastItemProto[i].GetPid());
-	if(pids) Script::AppendVectorToArray(pids_,pids);
+	if(pids) MapperScript.AppendVectorToArray(pids_,pids);
 	return pids_.size();
 }
 
@@ -4549,7 +4546,7 @@ void FOMapper::SScriptFunc::Global_SetFastPrototypes(asIScriptArray* pids)
 	if(pids)
 	{
 		WordVec pids_;
-		Script::AssignScriptArrayInVector(pids_,pids);
+		MapperScript.AssignScriptArrayInVector(pids_,pids);
 		for(size_t i=0,j=pids_.size();i<j;i++) Self->AddFastProto(pids_[i]);
 	}
 }
@@ -4603,7 +4600,7 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps(asIScriptArray* maps)
 		ProtoMap* pmap=Self->LoadedProtoMaps[i];
 		if(pmap==Self->CurProtoMap) index=i;
 	}
-	if(maps) Script::AppendVectorToArrayRef(Self->LoadedProtoMaps,maps);
+	if(maps) MapperScript.AppendVectorToArrayRef(Self->LoadedProtoMaps,maps);
 	return index;
 }
 
@@ -4685,7 +4682,7 @@ DWORD FOMapper::SScriptFunc::Global_GetSelectedObjects(asIScriptArray* objects)
 	MapObjectPtrVec objects_;
 	objects_.reserve(Self->SelectedObj.size());
 	for(size_t i=0,j=Self->SelectedObj.size();i<j;i++) objects_.push_back(Self->SelectedObj[i].MapObj);
-	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
+	if(objects) MapperScript.AppendVectorToArrayRef(objects_,objects);
 	return objects_.size();
 }
 
@@ -4754,7 +4751,7 @@ CScriptString* FOMapper::SScriptFunc::Global_GetIfaceIniStr(CScriptString& key)
 void FOMapper::SScriptFunc::Global_Log(CScriptString& text)
 {
 	//Self->AddMessFormat(text.buffer.c_str());
-	Script::Log(text.c_str());
+	MapperScript.Log(text.c_str());
 }
 
 bool FOMapper::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
@@ -4927,14 +4924,14 @@ void FOMapper::SScriptFunc::Global_GetMousePosition(int& x, int& y)
 
 DWORD FOMapper::SScriptFunc::Global_GetAngelScriptProperty(int property)
 {
-	asIScriptEngine* engine=Script::GetEngine();
+	asIScriptEngine* engine=MapperScript.GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
 	return engine->GetEngineProperty((asEEngineProp)property);
 }
 
 bool FOMapper::SScriptFunc::Global_SetAngelScriptProperty(int property, DWORD value)
 {
-	asIScriptEngine* engine=Script::GetEngine();
+	asIScriptEngine* engine=MapperScript.GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
 	int result=engine->SetEngineProperty((asEEngineProp)property,value);
 	if(result<0) SCRIPT_ERROR_R0("Invalid data. Property not setted.");

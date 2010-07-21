@@ -355,6 +355,7 @@ string OptMasterPath;
 string OptCritterPath;
 string OptFoPatchPath;
 string OptFoDataPath;
+string OptFoDataPathServer;
 int OptSleep=0;
 bool OptMsgboxInvert=false;
 int OptChangeLang=CHANGE_LANG_CTRL_SHIFT;
@@ -514,6 +515,7 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL(OptMessNotify,"-WinNotify");
 	OptSoundNotify=cfg.GetInt(CFG_FILE_APP_NAME,"SoundNotify",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptSoundNotify,"-SoundNotify");
+#ifndef FONLINE_SINGLE
 	OptPort=cfg.GetInt(CFG_FILE_APP_NAME,"RemotePort",4000);
 	GETOPTIONS_CMD_LINE_INT(OptPort,"-RemotePort");
 	GETOPTIONS_CHECK(OptPort,0,0xFFFF,4000);
@@ -523,6 +525,7 @@ void GetClientOptions()
 	OptProxyPort=cfg.GetInt(CFG_FILE_APP_NAME,"ProxyPort",1080);
 	GETOPTIONS_CMD_LINE_INT(OptProxyPort,"-ProxyPort");
 	GETOPTIONS_CHECK(OptProxyPort,0,0xFFFF,1080);
+#endif
 	OptGlobalSound=cfg.GetInt(CFG_FILE_APP_NAME,"GlobalSound",true)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptGlobalSound,"-GlobalSound");
 	OptDefaultCombatMode=cfg.GetInt(CFG_FILE_APP_NAME,"DefaultCombatMode",COMBAT_MODE_ANY);
@@ -557,12 +560,16 @@ void GetClientOptions()
 	cfg.GetStr(CFG_FILE_APP_NAME,"CritterDatPath","critter.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-CritterDatPath");
 	OptCritterPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"PatchDatPath","fopatch.dat",buf);
+	cfg.GetStr(CFG_FILE_APP_NAME,"PatchDatPath","fonline.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-PatchDatPath");
 	OptFoPatchPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPath",".\\data",buf);
+	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPath",".\\data\\",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPath");
 	OptFoDataPath=buf;
+	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPathServer",".\\data\\",buf);
+	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPathServer");
+	OptFoDataPathServer=buf;
+#ifndef FONLINE_SINGLE
 	cfg.GetStr(CFG_FILE_APP_NAME,"RemoteHost","localhost",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-RemoteHost");
 	OptHost=buf;
@@ -572,6 +579,7 @@ void GetClientOptions()
 	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyUser","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyUser");
 	OptProxyUser=buf;
+#endif
 	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyPass","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyPass");
 	OptProxyPass=buf;
@@ -602,7 +610,7 @@ void GetClientOptions()
 	LoadTrueChars();
 
 #ifdef FONLINE_CLIENT
-	Script::SetGarbageCollectTime(120000);
+	ClientScript.SetGarbageCollectTime(120000);
 #endif
 }
 
@@ -630,7 +638,7 @@ void GetServerOptions()
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	ServerGameSleep=cfg.GetInt("GameSleep",10);
-	Script::SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
+	ServerScript.SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
 	VarsGarbageTime=cfg.GetInt("VarsGarbageTime",3600)*1000;
 	WorldSaveManager=(cfg.GetInt("WorldSaveManager",1)==1);
 	LoadTrueChars();

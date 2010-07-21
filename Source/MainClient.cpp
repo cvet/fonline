@@ -44,19 +44,19 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 #endif
 
 	// Register window
-	WNDCLASS wnd_class;//»спользуетс€ дл€ регистрации класса окна
-	MSG msg;//сообщени€
-	wnd_class.style=CS_HREDRAW|CS_VREDRAW;//определ€ет свойства окна
-	wnd_class.lpfnWndProc=WndProc;//определ€ет адрес функции окна
-	wnd_class.cbClsExtra=0;//число байт, которое необходимо запросить у Windows. ќбычно равна 0
-	wnd_class.cbWndExtra=0;//число байт, которое необходимо запросить у Windows. ќбычно равна 0
-	wnd_class.hInstance=hCurrentInst;//сообщает Windows о том, кто создает определение класса
-	wnd_class.hIcon=LoadIcon(hCurrentInst,MAKEINTRESOURCE(IDI_ICON));//загружает иконку, в данном случае ее нет
-	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);//стандартный курсор
-	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);//фон приложени€
-	wnd_class.lpszMenuName=NULL;//определ€ет меню. ¬ данной ситуации меню отсутствует
-	wnd_class.lpszClassName=WINDOW_CLASS_NAME;//указатель на строку, содержащую им€ класса
-	RegisterClass(&wnd_class);//регистраци€ окна
+	WNDCLASS wnd_class;
+	MSG msg;
+	wnd_class.style=CS_HREDRAW|CS_VREDRAW;
+	wnd_class.lpfnWndProc=WndProc;
+	wnd_class.cbClsExtra=0;
+	wnd_class.cbWndExtra=0;
+	wnd_class.hInstance=hCurrentInst;
+	wnd_class.hIcon=LoadIcon(hCurrentInst,MAKEINTRESOURCE(IDI_ICON));
+	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);
+	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	wnd_class.lpszMenuName=NULL;
+	wnd_class.lpszClassName=WINDOW_CLASS_NAME;
+	RegisterClass(&wnd_class);
 
 	// Timer
 	Timer::Init();
@@ -93,6 +93,14 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	WriteLog("Starting FOnline (version %04X-%02X)...\n\n",CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF);
 #endif
 
+#ifdef FONLINE_SINGLE
+	if(!StartSinglePlayer())
+	{
+		WriteLog("FOnline single-player initialization fail.\n");
+		return 0;
+	}
+#endif
+
 	FOEngine=new FOClient();
 	if(!FOEngine || !FOEngine->Init(hWnd))
 	{
@@ -102,14 +110,6 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 
 #ifdef GAME_THREAD
 	hGameThread=CreateThread(NULL,0,GameLoopThread,NULL,0,&dwGameThreadID);
-#endif
-
-#ifdef FONLINE_SINGLE
-	if(!StartSinglePlayer())
-	{
-		WriteLog("FOnline single-player initialization fail.\n");
-		return 0;
-	}
 #endif
 
 	// Windows messages
