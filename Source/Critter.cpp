@@ -264,20 +264,20 @@ void Critter::ProcessVisibleCritters()
 		if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SCRIPT))
 		{
 			bool allow_self=true;
-			if(ServerScript.PrepareContext(ServerFunctions.CheckLook,CALL_FUNC_STR,GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.CheckLook,CALL_FUNC_STR,GetInfo()))
 			{
-				ServerScript.SetArgObject(map);
-				ServerScript.SetArgObject(this);
-				ServerScript.SetArgObject(cr);
-				if(ServerScript.RunPrepared()) allow_self=ServerScript.GetReturnedBool();
+				Script::SetArgObject(map);
+				Script::SetArgObject(this);
+				Script::SetArgObject(cr);
+				if(Script::RunPrepared()) allow_self=Script::GetReturnedBool();
 			}
 			bool allow_opp=true;
-			if(ServerScript.PrepareContext(ServerFunctions.CheckLook,CALL_FUNC_STR,GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.CheckLook,CALL_FUNC_STR,GetInfo()))
 			{
-				ServerScript.SetArgObject(map);
-				ServerScript.SetArgObject(cr);
-				ServerScript.SetArgObject(this);
-				if(ServerScript.RunPrepared()) allow_opp=ServerScript.GetReturnedBool();
+				Script::SetArgObject(map);
+				Script::SetArgObject(cr);
+				Script::SetArgObject(this);
+				if(Script::RunPrepared()) allow_opp=Script::GetReturnedBool();
 			}
 
 			if(allow_self)
@@ -555,12 +555,12 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 
 		if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SCRIPT))
 		{
-			if(ServerScript.PrepareContext(ServerFunctions.CheckLook,CALL_FUNC_STR,GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.CheckLook,CALL_FUNC_STR,GetInfo()))
 			{
-				ServerScript.SetArgObject(map);
-				ServerScript.SetArgObject(this);
-				ServerScript.SetArgObject(cr);
-				if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) Send_AddCritter(cr);
+				Script::SetArgObject(map);
+				Script::SetArgObject(this);
+				Script::SetArgObject(cr);
+				if(Script::RunPrepared() && Script::GetReturnedBool()) Send_AddCritter(cr);
 			}
 			continue;
 		}
@@ -826,12 +826,12 @@ void Critter::AddItem(Item*& item, bool send)
 	}
 
 	// Change item
-	if(ServerScript.PrepareContext(ServerFunctions.CritterChangeItem,CALL_FUNC_STR,GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterChangeItem,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgByte(SLOT_GROUND);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(item);
+		Script::SetArgByte(SLOT_GROUND);
+		Script::RunPrepared();
 	}
 }
 
@@ -904,12 +904,12 @@ void Critter::EraseItem(Item* item, bool send)
 
 	BYTE from_slot=item->ACC_CRITTER.Slot;
 	item->ACC_CRITTER.Slot=SLOT_GROUND;
-	if(ServerScript.PrepareContext(ServerFunctions.CritterChangeItem,CALL_FUNC_STR,GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterChangeItem,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgByte(from_slot);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(item);
+		Script::SetArgByte(from_slot);
+		Script::RunPrepared();
 	}
 }
 
@@ -1330,7 +1330,7 @@ bool Critter::ParseScript(const char* script, bool first_time)
 {
 	if(script)
 	{
-		DWORD func_num=ServerScript.GetScriptFuncNum(script,"void %s(Critter&,bool)");
+		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Critter&,bool)");
 		if(!func_num)
 		{
 			WriteLog(__FUNCTION__" - Script<%s> bind fail, critter<%s>.\n",script,GetInfo());
@@ -1339,11 +1339,11 @@ bool Critter::ParseScript(const char* script, bool first_time)
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && ServerScript.PrepareContext(ServerScript.GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,GetInfo()))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgBool(first_time);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgBool(first_time);
+		Script::RunPrepared();
 	}
 	return true;
 }
@@ -1352,31 +1352,31 @@ bool Critter::PrepareScriptFunc(int num_scr_func)
 {
 	if(num_scr_func>=CRITTER_EVENT_MAX) return false;
 	if(FuncId[num_scr_func]<=0) return false;
-	return ServerScript.PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,GetInfo());
+	return Script::PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,GetInfo());
 }
 
 void Critter::EventIdle()
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_IDLE)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::RunPrepared();
 }
 
 void Critter::EventFinish(bool deleted)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_FINISH)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgBool(deleted);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgBool(deleted);
+	Script::RunPrepared();
 }
 
 void Critter::EventDead(Critter* killer)
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_DEAD))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(killer);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(killer);
+		Script::RunPrepared();
 	}
 
 	CrVec crits=VisCr;
@@ -1390,100 +1390,100 @@ void Critter::EventDead(Critter* killer)
 void Critter::EventRespawn()
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_RESPAWN)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::RunPrepared();
 }
 
 void Critter::EventShowCritter(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SHOW_CRITTER)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventShowCritter1(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SHOW_CRITTER_1)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventShowCritter2(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SHOW_CRITTER_2)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventShowCritter3(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SHOW_CRITTER_3)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventHideCritter(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_HIDE_CRITTER)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventHideCritter1(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_HIDE_CRITTER_1)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventHideCritter2(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_HIDE_CRITTER_2)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventHideCritter3(Critter* cr)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_HIDE_CRITTER_3)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Critter::EventShowItemOnMap(Item* item, bool added, Critter* dropper)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SHOW_ITEM_ON_MAP)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(item);
-	ServerScript.SetArgBool(added);
-	ServerScript.SetArgObject(dropper);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(item);
+	Script::SetArgBool(added);
+	Script::SetArgObject(dropper);
+	Script::RunPrepared();
 }
 
 void Critter::EventChangeItemOnMap(Item* item)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_CHANGE_ITEM_ON_MAP)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(item);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(item);
+	Script::RunPrepared();
 }
 
 void Critter::EventHideItemOnMap(Item* item, bool removed, Critter* picker)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_HIDE_ITEM_ON_MAP)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(item);
-	ServerScript.SetArgBool(removed);
-	ServerScript.SetArgObject(picker);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(item);
+	Script::SetArgBool(removed);
+	Script::SetArgObject(picker);
+	Script::RunPrepared();
 }
 
 bool Critter::EventAttack(Critter* target)
@@ -1491,9 +1491,9 @@ bool Critter::EventAttack(Critter* target)
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_ATTACK))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(target);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(target);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 
 	CrVec crits=VisCr;
@@ -1510,9 +1510,9 @@ bool Critter::EventAttacked(Critter* attacker)
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_ATTACKED))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(attacker);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(attacker);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 
 	CrVec crits=VisCr;
@@ -1524,11 +1524,11 @@ bool Critter::EventAttacked(Critter* attacker)
 
 	if(!result && attacker)
 	{
-		if(ServerScript.PrepareContext(ServerFunctions.CritterAttacked,CALL_FUNC_STR,GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterAttacked,CALL_FUNC_STR,GetInfo()))
 		{
-			ServerScript.SetArgObject(this);
-			ServerScript.SetArgObject(attacker);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(this);
+			Script::SetArgObject(attacker);
+			Script::RunPrepared();
 		}
 	}
 	return result;
@@ -1537,23 +1537,23 @@ bool Critter::EventAttacked(Critter* attacker)
 bool Critter::EventStealing(Critter* thief, Item* item, DWORD count)
 {
 	bool success=false;
-	if(ServerScript.PrepareContext(ServerFunctions.CritterStealing,CALL_FUNC_STR,GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterStealing,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(thief);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgDword(count);
-		if(ServerScript.RunPrepared()) success=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(thief);
+		Script::SetArgObject(item);
+		Script::SetArgDword(count);
+		if(Script::RunPrepared()) success=Script::GetReturnedBool();
 	}
 
 	if(PrepareScriptFunc(CRITTER_EVENT_STEALING))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(thief);
-		ServerScript.SetArgBool(success);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgDword(count);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(thief);
+		Script::SetArgBool(success);
+		Script::SetArgObject(item);
+		Script::SetArgDword(count);
+		Script::RunPrepared();
 	}
 
 	CrVec crits=VisCr;
@@ -1569,11 +1569,11 @@ bool Critter::EventStealing(Critter* thief, Item* item, DWORD count)
 void Critter::EventMessage(Critter* from_cr, int num, int val)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_MESSAGE)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgDword(num);
-	ServerScript.SetArgDword(val);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgDword(num);
+	Script::SetArgDword(val);
+	Script::RunPrepared();
 }
 
 bool Critter::EventUseItem(Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery)
@@ -1581,12 +1581,12 @@ bool Critter::EventUseItem(Item* item, Critter* on_critter, Item* on_item, MapOb
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_USE_ITEM))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgObject(on_critter);
-		ServerScript.SetArgObject(on_item);
-		ServerScript.SetArgObject(on_scenery);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(item);
+		Script::SetArgObject(on_critter);
+		Script::SetArgObject(on_item);
+		Script::SetArgObject(on_scenery);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 
 	CrVec crits=VisCr;
@@ -1604,12 +1604,12 @@ bool Critter::EventUseSkill(int skill, Critter* on_critter, Item* on_item, MapOb
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_USE_SKILL))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
-		ServerScript.SetArgObject(on_critter);
-		ServerScript.SetArgObject(on_item);
-		ServerScript.SetArgObject(on_scenery);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
+		Script::SetArgObject(on_critter);
+		Script::SetArgObject(on_item);
+		Script::SetArgObject(on_scenery);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 
 	CrVec crits=VisCr;
@@ -1626,9 +1626,9 @@ void Critter::EventDropItem(Item* item)
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_DROP_ITEM))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(item);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 	}
 
 	CrVec crits=VisCr;
@@ -1641,20 +1641,20 @@ void Critter::EventDropItem(Item* item)
 
 void Critter::EventMoveItem(Item* item, BYTE from_slot)
 {
-	if(ServerScript.PrepareContext(ServerFunctions.CritterChangeItem,CALL_FUNC_STR,GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterChangeItem,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgByte(from_slot);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(item);
+		Script::SetArgByte(from_slot);
+		Script::RunPrepared();
 	}
 
 	if(PrepareScriptFunc(CRITTER_EVENT_MOVE_ITEM))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(item);
-		ServerScript.SetArgByte(from_slot);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(item);
+		Script::SetArgByte(from_slot);
+		Script::RunPrepared();
 	}
 
 	CrVec crits=VisCr;
@@ -1669,11 +1669,11 @@ void Critter::EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist)
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_KNOCKOUT))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgBool(face_up);
-		ServerScript.SetArgDword(lost_ap);
-		ServerScript.SetArgDword(knock_dist);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgBool(face_up);
+		Script::SetArgDword(lost_ap);
+		Script::SetArgDword(knock_dist);
+		Script::RunPrepared();
 	}
 
 	CrVec crits=VisCr;
@@ -1687,106 +1687,106 @@ void Critter::EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist)
 void Critter::EventSmthDead(Critter* from_cr, Critter* killer)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_DEAD)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(killer);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(killer);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthStealing(Critter* from_cr, Critter* thief, bool success, Item* item, DWORD count)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_STEALING)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(thief);
-	ServerScript.SetArgBool(success);
-	ServerScript.SetArgObject(item);
-	ServerScript.SetArgDword(count);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(thief);
+	Script::SetArgBool(success);
+	Script::SetArgObject(item);
+	Script::SetArgDword(count);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthAttack(Critter* from_cr, Critter* target)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_ATTACK)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(target);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(target);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthAttacked(Critter* from_cr, Critter* attacker)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_ATTACKED)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(attacker);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(attacker);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthUseItem(Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_USE_ITEM)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(item);
-	ServerScript.SetArgObject(on_critter);
-	ServerScript.SetArgObject(on_item);
-	ServerScript.SetArgObject(on_scenery);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(item);
+	Script::SetArgObject(on_critter);
+	Script::SetArgObject(on_item);
+	Script::SetArgObject(on_scenery);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthUseSkill(Critter* from_cr, int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_USE_SKILL)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
-	ServerScript.SetArgObject(on_critter);
-	ServerScript.SetArgObject(on_item);
-	ServerScript.SetArgObject(on_scenery);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
+	Script::SetArgObject(on_critter);
+	Script::SetArgObject(on_item);
+	Script::SetArgObject(on_scenery);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthDropItem(Critter* from_cr, Item* item)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_DROP_ITEM)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(item);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(item);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthMoveItem(Critter* from_cr, Item* item, BYTE from_slot)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_MOVE_ITEM)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgObject(item);
-	ServerScript.SetArgByte(from_slot);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgObject(item);
+	Script::SetArgByte(from_slot);
+	Script::RunPrepared();
 }
 
 void Critter::EventSmthKnockout(Critter* from_cr, bool face_up, DWORD lost_ap, DWORD knock_dist)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_KNOCKOUT)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(from_cr);
-	ServerScript.SetArgBool(face_up);
-	ServerScript.SetArgDword(lost_ap);
-	ServerScript.SetArgDword(knock_dist);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(from_cr);
+	Script::SetArgBool(face_up);
+	Script::SetArgDword(lost_ap);
+	Script::SetArgDword(knock_dist);
+	Script::RunPrepared();
 }
 
 int Critter::EventPlaneBegin(AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item)
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_PLANE_BEGIN))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(plane);
-		ServerScript.SetArgDword(reason);
-		ServerScript.SetArgObject(some_cr);
-		ServerScript.SetArgObject(some_item);
-		if(ServerScript.RunPrepared()) return ServerScript.GetReturnedDword();
+		Script::SetArgObject(this);
+		Script::SetArgObject(plane);
+		Script::SetArgDword(reason);
+		Script::SetArgObject(some_cr);
+		Script::SetArgObject(some_item);
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 	return PLANE_RUN_GLOBAL;
 }
@@ -1795,12 +1795,12 @@ int Critter::EventPlaneEnd(AIDataPlane* plane, int reason, Critter* some_cr, Ite
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_PLANE_END))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(plane);
-		ServerScript.SetArgDword(reason);
-		ServerScript.SetArgObject(some_cr);
-		ServerScript.SetArgObject(some_item);
-		if(ServerScript.RunPrepared()) return ServerScript.GetReturnedDword();
+		Script::SetArgObject(this);
+		Script::SetArgObject(plane);
+		Script::SetArgDword(reason);
+		Script::SetArgObject(some_cr);
+		Script::SetArgObject(some_item);
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 	return PLANE_RUN_GLOBAL;
 }
@@ -1809,13 +1809,13 @@ int Critter::EventPlaneRun(AIDataPlane* plane, int reason, DWORD& p0, DWORD& p1,
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_PLANE_RUN))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(plane);
-		ServerScript.SetArgDword(reason);
-		ServerScript.SetArgAddress(&p0);
-		ServerScript.SetArgAddress(&p1);
-		ServerScript.SetArgAddress(&p2);
-		if(ServerScript.RunPrepared()) return ServerScript.GetReturnedDword();
+		Script::SetArgObject(this);
+		Script::SetArgObject(plane);
+		Script::SetArgDword(reason);
+		Script::SetArgAddress(&p0);
+		Script::SetArgAddress(&p1);
+		Script::SetArgAddress(&p2);
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 	return PLANE_RUN_GLOBAL;
 }
@@ -1824,11 +1824,11 @@ bool Critter::EventBarter(Critter* cr_barter, bool attach, DWORD barter_count)
 {
 	if(FuncId[CRITTER_EVENT_BARTER]<=0) return true;
 	if(!PrepareScriptFunc(CRITTER_EVENT_BARTER)) return false;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr_barter);
-	ServerScript.SetArgBool(attach);
-	ServerScript.SetArgDword(barter_count);
-	if(ServerScript.RunPrepared()) return ServerScript.GetReturnedBool();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr_barter);
+	Script::SetArgBool(attach);
+	Script::SetArgDword(barter_count);
+	if(Script::RunPrepared()) return Script::GetReturnedBool();
 	return false;
 }
 
@@ -1836,11 +1836,11 @@ bool Critter::EventTalk(Critter* cr_talk, bool attach, DWORD talk_count)
 {
 	if(FuncId[CRITTER_EVENT_TALK]<=0) return true;
 	if(!PrepareScriptFunc(CRITTER_EVENT_TALK)) return false;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr_talk);
-	ServerScript.SetArgBool(attach);
-	ServerScript.SetArgDword(talk_count);
-	if(ServerScript.RunPrepared()) return ServerScript.GetReturnedBool();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr_talk);
+	Script::SetArgBool(attach);
+	Script::SetArgDword(talk_count);
+	if(Script::RunPrepared()) return Script::GetReturnedBool();
 	return false;
 }
 
@@ -1849,18 +1849,18 @@ bool Critter::EventGlobalProcess(int type, asIScriptArray* group, Item* car, DWO
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_GLOBAL_PROCESS))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgDword(type);
-		ServerScript.SetArgObject(group);
-		ServerScript.SetArgObject(car);
-		ServerScript.SetArgAddress(&x);
-		ServerScript.SetArgAddress(&y);
-		ServerScript.SetArgAddress(&to_x);
-		ServerScript.SetArgAddress(&to_y);
-		ServerScript.SetArgAddress(&speed);
-		ServerScript.SetArgAddress(&encounter_descriptor);
-		ServerScript.SetArgAddress(&wait_for_answer);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgDword(type);
+		Script::SetArgObject(group);
+		Script::SetArgObject(car);
+		Script::SetArgAddress(&x);
+		Script::SetArgAddress(&y);
+		Script::SetArgAddress(&to_x);
+		Script::SetArgAddress(&to_y);
+		Script::SetArgAddress(&speed);
+		Script::SetArgAddress(&encounter_descriptor);
+		Script::SetArgAddress(&wait_for_answer);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
 }
@@ -1870,16 +1870,16 @@ bool Critter::EventGlobalInvite(asIScriptArray* group, Item* car, DWORD encounte
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_GLOBAL_INVITE))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(group);
-		ServerScript.SetArgObject(car);
-		ServerScript.SetArgDword(encounter_descriptor);
-		ServerScript.SetArgDword(combat_mode);
-		ServerScript.SetArgAddress(&map_id);
-		ServerScript.SetArgAddress(&hx);
-		ServerScript.SetArgAddress(&hy);
-		ServerScript.SetArgAddress(&dir);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(group);
+		Script::SetArgObject(car);
+		Script::SetArgDword(encounter_descriptor);
+		Script::SetArgDword(combat_mode);
+		Script::SetArgAddress(&map_id);
+		Script::SetArgAddress(&hx);
+		Script::SetArgAddress(&hy);
+		Script::SetArgAddress(&dir);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
 }
@@ -1888,10 +1888,10 @@ void Critter::EventTurnBasedProcess(Map* map, bool begin_turn)
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_TURN_BASED_PROCESS))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(map);
-		ServerScript.SetArgBool(begin_turn);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(map);
+		Script::SetArgBool(begin_turn);
+		Script::RunPrepared();
 	}
 
 	CrVec crits=VisCr;
@@ -1906,10 +1906,10 @@ void Critter::EventSmthTurnBasedProcess(Critter* from_cr, Map* map, bool begin_t
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_SMTH_TURN_BASED_PROCESS))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(from_cr);
-		ServerScript.SetArgObject(map);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(from_cr);
+		Script::SetArgObject(map);
+		Script::RunPrepared();
 	}
 }
 
@@ -2324,11 +2324,11 @@ const char* Critter::GetInfo()
 
 int Critter::GetParam(DWORD index)
 {
-	if(ParamsGetScript[index] && ServerScript.PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,""))
+	if(ParamsGetScript[index] && Script::PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,""))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
-		if(ServerScript.RunPrepared()) return ServerScript.GetReturnedDword();
+		Script::SetArgObject(this);
+		Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 
 	switch(index)
@@ -2406,12 +2406,12 @@ void Critter::ProcessChangedParams()
 			{
 				DWORD index=CallChange[i+1];
 				ParamLocked=index;
-				if(ServerScript.PrepareContext(CallChange[i],CALL_FUNC_STR,GetInfo()))
+				if(Script::PrepareContext(CallChange[i],CALL_FUNC_STR,GetInfo()))
 				{
-					ServerScript.SetArgObject(this);
-					ServerScript.SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
-					ServerScript.SetArgDword(CallChange[i+2]);
-					ServerScript.RunPrepared();
+					Script::SetArgObject(this);
+					Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
+					Script::SetArgDword(CallChange[i+2]);
+					Script::RunPrepared();
 				}
 				ParamLocked=-1;
 				Send_Param(index);
@@ -4314,12 +4314,12 @@ void Client::CloseTalk()
 			break;
 		default:
 			if(func_id<=0) break;
-			if(!ServerScript.PrepareContext(func_id,CALL_FUNC_STR,GetInfo())) break;
-			ServerScript.SetArgObject(this);
-			ServerScript.SetArgObject(npc);
-			ServerScript.SetArgObject(NULL);
+			if(!Script::PrepareContext(func_id,CALL_FUNC_STR,GetInfo())) break;
+			Script::SetArgObject(this);
+			Script::SetArgObject(npc);
+			Script::SetArgObject(NULL);
 			Talk.Locked=true;
-			ServerScript.RunPrepared();
+			Script::RunPrepared();
 			Talk.Locked=false;
 			break;
 		}
@@ -4507,14 +4507,14 @@ bool Npc::AddPlane(int reason, AIDataPlane* plane, bool is_child, Critter* some_
 
 	DWORD child_index=(is_child?aiPlanes[0]->GetChildsCount()+1:0);
 	int result=EventPlaneBegin(plane,reason,some_cr,some_item);
-	if(result==PLANE_RUN_GLOBAL && ServerScript.PrepareContext(ServerFunctions.NpcPlaneBegin,CALL_FUNC_STR,GetInfo()))
+	if(result==PLANE_RUN_GLOBAL && Script::PrepareContext(ServerFunctions.NpcPlaneBegin,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(plane);
-		ServerScript.SetArgDword(reason);
-		ServerScript.SetArgObject(some_cr);
-		ServerScript.SetArgObject(some_item);
-		if(ServerScript.RunPrepared()) result=(ServerScript.GetReturnedBool()?PLANE_KEEP:PLANE_DISCARD);
+		Script::SetArgObject(this);
+		Script::SetArgObject(plane);
+		Script::SetArgDword(reason);
+		Script::SetArgObject(some_cr);
+		Script::SetArgObject(some_item);
+		if(Script::RunPrepared()) result=(Script::GetReturnedBool()?PLANE_KEEP:PLANE_DISCARD);
 	}
 
 	if(result==PLANE_DISCARD)
@@ -4561,14 +4561,14 @@ void Npc::NextPlane(int reason, Critter* some_cr, Item* some_item)
 	SetBestCurPlane();
 
 	int result=EventPlaneEnd(last,reason,some_cr,some_item);
-	if(result==PLANE_RUN_GLOBAL && ServerScript.PrepareContext(ServerFunctions.NpcPlaneEnd,CALL_FUNC_STR,GetInfo()))
+	if(result==PLANE_RUN_GLOBAL && Script::PrepareContext(ServerFunctions.NpcPlaneEnd,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(last);
-		ServerScript.SetArgDword(reason);
-		ServerScript.SetArgObject(some_cr);
-		ServerScript.SetArgObject(some_item);
-		if(ServerScript.RunPrepared()) result=(ServerScript.GetReturnedBool()?PLANE_DISCARD:PLANE_KEEP);
+		Script::SetArgObject(this);
+		Script::SetArgObject(last);
+		Script::SetArgDword(reason);
+		Script::SetArgObject(some_cr);
+		Script::SetArgObject(some_item);
+		if(Script::RunPrepared()) result=(Script::GetReturnedBool()?PLANE_DISCARD:PLANE_KEEP);
 	}
 
 	if(result==PLANE_KEEP)
@@ -4603,15 +4603,15 @@ bool Npc::RunPlane(int reason, DWORD& r0, DWORD& r1, DWORD& r2)
 //	aiPlanes.erase(aiPlanes.begin());
 
 	int result=EventPlaneRun(last,reason,r0,r1,r2);;
-	if(result==PLANE_RUN_GLOBAL && ServerScript.PrepareContext(ServerFunctions.NpcPlaneRun,CALL_FUNC_STR,GetInfo()))
+	if(result==PLANE_RUN_GLOBAL && Script::PrepareContext(ServerFunctions.NpcPlaneRun,CALL_FUNC_STR,GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(last);
-		ServerScript.SetArgDword(reason);
-		ServerScript.SetArgAddress(&r0);
-		ServerScript.SetArgAddress(&r1);
-		ServerScript.SetArgAddress(&r2);
-		if(ServerScript.RunPrepared()) result=(ServerScript.GetReturnedBool()?PLANE_KEEP:PLANE_DISCARD);
+		Script::SetArgObject(this);
+		Script::SetArgObject(last);
+		Script::SetArgDword(reason);
+		Script::SetArgAddress(&r0);
+		Script::SetArgAddress(&r1);
+		Script::SetArgAddress(&r2);
+		if(Script::RunPrepared()) result=(Script::GetReturnedBool()?PLANE_KEEP:PLANE_DISCARD);
 	}
 
 	return result==PLANE_KEEP;

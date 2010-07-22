@@ -556,8 +556,8 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 
 #ifdef FONLINE_SERVER
 			// Bind function
-#define BIND_D_FUNC(params) {id=ServerScript.Bind(name,"bool %s(Critter&,Critter@"params,false);}
-#define BIND_R_FUNC(params) {id=ServerScript.Bind(name,"void %s(Critter&,Critter@"params,false);}
+#define BIND_D_FUNC(params) {id=Script::Bind(name,"bool %s(Critter&,Critter@"params,false);}
+#define BIND_R_FUNC(params) {id=Script::Bind(name,"void %s(Critter&,Critter@"params,false);}
 			switch(values_count)
 			{
 			case 1: if(is_demand) BIND_D_FUNC(",int)") else BIND_R_FUNC(",int)") break;
@@ -646,7 +646,7 @@ int DialogManager::GetNotAnswerAction(const char * str)
 		return NOT_ANSWER_BEGIN_BATTLE;
 #ifdef FONLINE_SERVER
 	else
-		return ServerScript.Bind(str,"void %s(Critter&,Critter@,string@)",false); //Bind function
+		return Script::Bind(str,"void %s(Critter&,Critter@,string@)",false); //Bind function
 #endif // FONLINE_SERVER
 
 	return -1;

@@ -877,18 +877,18 @@ void HexManager::RebuildMap(int rx, int ry)
 	mainTree.SortByMapPos();
 
 #ifdef FONLINE_MAPPER
-	if(MapperFunctions.RenderMap && MapperScript.PrepareContext(MapperFunctions.RenderMap,CALL_FUNC_STR,"Game"))
+	if(MapperFunctions.RenderMap && Script::PrepareContext(MapperFunctions.RenderMap,CALL_FUNC_STR,"Game"))
 	{
 		SpritesCanDrawMap=true;
-		MapperScript.RunPrepared();
+		Script::RunPrepared();
 		SpritesCanDrawMap=false;
 	}
 #endif
 #ifdef FONLINE_CLIENT
-	if(ClientScript.PrepareContext(ClientFunctions.RenderMap,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.RenderMap,CALL_FUNC_STR,"Game"))
 	{
 		SpritesCanDrawMap=true;
-		ClientScript.RunPrepared();
+		Script::RunPrepared();
 		SpritesCanDrawMap=false;
 	}
 #endif

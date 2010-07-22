@@ -355,7 +355,6 @@ string OptMasterPath;
 string OptCritterPath;
 string OptFoPatchPath;
 string OptFoDataPath;
-string OptFoDataPathServer;
 int OptSleep=0;
 bool OptMsgboxInvert=false;
 int OptChangeLang=CHANGE_LANG_CTRL_SHIFT;
@@ -515,7 +514,6 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL(OptMessNotify,"-WinNotify");
 	OptSoundNotify=cfg.GetInt(CFG_FILE_APP_NAME,"SoundNotify",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptSoundNotify,"-SoundNotify");
-#ifndef FONLINE_SINGLE
 	OptPort=cfg.GetInt(CFG_FILE_APP_NAME,"RemotePort",4000);
 	GETOPTIONS_CMD_LINE_INT(OptPort,"-RemotePort");
 	GETOPTIONS_CHECK(OptPort,0,0xFFFF,4000);
@@ -525,7 +523,6 @@ void GetClientOptions()
 	OptProxyPort=cfg.GetInt(CFG_FILE_APP_NAME,"ProxyPort",1080);
 	GETOPTIONS_CMD_LINE_INT(OptProxyPort,"-ProxyPort");
 	GETOPTIONS_CHECK(OptProxyPort,0,0xFFFF,1080);
-#endif
 	OptGlobalSound=cfg.GetInt(CFG_FILE_APP_NAME,"GlobalSound",true)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptGlobalSound,"-GlobalSound");
 	OptDefaultCombatMode=cfg.GetInt(CFG_FILE_APP_NAME,"DefaultCombatMode",COMBAT_MODE_ANY);
@@ -560,16 +557,12 @@ void GetClientOptions()
 	cfg.GetStr(CFG_FILE_APP_NAME,"CritterDatPath","critter.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-CritterDatPath");
 	OptCritterPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"PatchDatPath","fonline.dat",buf);
+	cfg.GetStr(CFG_FILE_APP_NAME,"PatchDatPath","fopatch.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-PatchDatPath");
 	OptFoPatchPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPath",".\\data\\",buf);
+	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPath",".\\data",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPath");
 	OptFoDataPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPathServer",".\\data\\",buf);
-	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPathServer");
-	OptFoDataPathServer=buf;
-#ifndef FONLINE_SINGLE
 	cfg.GetStr(CFG_FILE_APP_NAME,"RemoteHost","localhost",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-RemoteHost");
 	OptHost=buf;
@@ -579,7 +572,6 @@ void GetClientOptions()
 	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyUser","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyUser");
 	OptProxyUser=buf;
-#endif
 	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyPass","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyPass");
 	OptProxyPass=buf;
@@ -610,7 +602,7 @@ void GetClientOptions()
 	LoadTrueChars();
 
 #ifdef FONLINE_CLIENT
-	ClientScript.SetGarbageCollectTime(120000);
+	Script::SetGarbageCollectTime(120000);
 #endif
 }
 
@@ -638,7 +630,7 @@ void GetServerOptions()
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	ServerGameSleep=cfg.GetInt("GameSleep",10);
-	ServerScript.SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
+	Script::SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
 	VarsGarbageTime=cfg.GetInt("VarsGarbageTime",3600)*1000;
 	WorldSaveManager=(cfg.GetInt("WorldSaveManager",1)==1);
 	LoadTrueChars();
@@ -1068,6 +1060,88 @@ char* StringDuplicate(const char* str)
 }
 
 /************************************************************************/
+/* Single player                                                        */
+/************************************************************************/
+
+#define INTERPROCESS_DATA_SIZE          (offsetof(InterprocessData,mapFileMutex))
+
+HANDLE InterprocessData::Init()
+{
+	SECURITY_ATTRIBUTES sa={sizeof(sa),NULL,TRUE};
+	mapFile=CreateFileMapping(INVALID_HANDLE_VALUE,&sa,PAGE_READWRITE,0,INTERPROCESS_DATA_SIZE+sizeof(mapFileMutex),NULL);
+	if(!mapFile) return NULL;
+	mapFilePtr=NULL;
+
+	mapFileMutex=CreateMutex(&sa,FALSE,NULL);
+	if(!mapFileMutex) return NULL;
+
+	if(!Lock()) return NULL;
+	ZeroMemory(this,INTERPROCESS_DATA_SIZE);
+	((InterprocessData*)mapFilePtr)->mapFileMutex=mapFileMutex;
+	Unlock();
+	return mapFile;
+}
+
+void InterprocessData::Finish()
+{
+	if(mapFile) CloseHandle(mapFile);
+	if(mapFileMutex) CloseHandle(mapFileMutex);
+	mapFile=NULL;
+	mapFilePtr=NULL;
+}
+
+bool InterprocessData::Attach(HANDLE map_file)
+{
+	if(!map_file) return false;
+	mapFile=map_file;
+	mapFilePtr=NULL;
+
+	// Read mutex handle
+	void* ptr=MapViewOfFile(mapFile,FILE_MAP_WRITE,0,0,0);
+	if(!ptr) return false;
+	mapFileMutex=((InterprocessData*)ptr)->mapFileMutex;
+	UnmapViewOfFile(ptr);
+	if(!mapFileMutex) return false;
+
+	return Refresh();
+}
+
+bool InterprocessData::Lock()
+{
+	if(!mapFile) return false;
+
+	DWORD result=WaitForSingleObject(mapFileMutex,INFINITE);
+	if(result!=WAIT_OBJECT_0) return false;
+
+	mapFilePtr=MapViewOfFile(mapFile,FILE_MAP_WRITE,0,0,0);
+	if(!mapFilePtr) return false;
+	memcpy(this,mapFilePtr,INTERPROCESS_DATA_SIZE);
+	return true;
+}
+
+void InterprocessData::Unlock()
+{
+	if(!mapFile || !mapFilePtr) return;
+
+	memcpy(mapFilePtr,this,INTERPROCESS_DATA_SIZE);
+	UnmapViewOfFile(mapFilePtr);
+	mapFilePtr=NULL;
+
+	ReleaseMutex(mapFileMutex);
+}
+
+bool InterprocessData::Refresh()
+{
+	if(!Lock()) return false;
+	Unlock();
+	return true;
+}
+
+bool SinglePlayer=false;
+InterprocessData SinglePlayerData;
+HANDLE SinglePlayerDataMutex=NULL;
+
+/************************************************************************/
 /*                                                                      */
 /************************************************************************/
 
@@ -1082,7 +1156,7 @@ PCharVec LstNames[PATH_LIST_COUNT];
 void LoadList(const char* lst_name, int path_type)
 {
 	FileManager fm;
-	if(!fm.LoadFile(lst_name)) return;
+	if(!fm.LoadFile(lst_name,PT_ROOT)) return;
 
 	char str[1024];
 	DWORD str_cnt=0;
@@ -1146,13 +1220,13 @@ string Deprecated_GetPicName(int pid, int type, WORD pic_num)
 {
 	if(!ListsLoaded)
 	{
-		LoadList(".\\data\\deprecated_lists\\tiles.lst",PT_ART_TILES);
-		LoadList(".\\data\\deprecated_lists\\items.lst",PT_ART_ITEMS);
-		LoadList(".\\data\\deprecated_lists\\scenery.lst",PT_ART_SCENERY);
-		LoadList(".\\data\\deprecated_lists\\walls.lst",PT_ART_WALLS);
-		LoadList(".\\data\\deprecated_lists\\misc.lst",PT_ART_MISC);
-		LoadList(".\\data\\deprecated_lists\\intrface.lst",PT_ART_INTRFACE);
-		LoadList(".\\data\\deprecated_lists\\inven.lst",PT_ART_INVEN);
+		LoadList("data\\deprecated_lists\\tiles.lst",PT_ART_TILES);
+		LoadList("data\\deprecated_lists\\items.lst",PT_ART_ITEMS);
+		LoadList("data\\deprecated_lists\\scenery.lst",PT_ART_SCENERY);
+		LoadList("data\\deprecated_lists\\walls.lst",PT_ART_WALLS);
+		LoadList("data\\deprecated_lists\\misc.lst",PT_ART_MISC);
+		LoadList("data\\deprecated_lists\\intrface.lst",PT_ART_INTRFACE);
+		LoadList("data\\deprecated_lists\\inven.lst",PT_ART_INVEN);
 		ListsLoaded=true;
 	}
 

@@ -97,7 +97,6 @@ namespace Preprocessor
 	void Undefine(const std::string& str);
 	bool IsDefined(const std::string& str);
 	void UndefAll();
-	void UnregisterPragmas();
 	void RegisterPragma(const std::string& str, PragmaCallback* callback);
 	void CallPragma(const std::string& name, const Preprocessor::PragmaInstance& parms);
 	std::vector<std::string>& GetFileDependencies();

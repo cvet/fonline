@@ -297,7 +297,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 	city_txt.GetStr(key1,"entrance_script","",res);
 	if(res[0])
 	{
-		int bind_id=ServerScript.Bind(res,"bool %s(Critter@[]&, uint8)",false);
+		int bind_id=Script::Bind(res,"bool %s(Critter@[]&, uint8)",false);
 		if(bind_id<=0)
 		{
 			WriteLog(__FUNCTION__" - Function<%s> not found, location pid<%u>.\n",res,pid);
@@ -385,7 +385,7 @@ bool MapManager::LoadMapProto(IniParser& maps_txt, ProtoMap& pmap, WORD pid)
 		char script[MAX_SCRIPT_NAME*2+2];
 		if(maps_txt.GetStr(key1,"script","",script))
 		{
-			if(!ServerScript.ReparseScriptName(script,pmap.Header.ScriptModule,pmap.Header.ScriptFunc))
+			if(!Script::ReparseScriptName(script,pmap.Header.ScriptModule,pmap.Header.ScriptFunc))
 			{
 				WriteLog(__FUNCTION__" - Proto map script name parsing fail, pid<%u>, name<%s>.\n",pid,map_name);
 				return false;
@@ -486,7 +486,7 @@ string MapManager::GetLocationsMapsStatistics()
 			sprintf(str,"     %2u) %-20s %-09u   %-4u %-4d %-4u %-9s %-6s %-50s\n",
 				map_index,map->Proto->GetName(),map->GetId(),map->GetPid(),map->GetTime(),map->GetRain(),
 				map->Data.IsTurnBasedAviable?"true":"false",map->IsTurnBasedOn?"true":"false",
-				map->Data.ScriptId?ServerScript.GetScriptFuncName(map->Data.ScriptId).c_str():"");
+				map->Data.ScriptId?Script::GetScriptFuncName(map->Data.ScriptId).c_str():"");
 			result+=str;
 			map_index++;
 		}
@@ -1133,20 +1133,20 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 		}
 	}
 
-	if(global_process && ServerScript.PrepareContext(ServerFunctions.GlobalProcess,CALL_FUNC_STR,rule->GetInfo()))
+	if(global_process && Script::PrepareContext(ServerFunctions.GlobalProcess,CALL_FUNC_STR,rule->GetInfo()))
 	{
-		ServerScript.SetArgDword(type);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgObject(arr);
-		ServerScript.SetArgObject(group->GetCar());
-		ServerScript.SetArgAddress(&cur_wx);
-		ServerScript.SetArgAddress(&cur_wy);
-		ServerScript.SetArgAddress(&to_wx);
-		ServerScript.SetArgAddress(&to_wy);
-		ServerScript.SetArgAddress(&speed);
-		ServerScript.SetArgAddress(&encounter_descriptor);
-		ServerScript.SetArgAddress(&wait_for_answer);
-		ServerScript.RunPrepared();
+		Script::SetArgDword(type);
+		Script::SetArgObject(cr);
+		Script::SetArgObject(arr);
+		Script::SetArgObject(group->GetCar());
+		Script::SetArgAddress(&cur_wx);
+		Script::SetArgAddress(&cur_wy);
+		Script::SetArgAddress(&to_wx);
+		Script::SetArgAddress(&to_wy);
+		Script::SetArgAddress(&speed);
+		Script::SetArgAddress(&encounter_descriptor);
+		Script::SetArgAddress(&wait_for_answer);
+		Script::RunPrepared();
 	}
 	arr->Release();
 
@@ -1228,17 +1228,17 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 		}
 	}
 
-	if(global_invite && ServerScript.PrepareContext(ServerFunctions.GlobalInvite,CALL_FUNC_STR,rule->GetInfo()))
+	if(global_invite && Script::PrepareContext(ServerFunctions.GlobalInvite,CALL_FUNC_STR,rule->GetInfo()))
 	{
-		ServerScript.SetArgObject(arr);
-		ServerScript.SetArgObject(group->GetCar());
-		ServerScript.SetArgDword(encounter_descriptor);
-		ServerScript.SetArgDword(combat_mode);
-		ServerScript.SetArgAddress(&map_id);
-		ServerScript.SetArgAddress(&hx);
-		ServerScript.SetArgAddress(&hy);
-		ServerScript.SetArgAddress(&dir);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(arr);
+		Script::SetArgObject(group->GetCar());
+		Script::SetArgDword(encounter_descriptor);
+		Script::SetArgDword(combat_mode);
+		Script::SetArgAddress(&map_id);
+		Script::SetArgAddress(&hx);
+		Script::SetArgAddress(&hy);
+		Script::SetArgAddress(&dir);
+		Script::RunPrepared();
 	}
 	arr->Release();
 
@@ -1304,18 +1304,18 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 
 bool MapManager::GM_CheckEntrance(int bind_id, asIScriptArray* arr, BYTE entrance)
 {
-	if(ServerScript.PrepareContext(bind_id,CALL_FUNC_STR,(*(Critter**)arr->GetElementPointer(0))->GetInfo()))
+	if(Script::PrepareContext(bind_id,CALL_FUNC_STR,(*(Critter**)arr->GetElementPointer(0))->GetInfo()))
 	{
-		ServerScript.SetArgObject(arr);
-		ServerScript.SetArgByte(entrance);
-		if(ServerScript.RunPrepared()) return ServerScript.GetReturnedBool();
+		Script::SetArgObject(arr);
+		Script::SetArgByte(entrance);
+		if(Script::RunPrepared()) return Script::GetReturnedBool();
 	}
 	return false;
 }
 
 asIScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 {
-	asIScriptArray* arr=ServerScript.CreateArray("Critter@[]");
+	asIScriptArray* arr=Script::CreateArray("Critter@[]");
 	if(!arr)
 	{
 		WriteLog(__FUNCTION__" - Create script array fail.\n");

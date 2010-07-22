@@ -78,11 +78,11 @@ void Map::Clear(bool full)
 	{
 		Critter* cr=*it;
 		cr->EventFinish(full);
-		if(ServerScript.PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			ServerScript.SetArgObject(cr);
-			ServerScript.SetArgBool(full);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(cr);
+			Script::SetArgBool(full);
+			Script::RunPrepared();
 		}
 
 		if(!cr->IsNotValid && cr->GetMap()==GetId())
@@ -511,11 +511,11 @@ void Map::AddCritter(Critter* cr)
 void Map::AddCritterEvents(Critter* cr)
 {
 	EventInCritter(cr);
-	if(ServerScript.PrepareContext(ServerFunctions.MapCritterIn,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.MapCritterIn,CALL_FUNC_STR,cr->GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::RunPrepared();
 	}
 }
 
@@ -537,11 +537,11 @@ void Map::EraseCritter(Critter* cr)
 	cr->SetTimeout(TO_BATTLE,0);
 
 	EventOutCritter(cr);
-	if(ServerScript.PrepareContext(ServerFunctions.MapCritterOut,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.MapCritterOut,CALL_FUNC_STR,cr->GetInfo()))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::RunPrepared();
 	}
 }
 
@@ -1199,14 +1199,14 @@ Item* Map::GetCarBag(WORD hx, WORD hy, ProtoItem* pcar, int num_bag)
 bool Map::PrepareScriptFunc(int num_scr_func)
 {
 	if(FuncId[num_scr_func]<=0) return false;
-	return ServerScript.PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid()));
+	return Script::PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid()));
 }
 
 bool Map::ParseScript(const char* script, bool first_time)
 {
 	if(script)
 	{
-		DWORD func_num=ServerScript.GetScriptFuncNum(script,"void %s(Map&,bool)");
+		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Map&,bool)");
 		if(!func_num)
 		{
 			WriteLog(__FUNCTION__" - Script<%s> bind fail, map pid<%u>.\n",script,GetPid());
@@ -1215,11 +1215,11 @@ bool Map::ParseScript(const char* script, bool first_time)
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && ServerScript.PrepareContext(ServerScript.GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgBool(first_time);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgBool(first_time);
+		Script::RunPrepared();
 	}
 	return true;
 }
@@ -1228,9 +1228,9 @@ void Map::EventFinish(bool to_delete)
 {
 	if(PrepareScriptFunc(MAP_EVENT_FINISH))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgBool(to_delete);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgBool(to_delete);
+		Script::RunPrepared();
 	}
 }
 
@@ -1238,8 +1238,8 @@ void Map::EventLoop(int loop_num)
 {
 	if(PrepareScriptFunc(MAP_EVENT_LOOP_0+loop_num))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::RunPrepared();
 	}
 }
 
@@ -1247,9 +1247,9 @@ void Map::EventInCritter(Critter* cr)
 {
 	if(PrepareScriptFunc(MAP_EVENT_IN_CRITTER))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::RunPrepared();
 	}
 }
 
@@ -1257,9 +1257,9 @@ void Map::EventOutCritter(Critter* cr)
 {
 	if(PrepareScriptFunc(MAP_EVENT_OUT_CRITTER))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::RunPrepared();
 	}
 }
 
@@ -1267,10 +1267,10 @@ void Map::EventCritterDead(Critter* cr, Critter* killer)
 {
 	if(PrepareScriptFunc(MAP_EVENT_CRITTER_DEAD))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgObject(killer);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::SetArgObject(killer);
+		Script::RunPrepared();
 	}
 }
 
@@ -1278,8 +1278,8 @@ void Map::EventTurnBasedBegin()
 {
 	if(PrepareScriptFunc(MAP_EVENT_TURN_BASED_BEGIN))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::RunPrepared();
 	}
 }
 
@@ -1287,8 +1287,8 @@ void Map::EventTurnBasedEnd()
 {
 	if(PrepareScriptFunc(MAP_EVENT_TURN_BASED_BEGIN))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::RunPrepared();
 	}
 }
 
@@ -1296,10 +1296,10 @@ void Map::EventTurnBasedProcess(Critter* cr, bool begin_turn)
 {
 	if(PrepareScriptFunc(MAP_EVENT_TURN_BASED_BEGIN))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgBool(begin_turn);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::SetArgBool(begin_turn);
+		Script::RunPrepared();
 	}
 }
 
@@ -1455,10 +1455,10 @@ void Map::BeginTurnBased(Critter* first_cr)
 	IsTurnBasedTimeout=false;
 
 	EventTurnBasedBegin();
-	if(ServerScript.PrepareContext(ServerFunctions.TurnBasedBegin,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::RunPrepared();
 	}
 
 	if(NeedEndTurnBased || TurnSequence.empty()) EndTurnBased();
@@ -1468,10 +1468,10 @@ void Map::BeginTurnBased(Critter* first_cr)
 void Map::EndTurnBased()
 {
 	EventTurnBasedEnd();
-	if(ServerScript.PrepareContext(ServerFunctions.TurnBasedEnd,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Script::PrepareContext(ServerFunctions.TurnBasedEnd,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::RunPrepared();
 	}
 
 	IsTurnBasedOn=false;
@@ -1549,12 +1549,12 @@ void Map::NextCritterTurn()
 
 			cr->EventTurnBasedProcess(this,false);
 			EventTurnBasedProcess(cr,false);
-			if(ServerScript.PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
 			{
-				ServerScript.SetArgObject(this);
-				ServerScript.SetArgObject(cr);
-				ServerScript.SetArgBool(false);
-				ServerScript.RunPrepared();
+				Script::SetArgObject(this);
+				Script::SetArgObject(cr);
+				Script::SetArgBool(false);
+				Script::RunPrepared();
 			}
 		}
 		else
@@ -1575,10 +1575,10 @@ void Map::NextCritterTurn()
 		TurnBasedTurn=0;
 
 		EventTurnBasedBegin();
-		if(ServerScript.PrepareContext(ServerFunctions.TurnBasedBegin,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+		if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 		{
-			ServerScript.SetArgObject(this);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(this);
+			Script::RunPrepared();
 		}
 
 		if(NeedEndTurnBased || TurnSequence.empty()) EndTurnBased();
@@ -1637,12 +1637,12 @@ void Map::NextCritterTurn()
 
 		cr->EventTurnBasedProcess(this,true);
 		EventTurnBasedProcess(cr,true);
-		if(ServerScript.PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			ServerScript.SetArgObject(this);
-			ServerScript.SetArgObject(cr);
-			ServerScript.SetArgBool(true);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(this);
+			Script::SetArgObject(cr);
+			Script::SetArgBool(true);
+			Script::RunPrepared();
 		}
 		if(NeedEndTurnBased) EndTurnBased();
 		else

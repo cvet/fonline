@@ -102,11 +102,6 @@ namespace {
 	CleanUpPragmas nasty_little_hack_this_is;
 }
 
-void Preprocessor::UnregisterPragmas()
-{
-	registered_pragmas.clear();
-}
-
 void Preprocessor::RegisterPragma(const std::string& name, Preprocessor::PragmaCallback* pc)
 {
 	if (pc == 0) return;

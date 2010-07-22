@@ -4,11 +4,7 @@
 void* zlib_alloc(void *opaque, unsigned int items, unsigned int size){return calloc(items, size);}
 void zlib_free(void *opaque, void *address){free(address);}
 
-#ifndef FONLINE_SINGLE
 #define MAX_CLIENTS_IN_GAME		(3000)
-#else
-#define MAX_CLIENTS_IN_GAME		(1)
-#endif
 
 #ifdef FOSERVER_DUMP
 HANDLE hDump;
@@ -93,7 +89,7 @@ void FOServer::Finish()
 	SaveWorldNextTick=0;
 
 	// End script
-	if(ServerScript.PrepareContext(ServerFunctions.Finish,CALL_FUNC_STR,"Game")) ServerScript.RunPrepared();
+	if(Script::PrepareContext(ServerFunctions.Finish,CALL_FUNC_STR,"Game")) Script::RunPrepared();
 
 	// Logging clients
 	LogFinish(LOG_FUNC);
@@ -144,7 +140,7 @@ void FOServer::Finish()
 		"Max cycle period:%u\n"
 		"Count of lags (>100ms):%u\n",
 		Statistics.LoopCycles,
-		Statistics.LoopTime/Statistics.LoopCycles,
+		Statistics.LoopTime/(Statistics.LoopCycles?Statistics.LoopCycles:1),
 		Statistics.LoopMin,
 		Statistics.LoopMax,
 		Statistics.LagsCount);
@@ -226,11 +222,11 @@ void FOServer::RemoveClient(Client* cl)
 	if(cl_ && cl_==cl)
 	{
 		cl->EventFinish(cl->Data.ClientToDelete);
-		if(ServerScript.PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cl->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cl->GetInfo()))
 		{
-			ServerScript.SetArgObject(cl);
-			ServerScript.SetArgBool(cl->Data.ClientToDelete);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(cl);
+			Script::SetArgBool(cl->Data.ClientToDelete);
+			Script::RunPrepared();
 		}
 
 		if(cl->GetMap())
@@ -328,6 +324,9 @@ void FOServer::RunGameLoop()
 
 	while(!FOQuit)
 	{
+		// Synchronize single player data
+		if(SinglePlayer) SinglePlayerData.Refresh();
+
 		// Pre loop
 		CycleBeginTick=Timer::FastTick();
 
@@ -342,7 +341,6 @@ void FOServer::RunGameLoop()
 		else call_cnt++;
 
 		// Get connected clients
-#ifndef FONLINE_SINGLE
 		EnterCriticalSection(&CSConnectedClients);
 		Statistics.CurOnline=ConnectedClients.size();
 		ProcessClients.clear();
@@ -365,9 +363,6 @@ void FOServer::RunGameLoop()
 			}
 		}
 		LeaveCriticalSection(&CSConnectedClients);
-#else
-		// Get Chosen
-#endif
 
 		// Connected clients process
 		for(ClVecIt it=ProcessClients.begin(),end=ProcessClients.end();it!=end;++it)
@@ -422,7 +417,7 @@ void FOServer::RunGameLoop()
 		if(game_loop_tick && Timer::FastTick()>=game_loop_tick)
 		{
 			DWORD wait=3600000; // 1hour
-			if(ServerScript.PrepareContext(ServerFunctions.Loop,CALL_FUNC_STR,"Game") && ServerScript.RunPrepared()) wait=ServerScript.GetReturnedDword();
+			if(Script::PrepareContext(ServerFunctions.Loop,CALL_FUNC_STR,"Game") && Script::RunPrepared()) wait=Script::GetReturnedDword();
 			if(!wait) game_loop_tick=0; // Disable
 			else game_loop_tick=Timer::FastTick()+wait;
 		}
@@ -431,7 +426,7 @@ void FOServer::RunGameLoop()
 		ItemMngr.ItemGarbager(CycleBeginTick); // Items garbage
 		CrMngr.CritterGarbager(CycleBeginTick); // Critters garbage
 		MapMngr.LocationGarbager(CycleBeginTick); // Locations and maps garbage
-		ServerScript.CollectGarbage(false); // AngelScript garbage
+		Script::CollectGarbage(false); // AngelScript garbage
 		VarsGarbarger(CycleBeginTick);
 
 		// Other
@@ -469,11 +464,11 @@ void FOServer::RunGameLoop()
 		{
 			Client* cl=(Client*)cr;
 			cl->EventFinish(cl->Data.ClientToDelete);
-			if(ServerScript.PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cl->GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cl->GetInfo()))
 			{
-				ServerScript.SetArgObject(cl);
-				ServerScript.SetArgBool(cl->Data.ClientToDelete);
-				ServerScript.RunPrepared();
+				Script::SetArgObject(cl);
+				Script::SetArgBool(cl->Data.ClientToDelete);
+				Script::RunPrepared();
 			}
 			if(cl->Data.ClientToDelete) cl->FullClear();
 			else SaveClient(cl,true);
@@ -508,14 +503,6 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 			closesocket(sock);
 			continue;
 		}
-
-#ifdef FONLINE_SINGLE
-		if(from.sin_addr.s_addr!=0x0100007F) // localhost
-		{
-			closesocket(sock);
-			continue;
-		}
-#endif
 
 		if(GameOpt.DisableTcpNagle)
 		{
@@ -1215,15 +1202,15 @@ void FOServer::Process_Text(Client* cl)
 		TextListen& tl=TextListeners[i];
 		if(how_say==tl.SayType && parameter==tl.Parameter && !_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
 		{
-			if(!ServerScript.PrepareContext(tl.FuncId,CALL_FUNC_STR,cl->GetInfo()))
+			if(!Script::PrepareContext(tl.FuncId,CALL_FUNC_STR,cl->GetInfo()))
 			{
 				WriteLog(__FUNCTION__" - Prepare context fail.\n");
 				break;
 			}
 			string str_=str;
-			ServerScript.SetArgObject(cl);
-			ServerScript.SetArgObject(&str_);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(cl);
+			Script::SetArgObject(&str_);
+			Script::RunPrepared();
 		}
 	}
 }
@@ -1273,11 +1260,11 @@ void FOServer::Process_Command(Client* cl)
 
 			switch(cl->Access)
 			{
-			case ACCESS_CLIENT: StringAppend(istr,"|0xFFFF0000 Client|0xFF00FF00 ."); break;
-			case ACCESS_TESTER: StringAppend(istr,"|0xFFFF0000 Tester|0xFF00FF00 ."); break;
-			case ACCESS_MODER: StringAppend(istr,"|0xFFFF0000 Moderator|0xFF00FF00 ."); break;
-			case ACCESS_ADMIN: StringAppend(istr,"|0xFFFF0000 Administrator|0xFF00FF00 ."); break;
-			case ACCESS_IMPLEMENTOR: StringAppend(istr,"|0xFFFFFFFF Implementor|0xFF00FF00 ."); break;
+			case ACCESS_CLIENT: strcat(istr,"|0xFFFF0000 Client|0xFF00FF00 ."); break;
+			case ACCESS_TESTER: strcat(istr,"|0xFFFF0000 Tester|0xFF00FF00 ."); break;
+			case ACCESS_MODER: strcat(istr,"|0xFFFF0000 Moderator|0xFF00FF00 ."); break;
+			case ACCESS_ADMIN: strcat(istr,"|0xFFFF0000 Administrator|0xFF00FF00 ."); break;
+			case ACCESS_IMPLEMENTOR: strcat(istr,"|0xFFFFFFFF Implementor|0xFF00FF00 ."); break;
 			default: break;
 			}
 
@@ -1317,9 +1304,6 @@ void FOServer::Process_Command(Client* cl)
 				ConnectedClients.size(),CrMngr.PlayersInGame(),CrMngr.NpcInGame(),
 				Timer::FastTick()/1000/60,(Timer::FastTick()-Statistics.ServerStartTick)/1000/60);
 			LeaveCriticalSection(&CSConnectedClients);
-#ifdef FONLINE_SINGLE
-			StringAppend(str," Single Edition.");
-#endif
 			result+=str;
 
 			const char* ptext=result.c_str();
@@ -1810,7 +1794,7 @@ void FOServer::Process_Command(Client* cl)
 		//	else if(ImplemPasw && name_access[0]=='i' && name_access[2]=='i' && name_access[1]=='i' && !strcmp(&ImplemPasw[149],pasw_access)) wanted_access=ACCESS_IMPLEMENTOR;
 
 			bool allow=false;
-			if(wanted_access!=-1 && ServerScript.PrepareContext(ServerFunctions.PlayerGetAccess,CALL_FUNC_STR,cl->GetInfo()))
+			if(wanted_access!=-1 && Script::PrepareContext(ServerFunctions.PlayerGetAccess,CALL_FUNC_STR,cl->GetInfo()))
 			{
 				int script_wanted_access=-1;
 				switch(wanted_access)
@@ -1834,10 +1818,10 @@ void FOServer::Process_Command(Client* cl)
 				}
 
 				CScriptString* pass=new CScriptString(pasw_access);
-				ServerScript.SetArgObject(cl);
-				ServerScript.SetArgDword(script_wanted_access);
-				ServerScript.SetArgObject(pass);
-				if(ServerScript.RunPrepared() && ServerScript.GetReturnedBool()) allow=true;
+				Script::SetArgObject(cl);
+				Script::SetArgDword(script_wanted_access);
+				Script::SetArgObject(pass);
+				if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
 				pass->Release();
 			}
 
@@ -2023,7 +2007,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(ServerScript.ReloadScripts(SCRIPTS_LST,"server",GameOpt.SkipScriptBinaries))
+			if(Script::ReloadScripts(SCRIPTS_LST,"server",GameOpt.SkipScriptBinaries))
 				cl->Send_Text(cl,"Success.",SAY_NETMSG);
 			else
 				cl->Send_Text(cl,"Fail.",SAY_NETMSG);
@@ -2050,19 +2034,19 @@ void FOServer::Process_Command(Client* cl)
 				break;
 			}
 
-			if(!ServerScript.GetModule(module_name))
+			if(!Script::GetModule(module_name))
 			{
 				cl->Send_Text(cl,"Fail, script not found.",SAY_NETMSG);
 				break;
 			}
 
-			if(!ServerScript.LoadScript(module_name,NULL,false))
+			if(!Script::LoadScript(module_name,NULL,false))
 			{
 				cl->Send_Text(cl,"Unable to load script.",SAY_NETMSG);
 				break;
 			}
 
-			asIScriptModule* mod=ServerScript.GetModule(module_name);
+			asIScriptModule* mod=Script::GetModule(module_name);
 		//	char fails[4096];
 			if(!mod || mod->BindAllImportedFunctions()<0)
 			{
@@ -2070,7 +2054,7 @@ void FOServer::Process_Command(Client* cl)
 		//		cl->Send_Text(cl,fails,SAY_NETMSG);
 			}
 
-			int errors=ServerScript.RebindFunctions();
+			int errors=Script::RebindFunctions();
 			cl->Send_Text(cl,Str::Format("Done, errors<%d>.",errors),SAY_NETMSG);
 		}
 		break;
@@ -2117,25 +2101,25 @@ void FOServer::Process_Command(Client* cl)
 				break;
 			}
 
-			int bind_id=ServerScript.Bind(module_name,func_name,"void %s(Critter&,int,int,int)",true);
+			int bind_id=Script::Bind(module_name,func_name,"void %s(Critter&,int,int,int)",true);
 			if(!bind_id)
 			{
 				cl->Send_Text(cl,"Fail, function not found.",SAY_NETMSG);
 				break;
 			}
 
-			if(!ServerScript.PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo()))
+			if(!Script::PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo()))
 			{
 				cl->Send_Text(cl,"Fail, prepare error.",SAY_NETMSG);
 				break;
 			}
 
-			ServerScript.SetArgObject(cl);
-			ServerScript.SetArgDword(param0);
-			ServerScript.SetArgDword(param1);
-			ServerScript.SetArgDword(param2);
+			Script::SetArgObject(cl);
+			Script::SetArgDword(param0);
+			Script::SetArgDword(param1);
+			Script::SetArgDword(param2);
 
-			if(ServerScript.RunPrepared()) cl->Send_Text(cl,"Run script success.",SAY_NETMSG);
+			if(Script::RunPrepared()) cl->Send_Text(cl,"Run script success.",SAY_NETMSG);
 			else cl->Send_Text(cl,"Run script fail.",SAY_NETMSG);
 		}
 		break;
@@ -2802,15 +2786,15 @@ void FOServer::InitGameTime()
 {
 	if(!GameOpt.TimeMultiplier)
 	{
-		if(ServerScript.PrepareContext(ServerFunctions.GetStartTime,CALL_FUNC_STR,"Game"))
+		if(Script::PrepareContext(ServerFunctions.GetStartTime,CALL_FUNC_STR,"Game"))
 		{
-			ServerScript.SetArgAddress(&GameOpt.TimeMultiplier);
-			ServerScript.SetArgAddress(&GameOpt.Year);
-			ServerScript.SetArgAddress(&GameOpt.Month);
-			ServerScript.SetArgAddress(&GameOpt.Day);
-			ServerScript.SetArgAddress(&GameOpt.Hour);
-			ServerScript.SetArgAddress(&GameOpt.Minute);
-			ServerScript.RunPrepared();
+			Script::SetArgAddress(&GameOpt.TimeMultiplier);
+			Script::SetArgAddress(&GameOpt.Year);
+			Script::SetArgAddress(&GameOpt.Month);
+			Script::SetArgAddress(&GameOpt.Day);
+			Script::SetArgAddress(&GameOpt.Hour);
+			Script::SetArgAddress(&GameOpt.Minute);
+			Script::RunPrepared();
 		}
 
 		GameOpt.Year=CLAMP(GameOpt.Year,1700,30000);
@@ -2863,14 +2847,6 @@ bool FOServer::Init()
 	if(Active) return true;
 	Active=0;
 
-	// File manager paths
-#ifndef FONLINE_SINGLE
-	FileManager::SetDataPath(".\\",true);
-#else
-	FileManager::SetDataPath(OptFoDataPath.c_str(),false);
-	FileManager::SetDataPath(OptFoDataPathServer.c_str(),true);
-#endif
-
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
@@ -2895,14 +2871,11 @@ bool FOServer::Init()
 #endif
 
 	// Check the sizes of struct and classes
-#ifndef FONLINE_SINGLE
 	STATIC_ASSERT(offsetof(Item,PLexems)==128);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
 	STATIC_ASSERT(offsetof(Critter,RefCounter)==9768);
 	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9836);
 	STATIC_ASSERT(offsetof(Npc,Reserved)==9800);
-#endif
-
 	STATIC_ASSERT(offsetof(ProtoItem,Weapon.Weapon_Aim)==182);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
@@ -2962,7 +2935,8 @@ bool FOServer::Init()
 	}
 
 	// Generic
-	FONames::GenerateFoNames(PT_SERVER_DATA_DATA); // Generate name of defines
+	FileManager::SetDataPath(".\\"); // File manager
+	FONames::GenerateFoNames(PT_SERVER_DATA); // Generate name of defines
 	if(!InitScriptSystem()) goto label_Error; // Script system
 	if(!InitLangPacks(LangPacks)) goto label_Error; // Language packs
 	if(!InitLangScript(LangPacks)) goto label_Error; // Client scripts
@@ -3019,21 +2993,23 @@ bool FOServer::Init()
 	WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2),&wsa))
 	{
-		WriteLog("WSAStartup error!");
+		WriteLog("WSAStartup error.");
 		goto label_Error;
 	}
 
 	ListenSock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,WSA_FLAG_OVERLAPPED);
 
-	UINT port;
-#ifdef FONLINE_SINGLE
-	// Find free port
-	port=0;
-	WriteLog("Starting server on free port.\n");
-#else
-	port=cfg.GetInt("Port",4000);
-	WriteLog("Starting server on port<%u>.\n",port);
-#endif
+	WORD port;
+	if(!SinglePlayer)
+	{
+		port=cfg.GetInt("Port",4000);
+		WriteLog("Starting server on port<%u>.\n",port);
+	}
+	else
+	{
+		port=0;
+		WriteLog("Starting server on free port.\n",port);
+	}
 
 	SOCKADDR_IN sin;
 	sin.sin_family=AF_INET;
@@ -3042,17 +3018,20 @@ bool FOServer::Init()
 
 	if(bind(ListenSock,(sockaddr*)&sin,sizeof(sin))==SOCKET_ERROR)
 	{
-		WriteLog("Bind error!");
+		WriteLog("Bind error.\n");
 		goto label_Error;
 	}
 
-#ifdef FONLINE_SINGLE
-	int namelen=sizeof(sin);
-	getsockname(ListenSock,(sockaddr*)&sin,&namelen);
-	OptPort=sin.sin_port;
-	OptHost="localhost";
-	WriteLog("Taked port<%u>.\n",OptPort);
-#endif
+	if(SinglePlayer)
+	{
+		int namelen=sizeof(sin);
+		if(getsockname(ListenSock,(sockaddr*)&sin,&namelen))
+		{
+			WriteLog("Getsockname error.\n");
+			goto label_Error;
+		}
+		WriteLog("Taked port<%u>.\n",sin.sin_port);
+	}
 
 	if(listen(ListenSock,SOMAXCONN)==SOCKET_ERROR)
 	{
@@ -3082,7 +3061,7 @@ bool FOServer::Init()
 	for(DWORD i=0;i<WorkThreadCount;i++) IOThreadHandles[i+1]=(HANDLE)_beginthreadex(NULL,0,Net_Work,(void*)IOCompletionPort,0,NULL);
 
 	// Start script
-	if(!ServerScript.PrepareContext(ServerFunctions.Start,CALL_FUNC_STR,"Game") || !ServerScript.RunPrepared() || !ServerScript.GetReturnedBool())
+	if(!Script::PrepareContext(ServerFunctions.Start,CALL_FUNC_STR,"Game") || !Script::RunPrepared() || !Script::GetReturnedBool())
 	{
 		WriteLog(__FUNCTION__" - Start script fail.\n");
 		goto label_Error;
@@ -3090,7 +3069,7 @@ bool FOServer::Init()
 
 	// Process command line definitions
 	const char* cmd_line=GetCommandLine();
-	asIScriptEngine* engine=ServerScript.GetEngine();
+	asIScriptEngine* engine=Script::GetEngine();
 	for(int i=0,j=engine->GetGlobalPropertyCount();i<j;i++)
 	{
 		const char* name;
@@ -3099,7 +3078,7 @@ bool FOServer::Init()
 		const char* config_group;
 		void* pointer;
 		if(engine->GetGlobalPropertyByIndex(i,&name,&type_id,&is_const,&config_group,&pointer)>=0)
-		{ 
+		{
 			const char* cmd_name=strstr(cmd_line,name);
 			if(cmd_name)
 			{
@@ -3136,6 +3115,14 @@ bool FOServer::Init()
 	SaveWorldNextTick=Timer::FastTick()+SaveWorldTime;
 
 	Active=true;
+
+	// Inform client about end of initialization
+	if(SinglePlayer)
+	{
+		if(!SinglePlayerData.Lock()) goto label_Error;
+		SinglePlayerData.NetPort=sin.sin_port;
+		SinglePlayerData.Unlock();
+	}
 	return true;
 
 label_Error:
@@ -3158,7 +3145,7 @@ bool FOServer::InitCrafts(LangPackVec& lang_packs)
 		{
 			if(!MrFixit.LoadCrafts(lang.Msg[TEXTMSG_CRAFT]))
 			{
-				WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.NameStr);
+				WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.GetPath());
 				return false;
 			}
 			main_lang=&lang;
@@ -3168,13 +3155,13 @@ bool FOServer::InitCrafts(LangPackVec& lang_packs)
 		CraftManager mr_fixit;
 		if(!mr_fixit.LoadCrafts(lang.Msg[TEXTMSG_CRAFT]))
 		{
-			WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.NameStr);
+			WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.GetPath());
 			return false;
 		}
 
 		if(!(MrFixit==mr_fixit))
 		{
-			WriteLog(__FUNCTION__" - Compare crafts fail. <%s>with<%s>.\n",main_lang->NameStr,lang.NameStr);
+			WriteLog(__FUNCTION__" - Compare crafts fail. <%s>with<%s>.\n",main_lang->GetPath(),lang.GetPath());
 			return false;
 		}
 	}
@@ -3187,13 +3174,9 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 	WriteLog("Loading language packs...\n");
 
 	IniParser cfg;
-	if(!cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT))
-	{
-		WriteLog("Server config file not found.\n");
-		return false;
-	}
-
+	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	int cur_lang=0;
+
 	while(true)
 	{
 		char cur_str_lang[256];
@@ -3201,7 +3184,6 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 		sprintf(cur_str_lang,"Language_%d",cur_lang);
 
 		if(!cfg.GetStr(cur_str_lang,"",lang_name)) break;
-		Str::Lwr(lang_name);
 
 		if(strlen(lang_name)!=4)
 		{
@@ -3212,14 +3194,14 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 		DWORD pack_id=*(DWORD*)&lang_name;
 		if(std::find(lang_packs.begin(),lang_packs.end(),pack_id)!=lang_packs.end())
 		{
-			WriteLog("Language pack<%u> is already initialized.\n",cur_lang);
+			WriteLog("Language pack<%u> is already Init.\n",cur_lang);
 			return false;
 		}
 
 		LanguagePack lang;
-		if(!lang.Init(lang_name))
+		if(!lang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_SERVER_TEXTS),FileMngr.GetPath(PT_SERVER_TEXTS)),*(DWORD*)&lang_name))
 		{
-			WriteLog("Unable to init language pack<%u>.\n",cur_lang);
+			WriteLog("Unable to init Language pack<%u>.\n",cur_lang);
 			return false;
 		}
 
@@ -3228,7 +3210,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 	}
 
 	WriteLog("Loading language packs complete, loaded<%u> packs.\n",cur_lang);
-	return cur_lang!=0;
+	return true;
 }
 
 bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
@@ -3312,7 +3294,7 @@ bool FOServer::InitLangScript(LangPackVec& lang_packs)
 	int errors=0;
 	char buf[1024];
 	string value,config;
-	ServerScript.Undefine("__SERVER");
+	Script::Undefine("__SERVER");
 	while(fgets(buf,1024,f))
 	{
 		if(buf[0]!='@') continue;
@@ -3327,16 +3309,16 @@ bool FOServer::InitLangScript(LangPackVec& lang_packs)
 			str >> value;
 			if(str.fail()) continue;
 
-			ServerScript.Define("__CLIENT");
-			char* buf=ServerScript.Preprocess((value+".fos").c_str(),false);
+			Script::Define("__CLIENT");
+			char* buf=Script::Preprocess((value+".fos").c_str(),false);
 			if(!buf)
 			{
 				WriteLog(__FUNCTION__" - Unable to preprocess client script<%s>.\n",value.c_str());
-				ServerScript.Undefine("__CLIENT");
+				Script::Undefine("__CLIENT");
 				errors++;
 				continue;
 			}
-			ServerScript.Undefine("__CLIENT");
+			Script::Undefine("__CLIENT");
 
 			for(LangPackVecIt it=lang_packs.begin(),end=lang_packs.end();it!=end;++it)
 			{
@@ -3365,7 +3347,7 @@ bool FOServer::InitLangScript(LangPackVec& lang_packs)
 			config+=config_+"\n";
 		}
 	}
-	ServerScript.Define("__SERVER");
+	Script::Define("__SERVER");
 	fclose(f);
 
 	// Add config text
@@ -3725,12 +3707,12 @@ void FOServer::SaveWorld()
 
 	// ServerFunctions.SaveWorld
 	SaveWorldDeleteIndexes.clear();
-	if(ServerScript.PrepareContext(ServerFunctions.WorldSave,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ServerFunctions.WorldSave,CALL_FUNC_STR,"Game"))
 	{
-		asIScriptArray* delete_indexes=ServerScript.CreateArray("uint[]");
-		ServerScript.SetArgDword(SaveWorldIndex+1);
-		ServerScript.SetArgObject(delete_indexes);
-		if(ServerScript.RunPrepared()) ServerScript.AssignScriptArrayInVector(SaveWorldDeleteIndexes,delete_indexes);
+		asIScriptArray* delete_indexes=Script::CreateArray("uint[]");
+		Script::SetArgDword(SaveWorldIndex+1);
+		Script::SetArgObject(delete_indexes);
+		if(Script::RunPrepared()) Script::AssignScriptArrayInVector(SaveWorldDeleteIndexes,delete_indexes);
 		delete_indexes->Release();
 	}
 
@@ -4359,7 +4341,7 @@ void FOServer::LoadTimeEventsFile(FILE* f)
 			fread(&values[0],values_size*sizeof(DWORD),1,f);
 		}
 
-		int bind_id=ServerScript.Bind(script_name,"uint %s(uint[]@)",false);
+		int bind_id=Script::Bind(script_name,"uint %s(uint[]@)",false);
 		if(bind_id<=0)
 		{
 			WriteLog("Unable to bind script function, event num<%u>, name<%s>.\n",num,script_name);
@@ -4388,10 +4370,10 @@ DWORD FOServer::CreateScriptEvent(DWORD begin_minute, const char* script_name, D
 	char full_name[256];
 	char module_name[256];
 	char func_name[256];
-	if(!ServerScript.ReparseScriptName(script_name,module_name,func_name)) SCRIPT_ERROR_R0("Can't reparse script name.");
+	if(!Script::ReparseScriptName(script_name,module_name,func_name)) SCRIPT_ERROR_R0("Can't reparse script name.");
 	Str::SFormat(full_name,"%s@%s",module_name,func_name);
 
-	int bind_id=ServerScript.Bind(module_name,func_name,"uint %s(uint[]@)",false);
+	int bind_id=Script::Bind(module_name,func_name,"uint %s(uint[]@)",false);
 	if(bind_id<=0) SCRIPT_ERROR_R0("Script function not found.");
 
 	TimeEvent te;
@@ -4421,14 +4403,14 @@ void FOServer::ProcessTimeEvents()
 		TimeEvent cur_event=TimeEvents[0]; // Copy
 		TimeEvents.erase(TimeEvents.begin()); // And erase
 		DWORD wait_time=0;
-		if(ServerScript.PrepareContext(cur_event.BindId,CALL_FUNC_STR,Str::Format("Time event<%u>",cur_event.Num)))
+		if(Script::PrepareContext(cur_event.BindId,CALL_FUNC_STR,Str::Format("Time event<%u>",cur_event.Num)))
 		{
 			asIScriptArray* dw=NULL;
 			DWORD size=cur_event.Values.size();
 
 			if(size>0)
 			{
-				dw=ServerScript.CreateArray("uint[]");
+				dw=Script::CreateArray("uint[]");
 				if(!dw)
 				{
 					WriteLog(__FUNCTION__" - Create uint array fail. Wait 10 real minutes.\n");
@@ -4443,15 +4425,15 @@ void FOServer::ProcessTimeEvents()
 
 			if(!size || dw)
 			{
-				ServerScript.SetArgObject(dw);
-				if(!ServerScript.RunPrepared())
+				Script::SetArgObject(dw);
+				if(!Script::RunPrepared())
 				{
 					WriteLog(__FUNCTION__" - RunPrepared fail. Wait 10 real minutes.\n");
 					wait_time=GameOpt.TimeMultiplier*10;
 				}
 				else
 				{
-					wait_time=ServerScript.GetReturnedDword();
+					wait_time=Script::GetReturnedDword();
 					if(wait_time && dw) // Recopy array
 					{
 						DWORD arr_size=dw->GetElementCount();
@@ -4511,7 +4493,7 @@ string FOServer::GetTimeEventsStatistics()
 
 void FOServer::SaveScriptFunctionsFile()
 {
-	const StrVec& cache=ServerScript.GetScriptFuncCache();
+	const StrVec& cache=Script::GetScriptFuncCache();
 	DWORD count=cache.size();
 	AddWorldSaveData(&count,sizeof(count));
 	for(size_t i=0,j=cache.size();i<j;i++)
@@ -4529,7 +4511,7 @@ void FOServer::LoadScriptFunctionsFile(FILE* f)
 	fread(&count,sizeof(count),1,f);
 	for(DWORD i=0;i<count;i++)
 	{
-		ServerScript.ResizeCache(i);
+		Script::ResizeCache(i);
 
 		char script[1024];
 		DWORD len=0;
@@ -4548,7 +4530,7 @@ void FOServer::LoadScriptFunctionsFile(FILE* f)
 		decl++;
 
 		// Parse
-		if(!ServerScript.GetScriptFuncNum(script,decl))
+		if(!Script::GetScriptFuncNum(script,decl))
 		{
 			WriteLog(__FUNCTION__" - Function<%s,%s> not found.\n",script,decl);
 			continue;

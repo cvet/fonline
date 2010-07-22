@@ -95,14 +95,14 @@ void CritterCl::Finish()
 void CritterCl::GenParams()
 {
 #ifdef FONLINE_CLIENT
-	if(ClientScript.PrepareContext(ClientFunctions.PlayerGeneration,CALL_FUNC_STR,"Registration"))
+	if(Script::PrepareContext(ClientFunctions.PlayerGeneration,CALL_FUNC_STR,"Registration"))
 	{
-		asIScriptArray* arr=ClientScript.CreateArray("int[]");
+		asIScriptArray* arr=Script::CreateArray("int[]");
 		if(!arr) return;
 		arr->Resize(MAX_PARAMS);
 		for(int i=0;i<MAX_PARAMS;i++) (*(int*)arr->GetElementPointer(i))=ParamsReg[i];
-		ClientScript.SetArgObject(arr);
-		if(ClientScript.RunPrepared() && arr->GetElementCount()==MAX_PARAMS)
+		Script::SetArgObject(arr);
+		if(Script::RunPrepared() && arr->GetElementCount()==MAX_PARAMS)
 			for(int i=0;i<MAX_PARAMS;i++) Params[i]=(*(int*)arr->GetElementPointer(i));
 		arr->Release();
 	}
@@ -503,11 +503,11 @@ DWORD CritterCl::GetTalkDistance()
 int CritterCl::GetParam(DWORD index)
 {
 #ifdef FONLINE_CLIENT
-	if(ParamsGetScript[index] && ClientScript.PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,GetInfo()))
+	if(ParamsGetScript[index] && Script::PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,GetInfo()))
 	{
-		ClientScript.SetArgObject(this);
-		ClientScript.SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
-		if(ClientScript.RunPrepared()) return ClientScript.GetReturnedDword();
+		Script::SetArgObject(this);
+		Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 #endif
 
@@ -579,12 +579,12 @@ void CritterCl::ProcessChangedParams()
 				DWORD index=CallChange_[i+1];
 				ParamLocked=index;
 #ifdef FONLINE_CLIENT
-				if(ClientScript.PrepareContext(CallChange_[i],CALL_FUNC_STR,GetInfo()))
+				if(Script::PrepareContext(CallChange_[i],CALL_FUNC_STR,GetInfo()))
 				{
-					ClientScript.SetArgObject(this);
-					ClientScript.SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
-					ClientScript.SetArgDword(CallChange_[i+2]);
-					ClientScript.RunPrepared();
+					Script::SetArgObject(this);
+					Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
+					Script::SetArgDword(CallChange_[i+2]);
+					Script::RunPrepared();
 				}
 #endif
 				ParamLocked=-1;
@@ -1070,16 +1070,16 @@ void CritterCl::Move(BYTE dir)
 void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /* = true */)
 {
 #ifdef FONLINE_CLIENT
-	if(ClientScript.PrepareContext(ClientFunctions.CritterAction,CALL_FUNC_STR,"CritterAction"))
+	if(Script::PrepareContext(ClientFunctions.CritterAction,CALL_FUNC_STR,"CritterAction"))
 	{
 		if(item) item=item->Clone();
 
-		ClientScript.SetArgBool(local_call);
-		ClientScript.SetArgObject(this);
-		ClientScript.SetArgDword(action);
-		ClientScript.SetArgDword(action_ext);
-		ClientScript.SetArgObject(item);
-		ClientScript.RunPrepared();
+		Script::SetArgBool(local_call);
+		Script::SetArgObject(this);
+		Script::SetArgDword(action);
+		Script::SetArgDword(action_ext);
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 
 		SAFEREL(item);
 	}
@@ -1590,13 +1590,13 @@ BYTE CritterCl::GetAnim2()
 void CritterCl::ProcessAnim(bool is2d, DWORD anim1, DWORD anim2, Item* item)
 {
 #ifdef FONLINE_CLIENT
-	if(ClientScript.PrepareContext(is2d?ClientFunctions.Animation2dProcess:ClientFunctions.Animation3dProcess,CALL_FUNC_STR,"AnimationProcess"))
+	if(Script::PrepareContext(is2d?ClientFunctions.Animation2dProcess:ClientFunctions.Animation3dProcess,CALL_FUNC_STR,"AnimationProcess"))
 	{
-		ClientScript.SetArgObject(this);
-		ClientScript.SetArgDword(anim1);
-		ClientScript.SetArgDword(anim2);
-		ClientScript.SetArgObject(item);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgDword(anim1);
+		Script::SetArgDword(anim2);
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 	}
 #endif
 }
@@ -1640,7 +1640,7 @@ void CritterCl::SetBaseType(DWORD type)
 #ifdef FONLINE_CLIENT
 		if(!Layers3d)
 		{
-			Layers3d=ClientScript.CreateArray("int[]");
+			Layers3d=Script::CreateArray("int[]");
 			((asIScriptArray*)Layers3d)->Resize(LAYERS3D_COUNT);
 		}
 		ZeroMemory(((asIScriptArray*)Layers3d)->GetElementPointer(0),LAYERS3D_COUNT*sizeof(int));

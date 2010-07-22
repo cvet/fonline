@@ -110,17 +110,13 @@ bool CheckUserPass(const char* str);
 #ifdef FONLINE_CLIENT
 	#include "ResourceClient.h"
 	#define WINDOW_CLASS_NAME   "FOnline"
+	#define WINDOW_NAME         "FOnline"
+	#define WINDOW_NAME_SP      "FOnline Single Player"
 	#define CFG_DEF_INT_FILE    "default800x600.ini"
-
-	#ifndef FONLINE_SINGLE
-		#define WINDOW_NAME     "FOnline"
-	#else
-		#define WINDOW_NAME     "FOnline Single Player"
-	#endif
 #else
 	#include "ResourceMapper.h"
 	#define WINDOW_CLASS_NAME   "FOnline Mapper"
-	#define WINDOW_NAME         "Fallout Online Mapper"
+	#define WINDOW_NAME         "FOnline Mapper"
 	const BYTE SELECT_ALPHA		=100;
 	#define CFG_DEF_INT_FILE    "mapper_default.ini"
 #endif
@@ -198,7 +194,6 @@ extern string OptMasterPath;
 extern string OptCritterPath;
 extern string OptFoPatchPath;
 extern string OptFoDataPath;
-extern string OptFoDataPathServer;
 extern string OptHost;
 extern DWORD OptPort;
 extern DWORD OptProxyType;
@@ -303,10 +298,6 @@ struct MapperScriptFunctions
 /* Server                                                               */
 /************************************************************************/
 #ifdef FONLINE_SERVER
-
-#ifndef FONLINE_SINGLE
-#include "ResourceServer.h"
-#endif
 
 #include <richedit.h>
 #include "Script.h"
@@ -636,6 +627,35 @@ template<int Size> inline void StringCopy(char (&to)[Size], const char* from){re
 void StringAppend(char* to, size_t size, const char* from);
 template<int Size> inline void StringAppend(char (&to)[Size], const char* from){return StringAppend(to,Size,from);}
 char* StringDuplicate(const char* str);
+
+/************************************************************************/
+/* Single player                                                        */
+/************************************************************************/
+
+class InterprocessData
+{
+public:
+	WORD NetPort;
+	bool Pause;
+
+private:
+	HANDLE mapFileMutex;
+	HANDLE mapFile;
+	void* mapFilePtr;
+
+public:
+	HANDLE Init();
+	void Finish();
+	bool Attach(HANDLE map_file);
+	bool Lock();
+	void Unlock();
+	bool Refresh();
+};
+
+extern bool SinglePlayer;
+extern InterprocessData SinglePlayerData;
+
+#define SINGLE_PLAYER_CONFIG_NAME        "FOnlineSP.cfg"
 
 /************************************************************************/
 /*                                                                      */

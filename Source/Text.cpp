@@ -661,10 +661,6 @@ bool IniParser::IsCachedKey(const char* key_name)
 	return cachedKeys.count(string(key_name))!=0;
 }
 
-#if (defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)) && !defined(FONLINE_SINGLE)
-#define FOMSG_CACHE
-#endif
-
 FOMsg::FOMsg()
 {
 	Clear();
@@ -908,15 +904,22 @@ int FOMsg::LoadMsgFile(const char* path)
 {
 	Clear();
 
-#ifdef FOMSG_CACHE
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	DWORD buf_len;
 	char* buf=(char*)Crypt.GetCache(path,buf_len);
 	if(!buf) return -1;
 #else
-	FileManager fm;
-	if(!fm.LoadFile(path,PT_SERVER_TEXTS)) return -2;
-	DWORD buf_len=fm.GetFsize();
-	char* buf=(char*)fm.ReleaseBuffer();
+	FILE* finfo=NULL;
+	if(!(finfo=fopen(path,"rb"))) return -2;
+
+	fseek(finfo,0,SEEK_END);
+	DWORD buf_len=ftell(finfo)+1;
+	fseek(finfo,0,SEEK_SET);
+
+	char* buf=new char[buf_len+1];
+	fread(buf,sizeof(char),buf_len,finfo);
+	buf[buf_len]='\0';
+	fclose(finfo);
 #endif
 
 	int result=LoadMsgFile(buf,buf_len);
@@ -965,7 +968,7 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 {
 	Clear();
 
-#ifdef FOMSG_CACHE
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	char* buf=(char*)Crypt.Uncompress((BYTE*)data,data_len,10);
 	if(!buf) return -3;
 #else
@@ -1006,7 +1009,8 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 		if(!*pbuf) break;
 		*pbuf='\0';
 
-#ifdef FONLINE_SERVER
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#else
 		if(num_info<last_num)
 		{
 			WriteLog(__FUNCTION__" - Error string id, cur<%u>, last<%u>\n",num_info,last_num);
@@ -1019,7 +1023,7 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 		pbuf++;
 	}
 
-#ifdef FOMSG_CACHE
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	delete[] buf;
 #endif
 	CalculateHash();
@@ -1028,7 +1032,8 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 
 int FOMsg::SaveMsgFile(const char* path)
 {
-#ifndef FOMSG_CACHE
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#else
 	FILE* finfo=NULL;
 	if(!(finfo=fopen(path,"wb"))) return -1;
 #endif
@@ -1049,7 +1054,7 @@ int FOMsg::SaveMsgFile(const char* path)
 	char* buf=(char*)str.c_str();
 	DWORD buf_len=str.length();
 
-#ifdef FOMSG_CACHE
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	buf=(char*)Crypt.Compress((BYTE*)buf,buf_len);
 	if(!buf) return -2;
 	Crypt.SetCache(path,(BYTE*)buf,buf_len);
@@ -1074,25 +1079,35 @@ void FOMsg::Clear()
 	strDataHash=0;
 }
 
-bool LanguagePack::Init(const char* name)
+bool LanguagePack::Init(const char* path, DWORD name)
 {
-	StringCopy(NameStr,name);
-	return LoadAll()==0;
+	if(!path || !name) return false;
+	Name=name;
+	Path=string(path)+string((char*)&Name)+string("\\");
+	if(LoadAll()<0) return false;
+	return true;
+}
+
+void LanguagePack::ChangeName(DWORD new_name)
+{
+	Name=new_name;
+	Path=Path.substr(0,Path.length()-5);
+	Path+=string((char*)&Name)+string("\\");
 }
 
 int LanguagePack::LoadAll()
 {
 	// Loading All MSG files
-	if(!Name)
+	if(!Name || !Path.size())
 	{
-		WriteLog(__FUNCTION__" - Language pack is not initialized.\n");
+		WriteLog(__FUNCTION__" - Lang Pack is not initialized.\n");
 		return -1;
 	}
 
 	int count_fail=0;
 	for(int i=0;i<TEXTMSG_COUNT;i++)
 	{
-		if(Msg[i].LoadMsgFile(Str::Format("%s\\%s",NameStr,TextMsgFileName[i]))<0)
+		if(Msg[i].LoadMsgFile(Str::Format("%s%s",Path.c_str(),TextMsgFileName[i]))<0)
 		{
 			count_fail++;
 			WriteLog(__FUNCTION__" - Unable to load MSG<%s>.\n",TextMsgFileName[i]);
@@ -1102,3 +1117,12 @@ int LanguagePack::LoadAll()
 	return -count_fail;
 }
 
+const char* LanguagePack::GetName()
+{
+	return (char*)&Name;
+}
+
+const char* LanguagePack::GetPath()
+{
+	return Path.c_str();
+}

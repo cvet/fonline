@@ -1092,9 +1092,9 @@ void ProtoMap::BindSceneryScript(MapObject* mobj)
 //============================================================
 #define BIND_SCENERY_FUNC(params) \
 	if(mobj->ProtoId!=SP_SCEN_TRIGGER) \
-		mobj->RunTime.BindScriptId=ServerScript.Bind(mobj->ScriptName,mobj->FuncName,"bool %s(Critter&,Scenery&,int,Item@"params,false); \
+		mobj->RunTime.BindScriptId=Script::Bind(mobj->ScriptName,mobj->FuncName,"bool %s(Critter&,Scenery&,int,Item@"params,false); \
 	else \
-		mobj->RunTime.BindScriptId=ServerScript.Bind(mobj->ScriptName,mobj->FuncName,"void %s(Critter&,Scenery&,bool,uint8"params,false)
+		mobj->RunTime.BindScriptId=Script::Bind(mobj->ScriptName,mobj->FuncName,"void %s(Critter&,Scenery&,bool,uint8"params,false)
 //============================================================
 
 	switch(mobj->MScenery.ParamsCount)
@@ -1397,7 +1397,7 @@ bool ProtoMap::Refresh()
 					{
 						char script_module[MAX_SCRIPT_NAME+1];
 						char script_func[MAX_SCRIPT_NAME+1];
-						if(ServerScript.ReparseScriptName(script,script_module,script_func))
+						if(Script::ReparseScriptName(script,script_module,script_func))
 						{
 							StringCopy(mobj.ScriptName,script_module);
 							StringCopy(mobj.FuncName,script_func);
@@ -1581,7 +1581,7 @@ bool ProtoMap::IsMapFile(const char* fname)
 	{
 		// Check binary format
 		FileManager file;
-		if(!file.LoadFile(fname)) return false;
+		if(!file.LoadFile(fname,PT_ROOT)) return false;
 		DWORD version=file.GetLEDWord();
 		return version==FO_MAP_VERSION_V4 || version==FO_MAP_VERSION_V5 ||
 			version==FO_MAP_VERSION_V6 || version==FO_MAP_VERSION_V7 ||

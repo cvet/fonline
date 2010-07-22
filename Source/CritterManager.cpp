@@ -64,7 +64,7 @@ bool CritterManager::LoadProtos()
 	// Get names of proto
 	if(!fileMngr.LoadFile("critters.lst",PT_SERVER_PRO_CRITTERS))
 	{
-		WriteLog("Can't open file<%s>.\n",FileManager::GetFullPath("critters.lst",PT_SERVER_PRO_CRITTERS));
+		WriteLog("Cannot open \"critters.lst\".\n");
 		return false;
 	}
 
@@ -233,11 +233,11 @@ void CritterManager::RunInitScriptCritters()
 	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(ServerScript.PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			ServerScript.SetArgObject(cr);
-			ServerScript.SetArgBool(false);
-			ServerScript.RunPrepared();
+			Script::SetArgObject(cr);
+			Script::SetArgBool(false);
+			Script::RunPrepared();
 		}
 		if(cr->Data.ScriptId) cr->ParseScript(NULL,false);
 	}
@@ -278,11 +278,11 @@ void CritterManager::CritterGarbager(DWORD cycle_tick)
 			}
 
 			npc->EventFinish(true);
-			if(ServerScript.PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,npc->GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,npc->GetInfo()))
 			{
-				ServerScript.SetArgObject(npc);
-				ServerScript.SetArgBool(true);
-				ServerScript.RunPrepared();
+				Script::SetArgObject(npc);
+				Script::SetArgBool(true);
+				Script::RunPrepared();
 			}
 
 			Map* map=MapMngr.GetMap(npc->GetMap());
@@ -418,11 +418,11 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		}
 	}
 
-	if(ServerScript.PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,npc->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,npc->GetInfo()))
 	{
-		ServerScript.SetArgObject(npc);
-		ServerScript.SetArgBool(true);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(npc);
+		Script::SetArgBool(true);
+		Script::RunPrepared();
 	}
 	if(script) npc->ParseScript(script,true);
 	map->AddCritterEvents(npc);

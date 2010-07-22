@@ -14,15 +14,9 @@
 #include <strstream>
 #include <process.h>
 
-#ifdef FONLINE_SERVER
-Script ServerScript;
-#endif
-#ifdef FONLINE_CLIENT
-Script ClientScript;
-#endif
-#ifdef FONLINE_MAPPER
-Script MapperScript;
-#endif
+
+namespace Script
+{
 
 const char* ContextStatesStr[]=
 {
@@ -36,23 +30,57 @@ const char* ContextStatesStr[]=
 	"Error",
 };
 
-HANDLE Script::EngineLogFile=NULL;
+class BindFunction
+{
+public:
+	bool IsScriptCall;
+	int ScriptFuncId;
+	string ModuleName;
+	string FuncName;
+	string FuncDecl;
+	size_t NativeFuncAddr;
+
+	BindFunction(int func_id, size_t native_func_addr, const char* module_name,  const char* func_name, const char* func_decl)
+	{
+		IsScriptCall=(native_func_addr==0);
+		ScriptFuncId=func_id;
+		NativeFuncAddr=native_func_addr;
+		ModuleName=module_name;
+		FuncName=func_name;
+		FuncDecl=func_decl;
+	}
+};
+typedef vector<BindFunction> BindFunctionVec;
+
+asIScriptEngine* Engine=NULL;
+HANDLE EngineLogFile=NULL;
+StrVec ModuleNames;
+asIScriptContext* GlobalCtx[GLOBAL_CONTEXT_STACK_SIZE]={0};
+BindFunctionVec BindedFunctions;
+int ScriptsPath=PT_SCRIPTS;
+bool LogDebugInfo=true;
+
+// Timeouts
+DWORD RunTimeoutSuspend=0;
+DWORD RunTimeoutMessage=0;
+HANDLE RunTimeoutThreadHandle=NULL;
+HANDLE RunTimeoutStartEvent=NULL;
+HANDLE RunTimeoutFinishEvent=NULL;
+unsigned int __stdcall RunTimeoutThread(void*);
 
 // #pragma globalvar "int __MyGlobalVar = 100"
 class GvarPragmaCallback : public Preprocessor::PragmaCallback
 {
 private:
-	set<string> addedVars;
-	list<int> intArray;
-	list<__int64> int64Array;
-	list<CScriptString*> stringArray;
-	list<float> floatArray;
-	list<double> doubleArray;
-	list<char> boolArray;
+	static set<string> addedVars;
+	static list<int> intArray;
+	static list<__int64> int64Array;
+	static list<CScriptString*> stringArray;
+	static list<float> floatArray;
+	static list<double> doubleArray;
+	static list<char> boolArray;
 
 public:
-	Script* ScriptCallback;
-
 	void pragma(const Preprocessor::PragmaInstance& instance)
 	{
 		string type,decl,value;
@@ -80,28 +108,28 @@ public:
 		if(type=="int8" || type=="int16" || type=="int32" || type=="int" || type=="uint8" || type=="uint16" || type=="uint32" || type=="uint")
 		{
 			list<int>::iterator it=intArray.insert(intArray.begin(),int_value);
-			if(ScriptCallback->GetEngine()->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register integer global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register integer global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else if(type=="int64" || type=="uint64")
 		{
 			list<__int64>::iterator it=int64Array.insert(int64Array.begin(),int_value);
-			if(ScriptCallback->GetEngine()->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register integer64 global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register integer64 global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else if(type=="string")
 		{
 			value=instance.text.substr(instance.text.find(value),string::npos);
 			list<CScriptString*>::iterator it=stringArray.insert(stringArray.begin(),new CScriptString(value));
-			if(ScriptCallback->GetEngine()->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register string global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register string global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else if(type=="float")
 		{
 			list<float>::iterator it=floatArray.insert(floatArray.begin(),(float)float_value);
-			if(ScriptCallback->GetEngine()->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register float global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register float global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else if(type=="double")
 		{
 			list<double>::iterator it=doubleArray.insert(doubleArray.begin(),float_value);
-			if(ScriptCallback->GetEngine()->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register double global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register double global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else if(type=="bool")
 		{
@@ -112,7 +140,7 @@ public:
 				return;
 			}
 			list<char>::iterator it=boolArray.insert(boolArray.begin(),value=="true"?true:false);
-			if(ScriptCallback->GetEngine()->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register boolean global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register boolean global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else
 		{
@@ -121,7 +149,7 @@ public:
 		addedVars.insert(name);
 	}
 
-	void clear()
+	static void clear()
 	{
 		addedVars.clear();
 		intArray.clear();
@@ -132,31 +160,35 @@ public:
 		boolArray.clear();
 	}
 };
+set<string> GvarPragmaCallback::addedVars;
+list<int> GvarPragmaCallback::intArray;
+list<__int64> GvarPragmaCallback::int64Array;
+list<CScriptString*> GvarPragmaCallback::stringArray;
+list<float> GvarPragmaCallback::floatArray;
+list<double> GvarPragmaCallback::doubleArray;
+list<char> GvarPragmaCallback::boolArray;
 
 // #pragma crdata "Stat 0 199"
 class CrDataPragmaCallback : public Preprocessor::PragmaCallback
 {
 public:
-	PragmaCallbackFunc CallFunc;
-
-	CrDataPragmaCallback():CallFunc(NULL){}
+	static PragmaCallbackFunc CallFunc;
 
 	void pragma(const Preprocessor::PragmaInstance& instance)
 	{
 		if(CallFunc && !(*CallFunc)(instance.text.c_str())) WriteLog("Unable to parse crdata pragma<%s>.\n",instance.text.c_str());
 	}
 };
+PragmaCallbackFunc CrDataPragmaCallback::CallFunc=NULL;
 
 // #pragma bindfunc "int MyFunc(int, uint) -> my.dll MyDllFunc"
 // #pragma bindfunc "int MyObject::MyMethod(int, uint) -> my.dll MyDllFunc"
 class BindFuncPragmaCallback : public Preprocessor::PragmaCallback
 {
 private:
-	set<string> alreadyProcessed;
+	static set<string> alreadyProcessed;
 
 public:
-	Script* ScriptCallback;
-
 	void pragma(const Preprocessor::PragmaInstance& instance)
 	{
 		if(alreadyProcessed.count(instance.text)) return;
@@ -181,7 +213,7 @@ public:
 			return;
 		}
 
-		HMODULE dll=ScriptCallback->LoadDynamicLibrary(dll_name.c_str());
+		HMODULE dll=LoadDynamicLibrary(dll_name.c_str());
 		if(!dll)
 		{
 			WriteLog("Error in bindfunc pragma<%s>, dll not found, error<%u>.\n",instance.text.c_str(),GetLastError());
@@ -200,7 +232,7 @@ public:
 		if(func_name.find("::")==string::npos)
 		{
 			// Register global function
-			result=ScriptCallback->GetEngine()->RegisterGlobalFunction(func_name.c_str(),asFUNCTION(func),asCALL_CDECL);
+			result=Engine->RegisterGlobalFunction(func_name.c_str(),asFUNCTION(func),asCALL_CDECL);
 		}
 		else
 		{
@@ -216,45 +248,21 @@ public:
 			string class_name;
 			class_name.assign(func_name,i,j-i);
 			func_name.erase(i,j-i+2);
-			result=ScriptCallback->GetEngine()->RegisterObjectMethod(class_name.c_str(),func_name.c_str(),asFUNCTION(func),asCALL_CDECL_OBJFIRST);
+			result=Engine->RegisterObjectMethod(class_name.c_str(),func_name.c_str(),asFUNCTION(func),asCALL_CDECL_OBJFIRST);
 		}
 		if(result<0) WriteLog("Error in bindfunc pragma<%s>, script registration fail, error<%d>.\n",instance.text.c_str(),result);
 	}
 };
+set<string> BindFuncPragmaCallback::alreadyProcessed;
 
-Script::Script()
+bool Init(bool with_log, PragmaCallbackFunc crdata)
 {
-	Engine=NULL;
-	ZeroMemory(GlobalCtx,sizeof(GlobalCtx));
-	LogDebugInfo=true;
-	pragmaGlobalvar=NULL;
-	pragmaCrata=NULL;
-	pragmaBindfunc=NULL;
-	GarbageCollectTime=60000;
-	garbageLastTick=0;
-	ScriptCall=false;
-	CurrentCtx=NULL;
-	NativeFuncAddr=0;
-	ZeroMemory(NativeArgs,sizeof(NativeArgs));
-	NativeRetValue=0;
-	CurrentArg=0;
-	RunTimeoutSuspend=0;
-	RunTimeoutMessage=0;
-	RunTimeoutThreadHandle=NULL;
-	RunTimeoutStartEvent=NULL;
-	RunTimeoutFinishEvent=NULL;
-}
-
-bool Script::Init(bool with_log, PragmaCallbackFunc crdata)
-{
-	// Check
 	if(with_log && !StartLog())
 	{
 		WriteLog(__FUNCTION__" - Log creation error.\n");
 		return false;
 	}
 
-	// AngelScript engine
 	Engine=asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	if(!Engine)
 	{
@@ -262,7 +270,6 @@ bool Script::Init(bool with_log, PragmaCallbackFunc crdata)
 		return false;
 	}
 
-	// Options, addons
 	Engine->SetMessageCallback(asFUNCTION(CallbackMessage),NULL,asCALL_CDECL);
 	RegisterScriptString(Engine);
 	RegisterScriptStringUtils(Engine);
@@ -273,13 +280,11 @@ bool Script::Init(bool with_log, PragmaCallbackFunc crdata)
 	RegisterScriptMath3D(Engine);
 	RegisterScriptArray(Engine);
 
-	// Binded functions
 	BindedFunctions.clear();
 	BindedFunctions.reserve(10000);
 	BindedFunctions.push_back(BindFunction(0,0,"","","")); // None
 	BindedFunctions.push_back(BindFunction(0,0,"","","")); // Temp
 
-	// Contexts pool
 	for(int i=0;i<GLOBAL_CONTEXT_STACK_SIZE;i++)
 	{
 		GlobalCtx[i]=CreateContext();
@@ -290,27 +295,20 @@ bool Script::Init(bool with_log, PragmaCallbackFunc crdata)
 		}
 	}
 
-	// Pragmas
-	pragmaGlobalvar=new(nothrow) GvarPragmaCallback();
-	if(!pragmaGlobalvar) return false;
-	((GvarPragmaCallback*)pragmaGlobalvar)->ScriptCallback=this;
-	pragmaCrata=new(nothrow) CrDataPragmaCallback();
-	if(!pragmaCrata) return false;
-	((CrDataPragmaCallback*)pragmaCrata)->CallFunc=crdata;
-	pragmaBindfunc=new(nothrow) BindFuncPragmaCallback();
-	if(!pragmaBindfunc) return false;
-	((BindFuncPragmaCallback*)pragmaBindfunc)->ScriptCallback=this;
+	CrDataPragmaCallback::CallFunc=crdata;
+	Preprocessor::RegisterPragma("globalvar",new GvarPragmaCallback());
+	Preprocessor::RegisterPragma("crdata",new CrDataPragmaCallback());
+	Preprocessor::RegisterPragma("bindfunc",new BindFuncPragmaCallback());
 
-	// Timeouts
 	RunTimeoutSuspend=30000;
 	RunTimeoutMessage=10000;
-	RunTimeoutThreadHandle=(HANDLE)_beginthreadex(NULL,0,RunTimeoutThread,this,0,NULL);
+	RunTimeoutThreadHandle=(HANDLE)_beginthreadex(NULL,0,RunTimeoutThread,NULL,0,NULL);
 	RunTimeoutStartEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
 	RunTimeoutFinishEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
 	return true;
 }
 
-void Script::Finish()
+void Finish()
 {
 	EndLog();
 	RunTimeoutSuspend=0;
@@ -327,6 +325,7 @@ void Script::Finish()
 
 	ModuleNames.clear();
 	BindedFunctions.clear();
+	GvarPragmaCallback::clear();
 	for(int i=0;i<GLOBAL_CONTEXT_STACK_SIZE;i++)
 	{
 		FinishContext(GlobalCtx[i]);
@@ -339,16 +338,17 @@ void Script::Finish()
 	}
 }
 
-HMODULE Script::LoadDynamicLibrary(const char* dll_name)
+HMODULE LoadDynamicLibrary(const char* dll_name)
 {
 	// Load dynamic library
 	char dll_name_[256];
-	StringCopy(dll_name_,ScriptsPath.c_str());
+	StringCopy(dll_name_,FileManager::GetFullPath("",ScriptsPath));
 	StringAppend(dll_name_,dll_name);
 	HMODULE dll=LoadLibrary(dll_name_);
 	if(!dll) return NULL;
 
 	// Register global function and vars
+	static StringSet alreadyLoadedDll;
 	if(!alreadyLoadedDll.count(dll_name_))
 	{
 		// Register variables
@@ -371,7 +371,7 @@ HMODULE Script::LoadDynamicLibrary(const char* dll_name)
 	return dll;
 }
 
-void Script::UnloadScripts()
+void UnloadScripts()
 {
 	for(StrVecIt it=ModuleNames.begin(),end=ModuleNames.end();it!=end;++it)
 	{
@@ -404,7 +404,7 @@ void Script::UnloadScripts()
 	ModuleNames.clear();
 }
 
-bool Script::ReloadScripts(const char* config, const char* key, bool skip_binaries)
+bool ReloadScripts(const char* config, const char* key, bool skip_binaries)
 {
 	WriteLog("Reload scripts...\n");
 
@@ -446,7 +446,7 @@ bool Script::ReloadScripts(const char* config, const char* key, bool skip_binari
 	return true;
 }
 
-bool Script::BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count)
+bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count)
 {
 	WriteLog("Bind reserved functions...\n");
 
@@ -497,12 +497,15 @@ bool Script::BindReservedFunctions(const char* config, const char* key, Reserved
 	return true;
 }
 
-asIScriptEngine* Script::GetEngine()
+void AddRef(){} // Dummy
+void Release(){} // Dummy
+
+asIScriptEngine* GetEngine()
 {
 	return Engine;
 }
 
-asIScriptContext* Script::CreateContext()
+asIScriptContext* CreateContext()
 {
 	asIScriptContext* ctx=Engine->CreateContext();
 	if(!ctx)
@@ -531,7 +534,7 @@ asIScriptContext* Script::CreateContext()
 	return ctx;
 }
 
-void Script::FinishContext(asIScriptContext*& ctx)
+void FinishContext(asIScriptContext*& ctx)
 {
 	if(ctx)
 	{
@@ -542,7 +545,7 @@ void Script::FinishContext(asIScriptContext*& ctx)
 	ctx=NULL;
 }
 
-asIScriptContext* Script::GetGlobalContext()
+asIScriptContext* GetGlobalContext()
 {
 	if(GlobalCtx[0]->GetState()!=asEXECUTION_ACTIVE)
 	{
@@ -557,13 +560,7 @@ asIScriptContext* Script::GetGlobalContext()
 	return NULL;
 }
 
-asIScriptContext* Script::GetActiveContext()
-{
-	return asGetActiveContext();
-	//return CurrentCtx;
-}
-
-void Script::PrintContextCallstack(asIScriptContext *ctx)
+void PrintContextCallstack(asIScriptContext *ctx)
 {
 	int line,column;
 	int func_id;
@@ -595,40 +592,40 @@ void Script::PrintContextCallstack(asIScriptContext *ctx)
 	}
 }
 
-const char* Script::GetActiveModuleName()
+const char* GetActiveModuleName()
 {
 	static char error[]="<error>";
-	asIScriptContext* ctx=GetActiveContext();
+	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
 	if(!func)
 	{
-		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.\n",ctx->GetUserData(),ctx->GetCurrentFunction());
+		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.",ctx->GetUserData(),ctx->GetCurrentFunction());
 		return error;
 	}
 	return func->GetModuleName();
 }
 
-const char* Script::GetActiveFuncName()
+const char* GetActiveFuncName()
 {
 	static char error[]="<error>";
-	asIScriptContext* ctx=GetActiveContext();
+	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
 	if(!func)
 	{
-		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.\n",ctx->GetUserData(),ctx->GetCurrentFunction());
+		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.",ctx->GetUserData(),ctx->GetCurrentFunction());
 		return error;
 	}
 	return func->GetName();
 }
 
-asIScriptModule* Script::GetModule(const char* name)
+asIScriptModule* GetModule(const char* name)
 {
 	return Engine->GetModule(name,asGM_ONLY_IF_EXISTS);
 }
 
-asIScriptModule* Script::CreateModule(const char* module_name)
+asIScriptModule* CreateModule(const char* module_name)
 {
 	StrVecIt it=std::find(ModuleNames.begin(),ModuleNames.end(),module_name);
 	if(it!=ModuleNames.end()) ModuleNames.erase(it);
@@ -638,16 +635,12 @@ asIScriptModule* Script::CreateModule(const char* module_name)
 	return mod;
 }
 
-char* Script::Preprocess(const char* fname, bool process_pragmas)
+char* Preprocess(const char* fname, bool process_pragmas)
 {
 	Preprocessor::VectorOutStream vos;
 	Preprocessor::FileSource fsrc;
-	fsrc.CurrentDir=ScriptsPath;
+	fsrc.CurrentDir=FileManager::GetFullPath("",ScriptsPath);
 
-	Preprocessor::UnregisterPragmas();
-	Preprocessor::RegisterPragma("globalvar",(GvarPragmaCallback*)pragmaGlobalvar);
-	Preprocessor::RegisterPragma("crdata",(CrDataPragmaCallback*)pragmaCrata);
-	Preprocessor::RegisterPragma("bindfunc",(BindFuncPragmaCallback*)pragmaBindfunc);
 	if(Preprocessor::Preprocess(fname,fsrc,vos,process_pragmas))
 	{
 		WriteLog(__FUNCTION__" - Unable to preprocess<%s> script.\n",fname);
@@ -659,40 +652,38 @@ char* Script::Preprocess(const char* fname, bool process_pragmas)
 	return result;
 }
 
-void Script::SetGarbageCollectTime(DWORD ticks)
+DWORD GarbageCollectTime=60000;
+void SetGarbageCollectTime(DWORD ticks)
 {
 	GarbageCollectTime=ticks;
 }
 
-void Script::CollectGarbage(bool force)
+void CollectGarbage(bool force)
 {
-	if(!garbageLastTick) garbageLastTick=Timer::FastTick();
-
-	if(force || (GarbageCollectTime && Timer::FastTick()-garbageLastTick>=GarbageCollectTime))
+	static DWORD last_tick=Timer::FastTick();
+	if(force || (GarbageCollectTime && Timer::FastTick()-last_tick>=GarbageCollectTime))
 	{
 		Engine->GarbageCollect(asGC_FULL_CYCLE);
-		garbageLastTick=Timer::FastTick();
+		last_tick=Timer::FastTick();
 	}
 }
 
-unsigned int __stdcall Script::RunTimeoutThread(void* data)
+unsigned int __stdcall RunTimeoutThread(void* data)
 {
-	Script* script=(Script*)data;
-
-	while(script->RunTimeoutSuspend)
+	while(RunTimeoutSuspend)
 	{
-		WaitForSingleObject(script->RunTimeoutStartEvent,INFINITE);
-		if(WaitForSingleObject(script->RunTimeoutFinishEvent,script->RunTimeoutSuspend)==WAIT_TIMEOUT)
+		WaitForSingleObject(RunTimeoutStartEvent,INFINITE);
+		if(WaitForSingleObject(RunTimeoutFinishEvent,RunTimeoutSuspend)==WAIT_TIMEOUT)
 		{
 			for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--)
-				if(script->GlobalCtx[i]->GetState()==asEXECUTION_ACTIVE) script->GlobalCtx[i]->Suspend();
-			WaitForSingleObject(script->RunTimeoutFinishEvent,INFINITE);
+				if(GlobalCtx[i]->GetState()==asEXECUTION_ACTIVE) GlobalCtx[i]->Suspend();
+			WaitForSingleObject(RunTimeoutFinishEvent,INFINITE);
 		}
 	}
 	return 0;
 }
 
-void Script::SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout)
+void SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout)
 {
 	RunTimeoutSuspend=suspend_timeout;
 	RunTimeoutMessage=message_timeout;
@@ -702,42 +693,36 @@ void Script::SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout)
 /* Load / Bind                                                          */
 /************************************************************************/
 
-void Script::SetScriptsPath(const char* path)
+void SetScriptsPath(int path_type)
 {
-	ScriptsPath=path;
+	ScriptsPath=path_type;
 }
 
-void Script::Define(const char* def)
+void Define(const char* def)
 {
 	Preprocessor::Define(def);
 }
 
-void Script::Undefine(const char* def)
+void Undefine(const char* def)
 {
 	if(def) Preprocessor::Undefine(def);
 	else Preprocessor::UndefAll();
 }
 
-bool Script::LoadScript(const char* module_name, const char* source, bool check_binary)
+bool LoadScript(const char* module_name, const char* source, bool check_binary)
 {
 	char fname[1024];
 	StringCopy(fname,module_name);
 	Str::Replacement(fname,'.','\\');
 	StringAppend(fname,".fos");
 
-	// Set pragmas
-	Preprocessor::UnregisterPragmas();
-	Preprocessor::RegisterPragma("globalvar",(GvarPragmaCallback*)pragmaGlobalvar);
-	Preprocessor::RegisterPragma("crdata",(CrDataPragmaCallback*)pragmaCrata);
-	Preprocessor::RegisterPragma("bindfunc",(BindFuncPragmaCallback*)pragmaBindfunc);
-
 	// Try load precompiled script
 	FileManager file_bin;
 	if(check_binary)
 	{
 		FileManager file;
-		file.LoadFile(Str::Format("%s%s",ScriptsPath.c_str(),fname));
-		file_bin.LoadFile(Str::Format("%s%sb",ScriptsPath.c_str(),fname));
+		file.LoadFile(fname,ScriptsPath);
+		file_bin.LoadFile(Str::Format("%sb",fname),ScriptsPath);
 
 		if(file_bin.IsLoaded() && file_bin.GetFsize()>sizeof(DWORD))
 		{
@@ -770,7 +755,7 @@ bool Script::LoadScript(const char* module_name, const char* source, bool check_
 			for(size_t i=0,j=dependencies.size();i<j;i++)
 			{
 				FileManager file_dep;
-				file_dep.LoadFile(Str::Format("%s%s",ScriptsPath.c_str(),dependencies[i].c_str()));
+				file_dep.LoadFile(dependencies[i].c_str(),ScriptsPath);
 				file_dep.GetTime(NULL,NULL,&last_write);
 				if(!no_all_files) no_all_files=!file_dep.IsLoaded();
 				if(!outdated) outdated=(file_dep.IsLoaded() && CompareFileTime(&last_write,&last_write_bin)>0);
@@ -830,7 +815,7 @@ bool Script::LoadScript(const char* module_name, const char* source, bool check_
 	Preprocessor::FileSource fsrc;
 	Preprocessor::VectorOutStream vos_err;
 	if(source) fsrc.Stream=source;
-	fsrc.CurrentDir=ScriptsPath;
+	fsrc.CurrentDir=FileManager::GetFullPath("",ScriptsPath);
 
 	if(Preprocessor::Preprocess(fname,fsrc,vos,true,vos_err))
 	{
@@ -886,28 +871,22 @@ bool Script::LoadScript(const char* module_name, const char* source, bool check_
 			for(size_t i=0,j=pragmas.size();i<j;i++) file_bin.SetData((BYTE*)pragmas[i].c_str(),pragmas[i].length()+1);
 			file_bin.SetData(&data[0],data.size());
 
-			if(!file_bin.SaveOutBufToFile(Str::Format("%s%sb",ScriptsPath.c_str(),fname),-1)) WriteLog(__FUNCTION__" - Can't save bytecode, script<%s>.\n",module_name);
+			if(!file_bin.SaveOutBufToFile(Str::Format("%sb",fname),ScriptsPath)) WriteLog(__FUNCTION__" - Can't save bytecode, script<%s>.\n",module_name);
 		}
 		else
 		{
 			WriteLog(__FUNCTION__" - Can't write bytecode, script<%s>.\n",module_name);
 		}
 
-		FILE* f=NULL;
-		if(!fopen_s(&f,Str::Format("%s%sp",ScriptsPath.c_str(),fname),"wt"))
-		{
-			fwrite(vos.GetData(),sizeof(char),vos.GetSize(),f);
-			fclose(f);
-		}
-		else
-		{
+		FileManager file_prep;
+		file_prep.SetData((void*)vos.GetData(),vos.GetSize());
+		if(!file_prep.SaveOutBufToFile(Str::Format("%sp",fname),ScriptsPath))
 			WriteLog(__FUNCTION__" - Can't write preprocessed file, script<%s>.\n",module_name);
-		}
 	}
 	return true;
 }
 
-int Script::BindImportedFunctions()
+int BindImportedFunctions()
 {
 	WriteLog("Bind all imported functions...");
 	int errors=0;
@@ -936,7 +915,7 @@ int Script::BindImportedFunctions()
 	return errors;
 }
 
-int Script::Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp)
+int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp)
 {
 	// Detect native dll
 	if(!strstr(module_name,".dll"))
@@ -1018,7 +997,7 @@ int Script::Bind(const char* module_name, const char* func_name, const char* dec
 	return BindedFunctions.size()-1;
 }
 
-int Script::Bind(const char* script_name, const char* decl, bool is_temp)
+int Bind(const char* script_name, const char* decl, bool is_temp)
 {
 	char module_name[256];
 	char func_name[256];
@@ -1030,7 +1009,7 @@ int Script::Bind(const char* script_name, const char* decl, bool is_temp)
 	return Bind(module_name,func_name,decl,is_temp);
 }
 
-int Script::RebindFunctions()
+int RebindFunctions()
 {
 	int errors=0;
 	for(int i=2,j=BindedFunctions.size();i<j;i++)
@@ -1054,7 +1033,7 @@ int Script::RebindFunctions()
 	return errors;
 }
 
-bool Script::ReparseScriptName(const char* script_name, char* module_name, char* func_name)
+bool ReparseScriptName(const char* script_name, char* module_name, char* func_name)
 {
 	if(!script_name || !module_name || !func_name)
 	{
@@ -1099,18 +1078,21 @@ bool Script::ReparseScriptName(const char* script_name, char* module_name, char*
 /* Functions accord                                                     */
 /************************************************************************/
 
-const StrVec& Script::GetScriptFuncCache()
+StrVec ScriptFuncCache;
+IntVec ScriptFuncBindId;
+
+const StrVec& GetScriptFuncCache()
 {
 	return ScriptFuncCache;
 }
 
-void Script::ResizeCache(DWORD count)
+void ResizeCache(DWORD count)
 {
 	ScriptFuncCache.resize(count);
 	ScriptFuncBindId.resize(count);
 }
 
-DWORD Script::GetScriptFuncNum(const char* script_name, const char* decl)
+DWORD GetScriptFuncNum(const char* script_name, const char* decl)
 {
 	char full_name[MAX_SCRIPT_NAME*2+1];
 	char module_name[MAX_SCRIPT_NAME+1];
@@ -1135,7 +1117,7 @@ DWORD Script::GetScriptFuncNum(const char* script_name, const char* decl)
 	return ScriptFuncCache.size();
 }
 
-int Script::GetScriptFuncBindId(DWORD func_num)
+int GetScriptFuncBindId(DWORD func_num)
 {
 	func_num--;
 	if(func_num>=ScriptFuncBindId.size())
@@ -1146,7 +1128,7 @@ int Script::GetScriptFuncBindId(DWORD func_num)
 	return ScriptFuncBindId[func_num];
 }
 
-string Script::GetScriptFuncName(DWORD func_num)
+string GetScriptFuncName(DWORD func_num)
 {
 	func_num--;
 	if(func_num>=ScriptFuncBindId.size())
@@ -1167,13 +1149,34 @@ string Script::GetScriptFuncName(DWORD func_num)
 	result+="@";
 	result+=bf.FuncName;
 	return result;
+
+	/*BindFunction& bf=BindedFunctions[ScriptFuncBindId[func_num]];
+	string result;
+	char buf[32];
+	result+="(";
+	result+=_itoa(func_num+1,buf,10);
+	result+=") ";
+	result+=bf.ModuleName;
+	result+="@";
+	result+=bf.FuncName;
+	result+="(";
+	result+=bf.FuncDecl;
+	result+=")";
+	return result;*/
 }
 
 /************************************************************************/
 /* Contexts                                                             */
 /************************************************************************/
 
-bool Script::PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
+bool ScriptCall=false;
+asIScriptContext* CurrentCtx=NULL;
+size_t NativeFuncAddr=0;
+size_t NativeArgs[256]={0}; // Large buffer
+size_t NativeRetValue=0;
+size_t CurrentArg=0;
+
+bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 {
 	if(bind_id<=0 || bind_id>=BindedFunctions.size())
 	{
@@ -1213,49 +1216,49 @@ bool Script::PrepareContext(int bind_id, const char* call_func, const char* ctx_
 	return true;
 }
 
-void Script::SetArgWord(WORD w)
+void SetArgWord(WORD w)
 {
 	if(ScriptCall) CurrentCtx->SetArgWord(CurrentArg,w);
 	else NativeArgs[CurrentArg]=w;
 	CurrentArg++;
 }
 
-void Script::SetArgDword(DWORD dw)
+void SetArgDword(DWORD dw)
 {
 	if(ScriptCall) CurrentCtx->SetArgDWord(CurrentArg,dw);
 	else NativeArgs[CurrentArg]=dw;
 	CurrentArg++;
 }
 
-void Script::SetArgByte(BYTE b)
+void SetArgByte(BYTE b)
 {
 	if(ScriptCall) CurrentCtx->SetArgByte(CurrentArg,b);
 	else NativeArgs[CurrentArg]=b;
 	CurrentArg++;
 }
 
-void Script::SetArgBool(bool bl)
+void SetArgBool(bool bl)
 {
 	if(ScriptCall) CurrentCtx->SetArgByte(CurrentArg,bl);
 	else NativeArgs[CurrentArg]=bl;
 	CurrentArg++;
 }
 
-void Script::SetArgObject(void* obj)
+void SetArgObject(void* obj)
 {
 	if(ScriptCall) CurrentCtx->SetArgObject(CurrentArg,obj);
 	else NativeArgs[CurrentArg]=(size_t)obj;
 	CurrentArg++;
 }
 
-void Script::SetArgAddress(void* addr)
+void SetArgAddress(void* addr)
 {
 	if(ScriptCall) CurrentCtx->SetArgAddress(CurrentArg,addr);
 	else NativeArgs[CurrentArg]=(size_t)addr;
 	CurrentArg++;
 }
 
-bool Script::RunPrepared()
+bool RunPrepared()
 {
 	if(ScriptCall)
 	{
@@ -1331,17 +1334,17 @@ bool Script::RunPrepared()
 	return true;
 }
 
-DWORD Script::GetReturnedDword()
+DWORD GetReturnedDword()
 {
 	return ScriptCall?CurrentCtx->GetReturnDWord():NativeRetValue;
 }
 
-bool Script::GetReturnedBool()
+bool GetReturnedBool()
 {
 	return ScriptCall?(CurrentCtx->GetReturnByte()!=0):((NativeRetValue&1)!=0);
 }
 
-void* Script::GetReturnedObject()
+void* GetReturnedObject()
 {
 	return ScriptCall?CurrentCtx->GetReturnObject():(void*)NativeRetValue;
 }
@@ -1350,7 +1353,7 @@ void* Script::GetReturnedObject()
 /* Logging                                                              */
 /************************************************************************/
 
-bool Script::StartLog()
+bool StartLog()
 {
 	if(EngineLogFile) return true;
 	EngineLogFile=CreateFile(".\\FOscript.log",GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
@@ -1359,7 +1362,7 @@ bool Script::StartLog()
 	return true;
 }
 
-void Script::EndLog()
+void EndLog()
 {
 	if(!EngineLogFile) return;
 	LogA("End logging script system.\n");
@@ -1367,9 +1370,9 @@ void Script::EndLog()
 	EngineLogFile=NULL;
 }
 
-void Script::Log(const char* str)
+void Log(const char* str)
 {
-	asIScriptContext* ctx=GetActiveContext();
+	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx)
 	{
 		LogA(str);
@@ -1390,7 +1393,7 @@ void Script::Log(const char* str)
 	else LogA(Str::Format("%s : %s\n",func->GetModuleName(),str));
 }
 
-void Script::LogA(const char* str)
+void LogA(const char* str)
 {
 	WriteLog(str);
 	if(!EngineLogFile) return;
@@ -1398,9 +1401,9 @@ void Script::LogA(const char* str)
 	WriteFile(EngineLogFile,str,strlen(str),&br,NULL);
 }
 
-void Script::LogError(const char* error)
+void LogError(const char* error)
 {
-	asIScriptContext* ctx=GetActiveContext();
+	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx)
 	{
 		LogA(error);
@@ -1417,12 +1420,12 @@ void Script::LogError(const char* error)
 	LogA(Str::Format("Script error: %s : %s : %s : %d, %d : %s.\n",error,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
 }
 
-void Script::SetLogDebugInfo(bool enabled)
+void SetLogDebugInfo(bool enabled)
 {
 	LogDebugInfo=enabled;
 }
 
-void Script::CallbackMessage(const asSMessageInfo* msg, void* param)
+void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
 	const char* type="Error";
 	if(msg->type==asMSGTYPE_WARNING) type="Warning";
@@ -1430,12 +1433,11 @@ void Script::CallbackMessage(const asSMessageInfo* msg, void* param)
 	LogA(Str::Format("Script message: %s : %s : %s : %d, %d.\n",msg->section,type,msg->message,msg->row,msg->col));
 }
 
-void Script::CallbackException(asIScriptContext* ctx, void* param)
+void CallbackException(asIScriptContext* ctx, void* param)
 {
 	int line,column;
 	line=ctx->GetExceptionLineNumber(&column);
-	asIScriptEngine* engine=ctx->GetEngine();
-	asIScriptFunction* func=(engine?engine->GetFunctionDescriptorById(ctx->GetExceptionFunction()):NULL);
+	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetExceptionFunction());
 	if(!func)
 	{
 		LogA(Str::Format("Script exception: %s : %s.\n",ctx->GetExceptionString(),ctx->GetUserData()));
@@ -1448,18 +1450,13 @@ void Script::CallbackException(asIScriptContext* ctx, void* param)
 /* Built-In types                                                       */
 /************************************************************************/
 
-asIScriptArray* Script::CreateArray(const char* type)
+asIScriptArray* CreateArray(const char* type)
 {
 	return (asIScriptArray*)Engine->CreateScriptObject(Engine->GetTypeIdByDecl(type));
 }
 
 /************************************************************************/
-/* Dummy functions                                                      */
-/************************************************************************/
-
-void Script::AddRef(){}
-void Script::Release(){}
-
-/************************************************************************/
 /*                                                                      */
 /************************************************************************/
+
+}

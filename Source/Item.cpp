@@ -172,7 +172,7 @@ bool Item::ParseScript(const char* script, bool first_time)
 {
 	if(script)
 	{
-		DWORD func_num=ServerScript.GetScriptFuncNum(script,"void %s(Item&,bool)");
+		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Item&,bool)");
 		if(!func_num)
 		{
 			WriteLog(__FUNCTION__" - Script<%s> bind fail, item pid<%u>.\n",script,GetProtoId());
@@ -181,11 +181,11 @@ bool Item::ParseScript(const char* script, bool first_time)
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && ServerScript.PrepareContext(ServerScript.GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId())))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId())))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgBool(first_time);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgBool(first_time);
+		Script::RunPrepared();
 	}
 	return true;
 }
@@ -194,16 +194,16 @@ bool Item::PrepareScriptFunc(int num_scr_func)
 {
 	if(num_scr_func>=ITEM_EVENT_MAX) return false;
 	if(FuncId[num_scr_func]<=0) return false;
-	return ServerScript.PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId()));
+	return Script::PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId()));
 }
 
 void Item::EventFinish(bool deleted)
 {
 	if(PrepareScriptFunc(ITEM_EVENT_FINISH))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgBool(deleted);
-		ServerScript.RunPrepared();
+		Script::SetArgObject(this);
+		Script::SetArgBool(deleted);
+		Script::RunPrepared();
 	}
 }
 
@@ -212,10 +212,10 @@ bool Item::EventAttack(Critter* cr, Critter* target)
 	bool result=false;
 	if(PrepareScriptFunc(ITEM_EVENT_ATTACK))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgObject(target);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::SetArgObject(target);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
 }
@@ -225,12 +225,12 @@ bool Item::EventUse(Critter* cr, Critter* on_critter, Item* on_item, MapObject* 
 	bool result=false;
 	if(PrepareScriptFunc(ITEM_EVENT_USE))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgObject(on_critter);
-		ServerScript.SetArgObject(on_item);
-		ServerScript.SetArgObject(on_scenery);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::SetArgObject(on_critter);
+		Script::SetArgObject(on_item);
+		Script::SetArgObject(on_scenery);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
 }
@@ -240,10 +240,10 @@ bool Item::EventUseOnMe(Critter* cr, Item* used_item)
 	bool result=false;
 	if(PrepareScriptFunc(ITEM_EVENT_USE_ON_ME))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgObject(used_item);
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::SetArgObject(used_item);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
 }
@@ -253,10 +253,10 @@ bool Item::EventSkill(Critter* cr, int skill)
 	bool result=false;
 	if(PrepareScriptFunc(ITEM_EVENT_SKILL))
 	{
-		ServerScript.SetArgObject(this);
-		ServerScript.SetArgObject(cr);
-		ServerScript.SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
-		if(ServerScript.RunPrepared()) result=ServerScript.GetReturnedBool();
+		Script::SetArgObject(this);
+		Script::SetArgObject(cr);
+		Script::SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
 }
@@ -264,28 +264,28 @@ bool Item::EventSkill(Critter* cr, int skill)
 void Item::EventDrop(Critter* cr)
 {
 	if(!PrepareScriptFunc(ITEM_EVENT_DROP)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::RunPrepared();
 }
 
 void Item::EventMove(Critter* cr, BYTE from_slot)
 {
 	if(!PrepareScriptFunc(ITEM_EVENT_MOVE)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr);
-	ServerScript.SetArgByte(from_slot);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr);
+	Script::SetArgByte(from_slot);
+	Script::RunPrepared();
 }
 
 void Item::EventWalk(Critter* cr, bool entered, BYTE dir)
 {
 	if(!PrepareScriptFunc(ITEM_EVENT_WALK)) return;
-	ServerScript.SetArgObject(this);
-	ServerScript.SetArgObject(cr); // Saved in Act_Move
-	ServerScript.SetArgBool(entered);
-	ServerScript.SetArgByte(dir);
-	ServerScript.RunPrepared();
+	Script::SetArgObject(this);
+	Script::SetArgObject(cr); // Saved in Act_Move
+	Script::SetArgBool(entered);
+	Script::SetArgByte(dir);
+	Script::RunPrepared();
 }
 #endif //FONLINE_SERVER
 

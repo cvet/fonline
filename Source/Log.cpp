@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Log.h"
+#include "Timer.h"
 #include <Richedit.h>
 #pragma comment(lib,"User32.lib")
 

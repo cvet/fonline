@@ -594,7 +594,7 @@ bool ItemManager::LoadProtos()
 	ClearProtos();
 	for(int i=0;i<count;i++)
 	{
-		if(LoadProtos(item_protos,Str::Format("%s%s",FileManager::GetPath(PT_SERVER_PRO_ITEMS),fnames[i].c_str())))
+		if(LoadProtos(item_protos,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS)))
 		{
 			ParseProtos(item_protos);
 			loaded+=item_protos.size();
@@ -608,7 +608,7 @@ bool ItemManager::LoadProtos()
 bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 {
 	protos.clear();
-	if(!txtFile.LoadFile(fname,PT_SERVER_DATA))
+	if(!txtFile.LoadFile(fname,PT_SERVER_ROOT))
 	{
 		WriteLog(__FUNCTION__" - File<%s> not found.\n",fname);
 		return false;

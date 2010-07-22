@@ -489,9 +489,9 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 	ZeroMemory(MoveWalkReserved,sizeof(MoveWalkReserved));
 
 	FileManager file;
-	if(!file.LoadFile(CRTYPE_FILE_NAME,PT_SERVER_DATA_DATA))
+	if(!file.LoadFile(CRTYPE_FILE_NAME,PT_SERVER_DATA))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",FileManager::GetFullPath(CRTYPE_FILE_NAME,PT_SERVER_DATA_DATA));
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",FileManager::GetFullPath(CRTYPE_FILE_NAME,PT_SERVER_DATA));
 		return false;
 	}
 

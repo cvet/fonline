@@ -32,14 +32,13 @@
 // Server paths
 #define PT_SERVER_ROOT         (30)
 #define PT_SERVER_DATA         (31)
-#define PT_SERVER_DATA_DATA    (32)
-#define PT_SERVER_TEXTS        (33)
-#define PT_SERVER_DIALOGS      (34)
-#define PT_SERVER_MAPS         (35)
-#define PT_SERVER_PRO_ITEMS    (36)
-#define PT_SERVER_PRO_CRITTERS (37)
-#define PT_SERVER_SCRIPTS      (38)
-#define PT_SERVER_BANS         (39)
+#define PT_SERVER_TEXTS        (32)
+#define PT_SERVER_DIALOGS      (33)
+#define PT_SERVER_MAPS         (34)
+#define PT_SERVER_PRO_ITEMS    (35)
+#define PT_SERVER_PRO_CRITTERS (36)
+#define PT_SERVER_SCRIPTS      (37)
+#define PT_SERVER_BANS         (38)
 
 extern char PathLst[][50];
 #define PATH_LIST_COUNT     (50)
@@ -47,12 +46,11 @@ extern char PathLst[][50];
 class FileManager
 {
 public:
-	static void SetDataPath(const char* data_path, bool server_path);
+	static void SetDataPath(const char* path);
 	static bool LoadDat(const char* path);
 	static void EndOfWork();
 
 	bool LoadFile(const char* fname, int path_type);
-	bool LoadFile(const char* full_path);
 	bool LoadStream(BYTE* stream, DWORD length);
 	void UnloadFile();
 	BYTE* ReleaseBuffer();
@@ -114,7 +112,6 @@ public:
 
 private:
 	static char dataPath[MAX_FOPATH];
-	static char dataPathServer[MAX_FOPATH];
 	static TDatFilePtrVec datFiles;
 
 	DWORD fileSize;

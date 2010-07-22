@@ -17,73 +17,8 @@ struct ReservedScriptFunction
 	char FuncDecl[256];
 };
 
-class BindFunction
+namespace Script
 {
-public:
-	bool IsScriptCall;
-	int ScriptFuncId;
-	string ModuleName;
-	string FuncName;
-	string FuncDecl;
-	size_t NativeFuncAddr;
-
-	BindFunction(int func_id, size_t native_func_addr, const char* module_name,  const char* func_name, const char* func_decl)
-	{
-		IsScriptCall=(native_func_addr==0);
-		ScriptFuncId=func_id;
-		NativeFuncAddr=native_func_addr;
-		ModuleName=module_name;
-		FuncName=func_name;
-		FuncDecl=func_decl;
-	}
-};
-typedef vector<BindFunction> BindFunctionVec;
-
-class Script
-{
-private:
-	asIScriptEngine* Engine;
-	static HANDLE EngineLogFile;
-	StrVec ModuleNames;
-	asIScriptContext* GlobalCtx[GLOBAL_CONTEXT_STACK_SIZE];
-	BindFunctionVec BindedFunctions;
-	string ScriptsPath;
-	bool LogDebugInfo;
-	StringSet alreadyLoadedDll;
-
-	// Pragmas
-	void* pragmaGlobalvar;
-	void* pragmaCrata;
-	void* pragmaBindfunc;
-
-	// Garbage
-	DWORD GarbageCollectTime;
-	DWORD garbageLastTick;
-
-	// Functions accord
-	StrVec ScriptFuncCache;
-	IntVec ScriptFuncBindId;
-
-	// Contexts
-	bool ScriptCall;
-	asIScriptContext* CurrentCtx;
-	size_t NativeFuncAddr;
-	size_t NativeArgs[256];
-	size_t NativeRetValue;
-	size_t CurrentArg;
-
-	// Timeouts
-	DWORD RunTimeoutSuspend;
-	DWORD RunTimeoutMessage;
-	HANDLE RunTimeoutThreadHandle;
-	HANDLE RunTimeoutStartEvent;
-	HANDLE RunTimeoutFinishEvent;
-
-	static unsigned int __stdcall RunTimeoutThread(void* data);
-
-public:
-	Script();
-
 	bool Init(bool with_log, PragmaCallbackFunc crdata);
 	void Finish();
 	HMODULE LoadDynamicLibrary(const char* dll_name);
@@ -92,11 +27,13 @@ public:
 	bool ReloadScripts(const char* config, const char* key, bool skip_binaries);
 	bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count);
 
+	void AddRef();
+	void Release();
+
 	asIScriptEngine* GetEngine();
 	asIScriptContext* CreateContext();
 	void FinishContext(asIScriptContext*& ctx);
 	asIScriptContext* GetGlobalContext();
-	asIScriptContext* GetActiveContext();
 	void PrintContextCallstack(asIScriptContext *ctx);
 	const char* GetActiveModuleName();
 	const char* GetActiveFuncName();
@@ -107,7 +44,7 @@ public:
 	void CollectGarbage(bool force);
 	void SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout);
 
-	void SetScriptsPath(const char* path);
+	void SetScriptsPath(int path_type);
 	void Define(const char* def);
 	void Undefine(const char* def);
 	bool LoadScript(const char* module_name, const char* source, bool check_binary);
@@ -136,21 +73,21 @@ public:
 	bool GetReturnedBool();
 	void* GetReturnedObject();
 
-	static bool StartLog();
-	static void EndLog();
+	bool StartLog();
+	void EndLog();
 	void Log(const char* str);
-	static void LogA(const char* str);
+	void LogA(const char* str);
 	void LogError(const char* error);
 	void SetLogDebugInfo(bool enabled);
 
-	static void CallbackMessage(const asSMessageInfo* msg, void* param);
-	static void CallbackException(asIScriptContext* ctx, void* param);
+	void CallbackMessage(const asSMessageInfo* msg, void* param);
+	void CallbackException(asIScriptContext* ctx, void* param);
 
 	// Arrays stuff
 	asIScriptArray* CreateArray(const char* type);
 
 	template<typename Type>
-	static void AppendVectorToArray(vector<Type>& vec, asIScriptArray* arr)
+	void AppendVectorToArray(vector<Type>& vec, asIScriptArray* arr)
 	{
 		if(!vec.empty() && arr)
 		{
@@ -164,7 +101,7 @@ public:
 		}
 	}
 	template<typename Type>
-	static void AppendVectorToArrayRef(vector<Type>& vec, asIScriptArray* arr)
+	void AppendVectorToArrayRef(vector<Type>& vec, asIScriptArray* arr)
 	{
 		if(!vec.empty() && arr)
 		{
@@ -179,7 +116,7 @@ public:
 		}
 	}
 	template<typename Type>
-	static void AssignScriptArrayInVector(vector<Type>& vec, asIScriptArray* arr)
+	void AssignScriptArrayInVector(vector<Type>& vec, asIScriptArray* arr)
 	{
 		if(arr)
 		{
@@ -195,21 +132,7 @@ public:
 			}
 		}
 	}
-
-	// Dummy functions
-	static void AddRef();
-	static void Release();
-};
-
-#ifdef FONLINE_SERVER
-extern Script ServerScript;
-#endif
-#ifdef FONLINE_CLIENT
-extern Script ClientScript;
-#endif
-#ifdef FONLINE_MAPPER
-extern Script MapperScript;
-#endif
+}
 
 class CBytecodeStream : public asIBinaryStream
 {

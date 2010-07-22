@@ -6,7 +6,7 @@
 char PathLst[][50]=
 {
 	// Client and mapper paths
-	".\\",
+	"",
 	"",
 	"art\\",
 	"art\\critters\\",
@@ -38,7 +38,6 @@ char PathLst[][50]=
 	"",
 
 	// Server paths
-	".\\",
 	"",
 	"data\\",
 	"text\\",
@@ -52,21 +51,11 @@ char PathLst[][50]=
 
 TDatFilePtrVec FileManager::datFiles;
 char FileManager::dataPath[MAX_FOPATH]={".\\"};
-char FileManager::dataPathServer[MAX_FOPATH]={".\\"};
 
-
-void FileManager::SetDataPath(const char* data_path, bool server_path)
+void FileManager::SetDataPath(const char* path)
 {
-	char* path=(server_path?dataPathServer:dataPath);
-	if(data_path)
-	{
-		StringCopy(path,MAX_FOPATH,data_path);
-		if(path[strlen(path)-1]!='\\') StringAppend(path,MAX_FOPATH,"\\");
-	}
-	else
-	{
-		StringCopy(path,MAX_FOPATH,".\\");
-	}
+	StringCopy(dataPath,path);
+	if(dataPath[strlen(path)-1]!='\\') StringAppend(dataPath,"\\");
 }
 
 bool FileManager::LoadDat(const char* path)
@@ -131,70 +120,47 @@ void FileManager::LoadSimple(HANDLE h_file)
 	curPos=0;
 }
 
-bool FileManager::LoadFile(const char* full_path)
-{
-	UnloadFile();
-
-	WIN32_FIND_DATA fd;
-	HANDLE f=FindFirstFile(full_path,&fd);
-	if(f!=INVALID_HANDLE_VALUE)
-	{
-		HANDLE hFile=CreateFile(full_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
-		if(hFile!=INVALID_HANDLE_VALUE)
-		{
-			FindClose(f);
-			LoadSimple(hFile);
-			return true;
-		}
-	}
-	FindClose(f);
-	return false;
-}
-
 bool FileManager::LoadFile(const char* fname, int path_type)
 {
 	UnloadFile();
 
 	if(!fname || !fname[0]) return false;
 
-	char full_path[1024]="";
-	char short_path[1024]="";
+	char folder_path[1024]="";
+	char dat_path[1024]="";
 
-	if(path_type<0)
+	if(path_type>=0 && path_type<PATH_LIST_COUNT)
 	{
-		return LoadFile(fname);
-	}
-	else if(path_type<PATH_LIST_COUNT)
-	{
-		StringCopy(short_path,PathLst[path_type]);
-		StringAppend(short_path,fname);
-		FormatPath(short_path);
-		StringCopy(full_path,GetDataPath(path_type));
-		StringAppend(full_path,short_path);
+		StringCopy(dat_path,PathLst[path_type]);
+		StringAppend(dat_path,fname);
+		FormatPath(dat_path);
+		StringCopy(folder_path,GetDataPath(path_type));
+		StringAppend(folder_path,dat_path);
 	}
 	else
 	{
+		WriteLog(__FUNCTION__" - Invalid path<%d>.\n",path_type);
 		return false;
 	}
 
 	WIN32_FIND_DATA fd;
-	HANDLE f=FindFirstFile(full_path,&fd);
+	HANDLE f=FindFirstFile(folder_path,&fd);
 	if(f!=INVALID_HANDLE_VALUE)
 	{
-		HANDLE h_file=CreateFile(full_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+		FindClose(f);
+		HANDLE h_file=CreateFile(folder_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
 		if(h_file!=INVALID_HANDLE_VALUE)
 		{
 			LoadSimple(h_file);
 			return true;
 		}
 	}
-	FindClose(f);
 
-	_strlwr(short_path);
+	_strlwr(dat_path);
 	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it)
 	{
 		TDatFile* dat=*it;
-		if(dat->DATOpenFile(short_path)!=INVALID_HANDLE_VALUE)
+		if(dat->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
 		{
 			fileSize=dat->DATGetFileSize();
 			fileBuf=new(nothrow) BYTE[fileSize+1];
@@ -210,7 +176,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 }
 
 /*
-	if(datFoPatch && datFoPatch->DATOpenFile(short_path)!=INVALID_HANDLE_VALUE)
+	if(datFoPatch && datFoPatch->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
 	{
 		fileSize=datFoPatch->DATGetFileSize();
 		fileBuf=new BYTE[fileSize+1];
@@ -227,10 +193,10 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 		if(!datCritter)
 		{
 			//пробуем загрузить из critter_dat если это каталог
-			StringCopy(full_path,pathCritterDat);
-			StringAppend(full_path,short_path);
+			StringCopy(folder_path,pathCritterDat);
+			StringAppend(folder_path,dat_path);
 
-			HANDLE h_file=CreateFile(full_path,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+			HANDLE h_file=CreateFile(folder_path,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
 			if(h_file!=INVALID_HANDLE_VALUE)
 			{
 				LoadSimple(h_file);
@@ -240,7 +206,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 			return false;
 		}
 
-		if(datCritter->DATOpenFile(short_path)!=INVALID_HANDLE_VALUE)
+		if(datCritter->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
 		{
 			fileSize = datCritter->DATGetFileSize();
 			fileBuf = new BYTE[fileSize+1];
@@ -257,10 +223,10 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	// Master folder
 	if(!datMaster)
 	{
-		StringCopy(full_path,pathMasterDat);
-		StringAppend(full_path,short_path);
+		StringCopy(folder_path,pathMasterDat);
+		StringAppend(folder_path,dat_path);
 
-		HANDLE h_file=CreateFile(full_path,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+		HANDLE h_file=CreateFile(folder_path,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
 		if(h_file!=INVALID_HANDLE_VALUE)
 		{
 			LoadSimple(h_file);
@@ -271,7 +237,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	}
 
 	// Master dat
-	if(datMaster->DATOpenFile(short_path)!=INVALID_HANDLE_VALUE)
+	if(datMaster->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
 	{
 		fileSize = datMaster->DATGetFileSize();
 		fileBuf = new BYTE[fileSize+1];
@@ -422,13 +388,14 @@ float FileManager::GetLEFloat()
 
 int FileManager::GetNum()
 {
+	// Todo: rework
 	while(curPos<fileSize)
 	{
 		if(fileBuf[curPos]>='0' && fileBuf[curPos]<='9') break;
 		else curPos++;
 	}
 
-	if(curPos>=fileSize) return 0; //TODO: send error
+	if(curPos>=fileSize) return 0;
 	int res=atoi((const char*)&fileBuf[curPos]);
 	if(res/1000000000) curPos+=10;
 	else if(res/100000000) curPos+=9;
@@ -612,8 +579,9 @@ const char* FileManager::GetPath(int path_type)
 
 const char* FileManager::GetDataPath(int path_type)
 {
-	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return PathLst[PT_ROOT];
-	return path_type<PT_SERVER_ROOT?dataPath:dataPathServer;
+	static char root_path[]=".\\";
+	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return root_path;
+	return dataPath;
 }
 
 void FileManager::FormatPath(char* path)
@@ -726,18 +694,15 @@ void FileManager::RecursiveDirLook(const char* init_dir, const char* ext, StrVec
 
 void FileManager::GetFolderFileNames(int path_type, const char* ext, StrVec& result)
 {
-	if(path_type<0 || path_type>=PATH_LIST_COUNT) return;
+	if(path_type<0 || path_type>=PATH_LIST_COUNT || path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return;
 
 	// Find in folder files
-	char path[MAX_FOPATH];
-	StringCopy(path,dataPath);
-	StringAppend(path,PathLst[path_type]);
 	RecursiveDirLook(PathLst[path_type],ext,result);
 }
 
 void FileManager::GetDatsFileNames(int path_type, const char* ext, StrVec& result)
 {
-	if(path_type<0 || path_type>=PATH_LIST_COUNT) return;
+	if(path_type<0 || path_type>=PATH_LIST_COUNT || path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return;
 
 	// Find in dat files
 	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it)

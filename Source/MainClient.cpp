@@ -15,61 +15,58 @@ DWORD dwGameThreadID=0;
 DWORD WINAPI GameLoopThread(void *);
 #endif
 
-#ifdef FONLINE_SINGLE
-#include "Server.h"
-FOServer Serv;
-
-void ServerLoopThread(void*);
-bool StartSinglePlayer();
-#endif
-
 int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCmdLine, int nCmdShow)
 {
 	setlocale(LC_ALL,"Russian");
 
-	// Check for run window
-#if !defined(DEV_VESRION) && !defined(FONLINE_SINGLE)
-	if(FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
+	// Exception
+	CatchExceptions("FOnline",CLIENT_VERSION);
+
+	// Register window
+	WNDCLASS wnd_class;//»спользуетс€ дл€ регистрации класса окна
+	MSG msg;//сообщени€
+	wnd_class.style=CS_HREDRAW|CS_VREDRAW;//определ€ет свойства окна
+	wnd_class.lpfnWndProc=WndProc;//определ€ет адрес функции окна
+	wnd_class.cbClsExtra=0;//число байт, которое необходимо запросить у Windows. ќбычно равна 0
+	wnd_class.cbWndExtra=0;//число байт, которое необходимо запросить у Windows. ќбычно равна 0
+	wnd_class.hInstance=hCurrentInst;//сообщает Windows о том, кто создает определение класса
+	wnd_class.hIcon=LoadIcon(hCurrentInst,MAKEINTRESOURCE(IDI_ICON));//загружает иконку, в данном случае ее нет
+	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);//стандартный курсор
+	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);//фон приложени€
+	wnd_class.lpszMenuName=NULL;//определ€ет меню. ¬ данной ситуации меню отсутствует
+	wnd_class.lpszClassName=WINDOW_CLASS_NAME;//указатель на строку, содержащую им€ класса
+	RegisterClass(&wnd_class);//регистраци€ окна
+
+	// Stuff
+	Timer::Init();
+	LogToFile("FOnline.log");
+
+	// Check single player parameters
+	if(strstr(lpCmdLine,"-singleplayer "))
+	{
+		SinglePlayer=true;
+		const char* ptr=strstr(lpCmdLine,"-singleplayer ")+strlen("-singleplayer ");
+		HANDLE map_file=NULL;
+		if(sscanf_s(ptr,"%p",&map_file)!=1 || !SinglePlayerData.Attach(map_file))
+		{
+			WriteLog("Can't attach to mapped file<%p>.\n",map_file);
+			return 0;
+		}
+	}
+
+	// Check for already runned window
+#ifndef DEV_VESRION
+	if(!SinglePlayer && FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
 	{
 		MessageBox(NULL,"FOnline already run.","FOnline",MB_OK);
 		return 0;
 	}
 #endif
 
-	// Exception
-#ifdef FONLINE_SINGLE
-	CatchExceptions("FOnlineSP",SINGLE_VERSION);
-#else
-	CatchExceptions("FOnline",CLIENT_VERSION);
-#endif
-
-	// Register window
-	WNDCLASS wnd_class;
-	MSG msg;
-	wnd_class.style=CS_HREDRAW|CS_VREDRAW;
-	wnd_class.lpfnWndProc=WndProc;
-	wnd_class.cbClsExtra=0;
-	wnd_class.cbWndExtra=0;
-	wnd_class.hInstance=hCurrentInst;
-	wnd_class.hIcon=LoadIcon(hCurrentInst,MAKEINTRESOURCE(IDI_ICON));
-	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);
-	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);
-	wnd_class.lpszMenuName=NULL;
-	wnd_class.lpszClassName=WINDOW_CLASS_NAME;
-	RegisterClass(&wnd_class);
-
-	// Timer
-	Timer::Init();
-
-#ifdef FONLINE_SINGLE
-	LogToFile("FOnlineSP.log");
-#else
-	LogToFile("FOnline.log");
-#endif
-
+	// Options
 	GetClientOptions();
 
-	hWnd=CreateWindow(WINDOW_CLASS_NAME,WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,hCurrentInst,NULL);
+	hWnd=CreateWindow(WINDOW_CLASS_NAME,SinglePlayer?WINDOW_NAME_SP:WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,hCurrentInst,NULL);
 
 	HDC dcscreen=GetDC(NULL);
 	int sw=GetDeviceCaps(dcscreen,HORZRES);
@@ -87,19 +84,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	UpdateWindow(hWnd);
 
 	// Start FOnline
-#ifdef FONLINE_SINGLE
-	WriteLog("Starting FOnline (version %04X)...\n\n",SINGLE_VERSION);
-#else
 	WriteLog("Starting FOnline (version %04X-%02X)...\n\n",CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF);
-#endif
-
-#ifdef FONLINE_SINGLE
-	if(!StartSinglePlayer())
-	{
-		WriteLog("FOnline single-player initialization fail.\n");
-		return 0;
-	}
-#endif
 
 	FOEngine=new FOClient();
 	if(!FOEngine || !FOEngine->Init(hWnd))
@@ -269,23 +254,3 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 
 	return DefWindowProc(hWndProc,message,wParam,lParam);
 }
-
-#ifdef FONLINE_SINGLE
-bool StartSinglePlayer()
-{
-	GetServerOptions();
-	if(Serv.Init())
-	{
-		_beginthread(ServerLoopThread,0,NULL);
-		return true;
-	}
-	return false;
-}
-
-void ServerLoopThread(void*)
-{
-	Serv.RunGameLoop();
-	Serv.Finish();
-	_endthread();
-}
-#endif

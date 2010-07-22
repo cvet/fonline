@@ -797,10 +797,7 @@ public:
 
 	bool operator==(const DWORD& _id){return (Id==_id);}
 
-#ifdef FONLINE_SINGLE
-	Item(){RefCounter=1;IsNotValid=false;}
-	virtual ~Item(){Proto=NULL;}
-#elif FONLINE_SERVER
+#ifdef FONLINE_SERVER
 	Item(){ZeroMemory(this,sizeof(Item)); RefCounter=1; IsNotValid=false; MEMORY_PROCESS(MEMORY_ITEM,sizeof(Item));}
 	~Item(){Proto=NULL; if(PLexems) MEMORY_PROCESS(MEMORY_ITEM,-LEXEMS_SIZE); SAFEDELA(PLexems); MEMORY_PROCESS(MEMORY_ITEM,-(int)sizeof(Item));}
 #elif FONLINE_CLIENT

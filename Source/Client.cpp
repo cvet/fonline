@@ -105,7 +105,7 @@ bool FOClient::Init(HWND hwnd)
 	if(!InitDInput()) return false;
 
 	// File manager
-	FileManager::SetDataPath(OptFoDataPath.c_str(),false);
+	FileManager::SetDataPath(OptFoDataPath.c_str());
 	if(!FileManager::LoadDat(OptMasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online",MB_OK);
@@ -128,9 +128,14 @@ bool FOClient::Init(HWND hwnd)
 		WriteLog(__FUNCTION__" - Can't set default cache.\n");
 		return false;
 	}
-	if(!strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)))
+	if(!SinglePlayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)))
 	{
 		WriteLog(__FUNCTION__" - Can't set new cache.\n");
+		return false;
+	}
+	if(SinglePlayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable("singleplayer.cache"))
+	{
+		WriteLog(__FUNCTION__" - Can't set single player cache.\n");
 		return false;
 	}
 
@@ -189,38 +194,33 @@ bool FOClient::Init(HWND hwnd)
 	SndMngr.SetMusicVolume(cfg.GetInt(CFG_FILE_APP_NAME,"MusicVolume",100));
 
 	// Language Packs
-//#ifndef FONLINE_SINGLE
 	char lang_name[MAX_FOTEXT];
 	cfg.GetStr(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name);
 	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
 	Str::Lwr(lang_name);
-	CurLang.Init(lang_name);
-//#else
-	
-//#endif
 
-	MsgText=&CurLang.Msg[TEXTMSG_TEXT];
-	MsgDlg=&CurLang.Msg[TEXTMSG_DLG];
-	MsgItem=&CurLang.Msg[TEXTMSG_ITEM];
-	MsgGame=&CurLang.Msg[TEXTMSG_GAME];
-	MsgGM=&CurLang.Msg[TEXTMSG_GM];
+	CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS)),*(DWORD*)&lang_name);
+
+	MsgText  =&CurLang.Msg[TEXTMSG_TEXT];
+	MsgDlg   =&CurLang.Msg[TEXTMSG_DLG];
+	MsgItem  =&CurLang.Msg[TEXTMSG_ITEM];
+	MsgGame  =&CurLang.Msg[TEXTMSG_GAME];
+	MsgGM    =&CurLang.Msg[TEXTMSG_GM];
 	MsgCombat=&CurLang.Msg[TEXTMSG_COMBAT];
-	MsgQuest=&CurLang.Msg[TEXTMSG_QUEST];
-	MsgHolo=&CurLang.Msg[TEXTMSG_HOLO];
-	MsgCraft=&CurLang.Msg[TEXTMSG_CRAFT];
+	MsgQuest =&CurLang.Msg[TEXTMSG_QUEST];
+	MsgHolo  =&CurLang.Msg[TEXTMSG_HOLO];
+	MsgCraft =&CurLang.Msg[TEXTMSG_CRAFT];
 	MsgInternal=&CurLang.Msg[TEXTMSG_INTERNAL];
 	MsgUserHolo=new FOMsg;
 	MsgUserHolo->LoadMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS),USER_HOLO_TEXTMSG_FILE));
 
-#ifndef FONLINE_SINGLE
 	// CritterCl types
 	CritType::InitFromMsg(MsgInternal);
-#endif
+	GET_UID2(UID2);
 
 	// Lang
 	Keyb::Lang=LANG_ENG;
 	if(!_stricmp(lang_name,"russ")) Keyb::Lang=LANG_RUS;
-	GET_UID2(UID2);
 
 	// Resource manager
 	ResMngr.Refresh(&SprMngr);
@@ -239,18 +239,17 @@ bool FOClient::Init(HWND hwnd)
 	if(!InitIfaceIni()) return false;
 
 	// Scripts
-	if(!ClientScript.Init(false,PragmaCallbackCrData)) return false;
-	asIScriptEngine* engine=ClientScript.GetEngine();
+	if(!Script::Init(false,PragmaCallbackCrData)) return false;
+	Script::SetScriptsPath(PT_SCRIPTS);
+	asIScriptEngine* engine=Script::GetEngine();
 #define BIND_CLIENT
 #define BIND_CLASS FOClient::ScriptFunc.
 #define BIND_ERROR do{WriteLog(__FUNCTION__" - Bind error, line<%d>.\n",__LINE__); return false;}while(0)
 #include <ScriptBind.h>
 	ReloadScripts();
 
-#ifndef FONLINE_SINGLE
 	// Names
 	FONames::GenerateFoNames(PT_DATA);
-#endif
 
 	// Load interface
 	int res=InitIface();
@@ -263,7 +262,6 @@ bool FOClient::Init(HWND hwnd)
 	// Quest Manager
 	QuestMngr.Init(MsgQuest);
 
-#ifndef FONLINE_SINGLE
 	// Item manager
 	if(!ItemMngr.Init()) return false;
 
@@ -289,7 +287,6 @@ bool FOClient::Init(HWND hwnd)
 	// MrFixit
 	MrFixit.LoadCrafts(*MsgCraft);
 	MrFixit.GenerateNames(*MsgGame,*MsgItem); // After Item manager init
-#endif
 
 	// Hex manager
 	if(!HexMngr.Init(&SprMngr)) return false;
@@ -314,10 +311,9 @@ bool FOClient::Init(HWND hwnd)
 	DrawShootBorders=false;
 	LookBorders.clear();
 	ShootBorders.clear();
+	WriteLog("Engine initialization complete.\n");
 	Active=true;
 	GET_UID4(UID4);
-
-	WriteLog("Engine initialization complete.\n");
 
 	// Try connect
 	if(strstr(GetCommandLine(),"-Start")) LogTryConnect();
@@ -433,7 +429,7 @@ void FOClient::Clear()
 	SndMngr.Clear();
 	QuestMngr.Clear();
 	MrFixit.Finish();
-	ClientScript.Finish();
+	Script::Finish();
 
 	if(Keyboard) Keyboard->Unacquire();
 	SAFEREL(Keyboard);
@@ -669,15 +665,15 @@ int FOClient::MainLoop()
 
 	if(IsScreenPresent(SCREEN__ELEVATOR)) ElevatorProcess();
 
-	// ScriptABCDEF loop
+	// Script loop
 	static DWORD next_call=0;
 	if(Timer::FastTick()>=next_call)
 	{
 		DWORD wait_tick=60000;
-		if(ClientScript.PrepareContext(ClientFunctions.Loop,CALL_FUNC_STR,"Game") && ClientScript.RunPrepared()) wait_tick=ClientScript.GetReturnedDword();
+		if(Script::PrepareContext(ClientFunctions.Loop,CALL_FUNC_STR,"Game") && Script::RunPrepared()) wait_tick=Script::GetReturnedDword();
 		next_call=Timer::FastTick()+wait_tick;
 	}
-	ClientScript.CollectGarbage(false);
+	Script::CollectGarbage(false);
 
 	// Video
 	if(IsVideoPlayed())
@@ -944,7 +940,7 @@ void FOClient::ParseKeyboard()
 		Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); //Clear buffer
 		Keyb::Lost();
 		Timer::StartAccelerator(ACCELERATE_NONE);
-		if(ClientScript.PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) ClientScript.RunPrepared();
+		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
 		return;
 	}
 
@@ -970,15 +966,15 @@ void FOClient::ParseKeyboard()
 		}
 
 		bool script_result=false;
-		if(dikdw && ClientScript.PrepareContext(ClientFunctions.KeyDown,CALL_FUNC_STR,"Game"))
+		if(dikdw && Script::PrepareContext(ClientFunctions.KeyDown,CALL_FUNC_STR,"Game"))
 		{
-			ClientScript.SetArgByte(dikdw);
-			if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+			Script::SetArgByte(dikdw);
+			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 		}
-		if(dikup && ClientScript.PrepareContext(ClientFunctions.KeyUp,CALL_FUNC_STR,"Game"))
+		if(dikup && Script::PrepareContext(ClientFunctions.KeyUp,CALL_FUNC_STR,"Game"))
 		{
-			ClientScript.SetArgByte(dikup);
-			if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+			Script::SetArgByte(dikup);
+			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 		}
 
 		Keyb::KeyPressed[dikup]=false;
@@ -1206,7 +1202,7 @@ void FOClient::ParseMouse()
 		Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); //Clear buffer
 		IfaceHold=IFACE_NONE;
 		Timer::StartAccelerator(ACCELERATE_NONE);
-		if(ClientScript.PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) ClientScript.RunPrepared();
+		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
 		return;
 	}
 
@@ -1296,11 +1292,11 @@ void FOClient::ParseMouse()
 			ProcessMouseScroll();
 			LMenuMouseMove();
 
-			if(ClientScript.PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(CurX);
-				ClientScript.SetArgDword(CurY);
-				ClientScript.RunPrepared();
+				Script::SetArgDword(CurX);
+				Script::SetArgDword(CurY);
+				Script::RunPrepared();
 			}
 		}	
 	}
@@ -1331,52 +1327,52 @@ void FOClient::ParseMouse()
 		// Scripts
 		bool script_result=false;
 		DI_ONMOUSE( DIMOFS_Z,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON0,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_LEFT);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_LEFT);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON0,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_LEFT);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_LEFT);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON1,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_RIGHT);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_RIGHT);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON1,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_RIGHT);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_RIGHT);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON2,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_MIDDLE);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON2,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_MIDDLE);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 				if(!script_result && !OptDisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z] && SpritesZoomMin!=SpritesZoomMax)
 				{
 					int screen=GetActiveScreen();
@@ -1389,73 +1385,73 @@ void FOClient::ParseMouse()
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON3,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT0);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT0);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON3,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT0);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT0);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON4,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT1);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT1);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON4,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT1);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT1);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON5,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT2);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT2);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON5,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT2);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT2);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON6,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT3);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT3);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON6,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT3);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT3);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN( DIMOFS_BUTTON7,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT4);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT4);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP( DIMOFS_BUTTON7,
-			if(ClientScript.PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
-				ClientScript.SetArgDword(MOUSE_CLICK_EXT4);
-				if(ClientScript.RunPrepared()) script_result=ClientScript.GetReturnedBool();
+				Script::SetArgDword(MOUSE_CLICK_EXT4);
+				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 
@@ -1655,11 +1651,11 @@ void FOClient::ParseMouse()
 		ProcessMouseScroll();
 		LMenuMouseMove();
 
-		if(ClientScript.PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
+		if(Script::PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
 		{
-			ClientScript.SetArgDword(CurX);
-			ClientScript.SetArgDword(CurY);
-			ClientScript.RunPrepared();
+			Script::SetArgDword(CurX);
+			Script::SetArgDword(CurY);
+			Script::RunPrepared();
 		}
 	}
 }
@@ -1917,8 +1913,23 @@ bool FOClient::InitNet()
 		return false;
 	}
 
-	if(!FillSockAddr(SockAddr,OptHost.c_str(),OptPort)) return false;
-	if(OptProxyType && !FillSockAddr(ProxyAddr,OptProxyHost.c_str(),OptProxyPort)) return false;
+	if(!SinglePlayer)
+	{
+		if(!FillSockAddr(SockAddr,OptHost.c_str(),OptPort)) return false;
+		if(OptProxyType && !FillSockAddr(ProxyAddr,OptProxyHost.c_str(),OptProxyPort)) return false;
+	}
+	else
+	{
+		while(true)
+		{
+			if(!SinglePlayerData.Refresh()) return false;
+			if(SinglePlayerData.NetPort) break;
+			Sleep(1000);
+		}
+		SockAddr.sin_family=AF_INET;
+		SockAddr.sin_port=SinglePlayerData.NetPort;
+		SockAddr.sin_addr.s_addr=inet_addr("127.0.0.1");
+	}
 
 	if(!NetConnect()) return false;
 	NetState=STATE_CONN;
@@ -1946,7 +1957,8 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port)
 
 bool FOClient::NetConnect()
 {
-	WriteLog("Connecting to server<%s:%d>.\n",OptHost.c_str(),OptPort);
+	if(!SinglePlayer) WriteLog("Connecting to server<%s:%d>.\n",OptHost.c_str(),OptPort);
+	else WriteLog("Connecting to server.\n");
 
 	if((Sock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,0))==INVALID_SOCKET)
 	{
@@ -1961,30 +1973,9 @@ bool FOClient::NetConnect()
 		if(setsockopt(Sock,IPPROTO_TCP,TCP_NODELAY,(char*)&optval,sizeof(optval)))
 			WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",WSAGetLastError());
 	}
-/*
-	int val;
-	int optsize=sizeof(val);
-	timeval tval;
-	tval.tv_sec=20;
-	tval.tv_usec=0;
-	if(setsockopt(Sock,SOL_SOCKET,SO_RCVTIMEO,(char*)&tval,sizeof(tval))) WriteLog("SO_RCVTIMEO err<%s>.\n",GetLastSocketError());
-	if(setsockopt(Sock,SOL_SOCKET,SO_SNDTIMEO,(char*)&tval,sizeof(tval))) WriteLog("SO_SNDTIMEO err<%s>.\n",GetLastSocketError());
 
-	val=1000000;
-	if(setsockopt(Sock,SOL_SOCKET,SO_RCVBUF,(char*)&val,sizeof(val))) WriteLog("SOL_SOCKET err<%s>.\n",GetLastSocketError());
-	if(setsockopt(Sock,SOL_SOCKET,SO_SNDBUF,(char*)&val,sizeof(val))) WriteLog("SO_SNDBUF err<%s>.\n",GetLastSocketError());
-
-	if(getsockopt(Sock,SOL_SOCKET,SO_RCVBUF,(char*)&val,&optsize)) WriteLog("get SO_RCVBUF err<%s>.\n",GetLastSocketError());
-	WriteLog("SO_RCVBUF %d\n",val);
-	if(getsockopt(Sock,SOL_SOCKET,SO_SNDBUF,(char*)&val,&optsize)) WriteLog("get SO_SNDBUF err<%s>.\n",GetLastSocketError());
-	WriteLog("SO_SNDBUF %d\n",val);
-	if(getsockopt(Sock,SOL_SOCKET,SO_RCVTIMEO,(char*)&val,&optsize)) WriteLog("get SO_RCVTIMEO err<%s>.\n",GetLastSocketError());
-	WriteLog("SO_RCVTIMEO %d\n",val);
-	if(getsockopt(Sock,SOL_SOCKET,SO_SNDTIMEO,(char*)&val,&optsize)) WriteLog("get SO_SNDTIMEO err<%s>.\n",GetLastSocketError());
-	WriteLog("SO_SNDTIMEO %d\n",val);
-*/
 	// Direct connect
-	if(!OptProxyType)
+	if(!OptProxyType || SinglePlayer)
 	{
 		if(connect(Sock,(sockaddr*)&SockAddr,sizeof(SOCKADDR_IN)))
 		{
@@ -2662,13 +2653,13 @@ void FOClient::Net_SendText(const char* send_str, BYTE how_say)
 	StringCopy(str_buf,send_str);
 
 	bool result=false;
-	if(ClientScript.PrepareContext(ClientFunctions.OutMessage,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.OutMessage,CALL_FUNC_STR,"Game"))
 	{
 		int say_type=how_say;
 		CScriptString* sstr=new CScriptString(str);
-		ClientScript.SetArgObject(sstr);
-		ClientScript.SetArgAddress(&say_type);
-		if(ClientScript.RunPrepared()) result=ClientScript.GetReturnedBool();
+		Script::SetArgObject(sstr);
+		Script::SetArgAddress(&say_type);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 		StringCopy(str,MAX_FOTEXT,sstr->c_str());
 		sstr->Release();
 		how_say=say_type;
@@ -3889,10 +3880,10 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
 		const char* look=FmtCritLook(cr,CRITTER_ONLY_NAME);
 		if(look) cr->Name=look;
-		if(ClientScript.PrepareContext(ClientFunctions.CritterIn,CALL_FUNC_STR,"Game"))
+		if(Script::PrepareContext(ClientFunctions.CritterIn,CALL_FUNC_STR,"Game"))
 		{
-			ClientScript.SetArgObject(cr);
-			ClientScript.RunPrepared();
+			Script::SetArgObject(cr);
+			Script::RunPrepared();
 		}
 	}
 }
@@ -3904,10 +3895,10 @@ void FOClient::Net_OnRemoveCritter()
 	CritterCl* cr=GetCritter(remid);
 	if(cr) cr->Finish();
 
-	if(ClientScript.PrepareContext(ClientFunctions.CritterOut,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.CritterOut,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(cr);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(cr);
+		Script::RunPrepared();
 	}
 }
 
@@ -4009,18 +4000,18 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	if(!len) return;
 
 	DWORD text_delay=OptTextDelay+len*100;
-	if(ClientScript.PrepareContext(ClientFunctions.InMessage,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.InMessage,CALL_FUNC_STR,"Game"))
 	{
 		CScriptString* sstr=new CScriptString(fstr);
-		ClientScript.SetArgObject(sstr);
-		ClientScript.SetArgAddress(&how_say);
-		ClientScript.SetArgAddress(&crid);
-		ClientScript.SetArgAddress(&text_delay);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(sstr);
+		Script::SetArgAddress(&how_say);
+		Script::SetArgAddress(&crid);
+		Script::SetArgAddress(&text_delay);
+		Script::RunPrepared();
 		StringCopy(fstr,sstr->c_str());
 		sstr->Release();
 
-		if(!ClientScript.GetReturnedBool()) return;
+		if(!Script::GetReturnedBool()) return;
 
 		len=strlen(fstr);
 		if(!len) return;
@@ -4171,15 +4162,15 @@ void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color)
 	DWORD len=strlen(str);
 	DWORD text_delay=OptTextDelay+len*100;
 	CScriptString* sstr=new CScriptString(str);
-	if(ClientScript.PrepareContext(ClientFunctions.MapMessage,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.MapMessage,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(sstr);
-		ClientScript.SetArgAddress(&hx);
-		ClientScript.SetArgAddress(&hy);
-		ClientScript.SetArgAddress(&color);
-		ClientScript.SetArgAddress(&text_delay);
-		ClientScript.RunPrepared();
-		if(!ClientScript.GetReturnedBool())
+		Script::SetArgObject(sstr);
+		Script::SetArgAddress(&hx);
+		Script::SetArgAddress(&hy);
+		Script::SetArgAddress(&color);
+		Script::SetArgAddress(&text_delay);
+		Script::RunPrepared();
+		if(!Script::GetReturnedBool())
 		{
 			sstr->Release();
 			return;
@@ -4634,6 +4625,14 @@ void FOClient::Net_OnCritterParam()
 		TurnBasedTime=0;
 		HexMngr.SetCritterContour(cr->GetId(),Sprite::ContourCustom);
 	}
+	else if(index==ST_RATE_ITEM)
+	{
+		ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
+		if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) unarmed=NULL;
+		if(!unarmed) unarmed=cr->GetUnarmedItem(0,0);
+		cr->DefItemSlotMain.Init(unarmed);
+		cr->DefItemSlotMain.SetRate(value&0xFF);
+	}
 }
 
 void FOClient::Net_OnCheckUID1()
@@ -4925,10 +4924,10 @@ void FOClient::Net_OnChosenAddItem()
 	if(item!=Chosen->ItemSlotMain || !item->IsWeapon()) item->SetRate(item->Data.Rate);
 	Chosen->AddItem(item);
 
-	if(ClientScript.PrepareContext(ClientFunctions.ItemInvIn,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemInvIn,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(item);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 	}
 
 	if(slot==SLOT_HAND1 || prev_slot==SLOT_HAND1) RebuildLookBorders=true;
@@ -4955,10 +4954,10 @@ void FOClient::Net_OnChosenEraseItem()
 		return;
 	}
 
-	if(ClientScript.PrepareContext(ClientFunctions.ItemInvOut,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemInvOut,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(item);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 	}
 
 	if(item->IsLight() && item->ACC_CRITTER.Slot!=SLOT_INV) HexMngr.RebuildLight();
@@ -4999,10 +4998,10 @@ void FOClient::Net_OnAddItemOnMap()
 	}
 
 	Item* item=HexMngr.GetItemById(item_id);
-	if(item && ClientScript.PrepareContext(ClientFunctions.ItemMapIn,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapIn,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(item);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 	}
 
 	// Refresh borders
@@ -5021,14 +5020,14 @@ void FOClient::Net_OnChangeItemOnMap()
 
 	HexMngr.ChangeItem(item_id,data);
 
-	if(item && ClientScript.PrepareContext(ClientFunctions.ItemMapChanged,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapChanged,CALL_FUNC_STR,"Game"))
 	{
 		Item* prev_state=new Item(*item);
 		prev_state->RefCounter=1;
 		prev_state->Data=data;
-		ClientScript.SetArgObject(item);
-		ClientScript.SetArgObject(prev_state);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(item);
+		Script::SetArgObject(prev_state);
+		Script::RunPrepared();
 		prev_state->Release();
 	}
 
@@ -5046,10 +5045,10 @@ void FOClient::Net_OnEraseItemFromMap()
 	HexMngr.FinishItem(item_id,is_deleted);
 
 	Item* item=HexMngr.GetItemById(item_id);
-	if(item && ClientScript.PrepareContext(ClientFunctions.ItemMapOut,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapOut,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(item);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(item);
+		Script::RunPrepared();
 	}
 
 	// Refresh borders
@@ -5085,15 +5084,15 @@ void FOClient::Net_OnCombatResult()
 
 	CHECK_IN_BUFF_ERROR;
 
-	asIScriptArray* arr=ClientScript.CreateArray("uint[]");
+	asIScriptArray* arr=Script::CreateArray("uint[]");
 	if(!arr) return;
 	arr->Resize(data_count);
 	for(int i=0;i<data_count;i++) *((DWORD*)arr->GetElementPointer(i))=data_vec[i];
 
-	if(ClientScript.PrepareContext(ClientFunctions.CombatResult,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.CombatResult,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(arr);
-		ClientScript.RunPrepared();
+		Script::SetArgObject(arr);
+		Script::RunPrepared();
 	}
 
 	arr->Release();
@@ -6341,7 +6340,7 @@ void FOClient::Net_OnRunClientScript()
 	Bin >> p4size;
 	if(p4size)
 	{
-		p4=ClientScript.CreateArray("int[]");
+		p4=Script::CreateArray("int[]");
 		if(p4)
 		{
 			p4->Resize(p4size);
@@ -6354,18 +6353,18 @@ void FOClient::Net_OnRunClientScript()
 	// Reparse module
 	int bind_id;
 	if(strstr(func_name->c_str(),"@"))
-		bind_id=ClientScript.Bind(func_name->c_str(),"void %s(int, int, int, string@, int[]@)",true);
+		bind_id=Script::Bind(func_name->c_str(),"void %s(int, int, int, string@, int[]@)",true);
 	else
-		bind_id=ClientScript.Bind("client_main",func_name->c_str(),"void %s(int, int, int, string@, int[]@)",true);
+		bind_id=Script::Bind("client_main",func_name->c_str(),"void %s(int, int, int, string@, int[]@)",true);
 
-	if(bind_id>0 && ClientScript.PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
+	if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgDword(p0);
-		ClientScript.SetArgDword(p1);
-		ClientScript.SetArgDword(p2);
-		ClientScript.SetArgObject(p3);
-		ClientScript.SetArgObject(p4);
-		ClientScript.RunPrepared();
+		Script::SetArgDword(p0);
+		Script::SetArgDword(p1);
+		Script::SetArgDword(p2);
+		Script::SetArgObject(p3);
+		Script::SetArgObject(p4);
+		Script::RunPrepared();
 	}
 
 	func_name->Release();
@@ -6484,8 +6483,8 @@ void FOClient::Net_OnMsgData()
 	if(lang!=CurLang.Name)
 	{
 		WriteLog(__FUNCTION__" - Received text in another language, set as default.\n");
-		CurLang.Name=lang;
-		WritePrivateProfileString(CFG_FILE_APP_NAME,"Language",CurLang.NameStr,CLIENT_CONFIG_FILE);
+		CurLang.ChangeName(lang);
+		WritePrivateProfileString(CFG_FILE_APP_NAME,"Language",CurLang.GetName(),CLIENT_CONFIG_FILE);
 	}
 
 	if(num_msg>=TEXTMSG_COUNT)
@@ -6506,7 +6505,7 @@ void FOClient::Net_OnMsgData()
 		return;
 	}
 
-	CurLang.Msg[num_msg].SaveMsgFile(Str::Format("%s\\%s",CurLang.NameStr,TextMsgFileName[num_msg]));
+	CurLang.Msg[num_msg].SaveMsgFile(Str::Format("%s%s",CurLang.GetPath(),TextMsgFileName[num_msg]));
 	CurLang.Msg[num_msg].CalculateHash();
 
 	switch(num_msg)
@@ -6888,16 +6887,16 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 		return false;
 	}
 
-	if(ClientScript.PrepareContext(ClientFunctions.PlayerGenerationCheck,CALL_FUNC_STR,"Registration"))
+	if(Script::PrepareContext(ClientFunctions.PlayerGenerationCheck,CALL_FUNC_STR,"Registration"))
 	{
-		asIScriptArray* arr=ClientScript.CreateArray("int[]");
+		asIScriptArray* arr=Script::CreateArray("int[]");
 		if(!arr) return false;
 
 		arr->Resize(MAX_PARAMS);
 		for(int i=0;i<MAX_PARAMS;i++) (*(int*)arr->GetElementPointer(i))=newcr->ParamsReg[i];
 		bool result=false;
-		ClientScript.SetArgObject(arr);
-		if(ClientScript.RunPrepared()) result=ClientScript.GetReturnedBool();
+		Script::SetArgObject(arr);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 
 		if(!result)
 		{
@@ -8172,14 +8171,14 @@ const char* FOClient::FmtGenericDesc(int desc_type, int& ox, int& oy)
 {
 	ox=0;
 	oy=0;
-	if(ClientScript.PrepareContext(ClientFunctions.GenericDesc,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.GenericDesc,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgDword(desc_type);
-		ClientScript.SetArgAddress(&ox);
-		ClientScript.SetArgAddress(&oy);
-		if(ClientScript.RunPrepared())
+		Script::SetArgDword(desc_type);
+		Script::SetArgAddress(&ox);
+		Script::SetArgAddress(&oy);
+		if(Script::RunPrepared())
 		{
-			CScriptString* result=(CScriptString*)ClientScript.GetReturnedObject();
+			CScriptString* result=(CScriptString*)Script::GetReturnedObject();
 			if(result)
 			{
 				static char str[MAX_FOTEXT];
@@ -8194,13 +8193,13 @@ const char* FOClient::FmtGenericDesc(int desc_type, int& ox, int& oy)
 
 const char* FOClient::FmtCritLook(CritterCl* cr, int look_type)
 {
-	if(ClientScript.PrepareContext(ClientFunctions.CritterLook,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.CritterLook,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(cr);
-		ClientScript.SetArgDword(look_type);
-		if(ClientScript.RunPrepared())
+		Script::SetArgObject(cr);
+		Script::SetArgDword(look_type);
+		if(Script::RunPrepared())
 		{
-			CScriptString* result=(CScriptString*)ClientScript.GetReturnedObject();
+			CScriptString* result=(CScriptString*)Script::GetReturnedObject();
 			if(result)
 			{
 				static char str[MAX_FOTEXT];
@@ -8215,13 +8214,13 @@ const char* FOClient::FmtCritLook(CritterCl* cr, int look_type)
 
 const char* FOClient::FmtItemLook(Item* item, int look_type)
 {
-	if(ClientScript.PrepareContext(ClientFunctions.ItemLook,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemLook,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(item);
-		ClientScript.SetArgDword(look_type);
-		if(ClientScript.RunPrepared())
+		Script::SetArgObject(item);
+		Script::SetArgDword(look_type);
+		if(Script::RunPrepared())
 		{
-			CScriptString* result=(CScriptString*)ClientScript.GetReturnedObject();
+			CScriptString* result=(CScriptString*)Script::GetReturnedObject();
 			if(result)
 			{
 				static char str[MAX_FOTEXT];
@@ -8835,7 +8834,7 @@ bool FOClient::ReloadScripts()
 	bytecode.resize(len);
 	memcpy(&bytecode.buffer[0],binary,len);
 
-	asIScriptModule* module=ClientScript.CreateModule(1,"client_main");
+	asIScriptModule* module=Script::CreateModule(1,"client_main");
 	if(!module)
 	{
 		WriteLog(__FUNCTION__" - Create script module fail.\n");
@@ -8856,8 +8855,8 @@ bool FOClient::ReloadScripts()
 	}
 
 	const char* config=msg_script.GetStr(STR_INTERNAL_SCRIPT_CONFIG);
-	ClientScript.Undefine(NULL);
-	ClientScript.Define("__CLIENT");
+	Script::Undefine(NULL);
+	Script::Define("__CLIENT");
 
 	// Load modules
 	WriteLog("Load scripts...\n");
@@ -8869,15 +8868,15 @@ bool FOClient::ReloadScripts()
 		const char* source=(char*)msg_script.GetBinary(i+1,len);
 		if(!module_name || !source) break;
 
-		if(!ClientScript.LoadScript(module_name,source,false))
+		if(!Script::LoadScript(module_name,source,false))
 		{
 			WriteLog(__FUNCTION__" - Load script<%s> fail.\n",module_name);
 			errors++;
 		}
 	}
 	WriteLog("Load scripts complete.\n");
-	errors+=ClientScript.BindImportedFunctions();
-	errors+=ClientScript.RebindFunctions();
+	errors+=Script::BindImportedFunctions();
+	errors+=Script::RebindFunctions();
 
 	// Bind reserved functions
 	ReservedScriptFunction BindGameFunc[]={
@@ -8918,7 +8917,7 @@ bool FOClient::ReloadScripts()
 		{&ClientFunctions.Animation3dProcess,"animation3d_process","void %s(CritterCl&,uint,uint,ItemCl@)"},
 		{&ClientFunctions.ItemsCollection,"items_collection","void %s(int,ItemCl@[]&)"},
 	};
-	if(!ClientScript.BindReservedFunctions(config,"client",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]))) errors++;
+	if(!Script::BindReservedFunctions(config,"client",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]))) errors++;
 
 	if(errors)
 	{
@@ -8928,7 +8927,7 @@ bool FOClient::ReloadScripts()
 
 	AnimFree(RES_SCRIPT);
 
-	if(!ClientScript.PrepareContext(ClientFunctions.Start,CALL_FUNC_STR,"Game") || !ClientScript.RunPrepared() || ClientScript.GetReturnedBool()==false)
+	if(!Script::PrepareContext(ClientFunctions.Start,CALL_FUNC_STR,"Game") || !Script::RunPrepared() || Script::GetReturnedBool()==false)
 	{
 		WriteLog("Execute start script fail.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
@@ -8947,24 +8946,24 @@ int FOClient::ScriptGetHitProc(CritterCl* cr, int hit_location)
 	if(!proto_item->IsWeapon() || !Chosen->ItemSlotMain->WeapIsUseAviable(use)) return 0;
 	if(proto_item->Weapon.Weapon_CurrentUse!=use) proto_item->Weapon_SetUse(use);
 
-	if(ClientScript.PrepareContext(ClientFunctions.ToHit,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ToHit,CALL_FUNC_STR,"Game"))
 	{
-		ClientScript.SetArgObject(Chosen);
-		ClientScript.SetArgObject(cr);
-		ClientScript.SetArgObject(proto_item);
-		ClientScript.SetArgDword(hit_location);
-		if(ClientScript.RunPrepared()) return ClientScript.GetReturnedDword();
+		Script::SetArgObject(Chosen);
+		Script::SetArgObject(cr);
+		Script::SetArgObject(proto_item);
+		Script::SetArgDword(hit_location);
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 	return 0;
 }
 
 void FOClient::DrawIfaceLayer(DWORD layer)
 {
-	if(ClientScript.PrepareContext(ClientFunctions.RenderIface,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.RenderIface,CALL_FUNC_STR,"Game"))
 	{
 		SpritesCanDraw=true;
-		ClientScript.SetArgDword(layer);
-		ClientScript.RunPrepared();
+		Script::SetArgDword(layer);
+		Script::RunPrepared();
 		SpritesCanDraw=false;
 	}
 }
@@ -8984,7 +8983,7 @@ bool FOClient::PragmaCallbackCrData(const char* text)
 	if(ParametersAlready_.count(name)) return true;
 	if(ParametersIndex_>=MAX_PARAMETERS_ARRAYS) return false;
 
-	asIScriptEngine* engine=ClientScript.GetEngine();
+	asIScriptEngine* engine=Script::GetEngine();
 	char decl[128];
 	sprintf_s(decl,"DataVal %s",name.c_str());
 	if(engine->RegisterObjectProperty("CritterCl",decl,offsetof(CritterCl,ThisPtr[ParametersIndex_]))<0) return false;
@@ -9056,10 +9055,10 @@ void SortCritterByDist(int hx, int hy, CritVec& critters)
 	std::sort(critters.begin(),critters.end(),SortCritterByDistPred);
 }
 
-#define SCRIPT_ERROR(error) do{ScriptLastError=error; ClientScript.LogError(__FUNCTION__", "error);}while(0)
-#define SCRIPT_ERROR_RX(error,x) do{ScriptLastError=error; ClientScript.LogError(__FUNCTION__", "error); return x;}while(0)
-#define SCRIPT_ERROR_R(error) do{ScriptLastError=error; ClientScript.LogError(__FUNCTION__", "error); return;}while(0)
-#define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; ClientScript.LogError(__FUNCTION__", "error); return 0;}while(0)
+#define SCRIPT_ERROR(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error);}while(0)
+#define SCRIPT_ERROR_RX(error,x) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return x;}while(0)
+#define SCRIPT_ERROR_R(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return;}while(0)
+#define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return 0;}while(0)
 static string ScriptLastError;
 
 int FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
@@ -9532,14 +9531,14 @@ WORD FOClient::SScriptFunc::Global_GetCurrentMapPid()
 
 DWORD FOClient::SScriptFunc::Global_GetMessageFilters(asIScriptArray* filters)
 {
-	if(filters) ClientScript.AppendVectorToArray(Self->MessBoxFilters,filters);
+	if(filters) Script::AppendVectorToArray(Self->MessBoxFilters,filters);
 	return Self->MessBoxFilters.size();
 }
 
 void FOClient::SScriptFunc::Global_SetMessageFilters(asIScriptArray* filters)
 {
 	Self->MessBoxFilters.clear();
-	if(filters) ClientScript.AssignScriptArrayInVector(Self->MessBoxFilters,filters);
+	if(filters) Script::AssignScriptArrayInVector(Self->MessBoxFilters,filters);
 }
 
 void FOClient::SScriptFunc::Global_Message(CScriptString& msg)
@@ -9856,7 +9855,7 @@ CScriptString* FOClient::SScriptFunc::Global_GetLastError()
 
 void FOClient::SScriptFunc::Global_Log(CScriptString& text)
 {
-	ClientScript.Log(text.c_str());
+	Script::Log(text.c_str());
 }
 
 ProtoItem* FOClient::SScriptFunc::Global_GetProtoItem(WORD proto_id)
@@ -9974,7 +9973,7 @@ bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour(DWORD index, CScript
 	CritterCl::ParamsGetScript[index]=0;
 	if(func_name.length()>0)
 	{
-		int bind_id=ClientScript.Bind(func_name.c_str(),"int %s(CritterCl&, uint)",false);
+		int bind_id=Script::Bind(func_name.c_str(),"int %s(CritterCl&, uint)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R0("Function not found.");
 		CritterCl::ParamsGetScript[index]=bind_id;
 	}
@@ -9987,7 +9986,7 @@ bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour(DWORD index, CScr
 	CritterCl::ParamsChangeScript[index]=0;
 	if(func_name.length()>0)
 	{
-		int bind_id=ClientScript.Bind(func_name.c_str(),"void %s(CritterCl&, uint, int)",false);
+		int bind_id=Script::Bind(func_name.c_str(),"void %s(CritterCl&, uint, int)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R0("Function not found.");
 		CritterCl::ParamsChangeScript[index]=bind_id;
 	}
@@ -10014,14 +10013,14 @@ void FOClient::SScriptFunc::Global_SetRegistrationParam(DWORD index, bool enable
 
 DWORD FOClient::SScriptFunc::Global_GetAngelScriptProperty(int property)
 {
-	asIScriptEngine* engine=ClientScript.GetEngine();
+	asIScriptEngine* engine=Script::GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
 	return engine->GetEngineProperty((asEEngineProp)property);
 }
 
 bool FOClient::SScriptFunc::Global_SetAngelScriptProperty(int property, DWORD value)
 {
-	asIScriptEngine* engine=ClientScript.GetEngine();
+	asIScriptEngine* engine=Script::GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
 	int result=engine->SetEngineProperty((asEEngineProp)property,value);
 	if(result<0) SCRIPT_ERROR_R0("Invalid data. Property not setted.");
