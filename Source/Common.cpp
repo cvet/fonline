@@ -1137,9 +1137,9 @@ bool InterprocessData::Refresh()
 	return true;
 }
 
-bool SinglePlayer=false;
-InterprocessData SinglePlayerData;
-HANDLE SinglePlayerDataMutex=NULL;
+bool Singleplayer=false;
+InterprocessData SingleplayerData;
+HANDLE SingleplayerClientProcess=NULL;
 
 /************************************************************************/
 /*                                                                      */

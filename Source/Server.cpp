@@ -325,7 +325,15 @@ void FOServer::RunGameLoop()
 	while(!FOQuit)
 	{
 		// Synchronize single player data
-		if(SinglePlayer) SinglePlayerData.Refresh();
+		if(Singleplayer)
+		{
+			if(WaitForSingleObject(SingleplayerClientProcess,0)==WAIT_OBJECT_0)
+			{
+				FOQuit=true;
+				break;
+			}
+			SingleplayerData.Refresh();
+		}
 
 		// Pre loop
 		CycleBeginTick=Timer::FastTick();
@@ -3000,7 +3008,7 @@ bool FOServer::Init()
 	ListenSock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,WSA_FLAG_OVERLAPPED);
 
 	WORD port;
-	if(!SinglePlayer)
+	if(!Singleplayer)
 	{
 		port=cfg.GetInt("Port",4000);
 		WriteLog("Starting server on port<%u>.\n",port);
@@ -3022,7 +3030,7 @@ bool FOServer::Init()
 		goto label_Error;
 	}
 
-	if(SinglePlayer)
+	if(Singleplayer)
 	{
 		int namelen=sizeof(sin);
 		if(getsockname(ListenSock,(sockaddr*)&sin,&namelen))
@@ -3117,11 +3125,11 @@ bool FOServer::Init()
 	Active=true;
 
 	// Inform client about end of initialization
-	if(SinglePlayer)
+	if(Singleplayer)
 	{
-		if(!SinglePlayerData.Lock()) goto label_Error;
-		SinglePlayerData.NetPort=sin.sin_port;
-		SinglePlayerData.Unlock();
+		if(!SingleplayerData.Lock()) goto label_Error;
+		SingleplayerData.NetPort=sin.sin_port;
+		SingleplayerData.Unlock();
 	}
 	return true;
 
@@ -3145,7 +3153,7 @@ bool FOServer::InitCrafts(LangPackVec& lang_packs)
 		{
 			if(!MrFixit.LoadCrafts(lang.Msg[TEXTMSG_CRAFT]))
 			{
-				WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.GetPath());
+				WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.NameStr);
 				return false;
 			}
 			main_lang=&lang;
@@ -3155,13 +3163,13 @@ bool FOServer::InitCrafts(LangPackVec& lang_packs)
 		CraftManager mr_fixit;
 		if(!mr_fixit.LoadCrafts(lang.Msg[TEXTMSG_CRAFT]))
 		{
-			WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.GetPath());
+			WriteLog(__FUNCTION__" - Unable to load crafts from<%s>.\n",lang.NameStr);
 			return false;
 		}
 
 		if(!(MrFixit==mr_fixit))
 		{
-			WriteLog(__FUNCTION__" - Compare crafts fail. <%s>with<%s>.\n",main_lang->GetPath(),lang.GetPath());
+			WriteLog(__FUNCTION__" - Compare crafts fail. <%s>with<%s>.\n",main_lang->NameStr,lang.NameStr);
 			return false;
 		}
 	}
@@ -3175,31 +3183,31 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
-	int cur_lang=0;
+	DWORD cur_lang=0;
 
 	while(true)
 	{
 		char cur_str_lang[256];
 		char lang_name[256];
-		sprintf(cur_str_lang,"Language_%d",cur_lang);
+		sprintf(cur_str_lang,"Language_%u",cur_lang);
 
 		if(!cfg.GetStr(cur_str_lang,"",lang_name)) break;
 
 		if(strlen(lang_name)!=4)
 		{
-			WriteLog("Language name not equal 4 digits.\n");
+			WriteLog("Language name not equal to four letters.\n");
 			return false;
 		}
 
 		DWORD pack_id=*(DWORD*)&lang_name;
 		if(std::find(lang_packs.begin(),lang_packs.end(),pack_id)!=lang_packs.end())
 		{
-			WriteLog("Language pack<%u> is already Init.\n",cur_lang);
+			WriteLog("Language pack<%u> is already initialized.\n",cur_lang);
 			return false;
 		}
 
 		LanguagePack lang;
-		if(!lang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_SERVER_TEXTS),FileMngr.GetPath(PT_SERVER_TEXTS)),*(DWORD*)&lang_name))
+		if(!lang.Init(lang_name,PT_SERVER_TEXTS))
 		{
 			WriteLog("Unable to init Language pack<%u>.\n",cur_lang);
 			return false;

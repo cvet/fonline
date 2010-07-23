@@ -15,6 +15,8 @@ DWORD dwGameThreadID=0;
 DWORD WINAPI GameLoopThread(void *);
 #endif
 
+void ServerShut(void*);
+
 int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCmdLine, int nCmdShow)
 {
 	setlocale(LC_ALL,"Russian");
@@ -41,22 +43,74 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	Timer::Init();
 	LogToFile("FOnline.log");
 
-	// Check single player parameters
-	if(strstr(lpCmdLine,"-singleplayer "))
+	// Singleplayer mode initialization
+	char full_path[MAX_FOPATH]={0};
+	char path[MAX_FOPATH]={0};
+	char name[MAX_FOPATH]={0};
+	GetModuleFileName(NULL,full_path,MAX_FOPATH);
+	FileManager::ExtractPath(full_path,path);
+	FileManager::ExtractFileName(full_path,name);
+	if(strstr(name,"Singleplayer") || strstr(lpCmdLine,"Singleplayer"))
 	{
-		SinglePlayer=true;
-		const char* ptr=strstr(lpCmdLine,"-singleplayer ")+strlen("-singleplayer ");
-		HANDLE map_file=NULL;
-		if(sscanf_s(ptr,"%p",&map_file)!=1 || !SinglePlayerData.Attach(map_file))
+		WriteLog("Singleplayer mode.\n");
+		Singleplayer=true;
+
+		// Create interprocess shared data
+		HANDLE map_file=SingleplayerData.Init();
+		if(!map_file)
 		{
-			WriteLog("Can't attach to mapped file<%p>.\n",map_file);
+			WriteLog("Can't map shared data to memory.\n");
 			return 0;
 		}
+
+		// Fill interprocess initial data
+		if(SingleplayerData.Lock())
+		{
+			// Initialize other data
+			SingleplayerData.NetPort=0;
+			SingleplayerData.Pause=false;
+
+			SingleplayerData.Unlock();
+		}
+		else
+		{
+			WriteLog("Can't lock mapped file.\n");
+			return 0;
+		}
+
+		// Config parsing
+		IniParser cfg;
+		char server_exe[MAX_FOPATH]={0};
+		char server_path[MAX_FOPATH]={0};
+		char server_cmdline[MAX_FOPATH]={0};
+		cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+		cfg.GetStr(CFG_FILE_APP_NAME,"ServerAppName","FOserv.exe",server_exe);
+		cfg.GetStr(CFG_FILE_APP_NAME,"ServerPath","..\\server\\",server_path);
+		cfg.GetStr(CFG_FILE_APP_NAME,"ServerCommandLine","",server_cmdline);
+
+		// Process attributes
+		PROCESS_INFORMATION server;
+		ZeroMemory(&server,sizeof(server));
+		STARTUPINFOA sui;
+		ZeroMemory(&sui,sizeof(sui));
+		sui.cb=sizeof(sui);
+		HANDLE client_process=OpenProcess(PROCESS_ALL_ACCESS,TRUE,GetCurrentProcessId());
+		char command_line[2048];
+
+		// Start server
+		sprintf(command_line,"\"%s%s\" -singleplayer %p %p %s -logpath %s",server_path,server_exe,map_file,client_process,server_cmdline,path);
+		if(!CreateProcess(NULL,command_line,NULL,NULL,TRUE,NORMAL_PRIORITY_CLASS,NULL,server_path,&sui,&server))
+		{
+			WriteLog("Can't start server process, error<%u>.\n",GetLastError());
+			return 0;
+		}
+		CloseHandle(server.hProcess);
+		CloseHandle(server.hThread);
 	}
 
 	// Check for already runned window
 #ifndef DEV_VESRION
-	if(!SinglePlayer && FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
+	if(!Singleplayer && FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
 	{
 		MessageBox(NULL,"FOnline already run.","FOnline",MB_OK);
 		return 0;
@@ -66,7 +120,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	// Options
 	GetClientOptions();
 
-	hWnd=CreateWindow(WINDOW_CLASS_NAME,SinglePlayer?WINDOW_NAME_SP:WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,hCurrentInst,NULL);
+	hWnd=CreateWindow(WINDOW_CLASS_NAME,Singleplayer?WINDOW_NAME_SP:WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,hCurrentInst,NULL);
 
 	HDC dcscreen=GetDC(NULL);
 	int sw=GetDeviceCaps(dcscreen,HORZRES);
@@ -122,6 +176,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 #endif
 	FOEngine->Clear();
 	delete FOEngine;
+	if(Singleplayer) SingleplayerData.Finish();
 	WriteLog("FOnline finished.\n");
 	LogFinish(-1);
 

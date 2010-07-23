@@ -31,11 +31,24 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	// Check single player parameters
 	if(strstr(lpCmdLine,"-singleplayer "))
 	{
-		LogToFile("FOserv.log");
-		SinglePlayer=true;
+		Singleplayer=true;
+
+		// Logging
+		char log_path[MAX_FOPATH]={0};
+		if(!strstr(lpCmdLine,"-nologpath ") && strstr(lpCmdLine,"-logpath "))
+		{
+			const char* ptr=strstr(lpCmdLine,"-logpath ")+strlen("-logpath ");
+			StringCopy(log_path,ptr);
+		}
+		StringAppend(log_path,"FOserv.log");
+		LogToFile(log_path);
+
+		WriteLog("Singleplayer mode.\n");
+
+		// Shared data
 		const char* ptr=strstr(lpCmdLine,"-singleplayer ")+strlen("-singleplayer ");
 		HANDLE map_file=NULL;
-		if(sscanf_s(ptr,"%p",&map_file)!=1 || !SinglePlayerData.Attach(map_file))
+		if(sscanf_s(ptr,"%p%p",&map_file,&SingleplayerClientProcess)!=2 || !SingleplayerData.Attach(map_file))
 		{
 			WriteLog("Can't attach to mapped file<%p>.\n",map_file);
 			return 0;
@@ -46,7 +59,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
-	if(!SinglePlayer || strstr(lpCmdLine,"-showwindow "))
+	if(!Singleplayer || strstr(lpCmdLine,"-showgui "))
 	{
 		LogFinish(-1);
 		LogToDlg(GetDlgItem(Dlg,IDC_LOG));
@@ -162,17 +175,20 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	}
 
 	// Command line
-	if(lpCmdLine[0])
-	{
-		WriteLog("Command line<%s>.\n",lpCmdLine);
-		if(strstr(lpCmdLine,"-start")) SendMessage(Dlg,WM_COMMAND,IDC_STOP,0);
-	}
+	if(lpCmdLine[0]) WriteLog("Command line<%s>.\n",lpCmdLine);
 
 	// Autostart
-	if(SinglePlayer)
+	if(strstr(lpCmdLine,"-start ") || Singleplayer)
 	{
-		FOQuit=false;
-		_beginthread(GameLoopThread,0,NULL);
+		if(Dlg)
+		{
+			SendMessage(Dlg,WM_COMMAND,IDC_STOP,0);
+		}
+		else
+		{
+			FOQuit=false;
+			_beginthread(GameLoopThread,0,NULL);
+		}
 	}
 
 	// Loop
@@ -189,8 +205,6 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 			{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
-
-				if(!Dlg && msg.message==WM_QUIT) FOQuit=true;
 			}
 		}
 		else if(result==WAIT_TIMEOUT)
@@ -545,6 +559,6 @@ void GameLoopThread(void*)
 	}
 
 	LogFinish(-1);
-	if(SinglePlayer) FOAppQuit=true;
+	if(Singleplayer) FOAppQuit=true;
 	_endthread();
 }

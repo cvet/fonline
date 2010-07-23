@@ -622,6 +622,28 @@ void FileManager::ExtractPath(const char* fname, char* path)
 	}
 }
 
+void FileManager::ExtractFileName(const char* fname, char* name)
+{
+	const char* str=strstr(fname,"\\");
+	if(str)
+	{
+		str++;
+		while(true)
+		{
+			const char* str_=strstr(str,"\\");
+			if(str_) str=str_+1;
+			else break;
+		}
+		int len=0;
+		for(;*str;len++,str++) name[len]=*str;
+		name[len]=0;
+	}
+	else
+	{
+		name[0]=0;
+	}
+}
+
 const char* FileManager::GetExtension(const char* fname)
 {
 	if(!fname) return NULL;

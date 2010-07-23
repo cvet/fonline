@@ -128,12 +128,12 @@ bool FOClient::Init(HWND hwnd)
 		WriteLog(__FUNCTION__" - Can't set default cache.\n");
 		return false;
 	}
-	if(!SinglePlayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)))
+	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)))
 	{
 		WriteLog(__FUNCTION__" - Can't set new cache.\n");
 		return false;
 	}
-	if(SinglePlayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable("singleplayer.cache"))
+	if(Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%ssingleplayer.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
 		WriteLog(__FUNCTION__" - Can't set single player cache.\n");
 		return false;
@@ -199,20 +199,20 @@ bool FOClient::Init(HWND hwnd)
 	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
 	Str::Lwr(lang_name);
 
-	CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS)),*(DWORD*)&lang_name);
+	CurLang.Init(lang_name,PT_TEXTS);
 
-	MsgText  =&CurLang.Msg[TEXTMSG_TEXT];
-	MsgDlg   =&CurLang.Msg[TEXTMSG_DLG];
-	MsgItem  =&CurLang.Msg[TEXTMSG_ITEM];
-	MsgGame  =&CurLang.Msg[TEXTMSG_GAME];
-	MsgGM    =&CurLang.Msg[TEXTMSG_GM];
+	MsgText=&CurLang.Msg[TEXTMSG_TEXT];
+	MsgDlg=&CurLang.Msg[TEXTMSG_DLG];
+	MsgItem=&CurLang.Msg[TEXTMSG_ITEM];
+	MsgGame=&CurLang.Msg[TEXTMSG_GAME];
+	MsgGM=&CurLang.Msg[TEXTMSG_GM];
 	MsgCombat=&CurLang.Msg[TEXTMSG_COMBAT];
-	MsgQuest =&CurLang.Msg[TEXTMSG_QUEST];
-	MsgHolo  =&CurLang.Msg[TEXTMSG_HOLO];
-	MsgCraft =&CurLang.Msg[TEXTMSG_CRAFT];
+	MsgQuest=&CurLang.Msg[TEXTMSG_QUEST];
+	MsgHolo=&CurLang.Msg[TEXTMSG_HOLO];
+	MsgCraft=&CurLang.Msg[TEXTMSG_CRAFT];
 	MsgInternal=&CurLang.Msg[TEXTMSG_INTERNAL];
 	MsgUserHolo=new FOMsg;
-	MsgUserHolo->LoadMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS),USER_HOLO_TEXTMSG_FILE));
+	MsgUserHolo->LoadMsgFile(USER_HOLO_TEXTMSG_FILE,PT_TEXTS);
 
 	// CritterCl types
 	CritType::InitFromMsg(MsgInternal);
@@ -1913,21 +1913,22 @@ bool FOClient::InitNet()
 		return false;
 	}
 
-	if(!SinglePlayer)
+	if(!Singleplayer)
 	{
 		if(!FillSockAddr(SockAddr,OptHost.c_str(),OptPort)) return false;
 		if(OptProxyType && !FillSockAddr(ProxyAddr,OptProxyHost.c_str(),OptProxyPort)) return false;
 	}
 	else
 	{
-		while(true)
+		for(int i=0;i<60;i++) // Wait 1 minute, than abort
 		{
-			if(!SinglePlayerData.Refresh()) return false;
-			if(SinglePlayerData.NetPort) break;
+			if(!SingleplayerData.Refresh()) return false;
+			if(SingleplayerData.NetPort) break;
 			Sleep(1000);
 		}
+		if(!SingleplayerData.NetPort) return false;
 		SockAddr.sin_family=AF_INET;
-		SockAddr.sin_port=SinglePlayerData.NetPort;
+		SockAddr.sin_port=SingleplayerData.NetPort;
 		SockAddr.sin_addr.s_addr=inet_addr("127.0.0.1");
 	}
 
@@ -1957,7 +1958,7 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port)
 
 bool FOClient::NetConnect()
 {
-	if(!SinglePlayer) WriteLog("Connecting to server<%s:%d>.\n",OptHost.c_str(),OptPort);
+	if(!Singleplayer) WriteLog("Connecting to server<%s:%d>.\n",OptHost.c_str(),OptPort);
 	else WriteLog("Connecting to server.\n");
 
 	if((Sock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,0))==INVALID_SOCKET)
@@ -1975,7 +1976,7 @@ bool FOClient::NetConnect()
 	}
 
 	// Direct connect
-	if(!OptProxyType || SinglePlayer)
+	if(!OptProxyType || Singleplayer)
 	{
 		if(connect(Sock,(sockaddr*)&SockAddr,sizeof(SOCKADDR_IN)))
 		{
@@ -6483,8 +6484,8 @@ void FOClient::Net_OnMsgData()
 	if(lang!=CurLang.Name)
 	{
 		WriteLog(__FUNCTION__" - Received text in another language, set as default.\n");
-		CurLang.ChangeName(lang);
-		WritePrivateProfileString(CFG_FILE_APP_NAME,"Language",CurLang.GetName(),CLIENT_CONFIG_FILE);
+		CurLang.Name=lang;
+		WritePrivateProfileString(CFG_FILE_APP_NAME,"Language",CurLang.NameStr,".\\"CLIENT_CONFIG_FILE);
 	}
 
 	if(num_msg>=TEXTMSG_COUNT)
@@ -6505,7 +6506,7 @@ void FOClient::Net_OnMsgData()
 		return;
 	}
 
-	CurLang.Msg[num_msg].SaveMsgFile(Str::Format("%s%s",CurLang.GetPath(),TextMsgFileName[num_msg]));
+	CurLang.Msg[num_msg].SaveMsgFile(Str::Format("%s\\%s",CurLang.NameStr,TextMsgFileName[num_msg]),PT_TEXTS);
 	CurLang.Msg[num_msg].CalculateHash();
 
 	switch(num_msg)
@@ -6672,7 +6673,7 @@ void FOClient::Net_OnUserHoloStr()
 
 	if(MsgUserHolo->Count(str_num)) MsgUserHolo->EraseStr(str_num);
 	MsgUserHolo->AddStr(str_num,text);
-	MsgUserHolo->SaveMsgFile(Str::Format("%s%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS),USER_HOLO_TEXTMSG_FILE));
+	MsgUserHolo->SaveMsgFile(USER_HOLO_TEXTMSG_FILE,PT_TEXTS);
 }
 
 void FOClient::Net_OnAutomapsInfo()

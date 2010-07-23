@@ -710,10 +710,6 @@ void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 	}
 	str.push_back('\0');
 	AddStr(num,(char*)&str[0]);
-
-// 	FILE* f=fopen("temp1.txt","wb");
-// 	fwrite(&str[0],1,str.size(),f);
-// 	fclose(f);
 }
 
 DWORD FOMsg::AddStr(const char* str)
@@ -900,26 +896,19 @@ int FOMsg::LoadMsgStream(CharVec& stream)
 }
 #endif
 
-int FOMsg::LoadMsgFile(const char* path)
+int FOMsg::LoadMsgFile(const char* fname, int path_type)
 {
 	Clear();
 
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	DWORD buf_len;
-	char* buf=(char*)Crypt.GetCache(path,buf_len);
+	char* buf=(char*)Crypt.GetCache(fname,buf_len);
 	if(!buf) return -1;
 #else
-	FILE* finfo=NULL;
-	if(!(finfo=fopen(path,"rb"))) return -2;
-
-	fseek(finfo,0,SEEK_END);
-	DWORD buf_len=ftell(finfo)+1;
-	fseek(finfo,0,SEEK_SET);
-
-	char* buf=new char[buf_len+1];
-	fread(buf,sizeof(char),buf_len,finfo);
-	buf[buf_len]='\0';
-	fclose(finfo);
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return -2;
+	DWORD buf_len=fm.GetFsize();
+	char* buf=(char*)fm.ReleaseBuffer();
 #endif
 
 	int result=LoadMsgFile(buf,buf_len);
@@ -1030,12 +1019,11 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 	return GetSize();
 }
 
-int FOMsg::SaveMsgFile(const char* path)
+int FOMsg::SaveMsgFile(const char* fname, int path_type)
 {
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 #else
-	FILE* finfo=NULL;
-	if(!(finfo=fopen(path,"wb"))) return -1;
+	FileManager fm;
 #endif
 
 	StringMulMapIt it=strData.begin();
@@ -1057,11 +1045,11 @@ int FOMsg::SaveMsgFile(const char* path)
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	buf=(char*)Crypt.Compress((BYTE*)buf,buf_len);
 	if(!buf) return -2;
-	Crypt.SetCache(path,(BYTE*)buf,buf_len);
+	Crypt.SetCache(fname,(BYTE*)buf,buf_len);
 	delete[] buf;
 #else
-	fwrite(buf,sizeof(char),buf_len,finfo);
-	fclose(finfo);
+	fm.CopyMem(buf,buf_len);
+	if(!fm.SaveOutBufToFile(fname,path_type)) return -2;
 #endif
 
 	return 1;
@@ -1079,26 +1067,18 @@ void FOMsg::Clear()
 	strDataHash=0;
 }
 
-bool LanguagePack::Init(const char* path, DWORD name)
+bool LanguagePack::Init(const char* lang, int path_type)
 {
-	if(!path || !name) return false;
-	Name=name;
-	Path=string(path)+string((char*)&Name)+string("\\");
+	memcpy(NameStr,lang,4);
+	PathType=path_type;
 	if(LoadAll()<0) return false;
 	return true;
-}
-
-void LanguagePack::ChangeName(DWORD new_name)
-{
-	Name=new_name;
-	Path=Path.substr(0,Path.length()-5);
-	Path+=string((char*)&Name)+string("\\");
 }
 
 int LanguagePack::LoadAll()
 {
 	// Loading All MSG files
-	if(!Name || !Path.size())
+	if(!Name)
 	{
 		WriteLog(__FUNCTION__" - Lang Pack is not initialized.\n");
 		return -1;
@@ -1107,7 +1087,7 @@ int LanguagePack::LoadAll()
 	int count_fail=0;
 	for(int i=0;i<TEXTMSG_COUNT;i++)
 	{
-		if(Msg[i].LoadMsgFile(Str::Format("%s%s",Path.c_str(),TextMsgFileName[i]))<0)
+		if(Msg[i].LoadMsgFile(Str::Format("%s\\%s",NameStr,TextMsgFileName[i]),PathType)<0)
 		{
 			count_fail++;
 			WriteLog(__FUNCTION__" - Unable to load MSG<%s>.\n",TextMsgFileName[i]);
@@ -1115,14 +1095,4 @@ int LanguagePack::LoadAll()
 	}
 
 	return -count_fail;
-}
-
-const char* LanguagePack::GetName()
-{
-	return (char*)&Name;
-}
-
-const char* LanguagePack::GetPath()
-{
-	return Path.c_str();
 }

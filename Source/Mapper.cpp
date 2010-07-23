@@ -122,11 +122,14 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Language Packs
-	char lang_name[5];
-	GetPrivateProfileString(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name,5,CLIENT_CONFIG_FILE);
-	if(strlen(lang_name)<4) StringCopy(lang_name,DEFAULT_LANGUAGE);
+	IniParser cfg;
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	char lang_name[MAX_FOTEXT];
+	cfg.GetStr(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name);
+	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
+	Str::Lwr(lang_name);
 
-	if(!CurLang.Init(Str::Format("%s%s",FileMngr.GetDataPath(PT_TEXTS),FileMngr.GetPath(PT_TEXTS)),*(DWORD*)&lang_name)) return false;
+	if(!CurLang.Init(lang_name,PT_TEXTS)) return false;
 
 	MsgText=&CurLang.Msg[TEXTMSG_TEXT];
 	MsgDlg=&CurLang.Msg[TEXTMSG_DLG];
@@ -263,12 +266,9 @@ int FOMapper::InitIface()
 	char key[256];
 	int i;
 
-	GetPrivateProfileString(CFG_FILE_APP_NAME,"Iface_mapper",CFG_DEF_INT_FILE,int_file,256,CLIENT_CONFIG_FILE);
-	if(!FileMngr.LoadFile(int_file,PT_ART_INTRFACE))
-	{
-		WriteLog("File <%d> not found.\n");
-		return __LINE__;
-	}
+	IniParser cfg;
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	cfg.GetStr(CFG_FILE_APP_NAME,"MapperInterface",CFG_DEF_INT_FILE,int_file);
 
 	if(!ini.LoadFile(int_file,PT_ART_INTRFACE))
 	{

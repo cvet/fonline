@@ -111,7 +111,7 @@ bool CheckUserPass(const char* str);
 	#include "ResourceClient.h"
 	#define WINDOW_CLASS_NAME   "FOnline"
 	#define WINDOW_NAME         "FOnline"
-	#define WINDOW_NAME_SP      "FOnline Single Player"
+	#define WINDOW_NAME_SP      "FOnline Singleplayer"
 	#define CFG_DEF_INT_FILE    "default800x600.ini"
 #else
 	#include "ResourceMapper.h"
@@ -652,10 +652,9 @@ public:
 	bool Refresh();
 };
 
-extern bool SinglePlayer;
-extern InterprocessData SinglePlayerData;
-
-#define SINGLE_PLAYER_CONFIG_NAME        "FOnlineSP.cfg"
+extern bool Singleplayer;
+extern InterprocessData SingleplayerData;
+extern HANDLE SingleplayerClientProcess;
 
 /************************************************************************/
 /*                                                                      */

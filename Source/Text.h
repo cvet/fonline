@@ -194,10 +194,10 @@ public:
 #endif
 
 	// Load MSG from file, old data is clear
-	int LoadMsgFile(const char* path);
+	int LoadMsgFile(const char* fname, int path_type);
 	int LoadMsgFile(char* data, DWORD data_len);
 	// Save strData in file, if file is not empty his clear
-	int SaveMsgFile(const char* path);
+	int SaveMsgFile(const char* fname, int path_type);
 	// Clearing MSG
 	void Clear();
 
@@ -218,18 +218,19 @@ typedef vector<FOMsg*> FOMsgVec;
 class LanguagePack
 {
 public:
-	DWORD Name;
-	char Zero;
-	string Path;
+	union
+	{
+		DWORD Name;
+		char NameStr[5];
+	};
+
+	int PathType;
 	FOMsg Msg[TEXTMSG_COUNT];
 
-	bool Init(const char* path, DWORD name);
-	void ChangeName(DWORD new_name);
+	bool Init(const char* lang, int path_type);
 	int LoadAll();
-	const char* GetName();
-	const char* GetPath();
 
-	LanguagePack():Name(0),Zero(0){}
+	LanguagePack(){ZeroMemory(NameStr,sizeof(NameStr));}
 	bool operator==(const DWORD& r){return Name==r;}
 };
 
