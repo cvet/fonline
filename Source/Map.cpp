@@ -405,7 +405,7 @@ void Map::Process()
 
 	if(NeedProcess)
 	{
-		DWORD tick=Timer::FastTick();
+		DWORD tick=Timer::GameTick();
 		for(int i=0;i<MAP_LOOP_FUNC_MAX;i++)
 		{
 			if(LoopEnabled[i] && tick-LoopLastTick[i]>=LoopWaitTick[i])
@@ -1496,10 +1496,10 @@ void Map::EndTurnBased()
 
 void Map::ProcessTurnBased()
 {
-	if(Timer::FastTick()>=TurnBasedEndTick)
+	if(Timer::GameTick()>=TurnBasedEndTick)
 	{
 		IsTurnBasedTimeout=!IsTurnBasedTimeout;
-		if(IsTurnBasedTimeout) TurnBasedEndTick=Timer::FastTick()+TURN_BASED_TIMEOUT;
+		if(IsTurnBasedTimeout) TurnBasedEndTick=Timer::GameTick()+TURN_BASED_TIMEOUT;
 		else NextCritterTurn();
 	}
 }
@@ -1518,12 +1518,12 @@ DWORD Map::GetCritterTurnId()
 
 DWORD Map::GetCritterTurnTime()
 {
-	return TurnBasedEndTick-Timer::FastTick();
+	return TurnBasedEndTick-Timer::GameTick();
 }
 
 void Map::EndCritterTurn()
 {
-	TurnBasedEndTick=Timer::FastTick();
+	TurnBasedEndTick=Timer::GameTick();
 }
 
 void Map::NextCritterTurn()
@@ -1603,7 +1603,7 @@ void Map::NextCritterTurn()
 		cr->Data.Params[ST_TURN_BASED_AC]=0;
 		cr->Send_ParamOther(OTHER_YOU_TURN,GameOpt.TurnBasedTick);
 		cr->SendA_ParamOther(OTHER_YOU_TURN,GameOpt.TurnBasedTick);
-		TurnBasedEndTick=Timer::FastTick()+GameOpt.TurnBasedTick;
+		TurnBasedEndTick=Timer::GameTick()+GameOpt.TurnBasedTick;
 
 		if(cr->Data.Params[ST_CURRENT_AP]>=0)
 		{

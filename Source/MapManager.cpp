@@ -47,7 +47,7 @@ Item* GlobalMapGroup::GetCar()
 bool GlobalMapGroup::CheckForFollow(Critter* cr)
 {
 	if(IsSetMove) return false;
-	if(Timer::FastTick()>=TimeCanFollow) return false;
+	if(Timer::GameTick()>=TimeCanFollow) return false;
 	if(std::find(CritMove.begin(),CritMove.end(),cr)!=CritMove.end()) return false;
 	if(CritMove.size()>=GM_MAX_GROUP_COUNT) return false;
 	return true;
@@ -67,12 +67,12 @@ void GlobalMapGroup::EraseCrit(Critter* cr)
 
 void GlobalMapGroup::StartEncaunterTime(int time)
 {
-	NextEncaunter=Timer::FastTick()+time;
+	NextEncaunter=Timer::GameTick()+time;
 }
 
 bool GlobalMapGroup::IsEncaunterTime()
 {
-	return Timer::FastTick()>=NextEncaunter;
+	return Timer::GameTick()>=NextEncaunter;
 }
 
 void GlobalMapGroup::Clear()
@@ -93,7 +93,7 @@ void GlobalMapGroup::Clear()
 	NextEncaunter=0;
 	IsMultiply=true;
 
-	MoveLastTick=Timer::FastTick();
+	MoveLastTick=Timer::GameTick();
 
 	EncounterDescriptor=0;
 	EncounterTick=0;
@@ -908,7 +908,7 @@ bool MapManager::RefreshGmMask(const char* mask_path)
 
 void MapManager::GM_GroupMove(GlobalMapGroup* group)
 {
-	DWORD tick=Timer::FastTick();
+	DWORD tick=Timer::GameTick();
 	DWORD dtime=tick-group->MoveLastTick;
 	if(dtime<GM_MOVE_PROC_TIME) return;
 	group->MoveLastTick=tick;
@@ -1187,12 +1187,12 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 		{
 			if(wait_for_answer)
 			{
-				group->EncounterTick=Timer::FastTick()+GM_ANSWER_WAIT_TIME;
+				group->EncounterTick=Timer::GameTick()+GM_ANSWER_WAIT_TIME;
 				group->EncounterForce=false;
 			}
 			else
 			{
-				group->EncounterTick=Timer::FastTick()+GM_LIGHT_TIME;
+				group->EncounterTick=Timer::GameTick()+GM_LIGHT_TIME;
 				group->EncounterForce=true;
 			}
 
@@ -1372,7 +1372,7 @@ void MapManager::GM_GroupStartMove(Critter* cr, bool send)
 	if(car) group->CarId=car->GetId();
 
 	group->StartEncaunterTime(ENCOUNTERS_TIME);
-	group->TimeCanFollow=Timer::FastTick()+TIME_CAN_FOLLOW_GM;
+	group->TimeCanFollow=Timer::GameTick()+TIME_CAN_FOLLOW_GM;
 	SETFLAG(cr->Flags,FCRIT_RULEGROUP);
 
 	group->AddCrit(cr);
@@ -1680,7 +1680,7 @@ void MapManager::GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, DWORD sp
 	}
 
 	group->Rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
-	if(Timer::FastTick()-group->MoveLastTick>GM_MOVE_PROC_TIME) group->MoveLastTick=Timer::FastTick();
+	if(Timer::GameTick()-group->MoveLastTick>GM_MOVE_PROC_TIME) group->MoveLastTick=Timer::GameTick();
 	if(group->IsEncaunterTime()) group->StartEncaunterTime(Random(1000,ENCOUNTERS_TIME));
 	if(!group->IsSetMove)
 	{

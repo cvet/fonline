@@ -480,7 +480,7 @@ void FOClient::AddCritter(CritterCl* cr)
 	}
 	if(cr->IsChosen()) Chosen=cr;
 	HexMngr.AddCrit(cr);
-	cr->FadingTick=Timer::FastTick()+FADING_PERIOD-(fading>Timer::FastTick()?fading-Timer::FastTick():0);
+	cr->FadingTick=Timer::GameTick()+FADING_PERIOD-(fading>Timer::GameTick()?fading-Timer::GameTick():0);
 }
 
 void FOClient::EraseCritter(DWORD remid)
@@ -583,7 +583,7 @@ void FOClient::LookBordersDraw()
 
 int FOClient::MainLoop()
 {
-	// Fps
+	// Fps counter
 	static DWORD LastCall=Timer::FastTick();
 	static WORD call_cnt=0;
 
@@ -596,6 +596,22 @@ int FOClient::MainLoop()
 	else call_cnt++;
 
 	if(!Active) return 0;
+
+	// Singleplayer
+	if(Singleplayer)
+	{
+		// Process pause
+		bool pause=SingleplayerData.Pause;
+		if(!pause && (!IsMainScreen(SCREEN_GAME) || IsScreenPresent(SCREEN__MENU_OPTION))) pause=true;
+		else if(pause && IsMainScreen(SCREEN_GAME) && !IsScreenPresent(SCREEN__MENU_OPTION)) pause=false;
+		if(pause!=SingleplayerData.Pause)
+		{
+			SingleplayerData.Lock();
+			SingleplayerData.Pause=pause;
+			SingleplayerData.Unlock();
+			Timer::SetGamePause(pause);
+		}
+	}
 
 	// Network
 	// Init Net
@@ -789,7 +805,7 @@ void FOClient::ScreenQuake(int noise, DWORD time)
 	ScreenOffsStep=ABS(ScreenOffsXf)/(time/30);
 	CmnScrOx+=ScreenOffsX;
 	CmnScrOy+=ScreenOffsY;
-	ScreenOffsNextTick=Timer::FastTick()+30;
+	ScreenOffsNextTick=Timer::GameTick()+30;
 }
 
 void FOClient::ProcessScreenEffectFading()
@@ -829,7 +845,7 @@ void FOClient::ProcessScreenEffectFading()
 
 void FOClient::ProcessScreenEffectQuake()
 {
-	if((ScreenOffsX || ScreenOffsY) && Timer::FastTick()>=ScreenOffsNextTick)
+	if((ScreenOffsX || ScreenOffsY) && Timer::GameTick()>=ScreenOffsNextTick)
 	{
 		CmnScrOx-=ScreenOffsX;
 		CmnScrOy-=ScreenOffsY;
@@ -843,7 +859,7 @@ void FOClient::ProcessScreenEffectQuake()
 		ScreenOffsY=ScreenOffsYf;
 		CmnScrOx+=ScreenOffsX;
 		CmnScrOy+=ScreenOffsY;
-		ScreenOffsNextTick=Timer::FastTick()+30;
+		ScreenOffsNextTick=Timer::GameTick()+30;
 	}
 }
 
@@ -4140,7 +4156,7 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 			DlgboxButtonText[1]=MsgGame->GetStr(STR_DIALOGBOX_CANCEL);
 			DlgboxButtonsCount=2;
 		}
-		DlgboxWait=Timer::FastTick()+GM_ANSWER_WAIT_TIME;
+		DlgboxWait=Timer::GameTick()+GM_ANSWER_WAIT_TIME;
 		StringCopy(DlgboxText,fstr);
 	}
 
@@ -4183,7 +4199,7 @@ void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color)
 	t.HexY=hy;
 	t.Color=(color?color:COLOR_TEXT);
 	t.Fade=false;
-	t.StartTick=Timer::FastTick();
+	t.StartTick=Timer::GameTick();
 	t.Tick=text_delay;
 	t.Text=sstr->c_std_str();
 	t.Rect=HexMngr.GetRectForText(hx,hy);
@@ -4824,7 +4840,7 @@ void FOClient::Net_OnChosenParam()
 		{
 			if(value<0) value=0;
 			ChosenAction.clear();
-			TurnBasedTime=Timer::FastTick()+value;
+			TurnBasedTime=Timer::GameTick()+value;
 			HexMngr.SetCritterContour(0,Sprite::ContourNone);
 			SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 		}
@@ -5363,7 +5379,7 @@ void FOClient::Net_OnChosenTalk()
 	Bin >> talk_time;
 
 	DlgCollectAnswers(false);
-	DlgEndTick=Timer::FastTick()+talk_time;
+	DlgEndTick=Timer::GameTick()+talk_time;
 	if(IsScreenPresent(SCREEN__BARTER)) HideScreen(SCREEN__BARTER);
 	ShowScreen(SCREEN__DIALOG);
 }
@@ -5398,9 +5414,9 @@ void FOClient::Net_OnGameInfo()
 	CHECK_IN_BUFF_ERROR;
 
 	GameStartMinute=GameOpt.Minute;
-	GameStartTick=Timer::FastTick();
+	GameStartTick=Timer::GameTick();
 	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-	GameOpt.FullMinuteTick=Timer::FastTick();
+	GameOpt.FullMinuteTick=Timer::GameTick();
 
 	HexMngr.SetWeather(time,rain);
 	SetDayTime(true);
@@ -5900,7 +5916,7 @@ void FOClient::Net_OnContainerInfo()
 	if(!Chosen) return;
 
 	Item::SortItems(item_container);
-	DlgEndTick=Timer::FastTick()+talk_time;
+	DlgEndTick=Timer::GameTick()+talk_time;
 	PupContId=cont_id;
 	PupContPid=0;
 
@@ -5977,7 +5993,7 @@ void FOClient::Net_OnFollow()
 	FollowRuleId=rule;
 	FollowType=follow_type;
 	FollowMap=map_pid;
-	DlgboxWait=Timer::FastTick()+wait_time;
+	DlgboxWait=Timer::GameTick()+wait_time;
 
 	// Find rule
 	char cr_name[64];
@@ -6063,7 +6079,7 @@ void FOClient::Net_OnPlayersBarter()
 			BarterOpponentHide=(param_ext!=0);
 			PBarterHide=BarterOpponentHide;
 			StringCopy(DlgboxText,FmtGameText(STR_BARTER_DIALOGBOX,cr->GetName(),!BarterOpponentHide?MsgGame->GetStr(STR_BARTER_OPEN_MODE):MsgGame->GetStr(STR_BARTER_HIDE_MODE)));
-			DlgboxWait=Timer::FastTick()+20000;
+			DlgboxWait=Timer::GameTick()+20000;
 			DlgboxButtonText[0]=MsgGame->GetStr(STR_DIALOGBOX_BARTER_OPEN);
 			DlgboxButtonText[1]=MsgGame->GetStr(STR_DIALOGBOX_BARTER_HIDE);
 			DlgboxButtonText[2]=MsgGame->GetStr(STR_DIALOGBOX_CANCEL);
@@ -6915,7 +6931,7 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 
 void FOClient::ProcessGameTime()
 {
-	DWORD delta_tick=Timer::FastTick()-GameStartTick;
+	DWORD delta_tick=Timer::GameTick()-GameStartTick;
 	DWORD gmin=(delta_tick/1000*GameOpt.TimeMultiplier/60+GameStartMinute)%60;
 
 	if(gmin==GameOpt.Minute) return;
@@ -6943,7 +6959,7 @@ void FOClient::ProcessGameTime()
 	}
 
 	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-	GameOpt.FullMinuteTick=Timer::FastTick();
+	GameOpt.FullMinuteTick=Timer::GameTick();
 	SetDayTime(false);
 }
 
@@ -7152,7 +7168,7 @@ void FOClient::CrittersProcess()
 	// Ap regeneration
 	if(Chosen->GetAp()<Chosen->GetParam(ST_ACTION_POINTS) && !IsTurnBased)
 	{
-		DWORD tick=Timer::FastTick();
+		DWORD tick=Timer::GameTick();
 		if(!Chosen->ApRegenerationTick) Chosen->ApRegenerationTick=tick;
 		else
 		{
@@ -7232,7 +7248,7 @@ void FOClient::CrittersProcess()
 			else if(!GameOpt.RunOnTransfer && Chosen->GetTimeout(TO_TRANSFER)) is_run=false;
 			else if(IsTurnBased) is_run=false;
 			else if(Chosen->IsDmgLeg() || Chosen->IsOverweight()) is_run=false;
-			else if(wait_click && Timer::FastTick()-start_tick<OptDoubleClickTime) return;
+			else if(wait_click && Timer::GameTick()-start_tick<OptDoubleClickTime) return;
 			else if(is_run && !IsTurnBased && Chosen->GetApCostCritterMove(is_run)>0 && Chosen->GetRealAp()<(GameOpt.RunModMul*Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER)/GameOpt.RunModDiv+GameOpt.RunModAdd) is_run=false;
 			if(is_run && !CritType::IsCanRun(Chosen->GetCrType())) is_run=false;
 			if(!is_run && !CritType::IsCanWalk(Chosen->GetCrType()))
@@ -8522,10 +8538,10 @@ void FOClient::SoundProcess()
 
 	// Ambient
 	static DWORD next_ambient=0;
-	if(Timer::FastTick()>next_ambient)
+	if(Timer::GameTick()>next_ambient)
 	{
 		if(IsMainScreen(SCREEN_GAME)) SndMngr.PlayAmbient(MsgGM->GetStr(STR_MAP_AMBIENT_(HexMngr.GetCurPidMap())));
-		next_ambient=Timer::FastTick()+Random(AMBIENT_SOUND_TIME/2,AMBIENT_SOUND_TIME);
+		next_ambient=Timer::GameTick()+Random(AMBIENT_SOUND_TIME/2,AMBIENT_SOUND_TIME);
 	}
 }
 
@@ -8777,7 +8793,7 @@ void FOClient::AnimProcess()
 
 		if(FLAG(anim->Flags,ANIMRUN_TO_END) || FLAG(anim->Flags,ANIMRUN_FROM_END))
 		{
-			DWORD cur_tick=Timer::FastTick();
+			DWORD cur_tick=Timer::GameTick();
 			if(cur_tick-anim->LastTick<anim->Frames->Ticks/anim->Frames->CntFrm) continue;
 
 			anim->LastTick=cur_tick;
@@ -9573,7 +9589,7 @@ void FOClient::SScriptFunc::Global_MapMessage(CScriptString& text, WORD hx, WORD
 	t.HexY=hy;
 	t.Color=(color?color:COLOR_TEXT);
 	t.Fade=fade;
-	t.StartTick=Timer::FastTick();
+	t.StartTick=Timer::GameTick();
 	t.Tick=ms;
 	t.Text=text.c_std_str();
 	t.Rect=Self->HexMngr.GetRectForText(hx,hy);

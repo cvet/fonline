@@ -4,7 +4,7 @@
 void FOServer::ProcessCritter(Critter* cr)
 {
 	if(cr->IsNotValid) return;
-	DWORD tick=Timer::FastTick();
+	DWORD tick=Timer::GameTick();
 
 	// Idle global function
 	if(tick>=cr->GlobalIdleNextTick)
@@ -331,7 +331,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 	map->UnSetFlagCritter(fx,fy,cr->IsDead());
 	cr->PrevHexX=fx;
 	cr->PrevHexY=fy;
-	cr->PrevHexTick=Timer::FastTick();
+	cr->PrevHexTick=Timer::GameTick();
 	cr->Data.HexX=hx;
 	cr->Data.HexY=hy;
 	map->SetFlagCritter(hx,hy,cr->IsDead());
@@ -516,7 +516,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	int wpn_max_dist=cr->GetAttackMaxDist(weap,use);
 
 	if(!CheckDist(hx,hy,tx,ty,wpn_max_dist)
-	&& !(hth_attack && Timer::FastTick()<t_acl->PrevHexTick+500 && CheckDist(hx,hy,t_acl->PrevHexX,t_acl->PrevHexY,wpn_max_dist)))
+	&& !(hth_attack && Timer::GameTick()<t_acl->PrevHexTick+500 && CheckDist(hx,hy,t_acl->PrevHexX,t_acl->PrevHexY,wpn_max_dist)))
 	{
 		cr->Send_XY(cr);
 		cr->Send_XY(t_acl);

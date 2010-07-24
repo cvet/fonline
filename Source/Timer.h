@@ -2,22 +2,17 @@
 #define __TIMER__
 
 #include <windows.h>
-/*struct SysTime {
-	WORD Year;
-	WORD Month;
-	WORD DayOfWeek;
-	WORD Day;
-	WORD Hour;
-	WORD Minute;
-	WORD Second;
-	WORD Milliseconds;
-};*/
 
 namespace Timer
 {
 	void Init();
-	unsigned long FastTick();
+
+	DWORD FastTick();
 	double AccurateTick();
+
+	DWORD GameTick();
+	void SetGamePause(bool pause);
+	bool IsGamePaused();
 
 	void StartAccelerator(int num);
 	bool ProcessAccelerator(int num);

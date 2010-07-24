@@ -22,7 +22,7 @@ SprDrawValid(false)
 	RefreshAnim();
 	RefreshAlpha();
 	if(IsShowAnim()) isAnimated=true;
-	animNextTick=Timer::FastTick()+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
+	animNextTick=Timer::GameTick()+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
 	SetFade(true);
 }
 
@@ -31,7 +31,7 @@ void ItemHex::Finish()
 	SetFade(false);
 	finishing=true;
 	finishingTime=fadingTick;
-	if(IsEffect()) finishingTime=Timer::FastTick();
+	if(IsEffect()) finishingTime=Timer::GameTick();
 }
 
 void ItemHex::StopFinishing()
@@ -46,7 +46,7 @@ void ItemHex::Process()
 	// Animation
 	if(begSpr!=endSpr)
 	{
-		int anim_proc=Procent(Anim->Ticks,Timer::FastTick()-animTick);
+		int anim_proc=Procent(Anim->Ticks,Timer::GameTick()-animTick);
 		if(anim_proc>=100)
 		{
 			/*if(animBegSpr!=curSpr)
@@ -58,7 +58,7 @@ void ItemHex::Process()
 
 			begSpr=animEndSpr;
 			SetSpr(endSpr);
-			animNextTick=Timer::FastTick()+Data.AnimWaitBase*10+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
+			animNextTick=Timer::GameTick()+Data.AnimWaitBase*10+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
 		}
 		else
 		{
@@ -73,22 +73,22 @@ void ItemHex::Process()
 		else
 			Finish();
 	}
-	else if(IsAnimated() && Timer::FastTick()-animTick>=Anim->Ticks)
+	else if(IsAnimated() && Timer::GameTick()-animTick>=Anim->Ticks)
 	{
-		if(Timer::FastTick()>=animNextTick) SetStayAnim();
+		if(Timer::GameTick()>=animNextTick) SetStayAnim();
 	}
 
 	// Effect
 	if(IsDynamicEffect() && !IsFinishing())
 	{
-		if(Timer::FastTick()>=effLastTick+EFFECT_0_TIME_PROC)
+		if(Timer::GameTick()>=effLastTick+EFFECT_0_TIME_PROC)
 		{
 			EffOffsX+=effSx*EFFECT_0_SPEED_MUL;
 			EffOffsY+=effSy*EFFECT_0_SPEED_MUL;
 			effCurX+=effSx*EFFECT_0_SPEED_MUL;
 			effCurY+=effSy*EFFECT_0_SPEED_MUL;
 			SetAnimOffs();
-			effLastTick=Timer::FastTick();
+			effLastTick=Timer::GameTick();
 			if(DistSqrt(effCurX,effCurY,effStartX,effStartY)>=effDist) Finish();
 		}
 	}
@@ -96,7 +96,7 @@ void ItemHex::Process()
 	// Fading
 	if(fading)
 	{
-		int fading_proc=100-Procent(FADING_PERIOD,fadingTick-Timer::FastTick());
+		int fading_proc=100-Procent(FADING_PERIOD,fadingTick-Timer::GameTick());
 		fading_proc=CLAMP(fading_proc,0,100);
 		if(fading_proc>=100)
 		{
@@ -119,7 +119,7 @@ void ItemHex::SetEffect(float sx, float sy, int dist)
 	effStartY=ScrY;
 	effCurX=ScrX;
 	effCurY=ScrY;
-	effLastTick=Timer::FastTick();
+	effLastTick=Timer::GameTick();
 	isEffect=true;
 	// Check off fade
 	fading=false;
@@ -137,7 +137,8 @@ WordPair ItemHex::GetEffectStep()
 
 void ItemHex::SetFade(bool fade_up)
 {
-	fadingTick=Timer::FastTick()+FADING_PERIOD-(fadingTick>Timer::FastTick()?fadingTick-Timer::FastTick():0);
+	int tick=Timer::GameTick();
+	fadingTick=tick+FADING_PERIOD-(fadingTick>tick?fadingTick-tick:0);
 	fadeUp=fade_up;
 	fading=true;
 }
@@ -191,7 +192,7 @@ Sprite::EggType ItemHex::GetEggType()
 void ItemHex::StartAnimate()
 {
 	SetStayAnim();
-	animNextTick=Timer::FastTick()+Data.AnimWaitBase*10+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
+	animNextTick=Timer::GameTick()+Data.AnimWaitBase*10+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
 	isAnimated=true;
 }
 
@@ -208,7 +209,7 @@ void ItemHex::SetAnimFromEnd()
 	begSpr=animEndSpr;
 	endSpr=animBegSpr;
 	SetSpr(begSpr);
-	animTick=Timer::FastTick();
+	animTick=Timer::GameTick();
 }
 
 void ItemHex::SetAnimFromStart()
@@ -216,7 +217,7 @@ void ItemHex::SetAnimFromStart()
 	begSpr=animBegSpr;
 	endSpr=animEndSpr;
 	SetSpr(begSpr);
-	animTick=Timer::FastTick();
+	animTick=Timer::GameTick();
 }
 
 void ItemHex::SetAnim(short beg, short end)
@@ -226,7 +227,7 @@ void ItemHex::SetAnim(short beg, short end)
 	begSpr=beg;
 	endSpr=end;
 	SetSpr(begSpr);
-	animTick=Timer::FastTick();
+	animTick=Timer::GameTick();
 }
 
 void ItemHex::SetSprStart()

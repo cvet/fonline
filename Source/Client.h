@@ -352,7 +352,7 @@ typedef vector<ShowVideo> ShowVideoVec;
 		DWORD LastTick;
 		int ResType;
 
-		IfaceAnim(AnyFrames* frm, int res_type):Frames(frm),Flags(0),CurSpr(0),LastTick(Timer::FastTick()),ResType(res_type){}
+		IfaceAnim(AnyFrames* frm, int res_type):Frames(frm),Flags(0),CurSpr(0),LastTick(Timer::GameTick()),ResType(res_type){}
 	};
 typedef vector<IfaceAnim*> IfaceAnimVec;
 typedef vector<IfaceAnim*>::iterator IfaceAnimVecIt;
@@ -1541,8 +1541,8 @@ typedef vector<FixDrawComponent*> FixDrawComponentVec;
 	bool NoLogOut;
 	DWORD* UID3,*UID2;
 
-	bool IsTurnBasedMyTurn(){return IsTurnBased && Timer::FastTick()<TurnBasedTime && Chosen && Chosen->GetAllAp()>0;}
-	DWORD GetTurnBasedMyTime(){return TurnBasedTime-Timer::FastTick();}
+	bool IsTurnBasedMyTurn(){return IsTurnBased && Timer::GameTick()<TurnBasedTime && Chosen && Chosen->GetAllAp()>0;}
+	DWORD GetTurnBasedMyTime(){return TurnBasedTime-Timer::GameTick();}
 
 	bool RebuildLookBorders;
 	bool DrawLookBorders,DrawShootBorders;

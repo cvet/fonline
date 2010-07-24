@@ -59,7 +59,7 @@ void FOServer::ProcessAI(Npc* npc)
 		{
 			if(CritType::IsCanWalk(npc->GetCrType()))
 			{
-				DWORD tick=Timer::FastTick();
+				DWORD tick=Timer::GameTick();
 				if(tick<npc->TryingGoHomeTick)
 				{
 					npc->SetWait(npc->TryingGoHomeTick-tick);
@@ -1342,7 +1342,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 
 	cl->Talk.DialogPackId=dlg_pack_id;
 	cl->Talk.LastDialogId=go_dialog;
-	cl->Talk.StartTick=Timer::FastTick();
+	cl->Talk.StartTick=Timer::GameTick();
 	cl->Talk.TalkTime=max(cl->GetSkill(SK_SPEECH)*1000,DIALOG_TALK_MIN_TIME);
 	cl->Talk.Barter=false;
 	cl->Talk.IgnoreDistance=ignore_distance;
@@ -1568,7 +1568,7 @@ label_Barter:
 			}
 
 			cl->Talk.Barter=true;
-			cl->Talk.StartTick=Timer::FastTick();
+			cl->Talk.StartTick=Timer::GameTick();
 			cl->Talk.TalkTime=max(cl->GetSkill(SK_BARTER)*1000,DIALOG_BARTER_MIN_TIME);
 			cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,true);
 			return;
@@ -1652,7 +1652,7 @@ label_Barter:
 		return;
 	}
 
-	cl->Talk.StartTick=Timer::FastTick();
+	cl->Talk.StartTick=Timer::GameTick();
 	cl->Talk.TalkTime=max(cl->GetSkill(SK_SPEECH)*1000,DIALOG_TALK_MIN_TIME);
 	cl->Send_Talk();
 	SetScore(SCORE_SPEAKER,cl,5);
@@ -1955,7 +1955,7 @@ void FOServer::Process_Barter(Client* cl)
 			WriteLog(__FUNCTION__" - Transfer item, from player to npc, fail, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 	}
 
-	cl->Talk.StartTick=Timer::FastTick();
+	cl->Talk.StartTick=Timer::GameTick();
 	cl->Talk.TalkTime=max(cl->GetSkill(SK_BARTER)*1000,DIALOG_BARTER_MIN_TIME);
 	if(!is_free) cl->Send_TextMsg(cl,STR_BARTER_GOOD_OFFER,SAY_DIALOG,TEXTMSG_GAME);
 	cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);

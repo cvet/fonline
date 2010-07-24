@@ -1257,7 +1257,7 @@ int FOClient::InitIface()
 #define INDICATOR_CHANGE_TICK        (35)
 void FOClient::DrawIndicator(INTRECT& rect, PointVec& points, DWORD color, int procent, DWORD& tick, bool is_vertical, bool from_top_or_left)
 {
-	if(Timer::FastTick()>=tick)
+	if(Timer::GameTick()>=tick)
 	{
 		int points_count=(is_vertical?rect.H():rect.W())/2*procent/100;
 		if(!points_count && procent) points_count=1;
@@ -1280,7 +1280,7 @@ void FOClient::DrawIndicator(INTRECT& rect, PointVec& points, DWORD color, int p
 				}
 			}
 		}
-		tick=Timer::FastTick()+INDICATOR_CHANGE_TICK;
+		tick=Timer::GameTick()+INDICATOR_CHANGE_TICK;
 	}
 	if(points.size()>0) SprMngr.DrawPoints(points,D3DPT_POINTLIST);
 }
@@ -2134,7 +2134,7 @@ void FOClient::GameDraw()
 	}
 
 	// Texts on map
-	DWORD tick=Timer::FastTick();
+	DWORD tick=Timer::GameTick();
 	for(MapTextVecIt it=GameMapTexts.begin();it!=GameMapTexts.end();)
 	{
 		MapText& t=(*it);
@@ -3096,8 +3096,8 @@ void FOClient::DlgDraw(bool is_dialog)
 	}
 
 	// Timer
-	if(!BarterIsPlayers && DlgEndTick>Timer::FastTick())
-		SprMngr.DrawStr(INTRECT(DlgWTimer,DlgX,DlgY),Str::Format("%u",(DlgEndTick-Timer::FastTick())/1000),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_DGREEN);
+	if(!BarterIsPlayers && DlgEndTick>Timer::GameTick())
+		SprMngr.DrawStr(INTRECT(DlgWTimer,DlgX,DlgY),Str::Format("%u",(DlgEndTick-Timer::GameTick())/1000),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_DGREEN);
 }
 
 void FOClient::DlgLMouseDown(bool is_dialog)
@@ -5250,11 +5250,11 @@ void FOClient::GmapProcess()
 			if(GmapSpeedX!=0.0f || GmapSpeedY!=0.0f)
 			{
 				static DWORD point_tick=0;
-				if(Timer::FastTick()>=point_tick)
+				if(Timer::GameTick()>=point_tick)
 				{
 					if(GmapTrace.empty() || GmapTrace[0].first!=old_x || GmapTrace[0].second!=old_y)
 						GmapTrace.push_back(IntPairVecVal(old_x,old_y));
-					point_tick=Timer::FastTick()+GM_TRACE_TIME;
+					point_tick=Timer::GameTick()+GM_TRACE_TIME;
 				}
 			}
 			else
@@ -5430,7 +5430,7 @@ void FOClient::GmapDraw()
 	// On map
 	if(GmapWait)
 	{
-		DWORD pic=((Timer::FastTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
+		DWORD pic=((Timer::GameTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
 		SpriteInfo* si=SprMngr.GetSpriteInfo(pic);
 		if(si) SprMngr.DrawSprite(pic,GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2,GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2);
 	}
@@ -8464,7 +8464,7 @@ DrawCurHand:
 void FOClient::DlgboxDraw()
 {
 	// Check for end time
-	if(DlgboxWait && Timer::FastTick()>DlgboxWait)
+	if(DlgboxWait && Timer::GameTick()>DlgboxWait)
 	{
 		ShowScreen(SCREEN_NONE);
 		return;
@@ -8630,7 +8630,7 @@ void FOClient::ElevatorLMouseUp()
 		if(ElevatorStartLevel+ElevatorSelectedButton!=ElevatorCurrentLevel && ShowScreenType && ShowScreenNeedAnswer)
 		{
 			ElevatorAnswerDone=true;
-			ElevatorSendAnswerTick=Timer::FastTick();
+			ElevatorSendAnswerTick=Timer::GameTick();
 			int diff=ABS((int)ElevatorCurrentLevel-int(ElevatorStartLevel+ElevatorSelectedButton));
 			AnyFrames* anim=AnimGetFrames(ElevatorIndicatorAnim);
 			if(anim) ElevatorSendAnswerTick+=anim->Ticks/anim->GetCnt()*(anim->GetCnt()*Procent(ElevatorLevelsCount-1,diff)/100);
@@ -8727,7 +8727,7 @@ void FOClient::ElevatorGenerate(DWORD param)
 
 void FOClient::ElevatorProcess()
 {
-	if(ElevatorAnswerDone && Timer::FastTick()>=ElevatorSendAnswerTick)
+	if(ElevatorAnswerDone && Timer::GameTick()>=ElevatorSendAnswerTick)
 	{
 		AnimRun(ElevatorIndicatorAnim,ANIMRUN_SET_FRM(AnimGetSprCount(ElevatorIndicatorAnim)*Procent(ElevatorLevelsCount-1,ElevatorSelectedButton)/100)|ANIMRUN_STOP);
 		if(ShowScreenNeedAnswer)

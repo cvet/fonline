@@ -595,8 +595,8 @@ void HexManager::ProcessRain()
 {
 	if(!rainCapacity) return;
 
-	static DWORD last_tick=Timer::FastTick();
-	DWORD delta=Timer::FastTick()-last_tick;
+	static DWORD last_tick=Timer::GameTick();
+	DWORD delta=Timer::GameTick()-last_tick;
 	if(delta<=RAIN_TICK) return;
 
 	for(DropVecIt it=rainData.begin(),end=rainData.end();it!=end;++it)
@@ -621,7 +621,7 @@ void HexManager::ProcessRain()
 		}
 	}
 	
-	last_tick=Timer::FastTick();
+	last_tick=Timer::GameTick();
 }
 
 void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)

@@ -285,14 +285,14 @@ private:
 	DWORD waitEndTick;
 
 public:
-	bool IsFree(){return (Timer::FastTick()-startBreakTime>=breakTime);}
+	bool IsFree(){return (Timer::GameTick()-startBreakTime>=breakTime);}
 	bool IsBusy(){return !IsFree();}
 	DWORD GetBreakTime(){return breakTime;}
-	void SetBreakTime(DWORD ms){breakTime=ms; startBreakTime=Timer::FastTick(); ApRegenerationTick=0;}
-	void SetBreakTimeDelta(DWORD ms){int dt=(Timer::FastTick()-startBreakTime)-breakTime; if(dt>ms) dt=0; SetBreakTime(ms-dt);}// if(dt>0) {dt=(int)ms-dt; if(dt>0) breakTime=dt; else breakTime=0;}
+	void SetBreakTime(DWORD ms){breakTime=ms; startBreakTime=Timer::GameTick(); ApRegenerationTick=0;}
+	void SetBreakTimeDelta(DWORD ms){int dt=(Timer::GameTick()-startBreakTime)-breakTime; if(dt>ms) dt=0; SetBreakTime(ms-dt);}// if(dt>0) {dt=(int)ms-dt; if(dt>0) breakTime=dt; else breakTime=0;}
 
-	void SetWait(DWORD ms){waitEndTick=Timer::FastTick()+ms;}
-	bool IsWait(){return Timer::FastTick()<waitEndTick;}
+	void SetWait(DWORD ms){waitEndTick=Timer::GameTick()+ms;}
+	bool IsWait(){return Timer::GameTick()<waitEndTick;}
 
 	WORD GetSayIntellect(){return IsPlayer()?(Timer::FastTick()&0xFFF0)|GetParam(ST_INTELLECT):0;}
 	void FullClear();
@@ -684,7 +684,7 @@ public:
 	// Bag
 public:
 	DWORD NextRefreshBagTick;
-	bool IsNeedRefreshBag(){return IsLife() && Timer::FastTick()>NextRefreshBagTick && IsNoPlanes();}
+	bool IsNeedRefreshBag(){return IsLife() && Timer::GameTick()>NextRefreshBagTick && IsNoPlanes();}
 	void RefreshBag();
 
 	// AI plane

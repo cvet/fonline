@@ -67,7 +67,7 @@ private:
 public:
 	void Finish();
 	bool IsFinishing(){return finishing;}
-	bool IsFinish(){return (finishing && Timer::FastTick()>finishingTime);}
+	bool IsFinish(){return (finishing && Timer::GameTick()>finishingTime);}
 	void StopFinishing();
 
 	// Process

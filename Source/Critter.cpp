@@ -1315,15 +1315,15 @@ void Critter::Heal()
 {
 	if(IsDead() || IsPerk(MODE_NO_HEAL) || GetTimeout(TO_BATTLE) || GetParam(ST_CURRENT_HP)>=GetParam(ST_MAX_LIFE))
 	{
-		LastHealTick=Timer::FastTick();
+		LastHealTick=Timer::GameTick();
 		return;
 	}
 
-	if(Timer::FastTick()-LastHealTick<CRIT_HEAL_TIME) return;
+	if(Timer::GameTick()-LastHealTick<CRIT_HEAL_TIME) return;
 
 	ChangeParam(ST_CURRENT_HP);
 	Data.Params[ST_CURRENT_HP]+=GetParam(ST_HEALING_RATE);
-	LastHealTick=Timer::FastTick();
+	LastHealTick=Timer::GameTick();
 }
 
 bool Critter::ParseScript(const char* script, bool first_time)
@@ -2772,7 +2772,7 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0)
 	StringCopy(Name,"err");
 	pingNextTick=Timer::FastTick()+PING_CLIENT_LIFE_TIME;
 	Talk.Clear();
-	talkNextTick=Timer::FastTick()+PROCESS_TALK_TICK;
+	talkNextTick=Timer::GameTick()+PROCESS_TALK_TICK;
 	ConnectTime=Timer::FastTick();
 	LastSay[0]=0;
 	LastSayEqualCount=0;
@@ -3502,7 +3502,7 @@ void Client::Send_Talk()
 		if(Talk.Lexems.length()) Bout.Push(Talk.Lexems.c_str(),Talk.Lexems.length()); //Lexems string
 		Bout << Talk.CurDialog.TextId; //Main text_id
 		for(AnswersVecIt it=Talk.CurDialog.Answers.begin(),end=Talk.CurDialog.Answers.end();it!=end;++it) Bout << (*it).TextId; //Answers text_id
-		Bout << DWORD(Talk.TalkTime-(Timer::FastTick()-Talk.StartTick)); //Talk time
+		Bout << DWORD(Talk.TalkTime-(Timer::GameTick()-Talk.StartTick)); //Talk time
 	}
 	BOUT_END(this);
 }
@@ -4219,12 +4219,12 @@ void Client::DropTimers(bool send)
 
 void Client::ProcessTalk(bool force)
 {
-	if(!force && Timer::FastTick()<talkNextTick) return;
-	talkNextTick=Timer::FastTick()+PROCESS_TALK_TICK;
+	if(!force && Timer::GameTick()<talkNextTick) return;
+	talkNextTick=Timer::GameTick()+PROCESS_TALK_TICK;
 	if(Talk.TalkType==TALK_NONE) return;
 
 	// Check time of talk
-	if(Timer::FastTick()-Talk.StartTick>Talk.TalkTime)
+	if(Timer::GameTick()-Talk.StartTick>Talk.TalkTime)
 	{
 		CloseTalk();
 		return;
@@ -4355,7 +4355,7 @@ Npc::~Npc()
 void Npc::RefreshBag()
 {
 	if(Data.BagRefreshTime<0) return;
-	NextRefreshBagTick=Timer::FastTick()+(Data.BagRefreshTime?Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
+	NextRefreshBagTick=Timer::GameTick()+(Data.BagRefreshTime?Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 
 	// Collect pids and count
 	static DWORD pids[MAX_ITEM_PROTOTYPES];

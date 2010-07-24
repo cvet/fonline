@@ -2614,7 +2614,7 @@ bool FOServer::SScriptFunc::Map_SetEvent(Map* map, int event_type, CScriptString
 			}
 			else
 			{
-				if(event_type==MAP_EVENT_LOOP_0+i) map->LoopLastTick[i]=Timer::FastTick();
+				if(event_type==MAP_EVENT_LOOP_0+i) map->LoopLastTick[i]=Timer::GameTick();
 				map->LoopEnabled[i]=true;
 				map->NeedProcess=true;
 			}
@@ -4149,7 +4149,7 @@ void SwapCrittersRefreshNpc(Npc* npc)
 	AIDataPlaneVec& planes=npc->GetPlanes();
 	for(AIDataPlaneVecIt it=planes.begin(),end=planes.end();it!=end;++it) delete *it;
 	planes.clear();
-	npc->NextRefreshBagTick=Timer::FastTick()+(npc->Data.BagRefreshTime?npc->Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
+	npc->NextRefreshBagTick=Timer::GameTick()+(npc->Data.BagRefreshTime?npc->Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 }
 
 void SwapCrittersRefreshClient(Client* cl, Map* map, Map* prev_map)

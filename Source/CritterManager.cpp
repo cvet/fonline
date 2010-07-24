@@ -218,7 +218,7 @@ bool CritterManager::LoadCrittersFile(FILE* f)
 		}
 		if(te_count) npc->CrTimeEvents=tevents;
 
-		npc->NextRefreshBagTick=Timer::FastTick()+(npc->Data.BagRefreshTime?npc->Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
+		npc->NextRefreshBagTick=Timer::GameTick()+(npc->Data.BagRefreshTime?npc->Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 		npc->NameStr="Npc_";
 		npc->NameStr+=Str::Format("%u",npc->GetId());
 		AddCritter(npc);

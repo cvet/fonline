@@ -6,6 +6,10 @@ __int64 QPC_StartValue=0;
 __int64 QPC_Freq=0;
 bool QPC_error=false;
 
+DWORD LastGameTick=0;
+DWORD SkipGameTick=0;
+bool GameTickPaused=false;
+
 #define MAX_ACCELERATE_TICK      (500)
 #define MIN_ACCELERATE_TICK      (40)
 int AcceleratorNum=0;
@@ -26,9 +30,13 @@ void Timer::Init()
 //	TIMECAPS ptc;
 //	timeGetDevCaps(&ptc,sizeof(ptc));
 //	WriteLog("<%u,%u>\n",ptc.wPeriodMin,ptc.wPeriodMax);
+
+	LastGameTick=timeGetTime();
+	SkipGameTick=LastGameTick;
+	GameTickPaused=false;
 }
 
-unsigned long Timer::FastTick()
+DWORD Timer::FastTick()
 {
 	return timeGetTime();
 }
@@ -42,6 +50,25 @@ double Timer::AccurateTick()
 	QueryPerformanceCounter((LARGE_INTEGER*)&qpc_value);
 //	return (qpc_value-QPC_StartValue)/QPC_Freq;
 	return (double)((double)(qpc_value-QPC_StartValue)/(double)QPC_Freq*1000.0);
+}
+
+DWORD Timer::GameTick()
+{
+	if(GameTickPaused) return LastGameTick-SkipGameTick;
+	return timeGetTime()-SkipGameTick;
+}
+
+void Timer::SetGamePause(bool pause)
+{
+	if(GameTickPaused==pause) return;
+	if(pause) LastGameTick=timeGetTime();
+	else SkipGameTick+=timeGetTime()-LastGameTick;
+	GameTickPaused=pause;
+}
+
+bool Timer::IsGamePaused()
+{
+	return GameTickPaused;
 }
 
 void Timer::StartAccelerator(int num)

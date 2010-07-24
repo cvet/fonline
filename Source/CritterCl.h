@@ -216,7 +216,7 @@ private:
 	DWORD reSetTick;
 
 public:
-	bool IsNeedReSet(){return needReSet && Timer::FastTick()>=reSetTick;}
+	bool IsNeedReSet(){return needReSet && Timer::GameTick()>=reSetTick;}
 	void ReSetOk(){needReSet=false;}
 
 	// Time
@@ -224,9 +224,9 @@ public:
 	DWORD TickCount;
 	DWORD StartTick;
 
-	void TickStart(DWORD ms){TickCount=ms; StartTick=Timer::FastTick();}
+	void TickStart(DWORD ms){TickCount=ms; StartTick=Timer::GameTick();}
 	void TickNull(){TickCount=0;}
-	bool IsFree(){return (Timer::FastTick()-StartTick>=TickCount);}
+	bool IsFree(){return (Timer::GameTick()-StartTick>=TickCount);}
 
 	// Animation
 public:
@@ -310,7 +310,7 @@ private:
 
 public:
 	bool IsFinishing(){return finishing;}
-	bool IsFinish(){return (finishing && Timer::FastTick()>finishingTime);}
+	bool IsFinish(){return (finishing && Timer::GameTick()>finishingTime);}
 
 	// Fade
 private:

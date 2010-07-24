@@ -560,6 +560,7 @@ public:
 	bool Reserved1;
 
 #ifdef FONLINE_SERVER
+	int FuncId[ITEM_EVENT_MAX];
 	Critter* ViewByCritter;
 	ItemPtrVec* ChildItems;
 	char* PLexems;
@@ -575,9 +576,6 @@ public:
 
 #ifdef FONLINE_SERVER
 	void FullClear();
-
-	// Scripts
-	int FuncId[ITEM_EVENT_MAX];
 
 	bool ParseScript(const char* script, bool first_time);
 	bool PrepareScriptFunc(int num_scr_func);

@@ -327,12 +327,15 @@ void FOServer::RunGameLoop()
 		// Synchronize single player data
 		if(Singleplayer)
 		{
+			// Check client process
 			if(WaitForSingleObject(SingleplayerClientProcess,0)==WAIT_OBJECT_0)
 			{
 				FOQuit=true;
 				break;
 			}
+
 			SingleplayerData.Refresh();
+			Timer::SetGamePause(SingleplayerData.Pause);
 		}
 
 		// Pre loop
@@ -377,6 +380,14 @@ void FOServer::RunGameLoop()
 		{
 			ClientPtr& cl=*it;
 			Process(cl);
+		}
+		if(Timer::IsGamePaused())
+		{
+			for(ClVecIt it=ProcessClients.begin(),end=ProcessClients.end();it!=end;++it)
+			{
+				Client* cl=*it;
+				if(Timer::IsGamePaused()) cl->Bin.LockReset();
+			}
 		}
 
 		// Critters process
@@ -2496,7 +2507,7 @@ void FOServer::Process_Command(Client* cl)
 			if(hour>=0 && hour<=23) GameOpt.Hour=hour;
 			if(minute>=0 && minute<=59) GameOpt.Minute=minute;
 			GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-			GameTimeStartTick=Timer::FastTick();
+			GameTimeStartTick=Timer::GameTick();
 			GameTimeStartMinute=GameOpt.Minute;
 
 			EnterCriticalSection(&CSConnectedClients);
@@ -2815,13 +2826,13 @@ void FOServer::InitGameTime()
 	GameOpt.Hour=CLAMP(GameOpt.Hour,0,23);
 	GameOpt.Minute=CLAMP(GameOpt.Minute,0,59);
 	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-	GameTimeStartTick=Timer::FastTick();
+	GameTimeStartTick=Timer::GameTick();
 	GameTimeStartMinute=GameOpt.Minute;
 }
 
 void FOServer::ProcessGameTime()
 {
-	DWORD delta_tick=Timer::FastTick()-GameTimeStartTick;
+	DWORD delta_tick=Timer::GameTick()-GameTimeStartTick;
 	DWORD minute=(delta_tick/1000*GameOpt.TimeMultiplier/60+GameTimeStartMinute)%60;
 	if(minute==GameOpt.Minute) return;
 
@@ -2879,7 +2890,7 @@ bool FOServer::Init()
 #endif
 
 	// Check the sizes of struct and classes
-	STATIC_ASSERT(offsetof(Item,PLexems)==128);
+	STATIC_ASSERT(offsetof(Item,PLexems)==160);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
 	STATIC_ASSERT(offsetof(Critter,RefCounter)==9768);
 	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9836);

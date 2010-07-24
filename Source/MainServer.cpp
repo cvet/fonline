@@ -32,6 +32,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	if(strstr(lpCmdLine,"-singleplayer "))
 	{
 		Singleplayer=true;
+		Timer::SetGamePause(true);
 
 		// Logging
 		char log_path[MAX_FOPATH]={0};

@@ -54,6 +54,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	{
 		WriteLog("Singleplayer mode.\n");
 		Singleplayer=true;
+		Timer::SetGamePause(true);
 
 		// Create interprocess shared data
 		HANDLE map_file=SingleplayerData.Init();
@@ -68,7 +69,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		{
 			// Initialize other data
 			SingleplayerData.NetPort=0;
-			SingleplayerData.Pause=false;
+			SingleplayerData.Pause=true;
 
 			SingleplayerData.Unlock();
 		}

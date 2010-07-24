@@ -264,7 +264,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		currentTrack=new_track;
 
 		// End time
-		DWORD tick=Timer::FastTick();
+		DWORD tick=Timer::GameTick();
 		if(FLAG(flags,ANIMATION_ONE_TIME)) endTick=tick+DWORD(period/GetSpeed()*1000.0);
 		else endTick=0;
 
@@ -313,7 +313,7 @@ int Animation3d::GetAnim2()
 
 bool Animation3d::IsAnimationPlaying()
 {
-	return Timer::FastTick()<endTick;
+	return Timer::GameTick()<endTick;
 }
 
 bool Animation3d::IsIntersect(int x, int y)
@@ -455,7 +455,7 @@ bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
 
 void Animation3d::ProcessBorders()
 {
-	if(calcBordersTick && Timer::FastTick()>=calcBordersTick)
+	if(calcBordersTick && Timer::GameTick()>=calcBordersTick)
 	{
 		SetupBorders();
 		calcBordersTick=0;
@@ -634,7 +634,7 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	D3D_HR(D3DDevice->Clear(0,NULL,D3DCLEAR_ZBUFFER,0,0.99999f,0));
 
 	double elapsed=0.0f;
-	DWORD tick=Timer::FastTick();
+	DWORD tick=Timer::GameTick();
 	if(AnimDelay && animController)
 	{
 		while(lastTick+AnimDelay<=tick)
@@ -1453,7 +1453,7 @@ Animation3d* Animation3dEntity::CloneAnimation()
 	if(!a3d) return NULL;
 
 	a3d->animEntity=this;
-	a3d->lastTick=Timer::FastTick();
+	a3d->lastTick=Timer::GameTick();
 
 	if(xFile->animController)
 	{

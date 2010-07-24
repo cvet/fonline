@@ -38,7 +38,7 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL)
 	ZeroMemory(&DefItemSlotMain,sizeof(Item));
 	ZeroMemory(&DefItemSlotExt,sizeof(Item));
 	ZeroMemory(&DefItemSlotArmor,sizeof(Item));
-	tickFun=Timer::FastTick()+Random(STAY_WAIT_SHOW_TIME/2,STAY_WAIT_SHOW_TIME);
+	tickFun=Timer::GameTick()+Random(STAY_WAIT_SHOW_TIME/2,STAY_WAIT_SHOW_TIME);
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
 }
 
@@ -111,7 +111,7 @@ void CritterCl::GenParams()
 
 void CritterCl::SetFade(bool fade_up)
 {
-	DWORD tick=Timer::FastTick();
+	DWORD tick=Timer::GameTick();
 	FadingTick=tick+FADING_PERIOD-(FadingTick>tick?FadingTick-tick:0);
 	fadeUp=fade_up;
 	fadingEnable=true;
@@ -119,7 +119,7 @@ void CritterCl::SetFade(bool fade_up)
 
 BYTE CritterCl::GetFadeAlpha()
 {
-	DWORD tick=Timer::FastTick();
+	DWORD tick=Timer::GameTick();
 	int fading_proc=100-Procent(FADING_PERIOD,FadingTick>tick?FadingTick-tick:0);
 	fading_proc=CLAMP(fading_proc,0,100);
 	if(fading_proc>=100)
@@ -665,11 +665,11 @@ int CritterCl::GetNightPersonBonus()
 
 void CritterCl::DrawStay(INTRECT r)
 {
-	if(Timer::FastTick()-staySprTick>500)
+	if(Timer::GameTick()-staySprTick>500)
 	{
 		staySprDir++;
 		if(staySprDir>5) staySprDir=0;
-		staySprTick=Timer::FastTick();
+		staySprTick=Timer::GameTick();
 	}
 
 	int dir=(!IsLife()?CrDir:staySprDir);
@@ -895,7 +895,7 @@ DWORD CritterCl::GetTimeout(int timeout)
 	DWORD to=(Params[timeout]>GameOpt.FullMinute?Params[timeout]-GameOpt.FullMinute:0);
 	if(timeout==TO_REMOVE_FROM_GAME && to<(Params[TO_BATTLE]>GameOpt.FullMinute?Params[TO_BATTLE]-GameOpt.FullMinute:0)) to=Params[TO_BATTLE];
 	DWORD sec=to*60/(GameOpt.TimeMultiplier?GameOpt.TimeMultiplier:1);
-	DWORD sec_sub=(Timer::FastTick()-GameOpt.FullMinuteTick)/1000;
+	DWORD sec_sub=(Timer::GameTick()-GameOpt.FullMinuteTick)/1000;
 	if(sec_sub>sec) sec=0;
 	else sec-=sec_sub;
 	if(timeout==TO_REMOVE_FROM_GAME && sec<CLIENT_KICK_TIME/1000) sec=CLIENT_KICK_TIME/1000;
@@ -948,7 +948,7 @@ void CritterCl::Move(BYTE dir)
 		if(!time_move) time_move=200;
 	}
 	TickStart(IsDmgTwoLeg()?GameOpt.Breaktime:time_move);
-	animStartTick=Timer::FastTick();
+	animStartTick=Timer::GameTick();
 
 	if(!Anim3d)
 	{
@@ -1109,7 +1109,7 @@ void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /
 			CondExt=action_ext;
 			CritterAnim* anim=GetCurAnim();
 			needReSet=true;
-			reSetTick=Timer::FastTick()+(anim && anim->Anim?anim->Anim->Ticks:1000);
+			reSetTick=Timer::GameTick()+(anim && anim->Anim?anim->Anim->Ticks:1000);
 		}
 		break;
 	case ACTION_CONNECT:
@@ -1125,7 +1125,7 @@ void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /
 		SetFade(true);
 		AnimateStay();
 		needReSet=true;
-		reSetTick=Timer::FastTick(); // Fast
+		reSetTick=Timer::GameTick(); // Fast
 		break;
 	case ACTION_REFRESH:
 		if(!IsAnim()) AnimateStay();
@@ -1146,7 +1146,7 @@ void CritterCl::NextAnim(bool erase_front)
 	if(animSequence.empty()) return;
 
 	CritterAnim* anim=&animSequence[0];
-	animStartTick=Timer::FastTick();
+	animStartTick=Timer::GameTick();
 	SetOffs(0,0,anim->MoveText);
 
 	ProcessAnim(!Anim3d,anim->IndAnim1,anim->IndAnim2,anim->ActiveItem);
@@ -1669,9 +1669,9 @@ void CritterCl::Process()
 	if(fadingEnable==true) Alpha=GetFadeAlpha();
 
 	// Extra offsets
-	if(OffsExtNextTick && Timer::FastTick()>=OffsExtNextTick)
+	if(OffsExtNextTick && Timer::GameTick()>=OffsExtNextTick)
 	{
-		OffsExtNextTick=Timer::FastTick()+30;
+		OffsExtNextTick=Timer::GameTick()+30;
 		int dist=DistSqrt(0,0,OxExtI,OyExtI);
 		SprOx-=OxExtI;
 		SprOy-=OyExtI;
@@ -1694,7 +1694,7 @@ void CritterCl::Process()
 	if(animSequence.size())
 	{
 		CritterAnim* anim=&animSequence[0];
-		int anim_proc=Procent(anim->AnimTick,Timer::FastTick()-animStartTick);
+		int anim_proc=Procent(anim->AnimTick,Timer::GameTick()-animStartTick);
 		if(!Anim3d)
 		{
 			if(anim_proc<100)
@@ -1756,10 +1756,10 @@ void CritterCl::Process()
 	}
 
 	// Fidget animation
-	if(!animSequence.size() && Cond==COND_LIFE && Timer::FastTick()>tickFun && IsFree() && !MoveSteps.size())
+	if(!animSequence.size() && Cond==COND_LIFE && Timer::GameTick()>tickFun && IsFree() && !MoveSteps.size())
 	{
 		Action(ACTION_FIDGET,0,NULL);
-		tickFun=Timer::FastTick()+Random(STAY_WAIT_SHOW_TIME,STAY_WAIT_SHOW_TIME*2);
+		tickFun=Timer::GameTick()+Random(STAY_WAIT_SHOW_TIME,STAY_WAIT_SHOW_TIME*2);
 	}
 }
 
@@ -1864,13 +1864,13 @@ void CritterCl::AddOffsExt(short ox, short oy)
 	GetStepsXY(OxExtSpeed,OyExtSpeed,0,0,ox,oy);
 	OxExtSpeed=-OxExtSpeed;
 	OyExtSpeed=-OyExtSpeed;
-	OffsExtNextTick=Timer::FastTick()+30;
+	OffsExtNextTick=Timer::GameTick()+30;
 	SetOffs(SprOx,SprOy,true);
 }
 
 void CritterCl::SetText(const char* str, DWORD color, DWORD text_delay)
 {
-	tickStartText=Timer::FastTick();
+	tickStartText=Timer::GameTick();
 	strTextOnHead=str;
 	tickTextDelay=text_delay;
 	textOnHeadColor=color;
@@ -1917,5 +1917,5 @@ void CritterCl::DrawTextOnHead()
 		}
 	}
 
-	if(Timer::FastTick()-tickStartText>=tickTextDelay && !strTextOnHead.empty()) strTextOnHead="";
+	if(Timer::GameTick()-tickStartText>=tickTextDelay && !strTextOnHead.empty()) strTextOnHead="";
 }
