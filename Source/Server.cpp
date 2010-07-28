@@ -3251,12 +3251,13 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 				for(int i_=0;i_<pack->Dialogs.size();i_++)
 				{
 					Dialog& dlg=pack->Dialogs[i_];
-					dlg.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000)); // Random id
-
+					if(dlg.TextId<100000000) dlg.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000));
+					else msg_dlg->AddStr(dlg.TextId,msg->GetStr((i_+1)*1000));
 					for(int j_=0;j_<dlg.Answers.size();j_++)
 					{
 						DialogAnswer& answ=dlg.Answers[j_];
-						answ.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000+(j_+1)*10)); // Random id
+						if(answ.TextId<100000000) answ.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000+(j_+1)*10));
+						else msg_dlg->AddStr(answ.TextId,msg->GetStr((i_+1)*1000+(j_+1)*10));
 					}
 				}
 
