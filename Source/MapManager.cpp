@@ -1956,8 +1956,8 @@ int MapManager::FindPath(PathFindData& pfd)
 							p_togo-=i+1;
 							goto label_FindOk;
 						}
-						GRID(nx,ny)=numindex;
 						coords.push_back(WordPairVecVal(nx,ny));
+						GRID(nx,ny)=numindex;
 					}
 					else if(check_cr && FLAG(flags,FH_CRITTER<<8))
 					{
@@ -2084,26 +2084,30 @@ label_FindOk:
 	}
 
 	// Check for closed door and critter
-	for(int i=0,j=path.size();i<j;i++)
+	if(check_cr || check_gag_items)
 	{
-		PathStep& ps=path[i];
-
-		if(check_cr && map->IsFlagCritter(ps.HexX,ps.HexY,false))
+		for(int i=0,j=path.size();i<j;i++)
 		{
-			Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false);
-			if(!cr) continue;
-			pfd.GagCritter=cr;
-			path.resize(i);
-			break;
-		}
+			PathStep& ps=path[i];
+			if(map->IsHexPassed(ps.HexX,ps.HexY)) continue;
 
-		if(check_gag_items && map->IsHexGag(ps.HexX,ps.HexY))
-		{
-			Item* item=map->GetItemGag(ps.HexX,ps.HexY);
-			if(!item) continue;
-			pfd.GagItem=item;
-			path.resize(i);
-			break;
+			if(check_cr && map->IsFlagCritter(ps.HexX,ps.HexY,false))
+			{
+				Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false);
+				if(!cr) continue;
+				pfd.GagCritter=cr;
+				path.resize(i);
+				break;
+			}
+
+			if(check_gag_items && map->IsHexGag(ps.HexX,ps.HexY))
+			{
+				Item* item=map->GetItemGag(ps.HexX,ps.HexY);
+				if(!item) continue;
+				pfd.GagItem=item;
+				path.resize(i);
+				break;
+			}
 		}
 	}
 
