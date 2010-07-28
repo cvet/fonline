@@ -18,17 +18,17 @@ CritterManager CrMngr;
 
 bool CritterManager::Init()
 {
-	WriteLog("Critter manager init...\n");
+	WriteLog("Critter manager initialization...\n");
 
 	if(active)
 	{
-		WriteLog("already init.\n");
+		WriteLog("already initialized.\n");
 		return true;
 	}
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog("Error, Object manager not init.\n");
+		WriteLog("Error, Items manager not init.\n");
 		return false;
 	}
 
@@ -38,7 +38,7 @@ bool CritterManager::Init()
 	npcCount=0;
 #endif
 	active=true;
-	WriteLog("Critter manager init success.\n");
+	WriteLog("Critter manager initialization complete.\n");
 	return true;
 }
 

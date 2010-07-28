@@ -72,7 +72,7 @@ void FOServer::ProcessAI(Npc* npc)
 			}
 			else if(map->IsHexPassed(npc->GetHomeX(),npc->GetHomeY()))
 			{
-				MapMngr.Transit(npc,map,npc->GetHomeX(),npc->GetHomeY(),npc->GetDir(),true);
+				MapMngr.Transit(npc,map,npc->GetHomeX(),npc->GetHomeY(),npc->GetDir(),2,true);
 				return;
 			}
 		}

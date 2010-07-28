@@ -84,17 +84,17 @@ label_ParseNext:
 
 bool NpcAIMngr::Init()
 {
-	WriteLog("NpcAI Manager Init.\n");
+	WriteLog("AI manager initialization...\n");
 	if(!LoadNpcBags()) return false;
-	WriteLog("NpcAI Manager Init success.\n");
+	WriteLog("AI manager initialization complete.\n");
 	return true;
 }
 
 void NpcAIMngr::Finish()
 {
-	WriteLog("NpcAI manager finish.\n");
+	WriteLog("AI manager finish.\n");
 	npcBags.clear();
-	WriteLog("NpcAI manager finish success.\n");
+	WriteLog("AI manager finish success.\n");
 }
 
 /************************************************************************/

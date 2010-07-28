@@ -4,6 +4,8 @@
 void FOServer::ProcessCritter(Critter* cr)
 {
 	if(cr->IsNotValid) return;
+	if(Timer::IsGamePaused()) return;
+
 	DWORD tick=Timer::GameTick();
 
 	// Idle global function
@@ -55,7 +57,6 @@ void FOServer::ProcessCritter(Critter* cr)
 				if(Script::RunPrepared()) time=Script::GetReturnedDword();
 			}
 			if(time) cr->AddCrTimeEvent(me.FuncNum,me.Rate,time,me.Identifier);
-			cr;
 		}
 	}
 
@@ -295,7 +296,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 	else if(cr->GetTimeout(TO_BATTLE))
 	{
 		int ap_cost=cr->GetApCostCritterMove(is_run);
-		if(cr->GetRealAp()<ap_cost)
+		if(cr->GetRealAp()<ap_cost && !Singleplayer)
 		{
 			cr->Send_XY(cr);
 			cr->Send_Param(ST_CURRENT_AP);
@@ -515,8 +516,8 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	bool is_range_attack=weap->WeapIsRangedAttack(use);
 	int wpn_max_dist=cr->GetAttackMaxDist(weap,use);
 
-	if(!CheckDist(hx,hy,tx,ty,wpn_max_dist)
-	&& !(hth_attack && Timer::GameTick()<t_acl->PrevHexTick+500 && CheckDist(hx,hy,t_acl->PrevHexX,t_acl->PrevHexY,wpn_max_dist)))
+	if(!CheckDist(hx,hy,tx,ty,wpn_max_dist) &&
+		!(hth_attack && Timer::GameTick()<t_acl->PrevHexTick+500 && CheckDist(hx,hy,t_acl->PrevHexX,t_acl->PrevHexY,wpn_max_dist)))
 	{
 		cr->Send_XY(cr);
 		cr->Send_XY(t_acl);
@@ -545,7 +546,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(hth_attack && cr->IsPerk(PE_BONUS_HTH_ATTACKS)) ap_cost--;
 	if(is_range_attack && cr->IsPerk(PE_BONUS_RATE_OF_FIRE)) ap_cost--;
 	if(cr->IsPerk(TRAIT_FAST_SHOT) && !hth_attack) ap_cost--;
-	if(cr->GetAp()<ap_cost)
+	if(cr->GetAp()<ap_cost && !Singleplayer)
 	{
 		cr->Send_Param(ST_CURRENT_AP);
 		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
@@ -651,7 +652,7 @@ bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
 	}
 
 	int ap_cost=cr->GetApCostReload()-(weap->WeapIsFastReload()?1:0);
-	if(cr->GetAp()<ap_cost)
+	if(cr->GetAp()<ap_cost && !Singleplayer)
 	{
 		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cr->GetInfo());
 		cr->Send_Param(ST_CURRENT_AP);
@@ -707,7 +708,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	}
 
 	int ap_cost=(item_id?cr->GetApCostUseItem():cr->GetApCostUseSkill());
-	if(cr->GetAp()<ap_cost)
+	if(cr->GetAp()<ap_cost && !Singleplayer)
 	{
 		cr->Send_Param(ST_CURRENT_AP);
 		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cr->GetInfo());
@@ -977,7 +978,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 	}
 
 	int ap_cost=cr->GetApCostPickItem();
-	if(cr->GetAp()<ap_cost)
+	if(cr->GetAp()<ap_cost && !Singleplayer)
 	{
 		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cr->GetInfo());
 		cr->Send_Param(ST_CURRENT_AP);
@@ -1099,6 +1100,8 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 void FOServer::KillCritter(Critter* cr, BYTE dead_type, Critter* attacker)
 {
+	if(cr->GetParam(MODE_INVULNERABLE)) return;
+
 	// Close talk
 	if(cr->IsPlayer())
 	{
@@ -1715,7 +1718,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	// Check UIDS
 #ifndef DEV_VESRION
-	if(GameOpt.AccountPlayTime)
+	if(GameOpt.AccountPlayTime && !Singleplayer)
 	{
 		int uid_zero=0;
 		for(int i=0;i<5;i++) if(!uid[i]) uid_zero++;
@@ -2169,10 +2172,13 @@ void FOServer::Process_GiveMap(Client* cl)
 	cl->Bin >> hash_scen;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	DWORD tick=Timer::FastTick();
-	if(tick-cl->LastSendedMapTick<GameOpt.Breaktime*3) cl->SetBreakTime(GameOpt.Breaktime*3);
-	else cl->SetBreakTime(GameOpt.Breaktime);
-	cl->LastSendedMapTick=tick;
+	if(!Singleplayer)
+	{
+		DWORD tick=Timer::FastTick();
+		if(tick-cl->LastSendedMapTick<GameOpt.Breaktime*3) cl->SetBreakTime(GameOpt.Breaktime*3);
+		else cl->SetBreakTime(GameOpt.Breaktime);
+		cl->LastSendedMapTick=tick;
+	}
 
 	ProtoMap* pmap=MapMngr.GetProtoMap(map_pid);
 	if(!pmap)
@@ -2370,7 +2376,7 @@ void FOServer::Process_ChangeItem(Client* cl)
 	bool is_castling=((from_slot==SLOT_HAND1 && to_slot==SLOT_HAND2) || (from_slot==SLOT_HAND2 && to_slot==SLOT_HAND1));
 	int ap_cost=(is_castling?0:cl->GetApCostMoveItemInventory());
 	if(to_slot==0xFF) ap_cost=cl->GetApCostDropItem();
-	if(cl->GetAp()<ap_cost)
+	if(cl->GetAp()<ap_cost && !Singleplayer)
 	{
 		WriteLog(__FUNCTION__" - Not enough AP, client<%s>.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
@@ -2405,7 +2411,11 @@ void FOServer::Process_RateItem(Client* cl)
 	cl->Bin >> rate;
 
 	cl->ItemSlotMain->SetRate(rate&0xFF);
-	if(!cl->ItemSlotMain->GetId()) cl->Data.Params[ST_RATE_ITEM]=rate;
+	if(!cl->ItemSlotMain->GetId())
+	{
+		cl->ChangeParam(ST_RATE_ITEM);
+		cl->Data.Params[ST_RATE_ITEM]=rate;
+	}
 }
 
 void FOServer::Process_SortValueItem(Client* cl)
@@ -2490,8 +2500,8 @@ void FOServer::Process_UseItem(Client* cl)
 	else if(use==USE_USE)
 	{
 		if(!item_id) return;
-		if(target_type!=TARGET_CRITTER && target_type!=TARGET_ITEM && target_type!=TARGET_SCENERY
-		&& target_type!=TARGET_SELF && target_type!=TARGET_SELF_ITEM) return;
+		if(target_type!=TARGET_CRITTER && target_type!=TARGET_ITEM && target_type!=TARGET_SCENERY &&
+			target_type!=TARGET_SELF && target_type!=TARGET_SELF_ITEM) return;
 		if(!cl->GetMap() && (target_type==TARGET_ITEM || target_type==TARGET_SCENERY)) return;
 		if(!Act_Use(cl,item_id,-1,target_type,target_id,target_pid,param)) cl->Send_TextMsg(cl,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 	}
@@ -2534,7 +2544,7 @@ void FOServer::Process_PickCritter(Client* cl)
 	}
 
 	int ap_cost=cl->GetApCostPickCritter();
-	if(cl->GetAp()<ap_cost)
+	if(cl->GetAp()<ap_cost && !Singleplayer)
 	{
 		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
@@ -2635,7 +2645,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 	}
 
 	int ap_cost=cl->GetApCostMoveItemContainer();
-	if(cl->GetAp()<ap_cost)
+	if(cl->GetAp()<ap_cost && !Singleplayer)
 	{
 		WriteLog(__FUNCTION__" - Not enough AP, client<%s>.\n",cl->GetInfo());
 		cl->Send_ContainerInfo();
@@ -3383,12 +3393,13 @@ void FOServer::Process_LevelUp(Client* cl)
 
 void FOServer::Process_CraftAsk(Client* cl)
 {
-	if(Timer::FastTick()<cl->LastSendCraftTick)
+	DWORD tick=Timer::FastTick();
+	if(tick<cl->LastSendCraftTick+CRAFT_SEND_TIME)
 	{
 		WriteLog(__FUNCTION__" - Client<%s> ignore send craft timeout.\n",cl->GetInfo());
 		return;
 	}
-	cl->LastSendCraftTick=Timer::FastTick()+CRAFT_SEND_TIME;
+	cl->LastSendCraftTick=tick;
 
 	DWORD msg_len;
 	WORD count;
@@ -3987,13 +3998,14 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			Location* loc=MapMngr.GetLocation(loc_id);
 			if(!loc || DistSqrt(cl->GroupMove->WXi,cl->GroupMove->WYi,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
 
-			if(cl->LastSendEntrancesLocId==loc_id && Timer::FastTick()<cl->LastSendEntrancesTick)
+			DWORD tick=Timer::FastTick();
+			if(cl->LastSendEntrancesLocId==loc_id && tick<cl->LastSendEntrancesTick+GM_ENTRANCES_SEND_TIME)
 			{
 				WriteLog(__FUNCTION__" - Client<%s> ignore send entrances timeout.\n",cl->GetInfo());
 				break;
 			}
 			cl->LastSendEntrancesLocId=loc_id;
-			cl->LastSendEntrancesTick=Timer::FastTick()+GM_ENTRANCES_SEND_TIME;
+			cl->LastSendEntrancesTick=tick;
 
 			int bind_id=loc->Proto->ScriptBindId;
 			if(bind_id>0)

@@ -106,23 +106,23 @@ void GlobalMapGroup::Clear()
 
 bool MapManager::Init()
 {
-	WriteLog("Map manager init...\n");
+	WriteLog("Map manager initialization...\n");
 
 	if(active)
 	{
-		WriteLog("already init.\n");
+		WriteLog("already initialized.\n");
 		return true;
 	}
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog("Error, Item manager not init.\n");
+		WriteLog("Error, Item manager not initialized.\n");
 		return false;
 	}
 
 	if(!CrMngr.IsInit())
 	{
-		WriteLog("Error, Critter manager not init.\n");
+		WriteLog("Error, Critter manager not initialized.\n");
 		return false;
 	}
 
@@ -131,7 +131,7 @@ bool MapManager::Init()
 
 	pmapsLoaded.clear();
 	active=true;
-	WriteLog("Map manager init success.\n");
+	WriteLog("Map manager initialization complete.\n");
 	return true;
 }
 
@@ -1561,7 +1561,7 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, DWORD entire, WO
 	rule->Data.WorldX=rule->GroupSelf->WXi;
 	rule->Data.WorldY=rule->GroupSelf->WYi;
 	if(car) map->SetCritterCar(car_hx,car_hy,car_owner,car);
-	if(!Transit(rule,map,hx,hy,dir,true)) return false;
+	if(!Transit(rule,map,hx,hy,dir,car?3:2,true)) return false;
 
 	// Transit other
 	for(CrVecIt it=transit_cr.begin(),end=transit_cr.end();it!=end;++it)
@@ -1572,7 +1572,7 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, DWORD entire, WO
 		cr->Data.WorldX=group->WXi;
 		cr->Data.WorldY=group->WYi;
 
-		if(!Transit(cr,map,hx,hy,dir,true))
+		if(!Transit(cr,map,hx,hy,dir,car?3:2,true))
 		{
 			GM_GroupStartMove(cr,true);
 			continue;
@@ -2275,7 +2275,7 @@ bool MapManager::TryTransitCrGrid(Critter* cr, Map* map, WORD hx, WORD hy, bool 
 	else
 	{
 		Map* to_map=MapMngr.GetMap(id_map);
-		if(to_map && Transit(cr,to_map,hx,hy,dir,force)) return true;
+		if(to_map && Transit(cr,to_map,hx,hy,dir,2,force)) return true;
 	}
 
 	return false;
@@ -2289,10 +2289,10 @@ bool MapManager::TransitToGlobal(Critter* cr, DWORD rule, BYTE follow_type, bool
 		return false;
 	}
 
-	return Transit(cr,NULL,rule>>16,rule&0xFFFF,follow_type,force);
+	return Transit(cr,NULL,rule>>16,rule&0xFFFF,follow_type,0,force);
 }
 
-bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, bool force)
+bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWORD radius, bool force)
 {
 	// Check location deletion
 	if(map && map->MapLocation->Data.ToGarbage)
@@ -2330,7 +2330,7 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, bool
 
 		// Local
 		if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) return false;
-		if(!map->FindStartHex(hx,hy,2,true) && !map->FindStartHex(hx,hy,2,false)) return false;
+		if(!map->FindStartHex(hx,hy,radius,true) && !map->FindStartHex(hx,hy,radius,false)) return false;
 
 		cr->LockMapTransfers++; // Transfer begin critical section
 		cr->Data.Dir=(dir>5?0:dir);
@@ -2350,7 +2350,7 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, bool
 	// Different maps
 	else
 	{
-		if(!AddCrToMap(cr,map,hx,hy,2)) return false;
+		if(!AddCrToMap(cr,map,hx,hy,radius)) return false;
 
 		// Global
 		if(!map)

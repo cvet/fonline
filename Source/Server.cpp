@@ -381,14 +381,6 @@ void FOServer::RunGameLoop()
 			ClientPtr& cl=*it;
 			Process(cl);
 		}
-		if(Timer::IsGamePaused())
-		{
-			for(ClVecIt it=ProcessClients.begin(),end=ProcessClients.end();it!=end;++it)
-			{
-				Client* cl=*it;
-				if(Timer::IsGamePaused()) cl->Bin.LockReset();
-			}
-		}
 
 		// Critters process
 		CrMap critters=CrMngr.GetCritters(); // TODO:
@@ -777,7 +769,7 @@ void FOServer::Process(ClientPtr& cl)
 	}
 	else if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_LOGINOK)
 	{
-#define CHECK_BUSY if(cl->IsBusy()) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
+#define CHECK_BUSY if(cl->IsBusy() && !Singleplayer) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
 
 		BIN_BEGIN(cl);
 		if(cl->Bin.IsEmpty()) cl->Bin.Reset();
@@ -818,12 +810,12 @@ void FOServer::Process(ClientPtr& cl)
 	else if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_GAME)
 	{
 #define MESSAGES_PER_CYCLE         (5)
-#define CHECK_BUSY_AND_LIFE if(!cl->IsLife()) break; if(cl->IsBusy()) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
+#define CHECK_BUSY_AND_LIFE if(!cl->IsLife()) break; if(cl->IsBusy() && !Singleplayer){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
 #define CHECK_NO_GLOBAL if(!cl->GetMap()) break;
 #define CHECK_IS_GLOBAL if(cl->GetMap() || !cl->GroupMove) break;
-#define CHECK_AP_MSG BYTE ap; cl->Bin >> ap; if(!cl->IsTurnBased()){if(ap>cl->GetMaxAp()) break; if((int)ap>cl->GetAp()){cl->Bin.MoveReadPos(-int(sizeof(msg)+sizeof(ap))); BIN_END(cl); return;}}
-#define CHECK_AP(ap) if(!cl->IsTurnBased()){if((int)(ap)>cl->GetMaxAp()) break; if((int)(ap)>cl->GetAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}
-#define CHECK_REAL_AP(ap) if(!cl->IsTurnBased()){if((int)(ap)>cl->GetMaxAp()*AP_DIVIDER) break; if((int)(ap)>cl->GetRealAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}
+#define CHECK_AP_MSG BYTE ap; cl->Bin >> ap; if(!Singleplayer){if(!cl->IsTurnBased()){if(ap>cl->GetMaxAp()) break; if((int)ap>cl->GetAp()){cl->Bin.MoveReadPos(-int(sizeof(msg)+sizeof(ap))); BIN_END(cl); return;}}}
+#define CHECK_AP(ap) if(!Singleplayer){if(!cl->IsTurnBased()){if((int)(ap)>cl->GetMaxAp()) break; if((int)(ap)>cl->GetAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}}
+#define CHECK_REAL_AP(ap) if(!Singleplayer){if(!cl->IsTurnBased()){if((int)(ap)>cl->GetMaxAp()*AP_DIVIDER) break; if((int)(ap)>cl->GetRealAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}}
 
 		for(int i=0;i<MESSAGES_PER_CYCLE;i++)
 		{
@@ -1396,7 +1388,7 @@ void FOServer::Process_Command(Client* cl)
 				break;
 			}
 
-			if(MapMngr.Transit(cr,map,hex_x,hex_y,cr->GetDir(),true)) cl->Send_Text(cl,"Critter move success.",SAY_NETMSG);
+			if(MapMngr.Transit(cr,map,hex_x,hex_y,cr->GetDir(),3,true)) cl->Send_Text(cl,"Critter move success.",SAY_NETMSG);
 			else cl->Send_Text(cl,"Critter move fail.",SAY_NETMSG);
 		}
 		break;
@@ -3243,11 +3235,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 			for(LangPackVecIt it_=lang_packs.begin(),end_=lang_packs.end();it_!=end_;++it_)
 			{
 				LanguagePack& lang=*it_;
-				char lang_name[5];
-				*(DWORD*)&lang_name=lang.Name;
-				lang_name[4]='\0';
-
-				if(pack->TextsLang[i]!=string(lang_name)) continue;
+				if(pack->TextsLang[i]!=lang.NameStr) continue;
 
 				FOMsg* msg=pack->Texts[i];
 				FOMsg* msg_dlg=&lang.Msg[TEXTMSG_DLG];
@@ -3256,27 +3244,26 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 				for(int n=100;n<300;n+=10)
 				{
 					for(int l=0,k=msg->Count(n);l<k;l++)
-						msg_dlg->AddStr(pack->PackId*1000+n,msg->GetStr(n));
+						msg_dlg->AddStr(pack->PackId*1000+n,msg->GetStr(n,l));
 				}
 
 				// Dialogs text
 				for(int i_=0;i_<pack->Dialogs.size();i_++)
 				{
 					Dialog& dlg=pack->Dialogs[i_];
-					if(dlg.TextId<10000000) dlg.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000));
-					else msg_dlg->AddStr(dlg.TextId,msg->GetStr((i_+1)*1000));
+					dlg.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000)); // Random id
+
 					for(int j_=0;j_<dlg.Answers.size();j_++)
 					{
 						DialogAnswer& answ=dlg.Answers[j_];
-						if(answ.TextId<10000000) answ.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000+(j_+1)*10));
-						else msg_dlg->AddStr(answ.TextId,msg->GetStr((i_+1)*1000+(j_+1)*10));
+						answ.TextId=msg_dlg->AddStr(msg->GetStr((i_+1)*1000+(j_+1)*10)); // Random id
 					}
 				}
 
 				// Any texts
 				StringMulMap& data=msg->GetData();
 				StringMulMapIt it__=data.upper_bound(99999999);
-				for(;it__!=data.end();++it__) msg_dlg->AddStr(100000000+pack->PackId*100000+((*it__).first-100000000),(*it__).second);
+				for(;it__!=data.end();++it__) msg_dlg->AddStr(1000000000+pack->PackId*100000+((*it__).first-100000000),(*it__).second);
 			}
 		}
 	}
@@ -3285,7 +3272,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 	{
 		LanguagePack& lang=*it;
 		lang.Msg[TEXTMSG_DLG].CalculateHash();
-		//lang.Msg[TEXTMSG_DLG].SaveMsgFile(Str::Format("%d.txt",lang.Name));
+		//lang.Msg[TEXTMSG_DLG].SaveMsgFile(Str::Format("%s.txt",lang.NameStr),PT_SERVER_ROOT);
 	}
 
 	srand(Timer::FastTick());
@@ -4189,12 +4176,13 @@ void FOServer::ClearScore(int score)
 
 void FOServer::Process_GetScores(Client* cl)
 {
-	if(Timer::FastTick()-SCORES_SEND_TIME<cl->LastSendScoresTick)
+	DWORD tick=Timer::FastTick();
+	if(tick<cl->LastSendScoresTick+SCORES_SEND_TIME)
 	{
 		WriteLog(__FUNCTION__" - Client<%s> ignore send scores timeout.\n",cl->GetInfo());
 		return;
 	}
-	cl->LastSendScoresTick=Timer::FastTick();
+	cl->LastSendScoresTick=tick;
 
 	MSGTYPE msg=NETMSG_SCORES;
 

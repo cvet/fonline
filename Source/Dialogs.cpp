@@ -36,15 +36,15 @@ bool DialogManager::LoadDialogs(const char* list_name)
 
 		dlg_count++;
 
-		DWORD dlg_num;
-		str >> dlg_num;
+		DWORD dlg_id;
+		str >> dlg_id;
 		if(str.fail())
 		{
-			WriteLog("Unable to read number of dialog.\n");
+			WriteLog("Unable to read id of dialog.\n");
 			continue;
 		}
 
-		char dlg_name[128];
+		char dlg_name[MAX_FOTEXT];
 		str >> dlg_name;
 		if(str.fail())
 		{
@@ -52,9 +52,9 @@ bool DialogManager::LoadDialogs(const char* list_name)
 			continue;
 		}
 
-		if(DialogsPacks.count(dlg_num))
+		if(DialogsPacks.count(dlg_id))
 		{
-			WriteLog("Dialog number is already parse.\n");
+			WriteLog("Dialog id<%u> is already parsed.\n",dlg_id);
 			continue;
 		}
 
@@ -65,20 +65,20 @@ bool DialogManager::LoadDialogs(const char* list_name)
 		FileManager fdlg;
 		if(!fdlg.LoadFile(name,PT_SERVER_DIALOGS))
 		{
-			WriteLog("Unable to open dialog file, number<%u>, name<%s>.\n",dlg_num,name);
+			WriteLog("Unable to open dialog file, id<%u>, name<%s>.\n",dlg_id,name);
 			continue;
 		}
 
-		DialogPack* pack=ParseDialog(dlg_name,dlg_num,(char*)fdlg.GetBuf());
+		DialogPack* pack=ParseDialog(dlg_name,dlg_id,(char*)fdlg.GetBuf());
 		if(!pack) 
 		{
-			WriteLog("Unable to parse dialog, num<%u>, path<%s>.\n",dlg_num,dlg_name);
+			WriteLog("Unable to parse dialog, id<%u>, path<%s>.\n",dlg_id,dlg_name);
 			continue;
 		}
 
 		if(!AddDialogs(pack))
 		{
-			WriteLog("Unable to add dialogs pack, num<%u>, path<%s>.\n",dlg_num,dlg_name);
+			WriteLog("Unable to add dialogs pack, id<%u>, path<%s>.\n",dlg_id,dlg_name);
 			continue;
 		}
 

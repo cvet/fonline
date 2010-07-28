@@ -465,6 +465,7 @@ struct GameOptions
 	DWORD BagRefreshTime;
 	DWORD AttackAnimationsMinDist;
 	DWORD WhisperDist;
+	DWORD ShoutDist;
 	int LookChecks;
 	DWORD LookDir[4];
 	DWORD LookSneakDir[4];

@@ -1675,6 +1675,10 @@ void SpriteManager::GetDrawCntrRect(Sprite* prep, INTRECT* prect)
 	else
 	{
 		*prect=si->Anim3d->GetBaseBorders();
+		(*prect).L*=SpritesZoom;
+		(*prect).T*=SpritesZoom;
+		(*prect).R*=SpritesZoom;
+		(*prect).B*=SpritesZoom;
 	}
 }
 

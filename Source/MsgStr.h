@@ -70,6 +70,8 @@
 #define STR_SCREENSHOT_NOT_SAVED        (252)
 #define STR_LOG_SAVED                   (253)
 #define STR_LOG_NOT_SAVED               (254)
+#define STR_ZOOM                        (260)
+#define STR_GAME_PAUSED                 (265)
 #define STR_DIALOG_BARTER               (295)
 #define STR_DIALOG_SAY                  (296)
 #define STR_DIALOG_LOG                  (297)

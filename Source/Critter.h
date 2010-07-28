@@ -287,7 +287,6 @@ private:
 public:
 	bool IsFree(){return (Timer::GameTick()-startBreakTime>=breakTime);}
 	bool IsBusy(){return !IsFree();}
-	DWORD GetBreakTime(){return breakTime;}
 	void SetBreakTime(DWORD ms){breakTime=ms; startBreakTime=Timer::GameTick(); ApRegenerationTick=0;}
 	void SetBreakTimeDelta(DWORD ms){int dt=(Timer::GameTick()-startBreakTime)-breakTime; if(dt>ms) dt=0; SetBreakTime(ms-dt);}// if(dt>0) {dt=(int)ms-dt; if(dt>0) breakTime=dt; else breakTime=0;}
 
@@ -558,7 +557,7 @@ private:
 	bool pingOk;
 
 public:
-	bool IsToPing(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME && Timer::FastTick()>=pingNextTick && !GetTimeout(TO_TRANSFER);}
+	bool IsToPing(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME && Timer::FastTick()>=pingNextTick && !GetTimeout(TO_TRANSFER) && !Singleplayer;}
 	void PingClient();
 	void PingOk(DWORD next_ping){pingOk=true; pingNextTick=Timer::FastTick()+next_ping;}
 
@@ -680,7 +679,6 @@ public:
 
 class Npc : public Critter
 {
-public:
 	// Bag
 public:
 	DWORD NextRefreshBagTick;

@@ -1930,7 +1930,14 @@ void FOClient::UseMouseMove()
 
 void FOClient::ConsoleDraw()
 {
-	if(ConsoleEdit && (IsMainScreen(SCREEN_GAME) || IsMainScreen(SCREEN_GLOBAL_MAP)))
+	bool is_game_screen=(IsMainScreen(SCREEN_GAME) || IsMainScreen(SCREEN_GLOBAL_MAP));
+
+	// Pause indicator
+	if(Timer::IsGamePaused() && is_game_screen && !IsScreenPresent(SCREEN__MENU_OPTION))
+		SprMngr.DrawStr(INTRECT(0,20,MODE_WIDTH,MODE_HEIGHT),MsgGame->GetStr(STR_GAME_PAUSED),FT_CENTERX|FT_COLORIZE,COLOR_TEXT_DRED,FONT_BIG);
+
+	// Console
+	if(ConsoleEdit && is_game_screen)
 	{
 		if(IsMainScreen(SCREEN_GAME)) SprMngr.DrawSprite(ConsolePic,IntX+ConsolePicX,(IntVisible?(IntAddMess?IntWAddMess[1]:IntY):MODE_HEIGHT)+ConsolePicY);
 
@@ -1942,6 +1949,7 @@ void FOClient::ConsoleDraw()
 		SprMngr.DrawStr(rect,buf,FT_NOBREAK);
 	}
 
+	// Help info
 	if(OptHelpInfo)
 	{
 		if(!Chosen) return;
@@ -2388,7 +2396,7 @@ void FOClient::IntDraw()
 		if(screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW)
 		{
 			SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),
-				Str::Format("ZOOM %d %%",(int)(1.0f/SpritesZoom*100.0f)),FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_BIG);
+				FmtGameText(STR_ZOOM,(int)(1.0f/SpritesZoom*100.0f)),FT_CENTERX|FT_CENTERY|FT_COLORIZE,COLOR_TEXT_SAND,FONT_BIG);
 		}
 	}
 
@@ -2735,6 +2743,13 @@ void FOClient::MessBoxGenerate()
 
 	INTRECT ir=MessBoxCurRectDraw();
 	int max_lines=SprMngr.GetLinesCount(0,ir.H(),NULL);
+
+	if(ir.IsZero() || max_lines<=0)
+	{
+		MessBoxMaxScroll=0;
+		MessBoxScrollLines=0;
+		return;
+	}
 
 	MessBoxScrollLines=-1;
 	bool check_filters=IsMainScreen(SCREEN_GAME);
@@ -4665,10 +4680,12 @@ void FOClient::ShowMainScreen(int new_screen)
 		break;
 	case SCREEN_GAME:
 		SetCurMode(CUR_DEFAULT);
+		if(Singleplayer) SingleplayerData.Pause=false;
 		break;
 	case SCREEN_GLOBAL_MAP:
 		SetCurMode(CUR_DEFAULT);
 		GmapMouseMove();
+		if(Singleplayer) SingleplayerData.Pause=false;
 		break;
 	case SCREEN_WAIT:
 		SetCurMode(CUR_WAIT);
@@ -4727,6 +4744,8 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 		if(p0==-1) SetCurMode(CUR_DEFAULT);
 		else if(p0==-2) SetLastCurMode();
 		if(s!=SCREEN_NONE) RunScreenScript(false,s,p0,p1,p2);
+
+		if(Singleplayer && SingleplayerData.Pause && s==SCREEN__MENU_OPTION) SingleplayerData.Pause=false;
 		return;
 	}
 
@@ -7136,9 +7155,12 @@ void FOClient::PerkDraw()
 
 	if(PerkCurPerk>=0)
 	{
-		DWORD spr_id=ResMngr.GetSkDxSprId(Str::GetHash(FONames::GetPictureName(SKILLDEX_PARAM(PerkCurPerk))));
-		if(spr_id) SprMngr.DrawSprite(spr_id,PerkWPic[0]+PerkX,PerkWPic[1]+PerkY);
-		else PerkCurPerk=-1;
+		const char* name=FONames::GetPictureName(SKILLDEX_PARAM(PerkCurPerk));
+		if(name)
+		{
+			DWORD spr_id=ResMngr.GetSkDxSprId(Str::GetHash(name));
+			if(spr_id) SprMngr.DrawSprite(spr_id,PerkWPic[0]+PerkX,PerkWPic[1]+PerkY);
+		}
 	}
 
 	SprMngr.DrawStr(INTRECT(PerkBOkText,PerkX,PerkY),MsgGame->GetStr(STR_PERK_TAKE),FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
@@ -8470,10 +8492,9 @@ void FOClient::DlgboxDraw()
 		return;
 	}
 
-	DWORD y_offs=0;
 	SprMngr.DrawSprite(DlgboxWTopPicNone,DlgboxWTop[0]+DlgboxX,DlgboxWTop[1]+DlgboxY);
 	SprMngr.DrawStr(INTRECT(DlgboxWText,DlgboxX,DlgboxY),DlgboxText,FT_COLORIZE);
-	y_offs+=DlgboxWTop.H();
+	DWORD y_offs=DlgboxWTop.H();
 	for(int i=0;i<DlgboxButtonsCount;i++)
 	{
 		SprMngr.DrawSprite(DlgboxWMiddlePicNone,DlgboxWMiddle[0]+DlgboxX,DlgboxWMiddle[1]+DlgboxY+y_offs);

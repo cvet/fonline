@@ -714,7 +714,7 @@ void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 
 DWORD FOMsg::AddStr(const char* str)
 {
-	DWORD i=Random(10000000,99999999);
+	DWORD i=Random(100000000,999999999);
 	if(strData.count(i)) return AddStr(str);
 	AddStr(i,str);
 	return i;
@@ -729,7 +729,7 @@ const char* FOMsg::GetStr(DWORD num)
 	{
 	case 0: return (*strData.begin()).second.c_str(); // give FOMSG_ERRNUM
 	case 1: break;
-	default: for(int i=0,j=Random(0,str_count);i<j;i++) ++it; break;
+	default: for(int i=0,j=Random(0,str_count)-1;i<j;i++) ++it; break;
 	}
 
 	return (*it).second.c_str();
@@ -769,7 +769,7 @@ int FOMsg::GetInt(DWORD num)
 	{
 	case 0: return -1;
 	case 1: break;
-	default: for(int i=0,j=Random(0,str_count);i<j;i++) ++it; break;
+	default: for(int i=0,j=Random(0,str_count)-1;i<j;i++) ++it; break;
 	}
 	
 	return atoi((*it).second.c_str());
@@ -1048,7 +1048,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 	Crypt.SetCache(fname,(BYTE*)buf,buf_len);
 	delete[] buf;
 #else
-	fm.CopyMem(buf,buf_len);
+	fm.SetData(buf,buf_len);
 	if(!fm.SaveOutBufToFile(fname,path_type)) return -2;
 #endif
 

@@ -1188,6 +1188,7 @@
 	if(engine->RegisterGlobalProperty("uint __BagRefreshTime",&GameOpt.BagRefreshTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __AttackAnimationsMinDist",&GameOpt.AttackAnimationsMinDist)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __WisperDist",&GameOpt.WhisperDist)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __ShoutDist",&GameOpt.ShoutDist)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __LookChecks",&GameOpt.LookChecks)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookDir0",&GameOpt.LookDir[0])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookDir1",&GameOpt.LookDir[1])) BIND_ERROR;

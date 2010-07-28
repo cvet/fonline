@@ -584,33 +584,37 @@ void FOClient::LookBordersDraw()
 int FOClient::MainLoop()
 {
 	// Fps counter
-	static DWORD LastCall=Timer::FastTick();
+	static DWORD last_call=Timer::FastTick();
 	static WORD call_cnt=0;
-
-    if((Timer::FastTick()-LastCall)>=1000)
+    if((Timer::FastTick()-last_call)>=1000)
 	{
 		FPS=call_cnt;
 		call_cnt=0;
-		LastCall=Timer::FastTick();
+		last_call=Timer::FastTick();
 	}
 	else call_cnt++;
 
 	if(!Active) return 0;
 
-	// Singleplayer
+	// Singleplayer data synchronization
 	if(Singleplayer)
 	{
-		// Process pause
 		bool pause=SingleplayerData.Pause;
-		if(!pause && (!IsMainScreen(SCREEN_GAME) || IsScreenPresent(SCREEN__MENU_OPTION))) pause=true;
-		else if(pause && IsMainScreen(SCREEN_GAME) && !IsScreenPresent(SCREEN__MENU_OPTION)) pause=false;
+
+		if(!pause)
+		{
+			int main_screen=GetMainScreen();
+			if((main_screen!=SCREEN_GAME && main_screen!=SCREEN_GLOBAL_MAP && main_screen!=SCREEN_WAIT) ||
+				IsScreenPresent(SCREEN__MENU_OPTION)) pause=true;
+		}
+
+		SingleplayerData.Lock(); // Read data
 		if(pause!=SingleplayerData.Pause)
 		{
-			SingleplayerData.Lock();
 			SingleplayerData.Pause=pause;
-			SingleplayerData.Unlock();
 			Timer::SetGamePause(pause);
 		}
+		SingleplayerData.Unlock(); // Write data
 	}
 
 	// Network
@@ -1090,6 +1094,7 @@ label_TryChangeLang:
 				case DIK_I: if(GetActiveScreen()==SCREEN__INVENTORY) {TryExit(); continue;} break;
 				case DIK_Q: DrawLookBorders=!DrawLookBorders; RebuildLookBorders=true; break;
 				case DIK_W: DrawShootBorders=!DrawShootBorders; RebuildLookBorders=true; break;
+				case DIK_SPACE: if(Singleplayer) SingleplayerData.Pause=!SingleplayerData.Pause; break;
 				default: break;
 				}
 			}
@@ -7164,6 +7169,9 @@ void FOClient::CrittersProcess()
 
 	// Actions
 	if(!Chosen->IsFree()) return;
+
+	// Game pause
+	if(Timer::IsGamePaused()) return;
 
 	// Ap regeneration
 	if(Chosen->GetAp()<Chosen->GetParam(ST_ACTION_POINTS) && !IsTurnBased)

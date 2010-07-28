@@ -1000,7 +1000,7 @@ bool FOServer::SScriptFunc::Crit_TransitToHex(Critter* cr, WORD hx, WORD hy, BYT
 	if(hx!=cr->GetHexX() || hy!=cr->GetHexY())
 	{
 		if(dir<6 && cr->Data.Dir!=dir) cr->Data.Dir=dir;
-		if(!MapMngr.Transit(cr,map,hx,hy,cr->GetDir(),true)) SCRIPT_ERROR_R0("Transit fail.");
+		if(!MapMngr.Transit(cr,map,hx,hy,cr->GetDir(),2,true)) SCRIPT_ERROR_R0("Transit fail.");
 	}
 	else if(dir<6 && cr->Data.Dir!=dir)
 	{
@@ -1030,7 +1030,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, DWORD map_id, WORD
 		if(cr->GetMap()!=map_id || cr->GetHexX()!=hx || cr->GetHexY()!=hy)
 		{
 			if(dir<6 && cr->Data.Dir!=dir) cr->Data.Dir=dir;
-			if(!MapMngr.Transit(cr,map,hx,hy,cr->GetDir(),true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
+			if(!MapMngr.Transit(cr,map,hx,hy,cr->GetDir(),2,true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
 		}
 		else if(dir<6 && cr->Data.Dir!=dir)
 		{
@@ -1068,7 +1068,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, DWORD map_id, B
 	}
 	else
 	{
-		if(!MapMngr.Transit(cr,map,hx,hy,dir,true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
+		if(!MapMngr.Transit(cr,map,hx,hy,dir,2,true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
 	}
 
 	Location* loc=map->MapLocation;

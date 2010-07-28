@@ -145,7 +145,7 @@ public:
 	void EraseCrFromMap(Critter* cr, Map* map, WORD hex_x, WORD hex_y);
 	bool TryTransitCrGrid(Critter* cr, Map* map, WORD hx, WORD hy, bool force);
 	bool TransitToGlobal(Critter* cr, DWORD rule, BYTE follow_type, bool force);
-	bool Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, bool force);
+	bool Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWORD radius, bool force);
 
 	// Global map
 private:

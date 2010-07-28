@@ -467,7 +467,7 @@ bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD radius, bool skip_unsafe)
 	int cnt=0;
 	if(radius==1) cnt=6;
 	else if(radius==2) cnt=18;
-	else if(radius==3) cnt=36;
+	else cnt=36;
 
 	for(int i=0;;i++)
 	{

@@ -1313,17 +1313,18 @@ void Critter::ToDead(BYTE dead_type, bool send_all)
 
 void Critter::Heal()
 {
+	DWORD tick=Timer::GameTick();
 	if(IsDead() || IsPerk(MODE_NO_HEAL) || GetTimeout(TO_BATTLE) || GetParam(ST_CURRENT_HP)>=GetParam(ST_MAX_LIFE))
 	{
-		LastHealTick=Timer::GameTick();
+		LastHealTick=tick;
 		return;
 	}
 
-	if(Timer::GameTick()-LastHealTick<CRIT_HEAL_TIME) return;
+	if(tick<LastHealTick+CRIT_HEAL_TIME) return;
 
 	ChangeParam(ST_CURRENT_HP);
 	Data.Params[ST_CURRENT_HP]+=GetParam(ST_HEALING_RATE);
-	LastHealTick=Timer::GameTick();
+	LastHealTick=tick;
 }
 
 bool Critter::ParseScript(const char* script, bool first_time)
@@ -2106,14 +2107,19 @@ void Critter::SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsa
 	if(IsPlayer()) Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
 
 	if(to_cr.empty()) return;
+
+	int dist=-1;
+	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist;
+	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist;
+
 	for(CrVecIt it=to_cr.begin(),end=to_cr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(cr==this || !cr->IsPlayer()) continue;
 
-		if(how_say!=SAY_WHISP && how_say!=SAY_WHISP_ON_HEAD)
+		if(dist==-1)
 			cr->Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
-		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,GameOpt.WhisperDist))
+		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist))
 			cr->Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
 	}
 }
@@ -2123,15 +2129,20 @@ void Critter::SendAA_Msg(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_msg
 	if(IsPlayer()) Send_TextMsg(this,num_str,how_say,num_msg);
 
 	if(to_cr.empty()) return;
+
+	int dist=-1;
+	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist;
+	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist;
+
 	for(CrVecIt it=to_cr.begin(),end=to_cr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(cr==this) continue;
 		if(!cr->IsPlayer()) continue;
 
-		if(how_say!=SAY_WHISP && how_say!=SAY_WHISP_ON_HEAD)
+		if(dist==-1)
 			cr->Send_TextMsg(this,num_str,how_say,num_msg);
-		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,GameOpt.WhisperDist))
+		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist))
 			cr->Send_TextMsg(this,num_str,how_say,num_msg);
 	}
 }
@@ -2141,15 +2152,20 @@ void Critter::SendAA_MsgLex(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_
 	if(IsPlayer()) Send_TextMsgLex(this,num_str,how_say,num_msg,lexems);
 
 	if(to_cr.empty()) return;
+
+	int dist=-1;
+	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist;
+	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist;
+
 	for(CrVecIt it=to_cr.begin(),end=to_cr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(cr==this) continue;
 		if(!cr->IsPlayer()) continue;
 
-		if(how_say!=SAY_WHISP && how_say!=SAY_WHISP_ON_HEAD)
+		if(dist==-1)
 			cr->Send_TextMsgLex(this,num_str,how_say,num_msg,lexems);
-		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,GameOpt.WhisperDist))
+		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist))
 			cr->Send_TextMsgLex(this,num_str,how_say,num_msg,lexems);
 	}
 }

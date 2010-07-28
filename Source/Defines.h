@@ -796,7 +796,8 @@ struct ScoreType
 #define MODE_DLG_SCRIPT_BARTER      (521)
 #define MODE_UNLIMITED_AMMO         (522)
 #define MODE_NO_HEAL                (526)
-#define MODE_NO_FLATTEN             (528) // client
+#define MODE_INVULNERABLE           (527)
+#define MODE_NO_FLATTEN             (528) // Client
 #define MODE_RANGE_HTH              (530)
 #define MODE_NO_LOOT                (532)
 #define MODE_NO_PUSH                (536)

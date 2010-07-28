@@ -1588,7 +1588,7 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 /************************************************************************/
 };
 
-//Fonts
+// Fonts
 #define FONT_FO                 (0)
 #define FONT_NUM                (1)
 #define FONT_BIG_NUM            (2)
@@ -1599,9 +1599,9 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define FONT_FAT                (7)
 #define FONT_BIG                (8)
 
-//Screens
+// Screens
 #define SCREEN_NONE             (0)
-//Primary screens
+// Primary screens
 #define SCREEN_LOGIN            (1)
 #define SCREEN_REGISTRATION     (2)
 #define SCREEN_CREDITS          (3)
@@ -1609,7 +1609,7 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define SCREEN_GAME             (5)
 #define SCREEN_GLOBAL_MAP       (6)
 #define SCREEN_WAIT             (7)
-//Secondary screens
+// Secondary screens
 #define SCREEN__INVENTORY       (10)
 #define SCREEN__PICKUP          (11)
 #define SCREEN__MINI_MAP        (12)

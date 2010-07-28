@@ -15,7 +15,7 @@ ItemManager ItemMngr;
 
 bool ItemManager::Init()
 {
-	WriteLog("Items manager init...\n");
+	WriteLog("Items manager initialization...\n");
 	if(IsInit())
 	{
 		WriteLog("already init.\n");
@@ -34,7 +34,7 @@ bool ItemManager::Init()
 #endif
 
 	isActive=true;
-	WriteLog("Items manager init success.\n");
+	WriteLog("Items manager initialization complete.\n");
 	return true;
 }
 

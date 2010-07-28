@@ -862,6 +862,7 @@ GameOptions::GameOptions()
 	BagRefreshTime=60;
 	AttackAnimationsMinDist=0;
 	WhisperDist=2;
+	ShoutDist=200;
 	LookChecks=0;
 	LookDir[0]=0;
 	LookDir[1]=20;
