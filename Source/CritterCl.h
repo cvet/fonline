@@ -305,12 +305,11 @@ private:
 
 	// Finish
 private:
-	bool finishing;
 	DWORD finishingTime;
 
 public:
-	bool IsFinishing(){return finishing;}
-	bool IsFinish(){return (finishing && Timer::GameTick()>finishingTime);}
+	bool IsFinishing(){return finishingTime!=0;}
+	bool IsFinish(){return (finishingTime && Timer::GameTick()>finishingTime);}
 
 	// Fade
 private:

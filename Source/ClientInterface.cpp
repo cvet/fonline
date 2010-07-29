@@ -5206,7 +5206,7 @@ void FOClient::GmapProcess()
 
 	if(!GmapWait)
 	{
-		DWORD dtime_move=Timer::AccurateTick()-GmapMoveLastTick;
+		DWORD dtime_move=Timer::GameTick()-GmapMoveLastTick;
 		if(dtime_move>=30)
 		{
 			int walk_type=GM_WALK_GROUND;
@@ -5264,7 +5264,7 @@ void FOClient::GmapProcess()
 				GmapSpeedY=0.0f;
 			}
 
-			GmapMoveLastTick=Timer::AccurateTick();
+			GmapMoveLastTick=Timer::GameTick();
 
 			if(GmapSpeedX!=0.0f || GmapSpeedY!=0.0f)
 			{
@@ -5282,7 +5282,7 @@ void FOClient::GmapProcess()
 			}
 		}
 
-		DWORD dtime_proc=Timer::AccurateTick()-GmapProcLastTick;
+		DWORD dtime_proc=Timer::GameTick()-GmapProcLastTick;
 		if(dtime_proc>=GM_MOVE_PROC_TIME)
 		{
 			Item* car=GmapGetCar();
@@ -5298,7 +5298,7 @@ void FOClient::GmapProcess()
 				car->Data.Car.Deteoration=wear;
 			}
 
-			GmapProcLastTick=Timer::AccurateTick();
+			GmapProcLastTick=Timer::GameTick();
 		}
 	}
 

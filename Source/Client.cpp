@@ -5785,8 +5785,8 @@ void FOClient::Net_OnGlobalInfo()
 
 		GmapGroupXf=group_x;
 		GmapGroupYf=group_y;
-		GmapMoveLastTick=Timer::AccurateTick();
-		GmapProcLastTick=Timer::AccurateTick();
+		GmapMoveLastTick=Timer::GameTick();
+		GmapProcLastTick=Timer::GameTick();
 		GmapGroupX=group_x;
 		GmapGroupY=group_y;
 		GmapWait=(wait!=0);

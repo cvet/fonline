@@ -26,7 +26,7 @@ ItemSlotMain(&DefItemSlotMain),ItemSlotArmor(&DefItemSlotArmor),ItemSlotExt(&Def
 begSpr(0),endSpr(0),curSpr(0),animStartTick(0),
 SprOx(0),SprOy(0),StartTick(0),TickCount(0),ApRegenerationTick(0),
 tickTextDelay(0),textOnHeadColor(COLOR_TEXT),Human(false),Alpha(0),
-fadingEnable(false),FadingTick(0),fadeUp(false),finishing(false),finishingTime(0),
+fadingEnable(false),FadingTick(0),fadeUp(false),finishingTime(0),
 staySprDir(0),staySprTick(0),needReSet(false),reSetTick(0),CurMoveStep(0),
 Visible(true),SprDrawValid(false),IsNotValid(false),RefCounter(1),NameRefCounter(0x80000000),LexemsRefCounter(0x80000000),
 OxExtI(0),OyExtI(0),OxExtF(0),OyExtF(0),OxExtSpeed(0),OyExtSpeed(0),OffsExtNextTick(0),
@@ -88,7 +88,6 @@ void CritterCl::InitForRegistration()
 void CritterCl::Finish()
 {
 	SetFade(false);
-	finishing=true;
 	finishingTime=FadingTick;
 }
 
@@ -665,11 +664,11 @@ int CritterCl::GetNightPersonBonus()
 
 void CritterCl::DrawStay(INTRECT r)
 {
-	if(Timer::GameTick()-staySprTick>500)
+	if(Timer::FastTick()-staySprTick>500)
 	{
 		staySprDir++;
 		if(staySprDir>5) staySprDir=0;
-		staySprTick=Timer::GameTick();
+		staySprTick=Timer::FastTick();
 	}
 
 	int dir=(!IsLife()?CrDir:staySprDir);
