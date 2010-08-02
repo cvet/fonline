@@ -321,8 +321,10 @@ private:
 
 public:
 	DWORD FadingTick;
-	INTRECT GetTextRect();
 
+	// Text
+public:
+	INTRECT GetTextRect();
 	void SetText(const char* str, DWORD color, DWORD text_delay);
 	void DrawTextOnHead();
 
@@ -334,6 +336,7 @@ private:
 	DWORD tickTextDelay;
 	DWORD textOnHeadColor;
 
+	// Ap cost
 public:
 	int GetApCostCritterMove(bool is_run){return IsTurnBased()?GameOpt.TbApCostCritterMove*AP_DIVIDER*(IsDmgTwoLeg()?4:(IsDmgLeg()?2:1)):(GetTimeout(TO_BATTLE)?(is_run?GameOpt.RtApCostCritterRun:GameOpt.RtApCostCritterWalk):0);}
 	int GetApCostMoveItemContainer(){return IsTurnBased()?GameOpt.TbApCostMoveItemContainer:GameOpt.RtApCostMoveItemContainer;}
@@ -345,6 +348,7 @@ public:
 	int GetApCostUseItem(){return IsTurnBased()?GameOpt.TbApCostUseItem:GameOpt.RtApCostUseItem;}
 	int GetApCostUseSkill(){return IsTurnBased()?GameOpt.TbApCostUseSkill:GameOpt.RtApCostUseSkill;}
 
+	// Ref counter
 public:
 	short RefCounter;
 	bool IsNotValid;

@@ -251,6 +251,25 @@ bool FOMapper::Init(HWND wnd)
 	return true;
 }
 
+bool FOMapper::IfaceLoadRect(INTRECT& comp, const char* name)
+{
+	char res[256];
+	if(!IfaceIni.GetStr(name,"",res))
+	{
+		WriteLog("Signature<%s> not found.\n",name);
+		return false;
+	}
+
+	if(sscanf(res,"%d%d%d%d",&comp[0],&comp[1],&comp[2],&comp[3])!=4)
+	{
+		comp.Clear();
+		WriteLog("Unable to parse signature<%s>.\n",name);
+		return false;
+	}
+
+	return true;
+}
+
 int FOMapper::InitIface()
 {
 	WriteLog("Init interface.\n");
@@ -263,8 +282,6 @@ int FOMapper::InitIface()
 
 	IniParser& ini=IfaceIni;
 	char int_file[256];
-	char key[256];
-	int i;
 
 	IniParser cfg;
 	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
@@ -280,51 +297,51 @@ int FOMapper::InitIface()
 	IntX=ini.GetInt("IntX",-1);
 	IntY=ini.GetInt("IntY",-1);
 
-	if(IntX==-1) IntX=(MODE_WIDTH-ini.GetInt("IntWMain2",MODE_WIDTH))/2;
-	if(IntY==-1) IntY=MODE_HEIGHT-ini.GetInt("IntWMain3",200);
+	IfaceLoadRect(IntWMain,"IntMain");
+	if(IntX==-1) IntX=(MODE_WIDTH-IntWMain.W())/2;
+	if(IntY==-1) IntY=MODE_HEIGHT-IntWMain.H();
 
-	for(i=0;i<=3;i++) { sprintf(key,"IntWMain%d",i); IntWMain[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntWWork%d",i); IntWWork[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntWHint%d",i); IntWHint[i]=ini.GetInt(key,1); }
+	IfaceLoadRect(IntWWork,"IntWork");
+	IfaceLoadRect(IntWHint,"IntHint");
 
-	for(i=0;i<=3;i++) { sprintf(key,"IntBArm%d",i); IntBArm[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBDrug%d",i); IntBDrug[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBWpn%d",i); IntBWpn[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBAmmo%d",i); IntBAmmo[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBMisc%d",i); IntBMisc[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBMisc2%d",i); IntBMisc2[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBKey%d",i); IntBKey[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBCont%d",i); IntBCont[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBDoor%d",i); IntBDoor[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBGrid%d",i); IntBGrid[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBGen%d",i); IntBGen[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBWall%d",i); IntBWall[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBTile%d",i); IntBTile[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBCrit%d",i); IntBCrit[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBFast%d",i); IntBFast[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBIgnore%d",i); IntBIgnore[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBInCont%d",i); IntBInCont[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBMess%d",i); IntBMess[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBList%d",i); IntBList[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBScrBack%d",i); IntBScrBack[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBScrBackFst%d",i); IntBScrBackFst[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBScrFront%d",i); IntBScrFront[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBScrFrontFst%d",i); IntBScrFrontFst[i]=ini.GetInt(key,1); }
+	IfaceLoadRect(IntBArm,"IntArm");
+	IfaceLoadRect(IntBDrug,"IntDrug");
+	IfaceLoadRect(IntBWpn,"IntWpn");
+	IfaceLoadRect(IntBAmmo,"IntAmmo");
+	IfaceLoadRect(IntBMisc,"IntMisc");
+	IfaceLoadRect(IntBMiscEx,"IntMiscEx");
+	IfaceLoadRect(IntBKey,"IntKey");
+	IfaceLoadRect(IntBCont,"IntCont");
+	IfaceLoadRect(IntBDoor,"IntDoor");
+	IfaceLoadRect(IntBGrid,"IntGrid");
+	IfaceLoadRect(IntBGen,"IntGen");
+	IfaceLoadRect(IntBWall,"IntWall");
+	IfaceLoadRect(IntBTile,"IntTile");
+	IfaceLoadRect(IntBCrit,"IntCrit");
+	IfaceLoadRect(IntBFast,"IntFast");
+	IfaceLoadRect(IntBIgnore,"IntIgnore");
+	IfaceLoadRect(IntBInCont,"IntInCont");
+	IfaceLoadRect(IntBMess,"IntMess");
+	IfaceLoadRect(IntBList,"IntList");
+	IfaceLoadRect(IntBScrBack,"IntScrBack");
+	IfaceLoadRect(IntBScrBackFst,"IntScrBackFst");
+	IfaceLoadRect(IntBScrFront,"IntScrFront");
+	IfaceLoadRect(IntBScrFrontFst,"IntScrFrontFst");
 
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowItem%d",i); IntBShowItem[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowScen%d",i); IntBShowScen[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowWall%d",i); IntBShowWall[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowCrit%d",i); IntBShowCrit[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowTile%d",i); IntBShowTile[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowRoof%d",i); IntBShowRoof[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBShowFast%d",i); IntBShowFast[i]=ini.GetInt(key,1); }
+	IfaceLoadRect(IntBShowItem,"IntShowItem");
+	IfaceLoadRect(IntBShowScen,"IntShowScen");
+	IfaceLoadRect(IntBShowWall,"IntShowWall");
+	IfaceLoadRect(IntBShowCrit,"IntShowCrit");
+	IfaceLoadRect(IntBShowTile,"IntShowTile");
+	IfaceLoadRect(IntBShowRoof,"IntShowRoof");
+	IfaceLoadRect(IntBShowFast,"IntShowFast");
 
-	for(i=0;i<=3;i++) { sprintf(key,"IntBSelectItem%d",i); IntBSelectItem[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBSelectScen%d",i); IntBSelectScen[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBSelectWall%d",i); IntBSelectWall[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBSelectCrit%d",i); IntBSelectCrit[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBSelectTile%d",i); IntBSelectTile[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"IntBSelectRoof%d",i); IntBSelectRoof[i]=ini.GetInt(key,1); }
+	IfaceLoadRect(IntBSelectItem,"IntSelectItem");
+	IfaceLoadRect(IntBSelectScen,"IntSelectScen");
+	IfaceLoadRect(IntBSelectWall,"IntSelectWall");
+	IfaceLoadRect(IntBSelectCrit,"IntSelectCrit");
+	IfaceLoadRect(IntBSelectTile,"IntSelectTile");
+	IfaceLoadRect(IntBSelectRoof,"IntSelectRoof");
 
 	IntVisible=true;
 	IntFix=true;
@@ -332,22 +349,6 @@ int FOMapper::InitIface()
 	IntVectX=0;
 	IntVectY=0;
 	SelectType=SELECT_TYPE_NEW;
-
-	ScrArm=0;
-	ScrDrug=0;
-	ScrWpn=0;
-	ScrAmmo=0;
-	ScrMisc=0;
-	ScrMisc2=0;
-	ScrKey=0;
-	ScrCont=0;
-	ScrDoor=0;
-	ScrGrid=0;
-	ScrGen=0;
-	ScrWall=0;
-	ScrTile=0;
-	ScrCrit=0;
-	ScrList=0;
 
 	CurProtoMap=NULL;
 	CurItemProtos=NULL;
@@ -381,9 +382,9 @@ int FOMapper::InitIface()
 	OptShowRoof=false;
 
 	// Object
-	for(i=0;i<=3;i++) { sprintf(key,"ObjWMain%d",i); ObjWMain[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"ObjWWork%d",i); ObjWWork[i]=ini.GetInt(key,1); }
-	for(i=0;i<=3;i++) { sprintf(key,"ObjBToAll%d",i); ObjBToAll[i]=ini.GetInt(key,1); }
+	IfaceLoadRect(ObjWMain,"ObjMain");
+	IfaceLoadRect(ObjWWork,"ObjWork");
+	IfaceLoadRect(ObjBToAll,"ObjToAll");
 	
 	ObjX=0;
 	ObjY=0;
@@ -439,17 +440,17 @@ int FOMapper::InitIface()
 	// Iface
 	ini.GetStr("IntMainPic","error",f_name);
 	if(!(IntMainPic=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
-	ini.GetStr("IntPTabPic","error",f_name);
+	ini.GetStr("IntTabPic","error",f_name);
 	if(!(IntPTab=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
-	ini.GetStr("IntPSelectPic","error",f_name);
+	ini.GetStr("IntSelectPic","error",f_name);
 	if(!(IntPSelect=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
-	ini.GetStr("IntPShowPic","error",f_name);
+	ini.GetStr("IntShowPic","error",f_name);
 	if(!(IntPShow=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
 
 	// Object
-	ini.GetStr("ObjWMainPic","error",f_name);
+	ini.GetStr("ObjMainPic","error",f_name);
 	if(!(ObjWMainPic=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
-	ini.GetStr("ObjPBToAllDn","error",f_name);
+	ini.GetStr("ObjToAllPicDn","error",f_name);
 	if(!(ObjPBToAllDn=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
 
 	// Console
@@ -1414,7 +1415,7 @@ void FOMapper::IntDraw()
 	case INT_MODE_WEAPON: SprMngr.DrawSprite(IntPTab,IntBWpn[0]+IntX,IntBWpn[1]+IntY); break;
 	case INT_MODE_AMMO: SprMngr.DrawSprite(IntPTab,IntBAmmo[0]+IntX,IntBAmmo[1]+IntY); break;
 	case INT_MODE_MISC: SprMngr.DrawSprite(IntPTab,IntBMisc[0]+IntX,IntBMisc[1]+IntY); break;
-	case INT_MODE_MISC2: SprMngr.DrawSprite(IntPTab,IntBMisc2[0]+IntX,IntBMisc2[1]+IntY); break;
+	case INT_MODE_MISC_EX: SprMngr.DrawSprite(IntPTab,IntBMiscEx[0]+IntX,IntBMiscEx[1]+IntY); break;
 	case INT_MODE_KEY: SprMngr.DrawSprite(IntPTab,IntBKey[0]+IntX,IntBKey[1]+IntY); break;
 	case INT_MODE_CONT: SprMngr.DrawSprite(IntPTab,IntBCont[0]+IntX,IntBCont[1]+IntY); break;
 	case INT_MODE_DOOR: SprMngr.DrawSprite(IntPTab,IntBDoor[0]+IntX,IntBDoor[1]+IntY); break;
@@ -2363,7 +2364,7 @@ void FOMapper::IntLMouseDown()
 	else if(IsCurInRect(IntBWpn,IntX,IntY)) IntSetMode(INT_MODE_WEAPON);
 	else if(IsCurInRect(IntBAmmo,IntX,IntY)) IntSetMode(INT_MODE_AMMO);
 	else if(IsCurInRect(IntBMisc,IntX,IntY)) IntSetMode(INT_MODE_MISC);
-	else if(IsCurInRect(IntBMisc2,IntX,IntY)) IntSetMode(INT_MODE_MISC2);
+	else if(IsCurInRect(IntBMiscEx,IntX,IntY)) IntSetMode(INT_MODE_MISC_EX);
 	else if(IsCurInRect(IntBKey,IntX,IntY)) IntSetMode(INT_MODE_KEY);
 	else if(IsCurInRect(IntBCont,IntX,IntY)) IntSetMode(INT_MODE_CONT);
 	else if(IsCurInRect(IntBDoor,IntX,IntY)) IntSetMode(INT_MODE_DOOR);
@@ -2661,7 +2662,7 @@ void FOMapper::IntSetMode(int mode)
 	case INT_MODE_WEAPON: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_WEAPON); CurProtoScroll=&ProtoScroll[INT_MODE_WEAPON]; break;
 	case INT_MODE_AMMO: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_AMMO); CurProtoScroll=&ProtoScroll[INT_MODE_AMMO]; break;
 	case INT_MODE_MISC: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_MISC); CurProtoScroll=&ProtoScroll[INT_MODE_MISC]; break;
-	case INT_MODE_MISC2: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_MISC_EX); CurProtoScroll=&ProtoScroll[INT_MODE_MISC2]; break;
+	case INT_MODE_MISC_EX: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_MISC_EX); CurProtoScroll=&ProtoScroll[INT_MODE_MISC_EX]; break;
 	case INT_MODE_KEY: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_KEY); CurProtoScroll=&ProtoScroll[INT_MODE_KEY]; break;
 	case INT_MODE_CONT: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_CONTAINER); CurProtoScroll=&ProtoScroll[INT_MODE_CONT]; break;
 	case INT_MODE_DOOR: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_DOOR); CurProtoScroll=&ProtoScroll[INT_MODE_DOOR]; break;

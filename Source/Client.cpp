@@ -38,6 +38,7 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 	BytesReceive=0;
 	BytesRealReceive=0;
 	BytesSend=0;
+	InitNetReason=0;
 
 	Chosen=NULL;
 	FPS=0;
@@ -68,17 +69,35 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 
 	MoveLastHx=-1;
 	MoveLastHy=-1;
+
+	SaveLoadDraft=NULL;
 }
 
 void _PreRestore()
 {
 	FOClient::Self->HexMngr.PreRestore();
+
+	// Save/load surface
+	if(Singleplayer)
+	{
+		SAFEREL(FOClient::Self->SaveLoadDraft);
+		FOClient::Self->SaveLoadDraftValid=false;
+	}
 }
 
 void _PostRestore()
 {
 	FOClient::Self->HexMngr.PostRestore();
 	FOClient::Self->SetDayTime(true);
+
+	// Save/load surface
+	if(Singleplayer)
+	{
+		SAFEREL(FOClient::Self->SaveLoadDraft);
+		if(FAILED(FOClient::Self->SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
+			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&FOClient::Self->SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
+		FOClient::Self->SaveLoadDraftValid=false;
+	}
 }
 
 DWORD* UID1;
@@ -140,7 +159,7 @@ bool FOClient::Init(HWND hwnd)
 	}
 
 	// User and password
-	if(OptName.empty() && OptPass.empty())
+	if(OptName.empty() && OptPass.empty() && !Singleplayer)
 	{
 		DWORD len;
 		char* str=(char*)Crypt.GetCache("__name",len);
@@ -316,7 +335,7 @@ bool FOClient::Init(HWND hwnd)
 	GET_UID4(UID4);
 
 	// Try connect
-	if(strstr(GetCommandLine(),"-Start")) LogTryConnect();
+	if(strstr(GetCommandLine(),"-Start") && !Singleplayer) LogTryConnect();
 	else if(!strstr(GetCommandLine(),"-SkipIntro"))
 	{
 		if(MsgGame->Count(STR_MUSIC_MAIN_THEME)) MusicAfterVideo=MsgGame->GetStr(STR_MUSIC_MAIN_THEME);
@@ -418,9 +437,12 @@ int FOClient::InitDInput()
 	return true;
 }
 
-void FOClient::Clear()
+void FOClient::Finish()
 {
-	WriteLog("FEngine finish...\n");
+	WriteLog("Engine finish...\n");
+
+	SAFEREL(SaveLoadDraft);
+
 	Keyb::ClearKeyb();
 	NetDisconnect();
 	ResMngr.Finish();
@@ -451,8 +473,9 @@ void FOClient::Clear()
 	}
 	IntellectSymbols.clear();
 	FileManager::EndOfWork();
+
 	Active=false;
-	WriteLog("FEngine finish complete.\n");
+	WriteLog("Engine finish complete.\n");
 }
 
 void FOClient::ClearCritters()
@@ -621,6 +644,8 @@ int FOClient::MainLoop()
 	// Init Net
 	if(NetState==STATE_INIT_NET)
 	{
+		ShowMainScreen(SCREEN_WAIT);
+
 		if(!InitNet())
 		{
 			ShowMainScreen(SCREEN_LOGIN);
@@ -628,15 +653,10 @@ int FOClient::MainLoop()
 			return 1;
 		}
 
-		if(IsMainScreen(SCREEN_REGISTRATION))
-		{
-			Net_SendCreatePlayer(RegNewCr);
-			ShowMainScreen(SCREEN_WAIT);
-		}
-		else
-		{
-			Net_SendLogIn(OptName.c_str(),OptPass.c_str());
-		}
+		if(InitNetReason==INIT_NET_REASON_LOGIN) Net_SendLogIn(OptName.c_str(),OptPass.c_str());
+		else if(InitNetReason==INIT_NET_REASON_REG) Net_SendCreatePlayer(RegNewCr);
+		else if(InitNetReason==INIT_NET_REASON_LOAD) Net_SendSaveLoad(false,SaveLoadFileName.c_str(),NULL);
+		else NetDisconnect();
 	}
 
 	// Parse Net
@@ -715,6 +735,7 @@ int FOClient::MainLoop()
 		if(HexMngr.IsMapLoaded())
 		{
 			GameDraw();
+			if(SaveLoadProcessDraft) SaveLoadFillDraft();
 			ProcessScreenEffectMirror();
 			DrawIfaceLayer(1);
 			IntDraw();
@@ -724,7 +745,12 @@ int FOClient::MainLoop()
 			WaitDraw();
 		}
 		break;
-	case SCREEN_GLOBAL_MAP: GmapDraw(); break;
+	case SCREEN_GLOBAL_MAP:
+		{
+			GmapDraw();
+			if(SaveLoadProcessDraft) SaveLoadFillDraft();
+		}
+		break;
 	case SCREEN_LOGIN: LogDraw(); break;
 	case SCREEN_REGISTRATION: ChaDraw(true); break;
 	case SCREEN_CREDITS: CreditsDraw(); break;
@@ -1261,6 +1287,8 @@ void FOClient::ParseMouse()
 		else if(Timer::ProcessAccelerator(ACCELERATE_PERK_SCRDOWN)) PerkLMouseUp();
 		else if(Timer::ProcessAccelerator(ACCELERATE_DLG_TEXT_UP)) DlgLMouseUp(true);
 		else if(Timer::ProcessAccelerator(ACCELERATE_DLG_TEXT_DOWN)) DlgLMouseUp(true);
+		else if(Timer::ProcessAccelerator(ACCELERATE_SAVE_LOAD_SCR_UP)) SaveLoadLMouseUp();
+		else if(Timer::ProcessAccelerator(ACCELERATE_SAVE_LOAD_SCR_DN)) SaveLoadLMouseUp();
 		IfaceHold=iface_hold;
 	}
 
@@ -1298,6 +1326,7 @@ void FOClient::ParseMouse()
 				case SCREEN__PIP_BOY: PipMouseMove(); break;
 				case SCREEN__FIX_BOY: FixMouseMove(); break;
 				case SCREEN__AIM: AimMouseMove(); break;
+				case SCREEN__SAVE_LOAD: SaveLoadMouseMove(); break;
 				default: break;
 				}
 			}
@@ -1515,6 +1544,7 @@ void FOClient::ParseMouse()
 				case SCREEN__PIP_BOY: PipLMouseDown(); break;
 				case SCREEN__FIX_BOY: FixLMouseDown(); break;	
 				case SCREEN__AIM: AimLMouseDown(); break;
+				case SCREEN__SAVE_LOAD: SaveLoadLMouseDown(); break;
 				default: break;
 				}
 			}
@@ -1564,6 +1594,7 @@ void FOClient::ParseMouse()
 				case SCREEN__PIP_BOY: PipLMouseUp(); break;
 				case SCREEN__FIX_BOY: FixLMouseUp(); break;
 				case SCREEN__AIM: AimLMouseUp(); break;
+				case SCREEN__SAVE_LOAD: SaveLoadLMouseUp(); break;
 				default: break;
 				}
 			}
@@ -1657,6 +1688,7 @@ void FOClient::ParseMouse()
 			case SCREEN__PIP_BOY: PipMouseMove(); break;
 			case SCREEN__FIX_BOY: FixMouseMove(); break;
 			case SCREEN__AIM: AimMouseMove(); break;
+			case SCREEN__SAVE_LOAD: SaveLoadMouseMove(); break;
 			default: break;
 			}
 		}
@@ -1914,6 +1946,27 @@ void FOClient::ProcessMouseWheel(int data)
 				AutomapZoom=CLAMP(AutomapZoom,0.1f,10.0f);
 				AutomapScrX=(float)(PipWMonitor.CX()+PipX)-scr_x/AutomapZoom;
 				AutomapScrY=(float)(PipWMonitor.CY()+PipY)-scr_y/AutomapZoom;
+			}
+		}
+	}
+/************************************************************************/
+/* Save/Load                                                            */
+/************************************************************************/
+	else if(screen==SCREEN__SAVE_LOAD)
+	{
+		int ox=(SaveLoadLoginScreen?SaveLoadCX:SaveLoadX);
+		int oy=(SaveLoadLoginScreen?SaveLoadCY:SaveLoadY);
+
+		if(IsCurInRect(SaveLoadSlots,ox,oy))
+		{
+			if(data>0)
+			{
+				if(SaveLoadSlotScroll>0) SaveLoadSlotScroll--;
+			}
+			else
+			{
+				int max=(int)SaveLoadDataSlots.size()-SaveLoadSlotsMax+(SaveLoadSave?1:0);
+				if(SaveLoadSlotScroll<max) SaveLoadSlotScroll++;
 			}
 		}
 	}
@@ -2375,12 +2428,20 @@ void FOClient::NetProcess()
 			Net_OnLoginSuccess();
 			break;
 		case NETMSG_REGISTER_SUCCESS:
-			WriteLog("Registration success.\n");
-			if(RegNewCr)
+			if(!Singleplayer)
 			{
-				OptName=RegNewCr->Name;
-				OptPass=RegNewCr->Pass;
-				SAFEDEL(RegNewCr);
+				WriteLog("Registration success.\n");
+				if(RegNewCr)
+				{
+					OptName=RegNewCr->Name;
+					OptPass=RegNewCr->Pass;
+					SAFEDEL(RegNewCr);
+				}
+			}
+			else
+			{
+				WriteLog("World loaded, enter to it.\n");
+				LogTryConnect();
 			}
 			break;
 
@@ -2626,7 +2687,7 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	DWORD uid0=*UID0;
 	Bout << uid0; uid3^=uid1+Random(0,53245); uid1|=uid3+*UID0; uid3^=uid1+uid3; uid1|=uid3;	// UID0
 
-	AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONN_SUCCESS));
+	if(!Singleplayer) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
@@ -2661,6 +2722,30 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 			Bout << i;
 			Bout << val;
 		}
+	}
+
+	WriteLog("complete.\n");
+}
+
+void FOClient::Net_SendSaveLoad(bool save, const char* fname, ByteVec* pic_data)
+{
+	if(save) WriteLog("Request save to file<%s>...",fname);
+	else WriteLog("Request load from file<%s>...",fname);
+
+	MSGTYPE msg=NETMSG_SINGLEPLAYER_SAVE_LOAD;
+	WORD fname_len=strlen(fname);
+	DWORD msg_len=sizeof(msg)+sizeof(save)+sizeof(fname_len)+fname_len;
+	if(save) msg_len+=sizeof(DWORD)+pic_data->size();
+
+	Bout << msg;
+	Bout << msg_len;
+	Bout << save;
+	Bout << fname_len;
+	Bout.Push(fname,fname_len);
+	if(save)
+	{
+		Bout << (DWORD)pic_data->size();
+		if(pic_data->size()) Bout.Push((char*)&(*pic_data)[0],pic_data->size());
 	}
 
 	WriteLog("complete.\n");
@@ -3785,7 +3870,7 @@ void FOClient::Net_SendRefereshMe()
 void FOClient::Net_OnLoginSuccess()
 {
 	NetState=STATE_LOGINOK;
-	AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_LOGINOK));
+	if(!Singleplayer) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_LOGINOK));
 	WriteLog("Auntification success.\n");
 
 	GmapFreeResources();
@@ -5408,6 +5493,7 @@ void FOClient::Net_OnGameInfo()
 	Bin >> GameOpt.Day;
 	Bin >> GameOpt.Hour;
 	Bin >> GameOpt.Minute;
+	Bin >> GameOpt.Second;
 	Bin >> GameOpt.TimeMultiplier;
 	Bin >> time;
 	Bin >> rain;
@@ -6896,17 +6982,20 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 	}
 
 	// Password
-	if(strlen(newcr->Pass)<MIN_NAME || strlen(newcr->Pass)<GameOpt.MinNameLength ||
-		strlen(newcr->Pass)>MAX_NAME || strlen(newcr->Pass)>GameOpt.MaxNameLength)
+	if(!Singleplayer)
 	{
-		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_PASS));
-		return false;
-	}
+		if(strlen(newcr->Pass)<MIN_NAME || strlen(newcr->Pass)<GameOpt.MinNameLength ||
+			strlen(newcr->Pass)>MAX_NAME || strlen(newcr->Pass)>GameOpt.MaxNameLength)
+		{
+			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_PASS));
+			return false;
+		}
 
-	if(!CheckUserPass(newcr->Pass))
-	{
-		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_PASS_WRONG_CHARS));
-		return false;
+		if(!CheckUserPass(newcr->Pass))
+		{
+			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_PASS_WRONG_CHARS));
+			return false;
+		}
 	}
 
 	if(Script::PrepareContext(ClientFunctions.PlayerGenerationCheck,CALL_FUNC_STR,"Registration"))
@@ -8054,6 +8143,7 @@ void FOClient::TryExit()
 		case SCREEN__PIP_BOY:
 		case SCREEN__FIX_BOY:	
 		case SCREEN__MENU_OPTION:
+		case SCREEN__SAVE_LOAD:
 		default:
 			ShowScreen(SCREEN_NONE);
 			break;
@@ -10370,6 +10460,7 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos(int screen, int& x, int
 	case SCREEN__SKILLBOX: x=Self->SboxX; y=Self->SboxY; break;
 	case SCREEN__USE: x=Self->UseX; y=Self->UseY; break;
 	case SCREEN__PERK: x=Self->PerkX; y=Self->PerkY; break;
+	case SCREEN__SAVE_LOAD: x=Self->SaveLoadX; y=Self->SaveLoadY; break;
 	default: x=0; y=0; break;
 	}
 }
@@ -10402,6 +10493,7 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen(int screen)
 	case SCREEN__USE:        Self->UseDraw(); break;
 	case SCREEN__PERK:       Self->PerkDraw(); break;
 	case SCREEN__TOWN_VIEW:  Self->TViewDraw(); break;
+	case SCREEN__SAVE_LOAD:  Self->SaveLoadDraw(); break;
 	default: break;
 	}
 }

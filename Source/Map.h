@@ -219,7 +219,7 @@ public:
 	// Constructor, destructor
 public:
 	Map();
-	~Map(){MEMORY_PROCESS(MEMORY_MAP,-(int)sizeof(Map));}
+	~Map(){MEMORY_PROCESS(MEMORY_MAP,-(int)sizeof(Map)); SAFEDELA(hexFlags);}
 
 	bool IsNotValid;
 	short RefCounter;

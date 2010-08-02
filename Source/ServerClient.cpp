@@ -139,27 +139,29 @@ void FOServer::SaveHoloInfoFile()
 	}
 }
 
-void FOServer::LoadHoloInfoFile(FILE* f)
+bool FOServer::LoadHoloInfoFile(FILE* f)
 {
+	LastHoloId=USER_HOLO_START_NUM;
+
 	DWORD count=0;
-	fread(&count,sizeof(count),1,f);
+	if(!fread(&count,sizeof(count),1,f)) return false;
 	for(DWORD i=0;i<count;i++)
 	{
 		DWORD id;
-		fread(&id,sizeof(id),1,f);
+		if(!fread(&id,sizeof(id),1,f)) return false;
 		bool can_rw;
-		fread(&can_rw,sizeof(can_rw),1,f);
+		if(!fread(&can_rw,sizeof(can_rw),1,f)) return false;
 
 		WORD title_len;
 		char title[USER_HOLO_MAX_TITLE_LEN+1]={0};
-		fread(&title_len,sizeof(title_len),1,f);
+		if(!fread(&title_len,sizeof(title_len),1,f)) return false;
 		if(title_len>=USER_HOLO_MAX_TITLE_LEN) title_len=USER_HOLO_MAX_TITLE_LEN;
 		if(title_len) fread(title,title_len,1,f);
 		title[title_len]=0;
 
 		WORD text_len;
 		char text[USER_HOLO_MAX_LEN+1]={0};
-		fread(&text_len,sizeof(text_len),1,f);
+		if(!fread(&text_len,sizeof(text_len),1,f)) return false;
 		if(text_len>=USER_HOLO_MAX_LEN) text_len=USER_HOLO_MAX_LEN;
 		if(text_len) fread(text,text_len,1,f);
 		text[text_len]=0;
@@ -167,6 +169,7 @@ void FOServer::LoadHoloInfoFile(FILE* f)
 		HolodiskInfo.insert(HoloInfoMapVal(id,new HoloInfo(can_rw,title,text)));
 		if(id>LastHoloId) LastHoloId=id;
 	}
+	return true;
 }
 
 void FOServer::AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send)
@@ -1308,7 +1311,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	// Check for ban by ip
 	DWORD ip=cl->GetIp();
 	ClientBanned* ban=GetBanByIp(ip);
-	if(ban)
+	if(ban && !Singleplayer)
 	{
 		cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
 		//cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
@@ -1375,7 +1378,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	CHECK_IN_BUFF_ERROR_EX(cl,cl->Send_TextMsg(cl,STR_NET_DATATRANS_ERR,SAY_NETMSG,TEXTMSG_GAME));
 
 	// Check data
-	if(!CheckUserName(cl->Name) || !CheckUserPass(cl->Pass))
+	if(!CheckUserName(cl->Name) || (!Singleplayer && !CheckUserPass(cl->Pass)))
 	{
 		// WriteLog(__FUNCTION__" - Error symbols in Name or Password.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1384,9 +1387,18 @@ void FOServer::Process_CreateClient(Client* cl)
 	}
 
 	int name_len=strlen(cl->Name);
+	if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength ||
+		name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
+	{
+		// WriteLog(_"Name or Password length too small.\n");
+		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
+		cl->Disconnect();
+		return;
+	}
+
 	int pass_len=strlen(cl->Pass);
-	if(name_len<MIN_NAME || pass_len<MIN_NAME || name_len<GameOpt.MinNameLength || pass_len<GameOpt.MinNameLength ||
-		name_len>MAX_NAME || pass_len>MAX_NAME || name_len>GameOpt.MaxNameLength || pass_len>GameOpt.MaxNameLength)
+	if(!Singleplayer && (pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength ||
+		pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength))
 	{
 		// WriteLog(_"Name or Password length too small.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1438,7 +1450,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	}
 
 	// Check for exist
-	if(GetClientData(cl->Name))
+	if(!Singleplayer && GetClientData(cl->Name))
 	{
 		// WriteLog("User<%s> already exist.\n",cl->Name);
 		cl->Send_TextMsg(cl,STR_NET_ACCOUNT_ALREADY,SAY_NETMSG,TEXTMSG_GAME);
@@ -1448,7 +1460,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	// Check brute force registration
 #ifndef DEV_VESRION
-	if(GameOpt.RegistrationTimeout)
+	if(GameOpt.RegistrationTimeout && !Singleplayer)
 	{
 		DWORD reg_tick=GameOpt.RegistrationTimeout*1000;
 		DwordMapIt it=RegIp.find(ip);
@@ -1518,7 +1530,8 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
-	cl->Data.Id=++LastClientId;
+	if(Singleplayer) cl->Data.Id=1;
+	else cl->Data.Id=++LastClientId;
 	cl->Access=ACCESS_DEFAULT;
 
 	if(!SaveClient(cl,false))
@@ -1529,7 +1542,17 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
-	cl->Send_TextMsg(cl,STR_NET_REG_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
+	if(Singleplayer && !NewWorld())
+	{
+		WriteLog(__FUNCTION__" - Generate new world fail.\n");
+		cl->Send_TextMsg(cl,STR_SP_NEW_GAME_FAIL,SAY_NETMSG,TEXTMSG_GAME);
+		cl->Disconnect();
+		return;
+	}
+
+	if(!Singleplayer) cl->Send_TextMsg(cl,STR_NET_REG_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
+	else cl->Send_TextMsg(cl,STR_SP_NEW_GAME_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
+
 	BOUT_BEGIN(cl);
 	cl->Bout << (MSGTYPE)NETMSG_REGISTER_SUCCESS;
 	BOUT_END(cl);
@@ -1537,14 +1560,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	cl->AddRef();
 	CrMngr.AddCritter(cl);
-	MapMngr.AddCrToMap(cl,0,0,0,0);
-
-	ClientData data;
-	data.Clear();
-	StringCopy(data.ClientName,cl->Name);
-	StringCopy(data.ClientPass,cl->Pass);
-	data.ClientId=cl->GetId();
-	ClientsData.push_back(data);
+	MapMngr.AddCrToMap(cl,NULL,0,0,0);
 
 	if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
 	{
@@ -1553,6 +1569,24 @@ void FOServer::Process_CreateClient(Client* cl)
 		Script::RunPrepared();
 	}
 	SaveClient(cl,false);
+
+	if(!Singleplayer)
+	{
+		ClientData data;
+		data.Clear();
+		StringCopy(data.ClientName,cl->Name);
+		StringCopy(data.ClientPass,cl->Pass);
+		data.ClientId=cl->GetId();
+		ClientsData.push_back(data);
+	}
+	else
+	{
+		ClientsSaveDataCount=0;
+		AddClientSaveData(cl);
+		SingleplayerSave.Valid=true;
+		SingleplayerSave.CrData=ClientsSaveData[0];
+		SingleplayerSave.PicData.clear();
+	}
 }
 
 void FOServer::Process_LogIn(ClientPtr& cl)
@@ -1582,6 +1616,12 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	cl->Bin.Pop(name,MAX_NAME);
 	name[MAX_NAME]=0;
 	StringCopy(cl->Pass,name);
+
+	if(Singleplayer)
+	{
+		ZeroMemory(cl->Name,sizeof(cl->Name));
+		ZeroMemory(cl->Pass,sizeof(cl->Pass));
+	}
 
 	// Bin hashes
 	DWORD msg_language;
@@ -1620,10 +1660,19 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	if(default_lang) cl->Send_TextMsg(cl,STR_NET_LANGUAGE_NOT_SUPPORTED,SAY_NETMSG,TEXTMSG_GAME);
 
+	// Singleplayer
+	if(Singleplayer && !SingleplayerSave.Valid)
+	{
+		WriteLog(__FUNCTION__" - World not contain singleplayer data.\n");
+		cl->Send_TextMsg(cl,STR_SP_SAVE_FAIL,SAY_NETMSG,TEXTMSG_GAME);
+		cl->Disconnect();
+		return;
+	}
+
 	// Check for ban by ip
 	DWORD ip=cl->GetIp();
 	ClientBanned* ban=GetBanByIp(ip);
-	if(ban)
+	if(ban && !Singleplayer)
 	{
 		cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
 		if(!_stricmp(ban->ClientName,cl->Name)) cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
@@ -1633,43 +1682,57 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Check login/password
-	DWORD name_len=strlen(cl->Name);
-	if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength || name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
+	if(!Singleplayer)
 	{
-		cl->Send_TextMsg(cl,STR_NET_WRONG_LOGIN,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
-	}
+		DWORD name_len=strlen(cl->Name);
+		if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength || name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
+		{
+			cl->Send_TextMsg(cl,STR_NET_WRONG_LOGIN,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			return;
+		}
 
-	DWORD pass_len=strlen(cl->Pass);
-	if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength)
-	{
-		cl->Send_TextMsg(cl,STR_NET_WRONG_PASS,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
-	}
+		DWORD pass_len=strlen(cl->Pass);
+		if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength)
+		{
+			cl->Send_TextMsg(cl,STR_NET_WRONG_PASS,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			return;
+		}
 
-	if(!CheckUserName(cl->Name) || !CheckUserPass(cl->Pass))
-	{
-		// WriteLog(__FUNCTION__" - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
-		cl->Send_TextMsg(cl,STR_NET_WRONG_DATA,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
+		if(!CheckUserName(cl->Name) || !CheckUserPass(cl->Pass))
+		{
+			// WriteLog(__FUNCTION__" - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
+			cl->Send_TextMsg(cl,STR_NET_WRONG_DATA,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			return;
+		}
 	}
 
 	// Get client account data
-	ClientData* data=GetClientData(cl->Name);
-	if(!data || strcmp(cl->Pass,data->ClientPass))
+	ClientData* data;
+	if(!Singleplayer)
 	{
-		// WriteLog(__FUNCTION__" - Wrong name<%s> or password.\n",cl->Name);
-		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
+		data=GetClientData(cl->Name);
+		if(!data || strcmp(cl->Pass,data->ClientPass))
+		{
+			// WriteLog(__FUNCTION__" - Wrong name<%s> or password.\n",cl->Name);
+			cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			return;
+		}
+	}
+	else
+	{
+		static ClientData singleplayer_data;
+		data=&singleplayer_data;
+		StringCopy(data->ClientName,SingleplayerSave.CrData.Name);
+		data->ClientId=SingleplayerSave.CrData.Data.Id;
 	}
 
 	// Check for ban by name
 	ban=GetBanByName(data->ClientName);
-	if(ban)
+	if(ban && !Singleplayer)
 	{
 		cl->Send_TextMsg(cl,STR_NET_BANNED,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
@@ -1904,6 +1967,15 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	{
 		cl->Data.Id=id;
 
+		// Singleplayer data
+		if(Singleplayer)
+		{
+			StringCopy(cl->Name,SingleplayerSave.CrData.Name);
+			cl->Data=SingleplayerSave.CrData.Data;
+			*cl->GetDataExt()=SingleplayerSave.CrData.DataExt;
+			cl->CrTimeEvents=SingleplayerSave.CrData.TimeEvents;
+		}
+
 		// Find in saved array
 		Client* cl_saved=NULL;
 		for(ClVecIt it=SaveClients.begin(),end=SaveClients.end();it!=end;++it)
@@ -2052,6 +2124,63 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	InterlockedExchange(&cl->NetState,STATE_LOGINOK);
 	cl->Send_LoadMap(NULL);
+}
+
+void FOServer::Process_SingleplayerSaveLoad(Client* cl)
+{
+	if(!Singleplayer)
+	{
+		cl->Disconnect();
+		return;
+	}
+
+	DWORD msg_len;
+	bool save;
+	WORD fname_len;
+	char fname[MAX_FOTEXT];
+	ByteVec pic_data;
+	cl->Bin >> msg_len;
+	cl->Bin >> save;
+	cl->Bin >> fname_len;
+	cl->Bin.Pop(fname,fname_len);
+	fname[fname_len]=0;
+	if(save)
+	{
+		DWORD pic_data_len;
+		cl->Bin >> pic_data_len;
+		pic_data.resize(pic_data_len);
+		if(pic_data_len) cl->Bin.Pop((char*)&pic_data[0],pic_data_len);
+	}
+
+	CHECK_IN_BUFF_ERROR(cl);
+
+	if(save)
+	{
+		ClientsSaveDataCount=0;
+		AddClientSaveData(cl);
+		SingleplayerSave.CrData=ClientsSaveData[0];
+		SingleplayerSave.PicData=pic_data;
+
+		SaveWorld(fname);
+		cl->Send_TextMsg(cl,STR_SP_SAVE_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
+	}
+	else
+	{
+		if(!LoadWorld(fname))
+		{
+			WriteLog(__FUNCTION__" - Unable load world from file<%s>.\n",fname);
+			cl->Send_TextMsg(cl,STR_SP_LOAD_FAIL,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			return;
+		}
+
+		cl->Send_TextMsg(cl,STR_SP_LOAD_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
+
+		BOUT_BEGIN(cl);
+		cl->Bout << (MSGTYPE)NETMSG_REGISTER_SUCCESS;
+		BOUT_END(cl);
+		cl->Disconnect();
+	}
 }
 
 void FOServer::Process_ParseToGame(Client* cl)

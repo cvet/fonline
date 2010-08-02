@@ -794,6 +794,7 @@ GameOptions::GameOptions()
 	Day=2;
 	Hour=14;
 	Minute=5;
+	Second=0;
 	FullMinute=0;
 	FullMinuteTick=0;
 	TimeMultiplier=0;

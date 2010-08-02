@@ -1121,6 +1121,7 @@
 	if(engine->RegisterGlobalProperty("const uint16 __Day",&GameOpt.Day)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint16 __Hour",&GameOpt.Hour)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint16 __Minute",&GameOpt.Minute)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("const uint16 __Second",&GameOpt.Second)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint16 __TimeMultiplier",&GameOpt.TimeMultiplier)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint __FullMinute",&GameOpt.FullMinute)) BIND_ERROR;
 

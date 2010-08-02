@@ -706,23 +706,17 @@ bool Critter::DelCrFromVisVec(Critter* del_cr)
 
 bool Critter::AddCrIntoVisSet1(DWORD crid)
 {
-	if(VisCr1.count(crid)) return false;
-	VisCr1.insert(crid);
-	return true;
+	return VisCr1.insert(crid).second;
 }
 
 bool Critter::AddCrIntoVisSet2(DWORD crid)
 {
-	if(VisCr2.count(crid)) return false;
-	VisCr2.insert(crid);
-	return true;
+	return VisCr2.insert(crid).second;
 }
 
 bool Critter::AddCrIntoVisSet3(DWORD crid)
 {
-	if(VisCr3.count(crid)) return false;
-	VisCr3.insert(crid);
-	return true;
+	return VisCr3.insert(crid).second;
 }
 
 bool Critter::DelCrFromVisSet1(DWORD crid)
@@ -740,27 +734,14 @@ bool Critter::DelCrFromVisSet3(DWORD crid)
 	return VisCr3.erase(crid)!=0;
 }
 
-#pragma MESSAGE("Optimize set checking.")
 bool Critter::AddIdVisItem(DWORD item_id)
 {
-//	return (*VisItem.insert(item_id)).second;
-	if(!VisItem.count(item_id))
-	{
-		VisItem.insert(item_id);
-		return true;
-	}
-	return false;
+	return VisItem.insert(item_id).second;
 }
 
 bool Critter::DelIdVisItem(DWORD item_id)
 {
-//	return VisItem.erase(item_id);
-	if(VisItem.count(item_id))
-	{
-		VisItem.erase(item_id);
-		return true;
-	}
-	return false;
+	return VisItem.erase(item_id)!=0;
 }
 
 bool Critter::SetDefaultItems(ProtoItem* proto_hand1, ProtoItem* proto_hand2, ProtoItem* proto_armor)
@@ -3543,6 +3524,7 @@ void Client::Send_GameInfo(Map* map)
 	Bout << GameOpt.Day;
 	Bout << GameOpt.Hour;
 	Bout << GameOpt.Minute;
+	Bout << GameOpt.Second;
 	Bout << GameOpt.TimeMultiplier;
 	Bout << time;
 	Bout << rain;

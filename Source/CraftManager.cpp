@@ -533,7 +533,7 @@ bool CraftManager::operator==(const CraftManager& r)
 		CraftItem* craft=(*it).second;
 		CraftItem* rcraft=(*it_).second;
 
-#define COMPARE_CRAFT(p) if(craft->p!=rcraft->p){WriteLog(__FUNCTION__" - Different <"#p">, craft<%u>.\n",craft->Num); return false;}
+#define COMPARE_CRAFT(p) if(craft->p!=rcraft->p){WriteLog(__FUNCTION__" - Different<"#p">, craft<%u>.\n",craft->Num); return false;}
 		COMPARE_CRAFT(Num);
 		COMPARE_CRAFT(ShowPNum);
 		COMPARE_CRAFT(ShowPVal);

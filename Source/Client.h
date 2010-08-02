@@ -25,7 +25,7 @@ class FOClient
 public:
 	static FOClient* Self;
 	bool Init(HWND hwnd);
-	void Clear();
+	void Finish();
 	void TryExit();
 	bool IsScroll(){return CmnDiMup || CmnDiMright || CmnDiMdown || CmnDiMleft || CmnDiUp || CmnDiRight || CmnDiDown || CmnDiLeft;}
 	void ProcessMouseScroll();
@@ -88,6 +88,7 @@ public:
 	DWORD* UID0;
 	bool UIDFail;
 	Item SomeItem;
+	int InitNetReason;
 
 	bool InitNet();
 	bool FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port);
@@ -99,6 +100,7 @@ public:
 
 	void Net_SendLogIn(const char* name, const char* pass);
 	void Net_SendCreatePlayer(CritterCl* newcr);
+	void Net_SendSaveLoad(bool save, const char* fname, ByteVec* pic_data);
 	void Net_SendUseSkill(BYTE skill, CritterCl* cr);
 	void Net_SendUseSkill(BYTE skill, ItemHex* item);
 	void Net_SendUseSkill(BYTE skill, Item* item);
@@ -295,8 +297,8 @@ public:
 			Type(type){Param[0]=param0;Param[1]=param1;Param[2]=param2;Param[3]=param3;Param[4]=param4;Param[5]=param5;}
 		ActionEvent(const ActionEvent& r){memcpy(this,&r,sizeof(ActionEvent));}
 	};
-typedef vector<ActionEvent> ActionEventVec;
-typedef vector<ActionEvent>::iterator ActionEventVecIt;
+	typedef vector<ActionEvent> ActionEventVec;
+	typedef vector<ActionEvent>::iterator ActionEventVecIt;
 
 	ActionEventVec ChosenAction;
 	void AddAction(bool to_front, ActionEvent& act);
@@ -321,7 +323,7 @@ typedef vector<ActionEvent>::iterator ActionEventVecIt;
 		string SoundName;
 		bool CanStop;
 	};
-typedef vector<ShowVideo> ShowVideoVec;
+	typedef vector<ShowVideo> ShowVideoVec;
 
 	ShowVideoVec ShowVideos;
 	IGraphBuilder* GraphBuilder;
@@ -354,8 +356,8 @@ typedef vector<ShowVideo> ShowVideoVec;
 
 		IfaceAnim(AnyFrames* frm, int res_type):Frames(frm),Flags(0),CurSpr(0),LastTick(Timer::GameTick()),ResType(res_type){}
 	};
-typedef vector<IfaceAnim*> IfaceAnimVec;
-typedef vector<IfaceAnim*>::iterator IfaceAnimVecIt;
+	typedef vector<IfaceAnim*> IfaceAnimVec;
+	typedef vector<IfaceAnim*>::iterator IfaceAnimVecIt;
 
 #define ANIMRUN_TO_END         (0x0001)
 #define ANIMRUN_FROM_END       (0x0002)
@@ -386,8 +388,8 @@ typedef vector<IfaceAnim*>::iterator IfaceAnimVecIt;
 		DWORD EndColor;
 		ScreenEffect(DWORD begin_tick, DWORD time, DWORD col, DWORD end_col):BeginTick(begin_tick),Time(time),StartColor(col),EndColor(end_col){}
 	};
-typedef vector<ScreenEffect> ScreenEffectVec;
-typedef vector<ScreenEffect>::iterator ScreenEffectVecIt;
+	typedef vector<ScreenEffect> ScreenEffectVec;
+	typedef vector<ScreenEffect>::iterator ScreenEffectVecIt;
 
 	// Fading
 	ScreenEffectVec ScreenEffects;
@@ -653,8 +655,8 @@ typedef vector<ScreenEffect>::iterator ScreenEffectVecIt;
 		char* IniName;
 		INTRECT Rect;
 	};
-typedef vector<SlotExt> SlotExtVec;
-typedef vector<SlotExt>::iterator SlotExtVecIt;
+	typedef vector<SlotExt> SlotExtVec;
+	typedef vector<SlotExt>::iterator SlotExtVecIt;
 	SlotExtVec SlotsExt;
 	// Radio
 	DWORD RadMainPic,RadPBOn;
@@ -701,8 +703,8 @@ typedef vector<SlotExt>::iterator SlotExtVecIt;
 		INTRECT EndRect;
 		bool operator==(const MapText& r){return HexX==r.HexX && HexY==r.HexY;}
 	};
-typedef vector<MapText> MapTextVec;
-typedef vector<MapText>::iterator MapTextVecIt;
+	typedef vector<MapText> MapTextVec;
+	typedef vector<MapText>::iterator MapTextVecIt;
 
 	MapTextVec GameMapTexts;
 	DWORD GameMouseStay;
@@ -789,7 +791,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 /************************************************************************/
 /* Login                                                                */
 /************************************************************************/
-	DWORD LogPMain,LogPBLogin,LogPBReg,LogPBOptions,LogPBCredits,LogPBExit;
+	DWORD LogPMain,LogPSingleplayerMain,LogPBLogin,LogPBReg,LogPBOptions,LogPBCredits,LogPBExit;
 	int LogFocus;
 
 	int LogX,LogY;
@@ -937,8 +939,8 @@ typedef vector<MapText>::iterator MapTextVecIt;
 		DWORD Color;
 		bool operator==(const DWORD& _right){return (this->LocId==_right);}
 	};
-typedef vector<GmapLocation> GmapLocationVec;
-typedef vector<GmapLocation>::iterator GmapLocationVecIt;
+	typedef vector<GmapLocation> GmapLocationVec;
+	typedef vector<GmapLocation>::iterator GmapLocationVecIt;
 	GmapLocationVec GmapLoc;
 	GmapLocation GmapTownLoc;
 
@@ -999,9 +1001,10 @@ typedef vector<GmapLocation>::iterator GmapLocationVecIt;
 /************************************************************************/
 /* Menu Options                                                         */
 /************************************************************************/
-	DWORD MoptPMain,MoptPBResumeOn,MoptPBExitOn;
+	DWORD MoptMainPic,MoptSingleplayerMainPic,MoptSaveGamePicDown,MoptLoadGamePicDown,
+		MoptOptionsPicDown,MoptExitPicDown,MoptResumePicDown;
+	INTRECT MoptMain,MoptSaveGame,MoptLoadGame,MoptOptions,MoptExit,MoptResume;
 	int MoptX,MoptY;
-	INTRECT MoptMain,MoptBResume,MoptBExit;
 
 	void MoptDraw();
 	void MoptLMouseDown();
@@ -1012,6 +1015,7 @@ typedef vector<GmapLocation>::iterator GmapLocationVecIt;
 /************************************************************************/
 	DWORD CreditsNextTick,CreditsMoveTick;
 	int CreditsYPos;
+	bool CreaditsExt;
 
 	void CreditsDraw();
 
@@ -1039,7 +1043,7 @@ typedef vector<GmapLocation>::iterator GmapLocationVecIt;
 		SwitchElement(DWORD name, DWORD desc, WORD pic, DWORD flags):NameStrNum(name),DescStrNum(desc),DrawFlags(flags),PictureId(pic){ZeroMemory(Addon,sizeof(Addon));}
 		SwitchElement(const char* add, DWORD flags):NameStrNum(0),DescStrNum(0),PictureId(0),DrawFlags(flags){CopyMemory(Addon,add,sizeof(Addon));}
 	};
-typedef vector<SwitchElement> SwitchElementVec;
+	typedef vector<SwitchElement> SwitchElementVec;
 
 	SwitchElementVec ChaSwitchText[3];
 	int ChaSwitchScroll[3];
@@ -1112,7 +1116,7 @@ typedef vector<SwitchElement> SwitchElementVec;
 /************************************************************************/
 /* Character name                                                       */
 /************************************************************************/
-	DWORD ChaNamePic;
+	DWORD ChaNameMainPic,ChaNameSingleplayerMainPic;
 	INTRECT ChaNameWMain,ChaNameWName,ChaNameWNameText,ChaNameWPass,ChaNameWPassText;
 	int ChaNameX,ChaNameY;
 
@@ -1228,8 +1232,8 @@ typedef vector<SwitchElement> SwitchElementVec;
 		Automap():LocId(0),LocPid(0),CurMap(0){}
 		bool operator==(const DWORD id)const{return LocId==id;}
 	};
-typedef vector<Automap> AutomapVec;
-typedef vector<Automap>::iterator AutomapVecIt;
+	typedef vector<Automap> AutomapVec;
+	typedef vector<Automap>::iterator AutomapVecIt;
 	AutomapVec Automaps;
 	Automap AutomapSelected;
 	WordSet AutomapWaitPids;
@@ -1356,6 +1360,7 @@ typedef vector<Automap>::iterator AutomapVecIt;
 	bool SayOnlyNumbers;
 #define DIALOGSAY_NONE        (0)
 #define DIALOGSAY_TEXT        (1)
+#define DIALOGSAY_SAVE        (2)
 	string SayTitle;
 	char SayText[MAX_FOTEXT];
 
@@ -1439,9 +1444,8 @@ typedef vector<Automap>::iterator AutomapVecIt;
 		SCraft(const SCraft& _right){Pos=_right.Pos;Name=_right.Name;Num=_right.Num;IsTrue=_right.IsTrue;}
 		SCraft& operator=(const SCraft& _right){Pos=_right.Pos;Name=_right.Name;Num=_right.Num;IsTrue=_right.IsTrue;return *this;}
 	};
-
-typedef vector<SCraft> SCraftVec;
-typedef vector<SCraftVec> SCraftVecVec;
+	typedef vector<SCraft> SCraftVec;
+	typedef vector<SCraftVec> SCraftVecVec;
 
 	SCraftVecVec FixCraftLst;
 	int FixScrollLst;
@@ -1460,7 +1464,7 @@ typedef vector<SCraftVec> SCraftVecVec;
 		FixDrawComponent(INTRECT& r, string& text):IsText(true),SprId(0){Rect=r;Text=text;}
 		FixDrawComponent(INTRECT& r, DWORD spr_id):IsText(false),SprId(spr_id){Rect=r;}
 	};
-typedef vector<FixDrawComponent*> FixDrawComponentVec;
+	typedef vector<FixDrawComponent*> FixDrawComponentVec;
 #define FIX_DRAW_PIC_WIDTH          (40)
 #define FIX_DRAW_PIC_HEIGHT         (40)
 
@@ -1502,6 +1506,50 @@ typedef vector<FixDrawComponent*> FixDrawComponentVec;
 	void IboxKeyUp(BYTE dik);
 	void IboxProcess();
 	void IboxMouseMove();
+
+/************************************************************************/
+/* Save/Load                                                            */
+/************************************************************************/
+#define SAVE_LOAD_IMAGE_WIDTH            (400)
+#define SAVE_LOAD_IMAGE_HEIGHT           (300)
+
+	DWORD SaveLoadMainPic,SaveLoadScrUpPicDown,SaveLoadScrDownPicDown,
+		SaveLoadDonePicDown,SaveLoadBackPicDown;
+	INTRECT SaveLoadMain,SaveLoadText,SaveLoadScrUp,SaveLoadScrDown,SaveLoadSlots,SaveLoadPic,
+		SaveLoadInfo,SaveLoadDone,SaveLoadDoneText,SaveLoadBack,SaveLoadBackText;
+	int SaveLoadX,SaveLoadY,SaveLoadCX,SaveLoadCY,SaveLoadVectX,SaveLoadVectY;
+	bool SaveLoadLoginScreen,SaveLoadSave;
+	LPDIRECT3DSURFACE SaveLoadDraft;
+	bool SaveLoadProcessDraft,SaveLoadDraftValid;
+
+	struct SaveLoadDataSlot
+	{
+		string Name;
+		string Info;
+		string InfoExt;
+		string FileName;
+		__int64 RealTime;
+		ByteVec PicData;
+
+		bool operator<(const SaveLoadDataSlot& r){return RealTime>r.RealTime;}
+	};
+	typedef vector<SaveLoadDataSlot> SaveLoadDataSlotVec;
+	SaveLoadDataSlotVec SaveLoadDataSlots;
+	DWORD SaveLoadClickSlotTick;
+	int SaveLoadSlotIndex,SaveLoadClickSlotIndex;
+	int SaveLoadSlotScroll,SaveLoadSlotsMax;
+	string SaveLoadFileName;
+
+	void SaveLoadCollect();
+	void SaveLoadSaveGame(const char* name);
+	void SaveLoadFillDraft();
+	void SaveLoadShowDraft();
+	void SaveLoadProcessDone();
+
+	void SaveLoadDraw();
+	void SaveLoadLMouseDown();
+	void SaveLoadLMouseUp();
+	void SaveLoadMouseMove();
 
 /************************************************************************/
 /* Cursor                                                               */
@@ -1567,7 +1615,7 @@ typedef vector<FixDrawComponent*> FixDrawComponentVec;
 		MessBoxMessage(const MessBoxMessage& r){Type=r.Type;Mess=r.Mess;Time=r.Time;}
 		MessBoxMessage& operator=(const MessBoxMessage& r){Type=r.Type;Mess=r.Mess;Time=r.Time;return *this;}
 	};
-typedef vector<MessBoxMessage> MessBoxMessageVec;
+	typedef vector<MessBoxMessage> MessBoxMessageVec;
 
 	MessBoxMessageVec MessBox;
 	string MessBoxCurText;
@@ -1634,6 +1682,7 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define SCREEN__USE             (31)
 #define SCREEN__PERK            (32)
 #define SCREEN__TOWN_VIEW       (33)
+#define SCREEN__SAVE_LOAD       (34)
 
 // Cur modes
 #define CUR_DEFAULT             (0)
@@ -1699,6 +1748,11 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define PROXY_SOCKS5            (2)
 #define PROXY_HTTP              (3)
 
+// InitNetReason
+#define INIT_NET_REASON_LOGIN   (0)
+#define INIT_NET_REASON_REG     (1)
+#define INIT_NET_REASON_LOAD    (2)
+
 // Items collections
 #define ITEMS_INVENTORY               (0)
 #define ITEMS_USE                     (1)
@@ -1745,8 +1799,8 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define IFACE_GAME_MNEXT        (60)
 #define IFACE_LOG_NAME          (80)
 #define IFACE_LOG_PASS          (81)
-#define IFACE_LOG_OK            (82)
-#define IFACE_LOG_REG           (83)
+#define IFACE_LOG_PLAY__NEWGAME (82)
+#define IFACE_LOG_REG__LOADGAME (83)
 #define IFACE_LOG_OPTIONS       (84)
 #define IFACE_LOG_CREDITS       (85)
 #define IFACE_LOG_EXIT          (86)
@@ -1798,8 +1852,11 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define IFACE_SBOX_TRAP         (167)
 #define IFACE_SBOX_SCIENCE      (168)
 #define IFACE_SBOX_REPAIR       (169)
-#define IFACE_MOPT_RESUME       (180)
-#define IFACE_MOPT_EXIT         (181)
+#define IFACE_MOPT_SAVEGAME     (180)
+#define IFACE_MOPT_LOADGAME     (181)
+#define IFACE_MOPT_OPTIONS      (182)
+#define IFACE_MOPT_EXIT         (183)
+#define IFACE_MOPT_RESUME       (184)
 #define IFACE_CHA_PRINT         (200)
 #define IFACE_CHA_OK            (201)
 #define IFACE_CHA_CANCEL        (202)
@@ -1889,6 +1946,11 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define IFACE_IBOX_TITLE        (422)
 #define IFACE_IBOX_TEXT         (423)
 #define IFACE_IBOX_MAIN         (424)
+#define IFACE_SAVELOAD_MAIN     (440)
+#define IFACE_SAVELOAD_SCR_UP   (441)
+#define IFACE_SAVELOAD_SCR_DN   (442)
+#define IFACE_SAVELOAD_DONE     (443)
+#define IFACE_SAVELOAD_BACK     (444)
 
 #define ACCELERATE_NONE             (0)
 #define ACCELERATE_CONSOLE          (1)
@@ -1926,5 +1988,7 @@ typedef vector<MessBoxMessage> MessBoxMessageVec;
 #define ACCELERATE_PERK_SCRDOWN     (33)
 #define ACCELERATE_DLG_TEXT_UP      (34)
 #define ACCELERATE_DLG_TEXT_DOWN    (35)
+#define ACCELERATE_SAVE_LOAD_SCR_UP (36)
+#define ACCELERATE_SAVE_LOAD_SCR_DN (37)
 
 #endif // __CLIENT__

@@ -45,6 +45,7 @@ public:
 	void Process_Move(Client* cl);
 	void Process_CreateClient(Client* cl);
 	void Process_LogIn(ClientPtr& cl);
+	void Process_SingleplayerSaveLoad(Client* cl);
 	void Process_Dir(Client* cl);
 	void Process_ChangeItem(Client* cl);
 	void Process_RateItem(Client* cl);
@@ -96,7 +97,7 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	HoloInfoMap HolodiskInfo;
 	DWORD LastHoloId;
 	void SaveHoloInfoFile();
-	void LoadHoloInfoFile(FILE* f);
+	bool LoadHoloInfoFile(FILE* f);
 	HoloInfo* GetHoloInfo(DWORD id){HoloInfoMapIt it=HolodiskInfo.find(id); return it!=HolodiskInfo.end()?(*it).second:NULL;}
 	void AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send);
 	void ErasePlayerHoloInfo(Critter* cr, DWORD index, bool send);
@@ -118,8 +119,28 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 
 	// Time events
 #define TIME_EVENT_MAX_SIZE       (0xFFFF)
+#define TIME_EVENTS_RESERVE       (1000000/sizeof(TimeEvent)) // 1 mb
+#define TIME_EVENTS_PER_CYCLE     (10)
+	struct TimeEvent
+	{
+		DWORD Num;
+		DWORD FullMinute;
+		string FuncName;
+		int BindId;
+		DWORD Rate;
+		DwordVec Values;
+		bool IsSaved;
+
+		bool operator==(const DWORD& r){return Num==r;}
+	};
+typedef vector<TimeEvent> TimeEventVec;
+typedef vector<TimeEvent>::iterator TimeEventVecIt;
+	TimeEventVec TimeEvents;
+	DWORD TimeEventsLastNum;
+
+	void AddTimeEvent(TimeEvent& te);
 	void SaveTimeEventsFile();
-	void LoadTimeEventsFile(FILE* f);
+	bool LoadTimeEventsFile(FILE* f);
 	DWORD CreateScriptEvent(DWORD begin_minute, const char* script_name, DwordVec& values, bool save);
 	void EraseTimeEvent(DWORD num);
 	void ProcessTimeEvents();
@@ -127,18 +148,18 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	string GetTimeEventsStatistics();
 
 	void SaveScriptFunctionsFile();
-	void LoadScriptFunctionsFile(FILE* f);
+	bool LoadScriptFunctionsFile(FILE* f);
 
 	// Any data
 typedef map<string,ByteVec,less<string>> AnyDataMap;
 typedef map<string,ByteVec,less<string>>::iterator AnyDataMapIt;
 typedef map<string,ByteVec,less<string>>::value_type AnyDataMapVal;
+typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 #define ANY_DATA_MAX_NAME         (64)
-#define ANY_DATA_MAX_SIZE         (0xFFFF)
 
 	AnyDataMap AnyData;
 	void SaveAnyDataFile();
-	void LoadAnyDataFile(FILE* f);
+	bool LoadAnyDataFile(FILE* f);
 	bool SetAnyData(const string& name, const BYTE* data, DWORD data_size);
 	BYTE* GetAnyData(const string& name, DWORD& length);
 	bool IsAnyData(const string& name);
@@ -697,6 +718,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 	void DisconnectClient(Client* cl);
 	void RemoveClient(Client* cl);
+	void AddSaveClient(Client* cl);
 	void EraseSaveClient(DWORD crid);
 	void Process(ClientPtr& acl);
 
@@ -708,7 +730,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	// Game time
 	DWORD GameTimeStartTick,GameTimeStartMinute;
 	void SaveGameInfoFile();
-	void LoadGameInfoFile(FILE* f, DWORD version);
+	bool LoadGameInfoFile(FILE* f);
 	void InitGameTime();
 	void ProcessGameTime();
 
@@ -749,12 +771,20 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	// Dump save/load
 	struct ClientSaveData
 	{
-		DWORD Id;
 		char Name[MAX_NAME+1];
 		char Password[MAX_NAME+1];
 		CritData Data;
 		CritDataExt DataExt;
 		Critter::CrTimeEventVec TimeEvents;
+
+		void Clear()
+		{
+			ZeroMemory(Name,sizeof(Name));
+			ZeroMemory(Password,sizeof(Password));
+			ZeroMemory(&Data,sizeof(Data));
+			ZeroMemory(&DataExt,sizeof(DataExt));
+			TimeEvents.clear();
+		}
 	};
 typedef vector<ClientSaveData> ClientSaveDataVec;
 	static ClientSaveDataVec ClientsSaveData;
@@ -771,8 +801,10 @@ typedef vector<ClientSaveData> ClientSaveDataVec;
 	static HANDLE DumpBeginEvent,DumpEndEvent;
 	static HANDLE DumpThreadHandle;
 
-	void SaveWorld();
-	bool LoadWorld();
+	bool NewWorld();
+	void SaveWorld(const char* name);
+	bool LoadWorld(const char* name);
+	void UnloadWorld();
 	static void AddWorldSaveData(void* data, size_t size);
 	static void AddClientSaveData(Client* cl);
 	static unsigned int __stdcall Dump_Work(void* data); // Thread
@@ -869,6 +901,14 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 	void SetScore(int score, const char* name);
 	const char* GetScores(); // size == MAX_NAME*SCORES_MAX
 	void ClearScore(int score);
+
+	// Singleplayer save
+	struct
+	{
+		bool Valid;
+		ClientSaveData CrData;
+		ByteVec PicData;
+	} SingleplayerSave;
 };
 
 #endif // __SERVER__

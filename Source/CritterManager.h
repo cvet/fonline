@@ -12,25 +12,26 @@
 class CritterManager
 {
 private:
+	bool isActive;
 	FileManager fileMngr;
 	CritData allProtos[MAX_CRIT_PROTOS];
-	DWORD lastNpcId;
-	bool active;
 
 public:
-	CritterManager():active(false),lastNpcId(NPC_START_ID){MEMORY_PROCESS(MEMORY_STATIC,sizeof(CritterManager));}
+	CritterManager():isActive(false){MEMORY_PROCESS(MEMORY_STATIC,sizeof(CritterManager));}
 
 	bool Init();
-	bool IsInit(void) const {return active;}
+	bool IsInit(){return isActive;}
 	void Finish();
+	void Clear();
 
 	bool LoadProtos();
 	CritData* GetProto(WORD proto_id);
 
 #ifdef FONLINE_SERVER
 private:
-	CrMap crMap;
+	CrMap allCritters;
 	DwordVec crToDelete;
+	DWORD lastNpcId;
 	DWORD playersCount,npcCount;
 
 public:
@@ -46,7 +47,7 @@ public:
 	Npc* CreateNpc(WORD proto_id, bool copy_data);
 
 	void AddCritter(Critter* cr);
-	CrMap& GetCritters(){return crMap;}
+	CrMap& GetCritters(){return allCritters;}
 	void GetCopyNpcs(PcVec& npcs);
 	void GetCopyPlayers(ClVec& players);
 	Critter* GetCritter(DWORD crid);

@@ -115,9 +115,6 @@ typedef vector<PathStep> PathStepVec;
 class MapManager
 {
 private:
-	bool active;
-	FileManager fm;
-	FileManager fmMsk;
 	DWORD lastMapId;
 	DWORD lastLocId;
 
@@ -128,6 +125,8 @@ public:
 	MapManager();
 	bool Init();
 	void Finish();
+	void Clear();
+
 	bool LoadLocationsProtos();
 	bool LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WORD pid);
 	bool LoadMapsProtos();

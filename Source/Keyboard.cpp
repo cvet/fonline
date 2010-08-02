@@ -222,8 +222,8 @@ void Keyb::GetChar(BYTE dik, char* str, int* position, int max, int flags)
 		char c;
 		if(Lang==LANG_RUS) c=(ShiftDwn?k.RusShift:k.Rus);
 		else c=(ShiftDwn?k.EngShift:k.Eng);
-		if(flags&KIF_NO_SPEC_SYMBOLS && (c=='\n' || c=='\r' || c=='\t')) return;
-		if(flags&KIF_ONLY_NUMBERS && !(c>='0' && c<='9')) return;
+
+		if(IsInvalidSymbol(c,flags)) return;
 
 		char* str_=&str[len];
 		for(int i=0,j=len-posit+1;i<j;i++,str_--) *(str_+1)=*str_;
@@ -256,9 +256,7 @@ void Keyb::EraseInvalidChars(char* str, int flags)
 	while(*str)
 	{
 		char c=*str;
-		if((flags&KIF_NO_SPEC_SYMBOLS && (c=='\n' || c=='\r' || c=='\t')) ||
-			(flags&KIF_ONLY_NUMBERS && !(c>='0' && c<='9')) ||
-			(std::find(Data.begin(),Data.end(),c)==Data.end()))
+		if(IsInvalidSymbol(c,flags))
 		{
 			// Copy back
 			for(char* str_=str;*str_;str_++) *str_=*(str_+1);
@@ -268,4 +266,23 @@ void Keyb::EraseInvalidChars(char* str, int flags)
 			str++;
 		}
 	}
+}
+
+bool Keyb::IsInvalidSymbol(char c, DWORD flags)
+{
+	if(flags&KIF_NO_SPEC_SYMBOLS && (c=='\n' || c=='\r' || c=='\t')) return true;
+	if(flags&KIF_ONLY_NUMBERS && !(c>='0' && c<='9')) return true;
+	if(flags&KIF_FILE_NAME)
+	{
+		switch(c)
+		{
+		case '\\': case '/': case ':': case '*':
+		case '?': case '"': case '<': case '>': case '|':
+		case '\n': case '\r': case '\t':
+			return true;
+		default:
+			break;
+		}
+	}
+	return std::find(Data.begin(),Data.end(),c)==Data.end();
 }

@@ -398,6 +398,7 @@ struct GameOptions
 	WORD Day;
 	WORD Hour;
 	WORD Minute;
+	WORD Second;
 	DWORD FullMinute;
 	DWORD FullMinuteTick;
 	WORD TimeMultiplier;

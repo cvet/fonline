@@ -175,7 +175,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 #ifdef GAME_THREAD
 	WaitForSingleObject(hGameThread,INFINITE);
 #endif
-	FOEngine->Clear();
+	FOEngine->Finish();
 	delete FOEngine;
 	if(Singleplayer) SingleplayerData.Finish();
 	WriteLog("FOnline finished.\n");

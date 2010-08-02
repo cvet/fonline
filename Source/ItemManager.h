@@ -14,7 +14,6 @@ class ItemManager
 {
 private:
 	bool isActive;
-	ItemPtrMap gameItems;
 	ProtoItem allProto[MAX_ITEM_PROTOTYPES]; // All
 	ProtoItemVec typeProto[ITEM_MAX_TYPES]; // By type
 	DWORD protoHash[ITEM_MAX_TYPES]; // Hash types protos
@@ -25,14 +24,13 @@ private:
 	bool SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, ProtoItemVec* protos);
 
 public:
-	ItemPtrMap& GetGameItems(){return gameItems;}
-	DWORD GetItemsCount(){return gameItems.size();}
 	ProtoItemVec& GetProtos(int type){return typeProto[type];}
 	DWORD GetProtosHash(int type){return protoHash[type];}
 
 	bool Init();
+	bool IsInit(){return isActive;}
 	void Finish();
-	bool IsInit(){return isActive;};
+	void Clear();
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR)
 	bool LoadProtos();
@@ -54,20 +52,20 @@ public:
 	void ClearProto(WORD pid);
 
 #ifdef FONLINE_SERVER
-	
-#endif
-
-#ifdef FONLINE_SERVER
 private:
+	ItemPtrMap gameItems;
 	// StaticPool<Item,1000000> itemsPool;
 	DwordVec itemToDelete;
 	DWORD lastItemId;
 
 public:
 	void SaveAllItemsFile(void(*save_func)(void*,size_t));
-	bool LoadAllItemsFile(FILE* f, int version);
+	bool LoadAllItemsFile(FILE* f);
 	bool CheckProtoFunctions();
 	void RunInitScriptItems();
+
+	ItemPtrMap& GetGameItems(){return gameItems;}
+	DWORD GetItemsCount(){return gameItems.size();}
 
 	Item* CreateItem(WORD pid, DWORD count, DWORD item_id = 0);
 	Item* SplitItem(Item* item, DWORD count);
@@ -75,7 +73,6 @@ public:
 	void EraseItem(DWORD item_id);
 	void FullEraseItemIt(ItemPtrMapIt& it);
 
-	void ClearAllItems();
 	void ItemToGarbage(Item* item, int from);
 	void ItemGarbager(DWORD cycle_tick);
 

@@ -433,9 +433,12 @@ bool SpriteManager::InitRenderStates()
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA));
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA));
 
-//	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE));
-//	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL));
-//	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHAREF,100));
+	if(deviceCaps.AlphaCmpCaps&D3DPCMPCAPS_GREATEREQUAL)
+	{
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHAREF,1));
+	}
 
 	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
 	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR)); // Zoom Out
@@ -586,6 +589,12 @@ bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, DWORD color)
 	D3D_HR(d3dDevice->SetDepthStencilSurface(old_ds));
 	old_rt->Release();
 	old_ds->Release();
+	return true;
+}
+
+bool SpriteManager::ClearCurRenderTarget(DWORD color)
+{
+	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,color,1.0f,0));
 	return true;
 }
 
@@ -1646,6 +1655,18 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 	return true;
 }
 
+bool SpriteManager::DrawSurface(LPDIRECT3DSURFACE& surf, RECT& dst)
+{
+	if(!surf) return true;
+	Flush();
+
+	LPDIRECT3DSURFACE backbuf=NULL;
+	D3D_HR(d3dDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));
+	D3D_HR(d3dDevice->StretchRect(surf,NULL,backbuf,&dst,D3DTEXF_LINEAR));
+	backbuf->Release();
+	return true;
+}
+
 DWORD SpriteManager::GetColor(int r, int g, int b)
 {
 	r=CLAMP(r,0,255);
@@ -2102,6 +2123,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILREF,1));
+		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
 
 		struct Vertex
 		{
@@ -2123,6 +2145,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NOTEQUAL));
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILREF,0));
+		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 	}
 
 	// Create or resize vertex buffer
@@ -2396,7 +2419,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZENABLE,TRUE));
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_NOTEQUAL));
 		D3D_HR(d3dDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
-		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG2));
+		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
 
 		struct Vertex
 		{
@@ -3367,7 +3390,6 @@ int SpriteManager::GetLinesCount(int width, int height, const char* str, int num
 	if(!font) return 0;
 
 	if(!str) return height/(font->MaxLettHeight+font->EmptyVer);
-	if(!str[0]) return 0;
 
 	static FontFormatInfo fi;
 	fi.Init(font,0,INTRECT(0,0,width?width:modeWidth,height?height:modeHeight),str);

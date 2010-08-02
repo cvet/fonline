@@ -108,12 +108,6 @@ bool MapManager::Init()
 {
 	WriteLog("Map manager initialization...\n");
 
-	if(active)
-	{
-		WriteLog("already initialized.\n");
-		return true;
-	}
-
 	if(!ItemMngr.IsInit())
 	{
 		WriteLog("Error, Item manager not initialized.\n");
@@ -130,7 +124,6 @@ bool MapManager::Init()
 	for(int i=1;i<FPATH_DATA_SIZE;i++) pathesPool[i].reserve(100);
 
 	pmapsLoaded.clear();
-	active=true;
 	WriteLog("Map manager initialization complete.\n");
 	return true;
 }
@@ -141,8 +134,9 @@ void MapManager::Finish()
 
 	for(LocMapIt it=gameLoc.begin();it!=gameLoc.end();++it)
 	{
-		(*it).second->Clear(false);
-		(*it).second->Release();
+		Location* loc=(*it).second;
+		loc->Clear(false);
+		loc->Release();
 	}
 	gameLoc.clear();
 	allMaps.clear();
@@ -154,9 +148,26 @@ void MapManager::Finish()
 	for(int i=0;i<MAX_PROTO_MAPS;i++) ProtoMaps[i].Clear();
 	pmapsLoaded.clear();
 	SAFEDEL(gmMask);
-	active=false;
 
 	WriteLog("Map manager finish complete.\n");
+}
+
+void MapManager::Clear()
+{
+	lastMapId=0;
+	lastLocId=0;
+	runGarbager=false;
+
+	for(LocMapIt it=gameLoc.begin();it!=gameLoc.end();++it)
+		SAFEREL((*it).second);
+	gameLoc.clear();
+	for(MapMapIt it=allMaps.begin();it!=allMaps.end();++it)
+		SAFEREL((*it).second);
+	allMaps.clear();
+
+	for(int i=0;i<GM__MAXZONEX;++i)
+		for(int j=0;j<GM__MAXZONEY;++j)
+			gmZone[i][j].Finish();
 }
 
 DwordPair EntranceParser(const char* str)
@@ -173,7 +184,7 @@ bool MapManager::LoadLocationsProtos()
 	IniParser city_txt;
 	if(!city_txt.LoadFile("Locations.cfg",PT_SERVER_MAPS))
 	{
-		WriteLog("File<%s> not found.\n",Str::Format("%sLocations.cfg",fm.GetPath(PT_SERVER_MAPS)));
+		WriteLog("File<%s> not found.\n",FileManager::GetFullPath("Locations.cfg",PT_SERVER_MAPS));
 		return false;
 	}
 
@@ -324,7 +335,7 @@ bool MapManager::LoadMapsProtos()
 	IniParser maps_txt;
 	if(!maps_txt.LoadFile("Maps.cfg",PT_SERVER_MAPS))
 	{
-		WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",fm.GetPath(PT_SERVER_MAPS)));
+		WriteLog("File<%s> not found.\n",FileManager::GetFullPath("Maps.cfg",PT_SERVER_MAPS));
 		return false;
 	}
 
@@ -418,6 +429,10 @@ void MapManager::SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t))
 bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 {
 	WriteLog("Load locations...");
+
+	lastLocId=0;
+	lastMapId=0;
+
 	DWORD count;
 	fread(&count,sizeof(count),1,f);
 	if(!count)
@@ -518,21 +533,10 @@ bool MapManager::GenerateWorld(const char* fname, int path_type)
 {
 	WriteLog("Generate world...\n");
 
-	if(!active)
-	{
-		WriteLog("Map Manager is not init.\n");
-		return false;
-	}
-
-	if(gameLoc.size())
-	{
-		WriteLog("World already generate.\n");
-		return true;
-	}
-
+	FileManager fm;
 	if(!fm.LoadFile(fname,path_type))
 	{
-		WriteLog("Load <%s%s> fail.\n",fm.GetPath(path_type),fname);
+		WriteLog("Load file<%s%s> fail.\n",fm.GetFullPath(fname,path_type));
 		return false;
 	}
 
@@ -856,19 +860,9 @@ void MapManager::LocationGarbager(DWORD cycle_tick)
 
 bool MapManager::RefreshGmMask(const char* mask_path)
 {
-	WriteLog("Refresh GM Mask...");
+	WriteLog("Refresh GM Mask<%s>...",mask_path);
 
-	if(!gmMask) gmMask=new CByteMask(GM_MAXX,GM_MAXY,0);
-	else gmMask->Fill(0);
-
-	if(!mask_path)
-	{
-		WriteLog("file null ptr.\n");
-		return false;
-	}
-
-	WriteLog("<%s>",mask_path);
-
+	FileManager fm;
 	if(!fm.LoadFile(mask_path,PT_SERVER_MAPS)) WriteLog("Global map mask file not found.\n");
 	else if(fm.GetLEWord()!=0x4D42) WriteLog("Invalid file format of global map mask.\n");
 	else
@@ -902,8 +896,6 @@ bool MapManager::RefreshGmMask(const char* mask_path)
 		}
 	}
 	return false;
-//	WriteLog("\nStatistics:\n");
-//	for(int i=0;i<16;i++) WriteLog("ind<%u>, count<%u>\n",i,st[i]);
 }
 
 void MapManager::GM_GroupMove(GlobalMapGroup* group)

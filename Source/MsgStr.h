@@ -28,6 +28,10 @@
 
 #define STR_VERSION_INFO                (1)
 
+// Months, days
+#define STR_MONTH(m)                    (20+(m))
+#define STR_DAY_OF_WEEK(dow)            (32+(dow))
+
 // Misc
 #define STR_DOT							(50)
 #define STR_COMMA						(52)
@@ -72,17 +76,24 @@
 #define STR_LOG_NOT_SAVED               (254)
 #define STR_ZOOM                        (260)
 #define STR_GAME_PAUSED                 (265)
-#define STR_DIALOG_BARTER               (295)
-#define STR_DIALOG_SAY                  (296)
-#define STR_DIALOG_LOG                  (297)
-#define STR_BARTER_OFFER                (300)
-#define STR_BARTER_TALK                 (301)
-#define STR_BARTER_END                  (302)
-#define STR_LOGIN_ENTER                 (305)
-#define STR_LOGIN_REG                   (306)
-#define STR_LOGIN_OPTIONS               (307)
-#define STR_LOGIN_CREDITS               (308)
-#define STR_LOGIN_EXIT                  (309)
+#define STR_DIALOG_BARTER               (275)
+#define STR_DIALOG_SAY                  (276)
+#define STR_DIALOG_LOG                  (277)
+#define STR_BARTER_OFFER                (280)
+#define STR_BARTER_TALK                 (281)
+#define STR_BARTER_END                  (282)
+#define STR_MENUOPT_SAVEGAME            (290)
+#define STR_MENUOPT_LOADGAME            (291)
+#define STR_MENUOPT_OPTIONS             (292)
+#define STR_MENUOPT_EXIT                (293)
+#define STR_MENUOPT_RESUME              (294)
+#define STR_LOGIN_NEWGAME               (300)
+#define STR_LOGIN_LOADGAME              (301)
+#define STR_LOGIN_PLAY                  (302)
+#define STR_LOGIN_REGISTRATION          (303)
+#define STR_LOGIN_OPTIONS               (304)
+#define STR_LOGIN_CREDITS               (305)
+#define STR_LOGIN_EXIT                  (306)
 #define STR_DIALOGBOX_CANCEL            (310)
 #define STR_DIALOGBOX_OK                (311)
 #define STR_DIALOGBOX_FOLLOW            (312)
@@ -92,8 +103,6 @@
 #define STR_DIALOGBOX_ENCOUNTER_TB      (316)
 #define STR_CHA_NAME_NAME               (320)
 #define STR_CHA_NAME_PASS               (321)
-#define STR_MENUOPT_RESUME              (322)
-#define STR_MENUOPT_EXIT                (323)
 #define STR_CHA_OK                      (325)
 #define STR_CHA_CANCEL                  (326)
 #define STR_CHA_PRINT                   (327)
@@ -120,6 +129,12 @@
 #define STR_TOWN_VIEW_BACK              (385)
 #define STR_TOWN_VIEW_ENTER             (386)
 #define STR_TOWN_VIEW_CONTOURS          (387)
+#define STR_SAVE_LOAD_SAVE              (390)
+#define STR_SAVE_LOAD_LOAD              (391)
+#define STR_SAVE_LOAD_DONE              (392)
+#define STR_SAVE_LOAD_BACK              (393)
+#define STR_SAVE_LOAD_NEW_RECORD        (394)
+#define STR_SAVE_LOAD_TYPE_RECORD_NAME  (395)
 
 // Inventory
 #define STR_INV_SHORT_SPECIAL_(num)     (400+(num))
@@ -299,6 +314,13 @@
 #define STR_NET_LOGIN_SCRIPT_FAIL       (1048)
 #define STR_NET_PERMANENT_DEATH         (1049)
 
+#define STR_SP_SAVE_SUCCESS             (1070)
+#define STR_SP_SAVE_FAIL                (1071)
+#define STR_SP_LOAD_SUCCESS             (1072)
+#define STR_SP_LOAD_FAIL                (1073)
+#define STR_SP_NEW_GAME_SUCCESS         (1074)
+#define STR_SP_NEW_GAME_FAIL            (1075)
+
 // Parameters
 #define STR_PARAM_NAME_(index)          (100000+(index)*10+1)
 #define STR_PARAM_NAME #(index)         (100000+(index)*10+1)
@@ -477,6 +499,7 @@
 // Credits
 #define STR_GAME_CREDITS_SPEED          (2000001000)
 #define STR_GAME_CREDITS                (2000001010)
+#define STR_GAME_CREDITS_EXT            (2000001020)
 
 //***************************************************************************************
 //***  FOOBJ.MSG  ***********************************************************************

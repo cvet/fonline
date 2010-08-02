@@ -15,32 +15,26 @@ ItemManager ItemMngr;
 
 bool ItemManager::Init()
 {
-	WriteLog("Items manager initialization...\n");
+	WriteLog("Item manager initialization...\n");
+
 	if(IsInit())
 	{
 		WriteLog("already init.\n");
 		return true;
 	}
 
-	ZeroMemory(protoScript,sizeof(protoScript));
+	Clear();
 	ClearProtos();
 
-#ifdef FONLINE_SERVER
-	lastItemId=0;
-#endif
-
-#ifdef ITEMS_STATISTICS
-	ZeroMemory(itemCount,sizeof(itemCount)); // Statistics
-#endif
-
 	isActive=true;
-	WriteLog("Items manager initialization complete.\n");
+	WriteLog("Item manager initialization complete.\n");
 	return true;
 }
 
 void ItemManager::Finish()
 {
-	WriteLog("Items manager finish...\n");
+	WriteLog("Item manager finish...\n");
+
 	if(!isActive)
 	{
 		WriteLog("already finish or not init.\n");
@@ -49,17 +43,39 @@ void ItemManager::Finish()
 
 #ifdef FONLINE_SERVER
 	ItemGarbager(0);
-	ClearAllItems();
+	
+	//WriteLog("Items pool size<%d>.\n",itemsPool.GetSize());
+	ItemPtrMap items=gameItems;
+	for(ItemPtrMapIt it=items.begin(),end=items.end();it!=end;++it)
+	{
+		Item* item=(*it).second;
+		item->EventFinish(false);
+		item->Release();
+		//itemsPool.Free((*it).second);
+	}
+	gameItems.clear();
 #endif
 
+	Clear();
 	ClearProtos();
+
+	isActive=false;
+	WriteLog("Item manager finish complete.\n");
+}
+
+void ItemManager::Clear()
+{
+#ifdef FONLINE_SERVER
+	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
+		SAFEREL((*it).second);
+	gameItems.clear();
+	itemToDelete.clear();
+	lastItemId=0;
+#endif
 
 #ifdef ITEMS_STATISTICS
 	ZeroMemory(itemCount,sizeof(itemCount)); // Statistics
 #endif
-
-	isActive=false;
-	WriteLog("Items manager finish success.\n");
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR)
@@ -841,9 +857,11 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 	}
 }
 
-bool ItemManager::LoadAllItemsFile(FILE* f, int version)
+bool ItemManager::LoadAllItemsFile(FILE* f)
 {
 	WriteLog("Load items...");
+
+	lastItemId=0;
 
 	DWORD count;
 	fread(&count,sizeof(count),1,f);
@@ -893,25 +911,6 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 		if(lexems[0]) item->SetLexems(lexems);
 
 		AddItemStatistics(pid,item->GetCount());
-
-		if(version==WORLD_SAVE_V6)
-		{
-			if(item->IsDoor())
-			{
-				bool is_open=FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN);
-				if(is_open || item->Proto->Door.NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
-				else UNSETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
-				if(is_open || item->Proto->Door.NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
-				else UNSETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
-				if(is_open || item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
-				else UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
-				SETFLAG(item->Data.Flags,ITEM_GAG);
-			}
-			if(item->Data.LightIntensity || item->Proto->LightIntensity) SETFLAG(item->Data.Flags,ITEM_LIGHT);
-			if(FLAG(item->Proto->Flags,ITEM_LIGHT)) SETFLAG(item->Data.Flags,ITEM_LIGHT);
-			if(FLAG(item->Proto->Flags,ITEM_COLORIZE)) SETFLAG(item->Data.Flags,ITEM_COLORIZE);
-			if(FLAG(item->Proto->Flags,ITEM_COLORIZE_INV)) SETFLAG(item->Data.Flags,ITEM_COLORIZE_INV);
-		}
 	}
 	if(errors) return false;
 
@@ -1058,20 +1057,6 @@ void ItemManager::FullEraseItemIt(ItemPtrMapIt& it)
 	item->Release();
 	//itemsPool.Free(item);
 	gameItems.erase(it);
-}
-
-void ItemManager::ClearAllItems()
-{
-	//	WriteLog("Items pool size<%d>.\n",itemsPool.GetSize());
-	ItemPtrMap items=gameItems;
-	for(ItemPtrMapIt it=items.begin(),end=items.end();it!=end;++it)
-	{
-		Item* item=(*it).second;
-		item->EventFinish(false);
-		item->Release();
-		//itemsPool.Free((*it).second);
-	}
-	gameItems.clear();
 }
 
 void ItemManager::ItemToGarbage(Item* item, int from)

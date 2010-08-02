@@ -28,7 +28,7 @@ char PathLst[][50]=
 	"scripts\\",
 	"video\\",
 	"text\\",
-	"",
+	"save\\",
 	"",
 	"",
 	"",
@@ -602,6 +602,13 @@ void FileManager::FormatPath(char* path)
 
 void FileManager::ExtractPath(const char* fname, char* path)
 {
+	bool dup=false;
+	if(fname==path)
+	{
+		fname=StringDuplicate(fname);
+		dup=true;
+	}
+
 	const char* str=strstr(fname,"\\");
 	if(str)
 	{
@@ -620,10 +627,19 @@ void FileManager::ExtractPath(const char* fname, char* path)
 	{
 		path[0]=0;
 	}
+
+	if(dup) delete[] fname;
 }
 
 void FileManager::ExtractFileName(const char* fname, char* name)
 {
+	bool dup=false;
+	if(fname==name)
+	{
+		fname=StringDuplicate(fname);
+		dup=true;
+	}
+
 	const char* str=strstr(fname,"\\");
 	if(str)
 	{
@@ -642,6 +658,8 @@ void FileManager::ExtractFileName(const char* fname, char* name)
 	{
 		name[0]=0;
 	}
+
+	if(dup) delete[] fname;
 }
 
 const char* FileManager::GetExtension(const char* fname)

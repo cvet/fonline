@@ -38,7 +38,7 @@ HANDLE FOServer::DumpThreadHandle=NULL;
 
 FOServer::FOServer()
 {
-	Active=0;
+	Active=false;
 	ShowUIDError=false;
 	CycleBeginTick=0;
 	ZeroMemory((void*)&Statistics,sizeof(Statistics));
@@ -46,6 +46,7 @@ FOServer::FOServer()
 	ZeroMemory(RadioChannels,sizeof(RadioChannels));
 	ServerWindow=NULL;
 	LastClientId=0;
+	SingleplayerSave.Valid=false;
 	Self=this;
 	MEMORY_PROCESS(MEMORY_STATIC,sizeof(FOServer));
 }
@@ -199,8 +200,7 @@ void FOServer::DisconnectClient(Client* cl)
 	{
 		cl->Disconnect(); // Refresh disconnectTick
 		EraseSaveClient(cl->GetId());
-		cl->AddRef();
-		SaveClients.push_back(cl);
+		AddSaveClient(cl);
 
 		SETFLAG(cl->Flags,FCRIT_DISCONNECT);
 		if(cl->GetMap())
@@ -264,13 +264,9 @@ void FOServer::RemoveClient(Client* cl)
 			cl->GroupMove=NULL;
 		}
 
-		// Deffered saving
+		// Deferred saving
 		EraseSaveClient(cl->GetId());
-		if(!cl->Data.ClientToDelete)
-		{
-			cl->AddRef();
-			SaveClients.push_back(cl);
-		}
+		if(!cl->Data.ClientToDelete) AddSaveClient(cl);
 
 		CrMngr.EraseCritter(cl);
 		cl->Disconnect();
@@ -289,6 +285,13 @@ void FOServer::RemoveClient(Client* cl)
 		cl->Disconnect();
 		cl->IsNotValid=true;
 	}
+}
+
+void FOServer::AddSaveClient(Client* cl)
+{
+	if(Singleplayer) return;
+	cl->AddRef();
+	SaveClients.push_back(cl);
 }
 
 void FOServer::EraseSaveClient(DWORD crid)
@@ -447,7 +450,7 @@ void FOServer::RunGameLoop()
 		// Saver
 		if(CycleBeginTick>=SaveWorldNextTick)
 		{
-			SaveWorld();
+			SaveWorld(NULL);
 			SaveWorldNextTick=Timer::FastTick()+SaveWorldTime;
 		}
 
@@ -486,7 +489,7 @@ void FOServer::RunGameLoop()
 		}
 	}
 
-	SaveWorld();
+	SaveWorld(NULL);
 }
 
 unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
@@ -617,7 +620,7 @@ void FOServer::Net_Input(WSAOVERLAPPED_EX* io)
 	Client* cl=(Client*)io->Client;
 
 	cl->Bin.Lock();
-	if(cl->Bin.GetCurPos()+io->Bytes>=GameOpt.FloodSize)
+	if(cl->Bin.GetCurPos()+io->Bytes>=GameOpt.FloodSize && !Singleplayer)
 	{
 		WriteLog(__FUNCTION__" - Flood.\n");
 		cl->Disconnect();
@@ -705,8 +708,6 @@ void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 
 void FOServer::Process(ClientPtr& cl)
 {
-#define TIME_CHECKER //if(Timer::FastTick()>=tick+50) WriteLog(__FUNCTION__" - !!!Lag<%u> message<%u>.\n",Timer::FastTick()-tick,(msg>>8)&0xFF)
-
 	if(cl->IsOffline())
 	{
 		cl->Bin.LockReset();
@@ -738,20 +739,24 @@ void FOServer::Process(ClientPtr& cl)
 				BIN_END(cl);
 				break;
 			case NETMSG_PING:
-				Process_Ping(cl);TIME_CHECKER;
+				Process_Ping(cl);
 				BIN_END(cl);
 				break;
 			case NETMSG_LOGIN:
-				Process_LogIn(cl);TIME_CHECKER;
+				Process_LogIn(cl);
 				BIN_END(cl);
 				break;
 			case NETMSG_CREATE_CLIENT:
-				Process_CreateClient(cl);TIME_CHECKER;
+				Process_CreateClient(cl);
+				BIN_END(cl);
+				break;
+			case NETMSG_SINGLEPLAYER_SAVE_LOAD:
+				Process_SingleplayerSaveLoad(cl);
 				BIN_END(cl);
 				break;
 			default:
 				//WriteLog(__FUNCTION__" - Invalid msg<%u> from client<%s> on STATE_CONN. Skip.\n",msg,cl->GetInfo());
-				cl->Bin.SkipMsg(msg);TIME_CHECKER;
+				cl->Bin.SkipMsg(msg);
 				BIN_END(cl);
 				break;
 			}
@@ -782,22 +787,22 @@ void FOServer::Process(ClientPtr& cl)
 			switch(msg) 
 			{
 			case NETMSG_PING:
-				Process_Ping(cl);TIME_CHECKER;
+				Process_Ping(cl);
 				BIN_END(cl);
 				break;
 			case NETMSG_SEND_GIVE_MAP:
 				CHECK_BUSY;
-				Process_GiveMap(cl);TIME_CHECKER;
+				Process_GiveMap(cl);
 				BIN_END(cl);
 				break;
 			case NETMSG_SEND_LOAD_MAP_OK:
 				CHECK_BUSY;
-				Process_ParseToGame(cl);TIME_CHECKER;
+				Process_ParseToGame(cl);
 				BIN_END(cl);
 				break;
 			default:
 				//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLog(__FUNCTION__" - Invalid msg<%u> from client<%s> on STATE_LOGINOK. Skip.\n",msg,cl->GetInfo());
-				cl->Bin.SkipMsg(msg);TIME_CHECKER;
+				cl->Bin.SkipMsg(msg);
 				BIN_END(cl);
 				break;
 			}
@@ -834,38 +839,38 @@ void FOServer::Process(ClientPtr& cl)
 			{
 			case NETMSG_PING:
 				{
-					Process_Ping(cl);TIME_CHECKER;
+					Process_Ping(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_TEXT:
 				{
-					Process_Text(cl);TIME_CHECKER;
+					Process_Text(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_COMMAND:
 				{
-					Process_Command(cl);TIME_CHECKER;
+					Process_Command(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_LEVELUP:
 				{
-					Process_LevelUp(cl);TIME_CHECKER;
+					Process_LevelUp(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_CRAFT_ASK:
 				{
-					Process_CraftAsk(cl);TIME_CHECKER;
+					Process_CraftAsk(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_CRAFT:
 				{
 					CHECK_BUSY_AND_LIFE;
-					Process_Craft(cl);TIME_CHECKER;
+					Process_Craft(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -873,7 +878,7 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
-					Process_Dir(cl);TIME_CHECKER;
+					Process_Dir(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -882,7 +887,7 @@ void FOServer::Process(ClientPtr& cl)
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
 					CHECK_REAL_AP(cl->GetApCostCritterMove(false));
-					Process_Move(cl);TIME_CHECKER;
+					Process_Move(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -891,7 +896,7 @@ void FOServer::Process(ClientPtr& cl)
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
 					CHECK_REAL_AP(cl->GetApCostCritterMove(true));
-					Process_Move(cl);TIME_CHECKER;
+					Process_Move(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -899,7 +904,7 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_AP_MSG;
-					Process_UseItem(cl);TIME_CHECKER;
+					Process_UseItem(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -908,7 +913,7 @@ void FOServer::Process(ClientPtr& cl)
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
 					CHECK_AP(cl->GetApCostPickItem());
-					Process_PickItem(cl);TIME_CHECKER;
+					Process_PickItem(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -917,7 +922,7 @@ void FOServer::Process(ClientPtr& cl)
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
 					CHECK_AP(cl->GetApCostPickCritter());
-					Process_PickCritter(cl);TIME_CHECKER;
+					Process_PickCritter(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -925,7 +930,7 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_AP(cl->GetApCostMoveItemContainer());
-					Process_ContainerItem(cl);TIME_CHECKER;
+					Process_ContainerItem(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -933,26 +938,26 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_AP_MSG;
-					Process_ChangeItem(cl);TIME_CHECKER;
+					Process_ChangeItem(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_RATE_ITEM:
 				{
-					Process_RateItem(cl);TIME_CHECKER;
+					Process_RateItem(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_SORT_VALUE_ITEM:
 				{
-					Process_SortValueItem(cl);TIME_CHECKER;
+					Process_SortValueItem(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_USE_SKILL:
 				{
 					CHECK_BUSY_AND_LIFE;
-					CHECK_AP(cl->GetApCostUseSkill());TIME_CHECKER;
+					CHECK_AP(cl->GetApCostUseSkill());
 					Process_UseSkill(cl);
 					BIN_END(cl);
 					continue;
@@ -961,7 +966,7 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
-					Process_Dialog(cl,false);TIME_CHECKER;
+					Process_Dialog(cl,false);
 					BIN_END(cl);
 					continue;
 				}
@@ -969,7 +974,7 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
-					Process_Dialog(cl,true);TIME_CHECKER;
+					Process_Dialog(cl,true);
 					BIN_END(cl);
 					continue;
 				}
@@ -977,20 +982,20 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
-					Process_Barter(cl);TIME_CHECKER;
+					Process_Barter(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_PLAYERS_BARTER:
 				{
 					CHECK_BUSY_AND_LIFE;
-					Process_PlayersBarter(cl);TIME_CHECKER;
+					Process_PlayersBarter(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_SCREEN_ANSWER:
 				{
-					Process_ScreenAnswer(cl);TIME_CHECKER;
+					Process_ScreenAnswer(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -1004,20 +1009,20 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					CHECK_NO_GLOBAL;
-					Process_Combat(cl);TIME_CHECKER;
+					Process_Combat(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_GET_INFO:
 				{
-					cl->Send_GameInfo(MapMngr.GetMap(cl->GetMap()));TIME_CHECKER;
+					cl->Send_GameInfo(MapMngr.GetMap(cl->GetMap()));
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_GIVE_MAP:
 				{
 					CHECK_BUSY;
-					Process_GiveMap(cl);TIME_CHECKER;
+					Process_GiveMap(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -1028,61 +1033,67 @@ void FOServer::Process(ClientPtr& cl)
 			case NETMSG_SEND_GIVE_GLOBAL_INFO:
 				{
 					CHECK_IS_GLOBAL;
-					Process_GiveGlobalInfo(cl);TIME_CHECKER;
+					Process_GiveGlobalInfo(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_RULE_GLOBAL:
 				{
 					CHECK_BUSY_AND_LIFE;
-					Process_RuleGlobal(cl);TIME_CHECKER;
+					Process_RuleGlobal(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_RADIO:
 				{
 					CHECK_BUSY_AND_LIFE;
-					Process_Radio(cl);TIME_CHECKER;
+					Process_Radio(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_SET_USER_HOLO_STR:
 				{
 					CHECK_BUSY_AND_LIFE;
-					Process_SetUserHoloStr(cl);TIME_CHECKER;
+					Process_SetUserHoloStr(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_GET_USER_HOLO_STR:
 				{
 					CHECK_BUSY_AND_LIFE;
-					Process_GetUserHoloStr(cl);TIME_CHECKER;
+					Process_GetUserHoloStr(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_GET_SCORES:
 				{
 					CHECK_BUSY;
-					Process_GetScores(cl);TIME_CHECKER;
+					Process_GetScores(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_RUN_SERVER_SCRIPT:
 				{
-					Process_RunServerScript(cl);TIME_CHECKER;
+					Process_RunServerScript(cl);
 					BIN_END(cl);
 					continue;
 				}
 			case NETMSG_SEND_KARMA_VOTING:
 				{
-					Process_KarmaVoting(cl);TIME_CHECKER;
+					Process_KarmaVoting(cl);
+					BIN_END(cl);
+					continue;
+				}
+			case NETMSG_SINGLEPLAYER_SAVE_LOAD:
+				{
+					Process_SingleplayerSaveLoad(cl);
 					BIN_END(cl);
 					continue;
 				}
 			default:
 				{
 					//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLog(__FUNCTION__" - Invalid msg<%u> from client<%s> on STATE_GAME. Skip.\n",msg,cl->GetInfo());
-					cl->Bin.SkipMsg(msg);TIME_CHECKER;
+					cl->Bin.SkipMsg(msg);
 					BIN_END(cl);
 					continue;
 				}
@@ -2733,64 +2744,89 @@ void FOServer::Process_Command(Client* cl)
 
 void FOServer::SaveGameInfoFile()
 {
+	// Singleplayer info
+	DWORD sp=(SingleplayerSave.Valid?1:0);
+	AddWorldSaveData(&sp,sizeof(sp));
+	if(SingleplayerSave.Valid)
+	{
+		// Critter data
+		ClientSaveData& csd=SingleplayerSave.CrData;
+		AddWorldSaveData(csd.Name,sizeof(csd.Name));
+		AddWorldSaveData(&csd.Data,sizeof(csd.Data));
+		AddWorldSaveData(&csd.DataExt,sizeof(csd.DataExt));
+		DWORD te_count=csd.TimeEvents.size();
+		AddWorldSaveData(&te_count,sizeof(te_count));
+		if(te_count) AddWorldSaveData(&csd.TimeEvents[0],te_count*sizeof(Critter::CrTimeEvent));
+
+		// Picture data
+		DWORD pic_size=SingleplayerSave.PicData.size();
+		AddWorldSaveData(&pic_size,sizeof(pic_size));
+		if(pic_size) AddWorldSaveData(&SingleplayerSave.PicData[0],pic_size);
+	}
+
+	// Time
 	AddWorldSaveData(&GameOpt.Year,sizeof(GameOpt.Year));
 	AddWorldSaveData(&GameOpt.Month,sizeof(GameOpt.Month));
 	AddWorldSaveData(&GameOpt.Day,sizeof(GameOpt.Day));
 	AddWorldSaveData(&GameOpt.Hour,sizeof(GameOpt.Hour));
 	AddWorldSaveData(&GameOpt.Minute,sizeof(GameOpt.Minute));
+	AddWorldSaveData(&GameOpt.Second,sizeof(GameOpt.Second));
 	AddWorldSaveData(&GameOpt.TimeMultiplier,sizeof(GameOpt.TimeMultiplier));
+
+	// Scores
 	AddWorldSaveData(&BestScores[0],sizeof(BestScores));
 }
 
-void FOServer::LoadGameInfoFile(FILE* f, DWORD version)
+bool FOServer::LoadGameInfoFile(FILE* f)
 {
-	if(version>=WORLD_SAVE_V4)
-	{
-		fread(&GameOpt.Year,sizeof(GameOpt.Year),1,f);
-		fread(&GameOpt.Month,sizeof(GameOpt.Month),1,f);
-		fread(&GameOpt.Day,sizeof(GameOpt.Day),1,f);
-		fread(&GameOpt.Hour,sizeof(GameOpt.Hour),1,f);
-		fread(&GameOpt.Minute,sizeof(GameOpt.Minute),1,f);
-		fread(&GameOpt.TimeMultiplier,sizeof(GameOpt.TimeMultiplier),1,f);
-	}
-	else
-	{
-		BYTE month,day,hour,minute,tmul;
-		fread(&GameOpt.Year,sizeof(GameOpt.Year),1,f);
-		fread(&month,sizeof(month),1,f);
-		fread(&day,sizeof(day),1,f);
-		fread(&hour,sizeof(hour),1,f);
-		fread(&minute,sizeof(minute),1,f);
-		fread(&tmul,sizeof(tmul),1,f);
-		GameOpt.Month=month;
-		GameOpt.Day=day;
-		GameOpt.Hour=hour;
-		GameOpt.Minute=minute;
-		GameOpt.TimeMultiplier=tmul;
-	}
+	WriteLog("Load game info...");
 
-	ZeroMemory(&BestScores[0],sizeof(BestScores));
-	if(version==WORLD_SAVE_V1)
+	// Singleplayer info
+	DWORD sp=0;
+	if(!fread(&sp,sizeof(sp),1,f)) return false;
+	if(sp==1)
 	{
-		for(int i=0;i<SCORES_MAX;i++)
+		WriteLog("singleplayer...");
+
+		// Critter data
+		ClientSaveData& csd=SingleplayerSave.CrData;
+		csd.Clear();
+		if(!fread(csd.Name,sizeof(csd.Name),1,f)) return false;
+		if(!fread(&csd.Data,sizeof(csd.Data),1,f)) return false;
+		if(!fread(&csd.DataExt,sizeof(csd.DataExt),1,f)) return false;
+		DWORD te_count=csd.TimeEvents.size();
+		if(!fread(&te_count,sizeof(te_count),1,f)) return false;
+		if(te_count)
 		{
-			DWORD id;
-			char name[MAX_NAME+1];
-			char padding[3];
-			int val;
-			fread(&id,sizeof(id),1,f);
-			fread(name,sizeof(name),1,f);
-			fread(padding,sizeof(padding),1,f);
-			fread(&val,sizeof(val),1,f);
-			BestScores[i].ClientId=id;
-			StringCopy(BestScores[i].ClientName,name);
-			BestScores[i].Value=val;
+			csd.TimeEvents.resize(te_count);
+			if(!fread(&csd.TimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f)) return false;
+		}
+
+		// Picture data
+		DWORD pic_size=0;
+		if(!fread(&pic_size,sizeof(pic_size),1,f)) return false;
+		if(pic_size)
+		{
+			SingleplayerSave.PicData.resize(pic_size);
+			if(!fread(&SingleplayerSave.PicData[0],pic_size,1,f)) return false;
 		}
 	}
-	else if(version>=WORLD_SAVE_V2)
-	{
-		fread(&BestScores[0],sizeof(BestScores),1,f);
-	}
+	SingleplayerSave.Valid=(sp==1);
+
+	// Time
+	if(!fread(&GameOpt.Year,sizeof(GameOpt.Year),1,f)) return false;
+	if(!fread(&GameOpt.Month,sizeof(GameOpt.Month),1,f)) return false;
+	if(!fread(&GameOpt.Day,sizeof(GameOpt.Day),1,f)) return false;
+	if(!fread(&GameOpt.Hour,sizeof(GameOpt.Hour),1,f)) return false;
+	if(!fread(&GameOpt.Minute,sizeof(GameOpt.Minute),1,f)) return false;
+	if(!fread(&GameOpt.Second,sizeof(GameOpt.Second),1,f)) return false;
+	if(!fread(&GameOpt.TimeMultiplier,sizeof(GameOpt.TimeMultiplier),1,f)) return false;
+
+	// Scores
+	if(!fread(&BestScores[0],sizeof(BestScores),1,f)) return false;
+
+	WriteLog("complete.\n");
+	return true;
 }
 
 void FOServer::InitGameTime()
@@ -2951,15 +2987,22 @@ bool FOServer::Init()
 	if(!InitScriptSystem()) goto label_Error; // Script system
 	if(!InitLangPacks(LangPacks)) goto label_Error; // Language packs
 	if(!InitLangScript(LangPacks)) goto label_Error; // Client scripts
-	if(!LoadClientsData()) goto label_Error;
+	if(!Singleplayer && !LoadClientsData()) goto label_Error;
+	if(!Singleplayer) LoadBans();
 	ConnectedClients.clear();
-	ConnectedClients.reserve(MAX_CLIENTS_IN_GAME);
-	InitializeCriticalSection(&CSConnectedClients);
 	SaveClients.clear();
-	SaveClients.reserve(MAX_CLIENTS_IN_GAME);
-	LastHoloId=USER_HOLO_START_NUM;
 	RegIp.clear();
-	LoadBans();
+	LastHoloId=USER_HOLO_START_NUM;
+	TimeEventsLastNum=0;
+	InitializeCriticalSection(&CSConnectedClients);
+
+	// Reserve memory
+	if(!Singleplayer)
+	{
+		ConnectedClients.reserve(MAX_CLIENTS_IN_GAME);
+		SaveClients.reserve(MAX_CLIENTS_IN_GAME);
+		TimeEvents.reserve(TIME_EVENTS_RESERVE);
+	}
 
 	// Managers
 	if(!AIMngr.Init()) goto label_Error; // NpcAi manager
@@ -2978,20 +3021,20 @@ bool FOServer::Init()
 	if(!CrMngr.LoadProtos()) goto label_Error; // Proto critters
 	if(!MapMngr.LoadMapsProtos()) goto label_Error; // Proto maps
 	if(!MapMngr.LoadLocationsProtos()) goto label_Error; // Proto locations
-
-	// Copy of data
-	if(!LoadWorld()) goto label_Error;
-	VarsGarbarger(0);
-	InitGameTime();
 	if(!ItemMngr.CheckProtoFunctions()) goto label_Error; // Check valid of proto functions
-	if(!TransferAllNpc()) goto label_Error; // Transfer critter copies to maps
-	if(!TransferAllItems()) goto label_Error; // Transfer items copies to critters and maps
-	MapMngr.RunInitScriptMaps(); // Init scripts for maps
-	CrMngr.RunInitScriptCritters(); // Init scripts for critters
-	ItemMngr.RunInitScriptItems(); // Init scripts for maps
 
-	// Try generate world if not exist
-	if(!MapMngr.GenerateWorld("GenerateWorld.cfg",PT_SERVER_MAPS)) goto label_Error;
+	// World loading
+	if(!Singleplayer)
+	{
+		// Copy of data
+		if(!LoadWorld(NULL)) goto label_Error;
+
+		// Try generate world if not exist
+		if(MapMngr.GetLocations().empty() && !NewWorld()) goto label_Error;
+
+		// Clear unused variables
+		VarsGarbarger(0);
+	}
 
 	// End of initialization
 	Statistics.BytesSend=0;
@@ -3116,6 +3159,7 @@ bool FOServer::Init()
 	ScriptSystemUpdate();
 
 	// World saver
+	if(Singleplayer) WorldSaveManager=0; // Disable deferred saving
 	if(WorldSaveManager)
 	{
 		DumpBeginEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
@@ -3560,14 +3604,14 @@ bool FOServer::LoadClientsData()
 			WriteLog("Unable to open client save file<%s>.\n",fname_);
 			return false;
 		}
-		DWORD id=0;
+
 		char pass[MAX_NAME+1]={0};
-		fread(&id,sizeof(id),1,f);
-		fread(pass,sizeof(pass),1,f);
+		DWORD id=-1;
+		bool read_ok=(fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
 		fclose(f);
 
 		DWORD pass_len=strlen(pass);
-		if(!IS_USER_ID(id) || pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(pass))
+		if(!read_ok || !IS_USER_ID(id) || pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(pass))
 		{
 			WriteLog("Wrong id<%u> or password<%s> of client<%s>. Skip.\n",id,pass,name);
 			if(!FindNextFile(h,&fdata)) break;
@@ -3602,6 +3646,8 @@ bool FOServer::LoadClientsData()
 
 bool FOServer::SaveClient(Client* cl, bool deferred)
 {
+	if(Singleplayer) return true;
+
 	if(!strcmp(cl->Name,"err") || !cl->GetId())
 	{
 		WriteLog(__FUNCTION__" - Trying save not valid client.\n");
@@ -3621,7 +3667,7 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 	}
 	else
 	{
-		char fname[64];
+		char fname[MAX_PATH];
 		sprintf(fname,".\\save\\clients\\%s.client",cl->Name);
 		FILE* f=NULL;
 		if(fopen_s(&f,fname,"wb"))
@@ -3630,7 +3676,6 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 			return false;
 		}
 
-		_fwrite_nolock(&cl->Data.Id,sizeof(cl->Data.Id),1,f);
 		_fwrite_nolock(cl->Pass,sizeof(cl->Pass),1,f);
 		_fwrite_nolock(&cl->Data,sizeof(cl->Data),1,f);
 		_fwrite_nolock(data_ext,sizeof(CritDataExt),1,f);
@@ -3644,6 +3689,8 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 
 bool FOServer::LoadClient(Client* cl)
 {
+	if(Singleplayer) return true;
+
 	CritDataExt* data_ext=cl->GetDataExt();
 	if(!data_ext)
 	{
@@ -3651,7 +3698,7 @@ bool FOServer::LoadClient(Client* cl)
 		return false;
 	}
 
-	char fname[64];
+	char fname[MAX_PATH];
 	sprintf(fname,".\\save\\clients\\%s.client",cl->Name);
 	FILE* f=NULL;
 	if(fopen_s(&f,fname,"rb"))
@@ -3660,30 +3707,38 @@ bool FOServer::LoadClient(Client* cl)
 		return false;
 	}
 
-	DWORD id=-2;
-	fread(&id,sizeof(id),1,f);
-	fread(cl->Pass,sizeof(cl->Pass),1,f);
-	fread(&cl->Data,sizeof(cl->Data),1,f);
-	fread(data_ext,sizeof(CritDataExt),1,f);
+	if(!fread(cl->Pass,sizeof(cl->Pass),1,f)) goto label_FileTruncated;
+	if(!fread(&cl->Data,sizeof(cl->Data),1,f)) goto label_FileTruncated;
+	if(!fread(data_ext,sizeof(CritDataExt),1,f)) goto label_FileTruncated;
 	DWORD te_count;
-	fread(&te_count,sizeof(te_count),1,f);
+	if(!fread(&te_count,sizeof(te_count),1,f)) goto label_FileTruncated;
 	if(te_count)
 	{
 		cl->CrTimeEvents.resize(te_count);
-		fread(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f);
+		if(!fread(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f)) goto label_FileTruncated;
 	}
-	fclose(f);
 
-	if(id!=cl->Data.Id)
-	{
-		WriteLog(__FUNCTION__" - Client save file<%s> truncated.\n",fname);
-		return false;
-	}
+	fclose(f);
+	return true;
+
+label_FileTruncated:
+	WriteLog(__FUNCTION__" - Client save file<%s> truncated.\n",fname);
+	fclose(f);
+	return false;
+}
+
+bool FOServer::NewWorld()
+{
+	UnloadWorld();
+	InitGameTime();
+	if(!MapMngr.GenerateWorld("GenerateWorld.cfg",PT_SERVER_MAPS)) return false;
 	return true;
 }
 
-void FOServer::SaveWorld()
+void FOServer::SaveWorld(const char* name)
 {
+	if(!name && Singleplayer) return; // Disable autosaving in singleplayer mode
+
 	double tick;
 	if(WorldSaveManager)
 	{
@@ -3701,16 +3756,12 @@ void FOServer::SaveWorld()
 		char fname[64];
 		sprintf(fname,".\\save\\world%04d.fo",SaveWorldIndex+1);
 		DumpFile=NULL;
-		if(fopen_s(&DumpFile,fname,"wb"))
+		if(fopen_s(&DumpFile,name?name:fname,"wb"))
 		{
-			WriteLog("Can't create dump file<%s>.\n",fname);
+			WriteLog("Can't create dump file<%s>.\n",name?name:fname);
 			return;
 		}
 	}
-
-	// Version
-	DWORD version=WORLD_SAVE_LAST;
-	AddWorldSaveData(&version,sizeof(version));
 
 	// ServerFunctions.SaveWorld
 	SaveWorldDeleteIndexes.clear();
@@ -3722,6 +3773,13 @@ void FOServer::SaveWorld()
 		if(Script::RunPrepared()) Script::AssignScriptArrayInVector(SaveWorldDeleteIndexes,delete_indexes);
 		delete_indexes->Release();
 	}
+
+	// Version
+	DWORD version=WORLD_SAVE_LAST;
+	AddWorldSaveData(&version,sizeof(version));
+
+	// SaveGameInfoFile
+	SaveGameInfoFile();
 
 	// SaveAllLocationsAndMapsFile
 	MapMngr.SaveAllLocationsAndMapsFile(AddWorldSaveData);
@@ -3744,11 +3802,10 @@ void FOServer::SaveWorld()
 	// SaveTimeEventsFile
 	SaveTimeEventsFile();
 
-	// SaveGameInfoFile
-	SaveGameInfoFile();
-
 	// SaveScriptFunctionsFile
 	SaveScriptFunctionsFile();
+
+	// End signature
 	AddWorldSaveData(&version,sizeof(version));
 
 	// SaveClient
@@ -3784,64 +3841,127 @@ void FOServer::SaveWorld()
 	WriteLog("World saved in %g ms.\n",Timer::AccurateTick()-tick);
 }
 
-bool FOServer::LoadWorld()
+bool FOServer::LoadWorld(const char* name)
 {
+	UnloadWorld();
+
 	FILE* f=NULL;
-	for(int i=WORLD_SAVE_MAX_INDEX;i>=1;i--)
+	if(!name)
 	{
-		char fname[64];
-		sprintf(fname,".\\save\\world%04d.fo",i);
-
-		if(!fopen_s(&f,fname,"rb"))
+		for(int i=WORLD_SAVE_MAX_INDEX;i>=1;i--)
 		{
-			WriteLog("Begin load from world file<%s>.\n",fname);
-			SaveWorldIndex=i;
-			break;
+			char fname[64];
+			sprintf(fname,".\\save\\world%04d.fo",i);
+
+			if(!fopen_s(&f,fname,"rb"))
+			{
+				WriteLog("Begin load world from dump file<%s>.\n",fname);
+				SaveWorldIndex=i;
+				break;
+			}
+			f=NULL;
 		}
-		f=NULL;
-	}
 
-	if(!f)
+		if(!f)
+		{
+			WriteLog("World dump file not found.\n");
+			SaveWorldIndex=0;
+			return true;
+		}
+	}
+	else
 	{
-		WriteLog("World dump file not found.\n");
-		SaveWorldIndex=0;
-		return true;
+		if(fopen_s(&f,name,"rb"))
+		{
+			WriteLog("World dump file not found.\n");
+			return false;
+		}
+
+		WriteLog("Begin load world from dump file<%s>.\n",name);
 	}
 
+	// File begin
 	DWORD version=0;
 	fread(&version,sizeof(version),1,f);
 	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 &&
-		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7)
+		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8)
 	{
 		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
 		return false;
 	}
-	if(version<WORLD_SAVE_V6)
+	if(version<WORLD_SAVE_V8)
 	{
 		WriteLog("Version of save file is not supported.\n");
 		fclose(f);
 		return false;
 	}
+
+	// Main data
+	if(!LoadGameInfoFile(f)) return false;
 	if(!MapMngr.LoadAllLocationsAndMapsFile(f)) return false;
 	if(!CrMngr.LoadCrittersFile(f)) return false;
-	if(!ItemMngr.LoadAllItemsFile(f,version)) return false;
+	if(!ItemMngr.LoadAllItemsFile(f)) return false;
 	if(!VarMngr.LoadVarsDataFile(f)) return false;
-	LoadHoloInfoFile(f);
-	LoadAnyDataFile(f);
-	LoadTimeEventsFile(f);
-	LoadGameInfoFile(f,version);
-	LoadScriptFunctionsFile(f);
+	if(!LoadHoloInfoFile(f)) return false;
+	if(!LoadAnyDataFile(f)) return false;
+	if(!LoadTimeEventsFile(f)) return false;
+	if(!LoadScriptFunctionsFile(f)) return false;
+
+	// File end
 	DWORD version_=0;
-	fread(&version_,sizeof(version_),1,f);
-	if(version!=version_)
+	if(!fread(&version_,sizeof(version_),1,f) || version!=version_)
 	{
 		WriteLog("World dump file truncated.\n");
 		fclose(f);
 		return false;
 	}
 	fclose(f);
+
+	// Initialize data
+	InitGameTime();
+	if(!TransferAllNpc()) return false; // Transfer critter copies to maps
+	if(!TransferAllItems()) return false; // Transfer items copies to critters and maps
+	MapMngr.RunInitScriptMaps(); // Init scripts for maps
+	CrMngr.RunInitScriptCritters(); // Init scripts for critters
+	ItemMngr.RunInitScriptItems(); // Init scripts for maps
 	return true;
+}
+
+void FOServer::UnloadWorld()
+{
+	// Locations / maps
+	MapMngr.Clear();
+
+	// Critters
+	CrMngr.Clear();
+
+	// Items
+	ItemMngr.Clear();
+
+	// Vars
+	VarsMap& vars=VarMngr.GetVars();
+	for(VarsMapIt it=vars.begin(),end=vars.end();it!=end;++it)
+		(*it).second->Release();
+	vars.clear();
+	VarMngr.GetQuestVars().clear();
+
+	// Holo info
+	HolodiskInfo.clear();
+	LastHoloId=USER_HOLO_START_NUM;
+
+	// Any data
+	AnyData.clear();
+
+	// Time events
+	TimeEvents.clear();
+	TimeEventsLastNum=0;
+
+	// Script functions
+	Script::ResizeCache(0);
+
+	// Singleplayer header
+	SingleplayerSave.Valid=false;
 }
 
 void FOServer::AddWorldSaveData(void* data, size_t size)
@@ -3883,7 +4003,6 @@ void FOServer::AddClientSaveData(Client* cl)
 	}
 
 	ClientSaveData& csd=ClientsSaveData[ClientsSaveDataCount];
-	csd.Id=cl->GetId();
 	memcpy(csd.Name,cl->Name,sizeof(csd.Name));
 	memcpy(csd.Password,cl->Pass,sizeof(csd.Password));
 	memcpy(&csd.Data,&cl->Data,sizeof(cl->Data));
@@ -3936,7 +4055,6 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 				continue;
 			}
 
-			fwrite(&csd.Id,sizeof(csd.Id),1,fc);
 			fwrite(csd.Password,sizeof(csd.Password),1,fc);
 			fwrite(&csd.Data,sizeof(csd.Data),1,fc);
 			fwrite(&csd.DataExt,sizeof(csd.DataExt),1,fc);
@@ -3968,21 +4086,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 /************************************************************************/
 /* RADIO                                                                */
 /************************************************************************/
-/*
-const char[10][]={
-"Конь в польто в эфире",
-"Конь - выдумка или реальность?",
-"Конь - кто он?",
-"Конь - где он?",
-"А может и нет, но никто уже не подскажет",
-"Иго иго иго-го",
-"",
-"",
-"",
-"",
-};
-const int HORSEMAN_TEXT_COUNT=
-*/
+
 void FOServer::RadioClearChannels()
 {
 	WriteLog("Clear radio channels.\n");
@@ -4263,27 +4367,8 @@ void FOServer::VarsGarbarger(DWORD cycle_tick)
 /************************************************************************/
 /* Time events                                                          */
 /************************************************************************/
-struct TimeEvent
-{
-	DWORD Num;
-	DWORD FullMinute;
-	string FuncName;
-	int BindId;
-	DWORD Rate;
-	DwordVec Values;
-	bool IsSaved;
 
-	bool operator==(const DWORD& r){return Num==r;}
-};
-typedef vector<TimeEvent> TimeEventVec;
-typedef vector<TimeEvent>::iterator TimeEventVecIt;
-TimeEventVec TimeEvents;
-DWORD TimeEventsLastNum=0;
-
-#define TIME_EVENTS_RESERVE       (1000000/sizeof(TimeEvent)) // 1 mb
-#define TIME_EVENTS_PER_CYCLE     (10)
-
-void AddTimeEvent(TimeEvent& te)
+void FOServer::AddTimeEvent(TimeEvent& te)
 {
 	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
 	{
@@ -4318,35 +4403,37 @@ void FOServer::SaveTimeEventsFile()
 	}
 }
 
-void FOServer::LoadTimeEventsFile(FILE* f)
+bool FOServer::LoadTimeEventsFile(FILE* f)
 {
 	WriteLog("Load time events...");
 
+	TimeEventsLastNum=0;
+
 	DWORD count=0;
-	fread(&count,sizeof(count),1,f);
+	if(!fread(&count,sizeof(count),1,f)) return false;
 	for(DWORD i=0;i<count;i++)
 	{
 		DWORD num;
-		fread(&num,sizeof(num),1,f);
+		if(!fread(&num,sizeof(num),1,f)) return false;
 
 		char script_name[MAX_SCRIPT_NAME*2+2];
 		WORD script_name_len;
-		fread(&script_name_len,sizeof(script_name_len),1,f);
-		fread(script_name,script_name_len,1,f);
+		if(!fread(&script_name_len,sizeof(script_name_len),1,f)) return false;
+		if(!fread(script_name,script_name_len,1,f)) return false;
 		script_name[script_name_len]=0;
 
 		DWORD begin_minute;
-		fread(&begin_minute,sizeof(begin_minute),1,f);
+		if(!fread(&begin_minute,sizeof(begin_minute),1,f)) return false;
 		DWORD rate;
-		fread(&rate,sizeof(rate),1,f);
+		if(!fread(&rate,sizeof(rate),1,f)) return false;
 
 		DwordVec values;
 		DWORD values_size;
-		fread(&values_size,sizeof(values_size),1,f);
+		if(!fread(&values_size,sizeof(values_size),1,f)) return false;
 		if(values_size)
 		{
 			values.resize(values_size);
-			fread(&values[0],values_size*sizeof(DWORD),1,f);
+			if(!fread(&values[0],values_size*sizeof(DWORD),1,f)) return false;
 		}
 
 		int bind_id=Script::Bind(script_name,"uint %s(uint[]@)",false);
@@ -4365,10 +4452,11 @@ void FOServer::LoadTimeEventsFile(FILE* f)
 		if(values_size) te.Values=values;
 
 		TimeEvents.push_back(te);
-		if(TimeEventsLastNum<num) TimeEventsLastNum=num;
+		if(num>TimeEventsLastNum) TimeEventsLastNum=num;
 	}
 
 	WriteLog("complete, count<%u>.\n",count);
+	return true;
 }
 
 DWORD FOServer::CreateScriptEvent(DWORD begin_minute, const char* script_name, DwordVec& values, bool save)
@@ -4513,18 +4601,18 @@ void FOServer::SaveScriptFunctionsFile()
 	}
 }
 
-void FOServer::LoadScriptFunctionsFile(FILE* f)
+bool FOServer::LoadScriptFunctionsFile(FILE* f)
 {
 	DWORD count=0;
-	fread(&count,sizeof(count),1,f);
+	if(!fread(&count,sizeof(count),1,f)) return false;
 	for(DWORD i=0;i<count;i++)
 	{
 		Script::ResizeCache(i);
 
 		char script[1024];
 		DWORD len=0;
-		fread(&len,sizeof(len),1,f);
-		fread(script,len,1,f);
+		if(!fread(&len,sizeof(len),1,f)) return false;
+		if(!fread(script,len,1,f)) return false;
 		script[len]=0;
 
 		// Cut off decl
@@ -4544,6 +4632,7 @@ void FOServer::LoadScriptFunctionsFile(FILE* f)
 			continue;
 		}
 	}
+	return true;
 }
 
 /************************************************************************/
@@ -4566,56 +4655,39 @@ void FOServer::SaveAnyDataFile()
 	}
 }
 
-void FOServer::LoadAnyDataFile(FILE* f)
+bool FOServer::LoadAnyDataFile(FILE* f)
 {
-	AutoPtrArr<BYTE> data(new BYTE[ANY_DATA_MAX_SIZE]);
-	if(!data.IsValid()) return;
-
+	ByteVec data;
 	DWORD count=0;
-	fread(&count,sizeof(count),1,f);
+	if(!fread(&count,sizeof(count),1,f)) return false;
 	for(DWORD i=0;i<count;i++)
 	{
 		char name[ANY_DATA_MAX_NAME+1];
 		DWORD name_len;
-		fread(&name_len,sizeof(name_len),1,f);
-		fread(name,name_len,1,f);
+		if(!fread(&name_len,sizeof(name_len),1,f)) return false;
+		if(!fread(name,name_len,1,f)) return false;
 		name[name_len]=0;
 
 		DWORD data_len;
-		fread(&data_len,sizeof(data_len),1,f);
-		if(data_len) fread(data.Get(),data_len,1,f);
+		if(!fread(&data_len,sizeof(data_len),1,f)) return false;
+		data.resize(data_len);
+		if(data_len && !fread(&data[0],data_len,1,f)) return false;
 
-		string name_=name;
-		ByteVec data_;
-		if(data_len)
-		{
-			data_.resize(data_len);
-			memcpy(&data_[0],data.Get(),data_len);
-		}
-		AnyData.insert(AnyDataMapVal(name_,data_));
-		MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
+		AnyDataMapInsert result=AnyData.insert(AnyDataMapVal(name,data));
+		MEMORY_PROCESS(MEMORY_ANY_DATA,(*result.first).second.capacity());
 	}
+	return true;
 }
 
 bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 {
-	AnyDataMapIt it=AnyData.find(name);
-	if(it==AnyData.end())
-	{
-		ByteVec data_;
-		data_.resize(data_size);
-		memcpy(&data_[0],data,data_size);
-		AnyData.insert(AnyDataMapVal(name,data_));
-		MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
-	}
-	else
-	{
-		ByteVec& data_=(*it).second;
-		MEMORY_PROCESS(MEMORY_ANY_DATA,-(int)data_.capacity());
-		data_.resize(data_size);
-		memcpy(&data_[0],data,data_size);
-		MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
-	}
+	AnyDataMapInsert result=AnyData.insert(AnyDataMapVal(name,ByteVec()));
+	ByteVec& data_=(*result.first).second;
+
+	MEMORY_PROCESS(MEMORY_ANY_DATA,-(int)data_.capacity());
+	data_.resize(data_size);
+	memcpy(&data_[0],data,data_size);
+	MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
 	return true;
 }
 

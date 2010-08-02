@@ -3831,7 +3831,6 @@ bool FOServer::SScriptFunc::Global_SetAnyData(CScriptString& name, asIScriptArra
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
 	DWORD data_size_bytes=data.GetElementCount()*data.GetElementSize();
-	if(data_size_bytes>ANY_DATA_MAX_SIZE) SCRIPT_ERROR_R0("Data size is greather than maximum");
 	return Self->SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
 }
 

@@ -594,6 +594,7 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
 		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
 		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILREF,1));
+		D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
 
 		struct Vertex
 		{
@@ -615,6 +616,7 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 
 		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NOTEQUAL));
 		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILREF,0));
+		D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 	}
 
 	// Lighting

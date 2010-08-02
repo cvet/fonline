@@ -46,6 +46,7 @@ public:
 	FOMapper();
 	bool Init(HWND wnd);
 	int InitIface();
+	bool IfaceLoadRect(INTRECT& comp, const char* name);
 	void Finish();
 	bool InitDI();
 	void ParseKeyboard();
@@ -139,7 +140,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 #define INT_MODE_WEAPON     (3)
 #define INT_MODE_AMMO       (4)
 #define INT_MODE_MISC       (5)
-#define INT_MODE_MISC2      (6)
+#define INT_MODE_MISC_EX      (6)
 #define INT_MODE_KEY        (7)
 #define INT_MODE_CONT       (8)
 #define INT_MODE_DOOR       (9)
@@ -175,7 +176,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	INTRECT IntWMain;
 	INTRECT IntWWork,IntWHint;
 
-	INTRECT IntBArm,IntBDrug,IntBWpn,IntBAmmo,IntBMisc,IntBMisc2,IntBKey,IntBCont,IntBDoor,
+	INTRECT IntBArm,IntBDrug,IntBWpn,IntBAmmo,IntBMisc,IntBMiscEx,IntBKey,IntBCont,IntBDoor,
 		IntBGrid,IntBGen,IntBWall,IntBTile,IntBCrit,
 		IntBFast,IntBIgnore,IntBInCont,IntBMess,IntBList,
 		IntBScrBack,IntBScrBackFst,IntBScrFront,IntBScrFrontFst;
@@ -193,9 +194,6 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	ProtoMap* CurProtoMap;
 
 	// Proto
-	int ScrArm,ScrDrug,ScrWpn,ScrAmmo,ScrMisc,ScrMisc2,ScrKey,ScrCont,ScrDoor,
-		ScrGrid,ScrGen,ScrWall,ScrTile,ScrCrit,ScrList;
-
 	ProtoItemVec* CurItemProtos;
 	ProtoItemVec FastItemProto;
 	ProtoItemVec IgnoreItemProto;
@@ -215,7 +213,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 
 	bool IsObjectMode(){return (IntMode==INT_MODE_ARMOR || IntMode==INT_MODE_DRUG ||
 		IntMode==INT_MODE_WEAPON || IntMode==INT_MODE_AMMO || IntMode==INT_MODE_MISC ||
-		IntMode==INT_MODE_MISC2 || IntMode==INT_MODE_KEY || IntMode==INT_MODE_CONT ||
+		IntMode==INT_MODE_MISC_EX || IntMode==INT_MODE_KEY || IntMode==INT_MODE_CONT ||
 		IntMode==INT_MODE_DOOR || IntMode==INT_MODE_GRID || IntMode==INT_MODE_GENERIC ||
 		IntMode==INT_MODE_WALL || IntMode==INT_MODE_FAST ||
 		IntMode==INT_MODE_IGNORE) &&

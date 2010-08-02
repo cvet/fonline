@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF077) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF078) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -95,7 +95,7 @@ MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*12/*Proto*/+sizeo
 // BYTE ping (see Ping in FOdefines.h)
 //////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_UPDATE_FILES_LIST    MAKE_NETMSG_HEADER(7)
+/*#define NETMSG_UPDATE_FILES_LIST    MAKE_NETMSG_HEADER(7)
 //////////////////////////////////////////////////////////////////////////
 // Prepared message
 // DWORD msg_len
@@ -119,6 +119,18 @@ MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*12/*Proto*/+sizeo
 // DWORD msg_len
 // WORD portion_len
 // BYTE portion[portion_len]
+//////////////////////////////////////////////////////////////////////////*/
+
+#define NETMSG_SINGLEPLAYER_SAVE_LOAD MAKE_NETMSG_HEADER(10)
+//////////////////////////////////////////////////////////////////////////
+// Singleplayer
+// DWORD msg_len
+// bool save
+// WORD fname_len
+// char fname[fname_len]
+// if save
+//  DWORD save_pic_len
+//  BYTE save_pic[save_pic_len]
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CHECK_UID0           MAKE_NETMSG_HEADER(6)
@@ -830,15 +842,16 @@ sizeof(WORD)+sizeof(DWORD)+92/*ItemData*/)
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GAME_INFO            MAKE_NETMSG_HEADER(117)
-#define NETMSG_GAME_INFO_SIZE       (sizeof(MSGTYPE)+sizeof(WORD)*6+\
+#define NETMSG_GAME_INFO_SIZE       (sizeof(MSGTYPE)+sizeof(WORD)*7+\
 sizeof(int)+sizeof(BYTE)+sizeof(bool)*2+sizeof(int)*4+sizeof(BYTE)*12)
 //////////////////////////////////////////////////////////////////////////
-// высылается игроку пройденное игровое время с начала игровых суток
+// Generic game info
 // WORD GameOpt.Year;
 // WORD GameOpt.Month;
 // WORD GameOpt.Day;
 // WORD GameOpt.Hour;
 // WORD GameOpt.Minute;
+// WORD GameOpt.Second;
 // WORD GameOpt.TimeMultiplier;
 // int time
 // BYTE rain

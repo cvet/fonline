@@ -11,6 +11,7 @@
 
 struct CritData
 {
+	DWORD Id;
 	WORD HexX;
 	WORD HexY;
 	WORD WorldX;
@@ -29,7 +30,6 @@ struct CritData
 	WORD LastHexX;
 	WORD LastHexY;
 	DWORD Reserved1[4];
-	DWORD Id;
 	DWORD MapId;
 	WORD MapPid;
 	WORD Reserved2;

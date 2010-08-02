@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Client.h"
+#include "Version.h"
 
 //==============================================================================================================================
 //******************************************************************************************************************************
@@ -107,20 +108,20 @@ int FOClient::InitIface()
 	TargetSmth.Clear();
 
 	// Inventory
-	IfaceLoadRect(InvWMain,"InvWMain");
-	IfaceLoadRect(InvWInv,"InvWInv");
-	IfaceLoadRect(InvWChosen,"InvWChosen");
-	IfaceLoadRect(InvWSlot1,"InvWSlot1");
-	IfaceLoadRect(InvWSlot2,"InvWSlot2");
-	IfaceLoadRect(InvWArmor,"InvWArmor");
-	IfaceLoadRect(InvBScrUp,"InvBScrUp");
-	IfaceLoadRect(InvBScrDn,"InvBScrDn");
-	IfaceLoadRect(InvBOk,"InvBOk");
-	IfaceLoadRect(InvWText,"InvWText");
-	IfaceLoadRect(RadWMain,"RadWMain");
-	IfaceLoadRect(RadWMainText,"RadWMainText");
-	IfaceLoadRect(RadBOn,"RadBOn");
-	IfaceLoadRect(RadWChannel,"RadWChannel");
+	IfaceLoadRect(InvWMain,"InvMain");
+	IfaceLoadRect(InvWInv,"InvInv");
+	IfaceLoadRect(InvWChosen,"InvChosen");
+	IfaceLoadRect(InvWSlot1,"InvSlot1");
+	IfaceLoadRect(InvWSlot2,"InvSlot2");
+	IfaceLoadRect(InvWArmor,"InvArmor");
+	IfaceLoadRect(InvBScrUp,"InvScrUp");
+	IfaceLoadRect(InvBScrDn,"InvScrDn");
+	IfaceLoadRect(InvBOk,"InvOk");
+	IfaceLoadRect(InvWText,"InvText");
+	IfaceLoadRect(RadWMain,"RadioMain");
+	IfaceLoadRect(RadWMainText,"RadioMainText");
+	IfaceLoadRect(RadBOn,"RadioOn");
+	IfaceLoadRect(RadWChannel,"RadioChannel");
 	InvX=IfaceIni.GetInt("InvX",-1);
 	if(InvX==-1) InvX=(MODE_WIDTH-InvWMain[2])/2;
 	InvY=IfaceIni.GetInt("InvY",-1);
@@ -135,12 +136,12 @@ int FOClient::InitIface()
 	InvItemInfoMaxScroll=0;
 
 	// Use
-	IfaceLoadRect(UseWMain,"UseWMain");
-	IfaceLoadRect(UseWChosen,"UseWChosen");
-	IfaceLoadRect(UseWInv,"UseWInv");
-	IfaceLoadRect(UseBScrUp,"UseBScrUp");
-	IfaceLoadRect(UseBScrDown,"UseBScrDown");
-	IfaceLoadRect(UseBCancel,"UseBCancel");
+	IfaceLoadRect(UseWMain,"UseMain");
+	IfaceLoadRect(UseWChosen,"UseChosen");
+	IfaceLoadRect(UseWInv,"UseInv");
+	IfaceLoadRect(UseBScrUp,"UseScrUp");
+	IfaceLoadRect(UseBScrDown,"UseScrDown");
+	IfaceLoadRect(UseBCancel,"UseCancel");
 	UseX=IfaceIni.GetInt("UseX",-1);
 	if(UseX==-1) UseX=(MODE_WIDTH-UseWMain[2])/2;
 	UseY=IfaceIni.GetInt("UseY",-1);
@@ -152,7 +153,7 @@ int FOClient::InitIface()
 	UseHoldId=0;
 
 	// Interface
-	IfaceLoadRect(IntWMain,"IntWMain");
+	IfaceLoadRect(IntWMain,"IntMain");
 	IntX=IfaceIni.GetInt("IntX",-1);
 	if(IntX==-1) IntX=(MODE_WIDTH-IntWMain.W())/2;
 	else if(IntX==-2) IntX=MODE_WIDTH-IntWMain.W();
@@ -163,23 +164,23 @@ int FOClient::InitIface()
 		if(IntX+IntWMain.W()>MODE_WIDTH) IntX=0;
 	}
 	IntY=MODE_HEIGHT-IntWMain.B;
-	IfaceLoadRect2(IntWMain,"IntWMain",IntX,IntY);
-	IfaceLoadRect2(IntWAddMess,"IntWAddMess",IntX,IntY);
-	IfaceLoadRect2(IntBAddMess,"IntBAddMess",IntX,IntY);
-	IfaceLoadRect2(IntBMessFilter1,"IntBMessFilter1",IntX,IntY);
-	IfaceLoadRect2(IntBMessFilter2,"IntBMessFilter2",IntX,IntY);
-	IfaceLoadRect2(IntBMessFilter3,"IntBMessFilter3",IntX,IntY);
-	IfaceLoadRect2(IntBItem,"IntBItem",IntX,IntY);
-	IfaceLoadRect2(IntBChangeSlot,"IntBChangeSlot",IntX,IntY);
-	IfaceLoadRect2(IntBInv,"IntBInv",IntX,IntY);
-	IfaceLoadRect2(IntBMenu,"IntBMenu",IntX,IntY);
-	IfaceLoadRect2(IntBSkill,"IntBSkill",IntX,IntY);
-	IfaceLoadRect2(IntBMap,"IntBMap",IntX,IntY);
-	IfaceLoadRect2(IntBChar,"IntBCha",IntX,IntY);
-	IfaceLoadRect2(IntBPip,"IntBPip",IntX,IntY);
-	IfaceLoadRect2(IntBFix,"IntBFix",IntX,IntY);
-	IfaceLoadRect2(IntWMess,"IntWMess",IntX,IntY);
-	IfaceLoadRect2(IntWMessLarge,"IntWMessLarge",IntX,IntY);
+	IfaceLoadRect2(IntWMain,"IntMain",IntX,IntY);
+	IfaceLoadRect2(IntWAddMess,"IntAddMessWindow",IntX,IntY);
+	IfaceLoadRect2(IntBAddMess,"IntAddMess",IntX,IntY);
+	IfaceLoadRect2(IntBMessFilter1,"IntMessFilter1",IntX,IntY);
+	IfaceLoadRect2(IntBMessFilter2,"IntMessFilter2",IntX,IntY);
+	IfaceLoadRect2(IntBMessFilter3,"IntMessFilter3",IntX,IntY);
+	IfaceLoadRect2(IntBItem,"IntItem",IntX,IntY);
+	IfaceLoadRect2(IntBChangeSlot,"IntChangeSlot",IntX,IntY);
+	IfaceLoadRect2(IntBInv,"IntInv",IntX,IntY);
+	IfaceLoadRect2(IntBMenu,"IntMenu",IntX,IntY);
+	IfaceLoadRect2(IntBSkill,"IntSkill",IntX,IntY);
+	IfaceLoadRect2(IntBMap,"IntMap",IntX,IntY);
+	IfaceLoadRect2(IntBChar,"IntCha",IntX,IntY);
+	IfaceLoadRect2(IntBPip,"IntPip",IntX,IntY);
+	IfaceLoadRect2(IntBFix,"IntFix",IntX,IntY);
+	IfaceLoadRect2(IntWMess,"IntMess",IntX,IntY);
+	IfaceLoadRect2(IntWMessLarge,"IntMessLarge",IntX,IntY);
 	IfaceLoadRect2(IntHP,"IntHp",IntX,IntY);
 	IfaceLoadRect2(IntAC,"IntAc",IntX,IntY);
 	IfaceLoadRect2(IntAP,"IntAp",IntX,IntY);
@@ -187,16 +188,16 @@ int FOClient::InitIface()
 	IntAPstepX=IfaceIni.GetInt("IntApStepX",9);
 	IntAPstepY=IfaceIni.GetInt("IntApStepY",0);
 	IntAPMax=IfaceIni.GetInt("IntApMax",10);
-	IfaceLoadRect2(IntWCombat,"IntWCombat",IntX,IntY);
-	IfaceLoadRect2(IntBCombatTurn,"IntBCombatTurn",IntX,IntY);
-	IfaceLoadRect2(IntBCombatEnd,"IntBCombatEnd",IntX,IntY);
-	IfaceLoadRect2(IntWApCost,"IntWApCost",IntX,IntY);
-	IfaceLoadRect2(IntWAmmoCount,"IntWAmmoCount",IntX,IntY);
-	IfaceLoadRect2(IntWWearProcent,"IntWWearProcent",IntX,IntY);
+	IfaceLoadRect2(IntWCombat,"IntCombat",IntX,IntY);
+	IfaceLoadRect2(IntBCombatTurn,"IntCombatTurn",IntX,IntY);
+	IfaceLoadRect2(IntBCombatEnd,"IntCombatEnd",IntX,IntY);
+	IfaceLoadRect2(IntWApCost,"IntApCost",IntX,IntY);
+	IfaceLoadRect2(IntWAmmoCount,"IntAmmoCount",IntX,IntY);
+	IfaceLoadRect2(IntWWearProcent,"IntWearProcent",IntX,IntY);
 	IntWAmmoCountStr=INTRECT(IntBItem,7,8);
 	IntWWearProcentStr=INTRECT(IntBItem,7,19);
-	IfaceLoadRect2(IntWAmmoCountStr,"IntWAmmoCountStr",IntX,IntY);
-	IfaceLoadRect2(IntWWearProcentStr,"IntWWearProcentStr",IntX,IntY);
+	IfaceLoadRect2(IntWAmmoCountStr,"IntAmmoCountText",IntX,IntY);
+	IfaceLoadRect2(IntWWearProcentStr,"IntWearProcentText",IntX,IntY);
 	IntVisible=true;
 	IntAddMess=false;
 	MessBoxFilters.clear();
@@ -207,15 +208,15 @@ int FOClient::InitIface()
 	IntMessTabStepX=IfaceIni.GetInt("IntMessTabStepX",0);
 	IntMessTabStepY=IfaceIni.GetInt("IntMessTabStepY",40);
 	IntMessTabLevelUp=false;
-	IntBItemOffsX=IfaceIni.GetInt("IntBItemOffsX",0);
-	IntBItemOffsY=IfaceIni.GetInt("IntBItemOffsY",-2);
-	IntAimX=IfaceIni.GetInt("IntWAimX",0);
+	IntBItemOffsX=IfaceIni.GetInt("IntItemOffsX",0);
+	IntBItemOffsY=IfaceIni.GetInt("IntItemOffsY",-2);
+	IntAimX=IfaceIni.GetInt("IntAimX",0);
 	IntAimX+=IntX;
-	IntAimY=IfaceIni.GetInt("IntWAimY",0);
+	IntAimY=IfaceIni.GetInt("IntAimY",0);
 	IntAimY+=IntY;
-	IntUseX=IfaceIni.GetInt("IntWUseX",0);
+	IntUseX=IfaceIni.GetInt("IntUseX",0);
 	IntUseX+=IntX;
-	IntUseY=IfaceIni.GetInt("IntWUseY",0);
+	IntUseY=IfaceIni.GetInt("IntUseY",0);
 	IntUseY+=IntY;
 	IntAmmoPoints.clear();
 	IntWearPoints.clear();
@@ -223,8 +224,8 @@ int FOClient::InitIface()
 	IntWearTick=0;
 
 	// Console
-	ConsolePicX=IfaceIni.GetInt("ConsolePicX",0);
-	ConsolePicY=IfaceIni.GetInt("ConsolePicY",0);
+	ConsolePicX=IfaceIni.GetInt("ConsoleMainPicX",0);
+	ConsolePicY=IfaceIni.GetInt("ConsoleMainPicY",0);
 	ConsoleTextX=IfaceIni.GetInt("ConsoleTextX",0);
 	ConsoleTextY=IfaceIni.GetInt("ConsoleTextY",0);
 	ConsoleEdit=false;
@@ -235,23 +236,23 @@ int FOClient::InitIface()
 
 	// Login
 	LogFocus=0;
-	IfaceLoadRect(LogMain,"LogWMain");
+	IfaceLoadRect(LogMain,"LogMain");
 	LogX=(MODE_WIDTH-LogMain.W())/2;
 	LogY=(MODE_HEIGHT-LogMain.H())/2;
-	IfaceLoadRect2(LogWName,"LogWName",LogX,LogY);
-	IfaceLoadRect2(LogWPass,"LogWPass",LogX,LogY);
-	IfaceLoadRect2(LogBOk,"LogBOk",LogX,LogY);
-	IfaceLoadRect2(LogBOkText,"LogBOkText",LogX,LogY);
-	IfaceLoadRect2(LogBReg,"LogBReg",LogX,LogY);
-	IfaceLoadRect2(LogBRegText,"LogBRegText",LogX,LogY);
-	IfaceLoadRect2(LogBOptions,"LogBOptions",LogX,LogY);
-	IfaceLoadRect2(LogBOptionsText,"LogBOptionsText",LogX,LogY);
-	IfaceLoadRect2(LogBCredits,"LogBCredits",LogX,LogY);
-	IfaceLoadRect2(LogBCreditsText,"LogBCreditsText",LogX,LogY);
-	IfaceLoadRect2(LogBExit,"LogBExit",LogX,LogY);
-	IfaceLoadRect2(LogBExitText,"LogBExitText",LogX,LogY);
-	IfaceLoadRect(LogWChat,"LogWChat");
-	IfaceLoadRect(LogWVersion,"LogWVersion");
+	IfaceLoadRect2(LogWName,"LogName",LogX,LogY);
+	IfaceLoadRect2(LogWPass,"LogPass",LogX,LogY);
+	IfaceLoadRect2(LogBOk,"LogPlay",LogX,LogY);
+	IfaceLoadRect2(LogBOkText,"LogPlayText",LogX,LogY);
+	IfaceLoadRect2(LogBReg,"LogReg",LogX,LogY);
+	IfaceLoadRect2(LogBRegText,"LogRegText",LogX,LogY);
+	IfaceLoadRect2(LogBOptions,"LogOptions",LogX,LogY);
+	IfaceLoadRect2(LogBOptionsText,"LogOptionsText",LogX,LogY);
+	IfaceLoadRect2(LogBCredits,"LogCredits",LogX,LogY);
+	IfaceLoadRect2(LogBCreditsText,"LogCreditsText",LogX,LogY);
+	IfaceLoadRect2(LogBExit,"LogExit",LogX,LogY);
+	IfaceLoadRect2(LogBExitText,"LogExitText",LogX,LogY);
+	IfaceLoadRect(LogWChat,"LogMessageBox");
+	IfaceLoadRect(LogWVersion,"LogVersion");
 
 	// Dialog
 	DlgCurAnswPage=0;
@@ -269,17 +270,17 @@ int FOClient::InitIface()
 	IfaceLoadRect(DlgWMain,"DlgMain");
 	IfaceLoadRect(DlgWText,"DlgText");
 	DlgMainTextLinesRect=SprMngr.GetLinesCount(0,DlgWText.H(),NULL);
-	IfaceLoadRect(DlgBScrUp,"DlgBScrUp");
-	IfaceLoadRect(DlgBScrDn,"DlgBScrDn");
+	IfaceLoadRect(DlgBScrUp,"DlgScrUp");
+	IfaceLoadRect(DlgBScrDn,"DlgScrDn");
 	IfaceLoadRect(DlgAnsw,"DlgAnsw");
 	IfaceLoadRect2(DlgAnswText,"DlgAnswText",DlgAnsw[0],DlgAnsw[1]);
-	IfaceLoadRect2(DlgWMoney,"DlgWMoney",DlgAnsw[0],DlgAnsw[1]);
-	IfaceLoadRect2(DlgBBarter,"DlgBBarter",DlgAnsw[0],DlgAnsw[1]);
-	IfaceLoadRect2(DlgBBarterText,"DlgBBarterText",DlgAnsw[0],DlgAnsw[1]);
-	IfaceLoadRect2(DlgBSay,"DlgBSay",DlgAnsw[0],DlgAnsw[1]);
-	IfaceLoadRect2(DlgBSayText,"DlgBSayText",DlgAnsw[0],DlgAnsw[1]);
-	IfaceLoadRect(DlgWAvatar,"DlgWAvatar");
-	IfaceLoadRect(DlgWTimer,"DlgWTimer");
+	IfaceLoadRect2(DlgWMoney,"DlgMoney",DlgAnsw[0],DlgAnsw[1]);
+	IfaceLoadRect2(DlgBBarter,"DlgBarter",DlgAnsw[0],DlgAnsw[1]);
+	IfaceLoadRect2(DlgBBarterText,"DlgBarterText",DlgAnsw[0],DlgAnsw[1]);
+	IfaceLoadRect2(DlgBSay,"DlgSay",DlgAnsw[0],DlgAnsw[1]);
+	IfaceLoadRect2(DlgBSayText,"DlgSayText",DlgAnsw[0],DlgAnsw[1]);
+	IfaceLoadRect(DlgWAvatar,"DlgAvatar");
+	IfaceLoadRect(DlgWTimer,"DlgTimer");
 	DlgNextAnswX=IfaceIni.GetInt("DlgNextAnswX",1);
 	DlgNextAnswY=IfaceIni.GetInt("DlgNextAnswY",1);
 	DlgX=IfaceIni.GetInt("DlgX",-1);
@@ -289,28 +290,28 @@ int FOClient::InitIface()
 	//Barter
 	BarterPlayerId=0;
 	IfaceLoadRect(BarterWMain,"BarterMain");
-	IfaceLoadRect2(BarterBOffer,"BarterBOffer",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBOfferText,"BarterBOfferText",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBTalk,"BarterBTalk",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBTalkText,"BarterBTalkText",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCont1Pic,"BarterWCont1Pic",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCont2Pic,"BarterWCont2Pic",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCont1,"BarterWCont1",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCont2,"BarterWCont2",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCont1o,"BarterWCont1o",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCont2o,"BarterWCont2o",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont1ScrUp,"BarterBCont1ScrUp",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont2ScrUp,"BarterBCont2ScrUp",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont1oScrUp,"BarterBCont1oScrUp",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont2oScrUp,"BarterBCont2oScrUp",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont1ScrDn,"BarterBCont1ScrDn",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont2ScrDn,"BarterBCont2ScrDn",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont1oScrDn,"BarterBCont1oScrDn",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterBCont2oScrDn,"BarterBCont2oScrDn",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCost1,"BarterWCost1",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCost2,"BarterWCost2",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWChosen,"BarterWChosen",BarterWMain[0],BarterWMain[1]);
-	IfaceLoadRect2(BarterWCritter,"BarterWCritter",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBOffer,"BarterOffer",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBOfferText,"BarterOfferText",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBTalk,"BarterTalk",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBTalkText,"BarterTalkText",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCont1Pic,"BarterCont1Pic",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCont2Pic,"BarterCont2Pic",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCont1,"BarterCont1",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCont2,"BarterCont2",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCont1o,"BarterCont1o",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCont2o,"BarterCont2o",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont1ScrUp,"BarterCont1ScrUp",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont2ScrUp,"BarterCont2ScrUp",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont1oScrUp,"BarterCont1oScrUp",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont2oScrUp,"BarterCont2oScrUp",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont1ScrDn,"BarterCont1ScrDn",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont2ScrDn,"BarterCont2ScrDn",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont1oScrDn,"BarterCont1oScrDn",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterBCont2oScrDn,"BarterCont2oScrDn",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCost1,"BarterCost1",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCost2,"BarterCost2",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWChosen,"BarterChosen",BarterWMain[0],BarterWMain[1]);
+	IfaceLoadRect2(BarterWCritter,"BarterCritter",BarterWMain[0],BarterWMain[1]);
 	BarterCont1HeightItem=IfaceIni.GetInt("BarterCont1ItemHeight",30);
 	BarterCont2HeightItem=IfaceIni.GetInt("BarterCont2ItemHeight",30);
 	BarterCont1oHeightItem=IfaceIni.GetInt("BarterCont1oItemHeight",30);
@@ -352,32 +353,34 @@ int FOClient::InitIface()
 	LmapSwitchHi=false;
 	LmapPrepareNextTick=0;
 	IfaceLoadRect(LmapMain,"LmapMain");
-	IfaceLoadRect(LmapWMap,"LmapWMap");
-	IfaceLoadRect(LmapBOk,"LmapBOk");
-	IfaceLoadRect(LmapBScan,"LmapBScan");
-	IfaceLoadRect(LmapBLoHi,"LmapBLoHi");
+	IfaceLoadRect(LmapWMap,"LmapMap");
+	IfaceLoadRect(LmapBOk,"LmapOk");
+	IfaceLoadRect(LmapBScan,"LmapScan");
+	IfaceLoadRect(LmapBLoHi,"LmapLoHi");
 
 	// Skillbox
-	IfaceLoadRect(SboxWMain,"SboxWMain");
-	IfaceLoadRect(SboxWMainText,"SboxWMainText");
-	IfaceLoadRect(SboxBCancel,"SboxBCancel");
-	IfaceLoadRect(SboxBCancelText,"SboxBCancelText");
-	IfaceLoadRect(SboxBSneak,"SboxBSneak");
-	IfaceLoadRect(SboxBLockpick,"SboxBLockpick");
-	IfaceLoadRect(SboxBSteal,"SboxBSteal");
-	IfaceLoadRect(SboxBTrap,"SboxBTrap");
-	IfaceLoadRect(SboxBFirstAid,"SboxBFirstAid");
-	IfaceLoadRect(SboxBDoctor,"SboxBDoctor");
-	IfaceLoadRect(SboxBScience,"SboxBScience");
-	IfaceLoadRect(SboxBRepair,"SboxBRepair");
-	IfaceLoadRect(SboxTSneak,"SboxTSneak");
-	IfaceLoadRect(SboxTLockpick,"SboxTLockpick");
-	IfaceLoadRect(SboxTSteal,"SboxTSteal");
-	IfaceLoadRect(SboxTTrap,"SboxTTrap");
-	IfaceLoadRect(SboxTFirstAid,"SboxTFirstAid");
-	IfaceLoadRect(SboxTDoctor,"SboxTDoctor");
-	IfaceLoadRect(SboxTScience,"SboxTScience");
-	IfaceLoadRect(SboxTRepair,"SboxTRepair");
+	IfaceLoadRect(SboxWMain,"SboxMain");
+	IfaceLoadRect(SboxWMainText,"SboxMainText");
+	IfaceLoadRect(SboxBCancel,"SboxCancel");
+	IfaceLoadRect(SboxBCancelText,"SboxCancelText");
+	IfaceLoadRect(SboxBSneak,"SboxSneak");
+	IfaceLoadRect(SboxBLockpick,"SboxLockpick");
+	IfaceLoadRect(SboxBSteal,"SboxSteal");
+	IfaceLoadRect(SboxBTrap,"SboxTrap");
+	IfaceLoadRect(SboxBFirstAid,"SboxFirstAid");
+	IfaceLoadRect(SboxBDoctor,"SboxDoctor");
+	IfaceLoadRect(SboxBScience,"SboxScience");
+	IfaceLoadRect(SboxBRepair,"SboxRepair");
+
+	IfaceLoadRect(SboxTSneak,"SboxSneakText");
+	IfaceLoadRect(SboxTLockpick,"SboxLockpickText");
+	IfaceLoadRect(SboxTSteal,"SboxStealText");
+	IfaceLoadRect(SboxTTrap,"SboxTrapText");
+	IfaceLoadRect(SboxTFirstAid,"SboxFirstAidText");
+	IfaceLoadRect(SboxTDoctor,"SboxDoctorText");
+	IfaceLoadRect(SboxTScience,"SboxScienceText");
+	IfaceLoadRect(SboxTRepair,"SboxRepairText");
+
 	SboxX=IfaceIni.GetInt("SboxX",-1);
 	SboxY=IfaceIni.GetInt("SboxY",-1);
 	if(SboxX<0) SboxX=MODE_WIDTH-SboxWMain[2];
@@ -391,135 +394,138 @@ int FOClient::InitIface()
 	MoptX=(MODE_WIDTH-MoptMain.W())/2;
 	MoptY=(MODE_HEIGHT-MoptMain.H())/2;
 	IfaceLoadRect2(MoptMain,"MoptMain",MoptX,MoptY);
-	IfaceLoadRect2(MoptBResume,"MoptBResume",MoptX,MoptY);
-	IfaceLoadRect2(MoptBExit,"MoptBExit",MoptX,MoptY);
+	IfaceLoadRect2(MoptSaveGame,"MoptSaveGame",MoptX,MoptY);
+	IfaceLoadRect2(MoptLoadGame,"MoptLoadGame",MoptX,MoptY);
+	IfaceLoadRect2(MoptOptions,"MoptOptions",MoptX,MoptY);
+	IfaceLoadRect2(MoptExit,"MoptExit",MoptX,MoptY);
+	IfaceLoadRect2(MoptResume,"MoptResume",MoptX,MoptY);
 
 	// Character
 	// Main
-	IfaceLoadRect(ChaWMain,"ChaWMain");
+	IfaceLoadRect(ChaWMain,"ChaMain");
 	ChaX=(MODE_WIDTH-ChaWMain.W())/2;
 	ChaY=(MODE_HEIGHT-ChaWMain.H())/2;
 	ChaVectX=0;
 	ChaVectY=0;
-	IfaceLoadRect(ChaBPrint,"ChaBPrint");
-	IfaceLoadRect(ChaBPrintText,"ChaBPrintText");
-	IfaceLoadRect(ChaBOk,"ChaBOk");
-	IfaceLoadRect(ChaBOkText,"ChaBOkText");
-	IfaceLoadRect(ChaBCancel,"ChaBCancel");
-	IfaceLoadRect(ChaBCancelText,"ChaBCancelText");
+	IfaceLoadRect(ChaBPrint,"ChaPrint");
+	IfaceLoadRect(ChaBPrintText,"ChaPrintText");
+	IfaceLoadRect(ChaBOk,"ChaOk");
+	IfaceLoadRect(ChaBOkText,"ChaOkText");
+	IfaceLoadRect(ChaBCancel,"ChaCancel");
+	IfaceLoadRect(ChaBCancelText,"ChaCancelText");
 	// Switch
-	IfaceLoadRect(ChaBSwitch,"ChaBSwitch");
-	IfaceLoadRect(ChaTSwitch,"ChaTSwitch");
-	IfaceLoadRect(ChaBSwitchScrUp,"ChaBSwitchScrUp");
-	IfaceLoadRect(ChaBSwitchScrDn,"ChaBSwitchScrDn");
+	IfaceLoadRect(ChaBSwitch,"ChaSwitch");
+	IfaceLoadRect(ChaTSwitch,"ChaSwitchText");
+	IfaceLoadRect(ChaBSwitchScrUp,"ChaSwitchScrUp");
+	IfaceLoadRect(ChaBSwitchScrDn,"ChaSwitchScrDn");
 	ChaCurSwitch=CHA_SWITCH_PERKS;
 	ZeroMemory(ChaSwitchScroll,sizeof(ChaSwitchScroll));
 	// Special
-	IfaceLoadRect(ChaWSpecialText,"ChaWSpecialText");
-	IfaceLoadRect(ChaWSpecialValue,"ChaWSpecialValue");
-	IfaceLoadRect(ChaWSpecialLevel,"ChaWSpecialLevel");
-	ChaWSpecialNextX=IfaceIni.GetInt("ChaWSpecialNextX",1);
-	ChaWSpecialNextY=IfaceIni.GetInt("ChaWSpecialNextY",1);
+	IfaceLoadRect(ChaWSpecialText,"ChaSpecialText");
+	IfaceLoadRect(ChaWSpecialValue,"ChaSpecialValue");
+	IfaceLoadRect(ChaWSpecialLevel,"ChaSpecialLevel");
+	ChaWSpecialNextX=IfaceIni.GetInt("ChaSpecialNextX",1);
+	ChaWSpecialNextY=IfaceIni.GetInt("ChaSpecialNextY",1);
 	// Skills
-	IfaceLoadRect(ChaWSkillText,"ChaWSkillText");
-	IfaceLoadRect(ChaWSkillName,"ChaWSkillName");
-	IfaceLoadRect(ChaWSkillValue,"ChaWSkillValue");
-	IfaceLoadRect(ChaWUnspentSP,"ChaWUnspentSP");
-	IfaceLoadRect(ChaWUnspentSPText,"ChaWUnspentSPText");
-	ChaWSkillNextX=IfaceIni.GetInt("ChaWSkillNextX",1);
-	ChaWSkillNextY=IfaceIni.GetInt("ChaWSkillNextY",1);
+	IfaceLoadRect(ChaWSkillText,"ChaSkillText");
+	IfaceLoadRect(ChaWSkillName,"ChaSkillName");
+	IfaceLoadRect(ChaWSkillValue,"ChaSkillValue");
+	IfaceLoadRect(ChaWUnspentSP,"ChaUnspentSP");
+	IfaceLoadRect(ChaWUnspentSPText,"ChaUnspentSPText");
+	ChaWSkillNextX=IfaceIni.GetInt("ChaSkillNextX",1);
+	ChaWSkillNextY=IfaceIni.GetInt("ChaSkillNextY",1);
 	ZeroMemory(ChaSkillUp,sizeof(ChaSkillUp));
 	ChaUnspentSkillPoints=0;
 	// Slider
-	IfaceLoadRect(ChaBSliderMinus,"ChaBSliderMinus");
-	IfaceLoadRect(ChaBSliderPlus,"ChaBSliderPlus");
-	ChaWSliderX=IfaceIni.GetInt("ChaWSliderX",1);
-	ChaWSliderY=IfaceIni.GetInt("ChaWSliderY",1);
+	IfaceLoadRect(ChaBSliderMinus,"ChaSliderMinus");
+	IfaceLoadRect(ChaBSliderPlus,"ChaSliderPlus");
+	ChaWSliderX=IfaceIni.GetInt("ChaSliderX",1);
+	ChaWSliderY=IfaceIni.GetInt("ChaSliderY",1);
 	ChaCurSkill=0;
 	// Level
-	IfaceLoadRect(ChaWLevel,"ChaWLevel");
-	IfaceLoadRect(ChaWExp,"ChaWExp");
-	IfaceLoadRect(ChaWNextLevel,"ChaWNextLevel");
+	IfaceLoadRect(ChaWLevel,"ChaLevel");
+	IfaceLoadRect(ChaWExp,"ChaExp");
+	IfaceLoadRect(ChaWNextLevel,"ChaNextLevel");
 	// Damage
-	IfaceLoadRect(ChaWDmgLife,"ChaWDmgLife");
-	IfaceLoadRect(ChaWDmg,"ChaWDmg");
-	ChaWDmgNextX=IfaceIni.GetInt("ChaWDmgNextX",1);
-	ChaWDmgNextY=IfaceIni.GetInt("ChaWDmgNextY",1);
+	IfaceLoadRect(ChaWDmgLife,"ChaDmgLife");
+	IfaceLoadRect(ChaWDmg,"ChaDmg");
+	ChaWDmgNextX=IfaceIni.GetInt("ChaDmgNextX",1);
+	ChaWDmgNextY=IfaceIni.GetInt("ChaDmgNextY",1);
 	// Stats
-	IfaceLoadRect(ChaWStatsName,"ChaWStatsName");
-	IfaceLoadRect(ChaWStatsValue,"ChaWStatsValue");
-	ChaWStatsNextX=IfaceIni.GetInt("ChaWStatsNextX",1);
-	ChaWStatsNextY=IfaceIni.GetInt("ChaWStatsNextY",1);
+	IfaceLoadRect(ChaWStatsName,"ChaStatsName");
+	IfaceLoadRect(ChaWStatsValue,"ChaStatsValue");
+	ChaWStatsNextX=IfaceIni.GetInt("ChaStatsNextX",1);
+	ChaWStatsNextY=IfaceIni.GetInt("ChaStatsNextY",1);
 	// Tips
-	IfaceLoadRect(ChaWName,"ChaWName");
-	IfaceLoadRect(ChaWDesc,"ChaWDesc");
-	IfaceLoadRect(ChaWPic,"ChaWPic");
+	IfaceLoadRect(ChaWName,"ChaParamName");
+	IfaceLoadRect(ChaWDesc,"ChaParamDesc");
+	IfaceLoadRect(ChaWPic,"ChaParamPic");
 	ZeroMemory(ChaName,sizeof(ChaName));
 	ZeroMemory(ChaDesc,sizeof(ChaDesc));
 	ChaSkilldexPic=-1;
 	// Buttons
-	IfaceLoadRect(ChaBName,"ChaBName");
-	IfaceLoadRect(ChaBAge,"ChaBAge");
-	IfaceLoadRect(ChaBSex,"ChaBSex");
+	IfaceLoadRect(ChaBName,"ChaName");
+	IfaceLoadRect(ChaBAge,"ChaAge");
+	IfaceLoadRect(ChaBSex,"ChaSex");
 	// Registration
 	RegNewCr=NULL;
 	RegWMain=ChaWMain;
-	IfaceLoadRect(RegWMain,"RegWMain");
-	IfaceLoadRect(RegBSpecialPlus,"RegBSpecialPlus");
-	IfaceLoadRect(RegBSpecialMinus,"RegBSpecialMinus");
-	IfaceLoadRect(RegBTagSkill,"RegBTagSkill");
-	IfaceLoadRect(RegWUnspentSpecial,"RegWUnspentSpecial");
-	IfaceLoadRect(RegWUnspentSpecialText,"RegWUnspentSpecialText");
-	RegBSpecialNextX=IfaceIni.GetInt("RegBSpecialNextX",1);
-	RegBSpecialNextY=IfaceIni.GetInt("RegBSpecialNextY",1);
-	RegBTagSkillNextX=IfaceIni.GetInt("RegBTagSkillNextX",1);
-	RegBTagSkillNextY=IfaceIni.GetInt("RegBTagSkillNextY",1);
+	IfaceLoadRect(RegWMain,"RegMain");
+	IfaceLoadRect(RegBSpecialPlus,"RegSpecialPlus");
+	IfaceLoadRect(RegBSpecialMinus,"RegSpecialMinus");
+	IfaceLoadRect(RegBTagSkill,"RegTagSkill");
+	IfaceLoadRect(RegWUnspentSpecial,"RegUnspentSpecial");
+	IfaceLoadRect(RegWUnspentSpecialText,"RegUnspentSpecialText");
+	RegBSpecialNextX=IfaceIni.GetInt("RegSpecialNextX",1);
+	RegBSpecialNextY=IfaceIni.GetInt("RegSpecialNextY",1);
+	RegBTagSkillNextX=IfaceIni.GetInt("RegTagSkillNextX",1);
+	RegBTagSkillNextY=IfaceIni.GetInt("RegTagSkillNextY",1);
 	RegCurSpecial=0;
 	RegCurTagSkill=0;
 	// Trait
-	IfaceLoadRect(RegBTraitL,"RegBTraitL");
-	IfaceLoadRect(RegBTraitR,"RegBTraitR");
-	IfaceLoadRect(RegWTraitL,"RegWTraitL");
-	IfaceLoadRect(RegWTraitR,"RegWTraitR");
+	IfaceLoadRect(RegBTraitL,"RegTraitL");
+	IfaceLoadRect(RegBTraitR,"RegTraitR");
+	IfaceLoadRect(RegWTraitL,"RegTraitLText");
+	IfaceLoadRect(RegWTraitR,"RegTraitRText");
 	RegTraitNextX=IfaceIni.GetInt("RegTraitNextX",1);
 	RegTraitNextY=IfaceIni.GetInt("RegTraitNextY",1);
 	RegTraitNum=0;
 
 	// ChaName
-	IfaceLoadRect(ChaNameWMain,"ChaNameWMain");
-	IfaceLoadRect(ChaNameWName,"ChaNameWName");
-	IfaceLoadRect(ChaNameWNameText,"ChaNameWNameText");
-	IfaceLoadRect(ChaNameWPass,"ChaNameWPass");
-	IfaceLoadRect(ChaNameWPassText,"ChaNameWPassText");
+	IfaceLoadRect(ChaNameWMain,"ChaNameMain");
+	IfaceLoadRect(ChaNameWName,"ChaNameName");
+	IfaceLoadRect(ChaNameWNameText,"ChaNameNameText");
+	IfaceLoadRect(ChaNameWPass,"ChaNamePass");
+	IfaceLoadRect(ChaNameWPassText,"ChaNamePassText");
 	ChaNameX=0;
 	ChaNameY=0;
 
 	// ChaAge
-	IfaceLoadRect(ChaAgeWMain,"ChaAgeWMain");
-	IfaceLoadRect(ChaAgeBUp,"ChaAgeBUp");
-	IfaceLoadRect(ChaAgeBDown,"ChaAgeBDown");
-	IfaceLoadRect(ChaAgeWAge,"ChaAgeWAge");
+	IfaceLoadRect(ChaAgeWMain,"ChaAgeMain");
+	IfaceLoadRect(ChaAgeBUp,"ChaAgeUp");
+	IfaceLoadRect(ChaAgeBDown,"ChaAgeDown");
+	IfaceLoadRect(ChaAgeWAge,"ChaAgeAge");
 	ChaAgeX=0;
 	ChaAgeY=0;
 
 	// ChaSex
-	IfaceLoadRect(ChaSexWMain,"ChaSexWMain");
-	IfaceLoadRect(ChaSexBMale,"ChaSexBMale");
-	IfaceLoadRect(ChaSexBFemale,"ChaSexBFemale");
+	IfaceLoadRect(ChaSexWMain,"ChaSexMain");
+	IfaceLoadRect(ChaSexBMale,"ChaSexMale");
+	IfaceLoadRect(ChaSexBFemale,"ChaSexFemale");
 	ChaSexX=0;
 	ChaSexY=0;
 
 	// Perk
-	IfaceLoadRect(PerkWMain,"PerkWMain");
-	IfaceLoadRect(PerkWText,"PerkWText");
-	IfaceLoadRect(PerkWPerks,"PerkWPerks");
-	IfaceLoadRect(PerkWPic,"PerkWPic");
-	IfaceLoadRect(PerkBScrUp,"PerkBScrUp");
-	IfaceLoadRect(PerkBScrDn,"PerkBScrDn");
-	IfaceLoadRect(PerkBOk,"PerkBOk");
-	IfaceLoadRect(PerkBCancel,"PerkBCancel");
-	IfaceLoadRect(PerkBOkText,"PerkBOkText");
-	IfaceLoadRect(PerkBCancelText,"PerkBCancelText");
+	IfaceLoadRect(PerkWMain,"PerkMain");
+	IfaceLoadRect(PerkWText,"PerkText");
+	IfaceLoadRect(PerkWPerks,"PerkPerks");
+	IfaceLoadRect(PerkWPic,"PerkPic");
+	IfaceLoadRect(PerkBScrUp,"PerkScrUp");
+	IfaceLoadRect(PerkBScrDn,"PerkScrDn");
+	IfaceLoadRect(PerkBOk,"PerkOk");
+	IfaceLoadRect(PerkBCancel,"PerkCancel");
+	IfaceLoadRect(PerkBOkText,"PerkOkText");
+	IfaceLoadRect(PerkBCancelText,"PerkCancelText");
 	PerkX=(MODE_WIDTH-PerkWMain.W())/2;
 	PerkY=(MODE_HEIGHT-PerkWMain.H())/2;
 	PerkNextX=IfaceIni.GetInt("PerkNextX",0);
@@ -530,10 +536,10 @@ int FOClient::InitIface()
 	PerkCurPerk=-1;
 
 	// Town view
-	IfaceLoadRect(TViewWMain,"TViewWMain");
-	IfaceLoadRect(TViewBBack,"TViewBBack");
-	IfaceLoadRect(TViewBEnter,"TViewBEnter");
-	IfaceLoadRect(TViewBContours,"TViewBContours");
+	IfaceLoadRect(TViewWMain,"TViewMain");
+	IfaceLoadRect(TViewBBack,"TViewBack");
+	IfaceLoadRect(TViewBEnter,"TViewEnter");
+	IfaceLoadRect(TViewBContours,"TViewContours");
 	TViewX=MODE_WIDTH-TViewWMain.W()-10;
 	TViewY=10;
 	TViewVectX=0;
@@ -583,33 +589,33 @@ int FOClient::InitIface()
 		}
 	}
 	// Other
-	IfaceLoadRect(GmapWMain,"GmapWMain");
+	IfaceLoadRect(GmapWMain,"GmapMain");
 	GmapX=GmapWMain.L;
 	GmapY=GmapWMain.T;
-	IfaceLoadRect2(GmapWMap,"GmapWMap",GmapX,GmapY);
-	IfaceLoadRect2(GmapBTown,"GmapBTown",GmapX,GmapY);
-	IfaceLoadRect2(GmapWName,"GmapWName",GmapX,GmapY);
-	IfaceLoadRect2(GmapWChat,"GmapWChat",GmapX,GmapY);
-	IfaceLoadRect2(GmapWPanel,"GmapWPanel",GmapX,GmapY);
-	IfaceLoadRect2(GmapWCar,"GmapWCar",GmapX,GmapY);
-	IfaceLoadRect2(GmapWTime,"GmapWTime",GmapX,GmapY);
-	IfaceLoadRect2(GmapWDayTime,"GmapWDayTime",GmapX,GmapY);
-	IfaceLoadRect2(GmapBInv,"GmapBInv",GmapX,GmapY);
-	IfaceLoadRect2(GmapBMenu,"GmapBMenu",GmapX,GmapY);
-	IfaceLoadRect2(GmapBCha,"GmapBCha",GmapX,GmapY);
-	IfaceLoadRect2(GmapBPip,"GmapBPip",GmapX,GmapY);
-	IfaceLoadRect2(GmapBFix,"GmapBFix",GmapX,GmapY);
+	IfaceLoadRect2(GmapWMap,"GmapMap",GmapX,GmapY);
+	IfaceLoadRect2(GmapBTown,"GmapTown",GmapX,GmapY);
+	IfaceLoadRect2(GmapWName,"GmapName",GmapX,GmapY);
+	IfaceLoadRect2(GmapWChat,"GmapMessageBox",GmapX,GmapY);
+	IfaceLoadRect2(GmapWPanel,"GmapPanel",GmapX,GmapY);
+	IfaceLoadRect2(GmapWCar,"GmapCar",GmapX,GmapY);
+	IfaceLoadRect2(GmapWTime,"GmapTime",GmapX,GmapY);
+	IfaceLoadRect2(GmapWDayTime,"GmapDayTime",GmapX,GmapY);
+	IfaceLoadRect2(GmapBInv,"GmapInv",GmapX,GmapY);
+	IfaceLoadRect2(GmapBMenu,"GmapMenu",GmapX,GmapY);
+	IfaceLoadRect2(GmapBCha,"GmapCha",GmapX,GmapY);
+	IfaceLoadRect2(GmapBPip,"GmapPip",GmapX,GmapY);
+	IfaceLoadRect2(GmapBFix,"GmapFix",GmapX,GmapY);
 	GmapMapScrX=GmapWMap.W()/2+GmapWMap.L;
 	GmapMapScrY=GmapWMap.H()/2+GmapWMap.T;
-	IfaceLoadRect2(GmapWLock,"GmapWLock",GmapX,GmapY);
-	GmapWNameStepX=IfaceIni.GetInt("GmapWNameStepX",0);
-	GmapWNameStepY=IfaceIni.GetInt("GmapWNameStepY",22);
-	IfaceLoadRect2(GmapWTabs,"GmapWTabs",GmapX,GmapY);
-	IfaceLoadRect2(GmapBTabsScrUp,"GmapBTabsScrUp",GmapX,GmapY);
-	IfaceLoadRect2(GmapBTabsScrDn,"GmapBTabsScrDn",GmapX,GmapY);
-	IfaceLoadRect(GmapWTab,"GmapWTab");
-	IfaceLoadRect(GmapWTabLoc,"GmapWTabLoc");
-	IfaceLoadRect(GmapBTabLoc,"GmapBTabLoc");
+	IfaceLoadRect2(GmapWLock,"GmapLock",GmapX,GmapY);
+	GmapWNameStepX=IfaceIni.GetInt("GmapNameStepX",0);
+	GmapWNameStepY=IfaceIni.GetInt("GmapNameStepY",22);
+	IfaceLoadRect2(GmapWTabs,"GmapTabs",GmapX,GmapY);
+	IfaceLoadRect2(GmapBTabsScrUp,"GmapTabsScrUp",GmapX,GmapY);
+	IfaceLoadRect2(GmapBTabsScrDn,"GmapTabsScrDn",GmapX,GmapY);
+	IfaceLoadRect(GmapWTab,"GmapTab");
+	IfaceLoadRect(GmapWTabLoc,"GmapTabLocImage");
+	IfaceLoadRect(GmapBTabLoc,"GmapTabLoc");
 	GmapTabNextX=IfaceIni.GetInt("GmapTabNextX",0);
 	GmapTabNextY=IfaceIni.GetInt("GmapTabNextY",0);
 	GmapNullParams();
@@ -625,25 +631,25 @@ int FOClient::InitIface()
 	GmapNextShowEntrancesTick=0;
 	GmapShowEntrancesLocId=0;
 	ZeroMemory(GmapShowEntrances,sizeof(GmapShowEntrances));
-	GmapPTownInOffsX=IfaceIni.GetInt("GmapPTownInOffsX",0);
-	GmapPTownInOffsY=IfaceIni.GetInt("GmapPTownInOffsY",0);
-	GmapPTownViewOffsX=IfaceIni.GetInt("GmapPTownViewOffsX",0);
-	GmapPTownViewOffsY=IfaceIni.GetInt("GmapPTownViewOffsY",0);
+	GmapPTownInOffsX=IfaceIni.GetInt("GmapTownInOffsX",0);
+	GmapPTownInOffsY=IfaceIni.GetInt("GmapTownInOffsY",0);
+	GmapPTownViewOffsX=IfaceIni.GetInt("GmapTownViewOffsX",0);
+	GmapPTownViewOffsY=IfaceIni.GetInt("GmapTownViewOffsY",0);
 	GmapZoom=1.0f;
 
 	// PickUp
-	IfaceLoadRect(PupWMain,"PupWMain");
-	IfaceLoadRect(PupWInfo,"PupWInfo");
-	IfaceLoadRect(PupWCont1,"PupWCont1");
-	IfaceLoadRect(PupWCont2,"PupWCont2");
-	IfaceLoadRect(PupBTakeAll,"PupBTakeAll");
-	IfaceLoadRect(PupBOk,"PupBOk");
-	IfaceLoadRect(PupBScrUp1,"PupBScrUp1");
-	IfaceLoadRect(PupBScrDw1,"PupBScrDw1");
-	IfaceLoadRect(PupBScrUp2,"PupBScrUp2");
-	IfaceLoadRect(PupBScrDw2,"PupBScrDw2");
-	IfaceLoadRect(PupBNextCritLeft,"PupBNextCritLeft");
-	IfaceLoadRect(PupBNextCritRight,"PupBNextCritRight");
+	IfaceLoadRect(PupWMain,"PupMain");
+	IfaceLoadRect(PupWInfo,"PupInfo");
+	IfaceLoadRect(PupWCont1,"PupCont1");
+	IfaceLoadRect(PupWCont2,"PupCont2");
+	IfaceLoadRect(PupBTakeAll,"PupTakeAll");
+	IfaceLoadRect(PupBOk,"PupOk");
+	IfaceLoadRect(PupBScrUp1,"PupScrUp1");
+	IfaceLoadRect(PupBScrDw1,"PupScrDw1");
+	IfaceLoadRect(PupBScrUp2,"PupScrUp2");
+	IfaceLoadRect(PupBScrDw2,"PupScrDw2");
+	IfaceLoadRect(PupBNextCritLeft,"PupNextCritLeft");
+	IfaceLoadRect(PupBNextCritRight,"PupNextCritRight");
 	PupX=(MODE_WIDTH-PupWMain.W())/2;
 	PupY=(MODE_HEIGHT-PupWMain.H())/2;
 	PupHeightItem1=IfaceIni.GetInt("PupHeightCont1",0);
@@ -662,14 +668,14 @@ int FOClient::InitIface()
 	PupLastPutId=0;
 
 	// Pipboy
-	IfaceLoadRect(PipWMain,"PipWMain");
-	IfaceLoadRect(PipWMonitor,"PipWMonitor");
-	IfaceLoadRect(PipBStatus,"PipBStatus");
-	//IfaceLoadRect(PipBGames,"PipBGames");
-	IfaceLoadRect(PipBAutomaps,"PipBAutomaps");
-	IfaceLoadRect(PipBArchives,"PipBArchives");
-	IfaceLoadRect(PipBClose,"PipBClose");
-	IfaceLoadRect(PipWTime,"PipWTime");
+	IfaceLoadRect(PipWMain,"PipMain");
+	IfaceLoadRect(PipWMonitor,"PipMonitor");
+	IfaceLoadRect(PipBStatus,"PipStatus");
+	//IfaceLoadRect(PipBGames,"PipGames");
+	IfaceLoadRect(PipBAutomaps,"PipAutomaps");
+	IfaceLoadRect(PipBArchives,"PipArchives");
+	IfaceLoadRect(PipBClose,"PipClose");
+	IfaceLoadRect(PipWTime,"PipTime");
 	PipX=(MODE_WIDTH-PipWMain.W())/2;
 	PipY=(MODE_HEIGHT-PipWMain.H())/2;
 	PipVectX=0;
@@ -690,24 +696,24 @@ int FOClient::InitIface()
 	AutomapZoom=1.0f;
 
 	// Aim
-	IfaceLoadRect(AimWMain,"AimWMain");
-	IfaceLoadRect(AimBCancel,"AimBCancel");
-	IfaceLoadRect(AimWHeadT,"AimWHeadText");
-	IfaceLoadRect(AimWLArmT,"AimWLArmText");
-	IfaceLoadRect(AimWRArmT,"AimWRArmText");
-	IfaceLoadRect(AimWTorsoT,"AimWTorsoText");
-	IfaceLoadRect(AimWRLegT,"AimWRLegText");
-	IfaceLoadRect(AimWLLegT,"AimWLLegText");
-	IfaceLoadRect(AimWEyesT,"AimWEyesText");
-	IfaceLoadRect(AimWGroinT,"AimWGroinText");
-	IfaceLoadRect(AimWHeadP,"AimWHeadProc");
-	IfaceLoadRect(AimWLArmP,"AimWLArmProc");
-	IfaceLoadRect(AimWRArmP,"AimWRArmProc");
-	IfaceLoadRect(AimWTorsoP,"AimWTorsoProc");
-	IfaceLoadRect(AimWRLegP,"AimWRLegProc");
-	IfaceLoadRect(AimWLLegP,"AimWLLegProc");
-	IfaceLoadRect(AimWEyesP,"AimWEyesProc");
-	IfaceLoadRect(AimWGroinP,"AimWGroinProc");
+	IfaceLoadRect(AimWMain,"AimMain");
+	IfaceLoadRect(AimBCancel,"AimCancel");
+	IfaceLoadRect(AimWHeadT,"AimHeadText");
+	IfaceLoadRect(AimWLArmT,"AimLArmText");
+	IfaceLoadRect(AimWRArmT,"AimRArmText");
+	IfaceLoadRect(AimWTorsoT,"AimTorsoText");
+	IfaceLoadRect(AimWRLegT,"AimRLegText");
+	IfaceLoadRect(AimWLLegT,"AimLLegText");
+	IfaceLoadRect(AimWEyesT,"AimEyesText");
+	IfaceLoadRect(AimWGroinT,"AimGroinText");
+	IfaceLoadRect(AimWHeadP,"AimHeadProc");
+	IfaceLoadRect(AimWLArmP,"AimLArmProc");
+	IfaceLoadRect(AimWRArmP,"AimRArmProc");
+	IfaceLoadRect(AimWTorsoP,"AimTorsoProc");
+	IfaceLoadRect(AimWRLegP,"AimRLegProc");
+	IfaceLoadRect(AimWLLegP,"AimLLegProc");
+	IfaceLoadRect(AimWEyesP,"AimEyesProc");
+	IfaceLoadRect(AimWGroinP,"AimGroinProc");
 	AimPicX=IfaceIni.GetInt("AimPicX",0);
 	AimPicY=IfaceIni.GetInt("AimPicY",0);
 	AimX=(MODE_WIDTH-AimWMain.W())/2;
@@ -719,12 +725,12 @@ int FOClient::InitIface()
 	AimTargetId=0;
 
 	// Dialog box
-	IfaceLoadRect(DlgboxWTop,"DlgboxWTop");
-	IfaceLoadRect(DlgboxWMiddle,"DlgboxWMiddle");
-	IfaceLoadRect(DlgboxWBottom,"DlgboxWBottom");
-	IfaceLoadRect(DlgboxWText,"DlgboxWText");
-	IfaceLoadRect(DlgboxBButton,"DlgboxBButton");
-	IfaceLoadRect(DlgboxBButtonText,"DlgboxBButtonText");
+	IfaceLoadRect(DlgboxWTop,"DlgboxTop");
+	IfaceLoadRect(DlgboxWMiddle,"DlgboxMiddle");
+	IfaceLoadRect(DlgboxWBottom,"DlgboxBottom");
+	IfaceLoadRect(DlgboxWText,"DlgboxText");
+	IfaceLoadRect(DlgboxBButton,"DlgboxButton");
+	IfaceLoadRect(DlgboxBButtonText,"DlgboxButtonText");
 	DlgboxX=(MODE_WIDTH-DlgboxWTop.W())/2;
 	DlgboxY=(MODE_HEIGHT-DlgboxWTop.H())/2;
 	DlgboxVectX=0;
@@ -762,13 +768,13 @@ int FOClient::InitIface()
 	ElevatorSendAnswerTick=0;
 
 	// Say box
-	IfaceLoadRect(SayWMain,"SayWMain");
-	IfaceLoadRect(SayWMainText,"SayWMainText");
-	IfaceLoadRect(SayWSay,"SayWSay");
-	IfaceLoadRect(SayBOk,"SayBOk");
-	IfaceLoadRect(SayBOkText,"SayBOkText");
-	IfaceLoadRect(SayBCancel,"SayBCancel");
-	IfaceLoadRect(SayBCancelText,"SayBCancelText");
+	IfaceLoadRect(SayWMain,"SayMain");
+	IfaceLoadRect(SayWMainText,"SayMainText");
+	IfaceLoadRect(SayWSay,"SaySay");
+	IfaceLoadRect(SayBOk,"SayOk");
+	IfaceLoadRect(SayBOkText,"SayOkText");
+	IfaceLoadRect(SayBCancel,"SayCancel");
+	IfaceLoadRect(SayBCancelText,"SayCancelText");
 	SayX=(MODE_WIDTH-SayWMain.W())/2;
 	SayY=(MODE_HEIGHT-SayWMain.H())/2;
 	SayVectX=0;
@@ -777,15 +783,15 @@ int FOClient::InitIface()
 	ZeroMemory(SayText,sizeof(SayText));
 
 	// Split
-	IfaceLoadRect(SplitWMain,"SplitWMain");
-	IfaceLoadRect(SplitWTitle,"SplitWTitle");
-	IfaceLoadRect(SplitWItem,"SplitWItem");
-	IfaceLoadRect(SplitBUp,"SplitBUp");
-	IfaceLoadRect(SplitBDown,"SplitBDown");
-	IfaceLoadRect(SplitBAll,"SplitBAll");
-	IfaceLoadRect(SplitWValue,"SplitWValue");
-	IfaceLoadRect(SplitBDone,"SplitBDone");
-	IfaceLoadRect(SplitBCancel,"SplitBCancel");
+	IfaceLoadRect(SplitWMain,"SplitMain");
+	IfaceLoadRect(SplitWTitle,"SplitTitle");
+	IfaceLoadRect(SplitWItem,"SplitItem");
+	IfaceLoadRect(SplitBUp,"SplitUp");
+	IfaceLoadRect(SplitBDown,"SplitDown");
+	IfaceLoadRect(SplitBAll,"SplitAll");
+	IfaceLoadRect(SplitWValue,"SplitValue");
+	IfaceLoadRect(SplitBDone,"SplitDone");
+	IfaceLoadRect(SplitBCancel,"SplitCancel");
 	SplitVectX=0;
 	SplitVectY=0;
 	SplitItemId=0;
@@ -801,14 +807,14 @@ int FOClient::InitIface()
 	SplitParentScreen=SCREEN_NONE;
 
 	// Timer
-	IfaceLoadRect(TimerWMain,"TimerWMain");
-	IfaceLoadRect(TimerWTitle,"TimerWTitle");
-	IfaceLoadRect(TimerWItem,"TimerWItem");
-	IfaceLoadRect(TimerBUp,"TimerBUp");
-	IfaceLoadRect(TimerBDown,"TimerBDown");
-	IfaceLoadRect(TimerWValue,"TimerWValue");
-	IfaceLoadRect(TimerBDone,"TimerBDone");
-	IfaceLoadRect(TimerBCancel,"TimerBCancel");
+	IfaceLoadRect(TimerWMain,"TimerMain");
+	IfaceLoadRect(TimerWTitle,"TimerTitle");
+	IfaceLoadRect(TimerWItem,"TimerItem");
+	IfaceLoadRect(TimerBUp,"TimerUp");
+	IfaceLoadRect(TimerBDown,"TimerDown");
+	IfaceLoadRect(TimerWValue,"TimerValue");
+	IfaceLoadRect(TimerBDone,"TimerDone");
+	IfaceLoadRect(TimerBCancel,"TimerCancel");
 	TimerVectX=0;
 	TimerVectY=0;
 	TimerItemId=0;
@@ -819,12 +825,12 @@ int FOClient::InitIface()
 	TimerItemColor=0;
 
 	// FixBoy
-	IfaceLoadRect(FixWMain,"FixWMain");
-	IfaceLoadRect(FixBScrUp,"FixBScrUp");
-	IfaceLoadRect(FixBScrDn,"FixBScrDn");
-	IfaceLoadRect(FixBDone,"FixBDone");
-	IfaceLoadRect(FixWWin,"FixWWin");
-	IfaceLoadRect(FixBFix,"FixBFix");
+	IfaceLoadRect(FixWMain,"FixMain");
+	IfaceLoadRect(FixBScrUp,"FixScrUp");
+	IfaceLoadRect(FixBScrDn,"FixScrDn");
+	IfaceLoadRect(FixBDone,"FixDone");
+	IfaceLoadRect(FixWWin,"FixWin");
+	IfaceLoadRect(FixBFix,"FixFix");
 	FixVectX=0;
 	FixVectY=0;
 	FixX=(MODE_WIDTH-FixWMain.W())/2;
@@ -839,13 +845,13 @@ int FOClient::InitIface()
 	FixNextShowCraftTick=0;
 
 	// Input box
-	IfaceLoadRect(IboxWMain,"IboxWMain");
-	IfaceLoadRect(IboxWTitle,"IboxWTitle");
-	IfaceLoadRect(IboxWText,"IboxWText");
-	IfaceLoadRect(IboxBDone,"IboxBDone");
-	IfaceLoadRect(IboxBDoneText,"IboxBDoneText");
-	IfaceLoadRect(IboxBCancel,"IboxBCancel");
-	IfaceLoadRect(IboxBCancelText,"IboxBCancelText");
+	IfaceLoadRect(IboxWMain,"IboxMain");
+	IfaceLoadRect(IboxWTitle,"IboxTitle");
+	IfaceLoadRect(IboxWText,"IboxText");
+	IfaceLoadRect(IboxBDone,"IboxDone");
+	IfaceLoadRect(IboxBDoneText,"IboxDoneText");
+	IfaceLoadRect(IboxBCancel,"IboxCancel");
+	IfaceLoadRect(IboxBCancelText,"IboxCancelText");
 	IboxMode=IBOX_MODE_NONE;
 	IboxX=(MODE_WIDTH-IboxWMain.W())/2;
 	IboxY=(MODE_HEIGHT-IboxWMain.H())/2;
@@ -857,6 +863,41 @@ int FOClient::InitIface()
 	IboxTextCur=0;
 	IboxLastKey=0;
 	IboxHolodiskId=0;
+
+	// Save/Load
+	IfaceLoadRect(SaveLoadMain,"SaveLoadMain");
+	IfaceLoadRect(SaveLoadText,"SaveLoadText");
+	IfaceLoadRect(SaveLoadScrUp,"SaveLoadScrUp");
+	IfaceLoadRect(SaveLoadScrDown,"SaveLoadScrDown");
+	IfaceLoadRect(SaveLoadSlots,"SaveLoadSlots");
+	IfaceLoadRect(SaveLoadPic,"SaveLoadPic");
+	IfaceLoadRect(SaveLoadInfo,"SaveLoadInfo");
+	IfaceLoadRect(SaveLoadDone,"SaveLoadDone");
+	IfaceLoadRect(SaveLoadDoneText,"SaveLoadDoneText");
+	IfaceLoadRect(SaveLoadBack,"SaveLoadBack");
+	IfaceLoadRect(SaveLoadBackText,"SaveLoadBackText");
+	SaveLoadCX=(MODE_WIDTH-SaveLoadMain.W())/2;
+	SaveLoadCY=(MODE_HEIGHT-SaveLoadMain.H())/2;
+	SaveLoadX=SaveLoadCX;
+	SaveLoadY=SaveLoadCY;
+	SaveLoadVectX=0;
+	SaveLoadVectY=0;
+	SaveLoadLoginScreen=false;
+	SaveLoadSave=false;
+	SaveLoadClickSlotTick=0;
+	SaveLoadClickSlotIndex=0;
+	SaveLoadSlotIndex=0;
+	SaveLoadSlotScroll=0;
+	SaveLoadSlotsMax=0;
+	SaveLoadDataSlots.clear();
+	// Save/load surface creating
+	if(!SaveLoadDraft && Singleplayer)
+	{
+		if(FAILED(SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
+			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
+	}
+	SaveLoadProcessDraft=false;
+	SaveLoadDraftValid=false;
 
 #pragma endregion
 /************************************************************************/
@@ -877,36 +918,36 @@ int FOClient::InitIface()
 	SprMngr.SurfType=RES_NONE;
 
 	// Interface
-	IfaceLoadSpr(IntPWAddMess,"IntWAddMessPicNone");
-	IfaceLoadSpr(IntPBAddMessDn,"IntBAddMessPicDown");
-	IfaceLoadSpr(IntPBMessFilter1Dn,"IntBMessFilter1PicDown");
-	IfaceLoadSpr(IntPBMessFilter2Dn,"IntBMessFilter2PicDown");
-	IfaceLoadSpr(IntPBMessFilter3Dn,"IntBMessFilter3PicDown");
-	IfaceLoadSpr(IntDiodeG,"IntAPgreenPic");
-	IfaceLoadSpr(IntDiodeY,"IntAPyellowPic");
-	IfaceLoadSpr(IntDiodeR,"IntAPredPic");
+	IfaceLoadSpr(IntPWAddMess,"IntAddMessWindowPic");
+	IfaceLoadSpr(IntPBAddMessDn,"IntAddMessPicDn");
+	IfaceLoadSpr(IntPBMessFilter1Dn,"IntMessFilter1PicDn");
+	IfaceLoadSpr(IntPBMessFilter2Dn,"IntMessFilter2PicDn");
+	IfaceLoadSpr(IntPBMessFilter3Dn,"IntMessFilter3PicDn");
+	IfaceLoadSpr(IntDiodeG,"IntApGreenPic");
+	IfaceLoadSpr(IntDiodeY,"IntApYellowPic");
+	IfaceLoadSpr(IntDiodeR,"IntApRedPic");
 	IfaceLoadSpr(IntBreakTimePic,"IntBreakTimePic");
-	IfaceLoadSpr(IntPBScrUpDn,"IntBScrUpPicDn");
-	IfaceLoadSpr(IntPBScrDnDn,"IntBScrDownPicDn");
-	IfaceLoadSpr(IntPBSlotsDn,"IntBChangeSlotPicDown");
-	IfaceLoadSpr(IntPBInvDn,"IntBInvPicDown");
-	IfaceLoadSpr(IntPBMenuDn,"IntBMenuPicDown");
-	IfaceLoadSpr(IntPBSkillDn,"IntBSkillPicDown");
-	IfaceLoadSpr(IntPBMapDn,"IntBMapPicDown");
-	IfaceLoadSpr(IntPBChaDn,"IntBChaPicDown");
-	IfaceLoadSpr(IntPBPipDn,"IntBPipPicDown");
-	IfaceLoadSpr(IntPBFixDn,"IntBFixPicDown");
-	IfaceLoadSpr(IntMessTabPicNone,"IntMessTabPicNone");
-	IfaceLoadSpr(IntBItemPicDn,"IntBItemPicDown");
-	IfaceLoadSpr(IntAimPic,"IntWAimPicNone");
-	IfaceLoadSpr(IntWApCostPicNone,"IntWApCostPicNone");
-	IfaceLoadAnim(IntWCombatAnim,"IntWCombatAnim");
-	IfaceLoadSpr(IntBCombatTurnPicDown,"IntBCombatTurnPicDown");
-	IfaceLoadSpr(IntBCombatEndPicDown,"IntBCombatEndPicDown");
-	IfaceLoadSpr(IntMainPic,"IntWMainPicNone");
+	IfaceLoadSpr(IntPBScrUpDn,"IntScrUpPicDn");
+	IfaceLoadSpr(IntPBScrDnDn,"IntScrDownPicDn");
+	IfaceLoadSpr(IntPBSlotsDn,"IntChangeSlotPicDn");
+	IfaceLoadSpr(IntPBInvDn,"IntInvPicDn");
+	IfaceLoadSpr(IntPBMenuDn,"IntMenuPicDn");
+	IfaceLoadSpr(IntPBSkillDn,"IntSkillPicDn");
+	IfaceLoadSpr(IntPBMapDn,"IntMapPicDn");
+	IfaceLoadSpr(IntPBChaDn,"IntChaPicDn");
+	IfaceLoadSpr(IntPBPipDn,"IntPipPicDn");
+	IfaceLoadSpr(IntPBFixDn,"IntFixPicDn");
+	IfaceLoadSpr(IntMessTabPicNone,"IntMessTabPic");
+	IfaceLoadSpr(IntBItemPicDn,"IntItemPicDn");
+	IfaceLoadSpr(IntAimPic,"IntAimPic");
+	IfaceLoadSpr(IntWApCostPicNone,"IntApCostPic");
+	IfaceLoadAnim(IntWCombatAnim,"IntCombatAnim");
+	IfaceLoadSpr(IntBCombatTurnPicDown,"IntCombatTurnPicDn");
+	IfaceLoadSpr(IntBCombatEndPicDown,"IntCombatEndPicDn");
+	IfaceLoadSpr(IntMainPic,"IntMainPic");
 
 	// Console
-	IfaceLoadSpr(ConsolePic,"ConsolePic");
+	IfaceLoadSpr(ConsolePic,"ConsoleMainPic");
 
 	// Default animations
 	SprMngr.SurfType=RES_IFACE;
@@ -927,55 +968,57 @@ int FOClient::InitIface()
 	}
 
 	// Inventory
-	IfaceLoadSpr(InvPWMain,"InvWMainPic");
-	IfaceLoadSpr(InvPBOkUp,"InvBOkPicUp");
-	IfaceLoadSpr(InvPBOkDw,"InvBOkPicDn");
-	IfaceLoadSpr(InvPBScrUpUp,"InvBScrUpPicUp");
-	IfaceLoadSpr(InvPBScrUpDw,"InvBScrUpPicDn");
-	IfaceLoadSpr(InvPBScrUpOff,"InvBScrUpPicNa");
-	IfaceLoadSpr(InvPBScrDwUp,"InvBScrDnPicUp");
-	IfaceLoadSpr(InvPBScrDwDw,"InvBScrDnPicDn");
-	IfaceLoadSpr(InvPBScrDwOff,"InvBScrDnPicNa");
+	IfaceLoadSpr(InvPWMain,"InvMainPic");
+	IfaceLoadSpr(InvPBOkUp,"InvOkPic");
+	IfaceLoadSpr(InvPBOkDw,"InvOkPicDn");
+	IfaceLoadSpr(InvPBScrUpUp,"InvScrUpPic");
+	IfaceLoadSpr(InvPBScrUpDw,"InvScrUpPicDn");
+	IfaceLoadSpr(InvPBScrUpOff,"InvScrUpPicNa");
+	IfaceLoadSpr(InvPBScrDwUp,"InvScrDnPic");
+	IfaceLoadSpr(InvPBScrDwDw,"InvScrDnPicDn");
+	IfaceLoadSpr(InvPBScrDwOff,"InvScrDnPicNa");
 	// Radio
-	IfaceLoadSpr(RadMainPic,"RadPicMain");
-	IfaceLoadSpr(RadPBOn,"RadPBOn");
+	IfaceLoadSpr(RadMainPic,"RadioMainPic");
+	IfaceLoadSpr(RadPBOn,"RadioOnPicDn");
 
 	// Use
-	IfaceLoadSpr(UseWMainPicNone,"UseWMainPicNone");
-	IfaceLoadSpr(UseBCancelPicDown,"UseBCancelPicDown");
-	IfaceLoadSpr(UseBScrUpPicDown,"UseBScrUpPicDown");
-	IfaceLoadSpr(UseBScrUpPicUp,"UseBScrUpPicUp");
-	IfaceLoadSpr(UseBScrUpPicOff,"UseBScrUpPicOff");
-	IfaceLoadSpr(UseBScrDownPicDown,"UseBScrDownPicDown");
-	IfaceLoadSpr(UseBScrDownPicUp,"UseBScrDownPicUp");
-	IfaceLoadSpr(UseBScrDownPicOff,"UseBScrDownPicOff");
+	IfaceLoadSpr(UseWMainPicNone,"UseMainPic");
+	IfaceLoadSpr(UseBCancelPicDown,"UseCancelPicDn");
+	IfaceLoadSpr(UseBScrUpPicDown,"UseScrUpPicDn");
+	IfaceLoadSpr(UseBScrUpPicUp,"UseScrUpPic");
+	IfaceLoadSpr(UseBScrUpPicOff,"UseScrUpPicOff");
+	IfaceLoadSpr(UseBScrDownPicDown,"UseScrDownPicDn");
+	IfaceLoadSpr(UseBScrDownPicUp,"UseScrDownPic");
+	IfaceLoadSpr(UseBScrDownPicOff,"UseScrDownPicOff");
 
 	// Login/Password
-	IfaceLoadSpr(LogPMain,"LogWMainPicNone");
-	IfaceLoadSpr(LogPBLogin,"LogBOkPicDown");
-	IfaceLoadSpr(LogPBReg,"LogBRegPicDown");
-	IfaceLoadSpr(LogPBOptions,"LogBOptionsPicDown");
-	IfaceLoadSpr(LogPBCredits,"LogBCreditsPicDown");
-	IfaceLoadSpr(LogPBExit,"LogBExitPicDown");
+	IfaceLoadSpr(LogPMain,"LogMainPic");
+	IfaceLoadSpr(LogPSingleplayerMain,"LogSingleplayerMainPic");
+	if(!LogPSingleplayerMain) LogPSingleplayerMain=LogPMain;
+	IfaceLoadSpr(LogPBLogin,"LogPlayPicDn");
+	IfaceLoadSpr(LogPBReg,"LogRegPicDn");
+	IfaceLoadSpr(LogPBOptions,"LogOptionsPicDn");
+	IfaceLoadSpr(LogPBCredits,"LogCreditsPicDn");
+	IfaceLoadSpr(LogPBExit,"LogExitPicDn");
 
 	// Dialog
 	IfaceLoadSpr(DlgPMain,"DlgMainPic");
 	IfaceLoadSpr(DlgPAnsw,"DlgAnswPic");
-	IfaceLoadSpr(DlgPBBarter,"DlgBBarterPic");
-	IfaceLoadSpr(DlgPBSay,"DlgBSayPic");
+	IfaceLoadSpr(DlgPBBarter,"DlgBarterPicDn");
+	IfaceLoadSpr(DlgPBSay,"DlgSayPicDn");
 	DlgAvatarSprId=0;
 	// Barter
 	IfaceLoadSpr(BarterPMain,"BarterMainPic");
-	IfaceLoadSpr(BarterPBOfferDn,"BarterBOfferPic");
-	IfaceLoadSpr(BarterPBTalkDn,"BarterBTalkPic");
-	IfaceLoadSpr(BarterPBC1ScrUpDn,"BarterBCont1ScrUpPicDn");
-	IfaceLoadSpr(BarterPBC2ScrUpDn,"BarterBCont2ScrUpPicDn");
-	IfaceLoadSpr(BarterPBC1oScrUpDn,"BarterBCont1oScrUpPicDn");
-	IfaceLoadSpr(BarterPBC2oScrUpDn,"BarterBCont2oScrUpPicDn");
-	IfaceLoadSpr(BarterPBC1ScrDnDn,"BarterBCont1ScrDnPicDn");
-	IfaceLoadSpr(BarterPBC2ScrDnDn,"BarterBCont2ScrDnPicDn");
-	IfaceLoadSpr(BarterPBC1oScrDnDn,"BarterBCont1oScrDnPicDn");
-	IfaceLoadSpr(BarterPBC2oScrDnDn,"BarterBCont2oScrDnPicDn");
+	IfaceLoadSpr(BarterPBOfferDn,"BarterOfferPic");
+	IfaceLoadSpr(BarterPBTalkDn,"BarterTalkPic");
+	IfaceLoadSpr(BarterPBC1ScrUpDn,"BarterCont1ScrUpPicDn");
+	IfaceLoadSpr(BarterPBC2ScrUpDn,"BarterCont2ScrUpPicDn");
+	IfaceLoadSpr(BarterPBC1oScrUpDn,"BarterCont1oScrUpPicDn");
+	IfaceLoadSpr(BarterPBC2oScrUpDn,"BarterCont2oScrUpPicDn");
+	IfaceLoadSpr(BarterPBC1ScrDnDn,"BarterCont1ScrDnPicDn");
+	IfaceLoadSpr(BarterPBC2ScrDnDn,"BarterCont2ScrDnPicDn");
+	IfaceLoadSpr(BarterPBC1oScrDnDn,"BarterCont1oScrDnPicDn");
+	IfaceLoadSpr(BarterPBC2oScrDnDn,"BarterCont2oScrDnPicDn");
 
 	// Cursors
 	SprMngr.SurfType=RES_IFACE;
@@ -1012,231 +1055,245 @@ int FOClient::InitIface()
 	if(!CurPScrLD) return __LINE__;
 
 	// LMenu
-	IfaceLoadSpr(LmenuPTalkOff,"LMenuTalkPicUp");
+	IfaceLoadSpr(LmenuPTalkOff,"LMenuTalkPic");
 	IfaceLoadSpr(LmenuPTalkOn,"LMenuTalkPicDn");
-	IfaceLoadSpr(LmenuPLookOff,"LMenuLookPicUp");
+	IfaceLoadSpr(LmenuPLookOff,"LMenuLookPic");
 	IfaceLoadSpr(LmenuPLookOn,"LMenuLookPicDn");
-	IfaceLoadSpr(LmenuPBreakOff,"LMenuCancelPicUp");
+	IfaceLoadSpr(LmenuPBreakOff,"LMenuCancelPic");
 	IfaceLoadSpr(LmenuPBreakOn,"LMenuCancelPicDn");
-	IfaceLoadSpr(LmenuPUseOff,"LMenuUsePicUp");
+	IfaceLoadSpr(LmenuPUseOff,"LMenuUsePic");
 	IfaceLoadSpr(LmenuPUseOn,"LMenuUsePicDn");
-	IfaceLoadSpr(LmenuPGMFollowOff,"LMenuGMFollowPicUp");
+	IfaceLoadSpr(LmenuPGMFollowOff,"LMenuGMFollowPic");
 	IfaceLoadSpr(LmenuPGMFollowOn,"LMenuGMFollowPicDn");
-	IfaceLoadSpr(LmenuPRotateOff,"LMenuRotatePicUp");
+	IfaceLoadSpr(LmenuPRotateOff,"LMenuRotatePic");
 	IfaceLoadSpr(LmenuPRotateOn,"LMenuRotatePicDn");
-	IfaceLoadSpr(LmenuPDropOff,"LMenuDropPicUp");
+	IfaceLoadSpr(LmenuPDropOff,"LMenuDropPic");
 	IfaceLoadSpr(LmenuPDropOn,"LMenuDropPicDn");
-	IfaceLoadSpr(LmenuPUnloadOff,"LMenuUnloadPicUp");
+	IfaceLoadSpr(LmenuPUnloadOff,"LMenuUnloadPic");
 	IfaceLoadSpr(LmenuPUnloadOn,"LMenuUnloadPicDn");
-	IfaceLoadSpr(LmenuPSortUpOff,"LMenuSortUpPicUp");
+	IfaceLoadSpr(LmenuPSortUpOff,"LMenuSortUpPic");
 	IfaceLoadSpr(LmenuPSortUpOn,"LMenuSortUpPicDn");
-	IfaceLoadSpr(LmenuPSortDownOff,"LMenuSortDownPicUp");
+	IfaceLoadSpr(LmenuPSortDownOff,"LMenuSortDownPic");
 	IfaceLoadSpr(LmenuPSortDownOn,"LMenuSortDownPicDn");
-	IfaceLoadSpr(LmenuPPickItemOff,"LMenuPickItemPicUp");
+	IfaceLoadSpr(LmenuPPickItemOff,"LMenuPickItemPic");
 	IfaceLoadSpr(LmenuPPickItemOn,"LMenuPickItemPicDn");
-	IfaceLoadSpr(LmenuPPushOff,"LMenuPushPicUp");
+	IfaceLoadSpr(LmenuPPushOff,"LMenuPushPic");
 	IfaceLoadSpr(LmenuPPushOn,"LMenuPushPicDn");
-	IfaceLoadSpr(LmenuPBagOff,"LMenuBagPicUp");
+	IfaceLoadSpr(LmenuPBagOff,"LMenuBagPic");
 	IfaceLoadSpr(LmenuPBagOn,"LMenuBagPicDn");
-	IfaceLoadSpr(LmenuPSkillOff,"LMenuSkillPicUp");
+	IfaceLoadSpr(LmenuPSkillOff,"LMenuSkillPic");
 	IfaceLoadSpr(LmenuPSkillOn,"LMenuSkillPicDn");
-	IfaceLoadSpr(LmenuPBarterOpenOff,"LMenuBarterOpenPicUp");
+	IfaceLoadSpr(LmenuPBarterOpenOff,"LMenuBarterOpenPic");
 	IfaceLoadSpr(LmenuPBarterOpenOn,"LMenuBarterOpenPicDn");
-	IfaceLoadSpr(LmenuPBarterHideOff,"LMenuBarterHidePicUp");
+	IfaceLoadSpr(LmenuPBarterHideOff,"LMenuBarterHidePic");
 	IfaceLoadSpr(LmenuPBarterHideOn,"LMenuBarterHidePicDn");
-	IfaceLoadSpr(LmenuPGmapKickOff,"LMenuGmapKickPicUp");
+	IfaceLoadSpr(LmenuPGmapKickOff,"LMenuGmapKickPic");
 	IfaceLoadSpr(LmenuPGmapKickOn,"LMenuGmapKickPicDn");
-	IfaceLoadSpr(LmenuPGmapRuleOff,"LMenuGmapRulePicUp");
+	IfaceLoadSpr(LmenuPGmapRuleOff,"LMenuGmapRulePic");
 	IfaceLoadSpr(LmenuPGmapRuleOn,"LMenuGmapRulePicDn");
-	IfaceLoadSpr(LmenuPVoteUpOff,"LMenuVoteUpPicUp");
+	IfaceLoadSpr(LmenuPVoteUpOff,"LMenuVoteUpPic");
 	IfaceLoadSpr(LmenuPVoteUpOn,"LMenuVoteUpPicDn");
-	IfaceLoadSpr(LmenuPVoteDownOff,"LMenuVoteDownPicUp");
+	IfaceLoadSpr(LmenuPVoteDownOff,"LMenuVoteDownPic");
 	IfaceLoadSpr(LmenuPVoteDownOn,"LMenuVoteDownPicDn");
 
 	// MiniMap
 	IfaceLoadSpr(LmapPMain,"LmapMainPic");
-	IfaceLoadSpr(LmapPBOkDw,"LmapBOkPicDn");
-	IfaceLoadSpr(LmapPBScanDw,"LmapBScanPicDn");
-	IfaceLoadSpr(LmapPBLoHiDw,"LmapBLoHiPicDn");
+	IfaceLoadSpr(LmapPBOkDw,"LmapOkPicDn");
+	IfaceLoadSpr(LmapPBScanDw,"LmapScanPicDn");
+	IfaceLoadSpr(LmapPBLoHiDw,"LmapLoHiPicDn");
 	SprMngr.SurfType=RES_IFACE;
 	LmapPPix=SprMngr.LoadSprite("green_pix.png",PT_ART_INTRFACE);
 	SprMngr.SurfType=RES_NONE;
 	if(!LmapPPix) return __LINE__;
 
 	// Skillbox
-	IfaceLoadSpr(SboxPMain,"SboxWMainPicNone");
-	IfaceLoadSpr(SboxPBCancelDn,"SboxBCancelPicDown");
-	IfaceLoadSpr(SboxPBSneakDn,"SboxBSneakPicDown");
-	IfaceLoadSpr(SboxPBLockPickDn,"SboxBLockpickPicDown");
-	IfaceLoadSpr(SboxPBStealDn,"SboxBStealPicDown");
-	IfaceLoadSpr(SboxPBTrapsDn,"SboxBTrapPicDown");
-	IfaceLoadSpr(SboxPBFirstaidDn,"SboxBFirstAidPicDown");
-	IfaceLoadSpr(SboxPBDoctorDn,"SboxBDoctorPicDown");
-	IfaceLoadSpr(SboxPBScienceDn,"SboxBSciencePicDown");
-	IfaceLoadSpr(SboxPBRepairDn,"SboxBRepairPicDown");
+	IfaceLoadSpr(SboxPMain,"SboxMainPic");
+	IfaceLoadSpr(SboxPBCancelDn,"SboxCancelPicDn");
+	IfaceLoadSpr(SboxPBSneakDn,"SboxSneakPicDn");
+	IfaceLoadSpr(SboxPBLockPickDn,"SboxLockpickPicDn");
+	IfaceLoadSpr(SboxPBStealDn,"SboxStealPicDn");
+	IfaceLoadSpr(SboxPBTrapsDn,"SboxTrapPicDn");
+	IfaceLoadSpr(SboxPBFirstaidDn,"SboxFirstAidPicDn");
+	IfaceLoadSpr(SboxPBDoctorDn,"SboxDoctorPicDn");
+	IfaceLoadSpr(SboxPBScienceDn,"SboxSciencePicDn");
+	IfaceLoadSpr(SboxPBRepairDn,"SboxRepairPicDn");
 
 	// Menu option
-	IfaceLoadSpr(MoptPMain,"MoptMainPic");
-	IfaceLoadSpr(MoptPBResumeOn,"MoptBResumePicDn");
-	IfaceLoadSpr(MoptPBExitOn,"MoptBExitPicDn");
+	IfaceLoadSpr(MoptMainPic,"MoptMainPic");
+	IfaceLoadSpr(MoptSingleplayerMainPic,"MoptSingleplayerMainPic");
+	if(!MoptSingleplayerMainPic) MoptSingleplayerMainPic=MoptMainPic;
+	IfaceLoadSpr(MoptSaveGamePicDown,"MoptSaveGamePicDn");
+	IfaceLoadSpr(MoptLoadGamePicDown,"MoptLoadGamePicDn");
+	IfaceLoadSpr(MoptOptionsPicDown,"MoptOptionsPicDn");
+	IfaceLoadSpr(MoptExitPicDown,"MoptExitPicDn");
+	IfaceLoadSpr(MoptResumePicDown,"MoptResumePicDn");
 
 	// Character
-	IfaceLoadSpr(ChaPMain,"ChaWMainPic");
-	IfaceLoadSpr(ChaPBPrintDn,"ChaBPrintPicDn");
-	IfaceLoadSpr(ChaPBOkDn,"ChaBOkPicDn");
-	IfaceLoadSpr(ChaPBCancelDn,"ChaBCancelPicDn");
+	IfaceLoadSpr(ChaPMain,"ChaMainPic");
+	IfaceLoadSpr(ChaPBPrintDn,"ChaPrintPicDn");
+	IfaceLoadSpr(ChaPBOkDn,"ChaOkPicDn");
+	IfaceLoadSpr(ChaPBCancelDn,"ChaCancelPicDn");
 	IfaceLoadSpr(ChaPWSlider,"ChaSliderPic");
-	IfaceLoadSpr(ChaPBSliderPlusDn,"ChaBSliderPlusPicDn");
-	IfaceLoadSpr(ChaPBSliderMinusDn,"ChaBSliderMinusPicDn");
+	IfaceLoadSpr(ChaPBSliderPlusDn,"ChaSliderPlusPicDn");
+	IfaceLoadSpr(ChaPBSliderMinusDn,"ChaSliderMinusPicDn");
 
 	// Switch
 	IfaceLoadSpr(ChaPBSwitchPerks,"ChaSwitchPerksPic");
 	IfaceLoadSpr(ChaPBSwitchKarma,"ChaSwitchKarmaPic");
 	IfaceLoadSpr(ChaPBSwitchKills,"ChaSwitchKillsPic");
 	IfaceLoadSpr(ChaPBSwitchMask,"ChaSwitchMaskPic");
-	IfaceLoadSpr(ChaPBSwitchScrUpUp,"ChaSwitchScrUpPicUp");
+	IfaceLoadSpr(ChaPBSwitchScrUpUp,"ChaSwitchScrUpPic");
 	IfaceLoadSpr(ChaPBSwitchScrUpDn,"ChaSwitchScrUpPicDn");
-	IfaceLoadSpr(ChaPBSwitchScrDnUp,"ChaSwitchScrDnPicUp");
+	IfaceLoadSpr(ChaPBSwitchScrDnUp,"ChaSwitchScrDnPic");
 	IfaceLoadSpr(ChaPBSwitchScrDnDn,"ChaSwitchScrDnPicDn");
 
 	// Registration
 	IfaceLoadSpr(RegPMain,"RegMainPic");
-	IfaceLoadSpr(RegPBSpecialPlusDn,"RegBSpecialPlusPicDn");
-	IfaceLoadSpr(RegPBSpecialMinusDn,"RegBSpecialMinusPicDn");
-	IfaceLoadSpr(RegPBTagSkillDn,"RegBTagSkillPicDn");
+	IfaceLoadSpr(RegPBSpecialPlusDn,"RegSpecialPlusPicDn");
+	IfaceLoadSpr(RegPBSpecialMinusDn,"RegSpecialMinusPicDn");
+	IfaceLoadSpr(RegPBTagSkillDn,"RegTagSkillPicDn");
 
 	// Traits
-	IfaceLoadSpr(RegPBTraitDn,"RegBTraitPicDn");
+	IfaceLoadSpr(RegPBTraitDn,"RegTraitPicDn");
 
 	// Buttons
-	IfaceLoadSpr(ChaPBNameDn,"ChaBNamePicDn");
-	IfaceLoadSpr(ChaPBAgeDn,"ChaBAgePicDn");
-	IfaceLoadSpr(ChaPBSexDn,"ChaBSexPicDn");
+	IfaceLoadSpr(ChaPBNameDn,"ChaNamePicDn");
+	IfaceLoadSpr(ChaPBAgeDn,"ChaAgePicDn");
+	IfaceLoadSpr(ChaPBSexDn,"ChaSexPicDn");
 
 	// ChaName
-	IfaceLoadSpr(ChaNamePic,"ChaNameMainPic");
+	IfaceLoadSpr(ChaNameMainPic,"ChaNameMainPic");
+	IfaceLoadSpr(ChaNameSingleplayerMainPic,"ChaNameSingleplayerMainPic");
+	if(!ChaNameSingleplayerMainPic) ChaNameSingleplayerMainPic=ChaNameMainPic;
 
 	// ChaAge
 	IfaceLoadSpr(ChaAgePic,"ChaAgeMainPic");
-	IfaceLoadSpr(ChaAgeBUpDn,"ChaAgeBUpPicDn");
-	IfaceLoadSpr(ChaAgeBDownDn,"ChaAgeBDownPicDn");
+	IfaceLoadSpr(ChaAgeBUpDn,"ChaAgeUpPicDn");
+	IfaceLoadSpr(ChaAgeBDownDn,"ChaAgeDownPicDn");
 
 	// ChaSex
 	IfaceLoadSpr(ChaSexPic,"ChaSexMainPic");
-	IfaceLoadSpr(ChaSexBMaleDn,"ChaSexBMalePicDn");
-	IfaceLoadSpr(ChaSexBFemaleDn,"ChaSexBFemalePicDn");
+	IfaceLoadSpr(ChaSexBMaleDn,"ChaSexMalePicDn");
+	IfaceLoadSpr(ChaSexBFemaleDn,"ChaSexFemalePicDn");
 
 	// Perk
 	IfaceLoadSpr(PerkPMain,"PerkMainPic");
-	IfaceLoadSpr(PerkPBScrUpDn,"PerkBScrUpPic");
-	IfaceLoadSpr(PerkPBScrDnDn,"PerkBScrDnPic");
-	IfaceLoadSpr(PerkPBOkDn,"PerkBOkPic");
-	IfaceLoadSpr(PerkPBCancelDn,"PerkBCancelPic");
+	IfaceLoadSpr(PerkPBScrUpDn,"PerkScrUpPic");
+	IfaceLoadSpr(PerkPBScrDnDn,"PerkScrDnPic");
+	IfaceLoadSpr(PerkPBOkDn,"PerkOkPic");
+	IfaceLoadSpr(PerkPBCancelDn,"PerkCancelPic");
 
 	// Town view
-	IfaceLoadSpr(TViewWMainPic,"TViewWMainPic");
-	IfaceLoadSpr(TViewBBackPicDn,"TViewBBackPicDn");
-	IfaceLoadSpr(TViewBEnterPicDn,"TViewBEnterPicDn");
-	IfaceLoadSpr(TViewBContoursPicDn,"TViewBContoursPicDn");
+	IfaceLoadSpr(TViewWMainPic,"TViewMainPic");
+	IfaceLoadSpr(TViewBBackPicDn,"TViewBackPicDn");
+	IfaceLoadSpr(TViewBEnterPicDn,"TViewEnterPicDn");
+	IfaceLoadSpr(TViewBContoursPicDn,"TViewContoursPicDn");
 
 	// Global map
-	IfaceLoadSpr(GmapWMainPic,"GmapWMainPic");
-	IfaceLoadSpr(GmapPBTownDw,"GmapBTownPicDn");
-	IfaceLoadSpr(GmapPGr,"GmapPGroupLocPic");
-	IfaceLoadSpr(GmapPTarg,"GmapPGroupTargPic");
-	IfaceLoadSpr(GmapPStay,"GmapPStayPic");
-	IfaceLoadSpr(GmapPStayDn,"GmapPStayPicDn");
-	IfaceLoadSpr(GmapPStayMask,"GmapPStayPicMask");
-	IfaceLoadSpr(GmapPTownInPic,"GmapPTownInPic");
-	IfaceLoadSpr(GmapPTownInPicDn,"GmapPTownInPicDn");
-	IfaceLoadSpr(GmapPTownInPicMask,"GmapPTownInPicMask");
-	IfaceLoadSpr(GmapPTownViewPic,"GmapPTownViewPic");
-	IfaceLoadSpr(GmapPTownViewPicDn,"GmapPTownViewPicDn");
-	IfaceLoadSpr(GmapPTownViewPicMask,"GmapPTownViewPicMask");
+	IfaceLoadSpr(GmapWMainPic,"GmapMainPic");
+	IfaceLoadSpr(GmapPBTownDw,"GmapTownPicDn");
+	IfaceLoadSpr(GmapPGr,"GmapGroupLocPic");
+	IfaceLoadSpr(GmapPTarg,"GmapGroupTargPic");
+	IfaceLoadSpr(GmapPStay,"GmapStayPic");
+	IfaceLoadSpr(GmapPStayDn,"GmapStayPicDn");
+	IfaceLoadSpr(GmapPStayMask,"GmapStayPicMask");
+	IfaceLoadSpr(GmapPTownInPic,"GmapTownInPic");
+	IfaceLoadSpr(GmapPTownInPicDn,"GmapTownInPicDn");
+	IfaceLoadSpr(GmapPTownInPicMask,"GmapTownInPicMask");
+	IfaceLoadSpr(GmapPTownViewPic,"GmapTownViewPic");
+	IfaceLoadSpr(GmapPTownViewPicDn,"GmapTownViewPicDn");
+	IfaceLoadSpr(GmapPTownViewPicMask,"GmapTownViewPicMask");
 	IfaceLoadSpr(GmapLocPic,"GmapLocPic");
 	IfaceLoadSpr(GmapPFollowCrit,"GmapFollowCritPic");
 	IfaceLoadSpr(GmapPFollowCritSelf,"GmapFollowCritSelfPic");
 	IfaceLoadSpr(GmapPWTab,"GmapTabPic");
 	IfaceLoadSpr(GmapPWBlankTab,"GmapBlankTabPic");
-	IfaceLoadSpr(GmapPBTabLoc,"GmapBTabLocPicDn");
-	IfaceLoadSpr(GmapPTabScrUpDw,"GmapBTabsScrUpPicDn");
-	IfaceLoadSpr(GmapPTabScrDwDw,"GmapBTabsScrDnPicDn");
-	IfaceLoadAnim(GmapWDayTimeAnim,"GmapWDayTimeAnim");
-	IfaceLoadSpr(GmapBInvPicDown,"GmapBInvPicDown");
-	IfaceLoadSpr(GmapBMenuPicDown,"GmapBMenuPicDown");
-	IfaceLoadSpr(GmapBChaPicDown,"GmapBChaPicDown");
-	IfaceLoadSpr(GmapBPipPicDown,"GmapBPipPicDown");
-	IfaceLoadSpr(GmapBFixPicDown,"GmapBFixPicDown");
-	IfaceLoadSpr(GmapPLightPic0,"GmapPLightPic0");
-	IfaceLoadSpr(GmapPLightPic1,"GmapPLightPic1");
+	IfaceLoadSpr(GmapPBTabLoc,"GmapTabLocPicDn");
+	IfaceLoadSpr(GmapPTabScrUpDw,"GmapTabsScrUpPicDn");
+	IfaceLoadSpr(GmapPTabScrDwDw,"GmapTabsScrDnPicDn");
+	IfaceLoadAnim(GmapWDayTimeAnim,"GmapDayTimeAnim");
+	IfaceLoadSpr(GmapBInvPicDown,"GmapInvPicDn");
+	IfaceLoadSpr(GmapBMenuPicDown,"GmapMenuPicDn");
+	IfaceLoadSpr(GmapBChaPicDown,"GmapChaPicDn");
+	IfaceLoadSpr(GmapBPipPicDown,"GmapPipPicDn");
+	IfaceLoadSpr(GmapBFixPicDown,"GmapFixPicDn");
+	IfaceLoadSpr(GmapPLightPic0,"GmapLightPic0");
+	IfaceLoadSpr(GmapPLightPic1,"GmapLightPic1");
 
 	// PickUp
-	IfaceLoadSpr(PupPMain,"PupWMainPicNone");
-	IfaceLoadSpr(PupPTakeAllOn,"PupBTAPicDown");
-	IfaceLoadSpr(PupPBOkOn,"PupBOkPicDown");
-	IfaceLoadSpr(PupPBScrUpOn1,"PupBScrUp1PicDown");
-	IfaceLoadSpr(PupPBScrUpOff1,"PupBScrUp1PicOff");
-	IfaceLoadSpr(PupPBScrDwOn1,"PupBScrDw1PicDown");
-	IfaceLoadSpr(PupPBScrDwOff1,"PupBScrDw1PicOff");
-	IfaceLoadSpr(PupPBScrUpOn2,"PupBScrUp2PicDown");
-	IfaceLoadSpr(PupPBScrUpOff2,"PupBScrUp2PicOff");
-	IfaceLoadSpr(PupPBScrDwOn2,"PupBScrDw2PicDown");
-	IfaceLoadSpr(PupPBScrDwOff2,"PupBScrDw2PicOff");
-	IfaceLoadSpr(PupBNextCritLeftPicUp,"PupBNextCritLeftPicUp");
-	IfaceLoadSpr(PupBNextCritLeftPicDown,"PupBNextCritLeftPicDown");
-	IfaceLoadSpr(PupBNextCritRightPicUp,"PupBNextCritRightPicUp");
-	IfaceLoadSpr(PupBNextCritRightPicDown,"PupBNextCritRightPicDown");
+	IfaceLoadSpr(PupPMain,"PupMainPic");
+	IfaceLoadSpr(PupPTakeAllOn,"PupTAPicDn");
+	IfaceLoadSpr(PupPBOkOn,"PupOkPicDn");
+	IfaceLoadSpr(PupPBScrUpOn1,"PupScrUp1PicDn");
+	IfaceLoadSpr(PupPBScrUpOff1,"PupScrUp1PicOff");
+	IfaceLoadSpr(PupPBScrDwOn1,"PupScrDw1PicDn");
+	IfaceLoadSpr(PupPBScrDwOff1,"PupScrDw1PicOff");
+	IfaceLoadSpr(PupPBScrUpOn2,"PupScrUp2PicDn");
+	IfaceLoadSpr(PupPBScrUpOff2,"PupScrUp2PicOff");
+	IfaceLoadSpr(PupPBScrDwOn2,"PupScrDw2PicDn");
+	IfaceLoadSpr(PupPBScrDwOff2,"PupScrDw2PicOff");
+	IfaceLoadSpr(PupBNextCritLeftPicUp,"PupNextCritLeftPic");
+	IfaceLoadSpr(PupBNextCritLeftPicDown,"PupNextCritLeftPicDn");
+	IfaceLoadSpr(PupBNextCritRightPicUp,"PupNextCritRightPic");
+	IfaceLoadSpr(PupBNextCritRightPicDown,"PupNextCritRightPicDn");
 
 	// Pipboy
 	IfaceLoadSpr(PipPMain,"PipMainPic");
-	IfaceLoadSpr(PipPWMonitor,"PipWMonitorPic");
-	IfaceLoadSpr(PipPBStatusDn,"PipBStatusPicDn");
-	//IfaceLoadSpr(PipPBGamesDn,"PipBGamesPicDn");
-	IfaceLoadSpr(PipPBAutomapsDn,"PipBAutomapsPicDn");
-	IfaceLoadSpr(PipPBArchivesDn,"PipBArchivesPicDn");
-	IfaceLoadSpr(PipPBCloseDn,"PipBClosePicDn");
+	IfaceLoadSpr(PipPWMonitor,"PipMonitorPic");
+	IfaceLoadSpr(PipPBStatusDn,"PipStatusPicDn");
+	//IfaceLoadSpr(PipPBGamesDn,"PipGamesPicDn");
+	IfaceLoadSpr(PipPBAutomapsDn,"PipAutomapsPicDn");
+	IfaceLoadSpr(PipPBArchivesDn,"PipArchivesPicDn");
+	IfaceLoadSpr(PipPBCloseDn,"PipClosePicDn");
 
 	// Aim
 	IfaceLoadSpr(AimPWMain,"AimMainPic");
-	IfaceLoadSpr(AimPBCancelDn,"AimBCancelPicDn");
+	IfaceLoadSpr(AimPBCancelDn,"AimCancelPicDn");
 
 	// Dialog box
-	IfaceLoadSpr(DlgboxWTopPicNone,"DlgboxWTopPicNone");
-	IfaceLoadSpr(DlgboxWMiddlePicNone,"DlgboxWMiddlePicNone");
-	IfaceLoadSpr(DlgboxWBottomPicNone,"DlgboxWBottomPicNone");
-	IfaceLoadSpr(DlgboxBButtonPicDown,"DlgboxBButtonPicDown");
+	IfaceLoadSpr(DlgboxWTopPicNone,"DlgboxTopPic");
+	IfaceLoadSpr(DlgboxWMiddlePicNone,"DlgboxMiddlePic");
+	IfaceLoadSpr(DlgboxWBottomPicNone,"DlgboxBottomPic");
+	IfaceLoadSpr(DlgboxBButtonPicDown,"DlgboxButtonPicDn");
 
 	// Say box
 	IfaceLoadSpr(SayWMainPicNone,"SayMainPic");
-	IfaceLoadSpr(SayBOkPicDown,"SayBOkPicDn");
-	IfaceLoadSpr(SayBCancelPicDown,"SayBCancelPicDn");
+	IfaceLoadSpr(SayBOkPicDown,"SayOkPicDn");
+	IfaceLoadSpr(SayBCancelPicDown,"SayCancelPicDn");
 
 	// Split
 	IfaceLoadSpr(SplitMainPic,"SplitMainPic");
-	IfaceLoadSpr(SplitPBUpDn,"SplitBUpPicDn");
-	IfaceLoadSpr(SplitPBDnDn,"SplitBDownPicDn");
-	IfaceLoadSpr(SplitPBAllDn,"SplitBAllPicDn");
-	IfaceLoadSpr(SplitPBDoneDn,"SplitBDonePic");
-	IfaceLoadSpr(SplitPBCancelDn,"SplitBCancelPic");
+	IfaceLoadSpr(SplitPBUpDn,"SplitUpPicDn");
+	IfaceLoadSpr(SplitPBDnDn,"SplitDownPicDn");
+	IfaceLoadSpr(SplitPBAllDn,"SplitAllPicDn");
+	IfaceLoadSpr(SplitPBDoneDn,"SplitDonePic");
+	IfaceLoadSpr(SplitPBCancelDn,"SplitCancelPic");
 
 	// Timer
 	IfaceLoadSpr(TimerMainPic,"TimerMainPic");
-	IfaceLoadSpr(TimerBUpPicDown,"TimerBUpPicDown");
-	IfaceLoadSpr(TimerBDownPicDown,"TimerBDownPicDown");
-	IfaceLoadSpr(TimerBDonePicDown,"TimerBDonePicDown");
-	IfaceLoadSpr(TimerBCancelPicDown,"TimerBCancelPicDown");
+	IfaceLoadSpr(TimerBUpPicDown,"TimerUpPicDn");
+	IfaceLoadSpr(TimerBDownPicDown,"TimerDownPicDn");
+	IfaceLoadSpr(TimerBDonePicDown,"TimerDonePicDn");
+	IfaceLoadSpr(TimerBCancelPicDown,"TimerCancelPicDn");
 
 	// FixBoy
-	IfaceLoadSpr(FixMainPic,"FixWMainPicNone");
-	IfaceLoadSpr(FixPBScrUpDn,"FixBScrUpPicDown");
-	IfaceLoadSpr(FixPBScrDnDn,"FixBScrDnPicDown");
-	IfaceLoadSpr(FixPBDoneDn,"FixBDonePicDown");
-	IfaceLoadSpr(FixPBFixDn,"FixBFixPicDown");
+	IfaceLoadSpr(FixMainPic,"FixMainPic");
+	IfaceLoadSpr(FixPBScrUpDn,"FixScrUpPicDn");
+	IfaceLoadSpr(FixPBScrDnDn,"FixScrDnPicDn");
+	IfaceLoadSpr(FixPBDoneDn,"FixDonePicDn");
+	IfaceLoadSpr(FixPBFixDn,"FixFixPicDn");
 
 	// Input box
-	IfaceLoadSpr(IboxWMainPicNone,"IboxWMainPicNone");
-	IfaceLoadSpr(IboxBDonePicDown,"IboxBDonePicDown");
-	IfaceLoadSpr(IboxBCancelPicDown,"IboxBCancelPicDown");
+	IfaceLoadSpr(IboxWMainPicNone,"IboxMainPic");
+	IfaceLoadSpr(IboxBDonePicDown,"IboxDonePicDn");
+	IfaceLoadSpr(IboxBCancelPicDown,"IboxCancelPicDn");
+
+	// Save/Load
+	IfaceLoadSpr(SaveLoadMainPic,"SaveLoadMainPic");
+	IfaceLoadSpr(SaveLoadScrUpPicDown,"SaveLoadScrUpPicDn");
+	IfaceLoadSpr(SaveLoadScrDownPicDown,"SaveLoadScrDownPicDn");
+	IfaceLoadSpr(SaveLoadDonePicDown,"SaveLoadDonePicDn");
+	IfaceLoadSpr(SaveLoadBackPicDown,"SaveLoadBackPicDn");
 
 #pragma endregion
 /************************************************************************/
@@ -1979,7 +2036,8 @@ void FOClient::ConsoleDraw()
 		}
 
 		SprMngr.DrawStr(INTRECT(10,10,MODE_WIDTH,MODE_HEIGHT),Str::Format(
-			"|0xAF00FF00 open test\n"
+			"|0xAF00FF00 FOnline\n"
+			"|0xAF22FF7A version %04X-%02X beta\n"
 			"|0x7F9B7AFF by |4294901760 Gamers |0x7FABCDFF for |0xFFFFFF00 Gamers\n\n"
 			"|0xFFBBBBBB Traffic, bytes:\n"
 			"Send: %u\n"
@@ -1996,6 +2054,7 @@ void FOClient::ConsoleDraw()
 			"Music: %d\n"
 			"\n"
 			"Sleep: %d\n",
+			CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF,
 			BytesSend,BytesReceive,BytesReceive+BytesSend,/*BytesRealReceive,*/
 			/*FULLVERSTR,*/FPS,PingTime,/*OptSleep,*/SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume(),OptSleep
 			),FT_COLORIZE,D3DCOLOR_XRGB(255,248,0),FONT_BIG);
@@ -2859,37 +2918,43 @@ bool FOClient::MessBoxLMouseDown()
 
 void FOClient::LogDraw()
 {
-	SprMngr.DrawSprite(LogPMain,LogX,LogY);
+	SprMngr.DrawSprite(Singleplayer?LogPSingleplayerMain:LogPMain,LogX,LogY);
 
-	if(IfaceHold==IFACE_LOG_OK) SprMngr.DrawSprite(LogPBLogin,LogBOk[0],LogBOk[1]);
-	if(IfaceHold==IFACE_LOG_REG) SprMngr.DrawSprite(LogPBReg,LogBReg[0],LogBReg[1]);
+	if(IfaceHold==IFACE_LOG_PLAY__NEWGAME) SprMngr.DrawSprite(LogPBLogin,LogBOk[0],LogBOk[1]);
+	if(IfaceHold==IFACE_LOG_REG__LOADGAME) SprMngr.DrawSprite(LogPBReg,LogBReg[0],LogBReg[1]);
 	if(IfaceHold==IFACE_LOG_OPTIONS) SprMngr.DrawSprite(LogPBOptions,LogBOptions[0],LogBOptions[1]);
 	if(IfaceHold==IFACE_LOG_CREDITS) SprMngr.DrawSprite(LogPBCredits,LogBCredits[0],LogBCredits[1]);
 	if(IfaceHold==IFACE_LOG_EXIT) SprMngr.DrawSprite(LogPBExit,LogBExit[0],LogBExit[1]);
 
-	SprMngr.DrawStr(LogBOkText,MsgGame->GetStr(STR_LOGIN_ENTER),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(LogBRegText,MsgGame->GetStr(STR_LOGIN_REG),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(LogBOkText,MsgGame->GetStr(Singleplayer?STR_LOGIN_NEWGAME:STR_LOGIN_PLAY),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(LogBRegText,MsgGame->GetStr(Singleplayer?STR_LOGIN_LOADGAME:STR_LOGIN_REGISTRATION),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(LogBOptionsText,MsgGame->GetStr(STR_LOGIN_OPTIONS),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(LogBCreditsText,MsgGame->GetStr(STR_LOGIN_CREDITS),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(LogBExitText,MsgGame->GetStr(STR_LOGIN_EXIT),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(LogWName,OptName.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_NAME?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 	SprMngr.DrawStr(LogWVersion,MsgGame->GetStr(STR_VERSION_INFO),FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEF);
 
-	if(Keyb::CtrlDwn)
+	if(!Singleplayer)
 	{
-		SprMngr.DrawStr(LogWPass,OptPass.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
-	}
-	else
-	{
-		char mask[MAX_NAME+1];
-		for(int i=0,j=min(MAX_NAME,OptPass.length());i<j;i++) mask[i]='#';
-		mask[min(MAX_NAME,OptPass.length())]='\0';
-		SprMngr.DrawStr(LogWPass,mask,FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+		SprMngr.DrawStr(LogWName,OptName.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_NAME?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+
+		if(Keyb::CtrlDwn)
+		{
+			SprMngr.DrawStr(LogWPass,OptPass.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+		}
+		else
+		{
+			char mask[MAX_NAME+1];
+			for(int i=0,j=min(MAX_NAME,OptPass.length());i<j;i++) mask[i]='#';
+			mask[min(MAX_NAME,OptPass.length())]='\0';
+			SprMngr.DrawStr(LogWPass,mask,FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+		}
 	}
 }
 
 void FOClient::LogKeyDown(BYTE dik)
 {
+	if(Singleplayer) return;
+
 	if(dik==DIK_RETURN || dik==DIK_NUMPADENTER)
 	{
 		LogTryConnect();
@@ -2920,8 +2985,8 @@ void FOClient::LogLMouseDown()
 
 	if(IsCurInRect(LogWName)) IfaceHold=(LogFocus=IFACE_LOG_NAME);
 	else if(IsCurInRect(LogWPass)) IfaceHold=(LogFocus=IFACE_LOG_PASS);
-	else if(IsCurInRect(LogBOk)) IfaceHold=IFACE_LOG_OK;
-	else if(IsCurInRect(LogBReg)) IfaceHold=IFACE_LOG_REG;
+	else if(IsCurInRect(LogBOk)) IfaceHold=IFACE_LOG_PLAY__NEWGAME;
+	else if(IsCurInRect(LogBReg)) IfaceHold=IFACE_LOG_REG__LOADGAME;
 	else if(IsCurInRect(LogBOptions)) IfaceHold=IFACE_LOG_OPTIONS;
 	else if(IsCurInRect(LogBCredits)) IfaceHold=IFACE_LOG_CREDITS;
 	else if(IsCurInRect(LogBExit)) IfaceHold=IFACE_LOG_EXIT;
@@ -2929,13 +2994,20 @@ void FOClient::LogLMouseDown()
 
 void FOClient::LogLMouseUp()
 {
-	if(IfaceHold==IFACE_LOG_OK && IsCurInRect(LogBOk))
+	if(IfaceHold==IFACE_LOG_PLAY__NEWGAME && IsCurInRect(LogBOk))
 	{
-		LogTryConnect();
+		if(!Singleplayer) LogTryConnect();
+		else ShowMainScreen(SCREEN_REGISTRATION);
 	}
-	else if(IfaceHold==IFACE_LOG_REG && IsCurInRect(LogBReg))
+	else if(IfaceHold==IFACE_LOG_REG__LOADGAME && IsCurInRect(LogBReg))
 	{
-		ShowMainScreen(SCREEN_REGISTRATION);
+		if(!Singleplayer) ShowMainScreen(SCREEN_REGISTRATION);
+		else
+		{
+			SaveLoadLoginScreen=true;
+			SaveLoadSave=false;
+			ShowScreen(SCREEN__SAVE_LOAD);
+		}
 	}
 	else if(IfaceHold==IFACE_LOG_OPTIONS && IsCurInRect(LogBOptions))
 	{
@@ -2955,43 +3027,47 @@ void FOClient::LogLMouseUp()
 
 void FOClient::LogTryConnect()
 {
-	while(!OptName.empty() && OptName[0]==' ') OptName.erase(0,1);
-	while(!OptName.empty() && OptName[OptName.length()-1]==' ') OptName.erase(OptName.length()-1,1);
-
-	if(OptName.length()<MIN_NAME || OptName.length()<GameOpt.MinNameLength ||
-		OptName.length()>MAX_NAME || OptName.length()>GameOpt.MaxNameLength)
+	if(!Singleplayer)
 	{
-		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_LOGIN));
-		return;
-	}
+		while(!OptName.empty() && OptName[0]==' ') OptName.erase(0,1);
+		while(!OptName.empty() && OptName[OptName.length()-1]==' ') OptName.erase(OptName.length()-1,1);
 
-	if(OptPass.length()<MIN_NAME || OptPass.length()<GameOpt.MinNameLength ||
-		OptPass.length()>MAX_NAME || OptPass.length()>GameOpt.MaxNameLength)
-	{
-		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_PASS));
-		return;
-	}
+		if(OptName.length()<MIN_NAME || OptName.length()<GameOpt.MinNameLength ||
+			OptName.length()>MAX_NAME || OptName.length()>GameOpt.MaxNameLength)
+		{
+			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_LOGIN));
+			return;
+		}
 
-	if(!CheckUserName(OptName.c_str()))
-	{
-		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_NAME_WRONG_CHARS));
-		return;
-	}
+		if(!CheckUserName(OptName.c_str()))
+		{
+			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_NAME_WRONG_CHARS));
+			return;
+		}
 
-	if(!CheckUserPass(OptPass.c_str()))
-	{
-		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_PASS_WRONG_CHARS));
-		return;
-	}
+		if(OptPass.length()<MIN_NAME || OptPass.length()<GameOpt.MinNameLength ||
+			OptPass.length()>MAX_NAME || OptPass.length()>GameOpt.MaxNameLength)
+		{
+			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_PASS));
+			return;
+		}
 
-	// Save login and password
-	Crypt.SetCache("__name",(BYTE*)OptName.c_str(),OptName.length()+1);
-	Crypt.SetCache("__pass",(BYTE*)OptPass.c_str(),OptPass.length()+1);
+		if(!CheckUserPass(OptPass.c_str()))
+		{
+			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_PASS_WRONG_CHARS));
+			return;
+		}
+
+		// Save login and password
+		Crypt.SetCache("__name",(BYTE*)OptName.c_str(),OptName.length()+1);
+		Crypt.SetCache("__pass",(BYTE*)OptPass.c_str(),OptPass.length()+1);
+
+		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONNECTION));
+	}
 
 	// Connect to server
-	AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONNECTION));
 	NetState=STATE_INIT_NET;
-	ShowMainScreen(SCREEN_WAIT);
+	InitNetReason=INIT_NET_REASON_LOGIN;
 	SAFEDEL(RegNewCr);
 	ScreenEffects.clear();
 }
@@ -4677,6 +4753,7 @@ void FOClient::ShowMainScreen(int new_screen)
 	case SCREEN_CREDITS:
 		CreditsNextTick=Timer::FastTick();
 		CreditsYPos=MODE_HEIGHT;
+		CreaditsExt=Keyb::ShiftDwn;
 		break;
 	case SCREEN_GAME:
 		SetCurMode(CUR_DEFAULT);
@@ -4745,7 +4822,17 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 		else if(p0==-2) SetLastCurMode();
 		if(s!=SCREEN_NONE) RunScreenScript(false,s,p0,p1,p2);
 
-		if(Singleplayer && SingleplayerData.Pause && s==SCREEN__MENU_OPTION) SingleplayerData.Pause=false;
+		if(Singleplayer)
+		{
+			if(SingleplayerData.Pause && s==SCREEN__MENU_OPTION) SingleplayerData.Pause=false;
+
+			if(s==SCREEN__SAVE_LOAD)
+			{
+				if(SaveLoadLoginScreen) ScreenFadeOut();
+				SaveLoadDataSlots.clear();
+			}
+			else if(s==SCREEN__SAY && SayType==DIALOGSAY_SAVE) SaveLoadShowDraft();
+		}
 		return;
 	}
 
@@ -4946,6 +5033,10 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 		TViewType=TOWN_VIEW_FROM_NONE;
 		TViewGmapLocId=0;
 		TViewGmapLocEntrance=0;
+		break;
+	case SCREEN__SAVE_LOAD:
+		SaveLoadCollect();
+		if(SaveLoadLoginScreen) ScreenFadeOut();
 		break;
 	default:
 		break;
@@ -6113,27 +6204,52 @@ void FOClient::SboxMouseMove()
 
 void FOClient::MoptDraw()
 {
-	SprMngr.DrawSprite(MoptPMain,MoptMain[0],MoptMain[1]);
+	SprMngr.DrawSprite(Singleplayer?MoptSingleplayerMainPic:MoptMainPic,MoptMain[0],MoptMain[1]);
 
-	if(IfaceHold==IFACE_MOPT_RESUME) SprMngr.DrawSprite(MoptPBResumeOn,MoptBResume[0],MoptBResume[1]);
-	if(IfaceHold==IFACE_MOPT_EXIT) SprMngr.DrawSprite(MoptPBExitOn,MoptBExit[0],MoptBExit[1]);
+	if(Singleplayer)
+	{
+		if(IfaceHold==IFACE_MOPT_SAVEGAME) SprMngr.DrawSprite(MoptSaveGamePicDown,MoptSaveGame[0],MoptSaveGame[1]);
+		else if(IfaceHold==IFACE_MOPT_LOADGAME) SprMngr.DrawSprite(MoptLoadGamePicDown,MoptLoadGame[0],MoptLoadGame[1]);
+		SprMngr.DrawStr(INTRECT(MoptSaveGame,0,IfaceHold==IFACE_MOPT_SAVEGAME?-1:0),MsgGame->GetStr(STR_MENUOPT_SAVEGAME),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+		SprMngr.DrawStr(INTRECT(MoptLoadGame,0,IfaceHold==IFACE_MOPT_LOADGAME?-1:0),MsgGame->GetStr(STR_MENUOPT_LOADGAME),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	}
 
-	SprMngr.DrawStr(INTRECT(MoptBResume,0,IfaceHold==IFACE_MOPT_RESUME?-1:0),MsgGame->GetStr(STR_MENUOPT_RESUME),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(INTRECT(MoptBExit,0,IfaceHold==IFACE_MOPT_EXIT?-1:0),MsgGame->GetStr(STR_MENUOPT_EXIT),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	if(IfaceHold==IFACE_MOPT_OPTIONS) SprMngr.DrawSprite(MoptOptionsPicDown,MoptOptions[0],MoptOptions[1]);
+	else if(IfaceHold==IFACE_MOPT_EXIT) SprMngr.DrawSprite(MoptExitPicDown,MoptExit[0],MoptExit[1]);
+	else if(IfaceHold==IFACE_MOPT_RESUME) SprMngr.DrawSprite(MoptResumePicDown,MoptResume[0],MoptResume[1]);
+	SprMngr.DrawStr(INTRECT(MoptOptions,0,IfaceHold==IFACE_MOPT_OPTIONS?-1:0),MsgGame->GetStr(STR_MENUOPT_OPTIONS),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(INTRECT(MoptResume,0,IfaceHold==IFACE_MOPT_RESUME?-1:0),MsgGame->GetStr(STR_MENUOPT_RESUME),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(INTRECT(MoptExit,0,IfaceHold==IFACE_MOPT_EXIT?-1:0),MsgGame->GetStr(STR_MENUOPT_EXIT),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 }
 
 void FOClient::MoptLMouseDown()
 {
 	IfaceHold=IFACE_NONE;
 
-	if(IsCurInRect(MoptBResume,0,0)) IfaceHold=IFACE_MOPT_RESUME;
-	else if(IsCurInRect(MoptBExit,0,0)) IfaceHold=IFACE_MOPT_EXIT;
+	if(Singleplayer && IsCurInRect(MoptSaveGame,0,0)) IfaceHold=IFACE_MOPT_SAVEGAME;
+	else if(Singleplayer && IsCurInRect(MoptLoadGame,0,0)) IfaceHold=IFACE_MOPT_LOADGAME;
+	else if(IsCurInRect(MoptOptions,0,0)) IfaceHold=IFACE_MOPT_OPTIONS;
+	else if(IsCurInRect(MoptExit,0,0)) IfaceHold=IFACE_MOPT_EXIT;
+	else if(IsCurInRect(MoptResume,0,0)) IfaceHold=IFACE_MOPT_RESUME;
 }
 
 void FOClient::MoptLMouseUp()
 {
-	if(IfaceHold==IFACE_MOPT_RESUME && IsCurInRect(MoptBResume,0,0)) ShowScreen(SCREEN_NONE);
-	else if(IfaceHold==IFACE_MOPT_EXIT && IsCurInRect(MoptBExit,0,0)) NetDisconnect();
+	if(IfaceHold==IFACE_MOPT_SAVEGAME && Singleplayer && IsCurInRect(MoptSaveGame,0,0))
+	{
+		SaveLoadLoginScreen=false;
+		SaveLoadSave=true;
+		ShowScreen(SCREEN__SAVE_LOAD);
+	}
+	else if(IfaceHold==IFACE_MOPT_LOADGAME && Singleplayer && IsCurInRect(MoptLoadGame,0,0))
+	{
+		SaveLoadLoginScreen=false;
+		SaveLoadSave=false;
+		ShowScreen(SCREEN__SAVE_LOAD);
+	}
+	else if(IfaceHold==IFACE_MOPT_OPTIONS && IsCurInRect(MoptOptions,0,0)) AddMess(FOMB_GAME,MsgGame->GetStr(STR_OPTIONS_NOT_AVIABLE));
+	else if(IfaceHold==IFACE_MOPT_EXIT && IsCurInRect(MoptExit,0,0)) NetDisconnect();
+	else if(IfaceHold==IFACE_MOPT_RESUME && IsCurInRect(MoptResume,0,0)) ShowScreen(SCREEN_NONE);
 
 	IfaceHold=IFACE_NONE;
 }
@@ -6144,7 +6260,9 @@ void FOClient::MoptLMouseUp()
 
 void FOClient::CreditsDraw()
 {
-	SprMngr.DrawStr(INTRECT(0,CreditsYPos,MODE_WIDTH,MODE_HEIGHT+50),MsgGame->GetStr(STR_GAME_CREDITS),FT_CENTERX|FT_COLORIZE,COLOR_TEXT,FONT_BIG);
+	SprMngr.DrawStr(INTRECT(0,CreditsYPos,MODE_WIDTH,MODE_HEIGHT+50),
+		MsgGame->GetStr(CreaditsExt?STR_GAME_CREDITS_EXT:STR_GAME_CREDITS),FT_CENTERX|FT_COLORIZE,COLOR_TEXT,FONT_BIG);
+
 	if(Timer::FastTick()>=CreditsNextTick)
 	{
 		CreditsYPos--;
@@ -6766,6 +6884,7 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			if(RegCheckData(RegNewCr))
 			{
 				NetState=STATE_INIT_NET;
+				InitNetReason=INIT_NET_REASON_REG;
 				SetCurMode(CUR_WAIT);
 			}
 		}
@@ -6949,18 +7068,23 @@ void FOClient::ChaNameDraw()
 		return;
 	}
 
-	SprMngr.DrawSprite(ChaNamePic,ChaNameX,ChaNameY);
+	SprMngr.DrawSprite(Singleplayer?ChaNameSingleplayerMainPic:ChaNameMainPic,ChaNameX,ChaNameY);
+
 	SprMngr.DrawStr(INTRECT(ChaNameWNameText,ChaNameX,ChaNameY),MsgGame->GetStr(STR_CHA_NAME_NAME),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(INTRECT(ChaNameWPassText,ChaNameX,ChaNameY),MsgGame->GetStr(STR_CHA_NAME_PASS),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(INTRECT(ChaNameWName,ChaNameX,ChaNameY),cr->GetName(),FT_NOBREAK|FT_CENTERY,IfaceHold==IFACE_CHA_NAME_NAME?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
-	SprMngr.DrawStr(INTRECT(ChaNameWPass,ChaNameX,ChaNameY),cr->GetPass(),FT_NOBREAK|FT_CENTERY,IfaceHold==IFACE_CHA_NAME_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+
+	if(!Singleplayer)
+	{
+		SprMngr.DrawStr(INTRECT(ChaNameWPassText,ChaNameX,ChaNameY),MsgGame->GetStr(STR_CHA_NAME_PASS),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+		SprMngr.DrawStr(INTRECT(ChaNameWPass,ChaNameX,ChaNameY),cr->GetPass(),FT_NOBREAK|FT_CENTERY,IfaceHold==IFACE_CHA_NAME_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+	}
 }
 
 void FOClient::ChaNameLMouseDown()
 {
 	IfaceHold=IFACE_NONE;
 
-	if(!IsCurInRect(ChaNameWMain,ChaX,ChaY))
+	if(!IsCurInRectNoTransp(Singleplayer?ChaNameSingleplayerMainPic:ChaNameMainPic,ChaNameWMain,ChaX,ChaY))
 	{
 		ShowScreen(SCREEN_NONE);
 		return;
@@ -6969,14 +7093,14 @@ void FOClient::ChaNameLMouseDown()
 	if(!IsMainScreen(SCREEN_REGISTRATION)) return;
 
 	if(IsCurInRect(ChaNameWName,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_NAME;
-	else if(IsCurInRect(ChaNameWPass,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_PASS;
+	else if(Singleplayer && IsCurInRect(ChaNameWPass,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_PASS;
 }
 
 void FOClient::ChaNameKeyDown(BYTE dik)
 {
 	if(!IsMainScreen(SCREEN_REGISTRATION) || !RegNewCr) return;
 
-	if(dik==DIK_TAB)
+	if(dik==DIK_TAB && !Singleplayer)
 	{
 		switch(IfaceHold)
 		{
@@ -7245,15 +7369,16 @@ void FOClient::PerkLMouseUp()
 
 void FOClient::PerkMouseMove()
 {
-	if(IfaceHold!=IFACE_PERK_MAIN) return;
+	if(IfaceHold==IFACE_PERK_MAIN)
+	{
+		PerkX=CurX-PerkVectX;
+		PerkY=CurY-PerkVectY;
 
-	PerkX=CurX-PerkVectX;
-	PerkY=CurY-PerkVectY;
-
-	if(PerkX<0) PerkX=0;
-	if(PerkX+PerkWMain[2]>MODE_WIDTH) PerkX=MODE_WIDTH-PerkWMain[2];
-	if(PerkY<0) PerkY=0;
-	if(PerkY+PerkWMain[3]>MODE_HEIGHT) PerkY=MODE_HEIGHT-PerkWMain[3];
+		if(PerkX<0) PerkX=0;
+		if(PerkX+PerkWMain[2]>MODE_WIDTH) PerkX=MODE_WIDTH-PerkWMain[2];
+		if(PerkY<0) PerkY=0;
+		if(PerkY+PerkWMain[3]>MODE_HEIGHT) PerkY=MODE_HEIGHT-PerkWMain[3];
+	}
 }
 
 //==============================================================================================================================
@@ -7917,15 +8042,16 @@ Label_Attack:
 
 void FOClient::AimMouseMove()
 {
-	if(IfaceHold!=IFACE_AIM_MAIN) return;
+	if(IfaceHold==IFACE_AIM_MAIN)
+	{
+		AimX=CurX-AimVectX;
+		AimY=CurY-AimVectY;
 
-	AimX=CurX-AimVectX;
-	AimY=CurY-AimVectY;
-
-	if(AimX<0) AimX=0;
-	if(AimX+AimWMain[2]>MODE_WIDTH) AimX=MODE_WIDTH-AimWMain[2];
-	if(AimY<0) AimY=0;
-	if(AimY+AimWMain[3]>MODE_HEIGHT) AimY=MODE_HEIGHT-AimWMain[3];
+		if(AimX<0) AimX=0;
+		if(AimX+AimWMain[2]>MODE_WIDTH) AimX=MODE_WIDTH-AimWMain[2];
+		if(AimY<0) AimY=0;
+		if(AimY+AimWMain[3]>MODE_HEIGHT) AimY=MODE_HEIGHT-AimWMain[3];
+	}
 }
 
 DWORD FOClient::AimGetPic(CritterCl* cr)
@@ -8193,16 +8319,17 @@ void FOClient::PupLMouseUp()
 
 void FOClient::PupMouseMove()
 {
-	if(IfaceHold!=IFACE_PUP_MAIN) return;
+	if(IfaceHold==IFACE_PUP_MAIN)
+	{
+		PupX=CurX-PupVectX;
+		PupY=CurY-PupVectY;
 
-	PupX=CurX-PupVectX;
-	PupY=CurY-PupVectY;
-
-	if(PupX<0) PupX=0;
-	if(PupX+PupWMain[2]>MODE_WIDTH) PupX=MODE_WIDTH-PupWMain[2];
-	if(PupY<0) PupY=0;
-	//if(PupY+PupWMain[3]>IntY) PupY=IntY-PupWMain[3];
-	if(PupY+PupWMain[3]>MODE_HEIGHT) PupY=MODE_HEIGHT-PupWMain[3];
+		if(PupX<0) PupX=0;
+		if(PupX+PupWMain[2]>MODE_WIDTH) PupX=MODE_WIDTH-PupWMain[2];
+		if(PupY<0) PupY=0;
+		//if(PupY+PupWMain[3]>IntY) PupY=IntY-PupWMain[3];
+		if(PupY+PupWMain[3]>MODE_HEIGHT) PupY=MODE_HEIGHT-PupWMain[3];
+	}
 }
 
 void FOClient::PupRMouseDown()
@@ -8593,16 +8720,17 @@ void FOClient::DlgboxLMouseUp()
 
 void FOClient::DlgboxMouseMove()
 {
-	if(IfaceHold!=IFACE_DIALOG_MAIN) return;
+	if(IfaceHold==IFACE_DIALOG_MAIN)
+	{
+		DlgboxX=CurX-DlgboxVectX;
+		DlgboxY=CurY-DlgboxVectY;
 
-	DlgboxX=CurX-DlgboxVectX;
-	DlgboxY=CurY-DlgboxVectY;
-
-	DWORD height=DlgboxWTop.H()+DlgboxButtonsCount*DlgboxWMiddle.H()+DlgboxWBottom.H();
-	if(DlgboxX<0) DlgboxX=0;
-	if(DlgboxX+DlgboxWTop[2]>MODE_WIDTH) DlgboxX=MODE_WIDTH-DlgboxWTop[2];
-	if(DlgboxY<0) DlgboxY=0;
-	if(DlgboxY+height>MODE_HEIGHT) DlgboxY=MODE_HEIGHT-height;
+		DWORD height=DlgboxWTop.H()+DlgboxButtonsCount*DlgboxWMiddle.H()+DlgboxWBottom.H();
+		if(DlgboxX<0) DlgboxX=0;
+		if(DlgboxX+DlgboxWTop[2]>MODE_WIDTH) DlgboxX=MODE_WIDTH-DlgboxWTop[2];
+		if(DlgboxY<0) DlgboxY=0;
+		if(DlgboxY+height>MODE_HEIGHT) DlgboxY=MODE_HEIGHT-height;
+	}
 }
 
 //==============================================================================================================================
@@ -8670,15 +8798,16 @@ void FOClient::ElevatorLMouseUp()
 
 void FOClient::ElevatorMouseMove()
 {
-	if(IfaceHold!=IFACE_ELEVATOR_MAIN) return;
+	if(IfaceHold==IFACE_ELEVATOR_MAIN)
+	{
+		ElevatorX=CurX-ElevatorVectX;
+		ElevatorY=CurY-ElevatorVectY;
 
-	ElevatorX=CurX-ElevatorVectX;
-	ElevatorY=CurY-ElevatorVectY;
-
-	if(ElevatorX<0) ElevatorX=0;
-	if(ElevatorX+ElevatorMain[2]>MODE_WIDTH) ElevatorX=MODE_WIDTH-ElevatorMain[2];
-	if(ElevatorY<0) ElevatorY=0;
-	if(ElevatorY+ElevatorMain[3]>MODE_HEIGHT) ElevatorY=MODE_HEIGHT-ElevatorMain[3];
+		if(ElevatorX<0) ElevatorX=0;
+		if(ElevatorX+ElevatorMain[2]>MODE_WIDTH) ElevatorX=MODE_WIDTH-ElevatorMain[2];
+		if(ElevatorY<0) ElevatorY=0;
+		if(ElevatorY+ElevatorMain[3]>MODE_HEIGHT) ElevatorY=MODE_HEIGHT-ElevatorMain[3];
+	}
 }
 
 void FOClient::ElevatorGenerate(DWORD param)
@@ -8819,9 +8948,10 @@ void FOClient::SayLMouseUp()
 		else
 		{
 			if(SayType==DIALOGSAY_TEXT) Net_SendSayNpc(DlgIsNpc,DlgNpcId,SayText);
+			else if(SayType==DIALOGSAY_SAVE) SaveLoadSaveGame(SayText);
 		}
-		WaitPing();
 		ShowScreen(SCREEN_NONE);
+		WaitPing();
 		return;
 	case IFACE_SAY_CANCEL:
 		if(!IsCurInRect(SayBCancel,SayX,SayY)) break;
@@ -8836,13 +8966,16 @@ void FOClient::SayLMouseUp()
 
 void FOClient::SayMouseMove()
 {
-	if(IfaceHold!=IFACE_SAY_MAIN) return;
-	SayX=CurX-SayVectX;
-	SayY=CurY-SayVectY;
-	if(SayX<0) SayX=0;
-	if(SayX+SayWMain[2]>MODE_WIDTH) SayX=MODE_WIDTH-SayWMain[2];
-	if(SayY<0) SayY=0;
-	if(SayY+SayWMain[3]>MODE_HEIGHT) SayY=MODE_HEIGHT-SayWMain[3];
+	if(IfaceHold==IFACE_SAY_MAIN)
+	{
+		SayX=CurX-SayVectX;
+		SayY=CurY-SayVectY;
+
+		if(SayX<0) SayX=0;
+		if(SayX+SayWMain[2]>MODE_WIDTH) SayX=MODE_WIDTH-SayWMain[2];
+		if(SayY<0) SayY=0;
+		if(SayY+SayWMain[3]>MODE_HEIGHT) SayY=MODE_HEIGHT-SayWMain[3];
+	}
 }
 
 void FOClient::SayKeyDown(BYTE dik)
@@ -8857,13 +8990,15 @@ void FOClient::SayKeyDown(BYTE dik)
 		else
 		{
 			if(SayType==DIALOGSAY_TEXT) Net_SendSayNpc(DlgIsNpc,DlgNpcId,SayText);
+			else if(SayType==DIALOGSAY_SAVE) SaveLoadSaveGame(SayText);
 		}
-		WaitPing();
 		ShowScreen(SCREEN_NONE);
+		WaitPing();
 		return;
 	}
 
 	if(SayType==DIALOGSAY_TEXT) Keyb::GetChar(dik,SayText,NULL,MAX_SAY_NPC_TEXT,SayOnlyNumbers?KIF_ONLY_NUMBERS:KIF_NO_SPEC_SYMBOLS);
+	else if(SayType==DIALOGSAY_SAVE) Keyb::GetChar(dik,SayText,NULL,MAX_FOPATH,SayOnlyNumbers?KIF_ONLY_NUMBERS:KIF_FILE_NAME);
 }
 
 //==============================================================================================================================
@@ -9063,15 +9198,16 @@ void FOClient::SplitLMouseUp()
 
 void FOClient::SplitMouseMove()
 {
-	if(IfaceHold!=IFACE_SPLIT_MAIN) return;
-	
-	SplitX=CurX-SplitVectX;
-	SplitY=CurY-SplitVectY;
-	
-	if(SplitX<0) SplitX=0;
-	if(SplitX+SplitWMain[2]>MODE_WIDTH) SplitX=MODE_WIDTH-SplitWMain[2];
-	if(SplitY<0) SplitY=0;
-	if(SplitY+SplitWMain[3]>MODE_HEIGHT) SplitY=MODE_HEIGHT-SplitWMain[3];
+	if(IfaceHold==IFACE_SPLIT_MAIN)
+	{
+		SplitX=CurX-SplitVectX;
+		SplitY=CurY-SplitVectY;
+
+		if(SplitX<0) SplitX=0;
+		if(SplitX+SplitWMain[2]>MODE_WIDTH) SplitX=MODE_WIDTH-SplitWMain[2];
+		if(SplitY<0) SplitY=0;
+		if(SplitY+SplitWMain[3]>MODE_HEIGHT) SplitY=MODE_HEIGHT-SplitWMain[3];
+	}
 }
 
 //==============================================================================================================================
@@ -9212,15 +9348,16 @@ void FOClient::TimerLMouseUp()
 
 void FOClient::TimerMouseMove()
 {
-	if(IfaceHold!=IFACE_TIMER_MAIN) return;
-	
-	TimerX=CurX-TimerVectX;
-	TimerY=CurY-TimerVectY;
-	
-	if(TimerX<0) TimerX=0;
-	if(TimerX+TimerWMain[2]>MODE_WIDTH) TimerX=MODE_WIDTH-TimerWMain[2];
-	if(TimerY<0) TimerY=0;
-	if(TimerY+TimerWMain[3]>MODE_HEIGHT) TimerY=MODE_HEIGHT-TimerWMain[3];
+	if(IfaceHold==IFACE_TIMER_MAIN)
+	{
+		TimerX=CurX-TimerVectX;
+		TimerY=CurY-TimerVectY;
+
+		if(TimerX<0) TimerX=0;
+		if(TimerX+TimerWMain[2]>MODE_WIDTH) TimerX=MODE_WIDTH-TimerWMain[2];
+		if(TimerY<0) TimerY=0;
+		if(TimerY+TimerWMain[3]>MODE_HEIGHT) TimerY=MODE_HEIGHT-TimerWMain[3];
+	}
 }
 
 //==============================================================================================================================
@@ -9683,15 +9820,16 @@ void FOClient::FixMouseMove()
 {
 	if(FixMode==FIX_MODE_LIST && IfaceHold==IFACE_NONE) FixCurCraft=GetMouseCraft();
 
-	if(IfaceHold!=IFACE_FIX_MAIN) return;
+	if(IfaceHold==IFACE_FIX_MAIN)
+	{
+		FixX=CurX-FixVectX;
+		FixY=CurY-FixVectY;
 
-	FixX=CurX-FixVectX;
-	FixY=CurY-FixVectY;
-
-	if(FixX<0) FixX=0;
-	if(FixX+FixWMain[2]>MODE_WIDTH) FixX=MODE_WIDTH-FixWMain[2];
-	if(FixY<0) FixY=0;
-	if(FixY+FixWMain[3]>MODE_HEIGHT) FixY=MODE_HEIGHT-FixWMain[3];
+		if(FixX<0) FixX=0;
+		if(FixX+FixWMain[2]>MODE_WIDTH) FixX=MODE_WIDTH-FixWMain[2];
+		if(FixY<0) FixY=0;
+		if(FixY+FixWMain[3]>MODE_HEIGHT) FixY=MODE_HEIGHT-FixWMain[3];
+	}
 }
 
 //==============================================================================================================================
@@ -9791,15 +9929,375 @@ void FOClient::IboxProcess()
 
 void FOClient::IboxMouseMove()
 {
-	if(IfaceHold!=IFACE_IBOX_MAIN) return;
+	if(IfaceHold==IFACE_IBOX_MAIN)
+	{
+		IboxX=CurX-IboxVectX;
+		IboxY=CurY-IboxVectY;
 
-	IboxX=CurX-IboxVectX;
-	IboxY=CurY-IboxVectY;
+		if(IboxX<0) IboxX=0;
+		if(IboxX+IboxWMain[2]>MODE_WIDTH) IboxX=MODE_WIDTH-IboxWMain[2];
+		if(IboxY<0) IboxY=0;
+		if(IboxY+IboxWMain[3]>MODE_HEIGHT) IboxY=MODE_HEIGHT-IboxWMain[3];
+	}
+}
 
-	if(IboxX<0) IboxX=0;
-	if(IboxX+IboxWMain[2]>MODE_WIDTH) IboxX=MODE_WIDTH-IboxWMain[2];
-	if(IboxY<0) IboxY=0;
-	if(IboxY+IboxWMain[3]>MODE_HEIGHT) IboxY=MODE_HEIGHT-IboxWMain[3];
+//==============================================================================================================================
+//******************************************************************************************************************************
+//==============================================================================================================================
+
+#define SAVE_LOAD_LINES_PER_SLOT         (3)
+void FOClient::SaveLoadCollect()
+{
+	// Collect singleplayer saves
+	SaveLoadDataSlots.clear();
+
+	// For each all saves in folder
+	StrVec fnames;
+	FileManager::GetFolderFileNames(PT_SAVE,"fo",fnames);
+	PtrVec open_handles;
+	for(size_t i=0;i<fnames.size();i++)
+	{
+		const string& fname=fnames[i];
+
+		// Open file
+		HANDLE hf=CreateFile(FileManager::GetFullPath(fname.c_str(),PT_DATA),FILE_GENERIC_READ,0,NULL,OPEN_EXISTING,0,NULL);
+		if(hf==INVALID_HANDLE_VALUE) continue;
+		open_handles.push_back(hf);
+
+		// Get file information
+		BY_HANDLE_FILE_INFORMATION finfo;
+		if(!GetFileInformationByHandle(hf,&finfo)) continue;
+
+		// Read save data, offsets see SaveGameInfoFile in Server.cpp
+		DWORD dw;
+
+		// Check singleplayer data
+		DWORD sp;
+		SetFilePointer(hf,4,NULL,FILE_BEGIN);
+		if(!ReadFile(hf,&sp,sizeof(sp),&dw,NULL)) continue;
+		if(sp!=1) continue; // Save not contain singleplayer data
+
+		// Critter name
+		char crname[MAX_NAME+1];
+		SetFilePointer(hf,8,NULL,FILE_BEGIN);
+		if(!ReadFile(hf,crname,sizeof(crname),&dw,NULL)) continue;
+
+		// Map pid
+		WORD map_pid;
+		SetFilePointer(hf,8+31+68,NULL,FILE_BEGIN);
+		if(!ReadFile(hf,&map_pid,sizeof(map_pid),&dw,NULL)) continue;
+
+		// Calculate critter time events size
+		DWORD te_size;
+		SetFilePointer(hf,8+31+7404+6944,NULL,FILE_BEGIN);
+		if(!ReadFile(hf,&te_size,sizeof(te_size),&dw,NULL)) continue;
+		te_size=te_size*16+4;
+
+		// Picture data
+		DWORD pic_data_len;
+		ByteVec pic_data;
+		SetFilePointer(hf,8+31+7404+6944+te_size,NULL,FILE_BEGIN);
+		if(!ReadFile(hf,&pic_data_len,sizeof(pic_data_len),&dw,NULL)) continue;
+		if(pic_data_len)
+		{
+			pic_data.resize(pic_data_len);
+			if(!ReadFile(hf,&pic_data[0],pic_data_len,&dw,NULL)) continue;
+		}
+
+		// Game time
+		WORD year,month,day,hour,minute;
+		SetFilePointer(hf,8+31+7404+6944+te_size+4+pic_data_len,NULL,FILE_BEGIN);
+		if(!ReadFile(hf,&year,sizeof(year),&dw,NULL)) continue;
+		if(!ReadFile(hf,&month,sizeof(month),&dw,NULL)) continue;
+		if(!ReadFile(hf,&day,sizeof(day),&dw,NULL)) continue;
+		if(!ReadFile(hf,&hour,sizeof(hour),&dw,NULL)) continue;
+		if(!ReadFile(hf,&minute,sizeof(minute),&dw,NULL)) continue;
+
+		// Extract name
+		char name[MAX_FOPATH];
+		FileManager::ExtractFileName(fname.c_str(),name);
+		if(strlen(name)<4) continue;
+		name[strlen(name)-3]=0;
+
+		// Extract full path
+		char fpath_[MAX_FOPATH];
+		char fpath[MAX_FOPATH];
+		StringCopy(fpath_,FileManager::GetDataPath(PT_DATA));
+		StringAppend(fpath_,fname.c_str());
+		if(!GetFullPathName(fpath_,MAX_FOPATH,fpath,NULL)) continue;
+
+		// Convert time
+		FILETIMELI writeft;
+		SYSTEMTIME write_utc,write;
+		writeft.ft=finfo.ftLastWriteTime;
+		if(!FileTimeToSystemTime(&writeft.ft,&write_utc)) continue;
+		if(!SystemTimeToTzSpecificLocalTime(NULL,&write_utc,&write)) continue;
+
+		// Fill slot data
+		SaveLoadDataSlot slot;
+		slot.Name=name;
+		slot.Info=Str::Format("%s\n%02d.%02d.%04d %02d:%02d:%02d\n",name,
+			write.wDay,write.wMonth,write.wYear,write.wHour,write.wMinute,write.wSecond);
+		slot.InfoExt=Str::Format("%s\n%02d %3s %04d %02d%02d\n%s",crname,
+			day,MsgGame->GetStr(STR_MONTH(month)),year,hour,minute,MsgGM->GetStr(STR_MAP_NAME_(map_pid)));
+		slot.FileName=fpath;
+		slot.RealTime=writeft.ul.QuadPart;
+		slot.PicData=pic_data;
+		SaveLoadDataSlots.push_back(slot);
+	}
+
+	// Close opened file handles
+	for(PtrVecIt it=open_handles.begin();it!=open_handles.end();++it) CloseHandle(*it);
+
+	// Sort by creation time
+	std::sort(SaveLoadDataSlots.begin(),SaveLoadDataSlots.end());
+
+	// Set scroll data
+	SaveLoadSlotScroll=0;
+	SaveLoadSlotsMax=SaveLoadSlots.H()/SprMngr.GetLinesHeight(0,0,"")/SAVE_LOAD_LINES_PER_SLOT;
+
+	// Show actual draft
+	SaveLoadShowDraft();
+}
+
+void FOClient::SaveLoadSaveGame(const char* name)
+{
+	// Get name of new save
+	char fpath_[MAX_FOPATH];
+	char fpath[MAX_FOPATH];
+	StringCopy(fpath_,FileManager::GetDataPath(PT_SAVE));
+	StringAppend(fpath_,FileManager::GetPath(PT_SAVE));
+	StringAppend(fpath_,name);
+	StringAppend(fpath_,".fo");
+	if(!GetFullPathName(fpath_,MAX_FOPATH,fpath,NULL)) return;
+
+	// Delete old files
+	if(SaveLoadFileName!="") DeleteFile(SaveLoadFileName.c_str());
+	DeleteFile(fpath);
+
+	// Get image data from surface
+	ByteVec pic_data;
+	if(SaveLoadDraftValid)
+	{
+		LPD3DXBUFFER img=NULL;
+		if(SUCCEEDED(D3DXSaveSurfaceToFileInMemory(&img,D3DXIFF_BMP,SaveLoadDraft,NULL,NULL)))
+		{
+			pic_data.resize(img->GetBufferSize());
+			memcpy(&pic_data[0],img->GetBufferPointer(),img->GetBufferSize());
+		}
+		SAFEREL(img);
+	}
+
+	// Send request
+	Net_SendSaveLoad(true,fpath,&pic_data);
+
+	// Close save/load screen
+	ShowScreen(SCREEN_NONE);
+}
+
+void FOClient::SaveLoadFillDraft()
+{
+	// Fill game preview draft
+	LPDIRECT3DDEVICE device=SprMngr.GetDevice();
+	LPDIRECT3DSURFACE rt=NULL;
+	SaveLoadDraftValid=(SUCCEEDED(device->GetRenderTarget(0,&rt)) &&
+		SUCCEEDED(device->StretchRect(rt,NULL,SaveLoadDraft,NULL,D3DTEXF_LINEAR)));
+	SAFEREL(rt);
+	SaveLoadProcessDraft=false;
+}
+
+void FOClient::SaveLoadShowDraft()
+{
+	SaveLoadDraftValid=false;
+	if(SaveLoadSlotIndex>=0 && SaveLoadSlotIndex<(int)SaveLoadDataSlots.size())
+	{
+		// Get surface from image data
+		SaveLoadDataSlot& slot=SaveLoadDataSlots[SaveLoadSlotIndex];
+		SaveLoadDraftValid=(slot.PicData.size() && SUCCEEDED(D3DXLoadSurfaceFromFileInMemory(SaveLoadDraft,NULL,NULL,
+			&slot.PicData[0],slot.PicData.size(),NULL,D3DX_FILTER_LINEAR,0,NULL)));
+	}
+	else if(SaveLoadSave && SaveLoadSlotIndex==(int)SaveLoadDataSlots.size())
+	{
+		// Process SaveLoadFillDraft
+		SaveLoadProcessDraft=true;
+	}
+}
+
+void FOClient::SaveLoadProcessDone()
+{
+	if(SaveLoadSave)
+	{
+		SaveLoadProcessDraft=true;
+
+		ShowScreen(SCREEN__SAY);
+		SayType=DIALOGSAY_SAVE;
+		SayTitle=MsgGame->GetStr(STR_SAVE_LOAD_TYPE_RECORD_NAME);
+		SayText[0]=0;
+		SayOnlyNumbers=false;
+
+		SaveLoadFileName="";
+		if(SaveLoadSlotIndex>=0 && SaveLoadSlotIndex<(int)SaveLoadDataSlots.size())
+		{
+			StringCopy(SayText,SaveLoadDataSlots[SaveLoadSlotIndex].Name.c_str());
+			SaveLoadFileName=SaveLoadDataSlots[SaveLoadSlotIndex].FileName;
+		}
+	}
+	else if(SaveLoadSlotIndex>=0 && SaveLoadSlotIndex<(int)SaveLoadDataSlots.size())
+	{
+		if(NetState==STATE_DISCONNECT)
+		{
+			SaveLoadFileName=SaveLoadDataSlots[SaveLoadSlotIndex].FileName;
+			NetState=STATE_INIT_NET;
+			InitNetReason=INIT_NET_REASON_LOAD;
+		}
+		else
+		{
+			Net_SendSaveLoad(false,SaveLoadDataSlots[SaveLoadSlotIndex].FileName.c_str(),NULL);
+			ShowScreen(SCREEN_NONE);
+			WaitPing();
+		}
+	}
+}
+
+void FOClient::SaveLoadDraw()
+{
+	int ox=(SaveLoadLoginScreen?SaveLoadCX:SaveLoadX);
+	int oy=(SaveLoadLoginScreen?SaveLoadCY:SaveLoadY);
+
+	if(SaveLoadLoginScreen) SprMngr.ClearCurRenderTarget(0xFF000000); // Black background
+	SprMngr.DrawSprite(SaveLoadMainPic,SaveLoadMain[0]+ox,SaveLoadMain[1]+oy);
+
+	if(IfaceHold==IFACE_SAVELOAD_SCR_UP) SprMngr.DrawSprite(SaveLoadScrUpPicDown,SaveLoadScrUp[0]+ox,SaveLoadScrUp[1]+oy);
+	else if(IfaceHold==IFACE_SAVELOAD_SCR_DN) SprMngr.DrawSprite(SaveLoadScrDownPicDown,SaveLoadScrDown[0]+ox,SaveLoadScrDown[1]+oy);
+	else if(IfaceHold==IFACE_SAVELOAD_DONE) SprMngr.DrawSprite(SaveLoadDonePicDown,SaveLoadDone[0]+ox,SaveLoadDone[1]+oy);
+	else if(IfaceHold==IFACE_SAVELOAD_BACK) SprMngr.DrawSprite(SaveLoadBackPicDown,SaveLoadBack[0]+ox,SaveLoadBack[1]+oy);
+
+	SprMngr.DrawStr(INTRECT(SaveLoadText,ox,oy),MsgGame->GetStr(SaveLoadSave?STR_SAVE_LOAD_SAVE:STR_SAVE_LOAD_LOAD),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(INTRECT(SaveLoadDoneText,ox,oy),MsgGame->GetStr(STR_SAVE_LOAD_DONE),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(INTRECT(SaveLoadBackText,ox,oy),MsgGame->GetStr(STR_SAVE_LOAD_BACK),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+
+	// Slots
+	int line_height=SprMngr.GetLinesHeight(0,0,"");
+	int cur=0;
+	for(int i=SaveLoadSlotScroll,j=(int)SaveLoadDataSlots.size();i<j;i++)
+	{
+		SaveLoadDataSlot& slot=SaveLoadDataSlots[i];
+		SprMngr.DrawStr(INTRECT(SaveLoadSlots,ox,oy+cur*line_height*SAVE_LOAD_LINES_PER_SLOT),
+			slot.Info.c_str(),FT_NOBREAK_LINE,i==SaveLoadSlotIndex?COLOR_TEXT_DDGREEN:COLOR_TEXT);
+		if(++cur>=SaveLoadSlotsMax) break;
+	}
+	if(SaveLoadSave && SaveLoadSlotScroll<=(int)SaveLoadDataSlots.size() && cur<=SaveLoadSlotsMax-1)
+	{
+		SprMngr.DrawStr(INTRECT(SaveLoadSlots,ox,oy+cur*line_height*SAVE_LOAD_LINES_PER_SLOT),
+			MsgGame->GetStr(STR_SAVE_LOAD_NEW_RECORD),FT_NOBREAK_LINE,SaveLoadSlotIndex==SaveLoadDataSlots.size()?COLOR_TEXT_DDGREEN:COLOR_TEXT);
+	}
+
+	// Selected slot ext info
+	if(SaveLoadSlotIndex>=0 && SaveLoadSlotIndex<(int)SaveLoadDataSlots.size())
+	{
+		SaveLoadDataSlot& slot=SaveLoadDataSlots[SaveLoadSlotIndex];
+		SprMngr.DrawStr(INTRECT(SaveLoadInfo,ox,oy),slot.InfoExt.c_str(),FT_CENTERY|FT_NOBREAK_LINE);
+	}
+	if(SaveLoadSave && SaveLoadSlotIndex==(int)SaveLoadDataSlots.size())
+	{
+		SprMngr.DrawStr(INTRECT(SaveLoadInfo,ox,oy),MsgGame->GetStr(STR_SAVE_LOAD_NEW_RECORD),FT_CENTERY|FT_NOBREAK_LINE);
+	}
+
+	// Draw preview draft
+	if(SaveLoadDraftValid)
+	{
+		RECT dst={SaveLoadPic.L+ox,SaveLoadPic.T+oy,SaveLoadPic.R+ox,SaveLoadPic.B+oy};
+		SprMngr.DrawSurface(SaveLoadDraft,dst);
+	}
+}
+
+void FOClient::SaveLoadLMouseDown()
+{
+	IfaceHold=IFACE_NONE;
+	int ox=(SaveLoadLoginScreen?SaveLoadCX:SaveLoadX);
+	int oy=(SaveLoadLoginScreen?SaveLoadCY:SaveLoadY);
+
+	if(!IsCurInRectNoTransp(SaveLoadMainPic,SaveLoadMain,ox,oy)) return;
+
+	if(IsCurInRect(SaveLoadScrUp,ox,oy))
+	{
+		IfaceHold=IFACE_SAVELOAD_SCR_UP;
+		Timer::StartAccelerator(ACCELERATE_SAVE_LOAD_SCR_UP);
+	}
+	else if(IsCurInRect(SaveLoadScrDown,ox,oy))
+	{
+		IfaceHold=IFACE_SAVELOAD_SCR_DN;
+		Timer::StartAccelerator(ACCELERATE_SAVE_LOAD_SCR_DN);
+	}
+	else if(IsCurInRect(SaveLoadDone,ox,oy)) IfaceHold=IFACE_SAVELOAD_DONE;
+	else if(IsCurInRect(SaveLoadBack,ox,oy)) IfaceHold=IFACE_SAVELOAD_BACK;
+	else if(IsCurInRect(SaveLoadSlots,ox,oy))
+	{
+		int line_height=SprMngr.GetLinesHeight(0,0,"");
+		int line=(CurY-SaveLoadSlots.T-oy)/line_height;
+		int index=line/SAVE_LOAD_LINES_PER_SLOT;
+		if(index<SaveLoadSlotsMax)
+		{
+			SaveLoadSlotIndex=index+SaveLoadSlotScroll;
+			SaveLoadShowDraft();
+
+			if(SaveLoadSlotIndex==SaveLoadClickSlotIndex && Timer::FastTick()-SaveLoadClickSlotTick<=GetDoubleClickTime())
+			{
+				SaveLoadProcessDone();
+			}
+			else
+			{
+				SaveLoadClickSlotIndex=SaveLoadSlotIndex;
+				SaveLoadClickSlotTick=Timer::FastTick();
+			}
+		}
+	}
+	else if(!SaveLoadLoginScreen)
+	{
+		SaveLoadVectX=CurX-SaveLoadX;
+		SaveLoadVectY=CurY-SaveLoadY;
+		IfaceHold=IFACE_SAVELOAD_MAIN;
+	}
+}
+
+void FOClient::SaveLoadLMouseUp()
+{
+	int ox=(SaveLoadLoginScreen?SaveLoadCX:SaveLoadX);
+	int oy=(SaveLoadLoginScreen?SaveLoadCY:SaveLoadY);
+
+	if(IfaceHold==IFACE_SAVELOAD_SCR_UP && IsCurInRect(SaveLoadScrUp,ox,oy))
+	{
+		if(SaveLoadSlotScroll>0) SaveLoadSlotScroll--;
+	}
+	else if(IfaceHold==IFACE_SAVELOAD_SCR_DN && IsCurInRect(SaveLoadScrDown,ox,oy))
+	{
+		int max=(int)SaveLoadDataSlots.size()-SaveLoadSlotsMax+(SaveLoadSave?1:0);
+		if(SaveLoadSlotScroll<max) SaveLoadSlotScroll++;
+	}
+	else if(IfaceHold==IFACE_SAVELOAD_DONE && IsCurInRect(SaveLoadDone,ox,oy))
+	{
+		SaveLoadProcessDone();
+	}
+	else if(IfaceHold==IFACE_SAVELOAD_BACK && IsCurInRect(SaveLoadBack,ox,oy))
+	{
+		ShowScreen(SCREEN_NONE);
+	}
+
+	IfaceHold=IFACE_NONE;
+}
+
+void FOClient::SaveLoadMouseMove()
+{
+	if(IfaceHold==IFACE_SAVELOAD_MAIN)
+	{
+		SaveLoadX=CurX-SaveLoadVectX;
+		SaveLoadY=CurY-SaveLoadVectY;
+
+		if(SaveLoadX<0) SaveLoadX=0;
+		if(SaveLoadX+SaveLoadMain[2]>MODE_WIDTH) SaveLoadX=MODE_WIDTH-SaveLoadMain[2];
+		if(SaveLoadY<0) SaveLoadY=0;
+		if(SaveLoadY+SaveLoadMain[3]>MODE_HEIGHT) SaveLoadY=MODE_HEIGHT-SaveLoadMain[3];
+	}
 }
 
 //==============================================================================================================================

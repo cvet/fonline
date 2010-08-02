@@ -20,7 +20,7 @@ bool CritterManager::Init()
 {
 	WriteLog("Critter manager initialization...\n");
 
-	if(active)
+	if(isActive)
 	{
 		WriteLog("already initialized.\n");
 		return true;
@@ -33,11 +33,9 @@ bool CritterManager::Init()
 	}
 
 	ZeroMemory(allProtos,sizeof(allProtos));
-#ifdef FONLINE_SERVER
-	playersCount=0;
-	npcCount=0;
-#endif
-	active=true;
+	Clear();
+
+	isActive=true;
 	WriteLog("Critter manager initialization complete.\n");
 	return true;
 }
@@ -45,16 +43,35 @@ bool CritterManager::Init()
 void CritterManager::Finish()
 {
 	WriteLog("Critter manager finish...\n");
+
 #ifdef FONLINE_SERVER
 	CritterGarbager(0);
 #endif
-	active=false;
-	WriteLog("Critter manager finish success.\n");
+
+	ZeroMemory(allProtos,sizeof(allProtos));
+	Clear();
+
+	isActive=false;
+	WriteLog("Critter manager finish complete.\n");
+}
+
+void CritterManager::Clear()
+{
+#ifdef FONLINE_SERVER
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
+		SAFEREL((*it).second);
+	allCritters.clear();
+	crToDelete.clear();
+	playersCount=0;
+	npcCount=0;
+	lastNpcId=NPC_START_ID;
+#endif
 }
 
 bool CritterManager::LoadProtos()
 {
 	WriteLog("Loading critters prototypes...\n");
+
 	if(!IsInit())
 	{
 		WriteLog("Critters manager is not init.\n");
@@ -154,7 +171,7 @@ CritData* CritterManager::GetProto(WORD proto_id)
 void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 {
 	CrVec crits;
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it)
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(cr->IsNpc()) crits.push_back(cr);
@@ -177,6 +194,8 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 bool CritterManager::LoadCrittersFile(FILE* f)
 {
 	WriteLog("Load npc...");
+
+	lastNpcId=0;
 
 	DWORD count;
 	fread(&count,sizeof(count),1,f);
@@ -230,7 +249,7 @@ bool CritterManager::LoadCrittersFile(FILE* f)
 
 void CritterManager::RunInitScriptCritters()
 {
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it)
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cr->GetInfo()))
@@ -474,7 +493,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
 
 void CritterManager::AddCritter(Critter* cr)
 {
-	crMap.insert(CrMapVal(cr->GetId(),cr));
+	allCritters.insert(CrMapVal(cr->GetId(),cr));
 	if(cr->IsPlayer()) playersCount++;
 	else npcCount++;
 }
@@ -482,7 +501,7 @@ void CritterManager::AddCritter(Critter* cr)
 void CritterManager::GetCopyNpcs(PcVec& npcs)
 {
 	npcs.reserve(npcCount);
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it)
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(cr->IsNpc()) npcs.push_back((Npc*)cr);
@@ -492,7 +511,7 @@ void CritterManager::GetCopyNpcs(PcVec& npcs)
 void CritterManager::GetCopyPlayers(ClVec& players)
 {
 	players.reserve(playersCount);
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it)
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(cr->IsPlayer()) players.push_back((Client*)cr);
@@ -501,8 +520,8 @@ void CritterManager::GetCopyPlayers(ClVec& players)
 
 Critter* CritterManager::GetCritter(DWORD crid)
 {
-	CrMapIt it=crMap.find(crid);
-	return it!=crMap.end()?(*it).second:NULL;
+	CrMapIt it=allCritters.find(crid);
+	return it!=allCritters.end()?(*it).second:NULL;
 }
 
 Client* CritterManager::GetPlayer(DWORD crid)
@@ -513,7 +532,7 @@ Client* CritterManager::GetPlayer(DWORD crid)
 
 Client* CritterManager::GetPlayer(const char* name)
 {
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it)
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(cr->IsPlayer() && !_stricmp(name,cr->GetName())) return (Client*)cr;
@@ -529,26 +548,26 @@ Npc* CritterManager::GetNpc(DWORD crid)
 
 void CritterManager::EraseCritter(Critter* cr)
 {
-	CrMapIt it=crMap.find(cr->GetId());
-	if(it!=crMap.end())
+	CrMapIt it=allCritters.find(cr->GetId());
+	if(it!=allCritters.end())
 	{
 		if(cr->IsPlayer()) playersCount--;
 		else npcCount--;
-		crMap.erase(it);
+		allCritters.erase(it);
 	}
 }
 
 void CritterManager::DeleteCritter(Critter* cr)
 {
 	cr->IsNotValid=true;
-	CrMapIt it=crMap.find(cr->GetId());
-	if(it==crMap.end()) return;
+	CrMapIt it=allCritters.find(cr->GetId());
+	if(it==allCritters.end()) return;
 	Critter* cr_=(*it).second;
 	if(cr_->IsPlayer()) playersCount--;
 	else npcCount--;
 	cr_->IsNotValid=true;
 	cr_->Release();
-	crMap.erase(it);
+	allCritters.erase(it);
 }
 
 DWORD CritterManager::PlayersInGame()
@@ -563,16 +582,16 @@ DWORD CritterManager::NpcInGame()
 
 DWORD CritterManager::CrittersInGame()
 {
-	return crMap.size();
+	return allCritters.size();
 }
 
 void CritterManager::ProcessCrittersVisible()
 {
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it) (*it).second->ProcessVisibleCritters();
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it) (*it).second->ProcessVisibleCritters();
 }
 
 void CritterManager::ProcessItemsVisible()
 {
-	for(CrMapIt it=crMap.begin(),end=crMap.end();it!=end;++it) (*it).second->ProcessVisibleItems();
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it) (*it).second->ProcessVisibleItems();
 }
 #endif
