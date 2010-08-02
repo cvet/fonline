@@ -2297,7 +2297,7 @@ void FOClient::GameKeyDown(BYTE dik)
 		case DIK_M: IfaceHold=IFACE_GAME_MNEXT; GameRMouseUp(); break;
 		case DIK_N: if(Chosen->NextRateItem(false)) Net_SendRateItem(); break;
 		case DIK_S: SboxUseOn.Clear(); ShowScreen(SCREEN__SKILLBOX); break;
-		case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.TimeMultiplier)); break;
+		case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.Second,GameOpt.TimeMultiplier)); break;
 		case DIK_COMMA: SetAction(CHOSEN_DIR,1/*CW*/); break;
 		case DIK_PERIOD: SetAction(CHOSEN_DIR,0/*CCW*/); break;
 		case DIK_TAB: ShowScreen(SCREEN__MINI_MAP); break;

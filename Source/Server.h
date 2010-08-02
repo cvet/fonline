@@ -124,7 +124,7 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	struct TimeEvent
 	{
 		DWORD Num;
-		DWORD FullMinute;
+		DWORD FullSecond;
 		string FuncName;
 		int BindId;
 		DWORD Rate;
@@ -141,7 +141,7 @@ typedef vector<TimeEvent>::iterator TimeEventVecIt;
 	void AddTimeEvent(TimeEvent& te);
 	void SaveTimeEventsFile();
 	bool LoadTimeEventsFile(FILE* f);
-	DWORD CreateScriptEvent(DWORD begin_minute, const char* script_name, DwordVec& values, bool save);
+	DWORD CreateScriptEvent(DWORD begin_second, const char* script_name, DwordVec& values, bool save);
 	void EraseTimeEvent(DWORD num);
 	void ProcessTimeEvents();
 	DWORD GetTimeEventsCount();
@@ -598,8 +598,8 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static void Global_DeleteNpcForce(Critter* npc);
 		static void Global_RadioMessage(WORD channel, CScriptString& text);
 		static void Global_RadioMessageMsg(WORD channel, WORD text_msg, DWORD num_str);
-		static DWORD Global_GetFullMinute(WORD year, WORD month, WORD day, WORD hour, WORD minute);
-		static void Global_GetGameTime(DWORD full_minute, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute);
+		static DWORD Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second);
+		static void Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second);
 		static DWORD Global_CreateLocation(WORD loc_pid, WORD wx, WORD wy, asIScriptArray* critters);
 		static void Global_DeleteLocation(DWORD loc_id);
 		static void Global_GetProtoCritter(WORD proto_id, asIScriptArray& data);
@@ -607,12 +607,12 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static Critter* Global_GetPlayer(CScriptString& name);
 		static DWORD Global_GetPlayerId(CScriptString& name);
 		static CScriptString* Global_GetPlayerName(DWORD id);
-		static DWORD Global_CreateTimeEventEmpty(DWORD begin_minute, CScriptString& script_name, bool save);
-		static DWORD Global_CreateTimeEventDw(DWORD begin_minute, CScriptString& script_name, DWORD dw, bool save);
-		static DWORD Global_CreateTimeEventDws(DWORD begin_minute, CScriptString& script_name, asIScriptArray& dw, bool save);
-		static DWORD Global_CreateTimeEventCr(DWORD begin_minute, CScriptString& script_name, Critter* cr, bool save);
-		static DWORD Global_CreateTimeEventItem(DWORD begin_minute, CScriptString& script_name, Item* item, bool save);
-		static DWORD Global_CreateTimeEventArr(DWORD begin_minute, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save);
+		static DWORD Global_CreateTimeEventEmpty(DWORD begin_second, CScriptString& script_name, bool save);
+		static DWORD Global_CreateTimeEventDw(DWORD begin_second, CScriptString& script_name, DWORD dw, bool save);
+		static DWORD Global_CreateTimeEventDws(DWORD begin_second, CScriptString& script_name, asIScriptArray& dw, bool save);
+		static DWORD Global_CreateTimeEventCr(DWORD begin_second, CScriptString& script_name, Critter* cr, bool save);
+		static DWORD Global_CreateTimeEventItem(DWORD begin_second, CScriptString& script_name, Item* item, bool save);
+		static DWORD Global_CreateTimeEventArr(DWORD begin_second, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save);
 		static void Global_EraseTimeEvent(DWORD num);
 		static bool Global_SetAnyData(CScriptString& name, asIScriptArray& data);
 		static bool Global_SetAnyDataSize(CScriptString& name, asIScriptArray& data, DWORD data_size_bytes);
@@ -728,11 +728,9 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static void LogToClients(char* str);
 
 	// Game time
-	DWORD GameTimeStartTick,GameTimeStartMinute;
 	void SaveGameInfoFile();
 	bool LoadGameInfoFile(FILE* f);
 	void InitGameTime();
-	void ProcessGameTime();
 
 	// Lang packs
 	LangPackVec LangPacks;
@@ -826,7 +824,7 @@ typedef vector<ClientSaveData> ClientSaveDataVec;
 		bool operator==(const char* name){return !_stricmp(name,ClientName);}
 		bool operator==(const DWORD ip){return ClientIp==ip;}
 
-		const char* GetBanLexems(){return Str::Format("$banby%s$time%d$reason%s",BannedBy[0]?BannedBy:"?",Timer::GetTimeDifference(EndTime,BeginTime)/60,BanInfo[0]?BanInfo:"just for fun");}
+		const char* GetBanLexems(){return Str::Format("$banby%s$time%d$reason%s",BannedBy[0]?BannedBy:"?",Timer::GetTimeDifference(EndTime,BeginTime)/60/60,BanInfo[0]?BanInfo:"just for fun");}
 	};
 typedef vector<ClientBanned> ClientBannedVec;
 typedef vector<ClientBanned>::iterator ClientBannedVecIt;

@@ -47,8 +47,6 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 	PingCallTick=0;
 	IsTurnBased=false;
 	TurnBasedTime=0;
-	GameStartMinute=0;
-	GameStartTick=0;
 	DaySumRGB=0;
 	CurMode=0;
 	CurModeLast=0;
@@ -674,7 +672,11 @@ int FOClient::MainLoop()
 	// Process
 	SoundProcess();
 	AnimProcess();
+
+	// Game time
+	WORD full_second=GameOpt.FullSecond;
 	ProcessGameTime();
+	if(full_second!=GameOpt.FullSecond) SetDayTime(false);
 
 	if(IsMainScreen(SCREEN_GLOBAL_MAP))
 	{
@@ -3347,18 +3349,19 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_SETTIME:
 		{
-			BYTE multiplier;
-			WORD year;
-			BYTE month;
-			BYTE day;
-			BYTE hour;
-			BYTE minute;
-			if(sscanf(str,"%u%u%u%u%u%u",&multiplier,&year,&month,&day,&hour,&minute)!=6)
+			int multiplier;
+			int year;
+			int month;
+			int day;
+			int hour;
+			int minute;
+			int second;
+			if(sscanf(str,"%d%d%d%d%d%d%d",&multiplier,&year,&month,&day,&hour,&minute,&second)!=7)
 			{
-				AddMess(FOMB_GAME,"Invalid arguments. Example: <~settime tmul year month day hour minute>.");
+				AddMess(FOMB_GAME,"Invalid arguments. Example: <~settime tmul year month day hour minute second>.");
 				break;
 			}
-			msg_len+=sizeof(multiplier)+sizeof(year)+sizeof(month)+sizeof(day)+sizeof(hour)+sizeof(minute);
+			msg_len+=sizeof(multiplier)+sizeof(year)+sizeof(month)+sizeof(day)+sizeof(hour)+sizeof(minute)+sizeof(second);
 
 			Bout << msg;
 			Bout << msg_len;
@@ -3369,6 +3372,7 @@ void FOClient::Net_SendCommand(char* str)
 			Bout << day;
 			Bout << hour;
 			Bout << minute;
+			Bout << second;
 		}
 		break;
 	case CMD_BAN:
@@ -5488,6 +5492,7 @@ void FOClient::Net_OnGameInfo()
 	bool no_log_out;
 	int* day_time=HexMngr.GetMapDayTime();
 	BYTE* day_color=HexMngr.GetMapDayColor();
+	Bin >> GameOpt.YearStart;
 	Bin >> GameOpt.Year;
 	Bin >> GameOpt.Month;
 	Bin >> GameOpt.Day;
@@ -5504,10 +5509,13 @@ void FOClient::Net_OnGameInfo()
 
 	CHECK_IN_BUFF_ERROR;
 
-	GameStartMinute=GameOpt.Minute;
-	GameStartTick=Timer::GameTick();
-	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-	GameOpt.FullMinuteTick=Timer::GameTick();
+	SYSTEMTIME st={GameOpt.YearStart,1,0,1,0,0,0,0};
+	FILETIMELI ft;
+	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(__FUNCTION__" - FileTimeToSystemTime error<%u>.\n",GetLastError());
+	GameOpt.YearStartFT=ft.ul.QuadPart;
+	GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
+	GameOpt.FullSecondStart=GameOpt.FullSecond;
+	GameOpt.GameTimeTick=Timer::GameTick();
 
 	HexMngr.SetWeather(time,rain);
 	SetDayTime(true);
@@ -7021,40 +7029,6 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 	}
 
 	return true;
-}
-
-void FOClient::ProcessGameTime()
-{
-	DWORD delta_tick=Timer::GameTick()-GameStartTick;
-	DWORD gmin=(delta_tick/1000*GameOpt.TimeMultiplier/60+GameStartMinute)%60;
-
-	if(gmin==GameOpt.Minute) return;
-	GameOpt.Minute++;
-
-	if(GameOpt.Minute>59)
-	{
-		GameOpt.Minute=0;
-		GameOpt.Hour++;
-		if(GameOpt.Hour>23)
-		{
-			GameOpt.Hour=0;
-			GameOpt.Day++;
-			if(GameOpt.Day>GameTimeMonthDay(GameOpt.Year,GameOpt.Month))
-			{
-				GameOpt.Day=1;
-				GameOpt.Month++;
-				if(GameOpt.Month>12)
-				{
-					GameOpt.Month=1;
-					GameOpt.Year++;
-				}
-			}
-		}
-	}
-
-	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-	GameOpt.FullMinuteTick=Timer::GameTick();
-	SetDayTime(false);
 }
 
 void FOClient::SetDayTime(bool refresh)
@@ -10006,10 +9980,10 @@ BYTE FOClient::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD 
 	return 0;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetFullMinute(WORD year, WORD month, WORD day, WORD hour, WORD minute)
+DWORD FOClient::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
 {
 	if(!year) year=GameOpt.Year;
-	else year=CLAMP(year,1601,30827);
+	else year=CLAMP(year,GameOpt.YearStart,GameOpt.YearStart+130);
 	if(!month) month=GameOpt.Month;
 	else month=CLAMP(month,1,12);
 	if(!day) day=GameOpt.Day;
@@ -10020,18 +9994,20 @@ DWORD FOClient::SScriptFunc::Global_GetFullMinute(WORD year, WORD month, WORD da
 	}
 	hour=CLAMP(hour,0,23);
 	minute=CLAMP(minute,0,59);
-	return GetFullMinute(year,month,day,hour,minute);
+	second=CLAMP(second,0,59);
+	return GetFullSecond(year,month,day,hour,minute,second);
 }
 
-void FOClient::SScriptFunc::Global_GetGameTime(DWORD full_minute, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute)
+void FOClient::SScriptFunc::Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second)
 {
-	SYSTEMTIME st=GetGameTime(full_minute);
+	SYSTEMTIME st=GetGameTime(full_second);
 	year=st.wYear;
 	month=st.wMonth;
 	day_of_week=st.wDayOfWeek;
 	day=st.wDay;
 	hour=st.wHour;
 	minute=st.wMinute;
+	second=st.wSecond;
 }
 
 bool FOClient::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)

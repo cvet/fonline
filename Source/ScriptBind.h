@@ -178,7 +178,7 @@
 	if(engine->RegisterObjectProperty("NpcPlane","int Identifier",offsetof(AIDataPlane,Identifier))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint IdentifierExt",offsetof(AIDataPlane,IdentifierExt))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","bool Run",offsetof(AIDataPlane,Pick.IsRun))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("NpcPlane","uint Misc_WaitMinute",offsetof(AIDataPlane,Misc.WaitMinute))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("NpcPlane","uint Misc_WaitSecond",offsetof(AIDataPlane,Misc.WaitSecond))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","int Misc_ScriptId",offsetof(AIDataPlane,Misc.ScriptBindId))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint Attack_TargId",offsetof(AIDataPlane,Attack.TargId))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","int Attack_MinHp",offsetof(AIDataPlane,Attack.MinHp))<0) BIND_ERROR;
@@ -751,14 +751,14 @@
 	if(engine->RegisterGlobalFunction("Critter@+ GetPlayer(string& name) const",asFUNCTION(BIND_CLASS Global_GetPlayer),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetPlayerId(string& name) const",asFUNCTION(BIND_CLASS Global_GetPlayerId),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetPlayerName(uint playerId) const",asFUNCTION(BIND_CLASS Global_GetPlayerName),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventEmpty),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, int value, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDw),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, uint value, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDw),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, uint[]& values, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDws),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, int[]& values, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDws),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, Critter& cr, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventCr),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, Item& item, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventItem),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginMinute, string& funcName, Critter@[]@+ critters, Item@[]@+ items, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventArr),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventEmpty),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, int value, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDw),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, uint value, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDw),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, uint[]& values, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDws),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, int[]& values, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventDws),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, Critter& cr, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventCr),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, Item& item, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventItem),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, Critter@[]@+ critters, Item@[]@+ items, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventArr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void EraseTimeEvent(uint num)",asFUNCTION(BIND_CLASS Global_EraseTimeEvent),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SetAnyData(string& name, int64[]& data)",asFUNCTION(BIND_CLASS Global_SetAnyData),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SetAnyData(string& name, int32[]& data)",asFUNCTION(BIND_CLASS Global_SetAnyData),asCALL_CDECL)<0) BIND_ERROR;
@@ -1098,9 +1098,9 @@
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)
-	if(engine->RegisterGlobalFunction("uint GetFullMinute(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute) const",asFUNCTION(BIND_CLASS Global_GetFullMinute),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const",asFUNCTION(BIND_CLASS Global_GetFullSecond),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void GetTime(uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds) const",asFUNCTION(BIND_CLASS Global_GetTime),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void GetGameTime(uint fullMinute, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute) const",asFUNCTION(BIND_CLASS Global_GetGameTime),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second) const",asFUNCTION(BIND_CLASS Global_GetGameTime),asCALL_CDECL)<0) BIND_ERROR;
 	//if(engine->RegisterGlobalFunction("void GetVersion(uint& server, uint& client, uint& net) const",asFUNCTION(BIND_CLASS Global_GetVersion),asCALL_CDECL)<0) BIND_ERROR;
 //	if(engine->RegisterGlobalFunction("void Sort(int[]& array, string& func)",asFUNCTION(BIND_CLASS Global_Sort),asCALL_CDECL)<0) BIND_ERROR;
 //	if(engine->RegisterGlobalFunction("void Sort(uint[]& array, string& func)",asFUNCTION(BIND_CLASS Global_Sort),asCALL_CDECL)<0) BIND_ERROR;
@@ -1123,7 +1123,7 @@
 	if(engine->RegisterGlobalProperty("const uint16 __Minute",&GameOpt.Minute)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint16 __Second",&GameOpt.Second)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint16 __TimeMultiplier",&GameOpt.TimeMultiplier)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("const uint __FullMinute",&GameOpt.FullMinute)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("const uint __FullSecond",&GameOpt.FullSecond)) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("bool __DisableTcpNagle",&GameOpt.DisableTcpNagle)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __DisableZlibCompression",&GameOpt.DisableZlibCompression)) BIND_ERROR;

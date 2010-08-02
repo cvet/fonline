@@ -2484,18 +2484,20 @@ void FOServer::Process_Command(Client* cl)
 /************************************************************************/
 	case CMD_SETTIME:
 		{
-			BYTE multiplier;
-			WORD year;
-			BYTE month;
-			BYTE day;
-			BYTE hour;
-			BYTE minute;
+			int multiplier;
+			int year;
+			int month;
+			int day;
+			int hour;
+			int minute;
+			int second;
 			cl->Bin >> multiplier;
 			cl->Bin >> year;
 			cl->Bin >> month;
 			cl->Bin >> day;
 			cl->Bin >> hour;
 			cl->Bin >> minute;
+			cl->Bin >> second;
 
 			if(!FLAG(cl->Access,CMD_SETTIME_ACCESS))
 			{
@@ -2503,15 +2505,16 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(multiplier>=1 && multiplier<=99) GameOpt.TimeMultiplier=multiplier;
-			if(year>=1 && year<=30000) GameOpt.Year=year;
+			if(multiplier>=1 && multiplier<=50000) GameOpt.TimeMultiplier=multiplier;
+			if(year>=GameOpt.YearStart && year<=GameOpt.YearStart+130) GameOpt.Year=year;
 			if(month>=1 && month<=12) GameOpt.Month=month;
 			if(day>=1 && day<=31) GameOpt.Day=day;
 			if(hour>=0 && hour<=23) GameOpt.Hour=hour;
 			if(minute>=0 && minute<=59) GameOpt.Minute=minute;
-			GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-			GameTimeStartTick=Timer::GameTick();
-			GameTimeStartMinute=GameOpt.Minute;
+			if(second>=0 && second<=59) GameOpt.Second=second;
+			GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
+			GameOpt.FullSecondStart=GameOpt.FullSecond;
+			GameOpt.GameTimeTick=Timer::GameTick();
 
 			EnterCriticalSection(&CSConnectedClients);
 			for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
@@ -2585,7 +2588,7 @@ void FOServer::Process_Command(Client* cl)
 				ban.ClientIp=(cl_banned && strstr(params,"+")?cl_banned->GetIp():0);
 				GetLocalTime(&ban.BeginTime);
 				ban.EndTime=ban.BeginTime;
-				Timer::ContinueTime(ban.EndTime,ban_hours*60);
+				Timer::ContinueTime(ban.EndTime,ban_hours*60*60);
 				StringCopy(ban.BannedBy,cl->Name);
 				StringCopy(ban.BanInfo,info);
 
@@ -2836,7 +2839,7 @@ void FOServer::InitGameTime()
 		if(Script::PrepareContext(ServerFunctions.GetStartTime,CALL_FUNC_STR,"Game"))
 		{
 			Script::SetArgAddress(&GameOpt.TimeMultiplier);
-			Script::SetArgAddress(&GameOpt.Year);
+			Script::SetArgAddress(&GameOpt.YearStart);
 			Script::SetArgAddress(&GameOpt.Month);
 			Script::SetArgAddress(&GameOpt.Day);
 			Script::SetArgAddress(&GameOpt.Hour);
@@ -2844,49 +2847,27 @@ void FOServer::InitGameTime()
 			Script::RunPrepared();
 		}
 
-		GameOpt.Year=CLAMP(GameOpt.Year,1700,30000);
+		GameOpt.YearStart=CLAMP(GameOpt.YearStart,1700,30000);
+		GameOpt.Year=GameOpt.YearStart;
+		GameOpt.Second=0;
 	}
 
-	GameOpt.TimeMultiplier=CLAMP(GameOpt.TimeMultiplier,1,99);
-	GameOpt.Year=CLAMP(GameOpt.Year,1601,30827);
+	SYSTEMTIME st={GameOpt.YearStart,1,0,1,0,0,0,0};
+	FILETIMELI ft;
+	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(__FUNCTION__" - SystemTimeToFileTime error<%u>.\n",GetLastError());
+	GameOpt.YearStartFT=ft.ul.QuadPart;
+
+	GameOpt.TimeMultiplier=CLAMP(GameOpt.TimeMultiplier,1,50000);
+	GameOpt.Year=CLAMP(GameOpt.Year,GameOpt.YearStart,GameOpt.YearStart+130);
 	GameOpt.Month=CLAMP(GameOpt.Month,1,12);
 	GameOpt.Day=CLAMP(GameOpt.Day,1,31);
 	GameOpt.Hour=CLAMP(GameOpt.Hour,0,23);
 	GameOpt.Minute=CLAMP(GameOpt.Minute,0,59);
-	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
-	GameTimeStartTick=Timer::GameTick();
-	GameTimeStartMinute=GameOpt.Minute;
-}
+	GameOpt.Second=CLAMP(GameOpt.Second,0,59);
+	GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 
-void FOServer::ProcessGameTime()
-{
-	DWORD delta_tick=Timer::GameTick()-GameTimeStartTick;
-	DWORD minute=(delta_tick/1000*GameOpt.TimeMultiplier/60+GameTimeStartMinute)%60;
-	if(minute==GameOpt.Minute) return;
-
-	GameOpt.Minute++;
-	if(GameOpt.Minute>59)
-	{
-		GameOpt.Minute=0;
-		GameOpt.Hour++;
-		if(GameOpt.Hour>23)
-		{
-			GameOpt.Hour=0;
-			GameOpt.Day++;
-			if(GameOpt.Day>GameTimeMonthDay(GameOpt.Year,GameOpt.Month))
-			{
-				GameOpt.Day=1;
-				GameOpt.Month++;
-				if(GameOpt.Month>12)
-				{
-					GameOpt.Month=1;
-					GameOpt.Year++;
-				}
-			}
-		}
-	}
-
-	GameOpt.FullMinute=GetFullMinute(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute);
+	GameOpt.FullSecondStart=GameOpt.FullSecond;
+	GameOpt.GameTimeTick=Timer::GameTick();
 }
 
 bool FOServer::Init()
@@ -3476,7 +3457,7 @@ DWORD FOServer::GetBanTime(ClientBanned& ban)
 {
 	SYSTEMTIME time;
 	GetLocalTime(&time);
-	int diff=Timer::GetTimeDifference(ban.EndTime,time)+1;
+	int diff=Timer::GetTimeDifference(ban.EndTime,time)/60+1;
 	return diff>0?diff:1;
 }
 
@@ -4373,7 +4354,7 @@ void FOServer::AddTimeEvent(TimeEvent& te)
 	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
 	{
 		TimeEvent& te_=*it;
-		if(te.FullMinute<te_.FullMinute)
+		if(te.FullSecond<te_.FullSecond)
 		{
 			TimeEvents.insert(it,te);
 			return;
@@ -4395,7 +4376,7 @@ void FOServer::SaveTimeEventsFile()
 		WORD script_name_len=te.FuncName.length();
 		AddWorldSaveData(&script_name_len,sizeof(script_name_len));
 		AddWorldSaveData((void*)te.FuncName.c_str(),script_name_len);
-		AddWorldSaveData(&te.FullMinute,sizeof(te.FullMinute));
+		AddWorldSaveData(&te.FullSecond,sizeof(te.FullSecond));
 		AddWorldSaveData(&te.Rate,sizeof(te.Rate));
 		DWORD values_size=te.Values.size();
 		AddWorldSaveData(&values_size,sizeof(values_size));
@@ -4422,8 +4403,8 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 		if(!fread(script_name,script_name_len,1,f)) return false;
 		script_name[script_name_len]=0;
 
-		DWORD begin_minute;
-		if(!fread(&begin_minute,sizeof(begin_minute),1,f)) return false;
+		DWORD begin_second;
+		if(!fread(&begin_second,sizeof(begin_second),1,f)) return false;
 		DWORD rate;
 		if(!fread(&rate,sizeof(rate),1,f)) return false;
 
@@ -4444,7 +4425,7 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 		}
 
 		TimeEvent te;
-		te.FullMinute=begin_minute;
+		te.FullSecond=begin_second;
 		te.Num=num;
 		te.FuncName=script_name;
 		te.BindId=bind_id;
@@ -4459,7 +4440,7 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 	return true;
 }
 
-DWORD FOServer::CreateScriptEvent(DWORD begin_minute, const char* script_name, DwordVec& values, bool save)
+DWORD FOServer::CreateScriptEvent(DWORD begin_second, const char* script_name, DwordVec& values, bool save)
 {
 	if(values.size()*sizeof(DWORD)>TIME_EVENT_MAX_SIZE) SCRIPT_ERROR_R0("Values size greather than maximum.");
 
@@ -4473,7 +4454,7 @@ DWORD FOServer::CreateScriptEvent(DWORD begin_minute, const char* script_name, D
 	if(bind_id<=0) SCRIPT_ERROR_R0("Script function not found.");
 
 	TimeEvent te;
-	te.FullMinute=begin_minute;
+	te.FullSecond=begin_second;
 	te.Num=TimeEventsLastNum+1;
 	te.FuncName=full_name;
 	te.BindId=bind_id;
@@ -4494,7 +4475,7 @@ void FOServer::EraseTimeEvent(DWORD num)
 
 void FOServer::ProcessTimeEvents()
 {
-	for(int i=0;!TimeEvents.empty() && TimeEvents[0].FullMinute<=GameOpt.FullMinute && i<TIME_EVENTS_PER_CYCLE;i++)
+	for(int i=0;!TimeEvents.empty() && TimeEvents[0].FullSecond<=GameOpt.FullSecond && i<TIME_EVENTS_PER_CYCLE;i++)
 	{
 		TimeEvent cur_event=TimeEvents[0]; // Copy
 		TimeEvents.erase(TimeEvents.begin()); // And erase
@@ -4510,7 +4491,7 @@ void FOServer::ProcessTimeEvents()
 				if(!dw)
 				{
 					WriteLog(__FUNCTION__" - Create uint array fail. Wait 10 real minutes.\n");
-					wait_time=GameOpt.TimeMultiplier*10;
+					wait_time=GameOpt.TimeMultiplier*600;
 				}
 				else
 				{
@@ -4525,7 +4506,7 @@ void FOServer::ProcessTimeEvents()
 				if(!Script::RunPrepared())
 				{
 					WriteLog(__FUNCTION__" - RunPrepared fail. Wait 10 real minutes.\n");
-					wait_time=GameOpt.TimeMultiplier*10;
+					wait_time=GameOpt.TimeMultiplier*600;
 				}
 				else
 				{
@@ -4544,12 +4525,12 @@ void FOServer::ProcessTimeEvents()
 		else
 		{
 			WriteLog(__FUNCTION__" - Game contexts prepare fail. Wait 10 real minutes.\n");
-			wait_time=GameOpt.TimeMultiplier*10;
+			wait_time=GameOpt.TimeMultiplier*600;
 		}
 
 		if(wait_time)
 		{
-			cur_event.FullMinute=GameOpt.FullMinute+wait_time;
+			cur_event.FullSecond=GameOpt.FullSecond+wait_time;
 			cur_event.Rate++;
 			AddTimeEvent(cur_event);
 		}
@@ -4567,15 +4548,15 @@ string FOServer::GetTimeEventsStatistics()
 	char str[1024];
 	sprintf(str,"Time events: %u\n",TimeEvents.size());
 	result=str;
-	SYSTEMTIME st=GetGameTime(GameOpt.FullMinute);
-	sprintf(str,"Game time: %02u.%02u.%04u %02u:%02u\n",st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute);
+	SYSTEMTIME st=GetGameTime(GameOpt.FullSecond);
+	sprintf(str,"Game time: %02u.%02u.%04u %02u:%02u:%02u\n",st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,st.wSecond);
 	result+=str;
-	result+="Number    Date       Time  Rate Saved Function                       Values\n";
+	result+="Number    Date       Time     Rate Saved Function                       Values\n";
 	for(size_t i=0,j=TimeEvents.size();i<j;i++)
 	{
 		TimeEvent& te=TimeEvents[i];
-		st=GetGameTime(te.FullMinute);
-		sprintf(str,"%09u %02u.%02u.%04u %02u:%02u %04u %-5s %-30s",te.Num,st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,te.Rate,te.IsSaved?"true":"false",te.FuncName.c_str());
+		st=GetGameTime(te.FullSecond);
+		sprintf(str,"%09u %02u.%02u.%04u %02u:%02u:%02u %04u %-5s %-30s",te.Num,st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,st.wSecond,te.Rate,te.IsSaved?"true":"false",te.FuncName.c_str());
 		result+=str;
 		for(size_t k=0,l=te.Values.size();k<l;k++)
 		{

@@ -740,8 +740,8 @@ struct ScoreType
 #define TO_TRANSFER                 (239)
 #define TO_REMOVE_FROM_GAME         (240)
 #define TO_KARMA_VOTING             (242)
-#define TB_BATTLE_TIMEOUT           (10000000)
-#define TB_BATTLE_TIMEOUT_CHECK(to) ((to)>100000)
+#define TB_BATTLE_TIMEOUT           (100000000)
+#define TB_BATTLE_TIMEOUT_CHECK(to) ((to)>10000000)
 
 // Kills
 #define KILL_BEGIN                  (GameOpt.KillBegin)

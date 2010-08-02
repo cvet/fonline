@@ -2602,10 +2602,10 @@ bool Critter::CheckMyTurn(Map* map)
 /* Timeouts                                                             */
 /************************************************************************/
 
-void Critter::SetTimeout(int timeout, DWORD game_minutes)
+void Critter::SetTimeout(int timeout, DWORD game_seconds)
 {
 	ChangeParam(timeout);
-	if(game_minutes) Data.Params[timeout]=GameOpt.FullMinute+game_minutes;
+	if(game_seconds) Data.Params[timeout]=GameOpt.FullSecond+game_seconds;
 	else Data.Params[timeout]=0;
 }
 
@@ -2626,7 +2626,7 @@ bool Critter::IsTransferTimeouts(bool send)
 
 DWORD Critter::GetTimeout(int timeout)
 {
-	return Data.Params[timeout]>GameOpt.FullMinute?Data.Params[timeout]-GameOpt.FullMinute:0;
+	return Data.Params[timeout]>GameOpt.FullSecond?Data.Params[timeout]-GameOpt.FullSecond:0;
 }
 
 /************************************************************************/
@@ -2709,7 +2709,7 @@ Critter* Critter::ScanEnemyStack()
 
 void Critter::AddCrTimeEvent(DWORD func_num, DWORD rate, DWORD duration, int identifier)
 {
-	if(duration) duration+=GameOpt.FullMinute;
+	if(duration) duration+=GameOpt.FullSecond;
 	CrTimeEventVecIt it=CrTimeEvents.begin(),end=CrTimeEvents.end();
 	for(;it!=end;++it)
 	{
@@ -2723,7 +2723,6 @@ void Critter::AddCrTimeEvent(DWORD func_num, DWORD rate, DWORD duration, int ide
 	cte.NextTime=duration;
 	cte.Identifier=identifier;
 	CrTimeEvents.insert(it,cte);
-	Data.CrTimeEventFullMinute=GameOpt.FullMinute;
 }
 
 void Critter::EraseCrTimeEvent(int index)
@@ -3519,6 +3518,7 @@ void Client::Send_GameInfo(Map* map)
 
 	BOUT_BEGIN(this);
 	Bout << NETMSG_GAME_INFO;
+	Bout << GameOpt.YearStart;
 	Bout << GameOpt.Year;
 	Bout << GameOpt.Month;
 	Bout << GameOpt.Day;

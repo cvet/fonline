@@ -393,15 +393,18 @@ struct ServerScriptFunctions
 
 struct GameOptions
 {
+	WORD YearStart;
+	ULONGLONG YearStartFT;
 	WORD Year;
 	WORD Month;
 	WORD Day;
 	WORD Hour;
 	WORD Minute;
 	WORD Second;
-	DWORD FullMinute;
-	DWORD FullMinuteTick;
+	DWORD FullSecondStart;
+	DWORD FullSecond;
 	WORD TimeMultiplier;
+	DWORD GameTimeTick;
 
 	bool DisableTcpNagle;
 	bool DisableZlibCompression;
@@ -525,9 +528,10 @@ struct GameOptions
 /* Game time                                                            */
 /************************************************************************/
 
-DWORD GetFullMinute(DWORD year, DWORD month, DWORD day, DWORD hour, DWORD minute);
-SYSTEMTIME GetGameTime(DWORD full_minute);
+DWORD GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second);
+SYSTEMTIME GetGameTime(DWORD full_second);
 DWORD GameTimeMonthDay(WORD year, WORD month);
+void ProcessGameTime();
 DWORD GameAimApCost(int hit_location);
 DWORD GameHitAim(int hit_location);
 

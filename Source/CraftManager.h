@@ -16,7 +16,7 @@
 #define MRFIXIT_AND_S		"&"
 #define MRFIXIT_OR_S		"|"
 
-#define FIXBOY_TIME_OUT     (GameOpt.TimeMultiplier) // 1 minute
+#define FIXBOY_TIME_OUT     (GameOpt.TimeMultiplier*60) // 1 minute
 
 struct CraftItem
 {

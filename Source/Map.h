@@ -199,7 +199,7 @@ public:
 	int TurnSequenceCur;
 	DwordVec TurnSequence;
 	bool IsTurnBasedTimeout;
-	DWORD TurnBasedBeginMinute;
+	DWORD TurnBasedBeginSecond;
 	bool NeedEndTurnBased;
 	DWORD TurnBasedRound;
 	DWORD TurnBasedTurn;

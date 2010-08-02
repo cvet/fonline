@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF078) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF079) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -842,10 +842,11 @@ sizeof(WORD)+sizeof(DWORD)+92/*ItemData*/)
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GAME_INFO            MAKE_NETMSG_HEADER(117)
-#define NETMSG_GAME_INFO_SIZE       (sizeof(MSGTYPE)+sizeof(WORD)*7+\
+#define NETMSG_GAME_INFO_SIZE       (sizeof(MSGTYPE)+sizeof(WORD)*8+\
 sizeof(int)+sizeof(BYTE)+sizeof(bool)*2+sizeof(int)*4+sizeof(BYTE)*12)
 //////////////////////////////////////////////////////////////////////////
 // Generic game info
+// WORD GameOpt.YearStart;
 // WORD GameOpt.Year;
 // WORD GameOpt.Month;
 // WORD GameOpt.Day;

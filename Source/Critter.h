@@ -458,7 +458,7 @@ public:
 	int GetApCostUseSkill(){return IsTurnBased()?GameOpt.TbApCostUseSkill:GameOpt.RtApCostUseSkill;}
 
 	// Timeouts
-	void SetTimeout(int timeout, DWORD game_minutes);
+	void SetTimeout(int timeout, DWORD game_seconds);
 	bool IsTransferTimeouts(bool send);
 	DWORD GetTimeout(int timeout);
 

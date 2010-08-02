@@ -19,7 +19,7 @@ namespace Timer
 	int GetAcceleratorNum();
 
 	int GetTimeDifference(SYSTEMTIME& st1, SYSTEMTIME& st2);
-	void ContinueTime(SYSTEMTIME& st, int minutes);
+	void ContinueTime(SYSTEMTIME& st, int seconds);
 };
 
 #endif // __TIMER__

@@ -231,8 +231,8 @@ void UpdateInfo()
 
 	if(Serv.IsInit())
 	{
-		SYSTEMTIME st=GetGameTime(GameOpt.FullMinute);
-		sprintf(str,"Game time: %02u.%02u.%04u %02u:%02u",st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute);
+		SYSTEMTIME st=GetGameTime(GameOpt.FullSecond);
+		sprintf(str,"Time: %02u.%02u.%04u %02u:%02u:%02u x%u",st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,st.wSecond,GameOpt.TimeMultiplier);
 		SetDlgItemText(Dlg,IDC_GAMETIME,str);
 		sprintf(str,"Connections: %u",Serv.Statistics.CurOnline);
 		SetDlgItemText(Dlg,IDC_COUNT,str);
@@ -257,7 +257,7 @@ void UpdateInfo()
 	}
 	else
 	{
-		SetDlgItemText(Dlg,IDC_GAMETIME,"Game time: n/a");
+		SetDlgItemText(Dlg,IDC_GAMETIME,"Time: n/a");
 		SetDlgItemText(Dlg,IDC_COUNT,"Connections: n/a");
 		SetDlgItemText(Dlg,IDC_INGAME,"Players in game: n/a");
 		SetDlgItemText(Dlg,IDC_NPC,"NPC in game: n/a");

@@ -25,7 +25,7 @@ struct CritData
 	DWORD ShowCritterDist1;
 	DWORD ShowCritterDist2;
 	DWORD ShowCritterDist3;
-	DWORD CrTimeEventFullMinute;
+	DWORD Reserved00;
 	DWORD GlobalGroupUid;
 	WORD LastHexX;
 	WORD LastHexY;

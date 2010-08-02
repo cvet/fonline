@@ -27,7 +27,7 @@ const char* MapEventFuncName[MAP_EVENT_MAX]=
 Map::Map():RefCounter(1),IsNotValid(false),hexFlags(NULL),
 MapLocation(NULL),Proto(NULL),NeedProcess(false),
 IsTurnBasedOn(false),TurnBasedEndTick(0),TurnSequenceCur(0),
-IsTurnBasedTimeout(false),TurnBasedBeginMinute(0),NeedEndTurnBased(false),
+IsTurnBasedTimeout(false),TurnBasedBeginSecond(0),NeedEndTurnBased(false),
 TurnBasedRound(0),TurnBasedTurn(0),TurnBasedWholeTurn(0)
 {
 	MEMORY_PROCESS(MEMORY_MAP,sizeof(Map));
@@ -1428,7 +1428,7 @@ void Map::BeginTurnBased(Critter* first_cr)
 	TurnBasedRound=0;
 	TurnBasedTurn=0;
 	TurnBasedWholeTurn=0;
-	TurnBasedBeginMinute=GameOpt.FullMinute;
+	TurnBasedBeginSecond=GameOpt.FullSecond;
 	if(first_cr && (!first_cr->IsLife() || !first_cr->IsKnockout() || first_cr->GetAp()<=0)) first_cr=NULL;
 	GenerateSequence(first_cr);
 	for(CrVecIt it=mapCritters.begin(),end=mapCritters.end();it!=end;++it)
@@ -1490,7 +1490,7 @@ void Map::EndTurnBased()
 		cr->Data.Params[ST_TURN_BASED_AC]=0;
 
 		// Continue time events
-		if(GameOpt.FullMinute>TurnBasedBeginMinute) cr->ContinueTimeEvents(GameOpt.FullMinute-TurnBasedBeginMinute);
+		if(GameOpt.FullSecond>TurnBasedBeginSecond) cr->ContinueTimeEvents(GameOpt.FullSecond-TurnBasedBeginSecond);
 	}
 }
 

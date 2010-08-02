@@ -752,20 +752,21 @@ const char* GetLastSocketError()
 /************************************************************************/
 #ifdef GAME_TIME
 
-DWORD GetFullMinute(DWORD year, DWORD month, DWORD day, DWORD hour, DWORD minute)
+DWORD GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
 {
-	SYSTEMTIME st={year,month,0,day,hour,minute,0,0};
+	SYSTEMTIME st={year,month,0,day,hour,minute,second,0};
 	FILETIMELI ft;
-	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(__FUNCTION__" - Error<%u>, args<%u,%u,%u,%u,%u>.\n",GetLastError(),year,month,day,hour,minute);
-	return DWORD(ft.ul.QuadPart/600000000);
+	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(__FUNCTION__" - Error<%u>, args<%u,%u,%u,%u,%u,%u>.\n",GetLastError(),year,month,day,hour,minute,second);
+	ft.ul.QuadPart-=GameOpt.YearStartFT;
+	return DWORD(ft.ul.QuadPart/10000000);
 }
 
-SYSTEMTIME GetGameTime(DWORD full_minute)
+SYSTEMTIME GetGameTime(DWORD full_second)
 {
 	SYSTEMTIME st;
 	FILETIMELI ft;
-	ft.ul.QuadPart=__int64(full_minute)*600000000;
-	if(!FileTimeToSystemTime(&ft.ft,&st)) WriteLog(__FUNCTION__" - Error<%u>, full minute<%u>.\n",GetLastError(),full_minute);
+	ft.ul.QuadPart=GameOpt.YearStartFT+ULONGLONG(full_second)*10000000;
+	if(!FileTimeToSystemTime(&ft.ft,&st)) WriteLog(__FUNCTION__" - Error<%u>, full second<%u>.\n",GetLastError(),full_second);
 	return st;
 }
 
@@ -784,20 +785,40 @@ DWORD GameTimeMonthDay(WORD year, WORD month)
 	return 0;
 }
 
+void ProcessGameTime()
+{
+	DWORD tick=Timer::GameTick();
+	DWORD delta_second=(tick-GameOpt.GameTimeTick)*GameOpt.TimeMultiplier/1000;
+	DWORD fs=GameOpt.FullSecondStart+delta_second;
+	if(GameOpt.FullSecond!=fs)
+	{
+		GameOpt.FullSecond=fs;
+		SYSTEMTIME st=GetGameTime(GameOpt.FullSecond);
+		GameOpt.Year=st.wYear;
+		GameOpt.Month=st.wMonth;
+		GameOpt.Day=st.wDay;
+		GameOpt.Hour=st.wHour;
+		GameOpt.Minute=st.wMinute;
+		GameOpt.Second=st.wSecond;
+	}
+}
+
 #endif
 
 GameOptions GameOpt;
 GameOptions::GameOptions()
 {
+	YearStart=2246;
 	Year=2246;
 	Month=1;
 	Day=2;
 	Hour=14;
 	Minute=5;
 	Second=0;
-	FullMinute=0;
-	FullMinuteTick=0;
+	FullSecondStart=0;
+	FullSecond=0;
 	TimeMultiplier=0;
+	GameTimeTick=0;
 
 	DisableTcpNagle=false;
 	DisableZlibCompression=false;

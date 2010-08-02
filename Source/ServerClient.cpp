@@ -42,13 +42,12 @@ void FOServer::ProcessCritter(Critter* cr)
 	// One event per cycle
 	if(!cr->CrTimeEvents.empty())
 	{
-		cr->Data.CrTimeEventFullMinute=GameOpt.FullMinute;
 		DWORD next_time=cr->CrTimeEvents[0].NextTime;
-		if(!next_time || (!cr->IsTurnBased() && GameOpt.FullMinute>=next_time))
+		if(!next_time || (!cr->IsTurnBased() && GameOpt.FullSecond>=next_time))
 		{
 			Critter::CrTimeEvent me=cr->CrTimeEvents[0];
 			cr->EraseCrTimeEvent(0);
-			DWORD time=GameOpt.TimeMultiplier*30; // 30 minutes on error
+			DWORD time=GameOpt.TimeMultiplier*1800; // 30 minutes on error
 			if(Script::PrepareContext(Script::GetScriptFuncBindId(me.FuncNum),CALL_FUNC_STR,cr->GetInfo()))
 			{
 				Script::SetArgObject(cr);
@@ -3981,7 +3980,7 @@ void FOServer::Process_KarmaVoting(Client* cl)
 //	else if(cl->GroupMove) cr=cl->GroupMove->GetCritter(crid);
 	if(!cr)
 	{
-		cl->SetTimeout(TO_KARMA_VOTING,1);
+		cl->SetTimeout(TO_KARMA_VOTING,1*GameOpt.TimeMultiplier); // Wait 1 second
 		return;
 	}
 

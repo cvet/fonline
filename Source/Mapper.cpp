@@ -9,7 +9,7 @@ void _PreRestore()
 void _PostRestore()
 {
 	FOMapper::Self->HexMngr.PostRestore();
-	FOMapper::Self->ProcessGameTime();
+	FOMapper::Self->ChangeGameTime();
 }
 
 bool FOMapper::SpritesCanDraw=false;
@@ -207,7 +207,7 @@ bool FOMapper::Init(HWND wnd)
 	if(!HexMngr.ReloadSprites(NULL)) return false;
 	HexMngr.SwitchShowTrack();
 	DayTime=432720;
-	ProcessGameTime();
+	ChangeGameTime();
 	AnyId=0x7FFFFFFF;
 
 	if(!OptFullScr)
@@ -572,7 +572,7 @@ bool FOMapper::InitDI()
 	return true;
 }
 
-void FOMapper::ProcessGameTime()
+void FOMapper::ChangeGameTime()
 {
 	GameOpt.Minute=DayTime%60;
 	GameOpt.Hour=DayTime/60%24;
@@ -785,8 +785,8 @@ label_TryChangeLang:
 			case DIK_F10: HexMngr.SwitchShowHex(); break;
 			case DIK_F11: HexMngr.SwitchShowRain(); break;
 			case DIK_DELETE: SelectDelete(); break;
-			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=60; ProcessGameTime();} break;
-			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=60; ProcessGameTime();} break;
+			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=60; ChangeGameTime();} break;
+			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=60; ChangeGameTime();} break;
 			case DIK_TAB: SelectType=(SelectType==SELECT_TYPE_OLD?SELECT_TYPE_NEW:SELECT_TYPE_OLD); break;
 			default: break;
 			}
@@ -800,8 +800,8 @@ label_TryChangeLang:
 			case DIK_F9: ObjFix=!ObjFix; break;
 			case DIK_F11: SprMngr.SaveSufaces(); break;
 			case DIK_ESCAPE: DestroyWindow(Wnd); break;
-			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=1; ProcessGameTime();} break;
-			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=1; ProcessGameTime();} break;
+			case DIK_ADD: if(!ConsoleEdit && SelectedObj.empty()) {DayTime+=1; ChangeGameTime();} break;
+			case DIK_SUBTRACT: if(!ConsoleEdit && SelectedObj.empty()) {DayTime-=1; ChangeGameTime();} break;
 			default: break;
 			}
 		}

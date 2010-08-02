@@ -2031,7 +2031,7 @@ DWORD FOServer::SScriptFunc::Crit_GetTimeEvents(Critter* cr, int identifier, asI
 	{
 		Critter::CrTimeEvent& cte=cr->CrTimeEvents[te_vec[i]];
 		if(indexes) *(DWORD*)indexes->GetElementPointer(indexes_size+i)=te_vec[i];
-		if(durations) *(DWORD*)durations->GetElementPointer(durations_size+i)=(cte.NextTime>GameOpt.FullMinute?cte.NextTime-GameOpt.FullMinute:0);
+		if(durations) *(DWORD*)durations->GetElementPointer(durations_size+i)=(cte.NextTime>GameOpt.FullSecond?cte.NextTime-GameOpt.FullSecond:0);
 		if(rates) *(DWORD*)rates->GetElementPointer(rates_size+i)=cte.Rate;
 	}
 	return size;
@@ -2083,7 +2083,7 @@ DWORD FOServer::SScriptFunc::Crit_GetTimeEventsArr(Critter* cr, asIScriptArray& 
 		Critter::CrTimeEvent& cte=cr->CrTimeEvents[te_vec[i]];
 		if(identifiers) *(int*)identifiers->GetElementPointer(identifiers_size+i)=cte.Identifier;
 		if(indexes) *(DWORD*)indexes->GetElementPointer(indexes_size+i)=te_vec[i];
-		if(durations) *(DWORD*)durations->GetElementPointer(durations_size+i)=(cte.NextTime>GameOpt.FullMinute?cte.NextTime-GameOpt.FullMinute:0);
+		if(durations) *(DWORD*)durations->GetElementPointer(durations_size+i)=(cte.NextTime>GameOpt.FullSecond?cte.NextTime-GameOpt.FullSecond:0);
 		if(rates) *(DWORD*)rates->GetElementPointer(rates_size+i)=cte.Rate;
 	}
 	return size;
@@ -3643,10 +3643,10 @@ void FOServer::SScriptFunc::Global_RadioMessageMsg(WORD channel, WORD text_msg, 
 	Self->RadioSendMsg(NULL,channel,text_msg,num_str);
 }
 
-DWORD FOServer::SScriptFunc::Global_GetFullMinute(WORD year, WORD month, WORD day, WORD hour, WORD minute)
+DWORD FOServer::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
 {
 	if(!year) year=GameOpt.Year;
-	else year=CLAMP(year,1601,30827);
+	else year=CLAMP(year,GameOpt.YearStart,GameOpt.YearStart+130);
 	if(!month) month=GameOpt.Month;
 	else month=CLAMP(month,1,12);
 	if(!day) day=GameOpt.Day;
@@ -3657,18 +3657,20 @@ DWORD FOServer::SScriptFunc::Global_GetFullMinute(WORD year, WORD month, WORD da
 	}
 	hour=CLAMP(hour,0,23);
 	minute=CLAMP(minute,0,59);
-	return GetFullMinute(year,month,day,hour,minute);
+	second=CLAMP(second,0,59);
+	return GetFullSecond(year,month,day,hour,minute,second);
 }
 
-void FOServer::SScriptFunc::Global_GetGameTime(DWORD full_minute, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute)
+void FOServer::SScriptFunc::Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second)
 {
-	SYSTEMTIME st=GetGameTime(full_minute);
+	SYSTEMTIME st=GetGameTime(full_second);
 	year=st.wYear;
 	month=st.wMonth;
 	day_of_week=st.wDayOfWeek;
 	day=st.wDay;
 	hour=st.wHour;
 	minute=st.wMinute;
+	second=st.wSecond;
 }
 
 DWORD FOServer::SScriptFunc::Global_CreateLocation(WORD loc_pid, WORD wx, WORD wy, asIScriptArray* critters)
@@ -3771,45 +3773,45 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 	return new CScriptString(data->ClientName);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventEmpty(DWORD begin_minute, CScriptString& script_name, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventEmpty(DWORD begin_second, CScriptString& script_name, bool save)
 {
 	DwordVec values;
-	return Self->CreateScriptEvent(begin_minute,script_name.c_str(),values,save); //Errors parsed in function
+	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventDw(DWORD begin_minute, CScriptString& script_name, DWORD dw, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventDw(DWORD begin_second, CScriptString& script_name, DWORD dw, bool save)
 {
 	DwordVec values;
 	values.push_back(dw);
-	return Self->CreateScriptEvent(begin_minute,script_name.c_str(),values,save); //Errors parsed in function
+	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventDws(DWORD begin_minute, CScriptString& script_name, asIScriptArray& dw, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventDws(DWORD begin_second, CScriptString& script_name, asIScriptArray& dw, bool save)
 {
 	DwordVec values;
 	DWORD dw_size=dw.GetElementCount();
 	values.resize(dw_size);
 	if(dw_size) memcpy((void*)&values[0],dw.GetElementPointer(0),dw_size*dw.GetElementSize());
-	return Self->CreateScriptEvent(begin_minute,script_name.c_str(),values,save); //Errors parsed in function
+	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventCr(DWORD begin_minute, CScriptString& script_name, Critter* cr, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventCr(DWORD begin_second, CScriptString& script_name, Critter* cr, bool save)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
 	DwordVec values;
 	values.push_back(cr->GetId());
-	return Self->CreateScriptEvent(begin_minute,script_name.c_str(),values,save); //Errors parsed in function
+	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventItem(DWORD begin_minute, CScriptString& script_name, Item* item, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventItem(DWORD begin_second, CScriptString& script_name, Item* item, bool save)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("Item arg nullptr.");
 	DwordVec values;
 	values.push_back(item->GetId());
-	return Self->CreateScriptEvent(begin_minute,script_name.c_str(),values,save); //Errors parsed in function
+	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventArr(DWORD begin_minute, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventArr(DWORD begin_second, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save)
 {
 	DwordVec values;
 	DWORD cr_size=(critters?critters->GetElementCount():0);
@@ -3819,7 +3821,7 @@ DWORD FOServer::SScriptFunc::Global_CreateTimeEventArr(DWORD begin_minute, CScri
 	if(items_size) memcpy((void*)&values[cr_size],items->GetElementPointer(0),items_size);
 	values[values.size()-2]=cr_size;
 	values[values.size()-1]=items_size;
-	return Self->CreateScriptEvent(begin_minute,script_name.c_str(),values,save); //Errors parsed in function
+	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
 }
 
 void FOServer::SScriptFunc::Global_EraseTimeEvent(DWORD num)

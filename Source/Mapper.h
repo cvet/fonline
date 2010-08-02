@@ -60,7 +60,7 @@ public:
 
 	// Game color
 	DWORD DayTime;
-	void ProcessGameTime();
+	void ChangeGameTime();
 
 	// MSG File
 	LanguagePack CurLang;

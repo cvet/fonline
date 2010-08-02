@@ -100,15 +100,15 @@ int Timer::GetTimeDifference(SYSTEMTIME& st1, SYSTEMTIME& st2)
 	SystemTimeToFileTime(&st1,&ft1.ft);
 	SystemTimeToFileTime(&st2,&ft2.ft);
 
-	__int64 result=(ft1.ul.QuadPart-ft2.ul.QuadPart)/600000000;
+	__int64 result=(ft1.ul.QuadPart-ft2.ul.QuadPart)/10000000;
 	return (int)result;
 }
 
-void Timer::ContinueTime(SYSTEMTIME& st, int minutes)
+void Timer::ContinueTime(SYSTEMTIME& st, int seconds)
 {
 	FILETIMELI ft;
 	SystemTimeToFileTime(&st,&ft.ft);
-	ft.ul.QuadPart+=__int64(minutes)*600000000;
+	ft.ul.QuadPart+=__int64(seconds)*10000000;
 	FileTimeToSystemTime(&ft.ft,&st);
 }
 
