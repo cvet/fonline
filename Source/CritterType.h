@@ -16,7 +16,7 @@ class FOMsg;
 struct CritTypeType
 {
 	bool Enabled;
-	char Name[7];
+	char Name[64];
 	DWORD Alias;
 
 	bool Is3d;

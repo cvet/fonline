@@ -7094,7 +7094,7 @@ void FOClient::ChaNameLMouseDown()
 	if(!IsMainScreen(SCREEN_REGISTRATION)) return;
 
 	if(IsCurInRect(ChaNameWName,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_NAME;
-	else if(Singleplayer && IsCurInRect(ChaNameWPass,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_PASS;
+	else if(!Singleplayer && IsCurInRect(ChaNameWPass,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_PASS;
 }
 
 void FOClient::ChaNameKeyDown(BYTE dik)

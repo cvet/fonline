@@ -1881,6 +1881,10 @@ bool HexManager::Scroll()
 			else if(CmnScrOy<0 && ScrollCheck(0,1)) CmnScrOy=0;
 		}
 	}
+	else
+	{
+		return false;
+	}
 	
 	return true;
 }

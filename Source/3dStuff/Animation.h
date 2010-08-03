@@ -176,17 +176,12 @@ private:
 	string fileName;
 	int pathType;
 	Animation3dXFile* xFile;
+	string defaultTexture;
 	DWORD numAnimationSets;
 	IntMap animIndexes;
 	AnimLinkVec animBones;
 	float scaleValue;
 	float speedAdjust;
-
-	struct EntityTexture
-	{
-		char* Name;
-		IDirect3DTexture9* Texture;
-	};
 
 	void ProcessTemplateDefines(char* str, StrVec& def);
 	int GetAnimationIndex(const char* anim_name);

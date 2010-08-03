@@ -1082,7 +1082,8 @@ Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_
 		// Set default textures
 		for(DWORD k=0;k<mopt.SubsetsCount;k++)
 		{
-			mopt.DefaultTexSubsets[k]=(mesh->exTexturesNames[k]?entity->xFile->GetTexture(mesh->exTexturesNames[k]):NULL);
+			const char* tex_name=(entity->defaultTexture!=""?entity->defaultTexture.c_str():mesh->exTexturesNames[k]);
+			mopt.DefaultTexSubsets[k]=(tex_name?entity->xFile->GetTexture(tex_name):NULL);
 			mopt.TexSubsets[k]=mopt.DefaultTexSubsets[k];
 		}
 	}
@@ -1306,6 +1307,14 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 					animBones.push_back(link);
 				}
 			}
+		}
+
+		// Default texture
+		if(fo3d.IsCachedKey("texture"))
+		{
+			char tex_name[MAX_FOPATH];
+			fo3d.GetStr("texture","",tex_name);
+			defaultTexture=tex_name;
 		}
 
 		// Other
@@ -1748,7 +1757,7 @@ void Animation3dXFile::SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationCont
 AnimTextureVec Animation3dXFile::Textures;
 IDirect3DTexture9* Animation3dXFile::GetTexture(const char* tex_name)
 {
-	if(tex_name)
+	if(tex_name && tex_name[0])
 	{
 		// Try find already loaded texture
 		for(AnimTextureVecIt it=Textures.begin(),end=Textures.end();it!=end;++it)

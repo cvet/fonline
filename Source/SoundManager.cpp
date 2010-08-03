@@ -621,20 +621,16 @@ void SoundManager::PlaySound(const char* name)
 
 void SoundManager::PlayAction(const char* body_type, BYTE anim1, BYTE anim2)
 {
-	if(!isActive || !GetSoundVolume()) return;
+	if(!isActive || !GetSoundVolume() || !body_type) return;
 
 	const char abc[]="_ABCDEFGHIJKLMNOPQRST";
-	char name[9];
-	name[0]=body_type[0];
-	name[1]=body_type[1];
-	name[2]=body_type[2];
-	name[3]=body_type[3];
-	name[4]=body_type[4];
-	name[5]=body_type[5];
-	name[6]=abc[anim1];
-	name[7]=abc[anim2];
-	name[8]='\0';
-	_strupr(name);
+	char name[64];
+	StringCopy(name,body_type);
+	size_t len=strlen(name);
+	name[len+0]=abc[anim1];
+	name[len+1]=abc[anim2];
+	name[len+2]='\0';
+	Str::Upr(name);
 
 	StrStrMapIt it=soundInfo.find(name);
 	if(it==soundInfo.end())

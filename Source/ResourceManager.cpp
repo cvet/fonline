@@ -178,21 +178,22 @@ AnyFrames* ResourceManager::GetCritAnim(DWORD crtype, BYTE anim1, BYTE anim2, BY
 	if(it!=critterFrames.end()) return (*it).second;
 
 	static char frm_ind[]="_ABCDEFGHIJKLMNOPQRST";
-	char spr_name[32];
+	char spr_name[64];
 	sprMngr->SurfType=RES_CRITTERS;
 
 	// Try load fofrm
-	sprintf(spr_name,"%s%c%c.fofrm",CritType::GetName(crtype),frm_ind[anim1],frm_ind[anim2]);
+	const char* name=CritType::GetName(crtype);
+	sprintf(spr_name,"%s%c%c.fofrm",name,frm_ind[anim1],frm_ind[anim2]);
 	AnyFrames* cr_frm=sprMngr->LoadAnyAnimation(spr_name,PT_ART_CRITTERS,false,dir);
 
 	// Try load fallout frames
 	if(!cr_frm)
 	{
-		sprintf(spr_name,"%s%c%c.frm",CritType::GetName(crtype),frm_ind[anim1],frm_ind[anim2]);
+		sprintf(spr_name,"%s%c%c.frm",name,frm_ind[anim1],frm_ind[anim2]);
 		cr_frm=sprMngr->LoadAnyAnimation(spr_name,PT_ART_CRITTERS,false,dir);
 		if(!cr_frm)
 		{
-			sprintf(spr_name,"%s%c%c.fr%u",CritType::GetName(crtype),frm_ind[anim1],frm_ind[anim2],dir);
+			sprintf(spr_name,"%s%c%c.fr%u",name,frm_ind[anim1],frm_ind[anim2],dir);
 			cr_frm=sprMngr->LoadAnyAnimation(spr_name,PT_ART_CRITTERS,false,0);
 			if(!cr_frm)
 			{

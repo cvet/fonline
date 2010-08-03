@@ -524,7 +524,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 
 		// Name
 		str >> svalue;
-		if(str.fail() || svalue.length()!=6) continue;
+		if(str.fail()) continue;
 		StringCopy(ct.Name,svalue.c_str());
 
 		// Alias, 3d, Walk, Run, Aim, Armor, Rotate
@@ -585,7 +585,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 
 	if(fill_msg)
 	{
-		char str[2048];
+		char str[MAX_FOTEXT];
 		for(int i=0;i<MAX_CRIT_TYPES;i++)
 		{
 			CritTypeType& ct=CrTypes[i];
@@ -623,21 +623,20 @@ bool CritType::InitFromMsg(FOMsg* msg)
 
 	int errors=0;
 	int success=0;
+	char name[MAX_FOTEXT]={0};
 	for(int i=0;i<MAX_CRIT_TYPES;i++)
 	{
 		if(!msg->Count(STR_INTERNAL_CRTYPE(i))) continue;
 		const char* str=msg->GetStr(STR_INTERNAL_CRTYPE(i));
 		CritTypeType& ct=CrTypesReserved.Get()[i];
 
-		char name[128]={0};
 		if(sscanf(str,"%s%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",name,
 			&ct.Alias,&ct.Is3d,&ct.CanWalk,&ct.CanRun,&ct.CanAim,&ct.CanArmor,&ct.CanRotate,
 			&ct.Anim1[1],&ct.Anim1[2],&ct.Anim1[3],&ct.Anim1[4],&ct.Anim1[5],&ct.Anim1[6],&ct.Anim1[7],
 			&ct.Anim1[8],&ct.Anim1[9],&ct.Anim1[10],&ct.Anim1[11],&ct.Anim1[12],&ct.Anim1[13],&ct.Anim1[14],
 			&ct.Anim1[15],&ct.Anim1[16],&ct.Anim1[17],&ct.Anim1[18],&ct.Anim1[19],&ct.Anim1[20],
 			&MoveWalkReserved[i][4],&MoveWalkReserved[i][5],
-			&MoveWalkReserved[i][0],&MoveWalkReserved[i][1],&MoveWalkReserved[i][2],&MoveWalkReserved[i][3])!=34
-			|| strlen(name)!=6)
+			&MoveWalkReserved[i][0],&MoveWalkReserved[i][1],&MoveWalkReserved[i][2],&MoveWalkReserved[i][3])!=34)
 		{
 			WriteLog(__FUNCTION__" - Bad data for critter type information, number<%d>, line<%s>.\n",i,str);
 			errors++;
