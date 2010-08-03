@@ -95,7 +95,7 @@ public:
 
 	bool LoadSoundList(const char* lst_name, int path_type);
 	void PlaySound(const char* name);
-	void PlayAction(const char* body_type, BYTE anim1, BYTE anim2);
+	void PlayAction(const char* body_type, DWORD anim1, DWORD anim2);
 	void PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
 	void PlayMusic(const char* fname, DWORD pos = 0, DWORD repeat = MUSIC_PLAY_PAUSE);
 	void StopMusic();

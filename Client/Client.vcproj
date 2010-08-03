@@ -545,10 +545,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\zconf.in.h"
-				>
-			</File>
-			<File
 				RelativePath="..\Source\zlib\zlib.h"
 				>
 			</File>

@@ -47,7 +47,7 @@
 #  define free_func             z_free_func
 #  define in_func               z_in_func
 #  define out_func              z_out_func
-#  define Byte                  z_Byte
+#  define ByteZ                  z_Byte
 #  define uInt                  z_uInt
 #  define uLong                 z_uLong
 #  define Bytef                 z_Bytef
@@ -258,16 +258,16 @@
 #endif
 
 #if !defined(__MACTYPES__)
-typedef unsigned char  Byte;  /* 8 bits */
+typedef unsigned char  ByteZ;  /* 8 bits */
 #endif
 typedef unsigned int   uInt;  /* 16 bits or more */
 typedef unsigned long  uLong; /* 32 bits or more */
 
 #ifdef SMALL_MEDIUM
    /* Borland C/C++ and some old MSC versions ignore FAR inside typedef */
-#  define Bytef Byte FAR
+#  define Bytef ByteZ FAR
 #else
-   typedef Byte  FAR Bytef;
+   typedef ByteZ  FAR Bytef;
 #endif
 typedef char  FAR charf;
 typedef int   FAR intf;
@@ -279,9 +279,9 @@ typedef uLong FAR uLongf;
    typedef void FAR   *voidpf;
    typedef void       *voidp;
 #else
-   typedef Byte const *voidpc;
-   typedef Byte FAR   *voidpf;
-   typedef Byte       *voidp;
+   typedef ByteZ const *voidpc;
+   typedef ByteZ FAR   *voidpf;
+   typedef ByteZ       *voidp;
 #endif
 
 #if 0           /* HAVE_UNISTD_H -- this line is updated by ./configure */

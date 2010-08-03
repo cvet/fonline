@@ -284,7 +284,7 @@ int ZEXPORT deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
     s->hash_mask = s->hash_size - 1;
     s->hash_shift =  ((s->hash_bits+MIN_MATCH-1)/MIN_MATCH);
 
-    s->window = (Bytef *) ZALLOC(strm, s->w_size, 2*sizeof(Byte));
+    s->window = (Bytef *) ZALLOC(strm, s->w_size, 2*sizeof(ByteZ));
     s->prev   = (Posf *)  ZALLOC(strm, s->w_size, sizeof(Pos));
     s->head   = (Posf *)  ZALLOC(strm, s->hash_size, sizeof(Pos));
 
@@ -306,7 +306,7 @@ int ZEXPORT deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
 
     s->level = level;
     s->strategy = strategy;
-    s->method = (Byte)method;
+    s->method = (ByteZ)method;
 
     return deflateReset(strm);
 }
@@ -519,8 +519,8 @@ local void putShortMSB (s, b)
     deflate_state *s;
     uInt b;
 {
-    put_byte(s, (Byte)(b >> 8));
-    put_byte(s, (Byte)(b & 0xff));
+    put_byte(s, (ByteZ)(b >> 8));
+    put_byte(s, (ByteZ)(b & 0xff));
 }
 
 /* =========================================================================
@@ -600,10 +600,10 @@ int ZEXPORT deflate (strm, flush)
                             (s->gzhead->name == Z_NULL ? 0 : 8) +
                             (s->gzhead->comment == Z_NULL ? 0 : 16)
                         );
-                put_byte(s, (Byte)(s->gzhead->time & 0xff));
-                put_byte(s, (Byte)((s->gzhead->time >> 8) & 0xff));
-                put_byte(s, (Byte)((s->gzhead->time >> 16) & 0xff));
-                put_byte(s, (Byte)((s->gzhead->time >> 24) & 0xff));
+                put_byte(s, (ByteZ)(s->gzhead->time & 0xff));
+                put_byte(s, (ByteZ)((s->gzhead->time >> 8) & 0xff));
+                put_byte(s, (ByteZ)((s->gzhead->time >> 16) & 0xff));
+                put_byte(s, (ByteZ)((s->gzhead->time >> 24) & 0xff));
                 put_byte(s, s->level == 9 ? 2 :
                             (s->strategy >= Z_HUFFMAN_ONLY || s->level < 2 ?
                              4 : 0));
@@ -742,8 +742,8 @@ int ZEXPORT deflate (strm, flush)
             if (s->pending + 2 > s->pending_buf_size)
                 flush_pending(strm);
             if (s->pending + 2 <= s->pending_buf_size) {
-                put_byte(s, (Byte)(strm->adler & 0xff));
-                put_byte(s, (Byte)((strm->adler >> 8) & 0xff));
+                put_byte(s, (ByteZ)(strm->adler & 0xff));
+                put_byte(s, (ByteZ)((strm->adler >> 8) & 0xff));
                 strm->adler = crc32(0L, Z_NULL, 0);
                 s->status = BUSY_STATE;
             }
@@ -832,14 +832,14 @@ int ZEXPORT deflate (strm, flush)
     /* Write the trailer */
 #ifdef GZIP
     if (s->wrap == 2) {
-        put_byte(s, (Byte)(strm->adler & 0xff));
-        put_byte(s, (Byte)((strm->adler >> 8) & 0xff));
-        put_byte(s, (Byte)((strm->adler >> 16) & 0xff));
-        put_byte(s, (Byte)((strm->adler >> 24) & 0xff));
-        put_byte(s, (Byte)(strm->total_in & 0xff));
-        put_byte(s, (Byte)((strm->total_in >> 8) & 0xff));
-        put_byte(s, (Byte)((strm->total_in >> 16) & 0xff));
-        put_byte(s, (Byte)((strm->total_in >> 24) & 0xff));
+        put_byte(s, (ByteZ)(strm->adler & 0xff));
+        put_byte(s, (ByteZ)((strm->adler >> 8) & 0xff));
+        put_byte(s, (ByteZ)((strm->adler >> 16) & 0xff));
+        put_byte(s, (ByteZ)((strm->adler >> 24) & 0xff));
+        put_byte(s, (ByteZ)(strm->total_in & 0xff));
+        put_byte(s, (ByteZ)((strm->total_in >> 8) & 0xff));
+        put_byte(s, (ByteZ)((strm->total_in >> 16) & 0xff));
+        put_byte(s, (ByteZ)((strm->total_in >> 24) & 0xff));
     }
     else
 #endif
@@ -917,7 +917,7 @@ int ZEXPORT deflateCopy (dest, source)
     zmemcpy(ds, ss, sizeof(deflate_state));
     ds->strm = dest;
 
-    ds->window = (Bytef *) ZALLOC(dest, ds->w_size, 2*sizeof(Byte));
+    ds->window = (Bytef *) ZALLOC(dest, ds->w_size, 2*sizeof(ByteZ));
     ds->prev   = (Posf *)  ZALLOC(dest, ds->w_size, sizeof(Pos));
     ds->head   = (Posf *)  ZALLOC(dest, ds->hash_size, sizeof(Pos));
     overlay = (ushf *) ZALLOC(dest, ds->lit_bufsize, sizeof(ush)+2);
@@ -929,7 +929,7 @@ int ZEXPORT deflateCopy (dest, source)
         return Z_MEM_ERROR;
     }
     /* following zmemcpy do not work for 16-bit MSDOS */
-    zmemcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(Byte));
+    zmemcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(ByteZ));
     zmemcpy(ds->prev, ss->prev, ds->w_size * sizeof(Pos));
     zmemcpy(ds->head, ss->head, ds->hash_size * sizeof(Pos));
     zmemcpy(ds->pending_buf, ss->pending_buf, (uInt)ds->pending_buf_size);
@@ -1051,8 +1051,8 @@ local uInt longest_match(s, cur_match)
     register ush scan_end   = *(ushf*)(scan+best_len-1);
 #else
     register Bytef *strend = s->window + s->strstart + MAX_MATCH;
-    register Byte scan_end1  = scan[best_len-1];
-    register Byte scan_end   = scan[best_len];
+    register ByteZ scan_end1  = scan[best_len-1];
+    register ByteZ scan_end   = scan[best_len];
 #endif
 
     /* The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.

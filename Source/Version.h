@@ -4,9 +4,9 @@
 #define SERVER_VERSION              0x00000337 // server_0337
 #define CLIENT_VERSION              0x00000251 // client_0251
 #define MAPPER_VERSION              0x00000115 // mapper_0115
-#define SINGLE_VERSION              0x00000001 // single_0001
 
 #define MAPPER_VERSION_STR          "v.1.22.5"
+#define DIALOG_EDITOR_VERSION_STR   "v.2.17.0"
 #define OBJECT_EDITOR_VERSION_STR   "v.2.13.2"
 
 #define MAJORNO 0

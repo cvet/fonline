@@ -48,6 +48,7 @@
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4793;4996"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -126,6 +127,7 @@
 				UsePrecompiledHeader="2"
 				WarningLevel="3"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4793;4996"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -393,6 +395,10 @@
 			</File>
 			<File
 				RelativePath="..\Source\Vars.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Version.h"
 				>
 			</File>
 		</Filter>
@@ -707,10 +713,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\Zlib\zconf.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\Zlib\zconf.in.h"
 				>
 			</File>
 			<File

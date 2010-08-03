@@ -58,8 +58,8 @@ typedef struct gz_stream {
     int      z_err;   /* error code for last stream operation */
     int      z_eof;   /* set if end of input file */
     FILE     *file;   /* .gz file */
-    Byte     *inbuf;  /* input buffer */
-    Byte     *outbuf; /* output buffer */
+    ByteZ     *inbuf;  /* input buffer */
+    ByteZ     *outbuf; /* output buffer */
     uLong    crc;     /* crc32 of uncompressed data */
     char     *msg;    /* error message */
     char     *path;   /* path name for debugging only */
@@ -156,13 +156,13 @@ local gzFile gz_open (path, mode, fd)
                            Z_DEFLATED, -MAX_WBITS, DEF_MEM_LEVEL, strategy);
         /* windowBits is passed < 0 to suppress zlib header */
 
-        s->stream.next_out = s->outbuf = (Byte*)ALLOC(Z_BUFSIZE);
+        s->stream.next_out = s->outbuf = (ByteZ*)ALLOC(Z_BUFSIZE);
 #endif
         if (err != Z_OK || s->outbuf == Z_NULL) {
             return destroy(s), (gzFile)Z_NULL;
         }
     } else {
-        s->stream.next_in  = s->inbuf = (Byte*)ALLOC(Z_BUFSIZE);
+        s->stream.next_in  = s->inbuf = (ByteZ*)ALLOC(Z_BUFSIZE);
 
         err = inflateInit2(&(s->stream), -MAX_WBITS);
         /* windowBits is passed < 0 to tell that there is no zlib header.
@@ -398,14 +398,14 @@ int ZEXPORT gzread (file, buf, len)
 {
     gz_stream *s = (gz_stream*)file;
     Bytef *start = (Bytef*)buf; /* starting point for crc computation */
-    Byte  *next_out; /* == stream.next_out but not forced far (for MSDOS) */
+    ByteZ  *next_out; /* == stream.next_out but not forced far (for MSDOS) */
 
     if (s == NULL || s->mode != 'r') return Z_STREAM_ERROR;
 
     if (s->z_err == Z_DATA_ERROR || s->z_err == Z_ERRNO) return -1;
     if (s->z_err == Z_STREAM_END) return 0;  /* EOF */
 
-    next_out = (Byte*)buf;
+    next_out = (ByteZ*)buf;
     s->stream.next_out = (Bytef*)buf;
     s->stream.avail_out = len;
 
@@ -787,7 +787,7 @@ z_off_t ZEXPORT gzseek (file, offset, whence)
 
         /* At this point, offset is the number of zero bytes to write. */
         if (s->inbuf == Z_NULL) {
-            s->inbuf = (Byte*)ALLOC(Z_BUFSIZE); /* for seeking */
+            s->inbuf = (ByteZ*)ALLOC(Z_BUFSIZE); /* for seeking */
             if (s->inbuf == Z_NULL) return -1L;
             zmemzero(s->inbuf, Z_BUFSIZE);
         }
@@ -831,7 +831,7 @@ z_off_t ZEXPORT gzseek (file, offset, whence)
     /* offset is now the number of bytes to skip. */
 
     if (offset != 0 && s->outbuf == Z_NULL) {
-        s->outbuf = (Byte*)ALLOC(Z_BUFSIZE);
+        s->outbuf = (ByteZ*)ALLOC(Z_BUFSIZE);
         if (s->outbuf == Z_NULL) return -1L;
     }
     if (offset && s->back != EOF) {
