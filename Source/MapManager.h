@@ -92,7 +92,6 @@ struct PathFindData
 	bool IsRun;
 	DWORD PathNum;
 	DWORD Trace;
-	bool IsAround;
 	bool CheckCrit;
 	bool CheckGagItems;
 	Critter* TraceCr;

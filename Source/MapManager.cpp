@@ -1905,25 +1905,28 @@ int MapManager::FindPath(PathFindData& pfd)
 	MapGridOffsY=from_hy;
 	GRID(from_hx,from_hy)=numindex;
 
-	WordPairVec coords,cr_coords,item_coords;
-	coords.reserve(FPATH_MAX_PATH*FPATH_MAX_PATH);
+	static WordPairVec coords,cr_coords,gag_coords;
+	coords.clear();
+	cr_coords.clear();
+	gag_coords.clear();
 
 	// First point
 	coords.push_back(WordPairVecVal(from_hx,from_hy));
 
 	// Begin search
-	DWORD p=0,p_togo=1;
-	WORD cx,cy,nx,ny;
-	bool set_crit=false;
+	int p=0,p_togo=1;
+	int cx,cy,nx,ny;
 	while(true)
 	{
-		numindex++;
-		if(numindex>FPATH_MAX_PATH) return FPATH_TOOFAR;
-
 		for(int i=0;i<p_togo;++i,++p)
 		{
 			cx=coords[p].first;
 			cy=coords[p].second;
+			numindex=GRID(cx,cy);
+
+			if(CheckDist(cx,cy,to_hx,to_hy,cut)) goto label_FindOk;
+			if(++numindex>FPATH_MAX_PATH) return FPATH_TOOFAR;
+
 			for(int j=1;j<=6;++j)
 			{
 				if(cx%2)
@@ -1936,30 +1939,24 @@ int MapManager::FindPath(PathFindData& pfd)
 					nx=cx+SXChet[j];
 					ny=cy+SYChet[j];
 				}
-				if(nx>=maxhx || ny>=maxhy) continue;
 
-				if(!GRID(nx,ny))
+				if(nx>=0 && ny>=0 && nx<maxhx && ny<maxhy && !GRID(nx,ny))
 				{
 					WORD flags=map->GetHexFlags(nx,ny);
 					if(!FLAG(flags,FH_NOWAY))
 					{
-						if(CheckDist(nx,ny,to_hx,to_hy,cut))
-						{
-							p_togo-=i+1;
-							goto label_FindOk;
-						}
 						coords.push_back(WordPairVecVal(nx,ny));
 						GRID(nx,ny)=numindex;
+					}
+					else if(check_gag_items && FLAG(flags,FH_GAG_ITEM<<8))
+					{
+						gag_coords.push_back(WordPairVecVal(nx,ny));
+						GRID(nx,ny)=numindex|0x4000;
 					}
 					else if(check_cr && FLAG(flags,FH_CRITTER<<8))
 					{
 						cr_coords.push_back(WordPairVecVal(nx,ny));
 						GRID(nx,ny)=numindex|0x8000;
-					}
-					else if(check_gag_items && FLAG(flags,FH_GAG_ITEM<<8))
-					{
-						item_coords.push_back(WordPairVecVal(nx,ny));
-						GRID(nx,ny)=numindex|0x4000;
 					}
 					else
 					{
@@ -1969,27 +1966,38 @@ int MapManager::FindPath(PathFindData& pfd)
 			}
 		}
 
+		// Add gag hex after some distance
+		if(gag_coords.size())
+		{
+			int last_index=GRID(coords.back().first,coords.back().second);
+			WordPair& xy=gag_coords.front();
+			int gag_index=GRID(xy.first,xy.second)^0x4000;
+			if(gag_index+10<last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
+			{
+				GRID(xy.first,xy.second)=gag_index;
+				coords.push_back(xy);
+				gag_coords.erase(gag_coords.begin());
+			}
+		}
+
+		// Add gag and critters hexes
 		p_togo=coords.size()-p;
 		if(!p_togo)
 		{
-			if(cr_coords.size())
+			if(gag_coords.size())
 			{
-				size_t index=cr_coords.size()-1;
-				WORD hx=cr_coords[index].first;
-				WORD hy=cr_coords[index].second;
-				GRID(hx,hy)^=0x8000;
-				coords.push_back(WordPairVecVal(hx,hy));
-				cr_coords.pop_back();
+				WordPair& xy=gag_coords.front();
+				GRID(xy.first,xy.second)^=0x4000;
+				coords.push_back(xy);
+				gag_coords.erase(gag_coords.begin());
 				p_togo++;
 			}
-			else if(item_coords.size())
+			else if(cr_coords.size())
 			{
-				size_t index=item_coords.size()-1;
-				WORD hx=item_coords[index].first;
-				WORD hy=item_coords[index].second;
-				GRID(hx,hy)^=0x4000;
-				coords.push_back(WordPairVecVal(hx,hy));
-				item_coords.pop_back();
+				WordPair& xy=cr_coords.front();
+				GRID(xy.first,xy.second)^=0x8000;
+				coords.push_back(xy);
+				cr_coords.erase(cr_coords.begin());
 				p_togo++;
 			}
 		}
@@ -1998,68 +2006,12 @@ int MapManager::FindPath(PathFindData& pfd)
 	}
 
 label_FindOk:
-	GRID(nx,ny)=numindex;
-	coords.push_back(WordPairVecVal(nx,ny));
-
-	WORD x1=coords[coords.size()-1].first;
-	WORD y1=coords[coords.size()-1].second;
+	WORD x1=cx;
+	WORD y1=cy;
 
 	if(++pathNumCur>=FPATH_DATA_SIZE) pathNumCur=1;
 	PathStepVec& path=pathesPool[pathNumCur];
 	path.resize(numindex-1);
-
-	// Go around
-	if(pfd.IsAround)
-	{
-		// Complete last index
-		for(int i=0;i<p_togo;++i,++p)
-		{
-			WORD cx_=coords[p].first;
-			WORD cy_=coords[p].second;
-			for(int j=1;j<=6;++j)
-			{
-				WORD nx_=((cx_%2)?cx_+SXNChet[j]:cx_+SXChet[j]);
-				WORD ny_=((cx_%2)?cy_+SYNChet[j]:cy_+SYChet[j]);
-				if(nx_>=maxhx || ny_>=maxhy) continue;
-				if(!GRID(nx_,ny_))
-				{
-					if(!FLAG(map->GetHexFlags(nx_,ny_),FH_NOWAY)) GRID(nx_,ny_)=numindex;
-					else GRID(nx_,ny_)=-1;
-				}
-			}
-		}
-
-		// Check two way
-		int go[2]={0,0};
-		WORD go_hx[2]={x1,x1};
-		WORD go_hy[2]={y1,y1};
-		int j=0;
-		GRID(x1,y1)=-2;
-		for(int i=0;i<6;i++)
-		{
-			WORD hx=x1;
-			WORD hy=y1;
-			MoveHexByDir(hx,hy,i,maxhx,maxhy);
-			if(GRID(hx,hy)==numindex)
-			{
-				for(int k=0;k<numindex-1;k++)
-				{
-					GRID(hx,hy)=-2;
-					int dir=FindPathGrid(hx,hy,numindex,false);
-					if(dir==-1) break;
-					go[j]++;
-				}
-				go_hx[j]=hx;
-				go_hy[j]=hy;
-				j++;
-				if(j>1) break;
-			}
-		}
-		int i1=Random(0,1);
-		int i2=!i1;
-		if(go[i1]>=go[i2]){x1=go_hx[i1];y1=go_hy[i1];}
-		else{x1=go_hx[i2];y1=go_hy[i2];}
-	}
 
 	// Parse full path
 	static bool switcher=false;
@@ -2083,20 +2035,20 @@ label_FindOk:
 			PathStep& ps=path[i];
 			if(map->IsHexPassed(ps.HexX,ps.HexY)) continue;
 
-			if(check_cr && map->IsFlagCritter(ps.HexX,ps.HexY,false))
-			{
-				Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false);
-				if(!cr) continue;
-				pfd.GagCritter=cr;
-				path.resize(i);
-				break;
-			}
-
 			if(check_gag_items && map->IsHexGag(ps.HexX,ps.HexY))
 			{
 				Item* item=map->GetItemGag(ps.HexX,ps.HexY);
 				if(!item) continue;
 				pfd.GagItem=item;
+				path.resize(i);
+				break;
+			}
+
+			if(check_cr && map->IsFlagCritter(ps.HexX,ps.HexY,false))
+			{
+				Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false);
+				if(!cr) continue;
+				pfd.GagCritter=cr;
 				path.resize(i);
 				break;
 			}

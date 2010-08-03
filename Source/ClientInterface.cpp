@@ -4724,6 +4724,7 @@ void FOClient::LMenuMouseUp()
 void FOClient::ShowMainScreen(int new_screen)
 {
 	while(GetActiveScreen()!=SCREEN_NONE) ShowScreen(SCREEN_NONE);
+	int prev_main_screen=ScreenModeMain;
 	if(ScreenModeMain) RunScreenScript(false,ScreenModeMain,-1,0,0);
 	ScreenModeMain=new_screen;
 	RunScreenScript(true,new_screen,-1,0,0);
@@ -4766,7 +4767,7 @@ void FOClient::ShowMainScreen(int new_screen)
 		break;
 	case SCREEN_WAIT:
 		SetCurMode(CUR_WAIT);
-		WaitPic=ResMngr.GetRandomSplash();
+		if(prev_main_screen!=SCREEN_WAIT) WaitPic=ResMngr.GetRandomSplash();
 		break;
 	default:
 		break;

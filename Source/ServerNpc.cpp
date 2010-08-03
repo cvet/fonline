@@ -203,7 +203,6 @@ void FOServer::ProcessAI(Npc* npc)
 			pfd.ToY=hy;
 			pfd.IsRun=plane->Move.IsRun;
 			pfd.Cut=cut;
-			pfd.IsAround=false;
 			pfd.Trace=trace;
 			pfd.TraceCr=trace_cr;
 			pfd.CheckCrit=true;

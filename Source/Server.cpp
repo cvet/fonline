@@ -47,6 +47,7 @@ FOServer::FOServer()
 	ServerWindow=NULL;
 	LastClientId=0;
 	SingleplayerSave.Valid=false;
+	VarsGarbageLastTick=0;
 	Self=this;
 	MEMORY_PROCESS(MEMORY_STATIC,sizeof(FOServer));
 }
@@ -2976,6 +2977,7 @@ bool FOServer::Init()
 	LastHoloId=USER_HOLO_START_NUM;
 	TimeEventsLastNum=0;
 	InitializeCriticalSection(&CSConnectedClients);
+	VarsGarbageLastTick=Timer::FastTick();
 
 	// Reserve memory
 	if(!Singleplayer)
