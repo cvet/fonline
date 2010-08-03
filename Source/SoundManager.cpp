@@ -635,10 +635,7 @@ void SoundManager::PlayAction(const char* body_type, BYTE anim1, BYTE anim2)
 	StrStrMapIt it=soundInfo.find(name);
 	if(it==soundInfo.end())
 	{
-		name[2]='X';
-		name[3]='X';
-		name[4]='X';
-		name[5]='X';
+		for(size_t i=2;i<len;i++) name[i]='X';
 
 		it=soundInfo.find(name);
 		if(it==soundInfo.end()) return;
