@@ -2903,7 +2903,7 @@ void Client::Send_AddCritter(Critter* cr)
 	if(cr->IsLexems()) Send_CritterLexems(cr);
 }
 
-void Client::Send_RemoveCritter(Critter* cr) //Oleg
+void Client::Send_RemoveCritter(Critter* cr)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 

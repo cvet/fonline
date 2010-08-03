@@ -568,6 +568,26 @@ void CritterCl::ProcessChangedParams()
 				CallChange_.push_back(old_val);
 			}
 			ParamsIsChanged[index]=false;
+
+			// Internal processing
+			if(index==ST_RATE_ITEM)
+			{
+				int value=Params[ST_RATE_ITEM];
+				ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
+				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) unarmed=NULL;
+				if(!unarmed) unarmed=GetUnarmedItem(0,0);
+				DefItemSlotMain.Init(unarmed);
+				DefItemSlotMain.SetRate(value&0xFF);
+			}
+			else if(index==ST_SCALE_FACTOR)
+			{
+				if(Anim3d)
+				{
+					int value=Params[ST_SCALE_FACTOR];
+					float scale=(float)(value?value:1000)/1000.0f;
+					Anim3d->SetScale(scale,scale,scale);
+				}
+			}
 		}
 		ParamsChanged.clear();
 
@@ -1645,6 +1665,10 @@ void CritterCl::SetBaseType(DWORD type)
 		ZeroMemory(Layers3d,LAYERS3D_COUNT*sizeof(int));
 #endif
 	}
+
+	// Allow influence of scale factor
+	ChangeParam(ST_SCALE_FACTOR);
+	ProcessChangedParams();
 }
 
 void CritterCl::SetDir(BYTE dir)

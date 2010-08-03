@@ -651,7 +651,7 @@ void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2)
 			for(int i=len-1;i>0;i--)
 			{
 				char c=body_type[i];
-				if((c>='A' && c<='X') || (c>='À' && c<='ß'))
+				if((c>='A' && c<='Z') || (c>='À' && c<='ß'))
 				{
 					for(int i=0;i<len;i++) name[i]=body_type[i];
 					name[len]=0;

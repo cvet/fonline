@@ -699,6 +699,7 @@ struct ScoreType
 #define ST_LAST_WEAPON_ID           (110)
 #define ST_BASE_CRTYPE              (112)
 #define ST_TALK_DISTANCE            (115)
+#define ST_SCALE_FACTOR             (116)
 #define ST_ANIM3D_LAYER_BEGIN       (150)
 #define ST_ANIM3D_LAYER_END         (179)
 

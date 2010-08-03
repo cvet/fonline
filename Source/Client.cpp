@@ -3996,6 +3996,9 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 			Script::SetArgObject(cr);
 			Script::RunPrepared();
 		}
+
+		for(int i=0;i<MAX_PARAMS;i++) cr->ChangeParam(i);
+		cr->ProcessChangedParams();
 	}
 }
 
@@ -4716,6 +4719,7 @@ void FOClient::Net_OnCritterParam()
 	{
 		cr->ChangeParam(index);
 		cr->Params[index]=value;
+		cr->ProcessChangedParams();
 	}
 
 	if(index>=ST_ANIM3D_LAYER_BEGIN && index<=ST_ANIM3D_LAYER_END)
@@ -4735,14 +4739,6 @@ void FOClient::Net_OnCritterParam()
 	{
 		TurnBasedTime=0;
 		HexMngr.SetCritterContour(cr->GetId(),Sprite::ContourCustom);
-	}
-	else if(index==ST_RATE_ITEM)
-	{
-		ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
-		if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) unarmed=NULL;
-		if(!unarmed) unarmed=cr->GetUnarmedItem(0,0);
-		cr->DefItemSlotMain.Init(unarmed);
-		cr->DefItemSlotMain.SetRate(value&0xFF);
 	}
 }
 
@@ -4806,7 +4802,7 @@ void FOClient::Net_OnChosenParams()
 	{
 		char buf[NETMSG_ALL_PARAMS_SIZE-sizeof(MSGTYPE)];
 		Bin.Pop(buf,NETMSG_ALL_PARAMS_SIZE-sizeof(MSGTYPE));
-		WriteLog("Chosen not created, skip.\n");
+		WriteLog("chosen not created, skip.\n");
 		return;
 	}
 
@@ -4819,13 +4815,8 @@ void FOClient::Net_OnChosenParams()
 	else AnimRun(IntWCombatAnim,ANIMRUN_SET_FRM(0));
 	if(IsScreenPresent(SCREEN__CHARACTER)) ChaPrepareSwitch();
 
-	// Unarmed
-	ProtoItem* unarmed=ItemMngr.GetProtoItem(Chosen->Params[ST_RATE_ITEM]>>16);
-	if(unarmed && unarmed->IsWeapon() && unarmed->Weapon.IsUnarmed) unarmed=Chosen->GetUnarmedItem(unarmed->Weapon.UnarmedTree,unarmed->Weapon.UnarmedPriority);
-	if(!unarmed) unarmed=Chosen->GetUnarmedItem(0,0);
-
-	Chosen->DefItemSlotMain.Init(unarmed);
-	Chosen->DefItemSlotMain.SetRate(Chosen->Params[ST_RATE_ITEM]&0xFF);
+	// Process all changed parameters
+	Chosen->ProcessChangedParams();
 
 	// Animate
 	if(!Chosen->IsAnim()) Chosen->AnimateStay();
@@ -4833,7 +4824,7 @@ void FOClient::Net_OnChosenParams()
 	// Refresh borders
 	RebuildLookBorders=true;
 
-	WriteLog("Complete.\n");
+	WriteLog("complete.\n");
 }
 
 void FOClient::Net_OnChosenParam()
@@ -4852,6 +4843,7 @@ void FOClient::Net_OnChosenParam()
 		Chosen->ChangeParam(index);
 		old_value=Chosen->Params[index];
 		Chosen->Params[index]=value;
+		Chosen->ProcessChangedParams();
 	}
 
 	if(index>=ST_ANIM3D_LAYER_BEGIN && index<=ST_ANIM3D_LAYER_END)
@@ -4880,15 +4872,6 @@ void FOClient::Net_OnChosenParam()
 	case ST_UNSPENT_PERKS:
 		{
 			if(value>0 && GetActiveScreen()==SCREEN__CHARACTER) ShowScreen(SCREEN__PERK);
-		}
-		break;
-	case ST_RATE_ITEM:
-		{
-			ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
-			if(unarmed && unarmed->IsWeapon() && unarmed->Weapon.IsUnarmed) unarmed=Chosen->GetUnarmedItem(unarmed->Weapon.UnarmedTree,unarmed->Weapon.UnarmedPriority);
-			if(!unarmed) unarmed=Chosen->GetUnarmedItem(0,0);
-			Chosen->DefItemSlotMain.Init(unarmed);
-			Chosen->DefItemSlotMain.SetRate(value&0xFF);
 		}
 		break;
 	case ST_CURRENT_AP:
