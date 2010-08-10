@@ -144,7 +144,7 @@ public:
 		width=width_4bit;
 		height=height_4bit;
 		width_b=width/2;
-		if(width%2) width_b++;
+		if(width&1) width_b++;
 		data=new BYTE[width_b*height];
 		Fill(fill);
 	}

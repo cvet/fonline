@@ -109,7 +109,7 @@ void ItemHex::Process()
 	}
 }
 
-void ItemHex::SetEffect(float sx, float sy, int dist)
+void ItemHex::SetEffect(float sx, float sy, DWORD dist)
 {
 	// Init effect
 	effSx=sx;
@@ -128,7 +128,7 @@ void ItemHex::SetEffect(float sx, float sy, int dist)
 
 WordPair ItemHex::GetEffectStep()
 {
-	int dist=DistSqrt(effCurX,effCurY,effStartX,effStartY);
+	DWORD dist=DistSqrt(effCurX,effCurY,effStartX,effStartY);
 	if(dist>effDist) dist=effDist;
 	int proc=Procent(effDist,dist);
 	if(proc>99) proc=99;

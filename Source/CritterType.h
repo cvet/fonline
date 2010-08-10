@@ -17,7 +17,9 @@ struct CritTypeType
 {
 	bool Enabled;
 	char Name[64];
+	char SoundName[64];
 	DWORD Alias;
+	DWORD Multihex;
 
 	bool Is3d;
 	bool CanWalk;
@@ -38,7 +40,9 @@ namespace CritType
 	CritTypeType& GetCritType(DWORD cr_type);
 	CritTypeType& GetRealCritType(DWORD cr_type);
 	const char* GetName(DWORD cr_type);
+	const char* GetSoundName(DWORD cr_type);
 	DWORD GetAlias(DWORD cr_type);
+	DWORD GetMultihex(DWORD cr_type);
 	bool IsCanWalk(DWORD cr_type);
 	bool IsCanRun(DWORD cr_type);
 	bool IsCanAim(DWORD cr_type);

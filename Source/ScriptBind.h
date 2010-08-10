@@ -190,7 +190,7 @@
 	if(engine->RegisterObjectProperty("NpcPlane","uint16 Walk_HexX",offsetof(AIDataPlane,Walk.HexX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint16 Walk_HexY",offsetof(AIDataPlane,Walk.HexY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint8 Walk_Dir",offsetof(AIDataPlane,Walk.Dir))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("NpcPlane","uint8 Walk_Cut",offsetof(AIDataPlane,Walk.Cut))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("NpcPlane","uint Walk_Cut",offsetof(AIDataPlane,Walk.Cut))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint16 Pick_HexX",offsetof(AIDataPlane,Pick.HexX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint16 Pick_HexY",offsetof(AIDataPlane,Pick.HexY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint16 Pick_Pid",offsetof(AIDataPlane,Pick.Pid))<0) BIND_ERROR;
@@ -520,6 +520,8 @@
 	if(engine->RegisterObjectMethod("Critter","void SetInternalBag(uint16[]& pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots)",asFUNCTION(BIND_CLASS Crit_SetInternalBag),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","uint GetInternalBag(uint16[]@+ pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots) const",asFUNCTION(BIND_CLASS Crit_GetInternalBag),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","uint16 GetProtoId() const",asFUNCTION(BIND_CLASS Crit_GetProtoId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","uint GetMultihex() const",asFUNCTION(BIND_CLASS Crit_GetMultihex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void SetMultihex(int value)",asFUNCTION(BIND_CLASS Crit_SetMultihex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectMethod("Critter","void AddEnemyInStack(uint critterId)",asFUNCTION(BIND_CLASS Crit_AddEnemyInStack),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool CheckEnemyInStack(uint critterId) const",asFUNCTION(BIND_CLASS Crit_CheckEnemyInStack),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -655,7 +657,8 @@
 	if(engine->RegisterObjectMethod("Map","uint GetCrittersSeeing(Critter@[]& critters, bool lookOnThem, int find_type, Critter@[]@+ critters_result) const",asFUNCTION(BIND_CLASS Map_GetCrittersSeeing),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist) const",asFUNCTION(BIND_CLASS Map_GetHexInPath),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void GetHexCoordWall(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist) const",asFUNCTION(BIND_CLASS Map_GetHexInPathWall),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Map","uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Map_GetPathLength),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Map_GetPathLengthHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","uint GetPathLength(Critter& cr, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Map_GetPathLengthCr),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool VerifyTrigger(Critter& cr, uint16 hexX, uint16 hexY, uint8 dir)",asFUNCTION(BIND_CLASS Map_VerifyTrigger),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","Critter@+ AddNpc(uint16 protoId, uint16 hexX, uint16 hexY, uint8 dir, int[]@+ params, int[]@+ items, string@+ script)",asFUNCTION(BIND_CLASS Map_AddNpc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","uint GetNpcCount(int npcRole, int findType) const",asFUNCTION(BIND_CLASS Map_GetNpcCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -864,6 +867,7 @@
 	//	if(engine->RegisterObjectMethod("CritterCl","void SetDir(uint8 dir)",asFUNCTION(BIND_CLASS Crit_SetDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","void set_ContourColor(uint value)",asFUNCTION(BIND_CLASS Crit_set_ContourColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","uint get_ContourColor() const",asFUNCTION(BIND_CLASS Crit_get_ContourColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("CritterCl","uint GetMultihex() const",asFUNCTION(BIND_CLASS Crit_GetMultihex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectProperty("CritterCl","const uint Id",offsetof(CritterCl,Id))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","const uint16 Pid",offsetof(CritterCl,Pid))<0) BIND_ERROR;
@@ -960,7 +964,8 @@
 	if(engine->RegisterGlobalFunction("uint GetCrittersPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, CritterCl@[]@+ critters) const",asFUNCTION(BIND_CLASS Global_GetCrittersInPath),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetCrittersPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, CritterCl@[]@+ critters, uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy) const",asFUNCTION(BIND_CLASS Global_GetCrittersInPathBlock),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist) const",asFUNCTION(BIND_CLASS Global_GetHexInPath),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Global_GetPathLength),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Global_GetPathLengthHex),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetPathLength(CritterCl& cr, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Global_GetPathLengthCr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void FlushScreen(uint fromColor, uint toColor, uint timeMs)",asFUNCTION(BIND_CLASS Global_FlushScreen),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void QuakeScreen(uint noise, uint timeMs)",asFUNCTION(BIND_CLASS Global_QuakeScreen),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void PlaySound(string& soundName)",asFUNCTION(BIND_CLASS Global_PlaySound),asCALL_CDECL)<0) BIND_ERROR;
@@ -1401,7 +1406,7 @@
 
 #if /*defined(BIND_CLIENT) || */defined(BIND_MAPPER)
 	if(engine->RegisterGlobalFunction("void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist) const",asFUNCTION(BIND_CLASS Global_GetHexInPath),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Global_GetPathLength),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const",asFUNCTION(BIND_CLASS Global_GetPathLengthHex),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalFunction("void Message(string& text)",asFUNCTION(BIND_CLASS Global_Message),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void Message(int textMsg, uint strNum)",asFUNCTION(BIND_CLASS Global_MessageMsg),asCALL_CDECL)<0) BIND_ERROR;

@@ -10,20 +10,12 @@ float SpritesZoom=1.0f;
 float SpritesZoomMax=MAX_ZOOM;
 float SpritesZoomMin=MIN_ZOOM;
 
-#define SPRITE_STROKE // For correct zooming linear interpolation
-
 #define TEX_FRMT                  D3DFMT_A8R8G8B8
 #define SPR_BUFFER_COUNT          (10000)
 #define SPRITES_POOL_GROW_SIZE    (10000)
 #define SPRITES_RESIZE_COUNT      (100)
-
-#define SURF_POINT(lr,x,y)        *((DWORD*)((BYTE*)lr.pBits+lr.Pitch*(y)+(x)*4))
-
-#ifdef SPRITE_STROKE
 #define SURF_SPRITES_OFFS         (2)
-#else
-#define SURF_SPRITES_OFFS         (1)
-#endif
+#define SURF_POINT(lr,x,y)        (*((DWORD*)((BYTE*)lr.pBits+lr.Pitch*(y)+(x)*4)))
 
 /************************************************************************/
 /* Sprites                                                              */
@@ -754,17 +746,10 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 	// FOnline fast format
 	if(fast)
 	{
-#ifdef SPRITE_STROKE
 		RECT r={x-1,y-1,x+w+1,y+h+1};
 		D3D_HR(dst_surf->LockRect(&rdst,&r,0));
 		BYTE* ptr=(BYTE*)((DWORD*)data+3);
 		for(int i=0;i<h;i++) memcpy((BYTE*)rdst.pBits+rdst.Pitch*(i+1)+4,ptr+w*4*i,w*4);
-#else
-		RECT r={x,y,x+w,y+h};
-		D3D_HR(dst_surf->LockRect(&rdst,&r,0));
-		BYTE* ptr=(BYTE*)((DWORD*)data+3);
-		for(int i=0;i<h;i++) memcpy((BYTE*)rdst.pBits+rdst.Pitch*i,ptr+w*4*i,w*4);
-#endif
 	}
 	// From file in memory
 	else
@@ -773,30 +758,39 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 		LPDIRECT3DSURFACE src_surf;
 		D3D_HR(d3dDevice->CreateOffscreenPlainSurface(w,h,TEX_FRMT,D3DPOOL_SCRATCH,&src_surf,NULL));
 		D3D_HR(D3DXLoadSurfaceFromFileInMemory(src_surf,NULL,NULL,data,size,NULL,D3DX_FILTER_NONE,D3DCOLOR_XRGB(0,0,0xFF),NULL));
+
 		D3DLOCKED_RECT rsrc;
 		RECT src_r={0,0,w,h};
 		D3D_HR(src_surf->LockRect(&rsrc,&src_r,D3DLOCK_READONLY));
 
-#ifdef SPRITE_STROKE
 		RECT dest_r={x-1,y-1,x+w+1,y+h+1};
 		D3D_HR(dst_surf->LockRect(&rdst,&dest_r,0));
+
 		for(int i=0;i<h;i++) memcpy((BYTE*)rdst.pBits+rdst.Pitch*(i+1)+4,(BYTE*)rsrc.pBits+rsrc.Pitch*i,w*4);
-#else
-		RECT dest_r={x,y,x+w,y+h};
-		D3D_HR(dst_surf->LockRect(&rdst,&dest_r,0));
-		for(int i=0;i<h;i++) memcpy((BYTE*)rdst.pBits+rdst.Pitch*i,(BYTE*)rsrc.pBits+rsrc.Pitch*i,w*4);
-#endif
 
 		D3D_HR(src_surf->UnlockRect());
 		src_surf->Release();
 	}
 
-#ifdef SPRITE_STROKE
+	if(OptDebugSprites)
+	{
+		DWORD rnd_color=D3DCOLOR_XRGB(Random(0,255),Random(0,255),Random(0,255));
+		for(DWORD yy=1;yy<h+1;yy++)
+		{
+			for(DWORD xx=1;xx<w+1;xx++)
+			{
+				DWORD& p=SURF_POINT(rdst,xx,yy);
+				if(p && (!SURF_POINT(rdst,xx-1,yy-1) || !SURF_POINT(rdst,xx,yy-1) || !SURF_POINT(rdst,xx+1,yy-1) ||
+					!SURF_POINT(rdst,xx-1,yy) || !SURF_POINT(rdst,xx+1,yy) || !SURF_POINT(rdst,xx-1,yy+1) ||
+					!SURF_POINT(rdst,xx,yy+1) || !SURF_POINT(rdst,xx+1,yy+1))) p=rnd_color;
+			}
+		}
+	}
+
 	for(int i=0;i<h+2;i++) SURF_POINT(rdst,0,i)=SURF_POINT(rdst,1,i); // Left
 	for(int i=0;i<h+2;i++) SURF_POINT(rdst,w+1,i)=SURF_POINT(rdst,w,i); // Right
 	for(int i=0;i<w+2;i++) SURF_POINT(rdst,i,0)=SURF_POINT(rdst,i,1); // Top
 	for(int i=0;i<w+2;i++) SURF_POINT(rdst,i,h+1)=SURF_POINT(rdst,i,h); // Bottom
-#endif
 
 	D3D_HR(dst_surf->UnlockRect());
 	dst_surf->Release();
@@ -1706,7 +1700,7 @@ void SpriteManager::GetDrawCntrRect(Sprite* prep, INTRECT* prect)
 bool SpriteManager::CompareHexEgg(WORD hx, WORD hy, Sprite::EggType egg)
 {
 	if(egg==Sprite::EggAlways) return true;
-	if(eggHy==hy && hx%2 && !(eggHx%2)) hy--;
+	if(eggHy==hy && hx&1 && !(eggHx&1)) hy--;
 	switch(egg)
 	{
 	case Sprite::EggX: if(hx>=eggHx) return true; break;

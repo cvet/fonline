@@ -45,7 +45,7 @@ struct TraceData
 	Map* TraceMap;
 	WORD BeginHx,BeginHy;
 	WORD EndHx,EndHy;
-	int Dist;
+	DWORD Dist;
 	float Angle;
 	Critter* FindCr;
 	int FindType;
@@ -85,13 +85,15 @@ struct PathFindData
 {
 	DWORD MapId;
 	WORD MoveParams;
+	Critter* FromCritter;
 	WORD FromX,FromY;
 	WORD ToX,ToY;
 	WORD NewToX,NewToY;
+	DWORD Multihex;
 	DWORD Cut;
-	bool IsRun;
 	DWORD PathNum;
 	DWORD Trace;
+	bool IsRun;
 	bool CheckCrit;
 	bool CheckGagItems;
 	Critter* TraceCr;

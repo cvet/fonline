@@ -442,7 +442,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static BYTE Global_GetDirection(WORD from_x, WORD from_y, WORD to_x, WORD to_y);
 		static BYTE Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset);
 		static void Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist);
-		static DWORD Global_GetPathLength(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
+		static DWORD Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
 		static bool Global_GetHexPos(WORD hx, WORD hy, int& x, int& y);
 		static bool Global_GetMonitorHex(int x, int y, WORD& hx, WORD& hy);
 		static void Global_GetMousePosition(int& x, int& y);

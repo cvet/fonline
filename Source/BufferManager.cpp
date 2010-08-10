@@ -138,24 +138,6 @@ void BufferManager::Pop(DWORD len)
 	bufEndPos-=len;
 }
 
-BufferManager& BufferManager::operator<<(int i)
-{
-	if(isError) return *this;
-	if(bufEndPos+4>=bufLen) GrowBuf(4);
-	*(int*)(bufData+bufEndPos)=i;
-	bufEndPos+=4;
-	return *this;
-}
-
-BufferManager& BufferManager::operator>>(int& i)
-{
-	if(isError) return *this;
-	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(int*)(bufData+bufReadPos);
-	bufReadPos+=4;
-	return *this;
-}
-
 BufferManager& BufferManager::operator<<(DWORD i)
 {
 	if(isError) return *this;
@@ -170,6 +152,24 @@ BufferManager& BufferManager::operator>>(DWORD& i)
 	if(isError) return *this;
 	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
 	i=*(DWORD*)(bufData+bufReadPos);
+	bufReadPos+=4;
+	return *this;
+}
+
+BufferManager& BufferManager::operator<<(int i)
+{
+	if(isError) return *this;
+	if(bufEndPos+4>=bufLen) GrowBuf(4);
+	*(int*)(bufData+bufEndPos)=i;
+	bufEndPos+=4;
+	return *this;
+}
+
+BufferManager& BufferManager::operator>>(int& i)
+{
+	if(isError) return *this;
+	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
+	i=*(int*)(bufData+bufReadPos);
 	bufReadPos+=4;
 	return *this;
 }
@@ -224,6 +224,24 @@ BufferManager& BufferManager::operator>>(BYTE& i)
 	if(isError) return *this;
 	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
 	i=*(BYTE*)(bufData+bufReadPos);
+	bufReadPos+=1;
+	return *this;
+}
+
+BufferManager& BufferManager::operator<<(char i)
+{
+	if(isError) return *this;
+	if(bufEndPos+1>=bufLen) GrowBuf(1);
+	*(char*)(bufData+bufEndPos)=i;
+	bufEndPos+=1;
+	return *this;
+}
+
+BufferManager& BufferManager::operator>>(char& i)
+{
+	if(isError) return *this;
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
+	i=*(char*)(bufData+bufReadPos);
 	bufReadPos+=1;
 	return *this;
 }

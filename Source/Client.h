@@ -455,6 +455,7 @@ public:
 		static bool Crit_GetVisible(CritterCl* cr);
 		static void Crit_set_ContourColor(CritterCl* cr, DWORD value);
 		static DWORD Crit_get_ContourColor(CritterCl* cr);
+		static DWORD Crit_GetMultihex(CritterCl* cr);
 
 		static bool Item_IsGrouped(Item* item);
 		static bool Item_IsWeared(Item* item);
@@ -476,7 +477,8 @@ public:
 		static DWORD Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, asIScriptArray* critters);
 		static DWORD Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, asIScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy);
 		static void Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist);
-		static DWORD Global_GetPathLength(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
+		static DWORD Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
+		static DWORD Global_GetPathLengthCr(CritterCl* cr, WORD to_hx, WORD to_hy, DWORD cut);
 		static void Global_FlushScreen(DWORD from_color, DWORD to_color, DWORD ms);
 		static void Global_QuakeScreen(DWORD noise, DWORD ms);
 		static void Global_PlaySound(CScriptString& sound_name);
@@ -1262,7 +1264,7 @@ public:
 	void AimLMouseDown();
 	void AimLMouseUp();
 	void AimMouseMove();
-	DWORD AimGetPic(CritterCl* cr);
+	DWORD AimGetPic(CritterCl* cr, const char* ext);
 
 /************************************************************************/
 /* PickUp                                                               */

@@ -314,7 +314,12 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 	}
 
 	// Check passed
-	if(!map->IsHexPassed(hx,hy))
+	WORD fx=cr->GetHexX();
+	WORD fy=cr->GetHexY();
+	BYTE dir=GetDir(fx,fy,hx,hy);
+	DWORD multihex=cr->GetMultihex();
+
+	if(!map->IsMovePassed(hx,hy,dir,multihex))
 	{
 		if(cr->IsPlayer())
 		{
@@ -329,18 +334,16 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 	cr->IsRuning=is_run;
 
 	// Process step
-	WORD fx=cr->GetHexX();
-	WORD fy=cr->GetHexY();
-	map->UnSetFlagCritter(fx,fy,cr->IsDead());
+	bool is_dead=cr->IsDead();
+	map->UnsetFlagCritter(fx,fy,multihex,is_dead);
 	cr->PrevHexX=fx;
 	cr->PrevHexY=fy;
 	cr->PrevHexTick=Timer::GameTick();
 	cr->Data.HexX=hx;
 	cr->Data.HexY=hy;
-	map->SetFlagCritter(hx,hy,cr->IsDead());
+	map->SetFlagCritter(hx,hy,multihex,is_dead);
 
 	// Set dir
-	BYTE dir=GetDir(fx,fy,hx,hy);
 	cr->Data.Dir=dir;
 
 	if(is_run)
@@ -417,54 +420,54 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		return false;
 	}
 
-	Critter* t_acl=cr->GetCritSelf(target_id);
-	if(!t_acl)
+	Critter* t_cr=cr->GetCritSelf(target_id);
+	if(!t_cr)
 	{
-		WriteLog(__FUNCTION__" - Target crit not found, targ id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+		WriteLog(__FUNCTION__" - Target critter not found, target id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 		return false;
 	}
 
-	if(cr->GetMap()!=t_acl->GetMap())
+	if(cr->GetMap()!=t_cr->GetMap())
 	{
-		WriteLog(__FUNCTION__" - Other maps, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Other maps, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
-	if(t_acl->IsDead())
+	if(t_cr->IsDead())
 	{
-		//if(cr->IsPlayer()) WriteLog(__FUNCTION__" - Target critter is dead, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
-		cr->Send_AddCritter(t_acl); //Refresh
+		//if(cr->IsPlayer()) WriteLog(__FUNCTION__" - Target critter is dead, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		cr->Send_AddCritter(t_cr); //Refresh
 		return false;
 	}
 
 	int hx=cr->GetHexX();
 	int hy=cr->GetHexY();
-	int tx=t_acl->GetHexX();
-	int ty=t_acl->GetHexY();
+	int tx=t_cr->GetHexX();
+	int ty=t_cr->GetHexY();
 
 	// Get weapon, ammo and armor
 	Item* weap=cr->ItemSlotMain;
 	if(!weap->IsWeapon())
 	{
-		WriteLog(__FUNCTION__" - Critter item is not weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Critter item is not weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(weap->IsBroken())
 	{
-		WriteLog(__FUNCTION__" - Critter weapon is broken, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Critter weapon is broken, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(weap->IsTwoHands() && cr->IsDmgArm())
 	{
-		WriteLog(__FUNCTION__" - Critter is damaged arm on two hands weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Critter is damaged arm on two hands weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(cr->IsDmgTwoArm() && weap->GetId())
 	{
-		WriteLog(__FUNCTION__" - Critter is damaged two arms on armed attack, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Critter is damaged two arms on armed attack, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
@@ -473,56 +476,56 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 
 	if(use>=MAX_USES)
 	{
-		WriteLog(__FUNCTION__" - Use<%u> invalid value, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Use<%u> invalid value, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(!(weap->Proto->Weapon.CountAttack & (1<<use)))
 	{
-		WriteLog(__FUNCTION__" - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim>=MAX_HIT_LOCATION)
 	{
-		WriteLog(__FUNCTION__" - Aim<%u> invalid value, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Aim<%u> invalid value, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim && !CritType::IsCanAim(cr->GetCrType()))
 	{
-		WriteLog(__FUNCTION__" - Aim is not aviable for this critter type, CrType<%u>, aim<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),aim,cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Aim is not aviable for this critter type, crtype<%u>, aim<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),aim,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim && cr->IsPerk(TRAIT_FAST_SHOT))
 	{
-		WriteLog(__FUNCTION__" - Aim is not aviable with fast shot trait, aim<%u>, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Aim is not aviable with fast shot trait, aim<%u>, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim && !weap->WeapIsCanAim(use))
 	{
-		WriteLog(__FUNCTION__" - Aim is not aviable for this weapon, aim<%u>, weapon pid<%u>, critter<%s>, target critter<%s>.\n",aim,weap->GetProtoId(),cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Aim is not aviable for this weapon, aim<%u>, weapon pid<%u>, critter<%s>, target critter<%s>.\n",aim,weap->GetProtoId(),cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(!CritType::IsAnim1(cr->GetCrType(),weap->Proto->Weapon.Anim1))
 	{
-		WriteLog(__FUNCTION__" - Anim1 is not aviable for this critter type, CrType<%u>, anim1<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),weap->Proto->Weapon.Anim1,cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Anim1 is not aviable for this critter type, crtype<%u>, anim1<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),weap->Proto->Weapon.Anim1,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	bool gun_attack=weap->WeapIsGunAttack(use);
 	bool hth_attack=weap->WeapIsHtHAttack(use);
 	bool is_range_attack=weap->WeapIsRangedAttack(use);
-	int wpn_max_dist=cr->GetAttackMaxDist(weap,use);
+	DWORD wpn_max_dist=cr->GetAttackDist(weap,use)+t_cr->GetMultihex();
 
 	if(!CheckDist(hx,hy,tx,ty,wpn_max_dist) &&
-		!(hth_attack && Timer::GameTick()<t_acl->PrevHexTick+500 && CheckDist(hx,hy,t_acl->PrevHexX,t_acl->PrevHexY,wpn_max_dist)))
+		!(hth_attack && Timer::GameTick()<t_cr->PrevHexTick+500 && CheckDist(hx,hy,t_cr->PrevHexX,t_cr->PrevHexY,wpn_max_dist)))
 	{
 		cr->Send_XY(cr);
-		cr->Send_XY(t_acl);
+		cr->Send_XY(t_cr);
 		return false;
 	}
 
@@ -533,13 +536,13 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	trace.EndHx=tx;
 	trace.EndHy=ty;
 	trace.Dist=(hth_attack?0:wpn_max_dist);
-	trace.FindCr=t_acl;
+	trace.FindCr=t_cr;
 	MapMngr.TraceBullet(trace);
 	if(!trace.IsCritterFounded)
 	{
 		cr->Send_XY(cr);
-		cr->Send_XY(t_acl);
-		// if(cr->IsPlayer()) WriteLog(__FUNCTION__" - Distance trace fail, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		cr->Send_XY(t_cr);
+		// if(cr->IsPlayer()) WriteLog(__FUNCTION__" - Distance trace fail, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
@@ -551,7 +554,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(cr->GetAp()<ap_cost && !Singleplayer)
 	{
 		cr->Send_Param(ST_CURRENT_AP);
-		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 	//WriteLog("Proto %u, ap %u.\n",weap->GetProtoId(),ap_cost);
@@ -569,13 +572,13 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 
 		if(!ammo)
 		{
-			WriteLog(__FUNCTION__" - Critter weapon ammo not found, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+			WriteLog(__FUNCTION__" - Critter weapon ammo not found, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 			return false;
 		}
 
 		if(!ammo->IsAmmo())
 		{
-			WriteLog(__FUNCTION__" - Critter weapon ammo is not ammo type, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_acl->GetInfo());
+			WriteLog(__FUNCTION__" - Critter weapon ammo is not ammo type, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 			return false;
 		}
 	}
@@ -595,8 +598,8 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(!ammo_round) ammo_round=1;
 
 	// Script events
-	bool event_result=(weap->GetId()?weap->EventAttack(cr,t_acl):false);
-	if(!event_result) event_result=cr->EventAttack(t_acl);
+	bool event_result=(weap->GetId()?weap->EventAttack(cr,t_cr):false);
+	if(!event_result) event_result=cr->EventAttack(t_cr);
 	if(event_result)
 	{
 		//cr->SendAA_Action(ACTION_USE_WEAPON,rate_weap,weap);
@@ -614,7 +617,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(Script::PrepareContext(ServerFunctions.CritterAttack,CALL_FUNC_STR,cr->GetInfo()))
 	{
 		Script::SetArgObject(cr);
-		Script::SetArgObject(t_acl);
+		Script::SetArgObject(t_cr);
 		Script::SetArgObject(weap->Proto);
 		Script::SetArgObject(ammo);
 		Script::SetArgByte(aim);
@@ -758,7 +761,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 					return false;
 				}
 
-				if(!CheckDist(cr->GetHexX(),cr->GetHexY(),target_cr->GetHexX(),target_cr->GetHexY(),1))
+				if(!CheckDist(cr->GetHexX(),cr->GetHexY(),target_cr->GetHexX(),target_cr->GetHexY(),cr->GetUseDist()+target_cr->GetMultihex()))
 				{
 					cr->Send_XY(cr);
 					cr->Send_XY(target_cr);
@@ -823,7 +826,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 			return false;
 		}
 
-		if(!CheckDist(cr->GetHexX(),cr->GetHexY(),target_item->ACC_HEX.HexX,target_item->ACC_HEX.HexY,1))
+		if(!CheckDist(cr->GetHexX(),cr->GetHexY(),target_item->ACC_HEX.HexX,target_item->ACC_HEX.HexY,cr->GetUseDist()))
 		{
 			cr->Send_XY(cr);
 			WriteLog(__FUNCTION__" - Target item too far, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
@@ -847,7 +850,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		WORD hx=target_id>>16;
 		WORD hy=target_id&0xFFFF;
 
-		if(!CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,1))
+		if(!CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,cr->GetUseDist()))
 		{
 			cr->Send_XY(cr);
 			WriteLog(__FUNCTION__" - Target scenery too far, critter<%s>, hx<%u>, hy<%u>.\n",cr->GetInfo(),hx,hy);
@@ -990,7 +993,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) return false;
 
-	if(!CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,1))
+	if(!CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,cr->GetUseDist()))
 	{
 		WriteLog(__FUNCTION__" - Wrong distance, critter<%s>.\n",cr->GetInfo());
 		cr->Send_XY(cr);
@@ -1141,14 +1144,15 @@ void FOServer::RespawnCritter(Critter* cr)
 
 	WORD hx=cr->GetHexX();
 	WORD hy=cr->GetHexY();
-	if(!map->IsHexPassed(hx,hy))
+	DWORD multihex=cr->GetMultihex();
+	if(!map->IsHexesPassed(hx,hy,multihex))
 	{
 		// WriteLog(__FUNCTION__" - Live critter on hex, continue dead.\n");
 		return;
 	}
 
-	map->UnSetFlagCritter(hx,hy,true);
-	map->SetFlagCritter(hx,hy,false);
+	map->UnsetFlagCritter(hx,hy,multihex,true);
+	map->SetFlagCritter(hx,hy,multihex,false);
 
 	cr->Data.Cond=COND_LIFE;
 	cr->Data.CondExt=COND_LIFE_NONE;
@@ -1203,10 +1207,12 @@ void FOServer::KnockoutCritter(Critter* cr, bool face_up, DWORD lose_ap, WORD kn
 
 	if(x1!=x2 || y1!=y2)
 	{
-		map->UnSetFlagCritter(x1,y1,cr->IsDead());
+		DWORD multihex=cr->GetMultihex();
+		bool is_dead=cr->IsDead();
+		map->UnsetFlagCritter(x1,y1,multihex,is_dead);
 		cr->Data.HexX=x2;
 		cr->Data.HexY=y2;
-		map->SetFlagCritter(x2,y2,cr->IsDead());
+		map->SetFlagCritter(x2,y2,multihex,is_dead);
 	}
 
 	cr->ToKnockout(face_up,lose_ap,knock_hx,knock_hy);
@@ -1221,18 +1227,19 @@ bool FOServer::MoveRandom(Critter* cr)
 
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) return false;
+
+	WORD hx=cr->GetHexX();
+	WORD hy=cr->GetHexY();
+	DWORD multihex=cr->GetMultihex();
 	WORD maxhx=map->GetMaxHexX();
 	WORD maxhy=map->GetMaxHexY();
 
 	for(int i=0;i<6;i++)
 	{
-		BYTE cur_dir=dirs[i];
-		WORD hx=cr->GetHexX();
-		WORD hy=cr->GetHexY();
-		MoveHexByDir(hx,hy,cur_dir,maxhx,maxhy);
-		if(map->IsHexPassed(hx,hy))
+		BYTE dir=dirs[i];
+		if(MoveHexByDir(hx,hy,dir,maxhx,maxhy) && map->IsMovePassed(hx,hy,dir,multihex))
 		{
-			WORD move_flags=cur_dir|BIN16(00000000,00111000);
+			WORD move_flags=BIN16(00000000,00111000)|dir;
 			if(Self->Act_Move(cr,hx,hy,move_flags))
 			{
 				cr->Send_Move(cr,move_flags);
@@ -1517,6 +1524,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	cl->Data.WorldY=GM_MAXY/2;
 	cl->Data.Cond=COND_LIFE;
 	cl->Data.CondExt=COND_LIFE_NONE;
+	cl->Data.Multihex=-1;
 
 	if(!cl->SetDefaultItems(
 		ItemMngr.GetProtoItem(ITEM_DEF_SLOT),
@@ -2691,7 +2699,7 @@ void FOServer::Process_PickCritter(Client* cl)
 	case PICK_CRIT_LOOT:
 		if(!cr->IsDead()) break;
 		if(cr->IsPerk(MODE_NO_LOOT)) break;
-		if(!CheckDist(cl->GetHexX(),cl->GetHexY(),cr->GetHexX(),cr->GetHexY(),LOOT_DIST))
+		if(!CheckDist(cl->GetHexX(),cl->GetHexY(),cr->GetHexX(),cr->GetHexY(),cl->GetUseDist()+cr->GetMultihex()))
 		{
 			cl->Send_XY(cl);
 			cl->Send_XY(cr);
@@ -2716,7 +2724,7 @@ void FOServer::Process_PickCritter(Client* cl)
 	case PICK_CRIT_PUSH:
 		if(!cr->IsLife()) break;
 		if(cr->IsPerk(MODE_NO_PUSH)) break;
-		if(!CheckDist(cl->GetHexX(),cl->GetHexY(),cr->GetHexX(),cr->GetHexY(),PUSH_DIST))
+		if(!CheckDist(cl->GetHexX(),cl->GetHexY(),cr->GetHexX(),cr->GetHexY(),cl->GetUseDist()+cr->GetMultihex()))
 		{
 			cl->Send_XY(cl);
 			cl->Send_XY(cr);
@@ -2816,11 +2824,11 @@ void FOServer::Process_ContainerItem(Client* cl)
 			}
 
 			// Check dist
-			if(!CheckDist(cl->GetHexX(),cl->GetHexY(),cont->ACC_HEX.HexX,cont->ACC_HEX.HexY,1))
+			if(!CheckDist(cl->GetHexX(),cl->GetHexY(),cont->ACC_HEX.HexX,cont->ACC_HEX.HexY,cl->GetUseDist()))
 			{
 				cl->Send_XY(cl);
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - Attempt to take a subject from the container from a distance more than 1.\n");
+				WriteLog(__FUNCTION__" - Transfer item container. Client<%s> distance more than allowed.\n",cl->GetInfo());
 				return;
 			}
 
@@ -3081,12 +3089,12 @@ void FOServer::Process_ContainerItem(Client* cl)
 		}
 
 		// Check dist
-		if(!is_far && !CheckDist(cl->GetHexX(),cl->GetHexY(),cr->GetHexX(),cr->GetHexY(),1))
+		if(!is_far && !CheckDist(cl->GetHexX(),cl->GetHexY(),cr->GetHexX(),cr->GetHexY(),cl->GetUseDist()+cr->GetMultihex()))
 		{
 			cl->Send_XY(cl);
 			cl->Send_XY(cr);
 			cl->Send_ContainerInfo();
-			WriteLog(__FUNCTION__" - Critter<%s> dist > 1.\n",cl->GetInfo());
+			WriteLog(__FUNCTION__" - Transfer critter container. Client<%s> distance more than allowed.\n",cl->GetInfo());
 			return;
 		}
 
@@ -4075,7 +4083,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			if(!rule || rule->GetMap() || !rule->GroupMove || rule!=rule->GroupMove->Rule) break;
 			// Check for follow
 			if(!rule->GroupMove->CheckForFollow(cl)) break;
-			if(!CheckDist(rule->Data.LastHexX,rule->Data.LastHexY,cl->GetHexX(),cl->GetHexY(),FOLLOW_DIST)) break;
+			if(!CheckDist(rule->Data.LastHexX,rule->Data.LastHexY,cl->GetHexX(),cl->GetHexY(),FOLLOW_DIST+rule->GetMultihex()+cl->GetMultihex())) break;
 			// Transit
 			if(cl->LockMapTransfers)
 			{

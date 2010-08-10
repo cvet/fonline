@@ -2336,15 +2336,6 @@ void FOClient::GameLMouseDown()
 		}
 		else if(GetMouseHex())
 		{
-			if(Keyb::CtrlDwn)
-			{
-				DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),TargetX,TargetY);
-				HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),TargetX,TargetY,400,0.0f,NULL,false,NULL,0,NULL,NULL,NULL,true);
-				HexMngr.RefreshMap();
-				AddMess(0,Str::Format("Dist %u, dir %u.",dist,GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),TargetX,TargetY)));
-				return;
-			}
-
 			SetAction(CHOSEN_MOVE,TargetX,TargetY,(act?0:0x100)|(Keyb::ShiftDwn==true?1/*run*/:0/*walk*/),0,Timer::FastTick());
 		}
 	}
@@ -4907,7 +4898,9 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 			if(!cr) break;
 			AimTargetId=cr->GetId();
 			SetCurMode(CUR_DEFAULT);
-			AimPic=AimGetPic(cr);
+			AimPic=AimGetPic(cr,"frm");
+			if(!AimPic) AimPic=AimGetPic(cr,"png");
+			if(!AimPic) AimPic=AimGetPic(cr,"bmp");
 			AimMouseMove();
 		}
 		break;
@@ -5120,26 +5113,19 @@ void FOClient::LmapPrepareMap()
 {
 	if(!Chosen) return;
 
-	int bx,by,ex,ey;
-	bx=Chosen->HexX;
-	by=Chosen->HexY;
-	ex=Chosen->HexX;
-	ey=Chosen->HexY;
-
-	int maxpixx,maxpixy;
-	maxpixx=(LmapWMap[2]-LmapWMap[0])/2/LmapZoom;
-	maxpixy=(LmapWMap[3]-LmapWMap[1])/2/LmapZoom;
-
-	bx-=maxpixx;
-	by-=maxpixy;
-	ex+=maxpixx;
-	ey+=maxpixy;
-
 	LmapPrepPix.clear();
-	int vis=Chosen->GetLook();
 
+	int maxpixx=(LmapWMap[2]-LmapWMap[0])/2/LmapZoom;
+	int maxpixy=(LmapWMap[3]-LmapWMap[1])/2/LmapZoom;
+	int bx=Chosen->GetHexX()-maxpixx;
+	int by=Chosen->GetHexY()-maxpixy;
+	int ex=Chosen->GetHexX()+maxpixx;
+	int ey=Chosen->GetHexY()+maxpixy;
+
+	DWORD vis=Chosen->GetLook();
 	DWORD cur_color=0;
 	int pix_x=LmapWMap[2]-LmapWMap[0], pix_y=0;
+
 	for(int i1=bx;i1<ex;i1++)
 	{
 		for(int i2=by;i2<ey;i2++)
@@ -5148,16 +5134,8 @@ void FOClient::LmapPrepareMap()
 			if(i1<0 || i2<0 || i1>=HexMngr.GetMaxHexX() || i2>=HexMngr.GetMaxHexY()) continue;
 
 			bool is_far=false;
-			int dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),i1,i2);
-		//	if(dist==vis)
-		//	{
-		//	//	LmapPrepPix.push_back(PrepPoint(LmapWMap[0]+pix_x,LmapWMap[1]+pix_y,0xAA00FFFF,&LmapX,&LmapY));
-		//	//	LmapPrepPix.push_back(PrepPoint(LmapWMap[0]+pix_x+(LmapZoom-1),LmapWMap[1]+pix_y+((LmapZoom-1)/2),0xAA00FFFF,&LmapX,&LmapY));
-		//	}
-			if(dist>vis)
-			{
-				is_far=true;
-			}
+			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),i1,i2);
+			if(dist>vis) is_far=true;
 
 			Field& f=HexMngr.GetField(i1,i2);
 			if(f.Crit)
@@ -5321,7 +5299,7 @@ void FOClient::GmapProcess()
 
 			int old_x=GmapGroupX;
 			int old_y=GmapGroupY;
-			int last_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
+			DWORD last_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
 
 			GmapGroupX=(int)GmapGroupXf;
 			GmapGroupY=(int)GmapGroupYf;
@@ -5349,7 +5327,7 @@ void FOClient::GmapProcess()
 
 			GMAP_CHECK_MAPSCR;
 
-			int cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
+			DWORD cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
 			if(!cur_dist || cur_dist>last_dist)
 			{
 				GmapSpeedX=0.0f;
@@ -5666,8 +5644,8 @@ void FOClient::GmapDraw()
 			for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
 			{
 				GmapLocation& loc=(*it);
-				int radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
-				if(radius<=0 || !MsgGM->Count(STR_GM_NAME_(loc.LocPid)) || !MsgGM->Count(STR_GM_INFO_(loc.LocPid))) continue;
+				DWORD radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
+				if(!radius || !MsgGM->Count(STR_GM_NAME_(loc.LocPid)) || !MsgGM->Count(STR_GM_INFO_(loc.LocPid))) continue;
 				if(DistSqrt(loc.LocWx,loc.LocWy,cx,cy)<=radius)
 				{
 					cur_loc=&loc;
@@ -5708,7 +5686,7 @@ void FOClient::GmapTownDraw()
 
 	WORD loc_pid=GmapTownLoc.LocPid;
 
-	if(DistSqrt(GmapTownLoc.LocWx,GmapTownLoc.LocWy,GmapGroupX,GmapGroupY)>GmapTownLoc.Radius/*MsgGM->GetInt(STR_GM_RADIUS(loc_pid)*/)
+	if(DistSqrt(GmapTownLoc.LocWx,GmapTownLoc.LocWy,GmapGroupX,GmapGroupY)>GmapTownLoc.Radius)
 	{
 		ShowScreen(SCREEN_NONE);
 		return;
@@ -5899,8 +5877,8 @@ void FOClient::GmapLMouseUp()
 					for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
 					{
 						GmapLocation& loc=(*it);
-						int radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
-						if(radius<=0) radius=6;
+						DWORD radius=loc.Radius;
+						if(!radius) radius=6;
 
 						if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupX,GmapGroupY)<=radius)
 						{
@@ -5923,7 +5901,8 @@ void FOClient::GmapLMouseUp()
 		for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
 		{
 			GmapLocation& loc=(*it);
-			int radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
+			DWORD radius=loc.Radius;
+			if(!radius) radius=6;
 
 			if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupX,GmapGroupY)<=radius)
 			{
@@ -7940,7 +7919,7 @@ void FOClient::AimDraw()
 		SprMngr.DrawStr(INTRECT(AimWGroinT,AimX,AimY),Str::Format("(%u) %s",GameOpt.ApCostAimGroin,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_GROIN-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_GROIN?COLOR_TEXT_RED:COLOR_TEXT);
 	}
 
-	bool zero=!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetAttackMaxDist(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true);
+	bool zero=!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetAttackDist(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true);
 	SprMngr.DrawStr(INTRECT(AimWHeadP,AimX,AimY),Str::ItoA(zero?0:ScriptGetHitProc(cr,HIT_LOCATION_HEAD)),FT_COLORIZE|FT_NOBREAK|FT_CENTERX);
 	SprMngr.DrawStr(INTRECT(AimWLArmP,AimX,AimY),Str::ItoA(zero?0:ScriptGetHitProc(cr,HIT_LOCATION_LEFT_ARM)),FT_COLORIZE|FT_NOBREAK|FT_CENTERX);
 	SprMngr.DrawStr(INTRECT(AimWRArmP,AimX,AimY),Str::ItoA(zero?0:ScriptGetHitProc(cr,HIT_LOCATION_RIGHT_ARM)),FT_COLORIZE|FT_NOBREAK|FT_CENTERX);
@@ -8055,12 +8034,12 @@ void FOClient::AimMouseMove()
 	}
 }
 
-DWORD FOClient::AimGetPic(CritterCl* cr)
+DWORD FOClient::AimGetPic(CritterCl* cr, const char* ext)
 {
-	char aim_name[64];
-	char aim_name_alias[64];
-	sprintf(aim_name,"%sna.frm",CritType::GetName(cr->GetCrType()));
-	sprintf(aim_name_alias,"%sna.frm",CritType::GetName(cr->GetCrTypeAlias()));
+	char aim_name[MAX_FOPATH];
+	char aim_name_alias[MAX_FOPATH];
+	sprintf(aim_name,"%sna.%s",CritType::GetName(cr->GetCrType()),ext);
+	sprintf(aim_name_alias,"%sna.%s",CritType::GetName(cr->GetCrTypeAlias()),ext);
 
 	StrDWordMapIt it=AimLoadedPics.find(string(aim_name));
 	if(it!=AimLoadedPics.end()) return (*it).second;
@@ -8479,7 +8458,7 @@ void FOClient::CurDraw()
 			CritterCl* cr=HexMngr.GetCritterPixel(CurX,CurY,true);
 			if(!cr || !Chosen || cr==Chosen) break;
 
-			if(!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetAttackMaxDist(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true)) break;
+			if(!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetAttackDist(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true)) break;
 
 			int hit=ScriptGetHitProc(cr,HIT_LOCATION_NONE);
 			if(!hit) break;

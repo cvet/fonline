@@ -22,17 +22,17 @@ int Procent(int full, int peace)
 	return peace*100/full;
 }
 
-int DistSqrt(int x1, int y1, int x2, int y2)
+DWORD DistSqrt(int x1, int y1, int x2, int y2)
 {
 	int dx=x1-x2;
 	int dy=y1-y2;
 	return (int)sqrt(double(dx*dx+dy*dy));
 }
 
-int DistGame(int x1, int y1, int x2, int y2)
+DWORD DistGame(int x1, int y1, int x2, int y2)
 {
 	int dx=(x1>x2?x1-x2:x2-x1);
-	if(x1%2==0)
+	if(!(x1&1))
 	{
 		if(y2<=y1)
 		{
@@ -62,7 +62,7 @@ int DistGame(int x1, int y1, int x2, int y2)
 
 DWORD NumericalNumber(DWORD num)
 {
-	if(num%2)
+	if(num&1)
 		return num*(num/2+1);
 	else
 		return num*num/2+num/2;
@@ -78,7 +78,7 @@ int GetDir(int x1, int y1, int x2, int y2)
 {
 	int dir=0;
 
-	if(x1%2)
+	if(x1&1)
 	{
 		if(x1> x2 && y1> y2) dir=0;
 		else if(x1> x2 && y1==y2) dir=1;
@@ -107,7 +107,7 @@ int GetFarDir(int x1, int y1, int x2, int y2)
 	float tx=x2;
 	float ty=y2;
 	float nx=3*(tx-hx);
-	float ny=(ty-hy)*SQRT3T2_FLOAT-(float(x2%2)-float(x1%2))*SQRT3_FLOAT;
+	float ny=(ty-hy)*SQRT3T2_FLOAT-(float(x2&1)-float(x1&1))*SQRT3_FLOAT;
 	float dir=180.0f+RAD2DEG*atan2f(ny,nx);
 
 	if(dir>=60.0f  && dir<120.0f) return 5;
@@ -124,22 +124,22 @@ bool GetCoords(WORD x1, WORD y1, BYTE ori, WORD& x2, WORD& y2)
 	{
 	case 0:
 		x1--;
-		if(!(x1%2)) y1--;
+		if(!(x1&1)) y1--;
 		break;
 	case 1:
 		x1--;
-		if(x1%2) y1++;
+		if(x1&1) y1++;
 		break;
 	case 2:
 		y1++;
 		break;
 	case 3:
 		x1++;
-		if(x1%2) y1++;
+		if(x1&1) y1++;
 		break;
 	case 4:
 		x1++;
-		if(!(x1%2)) y1--;
+		if(!(x1&1)) y1--;
 		break;
 	case 5:
 		y1--;
@@ -186,7 +186,7 @@ void ChangeStepsXY(float& sx, float& sy, float deq)
 	sy=sx*sin(rad)+sy*cos(rad);
 }
 
-void MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy)
+bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy)
 {
 	int hx_=hx;
 	int hy_=hy;
@@ -215,14 +215,16 @@ void MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy)
 		hy_--;
 		break;
 	default:
-		return;
+		return false;
 	}
 
 	if(hx_>=0 && hx_<maxhx && hy_>=0 && hy_<maxhy)
 	{
 		hx=hx_;
 		hy=hy_;
+		return true;
 	}
+	return false;
 }
 
 void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir)
@@ -273,20 +275,64 @@ bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int
 }
 
 /************************************************************************/
-/*                                                                      */
+/* Hex offsets                                                          */
+/************************************************************************/
+
+short SXEven[HEX_OFFSET_SIZE]={0};
+short SYEven[HEX_OFFSET_SIZE]={0};
+short SXOdd[HEX_OFFSET_SIZE]={0};
+short SYOdd[HEX_OFFSET_SIZE]={0};
+
+class InitializeOffsets
+{
+public:
+	InitializeOffsets()
+	{
+		int pos=0;
+		int xe=0,ye=0,xo=1,yo=0;
+		for(int i=0;i<MAX_HEX_OFFSET;i++)
+		{
+			MoveHexByDirUnsafe(xe,ye,0);
+			MoveHexByDirUnsafe(xo,yo,0);
+
+			for(int j=0;j<6;j++)
+			{
+				int dir=(j+2)%6;
+				for(int k=0;k<i+1;k++)
+				{
+					SXEven[pos]=xe;
+					SYEven[pos]=ye;
+					SXOdd[pos]=xo-1;
+					SYOdd[pos]=yo;
+					pos++;
+					MoveHexByDirUnsafe(xe,ye,dir);
+					MoveHexByDirUnsafe(xo,yo,dir);
+				}
+			}
+		}
+	}
+} InitializeOffsets_;
+
+/************************************************************************/
+/* True chars                                                           */
 /************************************************************************/
 
 bool NameTrueChar[0x100];
 bool PassTrueChar[0x100];
-void LoadTrueChars()
+
+class InitializeTrueChar
 {
-	for(int i=0;i<0x100;i++) NameTrueChar[i]=false;
-	for(int i=0;i<0x100;i++) PassTrueChar[i]=false;
-	const BYTE name_char[]=" _.-1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
-	const BYTE pass_char[]=" _-,.=[]{}?!@#$^&()|`~:;1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
-	for(int i=0,j=strlen((char*)name_char);i<j;i++) NameTrueChar[name_char[i]]=true;
-	for(int i=0,j=strlen((char*)pass_char);i<j;i++) PassTrueChar[pass_char[i]]=true;
-}
+public:
+	InitializeTrueChar()
+	{
+		for(int i=0;i<0x100;i++) NameTrueChar[i]=false;
+		for(int i=0;i<0x100;i++) PassTrueChar[i]=false;
+		const BYTE name_char[]=" _.-1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
+		const BYTE pass_char[]=" _-,.=[]{}?!@#$^&()|`~:;1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
+		for(int i=0,j=sizeof(name_char);i<j;i++) NameTrueChar[name_char[i]]=true;
+		for(int i=0,j=sizeof(pass_char);i<j;i++) PassTrueChar[pass_char[i]]=true;
+	}
+} InitializeTrueChar_;
 
 bool CheckUserName(const char* str)
 {
@@ -330,7 +376,7 @@ bool OptShowGroups=true;
 bool OptHelpInfo=false;
 bool OptDebugInfo=false;
 bool OptDebugNet=false;
-bool OptDebugIface=false;
+bool OptDebugSprites=false;
 bool OptFullScr=false;
 bool OptVSync=false;
 int OptFlushVal=256;
@@ -444,6 +490,7 @@ void GetClientOptions()
 	// Defines
 #define GETOPTIONS_CMD_LINE_INT(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+strlen(str_id)+1);}while(0)
 #define GETOPTIONS_CMD_LINE_BOOL(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+strlen(str_id)+1)!=0;}while(0)
+#define GETOPTIONS_CMD_LINE_BOOL_ON(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=true;}while(0)
 #define GETOPTIONS_CMD_LINE_STR(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) sscanf_s(str+strlen(str_id)+1,"%s",opt);}while(0)
 #define GETOPTIONS_CHECK(val_,min_,max_,def_) do{if(val_<min_ || val_>max_) val_=def_;} while(0)
 
@@ -545,10 +592,10 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Animation3dSmoothTime,"-Animation3dSmoothTime");
 	GETOPTIONS_CHECK(GameOpt.Animation3dSmoothTime,0,10000,250);
 
-	GETOPTIONS_CMD_LINE_BOOL(OptHelpInfo,"-HelpInfo");
-	GETOPTIONS_CMD_LINE_BOOL(OptDebugInfo,"-DebugInfo");
-	GETOPTIONS_CMD_LINE_BOOL(OptDebugNet,"-DebugNet");
-	GETOPTIONS_CMD_LINE_BOOL(OptDebugIface,"-DebugIface");
+	GETOPTIONS_CMD_LINE_BOOL_ON(OptHelpInfo,"-HelpInfo");
+	GETOPTIONS_CMD_LINE_BOOL_ON(OptDebugInfo,"-DebugInfo");
+	GETOPTIONS_CMD_LINE_BOOL_ON(OptDebugNet,"-DebugNet");
+	GETOPTIONS_CMD_LINE_BOOL_ON(OptDebugSprites,"-DebugSprites");
 
 	// Str
 	cfg.GetStr(CFG_FILE_APP_NAME,"MasterDatPath","master.dat",buf);
@@ -599,8 +646,6 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-LoggingTime");
 	LogWithTime(logging);
 
-	LoadTrueChars();
-
 #ifdef FONLINE_CLIENT
 	Script::SetGarbageCollectTime(120000);
 #endif
@@ -633,7 +678,6 @@ void GetServerOptions()
 	Script::SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
 	VarsGarbageTime=cfg.GetInt("VarsGarbageTime",3600)*1000;
 	WorldSaveManager=(cfg.GetInt("WorldSaveManager",1)==1);
-	LoadTrueChars();
 }
 
 ServerScriptFunctions ServerFunctions;

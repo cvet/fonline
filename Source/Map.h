@@ -102,7 +102,7 @@ public:
 
 	bool GetStartCoord(WORD& hx, WORD& hy, BYTE& dir, DWORD entire);
 	bool GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item);
-	bool FindStartHex(WORD& hx, WORD& hy, DWORD radius, bool skip_unsafe);
+	bool FindStartHex(WORD& hx, WORD& hy, DWORD multihex, DWORD seek_radius, bool skip_unsafe);
 
 	void SetId(DWORD id, WORD pid){Data.MapId=id; Data.MapPid=pid;}
 	DWORD GetId(){return Data.MapId;}
@@ -138,19 +138,23 @@ public:
 
 	WORD GetHexFlags(WORD hx, WORD hy);
 	void SetHexFlag(WORD hx, WORD hy, BYTE flag);
-	void UnSetHexFlag(WORD hx, WORD hy, BYTE flag);
+	void UnsetHexFlag(WORD hx, WORD hy, BYTE flag);
 
 	bool IsHexPassed(WORD hx, WORD hy);
 	bool IsHexRaked(WORD hx, WORD hy);
+	bool IsHexesPassed(WORD hx, WORD hy, DWORD radius);
+	bool IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex);
 	bool IsHexItem(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_ITEM);}
+
 	bool IsHexTrigger(WORD hx, WORD hy){return FLAG(Proto->HexFlags[hy*GetMaxHexX()+hx],FH_TRIGGER);}
 	bool IsHexTrap(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_WALK_ITEM);}
+
 	bool IsHexCritter(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_CRITTER|FH_DEAD_CRITTER);}
 	bool IsHexGag(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_GAG_ITEM);}
 
 	bool IsFlagCritter(WORD hx, WORD hy, bool dead);
-	void SetFlagCritter(WORD hx, WORD hy, bool dead);
-	void UnSetFlagCritter(WORD hx, WORD hy, bool dead);
+	void SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead);
+	void UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead);
 	Critter* GetCritter(DWORD crid);
 	DWORD GetNpcCount(int npc_role, int find_type);
 	Critter* GetNpc(int npc_role, int find_type, DWORD skip_count);

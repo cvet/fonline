@@ -56,7 +56,7 @@ struct AIDataPlane
 			WORD HexX;
 			WORD HexY;
 			BYTE Dir;
-			BYTE Cut;
+			DWORD Cut;
 		} Walk;
 
 		struct
@@ -83,8 +83,8 @@ struct AIDataPlane
 		DWORD TargId;
 		WORD HexX;
 		WORD HexY;
-		BYTE Cut;
-		BYTE Trace;
+		DWORD Cut;
+		DWORD Trace;
 	} Move;
 
 	AIDataPlane* GetCurPlane(){return ChildPlane?ChildPlane->GetCurPlane():this;}

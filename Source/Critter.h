@@ -393,8 +393,6 @@ public:
 	void ProcessChangedParams();
 	DWORD GetFollowCrId(){return GetParam(ST_FOLLOW_CRIT);}
 	void SetFollowCrId(DWORD crid){ChangeParam(ST_FOLLOW_CRIT); Data.Params[ST_FOLLOW_CRIT]=crid;}
-	int GetLook();
-	DWORD GetTalkDistance();
 	int GetSkill(DWORD index){return GetParam(index);}
 	bool IsPerk(DWORD index){return GetParam(index)!=0;}
 	int GetPerk(DWORD index){return GetParam(index);}
@@ -404,7 +402,11 @@ public:
 	bool IsDmgArm(){return Data.Params[DAMAGE_RIGHT_ARM]!=0 || Data.Params[DAMAGE_LEFT_ARM]!=0;}
 	bool IsDmgTwoArm(){return Data.Params[DAMAGE_RIGHT_ARM]!=0 && Data.Params[DAMAGE_LEFT_ARM]!=0;}
 	void SendMessage(int num, int val, int to);
-	int GetAttackMaxDist(Item* weap, int use);
+	int GetLook();
+	DWORD GetTalkDistance(Critter* talker);
+	DWORD GetAttackDist(Item* weap, int use);
+	DWORD GetUseDist();
+	DWORD GetMultihex();
 	bool IsLife(){return Data.Cond==COND_LIFE;}
 	bool IsDead(){return Data.Cond==COND_DEAD;}
 	bool IsKnockout(){return Data.Cond==COND_KNOCKOUT;}

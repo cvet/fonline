@@ -70,7 +70,7 @@ void FOServer::ProcessAI(Npc* npc)
 				npc->MoveToHex(REASON_GO_HOME,npc->GetHomeX(),npc->GetHomeY(),npc->GetHomeOri(),false,0);
 				return;
 			}
-			else if(map->IsHexPassed(npc->GetHomeX(),npc->GetHomeY()))
+			else if(map->IsHexesPassed(npc->GetHomeX(),npc->GetHomeY(),npc->GetMultihex()))
 			{
 				MapMngr.Transit(npc,map,npc->GetHomeX(),npc->GetHomeY(),npc->GetDir(),2,true);
 				return;
@@ -197,11 +197,13 @@ void FOServer::ProcessAI(Npc* npc)
 			PathFindData pfd;
 			pfd.Clear();
 			pfd.MapId=npc->GetMap();
+			pfd.FromCritter=npc;
 			pfd.FromX=npc->GetHexX();
 			pfd.FromY=npc->GetHexY();
 			pfd.ToX=hx;
 			pfd.ToY=hy;
 			pfd.IsRun=plane->Move.IsRun;
+			pfd.Multihex=npc->GetMultihex();
 			pfd.Cut=cut;
 			pfd.Trace=trace;
 			pfd.TraceCr=trace_cr;
@@ -462,7 +464,7 @@ void FOServer::ProcessAI(Npc* npc)
 			/* Step 2: Move to target                                               */
 			/************************************************************************/
 				bool is_can_walk=CritType::IsCanWalk(npc->GetCrType());
-				int best_dist=0,min_dist=0,max_dist=0;
+				DWORD best_dist=0,min_dist=0,max_dist=0;
 				r0=targ->GetId(),r1=0,r2=0;
 				if(npc->RunPlane(REASON_ATTACK_DISTANTION,r0,r1,r2))
 				{
@@ -470,7 +472,7 @@ void FOServer::ProcessAI(Npc* npc)
 					min_dist=r1;
 					max_dist=r2;
 
-					if(max_dist<=0) // Run away
+					if(r2<=0 || r1<0 || r0<0) // Run away
 					{
 						/*if(is_can_walk)
 						{
@@ -524,8 +526,8 @@ void FOServer::ProcessAI(Npc* npc)
 
 				if(max_dist<=0)
 				{
-					int look=npc->GetLook();
-					max_dist=npc->GetAttackMaxDist(weap,use);
+					DWORD look=npc->GetLook();
+					max_dist=npc->GetAttackDist(weap,use);
 					if(max_dist>look) max_dist=look;
 				}
 				if(min_dist<=0) min_dist=1;
@@ -551,7 +553,7 @@ void FOServer::ProcessAI(Npc* npc)
 				MapMngr.TraceBullet(trace);
 				if(!trace.IsCritterFounded)
 				{
-					if(is_can_walk) AI_MoveToCrit(npc,targ->GetId(),is_range?1:max_dist,max_dist+(is_range?0:ATTACK_HTH_DIRT_DIST),is_run);
+					if(is_can_walk) AI_MoveToCrit(npc,targ->GetId(),is_range?1+npc->GetMultihex():max_dist,max_dist+(is_range?0:ATTACK_HTH_DIRT_DIST),is_run);
 					else npc->NextPlane(REASON_CANT_WALK);
 					break;
 				}
@@ -611,7 +613,7 @@ void FOServer::ProcessAI(Npc* npc)
 						//		if((hx==res_hx && hy==res_hy) || trace.IsFullTrace) break;
 							}
 
-							if(!(i%2)) deq=deq_step*float((i+2)/2);
+							if(!(i&1)) deq=deq_step*float((i+2)/2);
 							else deq=-deq;
 						}
 
@@ -639,8 +641,9 @@ void FOServer::ProcessAI(Npc* npc)
 						if(!is_can_walk) npc->NextPlane(REASON_CANT_WALK);
 						else if(max_dist>1 && best_dist==1) // Check busy ring
 						{
-							short* rsx=((t_hx%2)?(short*)&SXNChet[1]:(short*)&SXChet[1]);
-							short* rsy=((t_hx%2)?(short*)&SYNChet[1]:(short*)&SYChet[1]);
+							bool odd=(t_hx&1)!=0;
+							short* rsx=(odd?SXOdd:SXEven);
+							short* rsy=(odd?SYOdd:SYEven);
 							int i;
 							for(i=0;i<6;i++,rsx++,rsy++) if(map->IsHexPassed(t_hx+*rsx,t_hy+*rsy)) break;
 
@@ -692,7 +695,7 @@ void FOServer::ProcessAI(Npc* npc)
 					break;
 				}
 
-				AI_Move(npc,plane->Attack.LastHexX,plane->Attack.LastHexY,plane->Attack.IsRun,1,npc->GetLook()/2);
+				AI_Move(npc,plane->Attack.LastHexX,plane->Attack.LastHexY,plane->Attack.IsRun,1+npc->GetMultihex(),npc->GetLook()/2);
 				plane->Attack.LastHexX=0;
 				plane->Attack.LastHexY=0;
 			}
@@ -765,9 +768,10 @@ void FOServer::ProcessAI(Npc* npc)
 				break;
 			}
 
-			if(!CheckDist(npc->GetHexX(),npc->GetHexY(),hx,hy,1))
+			int use_dist=npc->GetUseDist();
+			if(!CheckDist(npc->GetHexX(),npc->GetHexY(),hx,hy,use_dist))
 			{
-				AI_Move(npc,hx,hy,is_run,1,0);
+				AI_Move(npc,hx,hy,is_run,use_dist,0);
 			}
 			else
 			{
@@ -798,7 +802,7 @@ bool FOServer::AI_Stay(Npc* npc, DWORD ms)
 	return true;
 }
 
-bool FOServer::AI_Move(Npc* npc, WORD hx, WORD hy, bool is_run, BYTE cut, BYTE trace)
+bool FOServer::AI_Move(Npc* npc, WORD hx, WORD hy, bool is_run, DWORD cut, DWORD trace)
 {
 	AIDataPlane* plane=npc->GetCurPlane();
 	if(!plane) return false;
@@ -1171,7 +1175,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 				return;
 			}
 
-			DWORD talk_dist=npc->GetTalkDistance();
+			DWORD talk_dist=npc->GetTalkDistance(cl);
 			if(!CheckDist(cl->GetHexX(),cl->GetHexY(),npc->GetHexX(),npc->GetHexY(),talk_dist))
 			{
 				cl->Send_XY(cl);
@@ -1265,7 +1269,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 //			return;
 //		}
 
-		if(!ignore_distance && !CheckDist(cl->GetHexX(),cl->GetHexY(),hx,hy,GameOpt.TalkDistance))
+		if(!ignore_distance && !CheckDist(cl->GetHexX(),cl->GetHexY(),hx,hy,GameOpt.TalkDistance+cl->GetMultihex()))
 		{
 			cl->Send_XY(cl);
 			cl->Send_TextMsg(cl,STR_DIALOG_DIST_TOO_LONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1403,7 +1407,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		str[MAX_SAY_NPC_TEXT]=0;
 		if(!strlen(str))
 		{
-			WriteLog(__FUNCTION__" - Say text length is zero, client<%s>.",cl->GetInfo());
+			WriteLog(__FUNCTION__" - Say text length is zero, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 	}
@@ -1749,7 +1753,7 @@ void FOServer::Process_Barter(Client* cl)
 		return;
 	}
 
-	if(!CheckDist(cl->GetHexX(),cl->GetHexY(),npc->GetHexX(),npc->GetHexY(),npc->GetTalkDistance()))
+	if(!CheckDist(cl->GetHexX(),cl->GetHexY(),npc->GetHexX(),npc->GetHexY(),npc->GetTalkDistance(cl)))
 	{
 		WriteLog(__FUNCTION__" - Wrong distance, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_XY(cl);

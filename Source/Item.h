@@ -334,9 +334,9 @@ public:
 				BYTE Bag1[CAR_MAX_BAG_POSITION/2]; // 6
 				BYTE Blocks[CAR_MAX_BLOCKS/2]; // 40
 
-				BYTE GetBag0Dir(int num){return ((num%2)?(Bag0[num/2]&0xF):(Bag0[num/2]>>4));}
-				BYTE GetBag1Dir(int num){return ((num%2)?(Bag1[num/2]&0xF):(Bag1[num/2]>>4));}
-				BYTE GetBlockDir(int num){return ((num%2)?(Blocks[num/2]&0xF):(Blocks[num/2]>>4));}
+				BYTE GetBag0Dir(int num){return ((num&1)?(Bag0[num/2]&0xF):(Bag0[num/2]>>4));}
+				BYTE GetBag1Dir(int num){return ((num&1)?(Bag1[num/2]&0xF):(Bag1[num/2]>>4));}
+				BYTE GetBlockDir(int num){return ((num&1)?(Blocks[num/2]&0xF):(Blocks[num/2]>>4));}
 			} Car;
 		} MiscEx;
 

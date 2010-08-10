@@ -2908,7 +2908,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(ProtoItem,Weapon.Weapon_Aim)==182);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
-	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==84);
+	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);
 	STATIC_ASSERT(offsetof(GlobalMapGroup,EncounterForce)==84);
 	STATIC_ASSERT(offsetof(MapObject,RunTime.RefCounter)==244);
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);

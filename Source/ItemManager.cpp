@@ -452,7 +452,7 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	for(int i=0,j=strlen(buf);i<j;i++)\
 	{\
 		BYTE dir=buf[i]-'0';\
-		if(i%2) proto_item.MiscEx.Car.data[i/2]=(proto_item.MiscEx.Car.data[i/2]&0xF0)|dir;\
+		if(i&1) proto_item.MiscEx.Car.data[i/2]=(proto_item.MiscEx.Car.data[i/2]&0xF0)|dir;\
 		else proto_item.MiscEx.Car.data[i/2]=(proto_item.MiscEx.Car.data[i/2]&0x0F)|(dir<<4);\
 	}
 //===============================================================================================

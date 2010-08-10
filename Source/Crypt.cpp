@@ -12,7 +12,7 @@ CryptManager::CryptManager()
 	for(i=0;i<0x100;i++)
 	{
 		for(r=i,j=0x8;j;j--)
-			r=(r&1?(r>>1)^CRC_POLY:r>>1);
+			r=((r&1)?(r>>1)^CRC_POLY:r>>1);
 		crcTable[i]=r;
 	}
 }

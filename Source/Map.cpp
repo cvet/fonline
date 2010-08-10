@@ -185,8 +185,9 @@ bool Map::Generate()
 
 			if(npc->Data.Cond==COND_DEAD)
 			{
-				UnSetFlagCritter(npc->GetHexX(),npc->GetHexY(),false);
-				SetFlagCritter(npc->GetHexX(),npc->GetHexY(),true);
+				DWORD multihex=npc->GetMultihex();
+				UnsetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,false);
+				SetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,true);
 			}
 		}
 	}
@@ -454,20 +455,19 @@ bool Map::GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item)
 	return false;
 }
 
-bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD radius, bool skip_unsafe)
+bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD multihex, DWORD seek_radius, bool skip_unsafe)
 {
-	if(IsHexPassed(hx,hy) && !(skip_unsafe && (IsHexTrigger(hx,hy) || IsHexTrap(hx,hy)))) return true;
+	if(IsHexesPassed(hx,hy,multihex) && !(skip_unsafe && (IsHexTrigger(hx,hy) || IsHexTrap(hx,hy)))) return true;
+	if(!seek_radius) return false;
+	if(seek_radius>MAX_HEX_OFFSET) seek_radius=MAX_HEX_OFFSET;
 
 	static int cur_step=0;
 	short hx_=hx;
 	short hy_=hy;
-	short* sx=((hx%2)?((short*)&SXNChet[1]):((short*)&SXChet[1]));
-	short* sy=((hx%2)?((short*)&SYNChet[1]):((short*)&SYChet[1]));
-
-	int cnt=0;
-	if(radius==1) cnt=6;
-	else if(radius==2) cnt=18;
-	else cnt=36;
+	bool odd=(hx&1)!=0;
+	short* sx=(odd?SXOdd:SXEven);
+	short* sy=(odd?SYOdd:SYEven);
+	int cnt=NumericalNumber(seek_radius)*6;
 
 	for(int i=0;;i++)
 	{
@@ -479,7 +479,7 @@ bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD radius, bool skip_unsafe)
 		short ny=hy_+sy[cur_step];
 
 		if(nx<0 || nx>=GetMaxHexX() || ny<0 || ny>=GetMaxHexY()) continue;
-		if(!IsHexPassed(nx,ny)) continue;
+		if(!IsHexesPassed(nx,ny,multihex)) continue;
 		if(skip_unsafe && (IsHexTrigger(nx,ny) || IsHexTrap(nx,ny))) continue;
 		break;
 	}
@@ -504,7 +504,7 @@ void Map::AddCritter(Critter* cr)
 	else mapNpcs.push_back((Npc*)cr);
 	mapCritters.push_back(cr);
 
-	SetFlagCritter(cr->GetHexX(),cr->GetHexY(),cr->IsDead());
+	SetFlagCritter(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex(),cr->IsDead());
 	cr->SetTimeout(TO_BATTLE,IsTurnBasedOn?TB_BATTLE_TIMEOUT:0);
 }
 
@@ -833,13 +833,13 @@ void Map::GetItemsTrap(WORD hx, WORD hy, ItemPtrVec& traps)
 		Item* item=*it;
 		if(item->ACC_HEX.HexX==hx && item->ACC_HEX.HexY==hy && item->FuncId[ITEM_EVENT_WALK]>0) traps.push_back(item);
 	}
-	if(!traps.size()) UnSetHexFlag(hx,hy,FH_WALK_ITEM);
+	if(!traps.size()) UnsetHexFlag(hx,hy,FH_WALK_ITEM);
 }
 
 void Map::RecacheHexBlock(WORD hx, WORD hy)
 {
-	UnSetHexFlag(hx,hy,FH_BLOCK_ITEM);
-	UnSetHexFlag(hx,hy,FH_GAG_ITEM);
+	UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
+	UnsetHexFlag(hx,hy,FH_GAG_ITEM);
 	bool is_block=false;
 	bool is_gag=false;
 	for(ItemPtrVecIt it=HexItems.begin(),end=HexItems.end();it!=end;++it)
@@ -858,7 +858,7 @@ void Map::RecacheHexBlock(WORD hx, WORD hy)
 
 void Map::RecacheHexShoot(WORD hx, WORD hy)
 {
-	UnSetHexFlag(hx,hy,FH_NRAKE_ITEM);
+	UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
 	for(ItemPtrVecIt it=HexItems.begin(),end=HexItems.end();it!=end;++it)
 	{
 		Item* item=*it;
@@ -872,9 +872,9 @@ void Map::RecacheHexShoot(WORD hx, WORD hy)
 
 void Map::RecacheHexBlockShoot(WORD hx, WORD hy)
 {
-	UnSetHexFlag(hx,hy,FH_BLOCK_ITEM);
-	UnSetHexFlag(hx,hy,FH_NRAKE_ITEM);
-	UnSetHexFlag(hx,hy,FH_GAG_ITEM);
+	UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
+	UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
+	UnsetHexFlag(hx,hy,FH_GAG_ITEM);
 	bool is_block=false;
 	bool is_nrake=false;
 	bool is_gag=false;
@@ -904,7 +904,7 @@ void Map::SetHexFlag(WORD hx, WORD hy, BYTE flag)
 	SETFLAG(hexFlags[hy*GetMaxHexX()+hx],flag);
 }
 
-void Map::UnSetHexFlag(WORD hx, WORD hy, BYTE flag)
+void Map::UnsetHexFlag(WORD hx, WORD hy, BYTE flag)
 {
 	UNSETFLAG(hexFlags[hy*GetMaxHexX()+hx],flag);
 }
@@ -919,6 +919,60 @@ bool Map::IsHexRaked(WORD hx, WORD hy)
 	return !FLAG(GetHexFlags(hx,hy),FH_NOSHOOT);
 }
 
+bool Map::IsHexesPassed(WORD hx, WORD hy, DWORD radius)
+{
+	// Base
+	if(FLAG(GetHexFlags(hx,hy),FH_NOWAY)) return false;
+	if(!radius) return true;
+
+	// Neighbors
+	bool odd=(hx&1)!=0;
+	short* sx=(odd?SXOdd:SXEven);
+	short* sy=(odd?SYOdd:SYEven);
+	DWORD count=NumericalNumber(radius)*6;
+	short maxhx=GetMaxHexX();
+	short maxhy=GetMaxHexY();
+	for(DWORD i=0;i<count;i++)
+	{
+		short hx_=(short)hx+sx[i];
+		short hy_=(short)hy+sy[i];
+		if(hx_>=0 && hy_>=0 && hx_<maxhx && hy_<maxhy && FLAG(GetHexFlags(hx_,hy_),FH_NOWAY)) return false;
+	}
+	return true;
+}
+
+bool Map::IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex)
+{
+	// Single hex
+	if(!multihex) return IsHexPassed(hx,hy);
+
+	// Multihex
+	// Base hex
+	int hx_=hx,hy_=hy;
+	for(DWORD k=0;k<multihex;k++) MoveHexByDirUnsafe(hx_,hy_,dir);
+	if(hx_<0 || hy_<0 || hx_>=GetMaxHexX() || hy_>=GetMaxHexY()) return false;
+	if(!IsHexPassed(hx_,hy_)) return false;
+
+	// Clock wise hexes
+	int dir_=(dir+2)%6;
+	int hx__=hx_,hy__=hy_;
+	for(DWORD k=0;k<multihex;k++)
+	{
+		MoveHexByDirUnsafe(hx__,hy__,dir_);
+		if(!IsHexPassed(hx__,hy__)) return false;
+	}
+
+	// Counter clock wise hexes
+	dir_=(dir+4)%6;
+	hx__=hx_,hy__=hy_;
+	for(DWORD k=0;k<multihex;k++)
+	{
+		MoveHexByDirUnsafe(hx__,hy__,dir_);
+		if(!IsHexPassed(hx__,hy__)) return false;
+	}
+	return true;
+}
+
 bool Map::IsFlagCritter(WORD hx, WORD hy, bool dead)
 {
 	if(dead)
@@ -927,19 +981,39 @@ bool Map::IsFlagCritter(WORD hx, WORD hy, bool dead)
 		return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_CRITTER);
 }
 
-void Map::SetFlagCritter(WORD hx, WORD hy, bool dead)
-{
-	if(dead)
-		SetHexFlag(hx,hy,FH_DEAD_CRITTER);
-	else
-		SetHexFlag(hx,hy,FH_CRITTER);
-}
-
-void Map::UnSetFlagCritter(WORD hx, WORD hy, bool dead)
+void Map::SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
 {
 	if(dead)
 	{
-		UINT dead_count=0;
+		SetHexFlag(hx,hy,FH_DEAD_CRITTER);
+	}
+	else
+	{
+		SetHexFlag(hx,hy,FH_CRITTER);
+
+		if(multihex)
+		{
+			bool odd=(hx&1)!=0;
+			short* sx=(odd?SXOdd:SXEven);
+			short* sy=(odd?SYOdd:SYEven);
+			int count=NumericalNumber(multihex)*6;
+			short maxhx=GetMaxHexX();
+			short maxhy=GetMaxHexY();
+			for(int i=0;i<count;i++)
+			{
+				short hx_=(short)hx+sx[i];
+				short hy_=(short)hy+sy[i];
+				if(hx_>=0 && hy_>=0 && hx_<maxhx && hy_<maxhy) SetHexFlag(hx_,hy_,FH_CRITTER);
+			}
+		}
+	}
+}
+
+void Map::UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
+{
+	if(dead)
+	{
+		DWORD dead_count=0;
 		Critter* cr;
 		for(CrVecIt it=mapCritters.begin(),end=mapCritters.end();it!=end;++it)
 		{
@@ -947,10 +1021,28 @@ void Map::UnSetFlagCritter(WORD hx, WORD hy, bool dead)
 			if(cr->GetHexX()==hx && cr->GetHexY()==hy && cr->IsDead()) dead_count++;
 		}
 
-		if(dead_count<=1) UnSetHexFlag(hx,hy,FH_DEAD_CRITTER);
+		if(dead_count<=1) UnsetHexFlag(hx,hy,FH_DEAD_CRITTER);
 	}
 	else
-		UnSetHexFlag(hx,hy,FH_CRITTER);
+	{
+		UnsetHexFlag(hx,hy,FH_CRITTER);
+
+		if(multihex>0)
+		{
+			bool odd=(hx&1)!=0;
+			short* sx=(odd?SXOdd:SXEven);
+			short* sy=(odd?SYOdd:SYEven);
+			int count=NumericalNumber(multihex)*6;
+			short maxhx=GetMaxHexX();
+			short maxhy=GetMaxHexY();
+			for(int i=0;i<count;i++)
+			{
+				short hx_=(short)hx+sx[i];
+				short hy_=(short)hy+sy[i];
+				if(hx_>=0 && hy_>=0 && hx_<maxhx && hy_<maxhy) UnsetHexFlag(hx_,hy_,FH_CRITTER);
+			}
+		}
+	}
 }
 
 Critter* Map::GetCritter(DWORD crid)
@@ -994,7 +1086,18 @@ Critter* Map::GetHexCritter(WORD hx, WORD hy, bool dead)
 	for(CrVecIt it=mapCritters.begin(),end=mapCritters.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->GetHexX()==hx && cr->GetHexY()==hy && cr->IsDead()==dead) return cr;
+		if(cr->IsDead()==dead)
+		{
+			int mh=cr->GetMultihex();
+			if(!mh)
+			{
+				if(cr->GetHexX()==hx && cr->GetHexY()==hy) return cr;
+			}
+			else
+			{
+				if(CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,mh)) return cr;
+			}
+		}
 	}
 	return NULL;
 }
@@ -1004,7 +1107,7 @@ void Map::GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& c
 	for(CrVecIt it=mapCritters.begin(),end=mapCritters.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->CheckFind(find_type) && CheckDist(hx,hy,cr->GetHexX(),cr->GetHexY(),radius)) crits.push_back(cr);
+		if(cr->CheckFind(find_type) && CheckDist(hx,hy,cr->GetHexX(),cr->GetHexY(),radius+cr->GetMultihex())) crits.push_back(cr);
 	}
 }
 
@@ -1156,10 +1259,10 @@ void Map::ReplaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
 	CAR_WORK(proto_item,
-			UnSetHexFlag(hx,hy,FH_BLOCK_ITEM);
+			UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
 			if(!raked)
 			{
-				UnSetHexFlag(hx,hy,FH_NRAKE_ITEM);
+				UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
 				if(IsHexItem(hx,hy)) RecacheHexBlockShoot(hx,hy);
 			}
 			else

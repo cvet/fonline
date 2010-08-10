@@ -2107,7 +2107,7 @@ void FOMapper::IntLMouseDown()
 					WORD hx=so.MapNpc->GetHexX();
 					WORD hy=so.MapNpc->GetHexY();
 					ByteVec steps;
-					if(HexMngr.FindStep(hx,hy,SelectHX1,SelectHY1,steps)==FP_OK)
+					if(HexMngr.FindPath(NULL,hx,hy,SelectHX1,SelectHY1,steps,-1))
 					{
 						for(int k=0;k<steps.size();k++)
 						{
@@ -2529,7 +2529,7 @@ void FOMapper::IntLMouseUp()
 					HexMngr.GetCritters(hx,hy,critters,FIND_ALL);
 
 					// Tile, roof
-					if(!(hx%2) && !(hy%2))
+					if(!(hx&1) && !(hy&1))
 					{
 						DWORD tile=CurProtoMap->GetTile(hx/2,hy/2);
 						DWORD roof=CurProtoMap->GetRoof(hx/2,hy/2);
@@ -3209,8 +3209,8 @@ void FOMapper::ParseTile(DWORD name_hash, WORD hx, WORD hy)
 		HexMngr.RebuildTerrain();
 	}
 
-	if(hx%2) hx--;
-	if(hy%2) hy--;
+	if(hx&1) hx--;
+	if(hy&1) hy--;
 	HexMngr.SetTile(hx,hy,name_hash,DrawRoof);
 	CurMode=CUR_MODE_DEF;
 }
@@ -3385,8 +3385,8 @@ void FOMapper::CurDraw()
 
 			WORD hx,hy;
 			if(!HexMngr.GetHexPixel(CurX,CurY,hx,hy)) return;
-			if(hx%2) hx--;
-			if(hy%2) hy--;
+			if(hx&1) hx--;
+			if(hy&1) hy--;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
@@ -3749,7 +3749,7 @@ void FOMapper::ParseCommand(const char* cmd)
 		StringCopy(anim,cmd);
 		Str::Lwr(anim);
 		Str::EraseChars(anim,' ');
-		if(!strlen(anim) || strlen(anim)%2) return;
+		if(!strlen(anim) || strlen(anim)&1) return;
 
 		if(SelectedObj.size())
 		{
@@ -4859,7 +4859,7 @@ BYTE FOMapper::SScriptFunc::Global_GetDirection(WORD from_x, WORD from_y, WORD t
 BYTE FOMapper::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset)
 {
 	float nx=3.0f*(float(tx)-float(hx));
-	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx%2)-float(hx%2));
+	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx&1)-float(hx&1));
 	float dir=180.0f+RAD2DEG*atan2(ny,nx);
 	dir+=offset;
 	if(dir>360.0f) dir-=360.0f;
@@ -4880,14 +4880,14 @@ void FOMapper::SScriptFunc::Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD
 	to_hy=pre_block.second;
 }
 
-DWORD FOMapper::SScriptFunc::Global_GetPathLength(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
+DWORD FOMapper::SScriptFunc::Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
 {
 	if(from_hx>=Self->HexMngr.GetMaxHexX() || from_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid from hexes args.");
 	if(to_hx>=Self->HexMngr.GetMaxHexX() || to_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid to hexes args.");
 
-	if(cut && Self->HexMngr.CutPath(from_hx,from_hy,to_hx,to_hy,cut)!=FP_OK) return 0;
+	if(cut>0 && !Self->HexMngr.CutPath(NULL,from_hx,from_hy,to_hx,to_hy,cut)) return 0;
 	ByteVec steps;
-	Self->HexMngr.FindStep(from_hx,from_hy,to_hx,to_hy,steps);
+	if(!Self->HexMngr.FindPath(NULL,from_hx,from_hy,to_hx,to_hy,steps,-1)) return 0;
 	return steps.size();
 }
 

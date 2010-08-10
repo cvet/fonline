@@ -47,20 +47,20 @@ public:
 	bool NeedProcess() {return (bufReadPos<bufEndPos);}
 #endif
 
-	BufferManager& operator<<(int i);
-	BufferManager& operator>>(int &i);
 	BufferManager& operator<<(DWORD i);
-	BufferManager& operator>>(DWORD &i);
+	BufferManager& operator>>(DWORD& i);
+	BufferManager& operator<<(int i);
+	BufferManager& operator>>(int& i);
 	BufferManager& operator<<(WORD i);
-	BufferManager& operator>>(WORD &i);
+	BufferManager& operator>>(WORD& i);
 	BufferManager& operator<<(short i);
-	BufferManager& operator>>(short &i);
+	BufferManager& operator>>(short& i);
 	BufferManager& operator<<(BYTE i);
-	BufferManager& operator>>(BYTE &i);
-	BufferManager& operator<<(char *i);
-	BufferManager& operator>>(char *i);
+	BufferManager& operator>>(BYTE& i);
+	BufferManager& operator<<(char i);
+	BufferManager& operator>>(char& i);
 	BufferManager& operator<<(bool i);
-	BufferManager& operator>>(bool &i);
+	BufferManager& operator>>(bool& i);
 };
 
 #endif // __BUFFER_MANAGER__

@@ -23,16 +23,6 @@ typedef vector<Terrain*>::iterator TerrainVecIt;
 #define DRAW_ORDER_CRIT(pos)        ((pos)+2)
 
 #define FINDPATH_MAX_PATH           (600)
-#define FP_ERROR                    (0)
-#define FP_OK                       (1)
-#define FP_DEADLOCK                 (2)
-#define FP_TOOFAR                   (3)
-#define FP_ALREADY_HERE             (4)
-
-#define FINDTARGET_BARRIER          (-1)
-#define FINDTARGET_TOOFAR           (-2)
-#define FINDTARGET_ERROR            (-3)
-#define FINDTARGET_INVALID_TARG     (-4)
 
 #define TILE_ALPHA	(0xFF)
 #define ROOF_ALPHA	(OptRoofAlpha)
@@ -107,6 +97,8 @@ struct Field
 	bool IsNoLight;
 	BYTE LightValues[3];
 
+	bool IsMultihex;
+
 #ifdef FONLINE_MAPPER
 	DWORD SelTile;
 	DWORD SelRoof;
@@ -162,9 +154,9 @@ public:
 	void SwitchShowTrack();
 	bool IsShowTrack(){return isShowTrack;};
 
-	int FindStep(WORD start_x, WORD start_y, WORD end_x, WORD end_y, ByteVec& steps);
-	int CutPath(WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut);
-	bool TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, int dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed);
+	bool FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut);
+	bool CutPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut);
+	bool TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed);
 
 private:
 	WORD maxHexX,maxHexY;
@@ -286,6 +278,7 @@ public:
 	CritMap& GetCritters(){return allCritters;}
 	void SetCritterContour(DWORD crid, Sprite::ContourType contour);
 	void SetCrittersContour(Sprite::ContourType contour);
+	void SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set);
 
 	// Items
 private:

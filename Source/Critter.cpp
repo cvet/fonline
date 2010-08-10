@@ -144,25 +144,40 @@ void Critter::FullClear()
 
 int Critter::GetLook()
 {
-	int look=GameOpt.LookNormal+GetParam(ST_PERCEPTION)*3+GetParam(ST_BONUS_LOOK);
+	int look=GameOpt.LookNormal+GetParam(ST_PERCEPTION)*3+GetParam(ST_BONUS_LOOK)+GetMultihex();
 	if(look<(int)GameOpt.LookMinimum) look=GameOpt.LookMinimum;
 	return look;
 }
 
-DWORD Critter::GetTalkDistance()
+DWORD Critter::GetTalkDistance(Critter* talker)
 {
 	int dist=GetParam(ST_TALK_DISTANCE);
 	if(dist<=0) dist=GameOpt.TalkDistance;
-	return dist;
+	if(talker) dist+=talker->GetMultihex();
+	return dist+GetMultihex();
 }
 
-int Critter::GetAttackMaxDist(Item* weap, int use)
+DWORD Critter::GetAttackDist(Item* weap, int use)
 {
 	if(!weap->IsWeapon()) return 0;
 	int dist=weap->Proto->Weapon.MaxDist[use];
 	if(weap->Proto->Weapon.Skill[use]==SKILL_OFFSET(SK_THROWING)) dist=min(dist,3*min(10,GetParam(ST_STRENGTH)+2*GetPerk(PE_HEAVE_HO)));
 	if(weap->WeapIsHtHAttack(use) && IsPerk(MODE_RANGE_HTH)) dist++;
+	dist+=GetMultihex();
+	if(dist<0) dist=0;
 	return dist;
+}
+
+DWORD Critter::GetUseDist()
+{
+	return 1+GetMultihex();
+}
+
+DWORD Critter::GetMultihex()
+{
+	int mh=Data.Multihex;
+	if(mh<0) mh=CritType::GetMultihex(GetCrType());
+	return CLAMP(mh,0,MAX_HEX_OFFSET);
 }
 
 bool Critter::CheckFind(int find_type)
@@ -1286,8 +1301,9 @@ void Critter::ToDead(BYTE dead_type, bool send_all)
 		Map* map=MapMngr.GetMap(GetMap());
 		if(map)
 		{
-			map->UnSetFlagCritter(GetHexX(),GetHexY(),false);
-			map->SetFlagCritter(GetHexX(),GetHexY(),true);
+			DWORD multihex=GetMultihex();
+			map->UnsetFlagCritter(GetHexX(),GetHexY(),multihex,false);
+			map->SetFlagCritter(GetHexX(),GetHexY(),multihex,true);
 		}
 	}
 }
@@ -2090,8 +2106,8 @@ void Critter::SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsa
 	if(to_cr.empty()) return;
 
 	int dist=-1;
-	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist;
-	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist;
+	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist+GetMultihex();
+	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist+GetMultihex();
 
 	for(CrVecIt it=to_cr.begin(),end=to_cr.end();it!=end;++it)
 	{
@@ -2100,7 +2116,7 @@ void Critter::SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsa
 
 		if(dist==-1)
 			cr->Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
-		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist))
+		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist+cr->GetMultihex()))
 			cr->Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
 	}
 }
@@ -2112,8 +2128,8 @@ void Critter::SendAA_Msg(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_msg
 	if(to_cr.empty()) return;
 
 	int dist=-1;
-	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist;
-	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist;
+	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist+GetMultihex();
+	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist+GetMultihex();
 
 	for(CrVecIt it=to_cr.begin(),end=to_cr.end();it!=end;++it)
 	{
@@ -2123,7 +2139,7 @@ void Critter::SendAA_Msg(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_msg
 
 		if(dist==-1)
 			cr->Send_TextMsg(this,num_str,how_say,num_msg);
-		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist))
+		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist+cr->GetMultihex()))
 			cr->Send_TextMsg(this,num_str,how_say,num_msg);
 	}
 }
@@ -2135,8 +2151,8 @@ void Critter::SendAA_MsgLex(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_
 	if(to_cr.empty()) return;
 
 	int dist=-1;
-	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist;
-	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist;
+	if(how_say==SAY_SHOUT || how_say==SAY_SHOUT_ON_HEAD) dist=GameOpt.ShoutDist+GetMultihex();
+	else if(how_say==SAY_WHISP || how_say==SAY_WHISP_ON_HEAD) dist=GameOpt.WhisperDist+GetMultihex();
 
 	for(CrVecIt it=to_cr.begin(),end=to_cr.end();it!=end;++it)
 	{
@@ -2146,7 +2162,7 @@ void Critter::SendAA_MsgLex(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_
 
 		if(dist==-1)
 			cr->Send_TextMsgLex(this,num_str,how_say,num_msg,lexems);
-		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist))
+		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist+cr->GetMultihex()))
 			cr->Send_TextMsgLex(this,num_str,how_say,num_msg,lexems);
 	}
 }
@@ -2163,13 +2179,14 @@ void Critter::SendA_Dir()
 
 void Critter::SendA_Follow(BYTE follow_type, WORD map_pid, DWORD follow_wait)
 {
+	int dist=FOLLOW_DIST+GetMultihex();
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(!cr->IsPlayer()) continue;
 		if(cr->GetFollowCrId()!=GetId()) continue;
 		if(cr->IsDead() || cr->IsKnockout()) continue;
-		if(!CheckDist(Data.LastHexX,Data.LastHexY,cr->GetHexX(),cr->GetHexY(),FOLLOW_DIST)) continue;
+		if(!CheckDist(Data.LastHexX,Data.LastHexY,cr->GetHexX(),cr->GetHexY(),dist+cr->GetMultihex())) continue;
 		cr->Send_Follow(GetId(),follow_type,map_pid,follow_wait);
 	}
 }
@@ -2858,7 +2875,8 @@ void Client::Send_AddCritter(Critter* cr)
 	bool is_npc=cr->IsNpc();
 	MSGTYPE msg=(is_npc?NETMSG_ADD_NPC:NETMSG_ADD_PLAYER);
 	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(DWORD)+sizeof(DWORD)+sizeof(WORD)*2+
-		sizeof(BYTE)+sizeof(BYTE)*2+sizeof(DWORD)+(is_npc?sizeof(WORD)+sizeof(DWORD):MAX_NAME)+ParamsSendMsgLen;
+		sizeof(BYTE)+sizeof(BYTE)*2+sizeof(DWORD)+sizeof(short)+
+		(is_npc?sizeof(WORD)+sizeof(DWORD):MAX_NAME)+ParamsSendMsgLen;
 	int dialog_id=(is_npc?cr->GetParam(ST_DIALOG_ID):0);
 
 	BOUT_BEGIN(this);
@@ -2872,6 +2890,7 @@ void Client::Send_AddCritter(Critter* cr)
 	Bout << cr->Data.Cond;
 	Bout << cr->Data.CondExt;
 	Bout << cr->Flags;
+	Bout << cr->Data.Multihex;
 
 	if(is_npc)
 	{
@@ -4140,7 +4159,7 @@ Client* Client::BarterGetOpponent(DWORD opponent_id)
 
 	Critter* cr=(GetMap()?GetCritSelf(opponent_id):GroupMove->GetCritter(opponent_id));
 	if(!cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || cr->GetTimeout(TO_BATTLE) || ((Client*)cr)->IsOffline() ||
-	  (GetMap() && !CheckDist(GetHexX(),GetHexY(),cr->GetHexX(),cr->GetHexY(),BARTER_DIST)))
+	  (GetMap() && !CheckDist(GetHexX(),GetHexY(),cr->GetHexX(),cr->GetHexY(),BARTER_DIST+GetMultihex()+cr->GetMultihex())))
 	{
 		if(cr && cr->IsPlayer() && BarterOpponent==cr->GetId()) ((Client*)cr)->BarterEnd();
 		BarterEnd();
@@ -4265,14 +4284,14 @@ void Client::ProcessTalk(bool force)
 			map_id=npc->GetMap();
 			hx=npc->GetHexX();
 			hy=npc->GetHexY();
-			talk_distance=npc->GetTalkDistance();
+			talk_distance=npc->GetTalkDistance(this);
 		}
 		else if(Talk.TalkType==TALK_WITH_HEX)
 		{
 			map_id=Talk.TalkHexMap;
 			hx=Talk.TalkHexX;
 			hy=Talk.TalkHexY;
-			talk_distance=GameOpt.TalkDistance;
+			talk_distance=GameOpt.TalkDistance+GetMultihex();
 		}
 
 		if(GetMap()!=map_id || !CheckDist(GetHexX(),GetHexY(),hx,hy,talk_distance))

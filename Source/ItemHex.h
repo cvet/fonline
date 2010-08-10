@@ -80,7 +80,7 @@ private:
 	float effSx,effSy;
 	int effStartX,effStartY;
 	float effCurX,effCurY;
-	int effDist;
+	DWORD effDist;
 	DWORD effLastTick;
 
 public:
@@ -88,7 +88,7 @@ public:
 
 	bool IsEffect(){return isEffect;}
 	bool IsDynamicEffect(){return IsEffect() && (effSx || effSy);}
-	void SetEffect(float sx, float sy, int dist);
+	void SetEffect(float sx, float sy, DWORD dist);
 	WordPair GetEffectStep();
 
 	// Fade

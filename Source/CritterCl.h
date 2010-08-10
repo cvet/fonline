@@ -17,68 +17,6 @@
 class CritterCl
 {
 public:
-	CritterCl();
-	~CritterCl();
-	void Init();
-	void InitForRegistration();
-	void Finish();
-	void GenParams();
-	void SetBaseType(DWORD type);
-	void SetDir(BYTE dir);
-	BYTE GetDir(){return CrDir;}
-	void Animate(DWORD anim1, DWORD anim2, Item* item);
-	void AnimateStay();
-	void Action(int action, int action_ext, Item* item, bool local_call = true);
-	void Process();
-	const char* GetInfo(){return Name.c_str();}
-	DWORD GetId(){return Id;}
-	WORD GetHexX(){return HexX;}
-	WORD GetHexY(){return HexY;}
-	DWORD GetPos(){return HEX_POS(HexX,HexY);}
-	Item* GetSlotUse(BYTE num_slot, BYTE& use);
-	int GetAttackMaxDist();
-	int GetUsePic(BYTE num_slot);
-	bool IsItemAim(BYTE num_slot);
-	bool IsDmgEye(){return IsPerk(DAMAGE_EYE);}
-	bool IsDmgLeg(){return IsPerk(DAMAGE_RIGHT_LEG) || IsPerk(DAMAGE_LEFT_LEG);}
-	bool IsDmgTwoLeg(){return IsPerk(DAMAGE_RIGHT_LEG) && IsPerk(DAMAGE_LEFT_LEG);}
-	bool IsDmgArm(){return IsPerk(DAMAGE_RIGHT_ARM) || IsPerk(DAMAGE_LEFT_ARM);}
-	bool IsDmgTwoArm(){return IsPerk(DAMAGE_RIGHT_ARM) && IsPerk(DAMAGE_LEFT_ARM);}
-	int GetLook();
-	DWORD GetTalkDistance();
-	int GetCond(){return Cond;}
-	int GetCondExt(){return CondExt;}
-	void DrawStay(INTRECT r);
-	const char* GetName(){return Name.c_str();}
-	const char* GetPass(){return Pass;}
-	ProtoItem* GetProtoMain(){return ItemSlotMain->Proto;}
-	ProtoItem* GetProtoExt(){return ItemSlotExt->Proto;}
-	ProtoItem* GetProtoArm(){return ItemSlotArmor->Proto;}
-	const char* GetMoneyStr();
-	Item* GetAmmoAvialble(Item* weap);
-	DWORD GetTimeout(int timeout);
-	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetTimeout(TO_BATTLE));}
-	bool IsLastHexes();
-	void FixLastHexes();
-	WORD PopLastHexX();
-	WORD PopLastHexY();
-	bool IsNpc(){return FLAG(Flags,FCRIT_NPC);}
-	bool IsPlayer(){return FLAG(Flags,FCRIT_PLAYER);}
-	bool IsChosen(){return Human;}
-	bool IsGmapRule(){return FLAG(Flags,FCRIT_RULEGROUP)!=0;}
-	bool IsOnline(){return FLAG(Flags,FCRIT_DISCONNECT)==0;}
-	bool IsOffline(){return FLAG(Flags,FCRIT_DISCONNECT)!=0;}
-	bool IsLife(){return Cond==COND_LIFE;}
-	bool IsLifeNone(){return Cond==COND_LIFE && CondExt==COND_LIFE_NONE;}
-	bool IsKnockout(){return Cond==COND_KNOCKOUT;}
-	bool IsDead(){return Cond==COND_DEAD;}
-	bool IsToTalk(){return IsNpc() && IsLifeNone() && Params[ST_DIALOG_ID];}
-	bool IsOverweight(){return GetItemsWeight()>GetParam(ST_CARRY_WEIGHT);}
-	bool IsDoubleOverweight(){return GetItemsWeight()>GetParam(ST_CARRY_WEIGHT)*2;}
-	bool IsInjured(){return IsDmgArm() || IsDmgLeg() || IsDmgEye();}
-	bool CheckFind(int find_type);
-	bool IsCombatMode(){return GetTimeout(TO_BATTLE)!=0;}
-
 	DWORD Id;
 	WORD Pid;
 	WORD HexX,HexY;
@@ -111,12 +49,65 @@ public:
 	DWORD Flags;
 	DWORD BaseType,BaseTypeAlias;
 	DWORD ApRegenerationTick;
+	short Multihex;
 
-	// Parameters
+	CritterCl();
+	~CritterCl();
+	void Init();
+	void InitForRegistration();
+	void Finish();
+	void GenParams();
+
+	DWORD GetId(){return Id;}
+	const char* GetInfo(){return Name.c_str();}
+	WORD GetHexX(){return HexX;}
+	WORD GetHexY(){return HexY;}
+	bool IsLastHexes();
+	void FixLastHexes();
+	WORD PopLastHexX();
+	WORD PopLastHexY();
+	DWORD GetPos(){return HEX_POS(HexX,HexY);}
+	void SetBaseType(DWORD type);
+	void SetDir(BYTE dir);
+	BYTE GetDir(){return CrDir;}
+	DWORD GetCrTypeAlias();
+
+	void Animate(DWORD anim1, DWORD anim2, Item* item);
+	void AnimateStay();
+	void Action(int action, int action_ext, Item* item, bool local_call = true);
+	void Process();
+
+	int GetCond(){return Cond;}
+	int GetCondExt(){return CondExt;}
+	void DrawStay(INTRECT r);
+	const char* GetName(){return Name.c_str();}
+	const char* GetPass(){return Pass;}
+
+	bool IsNpc(){return FLAG(Flags,FCRIT_NPC);}
+	bool IsPlayer(){return FLAG(Flags,FCRIT_PLAYER);}
+	bool IsChosen(){return Human;}
+	bool IsGmapRule(){return FLAG(Flags,FCRIT_RULEGROUP)!=0;}
+	bool IsOnline(){return FLAG(Flags,FCRIT_DISCONNECT)==0;}
+	bool IsOffline(){return FLAG(Flags,FCRIT_DISCONNECT)!=0;}
+	bool IsLife(){return Cond==COND_LIFE;}
+	bool IsLifeNone(){return Cond==COND_LIFE && CondExt==COND_LIFE_NONE;}
+	bool IsKnockout(){return Cond==COND_KNOCKOUT;}
+	bool IsDead(){return Cond==COND_DEAD;}
+	bool CheckFind(int find_type);
+	bool IsToTalk(){return IsNpc() && IsLifeNone() && Params[ST_DIALOG_ID];}
+	bool IsCombatMode(){return GetTimeout(TO_BATTLE)!=0;}
+	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetTimeout(TO_BATTLE));}
+
+	DWORD GetLook();
+	DWORD GetTalkDistance();
+	DWORD GetAttackDist();
+	DWORD GetUseDist();
+	DWORD GetMultihex();
+
 	int GetParam(DWORD index);
 	void ChangeParam(DWORD index);
 	void ProcessChangedParams();
-	DWORD GetMaxVolume(){return CRITTER_INV_VOLUME;}
+
 	int GetSkill(DWORD index){return GetParam(index);}
 	bool IsTagSkill(DWORD index){return Params[TAG_SKILL1]==index || Params[TAG_SKILL2]==index || Params[TAG_SKILL3]==index || Params[TAG_SKILL4]==index;}
 	bool IsPerk(DWORD index){return GetParam(index)!=0;}
@@ -124,18 +115,17 @@ public:
 	int GetReputation(DWORD index);
 	bool IsAddicted(){for(int i=ADDICTION_BEGIN;i<=ADDICTION_END;i++) if(GetParam(i)!=0) return true; return false;}
 	DWORD GetMaxWeightKg(){return GetParam(ST_CARRY_WEIGHT)/1000;}
+	DWORD GetMaxVolume(){return CRITTER_INV_VOLUME;}
 	DWORD GetCrType();
-	DWORD GetCrTypeAlias();
-	BYTE GetUse(){return ItemSlotMain->Data.Rate&0xF;}
-	BYTE GetFullRate(){return ItemSlotMain->Data.Rate;}
-	bool NextRateItem(bool prev);
-	BYTE GetAim(){return (ItemSlotMain->Data.Rate>>4)&0xF;}
-	bool IsAim(){return GetAim()>0;}
-	void SetAim(BYTE hit_location);
-	DWORD GetUseApCost(Item* item, BYTE rate);
-	ProtoItem* GetUnarmedItem(BYTE tree, BYTE priority);
+	DWORD GetTimeout(int timeout);
 
-	// Migrate to dll in future
+	bool IsInjured(){return IsDmgArm() || IsDmgLeg() || IsDmgEye();}
+	bool IsDmgEye(){return IsPerk(DAMAGE_EYE);}
+	bool IsDmgLeg(){return IsPerk(DAMAGE_RIGHT_LEG) || IsPerk(DAMAGE_LEFT_LEG);}
+	bool IsDmgTwoLeg(){return IsPerk(DAMAGE_RIGHT_LEG) && IsPerk(DAMAGE_LEFT_LEG);}
+	bool IsDmgArm(){return IsPerk(DAMAGE_RIGHT_ARM) || IsPerk(DAMAGE_LEFT_ARM);}
+	bool IsDmgTwoArm(){return IsPerk(DAMAGE_RIGHT_ARM) && IsPerk(DAMAGE_LEFT_ARM);}
+
 	int GetStrength(){int val=Params[ST_STRENGTH]+Params[ST_STRENGTH_EXT]; if(Params[PE_ADRENALINE_RUSH] && GetTimeout(TO_BATTLE) && Params[ST_CURRENT_HP]<=(Params[ST_MAX_LIFE]+Params[ST_STRENGTH]+Params[ST_ENDURANCE]*2)/2) val++; return CLAMP(val,1,10);}
 	int GetPerception(){int val=(IsDmgEye()?1:Params[ST_PERCEPTION]+Params[ST_PERCEPTION_EXT]); if(Params[TRAIT_NIGHT_PERSON]) val+=GetNightPersonBonus(); return CLAMP(val,1,10);}
 	int GetEndurance(){int val=Params[ST_ENDURANCE]+Params[ST_ENDURANCE_EXT]; return CLAMP(val,1,10);}
@@ -167,6 +157,7 @@ public:
 	int GetNightPersonBonus();
 
 	// Items
+public:
 	ItemPtrMap InvItems;
 	Item DefItemSlotMain;
 	Item DefItemSlotExt;
@@ -201,8 +192,27 @@ public:
 	int GetFreeVolume();
 	Item* GetRadio();
 	bool IsHaveLightSources();
+	Item* GetSlotUse(BYTE num_slot, BYTE& use);
+	int GetUsePic(BYTE num_slot);
+	bool IsItemAim(BYTE num_slot);
+	BYTE GetUse(){return ItemSlotMain->Data.Rate&0xF;}
+	BYTE GetFullRate(){return ItemSlotMain->Data.Rate;}
+	bool NextRateItem(bool prev);
+	BYTE GetAim(){return (ItemSlotMain->Data.Rate>>4)&0xF;}
+	bool IsAim(){return GetAim()>0;}
+	void SetAim(BYTE hit_location);
+	DWORD GetUseApCost(Item* item, BYTE rate);
+	ProtoItem* GetUnarmedItem(BYTE tree, BYTE priority);
+	ProtoItem* GetProtoMain(){return ItemSlotMain->Proto;}
+	ProtoItem* GetProtoExt(){return ItemSlotExt->Proto;}
+	ProtoItem* GetProtoArm(){return ItemSlotArmor->Proto;}
+	const char* GetMoneyStr();
+	Item* GetAmmoAvialble(Item* weap);
+	bool IsOverweight(){return GetItemsWeight()>GetParam(ST_CARRY_WEIGHT);}
+	bool IsDoubleOverweight(){return GetItemsWeight()>GetParam(ST_CARRY_WEIGHT)*2;}
 
 	// Moving
+public:
 	bool IsRunning;
 	WordPairVec MoveSteps;
 	int CurMoveStep;

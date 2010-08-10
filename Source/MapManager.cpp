@@ -465,7 +465,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 			Map* map=CreateMap(map_data.MapPid,loc,map_data.MapId);
 			if(!map)
 			{
-				WriteLog("Error - can't create map, map id<%u>, map pid<%u>.",map_data.MapId,map_data.MapPid);
+				WriteLog("Error - can't create map, map id<%u>, map pid<%u>.\n",map_data.MapId,map_data.MapPid);
 				return false;
 			}
 			if(map_data.MapId>lastMapId) lastMapId=map_data.MapId;
@@ -1691,11 +1691,11 @@ void MapManager::TraceBullet(TraceData& trace)
 	WORD tx=trace.EndHx;
 	WORD ty=trace.EndHy;
 
-	int dist=trace.Dist;
+	DWORD dist=trace.Dist;
 	if(!dist) dist=DistGame(hx,hy,tx,ty);
 
 	float nx=3.0f*(float(tx)-float(hx));
-	float ny=(float(ty)-float(hy))*SQRT3T2_FLOAT-(float(tx%2)-float(hx%2))*SQRT3_FLOAT;
+	float ny=(float(ty)-float(hy))*SQRT3T2_FLOAT-(float(tx&1)-float(hx&1))*SQRT3_FLOAT;
 	float dir=180.0f+RAD2DEG*atan2f(ny,nx);
 
 	if(trace.Angle!=0.0f)
@@ -1720,9 +1720,9 @@ void MapManager::TraceBullet(TraceData& trace)
 	WORD t1x,t1y,t2x,t2y;
 
 	float x1=3.0f*float(hx)+BIAS_FLOAT;
-	float y1=SQRT3T2_FLOAT*float(hy)-SQRT3_FLOAT*(float(hx%2))+BIAS_FLOAT;
+	float y1=SQRT3T2_FLOAT*float(hy)-SQRT3_FLOAT*(float(hx&1))+BIAS_FLOAT;
 	float x2=3.0f*float(tx)+BIAS_FLOAT+BIAS_FLOAT;
-	float y2=SQRT3T2_FLOAT*float(ty)-SQRT3_FLOAT*(float(tx%2))+BIAS_FLOAT;
+	float y2=SQRT3T2_FLOAT*float(ty)-SQRT3_FLOAT*(float(tx&1))+BIAS_FLOAT;
 	if(trace.Angle!=0.0f)
 	{
 		x2-=x1;
@@ -1743,7 +1743,7 @@ void MapManager::TraceBullet(TraceData& trace)
 	trace.IsHaveLastPassed=false;
 	trace.IsTeammateFounded=false;
 	bool last_passed_ok=false;
-	for(int i=0;;i++)
+	for(DWORD i=0;;i++)
 	{
 		if(i>=dist)
 		{
@@ -1758,9 +1758,9 @@ void MapManager::TraceBullet(TraceData& trace)
 		MoveHexByDir(t1x,t1y,dir1,maxhx,maxhy);
 		MoveHexByDir(t2x,t2y,dir2,maxhx,maxhy);
 		c1x=3*float(t1x);
-		c1y=SQRT3T2_FLOAT*float(t1y)-(float(t1x%2))*SQRT3_FLOAT;
+		c1y=SQRT3T2_FLOAT*float(t1y)-(float(t1x&1))*SQRT3_FLOAT;
 		c2x=3*float(t2x);
-		c2y=SQRT3T2_FLOAT*float(t2y)-(float(t2x%2))*SQRT3_FLOAT;
+		c2y=SQRT3T2_FLOAT*float(t2y)-(float(t2x&1))*SQRT3_FLOAT;
 		dist1=dx*(y1-c1y)-dy*(x1-c1x);
 		dist2=dx*(y1-c2y)-dy*(x1-c2x);
 		dist1=(dist1>0?dist1:-dist1);
@@ -1842,6 +1842,7 @@ int MapManager::FindPath(PathFindData& pfd)
 	WORD from_hy=pfd.FromY;
 	WORD to_hx=pfd.ToX;
 	WORD to_hy=pfd.ToY;
+	DWORD multihex=pfd.Multihex;
 	DWORD cut=pfd.Cut;
 	DWORD trace=pfd.Trace;
 	bool is_run=pfd.IsRun;
@@ -1862,12 +1863,11 @@ int MapManager::FindPath(PathFindData& pfd)
 	if(!cut && FLAG(map->GetHexFlags(to_hx,to_hy),FH_NOWAY)) return FPATH_HEX_BUSY;
 
 	// Ring check
-	if(cut<=1)
+	if(cut<=1 && !multihex)
 	{
-		short* rsx;
-		short* rsy;
-		if(to_hx%2) {rsx=(short*)&SXNChet[1];rsy=(short*)&SYNChet[1];}
-		else {rsx=(short*)&SXChet[1];rsy=(short*)&SYChet[1];}
+		bool odd=(to_hx&1)!=0;
+		short* rsx=(odd?SXOdd:SXEven);
+		short* rsy=(odd?SYOdd:SYEven);
 
 		int i;
 		for(i=0;i<6;i++,rsx++,rsy++)
@@ -1915,10 +1915,10 @@ int MapManager::FindPath(PathFindData& pfd)
 
 	// Begin search
 	int p=0,p_togo=1;
-	int cx,cy,nx,ny;
+	WORD cx,cy;
 	while(true)
 	{
-		for(int i=0;i<p_togo;++i,++p)
+		for(int i=0;i<p_togo;i++,p++)
 		{
 			cx=coords[p].first;
 			cy=coords[p].second;
@@ -1927,40 +1927,76 @@ int MapManager::FindPath(PathFindData& pfd)
 			if(CheckDist(cx,cy,to_hx,to_hy,cut)) goto label_FindOk;
 			if(++numindex>FPATH_MAX_PATH) return FPATH_TOOFAR;
 
-			for(int j=1;j<=6;++j)
+			bool odd=(cx&1)!=0;
+			for(int j=0;j<6;j++)
 			{
-				if(cx%2)
-				{
-					nx=cx+SXNChet[j];
-					ny=cy+SYNChet[j];
-				}
-				else
-				{
-					nx=cx+SXChet[j];
-					ny=cy+SYChet[j];
-				}
+				short nx=(short)cx+(odd?SXOdd[j]:SXEven[j]);
+				short ny=(short)cy+(odd?SYOdd[j]:SYEven[j]);
+				if(nx<0 || ny<0 || nx>=maxhx || ny>=maxhy) continue;
 
-				if(nx>=0 && ny>=0 && nx<maxhx && ny<maxhy && !GRID(nx,ny))
+				short& g=GRID(nx,ny);
+				if(g) continue;
+
+				if(!multihex)
 				{
 					WORD flags=map->GetHexFlags(nx,ny);
 					if(!FLAG(flags,FH_NOWAY))
 					{
 						coords.push_back(WordPairVecVal(nx,ny));
-						GRID(nx,ny)=numindex;
+						g=numindex;
 					}
 					else if(check_gag_items && FLAG(flags,FH_GAG_ITEM<<8))
 					{
 						gag_coords.push_back(WordPairVecVal(nx,ny));
-						GRID(nx,ny)=numindex|0x4000;
+						g=numindex|0x4000;
 					}
 					else if(check_cr && FLAG(flags,FH_CRITTER<<8))
 					{
 						cr_coords.push_back(WordPairVecVal(nx,ny));
-						GRID(nx,ny)=numindex|0x8000;
+						g=numindex|0x8000;
 					}
 					else
 					{
-						GRID(nx,ny)=-1;
+						g=-1;
+					}
+				}
+				else
+				{
+					/*
+					// Multihex
+					// Base hex
+					int hx_=nx,hy_=ny;
+					for(DWORD k=0;k<multihex;k++) MoveHexByDirUnsafe(hx_,hy_,j);
+					if(hx_<0 || hy_<0 || hx_>=maxhx || hy_>=maxhy) continue;
+					//if(!IsHexPassed(hx_,hy_)) return false;
+
+					// Clock wise hexes
+					int dir_=(j+2)%6;
+					int hx__=hx_,hy__=hy_;
+					for(DWORD k=0;k<multihex;k++)
+					{
+						MoveHexByDirUnsafe(hx__,hy__,dir_);
+						//if(!IsHexPassed(hx__,hy__)) return false;
+					}
+
+					// Counter clock wise hexes
+					dir_=(j+4)%6;
+					hx__=hx_,hy__=hy_;
+					for(DWORD k=0;k<multihex;k++)
+					{
+						MoveHexByDirUnsafe(hx__,hy__,dir_);
+						//if(!IsHexPassed(hx__,hy__)) return false;
+					}
+					*/
+
+					if(map->IsMovePassed(nx,ny,j,multihex))
+					{
+						coords.push_back(WordPairVecVal(nx,ny));
+						g=numindex;
+					}
+					else
+					{
+						g=-1;
 					}
 				}
 			}
@@ -1969,9 +2005,9 @@ int MapManager::FindPath(PathFindData& pfd)
 		// Add gag hex after some distance
 		if(gag_coords.size())
 		{
-			int last_index=GRID(coords.back().first,coords.back().second);
+			short last_index=GRID(coords.back().first,coords.back().second);
 			WordPair& xy=gag_coords.front();
-			int gag_index=GRID(xy.first,xy.second)^0x4000;
+			short gag_index=GRID(xy.first,xy.second)^0x4000;
 			if(gag_index+10<last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
 			{
 				GRID(xy.first,xy.second)=gag_index;
@@ -2006,9 +2042,6 @@ int MapManager::FindPath(PathFindData& pfd)
 	}
 
 label_FindOk:
-	WORD x1=cx;
-	WORD y1=cy;
-
 	if(++pathNumCur>=FPATH_DATA_SIZE) pathNumCur=1;
 	PathStepVec& path=pathesPool[pathNumCur];
 	path.resize(numindex-1);
@@ -2017,12 +2050,12 @@ label_FindOk:
 	static bool switcher=false;
 	while(numindex>1)
 	{
-		if(numindex%2) switcher=!switcher;
+		if(numindex&1) switcher=!switcher;
 		numindex--;
 		PathStep& ps=path[numindex-1];
-		ps.HexX=x1;
-		ps.HexY=y1;
-		int dir=FindPathGrid(x1,y1,numindex,switcher);
+		ps.HexX=cx;
+		ps.HexY=cy;
+		int dir=FindPathGrid(cx,cy,numindex,switcher);
 		if(dir==-1) return FPATH_ERROR1;
 		ps.Dir=dir;
 	}
@@ -2047,7 +2080,7 @@ label_FindOk:
 			if(check_cr && map->IsFlagCritter(ps.HexX,ps.HexY,false))
 			{
 				Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false);
-				if(!cr) continue;
+				if(!cr || cr==pfd.FromCritter) continue;
 				pfd.GagCritter=cr;
 				path.resize(i);
 				break;
@@ -2132,7 +2165,7 @@ int MapManager::FindPathGrid(WORD& hx, WORD& hy, int index, bool switcher)
 {
 	if(switcher)
 	{
-		if(hx%2)
+		if(hx&1)
 		{
 			if(GRID(hx-1,hy-1)==index) { hx--; hy--; return GetDir(hx,hy,hx+1,hy+1); } // 0
 			if(GRID(hx,hy-1)==index)   { hy--; return GetDir(hx,hy,hx,hy+1); } // 5
@@ -2153,7 +2186,7 @@ int MapManager::FindPathGrid(WORD& hx, WORD& hy, int index, bool switcher)
 	}
 	else
 	{
-		if(hx%2)
+		if(hx&1)
 		{
 			if(GRID(hx-1,hy)==index)   { hx--; return GetDir(hx,hy,hx+1,hy); } // 1
 			if(GRID(hx+1,hy-1)==index) { hx++; hy--; return GetDir(hx,hy,hx-1,hy+1); } // 4
@@ -2278,14 +2311,17 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWOR
 
 		// Local
 		if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) return false;
-		if(!map->FindStartHex(hx,hy,radius,true) && !map->FindStartHex(hx,hy,radius,false)) return false;
+
+		DWORD multihex=cr->GetMultihex();
+		if(!map->FindStartHex(hx,hy,multihex,radius,true) && !map->FindStartHex(hx,hy,multihex,radius,false)) return false;
 
 		cr->LockMapTransfers++; // Transfer begin critical section
 		cr->Data.Dir=(dir>5?0:dir);
-		map->UnSetFlagCritter(old_hx,old_hy,cr->IsDead());
+		bool is_dead=cr->IsDead();
+		map->UnsetFlagCritter(old_hx,old_hy,multihex,is_dead);
 		cr->Data.HexX=hx;
 		cr->Data.HexY=hy;
-		map->SetFlagCritter(hx,hy,cr->IsDead());
+		map->SetFlagCritter(hx,hy,multihex,is_dead);
 		cr->SetBreakTime(0);
 		cr->Send_ParamOther(OTHER_TELEPORT,(cr->GetHexX()<<16)|(cr->GetHexY()));
 		cr->ClearVisible();
@@ -2355,7 +2391,9 @@ bool MapManager::AddCrToMap(Critter* cr, Map* map, WORD tx, WORD ty, DWORD radiu
 	else
 	{
 		if(tx>=map->GetMaxHexX() || ty>=map->GetMaxHexY()) return false;
-		if(!map->FindStartHex(tx,ty,radius,true) && !map->FindStartHex(tx,ty,radius,false)) return false;
+
+		DWORD multihex=cr->GetMultihex();
+		if(!map->FindStartHex(tx,ty,multihex,radius,true) && !map->FindStartHex(tx,ty,multihex,radius,false)) return false;
 
 		cr->LockMapTransfers++;
 		cr->SetTimeout(TO_BATTLE,0);
@@ -2403,7 +2441,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map, WORD hex_x, WORD hex_y)
 			(*it)->EventHideCritter(cr);
 		cr->ClearVisible();
 		map->EraseCritter(cr);
-		map->UnSetFlagCritter(hex_x,hex_y,cr->IsDead());
+		map->UnsetFlagCritter(hex_x,hex_y,cr->GetMultihex(),cr->IsDead());
 		if(map->MapLocation->IsToGarbage()) RunLocGarbager();
 		cr->LockMapTransfers--;
 	}

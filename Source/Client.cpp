@@ -518,25 +518,25 @@ void FOClient::LookBordersPrepare()
 	ShootBorders.clear();
 	if(HexMngr.IsMapLoaded() && Chosen)
 	{
-		int dist=Chosen->GetLook();
+		DWORD dist=Chosen->GetLook();
 		WORD base_hx=Chosen->GetHexX();
 		WORD base_hy=Chosen->GetHexY();
 		int hx=base_hx;
 		int hy=base_hy;
 		int dir=Chosen->GetDir();
-		int dist_shoot=Chosen->GetAttackMaxDist();
+		DWORD dist_shoot=Chosen->GetAttackDist();
 		WORD maxhx=HexMngr.GetMaxHexX();
 		WORD maxhy=HexMngr.GetMaxHexY();
 		const int dirs[6]={2,3,4,5,0,1};
 		bool seek_start=true;
 		for(int i=0;i<6;i++)
 		{
-			for(int j=0;j<dist;j++)
+			for(DWORD j=0;j<dist;j++)
 			{
 				if(seek_start)
 				{
 					// Move to start position
-					for(int l=0;l<dist;l++) MoveHexByDirUnsafe(hx,hy,0);
+					for(DWORD l=0;l<dist;l++) MoveHexByDirUnsafe(hx,hy,0);
 					seek_start=false;
 					j=-1;
 				}
@@ -553,7 +553,7 @@ void FOClient::LookBordersPrepare()
 					int dir_=GetFarDir(base_hx,base_hy,hx_,hy_);
 					int ii=(dir>dir_?dir-dir_:dir_-dir);
 					if(ii>3) ii=6-ii;
-					int dist_=dist-dist*GameOpt.LookDir[ii]/100;
+					DWORD dist_=dist-dist*GameOpt.LookDir[ii]/100;
 					WordPair block;
 					HexMngr.TraceBullet(base_hx,base_hy,hx_,hy_,dist_,0.0f,NULL,false,NULL,0,NULL,&block,NULL,false);
 					hx_=block.first;
@@ -570,7 +570,7 @@ void FOClient::LookBordersPrepare()
 
 				WORD hx__=hx_;
 				WORD hy__=hy_;
-				int dist_look=DistGame(base_hx,base_hy,hx_,hy_);
+				DWORD dist_look=DistGame(base_hx,base_hy,hx_,hy_);
 				WordPair block;
 				HexMngr.TraceBullet(base_hx,base_hy,hx_,hy_,min(dist_look,dist_shoot),0.0f,NULL,false,NULL,0,NULL,&block,NULL,true);
 				hx__=block.first;
@@ -1120,8 +1120,8 @@ label_TryChangeLang:
 					}
 				case DIK_F: if(GetActiveScreen()==SCREEN__FIX_BOY) {TryExit(); continue;} break;
 				case DIK_I: if(GetActiveScreen()==SCREEN__INVENTORY) {TryExit(); continue;} break;
-				case DIK_Q: DrawLookBorders=!DrawLookBorders; RebuildLookBorders=true; break;
-				case DIK_W: DrawShootBorders=!DrawShootBorders; RebuildLookBorders=true; break;
+				case DIK_Q: if(IsMainScreen(SCREEN_GAME) && GetActiveScreen()==SCREEN_NONE) {DrawLookBorders=!DrawLookBorders; RebuildLookBorders=true;} break;
+				case DIK_W: if(IsMainScreen(SCREEN_GAME) && GetActiveScreen()==SCREEN_NONE) {DrawShootBorders=!DrawShootBorders; RebuildLookBorders=true;} break;
 				case DIK_SPACE: if(Singleplayer) SingleplayerData.Pause=!SingleplayerData.Pause; break;
 				default: break;
 				}
@@ -3900,9 +3900,11 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
 	BYTE cond,cond_ext;
 	DWORD flags;
+	short multihex;
 	Bin >> cond;
 	Bin >> cond_ext;
 	Bin >> flags;
+	Bin >> multihex;
 
 	// Npc
 	WORD npc_pid;
@@ -3948,6 +3950,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 		cr->Cond=cond;
 		cr->CondExt=cond_ext;
 		cr->Flags=flags;
+		cr->Multihex=multihex;
 		memcpy(cr->Params,params,sizeof(params));
 
 		if(is_npc)
@@ -4732,8 +4735,24 @@ void FOClient::Net_OnCritterParam()
 	}
 	else if(index==OTHER_BASE_TYPE)
 	{
+		if(cr->Multihex<0 && CritType::GetMultihex(cr->GetCrType())!=CritType::GetMultihex(value))
+		{
+			HexMngr.SetMultihex(cr->GetHexX(),cr->GetHexY(),CritType::GetMultihex(cr->GetCrType()),false);
+			HexMngr.SetMultihex(cr->GetHexX(),cr->GetHexY(),CritType::GetMultihex(value),true);
+		}
+
 		cr->SetBaseType(value);
 		if(!cr->IsAnim()) cr->Action(ACTION_REFRESH,0,NULL,false);
+	}
+	else if(index==OTHER_MULTIHEX)
+	{
+		int old_mh=cr->GetMultihex();
+		cr->Multihex=value;
+		if(old_mh!=cr->GetMultihex())
+		{
+			HexMngr.SetMultihex(cr->GetHexX(),cr->GetHexY(),old_mh,false);
+			HexMngr.SetMultihex(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex(),true);
+		}
 	}
 	else if(index==OTHER_YOU_TURN)
 	{
@@ -4909,8 +4928,25 @@ void FOClient::Net_OnChosenParam()
 		break;
 	case OTHER_BASE_TYPE:
 		{
+			if(Chosen->Multihex<0 && CritType::GetMultihex(Chosen->GetCrType())!=CritType::GetMultihex(value))
+			{
+				HexMngr.SetMultihex(Chosen->GetHexX(),Chosen->GetHexY(),CritType::GetMultihex(Chosen->GetCrType()),false);
+				HexMngr.SetMultihex(Chosen->GetHexX(),Chosen->GetHexY(),CritType::GetMultihex(value),true);
+			}
+
 			Chosen->SetBaseType(value);
 			if(!Chosen->IsAnim()) Chosen->Action(ACTION_REFRESH,0,NULL,false);
+		}
+		break;
+	case OTHER_MULTIHEX:
+		{
+			int old_mh=Chosen->GetMultihex();
+			Chosen->Multihex=value;
+			if(old_mh!=Chosen->GetMultihex())
+			{
+				HexMngr.SetMultihex(Chosen->GetHexX(),Chosen->GetHexY(),old_mh,false);
+				HexMngr.SetMultihex(Chosen->GetHexX(),Chosen->GetHexY(),Chosen->GetMultihex(),true);
+			}
 		}
 		break;
 	case OTHER_YOU_TURN:
@@ -5203,28 +5239,23 @@ void FOClient::Net_OnEffect()
 	Bin >> hy;
 	Bin >> radius;
 
-	if(radius>MAX_RADIUS)
+	// Base hex effect
+	HexMngr.RunEffect(eff_pid,hx,hy,hx,hy);
+
+	// Radius hexes effect
+	if(radius>MAX_HEX_OFFSET) radius=MAX_HEX_OFFSET;
+	int cnt=NumericalNumber(radius)*6;
+	bool odd=(hx&1)!=0;
+	short* sx=(odd?SXOdd:SXEven);
+	short* sy=(odd?SYOdd:SYEven);
+	int maxhx=HexMngr.GetMaxHexX();
+	int maxhy=HexMngr.GetMaxHexY();
+
+	for(int i=0;i<cnt;i++)
 	{
-		WriteLog(__FUNCTION__" - Radius<%u> garather than<%u>. Set to max.\n",radius,MAX_RADIUS);
-		radius=MAX_RADIUS;
-	}
-
-	int cnt=1;
-	if(radius==1) cnt=7;
-	else if(radius==2) cnt=19;
-	else if(radius==3) cnt=37;
-	short* sx=((hx%2)?(short*)SXNChet:(short*)SXChet);
-	short* sy=((hx%2)?(short*)SYNChet:(short*)SYChet);
-
-	for(int i=0;i<cnt;i++,sx++,sy++)
-	{
-		if(hx+*sx>=HexMngr.GetMaxHexX() || hy+*sy>=HexMngr.GetMaxHexY()) continue;
-
-		if(!HexMngr.RunEffect(eff_pid,hx+*sx,hy+*sy,hx+*sx,hy+*sy))
-		{
-			WriteLog(__FUNCTION__" - Run effect fail, pid<%u>.\n",eff_pid);
-			continue;
-		}
+		int ex=hx+sx[i];
+		int ey=hy+sy[i];
+		if(ex>=0 && ey>=0 && ex<maxhx && ey<maxhy) HexMngr.RunEffect(eff_pid,ex,ey,ex,ey);
 	}
 }
 
@@ -7273,7 +7304,7 @@ void FOClient::CrittersProcess()
 			WORD hy=act.Param[1];
 			bool is_run=(act.Param[2]&0xFF)!=0;
 			bool wait_click=(act.Param[2]>>8)!=0;
-			BYTE cut=act.Param[3];
+			int cut=act.Param[3];
 			DWORD start_tick=act.Param[4];
 
 			if(!HexMngr.IsMapLoaded()) break;
@@ -7325,7 +7356,6 @@ void FOClient::CrittersProcess()
 			}
 
 			// Find steps
-			int result=FP_OK;
 			if(!skip_find)
 			{
 				//MoveDirs.resize(min(MoveDirs.size(),4)); // TODO:
@@ -7347,17 +7377,17 @@ void FOClient::CrittersProcess()
 
 				WORD hx_=hx;
 				WORD hy_=hy;
-				result=HexMngr.CutPath(from_hx,from_hy,hx_,hy_,cut);
-				if(result!=FP_OK)
+				bool result=HexMngr.CutPath(Chosen,from_hx,from_hy,hx_,hy_,cut);
+				if(!result)
 				{
-					int max_cut=DistGame(from_hx,from_hy,hx_,hy_);
-					if(max_cut>cut+1) result=HexMngr.CutPath(from_hx,from_hy,hx_,hy_,++cut);
-					if(result!=FP_OK) goto label_EndMove;
+					DWORD max_cut=DistGame(from_hx,from_hy,hx_,hy_);
+					if(max_cut>cut+1) result=HexMngr.CutPath(Chosen,from_hx,from_hy,hx_,hy_,++cut);
+					if(!result) goto label_EndMove;
 				}
 
 				ChosenAction[0].Param[3]=cut;
 				ByteVec steps;
-				if(HexMngr.FindStep(from_hx,from_hy,hx_,hy_,steps)==FP_OK)
+				if(HexMngr.FindPath(Chosen,from_hx,from_hy,hx_,hy_,steps,-1))
 				{
 					for(int i=0,j=steps.size();i<j;i++) MoveDirs.push_back(steps[i]);
 				}
@@ -7589,7 +7619,7 @@ label_EndMove:
 					hy=target_item->GetHexY();
 				}
 
-				int max_dist=(is_attack?Chosen->GetAttackMaxDist():1);
+				DWORD max_dist=(is_attack?Chosen->GetAttackDist():Chosen->GetUseDist())+(target_cr?target_cr->GetMultihex():0);
 
 				// Target find
 				bool need_move=false;
@@ -7597,13 +7627,13 @@ label_EndMove:
 				else need_move=!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,max_dist);
 				if(need_move) 
 				{
-					// If target too far, then move to her	
+					// If target too far, then move to it	
 					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,max_dist))
 					{
 						if(IsTurnBased) break;
 						if(target_cr) SetAction(CHOSEN_MOVE_TO_CRIT,target_cr->GetId(),0,0/*walk*/,max_dist);
 						else SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,max_dist,0);
-						if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,max_dist)==FP_OK) AddActionBack(act);
+						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,max_dist)) AddActionBack(act);
 						return;
 					}
 					AddMess(FOMB_GAME,MsgGame->GetStr(STR_FINDPATH_AIMBLOCK));
@@ -7774,12 +7804,13 @@ label_EndMove:
 				case SK_DOCTOR:
 				case SK_SCIENCE:
 				case SK_REPAIR:
-					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),1))
+					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetUseDist()+cr->GetMultihex()))
 					{
 						if(IsTurnBased) break;
-						SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,1);
+						DWORD dist=Chosen->GetUseDist()+cr->GetMultihex();
+						SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,dist);
 						WORD hx=cr->GetHexX(),hy=cr->GetHexY();
-						if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,1)==FP_OK) AddActionBack(act);
+						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,dist)) AddActionBack(act);
 						return;
 					}
 					break;
@@ -7843,12 +7874,12 @@ label_EndMove:
 
 				if(HexMngr.IsMapLoaded())
 				{
-					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY(),1))
+					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY(),Chosen->GetUseDist()))
 					{
 						if(IsTurnBased) break;
-						SetAction(CHOSEN_MOVE,item->GetHexX(),item->GetHexY(),0/*walk*/,1,0);
+						SetAction(CHOSEN_MOVE,item->GetHexX(),item->GetHexY(),0/*walk*/,Chosen->GetUseDist(),0);
 						WORD hx=item->GetHexX(),hy=item->GetHexY();
-						if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,1)==FP_OK) AddActionBack(act);
+						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 						return;
 					}
 
@@ -7884,11 +7915,11 @@ label_EndMove:
 			if(!item) break;
 			//if(!item->IsCanUse()) break;
 
-			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,1))
+			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
 			{
 				if(IsTurnBased) break;
-				SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,1,0);
-				if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,1)==FP_OK) AddActionBack(act);
+				SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,Chosen->GetUseDist(),0);
+				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 				return;
 			}
 
@@ -7925,17 +7956,17 @@ label_EndMove:
 				break;
 			}
 
-			DWORD talk_distance=cr->GetTalkDistance();
+			DWORD talk_distance=cr->GetTalkDistance()+Chosen->GetMultihex();
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),talk_distance))
 			{
 				if(IsTurnBased) break;
 				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,talk_distance);
 				WORD hx=cr->GetHexX(),hy=cr->GetHexY();
-				if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,talk_distance)==FP_OK) AddActionBack(act);
+				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,talk_distance)) AddActionBack(act);
 				return;
 			}
 
-			if(!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),talk_distance,0.0f,cr,false,NULL,0,NULL,NULL,NULL,true))
+			if(!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),talk_distance+Chosen->GetMultihex(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true))
 			{
 				AddMess(FOMB_GAME,MsgGame->GetStr(STR_FINDPATH_AIMBLOCK));
 				break;
@@ -7965,11 +7996,11 @@ label_EndMove:
 			if(!item) break;
 			if(!item->IsCanUse()) break;
 
-			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,1))
+			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
 			{
 				if(IsTurnBased) break;
-				SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,1,0);
-				if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,1)==FP_OK) AddActionBack(act);
+				SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,Chosen->GetUseDist(),0);
+				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 				AddActionBack(act);
 				return;
 			}
@@ -8003,13 +8034,13 @@ label_EndMove:
 			if(is_loot && (!cr->IsDead() || cr->IsPerk(MODE_NO_LOOT))) break;
 			if(!is_loot && (!cr->IsLife() || cr->IsPerk(MODE_NO_PUSH))) break;
 
-			int dist=(is_loot?LOOT_DIST:PUSH_DIST);
+			DWORD dist=Chosen->GetUseDist()+cr->GetMultihex();
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),dist))
 			{
 				if(IsTurnBased) break;
 				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,dist);
 				WORD hx=cr->GetHexX(),hy=cr->GetHexY();
-				if(HexMngr.CutPath(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,dist)==FP_OK) AddActionBack(act);
+				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,dist)) AddActionBack(act);
 				return;
 			}
 
@@ -9351,6 +9382,12 @@ DWORD FOClient::SScriptFunc::Crit_get_ContourColor(CritterCl* cr)
 	return cr->ContourColor;
 }
 
+DWORD FOClient::SScriptFunc::Crit_GetMultihex(CritterCl* cr)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	return cr->GetMultihex();
+}
+
 bool FOClient::SScriptFunc::Item_IsGrouped(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
@@ -9547,14 +9584,25 @@ void FOClient::SScriptFunc::Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD
 	to_hy=pre_block.second;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetPathLength(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
+DWORD FOClient::SScriptFunc::Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
 {
 	if(from_hx>=Self->HexMngr.GetMaxHexX() || from_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid from hexes args.");
 	if(to_hx>=Self->HexMngr.GetMaxHexX() || to_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid to hexes args.");
 
-	if(cut && Self->HexMngr.CutPath(from_hx,from_hy,to_hx,to_hy,cut)!=FP_OK) return 0;
+	if(cut>0 && !Self->HexMngr.CutPath(NULL,from_hx,from_hy,to_hx,to_hy,cut)) return 0;
 	ByteVec steps;
-	Self->HexMngr.FindStep(from_hx,from_hy,to_hx,to_hy,steps);
+	if(!Self->HexMngr.FindPath(NULL,from_hx,from_hy,to_hx,to_hy,steps,-1)) steps.clear();
+	return steps.size();
+}
+
+DWORD FOClient::SScriptFunc::Global_GetPathLengthCr(CritterCl* cr, WORD to_hx, WORD to_hy, DWORD cut)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
+	if(to_hx>=Self->HexMngr.GetMaxHexX() || to_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid to hexes args.");
+
+	if(cut>0 && !Self->HexMngr.CutPath(cr,cr->GetHexX(),cr->GetHexY(),to_hx,to_hy,cut)) return 0;
+	ByteVec steps;
+	if(!Self->HexMngr.FindPath(cr,cr->GetHexX(),cr->GetHexY(),to_hx,to_hy,steps,-1)) steps.clear();
 	return steps.size();
 }
 
@@ -9950,7 +9998,7 @@ BYTE FOClient::SScriptFunc::Global_GetDirection(WORD from_x, WORD from_y, WORD t
 BYTE FOClient::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset)
 {
 	float nx=3.0f*(float(tx)-float(hx));
-	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx%2)-float(hx%2));
+	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx&1)-float(hx&1));
 	float dir=180.0f+RAD2DEG*atan2(ny,nx);
 	dir+=offset;
 	if(dir>360.0f) dir-=360.0f;

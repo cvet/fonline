@@ -208,7 +208,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Maps
 #define TIME_CAN_FOLLOW_GM      (20000) //Can less than Map timeout
-#define MAX_RADIUS              (3)
 
 // Critter find types
 #define FIND_LIFE               (0x01)
@@ -217,10 +216,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define FIND_ONLY_PLAYERS       (0x10)
 #define FIND_ONLY_NPC           (0x20)
 #define FIND_ALL                (0x0F)
-
-#define LOOT_DIST				(1)
-#define PUSH_DIST				(1)
-#define STEAL_EXP_TICK          (30000)
 
 // Proto maps
 #define MAP_PROTO_EXT			".map"
@@ -418,8 +413,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 // Coordinates
 #define MAXHEX_DEF              (200)
 #define MAXHEX_MIN              (10)
-#define MAXHEX_MAX              (60000)
-#define HEX_POS(hx,hy)          ((hy)*MAXHEX_MAX*3+(hx)*3) // Todo: bad precision on big values
+#define MAXHEX_MAX              (30000)
+#define HEX_POS(hx,hy)          ((hy)*MAXHEX_MAX*3+(hx)*3)
 #define HEX_X_POS(pos)          ((pos)%(MAXHEX_MAX*3)/3)
 #define HEX_Y_POS(pos)          ((pos)/(MAXHEX_MAX*3))
 
@@ -823,9 +818,10 @@ struct ScoreType
 #define OTHER_WAIT_TIME             (1+MAX_PARAMS)
 #define OTHER_FLAGS                 (2+MAX_PARAMS)
 #define OTHER_BASE_TYPE             (3+MAX_PARAMS)
-#define OTHER_YOU_TURN              (4+MAX_PARAMS)
-#define OTHER_CLEAR_MAP             (5+MAX_PARAMS)
-#define OTHER_TELEPORT              (6+MAX_PARAMS)
+#define OTHER_MULTIHEX              (4+MAX_PARAMS)
+#define OTHER_YOU_TURN              (5+MAX_PARAMS)
+#define OTHER_CLEAR_MAP             (6+MAX_PARAMS)
+#define OTHER_TELEPORT              (7+MAX_PARAMS)
 
 // Critter actions
 // Flags for chosen:

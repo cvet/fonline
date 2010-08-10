@@ -36,6 +36,7 @@ void Field::Clear()
 	IsNotPassed=false;
 	IsNotRaked=false;
 	IsNoLight=false;
+	IsMultihex=false;
 
 #ifdef FINLINE_MAPPER
 	SelTile=0;
@@ -69,7 +70,7 @@ void Field::ProcessCache()
 	IsScen=false;
 	IsExitGrid=false;
 	Corner=0;
-	IsNotPassed=(Crit!=NULL);
+	IsNotPassed=(Crit!=NULL || IsMultihex);
 	IsNotRaked=false;
 	IsNoLight=false;
 	ScrollBlock=false;
@@ -566,7 +567,7 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 
 	float sx=0;
 	float sy=0;
-	int dist=0;
+	DWORD dist=0;
 
 	if(from_hx!=to_hx || from_hy!=to_hy)
 	{
@@ -632,7 +633,19 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 		Field& f=GetField(hx,hy);
 		cursorX=f.ScrX+1-1;
 		cursorY=f.ScrY-1-1;
-		if(f.IsNotPassed)
+
+		CritterCl* chosen=GetChosen();
+		if(!chosen)
+		{
+			drawCursorX=-1;
+			return;
+		}
+
+		int cx=chosen->GetHexX();
+		int cy=chosen->GetHexY();
+		DWORD mh=chosen->GetMultihex();
+
+		if((cx==hx && cy==hy) || (f.IsNotPassed && (!mh || !CheckDist(cx,cy,hx,hy,mh))))
 		{
 			drawCursorX=-1;
 		}
@@ -642,27 +655,23 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 			static WORD last_hx=0,last_hy=0;
 			if(refresh || hx!=last_hx || hy!=last_hy)
 			{
-				CritterCl* chosen=GetChosen();
-				if(chosen)
+				bool is_tb=chosen->IsTurnBased();
+				if(chosen->IsLife() && (!is_tb || chosen->GetAllAp()>0))
 				{
-					bool is_tb=chosen->IsTurnBased();
-					if(chosen->IsLife() && (!is_tb || chosen->GetAllAp()>0))
-					{
-						ByteVec steps;
-						int res=FindStep(chosen->GetHexX(),chosen->GetHexY(),hx,hy,steps);
-						if(res!=FP_OK) drawCursorX=-1;
-						else if(!is_tb) drawCursorX=(show_steps?steps.size():0);
-						else
-						{
-							drawCursorX=steps.size();
-							if(!show_steps && drawCursorX>chosen->GetAllAp()) drawCursorX=-1;
-						} 
-					}
+					ByteVec steps;
+					if(!FindPath(chosen,cx,cy,hx,hy,steps,-1)) drawCursorX=-1;
+					else if(!is_tb) drawCursorX=(show_steps?steps.size():0);
 					else
 					{
-						drawCursorX=-1;
-					}
+						drawCursorX=steps.size();
+						if(!show_steps && drawCursorX>chosen->GetAllAp()) drawCursorX=-1;
+					} 
 				}
+				else
+				{
+					drawCursorX=-1;
+				}
+
 				last_hx=hx;
 				last_hy=hy;
 				last_cur_x=drawCursorX;
@@ -790,8 +799,8 @@ void HexManager::RebuildMap(int rx, int ry)
 				{
 					int rofx=nx;
 					int rofy=ny;
-					if(rofx%2) rofx--;
-					if(rofy%2) rofy--;
+					if(rofx&1) rofx--;
+					if(rofy&1) rofy--;
 
 					if(GetField(rofx,rofy).RoofId<2)
 					{
@@ -1053,7 +1062,7 @@ void HexManager::TraceLight(WORD from_hx, WORD from_hy, WORD& hx, WORD& hy, int 
 		int ox=0;
 		int oy=0;
 
-		if(old_curx1i%2)
+		if(old_curx1i&1)
 		{
 			if(old_curx1i+1==curx1i && old_cury1i+1==cury1i) {ox= 1; oy= 1;}
 			if(old_curx1i-1==curx1i && old_cury1i+1==cury1i) {ox=-1; oy= 1;}
@@ -1342,7 +1351,7 @@ void HexManager::RebuildTiles()
 			int hx=viewField[vpos].HexX;
 			int hy=viewField[vpos].HexY;
 
-			if(hx%2 || hy%2) continue;
+			if(hx&1 || hy&1) continue;
 			if(hy<0 || hx<0 || hy>=maxHexY || hx>=maxHexX) continue;
 
 			Field& f=GetField(hx,hy);
@@ -1386,7 +1395,7 @@ void HexManager::RebuildRoof()
 			int hx=viewField[vpos].HexX;
 			int hy=viewField[vpos].HexY;
 
-			if(hx%2 || hy%2) continue;
+			if(hx&1 || hy&1) continue;
 			if(hy<0 || hx<0 || hy>=maxHexY || hx>=maxHexX) continue;
 
 			Field& f=GetField(hx,hy);
@@ -1421,8 +1430,8 @@ void HexManager::RebuildRoof()
 
 void HexManager::SetSkipRoof(int hx, int hy)
 {
-	if(hx%2) hx--;
-	if(hy%2) hy--;
+	if(hx&1) hx--;
+	if(hy&1) hy--;
 
 	if(roofSkip!=GetField(hx,hy).RoofNum)
 	{
@@ -1543,11 +1552,11 @@ void HexManager::InitView(int cx, int cy)
 	// Get center offset
 	int hw=VIEW_WIDTH/2+wRight;
 	int hv=VIEW_HEIGHT/2+hTop;
-	int vw=hv/2+hv%2+1;
+	int vw=hv/2+(hv&1)+1;
 	int vh=hv-vw/2-1;
  	for(int i=0;i<hw;i++)
  	{
- 		if(vw%2) vh--;
+ 		if(vw&1) vh--;
  		vw++;
  	}
 
@@ -1565,9 +1574,9 @@ void HexManager::InitView(int cx, int cy)
 
 	for(int j=0;j<hVisible;j++)
 	{
-		hx=cx+j/2+j%2;
-		hy=cy+(j-(hx-cx-(cx%2?1:0))/2);
-		x=(j%2?xa:xb);
+		hx=cx+j/2+(j&1);
+		hy=cy+(j-(hx-cx-(cx&1))/2);
+		x=((j&1)?xa:xb);
 
 		for(int i=0;i<wVisible;i++)
 		{
@@ -1579,7 +1588,7 @@ void HexManager::InitView(int cx, int cy)
 			viewField[vpos].HexX=hx;
 			viewField[vpos].HexY=hy;
 
-			if(hx%2) hy--;
+			if(hx&1) hy--;
 			hx++;
 			x+=32;
 		}
@@ -1640,7 +1649,7 @@ void HexManager::GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, in
 	int dy=to_hy-from_hy;
 	x=dy*16-dx*32;
 	y=dy*12;
-	if(from_hx%2)
+	if(from_hx&1)
 	{
 		if(dx>0) dx++;
 	}
@@ -1997,6 +2006,7 @@ void HexManager::SetCrit(CritterCl* cr)
 		}
 
 		f.Crit=cr;
+		SetMultihex(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex(),true);
 	}
 
 	if(GetHexToDraw(hx,hy) && cr->Visible)
@@ -2019,10 +2029,14 @@ void HexManager::RemoveCrit(CritterCl* cr)
 {
 	if(!IsMapLoaded()) return;
 
-	Field& f=GetField(cr->GetHexX(),cr->GetHexY());
+	WORD hx=cr->GetHexX();
+	WORD hy=cr->GetHexY();
+
+	Field& f=GetField(hx,hy);
 	if(f.Crit==cr)
 	{
 		f.Crit=NULL;
+		SetMultihex(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex(),false);
 	}
 	else
 	{
@@ -2030,6 +2044,7 @@ void HexManager::RemoveCrit(CritterCl* cr)
 		if(it!=f.DeadCrits.end()) f.DeadCrits.erase(it);
 	}
 
+	if(cr->IsChosen() || cr->IsHaveLightSources()) RebuildLight();
 	if(cr->SprDrawValid) cr->SprDraw->Unvalidate();
 	f.ProcessCache();
 }
@@ -2112,6 +2127,7 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 	if(!IsMapLoaded() || hx<0 || hx>=maxHexX || hy<0 || hy>=maxHexY) return false;
 	if(cr->GetHexX()==hx && cr->GetHexY()==hy) return true;
 
+	// Dead transit
 	if(cr->IsDead())
 	{
 		RemoveCrit(cr);
@@ -2123,17 +2139,21 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 		return true;
 	}
 
+	// Not dead transit
 	Field& f=GetField(hx,hy);
 
-	if(f.Crit!=NULL)
+	if(f.Crit!=NULL) // Hex busy
 	{
+		// Try move critter on busy hex in previous position
 		if(force && f.Crit->IsLastHexes()) TransitCritter(f.Crit,f.Crit->PopLastHexX(),f.Crit->PopLastHexY(),false,true);
 		if(f.Crit!=NULL)
 		{
-			//cr->ZeroSteps(); Try move every frame
+			// Try move in next game cycle
 			return false;
 		}
 	}
+
+	RemoveCrit(cr);
 
 	int old_hx=cr->GetHexX();
 	int old_hy=cr->GetHexY();
@@ -2161,37 +2181,29 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 		cr->AddOffsExt(ox,oy);
 	}
 
-	GetField(old_hx,old_hy).Crit=NULL;
-	f.Crit=cr;
-
-	if(cr->IsChosen() || cr->IsHaveLightSources()) RebuildLight();
-	if(cr->SprDrawValid)  cr->SprDraw->Unvalidate();
-
-	if(GetHexToDraw(hx,hy) && cr->Visible)
-	{
-		Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_CRIT(f.Pos),
-			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,
-			&cr->Alpha,GetLightHex(hx,hy),&cr->SprDrawValid);
-		cr->SprDraw=&spr;
-
-		/*if(CheckDist(old_hx,old_hy,hx,hy,1))
-		{
-			if(old_hx%2 && dir==0) pos=DRAW_ORDER_CRIT(f.Pos+11);
-			else if(!(old_hx%2) && dir==3) pos=DRAW_ORDER_CRIT(HexField[old_hy][old_hx].Pos+12);
-			else if(old_hx%2 && dir==2) pos=DRAW_ORDER_CRIT(HexField[old_hy][old_hx].Pos+1);
-			else if(!(old_hx%2) && dir==5) pos=DRAW_ORDER_CRIT(HexField[old_hy][old_hx].Pos+2);
-		}*/
-
-		cr->SetSprRect();
-		cr->FixLastHexes();
-		if(cr->GetId()==critterContourCrId) spr.Contour=critterContour;
-		else if(!cr->IsDead() && !cr->IsChosen()) spr.Contour=crittersContour;
-		spr.ContourColor=cr->ContourColor;
-	}
-
-	GetField(old_hx,old_hy).ProcessCache();
-	f.ProcessCache();
+	SetCrit(cr);
 	return true;
+}
+
+void HexManager::SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set)
+{
+	if(IsMapLoaded() && multihex)
+	{
+		bool odd=(hx&1)!=0;
+		short* sx=(odd?SXOdd:SXEven);
+		short* sy=(odd?SYOdd:SYEven);
+		for(int i=0,j=NumericalNumber(multihex)*6;i<j;i++)
+		{
+			short cx=(short)hx+sx[i];
+			short cy=(short)hy+sy[i];
+			if(cx>=0 && cy>=0 && cx<maxHexX && cy<maxHexY)
+			{
+				Field& neighbor=GetField(cx,cy);
+				neighbor.IsMultihex=set;
+				neighbor.ProcessCache();
+			}
+		}
+	}
 }
 
 bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
@@ -2375,67 +2387,112 @@ void HexManager::GetSmthPixel(int pix_x, int pix_y, ItemHex*& item, CritterCl*& 
 	}
 }
 
-int GridOffsX=0,GridOffsY=0;
-short Grid[FINDPATH_MAX_PATH*2+2][FINDPATH_MAX_PATH*2+2];
-#define GRID(x,y) Grid[(FINDPATH_MAX_PATH+1)+(x)-GridOffsX][(FINDPATH_MAX_PATH+1)+(y)-GridOffsY]
-int HexManager::FindStep(WORD start_x, WORD start_y, WORD end_x, WORD end_y, ByteVec& steps)
+bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut)
 {
-	if(!IsMapLoaded()) return FP_ERROR;
-	if(start_x==end_x && start_y==end_y) return FP_ALREADY_HERE;
+	// Static data
+#define GRID(x,y) grid[(FINDPATH_MAX_PATH+1)+(x)-grid_ox][(FINDPATH_MAX_PATH+1)+(y)-grid_oy]
+	static int grid_ox=0,grid_oy=0;
+	static short grid[FINDPATH_MAX_PATH*2+2][FINDPATH_MAX_PATH*2+2];
+	static WordPairVec coords;
+
+	if(!IsMapLoaded()) return false;
+	if(start_x==end_x && start_y==end_y) return true;
 
 	short numindex=1;
-	ZeroMemory(Grid,sizeof(Grid));
-	GridOffsX=start_x;
-	GridOffsY=start_y;
+	ZeroMemory(grid,sizeof(grid));
+	grid_ox=start_x;
+	grid_oy=start_y;
 	GRID(start_x,start_y)=numindex;
-
-	WordPairVec coords;
-	coords.reserve(FINDPATH_MAX_PATH*4);
+	coords.clear();
 	coords.push_back(WordPairVecVal(start_x,start_y));
 
-	DWORD p=0,p_togo=0;
+	DWORD mh=(cr?cr->GetMultihex():0);
+	int p=0;
 	while(true)
 	{
-		if(++numindex>FINDPATH_MAX_PATH) return FP_TOOFAR;
-		if(!(p_togo=coords.size()-p)) return FP_DEADLOCK;
+		if(++numindex>FINDPATH_MAX_PATH) return false;
+
+		int p_togo=coords.size()-p;
+		if(!p_togo) return false;
 
 		for(int i=0;i<p_togo;++i,++p)
 		{
-			WORD cx=coords[p].first;
-			WORD cy=coords[p].second;
+			int hx=coords[p].first;
+			int hy=coords[p].second;
+			bool odd=(hx&1)!=0;
 
-			for(int j=1;j<=6;++j)
+			for(int j=0;j<6;++j)
 			{
-				WORD nx=cx+((cx%2)?SXNChet[j]:SXChet[j]);
-				WORD ny=cy+((cx%2)?SYNChet[j]:SYChet[j]);
-				if(nx>=maxHexX || ny>=maxHexY) continue;
+				int nx=hx+(odd?SXOdd[j]:SXEven[j]);
+				int ny=hy+(odd?SYOdd[j]:SYEven[j]);
+				if(nx<0 || ny<0 || nx>=maxHexX || ny>=maxHexY || GRID(nx,ny)) continue;
+				GRID(nx,ny)=-1;
 
-				if(!GRID(nx,ny) && !GetField(nx,ny).IsNotPassed)
+				if(!mh)
 				{
-					GRID(nx,ny)=numindex;
-					coords.push_back(WordPairVecVal(nx,ny));
-
-					if(nx==end_x && ny==end_y) goto label_FindOk;
+					if(GetField(nx,ny).IsNotPassed) continue;
 				}
+				else
+				{
+					// Base hex
+					int nx_=nx,ny_=ny;
+					for(DWORD k=0;k<mh;k++) MoveHexByDirUnsafe(nx_,ny_,j);
+					if(nx_<0 || ny_<0 || nx_>=maxHexX || ny_>=maxHexY) continue;
+					if(GetField(nx_,ny_).IsNotPassed) continue;
+
+					// Clock wise hexes
+					bool not_passed=false;
+					int dir_=(j+2)%6;
+					int nx__=nx_,ny__=ny_;
+					for(DWORD k=0;k<mh && !not_passed;k++)
+					{
+						MoveHexByDirUnsafe(nx__,ny__,dir_);
+						not_passed=GetField(nx__,ny__).IsNotPassed;
+					}
+					if(not_passed) continue;
+
+					// Counter clock wise hexes
+					dir_=(j+4)%6;
+					nx__=nx_,ny__=ny_;
+					for(DWORD k=0;k<mh && !not_passed;k++)
+					{
+						MoveHexByDirUnsafe(nx__,ny__,dir_);
+						not_passed=GetField(nx__,ny__).IsNotPassed;
+					}
+					if(not_passed) continue;
+				}
+
+				GRID(nx,ny)=numindex;
+				coords.push_back(WordPairVecVal(nx,ny));
+
+				if(cut>=0 && CheckDist(nx,ny,end_x,end_y,cut))
+				{
+					end_x=nx;
+					end_y=ny;
+					return true;
+				}
+
+				if(cut<0 && nx==end_x && ny==end_y) goto label_FindOk;
 			}
 		}
 	}
+	if(cut>=0) return false;
 
 label_FindOk:
-	int x1=coords[coords.size()-1].first;
-	int y1=coords[coords.size()-1].second;
+	int x1=coords.back().first;
+	int y1=coords.back().second;
 	steps.resize(numindex-1);
 
 	// From end
 	static bool switcher=false;
 	while(numindex>1)
 	{
-		if(numindex%2) switcher=!switcher;
+		if(numindex&1) switcher=!switcher;
 		numindex--;
 
 		if(switcher)
 		{
-			if(x1%2)
+			if(x1&1)
 			{
 				if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=GetDir(x1-1,y1-1,x1,y1); x1--; y1--; continue; } // 0
 				if(GRID(x1,y1-1)==numindex)   { steps[numindex-1]=GetDir(x1,y1-1,x1,y1); y1--; continue; } // 5
@@ -2456,7 +2513,7 @@ label_FindOk:
 		}
 		else
 		{
-			if(x1%2)
+			if(x1&1)
 			{
 				if(GRID(x1-1,y1)==numindex)   { steps[numindex-1]=GetDir(x1-1,y1,x1,y1); x1--; continue; } // 1
 				if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=GetDir(x1+1,y1-1,x1,y1); x1++; y1--; continue; } // 4
@@ -2475,67 +2532,24 @@ label_FindOk:
 				if(GRID(x1,y1+1)==numindex)   { steps[numindex-1]=GetDir(x1,y1+1,x1,y1); y1++; continue; } // 2
 			}
 		}
-		return FP_ERROR;
+		return false;
 	}
-	return FP_OK;
+	return true;
 }
 
-int HexManager::CutPath(WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut)
+bool HexManager::CutPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut)
 {
-	if(!IsMapLoaded()) return FP_ERROR;
-
-	short numindex=1;
-	ZeroMemory(Grid,sizeof(Grid));
-	GridOffsX=start_x;
-	GridOffsY=start_y;
-	GRID(start_x,start_y)=numindex;
-	WordPairVec path;
-	path.reserve(FINDPATH_MAX_PATH*4);
-	path.push_back(WordPairVecVal(start_x,start_y));
-
-	size_t p=0;
-	size_t p_togo=0;
-	while(true)
-	{
-		if(++numindex>FINDPATH_MAX_PATH) return FP_TOOFAR;
-		if(!(p_togo=path.size()-p)) return FP_DEADLOCK;
-
-		for(size_t p_cur=0;p_cur<p_togo;++p_cur,++p)
-		{
-			WORD cx=path[p].first;
-			WORD cy=path[p].second;
-
-			for(int i=1;i<=6;++i)
-			{
-				WORD nx=cx+((cx%2)?SXNChet[i]:SXChet[i]);
-				WORD ny=cy+((cx%2)?SYNChet[i]:SYChet[i]);
-				if(nx>=maxHexX || ny>=maxHexY) continue;
-
-				if(!GRID(nx,ny) && !GetField(nx,ny).IsNotPassed)
-				{
-					GRID(nx,ny)=numindex;
-					path.push_back(WordPairVecVal(nx,ny));
-
-					if(CheckDist(nx,ny,end_x,end_y,cut))
-					{
-						end_x=nx;
-						end_y=ny;
-						return FP_OK;
-					}
-				}
-			}
-		}
-	}
-	return FP_ERROR;
+	static ByteVec dummy;
+	return FindPath(cr,start_x,start_y,end_x,end_y,dummy,cut);
 }
 
-bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, int dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed)
+bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed)
 {
 	if(IsShowTrack()) ClearHexTrack();
 
 	if(!dist) dist=DistGame(hx,hy,tx,ty);
 	float nx=3.0f*(float(tx)-float(hx));
-	float ny=(float(ty)-float(hy))*SQRT3T2_FLOAT-(float(tx%2)-float(hx%2))*SQRT3_FLOAT;
+	float ny=(float(ty)-float(hy))*SQRT3T2_FLOAT-(float(tx&1)-float(hx&1))*SQRT3_FLOAT;
 	float dir=180.0f+RAD2DEG*atan2f(ny,nx);
 
 	if(angle!=0.0f)
@@ -2560,9 +2574,9 @@ bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, int dist, float
 	WORD t1x,t1y,t2x,t2y;
 
 	float x1=3.0f*float(hx)+BIAS_FLOAT;
-	float y1=SQRT3T2_FLOAT*float(hy)-SQRT3_FLOAT*(float(hx%2))+BIAS_FLOAT;
+	float y1=SQRT3T2_FLOAT*float(hy)-SQRT3_FLOAT*(float(hx&1))+BIAS_FLOAT;
 	float x2=3.0f*float(tx)+BIAS_FLOAT+BIAS_FLOAT;
-	float y2=SQRT3T2_FLOAT*float(ty)-SQRT3_FLOAT*(float(tx%2))+BIAS_FLOAT;
+	float y2=SQRT3T2_FLOAT*float(ty)-SQRT3_FLOAT*(float(tx&1))+BIAS_FLOAT;
 	if(angle!=0.0f)
 	{
 		x2-=x1;
@@ -2577,7 +2591,7 @@ bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, int dist, float
 	float dy=y2-y1;
 	float c1x,c1y,c2x,c2y;
 	float dist1,dist2;
-	for(int i=0;i<dist;i++)
+	for(DWORD i=0;i<dist;i++)
 	{
 		t1x=cx;
 		t2x=cx;
@@ -2586,9 +2600,9 @@ bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, int dist, float
 		MoveHexByDir(t1x,t1y,dir1,maxHexX,maxHexY);
 		MoveHexByDir(t2x,t2y,dir2,maxHexX,maxHexY);
 		c1x=3.0f*float(t1x);
-		c1y=SQRT3T2_FLOAT*float(t1y)-(float(t1x%2))*SQRT3_FLOAT;
+		c1y=SQRT3T2_FLOAT*float(t1y)-(float(t1x&1))*SQRT3_FLOAT;
 		c2x=3.0f*float(t2x);
-		c2y=SQRT3T2_FLOAT*float(t2y)-(float(t2x%2))*SQRT3_FLOAT;
+		c2y=SQRT3T2_FLOAT*float(t2y)-(float(t2x&1))*SQRT3_FLOAT;
 		dist1=dx*(y1-c1y)-dy*(x1-c1x);
 		dist2=dx*(y1-c2y)-dy*(x1-c2x);
 		dist1=(dist1>0?dist1:-dist1);
@@ -3582,13 +3596,13 @@ void HexManager::GetHexesRect(INTRECT& r, WordPairVec& h)
 	{
 		if(dy>=0)
 		{
-			hx=r[0]+j/2+j%2;
-			hy=r[1]+(j-(hx-r[0]-(r[0]%2?1:0))/2);
+			hx=r[0]+j/2+(j&1);
+			hy=r[1]+(j-(hx-r[0]-((r[0]&1)?1:0))/2);
 		}
 		else
 		{
-			hx=r[0]-j/2-j%2;
-			hy=r[1]-(j-(r[0]-hx-(r[0]%2?0:1))/2);
+			hx=r[0]-j/2-(j&1);
+			hy=r[1]-(j-(r[0]-hx-((r[0]&1)?0:1))/2);
 		}
 
 		for(int i=0;i<=adx;i++)
@@ -3599,13 +3613,13 @@ void HexManager::GetHexesRect(INTRECT& r, WordPairVec& h)
 
 			if(dx>=0)
 			{
-				if(hx%2) hy--;
+				if(hx&1) hy--;
 				hx++;
 			}
 			else
 			{
 				hx--;
-				if(hx%2) hy++;
+				if(hx&1) hy++;
 			}
 		}
 	}

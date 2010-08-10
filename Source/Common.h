@@ -66,8 +66,8 @@ typedef vector<FLTRECT> FltRectVec;
 
 int Random(int minimum, int maximum);
 int Procent(int full, int peace);
-int DistSqrt(int x1, int y1, int x2, int y2);
-int DistGame(int x1, int y1, int x2, int y2);
+DWORD DistSqrt(int x1, int y1, int x2, int y2);
+DWORD DistGame(int x1, int y1, int x2, int y2);
 DWORD NumericalNumber(DWORD num);
 int NextLevel(int cur_level);
 int GetDir(int x1, int y1, int x2, int y2);
@@ -77,14 +77,19 @@ bool CheckDist(WORD x1, WORD y1, WORD x2, WORD y2, DWORD dist);
 int ReverseDir(int dir);
 void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
 void ChangeStepsXY(float& sx, float& sy, float deq);
-void MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy);
+bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy);
 void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir);
 bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
 
-const short SXChet[37]={ 0,-1,-1,0,1, 1, 0, 1,-1,-1, 2, 2,-2, 0,2,-2,1,-2, 0,-2,-3,-3,-3,-3,-2,-1,0,1,2,3,3, 3, 3, 2, 1, 0,-1};
-const short SYChet[37]={ 0, 0, 1,1,1, 0,-1,-1, 2,-1, 1,-1, 0, 2,0, 1,2,-1,-2,-2,-1, 0, 1, 2, 2, 3,3,3,2,2,1, 0,-1,-2,-2,-3,-2};
-const short SXNChet[37]={0,-1,-1,0,1, 1, 0, 2,-2, 2, 1,-1, 1,-2,2,-1,0, 0,-2,-2,-3,-3,-3,-3,-2,-1,0,1,2,3,3, 3, 3, 2, 1, 0,-1};
-const short SYNChet[37]={0,-1, 0,1,0,-1,-1, 1, 0,-1,-2, 1, 1, 1,0,-2,2,-2,-1,-2,-2,-1, 0, 1, 2, 2,3,2,2,1,0,-1,-2,-2,-3,-3,-3};
+// Hex offset
+#define MAX_HEX_OFFSET    (50) // Must be not odd
+#define HEX_OFFSET_SIZE   ((MAX_HEX_OFFSET*MAX_HEX_OFFSET/2+MAX_HEX_OFFSET/2)*6) // 7650
+extern short SXEven[HEX_OFFSET_SIZE];
+extern short SYEven[HEX_OFFSET_SIZE];
+extern short SXOdd[HEX_OFFSET_SIZE];
+extern short SYOdd[HEX_OFFSET_SIZE];
+
+// Relief
 const float GlobalMapKRelief[16]={1.5f,1.4f,1.3f,1.2f,1.1f,1.0f,0.95f,0.9f,0.85f,0.8f,0.75f,0.7f,0.65f,0.6f,0.55f,1.0f};
 //const float GlobalMapKRelief[16]={1.0f,0.1f,0.2f,0.3f,0.4f,0.5f,0.6f,0.7f,0.8f,0.9f,1.0f,1.1f,1.2f,1.3f,1.4f,1.5f};
 
@@ -177,7 +182,7 @@ extern bool OptShowGroups;
 extern bool OptHelpInfo;
 extern bool OptDebugInfo;
 extern bool OptDebugNet;
-extern bool OptDebugIface;
+extern bool OptDebugSprites;
 extern bool OptFullScr;
 extern bool OptVSync;
 extern int OptFlushVal;

@@ -600,7 +600,7 @@ const char* GetActiveModuleName()
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
 	if(!func)
 	{
-		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.",ctx->GetUserData(),ctx->GetCurrentFunction());
+		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.\n",ctx->GetUserData(),ctx->GetCurrentFunction());
 		return error;
 	}
 	return func->GetModuleName();
@@ -614,7 +614,7 @@ const char* GetActiveFuncName()
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
 	if(!func)
 	{
-		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.",ctx->GetUserData(),ctx->GetCurrentFunction());
+		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.\n",ctx->GetUserData(),ctx->GetCurrentFunction());
 		return error;
 	}
 	return func->GetName();

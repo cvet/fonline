@@ -949,8 +949,24 @@ bool FOServer::SScriptFunc::Crit_ChangeCrType(Critter* cr, DWORD new_type)
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!new_type) SCRIPT_ERROR_R0("New type arg is zero.");
 	if(!CritType::IsEnabled(new_type)) SCRIPT_ERROR_R0("New type arg is not enabled.");
+
 	if(cr->Data.BaseType!=new_type)
 	{
+		if(cr->Data.Multihex<0 && cr->GetMap() && !cr->IsDead())
+		{
+			DWORD old_mh=CritType::GetMultihex(cr->Data.BaseType);
+			DWORD new_mh=CritType::GetMultihex(new_type);
+			if(new_mh!=old_mh)
+			{
+				Map* map=MapMngr.GetMap(cr->GetMap());
+				if(map)
+				{
+					map->UnsetFlagCritter(cr->GetHexX(),cr->GetHexY(),old_mh,false);
+					map->SetFlagCritter(cr->GetHexX(),cr->GetHexY(),new_mh,false);
+				}
+			}
+		}
+
 		cr->Data.BaseType=new_type;
 		cr->Send_ParamOther(OTHER_BASE_TYPE,new_type);
 		cr->SendA_ParamOther(OTHER_BASE_TYPE,new_type);
@@ -1187,7 +1203,7 @@ bool FOServer::SScriptFunc::Crit_ToLife(Critter* cr)
 	if(!cr->GetMap()) SCRIPT_ERROR_R0("Critter on global map.");
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) SCRIPT_ERROR_R0("Map not found.");
-	if(!map->IsHexPassed(cr->GetHexX(),cr->GetHexY())) SCRIPT_ERROR_R0("Position busy.");
+	if(!map->IsHexesPassed(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex())) SCRIPT_ERROR_R0("Position busy.");
 	RespawnCritter(cr);
 	if(!cr->IsLife()) SCRIPT_ERROR_R0("Respawn critter fail.");
 	return true;
@@ -1209,7 +1225,24 @@ bool FOServer::SScriptFunc::Crit_ToKnockout(Critter* cr, bool face_up, DWORD los
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) SCRIPT_ERROR_R0("Critter map not found.");
 	if(knock_hx>=map->GetMaxHexX() || knock_hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
-	if((cr->GetHexX()!=knock_hx || cr->GetHexY()!=knock_hy) && !map->IsHexPassed(knock_hx,knock_hy)) SCRIPT_ERROR_R0("Knock hexes is busy.");
+
+	if(cr->GetHexX()!=knock_hx || cr->GetHexY()!=knock_hy)
+	{
+		bool passed=false;
+		DWORD multihex=cr->GetMultihex();
+		if(multihex)
+		{
+			map->UnsetFlagCritter(cr->GetHexX(),cr->GetHexY(),multihex,false);
+			passed=map->IsHexesPassed(knock_hx,knock_hy,multihex);
+			map->SetFlagCritter(cr->GetHexX(),cr->GetHexY(),multihex,false);
+		}
+		else
+		{
+			passed=map->IsHexPassed(knock_hx,knock_hy);
+		}
+		if(!passed) SCRIPT_ERROR_R0("Knock hexes is busy.");
+	}
+
 	KnockoutCritter(cr,face_up,lose_ap,knock_hx,knock_hy);
 	return true;
 }
@@ -1920,6 +1953,36 @@ WORD FOServer::SScriptFunc::Crit_GetProtoId(Critter* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->Data.ProtoId;
+}
+
+DWORD FOServer::SScriptFunc::Crit_GetMultihex(Critter* cr)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	return cr->GetMultihex();
+}
+
+void FOServer::SScriptFunc::Crit_SetMultihex(Critter* cr, int value)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
+	if(value<-1 || value>MAX_HEX_OFFSET) SCRIPT_ERROR_R("Invalid multihex arg value.");
+	if(cr->Data.Multihex==value) return;
+
+	DWORD old_mh=cr->GetMultihex();
+	cr->Data.Multihex=value;
+	DWORD new_mh=cr->GetMultihex();
+
+	if(old_mh!=new_mh && cr->GetMap() && !cr->IsDead())
+	{
+		Map* map=MapMngr.GetMap(cr->GetMap());
+		if(map)
+		{
+			map->UnsetFlagCritter(cr->GetHexX(),cr->GetHexY(),old_mh,false);
+			map->SetFlagCritter(cr->GetHexX(),cr->GetHexY(),new_mh,false);
+		}
+	}
+
+	cr->Send_ParamOther(OTHER_MULTIHEX,value);
+	cr->SendA_ParamOther(OTHER_MULTIHEX,value);
 }
 
 void FOServer::SScriptFunc::Crit_AddEnemyInStack(Critter* cr, DWORD critter_id)
@@ -3044,7 +3107,7 @@ void FOServer::SScriptFunc::Map_GetHexInPathWall(Map* map, WORD from_hx, WORD fr
 	}
 }
 
-DWORD FOServer::SScriptFunc::Map_GetPathLength(Map* map, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
+DWORD FOServer::SScriptFunc::Map_GetPathLengthHex(Map* map, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(from_hx>=map->GetMaxHexX() || from_hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid from hexes args.");
@@ -3064,10 +3127,32 @@ DWORD FOServer::SScriptFunc::Map_GetPathLength(Map* map, WORD from_hx, WORD from
 	return path.size();
 }
 
+DWORD FOServer::SScriptFunc::Map_GetPathLengthCr(Map* map, Critter* cr, WORD to_hx, WORD to_hy, DWORD cut)
+{
+	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
+	if(to_hx>=map->GetMaxHexX() || to_hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid to hexes args.");
+
+	PathFindData pfd;
+	pfd.Clear();
+	pfd.MapId=map->GetId();
+	pfd.FromCritter=cr;
+	pfd.FromX=cr->GetHexX();
+	pfd.FromY=cr->GetHexY();
+	pfd.ToX=to_hx;
+	pfd.ToY=to_hy;
+	pfd.Multihex=cr->GetMultihex();
+	pfd.Cut=cut;
+	DWORD result=MapMngr.FindPath(pfd);
+	if(result!=FPATH_OK) return 0;
+	PathStepVec& path=MapMngr.GetPath(pfd.PathNum);
+	return path.size();
+}
+
 Critter* FOServer::SScriptFunc::Map_AddNpc(Map* map, WORD proto_id, WORD hx, WORD hy, BYTE dir, asIScriptArray* params, asIScriptArray* items, CScriptString* script)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	if(params && params->GetElementCount()%2) SCRIPT_ERROR_R0("Invalid params array size.");
+	if(params && params->GetElementCount()&1) SCRIPT_ERROR_R0("Invalid params array size.");
 	if(items && items->GetElementCount()%3) SCRIPT_ERROR_R0("Invalid items array size.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 	if(!CrMngr.GetProto(proto_id)) SCRIPT_ERROR_R0("Proto not found.");
@@ -3251,8 +3336,8 @@ void FOServer::SScriptFunc::Map_UnblockHex(Map* map, WORD hx, WORD hy)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R("Invalid hexes args.");
-	map->UnSetHexFlag(hx,hy,FH_BLOCK_ITEM);
-	map->UnSetHexFlag(hx,hy,FH_NRAKE_ITEM);
+	map->UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
+	map->UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
 }
 
 void FOServer::SScriptFunc::Map_PlaySound(Map* map, CScriptString& sound_name)
@@ -3492,7 +3577,7 @@ BYTE FOServer::SScriptFunc::Global_GetDirection(WORD from_hx, WORD from_hy, WORD
 BYTE FOServer::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset)
 {
 	float nx=3.0f*(float(tx)-float(hx));
-	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx%2)-float(hx%2));
+	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx&1)-float(hx&1));
 	float dir=180.0f+RAD2DEG*atan2(ny,nx);
 	dir+=offset;
 	if(dir>360.0f) dir-=360.0f;

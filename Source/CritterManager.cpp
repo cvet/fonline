@@ -309,7 +309,7 @@ void CritterManager::CritterGarbager(DWORD cycle_tick)
 			{
 				npc->ClearVisible();
 				map->EraseCritter(npc);
-				map->UnSetFlagCritter(npc->GetHexX(),npc->GetHexY(),npc->IsDead());
+				map->UnsetFlagCritter(npc->GetHexX(),npc->GetHexY(),npc->GetMultihex(),npc->IsDead());
 				if(map->MapLocation->IsToGarbage()) MapMngr.RunLocGarbager();
 			}
 			else if(npc->GroupMove)
@@ -368,18 +368,20 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		static int cur_step=0;
 		short hx_=hx;
 		short hy_=hy;
-		short* sx=((hx%2)?((short*)&SXNChet[1]):((short*)&SXChet[1]));
-		short* sy=((hx%2)?((short*)&SYNChet[1]):((short*)&SYChet[1]));
+		bool odd=(hx&1)!=0;
+		short* sx=(odd?SXOdd:SXEven);
+		short* sy=(odd?SYOdd:SYEven);
 
+		// Find in 3 hex radius
 		for(int i=0;;i++)
 		{
-			if(i>=18)
+			if(i>=36)
 			{
 				WriteLog(__FUNCTION__" - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
 				return NULL;
 			}
 			cur_step++;
-			if(cur_step>=19) cur_step=1;
+			if(cur_step>=36) cur_step=0;
 			if(hx_+sx[cur_step]<0 || hx_+sx[cur_step]>=map->GetMaxHexX()) continue;
 			if(hy_+sy[cur_step]<0 || hy_+sy[cur_step]>=map->GetMaxHexY()) continue;
 			if(!map->IsHexPassed(hx_+sx[cur_step],hy_+sy[cur_step])) continue;
@@ -488,6 +490,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
 	npc->Data.ProtoId=proto_id;
 	npc->Data.Cond=COND_LIFE;
 	npc->Data.CondExt=COND_LIFE_NONE;
+	npc->Data.Multihex=-1;
 	return npc;
 }
 

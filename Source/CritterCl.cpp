@@ -30,7 +30,7 @@ fadingEnable(false),FadingTick(0),fadeUp(false),finishingTime(0),
 staySprDir(0),staySprTick(0),needReSet(false),reSetTick(0),CurMoveStep(0),
 Visible(true),SprDrawValid(false),IsNotValid(false),RefCounter(1),NameRefCounter(0x80000000),LexemsRefCounter(0x80000000),
 OxExtI(0),OyExtI(0),OxExtF(0),OyExtF(0),OxExtSpeed(0),OyExtSpeed(0),OffsExtNextTick(0),
-Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL)
+Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 {
 	Name="";
 	StringCopy(Pass,"");
@@ -428,17 +428,6 @@ Item* CritterCl::GetSlotUse(BYTE num_slot, BYTE& use)
 	return item;
 }
 
-int CritterCl::GetAttackMaxDist()
-{
-	BYTE use;
-	Item* weap=GetSlotUse(SLOT_HAND1,use);
-	if(!weap->IsWeapon()) return 0;
-	int dist=weap->Proto->Weapon.MaxDist[use];
-	if(weap->Proto->Weapon.Skill[use]==SKILL_OFFSET(SK_THROWING)) dist=min(dist,3*min(10,GetParam(ST_STRENGTH)+2*GetPerk(PE_HEAVE_HO)));
-	if(weap->WeapIsHtHAttack(use) && IsPerk(MODE_RANGE_HTH)) dist++;
-	return dist;
-}
-
 int CritterCl::GetUsePic(BYTE num_slot)
 {
 	static DWORD use_on_pic=Str::GetHash("art\\intrface\\useon.frm");
@@ -485,9 +474,9 @@ bool CritterCl::CheckFind(int find_type)
 		(IsDead() && FLAG(find_type,FIND_DEAD));
 }
 
-int CritterCl::GetLook()
+DWORD CritterCl::GetLook()
 {
-	int look=GameOpt.LookNormal+GetParam(ST_PERCEPTION)*3+GetParam(ST_BONUS_LOOK);
+	int look=GameOpt.LookNormal+GetParam(ST_PERCEPTION)*3+GetParam(ST_BONUS_LOOK)+GetMultihex();
 	if(look<GameOpt.LookMinimum) look=GameOpt.LookMinimum;
 	return look;
 }
@@ -496,7 +485,32 @@ DWORD CritterCl::GetTalkDistance()
 {
 	int dist=GetParam(ST_TALK_DISTANCE);
 	if(dist<=0) dist=GameOpt.TalkDistance;
+	return dist+GetMultihex();
+}
+
+DWORD CritterCl::GetAttackDist()
+{
+	BYTE use;
+	Item* weap=GetSlotUse(SLOT_HAND1,use);
+	if(!weap->IsWeapon()) return 0;
+	int dist=weap->Proto->Weapon.MaxDist[use];
+	if(weap->Proto->Weapon.Skill[use]==SKILL_OFFSET(SK_THROWING)) dist=min(dist,3*min(10,GetParam(ST_STRENGTH)+2*GetPerk(PE_HEAVE_HO)));
+	if(weap->WeapIsHtHAttack(use) && IsPerk(MODE_RANGE_HTH)) dist++;
+	dist+=GetMultihex();
+	if(dist<0) dist=0;
 	return dist;
+}
+
+DWORD CritterCl::GetUseDist()
+{
+	return 1+GetMultihex();
+}
+
+DWORD CritterCl::GetMultihex()
+{
+	int mh=Multihex;
+	if(mh<0) mh=CritType::GetMultihex(GetCrType());
+	return CLAMP(mh,0,MAX_HEX_OFFSET);
 }
 
 int CritterCl::GetParam(DWORD index)
@@ -1184,7 +1198,7 @@ void CritterCl::NextAnim(bool erase_front)
 	}
 
 #ifdef FONLINE_CLIENT
-	SndMngr.PlayAction(CritType::GetName(anim->IndCrType),anim->IndAnim1,anim->IndAnim2);
+	SndMngr.PlayAction(CritType::GetSoundName(anim->IndCrType),anim->IndAnim1,anim->IndAnim2);
 #endif
 }
 
@@ -1692,7 +1706,7 @@ void CritterCl::Process()
 	if(OffsExtNextTick && Timer::GameTick()>=OffsExtNextTick)
 	{
 		OffsExtNextTick=Timer::GameTick()+30;
-		int dist=DistSqrt(0,0,OxExtI,OyExtI);
+		DWORD dist=DistSqrt(0,0,OxExtI,OyExtI);
 		SprOx-=OxExtI;
 		SprOy-=OyExtI;
 		float mul=dist/10;

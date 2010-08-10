@@ -81,7 +81,7 @@ DWORD UIDDUMMY10=-1;
 	DWORD d_retval=-1;\
 	if((d_retval=GetAdaptersInfo(d_ainfo,&d_buf_len))!=ERROR_SUCCESS)\
 	{\
-		GlobalFree(d_ainfo);\
+		free(d_ainfo);\
 		UID_DUMMY_CALCS7;\
 		d_ainfo=(IP_ADAPTER_INFO*)malloc(d_buf_len);\
 		d_retval=GetAdaptersInfo(d_ainfo,&d_buf_len);\

@@ -20,12 +20,13 @@ struct CritData
 	BYTE Dir;
 	BYTE Cond;
 	BYTE CondExt;
-	BYTE Reserved0;
+	char Reserved0;
 	DWORD ScriptId;
 	DWORD ShowCritterDist1;
 	DWORD ShowCritterDist2;
 	DWORD ShowCritterDist3;
-	DWORD Reserved00;
+	WORD Reserved00;
+	short Multihex;
 	DWORD GlobalGroupUid;
 	WORD LastHexX;
 	WORD LastHexY;
