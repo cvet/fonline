@@ -234,7 +234,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 		--ext;
 	}
 
-	Sound* sound=new Sound();
+	Sound* sound=new(nothrow) Sound();
 	if(!sound)
 	{
 		WriteLog(__FUNCTION__" - Allocation error.\n");
@@ -292,43 +292,44 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 
 bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data)
 {
-	if(!fileMngr.LoadFile(sound->FileName.c_str(),sound->PathType))
+	FileManager fm;
+	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType))
 	{
 		WriteLog(__FUNCTION__" - File<%s> not found.\n",sound->FileName.c_str());	
 		return NULL;
 	}
 
-	DWORD dw_buf=fileMngr.GetLEDWord();
+	DWORD dw_buf=fm.GetLEDWord();
 	if(dw_buf!=MAKEFOURCC('R','I','F','F'))
 	{
 		WriteLog(__FUNCTION__" - <RIFF> not found.\n");
 		return false;
 	}
 
-	fileMngr.GoForward(4);
+	fm.GoForward(4);
 
-	dw_buf=fileMngr.GetLEDWord();
+	dw_buf=fm.GetLEDWord();
 	if(dw_buf!=MAKEFOURCC('W','A','V','E'))
 	{
 		WriteLog(__FUNCTION__" - <WAVE> not found.\n");
 		return false;
 	}
 
-	dw_buf=fileMngr.GetLEDWord();
+	dw_buf=fm.GetLEDWord();
 	if(dw_buf!=MAKEFOURCC('f','m','t',' '))
 	{
 		WriteLog(__FUNCTION__" - <fmt > not found.\n");
 		return false;
 	}
 
-	dw_buf=fileMngr.GetLEDWord();
+	dw_buf=fm.GetLEDWord();
 	if(!dw_buf)
 	{
 		WriteLog(__FUNCTION__" - Unknown format.\n");
 		return false;
 	}
 
-	fileMngr.CopyMem(&fformat,16);
+	fm.CopyMem(&fformat,16);
 	fformat.cbSize=0;
 
 	if(fformat.wFormatTag!=1)
@@ -337,14 +338,14 @@ bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 		return false;
 	}
 
-	fileMngr.GoForward(dw_buf-16);
+	fm.GoForward(dw_buf-16);
 
-	dw_buf=fileMngr.GetLEDWord();
+	dw_buf=fm.GetLEDWord();
 	if(dw_buf==MAKEFOURCC('f','a','c','t'))
 	{
-		dw_buf=fileMngr.GetLEDWord();
-		fileMngr.GoForward(dw_buf);
-		dw_buf=fileMngr.GetLEDWord();
+		dw_buf=fm.GetLEDWord();
+		fm.GoForward(dw_buf);
+		dw_buf=fm.GetLEDWord();
 	}
 
 	if(dw_buf!=MAKEFOURCC('d','a','t','a'))
@@ -353,11 +354,11 @@ bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 		return false;
 	}
 
-	dw_buf=fileMngr.GetLEDWord();
+	dw_buf=fm.GetLEDWord();
 	sound->BufSize=dw_buf;
-	sample_data=new unsigned char[dw_buf];
+	sample_data=new(nothrow) unsigned char[dw_buf];
 
-	if(!fileMngr.CopyMem(sample_data,dw_buf))
+	if(!fm.CopyMem(sample_data,dw_buf))
 	{
 		WriteLog(__FUNCTION__" - File truncated.\n");
 		delete[] sample_data;
@@ -369,7 +370,8 @@ bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 
 bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data, bool mono)
 {
-	if(!fileMngr.LoadFile(sound->FileName.c_str(),sound->PathType))
+	FileManager fm;
+	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType))
 	{
 		WriteLog(__FUNCTION__" - File<%s> not found.\n",sound->FileName.c_str());	
 		return NULL;
@@ -379,7 +381,7 @@ bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	int freq=0;
 	int samples=0;
 
-	AutoPtr<CACMUnpacker> acm(new CACMUnpacker(fileMngr.GetBuf(),(int)fileMngr.GetFsize(),channels,freq,samples));
+	AutoPtr<CACMUnpacker> acm(new(nothrow) CACMUnpacker(fm.GetBuf(),(int)fm.GetFsize(),channels,freq,samples));
 	samples*=2;
 
 	if(!acm.IsValid())
@@ -413,7 +415,7 @@ bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	fformat.cbSize=0;
 
 	sound->BufSize=samples;
-	sample_data=new unsigned char[samples];
+	sample_data=new(nothrow) unsigned char[samples];
 	int dec_data=acm->readAndDecompress((WORD*)sample_data,samples);
 	if(dec_data!=samples)
 	{
@@ -425,22 +427,67 @@ bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	return true;
 }
 
+size_t Ogg_read_func(void* ptr, size_t size, size_t nmemb, void* datasource)
+{
+	FileManager* fm=(FileManager*)datasource;
+	return fm->CopyMem(ptr,size)?size:0;
+}
+
+int Ogg_seek_func(void* datasource, ogg_int64_t offset, int whence)
+{
+	FileManager* fm=(FileManager*)datasource;
+	switch(whence)
+	{
+	case SEEK_SET: fm->SetCurPos(offset); break;
+	case SEEK_CUR: fm->GoForward(offset); break;
+	case SEEK_END: fm->SetCurPos(fm->GetFsize()); break;
+	default: return -1;
+	}
+	return 0;
+}
+
+int Ogg_close_func(void* datasource)
+{
+	FileManager* fm=(FileManager*)datasource;
+	delete fm;
+	return 0;
+}
+
+long Ogg_tell_func(void* datasource)
+{
+	FileManager* fm=(FileManager*)datasource;
+	return fm->GetCurPos();
+}
+
 bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data)
 {
-	char full_path[MAX_FOPATH];
-	fileMngr.GetFullPath(sound->FileName.c_str(),sound->PathType,full_path);
-
-	FILE* fs=fopen(full_path,"rb");
-	if(!fs)
+	FileManager* fm=new(nothrow) FileManager();
+	if(!fm || !fm->LoadFile(sound->FileName.c_str(),sound->PathType))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",full_path);
-		return false;
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",sound->FileName.c_str());	
+		SAFEDEL(fm);
+		return NULL;
 	}
 
-	int error;
-	if(error=ov_open(fs,&sound->OggDescriptor,NULL,0))
+	ov_callbacks callbacks;
+	callbacks.read_func=&Ogg_read_func;
+	callbacks.seek_func=&Ogg_seek_func;
+	callbacks.close_func=&Ogg_close_func;
+	callbacks.tell_func=&Ogg_tell_func;
+
+	int error=ov_open_callbacks(fm,&sound->OggDescriptor,NULL,0,callbacks);
+	if(error)
 	{
-		WriteLog(__FUNCTION__" - ov_open error<%d>.\n",error);
+		WriteLog(__FUNCTION__" - Open OGG file<%s> fail, error");
+		switch(error)
+		{
+		case OV_EREAD: WriteLog("<A read from media returned an error>.\n"); break;
+		case OV_ENOTVORBIS: WriteLog("<Bitstream does not contain any Vorbis data>.\n"); break;
+		case OV_EVERSION: WriteLog("<Vorbis version mismatch>.\n"); break;
+		case OV_EBADHEADER: WriteLog("<Invalid Vorbis bitstream header>.\n"); break;
+		case OV_EFAULT: WriteLog("<Internal logic fault; indicates a bug or heap/stack corruption>.\n"); break;
+		default: WriteLog("<Unknown error code %d>.\n",error); break;
+		}
 		return false;
 	}
 
@@ -448,6 +495,7 @@ bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	if(!vi)
 	{
 		WriteLog(__FUNCTION__" - ov_info error.\n");
+		ov_clear(&sound->OggDescriptor);
 		return false;
 	}
 
@@ -459,7 +507,7 @@ bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	fformat.nAvgBytesPerSec=fformat.nBlockAlign*vi->rate;
 	fformat.cbSize=0;
 
-	sample_data=new unsigned char[STREAMING_PORTION];
+	sample_data=new(nothrow) unsigned char[STREAMING_PORTION];
 	if(!sample_data)
 	{
 		ov_clear(&sound->OggDescriptor);
@@ -545,7 +593,7 @@ bool SoundManager::StreamingACM(Sound* sound, BYTE*& sample_data, DWORD& size_da
 
 bool SoundManager::StreamingOGG(Sound* sound, BYTE*& sample_data, DWORD& size_data)
 {
-	sample_data=new unsigned char[sound->BufSize];
+	sample_data=new(nothrow) unsigned char[sound->BufSize];
 	if(!sample_data) return false;
 
 	int result=0;
@@ -584,7 +632,8 @@ bool SoundManager::LoadSoundList(const char* lst_name, int path_type)
 {
 	if(!isActive) return false;
 
-	if(!fileMngr.LoadFile(lst_name,path_type))
+	FileManager fm;
+	if(!fm.LoadFile(lst_name,path_type))
 	{
 		WriteLog(__FUNCTION__" - Sound list<%s> load fail.\n",lst_name);
 		return false;
@@ -592,7 +641,7 @@ bool SoundManager::LoadSoundList(const char* lst_name, int path_type)
 	char str[256];
 	char name[256];
 	char fname[256];
-	istrstream istr((char*)fileMngr.GetBuf());
+	istrstream istr((char*)fm.GetBuf());
 	while(!istr.eof())
 	{
 		if(istr.getline(str,256).fail()) break;

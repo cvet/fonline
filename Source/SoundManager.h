@@ -58,12 +58,14 @@ struct Sound
 	bool IsMusic;
 	DWORD NextPlay;
 	DWORD RepeatTime;
+
 	// Streaming data
 	bool IsNeedStreaming;
 	DWORD BufOffs;
 	DWORD Decoded;
 	int MediaType;
 	OggVorbis_File OggDescriptor;
+
 	// Restore buffer
 	int PathType;
 	string FileName;
@@ -117,7 +119,6 @@ private:
 	long musicVolDb;
 	IDirectSound8* soundDevice;
 
-	FileManager fileMngr;
 	StrStrMap soundInfo;
 	SoundVec soundsActive;
 };

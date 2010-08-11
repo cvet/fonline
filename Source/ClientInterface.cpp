@@ -2036,27 +2036,27 @@ void FOClient::ConsoleDraw()
 		}
 
 		SprMngr.DrawStr(INTRECT(10,10,MODE_WIDTH,MODE_HEIGHT),Str::Format(
-			"|0xAF00FF00 FOnline\n"
-			"|0xAF22FF7A version %04X-%02X beta\n"
-			"|0x7F9B7AFF by |4294901760 Gamers |0x7FABCDFF for |0xFFFFFF00 Gamers\n\n"
-			"|0xFFBBBBBB Traffic, bytes:\n"
+			"|0xFFBBBBBB FOnline %s\n"
+			"by Gamers for Gamers\n"
+			"version %04X-%02X beta\n\n"
+			"Traffic, bytes:\n"
 			"Send: %u\n"
 			"Receive: %u\n"
 			"Sum: %u\n"
 			//"Receive Real: %u\n"
 			"\n"
-			//"|0xFF0000FF version %s\n\n"
-			"|0xFFAAAAAA FPS: %d\n"
-			"|0xFFAAAAAA Ping: %d\n"
+			"FPS: %d\n"
+			"Ping: %d\n"
 			"\n"
 			//"sleep: %d\n"
 			"Sound: %d\n"
 			"Music: %d\n"
 			"\n"
 			"Sleep: %d\n",
+			Singleplayer?"Singleplayer":"",
 			CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF,
 			BytesSend,BytesReceive,BytesReceive+BytesSend,/*BytesRealReceive,*/
-			/*FULLVERSTR,*/FPS,PingTime,/*OptSleep,*/SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume(),OptSleep
+			FPS,PingTime,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume(),OptSleep
 			),FT_COLORIZE,D3DCOLOR_XRGB(255,248,0),FONT_BIG);
 
 		SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),MsgGame->GetStr(STR_GAME_HELP),FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEF);
