@@ -3289,8 +3289,8 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 				}
 
 				// Any texts
-				StringMulMap& data=msg->GetData();
-				StringMulMapIt it__=data.upper_bound(99999999);
+				DwordStrMulMap& data=msg->GetData();
+				DwordStrMulMapIt it__=data.upper_bound(99999999);
 				for(;it__!=data.end();++it__) msg_dlg->AddStr(1000000000+pack->PackId*100000+((*it__).first-100000000),(*it__).second);
 			}
 		}

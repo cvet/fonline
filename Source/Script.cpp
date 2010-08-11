@@ -348,7 +348,7 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 	if(!dll) return NULL;
 
 	// Register global function and vars
-	static StringSet alreadyLoadedDll;
+	static StrSet alreadyLoadedDll;
 	if(!alreadyLoadedDll.count(dll_name_))
 	{
 		// Register variables

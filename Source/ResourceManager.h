@@ -37,10 +37,11 @@ private:
 	FileManager fileMngr;
 
 	PtrVec processedDats;
-	StringMap namesHash;
+	DwordStrMap namesHash;
 	LoadedAnimMap loadedAnims;
 	AnimMap critterFrames;
 	StrVec splashNames;
+	StrMap soundNames;
 
 	void AddNamesHash(StrVec& names);
 
@@ -70,6 +71,8 @@ public:
 
 	DWORD GetAvatarSprId(const char* fname);
 	DWORD GetRandomSplash();
+
+	StrMap& GetSoundNames(){return soundNames;}
 };
 
 extern ResourceManager ResMngr;

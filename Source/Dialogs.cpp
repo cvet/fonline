@@ -103,7 +103,7 @@ void DialogManager::SaveList(const char* list_path, const char* list_name)
 	fprintf(f,"***  DIALOGS  *********  COUNT: %08d  ********************************************\n",DlgPacksNames.size());
 	fprintf(f,"**************************************************************************************\n");
 
-	for(StrDWordMap::iterator it=DlgPacksNames.begin();it!=DlgPacksNames.end();++it)
+	for(StrDwordMapIt it=DlgPacksNames.begin();it!=DlgPacksNames.end();++it)
 	{
 		fprintf(f,"$\t%u\t%s\n",(*it).second,(*it).first.c_str());
 	}
@@ -120,14 +120,14 @@ bool DialogManager::AddDialogs(DialogPack* pack)
 	if(DialogsPacks.find(pack->PackId)!=DialogsPacks.end()) return false;
 	if(DlgPacksNames.find(pack->PackName)!=DlgPacksNames.end()) return false;
 
-	DialogsPacks.insert(DialogPackMap::value_type(pack->PackId,pack));
-	DlgPacksNames.insert(StrDWordMap::value_type(string(pack->PackName),pack->PackId));
+	DialogsPacks.insert(DialogPackMapVal(pack->PackId,pack));
+	DlgPacksNames.insert(StrDwordMapVal(string(pack->PackName),pack->PackId));
 	return true;
 }
 
 DialogPack* DialogManager::GetDialogPack(DWORD num_pack)
 {
-	DialogPackMap::iterator it=DialogsPacks.find(num_pack);
+	DialogPackMapIt it=DialogsPacks.find(num_pack);
 	return it==DialogsPacks.end()?NULL:(*it).second;
 }
 
@@ -135,13 +135,13 @@ DialogsVec* DialogManager::GetDialogs(DWORD num_pack)
 {
 	//	DialogsVecIt it=std::find(DialogsPacks.begin(),DialogsPacks.end(),num_pack);
 	//	return it!=DialogsPacks.end()?&(*it):NULL;
-	DialogPackMap::iterator it=DialogsPacks.find(num_pack);
+	DialogPackMapIt it=DialogsPacks.find(num_pack);
 	return it==DialogsPacks.end()?NULL:&(*it).second->Dialogs;
 }
 
 void DialogManager::EraseDialogs(DWORD num_pack)
 {
-	DialogPackMap::iterator it=DialogsPacks.find(num_pack);
+	DialogPackMapIt it=DialogsPacks.find(num_pack);
 	if(it==DialogsPacks.end()) return;
 
 	DlgPacksNames.erase((*it).second->PackName);
@@ -151,7 +151,7 @@ void DialogManager::EraseDialogs(DWORD num_pack)
 
 void DialogManager::EraseDialogs(string name_pack)
 {
-	StrDWordMap::iterator it=DlgPacksNames.find(name_pack);
+	StrDwordMapIt it=DlgPacksNames.find(name_pack);
 	if(it==DlgPacksNames.end()) return;
 	EraseDialogs((*it).second);
 }

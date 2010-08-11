@@ -12,6 +12,7 @@
 #include <string>
 using namespace std;
 
+// Typedefs
 typedef	DWORD MSGTYPE;
 union FILETIMELI
 {
@@ -25,41 +26,34 @@ typedef map<string,BYTE,less<string>>::value_type StrByteMapVal;
 typedef map<BYTE,string,less<BYTE>> ByteStrMap;
 typedef map<BYTE,string,less<BYTE>>::iterator ByteStrMapIt;
 typedef map<BYTE,string,less<BYTE>>::value_type ByteStrMapVal;
-typedef map<string,string,less<string>> StrStrMap;
-typedef map<string,string,less<string>>::iterator StrStrMapIt;
-typedef map<string,string,less<string>>::value_type StrStrMapVal;
-typedef map<DWORD,string,less<DWORD>> StringMap;
-typedef map<DWORD,string,less<DWORD>>::iterator StringMapIt;
-typedef map<DWORD,string,less<DWORD>>::value_type StringMapVal;
-typedef multimap<DWORD,string,less<DWORD>> StringMulMap;
-typedef multimap<DWORD,string,less<DWORD>>::iterator StringMulMapIt;
-typedef multimap<DWORD,string,less<DWORD>>::value_type StringMulMapVal;
-typedef set<string> StringSet;
+typedef map<string,string,less<string>> StrMap;
+typedef map<string,string,less<string>>::iterator StrMapIt;
+typedef map<string,string,less<string>>::value_type StrMapVal;
+typedef map<DWORD,string,less<DWORD>> DwordStrMap;
+typedef map<DWORD,string,less<DWORD>>::iterator DwordStrMapIt;
+typedef map<DWORD,string,less<DWORD>>::value_type DwordStrMapVal;
 typedef map<string,WORD,less<string>> StrWordMap;
 typedef map<string,WORD,less<string>>::iterator StrWordMapIt;
 typedef map<string,WORD,less<string>>::value_type StrWordMapVal;
-typedef map<string,DWORD,less<string>> StrDWordMap;
-typedef map<string,DWORD,less<string>>::iterator StrDWordMapIt;
-typedef map<string,DWORD,less<string>>::value_type StrDWordMapVal;
+typedef map<string,DWORD,less<string>> StrDwordMap;
+typedef map<string,DWORD,less<string>>::iterator StrDwordMapIt;
+typedef map<string,DWORD,less<string>>::value_type StrDwordMapVal;
 typedef map<WORD,string,less<WORD>> WordStrMap;
 typedef map<WORD,string,less<WORD>>::iterator WordStrMapIt;
 typedef map<WORD,string,less<WORD>>::value_type WordStrMapVal;
 typedef map<string,DWORD,less<string>> StrDwordMap;
 typedef map<string,DWORD,less<string>>::iterator StrDwordMapIt;
 typedef map<string,DWORD,less<string>>::value_type StrDwordMapVal;
-
-typedef map<WORD,char*,less<WORD>> CharMap;
-typedef map<WORD,char*,less<WORD>>::iterator CharMapIt;
-typedef map<WORD,char*,less<WORD>>::value_type CharMapVal;
-typedef map<WORD,DWORD,less<WORD>> WordMap;
-typedef map<WORD,DWORD,less<WORD>>::iterator WordMapIt;
-typedef map<WORD,DWORD,less<WORD>>::value_type WordMapVal;
 typedef map<DWORD,DWORD,less<DWORD>> DwordMap;
 typedef map<DWORD,DWORD,less<DWORD>>::iterator DwordMapIt;
 typedef map<DWORD,DWORD,less<DWORD>>::value_type DwordMapVal;
 typedef map<int,int,less<int>> IntMap;
 typedef map<int,int,less<int>>::iterator IntMapIt;
 typedef map<int,int,less<int>>::value_type IntMapVal;
+
+typedef multimap<DWORD,string,less<DWORD>> DwordStrMulMap;
+typedef multimap<DWORD,string,less<DWORD>>::iterator DwordStrMulMapIt;
+typedef multimap<DWORD,string,less<DWORD>>::value_type DwordStrMulMapVal;
 
 typedef vector<void*> PtrVec;
 typedef vector<void*>::iterator PtrVecIt;
@@ -80,6 +74,7 @@ typedef vector<BYTE*> PByteVec;
 typedef vector<float> FloatVec;
 typedef vector<float>::iterator FloatVecIt;
 
+typedef set<string> StrSet;
 typedef set<BYTE> ByteSet;
 typedef set<BYTE>::iterator ByteSetIt;
 typedef set<WORD> WordSet;
@@ -88,8 +83,6 @@ typedef set<DWORD> DwordSet;
 typedef set<DWORD>::iterator DwordSetIt;
 typedef set<int> IntSet;
 typedef set<int>::iterator IntSetIt;
-
-typedef deque<DWORD> DwordDeq;
 
 typedef pair<int,int> IntPair;
 typedef pair<WORD,WORD> WordPair;
@@ -114,61 +107,30 @@ typedef vector<BytePair> BytePairVec;
 typedef vector<BytePair>::iterator BytePairVecIt;
 typedef vector<BytePair>::value_type BytePairVecVal;
 
-//для работы с двоичными константами
+// Bits
 #define BIN__N(x)                     (x) | x>>3 | x>>6 | x>>9
 #define BIN__B(x)                     (x) & 0xf | (x)>>12 & 0xf0
 #define BIN8(v)                       (BIN__B(BIN__N(0x##v)))
 #define BIN16(bin16,bin8)             ((BIN8(bin16)<<8)|(BIN8(bin8)))
 #define BIN32(bin32,bin24,bin16,bin8) ((BIN8(bin32)<<24)|(BIN8(bin24)<<16)|(BIN8(bin16)<<8)|(BIN8(bin8)))
 
-//для работы с битами (по игре - флагами)
-#define FLAG(x,y)        (((x)&(y))!=0)
-#define FLAGS(x,y)       (((x)&(y))==y)
-#define SETFLAG(x,y)     ((x)=(x)|(y))
-#define UNSETFLAG(x,y)   ((x)=((x)|(y))^(y))
+#define FLAG(x,y)         (((x)&(y))!=0)
+#define FLAGS(x,y)        (((x)&(y))==y)
+#define SETFLAG(x,y)      ((x)=(x)|(y))
+#define UNSETFLAG(x,y)    ((x)=((x)|(y))^(y))
 
-//убирание минуса
-#define ABS(x) ((x)>=0?(x):-(x))
+// Limits
+#define MAX_BYTE          (0xFF)
+#define MAX_WORD          (0xFFFF)
+#define MAX_DWORD         (0xFFFFFFFF)
+#define MAX_INT           (0x7FFFFFFF)
+#define MIN_INT           (0x80000000)
 
-//для удобства
-#define BREAK_BEGIN do{
-#define BREAK_END   }while(0)
-
-#define MAKEDWORD(a,b,c,d) ((DWORD)(BYTE)(d) | ((DWORD)(BYTE)(c) << 8) | ((DWORD)(BYTE)(b) << 16) | ((DWORD)(BYTE)(a) << 24 ))
-
-//#define CONVERT_GRAMM(lbs) (UINT(float(lbs)*0.4535924f*1000))
-#define CONVERT_GRAMM(x) ((x)*453) //373?
-
-#define MAX_BYTE  (0xFF)
-#define MAX_WORD  (0xFFFF)
-#define MAX_DWORD (0xFFFFFFFF)
-#define MAX_INT   (0x7FFFFFFF)
-#define MIN_INT   (0x80000000)
-
+// Other stuff
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
-//#define DECLARE_COMPARE_PREDICATE(name,type,comp) class name{public:bool operator()(const type l, const type r)const{return comp;}}
+#define CONVERT_GRAMM(x)  ((x)*453)
 
-/************************************************************************/
-/* Special item pids                                                    */
-/************************************************************************/
-
-#define SP_SCEN_LIGHT				(F2PROTO_OFFSET_SCENERY+141) //Light Source
-#define SP_SCEN_LIGHT_STOP          (4592)
-#define SP_SCEN_BLOCK				(F2PROTO_OFFSET_SCENERY+67) //Secret Blocking Hex
-#define SP_SCEN_IBLOCK				(F2PROTO_OFFSET_SCENERY+344) //Block Hex Auto Inviso
-#define SP_SCEN_TRIGGER				(3852)
-#define SP_WALL_BLOCK_LIGHT			(F2PROTO_OFFSET_WALL+621) //Wall s.t. with light
-#define SP_WALL_BLOCK				(F2PROTO_OFFSET_WALL+622) //Wall s.t.
-#define SP_GRID_EXITGRID			(F2PROTO_OFFSET_SCENERY+49) //Exit Grid Map Marker
-#define SP_GRID_ENTIRE				(3853)
-#define SP_MISC_SCRBLOCK			(F2PROTO_OFFSET_MISC+12) //Scroll block
-#define SP_MISC_GRID_MAP_BEG		(F2PROTO_OFFSET_MISC+16) //Grid to LocalMap begin
-#define SP_MISC_GRID_MAP_END		(F2PROTO_OFFSET_MISC+23) //Grid to LocalMap end
-#define SP_MISC_GRID_MAP(pid)		((pid)>=SP_MISC_GRID_MAP_BEG && (pid)<=SP_MISC_GRID_MAP_END)
-#define SP_MISC_GRID_GM_BEG			(F2PROTO_OFFSET_MISC+31) //Grid to GlobalMap begin
-#define SP_MISC_GRID_GM_END			(F2PROTO_OFFSET_MISC+46) //Grid to GlobalMap end
-#define SP_MISC_GRID_GM(pid)		((pid)>=SP_MISC_GRID_GM_BEG && (pid)<=SP_MISC_GRID_GM_END)
-
+// World dump versions
 #define WORLD_SAVE_V1           (0x01AB0F01)
 #define WORLD_SAVE_V2           (0x01AB0F02)
 #define WORLD_SAVE_V3           (0x01AB0F03)
@@ -179,6 +141,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define WORLD_SAVE_V8           (0x01AB0F08)
 #define WORLD_SAVE_LAST         WORLD_SAVE_V8
 
+// Generic
+#define WORLD_START_TIME        "07:00 30:10:2246 x00"
 #define MAX_FOPATH              (1024)
 #define CRAFT_SEND_TIME         (60000)
 #define LEXEMS_SIZE             (128)
@@ -186,15 +150,13 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define MAX_PARAMETERS_ARRAYS   (100)
 #define AMBIENT_SOUND_TIME      (60000) // Random(X/2,X);
 
+// Critters
 #define GENDER_MALE             (0)
 #define GENDER_FEMALE           (1)
 #define GENDER_IT               (2)
 #define AGE_MAX                 (60)
 #define AGE_MIN                 (14)
-#define CRITICALS_ROLLS         (6)
-
 #define AGGRESSOR_TICK          (60000)
-#define WORLD_START_TIME        "07:00 30:10:2246 x00"
 #define MAX_ENEMY_STACK         (30)
 
 // Items
@@ -207,7 +169,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define UNARMED_KICK            (1020)
 
 // Maps
-#define TIME_CAN_FOLLOW_GM      (20000) //Can less than Map timeout
+#define TIME_CAN_FOLLOW_GM      (20000) // Can less than Map timeout
 
 // Critter find types
 #define FIND_LIFE               (0x01)
@@ -278,7 +240,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define CONT_PUT                (2)
 #define CONT_GETALL             (3)
 #define CONT_PUTALL             (4)
-//#define CONT_UNLOAD             (5) //TODO:
+//#define CONT_UNLOAD             (5) // TODO:
 
 // Target types
 #define TARGET_SELF             (0)
@@ -328,7 +290,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 // Global map
 #define GM_MAXX                 (GameOpt.GlobalMapWidth*GameOpt.GlobalMapZoneLength)
 #define GM_MAXY                 (GameOpt.GlobalMapHeight*GameOpt.GlobalMapZoneLength)
-#define GM_ZONE_LEN             (GameOpt.GlobalMapZoneLength) //должна быть кратна GM_MAXX и GM_MAXY
+#define GM_ZONE_LEN             (GameOpt.GlobalMapZoneLength) // Can be multiple to GM_MAXX and GM_MAXY
 #define GM__MAXZONEX            (100)
 #define GM__MAXZONEY            (100)
 #define GM_ZONES_FOG_SIZE       (((GM__MAXZONEX/4)+((GM__MAXZONEX%4)?1:0))*GM__MAXZONEY)
@@ -369,13 +331,13 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define GLOBAL_PROCESS_NEW_ZONE     (7)
 
 // GM Rule command
-#define GM_CMD_SETMOVE     (1) //+r-a*x,y//двигаться
-#define GM_CMD_STOP        (2) //+r-a//остановиться
-#define GM_CMD_TOLOCAL     (3) //+r-a*num_city,num_map//перейти на локльную карту
-#define GM_CMD_KICKCRIT    (4) //+r-a*cr_id//выкинуть крита из группы
-#define GM_CMD_FOLLOW_CRIT (5) //+r+a*cr_id//добавит в список крита
-#define GM_CMD_FOLLOW      (6) //
-#define GM_CMD_GIVE_RULE   (7) //
+#define GM_CMD_SETMOVE     (1) // +r-a*x,y
+#define GM_CMD_STOP        (2) // +r-a
+#define GM_CMD_TOLOCAL     (3) // +r-a*num_city,num_map
+#define GM_CMD_KICKCRIT    (4) // +r-a*cr_id
+#define GM_CMD_FOLLOW_CRIT (5) // +r+a*cr_id
+#define GM_CMD_FOLLOW      (6)
+#define GM_CMD_GIVE_RULE   (7)
 #define GM_CMD_ANSWER      (8)
 #define GM_CMD_ENTRANCES   (9)
 #define GM_CMD_VIEW_MAP    (10)
@@ -510,59 +472,52 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define SLOT_ARMOR              (3)
 #define SLOT_GROUND             (255)
 
-// Body Types
-// Slot protos offsets:
-#define SLOT_MAIN_PROTO_OFFSET	(1000)
-#define SLOT_EXT_PROTO_OFFSET	(1030)
-#define SLOT_ARMOR_PROTO_OFFSET	(1060)
-//1000 - 1100 protos reserved
-
 // Players barter
 #define BARTER_DIST             (1)
 	// Types
-#define BARTER_TRY              (0) //opponentId, isHide
-#define BARTER_ACCEPTED         (1) //opponentId, isHide
+#define BARTER_TRY              (0) // opponentId, isHide
+#define BARTER_ACCEPTED         (1) // opponentId, isHide
 #define BARTER_BEGIN            (2)
 #define BARTER_END              (3)
 #define BARTER_SET_SELF         (4)
 #define BARTER_SET_OPPONENT     (5)
 #define BARTER_UNSET_SELF       (6)
 #define BARTER_UNSET_OPPONENT   (7)
-#define BARTER_OFFER            (8) //isSet, isOpponent
+#define BARTER_OFFER            (8) // isSet, isOpponent
 #define BARTER_REFRESH          (9)
 
 // Scores
-#define SCORE_EVIL_OF_HOUR      (0) //Hour
+#define SCORE_EVIL_OF_HOUR      (0)
 #define SCORE_HERO_OF_HOUR      (1)
 #define SCORE_KARMA_ON_HOUR     (2)
-#define SCORE_SPEAKER           (3) //+ //Best
-#define SCORE_TRADER            (4) //+
-#define SCORE_ZOMBY             (5) //+
+#define SCORE_SPEAKER           (3)
+#define SCORE_TRADER            (4)
+#define SCORE_ZOMBY             (5)
 #define SCORE_PATY              (6)
-#define SCORE_MANIAC            (7) //+
-#define SCORE_SCAUT             (8) //+
-#define SCORE_DOCTOR            (9) //+
-#define SCORE_SHOOTER           (10) //+
-#define SCORE_MELEE             (11) //+
-#define SCORE_UNARMED           (12) //+
-#define SCORE_THIEF             (13) //+
-#define SCORE_DRIVER            (14) //+ //Profs
-#define SCORE_KILLER            (15) //+
-#define SCORE_SNIPER            (16) //+
+#define SCORE_MANIAC            (7)
+#define SCORE_SCAUT             (8)
+#define SCORE_DOCTOR            (9)
+#define SCORE_SHOOTER           (10)
+#define SCORE_MELEE             (11)
+#define SCORE_UNARMED           (12)
+#define SCORE_THIEF             (13)
+#define SCORE_DRIVER            (14)
+#define SCORE_KILLER            (15)
+#define SCORE_SNIPER            (16)
 #define SCORE_ADVENTURER        (17)
-#define SCORE_CRACKER           (18) //+
-#define SCORE_UNARMED_DAMAGE    (19) //+
+#define SCORE_CRACKER           (18)
+#define SCORE_UNARMED_DAMAGE    (19)
 #define SCORE_RITCH             (20)
-#define SCORE_CHOSEN_ONE        (21) //Best of the best
-#define SCORE_SIERRA_CUR        (40) //+
-#define SCORE_MARIPOSA_CUR      (41) //+
-#define SCORE_CATHEDRAL_CUR     (42) //+
-#define SCORE_SIERRA_BEST       (43) //+
-#define SCORE_MARIPOSA_BEST     (44) //+
-#define SCORE_CATHEDRAL_BEST    (45) //+
-#define SCORE_SIERRA_ORG        (46) //+
-#define SCORE_MARIPOSA_ORG      (47) //+
-#define SCORE_CATHEDRAL_ORG     (48) //+
+#define SCORE_CHOSEN_ONE        (21)
+#define SCORE_SIERRA_CUR        (40)
+#define SCORE_MARIPOSA_CUR      (41)
+#define SCORE_CATHEDRAL_CUR     (42)
+#define SCORE_SIERRA_BEST       (43)
+#define SCORE_MARIPOSA_BEST     (44)
+#define SCORE_CATHEDRAL_BEST    (45)
+#define SCORE_SIERRA_ORG        (46)
+#define SCORE_MARIPOSA_ORG      (47)
+#define SCORE_CATHEDRAL_ORG     (48)
 #define SCORE_BASE_BEST_ORG     (49)
 #define SCORES_MAX              (50)
 #define SCORES_SEND_TIME        (60000)
@@ -854,10 +809,7 @@ struct ScoreType
 #define ACTION_RESPAWN              (22) //   s
 #define ACTION_REFRESH              (23) //   s
 
-/************************************************************************/
-/* Script defines                                                       */
-/************************************************************************/
-
+// Script defines
 // Look checks
 #define LOOK_CHECK_DIR              (0x01)
 #define LOOK_CHECK_SNEAK_DIR        (0x02)
@@ -866,22 +818,19 @@ struct ScoreType
 #define LOOK_CHECK_SCRIPT           (0x10)
 
 // In SendMessage
-#define MESSAGE_TO_VISIBLE_ME       (0) //Отослать сообщения всем кто видет криттера.
-#define MESSAGE_TO_IAM_VISIBLE      (1) //Отослать сообщения всем кого видит криттер.
-#define MESSAGE_TO_ALL_ON_MAP       (2) //Отослать всем на карте.
+#define MESSAGE_TO_VISIBLE_ME       (0)
+#define MESSAGE_TO_IAM_VISIBLE      (1)
+#define MESSAGE_TO_ALL_ON_MAP       (2)
 
 // Special skill values
-#define SKILL_PICK_ON_GROUND       (-1)
-#define SKILL_PUT_CONT             (-2)
-#define SKILL_TAKE_CONT            (-3)
-#define SKILL_TAKE_ALL_CONT        (-4)
-#define SKILL_LOOT_CRITTER         (-5)
-#define SKILL_PUSH_CRITTER         (-6)
+#define SKILL_PICK_ON_GROUND        (-1)
+#define SKILL_PUT_CONT              (-2)
+#define SKILL_TAKE_CONT             (-3)
+#define SKILL_TAKE_ALL_CONT         (-4)
+#define SKILL_LOOT_CRITTER          (-5)
+#define SKILL_PUSH_CRITTER          (-6)
 
-/************************************************************************/
-/* ScenToSend                                                           */
-/************************************************************************/
-
+// Cached scenery
 struct ScenToSend // 32 bytes
 {
 	WORD ProtoId;
@@ -905,13 +854,10 @@ struct ScenToSend // 32 bytes
 };
 typedef vector<ScenToSend> ScenToSendVec;
 
-// Flags
 #define SCEN_CAN_USE                (0x01)
 #define SCEN_CAN_TALK               (0x02)
 
-/************************************************************************/
-/* Animations                                                           */
-/************************************************************************/
+// Animations
 
 // BA - В нокдауне (падает назад) 
 // BB - В нокдауне (падает вперед) 

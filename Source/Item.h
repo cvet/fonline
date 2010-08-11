@@ -185,6 +185,30 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define ITEM_DATA_MASK_MAP          (4)
 #define ITEM_DATA_MASK_MAX          (5)
 
+// Special item pids
+#define SP_SCEN_LIGHT				(F2PROTO_OFFSET_SCENERY+141) // Light Source
+#define SP_SCEN_LIGHT_STOP          (4592)
+#define SP_SCEN_BLOCK				(F2PROTO_OFFSET_SCENERY+67) // Secret Blocking Hex
+#define SP_SCEN_IBLOCK				(F2PROTO_OFFSET_SCENERY+344) // Block Hex Auto Inviso
+#define SP_SCEN_TRIGGER				(3852)
+#define SP_WALL_BLOCK_LIGHT			(F2PROTO_OFFSET_WALL+621) // Wall s.t. with light
+#define SP_WALL_BLOCK				(F2PROTO_OFFSET_WALL+622) // Wall s.t.
+#define SP_GRID_EXITGRID			(F2PROTO_OFFSET_SCENERY+49) // Exit Grid Map Marker
+#define SP_GRID_ENTIRE				(3853)
+#define SP_MISC_SCRBLOCK			(F2PROTO_OFFSET_MISC+12) // Scroll block
+#define SP_MISC_GRID_MAP_BEG		(F2PROTO_OFFSET_MISC+16) // Grid to LocalMap begin
+#define SP_MISC_GRID_MAP_END		(F2PROTO_OFFSET_MISC+23) // Grid to LocalMap end
+#define SP_MISC_GRID_MAP(pid)		((pid)>=SP_MISC_GRID_MAP_BEG && (pid)<=SP_MISC_GRID_MAP_END)
+#define SP_MISC_GRID_GM_BEG			(F2PROTO_OFFSET_MISC+31) // Grid to GlobalMap begin
+#define SP_MISC_GRID_GM_END			(F2PROTO_OFFSET_MISC+46) // Grid to GlobalMap end
+#define SP_MISC_GRID_GM(pid)		((pid)>=SP_MISC_GRID_GM_BEG && (pid)<=SP_MISC_GRID_GM_END)
+
+// Slot protos offsets
+// 1000 - 1100 protos reserved
+#define SLOT_MAIN_PROTO_OFFSET	    (1000)
+#define SLOT_EXT_PROTO_OFFSET	    (1030)
+#define SLOT_ARMOR_PROTO_OFFSET	    (1060)
+
 /************************************************************************/
 /* ProtoItem                                                         */
 /************************************************************************/

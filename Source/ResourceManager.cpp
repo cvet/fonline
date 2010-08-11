@@ -14,9 +14,9 @@ void ResourceManager::AddNamesHash(StrVec& names)
 		const string& fname=*it;
 		DWORD hash=Str::GetHash(fname.c_str());
 
-		StringMapIt it_=namesHash.find(hash);
+		DwordStrMapIt it_=namesHash.find(hash);
 		if(it_==namesHash.end())
-			namesHash.insert(StringMapVal(hash,fname));
+			namesHash.insert(DwordStrMapVal(hash,fname));
 		else if(_stricmp(fname.c_str(),(*it_).second.c_str()))
 			WriteLog(__FUNCTION__" - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",fname.c_str(),(*it_).second.c_str(),hash);
 	}
@@ -25,7 +25,7 @@ void ResourceManager::AddNamesHash(StrVec& names)
 const char* ResourceManager::GetName(DWORD name_hash)
 {
 	if(!name_hash) return NULL;
-	StringMapIt it=namesHash.find(name_hash);
+	DwordStrMapIt it=namesHash.find(name_hash);
 	return it!=namesHash.end()?(*it).second.c_str():NULL;
 }
 
@@ -37,16 +37,37 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 	static bool folders_done=false;
 	if(!folders_done)
 	{
+		// All names
 		StrVec file_names;
 		FileManager::GetFolderFileNames(PT_DATA,NULL,file_names);
 		AddNamesHash(file_names);
 
+		// Splashes
 		StrVec splashes;
 		FileManager::GetFolderFileNames(PT_ART_SPLASH,"rix",splashes);
 		FileManager::GetFolderFileNames(PT_ART_SPLASH,"png",splashes);
 		FileManager::GetFolderFileNames(PT_ART_SPLASH,"jpg",splashes);
 		for(StrVecIt it=splashes.begin(),end=splashes.end();it!=end;++it)
-			if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end()) splashNames.push_back(*it);
+			if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end())
+				splashNames.push_back(*it);
+
+		// Sound names
+		StrVec sounds;
+		FileManager::GetFolderFileNames(PT_SND_SFX,"wav",sounds);
+		FileManager::GetFolderFileNames(PT_SND_SFX,"acm",sounds);
+		FileManager::GetFolderFileNames(PT_SND_SFX,"ogg",sounds);
+		char fname[MAX_FOPATH];
+		char name[MAX_FOPATH];
+		for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)
+		{
+			FileManager::ExtractFileName((*it).c_str(),fname);
+			StringCopy(name,fname);
+			Str::Upr(name);
+			char* ext=(char*)FileManager::GetExtension(name);
+			if(!ext) continue;
+			*(--ext)=0;
+			if(name[0]) soundNames.insert(StrMapVal(name,fname));
+		}
 
 		folders_done=true;
 	}
@@ -58,16 +79,37 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 		TDatFile* dat=*it;
 		if(std::find(processedDats.begin(),processedDats.end(),dat)==processedDats.end())
 		{
+			// All names
 			StrVec file_names;
 			dat->GetFileNames(FileManager::GetPath(PT_DATA),NULL,file_names);
 			AddNamesHash(file_names);
 
+			// Splashes
 			StrVec splashes;
 			dat->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"rix",splashes);
 			dat->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"png",splashes);
 			dat->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"jpg",splashes);
 			for(StrVecIt it=splashes.begin(),end=splashes.end();it!=end;++it)
-				if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end()) splashNames.push_back(*it);
+				if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end())
+					splashNames.push_back(*it);
+
+			// Sound names
+			StrVec sounds;
+			dat->GetFileNames(FileManager::GetPath(PT_SND_SFX),"wav",sounds);
+			dat->GetFileNames(FileManager::GetPath(PT_SND_SFX),"acm",sounds);
+			dat->GetFileNames(FileManager::GetPath(PT_SND_SFX),"ogg",sounds);
+			char fname[MAX_FOPATH];
+			char name[MAX_FOPATH];
+			for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)
+			{
+				FileManager::ExtractFileName((*it).c_str(),fname);
+				StringCopy(name,fname);
+				Str::Upr(name);
+				char* ext=(char*)FileManager::GetExtension(name);
+				if(!ext) continue;
+				*(--ext)=0;
+				if(name[0]) soundNames.insert(StrMapVal(name,fname));
+			}
 
 			processedDats.push_back(dat);
 		}

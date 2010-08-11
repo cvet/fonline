@@ -1119,7 +1119,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 	int dist=ls.Distance;
 	if(dist<1) dist=1;
 	// Intensity
-	int inten=ABS(ls.Intensity);
+	int inten=abs(ls.Intensity);
 	if(inten>100) inten=50;
 	inten*=100;
 	if(FLAG(ls.Flags,LIGHT_GLOBAL)) GetColorDay(GetMapDayTime(),GetMapDayColor(),GetDayTime(),&LightCapacity);
@@ -1561,8 +1561,8 @@ void HexManager::InitView(int cx, int cy)
  	}
 
 	// Substract offset
-	cx-=ABS(vw);
-	cy-=ABS(vh);
+	cx-=abs(vw);
+	cy-=abs(vh);
 
 	int x;
 	int xa=-(wRight*32);
@@ -3588,8 +3588,8 @@ void HexManager::GetHexesRect(INTRECT& r, WordPairVec& h)
 	int dx=x/32;
 	int dy=y/12;
 
-	int adx=ABS(dx);
-	int ady=ABS(dy);
+	int adx=abs(dx);
+	int ady=abs(dy);
 
 	int hx,hy;
 	for(int j=0;j<=ady;j++)

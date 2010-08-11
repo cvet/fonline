@@ -168,7 +168,8 @@ bool CVarMngr::LoadTemplateVars(FILE* f, TempVarVec& vars)
 		// Description
 		StringCopy(var_desc,"error");
 
-		BREAK_BEGIN
+		do
+		{
 			char* mark=strstr(buf,VAR_DESC_MARK);
 			if(!mark) break;
 			Str::SkipLine(mark);
@@ -178,7 +179,8 @@ bool CVarMngr::LoadTemplateVars(FILE* f, TempVarVec& vars)
 			StringCopy(var_desc,mark);
 
 			buf=mark2+sizeof(VAR_DESC_MARK);
-		BREAK_END;
+		}
+		while(false);
 
 		// Parse var
 		TemplateVar* var=new TemplateVar();

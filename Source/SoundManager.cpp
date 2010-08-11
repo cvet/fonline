@@ -1,5 +1,7 @@
 #include "StdAfx.h"
 #include "SoundManager.h"
+#include "Common.h"
+#include "ResourceManager.h"
 #include "Text.h"
 
 SoundManager SndMngr;
@@ -8,19 +10,16 @@ SoundManager SndMngr;
 /* LIBS                                                                 */
 /************************************************************************/
 
-//for ACM
+// For ACM
 #include "Acm/acmstrm.h"
 
-//for OGG
+// For OGG
 #include "Ogg/codec.h"
 #include "Ogg/vorbisfile.h"
 #pragma comment (lib, "ogg_static.lib")
 #pragma comment (lib, "vorbisfile_static.lib")
 #pragma comment (lib, "vorbisenc_static.lib")
 #pragma comment (lib, "vorbis_static.lib")
-
-// Auto ptr
-#include <common.h>
 
 /************************************************************************/
 /* Volume correction                                                    */
@@ -29,32 +28,21 @@ SoundManager SndMngr;
 // The first function converts the default DirectSound range (0 - -10000) to a floating
 // point value between 0.0f and 1.0f. The second converts back. The third converts the
 // converted value to decibels. Enjoy.
-// Modify for long arg and result.
 
-long VolumeToDb(long vol_level)
+int VolumeToDb(int vol_level)
 {
 	double level=double(vol_level)/100.0;
 	if(level<=0.0) return DSBVOLUME_MIN;
 	else if(level>=1.0) return DSBVOLUME_MAX;
-	return (long)(-2000.0*log10(1.0/level));
+	return (int)(-2000.0*log10(1.0/level));
 }
 
-DWORD DbToVolume(long vol_db)
+DWORD DbToVolume(int vol_db)
 {
 	if(vol_db<=-9600) return 0;
 	else if(vol_db>=0) return 100;
 	return (DWORD)(pow(10,double(vol_db+2000)/2000.0)*10.0);
 }
-
-/*int VolumeToDecibels(float vol) 
-{
-	if (vol>=1.0F) 
-		return 0;
-	if (vol<=0.0F) 
-		return DSBVOLUME_MIN;
-	static const float adj=3321.928094887;  // 1000/log10(2)
-	return int(float(log10(vol)) * adj);
-}*/
 
 /************************************************************************/
 /* Initialization / Deinitialization / Process                          */
@@ -87,7 +75,6 @@ void SoundManager::Clear()
 	WriteLog("Sound manager finish.\n");
 	ClearSounds();
 	SAFEREL(soundDevice);
-	soundInfo.clear();
 	isActive=false;
 	WriteLog("Sound manager finish complete.\n");
 }
@@ -207,7 +194,7 @@ void SoundManager::SetMusicVolume(int vol_proc)
 /* Loader                                                               */
 /************************************************************************/
 
-void SoundManager::Play(Sound* sound, long vol_db, DWORD flags)
+void SoundManager::Play(Sound* sound, int vol_db, DWORD flags)
 {
 	if(!sound) return;
 	if(sound->IsNeedStreaming) flags|=DSBPLAY_LOOPING;
@@ -628,39 +615,6 @@ bool SoundManager::StreamingOGG(Sound* sound, BYTE*& sample_data, DWORD& size_da
 /* FOnline API                                                          */
 /************************************************************************/
 
-bool SoundManager::LoadSoundList(const char* lst_name, int path_type)
-{
-	if(!isActive) return false;
-
-	FileManager fm;
-	if(!fm.LoadFile(lst_name,path_type))
-	{
-		WriteLog(__FUNCTION__" - Sound list<%s> load fail.\n",lst_name);
-		return false;
-	}
-	char str[256];
-	char name[256];
-	char fname[256];
-	istrstream istr((char*)fm.GetBuf());
-	while(!istr.eof())
-	{
-		if(istr.getline(str,256).fail()) break;
-		Str::EraseChars(str,'\r');
-		Str::EraseChars(str,'\n');
-		_strupr(str);
-
-		StringCopy(fname,str);
-		StringCopy(name,str);
-		char* ext=(char*)FileManager::GetExtension(name);
-		if(!ext) continue;
-		*(--ext)='\0';
-
-		soundInfo.insert(StrStrMapVal(name,fname));
-	}
-
-	return true;
-}
-
 void SoundManager::PlaySound(const char* name)
 {
 	if(!isActive || !GetSoundVolume()) return;
@@ -683,18 +637,19 @@ void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2)
 	StringAppend(postfix,str);
 
 	// Find as it
+	StrMap& names=ResMngr.GetSoundNames();
 	char name[64];
 	StringCopy(name,body_type);
 	Str::Upr(name);
 	StringAppend(name,postfix);
-	StrStrMapIt it=soundInfo.find(name);
-	if(it==soundInfo.end())
+	StrMapIt it=names.find(name);
+	if(it==names.end())
 	{
 		// Try find by standart mask (12XXXXAB)
 		int len=(int)strlen(body_type);
 		for(int i=2;i<len;i++) name[i]='X';
-		it=soundInfo.find(name);
-		if(it==soundInfo.end())
+		it=names.find(name);
+		if(it==names.end())
 		{
 			// Try find by parts of name (ThirdSecondFirstFind)
 			for(int i=len-1;i>0;i--)
@@ -706,11 +661,11 @@ void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2)
 					name[len]=0;
 					StringAppend(name,postfix);
 
-					it=soundInfo.find(name);
-					if(it!=soundInfo.end()) break;
+					it=names.find(name);
+					if(it!=names.end()) break;
 				}
 			}
-			if(it==soundInfo.end()) return;
+			if(it==names.end()) return;
 		}
 	}
 
@@ -722,6 +677,7 @@ void SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE soun
 	if(!isActive || !GetSoundVolume()) return;
 
 	// Generate name of the sound
+	StrMap& names=ResMngr.GetSoundNames();
 	char name[9];
 	if(sound_type=='W') // Weapon, W123XXXR
 	{
@@ -739,8 +695,8 @@ void SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE soun
 		if(!Random(0,1))
 		{
 			name[7]='2';
-			_strupr(name);
-			if(!soundInfo.count(name)) name[7]='1';
+			Str::Upr(name);
+			if(!names.count(name)) name[7]='1';
 		}
 	}
 	else if(sound_type=='S') // Door
@@ -767,10 +723,10 @@ void SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE soun
 		name[7]='X';
 		name[8]='\0';
 	}
-	_strupr(name);
+	Str::Upr(name);
 
-	StrStrMapIt it=soundInfo.find(name);
-	if(it==soundInfo.end()) return;
+	StrMapIt it=names.find(name);
+	if(it==names.end()) return;
 
 	// Play
 	PlaySound((*it).second.c_str());
@@ -813,8 +769,8 @@ void SoundManager::PlayAmbient(const char* str)
 	
 	int rnd=Random(1,100);
 
-	char name[32];
-	char num[32];
+	char name[MAX_FOPATH];
+	char num[64];
 
 	for(int i=0;*str;++i,++str)
 	{
@@ -837,15 +793,16 @@ void SoundManager::PlayAmbient(const char* str)
 			int k=atoi(num);
 			if(rnd<=k)
 			{
-				_strupr(name);
-				PlaySound(name);
+				if(_stricmp(name,"blank")) PlaySound(name);
 				return;
 			}
 
 			rnd-=k;
 			i=-1;
 
+			while(*str==' ') str++;
 			if(*str!=',') return;
+			while(*str==' ') str++;
 			str++;
 		}
 	}

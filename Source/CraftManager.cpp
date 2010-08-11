@@ -592,9 +592,9 @@ void CraftManager::EraseCraft(DWORD num)
 bool CraftManager::LoadCrafts(FOMsg& msg)
 {
 	int load_fail=0;
-	StringMulMap& msg_str=msg.GetData();
-	StringMulMapIt it=msg_str.begin();
-	StringMulMapIt it_end=msg_str.end();
+	DwordStrMulMap& msg_str=msg.GetData();
+	DwordStrMulMapIt it=msg_str.begin();
+	DwordStrMulMapIt it_end=msg_str.end();
 
 	it++; // Skip ERROR
 

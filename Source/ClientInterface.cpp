@@ -99,7 +99,6 @@ int FOClient::InitIface()
 /************************************************************************/
 /* Data                                                                 */
 /************************************************************************/
-#pragma region Load Data
 	char res[512];
 
 	WriteLog("Load data.\n");
@@ -899,11 +898,9 @@ int FOClient::InitIface()
 	SaveLoadProcessDraft=false;
 	SaveLoadDraftValid=false;
 
-#pragma endregion
 /************************************************************************/
 /* Sprites                                                              */
 /************************************************************************/
-#pragma region Load sprites
 	WriteLog("Load sprites.\n");
 	IfaceFreeResources();
 
@@ -1295,18 +1292,6 @@ int FOClient::InitIface()
 	IfaceLoadSpr(SaveLoadDonePicDown,"SaveLoadDonePicDn");
 	IfaceLoadSpr(SaveLoadBackPicDown,"SaveLoadBackPicDn");
 
-#pragma endregion
-/************************************************************************/
-/* Sounds                                                               */
-/************************************************************************/
-#pragma region Load soundsLoaded
-	WriteLog("Load sounds.\n");
-	SndMngr.LoadSoundList("sound.lst",PT_SND_SFX);
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-#pragma endregion
 	WriteLog("Interface initialization complete.\n");
 	return 0;
 }
@@ -2525,7 +2510,7 @@ void FOClient::IntDraw()
 	}
 	else
 	{
-		for(int i=0,j=ABS(Chosen->GetAp());i<j && i<IntAPMax;i++)
+		for(int i=0,j=abs(Chosen->GetAp());i<j && i<IntAPMax;i++)
 			SprMngr.DrawSprite(IntDiodeR,IntAP[0]+i*IntAPstepX,IntAP[1]+i*IntAPstepY);
 	}
 
@@ -2578,7 +2563,7 @@ void FOClient::IntDraw()
 
 	// Hp
 	char bin_str[32];
-	sprintf(bin_str,"%c%03d",bin_str[0]='9'+4,ABS(Chosen->GetParam(ST_CURRENT_HP)));
+	sprintf(bin_str,"%c%03d",bin_str[0]='9'+4,abs(Chosen->GetParam(ST_CURRENT_HP)));
 	if(Chosen->GetParam(ST_CURRENT_HP)<0) bin_str[0]='9'+3;
 
 	if((Chosen->GetParam(ST_CURRENT_HP)*100)/Chosen->GetParam(ST_MAX_LIFE)<=20)
@@ -8041,7 +8026,7 @@ DWORD FOClient::AimGetPic(CritterCl* cr, const char* ext)
 	sprintf(aim_name,"%sna.%s",CritType::GetName(cr->GetCrType()),ext);
 	sprintf(aim_name_alias,"%sna.%s",CritType::GetName(cr->GetCrTypeAlias()),ext);
 
-	StrDWordMapIt it=AimLoadedPics.find(string(aim_name));
+	StrDwordMapIt it=AimLoadedPics.find(string(aim_name));
 	if(it!=AimLoadedPics.end()) return (*it).second;
 	it=AimLoadedPics.find(string(aim_name_alias));
 	if(it!=AimLoadedPics.end()) return (*it).second;
@@ -8049,7 +8034,7 @@ DWORD FOClient::AimGetPic(CritterCl* cr, const char* ext)
 	DWORD aim_pic=SprMngr.LoadSprite(aim_name,PT_ART_CRITTERS);
 	if(!aim_pic) aim_pic=SprMngr.LoadSprite(aim_name_alias,PT_ART_CRITTERS);
 
-	AimLoadedPics.insert(StrDWordMapVal(string(aim_name),aim_pic));
+	AimLoadedPics.insert(StrDwordMapVal(string(aim_name),aim_pic));
 	return aim_pic;
 }
 
@@ -8760,7 +8745,7 @@ void FOClient::ElevatorLMouseUp()
 		{
 			ElevatorAnswerDone=true;
 			ElevatorSendAnswerTick=Timer::GameTick();
-			int diff=ABS((int)ElevatorCurrentLevel-int(ElevatorStartLevel+ElevatorSelectedButton));
+			int diff=abs((int)ElevatorCurrentLevel-int(ElevatorStartLevel+ElevatorSelectedButton));
 			AnyFrames* anim=AnimGetFrames(ElevatorIndicatorAnim);
 			if(anim) ElevatorSendAnswerTick+=anim->Ticks/anim->GetCnt()*(anim->GetCnt()*Procent(ElevatorLevelsCount-1,diff)/100);
 			AnimRun(ElevatorIndicatorAnim,ElevatorStartLevel+ElevatorSelectedButton<ElevatorCurrentLevel?ANIMRUN_FROM_END:ANIMRUN_TO_END);

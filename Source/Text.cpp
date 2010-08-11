@@ -668,8 +668,8 @@ FOMsg::FOMsg()
 
 FOMsg& FOMsg::operator+=(const FOMsg& r)
 {
-	StringMulMap::const_iterator it=r.strData.begin();
-	StringMulMap::const_iterator end=r.strData.end();
+	DwordStrMulMap::const_iterator it=r.strData.begin();
+	DwordStrMulMap::const_iterator end=r.strData.end();
 	it++; // skip FOMSG_ERRNUM
 	for(;it!=end;++it) AddStr((*it).first,(*it).second);
 	CalculateHash();
@@ -679,15 +679,15 @@ FOMsg& FOMsg::operator+=(const FOMsg& r)
 void FOMsg::AddStr(DWORD num, const char* str)
 {
 	if(num==FOMSG_ERRNUM) return;
-	if(!str || !strlen(str)) strData.insert(StringMulMapVal(num," "));
-	else strData.insert(StringMulMapVal(num,str));
+	if(!str || !strlen(str)) strData.insert(DwordStrMulMapVal(num," "));
+	else strData.insert(DwordStrMulMapVal(num,str));
 }
 
 void FOMsg::AddStr(DWORD num, const string& str)
 {
 	if(num==FOMSG_ERRNUM) return;
-	if(!str.length()) strData.insert(StringMulMapVal(num," "));
-	else strData.insert(StringMulMapVal(num,str));
+	if(!str.length()) strData.insert(DwordStrMulMapVal(num," "));
+	else strData.insert(DwordStrMulMapVal(num,str));
 }
 
 void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
@@ -723,7 +723,7 @@ DWORD FOMsg::AddStr(const char* str)
 const char* FOMsg::GetStr(DWORD num)
 {
 	DWORD str_count=strData.count(num);
-	StringMulMapIt it=strData.find(num);
+	DwordStrMulMapIt it=strData.find(num);
 
 	switch(str_count)
 	{
@@ -738,7 +738,7 @@ const char* FOMsg::GetStr(DWORD num)
 const char* FOMsg::GetStr(DWORD num, DWORD skip)
 {
 	DWORD str_count=strData.count(num);
-	StringMulMapIt it=strData.find(num);
+	DwordStrMulMapIt it=strData.find(num);
 
 	if(skip>=str_count) return (*strData.begin()).second.c_str(); // give FOMSG_ERRNUM
 	for(int i=0;i<skip;i++) ++it;
@@ -748,14 +748,14 @@ const char* FOMsg::GetStr(DWORD num, DWORD skip)
 
 DWORD FOMsg::GetStrNumUpper(DWORD num)
 {
-	StringMulMapIt it=strData.upper_bound(num);
+	DwordStrMulMapIt it=strData.upper_bound(num);
 	if(it==strData.end()) return 0;
 	return (*it).first;
 }
 
 DWORD FOMsg::GetStrNumLower(DWORD num)
 {
-	StringMulMapIt it=strData.lower_bound(num);
+	DwordStrMulMapIt it=strData.lower_bound(num);
 	if(it==strData.end()) return 0;
 	return (*it).first;
 }
@@ -763,7 +763,7 @@ DWORD FOMsg::GetStrNumLower(DWORD num)
 int FOMsg::GetInt(DWORD num)
 {
 	DWORD str_count=strData.count(num);
-	StringMulMapIt it=strData.find(num);
+	DwordStrMulMapIt it=strData.find(num);
 	
 	switch(str_count)
 	{
@@ -820,8 +820,8 @@ void FOMsg::CalculateHash()
 #ifdef FONLINE_SERVER
 	toSend.clear();
 #endif
-	StringMulMapIt it=strData.begin();
-	StringMulMapIt end=strData.end();
+	DwordStrMulMapIt it=strData.begin();
+	DwordStrMulMapIt end=strData.end();
 	it++; // skip FOMSG_ERRNUM
 	for(;it!=end;++it)
 	{
@@ -847,7 +847,7 @@ DWORD FOMsg::GetHash()
 	return strDataHash;
 }
 
-StringMulMap& FOMsg::GetData()
+DwordStrMulMap& FOMsg::GetData()
 {
 	return strData;
 }
@@ -1026,7 +1026,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 	FileManager fm;
 #endif
 
-	StringMulMapIt it=strData.begin();
+	DwordStrMulMapIt it=strData.begin();
 	it++; //skip FOMSG_ERRNUM
 
 	string str;
@@ -1058,7 +1058,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 void FOMsg::Clear()
 {
 	strData.clear();
-	strData.insert(StringMapVal(FOMSG_ERRNUM,string("error")));
+	strData.insert(DwordStrMapVal(FOMSG_ERRNUM,string("error")));
 
 #ifdef FONLINE_SERVER
 	toSend.clear();

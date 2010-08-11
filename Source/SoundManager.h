@@ -9,7 +9,7 @@
 /* MANAGER                                                              */
 /************************************************************************/
 
-#define SOUND_DEFAULT_EXT			".ACM"
+#define SOUND_DEFAULT_EXT			".acm"
 #define MUSIC_PROCESS_TIME          (200)
 #define MUSIC_PLAY_PAUSE            (Random(240,360)*1000) // 4-6 minutes
 #define STREAMING_PORTION           (0x40000)
@@ -95,7 +95,6 @@ public:
 	void SetSoundVolume(int vol_proc);
 	void SetMusicVolume(int vol_proc);
 
-	bool LoadSoundList(const char* lst_name, int path_type);
 	void PlaySound(const char* name);
 	void PlayAction(const char* body_type, DWORD anim1, DWORD anim2);
 	void PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
@@ -104,7 +103,7 @@ public:
 	void PlayAmbient(const char* str);
 
 private:
-	void Play(Sound* sound, long vol_db, DWORD flags);
+	void Play(Sound* sound, int vol_db, DWORD flags);
 	Sound* Load(const char* fname, int path_type);
 	bool LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data);
 	bool LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data, bool mono);
@@ -115,11 +114,10 @@ private:
 	bool StreamingOGG(Sound* sound, BYTE*& sample_data, DWORD& size_data);
 
 	bool isActive;
-	long soundVolDb;
-	long musicVolDb;
+	int soundVolDb;
+	int musicVolDb;
 	IDirectSound8* soundDevice;
 
-	StrStrMap soundInfo;
 	SoundVec soundsActive;
 };
 

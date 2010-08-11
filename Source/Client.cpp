@@ -834,7 +834,7 @@ void FOClient::ScreenQuake(int noise, DWORD time)
 	ScreenOffsY=Random(0,1)?noise:-noise;
 	ScreenOffsXf=ScreenOffsX;
 	ScreenOffsYf=ScreenOffsY;
-	ScreenOffsStep=ABS(ScreenOffsXf)/(time/30);
+	ScreenOffsStep=fabs(ScreenOffsXf)/(time/30);
 	CmnScrOx+=ScreenOffsX;
 	CmnScrOy+=ScreenOffsY;
 	ScreenOffsNextTick=Timer::GameTick()+30;
@@ -9071,7 +9071,7 @@ void FOClient::DrawIfaceLayer(DWORD layer)
 	}
 }
 
-StringSet ParametersAlready_;
+StrSet ParametersAlready_;
 DWORD ParametersIndex_=1;
 bool FOClient::PragmaCallbackCrData(const char* text)
 {

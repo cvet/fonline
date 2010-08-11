@@ -127,6 +127,7 @@ public:
 };
 typedef map<DWORD,DialogPack*,less<DWORD>> DialogPackMap;
 typedef map<DWORD,DialogPack*,less<DWORD>>::iterator DialogPackMapIt;
+typedef map<DWORD,DialogPack*,less<DWORD>>::value_type DialogPackMapVal;
 
 struct Talking
 {
@@ -170,7 +171,7 @@ class DialogManager
 {
 public:
 	DialogPackMap DialogsPacks;
-	StrDWordMap DlgPacksNames;
+	StrDwordMap DlgPacksNames;
 	string LastErrors;
 
 	bool LoadDialogs(const char* list_name);

@@ -167,8 +167,8 @@ int ReverseDir(int dir)
 
 void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2)
 {
-	float dx=ABS(x2-x1);
-	float dy=ABS(y2-y1);
+	float dx=abs(x2-x1);
+	float dy=abs(y2-y1);
 
 	sx=1.0f;
 	sy=1.0f;

@@ -190,7 +190,7 @@ void FOServer::DialogScriptResult(DemandResult& result, Critter* master, Critter
 /* Pragma callbacks                                                     */
 /************************************************************************/
 
-StringSet ParametersAlready;
+StrSet ParametersAlready;
 DWORD ParametersIndex=1;
 bool FOServer::PragmaCallbackCrData(const char* text)
 {

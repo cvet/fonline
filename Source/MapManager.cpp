@@ -1002,7 +1002,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 			(walk_type==GM_WALK_WATER && GetGmRelief(new_x,new_y)!=0xF))
 		{
 			// Move from old to new and find last correct position
-			int steps=max(ABS(new_x-old_x),ABS(new_y-old_y));
+			int steps=max(abs(new_x-old_x),abs(new_y-old_y));
 			float xx=(float)old_x;
 			float yy=(float)old_y;
 			float oxx=(float)(new_x-old_x)/steps;

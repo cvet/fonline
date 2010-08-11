@@ -117,7 +117,7 @@ private:
 	DWORD bufLen;
 	char lastApp[128];
 	DWORD lastAppPos;
-	StringSet cachedKeys;
+	StrSet cachedKeys;
 
 	void GotoEol(DWORD& iter);
 	bool GotoApp(const char* app_name, DWORD& iter);
@@ -181,7 +181,7 @@ public:
 	DWORD GetSize(); // Gets Size of All Strings, without only FOMSG_ERRNUM
 	void CalculateHash(); // Calculate toSend data and hash
 	DWORD GetHash(); // Gets Hash code of MSG in toSend
-	StringMulMap& GetData(); // Gets strData
+	DwordStrMulMap& GetData(); // Gets strData
 
 #ifdef FONLINE_SERVER
 	const char* GetToSend(); // Gets toSend data
@@ -211,7 +211,7 @@ private:
 	// Hash of toSend
 	DWORD strDataHash;
 	// Numbers and String Values
-	StringMulMap strData;
+	DwordStrMulMap strData;
 };
 typedef vector<FOMsg*> FOMsgVec;
 

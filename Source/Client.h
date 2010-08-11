@@ -1257,7 +1257,7 @@ public:
 		AimWHeadT,AimWLArmT,AimWRArmT,AimWTorsoT,AimWRLegT,AimWLLegT,AimWEyesT,AimWGroinT,
 		AimWHeadP,AimWLArmP,AimWRArmP,AimWTorsoP,AimWRLegP,AimWLLegP,AimWEyesP,AimWGroinP;
 	int AimHeadP,AimLArmP,AimRArmP,AimTorsoP,AimRLegP,AimLLegP,AimEyesP,AimGroinP;
-	StrDWordMap AimLoadedPics;
+	StrDwordMap AimLoadedPics;
 	DWORD AimTargetId;
 
 	void AimDraw();
