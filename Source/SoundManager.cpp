@@ -622,7 +622,7 @@ void SoundManager::PlaySound(const char* name)
 	if(sound) Play(sound,soundVolDb,0);
 }
 
-void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2)
+void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2, bool anim2_by_val)
 {
 	if(!isActive || !GetSoundVolume() || !body_type) return;
 
@@ -630,43 +630,26 @@ void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2)
 	char postfix[64];
 	const char abc[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	if(anim1<sizeof(abc)) sprintf(postfix,"%c",abc[anim1]);
-	else sprintf(postfix,"%u",anim1);
-	char str[64];
-	if(anim2<sizeof(abc)) sprintf(str,"%c",abc[anim2]);
-	else sprintf(str,"-%u",anim2);
-	StringAppend(postfix,str);
+	else sprintf(postfix,"%u-",anim1);
+	char* ppostfix=&postfix[strlen(postfix)];
+	if(anim2<sizeof(abc) && !anim2_by_val) sprintf(ppostfix,"%c",abc[anim2]);
+	else sprintf(ppostfix,"%u",anim2);
 
-	// Find as it
-	StrMap& names=ResMngr.GetSoundNames();
+	// Name
 	char name[64];
 	StringCopy(name,body_type);
 	Str::Upr(name);
 	StringAppend(name,postfix);
+
+	// Find as it
+	StrMap& names=ResMngr.GetSoundNames();
 	StrMapIt it=names.find(name);
 	if(it==names.end())
 	{
-		// Try find by standart mask (12XXXXAB)
-		int len=(int)strlen(body_type);
-		for(int i=2;i<len;i++) name[i]='X';
+		// Try find by mask (12XXXXAB)
+		for(int i=2,j=(int)strlen(body_type);i<j;i++) name[i]='X';
 		it=names.find(name);
-		if(it==names.end())
-		{
-			// Try find by parts of name (ThirdSecondFirstFind)
-			for(int i=len-1;i>0;i--)
-			{
-				char c=body_type[i];
-				if((c>='A' && c<='Z') || (c>='À' && c<='ß'))
-				{
-					for(int i=0;i<len;i++) name[i]=body_type[i];
-					name[len]=0;
-					StringAppend(name,postfix);
-
-					it=names.find(name);
-					if(it!=names.end()) break;
-				}
-			}
-			if(it==names.end()) return;
-		}
+		if(it==names.end()) return;
 	}
 
 	PlaySound((*it).second.c_str());

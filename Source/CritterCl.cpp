@@ -1198,7 +1198,7 @@ void CritterCl::NextAnim(bool erase_front)
 	}
 
 #ifdef FONLINE_CLIENT
-	SndMngr.PlayAction(CritType::GetSoundName(anim->IndCrType),anim->IndAnim1,anim->IndAnim2);
+	SndMngr.PlayAction(CritType::GetSoundName(anim->IndCrType),anim->IndAnim1,anim->IndAnim2,Anim3d?true:false);
 #endif
 }
 
