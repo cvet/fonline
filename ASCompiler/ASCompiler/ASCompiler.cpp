@@ -14,6 +14,10 @@ typedef bool(*PragmaCallbackFunc)(const char*);
 
 asIScriptEngine* Engine;
 
+char* buf;
+IntVec lines;
+bool ext_log=false;
+
 void CallBack(const asSMessageInfo *msg, void *param)
 {
 	const char* type="ERR ";
@@ -21,6 +25,7 @@ void CallBack(const asSMessageInfo *msg, void *param)
 	else if(msg->type==asMSGTYPE_INFORMATION) type="INFO";
 
 	printf("%s (%d, %d) : %s : %s.\n",msg->section,msg->row,msg->col,type,msg->message);
+	if (ext_log) printf("\tIn line '%s'.\n",buf+lines[msg->row-1]); // show preprocessed line
 }
 
 class GvarPragmaCallback : public Preprocessor::PragmaCallback
@@ -124,7 +129,7 @@ public:
 bool PragmaCallbackCrData(const char* text);
 PragmaCallbackFunc CrDataPragmaCallback::CallFunc=PragmaCallbackCrData;
 
-StringSet ParametersAlready;
+StrSet ParametersAlready;
 DWORD ParametersIndex=1;
 bool PragmaCallbackCrData(const char* text)
 {
@@ -158,7 +163,7 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 	if(!dll) return NULL;
 
 	// Register global function and vars
-	static StringSet alreadyLoadedDll;
+	static StrSet alreadyLoadedDll;
 	if(!alreadyLoadedDll.count(dll_name))
 	{
 		// Register AS engine
@@ -269,6 +274,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		if(strstr(argv[i],"-p") && i+1<argc) str_prep=argv[i+1];
 		else if(strstr(argv[i],"-d") && i+1<argc) defines.push_back(argv[i+1]);
+		else if(strstr(argv[i],"-e")) ext_log=true;
 	}
 	/************************************************************************/
 	/* Dll                                                                  */
@@ -340,12 +346,23 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	vos.Format();
-	if(str_prep)
+
+	if(ext_log || str_prep)
 	{
-		char* buf=new char[vos.GetSize()+1];
+		buf=new char[vos.GetSize()+1];
 		memcpy(buf,vos.GetData(),vos.GetSize());
 		buf[vos.GetSize()]='\0';
+	}
 
+	if (ext_log)
+	{
+		int curline=1;
+		lines.push_back(0);
+		for (int i=0, j=vos.GetSize();i<j;i++) if(buf[i]=='\n') lines.push_back(i+1);
+	}
+
+	if(str_prep)
+	{
 		FILE* f=NULL;
 		if(!fopen_s(&f,str_prep,"wt"))
 		{
@@ -356,8 +373,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			printf("Unable to create preprocessed file<%s>.\n",str_prep);
 		}
-		delete buf;
 	}
+
+	// Break buffer into null-terminated lines
+	if (ext_log) for (int i=0;buf[i]!='\0';i++) if (buf[i]=='\n') buf[i]='\0';
 
 	// Compiler
 	__int64 freq,fp,fp2;
@@ -390,6 +409,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	/************************************************************************/
 	/*                                                                      */
 	/************************************************************************/
+	if (ext_log || str_prep) delete buf;
 	return 0;
 }
 
