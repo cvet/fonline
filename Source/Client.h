@@ -101,9 +101,9 @@ public:
 	void Net_SendLogIn(const char* name, const char* pass);
 	void Net_SendCreatePlayer(CritterCl* newcr);
 	void Net_SendSaveLoad(bool save, const char* fname, ByteVec* pic_data);
-	void Net_SendUseSkill(BYTE skill, CritterCl* cr);
-	void Net_SendUseSkill(BYTE skill, ItemHex* item);
-	void Net_SendUseSkill(BYTE skill, Item* item);
+	void Net_SendUseSkill(WORD skill, CritterCl* cr);
+	void Net_SendUseSkill(WORD skill, ItemHex* item);
+	void Net_SendUseSkill(WORD skill, Item* item);
 	void Net_SendUseItem(BYTE ap, DWORD item_id, WORD item_pid, BYTE rate, BYTE target_type, DWORD target_id, WORD target_pid, DWORD param);
 	void Net_SendPickItem(WORD targ_x, WORD targ_y, WORD pid);
 	void Net_SendPickCritter(DWORD crid, BYTE pick_type);

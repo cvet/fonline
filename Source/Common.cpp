@@ -19,7 +19,8 @@ int Random(int minimum, int maximum)
 int Procent(int full, int peace)
 {
 	if(!full) return 0;
-	return peace*100/full;
+	int procent=peace*100/full;
+	return CLAMP(procent,0,100);
 }
 
 DWORD DistSqrt(int x1, int y1, int x2, int y2)

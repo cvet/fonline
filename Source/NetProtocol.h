@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF07B) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF07C) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -542,10 +542,10 @@ sizeof(DWORD))
 //
 // Params:
 // BYTE ap
-// DWORD item_id - id объекта
-// BYTE from_slot - откуда
-// BYTE to_slot - куда, если на землю то 0xFF
-// DWORD count - перемещаемое колличество
+// DWORD item_id
+// BYTE from_slot
+// BYTE to_slot
+// DWORD count
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_PICK_ITEM       MAKE_NETMSG_HEADER(82)
@@ -592,7 +592,7 @@ sizeof(DWORD)+sizeof(BYTE))
 #define NETMSG_SEND_USE_ITEM_SIZE   (sizeof(MSGTYPE)+sizeof(BYTE)+sizeof(DWORD)+\
 sizeof(WORD)+sizeof(BYTE)+sizeof(BYTE)+sizeof(DWORD)+sizeof(WORD)+sizeof(DWORD))
 //////////////////////////////////////////////////////////////////////////
-// сигнал чузена о приминении активного предмета
+// Use some item.
 // Params:
 // BYTE ap
 // DWORD item_id
@@ -601,28 +601,28 @@ sizeof(WORD)+sizeof(BYTE)+sizeof(BYTE)+sizeof(DWORD)+sizeof(WORD)+sizeof(DWORD))
 // BYTE target_type
 // DWORD target_id
 // WORD target_pid
-// DWORD param;
+// DWORD param
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_USE_SKILL       MAKE_NETMSG_HEADER(86)
-#define NETMSG_SEND_USE_SKILL_SIZE	(sizeof(MSGTYPE)+sizeof(BYTE)+\
+#define NETMSG_SEND_USE_SKILL_SIZE	(sizeof(MSGTYPE)+sizeof(WORD)+\
 sizeof(DWORD)+sizeof(WORD))
 //////////////////////////////////////////////////////////////////////////
-// сигнал о приминении скилла
+// Use some skill.
 // Params:
-// BYTE skill
+// WORD skill
 // BYTE targ_type
 // DWORD target_id
-// WORD target_pid;
+// WORD target_pid
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_PICK_CRITTER    MAKE_NETMSG_HEADER(87)
 #define NETMSG_SEND_PICK_CRITTER_SIZE (sizeof(MSGTYPE)+sizeof(DWORD)+sizeof(BYTE))
 //////////////////////////////////////////////////////////////////////////
-//
+// Critter picking.
 // Params:
-// DWORD crid;
-// BYTE pick_type; (see Pick types in FOdefines.h)
+// DWORD crid
+// BYTE pick_type (see Pick types in FOdefines.h)
 //////////////////////////////////////////////////////////////////////////
 
 //************************************************************************

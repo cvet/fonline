@@ -533,16 +533,20 @@ INTRECT HexManager::GetRectForText(WORD hx, WORD hy)
 	if(f.Crit) return f.Crit->GetTextRect();
 	else if(f.DeadCrits.size()) return f.DeadCrits[0]->GetTextRect();
 
-	// Scenery
+	// Items
+	INTRECT r(0,0,0,0);
 	for(int i=0,j=f.Items.size();i<j;i++)
 	{
-		ItemHex* item=f.Items[i];
-		if(!item->IsScenOrGrid()) continue;
-		SpriteInfo* si=sprMngr->GetSpriteInfo(item->SprId);
-		if(!si) continue;
-		return INTRECT(0,0,si->Width,si->Height);
+		SpriteInfo* si=sprMngr->GetSpriteInfo(f.Items[i]->SprId);
+		if(si)
+		{
+			int w=si->Width-si->OffsX;
+			int h=si->Height-si->OffsY;
+			if(w>r.L) r.L=w;
+			if(h>r.B) r.B=h;
+		}
 	}
-	return INTRECT(0,0,0,0);
+	return r;
 }
 
 bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy)

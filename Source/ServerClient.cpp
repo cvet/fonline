@@ -699,9 +699,6 @@ bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
 #pragma MESSAGE("Add using hands/legs.")
 bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, DWORD target_id, WORD target_pid, DWORD param)
 {
-/************************************************************************/
-/* Check                                                                */
-/************************************************************************/
 	cr->SetBreakTime(GameOpt.Breaktime);
 
 	Map* map=MapMngr.GetMap(cr->GetMap());
@@ -741,9 +738,6 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		}
 	}
 
-/************************************************************************/
-/* Find target                                                          */
-/************************************************************************/
 	Critter* target_cr=NULL;
 	Item* target_item=NULL;
 	MapObject* target_scen=NULL;
@@ -959,13 +953,13 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		Script::SetArgObject(target_cr);
 		Script::SetArgObject(target_item);
 		Script::SetArgObject(target_scen);
-		Script::RunPrepared();
+		if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
+
+		// Nothing happens
+		cr->Send_TextMsg(cr,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 	}
 
 	return true;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 }
 
 bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
@@ -1027,6 +1021,8 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 			Script::SetArgObject(NULL);
 			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
 		}
+
+		cr->Send_TextMsg(cr,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 	}
 	else if(proto->IsScen())
 	{
@@ -1063,6 +1059,8 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 			Script::SetArgObject(pick_scenery);
 			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
 		}
+
+		cr->Send_TextMsg(cr,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 	}
 	else if(proto->IsGrid())
 	{
@@ -1082,25 +1080,21 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 			}
 			break;
 		default:
+			cr->Send_TextMsg(cr,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 			break;
 		}
 	}
 	else if(proto->IsWall())
 	{
-		WriteLog(__FUNCTION__" - Wall picked, critter<%s>.\n",cr->GetInfo());
-		cr->Send_Text(cr,"You can't pick wall! Don't do this in future.",SAY_NETMSG);
+		cr->Send_TextMsg(cr,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 		return false;
 	}
 	else
 	{
-		WriteLog(__FUNCTION__" - Unknown proto type<%u>, critter<%s>.\n",proto->GetType(),cr->GetInfo());
-		cr->Send_Text(cr,"Unknown proto type.",SAY_NETMSG);
+		cr->Send_TextMsg(cr,STR_USE_NOTHING,SAY_NETMSG,TEXTMSG_GAME);
 		return false;
 	}
 	return true;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 }
 
 void FOServer::KillCritter(Critter* cr, BYTE dead_type, Critter* attacker)
@@ -3337,14 +3331,11 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 		cl->Send_ContainerInfo(cr,transfer_type,false);
 	}
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 }
 
 void FOServer::Process_UseSkill(Client* cl)
 {
-	BYTE skill;
+	WORD skill;
 	BYTE targ_type;
 	DWORD target_id;
 	WORD target_pid;
@@ -3355,8 +3346,19 @@ void FOServer::Process_UseSkill(Client* cl)
 	cl->Bin >> target_pid;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	if(targ_type>=TARGET_SELF && targ_type<=TARGET_SCENERY) Act_Use(cl,0,skill,targ_type,target_id,target_pid,0);
-	else WriteLog(__FUNCTION__" - Invalid target type<%u>, client<%s>.\n",targ_type,cl->GetInfo());
+	if(skill<SKILL_BEGIN || skill>SKILL_END)
+	{
+		WriteLog(__FUNCTION__" - Invalid skill<%d>, client<%s>.\n",skill,cl->GetInfo());
+		return;
+	}
+
+	if(targ_type<TARGET_SELF || targ_type>TARGET_SCENERY)
+	{
+		WriteLog(__FUNCTION__" - Invalid target type<%u>, client<%s>.\n",targ_type,cl->GetInfo());
+		return;
+	}
+
+	Act_Use(cl,0,skill,targ_type,target_id,target_pid,0);
 }
 
 void FOServer::Process_Dir(Client* cl)

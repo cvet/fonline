@@ -829,6 +829,7 @@ struct ScoreType
 #define SKILL_TAKE_ALL_CONT         (-4)
 #define SKILL_LOOT_CRITTER          (-5)
 #define SKILL_PUSH_CRITTER          (-6)
+#define SKILL_TALK                  (-7)
 
 // Cached scenery
 struct ScenToSend // 32 bytes

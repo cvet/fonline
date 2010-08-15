@@ -14,18 +14,32 @@ typedef bool(*PragmaCallbackFunc)(const char*);
 
 asIScriptEngine* Engine;
 
-char* buf;
-IntVec lines;
-bool ext_log=false;
+char* Buf=NULL;
+IntVec Lines;
 
-void CallBack(const asSMessageInfo *msg, void *param)
+void CallBack(const asSMessageInfo* msg, void* param)
 {
-	const char* type="ERR ";
-	if(msg->type==asMSGTYPE_WARNING) type="WARN";
+	const char* type="ERROR";
+	if(msg->type==asMSGTYPE_WARNING) type="WARNING";
 	else if(msg->type==asMSGTYPE_INFORMATION) type="INFO";
 
-	printf("%s (%d, %d) : %s : %s.\n",msg->section,msg->row,msg->col,type,msg->message);
-	if (ext_log) printf("\tIn line '%s'.\n",buf+lines[msg->row-1]); // show preprocessed line
+	if(msg->type!=asMSGTYPE_INFORMATION)
+	{
+		const char* line=Buf+Lines[msg->row-1];
+		int col_offs=0;
+		while(*line==' ' || *line=='\t')
+		{
+			line++;
+			col_offs++;
+		}
+
+		printf("%s : %s : Line %d, Column %d.\n",type,msg->message,msg->row,msg->col-col_offs);
+		printf("\tIn line '%s'.\n",line); // Show preprocessed line
+	}
+	else
+	{
+		printf("%s : %s : Line %d.\n",type,msg->message,msg->row);
+	}
 }
 
 class GvarPragmaCallback : public Preprocessor::PragmaCallback
@@ -274,7 +288,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		if(strstr(argv[i],"-p") && i+1<argc) str_prep=argv[i+1];
 		else if(strstr(argv[i],"-d") && i+1<argc) defines.push_back(argv[i+1]);
-		else if(strstr(argv[i],"-e")) ext_log=true;
 	}
 	/************************************************************************/
 	/* Dll                                                                  */
@@ -347,26 +360,19 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	vos.Format();
 
-	if(ext_log || str_prep)
-	{
-		buf=new char[vos.GetSize()+1];
-		memcpy(buf,vos.GetData(),vos.GetSize());
-		buf[vos.GetSize()]='\0';
-	}
+	Buf=new char[vos.GetSize()+1];
+	memcpy(Buf,vos.GetData(),vos.GetSize());
+	Buf[vos.GetSize()]='\0';
 
-	if (ext_log)
-	{
-		int curline=1;
-		lines.push_back(0);
-		for (int i=0, j=vos.GetSize();i<j;i++) if(buf[i]=='\n') lines.push_back(i+1);
-	}
+	Lines.push_back(0);
+	for(int i=0,j=vos.GetSize();i<j;i++) if(Buf[i]=='\n') Lines.push_back(i+1);
 
 	if(str_prep)
 	{
 		FILE* f=NULL;
 		if(!fopen_s(&f,str_prep,"wt"))
 		{
-			fwrite(buf,sizeof(char),strlen(buf),f);
+			fwrite(Buf,sizeof(char),strlen(Buf),f);
 			fclose(f);
 		}
 		else
@@ -376,7 +382,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	// Break buffer into null-terminated lines
-	if (ext_log) for (int i=0;buf[i]!='\0';i++) if (buf[i]=='\n') buf[i]='\0';
+	for(int i=0;Buf[i]!='\0';i++) if (Buf[i]=='\n') Buf[i]='\0';
 
 	// Compiler
 	__int64 freq,fp,fp2;
@@ -406,10 +412,11 @@ int _tmain(int argc, _TCHAR* argv[])
 	printf("Success.\nTime: %.02f ms.\n",double(((double)fp2-(double)fp)/(double)freq*1000)/*,t2-t1*/);
 	Engine->Release();
 	FreeLibrary(comp_dll);
+	if(Buf) delete Buf;
+	Buf=NULL;
 	/************************************************************************/
 	/*                                                                      */
 	/************************************************************************/
-	if (ext_log || str_prep) delete buf;
 	return 0;
 }
 

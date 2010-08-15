@@ -744,8 +744,8 @@ Item* Map::GetItemHex(WORD hx, WORD hy, WORD item_pid, Critter* picker)
 	for(ItemPtrVecIt it=HexItems.begin(),end=HexItems.end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->ACC_HEX.HexX==hx && item->ACC_HEX.HexY==hy && (item_pid==0 || item->GetProtoId()==item_pid)
-		&& (!picker || (!item->IsHidden() && picker->CountIdVisItem(item->GetId())))) return item;
+		if(item->ACC_HEX.HexX==hx && item->ACC_HEX.HexY==hy && (item_pid==0 || item->GetProtoId()==item_pid) &&
+			(!picker || (!item->IsHidden() && picker->CountIdVisItem(item->GetId())))) return item;
 	}
 	return NULL;
 }

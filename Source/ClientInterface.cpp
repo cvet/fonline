@@ -2189,18 +2189,30 @@ void FOClient::GameDraw()
 	DWORD tick=Timer::GameTick();
 	for(MapTextVecIt it=GameMapTexts.begin();it!=GameMapTexts.end();)
 	{
-		MapText& t=(*it);
-		if(tick>=t.StartTick+t.Tick) it=GameMapTexts.erase(it);
+		MapText& mt=(*it);
+		if(tick>=mt.StartTick+mt.Tick) it=GameMapTexts.erase(it);
 		else
 		{
-			int procent=Procent(t.Tick,tick-t.StartTick);
-			INTRECT r=AverageFlexRect(t.Rect,t.EndRect,procent);
-			Field& f=HexMngr.GetField(t.HexX,t.HexY);
-			int x=(f.ScrX+32/2+CmnScrOx)/SpritesZoom-100-(t.Rect.L-r.L);
-			int y=(f.ScrY+12/2-t.Rect.H()-(t.Rect.T-r.T)+CmnScrOy)/SpritesZoom-70;
-			DWORD color=t.Color;
-			if(t.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
-			SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),t.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
+			DWORD dt=tick-mt.StartTick;
+			int procent=Procent(mt.Tick,dt);
+			INTRECT r=AverageFlexRect(mt.Rect,mt.EndRect,procent);
+			Field& f=HexMngr.GetField(mt.HexX,mt.HexY);
+			int x=(f.ScrX+16+CmnScrOx)/SpritesZoom-100-(mt.Rect.L-r.L);
+			int y=(f.ScrY+6-mt.Rect.H()-(mt.Rect.T-r.T)+CmnScrOy)/SpritesZoom-70;
+
+			DWORD color=mt.Color;
+			if(mt.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
+			else if(mt.Tick>500)
+			{
+				DWORD hide=mt.Tick-200;
+				if(dt>=hide)
+				{
+					DWORD alpha=0xFF*(100-Procent(mt.Tick-hide,dt-hide))/100;
+					color=(alpha<<24)|(color&0xFFFFFF);
+				}
+			}
+
+			SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),mt.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
 			it++;
 		}
 	}
@@ -4192,7 +4204,6 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 					if(cr->IsLife() && !cr->IsPerk(MODE_NO_PUSH)) LMenuCritNodes.push_back(LMENU_NODE_PUSH);
 					LMenuCritNodes.push_back(LMENU_NODE_BAG);
 					LMenuCritNodes.push_back(LMENU_NODE_SKILL);
-					//if(!cr->IsMob()) LMenuCritNodes.push_back(LMENU_NODE_GMFOLLOW);
 				}
 				else
 				{
@@ -4249,9 +4260,9 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 
 			LMenuNodes.clear();
 
-			if(!item->IsWall())
+			if(item->IsUsable())
 			{
-				if(item->IsCanUse()) LMenuNodes.push_back(LMENU_NODE_PICK);
+				LMenuNodes.push_back(LMENU_NODE_PICK);
 				LMenuNodes.push_back(LMENU_NODE_LOOK);
 				LMenuNodes.push_back(LMENU_NODE_BAG);
 				LMenuNodes.push_back(LMENU_NODE_SKILL);
@@ -4290,7 +4301,7 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 			}
 			else
 			{
-				// TODO:
+				// Items in another containers
 			}
 
 			LMenuNodes.push_back(LMENU_NODE_BREAK);

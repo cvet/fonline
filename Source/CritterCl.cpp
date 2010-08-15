@@ -1192,7 +1192,7 @@ void CritterCl::NextAnim(bool erase_front)
 		for(int i=0;i<=begSpr;++i)
 			ChangeOffs(anim->Anim->NextX[i],anim->Anim->NextY[i],anim->MoveText);
 	}
-	else	
+	else
 	{
 		Anim3d->SetAnimation(anim->IndAnim1,anim->IndAnim2,GetLayers3dData(),anim->BeginFrm?0:ANIMATION_ONE_TIME);
 	}
@@ -1938,6 +1938,17 @@ void CritterCl::DrawTextOnHead()
 		{
 			str=strTextOnHead;
 			color=textOnHeadColor;
+
+			if(tickTextDelay>500)
+			{
+				DWORD dt=Timer::GameTick()-tickStartText;
+				DWORD hide=tickTextDelay-200;
+				if(dt>=hide)
+				{
+					DWORD alpha=0xFF*(100-Procent(tickTextDelay-hide,dt-hide))/100;
+					color=(alpha<<24)|(color&0xFFFFFF);
+				}
+			}
 		}
 
 		if(fadingEnable)

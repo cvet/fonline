@@ -372,16 +372,16 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		short* sx=(odd?SXOdd:SXEven);
 		short* sy=(odd?SYOdd:SYEven);
 
-		// Find in 3 hex radius
+		// Find in 2 hex radius
 		for(int i=0;;i++)
 		{
-			if(i>=36)
+			if(i>=18)
 			{
 				WriteLog(__FUNCTION__" - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
 				return NULL;
 			}
 			cur_step++;
-			if(cur_step>=36) cur_step=0;
+			if(cur_step>=18) cur_step=0;
 			if(hx_+sx[cur_step]<0 || hx_+sx[cur_step]>=map->GetMaxHexX()) continue;
 			if(hy_+sy[cur_step]<0 || hy_+sy[cur_step]>=map->GetMaxHexY()) continue;
 			if(!map->IsHexPassed(hx_+sx[cur_step],hy_+sy[cur_step])) continue;

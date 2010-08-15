@@ -3313,7 +3313,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 	bool variable_space=false;
 	for(int i=0;str_[i];i++)
 	{
-		if(FLAG(flags,FT_COLORIZE) && fi.ColorDots[i+offs_col]) col=fi.ColorDots[i+offs_col];
+		if(FLAG(flags,FT_COLORIZE) && fi.ColorDots[i+offs_col]) col=(col&0xFF000000)|(fi.ColorDots[i+offs_col]&0xFFFFFF);
 
 		switch(str_[i]) 
 		{

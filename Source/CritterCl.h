@@ -270,7 +270,7 @@ private:
 		bool MoveText;
 		DWORD IndCrType,IndAnim1,IndAnim2;
 		Item* ActiveItem;
-		CritterAnim(AnyFrames* anim, DWORD tick, int beg_frm, int end_frm, bool move_text, BYTE ind_crtype, BYTE ind_anim1, BYTE ind_anim2, Item* item):
+		CritterAnim(AnyFrames* anim, DWORD tick, int beg_frm, int end_frm, bool move_text, DWORD ind_crtype, DWORD ind_anim1, DWORD ind_anim2, Item* item):
 			Anim(anim),AnimTick(tick),BeginFrm(beg_frm),EndFrm(end_frm),MoveText(move_text),IndCrType(ind_crtype),IndAnim1(ind_anim1),IndAnim2(ind_anim2),ActiveItem(item){}
 	};
 typedef vector<CritterAnim> CritterAnimVec;

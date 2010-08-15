@@ -3518,7 +3518,7 @@ void FOClient::Net_SendMove(ByteVec steps)
 	Bout << Chosen->HexY;
 }
 
-void FOClient::Net_SendUseSkill(BYTE skill, CritterCl* cr)
+void FOClient::Net_SendUseSkill(WORD skill, CritterCl* cr)
 {
 	Bout << NETMSG_SEND_USE_SKILL;
 	Bout << skill;
@@ -3527,7 +3527,7 @@ void FOClient::Net_SendUseSkill(BYTE skill, CritterCl* cr)
 	Bout << (WORD)0;
 }
 
-void FOClient::Net_SendUseSkill(BYTE skill, ItemHex* item)
+void FOClient::Net_SendUseSkill(WORD skill, ItemHex* item)
 {
 	Bout << NETMSG_SEND_USE_SKILL;
 	Bout << skill;
@@ -3548,7 +3548,7 @@ void FOClient::Net_SendUseSkill(BYTE skill, ItemHex* item)
 	}
 }
 
-void FOClient::Net_SendUseSkill(BYTE skill, Item* item)
+void FOClient::Net_SendUseSkill(WORD skill, Item* item)
 {
 	Bout << NETMSG_SEND_USE_SKILL;
 	Bout << skill;
@@ -7519,7 +7519,7 @@ label_EndMove:
 			else if(target_type==TARGET_ITEM) target_item=GetItem(target_id);
 			else if(target_type==TARGET_SCENERY) target_item=GetItem(target_id);
 			else break;
-			if(target_item && !target_item->IsItem() && !target_item->IsScenOrGrid()) break;
+			if(target_item && !target_item->IsUsable()) break;
 			if(target_type==TARGET_CRITTER && Chosen==target_cr) target_type=TARGET_SELF;
 			if(target_type==TARGET_SELF) target_id=Chosen->GetId();
 
@@ -7784,7 +7784,7 @@ label_EndMove:
 		break;
 	case CHOSEN_USE_SKL_ON_CRITTER:
 		{
-			BYTE skill=act.Param[0];
+			WORD skill=act.Param[0];
 			DWORD crid=act.Param[1];
 
 			CritterCl* cr=(crid?GetCritter(crid):Chosen);
@@ -7869,7 +7869,7 @@ label_EndMove:
 			else
 			{
 				ItemHex* item=HexMngr.GetItemById(item_id);
-				if(!item || !item->IsCanUse()) break;
+				if(!item || !item->IsUsable()) break;
 				item_action=item;
 
 				if(HexMngr.IsMapLoaded())
@@ -7912,8 +7912,7 @@ label_EndMove:
 			if(!HexMngr.IsMapLoaded()) break;
 
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
-			if(!item) break;
-			//if(!item->IsCanUse()) break;
+			if(!item || !item->IsUsable()) break;
 
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
 			{
@@ -7993,8 +7992,7 @@ label_EndMove:
 			if(!HexMngr.IsMapLoaded()) break;
 
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
-			if(!item) break;
-			if(!item->IsCanUse()) break;
+			if(!item || !item->IsUsable()) break;
 
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
 			{
