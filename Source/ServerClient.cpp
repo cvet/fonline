@@ -1661,6 +1661,12 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	if(default_lang) cl->Send_TextMsg(cl,STR_NET_LANGUAGE_NOT_SUPPORTED,SAY_NETMSG,TEXTMSG_GAME);
 
+	// Proto item data
+	for(int i=1;i<ITEM_MAX_TYPES;i++)
+	{
+		if(ItemMngr.GetProtosHash(i)!=item_hash[i]) Send_ProtoItemData(cl,i,ItemMngr.GetProtos(i),ItemMngr.GetProtosHash(i));
+	}
+
 	// Singleplayer
 	if(Singleplayer && !SingleplayerSave.Valid)
 	{
@@ -1773,12 +1779,6 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	DWORD id=data->ClientId;
 	StringCopy(cl->Name,data->ClientName);
 	cl->NameStr=cl->Name;
-
-	// Proto item data
-	for(int i=1;i<ITEM_MAX_TYPES;i++)
-	{
-		if(ItemMngr.GetProtosHash(i)!=item_hash[i]) Send_ProtoItemData(cl,i,ItemMngr.GetProtos(i),ItemMngr.GetProtosHash(i));
-	}
 
 	// Check UIDS
 #ifndef DEV_VESRION
