@@ -387,7 +387,7 @@ DWORD CritterCl::GetItemsWeightKg()
 
 DWORD CritterCl::GetItemsVolume()
 {
-	WORD res=0;
+	DWORD res=0;
 	for(ItemPtrMapIt it=InvItems.begin();it!=InvItems.end();++it)
 		res+=(*it).second->GetVolume();
 	return res;

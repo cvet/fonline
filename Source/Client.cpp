@@ -1366,9 +1366,9 @@ void FOClient::ParseMouse()
 
 		if(IsVideoPlayed())
 		{
-			if(IsCanStopVideo()
-			&&(((didod[i].dwOfs==DIMOFS_BUTTON0) && (didod[i].dwData&0x80))
-			|| ((didod[i].dwOfs==DIMOFS_BUTTON1) && (didod[i].dwData&0x80))))
+			if(IsCanStopVideo() &&
+				(((didod[i].dwOfs==DIMOFS_BUTTON0) && (didod[i].dwData&0x80)) ||
+				((didod[i].dwOfs==DIMOFS_BUTTON1) && (didod[i].dwData&0x80))))
 			{
 				NextVideo();
 				return;
@@ -7519,7 +7519,6 @@ label_EndMove:
 			else if(target_type==TARGET_ITEM) target_item=GetItem(target_id);
 			else if(target_type==TARGET_SCENERY) target_item=GetItem(target_id);
 			else break;
-			if(target_item && !target_item->IsUsable()) break;
 			if(target_type==TARGET_CRITTER && Chosen==target_cr) target_type=TARGET_SELF;
 			if(target_type==TARGET_SELF) target_id=Chosen->GetId();
 
@@ -7744,12 +7743,12 @@ label_EndMove:
 
 			if(cont==IFACE_PUP_CONT2)
 			{
-				if(Chosen->GetFreeWeight()<(int)item->GetWeight1st()*count)
+				if(Chosen->GetFreeWeight()<(int)(item->GetWeight1st()*count))
 				{
 					AddMess(FOMB_GAME,MsgGame->GetStr(STR_OVERWEIGHT));
 					break;
 				}
-				if(Chosen->GetFreeVolume()<(int)item->GetVolume1st()*count)
+				if(Chosen->GetFreeVolume()<(int)(item->GetVolume1st()*count))
 				{
 					AddMess(FOMB_GAME,MsgGame->GetStr(STR_OVERVOLUME));
 					break;
@@ -7869,7 +7868,7 @@ label_EndMove:
 			else
 			{
 				ItemHex* item=HexMngr.GetItemById(item_id);
-				if(!item || !item->IsUsable()) break;
+				if(!item) break;
 				item_action=item;
 
 				if(HexMngr.IsMapLoaded())
@@ -7912,7 +7911,7 @@ label_EndMove:
 			if(!HexMngr.IsMapLoaded()) break;
 
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
-			if(!item || !item->IsUsable()) break;
+			if(!item) break;
 
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
 			{
@@ -7992,7 +7991,7 @@ label_EndMove:
 			if(!HexMngr.IsMapLoaded()) break;
 
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
-			if(!item || !item->IsUsable()) break;
+			if(!item) break;
 
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
 			{

@@ -736,7 +736,7 @@ public:
 	void ContGetAllItems(ItemPtrVec& items, bool skip_hide);
 	Item* ContGetItemByPid(WORD pid, DWORD special_id);
 	void ContGetItems(ItemPtrVec& items, DWORD special_id);
-	DWORD ContGetFreeVolume(DWORD special_id);
+	int ContGetFreeVolume(DWORD special_id);
 #endif
 
 	// Door

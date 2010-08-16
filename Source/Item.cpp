@@ -631,18 +631,17 @@ void Item::ContGetItems(ItemPtrVec& items, DWORD special_id)
 	}
 }
 
-DWORD Item::ContGetFreeVolume(DWORD special_id)
+int Item::ContGetFreeVolume(DWORD special_id)
 {
 	if(!IsContainer()) return 0;
-	DWORD cur_volume=0;
-	DWORD max_volume=Proto->Container.ContVolume;
+	int cur_volume=0;
+	int max_volume=Proto->Container.ContVolume;
 	if(!ChildItems) return max_volume;
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
 		if(special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id) cur_volume+=item->GetVolume();
 	}
-	if(cur_volume>=max_volume) return 0;
 	return max_volume-cur_volume;
 }
 

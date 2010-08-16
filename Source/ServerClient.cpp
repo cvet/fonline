@@ -1222,8 +1222,6 @@ bool FOServer::MoveRandom(Critter* cr)
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) return false;
 
-	WORD hx=cr->GetHexX();
-	WORD hy=cr->GetHexY();
 	DWORD multihex=cr->GetMultihex();
 	WORD maxhx=map->GetMaxHexX();
 	WORD maxhy=map->GetMaxHexY();
@@ -1231,6 +1229,8 @@ bool FOServer::MoveRandom(Critter* cr)
 	for(int i=0;i<6;i++)
 	{
 		BYTE dir=dirs[i];
+		WORD hx=cr->GetHexX();
+		WORD hy=cr->GetHexY();
 		if(MoveHexByDir(hx,hy,dir,maxhx,maxhy) && map->IsMovePassed(hx,hy,dir,multihex))
 		{
 			WORD move_flags=BIN16(00000000,00111000)|dir;
@@ -2884,14 +2884,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Check weight
-				if(cl->GetFreeWeight()<(int)item->GetWeight1st()*item_count)
+				if(cl->GetFreeWeight()<(int)(item->GetWeight1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERWEIGHT,SAY_NETMSG,TEXTMSG_GAME);
 					break;
 				}
 
 				// Check volume
-				if(cl->GetFreeVolume()<(int)item->GetVolume1st()*item_count)
+				if(cl->GetFreeVolume()<(int)(item->GetVolume1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERVOLUME,SAY_NETMSG,TEXTMSG_GAME);
 					break;
@@ -3007,7 +3007,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Check volume
-				if(cont->ContGetFreeVolume(0)<item->GetVolume1st()*item_count)
+				if(cont->ContGetFreeVolume(0)<(int)(item->GetVolume1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERVOLUME,SAY_NETMSG,TEXTMSG_GAME);
 					break;
@@ -3146,14 +3146,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Check weight
-				if(cl->GetFreeWeight()<(int)item->GetWeight1st()*item_count)
+				if(cl->GetFreeWeight()<(int)(item->GetWeight1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERWEIGHT,SAY_NETMSG,TEXTMSG_GAME);
 					break;
 				}
 
 				// Check volume
-				if(cl->GetFreeVolume()<(int)item->GetVolume1st()*item_count)
+				if(cl->GetFreeVolume()<(int)(item->GetVolume1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERVOLUME,SAY_NETMSG,TEXTMSG_GAME);
 					break;
@@ -3280,12 +3280,12 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Check weight, volume
-				if(cr->GetFreeWeight()<(int)item->GetWeight1st()*item_count)
+				if(cr->GetFreeWeight()<(int)(item->GetWeight1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERWEIGHT,SAY_NETMSG,TEXTMSG_GAME);
 					break;
 				}
-				if(cr->GetFreeVolume()<(int)item->GetVolume1st()*item_count)
+				if(cr->GetFreeVolume()<(int)(item->GetVolume1st()*item_count))
 				{
 					cl->Send_TextMsg(cl,STR_OVERVOLUME,SAY_NETMSG,TEXTMSG_GAME);
 					break;

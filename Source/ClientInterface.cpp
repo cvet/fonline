@@ -4260,19 +4260,12 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 
 			LMenuNodes.clear();
 
-			if(item->IsUsable())
-			{
-				LMenuNodes.push_back(LMENU_NODE_PICK);
-				LMenuNodes.push_back(LMENU_NODE_LOOK);
-				LMenuNodes.push_back(LMENU_NODE_BAG);
-				LMenuNodes.push_back(LMENU_NODE_SKILL);
-				LMenuNodes.push_back(LMENU_NODE_BREAK);
-			}
-			else
-			{
-				LMenuNodes.push_back(LMENU_NODE_LOOK);
-				LMenuNodes.push_back(LMENU_NODE_BREAK);
-			}
+			if(item->IsUsable()) LMenuNodes.push_back(LMENU_NODE_PICK);
+			LMenuNodes.push_back(LMENU_NODE_LOOK);
+			LMenuNodes.push_back(LMENU_NODE_BAG);
+			LMenuNodes.push_back(LMENU_NODE_SKILL);
+			LMenuNodes.push_back(LMENU_NODE_BREAK);
+
 			LMenuCurNodes=&LMenuNodes;
 		}
 		break;
