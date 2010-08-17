@@ -1748,9 +1748,10 @@ public:
 #define PROXY_HTTP              (3)
 
 // InitNetReason
-#define INIT_NET_REASON_LOGIN   (0)
-#define INIT_NET_REASON_REG     (1)
-#define INIT_NET_REASON_LOAD    (2)
+#define INIT_NET_REASON_CACHE   (0)
+#define INIT_NET_REASON_LOGIN   (1)
+#define INIT_NET_REASON_REG     (2)
+#define INIT_NET_REASON_LOAD    (3)
 
 // Items collections
 #define ITEMS_INVENTORY               (0)

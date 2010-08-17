@@ -486,7 +486,6 @@ void FOServer::RunGameLoop()
 				Script::RunPrepared();
 			}
 			if(cl->Data.ClientToDelete) cl->FullClear();
-			else SaveClient(cl,true);
 		}
 	}
 

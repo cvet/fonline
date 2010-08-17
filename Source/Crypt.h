@@ -43,8 +43,8 @@ public:
 	// Uncrypt text
 //	void UncryptText(char* text);
 
+	bool IsCacheTable(const char* chache_fname);
 	bool CreateCacheTable(const char* chache_fname);
-	//bool ChangeCacheTable(const char* chache_fname);
 	bool SetCacheTable(const char* chache_fname);
 	void SetCache(const char* data_name, const BYTE* data, DWORD data_len);
 	BYTE* GetCache(const char* data_name, DWORD& data_len);

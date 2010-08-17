@@ -651,7 +651,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 		if(!msg->Count(STR_INTERNAL_CRTYPE(i))) continue;
 		const char* str=msg->GetStr(STR_INTERNAL_CRTYPE(i));
 		CritTypeType& ct=CrTypesReserved.Get()[i];
-
+WriteLog(__FUNCTION__" - number<%d>, line<%s>.\n",i,str);
 		if(sscanf(str,"%s%u%u%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%s",name,
 			&ct.Alias,&ct.Multihex,&ct.Is3d,&ct.CanWalk,&ct.CanRun,&ct.CanAim,&ct.CanArmor,&ct.CanRotate,
 			&ct.Anim1[1],&ct.Anim1[2],&ct.Anim1[3],&ct.Anim1[4],&ct.Anim1[5],&ct.Anim1[6],&ct.Anim1[7],
@@ -675,7 +675,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 
 	if(errors) return false;
 
-	if(!CrTypes[0].Enabled)
+	if(!CrTypesReserved.Get()[0].Enabled)
 	{
 		WriteLog(__FUNCTION__" - Default zero type not loaded.\n");
 		return false;

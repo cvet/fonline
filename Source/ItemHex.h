@@ -27,7 +27,6 @@ public:
 	AnyFrames* Anim;
 	static AnyFrames* DefaultAnim;
 	BYTE ScenFlags;
-	BYTE InfoOffset;
 	bool SprDrawValid;
 	Sprite* SprDraw;
 

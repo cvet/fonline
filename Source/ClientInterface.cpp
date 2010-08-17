@@ -2758,6 +2758,7 @@ void FOClient::IntMouseMove()
 void FOClient::AddMess(int mess_type, const char* msg)
 {
 	if(!msg) return;
+	if(mess_type==FOMB_GAME && !strcmp(msg,"error")) return;
 
 	// Text
 	const DWORD str_color[]={COLOR_TEXT_DGREEN,COLOR_TEXT,COLOR_TEXT_DRED,COLOR_TEXT_DDGREEN};
@@ -4747,7 +4748,11 @@ void FOClient::ShowMainScreen(int new_screen)
 		break;
 	case SCREEN_WAIT:
 		SetCurMode(CUR_WAIT);
-		if(prev_main_screen!=SCREEN_WAIT) WaitPic=ResMngr.GetRandomSplash();
+		if(prev_main_screen!=SCREEN_WAIT)
+		{
+			ScreenEffects.clear();
+			WaitPic=ResMngr.GetRandomSplash();
+		}
 		break;
 	default:
 		break;

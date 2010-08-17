@@ -1667,6 +1667,13 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		if(ItemMngr.GetProtosHash(i)!=item_hash[i]) Send_ProtoItemData(cl,i,ItemMngr.GetProtos(i),ItemMngr.GetProtosHash(i));
 	}
 
+	// If only cache checking than disconnect
+	if(!Singleplayer && !name[0])
+	{
+		cl->Disconnect();
+		return;
+	}
+
 	// Singleplayer
 	if(Singleplayer && !SingleplayerSave.Valid)
 	{

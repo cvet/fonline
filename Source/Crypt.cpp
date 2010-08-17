@@ -78,7 +78,7 @@ void CryptManager::TextXOR(char* data, DWORD len, char* xor, DWORD xor_len)
 BYTE* CryptManager::Compress(const BYTE* data, DWORD& data_len)
 {
 	DWORD buf_len=data_len*110/100+12;
-	AutoPtrArr<BYTE> buf(new BYTE[buf_len]);
+	AutoPtrArr<BYTE> buf(new(nothrow) BYTE[buf_len]);
 	if(!buf.IsValid()) return NULL;
 
 	if(compress(buf.Get(),&buf_len,data,data_len)!=Z_OK) return NULL;
@@ -98,14 +98,14 @@ BYTE* CryptManager::Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_appr
 		return NULL;
 	}
 
-	AutoPtrArr<BYTE> buf(new BYTE[buf_len]);
+	AutoPtrArr<BYTE> buf(new(nothrow) BYTE[buf_len]);
 	if(!buf.IsValid())
 	{
 		WriteLog("Unpack - Bad alloc, size<%u>.\n",buf_len);
 		return NULL;
 	}
 
-	AutoPtrArr<BYTE> data_(new BYTE[data_len]);
+	AutoPtrArr<BYTE> data_(new(nothrow) BYTE[data_len]);
 	if(!data_.IsValid())
 	{
 		WriteLog("Unpack - Bad alloc, size<%u>.\n",data_len);
@@ -131,7 +131,7 @@ BYTE* CryptManager::Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_appr
 		if(result==Z_BUF_ERROR)
 		{
 			buf_len*=2;
-			buf.Reset(new BYTE[buf_len]);
+			buf.Reset(new(nothrow) BYTE[buf_len]);
 			if(!buf.IsValid())
 			{
 				WriteLog("Unpack - Bad alloc, size<%u>.\n",buf_len);
@@ -198,10 +198,19 @@ struct CacheDescriptor
 } CacheTable[MAX_CACHE_DESCRIPTORS];
 string CacheTableName;
 
+bool CryptManager::IsCacheTable(const char* chache_fname)
+{
+	if(!chache_fname || !chache_fname[0]) return false;
+	FILE* f=NULL;
+	if(fopen_s(&f,chache_fname,"rb")) return false;
+	fclose(f);
+	return true;
+}
+
 bool CryptManager::CreateCacheTable(const char* chache_fname)
 {
-	FILE* f=fopen(chache_fname,"wb");
-	if(!f) return false;
+	FILE* f=NULL;
+	if(fopen_s(&f,chache_fname,"wb")) return false;
 
 	for(int i=0;i<sizeof(CacheTable);i++) ((BYTE*)&CacheTable[0])[i]=rand();
 	for(int i=0;i<MAX_CACHE_DESCRIPTORS;i++)
@@ -224,24 +233,27 @@ bool CryptManager::SetCacheTable(const char* chache_fname)
 {
 	if(!chache_fname || !chache_fname[0]) return false;
 
-	FILE* f=fopen(chache_fname,"rb");
-	if(!f)
+	FILE* f=NULL;
+	if(fopen_s(&f,chache_fname,"rb"))
 	{
 		if(CacheTableName.length()) // default.cache
 		{
-			FILE* fr=fopen(CacheTableName.c_str(),"rb");
-			if(!fr) return CreateCacheTable(chache_fname);
-			FILE* fw=fopen(chache_fname,"wb");
-			if(!fw)
+			FILE* fr=NULL;
+			if(fopen_s(&fr,CacheTableName.c_str(),"rb")) return CreateCacheTable(chache_fname);
+
+			FILE* fw=NULL;;
+			if(fopen_s(&fw,chache_fname,"wb"))
 			{
 				fclose(fr);
 				return CreateCacheTable(chache_fname);
 			}
+
 			CacheTableName=chache_fname;
 			fseek(fr,0,SEEK_END);
 			DWORD len=ftell(fr);
 			fseek(fr,0,SEEK_SET);
-			BYTE* buf=new BYTE[len];
+			BYTE* buf=new(nothrow) BYTE[len];
+			if(!buf) return false;
 			fread(buf,sizeof(BYTE),len,fr);
 			fwrite(buf,sizeof(BYTE),len,fw);
 			delete[] buf;
@@ -279,8 +291,8 @@ bool CryptManager::SetCacheTable(const char* chache_fname)
 
 void CryptManager::SetCache(const char* data_name, const BYTE* data, DWORD data_len)
 {
-	FILE* f=fopen(CacheTableName.c_str(),"r+b");
-	if(!f) return;
+	FILE* f=NULL;
+	if(fopen_s(&f,CacheTableName.c_str(),"r+b")) return;
 
 	CacheDescriptor desc_;
 	int desc_place=-1;
@@ -383,8 +395,8 @@ BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
 		if(!FLAG(desc.Flags,CACHE_DATA_VALID)) continue;
 		if(strcmp(data_name,desc.DataName)) continue;
 
-		FILE* f=fopen(CacheTableName.c_str(),"rb");
-		if(!f) return NULL;
+		FILE* f=NULL;
+		if(fopen_s(&f,CacheTableName.c_str(),"rb")) return NULL;
 
 		if(desc.DataCurLen>0xFFFFFF)
 		{
@@ -406,7 +418,7 @@ BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
 			return NULL;
 		}
 
-		BYTE* data=new BYTE[desc.DataCurLen];
+		BYTE* data=new(nothrow) BYTE[desc.DataCurLen];
 		if(!data)
 		{
 			fclose(f);

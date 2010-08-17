@@ -140,6 +140,8 @@ bool FOClient::Init(HWND hwnd)
 	}
 
 	// Cache
+	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)));
+
 	if(!Crypt.SetCacheTable(Str::Format("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
 		WriteLog(__FUNCTION__" - Can't set default cache.\n");
@@ -159,15 +161,25 @@ bool FOClient::Init(HWND hwnd)
 	// User and password
 	if(OptName.empty() && OptPass.empty() && !Singleplayer)
 	{
+		bool fail=false;
+
 		DWORD len;
 		char* str=(char*)Crypt.GetCache("__name",len);
 		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) OptName=str;
-		else OptName="PRESS ENTER";
+		else fail=true;
 		delete[] str;
+
 		str=(char*)Crypt.GetCache("__pass",len);
 		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) OptPass=str;
-		else OptPass="PRESS ENTER";
+		else fail=true;
 		delete[] str;
+
+		if(fail)
+		{
+			OptName="login";
+			OptPass="password";
+			refresh_cache=true;
+		}
 	}
 
 	// Sprite manager
@@ -263,7 +275,7 @@ bool FOClient::Init(HWND hwnd)
 #define BIND_CLASS FOClient::ScriptFunc.
 #define BIND_ERROR do{WriteLog(__FUNCTION__" - Bind error, line<%d>.\n",__LINE__); return false;}while(0)
 #include <ScriptBind.h>
-	ReloadScripts();
+	if(!ReloadScripts()) refresh_cache=true;
 
 	// Names
 	FONames::GenerateFoNames(PT_DATA);
@@ -332,8 +344,19 @@ bool FOClient::Init(HWND hwnd)
 	Active=true;
 	GET_UID4(UID4);
 
-	// Try connect
-	if(strstr(GetCommandLine(),"-Start") && !Singleplayer) LogTryConnect();
+	// Start game
+	// Check cache
+	if(refresh_cache)
+	{
+		NetState=STATE_INIT_NET;
+		InitNetReason=INIT_NET_REASON_CACHE;
+	}
+	// Begin game
+	else if(strstr(GetCommandLine(),"-Start") && !Singleplayer)
+	{
+		LogTryConnect();
+	}
+	// Skip intro
 	else if(!strstr(GetCommandLine(),"-SkipIntro"))
 	{
 		if(MsgGame->Count(STR_MUSIC_MAIN_THEME)) MusicAfterVideo=MsgGame->GetStr(STR_MUSIC_MAIN_THEME);
@@ -651,7 +674,8 @@ int FOClient::MainLoop()
 			return 1;
 		}
 
-		if(InitNetReason==INIT_NET_REASON_LOGIN) Net_SendLogIn(OptName.c_str(),OptPass.c_str());
+		if(InitNetReason==INIT_NET_REASON_CACHE) Net_SendLogIn(NULL,NULL);
+		else if(InitNetReason==INIT_NET_REASON_LOGIN) Net_SendLogIn(OptName.c_str(),OptPass.c_str());
 		else if(InitNetReason==INIT_NET_REASON_REG) Net_SendCreatePlayer(RegNewCr);
 		else if(InitNetReason==INIT_NET_REASON_LOAD) Net_SendSaveLoad(false,SaveLoadFileName.c_str(),NULL);
 		else NetDisconnect();
@@ -2667,14 +2691,19 @@ void FOClient::NetProcess()
 
 void FOClient::Net_SendLogIn(const char* name, const char* pass)
 {
+	char name_[MAX_NAME+1]={0};
+	char pass_[MAX_NAME+1]={0};
+	if(name) StringCopy(name_,name);
+	if(pass) StringCopy(pass_,pass);
+
 	DWORD uid1=*UID1;
 	Bout << NETMSG_LOGIN;
 	Bout << (WORD)FO_PROTOCOL_VERSION;
 	DWORD uid4=*UID4;
 	Bout << uid4; uid4=uid1;																	// UID4
-	Bout.Push(name,MAX_NAME);
+	Bout.Push(name_,MAX_NAME);
 	Bout << uid1; uid4^=uid1*Random(0,432157)+*UID3;											// UID1
-	Bout.Push(pass,MAX_NAME);
+	Bout.Push(pass_,MAX_NAME);
 	DWORD uid2=*UID2;
 	Bout << CurLang.Name;
 	for(int i=0;i<TEXTMSG_COUNT;i++) Bout << CurLang.Msg[i].GetHash();
@@ -2689,7 +2718,7 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	DWORD uid0=*UID0;
 	Bout << uid0; uid3^=uid1+Random(0,53245); uid1|=uid3+*UID0; uid3^=uid1+uid3; uid1|=uid3;	// UID0
 
-	if(!Singleplayer) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONN_SUCCESS));
+	if(!Singleplayer && name) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
@@ -6651,6 +6680,7 @@ void FOClient::Net_OnMsgData()
 		break;
 	case TEXTMSG_INTERNAL:
 		// Reload critter types
+		WriteLog("!!!\n");
 		CritType::InitFromMsg(MsgInternal);
 		CritterCl::FreeAnimations(); // Free animations, maybe critters table is changed
 
