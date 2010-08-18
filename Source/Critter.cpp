@@ -2235,6 +2235,15 @@ void Critter::SendA_ParamCheck(WORD num_param)
 			if(cr->IsPlayer()) cr->Send_CritterParam(this,num_param,0);
 		}
 	}
+	else if(condition_index==-2)
+	{
+		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+		{
+			Critter* cr=*it;
+			if(cr->IsPlayer() && (cr->Data.Params[num_param] == this->Data.Params[num_param]))
+				cr->Send_CritterParam(this,num_param,0);
+		}
+	}
 	else
 	{
 		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)

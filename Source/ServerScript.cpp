@@ -4173,9 +4173,15 @@ void FOServer::SScriptFunc::Global_SetSendParameter(int index, bool enabled)
 	Global_SetSendParameterCond(index,enabled,-1,0);
 }
 
+void FOServer::SScriptFunc::Global_SetSendParameterEqual(int index, bool enabled, bool onlyIfEqual)
+{
+	if(onlyIfEqual) Global_SetSendParameterCond(index,enabled,-2,0);
+	else Global_SetSendParameterCond(index,enabled,-1,0);
+}
+
 void FOServer::SScriptFunc::Global_SetSendParameterCond(int index, bool enabled, int condition_index, int condition_mask)
 {
-	if(condition_index<-1 || condition_index>=MAX_PARAMS)
+	if(condition_index<-2 || condition_index>=MAX_PARAMS)
 	{
 		SCRIPT_ERROR_R("Invalid condition index arg.");
 	}
