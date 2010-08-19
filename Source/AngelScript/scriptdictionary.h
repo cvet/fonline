@@ -22,8 +22,10 @@ class CScriptDictionary
 public:
     // Memory management
     CScriptDictionary(asIScriptEngine *engine);
-    void AddRef();
-    void Release();
+    void AddRef() const;
+    void Release() const;
+
+    CScriptDictionary &operator =(const CScriptDictionary &other);
 
     // Sets/Gets a variable type value for a key
     void Set(const std::string &key, void *value, int typeId);
@@ -69,15 +71,12 @@ protected:
 	// We don't want anyone to call the destructor directly, it should be called through the Release method
 	virtual ~CScriptDictionary();
 
-	// Don't allow assignment
-    CScriptDictionary &operator =(const CScriptDictionary &other);
-
 	// Helper methods
     void FreeValue(valueStruct &value);
 	
 	// Our properties
     asIScriptEngine *engine;
-    int refCount;
+    mutable int refCount;
     std::map<std::string, valueStruct> dict;
 };
 

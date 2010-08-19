@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -48,6 +48,8 @@ BEGIN_AS_NAMESPACE
 
 class asCObjectType;
 
+// TODO: Add const overload for GetAddressOfProperty
+
 
 class asCScriptObject : public asIScriptObject
 {
@@ -93,7 +95,7 @@ public:
 	void *AllocateObject(asCObjectType *objType, asCScriptEngine *engine);
 	void FreeObject(void *ptr, asCObjectType *objType, asCScriptEngine *engine);
 	void CopyObject(void *src, void *dst, asCObjectType *objType, asCScriptEngine *engine);
-	void CopyHandle(asDWORD *src, asDWORD *dst, asCObjectType *objType, asCScriptEngine *engine);
+	void CopyHandle(asPWORD *src, asPWORD *dst, asCObjectType *objType, asCScriptEngine *engine);
 
 	void CallDestructor();
 

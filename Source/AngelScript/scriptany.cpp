@@ -425,14 +425,14 @@ void CScriptAny::ReleaseAllHandles(asIScriptEngine * /*engine*/)
 	FreeObject();
 }
 
-int CScriptAny::AddRef()
+int CScriptAny::AddRef() const
 {
 	// Increase counter and clear flag set by GC
 	refCount = (refCount & 0x7FFFFFFF) + 1;
 	return refCount;
 }
 
-int CScriptAny::Release()
+int CScriptAny::Release() const
 {
 	// Now do the actual releasing (clearing the flag set by GC)
 	refCount = (refCount & 0x7FFFFFFF) - 1;

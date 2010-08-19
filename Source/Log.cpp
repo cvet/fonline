@@ -48,19 +48,20 @@ void LogToFunc(LogFuncPtr func_ptr)
 	LoggingType|=LOG_FUNC;
 }
 
-void LogToDlg(HWND dlg_item)
+void LogToDlg(void* dlg_item)
 {
 	LogFinish(LOG_DLG);
 	if(!dlg_item) return;
-	LogDlgItem=dlg_item;
+	LogDlgItem=*(HWND*)dlg_item;
+	if(!LogDlgItem) return;
 	LoggingType|=LOG_DLG;
 }
 
-void LogToBuffer(HANDLE event)
+void LogToBuffer(void* event)
 {
 	LogFinish(LOG_BUFFER);
 	LogBufferStr.reserve(MAX_LOGTEXT*2);
-	LogBufferEvent=event;
+	LogBufferEvent=*(HANDLE*)event;
 	LoggingType|=LOG_BUFFER;
 }
 

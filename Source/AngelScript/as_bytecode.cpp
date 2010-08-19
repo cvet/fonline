@@ -134,6 +134,10 @@ void asCByteCode::GetVarsUsed(asCArray<int> &vars)
 		{
 			InsertIfNotExists(vars, curr->wArg[1]);
 		}
+		else if( curr->op == asBC_LoadThisR )
+		{
+			InsertIfNotExists(vars, 0);
+		}
 
 		curr = curr->next;
 	}
@@ -172,6 +176,11 @@ bool asCByteCode::IsVarUsed(int offset)
 			if( curr->wArg[1] == offset )
 				return true;
 		}
+		else if( curr->op == asBC_LoadThisR )
+		{
+			if( offset == 0 )
+				return true;
+		}
 
 		curr = curr->next;
 	}
@@ -181,6 +190,8 @@ bool asCByteCode::IsVarUsed(int offset)
 
 void asCByteCode::ExchangeVar(int oldOffset, int newOffset)
 {
+	asASSERT(oldOffset != 0);
+
 	cByteInstruction *curr = first;
 	while( curr )
 	{
@@ -632,6 +643,14 @@ int asCByteCode::Optimize()
 			DeleteInstruction(instr);
 			instr = GoBack(curr);
 		}
+		// PshV4 0, ADDSi, PopRPtr -> LoadThisR
+		else if( IsCombination(curr, asBC_PshV4, asBC_ADDSi) &&
+		         IsCombination(instr, asBC_ADDSi, asBC_PopRPtr) &&
+				 curr->wArg[0] == 0 )
+		{
+			DeleteInstruction(curr);
+			instr = GoBack(ChangeFirstDeleteNext(instr, asBC_LoadThisR));
+		}
 		// PSF x, RDS4 -> PshV4 x
 		else if( IsCombination(curr, asBC_PSF, asBC_RDS4) )
 			instr = GoBack(ChangeFirstDeleteNext(curr, asBC_PshV4));
@@ -880,6 +899,8 @@ bool asCByteCode::IsTempVarReadByInstr(cByteInstruction *curr, int offset)
 	else if( asBCInfo[curr->op].type == asBCTYPE_rW_rW_ARG &&
 			 ((signed)curr->wArg[0] == offset || (signed)curr->wArg[1] == offset) )
 		return true;
+	else if( curr->op == asBC_LoadThisR && offset == 0 )
+		return true;
 
 	return false;
 }
@@ -1049,7 +1070,8 @@ bool asCByteCode::IsTempRegUsed(cByteInstruction *curr)
 			curr->op == asBC_CMPIi     ||
 			curr->op == asBC_CMPIu     ||
 			curr->op == asBC_CMPIf     ||
-			curr->op == asBC_LABEL     )
+			curr->op == asBC_LABEL     ||
+			curr->op == asBC_LoadThisR )
 			return false;
 	}
 
@@ -1399,6 +1421,7 @@ void asCByteCode::Output(asDWORD *array)
 				break;
 			case asBCTYPE_wW_DW_ARG:
 			case asBCTYPE_rW_DW_ARG:
+			case asBCTYPE_W_DW_ARG:
 				*(((asWORD*)ap)+1) = instr->wArg[0];
 				*(ap+1) = *(asDWORD*)&instr->arg;
 				break;
@@ -1765,6 +1788,7 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine)
 
 		case asBCTYPE_rW_DW_ARG:
 		case asBCTYPE_wW_DW_ARG:
+		case asBCTYPE_W_DW_ARG:
 			if( instr->op == asBC_SetV1 )
 				fprintf(file, "   %-8s v%d, 0x%x\n", asBCInfo[instr->op].name, instr->wArg[0], *(asBYTE*)ARG_DW(instr->arg));
 			else if( instr->op == asBC_SetV2 )
@@ -1934,7 +1958,8 @@ int asCByteCode::InstrW_PTR(asEBCInstr bc, short a, void *param)
 int asCByteCode::InstrW_DW(asEBCInstr bc, asWORD a, asDWORD b)
 {
 	asASSERT(asBCInfo[bc].type == asBCTYPE_wW_DW_ARG ||
-             asBCInfo[bc].type == asBCTYPE_rW_DW_ARG);
+             asBCInfo[bc].type == asBCTYPE_rW_DW_ARG ||
+			 asBCInfo[bc].type == asBCTYPE_W_DW_ARG);
 	asASSERT(asBCInfo[bc].stackInc == 0);
 
 	if( AddInstruction() < 0 )
@@ -1952,7 +1977,8 @@ int asCByteCode::InstrW_DW(asEBCInstr bc, asWORD a, asDWORD b)
 int asCByteCode::InstrSHORT_B(asEBCInstr bc, short a, asBYTE b)
 {
 	asASSERT(asBCInfo[bc].type == asBCTYPE_wW_DW_ARG || 
-	         asBCInfo[bc].type == asBCTYPE_rW_DW_ARG);
+	         asBCInfo[bc].type == asBCTYPE_rW_DW_ARG ||
+			 asBCInfo[bc].type == asBCTYPE_W_DW_ARG);
 	asASSERT(asBCInfo[bc].stackInc == 0);
 
 	if( AddInstruction() < 0 )
@@ -1979,7 +2005,8 @@ int asCByteCode::InstrSHORT_B(asEBCInstr bc, short a, asBYTE b)
 int asCByteCode::InstrSHORT_W(asEBCInstr bc, short a, asWORD b)
 {
 	asASSERT(asBCInfo[bc].type == asBCTYPE_wW_DW_ARG || 
-	         asBCInfo[bc].type == asBCTYPE_rW_DW_ARG);
+	         asBCInfo[bc].type == asBCTYPE_rW_DW_ARG ||
+			 asBCInfo[bc].type == asBCTYPE_W_DW_ARG);
 	asASSERT(asBCInfo[bc].stackInc == 0);
 
 	if( AddInstruction() < 0 )
@@ -2004,7 +2031,8 @@ int asCByteCode::InstrSHORT_W(asEBCInstr bc, short a, asWORD b)
 int asCByteCode::InstrSHORT_DW(asEBCInstr bc, short a, asDWORD b)
 {
 	asASSERT(asBCInfo[bc].type == asBCTYPE_wW_DW_ARG || 
-	         asBCInfo[bc].type == asBCTYPE_rW_DW_ARG);
+	         asBCInfo[bc].type == asBCTYPE_rW_DW_ARG ||
+			 asBCInfo[bc].type == asBCTYPE_W_DW_ARG);
 	asASSERT(asBCInfo[bc].stackInc == 0);
 
 	if( AddInstruction() < 0 )

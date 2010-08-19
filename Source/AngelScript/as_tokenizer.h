@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2008 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -40,16 +40,19 @@
 #ifndef AS_TOKENIZER_H
 #define AS_TOKENIZER_H
 
+#include "as_config.h"
 #include "as_tokendef.h"
 
 BEGIN_AS_NAMESPACE
 
 const char *asGetTokenDefinition(int tokenType);
 
+class asCScriptEngine;
+
 class asCTokenizer
 {
 public:
-	asCTokenizer();
+	asCTokenizer(asCScriptEngine *engine);
 	~asCTokenizer();
 
 	eTokenType GetToken(const char *source, size_t sourceLength, size_t *tokenLength, asETokenClass *tc = 0);
@@ -67,6 +70,8 @@ protected:
 
 	eTokenType tokenType;
 	size_t tokenLength;
+
+	asCScriptEngine *engine;
 };
 
 END_AS_NAMESPACE

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -60,6 +60,22 @@ static asCArrayObject* ArrayObjectFactory2(asIObjectType *ot, asUINT length)
 	return a;
 }
 
+static asCArrayObject* ArrayObjectFactoryDefVal(asIObjectType *ot, asUINT length, void *defVal)
+{
+	asCArrayObject *a = asNEW(asCArrayObject)(length, defVal, ot);
+
+	// It's possible the constructor raised a script exception, in which case we 
+	// need to free the memory and return null instead, else we get a memory leak.
+	asIScriptContext *ctx = asGetActiveContext();
+	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
+	{
+		asDELETE(a, asCArrayObject);
+		return 0;
+	}
+
+	return a;	
+}
+
 asCArrayObject* ArrayObjectFactory(asIObjectType *ot)
 {
 	return ArrayObjectFactory2(ot, 0);
@@ -101,6 +117,15 @@ static void ArrayObjectFactory2_Generic(asIScriptGeneric *gen)
 	asUINT length = gen->GetArgDWord(1);
 
 	*(asCArrayObject**)gen->GetAddressOfReturnLocation() = ArrayObjectFactory2(ot, length);
+}
+
+static void ArrayObjectFactoryDefVal_Generic(asIScriptGeneric *gen)
+{
+	asIObjectType *ot = *(asIObjectType**)gen->GetAddressOfArg(0);
+	asUINT length = gen->GetArgDWord(1);
+	void *defVal = gen->GetArgAddress(2);
+
+	*(asCArrayObject**)gen->GetAddressOfReturnLocation() = ArrayObjectFactoryDefVal(ot, length, defVal);
 }
 
 static void ArrayObjectAssignment_Generic(asIScriptGeneric *gen)
@@ -190,12 +215,13 @@ void RegisterArrayObject(asIScriptEngine *engine)
 #ifndef AS_MAX_PORTABILITY
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_FACTORY, "_builtin_array_<T>@ f(int&in)", asFUNCTIONPR(ArrayObjectFactory, (asIObjectType*), asCArrayObject*), asCALL_CDECL); asASSERT( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_FACTORY, "_builtin_array_<T>@ f(int&in, uint)", asFUNCTIONPR(ArrayObjectFactory2, (asIObjectType*, asUINT), asCArrayObject*), asCALL_CDECL); asASSERT( r >= 0 );
+	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_FACTORY, "_builtin_array_<T>@ f(int&in, uint, const T &in)", asFUNCTIONPR(ArrayObjectFactoryDefVal, (asIObjectType*, asUINT, void *), asCArrayObject*), asCALL_CDECL); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_LIST_FACTORY, "_builtin_array_<T>@ f(int&in, uint)", asFUNCTIONPR(ArrayObjectFactory2, (asIObjectType*, asUINT), asCArrayObject*), asCALL_CDECL); asASSERT( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(asCArrayObject,AddRef), asCALL_THISCALL); asASSERT( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(asCArrayObject,Release), asCALL_THISCALL); asASSERT( r >= 0 );
 	r = engine->RegisterObjectMethod("_builtin_array_<T>", "_builtin_array_<T> &opAssign(const _builtin_array_<T>&in)", asFUNCTION(ArrayObjectAssignment), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
-	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_INDEX, "T &f(uint)", asFUNCTION(ArrayObjectAt), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
-	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_INDEX, "const T &f(uint) const", asFUNCTION(ArrayObjectAt), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
+	r = engine->RegisterObjectMethod("_builtin_array_<T>", "T &opIndex(uint)", asFUNCTION(ArrayObjectAt), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
+	r = engine->RegisterObjectMethod("_builtin_array_<T>", "const T &opIndex(uint) const", asFUNCTION(ArrayObjectAt), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
 	r = engine->RegisterObjectMethod("_builtin_array_<T>", "uint length() const", asFUNCTION(ArrayObjectLength), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
 	r = engine->RegisterObjectMethod("_builtin_array_<T>", "void resize(uint)", asFUNCTION(ArrayObjectResize), asCALL_CDECL_OBJLAST); asASSERT( r >= 0 );
 
@@ -208,12 +234,13 @@ void RegisterArrayObject(asIScriptEngine *engine)
 #else
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_FACTORY, "_builtin_array_<T>@ f(int&in)", asFUNCTION(ArrayObjectFactory_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_FACTORY, "_builtin_array_<T>@ f(int&in, uint)", asFUNCTION(ArrayObjectFactory2_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
+	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_FACTORY, "_builtin_array_<T>@ f(int&in, uint, const T &in)", asFUNCTION(ArrayObjectFactoryDefVal_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_LIST_FACTORY, "_builtin_array_<T>@ f(int&in, uint)", asFUNCTION(ArrayObjectFactory2_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_ADDREF, "void f()", asFUNCTION(ArrayObject_AddRef_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_RELEASE, "void f()", asFUNCTION(ArrayObject_Release_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 	r = engine->RegisterObjectMethod("_builtin_array_<T>", "_builtin_array_<T> &opAssign(const _builtin_array_<T>&in)", asFUNCTION(ArrayObjectAssignment_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
-	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_INDEX, "T &f(uint)", asFUNCTION(ArrayObjectAt_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
-	r = engine->RegisterObjectBehaviour("_builtin_array_<T>", asBEHAVE_INDEX, "const T &f(uint) const", asFUNCTION(ArrayObjectAt_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
+	r = engine->RegisterObjectMethod("_builtin_array_<T>", "T &opIndex(uint)", asFUNCTION(ArrayObjectAt_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
+	r = engine->RegisterObjectMethod("_builtin_array_<T>", "const T &opIndex(uint) const", asFUNCTION(ArrayObjectAt_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 	r = engine->RegisterObjectMethod("_builtin_array_<T>", "uint length() const", asFUNCTION(ArrayObjectLength_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 	r = engine->RegisterObjectMethod("_builtin_array_<T>", "void resize(uint)", asFUNCTION(ArrayObjectResize_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
 
@@ -257,11 +284,6 @@ int asCArrayObject::CopyFrom(asIScriptArray *other)
 	return 0;
 }
 
-int asCArrayObject::GetElementSize()
-{
-	return elementSize;
-}
-
 asCArrayObject::asCArrayObject(asUINT length, asIObjectType *ot)
 {
 	refCount.set(1);
@@ -297,6 +319,68 @@ asCArrayObject::asCArrayObject(asUINT length, asIObjectType *ot)
 		objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType->GetTypeId());
 }
 
+asCArrayObject::asCArrayObject(asUINT length, void *defVal, asIObjectType *ot)
+{
+	refCount.set(1);
+	gcFlag = false;
+	objType = ot;
+	objType->AddRef();
+	buffer = 0;
+
+	// Determine element size
+	int typeId = objType->GetSubTypeId();
+	if( typeId & asTYPEID_MASK_OBJECT )
+	{
+		elementSize = sizeof(asPWORD);
+	}
+	else
+	{
+		elementSize = objType->GetEngine()->GetSizeOfPrimitiveType(typeId);
+	}
+
+	isArrayOfHandles = typeId & asTYPEID_OBJHANDLE ? true : false;
+
+	// Make sure the array size isn't too large for us to handle
+	if( !CheckMaxSize(length) )
+	{
+		// Don't continue with the initialization
+		return;
+	}
+
+	CreateBuffer(&buffer, length);
+
+	// Notify the GC of the successful creation
+	if( objType->GetFlags() & asOBJ_GC )
+		objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType->GetTypeId());
+
+	// Initialize the elements with the default value
+	for( asUINT n = 0; n < GetElementCount(); n++ )
+	{
+		if( (typeId & ~0x03FFFFFF) && !(typeId & asTYPEID_OBJHANDLE) )
+			objType->GetEngine()->CopyScriptObject(GetElementPointer(n), defVal, typeId);
+		else if( typeId & asTYPEID_OBJHANDLE )
+		{
+			*(void**)GetElementPointer(n) = *(void**)defVal;
+			objType->GetEngine()->AddRefScriptObject(*(void**)defVal, typeId);
+		}
+		else if( typeId == asTYPEID_BOOL ||
+				 typeId == asTYPEID_INT8 ||
+				 typeId == asTYPEID_UINT8 )
+			*(char*)GetElementPointer(n) = *(char*)defVal;
+		else if( typeId == asTYPEID_INT16 ||
+				 typeId == asTYPEID_UINT16 )
+			*(short*)GetElementPointer(n) = *(short*)defVal;
+		else if( typeId == asTYPEID_INT32 ||
+				 typeId == asTYPEID_UINT32 ||
+				 typeId == asTYPEID_FLOAT )
+			*(int*)GetElementPointer(n) = *(int*)defVal;
+		else if( typeId == asTYPEID_INT64 ||
+				 typeId == asTYPEID_UINT64 ||
+				 typeId == asTYPEID_DOUBLE )
+			*(double*)GetElementPointer(n) = *(double*)defVal;
+	}
+}
+
 asCArrayObject::~asCArrayObject()
 {
 	if( buffer )
@@ -315,6 +399,11 @@ asIScriptEngine *asCArrayObject::GetEngine() const
 asUINT asCArrayObject::GetElementCount()
 {
 	return buffer->numElements;
+}
+
+int asCArrayObject::GetElementSize()
+{
+	return elementSize;
 }
 
 void asCArrayObject::Resize(asUINT numElements)

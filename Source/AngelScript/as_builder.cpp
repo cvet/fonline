@@ -286,9 +286,9 @@ int asCBuilder::CompileFunction(const char *sectionName, const char *code, int l
 	node = node->firstChild;
 
 	// Create the function
-	bool isConstructor, isDestructor;
+	bool isConstructor, isDestructor, isPrivate;
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine,module,asFUNC_SCRIPT);
-	GetParsedFunctionDetails(node, scripts[0], 0, func->name, func->returnType, func->parameterTypes, func->inOutFlags, func->isReadOnly, isConstructor, isDestructor);
+	GetParsedFunctionDetails(node, scripts[0], 0, func->name, func->returnType, func->parameterTypes, func->inOutFlags, func->isReadOnly, isConstructor, isDestructor, isPrivate);
 	func->id               = engine->GetNextScriptFunctionId();
 	func->scriptSectionIdx = engine->GetScriptSectionNameIndex(sectionName ? sectionName : "");
 
@@ -1014,8 +1014,9 @@ int asCBuilder::RegisterFuncDef(asCScriptNode *node, asCScriptCode *file)
 	bool                       isConstMethod;
 	bool                       isConstructor;
 	bool                       isDestructor;
+	bool                       isPrivate;
 
-	GetParsedFunctionDetails(node, file, 0, name, returnType, parameterTypes, inOutFlags, isConstMethod, isConstructor, isDestructor);
+	GetParsedFunctionDetails(node, file, 0, name, returnType, parameterTypes, inOutFlags, isConstMethod, isConstructor, isDestructor, isPrivate);
 
 	int i = module->AddFuncDef(name.AddressOf());
 
@@ -1341,8 +1342,8 @@ void asCBuilder::CompileGlobalVariables()
 				if( gvar->property && !gvar->isEnumValue )
 					initOrder.PushLast(gvar->property);
 
-				// Does the function contain more than just a RET instruction?
-				if( initFunc && initFunc->byteCode.GetLength() > 1 )
+				// Does the function contain more than just a SUSPEND followed by a RET instruction?
+				if( initFunc && initFunc->byteCode.GetLength() > 2 )
 				{
 					// Create the init function for this variable
 					initFunc->id = engine->GetNextScriptFunctionId();
@@ -1351,6 +1352,7 @@ void asCBuilder::CompileGlobalVariables()
 					// Finalize the init function for this variable
 					initFunc->funcType = asFUNC_SCRIPT;
 					initFunc->returnType = asCDataType::CreatePrimitive(ttVoid, false);
+					initFunc->scriptSectionIdx = engine->GetScriptSectionNameIndex(gvar->script->name.AddressOf());
 
 					// Notify the GC of the new script function
 					engine->gc.AddScriptObjectToGC(initFunc, &engine->functionBehaviours);
@@ -1616,7 +1618,7 @@ void asCBuilder::CompileClasses()
 			// Copy properties from base class to derived class
 			for( asUINT p = 0; p < baseType->properties.GetLength(); p++ )
 			{
-				asCObjectProperty *prop = AddPropertyToClass(decl, baseType->properties[p]->name, baseType->properties[p]->type);
+				asCObjectProperty *prop = AddPropertyToClass(decl, baseType->properties[p]->name, baseType->properties[p]->type, baseType->properties[p]->isPrivate);
 
 				// The properties must maintain the same offset
 				asASSERT(prop && prop->byteOffset == baseType->properties[p]->byteOffset); UNUSED_VAR(prop);
@@ -1682,8 +1684,12 @@ void asCBuilder::CompileClasses()
 		{
 			if( node->nodeType == snDeclaration )
 			{
+				bool isPrivate = false;
+				if( node->firstChild && node->firstChild->tokenType == ttPrivate )
+					isPrivate = true;
+
 				asCScriptCode *file = decl->script;
-				asCDataType dt = CreateDataTypeFromNode(node->firstChild, file);
+				asCDataType dt = CreateDataTypeFromNode(isPrivate ? node->firstChild->next : node->firstChild, file);
 				asCString name(&file->code[node->lastChild->tokenPos], node->lastChild->tokenLength);
 
 				if( dt.IsReadOnly() )
@@ -1696,7 +1702,7 @@ void asCBuilder::CompileClasses()
 
 				CheckNameConflictMember(decl->objType, name.AddressOf(), node->lastChild, file);
 
-				AddPropertyToClass(decl, name, dt, file, node);
+				AddPropertyToClass(decl, name, dt, isPrivate, file, node);
 			}
 			else
 				asASSERT(false);
@@ -1871,6 +1877,7 @@ int asCBuilder::CreateVirtualFunction(asCScriptFunction *func, int idx)
 	vf->isReadOnly = func->isReadOnly;
 	vf->objectType = func->objectType;
 	vf->signatureId = func->signatureId;
+	vf->isPrivate = func->isPrivate;
 	vf->vfTableIdx = idx;
 
 	module->AddScriptFunction(vf);
@@ -1881,12 +1888,13 @@ int asCBuilder::CreateVirtualFunction(asCScriptFunction *func, int idx)
 	return vf->id;
 }
 
-asCObjectProperty *asCBuilder::AddPropertyToClass(sClassDeclaration *decl, const asCString &name, const asCDataType &dt, asCScriptCode *file, asCScriptNode *node)
+asCObjectProperty *asCBuilder::AddPropertyToClass(sClassDeclaration *decl, const asCString &name, const asCDataType &dt, bool isPrivate, asCScriptCode *file, asCScriptNode *node)
 {
 	// Store the properties in the object type descriptor
 	asCObjectProperty *prop = asNEW(asCObjectProperty);
-	prop->name = name;
-	prop->type = dt;
+	prop->name      = name;
+	prop->type      = dt;
+	prop->isPrivate = isPrivate;
 
 	int propSize;
 	if( dt.IsObject() )
@@ -2151,25 +2159,35 @@ int asCBuilder::RegisterTypedef(asCScriptNode *node, asCScriptCode *file)
 	return 0;
 }
 
-void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, bool &isConstMethod, bool &isConstructor, bool &isDestructor)
+void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, bool &isConstMethod, bool &isConstructor, bool &isDestructor, bool &isPrivate)
 {
+	node = node->firstChild;
+
+	// Is the function a private class method?
+	isPrivate = false;
+	if( node->tokenType == ttPrivate )
+	{
+		isPrivate = true;
+		node = node->next;
+	}
+
 	// Find the name
 	isConstructor = false;
 	isDestructor = false;
 	asCScriptNode *n = 0;
-	if( node->firstChild->nodeType == snDataType )
-		n = node->firstChild->next->next;
+	if( node->nodeType == snDataType )
+		n = node->next->next;
 	else
 	{
 		// If the first node is a ~ token, then we know it is a destructor
-		if( node->firstChild->tokenType == ttBitNot )
+		if( node->tokenType == ttBitNot )
 		{
-			n = node->firstChild->next;
+			n = node->next;
 			isDestructor = true;
 		}
 		else
 		{
-			n = node->firstChild;
+			n = node;
 			isConstructor = true;
 		}
 	}
@@ -2178,8 +2196,8 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 	// Initialize a script function object for registration
 	if( !isConstructor && !isDestructor )
 	{
-		returnType = CreateDataTypeFromNode(node->firstChild, file);
-		returnType = ModifyDataTypeFromNode(returnType, node->firstChild->next, file, 0, 0);
+		returnType = CreateDataTypeFromNode(node, file);
+		returnType = ModifyDataTypeFromNode(returnType, node->next, file, 0, 0);
 	}
 	else
 		returnType = asCDataType::CreatePrimitive(ttVoid, false);
@@ -2232,14 +2250,24 @@ int asCBuilder::RegisterScriptFunction(int funcID, asCScriptNode *node, asCScrip
 	bool                       isConstMethod;
 	bool                       isConstructor;
 	bool                       isDestructor;
+	bool                       isPrivate;
 
-	GetParsedFunctionDetails(node, file, objType, name, returnType, parameterTypes, inOutFlags, isConstMethod, isConstructor, isDestructor);
+	GetParsedFunctionDetails(node, file, objType, name, returnType, parameterTypes, inOutFlags, isConstMethod, isConstructor, isDestructor, isPrivate);
 
 	// Check for name conflicts
 	if( !isConstructor && !isDestructor )
 	{
 		if( objType )
+		{
 			CheckNameConflictMember(objType, name.AddressOf(), node, file);
+
+			if( name == objType->name )
+			{
+				int r, c;
+				file->ConvertPosToRowCol(node->tokenPos, &r, &c);
+				WriteError(file->name.AddressOf(), TXT_METHOD_CANT_HAVE_NAME_OF_CLASS, r, c);
+			}
+		}
 		else
 			CheckNameConflict(name.AddressOf(), node, file);
 	}
@@ -2262,11 +2290,11 @@ int asCBuilder::RegisterScriptFunction(int funcID, asCScriptNode *node, asCScrip
 		sFunctionDescription *func = asNEW(sFunctionDescription);
 		functions.PushLast(func);
 
-		func->script  = file;
-		func->node    = node;
-		func->name    = name;
-		func->objType = objType;
-		func->funcId  = funcID;
+		func->script    = file;
+		func->node      = node;
+		func->name      = name;
+		func->objType   = objType;
+		func->funcId    = funcID;
 	}
 
 	// Destructors may not have any parameters
@@ -2319,7 +2347,7 @@ int asCBuilder::RegisterScriptFunction(int funcID, asCScriptNode *node, asCScrip
 	}
 
 	// Register the function
-	module->AddScriptFunction(file->idx, funcID, name.AddressOf(), returnType, parameterTypes.AddressOf(), inOutFlags.AddressOf(), (asUINT)parameterTypes.GetLength(), isInterface, objType, isConstMethod, isGlobalFunction);
+	module->AddScriptFunction(file->idx, funcID, name.AddressOf(), returnType, parameterTypes.AddressOf(), inOutFlags.AddressOf(), (asUINT)parameterTypes.GetLength(), isInterface, objType, isConstMethod, isGlobalFunction, isPrivate);
 
 	if( objType )
 	{
@@ -2409,11 +2437,21 @@ int asCBuilder::RegisterImportedFunction(int importID, asCScriptNode *node, asCS
 		type = ModifyDataTypeFromNode(type, n->next, file, &inOutFlag, 0);
 
 		// Store the parameter type
-		n = n->next->next;
 		parameterTypes.PushLast(type);
 		inOutFlags.PushLast(inOutFlag);
 
+		if( type.GetTokenType() == ttVoid )
+		{
+			int r, c;
+			file->ConvertPosToRowCol(n->tokenPos, &r, &c);
+			asCString str;
+			str.Format(TXT_PARAMETER_CANT_BE_s, type.Format().AddressOf());
+			WriteError(file->name.AddressOf(), str.AddressOf(), r, c);
+			break;
+		}
+
 		// Move to next parameter
+		n = n->next->next;
 		if( n && n->nodeType == snIdentifier )
 			n = n->next;
 	}
@@ -2860,7 +2898,14 @@ asCObjectType *asCBuilder::GetObjectType(const char *type)
 
 asCScriptFunction *asCBuilder::GetFuncDef(const char *type)
 {
-	// TODO: funcdef: Search in the engine too
+	for( asUINT n = 0; n < engine->registeredFuncDefs.GetLength(); n++ )
+	{
+		// TODO: Only return the definitions for the config groups that the module has access to
+		if( engine->registeredFuncDefs[n]->name == type )
+		{
+			return engine->registeredFuncDefs[n];
+		}
+	}
 
 	if( module )
 	{

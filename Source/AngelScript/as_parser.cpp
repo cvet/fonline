@@ -48,7 +48,7 @@
 
 BEGIN_AS_NAMESPACE
 
-asCParser::asCParser(asCBuilder *builder)
+asCParser::asCParser(asCBuilder *builder) : tokenizer(builder->engine)
 {
 	this->builder    = builder;
 	this->engine     = builder->engine;
@@ -575,9 +575,14 @@ bool asCParser::IsVarDecl()
 	sToken t;
 	GetToken(&t);
 	RewindTo(&t);
-	
-	// A variable decl can start with a const
+
+	// A class property decl can be preceded by 'private' 
 	sToken t1;
+	GetToken(&t1);
+	if( t1.type != ttPrivate )
+		RewindTo(&t1);
+
+	// A variable decl can start with a const
 	GetToken(&t1);
 	if( t1.type == ttConst )
 		GetToken(&t1);
@@ -657,6 +662,15 @@ bool asCParser::IsFuncDecl(bool isMethod)
 	GetToken(&t);
 	RewindTo(&t);
 
+	// A class method decl can be preceded by 'private' 
+	if( isMethod )
+	{
+		sToken t1;
+		GetToken(&t1);
+		if( t1.type != ttPrivate )
+			RewindTo(&t1);
+	}
+
 	// A class constructor starts with identifier followed by parenthesis
 	// A class destructor starts with the ~ token
 	if( isMethod )
@@ -664,9 +678,12 @@ bool asCParser::IsFuncDecl(bool isMethod)
 		sToken t1, t2;
 		GetToken(&t1);
 		GetToken(&t2);
-		RewindTo(&t);
+		RewindTo(&t1);
 		if( (t1.type == ttIdentifier && t2.type == ttOpenParanthesis) || t1.type == ttBitNot )
+		{
+			RewindTo(&t);
 			return true;
+		}
 	}
 
 	// A function decl can start with a const
@@ -697,6 +714,13 @@ bool asCParser::IsFuncDecl(bool isMethod)
 		}
 
 		GetToken(&t2);
+	}
+
+	// There can be an ampersand if the function returns a reference
+	if( t2.type == ttAmp )
+	{
+		RewindTo(&t);
+		return true;
 	}
 
 	if( t2.type != ttIdentifier )
@@ -768,7 +792,7 @@ asCScriptNode *asCParser::ParseFuncDef()
 	GetToken(&t1);
 	if( t1.type != ttEndStatement )
 	{
-		Error(asGetTokenDefinition(ttEndStatement), &t1);
+		Error(ExpectedToken(asGetTokenDefinition(ttEndStatement)).AddressOf(), &t1);
 		return node;
 	}
 
@@ -785,6 +809,13 @@ asCScriptNode *asCParser::ParseFunction(bool isMethod)
 	GetToken(&t1);
 	GetToken(&t2);
 	RewindTo(&t1);
+
+	// A class method can start with private
+	if( isMethod && t1.type == ttPrivate )
+	{
+		node->AddChildLast(ParseToken(ttPrivate));
+		if( isSyntaxError ) return node;
+	}
 
 	// If it is a global function, or a method, except constructor and destructor, then the return type is parsed
 	if( !isMethod || (t1.type != ttBitNot && t2.type != ttOpenParanthesis) )
@@ -971,6 +1002,10 @@ asCScriptNode *asCParser::ParseClass()
 			// Parse a property declaration
 			asCScriptNode *prop = new(engine->memoryMgr.AllocScriptNode()) asCScriptNode(snDeclaration);
 			node->AddChildLast(prop);
+
+			// A variable declaration can be preceded by 'private'
+			if( t.type == ttPrivate )
+				prop->AddChildLast(ParseToken(ttPrivate));
 
 			prop->AddChildLast(ParseType(true));
 			if( isSyntaxError ) return node;
@@ -1472,6 +1507,18 @@ asCScriptNode *asCParser::ParseParameterList()
 	}
 	else
 	{
+		// If the parameter list is just (void) then the void token should be ignored
+		if( t1.type == ttVoid )
+		{
+			sToken t2;
+			GetToken(&t2);
+			if( t2.type == ttCloseParanthesis )
+			{
+				node->UpdateSourcePos(t2.pos, t2.length);
+				return node;
+			}
+		}
+
 		RewindTo(&t1);
 
 		for(;;)

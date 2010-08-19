@@ -8123,7 +8123,7 @@ void FOClient::TryPickItemOnGround()
 	for(ItemHexVecIt it=items.begin();it!=items.end();)
 	{
 		ItemHex* item=*it;
-		if(item->IsFinishing() || item->Proto->IsDoor()) it=items.erase(it);
+		if(item->IsFinishing() || item->Proto->IsDoor() || !item->IsUsable()) it=items.erase(it);
 		else ++it;
 	}
 	if(items.empty()) return;

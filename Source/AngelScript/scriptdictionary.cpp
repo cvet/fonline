@@ -30,13 +30,13 @@ CScriptDictionary::~CScriptDictionary()
     DeleteAll();
 }
 
-void CScriptDictionary::AddRef()
+void CScriptDictionary::AddRef() const
 {
 	// We need to clear the GC flag
 	refCount = (refCount & 0x7FFFFFFF) + 1;
 }
 
-void CScriptDictionary::Release()
+void CScriptDictionary::Release() const
 {
 	// We need to clear the GC flag
 	refCount = (refCount & 0x7FFFFFFF) - 1;
@@ -77,10 +77,22 @@ void CScriptDictionary::ReleaseAllReferences(asIScriptEngine * /*engine*/)
 	DeleteAll();
 }
 
-CScriptDictionary &CScriptDictionary::operator =(const CScriptDictionary & /*other*/)
+CScriptDictionary &CScriptDictionary::operator =(const CScriptDictionary &other)
 {
-    // Do nothing
-	// TODO: Should do a shallow copy of the dictionary
+	// Clear everything we had before
+	DeleteAll();
+
+	// Do a shallow copy of the dictionary
+    map<string, valueStruct>::const_iterator it;
+    for( it = other.dict.begin(); it != other.dict.end(); it++ )
+    {
+		if( it->second.typeId & asTYPEID_OBJHANDLE )
+			Set(it->first, (void*)&it->second.valueObj, it->second.typeId);
+		else if( it->second.typeId & asTYPEID_MASK_OBJECT )
+			Set(it->first, (void*)it->second.valueObj, it->second.typeId);
+		else
+			Set(it->first, (void*)&it->second.valueInt, it->second.typeId);
+    }
 
     return *this;
 }
@@ -287,6 +299,14 @@ void ScriptDictionaryRelease_Generic(asIScriptGeneric *gen)
     dict->Release();
 }
 
+void ScriptDictionaryAssign_Generic(asIScriptGeneric *gen)
+{
+    CScriptDictionary *dict = (CScriptDictionary*)gen->GetObject();
+    CScriptDictionary *other = *(CScriptDictionary**)gen->GetAddressOfArg(0);
+	*dict = *other;
+	*(CScriptDictionary**)gen->GetAddressOfReturnLocation() = dict;
+}
+
 void ScriptDictionarySet_Generic(asIScriptGeneric *gen)
 {
     CScriptDictionary *dict = (CScriptDictionary*)gen->GetObject();
@@ -411,6 +431,8 @@ void RegisterScriptDictionary_Native(asIScriptEngine *engine)
     r = engine->RegisterObjectBehaviour("dictionary", asBEHAVE_ADDREF, "void f()", asMETHOD(CScriptDictionary,AddRef), asCALL_THISCALL); assert( r >= 0 );
     r = engine->RegisterObjectBehaviour("dictionary", asBEHAVE_RELEASE, "void f()", asMETHOD(CScriptDictionary,Release), asCALL_THISCALL); assert( r >= 0 );
 
+	r = engine->RegisterObjectMethod("dictionary", "dictionary &opAssign(const dictionary &in)", asMETHODPR(CScriptDictionary, operator=, (const CScriptDictionary &), CScriptDictionary&), asCALL_THISCALL); assert( r >= 0 );
+
     r = engine->RegisterObjectMethod("dictionary", "void set(const string &in, ?&in)", asMETHODPR(CScriptDictionary,Set,(const string&,void*,int),void), asCALL_THISCALL); assert( r >= 0 );
     r = engine->RegisterObjectMethod("dictionary", "bool get(const string &in, ?&out) const", asMETHODPR(CScriptDictionary,Get,(const string&,void*,int) const,bool), asCALL_THISCALL); assert( r >= 0 );
 
@@ -440,6 +462,8 @@ void RegisterScriptDictionary_Generic(asIScriptEngine *engine)
     r = engine->RegisterObjectBehaviour("dictionary", asBEHAVE_FACTORY, "dictionary@ f()", asFUNCTION(ScriptDictionaryFactory_Generic), asCALL_GENERIC); assert( r>= 0 );
     r = engine->RegisterObjectBehaviour("dictionary", asBEHAVE_ADDREF, "void f()", asFUNCTION(ScriptDictionaryAddRef_Generic), asCALL_GENERIC); assert( r >= 0 );
     r = engine->RegisterObjectBehaviour("dictionary", asBEHAVE_RELEASE, "void f()", asFUNCTION(ScriptDictionaryRelease_Generic), asCALL_GENERIC); assert( r >= 0 );
+
+	r = engine->RegisterObjectMethod("dictionary", "dictionary &opAssign(const dictionary &in)", asFUNCTION(ScriptDictionaryAssign_Generic), asCALL_GENERIC); assert( r >= 0 );
 
     r = engine->RegisterObjectMethod("dictionary", "void set(const string &in, ?&in)", asFUNCTION(ScriptDictionarySet_Generic), asCALL_GENERIC); assert( r >= 0 );
     r = engine->RegisterObjectMethod("dictionary", "bool get(const string &in, ?&out) const", asFUNCTION(ScriptDictionaryGet_Generic), asCALL_GENERIC); assert( r >= 0 );

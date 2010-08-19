@@ -13,8 +13,8 @@ public:
 	CScriptAny(void *ref, int refTypeId, asIScriptEngine *engine);
 
 	// Memory management
-	int AddRef();
-	int Release();
+	int AddRef() const;
+	int Release() const;
 
 	// Copy the stored value from another any object
 	CScriptAny &operator=(const CScriptAny&);
@@ -44,7 +44,7 @@ protected:
 	virtual ~CScriptAny();
 	void FreeObject();
 
-	int refCount;
+	mutable int refCount;
 	asIScriptEngine *engine;
 
 	// The structure for holding the values

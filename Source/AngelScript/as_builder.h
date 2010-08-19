@@ -145,12 +145,12 @@ protected:
 	int RegisterFuncDef(asCScriptNode *node, asCScriptCode *file);
 	void CompileClasses();
 
-	void GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, bool &isConstMethod, bool &isConstructor, bool &isDestructor);
+	void GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, bool &isConstMethod, bool &isConstructor, bool &isDestructor, bool &isPrivate);
 
 	bool DoesMethodExist(asCObjectType *objType, int methodId);
 
 	void AddDefaultConstructor(asCObjectType *objType, asCScriptCode *file);
-	asCObjectProperty *AddPropertyToClass(sClassDeclaration *c, const asCString &name, const asCDataType &type, asCScriptCode *file = 0, asCScriptNode *node = 0);
+	asCObjectProperty *AddPropertyToClass(sClassDeclaration *c, const asCString &name, const asCDataType &type, bool isPrivate, asCScriptCode *file = 0, asCScriptNode *node = 0);
 	
 	int CreateVirtualFunction(asCScriptFunction *func, int idx);
 

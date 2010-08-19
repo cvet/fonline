@@ -382,7 +382,7 @@ asCScriptEngine::asCScriptEngine()
 
 	userData = 0;
 
-	initialContextStackSize = 1024;      // 1 KB
+	initialContextStackSize = 1024;      // 4 KB (1024 * sizeof(asDWORD)
 
 
 	typeIdSeqNbr = 0;
@@ -466,6 +466,14 @@ asCScriptEngine::~asCScriptEngine()
 					templateTypes[n]->beh.operators[f] = 0;
 				}
 			}
+			for( f = 0; f < templateTypes[n]->methods.GetLength(); f++ )
+			{
+				if( scriptFunctions[templateTypes[n]->methods[f]]->objectType == templateTypes[n] )
+				{
+					scriptFunctions[templateTypes[n]->methods[f]]->Release();
+					templateTypes[n]->methods[f] = 0;
+				}
+			}
 		}
 	}
 
@@ -489,6 +497,10 @@ asCScriptEngine::~asCScriptEngine()
 
 	GarbageCollect(asGC_FULL_CYCLE);
 	FreeUnusedGlobalProperties();
+	ClearUnusedTypes();
+
+	// There may be instances where one more gc cycle must be run
+	GarbageCollect(asGC_FULL_CYCLE);
 	ClearUnusedTypes();
 
 	asSMapNode<int,asCDataType*> *cursor = 0;
@@ -693,7 +705,7 @@ asETokenClass asCScriptEngine::ParseToken(const char *string, size_t stringLengt
 		stringLength = strlen(string);
 
 	size_t len;
-	asCTokenizer t;
+	asCTokenizer t(this);
 	asETokenClass tc;
 	t.GetToken(string, stringLength, &len, &tc);
 
@@ -1012,6 +1024,7 @@ int asCScriptEngine::RegisterObjectProperty(const char *obj, const char *declara
 	prop->name       = name;
 	prop->type       = type;
 	prop->byteOffset = byteOffset;
+	prop->isPrivate  = false;
 
 	dt.GetObjectType()->properties.PushLast(prop);
 
@@ -1041,7 +1054,7 @@ int asCScriptEngine::RegisterInterface(const char *name)
 	if( r >= 0 ) return ConfigError(asERROR);
 
 	// Make sure the name is not a reserved keyword
-	asCTokenizer t;
+	asCTokenizer t(this);
 	size_t tokenLen;
 	int token = t.GetToken(name, strlen(name), &tokenLen);
 	if( token != ttIdentifier || strlen(name) != tokenLen )
@@ -1312,7 +1325,7 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 		if( r < 0 )
 		{
 			// Make sure the name is not a reserved keyword
-			asCTokenizer t;
+			asCTokenizer t(this);
 			size_t tokenLen;
 			int token = t.GetToken(name, typeName.GetLength(), &tokenLen);
 			if( token != ttIdentifier || typeName.GetLength() != tokenLen )
@@ -2627,7 +2640,7 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	// Generate factory stubs for each of the factories
 	for( n = 0; n < templateType->beh.factories.GetLength(); n++ )
 	{
-		asCScriptFunction *func = GenerateTemplateFactoryStub(ot, templateType->beh.factories[n]);
+		asCScriptFunction *func = GenerateTemplateFactoryStub(templateType, ot, templateType->beh.factories[n]);
 
 		// The function's refCount was already initialized to 1
 		ot->beh.factories.PushLast(func->id);
@@ -2643,7 +2656,7 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	// Generate stub for the list factory as well
 	if( templateType->beh.listFactory )
 	{
-		asCScriptFunction *func = GenerateTemplateFactoryStub(ot, templateType->beh.listFactory);
+		asCScriptFunction *func = GenerateTemplateFactoryStub(templateType, ot, templateType->beh.listFactory);
 
 		// The function's refCount was already initialized to 1
 		ot->beh.listFactory = func->id;
@@ -2723,7 +2736,7 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 }
 
 // internal
-asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *ot, int factoryId)
+asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *templateType, asCObjectType *ot, int factoryId)
 {
 	asCScriptFunction *factory = scriptFunctions[factoryId];
 
@@ -2733,10 +2746,33 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *o
 	func->returnType       = asCDataType::CreateObjectHandle(ot, false);
 
 	// Skip the first parameter as this is the object type pointer that the stub will add
+	func->parameterTypes.SetLength(factory->parameterTypes.GetLength()-1);
+	func->inOutFlags.SetLength(factory->inOutFlags.GetLength()-1);
 	for( asUINT p = 1; p < factory->parameterTypes.GetLength(); p++ )
 	{
-		func->parameterTypes.PushLast(factory->parameterTypes[p]);
-		func->inOutFlags.PushLast(factory->inOutFlags[p]);
+		if( factory->parameterTypes[p].GetObjectType() == templateType->templateSubType.GetObjectType() )
+		{
+			func->parameterTypes[p-1] = ot->templateSubType;
+			if( factory->parameterTypes[p].IsObjectHandle() )
+				func->parameterTypes[p-1].MakeHandle(true);
+			func->parameterTypes[p-1].MakeReference(factory->parameterTypes[p].IsReference());
+			func->parameterTypes[p-1].MakeReadOnly(factory->parameterTypes[p].IsReference());
+		}
+		else if( factory->parameterTypes[p].GetObjectType() == templateType )
+		{
+			if( factory->parameterTypes[p].IsObjectHandle() )
+				func->parameterTypes[p-1] = asCDataType::CreateObjectHandle(ot, false);
+			else
+				func->parameterTypes[p-1] = asCDataType::CreateObject(ot, false);
+
+			func->parameterTypes[p-1].MakeReference(factory->parameterTypes[p].IsReference());
+			func->parameterTypes[p-1].MakeReadOnly(factory->parameterTypes[p].IsReadOnly());
+		}
+		else
+		{
+			func->parameterTypes[p-1] = factory->parameterTypes[p];
+		}
+		func->inOutFlags[p-1] = factory->inOutFlags[p];
 	}
 
 	SetScriptFunction(func);
@@ -2807,7 +2843,7 @@ bool asCScriptEngine::GenerateNewTemplateFunction(asCObjectType *templateType, a
 			}
 			else if( func->parameterTypes[p].GetObjectType() == templateType )
 			{
-				if( func2->parameterTypes[p].IsObjectHandle() )
+				if( func->parameterTypes[p].IsObjectHandle() )
 					func2->parameterTypes[p] = asCDataType::CreateObjectHandle(ot, false);
 				else
 					func2->parameterTypes[p] = asCDataType::CreateObject(ot, false);
@@ -3638,6 +3674,17 @@ asCConfigGroup *asCScriptEngine::FindConfigGroupForObjectType(const asCObjectTyp
 	return 0;
 }
 
+asCConfigGroup *asCScriptEngine::FindConfigGroupForFuncDef(asCScriptFunction *funcDef)
+{
+	for( asUINT n = 0; n < configGroups.GetLength(); n++ )
+	{
+		if( configGroups[n]->funcDefs.Exists(funcDef) )
+			return configGroups[n];
+	}
+
+	return 0;
+}
+
 int asCScriptEngine::SetConfigGroupModuleAccess(const char *groupName, const char *module, bool hasAccess)
 {
 	asCConfigGroup *group = 0;
@@ -3720,6 +3767,82 @@ void asCScriptEngine::FreeScriptFunctionId(int id)
 }
 
 // interface
+int asCScriptEngine::RegisterFuncdef(const char *decl)
+{
+	if( decl == 0 ) return ConfigError(asINVALID_ARG);
+
+	// Parse the function declaration
+	asCScriptFunction *func = asNEW(asCScriptFunction)(this, 0, asFUNC_FUNCDEF);
+
+	asCBuilder bld(this, 0);
+	int r = bld.ParseFunctionDeclaration(0, decl, func, false, 0, 0);
+	if( r < 0 )
+	{
+		// Set as dummy function before deleting
+		func->funcType = -1;
+		asDELETE(func,asCScriptFunction);
+		return ConfigError(asINVALID_DECLARATION);
+	}
+
+	// Check name conflicts
+	r = bld.CheckNameConflict(func->name.AddressOf(), 0, 0);
+	if( r < 0 )
+	{
+		asDELETE(func,asCScriptFunction);
+		return ConfigError(asNAME_TAKEN);
+	}
+
+	func->id = GetNextScriptFunctionId();
+	SetScriptFunction(func);
+
+	funcDefs.PushLast(func);
+	registeredFuncDefs.PushLast(func);
+	currentGroup->funcDefs.PushLast(func);
+
+	// If parameter type from other groups are used, add references
+	if( func->returnType.GetObjectType() )
+	{
+		asCConfigGroup *group = FindConfigGroupForObjectType(func->returnType.GetObjectType());
+		currentGroup->RefConfigGroup(group);
+	}
+	for( asUINT n = 0; n < func->parameterTypes.GetLength(); n++ )
+	{
+		if( func->parameterTypes[n].GetObjectType() )
+		{
+			asCConfigGroup *group = FindConfigGroupForObjectType(func->parameterTypes[n].GetObjectType());
+			currentGroup->RefConfigGroup(group);
+		}
+	}
+
+	// Return the function id as success
+	return func->id;
+}
+
+// interface
+int asCScriptEngine::GetFuncdefCount()
+{
+	return (int)registeredFuncDefs.GetLength();
+}
+
+// interface
+asIScriptFunction *asCScriptEngine::GetFuncdefByIndex(asUINT index, const char **configGroup)
+{
+	if( index >= registeredFuncDefs.GetLength() )
+		return 0;
+
+	if( configGroup )
+	{
+		asCConfigGroup *group = FindConfigGroupForFuncDef(registeredFuncDefs[index]);
+		if( group )
+			*configGroup = group->groupName.AddressOf();
+		else
+			*configGroup = 0;
+	}
+
+	return registeredFuncDefs[index];
+}
+
+// interface
 // TODO: typedef: Accept complex types for the typedefs
 int asCScriptEngine::RegisterTypedef(const char *type, const char *decl)
 {
@@ -3734,7 +3857,7 @@ int asCScriptEngine::RegisterTypedef(const char *type, const char *decl)
 	}
 
 	// Grab the data type
-	asCTokenizer t;
+	asCTokenizer t(this);
 	size_t tokenLen;
 	eTokenType token;
 	asCDataType dataType;
@@ -3844,7 +3967,7 @@ int asCScriptEngine::RegisterEnum(const char *name)
 		return ConfigError(asERROR);
 
 	// Make sure the name is not a reserved keyword
-	asCTokenizer t;
+	asCTokenizer t(this);
 	size_t tokenLen;
 	int token = t.GetToken(name, strlen(name), &tokenLen);
 	if( token != ttIdentifier || strlen(name) != tokenLen )

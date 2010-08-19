@@ -178,12 +178,12 @@ CScriptFile::~CScriptFile()
     Close();
 }
 
-void CScriptFile::AddRef()
+void CScriptFile::AddRef() const
 {
     ++refCount;
 }
 
-void CScriptFile::Release()
+void CScriptFile::Release() const
 {
     if( --refCount == 0 )
         delete this;

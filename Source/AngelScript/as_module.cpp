@@ -179,10 +179,10 @@ int asCModule::ResetGlobalVars()
 // interface
 int asCModule::GetFunctionIdByIndex(int index)
 {
-	if( index < 0 || index >= (int)scriptFunctions.GetLength() )
+	if( index < 0 || index >= (int)globalFunctions.GetLength() )
 		return asNO_FUNCTION;
 
-	return scriptFunctions[index]->id;
+	return globalFunctions[index]->id;
 }
 
 // internal
@@ -203,8 +203,8 @@ int asCModule::CallInit()
 
 	// Call the init function for each of the global variables
 	asIScriptContext *ctx = 0;
-	int r = 0;
-	for( n = 0; n < scriptGlobals.GetLength() && r == 0; n++ )
+	int r = asEXECUTION_FINISHED;
+	for( n = 0; n < scriptGlobals.GetLength() && r == asEXECUTION_FINISHED; n++ )
 	{
 		if( scriptGlobals[n]->GetInitFunc() )
 		{
@@ -217,7 +217,35 @@ int asCModule::CallInit()
 
 			r = ctx->Prepare(scriptGlobals[n]->GetInitFunc()->id);
 			if( r >= 0 )
+			{
 				r = ctx->Execute();
+				if( r != asEXECUTION_FINISHED )
+				{
+					asCString msg;
+					msg.Format(TXT_FAILED_TO_INITIALIZE_s, scriptGlobals[n]->name.AddressOf());
+					asCScriptFunction *func = scriptGlobals[n]->GetInitFunc();
+
+					engine->WriteMessage(func->scriptSectionIdx >= 0 ? engine->scriptSectionNames[func->scriptSectionIdx]->AddressOf() : "",
+										 func->GetLineNumber(0) & 0xFFFFF, 
+										 func->GetLineNumber(0) >> 20,
+										 asMSGTYPE_ERROR,
+										 msg.AddressOf());
+										 
+					if( r == asEXECUTION_EXCEPTION )
+					{
+						int funcId = ctx->GetExceptionFunction();
+						const asIScriptFunction *function = engine->GetFunctionDescriptorById(funcId);
+
+						msg.Format(TXT_EXCEPTION_s_IN_s, ctx->GetExceptionString(), function->GetDeclaration());
+
+						engine->WriteMessage(function->GetScriptSectionName(), 
+						                     ctx->GetExceptionLineNumber(), 
+											 0,
+											 asMSGTYPE_INFORMATION,
+											 msg.AddressOf());
+					}
+				}
+			}
 		}
 	}
 
@@ -684,15 +712,15 @@ int asCModule::GetNextImportedFunctionId()
 }
 
 // internal
-int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, int paramCount, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction)
+int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, int paramCount, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate)
 {
 	asASSERT(id >= 0);
 
 	// Store the function information
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine, this, isInterface ? asFUNC_INTERFACE : asFUNC_SCRIPT);
-	func->name       = name;
-	func->id         = id;
-	func->returnType = returnType;
+	func->name             = name;
+	func->id               = id;
+	func->returnType       = returnType;
 	func->scriptSectionIdx = sectionIdx;
 	for( int n = 0; n < paramCount; n++ )
 	{
@@ -701,6 +729,7 @@ int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const
 	}
 	func->objectType = objType;
 	func->isReadOnly = isConstMethod;
+	func->isPrivate  = isPrivate;
 
 	// The script function's refCount was initialized to 1
 	scriptFunctions.PushLast(func);

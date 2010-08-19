@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -1145,6 +1145,11 @@ endcopy:
 		// Call function
 		call [func]
 
+#ifndef THISCALL_CALLEE_POPS_HIDDEN_RETURN_POINTER
+		// Pop the return pointer
+		add  esp, 4
+#endif
+
 #ifndef THISCALL_CALLEE_POPS_ARGUMENTS
 		// Pop arguments
 		add  esp, paramSize
@@ -1198,6 +1203,9 @@ endcopy:
 		"pushl 8(%ebp)        \n" // push obj on the stack
 		"pushl 24(%ebp)       \n" // push retPtr on the stack
 		"call  *20(%ebp)      \n"
+#ifndef THISCALL_CALLEE_POPS_HIDDEN_RETURN_POINTER
+		"addl  $4, %esp       \n" // pop return pointer
+#endif
 		"addl  16(%ebp), %esp \n" // pop arguments
 		"addl  $4, %esp       \n" // pop the object pointer
 		                          // the return pointer was popped by the callee

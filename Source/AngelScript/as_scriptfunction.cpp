@@ -132,6 +132,7 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, in
 	objectType             = 0; 
 	name                   = ""; 
 	isReadOnly             = false;
+	isPrivate              = false;
 	stackNeeded            = 0;
 	sysFuncIntf            = 0;
 	signatureId            = 0;
@@ -270,8 +271,14 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName) const
 {
 	asCString str;
 
-	str = returnType.Format();
-	str += " ";
+	// Don't add the return type for constructors and destructors
+	if( !(returnType.GetTokenType() == ttVoid && 
+		  objectType && 
+		  (name == objectType->name || (name.GetLength() > 0 && name[0] == '~'))) ) 
+	{
+		str = returnType.Format();
+		str += " ";
+	}
 	if( objectType && includeObjectName )
 	{
 		if( objectType->name != "" )

@@ -2043,7 +2043,7 @@ void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc(Critter* cr)
 bool FOServer::SScriptFunc::Crit_AddTimeEvent(Critter* cr, CScriptString& func_name, DWORD duration, int identifier)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	DWORD func_num=Script::GetScriptFuncNum(func_name.c_str(),"uint %s(Critter&, int, uint&)");
+	DWORD func_num=Script::GetScriptFuncNum(func_name.c_str(),"uint %s(Critter&,int,uint&)");
 	if(!func_num) SCRIPT_ERROR_R0("Function not found.");
 	cr->AddCrTimeEvent(func_num,0,duration,identifier);
 	return true;
@@ -2052,7 +2052,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent(Critter* cr, CScriptString& func_n
 bool FOServer::SScriptFunc::Crit_AddTimeEventRate(Critter* cr, CScriptString& func_name, DWORD duration, int identifier, DWORD rate)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	DWORD func_num=Script::GetScriptFuncNum(func_name.c_str(),"uint %s(Critter&, int, uint&)");
+	DWORD func_num=Script::GetScriptFuncNum(func_name.c_str(),"uint %s(Critter&,int,uint&)");
 	if(!func_num) SCRIPT_ERROR_R0("Function not found.");
 	cr->AddCrTimeEvent(func_num,rate,duration,identifier);
 	return true;
@@ -4173,21 +4173,20 @@ void FOServer::SScriptFunc::Global_SetSendParameter(int index, bool enabled)
 	Global_SetSendParameterCond(index,enabled,-1,0);
 }
 
-void FOServer::SScriptFunc::Global_SetSendParameterEqual(int index, bool enabled, bool onlyIfEqual)
+void FOServer::SScriptFunc::Global_SetSendParameterEqual(int index, bool enabled, bool only_if_equal)
 {
-	if(onlyIfEqual) Global_SetSendParameterCond(index,enabled,-2,0);
+	if(only_if_equal) Global_SetSendParameterCond(index,enabled,-2,0);
 	else Global_SetSendParameterCond(index,enabled,-1,0);
 }
 
 void FOServer::SScriptFunc::Global_SetSendParameterCond(int index, bool enabled, int condition_index, int condition_mask)
 {
-	if(condition_index<-2 || condition_index>=MAX_PARAMS)
-	{
-		SCRIPT_ERROR_R("Invalid condition index arg.");
-	}
+	if(condition_index<-2 || condition_index>=MAX_PARAMS) SCRIPT_ERROR_R("Invalid condition index arg.");
 
 	if(index<0)
 	{
+		if(condition_index==-2) SCRIPT_ERROR_R("Invalid condition index arg.");
+
 		index=-index;
 		if(index>=SLOT_GROUND) SCRIPT_ERROR_R("Invalid index arg.");
 		Critter::SlotDataSendEnabled[index]=enabled;

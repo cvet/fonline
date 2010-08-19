@@ -151,6 +151,9 @@
 // GNU C based compilers
 //  __GNUC__   is defined
 
+// Embarcadero C++Builder
+//  __BORLANDC__ is defined
+
 
 
 //
@@ -275,6 +278,10 @@
 // This constant should be defined if the callee pops the hidden return pointer,
 // used when returning an object in memory.
 
+// THISCALL_CALLEE_POPS_HIDDEN_RETURN_POINTER
+// This constant should be defined if the callee pops the hidden return pointer
+// for thiscall functions; used when returning an object in memory.
+
 // THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 // With this constant defined AngelScript will pass the object pointer on the stack
 
@@ -306,24 +313,50 @@
 #define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 0
 #define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 0
 #define THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 0
+#define THISCALL_CALLEE_POPS_HIDDEN_RETURN_POINTER
 
 
-// Borland C++ Builder can be treated as MSVC 6.0
-#if defined(__BORLANDC__) && !defined(__MWERKS__)
-	#define _MSC_VER 1200
-	#define WIN32 
+// Embarcadero C++Builder
+#if defined(__BORLANDC__)
+ #ifndef _Windows
+  #error "Configuration doesn't yet support BCC for Linux or Mac OS."
+ #endif
+ #if defined(_M_X64)
+  #error "Configuration doesn't yet support BCC for AMD64."
+ #endif
 
-	#define fmodf fmod
-	#define sqrtf sqrt
-	#define sinf sin
-	#define cosf cos
-	#define ceilf ceil
-	#define floorf floor
-	#define powf pow
-	#define fmodf fmod
-	#define fabsf fabs
+	#define MULTI_BASE_OFFSET(x) (*((asDWORD*)(&x)+1))
+	#define HAVE_VIRTUAL_BASE_OFFSET
+	#define VIRTUAL_BASE_OFFSET(x) (*((asDWORD*)(&x)+2))
+	#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+	#define CDECL_RETURN_SIMPLE_IN_MEMORY
+	#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+	#undef STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+	#undef CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+	#undef THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+	#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+	#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+	#define THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+
+	#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
+	#define COMPLEX_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR)
+	#define STDCALL __stdcall
+	#define AS_SIZEOF_BOOL 1
+	#define AS_WINDOWS_THREADS
+	#undef THISCALL_CALLEE_POPS_HIDDEN_RETURN_POINTER
+
+	#define AS_WIN
+	#define AS_X86
+	#define ASM_INTEL
+
+	#define I64(x) x##ll
+
+	#define asVSNPRINTF(a, b, c, d) _vsnprintf(a, b, c, d)
+
+	#define fmodf(a,b) fmod(a,b)
+
+	#define UNREACHABLE_RETURN
 #endif
-
 
 // Microsoft Visual C++
 #if defined(_MSC_VER) && !defined(__MWERKS__)
@@ -367,9 +400,9 @@
 		#endif
 	#endif
 
-	#if _MSC_VER <= 1200 // MSVC++ 6
+	#if _MSC_VER <= 1300 // MSVC++ 7.0 and lower
 		#define I64(x) x##l
-	#else
+	#else // MSVC++ 7.1 and higher
 		#define I64(x) x##ll
 	#endif
 
@@ -409,9 +442,9 @@
 		#define ASM_INTEL  // Intel style for inline assembly
 	#endif
 
-	#if _MSC_VER <= 1200 // MSVC++ 6
+	#if _MSC_VER <= 1300 // MSVC++ 7.0 and lower
 		#define I64(x) x##l
-	#else
+	#else // MSVC++ 7.1 and higher
 		#define I64(x) x##ll
 	#endif
 
@@ -492,6 +525,14 @@
 		#if defined(i386) && !defined(__LP64__)
 			// Support native calling conventions on Mac OS X + Intel 32bit CPU
 			#define AS_X86
+		#elif defined(__LP64__) && !defined(__ppc__) && !defined(__PPC__)
+			#define AS_NO_THREADS
+			#define AS_X64_GCC
+			#define HAS_128_BIT_PRIMITIVES
+			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			// STDCALL is not available on 64bit Mac
+			#undef STDCALL
+			#define STDCALL
 		#elif (defined(__ppc__) || defined(__PPC__)) && !defined(__LP64__)
 			// Support native calling conventions on Mac OS X + PPC 32bit CPU
 			#define AS_PPC

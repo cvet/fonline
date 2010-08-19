@@ -1598,7 +1598,7 @@ void FOClient::InvLMouseDown()
 			InvHoldId=GetCurContainerItemId(INTRECT(InvWInv,InvX,InvY),InvHeightItem,InvScroll,InvCont);
 			if(InvHoldId) IfaceHold=IFACE_INV_INV;
 		}
-		else if(IsCurInRect(InvWSlot1,InvX,InvY)	&& Chosen->ItemSlotMain->GetId())
+		else if(IsCurInRect(InvWSlot1,InvX,InvY) && Chosen->ItemSlotMain->GetId())
 		{
 			InvHoldId=Chosen->ItemSlotMain->GetId();
 			IfaceHold=IFACE_INV_SLOT1;

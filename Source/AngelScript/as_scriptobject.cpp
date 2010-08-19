@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -436,7 +436,7 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 				if( !prop->type.IsObjectHandle() )
 					CopyObject(*src, *dst, prop->type.GetObjectType(), engine);
 				else
-					CopyHandle((asDWORD*)src, (asDWORD*)dst, prop->type.GetObjectType(), engine);
+					CopyHandle((asPWORD*)src, (asPWORD*)dst, prop->type.GetObjectType(), engine);
 			}
 			else
 			{
@@ -472,7 +472,9 @@ void *asCScriptObject::AllocateObject(asCObjectType *objType, asCScriptEngine *e
 	}
 	else if( objType->flags & asOBJ_TEMPLATE )
 	{
-		ptr = ArrayObjectFactory(objType);
+		// Templates store the original factory that takes the object
+		// type as a hidden parameter in the construct behaviour
+		ptr = engine->CallGlobalFunctionRetPtr(objType->beh.construct, objType);
 	}
 	else if( objType->flags & asOBJ_REF )
 	{
@@ -506,6 +508,8 @@ void asCScriptObject::FreeObject(void *ptr, asCObjectType *objType, asCScriptEng
 
 void asCScriptObject::CopyObject(void *src, void *dst, asCObjectType *objType, asCScriptEngine *engine)
 {
+	// TODO: If the object doesn't have the copy behaviour, and it is not a 
+	//       POD object then the copy must not be performed
 	int funcIndex = objType->beh.copy;
 
 	if( funcIndex )
@@ -514,7 +518,7 @@ void asCScriptObject::CopyObject(void *src, void *dst, asCObjectType *objType, a
 		memcpy(dst, src, objType->size);
 }
 
-void asCScriptObject::CopyHandle(asDWORD *src, asDWORD *dst, asCObjectType *objType, asCScriptEngine *engine)
+void asCScriptObject::CopyHandle(asPWORD *src, asPWORD *dst, asCObjectType *objType, asCScriptEngine *engine)
 {
 	if( *dst )
 		engine->CallObjectMethod(*(void**)dst, objType->beh.release);

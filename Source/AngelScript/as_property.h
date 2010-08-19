@@ -53,6 +53,7 @@ public:
 	asCString   name;
 	asCDataType type;
 	int         byteOffset;
+	bool		isPrivate;
 };
 
 class asCGlobalProperty

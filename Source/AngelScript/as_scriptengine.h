@@ -127,6 +127,11 @@ public:
 	virtual int         GetEnumValueCount(int enumTypeId);
 	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue);
 
+	// Funcdefs
+	virtual int                RegisterFuncdef(const char *decl);
+	virtual int                GetFuncdefCount();
+	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index, const char **configGroup = 0);
+
 	// Typedefs
 	virtual int         RegisterTypedef(const char *type, const char *decl);
 	virtual int         GetTypedefCount();
@@ -222,6 +227,7 @@ public:
 	asCConfigGroup *FindConfigGroupForFunction(int funcId);
 	asCConfigGroup *FindConfigGroupForGlobalVar(int gvarId);
 	asCConfigGroup *FindConfigGroupForObjectType(const asCObjectType *type);
+	asCConfigGroup *FindConfigGroupForFuncDef(asCScriptFunction *funcDef);
 
 	int  RequestBuild();
 	void BuildCompleted();
@@ -258,7 +264,7 @@ public:
 
 	bool               IsTemplateType(const char *name);
 	asCObjectType     *GetTemplateInstanceType(asCObjectType *templateType, asCDataType &subType);
-	asCScriptFunction *GenerateTemplateFactoryStub(asCObjectType *templateType, int origFactoryId);
+	asCScriptFunction *GenerateTemplateFactoryStub(asCObjectType *templateType, asCObjectType *templateInstanceType, int origFactoryId);
 	bool               GenerateNewTemplateFunction(asCObjectType *templateType, asCObjectType *templateInstanceType, asCDataType &subType, asCScriptFunction *templateFunc, asCScriptFunction **newFunc);
 
 	// String constants
@@ -291,6 +297,7 @@ public:
 	asCArray<asCObjectType *>      registeredEnums;
 	asCArray<asCGlobalProperty *>  registeredGlobalProps;
 	asCArray<asCScriptFunction *>  registeredGlobalFuncs;
+	asCArray<asCScriptFunction *>  registeredFuncDefs;
 	asCScriptFunction             *stringFactory;
 	bool configFailed;
 

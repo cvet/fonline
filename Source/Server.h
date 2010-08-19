@@ -639,7 +639,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static AIDataPlane* Global_CreatePlane();
 		static DWORD Global_GetBagItems(DWORD bag_id, asIScriptArray* pids, asIScriptArray* min_counts, asIScriptArray* max_counts, asIScriptArray* slots);
 		static void Global_SetSendParameter(int index, bool enabled);
-		static void Global_SetSendParameterEqual(int index, bool enabled, bool onlyIfEqual);
+		static void Global_SetSendParameterEqual(int index, bool enabled, bool only_if_equal);
 		static void Global_SetSendParameterCond(int index, bool enabled, int condition_index, int condition_mask);
 		static bool Global_SwapCritters(Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars);
 		static DWORD Global_GetAllItems(WORD pid, asIScriptArray* items);

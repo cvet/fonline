@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -281,8 +281,6 @@ int asCObjectType::GetInterfaceCount() const
 
 asIObjectType *asCObjectType::GetInterface(asUINT index) const
 {
-	assert(index < interfaces.GetLength());
-
 	return interfaces[index];
 }
 

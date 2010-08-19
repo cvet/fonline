@@ -175,7 +175,8 @@ protected:
 	void PrepareArgument2(asSExprContext *ctx, asSExprContext *arg, asCDataType *paramType, bool isFunction = false, int refType = 0, asCArray<int> *reservedVars = 0);
 	bool IsLValue(asCTypeInfo &type);
 	int  DoAssignment(asSExprContext *out, asSExprContext *lctx, asSExprContext *rctx, asCScriptNode *lexpr, asCScriptNode *rexpr, int op, asCScriptNode *opNode);
-	void MergeExprContexts(asSExprContext *before, asSExprContext *after);
+	void MergeExprBytecode(asSExprContext *before, asSExprContext *after);
+	void MergeExprBytecodeAndType(asSExprContext *before, asSExprContext *after);
 	void FilterConst(asCArray<int> &funcs);
 	void ConvertToVariable(asSExprContext *ctx);
 	void ConvertToVariableNotIn(asSExprContext *ctx, asSExprContext *exclude);

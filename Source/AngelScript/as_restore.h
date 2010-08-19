@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -61,6 +61,9 @@ protected:
 	asIBinaryStream *stream;
 	asCScriptEngine *engine;
 
+	void WriteData(const void *data, asUINT size);
+	void ReadData(void *data, asUINT size);
+
 	void WriteString(asCString *str);
 	void WriteFunction(asCScriptFunction *func);
 	void WriteFunctionSignature(asCScriptFunction *func);
@@ -68,8 +71,9 @@ protected:
 	void WriteObjectProperty(asCObjectProperty *prop);
 	void WriteDataType(const asCDataType *dt);
 	void WriteObjectType(asCObjectType *ot);
-	void WriteObjectTypeDeclaration(asCObjectType *ot, bool writeProperties);
+	void WriteObjectTypeDeclaration(asCObjectType *ot, int phase);
 	void WriteByteCode(asDWORD *bc, int length);
+	void WriteEncodedUInt(asUINT i);
 
 	void ReadString(asCString *str);
 	asCScriptFunction *ReadFunction(bool addToModule = true, bool addToEngine = true);
@@ -78,8 +82,9 @@ protected:
 	void ReadObjectProperty(asCObjectProperty *prop);
 	void ReadDataType(asCDataType *dt);
 	asCObjectType *ReadObjectType();
-	void ReadObjectTypeDeclaration(asCObjectType *ot, bool readProperties);
+	void ReadObjectTypeDeclaration(asCObjectType *ot, int phase);
 	void ReadByteCode(asDWORD *bc, int length);
+	asUINT ReadEncodedUInt();
 
 	// Helper functions for storing variable data
 	int FindObjectTypeIdx(asCObjectType*);
@@ -90,17 +95,21 @@ protected:
 	asCScriptFunction *FindFunction(int idx);
 	int FindGlobalPropPtrIndex(void *);
 	int FindStringConstantIndex(int id);
+	int FindObjectPropIndex(short offset, int typeId);
+	short FindObjectPropOffset(asWORD index);
 
 	// Intermediate data used for storing that which isn't constant, function id's, pointers, etc
 	void WriteUsedTypeIds();
 	void WriteUsedFunctions();
 	void WriteUsedGlobalProps();
 	void WriteUsedStringConstants();
+	void WriteUsedObjectProps();
 
 	void ReadUsedTypeIds();
 	void ReadUsedFunctions();
 	void ReadUsedGlobalProps();
 	void ReadUsedStringConstants();
+	void ReadUsedObjectProps();
 
 	// After loading, each function needs to be translated to update pointers, function ids, etc
 	void TranslateFunction(asCScriptFunction *func);
@@ -113,6 +122,16 @@ protected:
 	asCArray<int>                usedStringConstants;
 
 	asCArray<asCScriptFunction*> savedFunctions;
+	asCArray<asCDataType>        savedDataTypes;
+	asCArray<asCString>          savedStrings;
+
+	struct SObjProp
+	{
+		asCObjectType *objType;
+		int            offset;
+	};
+
+	asCArray<SObjProp>           usedObjectProperties;
 };
 
 END_AS_NAMESPACE

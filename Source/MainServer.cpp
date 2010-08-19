@@ -63,7 +63,8 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	if(!Singleplayer || strstr(lpCmdLine,"-showgui "))
 	{
 		LogFinish(-1);
-		LogToDlg(GetDlgItem(Dlg,IDC_LOG));
+		HWND dlg_log=GetDlgItem(Dlg,IDC_LOG);
+		LogToDlg(&dlg_log);
 		Dlg=CreateDialog(Instance,MAKEINTRESOURCE(IDD_DLG),NULL,DlgProc);
 
 		int wx=cfg.GetInt("PositionX",0);
@@ -485,7 +486,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			break;
 		case IDC_LOGGING:
 			if(SendMessage(GetDlgItem(Dlg,IDC_LOGGING),BM_GETCHECK,0,0)==BST_CHECKED)
-				LogToBuffer(LogEvent);
+				LogToBuffer(&LogEvent);
 			else
 				LogFinish(LOG_BUFFER);
 			break;
@@ -524,7 +525,7 @@ void GameLoopThread(void*)
 	if(Dlg)
 	{
 		LogFinish(-1);
-		LogToBuffer(LogEvent);
+		LogToBuffer(&LogEvent);
 	}
 	GetServerOptions();
 
@@ -555,7 +556,8 @@ void GameLoopThread(void*)
 		string str;
 		LogGetBuffer(str);
 		LogFinish(LOG_BUFFER);
-		LogToDlg(GetDlgItem(Dlg,IDC_LOG));
+		HWND dlg_log=GetDlgItem(Dlg,IDC_LOG);
+		LogToDlg(&dlg_log);
 		if(str.length()) WriteLog("%s",str.c_str());
 	}
 

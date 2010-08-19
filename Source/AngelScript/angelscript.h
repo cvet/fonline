@@ -44,17 +44,19 @@
 #ifdef AS_USE_NAMESPACE
  #define BEGIN_AS_NAMESPACE namespace AngelScript {
  #define END_AS_NAMESPACE }
+ #define AS_NAMESPACE_QUALIFIER AngelScript::
 #else
  #define BEGIN_AS_NAMESPACE
  #define END_AS_NAMESPACE
+ #define AS_NAMESPACE_QUALIFIER
 #endif
 
 BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-#define ANGELSCRIPT_VERSION        21900
-#define ANGELSCRIPT_VERSION_STRING "2.19.0 WIP"
+#define ANGELSCRIPT_VERSION        21902
+#define ANGELSCRIPT_VERSION_STRING "2.19.2 WIP"
 
 // Data types
 
@@ -329,10 +331,11 @@ typedef void *(*asALLOCFUNC_t)(size_t);
 typedef void (*asFREEFUNC_t)(void *);
 
 #define asFUNCTION(f) asFunctionPtr(f)
-#if defined(_MSC_VER) && _MSC_VER <= 1200
+#if (defined(_MSC_VER) && _MSC_VER <= 1200) || (defined(__BORLANDC__) && __BORLANDC__ < 0x590)
 // MSVC 6 has a bug that prevents it from properly compiling using the correct asFUNCTIONPR with operator >
-// so we need to use ordinary C style cast instead of static_cast. The drawback is that the compiler can't 
+// so we need to use ordinary C style cast instead of static_cast. The drawback is that the compiler can't
 // check that the cast is really valid.
+// BCC v5.8 (C++Builder 2006) and earlier have a similar bug which forces us to fall back to a C-style cast.
 #define asFUNCTIONPR(f,p,r) asFunctionPtr((void (*)())((r (*)p)(f)))
 #else
 #define asFUNCTIONPR(f,p,r) asFunctionPtr((void (*)())(static_cast<r (*)p>(f)))
@@ -357,8 +360,27 @@ struct asSFuncPtr
 	asBYTE flag; // 1 = generic, 2 = global func, 3 = method
 };
 
+#if defined(__BORLANDC__)
+// A bug in BCC (QC #85374) makes it impossible to distinguish const/non-const method overloads
+// with static_cast<>. The workaround is to use an _implicit_cast instead.
+
+ #if  __BORLANDC__ < 0x590
+ // BCC v5.8 (C++Builder 2006) and earlier have an even more annoying bug which causes
+ // the "pretty" workaround below (with _implicit_cast<>) to fail. For these compilers
+ // we need to use a traditional C-style cast.
+  #define AS_METHOD_AMBIGUITY_CAST(t) (t)
+ #else
+template <typename T>
+  T _implicit_cast (T val)
+{ return val; }
+  #define AS_METHOD_AMBIGUITY_CAST(t) AS_NAMESPACE_QUALIFIER _implicit_cast<t >
+ #endif
+#else
+ #define AS_METHOD_AMBIGUITY_CAST(t) static_cast<t >
+#endif
+
 #define asMETHOD(c,m) asSMethodPtr<sizeof(void (c::*)())>::Convert((void (c::*)())(&c::m))
-#define asMETHODPR(c,m,p,r) asSMethodPtr<sizeof(void (c::*)())>::Convert(static_cast<r (c::*)p>(&c::m))
+#define asMETHODPR(c,m,p,r) asSMethodPtr<sizeof(void (c::*)())>::Convert(AS_METHOD_AMBIGUITY_CAST(r (c::*)p)(&c::m))
 
 #else // Class methods are disabled
 
@@ -393,11 +415,17 @@ struct asSMessageInfo
 // Don't define anything when linking statically to the lib
 
 #ifdef WIN32
-  #ifdef ANGELSCRIPT_EXPORT
+  #if defined(ANGELSCRIPT_EXPORT)
     #define AS_API __declspec(dllexport)
-  #elif defined ANGELSCRIPT_DLL_LIBRARY_IMPORT
+  #elif defined(ANGELSCRIPT_DLL_LIBRARY_IMPORT)
     #define AS_API __declspec(dllimport)
   #else // statically linked library
+    #define AS_API
+  #endif
+#elif defined(__GNUC__) 
+  #if defined(ANGELSCRIPT_EXPORT)
+    #define AS_API __attribute__((visibility ("default")))
+  #else
     #define AS_API
   #endif
 #else
@@ -477,6 +505,11 @@ public:
 	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **configGroup = 0) = 0;
 	virtual int         GetEnumValueCount(int enumTypeId) = 0;
 	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) = 0;
+
+	// Funcdefs
+	virtual int                RegisterFuncdef(const char *decl) = 0;
+	virtual int                GetFuncdefCount() = 0;
+	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index, const char **configGroup = 0) = 0;
 
 	// Typedefs
 	virtual int         RegisterTypedef(const char *type, const char *decl) = 0;
@@ -1252,8 +1285,9 @@ enum asEBCInstr
 	asBC_JitEntry		= 175,
 	asBC_CallPtr        = 176,
 	asBC_FuncPtr        = 177,
+	asBC_LoadThisR      = 178,
 
-	asBC_MAXBYTECODE	= 178,
+	asBC_MAXBYTECODE	= 179,
 
 	// Temporary tokens. Can't be output to the final program
 	asBC_PSP			= 253,
@@ -1282,11 +1316,12 @@ enum asEBCType
 	asBCTYPE_W_rW_ARG     = 15,
 	asBCTYPE_wW_W_ARG     = 16,
 	asBCTYPE_QW_DW_ARG    = 17,
-	asBCTYPE_rW_QW_ARG    = 18
+	asBCTYPE_rW_QW_ARG    = 18,
+	asBCTYPE_W_DW_ARG     = 19
 };
 
 // Instruction type sizes
-const int asBCTypeSize[19] =
+const int asBCTypeSize[20] =
 {
     0, // asBCTYPE_INFO
     1, // asBCTYPE_NO_ARG
@@ -1306,7 +1341,8 @@ const int asBCTypeSize[19] =
     2, // asBCTYPE_W_rW_ARG
     2, // asBCTYPE_wW_W_ARG
     4, // asBCTYPE_QW_DW_ARG
-    3  // asBCTYPE_rW_QW_ARG
+    3, // asBCTYPE_rW_QW_ARG
+    2  // asBCTYPE_W_DW_ARG
 };
 
 // Instruction info
@@ -1321,7 +1357,7 @@ struct asSBCInfo
 #ifndef AS_64BIT_PTR
 	#define asBCTYPE_PTR_ARG    asBCTYPE_DW_ARG
 	#define asBCTYPE_PTR_DW_ARG asBCTYPE_DW_DW_ARG
-    #define asBCTYPE_wW_PTR_ARG asBCTYPE_wW_DW_ARG
+	#define asBCTYPE_wW_PTR_ARG asBCTYPE_wW_DW_ARG
 	#define asBCTYPE_rW_PTR_ARG asBCTYPE_rW_DW_ARG
 	#ifndef AS_PTR_SIZE
 		#define AS_PTR_SIZE 1
@@ -1329,7 +1365,7 @@ struct asSBCInfo
 #else
 	#define asBCTYPE_PTR_ARG    asBCTYPE_QW_ARG
 	#define asBCTYPE_PTR_DW_ARG asBCTYPE_QW_DW_ARG
-    #define asBCTYPE_wW_PTR_ARG asBCTYPE_wW_QW_ARG
+	#define asBCTYPE_wW_PTR_ARG asBCTYPE_wW_QW_ARG
 	#define asBCTYPE_rW_PTR_ARG asBCTYPE_rW_QW_ARG
 	#ifndef AS_PTR_SIZE
 		#define AS_PTR_SIZE 2
@@ -1420,7 +1456,7 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(TYPEID,	DW_ARG,			1),
 	asBCINFO(SetV4,		wW_DW_ARG,		0),
 	asBCINFO(SetV8,		wW_QW_ARG,		0),
-	asBCINFO(ADDSi,		DW_ARG,			0),
+	asBCINFO(ADDSi,		W_DW_ARG,		0),
 	asBCINFO(CpyVtoV4,	wW_rW_ARG,		0),
 	asBCINFO(CpyVtoV8,	wW_rW_ARG,		0),
 	asBCINFO(CpyVtoR4,	rW_ARG,			0),
@@ -1519,8 +1555,8 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(JitEntry,	W_ARG,			0),
 	asBCINFO(CallPtr,   rW_ARG,         0xFFFF),
 	asBCINFO(FuncPtr,   PTR_ARG,        AS_PTR_SIZE),
+	asBCINFO(LoadThisR, W_DW_ARG,       0),
 
-	asBCINFO_DUMMY(178),
 	asBCINFO_DUMMY(179),
 	asBCINFO_DUMMY(180),
 	asBCINFO_DUMMY(181),

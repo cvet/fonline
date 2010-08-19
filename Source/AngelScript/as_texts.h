@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -41,7 +41,7 @@
 
 // Compiler messages
 
-#define TXT_s_ALREADY_DECLARED            "'%s' already declared"
+#define TXT_s_ALREADY_DECLARED            "'%s' is already declared"
 #define TXT_ARG_NOT_LVALUE                "Argument cannot be assigned. Output will be discarded."
 #define TXT_ASSIGN_IN_GLOBAL_EXPR         "Assignments are not allowed in global expressions"
 
@@ -58,6 +58,7 @@
 #define TXT_CANNOT_INHERIT_FROM_SELF             "Can't inherit from itself, or another class that inherits from this class"
 #define TXT_CANNOT_INSTANCIATE_TEMPLATE_s_WITH_s "Can't instanciate template '%s' with subtype '%s'"
 #define TXT_CANT_IMPLICITLY_CONVERT_s_TO_s       "Can't implicitly convert from '%s' to '%s'."
+#define TXT_CANNOT_RETURN_REF_TO_LOCAL           "Can't return reference to local value."
 #define TXT_CANT_RETURN_VALUE                    "Can't return value when return type is 'void'"
 #define TXT_CHANGE_SIGN                          "Implicit conversion changed sign of value"
 #define TXT_COMPILING_s                          "Compiling %s"
@@ -92,7 +93,8 @@
 
 #define TXT_GET_SET_ACCESSOR_TYPE_MISMATCH_FOR_s "The property '%s' has mismatching types for the get and set accessors"
 
-#define TXT_HANDLE_COMPARISON             "The operand is implicitly converted to handle in order to compare them"
+#define TXT_HANDLE_ASSIGN_ON_NON_HANDLE_PROP     "It is not allowed to perform a handle assignment on a non-handle property"
+#define TXT_HANDLE_COMPARISON                    "The operand is implicitly converted to handle in order to compare them"
 
 #define TXT_IDENTIFIER_s_NOT_DATA_TYPE          "Identifier '%s' is not a data type"
 #define TXT_IF_WITH_EMPTY_STATEMENT             "If with empty statement"
@@ -116,6 +118,7 @@
 #define TXT_INVALID_UNICODE_SEQUENCE_IN_SRC     "Invalid unicode sequence in source"
 
 #define TXT_METHOD_IN_GLOBAL_EXPR                   "Object method calls are not allowed in global expressions"
+#define TXT_METHOD_CANT_HAVE_NAME_OF_CLASS          "The method cannot be named with the class name"
 #define TXT_MISSING_IMPLEMENTATION_OF_s             "Missing implementation of '%s'"
 #define TXT_MORE_THAN_ONE_MATCHING_OP               "Found more than one matching operator"
 #define TXT_MULTIPLE_MATCHING_SIGNATURES_TO_s       "Multiple matching signatures to '%s'"
@@ -159,15 +162,18 @@
 #define TXT_PARAMETER_ALREADY_DECLARED    "Parameter already declared"
 #define TXT_PARAMETER_CANT_BE_s           "Parameter type can't be '%s'"
 #define TXT_POSSIBLE_LOSS_OF_PRECISION    "Conversion from double to float, possible loss of precision"
+#define TXT_PRIVATE_METHOD_CALL_s         "Illegal call to private method '%s'"
+#define TXT_PRIVATE_PROP_ACCESS_s         "Illegal access to private property '%s'"
 #define TXT_PROPERTY_CANT_BE_CONST        "Class properties cannot be declared as const"
 #define TXT_PROPERTY_HAS_NO_GET_ACCESSOR  "The property has no get accessor"
 #define TXT_PROPERTY_HAS_NO_SET_ACCESSOR  "The property has no set accessor"
 
-#define TXT_REF_IS_READ_ONLY              "Reference is read-only"
-#define TXT_REF_IS_TEMP                   "Reference is temporary"
-#define TXT_RETURN_CANT_BE_s              "Return type can't be '%s'"
+#define TXT_REF_IS_READ_ONLY                    "Reference is read-only"
+#define TXT_REF_IS_TEMP                         "Reference is temporary"
+#define TXT_RETURN_CANT_BE_s                    "Return type can't be '%s'"
+#define TXT_REF_CANT_BE_RETURNED_DEFERRED_PARAM "Resulting reference cannot be returned. There are deferred arguments that may invalidate it."
+#define TXT_REF_CANT_BE_RETURNED_LOCAL_VARS     "Resulting reference cannot be returned. The expression uses objects that during cleanup may invalidate it."
 
-#define TXT_SCRIPT_FUNCTIONS_DOESNT_SUPPORT_RETURN_REF "Script functions must not return references"
 #define TXT_SIGNED_UNSIGNED_MISMATCH                   "Signed/Unsigned mismatch"
 #define TXT_STRINGS_NOT_RECOGNIZED                     "Strings are not recognized by the application"
 #define TXT_SWITCH_CASE_MUST_BE_CONSTANT               "Case expressions must be constants"
@@ -184,6 +190,11 @@
 
 #define TXT_VALUE_TOO_LARGE_FOR_TYPE      "Value is too large for data type"
 
+// Global variable initialization
+
+#define TXT_FAILED_TO_INITIALIZE_s		"Failed to initialize global variable '%s'"
+#define TXT_EXCEPTION_s_IN_s            "Exception '%s' in '%s'"
+
 // Engine message
 
 #define TXT_INVALID_CONFIGURATION                  "Invalid configuration"
@@ -193,7 +204,7 @@
 #define TXT_GC_REQUIRE_ADD_REL_GC_BEHAVIOUR        "A garbage collected type must have the addref, release, and all gc behaviours"
 #define TXT_SCOPE_REQUIRE_REL_BEHAVIOUR            "A scoped reference type must have the release behaviour"
 #define TXT_REF_REQUIRE_ADD_REL_BEHAVIOUR          "A reference type must have the addref and release behaviours"
-#define TXT_NON_POD_REQUIRE_CONSTR_DESTR_BEHAVIOUR "A non-pod value type must have the constructor and destructor behaviours"
+#define TXT_NON_POD_REQUIRE_CONSTR_DESTR_BEHAVIOUR "A non-pod value type must have the default constructor and destructor behaviours"
 #define TXT_CANNOT_PASS_TYPE_s_BY_VAL              "Can't pass type '%s' by value unless the application type is informed in the registration"
 #define TXT_CANNOT_RET_TYPE_s_BY_VAL               "Can't return type '%s' by value unless the application type is informed in the registration"
 #define TXT_DONT_SUPPORT_TYPE_s_BY_VAL             "Don't support passing type '%s' by value to application"

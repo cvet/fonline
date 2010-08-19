@@ -19,8 +19,8 @@ void WriteLog(const char* frmt, ...);
 // Append logging to
 void LogToFile(const char* fname); // File
 void LogToFunc(LogFuncPtr func_ptr); // Extern function
-void LogToDlg(HWND dlg_item); // Dialog item
-void LogToBuffer(HANDLE event); // Buffer, to get value use LogGetBuffer
+void LogToDlg(void* dlg_item); // Dialog item
+void LogToBuffer(void* event); // Buffer, to get value use LogGetBuffer
 
 int LogGetType();
 void LogFinish(int log_type); // Finish logging

@@ -167,7 +167,8 @@ enum eTokenType
 	ttClass,               // class
 	ttTypedef,             // typedef
 	ttEnum,                // enum
-	ttCast                 // cast
+	ttCast,                // cast
+	ttPrivate              // private
 };
 
 struct sTokenWord
@@ -276,6 +277,7 @@ sTokenWord const tokenWords[] =
 	{"xor"       , ttXor},
 	{"typedef"   , ttTypedef},
 	{"enum"      , ttEnum},
+	{"private"   , ttPrivate}
 };
 
 const unsigned int numTokenWords = sizeof(tokenWords)/sizeof(sTokenWord);

@@ -55,33 +55,68 @@ typedef asQWORD ( *funcptr_t )( void );
 #define CALLSTACK_MULTIPLIER      2
 #define X64_CALLSTACK_SIZE        ( X64_MAX_ARGS + MAX_CALL_SSE_REGISTERS + 3 )
 
-#define PUSH_LONG( val )                                 \
-	__asm__ __volatile__ (                           \
+// TODO: Should this really be different on Mac and other systems? Probably the Mac way is the correct one
+#if defined(AS_MAC)
+#define PUSH_LONG( val )                         \
+	__asm__ __volatile__ (                       \
+		"movq   %0, %%rax\n"                     \
+		"pushq  %%rax"                           \
+		:                                        \
+		: "m" ( val )                            \
+	)
+
+#define POP_LONG( reg )                          \
+	__asm__ __volatile__ (                       \
+		"popq     %rax\n"                        \
+		"movq     %rax, " reg                    \
+	)
+
+
+#define ASM_GET_REG( name, dest )                \
+	__asm__ __volatile__ (                       \
+		"movq %" name ", %0\n"                   \
+		:                                        \
+		: "m" ( dest )                           \
+	)
+#else
+#define PUSH_LONG( val )                         \
+	__asm__ __volatile__ (                       \
 		"mov    %0, %%rax\r\n"                   \
 		"push   %%rax"                           \
 		:                                        \
 		: "m" ( val )                            \
 	)
 
-#define POP_LONG( reg )                                  \
-	__asm__ __volatile__ (                           \
+#define POP_LONG( reg )                          \
+	__asm__ __volatile__ (                       \
 		"popq     %rax\r\n"                      \
 		"movq     %rax, " reg                    \
 	)
 
 
-#define ASM_GET_REG( name, dest )                        \
-	__asm__ __volatile__ (                           \
+#define ASM_GET_REG( name, dest )                \
+	__asm__ __volatile__ (                       \
 		"mov  %" name ", %0\r\n"                 \
 		:                                        \
 		: "m" ( dest )                           \
 	)
+#endif
 
 static asDWORD GetReturnedFloat()
 {
 	float   retval = 0.0f;
 	asDWORD ret    = 0;
 
+// TODO: Should this really be different on Mac and other systems? Probably the Mac way is the correct one
+#ifdef AS_MAC
+	__asm__ __volatile__ (
+		"lea      %0, %%rax\n"
+		"movss    %%xmm0, (%%rax)"
+		: /* no output */
+		: "m" (retval)
+		: "%rax"
+	);
+#else
 	__asm__ __volatile__ (
 		"lea      %0, %%rax\r\n"
 		"movss    %%xmm0, (%%rax)"
@@ -89,6 +124,7 @@ static asDWORD GetReturnedFloat()
 		: "m" (retval)
 		: "%rax"
 	);
+#endif
 
 	/* We need to avoid implicit conversions from float to unsigned - we need
 	   a bit-wise-correct-and-complete copy of the value */
@@ -102,6 +138,16 @@ static asQWORD GetReturnedDouble()
 	double  retval = 0.0f;
 	asQWORD ret    = 0;
 
+// TODO: Should this really be different on Mac and other systems? Probably the Mac way is the correct one
+#ifdef AS_MAC
+	__asm__ __volatile__ (
+		"lea     %0, %%rax\n"
+		"movlpd  %%xmm0, (%%rax)"
+		: /* no optput */
+		: "m" (retval)
+		: "%rax"
+	);
+#else
 	__asm__ __volatile__ (
 		"lea     %0, %%rax\r\n"
 		"movlpd  %%xmm0, (%%rax)"
@@ -109,6 +155,7 @@ static asQWORD GetReturnedDouble()
 		: "m" (retval)
 		: "%rax"
 	);
+#endif
 	/* We need to avoid implicit conversions from double to unsigned long long - we need
 	   a bit-wise-correct-and-complete copy of the value */
 	memcpy( &ret, &retval, sizeof( ret ) );

@@ -157,6 +157,7 @@ public:
 	asCArray<asCDataType>        parameterTypes;
 	asCArray<asETypeModifiers>   inOutFlags;
 	bool                         isReadOnly;
+	bool                         isPrivate;
 	asCObjectType               *objectType;
 	int                          signatureId;
 

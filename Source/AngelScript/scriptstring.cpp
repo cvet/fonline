@@ -125,7 +125,7 @@ void CScriptString::resize(size_t count)
 // reference counting
 //--------------------
 
-void CScriptString::AddRef()
+void CScriptString::AddRef() const
 {
 	refCount++;
 }
@@ -136,7 +136,7 @@ static void StringAddRef_Generic(asIScriptGeneric *gen)
 	thisPointer->AddRef();
 }
 
-void CScriptString::Release()
+void CScriptString::Release() const
 {
 	if( --refCount == 0 )
 		delete this;
@@ -308,6 +308,22 @@ static void AssignDoubleToString_Generic(asIScriptGeneric *gen)
 	gen->SetReturnAddress(thisPointer);
 }
 
+static CScriptString &AssignBoolToString(bool b, CScriptString &dest)
+{
+	char buf[100];
+	sprintf(buf, "%s", b ? "true" : "false");
+	dest = buf;
+	return dest;
+}
+
+static void AssignBoolToString_Generic(asIScriptGeneric *gen)
+{
+	bool b = gen->GetArgByte(0) ? true : false;
+	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
+	AssignBoolToString(b, *thisPointer);
+	gen->SetReturnAddress(thisPointer);
+}
+
 //-----------------
 // string += value
 //-----------------
@@ -373,6 +389,22 @@ static void AddAssignDoubleToString_Generic(asIScriptGeneric *gen)
 	double f = gen->GetArgDouble(0);
 	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
 	AddAssignDoubleToString(f, *thisPointer);
+	gen->SetReturnAddress(thisPointer);
+}
+
+static CScriptString &AddAssignBoolToString(bool b, CScriptString &dest)
+{
+	char buf[100];
+	sprintf(buf, "%s", b ? "true" : "false");
+	dest += buf;
+	return dest;
+}
+
+static void AddAssignBoolToString_Generic(asIScriptGeneric *gen)
+{
+	bool b = gen->GetArgByte(0) ? true : false;
+	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
+	AddAssignBoolToString(b, *thisPointer);
 	gen->SetReturnAddress(thisPointer);
 }
 
@@ -448,6 +480,23 @@ static void AddStringDouble_Generic(asIScriptGeneric *gen)
 	gen->SetReturnAddress(out);
 }
 
+static CScriptString *AddStringBool(const CScriptString &str, bool b)
+{
+	char buf[100];
+	sprintf(buf, "%s", b ? "true" : "false");
+	CScriptString* str_ = new CScriptString(str);
+	*str_ += buf;
+	return str_;
+}
+
+static void AddStringBool_Generic(asIScriptGeneric *gen)
+{
+	CScriptString *str = (CScriptString*)gen->GetObject();
+	bool b = gen->GetArgByte(0) ? true : false;
+	CScriptString *out = AddStringBool(*str, b);
+	gen->SetReturnAddress(out);
+}
+
 //----------------
 // value + string
 //----------------
@@ -517,6 +566,23 @@ static void AddDoubleString_Generic(asIScriptGeneric *gen)
 	double f = gen->GetArgDouble(0);
 	CScriptString *str = (CScriptString*)gen->GetObject();
 	CScriptString *out = AddDoubleString(f, *str);
+	gen->SetReturnAddress(out);
+}
+
+static CScriptString *AddBoolString(bool b, const CScriptString &str)
+{
+	char buf[100];
+	sprintf(buf, "%s", b ? "true" : "false");
+	CScriptString* str_ = new CScriptString(buf);
+	*str_ += str;
+	return str_;
+}
+
+static void AddBoolString_Generic(asIScriptGeneric *gen)
+{
+	bool b = gen->GetArgByte(0) ? true : false;
+	CScriptString *str = (CScriptString*)gen->GetObject();
+	CScriptString *out = AddBoolString(b, *str);
 	gen->SetReturnAddress(out);
 }
 
@@ -729,6 +795,11 @@ void RegisterScriptString_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "string &opAddAssign(uint)", asFUNCTION(AddAssignUIntToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "string@ opAdd(uint) const", asFUNCTION(AddStringUInt), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(uint) const", asFUNCTION(AddUIntString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+
+	r = engine->RegisterObjectMethod("string", "string &opAssign(bool)", asFUNCTION(AssignBoolToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string &opAddAssign(bool)", asFUNCTION(AddAssignBoolToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string@ opAdd(bool) const", asFUNCTION(AddStringBool), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(bool) const", asFUNCTION(AddBoolString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 }
 
 void RegisterScriptString_Generic(asIScriptEngine *engine)
@@ -792,6 +863,11 @@ void RegisterScriptString_Generic(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "string &opAddAssign(uint)", asFUNCTION(AddAssignUIntToString_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "string@ opAdd(uint) const", asFUNCTION(AddStringUInt_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(uint) const", asFUNCTION(AddUIntString_Generic), asCALL_GENERIC); assert( r >= 0 );
+
+	r = engine->RegisterObjectMethod("string", "string &opAssign(bool)", asFUNCTION(AssignBoolToString_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string &opAddAssign(bool)", asFUNCTION(AddAssignBoolToString_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string@ opAdd(bool) const", asFUNCTION(AddStringBool_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(bool) const", asFUNCTION(AddBoolString_Generic), asCALL_GENERIC); assert( r >= 0 );
 }
 
 void RegisterScriptString(asIScriptEngine *engine)

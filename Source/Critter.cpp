@@ -2240,7 +2240,7 @@ void Critter::SendA_ParamCheck(WORD num_param)
 		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 		{
 			Critter* cr=*it;
-			if(cr->IsPlayer() && (cr->Data.Params[num_param] == this->Data.Params[num_param]))
+			if(cr->IsPlayer() && (cr->Data.Params[num_param]==Data.Params[num_param]))
 				cr->Send_CritterParam(this,num_param,0);
 		}
 	}
@@ -2920,7 +2920,8 @@ void Client::Send_AddCritter(Critter* cr)
 		Bout << index;
 
 		int condition_index=ParamsSendConditionIndex[index];
-		if(condition_index==-1 || (Data.Params[condition_index]&ParamsSendConditionMask[index])!=0)
+		if(condition_index==-1 || (condition_index==-2 && cr->Data.Params[index]==Data.Params[index]) ||
+			(Data.Params[condition_index]&ParamsSendConditionMask[index])!=0)
 			Bout << cr->Data.Params[index];
 		else
 			Bout << (int)0;
