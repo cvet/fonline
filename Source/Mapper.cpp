@@ -2686,7 +2686,7 @@ MapObject* FOMapper::FindMapObject(ProtoMap& pmap, WORD hx, WORD hy, BYTE mobj_t
 {
 	for(int i=0,j=pmap.MObjects.size();i<j;i++)
 	{
-		MapObject* mo=CurProtoMap->MObjects[i];
+		MapObject* mo=pmap.MObjects[i];
 
 		if(mo->MapX==hx && mo->MapY==hy && mo->MapObjType==mobj_type &&
 			(!pid || mo->ProtoId==pid) && !(mo->MapObjType==MAP_OBJECT_ITEM && mo->MItem.InContainer))
@@ -2702,7 +2702,7 @@ void FOMapper::FindMapObjects(ProtoMap& pmap, WORD hx, WORD hy, DWORD radius, BY
 {
 	for(int i=0,j=pmap.MObjects.size();i<j;i++)
 	{
-		MapObject* mo=CurProtoMap->MObjects[i];
+		MapObject* mo=pmap.MObjects[i];
 
 		if(mo->MapObjType==mobj_type && DistGame(mo->MapX,mo->MapY,hx,hy)<=radius &&
 			(!pid || mo->ProtoId==pid) && !(mo->MapObjType==MAP_OBJECT_ITEM && mo->MItem.InContainer))
