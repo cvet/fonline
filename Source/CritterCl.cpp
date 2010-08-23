@@ -925,11 +925,7 @@ Item* CritterCl::GetAmmoAvialble(Item* weap)
 
 DWORD CritterCl::GetTimeout(int timeout)
 {
-	DWORD to=(Params[timeout]>GameOpt.FullSecond?Params[timeout]-GameOpt.FullSecond:0);
-	if(timeout==TO_REMOVE_FROM_GAME && to<(Params[TO_BATTLE]>GameOpt.FullSecond?Params[TO_BATTLE]-GameOpt.FullSecond:0)) to=Params[TO_BATTLE];
-	DWORD sec=to/(GameOpt.TimeMultiplier?GameOpt.TimeMultiplier:1);
-	if(timeout==TO_REMOVE_FROM_GAME && sec<CLIENT_KICK_TIME/1000) sec=CLIENT_KICK_TIME/1000;
-	return sec;
+	return Params[timeout]>GameOpt.FullSecond?Params[timeout]-GameOpt.FullSecond:0;
 }
 
 bool CritterCl::IsLastHexes()

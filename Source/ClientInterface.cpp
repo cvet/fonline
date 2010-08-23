@@ -7483,7 +7483,17 @@ void FOClient::PipDraw()
 			{
 				if(!MsgGame->Count(STR_PARAM_NAME_(j))) continue;
 				DWORD val=Chosen->GetTimeout(j);
+
+				if(j==TO_REMOVE_FROM_GAME)
+				{
+					DWORD to_battle=Chosen->GetTimeout(TO_BATTLE);
+					if(val<to_battle) val=to_battle;
+				}
+
+				val/=(GameOpt.TimeMultiplier?GameOpt.TimeMultiplier:1); // Convert to seconds
+				if(j==TO_REMOVE_FROM_GAME && val<CLIENT_KICK_TIME/1000) val=CLIENT_KICK_TIME/1000;
 				if(j==TO_REMOVE_FROM_GAME && NoLogOut) val=1000000;
+
 				DWORD str_num=STR_TIMEOUT_SECONDS;
 				if(val>300)
 				{
@@ -9980,7 +9990,7 @@ void FOClient::SaveLoadCollect()
 
 		// Game time
 		WORD year,month,day,hour,minute;
-		SetFilePointer(hf,8+31+7404+6944+te_size+4+pic_data_len,NULL,FILE_BEGIN);
+		SetFilePointer(hf,8+31+7404+6944+te_size+4+pic_data_len+2,NULL,FILE_BEGIN);
 		if(!ReadFile(hf,&year,sizeof(year),&dw,NULL)) continue;
 		if(!ReadFile(hf,&month,sizeof(month),&dw,NULL)) continue;
 		if(!ReadFile(hf,&day,sizeof(day),&dw,NULL)) continue;

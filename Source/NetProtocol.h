@@ -34,12 +34,6 @@
 // LOGIN MESSAGES
 //************************************************************************
 
-#define NETMSG_HELLO                MAKE_NETMSG_HEADER(10)
-#define NETMSG_HELLO_SIZE           (sizeof(MSGTYPE))
-//////////////////////////////////////////////////////////////////////////
-// First message after connection
-//////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_LOGIN                MAKE_NETMSG_HEADER(1)
 #define NETMSG_LOGIN_SIZE           (sizeof(MSGTYPE)+sizeof(WORD)+sizeof(DWORD)*8/*UIDs*/+\
 MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*12/*Proto*/+sizeof(BYTE))
@@ -119,7 +113,14 @@ MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*12/*Proto*/+sizeo
 // DWORD msg_len
 // WORD portion_len
 // BYTE portion[portion_len]
-//////////////////////////////////////////////////////////////////////////*/
+//////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_HELLO                MAKE_NETMSG_HEADER(10)
+#define NETMSG_HELLO_SIZE           (sizeof(MSGTYPE))
+//////////////////////////////////////////////////////////////////////////
+// First message after connection
+//////////////////////////////////////////////////////////////////////////
+*/
 
 #define NETMSG_SINGLEPLAYER_SAVE_LOAD MAKE_NETMSG_HEADER(10)
 //////////////////////////////////////////////////////////////////////////

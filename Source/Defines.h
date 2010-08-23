@@ -139,7 +139,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define WORLD_SAVE_V6           (0x01AB0F06)
 #define WORLD_SAVE_V7           (0x01AB0F07)
 #define WORLD_SAVE_V8           (0x01AB0F08)
-#define WORLD_SAVE_LAST         WORLD_SAVE_V8
+#define WORLD_SAVE_V9           (0x01AB0F09)
+#define WORLD_SAVE_LAST         WORLD_SAVE_V9
 
 // Generic
 #define WORLD_START_TIME        "07:00 30:10:2246 x00"

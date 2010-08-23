@@ -2768,6 +2768,7 @@ void FOServer::SaveGameInfoFile()
 	}
 
 	// Time
+	AddWorldSaveData(&GameOpt.YearStart,sizeof(GameOpt.YearStart));
 	AddWorldSaveData(&GameOpt.Year,sizeof(GameOpt.Year));
 	AddWorldSaveData(&GameOpt.Month,sizeof(GameOpt.Month));
 	AddWorldSaveData(&GameOpt.Day,sizeof(GameOpt.Day));
@@ -2817,6 +2818,7 @@ bool FOServer::LoadGameInfoFile(FILE* f)
 	SingleplayerSave.Valid=(sp==1);
 
 	// Time
+	if(!fread(&GameOpt.YearStart,sizeof(GameOpt.YearStart),1,f)) return false;
 	if(!fread(&GameOpt.Year,sizeof(GameOpt.Year),1,f)) return false;
 	if(!fread(&GameOpt.Month,sizeof(GameOpt.Month),1,f)) return false;
 	if(!fread(&GameOpt.Day,sizeof(GameOpt.Day),1,f)) return false;
@@ -3866,13 +3868,14 @@ bool FOServer::LoadWorld(const char* name)
 	DWORD version=0;
 	fread(&version,sizeof(version),1,f);
 	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 &&
-		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8)
+		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8 &&
+		version!=WORLD_SAVE_V9)
 	{
 		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
 		return false;
 	}
-	if(version<WORLD_SAVE_V8)
+	if(version<WORLD_SAVE_V9)
 	{
 		WriteLog("Version of save file is not supported.\n");
 		fclose(f);

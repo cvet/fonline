@@ -531,8 +531,8 @@
 	if(engine->RegisterObjectMethod("Critter","void ClearEnemyStack()",asFUNCTION(BIND_CLASS Crit_ClearEnemyStack),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void ClearEnemyStackNpc()",asFUNCTION(BIND_CLASS Crit_ClearEnemyStackNpc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
-	if(engine->RegisterObjectMethod("Critter","bool AddTimeEvent(uint beginSecond, string& funcName, int identifier)",asFUNCTION(BIND_CLASS Crit_AddTimeEvent),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool AddTimeEvent(uint beginSecond, string& funcName, int identifier, uint rate)",asFUNCTION(BIND_CLASS Crit_AddTimeEventRate),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool AddTimeEvent(string& funcName, uint duration, int identifier)",asFUNCTION(BIND_CLASS Crit_AddTimeEvent),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool AddTimeEvent(string& funcName, uint duration, int identifier, uint rate)",asFUNCTION(BIND_CLASS Crit_AddTimeEventRate),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","uint GetTimeEvents(int identifier, uint[]@+ indexes, uint[]@+ durations, uint[]@+ rates) const",asFUNCTION(BIND_CLASS Crit_GetTimeEvents),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","uint GetTimeEvents(int[]& findIdentifiers, int[]@+ identifiers, uint[]@+ indexes, uint[]@+ durations, uint[]@+ rates) const",asFUNCTION(BIND_CLASS Crit_GetTimeEventsArr),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void ChangeTimeEvent(uint index, uint newDuration, uint newRate)",asFUNCTION(BIND_CLASS Crit_ChangeTimeEvent),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

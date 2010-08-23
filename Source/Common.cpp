@@ -833,7 +833,8 @@ DWORD GameTimeMonthDay(WORD year, WORD month)
 void ProcessGameTime()
 {
 	DWORD tick=Timer::GameTick();
-	DWORD delta_second=(tick-GameOpt.GameTimeTick)*GameOpt.TimeMultiplier/1000;
+	DWORD dt=tick-GameOpt.GameTimeTick;
+	DWORD delta_second=dt/1000*GameOpt.TimeMultiplier+dt%1000*GameOpt.TimeMultiplier/1000;
 	DWORD fs=GameOpt.FullSecondStart+delta_second;
 	if(GameOpt.FullSecond!=fs)
 	{
