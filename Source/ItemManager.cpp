@@ -821,7 +821,6 @@ void ItemManager::ClearProto(WORD pid)
 	DWORD& hash=protoHash[proto_item->GetType()];
 
 	allProto[pid].Clear();
-	SAFEDELA(protoScript[pid]);
 
 	ProtoItemVecIt it=std::find(protos.begin(),protos.end(),pid);
 	if(it!=protos.end()) protos.erase(it);
