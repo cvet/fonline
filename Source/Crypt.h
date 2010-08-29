@@ -9,9 +9,6 @@ private:
 	// Crc32 table
 	DWORD crcTable[0x100];
 
-	// Tempolary argument
-	DWORD tmpValue;
-
 public:
 	// Init Crypt Manager
 	CryptManager();

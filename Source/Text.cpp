@@ -126,28 +126,12 @@ void Str::CopyWord(char* to_str, const char* from_str, char end_char, bool inclu
 
 char* Str::Lwr(char* str)
 {
-	_strlwr(str);
-
-	while(*str)
-	{
-		if(*str>='À' && *str<='ß') *str+=0x20;
-		++str;
-	}
-	
-	return str;
+	return _strlwr(str);
 }
 
 char* Str::Upr(char* str)
 {
-	_strupr(str);
-
-	while(*str)
-	{
-		if(*str>='à' && *str<='ÿ') *str-=0x20;
-		++str;
-	}
-	
-	return str;
+	return _strupr(str);
 }
 
 void Str::CopyBack(char* str)
@@ -306,10 +290,31 @@ bool Str::StrToInt(const char* str, int& i)
 DWORD Str::GetHash(const char* str)
 {
 	if(!str) return 0;
-	static char str_[MAX_FOPATH];
+
+	char str_[MAX_FOPATH];
 	StringCopy(str_,str);
 	Str::Lwr(str_);
-	return Crypt.Crc32((BYTE*)str_,strlen(str_));
+	int len=0;
+	for(char* s=str_;*s;s++,len++) if(*s=='/') *s='\\';
+	return Crypt.Crc32((BYTE*)str_,len);
+
+	/* TODO: Must be faster, need test
+	int len=0;
+	for(int i=0;i<MAX_FOPATH;i++)
+	{
+		const char& from=str[i];
+		char& to=str_[i];
+		if(from>='À' && from<='ß') to=from+0x20;
+		else if(from>='A' && from<='Z') to=from+0x20;
+		else if(from=='¨') to='¸';
+		else if(from=='/') to='\\';
+		else to=from;
+
+		if(!from) break;
+		len++;
+	}
+	str_[MAX_FOPATH-1]=0;
+	return Crypt.Crc32((BYTE*)str_,len);*/
 }
 
 /************************************************************************/

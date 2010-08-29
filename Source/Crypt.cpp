@@ -20,13 +20,13 @@ CryptManager::CryptManager()
 DWORD CryptManager::Crc32(BYTE* data, DWORD len)
 {
 	const DWORD CRC_MASK=0xD202EF8D;
-	tmpValue=0;
+	DWORD value=0;
 	while(len--)
 	{
-		tmpValue=crcTable[(BYTE)tmpValue^*data++]^tmpValue>>8;
-		tmpValue^=CRC_MASK;
+		value=crcTable[(BYTE)value^*data++]^value>>8;
+		value^=CRC_MASK;
 	}
-	return tmpValue;
+	return value;
 }
 
 void CryptManager::Crc32(BYTE* data, DWORD len, DWORD& crc)
@@ -41,9 +41,9 @@ void CryptManager::Crc32(BYTE* data, DWORD len, DWORD& crc)
 
 DWORD CryptManager::CheckSum(BYTE* data, DWORD len)
 {
-	tmpValue=0;
-	while(len--) tmpValue+=*data++;
-	return tmpValue;
+	DWORD value=0;
+	while(len--) value+=*data++;
+	return value;
 }
 
 void CryptManager::XOR(char* data, DWORD len, char* xor, DWORD xor_len)

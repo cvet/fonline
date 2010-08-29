@@ -318,6 +318,7 @@ bool ZipFile::ReadTree()
 		if(info.external_fa&0x20) // File == 0x20, Folder == 0x10
 		{
 			_strlwr_s(name);
+			for(char* str=name;*str;str++) if(*str=='/') *str='\\';
 			zip_info.Pos=pos;
 			zip_info.UncompressedSize=info.uncompressed_size;
 			filesTree.insert(IndexMapVal(name,zip_info));

@@ -508,6 +508,8 @@ const char* FileManager::GetDataPath(int path_type)
 
 void FileManager::FormatPath(char* path)
 {
+	for(char* str=path;*str;str++) if(*str=='/') *str='\\';
+
 	char* str=strstr(path,"..\\");
 	if(str)
 	{

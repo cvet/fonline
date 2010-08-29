@@ -4,7 +4,6 @@
 #include "FileManager.h"
 #include "DataFile.h"
 #include "CritterType.h"
-#include "Crypt.h"
 
 ResourceManager ResMngr;
 
