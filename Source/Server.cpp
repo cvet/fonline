@@ -2255,14 +2255,14 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-		//Check global	
+			// Check global	
 			if(!cl->GetMap())
 			{
 				cl->Send_Text(cl,"Only on local map.",SAY_NETMSG);
 				return;
 			}
 
-		//Find map	
+			// Find map	
 			Map* map=MapMngr.GetMap(cl->GetMap());
 			if(!map)
 			{
@@ -2270,7 +2270,16 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(RegenerateMap(map)) cl->Send_Text(cl,"Regenerate map success.",SAY_NETMSG);
+			// Regenerate
+			WORD hx=cl->GetHexX();
+			WORD hy=cl->GetHexY();
+			BYTE dir=cl->GetDir();
+			if(RegenerateMap(map))
+			{
+				// Transit to old position
+				MapMngr.Transit(cl,map,hx,hy,dir,5,true);
+				cl->Send_Text(cl,"Regenerate map success.",SAY_NETMSG);
+			}
 			else cl->Send_Text(cl,"Regenerate map fail.",SAY_NETMSG);
 		}
 		break;

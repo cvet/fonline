@@ -70,11 +70,11 @@ void Map::Clear(bool full)
 	IsNotValid=true;
 
 	// Clear critters
-	CrVec del_cr=mapCritters;
+	PcVec del_npc=mapNpcs;
 	mapCritters.clear();
 	mapPlayers.clear();
 	mapNpcs.clear();
-	for(CrVecIt it=del_cr.begin(),end=del_cr.end();it!=end;++it)
+	for(PcVecIt it=del_npc.begin(),end=del_npc.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		cr->EventFinish(full);

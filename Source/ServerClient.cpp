@@ -1266,8 +1266,8 @@ bool FOServer::RegenerateMap(Map* map)
 	}
 
 	map->Clear(true);
-	map->SetId(map_id,map_pid);
 	map->Init(map_proto,map_loc);
+	map->SetId(map_id,map_pid);
 	map->Generate();
 	return true;
 }

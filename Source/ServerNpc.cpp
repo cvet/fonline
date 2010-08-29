@@ -12,6 +12,7 @@ void FOServer::ProcessAI(Npc* npc)
 	// Global map
 	if(!npc->GetMap())
 	{
+		if(!npc->GroupMove) return;
 		MapMngr.GM_GlobalProcess(npc,npc->GroupMove,GLOBAL_PROCESS_NPC_IDLE);
 		if(!npc->GetMap() && !npc->IsWait()) npc->SetWait(GameOpt.CritterIdleTick);
 		return;
