@@ -7,43 +7,40 @@ struct AIDataPlane
 	int Identifier;
 	int IdentifierExt;
 
-	union
+	struct
 	{
-		struct
-		{
-			int WaitSecond;
-			int ScriptBindId;
-		} Misc;
+		int WaitSecond;
+		int ScriptBindId;
+	} Misc;
 
-		struct
-		{
-			int TargId;
-			int MinHp;
-			int IsGag;
-			int GagHexX,GagHexY;
-			int LastHexX,LastHexY;
-			int IsRun;
-		} Attack;
+	struct
+	{
+		int TargId;
+		int MinHp;
+		int IsGag;
+		int GagHexX,GagHexY;
+		int LastHexX,LastHexY;
+		int IsRun;
+	} Attack;
 
-		struct
-		{
-			int HexX;
-			int HexY;
-			int Dir;
-			int IsRun;
-			int Cut;
-		} Walk;
+	struct
+	{
+		int HexX;
+		int HexY;
+		int Dir;
+		int IsRun;
+		int Cut;
+	} Walk;
 
-		struct
-		{
-			int HexX;
-			int HexY;
-			int Pid;
-			int UseItemId;
-			int ToOpen;
-			int IsRun;
-		} Pick;
-	};
+	struct
+	{
+		int HexX;
+		int HexY;
+		int Pid;
+		int UseItemId;
+		int ToOpen;
+		int IsRun;
+	} Pick;
 
 	int RefCounter;
 
@@ -116,145 +113,142 @@ struct ProtoItem
 	int AnimHide[2];
 	int DrawPosOffsY;
 
-	union
+	struct
 	{
-		struct
+		int Anim0Male;
+		int Anim0Female;
+		int AC;
+		int Perk;
+
+		int DRNormal;
+		int DRLaser;
+		int DRFire;
+		int DRPlasma;
+		int DRElectr;
+		int DREmp;
+		int DRExplode;
+
+		int DTNormal;
+		int DTLaser;
+		int DTFire;
+		int DTPlasma;
+		int DTElectr;
+		int DTEmp;
+		int DTExplode;
+	} Armor;
+
+	struct
+	{
+		int NoWear;
+		int IsNeedAct;
+
+		int IsUnarmed;
+		int UnarmedTree;
+		int UnarmedPriority;
+		int UnarmedCriticalBonus;
+		int UnarmedArmorPiercing;
+		int UnarmedMinAgility;
+		int UnarmedMinUnarmed;
+		int UnarmedMinLevel;
+
+		int Anim1;
+		int VolHolder;
+		int Caliber;
+		int DefAmmo;
+		int ReloadAp;
+		int CrFailture;
+		int MinSt;
+		int Perk;
+
+		int CountAttack;
+		int Skill[1];
+		int DmgType[1];
+		int Anim2[1];
+		int PicDeprecated[1];
+		int PicHash[1];
+		int DmgMin[1];
+		int DmgMax[1];
+		int MaxDist[1];
+		int Effect[1];
+		int Round[1];
+		int Time[1];
+		int Aim[1];
+		int Remove[1];
+		int SoundId[1];
+
+		int Weapon_CurrentUse;
+		int Weapon_MaxDist;
+		int Weapon_DmgMin;
+		int Weapon_DmgMax;
+		int Weapon_Skill;
+		int Weapon_DmgType;
+		int Weapon_Anim2;
+		int Weapon_ApCost;
+		int Weapon_SoundId;
+		int Weapon_Remove;
+		int Weapon_Round;
+		int Weapon_Effect;
+		int Weapon_Aim;
+	} Weapon;
+
+	struct
+	{
+		int StartCount;
+		int Caliber;
+		int ACMod;
+		int DRMod;
+		int DmgMult;
+		int DmgDiv;
+	} Ammo;
+
+	struct
+	{
+		int StartVal1;
+		int StartVal2;
+		int StartVal3;
+
+		int IsCar;
+
+		struct _CAR
 		{
-			int Anim0Male;
-			int Anim0Female;
-			int AC;
-			int Perk;
+			int Speed; 
+			int Negotiability;
+			int WearConsumption;
+			int CritCapacity;
+			int FuelTank;
+			int RunToBreak;
+			int Entire;
+			int WalkType;
+			int FuelConsumption;
 
-			int DRNormal;
-			int DRLaser;
-			int DRFire;
-			int DRPlasma;
-			int DRElectr;
-			int DREmp;
-			int DRExplode;
+			int Bag0[1];
+			int Bag1[1];
+			int Blocks[1];
+		} Car;
+	} MiscEx;
 
-			int DTNormal;
-			int DTLaser;
-			int DTFire;
-			int DTPlasma;
-			int DTElectr;
-			int DTEmp;
-			int DTExplode;
-		} Armor;
+	struct
+	{
+		int ContVolume;
+		int CannotPickUp;
+		int MagicHandsGrnd;
+		int Changeble;
+		int IsNoOpen;
+	} Container;
 
-		struct
-		{
-			int NoWear;
-			int IsNeedAct;
+	struct
+	{
+		int WalkThru;
+		int IsNoOpen;
+		int NoBlockMove;
+		int NoBlockShoot;
+		int NoBlockLight;
+	} Door;
 
-			int IsUnarmed;
-			int UnarmedTree;
-			int UnarmedPriority;
-			int UnarmedCriticalBonus;
-			int UnarmedArmorPiercing;
-			int UnarmedMinAgility;
-			int UnarmedMinUnarmed;
-			int UnarmedMinLevel;
-
-			int Anim1;
-			int VolHolder;
-			int Caliber;
-			int DefAmmo;
-			int ReloadAp;
-			int CrFailture;
-			int MinSt;
-			int Perk;
-
-			int CountAttack;
-			int Skill[1];
-			int DmgType[1];
-			int Anim2[1];
-			int PicDeprecated[1];
-			int PicHash[1];
-			int DmgMin[1];
-			int DmgMax[1];
-			int MaxDist[1];
-			int Effect[1];
-			int Round[1];
-			int Time[1];
-			int Aim[1];
-			int Remove[1];
-			int SoundId[1];
-
-			int Weapon_CurrentUse;
-			int Weapon_MaxDist;
-			int Weapon_DmgMin;
-			int Weapon_DmgMax;
-			int Weapon_Skill;
-			int Weapon_DmgType;
-			int Weapon_Anim2;
-			int Weapon_ApCost;
-			int Weapon_SoundId;
-			int Weapon_Remove;
-			int Weapon_Round;
-			int Weapon_Effect;
-			int Weapon_Aim;
-		} Weapon;
-
-		struct
-		{
-			int StartCount;
-			int Caliber;
-			int ACMod;
-			int DRMod;
-			int DmgMult;
-			int DmgDiv;
-		} Ammo;
-
-		struct
-		{
-			int StartVal1;
-			int StartVal2;
-			int StartVal3;
-
-			int IsCar;
-
-			struct _CAR
-			{
-				int Speed; 
-				int Negotiability;
-				int WearConsumption;
-				int CritCapacity;
-				int FuelTank;
-				int RunToBreak;
-				int Entire;
-				int WalkType;
-				int FuelConsumption;
-
-				int Bag0[1];
-				int Bag1[1];
-				int Blocks[1];
-			} Car;
-		} MiscEx;
-
-		struct
-		{
-			int ContVolume;
-			int CannotPickUp;
-			int MagicHandsGrnd;
-			int Changeble;
-			int IsNoOpen;
-		} Container;
-
-		struct
-		{
-			int WalkThru;
-			int IsNoOpen;
-			int NoBlockMove;
-			int NoBlockShoot;
-			int NoBlockLight;
-		} Door;
-
-		struct
-		{
-			int Type;
-		} Grid;
-	};
+	struct
+	{
+		int Type;
+	} Grid;
 
 	void GetPid(){}
 	void GetType(){}
@@ -280,27 +274,24 @@ struct Item
 	int Lexems;
 	int IsNotValid;
 
-	union
+	struct
 	{
-		struct
-		{
-			int MapId;
-			int HexX;
-			int HexY;
-		} ACC_HEX;
+		int MapId;
+		int HexX;
+		int HexY;
+	} ACC_HEX;
 
-		struct
-		{
-			int Id;
-			int Slot;
-		} ACC_CRITTER;
+	struct
+	{
+		int Id;
+		int Slot;
+	} ACC_CRITTER;
 
-		struct
-		{
-			int ContainerId;
-			int SpecialId;
-		} ACC_CONTAINER;
-	};
+	struct
+	{
+		int ContainerId;
+		int SpecialId;
+	} ACC_CONTAINER;
 
 	struct ItemData
 	{
@@ -325,41 +316,38 @@ struct Item
 		int Cost;
 		int ScriptValues[10];
 
-		union
+		struct
 		{
-			struct
-			{
-				int DeteorationFlags;
-				int DeteorationCount;
-				int DeteorationValue;
-				int AmmoPid;
-				int AmmoCount;
-			} TechInfo;
+			int DeteorationFlags;
+			int DeteorationCount;
+			int DeteorationValue;
+			int AmmoPid;
+			int AmmoCount;
+		} TechInfo;
 
-			struct
-			{
-				int DoorId;
-				int Condition;
-				int Complexity;
-			} Locker;
+		struct
+		{
+			int DoorId;
+			int Condition;
+			int Complexity;
+		} Locker;
 
-			struct
-			{
-				int DoorId;
-				int Fuel;
-				int Deteoration;
-			} Car;
+		struct
+		{
+			int DoorId;
+			int Fuel;
+			int Deteoration;
+		} Car;
 
-			struct
-			{
-				int Number;
-			} Holodisk;
+		struct
+		{
+			int Number;
+		} Holodisk;
 
-			struct
-			{
-				int Channel;
-			} Radio;
-		};
+		struct
+		{
+			int Channel;
+		} Radio;
 	} Data;
 
 	int RefCounter;
@@ -384,79 +372,76 @@ struct MapObject
 
 	int UserData[10];
 
-	union
+	struct
 	{
-		struct
-		{
-			int Cond;
-			int CondExt;
-			int ParamIndex[15];
-			int ParamValue[15];
-		} MCritter;
+		int Cond;
+		int CondExt;
+		int ParamIndex[15];
+		int ParamValue[15];
+	} MCritter;
 
-		struct
-		{
-			int OffsetX;
-			int OffsetY;
-			int AnimStayBegin;
-			int AnimStayEnd;
-			int AnimWait;
-			int PicMapDeprecated;
-			int PicInvDeprecated;
-			int InfoOffset;
-			int Reserved[3];
-			int PicMapHash;
-			int PicInvHash;
+	struct
+	{
+		int OffsetX;
+		int OffsetY;
+		int AnimStayBegin;
+		int AnimStayEnd;
+		int AnimWait;
+		int PicMapDeprecated;
+		int PicInvDeprecated;
+		int InfoOffset;
+		int Reserved[3];
+		int PicMapHash;
+		int PicInvHash;
 
-			int Count;
+		int Count;
 
-			int DeteorationFlags;
-			int DeteorationCount;
-			int DeteorationValue;
+		int DeteorationFlags;
+		int DeteorationCount;
+		int DeteorationValue;
 
-			int InContainer;
-			int ItemSlot;
+		int InContainer;
+		int ItemSlot;
 
-			int AmmoPid;
-			int AmmoCount;
+		int AmmoPid;
+		int AmmoCount;
 
-			int LockerDoorId;
-			int LockerCondition;
-			int LockerComplexity;
+		int LockerDoorId;
+		int LockerCondition;
+		int LockerComplexity;
 
-			int TrapValue;
+		int TrapValue;
 
-			int Val[10];
-		} MItem;
+		int Val[10];
+	} MItem;
 
-		struct
-		{
-			int OffsetX;
-			int OffsetY;
-			int AnimStayBegin;
-			int AnimStayEnd;
-			int AnimWait;
-			int PicMapDeprecated;
-			int PicInvDeprecated;
-			int InfoOffset;
-			int Reserved[3];
-			int PicMapHash;
-			int PicInvHash;
+	struct
+	{
+		int OffsetX;
+		int OffsetY;
+		int AnimStayBegin;
+		int AnimStayEnd;
+		int AnimWait;
+		int PicMapDeprecated;
+		int PicInvDeprecated;
+		int InfoOffset;
+		int Reserved[3];
+		int PicMapHash;
+		int PicInvHash;
 
-			int CanUse;
-			int CanTalk;
-			int TriggerNum;
+		int CanUse;
+		int CanTalk;
+		int TriggerNum;
 
-			int ParamsCount;
-			int Param[5];
+		int ParamsCount;
+		int Param[5];
 
-			int ToMapPid;
-			int ToEntire;
-			int ToMapX;
-			int ToMapY;
-			int ToDir;
-		} MScenery;
-	};
+		int ToMapPid;
+		int ToEntire;
+		int ToMapX;
+		int ToMapY;
+		int ToDir;
+	} MScenery;
 
 	void AddRef(){}
 	void Release(){}
