@@ -19,26 +19,26 @@
     <CfgParent>Base</CfgParent>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Base)'!=''">
-    <BCC_OptimizeForSpeed>true</BCC_OptimizeForSpeed>
     <OutputExt>exe</OutputExt>
-    <DCC_CBuilderOutput>JPHNE</DCC_CBuilderOutput>
+    <BCC_OptimizeForSpeed>true</BCC_OptimizeForSpeed>
     <Defines>NO_STRICT</Defines>
+    <DCC_CBuilderOutput>JPHNE</DCC_CBuilderOutput>
     <DynamicRTL>true</DynamicRTL>
-    <ILINK_ObjectSearchPath>E:\Repozes\code\UpdaterClient;..\include\zlib</ILINK_ObjectSearchPath>
+    <ILINK_ObjectSearchPath>E:\Repozes\code\UpdaterClient;..\include\zlib;..\Source\Zlib</ILINK_ObjectSearchPath>
     <ProjectType>CppVCLApplication</ProjectType>
     <PackageImports>vcl.bpi;rtl.bpi;bcbie.bpi;vclx.bpi;vclactnband.bpi;xmlrtl.bpi;bcbsmp.bpi;dbrtl.bpi;vcldb.bpi;vcldbx.bpi;bdertl.bpi;dsnap.bpi;dsnapcon.bpi;teeUI.bpi;teedb.bpi;tee.bpi;adortl.bpi;vclib.bpi;ibxpress.bpi;dbxcds.bpi;dbexpress.bpi;DbxCommonDriver.bpi;IndyCore.bpi;IndySystem.bpi;IndyProtocols.bpi;inet.bpi;IntrawebDB_90_100.bpi;Intraweb_90_100.bpi;vclie.bpi;websnap.bpi;webdsnap.bpi;inetdbbde.bpi;inetdbxpress.bpi;soaprtl.bpi</PackageImports>
     <BCC_wpar>false</BCC_wpar>
     <PackageLibs>rtl.lib;vcl.lib;inet.lib;bcbsmp.lib;vclx.lib</PackageLibs>
-    <IncludePath>$(BDS)\include;$(BDS)\include\dinkumware;$(BDS)\include\vcl;E:\Repozes\code\UpdaterClient;..\include\zlib</IncludePath>
+    <IncludePath>$(BDS)\include;$(BDS)\include\dinkumware;$(BDS)\include\vcl;E:\Repozes\code\UpdaterClient;..\include\zlib;..\Source\Zlib</IncludePath>
     <AllPackageLibs>rtl.lib;vcl.lib;inet.lib;bcbsmp.lib;vclx.lib;rtl.lib;vcl.lib;inet.lib;bcbsmp.lib;vclx.lib;IndyCore.lib;IndySystem.lib</AllPackageLibs>
-    <ILINK_LibraryPath>$(BDS)\lib;$(BDS)\lib\obj;$(BDS)\lib\psdk;E:\Repozes\code\UpdaterClient;..\include\zlib</ILINK_LibraryPath>
+    <ILINK_LibraryPath>$(BDS)\lib;$(BDS)\lib\obj;$(BDS)\lib\psdk;E:\Repozes\code\UpdaterClient;..\include\zlib;..\Source\Zlib</ILINK_LibraryPath>
     <Multithreaded>true</Multithreaded>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Cfg_1)'!=''">
-    <BCC_OptimizeForSpeed>false</BCC_OptimizeForSpeed>
     <DCC_Optimize>false</DCC_Optimize>
-    <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+    <BCC_OptimizeForSpeed>false</BCC_OptimizeForSpeed>
     <Defines>_DEBUG;$(Defines)</Defines>
+    <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
     <ILINK_FullDebugInfo>true</ILINK_FullDebugInfo>
     <BCC_InlineFunctionExpansion>false</BCC_InlineFunctionExpansion>
     <ILINK_DisableIncrementalLinking>true</ILINK_DisableIncrementalLinking>
@@ -48,8 +48,8 @@
     <IntermediateOutputDir>Debug</IntermediateOutputDir>
     <TASM_DisplaySourceLines>true</TASM_DisplaySourceLines>
     <BCC_StackFrames>true</BCC_StackFrames>
-    <BCC_DisableOptimizations>true</BCC_DisableOptimizations>
     <ILINK_LibraryPath>$(BDS)\lib\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
+    <BCC_DisableOptimizations>true</BCC_DisableOptimizations>
     <TASM_Debugging>Full</TASM_Debugging>
     <BCC_SourceDebuggingOn>true</BCC_SourceDebuggingOn>
   </PropertyGroup>
@@ -67,72 +67,76 @@
 <BorlandProject><CPlusPlusBuilder.Personality><Source><Source Name="MainSource">UpdaterServer.cpp</Source></Source><VersionInfo><VersionInfo Name="IncludeVerInfo">True</VersionInfo><VersionInfo Name="AutoIncBuild">True</VersionInfo><VersionInfo Name="MajorVer">1</VersionInfo><VersionInfo Name="MinorVer">0</VersionInfo><VersionInfo Name="Release">0</VersionInfo><VersionInfo Name="Build">35</VersionInfo><VersionInfo Name="Debug">False</VersionInfo><VersionInfo Name="PreRelease">False</VersionInfo><VersionInfo Name="Special">False</VersionInfo><VersionInfo Name="Private">False</VersionInfo><VersionInfo Name="DLL">False</VersionInfo><VersionInfo Name="Locale">1049</VersionInfo><VersionInfo Name="CodePage">1251</VersionInfo></VersionInfo><VersionInfoKeys><VersionInfoKeys Name="CompanyName"></VersionInfoKeys><VersionInfoKeys Name="FileDescription"></VersionInfoKeys><VersionInfoKeys Name="FileVersion">1.0.0.35</VersionInfoKeys><VersionInfoKeys Name="InternalName"></VersionInfoKeys><VersionInfoKeys Name="LegalCopyright"></VersionInfoKeys><VersionInfoKeys Name="LegalTrademarks"></VersionInfoKeys><VersionInfoKeys Name="OriginalFilename"></VersionInfoKeys><VersionInfoKeys Name="ProductName"></VersionInfoKeys><VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys><VersionInfoKeys Name="Comments"></VersionInfoKeys></VersionInfoKeys><Debugging><Debugging Name="DebugSourceDirs"></Debugging></Debugging><Parameters><Parameters Name="RunParams"></Parameters><Parameters Name="Launcher"></Parameters><Parameters Name="UseLauncher">False</Parameters><Parameters Name="DebugCWD"></Parameters><Parameters Name="HostApplication"></Parameters><Parameters Name="RemoteHost"></Parameters><Parameters Name="RemotePath"></Parameters><Parameters Name="RemoteParams"></Parameters><Parameters Name="RemoteLauncher"></Parameters><Parameters Name="UseRemoteLauncher">False</Parameters><Parameters Name="RemoteCWD"></Parameters><Parameters Name="RemoteDebug">False</Parameters><Parameters Name="Debug Symbols Search Path"></Parameters><Parameters Name="LoadAllSymbols">True</Parameters><Parameters Name="LoadUnspecifiedSymbols">False</Parameters></Parameters><Linker><Linker Name="LibPrefix"></Linker><Linker Name="LibSuffix"></Linker><Linker Name="LibVersion"></Linker></Linker><ProjectProperties><ProjectProperties Name="AutoShowDeps">False</ProjectProperties><ProjectProperties Name="ManagePaths">True</ProjectProperties><ProjectProperties Name="VerifyPackages">False</ProjectProperties></ProjectProperties><HistoryLists_hlIncludePath><HistoryLists_hlIncludePath Name="Count">1</HistoryLists_hlIncludePath><HistoryLists_hlIncludePath Name="Item0">$(BDS)\include;$(BDS)\include\dinkumware;$(BDS)\include\vcl;E:\Repozes\code\UpdaterClient</HistoryLists_hlIncludePath></HistoryLists_hlIncludePath><HistoryLists_hlILINK_LibraryPath><HistoryLists_hlILINK_LibraryPath Name="Count">1</HistoryLists_hlILINK_LibraryPath><HistoryLists_hlILINK_LibraryPath Name="Item0">$(BDS)\lib;$(BDS)\lib\obj;$(BDS)\lib\psdk;E:\Repozes\code\UpdaterClient</HistoryLists_hlILINK_LibraryPath></HistoryLists_hlILINK_LibraryPath><HistoryLists_hlDefines><HistoryLists_hlDefines Name="Count">1</HistoryLists_hlDefines><HistoryLists_hlDefines Name="Item0">NO_STRICT</HistoryLists_hlDefines></HistoryLists_hlDefines><HistoryLists_hlILINK_MaxErrors><HistoryLists_hlILINK_MaxErrors Name="Count">1</HistoryLists_hlILINK_MaxErrors><HistoryLists_hlILINK_MaxErrors Name="Item0">0</HistoryLists_hlILINK_MaxErrors></HistoryLists_hlILINK_MaxErrors><HistoryLists_hlILINK_FileAlignment><HistoryLists_hlILINK_FileAlignment Name="Count">1</HistoryLists_hlILINK_FileAlignment><HistoryLists_hlILINK_FileAlignment Name="Item0">0x200</HistoryLists_hlILINK_FileAlignment></HistoryLists_hlILINK_FileAlignment><HistoryLists_hlILINK_ObjectAlignment><HistoryLists_hlILINK_ObjectAlignment Name="Count">1</HistoryLists_hlILINK_ObjectAlignment><HistoryLists_hlILINK_ObjectAlignment Name="Item0">4096</HistoryLists_hlILINK_ObjectAlignment></HistoryLists_hlILINK_ObjectAlignment><Excluded_Packages>
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
       <Excluded_Packages Name="$(BDS)\bin\bcboffice2k100.bpl">CodeGear C++Builder Office 2000 Servers Package</Excluded_Packages>
       <Excluded_Packages Name="$(BDS)\bin\bcbofficexp100.bpl">CodeGear C++Builder Office XP Servers Package</Excluded_Packages>
-    </Excluded_Packages><Folders /><VFOLDERS><VFOLDER ID="{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}" name="zlib" /></VFOLDERS></CPlusPlusBuilder.Personality></BorlandProject></BorlandProject>
+    </Excluded_Packages><Folders /><VFOLDERS>
+      <VFOLDER ID="{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}" name="Zlib" />
+    </VFOLDERS></CPlusPlusBuilder.Personality></BorlandProject></BorlandProject>
   </ProjectExtensions>
   <Import Project="$(MSBuildBinPath)\Borland.Cpp.Targets" />
   <ItemGroup>
     <ResFiles Include="UpdaterServer.res">
       <BuildOrder>0</BuildOrder>
     </ResFiles>
-    <CppCompile Include="..\include\zlib\adler32.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>6</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\compress.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>5</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\crc32.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>7</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\deflate.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>8</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\gzio.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>9</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\infback.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>10</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\inffast.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>11</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\inflate.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>12</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\inftrees.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>13</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\trees.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
-      <BuildOrder>14</BuildOrder>
-    </CppCompile>
-    <CppCompile Include="..\include\zlib\uncompr.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
+    <CppCompile Include="..\Source\Zlib\adler32.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
       <BuildOrder>4</BuildOrder>
     </CppCompile>
-    <CppCompile Include="..\include\zlib\zutil.c">
-      <VirtualFolder>{DCB1D6EC-C828-4B3B-A093-97EDD97A1303}</VirtualFolder>
+    <CppCompile Include="..\Source\Zlib\compress.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>5</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\crc32.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>6</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\deflate.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>7</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\gzclose.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>8</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\gzlib.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>9</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\gzread.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>10</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\gzwrite.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>11</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\infback.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>12</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\inffast.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>13</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\inflate.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>14</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\inftrees.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
       <BuildOrder>15</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\trees.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>16</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\uncompr.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>17</BuildOrder>
+    </CppCompile>
+    <CppCompile Include="..\Source\Zlib\zutil.c">
+      <VirtualFolder>{53A67FB5-C5F6-4EC1-937A-7A9E9FA2A6E4}</VirtualFolder>
+      <BuildOrder>18</BuildOrder>
     </CppCompile>
     <CppCompile Include="Common.cpp">
       <DependentOn>Common.h</DependentOn>

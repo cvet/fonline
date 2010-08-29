@@ -230,6 +230,7 @@
 // AS_WII     - Nintendo Wii
 // AS_IPHONE  - Apple IPhone
 // AS_ANDROID - Android
+// AS_HAIKU   - Haiku
 
 
 
@@ -616,6 +617,13 @@
 		#define AS_BSD
 		#if defined(i386) && !defined(__LP64__)
 			#define AS_X86
+		#elif defined(__LP64__)
+		    #define AS_X64_GCC
+            #define HAS_128_BIT_PRIMITIVES
+            #define SPLIT_OBJS_BY_MEMBER_TYPES
+    
+            #undef STDCALL
+            #define STDCALL
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
@@ -683,6 +691,28 @@
 		    #define AS_ARM
 			#define AS_ALIGN
 		#endif
+
+	// Haiku OS
+	#elif __HAIKU__
+		#define AS_HAIKU
+		// Only x86-32 is currently supported by Haiku, but they do plan to support
+		// x86-64 and PowerPC in the future, so should go ahead and check the platform
+		// for future compatibility
+		#if defined(i386) && !defined(__LP64__)
+			#define AS_X86
+			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+			#define CDECL_RETURN_SIMPLE_IN_MEMORY
+			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+		#else
+			#define AS_MAX_PORTABILITY
+		#endif
+	        
+		#define AS_POSIX_THREADS
+		#if !( ( (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) || __GNUC__ > 4) )
+			// Only with GCC 4.1 was the atomic instructions available
+			#define AS_NO_ATOMIC
+		#endif
+
 	#endif
 
 	#define I64(x) x##ll

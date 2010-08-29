@@ -48,17 +48,17 @@ bool FOMapper::Init(HWND wnd)
 
 	// File manager
 	FileManager::SetDataPath(OptFoDataPath.c_str());
-	if(!FileManager::LoadDat(OptMasterPath.c_str()))
+	if(!FileManager::LoadDataFile(OptMasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDat(OptCritterPath.c_str()))
+	if(!FileManager::LoadDataFile(OptCritterPath.c_str()))
 	{
 		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDat(OptFoPatchPath.c_str()))
+	if(!FileManager::LoadDataFile(OptFoPatchPath.c_str()))
 	{
 		MessageBox(Wnd,"FONLINE.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
@@ -4101,7 +4101,7 @@ void FOMapper::InitScriptSystem()
 	// Load script modules
 	Script::Undefine(NULL);
 	Script::Define("__MAPPER");
-	Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"mapper",GameOpt.SkipScriptBinaries);
+	Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"mapper",false);
 
 	// Bind game functions
 	ReservedScriptFunction BindGameFunc[]={
@@ -4700,9 +4700,9 @@ ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem(WORD proto_id)
 	return proto_item;
 }
 
-bool FOMapper::SScriptFunc::Global_LoadDat(CScriptString& dat_name)
+bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 {
-	if(FileManager::LoadDat(dat_name.c_str()))
+	if(FileManager::LoadDataFile(dat_name.c_str()))
 	{
 		// Reload resource manager
 		if(Self->IsMapperStarted)

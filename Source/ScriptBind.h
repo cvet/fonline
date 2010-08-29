@@ -1,5 +1,3 @@
-#include "Defines.h"
-
 	// Options
 	if(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES,true)<0) BIND_ERROR;
 	if(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE,true)<0) BIND_ERROR;
@@ -816,8 +814,7 @@
 	if(engine->RegisterGlobalFunction("NpcPlane@ CreatePlane()",asFUNCTION(BIND_CLASS Global_CreatePlane),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetBagItems(uint bagId, uint16[]@+ pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots)",asFUNCTION(BIND_CLASS Global_GetBagItems),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetSendParameter(int index, bool enabled)",asFUNCTION(BIND_CLASS Global_SetSendParameter),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void SetSendParameter(int index, bool enabled, bool onlyIfEqual)",asFUNCTION(BIND_CLASS Global_SetSendParameterEqual),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void SetSendParameter(int index, bool enabled, int conditionIndex, int conditionMask)",asFUNCTION(BIND_CLASS Global_SetSendParameterCond),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void SetSendParameter(int index, bool enabled, string@+ allowFunc)",asFUNCTION(BIND_CLASS Global_SetSendParameterFunc),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory, bool withVars)",asFUNCTION(BIND_CLASS Global_SwapCritters),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetAllItems(uint16 pid, Item@[]@+ items)",asFUNCTION(BIND_CLASS Global_GetAllItems),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetAllNpc(uint16 pid, Critter@[]@+ npc)",asFUNCTION(BIND_CLASS Global_GetAllNpc),asCALL_CDECL)<0) BIND_ERROR;
@@ -992,7 +989,7 @@
 	if(engine->RegisterGlobalFunction("string@ ReplaceText(const string& text, const string& replace, int i)",asFUNCTION(BIND_CLASS Global_ReplaceTextInt),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ FormatTags(const string& text, const string@+ lexems)",asFUNCTION(BIND_CLASS Global_FormatTags),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetSomeValue(int var)",asFUNCTION(BIND_CLASS Global_GetSomeValue),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("bool LoadDat(string& datName)",asFUNCTION(BIND_CLASS Global_LoadDat),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool LoadDataFile(string& dataFileName)",asFUNCTION(BIND_CLASS Global_LoadDataFile),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveScreen(uint16 hexX, uint16 hexY, uint speed)",asFUNCTION(BIND_CLASS Global_MoveScreen),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void LockScreenScroll(CritterCl@+ cr)",asFUNCTION(BIND_CLASS Global_LockScreenScroll),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetFog(uint16 zoneX, uint16 zoneY)",asFUNCTION(BIND_CLASS Global_GetFog),asCALL_CDECL)<0) BIND_ERROR;
@@ -1210,7 +1207,6 @@
 	if(engine->RegisterGlobalProperty("uint __RegistrationTimeout",&GameOpt.RegistrationTimeout)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __AccountPlayTime",&GameOpt.AccountPlayTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __LoggingVars",&GameOpt.LoggingVars)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("bool __SkipScriptBinaries",&GameOpt.SkipScriptBinaries)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __ScriptRunSuspendTimeout",&GameOpt.ScriptRunSuspendTimeout)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __ScriptRunMessageTimeout",&GameOpt.ScriptRunMessageTimeout)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __TalkDistance",&GameOpt.TalkDistance)) BIND_ERROR;
@@ -1422,7 +1418,7 @@
 	if(engine->RegisterGlobalFunction("string@ ReplaceText(const string& text, const string& replace, const string& str)",asFUNCTION(BIND_CLASS Global_ReplaceTextStr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ ReplaceText(const string& text, const string& replace, int i)",asFUNCTION(BIND_CLASS Global_ReplaceTextInt),asCALL_CDECL)<0) BIND_ERROR;
 
-	if(engine->RegisterGlobalFunction("bool LoadDat(string& datName)",asFUNCTION(BIND_CLASS Global_LoadDat),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool LoadDataFile(string& dataFileName)",asFUNCTION(BIND_CLASS Global_LoadDataFile),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveScreen(uint16 hexX, uint16 hexY, uint speed)",asFUNCTION(BIND_CLASS Global_MoveScreen),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalFunction("uint LoadSprite(string& name, int pathIndex)",asFUNCTION(BIND_CLASS Global_LoadSprite),asCALL_CDECL)<0) BIND_ERROR;

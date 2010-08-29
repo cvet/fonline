@@ -671,7 +671,11 @@ FOMsg& FOMsg::operator+=(const FOMsg& r)
 	DwordStrMulMap::const_iterator it=r.strData.begin();
 	DwordStrMulMap::const_iterator end=r.strData.end();
 	it++; // skip FOMSG_ERRNUM
-	for(;it!=end;++it) AddStr((*it).first,(*it).second);
+	for(;it!=end;++it)
+	{
+		EraseStr((*it).first);
+		AddStr((*it).first,(*it).second);
+	}
 	CalculateHash();
 	return *this;
 }
@@ -693,22 +697,23 @@ void FOMsg::AddStr(DWORD num, const string& str)
 void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 {
 	CharVec str;
-	str.reserve(len);
+	str.reserve(len*2+1);
 	for(int i=0;i<len;i++)
 	{
 		char c=(char)binary[i];
 		if(c=='\0' || c=='}')
 		{
-			str.push_back('#');
+			str.push_back(2);
 			str.push_back(c+1);
-			str.push_back('#');
 		}
 		else
 		{
+			str.push_back(1);
 			str.push_back(c);
 		}
 	}
 	str.push_back('\0');
+
 	AddStr(num,(char*)&str[0]);
 }
 
@@ -764,14 +769,14 @@ int FOMsg::GetInt(DWORD num)
 {
 	DWORD str_count=strData.count(num);
 	DwordStrMulMapIt it=strData.find(num);
-	
+
 	switch(str_count)
 	{
 	case 0: return -1;
 	case 1: break;
 	default: for(int i=0,j=Random(0,str_count)-1;i<j;i++) ++it; break;
 	}
-	
+
 	return atoi((*it).second.c_str());
 }
 
@@ -782,18 +787,13 @@ const BYTE* FOMsg::GetBinary(DWORD num, DWORD& len)
 	static ByteVec binary;
 	const char* str=GetStr(num);
 	binary.clear();
-	for(int i=0,j=strlen(str);i<j;i++)
+	for(int i=0,j=strlen(str);i<j-1;i+=2)
 	{
-		if(i<j-2 && str[i]=='#' && str[i+2]=='#')
-		{
-			binary.push_back(str[i+1]-1);
-			i+=2;
-		}
-		else
-		{
-			binary.push_back(str[i]);
-		}
+		if(str[i]==1) binary.push_back(str[i+1]);
+		else if(str[i]==2) binary.push_back(str[i+1]-1);
+		else return NULL;
 	}
+
 	len=binary.size();
 	return &binary[0];
 }
@@ -806,7 +806,13 @@ int FOMsg::Count(DWORD num)
 void FOMsg::EraseStr(DWORD num)
 {
 	if(num==FOMSG_ERRNUM) return;
-	strData.erase(num);
+
+	while(true)
+	{
+		DwordStrMulMapIt it=strData.find(num);
+		if(it!=strData.end()) strData.erase(it);
+		else break;
+	}
 }
 
 DWORD FOMsg::GetSize()

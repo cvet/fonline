@@ -48,6 +48,7 @@ BEGIN_AS_NAMESPACE
 asCRestore::asCRestore(asCModule* _module, asIBinaryStream* _stream, asCScriptEngine* _engine)
  : module(_module), stream(_stream), engine(_engine)
 {
+	error = false;
 }
 
 void asCRestore::WriteData(const void *data, asUINT size)
@@ -229,7 +230,7 @@ int asCRestore::Restore()
 		ReadObjectTypeDeclaration(ot, 2);
 	}
 
-	// structTypes[]
+	// classTypes[]
 	// First restore the structure names, then the properties
 	count = ReadEncodedUInt();
 	module->classTypes.Allocate(count, 0);
@@ -262,7 +263,27 @@ int asCRestore::Restore()
 			ReadObjectTypeDeclaration(module->classTypes[i], 2);
 	}
 
-	module->ResolveInterfaceIds();
+	asCArray<void*> substitutions;
+	module->ResolveInterfaceIds(&substitutions);
+
+	// The above method may have replaced the interface object types
+	// so we must updated this in the savedDataTypes if it is there.
+	// All the interface methods were also substituted so the 
+	// savedFunctions must also be updated
+	for( i = 0; i < substitutions.GetLength(); i += 2 )
+	{
+		for( asUINT d = 0; d < savedDataTypes.GetLength(); d++ )
+		{
+			if( savedDataTypes[d].GetObjectType() == substitutions[i] )
+				savedDataTypes[d].SetObjectType(reinterpret_cast<asCObjectType*>(substitutions[i+1]));
+		}
+
+		for( asUINT f = 0; f < savedFunctions.GetLength(); f++ )
+		{
+			if( savedFunctions[f] == substitutions[i] )
+				savedFunctions[f] = reinterpret_cast<asCScriptFunction*>(substitutions[i+1]);
+		}
+	}
 
 	// Read class methods and behaviours
 	for( i = 0; i < module->classTypes.GetLength(); ++i )
@@ -311,7 +332,6 @@ int asCRestore::Restore()
 	for( i = 0; i < count; ++i )
 	{
 		func = ReadFunction(false, false);
-
 		module->globalFunctions.PushLast(func);
 		func->AddRef();
 	}
@@ -319,7 +339,7 @@ int asCRestore::Restore()
 	// bindInformations[]
 	count = ReadEncodedUInt();
 	module->bindInformations.SetLength(count);
-	for(i=0;i<count;++i)
+	for( i = 0; i < count; ++i )
 	{
 		sBindInfo *info = asNEW(sBindInfo);
 		info->importedFunctionSignature = ReadFunction(false, false);
@@ -364,15 +384,18 @@ int asCRestore::Restore()
 	engine->PrepareEngine();
 
 	// Add references for all functions
-	for( i = 0; i < module->scriptFunctions.GetLength(); i++ )
-		module->scriptFunctions[i]->AddReferences();
-	for( i = 0; i < module->scriptGlobals.GetLength(); i++ )
-		if( module->scriptGlobals[i]->GetInitFunc() )
-			module->scriptGlobals[i]->GetInitFunc()->AddReferences();
+	if( !error )
+	{
+		for( i = 0; i < module->scriptFunctions.GetLength(); i++ )
+			module->scriptFunctions[i]->AddReferences();
+		for( i = 0; i < module->scriptGlobals.GetLength(); i++ )
+			if( module->scriptGlobals[i]->GetInitFunc() )
+				module->scriptGlobals[i]->GetInitFunc()->AddReferences();
 
-	module->CallInit();
+		module->CallInit();
+	}
 
-	return 0;
+	return error ? asERROR : asSUCCESS;
 }
 
 int asCRestore::FindStringConstantIndex(int id)
@@ -632,9 +655,14 @@ asCScriptFunction *asCRestore::ReadFunction(bool addToModule, bool addToEngine)
 	if( c == 'r' )
 	{
 		// This is a reference to a previously saved function
-		int index = ReadEncodedUInt();
-
-		return savedFunctions[index];
+		asUINT index = ReadEncodedUInt();
+		if( index < savedFunctions.GetLength() )
+			return savedFunctions[index];
+		else
+		{
+			error = true;
+			return 0;
+		}
 	}
 
 	// Load the new function
@@ -706,6 +734,7 @@ void asCRestore::WriteObjectTypeDeclaration(asCObjectType *ot, int phase)
 		// name
 		WriteString(&ot->name);
 		// size
+		// TODO: size may need to be adjusted if platform changes (pointer size, alignment, etc)
 		WriteEncodedUInt(ot->size);
 		// flags
 		asDWORD flags = ot->flags;
@@ -855,10 +884,13 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 			if( !ot->IsInterface() && ot->flags != asOBJ_TYPEDEF && ot->flags != asOBJ_ENUM )
 			{
 				asCScriptFunction *func = ReadFunction();
-				engine->scriptFunctions[ot->beh.construct]->Release();
-				ot->beh.construct = func->id;
-				ot->beh.constructors[0] = func->id;
-				func->AddRef();
+				if( func )
+				{
+					engine->scriptFunctions[ot->beh.construct]->Release();
+					ot->beh.construct = func->id;
+					ot->beh.constructors[0] = func->id;
+					func->AddRef();
+				}
 
 				func = ReadFunction();
 				if( func )
@@ -868,21 +900,30 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 				}
 
 				func = ReadFunction();
-				engine->scriptFunctions[ot->beh.factory]->Release();
-				ot->beh.factory = func->id;
-				ot->beh.factories[0] = func->id;
-				func->AddRef();
+				if( func )
+				{
+					engine->scriptFunctions[ot->beh.factory]->Release();
+					ot->beh.factory = func->id;
+					ot->beh.factories[0] = func->id;
+					func->AddRef();
+				}
 
 				size = ReadEncodedUInt();
 				for( n = 0; n < size; n++ )
 				{
 					asCScriptFunction *func = ReadFunction();
-					ot->beh.constructors.PushLast(func->id);
-					func->AddRef();
+					if( func )
+					{
+						ot->beh.constructors.PushLast(func->id);
+						func->AddRef();
+					}
 
 					func = ReadFunction();
-					ot->beh.factories.PushLast(func->id);
-					func->AddRef();
+					if( func )
+					{
+						ot->beh.factories.PushLast(func->id);
+						func->AddRef();
+					}
 				}
 			}
 
@@ -891,8 +932,11 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 			for( n = 0; n < size; n++ ) 
 			{
 				asCScriptFunction *func = ReadFunction();
-				ot->methods.PushLast(func->id);
-				func->AddRef();
+				if( func )
+				{
+					ot->methods.PushLast(func->id);
+					func->AddRef();
+				}
 			}
 
 			// virtualFunctionTable[]
@@ -900,8 +944,11 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 			for( n = 0; n < size; n++ )
 			{
 				asCScriptFunction *func = ReadFunction();
-				ot->virtualFunctionTable.PushLast(func);
-				func->AddRef();
+				if( func )
+				{
+					ot->virtualFunctionTable.PushLast(func);
+					func->AddRef();
+				}
 			}
 		}
 	}
@@ -1125,6 +1172,7 @@ void asCRestore::WriteObjectProperty(asCObjectProperty* prop)
 {
 	WriteString(&prop->name);
 	WriteDataType(&prop->type);
+	// TODO: offset may need to be adjusted on different platforms (alignment, pointer size, etc)
 	WriteEncodedUInt(prop->byteOffset);
 	WRITE_NUM(prop->isPrivate);
 }
@@ -1206,7 +1254,7 @@ void asCRestore::ReadDataType(asCDataType *dt)
 	READ_NUM(isReadOnly);
 
 	asCScriptFunction *funcDef = 0;
-	if( tokenType == ttIdentifier && objType->name == "_builtin_function_" )
+	if( tokenType == ttIdentifier && objType && objType->name == "_builtin_function_" )
 	{
 		asCScriptFunction func(engine, module, -1);
 		ReadFunctionSignature(&func);
@@ -1318,11 +1366,24 @@ asCObjectType* asCRestore::ReadObjectType()
 		asCString typeName;
 		ReadString(&typeName);
 		asCObjectType *tmpl = engine->GetObjectType(typeName.AddressOf());
+		if( tmpl == 0 )
+		{
+			// TODO: Write message to callback
+			error = true;
+			return 0;
+		}
 
 		READ_NUM(ch);
 		if( ch == 's' )
 		{
 			ot = ReadObjectType();
+			if( ot == 0 )
+			{
+				// TODO: Write message to callback
+				error = true;
+				return 0;
+			}
+
 			asCDataType dt = asCDataType::CreateObject(ot, false);
 
 			READ_NUM(ch);
@@ -1334,7 +1395,12 @@ asCObjectType* asCRestore::ReadObjectType()
 			else
 				ot = engine->GetTemplateInstanceType(tmpl, dt);
 			
-			asASSERT(ot);
+			if( ot == 0 )
+			{
+				// TODO: Write message to callback
+				error = true;
+				return 0;
+			}
 		}
 		else
 		{
@@ -1344,7 +1410,12 @@ asCObjectType* asCRestore::ReadObjectType()
 
 			ot = engine->GetTemplateInstanceType(tmpl, dt);
 			
-			asASSERT(ot);
+			if( ot == 0 )
+			{
+				// TODO: Write message to callback
+				error = true;
+				return 0;
+			}
 		}
 	}
 	else if( ch == 's' )
@@ -1363,8 +1434,12 @@ asCObjectType* asCRestore::ReadObjectType()
 			}
 		}
 
-		// TODO: Should give a friendly error in case the template type isn't found
-		asASSERT(ot);
+		if( ot == 0 )
+		{
+			// TODO: Write message to callback
+			error = true;
+			return 0;
+		}
 	}
 	else if( ch == 'o' )
 	{
@@ -1379,7 +1454,12 @@ asCObjectType* asCRestore::ReadObjectType()
 			if( !ot )
 				ot = engine->GetObjectType(typeName.AddressOf());
 			
-			asASSERT(ot);
+			if( ot == 0 )
+			{
+				// TODO: Write message to callback
+				error = true;
+				return 0;
+			}
 		}
 		else if( typeName == "_builtin_object_" )
 		{
@@ -1390,7 +1470,7 @@ asCObjectType* asCRestore::ReadObjectType()
 			ot = &engine->functionBehaviours;
 		}
 		else
-			assert( false );
+			asASSERT( false );
 	}
 	else
 	{
@@ -2003,10 +2083,13 @@ void asCRestore::ReadUsedGlobalProps()
 			}
 		}
 
-		// TODO: If the property isn't found, we must give an error
-		asASSERT(prop);
-
 		usedGlobalProperties[n] = prop;
+
+		if( prop == 0 )
+		{
+			error = true;
+			// TODO: Write error message to the callback
+		}
 	}
 }
 
@@ -2044,17 +2127,24 @@ void asCRestore::ReadUsedObjectProps()
 		ReadString(&name);
 
 		// Find the property offset
+		bool found = false;
 		for( asUINT p = 0; p < objType->properties.GetLength(); p++ )
 		{
 			if( objType->properties[p]->name == name )
 			{
 				usedObjectProperties[n].objType = objType;
 				usedObjectProperties[n].offset = objType->properties[p]->byteOffset;
+				found = true;
 				break;
 			}
 		}
 
-		// TODO: make sure the property was found
+		if( !found )
+		{
+			// TODO: Write error message to callback
+			error = true;
+			return;
+		}
 	}
 }
 
@@ -2082,6 +2172,7 @@ short asCRestore::FindObjectPropOffset(asWORD index)
 	if( index >= usedObjectProperties.GetLength() )
 	{
 		asASSERT(false);
+		error = true;
 		return 0;
 	}
 
@@ -2102,7 +2193,13 @@ int asCRestore::FindFunctionIndex(asCScriptFunction *func)
 
 asCScriptFunction *asCRestore::FindFunction(int idx)
 {
-	return usedFunctions[idx];
+	if( idx >= 0 && idx < (int)usedFunctions.GetLength() )
+		return usedFunctions[idx];
+	else
+	{
+		error = true;
+		return 0;
+	}
 }
 
 void asCRestore::TranslateFunction(asCScriptFunction *func)
@@ -2142,7 +2239,14 @@ void asCRestore::TranslateFunction(asCScriptFunction *func)
 		{
 			// Translate the index to the func id
 			int *fid = (int*)&bc[n+1];
-			*fid = FindFunction(*fid)->id;
+			asCScriptFunction *f = FindFunction(*fid);
+			if( f )
+				*fid = f->id;
+			else
+			{
+				error = true;
+				return;
+			}
 		}
 		else if( c == asBC_FuncPtr )
 		{
@@ -2158,10 +2262,17 @@ void asCRestore::TranslateFunction(asCScriptFunction *func)
 
 			// If the object type is a script class then the constructor id must be translated
 			asCObjectType *ot = *(asCObjectType**)arg;
-			if( ot->flags & asOBJ_SCRIPT_OBJECT )
+			if( ot && (ot->flags & asOBJ_SCRIPT_OBJECT) )
 			{
 				int *fid = (int*)&bc[n+1+AS_PTR_SIZE];
-				*fid = FindFunction(*fid)->id;
+				asCScriptFunction *f = FindFunction(*fid);
+				if( f )
+					*fid = f->id;
+				else
+				{
+					error = true;
+					return;
+				}
 			}
 		}
 		else if( c == asBC_STR )
@@ -2169,13 +2280,34 @@ void asCRestore::TranslateFunction(asCScriptFunction *func)
 			// Translate the index to the true string id
 			asWORD *arg = ((asWORD*)&bc[n])+1;
 
-			*arg = usedStringConstants[*arg];
+			if( *arg < usedStringConstants.GetLength() )	
+				*arg = usedStringConstants[*arg];
+			else
+			{
+				error = true;
+				return;
+			}
 		}
 		else if( c == asBC_CALLBND )
 		{
 			// Translate the function id
-			int *fid = (int*)&bc[n+1];
-			*fid = module->bindInformations[*fid]->importedFunctionSignature->id;
+			asUINT *fid = (asUINT*)&bc[n+1];
+			if( *fid < module->bindInformations.GetLength() )
+			{
+				sBindInfo *bi = module->bindInformations[*fid];
+				if( bi )
+					*fid = bi->importedFunctionSignature->id;
+				else
+				{
+					error = true;
+					return;
+				}
+			}
+			else
+			{
+				error = true;
+				return;
+			}
 		}
 		else if( c == asBC_PGA ||
 			     c == asBC_LDG ||
@@ -2187,7 +2319,13 @@ void asCRestore::TranslateFunction(asCScriptFunction *func)
 		{
 			// Translate the global var index to pointer
 			asPTRWORD *index = (asPTRWORD*)&bc[n+1];
-			*(void**)index = usedGlobalProperties[*(int*)index];
+			if( *(asUINT*)index < usedGlobalProperties.GetLength() )
+				*(void**)index = usedGlobalProperties[*(asUINT*)index];
+			else
+			{
+				error = true;
+				return;
+			}
 		}
 
 		n += asBCTypeSize[asBCInfo[c].type];
@@ -2209,7 +2347,13 @@ int asCRestore::FindTypeIdIdx(int typeId)
 
 int asCRestore::FindTypeId(int idx)
 {
-	return usedTypeIds[idx];
+	if( idx >= 0 && idx < (int)usedTypeIds.GetLength() )
+		return usedTypeIds[idx];
+	else
+	{
+		error = true;
+		return 0;
+	}
 }
 
 int asCRestore::FindObjectTypeIdx(asCObjectType *obj)
@@ -2227,6 +2371,12 @@ int asCRestore::FindObjectTypeIdx(asCObjectType *obj)
 
 asCObjectType *asCRestore::FindObjectType(int idx)
 {
+	if( idx < 0 || idx >= (int)usedTypes.GetLength() )
+	{
+		error = true;
+		return 0;
+	}
+
 	return usedTypes[idx];
 }
 

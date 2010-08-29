@@ -644,7 +644,9 @@ int asCByteCode::Optimize()
 			instr = GoBack(curr);
 		}
 		// PshV4 0, ADDSi, PopRPtr -> LoadThisR
-		else if( IsCombination(curr, asBC_PshV4, asBC_ADDSi) &&
+		// PshV8 0, ADDSi, PopRPtr -> LoadThisR
+		else if( (IsCombination(curr, asBC_PshV4, asBC_ADDSi) ||
+			      IsCombination(curr, asBC_PshV8, asBC_ADDSi)) &&
 		         IsCombination(instr, asBC_ADDSi, asBC_PopRPtr) &&
 				 curr->wArg[0] == 0 )
 		{
@@ -654,9 +656,25 @@ int asCByteCode::Optimize()
 		// PSF x, RDS4 -> PshV4 x
 		else if( IsCombination(curr, asBC_PSF, asBC_RDS4) )
 			instr = GoBack(ChangeFirstDeleteNext(curr, asBC_PshV4));
+		// PSF x, RDS8 -> PshV8 x
+		else if( IsCombination(curr, asBC_PSF, asBC_RDS8) )
+			instr = GoBack(ChangeFirstDeleteNext(curr, asBC_PshV8));
 		// RDS4, POP x -> POP x
-		else if( IsCombination(curr, asBC_RDS4, asBC_POP) && instr->wArg[0] > 0 ) 
-			instr = GoBack(DeleteInstruction(curr));
+		else if( IsCombination(curr, asBC_RDS4, asBC_POP) && instr->wArg[0] >= 1 ) 
+		{
+			DeleteInstruction(curr);
+			// Transform the pop to remove the address instead of the 4 byte word
+			instr->wArg[0] -= 1-AS_PTR_SIZE; 
+			instr = GoBack(instr);
+		}
+		// RDS8, POP 2 -> POP x-1
+		else if( IsCombination(curr, asBC_RDS8, asBC_POP) && instr->wArg[0] >= 2 )
+		{
+			DeleteInstruction(curr);
+			// Transform the pop to remove the address instead of the 8 byte word
+			instr->wArg[0] -= 2-AS_PTR_SIZE; 
+			instr = GoBack(instr);
+		}
 		// LDG x, WRTV4 y -> CpyVtoG4 y, x
 		else if( IsCombination(curr, asBC_LDG, asBC_WRTV4) && !IsTempRegUsed(instr) )
 		{
@@ -775,9 +793,10 @@ int asCByteCode::Optimize()
 			InsertBefore(curr, instr);
 			instr = GoBack(instr);
 		}
-		// YYY y, POP x -> POP x-1
+		// PshV4 y, POP x -> POP x-1
+		// PshC4 y, POP x -> POP x-1
 		else if( (IsCombination(curr, asBC_PshV4, asBC_POP) ||
-		          IsCombination(curr, asBC_PshC4, asBC_POP)) && instr->wArg[0] > 0 )
+		          IsCombination(curr, asBC_PshC4, asBC_POP)) && instr->wArg[0] >= 1 )
 		{
 			DeleteInstruction(curr);
 			instr->wArg[0]--;
@@ -787,21 +806,16 @@ int asCByteCode::Optimize()
 		else if( (IsCombination(curr, asBC_PshRPtr, asBC_POP) ||
 			      IsCombination(curr, asBC_PSF    , asBC_POP) ||
 				  IsCombination(curr, asBC_VAR    , asBC_POP)) 
-				  && instr->wArg[0] > (AS_PTR_SIZE-1) )
+				  && instr->wArg[0] >= AS_PTR_SIZE )
 		{
 			DeleteInstruction(curr);
 			instr->wArg[0] -= AS_PTR_SIZE;
 			instr = GoBack(instr);
 		}
-		// RDS8, POP 2 -> POP x-1
-		else if( IsCombination(curr, asBC_RDS8, asBC_POP) && instr->wArg[0] > 1 )
-		{
-			DeleteInstruction(curr);
-			instr->wArg[0] -= 2-AS_PTR_SIZE; // Transform the pop to remove the address instead of the 8 byte word
-			instr = GoBack(instr);
-		}
+		// PshV8 y, POP x -> POP x-2
 		// PshC8 y, POP x -> POP x-2
-		else if( IsCombination(curr, asBC_PshC8, asBC_POP) && instr->wArg[0] > 1 )
+		else if( (IsCombination(curr, asBC_PshV8, asBC_POP) ||
+			      IsCombination(curr, asBC_PshC8, asBC_POP)) && instr->wArg[0] >= 2 )
 		{
 			DeleteInstruction(curr);
 			instr->wArg[0] -= 2;
@@ -847,6 +861,18 @@ int asCByteCode::Optimize()
 			DeleteInstruction(instr->next);
 			instr = GoBack(curr);
 		}
+		// PSF, ChkRefS, RDS8 -> PshV8, CHKREF
+		else if( IsCombination(curr, asBC_PSF, asBC_ChkRefS) &&
+		         IsCombination(instr, asBC_ChkRefS, asBC_RDS8) )
+		{
+			asASSERT( AS_PTR_SIZE == 2 );
+
+			// TODO: Pointer size
+			curr->op = asBC_PshV8;
+			instr->op = asBC_CHKREF;
+			DeleteInstruction(instr->next);
+			instr = GoBack(curr);
+		}
 		// PSF, ChkRefS, POP -> ChkNullV
 		else if( (IsCombination(curr, asBC_PSF, asBC_ChkRefS) &&
 		          IsCombination(instr, asBC_ChkRefS, asBC_POP) &&
@@ -863,9 +889,23 @@ int asCByteCode::Optimize()
 		// PshV4, CHKREF, POP -> ChkNullV
 		else if( (IsCombination(curr, asBC_PshV4, asBC_CHKREF) &&
 		          IsCombination(instr, asBC_CHKREF, asBC_POP) &&
-		          instr->next->wArg[0] > 0) )
+		          instr->next->wArg[0] >= 1) )
 		{
 			asASSERT( AS_PTR_SIZE == 1 );
+
+			// TODO: Pointer size
+			curr->op = asBC_ChkNullV;
+			curr->stackInc = 0;
+			DeleteInstruction(instr->next);
+			DeleteInstruction(instr);
+			instr = GoBack(curr);
+		}
+		// PshV8, CHKREF, POP -> ChkNullV
+		else if( (IsCombination(curr, asBC_PshV8, asBC_CHKREF) &&
+		          IsCombination(instr, asBC_CHKREF, asBC_POP) &&
+		          instr->next->wArg[0] >= 2) )
+		{
+			asASSERT( AS_PTR_SIZE == 2 );
 
 			// TODO: Pointer size
 			curr->op = asBC_ChkNullV;
@@ -1579,7 +1619,7 @@ void asCByteCode::PostProcess()
 }
 
 #ifdef AS_DEBUG
-void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine)
+void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScriptFunction *func)
 {
 	_mkdir("AS_DEBUG");
 
@@ -1599,12 +1639,59 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine)
 		return;
 #endif
 
+	asUINT n;
+
+	fprintf(file, "%s\n\n", func->GetDeclaration());
+
 	fprintf(file, "Temps: ");
-	for( asUINT n = 0; n < temporaryVariables.GetLength(); n++ )
+	for( n = 0; n < temporaryVariables.GetLength(); n++ )
 	{
 		fprintf(file, "%d", temporaryVariables[n]);
 		if( n < temporaryVariables.GetLength()-1 )
 			fprintf(file, ", ");
+	}
+	fprintf(file, "\n\n");
+
+	fprintf(file, "Variables: \n");
+	for( n = 0; n < func->variables.GetLength(); n++ )
+	{
+		fprintf(file, " %.3d: %s %s\n", func->variables[n]->stackOffset, func->variables[n]->type.Format().AddressOf(), func->variables[n]->name.AddressOf());
+	}
+	asUINT offset = 0;
+	if( func->objectType )
+	{
+		fprintf(file, " %.3d: %s this\n", 0, func->objectType->name.AddressOf());
+		offset += AS_PTR_SIZE;
+	}
+	for( n = 0; n < func->parameterTypes.GetLength(); n++ )
+	{
+		bool found = false;
+		for( asUINT v = 0; v < func->variables.GetLength(); v++ )
+		{
+			if( func->variables[v]->stackOffset == offset )
+			{
+				found = true;
+				break;
+			}
+		}
+		if( !found )
+			fprintf(file, " %.3d: %s {noname param}\n", offset, func->parameterTypes[n].Format().AddressOf());
+
+		offset += func->parameterTypes[n].GetSizeOnStackDWords();
+	}
+	for( n = 0; n < func->objVariablePos.GetLength(); n++ )
+	{
+		bool found = false;
+		for( asUINT v = 0; v < func->variables.GetLength(); v++ )
+		{
+			if( func->variables[v]->stackOffset == func->objVariablePos[n] )
+			{
+				found = true;
+				break;
+			}
+		}
+		if( !found )
+			fprintf(file, " %.3d: %s {noname}\n", func->objVariablePos[n], func->objVariableTypes[n]->name.AddressOf());
 	}
 	fprintf(file, "\n\n");
 

@@ -111,7 +111,7 @@ int asCCompiler::CompileDefaultConstructor(asCBuilder *builder, asCScriptCode *s
 
 #ifdef AS_DEBUG
 	// DEBUG: output byte code
-	byteCode.DebugOutput(("__" + outFunc->objectType->name + "_" + outFunc->name + "__dc.txt").AddressOf(), engine);
+	byteCode.DebugOutput(("__" + outFunc->objectType->name + "_" + outFunc->name + "__dc.txt").AddressOf(), engine, outFunc);
 #endif
 
 	return 0;
@@ -410,9 +410,9 @@ int asCCompiler::CompileFunction(asCBuilder *builder, asCScriptCode *script, asC
 #ifdef AS_DEBUG
 	// DEBUG: output byte code
 	if( outFunc->objectType )
-		byteCode.DebugOutput(("__" + outFunc->objectType->name + "_" + outFunc->name + ".txt").AddressOf(), engine);
+		byteCode.DebugOutput(("__" + outFunc->objectType->name + "_" + outFunc->name + ".txt").AddressOf(), engine, outFunc);
 	else
-		byteCode.DebugOutput(("__" + outFunc->name + ".txt").AddressOf(), engine);
+		byteCode.DebugOutput(("__" + outFunc->name + ".txt").AddressOf(), engine, outFunc);
 #endif
 
 	return 0;
@@ -916,7 +916,7 @@ int asCCompiler::CompileGlobalVariable(asCBuilder *builder, asCScriptCode *scrip
 
 #ifdef AS_DEBUG
 	// DEBUG: output byte code
-	byteCode.DebugOutput(("___init_" + gvar->name + ".txt").AddressOf(), engine);
+	byteCode.DebugOutput(("___init_" + gvar->name + ".txt").AddressOf(), engine, outFunc);
 #endif
 
 	return 0;
@@ -2870,13 +2870,7 @@ void asCCompiler::CompileReturnStatement(asCScriptNode *rnode, asCByteCode *bc)
 			if( !expr.type.dataType.IsPrimitive() )
 			{
 				if( !expr.type.dataType.IsObjectHandle() && expr.type.dataType.IsReference() )
-				{
-#ifndef AS_64BIT_PTR 
-					expr.bc.Instr(asBC_RDS4);
-#else
-					expr.bc.Instr(asBC_RDS8);
-#endif
-				}
+					expr.bc.Instr(asBC_RDSPTR);
 
 				expr.bc.Instr(asBC_PopRPtr);
 			}
@@ -3001,6 +2995,17 @@ void asCCompiler::Warning(const char *msg, asCScriptNode *node)
 	if( node ) script->ConvertPosToRowCol(node->tokenPos, &r, &c);
 
 	builder->WriteWarning(script->name.AddressOf(), msg, r, c);
+}
+
+void asCCompiler::Information(const char *msg, asCScriptNode *node)
+{
+	asCString str;
+
+	int r = 0, c = 0;
+	asASSERT( node );
+	if( node ) script->ConvertPosToRowCol(node->tokenPos, &r, &c);
+
+	builder->WriteInfo(script->name.AddressOf(), msg, r, c, false);
 }
 
 void asCCompiler::PrintMatchingFuncs(asCArray<int> &funcs, asCScriptNode *node)
@@ -3536,11 +3541,7 @@ bool asCCompiler::CompileRefCast(asSExprContext *ctx, const asCDataType &to, boo
 
 				// Call the cast operator
 				ctx->bc.InstrSHORT(asBC_PSF, ctx->type.stackOffset);
-#ifdef AS_64BIT_PTR
-				ctx->bc.Instr(asBC_RDS8);
-#else
-				ctx->bc.Instr(asBC_RDS4);
-#endif
+				ctx->bc.Instr(asBC_RDSPTR);
 				ctx->type.dataType.MakeReference(false);
 
 				asCTypeInfo objType = ctx->type;
@@ -7784,7 +7785,6 @@ int asCCompiler::CompileExpressionPostOp(asCScriptNode *node, asSExprContext *ct
 					// Reference to primitive must be stored in the temp register
 					if( prop->type.IsPrimitive() )
 					{
-						// TODO: optimize: The ADD offset command should store the reference in the register directly
 						ctx->bc.Instr(asBC_PopRPtr);
 					}
 
@@ -8502,6 +8502,7 @@ void asCCompiler::MakeFunctionCall(asSExprContext *ctx, int funcId, asCObjectTyp
 			!engine->scriptFunctions[funcId]->isReadOnly )
 		{
 			Warning(TXT_CALLING_NONCONST_METHOD_ON_TEMP, node);
+			Information(engine->scriptFunctions[funcId]->GetDeclaration(), node);
 		}
 	}
 
@@ -8691,8 +8692,11 @@ void asCCompiler::ConvertToVariableNotIn(asSExprContext *ctx, asCArray<int> *res
 		offset = AllocateVariableNotIn(ctx->type.dataType, true, &excludeVars);
 		if( ctx->type.IsNullConstant() )
 		{
-			// TODO: Adapt pointer size
+#ifdef AS_64BIT_PTR
+			ctx->bc.InstrSHORT_QW(asBC_SetV8, (short)offset, 0);
+#else
 			ctx->bc.InstrSHORT_DW(asBC_SetV4, (short)offset, 0);
+#endif
 		}
 		else
 		{

@@ -5,7 +5,7 @@
 
 #include "Common.h"
 #define Byte ByteZlib
-#include "..\include\zlib\zlib.h"
+#include "..\Source\zlib\zlib.h"
 
 //---------------------------------------------------------------------------
 

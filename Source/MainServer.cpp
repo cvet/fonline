@@ -62,21 +62,22 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 
 	if(!Singleplayer || strstr(lpCmdLine,"-showgui "))
 	{
+		Dlg=CreateDialog(Instance,MAKEINTRESOURCE(IDD_DLG),NULL,DlgProc);
+
 		LogFinish(-1);
 		HWND dlg_log=GetDlgItem(Dlg,IDC_LOG);
 		LogToDlg(&dlg_log);
-		Dlg=CreateDialog(Instance,MAKEINTRESOURCE(IDD_DLG),NULL,DlgProc);
 
 		int wx=cfg.GetInt("PositionX",0);
 		int wy=cfg.GetInt("PositionY",0);
 		if(wx || wy) SetWindowPos(Dlg,0,wx,wy,0,0,SWP_NOZORDER|SWP_NOSIZE);
 
 		char win_title[256];
-		sprintf(win_title,"FOnline Server               version %04X-%02X",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
+		sprintf(win_title,"FOnline Server");
 		SetWindowText(Dlg,win_title);
 
 		// Disable buttons
-		EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPT),0);
+		EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPTS),0);
 		EnableWindow(GetDlgItem(Dlg,IDC_SAVE_WORLD),0);
 		EnableWindow(GetDlgItem(Dlg,IDC_CLIENTS),0);
 		EnableWindow(GetDlgItem(Dlg,IDC_MAPS),0);
@@ -109,7 +110,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		SendMessage(GetDlgItem(Dlg,IDC_SEND),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_RECV),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_COMPRESS),WM_SETFONT,(LPARAM)font,TRUE);
-		SendMessage(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPT),WM_SETFONT,(LPARAM)font,TRUE);
+		SendMessage(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPTS),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_SAVE_WORLD),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_SAVELOG),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_SAVEINFO),WM_SETFONT,(LPARAM)font,TRUE);
@@ -137,7 +138,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		ResizeDialog();
 
 		UpdateInfo();
-		SetDlgItemText(Dlg,IDC_RELOAD_CLIENT_SCRIPT,"Reload client script");
+		SetDlgItemText(Dlg,IDC_RELOAD_CLIENT_SCRIPTS,"Reload client scripts");
 		SetDlgItemText(Dlg,IDC_SAVE_WORLD,"Save world");
 		SetDlgItemText(Dlg,IDC_SAVELOG,"Save log");
 		SetDlgItemText(Dlg,IDC_SAVEINFO,"Save info");
@@ -155,14 +156,14 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		SetDlgItemText(Dlg,IDC_STOP,"Start server");
 	}
 
+	WriteLog("FOnline server, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
+
 	UpdateEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
 	if(!UpdateEvent) WriteLog("Create update event fail, error<%u>.\n",GetLastError());
 	LogEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
 	if(!LogEvent) WriteLog("Create log event fail, error<%u>.\n",GetLastError());
 	FOQuit=true;
 	Serv.ServerWindow=Dlg;
-
-	WriteLog("FOnline server, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
 
 	MemoryDebugLevel=cfg.GetInt("MemoryDebugLevel",0);
 	Script::SetLogDebugInfo(true);
@@ -414,7 +415,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 				SendMessage(GetDlgItem(Dlg,IDC_LOG),WM_SETFOCUS,0,0);
 
 				// Disable buttons
-				EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPT),0);
+				EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPTS),0);
 				EnableWindow(GetDlgItem(Dlg,IDC_SAVE_WORLD),0);
 				EnableWindow(GetDlgItem(Dlg,IDC_CLIENTS),0);
 				EnableWindow(GetDlgItem(Dlg,IDC_MAPS),0);
@@ -499,8 +500,8 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		case IDC_SAVE_WORLD:
 			if(Serv.IsInit()) Serv.SaveWorldNextTick=Timer::FastTick();
 			break;
-		case IDC_RELOAD_CLIENT_SCRIPT:
-			if(Serv.IsInit()) Serv.ReloadLangScript();
+		case IDC_RELOAD_CLIENT_SCRIPTS:
+			if(Serv.IsInit()) Serv.RequestReloadClientScripts=true;
 			break;
 		case IDC_SPLIT_UP:
 			if(SplitProcent>=50) SplitProcent-=40;
@@ -536,7 +537,7 @@ void GameLoopThread(void*)
 			if(SendMessage(GetDlgItem(Dlg,IDC_LOGGING),BM_GETCHECK,0,0)==BST_UNCHECKED) LogFinish(-1);
 
 			// Enable buttons
-			EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPT),1);
+			EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPTS),1);
 			EnableWindow(GetDlgItem(Dlg,IDC_SAVE_WORLD),1);
 			EnableWindow(GetDlgItem(Dlg,IDC_CLIENTS),1);
 			EnableWindow(GetDlgItem(Dlg,IDC_MAPS),1);

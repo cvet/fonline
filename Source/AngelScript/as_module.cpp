@@ -956,7 +956,7 @@ asCGlobalProperty *asCModule::AllocateGlobalProperty(const char *name, const asC
 }
 
 // internal
-void asCModule::ResolveInterfaceIds()
+void asCModule::ResolveInterfaceIds(asCArray<void*> *substitutions)
 {
 	// For each of the interfaces declared in the script find identical interface in the engine.
 	// If an identical interface was found then substitute the current id for the identical interface's id, 
@@ -1033,6 +1033,12 @@ void asCModule::ResolveInterfaceIds()
 		{
 			if( classTypes[c] == equals[i].a )
 			{
+				if( substitutions )
+				{
+					substitutions->PushLast(equals[i].a);
+					substitutions->PushLast(equals[i].b);
+				}
+
 				classTypes[c] = equals[i].b;
 				equals[i].b->AddRef();
 				break;
@@ -1040,15 +1046,7 @@ void asCModule::ResolveInterfaceIds()
 		}
 
 		// Remove the old object type from the engine's class types
-		for( c = 0; c < engine->classTypes.GetLength(); c++ )
-		{
-			if( engine->classTypes[c] == equals[i].a )
-			{
-				engine->classTypes[c] = engine->classTypes[engine->classTypes.GetLength()-1];
-				engine->classTypes.PopLast();
-				break;
-			}
-		}
+		engine->classTypes.RemoveValue(equals[i].a);
 
 		// Substitute all uses of this object type
 		// Only interfaces in the module is using the type so far
@@ -1082,10 +1080,16 @@ void asCModule::ResolveInterfaceIds()
 			{
 				if( scriptFunctions[c]->id == equals[i].a->methods[m] )
 				{
+					if( substitutions )
+						substitutions->PushLast(scriptFunctions[c]);
+
 					scriptFunctions[c]->Release();
 
 					scriptFunctions[c] = engine->GetScriptFunction(equals[i].b->methods[m]);
 					scriptFunctions[c]->AddRef();
+
+					if( substitutions )
+						substitutions->PushLast(scriptFunctions[c]);
 				}
 			}
 		}

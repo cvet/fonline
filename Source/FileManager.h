@@ -3,7 +3,7 @@
 
 #include "Defines.h"
 #include "Log.h"
-#include "DatFile\datfile.h"
+#include "DataFile.h"
 
 // Client and mapper paths
 #define PT_ROOT                (0)
@@ -39,7 +39,9 @@
 #define PT_SERVER_PRO_ITEMS    (35)
 #define PT_SERVER_PRO_CRITTERS (36)
 #define PT_SERVER_SCRIPTS      (37)
-#define PT_SERVER_BANS         (38)
+#define PT_SERVER_SAVE         (38)
+#define PT_SERVER_CLIENTS      (39)
+#define PT_SERVER_BANS         (40)
 
 extern char PathLst[][50];
 #define PATH_LIST_COUNT     (50)
@@ -48,7 +50,7 @@ class FileManager
 {
 public:
 	static void SetDataPath(const char* path);
-	static bool LoadDat(const char* path);
+	static bool LoadDataFile(const char* path);
 	static void EndOfWork();
 
 	bool LoadFile(const char* fname, int path_type);
@@ -105,7 +107,7 @@ public:
 	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 	int ParseLinesInt(const char* fname, int path_type, IntVec& lines);
 
-	static TDatFilePtrVec& GetDatFiles(){return datFiles;}
+	static DataFileVec& GetDataFiles(){return dataFiles;}
 	static void GetFolderFileNames(int path_type, const char* ext, StrVec& result); // Note: include subdirs
 	static void GetDatsFileNames(int path_type, const char* ext, StrVec& result); // Note: include subdirs
 
@@ -114,7 +116,7 @@ public:
 
 private:
 	static char dataPath[MAX_FOPATH];
-	static TDatFilePtrVec datFiles;
+	static DataFileVec dataFiles;
 
 	DWORD fileSize;
 	BYTE* fileBuf;

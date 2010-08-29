@@ -2,6 +2,7 @@
 #include "ResourceManager.h"
 #include "Common.h"
 #include "FileManager.h"
+#include "DataFile.h"
 #include "CritterType.h"
 #include "Crypt.h"
 
@@ -73,31 +74,31 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 	}
 
 	// Dat files, packed data
-	TDatFilePtrVec& dats=FileManager::GetDatFiles();
-	for(TDatFilePtrVecIt it=dats.begin(),end=dats.end();it!=end;++it)
+	DataFileVec& pfiles=FileManager::GetDataFiles();
+	for(DataFileVecIt it=pfiles.begin(),end=pfiles.end();it!=end;++it)
 	{
-		TDatFile* dat=*it;
-		if(std::find(processedDats.begin(),processedDats.end(),dat)==processedDats.end())
+		DataFile* pfile=*it;
+		if(std::find(processedDats.begin(),processedDats.end(),pfile)==processedDats.end())
 		{
 			// All names
 			StrVec file_names;
-			dat->GetFileNames(FileManager::GetPath(PT_DATA),NULL,file_names);
+			pfile->GetFileNames(FileManager::GetPath(PT_DATA),NULL,file_names);
 			AddNamesHash(file_names);
 
 			// Splashes
 			StrVec splashes;
-			dat->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"rix",splashes);
-			dat->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"png",splashes);
-			dat->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"jpg",splashes);
+			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"rix",splashes);
+			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"png",splashes);
+			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"jpg",splashes);
 			for(StrVecIt it=splashes.begin(),end=splashes.end();it!=end;++it)
 				if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end())
 					splashNames.push_back(*it);
 
 			// Sound names
 			StrVec sounds;
-			dat->GetFileNames(FileManager::GetPath(PT_SND_SFX),"wav",sounds);
-			dat->GetFileNames(FileManager::GetPath(PT_SND_SFX),"acm",sounds);
-			dat->GetFileNames(FileManager::GetPath(PT_SND_SFX),"ogg",sounds);
+			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),"wav",sounds);
+			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),"acm",sounds);
+			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),"ogg",sounds);
 			char fname[MAX_FOPATH];
 			char name[MAX_FOPATH];
 			for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)
@@ -111,7 +112,7 @@ void ResourceManager::Refresh(SpriteManager* spr_mngr)
 				if(name[0]) soundNames.insert(StrMapVal(name,fname));
 			}
 
-			processedDats.push_back(dat);
+			processedDats.push_back(pfile);
 		}
 	}
 }

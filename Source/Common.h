@@ -483,7 +483,6 @@ struct GameOptions
 	DWORD RegistrationTimeout;
 	DWORD AccountPlayTime;
 	bool LoggingVars;
-	bool SkipScriptBinaries;
 	DWORD ScriptRunSuspendTimeout;
 	DWORD ScriptRunMessageTimeout;
 	DWORD TalkDistance;

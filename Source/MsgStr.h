@@ -591,6 +591,8 @@
 //***  FOINTERNAL.MSG  ******************************************************************
 //***************************************************************************************
 
+#define STR_INTERNAL_SCRIPT_MODULES     (100)
+#define STR_INTERNAL_SCRIPT_PRAGMAS     (90000)
 #define STR_INTERNAL_SCRIPT_CONFIG      (99999)
 #define STR_INTERNAL_CRTYPE(num)        (100000+(num))
 

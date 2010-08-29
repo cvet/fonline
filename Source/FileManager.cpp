@@ -46,10 +46,12 @@ char PathLst[][50]=
 	"proto\\items\\",
 	"proto\\critters\\",
 	"scripts\\",
+	"save\\",
+	"save\\clients\\",
 	"save\\bans\\",
 };
 
-TDatFilePtrVec FileManager::datFiles;
+DataFileVec FileManager::dataFiles;
 char FileManager::dataPath[MAX_FOPATH]={".\\"};
 
 void FileManager::SetDataPath(const char* path)
@@ -58,38 +60,37 @@ void FileManager::SetDataPath(const char* path)
 	if(dataPath[strlen(path)-1]!='\\') StringAppend(dataPath,"\\");
 }
 
-bool FileManager::LoadDat(const char* path)
+bool FileManager::LoadDataFile(const char* path)
 {
 	if(!path)
 	{
-		WriteLog(__FUNCTION__" - Path nullptr.\n");
+		WriteLog(__FUNCTION__" - Path empty or nullptr.\n");
 		return false;
 	}
 
 	// Find already loaded
-	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it)
+	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
 	{
-		TDatFile* dat=*it;
-		if(dat->Datname==path) return true;
+		DataFile* pfile=*it;
+		if(pfile->GetPackName()==path) return true;
 	}
 
 	// Add new
-	TDatFile* dat=new(nothrow) TDatFile(path);	
-	if(!dat || dat->IsError)
+	DataFile* pfile=OpenDataFile(path);
+	if(!pfile)
 	{
-		WriteLog(__FUNCTION__" - Load dat file<%s> fail, error<%s>.\n",path,TDatFile::GetError(dat->ErrorType));
-		if(dat) delete dat;
+		WriteLog(__FUNCTION__" - Load packed file<%s> fail.\n",path);
 		return false;
 	}
 
-	datFiles.insert(datFiles.begin(),dat);
+	dataFiles.insert(dataFiles.begin(),pfile);
 	return true;
 }
 
 void FileManager::EndOfWork()
 {
-	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it) delete *it;
-	datFiles.clear();
+	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it) delete *it;
+	dataFiles.clear();
 }
 
 void FileManager::UnloadFile()
@@ -157,16 +158,12 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	}
 
 	_strlwr(dat_path);
-	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it)
+	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
 	{
-		TDatFile* dat=*it;
-		if(dat->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
+		DataFile* pfile=*it;
+		fileBuf=pfile->OpenFile(dat_path,fileSize);
+		if(fileBuf)
 		{
-			fileSize=dat->DATGetFileSize();
-			fileBuf=new(nothrow) BYTE[fileSize+1];
-			if(!fileBuf) return false;
-			if(!dat->DATReadFile(fileBuf,fileSize)) return false;
-			fileBuf[fileSize]=0;
 			curPos=0;
 			return true;
 		}
@@ -174,81 +171,6 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 
 	return false;
 }
-
-/*
-	if(datFoPatch && datFoPatch->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
-	{
-		fileSize=datFoPatch->DATGetFileSize();
-		fileBuf=new BYTE[fileSize+1];
-		DWORD br;
-		datFoPatch->DATReadFile(fileBuf,fileSize,&br);
-		fileBuf[fileSize]=0;
-		curPos=0;
-		return true;
-	}
-
-	if(path_type==PT_ART_CRITTERS)
-	{
-		// Critter folder
-		if(!datCritter)
-		{
-			//пробуем загрузить из critter_dat если это каталог
-			StringCopy(folder_path,pathCritterDat);
-			StringAppend(folder_path,dat_path);
-
-			HANDLE h_file=CreateFile(folder_path,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
-			if(h_file!=INVALID_HANDLE_VALUE)
-			{
-				LoadSimple(h_file);
-				return true;
-			}
-
-			return false;
-		}
-
-		if(datCritter->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
-		{
-			fileSize = datCritter->DATGetFileSize();
-			fileBuf = new BYTE[fileSize+1];
-			DWORD br;
-			datCritter->DATReadFile(fileBuf,fileSize,&br);
-			fileBuf[fileSize]=0;
-			curPos=0;
-			return true;
-		}
-
-		return false;
-	}
-
-	// Master folder
-	if(!datMaster)
-	{
-		StringCopy(folder_path,pathMasterDat);
-		StringAppend(folder_path,dat_path);
-
-		HANDLE h_file=CreateFile(folder_path,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
-		if(h_file!=INVALID_HANDLE_VALUE)
-		{
-			LoadSimple(h_file);
-			return true;
-		}
-
-		return false;
-	}
-
-	// Master dat
-	if(datMaster->DATOpenFile(dat_path)!=INVALID_HANDLE_VALUE)
-	{
-		fileSize = datMaster->DATGetFileSize();
-		fileBuf = new BYTE[fileSize+1];
-		DWORD br;
-		datMaster->DATReadFile(fileBuf,fileSize,&br);
-		fileBuf[fileSize]=0;
-		curPos=0;
-		return true;
-	}
-	return false;
-}*/
 
 bool FileManager::LoadStream(BYTE* stream, DWORD length)
 {
@@ -745,9 +667,9 @@ void FileManager::GetDatsFileNames(int path_type, const char* ext, StrVec& resul
 	if(path_type<0 || path_type>=PATH_LIST_COUNT || path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return;
 
 	// Find in dat files
-	for(TDatFilePtrVecIt it=datFiles.begin(),end=datFiles.end();it!=end;++it)
+	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
 	{
-		TDatFile* dat=*it;
+		DataFile* dat=*it;
 		dat->GetFileNames(PathLst[path_type],ext,result);
 	}
 }

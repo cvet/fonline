@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Server.h"
+#include "AngelScript/Preprocessor/preprocess.h"
 
 void* dbg_malloc(size_t size)
 {
@@ -59,6 +60,11 @@ void dbg_free2(void* ptr)
 	free(ptr_);
 }
 
+StrSet ParametersAlready;
+DWORD ParametersIndex=1; // 0 is ParamBase
+StrSet ParametersClAlready;
+DWORD ParametersClIndex=1; // 0 is ParamBase
+
 bool FOServer::InitScriptSystem()
 {
 	WriteLog("Script system initialization...\n");
@@ -97,7 +103,7 @@ bool FOServer::InitScriptSystem()
 	// Load script modules
 	Script::Undefine(NULL);
 	Script::Define("__SERVER");
-	if(!Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"server",GameOpt.SkipScriptBinaries))
+	if(!Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"server",false))
 	{
 		Script::Finish();
 		WriteLog("Reload scripts fail.\n");
@@ -159,7 +165,7 @@ void FOServer::FinishScriptSystem()
 {
 	WriteLog("Script system finish...\n");
 	Script::Finish();
-	WriteLog("Script system finish Ok.\n");
+	WriteLog("Script system finish complete.\n");
 }
 
 void FOServer::ScriptSystemUpdate()
@@ -187,19 +193,195 @@ void FOServer::DialogScriptResult(DemandResult& result, Critter* master, Critter
 }
 
 /************************************************************************/
+/* Client script processing                                             */
+/************************************************************************/
+
+#undef BIND_SERVER
+#undef BIND_CLASS
+#undef BIND_ERROR
+#define BIND_CLIENT
+#define BIND_CLASS BindClass::
+#define BIND_ERROR do{WriteLog(__FUNCTION__" - Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
+
+namespace ClientBind
+{
+#include "DummyData.h"
+
+	static int Bind(asIScriptEngine* engine)
+	{
+		int bind_errors=0;
+#include "ScriptBind.h"
+		return bind_errors;
+	}
+}
+
+bool FOServer::ReloadClientScripts()
+{
+	WriteLog("Reload client scripts...\n");
+
+	// Get config file
+	FileManager scripts_cfg;
+	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS);
+	if(!scripts_cfg.IsLoaded())
+	{
+		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);
+		return false;
+	}
+
+	// Disable debug allocators
+#ifdef MEMORY_DEBUG
+	asSetGlobalMemoryFunctions(malloc,free);
+#endif
+
+	asIScriptEngine* old_engine=Script::GetEngine();
+	asIScriptEngine* engine=Script::CreateEngine(PragmaCallbackCrClData);
+	if(engine) Script::SetEngine(engine);
+
+	// Bind vars and functions
+	int bind_errors=0;
+	if(engine) bind_errors=ClientBind::Bind(engine);
+
+	// Check errors
+	if(!engine || bind_errors)
+	{
+		if(!engine) WriteLog(__FUNCTION__" - asCreateScriptEngine fail.\n");
+		else WriteLog("Bind fail, errors<%d>.\n",bind_errors);
+		Script::FinishEngine(engine);
+
+#ifdef MEMORY_DEBUG
+		if(MemoryDebugLevel>=2) asSetGlobalMemoryFunctions(dbg_malloc2,dbg_free2);
+		else if(MemoryDebugLevel>=1) asSetGlobalMemoryFunctions(dbg_malloc,dbg_free);
+		else asSetGlobalMemoryFunctions(malloc,free);
+#endif
+		return false;
+	}
+
+	// Load script modules
+	Script::Undefine("__SERVER");
+	Script::Define("__CLIENT");
+	ParametersClAlready.clear();
+	ParametersClIndex=1;
+
+	int num=STR_INTERNAL_SCRIPT_MODULES;
+	int errors=0;
+	char buf[MAX_FOTEXT];
+	string value,config;
+	StrVec pragmas;
+	while(scripts_cfg.GetLine(buf,MAX_FOTEXT))
+	{
+		if(buf[0]!='@') continue;
+		istrstream str(&buf[1]);
+		str >> value;
+		if(str.fail() || value!="client") continue;
+		str >> value;
+		if(str.fail() || (value!="module" && value!="bind")) continue;
+
+		if(value=="module")
+		{
+			str >> value;
+			if(str.fail()) continue;
+
+			if(!Script::LoadScript(value.c_str(),NULL,false,"CLIENT_"))
+			{
+				WriteLog(__FUNCTION__" - Unable to load client script<%s>.\n",value.c_str());
+				errors++;
+				continue;
+			}
+
+			asIScriptModule* module=engine->GetModule(value.c_str(),asGM_ONLY_IF_EXISTS);
+			CBytecodeStream binary;
+			if(!module || module->SaveByteCode(&binary)<0)
+			{
+				WriteLog(__FUNCTION__" - Unable to save bytecode of client script<%s>.\n",value.c_str());
+				errors++;
+				continue;
+			}
+			std::vector<asBYTE>& buf=binary.GetBuf();
+
+			StrVec& pr=Preprocessor::GetParsedPragmas();
+			pragmas.insert(pragmas.end(),pr.begin(),pr.end());
+
+			// Add module name and bytecode
+			for(LangPackVecIt it=LangPacks.begin(),end=LangPacks.end();it!=end;++it)
+			{
+				LanguagePack& lang=*it;
+				FOMsg& msg_script=lang.Msg[TEXTMSG_INTERNAL];
+
+				for(int i=0;i<10;i++) msg_script.EraseStr(num+i);
+				msg_script.AddStr(num,value.c_str());
+				msg_script.AddBinary(num+1,(BYTE*)&buf[0],buf.size());
+			}
+			num+=2;
+		}
+		else
+		{
+			// Make bind line
+			string config_="@ client bind ";
+			str >> value;
+			if(str.fail()) continue;
+			config_+=value+" ";
+			str >> value;
+			if(str.fail()) continue;
+			config_+=value;
+			config+=config_+"\n";
+		}
+	}
+
+	Script::FinishEngine(engine);
+	Script::Undefine("__CLIENT");
+	Script::Define("__SERVER");
+
+#ifdef MEMORY_DEBUG
+	if(MemoryDebugLevel>=2) asSetGlobalMemoryFunctions(dbg_malloc2,dbg_free2);
+	else if(MemoryDebugLevel>=1) asSetGlobalMemoryFunctions(dbg_malloc,dbg_free);
+	else asSetGlobalMemoryFunctions(malloc,free);
+#endif
+	Script::SetEngine(old_engine);
+
+	// Add config text and pragmas, calculate hash
+	for(LangPackVecIt it=LangPacks.begin(),end=LangPacks.end();it!=end;++it)
+	{
+		LanguagePack& lang=*it;
+		FOMsg& msg_script=lang.Msg[TEXTMSG_INTERNAL];
+
+		msg_script.EraseStr(STR_INTERNAL_SCRIPT_CONFIG);
+		msg_script.AddStr(STR_INTERNAL_SCRIPT_CONFIG,config.c_str());
+
+		for(size_t i=0,j=pragmas.size();i<j;i++)
+		{
+			msg_script.EraseStr(STR_INTERNAL_SCRIPT_PRAGMAS+i);
+			msg_script.AddStr(STR_INTERNAL_SCRIPT_PRAGMAS+i,pragmas[i].c_str());
+		}
+		for(size_t i=0,j=10;i<j;i++) msg_script.EraseStr(STR_INTERNAL_SCRIPT_PRAGMAS+pragmas.size()+i);
+
+		msg_script.CalculateHash();
+	}
+
+	// Send to all connected clients
+	EnterCriticalSection(&CSConnectedClients);
+	for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
+	{
+		Client* cl=*it;
+		LangPackVecIt it_l=std::find(LangPacks.begin(),LangPacks.end(),cl->LanguageMsg);
+		if(it_l!=LangPacks.end()) Send_MsgData(cl,cl->LanguageMsg,TEXTMSG_INTERNAL,(*it_l).Msg[TEXTMSG_INTERNAL]);
+		cl->Send_LoadMap(NULL);
+	}
+	LeaveCriticalSection(&CSConnectedClients);
+
+	WriteLog("Reload client scripts complete.\n");
+	return true;
+}
+
+/************************************************************************/
 /* Pragma callbacks                                                     */
 /************************************************************************/
 
-StrSet ParametersAlready;
-DWORD ParametersIndex=1;
 bool FOServer::PragmaCallbackCrData(const char* text)
 {
 	string name;
 	DWORD min,max;
 	istrstream str(text);
-	str >> name;
-	str >> min;
-	str >> max;
+	str >> name >> min >> max;
 	if(str.fail()) return false;
 	if(min>max || max>=MAX_PARAMS) return false;
 	if(ParametersAlready.count(name)) return true;
@@ -216,6 +398,28 @@ bool FOServer::PragmaCallbackCrData(const char* text)
 	Critter::ParametersOffset[ParametersIndex]=(strstr(text,"+")!=NULL);
 	ParametersIndex++;
 	ParametersAlready.insert(name);
+	return true;
+}
+
+bool FOServer::PragmaCallbackCrClData(const char* text)
+{
+	string name;
+	DWORD min,max;
+	istrstream str(text);
+	str >> name >> min >> max;
+	if(str.fail()) return false;
+	if(min>max || max>=MAX_PARAMS) return false;
+	if(ParametersClAlready.count(name)) return true;
+	if(ParametersClIndex>=MAX_PARAMETERS_ARRAYS) return false;
+
+	asIScriptEngine* engine=Script::GetEngine();
+	char decl[128];
+	sprintf_s(decl,"DataVal %s",name.c_str());
+	if(engine->RegisterObjectProperty("CritterCl",decl,10000+ParametersClIndex*4)<0) return false;
+	sprintf_s(decl,"DataRef %sBase",name.c_str());
+	if(engine->RegisterObjectProperty("CritterCl",decl,10000+ParametersClIndex*4)<0) return false;
+	ParametersClIndex++;
+	ParametersClAlready.insert(name);
 	return true;
 }
 
@@ -1513,8 +1717,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem(Critter* cr, WORD pid, DWORD count)
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!pid) SCRIPT_ERROR_R0("Proto id arg is zero.");
 	if(!count) SCRIPT_ERROR_R0("Count arg is zero.");
-	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
-	if(!proto_item) SCRIPT_ERROR_R0("Proto item not found.");
+	if(!ItemMngr.GetProtoItem(pid)) SCRIPT_ERROR_R0("Invalid pid.");
 	return ItemMngr.AddItemCritter(cr,pid,count);
 }
 
@@ -1522,7 +1725,7 @@ bool FOServer::SScriptFunc::Crit_DeleteItem(Critter* cr, WORD pid, DWORD count)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!pid) SCRIPT_ERROR_R0("Proto id arg is zero.");
-	if(!count) SCRIPT_ERROR_R0("Count arg is zero.");
+	if(!count) count=cr->CountItemPid(pid);
 	return ItemMngr.SubItemCritter(cr,pid,count);
 }
 
@@ -1900,7 +2103,7 @@ void FOServer::SScriptFunc::Cl_ShowScreen(Critter* cl, int screen_type, DWORD pa
 	int bind_id=0;
 	if(func_name.length())
 	{
-		bind_id=Script::Bind(func_name.c_str(),"void %s(Critter&, uint, string&)",true);
+		bind_id=Script::Bind(func_name.c_str(),"void %s(Critter&,uint,string&)",true);
 		if(bind_id<=0) SCRIPT_ERROR_R("Function not found.");
 	}
 
@@ -4170,34 +4373,45 @@ DWORD FOServer::SScriptFunc::Global_GetBagItems(DWORD bag_id, asIScriptArray* pi
 
 void FOServer::SScriptFunc::Global_SetSendParameter(int index, bool enabled)
 {
-	Global_SetSendParameterCond(index,enabled,-1,0);
+	Global_SetSendParameterFunc(index,enabled,NULL);
 }
 
-void FOServer::SScriptFunc::Global_SetSendParameterEqual(int index, bool enabled, bool only_if_equal)
+void FOServer::SScriptFunc::Global_SetSendParameterFunc(int index, bool enabled, CScriptString* allow_func)
 {
-	if(only_if_equal) Global_SetSendParameterCond(index,enabled,-2,0);
-	else Global_SetSendParameterCond(index,enabled,-1,0);
-}
-
-void FOServer::SScriptFunc::Global_SetSendParameterCond(int index, bool enabled, int condition_index, int condition_mask)
-{
-	if(condition_index<-2 || condition_index>=MAX_PARAMS) SCRIPT_ERROR_R("Invalid condition index arg.");
-
 	if(index<0)
 	{
-		if(condition_index==-2) SCRIPT_ERROR_R("Invalid condition index arg.");
-
 		index=-index;
 		if(index>=SLOT_GROUND) SCRIPT_ERROR_R("Invalid index arg.");
+
+		if(allow_func && allow_func->length())
+		{
+			int bind_id=Script::Bind(allow_func->c_str(),"bool %s(uint,Critter&,Critter&)",false);
+			if(bind_id<=0) SCRIPT_ERROR_R("Function not found.");
+			Critter::SlotDataSendScript[index]=bind_id;
+		}
+		else
+		{
+			Critter::SlotDataSendScript[index]=0;
+		}
+
 		Critter::SlotDataSendEnabled[index]=enabled;
-		Critter::SlotDataSendConditionIndex[index]=condition_index;
-		Critter::SlotDataSendConditionMask[index]=condition_mask;
 		return;
 	}
 
 	if(index>=MAX_PARAMS)
 	{
 		SCRIPT_ERROR_R("Invalid index arg.");
+	}
+
+	if(allow_func && allow_func->length())
+	{
+		int bind_id=Script::Bind(allow_func->c_str(),"int %s(uint,Critter&,Critter&)",false);
+		if(bind_id<=0) SCRIPT_ERROR_R("Function not found.");
+		Critter::ParamsSendScript[index]=bind_id;
+	}
+	else
+	{
+		Critter::ParamsSendScript[index]=0;
 	}
 
 	WordVec& vec=Critter::ParamsSend;
@@ -4220,8 +4434,6 @@ void FOServer::SScriptFunc::Global_SetSendParameterCond(int index, bool enabled,
 
 	count=vec.size();
 	Critter::ParamsSendEnabled[index]=enabled;
-	Critter::ParamsSendConditionIndex[index]=condition_index;
-	Critter::ParamsSendConditionMask[index]=condition_mask;
 }
 
 template<typename Ty>
@@ -4483,7 +4695,7 @@ bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour(DWORD index, CScript
 	Critter::ParamsGetScript[index]=0;
 	if(func_name.length()>0)
 	{
-		int bind_id=Script::Bind(func_name.c_str(),"int %s(Critter&, uint)",false);
+		int bind_id=Script::Bind(func_name.c_str(),"int %s(Critter&,uint)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R0("Function not found.");
 		Critter::ParamsGetScript[index]=bind_id;
 	}
@@ -4496,7 +4708,7 @@ bool FOServer::SScriptFunc::Global_SetParameterChangeBehaviour(DWORD index, CScr
 	Critter::ParamsChangeScript[index]=0;
 	if(func_name.length()>0)
 	{
-		int bind_id=Script::Bind(func_name.c_str(),"void %s(Critter&, uint, int)",false);
+		int bind_id=Script::Bind(func_name.c_str(),"void %s(Critter&,uint,int)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R0("Function not found.");
 		Critter::ParamsChangeScript[index]=bind_id;
 	}

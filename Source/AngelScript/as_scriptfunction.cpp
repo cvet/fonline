@@ -286,7 +286,6 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName) const
 		else
 			str += "_unnamed_type_::";
 	}
-	asASSERT(name.GetLength() > 0);
 	if( name == "" )
 		str += "_unnamed_function_(";
 	else

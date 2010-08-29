@@ -116,13 +116,11 @@ public:
 	static WORD ParamsSendCount;
 	static WordVec ParamsSend;
 	static bool ParamsSendEnabled[MAX_PARAMS];
-	static int ParamsSendConditionIndex[MAX_PARAMS];
-	static int ParamsSendConditionMask[MAX_PARAMS];
+	static int ParamsSendScript[MAX_PARAMS];
 	static int ParamsChangeScript[MAX_PARAMS];
 	static int ParamsGetScript[MAX_PARAMS];
 	static bool SlotDataSendEnabled[0x100];
-	static int SlotDataSendConditionIndex[0x100];
-	static int SlotDataSendConditionMask[0x100];
+	static int SlotDataSendScript[0x100];
 	static DWORD ParametersMin[MAX_PARAMETERS_ARRAYS];
 	static DWORD ParametersMax[MAX_PARAMETERS_ARRAYS];
 	static bool ParametersOffset[MAX_PARAMETERS_ARRAYS];
@@ -137,6 +135,9 @@ public:
 	void SetMaps(DWORD map_id, WORD map_pid){Data.MapId=map_id;Data.MapPid=map_pid;}
 	void SetLexems(const char* lexems);
 	bool IsLexems(){return Data.Lexems[0]!=0;}
+
+	int RunParamsSendScript(int bind_id, DWORD param_index, Critter* from_cr, Critter* to_cr);
+	bool RunSlotDataSendScript(int bind_id, BYTE slot, Item* item, Critter* from_cr, Critter* to_cr);
 
 	// Visible critters and items
 	CrVec VisCr;
@@ -320,7 +321,7 @@ public:
 	void Send_AllParams();
 	void Send_Param(WORD num_param);
 	void Send_ParamOther(WORD num_param, int val);
-	void Send_CritterParam(Critter* cr, WORD num_param, int other_val);
+	void Send_CritterParam(Critter* cr, WORD num_param, int val);
 	void Send_Talk();
 	void Send_GameInfo(Map* map);
 	void Send_Text(Critter* from_cr, const char* s_str, BYTE how_say);
@@ -585,7 +586,7 @@ public:
 	void Send_AllParams();
 	void Send_Param(WORD num_param);
 	void Send_ParamOther(WORD num_param, int val);
-	void Send_CritterParam(Critter* cr, WORD num_param, int other_val);
+	void Send_CritterParam(Critter* cr, WORD num_param, int val);
 	void Send_Talk();
 	void Send_GameInfo(Map* map);
 	void Send_Text(Critter* from_cr, const char* s_str, BYTE how_say);

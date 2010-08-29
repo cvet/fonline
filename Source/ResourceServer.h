@@ -26,7 +26,7 @@
 #define IDC_COMPRESS                    1019
 #define IDC_SCRIPT_DEBUG                1020
 #define IDC_SAVE_WORLD                  1021
-#define IDC_RELOAD_CLIENT_SCRIPT        1022
+#define IDC_RELOAD_CLIENT_SCRIPTS       1022
 #define IDC_MEMORY                      1023
 #define IDC_TIME_EVENTS                 1024
 #define IDC_LOG                         1025

@@ -48,6 +48,7 @@ FOServer::FOServer()
 	LastClientId=0;
 	SingleplayerSave.Valid=false;
 	VarsGarbageLastTick=0;
+	RequestReloadClientScripts=false;
 	Self=this;
 	MEMORY_PROCESS(MEMORY_STATIC,sizeof(FOServer));
 }
@@ -453,6 +454,13 @@ void FOServer::RunGameLoop()
 		{
 			SaveWorld(NULL);
 			SaveWorldNextTick=Timer::FastTick()+SaveWorldTime;
+		}
+
+		// Client script
+		if(RequestReloadClientScripts)
+		{
+			ReloadClientScripts();
+			RequestReloadClientScripts=false;
 		}
 
 		// Post loop
@@ -1573,7 +1581,7 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			// Implementor commands
-			if(param_type>10 && FLAG(cl->Access,ACCESS_IMPLEMENTOR))
+			if(param_type>10 && FLAG(cl->Access,ACCESS_ADMIN))
 			{
 				if(param_type==255)
 				{
@@ -1641,7 +1649,7 @@ void FOServer::Process_Command(Client* cl)
 					cl->Data.Params[DAMAGE_LEFT_ARM]=0;
 					cl->Data.Params[DAMAGE_RIGHT_LEG]=0;
 					cl->Data.Params[DAMAGE_LEFT_LEG]=0;
-					cl->Send_Text(cl,"Full heal ok.",SAY_NETMSG);
+					cl->Send_Text(cl,"Full heal done.",SAY_NETMSG);
 				}
 				else if(param_type==222)
 				{
@@ -1787,7 +1795,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			cl->Send_Text(cl,"Ok.",SAY_NETMSG);
+			cl->Send_Text(cl,"Done.",SAY_NETMSG);
 		}
 		break;
 /************************************************************************/
@@ -1911,7 +1919,7 @@ void FOServer::Process_Command(Client* cl)
 			crash-=10;
 			delete crash;
 
-			cl->Send_Text(cl,"Crashed OK.",SAY_NETMSG);
+			cl->Send_Text(cl,"Crashed complete.",SAY_NETMSG);
 		}
 		break;
 /************************************************************************/
@@ -1961,7 +1969,7 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			if(ItemMngr.AddItemCritter(cl,pid,count)!=NULL)
-				cl->Send_Text(cl,"Item(s) added ok.",SAY_NETMSG);
+				cl->Send_Text(cl,"Item(s) added.",SAY_NETMSG);
 			else
 				cl->Send_Text(cl,"Item(s) added fail.",SAY_NETMSG);
 		}
@@ -2029,7 +2037,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(Script::ReloadScripts(SCRIPTS_LST,"server",GameOpt.SkipScriptBinaries))
+			if(Script::ReloadScripts(SCRIPTS_LST,"server",false))
 				cl->Send_Text(cl,"Success.",SAY_NETMSG);
 			else
 				cl->Send_Text(cl,"Fail.",SAY_NETMSG);
@@ -2056,43 +2064,30 @@ void FOServer::Process_Command(Client* cl)
 				break;
 			}
 
-			if(!Script::GetModule(module_name))
-			{
-				cl->Send_Text(cl,"Fail, script not found.",SAY_NETMSG);
-				break;
-			}
-
-			if(!Script::LoadScript(module_name,NULL,false))
+			if(!Script::LoadScript(module_name,NULL,true))
 			{
 				cl->Send_Text(cl,"Unable to load script.",SAY_NETMSG);
 				break;
 			}
 
-			asIScriptModule* mod=Script::GetModule(module_name);
-		//	char fails[4096];
-			if(!mod || mod->BindAllImportedFunctions()<0)
-			{
-				cl->Send_Text(cl,"Unable to bind imported functions.",SAY_NETMSG);
-		//		cl->Send_Text(cl,fails,SAY_NETMSG);
-			}
-
-			int errors=Script::RebindFunctions();
-			cl->Send_Text(cl,Str::Format("Done, errors<%d>.",errors),SAY_NETMSG);
+			int errors=Script::BindImportedFunctions();
+			if(!errors) cl->Send_Text(cl,"Complete.",SAY_NETMSG);
+			else cl->Send_Text(cl,Str::Format("Complete, bind errors<%d>.",errors),SAY_NETMSG);
 		}
 		break;
 /************************************************************************/
 /* LOADSCRIPT                                                           */
 /************************************************************************/
-	case CMD_RELOAD_CLIENT_SCRIPT:
+	case CMD_RELOAD_CLIENT_SCRIPTS:
 		{
-			if(!FLAG(cl->Access,CMD_RELOAD_CLIENT_SCRIPT_ACCESS))
+			if(!FLAG(cl->Access,CMD_RELOAD_CLIENT_SCRIPTS_ACCESS))
 			{
 				cl->Send_Text(cl,"Access denied.",SAY_NETMSG);
 				return;
 			}
 
-			if(ReloadLangScript()) cl->Send_Text(cl,"Reload client script success.",SAY_NETMSG);
-			else cl->Send_Text(cl,"Reload client script fail.",SAY_NETMSG);
+			if(ReloadClientScripts()) cl->Send_Text(cl,"Reload client scripts success.",SAY_NETMSG);
+			else cl->Send_Text(cl,"Reload client scripts fail.",SAY_NETMSG);
 		}
 		break;
 /************************************************************************/
@@ -2965,13 +2960,6 @@ bool FOServer::Init()
 	}
 
 	// Generic
-	FileManager::SetDataPath(".\\"); // File manager
-	FONames::GenerateFoNames(PT_SERVER_DATA); // Generate name of defines
-	if(!InitScriptSystem()) goto label_Error; // Script system
-	if(!InitLangPacks(LangPacks)) goto label_Error; // Language packs
-	if(!InitLangScript(LangPacks)) goto label_Error; // Client scripts
-	if(!Singleplayer && !LoadClientsData()) goto label_Error;
-	if(!Singleplayer) LoadBans();
 	ConnectedClients.clear();
 	SaveClients.clear();
 	RegIp.clear();
@@ -2980,13 +2968,25 @@ bool FOServer::Init()
 	InitializeCriticalSection(&CSConnectedClients);
 	VarsGarbageLastTick=Timer::FastTick();
 
-	// Reserve memory
 	if(!Singleplayer)
 	{
+		// Reserve memory
 		ConnectedClients.reserve(MAX_CLIENTS_IN_GAME);
 		SaveClients.reserve(MAX_CLIENTS_IN_GAME);
 		TimeEvents.reserve(TIME_EVENTS_RESERVE);
 	}
+
+	FileManager::SetDataPath(".\\"); // File manager
+	CreateDirectory(FileManager::GetFullPath("",PT_SERVER_BANS),NULL);
+	CreateDirectory(FileManager::GetFullPath("",PT_SERVER_CLIENTS),NULL);
+	CreateDirectory(FileManager::GetFullPath("",PT_SERVER_BANS),NULL);
+
+	FONames::GenerateFoNames(PT_SERVER_DATA); // Generate name of defines
+	if(!InitScriptSystem()) goto label_Error; // Script system
+	if(!InitLangPacks(LangPacks)) goto label_Error; // Language packs
+	if(!ReloadClientScripts()) goto label_Error; // Client scripts, after language packs initialization
+	if(!Singleplayer && !LoadClientsData()) goto label_Error;
+	if(!Singleplayer) LoadBans();
 
 	// Managers
 	if(!AIMngr.Init()) goto label_Error; // NpcAi manager
@@ -3312,113 +3312,7 @@ void FOServer::FinishLangPacks()
 {
 	WriteLog("Finish lang packs...\n");
 	LangPacks.clear();
-	WriteLog("Finish lang packs ok.\n");
-}
-
-#pragma MESSAGE("Send bytecode, not preprocessed scripts.")
-bool FOServer::InitLangScript(LangPackVec& lang_packs)
-{
-	FILE* f=fopen(FileManager::GetFullPath(SCRIPTS_LST,PT_SERVER_SCRIPTS),"rt");
-	if(!f)
-	{
-		WriteLog(__FUNCTION__" - File not found<%s>.\n",FileManager::GetFullPath(SCRIPTS_LST,PT_SERVER_SCRIPTS));
-		return false;
-	}
-
-	int module_num=1;
-	int errors=0;
-	char buf[1024];
-	string value,config;
-	Script::Undefine("__SERVER");
-	while(fgets(buf,1024,f))
-	{
-		if(buf[0]!='@') continue;
-		istrstream str(&buf[1]);
-		str >> value;
-		if(str.fail() || value!="client") continue;
-		str >> value;
-		if(str.fail() || (value!="module" && value!="bind")) continue;
-
-		if(value=="module")
-		{
-			str >> value;
-			if(str.fail()) continue;
-
-			Script::Define("__CLIENT");
-			char* buf=Script::Preprocess((value+".fos").c_str(),false);
-			if(!buf)
-			{
-				WriteLog(__FUNCTION__" - Unable to preprocess client script<%s>.\n",value.c_str());
-				Script::Undefine("__CLIENT");
-				errors++;
-				continue;
-			}
-			Script::Undefine("__CLIENT");
-
-			for(LangPackVecIt it=lang_packs.begin(),end=lang_packs.end();it!=end;++it)
-			{
-				LanguagePack& lang=*it;
-				FOMsg& msg_script=lang.Msg[TEXTMSG_INTERNAL];
-				msg_script.EraseStr(module_num);
-				msg_script.EraseStr(module_num+1);
-				msg_script.EraseStr(module_num+2);
-				msg_script.EraseStr(module_num+3);
-				msg_script.AddStr(module_num,value.c_str());
-				msg_script.AddBinary(module_num+1,(BYTE*)buf,strlen(buf)+1);
-			}
-			delete[] buf;
-			module_num+=2;
-		}
-		else
-		{
-			// Make bind line
-			string config_="@ client bind ";
-			str >> value;
-			if(str.fail()) continue;
-			config_+=value+" ";
-			str >> value;
-			if(str.fail()) continue;
-			config_+=value;
-			config+=config_+"\n";
-		}
-	}
-	Script::Define("__SERVER");
-	fclose(f);
-
-	// Add config text
-	for(LangPackVecIt it=lang_packs.begin(),end=lang_packs.end();it!=end;++it)
-	{
-		LanguagePack& lang=*it;
-		FOMsg& msg_script=lang.Msg[TEXTMSG_INTERNAL];
-		msg_script.AddStr(STR_INTERNAL_SCRIPT_CONFIG,config.c_str());
-	}
-
-	// Recalculate hashes
-	for(LangPackVecIt it=lang_packs.begin(),end=lang_packs.end();it!=end;++it)
-	{
-		LanguagePack& lang=*it;
-		lang.Msg[TEXTMSG_INTERNAL].CalculateHash();
-	}
-
-	return errors==0;
-}
-
-bool FOServer::ReloadLangScript()
-{
-	if(InitLangScript(LangPacks))
-	{
-		EnterCriticalSection(&CSConnectedClients);
-		for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
-		{
-			Client* cl_=*it;
-			LangPackVecIt it_l=std::find(LangPacks.begin(),LangPacks.end(),cl_->LanguageMsg);
-			if(it_l!=LangPacks.end()) Send_MsgData(cl_,cl_->LanguageMsg,TEXTMSG_INTERNAL,(*it_l).Msg[TEXTMSG_INTERNAL]);
-			cl_->Send_LoadMap(NULL);
-		}
-		LeaveCriticalSection(&CSConnectedClients);
-		return true;
-	}
-	return false;
+	WriteLog("Finish lang packs complete.\n");
 }
 
 bool FOServer::InitLangCrTypes(LangPackVec& lang_packs)
@@ -3427,7 +3321,11 @@ bool FOServer::InitLangCrTypes(LangPackVec& lang_packs)
 	if(!CritType::InitFromFile(&msg_crtypes)) return false;
 
 	for(LangPackVecIt it=lang_packs.begin(),end=lang_packs.end();it!=end;++it)
-		(*it).Msg[TEXTMSG_INTERNAL]+=msg_crtypes;
+	{
+		LanguagePack& lang=*it;
+		for(int i=0;i<MAX_CRIT_TYPES;i++) lang.Msg[TEXTMSG_INTERNAL].EraseStr(STR_INTERNAL_CRTYPE(i));
+		lang.Msg[TEXTMSG_INTERNAL]+=msg_crtypes;
+	}
 
 	return true;
 }
@@ -3535,11 +3433,12 @@ void FOServer::LoadBans()
 	IniParser bans_txt;
 	if(!bans_txt.LoadFile(BANS_FNAME_ACTIVE,PT_SERVER_BANS))
 	{
-		WriteLog(__FUNCTION__" - Can't open file<%s>.\n",BANS_FNAME_ACTIVE);
+		HANDLE h=CreateFile(FileManager::GetFullPath(BANS_FNAME_ACTIVE,PT_SERVER_BANS),GENERIC_WRITE,0,NULL,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,NULL);
+		if(h!=INVALID_HANDLE_VALUE) CloseHandle(h);
 		return;
 	}
 
-	char buf[512];
+	char buf[MAX_FOTEXT];
 	while(bans_txt.GotoNextApp("Ban"))
 	{
 		ClientBanned ban;
@@ -3575,12 +3474,12 @@ bool FOServer::LoadClientsData()
 	while(true)
 	{
 		// Take name from file title
-		char name[64];
+		char name[MAX_FOPATH];
 		StringCopy(name,fdata.cFileName);
 		*strstr(name,".client")=0;
 
 		// Take id and password from file
-		char fname_[64];
+		char fname_[MAX_FOPATH];
 		sprintf(fname_,".\\save\\clients\\%s",fdata.cFileName);
 		FILE* f=NULL;
 		if(fopen_s(&f,fname_,"rb"))

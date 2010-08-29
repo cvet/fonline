@@ -123,17 +123,17 @@ bool FOClient::Init(HWND hwnd)
 
 	// File manager
 	FileManager::SetDataPath(OptFoDataPath.c_str());
-	if(!FileManager::LoadDat(OptMasterPath.c_str()))
+	if(!FileManager::LoadDataFile(OptMasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDat(OptCritterPath.c_str()))
+	if(!FileManager::LoadDataFile(OptCritterPath.c_str()))
 	{
 		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDat(OptFoPatchPath.c_str()))
+	if(!FileManager::LoadDataFile(OptFoPatchPath.c_str()))
 	{
 		MessageBox(Wnd,"FONLINE.DAT not found.","Fallout Online",MB_OK);
 		return false;
@@ -268,13 +268,6 @@ bool FOClient::Init(HWND hwnd)
 	if(!InitIfaceIni()) return false;
 
 	// Scripts
-	if(!Script::Init(false,PragmaCallbackCrData)) return false;
-	Script::SetScriptsPath(PT_SCRIPTS);
-	asIScriptEngine* engine=Script::GetEngine();
-#define BIND_CLIENT
-#define BIND_CLASS FOClient::ScriptFunc.
-#define BIND_ERROR do{WriteLog(__FUNCTION__" - Bind error, line<%d>.\n",__LINE__); return false;}while(0)
-#include <ScriptBind.h>
 	if(!ReloadScripts()) refresh_cache=true;
 
 	// Names
@@ -2832,26 +2825,20 @@ struct CmdListDef
 const CmdListDef cmdlist[]=
 {
 	{"~1",CMD_EXIT},
-	{"конец",CMD_EXIT},
 	{"exit",CMD_EXIT},
 	{"~2",CMD_MYINFO},
 	{"myinfo",CMD_MYINFO},
 	{"~3",CMD_GAMEINFO},
 	{"gameinfo",CMD_GAMEINFO},
 	{"~4",CMD_CRITID},
-	{"ид",CMD_CRITID},
 	{"id",CMD_CRITID},
 	{"~5",CMD_MOVECRIT},
-	{"двигать",CMD_MOVECRIT},
 	{"move",CMD_MOVECRIT},
 	{"~6",CMD_KILLCRIT},
-	{"убить",CMD_KILLCRIT},
 	{"kill",CMD_KILLCRIT},
 	{"~7",CMD_DISCONCRIT},
-	{"отсоединить",CMD_DISCONCRIT},
 	{"disconnect",CMD_DISCONCRIT},
 	{"~8",CMD_TOGLOBAL},
-	{"наглобал",CMD_TOGLOBAL},
 	{"toglobal",CMD_TOGLOBAL},
 	{"~9",CMD_RESPAWN},
 	{"respawn",CMD_RESPAWN},
@@ -2875,9 +2862,9 @@ const CmdListDef cmdlist[]=
 	{"~18",CMD_LOADSCRIPT},
 	{"loadscript",CMD_LOADSCRIPT},
 	{"load",CMD_LOADSCRIPT},
-	{"~19",CMD_RELOAD_CLIENT_SCRIPT},
-	{"reloadclientscript",CMD_RELOAD_CLIENT_SCRIPT},
-	{"rcs",CMD_RELOAD_CLIENT_SCRIPT},
+	{"~19",CMD_RELOAD_CLIENT_SCRIPTS},
+	{"reloadclientscripts",CMD_RELOAD_CLIENT_SCRIPTS},
+	{"rcs",CMD_RELOAD_CLIENT_SCRIPTS},
 	{"~20",CMD_RUNSCRIPT},
 	{"runscript",CMD_RUNSCRIPT},
 	{"run",CMD_RUNSCRIPT},
@@ -3142,21 +3129,21 @@ void FOClient::Net_SendCommand(char* str)
 		{
 			WORD hex_x;
 			WORD hex_y;
-			BYTE ori;
+			BYTE dir;
 			WORD pid;
-			if(sscanf(str,"%d%d%d%d",&hex_x,&hex_y,&ori,&pid)!=4)
+			if(sscanf(str,"%d%d%d%d",&hex_x,&hex_y,&dir,&pid)!=4)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~addnpc hx hy dir pid>.");
 				break;
 			}
-			msg_len+=sizeof(hex_x)+sizeof(hex_y)+sizeof(ori)+sizeof(pid);
+			msg_len+=sizeof(hex_x)+sizeof(hex_y)+sizeof(dir)+sizeof(pid);
 			
 			Bout << msg;
 			Bout << msg_len;
 			Bout << cmd;
 			Bout << hex_x;
 			Bout << hex_y;
-			Bout << ori;
+			Bout << dir;
 			Bout << pid;
 		}
 		break;
@@ -3204,7 +3191,7 @@ void FOClient::Net_SendCommand(char* str)
 			Bout.Push(script_name,MAX_SCRIPT_NAME);
 		}
 		break;
-	case CMD_RELOAD_CLIENT_SCRIPT:
+	case CMD_RELOAD_CLIENT_SCRIPTS:
 		{
 			Bout << msg;
 			Bout << msg_len;
@@ -6680,15 +6667,11 @@ void FOClient::Net_OnMsgData()
 		break;
 	case TEXTMSG_INTERNAL:
 		// Reload critter types
-		WriteLog("!!!\n");
 		CritType::InitFromMsg(MsgInternal);
 		CritterCl::FreeAnimations(); // Free animations, maybe critters table is changed
 
 		// Reload scripts
-		if(!ReloadScripts())
-		{
-			NetState=STATE_DISCONNECT;
-		}
+		if(!ReloadScripts()) NetState=STATE_DISCONNECT;
 
 		// Names
 		FONames::GenerateFoNames(PT_DATA);
@@ -8949,62 +8932,83 @@ void FOClient::AnimFree(int res_type)
 /* Scripts                                                              */
 /************************************************************************/
 
+StrSet ParametersAlready_;
+DWORD ParametersIndex_=1; // 0 is ParamBase
+
 bool FOClient::ReloadScripts()
 {
+	WriteLog("Load scripts...\n");
+
 	FOMsg& msg_script=CurLang.Msg[TEXTMSG_INTERNAL];
-/*	DWORD len;
-	const BYTE* binary=msg_script.GetBinary(1,len);
-	if(!binary)
+	if(!msg_script.Count(STR_INTERNAL_SCRIPT_CONFIG) ||
+		!msg_script.Count(STR_INTERNAL_SCRIPT_MODULES) ||
+		!msg_script.Count(STR_INTERNAL_SCRIPT_MODULES+1))
 	{
-		WriteLog(__FUNCTION__" - Main script section not found in MSG.\n");
-		return;
-	}
-
-	CBytecodeStream bytecode;
-	bytecode.resize(len);
-	memcpy(&bytecode.buffer[0],binary,len);
-
-	asIScriptModule* module=Script::CreateModule(1,"client_main");
-	if(!module)
-	{
-		WriteLog(__FUNCTION__" - Create script module fail.\n");
-		return;
-	}
-
-	if(module->LoadByteCode(&bytecode)<0)
-	{
-		WriteLog(__FUNCTION__" - Can't load script bytecode.\n");
-		return;
-	}*/
-
-	if(!msg_script.Count(1) || !msg_script.Count(2) || !msg_script.Count(STR_INTERNAL_SCRIPT_CONFIG))
-	{
-		WriteLog(__FUNCTION__" - Main script section not found in MSG.\n");
+		WriteLog("Main script section not found in MSG.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
 
-	const char* config=msg_script.GetStr(STR_INTERNAL_SCRIPT_CONFIG);
-	Script::Undefine(NULL);
+	// Reinitialize engine
+	Script::Finish();
+	if(!Script::Init(false,PragmaCallbackCrData))
+	{
+		WriteLog("Unable to start script engine.\n");
+		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
+		return false;
+	}
+
+	// Bind stuff
+#define BIND_CLIENT
+#define BIND_CLASS FOClient::SScriptFunc::
+#define BIND_ERROR do{WriteLog("Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
+
+	asIScriptEngine* engine=Script::GetEngine();
+	int bind_errors=0;
+#include <ScriptBind.h>
+
+	if(bind_errors)
+	{
+		WriteLog("Bind fail, errors<%d>.\n",bind_errors);
+		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
+		return false;
+	}
+
+	// Options
+	Script::SetScriptsPath(PT_SCRIPTS);
 	Script::Define("__CLIENT");
+	ParametersAlready_.clear();
+	ParametersIndex_=1;
+
+	// Pragmas
+	StrVec pragmas;
+	for(int i=STR_INTERNAL_SCRIPT_PRAGMAS;;i+=2)
+	{
+		if(!msg_script.Count(i) || !msg_script.Count(i+1)) break;
+		pragmas.push_back(msg_script.GetStr(i));
+		pragmas.push_back(msg_script.GetStr(i+1));
+	}
+	Script::CallPragmas(pragmas);
 
 	// Load modules
-	WriteLog("Load scripts...\n");
 	int errors=0;
-	for(int i=1;;i+=2)
+	for(int i=STR_INTERNAL_SCRIPT_MODULES;;i+=2)
 	{
+		if(!msg_script.Count(i) || !msg_script.Count(i+1)) break;
+
 		const char* module_name=msg_script.GetStr(i);
 		DWORD len;
-		const char* source=(char*)msg_script.GetBinary(i+1,len);
-		if(!module_name || !source) break;
+		const BYTE* bytecode=msg_script.GetBinary(i+1,len);
+		if(!bytecode) break;
 
-		if(!Script::LoadScript(module_name,source,false))
+		if(!Script::LoadScript(module_name,bytecode,len))
 		{
-			WriteLog(__FUNCTION__" - Load script<%s> fail.\n",module_name);
+			WriteLog("Load script<%s> fail.\n",module_name);
 			errors++;
 		}
 	}
-	WriteLog("Load scripts complete.\n");
+
+	// Bind functions
 	errors+=Script::BindImportedFunctions();
 	errors+=Script::RebindFunctions();
 
@@ -9047,6 +9051,7 @@ bool FOClient::ReloadScripts()
 		{&ClientFunctions.Animation3dProcess,"animation3d_process","void %s(CritterCl&,uint,uint,ItemCl@)"},
 		{&ClientFunctions.ItemsCollection,"items_collection","void %s(int,ItemCl@[]&)"},
 	};
+	const char* config=msg_script.GetStr(STR_INTERNAL_SCRIPT_CONFIG);
 	if(!Script::BindReservedFunctions(config,"client",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]))) errors++;
 
 	if(errors)
@@ -9065,6 +9070,7 @@ bool FOClient::ReloadScripts()
 	}
 
 	Crypt.SetCache("_user_interface",(BYTE*)GameOpt.UserInterface.c_str(),GameOpt.UserInterface.length()+1);
+	WriteLog("Load scripts complete.\n");
 	return true;
 }
 
@@ -9098,16 +9104,12 @@ void FOClient::DrawIfaceLayer(DWORD layer)
 	}
 }
 
-StrSet ParametersAlready_;
-DWORD ParametersIndex_=1;
 bool FOClient::PragmaCallbackCrData(const char* text)
 {
 	string name;
 	DWORD min,max;
 	istrstream str(text);
-	str >> name;
-	str >> min;
-	str >> max;
+	str >> name >> min >> max;
 	if(str.fail()) return false;
 	if(min>max || max>=MAX_PARAMS) return false;
 	if(ParametersAlready_.count(name)) return true;
@@ -9193,8 +9195,8 @@ static string ScriptLastError;
 
 int FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
 {
-	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr");
-	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg");
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr.");
+	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
 	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
 	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
@@ -9204,8 +9206,8 @@ int FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
 
 int FOClient::SScriptFunc::DataVal_Index(CritterClPtr& cr, DWORD index)
 {
-	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr");
-	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg");
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr.");
+	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
 	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
 	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
@@ -9820,9 +9822,9 @@ int FOClient::SScriptFunc::Global_GetSomeValue(int var)
 	return 0;
 }
 
-bool FOClient::SScriptFunc::Global_LoadDat(CScriptString& dat_name)
+bool FOClient::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 {
-	if(FileManager::LoadDat(dat_name.c_str()))
+	if(FileManager::LoadDataFile(dat_name.c_str()))
 	{
 		ResMngr.Refresh(NULL);
 		FONames::GenerateFoNames(PT_DATA);

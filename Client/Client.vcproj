@@ -261,7 +261,7 @@
 			Name="Zlib"
 			>
 			<File
-				RelativePath="..\Source\zlib\adler32.c"
+				RelativePath="..\Source\Zlib\adler32.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -276,13 +276,12 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\compress.c"
+				RelativePath="..\Source\Zlib\compress.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -297,13 +296,12 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\crc32.c"
+				RelativePath="..\Source\Zlib\crc32.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -318,42 +316,16 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\crc32.h"
+				RelativePath="..\Source\Zlib\crc32.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\deflate.c"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\deflate.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\example.c"
+				RelativePath="..\Source\Zlib\deflate.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -368,13 +340,16 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\gzio.c"
+				RelativePath="..\Source\Zlib\deflate.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\gzclose.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -389,13 +364,16 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\infback.c"
+				RelativePath="..\Source\Zlib\gzguts.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\gzlib.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -410,13 +388,12 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\inffast.c"
+				RelativePath="..\Source\Zlib\gzread.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -431,21 +408,12 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\inffast.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\inffixed.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\inflate.c"
+				RelativePath="..\Source\Zlib\gzwrite.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -460,17 +428,12 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\inflate.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\inftrees.c"
+				RelativePath="..\Source\Zlib\infback.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -485,17 +448,12 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\inftrees.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\trees.c"
+				RelativePath="..\Source\Zlib\inffast.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -510,46 +468,20 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\trees.h"
+				RelativePath="..\Source\Zlib\inffast.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\uncompr.c"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\zconf.h"
+				RelativePath="..\Source\Zlib\inffixed.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\zlib.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\zlib\zutil.c"
+				RelativePath="..\Source\Zlib\inflate.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -564,13 +496,160 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;DX9RENDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;AS_DEBUG;_VC80_UPGRADE=0x0600;_MBCS;$(NOINHERIT)"
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\zlib\zutil.h"
+				RelativePath="..\Source\Zlib\inflate.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\inftrees.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\inftrees.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\ioapi.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\ioapi.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\trees.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\trees.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\uncompr.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\unzip.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\unzip.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\zconf.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\zlib.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\zutil.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\zutil.h"
 				>
 			</File>
 		</Filter>
@@ -724,6 +803,14 @@
 			</File>
 			<File
 				RelativePath="..\Source\Crypt.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\DataFile.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\DataFile.h"
 				>
 			</File>
 			<File
@@ -2166,30 +2253,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\datfile\cfile.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\datfile\datfile.cpp"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\Source\datfile\datfile.h"
 				>
 			</File>
 			<File

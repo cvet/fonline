@@ -3,6 +3,7 @@
 
 #include "AngelScript/angelscript.h"
 #include "AngelScript/scriptstring.h"
+#include <vector>
 
 #define GLOBAL_CONTEXT_STACK_SIZE      (10)
 #define CONTEXT_BUFFER_SIZE            (512)
@@ -31,15 +32,20 @@ namespace Script
 	void Release();
 
 	asIScriptEngine* GetEngine();
+	void SetEngine(asIScriptEngine* engine);
+	asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata);
+	void FinishEngine(asIScriptEngine*& engine);
+
 	asIScriptContext* CreateContext();
 	void FinishContext(asIScriptContext*& ctx);
 	asIScriptContext* GetGlobalContext();
-	void PrintContextCallstack(asIScriptContext *ctx);
+	void PrintContextCallstack(asIScriptContext* ctx);
+
 	const char* GetActiveModuleName();
 	const char* GetActiveFuncName();
 	asIScriptModule* GetModule(const char* name);
 	asIScriptModule* CreateModule(const char* module_name);
-	char* Preprocess(const char* fname, bool process_pragmas);
+
 	void SetGarbageCollectTime(DWORD ticks);
 	void CollectGarbage(bool force);
 	void SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout);
@@ -47,7 +53,11 @@ namespace Script
 	void SetScriptsPath(int path_type);
 	void Define(const char* def);
 	void Undefine(const char* def);
-	bool LoadScript(const char* module_name, const char* source, bool check_binary);
+	char* Preprocess(const char* fname, bool process_pragmas);
+	void CallPragmas(const StrVec& pragmas);
+	bool LoadScript(const char* module_name, const char* source, bool skip_binary, const char* file_pefix = NULL);
+	bool LoadScript(const char* module_name, const BYTE* bytecode, DWORD len);
+
 	int BindImportedFunctions();
 	int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp);
 	int Bind(const char* script_name, const char* decl, bool is_temp);

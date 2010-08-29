@@ -19,6 +19,7 @@
 #include "CritterType.h"
 #include "DataMask.h"
 #include "Script.h"
+#include "Zlib/zlib.h"
 
 class FOClient
 {
@@ -504,7 +505,7 @@ public:
 		static CScriptString* Global_ReplaceTextInt(CScriptString& text, CScriptString& replace, int i);
 		static CScriptString* Global_FormatTags(CScriptString& text, CScriptString* lexems);
 		static int Global_GetSomeValue(int var);
-		static bool Global_LoadDat(CScriptString& dat_name);
+		static bool Global_LoadDataFile(CScriptString& dat_name);
 		static void Global_MoveScreen(WORD hx, WORD hy, DWORD speed);
 		static void Global_LockScreenScroll(CritterCl* cr);
 		static int Global_GetFog(WORD zone_x, WORD zone_y);

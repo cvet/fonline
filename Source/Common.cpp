@@ -945,7 +945,6 @@ GameOptions::GameOptions()
 	RegistrationTimeout=5;
 	AccountPlayTime=0;
 	LoggingVars=false;
-	SkipScriptBinaries=false;
 	ScriptRunSuspendTimeout=30000;
 	ScriptRunMessageTimeout=10000;
 	TalkDistance=3;

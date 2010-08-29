@@ -3207,9 +3207,15 @@ void asCContext::ExecuteNext()
 		}
 		break;
 
+	// Push the qword value of a variable on the stack
+	case asBC_PshV8:
+		l_sp -= 2;
+		*(asQWORD*)l_sp = *(asQWORD*)(l_fp - asBC_SWORDARG0(l_bc));
+		l_bc++;
+		break;
+
 	// Don't let the optimizer optimize for size,
 	// since it requires extra conditions and jumps
-	case 179: l_bc = (asDWORD*)179; break;
 	case 180: l_bc = (asDWORD*)180; break;
 	case 181: l_bc = (asDWORD*)181; break;
 	case 182: l_bc = (asDWORD*)182; break;

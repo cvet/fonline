@@ -52,9 +52,19 @@ public:
 };
 typedef vector<BindFunction> BindFunctionVec;
 
+typedef std::vector<asIScriptModule*> ScriptModuleVec;
+typedef std::vector<asIScriptModule*>::iterator ScriptModuleVecIt;
+
+struct EngineData
+{
+	ScriptModuleVec Modules;
+	Preprocessor::PragmaCallback* PrGlobalVar;
+	Preprocessor::PragmaCallback* PrCrData;
+	Preprocessor::PragmaCallback* PrBindFunc;
+};
+
 asIScriptEngine* Engine=NULL;
 HANDLE EngineLogFile=NULL;
-StrVec ModuleNames;
 asIScriptContext* GlobalCtx[GLOBAL_CONTEXT_STACK_SIZE]={0};
 BindFunctionVec BindedFunctions;
 int ScriptsPath=PT_SCRIPTS;
@@ -72,13 +82,13 @@ unsigned int __stdcall RunTimeoutThread(void*);
 class GvarPragmaCallback : public Preprocessor::PragmaCallback
 {
 private:
-	static set<string> addedVars;
-	static list<int> intArray;
-	static list<__int64> int64Array;
-	static list<CScriptString*> stringArray;
-	static list<float> floatArray;
-	static list<double> doubleArray;
-	static list<char> boolArray;
+	set<string> addedVars;
+	list<int> intArray;
+	list<__int64> int64Array;
+	list<CScriptString*> stringArray;
+	list<float> floatArray;
+	list<double> doubleArray;
+	list<char> boolArray;
 
 public:
 	void pragma(const Preprocessor::PragmaInstance& instance)
@@ -148,38 +158,21 @@ public:
 		}
 		addedVars.insert(name);
 	}
-
-	static void clear()
-	{
-		addedVars.clear();
-		intArray.clear();
-		int64Array.clear();
-		stringArray.clear();
-		floatArray.clear();
-		doubleArray.clear();
-		boolArray.clear();
-	}
 };
-set<string> GvarPragmaCallback::addedVars;
-list<int> GvarPragmaCallback::intArray;
-list<__int64> GvarPragmaCallback::int64Array;
-list<CScriptString*> GvarPragmaCallback::stringArray;
-list<float> GvarPragmaCallback::floatArray;
-list<double> GvarPragmaCallback::doubleArray;
-list<char> GvarPragmaCallback::boolArray;
 
 // #pragma crdata "Stat 0 199"
 class CrDataPragmaCallback : public Preprocessor::PragmaCallback
 {
 public:
-	static PragmaCallbackFunc CallFunc;
+	PragmaCallbackFunc CallFunc;
+
+	CrDataPragmaCallback(PragmaCallbackFunc call_func):CallFunc(call_func){}
 
 	void pragma(const Preprocessor::PragmaInstance& instance)
 	{
 		if(CallFunc && !(*CallFunc)(instance.text.c_str())) WriteLog("Unable to parse crdata pragma<%s>.\n",instance.text.c_str());
 	}
 };
-PragmaCallbackFunc CrDataPragmaCallback::CallFunc=NULL;
 
 // #pragma bindfunc "int MyFunc(int, uint) -> my.dll MyDllFunc"
 // #pragma bindfunc "int MyObject::MyMethod(int, uint) -> my.dll MyDllFunc"
@@ -263,22 +256,13 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 		return false;
 	}
 
-	Engine=asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	// Create default engine
+	Engine=CreateEngine(crdata);
 	if(!Engine)
 	{
-		WriteLog(__FUNCTION__" - asCreateScriptEngine fail.\n");
+		WriteLog(__FUNCTION__" - Can't create AS engine.\n");
 		return false;
 	}
-
-	Engine->SetMessageCallback(asFUNCTION(CallbackMessage),NULL,asCALL_CDECL);
-	RegisterScriptString(Engine);
-	RegisterScriptStringUtils(Engine);
-	RegisterScriptAny(Engine);
-	RegisterScriptDictionary(Engine);
-	RegisterScriptFile(Engine);
-	RegisterScriptMath(Engine);
-	RegisterScriptMath3D(Engine);
-	RegisterScriptArray(Engine);
 
 	BindedFunctions.clear();
 	BindedFunctions.reserve(10000);
@@ -291,14 +275,11 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 		if(!GlobalCtx[i])
 		{
 			WriteLog(__FUNCTION__" - Create global contexts fail.\n");
+			Engine->Release();
+			Engine=NULL;
 			return false;
 		}
 	}
-
-	CrDataPragmaCallback::CallFunc=crdata;
-	Preprocessor::RegisterPragma("globalvar",new GvarPragmaCallback());
-	Preprocessor::RegisterPragma("crdata",new CrDataPragmaCallback());
-	Preprocessor::RegisterPragma("bindfunc",new BindFuncPragmaCallback());
 
 	RunTimeoutSuspend=30000;
 	RunTimeoutMessage=10000;
@@ -310,6 +291,8 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 
 void Finish()
 {
+	if(!Engine) return;
+
 	EndLog();
 	RunTimeoutSuspend=0;
 	RunTimeoutMessage=0;
@@ -323,19 +306,18 @@ void Finish()
 	CloseHandle(RunTimeoutFinishEvent);
 	RunTimeoutFinishEvent=NULL;
 
-	ModuleNames.clear();
 	BindedFunctions.clear();
-	GvarPragmaCallback::clear();
+	Preprocessor::ClearPragmas();
+	Preprocessor::UndefAll();
+	UnloadScripts();
+
 	for(int i=0;i<GLOBAL_CONTEXT_STACK_SIZE;i++)
 	{
 		FinishContext(GlobalCtx[i]);
 		GlobalCtx[i]=NULL;
 	}
-	if(Engine)
-	{
-		Engine->Release();
-		Engine=NULL;
-	}
+
+	FinishEngine(Engine); // Finish default engine
 }
 
 HMODULE LoadDynamicLibrary(const char* dll_name)
@@ -373,35 +355,26 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 
 void UnloadScripts()
 {
-	for(StrVecIt it=ModuleNames.begin(),end=ModuleNames.end();it!=end;++it)
-	{
-		string& mod_name=*it;
-		asIScriptModule* mod=Engine->GetModule(mod_name.c_str(),asGM_ONLY_IF_EXISTS);
-		if(!mod)
-		{
-			WriteLog(__FUNCTION__" - Module<%s> not found.\n",mod_name.c_str());
-			continue;
-		}
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	ScriptModuleVec& modules=edata->Modules;
 
-		int result=mod->ResetGlobalVars();
-		if(result<0) WriteLog(__FUNCTION__" - Reset global vars fail, module<%s>, error<%d>.\n",mod_name.c_str(),result);
-		result=mod->UnbindAllImportedFunctions();
-		if(result<0) WriteLog(__FUNCTION__" - Unbind fail, module<%s>, error<%d>.\n",mod_name.c_str(),result);
+	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
+	{
+		asIScriptModule* module=*it;
+		int result=module->ResetGlobalVars();
+		if(result<0) WriteLog(__FUNCTION__" - Reset global vars fail, module<%s>, error<%d>.\n",module->GetName(),result);
+		result=module->UnbindAllImportedFunctions();
+		if(result<0) WriteLog(__FUNCTION__" - Unbind fail, module<%s>, error<%d>.\n",module->GetName(),result);
 	}
 
-	for(StrVecIt it=ModuleNames.begin(),end=ModuleNames.end();it!=end;++it)
+	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 	{
-		string& mod_name=*it;
-		asIScriptModule* mod=Engine->GetModule(mod_name.c_str(),asGM_ONLY_IF_EXISTS);
-		if(!mod)
-		{
-			WriteLog(__FUNCTION__" - Module<%s> not found.\n",mod_name.c_str());
-			continue;
-		}
-		Engine->DiscardModule(mod_name.c_str());
+		asIScriptModule* module=*it;
+		Engine->DiscardModule(module->GetName());
 	}
+
+	modules.clear();
 	CollectGarbage(true);
-	ModuleNames.clear();
 }
 
 bool ReloadScripts(const char* config, const char* key, bool skip_binaries)
@@ -419,14 +392,15 @@ bool ReloadScripts(const char* config, const char* key, bool skip_binaries)
 	{
 		config_.getline(buf,1024);
 		if(buf[0]!='@') continue;
+
 		istrstream str(&buf[1]);
 		str >> value;
-		if(str.fail() || key!=value) continue;
+		if(str.fail() || value!=key) continue;
 		str >> value;
 		if(str.fail() || value!="module") continue;
 
 		str >> value;
-		if(str.fail() || !LoadScript(value.c_str(),NULL,!skip_binaries))
+		if(str.fail() || !LoadScript(value.c_str(),NULL,skip_binaries))
 		{
 			WriteLog("Load module fail, name<%s>.\n",value.c_str());
 			errors++;
@@ -505,6 +479,52 @@ asIScriptEngine* GetEngine()
 	return Engine;
 }
 
+void SetEngine(asIScriptEngine* engine)
+{
+	Engine=engine;
+}
+
+asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata)
+{
+	asIScriptEngine* engine=asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	if(!engine)
+	{
+		WriteLog(__FUNCTION__" - asCreateScriptEngine fail.\n");
+		return false;
+	}
+
+	engine->SetMessageCallback(asFUNCTION(CallbackMessage),NULL,asCALL_CDECL);
+	RegisterScriptString(engine);
+	RegisterScriptStringUtils(engine);
+	RegisterScriptAny(engine);
+	RegisterScriptDictionary(engine);
+	RegisterScriptFile(engine);
+	RegisterScriptMath(engine);
+	RegisterScriptMath3D(engine);
+	RegisterScriptArray(engine);
+
+	EngineData* edata=new EngineData();
+	edata->PrGlobalVar=new GvarPragmaCallback();
+	edata->PrCrData=new CrDataPragmaCallback(crdata);
+	edata->PrBindFunc=new BindFuncPragmaCallback();
+	engine->SetUserData(edata);
+	return engine;
+}
+
+void FinishEngine(asIScriptEngine*& engine)
+{
+	if(engine)
+	{
+		EngineData* edata=(EngineData*)engine->SetUserData(NULL);
+		delete edata->PrGlobalVar;
+		delete edata->PrCrData;
+		delete edata->PrBindFunc;
+		delete edata;
+		engine->Release();
+		engine=NULL;
+	}
+}
+
 asIScriptContext* CreateContext()
 {
 	asIScriptContext* ctx=Engine->CreateContext();
@@ -541,8 +561,8 @@ void FinishContext(asIScriptContext*& ctx)
 		char* buf=(char*)ctx->GetUserData();
 		if(buf) delete[] buf;
 		ctx->Release();
+		ctx=NULL;
 	}
-	ctx=NULL;
 }
 
 asIScriptContext* GetGlobalContext()
@@ -560,7 +580,7 @@ asIScriptContext* GetGlobalContext()
 	return NULL;
 }
 
-void PrintContextCallstack(asIScriptContext *ctx)
+void PrintContextCallstack(asIScriptContext* ctx)
 {
 	int line,column;
 	int func_id;
@@ -627,29 +647,24 @@ asIScriptModule* GetModule(const char* name)
 
 asIScriptModule* CreateModule(const char* module_name)
 {
-	StrVecIt it=std::find(ModuleNames.begin(),ModuleNames.end(),module_name);
-	if(it!=ModuleNames.end()) ModuleNames.erase(it);
-	asIScriptModule* mod=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
-	if(!mod) return NULL;
-	ModuleNames.push_back(module_name);
-	return mod;
-}
-
-char* Preprocess(const char* fname, bool process_pragmas)
-{
-	Preprocessor::VectorOutStream vos;
-	Preprocessor::FileSource fsrc;
-	fsrc.CurrentDir=FileManager::GetFullPath("",ScriptsPath);
-
-	if(Preprocessor::Preprocess(fname,fsrc,vos,process_pragmas))
+	// Delete old
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	ScriptModuleVec& modules=edata->Modules;
+	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 	{
-		WriteLog(__FUNCTION__" - Unable to preprocess<%s> script.\n",fname);
-		return NULL;
+		asIScriptModule* module=*it;
+		if(!strcmp(module->GetName(),module_name))
+		{
+			modules.erase(it);
+			break;
+		}
 	}
-	char* result=new char[vos.GetSize()+1];
-	memcpy(result,vos.GetData(),vos.GetSize());
-	result[vos.GetSize()]=0;
-	return result;
+
+	// Create new
+	asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
+	if(!module) return NULL;
+	modules.push_back(module);
+	return module;
 }
 
 DWORD GarbageCollectTime=60000;
@@ -709,20 +724,86 @@ void Undefine(const char* def)
 	else Preprocessor::UndefAll();
 }
 
-bool LoadScript(const char* module_name, const char* source, bool check_binary)
+char* Preprocess(const char* fname, bool process_pragmas)
 {
-	char fname[1024];
-	StringCopy(fname,module_name);
-	Str::Replacement(fname,'.','\\');
-	StringAppend(fname,".fos");
+	// Prepare preprocessor
+	Preprocessor::VectorOutStream vos;
+	Preprocessor::FileSource fsrc;
+	fsrc.CurrentDir=FileManager::GetFullPath("",ScriptsPath);
+
+	// Set current pragmas
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	Preprocessor::RegisterPragma("globalvar",edata->PrGlobalVar);
+	Preprocessor::RegisterPragma("crdata",edata->PrCrData);
+	Preprocessor::RegisterPragma("bindfunc",edata->PrBindFunc);
+
+	// Preprocess
+	if(Preprocessor::Preprocess(fname,fsrc,vos,process_pragmas))
+	{
+		WriteLog(__FUNCTION__" - Unable to preprocess<%s> script.\n",fname);
+		return NULL;
+	}
+
+	// Store result
+	char* result=new char[vos.GetSize()+1];
+	memcpy(result,vos.GetData(),vos.GetSize());
+	result[vos.GetSize()]=0;
+	return result;
+}
+
+void CallPragmas(const StrVec& pragmas)
+{
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+
+	// Set current pragmas
+	Preprocessor::RegisterPragma("globalvar",edata->PrGlobalVar);
+	Preprocessor::RegisterPragma("crdata",edata->PrCrData);
+	Preprocessor::RegisterPragma("bindfunc",edata->PrBindFunc);
+
+	// Call pragmas
+	for(size_t i=0,j=pragmas.size()/2;i<j;i++)
+	{
+		Preprocessor::PragmaInstance pi;
+		pi.text=pragmas[i*2+1];
+		pi.current_file="";
+		pi.current_file_line=0;
+		pi.root_file="";
+		pi.global_line=0;
+		Preprocessor::CallPragma(pragmas[i*2],pi);
+	}
+}
+
+bool LoadScript(const char* module_name, const char* source, bool skip_binary, const char* file_pefix /* = NULL */)
+{
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	ScriptModuleVec& modules=edata->Modules;
+
+	// Compute whole version for server, client, mapper
+	int version=(SERVER_VERSION<<20)|(CLIENT_VERSION<<10)|MAPPER_VERSION;
+
+	// Get script names
+	char fname_real[MAX_FOPATH]={0};
+	StringAppend(fname_real,module_name);
+	StringAppend(fname_real,".fos");
+
+	char fname_script[MAX_FOPATH]={0};
+	if(file_pefix) StringCopy(fname_script,file_pefix);
+	StringAppend(fname_script,module_name);
+	Str::Replacement(fname_script,'.','\\');
+	StringAppend(fname_script,".fos");
+
+	// Set current pragmas
+	Preprocessor::RegisterPragma("globalvar",edata->PrGlobalVar);
+	Preprocessor::RegisterPragma("crdata",edata->PrCrData);
+	Preprocessor::RegisterPragma("bindfunc",edata->PrBindFunc);
 
 	// Try load precompiled script
 	FileManager file_bin;
-	if(check_binary)
+	if(!skip_binary)
 	{
 		FileManager file;
-		file.LoadFile(fname,ScriptsPath);
-		file_bin.LoadFile(Str::Format("%sb",fname),ScriptsPath);
+		file.LoadFile(fname_real,ScriptsPath);
+		file_bin.LoadFile(Str::Format("%sb",fname_script),ScriptsPath);
 
 		if(file_bin.IsLoaded() && file_bin.GetFsize()>sizeof(DWORD))
 		{
@@ -761,21 +842,26 @@ bool LoadScript(const char* module_name, const char* source, bool check_binary)
 				if(!outdated) outdated=(file_dep.IsLoaded() && CompareFileTime(&last_write,&last_write_bin)>0);
 			}
 
-			if(no_all_files || (!outdated && bin_version==SERVER_VERSION))
+			if(no_all_files || (!outdated && bin_version==version))
 			{
-				if(bin_version!=SERVER_VERSION) WriteLog(__FUNCTION__" - Script<%s> compiled in older server version.\n",module_name);
+				if(bin_version!=version) WriteLog(__FUNCTION__" - Script<%s> compiled in older server version.\n",module_name);
 				if(outdated) WriteLog(__FUNCTION__" - Script<%s> outdated.\n",module_name);
 
-				StrVecIt it=std::find(ModuleNames.begin(),ModuleNames.end(),module_name);
-				if(it!=ModuleNames.end())
+				// Delete old
+				for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 				{
-					WriteLog(__FUNCTION__" - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
-					Engine->DiscardModule(module_name);
-					ModuleNames.erase(it);
+					asIScriptModule* module=*it;
+					if(!strcmp(module->GetName(),module_name))
+					{
+						WriteLog(__FUNCTION__" - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
+						Engine->DiscardModule(module_name);
+						modules.erase(it);
+						break;
+					}
 				}
 
-				asIScriptModule* mod=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
-				if(mod)
+				asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
+				if(module)
 				{
 					for(size_t i=0,j=pragmas.size()/2;i<j;i++)
 					{
@@ -791,9 +877,11 @@ bool LoadScript(const char* module_name, const char* source, bool check_binary)
 					CBytecodeStream binary;
 					binary.Write(file_bin.GetCurBuf(),file_bin.GetFsize()-file_bin.GetCurPos());
 
-					if(mod->LoadByteCode(&binary)>=0)
+					if(module->LoadByteCode(&binary)>=0)
 					{
-						ModuleNames.push_back(module_name);
+						StrVec& pragmas_=Preprocessor::GetParsedPragmas();
+						pragmas_=pragmas;
+						modules.push_back(module);
 						return true;
 					}
 					else WriteLog(__FUNCTION__" - Can't load binary, script<%s>.\n",module_name);
@@ -804,7 +892,7 @@ bool LoadScript(const char* module_name, const char* source, bool check_binary)
 
 		if(!file.IsLoaded())
 		{
-			WriteLog(__FUNCTION__" - Script<%s> not found.\n",fname);
+			WriteLog(__FUNCTION__" - Script<%s> not found.\n",fname_real);
 			return false;
 		}
 
@@ -817,61 +905,66 @@ bool LoadScript(const char* module_name, const char* source, bool check_binary)
 	if(source) fsrc.Stream=source;
 	fsrc.CurrentDir=FileManager::GetFullPath("",ScriptsPath);
 
-	if(Preprocessor::Preprocess(fname,fsrc,vos,true,vos_err))
+	if(Preprocessor::Preprocess(fname_real,fsrc,vos,true,vos_err))
 	{
 		vos_err.PushNull();
-		WriteLog(__FUNCTION__" - Unable to preprocess file<%s>, error<%s>.\n",fname,vos_err.GetData());
+		WriteLog(__FUNCTION__" - Unable to preprocess file<%s>, error<%s>.\n",fname_real,vos_err.GetData());
 		return false;
 	}
 	vos.Format();
 
-	StrVecIt it=std::find(ModuleNames.begin(),ModuleNames.end(),module_name);
-	if(it!=ModuleNames.end())
+	// Delete old
+	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 	{
-		WriteLog(__FUNCTION__" - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
-		Engine->DiscardModule(module_name);
-		ModuleNames.erase(it);
+		asIScriptModule* module=*it;
+		if(!strcmp(module->GetName(),module_name))
+		{
+			WriteLog(__FUNCTION__" - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
+			Engine->DiscardModule(module_name);
+			modules.erase(it);
+			break;
+		}
 	}
 
-	asIScriptModule* mod=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
-	if(!mod)
+	asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
+	if(!module)
 	{
 		WriteLog(__FUNCTION__" - Create module fail, script<%s>.\n",module_name);
 		return false;
 	}
 
-	if(mod->AddScriptSection(module_name,vos.GetData(),vos.GetSize(),0)<0)
+	if(module->AddScriptSection(module_name,vos.GetData(),vos.GetSize(),0)<0)
 	{
 		WriteLog(__FUNCTION__" - Unable to AddScriptSection module<%s>.\n",module_name);
 		return false;
 	}
 
-	if(mod->Build()<0)
+	if(module->Build()<0)
 	{
 		WriteLog(__FUNCTION__" - Unable to Build module<%s>.\n",module_name);
 		return false;
 	}
 
-	ModuleNames.push_back(module_name);
+	modules.push_back(module);
 
 	// Save binary version of script and preprocessed version
-	if(check_binary && !file_bin.IsLoaded())
+	if(!skip_binary && !file_bin.IsLoaded())
 	{
 		CBytecodeStream binary;
-		if(mod->SaveByteCode(&binary)>=0)
+		if(module->SaveByteCode(&binary)>=0)
 		{
 			std::vector<asBYTE>& data=binary.GetBuf();
 			StrVec& dependencies=Preprocessor::GetFileDependencies();
-			StrVec& pragmas=Preprocessor::GetPragmas();
+			StrVec& pragmas=Preprocessor::GetParsedPragmas();
 
-			file_bin.SetBEDWord(SERVER_VERSION);
+			file_bin.SetBEDWord(version);
 			file_bin.SetBEDWord(dependencies.size());
 			for(size_t i=0,j=dependencies.size();i<j;i++) file_bin.SetData((BYTE*)dependencies[i].c_str(),dependencies[i].length()+1);
 			file_bin.SetBEDWord(pragmas.size());
 			for(size_t i=0,j=pragmas.size();i<j;i++) file_bin.SetData((BYTE*)pragmas[i].c_str(),pragmas[i].length()+1);
 			file_bin.SetData(&data[0],data.size());
 
-			if(!file_bin.SaveOutBufToFile(Str::Format("%sb",fname),ScriptsPath)) WriteLog(__FUNCTION__" - Can't save bytecode, script<%s>.\n",module_name);
+			if(!file_bin.SaveOutBufToFile(Str::Format("%sb",fname_script),ScriptsPath)) WriteLog(__FUNCTION__" - Can't save bytecode, script<%s>.\n",module_name);
 		}
 		else
 		{
@@ -880,38 +973,75 @@ bool LoadScript(const char* module_name, const char* source, bool check_binary)
 
 		FileManager file_prep;
 		file_prep.SetData((void*)vos.GetData(),vos.GetSize());
-		if(!file_prep.SaveOutBufToFile(Str::Format("%sp",fname),ScriptsPath))
+		if(!file_prep.SaveOutBufToFile(Str::Format("%sp",fname_script),ScriptsPath))
 			WriteLog(__FUNCTION__" - Can't write preprocessed file, script<%s>.\n",module_name);
 	}
 	return true;
 }
 
+bool LoadScript(const char* module_name, const BYTE* bytecode, DWORD len)
+{
+	if(!bytecode || !len)
+	{
+		WriteLog(__FUNCTION__" - Bytecode empty, module name<%s>.\n",module_name);
+		return false;
+	}
+
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	ScriptModuleVec& modules=edata->Modules;
+
+	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
+	{
+		asIScriptModule* module=*it;
+		if(!strcmp(module->GetName(),module_name))
+		{
+			WriteLog(__FUNCTION__" - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
+			Engine->DiscardModule(module_name);
+			modules.erase(it);
+			break;
+		}
+	}
+
+	asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
+	if(!module)
+	{
+		WriteLog(__FUNCTION__" - Create module fail, script<%s>.\n",module_name);
+		return false;
+	}
+
+	CBytecodeStream binary;
+	binary.Write(bytecode,len);
+	int result=module->LoadByteCode(&binary);
+	if(result<0)
+	{
+		WriteLog(__FUNCTION__" - Can't load binary, module<%s>, result<%d>.\n",module_name,result);
+		return false;
+	}
+
+	modules.push_back(module);
+	return true;
+}
+
 int BindImportedFunctions()
 {
-	WriteLog("Bind all imported functions...");
-	int errors=0;
-	//char fails[4096];
-	for(StrVecIt it=ModuleNames.begin(),end=ModuleNames.end();it!=end;++it)
-	{
-		const string& mod_name=*it;
-		asIScriptModule* mod=Engine->GetModule(mod_name.c_str(),asGM_ONLY_IF_EXISTS);
-		if(!mod)
-		{
-			WriteLog("fail to find module<%s>...\n",mod_name.c_str());
-			errors++;
-			continue;
-		}
+	WriteLog("Bind all imported functions...\n");
 
-		int result=mod->BindAllImportedFunctions();
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	ScriptModuleVec& modules=edata->Modules;
+	int errors=0;
+	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
+	{
+		asIScriptModule* module=*it;
+		int result=module->BindAllImportedFunctions();
 		if(result<0)
 		{
-			//WriteLog("\n%s",fails);
-			WriteLog("fail to bind, module<%s>, error<%d>...\n",mod_name.c_str(),result);
+			WriteLog("fail to bind, module<%s>, error<%d>...\n",module->GetName(),result);
 			errors++;
 			continue;
 		}
 	}
-	WriteLog("success.\n");
+
+	WriteLog("Bind all imported functions complete.\n");
 	return errors;
 }
 
@@ -921,8 +1051,8 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 	if(!strstr(module_name,".dll"))
 	{
 		// Find module
-		asIScriptModule* mod=Engine->GetModule(module_name,asGM_ONLY_IF_EXISTS);
-		if(!mod)
+		asIScriptModule* module=Engine->GetModule(module_name,asGM_ONLY_IF_EXISTS);
+		if(!module)
 		{
 			WriteLog(__FUNCTION__" - Module<%s> not found.\n",module_name);
 			return 0;
@@ -931,7 +1061,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		// Find function
 		char decl_[256];
 		sprintf(decl_,decl,func_name);
-		int result=mod->GetFunctionIdByDecl(decl_);
+		int result=module->GetFunctionIdByDecl(decl_);
 		if(result<=0)
 		{
 			WriteLog(__FUNCTION__" - Function<%s> in module<%s> not found, result<%d>.\n",decl_,module_name,result);

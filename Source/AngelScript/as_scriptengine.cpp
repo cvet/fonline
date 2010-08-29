@@ -136,6 +136,9 @@ AS_API const char * asGetLibraryOptions()
 #ifdef AS_ANDROID
 		"AS_ANDROID "
 #endif
+#ifdef AS_HAIKU
+		"AS_HAIKU "
+#endif
 
 	// CPU family
 #ifdef AS_PPC
@@ -930,13 +933,14 @@ int asCScriptEngine::GetMethodIdByDecl(const asCObjectType *ot, const char *decl
 	asCBuilder bld(this, mod);
 
 	asCScriptFunction func(this, mod, -1);
-	int r = bld.ParseFunctionDeclaration(0, decl, &func, false);
-	if( r < 0 )
-		return asINVALID_DECLARATION;
 
 	// Set the object type so that the signature can be properly compared
 	// This cast is OK, it will only be used for comparison
 	func.objectType = const_cast<asCObjectType*>(ot);
+
+	int r = bld.ParseFunctionDeclaration(func.objectType, decl, &func, false);
+	if( r < 0 )
+		return asINVALID_DECLARATION;
 
 	// Search script functions for matching interface
 	int id = -1;
@@ -2717,11 +2721,9 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	// Increase ref counter for sub type if it is an object type
 	if( ot->templateSubType.GetObjectType() ) ot->templateSubType.GetObjectType()->AddRef();
 
-	// Verify if the subtype contains a garbage collected object, in which case this template is a potential circular reference
-	// TODO: We may be a bit smarter here. If we can guarantee that the array type cannot be part of the
-	//       potential circular reference then we don't need to set the flag
-
-	if( ot->templateSubType.GetObjectType() && (ot->templateSubType.GetObjectType()->flags & asOBJ_GC) )
+	// Verify if the subtype contains a garbage collected object, in which case this template is a potential circular reference.
+	// A handle can potentially hold derived types, which may be garbage collected so to be safe we have to set the GC flag.
+	if( ot->templateSubType.IsObjectHandle() || (ot->templateSubType.GetObjectType() && (ot->templateSubType.GetObjectType()->flags & asOBJ_GC)) )
 		ot->flags |= asOBJ_GC;
 	else if( ot->name == defaultArrayObjectType->name )
 		ot->flags &= ~asOBJ_GC;

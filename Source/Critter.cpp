@@ -62,13 +62,11 @@ DWORD Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
 WORD Critter::ParamsSendCount=0;
 WordVec Critter::ParamsSend;
 bool Critter::ParamsSendEnabled[MAX_PARAMS]={0};
-int Critter::ParamsSendConditionIndex[MAX_PARAMS]={0};
-int Critter::ParamsSendConditionMask[MAX_PARAMS]={0};
+int Critter::ParamsSendScript[MAX_PARAMS]={0};
 int Critter::ParamsChangeScript[MAX_PARAMS]={0};
 int Critter::ParamsGetScript[MAX_PARAMS]={0};
 bool Critter::SlotDataSendEnabled[0x100]={false};
-int Critter::SlotDataSendConditionIndex[0x100]={0};
-int Critter::SlotDataSendConditionMask[0x100]={0};
+int Critter::SlotDataSendScript[0x100]={0};
 DWORD Critter::ParametersMin[MAX_PARAMETERS_ARRAYS]={0};
 DWORD Critter::ParametersMax[MAX_PARAMETERS_ARRAYS]={MAX_PARAMS-1};
 bool Critter::ParametersOffset[MAX_PARAMETERS_ARRAYS]={false};
@@ -214,6 +212,31 @@ void Critter::SetLexems(const char* lexems)
 	{
 		Data.Lexems[0]=0;
 	}
+}
+
+int Critter::RunParamsSendScript(int bind_id, DWORD param_index, Critter* from_cr, Critter* to_cr)
+{
+	if(Script::PrepareContext(bind_id,CALL_FUNC_STR,from_cr->GetInfo()))
+	{
+		Script::SetArgDword(param_index);
+		Script::SetArgObject(from_cr);
+		Script::SetArgObject(to_cr);
+		if(Script::RunPrepared()) return Script::GetReturnedDword();
+	}
+	return 0;
+}
+
+bool Critter::RunSlotDataSendScript(int bind_id, BYTE slot, Item* item, Critter* from_cr, Critter* to_cr)
+{
+	if(Script::PrepareContext(bind_id,CALL_FUNC_STR,from_cr->GetInfo()))
+	{
+		Script::SetArgByte(slot);
+		Script::SetArgObject(item);
+		Script::SetArgObject(from_cr);
+		Script::SetArgObject(to_cr);
+		if(Script::RunPrepared()) return Script::GetReturnedBool();
+	}
+	return false;
 }
 
 void Critter::ProcessVisibleCritters()
@@ -1932,7 +1955,7 @@ void Critter::Send_GlobalMapFog(WORD zx, WORD zy, BYTE fog){if(IsPlayer()) ((Cli
 void Critter::Send_AllParams(){if(IsPlayer()) ((Client*)this)->Send_AllParams();}
 void Critter::Send_Param(WORD num_param){if(IsPlayer()) ((Client*)this)->Send_Param(num_param);}
 void Critter::Send_ParamOther(WORD num_param, int val){if(IsPlayer()) ((Client*)this)->Send_ParamOther(num_param,val);}
-void Critter::Send_CritterParam(Critter* cr, WORD num_param, int other_val){if(IsPlayer()) ((Client*)this)->Send_CritterParam(cr,num_param,other_val);}
+void Critter::Send_CritterParam(Critter* cr, WORD num_param, int val){if(IsPlayer()) ((Client*)this)->Send_CritterParam(cr,num_param,val);}
 void Critter::Send_Talk(){if(IsPlayer()) ((Client*)this)->Send_Talk();}
 void Critter::Send_GameInfo(Map* map){if(IsPlayer()) ((Client*)this)->Send_GameInfo(map);}
 void Critter::Send_Text(Critter* from_cr, const char* s_str, BYTE how_say){if(IsPlayer()) ((Client*)this)->Send_Text(from_cr,s_str,how_say);}
@@ -2033,8 +2056,8 @@ void Critter::SendAA_ItemData(Item* item)
 	{
 		if(SlotDataSendEnabled[slot])
 		{
-			int condition_index=SlotDataSendConditionIndex[slot];
-			if(condition_index==-1)
+			int script=SlotDataSendScript[slot];
+			if(!script)
 			{
 				// Send all data
 				for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
@@ -2051,7 +2074,7 @@ void Critter::SendAA_ItemData(Item* item)
 					Critter* cr=*it;
 					if(cr->IsPlayer())
 					{
-						if((cr->Data.Params[condition_index]&SlotDataSendConditionMask[slot])!=0)
+						if(RunSlotDataSendScript(script,slot,item,this,cr))
 							cr->Send_ItemData(this,slot,item,true);
 						else
 							cr->Send_ItemData(this,slot,item,false);
@@ -2226,22 +2249,14 @@ void Critter::SendA_ParamCheck(WORD num_param)
 {
 	if(VisCr.empty()) return;
 
-	int condition_index=ParamsSendConditionIndex[num_param];
-	if(condition_index==-1)
+	int script=ParamsSendScript[num_param];
+	if(!script)
 	{
+		int val=Data.Params[num_param];
 		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 		{
 			Critter* cr=*it;
-			if(cr->IsPlayer()) cr->Send_CritterParam(this,num_param,0);
-		}
-	}
-	else if(condition_index==-2)
-	{
-		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
-		{
-			Critter* cr=*it;
-			if(cr->IsPlayer() && (cr->Data.Params[num_param]==Data.Params[num_param]))
-				cr->Send_CritterParam(this,num_param,0);
+			if(cr->IsPlayer()) cr->Send_CritterParam(this,num_param,val);
 		}
 	}
 	else
@@ -2249,8 +2264,7 @@ void Critter::SendA_ParamCheck(WORD num_param)
 		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 		{
 			Critter* cr=*it;
-			if(cr->IsPlayer() && (cr->Data.Params[condition_index]&ParamsSendConditionMask[num_param])!=0)
-				cr->Send_CritterParam(this,num_param,0);
+			if(cr->IsPlayer()) cr->Send_CritterParam(this,num_param,RunParamsSendScript(script,num_param,this,cr));
 		}
 	}
 }
@@ -2350,7 +2364,7 @@ int Critter::GetParam(DWORD index)
 	if(ParamsGetScript[index] && Script::PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,""))
 	{
 		Script::SetArgObject(this);
-		Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
+		Script::SetArgDword(index);
 		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 
@@ -2919,12 +2933,11 @@ void Client::Send_AddCritter(Critter* cr)
 		WORD index=*it;
 		Bout << index;
 
-		int condition_index=ParamsSendConditionIndex[index];
-		if(condition_index==-1 || (condition_index==-2 && cr->Data.Params[index]==Data.Params[index]) ||
-			(Data.Params[condition_index]&ParamsSendConditionMask[index])!=0)
+		int script=ParamsSendScript[index];
+		if(!script)
 			Bout << cr->Data.Params[index];
 		else
-			Bout << (int)0;
+			Bout << RunParamsSendScript(script,index,cr,this); // Todo: calling before BOUT_END, maybe unsafe
 	}
 	BOUT_END(this);
 
@@ -3045,11 +3058,11 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_
 	for(ItemPtrVecIt it=inv.begin(),end=inv.end();it!=end;++it)
 	{
 		Item* item_=*it;
-		if(item_->ACC_CRITTER.Slot!=SLOT_INV && SlotEnabled[item_->ACC_CRITTER.Slot])
+		BYTE slot=item_->ACC_CRITTER.Slot;
+		if(slot!=SLOT_INV && SlotEnabled[slot])
 		{
-			int condition_index=SlotDataSendConditionIndex[item_->ACC_CRITTER.Slot];
-			if(SlotDataSendEnabled[item_->ACC_CRITTER.Slot] &&
-				(condition_index==-1 || (Data.Params[condition_index]&SlotDataSendConditionMask[item_->ACC_CRITTER.Slot])!=0))
+			int script=SlotDataSendScript[slot];
+			if(SlotDataSendEnabled[slot] && (!script || RunSlotDataSendScript(script,slot,item_,from_cr,this)))
 			{
 				SlotEnabledCacheDataExt[slots_data_ext_count]=item_;
 				slots_data_ext_count++;
@@ -3482,7 +3495,7 @@ void Client::Send_ParamOther(WORD num_param, int val)
 	BOUT_END(this);
 }
 
-void Client::Send_CritterParam(Critter* cr, WORD num_param, int other_val)
+void Client::Send_CritterParam(Critter* cr, WORD num_param, int val)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 
@@ -3490,8 +3503,7 @@ void Client::Send_CritterParam(Critter* cr, WORD num_param, int other_val)
 	Bout << NETMSG_CRITTER_PARAM;
 	Bout << cr->GetId();
 	Bout << num_param;
-	if(num_param<MAX_PARAMS) Bout << cr->Data.Params[num_param];
-	else Bout << other_val;
+	Bout << val;
 	BOUT_END(this);
 }
 

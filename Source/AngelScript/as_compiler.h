@@ -203,6 +203,7 @@ protected:
 
 	void Error(const char *msg, asCScriptNode *node);
 	void Warning(const char *msg, asCScriptNode *node);
+	void Information(const char *msg, asCScriptNode *node);
 	void PrintMatchingFuncs(asCArray<int> &funcs, asCScriptNode *node);
 
 

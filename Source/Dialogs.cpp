@@ -161,7 +161,7 @@ void DialogManager::Finish()
 	WriteLog("Dialog manager finish...\n");
 	DialogsPacks.clear();
 	DlgPacksNames.clear();
-	WriteLog("Dialog manager finish Ok.\n");
+	WriteLog("Dialog manager finish complete.\n");
 }
 
 string ParseLangKey(const char* str)

@@ -800,7 +800,11 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 
 	// Set the read-only flag if const is declared after parameter list
 	if( node->lastChild->nodeType == snUndefined && node->lastChild->tokenType == ttConst )
+	{
+		if( objType == 0 )
+			return asINVALID_DECLARATION;
 		func->isReadOnly = true;
+	}
 	else
 		func->isReadOnly = false;
 
@@ -1829,34 +1833,6 @@ void asCBuilder::CompileClasses()
 					//       Only if the object is of a type that can reference this type, either directly or indirectly
 
 					ot->flags |= asOBJ_GC;
-				}
-
-				// TODO: array: The template type should define if the instanciation can form circles or not
-				if( dt.IsArrayType() )
-				{
-					asCDataType sub = dt.GetSubType();
-					while( sub.IsObject() )
-					{
-						if( sub.IsObjectHandle() || (sub.GetObjectType()->flags & asOBJ_GC) )
-						{
-							decl->objType->flags |= asOBJ_GC;
-
-							// Make sure the array object is also marked as potential circle
-							sub = dt;
-							while( sub.IsTemplate() )
-							{
-								sub.GetObjectType()->flags |= asOBJ_GC;
-								sub = sub.GetSubType();
-							}
-
-							break;
-						}
-
-						if( sub.IsTemplate() )
-							sub = sub.GetSubType();
-						else
-							break;
-					}
 				}
 			}
 		}

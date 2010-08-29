@@ -114,7 +114,7 @@ bool CVarMngr::UpdateVarsTemplate()
 	FILE* f=fopen(full_path.c_str(),"rb");
 	if(!f)
 	{
-		WriteLog("File not found <%s>.\n",full_path);
+		WriteLog("file<%s> not found.\n",full_path);
 		return false;
 	}
 
@@ -127,7 +127,7 @@ bool CVarMngr::UpdateVarsTemplate()
 		if(!AddTemplateVar(*it)) return false;
 	}
 
-	WriteLog("Ok.\n");
+	WriteLog("complete.\n");
 	return true;
 }
 
@@ -308,9 +308,9 @@ void CVarMngr::SaveTemplateVars()
 	}
 	else
 	{
-		WriteLog("Vars file not created <%s>.\n",full_path);
+		WriteLog("unable to create file<%s>.\n",full_path);
 	}
-	WriteLog("Ok.\n");
+	WriteLog("complete.\n");
 }
 
 /**************************************************************************************************

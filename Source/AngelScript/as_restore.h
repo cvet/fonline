@@ -57,9 +57,10 @@ public:
 	int Restore();
 
 protected:
-	asCModule *module;
+	asCModule       *module;
 	asIBinaryStream *stream;
 	asCScriptEngine *engine;
+	bool             error;
 
 	void WriteData(const void *data, asUINT size);
 	void ReadData(void *data, asUINT size);

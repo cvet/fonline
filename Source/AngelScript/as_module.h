@@ -180,7 +180,7 @@ public:
 
 	int  GetNextImportedFunctionId();
 
-	void ResolveInterfaceIds();
+	void ResolveInterfaceIds(asCArray<void*> *substitutions = 0);
 	bool AreInterfacesEqual(asCObjectType *a, asCObjectType *b, asCArray<sObjectTypePair> &equals);
 	bool AreTypesEqual(const asCDataType &a, const asCDataType &b, asCArray<sObjectTypePair> &equals);
 

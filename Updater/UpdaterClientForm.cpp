@@ -22,7 +22,7 @@ __fastcall TMainForm::TMainForm(TComponent* Owner)
 	GetPrivateProfileString(CFG_FILE_APP_NAME,"Language","russ",str,5,CFG_FILE);
 	if(!strcmp(str,"engl")) Lang=LANG_ENG;
 
-	MainForm->Caption=GET_LANG("Обновления     v1.5","Updater     v1.5");
+	MainForm->Caption=GET_LANG("Обновления     v1.6","Updater     v1.6");
 	LHost->Caption=GET_LANG("Хост","Host");
 	LPort->Caption=GET_LANG("Порт","Port");
 	BCheck->Caption=GET_LANG("Проверить","Check");
@@ -39,6 +39,8 @@ __fastcall TMainForm::TMainForm(TComponent* Owner)
 	}
 
 	InitCrc32();
+
+	if(strstr(GetCommandLine(),"-start ")) BCheckClick(NULL);
 }
 //---------------------------------------------------------------------------
 #define UPD_INFO(ru,en) do{MLog->Lines->Add(Lang==LANG_RUS?ru:en); MLog->Refresh();}while(0)
@@ -129,9 +131,29 @@ void TMainForm::Process()
 							// Unpack
 							if(answer=="Catchpack" && !Uncompress(stream)) UPD_ERROR("Не удалось распаковать принятый файл.","Unable to unpack received file.");
 
+                            // Check folder availability
+							char buf[1024];
+							char* part=NULL;
+							if(GetFullPathName(fname.c_str(),1024,buf,&part)!=0)
+							{
+								if(part) *part=0;
+								if(!CreateDirectory(buf,NULL))
+								{
+									// Create all folders tree
+									for(int i=0,j=strlen(buf);i<j;i++)
+									{
+										if(buf[i]=='\\')
+										{
+											char c=buf[i+1];
+											buf[i+1]=0;
+											CreateDirectory(buf,NULL);
+											buf[i+1]=c;
+										}
+									}
+								}
+							}
+
 							// Save to file
-							AnsiString fpath=ExtractFilePath(fname);
-							if(fpath!="" && !DirectoryExists(fpath)) CreateDir(fpath);
 							stream->SaveToFile(fname);
 							tick=(GetTickCount()-tick)/1000;
 							AnsiString tickStr=tick;

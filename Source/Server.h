@@ -176,8 +176,13 @@ typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 	bool DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave);
 	void DialogScriptResult(DemandResult& result, Critter* master, Critter* slave);
 
+	// Client script
+	bool RequestReloadClientScripts;
+	bool ReloadClientScripts();
+
 	// Pragma callbacks
 	static bool PragmaCallbackCrData(const char* text);
+	static bool PragmaCallbackCrClData(const char* text);
 
 	// Text listen
 #define TEXT_LISTEN_FIRST_STR_MIN_LEN     (5)
@@ -639,8 +644,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static AIDataPlane* Global_CreatePlane();
 		static DWORD Global_GetBagItems(DWORD bag_id, asIScriptArray* pids, asIScriptArray* min_counts, asIScriptArray* max_counts, asIScriptArray* slots);
 		static void Global_SetSendParameter(int index, bool enabled);
-		static void Global_SetSendParameterEqual(int index, bool enabled, bool only_if_equal);
-		static void Global_SetSendParameterCond(int index, bool enabled, int condition_index, int condition_mask);
+		static void Global_SetSendParameterFunc(int index, bool enabled, CScriptString* allow_func);
 		static bool Global_SwapCritters(Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars);
 		static DWORD Global_GetAllItems(WORD pid, asIScriptArray* items);
 		static DWORD Global_GetAllNpc(WORD pid, asIScriptArray* npc);
@@ -740,8 +744,6 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	bool InitLangPacks(LangPackVec& lang_packs);
 	bool InitLangPacksDialogs(LangPackVec& lang_packs);
 	void FinishLangPacks();
-	bool InitLangScript(LangPackVec& lang_packs);
-	bool ReloadLangScript();
 	bool InitLangCrTypes(LangPackVec& lang_packs);
 
 	// Init/Finish

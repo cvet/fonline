@@ -4,6 +4,6 @@
     <Transaction>2009.09.06 03:47:29.109.groupproj,C:\Documents and Settings\Admin\Мои документы\RAD Studio\Projects\ProjectGroup1.groupproj=E:\Repozes\code\UpdaterClient\Updater.groupproj</Transaction>
   </Transactions>
 	<Default.Personality>
-		<Projects ActiveProject="UpdaterServer.exe"/>
+		<Projects ActiveProject="Updater.exe"/>
 	</Default.Personality>
 </BorlandProject>

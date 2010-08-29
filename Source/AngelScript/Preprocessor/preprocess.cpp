@@ -92,10 +92,8 @@ namespace {
 		~CleanUpPragmas()
 		{
 			PragmaIterator I = registered_pragmas.begin();
-			for (; I != registered_pragmas.end(); ++I)
-			{
-				delete I->second;
-			}
+			for (; I != registered_pragmas.end(); ++I) delete I->second;
+			registered_pragmas.clear();
 		}
 	};
 
@@ -106,11 +104,7 @@ void Preprocessor::RegisterPragma(const std::string& name, Preprocessor::PragmaC
 {
 	if (pc == 0) return;
 	PragmaIterator I = registered_pragmas.find(name);
-	if (I != registered_pragmas.end()) 
-	{
-		delete I->second;
-		//registered_pragmas.erase(I);
-	}
+	if (I != registered_pragmas.end()) registered_pragmas.erase(I);
 	registered_pragmas[name] = pc;
 }
 
@@ -123,6 +117,11 @@ void Preprocessor::CallPragma(const std::string& name, const Preprocessor::Pragm
 		return;
 	}
 	if (I->second) I->second->pragma(parms);
+}
+
+void Preprocessor::ClearPragmas()
+{
+	registered_pragmas.clear();
 }
 
 class Preprocessor::LineNumberTranslator::Table
@@ -722,7 +721,7 @@ std::vector<std::string>& Preprocessor::GetFileDependencies()
 	return FileDependencies;
 }
 
-std::vector<std::string>& Preprocessor::GetPragmas()
+std::vector<std::string>& Preprocessor::GetParsedPragmas()
 {
 	return Pragmas;
 }
