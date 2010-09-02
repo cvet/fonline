@@ -1,8 +1,9 @@
 #pragma once
 
-#include < vcclr.h >
-#include <MrFixit.h>
-#include <FONames.h>
+#include <vcclr.h>
+#include <FileManager.h>
+#include <CraftManager.h>
+#include <Names.h>
 
 namespace MrFixitEditor {
 
@@ -43,13 +44,13 @@ namespace MrFixitEditor {
 			//
 			//TODO: Add the constructor code here
 			//
-			// LogToFile(".\\MrFixit.log");
+			LogToFile(".\\MrFixit.log");
 		}
 
 		void Log(String^ str)
 		{
 			lErr->Text=str;
-			// WriteLog("%s",ToAnsi(str));
+			WriteLog("%s\n",ToAnsi(str));
 		}
 
 		void UpdateCraftsList()
@@ -156,7 +157,6 @@ namespace MrFixitEditor {
 		/// </summary>
 		void InitializeComponent(void)
 		{
-			System::ComponentModel::ComponentResourceManager^  resources = (gcnew System::ComponentModel::ComponentResourceManager(Form1::typeid));
 			this->lbParamShow = (gcnew System::Windows::Forms::ListBox());
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->label2 = (gcnew System::Windows::Forms::Label());
@@ -702,10 +702,9 @@ namespace MrFixitEditor {
 			this->Controls->Add(this->statusStrip1);
 			this->Controls->Add(this->tabControl1);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
-			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->MaximizeBox = false;
 			this->Name = L"Form1";
-			this->Text = L"MrFixit Editor   v1.7";
+			this->Text = L"MrFixit Editor   v1.10";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numParamCount))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numItemCount))->EndInit();
@@ -723,11 +722,20 @@ namespace MrFixitEditor {
 
 private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e)
 {
+	WriteLog("MrFixit initialization...\n");
 	srand(GetTickCount());
 	setlocale(LC_ALL,"Russian");
 	CurCraft=new CraftItem();
-	FONames::GenerateFoNames(".\\data\\");
+
+	IniParser cfg;
+	cfg.LoadFile("MrFixit.cfg",PT_ROOT);
+	char path[MAX_FOPATH];
+	cfg.GetStr("ServerPath",".\\",path);
+	FileManager::SetDataPath(path);
+
+	FONames::GenerateFoNames(PT_SERVER_DATA);
 	UpdateParamsLists();
+	WriteLog("MrFixit initialization complete.\n");
 }
 
 private: System::Void btnLoad_Click(System::Object^  sender, System::EventArgs^  e)

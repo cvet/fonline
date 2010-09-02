@@ -40,6 +40,8 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 	ZeroMemory(&DefItemSlotArmor,sizeof(Item));
 	tickFun=Timer::GameTick()+Random(STAY_WAIT_SHOW_TIME/2,STAY_WAIT_SHOW_TIME);
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
+	ZeroMemory(ParamsIsChanged,sizeof(ParamsIsChanged));
+	ParamLocked=-1;
 }
 
 CritterCl::~CritterCl()

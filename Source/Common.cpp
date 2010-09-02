@@ -425,7 +425,11 @@ bool OptDisableMouseEvents=false;
 bool OptDisableKeyboardEvents=false;
 string OptPlayerOffAppendix="_off";
 int OptCombatMessagesType=0;
-string OptMapperCache="default";
+
+#ifdef FONLINE_MAPPER
+string OptClientPath;
+string OptServerPath;
+#endif
 
 DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light)
 {
@@ -495,101 +499,120 @@ void GetClientOptions()
 #define GETOPTIONS_CMD_LINE_STR(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) sscanf_s(str+strlen(str_id)+1,"%s",opt);}while(0)
 #define GETOPTIONS_CHECK(val_,min_,max_,def_) do{if(val_<min_ || val_>max_) val_=def_;} while(0)
 
-	// Load config file
 	char buf[MAX_FOTEXT];
+
+	// Load config file
 	IniParser cfg;
+
+#ifdef FONLINE_MAPPER
+	IniParser cfg_mapper;
+	cfg_mapper.LoadFile(MAPPER_CONFIG_FILE,PT_ROOT);
+
+	cfg_mapper.GetStr("ClientPath","",buf);
+	GETOPTIONS_CMD_LINE_STR(buf,"-ClientPath");
+	OptClientPath=buf;
+	if(OptClientPath.length() && OptClientPath[OptClientPath.length()-1]!='\\') OptClientPath+="\\";
+	cfg_mapper.GetStr("ServerPath","",buf);
+	GETOPTIONS_CMD_LINE_STR(buf,"-ServerPath");
+	OptServerPath=buf;
+	if(OptServerPath.length() && OptServerPath[OptServerPath.length()-1]!='\\') OptServerPath+="\\";
+
+	FileManager::SetDataPath(OptClientPath.c_str());
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_DATA);
+#else
 	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+#endif
 
 	// Language
-	cfg.GetStr(CFG_FILE_APP_NAME,"Language","russ",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"Language","russ",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"Language");
 	if(!strcmp(buf,"russ")) SetExceptionsRussianText();
 
 	// Int
-	OptFullScr=cfg.GetInt(CFG_FILE_APP_NAME,"FullScreen",false)!=0;
+	OptFullScr=cfg.GetInt(CLIENT_CONFIG_APP,"FullScreen",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptFullScr,"-FullScreen");
-	OptVSync=cfg.GetInt(CFG_FILE_APP_NAME,"VSync",false)!=0;
+	OptVSync=cfg.GetInt(CLIENT_CONFIG_APP,"VSync",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptVSync,"-VSync");
-	OptScreenClear=cfg.GetInt(CFG_FILE_APP_NAME,"BackGroundClear",false);
+	OptScreenClear=cfg.GetInt(CLIENT_CONFIG_APP,"BackGroundClear",false);
 	GETOPTIONS_CMD_LINE_INT(OptScreenClear,"-BackGroundClear");
 	GETOPTIONS_CHECK(OptScreenClear,0,1,0);
-	OptLight=cfg.GetInt(CFG_FILE_APP_NAME,"Light",20);
+	OptLight=cfg.GetInt(CLIENT_CONFIG_APP,"Light",20);
 	GETOPTIONS_CMD_LINE_INT(OptLight,"-Light");
 	GETOPTIONS_CHECK(OptLight,0,50,20);
-	OptScrollDelay=cfg.GetInt(CFG_FILE_APP_NAME,"ScrollDelay",4);
+	OptScrollDelay=cfg.GetInt(CLIENT_CONFIG_APP,"ScrollDelay",4);
 	GETOPTIONS_CMD_LINE_INT(OptScrollDelay,"-ScrollDelay");
 	GETOPTIONS_CHECK(OptScrollDelay,1,32,4);
-	OptScrollStep=cfg.GetInt(CFG_FILE_APP_NAME,"ScrollStep",32);
+	OptScrollStep=cfg.GetInt(CLIENT_CONFIG_APP,"ScrollStep",32);
 	GETOPTIONS_CMD_LINE_INT(OptScrollStep,"-ScrollStep");
 	GETOPTIONS_CHECK(OptScrollStep,4,32,32);
-	OptMouseSpeed=cfg.GetInt(CFG_FILE_APP_NAME,"MouseSpeed",1);
+	OptMouseSpeed=cfg.GetInt(CLIENT_CONFIG_APP,"MouseSpeed",1);
 	GETOPTIONS_CMD_LINE_INT(OptMouseSpeed,"-MouseSpeed");
 	GETOPTIONS_CHECK(OptMouseSpeed,1,5,1);
-	OptTextDelay=cfg.GetInt(CFG_FILE_APP_NAME,"TextDelay",3000);
+	OptTextDelay=cfg.GetInt(CLIENT_CONFIG_APP,"TextDelay",3000);
 	GETOPTIONS_CMD_LINE_INT(OptTextDelay,"-TextDelay");
 	GETOPTIONS_CHECK(OptTextDelay,1000,3000,30000);
-	OptDamageHitDelay=cfg.GetInt(CFG_FILE_APP_NAME,"DamageHitDelay",0);
+	OptDamageHitDelay=cfg.GetInt(CLIENT_CONFIG_APP,"DamageHitDelay",0);
 	GETOPTIONS_CMD_LINE_INT(OptDamageHitDelay,"-OptDamageHitDelay");
 	GETOPTIONS_CHECK(OptDamageHitDelay,0,30000,0);
-	OptScreenWidth=cfg.GetInt(CFG_FILE_APP_NAME,"ScreenWidth",0);
+	OptScreenWidth=cfg.GetInt(CLIENT_CONFIG_APP,"ScreenWidth",0);
 	GETOPTIONS_CMD_LINE_INT(OptScreenWidth,"-ScreenWidth");
 	GETOPTIONS_CHECK(OptScreenWidth,100,30000,800);
-	OptScreenHeight=cfg.GetInt(CFG_FILE_APP_NAME,"ScreenHeight",0);
+	OptScreenHeight=cfg.GetInt(CLIENT_CONFIG_APP,"ScreenHeight",0);
 	GETOPTIONS_CMD_LINE_INT(OptScreenHeight,"-ScreenHeight");
 	GETOPTIONS_CHECK(OptScreenHeight,100,30000,600);
-	OptMultiSampling=cfg.GetInt(CFG_FILE_APP_NAME,"MultiSampling",0);
+	OptMultiSampling=cfg.GetInt(CLIENT_CONFIG_APP,"MultiSampling",0);
 	GETOPTIONS_CMD_LINE_INT(OptMultiSampling,"-MultiSampling");
 	GETOPTIONS_CHECK(OptMultiSampling,-1,16,-1);
-	OptSoftwareSkinning=cfg.GetInt(CFG_FILE_APP_NAME,"SoftwareSkinning",1)!=0;
+	OptSoftwareSkinning=cfg.GetInt(CLIENT_CONFIG_APP,"SoftwareSkinning",1)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptSoftwareSkinning,"-SoftwareSkinning");
-	OptAlwaysOnTop=cfg.GetInt(CFG_FILE_APP_NAME,"AlwaysOnTop",false)!=0;
+	OptAlwaysOnTop=cfg.GetInt(CLIENT_CONFIG_APP,"AlwaysOnTop",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptAlwaysOnTop,"-AlwaysOnTop");
-	OptFlushVal=cfg.GetInt(CFG_FILE_APP_NAME,"FlushValue",50);
+	OptFlushVal=cfg.GetInt(CLIENT_CONFIG_APP,"FlushValue",50);
 	GETOPTIONS_CMD_LINE_INT(OptFlushVal,"-FlushValue");
 	GETOPTIONS_CHECK(OptFlushVal,1,1000,50);
-	OptBaseTex=cfg.GetInt(CFG_FILE_APP_NAME,"BaseTexture",1024);
+	OptBaseTex=cfg.GetInt(CLIENT_CONFIG_APP,"BaseTexture",1024);
 	GETOPTIONS_CMD_LINE_INT(OptBaseTex,"-BaseTexture");
 	GETOPTIONS_CHECK(OptBaseTex,128,8192,1024);
-	OptSleep=cfg.GetInt(CFG_FILE_APP_NAME,"Sleep",0);
+	OptSleep=cfg.GetInt(CLIENT_CONFIG_APP,"Sleep",0);
 	GETOPTIONS_CMD_LINE_INT(OptSleep,"-Sleep");
 	GETOPTIONS_CHECK(OptSleep,-1,100,0);
-	OptMsgboxInvert=cfg.GetInt(CFG_FILE_APP_NAME,"InvertMessBox",false)!=0;
+	OptMsgboxInvert=cfg.GetInt(CLIENT_CONFIG_APP,"InvertMessBox",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptMsgboxInvert,"-InvertMessBox");
-	OptChangeLang=cfg.GetInt(CFG_FILE_APP_NAME,"LangChange",CHANGE_LANG_CTRL_SHIFT);
+	OptChangeLang=cfg.GetInt(CLIENT_CONFIG_APP,"LangChange",CHANGE_LANG_CTRL_SHIFT);
 	GETOPTIONS_CMD_LINE_INT(OptChangeLang,"-LangChange");
 	GETOPTIONS_CHECK(OptChangeLang,0,1,0);
-	OptMessNotify=cfg.GetInt(CFG_FILE_APP_NAME,"WinNotify",true)!=0;
+	OptMessNotify=cfg.GetInt(CLIENT_CONFIG_APP,"WinNotify",true)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptMessNotify,"-WinNotify");
-	OptSoundNotify=cfg.GetInt(CFG_FILE_APP_NAME,"SoundNotify",false)!=0;
+	OptSoundNotify=cfg.GetInt(CLIENT_CONFIG_APP,"SoundNotify",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptSoundNotify,"-SoundNotify");
-	OptPort=cfg.GetInt(CFG_FILE_APP_NAME,"RemotePort",4000);
+	OptPort=cfg.GetInt(CLIENT_CONFIG_APP,"RemotePort",4000);
 	GETOPTIONS_CMD_LINE_INT(OptPort,"-RemotePort");
 	GETOPTIONS_CHECK(OptPort,0,0xFFFF,4000);
-	OptProxyType=cfg.GetInt(CFG_FILE_APP_NAME,"ProxyType",0);
+	OptProxyType=cfg.GetInt(CLIENT_CONFIG_APP,"ProxyType",0);
 	GETOPTIONS_CMD_LINE_INT(OptProxyType,"-ProxyType");
 	GETOPTIONS_CHECK(OptProxyType,0,3,0);
-	OptProxyPort=cfg.GetInt(CFG_FILE_APP_NAME,"ProxyPort",1080);
+	OptProxyPort=cfg.GetInt(CLIENT_CONFIG_APP,"ProxyPort",1080);
 	GETOPTIONS_CMD_LINE_INT(OptProxyPort,"-ProxyPort");
 	GETOPTIONS_CHECK(OptProxyPort,0,0xFFFF,1080);
-	OptGlobalSound=cfg.GetInt(CFG_FILE_APP_NAME,"GlobalSound",true)!=0;
+	OptGlobalSound=cfg.GetInt(CLIENT_CONFIG_APP,"GlobalSound",true)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(OptGlobalSound,"-GlobalSound");
-	OptDefaultCombatMode=cfg.GetInt(CFG_FILE_APP_NAME,"DefaultCombatMode",COMBAT_MODE_ANY);
+	OptDefaultCombatMode=cfg.GetInt(CLIENT_CONFIG_APP,"DefaultCombatMode",COMBAT_MODE_ANY);
 	GETOPTIONS_CMD_LINE_INT(OptDefaultCombatMode,"-DefaultCombatMode");
 	GETOPTIONS_CHECK(OptDefaultCombatMode,COMBAT_MODE_ANY,COMBAT_MODE_TURN_BASED,COMBAT_MODE_ANY);
-	OptIndicatorType=cfg.GetInt(CFG_FILE_APP_NAME,"IndicatorType",COMBAT_MODE_ANY);
+	OptIndicatorType=cfg.GetInt(CLIENT_CONFIG_APP,"IndicatorType",COMBAT_MODE_ANY);
 	GETOPTIONS_CMD_LINE_INT(OptIndicatorType,"-IndicatorType");
 	GETOPTIONS_CHECK(OptIndicatorType,INDICATOR_LINES,INDICATOR_BOTH,INDICATOR_LINES);
-	OptDoubleClickTime=cfg.GetInt(CFG_FILE_APP_NAME,"DoubleClickTime",COMBAT_MODE_ANY);
+	OptDoubleClickTime=cfg.GetInt(CLIENT_CONFIG_APP,"DoubleClickTime",COMBAT_MODE_ANY);
 	GETOPTIONS_CMD_LINE_INT(OptDoubleClickTime,"-DoubleClickTime");
 	GETOPTIONS_CHECK(OptDoubleClickTime,0,1000,0);
 	if(!OptDoubleClickTime) OptDoubleClickTime=GetDoubleClickTime();
-	OptCombatMessagesType=cfg.GetInt(CFG_FILE_APP_NAME,"CombatMessagesType",0);
+	OptCombatMessagesType=cfg.GetInt(CLIENT_CONFIG_APP,"CombatMessagesType",0);
 	GETOPTIONS_CMD_LINE_INT(OptCombatMessagesType,"-CombatMessagesType");
 	GETOPTIONS_CHECK(OptCombatMessagesType,0,1,0);
-	GameOpt.Animation3dFPS=cfg.GetInt(CFG_FILE_APP_NAME,"Animation3dFPS",0);
+	GameOpt.Animation3dFPS=cfg.GetInt(CLIENT_CONFIG_APP,"Animation3dFPS",0);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Animation3dFPS,"-Animation3dFPS");
 	GETOPTIONS_CHECK(GameOpt.Animation3dFPS,0,1000,0);
-	GameOpt.Animation3dSmoothTime=cfg.GetInt(CFG_FILE_APP_NAME,"Animation3dSmoothTime",0);
+	GameOpt.Animation3dSmoothTime=cfg.GetInt(CLIENT_CONFIG_APP,"Animation3dSmoothTime",0);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Animation3dSmoothTime,"-Animation3dSmoothTime");
 	GETOPTIONS_CHECK(GameOpt.Animation3dSmoothTime,0,10000,250);
 
@@ -599,43 +622,39 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL_ON(OptDebugSprites,"-DebugSprites");
 
 	// Str
-	cfg.GetStr(CFG_FILE_APP_NAME,"MasterDatPath","master.dat",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"MasterDatPath","master.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-MasterDatPath");
 	OptMasterPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"CritterDatPath","critter.dat",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"CritterDatPath","critter.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-CritterDatPath");
 	OptCritterPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"PatchDatPath","fopatch.dat",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"PatchDatPath","fopatch.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-PatchDatPath");
 	OptFoPatchPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"FonlineDataPath",".\\data",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"FonlineDataPath",".\\data",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPath");
 	OptFoDataPath=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"RemoteHost","localhost",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"RemoteHost","localhost",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-RemoteHost");
 	OptHost=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyHost","localhost",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"ProxyHost","localhost",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyHost");
 	OptProxyHost=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyUser","",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"ProxyUser","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyUser");
 	OptProxyUser=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"ProxyPass","",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"ProxyPass","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ProxyPass");
 	OptProxyPass=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"UserName","",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"UserName","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-UserName");
 	OptName=buf;
-	cfg.GetStr(CFG_FILE_APP_NAME,"UserPass","",buf);
+	cfg.GetStr(CLIENT_CONFIG_APP,"UserPass","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-UserPass");
 	OptPass=buf;
 
-	cfg.GetStr(CFG_FILE_APP_NAME,"MapperCache","default",buf);
-	GETOPTIONS_CMD_LINE_STR(buf,"-MapperCache");
-	OptMapperCache=buf;
-
 	// Logging
-	bool logging=cfg.GetInt(CFG_FILE_APP_NAME,"Logging",1)!=0;
+	bool logging=cfg.GetInt(CLIENT_CONFIG_APP,"Logging",1)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-Logging");
 	if(!logging)
 	{
@@ -643,7 +662,7 @@ void GetClientOptions()
 		LogFinish(-1);
 	}
 
-	logging=cfg.GetInt(CFG_FILE_APP_NAME,"LoggingTime",false)!=0;
+	logging=cfg.GetInt(CLIENT_CONFIG_APP,"LoggingTime",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-LoggingTime");
 	LogWithTime(logging);
 

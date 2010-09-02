@@ -85,9 +85,9 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		char server_path[MAX_FOPATH]={0};
 		char server_cmdline[MAX_FOPATH]={0};
 		cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
-		cfg.GetStr(CFG_FILE_APP_NAME,"ServerAppName","FOserv.exe",server_exe);
-		cfg.GetStr(CFG_FILE_APP_NAME,"ServerPath","..\\server\\",server_path);
-		cfg.GetStr(CFG_FILE_APP_NAME,"ServerCommandLine","",server_cmdline);
+		cfg.GetStr(CLIENT_CONFIG_APP,"ServerAppName","FOserv.exe",server_exe);
+		cfg.GetStr(CLIENT_CONFIG_APP,"ServerPath","..\\server\\",server_path);
+		cfg.GetStr(CLIENT_CONFIG_APP,"ServerCommandLine","",server_cmdline);
 
 		// Process attributes
 		PROCESS_INFORMATION server;
@@ -95,7 +95,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		STARTUPINFOA sui;
 		ZeroMemory(&sui,sizeof(sui));
 		sui.cb=sizeof(sui);
-		HANDLE client_process=OpenProcess(PROCESS_ALL_ACCESS,TRUE,GetCurrentProcessId());
+		HANDLE client_process=OpenProcess(SYNCHRONIZE,TRUE,GetCurrentProcessId());
 		char command_line[2048];
 
 		// Start server

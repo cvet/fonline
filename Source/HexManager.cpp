@@ -184,7 +184,7 @@ bool HexManager::Init(SpriteManager* sm)
 		return false;
 	}
 
-	WriteLog("Hex field initialization success.\n");
+	WriteLog("Hex field initialization complete.\n");
 	return true;
 }
 

@@ -195,12 +195,142 @@
 	</References>
 	<Files>
 		<Filter
-			Name="Source Files"
-			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
+			Name="DatFile"
+			>
+			<File
+				RelativePath="..\..\Source\DatFile\cfile.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Source\DatFile\cfile.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\DatFile\unlzss.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Source\DatFile\unlzss.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="MrFixit"
+			Filter="h;hpp;hxx;hm;inl;inc;xsd"
+			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
 				RelativePath=".\AssemblyInfo.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Common.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Common.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\CraftManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\CraftManager.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Crypt.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Crypt.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\DataFile.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\DataFile.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Defines.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\FileManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\FileManager.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Form1.h"
+				FileType="3"
+				>
+				<File
+					RelativePath=".\Form1.resX"
+					SubType="Designer"
+					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						>
+						<Tool
+							Name="VCManagedResourceCompilerTool"
+							ResourceFileName="$(IntDir)\$(RootNamespace).Form1.resources"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|Win32"
+						>
+						<Tool
+							Name="VCManagedResourceCompilerTool"
+							ResourceFileName="$(IntDir)\$(RootNamespace).Form1.resources"
+						/>
+					</FileConfiguration>
+				</File>
+			</File>
+			<File
+				RelativePath="..\..\Source\Log.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Log.h"
 				>
 			</File>
 			<File
@@ -208,7 +338,15 @@
 				>
 			</File>
 			<File
-				RelativePath=".\stdafx.cpp"
+				RelativePath="..\..\Source\Names.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Names.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\StdAfx.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -227,24 +365,24 @@
 					/>
 				</FileConfiguration>
 			</File>
-		</Filter>
-		<Filter
-			Name="Header Files"
-			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
-			>
 			<File
-				RelativePath=".\Form1.h"
-				FileType="3"
+				RelativePath="..\..\Source\StdAfx.h"
 				>
-				<File
-					RelativePath=".\Form1.resX"
-					SubType="Designer"
-					>
-				</File>
 			</File>
 			<File
-				RelativePath=".\resource.h"
+				RelativePath="..\..\Source\Text.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Text.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Timer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Timer.h"
 				>
 			</File>
 		</Filter>
@@ -254,131 +392,23 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\app.ico"
-				>
-			</File>
-			<File
 				RelativePath=".\app.rc"
 				>
 			</File>
-		</Filter>
-		<Filter
-			Name="Ext"
-			>
 			<File
-				RelativePath="..\..\include\Crypt.cpp"
+				RelativePath=".\MrFixit.ico"
 				>
 			</File>
 			<File
-				RelativePath="..\..\include\Crypt.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\FOdefines.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\FONames.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\include\FONames.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\FOText.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\FOText.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\Log.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\Log.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\MrFixit.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						ObjectFile="$(IntDir)\$(InputName)1.obj"
-						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						ObjectFile="$(IntDir)\$(InputName)1.obj"
-						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\include\MrFixit.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\stdafx.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\Timer.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\include\Timer.h"
+				RelativePath=".\resource.h"
 				>
 			</File>
 		</Filter>
 		<Filter
-			Name="zlib"
+			Name="Zlib"
 			>
 			<File
-				RelativePath="..\..\include\zlib\adler32.c"
+				RelativePath="..\..\Source\Zlib\adler32.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -386,6 +416,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -399,7 +430,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\compress.c"
+				RelativePath="..\..\Source\Zlib\compress.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -407,6 +438,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -420,7 +452,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\crc32.c"
+				RelativePath="..\..\Source\Zlib\crc32.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -428,6 +460,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -441,11 +474,11 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\crc32.h"
+				RelativePath="..\..\Source\Zlib\crc32.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\deflate.c"
+				RelativePath="..\..\Source\Zlib\deflate.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -453,6 +486,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -466,11 +500,11 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\deflate.h"
+				RelativePath="..\..\Source\Zlib\deflate.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\example.c"
+				RelativePath="..\..\Source\Zlib\gzclose.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -478,6 +512,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -491,7 +526,11 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\gzio.c"
+				RelativePath="..\..\Source\Zlib\gzguts.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\gzlib.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -499,6 +538,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -512,7 +552,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\infback.c"
+				RelativePath="..\..\Source\Zlib\gzread.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -520,6 +560,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -533,7 +574,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\inffast.c"
+				RelativePath="..\..\Source\Zlib\gzwrite.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -541,6 +582,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -554,15 +596,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\inffast.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\zlib\inffixed.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\zlib\inflate.c"
+				RelativePath="..\..\Source\Zlib\infback.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -570,6 +604,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -583,11 +618,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\inflate.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\zlib\inftrees.c"
+				RelativePath="..\..\Source\Zlib\inffast.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -595,6 +626,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -608,11 +640,15 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\inftrees.h"
+				RelativePath="..\..\Source\Zlib\inffast.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\trees.c"
+				RelativePath="..\..\Source\Zlib\inffixed.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\inflate.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -620,6 +656,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -633,11 +670,11 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\trees.h"
+				RelativePath="..\..\Source\Zlib\inflate.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\uncompr.c"
+				RelativePath="..\..\Source\Zlib\inftrees.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -645,6 +682,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -658,19 +696,11 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\zconf.h"
+				RelativePath="..\..\Source\Zlib\inftrees.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\zconf.in.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\zlib\zlib.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\include\zlib\zutil.c"
+				RelativePath="..\..\Source\Zlib\ioapi.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -678,6 +708,7 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -691,7 +722,115 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\include\zlib\zutil.h"
+				RelativePath="..\..\Source\Zlib\ioapi.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\trees.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\trees.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\uncompr.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\unzip.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\unzip.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\zconf.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\zlib.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\zutil.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Source\Zlib\zutil.h"
 				>
 			</File>
 		</Filter>

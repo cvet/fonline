@@ -78,7 +78,7 @@ void ItemManager::Clear()
 #endif
 }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR)
+#if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR) || defined(FONLINE_MAPPER)
 #define PROTO_APP "Proto"
 int ItemManager::GetProtoValue(const char* key)
 {
@@ -610,7 +610,9 @@ bool ItemManager::LoadProtos()
 	ClearProtos();
 	for(int i=0;i<count;i++)
 	{
-		if(LoadProtos(item_protos,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS)))
+		char fname[MAX_FOPATH];
+		StringCopy(fname,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS));
+		if(LoadProtos(item_protos,fname))
 		{
 			ParseProtos(item_protos);
 			loaded+=item_protos.size();
@@ -626,7 +628,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 	protos.clear();
 	if(!txtFile.LoadFile(fname,PT_SERVER_ROOT))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",fname);
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",FileManager::GetFullPath(fname,PT_SERVER_ROOT));
 		return false;
 	}
 

@@ -23,7 +23,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	setlocale(LC_ALL,"Russian");
 
 	// Exceptions catcher
-	CatchExceptions("FOserv",SERVER_VERSION);
+	CatchExceptions("FOnlineServer",SERVER_VERSION);
 
 	Timer::Init(); // Timer
 	LoadLibrary("RICHED32.dll"); // Riched20.dll
@@ -41,7 +41,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 			const char* ptr=strstr(lpCmdLine,"-logpath ")+strlen("-logpath ");
 			StringCopy(log_path,ptr);
 		}
-		StringAppend(log_path,"FOserv.log");
+		StringAppend(log_path,"FOnlineServer.log");
 		LogToFile(log_path);
 
 		WriteLog("Singleplayer mode.\n");

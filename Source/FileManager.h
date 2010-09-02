@@ -43,6 +43,9 @@
 #define PT_SERVER_CLIENTS      (39)
 #define PT_SERVER_BANS         (40)
 
+// Other
+#define PT_MAPPER_DATA         (45)
+
 extern char PathLst[][50];
 #define PATH_LIST_COUNT     (50)
 
@@ -129,7 +132,6 @@ private:
 
 	FILETIME timeCreate,timeAccess,timeWrite;
 
-	void LoadSimple(HANDLE h_file);
 	static void RecursiveDirLook(const char* init_dir, const char* ext, StrVec& result);
 };
 

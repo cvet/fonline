@@ -49,6 +49,13 @@ char PathLst[][50]=
 	"save\\",
 	"save\\clients\\",
 	"save\\bans\\",
+	"",
+	"",
+	"",
+	"",
+
+	// Other
+	"data\\", // Mapper data
 };
 
 DataFileVec FileManager::dataFiles;
@@ -109,26 +116,15 @@ BYTE* FileManager::ReleaseBuffer()
 	return tmp;
 }
 
-void FileManager::LoadSimple(HANDLE h_file)
-{
-	GetFileTime(h_file,&timeCreate,&timeAccess,&timeWrite);
-  	fileSize=GetFileSize(h_file,NULL);
-	fileBuf=new(nothrow) BYTE[fileSize+1];
-	if(!fileBuf) return;
-	DWORD br;
-	if(ReadFile(h_file,fileBuf,fileSize,&br,NULL)) CloseHandle(h_file);	
-	fileBuf[fileSize]=0;
-	curPos=0;
-}
-
 bool FileManager::LoadFile(const char* fname, int path_type)
 {
 	UnloadFile();
 
 	if(!fname || !fname[0]) return false;
 
-	char folder_path[1024]="";
-	char dat_path[1024]="";
+	char folder_path[MAX_FOPATH]={0};
+	char dat_path[MAX_FOPATH]={0};
+	bool only_folder=false;
 
 	if(path_type>=0 && path_type<PATH_LIST_COUNT)
 	{
@@ -137,6 +133,21 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 		FormatPath(dat_path);
 		StringCopy(folder_path,GetDataPath(path_type));
 		StringAppend(folder_path,dat_path);
+
+		// Check for full path
+		if(folder_path[3]==':' && folder_path[0]=='.' && folder_path[1]=='\\')
+		{
+			char* str=folder_path;
+			char* str_=folder_path+2;
+			for(;*str_;str++,str_++) *str=*str_;
+			*str=0;
+			only_folder=true;
+		}
+	}
+	else if(path_type==-1)
+	{
+		StringCopy(folder_path,fname);
+		only_folder=true;
 	}
 	else
 	{
@@ -152,10 +163,23 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 		HANDLE h_file=CreateFile(folder_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
 		if(h_file!=INVALID_HANDLE_VALUE)
 		{
-			LoadSimple(h_file);
+			GetFileTime(h_file,&timeCreate,&timeAccess,&timeWrite);
+			DWORD size=GetFileSize(h_file,NULL);
+			BYTE* buf=new(nothrow) BYTE[size+1];
+			if(!buf) return false;
+			DWORD br;
+			BOOL result=ReadFile(h_file,buf,size,&br,NULL);
+			CloseHandle(h_file);
+			if(!result || size!=br) return false;
+			fileSize=size;
+			fileBuf=buf;
+			fileBuf[fileSize]=0;
+			curPos=0;
 			return true;
 		}
 	}
+
+	if(only_folder) return false;
 
 	_strlwr(dat_path);
 	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
@@ -478,10 +502,11 @@ void FileManager::SetLEDWord(DWORD data)
 
 const char* FileManager::GetFullPath(const char* fname, int path_type)
 {
-	static char buf[2048];
+	static char buf[MAX_FOPATH];
 	StringCopy(buf,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(buf,PathLst[path_type]);
 	if(fname) StringAppend(buf,fname);
+	FormatPath(buf);
 	return buf;
 }
 
@@ -491,6 +516,7 @@ void FileManager::GetFullPath(const char* fname, int path_type, char* get_path)
 	StringCopy(get_path,MAX_FOPATH,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(get_path,MAX_FOPATH,PathLst[path_type]);
 	if(fname) StringAppend(get_path,MAX_FOPATH,fname);
+	FormatPath(get_path);
 }
 
 const char* FileManager::GetPath(int path_type)
@@ -502,7 +528,7 @@ const char* FileManager::GetPath(int path_type)
 const char* FileManager::GetDataPath(int path_type)
 {
 	static char root_path[]=".\\";
-	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return root_path;
+	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT || path_type==PT_MAPPER_DATA) return root_path;
 	return dataPath;
 }
 

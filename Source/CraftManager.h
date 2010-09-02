@@ -69,7 +69,7 @@ public:
 	int SetStr(DWORD num, const char* str);
 	const char* GetStr(bool metadata);
 
-#ifdef FONLINE_SERVER
+#if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 private:
 	int SetStrParam(const char*& pstr_in, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec);
 	int SetStrItem(const char*& pstr_in, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec);

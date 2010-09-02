@@ -47,30 +47,18 @@ bool FOMapper::Init(HWND wnd)
 	OptScreenClear=true;
 
 	// File manager
-	FileManager::SetDataPath(OptFoDataPath.c_str());
-	if(!FileManager::LoadDataFile(OptMasterPath.c_str()))
+	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+	if(!FileManager::LoadDataFile(OptMasterPath.find(':')==string::npos?(OptClientPath+OptMasterPath).c_str():OptMasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDataFile(OptCritterPath.c_str()))
+	if(!FileManager::LoadDataFile(OptCritterPath.find(':')==string::npos?(OptClientPath+OptCritterPath).c_str():OptCritterPath.c_str()))
 	{
 		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDataFile(OptFoPatchPath.c_str()))
-	{
-		MessageBox(Wnd,"FONLINE.DAT not found.","Fallout Online Mapper",MB_OK);
-		return false;
-	}
-
-	// Cache
-	const char* cache_str=Str::Format("%s%s.cache",FileMngr.GetDataPath(PT_DATA),OptMapperCache.c_str());
-	if(!Crypt.SetCacheTable(cache_str))
-	{
-		WriteLog(__FUNCTION__" - Can't set cache<%s>.\n",cache_str);
-		return false;
-	}
+	FileManager::LoadDataFile(OptFoPatchPath.find(':')==string::npos?(OptClientPath+OptFoPatchPath).c_str():OptFoPatchPath.c_str());
 
 	// Sprite manager
 	SpriteMngrParams params;
@@ -104,7 +92,9 @@ bool FOMapper::Init(HWND wnd)
 	CritterCl::SprMngr=&SprMngr;
 
 	// Names
-	FONames::GenerateFoNames(PT_DATA);
+	FileManager::SetDataPath(OptServerPath.c_str());
+	FONames::GenerateFoNames(PT_SERVER_DATA);
+	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
 
 	// Input
 	if(!InitDI()) return false;
@@ -121,15 +111,18 @@ bool FOMapper::Init(HWND wnd)
 		return false;
 	}
 
+	// Server path
+	FileManager::SetDataPath(OptServerPath.c_str());
+
 	// Language Packs
-	IniParser cfg;
-	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	IniParser cfg_server;
+	cfg_server.LoadFile(SERVER_CONFIG_FILE,PT_ROOT);
 	char lang_name[MAX_FOTEXT];
-	cfg.GetStr(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name);
+	cfg_server.GetStr("Language_0",DEFAULT_LANGUAGE,lang_name);
 	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
 	Str::Lwr(lang_name);
 
-	if(!CurLang.Init(lang_name,PT_TEXTS)) return false;
+	if(!CurLang.Init(lang_name,PT_SERVER_TEXTS)) return false;
 
 	MsgText=&CurLang.Msg[TEXTMSG_TEXT];
 	MsgDlg=&CurLang.Msg[TEXTMSG_DLG];
@@ -142,28 +135,11 @@ bool FOMapper::Init(HWND wnd)
 	MsgCraft=&CurLang.Msg[TEXTMSG_CRAFT];
 
 	// Critter types
-	CritType::InitFromMsg(&CurLang.Msg[TEXTMSG_INTERNAL]);
+	CritType::InitFromFile(NULL);
 
 	// Item manager
 	if(!ItemMngr.Init()) return false;
-
-	// Prototypes
-	ItemMngr.ClearProtos();
-	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("__item_protos",protos_len);
-	if(protos)
-	{
-		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
-		delete[] protos;
-		if(protos_uc)
-		{
-			ProtoItemVec proto_items;
-			proto_items.resize(protos_len/sizeof(ProtoItem));
-			memcpy((void*)&proto_items[0],protos_uc,protos_len);
-			ItemMngr.ParseProtos(proto_items);
-			delete[] protos_uc;
-		}
-	}
+	if(!ItemMngr.LoadProtos()) return false;
 
 	// Get fast protos
 	AddFastProto(SP_GRID_EXITGRID);
@@ -202,6 +178,9 @@ bool FOMapper::Init(HWND wnd)
 		}
 	}
 
+	// Restore to client path
+	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+
 	// Hex manager
 	if(!HexMngr.Init(&SprMngr)) return false;
 	if(!HexMngr.ReloadSprites(NULL)) return false;
@@ -224,6 +203,7 @@ bool FOMapper::Init(HWND wnd)
 	ShowCursor(FALSE);
 	CurX=320;
 	CurY=240;
+
 	WriteLog("Mapper initialization complete.\n");
 
 	if(strstr(GetCommandLine(),"-Map"))
@@ -248,6 +228,7 @@ bool FOMapper::Init(HWND wnd)
 	RefreshTiles();
 	IsMapperStarted=true;
 
+	WriteLog("Mapper initialization complete.\n");
 	return true;
 }
 
@@ -274,22 +255,16 @@ int FOMapper::InitIface()
 {
 	WriteLog("Init interface.\n");
 	
-/************************************************************************/
-/* Data                                                                 */
-/************************************************************************/
-	
-	WriteLog("Load data.\n");
-
 	IniParser& ini=IfaceIni;
 	char int_file[256];
 
 	IniParser cfg;
-	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
-	cfg.GetStr(CFG_FILE_APP_NAME,"MapperInterface",CFG_DEF_INT_FILE,int_file);
+	cfg.LoadFile(MAPPER_CONFIG_FILE,PT_ROOT);
+	cfg.GetStr("MapperInterface",CFG_DEF_INT_FILE,int_file);
 
-	if(!ini.LoadFile(int_file,PT_ART_INTRFACE))
+	if(!ini.LoadFile(int_file,PT_MAPPER_DATA))
 	{
-		WriteLog("File<%s> not found.\n",FileManager::GetFullPath(int_file,PT_ART_INTRFACE));
+		WriteLog("File<%s> not found.\n",FileManager::GetFullPath(int_file,PT_MAPPER_DATA));
 		return __LINE__;
 	}
 
@@ -413,10 +388,6 @@ int FOMapper::InitIface()
 	// Messbox
 	MessBoxScroll=0;
 
-/************************************************************************/
-/* Sprites                                                              */
-/************************************************************************/
-
 	ItemHex::DefaultAnim=ResMngr.GetAnim(Str::GetHash("art\\items\\reserved.frm"),0);
 	if(!ItemHex::DefaultAnim)
 	{
@@ -439,29 +410,25 @@ int FOMapper::InitIface()
 
 	// Iface
 	ini.GetStr("IntMainPic","error",f_name);
-	if(!(IntMainPic=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(IntMainPic=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 	ini.GetStr("IntTabPic","error",f_name);
-	if(!(IntPTab=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(IntPTab=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 	ini.GetStr("IntSelectPic","error",f_name);
-	if(!(IntPSelect=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(IntPSelect=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 	ini.GetStr("IntShowPic","error",f_name);
-	if(!(IntPShow=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(IntPShow=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 
 	// Object
 	ini.GetStr("ObjMainPic","error",f_name);
-	if(!(ObjWMainPic=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(ObjWMainPic=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 	ini.GetStr("ObjToAllPicDn","error",f_name);
-	if(!(ObjPBToAllDn=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(ObjPBToAllDn=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 
 	// Console
 	ini.GetStr("ConsolePic","error",f_name);
-	if(!(ConsolePic=SprMngr.LoadSprite(f_name,PT_ART_INTRFACE))) return __LINE__;
+	if(!(ConsolePic=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
 
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-	WriteLog("Init iface success.\n");
+	WriteLog("Init interface complete.\n");
 	return 0;
 }
 
@@ -3647,11 +3614,14 @@ void FOMapper::ParseCommand(const char* cmd)
 		}
 
 		ProtoMap* pmap=new ProtoMap();
-		if(!pmap->Init(0xFFFF,map_name,PT_MAPS))
+		FileManager::SetDataPath(OptServerPath.c_str());
+		if(!pmap->Init(0xFFFF,map_name,PT_SERVER_MAPS))
 		{
 			AddMess("File not found or truncated.");
+			FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
 			return;
 		}
+		FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
 
 		SelectClear();
 		if(!HexMngr.SetProtoMap(*pmap))
@@ -3687,8 +3657,10 @@ void FOMapper::ParseCommand(const char* cmd)
 
 		SelectClear();
 		HexMngr.RefreshMap();
-		if(CurProtoMap->Save(map_name,PT_MAPS,strstr(cmd,"/text")!=NULL,strstr(cmd,"/nopack")==NULL)) AddMess("Save map success.");
+		FileManager::SetDataPath(OptServerPath.c_str());
+		if(CurProtoMap->Save(map_name,PT_SERVER_MAPS,strstr(cmd,"/text")!=NULL,strstr(cmd,"/nopack")==NULL)) AddMess("Save map success.");
 		else AddMess("Save map fail, see log.");
+		FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
 	}
 	// Run script
 	else if(*cmd=='#')
@@ -4087,11 +4059,11 @@ void FOMapper::InitScriptSystem()
 #include <ScriptBind.h>
 
 	// Load scripts
-	Script::SetScriptsPath(PT_SCRIPTS);
+	Script::SetScriptsPath(PT_MAPPER_DATA);
 
 	// Get config file
 	FileManager scripts_cfg;
-	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SCRIPTS);
+	scripts_cfg.LoadFile(SCRIPTS_LST,PT_MAPPER_DATA);
 	if(!scripts_cfg.IsLoaded())
 	{
 		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);
@@ -4556,7 +4528,13 @@ void FOMapper::SScriptFunc::Global_SetFastPrototypes(asIScriptArray* pids)
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap(CScriptString& file_name, int path_type)
 {
 	ProtoMap* pmap=new ProtoMap();
-	if(!pmap->Init(0xFFFF,file_name.c_str(),path_type)) return NULL;
+	FileManager::SetDataPath(OptServerPath.c_str());
+	if(!pmap->Init(0xFFFF,file_name.c_str(),path_type))
+	{
+		FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+		return NULL;
+	}
+	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
 	Self->LoadedProtoMaps.push_back(pmap);
 	return pmap;
 }
@@ -4579,7 +4557,10 @@ void FOMapper::SScriptFunc::Global_UnloadMap(ProtoMap* pmap)
 bool FOMapper::SScriptFunc::Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type, bool text, bool pack)
 {
 	if(!pmap) SCRIPT_ERROR_R0("Proto map arg nullptr.");
-	return pmap->Save(file_name.c_str(),path_type,text,pack);
+	FileManager::SetDataPath(OptServerPath.c_str());
+	bool result=pmap->Save(file_name.c_str(),path_type,text,pack);
+	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+	return result;
 }
 
 bool FOMapper::SScriptFunc::Global_ShowMap(ProtoMap* pmap)
@@ -4702,7 +4683,7 @@ ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem(WORD proto_id)
 
 bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 {
-	if(FileManager::LoadDataFile(dat_name.c_str()))
+	if(FileManager::LoadDataFile(dat_name.c_std_str().find(':')==string::npos?(OptClientPath+dat_name.c_std_str()).c_str():dat_name.c_str()))
 	{
 		// Reload resource manager
 		if(Self->IsMapperStarted)

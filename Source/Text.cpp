@@ -911,7 +911,7 @@ int FOMsg::LoadMsgFile(const char* fname, int path_type)
 {
 	Clear();
 
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#ifdef FONLINE_CLIENT
 	DWORD buf_len;
 	char* buf=(char*)Crypt.GetCache(fname,buf_len);
 	if(!buf) return -1;
@@ -968,7 +968,7 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 {
 	Clear();
 
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#ifdef FONLINE_CLIENT
 	char* buf=(char*)Crypt.Uncompress((BYTE*)data,data_len,10);
 	if(!buf) return -3;
 #else
@@ -1009,8 +1009,7 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 		if(!*pbuf) break;
 		*pbuf='\0';
 
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
-#else
+#ifndef FONLINE_CLIENT
 		if(num_info<last_num)
 		{
 			WriteLog(__FUNCTION__" - Error string id, cur<%u>, last<%u>\n",num_info,last_num);
@@ -1023,7 +1022,7 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 		pbuf++;
 	}
 
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#ifdef FONLINE_CLIENT
 	delete[] buf;
 #endif
 	CalculateHash();
@@ -1032,8 +1031,7 @@ int FOMsg::LoadMsgFile(char* data, DWORD data_len)
 
 int FOMsg::SaveMsgFile(const char* fname, int path_type)
 {
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
-#else
+#ifndef FONLINE_CLIENT
 	FileManager fm;
 #endif
 
@@ -1053,7 +1051,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 	char* buf=(char*)str.c_str();
 	DWORD buf_len=str.length();
 
-#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#ifdef FONLINE_CLIENT
 	buf=(char*)Crypt.Compress((BYTE*)buf,buf_len);
 	if(!buf) return -2;
 	Crypt.SetCache(fname,(BYTE*)buf,buf_len);

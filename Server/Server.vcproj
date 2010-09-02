@@ -83,7 +83,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\server\FOserv.exe"
+				OutputFile="..\..\..\FOnline\server\FOnlineServer.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
@@ -192,7 +192,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\server\FOservO.exe"
+				OutputFile="..\..\..\FOnline\server\FOnlineServerO.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateManifest="false"

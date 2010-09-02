@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "CraftManager.h"
 #include "Names.h"
+#include "FileManager.h"
 
 #ifdef FONLINE_SERVER
 #include "Critter.h"
@@ -267,7 +268,7 @@ int CraftItem::SetStr(DWORD num, const char* str_in)
 		return 0;
 	}
 
-#ifdef FONLINE_SERVER
+#if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 	// Parse show params
 	int res=SetStrParam(pstr_in,ShowPNum,ShowPVal,ShowPOr);
 	if(res<0) return num-10;
@@ -300,7 +301,7 @@ int CraftItem::SetStr(DWORD num, const char* str_in)
 	return 0;
 }
 
-#ifdef FONLINE_SERVER
+#if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 int CraftItem::SetStrParam(const char*& pstr_in, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec)
 {
 	char str[MAX_FOTEXT];
@@ -432,7 +433,7 @@ const char* CraftItem::GetStr(bool metadata)
 		return str;
 	}
 
-#ifdef FONLINE_SERVER
+#if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 	// Name, info
 	sprintf(str,"%s%c%s%c",Name.c_str(),MRFIXIT_NEXT,Info.c_str(),MRFIXIT_NEXT);
 
@@ -472,7 +473,7 @@ const char* CraftItem::GetStr(bool metadata)
 	return str;
 }
 
-#ifdef FONLINE_SERVER
+#if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 void CraftItem::GetStrParam(char* pstr_out, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec)
 {
 	for(size_t i=0,j=num_vec.size();i<j;i++)
@@ -559,7 +560,7 @@ bool CraftManager::operator==(const CraftManager& r)
 bool CraftManager::LoadCrafts(const char* path)
 {
 	FOMsg msg;
-	if(msg.LoadMsgFile(path)<0) return false;
+	if(msg.LoadMsgFile(path,-1)<0) return false;
 	return LoadCrafts(msg);
 }
 
@@ -577,7 +578,7 @@ bool CraftManager::SaveCrafts(const char* path)
 		msg.AddStr(craft->Num,string(craft->GetStr(false)));
 	}
 
-	if(msg.SaveMsgFile(path)<0) return false;
+	if(msg.SaveMsgFile(path,-1)<0) return false;
 	return true;
 }
 

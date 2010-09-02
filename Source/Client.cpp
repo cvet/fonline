@@ -133,11 +133,7 @@ bool FOClient::Init(HWND hwnd)
 		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDataFile(OptFoPatchPath.c_str()))
-	{
-		MessageBox(Wnd,"FONLINE.DAT not found.","Fallout Online",MB_OK);
-		return false;
-	}
+	FileManager::LoadDataFile(OptFoPatchPath.c_str());
 
 	// Cache
 	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)));
@@ -219,12 +215,12 @@ bool FOClient::Init(HWND hwnd)
 	IniParser cfg;
 	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
 	SndMngr.Init(Wnd);
-	SndMngr.SetSoundVolume(cfg.GetInt(CFG_FILE_APP_NAME,"SoundVolume",100));
-	SndMngr.SetMusicVolume(cfg.GetInt(CFG_FILE_APP_NAME,"MusicVolume",100));
+	SndMngr.SetSoundVolume(cfg.GetInt(CLIENT_CONFIG_APP,"SoundVolume",100));
+	SndMngr.SetMusicVolume(cfg.GetInt(CLIENT_CONFIG_APP,"MusicVolume",100));
 
 	// Language Packs
 	char lang_name[MAX_FOTEXT];
-	cfg.GetStr(CFG_FILE_APP_NAME,"Language",DEFAULT_LANGUAGE,lang_name);
+	cfg.GetStr(CLIENT_CONFIG_APP,"Language",DEFAULT_LANGUAGE,lang_name);
 	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
 	Str::Lwr(lang_name);
 
@@ -4845,12 +4841,12 @@ void FOClient::Net_OnChosenParams()
 	Bin.Pop((char*)Chosen->Params,sizeof(Chosen->Params));
 
 	// Process
-	for(int i=0;i<MAX_PARAMS;i++) Chosen->ChangeParam(i);
 	if(Chosen->GetTimeout(TO_BATTLE)) AnimRun(IntWCombatAnim,ANIMRUN_SET_FRM(244));
 	else AnimRun(IntWCombatAnim,ANIMRUN_SET_FRM(0));
 	if(IsScreenPresent(SCREEN__CHARACTER)) ChaPrepareSwitch();
 
 	// Process all changed parameters
+	for(int i=0;i<MAX_PARAMS;i++) Chosen->ChangeParam(i);
 	Chosen->ProcessChangedParams();
 
 	// Animate
@@ -6630,7 +6626,7 @@ void FOClient::Net_OnMsgData()
 	{
 		WriteLog(__FUNCTION__" - Received text in another language, set as default.\n");
 		CurLang.Name=lang;
-		WritePrivateProfileString(CFG_FILE_APP_NAME,"Language",CurLang.NameStr,".\\"CLIENT_CONFIG_FILE);
+		WritePrivateProfileString(CLIENT_CONFIG_APP,"Language",CurLang.NameStr,".\\"CLIENT_CONFIG_FILE);
 	}
 
 	if(num_msg>=TEXTMSG_COUNT)

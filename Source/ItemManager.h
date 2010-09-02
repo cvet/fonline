@@ -32,7 +32,7 @@ public:
 	void Finish();
 	void Clear();
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR)
+#if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR) || defined(FONLINE_MAPPER)
 	bool LoadProtos();
 	bool LoadProtos(ProtoItemVec& protos, const char* fname);
 #endif

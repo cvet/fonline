@@ -96,6 +96,12 @@ const float GlobalMapKRelief[16]={1.5f,1.4f,1.3f,1.2f,1.1f,1.0f,0.95f,0.9f,0.85f
 bool CheckUserName(const char* str);
 bool CheckUserPass(const char* str);
 
+// Config files
+#define SERVER_CONFIG_FILE      "FOnlineServer.cfg"
+#define CLIENT_CONFIG_FILE      "FOnline.cfg"
+#define CLIENT_CONFIG_APP       "Game Options"
+#define MAPPER_CONFIG_FILE      "Mapper.cfg"
+
 /************************************************************************/
 /* Client & Mapper                                                      */
 /************************************************************************/
@@ -103,8 +109,6 @@ bool CheckUserPass(const char* str);
 
 #define MODE_WIDTH				(OptScreenWidth)
 #define MODE_HEIGHT				(OptScreenHeight)
-#define CLIENT_CONFIG_FILE      "FOnline.cfg"
-#define CFG_FILE_APP_NAME       "Game Options"
 #define WM_FLASH_WINDOW			(WM_USER+1) // Chat notification
 #define DI_BUF_SIZE             (64)
 #define DI_ONDOWN(a,b)          if((didod[i].dwOfs==a) && (didod[i].dwData&0x80)) {b;}
@@ -235,7 +239,11 @@ extern bool OptDisableMouseEvents;
 extern bool OptDisableKeyboardEvents;
 extern string OptPlayerOffAppendix;
 extern int OptCombatMessagesType;
-extern string OptMapperCache;
+
+#ifdef FONLINE_MAPPER
+extern string OptClientPath;
+extern string OptServerPath;
+#endif
 
 //extern bool OptWeightFount;
 //#define GAME_MASS(x) (OptWeightFount?((x)/453):(x))
@@ -307,7 +315,6 @@ struct MapperScriptFunctions
 #include <richedit.h>
 #include "Script.h"
 
-#define SERVER_CONFIG_FILE      "FOserv.cfg"
 #define ITEMS_STATISTICS
 //#define FOSERVER_DUMP
 #define RADIO_SAFE
