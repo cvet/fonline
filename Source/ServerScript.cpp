@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "Server.h"
 #include "AngelScript/Preprocessor/preprocess.h"
+#include "Version.h"
 
 void* dbg_malloc(size_t size)
 {
@@ -346,6 +347,8 @@ bool FOServer::ReloadClientScripts()
 
 		msg_script.EraseStr(STR_INTERNAL_SCRIPT_CONFIG);
 		msg_script.AddStr(STR_INTERNAL_SCRIPT_CONFIG,config.c_str());
+		msg_script.EraseStr(STR_INTERNAL_SCRIPT_VERSION);
+		msg_script.AddStr(STR_INTERNAL_SCRIPT_VERSION,Str::Format("%d",CLIENT_SCRIPT_BINARY_VERSION));
 
 		for(size_t i=0,j=pragmas.size();i<j;i++)
 		{
