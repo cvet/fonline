@@ -2895,11 +2895,6 @@ void FOServer::SScriptFunc::Map_SetLoopTime(Map* map, DWORD loop_num, DWORD ms)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(loop_num>=MAP_LOOP_FUNC_MAX) SCRIPT_ERROR_R("Invalid loop number arg.");
-	if(ms<MAP_LOOP_MIN_TICK)
-	{
-		SCRIPT_ERROR("Loop time is less than minimum, set to it.");
-		ms=MAP_LOOP_MIN_TICK;
-	}
 	map->SetLoopTime(loop_num,ms);
 }
 

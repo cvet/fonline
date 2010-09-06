@@ -25,9 +25,9 @@ typedef vector<Terrain*>::iterator TerrainVecIt;
 #define FINDPATH_MAX_PATH           (600)
 
 #define TILE_ALPHA	(0xFF)
-#define ROOF_ALPHA	(OptRoofAlpha)
-#define VIEW_WIDTH  ((int)((MODE_WIDTH/32+((MODE_WIDTH%32)?1:0))*SpritesZoom))
-#define VIEW_HEIGHT ((int)((MODE_HEIGHT/12+((MODE_HEIGHT%12)?1:0))*SpritesZoom))
+#define ROOF_ALPHA	(GameOpt.RoofAlpha)
+#define VIEW_WIDTH  ((int)((MODE_WIDTH/32+((MODE_WIDTH%32)?1:0))*GameOpt.SpritesZoom))
+#define VIEW_HEIGHT ((int)((MODE_HEIGHT/12+((MODE_HEIGHT%12)?1:0))*GameOpt.SpritesZoom))
 #define HEX_WIDTH   (32)
 #define HEX_HEIGHT  (12)
 #define SCROLL_OX   (32)

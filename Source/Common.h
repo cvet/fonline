@@ -107,8 +107,8 @@ bool CheckUserPass(const char* str);
 /************************************************************************/
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 
-#define MODE_WIDTH				(OptScreenWidth)
-#define MODE_HEIGHT				(OptScreenHeight)
+#define MODE_WIDTH				(GameOpt.ScreenWidth)
+#define MODE_HEIGHT				(GameOpt.ScreenHeight)
 #define WM_FLASH_WINDOW			(WM_USER+1) // Chat notification
 #define DI_BUF_SIZE             (64)
 #define DI_ONDOWN(a,b)          if((didod[i].dwOfs==a) && (didod[i].dwData&0x80)) {b;}
@@ -158,95 +158,6 @@ typedef LPDIRECT3DVERTEXBUFFER9 LPDIRECT3DVERTEXBUFFER;
 typedef LPDIRECT3DINDEXBUFFER9 LPDIRECT3DINDEXBUFFER;
 typedef D3DMATERIAL9 D3DMATERIAL;
 #define Direct3DCreate Direct3DCreate9
-
-extern bool CmnQuit;
-extern int CmnScrOx;
-extern int CmnScrOy;
-extern bool CmnDiLeft;
-extern bool CmnDiRight;
-extern bool CmnDiUp;
-extern bool CmnDiDown;
-extern bool CmnDiMleft;
-extern bool CmnDiMright;
-extern bool CmnDiMup;
-extern bool CmnDiMdown;
-
-extern bool OptShowTile;
-extern bool OptShowRoof;
-extern bool OptShowItem;
-extern bool OptShowScen;
-extern bool OptShowWall;
-extern bool OptShowCrit;
-extern bool OptShowFast;
-extern bool CmnShowPlayerNames;
-extern bool CmnShowNpcNames;
-extern bool CmnShowCritId;
-
-extern bool OptShowGroups;
-extern bool OptHelpInfo;
-extern bool OptDebugInfo;
-extern bool OptDebugNet;
-extern bool OptDebugSprites;
-extern bool OptFullScr;
-extern bool OptVSync;
-extern int OptFlushVal;
-extern int OptBaseTex;
-extern int OptScreenClear;
-extern int OptLight;
-extern int OptScrollDelay;
-extern int OptScrollStep;
-extern bool OptMouseScroll;
-extern bool OptScrollCheck;
-extern int OptMouseSpeed;
-extern bool OptGlobalSound;
-extern string OptMasterPath;
-extern string OptCritterPath;
-extern string OptFoPatchPath;
-extern string OptFoDataPath;
-extern string OptHost;
-extern DWORD OptPort;
-extern DWORD OptProxyType;
-extern string OptProxyHost;
-extern DWORD OptProxyPort;
-extern string OptProxyUser;
-extern string OptProxyPass;
-extern string OptName;
-extern string OptPass;
-extern DWORD OptTextDelay;
-extern DWORD OptDamageHitDelay;
-extern bool OptAlwaysOnTop;
-extern int OptScreenWidth;
-extern int OptScreenHeight;
-extern int OptMultiSampling;
-extern bool OptSoftwareSkinning;
-extern int OptSleep;
-extern bool OptMsgboxInvert;
-extern int OptChangeLang;
-extern BYTE OptDefaultCombatMode;
-#define CHANGE_LANG_CTRL_SHIFT  (0)
-#define CHANGE_LANG_ALT_SHIFT   (1)
-extern bool OptMessNotify;
-extern bool OptSoundNotify;
-extern int OptIndicatorType;
-#define INDICATOR_LINES         (0)
-#define INDICATOR_NUMBERS       (1)
-#define INDICATOR_BOTH          (2)
-extern DWORD OptDoubleClickTime;
-extern BYTE OptRoofAlpha;
-extern bool OptHideCursor;
-extern bool OptDisableLMenu;
-extern bool OptDisableMouseEvents;
-extern bool OptDisableKeyboardEvents;
-extern string OptPlayerOffAppendix;
-extern int OptCombatMessagesType;
-
-#ifdef FONLINE_MAPPER
-extern string OptClientPath;
-extern string OptServerPath;
-#endif
-
-//extern bool OptWeightFount;
-//#define GAME_MASS(x) (OptWeightFount?((x)/453):(x))
 
 DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light);
 void GetClientOptions();
@@ -524,16 +435,121 @@ struct GameOptions
 	int ReputationHated;
 
 	// Client
+	bool Quit;
+	int ScrOx;
+	int ScrOy;
+	bool ShowTile;
+	bool ShowRoof;
+	bool ShowItem;
+	bool ShowScen;
+	bool ShowWall;
+	bool ShowCrit;
+	bool ShowFast;
+	bool ShowPlayerNames;
+	bool ShowNpcNames;
+	bool ShowCritId;
+	bool ScrollKeybLeft;
+	bool ScrollKeybRight;
+	bool ScrollKeybUp;
+	bool ScrollKeybDown;
+	bool ScrollMouseLeft;
+	bool ScrollMouseRight;
+	bool ScrollMouseUp;
+	bool ScrollMouseDown;
+	bool ShowGroups;
+	bool HelpInfo;
+	bool DebugInfo;
+	bool DebugNet;
+	bool DebugSprites;
+	bool FullScreen;
+	bool VSync;
+	int FlushVal;
+	int BaseTexture;
+	int ScreenClear;
+	int Light;
+	string Host;
+	int HostRefCounter;
+	DWORD Port;
+	DWORD ProxyType;
+	string ProxyHost;
+	int ProxyHostRefCounter;
+	DWORD ProxyPort;
+	string ProxyUser;
+	int ProxyUserRefCounter;
+	string ProxyPass;
+	int ProxyPassRefCounter;
+	string Name;
+	int NameRefCounter;
+	string Pass;
+	int PassRefCounter;
+	int ScrollDelay;
+	int ScrollStep;
+	bool ScrollCheck;
+	int MouseSpeed;
+	bool GlobalSound;
+	string MasterPath;
+	int MasterPathRefCounter;
+	string CritterPath;
+	int CritterPathRefCounter;
+	string FoPatchPath;
+	int FoPatchPathRefCounter;
+	string FoDataPath;
+	int FoDataPathRefCounter;
+	int Sleep;
+	bool MsgboxInvert;
+	int ChangeLang;
+	BYTE DefaultCombatMode;
+	bool MessNotify;
+	bool SoundNotify;
+	bool AlwaysOnTop;
+	DWORD TextDelay;
+	DWORD DamageHitDelay;
+	int ScreenWidth;
+	int ScreenHeight;
+	int MultiSampling;
+	bool SoftwareSkinning;
+	bool MouseScroll;
+	int IndicatorType;
+	DWORD DoubleClickTime;
+	BYTE RoofAlpha;
+	bool HideCursor;
+	bool DisableLMenu;
+	bool DisableMouseEvents;
+	bool DisableKeyboardEvents;
+	string PlayerOffAppendix;
+	int PlayerOffAppendixRefCounter;
+	int CombatMessagesType;
 	string UserInterface;
+	int UserInterfaceRefCounter;
 	bool DisableDrawScreens;
 	DWORD Animation3dSmoothTime;
 	DWORD Animation3dFPS;
 	int RunModMul;
 	int RunModDiv;
 	int RunModAdd;
+	float SpritesZoom;
+	float SpritesZoomMax;
+	float SpritesZoomMin;
+
+	// Mapper
+	string ClientPath;
+	int ClientPathRefCounter;
+	string ServerPath;
+	int ServerPathRefCounter;
 
 	GameOptions();
 } extern GameOpt;
+
+// ChangeLang
+#define CHANGE_LANG_CTRL_SHIFT  (0)
+#define CHANGE_LANG_ALT_SHIFT   (1)
+// IndicatorType
+#define INDICATOR_LINES         (0)
+#define INDICATOR_NUMBERS       (1)
+#define INDICATOR_BOTH          (2)
+// Zoom
+#define MIN_ZOOM                (0.2f)
+#define MAX_ZOOM                (10.0f)
 
 /************************************************************************/
 /* Game time                                                            */

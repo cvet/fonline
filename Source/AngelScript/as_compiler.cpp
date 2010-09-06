@@ -2930,6 +2930,7 @@ void asCCompiler::CompileReturnStatement(asCScriptNode *rnode, asCByteCode *bc)
 
 			// Release temporary variables used by expression
 			ReleaseTemporaryVariable(expr.type, &expr.bc);
+			ProcessDeferredParams(&expr);
 		}
 
 		bc->AddCode(&expr.bc);
@@ -3586,29 +3587,6 @@ bool asCCompiler::CompileRefCast(asSExprContext *ctx, const asCDataType &to, boo
 }
 
 
-// TODO: Re-think the implementation for implicit conversions
-//       It's currently inefficient and may at times generate unneeded copies of objects
-//       There are also too many different code paths to test, each working slightly differently
-//
-//       Reference and handle-of should be treated last
-//
-//       - The following conversion categories needs to be implemented in separate functions
-//         - primitive to primitive
-//         - primitive to value type
-//         - primitive to reference type
-//         - value type to value type
-//         - value type to primitive
-//         - value type to reference type
-//         - reference type to reference type
-//         - reference type to primitive
-//         - reference type to value type
-//
-//       Explicit conversion and implicit conversion should use the same functions, only with a flag to enable/disable conversions
-//
-//       If the conversion fails, the type in the asSExprContext must not be modified. This
-//       causes problems where the conversion is partially done and the compiler continues with
-//       another option.
-
 void asCCompiler::ImplicitConvPrimitiveToPrimitive(asSExprContext *ctx, const asCDataType &toOrig, asCScriptNode *node, EImplicitConv convType, bool generateCode, asCArray<int> *reservedVars)
 {
 	asCDataType to = toOrig;
@@ -3618,6 +3596,9 @@ void asCCompiler::ImplicitConvPrimitiveToPrimitive(asSExprContext *ctx, const as
 	// Start by implicitly converting constant values
 	if( ctx->type.isConstant )
 		ImplicitConversionConstant(ctx, to, node, convType);
+
+	// A primitive is const or not
+	ctx->type.dataType.MakeReadOnly(to.IsReadOnly());
 
 	if( to == ctx->type.dataType )
 		return;
@@ -4587,7 +4568,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				from->type.wordValue = short(from->type.intValue);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 		}
 	}
 	else if( to.IsIntegerType() && to.GetSizeInMemoryDWords() == 2 )
@@ -4754,7 +4735,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				from->type.wordValue = asWORD(from->type.dwordValue);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 		}
 	}
 	else if( to.IsUnsignedType() && to.GetSizeInMemoryDWords() == 2 )
@@ -4849,7 +4830,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(str.AddressOf(), node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.floatValue = fc;
 		}
 		else if( from->type.dataType.IsEnumType() )
@@ -4861,7 +4842,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.floatValue = fc;
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
@@ -4881,7 +4862,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.floatValue = fc;
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
@@ -4892,7 +4873,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.floatValue = fc;
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
@@ -4912,7 +4893,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.floatValue = fc;
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
@@ -4925,7 +4906,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.floatValue = fc;
 		}
 	}
@@ -4944,7 +4925,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 		//		if( !isExplicit ) Warning(str, node);
 		//	}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.doubleValue = fc;
 		}
 		else if( from->type.dataType.IsEnumType() )
@@ -4956,7 +4937,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.doubleValue = fc;
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
@@ -4976,7 +4957,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.doubleValue = fc;
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
@@ -4988,7 +4969,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.doubleValue = fc;
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
@@ -5008,7 +4989,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.doubleValue = fc;
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
@@ -5021,7 +5002,7 @@ void asCCompiler::ImplicitConversionConstant(asSExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType.SetTokenType(to.GetTokenType());
+			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
 			from->type.doubleValue = fc;
 		}
 	}
@@ -8136,7 +8117,8 @@ int asCCompiler::MatchArgument(asCArray<int> &funcs, asCArray<int> &matches, con
 				if( !isMatchExceptConst )
 				{
 					// Is it a size promotion, e.g. int8 -> int?
-					if( argType->dataType.IsSamePrimitiveBaseType(ti.type.dataType) )
+					if( argType->dataType.IsSamePrimitiveBaseType(ti.type.dataType) || 
+						(argType->dataType.IsEnumType() && ti.type.dataType.IsIntegerType()) )
 					{
 						if( !isMatchWithBaseType ) matches.SetLength(0);
 
@@ -8152,7 +8134,8 @@ int asCCompiler::MatchArgument(asCArray<int> &funcs, asCArray<int> &matches, con
 
 						// Is it a match except for sign?
 						if( (argType->dataType.IsIntegerType() && ti.type.dataType.IsUnsignedType()) ||
-							(argType->dataType.IsUnsignedType() && ti.type.dataType.IsIntegerType()) )
+							(argType->dataType.IsUnsignedType() && ti.type.dataType.IsIntegerType()) ||
+							(argType->dataType.IsEnumType() && ti.type.dataType.IsUnsignedType()) )
 						{
 							if( !isMatchExceptSign ) matches.SetLength(0);
 
@@ -8795,6 +8778,12 @@ void asCCompiler::CompileMathOperator(asCScriptNode *node, asSExprContext *lctx,
 	asCArray<int> reservedVars;
 	rctx->bc.GetVarsUsed(reservedVars);
 	lctx->bc.GetVarsUsed(reservedVars);
+
+	if( lctx->type.dataType.IsReference() )
+		ConvertToVariableNotIn(lctx, &reservedVars);
+	if( rctx->type.dataType.IsReference() )
+		ConvertToVariableNotIn(rctx, &reservedVars);
+
 	ImplicitConversion(lctx, to, node, asIC_IMPLICIT_CONV, true, &reservedVars);
 	ImplicitConversion(rctx, to, node, asIC_IMPLICIT_CONV, true, &reservedVars);
 
@@ -9390,6 +9379,12 @@ void asCCompiler::CompileComparisonOperator(asCScriptNode *node, asSExprContext 
 	// Do the actual conversion
 	asCArray<int> reservedVars;
 	rctx->bc.GetVarsUsed(reservedVars);
+
+	if( lctx->type.dataType.IsReference() )
+		ConvertToVariableNotIn(lctx, &reservedVars);
+	if( rctx->type.dataType.IsReference() )
+		ConvertToVariableNotIn(rctx, &reservedVars);
+
 	ImplicitConversion(lctx, to, node, asIC_IMPLICIT_CONV, true, &reservedVars);
 	ImplicitConversion(rctx, to, node, asIC_IMPLICIT_CONV);
 

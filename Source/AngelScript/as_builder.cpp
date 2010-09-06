@@ -1866,62 +1866,20 @@ int asCBuilder::CreateVirtualFunction(asCScriptFunction *func, int idx)
 
 asCObjectProperty *asCBuilder::AddPropertyToClass(sClassDeclaration *decl, const asCString &name, const asCDataType &dt, bool isPrivate, asCScriptCode *file, asCScriptNode *node)
 {
-	// Store the properties in the object type descriptor
-	asCObjectProperty *prop = asNEW(asCObjectProperty);
-	prop->name      = name;
-	prop->type      = dt;
-	prop->isPrivate = isPrivate;
-
-	int propSize;
-	if( dt.IsObject() )
+	if( !dt.CanBeInstanciated() )
 	{
-		propSize = dt.GetSizeOnStackDWords()*4;
-		if( !dt.IsObjectHandle() )
-		{
-			if( !dt.CanBeInstanciated() )
-			{
-				asASSERT( file && node );
-
-				int r, c;
-				file->ConvertPosToRowCol(node->tokenPos, &r, &c);
-				asCString str;
-				str.Format(TXT_DATA_TYPE_CANT_BE_s, dt.Format().AddressOf());
-				WriteError(file->name.AddressOf(), str.AddressOf(), r, c);
-				asDELETE(prop, asCObjectProperty);
-				return 0;
-			}
-			prop->type.MakeReference(true);
-		}
-	}
-	else
-	{
-		propSize = dt.GetSizeInMemoryBytes();
-		if( propSize == 0 && file && node )
+		if( file && node )
 		{
 			int r, c;
 			file->ConvertPosToRowCol(node->tokenPos, &r, &c);
 			asCString str;
 			str.Format(TXT_DATA_TYPE_CANT_BE_s, dt.Format().AddressOf());
 			WriteError(file->name.AddressOf(), str.AddressOf(), r, c);
-			asDELETE(prop, asCObjectProperty);
-			return 0;
 		}
+		return 0;
 	}
 
-	// Add extra bytes so that the property will be properly aligned
-	if( propSize == 2 && (decl->objType->size & 1) ) decl->objType->size += 1;
-	if( propSize > 2 && (decl->objType->size & 3) ) decl->objType->size += 4 - (decl->objType->size & 3);
-
-	prop->byteOffset = decl->objType->size;
-	decl->objType->size += propSize;
-
-	decl->objType->properties.PushLast(prop);
-
-	// Make sure the struct holds a reference to the config group where the object is registered
-	asCConfigGroup *group = engine->FindConfigGroupForObjectType(prop->type.GetObjectType());
-	if( group != 0 ) group->AddRef();
-
-	return prop;
+	return decl->objType->AddPropertyToClass(name, dt, isPrivate);
 }
 
 bool asCBuilder::DoesMethodExist(asCObjectType *objType, int methodId)

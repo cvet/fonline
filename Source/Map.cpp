@@ -1409,7 +1409,6 @@ void Map::EventTurnBasedProcess(Critter* cr, bool begin_turn)
 void Map::SetLoopTime(DWORD loop_num, DWORD ms)
 {
 	if(loop_num>=MAP_LOOP_FUNC_MAX) return;
-	if(ms<MAP_LOOP_MIN_TICK) ms=MAP_LOOP_MIN_TICK;
 	LoopWaitTick[loop_num]=ms;
 }
 

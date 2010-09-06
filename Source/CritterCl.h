@@ -24,6 +24,8 @@ public:
 	int Params[MAX_PARAMS];
 	string Name;
 	int NameRefCounter;
+	string NameOnHead;
+	int NameOnHeadRefCounter;
 	string Lexems;
 	int LexemsRefCounter;
 	string Avatar;

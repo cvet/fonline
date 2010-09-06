@@ -1992,19 +1992,19 @@ void FOClient::ConsoleDraw()
 	}
 
 	// Help info
-	if(OptHelpInfo)
+	if(GameOpt.HelpInfo)
 	{
 		if(!Chosen) return;
 
 		//SprMngr.DrawSprite(ResMngr.GetIfaceSprId(297),0,0);
 
-		if(OptDebugInfo)
+		if(GameOpt.DebugInfo)
 		{
 			GetMouseHex();
 			FLTPOINT p=Animation3d::Convert2dTo3d(CurX,CurY);
 			SprMngr.DrawStr(INTRECT(250,5,450,300),Str::Format(
 				"cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>, CondExt<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
-				Chosen->HexX,Chosen->HexY,TargetX,TargetY,CurX,CurY,Chosen->Cond,Chosen->CondExt,CmnScrOx,CmnScrOy,
+				Chosen->HexX,Chosen->HexY,TargetX,TargetY,CurX,CurY,Chosen->Cond,Chosen->CondExt,GameOpt.ScrOx,GameOpt.ScrOy,
 				GetFarDir(Chosen->HexX,Chosen->HexY,TargetX,TargetY),p.X,p.Y
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
@@ -2016,7 +2016,7 @@ void FOClient::ConsoleDraw()
 			SprMngr.DrawStr(INTRECT(650,5,800,300),Str::Format(
 				"Time:%02d:%02d %02d:%02d:%04d x%02d\nSleep:%d\nSound:%d\nMusic:%d",
 				GameOpt.Hour,GameOpt.Minute,GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.TimeMultiplier,
-				OptSleep,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume()
+				GameOpt.Sleep,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume()
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 		}
 
@@ -2041,7 +2041,7 @@ void FOClient::ConsoleDraw()
 			Singleplayer?"Singleplayer":"",
 			CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF,
 			BytesSend,BytesReceive,BytesReceive+BytesSend,/*BytesRealReceive,*/
-			FPS,PingTime,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume(),OptSleep
+			FPS,PingTime,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume(),GameOpt.Sleep
 			),FT_COLORIZE,D3DCOLOR_XRGB(255,248,0),FONT_BIG);
 
 		SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),MsgGame->GetStr(STR_GAME_HELP),FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEF);
@@ -2139,7 +2139,7 @@ void FOClient::GameDraw()
 	// Move cursor
 	if(IsCurMode(CUR_MOVE))
 	{
-		if((CmnDiMright || CmnDiMleft || CmnDiMup || CmnDiMdown) || !GetMouseHex()) HexMngr.SetCursorVisible(false);
+		if((GameOpt.ScrollMouseRight || GameOpt.ScrollMouseLeft || GameOpt.ScrollMouseUp || GameOpt.ScrollMouseDown) || !GetMouseHex()) HexMngr.SetCursorVisible(false);
 		else
 		{
 			HexMngr.SetCursorVisible(true);
@@ -2159,14 +2159,14 @@ void FOClient::GameDraw()
 		CritterCl* cr=(*it).second;
 
 		// Follow pic
-		if(OptShowGroups && cr->SprDrawValid && Chosen)
+		if(GameOpt.ShowGroups && cr->SprDrawValid && Chosen)
 		{
 			if(cr->GetId()==(DWORD)Chosen->Params[ST_FOLLOW_CRIT])
 			{
 				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCrit);
 				INTRECT tr=cr->GetTextRect();
-				int x=(tr.L+((tr.R-tr.L)/2)+CmnScrOx)/SpritesZoom-(si?si->Width/2:0);
-				int y=(tr.T+CmnScrOy)/SpritesZoom-(si?si->Height:0);
+				int x=(tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(si?si->Width/2:0);
+				int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(si?si->Height:0);
 				DWORD col=(CheckDist(cr->GetHexX(),cr->GetHexY(),Chosen->GetHexX(),Chosen->GetHexY(),FOLLOW_DIST)/* && Chosen->IsFree()*/)?COLOR_IFACE:COLOR_IFACE_RED;
 				SprMngr.DrawSprite(GmapPFollowCrit,x,y,col);
 			}
@@ -2174,8 +2174,8 @@ void FOClient::GameDraw()
 			{
 				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCritSelf);
 				INTRECT tr=cr->GetTextRect();
-				int x=(tr.L+((tr.R-tr.L)/2)+CmnScrOx)/SpritesZoom-(si?si->Width/2:0);
-				int y=(tr.T+CmnScrOy)/SpritesZoom-(si?si->Height:0);
+				int x=(tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(si?si->Width/2:0);
+				int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(si?si->Height:0);
 				DWORD col=(CheckDist(cr->GetHexX(),cr->GetHexY(),Chosen->GetHexX(),Chosen->GetHexY(),FOLLOW_DIST)/* && Chosen->IsFree()*/)?COLOR_IFACE:COLOR_IFACE_RED;
 				SprMngr.DrawSprite(GmapPFollowCritSelf,x,y,col);
 			}
@@ -2197,8 +2197,8 @@ void FOClient::GameDraw()
 			int procent=Procent(mt.Tick,dt);
 			INTRECT r=AverageFlexRect(mt.Rect,mt.EndRect,procent);
 			Field& f=HexMngr.GetField(mt.HexX,mt.HexY);
-			int x=(f.ScrX+16+CmnScrOx)/SpritesZoom-100-(mt.Rect.L-r.L);
-			int y=(f.ScrY+6-mt.Rect.H()-(mt.Rect.T-r.T)+CmnScrOy)/SpritesZoom-70;
+			int x=(f.ScrX+16+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(mt.Rect.L-r.L);
+			int y=(f.ScrY+6-mt.Rect.H()-(mt.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
 
 			DWORD color=mt.Color;
 			if(mt.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
@@ -2228,12 +2228,12 @@ void FOClient::GameKeyDown(BYTE dik)
 		{
 #ifdef DEV_VESRION
 		// Show/Hide sprites
-		case DIK_1: OptShowItem=!OptShowItem; HexMngr.RefreshMap(); break;
-		case DIK_2: OptShowScen=!OptShowScen; HexMngr.RefreshMap(); break;
-		case DIK_3: OptShowWall=!OptShowWall; HexMngr.RefreshMap(); break;
-		case DIK_4: OptShowCrit=!OptShowCrit; HexMngr.RefreshMap(); break;
-		case DIK_5: OptShowTile=!OptShowTile; HexMngr.RefreshMap(); break;
-		case DIK_6: OptShowRoof=!OptShowRoof; HexMngr.RefreshMap(); break;
+		case DIK_1: GameOpt.ShowItem=!GameOpt.ShowItem; HexMngr.RefreshMap(); break;
+		case DIK_2: GameOpt.ShowScen=!GameOpt.ShowScen; HexMngr.RefreshMap(); break;
+		case DIK_3: GameOpt.ShowWall=!GameOpt.ShowWall; HexMngr.RefreshMap(); break;
+		case DIK_4: GameOpt.ShowCrit=!GameOpt.ShowCrit; HexMngr.RefreshMap(); break;
+		case DIK_5: GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); break;
+		case DIK_6: GameOpt.ShowRoof=!GameOpt.ShowRoof; HexMngr.RefreshMap(); break;
 
 		// Chosen animate
 #define CHOSEN_ANIMATE(anim2) if(Chosen) Chosen->Animate(0,anim2,NULL)
@@ -2270,9 +2270,9 @@ void FOClient::GameKeyDown(BYTE dik)
 	switch(dik)
 	{
 	case DIK_EQUALS:
-	case DIK_ADD: OptLight+=5; if(OptLight>50) OptLight=50; SetDayTime(true); break;
+	case DIK_ADD: GameOpt.Light+=5; if(GameOpt.Light>50) GameOpt.Light=50; SetDayTime(true); break;
 	case DIK_MINUS:
-	case DIK_SUBTRACT: OptLight-=5; if(OptLight<0) OptLight=0; SetDayTime(true); break;
+	case DIK_SUBTRACT: GameOpt.Light-=5; if(GameOpt.Light<0) GameOpt.Light=0; SetDayTime(true); break;
 	default: break;
 	}
 
@@ -2284,7 +2284,7 @@ void FOClient::GameKeyDown(BYTE dik)
 		case DIK_A: if(Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse()<MAX_USES) SetCurMode(CUR_USE_WEAPON); break;
 		case DIK_C: ShowScreen(SCREEN__CHARACTER); if(Chosen->Params[ST_UNSPENT_PERKS]) ShowScreen(SCREEN__PERK); break;
 		case DIK_G: TryPickItemOnGround(); break;
-		case DIK_T: OptShowGroups=!OptShowGroups; break;
+		case DIK_T: GameOpt.ShowGroups=!GameOpt.ShowGroups; break;
 		case DIK_I: ShowScreen(SCREEN__INVENTORY); break;
 		case DIK_P: ShowScreen(SCREEN__PIP_BOY); break;
 		case DIK_F: ShowScreen(SCREEN__FIX_BOY); break;
@@ -2437,13 +2437,13 @@ void FOClient::GameRMouseUp()
 
 void FOClient::IntDraw()
 {
-	if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && SpritesZoomMin!=SpritesZoomMax)
+	if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 	{
 		int screen=GetActiveScreen();
 		if(screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW)
 		{
 			SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),
-				FmtGameText(STR_ZOOM,(int)(1.0f/SpritesZoom*100.0f)),FT_CENTERX|FT_CENTERY|FT_COLORIZE,COLOR_TEXT_SAND,FONT_BIG);
+				FmtGameText(STR_ZOOM,(int)(1.0f/GameOpt.SpritesZoom*100.0f)),FT_CENTERX|FT_CENTERY|FT_COLORIZE,COLOR_TEXT_SAND,FONT_BIG);
 		}
 	}
 
@@ -2592,16 +2592,16 @@ void FOClient::IntDraw()
 	Item* item=Chosen->ItemSlotMain;
 	if(item->IsWeapon() && item->WeapGetMaxAmmoCount())
 	{
-		if(OptIndicatorType==INDICATOR_LINES || OptIndicatorType==INDICATOR_BOTH) DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,Procent(item->WeapGetMaxAmmoCount(),item->WeapGetAmmoCount()),IntAmmoTick,true,false);
-		if(OptIndicatorType==INDICATOR_NUMBERS || OptIndicatorType==INDICATOR_BOTH) SprMngr.DrawStr(INTRECT(IntWAmmoCountStr,item_offsx,item_offsy),Str::Format("%03d",item->WeapGetAmmoCount()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DGREEN:COLOR_TEXT,FONT_SPECIAL);
+		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,Procent(item->WeapGetMaxAmmoCount(),item->WeapGetAmmoCount()),IntAmmoTick,true,false);
+		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH) SprMngr.DrawStr(INTRECT(IntWAmmoCountStr,item_offsx,item_offsy),Str::Format("%03d",item->WeapGetAmmoCount()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DGREEN:COLOR_TEXT,FONT_SPECIAL);
 	}
-	else if(OptIndicatorType==INDICATOR_LINES || OptIndicatorType==INDICATOR_BOTH) DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,0,IntAmmoTick,true,false);
+	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,0,IntAmmoTick,true,false);
 	if(item->IsWeared())
 	{
-		if(OptIndicatorType==INDICATOR_LINES || OptIndicatorType==INDICATOR_BOTH) DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetWearProc(),IntWearTick,true,false);
-		if(OptIndicatorType==INDICATOR_NUMBERS || OptIndicatorType==INDICATOR_BOTH) SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetWearProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
+		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetWearProc(),IntWearTick,true,false);
+		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH) SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetWearProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
 	}
-	else if(OptIndicatorType==INDICATOR_LINES || OptIndicatorType==INDICATOR_BOTH) DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,0,IntWearTick,true,false);
+	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,0,IntWearTick,true,false);
 }
 
 int FOClient::IntLMouseDown()
@@ -2822,7 +2822,7 @@ void FOClient::MessBoxGenerate()
 		if(lines_-MessBoxScroll<max_lines)
 		{
 			// Add to message box
-			if(OptMsgboxInvert) MessBoxCurText+=m.Mess; // Back
+			if(GameOpt.MsgboxInvert) MessBoxCurText+=m.Mess; // Back
 			else MessBoxCurText=m.Mess+MessBoxCurText; // Front
 		}
 		else break;
@@ -2836,12 +2836,12 @@ void FOClient::MessBoxDraw()
 	if(MessBoxCurText.empty()) return;
 
 	DWORD flags=FT_COLORIZE;
-	if(!OptMsgboxInvert) flags|=FT_UPPER|FT_BOTTOM;
+	if(!GameOpt.MsgboxInvert) flags|=FT_UPPER|FT_BOTTOM;
 
 	INTRECT ir=MessBoxCurRectDraw();
 	if(ir.IsZero()) return;
 
-	SprMngr.DrawStr(ir,MessBoxCurText.c_str(),flags|(OptMsgboxInvert?FT_SKIPLINES(MessBoxScrollLines):FT_SKIPLINES_END(MessBoxScrollLines)));
+	SprMngr.DrawStr(ir,MessBoxCurText.c_str(),flags|(GameOpt.MsgboxInvert?FT_SKIPLINES(MessBoxScrollLines):FT_SKIPLINES_END(MessBoxScrollLines)));
 }
 
 INTRECT FOClient::MessBoxCurRectDraw()
@@ -2886,14 +2886,14 @@ bool FOClient::MessBoxLMouseDown()
 	{
 		if(IsCurInRect(INTRECT(rmb.L,rmb.T,rmb.R,rmb.CY())))
 		{
-			if(OptMsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
-			if(!OptMsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
+			if(GameOpt.MsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
+			if(!GameOpt.MsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
 			MessBoxGenerate();
 		}
 		else
 		{
-			if(OptMsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
-			if(!OptMsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
+			if(GameOpt.MsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
+			if(!GameOpt.MsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
 			MessBoxGenerate();
 		}
 		return true;
@@ -2924,17 +2924,17 @@ void FOClient::LogDraw()
 
 	if(!Singleplayer)
 	{
-		SprMngr.DrawStr(LogWName,OptName.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_NAME?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+		SprMngr.DrawStr(LogWName,GameOpt.Name.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_NAME?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 
 		if(Keyb::CtrlDwn)
 		{
-			SprMngr.DrawStr(LogWPass,OptPass.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+			SprMngr.DrawStr(LogWPass,GameOpt.Pass.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 		}
 		else
 		{
 			char mask[MAX_NAME+1];
-			for(int i=0,j=min(MAX_NAME,OptPass.length());i<j;i++) mask[i]='#';
-			mask[min(MAX_NAME,OptPass.length())]='\0';
+			for(int i=0,j=min(MAX_NAME,GameOpt.Pass.length());i<j;i++) mask[i]='#';
+			mask[min(MAX_NAME,GameOpt.Pass.length())]='\0';
 			SprMngr.DrawStr(LogWPass,mask,FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 		}
 	}
@@ -2959,11 +2959,11 @@ void FOClient::LogKeyDown(BYTE dik)
 
 	if(LogFocus==IFACE_LOG_NAME)
 	{
-		Keyb::GetChar(dik,OptName,NULL,min(GameOpt.MaxNameLength,MAX_NAME),KIF_NO_SPEC_SYMBOLS);
+		Keyb::GetChar(dik,GameOpt.Name,NULL,min(GameOpt.MaxNameLength,MAX_NAME),KIF_NO_SPEC_SYMBOLS);
 	}
 	else if(LogFocus==IFACE_LOG_PASS)
 	{
-		Keyb::GetChar(dik,OptPass,NULL,min(GameOpt.MaxNameLength,MAX_NAME),KIF_NO_SPEC_SYMBOLS);
+		Keyb::GetChar(dik,GameOpt.Pass,NULL,min(GameOpt.MaxNameLength,MAX_NAME),KIF_NO_SPEC_SYMBOLS);
 	}
 }
 
@@ -3018,38 +3018,38 @@ void FOClient::LogTryConnect()
 {
 	if(!Singleplayer)
 	{
-		while(!OptName.empty() && OptName[0]==' ') OptName.erase(0,1);
-		while(!OptName.empty() && OptName[OptName.length()-1]==' ') OptName.erase(OptName.length()-1,1);
+		while(!GameOpt.Name.empty() && GameOpt.Name[0]==' ') GameOpt.Name.erase(0,1);
+		while(!GameOpt.Name.empty() && GameOpt.Name[GameOpt.Name.length()-1]==' ') GameOpt.Name.erase(GameOpt.Name.length()-1,1);
 
-		if(OptName.length()<MIN_NAME || OptName.length()<GameOpt.MinNameLength ||
-			OptName.length()>MAX_NAME || OptName.length()>GameOpt.MaxNameLength)
+		if(GameOpt.Name.length()<MIN_NAME || GameOpt.Name.length()<GameOpt.MinNameLength ||
+			GameOpt.Name.length()>MAX_NAME || GameOpt.Name.length()>GameOpt.MaxNameLength)
 		{
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_LOGIN));
 			return;
 		}
 
-		if(!CheckUserName(OptName.c_str()))
+		if(!CheckUserName(GameOpt.Name.c_str()))
 		{
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_NAME_WRONG_CHARS));
 			return;
 		}
 
-		if(OptPass.length()<MIN_NAME || OptPass.length()<GameOpt.MinNameLength ||
-			OptPass.length()>MAX_NAME || OptPass.length()>GameOpt.MaxNameLength)
+		if(GameOpt.Pass.length()<MIN_NAME || GameOpt.Pass.length()<GameOpt.MinNameLength ||
+			GameOpt.Pass.length()>MAX_NAME || GameOpt.Pass.length()>GameOpt.MaxNameLength)
 		{
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_PASS));
 			return;
 		}
 
-		if(!CheckUserPass(OptPass.c_str()))
+		if(!CheckUserPass(GameOpt.Pass.c_str()))
 		{
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_PASS_WRONG_CHARS));
 			return;
 		}
 
 		// Save login and password
-		Crypt.SetCache("__name",(BYTE*)OptName.c_str(),OptName.length()+1);
-		Crypt.SetCache("__pass",(BYTE*)OptPass.c_str(),OptPass.length()+1);
+		Crypt.SetCache("__name",(BYTE*)GameOpt.Name.c_str(),GameOpt.Name.length()+1);
+		Crypt.SetCache("__pass",(BYTE*)GameOpt.Pass.c_str(),GameOpt.Pass.length()+1);
 
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONNECTION));
 	}
@@ -3942,7 +3942,7 @@ void FOClient::LMenuStayOff()
 void FOClient::LMenuTryCreate()
 {
 	// Check valid current state
-	if(OptDisableLMenu || !Chosen || IsScroll() || !IsCurInWindow() || !IsCurMode(CUR_DEFAULT) || OptHideCursor)
+	if(GameOpt.DisableLMenu || !Chosen || IsScroll() || !IsCurInWindow() || !IsCurMode(CUR_DEFAULT) || GameOpt.HideCursor)
 	{
 		/*if(IsLMenu()) */LMenuSet(LMENU_OFF);
 		return;
@@ -5086,7 +5086,7 @@ void FOClient::SetCurPos(int x, int y)
 {
 	CurX=x;
 	CurY=y;
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		WINDOWINFO wi;
 		wi.cbSize=sizeof(wi);
@@ -5170,7 +5170,7 @@ void FOClient::LmapDraw()
 
 	SprMngr.DrawSprite(LmapPMain,LmapMain[0]+LmapX,LmapMain[1]+LmapY);
 	SprMngr.DrawPoints(LmapPrepPix,D3DPT_LINELIST);
-	SprMngr.DrawStr(INTRECT(LmapWMap[0]+LmapX,LmapWMap[1]+LmapY,LmapWMap[0]+LmapX+100,LmapWMap[1]+LmapY+15),Str::Format("SpritesZoom: %d",LmapZoom-1),0);
+	SprMngr.DrawStr(INTRECT(LmapWMap[0]+LmapX,LmapWMap[1]+LmapY,LmapWMap[0]+LmapX+100,LmapWMap[1]+LmapY+15),Str::Format("GameOpt.SpritesZoom: %d",LmapZoom-1),0);
 	if(IfaceHold==IFACE_LMAP_OK) SprMngr.DrawSprite(LmapPBOkDw,LmapBOk[0]+LmapX,LmapBOk[1]+LmapY);
 	if(IfaceHold==IFACE_LMAP_SCAN) SprMngr.DrawSprite(LmapPBScanDw,LmapBScan[0]+LmapX,LmapBScan[1]+LmapY);
 	if(LmapSwitchHi) SprMngr.DrawSprite(LmapPBLoHiDw,LmapBLoHi[0]+LmapX,LmapBLoHi[1]+LmapY);
@@ -5979,9 +5979,9 @@ void FOClient::GmapKeyDown(BYTE dik)
 	case DIK_O: ShowScreen(SCREEN__MENU_OPTION); break;
 	case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.TimeMultiplier)); break;
 	case DIK_EQUALS:
-	case DIK_ADD: OptLight+=5; if(OptLight>50) OptLight=50; SetDayTime(true); break;
+	case DIK_ADD: GameOpt.Light+=5; if(GameOpt.Light>50) GameOpt.Light=50; SetDayTime(true); break;
 	case DIK_MINUS:
-	case DIK_SUBTRACT: OptLight-=5; if(OptLight<0) OptLight=0; SetDayTime(true); break;
+	case DIK_SUBTRACT: GameOpt.Light-=5; if(GameOpt.Light<0) GameOpt.Light=0; SetDayTime(true); break;
 	default: break;
 	}
 }
@@ -8382,7 +8382,7 @@ CritterCl* FOClient::PupGetLootCrit(int scroll)
 
 void FOClient::CurDraw()
 {
-	if(OptHideCursor) return;
+	if(GameOpt.HideCursor) return;
 
 	DWORD spr_id;
 	SpriteInfo* si=NULL;
@@ -8403,15 +8403,15 @@ void FOClient::CurDraw()
 	{
 		DWORD cur_di=0;
 
-		if(CmnDiMright) cur_di=CurPScrRt;
-		else if(CmnDiMleft) cur_di=CurPScrLt;
-		else if(CmnDiMup) cur_di=CurPScrUp;
-		else if(CmnDiMdown) cur_di=CurPScrDw;
+		if(GameOpt.ScrollMouseRight) cur_di=CurPScrRt;
+		else if(GameOpt.ScrollMouseLeft) cur_di=CurPScrLt;
+		else if(GameOpt.ScrollMouseUp) cur_di=CurPScrUp;
+		else if(GameOpt.ScrollMouseDown) cur_di=CurPScrDw;
 
-		if		(CmnDiMright&& CmnDiMup	) cur_di=CurPScrRU;
-		else if	(CmnDiMleft	&& CmnDiMup	) cur_di=CurPScrLU;
-		else if	(CmnDiMright&& CmnDiMdown) cur_di=CurPScrRD;
-		else if	(CmnDiMleft	&& CmnDiMdown) cur_di=CurPScrLD;
+		if		(GameOpt.ScrollMouseRight&& GameOpt.ScrollMouseUp	) cur_di=CurPScrRU;
+		else if	(GameOpt.ScrollMouseLeft	&& GameOpt.ScrollMouseUp	) cur_di=CurPScrLU;
+		else if	(GameOpt.ScrollMouseRight&& GameOpt.ScrollMouseDown) cur_di=CurPScrRD;
+		else if	(GameOpt.ScrollMouseLeft	&& GameOpt.ScrollMouseDown) cur_di=CurPScrLD;
 
 		if(cur_di)
 		{
@@ -8490,9 +8490,9 @@ void FOClient::CurDraw()
 			if(!(si=SprMngr.GetSpriteInfo(CurPMove))) return;
 
 			if(HexMngr.IsHexPassed(TargetX,TargetY))
-				SprMngr.DrawSpriteSize(CurPMove,(f.ScrX+1+CmnScrOx)/SpritesZoom,(f.ScrY-1+CmnScrOy)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,TRUE,FALSE);
+				SprMngr.DrawSpriteSize(CurPMove,(f.ScrX+1+GameOpt.ScrOx)/GameOpt.SpritesZoom,(f.ScrY-1+GameOpt.ScrOy)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,TRUE,FALSE);
 			else
-				SprMngr.DrawSpriteSize(CurPMoveBlock,(f.ScrX+1+CmnScrOx)/SpritesZoom,(f.ScrY-1+CmnScrOy)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,TRUE,FALSE);
+				SprMngr.DrawSpriteSize(CurPMoveBlock,(f.ScrX+1+GameOpt.ScrOx)/GameOpt.SpritesZoom,(f.ScrY-1+GameOpt.ScrOy)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,TRUE,FALSE);
 
 			break;
 		}*/

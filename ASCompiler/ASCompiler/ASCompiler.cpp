@@ -90,7 +90,7 @@ public:
 		}
 		else if(type=="string")
 		{
-			value=instance.text.substr(instance.text.find(value),string::npos);
+			if(value!="") value=instance.text.substr(instance.text.find(value),string::npos);
 			list<string>::iterator it=stringArray.insert(stringArray.begin(),value);
 			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) printf("Unable to register string global var, pragma<%s>.\n",instance.text.c_str());
 		}

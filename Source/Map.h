@@ -24,7 +24,6 @@ extern const char* MapEventFuncName[MAP_EVENT_MAX];
 
 // Loop times
 #define MAP_LOOP_FUNC_MAX       (5)
-#define MAP_LOOP_MIN_TICK       (1000)
 #define MAP_LOOP_DEFAULT_TICK   (60*60000)
 #define MAP_MAX_DATA            (100)
 

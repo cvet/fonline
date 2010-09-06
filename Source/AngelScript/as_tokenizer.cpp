@@ -204,10 +204,10 @@ bool asCTokenizer::IsComment()
 bool asCTokenizer::IsConstant()
 {
 	// Starting with number
-	if( source[0] >= '0' && source[0] <= '9' )
+	if( (source[0] >= '0' && source[0] <= '9') || (source[0] == '.' && sourceLength > 1 && source[1] >= '0' && source[1] <= '9') )
 	{
 		// Is it a hexadecimal number?
-		if( source[0] == '0' && sourceLength >= 1 && (source[1] == 'x' || source[1] == 'X') )
+		if( source[0] == '0' && sourceLength > 1 && (source[1] == 'x' || source[1] == 'X') )
 		{
 			size_t n;
 			for( n = 2; n < sourceLength; n++ )
@@ -224,7 +224,7 @@ bool asCTokenizer::IsConstant()
 		}
 
 		size_t n;
-		for( n = 1; n < sourceLength; n++ )
+		for( n = 0; n < sourceLength; n++ )
 		{
 			if( source[n] < '0' || source[n] > '9' )
 				break;

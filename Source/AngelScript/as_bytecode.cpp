@@ -397,6 +397,8 @@ bool asCByteCode::PostponeInitOfTemp(cByteInstruction *curr, cByteInstruction **
 
 bool asCByteCode::RemoveUnusedValue(cByteInstruction *curr, cByteInstruction **next)
 {
+	// TODO: optimize: Should work for 64bit types as well
+
 	// The value isn't used for anything
 	if( (asBCInfo[curr->op].type == asBCTYPE_wW_rW_rW_ARG ||
 		 asBCInfo[curr->op].type == asBCTYPE_wW_rW_ARG    ||
@@ -550,6 +552,17 @@ bool asCByteCode::RemoveUnusedValue(cByteInstruction *curr, cByteInstruction **n
 	{
 		curr->op = asBC_PshC4;
 		curr->stackInc = asBCInfo[asBC_PshC4].stackInc;
+		DeleteInstruction(curr->next);
+		*next = GoBack(curr);
+		return true;
+	}
+	if( curr->op == asBC_SetV8 && curr->next && curr->next->op == asBC_PshV8 &&
+		curr->wArg[0] == curr->next->wArg[0] &&
+		IsTemporary(curr->wArg[0]) &&
+		!IsTempVarRead(curr->next, curr->wArg[0]) )
+	{
+		curr->op = asBC_PshC8;
+		curr->stackInc = asBCInfo[asBC_PshC8].stackInc;
 		DeleteInstruction(curr->next);
 		*next = GoBack(curr);
 		return true;

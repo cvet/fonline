@@ -39,6 +39,7 @@
 #include "as_restore.h"
 #include "as_bytecode.h"
 #include "as_arrayobject.h"
+#include "as_scriptobject.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -733,12 +734,10 @@ void asCRestore::WriteObjectTypeDeclaration(asCObjectType *ot, int phase)
 	{
 		// name
 		WriteString(&ot->name);
-		// size
-		// TODO: size may need to be adjusted if platform changes (pointer size, alignment, etc)
-		WriteEncodedUInt(ot->size);
 		// flags
-		asDWORD flags = ot->flags;
-		WRITE_NUM(flags);
+		WRITE_NUM(ot->flags);
+		// size
+		WriteEncodedUInt(ot->size);
 	}
 	else if( phase == 2 )
 	{
@@ -822,12 +821,13 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 	{
 		// name
 		ReadString(&ot->name);
+		// flags
+		READ_NUM(ot->flags);
 		// size
 		ot->size = ReadEncodedUInt();
-		// flags
-		asDWORD flags;
-		READ_NUM(flags);
-		ot->flags = flags;
+		// Reset the size of script classes, since it will be recalculated as properties are added
+		if( (ot->flags & asOBJ_SCRIPT_OBJECT) && ot->size != 0 )
+			ot->size = sizeof(asCScriptObject);
 
 		// Use the default script class behaviours
 		ot->beh = engine->scriptTypeBehaviours.beh;
@@ -845,7 +845,7 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 			engine->scriptFunctions[ot->beh.operators[i]]->AddRef();
 	}
 	else if( phase == 2 )
-	{	
+	{
 		if( ot->flags & asOBJ_ENUM )
 		{
 			int count = ReadEncodedUInt();
@@ -956,13 +956,8 @@ void asCRestore::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 	{
 		// properties[]
 		asUINT size = ReadEncodedUInt();
-		ot->properties.Allocate(size,0);
 		for( asUINT n = 0; n < size; n++ )
-		{
-			asCObjectProperty *prop = asNEW(asCObjectProperty);
-			ReadObjectProperty(prop);
-			ot->properties.PushLast(prop);
-		}
+			ReadObjectProperty(ot);
 	}
 }
 
@@ -1172,17 +1167,19 @@ void asCRestore::WriteObjectProperty(asCObjectProperty* prop)
 {
 	WriteString(&prop->name);
 	WriteDataType(&prop->type);
-	// TODO: offset may need to be adjusted on different platforms (alignment, pointer size, etc)
-	WriteEncodedUInt(prop->byteOffset);
 	WRITE_NUM(prop->isPrivate);
 }
 
-void asCRestore::ReadObjectProperty(asCObjectProperty* prop) 
+void asCRestore::ReadObjectProperty(asCObjectType *ot) 
 {
-	ReadString(&prop->name);
-	ReadDataType(&prop->type);
-	prop->byteOffset = ReadEncodedUInt();
-	READ_NUM(prop->isPrivate);
+	asCString name;
+	ReadString(&name);
+	asCDataType dt;
+	ReadDataType(&dt);
+	bool isPrivate;
+	READ_NUM(isPrivate);
+
+	ot->AddPropertyToClass(name, dt, isPrivate);
 }
 
 void asCRestore::WriteDataType(const asCDataType *dt) 

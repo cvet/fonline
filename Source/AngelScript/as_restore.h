@@ -80,7 +80,7 @@ protected:
 	asCScriptFunction *ReadFunction(bool addToModule = true, bool addToEngine = true);
 	void ReadFunctionSignature(asCScriptFunction *func);
 	void ReadGlobalProperty();
-	void ReadObjectProperty(asCObjectProperty *prop);
+	void ReadObjectProperty(asCObjectType *ot);
 	void ReadDataType(asCDataType *dt);
 	asCObjectType *ReadObjectType();
 	void ReadObjectTypeDeclaration(asCObjectType *ot, int phase);

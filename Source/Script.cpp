@@ -127,9 +127,9 @@ public:
 		}
 		else if(type=="string")
 		{
-			value=instance.text.substr(instance.text.find(value),string::npos);
+			if(value!="") value=instance.text.substr(instance.text.find(value),string::npos);
 			list<CScriptString*>::iterator it=stringArray.insert(stringArray.begin(),new CScriptString(value));
-			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register string global var, pragma<%s>.\n",instance.text.c_str());
+			if(Engine->RegisterGlobalProperty(name.c_str(),(*it))<0) WriteLog("Unable to register string global var, pragma<%s>.\n",instance.text.c_str());
 		}
 		else if(type=="float")
 		{

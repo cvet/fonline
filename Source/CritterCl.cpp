@@ -28,11 +28,12 @@ SprOx(0),SprOy(0),StartTick(0),TickCount(0),ApRegenerationTick(0),
 tickTextDelay(0),textOnHeadColor(COLOR_TEXT),Human(false),Alpha(0),
 fadingEnable(false),FadingTick(0),fadeUp(false),finishingTime(0),
 staySprDir(0),staySprTick(0),needReSet(false),reSetTick(0),CurMoveStep(0),
-Visible(true),SprDrawValid(false),IsNotValid(false),RefCounter(1),NameRefCounter(0x80000000),LexemsRefCounter(0x80000000),
+Visible(true),SprDrawValid(false),IsNotValid(false),RefCounter(1),NameRefCounter(1),NameOnHeadRefCounter(1),LexemsRefCounter(1),
 OxExtI(0),OyExtI(0),OxExtF(0),OyExtF(0),OxExtSpeed(0),OyExtSpeed(0),OffsExtNextTick(0),
 Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 {
 	Name="";
+	NameOnHead="";
 	StringCopy(Pass,"");
 	ZeroMemory(Params,sizeof(Params));
 	ZeroMemory(&DefItemSlotMain,sizeof(Item));
@@ -1811,7 +1812,7 @@ void CritterCl::SetOffs(short set_ox, short set_oy, bool move_text)
 			SprMngr->GetDrawCntrRect(SprDraw,&DRect);
 			if(move_text) textRect=DRect;
 		}
-		if(Anim3d) Anim3d->SetDrawPos(SprDraw->ScrX+SprOx+CmnScrOx,SprDraw->ScrY+SprOy+CmnScrOy);
+		if(Anim3d) Anim3d->SetDrawPos(SprDraw->ScrX+SprOx+GameOpt.ScrOx,SprDraw->ScrY+SprOy+GameOpt.ScrOy);
 		if(IsChosen()) SprMngr->SetEgg(HexX,HexY,SprDraw);
 	}
 }
@@ -1831,7 +1832,7 @@ void CritterCl::SetSprRect()
 		}
 		else
 		{
-			Anim3d->SetDrawPos(SprDraw->ScrX+SprOx+CmnScrOx,SprDraw->ScrY+SprOy+CmnScrOy);
+			Anim3d->SetDrawPos(SprDraw->ScrX+SprOx+GameOpt.ScrOx,SprDraw->ScrY+SprOy+GameOpt.ScrOy);
 		}
 		if(IsChosen()) SprMngr->SetEgg(HexX,HexY,SprDraw);
 	}
@@ -1844,7 +1845,7 @@ INTRECT CritterCl::GetTextRect()
 		if(Anim3d)
 		{
 			SprMngr->GetDrawCntrRect(SprDraw,&textRect);
-			textRect(-CmnScrOx,-CmnScrOy-3);
+			textRect(-GameOpt.ScrOx,-GameOpt.ScrOy-3);
 		}
 		return textRect;
 	}
@@ -1912,29 +1913,30 @@ void CritterCl::DrawTextOnHead()
 {
 	if(strTextOnHead.empty())
 	{
-		if(IsPlayer() && !CmnShowPlayerNames) return;
-		if(IsNpc() && !CmnShowNpcNames) return;
+		if(IsPlayer() && !GameOpt.ShowPlayerNames) return;
+		if(IsNpc() && !GameOpt.ShowNpcNames) return;
 	}
 
 	if(SprDrawValid)
 	{
 		INTRECT tr=GetTextRect();
-		int x=(tr.L+tr.W()/2+CmnScrOx)/SpritesZoom-100;
-		int y=(tr.T+CmnScrOy)/SpritesZoom-70;
+		int x=(tr.L+tr.W()/2+GameOpt.ScrOx)/GameOpt.SpritesZoom-100;
+		int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
 		INTRECT r(x,y,x+200,y+70);
 
-		string str;
+		char str[MAX_FOTEXT];
 		DWORD color;
 		if(strTextOnHead.empty())
 		{
-			str=GetName();
-			if(CmnShowCritId) str+=Str::Format(" <%u>",IsNpc()?GetId()-NPC_START_ID+1:GetId()-USERS_START_ID+1);
-			if(FLAG(Flags,FCRIT_DISCONNECT)) str+=OptPlayerOffAppendix;
+			if(NameOnHead.length()) StringCopy(str,NameOnHead.c_str());
+			else StringCopy(str,Name.c_str());
+			if(GameOpt.ShowCritId) StringAppend(str,Str::Format(" <%u>",GetId()));
+			if(FLAG(Flags,FCRIT_DISCONNECT)) StringAppend(str,GameOpt.PlayerOffAppendix.c_str());
 			color=(NameColor?NameColor:COLOR_CRITTER_NAME);
 		}
 		else
 		{
-			str=strTextOnHead;
+			StringCopy(str,strTextOnHead.c_str());
 			color=textOnHeadColor;
 
 			if(tickTextDelay>500)
@@ -1952,11 +1954,11 @@ void CritterCl::DrawTextOnHead()
 		if(fadingEnable)
 		{
 			DWORD alpha=GetFadeAlpha();
-			SprMngr->DrawStr(r,str.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,(alpha<<24)|(color&0xFFFFFF));
+			SprMngr->DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,(alpha<<24)|(color&0xFFFFFF));
 		}
 		else if(!IsFinishing())
 		{
-			SprMngr->DrawStr(r,str.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
+			SprMngr->DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
 		}
 	}
 

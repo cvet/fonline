@@ -196,6 +196,8 @@ public:
 	bool DerivesFrom(const asCObjectType *objType) const;
 	bool IsInterface() const;
 
+	asCObjectProperty *AddPropertyToClass(const asCString &name, const asCDataType &dt, bool isPrivate);
+
 	asCString   name;
 	int         size;
 	asCArray<asCObjectProperty*> properties;

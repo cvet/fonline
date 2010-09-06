@@ -17,18 +17,8 @@ FOMapper* FOMapper::Self=NULL;
 FOMapper::FOMapper():Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 {
 	Self=this;
-	CmnDiLeft=0;
-	CmnDiRight=0;
-	CmnDiUp=0;
-	CmnDiDown=0;
-	CmnDiMleft=0;
-	CmnDiMright=0;
-	CmnDiMup=0;
-	CmnDiMdown=0;
 	FPS=0;
 	DrawCrExtInfo=0;
-	CmnShowPlayerNames=true;
-	CmnShowNpcNames=true;
 	IsMapperStarted=false;
 }
 
@@ -43,38 +33,28 @@ bool FOMapper::Init(HWND wnd)
 	Keyb::InitKeyb();
 
 	// Options
-	OptScrollCheck=false;
-	OptScreenClear=true;
+	GameOpt.ScrollCheck=false;
+	GameOpt.ScreenClear=true;
 
 	// File manager
-	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
-	if(!FileManager::LoadDataFile(OptMasterPath.find(':')==string::npos?(OptClientPath+OptMasterPath).c_str():OptMasterPath.c_str()))
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
+	if(!FileManager::LoadDataFile(GameOpt.MasterPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.MasterPath).c_str():GameOpt.MasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDataFile(OptCritterPath.find(':')==string::npos?(OptClientPath+OptCritterPath).c_str():OptCritterPath.c_str()))
+	if(!FileManager::LoadDataFile(GameOpt.CritterPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.CritterPath).c_str():GameOpt.CritterPath.c_str()))
 	{
 		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online Mapper",MB_OK);
 		return false;
 	}
-	FileManager::LoadDataFile(OptFoPatchPath.find(':')==string::npos?(OptClientPath+OptFoPatchPath).c_str():OptFoPatchPath.c_str());
+	FileManager::LoadDataFile(GameOpt.FoPatchPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.FoPatchPath).c_str():GameOpt.FoPatchPath.c_str());
 
 	// Sprite manager
 	SpriteMngrParams params;
 	params.WndHeader=wnd;
-	params.FullScreen=OptFullScr;
-	params.ScreenWidth=OptScreenWidth;
-	params.ScreenHeight=OptScreenHeight;
-	params.VSync=OptVSync;
-	params.SprFlushVal=OptFlushVal;
-	params.BaseTexture=OptBaseTex;
 	params.PreRestoreFunc=&_PreRestore;
 	params.PostRestoreFunc=&_PostRestore;
-	params.DrawOffsetX=&CmnScrOx;
-	params.DrawOffsetY=&CmnScrOy;
-	params.MultiSampling=OptMultiSampling;
-	params.SoftwareSkinning=OptSoftwareSkinning;
 	if(!SprMngr.Init(params)) return false;
 
 	// Fonts
@@ -92,9 +72,9 @@ bool FOMapper::Init(HWND wnd)
 	CritterCl::SprMngr=&SprMngr;
 
 	// Names
-	FileManager::SetDataPath(OptServerPath.c_str());
+	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 	FONames::GenerateFoNames(PT_SERVER_DATA);
-	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 
 	// Input
 	if(!InitDI()) return false;
@@ -112,7 +92,7 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Server path
-	FileManager::SetDataPath(OptServerPath.c_str());
+	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 
 	// Language Packs
 	IniParser cfg_server;
@@ -179,7 +159,7 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Restore to client path
-	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 
 	// Hex manager
 	if(!HexMngr.Init(&SprMngr)) return false;
@@ -189,7 +169,7 @@ bool FOMapper::Init(HWND wnd)
 	ChangeGameTime();
 	AnyId=0x7FFFFFFF;
 
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		RECT r;
 		GetWindowRect(Wnd,&r);
@@ -354,7 +334,7 @@ int FOMapper::InitIface()
 	IsSelectTile=false;
 	IsSelectRoof=false;
 
-	OptShowRoof=false;
+	GameOpt.ShowRoof=false;
 
 	// Object
 	IfaceLoadRect(ObjWMain,"ObjMain");
@@ -501,7 +481,7 @@ bool FOMapper::InitDI()
 		return false;
 	}
 
-	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | (OptFullScr?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
+	hr=Mouse->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|(GameOpt.FullScreen?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
 	//	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_EXCLUSIVE);
 	if(hr!=DI_OK)
 	{
@@ -721,18 +701,18 @@ void FOMapper::ParseKeyboard()
 		{
 			Keyb::ShiftDwn=true;
 label_TryChangeLang:
-			if(Keyb::ShiftDwn && Keyb::CtrlDwn && OptChangeLang==CHANGE_LANG_CTRL_SHIFT) //Ctrl+Shift
+			if(Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang==CHANGE_LANG_CTRL_SHIFT) //Ctrl+Shift
 				Keyb::Lang=(Keyb::Lang==LANG_RUS)?LANG_ENG:LANG_RUS;
-			if(Keyb::ShiftDwn && Keyb::AltDwn && OptChangeLang==CHANGE_LANG_ALT_SHIFT) //Alt+Shift
+			if(Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang==CHANGE_LANG_ALT_SHIFT) //Alt+Shift
 				Keyb::Lang=(Keyb::Lang==LANG_RUS)?LANG_ENG:LANG_RUS;
 		}
 		if(dikup==DIK_RCONTROL || dikup==DIK_LCONTROL) Keyb::CtrlDwn=false;
 		else if(dikup==DIK_LMENU || dikup==DIK_RMENU) Keyb::AltDwn=false;
 		else if(dikup==DIK_LSHIFT || dikup==DIK_RSHIFT) Keyb::ShiftDwn=false;
 
-		if(script_result || OptDisableKeyboardEvents)
+		if(script_result || GameOpt.DisableKeyboardEvents)
 		{
-			if(dikdw==DIK_ESCAPE && Keyb::ShiftDwn) CmnQuit=true;
+			if(dikdw==DIK_ESCAPE && Keyb::ShiftDwn) GameOpt.Quit=true;
 			continue;
 		}
 
@@ -740,14 +720,14 @@ label_TryChangeLang:
 		{
 			switch(dikdw)
 			{
-			case DIK_F1: OptShowItem=!OptShowItem; HexMngr.RefreshMap(); break;
-			case DIK_F2: OptShowScen=!OptShowScen; HexMngr.RefreshMap(); break;
-			case DIK_F3: OptShowWall=!OptShowWall; HexMngr.RefreshMap(); break;
-			case DIK_F4: OptShowCrit=!OptShowCrit; HexMngr.RefreshMap(); break;
-			case DIK_F5: OptShowTile=!OptShowTile; HexMngr.RefreshMap(); break;
-			case DIK_F6: OptShowFast=!OptShowFast; HexMngr.RefreshMap(); break;
+			case DIK_F1: GameOpt.ShowItem=!GameOpt.ShowItem; HexMngr.RefreshMap(); break;
+			case DIK_F2: GameOpt.ShowScen=!GameOpt.ShowScen; HexMngr.RefreshMap(); break;
+			case DIK_F3: GameOpt.ShowWall=!GameOpt.ShowWall; HexMngr.RefreshMap(); break;
+			case DIK_F4: GameOpt.ShowCrit=!GameOpt.ShowCrit; HexMngr.RefreshMap(); break;
+			case DIK_F5: GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); break;
+			case DIK_F6: GameOpt.ShowFast=!GameOpt.ShowFast; HexMngr.RefreshMap(); break;
 			case DIK_F7: IntVisible=!IntVisible; break;
-			case DIK_F8: OptMouseScroll=!OptMouseScroll; break;
+			case DIK_F8: GameOpt.MouseScroll=!GameOpt.MouseScroll; break;
 			case DIK_F9: ObjVisible=!ObjVisible; break;
 			case DIK_F10: HexMngr.SwitchShowHex(); break;
 			case DIK_F11: HexMngr.SwitchShowRain(); break;
@@ -781,7 +761,7 @@ label_TryChangeLang:
 			case DIK_C: BufferCopy(); break;
 			case DIK_V: BufferPaste(50,50); break;
 			case DIK_A: SelectAll(); break;
-			case DIK_S: OptScrollCheck=!OptScrollCheck; break;
+			case DIK_S: GameOpt.ScrollCheck=!GameOpt.ScrollCheck; break;
 			case DIK_B: HexMngr.MarkPassedHexes(); break;
 			case DIK_M: DrawCrExtInfo++; if(DrawCrExtInfo>DRAW_CR_INFO_MAX) DrawCrExtInfo=0; break;
 			case DIK_L: SaveLogFile(); break;
@@ -798,10 +778,10 @@ label_TryChangeLang:
 			{
 				switch(dikdw)
 				{
-				case DIK_LEFT: CmnDiLeft=true; break;
-				case DIK_RIGHT: CmnDiRight=true; break;
-				case DIK_UP: CmnDiUp=true; break;
-				case DIK_DOWN: CmnDiDown=true; break;
+				case DIK_LEFT: GameOpt.ScrollKeybLeft=true; break;
+				case DIK_RIGHT: GameOpt.ScrollKeybRight=true; break;
+				case DIK_UP: GameOpt.ScrollKeybUp=true; break;
+				case DIK_DOWN: GameOpt.ScrollKeybDown=true; break;
 				default: break;
 				}
 
@@ -816,10 +796,10 @@ label_TryChangeLang:
 
 			switch(dikup)
 			{
-			case DIK_LEFT: CmnDiLeft=false; break;
-			case DIK_RIGHT: CmnDiRight=false; break;
-			case DIK_UP: CmnDiUp=false; break;
-			case DIK_DOWN: CmnDiDown=false; break;
+			case DIK_LEFT: GameOpt.ScrollKeybLeft=false; break;
+			case DIK_RIGHT: GameOpt.ScrollKeybRight=false; break;
+			case DIK_UP: GameOpt.ScrollKeybUp=false; break;
+			case DIK_DOWN: GameOpt.ScrollKeybDown=false; break;
 			default: break;
 			}
 		}
@@ -839,7 +819,7 @@ label_TryChangeLang:
 void FOMapper::ParseMouse()
 {
 	// Windows move cursor in windowed mode
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		WINDOWINFO wi;
 		wi.cbSize=sizeof(wi);
@@ -866,7 +846,7 @@ void FOMapper::ParseMouse()
 	}
 
 	// Windows move cursor in windowed mode
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		static int old_cur_x=CurX;
 		static int old_cur_y=CurY;
@@ -892,10 +872,10 @@ void FOMapper::ParseMouse()
 	{
 		// Mouse Move
 		// Direct input move cursor in fullscreen mode
-		if(OptFullScr)
+		if(GameOpt.FullScreen)
 		{
-			DI_ONMOUSE( DIMOFS_X, CurX+=didod[i].dwData*OptMouseSpeed; ismoved=true; continue;);
-			DI_ONMOUSE( DIMOFS_Y, CurY+=didod[i].dwData*OptMouseSpeed; ismoved=true; continue;);
+			DI_ONMOUSE( DIMOFS_X, CurX+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
+			DI_ONMOUSE( DIMOFS_Y, CurY+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
 		}
 
 		// Scripts
@@ -1019,7 +999,7 @@ void FOMapper::ParseMouse()
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		if(script_result || OptDisableMouseEvents) continue;
+		if(script_result || GameOpt.DisableMouseEvents) continue;
 
 		// Wheel
 		DI_ONMOUSE( DIMOFS_Z,
@@ -1126,27 +1106,27 @@ void FOMapper::ParseMouse()
 	}
 
 	// Scroll
-	if(OptMouseScroll==false) return;
+	if(GameOpt.MouseScroll==false) return;
 
 	if(CurX>=MODE_WIDTH-1)
-		CmnDiMright=true;
+		GameOpt.ScrollMouseRight=true;
 	else
-		CmnDiMright=false;
+		GameOpt.ScrollMouseRight=false;
 
 	if(CurX<=0)
-		CmnDiMleft=true;
+		GameOpt.ScrollMouseLeft=true;
 	else
-		CmnDiMleft=false;
+		GameOpt.ScrollMouseLeft=false;
 
 	if(CurY>=MODE_HEIGHT-1)
-		CmnDiMdown=true;
+		GameOpt.ScrollMouseDown=true;
 	else
-		CmnDiMdown=false;
+		GameOpt.ScrollMouseDown=false;
 
 	if(CurY<=0)
-		CmnDiMup=true;
+		GameOpt.ScrollMouseUp=true;
 	else
-		CmnDiMup=false;
+		GameOpt.ScrollMouseUp=false;
 }
 
 void FOMapper::MainLoop()
@@ -1279,8 +1259,8 @@ void FOMapper::MainLoop()
 				int procent=Procent(t.Tick,tick-t.StartTick);
 				INTRECT r=AverageFlexRect(t.Rect,t.EndRect,procent);
 				Field& f=HexMngr.GetField(t.HexX,t.HexY);
-				int x=(f.ScrX+32/2+CmnScrOx)/SpritesZoom-100-(t.Rect.L-r.L);
-				int y=(f.ScrY+12/2-t.Rect.H()-(t.Rect.T-r.T)+CmnScrOy)/SpritesZoom-70;
+				int x=(f.ScrX+32/2+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(t.Rect.L-r.L);
+				int y=(f.ScrY+12/2-t.Rect.H()-(t.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
 				DWORD color=t.Color;
 				if(t.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
 				SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),t.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
@@ -1399,13 +1379,13 @@ void FOMapper::IntDraw()
 	default: break;
 	}
 
-	if(OptShowItem) SprMngr.DrawSprite(IntPShow,IntBShowItem[0]+IntX,IntBShowItem[1]+IntY);
-	if(OptShowScen) SprMngr.DrawSprite(IntPShow,IntBShowScen[0]+IntX,IntBShowScen[1]+IntY);
-	if(OptShowWall) SprMngr.DrawSprite(IntPShow,IntBShowWall[0]+IntX,IntBShowWall[1]+IntY);
-	if(OptShowCrit) SprMngr.DrawSprite(IntPShow,IntBShowCrit[0]+IntX,IntBShowCrit[1]+IntY);
-	if(OptShowTile) SprMngr.DrawSprite(IntPShow,IntBShowTile[0]+IntX,IntBShowTile[1]+IntY);
-	if(OptShowRoof) SprMngr.DrawSprite(IntPShow,IntBShowRoof[0]+IntX,IntBShowRoof[1]+IntY);
-	if(OptShowFast) SprMngr.DrawSprite(IntPShow,IntBShowFast[0]+IntX,IntBShowFast[1]+IntY);
+	if(GameOpt.ShowItem) SprMngr.DrawSprite(IntPShow,IntBShowItem[0]+IntX,IntBShowItem[1]+IntY);
+	if(GameOpt.ShowScen) SprMngr.DrawSprite(IntPShow,IntBShowScen[0]+IntX,IntBShowScen[1]+IntY);
+	if(GameOpt.ShowWall) SprMngr.DrawSprite(IntPShow,IntBShowWall[0]+IntX,IntBShowWall[1]+IntY);
+	if(GameOpt.ShowCrit) SprMngr.DrawSprite(IntPShow,IntBShowCrit[0]+IntX,IntBShowCrit[1]+IntY);
+	if(GameOpt.ShowTile) SprMngr.DrawSprite(IntPShow,IntBShowTile[0]+IntX,IntBShowTile[1]+IntY);
+	if(GameOpt.ShowRoof) SprMngr.DrawSprite(IntPShow,IntBShowRoof[0]+IntX,IntBShowRoof[1]+IntY);
+	if(GameOpt.ShowFast) SprMngr.DrawSprite(IntPShow,IntBShowFast[0]+IntX,IntBShowFast[1]+IntY);
 
 	if(IsSelectItem) SprMngr.DrawSprite(IntPSelect,IntBSelectItem[0]+IntX,IntBSelectItem[1]+IntY);
 	if(IsSelectScen) SprMngr.DrawSprite(IntPSelect,IntBSelectScen[0]+IntX,IntBSelectScen[1]+IntY);
@@ -1557,7 +1537,7 @@ void FOMapper::IntDraw()
 	if(HexMngr.GetHexPixel(CurX,CurY,hx,hy))
 	{
 		char str[256];
-		sprintf(str,"hx<%u>\nhy<%u>\ntime<%u:%u>\nfps<%u>\n%s",hx,hy,DayTime/60%24,DayTime%60,FPS,OptScrollCheck?"ScrollCheck":"");
+		sprintf(str,"hx<%u>\nhy<%u>\ntime<%u:%u>\nfps<%u>\n%s",hx,hy,DayTime/60%24,DayTime%60,FPS,GameOpt.ScrollCheck?"ScrollCheck":"");
 		SprMngr.DrawStr(INTRECT(IntWMain,IntX+3,IntY+2),str,FT_NOBREAK);
 	}
 }
@@ -2421,13 +2401,13 @@ void FOMapper::IntLMouseDown()
 		else if(IntMode==INT_MODE_INCONT) InContScroll+=ProtosOnScreen;
 		else if(IntMode==INT_MODE_LIST) ListScroll+=ProtosOnScreen;
 	}
-	else if(IsCurInRect(IntBShowItem,IntX,IntY)) { OptShowItem=!OptShowItem; HexMngr.RefreshMap(); }
-	else if(IsCurInRect(IntBShowScen,IntX,IntY)) { OptShowScen=!OptShowScen; HexMngr.RefreshMap(); }
-	else if(IsCurInRect(IntBShowWall,IntX,IntY)) { OptShowWall=!OptShowWall; HexMngr.RefreshMap(); }
-	else if(IsCurInRect(IntBShowCrit,IntX,IntY)) { OptShowCrit=!OptShowCrit; HexMngr.RefreshMap(); }
-	else if(IsCurInRect(IntBShowTile,IntX,IntY)) { OptShowTile=!OptShowTile; HexMngr.RefreshMap(); }
-	else if(IsCurInRect(IntBShowRoof,IntX,IntY)) { OptShowRoof=!OptShowRoof; HexMngr.RefreshMap(); }
-	else if(IsCurInRect(IntBShowFast,IntX,IntY)) { OptShowFast=!OptShowFast; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowItem,IntX,IntY)) { GameOpt.ShowItem=!GameOpt.ShowItem; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowScen,IntX,IntY)) { GameOpt.ShowScen=!GameOpt.ShowScen; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowWall,IntX,IntY)) { GameOpt.ShowWall=!GameOpt.ShowWall; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowCrit,IntX,IntY)) { GameOpt.ShowCrit=!GameOpt.ShowCrit; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowTile,IntX,IntY)) { GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowRoof,IntX,IntY)) { GameOpt.ShowRoof=!GameOpt.ShowRoof; HexMngr.RefreshMap(); }
+	else if(IsCurInRect(IntBShowFast,IntX,IntY)) { GameOpt.ShowFast=!GameOpt.ShowFast; HexMngr.RefreshMap(); }
 	else if(IsCurInRect(IntBSelectItem,IntX,IntY)) IsSelectItem=!IsSelectItem;
 	else if(IsCurInRect(IntBSelectScen,IntX,IntY)) IsSelectScen=!IsSelectScen;
 	else if(IsCurInRect(IntBSelectWall,IntX,IntY)) IsSelectWall=!IsSelectWall;
@@ -2501,8 +2481,8 @@ void FOMapper::IntLMouseUp()
 						DWORD tile=CurProtoMap->GetTile(hx/2,hy/2);
 						DWORD roof=CurProtoMap->GetRoof(hx/2,hy/2);
 
-						if(IsSelectTile && OptShowTile /*&& !HexMngr.IsIgnorePid(tile)*/) SelectAddTile(hx/2,hy/2,tile,false,true);
-						if(IsSelectRoof && OptShowRoof /*&& !HexMngr.IsIgnorePid(roof)*/) SelectAddTile(hx/2,hy/2,roof,true,true);
+						if(IsSelectTile && GameOpt.ShowTile /*&& !HexMngr.IsIgnorePid(tile)*/) SelectAddTile(hx/2,hy/2,tile,false,true);
+						if(IsSelectRoof && GameOpt.ShowRoof /*&& !HexMngr.IsIgnorePid(roof)*/) SelectAddTile(hx/2,hy/2,roof,true,true);
 					}
 				}
 
@@ -2510,17 +2490,17 @@ void FOMapper::IntLMouseUp()
 				{
 					WORD pid=items[k]->GetProtoId();
 					if(HexMngr.IsIgnorePid(pid)) continue;
-					if(!OptShowFast && HexMngr.IsFastPid(pid)) continue;
+					if(!GameOpt.ShowFast && HexMngr.IsFastPid(pid)) continue;
 
-					if(items[k]->IsItem() && IsSelectItem && OptShowItem) SelectAddItem(items[k]);
-					else if(items[k]->IsScenOrGrid() && IsSelectScen && OptShowScen) SelectAddItem(items[k]);
-					else if(items[k]->IsWall() && IsSelectWall && OptShowWall) SelectAddItem(items[k]);
-					else if(OptShowFast && HexMngr.IsFastPid(pid)) SelectAddItem(items[k]);
+					if(items[k]->IsItem() && IsSelectItem && GameOpt.ShowItem) SelectAddItem(items[k]);
+					else if(items[k]->IsScenOrGrid() && IsSelectScen && GameOpt.ShowScen) SelectAddItem(items[k]);
+					else if(items[k]->IsWall() && IsSelectWall && GameOpt.ShowWall) SelectAddItem(items[k]);
+					else if(GameOpt.ShowFast && HexMngr.IsFastPid(pid)) SelectAddItem(items[k]);
 				}
 
 				for(int l=0;l<critters.size();l++)
 				{
-					if(IsSelectCrit && OptShowCrit) SelectAddCrit(critters[l]);
+					if(IsSelectCrit && GameOpt.ShowCrit) SelectAddCrit(critters[l]);
 				}
 			}
 			else
@@ -2970,8 +2950,8 @@ void FOMapper::SelectAll()
 	{
 		for(int j=0;j<HexMngr.GetMaxHexY()/2;j++)
 		{
-			if(IsSelectTile && OptShowTile) SelectAddTile(i,j,CurProtoMap->GetTile(i,j),false,true);
-			if(IsSelectRoof && OptShowRoof) SelectAddTile(i,j,CurProtoMap->GetRoof(i,j),true,true);
+			if(IsSelectTile && GameOpt.ShowTile) SelectAddTile(i,j,CurProtoMap->GetTile(i,j),false,true);
+			if(IsSelectRoof && GameOpt.ShowRoof) SelectAddTile(i,j,CurProtoMap->GetRoof(i,j),true,true);
 		}
 	}
 
@@ -2980,12 +2960,12 @@ void FOMapper::SelectAll()
 	{
 		if(HexMngr.IsIgnorePid(items[i]->GetProtoId())) continue;
 
-		if(items[i]->IsItem() && IsSelectItem && OptShowItem) SelectAddItem(items[i]);
-		else if(items[i]->IsScenOrGrid() && IsSelectScen && OptShowScen) SelectAddItem(items[i]);
-		else if(items[i]->IsWall() && IsSelectWall && OptShowWall) SelectAddItem(items[i]);
+		if(items[i]->IsItem() && IsSelectItem && GameOpt.ShowItem) SelectAddItem(items[i]);
+		else if(items[i]->IsScenOrGrid() && IsSelectScen && GameOpt.ShowScen) SelectAddItem(items[i]);
+		else if(items[i]->IsWall() && IsSelectWall && GameOpt.ShowWall) SelectAddItem(items[i]);
 	}
 
-	if(IsSelectCrit && OptShowCrit)
+	if(IsSelectCrit && GameOpt.ShowCrit)
 	{
 		CritMap& crits=HexMngr.GetCritters();
 		for(CritMapIt it=crits.begin(),end=crits.end();it!=end;++it) SelectAddCrit((*it).second);
@@ -3343,7 +3323,8 @@ void FOMapper::CurDraw()
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+16+CmnScrOx)/SpritesZoom,(y+CmnScrOy+6)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
+			SprMngr.DrawSpriteSize(spr_id,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+				si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 		}
 		else if(IsTileMode() && TilesPictures.size())
 		{
@@ -3362,7 +3343,7 @@ void FOMapper::CurDraw()
 			y=y-6+32;
 			if(DrawRoof) y-=98;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+16+CmnScrOx)/SpritesZoom,(y+CmnScrOy+6)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
+			SprMngr.DrawSpriteSize(spr_id,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 		}
 		else if(IsCritMode() && NpcProtos.size())
 		{
@@ -3377,7 +3358,7 @@ void FOMapper::CurDraw()
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+CmnScrOx+16)/SpritesZoom,(y+CmnScrOy+6)/SpritesZoom,si->Width/SpritesZoom,si->Height/SpritesZoom,true,false);
+			SprMngr.DrawSpriteSize(spr_id,(x+GameOpt.ScrOx+16)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 		}
 		else
 		{
@@ -3614,14 +3595,14 @@ void FOMapper::ParseCommand(const char* cmd)
 		}
 
 		ProtoMap* pmap=new ProtoMap();
-		FileManager::SetDataPath(OptServerPath.c_str());
+		FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 		if(!pmap->Init(0xFFFF,map_name,PT_SERVER_MAPS))
 		{
 			AddMess("File not found or truncated.");
-			FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+			FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 			return;
 		}
-		FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 
 		SelectClear();
 		if(!HexMngr.SetProtoMap(*pmap))
@@ -3657,10 +3638,10 @@ void FOMapper::ParseCommand(const char* cmd)
 
 		SelectClear();
 		HexMngr.RefreshMap();
-		FileManager::SetDataPath(OptServerPath.c_str());
+		FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 		if(CurProtoMap->Save(map_name,PT_SERVER_MAPS,strstr(cmd,"/text")!=NULL,strstr(cmd,"/nopack")==NULL)) AddMess("Save map success.");
 		else AddMess("Save map fail, see log.");
-		FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	}
 	// Run script
 	else if(*cmd=='#')
@@ -3992,7 +3973,7 @@ void FOMapper::MessBoxGenerate()
 		j++;
 		if(j<=MessBoxScroll) continue;
 		// Add to message box
-		if(OptMsgboxInvert) MessBoxCurText+=m.Mess; //Back
+		if(GameOpt.MsgboxInvert) MessBoxCurText+=m.Mess; //Back
 		else MessBoxCurText=m.Mess+MessBoxCurText; //Front
 		i++;
 		if(i>=max_lines) break;
@@ -4005,7 +3986,7 @@ void FOMapper::MessBoxDraw()
 	if(MessBoxCurText.empty()) return;
 
 	DWORD flags=FT_COLORIZE;
-	if(!OptMsgboxInvert) flags|=FT_UPPER|FT_BOTTOM;
+	if(!GameOpt.MsgboxInvert) flags|=FT_UPPER|FT_BOTTOM;
 
 	SprMngr.DrawStr(INTRECT(IntWWork[0]+IntX,IntWWork[1]+IntY,IntWWork[2]+IntX,IntWWork[3]+IntY),MessBoxCurText.c_str(),flags);
 }
@@ -4528,13 +4509,13 @@ void FOMapper::SScriptFunc::Global_SetFastPrototypes(asIScriptArray* pids)
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap(CScriptString& file_name, int path_type)
 {
 	ProtoMap* pmap=new ProtoMap();
-	FileManager::SetDataPath(OptServerPath.c_str());
+	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 	if(!pmap->Init(0xFFFF,file_name.c_str(),path_type))
 	{
-		FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 		return NULL;
 	}
-	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	Self->LoadedProtoMaps.push_back(pmap);
 	return pmap;
 }
@@ -4557,9 +4538,9 @@ void FOMapper::SScriptFunc::Global_UnloadMap(ProtoMap* pmap)
 bool FOMapper::SScriptFunc::Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type, bool text, bool pack)
 {
 	if(!pmap) SCRIPT_ERROR_R0("Proto map arg nullptr.");
-	FileManager::SetDataPath(OptServerPath.c_str());
+	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 	bool result=pmap->Save(file_name.c_str(),path_type,text,pack);
-	FileManager::SetDataPath((OptClientPath+OptFoDataPath).c_str());
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	return result;
 }
 
@@ -4683,7 +4664,7 @@ ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem(WORD proto_id)
 
 bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 {
-	if(FileManager::LoadDataFile(dat_name.c_std_str().find(':')==string::npos?(OptClientPath+dat_name.c_std_str()).c_str():dat_name.c_str()))
+	if(FileManager::LoadDataFile(dat_name.c_std_str().find(':')==string::npos?(GameOpt.ClientPath+dat_name.c_std_str()).c_str():dat_name.c_str()))
 	{
 		// Reload resource manager
 		if(Self->IsMapperStarted)
@@ -4878,10 +4859,10 @@ bool FOMapper::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
 	{
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
-		x+=CmnScrOx;
-		y+=CmnScrOy;
-		x/=SpritesZoom;
-		y/=SpritesZoom;
+		x+=GameOpt.ScrOx;
+		y+=GameOpt.ScrOy;
+		x/=GameOpt.SpritesZoom;
+		y/=GameOpt.SpritesZoom;
 		return true;
 	}
 	return false;

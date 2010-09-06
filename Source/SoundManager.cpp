@@ -247,7 +247,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 	DSBUFFERDESC dsbd;
 	ZeroMemory(&dsbd,sizeof(DSBUFFERDESC));
 	dsbd.dwBufferBytes=sound->BufSize;
-	dsbd.dwFlags=(DSBCAPS_CTRLVOLUME|DSBCAPS_GETCURRENTPOSITION2|(OptGlobalSound?DSBCAPS_GLOBALFOCUS:0)|(sound->IsNeedStreaming?0:DSBCAPS_STATIC));
+	dsbd.dwFlags=(DSBCAPS_CTRLVOLUME|DSBCAPS_GETCURRENTPOSITION2|(GameOpt.GlobalSound?DSBCAPS_GLOBALFOCUS:0)|(sound->IsNeedStreaming?0:DSBCAPS_STATIC));
 	dsbd.dwSize=sizeof(DSBUFFERDESC);
 	dsbd.lpwfxFormat=&fmt;
 	dsbd.dwReserved=0;

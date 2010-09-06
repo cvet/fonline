@@ -81,7 +81,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst,
 		return 0;
 	}
 
-	while(!CmnQuit)
+	while(!GameOpt.Quit)
 	{
 		if(PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE))
 		{
@@ -94,7 +94,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst,
 			Mapper->MainLoop();
 
 			// Sleep
-			if(OptSleep) Sleep(OptSleep);
+			if(GameOpt.Sleep) Sleep(GameOpt.Sleep);
 		}
 	}
 
@@ -114,7 +114,7 @@ LRESULT APIENTRY WndProc(HWND hWnd, UINT message,WPARAM wParam,LPARAM lParam)
 	switch(message)
 	{
 	case WM_DESTROY:
-		CmnQuit=true;
+		GameOpt.Quit=true;
 		return 0;
 	case WM_KEYDOWN:
 		if(wParam==VK_F12) ShowWindow(hWnd,SW_MINIMIZE);

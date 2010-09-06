@@ -21,15 +21,6 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 {
 	Self=this;
 
-	CmnDiLeft=0;
-	CmnDiRight=0;
-	CmnDiUp=0;
-	CmnDiDown=0;
-	CmnDiMleft=0;
-	CmnDiMright=0;
-	CmnDiMup=0;
-	CmnDiMdown=0;
-
 	ComLen=4096;
 	ComBuf=new char[ComLen];
 	ZStreamOk=false;
@@ -122,28 +113,28 @@ bool FOClient::Init(HWND hwnd)
 	if(!InitDInput()) return false;
 
 	// File manager
-	FileManager::SetDataPath(OptFoDataPath.c_str());
-	if(!FileManager::LoadDataFile(OptMasterPath.c_str()))
+	FileManager::SetDataPath(GameOpt.FoDataPath.c_str());
+	if(!FileManager::LoadDataFile(GameOpt.MasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online",MB_OK);
 		return false;
 	}
-	if(!FileManager::LoadDataFile(OptCritterPath.c_str()))
+	if(!FileManager::LoadDataFile(GameOpt.CritterPath.c_str()))
 	{
 		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online",MB_OK);
 		return false;
 	}
-	FileManager::LoadDataFile(OptFoPatchPath.c_str());
+	FileManager::LoadDataFile(GameOpt.FoPatchPath.c_str());
 
 	// Cache
-	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)));
+	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)));
 
 	if(!Crypt.SetCacheTable(Str::Format("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
 		WriteLog(__FUNCTION__" - Can't set default cache.\n");
 		return false;
 	}
-	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),OptHost.c_str(),OptPort)))
+	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)))
 	{
 		WriteLog(__FUNCTION__" - Can't set new cache.\n");
 		return false;
@@ -155,25 +146,25 @@ bool FOClient::Init(HWND hwnd)
 	}
 
 	// User and password
-	if(OptName.empty() && OptPass.empty() && !Singleplayer)
+	if(GameOpt.Name.empty() && GameOpt.Pass.empty() && !Singleplayer)
 	{
 		bool fail=false;
 
 		DWORD len;
 		char* str=(char*)Crypt.GetCache("__name",len);
-		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) OptName=str;
+		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) GameOpt.Name=str;
 		else fail=true;
 		delete[] str;
 
 		str=(char*)Crypt.GetCache("__pass",len);
-		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) OptPass=str;
+		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) GameOpt.Pass=str;
 		else fail=true;
 		delete[] str;
 
 		if(fail)
 		{
-			OptName="login";
-			OptPass="password";
+			GameOpt.Name="login";
+			GameOpt.Pass="password";
 			refresh_cache=true;
 		}
 	}
@@ -181,18 +172,8 @@ bool FOClient::Init(HWND hwnd)
 	// Sprite manager
 	SpriteMngrParams params;
 	params.WndHeader=hwnd;
-	params.FullScreen=OptFullScr;
-	params.ScreenWidth=MODE_WIDTH;
-	params.ScreenHeight=MODE_HEIGHT;
-	params.VSync=OptVSync;
-	params.SprFlushVal=OptFlushVal;
-	params.BaseTexture=OptBaseTex;
 	params.PreRestoreFunc=&_PreRestore;
 	params.PostRestoreFunc=&_PostRestore;
-	params.DrawOffsetX=&CmnScrOx;
-	params.DrawOffsetY=&CmnScrOy;
-	params.MultiSampling=OptMultiSampling;
-	params.SoftwareSkinning=OptSoftwareSkinning;
 	if(!SprMngr.Init(params)) return false;
 	GET_UID1(UID1);
 
@@ -409,7 +390,7 @@ int FOClient::InitDInput()
 		return false;
 	}
 
-	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | (OptFullScr?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
+	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | (GameOpt.FullScreen?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
 //	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_EXCLUSIVE);
 	if(hr!=DI_OK)
 	{
@@ -591,8 +572,8 @@ void FOClient::LookBordersPrepare()
 				int x,y,x_,y_;
 				HexMngr.GetHexCurrentPosition(hx_,hy_,x,y);
 				HexMngr.GetHexCurrentPosition(hx__,hy__,x_,y_);
-				LookBorders.push_back(PrepPoint(x+16,y+6,D3DCOLOR_ARGB(80,0,255,0),(short*)&CmnScrOx,(short*)&CmnScrOy));
-				ShootBorders.push_back(PrepPoint(x_+16,y_+6,D3DCOLOR_ARGB(80,255,0,0),(short*)&CmnScrOx,(short*)&CmnScrOy));
+				LookBorders.push_back(PrepPoint(x+16,y+6,D3DCOLOR_ARGB(80,0,255,0),(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
+				ShootBorders.push_back(PrepPoint(x_+16,y_+6,D3DCOLOR_ARGB(80,255,0,0),(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
 			}
 		}
 
@@ -610,8 +591,8 @@ void FOClient::LookBordersDraw()
 		LookBordersPrepare();
 		RebuildLookBorders=false;
 	}
-	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,&SpritesZoom);
-	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,&SpritesZoom);
+	if(DrawLookBorders) SprMngr.DrawPoints(LookBorders,D3DPT_LINESTRIP,&GameOpt.SpritesZoom);
+	if(DrawShootBorders) SprMngr.DrawPoints(ShootBorders,D3DPT_LINESTRIP,&GameOpt.SpritesZoom);
 }
 
 int FOClient::MainLoop()
@@ -664,7 +645,7 @@ int FOClient::MainLoop()
 		}
 
 		if(InitNetReason==INIT_NET_REASON_CACHE) Net_SendLogIn(NULL,NULL);
-		else if(InitNetReason==INIT_NET_REASON_LOGIN) Net_SendLogIn(OptName.c_str(),OptPass.c_str());
+		else if(InitNetReason==INIT_NET_REASON_LOGIN) Net_SendLogIn(GameOpt.Name.c_str(),GameOpt.Pass.c_str());
 		else if(InitNetReason==INIT_NET_REASON_REG) Net_SendCreatePlayer(RegNewCr);
 		else if(InitNetReason==INIT_NET_REASON_LOAD) Net_SendSaveLoad(false,SaveLoadFileName.c_str(),NULL);
 		else NetDisconnect();
@@ -739,7 +720,7 @@ int FOClient::MainLoop()
 	}
 
 	// Render
-	if(!SprMngr.BeginScene(IsMainScreen(SCREEN_GAME)?(OptScreenClear?D3DCOLOR_XRGB(100,100,100):0):D3DCOLOR_XRGB(0,0,0))) return 0;
+	if(!SprMngr.BeginScene(IsMainScreen(SCREEN_GAME)?(GameOpt.ScreenClear?D3DCOLOR_XRGB(100,100,100):0):D3DCOLOR_XRGB(0,0,0))) return 0;
 
 	ProcessScreenEffectQuake();
 	DrawIfaceLayer(0);
@@ -841,15 +822,15 @@ void FOClient::ScreenFade(DWORD time, DWORD from_color, DWORD to_color, bool pus
 
 void FOClient::ScreenQuake(int noise, DWORD time)
 {
-	CmnScrOx-=ScreenOffsX;
-	CmnScrOy-=ScreenOffsY;
+	GameOpt.ScrOx-=ScreenOffsX;
+	GameOpt.ScrOy-=ScreenOffsY;
 	ScreenOffsX=Random(0,1)?noise:-noise;
 	ScreenOffsY=Random(0,1)?noise:-noise;
 	ScreenOffsXf=ScreenOffsX;
 	ScreenOffsYf=ScreenOffsY;
 	ScreenOffsStep=fabs(ScreenOffsXf)/(time/30);
-	CmnScrOx+=ScreenOffsX;
-	CmnScrOy+=ScreenOffsY;
+	GameOpt.ScrOx+=ScreenOffsX;
+	GameOpt.ScrOy+=ScreenOffsY;
 	ScreenOffsNextTick=Timer::GameTick()+30;
 }
 
@@ -892,8 +873,8 @@ void FOClient::ProcessScreenEffectQuake()
 {
 	if((ScreenOffsX || ScreenOffsY) && Timer::GameTick()>=ScreenOffsNextTick)
 	{
-		CmnScrOx-=ScreenOffsX;
-		CmnScrOy-=ScreenOffsY;
+		GameOpt.ScrOx-=ScreenOffsX;
+		GameOpt.ScrOy-=ScreenOffsY;
 		if(ScreenOffsXf<0.0f) ScreenOffsXf+=ScreenOffsStep;
 		else if(ScreenOffsXf>0.0f) ScreenOffsXf-=ScreenOffsStep;
 		if(ScreenOffsYf<0.0f) ScreenOffsYf+=ScreenOffsStep;
@@ -902,8 +883,8 @@ void FOClient::ProcessScreenEffectQuake()
 		ScreenOffsYf=-ScreenOffsYf;
 		ScreenOffsX=ScreenOffsXf;
 		ScreenOffsY=ScreenOffsYf;
-		CmnScrOx+=ScreenOffsX;
-		CmnScrOy+=ScreenOffsY;
+		GameOpt.ScrOx+=ScreenOffsX;
+		GameOpt.ScrOy+=ScreenOffsY;
 		ScreenOffsNextTick=Timer::GameTick()+30;
 	}
 }
@@ -1055,18 +1036,18 @@ void FOClient::ParseKeyboard()
 		{
 			Keyb::ShiftDwn=true;
 label_TryChangeLang:
-			if(Keyb::ShiftDwn && Keyb::CtrlDwn && OptChangeLang==CHANGE_LANG_CTRL_SHIFT) //Ctrl+Shift
+			if(Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang==CHANGE_LANG_CTRL_SHIFT) //Ctrl+Shift
 				Keyb::Lang=(Keyb::Lang==LANG_RUS)?LANG_ENG:LANG_RUS;
-			if(Keyb::ShiftDwn && Keyb::AltDwn && OptChangeLang==CHANGE_LANG_ALT_SHIFT) //Alt+Shift
+			if(Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang==CHANGE_LANG_ALT_SHIFT) //Alt+Shift
 				Keyb::Lang=(Keyb::Lang==LANG_RUS)?LANG_ENG:LANG_RUS;
 		}
 		if(dikup==DIK_RCONTROL || dikup==DIK_LCONTROL) Keyb::CtrlDwn=false;
 		else if(dikup==DIK_LMENU || dikup==DIK_RMENU) Keyb::AltDwn=false;
 		else if(dikup==DIK_LSHIFT || dikup==DIK_RSHIFT) Keyb::ShiftDwn=false;
 
-		if(script_result || OptDisableKeyboardEvents)
+		if(script_result || GameOpt.DisableKeyboardEvents)
 		{
-			if(dikdw==DIK_ESCAPE && Keyb::ShiftDwn) CmnQuit=true;
+			if(dikdw==DIK_ESCAPE && Keyb::ShiftDwn) GameOpt.Quit=true;
 			continue;
 		}
 
@@ -1076,7 +1057,7 @@ label_TryChangeLang:
 			// F Buttons
 			switch(dikdw)
 			{
-			case DIK_F1: OptHelpInfo=!OptHelpInfo; break;
+			case DIK_F1: GameOpt.HelpInfo=!GameOpt.HelpInfo; break;
 			case DIK_F2:
 				if(SaveLogFile()) AddMess(FOMB_GAME,MsgGame->GetStr(STR_LOG_SAVED));
 				else AddMess(FOMB_GAME,MsgGame->GetStr(STR_LOG_NOT_SAVED));
@@ -1087,14 +1068,14 @@ label_TryChangeLang:
 				break;
 			case DIK_F4: IntVisible=!IntVisible; MessBoxGenerate(); break;
 			case DIK_F5: IntAddMess=!IntAddMess; MessBoxGenerate(); break;
-			case DIK_F6: CmnShowPlayerNames=!CmnShowPlayerNames; break;
+			case DIK_F6: GameOpt.ShowPlayerNames=!GameOpt.ShowPlayerNames; break;
 
-			case DIK_F7: if(OptDebugInfo) CmnShowNpcNames=!CmnShowNpcNames; break;
+			case DIK_F7: if(GameOpt.DebugInfo) GameOpt.ShowNpcNames=!GameOpt.ShowNpcNames; break;
 
-			case DIK_F8: OptMouseScroll=!OptMouseScroll; CmnDiMright=false; CmnDiMleft=false; CmnDiMdown=false; CmnDiMup=false; break;
+			case DIK_F8: GameOpt.MouseScroll=!GameOpt.MouseScroll; GameOpt.ScrollMouseRight=false; GameOpt.ScrollMouseLeft=false; GameOpt.ScrollMouseDown=false; GameOpt.ScrollMouseUp=false; break;
 
-			case DIK_F9: if(OptDebugInfo) HexMngr.SwitchShowTrack(); break;
-			case DIK_F10: if(OptDebugInfo) HexMngr.SwitchShowHex(); break;
+			case DIK_F9: if(GameOpt.DebugInfo) HexMngr.SwitchShowTrack(); break;
+			case DIK_F10: if(GameOpt.DebugInfo) HexMngr.SwitchShowHex(); break;
 
 				// Volume buttons
 			case DIK_VOLUMEUP:
@@ -1111,7 +1092,7 @@ label_TryChangeLang:
 			case DIK_PRIOR: ProcessMouseWheel(1); Timer::StartAccelerator(ACCELERATE_PAGE_UP); break;
 			case DIK_NEXT: ProcessMouseWheel(-1); Timer::StartAccelerator(ACCELERATE_PAGE_DOWN); break;
 
-			case DIK_F11: if(OptDebugInfo) SprMngr.SaveSufaces(); break;
+			case DIK_F11: if(GameOpt.DebugInfo) SprMngr.SaveSufaces(); break;
 			//case DIK_F11: HexMngr.SwitchShowRain(); break;
 
 			case DIK_ESCAPE: TryExit(); break;
@@ -1144,8 +1125,8 @@ label_TryChangeLang:
 		{
 			switch(dikdw)
 			{
-			case DIK_F6: if(OptDebugInfo && Keyb::CtrlDwn) CmnShowCritId=!CmnShowCritId; break;
-			case DIK_F7: if(OptDebugInfo && Keyb::CtrlDwn) CmnShowCritId=!CmnShowCritId; break;
+			case DIK_F6: if(GameOpt.DebugInfo && Keyb::CtrlDwn) GameOpt.ShowCritId=!GameOpt.ShowCritId; break;
+			case DIK_F7: if(GameOpt.DebugInfo && Keyb::CtrlDwn) GameOpt.ShowCritId=!GameOpt.ShowCritId; break;
 
 				// Num Pad
 			case DIK_EQUALS:
@@ -1153,18 +1134,18 @@ label_TryChangeLang:
 				if(ConsoleEdit) break;
 				if(Keyb::CtrlDwn) SndMngr.SetSoundVolume(SndMngr.GetSoundVolume()+2);
 				else if(Keyb::ShiftDwn) SndMngr.SetMusicVolume(SndMngr.GetMusicVolume()+2);
-				else if(Keyb::AltDwn && OptSleep<100) OptSleep++;
+				else if(Keyb::AltDwn && GameOpt.Sleep<100) GameOpt.Sleep++;
 				break;
 			case DIK_MINUS:
 			case DIK_SUBTRACT:
 				if(ConsoleEdit) break;
 				if(Keyb::CtrlDwn) SndMngr.SetSoundVolume(SndMngr.GetSoundVolume()-2);
 				else if(Keyb::ShiftDwn) SndMngr.SetMusicVolume(SndMngr.GetMusicVolume()-2);
-				else if(Keyb::AltDwn && OptSleep>-1) OptSleep--;
+				else if(Keyb::AltDwn && GameOpt.Sleep>-1) GameOpt.Sleep--;
 				break;
 				// Escape
 			case DIK_ESCAPE:
-				if(Keyb::ShiftDwn) CmnQuit=true;
+				if(Keyb::ShiftDwn) GameOpt.Quit=true;
 				break;
 			default: break;
 			}
@@ -1239,7 +1220,7 @@ label_TryChangeLang:
 void FOClient::ParseMouse()
 {
 	// Windows mouse move in windowed mode
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		WINDOWINFO wi;
 		wi.cbSize=sizeof(wi);
@@ -1308,7 +1289,7 @@ void FOClient::ParseMouse()
 	}
 
 	// Windows mouse move in windowed mode
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		static int old_cur_x=CurX;
 		static int old_cur_y=CurY;
@@ -1371,10 +1352,10 @@ void FOClient::ParseMouse()
 	{
 		// Mouse Move
 		// Direct input move cursor in full screen mode
-		if(OptFullScr)
+		if(GameOpt.FullScreen)
 		{
-			DI_ONMOUSE( DIMOFS_X, CurX+=didod[i].dwData*OptMouseSpeed; ismoved=true; continue;);
-			DI_ONMOUSE( DIMOFS_Y, CurY+=didod[i].dwData*OptMouseSpeed; ismoved=true; continue;);
+			DI_ONMOUSE( DIMOFS_X, CurX+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
+			DI_ONMOUSE( DIMOFS_Y, CurY+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
 		}
 
 		if(IsVideoPlayed())
@@ -1438,7 +1419,7 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
-				if(!script_result && !OptDisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z] && SpritesZoomMin!=SpritesZoomMax)
+				if(!script_result && !GameOpt.DisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 				{
 					int screen=GetActiveScreen();
 					if(IsMainScreen(SCREEN_GAME) && (screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW))
@@ -1520,7 +1501,7 @@ void FOClient::ParseMouse()
 			}
 		);
 
-		if(script_result || OptDisableMouseEvents) continue;
+		if(script_result || GameOpt.DisableMouseEvents) continue;
 		if(IsCurMode(CUR_WAIT)) continue;
 
 		// Wheel
@@ -1790,14 +1771,14 @@ void FOClient::ProcessMouseWheel(int data)
 		{
 			if(data>0)
 			{
-				if(OptMsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
-				if(!OptMsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
+				if(GameOpt.MsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
+				if(!GameOpt.MsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
 				MessBoxGenerate();
 			}
 			else
 			{
-				if(OptMsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
-				if(!OptMsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
+				if(GameOpt.MsgboxInvert && MessBoxScroll<MessBoxMaxScroll) MessBoxScroll++;
+				if(!GameOpt.MsgboxInvert && MessBoxScroll>0) MessBoxScroll--;
 				MessBoxGenerate();
 			}
 		}
@@ -1811,7 +1792,7 @@ void FOClient::ProcessMouseWheel(int data)
 				if(send) Net_SendRateItem();
 			}
 
-			if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME) && SpritesZoomMin!=SpritesZoomMax)
+			if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME) && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 			{
 				HexMngr.ChangeZoom(data>0?-1:1);
 				RebuildLookBorders=true;
@@ -2004,8 +1985,8 @@ bool FOClient::InitNet()
 
 	if(!Singleplayer)
 	{
-		if(!FillSockAddr(SockAddr,OptHost.c_str(),OptPort)) return false;
-		if(OptProxyType && !FillSockAddr(ProxyAddr,OptProxyHost.c_str(),OptProxyPort)) return false;
+		if(!FillSockAddr(SockAddr,GameOpt.Host.c_str(),GameOpt.Port)) return false;
+		if(GameOpt.ProxyType && !FillSockAddr(ProxyAddr,GameOpt.ProxyHost.c_str(),GameOpt.ProxyPort)) return false;
 	}
 	else
 	{
@@ -2047,7 +2028,7 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port)
 
 bool FOClient::NetConnect()
 {
-	if(!Singleplayer) WriteLog("Connecting to server<%s:%d>.\n",OptHost.c_str(),OptPort);
+	if(!Singleplayer) WriteLog("Connecting to server<%s:%d>.\n",GameOpt.Host.c_str(),GameOpt.Port);
 	else WriteLog("Connecting to server.\n");
 
 	if((Sock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,0))==INVALID_SOCKET)
@@ -2065,7 +2046,7 @@ bool FOClient::NetConnect()
 	}
 
 	// Direct connect
-	if(!OptProxyType || Singleplayer)
+	if(!GameOpt.ProxyType || Singleplayer)
 	{
 		if(connect(Sock,(sockaddr*)&SockAddr,sizeof(SOCKADDR_IN)))
 		{
@@ -2113,7 +2094,7 @@ bool FOClient::NetConnect()
 		Bin.Reset();
 		Bout.Reset();
 		// Authentication
-		if(OptProxyType==PROXY_SOCKS4)
+		if(GameOpt.ProxyType==PROXY_SOCKS4)
 		{
 			// Connect
 			Bout << BYTE(4); // Socks version
@@ -2136,7 +2117,7 @@ bool FOClient::NetConnect()
 				return false;
 			}
 		}
-		else if(OptProxyType==PROXY_SOCKS5)
+		else if(GameOpt.ProxyType==PROXY_SOCKS5)
 		{
 			Bout << BYTE(5); // Socks version
 			Bout << BYTE(1); // Count methods
@@ -2147,10 +2128,10 @@ bool FOClient::NetConnect()
 			if(b2==2) // User/Password
 			{
 				Bout << BYTE(1); // Subnegotiation version
-				Bout << BYTE(OptProxyUser.length()); // Name length
-				Bout.Push(OptProxyUser.c_str(),OptProxyUser.length()); // Name
-				Bout << BYTE(OptProxyPass.length()); // Pass length
-				Bout.Push(OptProxyPass.c_str(),OptProxyPass.length()); // Pass
+				Bout << BYTE(GameOpt.ProxyUser.length()); // Name length
+				Bout.Push(GameOpt.ProxyUser.c_str(),GameOpt.ProxyUser.length()); // Name
+				Bout << BYTE(GameOpt.ProxyPass.length()); // Pass length
+				Bout.Push(GameOpt.ProxyPass.c_str(),GameOpt.ProxyPass.length()); // Pass
 				SEND_RECV;
 				Bin >> b1; // Subnegotiation version
 				Bin >> b2; // Status
@@ -2192,9 +2173,9 @@ bool FOClient::NetConnect()
 				return false;
 			}
 		}
-		else if(OptProxyType==PROXY_HTTP)
+		else if(GameOpt.ProxyType==PROXY_HTTP)
 		{
-			char* buf=(char*)Str::Format("CONNECT %s:%d HTTP/1.0\r\n\r\n",inet_ntoa(SockAddr.sin_addr),OptPort);
+			char* buf=(char*)Str::Format("CONNECT %s:%d HTTP/1.0\r\n\r\n",inet_ntoa(SockAddr.sin_addr),GameOpt.Port);
 			Bout.Push(buf,strlen(buf));
 			SEND_RECV;
 			buf=Bin.GetCurData();
@@ -2213,7 +2194,7 @@ bool FOClient::NetConnect()
 		}
 		else
 		{
-			WriteLog("Unknown proxy type<%u>.\n",OptProxyType);
+			WriteLog("Unknown proxy type<%u>.\n",GameOpt.ProxyType);
 			return false;
 		}
 
@@ -2273,7 +2254,7 @@ void FOClient::ParseSocket()
 	{
 		NetProcess();
 
-		if(OptHelpInfo && Bout.IsEmpty() && !PingTick && Timer::FastTick()>=PingCallTick)
+		if(GameOpt.HelpInfo && Bout.IsEmpty() && !PingTick && Timer::FastTick()>=PingCallTick)
 		{
 			Net_SendPing(PING_PING);
 			PingTick=Timer::FastTick();
@@ -2429,7 +2410,7 @@ void FOClient::NetProcess()
 		MSGTYPE msg=0;
 		Bin >> msg;
 
-		if(OptDebugNet)
+		if(GameOpt.DebugNet)
 		{
 			static DWORD count=0;
 			AddMess(FOMB_GAME,Str::Format("%04u) Input net message<%u>.",count,(msg>>8)&0xFF));
@@ -2448,8 +2429,8 @@ void FOClient::NetProcess()
 				WriteLog("Registration success.\n");
 				if(RegNewCr)
 				{
-					OptName=RegNewCr->Name;
-					OptPass=RegNewCr->Pass;
+					GameOpt.Name=RegNewCr->Name;
+					GameOpt.Pass=RegNewCr->Pass;
 					SAFEDEL(RegNewCr);
 				}
 			}
@@ -2667,7 +2648,7 @@ void FOClient::NetProcess()
 			break;
 
 		default:
-			if(OptDebugNet) AddMess(FOMB_GAME,Str::Format("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
+			if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::Format("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
 			WriteLog("Invalid msg<%u>. Seek valid.\n",msg);
 			Bin.MoveReadPos(sizeof(MSGTYPE));
 			Bin.SeekValidMsg();
@@ -2703,7 +2684,7 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	Bout << UIDOR;																				// UID or
 	for(int i=1;i<ITEM_MAX_TYPES;i++) Bout << ItemMngr.GetProtosHash(i);
 	Bout << UIDCALC;																			// UID uidcalc
-	Bout << OptDefaultCombatMode;
+	Bout << GameOpt.DefaultCombatMode;
 	DWORD uid0=*UID0;
 	Bout << uid0; uid3^=uid1+Random(0,53245); uid1|=uid3+*UID0; uid3^=uid1+uid3; uid1|=uid3;	// UID0
 
@@ -4128,7 +4109,7 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	DWORD len=strlen(str);
 	if(!len) return;
 
-	DWORD text_delay=OptTextDelay+len*100;
+	DWORD text_delay=GameOpt.TextDelay+len*100;
 	if(Script::PrepareContext(ClientFunctions.InMessage,CALL_FUNC_STR,"Game"))
 	{
 		CScriptString* sstr=new CScriptString(fstr);
@@ -4289,7 +4270,7 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color)
 {
 	DWORD len=strlen(str);
-	DWORD text_delay=OptTextDelay+len*100;
+	DWORD text_delay=GameOpt.TextDelay+len*100;
 	CScriptString* sstr=new CScriptString(str);
 	if(Script::PrepareContext(ClientFunctions.MapMessage,CALL_FUNC_STR,"Game"))
 	{
@@ -4789,7 +4770,7 @@ void FOClient::Net_OnCritterXY()
 	Bin >> hx;
 	Bin >> hy;
 	Bin >> dir;
-	if(OptDebugNet) AddMess(FOMB_GAME,Str::Format(" - crid<%u> hx<%u> hy<%u> dir<%u>.",crid,hx,hy,dir));
+	if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::Format(" - crid<%u> hx<%u> hy<%u> dir<%u>.",crid,hx,hy,dir));
 
 	if(!HexMngr.IsMapLoaded()) return;
 
@@ -5567,7 +5548,7 @@ void FOClient::Net_OnLoadMap()
 	Bin >> hash_walls;
 	Bin >> hash_scen;
 
-	SpritesZoom=1.0f;
+	GameOpt.SpritesZoom=1.0f;
 	GmapZoom=1.0f;
 
 	GameMapTexts.clear();
@@ -7342,7 +7323,7 @@ void FOClient::CrittersProcess()
 			else if(!GameOpt.RunOnTransfer && Chosen->GetTimeout(TO_TRANSFER)) is_run=false;
 			else if(IsTurnBased) is_run=false;
 			else if(Chosen->IsDmgLeg() || Chosen->IsOverweight()) is_run=false;
-			else if(wait_click && Timer::GameTick()-start_tick<OptDoubleClickTime) return;
+			else if(wait_click && Timer::GameTick()-start_tick<GameOpt.DoubleClickTime) return;
 			else if(is_run && !IsTurnBased && Chosen->GetApCostCritterMove(is_run)>0 && Chosen->GetRealAp()<(GameOpt.RunModMul*Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER)/GameOpt.RunModDiv+GameOpt.RunModAdd) is_run=false;
 			if(is_run && !CritType::IsCanRun(Chosen->GetCrType())) is_run=false;
 			if(!is_run && !CritType::IsCanWalk(Chosen->GetCrType()))
@@ -8148,7 +8129,7 @@ void FOClient::TryExit()
 		switch(GetMainScreen())
 		{
 		case SCREEN_LOGIN:
-			CmnQuit=true;
+			GameOpt.Quit=true;
 			break;
 		case SCREEN_REGISTRATION:
 		case SCREEN_CREDITS:
@@ -8171,27 +8152,27 @@ void FOClient::TryExit()
 
 void FOClient::ProcessMouseScroll()
 {
-	if(IsLMenu() || !OptMouseScroll) return;
+	if(IsLMenu() || !GameOpt.MouseScroll) return;
 
 	if(CurX>=MODE_WIDTH-1)
-		CmnDiMright=true;
+		GameOpt.ScrollMouseRight=true;
 	else
-		CmnDiMright=false;
+		GameOpt.ScrollMouseRight=false;
 
 	if(CurX<=0)
-		CmnDiMleft=true;
+		GameOpt.ScrollMouseLeft=true;
 	else
-		CmnDiMleft=false;
+		GameOpt.ScrollMouseLeft=false;
 
 	if(CurY>=MODE_HEIGHT-1)
-		CmnDiMdown=true;
+		GameOpt.ScrollMouseDown=true;
 	else
-		CmnDiMdown=false;
+		GameOpt.ScrollMouseDown=false;
 
 	if(CurY<=0)
-		CmnDiMup=true;
+		GameOpt.ScrollMouseUp=true;
 	else
-		CmnDiMup=false;
+		GameOpt.ScrollMouseUp=false;
 }
 
 void FOClient::ProcessKeybScroll(bool down, BYTE dik)
@@ -8200,10 +8181,10 @@ void FOClient::ProcessKeybScroll(bool down, BYTE dik)
 
 	switch(dik)
 	{
-	case DIK_LEFT: CmnDiLeft=down; break;
-	case DIK_RIGHT: CmnDiRight=down; break;
-	case DIK_UP: CmnDiUp=down; break;
-	case DIK_DOWN: CmnDiDown=down; break;
+	case DIK_LEFT: GameOpt.ScrollKeybLeft=down; break;
+	case DIK_RIGHT: GameOpt.ScrollKeybRight=down; break;
+	case DIK_UP: GameOpt.ScrollKeybUp=down; break;
+	case DIK_DOWN: GameOpt.ScrollKeybDown=down; break;
 	default: break;
 	}
 }
@@ -8212,7 +8193,7 @@ bool FOClient::IsCurInWindow()
 {
 	if(GetActiveWindow()!=Wnd) return false;
 
-	if(!OptFullScr)
+	if(!GameOpt.FullScreen)
 	{
 		if(IsLMenu()) return true;
 
@@ -10536,10 +10517,10 @@ bool FOClient::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
 	{
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
-		x+=CmnScrOx;
-		y+=CmnScrOy;
-		x/=SpritesZoom;
-		y/=SpritesZoom;
+		x+=GameOpt.ScrOx;
+		y+=GameOpt.ScrOy;
+		x/=GameOpt.SpritesZoom;
+		y/=GameOpt.SpritesZoom;
 		return true;
 	}
 	return false;

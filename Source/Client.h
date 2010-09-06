@@ -28,10 +28,10 @@ public:
 	bool Init(HWND hwnd);
 	void Finish();
 	void TryExit();
-	bool IsScroll(){return CmnDiMup || CmnDiMright || CmnDiMdown || CmnDiMleft || CmnDiUp || CmnDiRight || CmnDiDown || CmnDiLeft;}
+	bool IsScroll(){return GameOpt.ScrollMouseUp || GameOpt.ScrollMouseRight || GameOpt.ScrollMouseDown || GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybUp || GameOpt.ScrollKeybRight || GameOpt.ScrollKeybDown || GameOpt.ScrollKeybLeft;}
 	void ProcessMouseScroll();
 	void ProcessKeybScroll(bool down, BYTE dik);
-	void DropScroll(){CmnDiMup=false;CmnDiMright=false;CmnDiMdown=false;CmnDiMleft=false;CmnDiUp=false;CmnDiRight=false;CmnDiDown=false;CmnDiLeft=false;}
+	void DropScroll(){GameOpt.ScrollMouseUp=false;GameOpt.ScrollMouseRight=false;GameOpt.ScrollMouseDown=false;GameOpt.ScrollMouseLeft=false;GameOpt.ScrollKeybUp=false;GameOpt.ScrollKeybRight=false;GameOpt.ScrollKeybDown=false;GameOpt.ScrollKeybLeft=false;}
 	bool IsCurInWindow();
 	int MainLoop();
 	void NetDisconnect();

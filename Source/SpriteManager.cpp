@@ -6,10 +6,6 @@
 #pragma MESSAGE("Use stencil for transparent egg.")
 #pragma MESSAGE("Add supporting of effects for sprites.")
 
-float SpritesZoom=1.0f;
-float SpritesZoomMax=MAX_ZOOM;
-float SpritesZoomMin=MIN_ZOOM;
-
 #define TEX_FRMT                  D3DFMT_A8R8G8B8
 #define SPR_BUFFER_COUNT          (10000)
 #define SPRITES_POOL_GROW_SIZE    (10000)
@@ -182,8 +178,7 @@ isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
 spr3dRT(NULL),spr3dRTEx(NULL),spr3dDS(NULL),spr3dRTData(NULL),spr3dSurfWidth(256),spr3dSurfHeight(256),sceneBeginned(false),
 d3dDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),curTexture(NULL),vbPoints(NULL),vbPointsSize(0),
 PreRestore(NULL),PostRestore(NULL),
-drawOffsetX(NULL),drawOffsetY(NULL),baseTexture(0),
-eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
+baseTexture(0),eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
 contoursTexture(NULL),contoursTextureSurf(NULL),contoursMidTexture(NULL),contoursMidTextureSurf(NULL),contours3dRT(NULL),
 contoursPS(NULL),contoursCT(NULL),contoursAdded(false),
 modeWidth(0),modeHeight(0)
@@ -209,19 +204,13 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	WriteLog("Sprite manager initialization...\n");
 
 	mngrParams=params;
-	flushSprCnt=params.SprFlushVal;
-	baseTexture=params.BaseTexture;
-	curSprCnt=0;
 	PreRestore=params.PreRestoreFunc;
 	PostRestore=params.PostRestoreFunc;
-	modeWidth=params.ScreenWidth;
-	modeHeight=params.ScreenHeight;
-
-	static int dummy_offs=0;
-	drawOffsetX=params.DrawOffsetX;
-	if(!drawOffsetX) drawOffsetX=&dummy_offs;
-	drawOffsetY=params.DrawOffsetY;
-	if(!drawOffsetX) drawOffsetX=&dummy_offs;
+	flushSprCnt=GameOpt.FlushVal;
+	baseTexture=GameOpt.BaseTexture;
+	modeWidth=GameOpt.ScreenWidth;
+	modeHeight=GameOpt.ScreenHeight;
+	curSprCnt=0;
 
 	direct3D=Direct3DCreate(D3D_SDK_VERSION);
 	if(!direct3D)
@@ -237,24 +226,24 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 
 	ZeroMemory(&presentParams,sizeof(presentParams));
 	presentParams.BackBufferCount=1;
-	presentParams.Windowed=(params.FullScreen?FALSE:TRUE);
+	presentParams.Windowed=(GameOpt.FullScreen?FALSE:TRUE);
 	presentParams.SwapEffect=D3DSWAPEFFECT_DISCARD;
 	presentParams.EnableAutoDepthStencil=TRUE;
 	presentParams.AutoDepthStencilFormat=D3DFMT_D24S8;
 	presentParams.hDeviceWindow=params.WndHeader;
-	presentParams.BackBufferWidth=params.ScreenWidth;
-	presentParams.BackBufferHeight=params.ScreenHeight;
+	presentParams.BackBufferWidth=modeWidth;
+	presentParams.BackBufferHeight=modeHeight;
 	presentParams.BackBufferFormat=D3DFMT_X8R8G8B8;
-	if(!params.VSync) presentParams.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
+	if(!GameOpt.VSync) presentParams.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
 
-	presentParams.MultiSampleType=(D3DMULTISAMPLE_TYPE)params.MultiSampling;
-	if(params.MultiSampling<0)
+	presentParams.MultiSampleType=(D3DMULTISAMPLE_TYPE)GameOpt.MultiSampling;
+	if(GameOpt.MultiSampling<0)
 	{
 		presentParams.MultiSampleType=D3DMULTISAMPLE_NONE;
 		for(int i=4;i>=1;i--)
 		{
 			if(SUCCEEDED(direct3D->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,
-				presentParams.BackBufferFormat,!params.FullScreen,(D3DMULTISAMPLE_TYPE)i,NULL)))
+				presentParams.BackBufferFormat,!GameOpt.FullScreen,(D3DMULTISAMPLE_TYPE)i,NULL)))
 			{
 				presentParams.MultiSampleType=(D3DMULTISAMPLE_TYPE)i;
 				break;
@@ -263,7 +252,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	}
 	if(presentParams.MultiSampleType!=D3DMULTISAMPLE_NONE)
 	{
-		HRESULT hr=direct3D->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,presentParams.BackBufferFormat,!params.FullScreen,
+		HRESULT hr=direct3D->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,presentParams.BackBufferFormat,!GameOpt.FullScreen,
 			presentParams.MultiSampleType,&presentParams.MultiSampleQuality);
 		if(FAILED(hr))
 		{
@@ -274,7 +263,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		if(presentParams.MultiSampleQuality) presentParams.MultiSampleQuality--;
 	}
 
-	int vproc=(!params.SoftwareSkinning && deviceCaps.DevCaps&D3DDEVCAPS_HWTRANSFORMANDLIGHT && deviceCaps.VertexShaderVersion>=D3DPS_VERSION(1,1) &&
+	int vproc=(!GameOpt.SoftwareSkinning && deviceCaps.DevCaps&D3DDEVCAPS_HWTRANSFORMANDLIGHT && deviceCaps.VertexShaderVersion>=D3DPS_VERSION(1,1) &&
 		deviceCaps.MaxVertexBlendMatrices>=2?D3DCREATE_HARDWARE_VERTEXPROCESSING:D3DCREATE_SOFTWARE_VERTEXPROCESSING);
 
 	D3D_HR(direct3D->CreateDevice(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,params.WndHeader,vproc,&presentParams,&d3dDevice));
@@ -313,7 +302,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		}
 	}
 
-	if(!Animation3d::StartUp(d3dDevice,params.SoftwareSkinning)) return false;
+	if(!Animation3d::StartUp(d3dDevice,GameOpt.SoftwareSkinning)) return false;
 	if(!InitRenderStates()) return false;
 	if(!InitBuffers()) return false;
 
@@ -555,7 +544,7 @@ bool SpriteManager::Restore()
 	if(!InitRenderStates()) return false;
 	if(!InitBuffers()) return false;
 	if(PostRestore) (*PostRestore)();
-	if(!Animation3d::StartUp(d3dDevice,mngrParams.SoftwareSkinning)) return false;
+	if(!Animation3d::StartUp(d3dDevice,GameOpt.SoftwareSkinning)) return false;
 
 	return true;
 }
@@ -772,7 +761,7 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 		src_surf->Release();
 	}
 
-	if(OptDebugSprites)
+	if(GameOpt.DebugSprites)
 	{
 		DWORD rnd_color=D3DCOLOR_XRGB(Random(0,255),Random(0,255),Random(0,255));
 		for(DWORD yy=1;yy<h+1;yy++)
@@ -1587,10 +1576,10 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE a
 		else if(alpha) ((BYTE*)&color)[3]=alpha;
 
 		// Casts
-		float xf=(float)x/SpritesZoom-0.5f;
-		float yf=(float)y/SpritesZoom-0.5f;
-		float wf=(float)si->Width/SpritesZoom;
-		float hf=(float)si->Height/SpritesZoom;
+		float xf=(float)x/GameOpt.SpritesZoom-0.5f;
+		float yf=(float)y/GameOpt.SpritesZoom-0.5f;
+		float wf=(float)si->Width/GameOpt.SpritesZoom;
+		float hf=(float)si->Height/GameOpt.SpritesZoom;
 
 		// Fill buffer
 		int mulpos=curSprCnt*4;
@@ -1638,8 +1627,8 @@ bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
 	if(!surf) return true;
 	Flush();
 
-	int ox=(int)((float)(32-*drawOffsetX)/SpritesZoom);
-	int oy=(int)((float)(24-*drawOffsetY)/SpritesZoom);
+	int ox=(int)((float)(32-GameOpt.ScrOx)/GameOpt.SpritesZoom);
+	int oy=(int)((float)(24-GameOpt.ScrOy)/GameOpt.SpritesZoom);
 	RECT src={ox,oy,ox+modeWidth,oy+modeHeight};
 
 	LPDIRECT3DSURFACE backbuf=NULL;
@@ -1690,10 +1679,10 @@ void SpriteManager::GetDrawCntrRect(Sprite* prep, INTRECT* prect)
 	else
 	{
 		*prect=si->Anim3d->GetBaseBorders();
-		(*prect).L*=SpritesZoom;
-		(*prect).T*=SpritesZoom;
-		(*prect).R*=SpritesZoom;
-		(*prect).B*=SpritesZoom;
+		(*prect).L*=GameOpt.SpritesZoom;
+		(*prect).T*=GameOpt.SpritesZoom;
+		(*prect).R*=GameOpt.SpritesZoom;
+		(*prect).B*=GameOpt.SpritesZoom;
 	}
 }
 
@@ -1726,8 +1715,8 @@ void SpriteManager::SetEgg(WORD hx, WORD hy, Sprite* spr)
 	else
 	{
 		INTRECT b=si->Anim3d->GetBaseBorders();
-		eggX=b.CX()-sprEgg->Width/2-*drawOffsetX;
-		eggY=b.CY()-sprEgg->Height/2-*drawOffsetY;
+		eggX=b.CX()-sprEgg->Width/2-GameOpt.ScrOx;
+		eggY=b.CY()-sprEgg->Height/2-GameOpt.ScrOy;
 	}
 
 	eggHx=hx;
@@ -1741,8 +1730,8 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
 	if(!eggValid) use_egg=false;
 	bool egg_trans=false;
-	int ex=eggX+*drawOffsetX;
-	int ey=eggY+*drawOffsetY;
+	int ex=eggX+GameOpt.ScrOx;
+	int ey=eggY+GameOpt.ScrOy;
 	DWORD cur_tick=Timer::FastTick();
 
 	if(use_egg) D3D_HR(d3dDevice->SetTexture(1,sprEgg->Surf->Texture)); // Transparent egg
@@ -1762,21 +1751,21 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
 		int x=spr->ScrX-si->Width/2+si->OffsX;
 		int y=spr->ScrY-si->Height+si->OffsY;
-		x+=*drawOffsetX;
-		y+=*drawOffsetY;
+		x+=GameOpt.ScrOx;
+		y+=GameOpt.ScrOy;
 		if(spr->OffsX) x+=*spr->OffsX;
 		if(spr->OffsY) y+=*spr->OffsY;
 
 		// Check borders
 		if(!si->Anim3d)
 		{
-			if(x/SpritesZoom>modeWidth || (x+si->Width)/SpritesZoom<0 || y/SpritesZoom>modeHeight || (y+si->Height)/SpritesZoom<0) continue;
+			if(x/GameOpt.SpritesZoom>modeWidth || (x+si->Width)/GameOpt.SpritesZoom<0 || y/GameOpt.SpritesZoom>modeHeight || (y+si->Height)/GameOpt.SpritesZoom<0) continue;
 		}
 		else
 		{
 			// Todo: check 3d borders
 //			INTRECT fb=si->Anim3d->GetExtraBorders();
-//			if(x/SpritesZoom>modeWidth || (x+si->Width)/SpritesZoom<0 || y/SpritesZoom>modeHeight || (y+si->Height)/SpritesZoom<0) continue;
+//			if(x/GameOpt.SpritesZoom>modeWidth || (x+si->Width)/GameOpt.SpritesZoom<0 || y/GameOpt.SpritesZoom>modeHeight || (y+si->Height)/GameOpt.SpritesZoom<0) continue;
 		}
 
 		// Base color
@@ -1857,13 +1846,13 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			}
 
 			// Draw 3d animation
-			Draw3d(x/SpritesZoom,y/SpritesZoom,1.0f/SpritesZoom,si->Anim3d,NULL,cur_color);
+			Draw3d(x/GameOpt.SpritesZoom,y/GameOpt.SpritesZoom,1.0f/GameOpt.SpritesZoom,si->Anim3d,NULL,cur_color);
 
 			// Process contour effect
 			if(collect_contours && spr->Contour!=Sprite::ContourNone) CollectContour(x,y,si,spr);
 
 			// Debug borders
-			if(OptDebugInfo)
+			if(GameOpt.DebugInfo)
 			{
 				INTRECT eb=si->Anim3d->GetExtraBorders();
 				INTRECT bb=si->Anim3d->GetBaseBorders();
@@ -1936,10 +1925,10 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		if(collect_contours && spr->Contour!=Sprite::ContourNone) CollectContour(x,y,si,spr);
 
 		// Casts
-		float xf=(float)x/SpritesZoom-0.5f;
-		float yf=(float)y/SpritesZoom-0.5f;
-		float wf=(float)si->Width/SpritesZoom;
-		float hf=(float)si->Height/SpritesZoom;
+		float xf=(float)x/GameOpt.SpritesZoom-0.5f;
+		float yf=(float)y/GameOpt.SpritesZoom-0.5f;
+		float wf=(float)si->Width/GameOpt.SpritesZoom;
+		float hf=(float)si->Height/GameOpt.SpritesZoom;
 
 		// Fill buffer
 		int mulpos=curSprCnt*4;
@@ -1986,7 +1975,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 	if(egg_trans) D3D_HR(d3dDevice->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE));
 	if(use_egg) D3D_HR(d3dDevice->SetTexture(1,NULL)); // Transparent egg
 
-	if(OptDebugInfo) DrawPoints(borders,D3DPT_TRIANGLELIST);
+	if(GameOpt.DebugInfo) DrawPoints(borders,D3DPT_TRIANGLELIST);
 	return true;
 }
 
@@ -2029,13 +2018,13 @@ bool SpriteManager::IsPixNoTransp(DWORD spr_id, int offs_x, int offs_y, bool wit
 	}
 
 	// 2d animation
-	if(with_zoom && (offs_x>si->Width/SpritesZoom || offs_y>si->Height/SpritesZoom)) return false;
+	if(with_zoom && (offs_x>si->Width/GameOpt.SpritesZoom || offs_y>si->Height/GameOpt.SpritesZoom)) return false;
 	if(!with_zoom && (offs_x>si->Width || offs_y>si->Height)) return false;
 
 	if(with_zoom)
 	{
-		offs_x*=SpritesZoom;
-		offs_y*=SpritesZoom;
+		offs_x*=GameOpt.SpritesZoom;
+		offs_y*=GameOpt.SpritesZoom;
 	}
 
 	D3DSURFACE_DESC sDesc;
@@ -2072,15 +2061,15 @@ bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
 {
 	if(!eggValid) return false;
 
-	int ex=eggX+*drawOffsetX;
-	int ey=eggY+*drawOffsetY;
-	int ox=pix_x-ex/SpritesZoom;
-	int oy=pix_y-ey/SpritesZoom;
+	int ex=eggX+GameOpt.ScrOx;
+	int ey=eggY+GameOpt.ScrOy;
+	int ox=pix_x-ex/GameOpt.SpritesZoom;
+	int oy=pix_y-ey/GameOpt.SpritesZoom;
 
-	if(ox<0 || oy<0 || ox>=int(eggSurfWidth/SpritesZoom) || oy>=int(eggSurfHeight/SpritesZoom)) return false;
+	if(ox<0 || oy<0 || ox>=int(eggSurfWidth/GameOpt.SpritesZoom) || oy>=int(eggSurfHeight/GameOpt.SpritesZoom)) return false;
 
-	ox*=SpritesZoom;
-	oy*=SpritesZoom;
+	ox*=GameOpt.SpritesZoom;
+	oy*=GameOpt.SpritesZoom;
 
 	D3DSURFACE_DESC sDesc;
 	D3D_HR(sprEgg->Surf->Texture->GetLevelDesc(0,&sDesc));
@@ -2325,9 +2314,9 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 
 	if(!anim3d)
 	{
-		if(borders.L>=modeWidth*SpritesZoom || borders.R<0 || borders.T>=modeHeight*SpritesZoom || borders.B<0) return true;
+		if(borders.L>=modeWidth*GameOpt.SpritesZoom || borders.R<0 || borders.T>=modeHeight*GameOpt.SpritesZoom || borders.B<0) return true;
 
-		if(SpritesZoom==1.0f)
+		if(GameOpt.SpritesZoom==1.0f)
 		{
 			ws=1.0f/(float)si->Surf->Width;
 			hs=1.0f/(float)si->Surf->Height;
@@ -2345,7 +2334,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 			D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1));
 			D3D_HR(d3dDevice->SetTexture(0,si->Surf->Texture));
 
-			borders(x/SpritesZoom,y/SpritesZoom,(x+si->Width)/SpritesZoom,(y+si->Height)/SpritesZoom);
+			borders(x/GameOpt.SpritesZoom,y/GameOpt.SpritesZoom,(x+si->Width)/GameOpt.SpritesZoom,(y+si->Height)/GameOpt.SpritesZoom);
 			struct Vertex
 			{
 				FLOAT x,y,z,rhw;

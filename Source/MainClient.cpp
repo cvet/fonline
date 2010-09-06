@@ -153,7 +153,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 #endif
 
 	// Windows messages
-	while(!CmnQuit)
+	while(!GameOpt.Quit)
 	{
 		if(PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE))
 		{
@@ -166,7 +166,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 			Sleep(100);
 #else
 			if(!FOEngine->MainLoop()) Sleep(100);
-			else if(OptSleep>=0) Sleep(OptSleep);
+			else if(GameOpt.Sleep>=0) Sleep(GameOpt.Sleep);
 #endif
 		}
 	}
@@ -188,10 +188,10 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 #ifdef GAME_THREAD
 DWORD WINAPI GameLoopThread(void *)
 {
-	while(!CmnQuit)
+	while(!GameOpt.Quit)
 	{
 		if(!FOEngine->MainLoop()) Sleep(100);
-		else if(OptSleep>=0) Sleep(OptSleep);
+		else if(GameOpt.Sleep>=0) Sleep(GameOpt.Sleep);
 	}
 
 	CloseHandle(hGameThread);
@@ -206,7 +206,7 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 	switch(message)
 	{
 	case WM_DESTROY:
-		CmnQuit=true;
+		GameOpt.Quit=true;
 		break;
 	case WM_KEYDOWN:
 		if(wParam==VK_F12)
@@ -223,7 +223,7 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 		}
 		break;
 	case WM_SHOWWINDOW:
-		if(OptAlwaysOnTop) SetWindowPos(hWnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
+		if(GameOpt.AlwaysOnTop) SetWindowPos(hWnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
 		break;
 	/*case WM_ACTIVATE:
 		if(LOWORD(wParam)==WA_INACTIVE && !HIWORD(wParam))
@@ -243,7 +243,7 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 		break;*/
 
 	case WM_ACTIVATE:
-		if(!OptGlobalSound && FOEngine && FOEngine->BasicAudio)
+		if(!GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio)
 		{
 			if(LOWORD(wParam)==WA_INACTIVE && !HIWORD(wParam)) FOEngine->BasicAudio->put_Volume(-10000);
 			else if((LOWORD(wParam)==WA_ACTIVE || LOWORD(wParam)==WA_CLICKACTIVE)) FOEngine->BasicAudio->put_Volume(0);
@@ -252,8 +252,8 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 	case WM_FLASH_WINDOW:
 		if(hWndProc!=GetActiveWindow())
 		{
-			if(OptMessNotify) FlashWindow(hWnd,true);
-			if(OptSoundNotify) Beep(100,200);
+			if(GameOpt.MessNotify) FlashWindow(hWnd,true);
+			if(GameOpt.SoundNotify) Beep(100,200);
 		}
 		return 0;
 // 	case WM_ERASEBKGND:

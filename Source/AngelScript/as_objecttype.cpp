@@ -533,6 +533,44 @@ const char *asCObjectType::GetConfigGroup() const
 }
 
 // internal
+asCObjectProperty *asCObjectType::AddPropertyToClass(const asCString &name, const asCDataType &dt, bool isPrivate)
+{
+	asASSERT( dt.CanBeInstanciated() );
+	asASSERT( !IsInterface() );
+
+	// Store the properties in the object type descriptor
+	asCObjectProperty *prop = asNEW(asCObjectProperty);
+	prop->name      = name;
+	prop->type      = dt;
+	prop->isPrivate = isPrivate;
+
+	int propSize;
+	if( dt.IsObject() )
+	{
+		propSize = dt.GetSizeOnStackDWords()*4;
+		if( !dt.IsObjectHandle() )
+			prop->type.MakeReference(true);
+	}
+	else
+		propSize = dt.GetSizeInMemoryBytes();
+
+	// Add extra bytes so that the property will be properly aligned
+	if( propSize == 2 && (size & 1) ) size += 1;
+	if( propSize > 2 && (size & 3) ) size += 4 - (size & 3);
+
+	prop->byteOffset = size;
+	size += propSize;
+
+	properties.PushLast(prop);
+
+	// Make sure the struct holds a reference to the config group where the object is registered
+	asCConfigGroup *group = engine->FindConfigGroupForObjectType(prop->type.GetObjectType());
+	if( group != 0 ) group->AddRef();
+
+	return prop;
+}
+
+// internal
 void asCObjectType::ReleaseAllHandles(asIScriptEngine *)
 {
 	ReleaseAllFunctions();
