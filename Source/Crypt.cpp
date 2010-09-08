@@ -212,7 +212,7 @@ bool CryptManager::CreateCacheTable(const char* chache_fname)
 	FILE* f=NULL;
 	if(fopen_s(&f,chache_fname,"wb")) return false;
 
-	for(int i=0;i<sizeof(CacheTable);i++) ((BYTE*)&CacheTable[0])[i]=rand();
+	for(int i=0;i<sizeof(CacheTable);i++) ((BYTE*)&CacheTable[0])[i]=Random(0,255);
 	for(int i=0;i<MAX_CACHE_DESCRIPTORS;i++)
 	{
 		CacheDescriptor& desc=CacheTable[i];

@@ -976,6 +976,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\Randomizer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\ResourceManager.cpp"
 				>
 			</File>

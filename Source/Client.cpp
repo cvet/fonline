@@ -8375,7 +8375,7 @@ void FOClient::ParseIntellectWords(char* words, PCharPairVec& text)
 	}
 }
 
-PCharPairVecIt FOClient::FindIntellectWord(const char* word, PCharPairVec& text)
+PCharPairVecIt FOClient::FindIntellectWord(const char* word, PCharPairVec& text, Randomizer& rnd)
 {
 	PCharPairVecIt it=text.begin();
 	PCharPairVecIt end=text.end();
@@ -8394,7 +8394,7 @@ PCharPairVecIt FOClient::FindIntellectWord(const char* word, PCharPairVec& text)
 			if(!_stricmp((*it_).first,(*it).first)) cnt++;
 			else break;
 		}
-		it_+=Random(0,cnt);
+		it_+=rnd.Random(0,cnt);
 		it=it_;
 	}
 
@@ -8425,7 +8425,7 @@ void FOClient::FmtTextIntellect(char* str, WORD intellect)
 	case 4: word_proc=30; symbol_proc=5; break;
 	}
 
-	srand((intellect<<16)|intellect);
+	Randomizer rnd((intellect<<16)|intellect);
 
 	char word[1024]={0};
 	while(true)
@@ -8441,8 +8441,8 @@ void FOClient::FmtTextIntellect(char* str, WORD intellect)
 		int len=strlen(word);
 		if(len)
 		{
-			PCharPairVecIt it=FindIntellectWord(word,IntellectWords);
-			if(it!=IntellectWords.end() && Random(1,100)<=word_proc)
+			PCharPairVecIt it=FindIntellectWord(word,IntellectWords,rnd);
+			if(it!=IntellectWords.end() && rnd.Random(1,100)<=word_proc)
 			{
 				Str::EraseInterval(str-len,len);
 				Str::Insert(str-len,(*it).second);
@@ -8452,12 +8452,12 @@ void FOClient::FmtTextIntellect(char* str, WORD intellect)
 			{
 				for(char* s=str-len;s<str;s++)
 				{
-					if(Random(1,100)>symbol_proc) continue;
+					if(rnd.Random(1,100)>symbol_proc) continue;
 
 					word[0]=*s;
 					word[1]=0;
 
-					it=FindIntellectWord(word,IntellectSymbols);
+					it=FindIntellectWord(word,IntellectSymbols,rnd);
 					if(it==IntellectSymbols.end()) continue;
 
 					int f_len=strlen((*it).first);

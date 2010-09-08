@@ -42,6 +42,7 @@ using namespace std;
 #include "Debugger.h"
 #include "Exception.h"
 #include "FlexRect.h"
+#include "Randomizer.h"
 
 #define ___MSG1(x) #x
 #define ___MSG0(x) ___MSG1(x)
@@ -64,7 +65,9 @@ using namespace std;
 typedef vector<INTRECT> IntRectVec;
 typedef vector<FLTRECT> FltRectVec;
 
+extern Randomizer DefaultRandomizer;
 int Random(int minimum, int maximum);
+
 int Procent(int full, int peace);
 DWORD DistSqrt(int x1, int y1, int x2, int y2);
 DWORD DistGame(int x1, int y1, int x2, int y2);

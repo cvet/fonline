@@ -3263,7 +3263,10 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 
 bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 {
-	srand(666666);
+	// Parse dialog texts with one seed to prevent MSG numbers truncation
+	Randomizer def_rnd=DefaultRandomizer;
+	DefaultRandomizer.Generate(666666);
+
 	for(DialogPackMapIt it=DlgMngr.DialogsPacks.begin(),end=DlgMngr.DialogsPacks.end();it!=end;++it)
 	{
 		DialogPack* pack=(*it).second;
@@ -3313,7 +3316,8 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 		//lang.Msg[TEXTMSG_DLG].SaveMsgFile(Str::Format("%s.txt",lang.NameStr),PT_SERVER_ROOT);
 	}
 
-	srand(Timer::FastTick());
+	// Restore default randomizer
+	DefaultRandomizer=def_rnd;
 	return true;
 }
 

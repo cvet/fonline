@@ -883,6 +883,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\Randomizer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Script.cpp"
 				>
 			</File>

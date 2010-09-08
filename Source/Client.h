@@ -258,7 +258,7 @@ public:
 	PCharPairVec IntellectSymbols;
 
 	void ParseIntellectWords(char* words, PCharPairVec& text);
-	PCharPairVecIt FindIntellectWord(const char* word, PCharPairVec& text);
+	PCharPairVecIt FindIntellectWord(const char* word, PCharPairVec& text, Randomizer& rnd);
 	void FmtTextIntellect(char* str, WORD intellect);
 
 #define SMTH_NONE         (0)

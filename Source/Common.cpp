@@ -11,9 +11,10 @@
 /*                                                                      */
 /************************************************************************/
 
+Randomizer DefaultRandomizer;
 int Random(int minimum, int maximum)
 {
-	return minimum+((int)(__int64(rand())*__int64(maximum-minimum+1)/(__int64(RAND_MAX)+1)));
+	return DefaultRandomizer.Random(minimum,maximum);
 }
 
 int Procent(int full, int peace)
@@ -410,9 +411,6 @@ DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light)
 
 void GetClientOptions()
 {
-	// Randomize
-	srand(Timer::FastTick());
-
 	// Defines
 #define GETOPTIONS_CMD_LINE_INT(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+strlen(str_id)+1);}while(0)
 #define GETOPTIONS_CMD_LINE_BOOL(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+strlen(str_id)+1)!=0;}while(0)
@@ -611,8 +609,6 @@ bool WorldSaveManager=true;
 
 void GetServerOptions()
 {
-	srand(Timer::FastTick());
-
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	ServerGameSleep=cfg.GetInt("GameSleep",10);
@@ -1061,7 +1057,7 @@ DWORD GameHitAim(int hit_location)
 }
 
 /************************************************************************/
-/*                                                                      */
+/* File logger                                                          */
 /************************************************************************/
 
 FileLogger::FileLogger(const char* fname)
@@ -1093,7 +1089,7 @@ void FileLogger::Write(const char* fmt, ...)
 }
 
 /************************************************************************/
-/*                                                                      */
+/* Safe string functions                                                */
 /************************************************************************/
 
 void StringCopy(char* to, size_t size, const char* from)
