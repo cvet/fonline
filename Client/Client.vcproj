@@ -960,6 +960,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\Mutex.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Names.cpp"
 				>
 			</File>

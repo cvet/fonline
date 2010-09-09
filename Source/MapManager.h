@@ -76,10 +76,11 @@ struct TraceData
 #define FPATH_HEX_BUSY_RING             (7)
 #define FPATH_TOOFAR                    (8)
 #define FPATH_DEADLOCK                  (9)
-#define FPATH_ERROR1                    (10)
+#define FPATH_ERROR                     (10)
 #define FPATH_INVALID_HEXES             (11)
 #define FPATH_TRACE_FAIL                (12)
 #define FPATH_TRACE_TARG_NULL_PTR       (13)
+#define FPATH_ALLOC_FAIL                (14)
 
 struct PathFindData 
 {

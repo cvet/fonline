@@ -1831,11 +1831,19 @@ void MapManager::TraceBullet(TraceData& trace)
 	}
 }
 
-int MapGridOffsX=0,MapGridOffsY=0;
-short Grid[FPATH_MAX_PATH*2+2][FPATH_MAX_PATH*2+2];
-#define GRID(x,y) Grid[(FPATH_MAX_PATH+1)+(x)-MapGridOffsX][(FPATH_MAX_PATH+1)+(y)-MapGridOffsY]
+int THREAD MapGridOffsX=0;
+int THREAD MapGridOffsY=0;
+static THREAD short* Grid=NULL;
+#define GRID(x,y) Grid[((FPATH_MAX_PATH+1)+(y)-MapGridOffsY)*(FPATH_MAX_PATH*2+2)+((FPATH_MAX_PATH+1)+(x)-MapGridOffsX)]
 int MapManager::FindPath(PathFindData& pfd)
 {
+	// Allocate temporary grid
+	if(!Grid)
+	{
+		Grid=new(nothrow) short[(FPATH_MAX_PATH*2+2)*(FPATH_MAX_PATH*2+2)];
+		if(!Grid) return FPATH_ALLOC_FAIL;
+	}
+
 	// Data
 	DWORD map_id=pfd.MapId;
 	WORD from_hx=pfd.FromX;
@@ -1900,15 +1908,15 @@ int MapManager::FindPath(PathFindData& pfd)
 
 	// Prepare
 	int numindex=1;
-	ZeroMemory(Grid,sizeof(Grid));
+	ZeroMemory(Grid,(FPATH_MAX_PATH*2+2)*(FPATH_MAX_PATH*2+2)*sizeof(short));
 	MapGridOffsX=from_hx;
 	MapGridOffsY=from_hy;
 	GRID(from_hx,from_hy)=numindex;
 
-	static WordPairVec coords,cr_coords,gag_coords;
-	coords.clear();
-	cr_coords.clear();
-	gag_coords.clear();
+	WordPairVec coords,cr_coords,gag_coords;
+	coords.reserve(10000);
+	cr_coords.reserve(100);
+	gag_coords.reserve(100);
 
 	// First point
 	coords.push_back(WordPairVecVal(from_hx,from_hy));
@@ -2047,7 +2055,7 @@ label_FindOk:
 	path.resize(numindex-1);
 
 	// Parse full path
-	static bool switcher=false;
+	static THREAD bool switcher=false;
 	while(numindex>1)
 	{
 		if(numindex&1) switcher=!switcher;
@@ -2056,7 +2064,7 @@ label_FindOk:
 		ps.HexX=cx;
 		ps.HexY=cy;
 		int dir=FindPathGrid(cx,cy,numindex,switcher);
-		if(dir==-1) return FPATH_ERROR1;
+		if(dir==-1) return FPATH_ERROR;
 		ps.Dir=dir;
 	}
 

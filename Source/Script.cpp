@@ -614,7 +614,7 @@ void PrintContextCallstack(asIScriptContext* ctx)
 
 const char* GetActiveModuleName()
 {
-	static char error[]="<error>";
+	static const char error[]="<error>";
 	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
@@ -628,7 +628,7 @@ const char* GetActiveModuleName()
 
 const char* GetActiveFuncName()
 {
-	static char error[]="<error>";
+	static const char error[]="<error>";
 	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
@@ -685,6 +685,8 @@ void CollectGarbage(bool force)
 
 unsigned int __stdcall RunTimeoutThread(void* data)
 {
+	LogSetThreadName("ScriptTimeout");
+
 	while(RunTimeoutSuspend)
 	{
 		WaitForSingleObject(RunTimeoutStartEvent,INFINITE);

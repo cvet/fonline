@@ -524,7 +524,7 @@ public:
 	WSAOVERLAPPED_EX* WSAIn;
 	WSAOVERLAPPED_EX* WSAOut;
 	volatile long NetState;
-	CRITICAL_SECTION ShutdownCS;
+	Mutex ShutdownLocker;
 	bool IsDisconnected;
 	bool DisableZlib;
 	z_stream Zstrm;

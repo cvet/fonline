@@ -1,10 +1,11 @@
 #include "StdAfx.h"
 #include "Log.h"
+#include "Common.h"
 #include "Timer.h"
 #include <Richedit.h>
 #pragma comment(lib,"User32.lib")
 
-CRITICAL_SECTION LogCS;
+Mutex LogLocker;
 int LoggingType=0;
 static HANDLE LogFileHadle=NULL;
 LogFuncPtr LogFunction=NULL;
@@ -12,20 +13,9 @@ HWND LogDlgItem=NULL;
 std::string LogBufferStr;
 HANDLE LogBufferEvent;
 bool LoggingWithTime=false;
+bool LoggingWithThread=false;
+THREAD char LogThreadName[64]={0};
 DWORD StartLogTime=Timer::FastTick();
-
-struct _Initializator
-{
-	_Initializator()
-	{
-		InitializeCriticalSection(&LogCS);
-	}
-
-	~_Initializator()
-	{
-		DeleteCriticalSection(&LogCS);
-	}
-} Initializator;
 
 void LogToFile(const char* fname)
 {
@@ -65,6 +55,11 @@ void LogToBuffer(void* event)
 	LoggingType|=LOG_BUFFER;
 }
 
+void LogSetThreadName(const char* name)
+{
+	StringCopy(LogThreadName,name);
+}
+
 int LogGetType()
 {
 	return LoggingType;
@@ -91,24 +86,37 @@ void WriteLog(const char* frmt, ...)
 {
 	if(!LoggingType) return;
 
-	EnterCriticalSection(&LogCS);
+	LogLocker.Lock();
 
-	char str[MAX_LOGTEXT];
-	va_list list;
+	char str_tid[64]={0};
+	if(LoggingWithThread)
+	{
+		if(LogThreadName[0]) sprintf(str_tid,"[%s]",LogThreadName);
+		else sprintf(str_tid,"[%04u]",GetCurrentThreadId());
+	}
+
+	char str_time[64]={0};
 	if(LoggingWithTime)
 	{
-		sprintf(str,"(%u)",Timer::FastTick()-StartLogTime);
-		size_t len=strlen(str);
-		va_start(list,frmt);
-		vsprintf_s(&str[len],MAX_LOGTEXT-len,frmt,list);
-		va_end(list);
+		DWORD delta=Timer::FastTick()-StartLogTime;
+		DWORD seconds=delta/1000;
+		DWORD minutes=seconds/60%60;
+		DWORD hours=seconds/60/60;
+		if(hours) sprintf(str_time,"[%03u:%02u:%02u:%03u]",hours,minutes,seconds%60,delta%1000);
+		else if(minutes) sprintf(str_time,"[%02u:%02u:%03u]",minutes,seconds%60,delta%1000);
+		else sprintf(str_time,"[%02u:%03u]",seconds%60,delta%1000);
 	}
-	else
-	{
-		va_start(list,frmt);
-		vsprintf_s(str,frmt,list);
-		va_end(list);
-	}
+
+	char str[MAX_LOGTEXT]={0};
+	if(str_tid[0]) StringAppend(str,str_tid);
+	if(str_time[0]) StringAppend(str,str_time);
+	if(str_tid[0] || str_time[0]) StringAppend(str," ");
+
+	size_t len=strlen(str);
+	va_list list;
+	va_start(list,frmt);
+	vsprintf_s(&str[len],MAX_LOGTEXT-len,frmt,list);
+	va_end(list);
 
 	if(LoggingType&LOG_FILE)
 	{
@@ -130,7 +138,7 @@ void WriteLog(const char* frmt, ...)
 		SetEvent(LogBufferEvent);
 	}
 
-	LeaveCriticalSection(&LogCS);
+	LogLocker.Unlock();
 }
 
 void LogWithTime(bool enabled)
@@ -138,14 +146,19 @@ void LogWithTime(bool enabled)
 	LoggingWithTime=enabled;
 }
 
+void LogWithThread(bool enabled)
+{
+	LoggingWithThread=enabled;
+}
+
 void LogGetBuffer(std::string& buf)
 {
+	SCOPE_LOCK(LogLocker);
+
 	if(LoggingType&LOG_BUFFER)
 	{
-		EnterCriticalSection(&LogCS);
 		buf=LogBufferStr;
 		LogBufferStr.clear();
-		LeaveCriticalSection(&LogCS);
 	}
 	else
 	{

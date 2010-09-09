@@ -410,7 +410,7 @@ int CraftItem::SetStrItem(const char*& pstr_in, WordVec& pid_vec, DwordVec& coun
 
 const char* CraftItem::GetStr(bool metadata)
 {
-	static char str[MAX_FOTEXT];
+	static THREAD char str[MAX_FOTEXT];
 
 	if(metadata)
 	{

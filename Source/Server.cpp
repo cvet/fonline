@@ -20,7 +20,7 @@ HANDLE* FOServer::IOThreadHandles=NULL;
 DWORD FOServer::WorkThreadCount=0;
 SOCKET FOServer::ListenSock=INVALID_SOCKET;
 ClVec FOServer::ConnectedClients;
-CRITICAL_SECTION FOServer::CSConnectedClients;
+Mutex FOServer::ConnectedClientsLocker;
 FOServer::Statistics_ FOServer::Statistics;
 FOServer::ClientSaveDataVec FOServer::ClientsSaveData;
 size_t FOServer::ClientsSaveDataCount=0;
@@ -100,13 +100,13 @@ void FOServer::Finish()
 	LogClients.clear();
 
 	// Net
-	EnterCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Lock();
 	for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 	{
 		Client* cl=*it;
 		cl->Shutdown();
 	}
-	LeaveCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Unlock();
 	closesocket(ListenSock);
 	ListenSock=INVALID_SOCKET;
 	for(DWORD i=0;i<WorkThreadCount;i++) PostQueuedCompletionStatus(IOCompletionPort,0,1,NULL);
@@ -116,7 +116,6 @@ void FOServer::Finish()
 	WorkThreadCount=0;
 	CloseHandle(IOCompletionPort);
 	IOCompletionPort=NULL;
-	DeleteCriticalSection(&CSConnectedClients);
 
 	// Managers
 	AIMngr.Finish();
@@ -158,9 +157,9 @@ string FOServer::GetIngamePlayersStatistics()
 	char str_loc[256];
 	char str_map[256];
 
-	EnterCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Lock();
 	DWORD conn_count=ConnectedClients.size();
-	LeaveCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Unlock();
 
 	ClVec players;
 	CrMngr.GetCopyPlayers(players);
@@ -357,7 +356,7 @@ void FOServer::RunGameLoop()
 		else call_cnt++;
 
 		// Get connected clients
-		EnterCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Lock();
 		Statistics.CurOnline=ConnectedClients.size();
 		ProcessClients.clear();
 		for(ClVecIt it=ConnectedClients.begin();it!=ConnectedClients.end();)
@@ -378,7 +377,7 @@ void FOServer::RunGameLoop()
 				++it;
 			}
 		}
-		LeaveCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Unlock();
 
 		// Connected clients process
 		for(ClVecIt it=ProcessClients.begin(),end=ProcessClients.end();it!=end;++it)
@@ -500,8 +499,199 @@ void FOServer::RunGameLoop()
 	SaveWorld(NULL);
 }
 
+void FOServer::InitLogic()
+{
+	return;
+
+	WriteLog("Starting logic threads, count<%u>.\n",10);
+	for(DWORD i=0;i<10;i++) _beginthreadex(NULL,0,Logic_Work,NULL,0,NULL);
+}
+
+unsigned int __stdcall FOServer::Logic_Work(void* data)
+{
+	static int thread_count=1;
+	LogSetThreadName(Str::Format("Logic%d",thread_count));
+	thread_count++;
+
+	SyncManager* sync_mngr=SyncManager::GetForCurThread();
+	while(true)
+	{
+		Job job=Job::PopFront();
+
+		if(job.Type==JOB_CRITTER)
+		{
+			Critter* cr=(Critter*)job.Data;
+/*
+			// Get connected clients
+			EnterCriticalSection(&CSConnectedClients);
+			Statistics.CurOnline=ConnectedClients.size();
+			ProcessClients.clear();
+			for(ClVecIt it=ConnectedClients.begin();it!=ConnectedClients.end();)
+			{
+				Client* cl=*it;
+				if(InterlockedCompareExchange(&cl->WSAIn->Operation,0,0)==WSAOP_FREE && InterlockedCompareExchange(&cl->WSAOut->Operation,0,0)==WSAOP_FREE)
+				{
+					cl->Shutdown();
+					InterlockedExchange(&cl->WSAIn->Operation,WSAOP_END);
+					InterlockedExchange(&cl->WSAOut->Operation,WSAOP_END);
+					cl->Release();
+					it=ConnectedClients.erase(it);
+				}
+				else
+				{
+					cl->AddRef();
+					ProcessClients.push_back(cl);
+					++it;
+				}
+			}
+			LeaveCriticalSection(&CSConnectedClients);
+
+			// Connected clients process
+			for(ClVecIt it=ProcessClients.begin(),end=ProcessClients.end();it!=end;++it)
+			{
+				ClientPtr& cl=*it;
+				Process(cl);
+			}
+
+			// Critters process
+			CrMap critters=CrMngr.GetCritters(); // TODO:
+			remove_cl.clear();
+			for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+			{
+				Critter* cr=(*it).second;
+				ProcessCritter(cr);
+
+				if(cr->IsPlayer())
+				{
+					Client* cl=(Client*)cr;
+					if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_REMOVE) remove_cl.push_back(cl);
+				}
+			}
+
+			// Disconnect, remove
+			for(ClVecIt it=remove_cl.begin(),end=remove_cl.end();it!=end;++it)
+			{
+				Client* cl=*it;
+				RemoveClient(cl);
+				ClVecIt it_=std::find(ProcessClients.begin(),ProcessClients.end(),cl);
+				if(it_!=ProcessClients.end())
+				{
+					ProcessClients.erase(it_);
+					cl->Release();
+				}
+			}
+
+			for(ClVecIt it=ProcessClients.begin(),end=ProcessClients.end();it!=end;++it)
+			{
+				Client* cl=*it;
+				if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_DISCONNECT) DisconnectClient(cl);
+				cl->Release();
+			}*/
+		}
+		else if(job.Type==JOB_MAP)
+		{
+			Map* map=(Map*)job.Data;
+		//	map->Process();
+		//	//MapMngr.ProcessMaps();
+		}
+		else if(job.Type==JOB_TIME_EVENT)
+		{
+			//ProcessTimeEvents();
+		}
+		else if(job.Type==JOB_GARBAGE)
+		{/*
+			ItemMngr.ItemGarbager(CycleBeginTick); // Items garbage
+			CrMngr.CritterGarbager(CycleBeginTick); // Critters garbage
+			MapMngr.LocationGarbager(CycleBeginTick); // Locations and maps garbage
+			Script::CollectGarbage(false); // AngelScript garbage
+			VarsGarbarger(CycleBeginTick);*/
+		}
+		else if(job.Type==JOB_GAME_LOOP)
+		{/*
+			// Synchronize single player data
+			if(Singleplayer)
+			{
+				// Check client process
+				if(WaitForSingleObject(SingleplayerClientProcess,0)==WAIT_OBJECT_0)
+				{
+					FOQuit=true;
+					break;
+				}
+
+				SingleplayerData.Refresh();
+				Timer::SetGamePause(SingleplayerData.Pause);
+			}
+
+			// Pre loop
+			CycleBeginTick=Timer::FastTick();
+
+			static DWORD last_tick=Timer::FastTick();
+			static WORD call_cnt=0;
+			if(CycleBeginTick-last_tick>=1000)
+			{
+				Statistics.FPS=call_cnt;
+				call_cnt=0;
+				last_tick=CycleBeginTick;
+			}
+			else call_cnt++;
+
+			// Script game loop
+			static DWORD game_loop_tick=1;
+			if(game_loop_tick && Timer::FastTick()>=game_loop_tick)
+			{
+				DWORD wait=3600000; // 1hour
+				if(Script::PrepareContext(ServerFunctions.Loop,CALL_FUNC_STR,"Game") && Script::RunPrepared()) wait=Script::GetReturnedDword();
+				if(!wait) game_loop_tick=0; // Disable
+				else game_loop_tick=Timer::FastTick()+wait;
+			}
+
+			// Other
+			ProcessGameTime();
+			ProcessBans();
+
+			// Saver
+			if(CycleBeginTick>=SaveWorldNextTick)
+			{
+				SaveWorld(NULL);
+				SaveWorldNextTick=Timer::FastTick()+SaveWorldTime;
+			}
+
+			// Client script
+			if(RequestReloadClientScripts)
+			{
+				ReloadClientScripts();
+				RequestReloadClientScripts=false;
+			}
+
+			// Post loop
+			DWORD loop_tick=Timer::FastTick()-CycleBeginTick;
+			Statistics.LoopTime+=loop_tick;
+			Statistics.LoopCycles++;
+			if(loop_tick>Statistics.LoopMax) Statistics.LoopMax=loop_tick;
+			if(loop_tick<Statistics.LoopMin) Statistics.LoopMin=loop_tick;
+			if(loop_tick>100) Statistics.LagsCount++;
+			Statistics.CycleTime=loop_tick;
+			Statistics.Uptime=(Timer::FastTick()-Statistics.ServerStartTick)/1000;
+			SetEvent(UpdateEvent);*/
+		}
+		else // JOB_NOP
+		{
+			Sleep(10);
+		}
+
+		sync_mngr->UnlockAll();
+
+		Job::Add(job);
+		Sleep(0);
+	}
+
+	return 0;
+}
+
 unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 {
+	LogSetThreadName("NetListen");
+
 	while(true)
 	{
 		// Blocked
@@ -517,9 +707,9 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 			continue;
 		}
 
-		EnterCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Lock();
 		DWORD count=ConnectedClients.size();
-		LeaveCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Unlock();
 		if(count>=MAX_CLIENTS_IN_GAME)
 		{
 			closesocket(sock);
@@ -565,16 +755,20 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 			continue;
 		}
 		// Add to connected collection
-		EnterCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Lock();
 		InterlockedExchange(&cl->NetState,STATE_CONN);
 		ConnectedClients.push_back(cl);
-		LeaveCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Unlock();
 	}
 	return 0;
 }
 
 unsigned int __stdcall FOServer::Net_Work(HANDLE iocp)
 {
+	static int thread_count=1;
+	LogSetThreadName(Str::Format("NetWork%d",thread_count));
+	thread_count++;
+
 	while(true)
 	{
 		DWORD bytes;
@@ -590,8 +784,8 @@ unsigned int __stdcall FOServer::Net_Work(HANDLE iocp)
 			break;
 		}
 
-		EnterCriticalSection(&io->CS);
-		Client* cl=(Client*)io->Client;
+		io->Locker.Lock();
+		Client* cl=(Client*)io->PClient;
 		cl->AddRef();
 
 		if(error==ERROR_SUCCESS && bytes)
@@ -617,7 +811,7 @@ unsigned int __stdcall FOServer::Net_Work(HANDLE iocp)
 			InterlockedExchange(&io->Operation,WSAOP_FREE);
 		}
 
-		LeaveCriticalSection(&io->CS);
+		io->Locker.Unlock();
 		cl->Release();
 	}
 	return 0;
@@ -625,7 +819,7 @@ unsigned int __stdcall FOServer::Net_Work(HANDLE iocp)
 
 void FOServer::Net_Input(WSAOVERLAPPED_EX* io)
 {
-	Client* cl=(Client*)io->Client;
+	Client* cl=(Client*)io->PClient;
 
 	cl->Bin.Lock();
 	if(cl->Bin.GetCurPos()+io->Bytes>=GameOpt.FloodSize && !Singleplayer)
@@ -651,7 +845,7 @@ void FOServer::Net_Input(WSAOVERLAPPED_EX* io)
 
 void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 {
-	Client* cl=(Client*)io->Client;
+	Client* cl=(Client*)io->PClient;
 
 	cl->Bout.Lock();
 	if(cl->Bout.IsEmpty()) // Nothing to send
@@ -1328,12 +1522,12 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			char str[512];
-			EnterCriticalSection(&CSConnectedClients);
+			ConnectedClientsLocker.Lock();
 			sprintf(str,"Connections: %u, Players: %u, Npc: %u. "
 				"FOServer machine uptime: %u min., FOServer uptime: %u min.",
 				ConnectedClients.size(),CrMngr.PlayersInGame(),CrMngr.NpcInGame(),
 				Timer::FastTick()/1000/60,(Timer::FastTick()-Statistics.ServerStartTick)/1000/60);
-			LeaveCriticalSection(&CSConnectedClients);
+			ConnectedClientsLocker.Unlock();
 			result+=str;
 
 			const char* ptext=result.c_str();
@@ -2520,13 +2714,13 @@ void FOServer::Process_Command(Client* cl)
 			GameOpt.FullSecondStart=GameOpt.FullSecond;
 			GameOpt.GameTimeTick=Timer::GameTick();
 
-			EnterCriticalSection(&CSConnectedClients);
+			ConnectedClientsLocker.Lock();
 			for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 			{
 				Client* cl_=*it;
 				if(cl_->IsOnline()) cl_->Send_GameInfo(MapMngr.GetMap(cl_->GetMap()));
 			}
-			LeaveCriticalSection(&CSConnectedClients);
+			ConnectedClientsLocker.Unlock();
 
 			cl->Send_Text(cl,"Time changed.",SAY_NETMSG);
 		}
@@ -2974,7 +3168,6 @@ bool FOServer::Init()
 	RegIp.clear();
 	LastHoloId=USER_HOLO_START_NUM;
 	TimeEventsLastNum=0;
-	InitializeCriticalSection(&CSConnectedClients);
 	VarsGarbageLastTick=Timer::FastTick();
 
 	if(!Singleplayer)
@@ -3171,6 +3364,8 @@ bool FOServer::Init()
 		SingleplayerData.NetPort=sin.sin_port;
 		SingleplayerData.Unlock();
 	}
+
+	InitLogic();
 	return true;
 
 label_Error:
@@ -3705,13 +3900,13 @@ void FOServer::SaveWorld(const char* name)
 	AddWorldSaveData(&version,sizeof(version));
 
 	// SaveClient
-	EnterCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Lock();
 	for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 	{
 		Client* cl=*it;
 		if(cl->GetId()) SaveClient(cl,true);
 	}
-	LeaveCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Unlock();
 	for(ClVecIt it=SaveClients.begin(),end=SaveClients.end();it!=end;++it)
 	{
 		Client* cl=*it;
@@ -4152,7 +4347,7 @@ void FOServer::SetScore(int score, const char* name)
 
 const char* FOServer::GetScores()
 {
-	static char scores[SCORE_NAME_LEN*SCORES_MAX]; // Only names
+	static THREAD char scores[SCORE_NAME_LEN*SCORES_MAX]; // Only names
 	for(int i=0;i<SCORES_MAX;i++)
 	{
 		char* offs=&scores[i*SCORE_NAME_LEN]; // Name

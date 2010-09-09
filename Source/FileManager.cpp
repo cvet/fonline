@@ -502,7 +502,7 @@ void FileManager::SetLEDWord(DWORD data)
 
 const char* FileManager::GetFullPath(const char* fname, int path_type)
 {
-	static char buf[MAX_FOPATH];
+	static THREAD char buf[MAX_FOPATH];
 	StringCopy(buf,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(buf,PathLst[path_type]);
 	if(fname) StringAppend(buf,fname);
@@ -527,7 +527,7 @@ const char* FileManager::GetPath(int path_type)
 
 const char* FileManager::GetDataPath(int path_type)
 {
-	static char root_path[]=".\\";
+	static const char root_path[]=".\\";
 	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT || path_type==PT_MAPPER_DATA) return root_path;
 	return dataPath;
 }

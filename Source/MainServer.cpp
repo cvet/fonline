@@ -36,7 +36,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 
 		// Logging
 		char log_path[MAX_FOPATH]={0};
-		if(!strstr(lpCmdLine,"-nologpath ") && strstr(lpCmdLine,"-logpath "))
+		if(!strstr(lpCmdLine,"-nologpath") && strstr(lpCmdLine,"-logpath "))
 		{
 			const char* ptr=strstr(lpCmdLine,"-logpath ")+strlen("-logpath ");
 			StringCopy(log_path,ptr);
@@ -60,7 +60,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
-	if(!Singleplayer || strstr(lpCmdLine,"-showgui "))
+	if(!Singleplayer || strstr(lpCmdLine,"-showgui"))
 	{
 		Dlg=CreateDialog(Instance,MAKEINTRESOURCE(IDD_DLG),NULL,DlgProc);
 
@@ -124,6 +124,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		SendMessage(GetDlgItem(Dlg,IDC_AUTOUPDATE),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_LOGGING),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_LOGGING_TIME),WM_SETFONT,(LPARAM)font,TRUE);
+		SendMessage(GetDlgItem(Dlg,IDC_LOGGING_THREAD),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_SCRIPT_DEBUG),WM_SETFONT,(LPARAM)font,TRUE);
 		SendMessage(GetDlgItem(Dlg,IDC_STOP),WM_SETFONT,(LPARAM)font,TRUE);
 
@@ -152,6 +153,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		SetDlgItemText(Dlg,IDC_AUTOUPDATE,"Update info every second");
 		SetDlgItemText(Dlg,IDC_LOGGING,"Logging");
 		SetDlgItemText(Dlg,IDC_LOGGING_TIME,"Logging with time");
+		SetDlgItemText(Dlg,IDC_LOGGING_THREAD,"Logging with thread");
 		SetDlgItemText(Dlg,IDC_SCRIPT_DEBUG,"Script debug info");
 		SetDlgItemText(Dlg,IDC_STOP,"Start server");
 	}
@@ -168,12 +170,15 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	MemoryDebugLevel=cfg.GetInt("MemoryDebugLevel",0);
 	Script::SetLogDebugInfo(true);
 	LogWithTime(cfg.GetInt("LoggingTime",1)==0?false:true);
+	LogWithThread(cfg.GetInt("LoggingThread",1)==0?false:true);
+	LogSetThreadName("GUI");
 
 	if(Dlg)
 	{
 		SendMessage(GetDlgItem(Dlg,IDC_AUTOUPDATE),BM_SETCHECK,BST_UNCHECKED,0);
 		SendMessage(GetDlgItem(Dlg,IDC_LOGGING),BM_SETCHECK,cfg.GetInt("Logging",1)==0?BST_UNCHECKED:BST_CHECKED,0);
 		SendMessage(GetDlgItem(Dlg,IDC_LOGGING_TIME),BM_SETCHECK,cfg.GetInt("LoggingTime",1)==0?BST_UNCHECKED:BST_CHECKED,0);
+		SendMessage(GetDlgItem(Dlg,IDC_LOGGING_THREAD),BM_SETCHECK,cfg.GetInt("LoggingThread",1)==0?BST_UNCHECKED:BST_CHECKED,0);
 		SendMessage(GetDlgItem(Dlg,IDC_SCRIPT_DEBUG),BM_SETCHECK,BST_CHECKED,0);
 	}
 
@@ -181,7 +186,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	if(lpCmdLine[0]) WriteLog("Command line<%s>.\n",lpCmdLine);
 
 	// Autostart
-	if(strstr(lpCmdLine,"-start ") || Singleplayer)
+	if(strstr(lpCmdLine,"-start") || Singleplayer)
 	{
 		if(Dlg)
 		{
@@ -494,6 +499,9 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		case IDC_LOGGING_TIME:
 			LogWithTime(SendMessage(GetDlgItem(Dlg,IDC_LOGGING_TIME),BM_GETCHECK,0,0)==BST_CHECKED?true:false);
 			break;
+		case IDC_LOGGING_THREAD:
+			LogWithThread(SendMessage(GetDlgItem(Dlg,IDC_LOGGING_THREAD),BM_GETCHECK,0,0)==BST_CHECKED?true:false);
+			break;
 		case IDC_SCRIPT_DEBUG:
 			Script::SetLogDebugInfo(SendMessage((HWND)lParam,BM_GETCHECK,0,0)==BST_CHECKED);
 			break;
@@ -523,6 +531,8 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 
 void GameLoopThread(void*)
 {
+	LogSetThreadName("Main");
+
 	if(Dlg)
 	{
 		LogFinish(-1);

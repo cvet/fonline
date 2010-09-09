@@ -730,7 +730,6 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 	// Log to client
 	static ClVec LogClients;
-	static CRITICAL_SECTION LogClientsCS;
 	static void LogToClients(char* str);
 
 	// Game time
@@ -752,13 +751,16 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	bool IsInit(){return Active;}
 	void RunGameLoop();
 
+	void InitLogic();
+	static unsigned int __stdcall Logic_Work(void* data); // Thread
+
 	// Net
 	static HANDLE IOCompletionPort;
 	static HANDLE* IOThreadHandles;
 	static DWORD WorkThreadCount;
 	static SOCKET ListenSock;
 	static ClVec ConnectedClients;
-	static CRITICAL_SECTION CSConnectedClients;
+	static Mutex ConnectedClientsLocker;
 
 	static unsigned int __stdcall Net_Listen(HANDLE iocp); // Thread
 	static unsigned int __stdcall Net_Work(HANDLE iocp); // Thread

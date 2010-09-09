@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by rs.rc
+// Used by Server.rc
 //
 #define IDD_DLG                         101
 #define IDI_SERVER                      105
@@ -36,10 +36,11 @@
 #define IDC_SAVEINFO                    1056
 #define IDC_LOGGING                     1057
 #define IDC_LOGGING_TIME                1058
-#define IDC_AUTOUPDATE                  1059
-#define IDC_SPLIT_UP                    1062
-#define IDC_SPLIT_DOWN                  1063
-#define IDC_DUMP                        1064
+#define IDC_LOGGING_THREAD              1059
+#define IDC_AUTOUPDATE                  1060
+#define IDC_SPLIT_UP                    1061
+#define IDC_SPLIT_DOWN                  1062
+#define IDC_DUMP                        1063
 
 // Next default values for new objects
 // 

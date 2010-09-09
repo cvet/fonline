@@ -2394,16 +2394,23 @@ void HexManager::GetSmthPixel(int pix_x, int pix_y, ItemHex*& item, CritterCl*& 
 bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut)
 {
 	// Static data
-#define GRID(x,y) grid[(FINDPATH_MAX_PATH+1)+(x)-grid_ox][(FINDPATH_MAX_PATH+1)+(y)-grid_oy]
+#define GRID(x,y) grid[((FINDPATH_MAX_PATH+1)+(y)-grid_oy)*(FINDPATH_MAX_PATH*2+2)+((FINDPATH_MAX_PATH+1)+(x)-grid_ox)]
 	static int grid_ox=0,grid_oy=0;
-	static short grid[FINDPATH_MAX_PATH*2+2][FINDPATH_MAX_PATH*2+2];
+	static short* grid=NULL;
 	static WordPairVec coords;
+
+	// Allocate temporary grid
+	if(!grid)
+	{
+		grid=new(nothrow) short[(FINDPATH_MAX_PATH*2+2)*(FINDPATH_MAX_PATH*2+2)];
+		if(!grid) return false;
+	}
 
 	if(!IsMapLoaded()) return false;
 	if(start_x==end_x && start_y==end_y) return true;
 
 	short numindex=1;
-	ZeroMemory(grid,sizeof(grid));
+	ZeroMemory(grid,(FINDPATH_MAX_PATH*2+2)*(FINDPATH_MAX_PATH*2+2)*sizeof(short));
 	grid_ox=start_x;
 	grid_oy=start_y;
 	GRID(start_x,start_y)=numindex;

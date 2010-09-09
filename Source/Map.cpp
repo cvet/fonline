@@ -461,7 +461,7 @@ bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD multihex, DWORD seek_radius, bo
 	if(!seek_radius) return false;
 	if(seek_radius>MAX_HEX_OFFSET) seek_radius=MAX_HEX_OFFSET;
 
-	static int cur_step=0;
+	static THREAD int cur_step=0;
 	short hx_=hx;
 	short hy_=hy;
 	bool odd=(hx&1)!=0;

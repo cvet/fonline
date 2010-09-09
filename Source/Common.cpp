@@ -584,6 +584,9 @@ void GetClientOptions()
 	logging=cfg.GetInt(CLIENT_CONFIG_APP,"LoggingTime",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-LoggingTime");
 	LogWithTime(logging);
+	logging=cfg.GetInt(CLIENT_CONFIG_APP,"LoggingThread",false)!=0;
+	GETOPTIONS_CMD_LINE_BOOL(logging,"-LoggingThread");
+	LogWithThread(logging);
 
 #ifdef FONLINE_CLIENT
 	Script::SetGarbageCollectTime(120000);
@@ -627,7 +630,7 @@ ServerScriptFunctions ServerFunctions;
 
 const char* GetLastSocketError()
 {
-	static char str[256];
+	static THREAD char str[256];
 	int error=WSAGetLastError();
 #define CASE_SOCK_ERROR(code,message) case code: sprintf(str,#code", %d, "message,code); break
 

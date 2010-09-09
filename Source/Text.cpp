@@ -188,21 +188,21 @@ void Str::GoTo(char*& str, char ch, bool skip_char /* = false */)
 
 const char* Str::ItoA(int i)
 {
-	static char str[128];
+	static THREAD char str[128];
 	sprintf(str,"%d",i);
 	return str;
 }
 
 const char* Str::DWtoA(DWORD dw)
 {
-	static char str[128];
+	static THREAD char str[128];
 	sprintf(str,"%u",dw);
 	return str;
 }
 
 const char* Str::Format(const char* fmt, ...)
 {
-	static char res[0x4000];
+	static THREAD char res[0x4000];
 	va_list list;
 	va_start(list,fmt);
 	vsprintf(res,fmt,list);
@@ -789,18 +789,20 @@ const BYTE* FOMsg::GetBinary(DWORD num, DWORD& len)
 {
 	if(!Count(num)) return NULL;
 
-	static ByteVec binary;
+	static THREAD ByteVec* binary=NULL;
+	if(!binary) binary=new(nothrow) ByteVec();
+
 	const char* str=GetStr(num);
-	binary.clear();
+	binary->clear();
 	for(int i=0,j=strlen(str);i<j-1;i+=2)
 	{
-		if(str[i]==1) binary.push_back(str[i+1]);
-		else if(str[i]==2) binary.push_back(str[i+1]-1);
+		if(str[i]==1) binary->push_back(str[i+1]);
+		else if(str[i]==2) binary->push_back(str[i+1]-1);
 		else return NULL;
 	}
 
-	len=binary.size();
-	return &binary[0];
+	len=binary->size();
+	return &(*binary)[0];
 }
 
 int FOMsg::Count(DWORD num)

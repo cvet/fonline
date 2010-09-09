@@ -831,6 +831,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\Jobs.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Jobs.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Log.cpp"
 				>
 			</File>
@@ -860,6 +868,10 @@
 			</File>
 			<File
 				RelativePath="..\Source\MsgStr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Mutex.h"
 				>
 			</File>
 			<File
@@ -952,6 +964,14 @@
 			</File>
 			<File
 				RelativePath="..\Source\Text.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\ThreadSync.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\ThreadSync.h"
 				>
 			</File>
 			<File
@@ -2175,14 +2195,6 @@
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath=".\ClassDiagram1.cd"
-			>
-		</File>
-		<File
-			RelativePath=".\resource.h"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

@@ -1215,7 +1215,8 @@ void FOServer::KnockoutCritter(Critter* cr, bool face_up, DWORD lose_ap, WORD kn
 
 bool FOServer::MoveRandom(Critter* cr)
 {
-	static ByteVec dirs;
+	ByteVec dirs;
+	dirs.reserve(6);
 	if(dirs.empty()) for(int i=0;i<6;i++) dirs.push_back(i);
 	else std::random_shuffle(dirs.begin(),dirs.end());
 
@@ -1909,20 +1910,20 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
-		EnterCriticalSection(&CSConnectedClients);
+		ConnectedClientsLocker.Lock();
 		// Check current online
 		ClVecIt it_=std::find(ConnectedClients.begin(),ConnectedClients.end(),cl);
 		if(it_==ConnectedClients.end())
 		{
-			LeaveCriticalSection(&CSConnectedClients);
+			ConnectedClientsLocker.Unlock();
 			return;
 		}
 		// Swap
 		BIN_END(cl);
-		EnterCriticalSection(&cl->WSAIn->CS);
-		EnterCriticalSection(&cl->WSAOut->CS);
-		EnterCriticalSection(&cl_old->WSAIn->CS);
-		EnterCriticalSection(&cl_old->WSAOut->CS);
+		cl->WSAIn->Locker.Lock();
+		cl->WSAOut->Locker.Lock();
+		cl_old->WSAIn->Locker.Lock();
+		cl_old->WSAOut->Locker.Lock();
 
 		(*it_)->Release();
 		cl_old->AddRef();
@@ -1930,10 +1931,10 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		std::swap(cl_old->WSAIn,cl->WSAIn);
 		std::swap(cl_old->WSAOut,cl->WSAOut);
-		cl_old->WSAIn->Client=cl_old;
-		cl_old->WSAOut->Client=cl_old;
-		cl->WSAIn->Client=cl;
-		cl->WSAOut->Client=cl;
+		cl_old->WSAIn->PClient=cl_old;
+		cl_old->WSAOut->PClient=cl_old;
+		cl->WSAIn->PClient=cl;
+		cl->WSAOut->PClient=cl;
 
 		std::swap(cl_old->NetState,cl->NetState);
 		cl_old->Sock=cl->Sock;
@@ -1954,15 +1955,15 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		cl_old->IsNotValid=false;
 		cl_old->IsDisconnected=false;
 
-		LeaveCriticalSection(&cl->WSAOut->CS);
-		LeaveCriticalSection(&cl->WSAIn->CS);
+		cl->WSAOut->Locker.Unlock();
+		cl->WSAIn->Locker.Unlock();
 		cl->Release(); // ProcessClients
 		cl_old->AddRef(); // ProcessClients
 		cl=cl_old;
 
-		LeaveCriticalSection(&cl->WSAOut->CS);
-		LeaveCriticalSection(&cl->WSAIn->CS);
-		LeaveCriticalSection(&CSConnectedClients);
+		cl->WSAOut->Locker.Unlock();
+		cl->WSAIn->Locker.Unlock();
+		ConnectedClientsLocker.Unlock();
 		BIN_BEGIN(cl);
 
 		// Erase from save

@@ -21,10 +21,12 @@ void LogToFile(const char* fname); // File
 void LogToFunc(LogFuncPtr func_ptr); // Extern function
 void LogToDlg(void* dlg_item); // Dialog item
 void LogToBuffer(void* event); // Buffer, to get value use LogGetBuffer
+void LogSetThreadName(const char* name); // Set name for current thread
 
 int LogGetType();
 void LogFinish(int log_type); // Finish logging
 void LogWithTime(bool enable); // Logging with time
+void LogWithThread(bool enabled); // Logging with thread name
 void LogGetBuffer(std::string& buf); // Get buffer, if used LogBuffer
 
 #endif // __LOG__

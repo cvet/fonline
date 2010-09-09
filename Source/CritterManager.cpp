@@ -365,7 +365,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 			return NULL;
 		}
 
-		static int cur_step=0;
+		static THREAD int cur_step=0;
 		short hx_=hx;
 		short hy_=hy;
 		bool odd=(hx&1)!=0;
@@ -426,6 +426,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 
 	map->AddCritter(npc);
 	CrMngr.AddCritter(npc);
+	//Job::Add(JOB_CRITTER,&npc);
 
 	for(DWORD i=0;i<items_count;i++)
 	{

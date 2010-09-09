@@ -361,7 +361,7 @@ bool FOServer::ReloadClientScripts()
 	}
 
 	// Send to all connected clients
-	EnterCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Lock();
 	for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 	{
 		Client* cl=*it;
@@ -369,7 +369,7 @@ bool FOServer::ReloadClientScripts()
 		if(it_l!=LangPacks.end()) Send_MsgData(cl,cl->LanguageMsg,TEXTMSG_INTERNAL,(*it_l).Msg[TEXTMSG_INTERNAL]);
 		cl->Send_LoadMap(NULL);
 	}
-	LeaveCriticalSection(&CSConnectedClients);
+	ConnectedClientsLocker.Unlock();
 
 	WriteLog("Reload client scripts complete.\n");
 	return true;

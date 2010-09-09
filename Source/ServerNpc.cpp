@@ -248,13 +248,14 @@ void FOServer::ProcessAI(Npc* npc)
 				{
 				case FPATH_MAP_NOT_FOUND: reason=REASON_FIND_PATH_ERROR; break;
 				case FPATH_TOOFAR: reason=REASON_HEX_TOO_FAR; break;
-				case FPATH_ERROR1: reason=REASON_FIND_PATH_ERROR; break;
+				case FPATH_ERROR: reason=REASON_FIND_PATH_ERROR; break;
 				case FPATH_INVALID_HEXES: reason=REASON_FIND_PATH_ERROR; break;
 				case FPATH_TRACE_TARG_NULL_PTR: reason=REASON_FIND_PATH_ERROR; break;
 				case FPATH_HEX_BUSY: reason=REASON_HEX_BUSY; break;
 				case FPATH_HEX_BUSY_RING: reason=REASON_HEX_BUSY_RING; break;
 				case FPATH_DEADLOCK: reason=REASON_DEADLOCK; break;
 				case FPATH_TRACE_FAIL: reason=REASON_TRACE_FAIL; break;
+				case FPATH_ALLOC_FAIL: reason=REASON_FIND_PATH_ERROR; break;
 				default: reason=REASON_FIND_PATH_ERROR; break;
 				}
 

@@ -114,7 +114,7 @@ bool CVarMngr::UpdateVarsTemplate()
 	FILE* f=fopen(full_path.c_str(),"rb");
 	if(!f)
 	{
-		WriteLog("file<%s> not found.\n",full_path);
+		WriteLog("file<%s> not found.\n",full_path.c_str());
 		return false;
 	}
 

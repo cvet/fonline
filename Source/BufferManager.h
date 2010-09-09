@@ -1,11 +1,13 @@
 #ifndef __BUFFER_MANAGER__
 #define __BUFFER_MANAGER__
 
+#include "Common.h"
+
 class BufferManager
 {
 private:
 	bool isError;
-	CRITICAL_SECTION cs;
+	Mutex bufLocker;
 	char* bufData;
 	DWORD bufLen;
 	DWORD bufEndPos;

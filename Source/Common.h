@@ -43,14 +43,15 @@ using namespace std;
 #include "Exception.h"
 #include "FlexRect.h"
 #include "Randomizer.h"
+#include "Mutex.h"
 
 #define ___MSG1(x) #x
 #define ___MSG0(x) ___MSG1(x)
 #define MESSAGE(desc) message(__FILE__ "(" ___MSG0(__LINE__) "):" #desc)
 
-#define SAFEREL(x)  {if(x) (x)->Release();(x)=NULL;}
-#define SAFEDEL(x)  {if(x) delete (x);(x)=NULL;}
-#define SAFEDELA(x) {if(x) delete[] (x);(x)=NULL;}
+#define SAFEREL(x)  {if(x) (x)->Release(); (x)=NULL;}
+#define SAFEDEL(x)  {if(x) delete (x);     (x)=NULL;}
+#define SAFEDELA(x) {if(x) delete[] (x);   (x)=NULL;}
 
 #define STATIC_ASSERT(a) {static int arr[(a)?1:-1];}
 #define D3D_HR(expr)     {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s - %s>.\n",DXGetErrorString(hr__),DXGetErrorDescription(hr__)); return 0;}}
@@ -61,6 +62,8 @@ using namespace std;
 #define SQRT3_FLOAT    (1.732050807568877f)
 #define BIAS_FLOAT     (0.02f)
 #define RAD2DEG        (57.29577951f)
+
+#define THREAD __declspec(thread)
 
 typedef vector<INTRECT> IntRectVec;
 typedef vector<FLTRECT> FltRectVec;
@@ -228,6 +231,8 @@ struct MapperScriptFunctions
 
 #include <richedit.h>
 #include "Script.h"
+#include "ThreadSync.h"
+#include "Jobs.h"
 
 #define ITEMS_STATISTICS
 //#define FOSERVER_DUMP
@@ -237,8 +242,8 @@ struct MapperScriptFunctions
 struct WSAOVERLAPPED_EX
 {
 	WSAOVERLAPPED OV;
-	CRITICAL_SECTION CS;
-	void* Client;
+	Mutex Locker;
+	void* PClient;
 	WSABUF Buffer;
 	long Operation;
 	DWORD Flags;
@@ -564,39 +569,6 @@ DWORD GameTimeMonthDay(WORD year, WORD month);
 void ProcessGameTime();
 DWORD GameAimApCost(int hit_location);
 DWORD GameHitAim(int hit_location);
-
-/************************************************************************/
-/* Mutex                                                                */
-/************************************************************************/
-
-class Mutex
-{
-private:
-	CRITICAL_SECTION mutexCS;
-	Mutex(const Mutex&){}
-	void operator=(const Mutex&){}
-
-public:
-	Mutex(){InitializeCriticalSection(&mutexCS);}
-	~Mutex(){DeleteCriticalSection(&mutexCS);}
-	void Lock(){EnterCriticalSection(&mutexCS);}
-	void Unlock(){LeaveCriticalSection(&mutexCS);}
-
-	class Unlocker
-	{
-	private:
-		CRITICAL_SECTION* pCS;
-
-	public:
-		Unlocker():pCS(NULL){}
-		Unlocker(Unlocker& unlock){unlock.pCS=pCS; pCS=NULL;}
-		Unlocker(CRITICAL_SECTION& cs){pCS=&cs; EnterCriticalSection(pCS);}
-		Unlocker& operator=(Unlocker& unlock){unlock.pCS=pCS; pCS=NULL; return *this;}
-		~Unlocker(){if(pCS) LeaveCriticalSection(pCS);}
-	};
-
-	Unlocker AutoLock(){return Unlocker(mutexCS);}
-};
 
 /************************************************************************/
 /* Auto pointers                                                        */

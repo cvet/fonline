@@ -2814,21 +2814,22 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0)
 	LastSayEqualCount=0;
 	ZeroMemory(UID,sizeof(UID));
 
-	InitializeCriticalSection(&ShutdownCS);
-	WSAIn=new WSAOVERLAPPED_EX;
-	ZeroMemory(WSAIn,sizeof(WSAOVERLAPPED_EX));
-	WSAIn->Client=this;
+	WSAIn=new WSAOVERLAPPED_EX();
+	ZeroMemory(&WSAIn->OV,sizeof(WSAIn->OV));
+	WSAIn->PClient=this;
 	WSAIn->Buffer.buf=new char[WSA_BUF_SIZE];
 	WSAIn->Buffer.len=WSA_BUF_SIZE;
 	WSAIn->Operation=WSAOP_RECV;
-	InitializeCriticalSection(&WSAIn->CS);
-	WSAOut=new WSAOVERLAPPED_EX;
-	ZeroMemory(WSAOut,sizeof(WSAOVERLAPPED_EX));
-	WSAOut->Client=this;
+	WSAIn->Flags=0;
+	WSAIn->Bytes=0;
+	WSAOut=new WSAOVERLAPPED_EX();
+	ZeroMemory(&WSAOut->OV,sizeof(WSAOut->OV));
+	WSAOut->PClient=this;
 	WSAOut->Buffer.buf=new char[WSA_BUF_SIZE];
 	WSAOut->Buffer.len=0;
 	WSAOut->Operation=WSAOP_FREE;
-	InitializeCriticalSection(&WSAOut->CS);
+	WSAOut->Flags=0;
+	WSAOut->Bytes=0;
 }
 
 Client::~Client()
@@ -2839,17 +2840,14 @@ Client::~Client()
 		MEMORY_PROCESS(MEMORY_CLIENT,-(int)sizeof(CritDataExt));
 		SAFEDEL(DataExt);
 	}
-	DeleteCriticalSection(&ShutdownCS);
 	if(WSAIn)
 	{
-		DeleteCriticalSection(&WSAIn->CS);
 		delete[] WSAIn->Buffer.buf;
 		delete WSAIn;
 		WSAIn=NULL;
 	}
 	if(WSAOut)
 	{
-		DeleteCriticalSection(&WSAOut->CS);
 		delete[] WSAOut->Buffer.buf;
 		delete WSAOut;
 		WSAOut=NULL;
@@ -2859,7 +2857,8 @@ Client::~Client()
 
 void Client::Shutdown()
 {
-	EnterCriticalSection(&ShutdownCS);
+	SCOPE_LOCK(ShutdownLocker);
+
 	if(Sock!=INVALID_SOCKET)
 	{
 		shutdown(Sock,SD_BOTH);
@@ -2869,7 +2868,6 @@ void Client::Shutdown()
 	Bin.LockReset();
 	Bout.LockReset();
 	if(!IsOffline()) Disconnect();
-	LeaveCriticalSection(&ShutdownCS);
 }
 
 void Client::PingClient()
@@ -4397,7 +4395,7 @@ void Npc::RefreshBag()
 	NextRefreshBagTick=Timer::GameTick()+(Data.BagRefreshTime?Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 
 	// Collect pids and count
-	static DWORD pids[MAX_ITEM_PROTOTYPES];
+	static THREAD DWORD pids[MAX_ITEM_PROTOTYPES];
 	ZeroMemory(&pids,sizeof(pids));
 
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)

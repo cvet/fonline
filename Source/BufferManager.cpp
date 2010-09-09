@@ -7,7 +7,6 @@
 BufferManager::BufferManager()
 {
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,NET_BUFFER_SIZE+sizeof(BufferManager));
-	InitializeCriticalSection(&cs);
 	bufLen=NET_BUFFER_SIZE;
 	bufEndPos=0;
 	bufReadPos=0;
@@ -18,7 +17,6 @@ BufferManager::BufferManager()
 BufferManager::BufferManager(DWORD alen)
 {
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,alen+sizeof(BufferManager));
-	InitializeCriticalSection(&cs);
 	bufLen=alen;
 	bufEndPos=0;
 	bufReadPos=0;
@@ -43,18 +41,17 @@ BufferManager& BufferManager::operator=(const BufferManager& r)
 BufferManager::~BufferManager()
 {
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,-(int)(bufLen+sizeof(BufferManager)));
-	DeleteCriticalSection(&cs);
 	SAFEDELA(bufData);
 }
 
 void BufferManager::Lock()
 {
-	EnterCriticalSection(&cs);
+	bufLocker.Lock();
 }
 
 void BufferManager::Unlock()
 {
-	LeaveCriticalSection(&cs);
+	bufLocker.Unlock();
 }
 
 void BufferManager::Refresh()
