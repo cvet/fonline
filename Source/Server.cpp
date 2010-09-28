@@ -380,6 +380,7 @@ void FOServer::MainLoop()
 	{
 		Job::PushBack(JOB_THREAD_SYNCHRONIZE);
 		LogicThreadHandles[i]=(HANDLE)_beginthreadex(NULL,0,Logic_Work,NULL,CREATE_SUSPENDED,NULL);
+		//SetThreadAffinityMask(LogicThreadHandles[i],1);
 	}
 	for(DWORD i=0;i<LogicThreadCount;i++) ResumeThread(LogicThreadHandles[i]);
 
@@ -526,8 +527,6 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			Client* cl=(Client*)job.Data;
 			SYNC_LOCK(cl);
 
-			//WriteLog("JOB_CLIENT %p work\n",job.Data);
-
 			// Check for removing
 			if(cl->IsNotValid) continue;
 
@@ -658,6 +657,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			// Manage threads data
 			static Mutex stats_locker;
 			static PtrVec stats_ptrs;
+			stats_locker.Lock();
 			struct StatisticsThread
 			{
 				DWORD CycleTime;
@@ -673,22 +673,8 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 				stats=new StatisticsThread();
 				ZeroMemory(stats,sizeof(StatisticsThread));
 				stats->LoopMin=MAX_DWORD;
-
-				SCOPE_LOCK(stats_locker);
 				stats_ptrs.push_back(stats);
 			}
-
-			// Calculate FPS
-			static THREAD DWORD last_tick=0;
-			static THREAD DWORD call_cnt=0;
-			if(!last_tick) last_tick=cycle_tick;
-			if(cycle_tick-last_tick>=1000)
-			{
-				stats->FPS=call_cnt;
-				call_cnt=0;
-				last_tick=cycle_tick;
-			}
-			else call_cnt++;
 
 			// Fill statistics
 			DWORD loop_tick=Timer::FastTick()-cycle_tick-sleep_time;
@@ -699,15 +685,12 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			stats->CycleTime=loop_tick;
 
 			// Calculate whole threads statistics
-			SCOPE_LOCK(stats_locker);
-
 			DWORD real_min_cycle=MAX_DWORD; // Calculate real cycle count for deferred releasing
-			DWORD cycle_time=0,fps=0,loop_time=0,loop_cycles=0,loop_min=0,loop_max=0,lags=0;
+			DWORD cycle_time=0,loop_time=0,loop_cycles=0,loop_min=0,loop_max=0,lags=0;
 			for(PtrVecIt it=stats_ptrs.begin(),end=stats_ptrs.end();it!=end;++it)
 			{
 				StatisticsThread* stats_thread=(StatisticsThread*)*it;
 				cycle_time+=stats_thread->CycleTime;
-				fps+=stats_thread->FPS;
 				loop_time+=stats_thread->LoopTime;
 				loop_cycles+=stats_thread->LoopCycles;
 				loop_min+=stats_thread->LoopMin;
@@ -717,12 +700,12 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			}
 			DWORD count=stats_ptrs.size();
 			Statistics.CycleTime=cycle_time/count;
-			Statistics.FPS=fps/count;
 			Statistics.LoopTime=loop_time/count;
 			Statistics.LoopCycles=loop_cycles/count;
 			Statistics.LoopMin=loop_min/count;
 			Statistics.LoopMax=loop_max/count;
 			Statistics.LagsCount=lags/count;
+			stats_locker.Unlock();
 
 			// Set real cycle count for deferred releasing
 			Job::SetDeferredReleaseCycle(real_min_cycle);
@@ -746,7 +729,24 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			continue;
 		}
 
-		Job::PushBack(job);
+		// Add job to back
+		size_t job_count=Job::PushBack(job);
+
+		// Calculate fps
+		static volatile size_t job_cur=0;
+		static volatile size_t fps=0;
+		static volatile DWORD job_tick=0;
+		if(++job_cur>=job_count)
+		{
+			job_cur=0;
+			fps++;
+			if(!job_tick || Timer::FastTick()-job_tick>=1000)
+			{
+				Statistics.FPS=fps;
+				fps=0;
+				job_tick=Timer::FastTick();
+			}
+		}
 	}
 
 	sync_mngr->UnlockAll();

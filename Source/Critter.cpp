@@ -1065,7 +1065,7 @@ Item* Critter::GetItemByPidInvPriority(WORD item_pid)
 				another_slot=item;
 			}
 		}
-		SYNC_LOCK(another_slot);
+		if(another_slot) SYNC_LOCK(another_slot);
 		return another_slot;
 	}
 	return NULL;

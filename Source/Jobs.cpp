@@ -39,10 +39,12 @@ void Job::PushBack(int type, void* data)
 	Jobs.push_back(Job(type,data,0));
 }
 
-void Job::PushBack(const Job& job)
+size_t Job::PushBack(const Job& job)
 {
 	SCOPE_LOCK(JobLocker);
 	Jobs.push_back(job);
+	size_t size=Jobs.size();
+	return size;
 }
 
 void Job::PushFront(const Job& job)

@@ -80,12 +80,15 @@ void SyncObject::Lock()
 					}
 				}
 
-				volatile bool all_done=curm->busyObjects.empty();
-				if(all_done) curm->isWaiting=false;
+				if(curm->busyObjects.empty())
+				{
+					curm->isWaiting=false;
+
+					SyncLocker.Unlock();
+					return;
+				}
 
 				SyncLocker.Unlock();
-
-				if(all_done) return;
 			}
 		}
 	}

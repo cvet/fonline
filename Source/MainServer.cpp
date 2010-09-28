@@ -195,7 +195,8 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		else
 		{
 			FOQuit=false;
-			_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
+			HANDLE th=(HANDLE)_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
+			//SetThreadAffinityMask(th,1);
 		}
 	}
 
