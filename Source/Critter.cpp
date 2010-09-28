@@ -2518,8 +2518,14 @@ void Critter::ChangeParam(DWORD index)
 IntVec CallChange;
 void Critter::ProcessChangedParams()
 {
-	if(ParamsChanged.size() && !IsNotValid)
+	if(ParamsChanged.size())
 	{
+		if(IsNotValid)
+		{
+			ParamsChanged.clear();
+			return;
+		}
+
 		CallChange.clear();
 		for(size_t i=0,j=ParamsChanged.size();i<j;i+=2)
 		{

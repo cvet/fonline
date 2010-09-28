@@ -45,10 +45,10 @@ private:
 public:
 	MutexCode():mcCounter(0){mcEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
 	~MutexCode(){CloseHandle(mcEvent);}
-	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(mcCounter) Sleep(0); mcLocker.Unlock();}
+	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
 	void UnlockCode(){SetEvent(mcEvent);}
-	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); mcCounter++; mcLocker.Unlock();}
-	void LeaveCode(){mcCounter--;}
+	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
+	void LeaveCode(){InterlockedDecrement(&mcCounter);}
 };
 
 class MutexSynchronizer
@@ -63,9 +63,9 @@ private:
 public:
 	MutexSynchronizer():msCounter(0){msEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
 	~MutexSynchronizer(){CloseHandle(msEvent);}
-	void Synchronize(long count){msCounter++; msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); msCounter--; ResetEvent(msEvent); while(msCounter!=count) Sleep(0); msLocker.Unlock();}
+	void Synchronize(long count){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); ResetEvent(msEvent); while(InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
 	void Resynchronize(){SetEvent(msEvent);}
-	void SynchronizePoint(){msCounter++; msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); msCounter--; msLocker.Unlock();}
+	void SynchronizePoint(){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); msLocker.Unlock();}
 };
 
 class MutexEvent
