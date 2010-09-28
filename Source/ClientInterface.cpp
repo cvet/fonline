@@ -5977,7 +5977,7 @@ void FOClient::GmapKeyDown(BYTE dik)
 	case DIK_P: ShowScreen(SCREEN__PIP_BOY); break;
 	case DIK_F: ShowScreen(SCREEN__FIX_BOY); break;
 	case DIK_O: ShowScreen(SCREEN__MENU_OPTION); break;
-	case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.TimeMultiplier)); break;
+	case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.Second,GameOpt.TimeMultiplier)); break;
 	case DIK_EQUALS:
 	case DIK_ADD: GameOpt.Light+=5; if(GameOpt.Light>50) GameOpt.Light=50; SetDayTime(true); break;
 	case DIK_MINUS:

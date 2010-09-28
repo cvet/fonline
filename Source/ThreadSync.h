@@ -1,18 +1,9 @@
 #ifndef __THREAD_SYNC__
 #define __THREAD_SYNC__
 
-#include <vector>
-using namespace std;
+#include "Common.h"
 
-// Sync objects
-// Critter
-// Location
-// Map
-// GameVar
-// ProtoItem ?
-// Item
-// NpcPlane ?
-// Scenery ?
+#define SYNC_LOCK(obj) (obj)->Sync.Lock()
 
 class SyncObject;
 class SyncManager;
@@ -29,7 +20,6 @@ private:
 
 public:
 	SyncObject();
-	~SyncObject();
 	void Lock();
 	void Unlock();
 };
@@ -38,14 +28,22 @@ class SyncManager
 {
 private:
 	friend SyncObject;
-	bool isWaiting;
+	volatile bool isWaiting;
+	volatile int threadPriority;
 	SyncObjectVec lockedObjects;
 	SyncObjectVec busyObjects;
+	IntVec priorityStack;
 
 public:
 	SyncManager();
 	~SyncManager();
+	void PushPriority(int priority);
+	void PopPriority();
 	void UnlockAll();
+	void Suspend();
+	void Resume();
+
+	static SyncManagerVec Managers;
 	static SyncManager* GetForCurThread();
 };
 

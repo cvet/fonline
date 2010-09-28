@@ -101,12 +101,22 @@ void FONames::GenerateFoNames(int path_type)
 		int offset=0;
 		while(fm.GetLine(line,512))
 		{
-			if(line[0]=='*') offset=atoi(&line[1]);
+			if(line[0]=='*')
+			{
+				offset=atoi(&line[1]);
+			}
 			else
 			{
 				int num;
 				char name[512];
-				if(sscanf_s(line,"%d %s",&num,name)==2) names.push_back(SomeName(num+offset,name));
+				istrstream str(line);
+
+				str >> num;
+				if(str.fail()) continue;
+				str >> name;
+				if(str.fail()) continue;
+
+				names.push_back(SomeName(num+offset,name));
 			}
 		}
 	}

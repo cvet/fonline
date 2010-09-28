@@ -451,7 +451,7 @@ public:
 		static Item* Crit_GetItem(CritterCl* cr, WORD proto_id, int slot);
 		static DWORD Crit_GetItems(CritterCl* cr, int slot, asIScriptArray* items);
 		static DWORD Crit_GetItemsByType(CritterCl* cr, int type, asIScriptArray* items);
-		static ProtoItem* Crit_GetSlotProto(CritterCl* cr, int slot);
+		static ProtoItem* Crit_GetSlotProto(CritterCl* cr, int slot, BYTE& mode);
 		static void Crit_SetVisible(CritterCl* cr, bool visible);
 		static bool Crit_GetVisible(CritterCl* cr);
 		static void Crit_set_ContourColor(CritterCl* cr, DWORD value);

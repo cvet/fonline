@@ -1,13 +1,14 @@
 #include "StdAfx.h"
 #include "Debugger.h"
+#include "Mutex.h"
 
 #define MAX_BLOCKS        (25)
 #define MAX_ENTRY         (2000)
 #define MAX_PROCESS       (20)
-double Ticks[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
-int Identifiers[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
-DWORD CurTick[MAX_BLOCKS][MAX_ENTRY];
-int CurEntry[MAX_BLOCKS];
+static double Ticks[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
+static int Identifiers[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
+static DWORD CurTick[MAX_BLOCKS][MAX_ENTRY];
+static int CurEntry[MAX_BLOCKS];
 
 void Debugger::BeginCycle()
 {
@@ -74,7 +75,6 @@ void Debugger::ShowLags(int num_block, double lag_to_show)
 	}
 }
 
-
 #define MAX_MEM_NODES          (15)
 struct MemNode
 {
@@ -82,7 +82,7 @@ struct MemNode
 	__int64 DeallocMem;
 	__int64 MinAlloc;
 	__int64 MaxAlloc;
-} MemNodes[MAX_MEM_NODES]={0};
+} static MemNodes[MAX_MEM_NODES]={0};
 
 const char* MemBlockNames[MAX_MEM_NODES]=
 {
@@ -103,8 +103,13 @@ const char* MemBlockNames[MAX_MEM_NODES]=
 	{"Angel Script "},
 };
 
+static Mutex* MemLocker=NULL;
+
 void Debugger::Memory(int block, int value)
 {
+	if(!MemLocker) MemLocker=new Mutex();
+	SCOPE_LOCK(*MemLocker);
+
 	if(value)
 	{
 		MemNode& node=MemNodes[block];
@@ -132,10 +137,13 @@ struct MemNodeStr
 };
 typedef vector<MemNodeStr> MemNodeStrVec;
 typedef vector<MemNodeStr>::iterator MemNodeStrVecIt;
-MemNodeStrVec MemNodesStr;
+static MemNodeStrVec MemNodesStr;
 
 void Debugger::MemoryStr(const char* block, int value)
 {
+	if(!MemLocker) MemLocker=new Mutex();
+	SCOPE_LOCK(*MemLocker);
+
 	if(block && value)
 	{
 		MemNodeStr* node;
@@ -171,6 +179,9 @@ void Debugger::MemoryStr(const char* block, int value)
 
 const char* Debugger::GetMemoryStatistics()
 {
+	if(!MemLocker) MemLocker=new Mutex();
+	SCOPE_LOCK(*MemLocker);
+
 	static string result;
 	result="Memory statistics:\n";
 

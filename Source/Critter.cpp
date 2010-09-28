@@ -81,7 +81,7 @@ ItemSlotMain(&defItemSlotMain),ItemSlotExt(&defItemSlotExt),ItemSlotArmor(&defIt
 startBreakTime(0),breakTime(0),waitEndTick(0),KnockoutAp(0),LastHealTick(0),
 Flags(0),AccessContainerId(0),TryingGoHomeTick(0),ApRegenerationTick(0),GlobalIdleNextTick(0),LockMapTransfers(0),
 ViewMapId(0),ViewMapPid(0),ViewMapLook(0),ViewMapHx(0),ViewMapHy(0),ViewMapDir(0),
-DisableSend(0)
+DisableSend(0),CanBeRemoved(false)
 {
 	ZeroMemory(&Data,sizeof(Data));
 	DataExt=NULL;
@@ -129,15 +129,14 @@ CritDataExt* Critter::GetDataExt()
 
 void Critter::FullClear()
 {
+	IsNotValid=true;
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
 		item->Accessory=0xB0;
-		ItemMngr.ItemToGarbage(item,0x4);
+		ItemMngr.ItemToGarbage(item);
 	}
 	invItems.clear();
-
-	IsNotValid=true;
 }
 
 int Critter::GetLook()
@@ -239,6 +238,21 @@ bool Critter::RunSlotDataSendScript(int bind_id, BYTE slot, Item* item, Critter*
 	return false;
 }
 
+void Critter::SyncLockCritters(bool only_players)
+{
+	CrVec critters=VisCr;
+	if(only_players)
+		for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it) if((*it)->IsPlayer()) SYNC_LOCK(*it);
+	else
+		for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it) SYNC_LOCK(*it);
+}
+
+void Critter::SyncLockCrittersSelf()
+{
+	CrVec critters=VisCrSelf;
+	for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it) SYNC_LOCK(*it);
+}
+
 void Critter::ProcessVisibleCritters()
 {
 	if(IsNotValid) return;
@@ -291,8 +305,10 @@ void Critter::ProcessVisibleCritters()
 	Map* map=MapMngr.GetMap(GetMap());
 	if(!map) return;
 
-	CrVec crits=map->GetCritters();
-	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
+	CrVec critters;
+	map->GetCritters(critters);
+
+	for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(cr==this || cr->IsNotValid) continue;
@@ -537,10 +553,13 @@ void Critter::ProcessVisibleCritters()
 
 void Critter::ProcessVisibleItems()
 {
+	if(IsNotValid) return;
+
 	Map* map=MapMngr.GetMap(GetMap());
 	if(!map) return;
+
 	int look=GetLook();
-	ItemPtrVec items=map->HexItems;
+	ItemPtrVec items=map->GetItemsNoLock();
 	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=*it;
@@ -581,12 +600,15 @@ void Critter::ProcessVisibleItems()
 
 void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 {
+	if(IsNotValid) return;
+
 	Send_GameInfo(map);
 
 	// Critters
 	int vis;
-	CrVec crits=map->GetCritters();
-	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
+	CrVec critters;
+	map->GetCritters(critters);
+	for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(cr==this || cr->IsNotValid) continue;
@@ -655,7 +677,8 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 	}
 
 	// Items
-	for(ItemPtrVecIt it=map->HexItems.begin(),end=map->HexItems.end();it!=end;++it)
+	ItemPtrVec& items=map->GetItemsNoLock();
+	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=*it;
 
@@ -673,6 +696,9 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 
 void Critter::ClearVisible()
 {
+	SyncLockCritters(false);
+	SyncLockCrittersSelf();
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -701,27 +727,43 @@ Critter* Critter::GetCritSelf(DWORD crid)
 	for(CrVecIt it=VisCrSelf.begin(),end=VisCrSelf.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->GetId()==crid) return cr;
+		if(cr->GetId()==crid)
+		{
+			SYNC_LOCK(cr);
+			return cr;
+		}
 	}
 	return NULL;
 }
 
 void Critter::GetCrFromVisCr(CrVec& crits, int find_type)
 {
+	CrVec cr_to_lock;
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->CheckFind(find_type) && std::find(crits.begin(),crits.end(),cr)==crits.end()) crits.push_back(cr);
+		if(cr->CheckFind(find_type) && std::find(crits.begin(),crits.end(),cr)==crits.end())
+		{
+			crits.push_back(cr);
+			cr_to_lock.push_back(cr);
+		}
 	}
+	for(CrVecIt it=cr_to_lock.begin(),end=cr_to_lock.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 void Critter::GetCrFromVisCrSelf(CrVec& crits, int find_type)
 {
+	CrVec cr_to_lock;
 	for(CrVecIt it=VisCrSelf.begin(),end=VisCrSelf.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->CheckFind(find_type) && std::find(crits.begin(),crits.end(),cr)==crits.end()) crits.push_back(cr);
+		if(cr->CheckFind(find_type) && std::find(crits.begin(),crits.end(),cr)==crits.end())
+		{
+			crits.push_back(cr);
+			cr_to_lock.push_back(cr);
+		}
 	}
+	for(CrVecIt it=cr_to_lock.begin(),end=cr_to_lock.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 bool Critter::AddCrIntoVisVec(Critter* add_cr)
@@ -782,26 +824,25 @@ bool Critter::DelIdVisItem(DWORD item_id)
 	return VisItem.erase(item_id)!=0;
 }
 
+void Critter::SyncLockItems()
+{
+	ItemPtrVec inv_items=invItems;
+	for(ItemPtrVecIt it=inv_items.begin(),end=inv_items.end();it!=end;++it) SYNC_LOCK(*it);
+}
+
 bool Critter::SetDefaultItems(ProtoItem* proto_hand1, ProtoItem* proto_hand2, ProtoItem* proto_armor)
 {
 	if(!proto_hand1 || !proto_hand2 || !proto_armor) return false;
 
-	ZeroMemory(&defItemSlotMain,sizeof(Item));
-	ZeroMemory(&defItemSlotExt,sizeof(Item));
-	ZeroMemory(&defItemSlotArmor,sizeof(Item));
-
 	defItemSlotMain.Init(proto_hand1);
 	defItemSlotExt.Init(proto_hand2);
 	defItemSlotArmor.Init(proto_armor);
-
 	defItemSlotMain.Accessory=ITEM_ACCESSORY_CRITTER;
 	defItemSlotExt.Accessory=ITEM_ACCESSORY_CRITTER;
 	defItemSlotArmor.Accessory=ITEM_ACCESSORY_CRITTER;
-
 	defItemSlotMain.ACC_CRITTER.Id=GetId();
 	defItemSlotExt.ACC_CRITTER.Id=GetId();
 	defItemSlotArmor.ACC_CRITTER.Id=GetId();
-
 	defItemSlotMain.ACC_CRITTER.Slot=SLOT_HAND1;
 	defItemSlotExt.ACC_CRITTER.Slot=SLOT_HAND2;
 	defItemSlotArmor.ACC_CRITTER.Slot=SLOT_ARMOR;
@@ -824,7 +865,7 @@ void Critter::AddItem(Item*& item, bool send)
 		if(item_already)
 		{
 			item_already->Count_Add(item->GetCount());
-			ItemMngr.ItemToGarbage(item,0x8);
+			ItemMngr.ItemToGarbage(item);
 			item=item_already;
 			if(send) SendAA_ItemData(item);
 			return;
@@ -941,6 +982,8 @@ Item* Critter::GetItem(DWORD item_id, bool skip_hide)
 		if(item->GetId()==item_id)
 		{
 			if(skip_hide && item->IsHidden()) return NULL;
+
+			SYNC_LOCK(item);
 			return item;
 		}
 	}
@@ -959,7 +1002,7 @@ Item* Critter::GetInvItem(DWORD item_id, int transfer_type)
 	return item;
 }
 
-void Critter::GetInvItems(ItemPtrVec& items, int transfer_type)
+void Critter::GetInvItems(ItemPtrVec& items, int transfer_type, bool lock)
 {
 	if(transfer_type==TRANSFER_CRIT_LOOT && IsPerk(MODE_NO_LOOT)) return;
 	if(transfer_type==TRANSFER_CRIT_STEAL && IsPerk(MODE_NO_STEAL)) return;
@@ -971,6 +1014,8 @@ void Critter::GetInvItems(ItemPtrVec& items, int transfer_type)
 			!(transfer_type==TRANSFER_CRIT_LOOT && item->IsNoLoot()) &&
 			!(transfer_type==TRANSFER_CRIT_STEAL && item->IsNoSteal())) items.push_back(item);
 	}
+
+	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 Item* Critter::GetItemByPid(WORD item_pid)
@@ -978,7 +1023,11 @@ Item* Critter::GetItemByPid(WORD item_pid)
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->GetProtoId()==item_pid) return item;
+		if(item->GetProtoId()==item_pid)
+		{
+			SYNC_LOCK(item);
+			return item;
+		}
 	}
 	return NULL;
 }
@@ -993,7 +1042,11 @@ Item* Critter::GetItemByPidInvPriority(WORD item_pid)
 		for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 		{
 			Item* item=*it;
-			if(item->GetProtoId()==item_pid) return item;
+			if(item->GetProtoId()==item_pid)
+			{
+				SYNC_LOCK(item);
+				return item;
+			}
 		}
 	}
 	else
@@ -1004,10 +1057,15 @@ Item* Critter::GetItemByPidInvPriority(WORD item_pid)
 			Item* item=*it;
 			if(item->GetProtoId()==item_pid)
 			{
-				if(item->ACC_CRITTER.Slot==SLOT_INV) return item;
+				if(item->ACC_CRITTER.Slot==SLOT_INV)
+				{
+					SYNC_LOCK(item);
+					return item;
+				}
 				another_slot=item;
 			}
 		}
+		SYNC_LOCK(another_slot);
 		return another_slot;
 	}
 	return NULL;
@@ -1022,6 +1080,8 @@ Item* Critter::GetAmmoForWeapon(Item* weap)
 	ammo=GetItemByPid(weap->Proto->Weapon.DefAmmo);
 	if(ammo) return ammo;
 	ammo=GetAmmo(weap->Proto->Weapon.Caliber);
+
+	// Already synchronized
 	return ammo;
 }
 
@@ -1030,7 +1090,11 @@ Item* Critter::GetAmmo(DWORD caliber)
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->GetType()==ITEM_TYPE_AMMO && item->Proto->Ammo.Caliber==caliber) return item;
+		if(item->GetType()==ITEM_TYPE_AMMO && item->Proto->Ammo.Caliber==caliber)
+		{
+			SYNC_LOCK(item);
+			return item;
+		}
 	}
 	return NULL;
 }
@@ -1040,7 +1104,11 @@ Item* Critter::GetItemCar()
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->IsCar()) return item;
+		if(item->IsCar())
+		{
+			SYNC_LOCK(item);
+			return item;
+		}
 	}
 	return NULL;
 }
@@ -1050,27 +1118,35 @@ Item* Critter::GetItemSlot(int slot)
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->ACC_CRITTER.Slot==slot) return item;
+		if(item->ACC_CRITTER.Slot==slot)
+		{
+			SYNC_LOCK(item);
+			return item;
+		}
 	}
 	return NULL;
 }
 
-void Critter::GetItemsSlot(int slot, ItemPtrVec& items)
+void Critter::GetItemsSlot(int slot, ItemPtrVec& items, bool lock)
 {
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
 		if(slot<0 || item->ACC_CRITTER.Slot==slot) items.push_back(item);
 	}
+
+	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-void Critter::GetItemsType(int type, ItemPtrVec& items)
+void Critter::GetItemsType(int type, ItemPtrVec& items, bool lock)
 {
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
 		if(item->GetType()==type) items.push_back(item);
 	}
+
+	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 DWORD Critter::CountItemPid(WORD pid)
@@ -1151,7 +1227,7 @@ bool Critter::MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count)
 			if(!GetMap())
 			{
 				//item->EventDrop(GetScriptContext(),this);
-				ItemMngr.ItemToGarbage(item,0x10);
+				ItemMngr.ItemToGarbage(item);
 				item=NULL;
 			}
 		}
@@ -1162,7 +1238,7 @@ bool Critter::MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count)
 		if(!map)
 		{
 			WriteLog(__FUNCTION__" - Map not found, map id<%u>, critter<%s>.\n",GetMap(),GetInfo());
-			ItemMngr.ItemToGarbage(item,0x20);
+			ItemMngr.ItemToGarbage(item);
 			return true;
 		}
 
@@ -1261,13 +1337,17 @@ DWORD Critter::CountItems()
 
 bool Critter::InHandsOnlyHtHWeapon()
 {
-	return (!ItemSlotMain->GetId() || !ItemSlotMain->IsWeapon() || ItemSlotMain->WeapIsHtHAttack(USE_PRIMARY)) && (!ItemSlotExt->GetId() || !ItemSlotExt->IsWeapon() || ItemSlotExt->WeapIsHtHAttack(USE_PRIMARY));
+	return (!ItemSlotMain->GetId() || !ItemSlotMain->IsWeapon() || ItemSlotMain->WeapIsHtHAttack(USE_PRIMARY)) &&
+		(!ItemSlotExt->GetId() || !ItemSlotExt->IsWeapon() || ItemSlotExt->WeapIsHtHAttack(USE_PRIMARY));
 }
 
 bool Critter::IsHaveGeckItem()
 {
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
-		if((*it)->IsGeck()) return true;
+	{
+		Item* item=*it;
+		if(item->IsGeck()) return true;
+	}
 	return false;
 }
 
@@ -1404,6 +1484,7 @@ void Critter::EventDead(Critter* killer)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_DEAD]>0) cr->EventSmthDead(this,killer);
 	}
 }
@@ -1521,6 +1602,7 @@ bool Critter::EventAttack(Critter* target)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_ATTACK]>0) cr->EventSmthAttack(this,target);
 	}
 	return result;
@@ -1540,6 +1622,7 @@ bool Critter::EventAttacked(Critter* attacker)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_ATTACKED]>0) cr->EventSmthAttacked(this,attacker);
 	}
 
@@ -1581,6 +1664,7 @@ bool Critter::EventStealing(Critter* thief, Item* item, DWORD count)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_STEALING]>0) cr->EventSmthStealing(this,thief,success,item,count);
 	}
 
@@ -1614,6 +1698,7 @@ bool Critter::EventUseItem(Item* item, Critter* on_critter, Item* on_item, MapOb
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_USE_ITEM]>0) cr->EventSmthUseItem(this,item,on_critter,on_item,on_scenery);
 	}
 
@@ -1637,6 +1722,7 @@ bool Critter::EventUseSkill(int skill, Critter* on_critter, Item* on_item, MapOb
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_USE_SKILL]>0) cr->EventSmthUseSkill(this,skill,on_critter,on_item,on_scenery);
 	}
 
@@ -1656,6 +1742,7 @@ void Critter::EventDropItem(Item* item)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_DROP_ITEM]>0) cr->EventSmthDropItem(this,item);
 	}
 }
@@ -1682,6 +1769,7 @@ void Critter::EventMoveItem(Item* item, BYTE from_slot)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_MOVE_ITEM]>0) cr->EventSmthMoveItem(this,item,from_slot);
 	}
 }
@@ -1701,6 +1789,7 @@ void Critter::EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_KNOCKOUT]>0) cr->EventSmthKnockout(this,face_up,lost_ap,knock_dist);
 	}
 }
@@ -1919,6 +2008,7 @@ void Critter::EventTurnBasedProcess(Map* map, bool begin_turn)
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
 		Critter* cr=*it;
+		SYNC_LOCK(cr);
 		if(cr->FuncId[CRITTER_EVENT_SMTH_TURN_BASED_PROCESS]>0) cr->EventSmthTurnBasedProcess(this,map,begin_turn);
 	}
 }
@@ -1981,11 +2071,9 @@ void Critter::Send_CritterLexems(Critter* cr){if(IsPlayer()) ((Client*)this)->Se
 
 void Critter::SendA_Move(WORD move_params)
 {
-	//Data.Dir=FLAG(move_params,BIN8(00000111));
-//	if(FLAG(move_params,0x38)==0x38) //проверка по окончании пути
-//		Send_XY();
-
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -1996,6 +2084,8 @@ void Critter::SendA_Move(WORD move_params)
 void Critter::SendA_XY()
 {
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2006,6 +2096,8 @@ void Critter::SendA_XY()
 void Critter::SendA_Action(int action, int action_ext, Item* item)
 {
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2018,6 +2110,8 @@ void Critter::SendAA_Action(int action, int action_ext, Item* item)
 	if(IsPlayer()) Send_Action(this,action,action_ext,item);
 
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2028,6 +2122,8 @@ void Critter::SendAA_Action(int action, int action_ext, Item* item)
 void Critter::SendA_Knockout(bool face_up, WORD knock_hx, WORD knock_hy)
 {
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2040,6 +2136,8 @@ void Critter::SendAA_MoveItem(Item* item, BYTE action, BYTE prev_slot)
 	if(IsPlayer()) Send_MoveItem(this,item,action,prev_slot);
 
 	if(VisCr.empty()) return;
+	SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2068,6 +2166,8 @@ void Critter::SendAA_ItemData(Item* item)
 			}
 			else
 			{
+				SyncLockCritters(true);
+
 				// Send all data if condition passably, else send half
 				for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 				{
@@ -2099,6 +2199,8 @@ void Critter::SendAA_Animate(DWORD anim1, DWORD anim2, Item* item, bool clear_se
 	if(IsPlayer()) Send_Animate(this,anim1,anim2,item,clear_sequence,delay_play);
 
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2109,10 +2211,16 @@ void Critter::SendAA_Animate(DWORD anim1, DWORD anim2, Item* item, bool clear_se
 void Critter::SendA_GlobalInfo(GlobalMapGroup* group, BYTE info_flags)
 {
 	if(!group) return;
-	for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
+
+	CrVec cr_group=group->CritMove;
+	for(CrVecIt it=cr_group.begin(),end=cr_group.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->IsPlayer()) cr->Send_GlobalInfo(info_flags);
+		if(cr->IsPlayer())
+		{
+			SYNC_LOCK(cr);
+			cr->Send_GlobalInfo(info_flags);
+		}
 	}
 }
 
@@ -2137,6 +2245,8 @@ void Critter::SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsa
 		Critter* cr=*it;
 		if(cr==this || !cr->IsPlayer()) continue;
 
+		//SYNC_LOCK(cr);
+
 		if(dist==-1)
 			cr->Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
 		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist+cr->GetMultihex()))
@@ -2159,6 +2269,8 @@ void Critter::SendAA_Msg(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_msg
 		Critter* cr=*it;
 		if(cr==this) continue;
 		if(!cr->IsPlayer()) continue;
+
+		//SYNC_LOCK(cr);
 
 		if(dist==-1)
 			cr->Send_TextMsg(this,num_str,how_say,num_msg);
@@ -2183,6 +2295,8 @@ void Critter::SendAA_MsgLex(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_
 		if(cr==this) continue;
 		if(!cr->IsPlayer()) continue;
 
+		//SYNC_LOCK(cr);
+
 		if(dist==-1)
 			cr->Send_TextMsgLex(this,num_str,how_say,num_msg,lexems);
 		else if(CheckDist(Data.HexX,Data.HexY,cr->Data.HexX,cr->Data.HexY,dist+cr->GetMultihex()))
@@ -2193,6 +2307,8 @@ void Critter::SendAA_MsgLex(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_
 void Critter::SendA_Dir()
 {
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
@@ -2202,6 +2318,9 @@ void Critter::SendA_Dir()
 
 void Critter::SendA_Follow(BYTE follow_type, WORD map_pid, DWORD follow_wait)
 {
+	if(VisCr.empty()) return;
+	SyncLockCritters(true);
+
 	int dist=FOLLOW_DIST+GetMultihex();
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
@@ -2214,34 +2333,15 @@ void Critter::SendA_Follow(BYTE follow_type, WORD map_pid, DWORD follow_wait)
 	}
 }
 
-void Critter::SendA_Effect(CrVec& crits, WORD eff_pid, WORD hx, WORD hy, WORD radius)
-{
-	if(crits.empty()) return;
-	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
-	{
-		Critter* cr=*it;
-		if(cr->IsPlayer()) cr->Send_Effect(eff_pid,hx,hy,radius);
-	}
-}
-
-void Critter::SendA_FlyEffect(CrVec& crits, WORD eff_pid, Critter* cr1, Critter* cr2)
-{
-	if(crits.empty()) return;
-	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
-	{
-		Critter* cr=*it;
-		if(cr->IsPlayer()) cr->Send_FlyEffect(eff_pid,cr1->GetId(),cr2->GetId(),cr1->GetHexX(),cr1->GetHexY(),cr2->GetHexX(),cr2->GetHexY());
-	}
-}
-
 void Critter::SendA_ParamOther(WORD num_param, int val)
 {
 	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->IsPlayer())
-			cr->Send_CritterParam(this,num_param,val);
+		if(cr->IsPlayer()) cr->Send_CritterParam(this,num_param,val);
 	}
 }
 
@@ -2261,6 +2361,8 @@ void Critter::SendA_ParamCheck(WORD num_param)
 	}
 	else
 	{
+		SyncLockCritters(true);
+
 		for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 		{
 			Critter* cr=*it;
@@ -2272,6 +2374,8 @@ void Critter::SendA_ParamCheck(WORD num_param)
 void Critter::Send_AddAllItems()
 {
 	if(!IsPlayer()) return;
+
+	SyncLockItems();
 
 	Client* cl=(Client*)this;
 	BOUT_BEGIN(cl);
@@ -2285,13 +2389,8 @@ void Critter::Send_AllQuests()
 {
 	if(!IsPlayer()) return;
 
-	VarsVec& vars=VarMngr.GetQuestVars();
 	DwordVec quests;
-	for(VarsVecIt it=vars.begin(),end=vars.end();it!=end;++it)
-	{
-		GameVar* var=*it;
-		if(var && var->GetMasterId()==GetId()) quests.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
-	}
+	VarMngr.GetQuestVars(GetId(),quests);
 	Send_Quests(quests);
 }
 
@@ -2319,27 +2418,34 @@ void Critter::SendMessage(int num, int val, int to)
 	{
 	case MESSAGE_TO_VISIBLE_ME:
 		{
-			for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+			CrVec critters=VisCr;
+			for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
 			{
-				(*it)->EventMessage(this,num,val);
+				Critter* cr=*it;
+				SYNC_LOCK(cr);
+				cr->EventMessage(this,num,val);
 			}
 		}
 		break;
 	case MESSAGE_TO_IAM_VISIBLE:
 		{
-			for(CrVecIt it=VisCrSelf.begin(),end=VisCrSelf.end();it!=end;++it)
+			CrVec critters=VisCrSelf;
+			for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
 			{
-				(*it)->EventMessage(this,num,val);
+				Critter* cr=*it;
+				SYNC_LOCK(cr);
+				cr->EventMessage(this,num,val);
 			}
 		}
 		break;
 	case MESSAGE_TO_ALL_ON_MAP:
 		{
-			Map* m=MapMngr.GetMap(GetMap());
-			if(!m) return;
+			Map* map=MapMngr.GetMap(GetMap());
+			if(!map) return;
 
-			CrVec crits=m->GetCritters();
-			for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
+			CrVec critters;
+			map->GetCritters(critters);
+			for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
 			{
 				Critter* cr=*it;
 				cr->EventMessage(this,num,val);
@@ -2412,7 +2518,7 @@ void Critter::ChangeParam(DWORD index)
 IntVec CallChange;
 void Critter::ProcessChangedParams()
 {
-	if(ParamsChanged.size())
+	if(ParamsChanged.size() && !IsNotValid)
 	{
 		CallChange.clear();
 		for(size_t i=0,j=ParamsChanged.size();i<j;i+=2)
@@ -2699,7 +2805,7 @@ void Critter::AddEnemyInStack(DWORD crid)
 
 bool Critter::CheckEnemyInStack(DWORD crid)
 {
-	if(IsPerk(MODE_NO_ENEMY_STACK)) return false;
+	if(Data.Params[MODE_NO_ENEMY_STACK]) return false;
 
 	int stack_count=min(Data.EnemyStackCount,MAX_ENEMY_STACK);
 	for(int i=0;i<stack_count;i++)
@@ -2728,7 +2834,7 @@ void Critter::EraseEnemyInStack(DWORD crid)
 
 Critter* Critter::ScanEnemyStack()
 {
-	if(IsPerk(MODE_NO_ENEMY_STACK)) return NULL;
+	if(Data.Params[MODE_NO_ENEMY_STACK]) return NULL;
 
 	int stack_count=min(Data.EnemyStackCount,MAX_ENEMY_STACK);
 	for(int i=0;i<stack_count;i++)
@@ -2843,16 +2949,18 @@ Client::~Client()
 	if(WSAIn)
 	{
 		delete[] WSAIn->Buffer.buf;
-		delete WSAIn;
-		WSAIn=NULL;
+		SAFEDEL(WSAIn);
 	}
 	if(WSAOut)
 	{
 		delete[] WSAOut->Buffer.buf;
-		delete WSAOut;
-		WSAOut=NULL;
+		SAFEDEL(WSAOut);
 	}
-	if(ZstrmInit) deflateEnd(&Zstrm);
+	if(ZstrmInit)
+	{
+		deflateEnd(&Zstrm);
+		ZstrmInit=false;
+	}
 }
 
 void Client::Shutdown()
@@ -2898,7 +3006,7 @@ void Client::Send_AddCritter(Critter* cr)
 	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(DWORD)+sizeof(DWORD)+sizeof(WORD)*2+
 		sizeof(BYTE)+sizeof(BYTE)*2+sizeof(DWORD)+sizeof(short)+
 		(is_npc?sizeof(WORD)+sizeof(DWORD):MAX_NAME)+ParamsSendMsgLen;
-	int dialog_id=(is_npc?cr->GetParam(ST_DIALOG_ID):0);
+	int dialog_id=(is_npc?cr->Data.Params[ST_DIALOG_ID]:0);
 
 	BOUT_BEGIN(this);
 	Bout << msg;
@@ -2935,7 +3043,8 @@ void Client::Send_AddCritter(Critter* cr)
 		if(!script)
 			Bout << cr->Data.Params[index];
 		else
-			Bout << RunParamsSendScript(script,index,cr,this); // Todo: calling before BOUT_END, maybe unsafe
+			Bout << RunParamsSendScript(script,index,cr,this);
+#pragma MESSAGE("RunParamsSendScript call before BOUT_END, may be unsafe.")
 	}
 	BOUT_END(this);
 
@@ -3240,7 +3349,7 @@ void Client::Send_ContainerInfo(Item* item_cont, BYTE transfer_type, bool open_s
 
 	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(BYTE)+sizeof(DWORD)+sizeof(DWORD)+sizeof(WORD)+sizeof(DWORD);
 	ItemPtrVec items;
-	item_cont->ContGetAllItems(items,true);
+	item_cont->ContGetAllItems(items,true,true);
 	if(items.size()) msg_len+=items.size()*(sizeof(DWORD)+sizeof(WORD)+sizeof(Item::ItemData));
 	if(open_screen) SETFLAG(transfer_type,0x80);
 
@@ -3283,13 +3392,13 @@ void Client::Send_ContainerInfo(Critter* cr_cont, BYTE transfer_type, bool open_
 
 	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(BYTE)+sizeof(DWORD)+sizeof(DWORD)+sizeof(WORD)+sizeof(DWORD);
 	ItemPtrVec items;
-	cr_cont->GetInvItems(items,transfer_type);
+	cr_cont->GetInvItems(items,transfer_type,true);
 	WORD barter_k=0;
 	if(transfer_type==TRANSFER_CRIT_BARTER)
 	{
 		if(cr_cont->GetSkill(SK_BARTER)>GetSkill(SK_BARTER)) barter_k=cr_cont->GetSkill(SK_BARTER)-GetSkill(SK_BARTER);
 		barter_k=CLAMP(barter_k,5,95);
-		if(cr_cont->GetParam(ST_FREE_BARTER_PLAYER)==GetId()) barter_k=0;
+		if(cr_cont->Data.Params[ST_FREE_BARTER_PLAYER]==GetId()) barter_k=0;
 	}
 
 	if(open_screen) SETFLAG(transfer_type,0x80);
@@ -3455,9 +3564,9 @@ void Client::Send_XY(Critter* cr)
 	BOUT_BEGIN(this);
 	Bout << NETMSG_CRITTER_XY;
 	Bout << cr->GetId();
-	Bout << cr->Data.HexX;
-	Bout << cr->Data.HexY;
-	Bout << cr->Data.Dir;
+	Bout << cr->GetHexX();
+	Bout << cr->GetHexY();
+	Bout << cr->GetDir();
 	BOUT_END(this);
 }
 
@@ -4394,6 +4503,8 @@ void Npc::RefreshBag()
 	if(Data.BagRefreshTime<0) return;
 	NextRefreshBagTick=Timer::GameTick()+(Data.BagRefreshTime?Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 
+	SyncLockItems();
+
 	// Collect pids and count
 	static THREAD DWORD pids[MAX_ITEM_PROTOTYPES];
 	ZeroMemory(&pids,sizeof(pids));
@@ -4428,7 +4539,7 @@ void Npc::RefreshBag()
 	bool drop_last_weapon=false;
 
 	// Internal bag
-	if(!GetParam(ST_BAG_ID))
+	if(!Data.Params[ST_BAG_ID])
 	{
 		 if(!Data.BagSize) return;
 
@@ -4446,7 +4557,7 @@ void Npc::RefreshBag()
 	// External bags
 	else
 	{
-		NpcBag& bag=AIMngr.GetBag(GetParam(ST_BAG_ID));
+		NpcBag& bag=AIMngr.GetBag(Data.Params[ST_BAG_ID]);
 		if(bag.empty()) return;
 
 		// Check combinations, update or create new
@@ -4737,8 +4848,9 @@ DWORD Npc::GetTalkedPlayers()
 	DWORD talk=0;
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
-		if(!(*it)->IsPlayer()) continue;
-		Client* cl=(Client*)(*it);
+		Critter* cr=*it;
+		if(!cr->IsPlayer()) continue;
+		Client* cl=(Client*)cr;
 		if(cl->Talk.TalkType==TALK_WITH_NPC && cl->Talk.TalkNpc==GetId()) talk++;
 	}
 	return talk;
@@ -4748,8 +4860,9 @@ bool Npc::IsTalkedPlayers()
 {
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
-		if(!(*it)->IsPlayer()) continue;
-		Client* cl=(Client*)(*it);
+		Critter* cr=*it;
+		if(!cr->IsPlayer()) continue;
+		Client* cl=(Client*)cr;
 		if(cl->Talk.TalkType==TALK_WITH_NPC && cl->Talk.TalkNpc==GetId()) return true;
 	}
 	return false;
@@ -4760,8 +4873,9 @@ DWORD Npc::GetBarterPlayers()
 	DWORD barter=0;
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
-		if(!(*it)->IsPlayer()) continue;
-		Client* cl=(Client*)(*it);
+		Critter* cr=*it;
+		if(!cr->IsPlayer()) continue;
+		Client* cl=(Client*)cr;
 		if(cl->Talk.TalkType==TALK_WITH_NPC && cl->Talk.TalkNpc==GetId() && cl->Talk.Barter) barter++;
 	}
 	return barter;
@@ -4770,7 +4884,7 @@ DWORD Npc::GetBarterPlayers()
 bool Npc::IsFreeToTalk()
 {
 	DWORD max_talkers=1;
-	DialogPack* dlg=DlgMngr.GetDialogPack(GetParam(ST_DIALOG_ID));
+	DialogPack* dlg=DlgMngr.GetDialogPack(Data.Params[ST_DIALOG_ID]);
 	if(dlg) max_talkers=dlg->MaxTalk;
 	return GetTalkedPlayers()<max_talkers;
 }
@@ -4826,9 +4940,11 @@ Item* Npc::GetBattleWeapon(int& use, Critter* targ)
 	lastBattleWeaponUse=0;
 
 	// Choose all valid weapons
-typedef pair<Item*,int> ItemIntPair;
-typedef vector<ItemIntPair> ItemIntPairVec;
-typedef vector<ItemIntPair>::value_type ItemIntPairVecVal;
+	typedef pair<Item*,int> ItemIntPair;
+	typedef vector<ItemIntPair> ItemIntPairVec;
+	typedef vector<ItemIntPair>::value_type ItemIntPairVecVal;
+
+	SyncLockItems();
 
 	ItemIntPairVec skill_weap[6];
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)

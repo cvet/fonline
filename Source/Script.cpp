@@ -14,7 +14,6 @@
 #include <strstream>
 #include <process.h>
 
-
 namespace Script
 {
 
@@ -65,17 +64,47 @@ struct EngineData
 
 asIScriptEngine* Engine=NULL;
 HANDLE EngineLogFile=NULL;
-asIScriptContext* GlobalCtx[GLOBAL_CONTEXT_STACK_SIZE]={0};
-BindFunctionVec BindedFunctions;
 int ScriptsPath=PT_SCRIPTS;
 bool LogDebugInfo=true;
+StrVec WrongGlobalObjects;
+
+DWORD GarbageCollectTime=60000;
+#ifdef SCRIPT_MULTITHREADING
+MutexCode GarbageLocker;
+#endif
+
+BindFunctionVec BindedFunctions;
+#ifdef SCRIPT_MULTITHREADING
+Mutex BindedFunctionsLocker;
+#endif
+StrVec ScriptFuncCache;
+IntVec ScriptFuncBindId;
+
+bool ConcurrentExecution=false;
+#ifdef SCRIPT_MULTITHREADING
+Mutex ConcurrentExecutionLocker;
+#endif
+
+// Contexts
+THREAD asIScriptContext* GlobalCtx[GLOBAL_CONTEXT_STACK_SIZE]={0};
+THREAD DWORD GlobalCtxIndex=0;
+class ActiveContext
+{
+public:
+	asIScriptContext** Contexts;
+	DWORD StartTick;
+	ActiveContext(asIScriptContext** ctx, DWORD tick):Contexts(ctx),StartTick(tick){}
+	bool operator==(asIScriptContext** ctx){return ctx==Contexts;}
+};
+typedef vector<ActiveContext> ActiveContextVec;
+typedef vector<ActiveContext>::iterator ActiveContextVecIt;
+ActiveContextVec ActiveContexts;
+Mutex ActiveGlobalCtxLocker;
 
 // Timeouts
-DWORD RunTimeoutSuspend=0;
-DWORD RunTimeoutMessage=0;
+DWORD RunTimeoutSuspend=10000;
+DWORD RunTimeoutMessage=5000;
 HANDLE RunTimeoutThreadHandle=NULL;
-HANDLE RunTimeoutStartEvent=NULL;
-HANDLE RunTimeoutFinishEvent=NULL;
 unsigned int __stdcall RunTimeoutThread(void*);
 
 // #pragma globalvar "int __MyGlobalVar = 100"
@@ -269,6 +298,35 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 	BindedFunctions.push_back(BindFunction(0,0,"","","")); // None
 	BindedFunctions.push_back(BindFunction(0,0,"","","")); // Temp
 
+	if(!InitThread()) return false;
+
+	RunTimeoutThreadHandle=(HANDLE)_beginthreadex(NULL,0,RunTimeoutThread,NULL,0,NULL);
+	return true;
+}
+
+void Finish()
+{
+	FinisthThread();
+
+	if(!Engine) return;
+
+	EndLog();
+	RunTimeoutSuspend=0;
+	RunTimeoutMessage=0;
+	WaitForSingleObject(RunTimeoutThreadHandle,INFINITE);
+	CloseHandle(RunTimeoutThreadHandle);
+	RunTimeoutThreadHandle=NULL;
+
+	BindedFunctions.clear();
+	Preprocessor::ClearPragmas();
+	Preprocessor::UndefAll();
+	UnloadScripts();
+
+	FinishEngine(Engine); // Finish default engine
+}
+
+bool InitThread()
+{
 	for(int i=0;i<GLOBAL_CONTEXT_STACK_SIZE;i++)
 	{
 		GlobalCtx[i]=CreateContext();
@@ -281,43 +339,20 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 		}
 	}
 
-	RunTimeoutSuspend=30000;
-	RunTimeoutMessage=10000;
-	RunTimeoutThreadHandle=(HANDLE)_beginthreadex(NULL,0,RunTimeoutThread,NULL,0,NULL);
-	RunTimeoutStartEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
-	RunTimeoutFinishEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
 	return true;
 }
 
-void Finish()
+void FinisthThread()
 {
-	if(!Engine) return;
-
-	EndLog();
-	RunTimeoutSuspend=0;
-	RunTimeoutMessage=0;
-	SetEvent(RunTimeoutStartEvent);
-	SetEvent(RunTimeoutFinishEvent);
-	WaitForSingleObject(RunTimeoutThreadHandle,INFINITE);
-	CloseHandle(RunTimeoutThreadHandle);
-	RunTimeoutThreadHandle=NULL;
-	CloseHandle(RunTimeoutStartEvent);
-	RunTimeoutStartEvent=NULL;
-	CloseHandle(RunTimeoutFinishEvent);
-	RunTimeoutFinishEvent=NULL;
-
-	BindedFunctions.clear();
-	Preprocessor::ClearPragmas();
-	Preprocessor::UndefAll();
-	UnloadScripts();
+	ActiveGlobalCtxLocker.Lock();
+	ActiveContextVecIt it=std::find(ActiveContexts.begin(),ActiveContexts.end(),(asIScriptContext**)GlobalCtx);
+	if(it!=ActiveContexts.end()) ActiveContexts.erase(it);
+	ActiveGlobalCtxLocker.Unlock();
 
 	for(int i=0;i<GLOBAL_CONTEXT_STACK_SIZE;i++)
-	{
 		FinishContext(GlobalCtx[i]);
-		GlobalCtx[i]=NULL;
-	}
 
-	FinishEngine(Engine); // Finish default engine
+	asThreadCleanup();
 }
 
 HMODULE LoadDynamicLibrary(const char* dll_name)
@@ -351,6 +386,16 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 		alreadyLoadedDll.insert(dll_name_);
 	}
 	return dll;
+}
+
+void SetWrongGlobalObjects(StrVec& names)
+{
+	WrongGlobalObjects=names;
+}
+
+void SetConcurrentExecution(bool enabled)
+{
+	ConcurrentExecution=enabled;
 }
 
 void UnloadScripts()
@@ -471,8 +516,15 @@ bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFu
 	return true;
 }
 
-void AddRef(){} // Dummy
-void Release(){} // Dummy
+void AddRef()
+{
+	// Dummy
+}
+
+void Release()
+{
+	// Dummy
+}
 
 asIScriptEngine* GetEngine()
 {
@@ -567,17 +619,14 @@ void FinishContext(asIScriptContext*& ctx)
 
 asIScriptContext* GetGlobalContext()
 {
-	if(GlobalCtx[0]->GetState()!=asEXECUTION_ACTIVE)
+	if(GlobalCtxIndex>=GLOBAL_CONTEXT_STACK_SIZE)
 	{
-		return GlobalCtx[0];
+		WriteLog(__FUNCTION__" - Script context stack overflow! Context call stack:\n");
+		for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--) WriteLog("  %d) %s.\n",i,GlobalCtx[i]->GetUserData());
+		return NULL;
 	}
-	else
-	{
-		for(int i=1;i<GLOBAL_CONTEXT_STACK_SIZE;i++) if(GlobalCtx[i]->GetState()!=asEXECUTION_ACTIVE) return GlobalCtx[i];
-	}
-	WriteLog(__FUNCTION__" - Script context stack overflow! Context call stack:\n");
-	for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--) WriteLog("  %d) %s.\n",i,GlobalCtx[i]->GetUserData());
-	return NULL;
+	GlobalCtxIndex++;
+	return GlobalCtx[GlobalCtxIndex-1];
 }
 
 void PrintContextCallstack(asIScriptContext* ctx)
@@ -618,11 +667,7 @@ const char* GetActiveModuleName()
 	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
-	if(!func)
-	{
-		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.\n",ctx->GetUserData(),ctx->GetCurrentFunction());
-		return error;
-	}
+	if(!func) return error;
 	return func->GetModuleName();
 }
 
@@ -632,11 +677,7 @@ const char* GetActiveFuncName()
 	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
-	if(!func)
-	{
-		WriteLog(__FUNCTION__" - Function descriptor not found, context name<%s>, current function id<%d>.\n",ctx->GetUserData(),ctx->GetCurrentFunction());
-		return error;
-	}
+	if(!func) return error;
 	return func->GetName();
 }
 
@@ -667,7 +708,6 @@ asIScriptModule* CreateModule(const char* module_name)
 	return module;
 }
 
-DWORD GarbageCollectTime=60000;
 void SetGarbageCollectTime(DWORD ticks)
 {
 	GarbageCollectTime=ticks;
@@ -678,7 +718,16 @@ void CollectGarbage(bool force)
 	static DWORD last_tick=Timer::FastTick();
 	if(force || (GarbageCollectTime && Timer::FastTick()-last_tick>=GarbageCollectTime))
 	{
+#ifdef SCRIPT_MULTITHREADING
+		GarbageLocker.LockCode();
+#endif
+
 		Engine->GarbageCollect(asGC_FULL_CYCLE);
+
+#ifdef SCRIPT_MULTITHREADING
+		GarbageLocker.UnlockCode();
+#endif
+
 		last_tick=Timer::FastTick();
 	}
 }
@@ -689,12 +738,25 @@ unsigned int __stdcall RunTimeoutThread(void* data)
 
 	while(RunTimeoutSuspend)
 	{
-		WaitForSingleObject(RunTimeoutStartEvent,INFINITE);
-		if(WaitForSingleObject(RunTimeoutFinishEvent,RunTimeoutSuspend)==WAIT_TIMEOUT)
+		// Check execution time every 1/10 second
+		Sleep(100);
+
+		SCOPE_LOCK(ActiveGlobalCtxLocker);
+
+		DWORD cur_tick=Timer::FastTick();
+		for(ActiveContextVecIt it=ActiveContexts.begin(),end=ActiveContexts.end();it!=end;++it)
 		{
-			for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--)
-				if(GlobalCtx[i]->GetState()==asEXECUTION_ACTIVE) GlobalCtx[i]->Suspend();
-			WaitForSingleObject(RunTimeoutFinishEvent,INFINITE);
+			ActiveContext& actx=*it;
+			if(cur_tick>=actx.StartTick+RunTimeoutSuspend)
+			{
+				// Suspend all contexts
+				for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--)
+					if(actx.Contexts[i]->GetState()==asEXECUTION_ACTIVE) actx.Contexts[i]->Suspend();
+
+				// Erase from collection
+				ActiveContexts.erase(it);
+				break;
+			}
 		}
 	}
 	return 0;
@@ -947,6 +1009,77 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 		return false;
 	}
 
+	// Check not allowed global variables
+	if(WrongGlobalObjects.size())
+	{
+		IntVec bad_typeids;
+		bad_typeids.reserve(WrongGlobalObjects.size());
+		for(StrVecIt it=WrongGlobalObjects.begin(),end=WrongGlobalObjects.end();it!=end;++it)
+			bad_typeids.push_back(Engine->GetTypeIdByDecl((*it).c_str())&asTYPEID_MASK_SEQNBR);
+
+		IntVec bad_typeids_class;
+		for(int m=0,n=module->GetObjectTypeCount();m<n;m++)
+		{
+			asIObjectType* ot=module->GetObjectTypeByIndex(m);
+			for(int i=0,j=ot->GetPropertyCount();i<j;i++)
+			{
+				int type=ot->GetPropertyTypeId(i)&asTYPEID_MASK_SEQNBR;
+				for(int k=0;k<bad_typeids.size();k++)
+				{
+					if(type==bad_typeids[k])
+					{
+						bad_typeids_class.push_back(ot->GetTypeId()&asTYPEID_MASK_SEQNBR);
+						break;
+					}
+				}
+			}
+		}
+
+		bool global_fail=false;
+		for(int i=0,j=module->GetGlobalVarCount();i<j;i++)
+		{
+			int type=module->GetGlobalVarTypeId(i);
+
+			if(type&asTYPEID_SCRIPTARRAY)
+			{
+				UNSETFLAG(type,asTYPEID_OBJHANDLE);
+				UNSETFLAG(type,asTYPEID_HANDLETOCONST);	
+				asIScriptArray* arr=(asIScriptArray*)Engine->CreateScriptObject(type);
+				if(arr)
+				{
+					type=arr->GetElementTypeId();
+					arr->Release();
+				}
+			}
+
+			type&=asTYPEID_MASK_SEQNBR;
+
+			for(int k=0;k<bad_typeids.size();k++)
+			{
+				if(type==bad_typeids[k])
+				{
+					string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type that cannot be stored globally";
+					Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
+					global_fail=true;
+					break;
+				}
+			}
+			if(std::find(bad_typeids_class.begin(),bad_typeids_class.end(),type)!=bad_typeids_class.end())
+			{
+				string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type in class property that cannot be stored globally";
+				Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
+				global_fail=true;
+			}
+		}
+
+		if(global_fail)
+		{
+			WriteLog(__FUNCTION__" - Wrong global variables in module<%s>.\n",module_name);
+			return false;
+		}
+	}
+
+	// Done, add to collection
 	modules.push_back(module);
 
 	// Save binary version of script and preprocessed version
@@ -1047,8 +1180,12 @@ int BindImportedFunctions()
 	return errors;
 }
 
-int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp)
+int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */)
 {
+#ifdef SCRIPT_MULTITHREADING
+	SCOPE_LOCK(BindedFunctionsLocker);
+#endif
+
 	// Detect native dll
 	if(!strstr(module_name,".dll"))
 	{
@@ -1056,7 +1193,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		asIScriptModule* module=Engine->GetModule(module_name,asGM_ONLY_IF_EXISTS);
 		if(!module)
 		{
-			WriteLog(__FUNCTION__" - Module<%s> not found.\n",module_name);
+			if(!disable_log) WriteLog(__FUNCTION__" - Module<%s> not found.\n",module_name);
 			return 0;
 		}
 
@@ -1066,7 +1203,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		int result=module->GetFunctionIdByDecl(decl_);
 		if(result<=0)
 		{
-			WriteLog(__FUNCTION__" - Function<%s> in module<%s> not found, result<%d>.\n",decl_,module_name,result);
+			if(!disable_log) WriteLog(__FUNCTION__" - Function<%s> in module<%s> not found, result<%d>.\n",decl_,module_name,result);
 			return 0;
 		}
 
@@ -1095,7 +1232,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		HMODULE dll=LoadDynamicLibrary(module_name);
 		if(!dll)
 		{
-			WriteLog(__FUNCTION__" - Dll<%s> not found in scripts folder, error<%u>.\n",module_name,GetLastError());
+			if(!disable_log) WriteLog(__FUNCTION__" - Dll<%s> not found in scripts folder, error<%u>.\n",module_name,GetLastError());
 			return 0;
 		}
 
@@ -1103,7 +1240,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		size_t func=(size_t)GetProcAddress(dll,func_name);
 		if(!func)
 		{
-			WriteLog(__FUNCTION__" - Function<%s> in dll<%s> not found, error<%u>.\n",func_name,module_name,GetLastError());
+			if(!disable_log) WriteLog(__FUNCTION__" - Function<%s> in dll<%s> not found, error<%u>.\n",func_name,module_name,GetLastError());
 			return 0;
 		}
 
@@ -1129,20 +1266,24 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 	return BindedFunctions.size()-1;
 }
 
-int Bind(const char* script_name, const char* decl, bool is_temp)
+int Bind(const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */)
 {
 	char module_name[256];
 	char func_name[256];
-	if(!ReparseScriptName(script_name,module_name,func_name))
+	if(!ReparseScriptName(script_name,module_name,func_name,disable_log))
 	{
 		WriteLog(__FUNCTION__" - Parse script name<%s> fail.\n",script_name);
 		return 0;
 	}
-	return Bind(module_name,func_name,decl,is_temp);
+	return Bind(module_name,func_name,decl,is_temp,disable_log);
 }
 
 int RebindFunctions()
 {
+#ifdef SCRIPT_MULTITHREADING
+	SCOPE_LOCK(BindedFunctionsLocker);
+#endif
+
 	int errors=0;
 	for(int i=2,j=BindedFunctions.size();i<j;i++)
 	{
@@ -1165,7 +1306,7 @@ int RebindFunctions()
 	return errors;
 }
 
-bool ReparseScriptName(const char* script_name, char* module_name, char* func_name)
+bool ReparseScriptName(const char* script_name, char* module_name, char* func_name, bool disable_log /* = false */)
 {
 	if(!script_name || !module_name || !func_name)
 	{
@@ -1193,13 +1334,13 @@ bool ReparseScriptName(const char* script_name, char* module_name, char* func_na
 
 	if(!strlen(module_name) || !strcmp(module_name,"<error>"))
 	{
-		WriteLog(__FUNCTION__" - Script name parse error, string<%s>.\n",script_name);
+		if(!disable_log) WriteLog(__FUNCTION__" - Script name parse error, string<%s>.\n",script_name);
 		module_name[0]=func_name[0]=0;
 		return false;
 	}
 	if(!strlen(func_name))
 	{
-		WriteLog(__FUNCTION__" - Function name parse error, string<%s>.\n",script_name);
+		if(!disable_log) WriteLog(__FUNCTION__" - Function name parse error, string<%s>.\n",script_name);
 		module_name[0]=func_name[0]=0;
 		return false;
 	}
@@ -1209,9 +1350,6 @@ bool ReparseScriptName(const char* script_name, char* module_name, char* func_na
 /************************************************************************/
 /* Functions accord                                                     */
 /************************************************************************/
-
-StrVec ScriptFuncCache;
-IntVec ScriptFuncBindId;
 
 const StrVec& GetScriptFuncCache()
 {
@@ -1226,6 +1364,10 @@ void ResizeCache(DWORD count)
 
 DWORD GetScriptFuncNum(const char* script_name, const char* decl)
 {
+#ifdef SCRIPT_MULTITHREADING
+	SCOPE_LOCK(BindedFunctionsLocker);
+#endif
+
 	char full_name[MAX_SCRIPT_NAME*2+1];
 	char module_name[MAX_SCRIPT_NAME+1];
 	char func_name[MAX_SCRIPT_NAME+1];
@@ -1251,6 +1393,10 @@ DWORD GetScriptFuncNum(const char* script_name, const char* decl)
 
 int GetScriptFuncBindId(DWORD func_num)
 {
+#ifdef SCRIPT_MULTITHREADING
+	SCOPE_LOCK(BindedFunctionsLocker);
+#endif
+
 	func_num--;
 	if(func_num>=ScriptFuncBindId.size())
 	{
@@ -1262,6 +1408,10 @@ int GetScriptFuncBindId(DWORD func_num)
 
 string GetScriptFuncName(DWORD func_num)
 {
+#ifdef SCRIPT_MULTITHREADING
+	SCOPE_LOCK(BindedFunctionsLocker);
+#endif
+
 	func_num--;
 	if(func_num>=ScriptFuncBindId.size())
 	{
@@ -1301,29 +1451,115 @@ string GetScriptFuncName(DWORD func_num)
 /* Contexts                                                             */
 /************************************************************************/
 
-bool ScriptCall=false;
-asIScriptContext* CurrentCtx=NULL;
-size_t NativeFuncAddr=0;
-size_t NativeArgs[256]={0}; // Large buffer
-size_t NativeRetValue=0;
-size_t CurrentArg=0;
+THREAD bool ScriptCall=false;
+THREAD asIScriptContext* CurrentCtx=NULL;
+THREAD size_t NativeFuncAddr=0;
+THREAD size_t NativeArgs[256]={0};
+THREAD size_t NativeRetValue=0;
+THREAD size_t CurrentArg=0;
+THREAD int ExecutionRecursionCounter=0;
+
+#ifdef SCRIPT_MULTITHREADING
+DWORD SynchronizeThreadId=0;
+int SynchronizeThreadCounter=0;
+MutexEvent SynchronizeThreadLocker;
+Mutex SynchronizeThreadLocalLocker;
+#endif
+
+void BeginExecution()
+{
+#ifdef SCRIPT_MULTITHREADING
+	if(!ExecutionRecursionCounter)
+	{
+		GarbageLocker.EnterCode();
+
+		SyncManager* sync_mngr=SyncManager::GetForCurThread();
+		if(!ConcurrentExecution)
+		{
+			sync_mngr->Suspend();
+			ConcurrentExecutionLocker.Lock();
+			sync_mngr->PushPriority(5);
+			sync_mngr->Resume();
+		}
+		else
+		{
+			sync_mngr->PushPriority(5);
+		}
+	}
+	ExecutionRecursionCounter++;
+#endif
+}
+
+void EndExecution()
+{
+#ifdef SCRIPT_MULTITHREADING
+	ExecutionRecursionCounter--;
+	if(!ExecutionRecursionCounter)
+	{
+		GarbageLocker.LeaveCode();
+
+		if(!ConcurrentExecution)
+		{
+			ConcurrentExecutionLocker.Unlock();
+
+			SyncManager* sync_mngr=SyncManager::GetForCurThread();
+			sync_mngr->PopPriority();
+		}
+		else
+		{
+			SyncManager* sync_mngr=SyncManager::GetForCurThread();
+			sync_mngr->PopPriority();
+
+			SynchronizeThreadLocalLocker.Lock();
+			bool sync_not_closed=(SynchronizeThreadId==GetCurrentThreadId());
+			if(sync_not_closed)
+			{
+				SynchronizeThreadId=0;
+				SynchronizeThreadCounter=0;
+				SynchronizeThreadLocker.Allow(); // Unlock synchronization section
+			}
+			SynchronizeThreadLocalLocker.Unlock();
+
+			if(sync_not_closed)
+			{
+				WriteLog(__FUNCTION__" - Synchronization section is not closed in script!\n");
+				sync_mngr->PopPriority();
+			}
+		}
+	}
+#endif
+}
 
 bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 {
-	if(bind_id<=0 || bind_id>=BindedFunctions.size())
+	bool is_script;
+	int func_id;
+	size_t func_addr;
 	{
-		WriteLog(__FUNCTION__" - Invalid bind id<%d>.\n",bind_id);
-		return false;
+#ifdef SCRIPT_MULTITHREADING
+		SCOPE_LOCK(BindedFunctionsLocker);
+#endif
+
+		if(bind_id<=0 || bind_id>=BindedFunctions.size())
+		{
+			WriteLog(__FUNCTION__" - Invalid bind id<%d>.\n",bind_id);
+			return false;
+		}
+
+		BindFunction& bf=BindedFunctions[bind_id];
+		is_script=bf.IsScriptCall;
+		func_id=bf.ScriptFuncId;
+		func_addr=bf.NativeFuncAddr;
 	}
 
-	BindFunction& bf=BindedFunctions[bind_id];
-	if(bf.IsScriptCall)
+	if(is_script)
 	{
-		int func_id=BindedFunctions[bind_id].ScriptFuncId;
 		if(func_id<=0) return false;
 
 		asIScriptContext* ctx=GetGlobalContext();
 		if(!ctx) return false;
+
+		BeginExecution();
 
 		StringCopy((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE,call_func);
 		StringAppend((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE,ctx_info);
@@ -1332,6 +1568,8 @@ bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 		if(result<0)
 		{
 			WriteLog(__FUNCTION__" - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n",ctx->GetUserData(),bind_id,func_id,result);
+			GlobalCtxIndex--;
+			EndExecution();
 			return false;
 		}
 
@@ -1340,7 +1578,9 @@ bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 	}
 	else
 	{
-		NativeFuncAddr=bf.NativeFuncAddr;
+		BeginExecution();
+
+		NativeFuncAddr=func_addr;
 		ScriptCall=false;
 	}
 
@@ -1395,11 +1635,25 @@ bool RunPrepared()
 	if(ScriptCall)
 	{
 		asIScriptContext* ctx=CurrentCtx;
-		DWORD message_tick=Timer::FastTick();
-		if(ctx==GlobalCtx[0]) SetEvent(RunTimeoutStartEvent);
+		DWORD tick=Timer::FastTick();
+
+		if(GlobalCtxIndex==1) // First context from stack, add timing
+		{
+			SCOPE_LOCK(ActiveGlobalCtxLocker);
+			ActiveContexts.push_back(ActiveContext(GlobalCtx,tick));
+		}
+
 		int result=ctx->Execute();
-		if(ctx==GlobalCtx[0]) SetEvent(RunTimeoutFinishEvent);
-		DWORD delta=Timer::FastTick()-message_tick;
+
+		GlobalCtxIndex--;
+		if(GlobalCtxIndex==0) // All scripts execution complete, erase timing
+		{
+			SCOPE_LOCK(ActiveGlobalCtxLocker);
+			ActiveContextVecIt it=std::find(ActiveContexts.begin(),ActiveContexts.end(),(asIScriptContext**)GlobalCtx);
+			if(it!=ActiveContexts.end()) ActiveContexts.erase(it);
+		}
+
+		DWORD delta=Timer::FastTick()-tick;
 
 		asEContextState state=ctx->GetState();
 		if(state!=asEXECUTION_FINISHED)
@@ -1409,9 +1663,10 @@ bool RunPrepared()
 			else WriteLog("Execution of script stopped due to %s.\n",ContextStatesStr[(int)state]);
 			PrintContextCallstack(ctx); // Name and state of context will be printed in this function
 			ctx->Abort();
+			EndExecution();
 			return false;
 		}
-		else if(delta>=RunTimeoutMessage)
+		else if(RunTimeoutMessage && delta>=RunTimeoutMessage)
 		{
 			WriteLog("Script work time<%u> in context<%s>.\n",delta,ctx->GetUserData());
 		}
@@ -1419,6 +1674,7 @@ bool RunPrepared()
 		if(result<0)
 		{
 			WriteLog(__FUNCTION__" - Context<%s> execute error<%d>, state<%s>.\n",ctx->GetUserData(),result,ContextStatesStr[(int)state]);
+			EndExecution();
 			return false;
 		}
 
@@ -1463,6 +1719,8 @@ bool RunPrepared()
 		NativeRetValue=ret_value;
 		ScriptCall=false;
 	}
+
+	EndExecution();
 	return true;
 }
 
@@ -1479,6 +1737,75 @@ bool GetReturnedBool()
 void* GetReturnedObject()
 {
 	return ScriptCall?CurrentCtx->GetReturnObject():(void*)NativeRetValue;
+}
+
+bool SynchronizeThread()
+{
+#ifdef SCRIPT_MULTITHREADING
+	if(!ConcurrentExecution) return true;
+
+	SynchronizeThreadLocalLocker.Lock(); // Local lock
+
+	if(!SynchronizeThreadId) // Section is free
+	{
+		SynchronizeThreadId=GetCurrentThreadId();
+		SynchronizeThreadCounter=1;
+		SynchronizeThreadLocker.Disallow(); // Lock synchronization section
+		SynchronizeThreadLocalLocker.Unlock(); // Local unlock
+
+		SyncManager* sync_mngr=SyncManager::GetForCurThread();
+		sync_mngr->PushPriority(10);
+	}
+	else if(SynchronizeThreadId==GetCurrentThreadId()) // Section busy by current thread
+	{
+		SynchronizeThreadCounter++;
+		SynchronizeThreadLocalLocker.Unlock(); // Local unlock
+	}
+	else // Section busy by another thread
+	{
+		SynchronizeThreadLocalLocker.Unlock(); // Local unlock
+
+		SyncManager* sync_mngr=SyncManager::GetForCurThread();
+		sync_mngr->Suspend(); // Allow other threads take objects
+		SynchronizeThreadLocker.Wait(); // Sleep until synchronization section locked
+		sync_mngr->Resume(); // Relock busy objects
+		return SynchronizeThread(); // Try enter again
+	}
+#endif
+	return true;
+}
+
+bool ResynchronizeThread()
+{
+#ifdef SCRIPT_MULTITHREADING
+	if(!ConcurrentExecution) return true;
+
+	SynchronizeThreadLocalLocker.Lock(); // Local lock
+
+	if(SynchronizeThreadId==GetCurrentThreadId())
+	{
+		if(--SynchronizeThreadCounter==0)
+		{
+			SynchronizeThreadId=0;
+			SynchronizeThreadLocker.Allow(); // Unlock synchronization section
+			SynchronizeThreadLocalLocker.Unlock(); // Local unlock
+
+			SyncManager* sync_mngr=SyncManager::GetForCurThread();
+			sync_mngr->PopPriority();
+		}
+		else
+		{
+			SynchronizeThreadLocalLocker.Unlock(); // Local unlock
+		}
+	}
+	else
+	{
+		// Invalid call
+		SynchronizeThreadLocalLocker.Unlock(); // Local unlock
+		return false;
+	}
+#endif
+	return true;
 }
 
 /************************************************************************/

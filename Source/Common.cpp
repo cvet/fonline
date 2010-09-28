@@ -591,6 +591,9 @@ void GetClientOptions()
 #ifdef FONLINE_CLIENT
 	Script::SetGarbageCollectTime(120000);
 #endif
+#ifdef FONLINE_MAPPER
+	Script::SetRunTimeout(0,0);
+#endif
 }
 
 ClientScriptFunctions ClientFunctions;
@@ -601,7 +604,7 @@ MapperScriptFunctions MapperFunctions;
 /************************************************************************/
 #ifdef FONLINE_SERVER
 
-bool FOAppQuit=false;
+volatile bool FOAppQuit=false;
 volatile bool FOQuit=false;
 HANDLE UpdateEvent=NULL;
 HANDLE LogEvent=NULL;
@@ -616,6 +619,7 @@ void GetServerOptions()
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	ServerGameSleep=cfg.GetInt("GameSleep",10);
 	Script::SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
+	Script::SetConcurrentExecution(cfg.GetInt("ScriptConcurrentExecution",0)!=0);
 	VarsGarbageTime=cfg.GetInt("VarsGarbageTime",3600)*1000;
 	WorldSaveManager=(cfg.GetInt("WorldSaveManager",1)==1);
 }
@@ -811,7 +815,6 @@ GameOptions::GameOptions()
 	FreeExp=false;
 	RegulatePvP=false;
 	NoAnswerShuffle=false;
-	ForceDialog=0;
 	DialogDemandRecheck=false;
 	FixBoyDefaultExperience=50;
 	SneakDivider=6;

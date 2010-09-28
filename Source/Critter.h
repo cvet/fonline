@@ -92,12 +92,17 @@ typedef vector<Npc*>::iterator PcVecIt;
 
 class Critter
 {
+private:
+	Critter(const Critter&){}
+	Critter& operator=(const Critter&){}
+
 public:
 	Critter();
 	~Critter();
 
 	CritData Data; // Saved
 	CritDataExt* DataExt; // Saved
+	SyncObject Sync;
 	bool CritterIsNpc;
 	DWORD Flags;
 	string NameStr;
@@ -149,6 +154,8 @@ public:
 	BYTE ViewMapDir;
 	DWORD ViewMapLocId,ViewMapLocEnt;
 
+	void SyncLockCritters(bool only_players);
+	void SyncLockCrittersSelf();
 	void ProcessVisibleCritters();
 	void ProcessVisibleItems();
 	void ViewMap(Map* map, int look, WORD hx, WORD hy, int dir);
@@ -189,6 +196,7 @@ public:
 	Item* ItemSlotExt;      // SLOT_HAND2
 	Item* ItemSlotArmor;    // SLOT_ARMOR
 
+	void SyncLockItems();
 	bool SetDefaultItems(ProtoItem* proto_hand1, ProtoItem* proto_hand2, ProtoItem* proto_armor);
 	Item& GetDefaultItemSlotMain(){return defItemSlotMain;}
 	void AddItem(Item*& item, bool send);
@@ -196,21 +204,21 @@ public:
 	void EraseItem(Item* item, bool send);
 	Item* GetItem(DWORD item_id, bool skip_hide);
 	Item* GetInvItem(DWORD item_id, int transfer_type);
-	void GetInvItems(ItemPtrVec& items, int transfer_type);
+	void GetInvItems(ItemPtrVec& items, int transfer_type, bool lock);
 	Item* GetItemByPid(WORD item_pid);
 	Item* GetItemByPidInvPriority(WORD item_pid);
 	Item* GetAmmoForWeapon(Item* weap);
 	Item* GetAmmo(DWORD caliber);
 	Item* GetItemCar();
 	Item* GetItemSlot(int slot);
-	void GetItemsSlot(int slot, ItemPtrVec& items);
-	void GetItemsType(int type, ItemPtrVec& items);
+	void GetItemsSlot(int slot, ItemPtrVec& items, bool lock);
+	void GetItemsType(int type, ItemPtrVec& items, bool lock);
 	DWORD CountItemPid(WORD item_pid);
 	void TakeDefaultItem(BYTE slot);
 	bool MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count);
 	DWORD RealCountItems(){return invItems.size();}
 	DWORD CountItems();
-	ItemPtrVec& GetInventory(){return invItems;}
+	ItemPtrVec& GetInventory(){SyncLockItems(); return invItems;}
 	bool InHandsOnlyHtHWeapon();
 	bool IsHaveGeckItem();
 
@@ -298,7 +306,7 @@ public:
 	void FullClear();
 
 	// Send
-	int DisableSend;
+	volatile int DisableSend;
 	bool IsSendDisabled(){return DisableSend>0;}
 	void Send_Move(Critter* from_cr, WORD move_params);
 	void Send_Dir(Critter* from_cr);
@@ -360,8 +368,6 @@ public:
 	void SendAA_MsgLex(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void SendA_Dir();
 	void SendA_Follow(BYTE follow_type, WORD map_pid, DWORD follow_wait);
-	void SendA_Effect(CrVec& crits, WORD eff_pid, WORD hx, WORD hy, WORD radius);
-	void SendA_FlyEffect(CrVec& crits, WORD eff_pid, Critter* cr1, Critter* cr2);
 	void SendA_ParamOther(WORD num_param, int val);
 	void SendA_ParamCheck(WORD num_param);
 
@@ -392,11 +398,11 @@ public:
 	int GetParam(DWORD index);
 	void ChangeParam(DWORD index);
 	void ProcessChangedParams();
-	DWORD GetFollowCrId(){return GetParam(ST_FOLLOW_CRIT);}
+	DWORD GetFollowCrId(){return Data.Params[ST_FOLLOW_CRIT];}
 	void SetFollowCrId(DWORD crid){ChangeParam(ST_FOLLOW_CRIT); Data.Params[ST_FOLLOW_CRIT]=crid;}
-	int GetSkill(DWORD index){return GetParam(index);}
-	bool IsPerk(DWORD index){return GetParam(index)!=0;}
-	int GetPerk(DWORD index){return GetParam(index);}
+	int GetSkill(DWORD index){return Data.Params[index];}
+	bool IsPerk(DWORD index){return Data.Params[index]!=0;}
+	int GetPerk(DWORD index){return Data.Params[index];}
 	bool IsDmgEye(){return Data.Params[DAMAGE_EYE]!=0;}
 	bool IsDmgLeg(){return Data.Params[DAMAGE_RIGHT_LEG]!=0 || Data.Params[DAMAGE_LEFT_LEG]!=0;}
 	bool IsDmgTwoLeg(){return Data.Params[DAMAGE_RIGHT_LEG]!=0 && Data.Params[DAMAGE_LEFT_LEG]!=0;}
@@ -504,6 +510,7 @@ typedef vector<CrTimeEvent>::iterator CrTimeEventVecIt;
 
 	// Reference counter
 	bool IsNotValid;
+	bool CanBeRemoved;
 	long RefCounter;
 	void AddRef(){InterlockedIncrement(&RefCounter);}
 	void Release(){if(!InterlockedDecrement(&RefCounter)) Delete();}
@@ -549,9 +556,9 @@ private:
 public:
 	void Shutdown();
 	bool IsOnline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME || InterlockedCompareExchange(&NetState,0,0)==STATE_LOGINOK || InterlockedCompareExchange(&NetState,0,0)==STATE_CONN;}
-	bool IsOffline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_DISCONNECT || InterlockedCompareExchange(&NetState,0,0)==STATE_REMOVE;}
+	bool IsOffline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_DISCONNECT;}
 	void Disconnect(){InterlockedExchange(&NetState,STATE_DISCONNECT); disconnectTick=Timer::FastTick();}
-	void RemoveFromGame(){InterlockedExchange(&NetState,STATE_REMOVE);}
+	void RemoveFromGame(){CanBeRemoved=true;}
 	DWORD GetOfflineTime(){return Timer::FastTick()-disconnectTick;}
 
 	// Ping

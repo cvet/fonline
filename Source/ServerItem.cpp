@@ -17,7 +17,7 @@ Item* FOServer::CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD coun
 
 	if(!map->AddItem(item,hx,hy,true))
 	{
-		ItemMngr.ItemToGarbage(item,0x2000);
+		ItemMngr.ItemToGarbage(item);
 		return NULL;
 	}
 
@@ -56,17 +56,6 @@ Item* FOServer::CreateItemToHexCr(Critter* cr, WORD hx, WORD hy, WORD pid, DWORD
 	return CreateItemOnHex(map,hx,hy,pid,count);
 }
 
-void FOServer::FindCritterItems(Critter* cr)
-{
-	DWORD crid=cr->GetId();
-	ItemPtrMap& items=ItemMngr.GetGameItems();
-	for(ItemPtrMapIt it=items.begin(),end=items.end();it!=end;++it)
-	{
-		Item* item=(*it).second;
-		if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==crid) cr->SetItem(item);
-	}
-}
-
 bool FOServer::TransferAllItems()
 {
 	WriteLog("Transfer all game_items to npc, maps and containers...\n");
@@ -77,8 +66,9 @@ bool FOServer::TransferAllItems()
 		return false;
 	}
 
-	CrMap& critters=CrMngr.GetCritters();
-	for(CrMapIt it=critters.begin();it!=critters.end();++it)
+	// Set default items
+	CrMap critters=CrMngr.GetCrittersNoLock();
+	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 
@@ -91,12 +81,14 @@ bool FOServer::TransferAllItems()
 		}
 	}
 
-	DwordVec bad_items;
-	ItemPtrMap& game_items=ItemMngr.GetGameItems();
-	for(ItemPtrMapIt it=game_items.begin(),end=game_items.end();it!=end;++it)
+	// Transfer items
+	ItemPtrVec bad_items;
+	ItemPtrVec game_items;
+	ItemMngr.GetGameItems(game_items);
+	for(ItemPtrVecIt it=game_items.begin(),end=game_items.end();it!=end;++it)
 	{
-		DWORD id=(*it).first;
-		Item* item=(*it).second;
+		Item* item=*it;
+		DWORD id=item->GetId();
 
 		switch(item->Accessory)
 		{
@@ -108,7 +100,7 @@ bool FOServer::TransferAllItems()
 				if(!npc)
 				{
 					WriteLog("Npc not found, id<%u>.\n",item->ACC_CRITTER.Id);
-					bad_items.push_back(id);
+					bad_items.push_back(item);
 					continue;
 				}
 
@@ -121,21 +113,21 @@ bool FOServer::TransferAllItems()
 				if(!map)
 				{
 					WriteLog("Map not found, map id<%u>, hx<%u>, hy<%u>.\n",item->ACC_HEX.MapId,item->ACC_HEX.HexX,item->ACC_HEX.HexY);
-					bad_items.push_back(id);
+					bad_items.push_back(item);
 					continue;
 				}
 	
 				if(item->ACC_HEX.HexX>=map->GetMaxHexX() || item->ACC_HEX.HexY>=map->GetMaxHexY())
 				{
 					WriteLog("Error position hex, id<%u>, hx<%u>, hy<%u>.\n",item->GetId(),item->ACC_HEX.HexX,item->ACC_HEX.HexY);
-					bad_items.push_back(id);
+					bad_items.push_back(item);
 					continue;
 				}
 
 				if(!item->Proto->IsItem())
 				{
 					WriteLog("Item is not item type.\n",item->GetId(),item->GetType());
-					bad_items.push_back(id);
+					bad_items.push_back(item);
 					continue;
 				}
 
@@ -148,14 +140,14 @@ bool FOServer::TransferAllItems()
 				if(!cont)
 				{
 					WriteLog("Container not found, id<%u>.\n",item->ACC_CONTAINER.ContainerId);
-					bad_items.push_back(id);
+					bad_items.push_back(item);
 					continue;
 				}
 
 				if(!cont->IsContainer())
 				{
 					WriteLog("Find item is not container, id<%u>, type<%u>, id_cont<%u>, type_cont<%u>.\n",item->GetId(),item->GetType(),cont->GetId(),cont->GetType());
-					bad_items.push_back(id);
+					bad_items.push_back(item);
 					continue;
 				}
 
@@ -164,14 +156,25 @@ bool FOServer::TransferAllItems()
 			break;
 		default:
 			WriteLog("Unknown accessory id<%u>, acc<%u>.\n",item->Id,item->Accessory);
-			bad_items.push_back(id);
+			bad_items.push_back(item);
 			continue;
 		}
 	}
 
-	for(DwordVecIt it=bad_items.begin(),end=bad_items.end();it!=end;++it) game_items.erase(*it);
+	// Garbage bad items
+	for(ItemPtrVecIt it=bad_items.begin(),end=bad_items.end();it!=end;++it)
+	{
+		Item* item=*it;
+		ItemMngr.ItemToGarbage(item);
+	}
 
-	CrMngr.ProcessItemsVisible();
+	// Process visible for all npc
+	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+	{
+		Critter* cr=(*it).second;
+		cr->ProcessVisibleItems();
+	}
+
 	WriteLog("Transfer game items success.\n");
 	return true;
 }

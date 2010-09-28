@@ -40,19 +40,21 @@ extern const char* MapEventFuncName[MAP_EVENT_MAX];
 
 class Map;
 class Location;
-class GlobalMapZone;
 
 class Map
 {
+public:
+	SyncObject Sync;
+
 private:
 	BYTE* hexFlags;
 	CrVec mapCritters;
 	ClVec mapPlayers;
 	PcVec mapNpcs;
+	ItemPtrVec hexItems;
+	Location* mapLocation;
 
 public:
-	Location* MapLocation;
-
 	struct MapData
 	{
 		DWORD MapId;
@@ -67,20 +69,20 @@ public:
 		int UserData[MAP_MAX_DATA];
 	} Data;
 
+	ProtoMap* Proto;
+
 	bool NeedProcess;
 	DWORD FuncId[MAP_EVENT_MAX];
 	DWORD LoopEnabled[MAP_LOOP_FUNC_MAX];
 	DWORD LoopLastTick[MAP_LOOP_FUNC_MAX];
 	DWORD LoopWaitTick[MAP_LOOP_FUNC_MAX];
 
-	ItemPtrVec HexItems;
-	ProtoMap* Proto;
-
 	bool Init(ProtoMap* proto, Location* location);
 	bool Generate();
 	void Clear(bool full);
 	void Process();
 
+	Location* GetLocation();
 	WORD GetMaxHexX(){return Proto->Header.MaxHexX;}
 	WORD GetMaxHexY(){return Proto->Header.MaxHexY;}
 	void SetLoopTime(DWORD loop_num, DWORD ms);
@@ -126,11 +128,12 @@ public:
 	Item* GetItemContainer(WORD hx, WORD hy);
 	Item* GetItemGag(WORD hx, WORD hy);
 
-	void GetItemsHex(WORD hx, WORD hy, ItemPtrVec& items);
-	void GetItemsHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, ItemPtrVec& items);
-	void GetItemsPid(WORD pid, ItemPtrVec& items);
-	void GetItemsType(int type, ItemPtrVec& items);
-	void GetItemsTrap(WORD hx, WORD hy, ItemPtrVec& items);
+	ItemPtrVec& GetItemsNoLock(){return hexItems;}
+	void GetItemsHex(WORD hx, WORD hy, ItemPtrVec& items, bool lock);
+	void GetItemsHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, ItemPtrVec& items, bool lock);
+	void GetItemsPid(WORD pid, ItemPtrVec& items, bool lock);
+	void GetItemsType(int type, ItemPtrVec& items, bool lock);
+	void GetItemsTrap(WORD hx, WORD hy, ItemPtrVec& items, bool lock);
 	void RecacheHexBlock(WORD hx, WORD hy);
 	void RecacheHexShoot(WORD hx, WORD hy);
 	void RecacheHexBlockShoot(WORD hx, WORD hy);
@@ -158,11 +161,14 @@ public:
 	DWORD GetNpcCount(int npc_role, int find_type);
 	Critter* GetNpc(int npc_role, int find_type, DWORD skip_count);
 	Critter* GetHexCritter(WORD hx, WORD hy, bool dead);
-	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& crits);
+	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool lock);
 
-	CrVec& GetCritters(){return mapCritters;}
-	ClVec& GetPlayers(){return mapPlayers;}
-	PcVec& GetNpcs(){return mapNpcs;}
+	void GetCritters(CrVec& critters);
+	void GetPlayers(ClVec& players);
+	void GetNpcs(PcVec& npcs);
+	CrVec& GetCrittersNoLock(){return mapCritters;}
+	ClVec& GetPlayersNoLock(){return mapPlayers;}
+	PcVec& GetNpcsNoLock(){return mapNpcs;}
 
 	bool IsNoLogOut(){return Proto->Header.NoLogOut;}
 
@@ -217,12 +223,12 @@ public:
 	DWORD GetCritterTurnTime();
 	void EndCritterTurn();
 	void NextCritterTurn();
-	void GenerateSequence(Critter* first_cr);
+	void GenerateSequence(CrVec& critters, Critter* first_cr);
 
 	// Constructor, destructor
 public:
 	Map();
-	~Map(){MEMORY_PROCESS(MEMORY_MAP,-(int)sizeof(Map)); SAFEDELA(hexFlags);}
+	~Map();
 
 	bool IsNotValid;
 	short RefCounter;
@@ -259,9 +265,11 @@ typedef vector<ProtoLocation> ProtoLocVec;
 
 class Location
 {
+public:
+	SyncObject Sync;
+
 private:
 	MapVec locMaps;
-	GlobalMapZone* locZone;
 
 public:
 	struct LocData
@@ -280,9 +288,9 @@ public:
 	} Data;
 
 	ProtoLocation* Proto;
-	int GeckCount;
+	volatile int GeckCount;
 
-	bool Init(ProtoLocation* proto, GlobalMapZone* zone, WORD wx, WORD wy);
+	bool Init(ProtoLocation* proto, WORD wx, WORD wy);
 	void Clear(bool full);
 	void Update();
 	bool IsToGarbage(){return Data.AutoGarbage || Data.ToGarbage;}
@@ -292,8 +300,9 @@ public:
 	void SetId(DWORD _id){Data.LocId=_id;}
 	WORD GetPid(){return Data.LocPid;}
 	int GetRadius(){return Data.Radius;}
-	GlobalMapZone* GetZone(){return locZone;}
-	MapVec& GetMaps(){return locMaps;}
+	MapVec& GetMapsNoLock(){return locMaps;};
+	void GetMaps(MapVec& maps, bool lock);
+	DWORD GetMapsCount(){return locMaps.size();}
 	Map* GetMap(DWORD count);
 	bool GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& ori);
 	bool IsAutomaps(){return !Proto->AutomapsPids.empty();}
@@ -303,7 +312,7 @@ public:
 	bool IsNoCrit();
 	bool IsNoPlayer();
 	bool IsNoNpc();
-	bool IsCanDelete(); // For location garbager
+	bool IsCanDelete();
 
 	bool IsNotValid;
 	short RefCounter;
@@ -316,40 +325,5 @@ typedef map<DWORD,Location*,less<DWORD>>::iterator LocMapIt;
 typedef map<DWORD,Location*,less<DWORD>>::value_type LocMapVal;
 typedef vector<Location*> LocVec;
 typedef vector<Location*>::iterator LocVecIt;
-
-class GlobalMapZone
-{
-private:
-	LocVec locations;
-	WORD zx,zy;
-
-public:
-	void Finish()
-	{
-		locations.clear();
-	}
-
-	void AddLocation(Location* loc)
-	{
-		if(!loc || std::find(locations.begin(),locations.end(),loc)!=locations.end()) return;
-		locations.push_back(loc);
-	}
-
-	void EraseLocation(Location* loc)
-	{
-		if(!loc) return;
-		LocVecIt it=std::find(locations.begin(),locations.end(),loc);
-		if(it!=locations.end()) locations.erase(it);
-	}
-
-	LocVec& GetLocations()
-	{
-		return locations;
-	}
-
-	DWORD Reserved;
-
-	GlobalMapZone():zx(0),zy(0),Reserved(0){};
-};
 
 #endif // __MAP__

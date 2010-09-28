@@ -229,6 +229,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, DWORD id, const char* d
 	DWORD text_id;
 	DWORD link;
 	char read_str[256];
+	bool ret_val;
 
 #ifdef FONLINE_NPCEDITOR
 	char script[1024];
@@ -251,7 +252,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, DWORD id, const char* d
 		if(!_stricmp(script,"NOT_ANSWER_CLOSE_DIALOG")) StringCopy(script,"None");
 		else if(!_stricmp(script,"NOT_ANSWER_BEGIN_BATTLE")) StringCopy(script,"Attack");
 #else
-		script=GetNotAnswerAction(read_str);
+		script=GetNotAnswerAction(read_str,ret_val);
 		if(script<0)
 		{
 			WriteLog("Unable to parse<%s>.\n",read_str);
@@ -266,6 +267,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, DWORD id, const char* d
 		current_dialog.TextId=text_id;
 		current_dialog.DlgScript=script;
 		current_dialog.Flags=flags; 
+		current_dialog.RetVal=ret_val;
 
 		// Read answers
 		input >> ch;
@@ -369,6 +371,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	char type_str[256];
 	char name[256]={0};
 	bool no_recheck=false;
+	bool ret_value=false;
 
 #ifdef FONLINE_NPCEDITOR
 	string script_val[5];
@@ -557,7 +560,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 #ifdef FONLINE_SERVER
 			// Bind function
 #define BIND_D_FUNC(params) {id=Script::Bind(name,"bool %s(Critter&,Critter@"params,false);}
-#define BIND_R_FUNC(params) {id=Script::Bind(name,"void %s(Critter&,Critter@"params,false);}
+#define BIND_R_FUNC(params) {if((id=Script::Bind(name,"uint %s(Critter&,Critter@"params,false,true))>0) {ret_value=true;} else id=Script::Bind(name,"void %s(Critter&,Critter@"params,false);}
 			switch(values_count)
 			{
 			case 1: if(is_demand) BIND_D_FUNC(",int)") else BIND_R_FUNC(",int)") break;
@@ -608,6 +611,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	result.ValuesCount=values_count;
 	result.Value=value;
 	result.NoRecheck=no_recheck;
+	result.RetValue=ret_value;
 #ifdef FONLINE_NPCEDITOR
 	result.ParamName=name;
 	result.ValuesNames[0]=script_val[0];
@@ -638,15 +642,25 @@ bool DialogManager::CheckLockTime(int time)
 	return time>=LOCK_TIME_MIN && time<=LOCK_TIME_MAX;
 }
 
-int DialogManager::GetNotAnswerAction(const char * str)
+int DialogManager::GetNotAnswerAction(const char* str, bool& ret_val)
 {
+	ret_val=false;
+
 	if(!_stricmp(str,"NOT_ANSWER_CLOSE_DIALOG") || !_stricmp(str,"None"))
 		return NOT_ANSWER_CLOSE_DIALOG;
 	else if(!_stricmp(str,"NOT_ANSWER_BEGIN_BATTLE") || !_stricmp(str,"Attack"))
 		return NOT_ANSWER_BEGIN_BATTLE;
 #ifdef FONLINE_SERVER
 	else
-		return Script::Bind(str,"void %s(Critter&,Critter@,string@)",false); //Bind function
+	{
+		int id=Script::Bind(str,"uint %s(Critter&,Critter@,string@)",false,true);
+		if(id>0)
+		{
+			ret_val=true;
+			return id;
+		}
+		return Script::Bind(str,"void %s(Critter&,Critter@,string@)",false);
+	}
 #endif // FONLINE_SERVER
 
 	return -1;

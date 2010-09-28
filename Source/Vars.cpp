@@ -6,10 +6,10 @@
 #include "Critter.h"
 #endif
 
-CVarMngr VarMngr;
+VarManager VarMngr;
 FileLogger* DbgLog=NULL;
 
-bool CVarMngr::Init(const char* fpath)
+bool VarManager::Init(const char* fpath)
 {
 	WriteLog("Var Manager initialization.\n");
 
@@ -27,7 +27,7 @@ bool CVarMngr::Init(const char* fpath)
 }
 
 #ifdef FONLINE_SERVER
-void CVarMngr::SaveVarsDataFile(void(*save_func)(void*,size_t))
+void VarManager::SaveVarsDataFile(void(*save_func)(void*,size_t))
 {
 	DWORD count=allVars.size();
 	save_func(&count,sizeof(count));
@@ -40,7 +40,7 @@ void CVarMngr::SaveVarsDataFile(void(*save_func)(void*,size_t))
 	}
 }
 
-bool CVarMngr::LoadVarsDataFile(FILE* f)
+bool VarManager::LoadVarsDataFile(FILE* f)
 {
 	WriteLog("Load vars...");
 	allQuestVars.reserve(100000); // 400kb
@@ -84,7 +84,7 @@ bool CVarMngr::LoadVarsDataFile(FILE* f)
 }
 #endif // FONLINE_SERVER
 
-void CVarMngr::Finish()
+void VarManager::Finish()
 {
 	WriteLog("Var manager finish...\n");
 
@@ -106,7 +106,7 @@ void CVarMngr::Finish()
 	WriteLog("Var manager finish complete.\n");
 }
 
-bool CVarMngr::UpdateVarsTemplate()
+bool VarManager::UpdateVarsTemplate()
 {
 	WriteLog("Update template vars...");
 
@@ -131,7 +131,7 @@ bool CVarMngr::UpdateVarsTemplate()
 	return true;
 }
 
-bool CVarMngr::LoadTemplateVars(FILE* f, TempVarVec& vars)
+bool VarManager::LoadTemplateVars(FILE* f, TempVarVec& vars)
 {
 	if(!f) return false;
 	
@@ -199,7 +199,7 @@ bool CVarMngr::LoadTemplateVars(FILE* f, TempVarVec& vars)
 	return true;
 }
 
-bool CVarMngr::AddTemplateVar(TemplateVar* var)
+bool VarManager::AddTemplateVar(TemplateVar* var)
 {
 	if(!var)
 	{
@@ -230,7 +230,7 @@ bool CVarMngr::AddTemplateVar(TemplateVar* var)
 	return true;
 }
 
-void CVarMngr::EraseTemplateVar(WORD temp_id)
+void VarManager::EraseTemplateVar(WORD temp_id)
 {
 	TemplateVar* var=GetTempVar(temp_id);
 	if(!var) return;
@@ -240,21 +240,21 @@ void CVarMngr::EraseTemplateVar(WORD temp_id)
 	delete var;
 }
 
-WORD CVarMngr::GetTempVarId(const string& var_name)
+WORD VarManager::GetTempVarId(const string& var_name)
 {
 	StrWordMapIt it=varsNames.find(var_name);
 	if(it==varsNames.end()) return 0;
 	return (*it).second;
 }
 
-TemplateVar* CVarMngr::GetTempVar(WORD temp_id)
+TemplateVar* VarManager::GetTempVar(WORD temp_id)
 {
 	TempVarMapIt it=tempVars.find(temp_id);
 	if(it==tempVars.end()) return NULL;
 	return (*it).second;
 }
 
-void CVarMngr::SaveTemplateVars()
+void VarManager::SaveTemplateVars()
 {
 	WriteLog("Save vars...");
 
@@ -318,7 +318,7 @@ void CVarMngr::SaveTemplateVars()
 **************************************************************************************************/
 #ifdef FONLINE_SERVER
 
-bool CVarMngr::CheckVar(const string& var_name, DWORD master_id, DWORD slave_id, char oper, int val)
+bool VarManager::CheckVar(const string& var_name, DWORD master_id, DWORD slave_id, char oper, int val)
 {
 	WORD temp_id=GetTempVarId(var_name);
 	if(!temp_id) return false;
@@ -327,14 +327,14 @@ bool CVarMngr::CheckVar(const string& var_name, DWORD master_id, DWORD slave_id,
 	return CheckVar(uvar,oper,val);
 }
 
-bool CVarMngr::CheckVar(WORD template_id, DWORD master_id, DWORD slave_id, char oper, int val)
+bool VarManager::CheckVar(WORD template_id, DWORD master_id, DWORD slave_id, char oper, int val)
 {
 	GameVar* var=GetVar(template_id,master_id,slave_id,true);
 	if(!var) return false;
 	return CheckVar(var,oper,val);
 }
 
-GameVar* CVarMngr::ChangeVar(const string& var_name, DWORD master_id, DWORD slave_id, char oper, int val)
+GameVar* VarManager::ChangeVar(const string& var_name, DWORD master_id, DWORD slave_id, char oper, int val)
 {
 	WORD temp_id=GetTempVarId(var_name);
 	if(!temp_id) return NULL;
@@ -344,7 +344,7 @@ GameVar* CVarMngr::ChangeVar(const string& var_name, DWORD master_id, DWORD slav
 	return var;
 }
 
-GameVar* CVarMngr::ChangeVar(WORD template_id, DWORD master_id, DWORD slave_id, char oper, int val)
+GameVar* VarManager::ChangeVar(WORD template_id, DWORD master_id, DWORD slave_id, char oper, int val)
 {
 	GameVar* var=GetVar(template_id,master_id,slave_id,true);
 	if(!var) return NULL;
@@ -356,7 +356,7 @@ GameVar* CVarMngr::ChangeVar(WORD template_id, DWORD master_id, DWORD slave_id, 
 ***************************************************************************************************
 **************************************************************************************************/
 
-bool CVarMngr::CheckVar(GameVar* var, char oper, int val)
+bool VarManager::CheckVar(GameVar* var, char oper, int val)
 {
 	switch(oper)
 	{
@@ -370,7 +370,7 @@ bool CVarMngr::CheckVar(GameVar* var, char oper, int val)
 	}
 }
 
-void CVarMngr::ChangeVar(GameVar* var, char oper, int val)
+void VarManager::ChangeVar(GameVar* var, char oper, int val)
 {
 	switch(oper)
 	{
@@ -387,14 +387,14 @@ void CVarMngr::ChangeVar(GameVar* var, char oper, int val)
 ***************************************************************************************************
 **************************************************************************************************/
 
-GameVar* CVarMngr::GetVar(const string& name, DWORD master_id, DWORD slave_id,  bool create)
+GameVar* VarManager::GetVar(const string& name, DWORD master_id, DWORD slave_id,  bool create)
 {
 	WORD temp_id=GetTempVarId(name);
 	if(!temp_id) return NULL;
 	return GetVar(temp_id,master_id,slave_id,create);
 }
 
-GameVar* CVarMngr::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool create)
+GameVar* VarManager::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool create)
 {
 	TemplateVar* tvar=GetTempVar(temp_id);
 	if(!tvar) return NULL;
@@ -423,6 +423,8 @@ GameVar* CVarMngr::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool c
 	id=((ULONGLONG)master_id<<24)|slave_id;
 	id=((ULONGLONG)temp_id<<48)|id;
 
+	varsLocker.Lock();
+
 	bool allocated=false; // DbgLog
 	GameVar* var;
 	VarsMapIt it=allVars.find(id);
@@ -438,6 +440,10 @@ GameVar* CVarMngr::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool c
 		var=(*it).second;
 	}
 
+	varsLocker.Unlock();
+
+	SYNC_LOCK(var);
+
 	if(DbgLog)
 	{
 		if(tvar->Type==VAR_GLOBAL) DbgLog->Write("Reading gvar<%s> value<%d>.%s\n",tvar->Name.c_str(),var->GetValue(),allocated?" Allocated.":"");
@@ -448,7 +454,7 @@ GameVar* CVarMngr::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool c
 	return var;
 }
 
-GameVar* CVarMngr::CreateVar(ULONGLONG id, TemplateVar* tvar)
+GameVar* VarManager::CreateVar(ULONGLONG id, TemplateVar* tvar)
 {
 	if(allVars.count(id))
 	{
@@ -484,7 +490,8 @@ GameVar* CVarMngr::CreateVar(ULONGLONG id, TemplateVar* tvar)
 	return var;
 }
 
-void CVarMngr::SwapVars(DWORD id1, DWORD id2)
+#pragma MESSAGE("Complete SwapVars.")
+void VarManager::SwapVars(DWORD id1, DWORD id2)
 {
 	/*VarsVec swap_vars;
 	for(VarsMapIt it=allVars.begin();it!=allVars.end();)
@@ -503,23 +510,143 @@ void CVarMngr::SwapVars(DWORD id1, DWORD id2)
 	}*/
 }
 
-DWORD CVarMngr::DeleteVars(DWORD id)
+DWORD VarManager::DeleteVars(DWORD id)
 {
-	DWORD result=0;
-	for(VarsMapIt it=allVars.begin();it!=allVars.end();)
+	varsLocker.Lock();
+	VarsMap all_vars=allVars;
+	varsLocker.Unlock();
+
+	UInt64Vec del_vars;
+	for(VarsMapIt it=all_vars.begin();it!=all_vars.end();++it)
 	{
 		GameVar* var=(*it).second;
+		SYNC_LOCK(var);
+
 		if((var->Type==VAR_LOCAL && var->GetMasterId()==id) ||
 			(var->Type==VAR_UNICUM && (var->GetMasterId()==id || var->GetSlaveId()==id)))
 		{
-			if(var->IsQuest()) allQuestVars[var->QuestVarIndex]=NULL;
-			var->Release();
-			it=allVars.erase(it);
-			result++;
+			del_vars.push_back(var->VarId);
 		}
-		else ++it;
 	}
-	return result;
+
+	varsLocker.Lock();
+	for(UInt64VecIt it=del_vars.begin(),end=del_vars.end();it!=end;++it)
+	{
+		ULONGLONG uid=*it;
+		VarsMapIt it_=allVars.find(uid);
+		if(it_!=allVars.end())
+		{
+			GameVar* var=(*it_).second;
+			if(var->IsQuest()) allQuestVars[var->QuestVarIndex]=NULL;
+			Job::DeferredRelease(var);
+			allVars.erase(it_);
+		}
+	}
+	varsLocker.Unlock();
+
+	return del_vars.size();
+}
+
+DWORD VarManager::ClearUnusedVars(DwordSet& ids1, DwordSet& ids2)
+{
+	varsLocker.Lock();
+	VarsMap vars=allVars;
+	varsLocker.Unlock();
+
+	DWORD lcount=0,ucount=0;
+	UInt64Vec del_vars;
+
+	for(VarsMapIt it=vars.begin();it!=vars.end();++it)
+	{
+		GameVar* var=(*it).second;
+		SYNC_LOCK(var);
+
+		if(var->Type==VAR_GLOBAL)
+		{
+			++it;
+			continue;
+		}
+
+		if(var->VarValue!=var->VarTemplate->StartVal || var->IsRandom())
+		{
+			if(var->Type==VAR_LOCAL)
+			{
+				DWORD master_id=var->GetMasterId();
+				if(ids2.count(master_id) || ids1.count(master_id))
+				{
+					++it;
+					continue;
+				}
+
+				lcount++;
+			}
+			else // VAR_UNICUM
+			{
+				DWORD master_id=var->GetMasterId();
+				if(ids2.count(master_id) || ids1.count(master_id))
+				{
+					++it;
+					continue;
+				}
+
+				DWORD slave_id=var->GetSlaveId();
+				if(ids2.count(slave_id) || ids1.count(slave_id))
+				{
+					++it;
+					continue;
+				}
+
+				ucount++;
+			}
+		}
+		else
+		{
+			if(var->Type==VAR_LOCAL) lcount++;
+			else ucount++; // VAR_UNICUM
+		}
+
+		del_vars.push_back(var->VarId);
+	}
+
+	varsLocker.Lock();
+	for(UInt64VecIt it=del_vars.begin(),end=del_vars.end();it!=end;++it)
+	{
+		ULONGLONG uid=*it;
+		VarsMapIt it_=allVars.find(uid);
+		if(it_!=allVars.end())
+		{
+			GameVar* var=(*it_).second;
+			if(var->IsQuest()) allQuestVars[var->QuestVarIndex]=NULL;
+			Job::DeferredRelease(var);
+			allVars.erase(it_);
+		}
+	}
+	varsLocker.Unlock();
+
+	return lcount+ucount;
+}
+
+void VarManager::GetQuestVars(DWORD master_id, DwordVec& vars)
+{
+	SCOPE_LOCK(varsLocker);
+
+	for(VarsVecIt it=allQuestVars.begin(),end=allQuestVars.end();it!=end;++it)
+	{
+		GameVar* var=*it;
+		if(var && var->GetMasterId()==master_id) vars.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
+	}
+
+	/*varsLocker.Lock();
+	VarsVec quest_vars=allQuestVars;
+	varsLocker.Unlock();
+
+	for(VarsVecIt it=quest_vars.begin(),end=quest_vars.end();it!=end;++it)
+	{
+		GameVar* var=*it;
+		SYNC_LOCK(var);
+
+		if(var && var->GetMasterId()==master_id) vars.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
+	}*/
 }
 
 /**************************************************************************************************

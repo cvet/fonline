@@ -6,7 +6,7 @@
 #include <iostream>
 #include <process.h>
 
-void GameLoopThread(void*);
+unsigned int __stdcall GameLoopThread(void*);
 int CALLBACK DlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam);
 void UpdateInfo();
 void UpdateLog();
@@ -195,13 +195,14 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		else
 		{
 			FOQuit=false;
-			_beginthread(GameLoopThread,0,NULL);
+			_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
 		}
 	}
 
 	// Loop
 	MSG msg;
 	HANDLE events[2]={UpdateEvent,LogEvent};
+	SyncManager* sync_mngr=SyncManager::GetForCurThread();
 	while(!FOAppQuit)
 	{
 		DWORD result=MsgWaitForMultipleObjects(2,events,FALSE,10000,QS_ALLINPUT);
@@ -224,6 +225,8 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		{
 			WriteLog("Wait failed on MsgWaitForMultipleObjects, error<%u>.\b",GetLastError());
 		}
+
+		sync_mngr->UnlockAll();
 	}
 
 	//SAFEDEL(serv);
@@ -249,7 +252,7 @@ void UpdateInfo()
 		SetDlgItemText(Dlg,IDC_NPC,str);
 		sprintf(str,"Items: %u",ItemMngr.GetItemsCount());
 		SetDlgItemText(Dlg,IDC_ITEMS_COUNT,str);
-		sprintf(str,"Locations: %u (%u)",MapMngr.GetLocations().size(),MapMngr.GetAllMaps().size());
+		sprintf(str,"Locations: %u (%u)",MapMngr.GetLocationsCount(),MapMngr.GetMapsCount());
 		SetDlgItemText(Dlg,IDC_LOC_COUNT,str);
 		sprintf(str,"Vars: %u",VarMngr.GetVarsCount());
 		SetDlgItemText(Dlg,IDC_VARS_COUNT,str);
@@ -434,7 +437,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 				SetDlgItemText(Dlg,IDC_STOP,"Stop server");
 				EnableWindow(GetDlgItem(Dlg,IDC_STOP),0);
 				SendMessage(GetDlgItem(Dlg,IDC_LOG),WM_SETFOCUS,0,0);
-				_beginthread(GameLoopThread,0,NULL);
+				_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
 			}
 			break;
 		case IDC_MEMORY:
@@ -466,7 +469,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		case IDC_SAVEINFO:
 			{
 				WORD idc=(LOWORD(wParam)==IDC_SAVELOG?IDC_LOG:IDC_INFO);
-				HANDLE hlog=CreateFile(idc==IDC_LOG?"FOserv.log":"FOinfo.txt",GENERIC_WRITE,0,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
+				HANDLE hlog=CreateFile(idc==IDC_LOG?"FOnlineServer.log":"FOnlineInfo.txt",GENERIC_WRITE,0,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
 				if(hlog!=INVALID_HANDLE_VALUE)
 				{
 					int len=GetWindowTextLength(GetDlgItem(Dlg,idc));
@@ -506,7 +509,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			Script::SetLogDebugInfo(SendMessage((HWND)lParam,BM_GETCHECK,0,0)==BST_CHECKED);
 			break;
 		case IDC_SAVE_WORLD:
-			if(Serv.IsInit()) Serv.SaveWorldNextTick=Timer::FastTick();
+			if(Serv.IsInit()) Serv.SaveWorldNextTick=Timer::FastTick(); // Force saving time
 			break;
 		case IDC_RELOAD_CLIENT_SCRIPTS:
 			if(Serv.IsInit()) Serv.RequestReloadClientScripts=true;
@@ -529,7 +532,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void GameLoopThread(void*)
+unsigned int __stdcall GameLoopThread(void*)
 {
 	LogSetThreadName("Main");
 
@@ -557,7 +560,7 @@ void GameLoopThread(void*)
 			EnableWindow(GetDlgItem(Dlg,IDC_STOP),1);
 		}
 
-		Serv.RunGameLoop();
+		Serv.MainLoop();
 		Serv.Finish();
 		UpdateInfo();
 	}
@@ -574,5 +577,5 @@ void GameLoopThread(void*)
 
 	LogFinish(-1);
 	if(Singleplayer) FOAppQuit=true;
-	_endthread();
+	return 0;
 }

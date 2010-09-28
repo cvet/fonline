@@ -197,10 +197,10 @@ public:
 	Item* GetSlotUse(BYTE num_slot, BYTE& use);
 	int GetUsePic(BYTE num_slot);
 	bool IsItemAim(BYTE num_slot);
-	BYTE GetUse(){return ItemSlotMain->Data.Rate&0xF;}
-	BYTE GetFullRate(){return ItemSlotMain->Data.Rate;}
+	BYTE GetUse(){return ItemSlotMain->Data.Mode&0xF;}
+	BYTE GetFullRate(){return ItemSlotMain->Data.Mode;}
 	bool NextRateItem(bool prev);
-	BYTE GetAim(){return (ItemSlotMain->Data.Rate>>4)&0xF;}
+	BYTE GetAim(){return (ItemSlotMain->Data.Mode>>4)&0xF;}
 	bool IsAim(){return GetAim()>0;}
 	void SetAim(BYTE hit_location);
 	DWORD GetUseApCost(Item* item, BYTE rate);

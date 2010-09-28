@@ -95,6 +95,7 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define USE_USE                     (4)
 #define MAX_USES					(3)
 #define USE_NONE                    (15)
+#define MAKE_ITEM_MODE(use,aim)     ((((aim)<<4)|((use)&0xF))&0xFF)
 
 // Corner type
 #define CORNER_NORTH_SOUTH          (0)
@@ -210,7 +211,7 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define SLOT_ARMOR_PROTO_OFFSET	    (1060)
 
 /************************************************************************/
-/* ProtoItem                                                         */
+/* ProtoItem                                                            */
 /************************************************************************/
 
 class ProtoItem
@@ -293,10 +294,10 @@ public:
 			BYTE MinSt;
 			BYTE Perk;
 
-			BYTE CountAttack;
-			BYTE Skill[MAX_USES];
-			BYTE DmgType[MAX_USES];
-			BYTE Anim2[MAX_USES];
+			BYTE Uses;
+			WORD Skill[MAX_USES];
+			WORD DmgType[MAX_USES];
+			WORD Anim2[MAX_USES];
 			WORD PicDeprecated[MAX_USES];
 			DWORD PicHash[MAX_USES];
 			WORD DmgMin[MAX_USES];
@@ -304,24 +305,10 @@ public:
 			WORD MaxDist[MAX_USES];
 			WORD Effect[MAX_USES];
 			WORD Round[MAX_USES];
-			DWORD Time[MAX_USES];
+			WORD ApCost[MAX_USES];
 			bool Aim[MAX_USES];
 			bool Remove[MAX_USES];
 			BYTE SoundId[MAX_USES];
-
-			BYTE Weapon_CurrentUse;
-			WORD Weapon_MaxDist;
-			WORD Weapon_DmgMin;
-			WORD Weapon_DmgMax;
-			BYTE Weapon_Skill;
-			BYTE Weapon_DmgType;
-			BYTE Weapon_Anim2;
-			BYTE Weapon_ApCost;
-			BYTE Weapon_SoundId;
-			bool Weapon_Remove;
-			WORD Weapon_Round;
-			WORD Weapon_Effect;
-			bool Weapon_Aim;
 		} Weapon;
 
 		struct
@@ -428,24 +415,6 @@ public:
 	bool operator==(const WORD& _r){return (Pid==_r);}
 	ProtoItem(){Clear();}
 
-	void Weapon_SetUse(BYTE use)
-	{
-		if(use>=MAX_USES) use=USE_PRIMARY;
-		Weapon.Weapon_CurrentUse=use;
-		Weapon.Weapon_Skill=Weapon.Skill[use];
-		Weapon.Weapon_DmgType=Weapon.DmgType[use];
-		Weapon.Weapon_Anim2=Weapon.Anim2[use];
-		Weapon.Weapon_DmgMin=Weapon.DmgMin[use];
-		Weapon.Weapon_DmgMax=Weapon.DmgMax[use];
-		Weapon.Weapon_MaxDist=Weapon.MaxDist[use];
-		Weapon.Weapon_Effect=Weapon.Effect[use];
-		Weapon.Weapon_Round=Weapon.Round[use];
-		Weapon.Weapon_ApCost=Weapon.Time[use];
-		Weapon.Weapon_SoundId=Weapon.SoundId[use];
-		Weapon.Weapon_Remove=Weapon.Remove[use];
-		Weapon.Weapon_Aim=Weapon.Aim[use];
-	}
-
 	bool Container_IsGroundLevel()
 	{
 		bool is_ground=true;
@@ -477,7 +446,7 @@ typedef vector<Item> ItemVec;
 typedef vector<Item>::iterator ItemVecIt;
 
 /************************************************************************/
-/* Item                                                              */
+/* Item                                                                 */
 /************************************************************************/
 
 class Item
@@ -523,7 +492,7 @@ public:
 
 		WORD SortValue;
 		BYTE Info;
-		BYTE Reserved0;
+		BYTE WeaponCurMode;
 		DWORD PicMapHash;
 		DWORD PicInvHash;
 		WORD AnimWaitBase;
@@ -531,7 +500,7 @@ public:
 		BYTE AnimShow[2];
 		BYTE AnimHide[2];
 		DWORD Flags;
-		BYTE Rate;
+		BYTE Mode;
 		char LightIntensity;
 		BYTE LightDistance;
 		BYTE LightFlags;
@@ -588,6 +557,7 @@ public:
 	Critter* ViewByCritter;
 	ItemPtrVec* ChildItems;
 	char* PLexems;
+	SyncObject Sync;
 #endif
 #ifdef FONLINE_CLIENT
 	DWORD Dummy[3];
@@ -614,7 +584,6 @@ public:
 #endif // FONLINE_SERVER
 
 	void Init(ProtoItem* proto);
-	void Clear();
 	Item* Clone();
 	void SetSortValue(ItemPtrVec& items);
 	static void SortItems(ItemVec& items);
@@ -633,7 +602,7 @@ public:
 	void Count_Sub(DWORD val);
 
 	BYTE GetType(){return Proto->GetType();}
-	void SetRate(BYTE rate);
+	void SetMode(BYTE mode);
 	WORD GetSortValue(){return Data.SortValue;}
 	bool IsGrouped(){return Proto->IsGrouped();}
 
@@ -672,10 +641,7 @@ public:
 	void SetLexems(const char* lexems);
 #endif
 
-/************************************************************************/
-/* WEAR                                                                 */
-/************************************************************************/
-
+	// Deteoration
 #ifdef FONLINE_SERVER
 	bool Wear(int count);
 	void Repair();
@@ -693,10 +659,6 @@ public:
 	int GetWearProc()   {int val=GetWear()*100/WEAR_MAX; return CLAMP(val,0,100);}
 	void SetWear(WORD wear){if(IsWeared()) Data.TechInfo.DeteorationValue=wear;}
 
-/************************************************************************/
-/* TYPE METHODS                                                         */
-/************************************************************************/
-
 	// Armor
 	bool IsArmor(){return GetType()==ITEM_TYPE_ARMOR;}
 
@@ -713,9 +675,8 @@ public:
 	bool WeapIsEffect(int use){return Proto->Weapon.Effect[use]!=0;}
 	WORD WeapGetEffectPid(int use){return Proto->Weapon.Effect[use];}
 	int WeapGetNeedStrength(){return Proto->Weapon.MinSt;}
-	bool WeapIsUseAviable(int use){BYTE ca=Proto->Weapon.CountAttack;if(use==USE_PRIMARY)return FLAG(ca,1);if(use==USE_SECONDARY)return FLAG(ca,2);if(use==USE_THIRD)return FLAG(ca,4);return false;}
+	bool WeapIsUseAviable(int use){return use>=USE_PRIMARY && use<=USE_THIRD?(((Proto->Weapon.Uses>>use)&1)!=0):false;}
 	bool WeapIsCanAim(int use){return use<MAX_USES && Proto->Weapon.Aim[use];}
-	void WeapRefreshProtoUse();
 	bool WeapIsHtHAttack(int use);
 	bool WeapIsGunAttack(int use);
 	bool WeapIsRangedAttack(int use);
@@ -731,12 +692,12 @@ public:
 	void ContAddItem(Item*& item, DWORD special_id);
 	void ContSetItem(Item* item);
 	void ContEraseItem(Item* item);
-	void ContErsAllItems();
 	Item* ContGetItem(DWORD item_id, bool skip_hide);
-	void ContGetAllItems(ItemPtrVec& items, bool skip_hide);
+	void ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool lock);
 	Item* ContGetItemByPid(WORD pid, DWORD special_id);
-	void ContGetItems(ItemPtrVec& items, DWORD special_id);
+	void ContGetItems(ItemPtrVec& items, DWORD special_id, bool lock);
 	int ContGetFreeVolume(DWORD special_id);
+	bool ContIsItems();
 #endif
 
 	// Door
@@ -778,10 +739,6 @@ public:
 	int LightGetFlags(){return Data.LightFlags?Data.LightFlags:Proto->LightFlags;}
 	DWORD LightGetColor(){return (Data.LightColor?Data.LightColor:Proto->LightColor)&0xFFFFFF;}
 
-/************************************************************************/
-/* MiscEx SUBTYPES METHODS                                               */
-/************************************************************************/
-
 	// Radio
 	bool IsRadio(){return GetProtoId()==PID_RADIO;}
 	WORD RadioGetChannel(){return Data.Radio.Channel;}
@@ -812,10 +769,6 @@ public:
 	bool IsTrap(){return FLAG(Data.Flags,ITEM_TRAP);}
 	void TrapSetValue(int val){Data.TrapValue=val;}
 	int TrapGetValue(){return Data.TrapValue;}
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 
 	bool operator==(const DWORD& _id){return (Id==_id);}
 

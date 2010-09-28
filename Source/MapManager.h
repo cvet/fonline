@@ -26,6 +26,7 @@ public:
 	bool IsValid();
 	bool IsMoving();
 	DWORD GetSize();
+	void SyncLockGroup();
 	Critter* GetCritter(DWORD crid);
 	Item* GetCar();
 	bool CheckForFollow(Critter* cr);
@@ -119,6 +120,7 @@ class MapManager
 private:
 	DWORD lastMapId;
 	DWORD lastLocId;
+	Mutex mapLocker;
 
 public:
 	ProtoMap ProtoMaps[MAX_PROTO_MAPS];
@@ -137,7 +139,6 @@ public:
 	bool LoadAllLocationsAndMapsFile(FILE* f);
 	string GetLocationsMapsStatistics();
 	void RunInitScriptMaps();
-	void ProcessMaps();
 	bool GenerateWorld(const char* fname, int path_type);
 
 	// Maps stuff
@@ -150,12 +151,10 @@ public:
 
 	// Global map
 private:
-	GlobalMapZone gmZone[GM__MAXZONEX][GM__MAXZONEY];
 	CByteMask* gmMask;
 
 public:
-	GlobalMapZone& GetZoneByCoord(WORD coord_x, WORD coord_y);
-	GlobalMapZone& GetZone(WORD zone_x, WORD zone_y);
+	void GetRadiusLocations(int wx, int wy, int radius, DwordVec& loc_ids);
 
 	bool RefreshGmMask(const char* mask_path);
 	int GetGmRelief(DWORD x, DWORD y){return gmMask->GetByte(x,y)&0xF;}
@@ -177,21 +176,21 @@ public:
 
 	// Locations
 private:
-	LocMap gameLoc;
-	bool runGarbager;
-	void DeleteLocation(DWORD loc_id);
+	LocMap allLocations;
+	volatile bool runGarbager;
 
 public:
 	bool IsInitProtoLocation(WORD pid_loc);
-	ProtoLocation* GetProtoLoc(WORD loc_pid);
+	ProtoLocation* GetProtoLocation(WORD loc_pid);
 	Location* CreateLocation(WORD pid_loc, WORD wx, WORD wy, DWORD loc_id);
 	Location* GetLocationByMap(DWORD map_id);
 	Location* GetLocation(DWORD loc_id);
 	Location* GetLocationByPid(WORD loc_pid, DWORD skip_count);
-	Location* GetLocationByCoord(int wx, int wy);
-	LocMap& GetLocations(){return gameLoc;}
-	void RunLocGarbager(){runGarbager=true;}
-	void LocationGarbager(DWORD cycle_tick);
+	bool IsLocationOnCoord(int wx, int wy);
+	void GetLocations(LocVec& locs, bool lock);
+	DWORD GetLocationsCount();
+	void LocationGarbager();
+	void RunGarbager(){runGarbager=true;}
 
 	// Maps
 private:
@@ -205,7 +204,8 @@ public:
 	Map* CreateMap(WORD pid_map, Location* loc_map, DWORD map_id);
 	Map* GetMap(DWORD map_id);
 	Map* GetMapByPid(WORD map_pid, DWORD skip_count);
-	MapMap& GetAllMaps(){return allMaps;}
+	void GetMaps(MapVec& maps, bool lock);
+	DWORD GetMapsCount();
 	ProtoMap* GetProtoMap(WORD pid_map);
 	bool IsProtoMapNoLogOut(WORD pid_map);
 	void TraceBullet(TraceData& trace);

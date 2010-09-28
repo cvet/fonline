@@ -42,16 +42,14 @@ void ItemManager::Finish()
 	}
 
 #ifdef FONLINE_SERVER
-	ItemGarbager(0);
-	
-	//WriteLog("Items pool size<%d>.\n",itemsPool.GetSize());
+	ItemGarbager();
+
 	ItemPtrMap items=gameItems;
 	for(ItemPtrMapIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=(*it).second;
 		item->EventFinish(false);
 		item->Release();
-		//itemsPool.Free((*it).second);
 	}
 	gameItems.clear();
 #endif
@@ -74,7 +72,7 @@ void ItemManager::Clear()
 #endif
 
 #ifdef ITEMS_STATISTICS
-	ZeroMemory(itemCount,sizeof(itemCount)); // Statistics
+	for(int i=0;i<MAX_ITEM_PROTOTYPES;i++) itemCount[i]=0;
 #endif
 }
 
@@ -291,7 +289,7 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 			SERIALIZE_PROTO_(WEAPON.MinSt,Weapon.MinSt,0);
 			SERIALIZE_PROTO_(WEAPON.Perk,Weapon.Perk,0);
 			SERIALIZE_PROTOB_(WEAPON.NoWear,Weapon.NoWear,0);
-			SERIALIZE_PROTO_(WEAPON.CountAttack,Weapon.CountAttack,0);
+			SERIALIZE_PROTO_(WEAPON.CountAttack,Weapon.Uses,0);
 			SERIALIZE_PROTO_(WEAPON.aSkill_0,Weapon.Skill[0],0);
 			SERIALIZE_PROTO_(WEAPON.aSkill_1,Weapon.Skill[1],0);
 			SERIALIZE_PROTO_(WEAPON.aSkill_2,Weapon.Skill[2],0);
@@ -327,9 +325,9 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 			SERIALIZE_PROTO_(WEAPON.aRound_0,Weapon.Round[0],0);
 			SERIALIZE_PROTO_(WEAPON.aRound_1,Weapon.Round[1],0);
 			SERIALIZE_PROTO_(WEAPON.aRound_2,Weapon.Round[2],0);
-			SERIALIZE_PROTO_(WEAPON.aTime_0,Weapon.Time[0],0);
-			SERIALIZE_PROTO_(WEAPON.aTime_1,Weapon.Time[1],0);
-			SERIALIZE_PROTO_(WEAPON.aTime_2,Weapon.Time[2],0);
+			SERIALIZE_PROTO_(WEAPON.aTime_0,Weapon.ApCost[0],0);
+			SERIALIZE_PROTO_(WEAPON.aTime_1,Weapon.ApCost[1],0);
+			SERIALIZE_PROTO_(WEAPON.aTime_2,Weapon.ApCost[2],0);
 			SERIALIZE_PROTOB_(WEAPON.aAim_0,Weapon.Aim[0],0);
 			SERIALIZE_PROTOB_(WEAPON.aAim_1,Weapon.Aim[1],0);
 			SERIALIZE_PROTOB_(WEAPON.aAim_2,Weapon.Aim[2],0);
@@ -362,7 +360,7 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 			SERIALIZE_PROTO(Weapon.MinSt,0);
 			SERIALIZE_PROTO(Weapon.Perk,0);
 			SERIALIZE_PROTOB(Weapon.NoWear,0);
-			SERIALIZE_PROTO(Weapon.CountAttack,0);
+			SERIALIZE_PROTO_(Weapon.CountAttack,Weapon.Uses,0);
 			SERIALIZE_PROTO_(Weapon.Skill_0,Weapon.Skill[0],0);
 			SERIALIZE_PROTO_(Weapon.Skill_1,Weapon.Skill[1],0);
 			SERIALIZE_PROTO_(Weapon.Skill_2,Weapon.Skill[2],0);
@@ -409,9 +407,9 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 			SERIALIZE_PROTO_(Weapon.Round_0,Weapon.Round[0],0);
 			SERIALIZE_PROTO_(Weapon.Round_1,Weapon.Round[1],0);
 			SERIALIZE_PROTO_(Weapon.Round_2,Weapon.Round[2],0);
-			SERIALIZE_PROTO_(Weapon.Time_0,Weapon.Time[0],0);
-			SERIALIZE_PROTO_(Weapon.Time_1,Weapon.Time[1],0);
-			SERIALIZE_PROTO_(Weapon.Time_2,Weapon.Time[2],0);
+			SERIALIZE_PROTO_(Weapon.Time_0,Weapon.ApCost[0],0);
+			SERIALIZE_PROTO_(Weapon.Time_1,Weapon.ApCost[1],0);
+			SERIALIZE_PROTO_(Weapon.Time_2,Weapon.ApCost[2],0);
 			SERIALIZE_PROTOB_(Weapon.Aim_0,Weapon.Aim[0],0);
 			SERIALIZE_PROTOB_(Weapon.Aim_1,Weapon.Aim[1],0);
 			SERIALIZE_PROTOB_(Weapon.Aim_2,Weapon.Aim[2],0);
@@ -716,8 +714,6 @@ void ItemManager::ParseProtos(ProtoItemVec& protos)
 			continue;
 		}
 
-		if(type==ITEM_TYPE_WEAPON) protos[i].Weapon_SetUse(USE_PRIMARY);
-
 		typeProto[type].push_back(proto_item);
 		allProto[pid]=proto_item;
 	}
@@ -919,6 +915,7 @@ bool ItemManager::LoadAllItemsFile(FILE* f)
 	return true;
 }
 
+#pragma MESSAGE("Add item proto functions checker.")
 bool ItemManager::CheckProtoFunctions()
 {
 	for(int i=0;i<MAX_ITEM_PROTOTYPES;i++)
@@ -940,12 +937,62 @@ void ItemManager::RunInitScriptItems()
 	}
 }
 
+void ItemManager::GetGameItems(ItemPtrVec& items)
+{
+	SCOPE_LOCK(itemLocker);
+	items.reserve(gameItems.size());
+	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
+	{
+		Item* item=(*it).second;
+		items.push_back(item);
+	}
+}
+
+DWORD ItemManager::GetItemsCount()
+{
+	SCOPE_LOCK(itemLocker);
+	DWORD count=gameItems.size();
+	return count;
+}
+
+void ItemManager::SetCritterItems(Critter* cr)
+{
+	ItemPtrVec items;
+	DWORD crid=cr->GetId();
+
+	itemLocker.Lock();
+	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
+	{
+		Item* item=(*it).second;
+		if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==crid)
+			items.push_back(item);
+	}
+	itemLocker.Unlock();
+
+	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
+	{
+		Item* item=*it;
+		SYNC_LOCK(item);
+		cr->SetItem(item);
+	}
+
+/*	ItemPtrVec items;
+	GetGameItems(items);
+
+	DWORD crid=cr->GetId();
+	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
+	{
+		Item* item=*it;
+		SYNC_LOCK(item);
+		if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==crid) cr->SetItem(item);
+	}*/
+}
+
 Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 {
 	if(!IsInitProto(pid)) return NULL;
 
 	Item* item=new Item();
-	//Item* item=itemsPool.Alloc();
 	if(!item)
 	{
 		WriteLog(__FUNCTION__" - Allocation fail.\n");
@@ -955,11 +1002,12 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 	item->Init(&allProto[pid]);
 	if(item_id)
 	{
+		SCOPE_LOCK(itemLocker);
+
 		if(gameItems.count(item_id))
 		{
 			WriteLog(__FUNCTION__" - Item already created, id<%u>.\n",item_id);
 			delete item;
-			//itemsPool.Free(item);
 			return NULL;
 		}
 
@@ -967,6 +1015,8 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 	}
 	else
 	{
+		SCOPE_LOCK(itemLocker);
+
 		item->Id=lastItemId+1;
 		lastItemId++;
 	}
@@ -976,7 +1026,11 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 	else AddItemStatistics(pid,1);
 #endif
 
+	SYNC_LOCK(item);
+
+	itemLocker.Lock();
 	gameItems.insert(ItemPtrMapVal(item->Id,item));
+	itemLocker.Unlock();
 
 	if(!item_id && count && protoScript[pid]) // Only for new items
 	{
@@ -1018,90 +1072,62 @@ Item* ItemManager::SplitItem(Item* item, DWORD count)
 
 Item* ItemManager::GetItem(DWORD item_id)
 {
+	Item* item=NULL;
+
+	itemLocker.Lock();
 	ItemPtrMapIt it=gameItems.find(item_id);
-	if(it==gameItems.end()) return NULL;
-	return (*it).second;
+	if(it!=gameItems.end()) item=(*it).second;
+	itemLocker.Unlock();
+
+	if(!item) return NULL;
+
+	SYNC_LOCK(item);
+	return item;
 }
 
-void ItemManager::EraseItem(DWORD item_id)
+void ItemManager::ItemToGarbage(Item* item)
 {
-	ItemPtrMapIt it=gameItems.find(item_id);
-	if(it==gameItems.end())
-	{
-		WriteLog(__FUNCTION__" - Item not found, id<%u>.\n",item_id);
-		return;
-	}
-	Item* item=(*it).second;
-
-#ifdef ITEMS_STATISTICS
-	if(item->IsGrouped()) item->Count_Set(0);
-	else SubItemStatistics(item->GetProtoId(),1);
-#endif
-
-	item->IsNotValid=true;
-	item->Release();
-	//itemsPool.Free(item);
-	gameItems.erase(it);
-}
-
-void ItemManager::FullEraseItemIt(ItemPtrMapIt& it)
-{
-	Item* item=(*it).second;
-
-#ifdef ITEMS_STATISTICS
-	if(item->IsGrouped()) item->Count_Set(0);
-	else SubItemStatistics(item->GetProtoId(),1);
-#endif
-
-	item->FullClear();
-	item->IsNotValid=true;
-	item->Release();
-	//itemsPool.Free(item);
-	gameItems.erase(it);
-}
-
-void ItemManager::ItemToGarbage(Item* item, int from)
-{
-	if(!item->IsNotValid && item->FuncId[ITEM_EVENT_FINISH]>0)
-	{
-		item->EventFinish(true);
-		if(!item->IsNotValid && item->IsValidAccessory()) return; // Disable deleting
-	}
-
+	SCOPE_LOCK(itemLocker);
 	itemToDelete.push_back(item->GetId());
-	item->IsNotValid=true;
-	item->From|=from;
 }
 
-void ItemManager::ItemGarbager(DWORD cycle_tick)
+void ItemManager::ItemGarbager()
 {
 	if(!itemToDelete.empty())
 	{
-		// Check performance
-		if(cycle_tick && Timer::FastTick()-cycle_tick>100) return;
-
+		itemLocker.Lock();
 		DwordVec to_del=itemToDelete;
 		itemToDelete.clear();
+		itemLocker.Unlock();
+
 		for(DwordVecIt it=to_del.begin(),end=to_del.end();it!=end;++it)
 		{
-			// Check performance
-			if(cycle_tick && Timer::FastTick()-cycle_tick>100)
+			itemLocker.Lock();
+			ItemPtrMapIt it_=gameItems.find(*it);
+			if(it_==gameItems.end())
 			{
-				for(;it!=end;++it) itemToDelete.push_back(*it);
-				return;
-			}
-
-			DWORD item_id=*it;
-			ItemPtrMapIt it_=gameItems.find(item_id);
-			if(it_==gameItems.end()) continue;
-
-			Item* item=(*it_).second;
-			if(item->IsValidAccessory())
-			{
-				WriteLog(__FUNCTION__" - Valid accessory, item id<%u>, accessory<%u>, from<%u>.\n",item_id,item->Accessory,item->From);
+				itemLocker.Unlock();
 				continue;
 			}
-			FullEraseItemIt(it_);
+			Item* item=(*it_).second;
+			gameItems.erase(it_);
+			itemLocker.Unlock();
+
+			SYNC_LOCK(item);
+
+			if(item->IsValidAccessory()) EraseItemHolder(item);
+			if(!item->IsNotValid && item->FuncId[ITEM_EVENT_FINISH]>0) item->EventFinish(true);
+
+			item->IsNotValid=true;
+			if(item->IsValidAccessory()) EraseItemHolder(item);
+
+#ifdef ITEMS_STATISTICS
+			if(item->IsGrouped()) item->Count_Set(0);
+			else SubItemStatistics(item->GetProtoId(),1);
+#endif
+
+			item->FullClear();
+			Job::DeferredRelease(item);
 		}
 	}
 }
@@ -1213,12 +1239,6 @@ void ItemManager::MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_i
 			to_cont->ContAddItem(item_,stack_id);
 		}
 	}
-}
-
-void ItemManager::DeleteItem(Item* item)
-{
-	EraseItemHolder(item);
-	ItemToGarbage(item,0x8000);
 }
 
 Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD stack_id)
@@ -1342,7 +1362,7 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 		if(count>=item->GetCount())
 		{
 			cr->EraseItem(item,true);
-			if(!erased_items) ItemMngr.ItemToGarbage(item,0x1);
+			if(!erased_items) ItemMngr.ItemToGarbage(item);
 			else erased_items->push_back(item);
 		}
 		else
@@ -1364,7 +1384,7 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 		for(int i=0;i<count;++i)
 		{
 			cr->EraseItem(item,true);
-			if(!erased_items) ItemMngr.ItemToGarbage(item,0x2);
+			if(!erased_items) ItemMngr.ItemToGarbage(item);
 			else erased_items->push_back(item);
 			item=cr->GetItemByPidInvPriority(pid);
 			if(!item) return true;
@@ -1505,10 +1525,10 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 bool ItemManager::MoveItemsContainers(Item* from_cont, Item* to_cont, DWORD from_stack_id, DWORD to_stack_id)
 {
 	if(!from_cont->IsContainer() || !to_cont->IsContainer()) return false;
-	if(!from_cont->ChildItems) return true;
+	if(!from_cont->ContIsItems()) return true;
 
 	ItemPtrVec items;
-	from_cont->ContGetItems(items,from_stack_id);
+	from_cont->ContGetItems(items,from_stack_id,true);
 	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=*it;
@@ -1522,10 +1542,10 @@ bool ItemManager::MoveItemsContainers(Item* from_cont, Item* to_cont, DWORD from
 bool ItemManager::MoveItemsContToCritter(Item* from_cont, Critter* to_cr, DWORD stack_id)
 {
 	if(!from_cont->IsContainer()) return false;
-	if(!from_cont->ChildItems) return true;
+	if(!from_cont->ContIsItems()) return true;
 
 	ItemPtrVec items;
-	from_cont->ContGetItems(items,stack_id);
+	from_cont->ContGetItems(items,stack_id,true);
 	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=*it;

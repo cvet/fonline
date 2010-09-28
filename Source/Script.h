@@ -22,9 +22,14 @@ namespace Script
 {
 	bool Init(bool with_log, PragmaCallbackFunc crdata);
 	void Finish();
-	HMODULE LoadDynamicLibrary(const char* dll_name);
-	void UnloadScripts();
+	bool InitThread();
+	void FinisthThread();
 
+	HMODULE LoadDynamicLibrary(const char* dll_name);
+	void SetWrongGlobalObjects(StrVec& names);
+	void SetConcurrentExecution(bool enabled);
+
+	void UnloadScripts();
 	bool ReloadScripts(const char* config, const char* key, bool skip_binaries);
 	bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count);
 
@@ -59,10 +64,10 @@ namespace Script
 	bool LoadScript(const char* module_name, const BYTE* bytecode, DWORD len);
 
 	int BindImportedFunctions();
-	int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp);
-	int Bind(const char* script_name, const char* decl, bool is_temp);
+	int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false);
+	int Bind(const char* script_name, const char* decl, bool is_temp, bool disable_log = false);
 	int RebindFunctions();
-	bool ReparseScriptName(const char* script_name, char* module_name, char* func_name);
+	bool ReparseScriptName(const char* script_name, char* module_name, char* func_name, bool disable_log = false);
 
 	const StrVec& GetScriptFuncCache();
 	void ResizeCache(DWORD count);
@@ -70,7 +75,7 @@ namespace Script
 	int GetScriptFuncBindId(DWORD func_num);
 	string GetScriptFuncName(DWORD func_num);
 
-	// Run context
+	// Script execution
 	bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info);
 	void SetArgWord(WORD w);
 	void SetArgDword(DWORD dw);
@@ -82,7 +87,10 @@ namespace Script
 	DWORD GetReturnedDword();
 	bool GetReturnedBool();
 	void* GetReturnedObject();
+	bool SynchronizeThread();
+	bool ResynchronizeThread();
 
+	// Logging
 	bool StartLog();
 	void EndLog();
 	void Log(const char* str);

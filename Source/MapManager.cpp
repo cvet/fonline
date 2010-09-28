@@ -26,12 +26,22 @@ DWORD GlobalMapGroup::GetSize()
 	return CritMove.size();
 }
 
+void GlobalMapGroup::SyncLockGroup()
+{
+	CrVec critters=CritMove;
+	for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it) SYNC_LOCK(*it);
+}
+
 Critter* GlobalMapGroup::GetCritter(DWORD crid)
 {
 	for(CrVecIt it=CritMove.begin(),end=CritMove.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->GetId()==crid) return cr;
+		if(cr->GetId()==crid)
+		{
+			SYNC_LOCK(cr);
+			return cr;
+		}
 	}
 	return NULL;
 }
@@ -132,18 +142,14 @@ void MapManager::Finish()
 {
 	WriteLog("Map manager finish...\n");
 
-	for(LocMapIt it=gameLoc.begin();it!=gameLoc.end();++it)
+	for(LocMapIt it=allLocations.begin();it!=allLocations.end();++it)
 	{
 		Location* loc=(*it).second;
 		loc->Clear(false);
 		loc->Release();
 	}
-	gameLoc.clear();
+	allLocations.clear();
 	allMaps.clear();
-
-	for(int i=0;i<GM__MAXZONEX;++i)
-		for(int j=0;j<GM__MAXZONEY;++j)
-			gmZone[i][j].Finish();
 
 	for(int i=0;i<MAX_PROTO_MAPS;i++) ProtoMaps[i].Clear();
 	pmapsLoaded.clear();
@@ -158,16 +164,12 @@ void MapManager::Clear()
 	lastLocId=0;
 	runGarbager=false;
 
-	for(LocMapIt it=gameLoc.begin();it!=gameLoc.end();++it)
+	for(LocMapIt it=allLocations.begin();it!=allLocations.end();++it)
 		SAFEREL((*it).second);
-	gameLoc.clear();
+	allLocations.clear();
 	for(MapMapIt it=allMaps.begin();it!=allMaps.end();++it)
 		SAFEREL((*it).second);
 	allMaps.clear();
-
-	for(int i=0;i<GM__MAXZONEX;++i)
-		for(int j=0;j<GM__MAXZONEY;++j)
-			gmZone[i][j].Finish();
 }
 
 DwordPair EntranceParser(const char* str)
@@ -408,17 +410,18 @@ bool MapManager::LoadMapProto(IniParser& maps_txt, ProtoMap& pmap, WORD pid)
 
 void MapManager::SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t))
 {
-	DWORD count=gameLoc.size();
+	DWORD count=allLocations.size();
 	save_func(&count,sizeof(count));
 
-	for(LocMapIt it=gameLoc.begin(),end=gameLoc.end();it!=end;++it)
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
 	{
 		Location* loc=(*it).second;
 		save_func(&loc->Data,sizeof(loc->Data));
 
-		DWORD map_count=loc->GetMaps().size();
+		MapVec& maps=loc->GetMapsNoLock();
+		DWORD map_count=maps.size();
 		save_func(&map_count,sizeof(map_count));
-		for(MapVecIt it_=loc->GetMaps().begin(),end_=loc->GetMaps().end();it_!=end_;++it_)
+		for(MapVecIt it_=maps.begin(),end_=maps.end();it_!=end_;++it_)
 		{
 			Map* map=*it_;
 			save_func(&map->Data,sizeof(map->Data));
@@ -472,21 +475,24 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 			map->Data=map_data;
 		}
 	}
+
 	WriteLog("complete, count<%u>.\n",count);
 	return true;
 }
 
 string MapManager::GetLocationsMapsStatistics()
 {
+	SCOPE_LOCK(mapLocker);
+
 	static string result;
 	char str[512];
-	sprintf(str,"Locations count: %u\n",gameLoc.size());
+	sprintf(str,"Locations count: %u\n",allLocations.size());
 	result=str;
 	sprintf(str,"Maps count: %u\n",allMaps.size());
 	result+=str;
 	result+="Location Name        Id          Pid  X     Y     Radius Color    Visible GeckEnabled GeckCount AutoGarbage ToGarbage\n";
 	result+="          Map Name            Id          Pid  Time Rain TbAviable TbOn   Script\n";
-	for(LocMapIt it=gameLoc.begin(),end=gameLoc.end();it!=end;++it)
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
 	{
 		Location* loc=(*it).second;
 		sprintf(str,"%-20s %-09u   %-4u %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
@@ -494,8 +500,9 @@ string MapManager::GetLocationsMapsStatistics()
 			loc->Data.GeckEnabled?"true":"false",loc->GeckCount,loc->Data.AutoGarbage?"true":"false",loc->Data.ToGarbage?"true":"false");
 		result+=str;
 
+		MapVec& maps=loc->GetMapsNoLock();
 		DWORD map_index=0;
-		for(MapVecIt it_=loc->GetMaps().begin(),end_=loc->GetMaps().end();it_!=end_;++it_)
+		for(MapVecIt it_=maps.begin(),end_=maps.end();it_!=end_;++it_)
 		{
 			Map* map=*it_;
 			sprintf(str,"     %2u) %-20s %-09u   %-4u %-4d %-4u %-9s %-6s %-50s\n",
@@ -516,16 +523,6 @@ void MapManager::RunInitScriptMaps()
 	{
 		Map* map=(*it).second;
 		if(map->Data.ScriptId) map->ParseScript(NULL,false);
-	}
-}
-
-void MapManager::ProcessMaps()
-{
-	MapMap maps=allMaps;
-	for(MapMapIt it=maps.begin(),end=maps.end();it!=end;++it)
-	{
-		Map* map=(*it).second;
-		map->Process();
 	}
 }
 
@@ -586,7 +583,7 @@ bool MapManager::IsInitProtoLocation(WORD pid_loc)
 	return ProtoLoc[pid_loc].IsInit;
 }
 
-ProtoLocation* MapManager::GetProtoLoc(WORD loc_pid)
+ProtoLocation* MapManager::GetProtoLocation(WORD loc_pid)
 {
 	if(!IsInitProtoLocation(loc_pid)) return NULL;
 	return &ProtoLoc[loc_pid];
@@ -607,7 +604,7 @@ Location* MapManager::CreateLocation(WORD pid_loc, WORD wx, WORD wy, DWORD loc_i
 	}
 
 	Location* loc=new Location();
-	if(!loc || !loc->Init(&ProtoLoc[pid_loc],&gmZone[GM_ZONE(wx)][GM_ZONE(wy)],wx,wy))
+	if(!loc || !loc->Init(&ProtoLoc[pid_loc],wx,wy))
 	{
 		WriteLog(__FUNCTION__" - Location init fail, pid<%u>.\n",pid_loc);
 		loc->Release();
@@ -616,8 +613,11 @@ Location* MapManager::CreateLocation(WORD pid_loc, WORD wx, WORD wy, DWORD loc_i
 
 	if(!loc_id)
 	{
+		mapLocker.Lock();
 		loc->SetId(lastLocId+1);
 		lastLocId++;
+		mapLocker.Unlock();
+
 		for(int i=0;i<loc->Proto->ProtoMapPids.size();++i)
 		{
 			WORD map_pid=loc->Proto->ProtoMapPids[i];
@@ -634,7 +634,9 @@ Location* MapManager::CreateLocation(WORD pid_loc, WORD wx, WORD wy, DWORD loc_i
 	}
 	else
 	{
-		if(gameLoc.count(loc_id))
+		SCOPE_LOCK(mapLocker);
+
+		if(allLocations.count(loc_id))
 		{
 			WriteLog(__FUNCTION__" - Location id<%u> is busy.\n",loc_id);
 			loc->Release();
@@ -643,32 +645,27 @@ Location* MapManager::CreateLocation(WORD pid_loc, WORD wx, WORD wy, DWORD loc_i
 		loc->SetId(loc_id);
 	}
 
-	loc->GetZone()->AddLocation(loc);
-	gameLoc.insert(LocMapVal(loc->GetId(),loc));
-	return loc;
-}
+	SYNC_LOCK(loc);
 
-void MapManager::DeleteLocation(DWORD loc_id)
-{
-	LocMapIt it=gameLoc.find(loc_id);
-	if(it==gameLoc.end()) return;
+	mapLocker.Lock();
+	allLocations.insert(LocMapVal(loc->GetId(),loc));
+	mapLocker.Unlock();
 
-	Location* loc=(*it).second;
-	loc->GetZone()->EraseLocation(loc);
-	gameLoc.erase(it);
-	MapVec& maps=loc->GetMaps();
+	// Generate location maps
+	MapVec maps=loc->GetMapsNoLock(); // Already locked
 	for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it)
 	{
 		Map* map=*it;
-		// Transit players to global map
-		map->KickPlayersToGlobalMap();
-		// Delete from main array
-		allMaps.erase(map->GetId());
+		if(!map->Generate())
+		{
+			WriteLog(__FUNCTION__" - Generate map fail.\n");
+			loc->Data.ToGarbage=true;
+			MapMngr.RunGarbager();
+			return NULL;
+		}
 	}
 
-	loc->Clear(true);
-	loc->IsNotValid=true;
-	loc->Release();
+	return loc;
 }
 
 bool MapManager::IsInitProtoMap(WORD pid_map)
@@ -697,21 +694,16 @@ Map* MapManager::CreateMap(WORD pid_map, Location* loc_map, DWORD map_id)
 
 	if(!map_id)
 	{
+		mapLocker.Lock();
 		map->SetId(lastMapId+1,pid_map);
 		lastMapId++;
-		allMaps.insert(MapMapVal(map->GetId(),map));
-		loc_map->GetMaps().push_back(map);
-
-		if(!map->Generate())
-		{
-			WriteLog(__FUNCTION__" - Generate map fail.\n");
-			map->IsNotValid=true;
-			map->Release();
-			return NULL;
-		}
+		loc_map->GetMapsNoLock().push_back(map);
+		mapLocker.Unlock();
 	}
 	else
 	{
+		SCOPE_LOCK(mapLocker);
+
 		if(allMaps.count(map_id))
 		{
 			WriteLog(__FUNCTION__" - Map already created, id<%u>.\n",map_id);
@@ -720,9 +712,15 @@ Map* MapManager::CreateMap(WORD pid_map, Location* loc_map, DWORD map_id)
 		}
 
 		map->SetId(map_id,pid_map);
-		allMaps.insert(MapMapVal(map->GetId(),map));
-		loc_map->GetMaps().push_back(map);
+		loc_map->GetMapsNoLock().push_back(map);
 	}
+
+	SYNC_LOCK(map);
+	Job::PushBack(JOB_MAP,map);
+
+	mapLocker.Lock();
+	allMaps.insert(MapMapVal(map->GetId(),map));
+	mapLocker.Unlock();
 
 	return map;
 }
@@ -730,26 +728,60 @@ Map* MapManager::CreateMap(WORD pid_map, Location* loc_map, DWORD map_id)
 Map* MapManager::GetMap(DWORD map_id)
 {
 	if(!map_id) return NULL;
+
+	mapLocker.Lock();
 	MapMapIt it=allMaps.find(map_id);
-	if(it==allMaps.end()) return NULL;
+	if(it==allMaps.end())
+	{
+		mapLocker.Unlock();
+		return NULL;
+	}
 	Map* map=(*it).second;
-	if(map->IsNotValid) return NULL;
+	mapLocker.Unlock();
+
+	SYNC_LOCK(map);
 	return map;
 }
 
 Map* MapManager::GetMapByPid(WORD map_pid, DWORD skip_count)
 {
 	if(!map_pid || map_pid>=MAX_PROTO_MAPS) return NULL;
+
+	mapLocker.Lock();
 	for(MapMapIt it=allMaps.begin(),end=allMaps.end();it!=end;++it)
 	{
 		Map* map=(*it).second;
-		if(!map->IsNotValid && map->GetPid()==map_pid)
+		if(map->GetPid()==map_pid)
 		{
-			if(!skip_count) return map;
+			if(!skip_count)
+			{
+				mapLocker.Unlock();
+
+				SYNC_LOCK(map);
+				return map;
+			}
 			else skip_count--;
 		}
 	}
+	mapLocker.Unlock();
 	return NULL;
+}
+
+void MapManager::GetMaps(MapVec& maps, bool lock)
+{
+	SCOPE_LOCK(mapLocker);
+
+	maps.reserve(allMaps.size());
+	for(MapMapIt it=allMaps.begin(),end=allMaps.end();it!=end;++it) maps.push_back((*it).second);
+
+	if(lock) for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it) SYNC_LOCK(*it);
+}
+
+DWORD MapManager::GetMapsCount()
+{
+	SCOPE_LOCK(mapLocker);
+	DWORD count=allMaps.size();
+	return count;
 }
 
 ProtoMap* MapManager::GetProtoMap(WORD pid_map)
@@ -768,90 +800,142 @@ Location* MapManager::GetLocationByMap(DWORD map_id)
 {
 	Map* map=GetMap(map_id);
 	if(!map) return NULL;
-	return map->MapLocation;
+	return map->GetLocation();
 }
 
 Location* MapManager::GetLocation(DWORD loc_id)
 {
 	if(!loc_id) return NULL;
-	LocMapIt it_loc=gameLoc.find(loc_id);
-	if(it_loc==gameLoc.end()) return NULL;
-	return (*it_loc).second;
+
+	mapLocker.Lock();
+	LocMapIt it=allLocations.find(loc_id);
+	if(it==allLocations.end())
+	{
+		mapLocker.Unlock();
+		return NULL;
+	}
+	Location* loc=(*it).second;
+	mapLocker.Unlock();
+
+	SYNC_LOCK(loc);
+	return loc;
 }
 
 Location* MapManager::GetLocationByPid(WORD loc_pid, DWORD skip_count)
 {
-	ProtoLocation* ploc=GetProtoLoc(loc_pid);
+	ProtoLocation* ploc=GetProtoLocation(loc_pid);
 	if(!ploc) return NULL;
 
-	LocMapIt it=gameLoc.begin();
-	for(;it!=gameLoc.end();++it)
+	mapLocker.Lock();
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
 	{
 		Location* loc=(*it).second;
 		if(loc->GetPid()==loc_pid)
 		{
-			if(!skip_count) return loc;
+			if(!skip_count)
+			{
+				mapLocker.Unlock();
+
+				SYNC_LOCK(loc);
+				return loc;
+			}
 			else skip_count--;
 		}
 	}
+	mapLocker.Unlock();
 	return NULL;
 }
 
-Location* MapManager::GetLocationByCoord(int wx, int wy)
+bool MapManager::IsLocationOnCoord(int wx, int wy)
 {
-	GlobalMapZone& zone=GetZoneByCoord(wx,wy);
-	LocVec& locs=zone.GetLocations();
+	SCOPE_LOCK(mapLocker);
 
-	for(LocVecIt it=locs.begin(),end=locs.end();it!=end;++it)
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
 	{
-		Location* loc=*it;
-		if(loc->IsVisible() && DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=loc->GetRadius()) return loc;
+		Location* loc=(*it).second;
+		if(loc->IsVisible() && DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=loc->GetRadius()) return true;
 	}
-	return NULL;
+	return false;
 }
 
-GlobalMapZone& MapManager::GetZoneByCoord(WORD coord_x, WORD coord_y)
+void MapManager::GetRadiusLocations(int wx, int wy, int radius, DwordVec& loc_ids)
 {
-	return GetZone(GM_ZONE(coord_x),GM_ZONE(coord_y));
+	SCOPE_LOCK(mapLocker);
+
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
+	{
+		Location* loc=(*it).second;
+		if(loc->IsVisible() && DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=loc->GetRadius()+radius) loc_ids.push_back(loc->GetId());
+	}
 }
 
-GlobalMapZone& MapManager::GetZone(WORD zone_x, WORD zone_y)
+void MapManager::GetLocations(LocVec& locs, bool lock)
 {
-	if(zone_x>=GM__MAXZONEX || zone_y>=GM__MAXZONEY) return gmZone[0][0];
-	if(zone_x>=GameOpt.GlobalMapWidth || zone_y>=GameOpt.GlobalMapHeight) return gmZone[0][0];
-	return gmZone[zone_x][zone_y];
+	SCOPE_LOCK(mapLocker);
+
+	locs.reserve(allLocations.size());
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it) locs.push_back((*it).second);
+
+	if(lock) for(LocVecIt it=locs.begin(),end=locs.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-void MapManager::LocationGarbager(DWORD cycle_tick)
+DWORD MapManager::GetLocationsCount()
+{
+	SCOPE_LOCK(mapLocker);
+	DWORD count=allLocations.size();
+	return count;
+}
+
+void MapManager::LocationGarbager()
 {
 	if(runGarbager)
 	{
-		// Check performance
-		if(cycle_tick && Timer::FastTick()-cycle_tick>100) return;
+		ClVec players;
+		CrMngr.GetCopyPlayers(players);
 
-		CrMap& critters=CrMngr.GetCritters();
-		LocMap locs=gameLoc;
+		mapLocker.Lock();
+		LocMap locs=allLocations;
+		mapLocker.Unlock();
+
 		for(LocMapIt it=locs.begin(),end=locs.end();it!=end;++it)
 		{
-			// Check performance
-			if(cycle_tick && Timer::FastTick()-cycle_tick>100) return;
-
 			Location* loc=(*it).second;
 			if(loc->IsToGarbage() && (loc->Data.ToGarbage || loc->IsCanDelete()))
 			{
+				SYNC_LOCK(loc);
+				loc->IsNotValid=true;
+
 				// Send all active clients about this
-				for(CrMapIt it_=critters.begin(),end_=critters.end();it_!=end_;++it_)
+				for(ClVecIt it_=players.begin(),end_=players.end();it_!=end_;++it_)
 				{
-					Critter* cr=(*it_).second;
-					if(!cr->GetMap() && cr->IsPlayer())
-					{
-						Client* cl=(Client*)cr;
-						if(cl->CheckKnownLocById(loc->GetId())) cl->Send_GlobalLocation(loc,false);
-					}
+					Client* cl=*it_;
+					if(!cl->GetMap() && cl->CheckKnownLocById(loc->GetId())) cl->Send_GlobalLocation(loc,false);
 				}
 
 				// Delete
-				DeleteLocation(loc->GetId());
+				mapLocker.Lock();
+				LocMapIt it=allLocations.find(loc->GetId());
+				if(it!=allLocations.end()) allLocations.erase(it);
+				mapLocker.Unlock();
+
+				// Delete maps
+				MapVec maps;
+				loc->GetMaps(maps,true);
+				for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it)
+				{
+					Map* map=*it;
+
+					// Transit players to global map
+					map->KickPlayersToGlobalMap();
+
+					// Delete from main array
+					mapLocker.Lock();
+					allMaps.erase(map->GetId());
+					mapLocker.Unlock();
+				}
+
+				loc->Clear(true);
+				Job::DeferredRelease(loc);
 			}
 		}
 		runGarbager=false;
@@ -913,7 +997,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		// Force invite
 		if(group->EncounterForce)
 		{
-			GM_GlobalInvite(group,rule->GetParam(MODE_DEFAULT_COMBAT));
+			GM_GlobalInvite(group,rule->Data.Params[MODE_DEFAULT_COMBAT]);
 			return;
 		}
 
@@ -931,6 +1015,8 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 	}
 
 	if(!group->IsMoving()) return;
+
+	group->SyncLockGroup();
 
 	int& xi=group->WXi;
 	int& yi=group->WYi;
@@ -1075,7 +1161,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		group->EncounterDescriptor=0;
 		group->StartEncaunterTime(ENCOUNTERS_TIME);
 		if(rule->IsPlayer() && ((Client*)rule)->IsOffline()) goto label_GMStopMove;
-		if(walk_type!=GM_WALK_GROUND || GetLocationByCoord(xi,yi)) return;
+		if(walk_type!=GM_WALK_GROUND || IsLocationOnCoord(xi,yi)) return;
 		GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
 	}
 
@@ -1173,7 +1259,7 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 		group->EncounterDescriptor=encounter_descriptor;
 		if(type==GLOBAL_PROCESS_ENTER)
 		{
-			GM_GlobalInvite(group,rule->GetParam(MODE_DEFAULT_COMBAT));
+			GM_GlobalInvite(group,rule->Data.Params[MODE_DEFAULT_COMBAT]);
 		}
 		else
 		{
@@ -1250,17 +1336,30 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 
 void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 {
-	Critter* rule=group->Rule;
+	group->SyncLockGroup();
+
+	int zlen=GM_ZONE_LEN;
+	DwordVec loc_ids1,loc_ids2;
+	bool loc_ids2_founded=false;
+	MapMngr.GetRadiusLocations(zx*zlen+zlen/2,zy*zlen+zlen/2,1*zlen+zlen/2,loc_ids1);
+
 	for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(!cr->IsPlayer()) continue;
 		Client* cl=(Client*)cr;
 
-		int len=(cr->IsPerk(PE_SCOUT)?2:1);
-		for(int x=-len;x<=len;x++)
+		int look_len=(cr->IsPerk(PE_SCOUT)?2:1);
+
+		if(look_len==2 && !loc_ids2_founded)
 		{
-			for(int y=-len;y<=len;y++)
+			MapMngr.GetRadiusLocations(zx*zlen+zlen/2,zy*zlen+zlen/2,2*zlen+zlen/2,loc_ids2);
+			loc_ids2_founded=true;
+		}
+
+		for(int x=-look_len;x<=look_len;x++)
+		{
+			for(int y=-look_len;y<=look_len;y++)
 			{
 				int zx_=zx+x;
 				int zy_=zy+y;
@@ -1274,20 +1373,23 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 						cl->GMapFog.Set2Bit(zx_,zy_,fog);
 						cl->Send_GlobalMapFog(zx_,zy_,fog);
 					}
+				}
+			}
+		}
 
-					// Find new locations
-					GlobalMapZone& zone=GetZone(zx_,zy_);
-					LocVec& locs=zone.GetLocations();
-					for(LocVecIt it_=locs.begin(),end_=locs.end();it_!=end_;++it_)
-					{
-						Location* loc=*it_;
-						if(loc->IsVisible() && !cl->CheckKnownLocById(loc->GetId()))
-						{
-							cl->AddKnownLoc(loc->GetId());
-							if(loc->IsAutomaps()) cl->Send_AutomapsInfo(NULL,loc);
-							cl->Send_GlobalLocation(loc,true);
-						}
-					}
+		// Find new locations
+		DwordVec& loc_ids=(look_len==1?loc_ids1:loc_ids2);
+		for(DwordVecIt it_=loc_ids.begin(),end_=loc_ids.end();it_!=end_;++it_)
+		{
+			DWORD loc_id=*it_;
+			if(!cl->CheckKnownLocById(loc_id))
+			{
+				Location* loc=GetLocation(loc_id);
+				if(loc)
+				{
+					cl->AddKnownLoc(loc_id);
+					if(loc->IsAutomaps()) cl->Send_AutomapsInfo(NULL,loc);
+					cl->Send_GlobalLocation(loc,true);
 				}
 			}
 		}
@@ -1313,6 +1415,8 @@ asIScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 		WriteLog(__FUNCTION__" - Create script array fail.\n");
 		return NULL;
 	}
+
+	group->SyncLockGroup();
 
 	arr->Resize(group->CritMove.size());
 	Critter** p_=(Critter**)arr->GetElementPointer(0);
@@ -1397,6 +1501,8 @@ void MapManager::GM_AddCritToGroup(Critter* cr, DWORD rule_id)
 	}
 
 	GlobalMapGroup* group=rule->GroupMove;
+	group->SyncLockGroup();
+
 	UNSETFLAG(cr->Flags,FCRIT_RULEGROUP);
 	cr->Data.WorldX=group->WXi;
 	cr->Data.WorldY=group->WYi;
@@ -1413,17 +1519,19 @@ void MapManager::GM_LeaveGroup(Critter* cr)
 {
 	if(cr->GetMap() || !cr->GroupMove || cr->GroupMove->GetSize()<2) return;
 
-	GlobalMapGroup* gr=cr->GroupMove;
+	GlobalMapGroup* group=cr->GroupMove;
+	group->SyncLockGroup();
+
 	if(cr!=cr->GroupMove->Rule)
 	{
-		gr->EraseCrit(cr);
-		for(CrVecIt it=gr->CritMove.begin(),end=gr->CritMove.end();it!=end;++it) (*it)->Send_RemoveCritter(cr);
+		group->EraseCrit(cr);
+		for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it) (*it)->Send_RemoveCritter(cr);
 
 		Item* car=cr->GetItemCar();
-		if(car && car->GetId()==gr->CarId)
+		if(car && car->GetId()==group->CarId)
 		{
-			gr->CarId=0;
-			MapMngr.GM_GroupSetMove(gr,gr->MoveX,gr->MoveY,0);
+			group->CarId=0;
+			MapMngr.GM_GroupSetMove(group,group->MoveX,group->MoveY,0);
 		}
 
 		GM_GroupStartMove(cr,true);
@@ -1433,10 +1541,10 @@ void MapManager::GM_LeaveGroup(Critter* cr)
 		// Give rule to critter with highest charisma
 		Critter* new_rule=NULL;
 		int max_charisma=0;
-		for(CrVecIt it=gr->CritMove.begin(),end=gr->CritMove.end();it!=end;++it)
+		for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
 		{
 			Critter* cr=*it;
-			if(cr==gr->Rule) continue;
+			if(cr==group->Rule) continue;
 			int charisma=cr->GetParam(ST_CHARISMA);
 			if(!max_charisma || charisma>max_charisma)
 			{
@@ -1454,6 +1562,8 @@ void MapManager::GM_LeaveGroup(Critter* cr)
 void MapManager::GM_GiveRule(Critter* cr, Critter* new_rule)
 {
 	if(cr->GetMap() || !cr->GroupMove || cr->GroupMove->GetSize()<2 || cr->GroupMove->Rule!=cr || cr==new_rule) return;
+
+	cr->GroupSelf->SyncLockGroup();
 
 	*new_rule->GroupSelf=*cr->GroupSelf;
 	new_rule->GroupSelf->Rule=new_rule;
@@ -1546,8 +1656,8 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, DWORD entire, WO
 	}
 
 	// Transit
+	group->SyncLockGroup();
 	CrVec transit_cr=group->CritMove;
-	Location& loc=*map->MapLocation;
 
 	// Transit rule
 	rule->Data.WorldX=rule->GroupSelf->WXi;
@@ -1610,7 +1720,7 @@ bool MapManager::GM_GroupToLoc(Critter* rule, DWORD loc_id, BYTE entrance, bool 
 		return false;
 	}
 
-	if(loc->GetMaps().empty())
+	if(!loc->GetMapsCount())
 	{
 		if(rule->IsPlayer()) ((Client*)rule)->EraseKnownLoc(loc_id);
 		WriteLog(__FUNCTION__" - Location is empty, critter<%s>.\n",rule->GetInfo());
@@ -1796,7 +1906,7 @@ void MapManager::TraceBullet(TraceData& trace)
 		}
 
 		if(!map->IsHexRaked(cx,cy)) break;
-		if(trace.Critters!=NULL && map->IsHexCritter(cx,cy)) map->GetCrittersHex(cx,cy,0,trace.FindType,*trace.Critters);
+		if(trace.Critters!=NULL && map->IsHexCritter(cx,cy)) map->GetCrittersHex(cx,cy,0,trace.FindType,*trace.Critters,false);
 		if((trace.FindCr || trace.IsCheckTeam) && map->IsFlagCritter(cx,cy,false))
 		{
 			Critter* cr=map->GetHexCritter(cx,cy,false);
@@ -1807,7 +1917,7 @@ void MapManager::TraceBullet(TraceData& trace)
 					trace.IsCritterFounded=true;
 					break;
 				}
-				if(trace.IsCheckTeam && cr->GetParam(ST_TEAM_ID)==trace.BaseCrTeamId)
+				if(trace.IsCheckTeam && cr->Data.Params[ST_TEAM_ID]==trace.BaseCrTeamId)
 				{
 					trace.IsTeammateFounded=true;
 					break;
@@ -2242,7 +2352,7 @@ bool MapManager::TryTransitCrGrid(Critter* cr, Map* map, WORD hx, WORD hy, bool 
 	if(!map || !FLAG(map->GetHexFlags(hx,hy),FH_SCEN_GRID)) return false;
 	if(!force && !map->IsTurnBasedOn && cr->IsTransferTimeouts(true)) return false;
 
-	Location* loc=map->MapLocation;
+	Location* loc=map->GetLocation();
 	DWORD id_map=0;
 	BYTE dir=0;
 
@@ -2284,7 +2394,7 @@ bool MapManager::TransitToGlobal(Critter* cr, DWORD rule, BYTE follow_type, bool
 bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWORD radius, bool force)
 {
 	// Check location deletion
-	if(map && map->MapLocation->Data.ToGarbage)
+	if(map && map->GetLocation()->Data.ToGarbage)
 	{
 		WriteLog(__FUNCTION__" - Transfer to deleted location, critter<%s>.\n",cr->GetInfo());
 		return false;
@@ -2445,12 +2555,19 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map, WORD hex_x, WORD hex_y)
 	else
 	{
 		cr->LockMapTransfers++;
-		for(CrVecIt it=cr->VisCr.begin(),end=cr->VisCr.end();it!=end;++it)
-			(*it)->EventHideCritter(cr);
+
+		CrVec critters=cr->VisCr;
+		for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
+		{
+			Critter* cr_=*it;
+			SYNC_LOCK(cr_);
+			cr_->EventHideCritter(cr);
+		}
+
 		cr->ClearVisible();
 		map->EraseCritter(cr);
 		map->UnsetFlagCritter(hex_x,hex_y,cr->GetMultihex(),cr->IsDead());
-		if(map->MapLocation->IsToGarbage()) RunLocGarbager();
+
 		cr->LockMapTransfers--;
 	}
 }

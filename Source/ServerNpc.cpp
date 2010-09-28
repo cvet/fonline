@@ -20,13 +20,7 @@ void FOServer::ProcessAI(Npc* npc)
 
 	// Get map
 	Map* map=MapMngr.GetMap(npc->GetMap());
-	if(!map)
-	{
-		WriteLog(__FUNCTION__" - Npc<%s> map not found.\n",npc->GetInfo());
-		CreateDump("ProcessAI_map_nullptr");
-		npc->SetBreakTime(60000);
-		return;
-	}
+	if(!map) return;
 
 	// Check turn based
 	if(map->IsTurnBasedOn && !map->IsCritterTurn(npc)) return;
@@ -133,14 +127,14 @@ void FOServer::ProcessAI(Npc* npc)
 	// Process move
 	if(plane->IsMove)
 	{
-		// Check run aviability
+		// Check run availability
 		if(plane->Move.IsRun)
 		{
 			if(npc->IsDmgLeg()) plane->Move.IsRun=false; // Clipped legs
 			else if(npc->IsOverweight()) plane->Move.IsRun=false; // Overweight
 		}
 
-		// Check ap aviability
+		// Check ap availability
 		int ap_move=npc->GetApCostCritterMove(plane->Move.IsRun);
 		if(map->IsTurnBasedOn) ap_move+=npc->GetParam(ST_MOVE_AP);
 		plane->IsMove=false;
@@ -443,7 +437,7 @@ void FOServer::ProcessAI(Npc* npc)
 						break;
 					}
 				}
-				npc->ItemSlotMain->Proto->Weapon_SetUse(use);
+				npc->ItemSlotMain->SetMode(MAKE_ITEM_MODE(use,0));
 
 				// Load weapon
 				if(!npc->IsPerk(MODE_UNLIMITED_AMMO) && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty())
@@ -584,7 +578,7 @@ void FOServer::ProcessAI(Npc* npc)
 					trace.Dist=best_dist;
 					trace.FindCr=npc;
 					trace.IsCheckTeam=true;
-					trace.BaseCrTeamId=npc->GetParam(ST_TEAM_ID);
+					trace.BaseCrTeamId=npc->Data.Params[ST_TEAM_ID];
 					MapMngr.TraceBullet(trace);
 					if(!trace.IsCritterFounded)
 					{
@@ -672,14 +666,12 @@ void FOServer::ProcessAI(Npc* npc)
 						break;
 					}
 
-					if(r0!=use && weap->WeapIsUseAviable(r0))
-					{
-						use=r0;
-						weap->Proto->Weapon_SetUse(use);
-					}
+					if(r0!=use && weap->WeapIsUseAviable(r0)) use=r0;
 
 					aim=r1;
 					if(!weap->Proto->Weapon.Aim[use]) aim=0;
+
+					weap->SetMode(MAKE_ITEM_MODE(use,aim));
 				}
 
 				AI_Attack(npc,map,use,aim,targ->GetId());
@@ -849,10 +841,10 @@ bool FOServer::AI_MoveItem(Npc* npc, Map* map, BYTE from_slot, BYTE to_slot, DWO
 
 bool FOServer::AI_Attack(Npc* npc, Map* map, BYTE use, BYTE aim, DWORD targ_id)
 {
-	int ap_cost=npc->ItemSlotMain->Proto->Weapon.Time[use];
+	int ap_cost=npc->ItemSlotMain->Proto->Weapon.ApCost[use];
 	if(aim) ap_cost+=GameAimApCost(aim);
-	if(npc->GetParam(PE_BONUS_HTH_ATTACKS) && npc->ItemSlotMain->WeapIsHtHAttack(use)) ap_cost--;
-	if(npc->GetParam(PE_BONUS_RATE_OF_FIRE) && npc->ItemSlotMain->WeapIsRangedAttack(use)) ap_cost--;
+	if(npc->IsPerk(PE_BONUS_HTH_ATTACKS) && npc->ItemSlotMain->WeapIsHtHAttack(use)) ap_cost--;
+	if(npc->IsPerk(PE_BONUS_RATE_OF_FIRE) && npc->ItemSlotMain->WeapIsRangedAttack(use)) ap_cost--;
 	if(npc->IsPerk(TRAIT_FAST_SHOT) && !npc->ItemSlotMain->WeapIsHtHAttack(use)) ap_cost--;
 	CHECK_NPC_AP_R0(npc,map,ap_cost);
 
@@ -916,50 +908,50 @@ bool FOServer::TransferAllNpc()
 {
 	WriteLog("Transfer all npc to game...\n");
 
-	if(CrMngr.CrittersInGame())
-	{
-		int errors=0;
-		CrMap& critters=CrMngr.GetCritters();
-		CrVec critters_groups;
-		critters_groups.reserve(critters.size());
-		// Move all critters to local maps and global map rules
-		for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
-		{
-			Critter* cr=(*it).second;
-			if(!cr->GetMap() && (cr->GetHexX() || cr->GetHexY()))
-			{
-				critters_groups.push_back(cr);
-				continue;
-			}
+	int errors=0;
+	CrMap critters=CrMngr.GetCrittersNoLock();
+	CrVec critters_groups;
+	critters_groups.reserve(critters.size());
 
-			Map* map=MapMngr.GetMap(cr->GetMap());
-			if(!MapMngr.AddCrToMap(cr,map,cr->GetHexX(),cr->GetHexY(),2))
-			{
-				WriteLog("Error parsing npc to map, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
-				errors++;
-				continue;
-			}
-			cr->Data.GlobalGroupUid--; // Restore group uid
-		}
-		// Move critters to global groups
-		for(CrVecIt it=critters_groups.begin(),end=critters_groups.end();it!=end;++it)
-		{
-			Critter* cr=*it;
-			if(!MapMngr.AddCrToMap(cr,NULL,cr->GetHexX(),cr->GetHexY(),2))
-			{
-				WriteLog("Error parsing npc to global group, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
-				errors++;
-				continue;
-			}
-		}
-	}
-	else
+	// Move all critters to local maps and global map rules
+	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
 	{
-		WriteLog("No npc to transfer.\n");
+		Critter* cr=(*it).second;
+		if(!cr->GetMap() && (cr->GetHexX() || cr->GetHexY()))
+		{
+			critters_groups.push_back(cr);
+			continue;
+		}
+
+		Map* map=MapMngr.GetMap(cr->GetMap());
+		if(!MapMngr.AddCrToMap(cr,map,cr->GetHexX(),cr->GetHexY(),2))
+		{
+			WriteLog("Error parsing npc to map, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
+			errors++;
+			continue;
+		}
+		cr->Data.GlobalGroupUid--; // Restore group uid
 	}
 
-	WriteLog("Set all npc visible.\n");
-	CrMngr.ProcessCrittersVisible();
+	// Move critters to global groups
+	for(CrVecIt it=critters_groups.begin(),end=critters_groups.end();it!=end;++it)
+	{
+		Critter* cr=*it;
+		if(!MapMngr.AddCrToMap(cr,NULL,cr->GetHexX(),cr->GetHexY(),2))
+		{
+			WriteLog("Error parsing npc to global group, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
+			errors++;
+			continue;
+		}
+	}
+
+	// Process critters visible
+	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+	{
+		Critter* cr=(*it).second;
+		cr->ProcessVisibleItems();
+	}
+
 	WriteLog("Transfer npc success.\n");
 	return true;
 }
@@ -1073,10 +1065,11 @@ bool FOServer::Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bo
 	return true;
 } 
 
-void FOServer::Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer)
+DWORD FOServer::Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer)
 {
-	if(!answer.Results.size()) return;
+	if(!answer.Results.size()) return 0;
 
+	DWORD force_dialog=0;
 	Critter* master;
 	Critter* slave;
 
@@ -1137,13 +1130,15 @@ void FOServer::Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer)
 			continue;
 		case DR_SCRIPT:
 			cl->Talk.Locked=true;
-			DialogScriptResult(result,master,slave);
+			force_dialog=DialogScriptResult(result,master,slave);
 			cl->Talk.Locked=false;
 			continue;
 		default:
 			continue;
 		}
 	}
+
+	return force_dialog;
 }
 
 void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WORD hy, bool ignore_distance)
@@ -1163,7 +1158,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 	{
 		if(!dlg_pack_id)
 		{
-			int npc_dlg_id=npc->GetParam(ST_DIALOG_ID);
+			int npc_dlg_id=npc->Data.Params[ST_DIALOG_ID];
 			if(npc_dlg_id<=0) return;
 			dlg_pack_id=npc_dlg_id;
 		}
@@ -1245,11 +1240,10 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 		dialog_pack=DlgMngr.GetDialogPack(dlg_pack_id);
 		dialogs=(dialog_pack?&dialog_pack->Dialogs:NULL);
 		if(!dialogs || !dialogs->size()) return;
-		//		{
-		//			npc->SendA_Str(npc->VisCr,STR_DIALOG_NO_DIALOGS,SAY_NORM,TEXTMSG_GAME);
-		//			WriteLog(__FUNCTION__" - No dialogs, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo_());
-		//			return;
-		//		}
+// 		{
+// 			WriteLog(__FUNCTION__" - No dialogs, client<%s>.\n",cl->GetInfo());
+// 			return;
+// 		}
 
 		if(!ignore_distance)
 		{
@@ -1292,17 +1286,15 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 
 	// Predialogue installations
 	DialogsVecIt it_d=dialogs->begin();
-	DWORD go_dialog=-1;
+	DWORD go_dialog=DWORD(-1);
 	AnswersVecIt it_a=(*it_d).Answers.begin();
 	for(;it_a!=(*it_d).Answers.end();++it_a)
 	{
-		GameOpt.ForceDialog=0;
 		if(Dialog_CheckDemand(npc,cl,*it_a,false)) go_dialog=(*it_a).Link;
-		if(GameOpt.ForceDialog) go_dialog=GameOpt.ForceDialog;
-		if(go_dialog!=-1) break;
+		if(go_dialog!=DWORD(-1)) break;
 	}
 
-	if(go_dialog==-1)
+	if(go_dialog==DWORD(-1))
 	{
 		// cl->Send_Str(cl,STR_DIALOG_PRE_INST_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 		// WriteLog(__FUNCTION__" - Invalid predialogue installations, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
@@ -1310,10 +1302,12 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 	}
 
 	// Use result
-	GameOpt.ForceDialog=0;
-	Dialog_UseResult(npc,cl,(*it_a));
-	if(GameOpt.ForceDialog) go_dialog=GameOpt.ForceDialog;
-	if(GameOpt.ForceDialog==-1) return;
+	DWORD force_dialog=Dialog_UseResult(npc,cl,(*it_a));
+	if(force_dialog)
+	{
+		if(force_dialog==DWORD(-1)) return;
+		go_dialog=force_dialog;
+	}
 
 	// Find dialog
 	it_d=std::find(dialogs->begin(),dialogs->end(),go_dialog);
@@ -1356,7 +1350,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 	cl->Talk.Lexems.clear();
 	if(cl->Talk.CurDialog.DlgScript>NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext(cl->Talk.CurDialog.DlgScript,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		CScriptString* lexems=new CScriptString;
+		CScriptString* lexems=new CScriptString();
 		Script::SetArgObject(cl);
 		Script::SetArgObject(npc);
 		Script::SetArgObject(lexems);
@@ -1482,21 +1476,23 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		// Say about
 		if(is_say)
 		{
-			// cl->Send_Text(cl,Str::Format("You say<%s>.",str),SAY_NETMSG);
 			if(cur_dialog->DlgScript<=NOT_ANSWER_BEGIN_BATTLE) return;
+
 			CScriptString* str_=new CScriptString(str);
 			if(!Script::PrepareContext(cur_dialog->DlgScript,CALL_FUNC_STR,cl->GetInfo())) return;
 			Script::SetArgObject(cl);
 			Script::SetArgObject(npc);
 			Script::SetArgObject(str_);
-			GameOpt.ForceDialog=0;
+
 			cl->Talk.Locked=true;
-			Script::RunPrepared();
+			DWORD force_dialog=0;
+			if(Script::RunPrepared() && cur_dialog->RetVal) force_dialog=Script::GetReturnedDword();
 			cl->Talk.Locked=false;
 			str_->Release();
-			if(GameOpt.ForceDialog)
+
+			if(force_dialog)
 			{
-				dlg_id=GameOpt.ForceDialog;
+				dlg_id=force_dialog;
 				goto label_ForceDialog;
 			}
 			return;
@@ -1539,10 +1535,9 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		}
 
 		// Use result
-		GameOpt.ForceDialog=0;
-		Dialog_UseResult(npc,cl,answer);
-		dlg_id=answer.Link;
-		if(GameOpt.ForceDialog) dlg_id=GameOpt.ForceDialog;
+		DWORD force_dialog=Dialog_UseResult(npc,cl,answer);
+		if(force_dialog) dlg_id=force_dialog;
+		else dlg_id=answer.Link;
 
 label_ForceDialog:
 		// Special links
@@ -1629,7 +1624,7 @@ label_Barter:
 	cl->Talk.Lexems.clear();
 	if(cl->Talk.CurDialog.DlgScript>NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext(cl->Talk.CurDialog.DlgScript,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		CScriptString* lexems=new CScriptString;
+		CScriptString* lexems=new CScriptString();
 		Script::SetArgObject(cl);
 		Script::SetArgObject(npc);
 		Script::SetArgObject(lexems);
@@ -1718,7 +1713,7 @@ void FOServer::Process_Barter(Client* cl)
 		return;
 	}
 
-	bool is_free=(npc->GetParam(ST_FREE_BARTER_PLAYER)==cl->GetId());
+	bool is_free=(npc->Data.Params[ST_FREE_BARTER_PLAYER]==cl->GetId());
 	if(!sale_count && !is_free)
 	{
 		WriteLog(__FUNCTION__" - Player nothing for sale, client<%s>.\n",cl->GetInfo());

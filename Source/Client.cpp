@@ -105,7 +105,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(ScenToSend)==32);
-	STATIC_ASSERT(sizeof(ProtoItem)==184);
+	STATIC_ASSERT(sizeof(ProtoItem)==168);
 	GET_UID0(UID0);
 
 	Wnd=hwnd;
@@ -268,7 +268,7 @@ bool FOClient::Init(HWND hwnd)
 	// Item prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("__item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("___item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
@@ -2882,6 +2882,8 @@ const CmdListDef cmdlist[]=
 	{"~36",CMD_DROP_UID},
 	{"dropuid",CMD_DROP_UID},
 	{"drop",CMD_DROP_UID},
+	{"~37",CMD_LOG},
+	{"log",CMD_LOG},
 };
 const int CMN_LIST_COUNT=sizeof(cmdlist)/sizeof(CmdListDef);
 
@@ -2934,17 +2936,19 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_CRITID:
 		{
-			AddMess(FOMB_GAME,"Command is not implemented.");
-			return;
+			char name[MAX_FOTEXT];
+			if(sscanf(str,"%s",name)!=1)
+			{
+				AddMess(FOMB_GAME,"Invalid arguments. Example: <~id name>.");
+				break;
+			}
+			name[MAX_NAME]=0;
+			msg_len+=MAX_NAME;
 
-			BYTE name_len=0;
-			char cr_name[MAX_NAME+1];
-			msg_len+=name_len;
 			Bout << msg;
 			Bout << msg_len;
 			Bout << cmd;
-			Bout << name_len;
-			Bout.Push(cr_name,name_len);
+			Bout.Push(name,MAX_NAME);
 		}
 		break;
 	case CMD_MOVECRIT:
@@ -3420,7 +3424,7 @@ void FOClient::Net_SendCommand(char* str)
 		{
 			char pass[128];
 			char new_pass[128];
-			if(sscanf(str,"%s%s",pass,&new_pass)!=2)
+			if(sscanf(str,"%s%s",pass,new_pass)!=2)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~changepassword current_password new_password>.");
 				break;
@@ -3441,6 +3445,22 @@ void FOClient::Net_SendCommand(char* str)
 			Bout << msg;
 			Bout << msg_len;
 			Bout << cmd;
+		}
+		break;
+	case CMD_LOG:
+		{
+			char flags[128];
+			if(sscanf(str,"%s",flags)!=1)
+			{
+				AddMess(FOMB_GAME,"Invalid arguments. Example: <~log flag>. Valid flags: '+' attach, '-' detach, '--' detach all.");
+				break;
+			}
+			msg_len+=16;
+
+			Bout << msg;
+			Bout << msg_len;
+			Bout << cmd;
+			Bout.Push(flags,16);
 		}
 		break;
 	default:
@@ -3606,7 +3626,7 @@ void FOClient::Net_SendItemCont(BYTE transfer_type, DWORD cont_id, DWORD item_id
 void FOClient::Net_SendRateItem()
 {
 	if(!Chosen) return;
-	DWORD rate=Chosen->ItemSlotMain->Data.Rate;
+	DWORD rate=Chosen->ItemSlotMain->Data.Mode;
 	if(!Chosen->ItemSlotMain->GetId()) rate|=Chosen->ItemSlotMain->GetProtoId()<<16;
 
 	Bout << NETMSG_SEND_RATE_ITEM;
@@ -5045,7 +5065,7 @@ void FOClient::Net_OnChosenAddItem()
 	Bin.Pop((char*)&item->Data,sizeof(item->Data));
 	item->Accessory=ITEM_ACCESSORY_CRITTER;
 	item->ACC_CRITTER.Slot=slot;
-	if(item!=Chosen->ItemSlotMain || !item->IsWeapon()) item->SetRate(item->Data.Rate);
+	if(item!=Chosen->ItemSlotMain || !item->IsWeapon()) item->SetMode(item->Data.Mode);
 	Chosen->AddItem(item);
 
 	if(Script::PrepareContext(ClientFunctions.ItemInvIn,CALL_FUNC_STR,"Game"))
@@ -6704,7 +6724,7 @@ void FOClient::Net_OnProtoItemData()
 		return;
 	}
 
-	Crypt.SetCache("__item_protos",proto_data,len);
+	Crypt.SetCache("___item_protos",proto_data,len);
 	delete[] proto_data;
 }
 
@@ -7561,7 +7581,7 @@ label_EndMove:
 
 				if(is_main_item)
 				{
-					item->SetRate(USE_PRIMARY);
+					item->SetMode(USE_PRIMARY);
 					Net_SendRateItem();
 					if(GetActiveScreen()==SCREEN_NONE) SetCurMode(CUR_USE_WEAPON);
 				}
@@ -9022,7 +9042,7 @@ bool FOClient::ReloadScripts()
 		{&ClientFunctions.MapMessage,"map_message","bool %s(string&,uint16&,uint16&,uint&,uint&)"},
 		{&ClientFunctions.InMessage,"in_message","bool %s(string&,int&,uint&,uint&)"},
 		{&ClientFunctions.OutMessage,"out_message","bool %s(string&,int&)"},
-		{&ClientFunctions.ToHit,"to_hit","int %s(CritterCl&,CritterCl&,ProtoItem&,int)"},
+		{&ClientFunctions.ToHit,"to_hit","int %s(CritterCl&,CritterCl&,ProtoItem&,uint8)"},
 		{&ClientFunctions.CombatResult,"combat_result","void %s(uint[]&)"},
 		{&ClientFunctions.GenericDesc,"generic_description","string %s(int,int&,int&)"},
 		{&ClientFunctions.ItemLook,"item_description","string %s(ItemCl&,int)"},
@@ -9066,14 +9086,13 @@ int FOClient::ScriptGetHitProc(CritterCl* cr, int hit_location)
 	int use=Chosen->GetUse();
 	ProtoItem* proto_item=Chosen->ItemSlotMain->Proto;
 	if(!proto_item->IsWeapon() || !Chosen->ItemSlotMain->WeapIsUseAviable(use)) return 0;
-	if(proto_item->Weapon.Weapon_CurrentUse!=use) proto_item->Weapon_SetUse(use);
 
 	if(Script::PrepareContext(ClientFunctions.ToHit,CALL_FUNC_STR,"Game"))
 	{
 		Script::SetArgObject(Chosen);
 		Script::SetArgObject(cr);
 		Script::SetArgObject(proto_item);
-		Script::SetArgDword(hit_location);
+		Script::SetArgByte(MAKE_ITEM_MODE(use,hit_location));
 		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 	return 0;
@@ -9352,23 +9371,22 @@ DWORD FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, asIScr
 	return items_.size();
 }
 
-ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto(CritterCl* cr, int slot)
+ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto(CritterCl* cr, int slot, BYTE& mode)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	ProtoItem* proto_item;
+
+	Item* item=NULL;
 	switch(slot)
 	{
-	case SLOT_HAND1: proto_item=cr->ItemSlotMain->Proto; break;
-	case SLOT_HAND2: proto_item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt->Proto:cr->DefItemSlotMain.Proto); break;
-	case SLOT_ARMOR: proto_item=cr->ItemSlotArmor->Proto; break;
-	default:
-		{
-			Item* item=cr->GetItemSlot(slot);
-			if(item) proto_item=item->Proto;
-		}
-		break;
+	case SLOT_HAND1: item=cr->ItemSlotMain; break;
+	case SLOT_HAND2: item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt:&cr->DefItemSlotMain); break;
+	case SLOT_ARMOR: item=cr->ItemSlotArmor; break;
+	default: item=cr->GetItemSlot(slot); break;
 	}
-	return proto_item;
+	if(!item) return NULL;
+
+	mode=item->Data.Mode;
+	return item->Proto;
 }
 
 void FOClient::SScriptFunc::Crit_SetVisible(CritterCl* cr, bool visible)

@@ -27,7 +27,6 @@ bool FOMapper::Init(HWND wnd)
 	WriteLog("Mapper initialization...\n");
 
 	STATIC_ASSERT(sizeof(MapObject)-sizeof(MapObject::_RunTime)==MAP_OBJECT_SIZE);
-	STATIC_ASSERT(sizeof(ProtoItem)==184);
 
 	Wnd=wnd;
 	Keyb::InitKeyb();
@@ -4144,7 +4143,12 @@ void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond(MapObject& mobj, BYTE 
 CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap(MapObject& mobj)
 {
 	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_RX("Map object is not item or scenery.",new CScriptString(""));
-	return new CScriptString(mobj.RunTime.PicMapName);
+	if(mobj.RunTime.PicMapName[0]) return new CScriptString(mobj.RunTime.PicMapName);
+	ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj.ProtoId);
+	if(!proto_item) SCRIPT_ERROR_RX("Proto item not found.",new CScriptString(""));
+	const char* name=ResMngr.GetName(proto_item->PicMapHash);
+	if(!name) SCRIPT_ERROR_RX("Name not found.",new CScriptString(""));
+	return new CScriptString(name);
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_PicMap(MapObject& mobj, CScriptString* str)
@@ -4158,6 +4162,12 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv(MapObject& mobj)
 {
 	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_RX("Map object is not item or scenery.",new CScriptString(""));
 	return new CScriptString(mobj.RunTime.PicInvName);
+	if(mobj.RunTime.PicMapName[0]) return new CScriptString(mobj.RunTime.PicInvName);
+	ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj.ProtoId);
+	if(!proto_item) SCRIPT_ERROR_RX("Proto item not found.",new CScriptString(""));
+	const char* name=ResMngr.GetName(proto_item->PicInvHash);
+	if(!name) SCRIPT_ERROR_RX("Name not found.",new CScriptString(""));
+	return new CScriptString(name);
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_PicInv(MapObject& mobj, CScriptString* str)
@@ -4570,34 +4580,41 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps(asIScriptArray* maps)
 
 DWORD FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, asIScriptArray* names)
 {
-	string dir_=FileManager::GetFullPath(NULL,PT_MAPS);
+	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
+	string dir_=FileManager::GetFullPath(NULL,PT_SERVER_MAPS);
 	if(dir) dir_=dir->c_std_str();
 
 	WIN32_FIND_DATA fdata;
 	HANDLE h=FindFirstFile((dir_+"*.*").c_str(),&fdata);
-	if(h==INVALID_HANDLE_VALUE) return 0;
+	if(h==INVALID_HANDLE_VALUE)
+	{
+		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
+		return 0;
+	}
 
-	DWORD count=0;
 	while(true)
 	{
 		if(ProtoMap::IsMapFile(Str::Format("%s%s",dir_.c_str(),fdata.cFileName)))
 		{
-			WriteLog("map<%s>\n",fdata.cFileName);
-
-			count++;
 			if(names)
 			{
+				char fname[MAX_FOPATH];
+				StringCopy(fname,fdata.cFileName);
+				char* ext=(char*)FileManager::GetExtension(fname);
+				if(ext) *(ext-1)=0;
+
 				int len=names->GetElementCount();
 				names->Resize(names->GetElementCount()+1);
 				CScriptString** ptr=(CScriptString**)names->GetElementPointer(len);
-				*ptr=new CScriptString(fdata.cFileName);
+				*ptr=new CScriptString(fname);
 			}
 		}
 
 		if(!FindNextFile(h,&fdata)) break;
 	}
 
-	return count;
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
+	return names->GetElementCount();
 }
 
 void FOMapper::SScriptFunc::Global_DeleteObject(MapObject* mobj)

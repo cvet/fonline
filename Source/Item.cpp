@@ -98,26 +98,6 @@ void Item::Init(ProtoItem* proto)
 #endif
 }
 
-void Item::Clear()
-{
-//	proto=NULL; TODO: keep proto for ItemMngr.EraseItem
-
-	Accessory=0x20+GetType();
-	IsNotValid=true;
-
-	/*if(IsContainer() && ChildItems)
-	{
-		for(ItemPtrMapIt it=ChildItems->begin();it!=ChildItems->end();++it)
-		{
-			Item* item=(*it).second;
-			item->Clear();
-			ItemMngr.FullErase item
-		}
-		ChildItems->clear();
-		SAFEDEL(ChildItems);
-	}*/
-}
-
 Item* Item::Clone()
 {
 	Item* clone=new Item();
@@ -145,27 +125,25 @@ Item* Item::Clone()
 #ifdef FONLINE_SERVER
 void Item::FullClear()
 {
-	if(!Proto)
-	{
-		WriteLog(__FUNCTION__" - Proto null ptr.\n");
-		return;
-	}
+	IsNotValid=true;
+	Accessory=0x20+GetType();
 
 	if(IsContainer() && ChildItems)
 	{
-		MEMORY_PROCESS(MEMORY_ITEM,-(int)(ChildItems->size()*(sizeof(Item*)+sizeof(DWORD))));
 		MEMORY_PROCESS(MEMORY_ITEM,-(int)sizeof(ItemPtrMap));
-		for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
-		{
-			Item* item=*it;
-			item->Accessory=0xB1;
-			ItemMngr.ItemToGarbage(item,0x10000);
-		}
+
+		ItemPtrVec del_items=*ChildItems;
 		ChildItems->clear();
 		SAFEDEL(ChildItems);
-	}
 
-	Clear();
+		for(ItemPtrVecIt it=del_items.begin(),end=del_items.end();it!=end;++it)
+		{
+			Item* item=*it;
+			SYNC_LOCK(item);
+			item->Accessory=0xB1;
+			ItemMngr.ItemToGarbage(item);
+		}
+	}
 }
 
 bool Item::ParseScript(const char* script, bool first_time)
@@ -384,35 +362,34 @@ void Item::Repair()
 }
 #endif
 
-void Item::SetRate(BYTE rate)
+void Item::SetMode(BYTE mode)
 {
 	if(!IsWeapon())
 	{
-		rate&=0xF;
-		if(rate==USE_USE && !IsCanUse() && !IsCanUseOnSmth()) rate=USE_NONE;
-		else if(IsCanUse() || IsCanUseOnSmth()) rate=USE_USE;
-		else rate=USE_NONE;
+		mode&=0xF;
+		if(mode==USE_USE && !IsCanUse() && !IsCanUseOnSmth()) mode=USE_NONE;
+		else if(IsCanUse() || IsCanUseOnSmth()) mode=USE_USE;
+		else mode=USE_NONE;
 	}
 	else
 	{
-		BYTE use=(rate&0xF);
-		BYTE aim=(rate>>4);
+		BYTE use=(mode&0xF);
+		BYTE aim=(mode>>4);
 
 		switch(use)
 		{
-		case USE_PRIMARY: if(Proto->Weapon.CountAttack & 0x1) break; use=0xF; aim=0; break;
-		case USE_SECONDARY: if(Proto->Weapon.CountAttack & 0x2) break; use=USE_PRIMARY; aim=0; break;
-		case USE_THIRD: if(Proto->Weapon.CountAttack & 0x4) break; use=USE_PRIMARY; aim=0; break;
+		case USE_PRIMARY: if(Proto->Weapon.Uses&0x1) break; use=0xF; aim=0; break;
+		case USE_SECONDARY: if(Proto->Weapon.Uses&0x2) break; use=USE_PRIMARY; aim=0; break;
+		case USE_THIRD: if(Proto->Weapon.Uses&0x4) break; use=USE_PRIMARY; aim=0; break;
 		case USE_RELOAD: aim=0; if(Proto->Weapon.VolHolder) break; use=USE_PRIMARY; break;
 		case USE_USE: aim=0; if(IsCanUseOnSmth()) break; use=USE_PRIMARY; break;
 		default: use=USE_PRIMARY; aim=0; break;
 		}
 
 		if(use<MAX_USES && aim && !Proto->Weapon.Aim[use]) aim=0;
-		rate=(aim<<4)|(use&0xF);
+		mode=(aim<<4)|(use&0xF);
 	}
-	Data.Rate=rate;
-	if(IsWeapon()) WeapRefreshProtoUse();
+	Data.Mode=mode;
 }
 
 DWORD Item::GetCost1st()
@@ -458,14 +435,6 @@ void Item::SetLexems(const char* lexems)
 }
 #endif
 
-void Item::WeapRefreshProtoUse()
-{
-	if(!IsWeapon()) return;
-	int use=Data.Rate&0xF;
-	if(use>=MAX_USES) use=0;
-	Proto->Weapon_SetUse(use);
-}
-
 bool Item::WeapIsHtHAttack(int use)
 {
 	return Proto->Weapon.Skill[use]==SKILL_OFFSET(SK_UNARMED) ||
@@ -499,12 +468,8 @@ void Item::ContAddItem(Item*& item, DWORD special_id)
 	if(!ChildItems)
 	{
 		MEMORY_PROCESS(MEMORY_ITEM,sizeof(ItemPtrMap));
-		ChildItems=new ItemPtrVec;
-	}
-	if(!ChildItems)
-	{
-		WriteLog(__FUNCTION__" - Allocation fail.\n");
-		return;
+		ChildItems=new(nothrow) ItemPtrVec();
+		if(!ChildItems) return;
 	}
 
 	if(item->IsGrouped())
@@ -513,7 +478,7 @@ void Item::ContAddItem(Item*& item, DWORD special_id)
 		if(item_)
 		{
 			item_->Count_Add(item->GetCount());
-			ItemMngr.ItemToGarbage(item,0x20000);
+			ItemMngr.ItemToGarbage(item);
 			item=item_;
 			return;
 		}
@@ -529,20 +494,16 @@ void Item::ContSetItem(Item* item)
 	if(!ChildItems)
 	{
 		MEMORY_PROCESS(MEMORY_ITEM,sizeof(ItemPtrMap));
-		ChildItems=new ItemPtrVec;
+		ChildItems=new(nothrow) ItemPtrVec();
+		if(!ChildItems) return;
 	}
-	if(!ChildItems)
-	{
-		WriteLog(__FUNCTION__" - Allocation fail.\n");
-		return;
-	}
+
 	if(std::find(ChildItems->begin(),ChildItems->end(),item)!=ChildItems->end())
 	{
 		WriteLog(__FUNCTION__" - Item already added!\n");
 		return;
 	}
 
-	MEMORY_PROCESS(MEMORY_ITEM,sizeof(Item*)+sizeof(DWORD));
 	ChildItems->push_back(item);
 	item->Accessory=ITEM_ACCESSORY_CONTAINER;
 	item->ACC_CONTAINER.ContainerId=GetId();
@@ -568,75 +529,82 @@ void Item::ContEraseItem(Item* item)
 
 	ItemPtrVecIt it=std::find(ChildItems->begin(),ChildItems->end(),item);
 	if(it!=ChildItems->end())
-	{
-		MEMORY_PROCESS(MEMORY_ITEM,-(int)(sizeof(Item*)+sizeof(DWORD)));
 		ChildItems->erase(it);
-	}
-	else WriteLog(__FUNCTION__" - Item not found, id<%u>, pid<%u>, container<%u>.\n",item->GetId(),item->GetProtoId(),GetId());
-	item->Accessory=0xd3;
-	//if(ChildItems->empty()) SAFEDEL(items); // TODO:
-}
+	else
+		WriteLog(__FUNCTION__" - Item not found, id<%u>, pid<%u>, container<%u>.\n",item->GetId(),item->GetProtoId(),GetId());
 
-void Item::ContErsAllItems()
-{
-	if(!IsContainer()) return;
-	if(!ChildItems) return;
-	MEMORY_PROCESS(MEMORY_ITEM,-(int)(ChildItems->size()*(sizeof(Item*)+sizeof(DWORD))));
-	ChildItems->clear();
+	item->Accessory=0xd3;
+
+	if(ChildItems->empty()) SAFEDEL(ChildItems);
 }
 
 Item* Item::ContGetItem(DWORD item_id, bool skip_hide)
 {
 	if(!IsContainer() || !ChildItems || !item_id) return NULL;
+
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
 		if(item->GetId()==item_id)
 		{
 			if(skip_hide && item->IsHidden()) return NULL;
+			SYNC_LOCK(item);
 			return item;
 		}
 	}
 	return NULL;
 }
 
-void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide)
+void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool lock)
 {
 	if(!IsContainer() || !ChildItems) return;
+
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
 		if(!skip_hide || !item->IsHidden()) items.push_back(item);
 	}
+
+	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 Item* Item::ContGetItemByPid(WORD pid, DWORD special_id)
 {
 	if(!IsContainer() || !ChildItems) return NULL;
+
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->GetProtoId()==pid && (special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id)) return item;
+		if(item->GetProtoId()==pid && (special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id))
+		{
+			SYNC_LOCK(item);
+			return item;
+		}
 	}
 	return NULL;	
 }
 
-void Item::ContGetItems(ItemPtrVec& items, DWORD special_id)
+void Item::ContGetItems(ItemPtrVec& items, DWORD special_id, bool lock)
 {
 	if(!IsContainer() || !ChildItems) return;
+
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
 		if(special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id) items.push_back(item);
 	}
+
+	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 int Item::ContGetFreeVolume(DWORD special_id)
 {
 	if(!IsContainer()) return 0;
+
 	int cur_volume=0;
 	int max_volume=Proto->Container.ContVolume;
 	if(!ChildItems) return max_volume;
+
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
@@ -645,9 +613,15 @@ int Item::ContGetFreeVolume(DWORD special_id)
 	return max_volume-cur_volume;
 }
 
+bool Item::ContIsItems()
+{
+	return ChildItems && ChildItems->size();
+}
+
 Item* Item::CarGetBag(int num_bag)
 {
 	if(!IsCar()) return NULL;
+
 	if(Accessory==ITEM_ACCESSORY_HEX)
 	{
 		Map* map=MapMngr.GetMap(ACC_HEX.MapId);

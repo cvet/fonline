@@ -1,5 +1,12 @@
 // Dummy data
 
+struct SyncObject
+{
+	int* SyncMngr;
+
+	void Lock(){}
+};
+
 struct AIDataPlane
 {
 	int Type;
@@ -160,35 +167,21 @@ struct ProtoItem
 		int MinSt;
 		int Perk;
 
-		int CountAttack;
-		int Skill[1];
-		int DmgType[1];
-		int Anim2[1];
-		int PicDeprecated[1];
-		int PicHash[1];
-		int DmgMin[1];
-		int DmgMax[1];
-		int MaxDist[1];
-		int Effect[1];
-		int Round[1];
-		int Time[1];
-		int Aim[1];
-		int Remove[1];
-		int SoundId[1];
-
-		int Weapon_CurrentUse;
-		int Weapon_MaxDist;
-		int Weapon_DmgMin;
-		int Weapon_DmgMax;
-		int Weapon_Skill;
-		int Weapon_DmgType;
-		int Weapon_Anim2;
-		int Weapon_ApCost;
-		int Weapon_SoundId;
-		int Weapon_Remove;
-		int Weapon_Round;
-		int Weapon_Effect;
-		int Weapon_Aim;
+		int Uses;
+		int Skill[10];
+		int DmgType[10];
+		int Anim2[10];
+		int PicDeprecated[10];
+		int PicHash[10];
+		int DmgMin[10];
+		int DmgMax[10];
+		int MaxDist[10];
+		int Effect[10];
+		int Round[10];
+		int ApCost[10];
+		int Aim[10];
+		int Remove[10];
+		int SoundId[10];
 	} Weapon;
 
 	struct
@@ -254,7 +247,6 @@ struct ProtoItem
 	void GetType(){}
 	void IsWeared(){}
 	void IsGrouped(){}
-	void Weapon_SetUse(){}
 	void Container_IsGroundLevel(){}
 
 	void AddRef(){}
@@ -305,7 +297,7 @@ struct Item
 		int AnimShow[2];
 		int AnimHide[2];
 		int Flags;
-		int Rate;
+		int Mode;
 		int LightIntensity;
 		int LightDistance;
 		int LightFlags;
@@ -548,6 +540,12 @@ struct Location
 
 struct ProtoMap
 {
+	struct
+	{
+		int MaxHexX;
+		int MaxHexY;
+	} Header;
+
 	void AddRef(){}
 	void Release(){}
 };
@@ -555,6 +553,9 @@ struct ProtoMap
 struct BindClass
 {
 #ifdef BIND_SERVER
+	static void Synchronizer_Constructor(){}
+	static void Synchronizer_Destructor(){}
+
 	static void NpcPlane_GetCopy(){}
 	static void NpcPlane_SetChild(){}
 	static void NpcPlane_GetChild(){}
@@ -880,7 +881,6 @@ struct BindClass
 	static void Global_DeleteItem(){}
 	static void Global_DeleteItems(){}
 	static void Global_DeleteNpc(){}
-	static void Global_DeleteNpcForce(){}
 	static void Global_RadioMessage(){}
 	static void Global_RadioMessageMsg(){}
 	static void Global_GetFullSecond(){}
@@ -932,6 +932,8 @@ struct BindClass
 	static void Global_GetScriptName(){}
 	static void Global_GetItemDataMask(){}
 	static void Global_SetItemDataMask(){}
+	static void Global_Synchronize(){}
+	static void Global_Resynchronize(){}
 #endif
 
 #ifdef BIND_CLIENT
@@ -1165,7 +1167,6 @@ struct GameOptions
 	int FreeExp;
 	int RegulatePvP;
 	int NoAnswerShuffle;
-	int ForceDialog;
 	int DialogDemandRecheck;
 	int FixBoyDefaultExperience;
 	int SneakDivider;

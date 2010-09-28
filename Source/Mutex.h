@@ -3,11 +3,12 @@
 
 #include <Windows.h>
 
-#define SCOPE_LOCK(mutex) Mutex::Unlocker scope_lock_##__LINE__=mutex.AutoLock()
+#define SCOPE_LOCK(mutex) volatile MutexLocker scope_lock__(mutex)
 
 class Mutex
 {
 private:
+	friend class MutexLocker;
 	CRITICAL_SECTION mutexCS;
 	Mutex(const Mutex&){}
 	void operator=(const Mutex&){}
@@ -17,21 +18,69 @@ public:
 	~Mutex(){DeleteCriticalSection(&mutexCS);}
 	void Lock(){EnterCriticalSection(&mutexCS);}
 	void Unlock(){LeaveCriticalSection(&mutexCS);}
+};
 
-	class Unlocker
-	{
-	private:
-		CRITICAL_SECTION* pCS;
+class MutexLocker
+{
+private:
+	CRITICAL_SECTION* pCS;
+	MutexLocker(){}
+	MutexLocker(const MutexLocker&){}
+	MutexLocker& operator=(const MutexLocker&){return *this;}
 
-	public:
-		Unlocker():pCS(NULL){}
-		Unlocker(Unlocker& unlock){unlock.pCS=pCS; pCS=NULL;}
-		Unlocker(CRITICAL_SECTION& cs){pCS=&cs; EnterCriticalSection(pCS);}
-		Unlocker& operator=(Unlocker& unlock){unlock.pCS=pCS; pCS=NULL; return *this;}
-		~Unlocker(){if(pCS) LeaveCriticalSection(pCS);}
-	};
+public:
+	MutexLocker(Mutex& mutex):pCS(&mutex.mutexCS){EnterCriticalSection(pCS);}
+	~MutexLocker(){LeaveCriticalSection(pCS);}
+};
 
-	Unlocker AutoLock(){return Unlocker(mutexCS);}
+class MutexCode
+{
+private:
+	HANDLE mcEvent;
+	Mutex mcLocker;
+	volatile long mcCounter;
+	MutexCode(const MutexCode&){}
+	void operator=(const MutexCode&){}
+
+public:
+	MutexCode():mcCounter(0){mcEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
+	~MutexCode(){CloseHandle(mcEvent);}
+	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(mcCounter) Sleep(0); mcLocker.Unlock();}
+	void UnlockCode(){SetEvent(mcEvent);}
+	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); mcCounter++; mcLocker.Unlock();}
+	void LeaveCode(){mcCounter--;}
+};
+
+class MutexSynchronizer
+{
+private:
+	HANDLE msEvent;
+	Mutex msLocker;
+	volatile long msCounter;
+	MutexSynchronizer(const MutexSynchronizer&){}
+	void operator=(const MutexSynchronizer&){}
+
+public:
+	MutexSynchronizer():msCounter(0){msEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
+	~MutexSynchronizer(){CloseHandle(msEvent);}
+	void Synchronize(long count){msCounter++; msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); msCounter--; ResetEvent(msEvent); while(msCounter!=count) Sleep(0); msLocker.Unlock();}
+	void Resynchronize(){SetEvent(msEvent);}
+	void SynchronizePoint(){msCounter++; msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); msCounter--; msLocker.Unlock();}
+};
+
+class MutexEvent
+{
+private:
+	HANDLE meEvent;
+	MutexEvent(const MutexEvent&){}
+	void operator=(const MutexEvent&){}
+
+public:
+	MutexEvent(){meEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
+	~MutexEvent(){CloseHandle(meEvent);}
+	void Allow(){SetEvent(meEvent);}
+	void Disallow(){ResetEvent(meEvent);}
+	void Wait(){WaitForSingleObject(meEvent,INFINITE);}
 };
 
 #endif // __MUTEX__

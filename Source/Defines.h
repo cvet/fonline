@@ -73,6 +73,8 @@ typedef vector<char*> PCharVec;
 typedef vector<BYTE*> PByteVec;
 typedef vector<float> FloatVec;
 typedef vector<float>::iterator FloatVecIt;
+typedef vector<ULONGLONG> UInt64Vec;
+typedef vector<ULONGLONG>::iterator UInt64VecIt;
 
 typedef set<string> StrSet;
 typedef set<BYTE> ByteSet;
@@ -641,7 +643,7 @@ struct ScoreType
 #define ST_MOVE_AP                  (88)
 #define ST_NPC_ROLE                 (89)
 #define ST_BONUS_LOOK               (101)
-#define ST_RATE_ITEM                (102)
+#define ST_HANDS_ITEM_AND_MODE      (102)
 #define ST_FREE_BARTER_PLAYER       (103)
 #define ST_DIALOG_ID                (104)
 #define ST_AI_ID                    (105)

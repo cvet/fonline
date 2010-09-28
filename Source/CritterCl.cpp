@@ -587,14 +587,14 @@ void CritterCl::ProcessChangedParams()
 			ParamsIsChanged[index]=false;
 
 			// Internal processing
-			if(index==ST_RATE_ITEM)
+			if(index==ST_HANDS_ITEM_AND_MODE)
 			{
-				int value=Params[ST_RATE_ITEM];
+				int value=Params[ST_HANDS_ITEM_AND_MODE];
 				ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
 				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) unarmed=NULL;
 				if(!unarmed) unarmed=GetUnarmedItem(0,0);
 				DefItemSlotMain.Init(unarmed);
-				DefItemSlotMain.SetRate(value&0xFF);
+				DefItemSlotMain.SetMode(value&0xFF);
 			}
 			else if(index==ST_SCALE_FACTOR)
 			{
@@ -741,13 +741,13 @@ const char* CritterCl::GetMoneyStr()
 bool CritterCl::NextRateItem(bool prev)
 {
 	bool result=false;
-	BYTE old_rate=ItemSlotMain->Data.Rate;
+	BYTE old_rate=ItemSlotMain->Data.Mode;
 	if(!ItemSlotMain->IsWeapon())
 	{
 		if(ItemSlotMain->IsCanUse() || ItemSlotMain->IsCanUseOnSmth())
-			ItemSlotMain->Data.Rate=USE_USE;
+			ItemSlotMain->Data.Mode=USE_USE;
 		else
-			ItemSlotMain->Data.Rate=USE_NONE;
+			ItemSlotMain->Data.Mode=USE_NONE;
 	}
 	else
 	{
@@ -841,8 +841,8 @@ bool CritterCl::NextRateItem(bool prev)
 						SetAim(HIT_LOCATION_NONE);
 						break;
 					}
-					if(!ItemSlotMain->Data.Rate) ItemSlotMain->Data.Rate=(ItemSlotMain->IsCanUseOnSmth()?USE_USE:USE_RELOAD);
-					else ItemSlotMain->Data.Rate--;
+					if(!ItemSlotMain->Data.Mode) ItemSlotMain->Data.Mode=(ItemSlotMain->IsCanUseOnSmth()?USE_USE:USE_RELOAD);
+					else ItemSlotMain->Data.Mode--;
 					if(IsItemAim(SLOT_HAND1) && !IsPerk(TRAIT_FAST_SHOT) && CritType::IsCanAim(GetCrType()))
 					{
 						SetAim(HIT_LOCATION_TORSO);
@@ -856,32 +856,32 @@ bool CritterCl::NextRateItem(bool prev)
 						SetAim(HIT_LOCATION_TORSO);
 						break;
 					}
-					ItemSlotMain->Data.Rate++;
+					ItemSlotMain->Data.Mode++;
 					SetAim(HIT_LOCATION_NONE);
 				}
 
 				switch(GetUse())
 				{
-				case USE_PRIMARY: if(ItemSlotMain->Proto->Weapon.CountAttack & 0x1) break; continue;
-				case USE_SECONDARY: if(ItemSlotMain->Proto->Weapon.CountAttack & 0x2) break; continue;
-				case USE_THIRD: if(ItemSlotMain->Proto->Weapon.CountAttack & 0x4) break; continue;
+				case USE_PRIMARY: if(ItemSlotMain->Proto->Weapon.Uses&0x1) break; continue;
+				case USE_SECONDARY: if(ItemSlotMain->Proto->Weapon.Uses&0x2) break; continue;
+				case USE_THIRD: if(ItemSlotMain->Proto->Weapon.Uses&0x4) break; continue;
 				case USE_RELOAD: if(ItemSlotMain->Proto->Weapon.VolHolder) break; continue;
 				case USE_USE: if(ItemSlotMain->IsCanUseOnSmth()) break; continue;
-				default: ItemSlotMain->Data.Rate=USE_PRIMARY; break;
+				default: ItemSlotMain->Data.Mode=USE_PRIMARY; break;
 				}
 				break;
 			}
 		}
 	}
-	ItemSlotMain->SetRate(ItemSlotMain->Data.Rate);
-	return ItemSlotMain->Data.Rate!=old_rate || result;
+	ItemSlotMain->SetMode(ItemSlotMain->Data.Mode);
+	return ItemSlotMain->Data.Mode!=old_rate || result;
 }
 
 void CritterCl::SetAim(BYTE hit_location)
 {
-	UNSETFLAG(ItemSlotMain->Data.Rate,0xF0);
+	UNSETFLAG(ItemSlotMain->Data.Mode,0xF0);
 	if(!IsItemAim(SLOT_HAND1)) return;
-	SETFLAG(ItemSlotMain->Data.Rate,hit_location<<4);
+	SETFLAG(ItemSlotMain->Data.Mode,hit_location<<4);
 }
 
 DWORD CritterCl::GetUseApCost(Item* item, BYTE rate)
@@ -893,7 +893,7 @@ DWORD CritterCl::GetUseApCost(Item* item, BYTE rate)
 	else if(use==USE_RELOAD) return GetApCostReload()-(item->IsWeapon() && item->WeapIsFastReload()?1:0);
 	else if(use>=USE_PRIMARY && use<=USE_THIRD && item->IsWeapon())
 	{
-		int ap_cost=item->Proto->Weapon.Time[use];
+		int ap_cost=item->Proto->Weapon.ApCost[use];
 		if(aim) ap_cost+=GameAimApCost(aim);
 		if(IsPerk(PE_BONUS_HTH_ATTACKS) && item->WeapIsHtHAttack(use)) ap_cost--;
 		if(IsPerk(PE_BONUS_RATE_OF_FIRE) && item->WeapIsRangedAttack(use)) ap_cost--;

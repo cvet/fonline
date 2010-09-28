@@ -41,7 +41,7 @@ public:
 	char    Who;            // Direction ('p' - player, 'n' - npc)
 	WORD    ParamId;        // Parameter Id
 	bool    NoRecheck;      // Disable demand rechecking
-	char    Reserved;       // Reserved
+	bool    RetValue;       // Reserved
 	char    Op;             // Operation
 	char    ValuesCount;    // Script values count
 	int     Value;          // Main value
@@ -54,9 +54,9 @@ public:
 #endif
 
 #ifdef FONLINE_NPCEDITOR
-	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),Op(0),Value(0),ValuesCount(0){}
+	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),RetValue(false),Op(0),Value(0),ValuesCount(0){}
 #else
-	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),Op(0),Value(0),ValuesCount(0){MEMORY_PROCESS(MEMORY_DIALOG,sizeof(DemandResult));}
+	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),RetValue(false),Op(0),Value(0),ValuesCount(0){MEMORY_PROCESS(MEMORY_DIALOG,sizeof(DemandResult));}
 	DemandResult(const DemandResult& r){*this=r; MEMORY_PROCESS(MEMORY_DIALOG,sizeof(DemandResult));}
 	~DemandResult(){MEMORY_PROCESS(MEMORY_DIALOG,-(int)sizeof(DemandResult));}
 #endif
@@ -90,6 +90,7 @@ public:
 	DWORD TextId;
 	AnswersVec Answers;
 	DWORD Flags;
+	bool RetVal;
 
 #ifdef FONLINE_NPCEDITOR
 	string DlgScript;
@@ -99,7 +100,7 @@ public:
 
 	bool IsNoShuffle(){return Flags&DIALOG_FLAG_NO_SHUFFLE;}
 
-	Dialog():Id(0),TextId(0),Flags(0)
+	Dialog():Id(0),TextId(0),Flags(0),RetVal(false)
 #ifdef FONLINE_NPCEDITOR
 		{DlgScript="None";}
 #else
@@ -192,7 +193,7 @@ public:
 private:
 	DemandResult* LoadDemandResult(istrstream& input, bool is_demand);
 	bool CheckLockTime(int time);
-	int GetNotAnswerAction(const char* str);
+	int GetNotAnswerAction(const char* str, bool& ret_val);
 	int GetDRType(const char* str);
 	bool CheckOper(char oper);
 	bool CheckWho(char who);

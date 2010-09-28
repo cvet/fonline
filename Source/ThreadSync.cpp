@@ -5,14 +5,9 @@
 
 static Mutex SyncLocker; // Defense code from simultaneously execution
 
-SyncObject::SyncObject()
+SyncObject::SyncObject():
+curMngr(NULL)
 {
-	curMngr=NULL;
-}
-
-SyncObject::~SyncObject()
-{
-	Unlock();
 }
 
 void SyncObject::Lock()
@@ -31,7 +26,7 @@ void SyncObject::Lock()
 	else if(curm!=curMngr)
 	{
 		// Another thread in wait state
-		if(curMngr->isWaiting)
+		if(curMngr->isWaiting && curm->threadPriority>=curMngr->threadPriority)
 		{
 			// Pick from waiting thread
 			SyncObjectVecIt it=std::find(curMngr->lockedObjects.begin(),curMngr->lockedObjects.end(),this);
@@ -62,14 +57,30 @@ void SyncObject::Lock()
 					SyncObject* obj=*it;
 					if(!obj->curMngr)
 					{
+						// Object free
 						obj->curMngr=curm;
 						curm->lockedObjects.push_back(obj);
 						it=curm->busyObjects.erase(it);
 					}
-					else ++it;
+					else if(obj->curMngr->isWaiting && curm->threadPriority>=obj->curMngr->threadPriority)
+					{
+						// Pick from waiting thread
+						SyncObjectVecIt it_=std::find(obj->curMngr->lockedObjects.begin(),obj->curMngr->lockedObjects.end(),obj);
+						obj->curMngr->lockedObjects.erase(it_);
+						obj->curMngr->busyObjects.push_back(obj);
+
+						obj->curMngr=curm;
+						curm->lockedObjects.push_back(obj);
+						it=curm->busyObjects.erase(it);
+					}
+					else
+					{
+						// Object busy
+						++it;
+					}
 				}
 
-				bool all_done=curm->busyObjects.empty();
+				volatile bool all_done=curm->busyObjects.empty();
 				if(all_done) curm->isWaiting=false;
 
 				SyncLocker.Unlock();
@@ -91,19 +102,48 @@ void SyncObject::Unlock()
 	{
 		SyncObjectVecIt it=std::find(curMngr->lockedObjects.begin(),curMngr->lockedObjects.end(),this);
 		curMngr->lockedObjects.erase(it);
+		curMngr=NULL;
+	}
+
+	for(SyncManagerVecIt it=SyncManager::Managers.begin(),end=SyncManager::Managers.end();it!=end;++it)
+	{
+		SyncManager* sync_mngr=*it;
+		SyncObjectVecIt it_=std::find(sync_mngr->busyObjects.begin(),sync_mngr->busyObjects.end(),this);
+		if(it_!=sync_mngr->busyObjects.end()) sync_mngr->busyObjects.erase(it_);
 	}
 }
 
-SyncManager::SyncManager()
+SyncManagerVec SyncManager::Managers;
+
+SyncManager::SyncManager():
+isWaiting(false),
+threadPriority(3) // Default priority
 {
-	isWaiting=false;
 	lockedObjects.reserve(100);
 	busyObjects.reserve(100);
+	priorityStack.reserve(10);
 }
 
 SyncManager::~SyncManager()
 {
 	UnlockAll();
+}
+
+void SyncManager::PushPriority(int priority)
+{
+	SCOPE_LOCK(SyncLocker);
+
+	int prev_priority=threadPriority;
+	priorityStack.push_back(prev_priority);
+	threadPriority=priority;
+}
+
+void SyncManager::PopPriority()
+{
+	SCOPE_LOCK(SyncLocker);
+
+	threadPriority=priorityStack.back();
+	priorityStack.pop_back();
 }
 
 void SyncManager::UnlockAll()
@@ -113,16 +153,52 @@ void SyncManager::UnlockAll()
 	for(SyncObjectVecIt it=lockedObjects.begin(),end=lockedObjects.end();it!=end;++it)
 	{
 		SyncObject* obj=*it;
-		if(obj->curMngr==this) obj->curMngr=NULL;
+		obj->curMngr=NULL;
 	}
 	lockedObjects.clear();
-	busyObjects.clear();
+}
+
+void SyncManager::Suspend()
+{
+	SCOPE_LOCK(SyncLocker);
+
+	isWaiting=true;
+}
+
+void SyncManager::Resume()
+{
+	SyncLocker.Lock();
+
+	isWaiting=false;
+
+	if(!busyObjects.empty())
+	{
+		SyncObjectVec busy_objs=busyObjects;
+		busyObjects.clear();
+
+		SyncLocker.Unlock();
+
+		for(SyncObjectVecIt it=busy_objs.begin(),end=busy_objs.end();it!=end;++it)
+		{
+			SyncObject* obj=*it;
+			obj->Lock();
+		}
+	}
+	else
+	{
+		SyncLocker.Unlock();
+	}
 }
 
 SyncManager* SyncManager::GetForCurThread()
 {
 	static THREAD SyncManager* sync_mngr=NULL;
-	if(!sync_mngr) sync_mngr=new(nothrow) SyncManager();
+	if(!sync_mngr)
+	{
+		sync_mngr=new(nothrow) SyncManager();
+		if(!sync_mngr) return NULL;
+		Managers.push_back(sync_mngr);
+	}
 	return sync_mngr;
 }
 

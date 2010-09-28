@@ -207,6 +207,8 @@ void FOServer::AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send)
 	// Cancel rewrite
 	if(holo_num>=USER_HOLO_START_NUM)
 	{
+		SCOPE_LOCK(HolodiskLocker);
+
 		HoloInfo* hi=GetHoloInfo(holo_num);
 		if(hi && hi->CanRewrite) hi->CanRewrite=false;
 	}
@@ -234,6 +236,9 @@ void FOServer::ErasePlayerHoloInfo(Critter* cr, DWORD index, bool send)
 void FOServer::Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text)
 {
 	if(!cr->IsPlayer()) return;
+
+	SCOPE_LOCK(HolodiskLocker);
+
 	Client* cl=(Client*)cr;
 	HoloInfo* hi=GetHoloInfo(holo_num);
 	if(hi)
@@ -373,7 +378,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 		if(map->IsHexTrap(fx,fy))
 		{
 			ItemPtrVec traps;
-			map->GetItemsTrap(fx,fy,traps);
+			map->GetItemsTrap(fx,fy,traps,true);
 			for(ItemPtrVecIt it=traps.begin(),end=traps.end();it!=end;++it)
 				(*it)->EventWalk(cr,false,dir);
 		}
@@ -382,7 +387,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 		if(map->IsHexTrap(hx,hy))
 		{
 			ItemPtrVec traps;
-			map->GetItemsTrap(hx,hy,traps);
+			map->GetItemsTrap(hx,hy,traps,true);
 			for(ItemPtrVecIt it=traps.begin(),end=traps.end();it!=end;++it)
 				(*it)->EventWalk(cr,true,dir);
 		}
@@ -480,7 +485,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		return false;
 	}
 
-	if(!(weap->Proto->Weapon.CountAttack & (1<<use)))
+	if(!(weap->Proto->Weapon.Uses & (1<<use)))
 	{
 		WriteLog(__FUNCTION__" - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
 		return false;
@@ -546,7 +551,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		return false;
 	}
 
-	int ap_cost=weap->Proto->Weapon.Time[use];
+	int ap_cost=weap->Proto->Weapon.ApCost[use];
 	if(aim) ap_cost+=GameAimApCost(aim);
 	if(hth_attack && cr->IsPerk(PE_BONUS_HTH_ATTACKS)) ap_cost--;
 	if(is_range_attack && cr->IsPerk(PE_BONUS_RATE_OF_FIRE)) ap_cost--;
@@ -613,14 +618,13 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(map->IsTurnBasedOn && !cr->GetAllAp()) map->EndCritterTurn();
 
 	// Run script
-	weap->Proto->Weapon_SetUse(use);
 	if(Script::PrepareContext(ServerFunctions.CritterAttack,CALL_FUNC_STR,cr->GetInfo()))
 	{
 		Script::SetArgObject(cr);
 		Script::SetArgObject(t_cr);
 		Script::SetArgObject(weap->Proto);
+		Script::SetArgByte(MAKE_ITEM_MODE(use,aim));
 		Script::SetArgObject(ammo);
-		Script::SetArgByte(aim);
 		Script::RunPrepared();
 	}
 	return true;
@@ -733,7 +737,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		{
 			WriteLog(__FUNCTION__" - Error, count is zero, id<%u>, critter<%s>.\n",item->GetId(),cr->GetInfo());
 			cr->EraseItem(item,true);
-			ItemMngr.ItemToGarbage(item,0x800);
+			ItemMngr.ItemToGarbage(item);
 			return false;
 		}
 	}
@@ -1099,7 +1103,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 void FOServer::KillCritter(Critter* cr, BYTE dead_type, Critter* attacker)
 {
-	if(cr->GetParam(MODE_INVULNERABLE)) return;
+	if(cr->Data.Params[MODE_INVULNERABLE]) return;
 
 	// Close talk
 	if(cr->IsPlayer())
@@ -1215,10 +1219,9 @@ void FOServer::KnockoutCritter(Critter* cr, bool face_up, DWORD lose_ap, WORD kn
 
 bool FOServer::MoveRandom(Critter* cr)
 {
-	ByteVec dirs;
-	dirs.reserve(6);
-	if(dirs.empty()) for(int i=0;i<6;i++) dirs.push_back(i);
-	else std::random_shuffle(dirs.begin(),dirs.end());
+	ByteVec dirs(6);
+	for(int i=0;i<6;i++) dirs[i]=i;
+	std::random_shuffle(dirs.begin(),dirs.end());
 
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) return false;
@@ -1235,7 +1238,7 @@ bool FOServer::MoveRandom(Critter* cr)
 		if(MoveHexByDir(hx,hy,dir,maxhx,maxhy) && map->IsMovePassed(hx,hy,dir,multihex))
 		{
 			WORD move_flags=BIN16(00000000,00111000)|dir;
-			if(Self->Act_Move(cr,hx,hy,move_flags))
+			if(Act_Move(cr,hx,hy,move_flags))
 			{
 				cr->Send_Move(cr,move_flags);
 				return true;
@@ -1252,10 +1255,11 @@ bool FOServer::RegenerateMap(Map* map)
 	DWORD map_id=map->GetId();
 	WORD map_pid=map->GetPid();
 	ProtoMap* map_proto=map->Proto;
-	Location* map_loc=map->MapLocation;
+	Location* map_loc=map->GetLocation();
 
-	// Kick players to global
-	ClVec players=map->GetPlayers();
+	// Kick clients to global
+	ClVec players;
+	map->GetPlayers(players);
 	for(ClVecIt it=players.begin(),end=players.end();it!=end;++it)
 	{
 		Client* cl=*it;
@@ -1308,17 +1312,20 @@ bool FOServer::VerifyTrigger(Map* map, Critter* cr, WORD from_hx, WORD from_hy, 
 
 void FOServer::Process_CreateClient(Client* cl)
 {
-	// WriteLog("Player registration...");
 	// Check for ban by ip
-	DWORD ip=cl->GetIp();
-	ClientBanned* ban=GetBanByIp(ip);
-	if(ban && !Singleplayer)
 	{
-		cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
-		//cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-		cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
-		cl->Disconnect();
-		return;
+		SCOPE_LOCK(BannedLocker);
+
+		DWORD ip=cl->GetIp();
+		ClientBanned* ban=GetBanByIp(ip);
+		if(ban && !Singleplayer)
+		{
+			cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
+			//cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
+			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
+			cl->Disconnect();
+			return;
+		}
 	}
 
 	DWORD msg_len;
@@ -1451,18 +1458,27 @@ void FOServer::Process_CreateClient(Client* cl)
 	}
 
 	// Check for exist
-	if(!Singleplayer && GetClientData(cl->Name))
+	if(!Singleplayer)
 	{
-		// WriteLog("User<%s> already exist.\n",cl->Name);
-		cl->Send_TextMsg(cl,STR_NET_ACCOUNT_ALREADY,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
+		SaveClientsLocker.Lock();
+		bool exist=GetClientData(cl->Name)!=NULL;
+		SaveClientsLocker.Unlock();
+
+		if(exist)
+		{
+			cl->Send_TextMsg(cl,STR_NET_ACCOUNT_ALREADY,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			return;
+		}
 	}
 
 	// Check brute force registration
 #ifndef DEV_VESRION
 	if(GameOpt.RegistrationTimeout && !Singleplayer)
 	{
+		SCOPE_LOCK(RegIpLocker);
+
+		DWORD ip=cl->GetIp();
 		DWORD reg_tick=GameOpt.RegistrationTimeout*1000;
 		DwordMapIt it=RegIp.find(ip);
 		if(it!=RegIp.end())
@@ -1544,12 +1560,20 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
-	if(Singleplayer && !NewWorld())
+	if(Singleplayer)
 	{
-		WriteLog(__FUNCTION__" - Generate new world fail.\n");
-		cl->Send_TextMsg(cl,STR_SP_NEW_GAME_FAIL,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
+		SynchronizeLogicThreads();
+		SyncManager::GetForCurThread()->UnlockAll();
+		SYNC_LOCK(cl);
+		if(!NewWorld())
+		{
+			WriteLog(__FUNCTION__" - Generate new world fail.\n");
+			cl->Send_TextMsg(cl,STR_SP_NEW_GAME_FAIL,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Disconnect();
+			ResynchronizeLogicThreads();
+			return;
+		}
+		ResynchronizeLogicThreads();
 	}
 
 	if(!Singleplayer) cl->Send_TextMsg(cl,STR_NET_REG_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
@@ -1563,6 +1587,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	cl->AddRef();
 	CrMngr.AddCritter(cl);
 	MapMngr.AddCrToMap(cl,NULL,0,0,0);
+	Job::PushBack(JOB_CRITTER,cl);
 
 	if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
 	{
@@ -1579,7 +1604,10 @@ void FOServer::Process_CreateClient(Client* cl)
 		StringCopy(data.ClientName,cl->Name);
 		StringCopy(data.ClientPass,cl->Pass);
 		data.ClientId=cl->GetId();
+
+		ClientsDataLocker.Lock();
 		ClientsData.push_back(data);
+		ClientsDataLocker.Unlock();
 	}
 	else
 	{
@@ -1685,15 +1713,19 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Check for ban by ip
-	DWORD ip=cl->GetIp();
-	ClientBanned* ban=GetBanByIp(ip);
-	if(ban && !Singleplayer)
 	{
-		cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
-		if(!_stricmp(ban->ClientName,cl->Name)) cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-		cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
-		cl->Disconnect();
-		return;
+		SCOPE_LOCK(BannedLocker);
+
+		DWORD ip=cl->GetIp();
+		ClientBanned* ban=GetBanByIp(ip);
+		if(ban && !Singleplayer)
+		{
+			cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
+			if(!_stricmp(ban->ClientName,cl->Name)) cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
+			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
+			cl->Disconnect();
+			return;
+		}
 	}
 
 	// Check login/password
@@ -1725,48 +1757,53 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Get client account data
-	ClientData* data;
+	ClientData data;
 	if(!Singleplayer)
 	{
-		data=GetClientData(cl->Name);
-		if(!data || strcmp(cl->Pass,data->ClientPass))
+		SCOPE_LOCK(ClientsDataLocker);
+		ClientData* data_=GetClientData(cl->Name);
+		if(!data_ || strcmp(cl->Pass,data_->ClientPass))
 		{
 			// WriteLog(__FUNCTION__" - Wrong name<%s> or password.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
 		}
+
+		data=*data_;
 	}
 	else
 	{
-		static ClientData singleplayer_data;
-		data=&singleplayer_data;
-		StringCopy(data->ClientName,SingleplayerSave.CrData.Name);
-		data->ClientId=SingleplayerSave.CrData.Data.Id;
+		StringCopy(data.ClientName,SingleplayerSave.CrData.Name);
+		data.ClientId=SingleplayerSave.CrData.Data.Id;
 	}
 
 	// Check for ban by name
-	ban=GetBanByName(data->ClientName);
-	if(ban && !Singleplayer)
 	{
-		cl->Send_TextMsg(cl,STR_NET_BANNED,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-		cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
-		cl->Disconnect();
-		return;
+		SCOPE_LOCK(BannedLocker);
+
+		ClientBanned* ban=GetBanByName(data.ClientName);
+		if(ban && !Singleplayer)
+		{
+			cl->Send_TextMsg(cl,STR_NET_BANNED,SAY_NETMSG,TEXTMSG_GAME);
+			cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
+			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
+			cl->Disconnect();
+			return;
+		}
 	}
 
 	// Request script
 	bool allow=false;
 	DWORD disallow_msg_num=0,disallow_str_num=0;
-	if(Script::PrepareContext(ServerFunctions.PlayerLogin,CALL_FUNC_STR,data->ClientName))
+	if(Script::PrepareContext(ServerFunctions.PlayerLogin,CALL_FUNC_STR,data.ClientName))
 	{
-		CScriptString* name=new CScriptString(data->ClientName);
-		CScriptString* pass=new CScriptString(data->ClientPass);
+		CScriptString* name=new CScriptString(data.ClientName);
+		CScriptString* pass=new CScriptString(data.ClientPass);
 		Script::SetArgDword(cl->GetIp());
 		Script::SetArgObject(name);
 		Script::SetArgObject(pass);
-		Script::SetArgDword(data->ClientId);
+		Script::SetArgDword(data.ClientId);
 		Script::SetArgAddress(&disallow_msg_num);
 		Script::SetArgAddress(&disallow_str_num);
 		if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
@@ -1784,8 +1821,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Copy data
-	DWORD id=data->ClientId;
-	StringCopy(cl->Name,data->ClientName);
+	DWORD id=data.ClientId;
+	StringCopy(cl->Name,data.ClientName);
 	cl->NameStr=cl->Name;
 
 	// Check UIDS
@@ -1830,15 +1867,17 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
+		SCOPE_LOCK(ClientsDataLocker);
+
 		DWORD tick=Timer::FastTick();
 		for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
 		{
 			ClientData& cd=*it;
-			if(&cd==data) continue;
+			if(cd.ClientId==data.ClientId) continue;
 
 			int matches=0;
 			if(!uid[0] || uid[0]==cd.UID[0]) matches++;
-			//if(!uid[1] || uid[1]==cd.UID[1]) matches++; // disabled, because it's very weak point, but not deleted
+			//if(!uid[1] || uid[1]==cd.UID[1]) matches++; // Todo: Disabled, because it's very weak point, but not deleted
 			if(!uid[2] || uid[2]==cd.UID[2]) matches++;
 			if(!uid[3] || uid[3]==cd.UID[3]) matches++;
 			if(!uid[4] || uid[4]==cd.UID[4]) matches++;
@@ -1852,9 +1891,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 				}
 				else
 				{
-					if(ShowUIDError) WriteLog(__FUNCTION__" - UID already used by critter<%s>, client<%s>. <%X %X><%X %X><%X %X><%X %X><%X %X>.\n",cd.ClientName,cl->Name,
-						cd.UID[0],uid[0],cd.UID[1],uid[1],cd.UID[2],uid[2],cd.UID[3],uid[3],cd.UID[4],uid[4]);
-					else WriteLog(__FUNCTION__" - UID already used by critter<%s>, client<%s>.\n",cd.ClientName,cl->Name);
+					WriteLog(__FUNCTION__" - UID already used by critter<%s>, client<%s>.\n",cd.ClientName,cl->Name);
 					cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 					cl->Disconnect();
 					return;
@@ -1864,19 +1901,18 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		for(int i=0;i<5;i++)
 		{
-			if(data->UID[i]!=uid[i])
+			if(data.UID[i]!=uid[i])
 			{
-				if(!data->UIDEndTick || tick>=data->UIDEndTick)
+				if(!data.UIDEndTick || tick>=data.UIDEndTick)
 				{
 					// Set new uids on this account and start play timeout
-					for(int i=0;i<5;i++) data->UID[i]=uid[i];
-					data->UIDEndTick=tick+GameOpt.AccountPlayTime*1000;
+					ClientData* data_=GetClientData(cl->Name);
+					for(int i=0;i<5;i++) data_->UID[i]=uid[i];
+					data_->UIDEndTick=tick+GameOpt.AccountPlayTime*1000;
 				}
 				else
 				{
-					if(ShowUIDError) WriteLog(__FUNCTION__" - Different UID, client<%s>. <%X %X><%X %X><%X %X><%X %X><%X %X>.\n",cl->Name,
-						data->UID[0],uid[0],data->UID[1],uid[1],data->UID[2],uid[2],data->UID[3],uid[3],data->UID[4],uid[4]);
-					else WriteLog(__FUNCTION__" - Different UID, client<%s>.\n",cl->Name);
+					WriteLog(__FUNCTION__" - Different UID, client<%s>.\n",cl->Name);
 					cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 					cl->Disconnect();
 					return;
@@ -1895,27 +1931,20 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		cl->Disconnect();
 		return;
 	}
+	if(cl_old) SYNC_LOCK(cl_old);
 
 	// Avatar in game
 	if(cl_old)
 	{
-		ClVecIt it=std::find(ProcessClients.begin(),ProcessClients.end(),cl_old);
-		bool is_online=(it!=ProcessClients.end());
-		if(is_online)
+		// Check current online
+		ConnectedClientsLocker.Lock();
+		ClVecIt it=std::find(ConnectedClients.begin(),ConnectedClients.end(),cl);
+		if(it==ConnectedClients.end())
 		{
-			// WriteLog(__FUNCTION__" - Over the critter other player supervises, client<%s>.\n",cl_old->GetInfo());
+			ConnectedClientsLocker.Unlock();
 			cl_old->Send_TextMsg(cl,STR_NET_KNOCK_KNOCK,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Send_TextMsg(cl,STR_NET_PLAYER_IN_GAME,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
-			return;
-		}
-
-		ConnectedClientsLocker.Lock();
-		// Check current online
-		ClVecIt it_=std::find(ConnectedClients.begin(),ConnectedClients.end(),cl);
-		if(it_==ConnectedClients.end())
-		{
-			ConnectedClientsLocker.Unlock();
 			return;
 		}
 		// Swap
@@ -1925,9 +1954,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		cl_old->WSAIn->Locker.Lock();
 		cl_old->WSAOut->Locker.Lock();
 
-		(*it_)->Release();
 		cl_old->AddRef();
-		(*it_)=cl_old;
+		(*it)=cl_old;
 
 		std::swap(cl_old->WSAIn,cl->WSAIn);
 		std::swap(cl_old->WSAOut,cl->WSAOut);
@@ -1957,8 +1985,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		cl->WSAOut->Locker.Unlock();
 		cl->WSAIn->Locker.Unlock();
-		cl->Release(); // ProcessClients
-		cl_old->AddRef(); // ProcessClients
+
+		Job::DeferredRelease(cl);
 		cl=cl_old;
 
 		cl->WSAOut->Locker.Unlock();
@@ -1986,6 +2014,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		}
 
 		// Find in saved array
+		SaveClientsLocker.Lock();
 		Client* cl_saved=NULL;
 		for(ClVecIt it=SaveClients.begin(),end=SaveClients.end();it!=end;++it)
 		{
@@ -1997,6 +2026,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 				break;
 			}
 		}
+		SaveClientsLocker.Unlock();
 
 		if(!cl_saved && !LoadClient(cl))
 		{
@@ -2048,7 +2078,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		}
 
 		// Find items
-		FindCritterItems(cl);
+		ItemMngr.SetCritterItems(cl);
 
 		// Add to map
 		Map* map=MapMngr.GetMap(cl->GetMap());
@@ -2106,6 +2136,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		if(cl->GetRadio()) RadioAddPlayer(cl,cl->GetRadioChannel());
 		cl->AddRef();
 		CrMngr.AddCritter(cl);
+		Job::PushBack(JOB_CRITTER,cl);
 
 		cl->DisableSend++;
 		if(cl->GetMap())
@@ -2175,13 +2206,18 @@ void FOServer::Process_SingleplayerSaveLoad(Client* cl)
 	}
 	else
 	{
+		SynchronizeLogicThreads();
+		SyncManager::GetForCurThread()->UnlockAll();
+		SYNC_LOCK(cl);
 		if(!LoadWorld(fname))
 		{
 			WriteLog(__FUNCTION__" - Unable load world from file<%s>.\n",fname);
 			cl->Send_TextMsg(cl,STR_SP_LOAD_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
+			ResynchronizeLogicThreads();
 			return;
 		}
+		ResynchronizeLogicThreads();
 
 		cl->Send_TextMsg(cl,STR_SP_LOAD_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
 
@@ -2267,19 +2303,30 @@ void FOServer::Process_ParseToGame(Client* cl)
 	cl->Send_AllQuests();
 	cl->Send_HoloInfo(true,0,cl->Data.HoloInfoCount);
 	cl->Send_AllAutomapsInfo();
-	// Send current critters and items
-	for(CrVecIt it=cl->VisCrSelf.begin(),end=cl->VisCrSelf.end();it!=end;++it) cl->Send_AddCritter(*it);
+
+	// Send current critters
+	CrVec critters=cl->VisCrSelf;
+	for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
+	{
+		Critter* cr=*it;
+		SYNC_LOCK(cr);
+		cl->Send_AddCritter(cr);
+	}
+
+	// Send current items on map
 	for(DwordSetIt it=cl->VisItem.begin(),end=cl->VisItem.end();it!=end;++it)
 	{
 		Item* item=ItemMngr.GetItem(*it);
 		if(item) cl->Send_AddItemOnMap(item);
 	}
+
 	// Check active talk
 	if(cl->Talk.TalkType!=TALK_NONE)
 	{
 		cl->ProcessTalk(true);
 		cl->Send_Talk();
 	}
+
 	// Turn based
 	if(map->IsTurnBasedOn)
 	{
@@ -2548,11 +2595,11 @@ void FOServer::Process_RateItem(Client* cl)
 	DWORD rate;
 	cl->Bin >> rate;
 
-	cl->ItemSlotMain->SetRate(rate&0xFF);
+	cl->ItemSlotMain->SetMode(rate&0xFF);
 	if(!cl->ItemSlotMain->GetId())
 	{
-		cl->ChangeParam(ST_RATE_ITEM);
-		cl->Data.Params[ST_RATE_ITEM]=rate;
+		cl->ChangeParam(ST_HANDS_ITEM_AND_MODE);
+		cl->Data.Params[ST_HANDS_ITEM_AND_MODE]=rate;
 	}
 }
 
@@ -2621,7 +2668,7 @@ void FOServer::Process_UseItem(Client* cl)
 				ProtoItem* unarmed=ItemMngr.GetProtoItem(item_pid);
 				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) break;
 				if(cl->GetParam(ST_STRENGTH)<unarmed->Weapon.MinSt || cl->GetParam(ST_AGILITY)<unarmed->Weapon.UnarmedMinAgility) break;
-				if(cl->GetParam(ST_LEVEL)<unarmed->Weapon.UnarmedMinLevel || cl->GetSkill(SK_UNARMED)<unarmed->Weapon.UnarmedMinUnarmed) break;
+				if(cl->Data.Params[ST_LEVEL]<unarmed->Weapon.UnarmedMinLevel || cl->GetSkill(SK_UNARMED)<unarmed->Weapon.UnarmedMinUnarmed) break;
 				cl->ItemSlotMain->Init(unarmed);
 			}
 
@@ -2930,7 +2977,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Get items
 				ItemPtrVec items;
-				cont->ContGetAllItems(items,true);
+				cont->ContGetAllItems(items,true,true);
 				if(items.empty())
 				{
 					cl->Send_ContainerInfo();
@@ -3210,7 +3257,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Get items
 				ItemPtrVec items;
-				cr->GetInvItems(items,transfer_type);
+				cr->GetInvItems(items,transfer_type,true);
 				if(items.empty()) return;
 
 				// Check weight, volume
@@ -3401,7 +3448,7 @@ void FOServer::Process_Radio(Client* cl)
 
 	if(radio->RadioGetChannel()==channel) return;
 
-	RadioErsPlayer(cl,radio->RadioGetChannel());
+	RadioErasePlayer(cl,radio->RadioGetChannel());
 	radio->RadioSetChannel(channel);
 	RadioAddPlayer(cl,channel);
 	cl->Send_TextMsg(cl,STR_RADIO_CHAN_CHANGED,SAY_NETMSG,TEXTMSG_GAME);
@@ -3448,6 +3495,8 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 #pragma MESSAGE("Check valid of received text.")
 //	int invalid_chars=CheckStr(text);
 //	if(invalid_chars>0) WriteLog(__FUNCTION__" - Found invalid chars, count<%u>, client<%s>, changed on '_'.\n",invalid_chars,cl->GetInfo());
+
+	SCOPE_LOCK(HolodiskLocker);
 
 	DWORD holo_id=holodisk->HolodiskGetNum();
 	HoloInfo* hi=GetHoloInfo(holo_id);
@@ -3512,7 +3561,7 @@ void FOServer::Process_LevelUp(Client* cl)
 
 	for(int i=0;i<count_skill_up;i++)
 	{
-		if(skills[i*2]>=SKILL_BEGIN && skills[i*2]<=SKILL_END && skills[i*2+1] && cl->GetParam(ST_UNSPENT_SKILL_POINTS)>0
+		if(skills[i*2]>=SKILL_BEGIN && skills[i*2]<=SKILL_END && skills[i*2+1] && cl->Data.Params[ST_UNSPENT_SKILL_POINTS]>0
 		&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
@@ -3523,7 +3572,7 @@ void FOServer::Process_LevelUp(Client* cl)
 		}
 	}
 
-	if(perk_up>=PERK_BEGIN && perk_up<=PERK_END && cl->GetParam(ST_UNSPENT_PERKS)>0
+	if(perk_up>=PERK_BEGIN && perk_up<=PERK_END && cl->Data.Params[ST_UNSPENT_PERKS]>0
 	&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
 	{
 		Script::SetArgObject(cl);
@@ -3604,6 +3653,7 @@ void FOServer::Process_Ping(Client* cl)
 	else if(ping==PING_UID_FAIL)
 	{
 #ifndef DEV_VESRION
+		ClientsDataLocker.Lock();
 		ClientData* data=GetClientData(cl->GetId());
 		if(data)
 		{
@@ -3611,6 +3661,7 @@ void FOServer::Process_Ping(Client* cl)
 			for(int i=0;i<5;i++) data->UID[i]=Random(0,10000);
 			data->UIDEndTick=Timer::FastTick()+GameOpt.AccountPlayTime*1000;
 		}
+		ClientsDataLocker.Unlock();
 		cl->Disconnect();
 		return;
 #endif

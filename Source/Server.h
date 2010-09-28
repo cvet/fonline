@@ -41,47 +41,47 @@ public:
 	~FOServer();
 
 	// Net proccess
-	void Process_ParseToGame(Client* cl);
-	void Process_Move(Client* cl);
-	void Process_CreateClient(Client* cl);
-	void Process_LogIn(ClientPtr& cl);
-	void Process_SingleplayerSaveLoad(Client* cl);
-	void Process_Dir(Client* cl);
-	void Process_ChangeItem(Client* cl);
-	void Process_RateItem(Client* cl);
-	void Process_SortValueItem(Client* cl);
-	void Process_UseItem(Client* cl); //заявка на использование объекта
-	void Process_PickItem(Client* cl);
-	void Process_PickCritter(Client* cl);
-	void Process_ContainerItem(Client* cl);
-	void Process_UseSkill(Client* cl); //заявка на использование скилла
-	void Process_GiveGlobalInfo(Client* cl);
-	void Process_RuleGlobal(Client* cl);
-	void Process_Text(Client* cl);
-	void Process_Command(Client* cl);
-	void Process_Dialog(Client* cl, bool is_say);
-	void Process_Barter(Client* cl);
-	void Process_GiveMap(Client* cl);
-	void Process_Radio(Client* cl); //with send
-	void Process_SetUserHoloStr(Client* cl);
-	void Process_GetUserHoloStr(Client* cl); //with send
-	void Process_LevelUp(Client* cl);
-	void Process_CraftAsk(Client* cl);
-	void Process_Craft(Client* cl);
-	void Process_Ping(Client* cl);
-	void Process_PlayersBarter(Client* cl);
-	void Process_ScreenAnswer(Client* cl);
-	void Process_GetScores(Client* cl);
-	void Process_Combat(Client* cl);
-	void Process_RunServerScript(Client* cl);
-	void Process_KarmaVoting(Client* cl);
+	static void Process_ParseToGame(Client* cl);
+	static void Process_Move(Client* cl);
+	static void Process_CreateClient(Client* cl);
+	static void Process_LogIn(ClientPtr& cl);
+	static void Process_SingleplayerSaveLoad(Client* cl);
+	static void Process_Dir(Client* cl);
+	static void Process_ChangeItem(Client* cl);
+	static void Process_RateItem(Client* cl);
+	static void Process_SortValueItem(Client* cl);
+	static void Process_UseItem(Client* cl);
+	static void Process_PickItem(Client* cl);
+	static void Process_PickCritter(Client* cl);
+	static void Process_ContainerItem(Client* cl);
+	static void Process_UseSkill(Client* cl);
+	static void Process_GiveGlobalInfo(Client* cl);
+	static void Process_RuleGlobal(Client* cl);
+	static void Process_Text(Client* cl);
+	static void Process_Command(Client* cl);
+	static void Process_Dialog(Client* cl, bool is_say);
+	static void Process_Barter(Client* cl);
+	static void Process_GiveMap(Client* cl);
+	static void Process_Radio(Client* cl);
+	static void Process_SetUserHoloStr(Client* cl);
+	static void Process_GetUserHoloStr(Client* cl);
+	static void Process_LevelUp(Client* cl);
+	static void Process_CraftAsk(Client* cl);
+	static void Process_Craft(Client* cl);
+	static void Process_Ping(Client* cl);
+	static void Process_PlayersBarter(Client* cl);
+	static void Process_ScreenAnswer(Client* cl);
+	static void Process_GetScores(Client* cl);
+	static void Process_Combat(Client* cl);
+	static void Process_RunServerScript(Client* cl);
+	static void Process_KarmaVoting(Client* cl);
 
-	void Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info);
-	void Send_MsgData(Client* cl, DWORD lang, WORD num_msg, FOMsg& data_msg);
-	void Send_ProtoItemData(Client* cl, BYTE type, ProtoItemVec& data, DWORD data_hash);
+	static void Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info);
+	static void Send_MsgData(Client* cl, DWORD lang, WORD num_msg, FOMsg& data_msg);
+	static void Send_ProtoItemData(Client* cl, BYTE type, ProtoItemVec& data, DWORD data_hash);
 
 	// Data
-	int UpdateVarsTemplate();
+	static int UpdateVarsTemplate();
 
 	// Holodisks
 	struct HoloInfo
@@ -94,21 +94,23 @@ public:
 typedef map<DWORD,HoloInfo*,less<DWORD>> HoloInfoMap;
 typedef map<DWORD,HoloInfo*,less<DWORD>>::iterator HoloInfoMapIt;
 typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
-	HoloInfoMap HolodiskInfo;
-	DWORD LastHoloId;
-	void SaveHoloInfoFile();
-	bool LoadHoloInfoFile(FILE* f);
-	HoloInfo* GetHoloInfo(DWORD id){HoloInfoMapIt it=HolodiskInfo.find(id); return it!=HolodiskInfo.end()?(*it).second:NULL;}
-	void AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send);
-	void ErasePlayerHoloInfo(Critter* cr, DWORD index, bool send);
-	void Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text);
+	static HoloInfoMap HolodiskInfo;
+	static Mutex HolodiskLocker;
+	static DWORD LastHoloId;
+
+	static void SaveHoloInfoFile();
+	static bool LoadHoloInfoFile(FILE* f);
+	static HoloInfo* GetHoloInfo(DWORD id){HoloInfoMapIt it=HolodiskInfo.find(id); return it!=HolodiskInfo.end()?(*it).second:NULL;}
+	static void AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send);
+	static void ErasePlayerHoloInfo(Critter* cr, DWORD index, bool send);
+	static void Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text);
 
 	// Actions
-	bool Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params);
-	bool Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id);
-	bool Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id);
-	bool Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, DWORD target_id, WORD target_pid, DWORD param);
-	bool Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid);
+	static bool Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params);
+	static bool Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id);
+	static bool Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id);
+	static bool Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, DWORD target_id, WORD target_pid, DWORD param);
+	static bool Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid);
 
 	static void KillCritter(Critter* cr, BYTE dead_type, Critter* attacker);
 	static void RespawnCritter(Critter* cr);
@@ -118,8 +120,7 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	static bool VerifyTrigger(Map* map, Critter* cr, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, BYTE dir);
 
 	// Time events
-#define TIME_EVENT_MAX_SIZE       (0xFFFF)
-#define TIME_EVENTS_RESERVE       (1000000/sizeof(TimeEvent)) // 1 mb
+#define TIME_EVENT_MAX_SIZE       (100000) // 100 kb
 #define TIME_EVENTS_PER_CYCLE     (10)
 	struct TimeEvent
 	{
@@ -130,62 +131,67 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 		DWORD Rate;
 		DwordVec Values;
 		bool IsSaved;
-
-		bool operator==(const DWORD& r){return Num==r;}
+		bool EraseMe;
 	};
-typedef vector<TimeEvent> TimeEventVec;
-typedef vector<TimeEvent>::iterator TimeEventVecIt;
-	TimeEventVec TimeEvents;
-	DWORD TimeEventsLastNum;
+typedef vector<TimeEvent*> TimeEventVec;
+typedef vector<TimeEvent*>::iterator TimeEventVecIt;
+	static TimeEventVec TimeEvents;
+	static TimeEventVec TimeEventsInProcess;
+	static DWORD TimeEventsLastNum;
+	static Mutex TimeEventsLocker;
 
-	void AddTimeEvent(TimeEvent& te);
-	void SaveTimeEventsFile();
-	bool LoadTimeEventsFile(FILE* f);
-	DWORD CreateScriptEvent(DWORD begin_second, const char* script_name, DwordVec& values, bool save);
-	void EraseTimeEvent(DWORD num);
-	void ProcessTimeEvents();
-	DWORD GetTimeEventsCount();
-	string GetTimeEventsStatistics();
+	static void AddTimeEvent(TimeEvent* te);
+	static void SaveTimeEventsFile();
+	static bool LoadTimeEventsFile(FILE* f);
+	static DWORD CreateTimeEvent(DWORD begin_second, const char* script_name, DwordVec& values, bool save);
+	static bool GetTimeEventData(DWORD num, DWORD& duration, DwordVec& data); // Todo:
+	static bool SetTimeEventData(DWORD num, DWORD duration, DwordVec& data); // Todo:
+	static bool EraseTimeEvent(DWORD num);
+	static void ProcessTimeEvents();
+	static DWORD GetTimeEventsCount();
+	static string GetTimeEventsStatistics();
 
-	void SaveScriptFunctionsFile();
-	bool LoadScriptFunctionsFile(FILE* f);
+	static void SaveScriptFunctionsFile();
+	static bool LoadScriptFunctionsFile(FILE* f);
 
 	// Any data
 typedef map<string,ByteVec,less<string>> AnyDataMap;
 typedef map<string,ByteVec,less<string>>::iterator AnyDataMapIt;
 typedef map<string,ByteVec,less<string>>::value_type AnyDataMapVal;
 typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
-#define ANY_DATA_MAX_NAME         (64)
+	static AnyDataMap AnyData;
+	static Mutex AnyDataLocker;
 
-	AnyDataMap AnyData;
-	void SaveAnyDataFile();
-	bool LoadAnyDataFile(FILE* f);
-	bool SetAnyData(const string& name, const BYTE* data, DWORD data_size);
-	BYTE* GetAnyData(const string& name, DWORD& length);
-	bool IsAnyData(const string& name);
-	void EraseAnyData(const string& name);
-	string GetAnyDataStatistics();
+	static void SaveAnyDataFile();
+	static bool LoadAnyDataFile(FILE* f);
+	static bool SetAnyData(const string& name, const BYTE* data, DWORD data_size);
+	static bool GetAnyData(const string& name, asIScriptArray& script_array);
+	static bool IsAnyData(const string& name);
+	static void EraseAnyData(const string& name);
+	static string GetAnyDataStatistics();
 
 	// Scripting
+	static StrVec ServerWrongGlobalObjects;
+
 	// Init/Finish system
-	bool InitScriptSystem();
-	void FinishScriptSystem();
-	void ScriptSystemUpdate();
+	static bool InitScriptSystem();
+	static void FinishScriptSystem();
+	static void ScriptSystemUpdate();
 
 	// Dialogs demand and result
-	bool DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave);
-	void DialogScriptResult(DemandResult& result, Critter* master, Critter* slave);
+	static bool DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave);
+	static DWORD DialogScriptResult(DemandResult& result, Critter* master, Critter* slave);
 
 	// Client script
-	bool RequestReloadClientScripts;
-	bool ReloadClientScripts();
+	static bool RequestReloadClientScripts;
+	static bool ReloadClientScripts();
 
 	// Pragma callbacks
 	static bool PragmaCallbackCrData(const char* text);
 	static bool PragmaCallbackCrClData(const char* text);
 
 	// Text listen
-#define TEXT_LISTEN_FIRST_STR_MIN_LEN     (5)
+#define TEXT_LISTEN_FIRST_STR_MIN_LEN     (2)
 #define TEXT_LISTEN_FIRST_STR_MAX_LEN     (63)
 	struct TextListen
 	{
@@ -197,7 +203,8 @@ typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 	};
 typedef vector<TextListen> TextListenVec;
 typedef vector<TextListen>::iterator TextListenVecIt;
-	TextListenVec TextListeners;
+	static TextListenVec TextListeners;
+	static Mutex TextListenersLocker;
 
 //	void GlobalEventCritterUseItem(Critter* cr);
 //	void GlobalEventCritterUseSkill(Critter* cr);
@@ -206,6 +213,246 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 //	void GlobalEventCritterIdle(Critter* cr);
 //	void GlobalEventCritterDead(Critter* cr);
 
+	// Items
+	static Item* CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count);
+	static Item* CreateItemToHexCr(Critter* cr, WORD hx, WORD hy, WORD pid, DWORD count);
+	static bool TransferAllItems();
+
+	// Npc
+	static void ProcessAI(Npc* npc);
+	static bool AI_Stay(Npc* npc, DWORD ms);
+	static bool AI_Move(Npc* npc, WORD hx, WORD hy, bool is_run, DWORD cut, DWORD trace);
+	static bool AI_MoveToCrit(Npc* npc, DWORD targ_id, DWORD cut, DWORD trace, bool is_run);
+	static bool AI_MoveItem(Npc* npc, Map* map, BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count);
+	static bool AI_Attack(Npc* npc, Map* map, BYTE use, BYTE aim, DWORD targ_id);
+	static bool AI_PickItem(Npc* npc, Map* map, WORD hx, WORD hy, WORD pid, DWORD use_item_id);
+	static bool AI_ReloadWeapon(Npc* npc, Map* map, Item* weap, DWORD ammo_id);
+	static void TraceFireLine(Map* map, WORD hx, WORD hy, float sx, float sy, DWORD dist, Npc* npc, WordPairVec& positions, DWORD step);
+	//static DWORD AIGetAttackPosition(Npc* npc, Map* map, WORD& hx, WORD& hy);
+	static bool TransferAllNpc();
+	static void ProcessCritter(Critter* cr);
+	static bool Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg);
+	static bool Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck);
+	static DWORD Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer);
+	static void Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WORD hy, bool ignore_distance);
+
+	// Radio
+	static DwordVec* RadioChannels[0x10000];
+	static Mutex RadioLocker;
+
+	static void RadioClearChannels();
+	static void RadioAddPlayer(Client* cl, WORD channel);
+	static void RadioErasePlayer(Client* cl, WORD channel);
+	static void RadioSendText(Critter* cr, WORD channel, const char* text, bool unsafe_text);
+	static void RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_str);
+
+	// Main
+	static int UpdateIndex,UpdateLastIndex;
+	static DWORD UpdateLastTick;
+	static HWND ServerWindow;
+	static bool Active;
+	static FileManager FileMngr;
+	static ClVec SaveClients;
+	static Mutex SaveClientsLocker;
+	static DwordMap RegIp;
+	static Mutex RegIpLocker;
+
+	static void DisconnectClient(Client* cl);
+	static void RemoveClient(Client* cl);
+	static void AddSaveClient(Client* cl);
+	static void EraseSaveClient(DWORD crid);
+	static void Process(ClientPtr& cl);
+
+	// Log to client
+	static ClVec LogClients;
+	static void LogToClients(char* str);
+
+	// Game time
+	static void SaveGameInfoFile();
+	static bool LoadGameInfoFile(FILE* f);
+	static void InitGameTime();
+
+	// Lang packs
+	static LangPackVec LangPacks; // Todo: synchronize
+	static bool InitCrafts(LangPackVec& lang_packs);
+	static bool InitLangPacks(LangPackVec& lang_packs);
+	static bool InitLangPacksDialogs(LangPackVec& lang_packs);
+	static void FinishLangPacks();
+	static bool InitLangCrTypes(LangPackVec& lang_packs);
+
+	// Init/Finish
+	static bool Init();
+	static void Finish();
+	static bool IsInit(){return Active;}
+	static void MainLoop();
+
+	static HANDLE* LogicThreadHandles;
+	static DWORD LogicThreadCount;
+	static MutexSynchronizer LogicThreadSync;
+	static void SynchronizeLogicThreads();
+	static void ResynchronizeLogicThreads();
+	static unsigned int __stdcall Logic_Work(void* data); // Thread
+
+	// Net
+	static HANDLE IOCompletionPort;
+	static HANDLE* IOThreadHandles;
+	static DWORD WorkThreadCount;
+	static SOCKET ListenSock;
+	static ClVec ConnectedClients;
+	static Mutex ConnectedClientsLocker;
+
+	static unsigned int __stdcall Net_Listen(HANDLE iocp); // Thread
+	static unsigned int __stdcall Net_Work(HANDLE iocp); // Thread
+	static void Net_Input(WSAOVERLAPPED_EX* io);
+	static void Net_Output(WSAOVERLAPPED_EX* io);
+
+	// Service
+	static DWORD VarsGarbageLastTick;
+	static void VarsGarbarger(bool force);
+
+	// Dump save/load
+	struct ClientSaveData
+	{
+		char Name[MAX_NAME+1];
+		char Password[MAX_NAME+1];
+		CritData Data;
+		CritDataExt DataExt;
+		Critter::CrTimeEventVec TimeEvents;
+
+		void Clear()
+		{
+			ZeroMemory(Name,sizeof(Name));
+			ZeroMemory(Password,sizeof(Password));
+			ZeroMemory(&Data,sizeof(Data));
+			ZeroMemory(&DataExt,sizeof(DataExt));
+			TimeEvents.clear();
+		}
+	};
+typedef vector<ClientSaveData> ClientSaveDataVec;
+	static ClientSaveDataVec ClientsSaveData;
+	static size_t ClientsSaveDataCount;
+
+#define WORLD_SAVE_MAX_INDEX                  (9999)
+#define WORLD_SAVE_DATA_BUFFER_SIZE           (10000000) // 10mb
+	static PByteVec WorldSaveData;
+	static size_t WorldSaveDataBufCount,WorldSaveDataBufFreeSize;
+
+	static DWORD SaveWorldIndex,SaveWorldTime,SaveWorldNextTick;
+	static DwordVec SaveWorldDeleteIndexes;
+	static FILE* DumpFile;
+	static HANDLE DumpBeginEvent,DumpEndEvent;
+	static HANDLE DumpThreadHandle;
+
+	static bool SaveClient(Client* cl, bool deferred);
+	static bool LoadClient(Client* cl);
+	static bool NewWorld();
+	static void SaveWorld(const char* name);
+	static bool LoadWorld(const char* name);
+	static void UnloadWorld();
+	static void AddWorldSaveData(void* data, size_t size);
+	static void AddClientSaveData(Client* cl);
+	static unsigned int __stdcall Dump_Work(void* data); // Thread
+
+	// Access
+	static StrVec AccessClient,AccessTester,AccessModer,AccessAdmin;
+
+	// Banned
+#define BANS_FNAME_ACTIVE         "active.txt"
+#define BANS_FNAME_EXPIRED        "expired.txt"
+	struct ClientBanned
+	{
+		SYSTEMTIME BeginTime;
+		SYSTEMTIME EndTime;
+		DWORD ClientIp;
+		char ClientName[MAX_NAME+1];
+		char BannedBy[MAX_NAME+1];
+		char BanInfo[128];
+		bool operator==(const char* name){return !_stricmp(name,ClientName);}
+		bool operator==(const DWORD ip){return ClientIp==ip;}
+
+		const char* GetBanLexems(){return Str::Format("$banby%s$time%d$reason%s",BannedBy[0]?BannedBy:"?",Timer::GetTimeDifference(EndTime,BeginTime)/60/60,BanInfo[0]?BanInfo:"just for fun");}
+	};
+typedef vector<ClientBanned> ClientBannedVec;
+typedef vector<ClientBanned>::iterator ClientBannedVecIt;
+	static ClientBannedVec Banned;
+	static Mutex BannedLocker;
+
+	static ClientBanned* GetBanByName(const char* name){ClientBannedVecIt it=std::find(Banned.begin(),Banned.end(),name); return it!=Banned.end()?&(*it):NULL;}
+	static ClientBanned* GetBanByIp(DWORD ip){ClientBannedVecIt it=std::find(Banned.begin(),Banned.end(),ip); return it!=Banned.end()?&(*it):NULL;}
+	static DWORD GetBanTime(ClientBanned& ban);
+	static void ProcessBans();
+	static void SaveBan(ClientBanned& ban, bool expired);
+	static void SaveBans();
+	static void LoadBans();
+
+	// Clients data
+	struct ClientData
+	{
+		char ClientName[MAX_NAME+1];
+		char ClientPass[MAX_NAME+1];
+		DWORD ClientId;
+		DWORD SaveIndex;
+		DWORD UID[5];
+		DWORD UIDEndTick;
+		void Clear(){ZeroMemory(this,sizeof(ClientData));}
+		bool operator==(const char* name){return !_stricmp(name,ClientName);}
+		bool operator==(const DWORD id){return ClientId==id;}
+		ClientData(){Clear();}
+	};
+typedef vector<ClientData> ClientDataVec;
+typedef vector<ClientData>::iterator ClientDataVecIt;
+	static ClientDataVec ClientsData;
+	static Mutex ClientsDataLocker;
+	static volatile DWORD LastClientId;
+
+	static bool LoadClientsData();
+	static ClientData* GetClientData(const char* name){ClientDataVecIt it=std::find(ClientsData.begin(),ClientsData.end(),name); return it!=ClientsData.end()?&(*it):NULL;}
+	static ClientData* GetClientData(DWORD id){ClientDataVecIt it=std::find(ClientsData.begin(),ClientsData.end(),id); return it!=ClientsData.end()?&(*it):NULL;}
+
+	// Statistics
+	struct Statistics_
+	{
+		DWORD ServerStartTick;
+		DWORD Uptime;
+		__int64 BytesSend;
+		__int64 BytesRecv;
+		__int64 DataReal;
+		__int64 DataCompressed;
+		float CompressRatio;
+		DWORD MaxOnline;
+		DWORD CurOnline;
+
+		DWORD CycleTime;
+		DWORD FPS;
+		DWORD LoopTime;
+		DWORD LoopCycles;
+		DWORD LoopMin;
+		DWORD LoopMax;
+		DWORD LagsCount;
+	} static Statistics;
+
+	static DWORD PlayersInGame(){return CrMngr.PlayersInGame();}
+	static DWORD NpcInGame(){return CrMngr.NpcInGame();}
+	static string GetIngamePlayersStatistics();
+
+	// Scores
+	static ScoreType BestScores[SCORES_MAX];
+	static Mutex BestScoresLocker;
+
+	static void SetScore(int score, Critter* cr, int val);
+	static void SetScore(int score, const char* name);
+	static const char* GetScores(); // size == MAX_NAME*SCORES_MAX
+	static void ClearScore(int score);
+
+	// Singleplayer save
+	struct SingleplayerSave_
+	{
+		bool Valid;
+		ClientSaveData CrData;
+		ByteVec PicData;
+	} static SingleplayerSave;
+
+	// Script functions
 	struct SScriptFunc
 	{
 #define SCRIPT_ERROR(error) do{SScriptFunc::ScriptLastError=error; Script::LogError(__FUNCTION__", "error);}while(0)
@@ -217,6 +464,9 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 		static int* DataRef_Index(CritterPtr& cr, DWORD index);
 		static int DataVal_Index(CritterPtr& cr, DWORD index);
+
+		static void Synchronizer_Constructor(void* memory);
+		static void Synchronizer_Destructor(void* memory);
 
 		static AIDataPlane* NpcPlane_GetCopy(AIDataPlane* plane);
 		static AIDataPlane* NpcPlane_SetChild(AIDataPlane* plane, AIDataPlane* child_plane);
@@ -380,7 +630,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static Item* Crit_GetItemById(Critter* cr, DWORD item_id);
 		static DWORD Crit_GetItems(Critter* cr, int slot, asIScriptArray* items);
 		static DWORD Crit_GetItemsByType(Critter* cr, int type, asIScriptArray* items);
-		static ProtoItem* Crit_GetSlotProto(Critter* cr, int slot);
+		static ProtoItem* Crit_GetSlotProto(Critter* cr, int slot, BYTE& mode);
 		static bool Crit_MoveItem(Critter* cr, DWORD item_id, DWORD count, BYTE to_slot);
 
 		static DWORD Npc_ErasePlane(Critter* npc, int plane_type, bool all);
@@ -581,7 +831,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static DWORD Location_GetMapCount(Location* loc);
 		static Map* Location_GetMap(Location* loc, WORD map_pid);
 		static Map* Location_GetMapByIndex(Location* loc, DWORD index);
-		static DWORD Location_GetMaps(Location* loc, asIScriptArray* arr);
+		static DWORD Location_GetMaps(Location* loc, asIScriptArray* maps);
 		static bool Location_Reload(Location* loc);
 		static void Location_Update(Location* loc);
 
@@ -671,248 +921,9 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 		static bool Global_IsCritterAnim1(DWORD cr_type, DWORD index);
 		static bool Global_IsCritterAnim3d(DWORD cr_type);
 		static int Global_GetGlobalMapRelief(DWORD x, DWORD y);
+		static void Global_Synchronize();
+		static void Global_Resynchronize();
 	} ScriptFunc;
-
-	// Items
-	static Item* CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count);
-	static Item* CreateItemToHexCr(Critter* cr, WORD hx, WORD hy, WORD pid, DWORD count);
-
-	void FindCritterItems(Critter* cr);
-	bool TransferAllItems();
-
-	// Npc
-	void ProcessAI(Npc* npc);
-	bool AI_Stay(Npc* npc, DWORD ms);
-	bool AI_Move(Npc* npc, WORD hx, WORD hy, bool is_run, DWORD cut, DWORD trace);
-	bool AI_MoveToCrit(Npc* npc, DWORD targ_id, DWORD cut, DWORD trace, bool is_run);
-	bool AI_MoveItem(Npc* npc, Map* map, BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count);
-	bool AI_Attack(Npc* npc, Map* map, BYTE use, BYTE aim, DWORD targ_id);
-	bool AI_PickItem(Npc* npc, Map* map, WORD hx, WORD hy, WORD pid, DWORD use_item_id);
-	bool AI_ReloadWeapon(Npc* npc, Map* map, Item* weap, DWORD ammo_id);
-	void TraceFireLine(Map* map, WORD hx, WORD hy, float sx, float sy, DWORD dist, Npc* npc, WordPairVec& positions, DWORD step);
-	//DWORD AIGetAttackPosition(Npc* npc, Map* map, WORD& hx, WORD& hy);
-	bool TransferAllNpc();
-	void ProcessCritter(Critter* cr);
-	bool Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg);
-	bool Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck);
-	void Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer);
-	void Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WORD hy, bool ignore_distance);
-
-	// Radio
-#ifdef RADIO_SAFE
-	DwordVec* RadioChannels[0x10000];
-#else
-	CrVec* RadioChannels[0x10000];
-#endif
-
-	void RadioClearChannels();
-	void RadioAddPlayer(Client* cl, WORD channel);
-	void RadioErsPlayer(Client* cl, WORD channel);
-	void RadioSendText(Critter* cr, WORD channel, const char* text, bool unsafe_text);
-	void RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_str);
-
-	// Main
-	static FOServer* Self;
-	static int UpdateIndex,UpdateLastIndex;
-	static DWORD UpdateLastTick;
-	HWND ServerWindow;
-	volatile bool Active;
-	FileManager FileMngr;
-	ClVec ProcessClients;
-	ClVec SaveClients;
-	DwordMap RegIp;
-
-	void DisconnectClient(Client* cl);
-	void RemoveClient(Client* cl);
-	void AddSaveClient(Client* cl);
-	void EraseSaveClient(DWORD crid);
-	void Process(ClientPtr& acl);
-
-	// Log to client
-	static ClVec LogClients;
-	static void LogToClients(char* str);
-
-	// Game time
-	void SaveGameInfoFile();
-	bool LoadGameInfoFile(FILE* f);
-	void InitGameTime();
-
-	// Lang packs
-	LangPackVec LangPacks;
-	bool InitCrafts(LangPackVec& lang_packs);
-	bool InitLangPacks(LangPackVec& lang_packs);
-	bool InitLangPacksDialogs(LangPackVec& lang_packs);
-	void FinishLangPacks();
-	bool InitLangCrTypes(LangPackVec& lang_packs);
-
-	// Init/Finish
-	bool Init();
-	void Finish();
-	bool IsInit(){return Active;}
-	void RunGameLoop();
-
-	void InitLogic();
-	static unsigned int __stdcall Logic_Work(void* data); // Thread
-
-	// Net
-	static HANDLE IOCompletionPort;
-	static HANDLE* IOThreadHandles;
-	static DWORD WorkThreadCount;
-	static SOCKET ListenSock;
-	static ClVec ConnectedClients;
-	static Mutex ConnectedClientsLocker;
-
-	static unsigned int __stdcall Net_Listen(HANDLE iocp); // Thread
-	static unsigned int __stdcall Net_Work(HANDLE iocp); // Thread
-	static void Net_Input(WSAOVERLAPPED_EX* io);
-	static void Net_Output(WSAOVERLAPPED_EX* io);
-
-	// Service
-	DWORD VarsGarbageLastTick;
-	void ClearUnusedVars();
-	void VarsGarbarger(DWORD cycle_tick);
-
-	// Dump save/load
-	struct ClientSaveData
-	{
-		char Name[MAX_NAME+1];
-		char Password[MAX_NAME+1];
-		CritData Data;
-		CritDataExt DataExt;
-		Critter::CrTimeEventVec TimeEvents;
-
-		void Clear()
-		{
-			ZeroMemory(Name,sizeof(Name));
-			ZeroMemory(Password,sizeof(Password));
-			ZeroMemory(&Data,sizeof(Data));
-			ZeroMemory(&DataExt,sizeof(DataExt));
-			TimeEvents.clear();
-		}
-	};
-typedef vector<ClientSaveData> ClientSaveDataVec;
-	static ClientSaveDataVec ClientsSaveData;
-	static size_t ClientsSaveDataCount;
-
-#define WORLD_SAVE_MAX_INDEX                  (9999)
-#define WORLD_SAVE_DATA_BUFFER_SIZE           (10000000) // 10mb
-	static PByteVec WorldSaveData;
-	static size_t WorldSaveDataBufCount,WorldSaveDataBufFreeSize;
-
-	static DWORD SaveWorldIndex,SaveWorldTime,SaveWorldNextTick;
-	static DwordVec SaveWorldDeleteIndexes;
-	static FILE* DumpFile;
-	static HANDLE DumpBeginEvent,DumpEndEvent;
-	static HANDLE DumpThreadHandle;
-
-	bool NewWorld();
-	void SaveWorld(const char* name);
-	bool LoadWorld(const char* name);
-	void UnloadWorld();
-	static void AddWorldSaveData(void* data, size_t size);
-	static void AddClientSaveData(Client* cl);
-	static unsigned int __stdcall Dump_Work(void* data); // Thread
-
-	// Access
-	StrVec AccessClient,AccessTester,AccessModer,AccessAdmin;
-
-	// Banned
-#define BANS_FNAME_ACTIVE         "active.txt"
-#define BANS_FNAME_EXPIRED        "expired.txt"
-	struct ClientBanned
-	{
-		SYSTEMTIME BeginTime;
-		SYSTEMTIME EndTime;
-		DWORD ClientIp;
-		char ClientName[MAX_NAME+1];
-		char BannedBy[MAX_NAME+1];
-		char BanInfo[128];
-		bool operator==(const char* name){return !_stricmp(name,ClientName);}
-		bool operator==(const DWORD ip){return ClientIp==ip;}
-
-		const char* GetBanLexems(){return Str::Format("$banby%s$time%d$reason%s",BannedBy[0]?BannedBy:"?",Timer::GetTimeDifference(EndTime,BeginTime)/60/60,BanInfo[0]?BanInfo:"just for fun");}
-	};
-typedef vector<ClientBanned> ClientBannedVec;
-typedef vector<ClientBanned>::iterator ClientBannedVecIt;
-	ClientBannedVec Banned;
-
-	ClientBanned* GetBanByName(const char* name){ClientBannedVecIt it=std::find(Banned.begin(),Banned.end(),name); return it!=Banned.end()?&(*it):NULL;}
-	ClientBanned* GetBanByIp(DWORD ip){ClientBannedVecIt it=std::find(Banned.begin(),Banned.end(),ip); return it!=Banned.end()?&(*it):NULL;}
-	DWORD GetBanTime(ClientBanned& ban);
-	void ProcessBans();
-	void SaveBan(ClientBanned& ban, bool expired);
-	void SaveBans();
-	void LoadBans();
-
-	// Clients data
-	struct ClientData
-	{
-		char ClientName[MAX_NAME+1];
-		char ClientPass[MAX_NAME+1];
-		DWORD ClientId;
-		DWORD SaveIndex;
-		DWORD UID[5];
-		DWORD UIDEndTick;
-		void Clear(){ZeroMemory(this,sizeof(ClientData));}
-		bool operator==(const char* name){return !_stricmp(name,ClientName);}
-		bool operator==(const DWORD id){return ClientId==id;}
-		ClientData(){Clear();}
-	};
-typedef vector<ClientData> ClientDataVec;
-typedef vector<ClientData>::iterator ClientDataVecIt;
-	ClientDataVec ClientsData;
-	bool ShowUIDError;
-	DWORD LastClientId;
-
-	bool LoadClientsData();
-	ClientData* GetClientData(const char* name){ClientDataVecIt it=std::find(ClientsData.begin(),ClientsData.end(),name); return it!=ClientsData.end()?&(*it):NULL;}
-	ClientData* GetClientData(DWORD id){ClientDataVecIt it=std::find(ClientsData.begin(),ClientsData.end(),id); return it!=ClientsData.end()?&(*it):NULL;}
-	bool SaveClient(Client* cl, bool deferred);
-	bool LoadClient(Client* cl);
-
-	// Lags
-	DWORD CycleBeginTick;
-
-	// Statistics
-	struct Statistics_
-	{
-		DWORD ServerStartTick;
-		DWORD Uptime;
-		int FPS;
-		int CycleTime;
-		__int64 BytesSend;
-		__int64 BytesRecv;
-		__int64 DataReal;
-		__int64 DataCompressed;
-		float CompressRatio;
-		DWORD MaxOnline;
-		DWORD CurOnline;
-		int LoopTime;
-		int LoopCycles;
-		int LoopMin;
-		int LoopMax;
-		int LagsCount;
-	} static Statistics;
-
-	DWORD PlayersInGame(){return CrMngr.PlayersInGame();}
-	DWORD NpcInGame(){return CrMngr.NpcInGame();}
-	string GetIngamePlayersStatistics();
-
-	// Scores
-	ScoreType BestScores[SCORES_MAX];
-
-	void SetScore(int score, Critter* cr, int val);
-	void SetScore(int score, const char* name);
-	const char* GetScores(); // size == MAX_NAME*SCORES_MAX
-	void ClearScore(int score);
-
-	// Singleplayer save
-	struct
-	{
-		bool Valid;
-		ClientSaveData CrData;
-		ByteVec PicData;
-	} SingleplayerSave;
 };
 
 #endif // __SERVER__

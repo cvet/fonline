@@ -236,7 +236,6 @@ struct MapperScriptFunctions
 
 #define ITEMS_STATISTICS
 //#define FOSERVER_DUMP
-#define RADIO_SAFE
 #define GAME_TIME
 
 struct WSAOVERLAPPED_EX
@@ -256,7 +255,7 @@ struct WSAOVERLAPPED_EX
 #define WSAOP_RECV         (3)
 typedef void(*WSASendCallback)(WSAOVERLAPPED_EX*);
 
-extern bool FOAppQuit;
+extern volatile bool FOAppQuit;
 extern volatile bool FOQuit;
 extern HANDLE UpdateEvent;
 extern HANDLE LogEvent;
@@ -343,7 +342,6 @@ struct GameOptions
 	bool FreeExp;
 	bool RegulatePvP;
 	bool NoAnswerShuffle;
-	DWORD ForceDialog;
 	bool DialogDemandRecheck;
 	DWORD FixBoyDefaultExperience;
 	DWORD SneakDivider;

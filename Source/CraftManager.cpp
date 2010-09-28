@@ -1030,7 +1030,7 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 			for(ItemPtrVecIt it=sub_items.begin(),end=sub_items.end();it!=end;++it)
 			{
 				Item* sub_item=*it;
-				if(!sub_item->IsNotValid && !sub_item->IsValidAccessory()) ItemMngr.ItemToGarbage(sub_item,0x100000);
+				if(!sub_item->IsNotValid && !sub_item->IsValidAccessory()) ItemMngr.ItemToGarbage(sub_item);
 			}
 		}
 	}

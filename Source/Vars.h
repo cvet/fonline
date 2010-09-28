@@ -56,6 +56,7 @@ public:
 	DWORD QuestVarIndex;
 	WORD Type;
 	short RefCount;
+	SyncObject Sync;
 
 	GameVar& operator+=(const int _right);
 	GameVar& operator-=(const int _right);
@@ -128,13 +129,14 @@ typedef vector<GameVar*> VarsVec;
 typedef vector<GameVar*>::iterator VarsVecIt;
 #endif // FONLINE_SERVER
 
-class CVarMngr
+class VarManager
 {
 private:
 	bool isInit;
 	string varsPath;
 	TempVarMap tempVars;
 	StrWordMap varsNames;
+	Mutex varsLocker;
 
 	bool LoadTemplateVars(FILE* f, TempVarVec& vars); // Return count error
 
@@ -164,6 +166,8 @@ public:
 	GameVar* GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool create);
 	void SwapVars(DWORD id1, DWORD id2);
 	DWORD DeleteVars(DWORD id);
+	DWORD ClearUnusedVars(DwordSet& ids1, DwordSet& ids2);
+	void GetQuestVars(DWORD master_id, DwordVec& vars);
 	VarsVec& GetQuestVars(){return allQuestVars;}
 	VarsMap& GetVars(){return allVars;}
 	DWORD GetVarsCount(){return allVars.size();}
@@ -178,6 +182,6 @@ private:
 #endif // FONLINE_SERVER
 };
 
-extern CVarMngr VarMngr;
+extern VarManager VarMngr;
 
 #endif // __VARS__

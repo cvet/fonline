@@ -3,7 +3,6 @@
 
 #include "Defines.h"
 #include "Item.h"
-//#include "StaticPool.h"
 
 #ifdef FONLINE_SERVER
 class Critter;
@@ -54,9 +53,9 @@ public:
 #ifdef FONLINE_SERVER
 private:
 	ItemPtrMap gameItems;
-	// StaticPool<Item,1000000> itemsPool;
 	DwordVec itemToDelete;
 	DWORD lastItemId;
+	Mutex itemLocker;
 
 public:
 	void SaveAllItemsFile(void(*save_func)(void*,size_t));
@@ -64,17 +63,16 @@ public:
 	bool CheckProtoFunctions();
 	void RunInitScriptItems();
 
-	ItemPtrMap& GetGameItems(){return gameItems;}
-	DWORD GetItemsCount(){return gameItems.size();}
+	void GetGameItems(ItemPtrVec& items);
+	DWORD GetItemsCount();
+	void SetCritterItems(Critter* cr);
 
 	Item* CreateItem(WORD pid, DWORD count, DWORD item_id = 0);
 	Item* SplitItem(Item* item, DWORD count);
 	Item* GetItem(DWORD item_id);
-	void EraseItem(DWORD item_id);
-	void FullEraseItemIt(ItemPtrMapIt& it);
 
-	void ItemToGarbage(Item* item, int from);
-	void ItemGarbager(DWORD cycle_tick);
+	void ItemToGarbage(Item* item);
+	void ItemGarbager();
 
 	void NotifyChangeItem(Item* item);
 
@@ -82,7 +80,6 @@ public:
 	void MoveItem(Item* item, DWORD count, Critter* to_cr);
 	void MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WORD to_hy);
 	void MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_id);
-	void DeleteItem(Item* item);
 
 	Item* AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD stack_id);
 	Item* AddItemCritter(Critter* cr, WORD pid, DWORD count);
@@ -98,7 +95,7 @@ public:
 #ifdef ITEMS_STATISTICS
 // Items statistics
 private:
-	__int64 itemCount[MAX_ITEM_PROTOTYPES];
+	volatile __int64 itemCount[MAX_ITEM_PROTOTYPES];
 
 public:
 	void AddItemStatistics(WORD pid, DWORD val);

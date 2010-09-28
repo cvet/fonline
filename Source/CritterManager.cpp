@@ -45,7 +45,7 @@ void CritterManager::Finish()
 	WriteLog("Critter manager finish...\n");
 
 #ifdef FONLINE_SERVER
-	CritterGarbager(0);
+	CritterGarbager();
 #endif
 
 	ZeroMemory(allProtos,sizeof(allProtos));
@@ -264,87 +264,93 @@ void CritterManager::RunInitScriptCritters()
 
 void CritterManager::CritterToGarbage(Critter* cr)
 {
+	SCOPE_LOCK(crLocker);
 	crToDelete.push_back(cr->GetId());
-	cr->IsNotValid=true;
 }
 
-void CritterManager::CritterGarbager(DWORD cycle_tick)
+void CritterManager::CritterGarbager()
 {
 	if(!crToDelete.empty())
 	{
-		// Check performance
-		if(cycle_tick && Timer::FastTick()-cycle_tick>100) return;
-
+		crLocker.Lock();
 		DwordVec to_del=crToDelete;
 		crToDelete.clear();
+		crLocker.Unlock();
+
 		for(DwordVecIt it=to_del.begin(),end=to_del.end();it!=end;++it)
 		{
-			// Check performance
-			if(cycle_tick && Timer::FastTick()-cycle_tick>100)
-			{
-				for(;it!=end;++it) crToDelete.push_back(*it);
-				return;
-			}
+			// Find and erase
+			Critter* cr=NULL;
 
-			DWORD crid=*it;
-			Critter* npc=GetCritter(crid);
-			if(!npc) continue;
-
-			if(!npc->IsNpc())
+			crLocker.Lock();
+			CrMapIt it_cr=allCritters.find(*it);
+			if(it_cr!=allCritters.end()) cr=(*it_cr).second;
+			if(!cr || !cr->IsNpc())
 			{
-				WriteLog(__FUNCTION__" - Critter<%s> is not npc.\n",npc->GetInfo());
+				crLocker.Unlock();
 				continue;
 			}
+			allCritters.erase(it_cr);
+			npcCount--;
+			crLocker.Unlock();
 
-			npc->EventFinish(true);
-			if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,npc->GetInfo()))
+			SYNC_LOCK(cr);
+
+			// Finish critter
+			cr->LockMapTransfers++;
+
+			Map* map=MapMngr.GetMap(cr->GetMap());
+			if(map)
 			{
-				Script::SetArgObject(npc);
+				cr->ClearVisible();
+				map->EraseCritter(cr);
+				map->UnsetFlagCritter(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex(),cr->IsDead());
+			}
+
+			cr->EventFinish(true);
+			if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cr->GetInfo()))
+			{
+				Script::SetArgObject(cr);
 				Script::SetArgBool(true);
 				Script::RunPrepared();
 			}
 
-			Map* map=MapMngr.GetMap(npc->GetMap());
-			if(map)
+			cr->LockMapTransfers--;
+
+			// Erase from global
+			if(cr->GroupMove)
 			{
-				npc->ClearVisible();
-				map->EraseCritter(npc);
-				map->UnsetFlagCritter(npc->GetHexX(),npc->GetHexY(),npc->GetMultihex(),npc->IsDead());
-				if(map->MapLocation->IsToGarbage()) MapMngr.RunLocGarbager();
-			}
-			else if(npc->GroupMove)
-			{
-				GlobalMapGroup* group=npc->GroupMove;
-				group->EraseCrit(npc);
-				if(npc==group->Rule)
+				GlobalMapGroup* group=cr->GroupMove;
+				group->EraseCrit(cr);
+				if(cr==group->Rule)
 				{
 					for(CrVecIt it_=group->CritMove.begin(),end_=group->CritMove.end();it_!=end_;++it_)
 					{
-						Critter* cr=*it_;
-						MapMngr.GM_GroupStartMove(cr,true);
+						Critter* cr_=*it_;
+						MapMngr.GM_GroupStartMove(cr_,true);
 					}
 				}
 				else
 				{
 					for(CrVecIt it_=group->CritMove.begin(),end_=group->CritMove.end();it_!=end_;++it_)
 					{
-						Critter* cr=*it_;
-						cr->Send_RemoveCritter(npc);
+						Critter* cr_=*it_;
+						cr_->Send_RemoveCritter(cr);
 					}
 
-					Item* car=npc->GetItemCar();
+					Item* car=cr->GetItemCar();
 					if(car && car->GetId()==group->CarId)
 					{
 						group->CarId=0;
 						MapMngr.GM_GroupSetMove(group,group->MoveX,group->MoveY,0); // Stop others
 					}
 				}
-
-				npc->GroupMove=NULL;
+				cr->GroupMove=NULL;
 			}
 
-			npc->FullClear();
-			DeleteCritter(npc);
+			cr->IsNotValid=true;
+			cr->FullClear();
+			Job::DeferredRelease(cr);
 		}
 	}
 }
@@ -394,17 +400,20 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		hy=hy_;
 	}
 
-	Npc* npc=CrMngr.CreateNpc(proto_id,true);
+	Npc* npc=CreateNpc(proto_id,true);
 	if(!npc)
 	{
 		WriteLog(__FUNCTION__" - Create npc with pid <%u> failture.\n",proto_id);
 		return NULL;
 	}
+
+	crLocker.Lock();
 	npc->Data.Id=lastNpcId+1;
 	lastNpcId++;
+	crLocker.Unlock();
 
 	// Flags and coords
-	Location* loc=map->MapLocation;
+	Location* loc=map->GetLocation();
 
 	if(dir>5) dir=Random(0,5);
 	npc->Data.Dir=dir;
@@ -425,8 +434,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	}
 
 	map->AddCritter(npc);
-	CrMngr.AddCritter(npc);
-	//Job::Add(JOB_CRITTER,&npc);
+	AddCritter(npc);
 
 	for(DWORD i=0;i<items_count;i++)
 	{
@@ -492,11 +500,16 @@ Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
 	npc->Data.Cond=COND_LIFE;
 	npc->Data.CondExt=COND_LIFE_NONE;
 	npc->Data.Multihex=-1;
+
+	SYNC_LOCK(npc);
+	Job::PushBack(JOB_CRITTER,npc);
 	return npc;
 }
 
 void CritterManager::AddCritter(Critter* cr)
 {
+	SCOPE_LOCK(crLocker);
+
 	allCritters.insert(CrMapVal(cr->GetId(),cr));
 	if(cr->IsPlayer()) playersCount++;
 	else npcCount++;
@@ -504,54 +517,103 @@ void CritterManager::AddCritter(Critter* cr)
 
 void CritterManager::GetCopyNpcs(PcVec& npcs)
 {
+	crLocker.Lock();
+	CrMap critters=allCritters;
+	crLocker.Unlock();
+
 	npcs.reserve(npcCount);
-	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
+	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(cr->IsNpc()) npcs.push_back((Npc*)cr);
+		if(cr->IsNpc() && !cr->IsNotValid)
+		{
+			SYNC_LOCK(cr);
+			npcs.push_back((Npc*)cr);
+		}
 	}
 }
 
 void CritterManager::GetCopyPlayers(ClVec& players)
 {
+	crLocker.Lock();
+	CrMap critters=allCritters;
+	crLocker.Unlock();
+
 	players.reserve(playersCount);
-	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
+	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(cr->IsPlayer()) players.push_back((Client*)cr);
+		if(cr->IsPlayer() && !cr->IsNotValid)
+		{
+			SYNC_LOCK(cr);
+			players.push_back((Client*)cr);
+		}
 	}
 }
 
 Critter* CritterManager::GetCritter(DWORD crid)
 {
+	Critter* cr=NULL;
+
+	crLocker.Lock();
 	CrMapIt it=allCritters.find(crid);
-	return it!=allCritters.end()?(*it).second:NULL;
+	if(it!=allCritters.end()) cr=(*it).second;
+	crLocker.Unlock();
+
+	if(!cr) return NULL;
+	SYNC_LOCK(cr);
+	return cr;
 }
 
 Client* CritterManager::GetPlayer(DWORD crid)
 {
-	Critter* cr=GetCritter(crid);
-	return cr && cr->IsPlayer()?(Client*)cr:NULL;
+	Critter* cr=NULL;
+
+	crLocker.Lock();
+	CrMapIt it=allCritters.find(crid);
+	if(it!=allCritters.end()) cr=(*it).second;
+	crLocker.Unlock();
+
+	if(!cr || !cr->IsPlayer()) return NULL;
+	SYNC_LOCK(cr);
+	return (Client*)cr;
 }
 
 Client* CritterManager::GetPlayer(const char* name)
 {
+	crLocker.Lock();
 	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(cr->IsPlayer() && !_stricmp(name,cr->GetName())) return (Client*)cr;
+		if(cr->IsPlayer() && !_stricmp(name,cr->GetName()))
+		{
+			crLocker.Unlock();
+			SYNC_LOCK(cr);
+			return (Client*)cr;
+		}
 	}
+	crLocker.Unlock();
 	return NULL;
 }
 
 Npc* CritterManager::GetNpc(DWORD crid)
 {
-	Critter* cr=GetCritter(crid);
-	return cr && cr->IsNpc()?(Npc*)cr:NULL;
+	Critter* cr=NULL;
+
+	crLocker.Lock();
+	CrMapIt it=allCritters.find(crid);
+	if(it!=allCritters.end()) cr=(*it).second;
+	crLocker.Unlock();
+
+	if(!cr || !cr->IsNpc()) return NULL;
+	SYNC_LOCK(cr);
+	return (Npc*)cr;
 }
 
 void CritterManager::EraseCritter(Critter* cr)
 {
+	SCOPE_LOCK(crLocker);
+
 	CrMapIt it=allCritters.find(cr->GetId());
 	if(it!=allCritters.end())
 	{
@@ -561,41 +623,28 @@ void CritterManager::EraseCritter(Critter* cr)
 	}
 }
 
-void CritterManager::DeleteCritter(Critter* cr)
-{
-	cr->IsNotValid=true;
-	CrMapIt it=allCritters.find(cr->GetId());
-	if(it==allCritters.end()) return;
-	Critter* cr_=(*it).second;
-	if(cr_->IsPlayer()) playersCount--;
-	else npcCount--;
-	cr_->IsNotValid=true;
-	cr_->Release();
-	allCritters.erase(it);
-}
-
 DWORD CritterManager::PlayersInGame()
 {
-	return playersCount;
+	crLocker.Lock();
+	DWORD count=playersCount;
+	crLocker.Unlock();
+	return count;
 }
 
 DWORD CritterManager::NpcInGame()
 {
-	return npcCount;
+	crLocker.Lock();
+	DWORD count=npcCount;
+	crLocker.Unlock();
+	return count;
 }
 
 DWORD CritterManager::CrittersInGame()
 {
-	return allCritters.size();
+	crLocker.Lock();
+	DWORD count=allCritters.size();
+	crLocker.Unlock();
+	return count;
 }
 
-void CritterManager::ProcessCrittersVisible()
-{
-	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it) (*it).second->ProcessVisibleCritters();
-}
-
-void CritterManager::ProcessItemsVisible()
-{
-	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it) (*it).second->ProcessVisibleItems();
-}
 #endif

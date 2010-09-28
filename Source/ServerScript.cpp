@@ -20,22 +20,27 @@ void dbg_free(void* ptr)
 	free(ptr_);
 }
 
-bool ASDbgMemoryCanWork=false;
-map<void*,string> ASDbgMemoryPtr;
-char ASDbgMemoryBuf[1024];
+static bool ASDbgMemoryCanWork=false;
+static THREAD bool ASDbgMemoryInUse=false;
+static map<void*,string> ASDbgMemoryPtr;
+static char ASDbgMemoryBuf[1024];
+static Mutex ASDbgMemoryLocker;
 void* dbg_malloc2(size_t size)
 {
 	size+=sizeof(size_t);
 	size_t* ptr=(size_t*)malloc(size);
 	*ptr=size;
 
-	if(ASDbgMemoryCanWork)
+	if(ASDbgMemoryCanWork && !ASDbgMemoryInUse)
 	{
+		SCOPE_LOCK(ASDbgMemoryLocker);
+		ASDbgMemoryInUse=true;
 		const char* module=Script::GetActiveModuleName();
 		const char* func=Script::GetActiveFuncName();
 		sprintf(ASDbgMemoryBuf,"AS : %s : %s",module?module:"<nullptr>",func?func:"<nullptr>");
 		MEMORY_PROCESS_STR(ASDbgMemoryBuf,size);
 		ASDbgMemoryPtr.insert(map<void*,string>::value_type(ptr,string(ASDbgMemoryBuf)));
+		ASDbgMemoryInUse=false;
 	}
 	MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT,size);
 
@@ -49,6 +54,7 @@ void dbg_free2(void* ptr)
 
 	if(ASDbgMemoryCanWork)
 	{
+		SCOPE_LOCK(ASDbgMemoryLocker);
 		map<void*,string>::iterator it=ASDbgMemoryPtr.find(ptr_);
 		if(it!=ASDbgMemoryPtr.end())
 		{
@@ -85,6 +91,19 @@ bool FOServer::InitScriptSystem()
 	}
 	Script::SetScriptsPath(PT_SERVER_SCRIPTS);
 
+	// Wrong global objects
+	ServerWrongGlobalObjects.push_back("Critter@");
+	ServerWrongGlobalObjects.push_back("Critter@[]");
+	ServerWrongGlobalObjects.push_back("Item@");
+	ServerWrongGlobalObjects.push_back("Item@[]");
+	ServerWrongGlobalObjects.push_back("Map@");
+	ServerWrongGlobalObjects.push_back("Map@[]");
+	ServerWrongGlobalObjects.push_back("Location@");
+	ServerWrongGlobalObjects.push_back("Location@[]");
+	ServerWrongGlobalObjects.push_back("GameVar@");
+	ServerWrongGlobalObjects.push_back("GameVar@[]");
+	Script::SetWrongGlobalObjects(ServerWrongGlobalObjects);
+
 	// Bind vars and functions, look bind.h
 	asIScriptEngine* engine=Script::GetEngine();
 #define BIND_SERVER
@@ -119,7 +138,7 @@ bool FOServer::InitScriptSystem()
 		{&ServerFunctions.Loop,"loop","uint %s()"},
 		{&ServerFunctions.GlobalProcess,"global_process","void %s(int,Critter&,Critter@[]&,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)"},
 		{&ServerFunctions.GlobalInvite,"global_invite","void %s(Critter@[]&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)"},
-		{&ServerFunctions.CritterAttack,"critter_attack","void %s(Critter&,Critter&,ProtoItem&,ProtoItem@,uint8)"},
+		{&ServerFunctions.CritterAttack,"critter_attack","void %s(Critter&,Critter&,ProtoItem&,uint8,ProtoItem@)"},
 		{&ServerFunctions.CritterAttacked,"critter_attacked","void %s(Critter&,Critter&)"},
 		{&ServerFunctions.CritterStealing,"critter_stealing","bool %s(Critter&,Critter&,Item&,uint)"},
 		{&ServerFunctions.CritterUseItem,"critter_use_item","bool %s(Critter&,Item&,Critter@,Item@,Scenery@,uint)"},
@@ -184,13 +203,14 @@ bool FOServer::DialogScriptDemand(DemandResult& demand, Critter* master, Critter
 	return false;
 }
 
-void FOServer::DialogScriptResult(DemandResult& result, Critter* master, Critter* slave)
+DWORD FOServer::DialogScriptResult(DemandResult& result, Critter* master, Critter* slave)
 {
-	if(!Script::PrepareContext(result.ParamId,CALL_FUNC_STR,master->GetInfo())) return;
+	if(!Script::PrepareContext(result.ParamId,CALL_FUNC_STR,master->GetInfo())) return 0;
 	Script::SetArgObject(master);
 	Script::SetArgObject(slave);
 	for(int i=0;i<result.ValuesCount;i++) Script::SetArgDword(result.ValueExt[i]);
-	Script::RunPrepared();
+	if(Script::RunPrepared() && result.RetValue) return Script::GetReturnedDword();
+	return 0;
 }
 
 /************************************************************************/
@@ -263,6 +283,9 @@ bool FOServer::ReloadClientScripts()
 	ParametersClAlready.clear();
 	ParametersClIndex=1;
 
+	StrVec empty;
+	Script::SetWrongGlobalObjects(empty);
+
 	int num=STR_INTERNAL_SCRIPT_MODULES;
 	int errors=0;
 	char buf[MAX_FOTEXT];
@@ -331,6 +354,8 @@ bool FOServer::ReloadClientScripts()
 	Script::FinishEngine(engine);
 	Script::Undefine("__CLIENT");
 	Script::Define("__SERVER");
+
+	Script::SetWrongGlobalObjects(ServerWrongGlobalObjects);
 
 #ifdef MEMORY_DEBUG
 	if(MemoryDebugLevel>=2) asSetGlobalMemoryFunctions(dbg_malloc2,dbg_free2);
@@ -478,6 +503,18 @@ int FOServer::SScriptFunc::DataVal_Index(CritterPtr& cr, DWORD index)
 	return cr->GetParam(index);
 }
 
+void FOServer::SScriptFunc::Synchronizer_Constructor(void* memory)
+{
+	new(memory) SyncObject();
+}
+
+void FOServer::SScriptFunc::Synchronizer_Destructor(void* memory)
+{
+	SyncObject* obj=(SyncObject*)memory;
+	obj->Unlock();
+	obj->~SyncObject();
+}
+
 AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetCopy(AIDataPlane* plane)
 {
 	return plane->GetCopy();
@@ -519,8 +556,9 @@ DWORD FOServer::SScriptFunc::Container_GetItems(Item* cont, DWORD special_id, as
 	if(!items) SCRIPT_ERROR_R0("Items array arg nullptr.");
 	if(cont->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!cont->IsContainer()) SCRIPT_ERROR_R0("Container item is not container type.");
+
 	ItemPtrVec items_;
-	cont->ContGetItems(items_,special_id);
+	cont->ContGetItems(items_,special_id,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
@@ -763,8 +801,9 @@ void FOServer::SScriptFunc::Item_SetLexems(Item* item, CScriptString* lexems)
 				break;
 			}
 
-			ClVec& clients=map->GetPlayers();
-			for(ClVecIt it=clients.begin(),end=clients.end();it!=end;++it)
+			ClVec players;
+			map->GetPlayers(players);
+			for(ClVecIt it=players.begin(),end=players.end();it!=end;++it)
 			{
 				Client* cl=*it;
 				if(cl->IsOnline() && cl->CountIdVisItem(item->GetId()))
@@ -990,7 +1029,7 @@ void FOServer::SScriptFunc::Item_set_Flags(Item* item, DWORD value)
 	if((old&ITEM_GECK)!=(value&ITEM_GECK) && item->Accessory==ITEM_ACCESSORY_HEX)
 	{
 		if(!map) map=MapMngr.GetMap(item->ACC_HEX.MapId);
-		if(map) map->MapLocation->GeckCount+=(FLAG(value,ITEM_GECK)?1:-1);
+		if(map) map->GetLocation()->GeckCount+=(FLAG(value,ITEM_GECK)?1:-1);
 	}
 
 	// Update data
@@ -1207,7 +1246,7 @@ bool FOServer::SScriptFunc::Crit_MoveToDir(Critter* cr, BYTE direction)
 	WORD hy=cr->GetHexY();
 	MoveHexByDir(hx,hy,direction,map->GetMaxHexX(),map->GetMaxHexY());
 	WORD move_flags=direction|BIN16(00000000,00111000);
- 	bool move=Self->Act_Move(cr,hx,hy,move_flags);
+ 	bool move=Act_Move(cr,hx,hy,move_flags);
 	if(!move) SCRIPT_ERROR_R0("Move fail.");
 	cr->Send_Move(cr,move_flags);
 	return true;
@@ -1264,7 +1303,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, DWORD map_id, WORD
 		else return true;
 	}
 
-	Location* loc=map->MapLocation;
+	Location* loc=map->GetLocation();
 	if(loc && DistSqrt(cr->Data.WorldX,cr->Data.WorldY,loc->Data.WX,loc->Data.WY)>loc->GetRadius())
 	{
 		cr->Data.WorldX=loc->Data.WX;
@@ -1294,7 +1333,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, DWORD map_id, B
 		if(!MapMngr.Transit(cr,map,hx,hy,dir,2,true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
 	}
 
-	Location* loc=map->MapLocation;
+	Location* loc=map->GetLocation();
 	if(loc && DistSqrt(cr->Data.WorldX,cr->Data.WorldY,loc->Data.WX,loc->Data.WY)>loc->GetRadius())
 	{
 		cr->Data.WorldX=loc->Data.WX;
@@ -1486,19 +1525,19 @@ void FOServer::SScriptFunc::Crit_AddScore(Critter* cr, int score, int val)
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(score<0) SCRIPT_ERROR_R("Score arg is negative.");
 	if(score>=SCORES_MAX) SCRIPT_ERROR_R("Score arg is greater than max scores.");
-	Self->SetScore(score,cr,val);
+	SetScore(score,cr,val);
 }
 
 void FOServer::SScriptFunc::Crit_AddHolodiskInfo(Critter* cr, DWORD holodisk_num)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	Self->AddPlayerHoloInfo(cr,holodisk_num,true);
+	AddPlayerHoloInfo(cr,holodisk_num,true);
 }
 
 void FOServer::SScriptFunc::Crit_EraseHolodiskInfo(Critter* cr, DWORD holodisk_num)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	Self->ErasePlayerHoloInfo(cr,holodisk_num,true);
+	ErasePlayerHoloInfo(cr,holodisk_num,true);
 }
 
 bool FOServer::SScriptFunc::Crit_IsHolodiskInfo(Critter* cr, DWORD holodisk_num)
@@ -1559,7 +1598,7 @@ bool FOServer::SScriptFunc::Crit_PickItem(Critter* cr, WORD hx, WORD hy, WORD pi
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) SCRIPT_ERROR_R0("Map not found.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
-	bool pick=Self->Act_PickItem(cr,hx,hy,pid);
+	bool pick=Act_PickItem(cr,hx,hy,pid);
 	if(!pick) SCRIPT_ERROR_R0("Pick fail.");
 	return true;
 }
@@ -1592,16 +1631,18 @@ WORD FOServer::SScriptFunc::Crit_GetFavoriteItem(Critter* cr, int slot)
 DWORD FOServer::SScriptFunc::Crit_GetCritters(Critter* cr, bool look_on_me, int find_type, asIScriptArray* critters)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+
 	CrVec cr_vec;
 	for(CrVecIt it=(look_on_me?cr->VisCr.begin():cr->VisCrSelf.begin()),end=(look_on_me?cr->VisCr.end():cr->VisCrSelf.end());it!=end;++it)
 	{
 		Critter* cr_=*it;
 		if(cr_->CheckFind(find_type)) cr_vec.push_back(cr_);
 	}
-	if(cr_vec.empty()) return 0;
+
 	if(critters)
 	{
 		SortCritterByDist(cr,cr_vec);
+		for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
 		Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
 	}
 	return cr_vec.size();
@@ -1617,10 +1658,11 @@ DWORD FOServer::SScriptFunc::Crit_GetFollowGroup(Critter* cr, int find_type, asI
 		Critter* cr_=*it;
 		if(cr_->GetFollowCrId()==cr->GetId() && cr_->CheckFind(find_type)) cr_vec.push_back(cr_);
 	}
-	if(cr_vec.empty()) return 0;
+
 	if(critters)
 	{
 		SortCritterByDist(cr,cr_vec);
+		for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
 		Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
 	}
 	return cr_vec.size();
@@ -1673,8 +1715,10 @@ DWORD FOServer::SScriptFunc::Npc_GetTalkedPlayers(Critter* cr, asIScriptArray* p
 	CrVec players_;
 	for(CrVecIt it=cr->VisCr.begin(),end=cr->VisCr.end();it!=end;++it)
 	{
-		if(!(*it)->IsPlayer()) continue;
-		Client* cl=(Client*)(*it);
+		Critter* cr=*it;
+		if(!cr->IsPlayer()) continue;
+
+		Client* cl=(Client*)cr;
 		if(cl->Talk.TalkType==TALK_WITH_NPC && cl->Talk.TalkNpc==cr->GetId())
 		{
 			talk++;
@@ -1685,6 +1729,7 @@ DWORD FOServer::SScriptFunc::Npc_GetTalkedPlayers(Critter* cr, asIScriptArray* p
 	if(players)
 	{
 		SortCritterByDist(cr,players_);
+		for(CrVecIt it=players_.begin(),end=players_.end();it!=end;++it) SYNC_LOCK(*it);
 		Script::AppendVectorToArrayRef<Critter*>(players_,players);
 	}
 	return talk;
@@ -1695,8 +1740,8 @@ bool FOServer::SScriptFunc::Crit_IsSeeCr(Critter* cr, Critter* cr_)
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(cr_->IsNotValid) return false;
 	if(cr==cr_) return true;
-	if(!cr->GetMap()) return cr->GroupMove->GetCritter(cr_->GetId())!=NULL;
-	return std::find(cr_->VisCr.begin(),cr_->VisCr.end(),cr)!=cr_->VisCr.end();
+	CrVec& critters=(cr->GetMap()?cr->VisCrSelf:cr->GroupMove->CritMove);
+	return std::find(critters.begin(),critters.end(),cr_)!=critters.end();
 }
 
 bool FOServer::SScriptFunc::Crit_IsSeenByCr(Critter* cr, Critter* cr_)
@@ -1704,8 +1749,8 @@ bool FOServer::SScriptFunc::Crit_IsSeenByCr(Critter* cr, Critter* cr_)
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(cr_->IsNotValid) return false;
 	if(cr==cr_) return true;
-	if(!cr->GetMap()) return cr->GroupMove->GetCritter(cr_->GetId())!=NULL;
-	return std::find(cr->VisCr.begin(),cr->VisCr.end(),cr_)!=cr->VisCr.end();
+	CrVec& critters=(cr->GetMap()?cr->VisCr:cr->GroupMove->CritMove);
+	return std::find(critters.begin(),critters.end(),cr_)!=critters.end();
 }
 
 bool FOServer::SScriptFunc::Crit_IsSeeItem(Critter* cr, Item* item)
@@ -1773,7 +1818,7 @@ DWORD FOServer::SScriptFunc::Crit_GetItems(Critter* cr, int slot, asIScriptArray
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
-	cr->GetItemsSlot(slot,items_);
+	cr->GetItemsSlot(slot,items_,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
@@ -1782,28 +1827,28 @@ DWORD FOServer::SScriptFunc::Crit_GetItemsByType(Critter* cr, int type, asIScrip
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
-	cr->GetItemsType(type,items_);
+	cr->GetItemsType(type,items_,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
 
-ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto(Critter* cr, int slot)
+ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto(Critter* cr, int slot, BYTE& mode)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	ProtoItem* proto_item;
+
+	Item* item=NULL;
 	switch(slot)
 	{
-	case SLOT_HAND1: proto_item=cr->ItemSlotMain->Proto; break;
-	case SLOT_HAND2: proto_item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt->Proto:cr->GetDefaultItemSlotMain().Proto); break;
-	case SLOT_ARMOR: proto_item=cr->ItemSlotArmor->Proto; break;
-	default:
-		{
-			Item* item=cr->GetItemSlot(slot);
-			if(item) proto_item=item->Proto;
-		}
-		break;
+	case SLOT_HAND1: item=cr->ItemSlotMain; break;
+	case SLOT_HAND2: item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt:&cr->GetDefaultItemSlotMain()); break;
+	case SLOT_ARMOR: item=cr->ItemSlotArmor; break;
+	default: item=cr->GetItemSlot(slot); break;
 	}
-	return proto_item;
+	if(!item) return NULL;
+
+	mode=item->Data.Mode;
+	if(!item->GetId() && (item==cr->ItemSlotMain || item==cr->ItemSlotExt)) mode=cr->Data.Params[ST_HANDS_ITEM_AND_MODE]&0xFF;
+	return item->Proto;
 }
 
 bool FOServer::SScriptFunc::Crit_MoveItem(Critter* cr, DWORD item_id, DWORD count, BYTE to_slot)
@@ -2842,7 +2887,7 @@ WORD FOServer::SScriptFunc::Map_GetProtoId(Map* map)
 Location* FOServer::SScriptFunc::Map_GetLocation(Map* map)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return map->MapLocation;
+	return map->GetLocation();
 }
 
 bool FOServer::SScriptFunc::Map_SetScript(Map* map, CScriptString* script)
@@ -3016,7 +3061,7 @@ Item* FOServer::SScriptFunc::Map_AddItem(Map* map, WORD hx, WORD hy, WORD proto_
 	if(!proto_item) SCRIPT_ERROR_R0("Invalid proto id arg.");
 	if(proto_item->IsCar() && !map->IsPlaceForCar(hx,hy,proto_item)) SCRIPT_ERROR_R0("No place for car.");
 	if(!count) count=1;
-	return Self->CreateItemOnHex(map,hx,hy,proto_id,count);
+	return CreateItemOnHex(map,hx,hy,proto_id,count);
 }
 
 DWORD FOServer::SScriptFunc::Map_GetItemsHex(Map* map, WORD hx, WORD hy, asIScriptArray* items)
@@ -3024,8 +3069,7 @@ DWORD FOServer::SScriptFunc::Map_GetItemsHex(Map* map, WORD hx, WORD hy, asIScri
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 	ItemPtrVec items_;
-	map->GetItemsHex(hx,hy,items_);
-	if(items_.empty()) return 0;
+	map->GetItemsHex(hx,hy,items_,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
@@ -3035,8 +3079,7 @@ DWORD FOServer::SScriptFunc::Map_GetItemsHexEx(Map* map, WORD hx, WORD hy, DWORD
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 	ItemPtrVec items_;
-	map->GetItemsHexEx(hx,hy,radius,pid,items_);
-	if(items_.empty()) return 0;
+	map->GetItemsHexEx(hx,hy,radius,pid,items_,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
@@ -3045,8 +3088,7 @@ DWORD FOServer::SScriptFunc::Map_GetItemsByPid(Map* map, WORD pid, asIScriptArra
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
-	map->GetItemsPid(pid,items_);
-	if(items_.empty()) return 0;
+	map->GetItemsPid(pid,items_,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
@@ -3055,8 +3097,7 @@ DWORD FOServer::SScriptFunc::Map_GetItemsByType(Map* map, int type, asIScriptArr
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
-	map->GetItemsType(type,items_);
-	if(items_.empty()) return 0;
+	map->GetItemsType(type,items_,items!=NULL);
 	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return items_.size();
 }
@@ -3150,7 +3191,7 @@ DWORD FOServer::SScriptFunc::Map_GetCritters(Map* map, WORD hx, WORD hy, DWORD r
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 	CrVec cr_vec;
-	map->GetCrittersHex(hx,hy,radius,find_type,cr_vec);
+	map->GetCrittersHex(hx,hy,radius,find_type,cr_vec,critters!=NULL);
 	if(critters)
 	{
 		SortCritterByDist(hx,hy,cr_vec);
@@ -3162,10 +3203,13 @@ DWORD FOServer::SScriptFunc::Map_GetCritters(Map* map, WORD hx, WORD hy, DWORD r
 DWORD FOServer::SScriptFunc::Map_GetCrittersByPids(Map* map, WORD pid, int find_type, asIScriptArray* critters)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+
 	CrVec cr_vec;
 	if(!pid)
 	{
-		for(CrVecIt it=map->GetCritters().begin(),end=map->GetCritters().end();it!=end;++it)
+		CrVec& map_critters=map->GetCrittersNoLock();
+		cr_vec.reserve(map_critters.size());
+		for(CrVecIt it=map_critters.begin(),end=map_critters.end();it!=end;++it)
 		{
 			Critter* cr=*it;
 			if(cr->CheckFind(find_type)) cr_vec.push_back(cr);
@@ -3173,14 +3217,20 @@ DWORD FOServer::SScriptFunc::Map_GetCrittersByPids(Map* map, WORD pid, int find_
 	}
 	else
 	{
-		for(PcVecIt it=map->GetNpcs().begin(),end=map->GetNpcs().end();it!=end;++it)
+		PcVec& map_npcs=map->GetNpcsNoLock();
+		cr_vec.reserve(map_npcs.size());
+		for(PcVecIt it=map_npcs.begin(),end=map_npcs.end();it!=end;++it)
 		{
 			Npc* npc=*it;
 			if(npc->GetProtoId()==pid && npc->CheckFind(find_type)) cr_vec.push_back(npc);
 		}
 	}
-	if(cr_vec.empty()) return 0;
-	if(critters) Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+
+	if(critters)
+	{
+		for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+	}
 	return cr_vec.size();
 }
 
@@ -3199,7 +3249,11 @@ DWORD FOServer::SScriptFunc::Map_GetCrittersInPath(Map* map, WORD from_hx, WORD 
 	trace.Critters=&cr_vec;
 	trace.FindType=find_type;
 	MapMngr.TraceBullet(trace);
-	if(critters) Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+	if(critters)
+	{
+		for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+	}
 	return cr_vec.size();
 }
 
@@ -3221,7 +3275,11 @@ DWORD FOServer::SScriptFunc::Map_GetCrittersInPathBlock(Map* map, WORD from_hx, 
 	trace.PreBlock=&pre_block;
 	trace.Block=&block;
 	MapMngr.TraceBullet(trace);
-	if(critters) Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+	if(critters)
+	{
+		for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+	}
 	pre_block_hx=pre_block.first;
 	pre_block_hy=pre_block.second;
 	block_hx=block.first;
@@ -3232,33 +3290,42 @@ DWORD FOServer::SScriptFunc::Map_GetCrittersInPathBlock(Map* map, WORD from_hx, 
 DWORD FOServer::SScriptFunc::Map_GetCrittersWhoViewPath(Map* map, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, int find_type, asIScriptArray* critters)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+
 	CrVec cr_vec;
 	if(critters) Script::AssignScriptArrayInVector<Critter*>(cr_vec,critters);
-	CrVec& crits=map->GetCritters();
-	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
+
+	CrVec& map_critters=map->GetCrittersNoLock();
+	for(CrVecIt it=map_critters.begin(),end=map_critters.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if( cr->CheckFind(find_type)
-			&& std::find(cr_vec.begin(),cr_vec.end(),cr)==cr_vec.end()
-			&& IntersectCircleLine(cr->GetHexX(),cr->GetHexY(),cr->GetLook(),from_hx,from_hy,to_hx,to_hy))
+		if(cr->CheckFind(find_type) &&
+			std::find(cr_vec.begin(),cr_vec.end(),cr)==cr_vec.end() &&
+			IntersectCircleLine(cr->GetHexX(),cr->GetHexY(),cr->GetLook(),from_hx,from_hy,to_hx,to_hy))
 			cr_vec.push_back(cr);
 	}
-	if(cr_vec.empty()) return 0;
-	if(critters) Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+
+	if(critters)
+	{
+		for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Critter*>(cr_vec,critters);
+	}
 	return cr_vec.size();
 }
 
 DWORD FOServer::SScriptFunc::Map_GetCrittersSeeing(Map* map, asIScriptArray& critters, bool look_on_them, int find_type, asIScriptArray* result_critters)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+
 	CrVec cr_vec;
 	Script::AssignScriptArrayInVector<Critter*>(cr_vec,&critters);
+
 	for(int i=0,j=critters.GetElementCount();i<j;i++)
 	{
 		Critter* cr=*(Critter**)critters.GetElementPointer(i);
 		if(look_on_them) cr->GetCrFromVisCr(cr_vec,find_type);
 		else cr->GetCrFromVisCrSelf(cr_vec,find_type);
 	}
+
 	if(result_critters) Script::AppendVectorToArrayRef<Critter*>(cr_vec,result_critters);
 	return cr_vec.size();
 }
@@ -3548,7 +3615,9 @@ void FOServer::SScriptFunc::Map_PlaySound(Map* map, CScriptString& sound_name)
 	char sound_name_[16];
 	strncpy(sound_name_,sound_name.c_str(),16);
 
-	for(ClVecIt it=map->GetPlayers().begin(),end=map->GetPlayers().end();it!=end;++it)
+	ClVec players;
+	map->GetPlayers(players);
+	for(ClVecIt it=players.begin(),end=players.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		cr->Send_PlaySound(0,sound_name_);
@@ -3563,7 +3632,9 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius(Map* map, CScriptString& sound_n
 	char sound_name_[16];
 	strncpy(sound_name_,sound_name.c_str(),16);
 
-	for(ClVecIt it=map->GetPlayers().begin(),end=map->GetPlayers().end();it!=end;++it)
+	ClVec players;
+	map->GetPlayers(players);
+	for(ClVecIt it=players.begin(),end=players.end();it!=end;++it)
 	{
 		Critter* cr=*it;
 		if(CheckDist(hx,hy,cr->GetHexX(),cr->GetHexY(),radius==0?cr->GetLook():radius)) cr->Send_PlaySound(0,sound_name_);
@@ -3614,7 +3685,7 @@ bool FOServer::SScriptFunc::Map_VerifyTrigger(Map* map, Critter* cr, WORD hx, WO
 	if(dir>5) SCRIPT_ERROR_R0("Invalid dir arg.");
 	WORD from_hx=hx,from_hy=hy;
 	MoveHexByDir(from_hx,from_hy,ReverseDir(dir),map->GetMaxHexX(),map->GetMaxHexY());
-	return Self->VerifyTrigger(map,cr,from_hx,from_hy,hx,hy,dir);
+	return VerifyTrigger(map,cr,from_hx,from_hy,hx,hy,dir);
 }
 
 void FOServer::SScriptFunc::Map_EventFinish(Map* map, bool deleted)
@@ -3709,17 +3780,21 @@ WORD FOServer::SScriptFunc::Location_GetProtoId(Location* loc)
 DWORD FOServer::SScriptFunc::Location_GetMapCount(Location* loc)
 {
 	if(loc->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return loc->GetMaps().size();
+	return loc->GetMapsCount();
 }
 
 Map* FOServer::SScriptFunc::Location_GetMap(Location* loc, WORD map_pid)
 {
 	if(loc->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	MapVec& maps=loc->GetMaps();
+	MapVec& maps=loc->GetMapsNoLock();
 	for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it)
 	{
 		Map* map=*it;
-		if(map->GetPid()==map_pid) return map;
+		if(map->GetPid()==map_pid)
+		{
+			SYNC_LOCK(map);
+			return map;
+		}
 	}
 	return NULL;
 }
@@ -3727,26 +3802,31 @@ Map* FOServer::SScriptFunc::Location_GetMap(Location* loc, WORD map_pid)
 Map* FOServer::SScriptFunc::Location_GetMapByIndex(Location* loc, DWORD index)
 {
 	if(loc->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	MapVec& maps=loc->GetMaps();
+	MapVec& maps=loc->GetMapsNoLock();
 	if(index>=maps.size()) SCRIPT_ERROR_R0("Invalid index arg.");
-	return maps[index];
+	Map* map=maps[index];
+	SYNC_LOCK(map);
+	return map;
 }
 
-DWORD FOServer::SScriptFunc::Location_GetMaps(Location* loc, asIScriptArray* arr)
+DWORD FOServer::SScriptFunc::Location_GetMaps(Location* loc, asIScriptArray* maps)
 {
 	if(loc->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	MapVec& maps=loc->GetMaps();
-	Script::AppendVectorToArrayRef<Map*>(maps,arr);
-	return maps.size();
+	MapVec maps_;
+	loc->GetMaps(maps_,maps!=NULL);
+	if(maps) Script::AppendVectorToArrayRef<Map*>(maps_,maps);
+	return maps_.size();
 }
 
 bool FOServer::SScriptFunc::Location_Reload(Location* loc)
 {
 	if(loc->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	MapVec& maps=loc->GetMaps();
+	MapVec maps;
+	loc->GetMaps(maps,true);
 	for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it)
 	{
-		if(!RegenerateMap(*it)) SCRIPT_ERROR_R0("Reload map in location fail.");
+		Map* map=*it;
+		if(!RegenerateMap(map)) SCRIPT_ERROR_R0("Reload map in location fail.");
 	}
 	return true;
 }
@@ -3878,6 +3958,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCont(asIScriptArray& items, Item* to
 void FOServer::SScriptFunc::Global_DeleteItem(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R("Item arg nullptr.");
+
 	// Delete car bags
 	if(item->IsCar() && item->Accessory==ITEM_ACCESSORY_HEX)
 	{
@@ -3887,12 +3968,13 @@ void FOServer::SScriptFunc::Global_DeleteItem(Item* item)
 			for(int i=0;i<CAR_MAX_BAGS;i++)
 			{
 				Item* bag=map->GetCarBag(item->ACC_HEX.HexX,item->ACC_HEX.HexY,item->Proto,i);
-				if(bag && !bag->IsNotValid) ItemMngr.DeleteItem(bag);
+				if(bag && !bag->IsNotValid) ItemMngr.ItemToGarbage(bag);
 			}
 		}
 	}
+
 	// Delete item
-	ItemMngr.DeleteItem(item);
+	ItemMngr.ItemToGarbage(item);
 }
 
 void FOServer::SScriptFunc::Global_DeleteItems(asIScriptArray& items)
@@ -3900,7 +3982,7 @@ void FOServer::SScriptFunc::Global_DeleteItems(asIScriptArray& items)
 	for(int i=0,j=items.GetElementCount();i<j;i++)
 	{
 		Item* item=*(Item**)items.GetElementPointer(i);
-		if(item && !item->IsNotValid) ItemMngr.DeleteItem(item);
+		if(item && !item->IsNotValid) ItemMngr.ItemToGarbage(item);
 	}
 }
 
@@ -3909,24 +3991,16 @@ void FOServer::SScriptFunc::Global_DeleteNpc(Critter* npc)
 	if(npc->IsNotValid) SCRIPT_ERROR_R("Npc arg nullptr.");
 	if(!npc->IsNpc()) SCRIPT_ERROR_R("Critter is not npc.");
 	CrMngr.CritterToGarbage(npc);
-	npc->IsNotValid=false;
-}
-
-void FOServer::SScriptFunc::Global_DeleteNpcForce(Critter* npc)
-{
-	if(npc->IsNotValid) SCRIPT_ERROR_R("Npc arg nullptr.");
-	if(!npc->IsNpc()) SCRIPT_ERROR_R("Critter is not npc.");
-	CrMngr.CritterToGarbage(npc);
 }
 
 void FOServer::SScriptFunc::Global_RadioMessage(WORD channel, CScriptString& text)
 {
-	Self->RadioSendText(NULL,channel,text.c_str(),false);
+	RadioSendText(NULL,channel,text.c_str(),false);
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsg(WORD channel, WORD text_msg, DWORD num_str)
 {
-	Self->RadioSendMsg(NULL,channel,text_msg,num_str);
+	RadioSendMsg(NULL,channel,text_msg,num_str);
 }
 
 DWORD FOServer::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
@@ -3998,21 +4072,8 @@ DWORD FOServer::SScriptFunc::Global_CreateLocation(WORD loc_pid, WORD wx, WORD w
 void FOServer::SScriptFunc::Global_DeleteLocation(DWORD loc_id)
 {
 	Location* loc=MapMngr.GetLocation(loc_id);
-	if(!loc) return;
-
-	/*MapVec& maps=loc->GetMaps();
-	for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it)
-	{
-		Map* map=*it;
-		for(ClMapIt it_=crits.begin(),end_=crits.end();it_!=end_;++it_)
-		{
-			Critter* cr=(*it_).second;
-			Self->TransitToGlobal(cr,0,FOLLOW_FORCE,true);
-		}
-	}*/
-
-	loc->Data.ToGarbage=true;
-	MapMngr.RunLocGarbager();
+	if(loc) loc->Data.ToGarbage=true;
+	MapMngr.RunGarbager();
 }
 
 void FOServer::SScriptFunc::Global_GetProtoCritter(WORD proto_id, asIScriptArray& data)
@@ -4046,7 +4107,8 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 	DWORD len=name.length();
 	if(len<MIN_NAME || len<GameOpt.MinNameLength) SCRIPT_ERROR_R0("Name length is less than minimum.");
 	if(len>MAX_NAME || len>GameOpt.MaxNameLength) SCRIPT_ERROR_R0("Name length is greater than maximum.");
-	ClientData* data=Self->GetClientData(name.c_str());
+	SCOPE_LOCK(ClientsDataLocker);
+	ClientData* data=GetClientData(name.c_str());
 	if(!data) SCRIPT_ERROR_R0("Player not found.");
 	return data->ClientId;
 }
@@ -4054,7 +4116,8 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 {
 	if(!id) SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
-	ClientData* data=Self->GetClientData(id);
+	SCOPE_LOCK(ClientsDataLocker);
+	ClientData* data=GetClientData(id);
 	if(!data) SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
 	return new CScriptString(data->ClientName);
 }
@@ -4062,14 +4125,14 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventEmpty(DWORD begin_second, CScriptString& script_name, bool save)
 {
 	DwordVec values;
-	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
 }
 
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventDw(DWORD begin_second, CScriptString& script_name, DWORD dw, bool save)
 {
 	DwordVec values;
 	values.push_back(dw);
-	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
 }
 
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventDws(DWORD begin_second, CScriptString& script_name, asIScriptArray& dw, bool save)
@@ -4078,7 +4141,7 @@ DWORD FOServer::SScriptFunc::Global_CreateTimeEventDws(DWORD begin_second, CScri
 	DWORD dw_size=dw.GetElementCount();
 	values.resize(dw_size);
 	if(dw_size) memcpy((void*)&values[0],dw.GetElementPointer(0),dw_size*dw.GetElementSize());
-	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
 }
 
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventCr(DWORD begin_second, CScriptString& script_name, Critter* cr, bool save)
@@ -4086,7 +4149,7 @@ DWORD FOServer::SScriptFunc::Global_CreateTimeEventCr(DWORD begin_second, CScrip
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
 	DwordVec values;
 	values.push_back(cr->GetId());
-	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
 }
 
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventItem(DWORD begin_second, CScriptString& script_name, Item* item, bool save)
@@ -4094,7 +4157,7 @@ DWORD FOServer::SScriptFunc::Global_CreateTimeEventItem(DWORD begin_second, CScr
 	if(item->IsNotValid) SCRIPT_ERROR_R0("Item arg nullptr.");
 	DwordVec values;
 	values.push_back(item->GetId());
-	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
 }
 
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventArr(DWORD begin_second, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save)
@@ -4107,19 +4170,19 @@ DWORD FOServer::SScriptFunc::Global_CreateTimeEventArr(DWORD begin_second, CScri
 	if(items_size) memcpy((void*)&values[cr_size],items->GetElementPointer(0),items_size);
 	values[values.size()-2]=cr_size;
 	values[values.size()-1]=items_size;
-	return Self->CreateScriptEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
 }
 
 void FOServer::SScriptFunc::Global_EraseTimeEvent(DWORD num)
 {
-	Self->EraseTimeEvent(num);
+	EraseTimeEvent(num);
 }
 
 bool FOServer::SScriptFunc::Global_SetAnyData(CScriptString& name, asIScriptArray& data)
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
 	DWORD data_size_bytes=data.GetElementCount()*data.GetElementSize();
-	return Self->SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
+	return SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
 }
 
 bool FOServer::SScriptFunc::Global_SetAnyDataSize(CScriptString& name, asIScriptArray& data, DWORD data_size)
@@ -4129,36 +4192,25 @@ bool FOServer::SScriptFunc::Global_SetAnyDataSize(CScriptString& name, asIScript
 	DWORD data_size_bytes=data_size*element_size;
 	DWORD real_data_size_bytes=data.GetElementCount()*element_size;
 	if(real_data_size_bytes<data_size_bytes) SCRIPT_ERROR_R0("Array length is less than data size in bytes arg.");
-	return Self->SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
+	return SetAnyData(name.c_std_str(),(BYTE*)data.GetElementPointer(0),data_size_bytes);
 }
 
 bool FOServer::SScriptFunc::Global_GetAnyData(CScriptString& name, asIScriptArray& data)
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
-	DWORD length;
-	BYTE* buf=Self->GetAnyData(name.c_std_str(),length);
-	if(!buf) return false; // SCRIPT_ERROR_R0("Data not found.");
-	if(!length)
-	{
-		data.Resize(0);
-		return true;
-	}
-	DWORD element_size=data.GetElementSize();
-	data.Resize(length/element_size+((length%element_size)?1:0));
-	CopyMemory(data.GetElementPointer(0),buf,length);
-	return true;
+	return GetAnyData(name.c_std_str(),data);
 }
 
 bool FOServer::SScriptFunc::Global_IsAnyData(CScriptString& name)
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
-	return Self->IsAnyData(name.c_std_str());
+	return IsAnyData(name.c_std_str());
 }
 
 void FOServer::SScriptFunc::Global_EraseAnyData(CScriptString& name)
 {
 	if(!name.length()) SCRIPT_ERROR_R("Name arg length is zero.");
-	Self->EraseAnyData(name.c_std_str());
+	EraseAnyData(name.c_std_str());
 }
 
 void FOServer::SScriptFunc::Global_ArrayPushBackInteger(asIScriptArray* arr, void* value)
@@ -4222,14 +4274,21 @@ Location* FOServer::SScriptFunc::Global_GetLocationByPid(WORD loc_pid, DWORD ski
 
 DWORD FOServer::SScriptFunc::Global_GetLocations(WORD wx, WORD wy, DWORD radius, asIScriptArray* locations)
 {
+	LocVec locs;
+	MapMngr.GetLocations(locs,false);
 	LocVec locs_;
-	LocMap& locs=MapMngr.GetLocations();
-	for(LocMapIt it=locs.begin(),end=locs.end();it!=end;++it)
+	locs_.reserve(locs.size());
+	for(LocVecIt it=locs.begin(),end=locs.end();it!=end;++it)
 	{
-		Location* loc=(*it).second;
-		if(DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=radius+loc->Data.Radius) locs_.push_back(loc);
+		Location* loc=*it;
+		if(DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=radius+loc->GetRadius()) locs_.push_back(loc);
 	}
-	if(locations) Script::AppendVectorToArrayRef<Location*>(locs_,locations);
+
+	if(locations)
+	{
+		for(LocVecIt it=locs_.begin(),end=locs_.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Location*>(locs_,locations);
+	}
 	return locs_.size();
 }
 
@@ -4247,7 +4306,7 @@ bool FOServer::SScriptFunc::Global_RunDialogNpc(Critter* player, Critter* npc, b
 	if(!npc->IsNpc()) SCRIPT_ERROR_R0("Npc arg is not npc.");
 	Client* cl=(Client*)player;
 	if(cl->Talk.Locked) SCRIPT_ERROR_R0("Can't open new dialog from demand, result or dialog functions."); //if(DlgCtx->GetState()==asEXECUTION_ACTIVE)
-	Self->Dialog_Begin(cl,(Npc*)npc,0,0,0,ignore_distance);
+	Dialog_Begin(cl,(Npc*)npc,0,0,0,ignore_distance);
 	return cl->Talk.TalkType==TALK_WITH_NPC && cl->Talk.TalkNpc==npc->GetId();
 }
 
@@ -4259,7 +4318,7 @@ bool FOServer::SScriptFunc::Global_RunDialogNpcDlgPack(Critter* player, Critter*
 	if(!npc->IsNpc()) SCRIPT_ERROR_R0("Npc arg is not npc.");
 	Client* cl=(Client*)player;
 	if(cl->Talk.Locked) SCRIPT_ERROR_R0("Can't open new dialog from demand, result or dialog functions."); //if(DlgCtx->GetState()==asEXECUTION_ACTIVE)
-	Self->Dialog_Begin(cl,(Npc*)npc,dlg_pack,0,0,ignore_distance);
+	Dialog_Begin(cl,(Npc*)npc,dlg_pack,0,0,ignore_distance);
 	return cl->Talk.TalkType==TALK_WITH_NPC && cl->Talk.TalkNpc==npc->GetId();
 }
 
@@ -4270,7 +4329,7 @@ bool FOServer::SScriptFunc::Global_RunDialogHex(Critter* player, DWORD dlg_pack,
 	if(!DlgMngr.GetDialogPack(dlg_pack)) SCRIPT_ERROR_R0("Dialog not found.");
 	Client* cl=(Client*)player;
 	if(cl->Talk.Locked) SCRIPT_ERROR_R0("Can't open new dialog from demand, result or dialog functions."); //if(DlgCtx->GetState()==asEXECUTION_ACTIVE)
-	Self->Dialog_Begin(cl,NULL,dlg_pack,hx,hy,ignore_distance);
+	Dialog_Begin(cl,NULL,dlg_pack,hx,hy,ignore_distance);
 	return cl->Talk.TalkType==TALK_WITH_HEX && cl->Talk.TalkHexX==hx && cl->Talk.TalkHexY==hy;
 }
 
@@ -4288,7 +4347,7 @@ void FOServer::SScriptFunc::Global_SetBestScore(int score, Critter* cl, CScriptS
 	if(cl && !cl->IsPlayer()) return; //SCRIPT_ERROR_R("Critter arg is not player.");
 	if(cl) name=cl->GetName();
 	if(!name.length() || name.length()>=SCORE_NAME_LEN-1) SCRIPT_ERROR_R("Invalid length of name.");
-	Self->SetScore(score,name.c_str());
+	SetScore(score,name.c_str());
 }
 
 bool FOServer::SScriptFunc::Global_AddTextListener(int say_type, CScriptString& first_str, WORD parameter, CScriptString& script_name)
@@ -4305,18 +4364,21 @@ bool FOServer::SScriptFunc::Global_AddTextListener(int say_type, CScriptString& 
 	StringCopy(tl.FirstStr,first_str.c_str());
 	tl.FirstStrLen=strlen(tl.FirstStr);
 	tl.Parameter=parameter;
-	Self->TextListeners.push_back(tl);
+
+	SCOPE_LOCK(TextListenersLocker);
+	TextListeners.push_back(tl);
 	return true;
 }
 
 void FOServer::SScriptFunc::Global_EraseTextListener(int say_type, CScriptString& first_str, WORD parameter)
 {
-	for(TextListenVecIt it=Self->TextListeners.begin(),end=Self->TextListeners.end();it!=end;++it)
+	SCOPE_LOCK(TextListenersLocker);
+	for(TextListenVecIt it=TextListeners.begin(),end=TextListeners.end();it!=end;++it)
 	{
 		TextListen& tl=*it;
 		if(say_type==tl.SayType && !_stricmp(first_str.c_str(),tl.FirstStr) && tl.Parameter==parameter)
 		{
-			Self->TextListeners.erase(it);
+			TextListeners.erase(it);
 			return;
 		}
 	}
@@ -4500,9 +4562,9 @@ bool FOServer::SScriptFunc::Global_SwapCritters(Critter* cr1, Critter* cr2, bool
 	Map* map2=MapMngr.GetMap(cr2->GetMap());
 	if(!map2) SCRIPT_ERROR_R0("Map of Critter2 not found.");
 
-	CrVec& cr_map1=map1->GetCritters();
-	ClVec& cl_map1=map1->GetPlayers();
-	PcVec& npc_map1=map1->GetNpcs();
+	CrVec& cr_map1=map1->GetCrittersNoLock();
+	ClVec& cl_map1=map1->GetPlayersNoLock();
+	PcVec& npc_map1=map1->GetNpcsNoLock();
 	CrVecIt it_cr=std::find(cr_map1.begin(),cr_map1.end(),cr1);
 	if(it_cr!=cr_map1.end()) cr_map1.erase(it_cr);
 	ClVecIt it_cl=std::find(cl_map1.begin(),cl_map1.end(),(Client*)cr1);
@@ -4510,9 +4572,9 @@ bool FOServer::SScriptFunc::Global_SwapCritters(Critter* cr1, Critter* cr2, bool
 	PcVecIt it_pc=std::find(npc_map1.begin(),npc_map1.end(),(Npc*)cr1);
 	if(it_pc!=npc_map1.end()) npc_map1.erase(it_pc);
 
-	CrVec& cr_map2=map2->GetCritters();
-	ClVec& cl_map2=map2->GetPlayers();
-	PcVec& npc_map2=map2->GetNpcs();
+	CrVec& cr_map2=map2->GetCrittersNoLock();
+	ClVec& cl_map2=map2->GetPlayersNoLock();
+	PcVec& npc_map2=map2->GetNpcsNoLock();
 	it_cr=std::find(cr_map2.begin(),cr_map2.end(),cr1);
 	if(it_cr!=cr_map2.end()) cr_map2.erase(it_cr);
 	it_cl=std::find(cl_map2.begin(),cl_map2.end(),(Client*)cr1);
@@ -4590,17 +4652,19 @@ bool FOServer::SScriptFunc::Global_SwapCritters(Critter* cr1, Critter* cr2, bool
 
 DWORD FOServer::SScriptFunc::Global_GetAllItems(WORD pid, asIScriptArray* items)
 {
-	ItemPtrMap& game_items=ItemMngr.GetGameItems();
-	ItemPtrVec items_;
-	items_.reserve(game_items.size());
-	for(ItemPtrMapIt it=game_items.begin(),end=game_items.end();it!=end;++it)
+	ItemPtrVec game_items;
+	ItemMngr.GetGameItems(game_items);
+	ItemPtrVec game_items_;
+	game_items_.reserve(game_items.size());
+	for(ItemPtrVecIt it=game_items.begin(),end=game_items.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
-		if(!item->IsNotValid && (!pid || pid==item->GetProtoId())) items_.push_back(item);
+		Item* item=*it;
+		SYNC_LOCK(item);
+		if(!item->IsNotValid && (!pid || pid==item->GetProtoId())) game_items_.push_back(item);
 	}
-	if(!items_.size()) return 0;
-	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
-	return items_.size();
+	if(!game_items_.size()) return 0;
+	if(items) Script::AppendVectorToArrayRef<Item*>(game_items_,items);
+	return game_items_.size();
 }
 
 DWORD FOServer::SScriptFunc::Global_GetAllNpc(WORD pid, asIScriptArray* npc)
@@ -4621,31 +4685,41 @@ DWORD FOServer::SScriptFunc::Global_GetAllNpc(WORD pid, asIScriptArray* npc)
 
 DWORD FOServer::SScriptFunc::Global_GetAllMaps(WORD pid, asIScriptArray* maps)
 {
-	MapMap& maps_=MapMngr.GetAllMaps();
+	MapVec maps_;
+	MapMngr.GetMaps(maps_,false);
 	MapVec maps__;
 	maps__.reserve(maps_.size());
-	for(MapMapIt it=maps_.begin(),end=maps_.end();it!=end;++it)
+	for(MapVecIt it=maps_.begin(),end=maps_.end();it!=end;++it)
 	{
-		Map* map=(*it).second;
-		if(!map->IsNotValid && (!pid || pid==map->GetPid())) maps__.push_back(map);
+		Map* map=*it;
+		if(!pid || pid==map->GetPid()) maps__.push_back(map);
 	}
-	if(!maps__.size()) return 0;
-	if(maps) Script::AppendVectorToArrayRef<Map*>(maps__,maps);
+
+	if(maps)
+	{
+		for(MapVecIt it=maps__.begin(),end=maps__.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Map*>(maps__,maps);
+	}
 	return maps__.size();
 }
 
 DWORD FOServer::SScriptFunc::Global_GetAllLocations(WORD pid, asIScriptArray* locations)
 {
-	LocMap& locs=MapMngr.GetLocations();
+	LocVec locs;
+	MapMngr.GetLocations(locs,false);
 	LocVec locs_;
 	locs_.reserve(locs.size());
-	for(LocMapIt it=locs.begin(),end=locs.end();it!=end;++it)
+	for(LocVecIt it=locs.begin(),end=locs.end();it!=end;++it)
 	{
-		Location* loc=(*it).second;
-		if(!loc->IsNotValid && (!pid || pid==loc->GetPid())) locs_.push_back(loc);
+		Location* loc=*it;
+		if(!pid || pid==loc->GetPid()) locs_.push_back(loc);
 	}
-	if(!locs_.size()) return 0;
-	if(locations) Script::AppendVectorToArrayRef<Location*>(locs_,locations);
+
+	if(locations)
+	{
+		for(LocVecIt it=locs_.begin(),end=locs_.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Location*>(locs_,locations);
+	}
 	return locs_.size();
 }
 
@@ -4793,6 +4867,16 @@ int FOServer::SScriptFunc::Global_GetGlobalMapRelief(DWORD x, DWORD y)
 DWORD FOServer::SScriptFunc::Global_GetScriptId(CScriptString& script_name, CScriptString& func_decl)
 {
 	return Script::GetScriptFuncNum(script_name.c_str(),func_decl.c_str());
+}
+
+void FOServer::SScriptFunc::Global_Synchronize()
+{
+	if(!Script::SynchronizeThread()) SCRIPT_ERROR_R("Invalid call.");
+}
+
+void FOServer::SScriptFunc::Global_Resynchronize()
+{
+	if(!Script::ResynchronizeThread()) SCRIPT_ERROR_R("Invalid call.");
 }
 
 /************************************************************************/

@@ -33,6 +33,7 @@ private:
 	DwordVec crToDelete;
 	DWORD lastNpcId;
 	DWORD playersCount,npcCount;
+	Mutex crLocker;
 
 public:
 	void SaveCrittersFile(void(*save_func)(void*,size_t));
@@ -41,13 +42,13 @@ public:
 	void RunInitScriptCritters();
 
 	void CritterToGarbage(Critter* cr);
-	void CritterGarbager(DWORD cycle_tick);
+	void CritterGarbager();
 
 	Npc* CreateNpc(WORD proto_id, DWORD params_count, int* params, DWORD items_count, int* items, const char* script, Map* map, WORD hx, WORD hy, BYTE dir, bool accuracy);
 	Npc* CreateNpc(WORD proto_id, bool copy_data);
 
 	void AddCritter(Critter* cr);
-	CrMap& GetCritters(){return allCritters;}
+	CrMap& GetCrittersNoLock(){return allCritters;}
 	void GetCopyNpcs(PcVec& npcs);
 	void GetCopyPlayers(ClVec& players);
 	Critter* GetCritter(DWORD crid);
@@ -55,14 +56,10 @@ public:
 	Client* GetPlayer(const char* name);
 	Npc* GetNpc(DWORD crid);
 	void EraseCritter(Critter* cr);
-	void DeleteCritter(Critter* cr);
 
 	DWORD PlayersInGame();
 	DWORD NpcInGame();
 	DWORD CrittersInGame();
-
-	void ProcessCrittersVisible();
-	void ProcessItemsVisible();
 
 #endif // FONLINE_SERVER
 };

@@ -77,6 +77,7 @@ public:
 	float GetLEFloat();
 	int GetNum();
 
+	void SwitchToWrite();
 	void ClearOutBuf();
 	bool ResizeOutBuf();
 	void SetPosOutBuf(DWORD pos);

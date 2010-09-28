@@ -356,6 +356,17 @@ int FileManager::GetNum()
 	return res;
 }
 
+void FileManager::SwitchToWrite()
+{
+	dataOutBuf=fileBuf;
+	fileBuf=NULL;
+	lenOutBuf=fileSize;
+	endOutBuf=fileSize;
+	fileSize=fileSize;
+	fileSize=0;
+	curPos=0;
+}
+
 void FileManager::ClearOutBuf()
 {
 	SAFEDELA(dataOutBuf);
@@ -398,23 +409,29 @@ void FileManager::SetPosOutBuf(DWORD pos)
 bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 {
 	if(!dataOutBuf || !fname) return false;
-	char fpath[2028];
 
-	if(path_type<0)
-		StringCopy(fpath,fname);
-	else
+	char fpath[MAX_FOPATH];
+	if(path_type>=0 && path_type<PATH_LIST_COUNT)
 	{
 		StringCopy(fpath,GetDataPath(path_type));
 		StringAppend(fpath,PathLst[path_type]);
 		StringAppend(fpath,fname);
 	}
+	else if(path_type==-1)
+	{
+		StringCopy(fpath,fname);
+	}
+	else
+	{
+		WriteLog(__FUNCTION__" - Invalid path<%d>.\n",path_type);
+		return false;
+	}
 
 	HANDLE h_file=CreateFile(fpath,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
 	if(h_file==INVALID_HANDLE_VALUE) return false;
 
-	DWORD br;
-	WriteFile(h_file,dataOutBuf,endOutBuf,&br,NULL);
-	if(br!=endOutBuf)
+	DWORD bw;
+	if(!WriteFile(h_file,dataOutBuf,endOutBuf,&bw,NULL) || bw!=endOutBuf)
 	{
 		CloseHandle(h_file);
 		h_file=NULL;
@@ -423,7 +440,6 @@ bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 	}
 
 	CloseHandle(h_file);
-	h_file=NULL;
 	return true;
 }
 

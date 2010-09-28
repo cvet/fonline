@@ -6,6 +6,7 @@
 #include <list>
 #include <set>
 #include <strstream>
+#include <algorithm>
 using namespace std;
 
 typedef int (__cdecl *BindFunc)(asIScriptEngine*);
@@ -13,7 +14,9 @@ typedef asIScriptEngine* (__cdecl *ASCreate)();
 typedef bool(*PragmaCallbackFunc)(const char*);
 
 asIScriptEngine* Engine;
-
+bool IsServer=false;
+bool IsClient=false;
+bool IsMapper=false;
 char* Buf=NULL;
 IntVec Lines;
 
@@ -25,16 +28,23 @@ void CallBack(const asSMessageInfo* msg, void* param)
 
 	if(msg->type!=asMSGTYPE_INFORMATION)
 	{
-		const char* line=Buf+Lines[msg->row-1];
-		int col_offs=0;
-		while(*line==' ' || *line=='\t')
+		if(msg->row)
 		{
-			line++;
-			col_offs++;
-		}
+			const char* line=Buf+Lines[msg->row-1];
+			int col_offs=0;
+			while(*line==' ' || *line=='\t')
+			{
+				line++;
+				col_offs++;
+			}
 
-		printf("%s : %s : Line %d, Column %d.\n",type,msg->message,msg->row,msg->col-col_offs);
-		printf("\tIn line '%s'.\n",line); // Show preprocessed line
+			printf("%s : %s : Line %d, Column %d.\n",type,msg->message,msg->row,msg->col-col_offs);
+			printf("\tIn line '%s'.\n",line); // Show preprocessed line
+		}
+		else
+		{
+			printf("%s : %s.\n",type,msg->message);
+		}
 	}
 	else
 	{
@@ -158,13 +168,12 @@ bool PragmaCallbackCrData(const char* text)
 	if(ParametersAlready.count(name)) return true;
 	if(ParametersIndex>=MAX_PARAMETERS_ARRAYS) return false;
 
-	bool is_client=Preprocessor::IsDefined("__CLIENT");
 	asIScriptEngine* engine=Engine;
 	char decl[128];
 	sprintf_s(decl,"DataVal %s",name.c_str());
-	if(engine->RegisterObjectProperty(is_client?"CritterCl":"Critter",decl,0)<0) return false;
+	if(engine->RegisterObjectProperty(IsClient?"CritterCl":"Critter",decl,0)<0) return false;
 	sprintf_s(decl,"DataRef %sBase",name.c_str());
-	if(engine->RegisterObjectProperty(is_client?"CritterCl":"Critter",decl,0)<0) return false;
+	if(engine->RegisterObjectProperty(IsClient?"CritterCl":"Critter",decl,0)<0) return false;
 	ParametersIndex++;
 	ParametersAlready.insert(name);
 	return true;
@@ -333,6 +342,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	if(result) printf("Warning, Bind result: %d.\n",result);
 	FreeLibrary(script_dll);
 
+	int type_count=Engine->GetObjectTypeCount();
+	for(int i=0;i<type_count;i++)
+	{
+		asIObjectType* ot=Engine->GetObjectTypeByIndex(i);
+		if(!strcmp(ot->GetName(),"Critter")) IsServer=true;
+		else if(!strcmp(ot->GetName(),"CritterCl")) IsClient=true;
+		else if(!strcmp(ot->GetName(),"MapperMap")) IsMapper=true;
+	}
+
 	/************************************************************************/
 	/* Compile                                                              */
 	/************************************************************************/
@@ -389,23 +407,103 @@ int _tmain(int argc, _TCHAR* argv[])
 	QueryPerformanceFrequency((PLARGE_INTEGER) &freq);
 	QueryPerformanceCounter((PLARGE_INTEGER)&fp);
 
-	asIScriptModule* mod=Engine->GetModule(0,asGM_ALWAYS_CREATE);
-	if(!mod)
+	asIScriptModule* module=Engine->GetModule(0,asGM_ALWAYS_CREATE);
+	if(!module)
 	{
 		printf("Can't create module.\n");
 		return 0;
 	}
 
-	if(mod->AddScriptSection(NULL,vos.GetData(),vos.GetSize(),0)<0)
+	if(module->AddScriptSection(NULL,vos.GetData(),vos.GetSize(),0)<0)
 	{
 		printf("Unable to add section.\n");
 		return 0;
 	}
 
-	if(mod->Build()<0)
+	if(module->Build()<0)
 	{
 		printf("Unable to build.\nRow and col see in preprocessed file.\n");
 		return 0;
+	}
+
+	// Check global not allowed types, only for server
+	if(IsServer)
+	{
+		int bad_typeids[]=
+		{
+			Engine->GetTypeIdByDecl("Critter@")  ,Engine->GetTypeIdByDecl("Critter@[]") ,
+			Engine->GetTypeIdByDecl("Item@")     ,Engine->GetTypeIdByDecl("Item@[]")    ,
+			Engine->GetTypeIdByDecl("Map@")      ,Engine->GetTypeIdByDecl("Map@[]")     ,
+			Engine->GetTypeIdByDecl("Location@") ,Engine->GetTypeIdByDecl("Location@[]"),
+			Engine->GetTypeIdByDecl("GameVar@")  ,Engine->GetTypeIdByDecl("GameVar@[]") ,
+		};
+		int bad_typeids_count=sizeof(bad_typeids)/sizeof(int);
+		for(int k=0;k<bad_typeids_count;k++) bad_typeids[k]&=asTYPEID_MASK_SEQNBR;
+
+		IntVec bad_typeids_class;
+		for(int m=0,n=module->GetObjectTypeCount();m<n;m++)
+		{
+			asIObjectType* ot=module->GetObjectTypeByIndex(m);
+			for(int i=0,j=ot->GetPropertyCount();i<j;i++)
+			{
+				int type=ot->GetPropertyTypeId(i)&asTYPEID_MASK_SEQNBR;
+				for(int k=0;k<bad_typeids_count;k++)
+				{
+					if(type==bad_typeids[k])
+					{
+						bad_typeids_class.push_back(ot->GetTypeId()&asTYPEID_MASK_SEQNBR);
+						break;
+					}
+				}
+			}
+		}
+
+		bool g_fail=false;
+		bool g_fail_class=false;
+		for(int i=0,j=module->GetGlobalVarCount();i<j;i++)
+		{
+			int type=module->GetGlobalVarTypeId(i);
+
+			if(type&asTYPEID_SCRIPTARRAY)
+			{
+				UNSETFLAG(type,asTYPEID_OBJHANDLE);
+				UNSETFLAG(type,asTYPEID_HANDLETOCONST);	
+				asIScriptArray* arr=(asIScriptArray*)Engine->CreateScriptObject(type);
+				if(arr)
+				{
+					type=arr->GetElementTypeId();
+					arr->Release();
+				}
+			}
+
+			type&=asTYPEID_MASK_SEQNBR;
+
+			for(int k=0;k<bad_typeids_count;k++)
+			{
+				if(type==bad_typeids[k])
+				{
+					string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type that cannot be stored globally";
+					Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
+					g_fail=true;
+					break;
+				}
+			}
+			if(std::find(bad_typeids_class.begin(),bad_typeids_class.end(),type)!=bad_typeids_class.end())
+			{
+				string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type in class property that cannot be stored globally";
+				Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
+				g_fail_class=true;
+			}
+		}
+
+		if(g_fail || g_fail_class)
+		{
+			if(!g_fail_class) printf("Erase global variable listed above.\n");
+			else printf("Erase global variable or class property listed above.\n");
+			printf("Classes that cannot be stored in global scope: Critter, Item, ProtoItem, Map, Location, GlobalVar.\n");
+			printf("Hint: store their Ids, instead pointers.\n");
+			return 0;
+		}
 	}
 
 	QueryPerformanceCounter((PLARGE_INTEGER)&fp2);
