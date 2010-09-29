@@ -1,9 +1,11 @@
 #ifndef __MUTEX__
 #define __MUTEX__
 
-#include <Windows.h>
+#include "Common.h"
+#include <intrin.h>
 
 #define SCOPE_LOCK(mutex) volatile MutexLocker scope_lock__(mutex)
+#define SCOPE_SPINLOCK(mutex) volatile MutexSpinlockLocker scope_spinlock__(mutex)
 
 class Mutex
 {
@@ -40,15 +42,15 @@ private:
 	Mutex mcLocker;
 	volatile long mcCounter;
 	MutexCode(const MutexCode&){}
-	void operator=(const MutexCode&){}
+	MutexCode& operator=(const MutexCode&){return *this;}
 
 public:
 	MutexCode():mcCounter(0){mcEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
 	~MutexCode(){CloseHandle(mcEvent);}
-	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
+	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(_InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
 	void UnlockCode(){SetEvent(mcEvent);}
-	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
-	void LeaveCode(){InterlockedDecrement(&mcCounter);}
+	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); _InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
+	void LeaveCode(){_InterlockedDecrement(&mcCounter);}
 };
 
 class MutexSynchronizer
@@ -58,14 +60,14 @@ private:
 	Mutex msLocker;
 	volatile long msCounter;
 	MutexSynchronizer(const MutexSynchronizer&){}
-	void operator=(const MutexSynchronizer&){}
+	MutexSynchronizer& operator=(const MutexSynchronizer&){return *this;}
 
 public:
 	MutexSynchronizer():msCounter(0){msEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
 	~MutexSynchronizer(){CloseHandle(msEvent);}
-	void Synchronize(long count){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); ResetEvent(msEvent); while(InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
+	void Synchronize(long count){_InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); _InterlockedDecrement(&msCounter); ResetEvent(msEvent); while(_InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
 	void Resynchronize(){SetEvent(msEvent);}
-	void SynchronizePoint(){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); msLocker.Unlock();}
+	void SynchronizePoint(){_InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); _InterlockedDecrement(&msCounter); msLocker.Unlock();}
 };
 
 class MutexEvent
@@ -73,7 +75,7 @@ class MutexEvent
 private:
 	HANDLE meEvent;
 	MutexEvent(const MutexEvent&){}
-	void operator=(const MutexEvent&){}
+	MutexEvent& operator=(const MutexEvent&){return *this;}
 
 public:
 	MutexEvent(){meEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
@@ -81,6 +83,33 @@ public:
 	void Allow(){SetEvent(meEvent);}
 	void Disallow(){ResetEvent(meEvent);}
 	void Wait(){WaitForSingleObject(meEvent,INFINITE);}
+};
+
+class MutexSpinlock
+{
+private:
+	friend class MutexSpinlockLocker;
+	volatile long spinCounter;
+	MutexSpinlock(const MutexSpinlock&){}
+	MutexSpinlock& operator=(const MutexSpinlock&){return *this;}
+
+public:
+	MutexSpinlock():spinCounter(0){}
+	void Lock(){while(_InterlockedCompareExchange(&spinCounter,1,0));}
+	void Unlock(){_InterlockedExchange(&spinCounter,0);}
+};
+
+class MutexSpinlockLocker
+{
+private:
+	MutexSpinlock* spinLock;
+	MutexSpinlockLocker(){}
+	MutexSpinlockLocker(const MutexSpinlockLocker&){}
+	MutexSpinlockLocker& operator=(const MutexSpinlockLocker&){return *this;}
+
+public:
+	MutexSpinlockLocker(MutexSpinlock& mutexSpinlock):spinLock(&mutexSpinlock){spinLock->Lock();}
+	~MutexSpinlockLocker(){spinLock->Unlock();}
 };
 
 #endif // __MUTEX__

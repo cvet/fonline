@@ -22,7 +22,7 @@ const char* GetLastSocketError();
 #endif
 
 // Windows API
-#include <windows.h>
+#include <Windows.h>
 
 // STL
 #include <map>

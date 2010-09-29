@@ -6,7 +6,7 @@
 #include "Item.h"
 #include "Vars.h"
 
-static Mutex JobLocker; // Defense code from simultaneously execution
+static MutexSpinlock JobLocker; // Defense code from simultaneously execution
 
 typedef deque<Job> JobDeque;
 typedef deque<Job>::iterator JobDequeIt;
@@ -29,19 +29,19 @@ ThreadId(0)
 
 void Job::PushBack(int type)
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 	Jobs.push_back(Job(type,NULL,0));
 }
 
 void Job::PushBack(int type, void* data)
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 	Jobs.push_back(Job(type,data,0));
 }
 
 size_t Job::PushBack(const Job& job)
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 	Jobs.push_back(job);
 	size_t size=Jobs.size();
 	return size;
@@ -49,33 +49,42 @@ size_t Job::PushBack(const Job& job)
 
 void Job::PushFront(const Job& job)
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 	Jobs.push_front(job);
 }
 
 Job Job::PopFront()
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 
 	if(Jobs.empty()) return Job(JOB_NOP,NULL,false);
 
 	Job job=Jobs.front();
-	Jobs.pop_front();
 
 	// Check owner
-	if(job.ThreadId && job.ThreadId!=GetCurrentThreadId())
+	int tid=(int)GetCurrentThreadId();
+	if(job.ThreadId && job.ThreadId!=tid)
 	{
-		Job job_next=PopFront();
-		Jobs.push_front(job);
-		return job_next;
+		for(JobDequeIt it=Jobs.begin()+1;it!=Jobs.end();++it)
+		{
+			Job& job_=*it;
+			if(!job_.ThreadId || job_.ThreadId==tid)
+			{
+				Job job__=job_;
+				Jobs.erase(it);
+				return job__;
+			}
+		}
+		return Job(JOB_NOP,NULL,false);
 	}
 
+	Jobs.pop_front();
 	return job;
 }
 
 void Job::Erase(int type)
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 
 	for(JobDequeIt it=Jobs.begin();it!=Jobs.end();)
 	{
@@ -89,7 +98,7 @@ void Job::Erase(int type)
 
 size_t Job::Count()
 {
-	SCOPE_LOCK(JobLocker);
+	SCOPE_SPINLOCK(JobLocker);
 	size_t count=Jobs.size();
 	return count;
 }
@@ -106,52 +115,52 @@ static DwordVec DeferredReleaseItemsCycle;
 static VarsVec DeferredReleaseVars;
 static DwordVec DeferredReleaseVarsCycle;
 static DWORD DeferredReleaseCycle=0;
-static Mutex DeferredReleaseLocker;
+static MutexSpinlock DeferredReleaseLocker;
 
 void Job::DeferredRelease(Critter* cr)
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 	DeferredReleaseCritters.push_back(cr);
 	DeferredReleaseCrittersCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(Map* map)
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 	DeferredReleaseMaps.push_back(map);
 	DeferredReleaseMapsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(Location* loc)
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 	DeferredReleaseLocs.push_back(loc);
 	DeferredReleaseLocsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(Item* item)
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 	DeferredReleaseItems.push_back(item);
 	DeferredReleaseItemsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(GameVar* var)
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 	DeferredReleaseVars.push_back(var);
 	DeferredReleaseVarsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::SetDeferredReleaseCycle(DWORD cycle)
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 	DeferredReleaseCycle=cycle;
 }
 
 void Job::ProcessDeferredReleasing()
 {
-	SCOPE_LOCK(DeferredReleaseLocker);
+	SCOPE_SPINLOCK(DeferredReleaseLocker);
 
 	// Wait at least 3 cycles
 	if(DeferredReleaseCycle<3) return;

@@ -195,8 +195,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		else
 		{
 			FOQuit=false;
-			HANDLE th=(HANDLE)_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
-			//SetThreadAffinityMask(th,1);
+			_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
 		}
 	}
 
@@ -204,6 +203,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	MSG msg;
 	HANDLE events[2]={UpdateEvent,LogEvent};
 	SyncManager* sync_mngr=SyncManager::GetForCurThread();
+	sync_mngr->UnlockAll();
 	while(!FOAppQuit)
 	{
 		DWORD result=MsgWaitForMultipleObjects(2,events,FALSE,10000,QS_ALLINPUT);
@@ -227,7 +227,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 			WriteLog("Wait failed on MsgWaitForMultipleObjects, error<%u>.\b",GetLastError());
 		}
 
-		sync_mngr->UnlockAll();
+		//sync_mngr->UnlockAll();
 	}
 
 	//SAFEDEL(serv);

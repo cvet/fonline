@@ -281,6 +281,8 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static bool InitLangCrTypes(LangPackVec& lang_packs);
 
 	// Init/Finish
+	static SYSTEM_INFO SystemInfo;
+
 	static bool Init();
 	static void Finish();
 	static bool IsInit(){return Active;}
@@ -288,6 +290,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 	static HANDLE* LogicThreadHandles;
 	static DWORD LogicThreadCount;
+	static bool LogicThreadSetAffinity;
 	static MutexSynchronizer LogicThreadSync;
 	static void SynchronizeLogicThreads();
 	static void ResynchronizeLogicThreads();

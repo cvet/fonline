@@ -34,8 +34,10 @@ DWORD FOServer::SaveWorldTime=0;
 DWORD FOServer::SaveWorldNextTick=0;
 DwordVec FOServer::SaveWorldDeleteIndexes;
 HANDLE FOServer::DumpThreadHandle=NULL;
+SYSTEM_INFO FOServer::SystemInfo;
 HANDLE* FOServer::LogicThreadHandles=NULL;
 DWORD FOServer::LogicThreadCount=0;
+bool FOServer::LogicThreadSetAffinity=false;
 bool FOServer::RequestReloadClientScripts=false;
 LangPackVec FOServer::LangPacks;
 FOServer::HoloInfoMap FOServer::HolodiskInfo;
@@ -380,11 +382,12 @@ void FOServer::MainLoop()
 	{
 		Job::PushBack(JOB_THREAD_SYNCHRONIZE);
 		LogicThreadHandles[i]=(HANDLE)_beginthreadex(NULL,0,Logic_Work,NULL,CREATE_SUSPENDED,NULL);
-		//SetThreadAffinityMask(LogicThreadHandles[i],1);
+		if(LogicThreadSetAffinity) SetThreadAffinityMask(LogicThreadHandles[i],1<<(i%SystemInfo.dwNumberOfProcessors));
 	}
 	for(DWORD i=0;i<LogicThreadCount;i++) ResumeThread(LogicThreadHandles[i]);
 
 	SyncManager* sync_mngr=SyncManager::GetForCurThread();
+	sync_mngr->UnlockAll();
 	while(!FOQuit)
 	{
 		// Synchronize point
@@ -432,8 +435,8 @@ void FOServer::MainLoop()
 		Statistics.Uptime=(Timer::FastTick()-Statistics.ServerStartTick)/1000;
 		SetEvent(UpdateEvent);
 
-		sync_mngr->UnlockAll();
-		Sleep(10);
+//		sync_mngr->UnlockAll();
+		Sleep(100);
 	}
 
 	WriteLog("***   Finishing game loop  ***\n");
@@ -3284,8 +3287,7 @@ bool FOServer::Init()
 	}
 
 	// System info
-	SYSTEM_INFO sys_info;
-	GetSystemInfo(&sys_info);
+	GetSystemInfo(&SystemInfo);
 
 	// Generic
 	ConnectedClients.clear();
@@ -3294,8 +3296,10 @@ bool FOServer::Init()
 	LastHoloId=USER_HOLO_START_NUM;
 	TimeEventsLastNum=0;
 	VarsGarbageLastTick=Timer::FastTick();
+
+	LogicThreadSetAffinity=cfg.GetInt("LogicThreadSetAffinity",0)!=0;
 	LogicThreadCount=cfg.GetInt("LogicThreadCount",0);
-	if(!LogicThreadCount) LogicThreadCount=sys_info.dwNumberOfProcessors;
+	if(!LogicThreadCount) LogicThreadCount=SystemInfo.dwNumberOfProcessors;
 	if(LogicThreadCount==1) Script::SetConcurrentExecution(false);
 
 	if(!Singleplayer)
@@ -3407,7 +3411,7 @@ bool FOServer::Init()
 	}
 
 	WorkThreadCount=cfg.GetInt("NetWorkThread",0);
-	if(!WorkThreadCount) WorkThreadCount=sys_info.dwNumberOfProcessors;
+	if(!WorkThreadCount) WorkThreadCount=SystemInfo.dwNumberOfProcessors;
 
 	IOCompletionPort=CreateIoCompletionPort(INVALID_HANDLE_VALUE,NULL,NULL,WorkThreadCount);
 	if(!IOCompletionPort)

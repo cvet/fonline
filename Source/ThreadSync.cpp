@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include "Mutex.h"
 
-static Mutex SyncLocker; // Defense code from simultaneously execution
+static MutexSpinlock SyncLocker; // Defense code from simultaneously execution
 
 SyncObject::SyncObject():
 curMngr(NULL)
@@ -99,7 +99,7 @@ void SyncObject::Lock()
 
 void SyncObject::Unlock()
 {
-	SCOPE_LOCK(SyncLocker);
+	SCOPE_SPINLOCK(SyncLocker);
 
 	if(curMngr)
 	{
@@ -134,7 +134,7 @@ SyncManager::~SyncManager()
 
 void SyncManager::PushPriority(int priority)
 {
-	SCOPE_LOCK(SyncLocker);
+	SCOPE_SPINLOCK(SyncLocker);
 
 	int prev_priority=threadPriority;
 	priorityStack.push_back(prev_priority);
@@ -143,7 +143,7 @@ void SyncManager::PushPriority(int priority)
 
 void SyncManager::PopPriority()
 {
-	SCOPE_LOCK(SyncLocker);
+	SCOPE_SPINLOCK(SyncLocker);
 
 	threadPriority=priorityStack.back();
 	priorityStack.pop_back();
@@ -151,7 +151,7 @@ void SyncManager::PopPriority()
 
 void SyncManager::UnlockAll()
 {
-	SCOPE_LOCK(SyncLocker);
+	SCOPE_SPINLOCK(SyncLocker);
 
 	for(SyncObjectVecIt it=lockedObjects.begin(),end=lockedObjects.end();it!=end;++it)
 	{
@@ -163,7 +163,7 @@ void SyncManager::UnlockAll()
 
 void SyncManager::Suspend()
 {
-	SCOPE_LOCK(SyncLocker);
+	SCOPE_SPINLOCK(SyncLocker);
 
 	isWaiting=true;
 }
