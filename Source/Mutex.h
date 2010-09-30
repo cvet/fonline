@@ -19,6 +19,7 @@ public:
 	Mutex(){InitializeCriticalSection(&mutexCS);}
 	~Mutex(){DeleteCriticalSection(&mutexCS);}
 	void Lock(){EnterCriticalSection(&mutexCS);}
+	bool TryLock(){return TryEnterCriticalSection(&mutexCS)!=FALSE;}
 	void Unlock(){LeaveCriticalSection(&mutexCS);}
 };
 
@@ -95,7 +96,8 @@ private:
 
 public:
 	MutexSpinlock():spinCounter(0){}
-	void Lock(){while(_InterlockedCompareExchange(&spinCounter,1,0));}
+	void Lock(){while(_InterlockedCompareExchange(&spinCounter,1,0)) /* Wait */;}
+	bool TryLock(){return _InterlockedCompareExchange(&spinCounter,1,0)==0;}
 	void Unlock(){_InterlockedExchange(&spinCounter,0);}
 };
 

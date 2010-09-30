@@ -69,15 +69,13 @@ const char* FONames::GetItemName(WORD pid)
 
 int FONames::GetDefineValue(const char* str)
 {
+	if(Str::IsNumber(str)) return atoi(str);
+
 	SomeNameVecIt it=std::find(Names[FONAME_DEFINE].begin(),Names[FONAME_DEFINE].end(),str);
 	if(it==Names[FONAME_DEFINE].end())
 	{
-		if(!Str::IsNumber(str))
-		{
-			WriteLog(__FUNCTION__" - Define<%s> not found, taked zero by default.\n",str);
-			return 0;
-		}
-		return atoi(str);
+		WriteLog(__FUNCTION__" - Define<%s> not found, taked zero by default.\n",str);
+		return 0;
 	}
 	return (*it).Index;
 }

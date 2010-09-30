@@ -211,7 +211,7 @@ string FOServer::GetIngamePlayersStatistics()
 		const char* name=cl->GetName();
 
 		Map* map=MapMngr.GetMap(cl->GetMap());
-		Location* loc=map->GetLocation();
+		Location* loc=map->GetLocation(false);
 		sprintf(str_loc,"%s (%u, %u)",map?loc->Proto->Name.c_str():"",map?loc->GetId():0,map?loc->GetPid():0);
 		sprintf(str_map,"%s (%u, %u)",map?map->Proto->GetName():"",map?map->GetId():0,map?map->GetPid():0);
 		sprintf(str,"%-20s %-9u %-15s %-10s %-8s %-5u %-5u %-30s %-30s %-4d\n",
@@ -2022,6 +2022,15 @@ void FOServer::Process_Command(Client* cl)
 						for(int i=0;i<MAX_PARAMS;i++) WriteLog("%s %u\n",FONames::GetParamName(i),cr->Data.Params[i]);
 					}
 				}
+				else if(param_type==90)
+				{
+					DWORD count=VarMngr.GetVarsCount();
+					double tick=Timer::AccurateTick();
+					VarsGarbarger(true);
+					count-=VarMngr.GetVarsCount();
+					tick=Timer::AccurateTick()-tick;
+					cl->Send_Text(cl,Str::Format("Erased %u vars in %g ms.",count,tick),SAY_NETMSG);
+				}
 				return;
 			}
 
@@ -3260,7 +3269,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(NpcBagItem)==16);
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);
-	STATIC_ASSERT(sizeof(GameVar)==32);
+	STATIC_ASSERT(sizeof(GameVar)==28);
 	STATIC_ASSERT(sizeof(ProtoItem)==168);
 
 	// Critters parameters
@@ -4111,7 +4120,7 @@ bool FOServer::LoadWorld(const char* name)
 	fread(&version,sizeof(version),1,f);
 	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 &&
 		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8 &&
-		version!=WORLD_SAVE_V9)
+		version!=WORLD_SAVE_V9 && version!=WORLD_SAVE_V10)
 	{
 		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
@@ -4129,7 +4138,7 @@ bool FOServer::LoadWorld(const char* name)
 	if(!MapMngr.LoadAllLocationsAndMapsFile(f)) return false;
 	if(!CrMngr.LoadCrittersFile(f)) return false;
 	if(!ItemMngr.LoadAllItemsFile(f)) return false;
-	if(!VarMngr.LoadVarsDataFile(f)) return false;
+	if(!VarMngr.LoadVarsDataFile(f,version)) return false;
 	if(!LoadHoloInfoFile(f)) return false;
 	if(!LoadAnyDataFile(f)) return false;
 	if(!LoadTimeEventsFile(f)) return false;
@@ -4171,11 +4180,7 @@ void FOServer::UnloadWorld()
 	ItemMngr.Clear();
 
 	// Vars
-	VarsMap& vars=VarMngr.GetVars();
-	for(VarsMapIt it=vars.begin(),end=vars.end();it!=end;++it)
-		(*it).second->Release();
-	vars.clear();
-	VarMngr.GetQuestVars().clear();
+	VarMngr.Clear();
 
 	// Holo info
 	HolodiskInfo.clear();
@@ -4513,17 +4518,24 @@ void FOServer::VarsGarbarger(bool force)
 		if(tick-VarsGarbageLastTick<VarsGarbageTime) return;
 	}
 
-	// Get clients ids
-	DwordSet clients;
-	for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it) clients.insert((*it).ClientId);
+	// Get client and npc ids
+	DwordSet ids_clients;
+	for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
+		ids_clients.insert((*it).ClientId);
 
 	// Get npc ids
-	PcVec npc_copy;
-	DwordSet npcs;
-	CrMngr.GetCopyNpcs(npc_copy);
-	for(PcVecIt it=npc_copy.begin(),end=npc_copy.end();it!=end;++it) npcs.insert((*it)->GetId());
+	DwordSet ids_npcs;
+	CrMngr.GetNpcIds(ids_npcs);
 
-	VarMngr.ClearUnusedVars(clients,npcs);
+	// Get location and map ids
+	DwordSet ids_locs,ids_maps;
+	MapMngr.GetLocationAndMapIds(ids_locs,ids_maps);
+
+	// Get item ids
+	DwordSet ids_items;
+	ItemMngr.GetItemIds(ids_items);
+
+	VarMngr.ClearUnusedVars(ids_npcs,ids_clients,ids_locs,ids_maps,ids_items);
 	VarsGarbageLastTick=Timer::FastTick();
 }
 

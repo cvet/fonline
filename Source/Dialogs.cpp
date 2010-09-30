@@ -251,6 +251,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, DWORD id, const char* d
 		StringCopy(script,read_str);
 		if(!_stricmp(script,"NOT_ANSWER_CLOSE_DIALOG")) StringCopy(script,"None");
 		else if(!_stricmp(script,"NOT_ANSWER_BEGIN_BATTLE")) StringCopy(script,"Attack");
+		ret_val=false;
 #else
 		script=GetNotAnswerAction(read_str,ret_val);
 		if(script<0)
@@ -366,12 +367,15 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	char who='p';
 	char oper='=';
 	int values_count=0;
-	int value=0;
+	char svalue[256]={0};
+	int ivalue=0;
 	int id=0;
 	char type_str[256];
 	char name[256]={0};
 	bool no_recheck=false;
 	bool ret_value=false;
+
+#define READ_VALUE if(!deprecated){input >> svalue; ivalue=FONames::GetDefineValue(svalue);}else{input >> ivalue; sprintf(svalue,"%d",ivalue);}
 
 #ifdef FONLINE_NPCEDITOR
 	string script_val[5];
@@ -385,7 +389,9 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 		AddError("Parse dr type fail.");
 		return NULL;
 	}
-	int type=GetDRType(type_str);
+
+	bool deprecated=false;
+	int type=GetDRType(type_str,deprecated);
 
 	if(type==DR_NO_RECHECK)
 	{
@@ -396,7 +402,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 			AddError("Parse dr type fail2.");
 			return NULL;
 		}
-		type=GetDRType(type_str);
+		type=GetDRType(type_str,deprecated);
 	}
 
 	switch(type)
@@ -413,6 +419,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 					errors++;
 				}
 			}
+
 			// Name
 			input >> name;
 			if((id=FONames::GetParamId(name))<0)
@@ -420,6 +427,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR parameter<%s>.",name);
 				errors++;
 			}
+
 			// Operator
 			input >> oper;
 			if(!CheckOper(oper))
@@ -427,8 +435,9 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR param oper<%c>.",oper);
 				errors++;
 			}
+
 			// Value
-			input >> value;
+			READ_VALUE;
 		}
 		break;
 	case DR_VAR:
@@ -440,6 +449,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR var who<%c>.",who);
 				errors++;
 			}
+
 			// Name
 			input >> name;
 			if((id=GetTempVarId(name))==0)
@@ -447,6 +457,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR var name<%s>.",name);
 				errors++;
 			}
+
 			// Operator
 			input >> oper;
 			if(!CheckOper(oper))
@@ -454,8 +465,9 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR var oper<%c>.",oper);
 				errors++;
 			}
+
 			// Value
-			input >> value;
+			READ_VALUE;
 		}
 		break;
 	case DR_ITEM:
@@ -467,6 +479,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR item who<%c>.",who);
 				errors++;
 			}
+
 			// Name
 			input >> name;
 			id=FONames::GetItemPid(name);
@@ -481,6 +494,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				}
 				if(name_!=0) StringCopy(name,name_);
 			}
+
 			// Operator
 			input >> oper;
 			if(!CheckOper(oper))
@@ -488,20 +502,24 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 				AddError("Invalid DR item oper<%c>.",oper);
 				errors++;
 			}
+
 			// Value
-			input >> value;
+			READ_VALUE;
 		}
 		break;
 	case DR_SCRIPT:
 		{
 			// Script name
 			input >> name;
+
 			// Operator, not used
-			if(_stricmp(type_str,"_script") && is_demand) input >> oper; // Deprecated
+			if(deprecated && is_demand) input >> oper;
+
 			// Values count
 			input >> values_count;
+
 			// Values
-			if(!_stricmp(type_str,"_script"))
+			if(!deprecated)
 			{
 #ifdef FONLINE_NPCEDITOR
 #define READ_SCRIPT_VALUE_(val) {input >> value_str; val=value_str;}
@@ -521,7 +539,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 					errors++;
 				}
 			}
-			else // Deprecated
+			else
 			{
 				char ch=*input.str();
 				input.rdbuf()->freeze(false);
@@ -581,12 +599,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 		break;
 	case DR_LOCK:
 		{
-			input >> value;
-			if(!CheckLockTime(value))
-			{
-				AddError("Invalid DR lock time<%d>.",value);
-				errors++;
-			}
+			READ_VALUE;
 		}
 		break;
 	case DR_OR:
@@ -609,10 +622,10 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	result.ParamId=id;
 	result.Op=oper;
 	result.ValuesCount=values_count;
-	result.Value=value;
 	result.NoRecheck=no_recheck;
 	result.RetValue=ret_value;
 #ifdef FONLINE_NPCEDITOR
+	result.ValueStr=svalue;
 	result.ParamName=name;
 	result.ValuesNames[0]=script_val[0];
 	result.ValuesNames[1]=script_val[1];
@@ -620,6 +633,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	result.ValuesNames[3]=script_val[3];
 	result.ValuesNames[4]=script_val[4];
 #else
+	result.Value=ivalue;
 	result.ValueExt[0]=script_val[0];
 	result.ValueExt[1]=script_val[1];
 	result.ValueExt[2]=script_val[2];
@@ -632,14 +646,9 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 
 WORD DialogManager::GetTempVarId(const char* str)
 {
-	WORD tid=VarMngr.GetTempVarId(string(str));
+	WORD tid=VarMngr.GetTemplateVarId(str);
 	if(!tid) WriteLog(__FUNCTION__" - Template var not found, name<%s>.\n",str);
 	return tid;
-}
-
-bool DialogManager::CheckLockTime(int time)
-{
-	return time>=LOCK_TIME_MIN && time<=LOCK_TIME_MAX;
 }
 
 int DialogManager::GetNotAnswerAction(const char* str, bool& ret_val)
@@ -666,14 +675,10 @@ int DialogManager::GetNotAnswerAction(const char* str, bool& ret_val)
 	return -1;
 }
 
-int DialogManager::GetDRType(const char* str)
+int DialogManager::GetDRType(const char* str, bool& deprecated)
 {
-	if(!str)
-	{
-		WriteLog(__FUNCTION__" - Invalid argument.\n");
-		return DR_NONE;
-	}
-
+	deprecated=false;
+	if(!str) return DR_NONE;
 	if(!_stricmp(str,"_param"))          return DR_PARAM;
 	else if(!_stricmp(str,"_item"))      return DR_ITEM;
 	else if(!_stricmp(str,"_lock"))      return DR_LOCK;
@@ -681,18 +686,18 @@ int DialogManager::GetDRType(const char* str)
 	else if(!_stricmp(str,"_var"))       return DR_VAR;
 	else if(!_stricmp(str,"no_recheck")) return DR_NO_RECHECK;
 	else if(!_stricmp(str,"or"))         return DR_OR;
-	else if(!_stricmp(str,"stat"))  return DR_PARAM;  // Deprecated
-	else if(!_stricmp(str,"skill")) return DR_PARAM;  // Deprecated
-	else if(!_stricmp(str,"perk"))  return DR_PARAM;  // Deprecated
-	else if(!_stricmp(str,"var"))   return DR_VAR;    // Deprecated
-	else if(!_stricmp(str,"gvar"))  return DR_VAR;    // Deprecated
-	else if(!_stricmp(str,"lvar"))  return DR_VAR;    // Deprecated
-	else if(!_stricmp(str,"uvar"))  return DR_VAR;    // Deprecated
-	else if(!_stricmp(str,"item"))  return DR_ITEM;   // Deprecated
-	else if(!_stricmp(str,"lock"))  return DR_LOCK;   // Deprecated
-	else if(!_stricmp(str,"script"))return DR_SCRIPT; // Deprecated
-	else if(!_stricmp(str,"kill"))  return DR_PARAM;  // Deprecated
-	else if(!_stricmp(str,"loy"))   return DR_PARAM;  // Deprecated
+	else if(!_stricmp(str,"stat"))  {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(!_stricmp(str,"skill")) {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(!_stricmp(str,"perk"))  {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(!_stricmp(str,"var"))   {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(!_stricmp(str,"gvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(!_stricmp(str,"lvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(!_stricmp(str,"uvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(!_stricmp(str,"item"))  {deprecated=true; return DR_ITEM;}   // Deprecated
+	else if(!_stricmp(str,"lock"))  {deprecated=true; return DR_LOCK;}   // Deprecated
+	else if(!_stricmp(str,"script")){deprecated=true; return DR_SCRIPT;} // Deprecated
+	else if(!_stricmp(str,"kill"))  {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(!_stricmp(str,"loy"))   {deprecated=true; return DR_PARAM;}  // Deprecated
 	return DR_NONE;
 }
 

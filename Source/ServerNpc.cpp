@@ -1020,7 +1020,27 @@ bool FOServer::Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bo
 			}
 			break; // or
 		case DR_VAR:
-			if(VarMngr.CheckVar(index,master->GetId(),slave?slave->GetId():0,demand.Op,demand.Value)) continue;
+			{
+				TemplateVar* tvar=VarMngr.GetTemplateVar(index);
+				if(!tvar) break;
+
+				DWORD master_id=0,slave_id=0;
+				if(tvar->Type==VAR_LOCAL) master_id=master->GetId();
+				else if(tvar->Type==VAR_UNICUM)
+				{
+					master_id=master->GetId();
+					slave_id=(slave?slave->GetId():0);
+				}
+				else if(tvar->Type==VAR_LOCAL_LOCATION)
+				{
+					Map* map=MapMngr.GetMap(master->GetMap(),false);
+					if(map) master_id=map->GetLocation(false)->GetId();
+				}
+				else if(tvar->Type==VAR_LOCAL_MAP) master_id=master->GetMap();
+				else if(tvar->Type==VAR_LOCAL_ITEM) master_id=master->ItemSlotMain->GetId();
+
+				if(VarMngr.CheckVar(index,master_id,slave_id,demand.Op,demand.Value)) continue;
+			}
 			break; // or
 		case DR_ITEM:
 			switch(demand.Op)
@@ -1104,7 +1124,25 @@ DWORD FOServer::Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer)
 			continue;
 		case DR_VAR:
 			{
-				GameVar* var=VarMngr.ChangeVar(index,master->GetId(),slave?slave->GetId():0,result.Op,result.Value);
+				TemplateVar* tvar=VarMngr.GetTemplateVar(index);
+				if(!tvar) break;
+
+				DWORD master_id=0,slave_id=0;
+				if(tvar->Type==VAR_LOCAL) master_id=master->GetId();
+				else if(tvar->Type==VAR_UNICUM)
+				{
+					master_id=master->GetId();
+					slave_id=(slave?slave->GetId():0);
+				}
+				else if(tvar->Type==VAR_LOCAL_LOCATION)
+				{
+					Map* map=MapMngr.GetMap(master->GetMap(),false);
+					if(map) master_id=map->GetLocation(false)->GetId();
+				}
+				else if(tvar->Type==VAR_LOCAL_MAP) master_id=master->GetMap();
+				else if(tvar->Type==VAR_LOCAL_ITEM) master_id=master->ItemSlotMain->GetId();
+
+				GameVar* var=VarMngr.ChangeVar(index,master_id,slave_id,result.Op,result.Value);
 				if(var && var->IsQuest()) master->Send_Quest(var->GetQuestStr());
 			}
 			continue;

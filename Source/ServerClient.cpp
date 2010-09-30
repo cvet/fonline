@@ -1255,7 +1255,7 @@ bool FOServer::RegenerateMap(Map* map)
 	DWORD map_id=map->GetId();
 	WORD map_pid=map->GetPid();
 	ProtoMap* map_proto=map->Proto;
-	Location* map_loc=map->GetLocation();
+	Location* map_loc=map->GetLocation(true);
 
 	// Kick clients to global
 	ClVec players;

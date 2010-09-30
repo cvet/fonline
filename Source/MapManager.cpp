@@ -577,6 +577,16 @@ bool MapManager::GenerateWorld(const char* fname, int path_type)
 	return true;
 }
 
+void MapManager::GetLocationAndMapIds(DwordSet& loc_ids, DwordSet& map_ids)
+{
+	SCOPE_LOCK(mapLocker);
+
+	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
+		loc_ids.insert((*it).second->GetId());
+	for(MapMapIt it=allMaps.begin(),end=allMaps.end();it!=end;++it)
+		map_ids.insert((*it).second->GetId());
+}
+
 bool MapManager::IsInitProtoLocation(WORD pid_loc)
 {
 	if(!pid_loc || pid_loc>=MAX_PROTO_LOCATIONS) return false;
@@ -725,7 +735,7 @@ Map* MapManager::CreateMap(WORD pid_map, Location* loc_map, DWORD map_id)
 	return map;
 }
 
-Map* MapManager::GetMap(DWORD map_id)
+Map* MapManager::GetMap(DWORD map_id, bool lock /* = true */)
 {
 	if(!map_id) return NULL;
 
@@ -739,7 +749,7 @@ Map* MapManager::GetMap(DWORD map_id)
 	Map* map=(*it).second;
 	mapLocker.Unlock();
 
-	SYNC_LOCK(map);
+	if(lock) SYNC_LOCK(map);
 	return map;
 }
 
@@ -800,7 +810,7 @@ Location* MapManager::GetLocationByMap(DWORD map_id)
 {
 	Map* map=GetMap(map_id);
 	if(!map) return NULL;
-	return map->GetLocation();
+	return map->GetLocation(true);
 }
 
 Location* MapManager::GetLocation(DWORD loc_id)
@@ -2352,7 +2362,7 @@ bool MapManager::TryTransitCrGrid(Critter* cr, Map* map, WORD hx, WORD hy, bool 
 	if(!map || !FLAG(map->GetHexFlags(hx,hy),FH_SCEN_GRID)) return false;
 	if(!force && !map->IsTurnBasedOn && cr->IsTransferTimeouts(true)) return false;
 
-	Location* loc=map->GetLocation();
+	Location* loc=map->GetLocation(true);
 	DWORD id_map=0;
 	BYTE dir=0;
 
@@ -2394,7 +2404,7 @@ bool MapManager::TransitToGlobal(Critter* cr, DWORD rule, BYTE follow_type, bool
 bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWORD radius, bool force)
 {
 	// Check location deletion
-	if(map && map->GetLocation()->Data.ToGarbage)
+	if(map && map->GetLocation(true)->Data.ToGarbage)
 	{
 		WriteLog(__FUNCTION__" - Transfer to deleted location, critter<%s>.\n",cr->GetInfo());
 		return false;

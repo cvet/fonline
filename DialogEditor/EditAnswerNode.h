@@ -31,17 +31,21 @@ namespace DialogEditor {
 			//TODO: Add the constructor code here
 			//
 		}
+	public: System::Windows::Forms::Button^  btnOk;
 
 		
-	public:	System::Windows::Forms::Button^			ok;
-	public:	System::Windows::Forms::Button^			Cancel;
+
+	public: System::Windows::Forms::Button^  btnCancel;
+
 	public:	System::Windows::Forms::TextBox^		answer;
 	public:	System::Windows::Forms::NumericUpDown^  link;
-	public: System::Windows::Forms::Label^			lErr;
-	public: System::Windows::Forms::Label^			label1;
+
+	public: System::Windows::Forms::Label^  lError;
+
 	public: System::Windows::Forms::ComboBox^  cbLinkOther;
 	public: 
 	public: System::Windows::Forms::RadioButton^  rbLinkOther;
+	public: System::Windows::Forms::Label^  lErrText;
 	public: System::Windows::Forms::RadioButton^  rbLinkId;
 
 	public: System::ComponentModel::Container ^ components;
@@ -62,37 +66,35 @@ namespace DialogEditor {
 		/// </summary>
 		void InitializeComponent(void)
 		{
-			this->ok = (gcnew System::Windows::Forms::Button());
-			this->Cancel = (gcnew System::Windows::Forms::Button());
+			this->btnOk = (gcnew System::Windows::Forms::Button());
+			this->btnCancel = (gcnew System::Windows::Forms::Button());
 			this->answer = (gcnew System::Windows::Forms::TextBox());
 			this->link = (gcnew System::Windows::Forms::NumericUpDown());
-			this->lErr = (gcnew System::Windows::Forms::Label());
-			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->cbLinkOther = (gcnew System::Windows::Forms::ComboBox());
 			this->rbLinkOther = (gcnew System::Windows::Forms::RadioButton());
 			this->rbLinkId = (gcnew System::Windows::Forms::RadioButton());
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->link))->BeginInit();
 			this->SuspendLayout();
 			// 
-			// ok
+			// btnOk
 			// 
-			this->ok->Location = System::Drawing::Point(394, 4);
-			this->ok->Name = L"ok";
-			this->ok->Size = System::Drawing::Size(75, 23);
-			this->ok->TabIndex = 3;
-			this->ok->Text = L"Ok";
-			this->ok->UseVisualStyleBackColor = true;
-			this->ok->Click += gcnew System::EventHandler(this, &Edit_nodeA::ok_Click);
+			this->btnOk->Location = System::Drawing::Point(394, 4);
+			this->btnOk->Name = L"btnOk";
+			this->btnOk->Size = System::Drawing::Size(75, 23);
+			this->btnOk->TabIndex = 3;
+			this->btnOk->Text = L"Ok";
+			this->btnOk->UseVisualStyleBackColor = true;
+			this->btnOk->Click += gcnew System::EventHandler(this, &Edit_nodeA::ok_Click);
 			// 
-			// Cancel
+			// btnCancel
 			// 
-			this->Cancel->Location = System::Drawing::Point(394, 33);
-			this->Cancel->Name = L"Cancel";
-			this->Cancel->Size = System::Drawing::Size(75, 23);
-			this->Cancel->TabIndex = 2;
-			this->Cancel->Text = L"Cancel";
-			this->Cancel->UseVisualStyleBackColor = true;
-			this->Cancel->Click += gcnew System::EventHandler(this, &Edit_nodeA::Cancel_Click);
+			this->btnCancel->Location = System::Drawing::Point(394, 33);
+			this->btnCancel->Name = L"btnCancel";
+			this->btnCancel->Size = System::Drawing::Size(75, 23);
+			this->btnCancel->TabIndex = 2;
+			this->btnCancel->Text = L"Cancel";
+			this->btnCancel->UseVisualStyleBackColor = true;
+			this->btnCancel->Click += gcnew System::EventHandler(this, &Edit_nodeA::Cancel_Click);
 			// 
 			// answer
 			// 
@@ -112,28 +114,6 @@ namespace DialogEditor {
 			this->link->Size = System::Drawing::Size(73, 20);
 			this->link->TabIndex = 1;
 			this->link->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) {1, 0, 0, 0});
-			// 
-			// lErr
-			// 
-			this->lErr->AutoSize = true;
-			this->lErr->ForeColor = System::Drawing::Color::Red;
-			this->lErr->Location = System::Drawing::Point(370, 109);
-			this->lErr->Name = L"lErr";
-			this->lErr->Size = System::Drawing::Size(24, 13);
-			this->lErr->TabIndex = 5;
-			this->lErr->Text = L"нет";
-			// 
-			// label1
-			// 
-			this->label1->AutoSize = true;
-			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(204)));
-			this->label1->ForeColor = System::Drawing::Color::DarkGreen;
-			this->label1->Location = System::Drawing::Point(316, 109);
-			this->label1->Name = L"label1";
-			this->label1->Size = System::Drawing::Size(57, 13);
-			this->label1->TabIndex = 6;
-			this->label1->Text = L"Ошибка:";
 			// 
 			// cbLinkOther
 			// 
@@ -162,7 +142,7 @@ namespace DialogEditor {
 			this->rbLinkId->Checked = true;
 			this->rbLinkId->Location = System::Drawing::Point(300, 4);
 			this->rbLinkId->Name = L"rbLinkId";
-			this->rbLinkId->Size = System::Drawing::Size(75, 17);
+			this->rbLinkId->Size = System::Drawing::Size(77, 17);
 			this->rbLinkId->TabIndex = 46;
 			this->rbLinkId->TabStop = true;
 			this->rbLinkId->Text = L"К диалогу";
@@ -177,18 +157,16 @@ namespace DialogEditor {
 			this->Controls->Add(this->cbLinkOther);
 			this->Controls->Add(this->rbLinkOther);
 			this->Controls->Add(this->rbLinkId);
-			this->Controls->Add(this->label1);
-			this->Controls->Add(this->lErr);
 			this->Controls->Add(this->link);
 			this->Controls->Add(this->answer);
-			this->Controls->Add(this->Cancel);
-			this->Controls->Add(this->ok);
+			this->Controls->Add(this->btnCancel);
+			this->Controls->Add(this->btnOk);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
 			this->Name = L"Edit_nodeA";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"Edit_nodeA";
-			this->Shown += gcnew System::EventHandler(this, &Edit_nodeA::Edit_nodeA_Shown);
 			this->Load += gcnew System::EventHandler(this, &Edit_nodeA::Edit_nodeA_Load);
+			this->Shown += gcnew System::EventHandler(this, &Edit_nodeA::Edit_nodeA_Shown);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->link))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();

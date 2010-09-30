@@ -413,7 +413,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	crLocker.Unlock();
 
 	// Flags and coords
-	Location* loc=map->GetLocation();
+	Location* loc=map->GetLocation(true);
 
 	if(dir>5) dir=Random(0,5);
 	npc->Data.Dir=dir;
@@ -620,6 +620,17 @@ void CritterManager::EraseCritter(Critter* cr)
 		if(cr->IsPlayer()) playersCount--;
 		else npcCount--;
 		allCritters.erase(it);
+	}
+}
+
+void CritterManager::GetNpcIds(DwordSet& npc_ids)
+{
+	SCOPE_LOCK(crLocker);
+
+	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
+	{
+		Critter* cr=(*it).second;
+		if(cr->IsNpc()) npc_ids.insert(cr->GetId());
 	}
 }
 

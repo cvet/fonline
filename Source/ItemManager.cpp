@@ -973,19 +973,17 @@ void ItemManager::SetCritterItems(Critter* cr)
 	{
 		Item* item=*it;
 		SYNC_LOCK(item);
-		cr->SetItem(item);
-	}
 
-/*	ItemPtrVec items;
-	GetGameItems(items);
-
-	DWORD crid=cr->GetId();
-	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
-	{
-		Item* item=*it;
-		SYNC_LOCK(item);
 		if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==crid) cr->SetItem(item);
-	}*/
+	}
+}
+
+void ItemManager::GetItemIds(DwordSet& item_ids)
+{
+	SCOPE_LOCK(itemLocker);
+
+	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
+		item_ids.insert((*it).second->GetId());
 }
 
 Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)

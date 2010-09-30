@@ -8,8 +8,6 @@
 
 // Misc
 #define DIALOG_FILE_EXT			".fodlg"
-#define LOCK_TIME_MIN			(0)
-#define LOCK_TIME_MAX			(1000000)
 
 // Special script
 #define NOT_ANSWER_CLOSE_DIALOG (0)
@@ -34,7 +32,7 @@
 #define DR_NO_RECHECK           (6)
 #define DR_OR                   (7)
 
-class DemandResult // Size 44
+class DemandResult
 {
 public:
 	char    Type;           // Type of demand or result
@@ -44,17 +42,18 @@ public:
 	bool    RetValue;       // Reserved
 	char    Op;             // Operation
 	char    ValuesCount;    // Script values count
-	int     Value;          // Main value
 
 #ifdef FONLINE_NPCEDITOR
+	string  ValueStr;       // Main value string
 	string  ParamName;      // Parameter Name
 	string  ValuesNames[5]; // Values names
 #else
+	int     Value;          // Main value
 	int     ValueExt[5];    // Extra value
 #endif
 
 #ifdef FONLINE_NPCEDITOR
-	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),RetValue(false),Op(0),Value(0),ValuesCount(0){}
+	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),RetValue(false),Op(0),ValuesCount(0){}
 #else
 	DemandResult():Type(DR_NONE),Who('p'),ParamId(0),NoRecheck(false),RetValue(false),Op(0),Value(0),ValuesCount(0){MEMORY_PROCESS(MEMORY_DIALOG,sizeof(DemandResult));}
 	DemandResult(const DemandResult& r){*this=r; MEMORY_PROCESS(MEMORY_DIALOG,sizeof(DemandResult));}
@@ -194,7 +193,7 @@ private:
 	DemandResult* LoadDemandResult(istrstream& input, bool is_demand);
 	bool CheckLockTime(int time);
 	int GetNotAnswerAction(const char* str, bool& ret_val);
-	int GetDRType(const char* str);
+	int GetDRType(const char* str, bool& deprecated);
 	bool CheckOper(char oper);
 	bool CheckWho(char who);
 	void AddError(const char* fmt, ...);

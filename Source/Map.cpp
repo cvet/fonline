@@ -394,9 +394,9 @@ void Map::Process()
 	}
 }
 
-Location* Map::GetLocation()
+Location* Map::GetLocation(bool lock)
 {
-	SYNC_LOCK(mapLocation);
+	if(lock) SYNC_LOCK(mapLocation);
 	return mapLocation;
 }
 

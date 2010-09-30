@@ -140,6 +140,7 @@ public:
 	string GetLocationsMapsStatistics();
 	void RunInitScriptMaps();
 	bool GenerateWorld(const char* fname, int path_type);
+	void GetLocationAndMapIds(DwordSet& loc_ids, DwordSet& map_ids);
 
 	// Maps stuff
 public:
@@ -202,7 +203,7 @@ private:
 public:
 	bool IsInitProtoMap(WORD pid_map);
 	Map* CreateMap(WORD pid_map, Location* loc_map, DWORD map_id);
-	Map* GetMap(DWORD map_id);
+	Map* GetMap(DWORD map_id, bool lock = true);
 	Map* GetMapByPid(WORD map_pid, DWORD skip_count);
 	void GetMaps(MapVec& maps, bool lock);
 	DWORD GetMapsCount();

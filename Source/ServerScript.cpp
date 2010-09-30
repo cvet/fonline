@@ -1029,7 +1029,7 @@ void FOServer::SScriptFunc::Item_set_Flags(Item* item, DWORD value)
 	if((old&ITEM_GECK)!=(value&ITEM_GECK) && item->Accessory==ITEM_ACCESSORY_HEX)
 	{
 		if(!map) map=MapMngr.GetMap(item->ACC_HEX.MapId);
-		if(map) map->GetLocation()->GeckCount+=(FLAG(value,ITEM_GECK)?1:-1);
+		if(map) map->GetLocation(false)->GeckCount+=(FLAG(value,ITEM_GECK)?1:-1);
 	}
 
 	// Update data
@@ -1303,7 +1303,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, DWORD map_id, WORD
 		else return true;
 	}
 
-	Location* loc=map->GetLocation();
+	Location* loc=map->GetLocation(true);
 	if(loc && DistSqrt(cr->Data.WorldX,cr->Data.WorldY,loc->Data.WX,loc->Data.WY)>loc->GetRadius())
 	{
 		cr->Data.WorldX=loc->Data.WX;
@@ -1333,7 +1333,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, DWORD map_id, B
 		if(!MapMngr.Transit(cr,map,hx,hy,dir,2,true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
 	}
 
-	Location* loc=map->GetLocation();
+	Location* loc=map->GetLocation(true);
 	if(loc && DistSqrt(cr->Data.WorldX,cr->Data.WorldY,loc->Data.WX,loc->Data.WY)>loc->GetRadius())
 	{
 		cr->Data.WorldX=loc->Data.WX;
@@ -2859,11 +2859,6 @@ GameVar* FOServer::SScriptFunc::Global_GetUnicumVar(WORD tvar_id, DWORD master_i
 	return uvar;
 }
 
-DWORD FOServer::SScriptFunc::Global_DeleteVars(DWORD id)
-{
-	return VarMngr.DeleteVars(id);
-}
-
 void FOServer::SScriptFunc::Cl_SendQuestVar(Critter* cl, GameVar* var)
 {
 	if(cl->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
@@ -2887,7 +2882,7 @@ WORD FOServer::SScriptFunc::Map_GetProtoId(Map* map)
 Location* FOServer::SScriptFunc::Map_GetLocation(Map* map)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return map->GetLocation();
+	return map->GetLocation(true);
 }
 
 bool FOServer::SScriptFunc::Map_SetScript(Map* map, CScriptString* script)

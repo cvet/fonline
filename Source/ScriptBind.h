@@ -766,7 +766,7 @@
 	if(engine->RegisterGlobalFunction("GameVar@+ GetGlobalVar(uint16 varId)",asFUNCTION(BIND_CLASS Global_GetGlobalVar),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("GameVar@+ GetLocalVar(uint16 varId, uint masterId)",asFUNCTION(BIND_CLASS Global_GetLocalVar),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("GameVar@+ GetUnicumVar(uint16 varId, uint masterId, uint slaveId)",asFUNCTION(BIND_CLASS Global_GetUnicumVar),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint DeleteVars(uint id)",asFUNCTION(BIND_CLASS Global_DeleteVars),asCALL_CDECL)<0) BIND_ERROR;	if(engine->RegisterGlobalFunction("Item@+ GetItem(uint itemId)",asFUNCTION(BIND_CLASS Global_GetItem),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("Item@+ GetItem(uint itemId)",asFUNCTION(BIND_CLASS Global_GetItem),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveItem(Item& item, uint count, Critter& toCr)",asFUNCTION(BIND_CLASS Global_MoveItemCr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveItem(Item& item, uint count, Item& toCont, uint stackId)",asFUNCTION(BIND_CLASS Global_MoveItemCont),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveItem(Item& item, uint count, Map& toMap, uint16 toHx, uint16 toHy)",asFUNCTION(BIND_CLASS Global_MoveItemMap),asCALL_CDECL)<0) BIND_ERROR;

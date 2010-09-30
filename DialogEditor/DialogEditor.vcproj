@@ -228,6 +228,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\DataFile.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\DataFile.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Defines.h"
 				>
 			</File>
@@ -516,7 +524,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\Zlib\example.c"
+				RelativePath="..\Source\Zlib\gzclose.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -538,7 +546,55 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\Zlib\gzio.c"
+				RelativePath="..\Source\Zlib\gzguts.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\gzlib.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\gzread.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\gzwrite.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -664,6 +720,32 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\Zlib\ioapi.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\ioapi.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Zlib\trees.c"
 				>
 				<FileConfiguration
@@ -710,6 +792,32 @@
 						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\unzip.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\Zlib\unzip.h"
+				>
 			</File>
 			<File
 				RelativePath="..\Source\Zlib\zconf.h"
@@ -771,30 +879,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\DatFile\cfile.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\DatFile\datfile.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\Source\DatFile\datfile.h"
 				>
 			</File>
 			<File

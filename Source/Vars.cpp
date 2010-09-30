@@ -29,53 +29,82 @@ bool VarManager::Init(const char* fpath)
 #ifdef FONLINE_SERVER
 void VarManager::SaveVarsDataFile(void(*save_func)(void*,size_t))
 {
-	DWORD count=allVars.size();
-	save_func(&count,sizeof(count));
-	for(VarsMapIt it=allVars.begin(),end=allVars.end();it!=end;++it)
+	save_func(&varsCount,sizeof(varsCount));
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
 	{
-		GameVar* var=(*it).second;
-		save_func(&var->VarId,sizeof(var->VarId));
-		save_func(&var->VarTemplate->TempId,sizeof(var->VarTemplate->TempId));
-		save_func(&var->VarValue,sizeof(var->VarValue));
+		TemplateVar* tvar=*it;
+		if(tvar)
+		{
+			for(VarsMap32It it_=tvar->Vars.begin(),end_=tvar->Vars.end();it_!=end_;++it_)
+			{
+				GameVar* var=(*it_).second;
+				save_func(&var->VarTemplate->TempId,sizeof(var->VarTemplate->TempId));
+				save_func(&var->MasterId,sizeof(var->MasterId));
+				save_func(&var->SlaveId,sizeof(var->SlaveId));
+				save_func(&var->VarValue,sizeof(var->VarValue));
+			}
+			for(VarsMap64It it_=tvar->VarsUnicum.begin(),end_=tvar->VarsUnicum.end();it_!=end_;++it_)
+			{
+				GameVar* var=(*it_).second;
+				save_func(&var->VarTemplate->TempId,sizeof(var->VarTemplate->TempId));
+				save_func(&var->MasterId,sizeof(var->MasterId));
+				save_func(&var->SlaveId,sizeof(var->SlaveId));
+				save_func(&var->VarValue,sizeof(var->VarValue));
+			}
+		}
 	}
 }
 
-bool VarManager::LoadVarsDataFile(FILE* f)
+bool VarManager::LoadVarsDataFile(FILE* f, int version)
 {
 	WriteLog("Load vars...");
-	allQuestVars.reserve(100000); // 400kb
+	allQuestVars.reserve(10000); // 40kb
 
 	DWORD count=0;
 	fread(&count,sizeof(count),1,f);
 	for(DWORD i=0;i<count;i++)
 	{
-		ULONGLONG id;
-		fread(&id,sizeof(id),1,f);
 		WORD temp_id;
-		fread(&temp_id,sizeof(temp_id),1,f);
+		DWORD master_id,slave_id;
 		int val;
-		fread(&val,sizeof(val),1,f);
+		if(version<WORLD_SAVE_V10)
+		{
+			ULONGLONG id;
+			fread(&id,sizeof(id),1,f);
+			fread(&temp_id,sizeof(temp_id),1,f);
+			fread(&val,sizeof(val),1,f);
+			master_id=(id>>24)&0xFFFFFF;
+			slave_id=id&0xFFFFFF;
+		}
+		else
+		{
+			fread(&temp_id,sizeof(temp_id),1,f);
+			fread(&master_id,sizeof(master_id),1,f);
+			fread(&slave_id,sizeof(slave_id),1,f);
+			fread(&val,sizeof(val),1,f);
+		}
 
-		TemplateVar* tvar=GetTempVar(temp_id);
+		TemplateVar* tvar=GetTemplateVar(temp_id);
 		if(!tvar)
 		{
 			WriteLog("Template var not found, tid<%u>.\n",temp_id);
 			continue;
 		}
 
-		GameVar* var=new GameVar(id,tvar,val);
-		if(allVars.count(id))
+		if(tvar->IsError())
 		{
-			char buf[64];
-			WriteLog("Id already added, id<%s>.\n",_ui64toa(id,buf,10));
+			WriteLog("Template var have invalid data, tid<%u>.\n",temp_id);
 			continue;
 		}
-		allVars.insert(VarsMapVal(id,var));
 
-		if(tvar->IsQuest())
+		GameVar* var;
+		if(tvar->IsNotUnicum()) var=CreateVar(master_id,tvar);
+		else var=CreateVarUnicum((((ULONGLONG)slave_id)<<32)|((ULONGLONG)master_id),master_id,slave_id,tvar);
+
+		if(!var)
 		{
-			var->QuestVarIndex=allQuestVars.size();
-			allQuestVars.push_back(var);
+			WriteLog("Can't create var, tid<%u>.\n",temp_id);
+			continue;
 		}
 	}
 
@@ -88,22 +117,34 @@ void VarManager::Finish()
 {
 	WriteLog("Var manager finish...\n");
 
-#ifdef FONLINE_SERVER
-	for(VarsMapIt it=allVars.begin(),end=allVars.end();it!=end;++it)
-		(*it).second->Release();
-	allVars.clear();
-	allQuestVars.clear();
-#endif
+	Clear();
 
-	for(TempVarMapIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
-		delete (*it).second;
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it) SAFEDEL(*it);
 	tempVars.clear();
-	varsNames.clear();
 
 	varsPath="";
 	SAFEDEL(DbgLog);
 	isInit=false;
 	WriteLog("Var manager finish complete.\n");
+}
+
+void VarManager::Clear()
+{
+#ifdef FONLINE_SERVER
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
+	{
+		TemplateVar* tvar=*it;
+		if(tvar)
+		{
+			for(VarsMap32It it_=tvar->Vars.begin(),end_=tvar->Vars.end();it_!=end_;++it_)
+				(*it_).second->Release();
+			tvar->Vars.clear();
+			for(VarsMap64It it_=tvar->VarsUnicum.begin(),end_=tvar->VarsUnicum.end();it_!=end_;++it_)
+				(*it_).second->Release();
+			tvar->VarsUnicum.clear();
+		}
+	}
+#endif
 }
 
 bool VarManager::UpdateVarsTemplate()
@@ -213,45 +254,57 @@ bool VarManager::AddTemplateVar(TemplateVar* var)
 		return false;
 	}
 
-	if(varsNames.count(var->Name))
+	if(IsTemplateVarAviable(var->Name.c_str()))
 	{
 		WriteLog(__FUNCTION__" - Name already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
-	if(tempVars.count(var->TempId))
+	if(var->TempId<tempVars.size() && tempVars[var->TempId])
 	{
 		WriteLog(__FUNCTION__" - Id already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
-	tempVars.insert(TempVarMapVal(var->TempId,var));
-	varsNames.insert(StrWordMapVal(var->Name,var->TempId));
+	if(var->TempId>=tempVars.size()) tempVars.resize(var->TempId+1);
+	tempVars[var->TempId]=var;
 	return true;
 }
 
 void VarManager::EraseTemplateVar(WORD temp_id)
 {
-	TemplateVar* var=GetTempVar(temp_id);
+	TemplateVar* var=GetTemplateVar(temp_id);
 	if(!var) return;
 
-	varsNames.erase(var->Name);
-	tempVars.erase(temp_id);
+	delete var; // If delete on server runtime than possible memory leaks
+	tempVars[temp_id]=NULL;
 	delete var;
 }
 
-WORD VarManager::GetTempVarId(const string& var_name)
+WORD VarManager::GetTemplateVarId(const char* var_name)
 {
-	StrWordMapIt it=varsNames.find(var_name);
-	if(it==varsNames.end()) return 0;
-	return (*it).second;
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
+	{
+		TemplateVar* tvar=*it;
+		if(tvar && !_stricmp(tvar->Name.c_str(),var_name)) return tvar->TempId;
+	}
+	return false;
 }
 
-TemplateVar* VarManager::GetTempVar(WORD temp_id)
+TemplateVar* VarManager::GetTemplateVar(WORD temp_id)
 {
-	TempVarMapIt it=tempVars.find(temp_id);
-	if(it==tempVars.end()) return NULL;
-	return (*it).second;
+	if(temp_id<tempVars.size()) return tempVars[temp_id];
+	return NULL;
+}
+
+bool VarManager::IsTemplateVarAviable(const char* var_name)
+{
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
+	{
+		TemplateVar* tvar=*it;
+		if(tvar && !_stricmp(tvar->Name.c_str(),var_name)) return true;
+	}
+	return false;
 }
 
 void VarManager::SaveTemplateVars()
@@ -262,23 +315,32 @@ void VarManager::SaveTemplateVars()
 	FILE* f=fopen(full_path.c_str(),"wt");
 	if(f)
 	{
+		DWORD count=0;
+		for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it) if(*it) count++;
+
 		fprintf(f,"#ifndef __VARS__\n");
 		fprintf(f,"#define __VARS__\n");
 		fprintf(f,"/*************************************************************************************\n");
-		fprintf(f,"***  VARS  *****  COUNT: %08d  ***************************************************\n",tempVars.size());
+		fprintf(f,"***  VARS  *****  COUNT: %08d  ***************************************************\n",count);
 		fprintf(f,"*************************************************************************************/\n");
 		fprintf(f,"\n\n");
-		for(TempVarMapIt it=tempVars.begin();it!=tempVars.end();++it)
+
+		for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it)
 		{
-			TemplateVar* var=(*it).second;
+			TemplateVar* var=*it;
+			if(!var) continue;
 
 			fprintf(f,"#define ");
 			if(var->Type==VAR_GLOBAL) fprintf(f,"GVAR_");
 			else if(var->Type==VAR_LOCAL) fprintf(f,"LVAR_");
 			else if(var->Type==VAR_UNICUM) fprintf(f,"UVAR_");
+			else if(var->Type==VAR_LOCAL_LOCATION) fprintf(f,"LLVAR_");
+			else if(var->Type==VAR_LOCAL_MAP) fprintf(f,"LMVAR_");
+			else if(var->Type==VAR_LOCAL_ITEM) fprintf(f,"LIVAR_");
 			else fprintf(f,"?VAR_");
 			fprintf(f,"%s",var->Name.c_str());
-			for(int i=0,j=30-var->Name.length();i<j;i++) fprintf(f," ");
+			int spaces=var->Name.length()+(var->Type==VAR_LOCAL_LOCATION || var->Type==VAR_LOCAL_MAP || var->Type==VAR_LOCAL_ITEM?1:0);
+			for(int i=0,j=max(1,40-spaces);i<j;i++) fprintf(f," ");
 			fprintf(f,"(%u)\n",var->TempId);
 		}
 
@@ -287,9 +349,10 @@ void VarManager::SaveTemplateVars()
 		fprintf(f,"\tId\tType\tName\t\tStart\tMin\tMax\tFlags\n");
 		fprintf(f,"**************************************************************************************\n");
 
-		for(TempVarMapIt it=tempVars.begin();it!=tempVars.end();++it)
+		for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it)
 		{
-			TemplateVar* var=(*it).second;
+			TemplateVar* var=*it;
+			if(!var) continue;
 
 			fprintf(f,"$\t%u\t%d\t%s\t%d\t%d\t%d\t%u\n",
 				var->TempId,var->Type,var->Name.c_str(),var->StartVal,var->MinVal,var->MaxVal,var->Flags);
@@ -318,25 +381,25 @@ void VarManager::SaveTemplateVars()
 **************************************************************************************************/
 #ifdef FONLINE_SERVER
 
-bool VarManager::CheckVar(const string& var_name, DWORD master_id, DWORD slave_id, char oper, int val)
+bool VarManager::CheckVar(const char* var_name, DWORD master_id, DWORD slave_id, char oper, int val)
 {
-	WORD temp_id=GetTempVarId(var_name);
+	WORD temp_id=GetTemplateVarId(var_name);
 	if(!temp_id) return false;
 	GameVar* uvar=GetVar(temp_id,master_id,slave_id,true);
 	if(!uvar) return false;
 	return CheckVar(uvar,oper,val);
 }
 
-bool VarManager::CheckVar(WORD template_id, DWORD master_id, DWORD slave_id, char oper, int val)
+bool VarManager::CheckVar(WORD temp_id, DWORD master_id, DWORD slave_id, char oper, int val)
 {
-	GameVar* var=GetVar(template_id,master_id,slave_id,true);
+	GameVar* var=GetVar(temp_id,master_id,slave_id,true);
 	if(!var) return false;
 	return CheckVar(var,oper,val);
 }
 
-GameVar* VarManager::ChangeVar(const string& var_name, DWORD master_id, DWORD slave_id, char oper, int val)
+GameVar* VarManager::ChangeVar(const char* var_name, DWORD master_id, DWORD slave_id, char oper, int val)
 {
-	WORD temp_id=GetTempVarId(var_name);
+	WORD temp_id=GetTemplateVarId(var_name);
 	if(!temp_id) return NULL;
 	GameVar* var=GetVar(temp_id,master_id,slave_id,true);
 	if(!var) return NULL;
@@ -344,9 +407,9 @@ GameVar* VarManager::ChangeVar(const string& var_name, DWORD master_id, DWORD sl
 	return var;
 }
 
-GameVar* VarManager::ChangeVar(WORD template_id, DWORD master_id, DWORD slave_id, char oper, int val)
+GameVar* VarManager::ChangeVar(WORD temp_id, DWORD master_id, DWORD slave_id, char oper, int val)
 {
-	GameVar* var=GetVar(template_id,master_id,slave_id,true);
+	GameVar* var=GetVar(temp_id,master_id,slave_id,true);
 	if(!var) return NULL;
 	ChangeVar(var,oper,val);
 	return var;
@@ -387,60 +450,81 @@ void VarManager::ChangeVar(GameVar* var, char oper, int val)
 ***************************************************************************************************
 **************************************************************************************************/
 
-GameVar* VarManager::GetVar(const string& name, DWORD master_id, DWORD slave_id,  bool create)
+GameVar* VarManager::GetVar(const char* name, DWORD master_id, DWORD slave_id,  bool create)
 {
-	WORD temp_id=GetTempVarId(name);
+	WORD temp_id=GetTemplateVarId(name);
 	if(!temp_id) return NULL;
 	return GetVar(temp_id,master_id,slave_id,create);
 }
 
 GameVar* VarManager::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool create)
 {
-	TemplateVar* tvar=GetTempVar(temp_id);
+	TemplateVar* tvar=GetTemplateVar(temp_id);
 	if(!tvar) return NULL;
 
 	switch(tvar->Type)
 	{
 	case VAR_GLOBAL:
-		master_id=0;
-		slave_id=0;
+		if(master_id || slave_id) return NULL;
+		master_id=temp_id;
 		break;
 	case VAR_LOCAL:
-		if(!master_id) return NULL;
-		slave_id=0;
+		if(!master_id || slave_id) return NULL;
 		break;
 	case VAR_UNICUM:
-		if(!master_id) return NULL;
-		if(!slave_id) return NULL;
+		if(!master_id || !slave_id) return NULL;
+		break;
+	case VAR_LOCAL_LOCATION:
+		if(!master_id || slave_id) return NULL;
+		break;
+	case VAR_LOCAL_MAP:
+		if(!master_id || slave_id) return NULL;
+		break;
+	case VAR_LOCAL_ITEM:
+		if(!master_id || slave_id) return NULL;
 		break;
 	default:
-		break;
+		return NULL;
 	}
 
-	master_id&=0xFFFFFF;
-	slave_id&=0xFFFFFF;
-	ULONGLONG id=0;
-	id=((ULONGLONG)master_id<<24)|slave_id;
-	id=((ULONGLONG)temp_id<<48)|id;
-
-	varsLocker.Lock();
-
-	bool allocated=false; // DbgLog
 	GameVar* var;
-	VarsMapIt it=allVars.find(id);
-	if(it==allVars.end())
+	bool allocated=false; // For DbgLog
+
+	if(tvar->IsNotUnicum())
 	{
-		if(!create) return NULL;
-		var=CreateVar(id,tvar);
-		if(!var) return NULL;
-		allocated=true;
+		SCOPE_LOCK(varsLocker);
+
+		VarsMap32It it=tvar->Vars.find(master_id);
+		if(it==tvar->Vars.end())
+		{
+			if(!create) return NULL;
+			var=CreateVar(master_id,tvar);
+			if(!var) return NULL;
+			allocated=true;
+		}
+		else
+		{
+			var=(*it).second;
+		}
 	}
 	else
 	{
-		var=(*it).second;
-	}
+		SCOPE_LOCK(varsLocker);
 
-	varsLocker.Unlock();
+		ULONGLONG id=(((ULONGLONG)slave_id)<<32)|((ULONGLONG)master_id);
+		VarsMap64It it=tvar->VarsUnicum.find(id);
+		if(it==tvar->VarsUnicum.end())
+		{
+			if(!create) return NULL;
+			var=CreateVarUnicum(id,master_id,slave_id,tvar);
+			if(!var) return NULL;
+			allocated=true;
+		}
+		else
+		{
+			var=(*it).second;
+		}
+	}
 
 	SYNC_LOCK(var);
 
@@ -449,24 +533,21 @@ GameVar* VarManager::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool
 		if(tvar->Type==VAR_GLOBAL) DbgLog->Write("Reading gvar<%s> value<%d>.%s\n",tvar->Name.c_str(),var->GetValue(),allocated?" Allocated.":"");
 		else if(tvar->Type==VAR_LOCAL) DbgLog->Write("Reading lvar<%s> masterId<%u> value<%d>.%s\n",tvar->Name.c_str(),master_id,var->GetValue(),allocated?" Allocated.":"");
 		else if(tvar->Type==VAR_UNICUM) DbgLog->Write("Reading uvar<%s> masterId<%u> slaveId<%u> value<%d>.%s\n",tvar->Name.c_str(),master_id,slave_id,var->GetValue(),allocated?" Allocated.":"");
+		else if(tvar->Type==VAR_LOCAL_LOCATION) DbgLog->Write("Reading llvar<%s> locId<%u> value<%d>.%s\n",tvar->Name.c_str(),master_id,var->GetValue(),allocated?" Allocated.":"");
+		else if(tvar->Type==VAR_LOCAL_MAP) DbgLog->Write("Reading lmvar<%s> mapId<%u> value<%d>.%s\n",tvar->Name.c_str(),master_id,var->GetValue(),allocated?" Allocated.":"");
+		else if(tvar->Type==VAR_LOCAL_ITEM) DbgLog->Write("Reading livar<%s> itemId<%u> value<%d>.%s\n",tvar->Name.c_str(),master_id,var->GetValue(),allocated?" Allocated.":"");
 	}
 
 	return var;
 }
 
-GameVar* VarManager::CreateVar(ULONGLONG id, TemplateVar* tvar)
+GameVar* VarManager::CreateVar(DWORD master_id, TemplateVar* tvar)
 {
-	if(allVars.count(id))
-	{
-		char buf[64];
-		WriteLog(__FUNCTION__" - Id already added, id<%s>.\n",_ui64toa(id,buf,10));
-		return false;
-	}
-
-	GameVar* var=new GameVar(id,tvar,tvar->IsRandom()?Random(tvar->MinVal,tvar->MaxVal):tvar->StartVal);
+	GameVar* var=new(nothrow) GameVar(master_id,0,tvar,tvar->IsRandom()?Random(tvar->MinVal,tvar->MaxVal):tvar->StartVal);
 	if(!var) return NULL;
 
-	allVars.insert(VarsMapVal(id,var));
+	tvar->Vars.insert(VarsMap32Val(master_id,var));
+
 	if(tvar->IsQuest())
 	{
 		bool founded=false;
@@ -487,143 +568,233 @@ GameVar* VarManager::CreateVar(ULONGLONG id, TemplateVar* tvar)
 			allQuestVars.push_back(var);
 		}
 	}
+
+	varsCount++;
 	return var;
 }
 
-#pragma MESSAGE("Complete SwapVars.")
+GameVar* VarManager::CreateVarUnicum(ULONGLONG id, DWORD master_id, DWORD slave_id, TemplateVar* tvar)
+{
+	GameVar* var=new(nothrow) GameVar(master_id,slave_id,tvar,tvar->IsRandom()?Random(tvar->MinVal,tvar->MaxVal):tvar->StartVal);
+	if(!var) return NULL;
+
+	tvar->VarsUnicum.insert(VarsMap64Val(id,var));
+
+	varsCount++;
+	return var;
+}
+
 void VarManager::SwapVars(DWORD id1, DWORD id2)
 {
-	/*VarsVec swap_vars;
-	for(VarsMapIt it=allVars.begin();it!=allVars.end();)
-	{
-		GameVar* var=(*it).second;
-		TemplateVar* tvar=var->GetTemplateVar();
+	if(!id1 || !id2 || id1==id2) return;
 
-		if((tvar->Type==VAR_LOCAL && var->GetMasterId()==id1)
-		|| (tvar->Type==VAR_UNICUM && (var->GetMasterId()==id1 || var->GetSlaveId()==id1)))
-		{
-			var->SetVarId(,);
-			swap_vars.push_back(var);
-			it=allVars.erase(it);
-		}
-		else ++it;
-	}*/
-}
-
-DWORD VarManager::DeleteVars(DWORD id)
-{
+	// Collect vars
+	VarsVec swap_vars1;
+	VarsVec swap_vars2;
+	VarsVec swap_vars_share;
 	varsLocker.Lock();
-	VarsMap all_vars=allVars;
-	varsLocker.Unlock();
-
-	UInt64Vec del_vars;
-	for(VarsMapIt it=all_vars.begin();it!=all_vars.end();++it)
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
 	{
-		GameVar* var=(*it).second;
-		SYNC_LOCK(var);
-
-		if((var->Type==VAR_LOCAL && var->GetMasterId()==id) ||
-			(var->Type==VAR_UNICUM && (var->GetMasterId()==id || var->GetSlaveId()==id)))
+		TemplateVar* tvar=*it;
+		if(tvar && (tvar->Type==VAR_LOCAL || tvar->Type==VAR_UNICUM))
 		{
-			del_vars.push_back(var->VarId);
-		}
-	}
-
-	varsLocker.Lock();
-	for(UInt64VecIt it=del_vars.begin(),end=del_vars.end();it!=end;++it)
-	{
-		ULONGLONG uid=*it;
-		VarsMapIt it_=allVars.find(uid);
-		if(it_!=allVars.end())
-		{
-			GameVar* var=(*it_).second;
-			if(var->IsQuest()) allQuestVars[var->QuestVarIndex]=NULL;
-			Job::DeferredRelease(var);
-			allVars.erase(it_);
+			if(tvar->IsNotUnicum())
+			{
+				for(VarsMap32It it_=tvar->Vars.begin(),end_=tvar->Vars.end();it_!=end_;++it_)
+				{
+					GameVar* var=(*it_).second;
+					if(var->MasterId==id1) swap_vars1.push_back(var);
+					else if(var->MasterId==id2) swap_vars2.push_back(var);
+				}
+			}
+			else
+			{
+				for(VarsMap64It it_=tvar->VarsUnicum.begin(),end_=tvar->VarsUnicum.end();it_!=end_;++it_)
+				{
+					GameVar* var=(*it_).second;
+					if((var->MasterId==id1 && var->SlaveId==id2) ||
+						(var->MasterId==id2 && var->SlaveId==id1)) swap_vars_share.push_back(var);
+					else if(var->MasterId==id1 || var->SlaveId==id1) swap_vars1.push_back(var);
+					else if(var->MasterId==id2 || var->SlaveId==id2) swap_vars2.push_back(var);
+				}
+			}
 		}
 	}
 	varsLocker.Unlock();
 
-	return del_vars.size();
-}
+	// Synchronize
+	for(VarsVecIt it=swap_vars1.begin(),end=swap_vars1.end();it!=end;++it) SYNC_LOCK(*it);
+	for(VarsVecIt it=swap_vars2.begin(),end=swap_vars2.end();it!=end;++it) SYNC_LOCK(*it);
+	for(VarsVecIt it=swap_vars_share.begin(),end=swap_vars_share.end();it!=end;++it) SYNC_LOCK(*it);
 
-DWORD VarManager::ClearUnusedVars(DwordSet& ids1, DwordSet& ids2)
-{
+	// Swap shared
 	varsLocker.Lock();
-	VarsMap vars=allVars;
-	varsLocker.Unlock();
-
-	DWORD lcount=0,ucount=0;
-	UInt64Vec del_vars;
-
-	for(VarsMapIt it=vars.begin();it!=vars.end();++it)
+	for(VarsVecIt it=swap_vars_share.begin(),end=swap_vars_share.end();it!=end;)
 	{
-		GameVar* var=(*it).second;
-		SYNC_LOCK(var);
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
 
-		if(var->Type==VAR_GLOBAL)
+		tvar->VarsUnicum.erase(var->GetUid());
+		std::swap(var->MasterId,var->SlaveId);
+		tvar->VarsUnicum.insert(VarsMap64Val(var->GetUid(),var));
+	}
+
+	// Erase vars
+	for(VarsVecIt it=swap_vars1.begin(),end=swap_vars1.end();it!=end;++it)
+	{
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
+		if(tvar->IsNotUnicum()) tvar->Vars.erase(id1);
+		else tvar->VarsUnicum.erase(var->GetUid());
+	}
+	for(VarsVecIt it=swap_vars2.begin(),end=swap_vars2.end();it!=end;++it)
+	{
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
+		if(tvar->IsNotUnicum()) tvar->Vars.erase(id2);
+		else tvar->VarsUnicum.erase(var->GetUid());
+	}
+
+	// Change owner, place
+	for(VarsVecIt it=swap_vars1.begin(),end=swap_vars1.end();it!=end;++it)
+	{
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
+
+		if(tvar->IsNotUnicum())
 		{
-			++it;
-			continue;
-		}
-
-		if(var->VarValue!=var->VarTemplate->StartVal || var->IsRandom())
-		{
-			if(var->Type==VAR_LOCAL)
-			{
-				DWORD master_id=var->GetMasterId();
-				if(ids2.count(master_id) || ids1.count(master_id))
-				{
-					++it;
-					continue;
-				}
-
-				lcount++;
-			}
-			else // VAR_UNICUM
-			{
-				DWORD master_id=var->GetMasterId();
-				if(ids2.count(master_id) || ids1.count(master_id))
-				{
-					++it;
-					continue;
-				}
-
-				DWORD slave_id=var->GetSlaveId();
-				if(ids2.count(slave_id) || ids1.count(slave_id))
-				{
-					++it;
-					continue;
-				}
-
-				ucount++;
-			}
+			var->MasterId=id2;
+			tvar->Vars.insert(VarsMap32Val(id2,var));
 		}
 		else
 		{
-			if(var->Type==VAR_LOCAL) lcount++;
-			else ucount++; // VAR_UNICUM
+			if(var->MasterId==id1) var->MasterId=id2;
+			else var->SlaveId=id2;
+			tvar->VarsUnicum.insert(VarsMap64Val(var->GetUid(),var));
 		}
-
-		del_vars.push_back(var->VarId);
 	}
-
-	varsLocker.Lock();
-	for(UInt64VecIt it=del_vars.begin(),end=del_vars.end();it!=end;++it)
+	for(VarsVecIt it=swap_vars2.begin(),end=swap_vars2.end();it!=end;++it)
 	{
-		ULONGLONG uid=*it;
-		VarsMapIt it_=allVars.find(uid);
-		if(it_!=allVars.end())
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
+
+		if(tvar->IsNotUnicum())
 		{
-			GameVar* var=(*it_).second;
-			if(var->IsQuest()) allQuestVars[var->QuestVarIndex]=NULL;
-			Job::DeferredRelease(var);
-			allVars.erase(it_);
+			var->MasterId=id1;
+			tvar->Vars.insert(VarsMap32Val(id1,var));
+		}
+		else
+		{
+			if(var->MasterId==id2) var->MasterId=id1;
+			else var->SlaveId=id1;
+			tvar->VarsUnicum.insert(VarsMap64Val(var->GetUid(),var));
+		}
+	}
+	varsLocker.Unlock();
+}
+
+DWORD VarManager::ClearUnusedVars(DwordSet& ids1, DwordSet& ids2, DwordSet& ids_locs, DwordSet& ids_maps, DwordSet& ids_items)
+{
+	// Collect all vars
+	varsLocker.Lock();
+	VarsVec all_vars;
+	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
+	{
+		TemplateVar* tvar=*it;
+		if(tvar && tvar->Type!=VAR_GLOBAL)
+		{
+			for(VarsMap32It it_=tvar->Vars.begin(),end_=tvar->Vars.end();it_!=end_;++it_)
+				all_vars.push_back((*it_).second);
+			for(VarsMap64It it_=tvar->VarsUnicum.begin(),end_=tvar->VarsUnicum.end();it_!=end_;++it_)
+				all_vars.push_back((*it_).second);
 		}
 	}
 	varsLocker.Unlock();
 
-	return lcount+ucount;
+	// Collect non used vars, synchronize it
+	VarsVec del_vars;
+	for(VarsVecIt it=all_vars.begin();it!=all_vars.end();++it)
+	{
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
+
+		if(var->VarValue!=var->VarTemplate->StartVal || tvar->IsRandom() || tvar->IsQuest())
+		{
+			switch(var->Type)
+			{
+			case VAR_LOCAL:
+				if(ids1.count(var->MasterId) || ids2.count(var->MasterId)) continue;
+				break;
+			case VAR_UNICUM:
+				if(ids1.count(var->MasterId) || ids2.count(var->MasterId)) continue;
+				if(ids1.count(var->SlaveId) || ids2.count(var->SlaveId)) continue;
+				break;
+			case VAR_LOCAL_LOCATION:
+				if(ids_locs.count(var->MasterId)) continue;
+				break;
+			case VAR_LOCAL_MAP:
+				if(ids_maps.count(var->MasterId)) continue;
+				break;
+			case VAR_LOCAL_ITEM:
+				if(ids_items.count(var->MasterId)) continue;
+				break;
+			default:
+				break;
+			}
+		}
+
+		del_vars.push_back(var);
+		SYNC_LOCK(var);
+	}
+
+	// Delete vars
+	size_t del_count=0;
+	varsLocker.Lock();
+	for(VarsVecIt it=del_vars.begin();it!=del_vars.end();++it)
+	{
+		GameVar* var=*it;
+		TemplateVar* tvar=var->VarTemplate;
+
+		// Be sure what var not changed between collection
+		if(var->VarValue!=var->VarTemplate->StartVal || tvar->IsRandom() || tvar->IsQuest())
+		{
+			switch(var->Type)
+			{
+			case VAR_LOCAL:
+				if(ids1.count(var->MasterId) || ids2.count(var->MasterId)) continue;
+				break;
+			case VAR_UNICUM:
+				if(ids1.count(var->MasterId) || ids2.count(var->MasterId)) continue;
+				if(ids1.count(var->SlaveId) || ids2.count(var->SlaveId)) continue;
+				break;
+			case VAR_LOCAL_LOCATION:
+				if(ids_locs.count(var->MasterId)) continue;
+				break;
+			case VAR_LOCAL_MAP:
+				if(ids_maps.count(var->MasterId)) continue;
+				break;
+			case VAR_LOCAL_ITEM:
+				if(ids_items.count(var->MasterId)) continue;
+				break;
+			default:
+				break;
+			}
+		}
+
+		// Delete it
+		if(tvar->IsQuest()) allQuestVars[var->QuestVarIndex]=NULL;
+
+		if(tvar->IsNotUnicum()) tvar->Vars.erase(var->MasterId);
+		else tvar->VarsUnicum.erase(var->GetUid());
+
+		Job::DeferredRelease(var);
+
+		del_count++;
+		varsCount--;
+	}
+	varsLocker.Unlock();
+
+	return del_count;
 }
 
 void VarManager::GetQuestVars(DWORD master_id, DwordVec& vars)
@@ -633,20 +804,8 @@ void VarManager::GetQuestVars(DWORD master_id, DwordVec& vars)
 	for(VarsVecIt it=allQuestVars.begin(),end=allQuestVars.end();it!=end;++it)
 	{
 		GameVar* var=*it;
-		if(var && var->GetMasterId()==master_id) vars.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
+		if(var && var->MasterId==master_id) vars.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
 	}
-
-	/*varsLocker.Lock();
-	VarsVec quest_vars=allQuestVars;
-	varsLocker.Unlock();
-
-	for(VarsVecIt it=quest_vars.begin(),end=quest_vars.end();it!=end;++it)
-	{
-		GameVar* var=*it;
-		SYNC_LOCK(var);
-
-		if(var && var->GetMasterId()==master_id) vars.push_back(VAR_CALC_QUEST(var->VarTemplate->TempId,var->VarValue));
-	}*/
 }
 
 /**************************************************************************************************
@@ -655,8 +814,8 @@ void VarManager::GetQuestVars(DWORD master_id, DwordVec& vars)
 
 void DebugLog(GameVar* var, const char* op, int value)
 {
-	DWORD master_id=var->GetMasterId();
-	DWORD slave_id=var->GetSlaveId();
+	DWORD master_id=var->MasterId;
+	DWORD slave_id=var->SlaveId;
 	TemplateVar* tvar=var->GetTemplateVar();
 	if(tvar->Type==VAR_GLOBAL) DbgLog->Write("Changing gvar<%s> op<%s> value<%d> result<%d>.\n",tvar->Name.c_str(),op,value,var->GetValue());
 	else if(tvar->Type==VAR_LOCAL) DbgLog->Write("Changing lvar<%s> masterId<%u> op<%s> value<%d> result<%d>.\n",tvar->Name.c_str(),master_id,op,value,var->GetValue());

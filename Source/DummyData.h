@@ -553,8 +553,8 @@ struct ProtoMap
 struct BindClass
 {
 #ifdef BIND_SERVER
-	static void Synchronizer_Constructor(){}
-	static void Synchronizer_Destructor(){}
+	static void Synchronizer_Constructor(void*){}
+	static void Synchronizer_Destructor(void*){}
 
 	static void NpcPlane_GetCopy(){}
 	static void NpcPlane_SetChild(){}
@@ -775,7 +775,6 @@ struct BindClass
 	static void Global_GetGlobalVar(){}
 	static void Global_GetLocalVar(){}
 	static void Global_GetUnicumVar(){}
-	static void Global_DeleteVars(){}
 
 	static void Map_GetProtoId(){}
 	static void Map_GetLocation(){}

@@ -66,6 +66,7 @@ public:
 	void GetGameItems(ItemPtrVec& items);
 	DWORD GetItemsCount();
 	void SetCritterItems(Critter* cr);
+	void GetItemIds(DwordSet& item_ids);
 
 	Item* CreateItem(WORD pid, DWORD count, DWORD item_id = 0);
 	Item* SplitItem(Item* item, DWORD count);

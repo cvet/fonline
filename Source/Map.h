@@ -82,7 +82,7 @@ public:
 	void Clear(bool full);
 	void Process();
 
-	Location* GetLocation();
+	Location* GetLocation(bool lock);
 	WORD GetMaxHexX(){return Proto->Header.MaxHexX;}
 	WORD GetMaxHexY(){return Proto->Header.MaxHexY;}
 	void SetLoopTime(DWORD loop_num, DWORD ms);

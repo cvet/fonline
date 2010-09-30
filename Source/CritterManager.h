@@ -56,6 +56,7 @@ public:
 	Client* GetPlayer(const char* name);
 	Npc* GetNpc(DWORD crid);
 	void EraseCritter(Critter* cr);
+	void GetNpcIds(DwordSet& npc_ids);
 
 	DWORD PlayersInGame();
 	DWORD NpcInGame();

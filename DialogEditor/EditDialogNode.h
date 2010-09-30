@@ -32,8 +32,10 @@ namespace DialogEditor {
 		System::Windows::Forms::ComboBox^		cbScript;
 		System::Windows::Forms::RichTextBox^	text;
 		System::Windows::Forms::NumericUpDown^  num;
-		System::Windows::Forms::Button^			cancel;
-		System::Windows::Forms::Button^			ok;
+	public: System::Windows::Forms::Button^  btnCancel;
+
+	public: System::Windows::Forms::Button^  btnOk;
+
 		System::ComponentModel::Container^		components;
 		System::Windows::Forms::CheckBox^		cbDialogNoShuffle;
 	public: 
@@ -59,8 +61,8 @@ namespace DialogEditor {
 		{
 			this->text = (gcnew System::Windows::Forms::RichTextBox());
 			this->num = (gcnew System::Windows::Forms::NumericUpDown());
-			this->cancel = (gcnew System::Windows::Forms::Button());
-			this->ok = (gcnew System::Windows::Forms::Button());
+			this->btnCancel = (gcnew System::Windows::Forms::Button());
+			this->btnOk = (gcnew System::Windows::Forms::Button());
 			this->cbScript = (gcnew System::Windows::Forms::ComboBox());
 			this->cbDialogNoShuffle = (gcnew System::Windows::Forms::CheckBox());
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->num))->BeginInit();
@@ -86,33 +88,33 @@ namespace DialogEditor {
 			this->num->TabIndex = 1;
 			this->num->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) {2, 0, 0, 0});
 			// 
-			// cancel
+			// btnCancel
 			// 
-			this->cancel->Location = System::Drawing::Point(3, 154);
-			this->cancel->Name = L"cancel";
-			this->cancel->Size = System::Drawing::Size(75, 23);
-			this->cancel->TabIndex = 2;
-			this->cancel->Text = L"Cancel";
-			this->cancel->UseVisualStyleBackColor = true;
-			this->cancel->Click += gcnew System::EventHandler(this, &Edit_node::cancel_Click);
-			this->cancel->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Edit_node::cancel_KeyDown);
+			this->btnCancel->Location = System::Drawing::Point(3, 154);
+			this->btnCancel->Name = L"btnCancel";
+			this->btnCancel->Size = System::Drawing::Size(75, 23);
+			this->btnCancel->TabIndex = 2;
+			this->btnCancel->Text = L"Cancel";
+			this->btnCancel->UseVisualStyleBackColor = true;
+			this->btnCancel->Click += gcnew System::EventHandler(this, &Edit_node::cancel_Click);
+			this->btnCancel->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Edit_node::cancel_KeyDown);
 			// 
-			// ok
+			// btnOk
 			// 
-			this->ok->Location = System::Drawing::Point(220, 154);
-			this->ok->Name = L"ok";
-			this->ok->Size = System::Drawing::Size(75, 23);
-			this->ok->TabIndex = 3;
-			this->ok->Text = L"Ok";
-			this->ok->UseVisualStyleBackColor = true;
-			this->ok->Click += gcnew System::EventHandler(this, &Edit_node::ok_Click);
+			this->btnOk->Location = System::Drawing::Point(220, 154);
+			this->btnOk->Name = L"btnOk";
+			this->btnOk->Size = System::Drawing::Size(75, 23);
+			this->btnOk->TabIndex = 3;
+			this->btnOk->Text = L"Ok";
+			this->btnOk->UseVisualStyleBackColor = true;
+			this->btnOk->Click += gcnew System::EventHandler(this, &Edit_node::ok_Click);
 			// 
-			// cbNot_answ
+			// cbScript
 			// 
 			this->cbScript->FormattingEnabled = true;
 			this->cbScript->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"None", L"Attack"});
 			this->cbScript->Location = System::Drawing::Point(3, 180);
-			this->cbScript->Name = L"cbNot_answ";
+			this->cbScript->Name = L"cbScript";
 			this->cbScript->Size = System::Drawing::Size(292, 21);
 			this->cbScript->TabIndex = 4;
 			// 
@@ -134,17 +136,17 @@ namespace DialogEditor {
 			this->ControlBox = false;
 			this->Controls->Add(this->cbDialogNoShuffle);
 			this->Controls->Add(this->cbScript);
-			this->Controls->Add(this->ok);
-			this->Controls->Add(this->cancel);
+			this->Controls->Add(this->btnOk);
+			this->Controls->Add(this->btnCancel);
 			this->Controls->Add(this->num);
 			this->Controls->Add(this->text);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
 			this->Name = L"Edit_node";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"Edit_node";
+			this->Load += gcnew System::EventHandler(this, &Edit_node::Edit_node_Load);
 			this->Shown += gcnew System::EventHandler(this, &Edit_node::Edit_node_Shown);
 			this->KeyUp += gcnew System::Windows::Forms::KeyEventHandler(this, &Edit_node::Edit_node_KeyUp);
-			this->Load += gcnew System::EventHandler(this, &Edit_node::Edit_node_Load);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->num))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
