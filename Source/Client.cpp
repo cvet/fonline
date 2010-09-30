@@ -6991,8 +6991,9 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 	int letters_rus=0,letters_eng=0;
 	for(int i=0,j=newcr->Name.length();i<j;i++)
 	{
-		if((newcr->Name[i]>='a' && newcr->Name[i]<='z') || (newcr->Name[i]>='A' && newcr->Name[i]<='Z')) letters_eng++;
-		else if((newcr->Name[i]>='à' && newcr->Name[i]<='ÿ') || (newcr->Name[i]>='À' && newcr->Name[i]<='ß')) letters_rus++;
+		char c=newcr->Name[i];
+		if((c>='a' && c<='z') || (c>='A' && c<='Z')) letters_eng++;
+		else if((c>='à' && c<='ÿ') || (c>='À' && c<='ß') || c=='¸' || c=='¨') letters_rus++;
 	}
 
 	if(letters_eng && letters_rus)
@@ -8451,7 +8452,8 @@ void FOClient::FmtTextIntellect(char* str, WORD intellect)
 	while(true)
 	{
 		if((*str>='a' && *str<='z') || (*str>='A' && *str<='Z') ||
-		   (*str>='à' && *str<='ÿ') || (*str>='À' && *str<='ß'))
+		   (*str>='à' && *str<='ÿ') || (*str>='À' && *str<='ß') ||
+		   *str=='¸' || *str=='¨')
 		{
 			strncat(word,str,1);
 			str++;

@@ -1436,8 +1436,9 @@ void FOServer::Process_CreateClient(Client* cl)
 	int letters_rus=0,letters_eng=0;
 	for(int i=0,j=name_len;i<j;i++)
 	{
-		if((cl->Name[i]>='a' && cl->Name[i]<='z') || (cl->Name[i]>='A' && cl->Name[i]<='Z')) letters_eng++;
-		else if((cl->Name[i]>='à' && cl->Name[i]<='ÿ') || (cl->Name[i]>='À' && cl->Name[i]<='ß')) letters_rus++;
+		char c=cl->Name[i];
+		if((c>='a' && c<='z') || (c>='A' && c<='Z')) letters_eng++;
+		else if((c>='à' && c<='ÿ') || (c>='À' && c<='ß') || c=='¸' || c=='¨') letters_rus++;
 	}
 
 	if(letters_eng && letters_rus)

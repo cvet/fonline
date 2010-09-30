@@ -5170,7 +5170,7 @@ void FOClient::LmapDraw()
 
 	SprMngr.DrawSprite(LmapPMain,LmapMain[0]+LmapX,LmapMain[1]+LmapY);
 	SprMngr.DrawPoints(LmapPrepPix,D3DPT_LINELIST);
-	SprMngr.DrawStr(INTRECT(LmapWMap[0]+LmapX,LmapWMap[1]+LmapY,LmapWMap[0]+LmapX+100,LmapWMap[1]+LmapY+15),Str::Format("GameOpt.SpritesZoom: %d",LmapZoom-1),0);
+	SprMngr.DrawStr(INTRECT(LmapWMap[0]+LmapX,LmapWMap[1]+LmapY,LmapWMap[0]+LmapX+100,LmapWMap[1]+LmapY+15),Str::Format("Zoom: %d",LmapZoom-1),0);
 	if(IfaceHold==IFACE_LMAP_OK) SprMngr.DrawSprite(LmapPBOkDw,LmapBOk[0]+LmapX,LmapBOk[1]+LmapY);
 	if(IfaceHold==IFACE_LMAP_SCAN) SprMngr.DrawSprite(LmapPBScanDw,LmapBScan[0]+LmapX,LmapBScan[1]+LmapY);
 	if(LmapSwitchHi) SprMngr.DrawSprite(LmapPBLoHiDw,LmapBLoHi[0]+LmapX,LmapBLoHi[1]+LmapY);

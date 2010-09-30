@@ -134,6 +134,17 @@ void RegisterScriptFile_Native(asIScriptEngine *engine)
 
 	r = engine->RegisterObjectMethod("file", "string@ readWord()", asMETHOD(CScriptFile,ReadWord), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("file", "int readNumber()", asMETHOD(CScriptFile,ReadNumber), asCALL_THISCALL); assert( r >= 0 );
+
+	r = engine->RegisterObjectMethod("file", "uint8 readUint8()", asMETHOD(CScriptFile,ReadUint8), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "uint16 readUint16()", asMETHOD(CScriptFile,ReadUint16), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "uint32 readUint32()", asMETHOD(CScriptFile,ReadUint32), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "uint64 readUint64()", asMETHOD(CScriptFile,ReadUint64), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "uint readData(uint count, uint8[]& data)", asMETHOD(CScriptFile,ReadData), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "bool writeUint8(uint8 data)", asMETHOD(CScriptFile,WriteUint8), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "bool writeUint16(uint16 data)", asMETHOD(CScriptFile,WriteUint16), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "bool writeUint32(uint32 data)", asMETHOD(CScriptFile,WriteUint32), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "bool writeUint64(uint64 data)", asMETHOD(CScriptFile,WriteUint64), asCALL_THISCALL); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("file", "bool writeData(uint8[]& data, uint count)", asMETHOD(CScriptFile,WriteData), asCALL_THISCALL); assert( r >= 0 );
 }
 
 void RegisterScriptFile_Generic(asIScriptEngine *engine)
@@ -365,6 +376,58 @@ int CScriptFile::ReadLine(CScriptString &str)
 	return int(str.length());
 }
 
+unsigned char CScriptFile::ReadUint8()
+{
+	if(!file) return 0;
+	unsigned char data;
+	if(!fread(&data,sizeof(data),1,file)) return 0;
+	return data;
+}
+
+unsigned short CScriptFile::ReadUint16()
+{
+	if(!file) return 0;
+	unsigned short data;
+	if(!fread(&data,sizeof(data),1,file)) return 0;
+	return data;
+}
+
+unsigned int CScriptFile::ReadUint32()
+{
+	if(!file) return 0;
+	unsigned int data;
+	if(!fread(&data,sizeof(data),1,file)) return 0;
+	return data;
+}
+
+unsigned __int64 CScriptFile::ReadUint64()
+{
+	if(!file) return 0;
+	unsigned __int64 data;
+	if(!fread(&data,sizeof(data),1,file)) return 0;
+	return data;
+}
+
+unsigned int CScriptFile::ReadData(unsigned int count, asIScriptArray& data)
+{
+	if(!file) return 0;
+
+	if(!count)
+	{
+		unsigned int pos=ftell(file);
+		fseek(file,0,SEEK_END);
+		count=ftell(file)-pos;
+		fseek(file,pos,SEEK_SET);
+		if(!count) return 0;
+	}
+
+	unsigned int size=data.GetElementCount();
+	data.Resize(size+count);
+	unsigned int r=fread(data.GetElementPointer(size),1,count,file);
+	if(r<count) data.Resize(size+r);
+	return r;
+}
+
 #if AS_WRITE_OPS == 1
 int CScriptFile::WriteString(const CScriptString &str)
 {
@@ -375,6 +438,39 @@ int CScriptFile::WriteString(const CScriptString &str)
 	size_t r = fwrite((void*)str.c_str(), 1, str.length(), file);
 
 	return int(r);
+}
+
+bool CScriptFile::WriteUint8(unsigned char data)
+{
+	if(!file) return false;
+	return fwrite(&data,sizeof(data),1,file)!=0;
+}
+
+bool CScriptFile::WriteUint16(unsigned short data)
+{
+	if(!file) return false;
+	return fwrite(&data,sizeof(data),1,file)!=0;
+}
+
+bool CScriptFile::WriteUint32(unsigned int data)
+{
+	if(!file) return false;
+	return fwrite(&data,sizeof(data),1,file)!=0;
+}
+
+bool CScriptFile::WriteUint64(unsigned __int64 data)
+{
+	if(!file) return false;
+	return fwrite(&data,sizeof(data),1,file)!=0;
+}
+
+bool CScriptFile::WriteData(asIScriptArray& data, unsigned int count)
+{
+	if(!file) return false;
+	if(!count) count=data.GetElementCount();
+	else if(count>data.GetElementCount()) return false;
+	if(!count) return false;
+	return fwrite(data.GetElementPointer(0),count,1,file)!=0;
 }
 #endif
 
