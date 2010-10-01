@@ -95,7 +95,7 @@ typedef map<DWORD,HoloInfo*,less<DWORD>> HoloInfoMap;
 typedef map<DWORD,HoloInfo*,less<DWORD>>::iterator HoloInfoMapIt;
 typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	static HoloInfoMap HolodiskInfo;
-	static MutexSpinlock HolodiskLocker;
+	static Mutex HolodiskLocker;
 	static DWORD LastHoloId;
 
 	static void SaveHoloInfoFile();
@@ -139,7 +139,7 @@ typedef vector<TimeEvent*>::iterator TimeEventVecIt;
 	static TimeEventVec TimeEvents;
 	static TimeEventVec TimeEventsInProcess;
 	static DWORD TimeEventsLastNum;
-	static MutexSpinlock TimeEventsLocker;
+	static Mutex TimeEventsLocker;
 
 	static void SaveTimeEventsFile();
 	static bool LoadTimeEventsFile(FILE* f);
@@ -162,7 +162,7 @@ typedef map<string,ByteVec,less<string>>::iterator AnyDataMapIt;
 typedef map<string,ByteVec,less<string>>::value_type AnyDataMapVal;
 typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 	static AnyDataMap AnyData;
-	static MutexSpinlock AnyDataLocker;
+	static Mutex AnyDataLocker;
 
 	static void SaveAnyDataFile();
 	static bool LoadAnyDataFile(FILE* f);
@@ -206,7 +206,7 @@ typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 typedef vector<TextListen> TextListenVec;
 typedef vector<TextListen>::iterator TextListenVecIt;
 	static TextListenVec TextListeners;
-	static MutexSpinlock TextListenersLocker;
+	static Mutex TextListenersLocker;
 
 //	void GlobalEventCritterUseItem(Critter* cr);
 //	void GlobalEventCritterUseSkill(Critter* cr);
@@ -240,7 +240,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 	// Radio
 	static DwordVec* RadioChannels[0x10000];
-	static MutexSpinlock RadioLocker;
+	static Mutex RadioLocker;
 
 	static void RadioClearChannels();
 	static void RadioAddPlayer(Client* cl, WORD channel);
@@ -255,9 +255,9 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static bool Active;
 	static FileManager FileMngr;
 	static ClVec SaveClients;
-	static MutexSpinlock SaveClientsLocker;
+	static Mutex SaveClientsLocker;
 	static DwordMap RegIp;
-	static MutexSpinlock RegIpLocker;
+	static Mutex RegIpLocker;
 
 	static void DisconnectClient(Client* cl);
 	static void RemoveClient(Client* cl);
@@ -304,7 +304,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static DWORD WorkThreadCount;
 	static SOCKET ListenSock;
 	static ClVec ConnectedClients;
-	static MutexSpinlock ConnectedClientsLocker;
+	static Mutex ConnectedClientsLocker;
 
 	static unsigned int __stdcall Net_Listen(HANDLE iocp); // Thread
 	static unsigned int __stdcall Net_Work(HANDLE iocp); // Thread
@@ -407,7 +407,7 @@ typedef vector<ClientBanned>::iterator ClientBannedVecIt;
 typedef vector<ClientData> ClientDataVec;
 typedef vector<ClientData>::iterator ClientDataVecIt;
 	static ClientDataVec ClientsData;
-	static MutexSpinlock ClientsDataLocker;
+	static Mutex ClientsDataLocker;
 	static volatile DWORD LastClientId;
 
 	static bool LoadClientsData();
@@ -442,7 +442,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 
 	// Scores
 	static ScoreType BestScores[SCORES_MAX];
-	static MutexSpinlock BestScoresLocker;
+	static Mutex BestScoresLocker;
 
 	static void SetScore(int score, Critter* cr, int val);
 	static void SetScore(int score, const char* name);

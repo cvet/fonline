@@ -99,7 +99,7 @@ public:
 typedef vector<ActiveContext> ActiveContextVec;
 typedef vector<ActiveContext>::iterator ActiveContextVecIt;
 ActiveContextVec ActiveContexts;
-MutexSpinlock ActiveGlobalCtxLocker;
+Mutex ActiveGlobalCtxLocker;
 
 // Timeouts
 DWORD RunTimeoutSuspend=10000;
@@ -741,7 +741,7 @@ unsigned int __stdcall RunTimeoutThread(void* data)
 		// Check execution time every 1/10 second
 		Sleep(100);
 
-		SCOPE_SPINLOCK(ActiveGlobalCtxLocker);
+		SCOPE_LOCK(ActiveGlobalCtxLocker);
 
 		DWORD cur_tick=Timer::FastTick();
 		for(ActiveContextVecIt it=ActiveContexts.begin(),end=ActiveContexts.end();it!=end;++it)
@@ -1662,7 +1662,7 @@ bool RunPrepared()
 
 		if(GlobalCtxIndex==1) // First context from stack, add timing
 		{
-			SCOPE_SPINLOCK(ActiveGlobalCtxLocker);
+			SCOPE_LOCK(ActiveGlobalCtxLocker);
 			ActiveContexts.push_back(ActiveContext(GlobalCtx,tick));
 		}
 
@@ -1671,7 +1671,7 @@ bool RunPrepared()
 		GlobalCtxIndex--;
 		if(GlobalCtxIndex==0) // All scripts execution complete, erase timing
 		{
-			SCOPE_SPINLOCK(ActiveGlobalCtxLocker);
+			SCOPE_LOCK(ActiveGlobalCtxLocker);
 			ActiveContextVecIt it=std::find(ActiveContexts.begin(),ActiveContexts.end(),(asIScriptContext**)GlobalCtx);
 			if(it!=ActiveContexts.end()) ActiveContexts.erase(it);
 		}

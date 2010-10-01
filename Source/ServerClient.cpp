@@ -214,7 +214,7 @@ void FOServer::AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send)
 	// Cancel rewrite
 	if(holo_num>=USER_HOLO_START_NUM)
 	{
-		SCOPE_SPINLOCK(HolodiskLocker);
+		SCOPE_LOCK(HolodiskLocker);
 
 		HoloInfo* hi=GetHoloInfo(holo_num);
 		if(hi && hi->CanRewrite) hi->CanRewrite=false;
@@ -1489,7 +1489,7 @@ void FOServer::Process_CreateClient(Client* cl)
 #ifndef DEV_VESRION
 	if(GameOpt.RegistrationTimeout && !Singleplayer)
 	{
-		SCOPE_SPINLOCK(RegIpLocker);
+		SCOPE_LOCK(RegIpLocker);
 
 		DWORD ip=cl->GetIp();
 		DWORD reg_tick=GameOpt.RegistrationTimeout*1000;
@@ -1618,7 +1618,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		StringCopy(data.ClientPass,cl->Pass);
 		data.ClientId=cl->GetId();
 
-		SCOPE_SPINLOCK(ClientsDataLocker);
+		SCOPE_LOCK(ClientsDataLocker);
 		ClientsData.push_back(data);
 	}
 	else
@@ -1772,7 +1772,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	ClientData data;
 	if(!Singleplayer)
 	{
-		SCOPE_SPINLOCK(ClientsDataLocker);
+		SCOPE_LOCK(ClientsDataLocker);
 
 		ClientData* data_=GetClientData(cl->Name);
 		if(!data_ || strcmp(cl->Pass,data_->ClientPass))
@@ -1880,7 +1880,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
-		SCOPE_SPINLOCK(ClientsDataLocker);
+		SCOPE_LOCK(ClientsDataLocker);
 
 		DWORD tick=Timer::FastTick();
 		for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
@@ -3668,7 +3668,7 @@ void FOServer::Process_Ping(Client* cl)
 	else if(ping==PING_UID_FAIL)
 	{
 #ifndef DEV_VESRION
-		SCOPE_SPINLOCK(ClientsDataLocker);
+		SCOPE_LOCK(ClientsDataLocker);
 
 		ClientData* data=GetClientData(cl->GetId());
 		if(data)

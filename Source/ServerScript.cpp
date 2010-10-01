@@ -24,7 +24,7 @@ static bool ASDbgMemoryCanWork=false;
 static THREAD bool ASDbgMemoryInUse=false;
 static map<void*,string> ASDbgMemoryPtr;
 static char ASDbgMemoryBuf[1024];
-static MutexSpinlock ASDbgMemoryLocker;
+static Mutex ASDbgMemoryLocker;
 void* dbg_malloc2(size_t size)
 {
 	size+=sizeof(size_t);
@@ -33,7 +33,7 @@ void* dbg_malloc2(size_t size)
 
 	if(ASDbgMemoryCanWork && !ASDbgMemoryInUse)
 	{
-		SCOPE_SPINLOCK(ASDbgMemoryLocker);
+		SCOPE_LOCK(ASDbgMemoryLocker);
 		ASDbgMemoryInUse=true;
 		const char* module=Script::GetActiveModuleName();
 		const char* func=Script::GetActiveFuncName();
@@ -54,7 +54,7 @@ void dbg_free2(void* ptr)
 
 	if(ASDbgMemoryCanWork)
 	{
-		SCOPE_SPINLOCK(ASDbgMemoryLocker);
+		SCOPE_LOCK(ASDbgMemoryLocker);
 		map<void*,string>::iterator it=ASDbgMemoryPtr.find(ptr_);
 		if(it!=ASDbgMemoryPtr.end())
 		{
@@ -4103,7 +4103,7 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 	if(len<MIN_NAME || len<GameOpt.MinNameLength) SCRIPT_ERROR_R0("Name length is less than minimum.");
 	if(len>MAX_NAME || len>GameOpt.MaxNameLength) SCRIPT_ERROR_R0("Name length is greater than maximum.");
 
-	SCOPE_SPINLOCK(ClientsDataLocker);
+	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(name.c_str());
 	if(!data) SCRIPT_ERROR_R0("Player not found.");
 	return data->ClientId;
@@ -4113,7 +4113,7 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 {
 	if(!id) SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
 
-	SCOPE_SPINLOCK(ClientsDataLocker);
+	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(id);
 	if(!data) SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
 	return new CScriptString(data->ClientName);
@@ -4336,7 +4336,7 @@ bool FOServer::SScriptFunc::Global_AddTextListener(int say_type, CScriptString& 
 	tl.FirstStrLen=strlen(tl.FirstStr);
 	tl.Parameter=parameter;
 
-	SCOPE_SPINLOCK(TextListenersLocker);
+	SCOPE_LOCK(TextListenersLocker);
 
 	TextListeners.push_back(tl);
 	return true;
@@ -4344,7 +4344,7 @@ bool FOServer::SScriptFunc::Global_AddTextListener(int say_type, CScriptString& 
 
 void FOServer::SScriptFunc::Global_EraseTextListener(int say_type, CScriptString& first_str, WORD parameter)
 {
-	SCOPE_SPINLOCK(TextListenersLocker);
+	SCOPE_LOCK(TextListenersLocker);
 
 	for(TextListenVecIt it=TextListeners.begin(),end=TextListeners.end();it!=end;++it)
 	{

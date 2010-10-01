@@ -19,7 +19,7 @@ HANDLE* FOServer::IOThreadHandles=NULL;
 DWORD FOServer::WorkThreadCount=0;
 SOCKET FOServer::ListenSock=INVALID_SOCKET;
 ClVec FOServer::ConnectedClients;
-MutexSpinlock FOServer::ConnectedClientsLocker;
+Mutex FOServer::ConnectedClientsLocker;
 FOServer::Statistics_ FOServer::Statistics;
 FOServer::ClientSaveDataVec FOServer::ClientsSaveData;
 size_t FOServer::ClientsSaveDataCount=0;
@@ -41,25 +41,25 @@ bool FOServer::LogicThreadSetAffinity=false;
 bool FOServer::RequestReloadClientScripts=false;
 LangPackVec FOServer::LangPacks;
 FOServer::HoloInfoMap FOServer::HolodiskInfo;
-MutexSpinlock FOServer::HolodiskLocker;
+Mutex FOServer::HolodiskLocker;
 DWORD FOServer::LastHoloId=0;
 FOServer::TimeEventVec FOServer::TimeEvents;
 DWORD FOServer::TimeEventsLastNum=0;
-MutexSpinlock FOServer::TimeEventsLocker;
+Mutex FOServer::TimeEventsLocker;
 FOServer::AnyDataMap FOServer::AnyData;
-MutexSpinlock FOServer::AnyDataLocker;
+Mutex FOServer::AnyDataLocker;
 StrVec FOServer::ServerWrongGlobalObjects;
 FOServer::TextListenVec FOServer::TextListeners;
-MutexSpinlock FOServer::TextListenersLocker;
+Mutex FOServer::TextListenersLocker;
 DwordVec* FOServer::RadioChannels[0x10000]={0};
-MutexSpinlock FOServer::RadioLocker;
+Mutex FOServer::RadioLocker;
 HWND FOServer::ServerWindow=NULL;
 bool FOServer::Active=false;
 FileManager FOServer::FileMngr;
 ClVec FOServer::SaveClients;
-MutexSpinlock FOServer::SaveClientsLocker;
+Mutex FOServer::SaveClientsLocker;
 DwordMap FOServer::RegIp;
-MutexSpinlock FOServer::RegIpLocker;
+Mutex FOServer::RegIpLocker;
 DWORD FOServer::VarsGarbageLastTick=0;
 StrVec FOServer::AccessClient;
 StrVec FOServer::AccessTester;
@@ -68,10 +68,10 @@ StrVec FOServer::AccessAdmin;
 FOServer::ClientBannedVec FOServer::Banned;
 Mutex FOServer::BannedLocker;
 FOServer::ClientDataVec FOServer::ClientsData;
-MutexSpinlock FOServer::ClientsDataLocker;
+Mutex FOServer::ClientsDataLocker;
 volatile DWORD FOServer::LastClientId=0;
 ScoreType FOServer::BestScores[SCORES_MAX]={0};
-MutexSpinlock FOServer::BestScoresLocker;
+Mutex FOServer::BestScoresLocker;
 FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
 MutexSynchronizer FOServer::LogicThreadSync;
 
@@ -335,7 +335,7 @@ void FOServer::AddSaveClient(Client* cl)
 {
 	if(Singleplayer) return;
 
-	SCOPE_SPINLOCK(SaveClientsLocker);
+	SCOPE_LOCK(SaveClientsLocker);
 
 	cl->AddRef();
 	SaveClients.push_back(cl);
@@ -343,7 +343,7 @@ void FOServer::AddSaveClient(Client* cl)
 
 void FOServer::EraseSaveClient(DWORD crid)
 {
-	SCOPE_SPINLOCK(SaveClientsLocker);
+	SCOPE_LOCK(SaveClientsLocker);
 
 	for(ClVecIt it=SaveClients.begin();it!=SaveClients.end();)
 	{
@@ -658,7 +658,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 
 			// Thread statistics
 			// Manage threads data
-			static MutexSpinlock stats_locker;
+			static Mutex stats_locker;
 			static PtrVec stats_ptrs;
 			stats_locker.Lock();
 			struct StatisticsThread
@@ -3004,7 +3004,7 @@ void FOServer::Process_Command(Client* cl)
 			else if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(new_pass)) cl->Send_Text(cl,"Invalid new password.",SAY_NETMSG);
 			else
 			{
-				SCOPE_SPINLOCK(SaveClientsLocker);
+				SCOPE_LOCK(SaveClientsLocker);
 
 				ClientData* data=GetClientData(cl->GetId());
 				if(data)
@@ -4342,7 +4342,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 
 void FOServer::RadioClearChannels()
 {
-	SCOPE_SPINLOCK(RadioLocker);
+	SCOPE_LOCK(RadioLocker);
 
 	WriteLog("Clear radio channels.\n");
 	for(int i=0;i<0x10000;i++) SAFEDEL(RadioChannels[i]);
@@ -4351,7 +4351,7 @@ void FOServer::RadioClearChannels()
 
 void FOServer::RadioAddPlayer(Client* cl, WORD channel)
 {
-	SCOPE_SPINLOCK(RadioLocker);
+	SCOPE_LOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha)
@@ -4370,7 +4370,7 @@ void FOServer::RadioAddPlayer(Client* cl, WORD channel)
 
 void FOServer::RadioErasePlayer(Client* cl, WORD channel)
 {
-	SCOPE_SPINLOCK(RadioLocker);
+	SCOPE_LOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha) return;
@@ -4387,7 +4387,7 @@ void FOServer::RadioErasePlayer(Client* cl, WORD channel)
 
 void FOServer::RadioSendText(Critter* cr, WORD channel, const char* text, bool unsafe_text)
 {
-	SCOPE_SPINLOCK(RadioLocker);
+	SCOPE_LOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha) return;
@@ -4428,7 +4428,7 @@ void FOServer::RadioSendText(Critter* cr, WORD channel, const char* text, bool u
 
 void FOServer::RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_str)
 {
-	SCOPE_SPINLOCK(RadioLocker);
+	SCOPE_LOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha) return;
@@ -4460,7 +4460,7 @@ void FOServer::RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_
 
 void FOServer::SetScore(int score, Critter* cr, int val)
 {
-	SCOPE_SPINLOCK(BestScoresLocker);
+	SCOPE_LOCK(BestScoresLocker);
 
 	cr->Data.Scores[score]+=val;
 	if(BestScores[score].ClientId==cr->GetId()) return;
@@ -4472,7 +4472,7 @@ void FOServer::SetScore(int score, Critter* cr, int val)
 
 void FOServer::SetScore(int score, const char* name)
 {
-	SCOPE_SPINLOCK(BestScoresLocker);
+	SCOPE_LOCK(BestScoresLocker);
 
 	BestScores[score].ClientId=0;
 	BestScores[score].Value=0;
@@ -4481,7 +4481,7 @@ void FOServer::SetScore(int score, const char* name)
 
 const char* FOServer::GetScores()
 {
-	SCOPE_SPINLOCK(BestScoresLocker);
+	SCOPE_LOCK(BestScoresLocker);
 
 	static THREAD char scores[SCORE_NAME_LEN*SCORES_MAX]; // Only names
 	for(int i=0;i<SCORES_MAX;i++)
@@ -4495,7 +4495,7 @@ const char* FOServer::GetScores()
 
 void FOServer::ClearScore(int score)
 {
-	SCOPE_SPINLOCK(BestScoresLocker);
+	SCOPE_LOCK(BestScoresLocker);
 
 	BestScores[score].ClientId=0;
 	BestScores[score].ClientName[0]='\0';
@@ -4682,7 +4682,7 @@ DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, int
 	TimeEvent* te=new(nothrow) TimeEvent();
 	if(!te) return 0;
 
-	SCOPE_SPINLOCK(TimeEventsLocker);
+	SCOPE_LOCK(TimeEventsLocker);
 
 	te->FullSecond=begin_second;
 	te->Num=TimeEventsLastNum+1;
@@ -4717,7 +4717,7 @@ DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, int
 
 void FOServer::TimeEventEndScriptCallback()
 {
-	SCOPE_SPINLOCK(TimeEventsLocker);
+	SCOPE_LOCK(TimeEventsLocker);
 
 	DWORD tid=GetCurrentThreadId();
 	for(TimeEventVecIt it=TimeEvents.begin();it!=TimeEvents.end();)
@@ -4846,7 +4846,7 @@ bool FOServer::SetTimeEvent(DWORD num, DWORD duration, asIScriptArray* values)
 
 bool FOServer::EraseTimeEvent(DWORD num)
 {
-	SCOPE_SPINLOCK(TimeEventsLocker);
+	SCOPE_LOCK(TimeEventsLocker);
 
 	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
 	{
@@ -4963,7 +4963,7 @@ void FOServer::ProcessTimeEvents()
 
 DWORD FOServer::GetTimeEventsCount()
 {
-	SCOPE_SPINLOCK(TimeEventsLocker);
+	SCOPE_LOCK(TimeEventsLocker);
 
 	DWORD count=TimeEvents.size();
 	return count;
@@ -4971,7 +4971,7 @@ DWORD FOServer::GetTimeEventsCount()
 
 string FOServer::GetTimeEventsStatistics()
 {
-	SCOPE_SPINLOCK(TimeEventsLocker);
+	SCOPE_LOCK(TimeEventsLocker);
 
 	static string result;
 	char str[1024];
@@ -5091,7 +5091,7 @@ bool FOServer::LoadAnyDataFile(FILE* f)
 
 bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 {
-	SCOPE_SPINLOCK(AnyDataLocker);
+	SCOPE_LOCK(AnyDataLocker);
 
 	AnyDataMapInsert result=AnyData.insert(AnyDataMapVal(name,ByteVec()));
 	ByteVec& data_=(*result.first).second;
@@ -5105,7 +5105,7 @@ bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 
 bool FOServer::GetAnyData(const string& name, asIScriptArray& script_array)
 {
-	SCOPE_SPINLOCK(AnyDataLocker);
+	SCOPE_LOCK(AnyDataLocker);
 
 	AnyDataMapIt it=AnyData.find(name);
 	if(it==AnyData.end()) return false;
@@ -5127,7 +5127,7 @@ bool FOServer::GetAnyData(const string& name, asIScriptArray& script_array)
 
 bool FOServer::IsAnyData(const string& name)
 {
-	SCOPE_SPINLOCK(AnyDataLocker);
+	SCOPE_LOCK(AnyDataLocker);
 
 	AnyDataMapIt it=AnyData.find(name);
 	bool present=(it!=AnyData.end());
@@ -5136,14 +5136,14 @@ bool FOServer::IsAnyData(const string& name)
 
 void FOServer::EraseAnyData(const string& name)
 {
-	SCOPE_SPINLOCK(AnyDataLocker);
+	SCOPE_LOCK(AnyDataLocker);
 
 	AnyData.erase(name);
 }
 
 string FOServer::GetAnyDataStatistics()
 {
-	SCOPE_SPINLOCK(AnyDataLocker);
+	SCOPE_LOCK(AnyDataLocker);
 
 	static string result;
 	char str[256];

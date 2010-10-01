@@ -6,7 +6,7 @@
 #include "Item.h"
 #include "Vars.h"
 
-static MutexSpinlock JobLocker; // Defense code from simultaneously execution
+static Mutex JobLocker; // Defense code from simultaneously execution
 
 typedef deque<Job> JobDeque;
 typedef deque<Job>::iterator JobDequeIt;
@@ -29,19 +29,22 @@ ThreadId(0)
 
 void Job::PushBack(int type)
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
+
 	Jobs.push_back(Job(type,NULL,0));
 }
 
 void Job::PushBack(int type, void* data)
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
+
 	Jobs.push_back(Job(type,data,0));
 }
 
 size_t Job::PushBack(const Job& job)
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
+
 	Jobs.push_back(job);
 	size_t size=Jobs.size();
 	return size;
@@ -49,13 +52,14 @@ size_t Job::PushBack(const Job& job)
 
 void Job::PushFront(const Job& job)
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
+
 	Jobs.push_front(job);
 }
 
 Job Job::PopFront()
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
 
 	if(Jobs.empty()) return Job(JOB_NOP,NULL,false);
 
@@ -84,7 +88,7 @@ Job Job::PopFront()
 
 void Job::Erase(int type)
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
 
 	for(JobDequeIt it=Jobs.begin();it!=Jobs.end();)
 	{
@@ -98,7 +102,7 @@ void Job::Erase(int type)
 
 size_t Job::Count()
 {
-	SCOPE_SPINLOCK(JobLocker);
+	SCOPE_LOCK(JobLocker);
 	size_t count=Jobs.size();
 	return count;
 }
@@ -115,52 +119,58 @@ static DwordVec DeferredReleaseItemsCycle;
 static VarsVec DeferredReleaseVars;
 static DwordVec DeferredReleaseVarsCycle;
 static DWORD DeferredReleaseCycle=0;
-static MutexSpinlock DeferredReleaseLocker;
+static Mutex DeferredReleaseLocker;
 
 void Job::DeferredRelease(Critter* cr)
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
+
 	DeferredReleaseCritters.push_back(cr);
 	DeferredReleaseCrittersCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(Map* map)
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
+
 	DeferredReleaseMaps.push_back(map);
 	DeferredReleaseMapsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(Location* loc)
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
+
 	DeferredReleaseLocs.push_back(loc);
 	DeferredReleaseLocsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(Item* item)
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
+
 	DeferredReleaseItems.push_back(item);
 	DeferredReleaseItemsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::DeferredRelease(GameVar* var)
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
+
 	DeferredReleaseVars.push_back(var);
 	DeferredReleaseVarsCycle.push_back(DeferredReleaseCycle);
 }
 
 void Job::SetDeferredReleaseCycle(DWORD cycle)
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
+
 	DeferredReleaseCycle=cycle;
 }
 
 void Job::ProcessDeferredReleasing()
 {
-	SCOPE_SPINLOCK(DeferredReleaseLocker);
+	SCOPE_LOCK(DeferredReleaseLocker);
 
 	// Wait at least 3 cycles
 	if(DeferredReleaseCycle<3) return;

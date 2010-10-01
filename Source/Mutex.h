@@ -4,8 +4,8 @@
 #include "Common.h"
 #include <intrin.h>
 
-#define SCOPE_LOCK(mutex) volatile MutexLocker scope_lock__(mutex)
-#define SCOPE_SPINLOCK(mutex) volatile MutexSpinlockLocker scope_spinlock__(mutex)
+#define DEFAULT_SPIN_COUNT    (4000)
+#define SCOPE_LOCK(mutex)     volatile MutexLocker scope_lock__(mutex)
 
 class Mutex
 {
@@ -16,8 +16,9 @@ private:
 	void operator=(const Mutex&){}
 
 public:
-	Mutex(){InitializeCriticalSection(&mutexCS);}
+	Mutex(){InitializeCriticalSectionAndSpinCount(&mutexCS,DEFAULT_SPIN_COUNT);}
 	~Mutex(){DeleteCriticalSection(&mutexCS);}
+	void SetSpinCount(int count){SetCriticalSectionSpinCount(&mutexCS,count);}
 	void Lock(){EnterCriticalSection(&mutexCS);}
 	bool TryLock(){return TryEnterCriticalSection(&mutexCS)!=FALSE;}
 	void Unlock(){LeaveCriticalSection(&mutexCS);}
@@ -86,7 +87,7 @@ public:
 	void Wait(){WaitForSingleObject(meEvent,INFINITE);}
 };
 
-class MutexSpinlock
+/*class MutexSpinlock
 {
 private:
 	friend class MutexSpinlockLocker;
@@ -96,7 +97,7 @@ private:
 
 public:
 	MutexSpinlock():spinCounter(0){}
-	void Lock(){while(_InterlockedCompareExchange(&spinCounter,1,0)) /* Wait */;}
+	void Lock(){while(_InterlockedCompareExchange(&spinCounter,1,0)) / *Wait* /;}
 	bool TryLock(){return _InterlockedCompareExchange(&spinCounter,1,0)==0;}
 	void Unlock(){_InterlockedExchange(&spinCounter,0);}
 };
@@ -112,6 +113,6 @@ private:
 public:
 	MutexSpinlockLocker(MutexSpinlock& mutexSpinlock):spinLock(&mutexSpinlock){spinLock->Lock();}
 	~MutexSpinlockLocker(){spinLock->Unlock();}
-};
+};*/
 
 #endif // __MUTEX__
