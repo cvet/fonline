@@ -78,7 +78,7 @@ Critter::Critter():
 CritterIsNpc(false),RefCounter(1),IsNotValid(false),NameStrRefCounter(0x80000000),
 GroupMove(NULL),PrevHexTick(0),PrevHexX(0),PrevHexY(0),
 ItemSlotMain(&defItemSlotMain),ItemSlotExt(&defItemSlotExt),ItemSlotArmor(&defItemSlotArmor),
-startBreakTime(0),breakTime(0),waitEndTick(0),KnockoutAp(0),LastHealTick(0),
+startBreakTime(0),breakTime(0),waitEndTick(0),KnockoutAp(0),LastHealTick(0),NextIntellectCachingTick(0),IntellectCacheValue(0),
 Flags(0),AccessContainerId(0),TryingGoHomeTick(0),ApRegenerationTick(0),GlobalIdleNextTick(0),LockMapTransfers(0),
 ViewMapId(0),ViewMapPid(0),ViewMapLook(0),ViewMapHx(0),ViewMapHy(0),ViewMapDir(0),
 DisableSend(0),CanBeRemoved(false)
@@ -2230,7 +2230,7 @@ void Critter::SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsa
 
 	WORD str_len=strlen(str);
 	DWORD from_id=GetId();
-	WORD intellect=(how_say>=SAY_NORM && how_say<=SAY_RADIO?GetSayIntellect():0);
+	WORD intellect=(how_say>=SAY_NORM && how_say<=SAY_RADIO?IntellectCacheValue:0);
 
 	if(IsPlayer()) Send_TextEx(from_id,str,str_len,how_say,intellect,unsafe_text);
 
@@ -3079,7 +3079,7 @@ void Client::Send_LoadMap(Map* map)
 	DWORD hash_walls=0;
 	DWORD hash_scen=0;
 
-	if(!map) map=MapMngr.GetMap(GetMap());
+	if(!map) map=MapMngr.GetMap(GetMap(),false);
 	if(map)
 	{
 		pid_map=map->GetPid();
@@ -3695,7 +3695,7 @@ void Client::Send_Text(Critter* from_cr, const char* s_str, BYTE how_say)
 	if(!s_str || !s_str[0]) return;
 	WORD s_len=strlen(s_str);
 	DWORD from_id=(from_cr?from_cr->GetId():0);
-	WORD intellect=(from_cr && how_say>=SAY_NORM && how_say<=SAY_RADIO?from_cr->GetSayIntellect():0);
+	WORD intellect=(from_cr && how_say>=SAY_NORM && how_say<=SAY_RADIO?from_cr->IntellectCacheValue:0);
 	Send_TextEx(from_id,s_str,s_len,how_say,intellect,false);
 }
 

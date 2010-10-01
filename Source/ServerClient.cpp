@@ -98,6 +98,13 @@ void FOServer::ProcessCritter(Critter* cr)
 		{
 			cl->RemoveFromGame();
 		}
+
+		// Cache intelligence for GetSayIntellect, every 3 seconds
+		if(tick>=cl->NextIntellectCachingTick)
+		{
+			cl->IntellectCacheValue=(tick&0xFFF0)|cl->GetParam(ST_INTELLECT);
+			cl->NextIntellectCachingTick=tick+3000;
+		}
 	}
 	else
 	{
@@ -207,7 +214,7 @@ void FOServer::AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send)
 	// Cancel rewrite
 	if(holo_num>=USER_HOLO_START_NUM)
 	{
-		SCOPE_LOCK(HolodiskLocker);
+		SCOPE_SPINLOCK(HolodiskLocker);
 
 		HoloInfo* hi=GetHoloInfo(holo_num);
 		if(hi && hi->CanRewrite) hi->CanRewrite=false;
@@ -237,17 +244,22 @@ void FOServer::Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text)
 {
 	if(!cr->IsPlayer()) return;
 
-	SCOPE_LOCK(HolodiskLocker);
+	HolodiskLocker.Lock();
 
 	Client* cl=(Client*)cr;
 	HoloInfo* hi=GetHoloInfo(holo_num);
 	if(hi)
 	{
-		string& str=(send_text?hi->Text:hi->Title);
+		string str=(send_text?hi->Text:hi->Title); // Copy
+
+		HolodiskLocker.Unlock();
+
 		cl->Send_UserHoloStr(send_text?STR_HOLO_INFO_DESC_(holo_num):STR_HOLO_INFO_NAME_(holo_num),str.c_str(),str.length());
 	}
 	else
 	{
+		HolodiskLocker.Unlock();
+
 		cl->Send_UserHoloStr(send_text?STR_HOLO_INFO_DESC_(holo_num):STR_HOLO_INFO_NAME_(holo_num),"Truncated",strlen("Truncated"));
 	}
 }
@@ -1462,7 +1474,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	if(!Singleplayer)
 	{
 		SaveClientsLocker.Lock();
-		bool exist=GetClientData(cl->Name)!=NULL;
+		bool exist=(GetClientData(cl->Name)!=NULL);
 		SaveClientsLocker.Unlock();
 
 		if(exist)
@@ -1477,7 +1489,7 @@ void FOServer::Process_CreateClient(Client* cl)
 #ifndef DEV_VESRION
 	if(GameOpt.RegistrationTimeout && !Singleplayer)
 	{
-		SCOPE_LOCK(RegIpLocker);
+		SCOPE_SPINLOCK(RegIpLocker);
 
 		DWORD ip=cl->GetIp();
 		DWORD reg_tick=GameOpt.RegistrationTimeout*1000;
@@ -1606,9 +1618,8 @@ void FOServer::Process_CreateClient(Client* cl)
 		StringCopy(data.ClientPass,cl->Pass);
 		data.ClientId=cl->GetId();
 
-		ClientsDataLocker.Lock();
+		SCOPE_SPINLOCK(ClientsDataLocker);
 		ClientsData.push_back(data);
-		ClientsDataLocker.Unlock();
 	}
 	else
 	{
@@ -1761,7 +1772,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	ClientData data;
 	if(!Singleplayer)
 	{
-		SCOPE_LOCK(ClientsDataLocker);
+		SCOPE_SPINLOCK(ClientsDataLocker);
+
 		ClientData* data_=GetClientData(cl->Name);
 		if(!data_ || strcmp(cl->Pass,data_->ClientPass))
 		{
@@ -1868,7 +1880,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
-		SCOPE_LOCK(ClientsDataLocker);
+		SCOPE_SPINLOCK(ClientsDataLocker);
 
 		DWORD tick=Timer::FastTick();
 		for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
@@ -3497,7 +3509,7 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 //	int invalid_chars=CheckStr(text);
 //	if(invalid_chars>0) WriteLog(__FUNCTION__" - Found invalid chars, count<%u>, client<%s>, changed on '_'.\n",invalid_chars,cl->GetInfo());
 
-	SCOPE_LOCK(HolodiskLocker);
+	HolodiskLocker.Lock();
 
 	DWORD holo_id=holodisk->HolodiskGetNum();
 	HoloInfo* hi=GetHoloInfo(holo_id);
@@ -3511,6 +3523,8 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 		holo_id=++LastHoloId;
 		HolodiskInfo.insert(HoloInfoMapVal(holo_id,new HoloInfo(true,title,text)));
 	}
+
+	HolodiskLocker.Unlock();
 
 	cl->Send_UserHoloStr(STR_HOLO_INFO_NAME_(holo_id),title,title_len);
 	cl->Send_UserHoloStr(STR_HOLO_INFO_DESC_(holo_id),text,text_len);
@@ -3654,7 +3668,8 @@ void FOServer::Process_Ping(Client* cl)
 	else if(ping==PING_UID_FAIL)
 	{
 #ifndef DEV_VESRION
-		ClientsDataLocker.Lock();
+		SCOPE_SPINLOCK(ClientsDataLocker);
+
 		ClientData* data=GetClientData(cl->GetId());
 		if(data)
 		{
@@ -3662,7 +3677,6 @@ void FOServer::Process_Ping(Client* cl)
 			for(int i=0;i<5;i++) data->UID[i]=Random(0,10000);
 			data->UIDEndTick=Timer::FastTick()+GameOpt.AccountPlayTime*1000;
 		}
-		ClientsDataLocker.Unlock();
 		cl->Disconnect();
 		return;
 #endif

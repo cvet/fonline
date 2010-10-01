@@ -24,7 +24,7 @@ static bool ASDbgMemoryCanWork=false;
 static THREAD bool ASDbgMemoryInUse=false;
 static map<void*,string> ASDbgMemoryPtr;
 static char ASDbgMemoryBuf[1024];
-static Mutex ASDbgMemoryLocker;
+static MutexSpinlock ASDbgMemoryLocker;
 void* dbg_malloc2(size_t size)
 {
 	size+=sizeof(size_t);
@@ -33,7 +33,7 @@ void* dbg_malloc2(size_t size)
 
 	if(ASDbgMemoryCanWork && !ASDbgMemoryInUse)
 	{
-		SCOPE_LOCK(ASDbgMemoryLocker);
+		SCOPE_SPINLOCK(ASDbgMemoryLocker);
 		ASDbgMemoryInUse=true;
 		const char* module=Script::GetActiveModuleName();
 		const char* func=Script::GetActiveFuncName();
@@ -54,7 +54,7 @@ void dbg_free2(void* ptr)
 
 	if(ASDbgMemoryCanWork)
 	{
-		SCOPE_LOCK(ASDbgMemoryLocker);
+		SCOPE_SPINLOCK(ASDbgMemoryLocker);
 		map<void*,string>::iterator it=ASDbgMemoryPtr.find(ptr_);
 		if(it!=ASDbgMemoryPtr.end())
 		{
@@ -4102,7 +4102,8 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 	DWORD len=name.length();
 	if(len<MIN_NAME || len<GameOpt.MinNameLength) SCRIPT_ERROR_R0("Name length is less than minimum.");
 	if(len>MAX_NAME || len>GameOpt.MaxNameLength) SCRIPT_ERROR_R0("Name length is greater than maximum.");
-	SCOPE_LOCK(ClientsDataLocker);
+
+	SCOPE_SPINLOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(name.c_str());
 	if(!data) SCRIPT_ERROR_R0("Player not found.");
 	return data->ClientId;
@@ -4111,7 +4112,8 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 {
 	if(!id) SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
-	SCOPE_LOCK(ClientsDataLocker);
+
+	SCOPE_SPINLOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(id);
 	if(!data) SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
 	return new CScriptString(data->ClientName);
@@ -4119,58 +4121,32 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventEmpty(DWORD begin_second, CScriptString& script_name, bool save)
 {
-	DwordVec values;
-	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),0,0,NULL,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventDw(DWORD begin_second, CScriptString& script_name, DWORD dw, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventValue(DWORD begin_second, CScriptString& script_name, DWORD value, bool save)
 {
-	DwordVec values;
-	values.push_back(dw);
-	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),1,value,NULL,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventDws(DWORD begin_second, CScriptString& script_name, asIScriptArray& dw, bool save)
+DWORD FOServer::SScriptFunc::Global_CreateTimeEventValues(DWORD begin_second, CScriptString& script_name, asIScriptArray& values, bool save)
 {
-	DwordVec values;
-	DWORD dw_size=dw.GetElementCount();
-	values.resize(dw_size);
-	if(dw_size) memcpy((void*)&values[0],dw.GetElementPointer(0),dw_size*dw.GetElementSize());
-	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
+	return CreateTimeEvent(begin_second,script_name.c_str(),2,0,&values,save);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventCr(DWORD begin_second, CScriptString& script_name, Critter* cr, bool save)
+bool FOServer::SScriptFunc::Global_EraseTimeEvent(DWORD num)
 {
-	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
-	DwordVec values;
-	values.push_back(cr->GetId());
-	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
+	return EraseTimeEvent(num);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventItem(DWORD begin_second, CScriptString& script_name, Item* item, bool save)
+bool FOServer::SScriptFunc::Global_GetTimeEvent(DWORD num, DWORD& duration, asIScriptArray* values)
 {
-	if(item->IsNotValid) SCRIPT_ERROR_R0("Item arg nullptr.");
-	DwordVec values;
-	values.push_back(item->GetId());
-	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
+	return GetTimeEvent(num,duration,values);
 }
 
-DWORD FOServer::SScriptFunc::Global_CreateTimeEventArr(DWORD begin_second, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save)
+bool FOServer::SScriptFunc::Global_SetTimeEvent(DWORD num, DWORD duration, asIScriptArray* values)
 {
-	DwordVec values;
-	DWORD cr_size=(critters?critters->GetElementCount():0);
-	DWORD items_size=(items?items->GetElementCount():0);
-	values.resize(cr_size+items_size+2);
-	if(cr_size) memcpy((void*)&values[0],critters->GetElementPointer(0),cr_size);
-	if(items_size) memcpy((void*)&values[cr_size],items->GetElementPointer(0),items_size);
-	values[values.size()-2]=cr_size;
-	values[values.size()-1]=items_size;
-	return CreateTimeEvent(begin_second,script_name.c_str(),values,save);
-}
-
-void FOServer::SScriptFunc::Global_EraseTimeEvent(DWORD num)
-{
-	EraseTimeEvent(num);
+	return SetTimeEvent(num,duration,values);
 }
 
 bool FOServer::SScriptFunc::Global_SetAnyData(CScriptString& name, asIScriptArray& data)
@@ -4360,14 +4336,16 @@ bool FOServer::SScriptFunc::Global_AddTextListener(int say_type, CScriptString& 
 	tl.FirstStrLen=strlen(tl.FirstStr);
 	tl.Parameter=parameter;
 
-	SCOPE_LOCK(TextListenersLocker);
+	SCOPE_SPINLOCK(TextListenersLocker);
+
 	TextListeners.push_back(tl);
 	return true;
 }
 
 void FOServer::SScriptFunc::Global_EraseTextListener(int say_type, CScriptString& first_str, WORD parameter)
 {
-	SCOPE_LOCK(TextListenersLocker);
+	SCOPE_SPINLOCK(TextListenersLocker);
+
 	for(TextListenVecIt it=TextListeners.begin(),end=TextListeners.end();it!=end;++it)
 	{
 		TextListen& tl=*it;

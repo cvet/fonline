@@ -287,6 +287,10 @@ public:
 	DWORD LastHealTick;
 	void Heal();
 
+	// Players intellect talking
+	DWORD NextIntellectCachingTick;
+	WORD IntellectCacheValue;
+
 	// Break time
 private:
 	DWORD startBreakTime;
@@ -302,7 +306,6 @@ public:
 	void SetWait(DWORD ms){waitEndTick=Timer::GameTick()+ms;}
 	bool IsWait(){return Timer::GameTick()<waitEndTick;}
 
-	WORD GetSayIntellect(){return IsPlayer()?(Timer::FastTick()&0xFFF0)|GetParam(ST_INTELLECT):0;}
 	void FullClear();
 
 	// Send

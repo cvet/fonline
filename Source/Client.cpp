@@ -6497,9 +6497,9 @@ void FOClient::Net_OnRunClientScript()
 	// Reparse module
 	int bind_id;
 	if(strstr(func_name->c_str(),"@"))
-		bind_id=Script::Bind(func_name->c_str(),"void %s(int, int, int, string@, int[]@)",true);
+		bind_id=Script::Bind(func_name->c_str(),"void %s(int,int,int,string@,int[]@)",true);
 	else
-		bind_id=Script::Bind("client_main",func_name->c_str(),"void %s(int, int, int, string@, int[]@)",true);
+		bind_id=Script::Bind("client_main",func_name->c_str(),"void %s(int,int,int,string@,int[]@)",true);
 
 	if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
 	{
@@ -10130,7 +10130,7 @@ bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour(DWORD index, CScript
 	CritterCl::ParamsGetScript[index]=0;
 	if(func_name.length()>0)
 	{
-		int bind_id=Script::Bind(func_name.c_str(),"int %s(CritterCl&, uint)",false);
+		int bind_id=Script::Bind(func_name.c_str(),"int %s(CritterCl&,uint)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R0("Function not found.");
 		CritterCl::ParamsGetScript[index]=bind_id;
 	}
@@ -10143,7 +10143,7 @@ bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour(DWORD index, CScr
 	CritterCl::ParamsChangeScript[index]=0;
 	if(func_name.length()>0)
 	{
-		int bind_id=Script::Bind(func_name.c_str(),"void %s(CritterCl&, uint, int)",false);
+		int bind_id=Script::Bind(func_name.c_str(),"void %s(CritterCl&,uint,int)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R0("Function not found.");
 		CritterCl::ParamsChangeScript[index]=bind_id;
 	}

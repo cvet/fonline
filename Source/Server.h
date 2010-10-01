@@ -95,7 +95,7 @@ typedef map<DWORD,HoloInfo*,less<DWORD>> HoloInfoMap;
 typedef map<DWORD,HoloInfo*,less<DWORD>>::iterator HoloInfoMapIt;
 typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	static HoloInfoMap HolodiskInfo;
-	static Mutex HolodiskLocker;
+	static MutexSpinlock HolodiskLocker;
 	static DWORD LastHoloId;
 
 	static void SaveHoloInfoFile();
@@ -120,7 +120,6 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	static bool VerifyTrigger(Map* map, Critter* cr, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, BYTE dir);
 
 	// Time events
-#define TIME_EVENT_MAX_SIZE       (100000) // 100 kb
 #define TIME_EVENTS_PER_CYCLE     (10)
 	struct TimeEvent
 	{
@@ -130,7 +129,9 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 		int BindId;
 		DWORD Rate;
 		DwordVec Values;
+		bool SignedValues;
 		bool IsSaved;
+		DWORD InProcess;
 		bool EraseMe;
 	};
 typedef vector<TimeEvent*> TimeEventVec;
@@ -138,14 +139,15 @@ typedef vector<TimeEvent*>::iterator TimeEventVecIt;
 	static TimeEventVec TimeEvents;
 	static TimeEventVec TimeEventsInProcess;
 	static DWORD TimeEventsLastNum;
-	static Mutex TimeEventsLocker;
+	static MutexSpinlock TimeEventsLocker;
 
-	static void AddTimeEvent(TimeEvent* te);
 	static void SaveTimeEventsFile();
 	static bool LoadTimeEventsFile(FILE* f);
-	static DWORD CreateTimeEvent(DWORD begin_second, const char* script_name, DwordVec& values, bool save);
-	static bool GetTimeEventData(DWORD num, DWORD& duration, DwordVec& data); // Todo:
-	static bool SetTimeEventData(DWORD num, DWORD duration, DwordVec& data); // Todo:
+	static void AddTimeEvent(TimeEvent* te);
+	static DWORD CreateTimeEvent(DWORD begin_second, const char* script_name, int values, DWORD val1, asIScriptArray* val2, bool save);
+	static void TimeEventEndScriptCallback();
+	static bool GetTimeEvent(DWORD num, DWORD& duration, asIScriptArray* values);
+	static bool SetTimeEvent(DWORD num, DWORD duration, asIScriptArray* values);
 	static bool EraseTimeEvent(DWORD num);
 	static void ProcessTimeEvents();
 	static DWORD GetTimeEventsCount();
@@ -160,7 +162,7 @@ typedef map<string,ByteVec,less<string>>::iterator AnyDataMapIt;
 typedef map<string,ByteVec,less<string>>::value_type AnyDataMapVal;
 typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 	static AnyDataMap AnyData;
-	static Mutex AnyDataLocker;
+	static MutexSpinlock AnyDataLocker;
 
 	static void SaveAnyDataFile();
 	static bool LoadAnyDataFile(FILE* f);
@@ -204,7 +206,7 @@ typedef pair<AnyDataMapIt,bool> AnyDataMapInsert;
 typedef vector<TextListen> TextListenVec;
 typedef vector<TextListen>::iterator TextListenVecIt;
 	static TextListenVec TextListeners;
-	static Mutex TextListenersLocker;
+	static MutexSpinlock TextListenersLocker;
 
 //	void GlobalEventCritterUseItem(Critter* cr);
 //	void GlobalEventCritterUseSkill(Critter* cr);
@@ -238,7 +240,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 
 	// Radio
 	static DwordVec* RadioChannels[0x10000];
-	static Mutex RadioLocker;
+	static MutexSpinlock RadioLocker;
 
 	static void RadioClearChannels();
 	static void RadioAddPlayer(Client* cl, WORD channel);
@@ -253,9 +255,9 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static bool Active;
 	static FileManager FileMngr;
 	static ClVec SaveClients;
-	static Mutex SaveClientsLocker;
+	static MutexSpinlock SaveClientsLocker;
 	static DwordMap RegIp;
-	static Mutex RegIpLocker;
+	static MutexSpinlock RegIpLocker;
 
 	static void DisconnectClient(Client* cl);
 	static void RemoveClient(Client* cl);
@@ -302,7 +304,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static DWORD WorkThreadCount;
 	static SOCKET ListenSock;
 	static ClVec ConnectedClients;
-	static Mutex ConnectedClientsLocker;
+	static MutexSpinlock ConnectedClientsLocker;
 
 	static unsigned int __stdcall Net_Listen(HANDLE iocp); // Thread
 	static unsigned int __stdcall Net_Work(HANDLE iocp); // Thread
@@ -405,7 +407,7 @@ typedef vector<ClientBanned>::iterator ClientBannedVecIt;
 typedef vector<ClientData> ClientDataVec;
 typedef vector<ClientData>::iterator ClientDataVecIt;
 	static ClientDataVec ClientsData;
-	static Mutex ClientsDataLocker;
+	static MutexSpinlock ClientsDataLocker;
 	static volatile DWORD LastClientId;
 
 	static bool LoadClientsData();
@@ -440,7 +442,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 
 	// Scores
 	static ScoreType BestScores[SCORES_MAX];
-	static Mutex BestScoresLocker;
+	static MutexSpinlock BestScoresLocker;
 
 	static void SetScore(int score, Critter* cr, int val);
 	static void SetScore(int score, const char* name);
@@ -741,7 +743,6 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static GameVar* Global_GetGlobalVar(WORD tvar_id);
 		static GameVar* Global_GetLocalVar(WORD tvar_id, DWORD master_id);
 		static GameVar* Global_GetUnicumVar(WORD tvar_id, DWORD master_id, DWORD slave_id);
-		static DWORD Global_DeleteVars(DWORD id);
 
 		static DWORD Map_GetId(Map* map);
 		static WORD Map_GetProtoId(Map* map);
@@ -867,12 +868,11 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static DWORD Global_GetPlayerId(CScriptString& name);
 		static CScriptString* Global_GetPlayerName(DWORD id);
 		static DWORD Global_CreateTimeEventEmpty(DWORD begin_second, CScriptString& script_name, bool save);
-		static DWORD Global_CreateTimeEventDw(DWORD begin_second, CScriptString& script_name, DWORD dw, bool save);
-		static DWORD Global_CreateTimeEventDws(DWORD begin_second, CScriptString& script_name, asIScriptArray& dw, bool save);
-		static DWORD Global_CreateTimeEventCr(DWORD begin_second, CScriptString& script_name, Critter* cr, bool save);
-		static DWORD Global_CreateTimeEventItem(DWORD begin_second, CScriptString& script_name, Item* item, bool save);
-		static DWORD Global_CreateTimeEventArr(DWORD begin_second, CScriptString& script_name, asIScriptArray* critters, asIScriptArray* items, bool save);
-		static void Global_EraseTimeEvent(DWORD num);
+		static DWORD Global_CreateTimeEventValue(DWORD begin_second, CScriptString& script_name, DWORD value, bool save);
+		static DWORD Global_CreateTimeEventValues(DWORD begin_second, CScriptString& script_name, asIScriptArray& values, bool save);
+		static bool Global_EraseTimeEvent(DWORD num);
+		static bool Global_GetTimeEvent(DWORD num, DWORD& duration, asIScriptArray* data);
+		static bool Global_SetTimeEvent(DWORD num, DWORD duration, asIScriptArray* data);
 		static bool Global_SetAnyData(CScriptString& name, asIScriptArray& data);
 		static bool Global_SetAnyDataSize(CScriptString& name, asIScriptArray& data, DWORD data_size_bytes);
 		static bool Global_GetAnyData(CScriptString& name, asIScriptArray& data);

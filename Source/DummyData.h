@@ -892,12 +892,11 @@ struct BindClass
 	static void Global_GetPlayerId(){}
 	static void Global_GetPlayerName(){}
 	static void Global_CreateTimeEventEmpty(){}
-	static void Global_CreateTimeEventDw(){}
-	static void Global_CreateTimeEventDws(){}
-	static void Global_CreateTimeEventCr(){}
-	static void Global_CreateTimeEventItem(){}
-	static void Global_CreateTimeEventArr(){}
+	static void Global_CreateTimeEventValue(){}
+	static void Global_CreateTimeEventValues(){}
 	static void Global_EraseTimeEvent(){}
+	static void Global_GetTimeEvent(){}
+	static void Global_SetTimeEvent(){}
 	static void Global_SetAnyData(){}
 	static void Global_SetAnyDataSize(){}
 	static void Global_GetAnyData(){}

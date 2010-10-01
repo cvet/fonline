@@ -279,8 +279,8 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 				vb[i].x=mesh.Vertices[i*3+0];
 				vb[i].y=mesh.Vertices[i*3+2];
 				vb[i].z=mesh.Vertices[i*3+1];
-				vb[i].u=mesh.TexCoords[i*2+0];
-				vb[i].v=mesh.TexCoords[i*2+1];
+				vb[i].u=(i*2+0<mesh.TexCoords.size()?mesh.TexCoords[i*2+0]:0.0f);
+				vb[i].v=(i*2+1<mesh.TexCoords.size()?mesh.TexCoords[i*2+1]:0.0f);
 			}
 
 			for(DWORD i=0;i<mesh.Faces.size()/3;i++)

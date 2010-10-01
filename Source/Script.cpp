@@ -99,7 +99,7 @@ public:
 typedef vector<ActiveContext> ActiveContextVec;
 typedef vector<ActiveContext>::iterator ActiveContextVecIt;
 ActiveContextVec ActiveContexts;
-Mutex ActiveGlobalCtxLocker;
+MutexSpinlock ActiveGlobalCtxLocker;
 
 // Timeouts
 DWORD RunTimeoutSuspend=10000;
@@ -741,7 +741,7 @@ unsigned int __stdcall RunTimeoutThread(void* data)
 		// Check execution time every 1/10 second
 		Sleep(100);
 
-		SCOPE_LOCK(ActiveGlobalCtxLocker);
+		SCOPE_SPINLOCK(ActiveGlobalCtxLocker);
 
 		DWORD cur_tick=Timer::FastTick();
 		for(ActiveContextVecIt it=ActiveContexts.begin(),end=ActiveContexts.end();it!=end;++it)
@@ -1464,6 +1464,10 @@ DWORD SynchronizeThreadId=0;
 int SynchronizeThreadCounter=0;
 MutexEvent SynchronizeThreadLocker;
 Mutex SynchronizeThreadLocalLocker;
+
+typedef vector<EndExecutionCallback> EndExecutionCallbackVec;
+typedef vector<EndExecutionCallback>::iterator EndExecutionCallbackVecIt;
+THREAD EndExecutionCallbackVec* EndExecutionCallbacks;
 #endif
 
 void BeginExecution()
@@ -1526,7 +1530,26 @@ void EndExecution()
 				sync_mngr->PopPriority();
 			}
 		}
+
+		if(EndExecutionCallbacks && !EndExecutionCallbacks->empty())
+		{
+			for(EndExecutionCallbackVecIt it=EndExecutionCallbacks->begin(),end=EndExecutionCallbacks->end();it!=end;++it)
+			{
+				EndExecutionCallback func=*it;
+				(*func)();
+			}
+			EndExecutionCallbacks->clear();
+		}
 	}
+#endif
+}
+
+void AddEndExecutionCallback(EndExecutionCallback func)
+{
+#ifdef SCRIPT_MULTITHREADING
+	if(!EndExecutionCallbacks) EndExecutionCallbacks=new(nothrow) EndExecutionCallbackVec();
+	EndExecutionCallbackVecIt it=std::find(EndExecutionCallbacks->begin(),EndExecutionCallbacks->end(),func);
+	if(it==EndExecutionCallbacks->end()) EndExecutionCallbacks->push_back(func);
 #endif
 }
 
@@ -1639,7 +1662,7 @@ bool RunPrepared()
 
 		if(GlobalCtxIndex==1) // First context from stack, add timing
 		{
-			SCOPE_LOCK(ActiveGlobalCtxLocker);
+			SCOPE_SPINLOCK(ActiveGlobalCtxLocker);
 			ActiveContexts.push_back(ActiveContext(GlobalCtx,tick));
 		}
 
@@ -1648,7 +1671,7 @@ bool RunPrepared()
 		GlobalCtxIndex--;
 		if(GlobalCtxIndex==0) // All scripts execution complete, erase timing
 		{
-			SCOPE_LOCK(ActiveGlobalCtxLocker);
+			SCOPE_SPINLOCK(ActiveGlobalCtxLocker);
 			ActiveContextVecIt it=std::find(ActiveContexts.begin(),ActiveContexts.end(),(asIScriptContext**)GlobalCtx);
 			if(it!=ActiveContexts.end()) ActiveContexts.erase(it);
 		}

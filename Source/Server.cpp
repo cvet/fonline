@@ -19,7 +19,7 @@ HANDLE* FOServer::IOThreadHandles=NULL;
 DWORD FOServer::WorkThreadCount=0;
 SOCKET FOServer::ListenSock=INVALID_SOCKET;
 ClVec FOServer::ConnectedClients;
-Mutex FOServer::ConnectedClientsLocker;
+MutexSpinlock FOServer::ConnectedClientsLocker;
 FOServer::Statistics_ FOServer::Statistics;
 FOServer::ClientSaveDataVec FOServer::ClientsSaveData;
 size_t FOServer::ClientsSaveDataCount=0;
@@ -41,26 +41,25 @@ bool FOServer::LogicThreadSetAffinity=false;
 bool FOServer::RequestReloadClientScripts=false;
 LangPackVec FOServer::LangPacks;
 FOServer::HoloInfoMap FOServer::HolodiskInfo;
-Mutex FOServer::HolodiskLocker;
+MutexSpinlock FOServer::HolodiskLocker;
 DWORD FOServer::LastHoloId=0;
 FOServer::TimeEventVec FOServer::TimeEvents;
-FOServer::TimeEventVec FOServer::TimeEventsInProcess;
 DWORD FOServer::TimeEventsLastNum=0;
-Mutex FOServer::TimeEventsLocker;
+MutexSpinlock FOServer::TimeEventsLocker;
 FOServer::AnyDataMap FOServer::AnyData;
-Mutex FOServer::AnyDataLocker;
+MutexSpinlock FOServer::AnyDataLocker;
 StrVec FOServer::ServerWrongGlobalObjects;
 FOServer::TextListenVec FOServer::TextListeners;
-Mutex FOServer::TextListenersLocker;
+MutexSpinlock FOServer::TextListenersLocker;
 DwordVec* FOServer::RadioChannels[0x10000]={0};
-Mutex FOServer::RadioLocker;
+MutexSpinlock FOServer::RadioLocker;
 HWND FOServer::ServerWindow=NULL;
 bool FOServer::Active=false;
 FileManager FOServer::FileMngr;
 ClVec FOServer::SaveClients;
-Mutex FOServer::SaveClientsLocker;
+MutexSpinlock FOServer::SaveClientsLocker;
 DwordMap FOServer::RegIp;
-Mutex FOServer::RegIpLocker;
+MutexSpinlock FOServer::RegIpLocker;
 DWORD FOServer::VarsGarbageLastTick=0;
 StrVec FOServer::AccessClient;
 StrVec FOServer::AccessTester;
@@ -69,10 +68,10 @@ StrVec FOServer::AccessAdmin;
 FOServer::ClientBannedVec FOServer::Banned;
 Mutex FOServer::BannedLocker;
 FOServer::ClientDataVec FOServer::ClientsData;
-Mutex FOServer::ClientsDataLocker;
+MutexSpinlock FOServer::ClientsDataLocker;
 volatile DWORD FOServer::LastClientId=0;
 ScoreType FOServer::BestScores[SCORES_MAX]={0};
-Mutex FOServer::BestScoresLocker;
+MutexSpinlock FOServer::BestScoresLocker;
 FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
 MutexSynchronizer FOServer::LogicThreadSync;
 
@@ -319,6 +318,7 @@ void FOServer::RemoveClient(Client* cl)
 			ClientData* data=GetClientData(id);
 			if(data) data->Clear();
 			SaveClientsLocker.Unlock();
+
 			cl->FullClear();
 		}
 
@@ -335,7 +335,7 @@ void FOServer::AddSaveClient(Client* cl)
 {
 	if(Singleplayer) return;
 
-	SCOPE_LOCK(SaveClientsLocker);
+	SCOPE_SPINLOCK(SaveClientsLocker);
 
 	cl->AddRef();
 	SaveClients.push_back(cl);
@@ -343,7 +343,7 @@ void FOServer::AddSaveClient(Client* cl)
 
 void FOServer::EraseSaveClient(DWORD crid)
 {
-	SCOPE_LOCK(SaveClientsLocker);
+	SCOPE_SPINLOCK(SaveClientsLocker);
 
 	for(ClVecIt it=SaveClients.begin();it!=SaveClients.end();)
 	{
@@ -658,7 +658,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 
 			// Thread statistics
 			// Manage threads data
-			static Mutex stats_locker;
+			static MutexSpinlock stats_locker;
 			static PtrVec stats_ptrs;
 			stats_locker.Lock();
 			struct StatisticsThread
@@ -1501,23 +1501,35 @@ void FOServer::Process_Text(Client* cl)
 	SetScore(SCORE_SPEAKER,cl,1);
 
 	// Text listen
-	SCOPE_LOCK(TextListenersLocker);
+	int listen_count=0;
+	int licten_func_id[100]; // 100 calls per one message is enough
+	CScriptString* licten_str[100];
+
+	TextListenersLocker.Lock();
+
 	WORD parameter=(how_say==SAY_RADIO?cl->GetRadioChannel():cl->GetProtoMap());
 	for(int i=0;i<TextListeners.size();i++)
 	{
 		TextListen& tl=TextListeners[i];
 		if(how_say==tl.SayType && parameter==tl.Parameter && !_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
 		{
-			if(!Script::PrepareContext(tl.FuncId,CALL_FUNC_STR,cl->GetInfo()))
-			{
-				WriteLog(__FUNCTION__" - Prepare context fail.\n");
-				break;
-			}
-			string str_=str;
+			licten_func_id[listen_count]=tl.FuncId;
+			licten_str[listen_count]=new CScriptString(str);
+			if(++listen_count>=100) break;
+		}
+	}
+
+	TextListenersLocker.Unlock();
+
+	for(int i=0;i<listen_count;i++)
+	{
+		if(Script::PrepareContext(licten_func_id[i],CALL_FUNC_STR,cl->GetInfo()))
+		{
 			Script::SetArgObject(cl);
-			Script::SetArgObject(&str_);
+			Script::SetArgObject(licten_str[i]);
 			Script::RunPrepared();
 		}
+		licten_str[i]->Release();
 	}
 }
 
@@ -1640,9 +1652,11 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			SaveClientsLocker.Lock();
+
 			ClientData* cd=GetClientData(name);
 			if(cd) cl->Send_Text(cl,Str::Format("Client id is %u.",cd->ClientId),SAY_NETMSG);
 			else cl->Send_Text(cl,"Client not found.",SAY_NETMSG);
+
 			SaveClientsLocker.Unlock();
 		}
 		break;
@@ -2800,7 +2814,7 @@ void FOServer::Process_Command(Client* cl)
 			for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 			{
 				Client* cl_=*it;
-				if(cl_->IsOnline()) cl_->Send_GameInfo(MapMngr.GetMap(cl_->GetMap()));
+				if(cl_->IsOnline()) cl_->Send_GameInfo(MapMngr.GetMap(cl_->GetMap(),false));
 			}
 			ConnectedClientsLocker.Unlock();
 
@@ -2990,7 +3004,8 @@ void FOServer::Process_Command(Client* cl)
 			else if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(new_pass)) cl->Send_Text(cl,"Invalid new password.",SAY_NETMSG);
 			else
 			{
-				SCOPE_LOCK(SaveClientsLocker);
+				SCOPE_SPINLOCK(SaveClientsLocker);
+
 				ClientData* data=GetClientData(cl->GetId());
 				if(data)
 				{
@@ -3236,9 +3251,9 @@ bool FOServer::Init()
 	// Check the sizes of struct and classes
 	STATIC_ASSERT(offsetof(Item,PLexems)==160);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
-	STATIC_ASSERT(offsetof(Critter,RefCounter)==9784);
-	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9852);
-	STATIC_ASSERT(offsetof(Npc,Reserved)==9816);
+	STATIC_ASSERT(offsetof(Critter,RefCounter)==9792);
+	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9860);
+	STATIC_ASSERT(offsetof(Npc,Reserved)==9824);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
 	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);
@@ -4049,6 +4064,7 @@ void FOServer::SaveWorld(const char* name)
 		if(cl->GetId()) SaveClient(cl,true);
 	}
 	ConnectedClientsLocker.Unlock();
+
 	SaveClientsLocker.Lock();
 	for(ClVecIt it=SaveClients.begin(),end=SaveClients.end();it!=end;++it)
 	{
@@ -4326,7 +4342,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 
 void FOServer::RadioClearChannels()
 {
-	SCOPE_LOCK(RadioLocker);
+	SCOPE_SPINLOCK(RadioLocker);
 
 	WriteLog("Clear radio channels.\n");
 	for(int i=0;i<0x10000;i++) SAFEDEL(RadioChannels[i]);
@@ -4335,7 +4351,7 @@ void FOServer::RadioClearChannels()
 
 void FOServer::RadioAddPlayer(Client* cl, WORD channel)
 {
-	SCOPE_LOCK(RadioLocker);
+	SCOPE_SPINLOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha)
@@ -4354,7 +4370,7 @@ void FOServer::RadioAddPlayer(Client* cl, WORD channel)
 
 void FOServer::RadioErasePlayer(Client* cl, WORD channel)
 {
-	SCOPE_LOCK(RadioLocker);
+	SCOPE_SPINLOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha) return;
@@ -4371,7 +4387,7 @@ void FOServer::RadioErasePlayer(Client* cl, WORD channel)
 
 void FOServer::RadioSendText(Critter* cr, WORD channel, const char* text, bool unsafe_text)
 {
-	SCOPE_LOCK(RadioLocker);
+	SCOPE_SPINLOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha) return;
@@ -4381,7 +4397,7 @@ void FOServer::RadioSendText(Critter* cr, WORD channel, const char* text, bool u
 
 #pragma MESSAGE("Add option for allowing sending radio message owner.")
 	DWORD from_id=0; // (cr?cr->GetId():0);
-	WORD intellect=(cr?cr->GetSayIntellect():0);
+	WORD intellect=(cr?cr->IntellectCacheValue:0);
 
 	for(DwordVecIt it=cha->begin();it!=cha->end();)
 	{
@@ -4412,7 +4428,7 @@ void FOServer::RadioSendText(Critter* cr, WORD channel, const char* text, bool u
 
 void FOServer::RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_str)
 {
-	SCOPE_LOCK(RadioLocker);
+	SCOPE_SPINLOCK(RadioLocker);
 
 	DwordVec* cha=RadioChannels[channel];
 	if(!cha) return;
@@ -4444,7 +4460,7 @@ void FOServer::RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_
 
 void FOServer::SetScore(int score, Critter* cr, int val)
 {
-	SCOPE_LOCK(BestScoresLocker);
+	SCOPE_SPINLOCK(BestScoresLocker);
 
 	cr->Data.Scores[score]+=val;
 	if(BestScores[score].ClientId==cr->GetId()) return;
@@ -4456,7 +4472,7 @@ void FOServer::SetScore(int score, Critter* cr, int val)
 
 void FOServer::SetScore(int score, const char* name)
 {
-	SCOPE_LOCK(BestScoresLocker);
+	SCOPE_SPINLOCK(BestScoresLocker);
 
 	BestScores[score].ClientId=0;
 	BestScores[score].Value=0;
@@ -4465,7 +4481,7 @@ void FOServer::SetScore(int score, const char* name)
 
 const char* FOServer::GetScores()
 {
-	SCOPE_LOCK(BestScoresLocker);
+	SCOPE_SPINLOCK(BestScoresLocker);
 
 	static THREAD char scores[SCORE_NAME_LEN*SCORES_MAX]; // Only names
 	for(int i=0;i<SCORES_MAX;i++)
@@ -4479,7 +4495,7 @@ const char* FOServer::GetScores()
 
 void FOServer::ClearScore(int score)
 {
-	SCOPE_LOCK(BestScoresLocker);
+	SCOPE_SPINLOCK(BestScoresLocker);
 
 	BestScores[score].ClientId=0;
 	BestScores[score].ClientName[0]='\0';
@@ -4543,22 +4559,6 @@ void FOServer::VarsGarbarger(bool force)
 /* Time events                                                          */
 /************************************************************************/
 
-void FOServer::AddTimeEvent(TimeEvent* te)
-{
-	SCOPE_LOCK(TimeEventsLocker);
-
-	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
-	{
-		TimeEvent* te_=*it;
-		if(te->FullSecond<te_->FullSecond)
-		{
-			TimeEvents.insert(it,te);
-			return;
-		}
-	}
-	TimeEvents.push_back(te);
-}
-
 void FOServer::SaveTimeEventsFile()
 {
 	DWORD count=0;
@@ -4613,7 +4613,10 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 			if(!fread(&values[0],values_size*sizeof(DWORD),1,f)) return false;
 		}
 
-		int bind_id=Script::Bind(script_name,"uint %s(uint[]@)",false);
+		bool singed=false;
+		int bind_id=Script::Bind(script_name,"uint %s(int[]@)",false,true);
+		if(bind_id<=0) bind_id=Script::Bind(script_name,"uint %s(uint[]@)",false);
+		else singed=true;
 		if(bind_id<=0)
 		{
 			WriteLog("Unable to bind script function, event num<%u>, name<%s>.\n",num,script_name);
@@ -4626,7 +4629,10 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 		te->Num=num;
 		te->FuncName=script_name;
 		te->BindId=bind_id;
+		te->Rate=rate;
+		te->SignedValues=singed;
 		te->IsSaved=true;
+		te->InProcess=0;
 		te->EraseMe=false;
 		if(values_size) te->Values=values;
 
@@ -4638,73 +4644,217 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 	return true;
 }
 
-DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, DwordVec& values, bool save)
+void FOServer::AddTimeEvent(TimeEvent* te)
 {
-	if(values.size()*sizeof(DWORD)>TIME_EVENT_MAX_SIZE) SCRIPT_ERROR_R0("Values size greather than maximum.");
+	// Invoked in locked scope
 
-	char full_name[256];
+	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
+	{
+		TimeEvent* te_=*it;
+		if(te->FullSecond<te_->FullSecond)
+		{
+			TimeEvents.insert(it,te);
+			return;
+		}
+	}
+	TimeEvents.push_back(te);
+}
+
+DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, int values, DWORD val1, asIScriptArray* val2, bool save)
+{
 	char module_name[256];
 	char func_name[256];
-	if(!Script::ReparseScriptName(script_name,module_name,func_name)) SCRIPT_ERROR_R0("Can't reparse script name.");
-	Str::SFormat(full_name,"%s@%s",module_name,func_name);
+	if(!Script::ReparseScriptName(script_name,module_name,func_name)) return 0;
 
-	int bind_id=Script::Bind(module_name,func_name,"uint %s(uint[]@)",false);
-	if(bind_id<=0) SCRIPT_ERROR_R0("Script function not found.");
-
-	SCOPE_LOCK(TimeEventsLocker);
+	bool singed=false;
+	int bind_id=Script::Bind(module_name,func_name,"uint %s(int[]@)",false,true);
+	if(bind_id<=0) bind_id=Script::Bind(module_name,func_name,"uint %s(uint[]@)",false);
+	else singed=true;
+	if(bind_id<=0) return 0;
 
 	TimeEvent* te=new(nothrow) TimeEvent();
 	if(!te) return 0;
+
+	SCOPE_SPINLOCK(TimeEventsLocker);
+
 	te->FullSecond=begin_second;
 	te->Num=TimeEventsLastNum+1;
-	te->FuncName=full_name;
+	te->FuncName=Str::Format("%s@%s",module_name,func_name);
 	te->BindId=bind_id;
+	te->SignedValues=singed;
 	te->IsSaved=save;
+	te->InProcess=0;
 	te->EraseMe=false;
 	te->Rate=0;
-	te->Values=values;
+
+	if(values==1)
+	{
+		// Single value
+		te->Values.push_back(val1);
+	}
+	else if(values==2)
+	{
+		// Array values
+		DWORD count=val2->GetElementCount();
+		if(count)
+		{
+			te->Values.resize(count);
+			memcpy(&te->Values[0],val2->GetElementPointer(0),count*sizeof(DWORD));
+		}
+	}
 
 	AddTimeEvent(te);
 	TimeEventsLastNum++;
 	return TimeEventsLastNum;
 }
 
-bool FOServer::GetTimeEventData(DWORD num, DWORD& duration, DwordVec& data)
+void FOServer::TimeEventEndScriptCallback()
 {
-	SCOPE_LOCK(TimeEventsLocker);
-	return false;
+	SCOPE_SPINLOCK(TimeEventsLocker);
+
+	DWORD tid=GetCurrentThreadId();
+	for(TimeEventVecIt it=TimeEvents.begin();it!=TimeEvents.end();)
+	{
+		TimeEvent* te=*it;
+		if(te->InProcess==tid)
+		{
+			te->InProcess=0;
+
+			if(te->EraseMe)
+			{
+				it=TimeEvents.erase(it);
+				delete te;
+			}
+		}
+		else ++it;
+	}
 }
 
-bool FOServer::SetTimeEventData(DWORD num, DWORD duration, DwordVec& data)
+bool FOServer::GetTimeEvent(DWORD num, DWORD& duration, asIScriptArray* values)
 {
-	SCOPE_LOCK(TimeEventsLocker);
-	return false;
+	TimeEventsLocker.Lock();
+
+	TimeEvent* te=NULL;
+	DWORD tid=GetCurrentThreadId();
+
+	// Find event
+	while(true)
+	{
+		for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
+		{
+			TimeEvent* te_=*it;
+			if(te_->Num==num)
+			{
+				te=te_;
+				break;
+			}
+		}
+
+		// Event not found or erased
+		if(!te || te->EraseMe)
+		{
+			TimeEventsLocker.Unlock();
+			return false;
+		}
+
+		// Wait of other threads end work with event
+		if(te->InProcess && te->InProcess!=tid)
+		{
+			TimeEventsLocker.Unlock();
+			Sleep(0);
+			TimeEventsLocker.Lock();
+		}
+		else
+		{
+			// Begin work with event
+			break;
+		}
+	}
+
+	// Fill data
+	if(values) Script::AppendVectorToArray(te->Values,values);
+	duration=(te->FullSecond>GameOpt.FullSecond?te->FullSecond-GameOpt.FullSecond:0);
+
+	// Lock for current thread
+	te->InProcess=tid;
+
+	// Add end of script execution callback to unlock event if SetTimeEvent not be called
+	if(LogicThreadCount>1) Script::AddEndExecutionCallback(TimeEventEndScriptCallback);
+
+	TimeEventsLocker.Unlock();
+	return true;
+}
+
+bool FOServer::SetTimeEvent(DWORD num, DWORD duration, asIScriptArray* values)
+{
+	TimeEventsLocker.Lock();
+
+	TimeEvent* te=NULL;
+	DWORD tid=GetCurrentThreadId();
+
+	// Find event
+	while(true)
+	{
+		for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
+		{
+			TimeEvent* te_=*it;
+			if(te_->Num==num)
+			{
+				te=te_;
+				break;
+			}
+		}
+
+		// Event not found or erased
+		if(!te || te->EraseMe)
+		{
+			TimeEventsLocker.Unlock();
+			return false;
+		}
+
+		// Wait of other threads end work with event
+		if(te->InProcess && te->InProcess!=tid)
+		{
+			TimeEventsLocker.Unlock();
+			Sleep(0);
+			TimeEventsLocker.Lock();
+		}
+		else
+		{
+			// Begin work with event
+			break;
+		}
+	}
+
+	// Fill data, lock event to current thread
+	if(values) Script::AssignScriptArrayInVector(te->Values,values);
+	te->FullSecond=GameOpt.FullSecond+duration;
+
+	// Unlock from current thread
+	te->InProcess=0;
+
+	TimeEventsLocker.Unlock();
+	return true;
 }
 
 bool FOServer::EraseTimeEvent(DWORD num)
 {
-	SCOPE_LOCK(TimeEventsLocker);
+	SCOPE_SPINLOCK(TimeEventsLocker);
 
-	// Erase non-active time event
 	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
 	{
 		TimeEvent* te=*it;
 		if(te->Num==num)
 		{
-			delete te;
-			TimeEvents.erase(it);
-			return true;
-		}
-	}
-
-	// Erase active time event
-	for(TimeEventVecIt it=TimeEventsInProcess.begin(),end=TimeEventsInProcess.end();it!=end;++it)
-	{
-		TimeEvent* te=*it;
-		if(te->Num==num)
-		{
-			te->EraseMe=true;
-			TimeEventsInProcess.erase(it);
+			if(te->InProcess)
+			{
+				te->EraseMe=true;
+			}
+			else
+			{
+				delete te;
+				TimeEvents.erase(it);
+			}
 			return true;
 		}
 	}
@@ -4716,41 +4866,50 @@ void FOServer::ProcessTimeEvents()
 {
 	TimeEventsLocker.Lock();
 
-	if(TimeEvents.empty() || TimeEvents.front()->FullSecond>GameOpt.FullSecond)
+	TimeEvent* cur_event=NULL;
+	for(TimeEventVecIt it=TimeEvents.begin(),end=TimeEvents.end();it!=end;++it)
 	{
-		TimeEventsLocker.Unlock();
-		return;
+		TimeEvent* te=*it;
+		if(!te->InProcess && te->FullSecond<=GameOpt.FullSecond)
+		{
+			te->InProcess=GetCurrentThreadId();
+			cur_event=te;
+			break;
+		}
 	}
-	TimeEvent* cur_event=TimeEvents.front(); // Copy
-	TimeEvents.erase(TimeEvents.begin()); // And erase
-	TimeEventsInProcess.push_back(cur_event); // Store to know what processed
 
 	TimeEventsLocker.Unlock();
+
+	if(!cur_event) return;
 
 	DWORD wait_time=0;
 	if(Script::PrepareContext(cur_event->BindId,CALL_FUNC_STR,Str::Format("Time event<%u>",cur_event->Num)))
 	{
-		asIScriptArray* dw=NULL;
+		asIScriptArray* values=NULL;
 		DWORD size=cur_event->Values.size();
 
 		if(size>0)
 		{
-			dw=Script::CreateArray("uint[]");
-			if(!dw)
+			if(cur_event->SignedValues)
+				values=Script::CreateArray("int[]");
+			else
+				values=Script::CreateArray("uint[]");
+
+			if(!values)
 			{
-				WriteLog(__FUNCTION__" - Create uint array fail. Wait 10 real minutes.\n");
+				WriteLog(__FUNCTION__" - Create values array fail. Wait 10 real minutes.\n");
 				wait_time=GameOpt.TimeMultiplier*600;
 			}
 			else
 			{
-				dw->Resize(size);
-				memcpy(dw->GetElementPointer(0),(void*)&cur_event->Values[0],size*sizeof(DWORD));
+				values->Resize(size);
+				memcpy(values->GetElementPointer(0),(void*)&cur_event->Values[0],size*sizeof(DWORD));
 			}
 		}
 
-		if(!size || dw)
+		if(!size || values)
 		{
-			Script::SetArgObject(dw);
+			Script::SetArgObject(values);
 			if(!Script::RunPrepared())
 			{
 				WriteLog(__FUNCTION__" - RunPrepared fail. Wait 10 real minutes.\n");
@@ -4759,15 +4918,15 @@ void FOServer::ProcessTimeEvents()
 			else
 			{
 				wait_time=Script::GetReturnedDword();
-				if(wait_time && dw) // Recopy array
+				if(wait_time && values) // Refresh array
 				{
-					DWORD arr_size=dw->GetElementCount();
+					DWORD arr_size=values->GetElementCount();
 					cur_event->Values.resize(arr_size);
-					if(arr_size) memcpy(&cur_event->Values[0],dw->GetElementPointer(0),arr_size*sizeof(cur_event->Values[0]));
+					if(arr_size) memcpy(&cur_event->Values[0],values->GetElementPointer(0),arr_size*sizeof(cur_event->Values[0]));
 				}
 			}
 
-			if(dw) dw->Release();
+			if(values) values->Release();
 		}
 	}
 	else
@@ -4783,21 +4942,21 @@ void FOServer::ProcessTimeEvents()
 		cur_event->FullSecond=GameOpt.FullSecond+wait_time;
 		cur_event->Rate++;
 		AddTimeEvent(cur_event);
+		cur_event->InProcess=0;
 	}
 	else
 	{
+		TimeEventVecIt it=std::find(TimeEvents.begin(),TimeEvents.end(),cur_event);
+		TimeEvents.erase(it);
 		delete cur_event;
 	}
-
-	TimeEventVecIt it=std::find(TimeEventsInProcess.begin(),TimeEventsInProcess.end(),cur_event);
-	if(it!=TimeEventsInProcess.end()) TimeEventsInProcess.erase(it);
 
 	TimeEventsLocker.Unlock();
 }
 
 DWORD FOServer::GetTimeEventsCount()
 {
-	SCOPE_LOCK(TimeEventsLocker);
+	SCOPE_SPINLOCK(TimeEventsLocker);
 
 	DWORD count=TimeEvents.size();
 	return count;
@@ -4805,7 +4964,7 @@ DWORD FOServer::GetTimeEventsCount()
 
 string FOServer::GetTimeEventsStatistics()
 {
-	SCOPE_LOCK(TimeEventsLocker);
+	SCOPE_SPINLOCK(TimeEventsLocker);
 
 	static string result;
 	char str[1024];
@@ -4925,7 +5084,7 @@ bool FOServer::LoadAnyDataFile(FILE* f)
 
 bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 {
-	SCOPE_LOCK(AnyDataLocker);
+	SCOPE_SPINLOCK(AnyDataLocker);
 
 	AnyDataMapInsert result=AnyData.insert(AnyDataMapVal(name,ByteVec()));
 	ByteVec& data_=(*result.first).second;
@@ -4939,7 +5098,7 @@ bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 
 bool FOServer::GetAnyData(const string& name, asIScriptArray& script_array)
 {
-	SCOPE_LOCK(AnyDataLocker);
+	SCOPE_SPINLOCK(AnyDataLocker);
 
 	AnyDataMapIt it=AnyData.find(name);
 	if(it==AnyData.end()) return false;
@@ -4961,7 +5120,7 @@ bool FOServer::GetAnyData(const string& name, asIScriptArray& script_array)
 
 bool FOServer::IsAnyData(const string& name)
 {
-	SCOPE_LOCK(AnyDataLocker);
+	SCOPE_SPINLOCK(AnyDataLocker);
 
 	AnyDataMapIt it=AnyData.find(name);
 	bool present=(it!=AnyData.end());
@@ -4970,14 +5129,14 @@ bool FOServer::IsAnyData(const string& name)
 
 void FOServer::EraseAnyData(const string& name)
 {
-	SCOPE_LOCK(AnyDataLocker);
+	SCOPE_SPINLOCK(AnyDataLocker);
 
 	AnyData.erase(name);
 }
 
 string FOServer::GetAnyDataStatistics()
 {
-	SCOPE_LOCK(AnyDataLocker);
+	SCOPE_SPINLOCK(AnyDataLocker);
 
 	static string result;
 	char str[256];

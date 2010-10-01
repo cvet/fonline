@@ -10,6 +10,7 @@
 #define CALL_FUNC_STR                  __FUNCTION__" : "
 
 typedef bool(*PragmaCallbackFunc)(const char*);
+typedef void(*EndExecutionCallback)();
 
 struct ReservedScriptFunction
 {
@@ -76,6 +77,10 @@ namespace Script
 	string GetScriptFuncName(DWORD func_num);
 
 	// Script execution
+	void BeginExecution();
+	void EndExecution();
+	void AddEndExecutionCallback(EndExecutionCallback func);
+
 	bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info);
 	void SetArgWord(WORD w);
 	void SetArgDword(DWORD dw);
@@ -87,6 +92,7 @@ namespace Script
 	DWORD GetReturnedDword();
 	bool GetReturnedBool();
 	void* GetReturnedObject();
+
 	bool SynchronizeThread();
 	bool ResynchronizeThread();
 
