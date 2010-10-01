@@ -4944,17 +4944,18 @@ void FOServer::ProcessTimeEvents()
 
 	TimeEventsLocker.Lock();
 
+	TimeEventVecIt it=std::find(TimeEvents.begin(),TimeEvents.end(),cur_event);
+	TimeEvents.erase(it);
+
 	if(wait_time && !cur_event->EraseMe)
 	{
 		cur_event->FullSecond=GameOpt.FullSecond+wait_time;
 		cur_event->Rate++;
-		AddTimeEvent(cur_event);
 		cur_event->InProcess=0;
+		AddTimeEvent(cur_event);
 	}
 	else
 	{
-		TimeEventVecIt it=std::find(TimeEvents.begin(),TimeEvents.end(),cur_event);
-		TimeEvents.erase(it);
 		delete cur_event;
 	}
 
