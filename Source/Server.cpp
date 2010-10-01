@@ -4536,8 +4536,15 @@ void FOServer::VarsGarbarger(bool force)
 
 	// Get client and npc ids
 	DwordSet ids_clients;
-	for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
-		ids_clients.insert((*it).ClientId);
+	if(!Singleplayer)
+	{
+		for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
+			ids_clients.insert((*it).ClientId);
+	}
+	else
+	{
+		ids_clients.insert(1);
+	}
 
 	// Get npc ids
 	DwordSet ids_npcs;

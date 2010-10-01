@@ -106,6 +106,8 @@ bool VarManager::LoadVarsDataFile(FILE* f, int version)
 			WriteLog("Can't create var, tid<%u>.\n",temp_id);
 			continue;
 		}
+
+		var->VarValue=val;
 	}
 
 	WriteLog("complete, count<%u>.\n",count);
@@ -144,6 +146,7 @@ void VarManager::Clear()
 			tvar->VarsUnicum.clear();
 		}
 	}
+	varsCount=0;
 #endif
 }
 

@@ -492,7 +492,7 @@ public:
 
 		WORD SortValue;
 		BYTE Info;
-		BYTE WeaponCurMode;
+		BYTE Reserved;
 		DWORD PicMapHash;
 		DWORD PicInvHash;
 		WORD AnimWaitBase;
