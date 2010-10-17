@@ -51,8 +51,6 @@ Mutex FOServer::AnyDataLocker;
 StrVec FOServer::ServerWrongGlobalObjects;
 FOServer::TextListenVec FOServer::TextListeners;
 Mutex FOServer::TextListenersLocker;
-DwordVec* FOServer::RadioChannels[0x10000]={0};
-Mutex FOServer::RadioLocker;
 HWND FOServer::ServerWindow=NULL;
 bool FOServer::Active=false;
 FileManager FOServer::FileMngr;
@@ -80,7 +78,6 @@ FOServer::FOServer()
 	Active=false;
 	ZeroMemory(&Statistics,sizeof(Statistics));
 	ZeroMemory(&ServerFunctions,sizeof(ServerFunctions));
-	ZeroMemory(RadioChannels,sizeof(RadioChannels));
 	ServerWindow=NULL;
 	LastClientId=0;
 	SingleplayerSave.Valid=false;
@@ -161,7 +158,6 @@ void FOServer::Finish()
 	VarMngr.Finish();
 	FinishScriptSystem();
 	FinishLangPacks();
-	RadioClearChannels();
 	FileManager::EndOfWork();
 	Active=false;
 
@@ -199,7 +195,7 @@ string FOServer::GetIngamePlayersStatistics()
 	ConnectedClientsLocker.Unlock();
 
 	ClVec players;
-	CrMngr.GetCopyPlayers(players);
+	CrMngr.GetCopyPlayers(players,false);
 
 	sprintf(str,"Players in game: %u\nConnections: %u\n",players.size(),conn_count);
 	result=str;
@@ -208,9 +204,9 @@ string FOServer::GetIngamePlayersStatistics()
 	{
 		Client* cl=players[i];
 		const char* name=cl->GetName();
-
-		Map* map=MapMngr.GetMap(cl->GetMap());
+		Map* map=MapMngr.GetMap(cl->GetMap(),false);
 		Location* loc=map->GetLocation(false);
+
 		sprintf(str_loc,"%s (%u, %u)",map?loc->Proto->Name.c_str():"",map?loc->GetId():0,map?loc->GetPid():0);
 		sprintf(str_map,"%s (%u, %u)",map?map->Proto->GetName():"",map?map->GetId():0,map?map->GetPid():0);
 		sprintf(str,"%-20s %-9u %-15s %-10s %-8s %-5u %-5u %-30s %-30s %-4d\n",
@@ -234,7 +230,7 @@ void FOServer::DisconnectClient(Client* cl)
 	}
 
 	DWORD id=cl->GetId();
-	Client* cl_=(id?CrMngr.GetPlayer(id):NULL);
+	Client* cl_=(id?CrMngr.GetPlayer(id,false):NULL);
 	if(cl_ && cl_==cl)
 	{
 		cl->Disconnect(); // Refresh disconnectTick
@@ -257,7 +253,7 @@ void FOServer::DisconnectClient(Client* cl)
 void FOServer::RemoveClient(Client* cl)
 {
 	DWORD id=cl->GetId();
-	Client* cl_=(id?CrMngr.GetPlayer(id):NULL);
+	Client* cl_=(id?CrMngr.GetPlayer(id,false):NULL);
 	if(cl_ && cl_==cl)
 	{
 		cl->EventFinish(cl->Data.ClientToDelete);
@@ -270,7 +266,7 @@ void FOServer::RemoveClient(Client* cl)
 
 		if(cl->GetMap())
 		{
-			Map* map=MapMngr.GetMap(cl->GetMap());
+			Map* map=MapMngr.GetMap(cl->GetMap(),true);
 			if(map) MapMngr.EraseCrFromMap(cl,map,cl->GetHexX(),cl->GetHexY());
 		}
 		else if(cl->GroupMove)
@@ -310,6 +306,14 @@ void FOServer::RemoveClient(Client* cl)
 		CrMngr.EraseCritter(cl);
 		cl->Disconnect();
 		cl->IsNotValid=true;
+
+		// Erase radios from collection
+		ItemPtrVec items=cl->GetItemsNoLock();
+		for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
+		{
+			Item* item=*it;
+			if(item->IsRadio()) ItemMngr.RadioRegister(item,false);
+		}
 
 		// Full delete
 		if(cl->Data.ClientToDelete)
@@ -1295,7 +1299,8 @@ void FOServer::Process(ClientPtr& cl)
 				}
 			case NETMSG_SEND_GET_INFO:
 				{
-					cl->Send_GameInfo(MapMngr.GetMap(cl->GetMap()));
+					Map* map=MapMngr.GetMap(cl->GetMap(),false);
+					cl->Send_GameInfo(map);
 					BIN_END(cl);
 					continue;
 				}
@@ -1321,13 +1326,6 @@ void FOServer::Process(ClientPtr& cl)
 				{
 					CHECK_BUSY_AND_LIFE;
 					Process_RuleGlobal(cl);
-					BIN_END(cl);
-					continue;
-				}
-			case NETMSG_RADIO:
-				{
-					CHECK_BUSY_AND_LIFE;
-					Process_Radio(cl);
 					BIN_END(cl);
 					continue;
 				}
@@ -1428,6 +1426,8 @@ void FOServer::Process_Text(Client* cl)
 		cl->LastSayEqualCount=0;
 	}
 
+	WordVec channels;
+
 	switch(how_say)
 	{
 	case SAY_NORM:
@@ -1440,17 +1440,17 @@ void FOServer::Process_Text(Client* cl)
 		break;
 	case SAY_SHOUT:
 		{
-			if(cl->GetMap()) //local
+			if(cl->GetMap())
 			{
 				Map* map=MapMngr.GetMap(cl->GetMap());
 				if(!map) return;
 
 				CrVec critters;
-				map->GetCritters(critters);
+				map->GetCritters(critters,false);
 
 				cl->SendAA_Text(critters,str,SAY_SHOUT,true);
 			}
-			else //global
+			else
 			{
 				cl->SendAA_Text(cl->GroupMove->CritMove,str,SAY_SHOUT,true);
 			}
@@ -1458,42 +1458,41 @@ void FOServer::Process_Text(Client* cl)
 		break;
 	case SAY_EMOTE:
 		{
-			if(cl->GetMap()) //local
+			if(cl->GetMap())
 				cl->SendAA_Text(cl->VisCr,str,SAY_EMOTE,true);
-			else //global
+			else
 				cl->SendAA_Text(cl->GroupMove->CritMove,str,SAY_EMOTE,true);
 		}
 		break;
 	case SAY_WHISP:
 		{
-			if(cl->GetMap()) //local
+			if(cl->GetMap())
 				cl->SendAA_Text(cl->VisCr,str,SAY_WHISP,true);
-			else //global
-				//cl->SendA_Text(cl->GroupMove->critMove,pstr,SAY_WHISP,true);
-				return;
+			else
+				cl->Send_TextEx(cl->GetId(),str,len,SAY_WHISP,cl->IntellectCacheValue,true);
 		}
 		break;
-	case SAY_SOCIAL: //TODO:
+	case SAY_SOCIAL:
 		{
 			return;
 		}
 		break;
 	case SAY_RADIO:
 		{
-			if(cl->GetRadio())
-			{
-				if(cl->GetMap()) cl->SendAA_Text(cl->VisCr,str,SAY_WHISP,true);
-				RadioSendText(cl,cl->GetRadioChannel(),str,true);
-			}
+			if(cl->GetMap())
+				cl->SendAA_Text(cl->VisCr,str,SAY_WHISP,true);
 			else
+				cl->Send_TextEx(cl->GetId(),str,len,SAY_WHISP,cl->IntellectCacheValue,true);
+
+			ItemMngr.RadioSendText(cl,str,len,true,0,0,channels);
+			if(channels.empty())
 			{
-				cl->Send_Text(cl,"Error - No radio",SAY_NETMSG);
+				cl->Send_TextMsg(cl,STR_RADIO_CANT_SEND,SAY_NETMSG,TEXTMSG_GAME);
 				return;
 			}
 		}
 		break;
 	default:
-		cl->Send_Text(cl,"Unknown Say Param.",SAY_NETMSG);
 		return;
 	}
 
@@ -1507,15 +1506,32 @@ void FOServer::Process_Text(Client* cl)
 
 	TextListenersLocker.Lock();
 
-	WORD parameter=(how_say==SAY_RADIO?cl->GetRadioChannel():cl->GetProtoMap());
-	for(int i=0;i<TextListeners.size();i++)
+	if(how_say==SAY_RADIO)
 	{
-		TextListen& tl=TextListeners[i];
-		if(how_say==tl.SayType && parameter==tl.Parameter && !_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
+		for(int i=0;i<TextListeners.size();i++)
 		{
-			licten_func_id[listen_count]=tl.FuncId;
-			licten_str[listen_count]=new CScriptString(str);
-			if(++listen_count>=100) break;
+			TextListen& tl=TextListeners[i];
+			if(tl.SayType==SAY_RADIO && std::find(channels.begin(),channels.end(),tl.Parameter)!=channels.end() &&
+				!_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
+			{
+				licten_func_id[listen_count]=tl.FuncId;
+				licten_str[listen_count]=new CScriptString(str);
+				if(++listen_count>=100) break;
+			}
+		}
+	}
+	else
+	{
+		WORD pid=cl->GetProtoMap();
+		for(int i=0;i<TextListeners.size();i++)
+		{
+			TextListen& tl=TextListeners[i];
+			if(tl.SayType==how_say && tl.Parameter==pid && !_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
+			{
+				licten_func_id[listen_count]=tl.FuncId;
+				licten_str[listen_count]=new CScriptString(str);
+				if(++listen_count>=100) break;
+			}
 		}
 	}
 
@@ -1678,14 +1694,14 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			Critter* cr=CrMngr.GetCritter(crid);
+			Critter* cr=CrMngr.GetCritter(crid,true);
 			if(!cr)
 			{
 				cl->Send_Text(cl,"Critter not found.",SAY_NETMSG);
 				break;
 			}
 
-			Map* map=MapMngr.GetMap(cr->GetMap());
+			Map* map=MapMngr.GetMap(cr->GetMap(),true);
 			if(!map)
 			{
 				cl->Send_Text(cl,"Critter is on global.",SAY_NETMSG);
@@ -1716,7 +1732,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			Critter* cr=CrMngr.GetCritter(crid);
+			Critter* cr=CrMngr.GetCritter(crid,true);
 			if(!cr)
 			{
 				cl->Send_Text(cl,"Critter not found.",SAY_NETMSG);
@@ -1747,7 +1763,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			Critter* cr=CrMngr.GetCritter(crid);
+			Critter* cr=CrMngr.GetCritter(crid,true);
 			if(!cr)
 			{
 				cl->Send_Text(cl,"Critter not found.",SAY_NETMSG);
@@ -1811,7 +1827,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			Critter* cr=(!crid?cl:CrMngr.GetCritter(crid));
+			Critter* cr=(!crid?cl:CrMngr.GetCritter(crid,true));
 			if(!cr) cl->Send_Text(cl,"Critter not found.",SAY_NETMSG);
 			else if(!cr->IsDead()) cl->Send_Text(cl,"Critter does not require respawn.",SAY_NETMSG);
 			else
@@ -1960,7 +1976,7 @@ void FOServer::Process_Command(Client* cl)
 				else if(param_type==200)
 				{
 					PcVec npcs;
-					CrMngr.GetCopyNpcs(npcs);
+					CrMngr.GetCopyNpcs(npcs,true);
 					for(PcVecIt it=npcs.begin(),end=npcs.end();it!=end;++it)
 					{
 						Npc* npc=*it;
@@ -1995,7 +2011,7 @@ void FOServer::Process_Command(Client* cl)
 				else if(param_type==97)
 				{
 					PcVec npcs;
-					CrMngr.GetCopyNpcs(npcs);
+					CrMngr.GetCopyNpcs(npcs,true);
 					for(PcVecIt it=npcs.begin(),end=npcs.end();it!=end;++it)
 					{
 						Npc* npc=*it;
@@ -2005,7 +2021,7 @@ void FOServer::Process_Command(Client* cl)
 				else if(param_type==96)
 				{
 					PcVec npcs;
-					CrMngr.GetCopyNpcs(npcs);
+					CrMngr.GetCopyNpcs(npcs,true);
 					for(PcVecIt it=npcs.begin(),end=npcs.end();it!=end;++it)
 					{
 						Npc* npc=*it;
@@ -2015,7 +2031,7 @@ void FOServer::Process_Command(Client* cl)
 				else if(param_type==95)
 				{
 					PcVec npcs;
-					CrMngr.GetCopyNpcs(npcs);
+					CrMngr.GetCopyNpcs(npcs,true);
 					for(PcVecIt it=npcs.begin(),end=npcs.end();it!=end;++it)
 					{
 						Npc* npc=*it;
@@ -2028,7 +2044,7 @@ void FOServer::Process_Command(Client* cl)
 				}
 				else if(param_type==91)
 				{
-					Critter* cr=CrMngr.GetCritter(param_val);
+					Critter* cr=CrMngr.GetCritter(param_val,true);
 					if(cr)
 					{
 						WriteLog("Cond %u\n",cr->Data.Cond);
@@ -2764,7 +2780,7 @@ void FOServer::Process_Command(Client* cl)
 				*var=value;
 				if(var->IsQuest())
 				{
-					Critter* cr=CrMngr.GetCritter(master_id);
+					Critter* cr=CrMngr.GetCritter(master_id,false);
 					if(cr) cr->Send_Quest(var->GetQuestStr());
 				}
 				cl->Send_Text(cl,"Var changed.",SAY_NETMSG);
@@ -2879,7 +2895,7 @@ void FOServer::Process_Command(Client* cl)
 					return;
 				}
 
-				Client* cl_banned=CrMngr.GetPlayer(name);
+				Client* cl_banned=CrMngr.GetPlayer(name,true);
 				ClientBanned ban;
 				ZeroMemory(&ban,sizeof(ban));
 				StringCopy(ban.ClientName,name);
@@ -3251,9 +3267,9 @@ bool FOServer::Init()
 	// Check the sizes of struct and classes
 	STATIC_ASSERT(offsetof(Item,PLexems)==160);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
-	STATIC_ASSERT(offsetof(Critter,RefCounter)==9792);
-	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9860);
-	STATIC_ASSERT(offsetof(Npc,Reserved)==9824);
+	STATIC_ASSERT(offsetof(Critter,RefCounter)==9800);
+	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9868);
+	STATIC_ASSERT(offsetof(Npc,Reserved)==9832);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
 	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);
@@ -3262,7 +3278,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);
 	STATIC_ASSERT(offsetof(ScenToSend,PicMapHash)==24);
 	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==320);
-	STATIC_ASSERT(offsetof(Map,RefCounter)==770);
+	STATIC_ASSERT(offsetof(Map,RefCounter)==794);
 	STATIC_ASSERT(offsetof(ProtoLocation,GeckEnabled)==92);
 	STATIC_ASSERT(offsetof(Location,RefCounter)==286);
 
@@ -3285,7 +3301,9 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);
 	STATIC_ASSERT(sizeof(GameVar)==28);
-	STATIC_ASSERT(sizeof(ProtoItem)==168);
+	STATIC_ASSERT(sizeof(ProtoItem)==180);
+	STATIC_ASSERT(sizeof(Mutex)==24);
+	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
 
 	// Critters parameters
 	Critter::SendDataCallback=&Net_Output;
@@ -3325,6 +3343,7 @@ bool FOServer::Init()
 	LogicThreadCount=cfg.GetInt("LogicThreadCount",0);
 	if(!LogicThreadCount) LogicThreadCount=SystemInfo.dwNumberOfProcessors;
 	if(LogicThreadCount==1) Script::SetConcurrentExecution(false);
+	LogicMT=(LogicThreadCount!=1);
 
 	if(!Singleplayer)
 	{
@@ -4136,7 +4155,7 @@ bool FOServer::LoadWorld(const char* name)
 	fread(&version,sizeof(version),1,f);
 	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 &&
 		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8 &&
-		version!=WORLD_SAVE_V9 && version!=WORLD_SAVE_V10)
+		version!=WORLD_SAVE_V9 && version!=WORLD_SAVE_V10 && version!=WORLD_SAVE_V11)
 	{
 		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
@@ -4153,7 +4172,7 @@ bool FOServer::LoadWorld(const char* name)
 	if(!LoadGameInfoFile(f)) return false;
 	if(!MapMngr.LoadAllLocationsAndMapsFile(f)) return false;
 	if(!CrMngr.LoadCrittersFile(f)) return false;
-	if(!ItemMngr.LoadAllItemsFile(f)) return false;
+	if(!ItemMngr.LoadAllItemsFile(f,version)) return false;
 	if(!VarMngr.LoadVarsDataFile(f,version)) return false;
 	if(!LoadHoloInfoFile(f)) return false;
 	if(!LoadAnyDataFile(f)) return false;
@@ -4334,124 +4353,6 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 		SetEvent(DumpEndEvent);
 	}
 	return 0;
-}
-
-/************************************************************************/
-/* RADIO                                                                */
-/************************************************************************/
-
-void FOServer::RadioClearChannels()
-{
-	SCOPE_LOCK(RadioLocker);
-
-	WriteLog("Clear radio channels.\n");
-	for(int i=0;i<0x10000;i++) SAFEDEL(RadioChannels[i]);
-	WriteLog("Clear radio channels complete.\n");
-}
-
-void FOServer::RadioAddPlayer(Client* cl, WORD channel)
-{
-	SCOPE_LOCK(RadioLocker);
-
-	DwordVec* cha=RadioChannels[channel];
-	if(!cha)
-	{
-		cha=new(nothrow) DwordVec;
-		if(!cha) return;
-		RadioChannels[channel]=cha;
-	}
-	else
-	{
-		if(std::find(cha->begin(),cha->end(),cl->GetId())!=cha->end()) return;
-	}
-
-	cha->push_back(cl->GetId());
-}
-
-void FOServer::RadioErasePlayer(Client* cl, WORD channel)
-{
-	SCOPE_LOCK(RadioLocker);
-
-	DwordVec* cha=RadioChannels[channel];
-	if(!cha) return;
-
-	DwordVecIt it=std::find(cha->begin(),cha->end(),cl->GetId());
-	if(it!=cha->end()) cha->erase(it);
-
-	if(cha->empty())
-	{
-		delete cha;
-		RadioChannels[channel]=NULL;
-	}
-}
-
-void FOServer::RadioSendText(Critter* cr, WORD channel, const char* text, bool unsafe_text)
-{
-	SCOPE_LOCK(RadioLocker);
-
-	DwordVec* cha=RadioChannels[channel];
-	if(!cha) return;
-
-	if(!text || !text[0]) return;
-	WORD str_len=strlen(text);
-
-#pragma MESSAGE("Add option for allowing sending radio message owner.")
-	DWORD from_id=0; // (cr?cr->GetId():0);
-	WORD intellect=(cr?cr->IntellectCacheValue:0);
-
-	for(DwordVecIt it=cha->begin();it!=cha->end();)
-	{
-		Client* send_cl=(Client*)CrMngr.GetCritter(*it);
-		if(!send_cl)
-		{
-			it=cha->erase(it);
-			continue;
-		}
-
-		if(send_cl->GetRadio() && send_cl->GetRadioChannel()==channel)
-		{
-			send_cl->Send_TextEx(from_id,text,str_len,SAY_RADIO,intellect,unsafe_text);
-			++it;
-		}
-		else
-		{
-			it=cha->erase(it);
-		}
-	}
-
-	if(cha->empty())
-	{
-		delete cha;
-		RadioChannels[channel]=NULL;
-	}
-}
-
-void FOServer::RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_str)
-{
-	SCOPE_LOCK(RadioLocker);
-
-	DwordVec* cha=RadioChannels[channel];
-	if(!cha) return;
-
-	for(DwordVecIt it=cha->begin();it!=cha->end();)
-	{
-		Client* send_cl=(Client*)CrMngr.GetCritter(*it);
-		if(!send_cl)
-		{
-			it=cha->erase(it);
-			continue;
-		}
-
-		if(send_cl->GetRadio() && send_cl->GetRadioChannel()==channel)
-		{
-			send_cl->Send_TextMsg(cr,num_str,SAY_RADIO,text_msg);
-			++it;
-		}
-		else
-		{
-			it=cha->erase(it);
-		}
-	}
 }
 
 /************************************************************************/

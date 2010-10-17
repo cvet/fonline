@@ -144,7 +144,7 @@ void FOServer::ProcessAI(Npc* npc)
 		// Check
 		if(plane->Move.PathNum && plane->Move.TargId)
 		{
-			Critter* targ=npc->GetCritSelf(plane->Move.TargId);
+			Critter* targ=npc->GetCritSelf(plane->Move.TargId,true);
 			if(!targ || ((plane->Attack.LastHexX || plane->Attack.LastHexY) && !CheckDist(targ->GetHexX(),targ->GetHexY(),plane->Attack.LastHexX,plane->Attack.LastHexY,0)))
 			{
 				plane->Move.PathNum=0;//PathSafeFinish(*step);
@@ -164,7 +164,7 @@ void FOServer::ProcessAI(Npc* npc)
 
 			if(plane->Move.TargId)
 			{
-				Critter* targ=npc->GetCritSelf(plane->Move.TargId);
+				Critter* targ=npc->GetCritSelf(plane->Move.TargId,true);
 				if(!targ)
 				{
 					plane->IsMove=false;
@@ -337,13 +337,9 @@ void FOServer::ProcessAI(Npc* npc)
 			if(map->Data.IsTurnBasedAviable && !map->IsTurnBasedOn) map->BeginTurnBased(npc);
 
 		/************************************************************************/
-		/* Attack is not aviable                                                */
-		/************************************************************************/
-
-		/************************************************************************/
 		/* Target is visible                                                    */
 		/************************************************************************/
-			Critter* targ=npc->GetCritSelf(plane->Attack.TargId);
+			Critter* targ=npc->GetCritSelf(plane->Attack.TargId,true);
 			if(targ)
 			{
 			/************************************************************************/
@@ -685,7 +681,8 @@ void FOServer::ProcessAI(Npc* npc)
 
 				if((!plane->Attack.LastHexX && !plane->Attack.LastHexY) || !CritType::IsCanWalk(npc->GetCrType()))
 				{
-					npc->NextPlane(REASON_TARGET_DISAPPEARED,CrMngr.GetCritter(plane->Attack.TargId),NULL);
+					Critter* targ_=CrMngr.GetCritter(plane->Attack.TargId,true);
+					npc->NextPlane(REASON_TARGET_DISAPPEARED,targ_,NULL);
 					break;
 				}
 
@@ -848,7 +845,7 @@ bool FOServer::AI_Attack(Npc* npc, Map* map, BYTE use, BYTE aim, DWORD targ_id)
 	if(npc->IsPerk(TRAIT_FAST_SHOT) && !npc->ItemSlotMain->WeapIsHtHAttack(use)) ap_cost--;
 	CHECK_NPC_AP_R0(npc,map,ap_cost);
 
-	Critter* targ=npc->GetCritSelf(targ_id);
+	Critter* targ=npc->GetCritSelf(targ_id,false);
 	if(!targ || !Act_Attack(npc,use|(aim<<4),targ_id)) return false;
 	return true;
 }
@@ -924,6 +921,16 @@ bool FOServer::TransferAllNpc()
 		}
 
 		Map* map=MapMngr.GetMap(cr->GetMap());
+
+		if(cr->GetMap() && !map)
+		{
+			WriteLog("Map not found, critter<%s>, map id<%u>, hx<%u>, hy<%u>. Transfered to global map.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
+			errors++;
+			cr->SetMaps(0,0);
+			cr->Data.HexX=0;
+			cr->Data.HexY=0;
+		}
+
 		if(!MapMngr.AddCrToMap(cr,map,cr->GetHexX(),cr->GetHexY(),2))
 		{
 			WriteLog("Error parsing npc to map, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
@@ -952,7 +959,7 @@ bool FOServer::TransferAllNpc()
 		cr->ProcessVisibleItems();
 	}
 
-	WriteLog("Transfer npc success.\n");
+	WriteLog("Transfer npc complete. Errors<%d>.\n",errors);
 	return true;
 }
 
@@ -1460,7 +1467,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 	if(is_npc)
 	{
 		// Find npc
-		npc=CrMngr.GetNpc(id_npc_talk);
+		npc=CrMngr.GetNpc(id_npc_talk,true);
 		if(!npc)
 		{
 			cl->Send_TextMsg(cl,STR_DIALOG_NPC_NOT_FOUND,SAY_NETMSG,TEXTMSG_GAME);
@@ -1743,7 +1750,7 @@ void FOServer::Process_Barter(Client* cl)
 		return;
 	}
 
-	Npc* npc=CrMngr.GetNpc(id_npc_talk);
+	Npc* npc=CrMngr.GetNpc(id_npc_talk,true);
 	if(!npc)
 	{
 		WriteLog(__FUNCTION__" - Npc not found, client<%s>.\n",cl->GetInfo());

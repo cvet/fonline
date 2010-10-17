@@ -105,7 +105,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(ScenToSend)==32);
-	STATIC_ASSERT(sizeof(ProtoItem)==168);
+	STATIC_ASSERT(sizeof(ProtoItem)==180);
 	GET_UID0(UID0);
 
 	Wnd=hwnd;
@@ -268,7 +268,7 @@ bool FOClient::Init(HWND hwnd)
 	// Item prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("___item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("____item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
@@ -1175,7 +1175,6 @@ label_TryChangeLang:
 				case SCREEN__CHA_NAME: ChaNameKeyDown(dikdw); break;
 				case SCREEN__SAY: SayKeyDown(dikdw); break;
 				case SCREEN__INPUT_BOX: IboxKeyDown(dikdw); break;
-				case SCREEN__INVENTORY: InvKeyDown(dikdw); ConsoleKeyDown(dikdw); break;
 				case SCREEN__DIALOG: DlgKeyDown(true,dikdw); ConsoleKeyDown(dikdw); break;
 				case SCREEN__BARTER: DlgKeyDown(false,dikdw); ConsoleKeyDown(dikdw); break;
 				default: ConsoleKeyDown(dikdw); break;
@@ -3721,16 +3720,6 @@ void FOClient::Net_SendRuleGlobal(BYTE command, DWORD param1, DWORD param2)
 	WaitPing();
 }
 
-void FOClient::Net_SendRadio()
-{
-	if(!Chosen) return;
-	Item* radio=Chosen->GetRadio();
-	if(!radio) return;
-
-	Bout << NETMSG_RADIO;
-	Bout << radio->RadioGetChannel();
-}
-
 void FOClient::Net_SendLevelUp(WORD perk_up)
 {
 	if(!Chosen) return;
@@ -4195,7 +4184,9 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 		break;
 	}
 
-	CritterCl* cr=GetCritter(crid);
+	CritterCl* cr=NULL;
+	if(how_say!=SAY_RADIO) cr=GetCritter(crid);
+
 	string crit_name=(cr?cr->GetName():"?");
 
 	// CritterCl on head text
@@ -4204,10 +4195,24 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	// Message box text
 	if(fstr_mb)
 	{
-		if(how_say==SAY_NETMSG || how_say==SAY_RADIO)
+		if(how_say==SAY_NETMSG)
+		{
 			AddMess(mess_type,FmtGameText(fstr_mb,fstr));
+		}
+		else if(how_say==SAY_RADIO)
+		{
+			WORD channel=0;
+			if(Chosen)
+			{
+				Item* radio=Chosen->GetItem(crid);
+				if(radio) channel=radio->Data.Radio.Channel;
+			}
+			AddMess(mess_type,FmtGameText(fstr_mb,channel,fstr));
+		}
 		else
+		{
 			AddMess(mess_type,FmtGameText(fstr_mb,crit_name.c_str(),fstr));
+		}
 
 		if(IsScreenPlayersBarter() && Chosen && (crid==BarterOpponentId || crid==Chosen->GetId()))
 		{
@@ -4288,7 +4293,7 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 }
 
-void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color)
+void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color, WORD intellect)
 {
 	DWORD len=strlen(str);
 	DWORD text_delay=GameOpt.TextDelay+len*100;
@@ -4308,6 +4313,12 @@ void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color)
 		}
 	}
 
+	char fstr[MAX_FOTEXT];
+	StringCopy(fstr,sstr->c_str());
+	sstr->Release();
+
+	FmtTextIntellect(fstr,intellect);
+
 	MapText t;
 	t.HexX=hx;
 	t.HexY=hy;
@@ -4315,14 +4326,13 @@ void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color)
 	t.Fade=false;
 	t.StartTick=Timer::GameTick();
 	t.Tick=text_delay;
-	t.Text=sstr->c_std_str();
+	t.Text=fstr;
 	t.Rect=HexMngr.GetRectForText(hx,hy);
 	t.EndRect=t.Rect;
 	MapTextVecIt it=std::find(GameMapTexts.begin(),GameMapTexts.end(),t);
 	if(it!=GameMapTexts.end()) GameMapTexts.erase(it);
 	GameMapTexts.push_back(t);
 
-	sstr->Release();
 	SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 }
 
@@ -4333,6 +4343,8 @@ void FOClient::Net_OnMapText()
 	DWORD color;
 	WORD len;
 	char str[MAX_FOTEXT+1];
+	WORD intellect;
+	bool unsafe_text;
 
 	Bin >> msg_len;
 	Bin >> hx;
@@ -4344,6 +4356,9 @@ void FOClient::Net_OnMapText()
 	if(len>MAX_FOTEXT) Bin.Pop(len-MAX_FOTEXT);
 	str[min(len,MAX_FOTEXT)]=0;
 
+	Bin >> intellect;
+	Bin >> unsafe_text;
+
 	CHECK_IN_BUFF_ERROR;
 
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY())
@@ -4352,7 +4367,9 @@ void FOClient::Net_OnMapText()
 		return;
 	}
 
-	OnMapText(str,hx,hy,color);
+	if(unsafe_text) Keyb::EraseInvalidChars(str,KIF_NO_SPEC_SYMBOLS);
+
+	OnMapText(str,hx,hy,color,intellect);
 }
 
 void FOClient::Net_OnMapTextMsg()
@@ -4378,7 +4395,7 @@ void FOClient::Net_OnMapTextMsg()
 	StringCopy(str,CurLang.Msg[msg_num].GetStr(num_str));
 	FormatTags(str,MAX_FOTEXT,Chosen,NULL,"");
 
-	OnMapText(str,hx,hy,color);
+	OnMapText(str,hx,hy,color,0);
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -4417,7 +4434,7 @@ void FOClient::Net_OnMapTextMsgLex()
 	StringCopy(str,CurLang.Msg[msg_num].GetStr(num_str));
 	FormatTags(str,MAX_FOTEXT,Chosen,NULL,lexems);
 
-	OnMapText(str,hx,hy,color);
+	OnMapText(str,hx,hy,color,0);
 }
 
 void FOClient::Net_OnCritterDir()
@@ -6724,7 +6741,7 @@ void FOClient::Net_OnProtoItemData()
 		return;
 	}
 
-	Crypt.SetCache("___item_protos",proto_data,len);
+	Crypt.SetCache("____item_protos",proto_data,len);
 	delete[] proto_data;
 }
 

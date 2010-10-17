@@ -62,7 +62,6 @@ public:
 	static void Process_Dialog(Client* cl, bool is_say);
 	static void Process_Barter(Client* cl);
 	static void Process_GiveMap(Client* cl);
-	static void Process_Radio(Client* cl);
 	static void Process_SetUserHoloStr(Client* cl);
 	static void Process_GetUserHoloStr(Client* cl);
 	static void Process_LevelUp(Client* cl);
@@ -237,16 +236,6 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 	static bool Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck);
 	static DWORD Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer);
 	static void Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WORD hy, bool ignore_distance);
-
-	// Radio
-	static DwordVec* RadioChannels[0x10000];
-	static Mutex RadioLocker;
-
-	static void RadioClearChannels();
-	static void RadioAddPlayer(Client* cl, WORD channel);
-	static void RadioErasePlayer(Client* cl, WORD channel);
-	static void RadioSendText(Critter* cr, WORD channel, const char* text, bool unsafe_text);
-	static void RadioSendMsg(Critter* cr, WORD channel, WORD text_msg, DWORD num_str);
 
 	// Main
 	static int UpdateIndex,UpdateLastIndex;

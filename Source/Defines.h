@@ -13,6 +13,17 @@
 using namespace std;
 
 // Typedefs
+/*
+typedef unsigned char    u08;
+typedef unsigned short   u16;
+typedef unsigned int     u32;
+typedef unsigned __int64 u64;
+typedef char             s08;
+typedef short            s16;
+typedef int              s32;
+typedef __int64          s64;
+*/
+
 typedef	DWORD MSGTYPE;
 union FILETIMELI
 {
@@ -143,7 +154,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define WORLD_SAVE_V8           (0x01AB0F08)
 #define WORLD_SAVE_V9           (0x01AB0F09)
 #define WORLD_SAVE_V10          (0x01AB0F10)
-#define WORLD_SAVE_LAST         WORLD_SAVE_V10
+#define WORLD_SAVE_V11          (0x01AB0F11)
+#define WORLD_SAVE_LAST         WORLD_SAVE_V11
 
 // Generic
 #define WORLD_START_TIME        "07:00 30:10:2246 x00"
@@ -162,6 +174,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define AGE_MIN                 (14)
 #define AGGRESSOR_TICK          (60000)
 #define MAX_ENEMY_STACK         (30)
+#define MAX_STORED_IP           (20)
 
 // Items
 #define MAX_ADDED_NOGROUP_ITEMS (30)

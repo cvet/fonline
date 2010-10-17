@@ -83,7 +83,7 @@ struct TraceData
 #define FPATH_TRACE_TARG_NULL_PTR       (13)
 #define FPATH_ALLOC_FAIL                (14)
 
-struct PathFindData 
+struct PathFindData
 {
 	DWORD MapId;
 	WORD MoveParams;
@@ -155,7 +155,8 @@ private:
 	CByteMask* gmMask;
 
 public:
-	void GetRadiusLocations(int wx, int wy, int radius, DwordVec& loc_ids);
+	bool IsIntersectZone(int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones);
+	void GetZoneLocations(int zx, int zy, int zone_radius, DwordVec& loc_ids);
 
 	bool RefreshGmMask(const char* mask_path);
 	int GetGmRelief(DWORD x, DWORD y){return gmMask->GetByte(x,y)&0xF;}
@@ -203,7 +204,7 @@ private:
 public:
 	bool IsInitProtoMap(WORD pid_map);
 	Map* CreateMap(WORD pid_map, Location* loc_map, DWORD map_id);
-	Map* GetMap(DWORD map_id, bool lock = true);
+	Map* GetMap(DWORD map_id, bool sync_lock = true);
 	Map* GetMapByPid(WORD map_pid, DWORD skip_count);
 	void GetMaps(MapVec& maps, bool lock);
 	DWORD GetMapsCount();

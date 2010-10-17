@@ -334,7 +334,6 @@ bool BufferManager::NeedProcess()
 	case NETMSG_SEND_GIVE_GLOBAL_INFO:		return (NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_RULE_GLOBAL:			return (NETMSG_SEND_RULE_GLOBAL_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_FOLLOW:						return (NETMSG_FOLLOW_SIZE+bufReadPos<=bufEndPos);
-	case NETMSG_RADIO:						return (NETMSG_RADIO_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_QUEST:						return (NETMSG_QUEST_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_GET_USER_HOLO_STR:		return (NETMSG_SEND_GET_USER_HOLO_STR_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_GET_SCORES:			return (NETMSG_SEND_GET_SCORES_SIZE+bufReadPos<=bufEndPos);
@@ -469,7 +468,6 @@ void BufferManager::SkipMsg(MSGTYPE msg)
 	case NETMSG_SEND_GIVE_GLOBAL_INFO:		bufReadPos+=NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE; return;
 	case NETMSG_SEND_RULE_GLOBAL:			bufReadPos+=NETMSG_SEND_RULE_GLOBAL_SIZE; return;
 	case NETMSG_FOLLOW:						bufReadPos+=NETMSG_FOLLOW_SIZE; return;
-	case NETMSG_RADIO:						bufReadPos+=NETMSG_RADIO_SIZE; return;
 	case NETMSG_QUEST:						bufReadPos+=NETMSG_QUEST_SIZE; return;
 	case NETMSG_SEND_GET_USER_HOLO_STR:		bufReadPos+=NETMSG_SEND_GET_USER_HOLO_STR_SIZE; return;
 	case NETMSG_SEND_GET_SCORES:			bufReadPos+=NETMSG_SEND_GET_SCORES_SIZE; return;
@@ -607,7 +605,6 @@ void BufferManager::SeekValidMsg()
 		case NETMSG_SEND_GIVE_GLOBAL_INFO:
 		case NETMSG_SEND_RULE_GLOBAL:
 		case NETMSG_FOLLOW:
-		case NETMSG_RADIO:
 		case NETMSG_QUEST:
 		case NETMSG_SEND_GET_USER_HOLO_STR:
 		case NETMSG_SEND_GET_SCORES:

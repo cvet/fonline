@@ -67,13 +67,12 @@ void ItemManager::Clear()
 	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
 		SAFEREL((*it).second);
 	gameItems.clear();
+	radioItems.clear();
 	itemToDelete.clear();
 	lastItemId=0;
 #endif
 
-#ifdef ITEMS_STATISTICS
 	for(int i=0;i<MAX_ITEM_PROTOTYPES;i++) itemCount[i]=0;
-#endif
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR) || defined(FONLINE_MAPPER)
@@ -102,10 +101,10 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 		proto_item.Clear();
 	}
 
-#define SERIALIZE_PROTO(field,def) if(save) fprintf(f,"%s=%d\n",#field,proto_item.field); else proto_item.field=GetProtoValue(#field)
-#define SERIALIZE_PROTOB(field,def) if(save) fprintf(f,"%s=%d\n",#field,proto_item.field?1:0); else proto_item.field=GetProtoValue(#field)!=0
-#define SERIALIZE_PROTO_(field,field_,def) if(save) fprintf(f,"%s=%d\n",#field,proto_item.field_); else proto_item.field_=GetProtoValue(#field)
-#define SERIALIZE_PROTOB_(field,field_,def) if(save) fprintf(f,"%s=%d\n",#field,proto_item.field_?1:0); else proto_item.field_=GetProtoValue(#field)!=0
+#define SERIALIZE_PROTO(field,def) if(save && proto_item.field) fprintf(f,"%s=%d\n",#field,proto_item.field); else if(!save) proto_item.field=GetProtoValue(#field)
+#define SERIALIZE_PROTOB(field,def) if(save && proto_item.field) fprintf(f,"%s=%d\n",#field,proto_item.field?1:0); else if(!save) proto_item.field=GetProtoValue(#field)!=0
+#define SERIALIZE_PROTO_(field,field_,def) if(save && proto_item.field_) fprintf(f,"%s=%d\n",#field,proto_item.field_); else if(!save) proto_item.field_=GetProtoValue(#field)
+#define SERIALIZE_PROTOB_(field,field_,def) if(save && proto_item.field_) fprintf(f,"%s=%d\n",#field,proto_item.field_?1:0); else if(!save) proto_item.field_=GetProtoValue(#field)!=0
 	SERIALIZE_PROTO(Pid,0);
 	if(!proto_item.Pid || proto_item.Pid>=MAX_ITEM_PROTOTYPES) return false;
 
@@ -115,8 +114,8 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	if(save)
 	{
 #ifdef FONLINE_OBJECT_EDITOR
-		fprintf(f,"PicMapName=%s\n",proto_item.PicMapStr.c_str());
-		fprintf(f,"PicInvName=%s\n",proto_item.PicInvStr.c_str());
+		if(proto_item.PicMapStr.length()) fprintf(f,"PicMapName=%s\n",proto_item.PicMapStr.c_str());
+		if(proto_item.PicInvStr.length()) fprintf(f,"PicInvName=%s\n",proto_item.PicInvStr.c_str());
 #endif
 	}
 	else
@@ -138,8 +137,8 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	if(save)
 	{
 #ifdef FONLINE_OBJECT_EDITOR
-		fprintf(f,"ScriptModule=%s\n",proto_item.ScriptModule.c_str());
-		fprintf(f,"ScriptFunc=%s\n",proto_item.ScriptFunc.c_str());
+		if(proto_item.ScriptModule.length()) fprintf(f,"ScriptModule=%s\n",proto_item.ScriptModule.c_str());
+		if(proto_item.ScriptFunc.length()) fprintf(f,"ScriptFunc=%s\n",proto_item.ScriptFunc.c_str());
 #endif
 	}
 	else
@@ -205,11 +204,14 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 		}
 	}
 
+	if(!save && proto_item.LightColor==0xFF000000 && !FLAG(proto_item.Flags,ITEM_LIGHT|ITEM_COLORIZE|ITEM_COLORIZE)) proto_item.LightColor=0;
+
 	SERIALIZE_PROTO(Weight,0);
 	SERIALIZE_PROTO(Volume,0);
 	SERIALIZE_PROTO(SoundId,0);
 	SERIALIZE_PROTO(Cost,0);
 	SERIALIZE_PROTO(Material,0);
+
 	SERIALIZE_PROTO(AnimWaitBase,0);
 	SERIALIZE_PROTO(AnimWaitRndMin,0);
 	SERIALIZE_PROTO(AnimWaitRndMax,0);
@@ -220,6 +222,17 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	SERIALIZE_PROTO_(AnimHide_0,AnimHide[0],0);
 	SERIALIZE_PROTO_(AnimHide_1,AnimHide[1],0);
 	SERIALIZE_PROTO(DrawPosOffsY,0);
+
+	SERIALIZE_PROTO(RadioChannel,0);
+	SERIALIZE_PROTO(RadioFlags,0);
+	SERIALIZE_PROTO(RadioBroadcastSend,0);
+	SERIALIZE_PROTO(RadioBroadcastRecv,0);
+
+	SERIALIZE_PROTO(IndicatorStart,0);
+	SERIALIZE_PROTO(IndicatorMax,0);
+
+	SERIALIZE_PROTO(HolodiskNum,0);
+
 	switch(proto_item.Type)
 	{
 	case ITEM_TYPE_ARMOR:
@@ -374,9 +387,9 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 			if(save)
 			{
 #ifdef FONLINE_OBJECT_EDITOR
-				fprintf(f,"Weapon.PicName_0=%s\n",proto_item.WeaponPicStr[0].c_str());
-				fprintf(f,"Weapon.PicName_1=%s\n",proto_item.WeaponPicStr[1].c_str());
-				fprintf(f,"Weapon.PicName_2=%s\n",proto_item.WeaponPicStr[2].c_str());
+				if(proto_item.WeaponPicStr[0].length()) fprintf(f,"Weapon.PicName_0=%s\n",proto_item.WeaponPicStr[0].c_str());
+				if(proto_item.WeaponPicStr[1].length()) fprintf(f,"Weapon.PicName_1=%s\n",proto_item.WeaponPicStr[1].c_str());
+				if(proto_item.WeaponPicStr[2].length()) fprintf(f,"Weapon.PicName_2=%s\n",proto_item.WeaponPicStr[2].c_str());
 #endif
 			}
 			else
@@ -854,7 +867,7 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 	}
 }
 
-bool ItemManager::LoadAllItemsFile(FILE* f)
+bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 {
 	WriteLog("Load items...");
 
@@ -908,6 +921,16 @@ bool ItemManager::LoadAllItemsFile(FILE* f)
 		if(lexems[0]) item->SetLexems(lexems);
 
 		AddItemStatistics(pid,item->GetCount());
+
+		// Radio collection
+		if(item->IsRadio()) RadioRegister(item,true);
+
+		// Patches
+		if(version<WORLD_SAVE_V11)
+		{
+			if(item->GetProtoId()==PID_RADIO && FLAG(item->Proto->Flags,ITEM_RADIO)) SETFLAG(item->Data.Flags,ITEM_RADIO);
+			else if(item->GetProtoId()==PID_HOLODISK && FLAG(item->Proto->Flags,ITEM_HOLODISK)) SETFLAG(item->Data.Flags,ITEM_HOLODISK);
+		}
 	}
 	if(errors) return false;
 
@@ -974,7 +997,11 @@ void ItemManager::SetCritterItems(Critter* cr)
 		Item* item=*it;
 		SYNC_LOCK(item);
 
-		if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==crid) cr->SetItem(item);
+		if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==crid)
+		{
+			cr->SetItem(item);
+			if(item->IsRadio()) RadioRegister(item,true);
+		}
 	}
 }
 
@@ -1020,16 +1047,19 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 	}
 
 	if(item->IsGrouped()) item->Count_Set(count);
-#ifdef ITEMS_STATISTICS
 	else AddItemStatistics(pid,1);
-#endif
 
 	SYNC_LOCK(item);
 
+	// Main collection
 	itemLocker.Lock();
 	gameItems.insert(ItemPtrMapVal(item->Id,item));
 	itemLocker.Unlock();
 
+	// Radio collection
+	if(item->IsRadio()) RadioRegister(item,true);
+
+	// Prototype script
 	if(!item_id && count && protoScript[pid]) // Only for new items
 	{
 		item->ParseScript(protoScript[pid],true);
@@ -1065,10 +1095,14 @@ Item* ItemManager::SplitItem(Item* item, DWORD count)
 	new_item->Data.Count=0;
 	new_item->Count_Add(count);
 	if(item->PLexems) new_item->SetLexems(item->PLexems);
+
+	// Radio collection
+	if(new_item->IsRadio()) RadioRegister(new_item,true);
+
 	return new_item;
 }
 
-Item* ItemManager::GetItem(DWORD item_id)
+Item* ItemManager::GetItem(DWORD item_id, bool sync_lock)
 {
 	Item* item=NULL;
 
@@ -1077,9 +1111,7 @@ Item* ItemManager::GetItem(DWORD item_id)
 	if(it!=gameItems.end()) item=(*it).second;
 	itemLocker.Unlock();
 
-	if(!item) return NULL;
-
-	SYNC_LOCK(item);
+	if(item && sync_lock) SYNC_LOCK(item);
 	return item;
 }
 
@@ -1100,6 +1132,7 @@ void ItemManager::ItemGarbager()
 
 		for(DwordVecIt it=to_del.begin(),end=to_del.end();it!=end;++it)
 		{
+			// Erase from main collection
 			itemLocker.Lock();
 			ItemPtrMapIt it_=gameItems.find(*it);
 			if(it_==gameItems.end())
@@ -1111,19 +1144,24 @@ void ItemManager::ItemGarbager()
 			gameItems.erase(it_);
 			itemLocker.Unlock();
 
+			// Synchronize
 			SYNC_LOCK(item);
 
+			// Call finish event
 			if(item->IsValidAccessory()) EraseItemHolder(item);
 			if(!item->IsNotValid && item->FuncId[ITEM_EVENT_FINISH]>0) item->EventFinish(true);
 
 			item->IsNotValid=true;
 			if(item->IsValidAccessory()) EraseItemHolder(item);
 
-#ifdef ITEMS_STATISTICS
+			// Erase from statistics
 			if(item->IsGrouped()) item->Count_Set(0);
 			else SubItemStatistics(item->GetProtoId(),1);
-#endif
 
+			// Erase from radio collection
+			if(item->IsRadio()) RadioRegister(item,false);
+
+			// Clear, release
 			item->FullClear();
 			Job::DeferredRelease(item);
 		}
@@ -1136,13 +1174,13 @@ void ItemManager::NotifyChangeItem(Item* item)
 	{
 	case ITEM_ACCESSORY_CRITTER:
 		{
-			Critter* cr=CrMngr.GetCritter(item->ACC_CRITTER.Id);
+			Critter* cr=CrMngr.GetCritter(item->ACC_CRITTER.Id,false);
 			if(cr) cr->SendAA_ItemData(item);
 		}
 		break;
 	case ITEM_ACCESSORY_HEX:
 		{
-			Map* map=MapMngr.GetMap(item->ACC_HEX.MapId);
+			Map* map=MapMngr.GetMap(item->ACC_HEX.MapId,false);
 			if(map) map->ChangeDataItem(item);
 		}
 		break;
@@ -1157,19 +1195,20 @@ void ItemManager::EraseItemHolder(Item* item)
 	{
 	case ITEM_ACCESSORY_CRITTER:
 		{
-			Critter* cr=CrMngr.GetCritter(item->ACC_CRITTER.Id);
+			Critter* cr=CrMngr.GetCritter(item->ACC_CRITTER.Id,true);
 			if(cr) cr->EraseItem(item,true);
+			else if(item->IsRadio()) ItemMngr.RadioRegister(item,true);
 		}
 		break;
 	case ITEM_ACCESSORY_HEX:
 		{
-			Map* map=MapMngr.GetMap(item->ACC_HEX.MapId);
-			if(map) map->EraseItem(item->GetId(),true);
+			Map* map=MapMngr.GetMap(item->ACC_HEX.MapId,true);
+			if(map) map->EraseItem(item->GetId());
 		}
 		break;
 	case ITEM_ACCESSORY_CONTAINER:
 		{
-			Item* cont=ItemMngr.GetItem(item->ACC_CONTAINER.ContainerId);
+			Item* cont=ItemMngr.GetItem(item->ACC_CONTAINER.ContainerId,true);
 			if(cont) cont->ContEraseItem(item);
 		}
 		break;
@@ -1206,7 +1245,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WOR
 	if(count>=item->GetCount() || !item->IsGrouped())
 	{
 		EraseItemHolder(item);
-		to_map->AddItem(item,to_hx,to_hy,true);
+		to_map->AddItem(item,to_hx,to_hy);
 	}
 	else
 	{
@@ -1214,7 +1253,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WOR
 		if(item_)
 		{
 			NotifyChangeItem(item);
-			to_map->AddItem(item_,to_hx,to_hy,true);
+			to_map->AddItem(item_,to_hx,to_hy);
 		}
 	}
 }
@@ -1553,30 +1592,194 @@ bool ItemManager::MoveItemsContToCritter(Item* from_cont, Critter* to_cr, DWORD 
 
 	return true;
 }
+
+void ItemManager::RadioRegister(Item* radio, bool add)
+{
+	SCOPE_LOCK(radioItemsLocker);
+
+	ItemPtrVecIt it=std::find(radioItems.begin(),radioItems.end(),radio);
+
+	if(add)
+	{
+		if(it==radioItems.end()) radioItems.push_back(radio);
+	}
+	else
+	{
+		if(it!=radioItems.end()) radioItems.erase(it);
+	}
+}
+
+void ItemManager::RadioSendText(Critter* cr, const char* text, WORD text_len, bool unsafe_text, WORD text_msg, DWORD num_str, WordVec& channels)
+{
+	ItemPtrVec radios;
+	ItemPtrVec items=cr->GetItemsNoLock();
+	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
+	{
+		Item* item=*it;
+		if(item->IsRadio() && item->RadioIsSendActive() &&
+			std::find(channels.begin(),channels.end(),item->Data.Radio.Channel)==channels.end())
+		{
+			channels.push_back(item->Data.Radio.Channel);
+			radios.push_back(item);
+
+			if(radios.size()>100) break;
+		}
+	}
+
+	for(size_t i=0,j=radios.size();i<j;i++)
+	{
+		RadioSendTextEx(channels[i],
+			radios[i]->Data.Radio.BroadcastSend,cr->GetMap(),cr->Data.WorldX,cr->Data.WorldY,
+			text,text_len,cr->IntellectCacheValue,unsafe_text,text_msg,num_str);
+	}
+}
+
+void ItemManager::RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_map_id, WORD from_wx, WORD from_wy,
+								  const char* text, WORD text_len, WORD intellect, bool unsafe_text,
+								  WORD text_msg, DWORD num_str)
+{
+	// Broadcast
+	if(broadcast_type!=RADIO_BROADCAST_FORCE_ALL && broadcast_type!=RADIO_BROADCAST_WORLD &&
+		broadcast_type!=RADIO_BROADCAST_MAP && broadcast_type!=RADIO_BROADCAST_LOCATION &&
+		!(broadcast_type>=101 && broadcast_type<=200)/*RADIO_BROADCAST_ZONE*/) return;
+	if((broadcast_type==RADIO_BROADCAST_MAP || broadcast_type==RADIO_BROADCAST_LOCATION) && !from_map_id) return;
+
+	int broadcast=0;
+	DWORD broadcast_map_id=0;
+	DWORD broadcast_loc_id=0;
+
+	// Get copy of all radios
+	radioItemsLocker.Lock();
+	ItemPtrVec radio_items=radioItems;
+	radioItemsLocker.Unlock();
+
+	// Multiple sending controlling
+	// Not thread safe, but this not so important in this case
+	static DWORD msg_count=0;
+	msg_count++;
+
+	// Send
+	for(ItemPtrVecIt it=radio_items.begin(),end=radio_items.end();it!=end;++it)
+	{
+		Item* radio=*it;
+
+		if(radio->Data.Radio.Channel==channel && radio->RadioIsRecvActive())
+		{
+			if(broadcast_type!=RADIO_BROADCAST_FORCE_ALL && radio->Data.Radio.BroadcastRecv!=RADIO_BROADCAST_FORCE_ALL)
+			{
+				if(broadcast_type==RADIO_BROADCAST_WORLD) broadcast=radio->Data.Radio.BroadcastRecv;
+				else if(radio->Data.Radio.BroadcastRecv==RADIO_BROADCAST_WORLD) broadcast=broadcast_type;
+				else broadcast=min(broadcast_type,radio->Data.Radio.BroadcastRecv);
+
+				if(broadcast==RADIO_BROADCAST_WORLD) broadcast=RADIO_BROADCAST_FORCE_ALL;
+				else if(broadcast==RADIO_BROADCAST_MAP || broadcast==RADIO_BROADCAST_LOCATION)
+				{
+					if(!broadcast_map_id)
+					{
+						Map* map=MapMngr.GetMap(from_map_id,false);
+						if(!map) continue;
+						broadcast_map_id=map->GetId();
+						broadcast_loc_id=map->GetLocation(false)->GetId();
+					}
+				}
+				else if(!(broadcast>=101 && broadcast<=200)/*RADIO_BROADCAST_ZONE*/) continue;
+			}
+			else
+			{
+				broadcast=RADIO_BROADCAST_FORCE_ALL;
+			}
+
+			if(radio->Accessory==ITEM_ACCESSORY_CRITTER)
+			{
+				Client* cl=CrMngr.GetPlayer(radio->ACC_CRITTER.Id,false);
+				if(cl && cl->RadioMessageSended!=msg_count)
+				{
+					if(broadcast!=RADIO_BROADCAST_FORCE_ALL)
+					{
+						if(broadcast==RADIO_BROADCAST_MAP)
+						{
+							if(broadcast_map_id!=cl->GetMap()) continue;
+						}
+						else if(broadcast==RADIO_BROADCAST_LOCATION)
+						{
+							Map* map=MapMngr.GetMap(cl->GetMap(),false);
+							if(!map || broadcast_loc_id!=map->GetLocation(false)->GetId()) continue;
+						}
+						else if(broadcast>=101 && broadcast<=200) // RADIO_BROADCAST_ZONE
+						{
+							if(!MapMngr.IsIntersectZone(from_wx,from_wy,0,cl->Data.WorldX,cl->Data.WorldY,0,broadcast-101)) continue;
+						}
+						else continue;
+					}
+
+					if(text) cl->Send_TextEx(radio->GetId(),text,text_len,SAY_RADIO,intellect,unsafe_text);
+					else cl->Send_TextMsg(radio->GetId(),num_str,SAY_RADIO,text_msg);
+
+					cl->RadioMessageSended=msg_count;
+				}
+			}
+			else if(radio->Accessory==ITEM_ACCESSORY_HEX)
+			{
+				if(broadcast==RADIO_BROADCAST_MAP && broadcast_map_id!=radio->ACC_HEX.MapId) continue;
+
+				Map* map=MapMngr.GetMap(radio->ACC_HEX.MapId,false);
+				if(map)
+				{
+					if(broadcast!=RADIO_BROADCAST_FORCE_ALL && broadcast!=RADIO_BROADCAST_MAP)
+					{
+						if(broadcast==RADIO_BROADCAST_LOCATION)
+						{
+							Location* loc=map->GetLocation(false);
+							if(broadcast_loc_id!=loc->GetId()) continue;
+						}
+						else if(broadcast>=101 && broadcast<=200) // RADIO_BROADCAST_ZONE
+						{
+							Location* loc=map->GetLocation(false);
+							if(!MapMngr.IsIntersectZone(from_wx,from_wy,0,loc->Data.WX,loc->Data.WY,loc->GetRadius(),broadcast-101)) continue;
+						}
+						else continue;
+					}
+
+					if(text) map->SetText(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text,text_len,intellect,unsafe_text);
+					else map->SetTextMsg(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text_msg,num_str);
+				}
+			}
+		}
+	}
+}
 #endif // FONLINE_SERVER
 
-#ifdef ITEMS_STATISTICS
 void ItemManager::AddItemStatistics(WORD pid, DWORD val)
 {
 	if(!IsInitProto(pid)) return;
+
+	SCOPE_SPINLOCK(itemCountLocker);
+
 	itemCount[pid]+=(__int64)val;
 }
 
 void ItemManager::SubItemStatistics(WORD pid, DWORD val)
 {
 	if(!IsInitProto(pid)) return;
+
+	SCOPE_SPINLOCK(itemCountLocker);
+
 	itemCount[pid]-=(__int64)val;
 }
 
 __int64 ItemManager::GetItemStatistics(WORD pid)
 {
-	return itemCount[pid];
+	SCOPE_SPINLOCK(itemCountLocker);
+
+	__int64 count=itemCount[pid];
+	return count;
 }
 
 string ItemManager::GetItemsStatistics()
 {
-	static string result;
-	result="Pid    Name                                     Count\n";
+	SCOPE_SPINLOCK(itemCountLocker);
+
+	string result="Pid    Name                                     Count\n";
 	if(IsInit())
 	{
 		char str[512];
@@ -1595,8 +1798,6 @@ string ItemManager::GetItemsStatistics()
 	}
 	return result;
 }
-
-#endif // ITEMS_STATISTICS
 
 //==============================================================================================================================
 //******************************************************************************************************************************

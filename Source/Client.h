@@ -124,7 +124,6 @@ public:
 	void Net_SendText(const char* send_str, BYTE how_say);
 	void Net_SendDir();
     void Net_SendMove(ByteVec steps);
-	void Net_SendRadio();
 	void Net_SendLevelUp(WORD perk_up);
 	void Net_SendCraftAsk(DwordVec numbers);
 	void Net_SendCraft(DWORD craft_num);
@@ -208,7 +207,7 @@ public:
 	void Net_OnViewMap();
 
 	void OnText(const char* str, DWORD crid, int how_say, WORD intellect);
-	void OnMapText(const char* str, WORD hx, WORD hy, DWORD color);
+	void OnMapText(const char* str, WORD hx, WORD hy, DWORD color, WORD intellect);
 
 	void WaitPing();
 
@@ -661,19 +660,12 @@ public:
 	typedef vector<SlotExt> SlotExtVec;
 	typedef vector<SlotExt>::iterator SlotExtVecIt;
 	SlotExtVec SlotsExt;
-	// Radio
-	DWORD RadMainPic,RadPBOn;
-#define SET_INV_RADX	RadX=InvX+(InvWMain[2]-InvWMain[0])/2-(RadWMain[2]-RadWMain[0])/2
-#define SET_INV_RADY	RadY=InvY+InvWMain[3]
-	int RadX,RadY;
-	INTRECT RadWMain,RadWMainText,RadWChannel,RadBOn;
 
 	void InvDraw();
 	void InvMouseMove();
 	void InvLMouseDown();
 	void InvLMouseUp();
 	void InvRMouseDown();
-	void InvKeyDown(BYTE dik);
 
 /************************************************************************/
 /* Use                                                                  */
@@ -1791,7 +1783,6 @@ public:
 #define IFACE_INV_SCRDW         (26)
 #define IFACE_INV_OK            (27)
 #define IFACE_INV_MAIN          (28)
-#define IFACE_INV_RAD_ON        (29)
 #define IFACE_USE_INV           (40)
 #define IFACE_USE_SCRUP         (41)
 #define IFACE_USE_SCRDW         (42)

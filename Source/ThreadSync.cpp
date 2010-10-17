@@ -12,6 +12,8 @@ curMngr(NULL)
 
 void SyncObject::Lock()
 {
+	if(!LogicMT) return;
+
 	SyncLocker.Lock();
 
 	SyncManager* curm=SyncManager::GetForCurThread();
@@ -99,6 +101,8 @@ void SyncObject::Lock()
 
 void SyncObject::Unlock()
 {
+	if(!LogicMT) return;
+
 	SCOPE_LOCK(SyncLocker);
 
 	if(curMngr)
@@ -134,6 +138,8 @@ SyncManager::~SyncManager()
 
 void SyncManager::PushPriority(int priority)
 {
+	if(!LogicMT) return;
+
 	SCOPE_LOCK(SyncLocker);
 
 	int prev_priority=threadPriority;
@@ -143,6 +149,8 @@ void SyncManager::PushPriority(int priority)
 
 void SyncManager::PopPriority()
 {
+	if(!LogicMT) return;
+
 	SCOPE_LOCK(SyncLocker);
 
 	threadPriority=priorityStack.back();
@@ -151,6 +159,8 @@ void SyncManager::PopPriority()
 
 void SyncManager::UnlockAll()
 {
+	if(!LogicMT) return;
+
 	SCOPE_LOCK(SyncLocker);
 
 	for(SyncObjectVecIt it=lockedObjects.begin(),end=lockedObjects.end();it!=end;++it)
@@ -163,6 +173,8 @@ void SyncManager::UnlockAll()
 
 void SyncManager::Suspend()
 {
+	if(!LogicMT) return;
+
 	SCOPE_LOCK(SyncLocker);
 
 	isWaiting=true;
@@ -170,6 +182,8 @@ void SyncManager::Suspend()
 
 void SyncManager::Resume()
 {
+	if(!LogicMT) return;
+
 	SyncLocker.Lock();
 
 	isWaiting=false;

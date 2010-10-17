@@ -149,21 +149,20 @@ public:
 	CrVec VisCrSelf;
 	DwordSet VisCr1,VisCr2,VisCr3;
 	DwordSet VisItem;
+	MutexSpinlock VisItemLocker;
 	DWORD ViewMapId;
 	WORD ViewMapPid,ViewMapLook,ViewMapHx,ViewMapHy;
 	BYTE ViewMapDir;
 	DWORD ViewMapLocId,ViewMapLocEnt;
 
-	void SyncLockCritters(bool only_players);
-	void SyncLockCrittersSelf();
+	void SyncLockCritters(bool self_critters, bool only_players);
 	void ProcessVisibleCritters();
 	void ProcessVisibleItems();
 	void ViewMap(Map* map, int look, WORD hx, WORD hy, int dir);
 	void ClearVisible();
 
-	Critter* GetCritSelf(DWORD crid);
-	void GetCrFromVisCr(CrVec& crits, int find_type);
-	void GetCrFromVisCrSelf(CrVec& crits, int find_type);
+	Critter* GetCritSelf(DWORD crid, bool sync_lock);
+	void GetCrFromVisCr(CrVec& critters, int find_type, bool vis_cr_self, bool sync_lock);
 
 	bool AddCrIntoVisVec(Critter* add_cr);
 	bool DelCrFromVisVec(Critter* del_cr);
@@ -177,7 +176,7 @@ public:
 
 	bool AddIdVisItem(DWORD item_id);
 	bool DelIdVisItem(DWORD item_id);
-	bool CountIdVisItem(DWORD item_id){return VisItem.count(item_id)>0;}
+	bool CountIdVisItem(DWORD item_id);
 
 	// Global map group
 public:
@@ -204,6 +203,7 @@ public:
 	void EraseItem(Item* item, bool send);
 	Item* GetItem(DWORD item_id, bool skip_hide);
 	Item* GetInvItem(DWORD item_id, int transfer_type);
+	ItemPtrVec& GetItemsNoLock(){return invItems;}
 	void GetInvItems(ItemPtrVec& items, int transfer_type, bool lock);
 	Item* GetItemByPid(WORD item_pid);
 	Item* GetItemByPidInvPriority(WORD item_pid);
@@ -287,9 +287,10 @@ public:
 	DWORD LastHealTick;
 	void Heal();
 
-	// Players intellect talking
-	DWORD NextIntellectCachingTick;
-	WORD IntellectCacheValue;
+	// Cached values to avoid synchronization
+	DWORD CacheValuesNextTick;
+	WORD IntellectCacheValue; // Players talking
+	DWORD LookCacheValue; // Critter::GetLook()
 
 	// Break time
 private:
@@ -338,7 +339,9 @@ public:
 	void Send_Text(Critter* from_cr, const char* s_str, BYTE how_say);
 	void Send_TextEx(DWORD from_id, const char* s_str, WORD str_len, BYTE how_say, WORD intellect, bool unsafe_text);
 	void Send_TextMsg(Critter* from_cr, DWORD str_num, BYTE how_say, WORD num_msg);
+	void Send_TextMsg(DWORD from_id, DWORD str_num, BYTE how_say, WORD num_msg);
 	void Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
+	void Send_TextMsgLex(DWORD from_id, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
 	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
@@ -543,6 +546,7 @@ public:
 	DWORD LastSendedMapTick;
 	char LastSay[MAX_NET_TEXT+1];
 	DWORD LastSayEqualCount;
+	DWORD RadioMessageSended;
 
 public:
 	DWORD GetIp(){return From.sin_addr.s_addr;}
@@ -602,7 +606,9 @@ public:
 	void Send_Text(Critter* from_cr, const char* s_str, BYTE how_say);
 	void Send_TextEx(DWORD from_id, const char* s_str, WORD str_len, BYTE how_say, WORD intellect, bool unsafe_text);
 	void Send_TextMsg(Critter* from_cr, DWORD str_num, BYTE how_say, WORD num_msg);
+	void Send_TextMsg(DWORD from_id, DWORD str_num, BYTE how_say, WORD num_msg);
 	void Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
+	void Send_TextMsgLex(DWORD from_id, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
 	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
@@ -619,9 +625,9 @@ public:
 	void Send_PlaySound(DWORD crid_synchronize, const char* sound_name);
 	void Send_PlaySoundType(DWORD crid_synchronize, BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
 	void Send_CritterLexems(Critter* cr);
-	void Send_MapText(WORD hx, WORD hy, DWORD color, const char* text);
+	void Send_MapText(WORD hx, WORD hy, DWORD color, const char* text, WORD text_len, WORD intellect, bool unsafe_text);
 	void Send_MapTextMsg(WORD hx, WORD hy, DWORD color, WORD num_msg, DWORD num_str);
-	void Send_MapTextMsgLex(WORD hx, WORD hy, DWORD color, WORD num_msg, DWORD num_str, const char* lexems);
+	void Send_MapTextMsgLex(WORD hx, WORD hy, DWORD color, WORD num_msg, DWORD num_str, const char* lexems, WORD lexems_len);
 	void Send_UserHoloStr(DWORD str_num, const char* text, WORD text_len);
 	void Send_PlayersBarter(BYTE barter, DWORD param, DWORD param_ext);
 	void Send_PlayersBarterSetHide(Item* item, DWORD count);
@@ -633,13 +639,6 @@ public:
 	void Send_ItemLexemsNull(Item* item); // Without checks!
 	void Send_CheckUIDS();
 	void Send_SomeItem(Item* item); // Without checks!
-
-	// Radio
-	Item* GetRadio();
-	WORD GetRadioChannel();
-
-	// Params
-	bool IsImplementor();
 
 	// Locations
 	bool CheckKnownLocById(DWORD loc_id);

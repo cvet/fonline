@@ -49,12 +49,12 @@ public:
 
 	void AddCritter(Critter* cr);
 	CrMap& GetCrittersNoLock(){return allCritters;}
-	void GetCopyNpcs(PcVec& npcs);
-	void GetCopyPlayers(ClVec& players);
-	Critter* GetCritter(DWORD crid);
-	Client* GetPlayer(DWORD crid);
-	Client* GetPlayer(const char* name);
-	Npc* GetNpc(DWORD crid);
+	void GetCopyNpcs(PcVec& npcs, bool sync_lock);
+	void GetCopyPlayers(ClVec& players, bool sync_lock);
+	Critter* GetCritter(DWORD crid, bool sync_lock);
+	Client* GetPlayer(DWORD crid, bool sync_lock);
+	Client* GetPlayer(const char* name, bool sync_lock);
+	Npc* GetNpc(DWORD crid, bool sync_lock);
 	void EraseCritter(Critter* cr);
 	void GetNpcIds(DwordSet& npc_ids);
 

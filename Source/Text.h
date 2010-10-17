@@ -195,7 +195,7 @@ public:
 
 	// Load MSG from file, old data is clear
 	int LoadMsgFile(const char* fname, int path_type);
-	int LoadMsgFile(char* data, DWORD data_len);
+	int LoadMsgFileBuf(char* data, DWORD data_len);
 	// Save strData in file, if file is not empty his clear
 	int SaveMsgFile(const char* fname, int path_type);
 	// Clearing MSG

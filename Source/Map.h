@@ -47,6 +47,7 @@ public:
 	SyncObject Sync;
 
 private:
+	Mutex dataLocker;
 	BYTE* hexFlags;
 	CrVec mapCritters;
 	ClVec mapPlayers;
@@ -81,6 +82,8 @@ public:
 	bool Generate();
 	void Clear(bool full);
 	void Process();
+	void Lock(){dataLocker.Lock();}
+	void Unlock(){dataLocker.Unlock();}
 
 	Location* GetLocation(bool lock);
 	WORD GetMaxHexX(){return Proto->Header.MaxHexX;}
@@ -97,9 +100,9 @@ public:
 	int GetData(DWORD index);
 	void SetData(DWORD index, int value);
 
-	void SetText(WORD hx, WORD hy, DWORD color, const char* text);
+	void SetText(WORD hx, WORD hy, DWORD color, const char* text, WORD text_len, WORD intellect, bool unsafe_text);
 	void SetTextMsg(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str);
-	void SetTextMsgLex(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str, const char* lexems);
+	void SetTextMsgLex(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str, const char* lexems, WORD lexems_len);
 
 	bool GetStartCoord(WORD& hx, WORD& hy, BYTE& dir, DWORD entire);
 	bool GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item);
@@ -114,9 +117,9 @@ public:
 	void EraseCritter(Critter* cr);
 	void KickPlayersToGlobalMap();
 
-	bool AddItem(Item* item, WORD hx, WORD hy, bool send_all);
+	bool AddItem(Item* item, WORD hx, WORD hy);
 	void SetItem(Item* item, WORD hx, WORD hy);
-	void EraseItem(DWORD item_id, bool send_all);
+	void EraseItem(DWORD item_id);
 	void ChangeDataItem(Item* item);
 	void ChangeViewItem(Item* item);
 	void AnimateItem(Item* item, BYTE from_frm, BYTE to_frm);
@@ -157,18 +160,21 @@ public:
 	bool IsFlagCritter(WORD hx, WORD hy, bool dead);
 	void SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead);
 	void UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead);
-	Critter* GetCritter(DWORD crid);
 	DWORD GetNpcCount(int npc_role, int find_type);
-	Critter* GetNpc(int npc_role, int find_type, DWORD skip_count);
-	Critter* GetHexCritter(WORD hx, WORD hy, bool dead);
-	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool lock);
+	Critter* GetCritter(DWORD crid, bool sync_lock);
+	Critter* GetNpc(int npc_role, int find_type, DWORD skip_count, bool sync_lock);
+	Critter* GetHexCritter(WORD hx, WORD hy, bool dead, bool sync_lock);
+	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool sync_lock);
 
-	void GetCritters(CrVec& critters);
-	void GetPlayers(ClVec& players);
-	void GetNpcs(PcVec& npcs);
+	void GetCritters(CrVec& critters, bool sync_lock);
+	void GetPlayers(ClVec& players, bool sync_lock);
+	void GetNpcs(PcVec& npcs, bool sync_lock);
 	CrVec& GetCrittersNoLock(){return mapCritters;}
 	ClVec& GetPlayersNoLock(){return mapPlayers;}
 	PcVec& GetNpcsNoLock(){return mapNpcs;}
+	DWORD GetCrittersCount();
+	DWORD GetPlayersCount();
+	DWORD GetNpcsCount();
 
 	bool IsNoLogOut(){return Proto->Header.NoLogOut;}
 

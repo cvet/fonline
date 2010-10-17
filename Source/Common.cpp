@@ -457,7 +457,7 @@ void GetClientOptions()
 	GETOPTIONS_CHECK(GameOpt.ScreenClear,0,1,0);
 	GameOpt.Light=cfg.GetInt(CLIENT_CONFIG_APP,"Light",20);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Light,"-Light");
-	GETOPTIONS_CHECK(GameOpt.Light,0,50,20);
+	GETOPTIONS_CHECK(GameOpt.Light,0,100,20);
 	GameOpt.ScrollDelay=cfg.GetInt(CLIENT_CONFIG_APP,"ScrollDelay",4);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.ScrollDelay,"-ScrollDelay");
 	GETOPTIONS_CHECK(GameOpt.ScrollDelay,1,32,4);
@@ -612,6 +612,7 @@ int ServerGameSleep=10;
 int MemoryDebugLevel=10;
 DWORD VarsGarbageTime=3600000;
 bool WorldSaveManager=true;
+bool LogicMT=false;
 
 void GetServerOptions()
 {

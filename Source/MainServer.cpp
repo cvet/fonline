@@ -334,13 +334,11 @@ void UpdateInfo()
 		}
 		break;
 	case 5: // Items count
-#ifdef ITEMS_STATISTICS
 		if(Serv.IsInit())
 		{
 			str_=ItemMngr.GetItemsStatistics();
 			SendDlgItemMessage(Dlg,IDC_INFO,WM_SETTEXT,0,(LPARAM)str_.c_str());
 		}
-#endif
 		break;
 	default:
 		break;

@@ -111,8 +111,8 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define ITEM_NO_BLOCK               (0x00000004)
 #define ITEM_SHOOT_THRU             (0x00000008)
 #define ITEM_LIGHT_THRU             (0x00000010)
-#define ITEM_MULTI_HEX              (0x00000020)
-#define ITEM_WALL_TRANS_END         (0x00000040)
+#define ITEM_MULTI_HEX              (0x00000020) // Not used
+#define ITEM_WALL_TRANS_END         (0x00000040) // Not used
 #define ITEM_TWO_HANDS              (0x00000080)
 #define ITEM_BIG_GUN                (0x00000100)
 #define ITEM_ALWAYS_VIEW            (0x00000200)
@@ -135,7 +135,9 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define ITEM_CAN_TALK               (0x04000000)
 #define ITEM_CAN_PICKUP             (0x08000000)
 #define ITEM_CAN_USE                (0x10000000)
-#define ITEM_CACHED                 (0x80000000)
+#define ITEM_HOLODISK               (0x20000000)
+#define ITEM_RADIO                  (0x40000000)
+#define ITEM_CACHED                 (0x80000000) // Not used
 
 // Material
 #define MATERIAL_GLASS				(0)
@@ -159,6 +161,17 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define BI_SERVICE					(0x10)
 #define BI_SERVICE_EXT				(0x20)
 #define BI_ETERNAL					(0x40)
+
+// Radio
+	// Flags
+#define RADIO_DISABLE_SEND          (0x01)
+#define RADIO_DISABLE_RECV          (0x02)
+	// Broadcast
+#define RADIO_BROADCAST_WORLD       (0)
+#define RADIO_BROADCAST_MAP         (20)
+#define RADIO_BROADCAST_LOCATION    (40)
+#define RADIO_BROADCAST_ZONE(x)     (100+CLAMP(x,1,100)) // 1..100
+#define RADIO_BROADCAST_FORCE_ALL   (250)
 
 // Offsets by original pids
 #define F2PROTO_OFFSET_ITEM			(0)
@@ -244,6 +257,16 @@ public:
 	BYTE AnimShow[2];
 	BYTE AnimHide[2];
 	char DrawPosOffsY;
+
+	WORD RadioChannel;
+	WORD RadioFlags;
+	BYTE RadioBroadcastSend;
+	BYTE RadioBroadcastRecv;
+
+	BYTE IndicatorStart;
+	BYTE IndicatorMax;
+
+	DWORD HolodiskNum;
 
 	union
 	{
@@ -492,7 +515,7 @@ public:
 
 		WORD SortValue;
 		BYTE Info;
-		BYTE Reserved;
+		BYTE Indicator;
 		DWORD PicMapHash;
 		DWORD PicInvHash;
 		WORD AnimWaitBase;
@@ -544,6 +567,9 @@ public:
 			struct
 			{
 				WORD Channel;
+				WORD Flags;
+				BYTE BroadcastSend;
+				BYTE BroadcastRecv;
 			} Radio;
 		};
 	} Data;
@@ -693,9 +719,9 @@ public:
 	void ContSetItem(Item* item);
 	void ContEraseItem(Item* item);
 	Item* ContGetItem(DWORD item_id, bool skip_hide);
-	void ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool lock);
+	void ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool sync_lock);
 	Item* ContGetItemByPid(WORD pid, DWORD special_id);
-	void ContGetItems(ItemPtrVec& items, DWORD special_id, bool lock);
+	void ContGetItems(ItemPtrVec& items, DWORD special_id, bool sync_lock);
 	int ContGetFreeVolume(DWORD special_id);
 	bool ContIsItems();
 #endif
@@ -740,9 +766,9 @@ public:
 	DWORD LightGetColor(){return (Data.LightColor?Data.LightColor:Proto->LightColor)&0xFFFFFF;}
 
 	// Radio
-	bool IsRadio(){return GetProtoId()==PID_RADIO;}
-	WORD RadioGetChannel(){return Data.Radio.Channel;}
-	void RadioSetChannel(WORD chan){Data.Radio.Channel=chan;}
+	bool IsRadio(){return FLAG(Data.Flags,ITEM_RADIO);}
+	bool RadioIsSendActive(){return !FLAG(Data.Radio.Flags,RADIO_DISABLE_SEND);}
+	bool RadioIsRecvActive(){return !FLAG(Data.Radio.Flags,RADIO_DISABLE_RECV);}
 
 	// Car
 	bool IsCar(){return Proto->IsCar();}
@@ -761,7 +787,7 @@ public:
 #endif
 
 	// Holodisk
-	bool IsHolodisk(){return GetProtoId()==PID_HOLODISK;}
+	bool IsHolodisk(){return FLAG(Data.Flags,ITEM_HOLODISK);}
 	DWORD HolodiskGetNum(){return Data.Holodisk.Number;}
 	void HolodiskSetNum(DWORD num){Data.Holodisk.Number=num;}
 

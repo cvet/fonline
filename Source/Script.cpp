@@ -306,8 +306,6 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 
 void Finish()
 {
-	FinisthThread();
-
 	if(!Engine) return;
 
 	EndLog();
@@ -323,6 +321,8 @@ void Finish()
 	UnloadScripts();
 
 	FinishEngine(Engine); // Finish default engine
+
+	FinisthThread();
 }
 
 bool InitThread()
@@ -1159,7 +1159,7 @@ bool LoadScript(const char* module_name, const BYTE* bytecode, DWORD len)
 
 int BindImportedFunctions()
 {
-	WriteLog("Bind all imported functions...\n");
+	//WriteLog("Bind all imported functions...\n");
 
 	EngineData* edata=(EngineData*)Engine->GetUserData();
 	ScriptModuleVec& modules=edata->Modules;
@@ -1170,13 +1170,13 @@ int BindImportedFunctions()
 		int result=module->BindAllImportedFunctions();
 		if(result<0)
 		{
-			WriteLog("fail to bind, module<%s>, error<%d>...\n",module->GetName(),result);
+			WriteLog(__FUNCTION__" - Fail to bind imported functions, module<%s>, error<%d>.\n",module->GetName(),result);
 			errors++;
 			continue;
 		}
 	}
 
-	WriteLog("Bind all imported functions complete.\n");
+	//WriteLog("Bind all imported functions complete.\n");
 	return errors;
 }
 

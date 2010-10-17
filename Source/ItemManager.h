@@ -59,7 +59,7 @@ private:
 
 public:
 	void SaveAllItemsFile(void(*save_func)(void*,size_t));
-	bool LoadAllItemsFile(FILE* f);
+	bool LoadAllItemsFile(FILE* f, int version);
 	bool CheckProtoFunctions();
 	void RunInitScriptItems();
 
@@ -70,7 +70,7 @@ public:
 
 	Item* CreateItem(WORD pid, DWORD count, DWORD item_id = 0);
 	Item* SplitItem(Item* item, DWORD count);
-	Item* GetItem(DWORD item_id);
+	Item* GetItem(DWORD item_id, bool sync_lock);
 
 	void ItemToGarbage(Item* item);
 	void ItemGarbager();
@@ -91,19 +91,31 @@ public:
 	bool MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD item_id, DWORD count);
 	bool MoveItemsContainers(Item* from_cont, Item* to_cont, DWORD from_stack_id, DWORD to_stack_id);
 	bool MoveItemsContToCritter(Item* from_cont, Critter* to_cr, DWORD stack_id);
+
+	// Radio
+private:
+	ItemPtrVec radioItems;
+	Mutex radioItemsLocker;
+
+public:
+	void RadioRegister(Item* radio, bool add);
+	void RadioSendText(Critter* cr, const char* text, WORD text_len, bool unsafe_text, WORD text_msg, DWORD num_str, WordVec& channels);
+	void RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_map_id, WORD from_wx, WORD from_wy,
+		const char* text, WORD text_len, WORD intellect, bool unsafe_text,
+		WORD text_msg, DWORD num_str);
+
 #endif
 
-#ifdef ITEMS_STATISTICS
-// Items statistics
+	// Items statistics
 private:
-	volatile __int64 itemCount[MAX_ITEM_PROTOTYPES];
+	__int64 itemCount[MAX_ITEM_PROTOTYPES];
+	MutexSpinlock itemCountLocker;
 
 public:
 	void AddItemStatistics(WORD pid, DWORD val);
 	void SubItemStatistics(WORD pid, DWORD val);
 	__int64 GetItemStatistics(WORD pid);
 	string GetItemsStatistics();
-#endif
 
 	ItemManager():isActive(false){MEMORY_PROCESS(MEMORY_STATIC,sizeof(ItemManager));};
 };

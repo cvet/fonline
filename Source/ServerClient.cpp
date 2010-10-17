@@ -100,10 +100,11 @@ void FOServer::ProcessCritter(Critter* cr)
 		}
 
 		// Cache intelligence for GetSayIntellect, every 3 seconds
-		if(tick>=cl->NextIntellectCachingTick)
+		if(tick>=cl->CacheValuesNextTick)
 		{
 			cl->IntellectCacheValue=(tick&0xFFF0)|cl->GetParam(ST_INTELLECT);
-			cl->NextIntellectCachingTick=tick+3000;
+			cl->LookCacheValue=cl->GetLook();
+			cl->CacheValuesNextTick=tick+3000;
 		}
 	}
 	else
@@ -266,14 +267,15 @@ void FOServer::Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text)
 
 bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 {
-	if(!cr->GetMap()) return false;
+	DWORD map_id=cr->GetMap();
+	if(!map_id) return false;
 	bool is_run=FLAG(move_params,0x8000);
 	if(is_run && !CritType::IsCanRun(cr->GetCrType())) return false;
 	if(!is_run && !CritType::IsCanWalk(cr->GetCrType())) return false;
 
 	// Check
-	Map* map=MapMngr.GetMap(cr->GetMap());
-	if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) return false;
+	Map* map=MapMngr.GetMap(map_id,true);
+	if(!map || map_id!=cr->GetMap() || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) return false;
 
 	// Check turn based
 	if(!cr->CheckMyTurn(map))
@@ -287,7 +289,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 	if(map->IsTurnBasedOn)
 	{
 		int ap_cost=cr->GetApCostCritterMove(is_run)/AP_DIVIDER;
-		int move_ap=cr->GetParam(ST_MOVE_AP);
+		int move_ap=cr->Data.Params[ST_MOVE_AP];
 		if(ap_cost)
 		{
 			if((cr->GetAp()+move_ap)/ap_cost<=0)
@@ -341,7 +343,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 		if(cr->IsPlayer())
 		{
 			cr->Send_XY(cr);
-			Critter* cr_hex=map->GetHexCritter(hx,hy,false);
+			Critter* cr_hex=map->GetHexCritter(hx,hy,false,false);
 			if(cr_hex) cr->Send_XY(cr_hex);
 		}
 		return false;
@@ -437,7 +439,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		return false;
 	}
 
-	Critter* t_cr=cr->GetCritSelf(target_id);
+	Critter* t_cr=cr->GetCritSelf(target_id,true);
 	if(!t_cr)
 	{
 		WriteLog(__FUNCTION__" - Target critter not found, target id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
@@ -764,7 +766,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		{
 			if(cr->GetMap())
 			{
-				target_cr=cr->GetCritSelf(target_id);
+				target_cr=cr->GetCritSelf(target_id,true);
 				if(!target_cr)
 				{
 					WriteLog(__FUNCTION__" - Target critter not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
@@ -1271,7 +1273,7 @@ bool FOServer::RegenerateMap(Map* map)
 
 	// Kick clients to global
 	ClVec players;
-	map->GetPlayers(players);
+	map->GetPlayers(players,true);
 	for(ClVecIt it=players.begin(),end=players.end();it!=end;++it)
 	{
 		Client* cl=*it;
@@ -1549,6 +1551,9 @@ void FOServer::Process_CreateClient(Client* cl)
 	cl->Data.Cond=COND_LIFE;
 	cl->Data.CondExt=COND_LIFE_NONE;
 	cl->Data.Multihex=-1;
+
+	CritDataExt* data_ext=cl->GetDataExt();
+	data_ext->PlayIp[0]=cl->GetIp();
 
 	if(!cl->SetDefaultItems(
 		ItemMngr.GetProtoItem(ITEM_DEF_SLOT),
@@ -1897,7 +1902,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 			if(matches>=4)
 			{
-				if((!cd.UIDEndTick || tick>=cd.UIDEndTick) && !CrMngr.GetCritter(cd.ClientId))
+				if((!cd.UIDEndTick || tick>=cd.UIDEndTick) && !CrMngr.GetCritter(cd.ClientId,false))
 				{
 					for(int i=0;i<5;i++) cd.UID[i]=0;
 					cd.UIDEndTick=0;
@@ -1937,14 +1942,13 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 #endif
 
 	// Find in players in game
-	Client* cl_old=CrMngr.GetPlayer(id);
+	Client* cl_old=CrMngr.GetPlayer(id,true);
 	if(cl==cl_old)
 	{
 		WriteLog(__FUNCTION__" - Find same ptr, client<%s>.\n",cl->Name);
 		cl->Disconnect();
 		return;
 	}
-	if(cl_old) SYNC_LOCK(cl_old);
 
 	// Avatar in game
 	if(cl_old)
@@ -2120,7 +2124,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		if(!cl->GetMap() && (cl->GetHexX() || cl->GetHexY()))
 		{
 			DWORD rule_id=(cl->GetHexX()<<16)|cl->GetHexY();
-			Critter* rule=CrMngr.GetCritter(rule_id);
+			Critter* rule=CrMngr.GetCritter(rule_id,false);
 			if(!rule || rule->GetMap() || cl->Data.GlobalGroupUid!=rule->Data.GlobalGroupUid)
 			{
 				cl->Data.HexX=0;
@@ -2146,7 +2150,6 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		}
 
 		cl->SetTimeout(TO_TRANSFER,0);
-		if(cl->GetRadio()) RadioAddPlayer(cl,cl->GetRadioChannel());
 		cl->AddRef();
 		CrMngr.AddCritter(cl);
 		Job::PushBack(JOB_CRITTER,cl);
@@ -2169,6 +2172,39 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	cl->Data.Params[MODE_DEFAULT_COMBAT]=default_combat_mode;
 	for(int i=0;i<5;i++) cl->UID[i]=uid[i];
+
+	// Play ip
+	CritDataExt* data_ext=cl->GetDataExt();
+	DWORD ip=cl->GetIp();
+	bool ip_stored=false;
+	for(int i=0;i<MAX_STORED_IP;i++)
+	{
+		if(data_ext->PlayIp[i]==ip)
+		{
+			ip_stored=true;
+			break;
+		}
+	}
+	if(!ip_stored)
+	{
+		// Check free slots
+		if(data_ext->PlayIp[MAX_STORED_IP-1])
+		{
+			// Free 1/2 slots
+			for(int i=MAX_STORED_IP/2;i<MAX_STORED_IP;i++)
+				data_ext->PlayIp[i]=0;
+		}
+
+		// Store ip
+		for(int i=0;i<MAX_STORED_IP;i++)
+		{
+			if(!data_ext->PlayIp[i])
+			{
+				data_ext->PlayIp[i]=ip;
+				break;
+			}
+		}
+	}
 
 	// Login ok
 	BOUT_BEGIN(cl);
@@ -2243,7 +2279,7 @@ void FOServer::Process_SingleplayerSaveLoad(Client* cl)
 
 void FOServer::Process_ParseToGame(Client* cl)
 {
-	if(!cl->GetId() || !CrMngr.GetPlayer(cl->GetId())) return;
+	if(!cl->GetId() || !CrMngr.GetPlayer(cl->GetId(),false)) return;
 	cl->SetBreakTime(GameOpt.Breaktime);
 
 #ifdef DEV_VESRION
@@ -2266,7 +2302,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 	}
 
 	// Parse
-	Map* map=MapMngr.GetMap(cl->GetMap());
+	Map* map=MapMngr.GetMap(cl->GetMap(),true);
 	cl->Send_GameInfo(map);
 	cl->DropTimers(true);
 
@@ -2327,9 +2363,12 @@ void FOServer::Process_ParseToGame(Client* cl)
 	}
 
 	// Send current items on map
-	for(DwordSetIt it=cl->VisItem.begin(),end=cl->VisItem.end();it!=end;++it)
+	cl->VisItemLocker.Lock();
+	DwordSet items=cl->VisItem;
+	cl->VisItemLocker.Unlock();
+	for(DwordSetIt it=items.begin(),end=items.end();it!=end;++it)
 	{
-		Item* item=ItemMngr.GetItem(*it);
+		Item* item=ItemMngr.GetItem(*it,false);
 		if(item) cl->Send_AddItemOnMap(item);
 	}
 
@@ -2346,7 +2385,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 		if(map->IsCritterTurn(cl)) cl->Send_ParamOther(OTHER_YOU_TURN,map->GetCritterTurnTime());
 		else
 		{
-			Critter* cr=cl->GetCritSelf(map->GetCritterTurnId());
+			Critter* cr=cl->GetCritSelf(map->GetCritterTurnId(),false);
 			if(cr) cl->Send_CritterParam(cr,OTHER_YOU_TURN,map->GetCritterTurnTime());
 		}
 	}
@@ -2594,13 +2633,6 @@ void FOServer::Process_ChangeItem(Client* cl)
 		cl->Send_Param(ST_CURRENT_AP);
 		cl->Send_AddAllItems();
 	}
-
-	// Check for radio
-	if(to_slot==SLOT_HAND1 || to_slot==SLOT_HAND2)
-	{
-		Item* radio=cl->GetRadio();
-		if(radio) RadioAddPlayer(cl,radio->RadioGetChannel());
-	}
 }
 
 void FOServer::Process_RateItem(Client* cl)
@@ -2753,7 +2785,7 @@ void FOServer::Process_PickCritter(Client* cl)
 	Map* map=MapMngr.GetMap(cl->GetMap());
 	if(map && map->IsTurnBasedOn && !cl->GetAllAp()) map->EndCritterTurn();
 
-	Critter* cr=cl->GetCritSelf(crid);
+	Critter* cr=cl->GetCritSelf(crid,true);
 	if(!cr) return;
 
 	switch(pick_type)
@@ -2869,7 +2901,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		if(transfer_type==TRANSFER_HEX_CONT_UP || transfer_type==TRANSFER_HEX_CONT_DOWN)
 		{
 			// Get item
-			cont=ItemMngr.GetItem(cont_id);
+			cont=ItemMngr.GetItem(cont_id,true);
 			if(!cont || cont->Accessory!=ITEM_ACCESSORY_HEX || !cont->IsContainer())
 			{
 				cl->Send_ContainerInfo();
@@ -2905,7 +2937,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		// Get far container without checks
 		else if(transfer_type==TRANSFER_FAR_CONT)
 		{
-			cont=ItemMngr.GetItem(cont_id);
+			cont=ItemMngr.GetItem(cont_id,true);
 			if(!cont || !cont->IsContainer())
 			{
 				cl->Send_ContainerInfo();
@@ -3126,13 +3158,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 		bool is_loot=(transfer_type==TRANSFER_CRIT_LOOT);
 
 		// Get critter target
-		Critter* cr=(is_far?CrMngr.GetCritter(cont_id):(cl->GetMap()?cl->GetCritSelf(cont_id):cl->GroupMove->GetCritter(cont_id)));
+		Critter* cr=(is_far?CrMngr.GetCritter(cont_id,true):(cl->GetMap()?cl->GetCritSelf(cont_id,true):cl->GroupMove->GetCritter(cont_id)));
 		if(!cr)
 		{
 			cl->Send_ContainerInfo();
 			WriteLog(__FUNCTION__" - Critter not found.\n");
 			return;
 		}
+		SYNC_LOCK(cr);
 
 		// Check for self
 		if(cl==cr)
@@ -3443,30 +3476,6 @@ void FOServer::Process_Dir(Client* cl)
 
 	cl->Data.Dir=dir;
 	cl->SendA_Dir();
-}
-
-void FOServer::Process_Radio(Client* cl)
-{
-	WORD channel;
-
-	cl->Bin >> channel;
-	CHECK_IN_BUFF_ERROR(cl);
-
-	Item* radio=cl->GetRadio();
-	if(!radio)
-	{
-		WriteLog(__FUNCTION__" - No radio, player info<%s>, player id<%u>.\n",cl->GetInfo(),cl->GetId());
-		return;
-	}
-
-	if(radio->RadioGetChannel()==channel) return;
-
-	RadioErasePlayer(cl,radio->RadioGetChannel());
-	radio->RadioSetChannel(channel);
-	RadioAddPlayer(cl,channel);
-	cl->Send_TextMsg(cl,STR_RADIO_CHAN_CHANGED,SAY_NETMSG,TEXTMSG_GAME);
-
-	cl->SendAA_ItemData(radio);
 }
 
 void FOServer::Process_SetUserHoloStr(Client* cl)
@@ -4059,7 +4068,7 @@ void FOServer::Process_KarmaVoting(Client* cl)
 	if(cl->GetId()==crid) return;
 	if(cl->GetTimeout(TO_KARMA_VOTING)) return;
 
-	Critter* cr=CrMngr.GetCritter(crid);
+	Critter* cr=CrMngr.GetCritter(crid,true);
 //	if(cl->GetMap()) cr=cl->GetCritSelf(crid);
 //	else if(cl->GroupMove) cr=cl->GroupMove->GetCritter(crid);
 	if(!cr)
@@ -4099,7 +4108,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		{
 			if(!param1) break;
 
-			Critter* cr=cl->GetCritSelf(param1);
+			Critter* cr=cl->GetCritSelf(param1,false);
 			if(!cr) break;
 
 			if(cl->GetFollowCrId()==cr->GetId()) cl->SetFollowCrId(0);
@@ -4155,11 +4164,13 @@ void FOServer::Process_RuleGlobal(Client* cl)
 	case GM_CMD_FOLLOW:
 		{
 			// Find rule
-			Critter* rule=CrMngr.GetCritter(param1);
+			Critter* rule=CrMngr.GetCritter(param1,true);
 			if(!rule || rule->GetMap() || !rule->GroupMove || rule!=rule->GroupMove->Rule) break;
+
 			// Check for follow
 			if(!rule->GroupMove->CheckForFollow(cl)) break;
 			if(!CheckDist(rule->Data.LastHexX,rule->Data.LastHexY,cl->GetHexX(),cl->GetHexY(),FOLLOW_DIST+rule->GetMultihex()+cl->GetMultihex())) break;
+
 			// Transit
 			if(cl->LockMapTransfers)
 			{

@@ -49,7 +49,7 @@ Critter* GlobalMapGroup::GetCritter(DWORD crid)
 Item* GlobalMapGroup::GetCar()
 {
 	if(!CarId) return NULL;
-	Item* car=ItemMngr.GetItem(CarId);
+	Item* car=ItemMngr.GetItem(CarId,true);
 	if(!car) CarId=0;
 	return car;
 }
@@ -431,7 +431,7 @@ void MapManager::SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t))
 
 bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 {
-	WriteLog("Load locations...");
+	WriteLog("Load locations...\n");
 
 	lastLocId=0;
 	lastMapId=0;
@@ -444,39 +444,64 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 		return true;
 	}
 
+	DWORD locaded=0;
 	for(DWORD i=0;i<count;++i)
 	{
+		// Read data
 		Location::LocData data;
 		fread(&data,sizeof(data),1,f);
-
-		Location* loc=CreateLocation(data.LocPid,data.WX,data.WY,data.LocId);
-		if(!loc)
-		{
-			WriteLog("Error - can't create location.\n");
-			return false;
-		}
 		if(data.LocId>lastLocId) lastLocId=data.LocId;
-		loc->Data=data;
 
 		DWORD map_count;
 		fread(&map_count,sizeof(map_count),1,f);
+		vector<Map::MapData> map_data(map_count);
 		for(int j=0;j<map_count;j++)
 		{
-			Map::MapData map_data;
-			fread(&map_data,sizeof(map_data),1,f);
+			fread(&map_data[j],sizeof(map_data[j]),1,f);
+			if(map_data[j].MapId>lastMapId) lastMapId=map_data[j].MapId;
+		}
 
-			Map* map=CreateMap(map_data.MapPid,loc,map_data.MapId);
+		// Check pids
+		if(!IsInitProtoLocation(data.LocPid))
+		{
+			WriteLog("Proto location<%u> is not init. Skip location.\n",data.LocPid);
+			continue;
+		}
+		bool map_fail=false;
+		for(int j=0;j<map_count;j++)
+		{
+			if(!IsInitProtoMap(map_data[j].MapPid))
+			{
+				WriteLog("Proto map<%u> of proto location<%u> is not init. Skip location.\n",map_data[j].MapPid,data.LocPid);
+				map_fail=true;
+			}
+		}
+		if(map_fail) continue;
+
+		// Try create
+		Location* loc=CreateLocation(data.LocPid,data.WX,data.WY,data.LocId);
+		if(!loc)
+		{
+			WriteLog("Can't create location, pid<%u>.\n",data.LocPid);
+			return false;
+		}
+		loc->Data=data;
+
+		for(int j=0;j<map_count;j++)
+		{
+			Map* map=CreateMap(map_data[j].MapPid,loc,map_data[j].MapId);
 			if(!map)
 			{
-				WriteLog("Error - can't create map, map id<%u>, map pid<%u>.\n",map_data.MapId,map_data.MapPid);
+				WriteLog("Can't create map, map pid<%u>, location pid<%u>.\n",map_data[j].MapPid,data.LocPid);
 				return false;
 			}
-			if(map_data.MapId>lastMapId) lastMapId=map_data.MapId;
-			map->Data=map_data;
+			map->Data=map_data[j];
 		}
+
+		locaded++;
 	}
 
-	WriteLog("complete, count<%u>.\n",count);
+	WriteLog("Load locations complete, count<%u>.\n",locaded);
 	return true;
 }
 
@@ -735,21 +760,18 @@ Map* MapManager::CreateMap(WORD pid_map, Location* loc_map, DWORD map_id)
 	return map;
 }
 
-Map* MapManager::GetMap(DWORD map_id, bool lock /* = true */)
+Map* MapManager::GetMap(DWORD map_id, bool sync_lock)
 {
 	if(!map_id) return NULL;
 
+	Map* map=NULL;
+
 	mapLocker.Lock();
 	MapMapIt it=allMaps.find(map_id);
-	if(it==allMaps.end())
-	{
-		mapLocker.Unlock();
-		return NULL;
-	}
-	Map* map=(*it).second;
+	if(it!=allMaps.end()) map=(*it).second;
 	mapLocker.Unlock();
 
-	if(lock) SYNC_LOCK(map);
+	if(map && sync_lock) SYNC_LOCK(map);
 	return map;
 }
 
@@ -868,14 +890,24 @@ bool MapManager::IsLocationOnCoord(int wx, int wy)
 	return false;
 }
 
-void MapManager::GetRadiusLocations(int wx, int wy, int radius, DwordVec& loc_ids)
+bool MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones)
+{
+	int zl=GM_ZONE_LEN;
+	INTRECT r1((wx1-w1_radius)/zl-zones,(wy1-w1_radius)/zl-zones,(wx1+w1_radius)/zl+zones,(wy1+w1_radius)/zl+zones);
+	INTRECT r2((wx2-w2_radius)/zl,(wy2-w2_radius)/zl,(wx2+w2_radius)/zl,(wy2+w2_radius)/zl);
+	return r1.L<=r2.R && r2.L<=r1.R && r1.T<=r2.B && r2.T<=r1.B;
+}
+
+void MapManager::GetZoneLocations(int zx, int zy, int zone_radius, DwordVec& loc_ids)
 {
 	SCOPE_LOCK(mapLocker);
 
+	int wx=zx*GM_ZONE_LEN;
+	int wy=zy*GM_ZONE_LEN;
 	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
 	{
 		Location* loc=(*it).second;
-		if(loc->IsVisible() && DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=loc->GetRadius()+radius) loc_ids.push_back(loc->GetId());
+		if(loc->IsVisible() && IsIntersectZone(wx,wy,0,loc->Data.WX,loc->Data.WY,loc->GetRadius(),zone_radius)) loc_ids.push_back(loc->GetId());
 	}
 }
 
@@ -901,7 +933,7 @@ void MapManager::LocationGarbager()
 	if(runGarbager)
 	{
 		ClVec players;
-		CrMngr.GetCopyPlayers(players);
+		CrMngr.GetCopyPlayers(players,true);
 
 		mapLocker.Lock();
 		LocMap locs=allLocations;
@@ -1348,10 +1380,9 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 {
 	group->SyncLockGroup();
 
-	int zlen=GM_ZONE_LEN;
 	DwordVec loc_ids1,loc_ids2;
 	bool loc_ids2_founded=false;
-	MapMngr.GetRadiusLocations(zx*zlen+zlen/2,zy*zlen+zlen/2,1*zlen+zlen/2,loc_ids1);
+	MapMngr.GetZoneLocations(zx,zy,1,loc_ids1);
 
 	for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
 	{
@@ -1363,7 +1394,7 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 
 		if(look_len==2 && !loc_ids2_founded)
 		{
-			MapMngr.GetRadiusLocations(zx*zlen+zlen/2,zy*zlen+zlen/2,2*zlen+zlen/2,loc_ids2);
+			MapMngr.GetZoneLocations(zx,zy,2,loc_ids2);
 			loc_ids2_founded=true;
 		}
 
@@ -1502,7 +1533,7 @@ void MapManager::GM_AddCritToGroup(Critter* cr, DWORD rule_id)
 		return;
 	}
 
-	Critter* rule=CrMngr.GetCritter(rule_id);
+	Critter* rule=CrMngr.GetCritter(rule_id,true);
 	if(!rule || rule->GetMap() || !rule->GroupMove || rule!=rule->GroupMove->Rule)
 	{
 		if(cr->IsNpc()) WriteLog(__FUNCTION__" - Invalid rule on global map. Start move alone.\n");
@@ -1919,7 +1950,7 @@ void MapManager::TraceBullet(TraceData& trace)
 		if(trace.Critters!=NULL && map->IsHexCritter(cx,cy)) map->GetCrittersHex(cx,cy,0,trace.FindType,*trace.Critters,false);
 		if((trace.FindCr || trace.IsCheckTeam) && map->IsFlagCritter(cx,cy,false))
 		{
-			Critter* cr=map->GetHexCritter(cx,cy,false);
+			Critter* cr=map->GetHexCritter(cx,cy,false,false);
 			if(cr)
 			{
 				if(cr==trace.FindCr)
@@ -2207,7 +2238,7 @@ label_FindOk:
 
 			if(check_cr && map->IsFlagCritter(ps.HexX,ps.HexY,false))
 			{
-				Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false);
+				Critter* cr=map->GetHexCritter(ps.HexX,ps.HexY,false,false);
 				if(!cr || cr==pfd.FromCritter) continue;
 				pfd.GagCritter=cr;
 				path.resize(i);
@@ -2427,9 +2458,12 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWOR
 
 	DWORD map_id=(map?map->GetId():0);
 	DWORD old_map_id=cr->GetMap();
-	Map* old_map=MapMngr.GetMap(old_map_id);
+	Map* old_map=MapMngr.GetMap(old_map_id,true);
 	WORD old_hx=cr->GetHexX();
 	WORD old_hy=cr->GetHexY();
+
+	// Recheck after synchronization
+	if(cr->GetMap()!=old_map_id) return false;
 
 	// One map
 	if(old_map_id==map_id)
@@ -2566,11 +2600,12 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map, WORD hex_x, WORD hex_y)
 	{
 		cr->LockMapTransfers++;
 
+		cr->SyncLockCritters(false,false);
 		CrVec critters=cr->VisCr;
+
 		for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
 		{
 			Critter* cr_=*it;
-			SYNC_LOCK(cr_);
 			cr_->EventHideCritter(cr);
 		}
 

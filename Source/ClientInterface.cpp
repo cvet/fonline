@@ -117,10 +117,6 @@ int FOClient::InitIface()
 	IfaceLoadRect(InvBScrDn,"InvScrDn");
 	IfaceLoadRect(InvBOk,"InvOk");
 	IfaceLoadRect(InvWText,"InvText");
-	IfaceLoadRect(RadWMain,"RadioMain");
-	IfaceLoadRect(RadWMainText,"RadioMainText");
-	IfaceLoadRect(RadBOn,"RadioOn");
-	IfaceLoadRect(RadWChannel,"RadioChannel");
 	InvX=IfaceIni.GetInt("InvX",-1);
 	if(InvX==-1) InvX=(MODE_WIDTH-InvWMain[2])/2;
 	InvY=IfaceIni.GetInt("InvY",-1);
@@ -128,8 +124,6 @@ int FOClient::InitIface()
 	InvScroll=0;
 	InvHeightItem=IfaceIni.GetInt("InvHeightItem",30);
 	for(int i=0,j=SlotsExt.size();i<j;i++) IfaceLoadRect(SlotsExt[i].Rect,SlotsExt[i].IniName);
-	SET_INV_RADX;
-	SET_INV_RADY;
 	InvItemInfo="";
 	InvItemInfoScroll=0;
 	InvItemInfoMaxScroll=0;
@@ -974,9 +968,6 @@ int FOClient::InitIface()
 	IfaceLoadSpr(InvPBScrDwUp,"InvScrDnPic");
 	IfaceLoadSpr(InvPBScrDwDw,"InvScrDnPicDn");
 	IfaceLoadSpr(InvPBScrDwOff,"InvScrDnPicNa");
-	// Radio
-	IfaceLoadSpr(RadMainPic,"RadioMainPic");
-	IfaceLoadSpr(RadPBOn,"RadioOnPicDn");
 
 	// Use
 	IfaceLoadSpr(UseWMainPicNone,"UseMainPic");
@@ -1542,16 +1533,6 @@ void FOClient::InvDraw()
 		SprMngr.DrawSpriteSize(anim->GetCurSprId(),se.Rect[0]+InvX,se.Rect[1]+InvY,se.Rect.W(),se.Rect.H(),false,true,item->GetInvColor());
 	}
 
-	// Radio
-	Item* radio=Chosen->GetRadio();
-	if(radio)
-	{
-		SprMngr.DrawSprite(RadMainPic,RadX,RadY);
-		if(IfaceHold==IFACE_INV_RAD_ON) SprMngr.DrawSprite(RadPBOn,RadX+RadBOn[0],RadY+RadBOn[1]);
-	}
-
-	SprMngr.Flush();
-
 	// Items in inventory
 	DWORD skip_id=0;
 	if(IsCurMode(CUR_HAND) && IfaceHold==IFACE_INV_INV && InvHoldId) skip_id=InvHoldId;
@@ -1574,13 +1555,6 @@ void FOClient::InvDraw()
 	{
 		// Item info
 		SprMngr.DrawStr(INTRECT(InvWText,InvX,InvY),InvItemInfo.c_str(),FT_SKIPLINES(InvItemInfoScroll));
-	}
-
-	// Radio
-	if(radio)
-	{
-		SprMngr.DrawStr(INTRECT(RadWMainText,RadX,RadY),MsgGame->GetStr(STR_RADIO_CHANNEL),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-		SprMngr.DrawStr(INTRECT(RadWChannel,RadX,RadY),Str::DWtoA(radio->RadioGetChannel()),FT_NOBREAK|FT_CENTERX|FT_CENTERY,InvFocus==INVF_RAD_CHANNEL?COLOR_TEXT_DGREEN:COLOR_TEXT);
 	}
 }
 
@@ -1653,11 +1627,6 @@ void FOClient::InvLMouseDown()
 
 		if(IsCurMode(CUR_DEFAULT) && (IfaceHold==IFACE_INV_INV || IfaceHold==IFACE_INV_SLOT1 || IfaceHold==IFACE_INV_SLOT2 ||
 			IfaceHold==IFACE_INV_ARMOR || IfaceHold==IFACE_INV_SLOTS_EXT)) LMenuTryActivate();
-	}
-	else if(Chosen->GetRadio() && IsCurInRect(RadWMain,RadX,RadY))
-	{
-		if(IsCurInRect(RadWChannel,RadX,RadY)) InvFocus=INVF_RAD_CHANNEL;
-		else if(IsCurInRect(RadBOn,RadX,RadY)) IfaceHold=IFACE_INV_RAD_ON;
 	}
 }
 
@@ -1762,15 +1731,6 @@ void FOClient::InvLMouseUp()
 	{
 		ShowScreen(SCREEN_NONE);
 	}
-	else if(IfaceHold==IFACE_INV_RAD_ON && IsCurInRect(RadBOn,RadX,RadY))
-	{
-		Item* radio=Chosen->GetRadio();
-		if(radio)
-		{
-			Net_SendRadio();
-			WaitPing();
-		}
-	}
 
 	InvHoldId=0;
 	IfaceHold=IFACE_NONE;
@@ -1797,33 +1757,6 @@ void FOClient::InvMouseMove()
 		if(InvY<0) InvY=0;
 		//if(InvY+InvMain[3]>IntY) InvY=IntY-InvMain[3];
 		if(InvY+InvWMain[3]>MODE_HEIGHT) InvY=MODE_HEIGHT-InvWMain[3];
-
-		SET_INV_RADX;
-		SET_INV_RADY;
-	}
-}
-
-void FOClient::InvKeyDown(BYTE dik)
-{
-	if(!Chosen) return;
-
-	if(InvFocus==INVF_RAD_CHANNEL)
-	{
-		Item* radio=Chosen->GetRadio();
-		if(radio)
-		{
-			if(dik==DIK_RETURN || dik==DIK_NUMPADENTER)
-			{
-				Net_SendRadio();
-				WaitPing();
-				return;
-			}
-
-			char chan[16];
-			StringCopy(chan,Str::DWtoA(radio->RadioGetChannel()));
-			Keyb::GetChar(dik,chan,NULL,5,KIF_ONLY_NUMBERS);
-			radio->RadioSetChannel(atoi(chan));
-		}
 	}
 }
 
@@ -2588,20 +2521,42 @@ void FOClient::IntDraw()
 	// Ac
 	SprMngr.DrawStr(IntAC,Str::Format("%c%03d",'9'+4,Chosen->GetParam(ST_ARMOR_CLASS)),0,COLOR_IFACE,FONT_NUM);
 
-	// Ammo count
+	// Indicator
 	Item* item=Chosen->ItemSlotMain;
+	int indicator_max=item->Proto->IndicatorMax;
+	int indicator_cur=item->Data.Indicator;
+
 	if(item->IsWeapon() && item->WeapGetMaxAmmoCount())
 	{
-		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,Procent(item->WeapGetMaxAmmoCount(),item->WeapGetAmmoCount()),IntAmmoTick,true,false);
-		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH) SprMngr.DrawStr(INTRECT(IntWAmmoCountStr,item_offsx,item_offsy),Str::Format("%03d",item->WeapGetAmmoCount()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DGREEN:COLOR_TEXT,FONT_SPECIAL);
+		indicator_max=item->WeapGetMaxAmmoCount();
+		indicator_cur=item->WeapGetAmmoCount();
 	}
-	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,0,IntAmmoTick,true,false);
+
+	if(indicator_max)
+	{
+		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
+			DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,Procent(indicator_max,indicator_cur),IntAmmoTick,true,false);
+		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH)
+			SprMngr.DrawStr(INTRECT(IntWAmmoCountStr,item_offsx,item_offsy),Str::Format("%03d",indicator_cur),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DGREEN:COLOR_TEXT,FONT_SPECIAL);
+	}
+	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
+	{
+		DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,0,IntAmmoTick,true,false);
+	}
+
+	// Deteoration indicator
 	if(item->IsWeared())
 	{
-		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetWearProc(),IntWearTick,true,false);
-		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH) SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetWearProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
+		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
+			DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetWearProc(),IntWearTick,true,false);
+		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH)
+			SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetWearProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
 	}
-	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH) DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,0,IntWearTick,true,false);
+	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
+	{
+		DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,0,IntWearTick,true,false);
+	}
+
 }
 
 int FOClient::IntLMouseDown()

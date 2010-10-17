@@ -83,7 +83,9 @@ struct CritDataExt
 	WORD Reserved24;
 	WORD LocationsCount;
 	DWORD LocationsId[MAX_STORED_LOCATIONS];
-	DWORD Reserved25[100];
+	DWORD Reserved25[40];
+	DWORD PlayIp[MAX_STORED_IP];
+	DWORD Reserved26[40];
 };
 
 #endif // __CRITTER_DATA__

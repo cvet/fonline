@@ -120,6 +120,16 @@ struct ProtoItem
 	int AnimHide[2];
 	int DrawPosOffsY;
 
+	int RadioChannel;
+	int RadioFlags;
+	int RadioBroadcastSend;
+	int RadioBroadcastRecv;
+
+	int IndicatorStart;
+	int IndicatorMax;
+
+	int HolodiskNum;
+
 	struct
 	{
 		int Anim0Male;
@@ -289,7 +299,7 @@ struct Item
 	{
 		int SortValue;
 		int Info;
-		int Reserved0;
+		int Indicator;
 		int PicMapHash;
 		int PicInvHash;
 		int AnimWaitBase;
@@ -339,6 +349,9 @@ struct Item
 		struct
 		{
 			int Channel;
+			int Flags;
+			int BroadcastSend;
+			int BroadcastRecv;
 		} Radio;
 	} Data;
 

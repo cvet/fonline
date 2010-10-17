@@ -9,7 +9,7 @@
 
 namespace FONames
 {
-	void GenerateFoNames(int path_type);
+	void GenerateFoNames(int path_type, const char* path = NULL);
 	StrVec GetNames(int names);
 	int GetParamId(const char* str);
 	const char* GetParamName(DWORD index);

@@ -40,6 +40,14 @@
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Material",offsetof(ProtoItem,Material))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Slot",offsetof(ProtoItem,Slot))<0) BIND_ERROR;
 
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 RadioChannel",offsetof(ProtoItem,RadioChannel))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 RadioFlags",offsetof(ProtoItem,RadioFlags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 RadioBroadcastSend",offsetof(ProtoItem,RadioBroadcastSend))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 RadioBroadcastRecv",offsetof(ProtoItem,RadioBroadcastRecv))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 IndicatorStart",offsetof(ProtoItem,IndicatorStart))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 IndicatorMax",offsetof(ProtoItem,IndicatorMax))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint HolodiskNum",offsetof(ProtoItem,HolodiskNum))<0) BIND_ERROR;
+
 	// Misc2
 	if(engine->RegisterObjectProperty("ProtoItem","const uint Misc2_StartVal1",offsetof(ProtoItem,MiscEx.StartVal1))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint Misc2_StartVal2",offsetof(ProtoItem,MiscEx.StartVal2))<0) BIND_ERROR;
@@ -370,6 +378,7 @@
 	if(engine->RegisterObjectProperty("Item","uint LightColor",offsetof(Item,Data.LightColor))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_LightColor(uint val)",asFUNCTION(BIND_CLASS Item_set_LightColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","uint get_LightColor() const",asFUNCTION(BIND_CLASS Item_get_LightColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint8 Indicator",offsetof(Item,Data.Indicator))<0) BIND_ERROR;
 	// Tech info
 	if(engine->RegisterObjectProperty("Item","uint8 BrokenFlags",offsetof(Item,Data.TechInfo.DeteorationFlags))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_BrokenFlags(uint8 val)",asFUNCTION(BIND_CLASS Item_set_BrokenFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -411,6 +420,9 @@
 	if(engine->RegisterObjectProperty("Item","uint16 RadioChannel",offsetof(Item,Data.Radio.Channel))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_RadioChannel(uint16 val)",asFUNCTION(BIND_CLASS Item_set_RadioChannel),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","uint16 get_RadioChannel() const",asFUNCTION(BIND_CLASS Item_get_RadioChannel),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint16 RadioFlags",offsetof(Item,Data.Radio.Flags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint8 RadioBroadcastSend",offsetof(Item,Data.Radio.BroadcastSend))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint8 RadioBroadcastRecv",offsetof(Item,Data.Radio.BroadcastRecv))<0) BIND_ERROR;
 	// Holodisk
 	if(engine->RegisterObjectProperty("Item","uint HolodiskNumber",offsetof(Item,Data.Holodisk.Number))<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Item","void set_HolodiskNumber(uint val)",asFUNCTION(BIND_CLASS Item_set_HolodiskNumber),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -974,6 +986,7 @@
 	if(engine->RegisterObjectProperty("ItemCl","const uint8 LightFlags",offsetof(Item,Data.LightFlags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint LightColor",offsetof(Item,Data.LightColor))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const int16 TrapValue",offsetof(Item,Data.TrapValue))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint8 Indicator",offsetof(Item,Data.Indicator))<0) BIND_ERROR;
 	// Tech info
 	if(engine->RegisterObjectProperty("ItemCl","const uint8 BrokenFlags",offsetof(Item,Data.TechInfo.DeteorationFlags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint8 BrokenCount",offsetof(Item,Data.TechInfo.DeteorationCount))<0) BIND_ERROR;
@@ -989,6 +1002,9 @@
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 CarDeteoration",offsetof(Item,Data.Car.Deteoration))<0) BIND_ERROR;
 	// Radio
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 RadioChannel",offsetof(Item,Data.Radio.Channel))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint16 RadioFlags",offsetof(Item,Data.Radio.Flags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint8 RadioBroadcastSend",offsetof(Item,Data.Radio.BroadcastSend))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint8 RadioBroadcastRecv",offsetof(Item,Data.Radio.BroadcastRecv))<0) BIND_ERROR;
 	// Holodisk
 	if(engine->RegisterObjectProperty("ItemCl","const uint HolodiskNumber",offsetof(Item,Data.Holodisk.Number))<0) BIND_ERROR;
 

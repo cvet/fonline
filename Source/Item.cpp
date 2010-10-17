@@ -67,6 +67,7 @@ void Item::Init(ProtoItem* proto)
 	Data.AnimHide[0]=Proto->AnimHide[0];
 	Data.AnimHide[1]=Proto->AnimHide[1];
 	Data.Flags=Proto->Flags;
+	Data.Indicator=Proto->IndicatorStart;
 
 	switch(GetType())
 	{
@@ -78,9 +79,6 @@ void Item::Init(ProtoItem* proto)
 		Data.ScriptValues[1]=Proto->MiscEx.StartVal1;
 		Data.ScriptValues[2]=Proto->MiscEx.StartVal2;
 		Data.ScriptValues[3]=Proto->MiscEx.StartVal3;
-#ifdef FONLINE_SERVER
-		if(IsHolodisk()) Data.Holodisk.Number=Random(1,42);
-#endif
 		break;
 	case ITEM_TYPE_DOOR:
 		SETFLAG(Data.Flags,ITEM_GAG);
@@ -90,6 +88,22 @@ void Item::Init(ProtoItem* proto)
 		break;
 	default:
 		break;
+	}
+
+	if(IsRadio())
+	{
+		Data.Radio.Channel=Proto->RadioChannel;
+		Data.Radio.Flags=Proto->RadioFlags;
+		Data.Radio.BroadcastSend=Proto->RadioBroadcastSend;
+		Data.Radio.BroadcastRecv=Proto->RadioBroadcastRecv;
+	}
+
+	if(IsHolodisk())
+	{
+		Data.Holodisk.Number=Proto->HolodiskNum;
+#ifdef FONLINE_SERVER
+		if(!Data.Holodisk.Number) Data.Holodisk.Number=Random(1,42);
+#endif
 	}
 
 #ifdef FONLINE_CLIENT
@@ -291,10 +305,8 @@ void Item::Count_Set(DWORD val)
 {
 	if(!IsGrouped()) return;
 
-#ifdef ITEMS_STATISTICS
 	if(Data.Count>val) ItemMngr.SubItemStatistics(GetProtoId(),Data.Count-val);
 	else if(Data.Count<val) ItemMngr.AddItemStatistics(GetProtoId(),val-Data.Count);
-#endif
 	Data.Count=val;
 }
 
@@ -303,9 +315,7 @@ void Item::Count_Add(DWORD val)
 	if(!IsGrouped()) return;
 
 	Data.Count+=val;
-#ifdef ITEMS_STATISTICS
 	ItemMngr.AddItemStatistics(GetProtoId(),val);
-#endif
 }
 
 void Item::Count_Sub(DWORD val)
@@ -314,9 +324,7 @@ void Item::Count_Sub(DWORD val)
 
 	if(val>Data.Count) val=Data.Count;
 	Data.Count-=val;
-#ifdef ITEMS_STATISTICS
 	ItemMngr.SubItemStatistics(GetProtoId(),val);
-#endif
 }
 
 #ifdef FONLINE_SERVER
@@ -555,7 +563,7 @@ Item* Item::ContGetItem(DWORD item_id, bool skip_hide)
 	return NULL;
 }
 
-void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool lock)
+void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool sync_lock)
 {
 	if(!IsContainer() || !ChildItems) return;
 
@@ -565,7 +573,8 @@ void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool lock)
 		if(!skip_hide || !item->IsHidden()) items.push_back(item);
 	}
 
-	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
+#pragma MESSAGE("Recheck after synchronization.")
+	if(sync_lock && LogicMT) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 Item* Item::ContGetItemByPid(WORD pid, DWORD special_id)
@@ -584,7 +593,7 @@ Item* Item::ContGetItemByPid(WORD pid, DWORD special_id)
 	return NULL;	
 }
 
-void Item::ContGetItems(ItemPtrVec& items, DWORD special_id, bool lock)
+void Item::ContGetItems(ItemPtrVec& items, DWORD special_id, bool sync_lock)
 {
 	if(!IsContainer() || !ChildItems) return;
 
@@ -594,7 +603,8 @@ void Item::ContGetItems(ItemPtrVec& items, DWORD special_id, bool lock)
 		if(special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id) items.push_back(item);
 	}
 
-	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
+#pragma MESSAGE("Recheck after synchronization.")
+	if(sync_lock && LogicMT) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
 int Item::ContGetFreeVolume(DWORD special_id)

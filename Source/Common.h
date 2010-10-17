@@ -53,7 +53,7 @@ using namespace std;
 #define SAFEDEL(x)  {if(x) delete (x);     (x)=NULL;}
 #define SAFEDELA(x) {if(x) delete[] (x);   (x)=NULL;}
 
-#define STATIC_ASSERT(a) {static int arr[(a)?1:-1];}
+#define STATIC_ASSERT(a) {static int static_assert_array__[(a)?1:-1];}
 #define D3D_HR(expr)     {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s - %s>.\n",DXGetErrorString(hr__),DXGetErrorDescription(hr__)); return 0;}}
 
 #define PI_FLOAT       (3.14159265f)
@@ -86,6 +86,8 @@ void ChangeStepsXY(float& sx, float& sy, float deq);
 bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy);
 void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir);
 bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
+
+template<class T> inline bool CompareContainers(const T& a, const T& b){return a.size()==b.size() && (a.empty() || !memcmp(&a[0],&b[0],a.size()*sizeof(a[0])));}
 
 // Hex offset
 #define MAX_HEX_OFFSET    (50) // Must be not odd
@@ -234,7 +236,6 @@ struct MapperScriptFunctions
 #include "ThreadSync.h"
 #include "Jobs.h"
 
-#define ITEMS_STATISTICS
 //#define FOSERVER_DUMP
 #define GAME_TIME
 
@@ -263,6 +264,7 @@ extern int ServerGameSleep;
 extern int MemoryDebugLevel;
 extern DWORD VarsGarbageTime;
 extern bool WorldSaveManager;
+extern bool LogicMT;
 
 void GetServerOptions();
 

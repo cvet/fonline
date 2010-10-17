@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF08A) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF08B) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -1021,7 +1021,7 @@ sizeof(BYTE)+sizeof(WORD)+sizeof(DWORD))
 //////////////////////////////////////////////////////////////////////////
 
 //************************************************************************
-// UPDATE MSG and PROTO ITEM
+// Cached data
 //************************************************************************
 
 #define NETMSG_MSG_DATA             MAKE_NETMSG_HEADER(141)
@@ -1046,16 +1046,6 @@ sizeof(BYTE)+sizeof(WORD)+sizeof(DWORD))
 // DWORD item_hash
 // ProtoItem[(msg_len-sizeof(MSGTYPE)-sizeof(msg_len)-sizeof(item_type)-
 //	sizeof(msg_hash))/sizeof(ProtoItem)]
-//////////////////////////////////////////////////////////////////////////
-
-//************************************************************************
-// RADIO
-//************************************************************************
-
-#define NETMSG_RADIO                MAKE_NETMSG_HEADER(151)
-#define NETMSG_RADIO_SIZE           (sizeof(MSGTYPE)+sizeof(WORD))
-//////////////////////////////////////////////////////////////////////////
-// WORD channel
 //////////////////////////////////////////////////////////////////////////
 
 //************************************************************************

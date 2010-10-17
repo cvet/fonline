@@ -87,13 +87,21 @@ const char* FONames::GetPictureName(DWORD index)
 	return (*it).Name.c_str();
 }
 
-void FONames::GenerateFoNames(int path_type)
+void FONames::GenerateFoNames(int path_type, const char* path /* = NULL */)
 {
 	for(int i=0;i<FONAME_MAX;i++)
 	{
 		SomeNameVec& names=Names[i];
 		FileManager fm;
-		if(!fm.LoadFile(NamesFile[i],path_type)) continue;
+
+		if(path)
+		{
+			if(!fm.LoadFile(Str::Format("%s%s",path,NamesFile[i]),path_type)) continue;
+		}
+		else
+		{
+			if(!fm.LoadFile(NamesFile[i],path_type)) continue;
+		}
 
 		char line[512];
 		int offset=0;

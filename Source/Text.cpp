@@ -924,7 +924,7 @@ int FOMsg::LoadMsgFile(const char* fname, int path_type)
 	char* buf=(char*)fm.ReleaseBuffer();
 #endif
 
-	int result=LoadMsgFile(buf,buf_len);
+	int result=LoadMsgFileBuf(buf,buf_len);
 	delete[] buf;
 	return result;
 }
@@ -966,7 +966,7 @@ int FOMsg::LoadMsgFile(const char* fname, int path_type)
 //  	FOnline.exe!_WinMain@16()  + 0x205 bytes	C++
 // >	FOnline.exe!__tmainCRTStartup()  Line 263 + 0x1b bytes	C
 
-int FOMsg::LoadMsgFile(char* data, DWORD data_len)
+int FOMsg::LoadMsgFileBuf(char* data, DWORD data_len)
 {
 	Clear();
 
