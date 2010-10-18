@@ -281,7 +281,6 @@ void VarManager::EraseTemplateVar(WORD temp_id)
 
 	delete var; // If delete on server runtime than possible memory leaks
 	tempVars[temp_id]=NULL;
-	delete var;
 }
 
 WORD VarManager::GetTemplateVarId(const char* var_name)
