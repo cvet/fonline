@@ -2609,53 +2609,61 @@ void SpriteManager::WriteContour8(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DW
 /************************************************************************/
 #define FONT_BUF_LEN	    (0x5000)
 #define FONT_MAX_LINES	    (1000)
-#define MAX_FONT            (9)
 #define FORMAT_TYPE_DRAW    (0)
 #define FORMAT_TYPE_SPLIT   (1)
 #define FORMAT_TYPE_LCOUNT  (2)
 
 struct Letter
 {
-	WORD Dx;
-	WORD Dy;
-	BYTE W;
-	BYTE H;
+	short W;
+	short H;
+	short OffsW;
 	short OffsH;
+	short XAdvance;
 
-	Letter():Dx(0),Dy(0),W(0),H(0),OffsH(0){};
+	Letter():W(0),H(0),OffsW(0),OffsH(0),XAdvance(0){};
 };
 
 struct Font
 {
-	LPDIRECT3DTEXTURE FontSurf,FontSurfBordered;
+	LPDIRECT3DTEXTURE FontTex;
+	LPDIRECT3DTEXTURE FontTexBordered;
 
-	Letter Let[256];
+	Letter Letters[256];
 	int SpaceWidth;
 	int MaxLettHeight;
 	int EmptyVer;
-	int EmptyHor;
 	FLOAT ArrXY[256][4];
 
 	Font()
 	{
-		MaxLettHeight=0;
+		FontTex=NULL;
+		FontTexBordered=NULL;
 		SpaceWidth=0;
-		EmptyHor=0;
+		MaxLettHeight=0;
 		EmptyVer=0;
-		FontSurf=NULL;
-		FontSurfBordered=NULL;
+		for(int i=0;i<256;i++)
+		{
+			ArrXY[i][0]=0.0f;
+			ArrXY[i][1]=0.0f;
+			ArrXY[i][2]=0.0f;
+			ArrXY[i][3]=0.0f;
+		}
 	}
 };
+typedef vector<Font*> FontVec;
+typedef vector<Font*>::iterator FontVecIt;
 
-Font Fonts[MAX_FONT];
+FontVec Fonts;
+
 int DefFontIndex=-1;
 DWORD DefFontColor=0;
 
 Font* GetFont(int num)
 {
 	if(num<0) num=DefFontIndex;
-	if(num<0 || num>=MAX_FONT) return NULL;
-	return &Fonts[num];
+	if(num<0 || num>=Fonts.size()) return NULL;
+	return Fonts[num];
 }
 
 struct FontFormatInfo
@@ -2696,6 +2704,7 @@ struct FontFormatInfo
 		DefColor=COLOR_TEXT;
 		StrLines=NULL;
 	}
+
 	FontFormatInfo& operator=(const FontFormatInfo& _fi)
 	{
 		CurFont=_fi.CurFont;
@@ -2724,17 +2733,17 @@ void SpriteManager::SetDefaultFont(int index, DWORD color)
 	DefFontColor=color;
 }
 
-bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
+bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 {
-	int tex_w=256*size_mod;
-	int tex_h=256*size_mod;
-
-	if(index>=MAX_FONT)
+	if(index<0)
 	{
 		WriteLog(__FUNCTION__" - Invalid index.\n");
 		return false;
 	}
-	Font& font=Fonts[index];
+
+	Font font;
+	int tex_w=256*size_mod;
+	int tex_h=256*size_mod;
 
 	BYTE* data=new BYTE[tex_w*tex_h*4]; // TODO: Leak
 	if(!data)
@@ -2745,35 +2754,45 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	ZeroMemory(data,tex_w*tex_h*4);
 
 	FileManager fm;
-	if(!fm.LoadFile(Str::Format("%s.bmp",font_name),PT_ART_MISC))
+	if(!fm.LoadFile(Str::Format("%s.bmp",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - File <%s> not found.\n",Str::Format("%s.bmp",font_name));
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",Str::Format("%s.bmp",font_name));
 		delete[] data;
 		return false;
 	}
 
 	LPDIRECT3DTEXTURE image=NULL;
 	D3D_HR(D3DXCreateTextureFromFileInMemoryEx(d3dDevice,fm.GetBuf(),fm.GetFsize(),D3DX_DEFAULT,D3DX_DEFAULT,1,0,
-		D3DFMT_UNKNOWN,D3DPOOL_MANAGED,D3DX_DEFAULT,D3DX_DEFAULT,D3DCOLOR_ARGB(255,0,0,0),NULL,NULL,&image));
+		D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,D3DX_DEFAULT,D3DX_DEFAULT,D3DCOLOR_ARGB(255,0,0,0),NULL,NULL,&image));
 
 	D3DLOCKED_RECT lr;
 	D3D_HR(image->LockRect(0,&lr,NULL,D3DLOCK_READONLY));
 
-	if(!fm.LoadFile(Str::Format("%s.fnt",font_name),PT_ART_MISC))
+	if(!fm.LoadFile(Str::Format("%s.fnt0",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - File <%s> not found.\n",Str::Format("%s.fnt",font_name));
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",Str::Format("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
 	}
 
-	font.EmptyHor=fm.GetBEDWord();
+	int empty_hor=fm.GetBEDWord();
 	font.EmptyVer=fm.GetBEDWord();
 	font.MaxLettHeight=fm.GetBEDWord();
 	font.SpaceWidth=fm.GetBEDWord();
-	if(!fm.CopyMem(font.Let,sizeof(Letter)*256))
+
+	struct LetterOldFont
 	{
-		WriteLog(__FUNCTION__" - Incorrect size in <%s> file.\n",Str::Format("%s.fnt",font_name));
+		WORD Dx;
+		WORD Dy;
+		BYTE W;
+		BYTE H;
+		short OffsH;
+	} letters[256];
+
+	if(!fm.CopyMem(letters,sizeof(LetterOldFont)*256))
+	{
+		WriteLog(__FUNCTION__" - Incorrect size in file<%s>.\n",Str::Format("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
@@ -2787,9 +2806,17 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	int cur_y=0;
 	for(int i=0;i<256;i++)
 	{
-		int w=font.Let[i].W;
-		int h=font.Let[i].H;
+		LetterOldFont& letter_old=letters[i];
+		Letter& letter=font.Letters[i];
+
+		int w=letter_old.W;
+		int h=letter_old.H;
 		if(!w || !h) continue;
+
+		letter.W=letter_old.W;
+		letter.H=letter_old.H;
+		letter.OffsH=letter.OffsH;
+		letter.XAdvance=w+empty_hor;
 
 		if(cur_x+w+2>=tex_w)
 		{
@@ -2800,11 +2827,11 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 				delete[] data;
 				SAFEREL(image);
 				//WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
-				return LoadFont(index,font_name,size_mod*2);
+				return LoadFontOld(index,font_name,size_mod*2);
 			}
 		}
 
-		for(int j=0;j<h;j++) memcpy(data+(cur_y+j+1)*tex_w*4+(cur_x+1)*4,(BYTE*)lr.pBits+(font.Let[i].Dy+j)*sd.Width*4+font.Let[i].Dx*4,w*4);
+		for(int j=0;j<h;j++) memcpy(data+(cur_y+j+1)*tex_w*4+(cur_x+1)*4,(BYTE*)lr.pBits+(letter_old.Dy+j)*sd.Width*4+letter_old.Dx*4,w*4);
 
 		font.ArrXY[i][0]=(FLOAT)cur_x/tex_w;
 		font.ArrXY[i][1]=(FLOAT)cur_y/tex_h;
@@ -2817,18 +2844,23 @@ bool SpriteManager::LoadFont(int index, const char* font_name, int size_mod)
 	SAFEREL(image);
 
 	// Create texture
-	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurf));
-	D3D_HR(font.FontSurf->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontTex));
+	D3D_HR(font.FontTex->LockRect(0,&lr,NULL,0));
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	WriteContour8((DWORD*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
-	D3D_HR(font.FontSurf->UnlockRect(0));
+	D3D_HR(font.FontTex->UnlockRect(0));
 
 	// Create bordered texture
-	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurfBordered));
-	D3D_HR(font.FontSurfBordered->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontTexBordered));
+	D3D_HR(font.FontTexBordered->LockRect(0,&lr,NULL,0));
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
-	D3D_HR(font.FontSurfBordered->UnlockRect(0));
+	D3D_HR(font.FontTexBordered->UnlockRect(0));
 	delete[] data;
+
+	// Register
+	if(index>=Fonts.size()) Fonts.resize(index+1);
+	SAFEDEL(Fonts[index]);
+	Fonts[index]=new Font(font);
 	return true;
 }
 
@@ -2838,17 +2870,18 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	int tex_h=256*size_mod;
 
 	// Read file in buffer
-	if(index>=MAX_FONT)
+	if(index<0)
 	{
 		WriteLog(__FUNCTION__" - Invalid index.\n");
 		return false;
 	}
-	Font& font=Fonts[index];
 
+	Font font;
 	FileManager fm;
-	if(!fm.LoadFile(font_name,PT_ART_MISC))
+
+	if(!fm.LoadFile(Str::Format("%s.aaf",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - File <%s> not found.\n",font_name);
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",Str::Format("%s.aaf",font_name));
 		return false;
 	}
 
@@ -2865,7 +2898,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	font.MaxLettHeight=fm.GetBEWord();
 	// Горизонтальный зазор.
 	// Зазор (в пикселах) между соседними изображениями символов.
-	font.EmptyHor=fm.GetBEWord();
+	int empty_hor=fm.GetBEWord();
 	// Ширина пробела.
 	// Ширина символа 'Пробел'.
 	font.SpaceWidth=fm.GetBEWord();
@@ -2888,7 +2921,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 
 	for(int i=0;i<256;i++)
 	{
-		Letter& l=font.Let[i];
+		Letter& l=font.Letters[i];
 
 		l.W=fm.GetBEWord();
 		l.H=fm.GetBEWord();
@@ -2922,6 +2955,8 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 			}
 		}
 
+		l.XAdvance=l.W+empty_hor;
+
 		font.ArrXY[i][0]=(FLOAT)cur_x/tex_w;
 		font.ArrXY[i][1]=(FLOAT)cur_y/tex_h;
 		font.ArrXY[i][2]=(FLOAT)(cur_x+int(l.W)+2)/tex_w;
@@ -2930,19 +2965,168 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	}
 
 	// Create texture
-	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurf));
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontTex));
 	D3DLOCKED_RECT lr;
-	D3D_HR(font.FontSurf->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
+	D3D_HR(font.FontTex->LockRect(0,&lr,NULL,0));
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
 	WriteContour8((DWORD*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
-	D3D_HR(font.FontSurf->UnlockRect(0));
+	D3D_HR(font.FontTex->UnlockRect(0));
 
 	// Create bordered texture
-	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontSurfBordered));
-	D3D_HR(font.FontSurfBordered->LockRect(0,&lr,NULL,0)); // D3DLOCK_DISCARD
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontTexBordered));
+	D3D_HR(font.FontTexBordered->LockRect(0,&lr,NULL,0));
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
-	D3D_HR(font.FontSurfBordered->UnlockRect(0));
+	D3D_HR(font.FontTexBordered->UnlockRect(0));
 	delete[] data;
+
+	// Register
+	if(index>=Fonts.size()) Fonts.resize(index+1);
+	SAFEDEL(Fonts[index]);
+	Fonts[index]=new Font(font);
+	return true;
+}
+
+bool SpriteManager::LoadFontBMF(int index, const char* font_name)
+{
+	if(index<0)
+	{
+		WriteLog(__FUNCTION__" - Invalid index.\n");
+		return false;
+	}
+
+	Font font;
+	FileManager fm;
+	FileManager fm_tex;
+
+	if(!fm.LoadFile(Str::Format("%s.fnt",font_name),PT_FONTS))
+	{
+		WriteLog(__FUNCTION__" - Font file<%s> not found.\n",Str::Format("%s.fnt",font_name));
+		return false;
+	}
+
+	DWORD signature=fm.GetLEDWord();
+	if(signature!=MAKEFOURCC('B','M','F',3))
+	{
+		WriteLog(__FUNCTION__" - Invalid signature of font<%s>.\n",font_name);
+		return false;
+	}
+
+	// Info
+	fm.GetByte();
+	DWORD block_len=fm.GetLEDWord();
+	DWORD next_block=block_len+fm.GetCurPos()+1;
+
+	fm.GoForward(7);
+	if(fm.GetByte()!=1 || fm.GetByte()!=1 || fm.GetByte()!=1 || fm.GetByte()!=1)
+	{
+		WriteLog(__FUNCTION__" - Wrong padding in font<%s>.\n",font_name);
+		return false;
+	}
+
+	// Common
+	fm.SetCurPos(next_block);
+	block_len=fm.GetLEDWord();
+	next_block=block_len+fm.GetCurPos()+1;
+
+	int line_height=fm.GetLEWord();
+	int base_height=fm.GetLEWord();
+	font.MaxLettHeight=base_height;
+
+	int tex_w=fm.GetLEWord();
+	int tex_h=fm.GetLEWord();
+
+	if(fm.GetLEWord()!=1)
+	{
+		WriteLog(__FUNCTION__" - Texture for font<%s> must be single.\n",font_name);
+		return false;
+	}
+
+	// Pages
+	fm.SetCurPos(next_block);
+	block_len=fm.GetLEDWord();
+	next_block=block_len+fm.GetCurPos()+1;
+
+	char texture_name[MAX_FOPATH]={0};
+	fm.GetStr(texture_name);
+
+	if(!fm_tex.LoadFile(texture_name,PT_FONTS))
+	{
+		WriteLog(__FUNCTION__" - Texture file<%s> not found.\n",texture_name);
+		return false;
+	}
+
+	// Chars
+	fm.SetCurPos(next_block);
+
+	int count=fm.GetLEDWord()/20;
+	for(int i=0;i<count;i++)
+	{
+		// Read data
+		int id=fm.GetLEDWord();
+		int x=fm.GetLEWord();
+		int y=fm.GetLEWord();
+		int w=fm.GetLEWord();
+		int h=fm.GetLEWord();
+		int ox=fm.GetLEWord();
+		int oy=fm.GetLEWord();
+		int xa=fm.GetLEWord();
+		fm.GoForward(2);
+
+		if(id<0 || id>255) continue;
+
+		// Fill data
+		Letter& let=font.Letters[id];
+		let.W=w-2;
+		let.H=h-2;
+		let.OffsW=-ox;
+		let.OffsH=-oy+(line_height-base_height);
+		let.XAdvance=xa+1;
+
+		// Texture coordinates
+		font.ArrXY[id][0]=(FLOAT)x/tex_w;
+		font.ArrXY[id][1]=(FLOAT)y/tex_h;
+		font.ArrXY[id][2]=(FLOAT)(x+w)/tex_w;
+		font.ArrXY[id][3]=(FLOAT)(y+h)/tex_h;
+	}
+
+	font.EmptyVer=1;
+	font.SpaceWidth=font.Letters[' '].XAdvance;
+
+	// Create texture
+	D3D_HR(D3DXCreateTextureFromFileInMemoryEx(d3dDevice,fm_tex.GetBuf(),fm_tex.GetFsize(),D3DX_DEFAULT,D3DX_DEFAULT,1,0,
+		D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,D3DX_DEFAULT,D3DX_DEFAULT,D3DCOLOR_ARGB(255,0,0,0),NULL,NULL,&font.FontTex));
+
+	// Create bordered texture
+	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontTexBordered));
+
+	D3DLOCKED_RECT lr,lrb;
+	D3D_HR(font.FontTex->LockRect(0,&lr,NULL,0));
+	D3D_HR(font.FontTexBordered->LockRect(0,&lrb,NULL,0));
+
+	for(DWORD y=0;y<tex_h;y++)
+		for(DWORD x=0;x<tex_w;x++)
+			if(SURF_POINT(lr,x,y)&0xFF000000)
+				SURF_POINT(lr,x,y)=(SURF_POINT(lr,x,y)&0xFF000000)|(0x7F7F7F);
+			else
+				SURF_POINT(lr,x,y)=0;
+
+	memcpy(lrb.pBits,lr.pBits,lr.Pitch*tex_h);
+
+	for(DWORD y=0;y<tex_h;y++)
+		for(DWORD x=0;x<tex_w;x++)
+			if(SURF_POINT(lr,x,y))
+				for(int xx=-1;xx<=1;xx++)
+					for(int yy=-1;yy<=1;yy++)
+						if(!SURF_POINT(lrb,x+xx,y+yy))
+							SURF_POINT(lrb,x+xx,y+yy)=0xFF000000;
+
+	D3D_HR(font.FontTexBordered->UnlockRect(0));
+	D3D_HR(font.FontTex->UnlockRect(0));
+
+	// Register
+	if(index>=Fonts.size()) Fonts.resize(index+1);
+	SAFEDEL(Fonts[index]);
+	Fonts[index]=new Font(font);
 	return true;
 }
 
@@ -3019,7 +3203,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		case '\r': continue;
 		case ' ': lett_len=font->SpaceWidth; break;
 		case '\t': lett_len=font->SpaceWidth*4; break;
-		default: lett_len=font->Let[(BYTE)str[i]].W+font->EmptyHor; break;
+		default: lett_len=font->Letters[(BYTE)str[i]].XAdvance; break;
 		}
 
 		if(curx+lett_len>r.R)
@@ -3236,7 +3420,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		case '\r':
 			break;
 		default:
-			curx+=font->Let[(BYTE)str[i]].W+font->EmptyHor;
+			curx+=font->Letters[(BYTE)str[i]].XAdvance;
 			//if(curx>fi.LineWidth[curstr]) fi.LineWidth[curstr]=curx;
 			can_count=true;
 			break;
@@ -3285,7 +3469,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 	lastCall=NULL;
 	curTexture=NULL;
 
-	D3D_HR(d3dDevice->SetTexture(0,FLAG(flags,FT_BORDERED)?font->FontSurfBordered:font->FontSurf));
+	D3D_HR(d3dDevice->SetTexture(0,FLAG(flags,FT_BORDERED)?font->FontTexBordered:font->FontTex));
 
 	if(FLAG(flags,FT_COLORIZE))
 	{
@@ -3323,11 +3507,12 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 		case '\r':
 			continue;
 		default:
+			Letter& l=font->Letters[(BYTE)str_[i]];
 			int mulpos=curSprCnt*4;
-			int x=curx-1;
-			int y=cury-font->Let[(BYTE)str_[i]].OffsH-1;
-			int w=font->Let[(BYTE)str_[i]].W+2;
-			int h=font->Let[(BYTE)str_[i]].H+2;
+			int x=curx-l.OffsW-1;
+			int y=cury-l.OffsH-1;
+			int w=l.W+2;
+			int h=l.H+2;
 
 			FLOAT x1=font->ArrXY[(BYTE)str_[i]][0];
 			FLOAT y1=font->ArrXY[(BYTE)str_[i]][1];
@@ -3359,7 +3544,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 			waitBuf[mulpos++].Diffuse=col;
 
 			if(++curSprCnt==flushSprCnt) Flush();
-			curx+=font->Let[(BYTE)str_[i]].W+font->EmptyHor;
+			curx+=l.XAdvance;
 			variable_space=true;
 		}
 	}

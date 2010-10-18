@@ -29,6 +29,7 @@
 #define PT_VIDEO               (20)
 #define PT_TEXTS               (21)
 #define PT_SAVE                (22)
+#define PT_FONTS               (23)
 
 // Server paths
 #define PT_SERVER_ROOT         (30)

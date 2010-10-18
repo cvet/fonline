@@ -1034,6 +1034,9 @@ struct BindClass
 	static void Global_GetCurrentCursor(){}
 	static void Global_GetLastCursor(){}
 	static void Global_ChangeCursor(){}
+	static void Global_WaitPing(){}
+	static void Global_LoadFont(){}
+	static void Global_SetDefaultFont(){}
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)

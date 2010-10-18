@@ -1977,7 +1977,7 @@ void FOClient::ConsoleDraw()
 			FPS,PingTime,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume(),GameOpt.Sleep
 			),FT_COLORIZE,D3DCOLOR_XRGB(255,248,0),FONT_BIG);
 
-		SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),MsgGame->GetStr(STR_GAME_HELP),FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEF);
+		SprMngr.DrawStr(INTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),MsgGame->GetStr(STR_GAME_HELP),FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEFAULT);
 	}	
 }
 
@@ -2875,7 +2875,7 @@ void FOClient::LogDraw()
 	SprMngr.DrawStr(LogBOptionsText,MsgGame->GetStr(STR_LOGIN_OPTIONS),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(LogBCreditsText,MsgGame->GetStr(STR_LOGIN_CREDITS),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(LogBExitText,MsgGame->GetStr(STR_LOGIN_EXIT),FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(LogWVersion,MsgGame->GetStr(STR_VERSION_INFO),FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEF);
+	SprMngr.DrawStr(LogWVersion,MsgGame->GetStr(STR_VERSION_INFO),FT_CENTERY,COLOR_TEXT_WHITE,FONT_DEFAULT);
 
 	if(!Singleplayer)
 	{
@@ -5561,7 +5561,7 @@ void FOClient::GmapDraw()
 	if(car)
 	{
 		SprMngr.DrawSpriteSize(ResMngr.GetSprId(car->GetPicMap(),car->Proto->Dir),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
-		SprMngr.DrawStr(GmapWCar,FmtItemLook(car,ITEM_LOOK_WM_CAR),FT_CENTERX|FT_BOTTOM,COLOR_TEXT,FONT_DEF);
+		SprMngr.DrawStr(GmapWCar,FmtItemLook(car,ITEM_LOOK_WM_CAR),FT_CENTERX|FT_BOTTOM,COLOR_TEXT,FONT_DEFAULT);
 	}
 
 	// Day time
@@ -7407,7 +7407,7 @@ void FOClient::PipDraw()
 
 	int scr=-(int)PipScroll[PipMode];
 	INTRECT& r=PipWMonitor;
-	int ml=SprMngr.GetLinesCount(0,r.H(),NULL,FONT_DEF);
+	int ml=SprMngr.GetLinesCount(0,r.H(),NULL,FONT_DEFAULT);
 	int h=r.H()/ml;
 #define PIP_DRAW_TEXT(text,flags,color) do{if(scr>=0 && scr<ml) SprMngr.DrawStr(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h,PipX,PipY),text,flags,color);}while(0)
 #define PIP_DRAW_TEXTR(text,flags,color) do{if(scr>=0 && scr<ml) SprMngr.DrawStr(INTRECT(r[2]-r.W()/3,r[1]+scr*h,r[2],r[1]+scr*h+h,PipX,PipY),text,flags,color);}while(0)
@@ -7637,7 +7637,7 @@ void FOClient::PipLMouseDown()
 	if(!Chosen) return;
 
 	INTRECT& r=PipWMonitor;
-	int ml=SprMngr.GetLinesCount(0,r.H(),NULL,FONT_DEF);
+	int ml=SprMngr.GetLinesCount(0,r.H(),NULL,FONT_DEFAULT);
 	int h=r.H()/ml;
 	int scr=-(int)PipScroll[PipMode];
 

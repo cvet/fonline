@@ -29,7 +29,7 @@ char PathLst[][50]=
 	"video\\",
 	"text\\",
 	"save\\",
-	"",
+	"fonts\\",
 	"",
 	"",
 	"",

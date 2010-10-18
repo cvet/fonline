@@ -406,7 +406,7 @@ public:
 	void ProcessChangedParams();
 	DWORD GetFollowCrId(){return Data.Params[ST_FOLLOW_CRIT];}
 	void SetFollowCrId(DWORD crid){ChangeParam(ST_FOLLOW_CRIT); Data.Params[ST_FOLLOW_CRIT]=crid;}
-	int GetSkill(DWORD index){return Data.Params[index];}
+	int GetSkill(DWORD index){return CLAMP(Data.Params[index],-MAX_SKILL_VAL,MAX_SKILL_VAL);}
 	bool IsPerk(DWORD index){return Data.Params[index]!=0;}
 	int GetPerk(DWORD index){return Data.Params[index];}
 	bool IsDmgEye(){return Data.Params[DAMAGE_EYE]!=0;}

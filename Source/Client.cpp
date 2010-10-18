@@ -182,16 +182,16 @@ bool FOClient::Init(HWND hwnd)
 	CritterCl::SprMngr=&SprMngr;
 
 	// Fonts
-	if(!SprMngr.LoadFont(FONT_FO,"fnt_def",1)) return false;
-	if(!SprMngr.LoadFont(FONT_NUM,"fnt_num",1)) return false;
-	if(!SprMngr.LoadFont(FONT_BIG_NUM,"fnt_big_num",1)) return false;
-	if(!SprMngr.LoadFont(FONT_SAND_NUM,"fnt_sand_num",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_SPECIAL,"font0.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_DEF,"font1.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_THIN,"font2.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_FAT,"font3.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_BIG,"font4.aaf",1)) return false;
-	SprMngr.SetDefaultFont(FONT_DEF,COLOR_TEXT);
+	if(!SprMngr.LoadFontOld(FONT_FO,"OldDefault",1)) return false;
+	if(!SprMngr.LoadFontOld(FONT_NUM,"Numbers",1)) return false;
+	if(!SprMngr.LoadFontOld(FONT_BIG_NUM,"BigNumbers",1)) return false;
+	if(!SprMngr.LoadFontOld(FONT_SAND_NUM,"SandNumbers",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_SPECIAL,"Special",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_DEFAULT,"Default",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_THIN,"Thin",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_FAT,"Fat",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_BIG,"Big",1)) return false;
+	SprMngr.SetDefaultFont(FONT_DEFAULT,COLOR_TEXT);
 
 	// Sound manager
 	IniParser cfg;
@@ -1927,7 +1927,7 @@ void FOClient::ProcessMouseWheel(int data)
 			if(PipMode!=PIP__AUTOMAPS_MAP)
 			{
 				int scroll=1;
-				if(Keyb::ShiftDwn) scroll=SprMngr.GetLinesCount(0,PipWMonitor.H(),NULL,FONT_DEF);
+				if(Keyb::ShiftDwn) scroll=SprMngr.GetLinesCount(0,PipWMonitor.H(),NULL,FONT_DEFAULT);
 				if(data>0) scroll=-scroll;
 				PipScroll[PipMode]+=scroll;
 				if(PipScroll[PipMode]<0) PipScroll[PipMode]=0;
@@ -10125,6 +10125,21 @@ bool FOClient::SScriptFunc::Global_Load3dFile(CScriptString& fname, int path_typ
 {
 	Animation3dEntity* entity=Animation3dEntity::GetEntity(fname.c_str(),path_type);
 	return entity!=NULL;
+}
+
+void FOClient::SScriptFunc::Global_WaitPing()
+{
+	Self->WaitPing();
+}
+
+bool FOClient::SScriptFunc::Global_LoadFont(int font_index, CScriptString& font_fname)
+{
+	return Self->SprMngr.LoadFontBMF(font_index,font_fname.c_str());
+}
+
+void FOClient::SScriptFunc::Global_SetDefaultFont(int font, DWORD color)
+{
+	Self->SprMngr.SetDefaultFont(font,color);
 }
 
 void FOClient::SScriptFunc::Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds)

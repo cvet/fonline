@@ -205,7 +205,7 @@ string FOServer::GetIngamePlayersStatistics()
 		Client* cl=players[i];
 		const char* name=cl->GetName();
 		Map* map=MapMngr.GetMap(cl->GetMap(),false);
-		Location* loc=map->GetLocation(false);
+		Location* loc=(map?map->GetLocation(false):NULL);
 
 		sprintf(str_loc,"%s (%u, %u)",map?loc->Proto->Name.c_str():"",map?loc->GetId():0,map?loc->GetPid():0);
 		sprintf(str_map,"%s (%u, %u)",map?map->Proto->GetName():"",map?map->GetId():0,map?map->GetPid():0);

@@ -523,9 +523,6 @@ public:
 		static DWORD Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second);
 		static void Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second);
 		static bool Global_StrToInt(CScriptString& text, int& result);
-		static void Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps);
-		static CScriptString* Global_GetIfaceIniStr(CScriptString& key);
-		static bool Global_Load3dFile(CScriptString& fname, int path_type);
 		static DWORD Global_GetTick(){return Timer::FastTick();}
 		static void Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds);
 		static bool Global_SetParameterGetBehaviour(DWORD index, CScriptString& func_name);
@@ -573,6 +570,12 @@ public:
 		static int Global_GetCurrentCursor();
 		static int Global_GetLastCursor();
 		static void Global_ChangeCursor(int cursor);
+		static void Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps);
+		static CScriptString* Global_GetIfaceIniStr(CScriptString& key);
+		static bool Global_Load3dFile(CScriptString& fname, int path_type);
+		static void Global_WaitPing();
+		static bool Global_LoadFont(int font, CScriptString& font_fname);
+		static void Global_SetDefaultFont(int font, DWORD color);
 	} ScriptFunc;
 
 	static bool SpritesCanDraw;
@@ -1634,7 +1637,7 @@ public:
 #define FONT_BIG_NUM            (2)
 #define FONT_SAND_NUM           (3)
 #define FONT_SPECIAL            (4)
-#define FONT_DEF                (5)
+#define FONT_DEFAULT            (5)
 #define FONT_THIN               (6)
 #define FONT_FAT                (7)
 #define FONT_BIG                (8)
