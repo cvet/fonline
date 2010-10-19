@@ -57,15 +57,16 @@ bool FOMapper::Init(HWND wnd)
 	if(!SprMngr.Init(params)) return false;
 
 	// Fonts
-	if(!SprMngr.LoadFont(FONT_FO,"fnt_def",1)) return false;
-	if(!SprMngr.LoadFont(FONT_NUM,"fnt_num",1)) return false;
-	if(!SprMngr.LoadFont(FONT_BIG_NUM,"fnt_big_num",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_SPECIAL,"font0.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_DEF,"font1.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_THIN,"font2.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_FAT,"font3.aaf",1)) return false;
-	if(!SprMngr.LoadFontAAF(FONT_BIG,"font4.aaf",1)) return false;
-	SprMngr.SetDefaultFont(FONT_DEF,COLOR_TEXT);
+	if(!SprMngr.LoadFontOld(FONT_FO,"OldDefault",1)) return false;
+	if(!SprMngr.LoadFontOld(FONT_NUM,"Numbers",1)) return false;
+	if(!SprMngr.LoadFontOld(FONT_BIG_NUM,"BigNumbers",1)) return false;
+	if(!SprMngr.LoadFontOld(FONT_SAND_NUM,"SandNumbers",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_SPECIAL,"Special",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_DEFAULT,"Default",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_THIN,"Thin",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_FAT,"Fat",1)) return false;
+	if(!SprMngr.LoadFontAAF(FONT_BIG,"Big",1)) return false;
+	SprMngr.SetDefaultFont(FONT_DEFAULT,COLOR_TEXT);
 
 	// Critters sprite manager ptr
 	CritterCl::SprMngr=&SprMngr;

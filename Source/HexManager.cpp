@@ -819,7 +819,7 @@ void HexManager::RebuildMap(int rx, int ry)
 						Drop* new_drop=new Drop(picRainDrop,Random(-10,10),-100-Random(0,100),-100);
 						rainData.push_back(new_drop);
 
-						mainTree.AddSprite(DRAW_ORDER_HEX(f.Pos),f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
+						roofRainTree.AddSprite(DRAW_ORDER_HEX(f.Pos),f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
 							&new_drop->OffsX,&new_drop->OffsY,NULL,GetLightHex(nx,ny),NULL);
 					}
 				}

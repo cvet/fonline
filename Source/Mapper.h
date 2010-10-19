@@ -17,14 +17,15 @@
 #include "Script.h"
 
 // Fonts
-#define FONT_FO         (0)
-#define FONT_NUM        (1)
-#define FONT_BIG_NUM    (2)
-#define FONT_SPECIAL    (3)
-#define FONT_DEF        (4)
-#define FONT_THIN       (5)
-#define FONT_FAT        (6)
-#define FONT_BIG        (7)
+#define FONT_FO                 (0)
+#define FONT_NUM                (1)
+#define FONT_BIG_NUM            (2)
+#define FONT_SAND_NUM           (3)
+#define FONT_SPECIAL            (4)
+#define FONT_DEFAULT            (5)
+#define FONT_THIN               (6)
+#define FONT_FAT                (7)
+#define FONT_BIG                (8)
 
 typedef vector<CritData*> CritDataVec;
 
