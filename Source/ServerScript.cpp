@@ -1877,6 +1877,7 @@ bool FOServer::SScriptFunc::Crit_MoveItem(Critter* cr, DWORD item_id, DWORD coun
 	if(count>item->GetCount()) SCRIPT_ERROR_R0("Item count arg is greater than items count.");
 	bool result=cr->MoveItem(item->ACC_CRITTER.Slot,to_slot,item_id,count);
 	if(!result) return false; //SCRIPT_ERROR_R0("Fail to move item.");
+	cr->Send_AddItem(item);
 	return true;
 }
 

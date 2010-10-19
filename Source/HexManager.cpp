@@ -405,8 +405,8 @@ void HexManager::FinishItem(DWORD id, bool is_deleted)
 ItemHexVecIt HexManager::DeleteItem(ItemHex* item, bool with_delete /* = true */)
 {
 	WORD pid=item->GetProtoId();
-	WORD hx=item->HexX;
-	WORD hy=item->HexY;
+	WORD hx=item->GetHexX();
+	WORD hy=item->GetHexY();
 
 	if(item->Proto->IsCar()) ReplaceCarBlocks(item->HexX,item->HexY,item->Proto);
 	if(item->SprDrawValid) item->SprDraw->Unvalidate();
@@ -467,13 +467,17 @@ bool ItemCompWall(ItemHex* o1, ItemHex* o2){return o1->IsWall() && !o2->IsWall()
 void HexManager::PushItem(ItemHex* item)
 {
 	hexItems.push_back(item);
-	WORD hx=item->HexX;
-	WORD hy=item->HexY;
+
+	WORD hx=item->GetHexX();
+	WORD hy=item->GetHexY();
+
 	Field& f=GetField(hx,hy);
 	item->HexScrX=&f.ScrX;
 	item->HexScrY=&f.ScrY;
 	f.AddItem(item);
+
 	if(item->Proto->IsCar()) PlaceCarBlocks(hx,hy,item->Proto);
+
 	// Sort
 	std::sort(f.Items.begin(),f.Items.end(),ItemCompScen);
 	std::sort(f.Items.begin(),f.Items.end(),ItemCompWall);
@@ -3669,7 +3673,10 @@ void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 	}
 	else
 	{
-		item->Data.Flags=item->Proto->Flags;
+		UNSETFLAG(item->Data.Flags,ITEM_SHOW_ANIM);
+		UNSETFLAG(item->Data.Flags,ITEM_SHOW_ANIM_EXT);
+		SETFLAG(item->Data.Flags,item->Proto->Flags&ITEM_SHOW_ANIM);
+		SETFLAG(item->Data.Flags,item->Proto->Flags&ITEM_SHOW_ANIM_EXT);
 		item->Data.AnimShow[0]=item->Proto->AnimShow[0];
 		item->Data.AnimShow[1]=item->Proto->AnimShow[1];
 		item->Data.AnimStay[0]=item->Proto->AnimStay[0];
