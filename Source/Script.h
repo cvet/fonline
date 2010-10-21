@@ -52,8 +52,18 @@ namespace Script
 	asIScriptModule* GetModule(const char* name);
 	asIScriptModule* CreateModule(const char* module_name);
 
+#ifdef FONLINE_SERVER
+	void SetGarbagerCycle(DWORD ticks);
+	void SetEvaluationCycle(DWORD ticks);
+	void SetMaxGarbagerTime(DWORD ticks);
+	void GetGCStatistics(DWORD* current_size, DWORD* total_destroyed, DWORD* total_detected);
+	void ScriptGarbager(DWORD cycle_tick);
+	void CollectGarbage(asDWORD flags = asGC_FULL_CYCLE);
+#endif
+#ifndef FONLINE_SERVER
 	void SetGarbageCollectTime(DWORD ticks);
-	void CollectGarbage(bool force);
+	void CollectGarbage(bool force = true);
+#endif
 	void SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout);
 
 	void SetScriptsPath(int path_type);

@@ -477,7 +477,7 @@ void FOServer::MainLoop()
 	ItemMngr.ItemGarbager();
 	CrMngr.CritterGarbager();
 	MapMngr.LocationGarbager();
-	Script::CollectGarbage(true);
+	Script::CollectGarbage();
 	Job::SetDeferredReleaseCycle(0xFFFFFFFF);
 	Job::ProcessDeferredReleasing();
 
@@ -619,7 +619,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 		else if(job.Type==JOB_GARBAGE_SCRIPT)
 		{
 			// AngelScript garbage
-			Script::CollectGarbage(false);
+			Script::ScriptGarbager(cycle_tick);
 		}
 		else if(job.Type==JOB_GARBAGE_VARS)
 		{

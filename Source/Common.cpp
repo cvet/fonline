@@ -619,7 +619,9 @@ void GetServerOptions()
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 	ServerGameSleep=cfg.GetInt("GameSleep",10);
-	Script::SetGarbageCollectTime(cfg.GetInt("ASGarbageTime",120)*1000);
+	Script::SetGarbagerCycle(cfg.GetInt("ASGarbagerCycle",120)*1000);
+	Script::SetEvaluationCycle(cfg.GetInt("ASEvaluationCycle",120)*1000);
+	Script::SetMaxGarbagerTime(cfg.GetInt("ASMaxGarbagerTime",40));
 	Script::SetConcurrentExecution(cfg.GetInt("ScriptConcurrentExecution",0)!=0);
 	VarsGarbageTime=cfg.GetInt("VarsGarbageTime",3600)*1000;
 	WorldSaveManager=(cfg.GetInt("WorldSaveManager",1)==1);

@@ -68,7 +68,15 @@ int ScriptsPath=PT_SCRIPTS;
 bool LogDebugInfo=true;
 StrVec WrongGlobalObjects;
 
-DWORD GarbageCollectTime=60000;
+#ifdef FONLINE_SERVER
+DWORD GarbagerCycle=120000;
+DWORD EvaluationCycle=120000;
+DWORD MaxGarbagerTime=40;
+#endif
+#ifndef FONLINE_SERVER
+DWORD GarbageCollectTime=120000;
+#endif
+
 #ifdef SCRIPT_MULTITHREADING
 MutexCode GarbageLocker;
 #endif
@@ -419,7 +427,7 @@ void UnloadScripts()
 	}
 
 	modules.clear();
-	CollectGarbage(true);
+	CollectGarbage();
 }
 
 bool ReloadScripts(const char* config, const char* key, bool skip_binaries)
@@ -708,11 +716,166 @@ asIScriptModule* CreateModule(const char* module_name)
 	return module;
 }
 
+#ifndef FONLINE_SERVER
 void SetGarbageCollectTime(DWORD ticks)
 {
 	GarbageCollectTime=ticks;
 }
+#endif
 
+#ifdef FONLINE_SERVER
+void SetGarbagerCycle(DWORD ticks)
+{
+	GarbagerCycle=ticks;
+}
+
+void SetEvaluationCycle(DWORD ticks)
+{
+	EvaluationCycle=ticks;
+}
+
+void SetMaxGarbagerTime(DWORD ticks)
+{
+	MaxGarbagerTime=ticks;
+}
+
+void GetGCStatistics(DWORD* current_size, DWORD* total_destroyed, DWORD* total_detected)
+{
+	Engine->GetGCStatistics((asUINT*)current_size, (asUINT*)total_destroyed, (asUINT*)total_detected);
+}
+
+void ScriptGarbager(DWORD cycle_tick)
+{
+	static BYTE garbager_state=5;
+	static DWORD last_nongarbage=0;
+	static DWORD best_count=0;
+	static DWORD last_garbager_tick=0;
+	static DWORD last_evaluation_tick=0;
+	static BYTE deferred=0;
+
+	static DWORD garbager_count[3]; // uses garbager_state as index
+	static double garbager_time[3]; // uses garbager_state as index
+
+	switch(garbager_state)
+	{
+	case 5: // first time
+		best_count=1000;
+	case 6: // statistics init and first time
+		{
+			CollectGarbage(asGC_FULL_CYCLE|asGC_DESTROY_GARBAGE);
+			DWORD dummy=0;
+			GetGCStatistics(&last_nongarbage, &dummy, &dummy);
+			garbager_state=0;
+			break;
+		}
+	case 0:
+	case 1:
+	case 2: // statistics stage 0,1,2
+		{
+			if(Timer::FastTick()-cycle_tick > 100)
+			{
+				deferred++;
+				if(deferred==5) deferred=0;
+			} else deferred=0;
+			if(deferred) break; // safeguard, don't garbage if current cycle is already long
+			//DWORD now_tick=Timer::FastTick();
+			DWORD dummy=0;
+			DWORD current_size=0;
+			GetGCStatistics(&current_size, &dummy, &dummy);
+			// try 1x, 1.5x and 2x count time for time extrapolation:
+			if(current_size<last_nongarbage+(best_count*(2+garbager_state))/2) break;
+			//WriteLog("GC: statistics stage %d: ",garbager_state);
+			garbager_time[garbager_state]=Timer::AccurateTick();
+			CollectGarbage(asGC_FULL_CYCLE|asGC_DESTROY_GARBAGE);
+			garbager_time[garbager_state]=Timer::AccurateTick()-garbager_time[garbager_state];
+			GetGCStatistics(&last_nongarbage, &dummy, &dummy);
+			garbager_count[garbager_state]=current_size-last_nongarbage;
+			//WriteLog("%d objects, %f ms [checked in %f]\n",garbager_count[garbager_state],garbager_time[garbager_state],Timer::FastTick()-now_tick);
+			if(!garbager_count[garbager_state]) break; // repeat this step
+			garbager_state++;
+			break;
+		}
+	case 3: // statistics last stage, calculate best_count
+		{
+			//WriteLog("GC: statistics final:\n");
+			double obj_times[2];
+			bool undetermined=false;
+			for(int i=0;i<2;i++)
+			{
+				if(garbager_count[i+1]==garbager_count[i])
+				{
+					undetermined=true; // too low resolution, break statistics and repeat later
+					break;
+				}
+				obj_times[i]=(garbager_time[i+1]-garbager_time[i])/((double)garbager_count[i+1]-(double)garbager_count[i]);
+				if(obj_times[i]<=0.0f) // should no happen
+				{
+					undetermined=true; // too low resolution, break statistics and repeat later
+					break;
+				}
+			}
+			garbager_state=4;
+			if(undetermined) break;
+			double object_delete_time=(obj_times[0]+obj_times[1])/2;
+			double overhead=0.0f;
+			for(int i=0;i<3;i++) overhead+=(garbager_time[i]-garbager_count[i]*object_delete_time);
+			overhead/=3;
+			if(overhead>40.0f) overhead=40.0f; // will result on deletion on every frame
+			best_count=(DWORD)((40.0f-overhead)/object_delete_time);
+			//WriteLog("GC: object deletion times: %f %f (%f), overhead %f, optimal obj count=%d\n",obj_times[0],obj_times[1],object_delete_time,overhead,best_count);
+			break;
+		}
+	case 4: // normal garbage check
+		{
+			if(GarbagerCycle && Timer::FastTick()-last_garbager_tick>=GarbagerCycle)
+			{
+				//WriteLog("GC: detecting circular garbage\n");
+				CollectGarbage(asGC_ONE_STEP|asGC_DETECT_GARBAGE);
+				last_garbager_tick=Timer::FastTick();
+			}
+			if(EvaluationCycle && Timer::FastTick()-last_evaluation_tick>=EvaluationCycle)
+			{
+				//WriteLog("GC: entering scheduled statistics\n");
+				garbager_state=6; // enter statistics after normal garbaging is done
+				last_evaluation_tick=Timer::FastTick();
+			}
+			DWORD dummy=0;
+			DWORD current_size=0;
+			GetGCStatistics(&current_size, &dummy, &dummy);
+			if(current_size>last_nongarbage+best_count)
+			{
+				//WriteLog("GC: current cycle time so far is %d\n",Timer::FastTick()-cycle_tick);
+				if(Timer::FastTick()-cycle_tick > 100)
+				{
+					deferred++;
+					if(deferred==5) deferred=0;
+				} else deferred=0;
+
+				if(!deferred) // safeguard, don't garbage if current cycle is already long
+				{
+					//WriteLog("GC: collecting garbage:\n");
+					//DWORD now_tick=Timer::FastTick();
+					CollectGarbage(asGC_FULL_CYCLE|asGC_DESTROY_GARBAGE);
+					//WriteLog("GC: done in %d ms\n",Timer::FastTick()-now_tick);
+				}
+			}
+		}
+	}
+}
+
+void CollectGarbage(asDWORD flags)
+{
+#ifdef SCRIPT_MULTITHREADING
+	GarbageLocker.LockCode();
+#endif
+	Engine->GarbageCollect(flags);
+#ifdef SCRIPT_MULTITHREADING
+	GarbageLocker.UnlockCode();
+#endif
+}
+#endif
+
+#ifndef FONLINE_SERVER
 void CollectGarbage(bool force)
 {
 	static DWORD last_tick=Timer::FastTick();
@@ -731,6 +894,7 @@ void CollectGarbage(bool force)
 		last_tick=Timer::FastTick();
 	}
 }
+#endif
 
 unsigned int __stdcall RunTimeoutThread(void* data)
 {
