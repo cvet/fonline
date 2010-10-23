@@ -1226,8 +1226,6 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 	DWORD encounter_descriptor=0;
 	bool wait_for_answer=false;
 	Critter* rule=group->Rule;
-	asIScriptArray* arr=GM_CreateGroupArray(group);
-	if(!arr) return;
 	DWORD cur_wx=group->WXi;
 	DWORD cur_wy=group->WYi;
 	DWORD to_wx=group->MoveX;
@@ -1237,7 +1235,7 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 
 	if(cr->FuncId[CRITTER_EVENT_GLOBAL_PROCESS]>0)
 	{
-		if(cr->EventGlobalProcess(type,arr,group->GetCar(),cur_wx,cur_wy,to_wx,to_wy,speed,encounter_descriptor,wait_for_answer))
+		if(cr->EventGlobalProcess(type,group->GetCar(),cur_wx,cur_wy,to_wx,to_wy,speed,encounter_descriptor,wait_for_answer))
 		{
 			global_process=false;
 		}
@@ -1257,7 +1255,6 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 	{
 		Script::SetArgDword(type);
 		Script::SetArgObject(cr);
-		Script::SetArgObject(arr);
 		Script::SetArgObject(group->GetCar());
 		Script::SetArgAddress(&cur_wx);
 		Script::SetArgAddress(&cur_wy);
@@ -1268,7 +1265,6 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 		Script::SetArgAddress(&wait_for_answer);
 		Script::RunPrepared();
 	}
-	arr->Release();
 
 	if(!group->IsValid()) return;
 
@@ -1329,13 +1325,11 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 	WORD hx=0,hy=0;
 	BYTE dir=0;
 	Critter* rule=group->Rule;
-	asIScriptArray* arr=GM_CreateGroupArray(group);
-	if(!arr) return;
 	bool global_invite=true;
 
 	if(rule->FuncId[CRITTER_EVENT_GLOBAL_INVITE]>0)
 	{
-		if(rule->EventGlobalInvite(arr,group->GetCar(),encounter_descriptor,combat_mode,map_id,hx,hy,dir))
+		if(rule->EventGlobalInvite(group->GetCar(),encounter_descriptor,combat_mode,map_id,hx,hy,dir))
 		{
 			global_invite=false;
 		}
@@ -1350,7 +1344,7 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 
 	if(global_invite && Script::PrepareContext(ServerFunctions.GlobalInvite,CALL_FUNC_STR,rule->GetInfo()))
 	{
-		Script::SetArgObject(arr);
+		Script::SetArgObject(rule);
 		Script::SetArgObject(group->GetCar());
 		Script::SetArgDword(encounter_descriptor);
 		Script::SetArgDword(combat_mode);
@@ -1360,7 +1354,6 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 		Script::SetArgAddress(&dir);
 		Script::RunPrepared();
 	}
-	arr->Release();
 
 	if(!group->IsValid()) return;
 

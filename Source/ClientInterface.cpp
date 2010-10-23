@@ -5207,7 +5207,7 @@ void FOClient::GmapNullParams()
 	GmapTabsLastScr=0;
 	GmapCurHoldBLoc=0;
 	GmapLoc.clear();
-	SAFEDEL(GmapCar.Car);
+	SAFEREL(GmapCar.Car);
 	GmapCar.MasterId=0;
 	GmapFog.Fill(0);
 	GmapIsProc=false;

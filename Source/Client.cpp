@@ -5150,7 +5150,7 @@ void FOClient::Net_OnAddItemOnMap()
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(item_pid);
 		if(proto_item && proto_item->IsCar())
 		{
-			SAFEDEL(GmapCar.Car);
+			SAFEREL(GmapCar.Car);
 			GmapCar.Car=new Item();
 			GmapCar.Car->Id=item_id;
 			GmapCar.Car->Init(proto_item);
@@ -5954,7 +5954,8 @@ void FOClient::Net_OnGlobalInfo()
 
 		// Car master id
 		Bin >> GmapCar.MasterId;
-		//if(GmapCar.MasterId) SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC(0)-1));
+
+		SAFEREL(GmapCar.Car);
 
 		GmapIsProc=true;
 	}

@@ -269,8 +269,8 @@ public:
 	int EventPlaneRun(AIDataPlane* plane, int reason, DWORD& p0, DWORD& p1, DWORD& p2);
 	bool EventBarter(Critter* cr_barter, bool attach, DWORD barter_count);
 	bool EventTalk(Critter* cr_talk, bool attach, DWORD talk_count);
-	bool EventGlobalProcess(int type, asIScriptArray* group, Item* car, DWORD& x, DWORD& y, DWORD& to_x, DWORD& to_y, DWORD& speed, DWORD& encounter_descriptor, bool& wait_for_answer);
-	bool EventGlobalInvite(asIScriptArray* group, Item* car, DWORD encounter_descriptor, int combat_mode, DWORD& map_id, WORD& hx, WORD& hy, BYTE& dir);
+	bool EventGlobalProcess(int type, Item* car, DWORD& x, DWORD& y, DWORD& to_x, DWORD& to_y, DWORD& speed, DWORD& encounter_descriptor, bool& wait_for_answer);
+	bool EventGlobalInvite(Item* car, DWORD encounter_descriptor, int combat_mode, DWORD& map_id, WORD& hx, WORD& hy, BYTE& dir);
 	void EventTurnBasedProcess(Map* map, bool begin_turn);
 	void EventSmthTurnBasedProcess(Critter* from_cr, Map* map, bool begin_turn);
 

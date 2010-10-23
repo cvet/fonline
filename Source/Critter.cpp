@@ -46,8 +46,8 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 	{"int %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)"}, // CRITTER_EVENT_PLANE_RUN
 	{"bool %s(Critter&,Critter&,bool,uint)"}, // CRITTER_EVENT_BARTER
 	{"bool %s(Critter&,Critter&,bool,uint)"}, // CRITTER_EVENT_TALK
-	{"bool %s(Critter&,int,Critter@[]&,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)"}, // CRITTER_EVENT_GLOBAL_PROCESS
-	{"bool %s(Critter&,Critter@[]&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)"}, // CRITTER_EVENT_GLOBAL_INVITE
+	{"bool %s(Critter&,int,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)"}, // CRITTER_EVENT_GLOBAL_PROCESS
+	{"bool %s(Critter&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)"}, // CRITTER_EVENT_GLOBAL_INVITE
 	{"void %s(Critter&,Map&,bool)"}, // CRITTER_EVENT_TURN_BASED_PROCESS
 	{"void %s(Critter&,Critter&,Map&,bool)"}, // CRITTER_EVENT_SMTH_TURN_BASED_PROCESS
 };
@@ -2012,14 +2012,13 @@ bool Critter::EventTalk(Critter* cr_talk, bool attach, DWORD talk_count)
 	return false;
 }
 
-bool Critter::EventGlobalProcess(int type, asIScriptArray* group, Item* car, DWORD& x, DWORD& y, DWORD& to_x, DWORD& to_y, DWORD& speed, DWORD& encounter_descriptor, bool& wait_for_answer)
+bool Critter::EventGlobalProcess(int type, Item* car, DWORD& x, DWORD& y, DWORD& to_x, DWORD& to_y, DWORD& speed, DWORD& encounter_descriptor, bool& wait_for_answer)
 {
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_GLOBAL_PROCESS))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgDword(type);
-		Script::SetArgObject(group);
 		Script::SetArgObject(car);
 		Script::SetArgAddress(&x);
 		Script::SetArgAddress(&y);
@@ -2033,13 +2032,12 @@ bool Critter::EventGlobalProcess(int type, asIScriptArray* group, Item* car, DWO
 	return result;
 }
 
-bool Critter::EventGlobalInvite(asIScriptArray* group, Item* car, DWORD encounter_descriptor, int combat_mode, DWORD& map_id, WORD& hx, WORD& hy, BYTE& dir)
+bool Critter::EventGlobalInvite(Item* car, DWORD encounter_descriptor, int combat_mode, DWORD& map_id, WORD& hx, WORD& hy, BYTE& dir)
 {
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_GLOBAL_INVITE))
 	{
 		Script::SetArgObject(this);
-		Script::SetArgObject(group);
 		Script::SetArgObject(car);
 		Script::SetArgDword(encounter_descriptor);
 		Script::SetArgDword(combat_mode);
@@ -3517,10 +3515,7 @@ void Client::Send_GlobalInfo(BYTE info_flags)
 		msg_len+=sizeof(loc_count)+SEND_LOCATION_SIZE*loc_count;
 
 	if(FLAG(info_flags,GM_INFO_GROUP_PARAM))
-	{
-		msg_len+=sizeof(WORD)*4+sizeof(int)*2+sizeof(BYTE)+sizeof(WORD); //xi, yi, move_x, move_y, speed_x and speed_y, wait, car_pid
-		if(GroupMove->CarId) msg_len+=sizeof(DWORD)+sizeof(WORD)*4; //car_master, fuel, fuel_tank, wear, run_to_break
-	}
+		msg_len+=sizeof(WORD)*4+sizeof(int)*2+sizeof(BYTE)+sizeof(DWORD);
 
 	if(FLAG(info_flags,GM_INFO_ZONES_FOG)) msg_len+=GM_ZONES_FOG_SIZE;
 

@@ -164,7 +164,7 @@ public:
 	Critter* GetCritter(DWORD crid, bool sync_lock);
 	Critter* GetNpc(int npc_role, int find_type, DWORD skip_count, bool sync_lock);
 	Critter* GetHexCritter(WORD hx, WORD hy, bool dead, bool sync_lock);
-	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool sync_lock);
+	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool sync_lock); // Critters append
 
 	void GetCritters(CrVec& critters, bool sync_lock);
 	void GetPlayers(ClVec& players, bool sync_lock);

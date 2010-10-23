@@ -88,9 +88,9 @@ public:
 	bool IsNpc(){return FLAG(Flags,FCRIT_NPC);}
 	bool IsPlayer(){return FLAG(Flags,FCRIT_PLAYER);}
 	bool IsChosen(){return Human;}
-	bool IsGmapRule(){return FLAG(Flags,FCRIT_RULEGROUP)!=0;}
-	bool IsOnline(){return FLAG(Flags,FCRIT_DISCONNECT)==0;}
-	bool IsOffline(){return FLAG(Flags,FCRIT_DISCONNECT)!=0;}
+	bool IsGmapRule(){return FLAG(Flags,FCRIT_RULEGROUP);}
+	bool IsOnline(){return FLAG(Flags,FCRIT_DISCONNECT);}
+	bool IsOffline(){return FLAG(Flags,FCRIT_DISCONNECT);}
 	bool IsLife(){return Cond==COND_LIFE;}
 	bool IsLifeNone(){return Cond==COND_LIFE && CondExt==COND_LIFE_NONE;}
 	bool IsKnockout(){return Cond==COND_KNOCKOUT;}

@@ -12,7 +12,7 @@ Item* FOServer::CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD coun
 
 	if(proto_item->IsCar() && !map->IsPlaceForCar(hx,hy,proto_item)) return NULL;
 
-	Item* item=ItemMngr.CreateItem(pid,count);
+	Item* item=ItemMngr.CreateItem(pid,proto_item->IsGrouped()?count:1);
 	if(!item) return NULL;
 
 	if(!map->AddItem(item,hx,hy))
@@ -45,6 +45,7 @@ Item* FOServer::CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD coun
 		}
 	}
 
+	if(!proto_item->IsGrouped() && count>1) return CreateItemOnHex(map,hx,hy,pid,count-1);
 	return item;
 }
 

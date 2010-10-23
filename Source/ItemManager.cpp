@@ -1791,7 +1791,7 @@ string ItemManager::GetItemsStatistics()
 			if(proto_item && proto_item->IsItem())
 			{
 				char* s=(char*)FONames::GetItemName(i);
-				sprintf(str,"%-6u %-40s %-20s\n",i,s?s:_itoa(i,str_,10),_i64toa(GetItemStatistics(i),str__,10));
+				sprintf(str,"%-6u %-40s %-20s\n",i,s?s:_itoa(i,str_,10),_i64toa(itemCount[i],str__,10));
 				result+=str;
 			}
 		}

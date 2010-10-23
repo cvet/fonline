@@ -65,7 +65,7 @@ void FOServer::ProcessCritter(Critter* cr)
 	// Global map
 	if(!cr->GetMap() && cr->GroupMove && cr==cr->GroupMove->Rule) MapMngr.GM_GroupMove(cr->GroupMove);
 
-	// Client or Npc
+	// Client
 	if(cr->IsPlayer())
 	{
 		// Cast
@@ -107,6 +107,7 @@ void FOServer::ProcessCritter(Critter* cr)
 			cl->CacheValuesNextTick=tick+3000;
 		}
 	}
+	// Npc
 	else
 	{
 		// Cast
@@ -1953,10 +1954,10 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	// Avatar in game
 	if(cl_old)
 	{
-		// Check current online
 		ConnectedClientsLocker.Lock();
-		ClVecIt it=std::find(ConnectedClients.begin(),ConnectedClients.end(),cl);
-		if(it==ConnectedClients.end())
+
+		// Check founded critter for online
+		if(std::find(ConnectedClients.begin(),ConnectedClients.end(),cl_old)!=ConnectedClients.end())
 		{
 			ConnectedClientsLocker.Unlock();
 			cl_old->Send_TextMsg(cl,STR_NET_KNOCK_KNOCK,SAY_NETMSG,TEXTMSG_GAME);
@@ -1964,6 +1965,16 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			cl->Disconnect();
 			return;
 		}
+
+		// Find current client in online collection
+		ClVecIt it=std::find(ConnectedClients.begin(),ConnectedClients.end(),cl);
+		if(it==ConnectedClients.end())
+		{
+			ConnectedClientsLocker.Unlock();
+			cl->Disconnect();
+			return;
+		}
+
 		// Swap
 		BIN_END(cl);
 		cl->WSAIn->Locker.Lock();

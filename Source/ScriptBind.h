@@ -468,7 +468,7 @@
 	if(engine->RegisterObjectMethod("Critter","bool MoveToDir(uint8 dir)",asFUNCTION(BIND_CLASS Crit_MoveToDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)",asFUNCTION(BIND_CLASS Crit_TransitToHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir)",asFUNCTION(BIND_CLASS Crit_TransitToMapHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, uint8 entireNum)",asFUNCTION(BIND_CLASS Crit_TransitToMapEntire),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, int entireNum)",asFUNCTION(BIND_CLASS Crit_TransitToMapEntire),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobal(bool requestGroup)",asFUNCTION(BIND_CLASS Crit_TransitToGlobal),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobal(Critter@[]& group)",asFUNCTION(BIND_CLASS Crit_TransitToGlobalWithGroup),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobalGroup(uint critterId)",asFUNCTION(BIND_CLASS Crit_TransitToGlobalGroup),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -623,8 +623,8 @@
 	if(engine->RegisterObjectMethod("Critter","int EventPlaneRun(NpcPlane& plane, int reason, uint& p0, uint& p1, uint& p2)",asFUNCTION(BIND_CLASS Crit_EventPlaneRun),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventBarter(Critter& barterCr, bool attach, uint barterCount)",asFUNCTION(BIND_CLASS Crit_EventBarter),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventTalk(Critter& talkCr, bool attach, uint talkCount)",asFUNCTION(BIND_CLASS Crit_EventTalk),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool EventGlobalProcess(int type, Critter@[]& group, Item@ car, uint& x, uint& y, uint& toX, uint& toY, uint& speed, uint& encounterDescriptor, bool& waitForAnswer)",asFUNCTION(BIND_CLASS Crit_EventGlobalProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool EventGlobalInvite(Critter@[]& group, Item@ car, uint encounterDescriptor, int combatMode, uint& mapId, uint16& hexX, uint16& hexY, uint8& dir)",asFUNCTION(BIND_CLASS Crit_EventGlobalInvite),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool EventGlobalProcess(int type, Item@ car, uint& x, uint& y, uint& toX, uint& toY, uint& speed, uint& encounterDescriptor, bool& waitForAnswer)",asFUNCTION(BIND_CLASS Crit_EventGlobalProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool EventGlobalInvite(Item@ car, uint encounterDescriptor, int combatMode, uint& mapId, uint16& hexX, uint16& hexY, uint8& dir)",asFUNCTION(BIND_CLASS Crit_EventGlobalInvite),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventTurnBasedProcess(Map& map, bool beginTurn)",asFUNCTION(BIND_CLASS Crit_EventTurnBasedProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthTurnBasedProcess(Critter& fromCr, Map& map, bool beginTurn)",asFUNCTION(BIND_CLASS Crit_EventSmthTurnBasedProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 

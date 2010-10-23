@@ -1248,8 +1248,12 @@ void Map::GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& c
 		}
 	}
 
-	// Store result
-	critters=find_critters;
+	// Store result, append
+	if(find_critters.size())
+	{
+		critters.reserve(critters.size()+find_critters.size());
+		critters.insert(critters.end(),find_critters.begin(),find_critters.end());
+	}
 }
 
 void Map::GetCritters(CrVec& critters, bool sync_lock)

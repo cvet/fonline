@@ -136,8 +136,8 @@ bool FOServer::InitScriptSystem()
 		{&ServerFunctions.GetStartTime,"get_start_time","void %s(uint16&,uint16&,uint16&,uint16&,uint16&,uint16&)"},
 		{&ServerFunctions.Finish,"finish","void %s()"},
 		{&ServerFunctions.Loop,"loop","uint %s()"},
-		{&ServerFunctions.GlobalProcess,"global_process","void %s(int,Critter&,Critter@[]&,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)"},
-		{&ServerFunctions.GlobalInvite,"global_invite","void %s(Critter@[]&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)"},
+		{&ServerFunctions.GlobalProcess,"global_process","void %s(int,Critter&,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)"},
+		{&ServerFunctions.GlobalInvite,"global_invite","void %s(Critter&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)"},
 		{&ServerFunctions.CritterAttack,"critter_attack","void %s(Critter&,Critter&,ProtoItem&,uint8,ProtoItem@)"},
 		{&ServerFunctions.CritterAttacked,"critter_attacked","void %s(Critter&,Critter&)"},
 		{&ServerFunctions.CritterStealing,"critter_stealing","bool %s(Critter&,Critter&,Item&,uint)"},
@@ -1327,7 +1327,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, DWORD map_id, WORD
 	return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, DWORD map_id, BYTE entire)
+bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, DWORD map_id, int entire)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(cr->LockMapTransfers) SCRIPT_ERROR_R0("Transfers locked.");
@@ -2824,16 +2824,16 @@ bool FOServer::SScriptFunc::Crit_EventTalk(Critter* cr, Critter* cr_talk, bool a
 	return cr->EventTalk(cr_talk,attach,talk_count);
 }
 
-bool FOServer::SScriptFunc::Crit_EventGlobalProcess(Critter* cr, int type, asIScriptArray* group, Item* car, DWORD& x, DWORD& y, DWORD& to_x, DWORD& to_y, DWORD& speed, DWORD& encounter_descriptor, bool& wait_for_answer)
+bool FOServer::SScriptFunc::Crit_EventGlobalProcess(Critter* cr, int type, Item* car, DWORD& x, DWORD& y, DWORD& to_x, DWORD& to_y, DWORD& speed, DWORD& encounter_descriptor, bool& wait_for_answer)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return cr->EventGlobalProcess(type,group,car,x,y,to_x,to_y,speed,encounter_descriptor,wait_for_answer);
+	return cr->EventGlobalProcess(type,car,x,y,to_x,to_y,speed,encounter_descriptor,wait_for_answer);
 }
 
-bool FOServer::SScriptFunc::Crit_EventGlobalInvite(Critter* cr, asIScriptArray* group, Item* car, DWORD encounter_descriptor, int combat_mode, DWORD& map_id, WORD& hx, WORD& hy, BYTE& dir)
+bool FOServer::SScriptFunc::Crit_EventGlobalInvite(Critter* cr, Item* car, DWORD encounter_descriptor, int combat_mode, DWORD& map_id, WORD& hx, WORD& hy, BYTE& dir)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return cr->EventGlobalInvite(group,car,encounter_descriptor,combat_mode,map_id,hx,hy,dir);
+	return cr->EventGlobalInvite(car,encounter_descriptor,combat_mode,map_id,hx,hy,dir);
 }
 
 void FOServer::SScriptFunc::Crit_EventTurnBasedProcess(Critter* cr, Map* map, bool begin_turn)
@@ -3483,10 +3483,10 @@ Critter* FOServer::SScriptFunc::Map_GetNpc(Map* map, int npc_role, int find_type
 	return map->GetNpc(npc_role,find_type,skip_count,true);
 }
 
-DWORD FOServer::SScriptFunc::Map_CountEntire(Map* map, int entire_num)
+DWORD FOServer::SScriptFunc::Map_CountEntire(Map* map, int entire)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return map->Proto->CountEntire(entire_num);
+	return map->Proto->CountEntire(entire);
 }
 
 DWORD FOServer::SScriptFunc::Map_GetEntires(Map* map, int entire, asIScriptArray* entires, asIScriptArray* hx, asIScriptArray* hy)
@@ -4123,7 +4123,7 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 
 	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(name.c_str());
-	if(!data) SCRIPT_ERROR_R0("Player not found.");
+	if(!data) return 0; //SCRIPT_ERROR_R0("Player not found.");
 	return data->ClientId;
 }
 

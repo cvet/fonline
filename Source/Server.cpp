@@ -221,6 +221,7 @@ void FOServer::DisconnectClient(Client* cl)
 {
 	if(cl->IsDisconnected) return;
 	cl->IsDisconnected=true;
+
 	if(InterlockedCompareExchange(&cl->WSAOut->Operation,0,0)==WSAOP_FREE)
 	{
 		cl->Bout.Lock();
@@ -245,7 +246,10 @@ void FOServer::DisconnectClient(Client* cl)
 		else if(cl->GroupMove)
 		{
 			for(CrVecIt it=cl->GroupMove->CritMove.begin(),end=cl->GroupMove->CritMove.end();it!=end;++it)
-				(*it)->Send_CritterParam(cl,OTHER_FLAGS,cl->Flags);
+			{
+				Critter* cr=*it;
+				if(cr!=cl) cr->Send_CritterParam(cl,OTHER_FLAGS,cl->Flags);
+			}
 		}
 	}
 }
@@ -504,9 +508,16 @@ void FOServer::ResynchronizeLogicThreads()
 unsigned int __stdcall FOServer::Logic_Work(void* data)
 {
 	// Set thread name
-	static int thread_count=0;
-	LogSetThreadName(Str::Format("Logic%d",thread_count));
-	thread_count++;
+	if(LogicThreadCount>1)
+	{
+		static int thread_count=0;
+		LogSetThreadName(Str::Format("Logic%d",thread_count));
+		thread_count++;
+	}
+	else 
+	{
+		LogSetThreadName("Logic");
+	}
 
 	// Init scripts
 	if(!Script::InitThread()) return 0;
@@ -541,7 +552,8 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			if(InterlockedCompareExchange(&cl->WSAIn->Operation,0,0)==WSAOP_FREE &&
 				InterlockedCompareExchange(&cl->WSAOut->Operation,0,0)==WSAOP_FREE)
 			{
-				cl->Shutdown();
+				DisconnectClient(cl);
+
 				InterlockedExchange(&cl->WSAIn->Operation,WSAOP_END);
 				InterlockedExchange(&cl->WSAOut->Operation,WSAOP_END);
 
@@ -619,7 +631,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 		else if(job.Type==JOB_GARBAGE_SCRIPT)
 		{
 			// AngelScript garbage
-			Script::ScriptGarbager(cycle_tick);
+			Script::ScriptGarbager();
 		}
 		else if(job.Type==JOB_GARBAGE_VARS)
 		{
@@ -4430,7 +4442,6 @@ void FOServer::VarsGarbarger(bool force)
 {
 	if(!force)
 	{
-		if(!VarsGarbageTime) return;
 		DWORD tick=Timer::FastTick();
 		if(tick-VarsGarbageLastTick<VarsGarbageTime) return;
 	}

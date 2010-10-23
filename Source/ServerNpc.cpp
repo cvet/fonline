@@ -1270,15 +1270,15 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 			return;
 		}
 
-		if(npc->IsPlaneNoTalk())
-		{
-			cl->Send_TextMsg(cl,STR_DIALOG_NPC_BUSY,SAY_NETMSG,TEXTMSG_GAME);
-			return;
-		}
-
 		if(!npc->EventTalk(cl,true,npc->GetTalkedPlayers()+1))
 		{
 			// Message must processed in script
+			return;
+		}
+
+		if(npc->IsPlaneNoTalk())
+		{
+			cl->Send_TextMsg(cl,STR_DIALOG_NPC_BUSY,SAY_NETMSG,TEXTMSG_GAME);
 			return;
 		}
 
