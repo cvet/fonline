@@ -55,6 +55,12 @@ void LogToBuffer(void* event)
 	LoggingType|=LOG_BUFFER;
 }
 
+void LogToDebugOutput()
+{
+	LogFinish(LOG_DEBUG_OUTPUT);
+	LoggingType|=LOG_DEBUG_OUTPUT;
+}
+
 void LogSetThreadName(const char* name)
 {
 	StringCopy(LogThreadName,name);
@@ -67,6 +73,7 @@ int LogGetType()
 
 void LogFinish(int log_type)
 {
+	log_type&=LoggingType;
 	if(log_type&LOG_FILE)
 	{
 		if(LogFileHadle) CloseHandle(LogFileHadle);
@@ -79,7 +86,7 @@ void LogFinish(int log_type)
 		LogBufferStr.clear();
 		LogBufferEvent=NULL;
 	}
-	LoggingType&=~log_type;
+	LoggingType^=log_type;
 }
 
 void WriteLog(const char* frmt, ...)
@@ -137,6 +144,10 @@ void WriteLog(const char* frmt, ...)
 		LogBufferStr+=str;
 		SetEvent(LogBufferEvent);
 	}
+	if(LoggingType&LOG_DEBUG_OUTPUT)
+	{
+		OutputDebugString(str);
+	}
 
 	LogLocker.Unlock();
 }
@@ -155,15 +166,8 @@ void LogGetBuffer(std::string& buf)
 {
 	SCOPE_LOCK(LogLocker);
 
-	if(LoggingType&LOG_BUFFER)
-	{
-		buf=LogBufferStr;
-		LogBufferStr.clear();
-	}
-	else
-	{
-		buf="";
-	}
+	buf=LogBufferStr;
+	LogBufferStr.clear();
 }
 
 

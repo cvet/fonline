@@ -86,6 +86,7 @@ void ChangeStepsXY(float& sx, float& sy, float deq);
 bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy);
 void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir);
 bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
+void RestoreMainDirectory();
 
 template<class T> inline bool CompareContainers(const T& a, const T& b){return a.size()==b.size() && (a.empty() || !memcmp(&a[0],&b[0],a.size()*sizeof(a[0])));}
 

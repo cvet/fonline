@@ -1135,7 +1135,7 @@ Critter* Map::GetCritter(DWORD crid, bool sync_lock)
 		if(cr->GetMap()!=GetId()) return NULL;
 	}
 
-	return NULL;
+	return cr;
 }
 
 Critter* Map::GetNpc(int npc_role, int find_type, DWORD skip_count, bool sync_lock)

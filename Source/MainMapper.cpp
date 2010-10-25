@@ -3,15 +3,14 @@
 #include "Exception.h"
 #include "Version.h"
 
-LRESULT APIENTRY WndProc(HWND hWnd,UINT message,WPARAM wParam,LPARAM lParam);
+LRESULT APIENTRY WndProc(HWND wnd,UINT message,WPARAM wparam,LPARAM lparam);
 HINSTANCE Instance=NULL;
 HWND Wnd=NULL;
-FOMapper* Mapper;
+FOMapper* Mapper=NULL;
 
-
-int APIENTRY WinMain(HINSTANCE hCurrentInst,
-	HINSTANCE hPreviousInst,LPSTR lpCmdLine,int nCmdShow)
+int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_line,int cmd_show)
 {
+	RestoreMainDirectory();
 	setlocale(LC_ALL,"Russian");
 
 	// Exceptions
@@ -34,14 +33,14 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst,
 	wndClass.lpfnWndProc=WndProc;
 	wndClass.cbClsExtra=0;
 	wndClass.cbWndExtra=0;
-	wndClass.hInstance=hCurrentInst;
-	wndClass.hIcon=LoadIcon(hCurrentInst,MAKEINTRESOURCE(IDI_ICON));
+	wndClass.hInstance=cur_instance;
+	wndClass.hIcon=LoadIcon(cur_instance,MAKEINTRESOURCE(IDI_ICON));
 	wndClass.hCursor=LoadCursor(NULL,IDC_ARROW);
 	wndClass.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);
 	wndClass.lpszMenuName=NULL;
 	wndClass.lpszClassName=WINDOW_CLASS_NAME;
 	RegisterClass(&wndClass);
-	Instance=hCurrentInst;
+	Instance=cur_instance;
 
 	LogToFile("FOMapper.log");
 
@@ -54,7 +53,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst,
 		CW_USEDEFAULT,CW_USEDEFAULT,100,100,
 		NULL,
 		NULL,
-		hCurrentInst,
+		cur_instance,
 		NULL);
 
 	HDC dcscreen=GetDC(NULL);
@@ -109,7 +108,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst,
 	return 0;
 }
 
-LRESULT APIENTRY WndProc(HWND hWnd, UINT message,WPARAM wParam,LPARAM lParam)
+LRESULT APIENTRY WndProc(HWND wnd, UINT message,WPARAM wparam,LPARAM lparam)
 {
 	switch(message)
 	{
@@ -117,13 +116,13 @@ LRESULT APIENTRY WndProc(HWND hWnd, UINT message,WPARAM wParam,LPARAM lParam)
 		GameOpt.Quit=true;
 		return 0;
 	case WM_KEYDOWN:
-		if(wParam==VK_F12) ShowWindow(hWnd,SW_MINIMIZE);
+		if(wparam==VK_F12) ShowWindow(wnd,SW_MINIMIZE);
 		return 0;
 	case WM_ACTIVATE:
 		break;
 	case WM_FLASH_WINDOW:
-		if(hWnd!=GetActiveWindow()) FlashWindow(hWnd,true);
+		if(wnd!=GetActiveWindow()) FlashWindow(wnd,true);
 		break;
 	}
-	return DefWindowProc(hWnd,message,wParam,lParam);
+	return DefWindowProc(wnd,message,wparam,lparam);
 }

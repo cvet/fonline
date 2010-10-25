@@ -7,38 +7,64 @@
 #include <process.h>
 
 unsigned int __stdcall GameLoopThread(void*);
-int CALLBACK DlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam);
+int CALLBACK DlgProc(HWND dlg, UINT msg,WPARAM wparam, LPARAM lparam);
 void UpdateInfo();
 void UpdateLog();
 void ResizeDialog();
+void ServiceMain(bool as_service);
 HINSTANCE Instance=NULL;
 HWND Dlg=NULL;
 RECT MainInitRect,LogInitRect,InfoInitRect;
 int SplitProcent=50;
+HANDLE LoopThreadHandle=NULL;
+HANDLE GameInitEvent=NULL;
 FOServer Serv;
 
-int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCmdLine, int nCmdShow)
+int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show)
 {
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_LEAK_CHECK_DF);
+	RestoreMainDirectory();
 	setlocale(LC_ALL,"Russian");
 
 	// Exceptions catcher
 	CatchExceptions("FOnlineServer",SERVER_VERSION);
 
-	Timer::Init(); // Timer
-	LoadLibrary("RICHED32.dll"); // Riched20.dll
+	// Timer
+	Timer::Init();
+
+	// Config
+	IniParser cfg;
+	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
+
+	// Logging
+	LogSetThreadName("GUI");
+	LogWithTime(cfg.GetInt("LoggingTime",1)==0?false:true);
+	LogWithThread(cfg.GetInt("LoggingThread",1)==0?false:true);
+	if(strstr(cmd_line,"-logdebugoutput") || cfg.GetInt("LoggingDebugOutput",0)!=0) LogToDebugOutput();
+
+	// Init events
+	GameInitEvent=CreateEvent(NULL,TRUE,FALSE,NULL);
+	UpdateEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
+	LogEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
+
+	// Service
+	if(strstr(cmd_line,"-service"))
+	{
+		ServiceMain(strstr(cmd_line,"--service")!=NULL);
+		return 0;
+	}
 
 	// Check single player parameters
-	if(strstr(lpCmdLine,"-singleplayer "))
+	if(strstr(cmd_line,"-singleplayer "))
 	{
 		Singleplayer=true;
 		Timer::SetGamePause(true);
 
 		// Logging
 		char log_path[MAX_FOPATH]={0};
-		if(!strstr(lpCmdLine,"-nologpath") && strstr(lpCmdLine,"-logpath "))
+		if(!strstr(cmd_line,"-nologpath") && strstr(cmd_line,"-logpath "))
 		{
-			const char* ptr=strstr(lpCmdLine,"-logpath ")+strlen("-logpath ");
+			const char* ptr=strstr(cmd_line,"-logpath ")+strlen("-logpath ");
 			StringCopy(log_path,ptr);
 		}
 		StringAppend(log_path,"FOnlineServer.log");
@@ -47,7 +73,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		WriteLog("Singleplayer mode.\n");
 
 		// Shared data
-		const char* ptr=strstr(lpCmdLine,"-singleplayer ")+strlen("-singleplayer ");
+		const char* ptr=strstr(cmd_line,"-singleplayer ")+strlen("-singleplayer ");
 		HANDLE map_file=NULL;
 		if(sscanf_s(ptr,"%p%p",&map_file,&SingleplayerClientProcess)!=2 || !SingleplayerData.Attach(map_file))
 		{
@@ -56,17 +82,15 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		}
 	}
 
-	// Configuration
-	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
-
-	if(!Singleplayer || strstr(lpCmdLine,"-showgui"))
+	// Singleplayer
+	if(!Singleplayer || strstr(cmd_line,"-showgui"))
 	{
+		LoadLibrary("RICHED32.dll");
+
 		Dlg=CreateDialog(Instance,MAKEINTRESOURCE(IDD_DLG),NULL,DlgProc);
 
-		LogFinish(-1);
-		HWND dlg_log=GetDlgItem(Dlg,IDC_LOG);
-		LogToDlg(&dlg_log);
+		LogFinish(LOG_FILE);
+		LogToBuffer(&LogEvent);
 
 		int wx=cfg.GetInt("PositionX",0);
 		int wy=cfg.GetInt("PositionY",0);
@@ -160,18 +184,11 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 
 	WriteLog("FOnline server, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
 
-	UpdateEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
-	if(!UpdateEvent) WriteLog("Create update event fail, error<%u>.\n",GetLastError());
-	LogEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
-	if(!LogEvent) WriteLog("Create log event fail, error<%u>.\n",GetLastError());
 	FOQuit=true;
 	Serv.ServerWindow=Dlg;
 
 	MemoryDebugLevel=cfg.GetInt("MemoryDebugLevel",0);
 	Script::SetLogDebugInfo(true);
-	LogWithTime(cfg.GetInt("LoggingTime",1)==0?false:true);
-	LogWithThread(cfg.GetInt("LoggingThread",1)==0?false:true);
-	LogSetThreadName("GUI");
 
 	if(Dlg)
 	{
@@ -183,10 +200,10 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	}
 
 	// Command line
-	if(lpCmdLine[0]) WriteLog("Command line<%s>.\n",lpCmdLine);
+	if(cmd_line[0]) WriteLog("Command line<%s>.\n",cmd_line);
 
 	// Autostart
-	if(strstr(lpCmdLine,"-start") || Singleplayer)
+	if(strstr(cmd_line,"-start") || Singleplayer)
 	{
 		if(Dlg)
 		{
@@ -195,7 +212,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 		else
 		{
 			FOQuit=false;
-			_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
+			LoopThreadHandle=(HANDLE)_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
 		}
 	}
 
@@ -386,7 +403,7 @@ void ResizeDialog()
 	}
 }
 
-int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
+int CALLBACK DlgProc(HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch(msg)
 	{
@@ -402,7 +419,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		UpdateLog();
 		break;
 	case WM_COMMAND:
-		switch(LOWORD(wParam))
+		switch(LOWORD(wparam))
 		{
 		case IDCANCEL:
 			//FOQuit=true;
@@ -432,11 +449,12 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			}
 			else // Begin work
 			{
-				FOQuit=false;
 				SetDlgItemText(Dlg,IDC_STOP,"Stop server");
 				EnableWindow(GetDlgItem(Dlg,IDC_STOP),0);
 				SendMessage(GetDlgItem(Dlg,IDC_LOG),WM_SETFOCUS,0,0);
-				_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
+
+				FOQuit=false;
+				LoopThreadHandle=(HANDLE)_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
 			}
 			break;
 		case IDC_MEMORY:
@@ -467,7 +485,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		case IDC_SAVELOG:
 		case IDC_SAVEINFO:
 			{
-				WORD idc=(LOWORD(wParam)==IDC_SAVELOG?IDC_LOG:IDC_INFO);
+				WORD idc=(LOWORD(wparam)==IDC_SAVELOG?IDC_LOG:IDC_INFO);
 				HANDLE hlog=CreateFile(idc==IDC_LOG?"FOnlineServer.log":"FOnlineInfo.txt",GENERIC_WRITE,0,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
 				if(hlog!=INVALID_HANDLE_VALUE)
 				{
@@ -505,7 +523,7 @@ int CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			LogWithThread(SendMessage(GetDlgItem(Dlg,IDC_LOGGING_THREAD),BM_GETCHECK,0,0)==BST_CHECKED?true:false);
 			break;
 		case IDC_SCRIPT_DEBUG:
-			Script::SetLogDebugInfo(SendMessage((HWND)lParam,BM_GETCHECK,0,0)==BST_CHECKED);
+			Script::SetLogDebugInfo(SendMessage((HWND)lparam,BM_GETCHECK,0,0)==BST_CHECKED);
 			break;
 		case IDC_SAVE_WORLD:
 			if(Serv.IsInit()) Serv.SaveWorldNextTick=Timer::FastTick(); // Force saving time
@@ -535,18 +553,13 @@ unsigned int __stdcall GameLoopThread(void*)
 {
 	LogSetThreadName("Main");
 
-	if(Dlg)
-	{
-		LogFinish(-1);
-		LogToBuffer(&LogEvent);
-	}
 	GetServerOptions();
 
 	if(Serv.Init())
 	{
 		if(Dlg)
 		{
-			if(SendMessage(GetDlgItem(Dlg,IDC_LOGGING),BM_GETCHECK,0,0)==BST_UNCHECKED) LogFinish(-1);
+			if(SendMessage(GetDlgItem(Dlg,IDC_LOGGING),BM_GETCHECK,0,0)==BST_UNCHECKED) LogFinish(LOG_DLG);
 
 			// Enable buttons
 			EnableWindow(GetDlgItem(Dlg,IDC_RELOAD_CLIENT_SCRIPTS),1);
@@ -559,16 +572,22 @@ unsigned int __stdcall GameLoopThread(void*)
 			EnableWindow(GetDlgItem(Dlg,IDC_STOP),1);
 		}
 
+		SetEvent(GameInitEvent);
+
 		Serv.MainLoop();
 		Serv.Finish();
 		UpdateInfo();
+	}
+	else
+	{
+		SetEvent(GameInitEvent);
 	}
 
 	if(Dlg)
 	{
 		string str;
-		LogGetBuffer(str);
 		LogFinish(LOG_BUFFER);
+		LogGetBuffer(str);
 		HWND dlg_log=GetDlgItem(Dlg,IDC_LOG);
 		LogToDlg(&dlg_log);
 		if(str.length()) WriteLog("%s",str.c_str());
@@ -577,4 +596,156 @@ unsigned int __stdcall GameLoopThread(void*)
 	LogFinish(-1);
 	if(Singleplayer) FOAppQuit=true;
 	return 0;
+}
+
+/************************************************************************/
+/* Service                                                              */
+/************************************************************************/
+
+SERVICE_STATUS_HANDLE FOServiceStatusHandle;
+VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv);
+VOID WINAPI FOServiceCtrlHandler(DWORD opcode);
+void SetFOServiceStatus(DWORD state);
+
+void ServiceMain(bool as_service)
+{
+	// Binary started as service
+	if(as_service)
+	{
+		// Start
+		SERVICE_TABLE_ENTRY dispatch_table[]={{"FOnlineServer",FOServiceStart},{NULL,NULL}};
+		StartServiceCtrlDispatcher(dispatch_table);
+		return;
+	}
+
+	// Open service manager
+	SC_HANDLE manager=OpenSCManager(NULL,NULL,SC_MANAGER_ALL_ACCESS);
+	if(!manager)
+	{
+		MessageBox(NULL,"Can't open service manager.","FOnlineServer",MB_OK|MB_ICONHAND);
+		return;
+	}
+
+	// Delete service
+	if(strstr(GetCommandLine(),"-delete"))
+	{
+		SC_HANDLE service=OpenService(manager,"FOnlineServer",DELETE);
+
+		if(service && DeleteService(service))
+			MessageBox(NULL,"Service deleted.","FOnlineServer",MB_OK|MB_ICONASTERISK);
+		else
+			MessageBox(NULL,"Can't delete service.","FOnlineServer",MB_OK|MB_ICONHAND);
+
+		CloseServiceHandle(service);
+		CloseServiceHandle(manager);
+		return;
+	}
+
+	// Manage service
+	SC_HANDLE service=OpenService(manager,"FOnlineServer",SERVICE_QUERY_CONFIG|SERVICE_CHANGE_CONFIG|SERVICE_QUERY_STATUS|SERVICE_START);
+
+	// Compile service path
+	char path1[1024];
+	GetModuleFileName(GetModuleHandle(NULL),path1,1024);
+	char path2[1024];
+	sprintf(path2,"\"%s\" --service",path1);
+
+	// Change executable path, if changed
+	if(service)
+	{
+		LPQUERY_SERVICE_CONFIG service_cfg=(LPQUERY_SERVICE_CONFIG)calloc(8192,1);
+		DWORD dw; 
+		if(QueryServiceConfig(service,service_cfg,8192,&dw) && _stricmp(service_cfg->lpBinaryPathName,path2))
+			ChangeServiceConfig(service,SERVICE_NO_CHANGE,SERVICE_NO_CHANGE,SERVICE_NO_CHANGE,path2,NULL,NULL,NULL,NULL,NULL,NULL);
+		free(service_cfg);
+	}
+
+	// Register service
+	if(!service)
+	{
+		service=CreateService(manager,"FOnlineServer","FOnlineServer",SERVICE_ALL_ACCESS,
+			SERVICE_WIN32_OWN_PROCESS,SERVICE_DEMAND_START,SERVICE_ERROR_NORMAL,path2,NULL,NULL,NULL,NULL,NULL);
+
+		if(service)
+			MessageBox(NULL,"\'FOnlineServer\' service registered.","FOnlineServer",MB_OK|MB_ICONASTERISK);
+		else
+			MessageBox(NULL,"Can't register \'FOnlineServer\' service.","FOnlineServer",MB_OK|MB_ICONHAND);
+	}
+	// Start service
+	else
+	{
+		SERVICE_STATUS status;
+		if(service && QueryServiceStatus(service,&status) && status.dwCurrentState!=SERVICE_STOPPED)
+			MessageBox(NULL,"Service already running.","FOnlineServer",MB_OK|MB_ICONASTERISK);
+		else if(service && !StartService(service,0,NULL))
+			MessageBox(NULL,"Can't start service.","FOnlineServer",MB_OK|MB_ICONHAND);
+	}
+
+	// Close handles
+	if(service) CloseServiceHandle(service);
+	if(manager) CloseServiceHandle(manager);
+}
+
+VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)  
+{
+	LogToFile("FOnlineServer.log");
+	LogSetThreadName("Service");
+	WriteLog("FOnline server service, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
+
+	FOServiceStatusHandle=RegisterServiceCtrlHandler("FOnlineServer",FOServiceCtrlHandler); 
+	if(!FOServiceStatusHandle) return;
+
+	// Start game
+	SetFOServiceStatus(SERVICE_START_PENDING);
+
+	FOQuit=false;
+	LoopThreadHandle=(HANDLE)_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
+	WaitForSingleObject(GameInitEvent,INFINITE);
+
+	if(Serv.IsInit()) SetFOServiceStatus(SERVICE_RUNNING);
+	else SetFOServiceStatus(SERVICE_STOPPED);
+} 
+
+VOID WINAPI FOServiceCtrlHandler(DWORD opcode)  
+{ 
+	switch(opcode) 
+	{
+	case SERVICE_CONTROL_STOP: 
+		SetFOServiceStatus(SERVICE_STOP_PENDING);
+		FOQuit=true;
+		WaitForSingleObject(LoopThreadHandle,INFINITE);
+		SetFOServiceStatus(SERVICE_STOPPED);
+		return; 
+	case SERVICE_CONTROL_INTERROGATE: 
+		// Fall through to send current status
+		break;
+	default:
+		break;
+	}
+
+	// Send current status 
+	SetFOServiceStatus(0);
+}
+
+void SetFOServiceStatus(DWORD state)
+{
+	static DWORD last_state=0;
+	static DWORD check_point=0;
+
+	if(!state) state=last_state;
+	else last_state=state;
+
+	SERVICE_STATUS srv_status;
+	srv_status.dwServiceType=SERVICE_WIN32_OWN_PROCESS;
+	srv_status.dwCurrentState=state;
+	srv_status.dwWin32ExitCode=0;
+	srv_status.dwServiceSpecificExitCode=0;
+	srv_status.dwWaitHint=0;
+	srv_status.dwCheckPoint=0;
+	srv_status.dwControlsAccepted=0;
+
+	if(state==SERVICE_RUNNING) srv_status.dwControlsAccepted=SERVICE_ACCEPT_STOP;
+	if(!(state==SERVICE_RUNNING || state==SERVICE_STOPPED)) srv_status.dwCheckPoint=++check_point;
+
+	SetServiceStatus(FOServiceStatusHandle,&srv_status);
 }

@@ -5,39 +5,37 @@
 
 //#define GAME_THREAD
 
-LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lParam);
-HWND hWnd=NULL;
-FOClient* FOEngine;
+LRESULT APIENTRY WndProc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
+HWND Wnd=NULL;
+FOClient* FOEngine=NULL;
 
 #ifdef GAME_THREAD
-HANDLE hGameThread=NULL;
-DWORD dwGameThreadID=0;
-DWORD WINAPI GameLoopThread(void *);
+DWORD WINAPI GameLoopThread(void*);
+HANDLE GameLoopThreadHandle=NULL;
 #endif
 
-void ServerShut(void*);
-
-int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCmdLine, int nCmdShow)
+int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show)
 {
+	RestoreMainDirectory();
 	setlocale(LC_ALL,"Russian");
 
 	// Exception
 	CatchExceptions("FOnline",CLIENT_VERSION);
 
 	// Register window
-	WNDCLASS wnd_class;//»спользуетс€ дл€ регистрации класса окна
-	MSG msg;//сообщени€
-	wnd_class.style=CS_HREDRAW|CS_VREDRAW;//определ€ет свойства окна
-	wnd_class.lpfnWndProc=WndProc;//определ€ет адрес функции окна
-	wnd_class.cbClsExtra=0;//число байт, которое необходимо запросить у Windows. ќбычно равна 0
-	wnd_class.cbWndExtra=0;//число байт, которое необходимо запросить у Windows. ќбычно равна 0
-	wnd_class.hInstance=hCurrentInst;//сообщает Windows о том, кто создает определение класса
-	wnd_class.hIcon=LoadIcon(hCurrentInst,MAKEINTRESOURCE(IDI_ICON));//загружает иконку, в данном случае ее нет
-	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);//стандартный курсор
-	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);//фон приложени€
-	wnd_class.lpszMenuName=NULL;//определ€ет меню. ¬ данной ситуации меню отсутствует
-	wnd_class.lpszClassName=WINDOW_CLASS_NAME;//указатель на строку, содержащую им€ класса
-	RegisterClass(&wnd_class);//регистраци€ окна
+	WNDCLASS wnd_class;
+	MSG msg;
+	wnd_class.style=CS_HREDRAW|CS_VREDRAW;
+	wnd_class.lpfnWndProc=WndProc;
+	wnd_class.cbClsExtra=0;
+	wnd_class.cbWndExtra=0;
+	wnd_class.hInstance=cur_instance;
+	wnd_class.hIcon=LoadIcon(cur_instance,MAKEINTRESOURCE(IDI_ICON));
+	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);
+	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	wnd_class.lpszMenuName=NULL;
+	wnd_class.lpszClassName=WINDOW_CLASS_NAME;
+	RegisterClass(&wnd_class);
 
 	// Stuff
 	Timer::Init();
@@ -50,7 +48,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	GetModuleFileName(NULL,full_path,MAX_FOPATH);
 	FileManager::ExtractPath(full_path,path);
 	FileManager::ExtractFileName(full_path,name);
-	if(strstr(name,"Singleplayer") || strstr(lpCmdLine,"Singleplayer"))
+	if(strstr(name,"Singleplayer") || strstr(cmd_line,"Singleplayer"))
 	{
 		WriteLog("Singleplayer mode.\n");
 		Singleplayer=true;
@@ -121,7 +119,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 	// Options
 	GetClientOptions();
 
-	hWnd=CreateWindow(WINDOW_CLASS_NAME,Singleplayer?WINDOW_NAME_SP:WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,hCurrentInst,NULL);
+	Wnd=CreateWindow(WINDOW_CLASS_NAME,Singleplayer?WINDOW_NAME_SP:WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,cur_instance,NULL);
 
 	HDC dcscreen=GetDC(NULL);
 	int sw=GetDeviceCaps(dcscreen,HORZRES);
@@ -130,26 +128,26 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 
 	WINDOWINFO wi;
 	wi.cbSize=sizeof(wi);
-	GetWindowInfo(hWnd,&wi);
+	GetWindowInfo(Wnd,&wi);
 	INTRECT wborders(wi.rcClient.left-wi.rcWindow.left,wi.rcClient.top-wi.rcWindow.top,wi.rcWindow.right-wi.rcClient.right,wi.rcWindow.bottom-wi.rcClient.bottom);
-	SetWindowPos(hWnd,NULL,(sw-MODE_WIDTH-wborders.L-wborders.R)/2,(sh-MODE_HEIGHT-wborders.T-wborders.B)/2,
+	SetWindowPos(Wnd,NULL,(sw-MODE_WIDTH-wborders.L-wborders.R)/2,(sh-MODE_HEIGHT-wborders.T-wborders.B)/2,
 		MODE_WIDTH+wborders.L+wborders.R,MODE_HEIGHT+wborders.T+wborders.B,0);
 
-	ShowWindow(hWnd,SW_SHOWNORMAL);
-	UpdateWindow(hWnd);
+	ShowWindow(Wnd,SW_SHOWNORMAL);
+	UpdateWindow(Wnd);
 
 	// Start FOnline
 	WriteLog("Starting FOnline (version %04X-%02X)...\n\n",CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF);
 
 	FOEngine=new FOClient();
-	if(!FOEngine || !FOEngine->Init(hWnd))
+	if(!FOEngine || !FOEngine->Init(Wnd))
 	{
 		WriteLog("FOnline engine initialization fail.\n");
 		return 0;
 	}
 
 #ifdef GAME_THREAD
-	hGameThread=CreateThread(NULL,0,GameLoopThread,NULL,0,&dwGameThreadID);
+	GameLoopThreadHandle=CreateThread(NULL,0,GameLoopThread,NULL,0,NULL);
 #endif
 
 	// Windows messages
@@ -173,7 +171,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 
 	// Finishing FOnline
 #ifdef GAME_THREAD
-	WaitForSingleObject(hGameThread,INFINITE);
+	WaitForSingleObject(GameLoopThreadHandle,INFINITE);
 #endif
 	FOEngine->Finish();
 	delete FOEngine;
@@ -186,7 +184,7 @@ int APIENTRY WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst, LPSTR lpCm
 }
 
 #ifdef GAME_THREAD
-DWORD WINAPI GameLoopThread(void *)
+DWORD WINAPI GameLoopThread(void*)
 {
 	while(!GameOpt.Quit)
 	{
@@ -194,14 +192,14 @@ DWORD WINAPI GameLoopThread(void *)
 		else if(GameOpt.Sleep>=0) Sleep(GameOpt.Sleep);
 	}
 
-	CloseHandle(hGameThread);
-	hGameThread=NULL;
+	CloseHandle(GameLoopThreadHandle);
+	GameLoopThreadHandle=NULL;
 	ExitThread(0);
 	return 0;
 }
 #endif
 
-LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT APIENTRY WndProc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	switch(message)
 	{
@@ -209,32 +207,32 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 		GameOpt.Quit=true;
 		break;
 	case WM_KEYDOWN:
-		if(wParam==VK_F12)
+		if(wparam==VK_F12)
 		{
-			ShowWindow(hWnd,SW_MINIMIZE);
-			/*if(OptFullScr) SendMessage(hWnd,WM_ACTIVATE,WA_INACTIVE,NULL);
+			ShowWindow(Wnd,SW_MINIMIZE);
+			/*if(OptFullScr) SendMessage(Wnd,WM_ACTIVATE,WA_INACTIVE,NULL);
 			else
 			{
 				FOEngine->DoLost();
-				ShowWindow(hWnd,SW_MINIMIZE);
-				UpdateWindow(hWnd);
+				ShowWindow(Wnd,SW_MINIMIZE);
+				UpdateWindow(Wnd);
 			}*/
 			return 0;
 		}
 		break;
 	case WM_SHOWWINDOW:
-		if(GameOpt.AlwaysOnTop) SetWindowPos(hWnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
+		if(GameOpt.AlwaysOnTop) SetWindowPos(Wnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
 		break;
 	/*case WM_ACTIVATE:
-		if(LOWORD(wParam)==WA_INACTIVE && !HIWORD(wParam))
+		if(LOWORD(wparam)==WA_INACTIVE && !HIWORD(wparam))
 		{
 			if(!FOEngine) break;
 			if(!OptFullScr) break;
 			FOEngine->DoLost();
-			ShowWindow(hWnd,SW_MINIMIZE);
-			UpdateWindow(hWnd);
+			ShowWindow(Wnd,SW_MINIMIZE);
+			UpdateWindow(Wnd);
 		}
-		else if((LOWORD(wParam)==WA_ACTIVE || LOWORD(wParam)==WA_CLICKACTIVE))
+		else if((LOWORD(wparam)==WA_ACTIVE || LOWORD(wparam)==WA_CLICKACTIVE))
 		{
 			if(!FOEngine) break;
 			FOEngine->Restore();
@@ -245,14 +243,14 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 	case WM_ACTIVATE:
 		if(!GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio)
 		{
-			if(LOWORD(wParam)==WA_INACTIVE && !HIWORD(wParam)) FOEngine->BasicAudio->put_Volume(-10000);
-			else if((LOWORD(wParam)==WA_ACTIVE || LOWORD(wParam)==WA_CLICKACTIVE)) FOEngine->BasicAudio->put_Volume(0);
+			if(LOWORD(wparam)==WA_INACTIVE && !HIWORD(wparam)) FOEngine->BasicAudio->put_Volume(-10000);
+			else if((LOWORD(wparam)==WA_ACTIVE || LOWORD(wparam)==WA_CLICKACTIVE)) FOEngine->BasicAudio->put_Volume(0);
 		}
 		break;
 	case WM_FLASH_WINDOW:
-		if(hWndProc!=GetActiveWindow())
+		if(wnd!=GetActiveWindow())
 		{
-			if(GameOpt.MessNotify) FlashWindow(hWnd,true);
+			if(GameOpt.MessNotify) FlashWindow(Wnd,true);
 			if(GameOpt.SoundNotify) Beep(100,200);
 		}
 		return 0;
@@ -269,10 +267,10 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 		if(FOEngine)
 		{
 			PAINTSTRUCT ps;
-			HDC hdc=BeginPaint(hWnd,&ps);
+			HDC hdc=BeginPaint(Wnd,&ps);
 			FOEngine->MainLoop();
-			if(FOEngine->WindowLess) FOEngine->WindowLess->RepaintVideo(hWndProc,hdc);
-			EndPaint(hWnd,&ps);
+			if(FOEngine->WindowLess) FOEngine->WindowLess->RepaintVideo(wnd,hdc);
+			EndPaint(Wnd,&ps);
 			return 0;
 		}
 
@@ -281,8 +279,8 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 			PAINTSTRUCT ps; 
 			HDC         hdc; 
 			RECT        rcClient; 
-			GetClientRect(hWndProc, &rcClient); 
-			hdc = BeginPaint(hWndProc, &ps); 
+			GetClientRect(wnd, &rcClient); 
+			hdc = BeginPaint(wnd, &ps); 
 
 			/ *HRGN rgnClient = CreateRectRgnIndirect(&rcClient); 
 			HRGN rgnVideo  = CreateRectRgnIndirect(&FOEngine->WindowLessRectDest);  // Saved from earlier.
@@ -296,8 +294,8 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 			DeleteObject(rgnVideo); * /
 
 			// Request the VMR to paint the video.
-			HRESULT hr = FOEngine->WindowLess->RepaintVideo(hWndProc, hdc);
-			EndPaint(hWndProc, &ps);
+			HRESULT hr = FOEngine->WindowLess->RepaintVideo(wnd, hdc);
+			EndPaint(wnd, &ps);
 		}*/
 		break;
 #endif
@@ -308,5 +306,5 @@ LRESULT APIENTRY WndProc(HWND hWndProc, UINT message, WPARAM wParam, LPARAM lPar
 	break;*/
 	}
 
-	return DefWindowProc(hWndProc,message,wParam,lParam);
+	return DefWindowProc(wnd,message,wparam,lparam);
 }

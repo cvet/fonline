@@ -276,6 +276,22 @@ bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int
 	return a+b+c<0;
 }
 
+void RestoreMainDirectory()
+{
+	// Get executable file path
+	char path[MAX_FOPATH]={0};
+	GetModuleFileName(GetModuleHandle(NULL),path,MAX_FOPATH);
+
+	// Cut off executable name
+	int last=0;
+	for(int i=0;path[i];i++)
+		if(path[i]=='\\') last=i;
+	path[last+1]=0;
+
+	// Set executable directory
+	SetCurrentDirectory(path);
+}
+
 /************************************************************************/
 /* Hex offsets                                                          */
 /************************************************************************/
@@ -577,9 +593,13 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-Logging");
 	if(!logging)
 	{
-		WriteLog("Logging off.\n");
+		WriteLog("File logging off.\n");
 		LogFinish(-1);
 	}
+
+	logging=cfg.GetInt(CLIENT_CONFIG_APP,"LoggingDebugOutput",0)!=0;
+	GETOPTIONS_CMD_LINE_BOOL(logging,"-LoggingDebugOutput");
+	if(logging) LogToDebugOutput();
 
 	logging=cfg.GetInt(CLIENT_CONFIG_APP,"LoggingTime",false)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-LoggingTime");
