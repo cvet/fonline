@@ -40,7 +40,6 @@
 #include "as_tokendef.h"
 #include "as_objecttype.h"
 #include "as_scriptengine.h"
-#include "as_arrayobject.h"
 #include "as_tokenizer.h"
 
 BEGIN_AS_NAMESPACE
@@ -114,17 +113,6 @@ asCDataType asCDataType::CreatePrimitive(eTokenType tt, bool isConst)
 	return dt;
 }
 
-asCDataType asCDataType::CreateDefaultArray(asCScriptEngine *engine)
-{
-	asCDataType dt;
-
-	// _builtin_array_<T> represents the default array
-	dt.objectType       = engine->defaultArrayObjectType;
-	dt.tokenType        = ttIdentifier;
-
-	return dt;
-}
-
 asCDataType asCDataType::CreateNullHandle()
 {
 	asCDataType dt;
@@ -161,7 +149,7 @@ asCString asCDataType::Format() const
 	{
 		str += asGetTokenDefinition(tokenType);
 	}
-	else if( IsArrayType() )
+	else if( IsArrayType() && objectType && !objectType->engine->ep.expandDefaultArrayToTemplate )
 	{
 		str += objectType->templateSubType.Format();
 		str += "[]";
@@ -240,6 +228,9 @@ int asCDataType::MakeHandle(bool b, bool acceptHandleForScope)
 
 int asCDataType::MakeArray(asCScriptEngine *engine)
 {
+	if( engine->defaultArrayObjectType == 0 )
+		return asINVALID_TYPE;
+
 	bool tmpIsReadOnly = isReadOnly;
 	isReadOnly = false;
 	asCObjectType *at = engine->GetTemplateInstanceType(engine->defaultArrayObjectType, *this);
@@ -343,8 +334,11 @@ bool asCDataType::IsHandleToConst() const
 // TODO: 3.0.0: This should be removed
 bool asCDataType::IsArrayType() const
 {
-	// TODO: array: The default array type should be defined by the application
-	return objectType ? (objectType->name == objectType->engine->defaultArrayObjectType->name) : false;
+	// This is only true if the type used is the default array type, i.e. the one used for the [] syntax form
+	if( objectType && objectType->engine->defaultArrayObjectType )
+		return objectType->name == objectType->engine->defaultArrayObjectType->name;
+	
+	return false;
 }
 
 bool asCDataType::IsTemplate() const

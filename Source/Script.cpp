@@ -523,12 +523,12 @@ bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFu
 	return true;
 }
 
-void AddRef()
+void AddRef(void*)
 {
 	// Dummy
 }
 
-void Release()
+void Release(void*)
 {
 	// Dummy
 }
@@ -553,6 +553,7 @@ asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata)
 	}
 
 	engine->SetMessageCallback(asFUNCTION(CallbackMessage),NULL,asCALL_CDECL);
+	RegisterScriptArray(engine,true);
 	RegisterScriptString(engine);
 	RegisterScriptStringUtils(engine);
 	RegisterScriptAny(engine);
@@ -560,7 +561,6 @@ asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata)
 	RegisterScriptFile(engine);
 	RegisterScriptMath(engine);
 	RegisterScriptMath3D(engine);
-	RegisterScriptArray(engine);
 
 	EngineData* edata=new EngineData();
 	edata->PrGlobalVar=new GvarPragmaCallback();
@@ -1153,7 +1153,9 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			asIObjectType* ot=module->GetObjectTypeByIndex(m);
 			for(int i=0,j=ot->GetPropertyCount();i<j;i++)
 			{
-				int type=ot->GetPropertyTypeId(i)&asTYPEID_MASK_SEQNBR;
+				int type=0;
+				ot->GetProperty(i,NULL,&type,NULL,NULL);
+				type&=asTYPEID_MASK_SEQNBR;
 				for(int k=0;k<bad_typeids.size();k++)
 				{
 					if(type==bad_typeids[k])
@@ -1168,18 +1170,15 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 		bool global_fail=false;
 		for(int i=0,j=module->GetGlobalVarCount();i<j;i++)
 		{
-			int type=module->GetGlobalVarTypeId(i);
+			int type=0;
+			module->GetGlobalVar(i,NULL,&type,NULL);
 
-			if(type&asTYPEID_SCRIPTARRAY)
+			while(type&asTYPEID_TEMPLATE)
 			{
-				UNSETFLAG(type,asTYPEID_OBJHANDLE);
-				UNSETFLAG(type,asTYPEID_HANDLETOCONST);	
-				asIScriptArray* arr=(asIScriptArray*)Engine->CreateScriptObject(type);
-				if(arr)
-				{
-					type=arr->GetElementTypeId();
-					arr->Release();
-				}
+				asIObjectType* obj=(asIObjectType*)Engine->GetObjectTypeById(type);
+				if(!obj) break;
+				type=obj->GetSubTypeId();
+				obj->Release();
 			}
 
 			type&=asTYPEID_MASK_SEQNBR;
@@ -1188,7 +1187,9 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			{
 				if(type==bad_typeids[k])
 				{
-					string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type that cannot be stored globally";
+					const char* name=NULL;
+					module->GetGlobalVar(i,&name,NULL,NULL);
+					string msg="The global variable '"+string(name)+"' uses a type that cannot be stored globally";
 					Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
 					global_fail=true;
 					break;
@@ -1196,7 +1197,9 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			}
 			if(std::find(bad_typeids_class.begin(),bad_typeids_class.end(),type)!=bad_typeids_class.end())
 			{
-				string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type in class property that cannot be stored globally";
+				const char* name=NULL;
+				module->GetGlobalVar(i,&name,NULL,NULL);
+				string msg="The global variable '"+string(name)+"' uses a type in class property that cannot be stored globally";
 				Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
 				global_fail=true;
 			}
@@ -2059,12 +2062,12 @@ void CallbackException(asIScriptContext* ctx, void* param)
 }
 
 /************************************************************************/
-/* Built-In types                                                       */
+/* Array                                                                */
 /************************************************************************/
 
-asIScriptArray* CreateArray(const char* type)
+CScriptArray* CreateArray(const char* type)
 {
-	return (asIScriptArray*)Engine->CreateScriptObject(Engine->GetTypeIdByDecl(type));
+	return new CScriptArray(0,Engine->GetObjectTypeById(Engine->GetTypeIdByDecl(type)));
 }
 
 /************************************************************************/

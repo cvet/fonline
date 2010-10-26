@@ -1956,10 +1956,10 @@ void FOServer::Process_Barter(Client* cl)
 	bool result=false;
 	if(Script::PrepareContext(ServerFunctions.ItemsBarter,CALL_FUNC_STR,cl->GetInfo()))
 	{
-		asIScriptArray* sale_items_=Script::CreateArray("Item@[]");
-		asIScriptArray* sale_items_count_=Script::CreateArray("uint[]");
-		asIScriptArray* buy_items_=Script::CreateArray("Item@[]");
-		asIScriptArray* buy_items_count_=Script::CreateArray("uint[]");
+		CScriptArray* sale_items_=Script::CreateArray("Item@[]");
+		CScriptArray* sale_items_count_=Script::CreateArray("uint[]");
+		CScriptArray* buy_items_=Script::CreateArray("Item@[]");
+		CScriptArray* buy_items_count_=Script::CreateArray("uint[]");
 		Script::AppendVectorToArrayRef(sale_items,sale_items_);
 		Script::AppendVectorToArray(sale_item_count,sale_items_count_);
 		Script::AppendVectorToArrayRef(buy_items,buy_items_);

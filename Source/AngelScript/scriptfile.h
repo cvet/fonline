@@ -30,6 +30,7 @@
 //
 
 #include <AngelScript/angelscript.h>
+#include "scriptarray.h"
 #include "scriptstring.h"
 
 BEGIN_AS_NAMESPACE
@@ -62,7 +63,7 @@ public:
 	unsigned short ReadUint16();
 	unsigned int ReadUint32();
 	unsigned __int64 ReadUint64();
-	unsigned int ReadData(unsigned int count, asIScriptArray& data);
+	unsigned int ReadData(unsigned int count, CScriptArray& data);
 
     // Writing
     int WriteString(const CScriptString &str);
@@ -71,7 +72,7 @@ public:
 	bool WriteUint16(unsigned short data);
 	bool WriteUint32(unsigned int data);
 	bool WriteUint64(unsigned __int64 data);
-	bool WriteData(asIScriptArray& data, unsigned int count);
+	bool WriteData(CScriptArray& data, unsigned int count);
 
     // Cursor
 	int GetPos() const;

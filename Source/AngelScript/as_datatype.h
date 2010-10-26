@@ -63,7 +63,6 @@ public:
 	static asCDataType CreateObject(asCObjectType *ot, bool isConst);
 	static asCDataType CreateObjectHandle(asCObjectType *ot, bool isConst);
 	static asCDataType CreateFuncDef(asCScriptFunction *ot);
-	static asCDataType CreateDefaultArray(asCScriptEngine *engine);
 	static asCDataType CreateNullHandle();
 
 	int MakeHandle(bool b, bool acceptHandleForScope = false);

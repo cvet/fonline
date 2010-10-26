@@ -66,6 +66,7 @@
 #define TXT_CONSTRUCTOR_NAME_ERROR               "The constructor name must be the same as the class"
 
 #define TXT_DATA_TYPE_CANT_BE_s           "Data type can't be '%s'"
+#define TXT_DECL_IN_SWITCH                "Variables cannot be declared in switch cases, except inside statement blocks"
 #define TXT_DEFAULT_MUST_BE_LAST          "The default case must be the last one"
 #define TXT_DESTRUCTOR_MAY_NOT_HAVE_PARM  "The destructor must not have any parameters"
 #define TXT_DUPLICATE_SWITCH_CASE         "Duplicate switch case"
@@ -137,6 +138,7 @@
 #define TXT_NO_APPROPRIATE_INDEX_OPERATOR          "No appropriate indexing operator found"
 #define TXT_NO_CONVERSION_s_TO_s                   "No conversion from '%s' to '%s' available."
 #define TXT_NO_CONVERSION_s_TO_MATH_TYPE           "No conversion from '%s' to math type available."
+#define TXT_NO_DEFAULT_ARRAY_TYPE                  "The application doesn't support the default array type."
 #define TXT_NO_DEFAULT_CONSTRUCTOR_FOR_s           "No default constructor for object of type '%s'."
 #define TXT_NO_DEFAULT_COPY_OP                     "There is no copy operator for this type available."
 #define TXT_NO_COPY_CONSTRUCTOR_FOR_s              "No copy constructor for object of type '%s'."
@@ -179,7 +181,6 @@
 #define TXT_SWITCH_CASE_MUST_BE_CONSTANT               "Case expressions must be constants"
 #define TXT_SWITCH_MUST_BE_INTEGRAL                    "Switch expressions must be integral numbers"
 
-#define TXT_TOO_MANY_ARRAY_DIMENSIONS        "Too many array dimensions"
 #define TXT_TYPE_s_NOT_AVAILABLE_FOR_MODULE  "Type '%s' is not available for this module"
 
 #define TXT_UNEXPECTED_END_OF_FILE        "Unexpected end of file"
@@ -211,10 +212,6 @@
 
 // Internal names
 
-#ifdef AS_DEPRECATED
-// Deprecated since 2.18.0, 2009-12-08
-#define TXT_EXECUTESTRING                 "ExecuteString"
-#endif
 #define TXT_PROPERTY                      "Property"
 #define TXT_SYSTEM_FUNCTION               "System function"
 #define TXT_VARIABLE_DECL                 "Variable declaration"

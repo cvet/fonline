@@ -1011,9 +1011,9 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 
 		if(crafted.size() && Script::PrepareContext(ServerFunctions.ItemsCrafted,CALL_FUNC_STR,cr->GetInfo()))
 		{
-			asIScriptArray* crafted_=Script::CreateArray("Item@[]");
-			asIScriptArray* crafted_count_=Script::CreateArray("uint[]");
-			asIScriptArray* sub_items_=Script::CreateArray("Item@[]");
+			CScriptArray* crafted_=Script::CreateArray("Item@[]");
+			CScriptArray* crafted_count_=Script::CreateArray("uint[]");
+			CScriptArray* sub_items_=Script::CreateArray("Item@[]");
 			Script::AppendVectorToArrayRef(crafted,crafted_);
 			Script::AppendVectorToArray(crafted_count,crafted_count_);
 			Script::AppendVectorToArrayRef(sub_items,sub_items_);

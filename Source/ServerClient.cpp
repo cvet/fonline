@@ -3999,7 +3999,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 	char p3str[MAX_FOTEXT];
 	CScriptString* p3=NULL;
 	WORD p4size;
-	asIScriptArray* p4=NULL;
+	CScriptArray* p4=NULL;
 
 	cl->Bin >> msg_len;
 	cl->Bin >> unsafe;
@@ -4047,7 +4047,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 		if(p4)
 		{
 			p4->Resize(p4size);
-			cl->Bin.Pop((char*)p4->GetElementPointer(0),p4size*sizeof(DWORD));
+			cl->Bin.Pop((char*)p4->At(0),p4size*sizeof(DWORD));
 		}
 	}
 
@@ -4246,7 +4246,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			{
 				BYTE count=0;
 				BYTE show[0x100];
-				asIScriptArray* arr=MapMngr.GM_CreateGroupArray(cl->GroupMove);
+				CScriptArray* arr=MapMngr.GM_CreateGroupArray(cl->GroupMove);
 				if(!arr) break;
 				for(BYTE i=0,j=(BYTE)loc->Proto->Entrance.size();i<j;i++)
 				{
@@ -4297,7 +4297,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			if(entrance>=loc->Proto->Entrance.size()) break;
 			if(loc->Proto->ScriptBindId)
 			{
-				asIScriptArray* arr=MapMngr.GM_CreateGroupArray(cl->GroupMove);
+				CScriptArray* arr=MapMngr.GM_CreateGroupArray(cl->GroupMove);
 				if(!arr) break;
 				bool result=MapMngr.GM_CheckEntrance(loc->Proto->ScriptBindId,arr,entrance);
 				arr->Release();

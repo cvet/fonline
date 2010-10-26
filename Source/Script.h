@@ -2,6 +2,7 @@
 #define __SCRIPT__
 
 #include "AngelScript/angelscript.h"
+#include "AngelScript/scriptarray.h"
 #include "AngelScript/scriptstring.h"
 #include <vector>
 
@@ -34,8 +35,8 @@ namespace Script
 	bool ReloadScripts(const char* config, const char* key, bool skip_binaries);
 	bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count);
 
-	void AddRef();
-	void Release();
+	void AddRef(void*); // Dummy
+	void Release(void*); // Dummy
 
 	asIScriptEngine* GetEngine();
 	void SetEngine(asIScriptEngine* engine);
@@ -115,49 +116,49 @@ namespace Script
 	void CallbackException(asIScriptContext* ctx, void* param);
 
 	// Arrays stuff
-	asIScriptArray* CreateArray(const char* type);
+	CScriptArray* CreateArray(const char* type);
 
 	template<typename Type>
-	void AppendVectorToArray(vector<Type>& vec, asIScriptArray* arr)
+	void AppendVectorToArray(vector<Type>& vec, CScriptArray* arr)
 	{
 		if(!vec.empty() && arr)
 		{
-			asUINT i=arr->GetElementCount();
-			arr->Resize(arr->GetElementCount()+vec.size());
+			asUINT i=arr->GetSize();
+			arr->Resize(arr->GetSize()+vec.size());
 			for(size_t k=0,l=vec.size();k<l;k++,i++)
 			{
-				Type* p=(Type*)arr->GetElementPointer(i);
+				Type* p=(Type*)arr->At(i);
 				*p=vec[k];
 			}
 		}
 	}
 	template<typename Type>
-	void AppendVectorToArrayRef(vector<Type>& vec, asIScriptArray* arr)
+	void AppendVectorToArrayRef(vector<Type>& vec, CScriptArray* arr)
 	{
 		if(!vec.empty() && arr)
 		{
-			asUINT i=arr->GetElementCount();
-			arr->Resize(arr->GetElementCount()+vec.size());
+			asUINT i=arr->GetSize();
+			arr->Resize(arr->GetSize()+vec.size());
 			for(size_t k=0,l=vec.size();k<l;k++,i++)
 			{
-				Type* p=(Type*)arr->GetElementPointer(i);
+				Type* p=(Type*)arr->At(i);
 				*p=vec[k];
 				(*p)->AddRef();
 			}
 		}
 	}
 	template<typename Type>
-	void AssignScriptArrayInVector(vector<Type>& vec, asIScriptArray* arr)
+	void AssignScriptArrayInVector(vector<Type>& vec, CScriptArray* arr)
 	{
 		if(arr)
 		{
-			asUINT count=arr->GetElementCount();
+			asUINT count=arr->GetSize();
 			if(count)
 			{
 				vec.resize(count);
 				for(asUINT i=0;i<count;i++)
 				{
-					Type* p=(Type*)arr->GetElementPointer(i);
+					Type* p=(Type*)arr->At(i);
 					vec[i]=*p;
 				}
 			}

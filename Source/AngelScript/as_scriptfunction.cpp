@@ -123,7 +123,7 @@ void RegisterScriptFunction(asCScriptEngine *engine)
 }
 
 // internal
-asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, int _funcType)
+asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, asEFuncType _funcType)
 {
 	refCount.set(1);
 	this->engine           = engine;
@@ -141,6 +141,8 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, in
 	vfTableIdx             = -1;
 	jitFunction            = 0;
 	gcFlag                 = false;
+	userData               = 0;
+	id                     = 0;
 
 	// Notify the GC of script functions
 	if( funcType == asFUNC_SCRIPT )
@@ -150,6 +152,10 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, in
 // internal
 asCScriptFunction::~asCScriptFunction()
 {
+	// Clean user data
+	if( userData && engine->cleanFunctionFunc )
+		engine->cleanFunctionFunc(this);
+
 	// Imported functions are not reference counted, nor are dummy 
 	// functions that are allocated on the stack
 	asASSERT( funcType == -1              || 
@@ -180,7 +186,7 @@ int asCScriptFunction::GetId() const
 }
 
 // interface
-int asCScriptFunction::AddRef()
+int asCScriptFunction::AddRef() const
 {
 	gcFlag = false;
 	asASSERT( funcType != asFUNC_IMPORTED );
@@ -188,15 +194,33 @@ int asCScriptFunction::AddRef()
 }
 
 // interface
-int asCScriptFunction::Release()
+int asCScriptFunction::Release() const
 {
 	gcFlag = false;
 	asASSERT( funcType != asFUNC_IMPORTED );
 	int r = refCount.atomicDec();
 	if( r == 0 && funcType != -1 ) // Dummy functions are allocated on the stack and cannot be deleted
-		asDELETE(this,asCScriptFunction);
+		asDELETE(const_cast<asCScriptFunction*>(this),asCScriptFunction);
 
 	return r;
+}
+
+// interface 
+void asCScriptEngine::SetEngineUserDataCleanupCallback(asCLEANENGINEFUNC_t callback)
+{
+	cleanEngineFunc = callback;
+}
+
+// interface
+void asCScriptEngine::SetContextUserDataCleanupCallback(asCLEANCONTEXTFUNC_t callback)
+{
+	cleanContextFunc = callback;
+}
+
+// interface
+void asCScriptEngine::SetFunctionUserDataCleanupCallback(asCLEANFUNCTIONFUNC_t callback)
+{
+	cleanFunctionFunc = callback;
 }
 
 // interface
@@ -231,6 +255,8 @@ const char *asCScriptFunction::GetName() const
 	return name.AddressOf();
 }
 
+#ifdef AS_DEPRECATED
+// Since 2.20.0
 // interface
 bool asCScriptFunction::IsClassMethod() const
 {
@@ -242,11 +268,18 @@ bool asCScriptFunction::IsInterfaceMethod() const
 {
 	return objectType && objectType->IsInterface();
 }
+#endif
 
 // interface
 bool asCScriptFunction::IsReadOnly() const
 {
 	return isReadOnly;
+}
+
+// interface
+bool asCScriptFunction::IsPrivate() const
+{
+	return isPrivate;
 }
 
 // internal
@@ -358,6 +391,46 @@ int asCScriptFunction::GetLineNumber(int programPosition)
 			return lineNumbers[i*2+1];
 		}
 	}
+}
+
+// interface
+asEFuncType asCScriptFunction::GetFuncType() const
+{
+	return funcType;
+}
+
+// interface
+int asCScriptFunction::GetVarCount() const
+{
+	return int(variables.GetLength());
+}
+
+// interface
+int asCScriptFunction::GetVar(asUINT index, const char **name, int *typeId) const
+{
+	if( index >= variables.GetLength() )
+		return asINVALID_ARG;
+
+	if( name )
+		*name = variables[index]->name.AddressOf();
+	if( typeId )
+		*typeId = engine->GetTypeIdFromDataType(variables[index]->type);
+
+	return asSUCCESS;
+}
+
+// interface
+const char *asCScriptFunction::GetVarDecl(asUINT index) const
+{
+	if( index >= variables.GetLength() )
+		return 0;
+
+	asASSERT(threadManager);
+	asCString *tempString = &threadManager->GetLocalData()->string;
+	*tempString = variables[index]->type.Format();
+	*tempString += " " + variables[index]->name;
+
+	return tempString->AddressOf();	
 }
 
 // internal
@@ -721,6 +794,20 @@ asDWORD *asCScriptFunction::GetByteCode(asUINT *length)
 	}
 
 	return 0;
+}
+
+// interface
+void *asCScriptFunction::SetUserData(void *data)
+{
+	void *oldData = userData;
+	userData = data;
+	return oldData;
+}
+
+// interface
+void *asCScriptFunction::GetUserData() const
+{
+	return userData;
 }
 
 // internal

@@ -5245,10 +5245,10 @@ void FOClient::Net_OnCombatResult()
 
 	CHECK_IN_BUFF_ERROR;
 
-	asIScriptArray* arr=Script::CreateArray("uint[]");
+	CScriptArray* arr=Script::CreateArray("uint[]");
 	if(!arr) return;
 	arr->Resize(data_count);
-	for(int i=0;i<data_count;i++) *((DWORD*)arr->GetElementPointer(i))=data_vec[i];
+	for(int i=0;i<data_count;i++) *((DWORD*)arr->At(i))=data_vec[i];
 
 	if(Script::PrepareContext(ClientFunctions.CombatResult,CALL_FUNC_STR,"Game"))
 	{
@@ -6480,7 +6480,7 @@ void FOClient::Net_OnRunClientScript()
 	WORD p3len;
 	CScriptString* p3=NULL;
 	WORD p4size;
-	asIScriptArray* p4=NULL;
+	CScriptArray* p4=NULL;
 	Bin >> msg_len;
 	Bin >> func_name_len;
 	if(func_name_len && func_name_len<MAX_FOTEXT)
@@ -6506,7 +6506,7 @@ void FOClient::Net_OnRunClientScript()
 		if(p4)
 		{
 			p4->Resize(p4size);
-			Bin.Pop((char*)p4->GetElementPointer(0),p4size*sizeof(DWORD));
+			Bin.Pop((char*)p4->At(0),p4size*sizeof(DWORD));
 		}
 	}
 
@@ -7052,11 +7052,11 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 
 	if(Script::PrepareContext(ClientFunctions.PlayerGenerationCheck,CALL_FUNC_STR,"Registration"))
 	{
-		asIScriptArray* arr=Script::CreateArray("int[]");
+		CScriptArray* arr=Script::CreateArray("int[]");
 		if(!arr) return false;
 
 		arr->Resize(MAX_PARAMS);
-		for(int i=0;i<MAX_PARAMS;i++) (*(int*)arr->GetElementPointer(i))=newcr->ParamsReg[i];
+		for(int i=0;i<MAX_PARAMS;i++) (*(int*)arr->At(i))=newcr->ParamsReg[i];
 		bool result=false;
 		Script::SetArgObject(arr);
 		if(Script::RunPrepared()) result=Script::GetReturnedBool();
@@ -7067,8 +7067,8 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 			return false;
 		}
 
-		if(arr->GetElementCount()==MAX_PARAMS)
-			for(int i=0;i<MAX_PARAMS;i++) newcr->ParamsReg[i]=(*(int*)arr->GetElementPointer(i));
+		if(arr->GetSize()==MAX_PARAMS)
+			for(int i=0;i<MAX_PARAMS;i++) newcr->ParamsReg[i]=(*(int*)arr->At(i));
 		arr->Release();
 	}
 
@@ -9155,41 +9155,41 @@ bool FOClient::PragmaCallbackCrData(const char* text)
 }
 
 template<typename Type>
-void AppendVectorToArray(vector<Type>& vec, asIScriptArray* arr)
+void AppendVectorToArray(vector<Type>& vec, CScriptArray* arr)
 {
 	if(vec.empty()) return;
-	int i=arr->GetElementCount();
-	arr->Resize(arr->GetElementCount()+vec.size());
+	int i=arr->GetSize();
+	arr->Resize(arr->GetSize()+vec.size());
 	for(int k=0,l=vec.size();k<l;k++,i++)
 	{
-		Type* p=(Type*)arr->GetElementPointer(i);
+		Type* p=(Type*)arr->At(i);
 		*p=vec[k];
 	}
 }
 
 template<typename Type>
-void AppendVectorToArrayRef(vector<Type>& vec, asIScriptArray* arr)
+void AppendVectorToArrayRef(vector<Type>& vec, CScriptArray* arr)
 {
 	if(vec.empty()) return;
-	int i=arr->GetElementCount();
-	arr->Resize(arr->GetElementCount()+vec.size());
+	int i=arr->GetSize();
+	arr->Resize(arr->GetSize()+vec.size());
 	for(int k=0,l=vec.size();k<l;k++,i++)
 	{
-		Type* p=(Type*)arr->GetElementPointer(i);
+		Type* p=(Type*)arr->At(i);
 		*p=vec[k];
 		(*p)->AddRef();
 	}
 }
 
 template<typename Type>
-void AssignScriptArrayInVector(vector<Type>& vec, asIScriptArray* arr)
+void AssignScriptArrayInVector(vector<Type>& vec, CScriptArray* arr)
 {
-	int cnt=arr->GetElementCount();
+	int cnt=arr->GetSize();
 	if(!cnt) return;
 	vec.resize(cnt);
 	for(int i=0;i<cnt;i++)
 	{
-		Type* p=(Type*)arr->GetElementPointer(i);
+		Type* p=(Type*)arr->At(i);
 		vec[i]=*p;
 	}
 }
@@ -9373,7 +9373,7 @@ Item* FOClient::SScriptFunc::Crit_GetItem(CritterCl* cr, WORD proto_id, int slot
 	return cr->GetItemSlot(slot);
 }
 
-DWORD FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, asIScriptArray* items)
+DWORD FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, CScriptArray* items)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
@@ -9382,7 +9382,7 @@ DWORD FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, asIScriptArr
 	return items_.size();
 }
 
-DWORD FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, asIScriptArray* items)
+DWORD FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, CScriptArray* items)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
@@ -9563,7 +9563,7 @@ CritterCl* FOClient::SScriptFunc::Global_GetCritter(DWORD critter_id)
 	return cr;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCritters(WORD hx, WORD hy, DWORD radius, int find_type, asIScriptArray* critters)
+DWORD FOClient::SScriptFunc::Global_GetCritters(WORD hx, WORD hy, DWORD radius, int find_type, CScriptArray* critters)
 {
 	if(hx>=Self->HexMngr.GetMaxHexX() || hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 
@@ -9583,7 +9583,7 @@ DWORD FOClient::SScriptFunc::Global_GetCritters(WORD hx, WORD hy, DWORD radius, 
 	return cr_vec.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersByPids(WORD pid, int find_type, asIScriptArray* critters)
+DWORD FOClient::SScriptFunc::Global_GetCrittersByPids(WORD pid, int find_type, CScriptArray* critters)
 {
 	CritMap& crits=Self->HexMngr.GetCritters();
 	CritVec cr_vec;
@@ -9608,7 +9608,7 @@ DWORD FOClient::SScriptFunc::Global_GetCrittersByPids(WORD pid, int find_type, a
 	return cr_vec.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, asIScriptArray* critters)
+DWORD FOClient::SScriptFunc::Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters)
 {
 	CritVec cr_vec;
 	Self->HexMngr.TraceBullet(from_hx,from_hy,to_hx,to_hy,dist,angle,NULL,false,&cr_vec,FIND_LIFE|FIND_KO,NULL,NULL,NULL,true);
@@ -9616,7 +9616,7 @@ DWORD FOClient::SScriptFunc::Global_GetCrittersInPath(WORD from_hx, WORD from_hy
 	return cr_vec.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, asIScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy)
+DWORD FOClient::SScriptFunc::Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy)
 {
 	CritVec cr_vec;
 	WordPair block,pre_block;
@@ -9702,13 +9702,13 @@ WORD FOClient::SScriptFunc::Global_GetCurrentMapPid()
 	return Self->HexMngr.GetCurPidMap();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetMessageFilters(asIScriptArray* filters)
+DWORD FOClient::SScriptFunc::Global_GetMessageFilters(CScriptArray* filters)
 {
 	if(filters) Script::AppendVectorToArray(Self->MessBoxFilters,filters);
 	return Self->MessBoxFilters.size();
 }
 
-void FOClient::SScriptFunc::Global_SetMessageFilters(asIScriptArray* filters)
+void FOClient::SScriptFunc::Global_SetMessageFilters(CScriptArray* filters)
 {
 	Self->MessBoxFilters.clear();
 	if(filters) Script::AssignScriptArrayInVector(Self->MessBoxFilters,filters);
@@ -10265,14 +10265,14 @@ int FOClient::SScriptFunc::Global_GetGlobalMapRelief(DWORD x, DWORD y)
 	return Self->GmapRelief->Get4Bit(x,y);
 }
 
-void FOClient::SScriptFunc::Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, asIScriptArray* p4)
+void FOClient::SScriptFunc::Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
 	DwordVec dw;
 	if(p4) AssignScriptArrayInVector<DWORD>(dw,p4);
 	Self->Net_SendRunScript(false,func_name.c_str(),p0,p1,p2,p3?p3->c_str():NULL,dw);
 }
 
-void FOClient::SScriptFunc::Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, asIScriptArray* p4)
+void FOClient::SScriptFunc::Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
 	DwordVec dw;
 	if(p4) AssignScriptArrayInVector<DWORD>(dw,p4);
@@ -10336,7 +10336,7 @@ void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, i
 	Self->SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
 }
 
-void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, asIScriptArray& data)
+void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArray& data)
 {
 	if(!SpritesCanDraw) return;
 
@@ -10352,16 +10352,16 @@ void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, asIScriptAr
 	default: return;
 	}
 
-	int size=data.GetElementCount()/3;
+	int size=data.GetSize()/3;
 	PointVec points;
 	points.resize(size);
 
 	for(int i=0;i<size;i++)
 	{
 		PrepPoint& pp=points[i];
-		pp.PointX=*(int*)data.GetElementPointer(i*3);
-		pp.PointY=*(int*)data.GetElementPointer(i*3+1);
-		pp.PointColor=*(int*)data.GetElementPointer(i*3+2);
+		pp.PointX=*(int*)data.At(i*3);
+		pp.PointY=*(int*)data.At(i*3+1);
+		pp.PointColor=*(int*)data.At(i*3+2);
 		//pp.PointOffsX=NULL;
 		//pp.PointOffsY=NULL;
 	}
@@ -10427,7 +10427,7 @@ Animation3dVec DrawCritter3dAnim;
 DwordVec DrawCritter3dCrType;
 DwordVec DrawCritter3dFailToLoad;
 int DrawCritter3dLayers[LAYERS3D_COUNT];
-void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, asIScriptArray* layers, asIScriptArray* position, DWORD color)
+void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, CScriptArray* layers, CScriptArray* position, DWORD color)
 {
 	// x y
 	// rx ry rz
@@ -10463,25 +10463,25 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 
 		if(anim)
 		{
-			DWORD count=(position?position->GetElementCount():0);
-			float x=(count>0?*(float*)position->GetElementPointer(0):0.0f);
-			float y=(count>1?*(float*)position->GetElementPointer(1):0.0f);
-			float rx=(count>2?*(float*)position->GetElementPointer(2):0.0f);
-			float ry=(count>3?*(float*)position->GetElementPointer(3):0.0f);
-			float rz=(count>4?*(float*)position->GetElementPointer(4):0.0f);
-			float sx=(count>5?*(float*)position->GetElementPointer(5):1.0f);
-			float sy=(count>6?*(float*)position->GetElementPointer(6):1.0f);
-			float sz=(count>7?*(float*)position->GetElementPointer(7):1.0f);
-			float speed=(count>8?*(float*)position->GetElementPointer(8):1.0f);
+			DWORD count=(position?position->GetSize():0);
+			float x=(count>0?*(float*)position->At(0):0.0f);
+			float y=(count>1?*(float*)position->At(1):0.0f);
+			float rx=(count>2?*(float*)position->At(2):0.0f);
+			float ry=(count>3?*(float*)position->At(3):0.0f);
+			float rz=(count>4?*(float*)position->At(4):0.0f);
+			float sx=(count>5?*(float*)position->At(5):1.0f);
+			float sy=(count>6?*(float*)position->At(6):1.0f);
+			float sz=(count>7?*(float*)position->At(7):1.0f);
+			float speed=(count>8?*(float*)position->At(8):1.0f);
 			// 9 reserved
-			float stl=(count>10?*(float*)position->GetElementPointer(10):0.0f);
-			float stt=(count>11?*(float*)position->GetElementPointer(11):0.0f);
-			float str=(count>12?*(float*)position->GetElementPointer(12):0.0f);
-			float stb=(count>13?*(float*)position->GetElementPointer(13):0.0f);
+			float stl=(count>10?*(float*)position->At(10):0.0f);
+			float stt=(count>11?*(float*)position->At(11):0.0f);
+			float str=(count>12?*(float*)position->At(12):0.0f);
+			float stb=(count>13?*(float*)position->At(13):0.0f);
 
 			ZeroMemory(DrawCritter3dLayers,sizeof(DrawCritter3dLayers));
-			for(DWORD i=0,j=(layers?layers->GetElementCount():0);i<j && i<LAYERS3D_COUNT;i++)
-				DrawCritter3dLayers[i]=*(int*)layers->GetElementPointer(i);
+			for(DWORD i=0,j=(layers?layers->GetSize():0);i<j && i<LAYERS3D_COUNT;i++)
+				DrawCritter3dLayers[i]=*(int*)layers->At(i);
 
 			anim->SetRotation(rx*D3DX_PI/180.0f,ry*D3DX_PI/180.0f,rz*D3DX_PI/180.0f);
 			anim->SetScale(sx,sy,sz);

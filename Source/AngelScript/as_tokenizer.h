@@ -52,7 +52,7 @@ class asCScriptEngine;
 class asCTokenizer
 {
 public:
-	asCTokenizer(asCScriptEngine *engine);
+	asCTokenizer(const asCScriptEngine *engine);
 	~asCTokenizer();
 
 	eTokenType GetToken(const char *source, size_t sourceLength, size_t *tokenLength, asETokenClass *tc = 0);
@@ -71,7 +71,7 @@ protected:
 	eTokenType tokenType;
 	size_t tokenLength;
 
-	asCScriptEngine *engine;
+	const asCScriptEngine *engine;
 };
 
 END_AS_NAMESPACE

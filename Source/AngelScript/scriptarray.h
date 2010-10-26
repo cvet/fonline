@@ -1,7 +1,7 @@
 #ifndef SCRIPTARRAY_H
 #define SCRIPTARRAY_H
 
-#include <AngelScript\angelscript.h>
+#include "angelscript.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -23,14 +23,25 @@ public:
 	int            GetElementTypeId() const;
 
 	void   Resize(asUINT numElements);
+	void   Grow(asUINT numElements);
+	void   Reduce(asUINT numElements);
 	asUINT GetSize() const;
+	int    GetElementSize() const;
 
 	// Get a pointer to an element. Returns 0 if out of bounds
 	void  *At(asUINT index);
+	void  *First();
+	void  *Last();
 
 	CScriptArray &operator=(const CScriptArray&);
 
-	// TODO: Add methods Sort, Reverse, Find, PopLast, PushLast, InsertAt, RemoveAt, etc
+	// TODO: Add methods Sort, Reverse, Find, etc
+	void InsertAt(asUINT index, void *value);
+	void RemoveAt(asUINT index);
+	void InsertFirst(void *value);
+	void RemoveFirst();
+	void InsertLast(void *value);
+	void RemoveLast();
 
 	// GC methods
 	int  GetRefCount();
@@ -49,6 +60,9 @@ protected:
 
 	bool CheckMaxSize(asUINT numElements);
 
+	void Resize(int delta, asUINT at);
+	void SetValue(asUINT index, void *value);
+
 	void CreateBuffer(SArrayBuffer **buf, asUINT numElements);
 	void DeleteBuffer(SArrayBuffer *buf);
 	void CopyBuffer(SArrayBuffer *dst, SArrayBuffer *src);
@@ -57,9 +71,7 @@ protected:
 	void Destruct(SArrayBuffer *buf, asUINT start, asUINT end);
 };
 
-void RegisterScriptArray(asIScriptEngine *engine);
-void RegisterScriptArray_Native(asIScriptEngine *engine);
-void RegisterScriptArray_Generic(asIScriptEngine *engine);
+void RegisterScriptArray(asIScriptEngine *engine, bool defaultArray);
 
 END_AS_NAMESPACE
 

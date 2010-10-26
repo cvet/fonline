@@ -421,7 +421,7 @@ bool asCByteCode::RemoveUnusedValue(cByteInstruction *curr, cByteInstruction **n
 		return true;
 	}
 
-	// TODO: There should be one for doubles as well
+	// TODO: optimize: There should be one for doubles as well
 	// The value is immediately used and then never again
 	if( curr->op == asBC_SetV4 &&
 		curr->next && 
@@ -868,7 +868,6 @@ int asCByteCode::Optimize()
 		{
 			asASSERT( AS_PTR_SIZE == 1 );
 
-			// TODO: Pointer size
 			curr->op = asBC_PshV4;
 			instr->op = asBC_CHKREF;
 			DeleteInstruction(instr->next);
@@ -880,7 +879,6 @@ int asCByteCode::Optimize()
 		{
 			asASSERT( AS_PTR_SIZE == 2 );
 
-			// TODO: Pointer size
 			curr->op = asBC_PshV8;
 			instr->op = asBC_CHKREF;
 			DeleteInstruction(instr->next);
@@ -906,7 +904,6 @@ int asCByteCode::Optimize()
 		{
 			asASSERT( AS_PTR_SIZE == 1 );
 
-			// TODO: Pointer size
 			curr->op = asBC_ChkNullV;
 			curr->stackInc = 0;
 			DeleteInstruction(instr->next);
@@ -920,7 +917,6 @@ int asCByteCode::Optimize()
 		{
 			asASSERT( AS_PTR_SIZE == 2 );
 
-			// TODO: Pointer size
 			curr->op = asBC_ChkNullV;
 			curr->stackInc = 0;
 			DeleteInstruction(instr->next);
@@ -1447,11 +1443,6 @@ cByteInstruction *asCByteCode::DeleteInstruction(cByteInstruction *instr)
 void asCByteCode::Output(asDWORD *array)
 {
 	// TODO: Receive a script function pointer
-
-	// TODO: When arguments in a byte instruction are too large put them in the constant memory instead
-	//       4 byte arguments may remain in the instruction code for now. But move 
-	//       the 8 byte arguments to the constant memory
-	//       Pointers will also be moved to the pointer array
 
 	asDWORD *ap = array;
 

@@ -47,7 +47,6 @@
 #include "as_texts.h"
 #include "as_module.h"
 #include "as_callfunc.h"
-#include "as_arrayobject.h"
 #include "as_generic.h"
 #include "as_scriptobject.h"
 #include "as_compiler.h"
@@ -280,6 +279,10 @@ int asCScriptEngine::SetEngineProperty(asEEngineProp property, asPWORD value)
 			return asINVALID_ARG;
 		break;
 
+	case asEP_EXPAND_DEF_ARRAY_TO_TMPL:
+		ep.expandDefaultArrayToTemplate = value ? true : false;
+		break;
+
 	default:
 		return asINVALID_ARG;
 	}
@@ -287,7 +290,7 @@ int asCScriptEngine::SetEngineProperty(asEEngineProp property, asPWORD value)
 	return asSUCCESS;
 }
 
-asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property)
+asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property) const
 {
 	switch( property )
 	{
@@ -332,6 +335,9 @@ asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property)
 
 	case asEP_PROPERTY_ACCESSOR_MODE:
 		return ep.propertyAccessorMode;
+
+	case asEP_EXPAND_DEF_ARRAY_TO_TMPL:
+		return ep.expandDefaultArrayToTemplate;
 	}
 
 	return 0;
@@ -353,24 +359,25 @@ asCScriptEngine::asCScriptEngine()
 
 	// Engine properties
 	{
-		ep.allowUnsafeReferences    = false;
-		ep.optimizeByteCode         = true;
-		ep.copyScriptSections       = true;
-		ep.maximumContextStackSize  = 0;         // no limit
-		ep.useCharacterLiterals     = false;
-		ep.allowMultilineStrings    = false;
-		ep.allowImplicitHandleTypes = false;
+		ep.allowUnsafeReferences        = false;
+		ep.optimizeByteCode             = true;
+		ep.copyScriptSections           = true;
+		ep.maximumContextStackSize      = 0;         // no limit
+		ep.useCharacterLiterals         = false;
+		ep.allowMultilineStrings        = false;
+		ep.allowImplicitHandleTypes     = false;
 		// TODO: optimize: Maybe this should be turned off by default? If a debugger is not used
 		//                 then this is just slowing down the execution. The exception handler
 		//                 should still be able to determine the line number from the bytecode
 		//                 position.
-		ep.buildWithoutLineCues     = false;
-		ep.initGlobalVarsAfterBuild = true;
-		ep.requireEnumScope         = false;
-		ep.scanner                  = 1;         // utf8. 0 = ascii
-		ep.includeJitInstructions   = false;
-		ep.stringEncoding           = 0;         // utf8. 1 = utf16
-		ep.propertyAccessorMode     = 2;         // 0 = disable, 1 = app registered only, 2 = app and script created
+		ep.buildWithoutLineCues         = false;
+		ep.initGlobalVarsAfterBuild     = true;
+		ep.requireEnumScope             = false;
+		ep.scanner                      = 1;         // utf8. 0 = ascii
+		ep.includeJitInstructions       = false;
+		ep.stringEncoding               = 0;         // utf8. 1 = utf16
+		ep.propertyAccessorMode         = 2;         // 0 = disable, 1 = app registered only, 2 = app and script created
+		ep.expandDefaultArrayToTemplate = false;
 	}
 
 	gc.engine = this;
@@ -382,8 +389,12 @@ asCScriptEngine::asCScriptEngine()
 	isBuilding = false;
 	lastModule = 0;
 
+	// User data
+	userData          = 0;
+	cleanEngineFunc   = 0;
+	cleanContextFunc  = 0;
+	cleanFunctionFunc = 0;
 
-	userData = 0;
 
 	initialContextStackSize = 1024;      // 4 KB (1024 * sizeof(asDWORD)
 
@@ -414,7 +425,6 @@ asCScriptEngine::asCScriptEngine()
 
 	defaultArrayObjectType = 0;
 
-	RegisterArrayObject(this);
 	RegisterScriptObject(this);
 	RegisterScriptFunction(this);
 	RegisterObjectTypeGCBehaviours(this);
@@ -527,9 +537,7 @@ asCScriptEngine::~asCScriptEngine()
 	for( n = 0; n < registeredGlobalProps.GetLength(); n++ )
 	{
 		if( registeredGlobalProps[n] )
-		{
-			asDELETE(registeredGlobalProps[n],asCGlobalProperty);
-		}
+			registeredGlobalProps[n]->Release();
 	}
 	registeredGlobalProps.SetLength(0);
 	FreeUnusedGlobalProperties();
@@ -593,24 +601,28 @@ asCScriptEngine::~asCScriptEngine()
 	}
 	scriptSectionNames.SetLength(0);
 
+	// Clean the user data
+	if( userData && cleanEngineFunc )
+		cleanEngineFunc(this);
+
 	// Release the thread manager
 	threadManager->Release();
 }
 
 // interface
-int asCScriptEngine::AddRef()
+int asCScriptEngine::AddRef() const
 {
 	return refCount.atomicInc();
 }
 
 // interface
-int asCScriptEngine::Release()
+int asCScriptEngine::Release() const
 {
 	int r = refCount.atomicDec();
 
 	if( r == 0 )
 	{
-		asDELETE(this,asCScriptEngine);
+		asDELETE(const_cast<asCScriptEngine*>(this),asCScriptEngine);
 		return 0;
 	}
 
@@ -626,7 +638,7 @@ void *asCScriptEngine::SetUserData(void *data)
 }
 
 // interface
-void *asCScriptEngine::GetUserData()
+void *asCScriptEngine::GetUserData() const
 {
 	return userData;
 }
@@ -696,13 +708,13 @@ int asCScriptEngine::SetJITCompiler(asIJITCompiler *compiler)
     return asSUCCESS;
 }
 
-asIJITCompiler *asCScriptEngine::GetJITCompiler()
+asIJITCompiler *asCScriptEngine::GetJITCompiler() const
 {
     return jitCompiler;
 }
 
 // interface
-asETokenClass asCScriptEngine::ParseToken(const char *string, size_t stringLength, int *tokenLength)
+asETokenClass asCScriptEngine::ParseToken(const char *string, size_t stringLength, int *tokenLength) const
 {
 	if( stringLength == 0 )
 		stringLength = strlen(string);
@@ -904,7 +916,7 @@ int asCScriptEngine::GetFactoryIdByDecl(const asCObjectType *ot, const char *dec
 
 	asCBuilder bld(this, mod);
 
-	asCScriptFunction func(this, mod,-1);
+	asCScriptFunction func(this, mod, asFUNC_DUMMY);
 	int r = bld.ParseFunctionDeclaration(0, decl, &func, false);
 	if( r < 0 )
 		return asINVALID_DECLARATION;
@@ -932,7 +944,7 @@ int asCScriptEngine::GetMethodIdByDecl(const asCObjectType *ot, const char *decl
 {
 	asCBuilder bld(this, mod);
 
-	asCScriptFunction func(this, mod, -1);
+	asCScriptFunction func(this, mod, asFUNC_DUMMY);
 
 	// Set the object type so that the signature can be properly compared
 	// This cast is OK, it will only be used for comparison
@@ -972,7 +984,7 @@ asCString asCScriptEngine::GetFunctionDeclaration(int funcID)
 	return str;
 }
 
-asCScriptFunction *asCScriptEngine::GetScriptFunction(int funcId)
+asCScriptFunction *asCScriptEngine::GetScriptFunction(int funcId) const
 {
 	if( funcId < 0 || funcId >= (int)scriptFunctions.GetLength() )
 		return 0;
@@ -1283,17 +1295,7 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 
 		currentGroup->objTypes.PushLast(type);
 
-		if( defaultArrayObjectType == 0 )
-		{
-			// TODO: The default array object type should be defined by the application
-			// The default array object type is registered by the engine itself
-			defaultArrayObjectType = type;
-			type->AddRef();
-		}
-		else
-		{
-			registeredObjTypes.PushLast(type);
-		}
+		registeredObjTypes.PushLast(type);
 	}
 	else
 	{
@@ -1459,7 +1461,7 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 	asSTypeBehaviour *beh = &objectType->beh;
 
 	// Verify function declaration
-	asCScriptFunction func(this, 0, -1);
+	asCScriptFunction func(this, 0, asFUNC_DUMMY);
 
 	asCBuilder bld(this, 0);
 	int r = bld.ParseFunctionDeclaration(objectType, decl, &func, true, &internal.paramAutoHandles, &internal.returnAutoHandle);
@@ -1690,6 +1692,8 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 
 		func.id = beh->templateCallback = AddBehaviourFunction(func, internal);
 	}
+#ifdef AS_DEPRECATED
+	// Since 2.20.0
 	else if( behaviour == asBEHAVE_INDEX )
 	{
 		// Verify that the var type is not used
@@ -1710,6 +1714,7 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 		func.id = AddBehaviourFunction(func, internal);
 		beh->operators.PushLast(func.id);
 	}
+#endif
 	else if( behaviour >= asBEHAVE_FIRST_GC &&
 		     behaviour <= asBEHAVE_LAST_GC )
 	{
@@ -1942,14 +1947,14 @@ void asCScriptEngine::FreeUnusedGlobalProperties()
 }
 
 // interface
-int asCScriptEngine::GetGlobalPropertyCount()
+int asCScriptEngine::GetGlobalPropertyCount() const
 {
 	return (int)registeredGlobalProps.GetLength();
 }
 
 // interface
 // TODO: If the typeId ever encodes the const flag, then the isConst parameter should be removed
-int asCScriptEngine::GetGlobalPropertyByIndex(asUINT index, const char **name, int *typeId, bool *isConst, const char **configGroup, void **pointer)
+int asCScriptEngine::GetGlobalPropertyByIndex(asUINT index, const char **name, int *typeId, bool *isConst, const char **configGroup, void **pointer) const
 {
 	if( index >= registeredGlobalProps.GetLength() )
 		return asINVALID_ARG;
@@ -2031,7 +2036,7 @@ int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const
 	if( r < 0 )
 	{
 		// Set as dummy function before deleting
-		func->funcType = -1;
+		func->funcType = asFUNC_DUMMY;
 		asDELETE(func,asCScriptFunction);
 		return ConfigError(asINVALID_DECLARATION);
 	}
@@ -2132,7 +2137,7 @@ int asCScriptEngine::RegisterGlobalFunction(const char *declaration, const asSFu
 	if( r < 0 )
 	{
 		// Set as dummy function before deleting
-		func->funcType = -1;
+		func->funcType = asFUNC_DUMMY;
 		asDELETE(func,asCScriptFunction);
 		return ConfigError(asINVALID_DECLARATION);
 	}
@@ -2171,13 +2176,13 @@ int asCScriptEngine::RegisterGlobalFunction(const char *declaration, const asSFu
 }
 
 // interface
-int asCScriptEngine::GetGlobalFunctionCount()
+int asCScriptEngine::GetGlobalFunctionCount() const
 {
 	return (int)registeredGlobalFuncs.GetLength();
 }
 
 // interface
-int asCScriptEngine::GetGlobalFunctionIdByIndex(asUINT index)
+int asCScriptEngine::GetGlobalFunctionIdByIndex(asUINT index) const
 {
 	if( index >= registeredGlobalFuncs.GetLength() )
 		return asINVALID_ARG;
@@ -2297,6 +2302,32 @@ int asCScriptEngine::ConfigError(int err)
 	return err;
 }
 
+// interface
+int asCScriptEngine::RegisterDefaultArrayType(const char *type)
+{
+	asCBuilder bld(this, 0);
+	asCDataType dt;
+	int r = bld.ParseDataType(type, &dt);
+	if( r < 0 ) return r;
+
+	if( dt.GetObjectType() == 0 ||
+		!(dt.GetObjectType()->GetFlags() & asOBJ_TEMPLATE) )
+		return asINVALID_TYPE;
+
+	defaultArrayObjectType = dt.GetObjectType();
+	defaultArrayObjectType->AddRef();
+
+	return 0;
+}
+
+// interface
+int asCScriptEngine::GetDefaultArrayTypeId() const
+{
+	if( defaultArrayObjectType )
+		return GetTypeIdFromDataType(asCDataType::CreateObject(defaultArrayObjectType, false));
+
+	return asINVALID_TYPE;
+}
 
 // interface
 int asCScriptEngine::RegisterStringFactory(const char *datatype, const asSFuncPtr &funcPointer, asDWORD callConv)
@@ -2330,7 +2361,7 @@ int asCScriptEngine::RegisterStringFactory(const char *datatype, const asSFuncPt
 	if( r < 0 )
 	{
 		// Set as dummy before deleting
-		func->funcType = -1;
+		func->funcType = asFUNC_DUMMY;
 		asDELETE(func,asCScriptFunction);
 		return ConfigError(asINVALID_TYPE);
 	}
@@ -2357,7 +2388,7 @@ int asCScriptEngine::RegisterStringFactory(const char *datatype, const asSFuncPt
 }
 
 // interface
-int asCScriptEngine::GetStringFactoryReturnTypeId()
+int asCScriptEngine::GetStringFactoryReturnTypeId() const
 {
 	if( stringFactory == 0 )
 		return asNO_FUNCTION;
@@ -2429,105 +2460,6 @@ void asCScriptEngine::BuildCompleted()
 
 	isBuilding = false;
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-// interface
-int asCScriptEngine::ExecuteString(const char *module, const char *script, asIScriptContext **ctx, asDWORD flags)
-{
-	int r;
-	if( (r = RequestBuild()) < 0 )
-		return r;
-
-	PrepareEngine();
-
-	// Make sure the config worked
-	if( configFailed )
-	{
-		if( ctx && !(flags & asEXECSTRING_USE_MY_CONTEXT) )
-			*ctx = 0;
-
-		WriteMessage("",0,0,asMSGTYPE_ERROR,TXT_INVALID_CONFIGURATION);
-		isBuilding = false;
-		return asINVALID_CONFIGURATION;
-	}
-
-	asIScriptContext *exec = 0;
-	if( !(flags & asEXECSTRING_USE_MY_CONTEXT) )
-	{
-		int r = CreateContext(&exec, false);
-		if( r < 0 )
-		{
-			if( ctx && !(flags & asEXECSTRING_USE_MY_CONTEXT) )
-				*ctx = 0;
-			isBuilding = false;
-			return r;
-		}
-		if( ctx )
-		{
-			*ctx = exec;
-			exec->AddRef();
-		}
-	}
-	else
-	{
-		if( *ctx == 0 )
-		{
-			isBuilding = false;
-			return asINVALID_ARG;
-		}
-		exec = *ctx;
-		exec->AddRef();
-	}
-
-	// Make sure the context isn't holding a reference to the previous ExecuteString function()
-	exec->Unprepare();
-
-	// Get the module to compile the string in
-	asCModule *mod = GetModule(module, true);
-
-	// Compile string function
-	asCBuilder builder(this, mod);
-	asCString str = script;
-	str = "void ExecuteString(){\n" + str + "\n;}";
-
-	r = builder.BuildString(str.AddressOf(), (asCContext*)exec);
-	
-	BuildCompleted();
-
-	if( r < 0 )
-	{
-		if( ctx && !(flags & asEXECSTRING_USE_MY_CONTEXT) )
-		{
-			(*ctx)->Release();
-			*ctx = 0;
-		}
-		exec->Release();
-		return asERROR;
-	}
-
-	// Prepare and execute the context
-	r = ((asCContext*)exec)->Prepare(((asCContext*)exec)->stringFunction->id);
-	if( r < 0 )
-	{
-		if( ctx && !(flags & asEXECSTRING_USE_MY_CONTEXT) )
-		{
-			(*ctx)->Release();
-			*ctx = 0;
-		}
-		exec->Release();
-		return r;
-	}
-
-	if( flags & asEXECSTRING_ONLY_PREPARE )
-		r = asEXECUTION_PREPARED;
-	else
-		r = exec->Execute();
-
-	exec->Release();
-	return r;
-}
-#endif
 
 void asCScriptEngine::RemoveTemplateInstanceType(asCObjectType *t)
 {
@@ -2725,8 +2657,6 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	// A handle can potentially hold derived types, which may be garbage collected so to be safe we have to set the GC flag.
 	if( ot->templateSubType.IsObjectHandle() || (ot->templateSubType.GetObjectType() && (ot->templateSubType.GetObjectType()->flags & asOBJ_GC)) )
 		ot->flags |= asOBJ_GC;
-	else if( ot->name == defaultArrayObjectType->name )
-		ot->flags &= ~asOBJ_GC;
 
 	templateTypes.PushLast(ot);
 
@@ -3233,7 +3163,7 @@ bool asCScriptEngine::CallGlobalFunctionRetBool(void *param1, void *param2, asSS
 	}
 }
 
-void *asCScriptEngine::CallAlloc(asCObjectType *type)
+void *asCScriptEngine::CallAlloc(asCObjectType *type) const
 {
     // Allocate 4 bytes as the smallest size. Otherwise CallSystemFunction may try to
     // copy a DWORD onto a smaller memory block, in case the object type is return in registers.
@@ -3244,7 +3174,7 @@ void *asCScriptEngine::CallAlloc(asCObjectType *type)
 #endif
 }
 
-void asCScriptEngine::CallFree(void *obj)
+void asCScriptEngine::CallFree(void *obj) const
 {
 	userFree(obj);
 }
@@ -3263,7 +3193,7 @@ int asCScriptEngine::GarbageCollect(asDWORD flags)
 }
 
 // interface
-void asCScriptEngine::GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected)
+void asCScriptEngine::GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected) const
 {
 	gc.GetStatistics(currentSize, totalDestroyed, totalDetected);
 }
@@ -3276,7 +3206,7 @@ void asCScriptEngine::GCEnumCallback(void *reference)
 
 
 // TODO: multithread: The mapTypeIdToDataType must be protected with critical sections in all functions that access it
-int asCScriptEngine::GetTypeIdFromDataType(const asCDataType &dt)
+int asCScriptEngine::GetTypeIdFromDataType(const asCDataType &dt) const
 {
 	if( dt.IsNullHandle() ) return 0;
 
@@ -3298,7 +3228,7 @@ int asCScriptEngine::GetTypeIdFromDataType(const asCDataType &dt)
 	if( dt.GetObjectType() )
 	{
 		if( dt.GetObjectType()->flags & asOBJ_SCRIPT_OBJECT ) typeId |= asTYPEID_SCRIPTOBJECT;
-		else if( dt.GetObjectType()->flags & asOBJ_TEMPLATE ) typeId |= asTYPEID_SCRIPTARRAY; // TODO: Should be asTYPEID_TEMPLATE
+		else if( dt.GetObjectType()->flags & asOBJ_TEMPLATE ) typeId |= asTYPEID_TEMPLATE; 
 		else if( dt.GetObjectType()->flags & asOBJ_ENUM ); // TODO: Should we have a specific bit for this?
 		else typeId |= asTYPEID_APPOBJECT;
 	}
@@ -3336,7 +3266,7 @@ int asCScriptEngine::GetTypeIdFromDataType(const asCDataType &dt)
 	return GetTypeIdFromDataType(dt);
 }
 
-const asCDataType *asCScriptEngine::GetDataTypeFromTypeId(int typeId)
+const asCDataType *asCScriptEngine::GetDataTypeFromTypeId(int typeId) const
 {
 	asSMapNode<int,asCDataType*> *cursor = 0;
 	if( mapTypeIdToDataType.MoveTo(&cursor, typeId) )
@@ -3345,7 +3275,7 @@ const asCDataType *asCScriptEngine::GetDataTypeFromTypeId(int typeId)
 	return 0;
 }
 
-asCObjectType *asCScriptEngine::GetObjectTypeFromTypeId(int typeId)
+asCObjectType *asCScriptEngine::GetObjectTypeFromTypeId(int typeId) const
 {
 	asSMapNode<int,asCDataType*> *cursor = 0;
 	if( mapTypeIdToDataType.MoveTo(&cursor, typeId) )
@@ -3372,10 +3302,11 @@ void asCScriptEngine::RemoveFromTypeIdMap(asCObjectType *type)
 }
 
 // interface
-int asCScriptEngine::GetTypeIdByDecl(const char *decl)
+int asCScriptEngine::GetTypeIdByDecl(const char *decl) const
 {
 	asCDataType dt;
-	asCBuilder bld(this, 0);
+	// This cast is ok, because we are not changing anything in the engine
+	asCBuilder bld(const_cast<asCScriptEngine*>(this), 0);
 	int r = bld.ParseDataType(decl, &dt);
 	if( r < 0 )
 		return asINVALID_TYPE;
@@ -3385,7 +3316,7 @@ int asCScriptEngine::GetTypeIdByDecl(const char *decl)
 
 
 
-const char *asCScriptEngine::GetTypeDeclaration(int typeId)
+const char *asCScriptEngine::GetTypeDeclaration(int typeId) const
 {
 	const asCDataType *dt = GetDataTypeFromTypeId(typeId);
 	if( dt == 0 ) return 0;
@@ -3397,7 +3328,7 @@ const char *asCScriptEngine::GetTypeDeclaration(int typeId)
 	return tempString->AddressOf();
 }
 
-int asCScriptEngine::GetSizeOfPrimitiveType(int typeId)
+int asCScriptEngine::GetSizeOfPrimitiveType(int typeId) const
 {
 	const asCDataType *dt = GetDataTypeFromTypeId(typeId);
 	if( dt == 0 ) return 0;
@@ -3527,7 +3458,7 @@ void asCScriptEngine::ReleaseScriptObject(void *obj, int typeId)
 	}
 }
 
-bool asCScriptEngine::IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId)
+bool asCScriptEngine::IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId) const
 {
 	// if equal, then it is obvious they are compatible
 	if( objTypeId == handleTypeId )
@@ -3631,7 +3562,7 @@ int asCScriptEngine::RemoveConfigGroup(const char *groupName)
 	return 0;
 }
 
-asCConfigGroup *asCScriptEngine::FindConfigGroupForFunction(int funcId)
+asCConfigGroup *asCScriptEngine::FindConfigGroupForFunction(int funcId) const
 {
 	for( asUINT n = 0; n < configGroups.GetLength(); n++ )
 	{
@@ -3648,13 +3579,13 @@ asCConfigGroup *asCScriptEngine::FindConfigGroupForFunction(int funcId)
 }
 
 
-asCConfigGroup *asCScriptEngine::FindConfigGroupForGlobalVar(int gvarId)
+asCConfigGroup *asCScriptEngine::FindConfigGroupForGlobalVar(int gvarId) const
 {
 	for( asUINT n = 0; n < configGroups.GetLength(); n++ )
 	{
 		for( asUINT m = 0; m < configGroups[n]->globalProps.GetLength(); m++ )
 		{
-			if( configGroups[n]->globalProps[m]->id == gvarId )
+			if( int(configGroups[n]->globalProps[m]->id) == gvarId )
 				return configGroups[n];
 		}
 	}
@@ -3662,7 +3593,7 @@ asCConfigGroup *asCScriptEngine::FindConfigGroupForGlobalVar(int gvarId)
 	return 0;
 }
 
-asCConfigGroup *asCScriptEngine::FindConfigGroupForObjectType(const asCObjectType *objType)
+asCConfigGroup *asCScriptEngine::FindConfigGroupForObjectType(const asCObjectType *objType) const
 {
 	for( asUINT n = 0; n < configGroups.GetLength(); n++ )
 	{
@@ -3676,7 +3607,7 @@ asCConfigGroup *asCScriptEngine::FindConfigGroupForObjectType(const asCObjectTyp
 	return 0;
 }
 
-asCConfigGroup *asCScriptEngine::FindConfigGroupForFuncDef(asCScriptFunction *funcDef)
+asCConfigGroup *asCScriptEngine::FindConfigGroupForFuncDef(asCScriptFunction *funcDef) const
 {
 	for( asUINT n = 0; n < configGroups.GetLength(); n++ )
 	{
@@ -3781,7 +3712,7 @@ int asCScriptEngine::RegisterFuncdef(const char *decl)
 	if( r < 0 )
 	{
 		// Set as dummy function before deleting
-		func->funcType = -1;
+		func->funcType = asFUNC_DUMMY;
 		asDELETE(func,asCScriptFunction);
 		return ConfigError(asINVALID_DECLARATION);
 	}
@@ -3821,13 +3752,13 @@ int asCScriptEngine::RegisterFuncdef(const char *decl)
 }
 
 // interface
-int asCScriptEngine::GetFuncdefCount()
+int asCScriptEngine::GetFuncdefCount() const
 {
 	return (int)registeredFuncDefs.GetLength();
 }
 
 // interface
-asIScriptFunction *asCScriptEngine::GetFuncdefByIndex(asUINT index, const char **configGroup)
+asIScriptFunction *asCScriptEngine::GetFuncdefByIndex(asUINT index, const char **configGroup) const
 {
 	if( index >= registeredFuncDefs.GetLength() )
 		return 0;
@@ -3920,13 +3851,13 @@ int asCScriptEngine::RegisterTypedef(const char *type, const char *decl)
 }
 
 // interface
-int asCScriptEngine::GetTypedefCount()
+int asCScriptEngine::GetTypedefCount() const
 {
 	return (int)registeredTypeDefs.GetLength();
 }
 
 // interface
-const char *asCScriptEngine::GetTypedefByIndex(asUINT index, int *typeId, const char **configGroup)
+const char *asCScriptEngine::GetTypedefByIndex(asUINT index, int *typeId, const char **configGroup) const
 {
 	if( index >= registeredTypeDefs.GetLength() )
 		return 0;
@@ -4034,13 +3965,13 @@ int asCScriptEngine::RegisterEnumValue(const char *typeName, const char *valueNa
 }
 
 // interface
-int asCScriptEngine::GetEnumCount()
+int asCScriptEngine::GetEnumCount() const
 {
 	return (int)registeredEnums.GetLength();
 }
 
 // interface
-const char *asCScriptEngine::GetEnumByIndex(asUINT index, int *enumTypeId, const char **configGroup)
+const char *asCScriptEngine::GetEnumByIndex(asUINT index, int *enumTypeId, const char **configGroup) const
 {
 	if( index >= registeredEnums.GetLength() )
 		return 0;
@@ -4061,7 +3992,7 @@ const char *asCScriptEngine::GetEnumByIndex(asUINT index, int *enumTypeId, const
 }
 
 // interface
-int asCScriptEngine::GetEnumValueCount(int enumTypeId)
+int asCScriptEngine::GetEnumValueCount(int enumTypeId) const
 {
 	const asCDataType *dt = GetDataTypeFromTypeId(enumTypeId);
 	asCObjectType *t = dt->GetObjectType();
@@ -4072,7 +4003,7 @@ int asCScriptEngine::GetEnumValueCount(int enumTypeId)
 }
 
 // interface
-const char *asCScriptEngine::GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue)
+const char *asCScriptEngine::GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const
 {
 	// TODO: This same function is implemented in as_module.cpp as well. Perhaps it should be moved to asCObjectType?
 	const asCDataType *dt = GetDataTypeFromTypeId(enumTypeId);
@@ -4090,13 +4021,13 @@ const char *asCScriptEngine::GetEnumValueByIndex(int enumTypeId, asUINT index, i
 }
 
 // interface
-int asCScriptEngine::GetObjectTypeCount()
+int asCScriptEngine::GetObjectTypeCount() const
 {
 	return (int)registeredObjTypes.GetLength();
 }
 
 // interface
-asIObjectType *asCScriptEngine::GetObjectTypeByIndex(asUINT index)
+asIObjectType *asCScriptEngine::GetObjectTypeByIndex(asUINT index) const
 {
 	if( index >= registeredObjTypes.GetLength() )
 		return 0;
@@ -4105,7 +4036,7 @@ asIObjectType *asCScriptEngine::GetObjectTypeByIndex(asUINT index)
 }
 
 // interface
-asIObjectType *asCScriptEngine::GetObjectTypeById(int typeId)
+asIObjectType *asCScriptEngine::GetObjectTypeById(int typeId) const
 {
 	const asCDataType *dt = GetDataTypeFromTypeId(typeId);
 
@@ -4120,14 +4051,14 @@ asIObjectType *asCScriptEngine::GetObjectTypeById(int typeId)
 }
 
 
-asIScriptFunction *asCScriptEngine::GetFunctionDescriptorById(int funcId)
+asIScriptFunction *asCScriptEngine::GetFunctionDescriptorById(int funcId) const
 {
 	return GetScriptFunction(funcId);
 }
 
 
 // internal
-bool asCScriptEngine::IsTemplateType(const char *name)
+bool asCScriptEngine::IsTemplateType(const char *name) const
 {
 	// TODO: optimize: Improve linear search
 	for( unsigned int n = 0; n < objectTypes.GetLength(); n++ )

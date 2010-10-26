@@ -161,10 +161,6 @@ asCContext::asCContext(asCScriptEngine *engine, bool holdRef)
 	inExceptionHandler = false;
 	isStackMemoryNotAllocated = false;
 
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-	stringFunction = 0;
-#endif
 	currentFunction = 0;
 	regs.objectRegister = 0;
 	initialFunction = 0;
@@ -183,18 +179,18 @@ asCContext::~asCContext()
 	DetachEngine();
 }
 
-int asCContext::AddRef()
+int asCContext::AddRef() const
 {
 	return refCount.atomicInc();
 }
 
-int asCContext::Release()
+int asCContext::Release() const
 {
 	int r = refCount.atomicDec();
 
 	if( r == 0 )
 	{
-		asDELETE(this,asCContext);
+		asDELETE(const_cast<asCContext*>(this),asCContext);
 		return 0;
 	}
 
@@ -211,13 +207,17 @@ void asCContext::DetachEngine()
 	// Free all resources
 	Unprepare();
 
+	// Clean the user data
+	if( userData && engine->cleanContextFunc )
+		engine->cleanContextFunc(this);
+
 	// Clear engine pointer
 	if( holdEngineRef )
 		engine->Release();
 	engine = 0;
 }
 
-asIScriptEngine *asCContext::GetEngine()
+asIScriptEngine *asCContext::GetEngine() const
 {
 	return engine;
 }
@@ -229,7 +229,7 @@ void *asCContext::SetUserData(void *data)
 	return oldData;
 }
 
-void *asCContext::GetUserData()
+void *asCContext::GetUserData() const
 {
 	return userData;
 }
@@ -379,33 +379,9 @@ int asCContext::Unprepare()
 	regs.stackFramePointer = 0;
 	regs.stackPointer = 0;
 	stackIndex = 0;
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-	// Deallocate string function
-	if( stringFunction )
-	{
-		stringFunction->Release();
-		stringFunction = 0;
-	}
-#endif
 	
 	return 0;
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-int asCContext::SetExecuteStringFunction(asCScriptFunction *func)
-{
-	if( stringFunction )
-		stringFunction->Release();
-
-	// The new function already has the refCount set to 1
-	stringFunction = func;
-
-	return 0;
-}
-#endif
 
 asBYTE asCContext::GetReturnByte()
 {
@@ -1133,7 +1109,7 @@ int asCContext::GetCallstackFunction(int index)
 	return func->id;
 }
 
-int asCContext::GetCallstackLineNumber(int index, int *column)
+int asCContext::GetCallstackLineNumber(int index, int *column, const char **sectionName)
 {
 	// TODO: The current function should be accessed at stackLevel 0
 
@@ -1145,6 +1121,8 @@ int asCContext::GetCallstackLineNumber(int index, int *column)
 
 	asDWORD line = func->GetLineNumber(int(bytePos - func->byteCode.AddressOf()));
 	if( column ) *column = (line >> 20);
+
+	if( sectionName ) *sectionName = func->GetScriptSectionName();
 
 	return (line & 0xFFFFF);
 }
@@ -3478,15 +3456,19 @@ void asCContext::CleanStackFrame()
 	}
 }
 
-int asCContext::GetExceptionLineNumber(int *column)
+// interface
+int asCContext::GetExceptionLineNumber(int *column, const char **sectionName)
 {
 	if( GetState() != asEXECUTION_EXCEPTION ) return asERROR;
 
 	if( column ) *column = exceptionColumn;
 
+	if( sectionName ) *sectionName = engine->scriptFunctions[exceptionFunction]->GetScriptSectionName();
+
 	return exceptionLine;
 }
 
+// interface
 int asCContext::GetExceptionFunction()
 {
 	if( GetState() != asEXECUTION_EXCEPTION ) return asERROR;
@@ -3494,6 +3476,7 @@ int asCContext::GetExceptionFunction()
 	return exceptionFunction;
 }
 
+// interface
 int asCContext::GetCurrentFunction()
 {
 	if( status == asEXECUTION_SUSPENDED || status == asEXECUTION_ACTIVE )
@@ -3502,12 +3485,15 @@ int asCContext::GetCurrentFunction()
 	return -1;
 }
 
-int asCContext::GetCurrentLineNumber(int *column)
+// interface
+int asCContext::GetCurrentLineNumber(int *column, const char **sectionName)
 {
 	if( status == asEXECUTION_SUSPENDED || status == asEXECUTION_ACTIVE )
 	{
 		asDWORD line = currentFunction->GetLineNumber(int(regs.programPointer - currentFunction->byteCode.AddressOf()));
 		if( column ) *column = line >> 20;
+
+		if( sectionName ) *sectionName = currentFunction->GetScriptSectionName();
 
 		return line & 0xFFFFF;
 	}
@@ -3522,7 +3508,7 @@ const char *asCContext::GetExceptionString()
 	return exceptionString.AddressOf();
 }
 
-asEContextState asCContext::GetState()
+asEContextState asCContext::GetState() const
 {
 	return status;
 }
@@ -3704,7 +3690,7 @@ int asCContext::GetVarCount(int stackLevel)
 	if( func == 0 )
 		return asERROR;
 
-	return (int)func->variables.GetLength();
+	return func->GetVarCount();
 }
 
 const char *asCContext::GetVarName(int varIndex, int stackLevel)
@@ -3725,10 +3711,9 @@ const char *asCContext::GetVarName(int varIndex, int stackLevel)
 	if( func == 0 )
 		return 0;
 
-	if( varIndex < 0 || varIndex >= (signed)func->variables.GetLength() )
-		return 0;
-
-	return func->variables[varIndex]->name.AddressOf();
+	const char *name = 0;
+	int r = func->GetVar(varIndex, &name);
+	return r >= 0 ? name : 0;
 }
 
 const char *asCContext::GetVarDeclaration(int varIndex, int stackLevel)
@@ -3749,15 +3734,7 @@ const char *asCContext::GetVarDeclaration(int varIndex, int stackLevel)
 	if( func == 0 )
 		return 0;
 
-	if( varIndex < 0 || varIndex >= (signed)func->variables.GetLength() )
-		return 0;
-
-	asASSERT(threadManager);
-	asCString *tempString = &threadManager->GetLocalData()->string;
-	*tempString = func->variables[varIndex]->type.Format();
-	*tempString += " " + func->variables[varIndex]->name;
-
-	return tempString->AddressOf();
+	return func->GetVarDecl(varIndex);
 }
 
 int asCContext::GetVarTypeId(int varIndex, int stackLevel)
@@ -3778,10 +3755,9 @@ int asCContext::GetVarTypeId(int varIndex, int stackLevel)
 	if( func == 0 )
 		return asINVALID_ARG;
 
-	if( varIndex < 0 || varIndex >= (signed)func->variables.GetLength() )
-		return asINVALID_ARG;
-
-	return engine->GetTypeIdFromDataType(func->variables[varIndex]->type);
+	int typeId;
+	int r = func->GetVar(varIndex, 0, &typeId);
+	return r < 0 ? r : typeId;
 }
 
 void *asCContext::GetAddressOfVar(int varIndex, int stackLevel)

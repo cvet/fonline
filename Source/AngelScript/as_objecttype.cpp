@@ -140,13 +140,13 @@ asCObjectType::asCObjectType(asCScriptEngine *engine)
 	acceptRefSubType = true;
 }
 
-int asCObjectType::AddRef()
+int asCObjectType::AddRef() const
 {
 	gcFlag = false;
 	return refCount.atomicInc();
 }
 
-int asCObjectType::Release()
+int asCObjectType::Release() const
 {
 	gcFlag = false;
 	return refCount.atomicDec();
@@ -320,20 +320,30 @@ int asCObjectType::GetFactoryIdByDecl(const char *decl) const
 	return engine->GetFactoryIdByDecl(this, decl);
 }
 
+// interface
 int asCObjectType::GetMethodCount() const
 {
 	return (int)methods.GetLength();
 }
 
-int asCObjectType::GetMethodIdByIndex(int index) const
+// interface
+int asCObjectType::GetMethodIdByIndex(int index, bool getVirtual) const
 {
 	if( index < 0 || (unsigned)index >= methods.GetLength() )
 		return asINVALID_ARG;
 
+	if( !getVirtual )
+	{
+		asCScriptFunction *func = engine->scriptFunctions[methods[index]];
+		if( func && func->funcType == asFUNC_VIRTUAL )
+			return virtualFunctionTable[func->vfTableIdx]->id;
+	}
+
 	return methods[index];
 }
 
-int asCObjectType::GetMethodIdByName(const char *name) const
+// interface
+int asCObjectType::GetMethodIdByName(const char *name, bool getVirtual) const
 {
 	int id = -1;
 	for( size_t n = 0; n < methods.GetLength(); n++ )
@@ -349,10 +359,18 @@ int asCObjectType::GetMethodIdByName(const char *name) const
 
 	if( id == -1 ) return asNO_FUNCTION;
 
+	if( !getVirtual )
+	{
+		asCScriptFunction *func = engine->scriptFunctions[id];
+		if( func && func->funcType == asFUNC_VIRTUAL )
+			return virtualFunctionTable[func->vfTableIdx]->id;
+	}
+
 	return id;
 }
 
-int asCObjectType::GetMethodIdByDecl(const char *decl) const
+// interface
+int asCObjectType::GetMethodIdByDecl(const char *decl, bool getVirtual) const
 {
 	// Get the module from one of the methods
 	if( methods.GetLength() == 0 )
@@ -367,22 +385,78 @@ int asCObjectType::GetMethodIdByDecl(const char *decl) const
 		return asNO_MODULE;
 	}
 
-	return engine->GetMethodIdByDecl(this, decl, mod);
+	int id = engine->GetMethodIdByDecl(this, decl, mod);
+	if( !getVirtual && id >= 0 )
+	{
+		asCScriptFunction *func = engine->scriptFunctions[id];
+		if( func && func->funcType == asFUNC_VIRTUAL )
+			return virtualFunctionTable[func->vfTableIdx]->id;
+	}
+
+	return id;
 }
 
-asIScriptFunction *asCObjectType::GetMethodDescriptorByIndex(int index) const
+// interface
+asIScriptFunction *asCObjectType::GetMethodDescriptorByIndex(int index, bool getVirtual) const
 {
 	if( index < 0 || (unsigned)index >= methods.GetLength() ) 
 		return 0;
 
+	if( !getVirtual )
+	{
+		asCScriptFunction *func = engine->scriptFunctions[methods[index]];
+		if( func && func->funcType == asFUNC_VIRTUAL )
+			return virtualFunctionTable[func->vfTableIdx];
+	}
+
 	return engine->scriptFunctions[methods[index]];
 }
 
+// interface
 int asCObjectType::GetPropertyCount() const
 {
 	return (int)properties.GetLength();
 }
 
+// interface
+int asCObjectType::GetProperty(asUINT index, const char **name, int *typeId, bool *isPrivate, int *offset) const
+{
+	if( index >= properties.GetLength() )
+		return asINVALID_ARG;
+
+	if( name )
+		*name = properties[index]->name.AddressOf();
+	if( typeId )
+		*typeId = engine->GetTypeIdFromDataType(properties[index]->type);
+	if( isPrivate )
+		*isPrivate = properties[index]->isPrivate;
+	if( offset )
+		*offset = properties[index]->byteOffset;
+
+	return 0;
+}
+
+// interface
+const char *asCObjectType::GetPropertyDeclaration(asUINT index) const
+{
+	if( index >= properties.GetLength() )
+		return 0;
+
+	asASSERT(threadManager);
+	asCString *tempString = &threadManager->GetLocalData()->string;
+	if( properties[index]->isPrivate )
+		*tempString = "private ";
+	else
+		*tempString = "";
+	*tempString += properties[index]->type.Format();
+	*tempString += " ";
+	*tempString += properties[index]->name;
+
+	return tempString->AddressOf();
+}
+
+#ifdef AS_DEPRECATED
+// Since 2.20.0
 int asCObjectType::GetPropertyTypeId(asUINT prop) const
 {
 	if( prop >= properties.GetLength() )
@@ -399,9 +473,12 @@ const char *asCObjectType::GetPropertyName(asUINT prop) const
 	return properties[prop]->name.AddressOf();
 }
 
-asIObjectType *asCObjectType::GetBaseType() const
+bool asCObjectType::IsPropertyPrivate(asUINT prop) const
 {
-	return derivedFrom; 
+	if( prop >= properties.GetLength() )
+		return false;
+
+	return properties[prop]->isPrivate;
 }
 
 int asCObjectType::GetPropertyOffset(asUINT prop) const
@@ -410,6 +487,12 @@ int asCObjectType::GetPropertyOffset(asUINT prop) const
 		return 0;
 
 	return properties[prop]->byteOffset;
+}
+#endif
+
+asIObjectType *asCObjectType::GetBaseType() const
+{
+	return derivedFrom; 
 }
 
 int asCObjectType::GetBehaviourCount() const

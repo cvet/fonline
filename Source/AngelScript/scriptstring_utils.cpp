@@ -1,8 +1,7 @@
 #include <assert.h>
 #include "scriptstring.h"
+#include "scriptarray.h"
 #include <string.h> // strstr
-
-
 
 // This function returns a string containing the substring of the input string
 // determined by the starting index and count of characters.
@@ -23,8 +22,6 @@ void StringSubString_Generic(asIScriptGeneric *gen)
     // Return the substring
     *(CScriptString**)gen->GetAddressOfReturnLocation() = sub;
 }
-
-
 
 // This function returns the index of the first position where the substring
 // exists in the input string. If the substring doesn't exist in the input
@@ -59,8 +56,6 @@ void StringFindFirst0_Generic(asIScriptGeneric *gen)
     *(int*)gen->GetAddressOfReturnLocation() = loc;
 }
 
-
-
 // This function returns the index of the last position where the substring
 // exists in the input string. If the substring doesn't exist in the input
 // string -1 is returned.
@@ -92,8 +87,6 @@ void StringFindLast0_Generic(asIScriptGeneric *gen)
     // Return the result
     *(int*)gen->GetAddressOfReturnLocation() = loc;
 }
-
-
 
 // This function returns the index of the first character that is in
 // the specified set of characters. If no such character is found -1 is
@@ -127,7 +120,6 @@ void StringFindFirstOf0_Generic(asIScriptGeneric *gen)
     *(int*)gen->GetAddressOfReturnLocation() = loc;
 }
 
-
 // This function returns the index of the first character that is not in
 // the specified set of characters. If no such character is found -1 is
 // returned.
@@ -159,8 +151,6 @@ void StringFindFirstNotOf0_Generic(asIScriptGeneric *gen)
     // Return the result
     *(int*)gen->GetAddressOfReturnLocation() = loc;
 }
-
-
 
 // This function returns the index of the last character that is in
 // the specified set of characters. If no such character is found -1 is
@@ -194,8 +184,6 @@ void StringFindLastOf0_Generic(asIScriptGeneric *gen)
     *(int*)gen->GetAddressOfReturnLocation() = loc;
 }
 
-
-
 // This function returns the index of the last character that is not in
 // the specified set of characters. If no such character is found -1 is
 // returned.
@@ -228,8 +216,6 @@ void StringFindLastNotOf0_Generic(asIScriptGeneric *gen)
     *(int*)gen->GetAddressOfReturnLocation() = loc;
 }
 
-
-
 // This function takes an input string and splits it into parts by looking
 // for a specified delimiter. Example:
 //
@@ -248,11 +234,12 @@ void StringSplit_Generic(asIScriptGeneric *gen)
     asIScriptContext *ctx = asGetActiveContext();
     asIScriptEngine *engine = ctx->GetEngine();
 
-    // TODO: This should only be done once
-    int stringArrayType = engine->GetTypeIdByDecl("string@[]");
+	// TODO: This should only be done once
+	// TODO: This assumes that CScriptArray was already registered
+	asIObjectType *arrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl("array<string@>"));
 
-    // Create the array object
-    asIScriptArray *array = (asIScriptArray*)engine->CreateScriptObject(stringArrayType);
+	// Create the array object
+	CScriptArray *array = new CScriptArray(0, arrayType);
 
     // Get the arguments
     CScriptString *str = *(CScriptString**)gen->GetAddressOfArg(0);
@@ -265,8 +252,8 @@ void StringSplit_Generic(asIScriptGeneric *gen)
         // Add the part to the array
         CScriptString *part = new CScriptString();
         part->assign(str->c_str(prev), pos-prev);
-        array->Resize(array->GetElementCount()+1);
-        *(CScriptString**)array->GetElementPointer(count) = part;
+        array->Resize(array->GetSize()+1);
+        *(CScriptString**)array->At(count) = part;
 
         // Find the next part
         count++;
@@ -276,14 +263,12 @@ void StringSplit_Generic(asIScriptGeneric *gen)
     // Add the remaining part
     CScriptString *part = new CScriptString();
     part->assign(str->c_str(prev));
-    array->Resize(array->GetElementCount()+1);
-    *(CScriptString**)array->GetElementPointer(count) = part;
+    array->Resize(array->GetSize()+1);
+    *(CScriptString**)array->At(count) = part;
 
     // Return the array by handle
-    *(asIScriptArray**)gen->GetAddressOfReturnLocation() = array;
+    *(CScriptArray**)gen->GetAddressOfReturnLocation() = array;
 }
-
-
 
 // This function takes as input an array of string handles as well as a
 // delimiter and concatenates the array elements into one delimited string.
@@ -301,21 +286,21 @@ void StringSplit_Generic(asIScriptGeneric *gen)
 void StringJoin_Generic(asIScriptGeneric *gen)
 {
     // Get the arguments
-    asIScriptArray *array = *(asIScriptArray**)gen->GetAddressOfArg(0);
+    CScriptArray *array = *(CScriptArray**)gen->GetAddressOfArg(0);
     CScriptString *delim = *(CScriptString**)gen->GetAddressOfArg(1);
 
     // Create the new string
     CScriptString *str = new CScriptString();
     int n;
-    for( n = 0; n < (int)array->GetElementCount() - 1; n++ )
+    for( n = 0; n < (int)array->GetSize() - 1; n++ )
     {
-        CScriptString *part = *(CScriptString**)array->GetElementPointer(n);
+        CScriptString *part = *(CScriptString**)array->At(n);
         *str += *part;
         *str += *delim;
     }
 
     // Add the last part
-    CScriptString *part = *(CScriptString**)array->GetElementPointer(n);
+    CScriptString *part = *(CScriptString**)array->At(n);
     *str += *part;
 
     // Return the string
@@ -356,9 +341,6 @@ void StringStrUpr_Generic(asIScriptGeneric *gen)
 //       string @ floatToByteString(float);
 //       string @ doubleToByteString(double);
 
-
-
-
 // This is where the utility functions are registered.
 // The string type must have been registered first.
 void RegisterScriptStringUtils(asIScriptEngine *engine)
@@ -378,8 +360,8 @@ void RegisterScriptStringUtils(asIScriptEngine *engine)
     r = engine->RegisterGlobalFunction("int findLastOf(const string &in, const string &in, int)", asFUNCTION(StringFindLastOf_Generic), asCALL_GENERIC); assert(r >= 0);
     r = engine->RegisterGlobalFunction("int findLastNotOf(const string &in, const string &in)", asFUNCTION(StringFindLastNotOf0_Generic), asCALL_GENERIC); assert(r >= 0);
     r = engine->RegisterGlobalFunction("int findLastNotOf(const string &in, const string &in, int)", asFUNCTION(StringFindLastNotOf_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterGlobalFunction("string@[]@ split(const string &in, const string &in)", asFUNCTION(StringSplit_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterGlobalFunction("string@ join(const string@[] &in, const string &in)", asFUNCTION(StringJoin_Generic), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterGlobalFunction("array<string@>@ split(const string &in, const string &in)", asFUNCTION(StringSplit_Generic), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterGlobalFunction("string@ join(const array<string@> &in, const string &in)", asFUNCTION(StringJoin_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string@ strlwr(const string &in)", asFUNCTION(StringStrLwr_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string@ strupr(const string &in)", asFUNCTION(StringStrUpr_Generic), asCALL_GENERIC); assert(r >= 0);
 }

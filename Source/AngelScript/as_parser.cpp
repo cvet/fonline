@@ -158,7 +158,7 @@ int asCParser::ParseDataType(asCScriptCode *script)
 }
 
 
-// Parse a template declaration: IDENTIFIER < class IDENTIFIER >
+// Parse a template declaration: IDENTIFIER '<' 'class'? IDENTIFIER '>'
 int asCParser::ParseTemplateDecl(asCScriptCode *script)
 {
 	Reset();
@@ -177,12 +177,10 @@ int asCParser::ParseTemplateDecl(asCScriptCode *script)
 		return -1;
 	}
 
+	// The class token is optional
 	GetToken(&t);
 	if( t.type != ttClass )
-	{
-		Error(ExpectedToken(asGetTokenDefinition(ttClass)).AddressOf(), &t);
-		return -1;
-	}
+		RewindTo(&t);
 
 	scriptNode->AddChildLast(ParseIdentifier());
 	if( isSyntaxError ) return -1;
@@ -693,6 +691,12 @@ bool asCParser::IsFuncDecl(bool isMethod)
 		GetToken(&t1);
 
 	if( !IsDataType(t1) )
+	{
+		RewindTo(&t);
+		return false;
+	}
+
+	if( !CheckTemplateType(t1) )
 	{
 		RewindTo(&t);
 		return false;
@@ -2260,8 +2264,11 @@ asCScriptNode *asCParser::ParseCase()
 		   t.type != ttEndStatementBlock && 
 		   t.type != ttBreak )
 	{
-
-		node->AddChildLast(ParseStatement());
+		if( IsVarDecl() )
+			// Variable declarations are not allowed, but we parse it anyway to give a good error message
+			node->AddChildLast(ParseDeclaration());
+		else
+			node->AddChildLast(ParseStatement());
 		if( isSyntaxError ) return node;
 
 		GetToken(&t);

@@ -175,8 +175,6 @@ int asCBuilder::Build()
 
 	ParseScripts();
 
-	// TODO: funcdef: Complete the funcdefs
-
 	CompileClasses();
 	CompileGlobalVariables();
 	CompileFunctions();
@@ -186,21 +184,6 @@ int asCBuilder::Build()
 
 	return asSUCCESS;
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-int asCBuilder::BuildString(const char *string, asCContext *ctx)
-{
-	asCScriptFunction *execFunc = 0;
-	int r = CompileFunction(TXT_EXECUTESTRING, string, -1, 0, &execFunc);
-	if( r >= 0 )
-	{
-		ctx->SetExecuteStringFunction(execFunc);
-	}
-
-	return r;
-}
-#endif
 
 int asCBuilder::CompileGlobalVar(const char *sectionName, const char *code, int lineOffset)
 {
@@ -1260,7 +1243,7 @@ void asCBuilder::CompileGlobalVariables()
 				if( gvar->nextNode )
 				{
 					asCCompiler comp(engine);
-					asCScriptFunction func(engine, module, -1);
+					asCScriptFunction func(engine, module, asFUNC_DUMMY);
 
 					// Temporarily switch the type of the variable to int so it can be compiled properly
 					asCDataType saveType;
@@ -1315,7 +1298,7 @@ void asCBuilder::CompileGlobalVariables()
 			else
 			{
 				// Compile the global variable
-				initFunc = asNEW(asCScriptFunction)(engine, module, -1);
+				initFunc = asNEW(asCScriptFunction)(engine, module, asFUNC_DUMMY);
 				asCCompiler comp(engine);
 				int r = comp.CompileGlobalVariable(this, gvar->script, gvar->nextNode, gvar, initFunc);
 				if( r >= 0 )
@@ -2441,7 +2424,7 @@ int asCBuilder::RegisterImportedFunction(int importID, asCScriptNode *node, asCS
 
 asCScriptFunction *asCBuilder::GetFunctionDescription(int id)
 {
-	// TODO: This should be improved
+	// TODO: import: This should be improved when the imported functions are removed
 	// Get the description from the engine
 	if( (id & 0xFFFF0000) == 0 )
 		return engine->scriptFunctions[id];
@@ -2730,7 +2713,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			{
 				int r, c;
 				file->ConvertPosToRowCol(n->tokenPos, &r, &c);
-				WriteError(file->name.AddressOf(), TXT_TOO_MANY_ARRAY_DIMENSIONS, r, c);
+				WriteError(file->name.AddressOf(), TXT_NO_DEFAULT_ARRAY_TYPE, r, c);
 				break;
 			}
 		}

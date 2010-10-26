@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -57,12 +57,12 @@ class asCContext : public asIScriptContext
 {
 public:
 	// From asIScriptContext
-	int  AddRef();
-	int  Release();
+	int  AddRef() const;
+	int  Release() const;
 
-	asIScriptEngine *GetEngine();
+	asIScriptEngine *GetEngine() const;
 
-	asEContextState GetState();
+	asEContextState GetState() const;
 
 	int  Prepare(int functionID);
 	int  Unprepare();
@@ -93,11 +93,12 @@ public:
 	int  Abort();
 	int  Suspend();
 
-	int  GetCurrentLineNumber(int *column);
+	// TODO: These two should be deprecated. They do the same thing as the GetCallstackXXX
+	int  GetCurrentLineNumber(int *column, const char **sectionName);
 	int  GetCurrentFunction();
 
 	int  SetException(const char *descr);
-	int  GetExceptionLineNumber(int *column);
+	int  GetExceptionLineNumber(int *column, const char **sectionName);
 	int  GetExceptionFunction();
 	const char *GetExceptionString();
 
@@ -108,7 +109,7 @@ public:
 
 	int GetCallstackSize();
 	int GetCallstackFunction(int index);
-	int GetCallstackLineNumber(int index, int *column);
+	int GetCallstackLineNumber(int index, int *column, const char **sectionName);
 
 	int         GetVarCount(int stackLevel);
 	const char *GetVarName(int varIndex, int stackLevel);
@@ -119,17 +120,12 @@ public:
     void       *GetThisPointer(int stackLevel);
 
 	void *SetUserData(void *data);
-	void *GetUserData();
+	void *GetUserData() const;
 
 public:
 	// Internal public functions
 	asCContext(asCScriptEngine *engine, bool holdRef);
 	virtual ~asCContext();
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-	int  SetExecuteStringFunction(asCScriptFunction *func);
-#endif
 
 //protected:
 	friend class asCScriptEngine;
@@ -154,7 +150,7 @@ public:
 	void SetInternalException(const char *descr);
 
 	// Must be protected for multiple accesses
-	asCAtomic refCount;
+	mutable asCAtomic refCount;
 
 	bool holdEngineRef;
 	asCScriptEngine *engine;
@@ -181,12 +177,6 @@ public:
 
 	int returnValueSize;
 	int argumentsSize;
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-	// String function
-	asCScriptFunction *stringFunction;
-#endif
 
 	asCScriptFunction *initialFunction;
 

@@ -38,6 +38,8 @@
 #ifndef AS_CONFIG_H
 #define AS_CONFIG_H
 
+
+
 //
 // Features
 //-----------------------------------------
@@ -216,7 +218,7 @@
 // AS_WIN     - Microsoft Windows
 // AS_LINUX   - Linux
 // AS_MAC     - Apple Macintosh
-// AS_BSD     - FreeBSD
+// AS_BSD     - BSD based OS (FreeBSD, DragonFly, OpenBSD, etc)
 // AS_XBOX    - Microsoft XBox
 // AS_XBOX360 - Microsoft XBox 360
 // AS_PSP     - Sony Playstation Portable
@@ -475,7 +477,13 @@
 	// Support native calling conventions on x86, but not 64bit yet
 	#if defined(i386) && !defined(__LP64__)
 		#define AS_X86
+	// PS3
+	#elif (defined(__PPC__) || defined(__ppc__)) && defined(__PPU__)
+		// Support native calling conventions on PS3
+		#define AS_PS3
+		#define AS_PPC_64
 	#endif
+
 
 	#define I64(x) x##ll
 
@@ -574,12 +582,14 @@
 		#if defined(i386) && !defined(__LP64__)
 			// Support native calling conventions on Intel 32bit CPU
 			#define AS_X86
-		#else
+		#elif defined(__LP64__)
 			// No support for native calling conventions yet
 			#define AS_MAX_PORTABILITY
 			// STDCALL is not available on 64bit Linux
 			#undef STDCALL
 			#define STDCALL
+		#else
+			#define AS_MAX_PORTABILITY
 		#endif
         #define AS_WIN
         #define AS_WINDOWS_THREADS
@@ -593,13 +603,15 @@
 
 			// Support native calling conventions on Intel 32bit CPU
 			#define AS_X86
-		#else
+		#elif defined(__LP64__)
 			#define AS_X64_GCC
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
 			// STDCALL is not available on 64bit Linux
 			#undef STDCALL
 			#define STDCALL
+		#else
+			#define AS_MAX_PORTABILITY
 		#endif
        	#define AS_LINUX
        	#define AS_POSIX_THREADS
@@ -610,7 +622,7 @@
 		#endif
 
 	// Free BSD
-	#elif __FreeBSD__
+	#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 		#define AS_BSD
 		#if defined(i386) && !defined(__LP64__)
 			#define AS_X86

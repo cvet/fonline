@@ -645,9 +645,9 @@ void ServiceMain(bool as_service)
 	SC_HANDLE service=OpenService(manager,"FOnlineServer",SERVICE_QUERY_CONFIG|SERVICE_CHANGE_CONFIG|SERVICE_QUERY_STATUS|SERVICE_START);
 
 	// Compile service path
-	char path1[1024];
-	GetModuleFileName(GetModuleHandle(NULL),path1,1024);
-	char path2[1024];
+	char path1[MAX_FOPATH];
+	GetModuleFileName(GetModuleHandle(NULL),path1,MAX_FOPATH);
+	char path2[MAX_FOPATH];
 	sprintf(path2,"\"%s\" --service",path1);
 
 	// Change executable path, if changed

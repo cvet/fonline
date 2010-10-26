@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -63,15 +63,27 @@ asCGeneric::~asCGeneric()
 }
 
 // interface
-asIScriptEngine *asCGeneric::GetEngine()
+asIScriptEngine *asCGeneric::GetEngine() const
 {
 	return (asIScriptEngine*)engine;
 }
 
 // interface
-int asCGeneric::GetFunctionId()
+int asCGeneric::GetFunctionId() const
 {
 	return sysFunction->id;
+}
+
+// interface
+asIScriptFunction *asCGeneric::GetFunctionDescriptor() const
+{
+	return sysFunction;
+}
+
+// interface
+void *asCGeneric::GetFunctionUserData() const
+{
+	return sysFunction->userData;
 }
 
 // interface
@@ -81,14 +93,14 @@ void *asCGeneric::GetObject()
 }
 
 // interface
-int asCGeneric::GetObjectTypeId()
+int asCGeneric::GetObjectTypeId() const
 {
 	asCDataType dt = asCDataType::CreateObject(sysFunction->objectType, false);
 	return engine->GetTypeIdFromDataType(dt);
 }
 
 // interface
-int asCGeneric::GetArgCount()
+int asCGeneric::GetArgCount() const
 {
 	return (int)sysFunction->parameterTypes.GetLength();
 }
@@ -293,7 +305,7 @@ void *asCGeneric::GetAddressOfArg(asUINT arg)
 }
 
 // interface
-int asCGeneric::GetArgTypeId(asUINT arg)
+int asCGeneric::GetArgTypeId(asUINT arg) const
 {
 	if( arg >= (unsigned)sysFunction->parameterTypes.GetLength() )
 		return 0;
@@ -499,7 +511,7 @@ void *asCGeneric::GetAddressOfReturnLocation()
 }
 
 // interface
-int asCGeneric::GetReturnTypeId()
+int asCGeneric::GetReturnTypeId() const
 {
 	return sysFunction->GetReturnTypeId();
 }

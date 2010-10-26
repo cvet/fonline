@@ -60,24 +60,17 @@ struct asSScriptVariable
 	int stackOffset;
 };
 
-const int asFUNC_SYSTEM    = 0;
-const int asFUNC_SCRIPT    = 1;
-const int asFUNC_INTERFACE = 2;
-const int asFUNC_IMPORTED  = 3;
-const int asFUNC_VIRTUAL   = 4;
-const int asFUNC_FUNCDEF   = 5;
+const asEFuncType asFUNC_DUMMY = asEFuncType(-1);
 
 struct asSSystemFunctionInterface;
-
-// TODO: Need a method for obtaining the function type, so that the application can differenciate between the types
-//       This should replace the IsClassMethod and IsInterfaceMethod
 
 // TODO: GetModuleName should be removed. A function won't belong to a specific module anymore
 //       as the function can be removed from the module, but still remain alive. For example
 //       for dynamically generated functions held by a function pointer.
 
 // TODO: Might be interesting to allow enumeration of accessed global variables, and 
-//       also functions/methods that are being called.
+//       also functions/methods that are being called. This could be used to build a 
+//       code database with call graphs, etc.
 
 void RegisterScriptFunction(asCScriptEngine *engine);
 
@@ -88,10 +81,11 @@ public:
 	asIScriptEngine     *GetEngine() const;
 
 	// Memory management
-	int AddRef();
-	int Release();
+	int AddRef() const;
+	int Release() const;
 
 	int                  GetId() const;
+	asEFuncType          GetFuncType() const;
 	const char          *GetModuleName() const;
 	asIObjectType       *GetObjectType() const;
 	const char          *GetObjectName() const;
@@ -99,23 +93,36 @@ public:
 	const char          *GetDeclaration(bool includeObjectName = true) const;
 	const char          *GetScriptSectionName() const;
 	const char          *GetConfigGroup() const;
-
-	bool                 IsClassMethod() const;
-	bool                 IsInterfaceMethod() const;
 	bool                 IsReadOnly() const;
+	bool                 IsPrivate() const;
 
 	int                  GetParamCount() const;
 	int                  GetParamTypeId(int index, asDWORD *flags = 0) const;
 	int                  GetReturnTypeId() const;
 
+	// Debug information
+	int                  GetVarCount() const;
+	int                  GetVar(asUINT index, const char **name, int *typeId = 0) const;
+	const char *         GetVarDecl(asUINT index) const;
+
 	// For JIT compilation
 	asDWORD             *GetByteCode(asUINT *length = 0);
+
+	// User data
+	void                *SetUserData(void *userData);
+	void                *GetUserData() const;
+
+#ifdef AS_DEPRECATED
+	// Since 2.20.0
+	bool                 IsClassMethod() const;
+	bool                 IsInterfaceMethod() const;
+#endif
 
 public:
 	//-----------------------------------
 	// Internal methods
 
-	asCScriptFunction(asCScriptEngine *engine, asCModule *mod, int funcType);
+	asCScriptFunction(asCScriptEngine *engine, asCModule *mod, asEFuncType funcType);
 	~asCScriptFunction();
 
 	void      AddVariable(asCString &name, asCDataType &type, int stackOffset);
@@ -146,10 +153,12 @@ public:
 	//-----------------------------------
 	// Properties
 
-	asCAtomic                    refCount;
-	bool                         gcFlag;
+	mutable asCAtomic            refCount;
+	mutable bool                 gcFlag;
 	asCScriptEngine             *engine;
 	asCModule                   *module;
+
+	void                        *userData;
 
 	// Function signature
 	asCString                    name;
@@ -163,7 +172,7 @@ public:
 
 	int                          id;
 
-	int                          funcType;
+	asEFuncType                  funcType;
 
 	// Used by asFUNC_SCRIPT
 	asCArray<asDWORD>            byteCode;

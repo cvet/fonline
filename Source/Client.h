@@ -448,8 +448,8 @@ public:
 		static DWORD Crit_CountItem(CritterCl* cr, WORD proto_id);
 		static DWORD Crit_CountItemByType(CritterCl* cr, BYTE type);
 		static Item* Crit_GetItem(CritterCl* cr, WORD proto_id, int slot);
-		static DWORD Crit_GetItems(CritterCl* cr, int slot, asIScriptArray* items);
-		static DWORD Crit_GetItemsByType(CritterCl* cr, int type, asIScriptArray* items);
+		static DWORD Crit_GetItems(CritterCl* cr, int slot, CScriptArray* items);
+		static DWORD Crit_GetItemsByType(CritterCl* cr, int type, CScriptArray* items);
 		static ProtoItem* Crit_GetSlotProto(CritterCl* cr, int slot, BYTE& mode);
 		static void Crit_SetVisible(CritterCl* cr, bool visible);
 		static bool Crit_GetVisible(CritterCl* cr);
@@ -472,10 +472,10 @@ public:
 		static Item* Global_GetItem(DWORD item_id);
 		static DWORD Global_GetCrittersDistantion(CritterCl* cr1, CritterCl* cr2);
 		static CritterCl* Global_GetCritter(DWORD critter_id);
-		static DWORD Global_GetCritters(WORD hx, WORD hy, DWORD radius, int find_type, asIScriptArray* critters);
-		static DWORD Global_GetCrittersByPids(WORD pid, int find_type, asIScriptArray* critters);
-		static DWORD Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, asIScriptArray* critters);
-		static DWORD Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, asIScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy);
+		static DWORD Global_GetCritters(WORD hx, WORD hy, DWORD radius, int find_type, CScriptArray* critters);
+		static DWORD Global_GetCrittersByPids(WORD pid, int find_type, CScriptArray* critters);
+		static DWORD Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters);
+		static DWORD Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy);
 		static void Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist);
 		static DWORD Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
 		static DWORD Global_GetPathLengthCr(CritterCl* cr, WORD to_hx, WORD to_hy, DWORD cut);
@@ -487,8 +487,8 @@ public:
 		static void Global_PlayVideo(CScriptString& video_name, bool can_stop);
 		static bool Global_IsTurnBased();
 		static WORD Global_GetCurrentMapPid();
-		static DWORD Global_GetMessageFilters(asIScriptArray* filters);
-		static void Global_SetMessageFilters(asIScriptArray* filters);
+		static DWORD Global_GetMessageFilters(CScriptArray* filters);
+		static void Global_SetMessageFilters(CScriptArray* filters);
 		static void Global_Message(CScriptString& msg);
 		static void Global_MessageType(CScriptString& msg, int type);
 		static void Global_MessageMsg(int text_msg, DWORD str_num);
@@ -539,8 +539,8 @@ public:
 		static bool Global_IsCritterAnim1(DWORD cr_type, DWORD index);
 		static bool Global_IsCritterAnim3d(DWORD cr_type);
 		static int Global_GetGlobalMapRelief(DWORD x, DWORD y);
-		static void Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, asIScriptArray* p4);
-		static void Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, asIScriptArray* p4);
+		static void Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
+		static void Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 
 		static DWORD Global_LoadSprite(CScriptString& spr_name, int path_index);
 		static DWORD Global_LoadSpriteHash(DWORD name_hash, BYTE dir);
@@ -550,10 +550,10 @@ public:
 		static void Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color);
 		static void Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color);
 		static void Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags);
-		static void Global_DrawPrimitive(int primitive_type, asIScriptArray& data);
+		static void Global_DrawPrimitive(int primitive_type, CScriptArray& data);
 		static void Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy);
 		static void Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir, int l, int t, int r, int b, bool scratch, bool center, DWORD color);
-		static void Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, asIScriptArray* layers, asIScriptArray* position, DWORD color);
+		static void Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, CScriptArray* layers, CScriptArray* position, DWORD color);
 
 		static void Global_ShowScreen(int screen, int p0, int p1, int p2);
 		static void Global_HideScreen(int screen, int p0, int p1, int p2);

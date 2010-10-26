@@ -446,7 +446,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			asIObjectType* ot=module->GetObjectTypeByIndex(m);
 			for(int i=0,j=ot->GetPropertyCount();i<j;i++)
 			{
-				int type=ot->GetPropertyTypeId(i)&asTYPEID_MASK_SEQNBR;
+				int type=0;
+				ot->GetProperty(i,NULL,&type,NULL,NULL);
+				type&=asTYPEID_MASK_SEQNBR;
 				for(int k=0;k<bad_typeids_count;k++)
 				{
 					if(type==bad_typeids[k])
@@ -462,18 +464,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		bool g_fail_class=false;
 		for(int i=0,j=module->GetGlobalVarCount();i<j;i++)
 		{
-			int type=module->GetGlobalVarTypeId(i);
+			int type=0;
+			module->GetGlobalVar(i,NULL,&type,NULL);
 
-			if(type&asTYPEID_SCRIPTARRAY)
+			while(type&asTYPEID_TEMPLATE)
 			{
-				UNSETFLAG(type,asTYPEID_OBJHANDLE);
-				UNSETFLAG(type,asTYPEID_HANDLETOCONST);	
-				asIScriptArray* arr=(asIScriptArray*)Engine->CreateScriptObject(type);
-				if(arr)
-				{
-					type=arr->GetElementTypeId();
-					arr->Release();
-				}
+				asIObjectType* obj=(asIObjectType*)Engine->GetObjectTypeById(type);
+				if(!obj) break;
+				type=obj->GetSubTypeId();
+				obj->Release();
 			}
 
 			type&=asTYPEID_MASK_SEQNBR;
@@ -482,7 +481,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			{
 				if(type==bad_typeids[k])
 				{
-					string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type that cannot be stored globally";
+					const char* name=NULL;
+					module->GetGlobalVar(i,&name,NULL,NULL);
+					string msg="The global variable '"+string(name)+"' uses a type that cannot be stored globally";
 					Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
 					g_fail=true;
 					break;
@@ -490,7 +491,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			}
 			if(std::find(bad_typeids_class.begin(),bad_typeids_class.end(),type)!=bad_typeids_class.end())
 			{
-				string msg="The global variable '"+string(module->GetGlobalVarName(i))+"' uses a type in class property that cannot be stored globally";
+				const char* name=NULL;
+				module->GetGlobalVar(i,&name,NULL,NULL);
+				string msg="The global variable '"+string(name)+"' uses a type in class property that cannot be stored globally";
 				Engine->WriteMessage("",0,0,asMSGTYPE_ERROR,msg.c_str());
 				g_fail_class=true;
 			}

@@ -408,7 +408,7 @@ unsigned __int64 CScriptFile::ReadUint64()
 	return data;
 }
 
-unsigned int CScriptFile::ReadData(unsigned int count, asIScriptArray& data)
+unsigned int CScriptFile::ReadData(unsigned int count, CScriptArray& data)
 {
 	if(!file) return 0;
 
@@ -421,9 +421,9 @@ unsigned int CScriptFile::ReadData(unsigned int count, asIScriptArray& data)
 		if(!count) return 0;
 	}
 
-	unsigned int size=data.GetElementCount();
+	unsigned int size=data.GetSize();
 	data.Resize(size+count);
-	unsigned int r=fread(data.GetElementPointer(size),1,count,file);
+	unsigned int r=fread(data.At(size),1,count,file);
 	if(r<count) data.Resize(size+r);
 	return r;
 }
@@ -464,13 +464,13 @@ bool CScriptFile::WriteUint64(unsigned __int64 data)
 	return fwrite(&data,sizeof(data),1,file)!=0;
 }
 
-bool CScriptFile::WriteData(asIScriptArray& data, unsigned int count)
+bool CScriptFile::WriteData(CScriptArray& data, unsigned int count)
 {
 	if(!file) return false;
-	if(!count) count=data.GetElementCount();
-	else if(count>data.GetElementCount()) return false;
+	if(!count) count=data.GetSize();
+	else if(count>data.GetSize()) return false;
 	if(!count) return false;
-	return fwrite(data.GetElementPointer(0),count,1,file)!=0;
+	return fwrite(data.At(0),count,1,file)!=0;
 }
 #endif
 

@@ -4203,7 +4203,7 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild(MapObject& mobj, WORD pi
 	return mobj_;
 }
 
-DWORD FOMapper::SScriptFunc::MapperObject_GetChilds(MapObject& mobj, asIScriptArray* objects)
+DWORD FOMapper::SScriptFunc::MapperObject_GetChilds(MapObject& mobj, CScriptArray* objects)
 {
 	if(!mobj.RunTime.FromMap) return 0;
 	if(mobj.MapObjType!=MAP_OBJECT_ITEM) return 0;
@@ -4311,7 +4311,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_GetObject(ProtoMap& pmap, WORD hx, W
 	return Self->FindMapObject(pmap,hx,hy,mobj_type,pid,skip);
 }
 
-DWORD FOMapper::SScriptFunc::MapperMap_GetObjects(ProtoMap& pmap, WORD hx, WORD hy, DWORD radius, int mobj_type, WORD pid, asIScriptArray* objects)
+DWORD FOMapper::SScriptFunc::MapperMap_GetObjects(ProtoMap& pmap, WORD hx, WORD hy, DWORD radius, int mobj_type, WORD pid, CScriptArray* objects)
 {
 	MapObjectPtrVec objects_;
 	Self->FindMapObjects(pmap,hx,hy,radius,mobj_type,pid,objects_);
@@ -4497,7 +4497,7 @@ void FOMapper::SScriptFunc::Global_SetDefaultCritterParam(DWORD index, int param
 	Self->DefaultCritterParam[index]=param;
 }
 
-DWORD FOMapper::SScriptFunc::Global_GetFastPrototypes(asIScriptArray* pids)
+DWORD FOMapper::SScriptFunc::Global_GetFastPrototypes(CScriptArray* pids)
 {
 	WordVec pids_;
 	for(size_t i=0,j=Self->FastItemProto.size();i<j;i++) pids_.push_back(Self->FastItemProto[i].GetPid());
@@ -4505,7 +4505,7 @@ DWORD FOMapper::SScriptFunc::Global_GetFastPrototypes(asIScriptArray* pids)
 	return pids_.size();
 }
 
-void FOMapper::SScriptFunc::Global_SetFastPrototypes(asIScriptArray* pids)
+void FOMapper::SScriptFunc::Global_SetFastPrototypes(CScriptArray* pids)
 {
 	Self->HexMngr.ClearFastPids();
 	Self->FastItemProto.clear();
@@ -4567,7 +4567,7 @@ bool FOMapper::SScriptFunc::Global_ShowMap(ProtoMap* pmap)
 	return true;
 }
 
-int FOMapper::SScriptFunc::Global_GetLoadedMaps(asIScriptArray* maps)
+int FOMapper::SScriptFunc::Global_GetLoadedMaps(CScriptArray* maps)
 {
 	int index=-1;
 	for(int i=0,j=(int)Self->LoadedProtoMaps.size();i<j;i++)
@@ -4579,7 +4579,7 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps(asIScriptArray* maps)
 	return index;
 }
 
-DWORD FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, asIScriptArray* names)
+DWORD FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, CScriptArray* names)
 {
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 	string dir_=FileManager::GetFullPath(NULL,PT_SERVER_MAPS);
@@ -4604,9 +4604,9 @@ DWORD FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, asIScrip
 				char* ext=(char*)FileManager::GetExtension(fname);
 				if(ext) *(ext-1)=0;
 
-				int len=names->GetElementCount();
-				names->Resize(names->GetElementCount()+1);
-				CScriptString** ptr=(CScriptString**)names->GetElementPointer(len);
+				int len=names->GetSize();
+				names->Resize(names->GetSize()+1);
+				CScriptString** ptr=(CScriptString**)names->At(len);
 				*ptr=new CScriptString(fname);
 			}
 		}
@@ -4615,7 +4615,7 @@ DWORD FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, asIScrip
 	}
 
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
-	return names->GetElementCount();
+	return names->GetSize();
 }
 
 void FOMapper::SScriptFunc::Global_DeleteObject(MapObject* mobj)
@@ -4623,11 +4623,11 @@ void FOMapper::SScriptFunc::Global_DeleteObject(MapObject* mobj)
 	if(mobj) Self->DeleteMapObject(mobj);
 }
 
-void FOMapper::SScriptFunc::Global_DeleteObjects(asIScriptArray& objects)
+void FOMapper::SScriptFunc::Global_DeleteObjects(CScriptArray& objects)
 {
-	for(int i=0,j=objects.GetElementCount();i<j;i++)
+	for(int i=0,j=objects.GetSize();i<j;i++)
 	{
-		MapObject* mobj=*(MapObject**)objects.GetElementPointer(i);
+		MapObject* mobj=*(MapObject**)objects.At(i);
 		if(mobj) Self->DeleteMapObject(mobj);
 	}
 }
@@ -4641,11 +4641,11 @@ void FOMapper::SScriptFunc::Global_SelectObject(MapObject* mobj, bool set)
 	}
 }
 
-void FOMapper::SScriptFunc::Global_SelectObjects(asIScriptArray& objects, bool set)
+void FOMapper::SScriptFunc::Global_SelectObjects(CScriptArray& objects, bool set)
 {
-	for(int i=0,j=objects.GetElementCount();i<j;i++)
+	for(int i=0,j=objects.GetSize();i<j;i++)
 	{
-		MapObject* mobj=*(MapObject**)objects.GetElementPointer(i);
+		MapObject* mobj=*(MapObject**)objects.At(i);
 		if(mobj)
 		{
 			if(set) Self->SelectAdd(mobj);
@@ -4659,7 +4659,7 @@ MapObject* FOMapper::SScriptFunc::Global_GetSelectedObject()
 	return Self->SelectedObj.size()?Self->SelectedObj[0].MapObj:NULL;
 }
 
-DWORD FOMapper::SScriptFunc::Global_GetSelectedObjects(asIScriptArray* objects)
+DWORD FOMapper::SScriptFunc::Global_GetSelectedObjects(CScriptArray* objects)
 {
 	MapObjectPtrVec objects_;
 	objects_.reserve(Self->SelectedObj.size());
@@ -4983,7 +4983,7 @@ void FOMapper::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, i
 	Self->SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
 }
 
-void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, asIScriptArray& data)
+void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArray& data)
 {
 	if(!SpritesCanDraw) return;
 
@@ -4999,16 +4999,16 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, asIScriptAr
 	default: return;
 	}
 
-	int size=data.GetElementCount()/3;
+	int size=data.GetSize()/3;
 	PointVec points;
 	points.resize(size);
 
 	for(int i=0;i<size;i++)
 	{
 		PrepPoint& pp=points[i];
-		pp.PointX=*(int*)data.GetElementPointer(i*3);
-		pp.PointY=*(int*)data.GetElementPointer(i*3+1);
-		pp.PointColor=*(int*)data.GetElementPointer(i*3+2);
+		pp.PointX=*(int*)data.At(i*3);
+		pp.PointY=*(int*)data.At(i*3+1);
+		pp.PointColor=*(int*)data.At(i*3+2);
 		//pp.PointOffsX=NULL;
 		//pp.PointOffsY=NULL;
 	}
@@ -5074,7 +5074,7 @@ Animation3dVec DrawCritter3dAnim;
 DwordVec DrawCritter3dCrType;
 DwordVec DrawCritter3dFailToLoad;
 int DrawCritter3dLayers[LAYERS3D_COUNT];
-void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, asIScriptArray* layers, asIScriptArray* position, DWORD color)
+void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, CScriptArray* layers, CScriptArray* position, DWORD color)
 {
 	// x y
 	// rx ry rz
@@ -5110,25 +5110,25 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 
 		if(anim)
 		{
-			DWORD count=(position?position->GetElementCount():0);
-			float x=(count>0?*(float*)position->GetElementPointer(0):0.0f);
-			float y=(count>1?*(float*)position->GetElementPointer(1):0.0f);
-			float rx=(count>2?*(float*)position->GetElementPointer(2):0.0f);
-			float ry=(count>3?*(float*)position->GetElementPointer(3):0.0f);
-			float rz=(count>4?*(float*)position->GetElementPointer(4):0.0f);
-			float sx=(count>5?*(float*)position->GetElementPointer(5):1.0f);
-			float sy=(count>6?*(float*)position->GetElementPointer(6):1.0f);
-			float sz=(count>7?*(float*)position->GetElementPointer(7):1.0f);
-			float speed=(count>8?*(float*)position->GetElementPointer(8):1.0f);
+			DWORD count=(position?position->GetSize():0);
+			float x=(count>0?*(float*)position->At(0):0.0f);
+			float y=(count>1?*(float*)position->At(1):0.0f);
+			float rx=(count>2?*(float*)position->At(2):0.0f);
+			float ry=(count>3?*(float*)position->At(3):0.0f);
+			float rz=(count>4?*(float*)position->At(4):0.0f);
+			float sx=(count>5?*(float*)position->At(5):1.0f);
+			float sy=(count>6?*(float*)position->At(6):1.0f);
+			float sz=(count>7?*(float*)position->At(7):1.0f);
+			float speed=(count>8?*(float*)position->At(8):1.0f);
 			// 9 reserved
-			float stl=(count>10?*(float*)position->GetElementPointer(10):0.0f);
-			float stt=(count>11?*(float*)position->GetElementPointer(11):0.0f);
-			float str=(count>12?*(float*)position->GetElementPointer(12):0.0f);
-			float stb=(count>13?*(float*)position->GetElementPointer(13):0.0f);
+			float stl=(count>10?*(float*)position->At(10):0.0f);
+			float stt=(count>11?*(float*)position->At(11):0.0f);
+			float str=(count>12?*(float*)position->At(12):0.0f);
+			float stb=(count>13?*(float*)position->At(13):0.0f);
 
 			ZeroMemory(DrawCritter3dLayers,sizeof(DrawCritter3dLayers));
-			for(DWORD i=0,j=(layers?layers->GetElementCount():0);i<j && i<LAYERS3D_COUNT;i++)
-				DrawCritter3dLayers[i]=*(int*)layers->GetElementPointer(i);
+			for(DWORD i=0,j=(layers?layers->GetSize():0);i<j && i<LAYERS3D_COUNT;i++)
+				DrawCritter3dLayers[i]=*(int*)layers->At(i);
 
 			anim->SetRotation(rx*D3DX_PI/180.0f,ry*D3DX_PI/180.0f,rz*D3DX_PI/180.0f);
 			anim->SetScale(sx,sy,sz);

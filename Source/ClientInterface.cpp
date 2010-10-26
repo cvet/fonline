@@ -1424,7 +1424,7 @@ void FOClient::ProcessItemsCollection(int collection, ItemVec& init_items, ItemV
 
 	if(Script::PrepareContext(ClientFunctions.ItemsCollection,CALL_FUNC_STR,"Game"))
 	{
-		asIScriptArray* arr=Script::CreateArray("ItemCl@[]");
+		CScriptArray* arr=Script::CreateArray("ItemCl@[]");
 		if(arr)
 		{
 			ItemPtrVec items_ptr;
@@ -4723,7 +4723,7 @@ int FOClient::GetActiveScreen(IntVec** screens /* = NULL */)
 
 	if(Script::PrepareContext(ClientFunctions.GetActiveScreens,CALL_FUNC_STR,"Game"))
 	{
-		asIScriptArray* arr=Script::CreateArray("int[]");
+		CScriptArray* arr=Script::CreateArray("int[]");
 		if(arr)
 		{
 			Script::SetArgObject(arr);
@@ -8761,7 +8761,7 @@ void FOClient::ElevatorGenerate(DWORD param)
 	ElevatorCurrentLevel=0;
 
 	if(!Script::PrepareContext(ClientFunctions.GetElevator,CALL_FUNC_STR,"Game")) return;
-	asIScriptArray* arr=Script::CreateArray("int[]");
+	CScriptArray* arr=Script::CreateArray("int[]");
 	if(!arr) return;
 	Script::SetArgDword(param);
 	Script::SetArgObject(arr);
@@ -8772,11 +8772,11 @@ void FOClient::ElevatorGenerate(DWORD param)
 	}
 
 	DWORD added_buttons=0;
-	for(int i=0,j=arr->GetElementCount();i<j;i++)
+	for(int i=0,j=arr->GetSize();i<j;i++)
 	{
 		if(i>100) break;
 
-		DWORD val=*(DWORD*)arr->GetElementPointer(i);
+		DWORD val=*(DWORD*)arr->At(i);
 		switch(i)
 		{
 		case 0: ElevatorCurrentLevel=val; break;

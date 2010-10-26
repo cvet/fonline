@@ -4046,7 +4046,7 @@ void FOServer::SaveWorld(const char* name)
 	SaveWorldDeleteIndexes.clear();
 	if(Script::PrepareContext(ServerFunctions.WorldSave,CALL_FUNC_STR,"Game"))
 	{
-		asIScriptArray* delete_indexes=Script::CreateArray("uint[]");
+		CScriptArray* delete_indexes=Script::CreateArray("uint[]");
 		Script::SetArgDword(SaveWorldIndex+1);
 		Script::SetArgObject(delete_indexes);
 		if(Script::RunPrepared()) Script::AssignScriptArrayInVector(SaveWorldDeleteIndexes,delete_indexes);
@@ -4579,7 +4579,7 @@ void FOServer::AddTimeEvent(TimeEvent* te)
 	TimeEvents.push_back(te);
 }
 
-DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, int values, DWORD val1, asIScriptArray* val2, bool save)
+DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, int values, DWORD val1, CScriptArray* val2, bool save)
 {
 	char module_name[256];
 	char func_name[256];
@@ -4614,11 +4614,11 @@ DWORD FOServer::CreateTimeEvent(DWORD begin_second, const char* script_name, int
 	else if(values==2)
 	{
 		// Array values
-		DWORD count=val2->GetElementCount();
+		DWORD count=val2->GetSize();
 		if(count)
 		{
 			te->Values.resize(count);
-			memcpy(&te->Values[0],val2->GetElementPointer(0),count*sizeof(DWORD));
+			memcpy(&te->Values[0],val2->At(0),count*sizeof(DWORD));
 		}
 	}
 
@@ -4649,7 +4649,7 @@ void FOServer::TimeEventEndScriptCallback()
 	}
 }
 
-bool FOServer::GetTimeEvent(DWORD num, DWORD& duration, asIScriptArray* values)
+bool FOServer::GetTimeEvent(DWORD num, DWORD& duration, CScriptArray* values)
 {
 	TimeEventsLocker.Lock();
 
@@ -4704,7 +4704,7 @@ bool FOServer::GetTimeEvent(DWORD num, DWORD& duration, asIScriptArray* values)
 	return true;
 }
 
-bool FOServer::SetTimeEvent(DWORD num, DWORD duration, asIScriptArray* values)
+bool FOServer::SetTimeEvent(DWORD num, DWORD duration, CScriptArray* values)
 {
 	TimeEventsLocker.Lock();
 
@@ -4804,7 +4804,7 @@ void FOServer::ProcessTimeEvents()
 	DWORD wait_time=0;
 	if(Script::PrepareContext(cur_event->BindId,CALL_FUNC_STR,Str::Format("Time event<%u>",cur_event->Num)))
 	{
-		asIScriptArray* values=NULL;
+		CScriptArray* values=NULL;
 		DWORD size=cur_event->Values.size();
 
 		if(size>0)
@@ -4822,7 +4822,7 @@ void FOServer::ProcessTimeEvents()
 			else
 			{
 				values->Resize(size);
-				memcpy(values->GetElementPointer(0),(void*)&cur_event->Values[0],size*sizeof(DWORD));
+				memcpy(values->At(0),(void*)&cur_event->Values[0],size*sizeof(DWORD));
 			}
 		}
 
@@ -4839,9 +4839,9 @@ void FOServer::ProcessTimeEvents()
 				wait_time=Script::GetReturnedDword();
 				if(wait_time && values) // Refresh array
 				{
-					DWORD arr_size=values->GetElementCount();
+					DWORD arr_size=values->GetSize();
 					cur_event->Values.resize(arr_size);
-					if(arr_size) memcpy(&cur_event->Values[0],values->GetElementPointer(0),arr_size*sizeof(cur_event->Values[0]));
+					if(arr_size) memcpy(&cur_event->Values[0],values->At(0),arr_size*sizeof(cur_event->Values[0]));
 				}
 			}
 
@@ -5011,12 +5011,12 @@ bool FOServer::SetAnyData(const string& name, const BYTE* data, DWORD data_size)
 
 	MEMORY_PROCESS(MEMORY_ANY_DATA,-(int)data_.capacity());
 	data_.resize(data_size);
-	memcpy(&data_[0],data,data_size);
+	if(data_size) memcpy(&data_[0],data,data_size);
 	MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
 	return true;
 }
 
-bool FOServer::GetAnyData(const string& name, asIScriptArray& script_array)
+bool FOServer::GetAnyData(const string& name, CScriptArray& script_array)
 {
 	SCOPE_LOCK(AnyDataLocker);
 
@@ -5034,7 +5034,7 @@ bool FOServer::GetAnyData(const string& name, asIScriptArray& script_array)
 
 	DWORD element_size=script_array.GetElementSize();
 	script_array.Resize(length/element_size+((length%element_size)?1:0));
-	memcpy(script_array.GetElementPointer(0),&data[0],length);
+	memcpy(script_array.At(0),&data[0],length);
 	return true;
 }
 

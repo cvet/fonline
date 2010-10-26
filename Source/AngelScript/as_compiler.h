@@ -65,7 +65,21 @@ struct asSDeferredParam
 
 struct asSExprContext
 {
-	asSExprContext(asCScriptEngine *engine) : bc(engine) {exprNode = 0; origExpr = 0; property_get = 0; property_set = 0; }
+	asSExprContext(asCScriptEngine *engine) : bc(engine) 
+	{
+		exprNode        = 0; 
+		origExpr        = 0; 
+		property_get    = 0; 
+		property_set    = 0; 
+		property_const  = false;
+		property_handle = false;
+		property_ref    = false;
+		property_arg    = 0;
+	}
+	~asSExprContext() 
+	{
+		asASSERT(property_arg == 0);
+	}
 
 	asCByteCode bc;
 	asCTypeInfo type;
@@ -74,6 +88,7 @@ struct asSExprContext
 	bool property_const; // If the object that is being accessed through property accessor is read-only
 	bool property_handle; // If the property accessor is called on an object stored in a handle
 	bool property_ref; // If the property accessor is called on a reference
+	asSExprContext *property_arg;
 	asCArray<asSDeferredParam> deferredParams;
 	asCScriptNode  *exprNode;
 	asSExprContext *origExpr;
@@ -156,6 +171,7 @@ protected:
 	void ProcessPropertyGetAccessor(asSExprContext *ctx, asCScriptNode *node);
 	int  ProcessPropertySetAccessor(asSExprContext *ctx, asSExprContext *arg, asCScriptNode *node);
 	int  FindPropertyAccessor(const asCString &name, asSExprContext *ctx, asCScriptNode *node);
+	int  FindPropertyAccessor(const asCString &name, asSExprContext *ctx, asSExprContext *arg, asCScriptNode *node);
 	void SwapPostFixOperands(asCArray<asCScriptNode *> &postfix, asCArray<asCScriptNode *> &target);
 	void PrepareTemporaryObject(asCScriptNode *node, asSExprContext *ctx, asCArray<int> *reservedVars);
 	void PrepareOperand(asSExprContext *ctx, asCScriptNode *node);

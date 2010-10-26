@@ -1430,9 +1430,9 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 	}
 }
 
-bool MapManager::GM_CheckEntrance(int bind_id, asIScriptArray* arr, BYTE entrance)
+bool MapManager::GM_CheckEntrance(int bind_id, CScriptArray* arr, BYTE entrance)
 {
-	if(Script::PrepareContext(bind_id,CALL_FUNC_STR,(*(Critter**)arr->GetElementPointer(0))->GetInfo()))
+	if(Script::PrepareContext(bind_id,CALL_FUNC_STR,(*(Critter**)arr->At(0))->GetInfo()))
 	{
 		Script::SetArgObject(arr);
 		Script::SetArgByte(entrance);
@@ -1441,9 +1441,9 @@ bool MapManager::GM_CheckEntrance(int bind_id, asIScriptArray* arr, BYTE entranc
 	return false;
 }
 
-asIScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
+CScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 {
-	asIScriptArray* arr=Script::CreateArray("Critter@[]");
+	CScriptArray* arr=Script::CreateArray("Critter@[]");
 	if(!arr)
 	{
 		WriteLog(__FUNCTION__" - Create script array fail.\n");
@@ -1453,7 +1453,7 @@ asIScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 	group->SyncLockGroup();
 
 	arr->Resize(group->CritMove.size());
-	Critter** p_=(Critter**)arr->GetElementPointer(0);
+	Critter** p_=(Critter**)arr->At(0);
 	*p_=group->Rule;
 	group->Rule->AddRef();
 	int ind=1;
@@ -1461,7 +1461,7 @@ asIScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 	{
 		Critter* cr=*it;
 		if(cr==group->Rule) continue;
-		Critter** p=(Critter**)arr->GetElementPointer(ind);
+		Critter** p=(Critter**)arr->At(ind);
 		if(!p)
 		{
 			WriteLog(__FUNCTION__" - Critical bug, rule critter<%s>, not valid<%d>.\n",group->Rule->GetInfo(),group->Rule->IsNotValid);
@@ -1769,7 +1769,7 @@ bool MapManager::GM_GroupToLoc(Critter* rule, DWORD loc_id, BYTE entrance, bool 
 
 	if(loc->Proto->ScriptBindId)
 	{
-		asIScriptArray* arr=GM_CreateGroupArray(rule->GroupMove);
+		CScriptArray* arr=GM_CreateGroupArray(rule->GroupMove);
 		if(!arr) return false;
 		bool result=GM_CheckEntrance(loc->Proto->ScriptBindId,arr,entrance);
 		arr->Release();

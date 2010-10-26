@@ -109,10 +109,6 @@ public:
 	int AddCode(const char *name, const char *code, int codeLength, int lineOffset, int sectionIdx, bool makeCopy);
 	int Build();
 
-#ifdef AS_DEPRECATED
-// Deprecated since 2009-12-08, 2.18.0
-	int BuildString(const char *string, asCContext *ctx);
-#endif
 	int CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD compileFlags, asCScriptFunction **outFunc);
 	int CompileGlobalVar(const char *sectionName, const char *code, int lineOffset);
 

@@ -14,6 +14,7 @@ extern "C" __declspec(dllexport) asIScriptEngine* Register()
 	setlocale(LC_ALL,"Russian");
 	asIScriptEngine* engine=asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	if(!engine) return NULL;
+	RegisterScriptArray(engine,true);
 	RegisterScriptString(engine);
 	RegisterScriptStringUtils(engine);
 	RegisterScriptAny(engine);
@@ -21,6 +22,5 @@ extern "C" __declspec(dllexport) asIScriptEngine* Register()
 	RegisterScriptFile(engine);
 	RegisterScriptMath(engine);
 	RegisterScriptMath3D(engine);
-	RegisterScriptArray(engine);
 	return engine;
 }

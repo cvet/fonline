@@ -30,13 +30,9 @@
 
 
 #include <new>
-
 #include "as_config.h"
-
 #include "as_scriptengine.h"
-
 #include "as_scriptobject.h"
-#include "as_arrayobject.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -237,14 +233,14 @@ asIScriptEngine *asCScriptObject::GetEngine() const
 	return objType->engine;
 }
 
-int asCScriptObject::AddRef()
+int asCScriptObject::AddRef() const
 {
 	// Increase counter and clear flag set by GC
 	gcFlag = false;
 	return refCount.atomicInc();
 }
 
-int asCScriptObject::Release()
+int asCScriptObject::Release() const
 {
 	// Clear the flag set by the GC
 	gcFlag = false;
@@ -252,14 +248,16 @@ int asCScriptObject::Release()
 	// Call the script destructor behaviour if the reference counter is 1.
 	if( refCount.get() == 1 && !isDestructCalled )
 	{
-		CallDestructor();
+		// This cast is OK since we are the last reference
+		const_cast<asCScriptObject*>(this)->CallDestructor();
 	}
 
 	// Now do the actual releasing
 	int r = refCount.atomicDec();
 	if( r == 0 )
 	{
-		Destruct();
+		// This cast is OK since we are the last reference
+		const_cast<asCScriptObject*>(this)->Destruct();
 		return 0;
 	}
 

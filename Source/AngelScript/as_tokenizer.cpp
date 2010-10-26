@@ -47,7 +47,7 @@
 
 BEGIN_AS_NAMESPACE
 
-asCTokenizer::asCTokenizer(asCScriptEngine *e)
+asCTokenizer::asCTokenizer(const asCScriptEngine *e)
 {
 	engine = e;
 }

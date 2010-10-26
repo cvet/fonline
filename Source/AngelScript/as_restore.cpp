@@ -38,7 +38,6 @@
 #include "as_config.h"
 #include "as_restore.h"
 #include "as_bytecode.h"
-#include "as_arrayobject.h"
 #include "as_scriptobject.h"
 
 BEGIN_AS_NAMESPACE
@@ -465,7 +464,7 @@ void asCRestore::ReadUsedFunctions()
 		// Is the function from the module or the application?
 		READ_NUM(c);
 
-		asCScriptFunction func(engine, c == 'm' ? module : 0, -1);
+		asCScriptFunction func(engine, c == 'm' ? module : 0, asFUNC_DUMMY);
 		ReadFunctionSignature(&func);
 
 		// Find the correct function
@@ -499,7 +498,7 @@ void asCRestore::ReadUsedFunctions()
 		}
 
 		// Set the type to dummy so it won't try to release the id
-		func.funcType = -1;
+		func.funcType = asFUNC_DUMMY;
 	}
 }
 
@@ -667,7 +666,7 @@ asCScriptFunction *asCRestore::ReadFunction(bool addToModule, bool addToEngine)
 	}
 
 	// Load the new function
-	asCScriptFunction *func = asNEW(asCScriptFunction)(engine,module,-1);
+	asCScriptFunction *func = asNEW(asCScriptFunction)(engine,module,asFUNC_DUMMY);
 	savedFunctions.PushLast(func);
 
 	int i, count;
@@ -1253,7 +1252,7 @@ void asCRestore::ReadDataType(asCDataType *dt)
 	asCScriptFunction *funcDef = 0;
 	if( tokenType == ttIdentifier && objType && objType->name == "_builtin_function_" )
 	{
-		asCScriptFunction func(engine, module, -1);
+		asCScriptFunction func(engine, module, asFUNC_DUMMY);
 		ReadFunctionSignature(&func);
 		for( asUINT n = 0; n < engine->registeredFuncDefs.GetLength(); n++ )
 		{
@@ -1277,7 +1276,7 @@ void asCRestore::ReadDataType(asCDataType *dt)
 			}
 		}
 
-		func.funcType = -1;
+		func.funcType = asFUNC_DUMMY;
 	}
 
 	if( funcDef )
@@ -1305,8 +1304,7 @@ void asCRestore::WriteObjectType(asCObjectType* ot)
 	if( ot )
 	{
 		// Check for template instances/specializations
-		if( ot->templateSubType.GetTokenType() != ttUnrecognizedToken &&
-			ot != engine->defaultArrayObjectType )
+		if( ot->templateSubType.GetTokenType() != ttUnrecognizedToken )
 		{
 			ch = 'a';
 			WRITE_NUM(ch);

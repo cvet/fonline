@@ -915,8 +915,6 @@ struct BindClass
 	static void Global_GetAnyData(){}
 	static void Global_IsAnyData(){}
 	static void Global_EraseAnyData(){}
-	static void Global_ArrayPushBackInteger(){}
-	static void Global_ArrayPushBackCritter(){}
 	static void Global_SetStartLocation(){}
 	static void Global_GetMap(){}
 	static void Global_GetMapByPid(){}

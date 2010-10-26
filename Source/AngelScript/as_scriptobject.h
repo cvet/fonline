@@ -60,8 +60,8 @@ public:
 	asIScriptEngine *GetEngine() const;
 
 	// Memory management
-	int AddRef();
-	int Release();
+	int AddRef() const;
+	int Release() const;
 
 	// Type info
 	int            GetTypeId() const;
@@ -102,8 +102,8 @@ public:
 	asCObjectType *objType;
 
 protected:
-	asCAtomic refCount;
-	bool gcFlag;
+	mutable asCAtomic refCount;
+	mutable bool gcFlag;
 	bool isDestructCalled;
 };
 

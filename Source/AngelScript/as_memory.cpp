@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -46,8 +46,22 @@
 BEGIN_AS_NAMESPACE
 
 // By default we'll use the standard memory management functions
+
+// Make sure these globals are initialized first. Otherwise the
+// library may crash in case the application initializes the engine
+// as a global variable.
+
+#ifdef _MSC_VER
+// MSVC let's us choose between a couple of different initialization orders.
+#pragma warning(disable: 4073)
+#pragma init_seg(lib)
 asALLOCFUNC_t userAlloc = malloc;
 asFREEFUNC_t  userFree  = free;
+#else
+// Other compilers will just have to rely on luck.
+asALLOCFUNC_t userAlloc = malloc;
+asFREEFUNC_t  userFree  = free;
+#endif
 
 extern "C"
 {

@@ -4,22 +4,24 @@
 	if(engine->SetEngineProperty(asEP_SCRIPT_SCANNER,0)<0) BIND_ERROR;
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)
-	// Parameters arrays
+	// Reference value
 	if(engine->RegisterObjectType("DataRef",0,asOBJ_REF|asOBJ_NOHANDLE)<0) BIND_ERROR;
 #ifdef BIND_SERVER
-	if(engine->RegisterObjectBehaviour("DataRef",asBEHAVE_INDEX,"int &f(uint)",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("DataRef",asBEHAVE_INDEX,"const int &f(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("DataRef","int& opIndex(uint)",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("DataRef","const int& opIndex(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 #else
-	if(engine->RegisterObjectBehaviour("DataRef",asBEHAVE_INDEX,"const int f(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("DataRef","const int& opIndex(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 #endif
+	// Computed value
 	if(engine->RegisterObjectType("DataVal",0,asOBJ_REF|asOBJ_NOHANDLE)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("DataVal",asBEHAVE_INDEX,"const int f(uint) const",asFUNCTION(BIND_CLASS DataVal_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-#endif
+	if(engine->RegisterObjectMethod("DataVal","const int opIndex(uint) const",asFUNCTION(BIND_CLASS DataVal_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+#endif // #if defined(BIND_CLIENT) || defined(BIND_SERVER)
 
 	// Item prototype
 	if(engine->RegisterObjectType("ProtoItem",0,asOBJ_REF)<0) BIND_ERROR;
 	if(engine->RegisterObjectBehaviour("ProtoItem",asBEHAVE_ADDREF,"void f()",asMETHOD(ProtoItem,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectBehaviour("ProtoItem",asBEHAVE_RELEASE,"void f()",asMETHOD(ProtoItem,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectMethod("ProtoItem","uint8 GetType() const",asMETHOD(ProtoItem,GetType),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ProtoItem","uint16 GetProtoId() const",asMETHOD(ProtoItem,GetPid),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ProtoItem","bool IsGrouped() const",asMETHOD(ProtoItem,IsGrouped),asCALL_THISCALL)<0) BIND_ERROR;
@@ -156,29 +158,46 @@
 /* Types                                                                */
 /************************************************************************/
 	if(engine->RegisterObjectType("GameVar",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("GameVar",asBEHAVE_ADDREF,"void f()",asMETHOD(GameVar,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("GameVar",asBEHAVE_RELEASE,"void f()",asMETHOD(GameVar,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectType("NpcPlane",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("NpcPlane",asBEHAVE_ADDREF,"void f()",asMETHOD(AIDataPlane,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("NpcPlane",asBEHAVE_RELEASE,"void f()",asMETHOD(AIDataPlane,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectType("Item",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Item",asBEHAVE_ADDREF,"void f()",asMETHOD(Item,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Item",asBEHAVE_RELEASE,"void f()",asMETHOD(Item,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectType("Scenery",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Scenery",asBEHAVE_ADDREF,"void f()",asMETHOD(MapObject,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Scenery",asBEHAVE_RELEASE,"void f()",asMETHOD(MapObject,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectType("Critter",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Critter",asBEHAVE_ADDREF,"void f()",asMETHOD(Critter,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Critter",asBEHAVE_RELEASE,"void f()",asMETHOD(Critter,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectType("Map",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Map",asBEHAVE_ADDREF,"void f()",asMETHOD(Map,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Map",asBEHAVE_RELEASE,"void f()",asMETHOD(Map,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectType("Location",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Location",asBEHAVE_ADDREF,"void f()",asMETHOD(Location,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Location",asBEHAVE_RELEASE,"void f()",asMETHOD(Location,Release),asCALL_THISCALL)<0) BIND_ERROR;
 
 /************************************************************************/
 /* Synchronizer                                                         */
 /************************************************************************/
-
 	if(engine->RegisterObjectType("Synchronizer",sizeof(SyncObject),asOBJ_VALUE)<0) BIND_ERROR;
 
-	if(engine->RegisterObjectBehaviour("Synchronizer",asBEHAVE_CONSTRUCT,"void f()",asFUNCTION(BIND_CLASS Synchronizer_Constructor),asCALL_CDECL_OBJLAST)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("Synchronizer",asBEHAVE_DESTRUCT,"void f()",asFUNCTION(BIND_CLASS Synchronizer_Destructor),asCALL_CDECL_OBJLAST)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Synchronizer",asBEHAVE_CONSTRUCT,"void f()",asFUNCTION(BIND_CLASS Synchronizer_Constructor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("Synchronizer",asBEHAVE_DESTRUCT,"void f()",asFUNCTION(BIND_CLASS Synchronizer_Destructor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectMethod("Synchronizer","void Lock()",asMETHOD(SyncObject,Lock),asCALL_THISCALL)<0) BIND_ERROR;
 
 /************************************************************************/
 /* GameVar                                                              */
 /************************************************************************/
-	if(engine->RegisterObjectBehaviour("GameVar",asBEHAVE_ADDREF,"void f()",asMETHOD(GameVar,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("GameVar",asBEHAVE_RELEASE,"void f()",asMETHOD(GameVar,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("GameVar","int GetValue() const",asMETHOD(GameVar,GetValue),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("GameVar","int GetMin() const",asMETHOD(GameVar,GetMin),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("GameVar","int GetMax() const",asMETHOD(GameVar,GetMax),asCALL_THISCALL)<0) BIND_ERROR;
@@ -210,8 +229,6 @@
 /************************************************************************/
 /* NpcPlane                                                             */
 /************************************************************************/
-	if(engine->RegisterObjectBehaviour("NpcPlane",asBEHAVE_ADDREF,"void f()",asMETHOD(AIDataPlane,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("NpcPlane",asBEHAVE_RELEASE,"void f()",asMETHOD(AIDataPlane,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","int Type",offsetof(AIDataPlane,Type))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("NpcPlane","uint Priority",offsetof(AIDataPlane,Priority))<0) BIND_ERROR;
 	//if(engine->RegisterObjectProperty("NpcPlane","NpcPlane@ Child",offsetof(AIDataPlane,Type))<0) BIND_ERROR;
@@ -244,11 +261,9 @@
 	if(engine->RegisterObjectMethod("NpcPlane","bool Misc_SetScript(string& funcName)",asFUNCTION(BIND_CLASS NpcPlane_Misc_SetScript),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 /************************************************************************/
-/* Object                                                               */
+/* Item                                                                 */
 /************************************************************************/
 	// Methods
-	if(engine->RegisterObjectBehaviour("Item",asBEHAVE_ADDREF,"void f()",asMETHOD(Item,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("Item",asBEHAVE_RELEASE,"void f()",asMETHOD(Item,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool IsGrouped() const",asFUNCTION(BIND_CLASS Item_IsGrouped),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool IsWeared() const",asFUNCTION(BIND_CLASS Item_IsWeared),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool SetScript(string@+ script)",asFUNCTION(BIND_CLASS Item_SetScript),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -431,9 +446,6 @@
 /************************************************************************/
 /* Scenery                                                              */
 /************************************************************************/
-	if(engine->RegisterObjectBehaviour("Scenery",asBEHAVE_ADDREF,"void f()",asMETHOD(MapObject,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("Scenery",asBEHAVE_RELEASE,"void f()",asMETHOD(MapObject,Release),asCALL_THISCALL)<0) BIND_ERROR;
-
 	if(engine->RegisterObjectProperty("Scenery","const uint16 ProtoId",offsetof(MapObject,ProtoId))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Scenery","const uint16 HexX",offsetof(MapObject,MapX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Scenery","const uint16 HexY",offsetof(MapObject,MapY))<0) BIND_ERROR;
@@ -441,9 +453,6 @@
 /************************************************************************/
 /* Critter                                                              */
 /************************************************************************/
-	if(engine->RegisterObjectBehaviour("Critter",asBEHAVE_ADDREF,"void f()",asMETHOD(Critter,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("Critter",asBEHAVE_RELEASE,"void f()",asMETHOD(Critter,Release),asCALL_THISCALL)<0) BIND_ERROR;
-
 	if(engine->RegisterObjectMethod("Critter","bool IsPlayer() const",asFUNCTION(BIND_CLASS Crit_IsPlayer),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool IsNpc() const",asFUNCTION(BIND_CLASS Crit_IsNpc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool IsCanWalk() const",asFUNCTION(BIND_CLASS Crit_IsCanWalk),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -652,8 +661,6 @@
 /************************************************************************/
 /* Map                                                                  */
 /************************************************************************/
-	if(engine->RegisterObjectBehaviour("Map",asBEHAVE_ADDREF,"void f()",asMETHOD(Map,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("Map",asBEHAVE_RELEASE,"void f()",asMETHOD(Map,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Map","const bool IsNotValid",offsetof(Map,IsNotValid))<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","uint16 GetProtoId() const",asFUNCTION(BIND_CLASS Map_GetProtoId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","Location@+ GetLocation() const",asFUNCTION(BIND_CLASS Map_GetLocation),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -751,8 +758,6 @@
 /************************************************************************/
 /* Location                                                             */
 /************************************************************************/
-	if(engine->RegisterObjectBehaviour("Location",asBEHAVE_ADDREF,"void f()",asMETHOD(Location,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("Location",asBEHAVE_RELEASE,"void f()",asMETHOD(Location,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Location","uint16 GetProtoId() const",asFUNCTION(BIND_CLASS Location_GetProtoId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Location","uint GetMapCount() const",asFUNCTION(BIND_CLASS Location_GetMapCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Location","Map@+ GetMap(uint16 mapPid) const",asFUNCTION(BIND_CLASS Location_GetMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -835,16 +840,6 @@
 	if(engine->RegisterGlobalFunction("bool IsAnyData(string& name)",asFUNCTION(BIND_CLASS Global_IsAnyData),asCALL_CDECL)<0) BIND_ERROR;
 	//if(engine->RegisterGlobalFunction("bool AnyDataClass(?& storedClass, ?[]& array)",asFUNCTION(BIND_CLASS Global_AnyDataClass),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void EraseAnyData(string& name)",asFUNCTION(BIND_CLASS Global_EraseAnyData),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(Critter@[]& arr, Critter@+ cr)",asFUNCTION(BIND_CLASS Global_ArrayPushBackCritter),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(int64[]& arr, int64& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(int32[]& arr, int32& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(int16[]& arr, int16& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(int8[]& arr, int8& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(uint64[]& arr, uint64& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(uint32[]& arr, uint32& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(uint16[]& arr, uint16& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void ArrayPushBack(uint8[]& arr, uint8& value)",asFUNCTION(BIND_CLASS Global_ArrayPushBackInteger),asCALL_CDECL)<0) BIND_ERROR;
-	//if(engine->RegisterGlobalFunction("void ArrayErase(uint[]& arr, uint index)",asFUNCTION(BIND_CLASS Global_ArrayErase),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("Map@+ GetMap(uint mapId)",asFUNCTION(BIND_CLASS Global_GetMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("Map@+ GetMapByPid(uint16 mapPid, uint skipCount)",asFUNCTION(BIND_CLASS Global_GetMapByPid),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("Location@+ GetLocation(uint locId)",asFUNCTION(BIND_CLASS Global_GetLocation),asCALL_CDECL)<0) BIND_ERROR;
@@ -877,10 +872,13 @@
 
 #ifdef BIND_CLIENT
 	if(engine->RegisterObjectType("CritterCl",0,asOBJ_REF)<0) BIND_ERROR;
-	if(engine->RegisterObjectType("ItemCl",0,asOBJ_REF)<0) BIND_ERROR;
-
 	if(engine->RegisterObjectBehaviour("CritterCl",asBEHAVE_ADDREF,"void f()",asMETHOD(CritterCl,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectBehaviour("CritterCl",asBEHAVE_RELEASE,"void f()",asMETHOD(CritterCl,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
+	if(engine->RegisterObjectType("ItemCl",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("ItemCl",asBEHAVE_ADDREF,"void f()",asMETHOD(Item,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("ItemCl",asBEHAVE_RELEASE,"void f()",asMETHOD(Item,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
 	if(engine->RegisterObjectMethod("CritterCl","bool IsChosen() const",asFUNCTION(BIND_CLASS Crit_IsChosen),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","bool IsPlayer() const",asFUNCTION(BIND_CLASS Crit_IsPlayer),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","bool IsNpc() const",asFUNCTION(BIND_CLASS Crit_IsNpc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -908,10 +906,6 @@
 	if(engine->RegisterObjectMethod("CritterCl","void SetVisible(bool visible)",asFUNCTION(BIND_CLASS Crit_SetVisible),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","bool GetVisible() const",asFUNCTION(BIND_CLASS Crit_GetVisible),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	//if(engine->RegisterObjectMethod("CritterCl","bool IsMyTurn() const",asFUNCTION(BIND_CLASS Crit_CheckKey),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	//	if(engine->RegisterObjectMethod("CritterCl","bool MoveToDir(uint8 dir)",asFUNCTION(BIND_CLASS Crit_MoveToDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	//	if(engine->RegisterObjectMethod("CritterCl","bool MoveToHex(uint16 hexX, uint16 hexY)",asFUNCTION(BIND_CLASS Crit_MoveToDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	//	if(engine->RegisterObjectMethod("CritterCl","void Say(uint8 howSay, string& text)",asFUNCTION(BIND_CLASS Crit_Say),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	//	if(engine->RegisterObjectMethod("CritterCl","void SetDir(uint8 dir)",asFUNCTION(BIND_CLASS Crit_SetDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","void set_ContourColor(uint value)",asFUNCTION(BIND_CLASS Crit_set_ContourColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","uint get_ContourColor() const",asFUNCTION(BIND_CLASS Crit_get_ContourColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","uint GetMultihex() const",asFUNCTION(BIND_CLASS Crit_GetMultihex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -935,8 +929,6 @@
 	if(engine->RegisterObjectProperty("CritterCl","DataRef ParamBase",offsetof(CritterCl,ThisPtr[0]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","int[]@ Anim3dLayer",offsetof(CritterCl,Layers3d))<0) BIND_ERROR;
 
-	if(engine->RegisterObjectBehaviour("ItemCl",asBEHAVE_ADDREF,"void f()",asMETHOD(Item,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("ItemCl",asBEHAVE_RELEASE,"void f()",asMETHOD(Item,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","bool IsGrouped() const",asFUNCTION(BIND_CLASS Item_IsGrouped),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","bool IsWeared() const",asFUNCTION(BIND_CLASS Item_IsWeared),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","uint GetScriptId() const",asFUNCTION(BIND_CLASS Item_GetScriptId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -1309,11 +1301,14 @@
 
 #ifdef BIND_MAPPER
 	if(engine->RegisterObjectType("MapperObject",0,asOBJ_REF)<0) BIND_ERROR;
-	if(engine->RegisterObjectType("MapperMap",0,asOBJ_REF)<0) BIND_ERROR;
-
-	// MapperObject
 	if(engine->RegisterObjectBehaviour("MapperObject",asBEHAVE_ADDREF,"void f()",asMETHOD(MapObject,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectBehaviour("MapperObject",asBEHAVE_RELEASE,"void f()",asMETHOD(MapObject,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
+	if(engine->RegisterObjectType("MapperMap",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("MapperMap",asBEHAVE_ADDREF,"void f()",asMETHOD(ProtoMap,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("MapperMap",asBEHAVE_RELEASE,"void f()",asMETHOD(ProtoMap,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
+	// MapperObject
 	if(engine->RegisterObjectMethod("MapperObject","void Update() const",asFUNCTION(BIND_CLASS MapperObject_Update),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","MapperObject@+ AddChild(uint16 pid)",asFUNCTION(BIND_CLASS MapperObject_AddChild),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","uint GetChilds(MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS MapperObject_Update),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -1431,8 +1426,6 @@
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_ToDir",offsetof(MapObject,MScenery.ToDir))<0) BIND_ERROR;
 
 	// MapperMap
-	if(engine->RegisterObjectBehaviour("MapperMap",asBEHAVE_ADDREF,"void f()",asMETHOD(ProtoMap,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectBehaviour("MapperMap",asBEHAVE_RELEASE,"void f()",asMETHOD(ProtoMap,Release),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","MapperObject@+ AddObject(uint16 hexX, uint16 hexY, int mapObjType, uint16 pid)",asFUNCTION(BIND_CLASS MapperMap_AddObject),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","MapperObject@+ GetObject(uint16 hexX, uint16 hexY, int mapObjType, uint16 pid, uint skip) const",asFUNCTION(BIND_CLASS MapperMap_GetObject),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","uint GetObjects(uint16 hexX, uint16 hexY, uint radius, int mapObjType, uint16 pid, MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS MapperMap_GetObjects),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

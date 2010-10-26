@@ -58,7 +58,7 @@ BEGIN_AS_NAMESPACE
 class asCBuilder;
 class asCContext;
 
-// TODO: Remove this when import is removed
+// TODO: import: Remove this when import is removed
 struct sBindInfo;
 
 // TODO: Deprecate CreateScriptObject. Objects should be created by calling the factory function instead.
@@ -79,12 +79,12 @@ class asCScriptEngine : public asIScriptEngine
 //=============================================================
 public:
 	// Memory management
-	virtual int AddRef();
-	virtual int Release();
+	virtual int AddRef() const;
+	virtual int Release() const;
 
 	// Engine properties
 	virtual int     SetEngineProperty(asEEngineProp property, asPWORD value);
-	virtual asPWORD GetEngineProperty(asEEngineProp property);
+	virtual asPWORD GetEngineProperty(asEEngineProp property) const;
 
 	// Compiler messages
 	virtual int SetMessageCallback(const asSFuncPtr &callback, void *obj, asDWORD callConv);
@@ -93,17 +93,17 @@ public:
 
     // JIT Compiler
     virtual int SetJITCompiler(asIJITCompiler *compiler);
-    virtual asIJITCompiler *GetJITCompiler();
+    virtual asIJITCompiler *GetJITCompiler() const;
 
 	// Global functions
 	virtual int RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv);
-	virtual int GetGlobalFunctionCount();
-	virtual int GetGlobalFunctionIdByIndex(asUINT index);
+	virtual int GetGlobalFunctionCount() const;
+	virtual int GetGlobalFunctionIdByIndex(asUINT index) const;
 
 	// Global properties
 	virtual int RegisterGlobalProperty(const char *declaration, void *pointer);
-	virtual int GetGlobalPropertyCount();
-	virtual int GetGlobalPropertyByIndex(asUINT index, const char **name, int *typeId = 0, bool *isConst = 0, const char **configGroup = 0, void **pointer = 0);
+	virtual int GetGlobalPropertyCount() const;
+	virtual int GetGlobalPropertyByIndex(asUINT index, const char **name, int *typeId = 0, bool *isConst = 0, const char **configGroup = 0, void **pointer = 0) const;
 	
 	// Type registration
 	virtual int            RegisterObjectType(const char *obj, int byteSize, asDWORD flags);
@@ -112,30 +112,34 @@ public:
 	virtual int            RegisterObjectBehaviour(const char *obj, asEBehaviours behaviour, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv);
 	virtual int            RegisterInterface(const char *name);
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration);
-	virtual int            GetObjectTypeCount();
-	virtual asIObjectType *GetObjectTypeByIndex(asUINT index);
+	virtual int            GetObjectTypeCount() const;
+	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const;
 	
 	// String factory
 	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv);
-	virtual int GetStringFactoryReturnTypeId();
+	virtual int GetStringFactoryReturnTypeId() const;
+
+	// Default array type
+	virtual int RegisterDefaultArrayType(const char *type);
+	virtual int GetDefaultArrayTypeId() const;
 
 	// Enums
 	virtual int         RegisterEnum(const char *type);
 	virtual int         RegisterEnumValue(const char *type, const char *name, int value);
-	virtual int         GetEnumCount();
-	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **configGroup = 0);
-	virtual int         GetEnumValueCount(int enumTypeId);
-	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue);
+	virtual int         GetEnumCount() const;
+	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **configGroup = 0) const;
+	virtual int         GetEnumValueCount(int enumTypeId) const;
+	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const;
 
 	// Funcdefs
 	virtual int                RegisterFuncdef(const char *decl);
-	virtual int                GetFuncdefCount();
-	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index, const char **configGroup = 0);
+	virtual int                GetFuncdefCount() const;
+	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index, const char **configGroup = 0) const;
 
 	// Typedefs
 	virtual int         RegisterTypedef(const char *type, const char *decl);
-	virtual int         GetTypedefCount();
-	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **configGroup = 0);
+	virtual int         GetTypedefCount() const;
+	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **configGroup = 0) const;
 
 	// Configuration groups
 	virtual int BeginConfigGroup(const char *groupName);
@@ -148,13 +152,13 @@ public:
 	virtual int              DiscardModule(const char *module);
 
 	// Script functions
-	virtual asIScriptFunction *GetFunctionDescriptorById(int funcId);
+	virtual asIScriptFunction *GetFunctionDescriptorById(int funcId) const;
 
 	// Type identification
-	virtual asIObjectType *GetObjectTypeById(int typeId);
-	virtual int            GetTypeIdByDecl(const char *decl);
-	virtual const char    *GetTypeDeclaration(int typeId);
-	virtual int            GetSizeOfPrimitiveType(int typeId);
+	virtual asIObjectType *GetObjectTypeById(int typeId) const;
+	virtual int            GetTypeIdByDecl(const char *decl) const;
+	virtual const char    *GetTypeDeclaration(int typeId) const;
+	virtual int            GetSizeOfPrimitiveType(int typeId) const;
 
 	// Script execution
 	virtual asIScriptContext *CreateContext();
@@ -163,25 +167,23 @@ public:
 	virtual void              CopyScriptObject(void *dstObj, void *srcObj, int typeId);
 	virtual void              ReleaseScriptObject(void *obj, int typeId);
 	virtual void              AddRefScriptObject(void *obj, int typeId);
-	virtual bool              IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId);
+	virtual bool              IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId) const;
 
 	// String interpretation
-	virtual asETokenClass ParseToken(const char *string, size_t stringLength = 0, int *tokenLength = 0);
+	virtual asETokenClass ParseToken(const char *string, size_t stringLength = 0, int *tokenLength = 0) const;
 
 	// Garbage collection
 	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE);
-	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected);
+	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected) const;
 	virtual void NotifyGarbageCollectorOfNewObject(void *obj, int typeId);
 	virtual void GCEnumCallback(void *reference);
 
 	// User data
 	virtual void *SetUserData(void *data);
-	virtual void *GetUserData();
-
-#ifdef AS_DEPRECATED
-	// deprecated since 2009-12-08, 2.18.0
-	virtual int           ExecuteString(const char *module, const char *script, asIScriptContext **ctx, asDWORD flags);
-#endif
+	virtual void *GetUserData() const;
+	virtual void  SetEngineUserDataCleanupCallback(asCLEANENGINEFUNC_t callback);
+	virtual void  SetContextUserDataCleanupCallback(asCLEANCONTEXTFUNC_t callback);
+	virtual void  SetFunctionUserDataCleanupCallback(asCLEANFUNCTIONFUNC_t callback);
 
 //===========================================================
 // internal methods
@@ -205,8 +207,8 @@ public:
 
 	int VerifyVarTypeNotInFunction(asCScriptFunction *func);
 
-	void *CallAlloc(asCObjectType *objType);
-	void  CallFree(void *obj);
+	void *CallAlloc(asCObjectType *objType) const;
+	void  CallFree(void *obj) const;
 	void *CallGlobalFunctionRetPtr(int func);
 	void *CallGlobalFunctionRetPtr(int func, void *param1);
 	void *CallGlobalFunctionRetPtr(asSSystemFunctionInterface *func, asCScriptFunction *desc);
@@ -224,10 +226,10 @@ public:
 	void RemoveTemplateInstanceType(asCObjectType *t);
 	void RemoveTypeAndRelatedFromList(asCArray<asCObjectType*> &types, asCObjectType *ot);
 
-	asCConfigGroup *FindConfigGroupForFunction(int funcId);
-	asCConfigGroup *FindConfigGroupForGlobalVar(int gvarId);
-	asCConfigGroup *FindConfigGroupForObjectType(const asCObjectType *type);
-	asCConfigGroup *FindConfigGroupForFuncDef(asCScriptFunction *funcDef);
+	asCConfigGroup *FindConfigGroupForFunction(int funcId) const;
+	asCConfigGroup *FindConfigGroupForGlobalVar(int gvarId) const;
+	asCConfigGroup *FindConfigGroupForObjectType(const asCObjectType *type) const;
+	asCConfigGroup *FindConfigGroupForFuncDef(asCScriptFunction *funcDef) const;
 
 	int  RequestBuild();
 	void BuildCompleted();
@@ -243,7 +245,7 @@ public:
 
 	asCString GetFunctionDeclaration(int funcID);
 
-	asCScriptFunction *GetScriptFunction(int funcID);
+	asCScriptFunction *GetScriptFunction(int funcID) const;
 
 	asCModule *GetModule(const char *name, bool create);
 	asCModule *GetModuleFromFuncId(int funcId);
@@ -257,12 +259,12 @@ public:
 
 	int ConfigError(int err);
 
-	int                GetTypeIdFromDataType(const asCDataType &dt);
-	const asCDataType *GetDataTypeFromTypeId(int typeId);
-	asCObjectType     *GetObjectTypeFromTypeId(int typeId);
+	int                GetTypeIdFromDataType(const asCDataType &dt) const;
+	const asCDataType *GetDataTypeFromTypeId(int typeId) const;
+	asCObjectType     *GetObjectTypeFromTypeId(int typeId) const;
 	void               RemoveFromTypeIdMap(asCObjectType *type);
 
-	bool               IsTemplateType(const char *name);
+	bool               IsTemplateType(const char *name) const;
 	asCObjectType     *GetTemplateInstanceType(asCObjectType *templateType, asCDataType &subType);
 	asCScriptFunction *GenerateTemplateFactoryStub(asCObjectType *templateType, asCObjectType *templateInstanceType, int origFactoryId);
 	bool               GenerateNewTemplateFunction(asCObjectType *templateType, asCObjectType *templateInstanceType, asCDataType &subType, asCScriptFunction *templateFunc, asCScriptFunction **newFunc);
@@ -322,7 +324,7 @@ public:
 	asCArray<sBindInfo *>  importedFunctions;
 
 	// These resources must be protected for multiple accesses
-	asCAtomic              refCount;
+	mutable asCAtomic      refCount;
 	asCArray<asCModule *>  scriptModules;
 	asCModule             *lastModule;
 	bool                   isBuilding;
@@ -338,8 +340,8 @@ public:
 	asCArray<asCString *> scriptSectionNames;
 
 	// Type identifiers
-	int                       typeIdSeqNbr;
-	asCMap<int, asCDataType*> mapTypeIdToDataType;
+	mutable int                       typeIdSeqNbr;
+	mutable asCMap<int, asCDataType*> mapTypeIdToDataType;
 
 	// Garbage collector
 	asCGarbageCollector gc;
@@ -360,7 +362,10 @@ public:
 	asCArray<asCString*>        stringConstants;
 
 	// User data
-	void *userData;
+	void                  *userData;
+	asCLEANENGINEFUNC_t    cleanEngineFunc;
+	asCLEANCONTEXTFUNC_t   cleanContextFunc;
+	asCLEANFUNCTIONFUNC_t  cleanFunctionFunc;
 
 	// Critical sections for threads
 	DECLARECRITICALSECTION(engineCritical);
@@ -382,6 +387,7 @@ public:
 		bool includeJitInstructions;
 		int  stringEncoding;
 		int  propertyAccessorMode;
+		bool expandDefaultArrayToTemplate;
 	} ep;
 };
 

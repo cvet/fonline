@@ -76,7 +76,7 @@ asCModule::~asCModule()
 }
 
 // interface
-asIScriptEngine *asCModule::GetEngine()
+asIScriptEngine *asCModule::GetEngine() const
 {
 	return engine;
 }
@@ -88,7 +88,7 @@ void asCModule::SetName(const char *name)
 }
 
 // interface
-const char *asCModule::GetName()
+const char *asCModule::GetName() const
 {
 	return name.AddressOf();
 }
@@ -177,7 +177,7 @@ int asCModule::ResetGlobalVars()
 }
 
 // interface
-int asCModule::GetFunctionIdByIndex(int index)
+int asCModule::GetFunctionIdByIndex(int index) const
 {
 	if( index < 0 || index >= (int)globalFunctions.GetLength() )
 		return asNO_FUNCTION;
@@ -276,20 +276,23 @@ void asCModule::CallExit()
 	{
 		if( scriptGlobals[n]->type.IsObject() )
 		{
-			void *obj = *(void**)scriptGlobals[n]->GetAddressOfValue();
-			if( obj )
+			void **obj = (void**)scriptGlobals[n]->GetAddressOfValue();
+			if( *obj )
 			{
 				asCObjectType *ot = scriptGlobals[n]->type.GetObjectType();
 
 				if( ot->beh.release )
-					engine->CallObjectMethod(obj, ot->beh.release);
+					engine->CallObjectMethod(*obj, ot->beh.release);
 				else
 				{
 					if( ot->beh.destruct )
-						engine->CallObjectMethod(obj, ot->beh.destruct);
+						engine->CallObjectMethod(*obj, ot->beh.destruct);
 
-					engine->CallFree(obj);
+					engine->CallFree(*obj);
 				}
+
+				// Set the address to 0 as someone might try to access the variable afterwards
+				*obj = 0;
 			}
 		}
 	}
@@ -363,7 +366,7 @@ void asCModule::InternalReset()
 }
 
 // interface
-int asCModule::GetFunctionIdByName(const char *name)
+int asCModule::GetFunctionIdByName(const char *name) const
 {
 	// TODO: optimize: Improve linear search
 	// Find the function id
@@ -385,17 +388,17 @@ int asCModule::GetFunctionIdByName(const char *name)
 }
 
 // interface
-int asCModule::GetImportedFunctionCount()
+int asCModule::GetImportedFunctionCount() const
 {
 	return (int)bindInformations.GetLength();
 }
 
 // interface
-int asCModule::GetImportedFunctionIndexByDecl(const char *decl)
+int asCModule::GetImportedFunctionIndexByDecl(const char *decl) const
 {
-	asCBuilder bld(engine, this);
+	asCBuilder bld(engine, const_cast<asCModule*>(this));
 
-	asCScriptFunction func(engine, this, -1);
+	asCScriptFunction func(engine, const_cast<asCModule*>(this), asFUNC_DUMMY);
 	bld.ParseFunctionDeclaration(0, decl, &func, false);
 
 	// TODO: optimize: Improve linear search
@@ -433,17 +436,17 @@ int asCModule::GetImportedFunctionIndexByDecl(const char *decl)
 }
 
 // interface
-int asCModule::GetFunctionCount()
+int asCModule::GetFunctionCount() const
 {
 	return (int)globalFunctions.GetLength();
 }
 
 // interface
-int asCModule::GetFunctionIdByDecl(const char *decl)
+int asCModule::GetFunctionIdByDecl(const char *decl) const
 {
-	asCBuilder bld(engine, this);
+	asCBuilder bld(engine, const_cast<asCModule*>(this));
 
-	asCScriptFunction func(engine, this, -1);
+	asCScriptFunction func(engine, const_cast<asCModule*>(this), asFUNC_DUMMY);
 	int r = bld.ParseFunctionDeclaration(0, decl, &func, false);
 	if( r < 0 )
 		return asINVALID_DECLARATION;
@@ -484,13 +487,13 @@ int asCModule::GetFunctionIdByDecl(const char *decl)
 }
 
 // interface
-int asCModule::GetGlobalVarCount()
+int asCModule::GetGlobalVarCount() const
 {
 	return (int)scriptGlobals.GetLength();
 }
 
 // interface
-int asCModule::GetGlobalVarIndexByName(const char *name)
+int asCModule::GetGlobalVarIndexByName(const char *name) const
 {
 	// Find the global var id
 	int id = -1;
@@ -509,9 +512,9 @@ int asCModule::GetGlobalVarIndexByName(const char *name)
 }
 
 // interface
-int asCModule::RemoveGlobalVar(int index)
+int asCModule::RemoveGlobalVar(asUINT index)
 {
-	if( index < 0 || index >= (int)scriptGlobals.GetLength() )
+	if( index >= scriptGlobals.GetLength() )
 		return asINVALID_ARG;
 
 	scriptGlobals[index]->Release();
@@ -521,7 +524,7 @@ int asCModule::RemoveGlobalVar(int index)
 }
 
 // interface
-asIScriptFunction *asCModule::GetFunctionDescriptorByIndex(int index)
+asIScriptFunction *asCModule::GetFunctionDescriptorByIndex(int index) const
 {
 	if( index < 0 || index >= (int)globalFunctions.GetLength() )
 		return 0;
@@ -530,15 +533,15 @@ asIScriptFunction *asCModule::GetFunctionDescriptorByIndex(int index)
 }
 
 // interface
-asIScriptFunction *asCModule::GetFunctionDescriptorById(int funcId)
+asIScriptFunction *asCModule::GetFunctionDescriptorById(int funcId) const
 {
 	return engine->GetFunctionDescriptorById(funcId);
 }
 
 // interface
-int asCModule::GetGlobalVarIndexByDecl(const char *decl)
+int asCModule::GetGlobalVarIndexByDecl(const char *decl) const
 {
-	asCBuilder bld(engine, this);
+	asCBuilder bld(engine, const_cast<asCModule*>(this));
 
 	asCObjectProperty gvar;
 	bld.ParseVariableDeclaration(decl, &gvar);
@@ -562,9 +565,9 @@ int asCModule::GetGlobalVarIndexByDecl(const char *decl)
 }
 
 // interface
-void *asCModule::GetAddressOfGlobalVar(int index)
+void *asCModule::GetAddressOfGlobalVar(asUINT index)
 {
-	if( index < 0 || index >= (int)scriptGlobals.GetLength() )
+	if( index >= scriptGlobals.GetLength() )
 		return 0;
 
 	// TODO: value types shouldn't need dereferencing
@@ -576,9 +579,9 @@ void *asCModule::GetAddressOfGlobalVar(int index)
 }
 
 // interface
-const char *asCModule::GetGlobalVarDeclaration(int index)
+const char *asCModule::GetGlobalVarDeclaration(asUINT index) const
 {
-	if( index < 0 || index >= (int)scriptGlobals.GetLength() )
+	if( index >= scriptGlobals.GetLength() )
 		return 0;
 
 	asCGlobalProperty *prop = scriptGlobals[index];
@@ -592,7 +595,28 @@ const char *asCModule::GetGlobalVarDeclaration(int index)
 }
 
 // interface
-const char *asCModule::GetGlobalVarName(int index)
+int asCModule::GetGlobalVar(asUINT index, const char **name, int *typeId, bool *isConst) const
+{
+	if( index >= scriptGlobals.GetLength() )
+		return asINVALID_ARG;
+
+	asCGlobalProperty *prop = scriptGlobals[index];
+
+	if( name )
+		*name = prop->name.AddressOf();
+	if( typeId )
+		*typeId = engine->GetTypeIdFromDataType(prop->type);
+	if( isConst )
+		*isConst = prop->type.IsReadOnly();
+
+	return asSUCCESS;
+}
+
+
+#ifdef AS_DEPRECATED
+// Since 2.20.0
+// interface
+const char *asCModule::GetGlobalVarName(int index) const
 {
 	if( index < 0 || index >= (int)scriptGlobals.GetLength() )
 		return 0;
@@ -602,7 +626,7 @@ const char *asCModule::GetGlobalVarName(int index)
 
 // interface
 // TODO: If the typeId ever encodes the const flag, then the isConst parameter should be removed
-int asCModule::GetGlobalVarTypeId(int index, bool *isConst)
+int asCModule::GetGlobalVarTypeId(int index, bool *isConst) const
 {
 	if( index < 0 || index >= (int)scriptGlobals.GetLength() )
 		return asINVALID_ARG;
@@ -612,15 +636,16 @@ int asCModule::GetGlobalVarTypeId(int index, bool *isConst)
 
 	return engine->GetTypeIdFromDataType(scriptGlobals[index]->type);
 }
+#endif
 
 // interface
-int asCModule::GetObjectTypeCount()
+int asCModule::GetObjectTypeCount() const
 {
 	return (int)classTypes.GetLength();
 }
 
 // interface 
-asIObjectType *asCModule::GetObjectTypeByIndex(asUINT index)
+asIObjectType *asCModule::GetObjectTypeByIndex(asUINT index) const
 {
 	if( index >= classTypes.GetLength() ) 
 		return 0;
@@ -629,10 +654,10 @@ asIObjectType *asCModule::GetObjectTypeByIndex(asUINT index)
 }
 
 // interface
-int asCModule::GetTypeIdByDecl(const char *decl)
+int asCModule::GetTypeIdByDecl(const char *decl) const
 {
 	asCDataType dt;
-	asCBuilder bld(engine, this);
+	asCBuilder bld(engine, const_cast<asCModule*>(this));
 	int r = bld.ParseDataType(decl, &dt);
 	if( r < 0 )
 		return asINVALID_TYPE;
@@ -641,13 +666,13 @@ int asCModule::GetTypeIdByDecl(const char *decl)
 }
 
 // interface
-int asCModule::GetEnumCount()
+int asCModule::GetEnumCount() const
 {
 	return (int)enumTypes.GetLength();
 }
 
 // interface
-const char *asCModule::GetEnumByIndex(asUINT index, int *enumTypeId)
+const char *asCModule::GetEnumByIndex(asUINT index, int *enumTypeId) const
 {
 	if( index >= enumTypes.GetLength() )
 		return 0;
@@ -659,7 +684,7 @@ const char *asCModule::GetEnumByIndex(asUINT index, int *enumTypeId)
 }
 
 // interface
-int asCModule::GetEnumValueCount(int enumTypeId)
+int asCModule::GetEnumValueCount(int enumTypeId) const
 {
 	const asCDataType *dt = engine->GetDataTypeFromTypeId(enumTypeId);
 	asCObjectType *t = dt->GetObjectType();
@@ -670,7 +695,7 @@ int asCModule::GetEnumValueCount(int enumTypeId)
 }
 
 // interface
-const char *asCModule::GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue)
+const char *asCModule::GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const
 {
 	const asCDataType *dt = engine->GetDataTypeFromTypeId(enumTypeId);
 	asCObjectType *t = dt->GetObjectType();
@@ -687,13 +712,13 @@ const char *asCModule::GetEnumValueByIndex(int enumTypeId, asUINT index, int *ou
 }
 
 // interface
-int asCModule::GetTypedefCount()
+int asCModule::GetTypedefCount() const
 {
 	return (int)typeDefs.GetLength();
 }
 
 // interface
-const char *asCModule::GetTypedefByIndex(asUINT index, int *typeId)
+const char *asCModule::GetTypedefByIndex(asUINT index, int *typeId) const
 {
 	if( index >= typeDefs.GetLength() )
 		return 0;
@@ -792,7 +817,7 @@ int asCModule::AddImportedFunction(int id, const char *name, const asCDataType &
 }
 
 // internal
-asCScriptFunction *asCModule::GetImportedFunction(int index)
+asCScriptFunction *asCModule::GetImportedFunction(int index) const
 {
 	return bindInformations[index]->importedFunctionSignature;
 }
@@ -849,7 +874,7 @@ int asCModule::UnbindImportedFunction(int index)
 }
 
 // interface
-const char *asCModule::GetImportedFunctionDeclaration(int index)
+const char *asCModule::GetImportedFunctionDeclaration(int index) const
 {
 	asCScriptFunction *func = GetImportedFunction(index);
 	if( func == 0 ) return 0;
@@ -862,7 +887,7 @@ const char *asCModule::GetImportedFunctionDeclaration(int index)
 }
 
 // interface
-const char *asCModule::GetImportedFunctionSourceModule(int index)
+const char *asCModule::GetImportedFunctionSourceModule(int index) const
 {
 	if( index >= (int)bindInformations.GetLength() )
 		return 0;
@@ -1247,11 +1272,11 @@ bool asCModule::AreTypesEqual(const asCDataType &a, const asCDataType &b, asCArr
 }
 
 // interface
-int asCModule::SaveByteCode(asIBinaryStream *out)
+int asCModule::SaveByteCode(asIBinaryStream *out) const
 {
 	if( out == 0 ) return asINVALID_ARG;
 
-	asCRestore rest(this, out, engine);
+	asCRestore rest(const_cast<asCModule*>(this), out, engine);
 	return rest.Save();
 }
 

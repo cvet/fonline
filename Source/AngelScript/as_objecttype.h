@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2010 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -139,8 +139,8 @@ public:
 	const char      *GetConfigGroup() const;
 
 	// Memory management
-	int AddRef();
-	int Release();
+	int AddRef() const;
+	int Release() const;
 
 	// Type info
 	const char      *GetName() const;
@@ -149,10 +149,6 @@ public:
 	asUINT           GetSize() const;
 	int              GetTypeId() const;
 	int              GetSubTypeId() const;
-
-	// Behaviours
-	int GetBehaviourCount() const;
-	int GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const;
 
 	// Interfaces
 	int              GetInterfaceCount() const;
@@ -165,16 +161,27 @@ public:
 
 	// Methods
 	int                GetMethodCount() const;
-	int                GetMethodIdByIndex(int index) const;
-	int                GetMethodIdByName(const char *name) const;
-	int                GetMethodIdByDecl(const char *decl) const;
-	asIScriptFunction *GetMethodDescriptorByIndex(int index) const;
+	int                GetMethodIdByIndex(int index, bool getVirtual) const;
+	int                GetMethodIdByName(const char *name, bool getVirtual) const;
+	int                GetMethodIdByDecl(const char *decl, bool getVirtual) const;
+	asIScriptFunction *GetMethodDescriptorByIndex(int index, bool getVirtual) const;
 
 	// Properties
 	int         GetPropertyCount() const;
+	int         GetProperty(asUINT index, const char **name, int *typeId, bool *isPrivate, int *offset) const;
+	const char *GetPropertyDeclaration(asUINT index) const;
+
+	// Behaviours
+	int GetBehaviourCount() const;
+	int GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const;
+
+#ifdef AS_DEPRECATED
+	// Since 2.20.0
 	int         GetPropertyTypeId(asUINT prop) const;
 	const char *GetPropertyName(asUINT prop) const;
+	bool        IsPropertyPrivate(asUINT prop) const;
 	int         GetPropertyOffset(asUINT prop) const;
+#endif
 
 //===========================================
 // Internal
@@ -219,8 +226,8 @@ public:
 	asCScriptEngine *engine;
 
 protected:
-	asCAtomic refCount;
-	bool      gcFlag;
+	mutable asCAtomic refCount;
+	mutable bool      gcFlag;
 };
 
 END_AS_NAMESPACE
