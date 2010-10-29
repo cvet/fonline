@@ -4171,7 +4171,7 @@ bool FOServer::SScriptFunc::Global_SetAnyData(CScriptString& name, CScriptArray&
 {
 	if(!name.length()) SCRIPT_ERROR_R0("Name arg length is zero.");
 	DWORD data_size_bytes=data.GetSize()*data.GetElementSize();
-	return SetAnyData(name.c_std_str(),(BYTE*)data.At(0),data_size_bytes);
+	return SetAnyData(name.c_std_str(),data_size_bytes?(BYTE*)data.At(0):NULL,data_size_bytes);
 }
 
 bool FOServer::SScriptFunc::Global_SetAnyDataSize(CScriptString& name, CScriptArray& data, DWORD data_size)
