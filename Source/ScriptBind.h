@@ -6,11 +6,9 @@
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)
 	// Reference value
 	if(engine->RegisterObjectType("DataRef",0,asOBJ_REF|asOBJ_NOHANDLE)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("DataRef","const int& opIndex(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 #ifdef BIND_SERVER
 	if(engine->RegisterObjectMethod("DataRef","int& opIndex(uint)",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("DataRef","const int& opIndex(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-#else
-	if(engine->RegisterObjectMethod("DataRef","const int& opIndex(uint) const",asFUNCTION(BIND_CLASS DataRef_Index),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 #endif
 	// Computed value
 	if(engine->RegisterObjectType("DataVal",0,asOBJ_REF|asOBJ_NOHANDLE)<0) BIND_ERROR;

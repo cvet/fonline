@@ -9218,7 +9218,7 @@ void SortCritterByDist(int hx, int hy, CritVec& critters)
 #define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return 0;}while(0)
 static string ScriptLastError;
 
-int FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
+int* FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr.");
 	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
@@ -9226,7 +9226,7 @@ int FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
 	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
 	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greather than maximum.");
-	return cr->Params[index];
+	return &cr->Params[index];
 }
 
 int FOClient::SScriptFunc::DataVal_Index(CritterClPtr& cr, DWORD index)

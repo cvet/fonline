@@ -422,7 +422,7 @@ public:
 
 	struct SScriptFunc
 	{
-		static int DataRef_Index(CritterClPtr& cr, DWORD index);
+		static int* DataRef_Index(CritterClPtr& cr, DWORD index);
 		static int DataVal_Index(CritterClPtr& cr, DWORD index);
 
 		static bool Crit_IsChosen(CritterCl* cr);
