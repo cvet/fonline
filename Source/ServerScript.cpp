@@ -490,7 +490,7 @@ int* FOServer::SScriptFunc::DataRef_Index(CritterPtr& cr, DWORD index)
 	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(Critter::ParametersOffset[data_index]) index+=Critter::ParametersMin[data_index];
 	if(index<Critter::ParametersMin[data_index]) SCRIPT_ERROR_RX("Index is less than minimum.",&dummy);
-	if(index>Critter::ParametersMax[data_index]) SCRIPT_ERROR_RX("Index is greather than maximum.",&dummy);
+	if(index>Critter::ParametersMax[data_index]) SCRIPT_ERROR_RX("Index is greater than maximum.",&dummy);
 	cr->ChangeParam(index);
 	return &cr->Data.Params[index];
 }
@@ -502,7 +502,7 @@ int FOServer::SScriptFunc::DataVal_Index(CritterPtr& cr, DWORD index)
 	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(Critter::ParametersOffset[data_index]) index+=Critter::ParametersMin[data_index];
 	if(index<Critter::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
-	if(index>Critter::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greather than maximum.");
+	if(index>Critter::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greater than maximum.");
 	return cr->GetParam(index);
 }
 
@@ -3909,7 +3909,7 @@ void FOServer::SScriptFunc::Global_MoveItemCr(Item* item, DWORD count, Critter* 
 	if(item->IsNotValid) SCRIPT_ERROR_R("Item arg nullptr.");
 	if(to_cr->IsNotValid) SCRIPT_ERROR_R("Critter arg nullptr.");
 	if(!count) count=item->GetCount();
-	if(count>item->GetCount()) SCRIPT_ERROR_R("Count arg is greather than maximum.");
+	if(count>item->GetCount()) SCRIPT_ERROR_R("Count arg is greater than maximum.");
 	ItemMngr.MoveItem(item,count,to_cr);
 }
 
@@ -3919,7 +3919,7 @@ void FOServer::SScriptFunc::Global_MoveItemMap(Item* item, DWORD count, Map* to_
 	if(to_map->IsNotValid) SCRIPT_ERROR_R("Container arg nullptr.");
 	if(to_hx>=to_map->GetMaxHexX() || to_hy>=to_map->GetMaxHexY()) SCRIPT_ERROR_R("Invalid hexex args.");
 	if(!count) count=item->GetCount();
-	if(count>item->GetCount()) SCRIPT_ERROR_R("Count arg is greather than maximum.");
+	if(count>item->GetCount()) SCRIPT_ERROR_R("Count arg is greater than maximum.");
 	ItemMngr.MoveItem(item,count,to_map,to_hx,to_hy);
 }
 
@@ -3929,7 +3929,7 @@ void FOServer::SScriptFunc::Global_MoveItemCont(Item* item, DWORD count, Item* t
 	if(to_cont->IsNotValid) SCRIPT_ERROR_R("Container arg nullptr.");
 	if(!to_cont->IsContainer()) SCRIPT_ERROR_R("Container arg is not container type.");
 	if(!count) count=item->GetCount();
-	if(count>item->GetCount()) SCRIPT_ERROR_R("Count arg is greather than maximum.");
+	if(count>item->GetCount()) SCRIPT_ERROR_R("Count arg is greater than maximum.");
 	ItemMngr.MoveItem(item,count,to_cont,stack_id);
 }
 

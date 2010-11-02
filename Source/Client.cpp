@@ -9220,12 +9220,13 @@ static string ScriptLastError;
 
 int* FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
 {
-	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr.");
-	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
+	static int dummy=0;
+	if(cr->IsNotValid) SCRIPT_ERROR_RX("This nulltptr.",&dummy);
+	if(index>=MAX_PARAMS) SCRIPT_ERROR_RX("Invalid index arg.",&dummy);
 	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
-	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
-	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greather than maximum.");
+	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_RX("Index is less than minimum.",&dummy);
+	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_RX("Index is greater than maximum.",&dummy);
 	return &cr->Params[index];
 }
 
@@ -9236,7 +9237,7 @@ int FOClient::SScriptFunc::DataVal_Index(CritterClPtr& cr, DWORD index)
 	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
 	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
-	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greather than maximum.");
+	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greater than maximum.");
 	return cr->GetParam(index);
 }
 
