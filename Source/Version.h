@@ -7,7 +7,7 @@
 
 #define MAPPER_VERSION_STR           "v.1.23.13"
 #define DIALOG_EDITOR_VERSION_STR    "v.2.18.2"
-#define OBJECT_EDITOR_VERSION_STR    "v.2.14.0"
+#define OBJECT_EDITOR_VERSION_STR    "v.2.14.1"
 
 #define CLIENT_SCRIPT_BINARY_VERSION (6)
 

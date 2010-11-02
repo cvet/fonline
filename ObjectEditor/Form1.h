@@ -5706,7 +5706,7 @@ void ShowObject(ProtoItem* proto)
 
 		// 1
 		nWeapPAskill->Value=(UINT)proto->Weapon.Skill[0];
-		cmbWeapPAtypeattack->SelectedIndex=(UINT)proto->Weapon.DmgType[0]-1;
+		cmbWeapPAtypeattack->SelectedIndex=(INT)proto->Weapon.DmgType[0]-1;
 		txtWeapPApic->Text=ToClrString(proto->WeaponPicStr[0]);
 		nWeapPAdmgmin->Value=(UINT)proto->Weapon.DmgMin[0];
 		nWeapPAdmgmax->Value=(UINT)proto->Weapon.DmgMax[0];
@@ -5721,7 +5721,7 @@ void ShowObject(ProtoItem* proto)
 
 		// 2
 		nWeapSAskill->Value=(UINT)proto->Weapon.Skill[1];
-		cmbWeapSAtypeattack->SelectedIndex=(UINT)proto->Weapon.DmgType[1]-1;
+		cmbWeapSAtypeattack->SelectedIndex=(INT)proto->Weapon.DmgType[1]-1;
 		txtWeapSApic->Text=ToClrString(proto->WeaponPicStr[1]);
 		nWeapSAdmgmin->Value=(UINT)proto->Weapon.DmgMin[1];
 		nWeapSAdmgmax->Value=(UINT)proto->Weapon.DmgMax[1];
@@ -5736,7 +5736,7 @@ void ShowObject(ProtoItem* proto)
 
 		// 3
 		nWeapTAskill->Value=(UINT)proto->Weapon.Skill[2];
-		cmbWeapTAtypeattack->SelectedIndex=(UINT)proto->Weapon.DmgType[2]-1;
+		cmbWeapTAtypeattack->SelectedIndex=(INT)proto->Weapon.DmgType[2]-1;
 		txtWeapTApic->Text=ToClrString(proto->WeaponPicStr[2]);
 		nWeapTAdmgmin->Value=(UINT)proto->Weapon.DmgMin[2];
 		nWeapTAdmgmax->Value=(UINT)proto->Weapon.DmgMax[2];
@@ -6028,7 +6028,7 @@ ProtoItem* CompileObject()
 
 		// 1
 		proto->Weapon.Skill[0]=(BYTE)nWeapPAskill->Value;
-		proto->Weapon.DmgType[0]=(BYTE)cmbWeapPAtypeattack->SelectedIndex+1;
+		proto->Weapon.DmgType[0]=(INT)cmbWeapPAtypeattack->SelectedIndex+1;
 		proto->WeaponPicStr[0]=ToAnsi(txtWeapPApic->Text);
 		proto->Weapon.DmgMin[0]=(WORD)nWeapPAdmgmin->Value;
 		proto->Weapon.DmgMax[0]=(WORD)nWeapPAdmgmax->Value;
@@ -6043,7 +6043,7 @@ ProtoItem* CompileObject()
 
 		// 2
 		proto->Weapon.Skill[1]=(BYTE)nWeapSAskill->Value;
-		proto->Weapon.DmgType[1]=(BYTE)cmbWeapSAtypeattack->SelectedIndex+1;
+		proto->Weapon.DmgType[1]=(INT)cmbWeapSAtypeattack->SelectedIndex+1;
 		proto->WeaponPicStr[1]=ToAnsi(txtWeapSApic->Text);
 		proto->Weapon.DmgMin[1]=(WORD)nWeapSAdmgmin->Value;
 		proto->Weapon.DmgMax[1]=(WORD)nWeapSAdmgmax->Value;
@@ -6058,7 +6058,7 @@ ProtoItem* CompileObject()
 
 		// 3
 		proto->Weapon.Skill[2]=(BYTE)nWeapTAskill->Value;
-		proto->Weapon.DmgType[2]=(BYTE)cmbWeapTAtypeattack->SelectedIndex+1;
+		proto->Weapon.DmgType[2]=(INT)cmbWeapTAtypeattack->SelectedIndex+1;
 		proto->WeaponPicStr[2]=ToAnsi(txtWeapTApic->Text);
 		proto->Weapon.DmgMin[2]=(WORD)nWeapTAdmgmin->Value;
 		proto->Weapon.DmgMax[2]=(WORD)nWeapTAdmgmax->Value;
