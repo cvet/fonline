@@ -40,6 +40,7 @@ private:
 	DwordStrMap namesHash;
 	LoadedAnimMap loadedAnims;
 	AnimMap critterFrames;
+	Animation3dVec critter3d;
 	StrVec splashNames;
 	StrMap soundNames;
 
@@ -67,7 +68,9 @@ public:
 	AnyFrames* GetIfaceAnim(DWORD name_hash);
 	AnyFrames* GetInvAnim(DWORD name_hash);
 
-	AnyFrames* GetCritAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
+	AnyFrames* GetCrit2dAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
+	Animation3d* GetCrit3dAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
+	DWORD GetCritSprId(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
 
 	DWORD GetAvatarSprId(const char* fname);
 	DWORD GetRandomSplash();

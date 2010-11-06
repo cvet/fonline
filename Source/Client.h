@@ -576,6 +576,8 @@ public:
 		static void Global_WaitPing();
 		static bool Global_LoadFont(int font, CScriptString& font_fname);
 		static void Global_SetDefaultFont(int font, DWORD color);
+		static void Global_SetEffect(int effect_type, int effect_subtype, CScriptString* effect_name);
+		static void Global_RefreshMap(bool only_tiles, bool only_roof, bool only_light);
 	} ScriptFunc;
 
 	static bool SpritesCanDraw;

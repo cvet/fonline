@@ -38,10 +38,6 @@ bool Terrain::Draw(LPDIRECT3DSURFACE surf_rt, LPDIRECT3DSURFACE surf_ds, float x
 	IDirect3DVertexBuffer9* stream_data;
 	UINT stream_offset,stream_stride;
 	D3D_HR(d3dDevice->GetStreamSource(0,&stream_data,&stream_offset,&stream_stride));
-	DWORD fvf;
-	D3D_HR(d3dDevice->GetFVF(&fvf));
-	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_LINEAR));
-	D3D_HR(d3dDevice->SetSamplerState(1,D3DSAMP_MIPFILTER,D3DTEXF_LINEAR));
 
 	// Get proj/view matrices
 	D3DVIEWPORT9 vp;
@@ -67,9 +63,6 @@ bool Terrain::Draw(LPDIRECT3DSURFACE surf_rt, LPDIRECT3DSURFACE surf_ds, float x
 	D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
 	D3D_HR(d3dDevice->SetSamplerState(1,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
 	D3D_HR(d3dDevice->SetStreamSource(0,stream_data,stream_offset,stream_stride));
-	D3D_HR(d3dDevice->SetVertexShader(NULL));
-	D3D_HR(d3dDevice->SetPixelShader(NULL));
-	D3D_HR(d3dDevice->SetFVF(fvf));
 	D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
 	D3D_HR(d3dDevice->SetDepthStencilSurface(old_ds));
 	old_rt->Release();

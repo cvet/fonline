@@ -1,75 +1,84 @@
 #ifndef __MESH_STRUCTURES__
 #define __MESH_STRUCTURES__
 
+struct TextureEx
+{
+	const char* Name;
+	IDirect3DTexture9* Texture;
+};
+
 struct EffectEx
 {
+	const char* Name;
 	ID3DXEffect* Effect;
+	DWORD EffectFlags;
 	D3DXHANDLE EffectParams;
-	D3DXHANDLE TechniqueSkin;
-	D3DXHANDLE TechniqueSkinWithShadow;
+	D3DXHANDLE TechniqueSkinned;
+	D3DXHANDLE TechniqueSkinnedWithShadow;
 	D3DXHANDLE TechniqueSimple;
 	D3DXHANDLE TechniqueSimpleWithShadow;
-	D3DXHANDLE NumBones;
-	D3DXHANDLE GroundPos;
+	D3DXHANDLE BonesInfluences;
+	D3DXHANDLE GroundPosition;
 	D3DXHANDLE LightDir;
 	D3DXHANDLE LightDiffuse;
 	D3DXHANDLE MaterialAmbient;
 	D3DXHANDLE MaterialDiffuse;
 	D3DXHANDLE WorldMatrices;
-	D3DXHANDLE ProjMatrix;
+	D3DXHANDLE ProjectionMatrix;
 
-	EffectEx(ID3DXEffect* effect)
-	{
-		Effect=effect;
-		EffectParams=NULL;
-		TechniqueSkin=Effect->GetTechniqueByName("Skin");
-		TechniqueSkinWithShadow=Effect->GetTechniqueByName("SkinWithShadow");
-		TechniqueSimple=Effect->GetTechniqueByName("Simple");
-		TechniqueSimpleWithShadow=Effect->GetTechniqueByName("SimpleWithShadow");
-		NumBones=Effect->GetParameterByName(NULL,"NumBones");
-		GroundPos=Effect->GetParameterByName(NULL,"GroundPos");
-		LightDir=Effect->GetParameterByName(NULL,"LightDir");
-		LightDiffuse=Effect->GetParameterByName(NULL,"LightDiffuse");
-		MaterialAmbient=Effect->GetParameterByName(NULL,"MaterialAmbient");
-		MaterialDiffuse=Effect->GetParameterByName(NULL,"MaterialDiffuse");
-		WorldMatrices=Effect->GetParameterByName(NULL,"WorldMatrices");
-		ProjMatrix=Effect->GetParameterByName(NULL,"ProjMatrix");
-	}
-
-	~EffectEx()
-	{
-		if(Effect)
-		{
-			if(EffectParams) Effect->DeleteParameterBlock(EffectParams);
-			Effect->Release();
-		}
-	}
+	// Automatic variables
+	bool IsNeedProcess;
+	D3DXHANDLE PassIndex;
+	bool IsTime;
+	D3DXHANDLE Time;
+	float TimeCurrent;
+	double TimeLastTick;
+	D3DXHANDLE TimeGame;
+	float TimeGameCurrent;
+	double TimeGameLastTick;
+	bool IsRandomPass;
+	D3DXHANDLE Random1Pass;
+	D3DXHANDLE Random2Pass;
+	D3DXHANDLE Random3Pass;
+	D3DXHANDLE Random4Pass;
+	bool IsRandomEffect;
+	D3DXHANDLE Random1Effect;
+	D3DXHANDLE Random2Effect;
+	D3DXHANDLE Random3Effect;
+	D3DXHANDLE Random4Effect;
 };
 
 struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER
 {
-	// The base D3DXMESHCONTAINER has a pMaterials member which is a D3DXMATERIAL structure 
-	// that contains a texture filename and material data. It is easier to ignore this and 
-	// instead store the data in arrays of textures and materials in this extended structure:
-	char**               exTexturesNames;
-	D3DMATERIAL9*		 exMaterials;		    // Array of materials
-	// Skinned mesh variables
-	ID3DXMesh*           exSkinMesh;			// The skin mesh
-	D3DXMATRIX*			 exBoneOffsets;			// The bone matrix Offsets, one per bone
-	D3DXMATRIX**		 exFrameCombinedMatrixPointer;	// Array of frame matrix pointers
-	// Used for indexed shader skinning
-	ID3DXMesh*           exSkinMeshBlended;     // The blended skin mesh
-	ID3DXBuffer*         exBoneCombinationBuf;
-	DWORD                exNumAttributeGroups;
-	DWORD                exNumPaletteEntries;
-	DWORD                exNumInfl;
+	// Material
+	char**              exTexturesNames;
+	D3DMATERIAL9*       exMaterials;                  // Array of materials
+
 	// Effect
-	EffectEx*            exEffect;
+	D3DXEFFECTINSTANCE* exEffects;
+
+	// Skinned mesh variables
+	ID3DXMesh*          exSkinMesh;                   // The skin mesh
+	D3DXMATRIX*         exBoneOffsets;                // The bone matrix Offsets, one per bone
+	D3DXMATRIX**        exFrameCombinedMatrixPointer; // Array of frame matrix pointers
+
+	// Used for indexed shader skinning
+	ID3DXMesh*          exSkinMeshBlended;            // The blended skin mesh
+	ID3DXBuffer*        exBoneCombinationBuf;
+	DWORD               exNumAttributeGroups;
+	DWORD               exNumPaletteEntries;
+	DWORD               exNumInfl;
 };
 
 struct D3DXFRAME_EXTENDED: public D3DXFRAME
 {
     D3DXMATRIX exCombinedTransformationMatrix;
 };
+
+
+typedef vector<TextureEx*> TextureExVec;
+typedef vector<TextureEx*>::iterator TextureExVecIt;
+typedef vector<EffectEx*> EffectExVec;
+typedef vector<EffectEx*>::iterator EffectExVecIt;
 
 #endif // __MESH_STRUCTURES__

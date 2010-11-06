@@ -1,5 +1,6 @@
+// Contours shader
 
-sampler SpriteTex;
+sampler2D SpriteTex;
 
 float WidthStep;
 float HeightStep;
@@ -8,53 +9,45 @@ float3 SpriteBordersHeight;
 float4 ContourColor;
 float ContourColorOffs;
 
-struct PS_INPUT
-{
-	float2 TexPos : TEXCOORD0;
-};
 
-struct PS_OUTPUT
+bool CheckPixel(in float x, in float y, inout float2 input, inout float4 output)
 {
-	float4 Diffuse : COLOR0;
-};
-
-bool CheckPixel(in float x, in float y, inout PS_INPUT input, inout PS_OUTPUT output)
-{
+	bool result=false;
 	if(tex2D(SpriteTex,float2(x,y)).a!=0.0f)
 	{
-		output.Diffuse=ContourColor;
-		if(input.TexPos.y>=SpriteBordersHeight[0] && input.TexPos.y<=SpriteBordersHeight[1])
+		output=ContourColor;
+		if(input.y>=SpriteBordersHeight[0] && input.y<=SpriteBordersHeight[1])
 		{
-			float v=(input.TexPos.y-SpriteBordersHeight[0])/SpriteBordersHeight[2]+ContourColorOffs;
+			float v=(input.y-SpriteBordersHeight[0])/SpriteBordersHeight[2]+ContourColorOffs;
 			if(v>1.0f) v=2.0f-v;
 			else if(v<0.0f) v=-v;
-			output.Diffuse.rgb+=v*0.60f-0.30f;
-			output.Diffuse.rgb=saturate(output.Diffuse.rgb);
+			output.rgb+=v*0.60f-0.30f;
+			output.rgb=saturate(output.rgb);
 		}
-		return true;
+		result=true;
 	}
-	return false;
+	return result;
 }
 
-PS_OUTPUT Main(PS_INPUT input)
+float4 Main(float2 input : TEXCOORD) : COLOR
 {
-	PS_OUTPUT output=(PS_OUTPUT)0;
-	
-	float l=input.TexPos.x-WidthStep;
-	float r=input.TexPos.x+WidthStep;
-	float t=input.TexPos.y-HeightStep;
-	float b=input.TexPos.y+HeightStep;
+	float4 output = 0.0f;
 
-	if(l<SpriteBorders[0]) CheckPixel(r,input.TexPos.y,input,output);
-	else if(r>SpriteBorders[2]) CheckPixel(l,input.TexPos.y,input,output);
-	else if(t<SpriteBorders[1]) CheckPixel(input.TexPos.x,b,input,output);
-	else if(b>SpriteBorders[3]) CheckPixel(input.TexPos.x,t,input,output);
-	else if(tex2D(SpriteTex,input.TexPos).a==0.0f)
+	float l=input.x-WidthStep;
+	float r=input.x+WidthStep;
+	float t=input.y-HeightStep;
+	float b=input.y+HeightStep;
+
+	if(l<SpriteBorders[0]) CheckPixel(r,input.y,input,output);
+	else if(r>SpriteBorders[2]) CheckPixel(l,input.y,input,output);
+	else if(t<SpriteBorders[1]) CheckPixel(input.x,b,input,output);
+	else if(b>SpriteBorders[3]) CheckPixel(input.x,t,input,output);
+	else if(tex2D(SpriteTex,input).a==0.0f)
 	{
-		CheckPixel(r,input.TexPos.y,input,output) ||
-		CheckPixel(l,input.TexPos.y,input,output) ||
-		CheckPixel(input.TexPos.x,t,input,output) ||
-		CheckPixel(input.TexPos.x,b,input,output);
+		CheckPixel(r,input.y,input,output) ||
+		CheckPixel(l,input.y,input,output) ||
+		CheckPixel(input.x,t,input,output) ||
+		CheckPixel(input.x,b,input,output);
 	}
 
 	return output;

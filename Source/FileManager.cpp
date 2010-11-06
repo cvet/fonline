@@ -30,7 +30,7 @@ char PathLst[][50]=
 	"text\\",
 	"save\\",
 	"fonts\\",
-	"",
+	"cache\\",
 	"",
 	"",
 	"",
@@ -184,11 +184,12 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	_strlwr(dat_path);
 	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
 	{
-		DataFile* pfile=*it;
-		fileBuf=pfile->OpenFile(dat_path,fileSize);
+		DataFile* dat=*it;
+		fileBuf=dat->OpenFile(dat_path,fileSize);
 		if(fileBuf)
 		{
 			curPos=0;
+			dat->GetTime(&timeCreate,&timeAccess,&timeWrite);
 			return true;
 		}
 	}
@@ -356,13 +357,24 @@ int FileManager::GetNum()
 	return res;
 }
 
+void FileManager::SwitchToRead()
+{
+	fileBuf=dataOutBuf;
+	dataOutBuf=NULL;
+	fileSize=endOutBuf;
+	curPos=0;
+	lenOutBuf=0;
+	endOutBuf=0;
+	posOutBuf=0;
+}
+
 void FileManager::SwitchToWrite()
 {
 	dataOutBuf=fileBuf;
 	fileBuf=NULL;
 	lenOutBuf=fileSize;
 	endOutBuf=fileSize;
-	fileSize=fileSize;
+	posOutBuf=fileSize;
 	fileSize=0;
 	curPos=0;
 }

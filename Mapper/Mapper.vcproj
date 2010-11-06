@@ -256,10 +256,6 @@
 				RelativePath="..\Source\ResourceMapper.h"
 				>
 			</File>
-			<File
-				RelativePath="..\Source\3dStuff\Skinning.fx"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Mapper"

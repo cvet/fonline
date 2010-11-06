@@ -1,7 +1,7 @@
 #ifndef __3D_LOADER__
 #define __3D_LOADER__
 
-#include "common.h"
+#include "Common.h"
 #include "Defines.h"
 #include "FileManager.h"
 #include "MeshHierarchy.h"
@@ -10,20 +10,34 @@
 
 class Loader3d
 {
+	// Models
 public:
 	static D3DXFRAME* Load(IDirect3DDevice9* device, const char* fname, int path_type, ID3DXAnimationController** anim);
 	static void Free(D3DXFRAME* frame);
 
-	//static ID3DXAnimationController* LoadAnimation();
-
 private:
 	static MeshHierarchy memAllocator;
 
-	// X
 	static D3DXFRAME* Load_X(FileManager& fm, IDirect3DDevice9* device, ID3DXAnimationController** anim);
-
-	// 3ds
 	static D3DXFRAME* Load_3ds(FileManager& fm, IDirect3DDevice9* device);
+
+	// Textures
+public:
+	static TextureEx* LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path, int model_path_type);
+	static void FreeTexture(TextureEx* texture); // If texture is NULL than free all textures
+
+private:
+	static TextureExVec loadedTextures;
+
+	// Effects
+	// Todo: add free/restore
+public:
+	static EffectEx* LoadEffect(IDirect3DDevice9* device, const char* effect_name);
+	static EffectEx* LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path, int model_path_type);
+	static void EffectProcessVariables(EffectEx* effect, int pass);
+
+private:
+	static EffectExVec loadedEffects;
 };
 
 #endif // __3D_LOADER__

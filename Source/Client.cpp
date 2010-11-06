@@ -113,8 +113,13 @@ bool FOClient::Init(HWND hwnd)
 	Keyb::InitKeyb();
 	if(!InitDInput()) return false;
 
-	// File manager
+	// Paths
 	FileManager::SetDataPath(GameOpt.FoDataPath.c_str());
+	CreateDirectory(FileManager::GetFullPath("",PT_DATA),NULL);
+	CreateDirectory(FileManager::GetFullPath("",PT_CACHE),NULL);
+	if(Singleplayer) CreateDirectory(FileManager::GetFullPath("",PT_SAVE),NULL);
+
+	// Main data files
 	if(!FileManager::LoadDataFile(GameOpt.MasterPath.c_str()))
 	{
 		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online",MB_OK);
@@ -192,6 +197,19 @@ bool FOClient::Init(HWND hwnd)
 	if(!SprMngr.LoadFontAAF(FONT_FAT,"Fat",1)) return false;
 	if(!SprMngr.LoadFontAAF(FONT_BIG,"Big",1)) return false;
 	SprMngr.SetDefaultFont(FONT_DEFAULT,COLOR_TEXT);
+	EffectEx* font_effect=Loader3d::LoadEffect(SprMngr.GetDevice(),"Font_Default.fx");
+	if(font_effect)
+	{
+		SprMngr.SetFontEffect(FONT_FO,font_effect);
+		SprMngr.SetFontEffect(FONT_NUM,font_effect);
+		SprMngr.SetFontEffect(FONT_BIG_NUM,font_effect);
+		SprMngr.SetFontEffect(FONT_SAND_NUM,font_effect);
+		SprMngr.SetFontEffect(FONT_SPECIAL,font_effect);
+		SprMngr.SetFontEffect(FONT_DEFAULT,font_effect);
+		SprMngr.SetFontEffect(FONT_THIN,font_effect);
+		SprMngr.SetFontEffect(FONT_FAT,font_effect);
+		SprMngr.SetFontEffect(FONT_BIG,font_effect);
+	}
 
 	// Sound manager
 	IniParser cfg;
@@ -10142,6 +10160,61 @@ bool FOClient::SScriptFunc::Global_LoadFont(int font_index, CScriptString& font_
 void FOClient::SScriptFunc::Global_SetDefaultFont(int font, DWORD color)
 {
 	Self->SprMngr.SetDefaultFont(font,color);
+}
+
+void FOClient::SScriptFunc::Global_SetEffect(int effect_type, int effect_subtype, CScriptString* effect_name)
+{
+	EffectEx* font_effect=NULL;
+	if(effect_name && effect_name->length())
+	{
+		font_effect=Loader3d::LoadEffect(Self->SprMngr.GetDevice(),effect_name->c_str());
+		if(!font_effect) SCRIPT_ERROR_R("Effect not found.");
+	}
+
+#define EFFECT_2D              (0)  // 2D_Default.fx
+#define EFFECT_2D_GENERIC       (1)
+#define EFFECT_2D_TILE          (2)
+#define EFFECT_2D_ROOF          (4)
+#define EFFECT_3D              (1)  // 3D_Default.fx
+#define EFFECT_INTERFACE       (2)  // Interface_Default.fx
+#define EFFECT_FONT            (3)  // Interface_Default.fx
+#define EFFECT_PRIMITIVE       (4)  // Primitive_Default.fx
+
+	if(effect_type==EFFECT_2D)
+	{
+		if(effect_subtype&EFFECT_2D_GENERIC) Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_GENERIC,font_effect);
+		if(effect_subtype&EFFECT_2D_TILE) Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_TILE,font_effect);
+		if(effect_subtype&EFFECT_2D_ROOF) Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_ROOF,font_effect);
+	}
+	else if(effect_type==EFFECT_3D)
+	{
+		Animation3d::SetDefaultEffect(font_effect);
+	}
+	else if(effect_type==EFFECT_INTERFACE)
+	{
+		Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_IFACE,font_effect);
+	}
+	else if(effect_type==EFFECT_FONT)
+	{
+		Self->SprMngr.SetFontEffect(effect_subtype,font_effect);
+	}
+	else if(effect_type==EFFECT_PRIMITIVE)
+	{
+		Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_POINT,font_effect);
+	}
+
+	if((effect_type==EFFECT_2D || effect_type==EFFECT_3D) && Self->HexMngr.IsMapLoaded()) Self->HexMngr.RefreshMap();
+}
+
+void FOClient::SScriptFunc::Global_RefreshMap(bool only_tiles, bool only_roof, bool only_light)
+{
+	if(Self->HexMngr.IsMapLoaded())
+	{
+		if(only_tiles) Self->HexMngr.RebuildTiles();
+		else if(only_roof) Self->HexMngr.RebuildRoof();
+		else if(only_light) Self->HexMngr.RebuildLight();
+		else Self->HexMngr.RefreshMap();
+	}
 }
 
 void FOClient::SScriptFunc::Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds)

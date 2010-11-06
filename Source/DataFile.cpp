@@ -19,6 +19,8 @@ private:
 	BYTE* memTree;
 	HANDLE datHandle;
 
+	FILETIME timeCreate,timeAccess,timeWrite;
+
 	bool ReadTree();
 
 public:
@@ -28,6 +30,7 @@ public:
 	const string& GetPackName(){return fileName;}
 	BYTE* OpenFile(const char* fname, DWORD& len);
 	void GetFileNames(const char* path, const char* ext, StrVec& result);
+	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 };
 
 class ZipFile : public DataFile
@@ -46,6 +49,8 @@ private:
 	string fileName;
 	unzFile zipHandle;
 
+	FILETIME timeCreate,timeAccess,timeWrite;
+
 	bool ReadTree();
 
 public:
@@ -55,6 +60,7 @@ public:
 	const string& GetPackName(){return fileName;}
 	BYTE* OpenFile(const char* fname, DWORD& len);
 	void GetFileNames(const char* path, const char* ext, StrVec& result);
+	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 };
 
 /************************************************************************/
@@ -127,6 +133,8 @@ bool FalloutDatFile::Init(const char* fname)
 		WriteLog(__FUNCTION__" - Cannot open file.\n");
 		return false;
 	}
+
+	GetFileTime(datHandle,&timeCreate,&timeAccess,&timeWrite);
 
 	if(!ReadTree())
 	{
@@ -260,6 +268,13 @@ void FalloutDatFile::GetFileNames(const char* path, const char* ext, StrVec& res
 	}
 }
 
+void FalloutDatFile::GetTime(FILETIME* create, FILETIME* access, FILETIME* write)
+{
+	if(create) *create=timeCreate;
+	if(access) *access=timeAccess;
+	if(write) *write=timeWrite;
+}
+
 /************************************************************************/
 /* Zip file                                                             */
 /************************************************************************/
@@ -275,6 +290,16 @@ bool ZipFile::Init(const char* fname)
 		WriteLog(__FUNCTION__" - Can't retrieve file full path.\n");
 		return false;
 	}
+
+	HANDLE fh=CreateFile(fname,GENERIC_READ,FILE_SHARE_READ,
+		NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+	if(fh==INVALID_HANDLE_VALUE)
+	{
+		WriteLog(__FUNCTION__" - Cannot open file.\n");
+		return false;
+	}
+	GetFileTime(fh,&timeCreate,&timeAccess,&timeWrite);
+	CloseHandle(fh);
 
 	zipHandle=unzOpen(path);
 	if(!zipHandle)
@@ -381,6 +406,13 @@ void ZipFile::GetFileNames(const char* path, const char* ext, StrVec& result)
 			}
 		}
 	}
+}
+
+void ZipFile::GetTime(FILETIME* create, FILETIME* access, FILETIME* write)
+{
+	if(create) *create=timeCreate;
+	if(access) *access=timeAccess;
+	if(write) *write=timeWrite;
 }
 
 /************************************************************************/

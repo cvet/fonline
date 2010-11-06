@@ -1276,7 +1276,7 @@ bool CritterCl::LoadAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
 	AnimMapIt it=crAnim.find(ANIM_MAP_ID(crtype,anim1,anim2,dir));
 	if(it!=crAnim.end()) return (*it).second!=NULL;
 
-	AnyFrames* frames=ResMngr.GetCritAnim(crtype,anim1,anim2,dir);
+	AnyFrames* frames=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
 	crAnim.insert(AnimMapVal(ANIM_MAP_ID(crtype,anim1,anim2,dir),frames));
 	if(!frames) return false;
 

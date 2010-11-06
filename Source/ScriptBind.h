@@ -1078,6 +1078,8 @@
 	if(engine->RegisterGlobalFunction("void WaitPing()",asFUNCTION(BIND_CLASS Global_WaitPing),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool LoadFont(int font, string& fontFileName)",asFUNCTION(BIND_CLASS Global_LoadFont),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetDefaultFont(int font, uint color)",asFUNCTION(BIND_CLASS Global_SetDefaultFont),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void SetEffect(int effectType, int effectSubtype, string@+ effectName)",asFUNCTION(BIND_CLASS Global_SetEffect),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void RefreshMap(bool onlyTiles, bool onlyRoof, bool onlyLight)",asFUNCTION(BIND_CLASS Global_RefreshMap),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("uint8 __RoofAlpha",&GameOpt.RoofAlpha)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __HideCursor",&GameOpt.HideCursor)) BIND_ERROR;

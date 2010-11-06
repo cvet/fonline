@@ -31,34 +31,26 @@ typedef vector<D3DXVECTOR3> Vector3Vec;
 typedef vector<D3DXVECTOR3>::iterator Vector3VecIt;
 typedef vector<D3DXMATRIX> MatrixVec;
 typedef vector<D3DXMATRIX>::iterator MatrixVecIt;
-class AnimTexture;
-typedef vector<AnimTexture*> AnimTextureVec;
-typedef vector<AnimTexture*>::iterator AnimTextureVecIt;
-
-class AnimTexture
-{
-public:
-	char* Name;
-	IDirect3DTexture9* Data;
-
-	AnimTexture(char* name, IDirect3DTexture9* data){Name=name;Data=data;}
-	~AnimTexture(){SAFEDELA(Name);SAFEREL(Data);}
-};
 
 struct AnimLink
 {
 	DWORD Id;
 	int Layer;
 	int LayerValue;
-	string LinkBone;
-	string ChildFName;
+	char* LinkBone;
+	char* ChildFName;
 	float RotX,RotY,RotZ;
 	float MoveX,MoveY,MoveZ;
-	IntVec DisabledLayers;
-	IntVec DisabledSubsets;
-	string RootTextureName;
-	string TextureName;
+	int* DisabledLayers;
+	int DisabledLayersCount;
+	int* DisabledSubsets;
+	int DisabledSubsetsCount;
+	char* RootTextureName;
+	char* TextureName;
 	int TextureSubset;
+	D3DXEFFECTINSTANCE* RootEffectInst;
+	D3DXEFFECTINSTANCE* EffectInst;
+	int EffectSubset;
 };
 typedef vector<AnimLink> AnimLinkVec;
 typedef vector<AnimLink>::iterator AnimLinkVecIt;
@@ -68,8 +60,10 @@ struct MeshOptions
 	D3DXMESHCONTAINER_EXTENDED* MeshPtr;
 	DWORD SubsetsCount;
 	bool* DisabledSubsets;
-	IDirect3DTexture9** TexSubsets;
-	IDirect3DTexture9** DefaultTexSubsets;
+	TextureEx** TexSubsets;
+	TextureEx** DefaultTexSubsets;
+	EffectEx** EffectSubsets;
+	EffectEx** DefaultEffectSubsets;
 };
 typedef vector<MeshOptions> MeshOptionsVec;
 typedef vector<MeshOptions>::iterator MeshOptionsVecIt;
@@ -83,7 +77,7 @@ private:
 
 	Animation3dEntity* animEntity;
 	ID3DXAnimationController* animController;
-	int currentAnimation[LAYERS3D_COUNT+1]; // +1 for actions
+	int currentLayers[LAYERS3D_COUNT+1]; // +1 for actions
 	DWORD numAnimationSets;
 	DWORD currentTrack;
 	DWORD lastTick;
@@ -110,7 +104,6 @@ private:
 	D3DXMATRIX parentMatrix;
 	FrameVec linkFrames;
 	MatrixVec linkMatricles;
-	//MatrixVec 
 	AnimLink animLink;
 	bool childChecker;
 
@@ -118,13 +111,14 @@ private:
 	void UpdateFrameMatrices(const D3DXFRAME* frame_base, const D3DXMATRIX* parent_matrix);
 	void BuildShadowVolume(D3DXFRAME_EXTENDED* frame);
 	bool DrawFrame(LPD3DXFRAME frame, bool with_shadow);
-	bool DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, ID3DXEffect* effect, D3DXHANDLE technique);
+	bool DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, EffectEx* effect_ex, D3DXHANDLE technique);
 	bool IsIntersectFrame(LPD3DXFRAME frame, const D3DXVECTOR3& ray_origin, const D3DXVECTOR3& ray_dir);
 	bool SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders);
 	void ProcessBorders();
 	double GetSpeed();
 	MeshOptions* GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh);
-	void SetTexture(const char* tex_name, int subset);
+	void SetTexture(const char* texture_name, int subset);
+	void SetEffect(D3DXEFFECTINSTANCE* effect_inst, int subset);
 
 public:
 	Animation3d();
@@ -164,6 +158,7 @@ public:
 	static void AnimateSlower();
 	static FLTPOINT Convert2dTo3d(int x, int y);
 	static INTPOINT Convert3dTo2d(float x, float y);
+	static void SetDefaultEffect(EffectEx* effect);
 };
 
 class Animation3dEntity
@@ -177,6 +172,7 @@ private:
 	int pathType;
 	Animation3dXFile* xFile;
 	string defaultTexture;
+	D3DXEFFECTINSTANCE defaultEffect;
 	DWORD numAnimationSets;
 	IntMap animIndexes;
 	AnimLinkVec animBones;
@@ -216,9 +212,8 @@ private:
 	void SetupFacesCount(D3DXFRAME_EXTENDED* frame, DWORD& count);
 	static void SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationController* anim_controller);
 
-	// Textures managing
-	static AnimTextureVec Textures;
-	IDirect3DTexture9* GetTexture(const char* tex_name);
+	TextureEx* GetTexture(const char* tex_name);
+	EffectEx* GetEffect(D3DXEFFECTINSTANCE* effect_inst);
 
 public:
 	Animation3dXFile();

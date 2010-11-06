@@ -37,7 +37,7 @@ currentTrack(0),lastTick(0),endTick(0),speedAdjust(1.0f),shadowDisabled(false),d
 drawScale(0.0f),bordersDisabled(false),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),
 childChecker(true)
 {
-	ZeroMemory(currentAnimation,sizeof(currentAnimation));
+	ZeroMemory(currentLayers,sizeof(currentLayers));
 	groundPos.w=1.0f;
 	D3DXMatrixRotationX(&matRot,-25.7f*D3DX_PI/180.0f);
 	D3DXMatrixIdentity(&matScale);
@@ -70,11 +70,12 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 	if(index<0 && anim1>=ANIM1_KNIFE && anim1<=ANIM1_ROCKET_LAUNCHER) index=animEntity->GetAnimationIndex(ANIM1_UNARMED,anim2);
 	if(index<0) return;
 
-	// Check changes indicies or not
+	// Check changes indices or not
+	if(!layers) layers=currentLayers;
 	bool layer_changed=false;
 	for(int i=0;i<LAYERS3D_COUNT;i++)
 	{
-		if(currentAnimation[i]!=layers[i])
+		if(currentLayers[i]!=layers[i])
 		{
 			layer_changed=true;
 			break;
@@ -83,10 +84,10 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 
 	// Is not one time play and same action
 	int action=(anim1<<16)|anim2;
-	if(!FLAG(flags,ANIMATION_ONE_TIME) && currentAnimation[LAYERS3D_COUNT]==action && !layer_changed) return;
+	if(!FLAG(flags,ANIMATION_ONE_TIME) && currentLayers[LAYERS3D_COUNT]==action && !layer_changed) return;
 
-	memcpy(currentAnimation,layers,sizeof(int)*LAYERS3D_COUNT);
-	currentAnimation[LAYERS3D_COUNT]=action;
+	memcpy(currentLayers,layers,sizeof(int)*LAYERS3D_COUNT);
+	currentLayers[LAYERS3D_COUNT]=action;
 
 	if(layer_changed)
 	{
@@ -115,11 +116,11 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 					AnimLink& link=*it;
 					if(link.Layer==i && link.LayerValue==layers[i])
 					{
-						for(IntVecIt it_=link.DisabledLayers.begin(),end_=link.DisabledLayers.end();it_!=end_;++it_) unused_layers[*it_]=true;
-						for(IntVecIt it_=link.DisabledSubsets.begin(),end_=link.DisabledSubsets.end();it_!=end_;++it_)
+						for(int j=0;j<link.DisabledLayersCount;j++) unused_layers[link.DisabledLayers[j]]=true;
+						for(int j=0;j<link.DisabledSubsetsCount;j++)
 						{
-							int mesh_ss=(*it_)%100;
-							int mesh_num=(*it_)/100;
+							int mesh_ss=link.DisabledSubsets[j]%100;
+							int mesh_num=link.DisabledSubsets[j]/100;
 							if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].DisabledSubsets[mesh_ss]=true;
 						}
 					}
@@ -137,9 +138,10 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 				AnimLink& link=*it;
 				if(link.Layer==i && link.LayerValue==layers[i])
 				{
-					if(link.RootTextureName.length()) SetTexture(link.RootTextureName.c_str(),-1);
+					if(link.RootTextureName) SetTexture(link.RootTextureName,-1);
+					if(link.RootEffectInst) SetEffect(link.RootEffectInst,-1);
 
-					if(!link.ChildFName.length()) continue;
+					if(!link.ChildFName) continue;
 
 					bool aviable=false;
 					for(Animation3dVecIt it=childAnimations.begin(),end=childAnimations.end();it!=end;++it)
@@ -158,12 +160,12 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 						Animation3d* anim3d=NULL;
 
 						// Link to main frame
-						if(link.LinkBone.length())
+						if(link.LinkBone)
 						{
-							D3DXFRAME_EXTENDED* to_frame=(D3DXFRAME_EXTENDED*)D3DXFrameFind(animEntity->xFile->frameRoot,link.LinkBone.c_str());
+							D3DXFRAME_EXTENDED* to_frame=(D3DXFRAME_EXTENDED*)D3DXFrameFind(animEntity->xFile->frameRoot,link.LinkBone);
 							if(to_frame)
 							{
-								anim3d=Animation3d::GetAnimation(link.ChildFName.c_str(),animEntity->pathType,true);
+								anim3d=Animation3d::GetAnimation(link.ChildFName,animEntity->pathType,true);
 								if(anim3d)
 								{
 									anim3d->parentAnimation=this;
@@ -176,7 +178,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 						// Link all bones
 						else
 						{
-							anim3d=Animation3d::GetAnimation(link.ChildFName.c_str(),animEntity->pathType,true);
+							anim3d=Animation3d::GetAnimation(link.ChildFName,animEntity->pathType,true);
 							if(anim3d)
 							{
 								for(FrameVecIt it=anim3d->animEntity->xFile->framesSkinned.begin(),end=anim3d->animEntity->xFile->framesSkinned.end();it!=end;++it)
@@ -198,7 +200,10 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 						}
 
 						// Set textures
-						if(anim3d && link.TextureName.length()) anim3d->SetTexture(link.TextureName.c_str(),link.TextureSubset);
+						if(anim3d && link.TextureName) anim3d->SetTexture(link.TextureName,link.TextureSubset);
+
+						// Set effects
+						if(anim3d && link.EffectInst) anim3d->SetEffect(link.EffectInst,link.EffectSubset);
 					}
 				}
 			}
@@ -303,12 +308,12 @@ bool Animation3d::IsAnimation(int anim1, int anim2)
 
 int Animation3d::GetAnim1()
 {
-	return currentAnimation[LAYERS3D_COUNT]>>16;
+	return currentLayers[LAYERS3D_COUNT]>>16;
 }
 
 int Animation3d::GetAnim2()
 {
-	return currentAnimation[LAYERS3D_COUNT]&0xFFFF;
+	return currentLayers[LAYERS3D_COUNT]&0xFFFF;
 }
 
 bool Animation3d::IsAnimationPlaying()
@@ -515,36 +520,71 @@ MeshOptions* Animation3d::GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh)
 	return NULL;
 }
 
-void Animation3d::SetTexture(const char* tex_name, int subset)
+void Animation3d::SetTexture(const char* texture_name, int subset)
 {
-	IDirect3DTexture9* tex=NULL;
-	if(!_stricmp(tex_name,"root"))
+	TextureEx* texture=NULL;
+	if(!_stricmp(texture_name,"root"))
 	{
 		if(parentAnimation && parentAnimation->meshOpt.size())
 		{
 			MeshOptions& mopt=*parentAnimation->meshOpt.begin();
-			if(mopt.SubsetsCount) tex=mopt.TexSubsets[0];
+			if(mopt.SubsetsCount) texture=mopt.TexSubsets[0];
 		}
 	}
 	else
 	{
-		tex=animEntity->xFile->GetTexture(tex_name);
+		texture=animEntity->xFile->GetTexture(texture_name);
 	}
 
-	if(tex)
+	if(texture)
 	{
 		if(subset>=0)
 		{
 			DWORD mesh_ss=subset%100;
 			DWORD mesh_num=subset/100;
-			if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].TexSubsets[mesh_ss]=tex;
+			if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].TexSubsets[mesh_ss]=texture;
 		}
 		else
 		{
 			for(MeshOptionsVecIt it=meshOpt.begin(),end=meshOpt.end();it!=end;++it)
 			{
 				MeshOptions& mopt=*it;
-				for(DWORD i=0;i<mopt.SubsetsCount;i++) mopt.TexSubsets[i]=tex;
+				for(DWORD i=0;i<mopt.SubsetsCount;i++) mopt.TexSubsets[i]=texture;
+			}
+		}
+	}
+}
+
+void Animation3d::SetEffect(D3DXEFFECTINSTANCE* effect_inst, int subset)
+{
+	EffectEx* effect=NULL;
+	if(!_stricmp(effect_inst->pEffectFilename,"root"))
+	{
+		if(parentAnimation && parentAnimation->meshOpt.size())
+		{
+			MeshOptions& mopt=*parentAnimation->meshOpt.begin();
+			if(mopt.SubsetsCount) effect=mopt.EffectSubsets[0];
+		}
+	}
+	else
+	{
+		effect=animEntity->xFile->GetEffect(effect_inst);
+	}
+
+	if(effect)
+	{
+		if(subset>=0)
+		{
+			DWORD mesh_ss=subset%100;
+			DWORD mesh_num=subset/100;
+			if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].EffectSubsets[mesh_ss]=effect;
+		}
+		else
+		{
+			for(MeshOptionsVecIt it=meshOpt.begin(),end=meshOpt.end();it!=end;++it)
+			{
+				MeshOptions& mopt=*it;
+				for(DWORD i=0;i<mopt.SubsetsCount;i++) mopt.EffectSubsets[i]=effect;
 			}
 		}
 	}
@@ -590,12 +630,6 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	// Apply stencil
 	if(stencil)
 	{
-		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILENABLE,TRUE));
-		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
-		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
-		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILREF,1));
-		D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
-
 		struct Vertex
 		{
 			FLOAT x,y,z,rhw;
@@ -610,7 +644,16 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 			{stencil->R-0.5f,stencil->B-0.5f,1.0f,1.0f,-1},
 		};
 
+		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILENABLE,TRUE));
+		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFUNC,D3DCMP_NEVER));
+		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILFAIL,D3DSTENCILOP_REPLACE));
+		D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILREF,1));
+		D3D_HR(D3DDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
+
+		D3D_HR(D3DDevice->SetVertexShader(NULL));
+		D3D_HR(D3DDevice->SetPixelShader(NULL));
 		D3D_HR(D3DDevice->SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE));
+
 		D3D_HR(D3DDevice->Clear(0,NULL,D3DCLEAR_STENCIL,0,1.0f,0));
 		D3D_HR(D3DDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
 
@@ -698,6 +741,7 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 	{
 		elapsed*=GetSpeed();
 		animController->AdvanceTime(elapsed,NULL);
+		if(animController->GetTime()>60.0) animController->ResetTime();
 	}
 
 	// Store linked matrices
@@ -825,14 +869,8 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 
 		if(mesh_container_ex->exSkinMeshBlended)
 		{
-			EffectEx* effect=(mesh_container_ex->exEffect?mesh_container_ex->exEffect:EffectMain);
 			LPD3DXBONECOMBINATION bone_comb=(LPD3DXBONECOMBINATION)mesh_container_ex->exBoneCombinationBuf->GetBufferPointer();
 			D3DXMATRIX matrix;
-
-			if(effect->EffectParams) effect->Effect->ApplyParameterBlock(effect->EffectParams);
-			D3D_HR(effect->Effect->SetMatrix(effect->ProjMatrix,&MatrixProj));
-			D3D_HR(effect->Effect->SetVector(effect->GroundPos,&groundPos));
-			D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
 
 			for(DWORD i=0,j=mesh_container_ex->exNumAttributeGroups;i<j;i++)
 			{
@@ -850,7 +888,13 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 					}
 				}
 
-				D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,BoneMatrices,mesh_container_ex->exNumPaletteEntries));
+				EffectEx* effect=(mopt->EffectSubsets[attr_id]?mopt->EffectSubsets[attr_id]:EffectMain);
+
+				if(effect->EffectParams) D3D_HR(effect->Effect->ApplyParameterBlock(effect->EffectParams));
+				if(effect->ProjectionMatrix) D3D_HR(effect->Effect->SetMatrix(effect->ProjectionMatrix,&MatrixProj));
+				if(effect->GroundPosition) D3D_HR(effect->Effect->SetVector(effect->GroundPosition,&groundPos));
+				if(effect->LightDiffuse) D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
+				if(effect->WorldMatrices) D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,BoneMatrices,mesh_container_ex->exNumPaletteEntries));
 
 				// Sum of all ambient and emissive contribution
 				D3DMATERIAL9& material=mesh_container_ex->exMaterials[attr_id];
@@ -858,62 +902,63 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				//D3DXColorModulate(&amb_emm,&D3DXCOLOR(material.Ambient),&D3DXCOLOR(0.25f,0.25f,0.25f,1.0f));
 				//amb_emm+=D3DXCOLOR(material.Emissive);
 				//D3D_HR(effect->SetVector("MaterialAmbient",(D3DXVECTOR4*)&amb_emm));
-				D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&material.Diffuse));
+				if(effect->MaterialDiffuse) D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&material.Diffuse));
 
 				// Setup the material of the mesh subset - REMEMBER to use the original pre-skinning attribute id to get the correct material id
-				D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[attr_id]));
+				D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[attr_id]->Texture));
 
 				// Set NumBones to select the correct vertex shader for the number of bones
-				D3D_HR(effect->Effect->SetInt(effect->NumBones,mesh_container_ex->exNumInfl-1));
+				if(effect->BonesInfluences) D3D_HR(effect->Effect->SetInt(effect->BonesInfluences,mesh_container_ex->exNumInfl-1));
 
 				// Start the effect now all parameters have been updated
-				DrawMeshEffect(mesh_container_ex->exSkinMeshBlended,i,effect->Effect,with_shadow?effect->TechniqueSkinWithShadow:effect->TechniqueSkin);
+				DrawMeshEffect(mesh_container_ex->exSkinMeshBlended,i,effect,with_shadow?effect->TechniqueSkinnedWithShadow:effect->TechniqueSkinned);
 			}
 		}
 		else
 		{
 			// Select the mesh to draw, if there is skin then use the skinned mesh else the normal one
 			LPD3DXMESH draw_mesh=(mesh_container_ex->pSkinInfo?mesh_container_ex->exSkinMesh:mesh_container_ex->MeshData.pMesh);
-			EffectEx* effect=(mesh_container_ex->exEffect?mesh_container_ex->exEffect:EffectMain);
-
-			if(effect)
-			{
-				if(effect->EffectParams) effect->Effect->ApplyParameterBlock(effect->EffectParams);
-				D3D_HR(effect->Effect->SetMatrix(effect->ProjMatrix,&MatrixProj));
-				D3D_HR(effect->Effect->SetVector(effect->GroundPos,&groundPos));
-				D3DXMATRIX wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty)*MatrixView;
-				D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,&wmatrix,1));
-				D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
-			}
-			else
-			{
-				D3DXMATRIX& wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty);
-				D3D_HR(D3DDevice->SetTransform(D3DTS_WORLD,&wmatrix));
-				D3D_HR(D3DDevice->SetLight(0,&GlobalLight));
-			}
 
 			// Loop through all the materials in the mesh rendering each subset
 			for(DWORD i=0;i<mesh_container_ex->NumMaterials;i++)
 			{
 				if(mopt->DisabledSubsets[i]) continue;
 
+				EffectEx* effect=(mopt->EffectSubsets[i]?mopt->EffectSubsets[i]:EffectMain);
+
 				if(effect)
 				{
-					D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&mesh_container_ex->exMaterials[i].Diffuse));
-					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]));
-					DrawMeshEffect(draw_mesh,i,effect->Effect,with_shadow?effect->TechniqueSimpleWithShadow:effect->TechniqueSimple);
+					if(effect->EffectParams) D3D_HR(effect->Effect->ApplyParameterBlock(effect->EffectParams));
+					if(effect->ProjectionMatrix) D3D_HR(effect->Effect->SetMatrix(effect->ProjectionMatrix,&MatrixProj));
+					if(effect->GroundPosition) D3D_HR(effect->Effect->SetVector(effect->GroundPosition,&groundPos));
+					D3DXMATRIX wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty)*MatrixView;
+					if(effect->WorldMatrices) D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,&wmatrix,1));
+					if(effect->LightDiffuse) D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
+				}
+				else
+				{
+					D3DXMATRIX& wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty);
+					D3D_HR(D3DDevice->SetTransform(D3DTS_WORLD,&wmatrix));
+					D3D_HR(D3DDevice->SetLight(0,&GlobalLight));
+				}
+
+				if(effect)
+				{
+					if(effect->MaterialDiffuse) D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&mesh_container_ex->exMaterials[i].Diffuse));
+					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]->Texture));
+					DrawMeshEffect(draw_mesh,i,effect,with_shadow?effect->TechniqueSimpleWithShadow:effect->TechniqueSimple);
 				}
 				else
 				{
 					D3D_HR(D3DDevice->SetMaterial(&mesh_container_ex->exMaterials[i]));
-					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]));
+					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]->Texture));
+					D3D_HR(D3DDevice->SetVertexShader(NULL));
+					D3D_HR(D3DDevice->SetPixelShader(NULL));
 					D3D_HR(draw_mesh->DrawSubset(i));
 				}
 			}
 		}
 
-		D3D_HR(D3DDevice->SetVertexShader(NULL));
-		D3D_HR(D3DDevice->SetPixelShader(NULL));
 		mesh_container=mesh_container->pNextMeshContainer;
 	}
 
@@ -924,13 +969,18 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 	return true;
 }
 
-bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, ID3DXEffect* effect, D3DXHANDLE technique)
+bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, EffectEx* effect_ex, D3DXHANDLE technique)
 {
+	ID3DXEffect* effect=effect_ex->Effect;
 	D3D_HR(effect->SetTechnique(technique));
+	if(effect_ex->IsNeedProcess) Loader3d::EffectProcessVariables(effect_ex,-1);
+
 	UINT passes;
-	D3D_HR(effect->Begin(&passes,D3DXFX_DONOTSAVESTATE));
+	D3D_HR(effect->Begin(&passes,effect_ex->EffectFlags));
 	for(UINT pass=0;pass<passes;pass++)
 	{
+		if(effect_ex->IsNeedProcess) Loader3d::EffectProcessVariables(effect_ex,pass);
+
 		D3D_HR(effect->BeginPass(pass));
 		D3D_HR(mesh->DrawSubset(subset));
 		D3D_HR(effect->EndPass());
@@ -976,17 +1026,12 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	// Create skinning effect
 	if(SkinningMethod==SKINNING_HLSL_SHADER)
 	{
-		ID3DXEffect* effect=NULL;
-		ID3DXBuffer* errors=NULL;
-		HRESULT hr=D3DXCreateEffectFromResource(D3DDevice,NULL,MAKEINTRESOURCE(IDR_EFFECT_SKINNING),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors);
-		if(FAILED(hr))
+		EffectMain=Loader3d::LoadEffect(D3DDevice,"3D_Default.fx");
+		if(!EffectMain)
 		{
-			if(errors) WriteLog(__FUNCTION__" - Create effect messages:\n<\n%s>\n",errors->GetBufferPointer());
-			WriteLog(__FUNCTION__" - Fail to create effect, error<%s>, skinning switched to software.\n",DXGetErrorString(hr));
 			SkinningMethod=SKINNING_SOFTWARE;
+			WriteLog(__FUNCTION__" - Fail to create effect, skinning switched to software.\n");
 		}
-		SAFEREL(errors);
-		if(effect) EffectMain=new(nothrow) EffectEx(effect);
 	}
 
 	// FPS & Smooth
@@ -1034,16 +1079,12 @@ void Animation3d::Finish()
 	Animation3dEntity::allEntities.clear();
 	for(Animation3dXFileVecIt it=Animation3dXFile::xFiles.begin(),end=Animation3dXFile::xFiles.end();it!=end;++it) delete *it;
 	Animation3dXFile::xFiles.clear();
+
 	SAFEDEL(EffectMain);
 	SAFEDELA(BoneMatrices);
 	MaxBones=0;
-	for(AnimTextureVecIt it=Animation3dXFile::Textures.begin(),end=Animation3dXFile::Textures.end();it!=end;++it)
-	{
-		AnimTexture* tex=*it;
-		SAFEDELA(tex->Name);
-		SAFEREL(tex->Data);
-		SAFEDEL(tex);
-	}
+
+	Loader3d::FreeTexture(NULL);
 }
 
 void Animation3d::BeginScene()
@@ -1073,18 +1114,26 @@ Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_
 		mopt.MeshPtr=mesh;
 		mopt.SubsetsCount=mesh->NumMaterials;
 		mopt.DisabledSubsets=new(nothrow) bool[mesh->NumMaterials];
-		mopt.TexSubsets=new(nothrow) IDirect3DTexture9*[mesh->NumMaterials];
-		mopt.DefaultTexSubsets=new(nothrow) IDirect3DTexture9*[mesh->NumMaterials];
+		mopt.TexSubsets=new(nothrow) TextureEx*[mesh->NumMaterials];
+		mopt.DefaultTexSubsets=new(nothrow) TextureEx*[mesh->NumMaterials];
+		mopt.EffectSubsets=new(nothrow) EffectEx*[mesh->NumMaterials];
+		mopt.DefaultEffectSubsets=new(nothrow) EffectEx*[mesh->NumMaterials];
 		ZeroMemory(mopt.DisabledSubsets,mesh->NumMaterials*sizeof(bool));
-		ZeroMemory(mopt.TexSubsets,mesh->NumMaterials*sizeof(IDirect3DTexture9*));
-		ZeroMemory(mopt.DefaultTexSubsets,mesh->NumMaterials*sizeof(IDirect3DTexture9*));
+		ZeroMemory(mopt.TexSubsets,mesh->NumMaterials*sizeof(TextureEx*));
+		ZeroMemory(mopt.DefaultTexSubsets,mesh->NumMaterials*sizeof(TextureEx*));
+		ZeroMemory(mopt.EffectSubsets,mesh->NumMaterials*sizeof(EffectEx*));
+		ZeroMemory(mopt.DefaultEffectSubsets,mesh->NumMaterials*sizeof(EffectEx*));
 
-		// Set default textures
+		// Set default textures and effects
 		for(DWORD k=0;k<mopt.SubsetsCount;k++)
 		{
 			const char* tex_name=(entity->defaultTexture!=""?entity->defaultTexture.c_str():mesh->exTexturesNames[k]);
 			mopt.DefaultTexSubsets[k]=(tex_name?entity->xFile->GetTexture(tex_name):NULL);
 			mopt.TexSubsets[k]=mopt.DefaultTexSubsets[k];
+
+			D3DXEFFECTINSTANCE* effect_inst=(entity->defaultEffect.pEffectFilename?&entity->defaultEffect:&mesh->exEffects[k]);
+			mopt.DefaultEffectSubsets[k]=(effect_inst->pEffectFilename?entity->xFile->GetEffect(effect_inst):NULL);
+			mopt.EffectSubsets[k]=mopt.DefaultEffectSubsets[k];
 		}
 	}
 
@@ -1128,6 +1177,11 @@ INTPOINT Animation3d::Convert3dTo2d(float x, float y)
 	return INTPOINT(coords.x,coords.y);
 }
 
+void Animation3d::SetDefaultEffect(EffectEx* effect)
+{
+	EffectMain=effect;
+}
+
 /************************************************************************/
 /* Animation3dEntity                                                    */
 /************************************************************************/
@@ -1136,10 +1190,38 @@ Animation3dEntityVec Animation3dEntity::allEntities;
 
 Animation3dEntity::Animation3dEntity():pathType(0),xFile(NULL),scaleValue(1.0f),speedAdjust(1.0f)
 {
+	ZeroMemory(&defaultEffect,sizeof(defaultEffect));
 }
 
 Animation3dEntity::~Animation3dEntity()
 {
+	SAFEDELA(defaultEffect.pEffectFilename);
+
+	for(AnimLinkVecIt it=animBones.begin(),end=animBones.end();it!=end;++it)
+	{
+		AnimLink& link=*it;
+		SAFEDELA(link.LinkBone);
+		SAFEDELA(link.ChildFName);
+		SAFEDELA(link.DisabledLayers);
+		SAFEDELA(link.DisabledSubsets);
+		SAFEDELA(link.RootTextureName);
+		SAFEDELA(link.TextureName);
+		if(link.RootEffectInst)
+		{
+			for(DWORD i=0;i<link.RootEffectInst->NumDefaults;i++)
+				SAFEDELA(link.RootEffectInst->pDefaults[i].pValue);
+			SAFEDELA(link.RootEffectInst->pDefaults);
+		}
+		SAFEDELA(link.RootEffectInst);
+		if(link.EffectInst)
+		{
+			for(DWORD i=0;i<link.EffectInst->NumDefaults;i++)
+				SAFEDELA(link.EffectInst->pDefaults[i].pValue);
+			SAFEDELA(link.EffectInst->pDefaults);
+		}
+		SAFEDELA(link.EffectInst);
+	}
+	animBones.clear();
 }
 
 bool Animation3dEntity::Load(const char* name, int path_type)
@@ -1235,6 +1317,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		}
 
 		// Indexing bones
+		bool last_effect_root=false;
 		for(int i=0;i<LAYERS3D_COUNT;i++)
 		{
 			sprintf(key,"layer_%d",i);
@@ -1252,6 +1335,8 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 
 					// Initialize
 					AnimLink link;
+					ZeroMemory(&link,sizeof(link));
+
 					static DWORD id=0;
 					link.Id=++id;
 					link.Layer=i;
@@ -1262,13 +1347,14 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 					link.MoveY=0.0f;
 					link.MoveZ=0.0f;
 					link.LayerValue=atoi(params[0].c_str());
+
 					// Parameters
 					for(int k=1;k<params.size()-1;k+=2)
 					{
 						string& p1=params[k];
 						string& p2=params[k+1];
-						if(p1=="anim") link.ChildFName=p2;
-						else if(p1=="link") link.LinkBone=p2;
+						if(p1=="anim") link.ChildFName=StringDuplicate(p2.c_str());
+						else if(p1=="link") link.LinkBone=StringDuplicate(p2.c_str());
 						else if(p1=="rotx") link.RotX=atoi(p2.c_str());
 						else if(p1=="roty") link.RotY=atoi(p2.c_str());
 						else if(p1=="rotz") link.RotZ=atoi(p2.c_str());
@@ -1282,7 +1368,15 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 							for(size_t m=0,n=layers.size();m<n;m++)
 							{
 								int layer=atoi(layers[m].c_str());
-								if(layer>=0 && layer<LAYERS3D_COUNT) link.DisabledLayers.push_back(layer);
+								if(layer>=0 && layer<LAYERS3D_COUNT)
+								{
+									int* tmp=link.DisabledLayers;
+									link.DisabledLayers=new int[link.DisabledLayersCount+1];
+									for(int h=0;h<link.DisabledLayersCount;h++) link.DisabledLayers[h]=tmp[h];
+									if(tmp) delete tmp;
+									link.DisabledLayers[link.DisabledLayersCount]=layer;
+									link.DisabledLayersCount++;
+								}
 							}
 						}
 						else if(p1=="disable_subset")
@@ -1292,17 +1386,70 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 							for(size_t m=0,n=subsets.size();m<n;m++)
 							{
 								int ss=atoi(subsets[m].c_str());
-								if(ss>=0) link.DisabledSubsets.push_back(ss);
+								if(ss>=0)
+								{
+									int* tmp=link.DisabledSubsets;
+									link.DisabledSubsets=new int[link.DisabledSubsetsCount+1];
+									for(int h=0;h<link.DisabledSubsetsCount;h++) link.DisabledSubsets[h]=tmp[h];
+									if(tmp) delete tmp;
+									link.DisabledSubsets[link.DisabledSubsetsCount]=ss;
+									link.DisabledSubsetsCount++;
+								}
 							}
 						}
-						else if(p1=="root_texture") link.RootTextureName=p2;
+						else if(p1=="root_texture")
+						{
+							link.RootTextureName=StringDuplicate(p2.c_str());
+						}
 						else if(p1=="texture")
 						{
-							link.TextureName=p2;
+							link.TextureName=StringDuplicate(p2.c_str());
 							link.TextureSubset=-1;
 							if(k<params.size()-2 && Str::IsNumber(params[k+2].c_str())) link.TextureSubset=atoi(params[k+2].c_str());
 						}
+						else if(p1=="root_effect")
+						{
+							if(!link.RootEffectInst) link.RootEffectInst=new D3DXEFFECTINSTANCE;
+							ZeroMemory(link.RootEffectInst,sizeof(D3DXEFFECTINSTANCE));
+							link.RootEffectInst->pEffectFilename=StringDuplicate(p2.c_str());
+							last_effect_root=true;
+						}
+						else if(p1=="effect")
+						{
+							if(!link.EffectInst) link.EffectInst=new D3DXEFFECTINSTANCE;
+							ZeroMemory(link.EffectInst,sizeof(D3DXEFFECTINSTANCE));
+							link.EffectInst->pEffectFilename=StringDuplicate(p2.c_str());
+							link.EffectSubset=-1;
+							if(k<params.size()-2 && Str::IsNumber(params[k+2].c_str())) link.EffectSubset=atoi(params[k+2].c_str());
+							last_effect_root=false;
+						}
+						else if(p1=="def")
+						{
+							// Todo: parse defaults
+							/*D3DXEFFECTINSTANCE* inst=(last_effect_root?link.RootEffectInst:link.EffectInst);
+							if(!inst) continue;
+
+							LPD3DXEFFECTDEFAULT* tmp=inst->pDefaults;
+							link.DisabledSubsets=new int[link.DisabledSubsetsCount+1];
+							for(int h=0;h<link.DisabledSubsetsCount;h++) link.DisabledSubsets[h]=tmp[h];
+							if(tmp) delete tmp;
+							link.DisabledSubsets[link.DisabledSubsetsCount]=ss;
+							link.DisabledSubsetsCount++;
+
+							inst->NumDefaults
+
+							if(p2=="string")
+							{
+							}
+							else if(p2=="floats")
+							{
+							}
+							else if(p2=="dword")
+							{
+							}*/
+						}
 					}
+
 					// Add to sequence
 					animBones.push_back(link);
 				}
@@ -1315,6 +1462,14 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 			char tex_name[MAX_FOPATH];
 			fo3d.GetStr("texture","",tex_name);
 			defaultTexture=tex_name;
+		}
+
+		// Default effect
+		if(fo3d.IsCachedKey("effect"))
+		{
+			char effect_name[MAX_FOPATH];
+			fo3d.GetStr("effect","",effect_name);
+			defaultEffect.pEffectFilename=StringDuplicate(effect_name);
 		}
 
 		// Other
@@ -1648,10 +1803,7 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 			if(SkinningMethod==SKINNING_HLSL_SHADER)
 			{
 				// Get palette size
-				// First 9 constants are used for other data.  Each 4x3 matrix takes up 3 constants.
-				// (96 - 9) /3 i.e. Maximum constant count - used constants 
-				DWORD max_matrices=26;
-				mesh_container->exNumPaletteEntries=min(max_matrices,mesh_container->pSkinInfo->GetNumBones());
+				mesh_container->exNumPaletteEntries=mesh_container->pSkinInfo->GetNumBones();
 
 				D3D_HR(mesh_container->pSkinInfo->ConvertToIndexedBlendedMesh(
 					mesh_container->MeshData.pMesh,
@@ -1754,40 +1906,18 @@ void Animation3dXFile::SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationCont
 	if(frame->pFrameFirstChild) SetupAnimationOutput(frame->pFrameFirstChild,anim_controller);
 }
 
-AnimTextureVec Animation3dXFile::Textures;
-IDirect3DTexture9* Animation3dXFile::GetTexture(const char* tex_name)
+TextureEx* Animation3dXFile::GetTexture(const char* tex_name)
 {
-	if(tex_name && tex_name[0])
-	{
-		// Try find already loaded texture
-		for(AnimTextureVecIt it=Textures.begin(),end=Textures.end();it!=end;++it)
-		{
-			AnimTexture* tex=*it;
-			if(!_stricmp(tex->Name,tex_name)) return tex->Data;
-		}
+	TextureEx* texture=Loader3d::LoadTexture(D3DDevice,tex_name,fileName.c_str(),pathType);
+	if(!texture) WriteLog(__FUNCTION__" - Can't load texture<%s>.\n",tex_name?tex_name:"nullptr");
+	return texture;
+}
 
-		// First try load from textures folder
-		FileManager fm;
-		if(!fm.LoadFile(tex_name,PT_TEXTURES))
-		{
-			// After try load from file folder
-			char path[MAX_FOPATH];
-			FileManager::ExtractPath(fileName.c_str(),path);
-			StringAppend(path,tex_name);
-			fm.LoadFile(path,pathType);
-		}
-
-		// Create texture
-		IDirect3DTexture9* tex=NULL;
-		if(fm.IsLoaded() && SUCCEEDED(D3DXCreateTextureFromFileInMemory(D3DDevice,fm.GetBuf(),fm.GetFsize(),&tex)))
-		{
-			Textures.push_back(new AnimTexture(Str::DuplicateString(tex_name),tex));
-			return tex;
-		}
-	}
-
-	WriteLog(__FUNCTION__" - Can't load texture<%s>.\n",tex_name?tex_name:"nullptr");
-	return NULL;
+EffectEx* Animation3dXFile::GetEffect(D3DXEFFECTINSTANCE* effect_inst)
+{
+	EffectEx* effect=Loader3d::LoadEffect(D3DDevice,effect_inst,fileName.c_str(),pathType);
+	if(!effect) WriteLog(__FUNCTION__" - Can't load effect<%s>.\n",effect_inst && effect_inst->pEffectFilename?effect_inst->pEffectFilename:"nullptr");
+	return effect;
 }
 
 /************************************************************************/

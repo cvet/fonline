@@ -212,8 +212,10 @@ SpriteInfo* ResourceManager::GetSkDxSprInfo(DWORD name_hash){sprMngr->SurfType=R
 AnyFrames* ResourceManager::GetIfaceAnim(DWORD name_hash){sprMngr->SurfType=RES_IFACE; return GetAnim(name_hash,0);}
 AnyFrames* ResourceManager::GetInvAnim(DWORD name_hash){sprMngr->SurfType=RES_IFACE_EXT; return GetAnim(name_hash,0);}
 
-AnyFrames* ResourceManager::GetCritAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir)
+AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir)
 {
+	if(CritType::IsAnim3d(crtype)) return NULL;
+
 	DWORD id=(int(crtype)<<19)|(int(anim1)<<11)|(int(anim2)<<3)|(dir&7);
 
 	AnimMapIt it=critterFrames.find(id);
@@ -248,6 +250,46 @@ AnyFrames* ResourceManager::GetCritAnim(DWORD crtype, BYTE anim1, BYTE anim2, BY
 	sprMngr->SurfType=RES_NONE;
 	critterFrames.insert(AnimMapVal(id,cr_frm));
 	return cr_frm;
+}
+
+Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir)
+{
+	if(!CritType::IsAnim3d(crtype)) return NULL;
+
+	if(crtype<critter3d.size() && critter3d[crtype])
+	{
+		critter3d[crtype]->SetAnimation(anim1,anim2,NULL,ANIMATION_STAY);
+		critter3d[crtype]->SetDir(dir);
+		return critter3d[crtype];
+	}
+
+	char name[64];
+	sprintf(name,"%s.fo3d",CritType::GetName(crtype));
+	Animation3d* anim3d=sprMngr->Load3dAnimation(name,PT_ART_CRITTERS);
+	if(!anim3d) return NULL;
+
+	if(crtype>=critter3d.size()) critter3d.resize(crtype+1);
+	critter3d[crtype]=anim3d;
+
+	anim3d->SetAnimation(anim1,anim2,NULL,ANIMATION_STAY);
+	anim3d->SetDir(dir);
+	return anim3d;
+}
+
+DWORD ResourceManager::GetCritSprId(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir)
+{
+	DWORD spr_id=0;
+	if(!CritType::IsAnim3d(crtype))
+	{
+		AnyFrames* anim=GetCrit2dAnim(crtype,anim1,anim2,dir);
+		spr_id=(anim?anim->GetSprId(0):0);
+	}
+	else
+	{
+		Animation3d* anim=GetCrit3dAnim(crtype,anim1,anim2,dir);
+		spr_id=(anim?anim->GetSprId():0);
+	}
+	return spr_id;
 }
 
 DWORD ResourceManager::GetAvatarSprId(const char* fname)

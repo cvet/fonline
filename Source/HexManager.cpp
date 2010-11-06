@@ -1710,15 +1710,18 @@ void HexManager::DrawMap()
 			}
 
 			// Draw simple tiles
+			sprMngr->SetCurEffect2D(DEFAULT_EFFECT_TILE);
 			sprMngr->PrepareBuffer(tilesTree,tileSurf,TILE_ALPHA);
 
 			// Done
 			reprepareTiles=false;
 		}
+
 		sprMngr->DrawPrepared(tileSurf);
 	}
 
 	// Flat sprites
+	sprMngr->SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
 	sprMngr->DrawSprites(mainTree,false,false,0,0);
 
 	// Light
@@ -1729,6 +1732,7 @@ void HexManager::DrawMap()
 	DrawCursor(cursorPrePic);
 
 	// Sprites
+	sprMngr->SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
 	sprMngr->DrawSprites(mainTree,true,true,1,-1);
 
 	// Roof
@@ -1737,10 +1741,13 @@ void HexManager::DrawMap()
 		LPDIRECT3DDEVICE device=sprMngr->GetDevice();
 		device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT);
 		device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT);
+		sprMngr->SetCurEffect2D(DEFAULT_EFFECT_ROOF);
 		sprMngr->DrawSprites(roofTree,false,true,0,-1);
-		if(rainCapacity) sprMngr->DrawSprites(roofRainTree,false,false,0,-1);
 		device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR);
 		device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR);
+
+		sprMngr->SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
+		if(rainCapacity) sprMngr->DrawSprites(roofRainTree,false,false,0,-1);
 	}
 
 	// Contours

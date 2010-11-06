@@ -252,10 +252,6 @@
 				RelativePath="..\Source\ResourceClient.h"
 				>
 			</File>
-			<File
-				RelativePath="..\Source\3dStuff\Skinning.fx"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Zlib"
@@ -2173,10 +2169,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\3dStuff\MeshStructures.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\ShadowVolume.h"
 				>
 			</File>
 			<File

@@ -67,6 +67,19 @@ bool FOMapper::Init(HWND wnd)
 	if(!SprMngr.LoadFontAAF(FONT_FAT,"Fat",1)) return false;
 	if(!SprMngr.LoadFontAAF(FONT_BIG,"Big",1)) return false;
 	SprMngr.SetDefaultFont(FONT_DEFAULT,COLOR_TEXT);
+	EffectEx* font_effect=Loader3d::LoadEffect(SprMngr.GetDevice(),"Font_Default.fx");
+	if(font_effect)
+	{
+		SprMngr.SetFontEffect(FONT_FO,font_effect);
+		SprMngr.SetFontEffect(FONT_NUM,font_effect);
+		SprMngr.SetFontEffect(FONT_BIG_NUM,font_effect);
+		SprMngr.SetFontEffect(FONT_SAND_NUM,font_effect);
+		SprMngr.SetFontEffect(FONT_SPECIAL,font_effect);
+		SprMngr.SetFontEffect(FONT_DEFAULT,font_effect);
+		SprMngr.SetFontEffect(FONT_THIN,font_effect);
+		SprMngr.SetFontEffect(FONT_FAT,font_effect);
+		SprMngr.SetFontEffect(FONT_BIG,font_effect);
+	}
 
 	// Critters sprite manager ptr
 	CritterCl::SprMngr=&SprMngr;
@@ -1457,8 +1470,7 @@ void FOMapper::IntDraw()
 		{
 			CritData* pnpc=NpcProtos[i];
 
-			AnyFrames* anim=ResMngr.GetCritAnim(pnpc->BaseType,1,1,NpcDir);
-			DWORD spr_id=(anim?anim->GetSprId(0):0);
+			DWORD spr_id=ResMngr.GetCritSprId(pnpc->BaseType,1,1,NpcDir);
 			if(!spr_id) continue;
 
 			DWORD col=COLOR_IFACE;
@@ -3170,8 +3182,7 @@ void FOMapper::ParseNpc(WORD pid, WORD hx, WORD hy)
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return;
 	if(HexMngr.GetField(hx,hy).Crit) return;
 
-	AnyFrames* anim=ResMngr.GetCritAnim(pnpc->BaseType,1,1,NpcDir);
-	DWORD spr_id=(anim?anim->GetSprId(0):0);
+	DWORD spr_id=ResMngr.GetCritSprId(pnpc->BaseType,1,1,NpcDir);
 	if(!spr_id) return;
 
 	SelectClear();
@@ -3347,8 +3358,7 @@ void FOMapper::CurDraw()
 		}
 		else if(IsCritMode() && NpcProtos.size())
 		{
-			AnyFrames* anim=ResMngr.GetCritAnim(NpcProtos[CurProto[IntMode]]->BaseType,1,1,NpcDir);
-			spr_id=(anim?anim->GetSprId(0):0);
+			DWORD spr_id=ResMngr.GetCritSprId(NpcProtos[CurProto[IntMode]]->BaseType,1,1,NpcDir);
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			WORD hx,hy;

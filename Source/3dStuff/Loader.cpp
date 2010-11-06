@@ -3,6 +3,10 @@
 #include "Text.h"
 #include "Timer.h"
 
+/************************************************************************/
+/* Models                                                               */
+/************************************************************************/
+
 MeshHierarchy Loader3d::memAllocator;
 
 D3DXFRAME* Loader3d::Load(IDirect3DDevice9* device, const char* fname, int path_type, ID3DXAnimationController** anim)
@@ -340,6 +344,342 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 
 	return frame_root;
 };
+
+/************************************************************************/
+/* Textures                                                             */
+/************************************************************************/
+TextureExVec Loader3d::loadedTextures;
+
+TextureEx* Loader3d::LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path, int model_path_type)
+{
+	if(!texture_name || !texture_name[0]) return NULL;
+
+	// Try find already loaded texture
+	for(TextureExVecIt it=loadedTextures.begin(),end=loadedTextures.end();it!=end;++it)
+	{
+		TextureEx* texture=*it;
+		if(!_stricmp(texture->Name,texture_name)) return texture;
+	}
+
+	// First try load from textures folder
+	FileManager fm;
+	if(!fm.LoadFile(texture_name,PT_TEXTURES) && model_path)
+	{
+		// After try load from file folder
+		char path[MAX_FOPATH];
+		FileManager::ExtractPath(model_path,path);
+		StringAppend(path,texture_name);
+		fm.LoadFile(path,model_path_type);
+	}
+
+	// Create texture
+	IDirect3DTexture9* texture=NULL;
+	if(!fm.IsLoaded() || FAILED(D3DXCreateTextureFromFileInMemory(device,fm.GetBuf(),fm.GetFsize(),&texture))) return NULL;
+
+	TextureEx* texture_ex=new TextureEx();
+	texture_ex->Name=StringDuplicate(texture_name);
+	texture_ex->Texture=texture;
+	loadedTextures.push_back(texture_ex);
+	return loadedTextures.back();
+}
+
+void Loader3d::FreeTexture(TextureEx* texture)
+{
+	if(texture)
+	{
+		for(TextureExVecIt it=loadedTextures.begin(),end=loadedTextures.end();it!=end;++it)
+		{
+			TextureEx* texture_=*it;
+			if(texture_==texture)
+			{
+				loadedTextures.erase(it);
+				break;
+			}
+		}
+
+		SAFEDELA(texture->Name);
+		SAFEREL(texture->Texture);
+		SAFEDEL(texture);
+	}
+	else
+	{
+		TextureExVec textures=loadedTextures;
+		for(TextureExVecIt it=textures.begin(),end=textures.end();it!=end;++it) FreeTexture(*it);
+	}
+}
+
+/************************************************************************/
+/* Effects                                                              */
+/************************************************************************/
+class IncludeParser : public ID3DXInclude
+{
+public:
+	char* RootPath;
+	int RootPathType;
+
+	STDMETHOD(Open)(THIS_ D3DXINCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
+	{
+		FileManager fm;
+		if(!fm.LoadFile(pFileName,PT_EFFECTS))
+		{
+			if(!RootPath) return S_FALSE;
+			char path[MAX_FOPATH];
+			FileManager::ExtractPath(RootPath,path);
+			StringAppend(path,pFileName);
+			if(!fm.LoadFile(path,RootPathType)) return S_FALSE;
+		}
+		*pBytes=fm.GetFsize();
+		*ppData=fm.ReleaseBuffer();
+		return S_OK;
+	}
+
+	STDMETHOD(Close)(THIS_ LPCVOID pData)
+	{
+		if(pData) delete[] pData;
+		return S_OK;
+	}
+};
+
+EffectExVec Loader3d::loadedEffects;
+IncludeParser includeParser;
+
+EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, const char* effect_name)
+{
+	D3DXEFFECTINSTANCE effect_inst;
+	ZeroMemory(&effect_inst,sizeof(effect_inst));
+	effect_inst.pEffectFilename=(char*)effect_name;
+	return LoadEffect(device,&effect_inst,NULL,0);
+}
+
+EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path, int model_path_type)
+{
+	if(!effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[0]) return NULL;
+	const char* effect_name=effect_inst->pEffectFilename;
+
+	// Try find already loaded texture
+	for(EffectExVecIt it=loadedEffects.begin(),end=loadedEffects.end();it!=end;++it)
+	{
+		EffectEx* effect=*it;
+		if(!_stricmp(effect->Name,effect_name)) return effect;
+	}
+
+	// First try load from effects folder
+	FileManager fm;
+	if(!fm.LoadFile(effect_name,PT_EFFECTS) && model_path)
+	{
+		// After try load from file folder
+		char path[MAX_FOPATH];
+		FileManager::ExtractPath(model_path,path);
+		StringAppend(path,effect_name);
+		fm.LoadFile(path,model_path_type);
+	}
+	if(!fm.IsLoaded()) return NULL;
+
+	// Find already compiled effect in cache
+	char cache_name[MAX_FOPATH];
+	sprintf(cache_name,"%s.fxc",effect_name);
+	FileManager fm_cache;
+	if(fm_cache.LoadFile(cache_name,PT_CACHE))
+	{
+		FILETIME last_write,last_write_cache;
+		fm.GetTime(NULL,NULL,&last_write);
+		fm_cache.GetTime(NULL,NULL,&last_write_cache);
+		if(CompareFileTime(&last_write,&last_write_cache)>0) fm_cache.UnloadFile();
+	}
+
+	// Load and cache effect
+	if(!fm_cache.IsLoaded())
+	{
+		char* buf=(char*)fm.GetBuf();
+		DWORD size=fm.GetFsize();
+
+		LPD3DXEFFECTCOMPILER ef_comp=NULL;
+		LPD3DXBUFFER ef_buf=NULL;
+		LPD3DXBUFFER errors=NULL;
+
+		includeParser.RootPath=(char*)model_path;
+		includeParser.RootPathType=model_path_type;
+		if(SUCCEEDED(D3DXCreateEffectCompiler(buf,size,NULL,&includeParser,0/*D3DXSHADER_USE_LEGACY_D3DX9_31_DLL*/,&ef_comp,&errors)))
+		{
+			SAFEREL(errors);
+			if(SUCCEEDED(ef_comp->CompileEffect(0,&ef_buf,&errors)))
+			{
+				fm_cache.SetData(ef_buf->GetBufferPointer(),ef_buf->GetBufferSize());
+				fm_cache.SaveOutBufToFile(cache_name,PT_CACHE);
+				fm_cache.SwitchToRead();
+			}
+			else
+			{
+				WriteLog(__FUNCTION__" - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+			}
+		}
+		else
+		{
+			WriteLog(__FUNCTION__" - Unable to create effect compiler, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+		}
+
+		SAFEREL(ef_comp);
+		SAFEREL(ef_buf);
+		SAFEREL(errors);
+
+		if(!fm_cache.IsLoaded()) return NULL;
+	}
+
+	// Create effect
+	ID3DXEffect* effect=NULL;
+	LPD3DXBUFFER errors=NULL;
+	if(FAILED(D3DXCreateEffect(device,fm_cache.GetBuf(),fm_cache.GetFsize(),NULL,NULL,/*D3DXSHADER_SKIPVALIDATION|*/D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
+	{
+		WriteLog(__FUNCTION__" - Unable to create effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+		SAFEREL(effect);
+		SAFEREL(errors);
+		return NULL;
+	}
+	SAFEREL(errors);
+
+	EffectEx* effect_ex=new EffectEx();
+	effect_ex->Name=StringDuplicate(effect_name);
+	effect_ex->Effect=effect;
+	effect_ex->EffectFlags=D3DXFX_DONOTSAVESTATE;
+	effect_ex->EffectParams=NULL;
+
+	effect_ex->TechniqueSkinned=effect->GetTechniqueByName("Skinned");
+	effect_ex->TechniqueSkinnedWithShadow=effect->GetTechniqueByName("SkinnedWithShadow");
+	effect_ex->TechniqueSimple=effect->GetTechniqueByName("Simple");
+	effect_ex->TechniqueSimpleWithShadow=effect->GetTechniqueByName("SimpleWithShadow");
+	effect_ex->BonesInfluences=effect->GetParameterByName(NULL,"BonesInfluences");
+	effect_ex->GroundPosition=effect->GetParameterByName(NULL,"GroundPosition");
+	effect_ex->LightDir=effect->GetParameterByName(NULL,"LightDir");
+	effect_ex->LightDiffuse=effect->GetParameterByName(NULL,"LightDiffuse");
+	effect_ex->MaterialAmbient=effect->GetParameterByName(NULL,"MaterialAmbient");
+	effect_ex->MaterialDiffuse=effect->GetParameterByName(NULL,"MaterialDiffuse");
+	effect_ex->WorldMatrices=effect->GetParameterByName(NULL,"WorldMatrices");
+	effect_ex->ProjectionMatrix=effect->GetParameterByName(NULL,"ProjectionMatrix");
+
+	if(!effect_ex->TechniqueSimple)
+	{
+		WriteLog(__FUNCTION__" - Technique 'Simple' not founded, effect<%s>.\n",effect_name);
+		delete effect_ex;
+		SAFEREL(effect);
+		return NULL;
+	}
+
+	if(!effect_ex->TechniqueSimpleWithShadow) effect_ex->TechniqueSimpleWithShadow=effect_ex->TechniqueSimple;
+	if(!effect_ex->TechniqueSkinned) effect_ex->TechniqueSkinned=effect_ex->TechniqueSimple;
+	if(!effect_ex->TechniqueSkinnedWithShadow) effect_ex->TechniqueSkinnedWithShadow=effect_ex->TechniqueSkinned;
+
+	effect_ex->PassIndex=effect->GetParameterByName(NULL,"PassIndex");
+	effect_ex->Time=effect->GetParameterByName(NULL,"Time");
+	effect_ex->TimeCurrent=0.0f;
+	effect_ex->TimeLastTick=Timer::AccurateTick();
+	effect_ex->TimeGame=effect->GetParameterByName(NULL,"TimeGame");
+	effect_ex->TimeGameCurrent=0.0f;
+	effect_ex->TimeGameLastTick=Timer::AccurateTick();
+	effect_ex->IsTime=(effect_ex->Time || effect_ex->TimeGame);
+	effect_ex->Random1Pass=effect->GetParameterByName(NULL,"Random1Pass");
+	effect_ex->Random2Pass=effect->GetParameterByName(NULL,"Random2Pass");
+	effect_ex->Random3Pass=effect->GetParameterByName(NULL,"Random3Pass");
+	effect_ex->Random4Pass=effect->GetParameterByName(NULL,"Random4Pass");
+	effect_ex->IsRandomPass=(effect_ex->Random1Pass || effect_ex->Random2Pass || effect_ex->Random3Pass || effect_ex->Random4Pass);
+	effect_ex->Random1Effect=effect->GetParameterByName(NULL,"Random1Effect");
+	effect_ex->Random2Effect=effect->GetParameterByName(NULL,"Random2Effect");
+	effect_ex->Random3Effect=effect->GetParameterByName(NULL,"Random3Effect");
+	effect_ex->Random4Effect=effect->GetParameterByName(NULL,"Random4Effect");
+	effect_ex->IsRandomEffect=(effect_ex->Random1Effect || effect_ex->Random2Effect || effect_ex->Random3Effect || effect_ex->Random4Effect);
+	effect_ex->IsNeedProcess=(effect_ex->PassIndex || effect_ex->IsTime || effect_ex->IsRandomPass || effect_ex->IsRandomEffect);
+
+	if(effect_inst->NumDefaults)
+	{
+		effect->BeginParameterBlock();
+		for(DWORD d=0;d<effect_inst->NumDefaults;d++)
+		{
+			D3DXEFFECTDEFAULT& def=effect_inst->pDefaults[d];
+			D3DXHANDLE param=NULL;
+			effect->GetParameterByName(param,def.pParamName);
+			switch(def.Type)
+			{
+			case D3DXEDT_STRING: // pValue points to a null terminated ASCII string 
+				effect->SetString(param,(LPCSTR)def.pValue); break;
+			case D3DXEDT_FLOATS: // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
+				effect->SetFloatArray(param,(FLOAT*)def.pValue,def.NumBytes/sizeof(FLOAT)); break;
+			case D3DXEDT_DWORD:  // pValue points to a DWORD
+				effect->SetInt(param,*(DWORD*)def.pValue); break;
+			default: break;
+			}
+		}
+		effect_ex->EffectParams=effect->EndParameterBlock();
+	}
+
+	loadedEffects.push_back(effect_ex);
+	return loadedEffects.back();
+}
+
+void Loader3d::EffectProcessVariables(EffectEx* effect, int pass)
+{
+	// Process effect
+	if(pass==-1)
+	{
+		if(effect->IsTime)
+		{
+			double tick=Timer::AccurateTick();
+			if(effect->Time)
+			{
+				effect->TimeCurrent+=tick-effect->TimeLastTick;
+				effect->TimeLastTick=tick;
+				while(effect->TimeCurrent>=120.0f) effect->TimeCurrent-=120.0f;
+
+				effect->Effect->SetFloat(effect->Time,effect->TimeCurrent);
+			}
+			if(effect->TimeGame)
+			{
+				if(!Timer::IsGamePaused())
+				{
+					effect->TimeGameCurrent+=tick-effect->TimeGameLastTick;
+					effect->TimeGameLastTick=tick;
+					while(effect->TimeGameCurrent>=120.0f) effect->TimeGameCurrent-=120.0f;
+				}
+				else
+				{
+					effect->TimeGameLastTick=tick;
+				}
+
+				effect->Effect->SetFloat(effect->TimeGame,effect->TimeGameCurrent);
+			}
+		}
+
+		if(effect->IsRandomEffect)
+		{
+			if(effect->Random1Effect) effect->Effect->SetFloat(effect->Random1Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect->Random2Effect) effect->Effect->SetFloat(effect->Random2Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect->Random3Effect) effect->Effect->SetFloat(effect->Random3Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect->Random4Effect) effect->Effect->SetFloat(effect->Random4Effect,(double)Random(0,2000000000)/2000000000.0);
+		}
+	}
+	// Process pass
+	else
+	{
+		if(effect->PassIndex) effect->Effect->SetFloat(effect->Random1Pass,(float)pass);
+
+		if(effect->IsRandomPass)
+		{
+			if(effect->Random1Pass) effect->Effect->SetFloat(effect->Random1Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect->Random2Pass) effect->Effect->SetFloat(effect->Random2Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect->Random3Pass) effect->Effect->SetFloat(effect->Random3Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect->Random4Pass) effect->Effect->SetFloat(effect->Random4Pass,(double)Random(0,2000000000)/2000000000.0);
+		}
+	}
+}
+
+/*
+Todo:
+	if(Name) delete Name;
+	if(Effect)
+	{
+		if(EffectParams) Effect->DeleteParameterBlock(EffectParams);
+		Effect->Release();
+		Effect=NULL;
+	}
+*/
 
 /************************************************************************/
 /*                                                                      */

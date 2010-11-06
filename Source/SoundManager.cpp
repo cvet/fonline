@@ -206,15 +206,17 @@ void SoundManager::Play(Sound* sound, int vol_db, DWORD flags)
 
 Sound* SoundManager::Load(const char* fname, int path_type)
 {
-	char full_name[MAX_FOPATH];
-	StringCopy(full_name,fname);
+	char fname_[MAX_FOPATH];
+	StringCopy(fname_,fname);
+
+	if(strstr(fname_,"\\") || strstr(fname_,"/")) path_type=PT_DATA;
 
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
 	{
 		// Default ext
-		ext=full_name+strlen(full_name);
-		StringAppend(full_name,SOUND_DEFAULT_EXT);
+		ext=fname_+strlen(fname_);
+		StringAppend(fname_,SOUND_DEFAULT_EXT);
 	}
 	else
 	{
@@ -228,16 +230,16 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 		return NULL;
 	}
 
-	sound->FileName=full_name;
+	sound->FileName=fname_;
 	sound->PathType=path_type;
 
 	WAVEFORMATEX fmt;
 	ZeroMemory(&fmt,sizeof(WAVEFORMATEX));
 	unsigned char* sample_data=NULL;
 
-	if(!((!_stricmp(ext,".wav") && LoadWAV(sound,fmt,sample_data))
-	|| (!_stricmp(ext,".acm") && LoadACM(sound,fmt,sample_data,path_type==PT_SND_MUSIC?false:true))
-	|| (!_stricmp(ext,".ogg") && LoadOGG(sound,fmt,sample_data))))
+	if(!((!_stricmp(ext,".wav") && LoadWAV(sound,fmt,sample_data)) ||
+		(!_stricmp(ext,".acm") && LoadACM(sound,fmt,sample_data,path_type==PT_SND_MUSIC?false:true)) ||
+		(!_stricmp(ext,".ogg") && LoadOGG(sound,fmt,sample_data))))
 	{
 		WriteLog(__FUNCTION__" - Unable to load sound<%s>.\n",fname);
 		delete sound;

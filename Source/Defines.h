@@ -3,8 +3,8 @@
 
 #pragma warning (disable : 4786)
 
+#include <Windows.h>
 #include "ItemPid.h"
-#include <windows.h>
 #include <map>
 #include <vector>
 #include <deque>
@@ -23,6 +23,14 @@ typedef short            s16;
 typedef int              s32;
 typedef __int64          s64;
 */
+
+#ifndef _FILETIME_
+struct FILETIME
+{
+	DWORD dwLowDateTime;
+	DWORD dwHighDateTime;
+};
+#endif
 
 typedef	DWORD MSGTYPE;
 union FILETIMELI

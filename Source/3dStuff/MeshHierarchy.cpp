@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "MeshHierarchy.h"
 #include <FileManager.h>
+#include "Loader.h"
 
 HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
 {
@@ -56,15 +57,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	*retNewMeshContainer=0;
 
 	// The mesh name (may be 0) needs copying over
-	if(Name && strlen(Name))
-	{
-		newMeshContainer->Name=StringDuplicate(Name);
-//		Utility3d::DebugString("Added mesh: "+ToString(Name));
-	}
-	else
-	{
-//		Utility3d::DebugString("Added Mesh: no name given");
-	}
+	if(Name && strlen(Name)) newMeshContainer->Name=StringDuplicate(Name);
 
 	// The mesh type (D3DXMESHTYPE_MESH, D3DXMESHTYPE_PMESH or D3DXMESHTYPE_PATCHMESH)
 	if(meshData->Type!=D3DXMESHTYPE_MESH)
@@ -95,6 +88,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	newMeshContainer->NumMaterials=max(numMaterials,1);
 	newMeshContainer->exMaterials=new D3DMATERIAL9[newMeshContainer->NumMaterials];
 	newMeshContainer->exTexturesNames=new char*[newMeshContainer->NumMaterials];
+	newMeshContainer->exEffects=new D3DXEFFECTINSTANCE[newMeshContainer->NumMaterials];
 
 	if(numMaterials>0)
 	{
@@ -103,6 +97,29 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 		{
 			newMeshContainer->exTexturesNames[i]=StringDuplicate(materials[i].pTextureFilename);
 			newMeshContainer->exMaterials[i]=materials[i].MatD3D;
+
+			// The mesh may contain a reference to an effect file
+			ZeroMemory(&newMeshContainer->exEffects[i],sizeof(D3DXEFFECTINSTANCE));
+			if(effectInstances && effectInstances[i].pEffectFilename && effectInstances[i].pEffectFilename[0])
+			{
+				newMeshContainer->exEffects[i].pEffectFilename=StringDuplicate(effectInstances[i].pEffectFilename);
+				newMeshContainer->exEffects[i].NumDefaults=effectInstances[i].NumDefaults;
+				newMeshContainer->exEffects[i].pDefaults=NULL;
+
+				DWORD defaults=newMeshContainer->exEffects[i].NumDefaults;
+				if(defaults)
+				{
+					newMeshContainer->exEffects[i].pDefaults=new D3DXEFFECTDEFAULT[defaults];
+					for(DWORD j=0;j<defaults;j++)
+					{
+						newMeshContainer->exEffects[i].pDefaults[j].pParamName=StringDuplicate(effectInstances[i].pDefaults[j].pParamName);
+						newMeshContainer->exEffects[i].pDefaults[j].Type=effectInstances[i].pDefaults[j].Type;
+						newMeshContainer->exEffects[i].pDefaults[j].NumBytes=effectInstances[i].pDefaults[j].NumBytes;
+						newMeshContainer->exEffects[i].pDefaults[j].pValue=new char[newMeshContainer->exEffects[i].pDefaults[j].NumBytes];
+						memcpy(newMeshContainer->exEffects[i].pDefaults[j].pValue,effectInstances[i].pDefaults[j].pValue,newMeshContainer->exEffects[i].pDefaults[j].NumBytes);
+					}
+				}
+			}
 		}
 	}
 	else
@@ -115,6 +132,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 		newMeshContainer->exMaterials[0].Diffuse.b=0.5f;
 		newMeshContainer->exMaterials[0].Specular=newMeshContainer->exMaterials[0].Diffuse;
 		newMeshContainer->exTexturesNames[0]=NULL;
+		ZeroMemory(&newMeshContainer->exEffects[0],sizeof(D3DXEFFECTINSTANCE));
     }
 
 	// If there is skin data associated with the mesh copy it over
@@ -135,11 +153,6 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	    // get each of the bone offset matrices so that we don't need to get them later
 	    for (UINT i=0; i < numBones; i++)
 	        newMeshContainer->exBoneOffsets[i]=*(newMeshContainer->pSkinInfo->GetBoneOffsetMatrix(i));
-
-//		Utility3d::DebugString("Mesh has skinning info.\n Number of bones is: "+ToString(numBones));
-        // Note: in the Microsoft samples a GenerateSkinnedMesh function is called here in order to prepare
-		// the skinned mesh data for optimial hardware acceleration. As mentioned in the notes this sample
-		// does not do hardware skinning but instead uses software skinning.
 	}
 	else
 	{
@@ -153,48 +166,6 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	// When we got the device we caused an internal reference count to be incremented
 	// So we now need to release it
 	pd3dDevice->Release();
-
-	// The mesh may contain a reference to an effect file
-	if(effectInstances && effectInstances->pEffectFilename)
-	{
-		FileManager fm;
-		if(fm.LoadFile(effectInstances->pEffectFilename,PT_EFFECTS)) // Todo: add search from mesh folder
-		{
-			ID3DXEffect* effect=NULL;
-			ID3DXBuffer* errors=NULL;
-			if(SUCCEEDED(D3DXCreateEffect(pd3dDevice,fm.GetBuf(),fm.GetFsize(),NULL,NULL,D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
-			{
-				newMeshContainer->exEffect=new EffectEx(effect);
-				effect->BeginParameterBlock();
-				for(DWORD d=0;d<newMeshContainer->pEffects->NumDefaults;d++)
-				{
-					D3DXEFFECTDEFAULT& def=newMeshContainer->pEffects->pDefaults[d];
-					D3DXHANDLE param=NULL;
-					effect->GetParameterByName(param,def.pParamName);
-					switch(def.Type)
-					{
-					case D3DXEDT_STRING: // pValue points to a null terminated ASCII string 
-						effect->SetString(param,(LPCSTR)def.pValue); break;
-					case D3DXEDT_FLOATS: // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
-						effect->SetFloatArray(param,(FLOAT*)def.pValue,def.NumBytes/sizeof(float)); break;
-					case D3DXEDT_DWORD:  // pValue points to a DWORD
-						effect->SetInt(param,*(DWORD*)def.pValue); break;
-					default: break;
-					}
-				}
-				newMeshContainer->exEffect->EffectParams=effect->EndParameterBlock();
-			}
-			else
-			{
-				WriteLog(__FUNCTION__" - Could not load effect<%s>, errors<%s>.\n",effectInstances->pEffectFilename,errors->GetBufferPointer());
-				errors->Release();
-			}
-		}
-		else
-		{
-			WriteLog(__FUNCTION__" - Could not find effect<%s>.\n",effectInstances->pEffectFilename);
-		}
-	}
 
 	// Set the output mesh container pointer to our newly created one
 	*retNewMeshContainer=newMeshContainer;    
@@ -230,6 +201,17 @@ HRESULT MeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBas
 			SAFEDELA(mesh_container->exTexturesNames[i]);
 	}
 	SAFEDELA(mesh_container->exTexturesNames);
+	// Delete effect
+	if(mesh_container->exEffects)
+	{
+		for(DWORD i=0;i<mesh_container->NumMaterials;i++)
+		{
+			for(DWORD j=0;j<mesh_container->exEffects[i].NumDefaults;j++)
+				SAFEDELA(mesh_container->exEffects[i].pDefaults[j].pValue);
+			SAFEDELA(mesh_container->exEffects[i].pDefaults);
+		}
+	}
+	SAFEDEL(mesh_container->exEffects);
 	// Adjacency data
 	SAFEDELA(mesh_container->pAdjacency);
 	// Bone parts
@@ -244,8 +226,6 @@ HRESULT MeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBas
 	SAFEREL(mesh_container->pSkinInfo);
 	// Release blend mesh
 	SAFEREL(mesh_container->exSkinMeshBlended);
-	// Delete effect
-	SAFEDEL(mesh_container->exEffect);
 	// Finally delete the mesh container itself
 	SAFEDEL(mesh_container);
     return S_OK;
