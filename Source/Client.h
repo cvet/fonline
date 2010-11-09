@@ -504,7 +504,6 @@ public:
 		static CScriptString* Global_ReplaceTextInt(CScriptString& text, CScriptString& replace, int i);
 		static CScriptString* Global_FormatTags(CScriptString& text, CScriptString* lexems);
 		static int Global_GetSomeValue(int var);
-		static bool Global_LoadDataFile(CScriptString& dat_name);
 		static void Global_MoveScreen(WORD hx, WORD hy, DWORD speed);
 		static void Global_LockScreenScroll(CritterCl* cr);
 		static int Global_GetFog(WORD zone_x, WORD zone_y);
@@ -532,6 +531,7 @@ public:
 		static DWORD Global_GetAngelScriptProperty(int property);
 		static bool Global_SetAngelScriptProperty(int property, DWORD value);
 		static DWORD Global_GetStrHash(CScriptString* str);
+		static bool Global_LoadDataFile(CScriptString& dat_name);
 		static bool Global_IsCritterCanWalk(DWORD cr_type);
 		static bool Global_IsCritterCanRun(DWORD cr_type);
 		static bool Global_IsCritterCanRotate(DWORD cr_type);
@@ -1474,6 +1474,8 @@ public:
 	DWORD FixNextShowCraftTick;
 
 	void FixGenerate(int fix_mode);
+	void FixGenerateStrLine(string& str, INTRECT& r);
+	void FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& or_vec, string& str, INTRECT& r, int& x);
 	int GetMouseCraft();
 	SCraftVec* GetCurSCrafts();
 

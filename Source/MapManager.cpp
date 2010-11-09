@@ -1028,7 +1028,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 {
 	DWORD tick=Timer::GameTick();
 	DWORD dtime=tick-group->MoveLastTick;
-	if(dtime<GM_MOVE_PROC_TIME) return;
+	if(dtime<GM_MOVE_PROCESS_TIME) return;
 	group->MoveLastTick=tick;
 	Critter* rule=group->Rule;
 
@@ -1105,45 +1105,49 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		else if(n<100 && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
 	}
 
-	xf+=sxf*kr*((float)(dtime)/GM_MOVE_PROC_TIME);
-	yf+=syf*kr*((float)(dtime)/GM_MOVE_PROC_TIME);
+	xf+=sxf*kr*((float)(dtime)/GM_MOVE_TIME);
+	yf+=syf*kr*((float)(dtime)/GM_MOVE_TIME);
 
 	int old_x=xi;
 	int old_y=yi;
-	int new_x=(int)xf; // Cast
-	int new_y=(int)yf; // Cast
-
-	if(new_x>=GM_MAXX || new_y>=GM_MAXY || new_x<0 || new_y<0)
-	{
-		if(new_x>=GM_MAXX) new_x=GM_MAXX-1;
-		if(new_x<0) new_x=0;
-		if(new_y>=GM_MAXY) new_y=GM_MAXY-1;
-		if(new_y<0) new_y=0;
-		goto label_GMStopMove;
-	}
+	xi=(int)xf; // Cast
+	yi=(int)yf; // Cast
 
 	// New position
-	if(old_x!=new_x || old_y!=new_y)
+	if(old_x!=xi || old_y!=yi)
 	{
-		// Check relief
-		if((walk_type==GM_WALK_GROUND && GetGmRelief(old_x,old_y)!=0xF && GetGmRelief(new_x,new_y)==0xF ) ||
-			(walk_type==GM_WALK_WATER && GetGmRelief(new_x,new_y)!=0xF))
+		// Check borders
+		if(xi<0 || yi<0 || xi>=GM_MAXX || yi>=GM_MAXY)
 		{
-			// Move from old to new and find last correct position
-			int steps=max(abs(new_x-old_x),abs(new_y-old_y));
+			if(xi<0) xi=0;
+			if(xi>=GM_MAXX) xi=GM_MAXX-1;
+			if(yi<0) yi=0;
+			if(yi>=GM_MAXY) yi=GM_MAXY-1;
+
+			// Stop group
+			xf=xi;
+			yf=yi;
+			sxf=0.0f;
+			syf=0.0f;
+		}
+
+		// Move from old to new and find last correct position
+		int steps=max(abs(xi-old_x),abs(yi-old_y));
+		int new_x_=old_x;
+		int new_y_=old_y;
+		if(steps)
+		{
 			float xx=(float)old_x;
 			float yy=(float)old_y;
-			float oxx=(float)(new_x-old_x)/steps;
-			float oyy=(float)(new_y-old_y)/steps;
-			int new_x_=old_x;
-			int new_y_=old_y;
+			float oxx=(float)(xi-old_x)/steps;
+			float oyy=(float)(yi-old_y)/steps;
 
 			for(int i=0;i<steps;i++)
 			{
 				xx+=oxx;
 				yy+=oyy;
-				int xxi=(int)xx;
-				int yyi=(int)yy;
+				int xxi=(int)(xx>=0.0f?xx+0.5f:xx-0.5f);
+				int yyi=(int)(yy>=0.0f?yy+0.5f:yy-0.5f);
 
 				if((walk_type==GM_WALK_GROUND && GetGmRelief(xxi,yyi)==0xF) ||
 					(walk_type==GM_WALK_WATER && GetGmRelief(xxi,yyi)!=0xF)) break;
@@ -1151,23 +1155,19 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 				new_x_=xxi;
 				new_y_=yyi;
 			}
-			if(new_x_==old_x && new_y_==old_y) goto label_GMStopMove;
-
-			new_x=new_x_;
-			new_y=new_y_;
 		}
 
-		// Set new position	
-		xi=new_x;
-		yi=new_y;
+		if((xi!=new_x_ || yi!=new_y_) || (sxf==0.0f && syf==0.0f))
+		{
+			xi=new_x_;
+			yi=new_y_;
+			goto label_GMStopMove;
+		}
 
-		// Add Score
-//		if(car && group->GetSize()>1 && rule->IsPlayer()) SetScore(SCORE_DRIVER,(Client*)rule,group->GetSize()-1);
-
+		// Set new position	to all group
 		for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
 		{
 			Critter* cr=*it;
-//			if(cr->IsPlayer()) SetScore(SCORE_SCAUT,(Client*)cr,1);
 			cr->Data.WorldX=xi;
 			cr->Data.WorldY=yi;
 		}
@@ -1175,27 +1175,21 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		// Zone
 		int old_zone_x=GM_ZONE(old_x);
 		int old_zone_y=GM_ZONE(old_y);
-		int cur_zone_x=GM_ZONE(new_x);
-		int cur_zone_y=GM_ZONE(new_y);
+		int cur_zone_x=GM_ZONE(xi);
+		int cur_zone_y=GM_ZONE(yi);
 
 		// Change zone
 		if(old_zone_x!=cur_zone_x || old_zone_y!=cur_zone_y) GM_GroupScanZone(group,cur_zone_x,cur_zone_y);
 		//GM_GlobalProcess(group,GLOBAL_PROCESS_NEW_ZONE);
-	}
 
-	// Dist
-	cur_dist=DistSqrt(xi,yi,mxi,myi);
-	if(!cur_dist || cur_dist>last_dist)
-	{
-		xi=mxi;
-		yi=myi;
-		for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
+		// Dist
+		cur_dist=DistSqrt(xi,yi,mxi,myi);
+		if(!cur_dist || cur_dist>last_dist)
 		{
-			Critter* cr=*it;
-			cr->Data.WorldX=xi;
-			cr->Data.WorldY=yi;
+			xi=mxi;
+			yi=myi;
+			goto label_GMStopMove;
 		}
-		goto label_GMStopMove;
 	}
 
 	if(group->IsEncaunterTime())
@@ -1211,12 +1205,23 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 
 label_GMStopMove:
 
+	// Set new position	to all group
+	for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
+	{
+		Critter* cr=*it;
+		cr->Data.WorldX=xi;
+		cr->Data.WorldY=yi;
+	}
+
+	// Drop move parameters
 	sxf=0.0f;
 	syf=0.0f;
 	mxi=xi;
 	myi=yi;
 	xf=xi;
 	yf=yi;
+
+	// Notify
 	rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
 	GM_GlobalProcess(rule,group,GLOBAL_PROCESS_STOPPED);
 }
@@ -1810,13 +1815,13 @@ void MapManager::GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, DWORD sp
 	else
 	{
 		float k_speed=1000.0f/float(speed);
-		float time=(k_speed*1000.0f*float(dist))/float(GM_MOVE_PROC_TIME);
+		float time=(k_speed*1000.0f*float(dist))/float(GM_MOVE_TIME);
 		group->SpeedX=float(group->MoveX-group->WXi)/time;
 		group->SpeedY=float(group->MoveY-group->WYi)/time;
 	}
 
 	group->Rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
-	if(Timer::GameTick()-group->MoveLastTick>GM_MOVE_PROC_TIME) group->MoveLastTick=Timer::GameTick();
+	if(Timer::GameTick()-group->MoveLastTick>GM_MOVE_TIME) group->MoveLastTick=Timer::GameTick();
 	if(group->IsEncaunterTime()) group->StartEncaunterTime(Random(1000,ENCOUNTERS_TIME));
 	if(!group->IsSetMove)
 	{

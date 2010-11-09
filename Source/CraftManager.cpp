@@ -118,35 +118,8 @@ void CraftItem::SetName(FOMsg& msg_game, FOMsg& msg_item)
 
 	int i,j;
 	ProtoItem* proto;
-/*
-//Need items
-	for(i=0,j=NeedItems.size();i<j;i++)
-	{
-		proto=ItemMngr.GetProtoItem(NeedItems[i]);
 
-		if(!proto)
-			Name+="???";
-		else
-			Name+=msg_item.GetStr(proto->NameId);
-
-		if(NeedItemsVal[i]>1)
-		{
-			Name+=" ";
-			Name+=Str::DWtoA(NeedItemsVal[i]);
-			Name+=" шт.";
-		}
-
-		if(i==j-1) break;
-
-		if(NeedItemsOr[i])
-			Name+=" или ";
-		else
-			Name+=" и ";
-	}
-
-	Name+=" => ";
-*/
-//Out items
+	// Out items
 	for(i=0,j=OutItems.size();i<j;i++)
 	{
 		proto=ItemMngr.GetProtoItem(OutItems[i]);

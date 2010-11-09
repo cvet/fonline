@@ -4,6 +4,7 @@
 
 #ifdef FONLINE_SERVER
 #include "Critter.h"
+#include "CritterManager.h"
 #endif
 
 VarManager VarMngr;
@@ -15,6 +16,7 @@ bool VarManager::Init(const char* fpath)
 
 	if(!fpath) varsPath=".\\";
 	else varsPath=string(fpath);
+	varsPath+=VAR_FNAME_VARS;
 
 	// Load vars templates
 	if(!UpdateVarsTemplate()) return false;
@@ -152,33 +154,31 @@ void VarManager::Clear()
 
 bool VarManager::UpdateVarsTemplate()
 {
-	WriteLog("Update template vars...");
+	WriteLog("Update template vars...\n");
 
-	string full_path=varsPath+string(VAR_FNAME_VARS);
-	FILE* f=fopen(full_path.c_str(),"rb");
-	if(!f)
+	FileManager fm;
+#ifdef FONLINE_SERVER
+	if(!fm.LoadFile(varsPath.c_str(),PT_SERVER_ROOT))
+#else
+	if(!fm.LoadFile(varsPath.c_str(),-1))
+#endif
 	{
-		WriteLog("file<%s> not found.\n",full_path.c_str());
+		WriteLog("Template vars file<%s> not found.\n",varsPath.c_str());
 		return false;
 	}
 
 	TempVarVec load_vars;
-	if(!LoadTemplateVars(f,load_vars)) return false;
-	fclose(f);
+	if(!LoadTemplateVars((char*)fm.GetBuf(),load_vars)) return false;
 
 	for(TempVarVecIt it=load_vars.begin(),it_end=load_vars.end();it!=it_end;++it)
-	{
 		if(!AddTemplateVar(*it)) return false;
-	}
 
-	WriteLog("complete.\n");
+	WriteLog("Update template vars complete.\n");
 	return true;
 }
 
-bool VarManager::LoadTemplateVars(FILE* f, TempVarVec& vars)
+bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 {
-	if(!f) return false;
-	
 	WORD var_id;
 	int var_type;
 	char var_name[VAR_NAME_LEN];
@@ -188,13 +188,7 @@ bool VarManager::LoadTemplateVars(FILE* f, TempVarVec& vars)
 	int var_max;
 	DWORD var_flags;
 
-	fseek(f,0,SEEK_END);
-	long fsize=ftell(f);
-	fseek(f,0,SEEK_SET);
-
-	char* buf_begin=new char[fsize];
-	fread(buf_begin,1,fsize-1,f);
-	buf_begin[fsize-1]=0;
+	char* buf_begin=StringDuplicate(str);
 	Str::Replacement(buf_begin,'\r','\n','\n');
 	char* buf=buf_begin;
 
@@ -247,7 +241,7 @@ bool VarManager::AddTemplateVar(TemplateVar* var)
 {
 	if(!var)
 	{
-		WriteLog(__FUNCTION__" - Nullptr.\n");
+		WriteLog(__FUNCTION__" - Template var nullptr.\n");
 		return false;
 	}
 
@@ -313,68 +307,67 @@ void VarManager::SaveTemplateVars()
 {
 	WriteLog("Save vars...");
 
-	string full_path=varsPath+string(VAR_FNAME_VARS);
-	FILE* f=fopen(full_path.c_str(),"wt");
-	if(f)
+	FileManager fm;
+
+	DWORD count=0;
+	for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it) if(*it) count++;
+
+	fm.SetStr("#ifndef __VARS__\n");
+	fm.SetStr("#define __VARS__\n");
+	fm.SetStr("/*************************************************************************************\n");
+	fm.SetStr("***  VARS  *****  COUNT: %08d  ***************************************************\n",count);
+	fm.SetStr("*************************************************************************************/\n");
+	fm.SetStr("\n\n");
+
+	for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it)
 	{
-		DWORD count=0;
-		for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it) if(*it) count++;
+		TemplateVar* var=*it;
+		if(!var) continue;
 
-		fprintf(f,"#ifndef __VARS__\n");
-		fprintf(f,"#define __VARS__\n");
-		fprintf(f,"/*************************************************************************************\n");
-		fprintf(f,"***  VARS  *****  COUNT: %08d  ***************************************************\n",count);
-		fprintf(f,"*************************************************************************************/\n");
-		fprintf(f,"\n\n");
-
-		for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it)
-		{
-			TemplateVar* var=*it;
-			if(!var) continue;
-
-			fprintf(f,"#define ");
-			if(var->Type==VAR_GLOBAL) fprintf(f,"GVAR_");
-			else if(var->Type==VAR_LOCAL) fprintf(f,"LVAR_");
-			else if(var->Type==VAR_UNICUM) fprintf(f,"UVAR_");
-			else if(var->Type==VAR_LOCAL_LOCATION) fprintf(f,"LLVAR_");
-			else if(var->Type==VAR_LOCAL_MAP) fprintf(f,"LMVAR_");
-			else if(var->Type==VAR_LOCAL_ITEM) fprintf(f,"LIVAR_");
-			else fprintf(f,"?VAR_");
-			fprintf(f,"%s",var->Name.c_str());
-			int spaces=var->Name.length()+(var->Type==VAR_LOCAL_LOCATION || var->Type==VAR_LOCAL_MAP || var->Type==VAR_LOCAL_ITEM?1:0);
-			for(int i=0,j=max(1,40-spaces);i<j;i++) fprintf(f," ");
-			fprintf(f,"(%u)\n",var->TempId);
-		}
-
-		fprintf(f,"\n\n");
-		fprintf(f,"/*************************************************************************************\n");
-		fprintf(f,"\tId\tType\tName\t\tStart\tMin\tMax\tFlags\n");
-		fprintf(f,"**************************************************************************************\n");
-
-		for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it)
-		{
-			TemplateVar* var=*it;
-			if(!var) continue;
-
-			fprintf(f,"$\t%u\t%d\t%s\t%d\t%d\t%d\t%u\n",
-				var->TempId,var->Type,var->Name.c_str(),var->StartVal,var->MinVal,var->MaxVal,var->Flags);
-
-			fprintf(f,"%s\n",VAR_DESC_MARK);
-			fprintf(f,"%s\n",var->Desc.c_str());
-			fprintf(f,"%s\n",VAR_DESC_MARK);
-			fprintf(f,"\n");
-		}
-
-		fprintf(f,"**************************************************************************************\n");
-		fprintf(f,"**************************************************************************************\n");
-		fprintf(f,"*************************************************************************************/\n");
-		fprintf(f,"#endif\n");
-		fclose(f);
+		fm.SetStr("#define ");
+		if(var->Type==VAR_GLOBAL) fm.SetStr("GVAR_");
+		else if(var->Type==VAR_LOCAL) fm.SetStr("LVAR_");
+		else if(var->Type==VAR_UNICUM) fm.SetStr("UVAR_");
+		else if(var->Type==VAR_LOCAL_LOCATION) fm.SetStr("LLVAR_");
+		else if(var->Type==VAR_LOCAL_MAP) fm.SetStr("LMVAR_");
+		else if(var->Type==VAR_LOCAL_ITEM) fm.SetStr("LIVAR_");
+		else fm.SetStr("?VAR_");
+		fm.SetStr("%s",var->Name.c_str());
+		int spaces=var->Name.length()+(var->Type==VAR_LOCAL_LOCATION || var->Type==VAR_LOCAL_MAP || var->Type==VAR_LOCAL_ITEM?1:0);
+		for(int i=0,j=max(1,40-spaces);i<j;i++) fm.SetStr(" ");
+		fm.SetStr("(%u)\n",var->TempId);
 	}
-	else
+
+	fm.SetStr("\n\n");
+	fm.SetStr("/*************************************************************************************\n");
+	fm.SetStr("\tId\tType\tName\t\tStart\tMin\tMax\tFlags\n");
+	fm.SetStr("**************************************************************************************\n");
+
+	for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it)
 	{
-		WriteLog("unable to create file<%s>.\n",full_path);
+		TemplateVar* var=*it;
+		if(!var) continue;
+
+		fm.SetStr("$\t%u\t%d\t%s\t%d\t%d\t%d\t%u\n",
+			var->TempId,var->Type,var->Name.c_str(),var->StartVal,var->MinVal,var->MaxVal,var->Flags);
+
+		fm.SetStr("%s\n",VAR_DESC_MARK);
+		fm.SetStr("%s\n",var->Desc.c_str());
+		fm.SetStr("%s\n",VAR_DESC_MARK);
+		fm.SetStr("\n");
 	}
+
+	fm.SetStr("**************************************************************************************\n");
+	fm.SetStr("**************************************************************************************\n");
+	fm.SetStr("*************************************************************************************/\n");
+	fm.SetStr("#endif\n");
+
+#ifdef FONLINE_SERVER
+	fm.SaveOutBufToFile(varsPath.c_str(),PT_SERVER_DATA);
+#else
+	fm.LoadFile(varsPath.c_str(),-1);
+#endif
+
 	WriteLog("complete.\n");
 }
 
@@ -824,10 +817,17 @@ void DebugLog(GameVar* var, const char* op, int value)
 	else if(tvar->Type==VAR_UNICUM) DbgLog->Write("Changing uvar<%s> masterId<%u> slaveId<%u> op<%s> value<%d> result<%d>.\n",tvar->Name.c_str(),master_id,slave_id,op,value,var->GetValue());
 }
 
+void SendQuestVar(GameVar* var)
+{
+	Client* cl=CrMngr.GetPlayer(var->GetMasterId(),false);
+	if(cl) cl->Send_Quest(var->GetQuestStr());
+}
+
 GameVar& GameVar::operator+=(const int _right)
 {
 	VarValue+=_right;
 	if(!VarTemplate->IsNoBorders() && VarValue>VarTemplate->MaxVal) VarValue=VarTemplate->MaxVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"+=",_right);
 	return *this;
 }
@@ -836,6 +836,7 @@ GameVar& GameVar::operator-=(const int _right)
 {
 	VarValue-=_right;
 	if(!VarTemplate->IsNoBorders() && VarValue<VarTemplate->MinVal) VarValue=VarTemplate->MinVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"-=",_right);
 	return *this;
 }
@@ -844,6 +845,7 @@ GameVar& GameVar::operator*=(const int _right)
 {
 	VarValue*=_right;
 	if(!VarTemplate->IsNoBorders() && VarValue>VarTemplate->MaxVal) VarValue=VarTemplate->MaxVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"*=",_right);
 	return *this;
 }
@@ -852,6 +854,7 @@ GameVar& GameVar::operator/=(const int _right)
 {
 	VarValue/=_right;
 	if(!VarTemplate->IsNoBorders() && VarValue<VarTemplate->MinVal) VarValue=VarTemplate->MinVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"/=",_right);
 	return *this;
 }
@@ -864,6 +867,7 @@ GameVar& GameVar::operator=(const int _right)
 		if(VarValue>VarTemplate->MaxVal) VarValue=VarTemplate->MaxVal;
 		if(VarValue<VarTemplate->MinVal) VarValue=VarTemplate->MinVal;
 	}
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"=",_right);
 	return *this;
 }
@@ -872,6 +876,7 @@ GameVar& GameVar::operator+=(const GameVar& _right)
 {
 	VarValue+=_right.VarValue;
 	if(!VarTemplate->IsNoBorders() && VarValue>VarTemplate->MaxVal) VarValue=VarTemplate->MaxVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"+=",_right.VarValue);
 	return *this;
 }
@@ -880,6 +885,7 @@ GameVar& GameVar::operator-=(const GameVar& _right)
 {
 	VarValue-=_right.VarValue;
 	if(!VarTemplate->IsNoBorders() && VarValue<VarTemplate->MinVal) VarValue=VarTemplate->MinVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"-=",_right.VarValue);
 	return *this;
 }
@@ -888,6 +894,7 @@ GameVar& GameVar::operator*=(const GameVar& _right)
 {
 	VarValue*=_right.VarValue;
 	if(!VarTemplate->IsNoBorders() && VarValue>VarTemplate->MaxVal) VarValue=VarTemplate->MaxVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"*=",_right.VarValue);
 	return *this;
 }
@@ -896,6 +903,7 @@ GameVar& GameVar::operator/=(const GameVar& _right)
 {
 	VarValue/=_right.VarValue;
 	if(!VarTemplate->IsNoBorders() && VarValue<VarTemplate->MinVal) VarValue=VarTemplate->MinVal;
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"/=",_right.VarValue);
 	return *this;
 }
@@ -908,6 +916,7 @@ GameVar& GameVar::operator=(const GameVar& _right)
 		if(VarValue>VarTemplate->MaxVal) VarValue=VarTemplate->MaxVal;
 		if(VarValue<VarTemplate->MinVal) VarValue=VarTemplate->MinVal;
 	}
+	if(IsQuest()) SendQuestVar(this);
 	if(DbgLog) DebugLog(this,"=",_right.VarValue);
 	return *this;
 }

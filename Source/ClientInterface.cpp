@@ -5226,7 +5226,7 @@ void FOClient::GmapProcess()
 	if(!GmapWait)
 	{
 		DWORD dtime_move=Timer::GameTick()-GmapMoveLastTick;
-		if(dtime_move>=30)
+		if(dtime_move>=GM_MOVE_PROCESS_TIME)
 		{
 			int walk_type=GM_WALK_GROUND;
 			Item* car=GmapGetCar();
@@ -5243,8 +5243,8 @@ void FOClient::GmapProcess()
 				else if(n<100 && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
 			}
 
-			GmapGroupXf+=GmapSpeedX*kr*((float)(dtime_move)/GM_MOVE_PROC_TIME);
-			GmapGroupYf+=GmapSpeedY*kr*((float)(dtime_move)/GM_MOVE_PROC_TIME);
+			GmapGroupXf+=GmapSpeedX*kr*((float)(dtime_move)/GM_MOVE_TIME);
+			GmapGroupYf+=GmapSpeedY*kr*((float)(dtime_move)/GM_MOVE_TIME);
 
 			int old_x=GmapGroupX;
 			int old_y=GmapGroupY;
@@ -5253,34 +5253,67 @@ void FOClient::GmapProcess()
 			GmapGroupX=(int)GmapGroupXf;
 			GmapGroupY=(int)GmapGroupYf;
 
-			int old_relief=(GmapRelief?GmapRelief->Get4Bit(old_x,old_y):0xF);
-			int relief=(GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0xF);
-			if(GmapGroupX>=GM_MAXX || GmapGroupY>=GM_MAXY || GmapGroupX<0 || GmapGroupY<0 ||
-				(walk_type==GM_WALK_GROUND && old_relief!=0xF && relief==0xF) ||
-				(walk_type==GM_WALK_WATER && relief!=0xF))
-		//	if(GmapGroupX>=GM_MAXX || GmapGroupY>=GM_MAXY || GmapGroupX<0 || GmapGroupY<0)
+			if(GmapGroupX!=old_x || GmapGroupY!=old_y)
 			{
-				if(GmapGroupX>=GM_MAXX) GmapGroupX=GM_MAXX-1;
-				if(GmapGroupX<0) GmapGroupX=0;
-				if(GmapGroupY>=GM_MAXY) GmapGroupY=GM_MAXY-1;
-				if(GmapGroupY<0) GmapGroupY=0;
+				if(GmapGroupX<0 || GmapGroupY<0 || GmapGroupX>=GM_MAXX || GmapGroupY>=GM_MAXY)
+				{
+					if(GmapGroupX<0) GmapGroupX=0;
+					if(GmapGroupX>=GM_MAXX) GmapGroupX=GM_MAXX-1;
+					if(GmapGroupY<0) GmapGroupY=0;
+					if(GmapGroupY>=GM_MAXY) GmapGroupY=GM_MAXY-1;
 
-				GmapGroupXf=GmapGroupX;
-				GmapGroupYf=GmapGroupY;
-				GmapSpeedX=0.0f;
-				GmapSpeedY=0.0f;
-			}
+					// Stop group
+					GmapSpeedX=0.0f;
+					GmapSpeedY=0.0f;
+				}
 
-			GmapMapScrX+=(old_x-GmapGroupX)/GmapZoom;
-			GmapMapScrY+=(old_y-GmapGroupY)/GmapZoom;
+				// Move from old to new and find last correct position
+				int steps=max(abs(GmapGroupX-old_x),abs(GmapGroupY-old_y));
+				int new_x_=old_x;
+				int new_y_=old_y;
+				if(steps)
+				{
+					float xx=(float)old_x;
+					float yy=(float)old_y;
+					float oxx=(float)(GmapGroupX-old_x)/steps;
+					float oyy=(float)(GmapGroupY-old_y)/steps;
 
-			GMAP_CHECK_MAPSCR;
+					for(int i=0;i<steps;i++)
+					{
+						xx+=oxx;
+						yy+=oyy;
+						int xxi=(int)(xx>=0.0f?xx+0.5f:xx-0.5f);
+						int yyi=(int)(yy>=0.0f?yy+0.5f:yy-0.5f);
+						
+						if((walk_type==GM_WALK_GROUND && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0xF)==0xF) ||
+							(walk_type==GM_WALK_WATER && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0xF)!=0xF)) break;
 
-			DWORD cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
-			if(!cur_dist || cur_dist>last_dist)
-			{
-				GmapSpeedX=0.0f;
-				GmapSpeedY=0.0f;
+						new_x_=xxi;
+						new_y_=yyi;
+					}
+				}
+
+				if(GmapGroupX!=new_x_ || GmapGroupY!=new_y_)
+				{
+					GmapGroupX=new_x_;
+					GmapGroupY=new_y_;
+					GmapSpeedX=0.0f;
+					GmapSpeedY=0.0f;
+				}
+
+				// Process scroll
+				GmapMapScrX+=(old_x-GmapGroupX)/GmapZoom;
+				GmapMapScrY+=(old_y-GmapGroupY)/GmapZoom;
+
+				GMAP_CHECK_MAPSCR;
+
+				// Check dist
+				DWORD cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
+				if(!cur_dist || cur_dist>last_dist)
+				{
+					GmapSpeedX=0.0f;
+					GmapSpeedY=0.0f;
+				}
 			}
 
 			GmapMoveLastTick=Timer::GameTick();
@@ -5297,12 +5330,14 @@ void FOClient::GmapProcess()
 			}
 			else
 			{
+				GmapGroupXf=GmapGroupX;
+				GmapGroupYf=GmapGroupY;
 				GmapTrace.clear();
 			}
 		}
 
 		DWORD dtime_proc=Timer::GameTick()-GmapProcLastTick;
-		if(dtime_proc>=GM_MOVE_PROC_TIME)
+		if(dtime_proc>=GM_MOVE_TIME)
 		{
 			Item* car=GmapGetCar();
 			if(car && (GmapSpeedX || GmapSpeedY))
@@ -9312,9 +9347,7 @@ void FOClient::FixGenerate(int fix_mode)
 	}
 
 	FixMode=fix_mode;
-/************************************************************************/
-/* LIST                                                                 */
-/************************************************************************/
+
 	if(fix_mode==FIX_MODE_LIST)
 	{
 		FixCraftLst.clear();
@@ -9334,16 +9367,11 @@ void FOClient::FixGenerate(int fix_mode)
 				if(!FixShowCraft.count(craft->Num)) continue;
 			}
 
-			INTRECT pos(
-				FixWWin[0],
-				FixWWin[1]+cur_height,
-				FixWWin[2],
-				FixWWin[1]+cur_height+100); //Any
-
+			INTRECT pos(FixWWin[0],FixWWin[1]+cur_height,FixWWin[2],FixWWin[1]+cur_height+100);
 			int line_height=SprMngr.GetLinesHeight(FixWWin.W(),0,craft->Name.c_str());
 
 			cur_height+=line_height;
-			pos.B=FixWWin[1]+cur_height; //Bottom
+			pos.B=FixWWin[1]+cur_height;
 
 			if(cur_height>FixWWin.H())
 			{	
@@ -9365,9 +9393,6 @@ void FOClient::FixGenerate(int fix_mode)
 		if(!scraft_vec.empty()) FixCraftLst.push_back(scraft_vec);
 		if(script_craft.size() && Timer::FastTick()>=FixNextShowCraftTick) Net_SendCraftAsk(script_craft);
 	}
-/************************************************************************/
-/* FIXIT                                                                */
-/************************************************************************/
 	else if(fix_mode==FIX_MODE_FIXIT)
 	{
 		SCraftVec* cur_vec=GetCurSCrafts();
@@ -9386,71 +9411,6 @@ void FOClient::FixGenerate(int fix_mode)
 			return;
 		}
 
-//=================================================
-#define FIX_PARSE_STR_LINE \
-	do{\
-	r.B+=SprMngr.GetLinesHeight(FixWWin.W(),0,str.c_str());\
-	FixDrawComp.push_back(new FixDrawComponent(r,str));\
-	r.T=r.B;\
-	}while(0)
-
-#define FIX_PARSE_ITEMS(items_vec,val_vec,or_vec) \
-	str="";\
-	for(int i=0,j=items_vec##.size();i<j;i++)\
-	{\
-		DWORD color=COLOR_TEXT;\
-		if(Chosen->CountItemPid(items_vec##[i])<val_vec##[i]) color=COLOR_TEXT_DGREEN;\
-		str+="|";\
-		str+=Str::Format("%u",color);\
-		str+=" ";\
-\
-		if(i>0)\
-		{\
-			if(or_vec##[i-1])\
-				str+=MsgGame->GetStr(STR_OR);\
-			else\
-				str+=MsgGame->GetStr(STR_AND);\
-		}\
-\
-		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec##[i]);\
-		if(!proto)\
-			str+="???";\
-		else\
-			str+=MsgItem->GetStr(proto->GetInfo());\
-\
-		if(val_vec##[i]>1)\
-		{\
-			str+=" ";\
-			str+=Str::DWtoA(val_vec##[i]);\
-			str+=" ";\
-			str+=MsgGame->GetStr(STR_FIX_PIECES);\
-		}\
-\
-		str+="\n";\
-\
-	}\
-	FIX_PARSE_STR_LINE;\
-	\
-	x=FixWWin[0]+FixWWin.W()/2-FIX_DRAW_PIC_WIDTH/2*items_vec##.size();\
-	for(int i=0,j=items_vec##.size();i<j;i++,x+=FIX_DRAW_PIC_WIDTH)\
-	{\
-		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec##[i]);\
-		if(!proto) continue;\
-\
-		DWORD spr_id=ResMngr.GetInvSprId(proto->PicInvHash);\
-		if(!spr_id) continue;\
-\
-		INTRECT r2=r;\
-		r2.L=x;\
-		r2.R=x+FIX_DRAW_PIC_WIDTH;\
-		r2.B+=FIX_DRAW_PIC_HEIGHT;\
-\
-		FixDrawComp.push_back(new FixDrawComponent(r2,spr_id));\
-	}\
-	r.B+=FIX_DRAW_PIC_HEIGHT;\
-	r.T=r.B;
-//=================================================
-
 		INTRECT r(FixWWin[0],FixWWin[1],FixWWin[2],FixWWin[1]);
 		string str;
 		int x;
@@ -9460,9 +9420,9 @@ void FOClient::FixGenerate(int fix_mode)
 		FixDrawComp.clear();
 
 		// Out items
-		ByteVec tmp_vec; //Temp vector
-		for(int i=0;i<craft->OutItems.size();i++) tmp_vec.push_back(0); //Push AND
-		FIX_PARSE_ITEMS(craft->OutItems,craft->OutItemsVal,tmp_vec);
+		ByteVec tmp_vec; // Temp vector
+		for(int i=0;i<craft->OutItems.size();i++) tmp_vec.push_back(0); // Push AND
+		FixGenerateItems(craft->OutItems,craft->OutItemsVal,tmp_vec,str,r,x);
 
 		// About
 		if(craft->Info.length())
@@ -9470,7 +9430,7 @@ void FOClient::FixGenerate(int fix_mode)
 			str="\n";
 			str+=craft->Info;
 			str+="\n";
-			FIX_PARSE_STR_LINE;
+			FixGenerateStrLine(str,r);
 		}
 
 		// Need params
@@ -9503,7 +9463,7 @@ void FOClient::FixGenerate(int fix_mode)
 				else
 					str+=MsgGame->GetStr(STR_AND);
 			}
-			FIX_PARSE_STR_LINE;
+			FixGenerateStrLine(str,r);
 		}
 
 		// Need tools
@@ -9511,8 +9471,8 @@ void FOClient::FixGenerate(int fix_mode)
 		{
 			str="\n";
 			str+=MsgGame->GetStr(STR_FIX_TOOLS);
-			FIX_PARSE_STR_LINE;
-			FIX_PARSE_ITEMS(craft->NeedTools,craft->NeedToolsVal,craft->NeedToolsOr);
+			FixGenerateStrLine(str,r);
+			FixGenerateItems(craft->NeedTools,craft->NeedToolsVal,craft->NeedToolsOr,str,r,x);
 		}
 
 		// Need items
@@ -9520,13 +9480,10 @@ void FOClient::FixGenerate(int fix_mode)
 		{
 			str="\n";
 			str+=MsgGame->GetStr(STR_FIX_ITEMS);
-			FIX_PARSE_STR_LINE;
-			FIX_PARSE_ITEMS(craft->NeedItems,craft->NeedItemsVal,craft->NeedItemsOr);
+			FixGenerateStrLine(str,r);
+			FixGenerateItems(craft->NeedItems,craft->NeedItemsVal,craft->NeedItemsOr,str,r,x);
 		}
 	}
-/************************************************************************/
-/* RESULT                                                               */
-/************************************************************************/
 	else if(fix_mode==FIX_MODE_RESULT)
 	{
 		FixResultStr="ERROR RESULT";
@@ -9540,10 +9497,74 @@ void FOClient::FixGenerate(int fix_mode)
 		default: break;
 		}
 	}
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 }
+
+void FOClient::FixGenerateStrLine(string& str, INTRECT& r)
+{
+	r.B+=SprMngr.GetLinesHeight(FixWWin.W(),0,str.c_str());
+	FixDrawComp.push_back(new FixDrawComponent(r,str));
+	r.T=r.B;
+}
+
+void FOClient::FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& or_vec, string& str, INTRECT& r, int& x)
+{
+	str="";
+	for(int i=0,j=items_vec.size();i<j;i++)
+	{
+		DWORD color=COLOR_TEXT;
+		if(Chosen->CountItemPid(items_vec[i])<val_vec[i]) color=COLOR_TEXT_DGREEN;
+
+		str+="|";
+		str+=Str::Format("%u",color);
+		str+=" ";
+
+		if(i>0)
+		{
+			if(or_vec[i-1])
+				str+=MsgGame->GetStr(STR_OR);
+			else
+				str+=MsgGame->GetStr(STR_AND);
+		}
+
+		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec[i]);
+		if(!proto)
+			str+="???";
+		else
+			str+=MsgItem->GetStr(proto->GetInfo());
+
+		if(val_vec[i]>1)
+		{
+			str+=" ";
+			str+=Str::DWtoA(val_vec[i]);
+			str+=" ";
+			str+=MsgGame->GetStr(STR_FIX_PIECES);
+		}
+
+		str+="\n";
+	}
+
+	FixGenerateStrLine(str,r);
+
+	x=FixWWin[0]+FixWWin.W()/2-FIX_DRAW_PIC_WIDTH/2*items_vec.size();
+	for(int i=0,j=items_vec.size();i<j;i++,x+=FIX_DRAW_PIC_WIDTH)
+	{
+		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec[i]);
+		if(!proto) continue;
+
+		DWORD spr_id=ResMngr.GetInvSprId(proto->PicInvHash);
+		if(!spr_id) continue;
+
+		INTRECT r2=r;
+		r2.L=x;
+		r2.R=x+FIX_DRAW_PIC_WIDTH;
+		r2.B+=FIX_DRAW_PIC_HEIGHT;
+
+		FixDrawComp.push_back(new FixDrawComponent(r2,spr_id));
+	}
+	r.B+=FIX_DRAW_PIC_HEIGHT;
+	r.T=r.B;
+}
+
 
 int FOClient::GetMouseCraft()
 {
@@ -9571,7 +9592,6 @@ FOClient::SCraftVec* FOClient::GetCurSCrafts()
 
 void FOClient::FixDraw()
 {
-//GRAPH
 	SprMngr.DrawSprite(FixMainPic,FixWMain[0]+FixX,FixWMain[1]+FixY);
 
 	switch(IfaceHold)
@@ -9598,12 +9618,9 @@ void FOClient::FixDraw()
 
 	switch(FixMode)
 	{
-/************************************************************************/
-/* LIST                                                                 */
-/************************************************************************/	
 	case FIX_MODE_LIST:
 		{
-		//Crafts names
+			// Crafts names
 			SCraftVec* cur_vec=GetCurSCrafts();
 			if(!cur_vec) break;
 
@@ -9621,15 +9638,12 @@ void FOClient::FixDraw()
 				SprMngr.DrawStr(INTRECT(scraft->Pos,FixX,FixY),scraft->Name.c_str(),0,col);
 			}
 
-		//Number of page
+			// Number of page
 			char str[64];
 			sprintf(str,"%u/%u",FixScrollLst+1,FixCraftLst.size());
 			SprMngr.DrawStr(INTRECT(FixWWin[2]-30+FixX,FixWWin[3]-15+FixY,FixWWin[2]+FixX,FixWWin[3]+FixY),str,FT_NOBREAK);
 		}
 		break;
-/************************************************************************/
-/* FIXIT                                                                */
-/************************************************************************/
 	case FIX_MODE_FIXIT:
 		{
 			for(int i=0,j=FixDrawComp.size();i<j;i++)
@@ -9639,17 +9653,11 @@ void FOClient::FixDraw()
 			}
 		}
 		break;
-/************************************************************************/
-/* RESULT                                                                 */
-/************************************************************************/
 	case FIX_MODE_RESULT:
 		{
 			SprMngr.DrawStr(INTRECT(FixWWin,FixX,FixY),FixResultStr.c_str(),FT_CENTERX|FT_COLORIZE);
 		}
 		break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 	default:
 		break;
 	}

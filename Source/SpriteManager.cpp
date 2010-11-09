@@ -262,8 +262,10 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		if(presentParams.MultiSampleQuality) presentParams.MultiSampleQuality--;
 	}
 
-	int vproc=(!GameOpt.SoftwareSkinning && deviceCaps.DevCaps&D3DDEVCAPS_HWTRANSFORMANDLIGHT && deviceCaps.VertexShaderVersion>=D3DPS_VERSION(1,1) &&
-		deviceCaps.MaxVertexBlendMatrices>=2?D3DCREATE_HARDWARE_VERTEXPROCESSING:D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+	int vproc=D3DCREATE_SOFTWARE_VERTEXPROCESSING;
+	if(!GameOpt.SoftwareSkinning && deviceCaps.DevCaps&D3DDEVCAPS_HWTRANSFORMANDLIGHT &&
+		deviceCaps.VertexShaderVersion>=D3DPS_VERSION(2,0) && deviceCaps.MaxVertexBlendMatrices>=2)
+		vproc=D3DCREATE_HARDWARE_VERTEXPROCESSING;
 
 	D3D_HR(direct3D->CreateDevice(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,params.WndHeader,vproc,&presentParams,&d3dDevice));
 
@@ -272,9 +274,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	{
 		// Contours shader
 		ID3DXBuffer* shader=NULL,*errors=NULL;
-		// Todo: D3DXSHADER_SKIPVALIDATION
-		HRESULT hr=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",0,&shader,&errors,&contoursCT);
-		//if(FAILED(hr)) hr=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",D3DXSHADER_USE_LEGACY_D3DX9_31_DLL,&shader,&errors,&contoursCT);;
+		HRESULT hr=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",D3DXSHADER_SKIPVALIDATION,&shader,&errors,&contoursCT);
 		if(SUCCEEDED(hr))
 		{
 			hr=d3dDevice->CreatePixelShader((DWORD*)shader->GetBufferPointer(),&contoursPS);

@@ -905,7 +905,7 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				if(effect->MaterialDiffuse) D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&material.Diffuse));
 
 				// Setup the material of the mesh subset - REMEMBER to use the original pre-skinning attribute id to get the correct material id
-				D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[attr_id]->Texture));
+				D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[attr_id]?mopt->TexSubsets[attr_id]->Texture:NULL));
 
 				// Set NumBones to select the correct vertex shader for the number of bones
 				if(effect->BonesInfluences) D3D_HR(effect->Effect->SetInt(effect->BonesInfluences,mesh_container_ex->exNumInfl-1));
@@ -945,13 +945,13 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				if(effect)
 				{
 					if(effect->MaterialDiffuse) D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&mesh_container_ex->exMaterials[i].Diffuse));
-					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]->Texture));
+					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]?mopt->TexSubsets[i]->Texture:NULL));
 					DrawMeshEffect(draw_mesh,i,effect,with_shadow?effect->TechniqueSimpleWithShadow:effect->TechniqueSimple);
 				}
 				else
 				{
 					D3D_HR(D3DDevice->SetMaterial(&mesh_container_ex->exMaterials[i]));
-					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]->Texture));
+					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]?mopt->TexSubsets[i]->Texture:NULL));
 					D3D_HR(D3DDevice->SetVertexShader(NULL));
 					D3D_HR(D3DDevice->SetPixelShader(NULL));
 					D3D_HR(draw_mesh->DrawSubset(i));

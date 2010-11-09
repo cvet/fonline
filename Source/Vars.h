@@ -151,7 +151,7 @@ private:
 	StrWordMap varsNames;
 	Mutex varsLocker;
 
-	bool LoadTemplateVars(FILE* f, TempVarVec& vars); // Return count error
+	bool LoadTemplateVars(const char* str, TempVarVec& vars); // Return count error
 
 public:
 	bool Init(const char* fpath);

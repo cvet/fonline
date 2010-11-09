@@ -134,15 +134,17 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 		StringCopy(folder_path,GetDataPath(path_type));
 		StringAppend(folder_path,dat_path);
 
-		// Check for full path
-		if(folder_path[3]==':' && folder_path[0]=='.' && folder_path[1]=='\\')
+		// Erase '.\'
+		while(folder_path[0]=='.' && folder_path[1]=='\\')
 		{
 			char* str=folder_path;
 			char* str_=folder_path+2;
 			for(;*str_;str++,str_++) *str=*str_;
 			*str=0;
-			only_folder=true;
 		}
+
+		// Check for full path
+		if(folder_path[1]==':') only_folder=true;
 	}
 	else if(path_type==-1)
 	{
@@ -562,8 +564,10 @@ const char* FileManager::GetDataPath(int path_type)
 
 void FileManager::FormatPath(char* path)
 {
+	// Change '/' to '\'
 	for(char* str=path;*str;str++) if(*str=='/') *str='\\';
 
+	// Erase 'folder..\'
 	char* str=strstr(path,"..\\");
 	if(str)
 	{

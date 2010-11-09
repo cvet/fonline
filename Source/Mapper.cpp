@@ -4690,21 +4690,6 @@ ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem(WORD proto_id)
 	return proto_item;
 }
 
-bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
-{
-	if(FileManager::LoadDataFile(dat_name.c_std_str().find(':')==string::npos?(GameOpt.ClientPath+dat_name.c_std_str()).c_str():dat_name.c_str()))
-	{
-		// Reload resource manager
-		if(Self->IsMapperStarted)
-		{
-			ResMngr.Refresh(NULL);
-			Self->RefreshTiles();
-		}
-		return true;
-	}
-	return false;
-}
-
 void FOMapper::SScriptFunc::Global_MoveScreen(WORD hx, WORD hy, DWORD speed)
 {
 	if(hx>=Self->HexMngr.GetMaxHexX() || hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R("Invalid hex args.");
@@ -4934,6 +4919,21 @@ DWORD FOMapper::SScriptFunc::Global_GetStrHash(CScriptString* str)
 {
 	if(str) return Str::GetHash(str->c_str());
 	return 0;
+}
+
+bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
+{
+	if(FileManager::LoadDataFile(dat_name.c_std_str().find(':')==string::npos?(GameOpt.ClientPath+dat_name.c_std_str()).c_str():dat_name.c_str()))
+	{
+		// Reload resource manager
+		if(Self->IsMapperStarted)
+		{
+			ResMngr.Refresh(NULL);
+			Self->RefreshTiles();
+		}
+		return true;
+	}
+	return false;
 }
 
 DWORD FOMapper::SScriptFunc::Global_LoadSprite(CScriptString& spr_name, int path_index)

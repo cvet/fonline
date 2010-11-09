@@ -784,7 +784,6 @@ struct BindClass
 	static void Crit_EventTurnBasedProcess(){}
 	static void Crit_EventSmthTurnBasedProcess(){}
 
-	static void Cl_SendQuestVar(){}
 	static void Global_GetGlobalVar(){}
 	static void Global_GetLocalVar(){}
 	static void Global_GetUnicumVar(){}
@@ -1123,7 +1122,6 @@ struct BindClass
 	static void Global_IsMsgStr(){}
 	static void Global_ReplaceTextStr(){}
 	static void Global_ReplaceTextInt(){}
-	static void Global_LoadDataFile(){}
 	static void Global_MoveScreen(){}
 	static void Global_MoveHexByDir(){}
 	static void Global_GetIfaceIniStr(){}
@@ -1156,6 +1154,7 @@ struct BindClass
 	static void Global_GetAngelScriptProperty(){}
 	static void Global_SetAngelScriptProperty(){}
 	static void Global_GetStrHash(){}
+	static void Global_LoadDataFile(){}
 };
 
 void Random(){}

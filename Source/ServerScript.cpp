@@ -2159,15 +2159,15 @@ void FOServer::SScriptFunc::Cl_ShowContainer(Critter* cl, Critter* cr_cont, Item
 	}
 }
 
-void FOServer::SScriptFunc::Cl_ShowScreen(Critter* cl, int screen_type, DWORD param, CScriptString& func_name)
+void FOServer::SScriptFunc::Cl_ShowScreen(Critter* cl, int screen_type, DWORD param, CScriptString* func_name)
 {
 	if(cl->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(!cl->IsPlayer()) return; //SCRIPT_ERROR_R("Critter is not player.");
 
 	int bind_id=0;
-	if(func_name.length())
+	if(func_name && func_name->length())
 	{
-		bind_id=Script::Bind(func_name.c_str(),"void %s(Critter&,uint,string&)",true);
+		bind_id=Script::Bind(func_name->c_str(),"void %s(Critter&,uint,string&)",true);
 		if(bind_id<=0) SCRIPT_ERROR_R("Function not found.");
 	}
 
@@ -2873,14 +2873,6 @@ GameVar* FOServer::SScriptFunc::Global_GetUnicumVar(WORD tvar_id, DWORD master_i
 	GameVar* uvar=VarMngr.GetVar(tvar_id,master_id,slave_id,true);
 	if(!uvar) SCRIPT_ERROR_R0("Unicum var not found.");
 	return uvar;
-}
-
-void FOServer::SScriptFunc::Cl_SendQuestVar(Critter* cl, GameVar* var)
-{
-	if(cl->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(!cl->IsPlayer()) return; //SCRIPT_ERROR_R("Critter is not player.");
-	if(!var->IsQuest()) SCRIPT_ERROR_R("GameVar is not quest var.");
-	cl->Send_Quest(var->GetQuestStr());
 }
 
 DWORD FOServer::SScriptFunc::Map_GetId(Map* map)
@@ -4782,6 +4774,16 @@ DWORD FOServer::SScriptFunc::Global_GetStrHash(CScriptString* str)
 {
 	if(str) return Str::GetHash(str->c_str());
 	return 0;
+}
+
+bool FOServer::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
+{
+	if(FileManager::LoadDataFile(dat_name.c_str()))
+	{
+		FONames::GenerateFoNames(PT_SERVER_DATA);
+		return true;
+	}
+	return false;
 }
 
 bool FOServer::SScriptFunc::Global_IsCritterCanWalk(DWORD cr_type)

@@ -4329,6 +4329,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		WriteLog(__FUNCTION__" - Unknown command<%u>, from client<%s>.\n",cl->GetInfo());
 		break;
 	}
+
 	cl->SetBreakTime(GameOpt.Breaktime);
 }
 

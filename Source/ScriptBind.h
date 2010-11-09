@@ -552,7 +552,6 @@
 	if(engine->RegisterObjectMethod("Critter","void PlaySound(string& soundName, bool sendSelf)",asFUNCTION(BIND_CLASS Crit_PlaySound),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt, bool sendSelf)",asFUNCTION(BIND_CLASS Crit_PlaySoundType),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
-	if(engine->RegisterObjectMethod("Critter","void SendQuestVar(GameVar& var)",asFUNCTION(BIND_CLASS Cl_SendQuestVar),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void SendCombatResult(uint[]& combatResult)",asFUNCTION(BIND_CLASS Crit_SendCombatResult),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool IsKnownLoc(bool byId, uint locNum) const",asFUNCTION(BIND_CLASS Cl_IsKnownLoc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool SetKnownLoc(bool byId, uint locNum)",asFUNCTION(BIND_CLASS Cl_SetKnownLoc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -561,7 +560,7 @@
 	if(engine->RegisterObjectMethod("Critter","int GetFog(uint16 zoneX, uint16 zoneY)",asFUNCTION(BIND_CLASS Cl_GetFog),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectMethod("Critter","void ShowContainer(Critter@+ contCr, Item@+ contItem, uint8 transferType)",asFUNCTION(BIND_CLASS Cl_ShowContainer),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","void ShowScreen(int screenType, uint param, string& funcName)",asFUNCTION(BIND_CLASS Cl_ShowScreen),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void ShowScreen(int screenType, uint param, string@+ funcName)",asFUNCTION(BIND_CLASS Cl_ShowScreen),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void RunClientScript(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)",asFUNCTION(BIND_CLASS Cl_RunClientScript),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void Disconnect()",asFUNCTION(BIND_CLASS Cl_Disconnect),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
@@ -1034,7 +1033,6 @@
 	if(engine->RegisterGlobalFunction("string@ ReplaceText(const string& text, const string& replace, int i)",asFUNCTION(BIND_CLASS Global_ReplaceTextInt),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ FormatTags(const string& text, const string@+ lexems)",asFUNCTION(BIND_CLASS Global_FormatTags),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetSomeValue(int var)",asFUNCTION(BIND_CLASS Global_GetSomeValue),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("bool LoadDataFile(string& dataFileName)",asFUNCTION(BIND_CLASS Global_LoadDataFile),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveScreen(uint16 hexX, uint16 hexY, uint speed)",asFUNCTION(BIND_CLASS Global_MoveScreen),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void LockScreenScroll(CritterCl@+ cr)",asFUNCTION(BIND_CLASS Global_LockScreenScroll),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetFog(uint16 zoneX, uint16 zoneY)",asFUNCTION(BIND_CLASS Global_GetFog),asCALL_CDECL)<0) BIND_ERROR;
@@ -1482,7 +1480,6 @@
 	if(engine->RegisterGlobalFunction("string@ ReplaceText(const string& text, const string& replace, const string& str)",asFUNCTION(BIND_CLASS Global_ReplaceTextStr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ ReplaceText(const string& text, const string& replace, int i)",asFUNCTION(BIND_CLASS Global_ReplaceTextInt),asCALL_CDECL)<0) BIND_ERROR;
 
-	if(engine->RegisterGlobalFunction("bool LoadDataFile(string& dataFileName)",asFUNCTION(BIND_CLASS Global_LoadDataFile),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveScreen(uint16 hexX, uint16 hexY, uint speed)",asFUNCTION(BIND_CLASS Global_MoveScreen),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalFunction("uint LoadSprite(string& name, int pathIndex)",asFUNCTION(BIND_CLASS Global_LoadSprite),asCALL_CDECL)<0) BIND_ERROR;
@@ -1519,6 +1516,7 @@
 	if(engine->RegisterGlobalFunction("uint GetAngelScriptProperty(int property)",asFUNCTION(BIND_CLASS Global_GetAngelScriptProperty),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetAngelScriptProperty(int property, uint value)",asFUNCTION(BIND_CLASS Global_SetAngelScriptProperty),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetStrHash(string@+ str)",asFUNCTION(BIND_CLASS Global_GetStrHash),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool LoadDataFile(string& dataFileName)",asFUNCTION(BIND_CLASS Global_LoadDataFile),asCALL_CDECL)<0) BIND_ERROR;
 
 /************************************************************************/
 /*                                                                      */

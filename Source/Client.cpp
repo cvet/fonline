@@ -6425,7 +6425,7 @@ void FOClient::Net_OnShowScreen()
 	Bin >> param;
 	Bin >> need_answer;
 
-// Close current
+	// Close current
 	switch(screen_type)
 	{
 	case SHOW_SCREEN_TIMER:
@@ -6440,7 +6440,7 @@ void FOClient::Net_OnShowScreen()
 		break;
 	}
 
-// Open new
+	// Open new
 	switch(screen_type)
 	{
 	case SHOW_SCREEN_TIMER:
@@ -6717,9 +6717,6 @@ void FOClient::Net_OnMsgData()
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_TO_LOAD_IFACE));
 			NetState=STATE_DISCONNECT;
 		}
-
-#pragma MESSAGE("Reboot client.")
-		// Need restart client
 		break;
 	default:
 		break;
@@ -6762,6 +6759,9 @@ void FOClient::Net_OnProtoItemData()
 
 	Crypt.SetCache("____item_protos",proto_data,len);
 	delete[] proto_data;
+
+	// Refresh craft names
+	MrFixit.GenerateNames(*MsgGame,*MsgItem);
 }
 
 void FOClient::Net_OnQuest(bool many)
@@ -9865,17 +9865,6 @@ int FOClient::SScriptFunc::Global_GetSomeValue(int var)
 	return 0;
 }
 
-bool FOClient::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
-{
-	if(FileManager::LoadDataFile(dat_name.c_str()))
-	{
-		ResMngr.Refresh(NULL);
-		FONames::GenerateFoNames(PT_DATA);
-		return true;
-	}
-	return false;
-}
-
 void FOClient::SScriptFunc::Global_MoveScreen(WORD hx, WORD hy, DWORD speed)
 {
 	if(hx>=Self->HexMngr.GetMaxHexX() || hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R("Invalid hex args.");
@@ -10295,6 +10284,17 @@ DWORD FOClient::SScriptFunc::Global_GetStrHash(CScriptString* str)
 {
 	if(str) return Str::GetHash(str->c_str());
 	return 0;
+}
+
+bool FOClient::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
+{
+	if(FileManager::LoadDataFile(dat_name.c_str()))
+	{
+		ResMngr.Refresh(NULL);
+		FONames::GenerateFoNames(PT_DATA);
+		return true;
+	}
+	return false;
 }
 
 bool FOClient::SScriptFunc::Global_IsCritterCanWalk(DWORD cr_type)

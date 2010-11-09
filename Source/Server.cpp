@@ -3905,7 +3905,6 @@ bool FOServer::LoadClientsData()
 		id_already.insert(id);
 
 		// Add
-		//WriteLog("Indexing<%s> -> id<%u> name<%s> pass<%s>.\n",fdata.cFileName,id,name,pass);
 		ClientData data;
 		data.Clear();
 		StringCopy(data.ClientName,name);

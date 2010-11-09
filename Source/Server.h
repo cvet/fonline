@@ -653,7 +653,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static void Crit_SetTimeout(Critter* cr, int num_timeout, DWORD time);
 		static DWORD Crit_GetTimeout(Critter* cr, DWORD num_timeout);
 		static void Cl_ShowContainer(Critter* cl, Critter* cr_cont, Item* item_cont, BYTE transfer_type);
-		static void Cl_ShowScreen(Critter* cl, int screen_type, DWORD param, CScriptString& func_name);
+		static void Cl_ShowScreen(Critter* cl, int screen_type, DWORD param, CScriptString* func_name);
 		static void Cl_RunClientScript(Critter* cl, CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 		static void Cl_Disconnect(Critter* cl);
 
@@ -728,7 +728,6 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static void Crit_EventTurnBasedProcess(Critter* cr, Map* map, bool begin_turn);
 		static void Crit_EventSmthTurnBasedProcess(Critter* cr, Critter* from_cr, Map* map, bool begin_turn);
 
-		static void Cl_SendQuestVar(Critter* cl, GameVar* var);
 		static GameVar* Global_GetGlobalVar(WORD tvar_id);
 		static GameVar* Global_GetLocalVar(WORD tvar_id, DWORD master_id);
 		static GameVar* Global_GetUnicumVar(WORD tvar_id, DWORD master_id, DWORD slave_id);
@@ -902,6 +901,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static DWORD Global_GetAngelScriptProperty(int property);
 		static bool Global_SetAngelScriptProperty(int property, DWORD value);
 		static DWORD Global_GetStrHash(CScriptString* str);
+		static bool Global_LoadDataFile(CScriptString& dat_name);
 		//static DWORD Global_GetVersion();
 		static bool Global_IsCritterCanWalk(DWORD cr_type);
 		static bool Global_IsCritterCanRun(DWORD cr_type);

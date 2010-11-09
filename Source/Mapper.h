@@ -414,7 +414,6 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static MapObject* Global_GetSelectedObject();
 		static DWORD Global_GetSelectedObjects(CScriptArray* objects);
 		static ProtoItem* Global_GetProtoItem(WORD proto_id);
-		static bool Global_LoadDataFile(CScriptString& dat_name);
 		static void Global_MoveScreen(WORD hx, WORD hy, DWORD speed);
 		static void Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps);
 		static CScriptString* Global_GetIfaceIniStr(CScriptString& key);
@@ -422,6 +421,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static DWORD Global_GetAngelScriptProperty(int property);
 		static bool Global_SetAngelScriptProperty(int property, DWORD value);
 		static DWORD Global_GetStrHash(CScriptString* str);
+		static bool Global_LoadDataFile(CScriptString& dat_name);
 		static int Global_GetKeybLang(){return Keyb::Lang;}
 
 		static CScriptString* Global_GetLastError();
