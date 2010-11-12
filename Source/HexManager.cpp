@@ -880,7 +880,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					CritterCl* cr=*it;
 					if(!cr->Visible) continue;
 
-					Sprite& spr=mainTree.AddSprite(cr->IsPerk(MODE_NO_FLATTEN)?DRAW_ORDER_CRIT(f.Pos):DRAW_ORDER_CRIT_DEAD(f.Pos),
+					Sprite& spr=mainTree.AddSprite(cr->IsRawParam(MODE_NO_FLATTEN)?DRAW_ORDER_CRIT(f.Pos):DRAW_ORDER_CRIT_DEAD(f.Pos),
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,&cr->Alpha,GetLightHex(nx,ny),&cr->SprDrawValid);
 					cr->SprDraw=&spr;
 
@@ -1302,9 +1302,9 @@ void HexManager::CollectLightSources()
 	{
 		CritterCl* cr=(*it).second;
 		bool added=false;
-		for(ItemPtrMapIt it_=cr->InvItems.begin(),end_=cr->InvItems.end();it_!=end_;++it_)
+		for(ItemPtrVecIt it_=cr->InvItems.begin(),end_=cr->InvItems.end();it_!=end_;++it_)
 		{
-			Item* item=(*it_).second;
+			Item* item=*it_;
 			if(item->IsLight() && item->ACC_CRITTER.Slot!=SLOT_INV)
 			{
 				lightSources.push_back(LightSource(cr->GetHexX(),cr->GetHexY(),item->LightGetColor(),item->LightGetDistance(),item->LightGetIntensity(),item->LightGetFlags()));
@@ -2026,7 +2026,7 @@ void HexManager::SetCrit(CritterCl* cr)
 
 	if(GetHexToDraw(hx,hy) && cr->Visible)
 	{
-		Sprite& spr=mainTree.InsertSprite(cr->IsDead() && !cr->IsPerk(MODE_NO_FLATTEN)?DRAW_ORDER_CRIT_DEAD(f.Pos):DRAW_ORDER_CRIT(f.Pos),
+		Sprite& spr=mainTree.InsertSprite(cr->IsDead() && !cr->IsRawParam(MODE_NO_FLATTEN)?DRAW_ORDER_CRIT_DEAD(f.Pos):DRAW_ORDER_CRIT(f.Pos),
 			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,&cr->Alpha,GetLightHex(hx,hy),&cr->SprDrawValid);
 		cr->SprDraw=&spr;
 
@@ -3210,7 +3210,7 @@ bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& max
 		{
 			Item item;
 			item.Init(proto_item);
-			item.Accessory=ITEM_ACCESSORY_HEX;
+			item.Accessory=ITEM_ACCESSORY_NONE;
 			item.ACC_HEX.HexX=scenwall.MapX;
 			item.ACC_HEX.HexY=scenwall.MapY;
 			items.push_back(item);
@@ -3432,9 +3432,8 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 			CritterCl* cr=new CritterCl();
 			cr->SetBaseType(pnpc->BaseType);
-			cr->DefItemSlotMain.Init(pitem_main?pitem_main:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-			cr->DefItemSlotExt.Init(pitem_ext?pitem_ext:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-			cr->DefItemSlotArmor.Init(pitem_armor?pitem_armor:ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
+			cr->DefItemSlotHand->Init(pitem_main?pitem_main:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+			cr->DefItemSlotArmor->Init(pitem_armor?pitem_armor:ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 			memcpy(cr->Params,pnpc->Params,sizeof(pnpc->Params));
 			cr->HexX=o->MapX;
 			cr->HexY=o->MapY;

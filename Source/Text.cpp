@@ -639,6 +639,36 @@ void IniParser::GetAppLines(StrVec& lines)
 	}
 }
 
+void IniParser::CacheApps()
+{
+	if(!bufPtr) return;
+	istrstream str(bufPtr,bufLen);
+	char line[256];
+	while(!str.eof())
+	{
+		str.getline(line,sizeof(line),'\n');
+		if(line[0]==STR_PRIVATE_APP_BEGIN)
+		{
+			char* end=strstr(line+1,"]");
+			if(end)
+			{
+				int len=end-line-1;
+				if(len>0)
+				{
+					string app;
+					app.assign(line+1,len);
+					cachedKeys.insert(app);
+				}
+			}
+		}
+	}
+}
+
+bool IniParser::IsCachedApp(const char* app_name)
+{
+	return cachedKeys.count(string(app_name))!=0;
+}
+
 void IniParser::CacheKeys()
 {
 	if(!bufPtr) return;

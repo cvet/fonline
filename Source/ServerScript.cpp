@@ -287,6 +287,8 @@ bool FOServer::ReloadClientScripts()
 	StrVec empty;
 	Script::SetWrongGlobalObjects(empty);
 
+	Script::SetLoadLibraryCompiler(true);
+
 	int num=STR_INTERNAL_SCRIPT_MODULES;
 	int errors=0;
 	char buf[MAX_FOTEXT];
@@ -359,6 +361,8 @@ bool FOServer::ReloadClientScripts()
 	Script::Define("__SERVER");
 
 	Script::SetWrongGlobalObjects(ServerWrongGlobalObjects);
+
+	Script::SetLoadLibraryCompiler(false);
 
 #ifdef MEMORY_DEBUG
 	if(MemoryDebugLevel>=2) asSetGlobalMemoryFunctions(dbg_malloc2,dbg_free2);
@@ -1105,7 +1109,7 @@ bool FOServer::SScriptFunc::Crit_IsCanRotate(Critter* cr)
 bool FOServer::SScriptFunc::Crit_IsCanAim(Critter* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return CritType::IsCanAim(cr->GetCrType()) && !cr->IsPerk(TRAIT_FAST_SHOT);
+	return CritType::IsCanAim(cr->GetCrType()) && !cr->IsRawParam(MODE_NO_AIM);
 }
 
 bool FOServer::SScriptFunc::Crit_IsAnim1(Critter* cr, DWORD index)
@@ -1855,7 +1859,7 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto(Critter* cr, int slot, BYTE&
 	switch(slot)
 	{
 	case SLOT_HAND1: item=cr->ItemSlotMain; break;
-	case SLOT_HAND2: item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt:&cr->GetDefaultItemSlotMain()); break;
+	case SLOT_HAND2: item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt:cr->GetDefaultItemSlotMain()); break;
 	case SLOT_ARMOR: item=cr->ItemSlotArmor; break;
 	default: item=cr->GetItemSlot(slot); break;
 	}
@@ -4393,7 +4397,7 @@ void FOServer::SScriptFunc::Global_SetSendParameterFunc(int index, bool enabled,
 
 		if(allow_func && allow_func->length())
 		{
-			int bind_id=Script::Bind(allow_func->c_str(),"bool %s(uint,Critter&,Critter&)",false);
+			int bind_id=Script::Bind(allow_func->c_str(),"bool %s(uint8,Item&,Critter&,Critter&)",false);
 			if(bind_id<=0) SCRIPT_ERROR_R("Function not found.");
 			Critter::SlotDataSendScript[index]=bind_id;
 		}
@@ -4491,7 +4495,7 @@ void SwapCrittersRefreshClient(Client* cl, Map* map, Map* prev_map)
 				if(cr) cl->Send_CritterParam(cr,OTHER_YOU_TURN,map->GetCritterTurnTime());
 			}
 		}
-		else if(TB_BATTLE_TIMEOUT_CHECK(cl->GetTimeout(TO_BATTLE))) cl->SetTimeout(TO_BATTLE,0);
+		else if(TB_BATTLE_TIMEOUT_CHECK(cl->GetParam(TO_BATTLE))) cl->SetTimeout(TO_BATTLE,0);
 	}
 }
 

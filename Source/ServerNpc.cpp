@@ -1,9 +1,9 @@
 #include "StdAfx.h"
 #include "Server.h"
 
-#define CHECK_NPC_AP(npc,map,need_ap) do{if(npc->GetAp()<(int)(need_ap)){if(map->IsTurnBasedOn) {if(map->IsCritterTurn(npc)) map->EndCritterTurn();} else npc->SetWait(GameOpt.ApRegeneration/npc->GetMaxAp()*((int)(need_ap)-npc->GetAp())); return;}}while(0)
-#define CHECK_NPC_REAL_AP(npc,map,need_ap) do{if(npc->GetRealAp()<(int)(need_ap)){if(map->IsTurnBasedOn) {if(map->IsCritterTurn(npc)) map->EndCritterTurn();} else npc->SetWait(GameOpt.ApRegeneration/npc->GetMaxAp()*((int)(need_ap)-npc->GetRealAp())/AP_DIVIDER); return;}}while(0)
-#define CHECK_NPC_AP_R0(npc,map,need_ap) do{if(npc->GetAp()<(int)(need_ap)){if(map->IsTurnBasedOn) {if(map->IsCritterTurn(npc)) map->EndCritterTurn();} else npc->SetWait(GameOpt.ApRegeneration/npc->GetMaxAp()*((int)(need_ap)-npc->GetAp())); return false;}}while(0)
+#define CHECK_NPC_AP(npc,map,need_ap) do{if(npc->GetParam(ST_CURRENT_AP)<(int)(need_ap)){if(map->IsTurnBasedOn) {if(map->IsCritterTurn(npc)) map->EndCritterTurn();} else npc->SetWait(GameOpt.ApRegeneration/npc->GetParam(ST_ACTION_POINTS)*((int)(need_ap)-npc->GetParam(ST_CURRENT_AP))); return;}}while(0)
+#define CHECK_NPC_REAL_AP(npc,map,need_ap) do{if(npc->GetRealAp()<(int)(need_ap)){if(map->IsTurnBasedOn) {if(map->IsCritterTurn(npc)) map->EndCritterTurn();} else npc->SetWait(GameOpt.ApRegeneration/npc->GetParam(ST_ACTION_POINTS)*((int)(need_ap)-npc->GetRealAp())/AP_DIVIDER); return;}}while(0)
+#define CHECK_NPC_AP_R0(npc,map,need_ap) do{if(npc->GetParam(ST_CURRENT_AP)<(int)(need_ap)){if(map->IsTurnBasedOn) {if(map->IsCritterTurn(npc)) map->EndCritterTurn();} else npc->SetWait(GameOpt.ApRegeneration/npc->GetParam(ST_ACTION_POINTS)*((int)(need_ap)-npc->GetParam(ST_CURRENT_AP))); return false;}}while(0)
 void FOServer::ProcessAI(Npc* npc)
 {
 	// Check busy
@@ -50,7 +50,7 @@ void FOServer::ProcessAI(Npc* npc)
 		}
 
 		// Go home
-		if(!npc->IsPerk(MODE_NO_HOME) && map->GetId()==npc->GetHomeMap() && (npc->GetHexX()!=npc->GetHomeX() || npc->GetHexY()!=npc->GetHomeY()))
+		if(!npc->IsRawParam(MODE_NO_HOME) && map->GetId()==npc->GetHomeMap() && (npc->GetHexX()!=npc->GetHomeX() || npc->GetHexY()!=npc->GetHomeY()))
 		{
 			if(CritType::IsCanWalk(npc->GetCrType()))
 			{
@@ -72,14 +72,14 @@ void FOServer::ProcessAI(Npc* npc)
 			}
 		}
 		// Set home direction
-		else if(!npc->IsPerk(MODE_NO_HOME) && CritType::IsCanRotate(npc->GetCrType()) && map->GetId()==npc->GetHomeMap() && npc->GetDir()!=npc->GetHomeOri())
+		else if(!npc->IsRawParam(MODE_NO_HOME) && CritType::IsCanRotate(npc->GetCrType()) && map->GetId()==npc->GetHomeMap() && npc->GetDir()!=npc->GetHomeOri())
 		{
 			npc->Data.Dir=npc->GetHomeOri();
 			npc->SendA_Dir();
 			npc->SetWait(200);
 			return;
 		}
-		else if(!npc->IsPerk(MODE_NO_FAVORITE_ITEM))
+		else if(!npc->IsRawParam(MODE_NO_FAVORITE_ITEM))
 		{
 			WORD favor_item_pid;
 			Item* favor_item;
@@ -377,42 +377,42 @@ void FOServer::ProcessAI(Npc* npc)
 				Item* weap=NULL;
 				DWORD r0=targ->GetId(),r1=0,r2=0;
 				int sss=0;
-				if(npc->RunPlane(REASON_ATTACK_WEAPON,r0,r1,r2))
+				if(!npc->RunPlane(REASON_ATTACK_WEAPON,r0,r1,r2))
 				{
-					if(r0)
-					{
-						weap=npc->GetItem(r0,false);
-						SETFLAG(sss,0x000001);
-					}
-					else
-					{
-						if(npc->IsPerk(MODE_NO_UNARMED))
-						{
-							npc->NextPlane(REASON_NO_UNARMED);
-							break;
-						}
-
-						SETFLAG(sss,0x000002);
-						ProtoItem* unarmed=ItemMngr.GetProtoItem(r2);
-						if(unarmed && unarmed->Weapon.IsUnarmed)
-						{
-							SETFLAG(sss,0x000004);
-							Item& def_item_main=npc->GetDefaultItemSlotMain();
-							if(def_item_main.Proto!=unarmed) def_item_main.Init(unarmed);
-							weap=&def_item_main;
-						}
-					}
-					use=r1;
+					WriteLog("REASON_ATTACK_WEAPON fail. Skip attack.\n");
+					break;
 				}
 				if(plane!=npc->GetCurPlane()) break; // Validate plane
+
+				if(r0)
+				{
+					weap=npc->GetItem(r0,false);
+					SETFLAG(sss,0x000001);
+				}
+				else
+				{
+					if(npc->IsRawParam(MODE_NO_UNARMED))
+					{
+						npc->NextPlane(REASON_NO_UNARMED);
+						break;
+					}
+
+					SETFLAG(sss,0x000002);
+					ProtoItem* unarmed=ItemMngr.GetProtoItem(r2);
+					if(unarmed && unarmed->Weapon.IsUnarmed)
+					{
+						SETFLAG(sss,0x000004);
+						Item* def_item_main=npc->GetDefaultItemSlotMain();
+						if(def_item_main->Proto!=unarmed) def_item_main->Init(unarmed);
+						weap=def_item_main;
+					}
+				}
+				use=r1;
+
 				if(!weap || !weap->IsWeapon() || !weap->WeapIsUseAviable(use))
 				{
-					WriteLog("Def weap debug value<%u>.\n",sss);
-					if(!weap) WriteLog("Def get weap nullptr.\n");
-					else if(!weap->IsWeapon()) WriteLog("Def get weap not weapon.\n");
-					else if(!weap->WeapIsUseAviable(use)) WriteLog("Def get weap bad use.\n");
-					else WriteLog("Def get weap.\n");
-					weap=npc->GetBattleWeapon(use,targ);
+					WriteLog("REASON_ATTACK_WEAPON fail, debug values<%u><%p><%d><%d>.\n",sss,weap,weap?weap->IsWeapon():-1,weap?weap->WeapIsUseAviable(use):-1);
+					break;
 				}
 
 				// Hide cur, show new
@@ -436,7 +436,7 @@ void FOServer::ProcessAI(Npc* npc)
 				npc->ItemSlotMain->SetMode(MAKE_ITEM_MODE(use,0));
 
 				// Load weapon
-				if(!npc->IsPerk(MODE_UNLIMITED_AMMO) && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty())
+				if(!npc->IsRawParam(MODE_UNLIMITED_AMMO) && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty())
 				{
 					Item* ammo=npc->GetAmmoForWeapon(weap);
 					if(!ammo)
@@ -450,7 +450,7 @@ void FOServer::ProcessAI(Npc* npc)
 						break;
 					}
 				}
-				else if(npc->IsPerk(MODE_UNLIMITED_AMMO) && weap->WeapGetMaxAmmoCount()) weap->WeapLoadHolder();
+				else if(npc->IsRawParam(MODE_UNLIMITED_AMMO) && weap->WeapGetMaxAmmoCount()) weap->WeapLoadHolder();
 
 			/************************************************************************/
 			/* Step 2: Move to target                                               */
@@ -458,63 +458,22 @@ void FOServer::ProcessAI(Npc* npc)
 				bool is_can_walk=CritType::IsCanWalk(npc->GetCrType());
 				DWORD best_dist=0,min_dist=0,max_dist=0;
 				r0=targ->GetId(),r1=0,r2=0;
-				if(npc->RunPlane(REASON_ATTACK_DISTANTION,r0,r1,r2))
+				if(!npc->RunPlane(REASON_ATTACK_DISTANTION,r0,r1,r2))
 				{
-					best_dist=r0;
-					min_dist=r1;
-					max_dist=r2;
-
-					if(r2<=0 || r1<0 || r0<0) // Run away
-					{
-						/*if(is_can_walk)
-						{
-							int dist=DistGame(targ->GetHexX(),targ->GetHexY(),npc->GetHexX(),npc->GetHexY());
-							dist-=50;
-							dist=ABS(dist);
-							int dir=GetFarDir(targ->GetHexX(),targ->GetHexY(),npc->GetHexX(),npc->GetHexY());
-							WORD hx=npc->GetHexX();
-							WORD hy=npc->GetHexY();
-							MoveHexByDir(hx,hy,dir);
-							WordPair last_passed;
-							TraceData trace;
-							trace.Map=map;
-							trace.BeginHx=npc->GetHexX();
-							trace.BeginHy=npc->GetHexY();
-							trace.EndHx=hx;
-							trace.EndHy=hy;
-							trace.Dist=dist;
-							trace.LastPassed=&last_passed;
-							trace.LastPassedSkipCritters=true;
-							TraceBullet(trace);
-							if(trace.IsHaveLastPassed)
-							{
-								AIDataPlane* child_plane=new AIDataPlane(AI_PLANE_WALK,AI_PLANE_WALK_PRIORITY);
-								if(!child_plane) return;
-								child_plane->Walk.HexX=last_passed.first;
-								child_plane->Walk.HexY=last_passed.second;
-								child_plane->Walk.Dir=npc->GetDir();
-								child_plane->Walk.IsRun=CritType::IsCanRun(npc->GetCrType());
-								npc->AddPlane(REASON_RUN_AWAY,child_plane,true);
-							}
-						}
-						else
-						{
-							npc->NextPlane(REASON_CANT_WALK);
-						}*/
-						npc->NextPlane(REASON_RUN_AWAY);
-						break;
-					}
-					if(min_dist>max_dist) min_dist=max_dist;
-					best_dist=CLAMP(best_dist,min_dist,max_dist);
+					WriteLog("REASON_ATTACK_DISTANTION fail. Skip attack.\n");
+					break;
 				}
 				if(plane!=npc->GetCurPlane()) break; // Validate plane
 
-#define ATTACK_HTH_DIRT_DIST        (5)
-#define ATTACK_RANGE_MIN_PROC       (50)
+				best_dist=r0;
+				min_dist=r1;
+				max_dist=r2;
 
-				bool is_range=weap->WeapIsRangedAttack(use);
-				bool can_aim=(CritType::IsCanAim(npc->GetCrType()) && !npc->IsPerk(TRAIT_FAST_SHOT) && weap->WeapIsCanAim(use));
-				int aim=(can_aim && !Random(0,10)?Random(1,8):0);
+				if(r2<=0 || r1<0 || r0<0) // Run away
+				{
+					npc->NextPlane(REASON_RUN_AWAY);
+					break;
+				}
 
 				if(max_dist<=0)
 				{
@@ -524,6 +483,9 @@ void FOServer::ProcessAI(Npc* npc)
 				}
 				if(min_dist<=0) min_dist=1;
 
+				if(min_dist>max_dist) min_dist=max_dist;
+				best_dist=CLAMP(best_dist,min_dist,max_dist);
+
 				WORD hx=npc->GetHexX();
 				WORD hy=npc->GetHexY();
 				WORD t_hx=targ->GetHexX();
@@ -531,6 +493,7 @@ void FOServer::ProcessAI(Npc* npc)
 				WORD res_hx=t_hx;
 				WORD res_hy=t_hy;
 				bool is_run=plane->Attack.IsRun;
+				bool is_range=(weap->Proto->Weapon.MaxDist[use]>2);
 
 				TraceData trace;
 				trace.TraceMap=map;
@@ -545,28 +508,16 @@ void FOServer::ProcessAI(Npc* npc)
 				MapMngr.TraceBullet(trace);
 				if(!trace.IsCritterFounded)
 				{
-					if(is_can_walk) AI_MoveToCrit(npc,targ->GetId(),is_range?1+npc->GetMultihex():max_dist,max_dist+(is_range?0:ATTACK_HTH_DIRT_DIST),is_run);
+					if(is_can_walk) AI_MoveToCrit(npc,targ->GetId(),is_range?1+npc->GetMultihex():max_dist,max_dist+(is_range?0:5),is_run);
 					else npc->NextPlane(REASON_CANT_WALK);
 					break;
 				}
 
+				if(!is_can_walk) npc->NextPlane(REASON_CANT_WALK);
+
 				// Find better position
 				if(is_range && is_can_walk)
 				{
-					if(!best_dist)
-					{
-						int base_hit=(npc->GetSkill(weap->Proto->Weapon.Skill[use])-30)+(npc->GetParam(ST_PERCEPTION)*8)-targ->GetParam(ST_ARMOR_CLASS)-ATTACK_RANGE_MIN_PROC;
-						best_dist=base_hit/4;
-						if(best_dist<=min_dist)
-						{
-							best_dist=min_dist;
-							if(can_aim) aim=Random(1,8);
-						}
-						if(best_dist>max_dist) best_dist=max_dist;
-						int best_dist_now=best_dist*2;
-						if(best_dist_now>max_dist) best_dist=max_dist;
-					}
-
 					trace.BeginHx=t_hx;
 					trace.BeginHy=t_hy;
 					trace.EndHx=hx;
@@ -598,11 +549,6 @@ void FOServer::ProcessAI(Npc* npc)
 								res_hy=last_passed.second;
 								find_ok=true;
 								break;
-
-						//		res_hx=last_passed.first;
-						//		res_hy=last_passed.second;
-						//		find_ok=true;
-						//		if((hx==res_hx && hy==res_hy) || trace.IsFullTrace) break;
 							}
 
 							if(!(i&1)) deq=deq_step*float((i+2)/2);
@@ -626,8 +572,6 @@ void FOServer::ProcessAI(Npc* npc)
 				// Find precision HtH attack
 				else if(!is_range)
 				{
-					if(!best_dist) best_dist=max_dist;
-
 					if(!CheckDist(hx,hy,t_hx,t_hy,max_dist))
 					{
 						if(!is_can_walk) npc->NextPlane(REASON_CANT_WALK);
@@ -654,23 +598,25 @@ void FOServer::ProcessAI(Npc* npc)
 				r0=targ->GetId();
 				r1=0;
 				r2=0;
-				if(npc->RunPlane(REASON_ATTACK_USE_AIM,r0,r1,r2))
+				if(!npc->RunPlane(REASON_ATTACK_USE_AIM,r0,r1,r2))
 				{
-					if(r2)
-					{
-						npc->SetWait(r2);
-						break;
-					}
-
-					if(r0!=use && weap->WeapIsUseAviable(r0)) use=r0;
-
-					aim=r1;
-					if(!weap->Proto->Weapon.Aim[use]) aim=0;
-
-					weap->SetMode(MAKE_ITEM_MODE(use,aim));
+					WriteLog("REASON_ATTACK_USE_AIM fail. Skip attack.\n");
+					break;
 				}
 
-				AI_Attack(npc,map,use,aim,targ->GetId());
+				if(r2)
+				{
+					npc->SetWait(r2);
+					break;
+				}
+
+				if(r0!=use && weap->WeapIsUseAviable(r0)) use=r0;
+
+				int aim=r1;
+				if(!(CritType::IsCanAim(npc->GetCrType()) && !npc->IsRawParam(MODE_NO_AIM) && weap->WeapIsCanAim(use))) aim=0;
+
+				weap->SetMode(MAKE_ITEM_MODE(use,aim));
+				AI_Attack(npc,map,MAKE_ITEM_MODE(use,aim),targ->GetId());
 			}
 		/************************************************************************/
 		/* Target not visible, try find by last stored position                 */
@@ -836,17 +782,15 @@ bool FOServer::AI_MoveItem(Npc* npc, Map* map, BYTE from_slot, BYTE to_slot, DWO
 	return npc->MoveItem(from_slot,to_slot,item_id,count);
 }
 
-bool FOServer::AI_Attack(Npc* npc, Map* map, BYTE use, BYTE aim, DWORD targ_id)
+bool FOServer::AI_Attack(Npc* npc, Map* map, BYTE mode, DWORD targ_id)
 {
-	int ap_cost=npc->ItemSlotMain->Proto->Weapon.ApCost[use];
-	if(aim) ap_cost+=GameAimApCost(aim);
-	if(npc->IsPerk(PE_BONUS_HTH_ATTACKS) && npc->ItemSlotMain->WeapIsHtHAttack(use)) ap_cost--;
-	if(npc->IsPerk(PE_BONUS_RATE_OF_FIRE) && npc->ItemSlotMain->WeapIsRangedAttack(use)) ap_cost--;
-	if(npc->IsPerk(TRAIT_FAST_SHOT) && !npc->ItemSlotMain->WeapIsHtHAttack(use)) ap_cost--;
+	int ap_cost=(GameOpt.GetUseApCost?GameOpt.GetUseApCost(npc,npc->ItemSlotMain,mode):1);
+
 	CHECK_NPC_AP_R0(npc,map,ap_cost);
 
 	Critter* targ=npc->GetCritSelf(targ_id,false);
-	if(!targ || !Act_Attack(npc,use|(aim<<4),targ_id)) return false;
+	if(!targ || !Act_Attack(npc,mode,targ_id)) return false;
+
 	return true;
 }
 
@@ -858,48 +802,10 @@ bool FOServer::AI_PickItem(Npc* npc, Map* map, WORD hx, WORD hy, WORD pid, DWORD
 
 bool FOServer::AI_ReloadWeapon(Npc* npc, Map* map, Item* weap, DWORD ammo_id)
 {
-	CHECK_NPC_AP_R0(npc,map,npc->GetApCostReload()-(weap->WeapIsFastReload()?1:0));
+	int ap_cost=(GameOpt.GetUseApCost?GameOpt.GetUseApCost(npc,npc->ItemSlotMain,USE_RELOAD):1);
+	CHECK_NPC_AP_R0(npc,map,ap_cost);
 	return Act_Reload(npc,weap->GetId(),ammo_id);
 }
-
-void FOServer::TraceFireLine(Map* map, WORD hx, WORD hy, float sx, float sy, DWORD dist, Npc* npc, WordPairVec& positions, DWORD step)
-{
-	WordPair pos;
-	CrVec crits;
-	//TraceBullet(map,hx,hy,sx,sy,dist,&crits,&pos,NULL);
-	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
-	{
-		Critter* cr=*it;
-		if(cr==npc) continue;
-		//if(cr->IsPlayer()) // 
-	}
-}
-
-/*DWORD FOServer::AIGetAttackPosition(Npc* npc, Map* map, WORD& hx, WORD& hy, bool is_run)
-{
-	int use;
-	Item* weapon=npc->GetBattleWeapon(use);
-	DWORD attack_dist=npc;
-
-
-	PathFindData pfd;
-	pfd.Clear();
-	pfd.MapId=npc->GetMap();
-	pfd.FromX=npc->GetHexX();
-	pfd.FromY=npc->GetHexY();
-	pfd.ToX=hx;
-	pfd.ToY=hy;
-	pfd.IsRun=is_run;
-	pfd.Cut=cut;
-	pfd.IsAround=is_around;
-	pfd.Trace=trace;
-	pfd.TraceCr=trace_cr;
-	pfd.CheckCrit=check_cr;
-	// Calc fire distantion (used skill val, weapon max dist, target ac...)
-	// Move pos to fire line (with skip critters)
-	// Trace around (by hex steps or deq)
-	return 0;
-}*/
 
 bool FOServer::TransferAllNpc()
 {
@@ -1012,7 +918,7 @@ bool FOServer::Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bo
 		case DR_PARAM:
 			{
 				int val=master->GetParam(index);
-				if(index==ST_INTELLECT) val+=master->GetPerk(PE_SMOOTH_TALKER)*2;
+				if(index==ST_INTELLECT) val+=master->GetRawParam(PE_SMOOTH_TALKER)*2;
 				if(index>=REPUTATION_BEGIN && index<=REPUTATION_END && master->Data.Params[index]==0x80000000) master->Data.Params[index]=0;
 				switch(demand.Op)
 				{
@@ -1387,7 +1293,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 	cl->Talk.DialogPackId=dlg_pack_id;
 	cl->Talk.LastDialogId=go_dialog;
 	cl->Talk.StartTick=Timer::GameTick();
-	cl->Talk.TalkTime=max(cl->GetSkill(SK_SPEECH)*1000,DIALOG_TALK_MIN_TIME);
+	cl->Talk.TalkTime=max(cl->GetRawParam(SK_SPEECH)*1000,GameOpt.DlgTalkMinTime);
 	cl->Talk.Barter=false;
 	cl->Talk.IgnoreDistance=ignore_distance;
 
@@ -1453,7 +1359,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		}
 	}
 
-	if(cl->IsPerk(MODE_HIDE))
+	if(cl->IsRawParam(MODE_HIDE))
 	{
 		cl->ChangeParam(MODE_HIDE);
 		cl->Data.Params[MODE_HIDE]=0;
@@ -1596,12 +1502,12 @@ label_Barter:
 				cl->Send_TextMsg(cl,STR_BARTER_NO_BARTER_MODE,SAY_DIALOG,TEXTMSG_GAME);
 				return;
 			}
-			if(cur_dialog->DlgScript!=NOT_ANSWER_CLOSE_DIALOG && !npc->IsPerk(MODE_DLG_SCRIPT_BARTER))
+			if(cur_dialog->DlgScript!=NOT_ANSWER_CLOSE_DIALOG && !npc->IsRawParam(MODE_DLG_SCRIPT_BARTER))
 			{
 				cl->Send_TextMsg(npc,STR_BARTER_NO_BARTER_NOW,SAY_DIALOG,TEXTMSG_GAME);
 				return;
 			}
-			if(npc->IsPerk(MODE_NO_BARTER))
+			if(npc->IsRawParam(MODE_NO_BARTER))
 			{
 				cl->Send_TextMsg(npc,STR_BARTER_NO_BARTER_MODE,SAY_DIALOG,TEXTMSG_GAME);
 				return;
@@ -1614,7 +1520,7 @@ label_Barter:
 
 			cl->Talk.Barter=true;
 			cl->Talk.StartTick=Timer::GameTick();
-			cl->Talk.TalkTime=max(cl->GetSkill(SK_BARTER)*1000,DIALOG_BARTER_MIN_TIME);
+			cl->Talk.TalkTime=max(cl->GetRawParam(SK_BARTER)*1000,GameOpt.DlgBarterMinTime);
 			cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,true);
 			return;
 		case -2:
@@ -1698,7 +1604,7 @@ label_Barter:
 	}
 
 	cl->Talk.StartTick=Timer::GameTick();
-	cl->Talk.TalkTime=max(cl->GetSkill(SK_SPEECH)*1000,DIALOG_TALK_MIN_TIME);
+	cl->Talk.TalkTime=max(cl->GetRawParam(SK_SPEECH)*1000,GameOpt.DlgTalkMinTime);
 	cl->Send_Talk();
 	SetScore(SCORE_SPEAKER,cl,5);
 }
@@ -1781,7 +1687,7 @@ void FOServer::Process_Barter(Client* cl)
 		return;
 	}
 
-	if(npc->IsPerk(MODE_NO_BARTER))
+	if(npc->IsRawParam(MODE_NO_BARTER))
 	{
 		WriteLog(__FUNCTION__" - Npc has NoBarterMode, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_ContainerInfo();
@@ -1812,7 +1718,7 @@ void FOServer::Process_Barter(Client* cl)
 	}
 
 	// Check cost
-	int barter_k=npc->GetSkill(SK_BARTER)-cl->GetSkill(SK_BARTER);
+	int barter_k=npc->GetRawParam(SK_BARTER)-cl->GetRawParam(SK_BARTER);
 	barter_k=CLAMP(barter_k,5,95);
 	int sale_cost=0;
 	int buy_cost=0;
@@ -1917,7 +1823,7 @@ void FOServer::Process_Barter(Client* cl)
 		}
 		else
 		{
-			base_cost=base_cost*(100+(cl->IsPerk(PE_MASTER_TRADER)?0:barter_k))/100;
+			base_cost=base_cost*(100+(cl->IsRawParam(PE_MASTER_TRADER)?0:barter_k))/100;
 			if(!base_cost) base_cost++;
 		}
 		buy_cost+=base_cost*buy_item_count[i];
@@ -2001,7 +1907,7 @@ void FOServer::Process_Barter(Client* cl)
 	}
 
 	cl->Talk.StartTick=Timer::GameTick();
-	cl->Talk.TalkTime=max(cl->GetSkill(SK_BARTER)*1000,DIALOG_BARTER_MIN_TIME);
+	cl->Talk.TalkTime=max(cl->GetRawParam(SK_BARTER)*1000,GameOpt.DlgBarterMinTime);
 	if(!is_free) cl->Send_TextMsg(cl,STR_BARTER_GOOD_OFFER,SAY_DIALOG,TEXTMSG_GAME);
 	cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 	SetScore(SCORE_TRADER,cl,1);

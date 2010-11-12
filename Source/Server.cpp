@@ -1114,9 +1114,9 @@ void FOServer::Process(ClientPtr& cl)
 #define CHECK_BUSY_AND_LIFE if(!cl->IsLife()) break; if(cl->IsBusy() && !Singleplayer){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
 #define CHECK_NO_GLOBAL if(!cl->GetMap()) break;
 #define CHECK_IS_GLOBAL if(cl->GetMap() || !cl->GroupMove) break;
-#define CHECK_AP_MSG BYTE ap; cl->Bin >> ap; if(!Singleplayer){if(!cl->IsTurnBased()){if(ap>cl->GetMaxAp()) break; if((int)ap>cl->GetAp()){cl->Bin.MoveReadPos(-int(sizeof(msg)+sizeof(ap))); BIN_END(cl); return;}}}
-#define CHECK_AP(ap) if(!Singleplayer){if(!cl->IsTurnBased()){if((int)(ap)>cl->GetMaxAp()) break; if((int)(ap)>cl->GetAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}}
-#define CHECK_REAL_AP(ap) if(!Singleplayer){if(!cl->IsTurnBased()){if((int)(ap)>cl->GetMaxAp()*AP_DIVIDER) break; if((int)(ap)>cl->GetRealAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}}
+#define CHECK_AP_MSG BYTE ap; cl->Bin >> ap; if(!Singleplayer){if(!cl->IsTurnBased()){if(ap>cl->GetParam(ST_ACTION_POINTS)) break; if((int)ap>cl->GetParam(ST_CURRENT_AP)){cl->Bin.MoveReadPos(-int(sizeof(msg)+sizeof(ap))); BIN_END(cl); return;}}}
+#define CHECK_AP(ap) if(!Singleplayer){if(!cl->IsTurnBased()){if((int)(ap)>cl->GetParam(ST_ACTION_POINTS)) break; if((int)(ap)>cl->GetParam(ST_CURRENT_AP)){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}}
+#define CHECK_REAL_AP(ap) if(!Singleplayer){if(!cl->IsTurnBased()){if((int)(ap)>cl->GetParam(ST_ACTION_POINTS)*AP_DIVIDER) break; if((int)(ap)>cl->GetRealAp()){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}}}
 
 		for(int i=0;i<MESSAGES_PER_CYCLE;i++)
 		{
@@ -1958,17 +1958,12 @@ void FOServer::Process_Command(Client* cl)
 				else if(param_type==233)
 				{
 					cl->ChangeParam(ST_CURRENT_HP);
-					cl->ChangeParam(DAMAGE_EYE);
-					cl->ChangeParam(DAMAGE_RIGHT_ARM);
-					cl->ChangeParam(DAMAGE_LEFT_ARM);
-					cl->ChangeParam(DAMAGE_RIGHT_LEG);
-					cl->ChangeParam(DAMAGE_LEFT_LEG);
 					cl->Data.Params[ST_CURRENT_HP]=cl->GetParam(ST_MAX_LIFE);
-					cl->Data.Params[DAMAGE_EYE]=0;
-					cl->Data.Params[DAMAGE_RIGHT_ARM]=0;
-					cl->Data.Params[DAMAGE_LEFT_ARM]=0;
-					cl->Data.Params[DAMAGE_RIGHT_LEG]=0;
-					cl->Data.Params[DAMAGE_LEFT_LEG]=0;
+					for(int i=DAMAGE_BEGIN;i<=DAMAGE_END;i++)
+					{
+						cl->ChangeParam(i);
+						cl->Data.Params[i]=0;
+					}
 					cl->Send_Text(cl,"Full heal done.",SAY_NETMSG);
 				}
 				else if(param_type==222)
@@ -3277,11 +3272,11 @@ bool FOServer::Init()
 #endif
 
 	// Check the sizes of struct and classes
-	STATIC_ASSERT(offsetof(Item,PLexems)==160);
+	STATIC_ASSERT(offsetof(Item,IsNotValid)==118);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
-	STATIC_ASSERT(offsetof(Critter,RefCounter)==9800);
-	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9868);
-	STATIC_ASSERT(offsetof(Npc,Reserved)==9832);
+	STATIC_ASSERT(offsetof(Critter,RefCounter)==9304);
+	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9372);
+	STATIC_ASSERT(offsetof(Npc,Reserved)==9328);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
 	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);
@@ -3316,6 +3311,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(ProtoItem)==180);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
+	STATIC_ASSERT(sizeof(GameOptions)==1088);
 
 	// Critters parameters
 	Critter::SendDataCallback=&Net_Output;
@@ -3325,6 +3321,11 @@ bool FOServer::Init()
 	ZeroMemory(Critter::ParamsChangeScript,sizeof(Critter::ParamsChangeScript));
 	ZeroMemory(Critter::ParamsGetScript,sizeof(Critter::ParamsGetScript));
 	ZeroMemory(Critter::SlotDataSendEnabled,sizeof(Critter::SlotDataSendEnabled));
+
+	// Register dll script data
+	struct CritterChangeParameter_{static void CritterChangeParameter(void* cr, DWORD index){((Critter*)cr)->ChangeParam(index);}};
+	GameOpt.CritterChangeParameter=&CritterChangeParameter_::CritterChangeParameter;
+	GameOpt.CritterTypes=&CritType::GetRealCritType(0);
 
 	// Accesses
 	if(cfg.IsLoaded())

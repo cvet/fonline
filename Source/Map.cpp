@@ -1818,7 +1818,7 @@ void Map::BeginTurnBased(Critter* first_cr)
 	TurnBasedWholeTurn=0;
 	TurnBasedBeginSecond=GameOpt.FullSecond;
 
-	if(first_cr && (!first_cr->IsLife() || !first_cr->IsKnockout() || first_cr->GetAp()<=0)) first_cr=NULL;
+	if(first_cr && (!first_cr->IsLife() || !first_cr->IsKnockout() || first_cr->GetParam(ST_CURRENT_AP)<=0)) first_cr=NULL;
 	GenerateSequence(critters,first_cr);
 
 	for(CrVecIt it=critters.begin(),end=critters.end();it!=end;++it)
@@ -1927,19 +1927,6 @@ void Map::NextCritterTurn()
 		Critter* cr=GetCritter(TurnSequence[TurnSequenceCur],true);
 		if(cr)
 		{
-			cr->ChangeParam(ST_TURN_BASED_AC);
-			cr->ChangeParam(ST_MOVE_AP);
-			bool hth_evade=(cr->IsPerk(PE_HTH_EVADE) && cr->InHandsOnlyHtHWeapon());
-			cr->Data.Params[ST_TURN_BASED_AC]=cr->GetAp()*(hth_evade?2:1); // + ST_MOVE_AP ???
-			if(cr->Data.Params[ST_TURN_BASED_AC]<0) cr->Data.Params[ST_TURN_BASED_AC]=0;
-			if(hth_evade && cr->GetSkill(SK_UNARMED)>0) cr->Data.Params[ST_TURN_BASED_AC]+=cr->GetSkill(SK_UNARMED)/12;
-			cr->Data.Params[ST_MOVE_AP]=0;
-			if(cr->Data.Params[ST_CURRENT_AP]>0)
-			{
-				cr->ChangeParam(ST_CURRENT_AP);
-				cr->Data.Params[ST_CURRENT_AP]=0;
-			}
-
 			cr->EventTurnBasedProcess(this,false);
 			EventTurnBasedProcess(cr,false);
 			if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
@@ -1948,6 +1935,12 @@ void Map::NextCritterTurn()
 				Script::SetArgObject(cr);
 				Script::SetArgBool(false);
 				Script::RunPrepared();
+			}
+
+			if(cr->Data.Params[ST_CURRENT_AP]>0)
+			{
+				cr->ChangeParam(ST_CURRENT_AP);
+				cr->Data.Params[ST_CURRENT_AP]=0;
 			}
 		}
 		else
@@ -1993,24 +1986,16 @@ void Map::NextCritterTurn()
 			return;
 		}
 
-		cr->ChangeParam(ST_TURN_BASED_AC);
-		cr->ChangeParam(ST_MOVE_AP);
-		cr->Data.Params[ST_MOVE_AP]=cr->GetParam(ST_MAX_MOVE_AP);
-		cr->Data.Params[ST_TURN_BASED_AC]=0;
-		cr->Send_ParamOther(OTHER_YOU_TURN,GameOpt.TurnBasedTick);
-		cr->SendA_ParamOther(OTHER_YOU_TURN,GameOpt.TurnBasedTick);
-		TurnBasedEndTick=Timer::GameTick()+GameOpt.TurnBasedTick;
-
 		if(cr->Data.Params[ST_CURRENT_AP]>=0)
 		{
 			cr->ChangeParam(ST_CURRENT_AP);
-			cr->Data.Params[ST_CURRENT_AP]=cr->GetMaxAp()*AP_DIVIDER;
+			cr->Data.Params[ST_CURRENT_AP]=cr->GetParam(ST_ACTION_POINTS)*AP_DIVIDER;
 		}
 		else
 		{
 			cr->ChangeParam(ST_CURRENT_AP);
-			cr->Data.Params[ST_CURRENT_AP]+=cr->GetMaxAp()*AP_DIVIDER;
-			if(cr->GetAp()<0 || (cr->GetAp()==0 && !cr->GetParam(ST_MAX_MOVE_AP)))
+			cr->Data.Params[ST_CURRENT_AP]+=cr->GetParam(ST_ACTION_POINTS)*AP_DIVIDER;
+			if(cr->GetParam(ST_CURRENT_AP)<0 || (cr->GetParam(ST_CURRENT_AP)==0 && !cr->GetParam(ST_MAX_MOVE_AP)))
 			{
 				TurnBasedTurn++;
 				TurnBasedWholeTurn++;
@@ -2030,6 +2015,10 @@ void Map::NextCritterTurn()
 				return;
 			}
 		}
+
+		cr->Send_ParamOther(OTHER_YOU_TURN,GameOpt.TurnBasedTick);
+		cr->SendA_ParamOther(OTHER_YOU_TURN,GameOpt.TurnBasedTick);
+		TurnBasedEndTick=Timer::GameTick()+GameOpt.TurnBasedTick;
 
 		cr->EventTurnBasedProcess(this,true);
 		EventTurnBasedProcess(cr,true);
@@ -2252,7 +2241,7 @@ bool Location::IsCanDelete()
 		for(PcVecIt it_=npcs.begin(),end_=npcs.end();it_!=end_;++it_)
 		{
 			Npc* npc=*it_;
-			if(npc->IsPerk(MODE_GECK) || (!npc->IsPerk(MODE_NO_HOME) && npc->GetHomeMap()!=map->GetId()) || npc->IsHaveGeckItem()) return false;
+			if(npc->IsRawParam(MODE_GECK) || (!npc->IsRawParam(MODE_NO_HOME) && npc->GetHomeMap()!=map->GetId()) || npc->IsHaveGeckItem()) return false;
 		}
 	}
 	return true;

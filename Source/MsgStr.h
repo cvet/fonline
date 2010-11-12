@@ -158,17 +158,9 @@
 #define STR_ITEM_WEIGHT_FUNT            (436)
 #define STR_ITEM_COST                   (437)
 #define STR_ITEM_TRADER_COST            (438)
+
 #define STR_OVERWEIGHT_TITLE            (440)
-#define STR_HIDEMODE_TITLE              (441)
-#define STR_LEVELUP_TITLE               (442)
-#define STR_POISONED_TITLE              (443)
-#define STR_RADIATED_TITLE              (444)
-#define STR_INJURED_TITLE               (445)
-#define STR_ADDICTED_TITLE              (446)
-#define STR_TIMEOUT_TITLE               (447)
 #define STR_OVERVOLUME_TITLE            (448)
-#define STR_YOU_TURN_TITLE              (449)
-#define STR_TURN_BASED_TITLE            (450)
 
 // Radio
 #define STR_RADIO_CANT_SEND             (479)
@@ -349,9 +341,6 @@
 #define STR_PERKS_DESC                  (4057)
 #define STR_KILLS_DESC                  (4058)
 #define STR_TRAITS_DESC                 (4061)
-
-#define STR_GAIN_LEVELUP				(4090)
-#define STR_GAIN_EXPERIENCE				(4091)
 
 #define STR_SWITCH_PERKS_NAME           (4109)
 #define STR_SWITCH_KARMA_NAME           (4110)

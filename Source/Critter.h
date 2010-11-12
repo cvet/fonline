@@ -185,19 +185,18 @@ public:
 
 	// Items
 protected:
-	Item defItemSlotMain;
-	Item defItemSlotExt;
-	Item defItemSlotArmor;
-	ItemPtrVec invItems;    // SLOT_INV
+	ItemPtrVec invItems;
+	Item* defItemSlotHand;
+	Item* defItemSlotArmor;
 
 public:	
-	Item* ItemSlotMain;     // SLOT_HAND1
-	Item* ItemSlotExt;      // SLOT_HAND2
-	Item* ItemSlotArmor;    // SLOT_ARMOR
+	Item* ItemSlotMain;
+	Item* ItemSlotExt;
+	Item* ItemSlotArmor;
 
 	void SyncLockItems();
-	bool SetDefaultItems(ProtoItem* proto_hand1, ProtoItem* proto_hand2, ProtoItem* proto_armor);
-	Item& GetDefaultItemSlotMain(){return defItemSlotMain;}
+	bool SetDefaultItems(ProtoItem* proto_hand, ProtoItem* proto_armor);
+	Item* GetDefaultItemSlotMain(){return defItemSlotHand;}
 	void AddItem(Item*& item, bool send);
 	void SetItem(Item* item);
 	void EraseItem(Item* item, bool send);
@@ -219,7 +218,6 @@ public:
 	DWORD RealCountItems(){return invItems.size();}
 	DWORD CountItems();
 	ItemPtrVec& GetInventory(){SyncLockItems(); return invItems;}
-	bool InHandsOnlyHtHWeapon();
 	bool IsHaveGeckItem();
 
 	// Scripts
@@ -406,10 +404,8 @@ public:
 	void ProcessChangedParams();
 	DWORD GetFollowCrId(){return Data.Params[ST_FOLLOW_CRIT];}
 	void SetFollowCrId(DWORD crid){ChangeParam(ST_FOLLOW_CRIT); Data.Params[ST_FOLLOW_CRIT]=crid;}
-	int GetSkill(DWORD index){return CLAMP(Data.Params[index],-MAX_SKILL_VAL,MAX_SKILL_VAL);}
-	bool IsPerk(DWORD index){return Data.Params[index]!=0;}
-	int GetPerk(DWORD index){return Data.Params[index];}
-	bool IsDmgEye(){return Data.Params[DAMAGE_EYE]!=0;}
+	bool IsRawParam(DWORD index){return Data.Params[index]!=0;}
+	int GetRawParam(DWORD index){return Data.Params[index];}
 	bool IsDmgLeg(){return Data.Params[DAMAGE_RIGHT_LEG]!=0 || Data.Params[DAMAGE_LEFT_LEG]!=0;}
 	bool IsDmgTwoLeg(){return Data.Params[DAMAGE_RIGHT_LEG]!=0 && Data.Params[DAMAGE_LEFT_LEG]!=0;}
 	bool IsDmgArm(){return Data.Params[DAMAGE_RIGHT_ARM]!=0 || Data.Params[DAMAGE_LEFT_ARM]!=0;}
@@ -424,58 +420,27 @@ public:
 	bool IsDead(){return Data.Cond==COND_DEAD;}
 	bool IsKnockout(){return Data.Cond==COND_KNOCKOUT;}
 	bool CheckFind(int find_type);
-
-	// Migrate to dll in future
-	int GetStrength(){int val=Data.Params[ST_STRENGTH]+Data.Params[ST_STRENGTH_EXT]; if(Data.Params[PE_ADRENALINE_RUSH] && GetTimeout(TO_BATTLE) && Data.Params[ST_CURRENT_HP]<=(Data.Params[ST_MAX_LIFE]+Data.Params[ST_STRENGTH]+Data.Params[ST_ENDURANCE]*2)/2) val++; return CLAMP(val,1,10);}
-	int GetPerception(){int val=(IsDmgEye()?1:Data.Params[ST_PERCEPTION]+Data.Params[ST_PERCEPTION_EXT]); if(Data.Params[TRAIT_NIGHT_PERSON]) val+=GetNightPersonBonus(); return CLAMP(val,1,10);}
-	int GetEndurance(){int val=Data.Params[ST_ENDURANCE]+Data.Params[ST_ENDURANCE_EXT]; return CLAMP(val,1,10);}
-	int GetCharisma(){int val=Data.Params[ST_CHARISMA]+Data.Params[ST_CHARISMA_EXT]; return CLAMP(val,1,10);}
-	int GetIntellegence(){int val=Data.Params[ST_INTELLECT]+Data.Params[ST_INTELLECT_EXT]; if(Data.Params[TRAIT_NIGHT_PERSON]) val+=GetNightPersonBonus(); return CLAMP(val,1,10);}
-	int GetAgility(){int val=Data.Params[ST_AGILITY]+Data.Params[ST_AGILITY_EXT]; return CLAMP(val,1,10);}
-	int GetLuck(){int val=Data.Params[ST_LUCK]+Data.Params[ST_LUCK_EXT]; return CLAMP(val,1,10);}
-	int GetHp(){return Data.Params[ST_CURRENT_HP];}
-	int GetMaxLife(){int val=Data.Params[ST_MAX_LIFE]+Data.Params[ST_MAX_LIFE_EXT]+Data.Params[ST_STRENGTH]+Data.Params[ST_ENDURANCE]*2; return CLAMP(val,1,9999);}
-	int GetMaxAp(){int val=Data.Params[ST_ACTION_POINTS]+Data.Params[ST_ACTION_POINTS_EXT]+GetAgility()/2; return CLAMP(val,1,9999);}
-	int GetAp(){int val=Data.Params[ST_CURRENT_AP]; val/=AP_DIVIDER; return CLAMP(val,-9999,9999);}
 	int GetRealAp(){return Data.Params[ST_CURRENT_AP];}
+	int GetAllAp(){return GetParam(ST_CURRENT_AP)+GetParam(ST_MOVE_AP);}
 	void SubAp(int val){ChangeParam(ST_CURRENT_AP);Data.Params[ST_CURRENT_AP]-=val*AP_DIVIDER;ApRegenerationTick=0;}
-	int GetMaxMoveAp(){int val=Data.Params[ST_MAX_MOVE_AP]; return CLAMP(val,0,9999);}
-	int GetMoveAp(){int val=Data.Params[ST_MOVE_AP]; return CLAMP(val,0,9999);}
-	int GetAllAp(){return GetAp()+GetMoveAp();}
 	void SubMoveAp(int val){ChangeParam(ST_CURRENT_AP);Data.Params[ST_MOVE_AP]-=val;}
-	DWORD GetMaxWeight(){int val=max(Data.Params[ST_CARRY_WEIGHT]+Data.Params[ST_CARRY_WEIGHT_EXT],0); val+=CONVERT_GRAMM(25+GetStrength()*(25-Data.Params[TRAIT_SMALL_FRAME]*10)); return (DWORD)val;}
-	int GetSequence(){int val=Data.Params[ST_SEQUENCE]+Data.Params[ST_SEQUENCE_EXT]+GetPerception()*2; return CLAMP(val,0,9999);}
-	int GetMeleeDmg(){int strength=GetStrength(); int val=Data.Params[ST_MELEE_DAMAGE]+Data.Params[ST_MELEE_DAMAGE_EXT]+(strength>6?strength-5:1); return CLAMP(val,1,9999);}
-	int GetHealingRate(){int e=GetEndurance(); int val=Data.Params[ST_HEALING_RATE]+Data.Params[ST_HEALING_RATE_EXT]+max(1,e/3); return CLAMP(val,0,9999);}
-	int GetCriticalChance(){int val=Data.Params[ST_CRITICAL_CHANCE]+Data.Params[ST_CRITICAL_CHANCE_EXT]+GetLuck(); return CLAMP(val,0,100);}
-	int GetMaxCritical(){int val=Data.Params[ST_MAX_CRITICAL]+Data.Params[ST_MAX_CRITICAL_EXT]; return CLAMP(val,-100,100);}
-	int GetAc();
-	int GetDamageResistance(int dmg_type);
-	int GetDamageThreshold(int dmg_type);
-	int GetRadiationResist(){int val=Data.Params[ST_RADIATION_RESISTANCE]+Data.Params[ST_RADIATION_RESISTANCE_EXT]+GetEndurance()*2; return CLAMP(val,0,95);}
-	int GetPoisonResist(){int val=Data.Params[ST_POISON_RESISTANCE]+Data.Params[ST_POISON_RESISTANCE_EXT]+GetEndurance()*5; return CLAMP(val,0,95);}
-	int GetNightPersonBonus();
-	int GetReputation(DWORD index);
 
 	// Turn based
 	DWORD AccessContainerId;
 
-	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetTimeout(TO_BATTLE));}
+	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetParam(TO_BATTLE));}
 	bool CheckMyTurn(Map* map);
-	int GetApCostCritterMove(bool is_run){return IsTurnBased()?GameOpt.TbApCostCritterMove*AP_DIVIDER*(IsDmgTwoLeg()?4:(IsDmgLeg()?2:1)):(GetTimeout(TO_BATTLE)?(is_run?GameOpt.RtApCostCritterRun:GameOpt.RtApCostCritterWalk):0);}
+	int GetApCostCritterMove(bool is_run){return IsTurnBased()?GameOpt.TbApCostCritterMove*AP_DIVIDER*(IsDmgTwoLeg()?4:(IsDmgLeg()?2:1)):(GetParam(TO_BATTLE)?(is_run?GameOpt.RtApCostCritterRun:GameOpt.RtApCostCritterWalk):0);}
 	int GetApCostMoveItemContainer(){return IsTurnBased()?GameOpt.TbApCostMoveItemContainer:GameOpt.RtApCostMoveItemContainer;}
-	int GetApCostMoveItemInventory(){int val=IsTurnBased()?GameOpt.TbApCostMoveItemInventory:GameOpt.RtApCostMoveItemInventory; if(IsPerk(PE_QUICK_POCKETS)) val/=2; return val;}
+	int GetApCostMoveItemInventory(){int val=IsTurnBased()?GameOpt.TbApCostMoveItemInventory:GameOpt.RtApCostMoveItemInventory; if(IsRawParam(PE_QUICK_POCKETS)) val/=2; return val;}
 	int GetApCostPickItem(){return IsTurnBased()?GameOpt.TbApCostPickItem:GameOpt.RtApCostPickItem;}
 	int GetApCostDropItem(){return IsTurnBased()?GameOpt.TbApCostDropItem:GameOpt.RtApCostDropItem;}
-	int GetApCostReload(){return IsTurnBased()?GameOpt.TbApCostReloadWeapon:GameOpt.RtApCostReloadWeapon;}
 	int GetApCostPickCritter(){return IsTurnBased()?GameOpt.TbApCostPickCritter:GameOpt.RtApCostPickCritter;}
-	int GetApCostUseItem(){return IsTurnBased()?GameOpt.TbApCostUseItem:GameOpt.RtApCostUseItem;}
 	int GetApCostUseSkill(){return IsTurnBased()?GameOpt.TbApCostUseSkill:GameOpt.RtApCostUseSkill;}
 
 	// Timeouts
 	void SetTimeout(int timeout, DWORD game_seconds);
 	bool IsTransferTimeouts(bool send);
-	DWORD GetTimeout(int timeout);
 
 	// Home
 	DWORD TryingGoHomeTick;
@@ -574,7 +539,7 @@ private:
 	bool pingOk;
 
 public:
-	bool IsToPing(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME && Timer::FastTick()>=pingNextTick && !GetTimeout(TO_TRANSFER) && !Singleplayer;}
+	bool IsToPing(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME && Timer::FastTick()>=pingNextTick && !GetParam(TO_TRANSFER) && !Singleplayer;}
 	void PingClient();
 	void PingOk(DWORD next_ping){pingOk=true; pingNextTick=Timer::FastTick()+next_ping;}
 
@@ -720,17 +685,6 @@ public:
 	DWORD GetBarterPlayers();
 	bool IsFreeToTalk();
 	bool IsPlaneNoTalk();
-
-	// AI Battle
-private:
-	DWORD lastBattleWeaponId;
-	DWORD lastBattleWeaponUse;
-
-	bool CheckBattleWeapon(Item* weap);
-
-public:
-	Item* GetBattleWeapon(int& use, Critter* targ);
-	void NullLastBattleWeapon(){lastBattleWeaponId=0;lastBattleWeaponUse=0;}
 
 	// Target
 public:

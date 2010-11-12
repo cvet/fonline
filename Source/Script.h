@@ -30,6 +30,7 @@ namespace Script
 	HMODULE LoadDynamicLibrary(const char* dll_name);
 	void SetWrongGlobalObjects(StrVec& names);
 	void SetConcurrentExecution(bool enabled);
+	void SetLoadLibraryCompiler(bool enabled);
 
 	void UnloadScripts();
 	bool ReloadScripts(const char* config, const char* key, bool skip_binaries);

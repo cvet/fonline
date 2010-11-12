@@ -5,7 +5,7 @@
 
 AnyFrames* ItemHex::DefaultAnim=NULL;
 
-ItemHex::ItemHex(DWORD id, ProtoItem* pobj, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y):
+ItemHex::ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y):
 HexX(hx),HexY(hy),StartScrX(scr_x),StartScrY(scr_y),ScrX(0),ScrY(0),HexScrX(hex_scr_x),HexScrY(hex_scr_y),
 curSpr(0),begSpr(0),endSpr(0),animBegSpr(0),animEndSpr(0),animTick(0),animNextTick(0),
 Alpha(0),maxAlpha(0xFF),Dir(dir),
@@ -15,8 +15,11 @@ isEffect(false),effSx(0),effSy(0),EffOffsX(0),EffOffsY(0),effStartX(0),effStartY
 isAnimated(false),ScenFlags(0)/*,IsFocused(false)*/,
 SprDrawValid(false)
 {
-	Init(pobj);
+	Init(proto);
 	Id=id;
+	Accessory=ITEM_ACCESSORY_HEX;
+	ACC_HEX.HexX=hx;
+	ACC_HEX.HexY=hy;
 	if(data) Data=*data;
 
 	RefreshAnim();

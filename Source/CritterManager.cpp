@@ -481,9 +481,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
 		return NULL;
 	}
 
-	if(!npc->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),
-		ItemMngr.GetProtoItem(ITEM_DEF_SLOT),
-		ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
+	if(!npc->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 	{
 		delete npc;
 		WriteLog(__FUNCTION__" - Can't set default items of proto id<%u>.\n",proto_id);

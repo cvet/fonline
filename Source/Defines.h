@@ -206,7 +206,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Proto maps
 #define MAP_PROTO_EXT			".map"
-#define MAX_PROTO_MAPS          (10000)
+#define MAX_PROTO_MAPS          (30000)
 
 // Type entires
 #define ENTIRE_DEFAULT			(0)
@@ -289,11 +289,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Locker
 #define LOCKER_ISOPEN           (0x01)
-#define LOCKER_LOCKED           (0x02)
-#define LOCKER_JAMMED           (0x04)
-#define LOCKER_BROKEN           (0x08)
-#define LOCKER_NOOPEN           (0x10)
-#define LOCKER_ELECTRO          (0x20)
 
 // Hit locations
 #define HIT_LOCATION_NONE       (0)
@@ -309,8 +304,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define MAX_HIT_LOCATION        (10)
 
 // Locations
-#define MAX_PROTO_LOCATIONS     (10000)
-#define MAX_MAPS_IN_LOCATION    (50)
+#define MAX_PROTO_LOCATIONS     (30000)
 
 // Global map
 #define GM_MAXX                 (GameOpt.GlobalMapWidth*GameOpt.GlobalMapZoneLength)
@@ -374,14 +368,14 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define GM_WALK_WATER           (2)
 
 // Flags Hex
-	// Static
+	// Proto map
 #define FH_BLOCK                       BIN8(00000001)
 #define FH_NOTRAKE                     BIN8(00000010)
 #define FH_WALL                        BIN8(00000100)
 #define FH_SCEN                        BIN8(00001000)
 #define FH_SCEN_GRID                   BIN8(00010000)
 #define FH_TRIGGER                     BIN8(00100000)
-	// Dynamic
+	// Map copy
 #define FH_CRITTER            BIN8(00000001)
 #define FH_DEAD_CRITTER       BIN8(00000010)
 #define FH_ITEM               BIN8(00000100)
@@ -427,13 +421,13 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define CLIENT_KICK_TIME        (3*60*1000)
 #define MAX_ANSWERS				(100)
 #define PROCESS_TALK_TICK       (1000)
-#define DIALOG_BARTER_MIN_TIME  (30000)
-#define DIALOG_TALK_MIN_TIME    (30000)
 #define DIALOGS_LST_NAME		"dialogs.lst"
 #define MAX_SCRIPT_NAME			(64)
 #define SCRIPTS_LST             "scripts.cfg"
 #define MAX_START_SPECIAL		(40)
-#define TURN_BASED_TIMEOUT      (GameOpt.Breaktime)
+#define TURN_BASED_TIMEOUT      (1000)
+#define MIN_VISIBLE_CRIT        (6)
+#define FADING_PERIOD           (1000)
 
 #define RESPOWN_TIME_PLAYER     (3)
 #define RESPOWN_TIME_NPC        (120)
@@ -478,12 +472,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define COND_DEAD_BURN_RUN       (13)
 #define COND_NOT_IN_GAME        (4)
 
-// Other
-#define MIN_VISIBLE_CRIT        (6)
-#define MIN_HIT                 (5)
-#define MAX_HIT                 (95)
-#define FADING_PERIOD           (1000)
-
 // Run-time critters flags
 #define FCRIT_PLAYER            (0x00010000) // Player
 #define FCRIT_NPC               (0x00020000) // Npc
@@ -513,38 +501,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define BARTER_REFRESH          (9)
 
 // Scores
-#define SCORE_EVIL_OF_HOUR      (0)
-#define SCORE_HERO_OF_HOUR      (1)
-#define SCORE_KARMA_ON_HOUR     (2)
 #define SCORE_SPEAKER           (3)
 #define SCORE_TRADER            (4)
-#define SCORE_ZOMBY             (5)
-#define SCORE_PATY              (6)
-#define SCORE_MANIAC            (7)
-#define SCORE_SCAUT             (8)
-#define SCORE_DOCTOR            (9)
-#define SCORE_SHOOTER           (10)
-#define SCORE_MELEE             (11)
-#define SCORE_UNARMED           (12)
-#define SCORE_THIEF             (13)
-#define SCORE_DRIVER            (14)
-#define SCORE_KILLER            (15)
-#define SCORE_SNIPER            (16)
-#define SCORE_ADVENTURER        (17)
-#define SCORE_CRACKER           (18)
-#define SCORE_UNARMED_DAMAGE    (19)
-#define SCORE_RITCH             (20)
-#define SCORE_CHOSEN_ONE        (21)
-#define SCORE_SIERRA_CUR        (40)
-#define SCORE_MARIPOSA_CUR      (41)
-#define SCORE_CATHEDRAL_CUR     (42)
-#define SCORE_SIERRA_BEST       (43)
-#define SCORE_MARIPOSA_BEST     (44)
-#define SCORE_CATHEDRAL_BEST    (45)
-#define SCORE_SIERRA_ORG        (46)
-#define SCORE_MARIPOSA_ORG      (47)
-#define SCORE_CATHEDRAL_ORG     (48)
-#define SCORE_BASE_BEST_ORG     (49)
 #define SCORES_MAX              (50)
 #define SCORES_SEND_TIME        (60000)
 #define SCORE_NAME_LEN          (64)
@@ -572,13 +530,10 @@ struct ScoreType
 #define SHOW_SCREEN_PIPBOY               (10) // Pip-boy.
 #define SHOW_SCREEN_MINIMAP              (11) // Mini-map.
 
-// Item perks
-#define WEAPON_PERK_FAST_RELOAD     (6)
-
 // Parameters
 #define MAX_PARAMS                  (1000)
 #define SKILL_OFFSET(skill)         ((skill)-(GameOpt.AbsoluteOffsets?0:SKILL_BEGIN))
-#define PERK_OFFSET(skill)          ((skill)-(GameOpt.AbsoluteOffsets?0:PERK_BEGIN))
+#define PERK_OFFSET(perk)           ((perk)-(GameOpt.AbsoluteOffsets?0:PERK_BEGIN))
 
 // Stats
 #define ST_STRENGTH                 (0)
@@ -596,55 +551,9 @@ struct ScoreType
 #define ST_SEQUENCE                 (12)
 #define ST_HEALING_RATE             (13)
 #define ST_CRITICAL_CHANCE          (14)
-#define ST_MAX_CRITICAL             (15)
-#define ST_NORMAL_ABSORB            (16)
-#define ST_LASER_ABSORB             (17)
-#define ST_FIRE_ABSORB              (18)
-#define ST_PLASMA_ABSORB            (19)
-#define ST_ELECTRO_ABSORB           (20)
-#define ST_EMP_ABSORB               (21)
-#define ST_EXPLODE_ABSORB           (22)
 #define ST_NORMAL_RESIST            (23)
-#define ST_LASER_RESIST             (24)
-#define ST_FIRE_RESIST              (25)
-#define ST_PLASMA_RESIST            (26)
-#define ST_ELECTRO_RESIST           (27)
-#define ST_EMP_RESIST               (28)
-#define ST_EXPLODE_RESIST           (29)
 #define ST_RADIATION_RESISTANCE     (30)
 #define ST_POISON_RESISTANCE        (31)
-#define ST_STRENGTH_EXT             (32)
-#define ST_PERCEPTION_EXT           (33)
-#define ST_ENDURANCE_EXT            (34)
-#define ST_CHARISMA_EXT             (35)
-#define ST_INTELLECT_EXT            (36)
-#define ST_AGILITY_EXT              (37)
-#define ST_LUCK_EXT                 (38)
-#define ST_MAX_LIFE_EXT             (39)
-#define ST_ACTION_POINTS_EXT        (40)
-#define ST_ARMOR_CLASS_EXT          (41)
-#define ST_MELEE_DAMAGE_EXT         (42)
-#define ST_CARRY_WEIGHT_EXT         (43)
-#define ST_SEQUENCE_EXT             (44)
-#define ST_HEALING_RATE_EXT         (45)
-#define ST_CRITICAL_CHANCE_EXT      (46)
-#define ST_MAX_CRITICAL_EXT         (47)
-#define ST_NORMAL_ABSORB_EXT        (48)
-#define ST_LASER_ABSORB_EXT         (49)
-#define ST_FIRE_ABSORB_EXT          (50)
-#define ST_PLASMA_ABSORB_EXT        (51)
-#define ST_ELECTRO_ABSORB_EXT       (52)
-#define ST_EMP_ABSORB_EXT           (53)
-#define ST_EXPLODE_ABSORB_EXT       (54)
-#define ST_NORMAL_RESIST_EXT        (55)
-#define ST_LASER_RESIST_EXT         (56)
-#define ST_FIRE_RESIST_EXT          (57)
-#define ST_PLASMA_RESIST_EXT        (58)
-#define ST_ELECTRO_RESIST_EXT       (59)
-#define ST_EMP_RESIST_EXT           (60)
-#define ST_EXPLODE_RESIST_EXT       (61)
-#define ST_RADIATION_RESISTANCE_EXT (62)
-#define ST_POISON_RESISTANCE_EXT    (63)
 #define ST_AGE                      (70)
 #define ST_GENDER					(71)
 #define ST_CURRENT_HP				(72)
@@ -684,12 +593,7 @@ struct ScoreType
 #define SKILL_END                   (GameOpt.SkillEnd)
 #define SKILL_COUNT                 (SKILL_END-SKILL_BEGIN+1)
 #define MAX_SKILL_VAL               (300)
-#define SK_SMALL_GUNS               (200)
-#define SK_BIG_GUNS                 (201)
-#define SK_ENERGY_WEAPONS           (202)
 #define SK_UNARMED                  (203)
-#define SK_MELEE_WEAPONS            (204)
-#define SK_THROWING                 (205)
 #define SK_FIRST_AID                (206)
 #define SK_DOCTOR                   (207)
 #define SK_SNEAK                    (208)
@@ -700,7 +604,6 @@ struct ScoreType
 #define SK_REPAIR                   (213)
 #define SK_SPEECH                   (214)
 #define SK_BARTER                   (215)
-#define SK_OUTDOORSMAN              (217)
 
 // Tag skills
 #define TAG_SKILL1                  (226)
@@ -728,17 +631,11 @@ struct ScoreType
 #define PERK_BEGIN                  (GameOpt.PerkBegin)
 #define PERK_END                    (GameOpt.PerkEnd)
 #define PERK_COUNT                  (PERK_END-PERK_BEGIN+1)
-#define PE_BONUS_HTH_ATTACKS        (302)
-#define PE_BONUS_RATE_OF_FIRE       (306)
 #define PE_SILENT_RUNNING           (316)
 #define PE_MASTER_TRADER            (318)
-#define PE_HEAVE_HO                 (336)
-#define PE_PATHFINDER               (344)
 #define PE_SCOUT                    (346)
 #define PE_QUICK_POCKETS            (349)
 #define PE_SMOOTH_TALKER            (350)
-#define PE_ADRENALINE_RUSH          (380)
-#define PE_HTH_EVADE                (394)
 
 // Addiction
 #define ADDICTION_BEGIN             (GameOpt.AddictionBegin)
@@ -753,7 +650,6 @@ struct ScoreType
 #define DAMAGE_END                  (GameOpt.DamageEnd)
 #define DAMAGE_POISONED             (500)
 #define DAMAGE_RADIATED             (501)
-#define DAMAGE_EYE                  (502)
 #define DAMAGE_RIGHT_ARM            (503)
 #define DAMAGE_LEFT_ARM             (504)
 #define DAMAGE_RIGHT_LEG            (505)
@@ -780,15 +676,12 @@ struct ScoreType
 #define MODE_NO_LOOT                (532)
 #define MODE_NO_PUSH                (536)
 #define MODE_NO_UNARMED             (537)
+#define MODE_NO_AIM                 (538)
 
 // Traits
 #define TRAIT_BEGIN                 (GameOpt.TraitBegin)
 #define TRAIT_END                   (GameOpt.TraitEnd)
 #define TRAIT_COUNT                 (TRAIT_END-TRAIT_BEGIN+1)
-#define TRAIT_SMALL_FRAME           (552)
-#define TRAIT_FAST_SHOT             (557)
-#define TRAIT_SEX_APPEAL            (563)
-#define TRAIT_NIGHT_PERSON          (565)
 
 // Reputation
 #define REPUTATION_BEGIN            (GameOpt.ReputationBegin)

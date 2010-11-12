@@ -2253,18 +2253,16 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	}
 	else
 	{
-		// Prepare
 		D3D_HR(d3dDevice->SetVertexShader(NULL));
 		D3D_HR(d3dDevice->SetPixelShader(NULL));
 		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_DISABLE));
 
-		// Draw
 		D3D_HR(d3dDevice->DrawPrimitive(prim,0,count));
 
-		// Restore
-		if(stencil) D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
 		D3D_HR(d3dDevice->SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_MODULATE2X));
 	}
+
+	if(stencil) D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
 	return true;
 }
 

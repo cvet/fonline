@@ -915,7 +915,7 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;
 
-	if(FLAG(flags,FIXBOY_CHECK_TIMEOUT) && (cr->GetTimeout(TO_SK_SCIENCE) || cr->GetTimeout(TO_SK_REPAIR))) CRAFT_RETURN_TIMEOUT;
+	if(FLAG(flags,FIXBOY_CHECK_TIMEOUT) && (cr->GetParam(TO_SK_SCIENCE) || cr->GetParam(TO_SK_REPAIR))) CRAFT_RETURN_TIMEOUT;
 	if(FLAG(flags,FIXBOY_CHECK_PARAMS) && !IsTrueParams(cr,craft->NeedPNum,craft->NeedPVal,craft->NeedPOr)) CRAFT_RETURN_FAIL;
 	if(FLAG(flags,FIXBOY_CHECK_MATERIALS) && !IsTrueItems(cr,craft->NeedTools,craft->NeedToolsVal,craft->NeedToolsOr)) CRAFT_RETURN_FAIL;
 	if(FLAG(flags,FIXBOY_CHECK_TOOLS) && !IsTrueItems(cr,craft->NeedItems,craft->NeedItemsVal,craft->NeedItemsOr)) CRAFT_RETURN_FAIL;

@@ -77,7 +77,6 @@ Item* Critter::SlotEnabledCacheDataExt[0x100]={NULL};
 Critter::Critter():
 CritterIsNpc(false),RefCounter(1),IsNotValid(false),NameStrRefCounter(0x80000000),
 GroupMove(NULL),PrevHexTick(0),PrevHexX(0),PrevHexY(0),
-ItemSlotMain(&defItemSlotMain),ItemSlotExt(&defItemSlotExt),ItemSlotArmor(&defItemSlotArmor),
 startBreakTime(0),breakTime(0),waitEndTick(0),KnockoutAp(0),LastHealTick(0),CacheValuesNextTick(0),IntellectCacheValue(0),
 Flags(0),AccessContainerId(0),TryingGoHomeTick(0),ApRegenerationTick(0),GlobalIdleNextTick(0),LockMapTransfers(0),
 ViewMapId(0),ViewMapPid(0),ViewMapLook(0),ViewMapHx(0),ViewMapHy(0),ViewMapDir(0),
@@ -98,11 +97,15 @@ DisableSend(0),CanBeRemoved(false)
 	ParamsChanged.reserve(10);
 	ParamLocked=-1;
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
+	ItemSlotMain=ItemSlotExt=defItemSlotHand=new Item();
+	ItemSlotArmor=defItemSlotArmor=new Item();
 }
 
 Critter::~Critter()
 {
 	SAFEDEL(GroupSelf);
+	SAFEREL(defItemSlotHand);
+	SAFEREL(defItemSlotArmor);
 }
 
 CritDataExt* Critter::GetDataExt()
@@ -156,13 +159,7 @@ DWORD Critter::GetTalkDistance(Critter* talker)
 
 DWORD Critter::GetAttackDist(Item* weap, int use)
 {
-	if(!weap->IsWeapon()) return 0;
-	int dist=weap->Proto->Weapon.MaxDist[use];
-	if(weap->Proto->Weapon.Skill[use]==SKILL_OFFSET(SK_THROWING)) dist=min(dist,3*min(10,GetParam(ST_STRENGTH)+2*GetPerk(PE_HEAVE_HO)));
-	if(weap->WeapIsHtHAttack(use) && IsPerk(MODE_RANGE_HTH)) dist++;
-	dist+=GetMultihex();
-	if(dist<0) dist=0;
-	return dist;
+	return GameOpt.GetAttackDistantion?GameOpt.GetAttackDistantion(this,weap,use):1;
 }
 
 DWORD Critter::GetUseDist()
@@ -321,7 +318,7 @@ void Critter::ProcessVisibleCritters()
 	bool show_cr3=((FuncId[CRITTER_EVENT_SHOW_CRITTER_3]>0 || FuncId[CRITTER_EVENT_HIDE_CRITTER_3]>0) && Data.ShowCritterDist3>0);
 	bool show_cr=(show_cr1 || show_cr2 || show_cr3);
 	// Sneak self
-	int sneak_base_self=GetSkill(SK_SNEAK);
+	int sneak_base_self=GetRawParam(SK_SNEAK);
 	if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SNEAK_WEIGHT)) sneak_base_self-=GetItemsWeight()/GameOpt.LookWeight;
 
 	Map* map=MapMngr.GetMap(GetMap());
@@ -462,9 +459,9 @@ void Critter::ProcessVisibleCritters()
 		}
 
 		// Self
-		if(cr->IsPerk(MODE_HIDE) && dist!=MAX_INT)
+		if(cr->IsRawParam(MODE_HIDE) && dist!=MAX_INT)
 		{
-			int sneak_opp=cr->GetSkill(SK_SNEAK);
+			int sneak_opp=cr->GetRawParam(SK_SNEAK);
 			if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SNEAK_WEIGHT)) sneak_opp-=cr->GetItemsWeight()/GameOpt.LookWeight;
 			if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SNEAK_DIR))
 			{
@@ -517,7 +514,7 @@ void Critter::ProcessVisibleCritters()
 		}
 
 		// Opponent
-		if(IsPerk(MODE_HIDE) && dist!=MAX_INT)
+		if(IsRawParam(MODE_HIDE) && dist!=MAX_INT)
 		{
 			int sneak_self=sneak_base_self;
 			if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SNEAK_DIR))
@@ -676,9 +673,9 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 		}
 
 		// Hide modifier
-		if(cr->IsPerk(MODE_HIDE))
+		if(cr->IsRawParam(MODE_HIDE))
 		{
-			int sneak_opp=cr->GetSkill(SK_SNEAK);
+			int sneak_opp=cr->GetRawParam(SK_SNEAK);
 			if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SNEAK_WEIGHT)) sneak_opp-=cr->GetItemsWeight()/GameOpt.LookWeight;
 			if(FLAG(GameOpt.LookChecks,LOOK_CHECK_SNEAK_DIR))
 			{
@@ -888,22 +885,18 @@ void Critter::SyncLockItems()
 	for(ItemPtrVecIt it=inv_items.begin(),end=inv_items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-bool Critter::SetDefaultItems(ProtoItem* proto_hand1, ProtoItem* proto_hand2, ProtoItem* proto_armor)
+bool Critter::SetDefaultItems(ProtoItem* proto_hand, ProtoItem* proto_armor)
 {
-	if(!proto_hand1 || !proto_hand2 || !proto_armor) return false;
+	if(!proto_hand || !proto_armor) return false;
 
-	defItemSlotMain.Init(proto_hand1);
-	defItemSlotExt.Init(proto_hand2);
-	defItemSlotArmor.Init(proto_armor);
-	defItemSlotMain.Accessory=ITEM_ACCESSORY_CRITTER;
-	defItemSlotExt.Accessory=ITEM_ACCESSORY_CRITTER;
-	defItemSlotArmor.Accessory=ITEM_ACCESSORY_CRITTER;
-	defItemSlotMain.ACC_CRITTER.Id=GetId();
-	defItemSlotExt.ACC_CRITTER.Id=GetId();
-	defItemSlotArmor.ACC_CRITTER.Id=GetId();
-	defItemSlotMain.ACC_CRITTER.Slot=SLOT_HAND1;
-	defItemSlotExt.ACC_CRITTER.Slot=SLOT_HAND2;
-	defItemSlotArmor.ACC_CRITTER.Slot=SLOT_ARMOR;
+	defItemSlotHand->Init(proto_hand);
+	defItemSlotArmor->Init(proto_armor);
+	defItemSlotHand->Accessory=ITEM_ACCESSORY_CRITTER;
+	defItemSlotArmor->Accessory=ITEM_ACCESSORY_CRITTER;
+	defItemSlotHand->ACC_CRITTER.Id=GetId();
+	defItemSlotArmor->ACC_CRITTER.Id=GetId();
+	defItemSlotHand->ACC_CRITTER.Slot=SLOT_HAND1;
+	defItemSlotArmor->ACC_CRITTER.Slot=SLOT_ARMOR;
 	return true;
 }
 
@@ -932,9 +925,6 @@ void Critter::AddItem(Item*& item, bool send)
 
 	item->SetSortValue(invItems);
 	SetItem(item);
-
-	// Npc battle weapon
-	if((item->IsWeapon() || item->IsAmmo()) && IsNpc()) ((Npc*)this)->NullLastBattleWeapon();
 
 	// Send
 	if(send)
@@ -1050,8 +1040,8 @@ Item* Critter::GetItem(DWORD item_id, bool skip_hide)
 
 Item* Critter::GetInvItem(DWORD item_id, int transfer_type)
 {
-	if(transfer_type==TRANSFER_CRIT_LOOT && IsPerk(MODE_NO_LOOT)) return NULL;
-	if(transfer_type==TRANSFER_CRIT_STEAL && IsPerk(MODE_NO_STEAL)) return NULL;
+	if(transfer_type==TRANSFER_CRIT_LOOT && IsRawParam(MODE_NO_LOOT)) return NULL;
+	if(transfer_type==TRANSFER_CRIT_STEAL && IsRawParam(MODE_NO_STEAL)) return NULL;
 
 	Item* item=GetItem(item_id,true);
 	if(!item || item->ACC_CRITTER.Slot!=SLOT_INV ||
@@ -1062,8 +1052,8 @@ Item* Critter::GetInvItem(DWORD item_id, int transfer_type)
 
 void Critter::GetInvItems(ItemPtrVec& items, int transfer_type, bool lock)
 {
-	if(transfer_type==TRANSFER_CRIT_LOOT && IsPerk(MODE_NO_LOOT)) return;
-	if(transfer_type==TRANSFER_CRIT_STEAL && IsPerk(MODE_NO_STEAL)) return;
+	if(transfer_type==TRANSFER_CRIT_LOOT && IsRawParam(MODE_NO_LOOT)) return;
+	if(transfer_type==TRANSFER_CRIT_STEAL && IsRawParam(MODE_NO_STEAL)) return;
 
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
@@ -1378,9 +1368,9 @@ void Critter::TakeDefaultItem(BYTE slot)
 {
 	switch(slot)
 	{
-	case SLOT_HAND1: ItemSlotMain=&defItemSlotMain; break;
-	case SLOT_HAND2: ItemSlotExt=&defItemSlotExt; break;
-	case SLOT_ARMOR: ItemSlotArmor=&defItemSlotArmor; break;
+	case SLOT_HAND1: ItemSlotMain=defItemSlotHand; break;
+	case SLOT_HAND2: ItemSlotExt=defItemSlotHand; break;
+	case SLOT_ARMOR: ItemSlotArmor=defItemSlotArmor; break;
 	default: break;
 	}
 }
@@ -1391,12 +1381,6 @@ DWORD Critter::CountItems()
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 		count+=(*it)->GetCount();
 	return count;
-}
-
-bool Critter::InHandsOnlyHtHWeapon()
-{
-	return (!ItemSlotMain->GetId() || !ItemSlotMain->IsWeapon() || ItemSlotMain->WeapIsHtHAttack(USE_PRIMARY)) &&
-		(!ItemSlotExt->GetId() || !ItemSlotExt->IsWeapon() || ItemSlotExt->WeapIsHtHAttack(USE_PRIMARY));
 }
 
 bool Critter::IsHaveGeckItem()
@@ -1423,14 +1407,14 @@ void Critter::TryUpOnKnockout()
 	if(GetParam(ST_CURRENT_HP)<=0) return;
 	if(KnockoutAp)
 	{
-		int cur_ap=GetAp();
+		int cur_ap=GetParam(ST_CURRENT_AP);
 		if(cur_ap<=0) return;
 		int ap=min(KnockoutAp,cur_ap);
 		SubAp(ap);
 		KnockoutAp-=ap;
 		if(KnockoutAp) return;
 	}
-	else if(GetAp()<0) return;
+	else if(GetParam(ST_CURRENT_AP)<0) return;
 	Data.Cond=COND_LIFE;
 	Data.CondExt=COND_LIFE_NONE;
 	SendAA_Action(ACTION_STANDUP,0,NULL);
@@ -1472,7 +1456,7 @@ void Critter::ToDead(BYTE dead_type, bool send_all)
 void Critter::Heal()
 {
 	DWORD tick=Timer::GameTick();
-	if(IsDead() || IsPerk(MODE_NO_HEAL) || GetTimeout(TO_BATTLE) || GetParam(ST_CURRENT_HP)>=GetParam(ST_MAX_LIFE))
+	if(IsDead() || IsRawParam(MODE_NO_HEAL) || GetParam(TO_BATTLE) || GetParam(ST_CURRENT_HP)>=GetParam(ST_MAX_LIFE))
 	{
 		LastHealTick=tick;
 		return;
@@ -2528,38 +2512,9 @@ int Critter::GetParam(DWORD index)
 	if(ParamsGetScript[index] && Script::PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,""))
 	{
 		Script::SetArgObject(this);
-		Script::SetArgDword(index);
+		Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
 		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
-
-	switch(index)
-	{
-	case ST_STRENGTH: return GetStrength();
-	case ST_PERCEPTION: return GetPerception();
-	case ST_ENDURANCE: return GetEndurance();
-	case ST_CHARISMA: return GetCharisma();
-	case ST_INTELLECT: return GetIntellegence();
-	case ST_AGILITY: return GetAgility();
-	case ST_LUCK: return GetLuck();
-	case ST_MAX_LIFE: return GetMaxLife();
-	case ST_SEQUENCE: return GetSequence();
-	case ST_ACTION_POINTS: return GetMaxAp();
-	case ST_ARMOR_CLASS: return GetAc();
-	case ST_MELEE_DAMAGE: return GetMeleeDmg();
-	case ST_CARRY_WEIGHT: return GetMaxWeight();
-	case ST_HEALING_RATE: return GetHealingRate();
-	case ST_CRITICAL_CHANCE: return GetCriticalChance();
-	case ST_MAX_CRITICAL: return GetMaxCritical();
-	case ST_RADIATION_RESISTANCE: return GetRadiationResist();
-	case ST_POISON_RESISTANCE: return GetPoisonResist();
-	case ST_CURRENT_AP: return GetAp();
-	default: break;
-	}
-
-	if(index>=ST_NORMAL_RESIST && index<=ST_EXPLODE_RESIST) return GetDamageResistance(index-ST_NORMAL_RESIST+1);
-	if(index>=ST_NORMAL_ABSORB && index<=ST_EXPLODE_ABSORB) return GetDamageThreshold(index-ST_NORMAL_ABSORB+1);
-	if(index>=TIMEOUT_BEGIN && index<=TIMEOUT_END) return GetTimeout(index);
-	if(index>=REPUTATION_BEGIN && index<=REPUTATION_END) return GetReputation(index);
 	return Data.Params[index];
 }
 
@@ -2626,77 +2581,6 @@ void Critter::ProcessChangedParams()
 			}
 		}
 	}
-}
-
-int Critter::GetAc()
-{
-	int val=Data.Params[ST_ARMOR_CLASS]+Data.Params[ST_ARMOR_CLASS_EXT]+GetAgility()+Data.Params[ST_TURN_BASED_AC];
-	Item* armor=ItemSlotArmor;
-	if(!armor->GetId() || !armor->IsArmor()) armor=NULL;
-	int wearProc=(armor?100-armor->GetWearProc():0);
-	if(armor) val+=armor->Proto->Armor.AC*wearProc/100;
-	return CLAMP(val,0,90);
-}
-
-int Critter::GetDamageResistance(int dmg_type)
-{
-	Item* armor=ItemSlotArmor;
-	if(!armor->GetId() || !armor->IsArmor()) armor=NULL;
-	int wearProc=(armor?100-armor->GetWearProc():0);
-
-	int val=0;
-	switch(dmg_type)
-	{
-	case DAMAGE_TYPE_UNCALLED: break;
-	case DAMAGE_TYPE_NORMAL:   val=Data.Params[ST_NORMAL_RESIST] +Data.Params[ST_NORMAL_RESIST_EXT] +(armor?armor->Proto->Armor.DRNormal*wearProc/100:0); break;
-	case DAMAGE_TYPE_LASER:    val=Data.Params[ST_LASER_RESIST]  +Data.Params[ST_LASER_RESIST_EXT]  +(armor?armor->Proto->Armor.DRLaser*wearProc/100:0); break;
-	case DAMAGE_TYPE_FIRE:     val=Data.Params[ST_FIRE_RESIST]   +Data.Params[ST_FIRE_RESIST_EXT]   +(armor?armor->Proto->Armor.DRFire*wearProc/100:0); break;
-	case DAMAGE_TYPE_PLASMA:   val=Data.Params[ST_PLASMA_RESIST] +Data.Params[ST_PLASMA_RESIST_EXT] +(armor?armor->Proto->Armor.DRPlasma*wearProc/100:0); break;
-	case DAMAGE_TYPE_ELECTR:   val=Data.Params[ST_ELECTRO_RESIST]+Data.Params[ST_ELECTRO_RESIST_EXT]+(armor?armor->Proto->Armor.DRElectr*wearProc/100:0); break;
-	case DAMAGE_TYPE_EMP:      val=Data.Params[ST_EMP_RESIST]    +Data.Params[ST_EMP_RESIST_EXT]    +(armor?armor->Proto->Armor.DREmp:0); break;
-	case DAMAGE_TYPE_EXPLODE:  val=Data.Params[ST_EXPLODE_RESIST]+Data.Params[ST_EXPLODE_RESIST_EXT]+(armor?armor->Proto->Armor.DRExplode*wearProc/100:0); break;
-	default: break;
-	}
-
-	if(dmg_type==DAMAGE_TYPE_EMP) return CLAMP(val,0,999);
-	return CLAMP(val,0,90);
-}
-
-int Critter::GetDamageThreshold(int dmg_type)
-{
-	Item* armor=ItemSlotArmor;
-	if(!armor->GetId() || !armor->IsArmor()) armor=NULL;
-	int wearProc=(armor?100-armor->GetWearProc():0);
-
-	int val=0;
-	switch(dmg_type)
-	{
-	case DAMAGE_TYPE_UNCALLED: break;
-	case DAMAGE_TYPE_NORMAL:   val=Data.Params[ST_NORMAL_ABSORB] +Data.Params[ST_NORMAL_ABSORB_EXT] +(armor?armor->Proto->Armor.DTNormal*wearProc/100:0); break;
-	case DAMAGE_TYPE_LASER:    val=Data.Params[ST_LASER_ABSORB]  +Data.Params[ST_LASER_ABSORB_EXT]  +(armor?armor->Proto->Armor.DTLaser*wearProc/100:0); break;
-	case DAMAGE_TYPE_FIRE:     val=Data.Params[ST_FIRE_ABSORB]   +Data.Params[ST_FIRE_ABSORB_EXT]   +(armor?armor->Proto->Armor.DTFire*wearProc/100:0); break;
-	case DAMAGE_TYPE_PLASMA:   val=Data.Params[ST_PLASMA_ABSORB] +Data.Params[ST_PLASMA_ABSORB_EXT] +(armor?armor->Proto->Armor.DTPlasma*wearProc/100:0); break;
-	case DAMAGE_TYPE_ELECTR:   val=Data.Params[ST_ELECTRO_ABSORB]+Data.Params[ST_ELECTRO_ABSORB_EXT]+(armor?armor->Proto->Armor.DTElectr*wearProc/100:0); break;
-	case DAMAGE_TYPE_EMP:      val=Data.Params[ST_EMP_ABSORB]    +Data.Params[ST_EMP_ABSORB_EXT]    +(armor?armor->Proto->Armor.DTEmp:0); break;
-	case DAMAGE_TYPE_EXPLODE:  val=Data.Params[ST_EXPLODE_ABSORB]+Data.Params[ST_EXPLODE_ABSORB_EXT]+(armor?armor->Proto->Armor.DTExplode*wearProc/100:0); break;
-	default: break;
-	}
-
-	return CLAMP(val,0,999);
-}
-
-int Critter::GetNightPersonBonus()
-{
-	if(GameOpt.Hour<6 || GameOpt.Hour>18) return 1;
-	if(GameOpt.Hour==6 && GameOpt.Minute==0) return 1;
-	if(GameOpt.Hour==18 && GameOpt.Minute>0) return 1;
-	return -1;
-}
-
-int Critter::GetReputation(DWORD index)
-{
-	if(Data.Params[index]==0x80000000) Data.Params[index]=0;
-	return Data.Params[index];
 }
 
 DWORD Critter::GetTimeWalk()
@@ -2821,22 +2705,17 @@ void Critter::SetTimeout(int timeout, DWORD game_seconds)
 
 bool Critter::IsTransferTimeouts(bool send)
 {
-	if(GetTimeout(TO_TRANSFER))
+	if(GetParam(TO_TRANSFER))
 	{
 		if(send) Send_TextMsg(this,STR_TIMEOUT_TRANSFER_WAIT,SAY_NETMSG,TEXTMSG_GAME);
 		return true;
 	}
-	if(GetTimeout(TO_BATTLE))
+	if(GetParam(TO_BATTLE))
 	{
 		if(send) Send_TextMsg(this,STR_TIMEOUT_BATTLE_WAIT,SAY_NETMSG,TEXTMSG_GAME);
 		return true;
 	}
 	return false;
-}
-
-DWORD Critter::GetTimeout(int timeout)
-{
-	return Data.Params[timeout]>GameOpt.FullSecond?Data.Params[timeout]-GameOpt.FullSecond:0;
 }
 
 /************************************************************************/
@@ -2969,7 +2848,7 @@ LastSendScoresTick(0),LastSendCraftTick(0),LastSendEntrancesTick(0),LastSendEntr
 ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0)
 {
 	CritterIsNpc=false;
-	MEMORY_PROCESS(MEMORY_CLIENT,sizeof(Client)+sizeof(GlobalMapGroup)+40+WSA_BUF_SIZE*2);
+	MEMORY_PROCESS(MEMORY_CLIENT,sizeof(Client)+sizeof(GlobalMapGroup)+40+WSA_BUF_SIZE*2+sizeof(Item)*2);
 
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
@@ -3004,7 +2883,7 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 
 Client::~Client()
 {
-	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(sizeof(Client)+sizeof(GlobalMapGroup)+40+WSA_BUF_SIZE*2));
+	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(sizeof(Client)+sizeof(GlobalMapGroup)+40+WSA_BUF_SIZE*2+sizeof(Item)*2));
 	if(DataExt)
 	{
 		MEMORY_PROCESS(MEMORY_CLIENT,-(int)sizeof(CritDataExt));
@@ -3460,7 +3339,7 @@ void Client::Send_ContainerInfo(Critter* cr_cont, BYTE transfer_type, bool open_
 	WORD barter_k=0;
 	if(transfer_type==TRANSFER_CRIT_BARTER)
 	{
-		if(cr_cont->GetSkill(SK_BARTER)>GetSkill(SK_BARTER)) barter_k=cr_cont->GetSkill(SK_BARTER)-GetSkill(SK_BARTER);
+		if(cr_cont->GetRawParam(SK_BARTER)>GetRawParam(SK_BARTER)) barter_k=cr_cont->GetRawParam(SK_BARTER)-GetRawParam(SK_BARTER);
 		barter_k=CLAMP(barter_k,5,95);
 		if(cr_cont->Data.Params[ST_FREE_BARTER_PLAYER]==GetId()) barter_k=0;
 	}
@@ -4364,7 +4243,7 @@ Client* Client::BarterGetOpponent(DWORD opponent_id)
 	}
 
 	Critter* cr=(GetMap()?GetCritSelf(opponent_id,true):GroupMove->GetCritter(opponent_id));
-	if(!cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || cr->GetTimeout(TO_BATTLE) || ((Client*)cr)->IsOffline() ||
+	if(!cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || cr->GetParam(TO_BATTLE) || ((Client*)cr)->IsOffline() ||
 	  (GetMap() && !CheckDist(GetHexX(),GetHexY(),cr->GetHexX(),cr->GetHexY(),BARTER_DIST+GetMultihex()+cr->GetMultihex())))
 	{
 		if(cr && cr->IsPlayer() && BarterOpponent==cr->GetId()) ((Client*)cr)->BarterEnd();
@@ -4557,16 +4436,16 @@ void Client::CloseTalk()
 /************************************************************************/
 
 Npc::Npc():
-NextRefreshBagTick(0),lastBattleWeaponId(0),lastBattleWeaponUse(0)
+NextRefreshBagTick(0)
 {
 	CritterIsNpc=true;
-	MEMORY_PROCESS(MEMORY_NPC,sizeof(Npc)+sizeof(GlobalMapGroup)+40);
+	MEMORY_PROCESS(MEMORY_NPC,sizeof(Npc)+sizeof(GlobalMapGroup)+40+sizeof(Item)*2);
 	SETFLAG(Flags,FCRIT_NPC);
 }
 
 Npc::~Npc()
 {
-	MEMORY_PROCESS(MEMORY_NPC,-(int)(sizeof(Npc)+sizeof(GlobalMapGroup)+40));
+	MEMORY_PROCESS(MEMORY_NPC,-(int)(sizeof(Npc)+sizeof(GlobalMapGroup)+40+sizeof(Item)*2));
 	if(DataExt)
 	{
 		MEMORY_PROCESS(MEMORY_NPC,-(int)sizeof(CritDataExt));
@@ -4597,7 +4476,7 @@ void Npc::RefreshBag()
 	}
 
 	// Item garbager
-	if(!IsPerk(MODE_NO_ITEM_GARBAGER))
+	if(!IsRawParam(MODE_NO_ITEM_GARBAGER))
 	{
 		// Erase not grouped items
 		int need_count=Random(2,4);
@@ -4982,100 +4861,6 @@ bool Npc::IsPlaneNoTalk()
 	}
 
 	return false;
-}
-
-bool Npc::CheckBattleWeapon(Item* weap)
-{
-	if(!weap->IsWeapon()) return false;
-	if(!CritType::IsAnim1(GetCrType(),weap->Proto->Weapon.Anim1)) return false;
-	if(weap->IsBroken()) return false;
-	if(weap->IsTwoHands() && IsDmgArm()) return false;
-	if(!IsPerk(MODE_UNLIMITED_AMMO) && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty() && !GetAmmoForWeapon(weap)) return false;
-	return true;
-}
-
-bool BestSkillGreather(const IntPair& l, const IntPair& r){return l.second>r.second;}
-Item* Npc::GetBattleWeapon(int& use, Critter* targ)
-{
-	// Unarmed protos
-	ProtoItem* punch=ItemMngr.GetProtoItem(UNARMED_PUNCH);
-	ProtoItem* kick=ItemMngr.GetProtoItem(UNARMED_KICK);
-	ProtoItem* unarmed=(Random(0,4)?punch:kick);
-	if(defItemSlotMain.Proto!=unarmed) defItemSlotMain.Init(unarmed);
-	use=USE_PRIMARY;
-
-	// Damaged two arms
-	if(IsDmgTwoArm()) return &defItemSlotMain;
-
-	// Get last battle weapon
-	use=lastBattleWeaponUse;
-	Item* weap=(lastBattleWeaponId==MAX_DWORD?&defItemSlotMain:GetItem(lastBattleWeaponId,false));
-	if(weap && CheckBattleWeapon(weap)) return weap;
-
-	// Get new weapon
-	lastBattleWeaponId=0;
-	lastBattleWeaponUse=0;
-
-	// Choose all valid weapons
-	typedef pair<Item*,int> ItemIntPair;
-	typedef vector<ItemIntPair> ItemIntPairVec;
-	typedef vector<ItemIntPair>::value_type ItemIntPairVecVal;
-
-	SyncLockItems();
-
-	ItemIntPairVec skill_weap[6];
-	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
-	{
-		Item* item=*it;
-		if(!CheckBattleWeapon(item)) continue;
-
-		for(int i=0;i<MAX_USES;i++)
-		{
-			if(!item->WeapIsUseAviable(i)) continue;
-			int sk=item->Proto->Weapon.Skill[i];
-			if(sk<SKILL_BEGIN) sk+=SKILL_BEGIN;
-			if(sk>=SK_SMALL_GUNS && sk<=SK_THROWING) skill_weap[sk-SKILL_BEGIN].push_back(ItemIntPairVecVal(item,i));
-		}
-	}
-
-	// Sort skills
-	IntPairVec best_sk(6);
-	best_sk.push_back(IntPairVecVal(SK_SMALL_GUNS,GetSkill(SK_SMALL_GUNS)));
-	best_sk.push_back(IntPairVecVal(SK_BIG_GUNS,GetSkill(SK_BIG_GUNS)));
-	best_sk.push_back(IntPairVecVal(SK_ENERGY_WEAPONS,GetSkill(SK_ENERGY_WEAPONS)));
-	best_sk.push_back(IntPairVecVal(SK_UNARMED,GetSkill(SK_UNARMED)));
-	best_sk.push_back(IntPairVecVal(SK_MELEE_WEAPONS,GetSkill(SK_MELEE_WEAPONS)));
-	best_sk.push_back(IntPairVecVal(SK_THROWING,GetSkill(SK_THROWING)));
-	// Sort by greather
-	std::sort(best_sk.begin(),best_sk.end(),BestSkillGreather);
-
-	// Choose one weapon
-	for(int i=0;i<6;i++)
-	{
-		// Find by skill, Weapon+Use
-		ItemIntPairVec& wu=skill_weap[best_sk[i].first-SKILL_BEGIN];
-		if(wu.empty()) continue;
-
-		// Sort weapons
-		if(wu.size()>1)
-		{
-			//TODO:
-			std::random_shuffle(wu.begin(),wu.end());
-		}
-
-		// Set
-		ItemIntPair& f=wu[0];
-		lastBattleWeaponId=f.first->GetId();
-		lastBattleWeaponUse=f.second;
-		use=f.second;
-		return f.first;
-	}
-
-	// Not found, set hands
-	use=USE_PRIMARY;
-	lastBattleWeaponId=MAX_DWORD;
-	lastBattleWeaponUse=use;
-	return &defItemSlotMain;
 }
 
 void Npc::MoveToHex(int reason, WORD hx, WORD hy, BYTE ori, bool is_run, BYTE cut)

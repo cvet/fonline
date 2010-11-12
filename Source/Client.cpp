@@ -39,6 +39,7 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 	PingCallTick=0;
 	IsTurnBased=false;
 	TurnBasedTime=0;
+	TurnBasedCurCritterId=0;
 	DaySumRGB=0;
 	CurMode=0;
 	CurModeLast=0;
@@ -106,10 +107,17 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(ScenToSend)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==180);
-	GET_UID0(UID0);
+	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
 
+	GET_UID0(UID0);
 	Wnd=hwnd;
 
+	// Register dll script data
+	struct CritterChangeParameter_{static void CritterChangeParameter(void*, DWORD){}}; // Dummy
+	GameOpt.CritterChangeParameter=&CritterChangeParameter_::CritterChangeParameter;
+	GameOpt.CritterTypes=&CritType::GetRealCritType(0);
+
+	// Input
 	Keyb::InitKeyb();
 	if(!InitDInput()) return false;
 
@@ -3986,18 +3994,13 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 			cr->Name=cl_name;
 		}
 
-		cr->DefItemSlotMain.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotExt.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotArmor.Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
+		cr->DefItemSlotHand->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+		cr->DefItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 
 		cr->SetBaseType(base_type);
 		cr->Init();
 
-		if(FLAG(cr->Flags,FCRIT_CHOSEN))
-		{
-			cr->Human=true;
-			SetAction(CHOSEN_NONE);
-		}
+		if(FLAG(cr->Flags,FCRIT_CHOSEN)) SetAction(CHOSEN_NONE);
 
 		AddCritter(cr);
 
@@ -4644,16 +4647,15 @@ void FOClient::Net_OnCritterMoveItem()
 	if(cr!=Chosen)
 	{
 		__int64 prev_hash_sum=0;
-		for(ItemPtrMapIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
+		for(ItemPtrVecIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
 		{
-			Item* item=(*it).second;
+			Item* item=*it;
 			prev_hash_sum+=item->LightGetHash();
 		}
 
 		cr->EraseAllItems();
-		cr->DefItemSlotMain.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotExt.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotArmor.Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
+		cr->DefItemSlotHand->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+		cr->DefItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 
 		for(BYTE i=0;i<slots_data_count;i++)
 		{
@@ -4670,9 +4672,9 @@ void FOClient::Net_OnCritterMoveItem()
 		}
 
 		__int64 hash_sum=0;
-		for(ItemPtrMapIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
+		for(ItemPtrVecIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
 		{
-			Item* item=(*it).second;
+			Item* item=*it;
 			hash_sum+=item->LightGetHash();
 		}
 		if(hash_sum!=prev_hash_sum) HexMngr.RebuildLight();
@@ -4805,7 +4807,8 @@ void FOClient::Net_OnCritterParam()
 	}
 	else if(index==OTHER_YOU_TURN)
 	{
-		TurnBasedTime=0;
+		TurnBasedTime=Timer::GameTick()+value;
+		TurnBasedCurCritterId=cr->GetId();
 		HexMngr.SetCritterContour(cr->GetId(),Sprite::ContourCustom);
 	}
 }
@@ -4878,7 +4881,7 @@ void FOClient::Net_OnChosenParams()
 	Bin.Pop((char*)Chosen->Params,sizeof(Chosen->Params));
 
 	// Process
-	if(Chosen->GetTimeout(TO_BATTLE)) AnimRun(IntWCombatAnim,ANIMRUN_SET_FRM(244));
+	if(Chosen->GetParam(TO_BATTLE)) AnimRun(IntWCombatAnim,ANIMRUN_SET_FRM(244));
 	else AnimRun(IntWCombatAnim,ANIMRUN_SET_FRM(0));
 	if(IsScreenPresent(SCREEN__CHARACTER)) ChaPrepareSwitch();
 
@@ -4922,26 +4925,6 @@ void FOClient::Net_OnChosenParam()
 
 	switch(index)
 	{
-	case ST_LEVEL:
-		{
-			if(value>old_value)
-			{
-				SndMngr.PlaySound(SND_LEVELUP);
-				AddMess(FOMB_GAME,MsgGame->GetStr(STR_GAIN_LEVELUP));
-				IntMessTabLevelUp=true;
-			}
-		}
-		break;
-	case ST_EXPERIENCE:
-		{
-			if(value>old_value) AddMess(FOMB_GAME,FmtGameText(STR_GAIN_EXPERIENCE,value-old_value));
-		}
-		break;
-	case ST_UNSPENT_PERKS:
-		{
-			if(value>0 && GetActiveScreen()==SCREEN__CHARACTER) ShowScreen(SCREEN__PERK);
-		}
-		break;
 	case ST_CURRENT_AP:
 		{
 			Chosen->ApRegenerationTick=0;
@@ -4949,7 +4932,7 @@ void FOClient::Net_OnChosenParam()
 		break;
 	case TO_BATTLE:
 		{
-			if(Chosen->GetTimeout(TO_BATTLE))
+			if(Chosen->GetParam(TO_BATTLE))
 			{
 				AnimRun(IntWCombatAnim,ANIMRUN_TO_END);
 				if(AnimGetCurSprCnt(IntWCombatAnim)==0) SndMngr.PlaySound(SND_COMBAT_MODE_ON);
@@ -5003,6 +4986,7 @@ void FOClient::Net_OnChosenParam()
 			if(value<0) value=0;
 			ChosenAction.clear();
 			TurnBasedTime=Timer::GameTick()+value;
+			TurnBasedCurCritterId=Chosen->GetId();
 			HexMngr.SetCritterContour(0,Sprite::ContourNone);
 			SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 		}
@@ -5536,7 +5520,8 @@ void FOClient::Net_OnChosenTalk()
 	Bin >> talk_time;
 
 	DlgCollectAnswers(false);
-	DlgEndTick=Timer::GameTick()+talk_time;
+	if(talk_time) DlgEndTick=Timer::GameTick()+talk_time;
+	else DlgEndTick=0;
 	if(IsScreenPresent(SCREEN__BARTER)) HideScreen(SCREEN__BARTER);
 	ShowScreen(SCREEN__DIALOG);
 }
@@ -6079,7 +6064,8 @@ void FOClient::Net_OnContainerInfo()
 	if(!Chosen) return;
 
 	Item::SortItems(item_container);
-	DlgEndTick=Timer::GameTick()+talk_time;
+	if(talk_time) DlgEndTick=Timer::GameTick()+talk_time;
+	else DlgEndTick=0;
 	PupContId=cont_id;
 	PupContPid=0;
 
@@ -7215,10 +7201,10 @@ void FOClient::ChosenChangeSlot()
 		AddActionBack(CHOSEN_MOVE_ITEM,Chosen->ItemSlotExt->GetId(),Chosen->ItemSlotExt->GetCount(),SLOT_HAND1);
 	else
 	{
-		BYTE tree=Chosen->DefItemSlotMain.Proto->Weapon.UnarmedTree+1;
+		BYTE tree=Chosen->DefItemSlotHand->Proto->Weapon.UnarmedTree+1;
 		ProtoItem* unarmed=Chosen->GetUnarmedItem(tree,0);
 		if(!unarmed) unarmed=Chosen->GetUnarmedItem(0,0);
-		Chosen->DefItemSlotMain.Init(unarmed);
+		Chosen->DefItemSlotHand->Init(unarmed);
 	}
 }
 
@@ -7268,7 +7254,7 @@ void FOClient::CrittersProcess()
 	if(IsMainScreen(SCREEN_GAME))
 	{
 		// Timeout mode
-		if(!Chosen->GetTimeout(TO_BATTLE) && AnimGetCurSprCnt(IntWCombatAnim)>0)
+		if(!Chosen->GetParam(TO_BATTLE) && AnimGetCurSprCnt(IntWCombatAnim)>0)
 		{
 			AnimRun(IntWCombatAnim,ANIMRUN_FROM_END);
 			if(AnimGetCurSprCnt(IntWCombatAnim)==AnimGetSprCount(IntWCombatAnim)-1) SndMngr.PlaySound(SND_COMBAT_MODE_OFF);
@@ -7286,7 +7272,7 @@ void FOClient::CrittersProcess()
 		}
 
 		// Hide Mode
-		if(Chosen->IsPerk(MODE_HIDE))
+		if(Chosen->IsRawParam(MODE_HIDE))
 			Chosen->Alpha=0x82;
 		else
 			Chosen->Alpha=0xFF;
@@ -7299,7 +7285,7 @@ void FOClient::CrittersProcess()
 	if(Timer::IsGamePaused()) return;
 
 	// Ap regeneration
-	if(Chosen->GetAp()<Chosen->GetParam(ST_ACTION_POINTS) && !IsTurnBased)
+	if(Chosen->GetParam(ST_CURRENT_AP)<Chosen->GetParam(ST_ACTION_POINTS) && !IsTurnBased)
 	{
 		DWORD tick=Timer::GameTick();
 		if(!Chosen->ApRegenerationTick) Chosen->ApRegenerationTick=tick;
@@ -7315,7 +7301,7 @@ void FOClient::CrittersProcess()
 			}
 		}
 	}
-	if(Chosen->GetAp()>Chosen->GetParam(ST_ACTION_POINTS)) Chosen->Params[ST_CURRENT_AP]=Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER;
+	if(Chosen->GetParam(ST_CURRENT_AP)>Chosen->GetParam(ST_ACTION_POINTS)) Chosen->Params[ST_CURRENT_AP]=Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER;
 
 	if(ChosenAction.empty()) return;
 
@@ -7327,7 +7313,7 @@ void FOClient::CrittersProcess()
 	}
 
 	ActionEvent act=ChosenAction[0];
-#define CHECK_NEED_AP(need_ap) {if(IsTurnBased && !IsTurnBasedMyTurn()) break; if(Chosen->GetParam(ST_ACTION_POINTS)<(int)(need_ap)){AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,need_ap)); break;} if(Chosen->GetAp()<(int)(need_ap)){if(IsTurnBased){if(Chosen->GetAp()) AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,need_ap)); break;} else return;}}
+#define CHECK_NEED_AP(need_ap) {if(IsTurnBased && !IsTurnBasedMyTurn()) break; if(Chosen->GetParam(ST_ACTION_POINTS)<(int)(need_ap)){AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,need_ap)); break;} if(Chosen->GetParam(ST_CURRENT_AP)<(int)(need_ap)){if(IsTurnBased){if(Chosen->GetParam(ST_CURRENT_AP)) AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,need_ap)); break;} else return;}}
 #define CHECK_NEED_REAL_AP(need_ap) {if(IsTurnBased && !IsTurnBasedMyTurn()) break; if(Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER<(int)(need_ap)){AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,(need_ap)/AP_DIVIDER)); break;} if(Chosen->GetRealAp()<(int)(need_ap)){if(IsTurnBased){if(Chosen->GetRealAp()) AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_AP,(need_ap)/AP_DIVIDER)); break;} else return;}}
 
 	// Force end move
@@ -7377,8 +7363,8 @@ void FOClient::CrittersProcess()
 
 			if(CheckDist(from_hx,from_hy,hx,hy,cut)) goto label_EndMove;
 
-			if(!GameOpt.RunOnCombat && Chosen->GetTimeout(TO_BATTLE)) is_run=false;
-			else if(!GameOpt.RunOnTransfer && Chosen->GetTimeout(TO_TRANSFER)) is_run=false;
+			if(!GameOpt.RunOnCombat && Chosen->GetParam(TO_BATTLE)) is_run=false;
+			else if(!GameOpt.RunOnTransfer && Chosen->GetParam(TO_TRANSFER)) is_run=false;
 			else if(IsTurnBased) is_run=false;
 			else if(Chosen->IsDmgLeg() || Chosen->IsOverweight()) is_run=false;
 			else if(wait_click && Timer::GameTick()-start_tick<GameOpt.DoubleClickTime) return;
@@ -7442,7 +7428,7 @@ void FOClient::CrittersProcess()
 			}
 
 label_EndMove:
-			if(IsTurnBased && ap_cost_real>0 && MoveDirs.size()/(ap_cost_real/AP_DIVIDER)>Chosen->GetAp()+Chosen->GetParam(ST_MOVE_AP)) MoveDirs.resize(Chosen->GetAp()+Chosen->GetParam(ST_MOVE_AP));
+			if(IsTurnBased && ap_cost_real>0 && MoveDirs.size()/(ap_cost_real/AP_DIVIDER)>Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP)) MoveDirs.resize(Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP));
 			if(!IsTurnBased && ap_cost_real>0 && MoveDirs.size()>Chosen->GetRealAp()/ap_cost_real) MoveDirs.resize(Chosen->GetRealAp()/ap_cost_real);
 			if(MoveDirs.size()>1 && Chosen->IsDmgTwoLeg()) MoveDirs.resize(1);
 
@@ -7471,7 +7457,7 @@ label_EndMove:
 						Chosen->SubAp(ap_cost);
 					}
 				}
-				else if(Chosen->GetTimeout(TO_BATTLE))
+				else if(Chosen->GetParam(TO_BATTLE))
 				{
 					Chosen->Params[ST_CURRENT_AP]-=ap_cost_real;
 				}
@@ -7535,7 +7521,7 @@ label_EndMove:
 			BYTE aim=(rate>>4);
 
 			// Find item
-			Item* item=(item_id?Chosen->GetItem(item_id):&Chosen->DefItemSlotMain);
+			Item* item=(item_id?Chosen->GetItem(item_id):Chosen->DefItemSlotHand);
 			if(!item) break;
 			bool is_main_item=(item==Chosen->ItemSlotMain);
 
@@ -7589,7 +7575,7 @@ label_EndMove:
 				if(is_self) break;
 				if(!item->IsWeapon()) break;
 				if(target_cr->IsDead()) break;
-				if(!Chosen->IsPerk(MODE_UNLIMITED_AMMO) && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty())
+				if(!Chosen->IsRawParam(MODE_UNLIMITED_AMMO) && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty())
 				{
 					SndMngr.PlaySoundType('W',SOUND_WEAPON_EMPTY,item->Proto->Weapon.SoundId[use],'1');
 					break;
@@ -7837,7 +7823,7 @@ label_EndMove:
 			CritterCl* cr=(crid?GetCritter(crid):Chosen);
 			if(!cr) break;
 
-			if(skill==SK_STEAL && cr->IsPerk(MODE_NO_STEAL)) break;
+			if(skill==SK_STEAL && cr->IsRawParam(MODE_NO_STEAL)) break;
 
 			if(cr!=Chosen && HexMngr.IsMapLoaded())
 			{
@@ -8076,8 +8062,8 @@ label_EndMove:
 			CritterCl* cr=GetCritter(crid);
 			if(!cr) break;
 
-			if(is_loot && (!cr->IsDead() || cr->IsPerk(MODE_NO_LOOT))) break;
-			if(!is_loot && (!cr->IsLife() || cr->IsPerk(MODE_NO_PUSH))) break;
+			if(is_loot && (!cr->IsDead() || cr->IsRawParam(MODE_NO_LOOT))) break;
+			if(!is_loot && (!cr->IsLife() || cr->IsRawParam(MODE_NO_PUSH))) break;
 
 			DWORD dist=Chosen->GetUseDist()+cr->GetMultihex();
 			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),dist))
@@ -9418,7 +9404,7 @@ ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto(CritterCl* cr, int slot, BYT
 	switch(slot)
 	{
 	case SLOT_HAND1: item=cr->ItemSlotMain; break;
-	case SLOT_HAND2: item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt:&cr->DefItemSlotMain); break;
+	case SLOT_HAND2: item=(cr->ItemSlotExt->GetId()?cr->ItemSlotExt:cr->DefItemSlotHand); break;
 	case SLOT_ARMOR: item=cr->ItemSlotArmor; break;
 	default: item=cr->GetItemSlot(slot); break;
 	}
@@ -9458,6 +9444,12 @@ DWORD FOClient::SScriptFunc::Crit_GetMultihex(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->GetMultihex();
+}
+
+bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn(CritterCl* cr)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	return Self->IsTurnBased && cr->GetId()==Self->TurnBasedCurCritterId;
 }
 
 bool FOClient::SScriptFunc::Item_IsGrouped(Item* item)
@@ -9711,8 +9703,13 @@ void FOClient::SScriptFunc::Global_PlayVideo(CScriptString& video_name, bool can
 
 bool FOClient::SScriptFunc::Global_IsTurnBased()
 {
-	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R0("Map is not loaded.");
-	return Self->IsTurnBased;
+	return Self->HexMngr.IsMapLoaded() && Self->IsTurnBased;
+}
+
+DWORD FOClient::SScriptFunc::Global_GetTurnBasedTime()
+{
+	if(Self->HexMngr.IsMapLoaded() && Self->IsTurnBased && Self->TurnBasedTime>Timer::GameTick()) return Self->TurnBasedTime-Timer::GameTick();
+	return 0;
 }
 
 WORD FOClient::SScriptFunc::Global_GetCurrentMapPid()
@@ -9776,16 +9773,14 @@ void FOClient::SScriptFunc::Global_MapMessage(CScriptString& text, WORD hx, WORD
 
 CScriptString* FOClient::SScriptFunc::Global_GetMsgStr(int text_msg, DWORD str_num)
 {
-	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R0("Invalid text msg arg.");
-	CScriptString* str=new CScriptString(text_msg==TEXTMSG_HOLO?Self->GetHoloText(str_num):Self->CurLang.Msg[text_msg].GetStr(str_num));
-	return str;
+	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_RX("Invalid text msg arg.",new CScriptString(""));
+	return new CScriptString(text_msg==TEXTMSG_HOLO?Self->GetHoloText(str_num):Self->CurLang.Msg[text_msg].GetStr(str_num));
 }
 
 CScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip(int text_msg, DWORD str_num, DWORD skip_count)
 {
-	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R0("Invalid text msg arg.");
-	CScriptString* str=new CScriptString(text_msg==TEXTMSG_HOLO?Self->GetHoloText(str_num):Self->CurLang.Msg[text_msg].GetStr(str_num,skip_count));
-	return str;
+	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_RX("Invalid text msg arg.",new CScriptString(""));
+	return new CScriptString(text_msg==TEXTMSG_HOLO?Self->GetHoloText(str_num):Self->CurLang.Msg[text_msg].GetStr(str_num,skip_count));
 }
 
 DWORD FOClient::SScriptFunc::Global_GetMsgStrNumUpper(int text_msg, DWORD str_num)

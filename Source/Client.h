@@ -456,6 +456,7 @@ public:
 		static void Crit_set_ContourColor(CritterCl* cr, DWORD value);
 		static DWORD Crit_get_ContourColor(CritterCl* cr);
 		static DWORD Crit_GetMultihex(CritterCl* cr);
+		static bool Crit_IsTurnBasedTurn(CritterCl* cr);
 
 		static bool Item_IsGrouped(Item* item);
 		static bool Item_IsWeared(Item* item);
@@ -486,6 +487,7 @@ public:
 		static void Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat);
 		static void Global_PlayVideo(CScriptString& video_name, bool can_stop);
 		static bool Global_IsTurnBased();
+		static DWORD Global_GetTurnBasedTime();
 		static WORD Global_GetCurrentMapPid();
 		static DWORD Global_GetMessageFilters(CScriptArray* filters);
 		static void Global_SetMessageFilters(CScriptArray* filters);
@@ -749,11 +751,6 @@ public:
 	void IntRMouseDown();
 	void IntLMouseUp();
 	void IntMouseMove();
-
-	DWORD IntMessTabPicNone;
-	INTRECT IntMessTab;
-	int IntMessTabStepX,IntMessTabStepY;
-	bool IntMessTabLevelUp;
 
 /************************************************************************/
 /* LMenu                                                                */
@@ -1571,7 +1568,6 @@ public:
 	void ProcessMouseWheel(int data);
 	void SetGameColor(DWORD color);
 
-//	StringMap CritsNames;
 	CritterCl* Chosen;
 
 	void AddCritter(CritterCl* cr);
@@ -1580,20 +1576,18 @@ public:
 	void ClearCritters();
 	void EraseCritter(DWORD remid);
 
-//	void AddCritName(CrID crid, string name){if(CritsNames.count(crid)) CritsNames.erase(crid); CritsNames.insert(StringMapVal(crid,name));}
-//	const char* GetCritName(CrID crid){StringMapIt it=CritsNames.find(crid); return it!=CritsNames.end()?(*it).second.c_str():NULL;}
-
 	bool IsTurnBased;
 	DWORD TurnBasedTime;
+	DWORD TurnBasedCurCritterId;
 	bool NoLogOut;
 	DWORD* UID3,*UID2;
 
-	bool IsTurnBasedMyTurn(){return IsTurnBased && Timer::GameTick()<TurnBasedTime && Chosen && Chosen->GetAllAp()>0;}
-	DWORD GetTurnBasedMyTime(){return TurnBasedTime-Timer::GameTick();}
+	bool IsTurnBasedMyTurn(){return IsTurnBased && Timer::GameTick()<TurnBasedTime && Chosen && Chosen->GetId()==TurnBasedCurCritterId && Chosen->GetAllAp()>0;}
 
 	bool RebuildLookBorders;
 	bool DrawLookBorders,DrawShootBorders;
 	PointVec LookBorders,ShootBorders;
+
 	void LookBordersPrepare();
 	void LookBordersDraw();
 

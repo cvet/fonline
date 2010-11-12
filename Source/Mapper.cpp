@@ -2277,8 +2277,7 @@ void FOMapper::IntLMouseDown()
 						if(child->MItem.ItemSlot==SLOT_HAND2) pitem_ext=ItemMngr.GetProtoItem(child->ProtoId);
 						else if(child->MItem.ItemSlot==SLOT_ARMOR) pitem_armor=ItemMngr.GetProtoItem(child->ProtoId);
 					}
-					SelectedObj[0].MapNpc->DefItemSlotExt.Init(pitem_ext?pitem_ext:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-					SelectedObj[0].MapNpc->DefItemSlotArmor.Init(pitem_armor?pitem_armor:ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
+					SelectedObj[0].MapNpc->DefItemSlotArmor->Init(pitem_armor?pitem_armor:ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 
 					ProtoItem* pitem_main=NULL;
 					for(int i=0;i<SelectedObj[0].Childs.size();i++)
@@ -2295,7 +2294,7 @@ void FOMapper::IntLMouseDown()
 							}
 						}
 					}
-					SelectedObj[0].MapNpc->DefItemSlotMain.Init(pitem_main?pitem_main:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+					SelectedObj[0].MapNpc->DefItemSlotHand->Init(pitem_main?pitem_main:ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
 					SelectedObj[0].MapNpc->AnimateStay();
 				}
 				HexMngr.RebuildLight();
@@ -3200,9 +3199,8 @@ void FOMapper::ParseNpc(WORD pid, WORD hx, WORD hy)
 
 	CritterCl* cr=new CritterCl();
 	cr->SetBaseType(pnpc->BaseType);
-	cr->DefItemSlotMain.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-	cr->DefItemSlotExt.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-	cr->DefItemSlotArmor.Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
+	cr->DefItemSlotHand->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+	cr->DefItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 	cr->HexX=hx;
 	cr->HexY=hy;
 	cr->SetDir(NpcDir);
@@ -3235,9 +3233,8 @@ MapObject* FOMapper::ParseMapObj(MapObject* mobj)
 
 		CritterCl* cr=new CritterCl();
 		cr->SetBaseType(pnpc->BaseType);
-		cr->DefItemSlotMain.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotExt.Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotArmor.Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
+		cr->DefItemSlotHand->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+		cr->DefItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 		cr->HexX=mobj->MapX;
 		cr->HexY=mobj->MapY;
 		cr->SetDir(mobj->Dir);

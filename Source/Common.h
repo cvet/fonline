@@ -387,12 +387,6 @@ struct GameOptions
 	DWORD ApCostAimTorso;
 	DWORD ApCostAimArms;
 	DWORD ApCostAimLegs;
-	DWORD HitAimEyes;
-	DWORD HitAimHead;
-	DWORD HitAimGroin;
-	DWORD HitAimTorso;
-	DWORD HitAimArms;
-	DWORD HitAimLegs;
 	bool RunOnCombat;
 	bool RunOnTransfer;
 	DWORD GlobalMapWidth;
@@ -415,6 +409,8 @@ struct GameOptions
 	DWORD TalkDistance;
 	DWORD MinNameLength;
 	DWORD MaxNameLength;
+	DWORD DlgTalkMinTime;
+	DWORD DlgBarterMinTime;
 
 	bool AbsoluteOffsets;
 	DWORD SkillBegin;
@@ -546,6 +542,14 @@ struct GameOptions
 	string ServerPath;
 	int ServerPathRefCounter;
 
+	// Engine data
+	void (*CritterChangeParameter)(void*,DWORD);
+	void* CritterTypes;
+
+	// Callbacks
+	DWORD (*GetUseApCost)(void*,void*,BYTE);
+	DWORD (*GetAttackDistantion)(void*,void*,BYTE);
+
 	GameOptions();
 } extern GameOpt;
 
@@ -568,8 +572,6 @@ DWORD GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WOR
 SYSTEMTIME GetGameTime(DWORD full_second);
 DWORD GameTimeMonthDay(WORD year, WORD month);
 void ProcessGameTime();
-DWORD GameAimApCost(int hit_location);
-DWORD GameHitAim(int hit_location);
 
 /************************************************************************/
 /* Auto pointers                                                        */

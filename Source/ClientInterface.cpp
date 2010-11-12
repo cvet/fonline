@@ -197,10 +197,6 @@ int FOClient::InitIface()
 	MessBoxScroll=0;
 	MessBoxMaxScroll=0;
 	MessBoxScrollLines=0;
-	IfaceLoadRect(IntMessTab,"IntMessTab");
-	IntMessTabStepX=IfaceIni.GetInt("IntMessTabStepX",0);
-	IntMessTabStepY=IfaceIni.GetInt("IntMessTabStepY",40);
-	IntMessTabLevelUp=false;
 	IntBItemOffsX=IfaceIni.GetInt("IntItemOffsX",0);
 	IntBItemOffsY=IfaceIni.GetInt("IntItemOffsY",-2);
 	IntAimX=IfaceIni.GetInt("IntAimX",0);
@@ -928,7 +924,6 @@ int FOClient::InitIface()
 	IfaceLoadSpr(IntPBChaDn,"IntChaPicDn");
 	IfaceLoadSpr(IntPBPipDn,"IntPipPicDn");
 	IfaceLoadSpr(IntPBFixDn,"IntFixPicDn");
-	IfaceLoadSpr(IntMessTabPicNone,"IntMessTabPic");
 	IfaceLoadSpr(IntBItemPicDn,"IntItemPicDn");
 	IfaceLoadSpr(IntAimPic,"IntAimPic");
 	IfaceLoadSpr(IntWApCostPicNone,"IntApCostPic");
@@ -2293,7 +2288,7 @@ void FOClient::GameLMouseDown()
 			if(Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse()<MAX_USES && cr!=Chosen && Chosen->IsAim())
 			{
 				if(!CritType::IsCanAim(Chosen->GetCrType())) AddMess(FOMB_GAME,"Aim attack is not aviable for this critter type.");
-				else if(!Chosen->IsPerk(TRAIT_FAST_SHOT)) ShowScreen(SCREEN__AIM);
+				else if(!Chosen->IsRawParam(MODE_NO_AIM)) ShowScreen(SCREEN__AIM);
 				return;
 			}
 
@@ -2350,7 +2345,7 @@ void FOClient::GameRMouseUp()
 		{
 		case CUR_DEFAULT: SetCurMode(CUR_MOVE); break;
 		case CUR_MOVE:
-			if(Chosen->GetTimeout(TO_BATTLE) && Chosen->ItemSlotMain->IsWeapon())
+			if(Chosen->GetParam(TO_BATTLE) && Chosen->ItemSlotMain->IsWeapon())
 				SetCurMode(CUR_USE_WEAPON);
 			else
 				SetCurMode(CUR_DEFAULT);
@@ -2415,7 +2410,7 @@ void FOClient::IntDraw()
 	default: break;
 	}
 
-	if(IsTurnBased && Chosen->IsPerk(MODE_END_COMBAT)) SprMngr.DrawSprite(IntBCombatEndPicDown,IntBCombatEnd[0],IntBCombatEnd[1]);
+	if(IsTurnBased && Chosen->IsRawParam(MODE_END_COMBAT)) SprMngr.DrawSprite(IntBCombatEndPicDown,IntBCombatEnd[0],IntBCombatEnd[1]);
 
 	// Item offsets
 	int item_offsx,item_offsy;
@@ -2448,63 +2443,26 @@ void FOClient::IntDraw()
 	}
 
 	// Ap
-	if(Chosen->GetAp()>=0)
+	if(Chosen->GetParam(ST_CURRENT_AP)>=0)
 	{
-		for(int i=0,j=Chosen->GetAp();i<j && i<IntAPMax;i++)
+		for(int i=0,j=Chosen->GetParam(ST_CURRENT_AP);i<j && i<IntAPMax;i++)
 			SprMngr.DrawSprite(IntDiodeG,IntAP[0]+i*IntAPstepX,IntAP[1]+i*IntAPstepY);
 	}
 	else
 	{
-		for(int i=0,j=abs(Chosen->GetAp());i<j && i<IntAPMax;i++)
+		for(int i=0,j=abs(Chosen->GetParam(ST_CURRENT_AP));i<j && i<IntAPMax;i++)
 			SprMngr.DrawSprite(IntDiodeR,IntAP[0]+i*IntAPstepX,IntAP[1]+i*IntAPstepY);
 	}
 
 	// Move Ap
 	if(IsTurnBased)
 	{
-		for(int i=Chosen->GetAp(),j=Chosen->GetAp()+Chosen->GetParam(ST_MOVE_AP);i<j && i<IntAPMax;i++)
+		for(int i=Chosen->GetParam(ST_CURRENT_AP),j=Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP);i<j && i<IntAPMax;i++)
 			SprMngr.DrawSprite(IntDiodeY,IntAP[0]+i*IntAPstepX,IntAP[1]+i*IntAPstepY);
 	}
 
 	// Break time
 	if(!Chosen->IsFree()) SprMngr.DrawSprite(IntBreakTimePic,IntBreakTime[0],IntBreakTime[1]);
-
-	// Chosen mess tabs
-	int cur_mess_tab=0;
-	if(Chosen->IsPerk(MODE_HIDE)) cur_mess_tab++;
-	if(IntMessTabLevelUp) cur_mess_tab++;
-	if(Chosen->IsOverweight()) cur_mess_tab++;
-	if(Chosen->IsPerk(DAMAGE_POISONED)) cur_mess_tab++;
-	if(Chosen->IsPerk(DAMAGE_RADIATED)) cur_mess_tab++;
-	if(Chosen->IsInjured()) cur_mess_tab++;
-	if(Chosen->IsAddicted()) cur_mess_tab++;
-	if(Chosen->GetTimeout(TO_TRANSFER)) cur_mess_tab++;
-	if(IsTurnBasedMyTurn()) cur_mess_tab++;
-	if(IsTurnBased && !IsTurnBasedMyTurn()) cur_mess_tab++;
-
-	for(int i=0;i<cur_mess_tab;i++)
-		SprMngr.DrawSprite(IntMessTabPicNone,IntMessTab[0]+IntMessTabStepX*i,IntMessTab[1]+IntMessTabStepY*i);
-
-	// Chosen mess text
-//=============================================
-#define INTDRAW_MESSTAB_TEXT(expr,str,color) \
-	if(expr)\
-	{\
-		SprMngr.DrawStr(INTRECT(IntMessTab,IntMessTabStepX*cur_mess_tab,IntMessTabStepY*cur_mess_tab),str,FT_CENTERX|FT_CENTERY,color);\
-		cur_mess_tab++;\
-	}
-//=============================================
-	cur_mess_tab=0;
-	INTDRAW_MESSTAB_TEXT(Chosen->IsPerk(MODE_HIDE),FmtGameText(STR_HIDEMODE_TITLE),COLOR_TEXT_DGREEN);
-	INTDRAW_MESSTAB_TEXT(IntMessTabLevelUp,FmtGameText(STR_LEVELUP_TITLE),COLOR_TEXT_DGREEN);
-	INTDRAW_MESSTAB_TEXT(Chosen->IsOverweight(),FmtGameText(STR_OVERWEIGHT_TITLE),COLOR_TEXT_DRED);
-	INTDRAW_MESSTAB_TEXT(Chosen->IsPerk(DAMAGE_POISONED),FmtGameText(STR_POISONED_TITLE),COLOR_TEXT_DRED);
-	INTDRAW_MESSTAB_TEXT(Chosen->IsPerk(DAMAGE_RADIATED),FmtGameText(STR_RADIATED_TITLE),COLOR_TEXT_DRED);
-	INTDRAW_MESSTAB_TEXT(Chosen->IsInjured(),FmtGameText(STR_INJURED_TITLE),COLOR_TEXT_DRED);
-	INTDRAW_MESSTAB_TEXT(Chosen->IsAddicted(),FmtGameText(STR_ADDICTED_TITLE),COLOR_TEXT_DRED);
-	INTDRAW_MESSTAB_TEXT(Chosen->GetTimeout(TO_TRANSFER),FmtGameText(STR_TIMEOUT_TITLE,Chosen->GetTimeout(TO_TRANSFER)),COLOR_TEXT_DRED);
-	INTDRAW_MESSTAB_TEXT(IsTurnBasedMyTurn(),FmtGameText(STR_YOU_TURN_TITLE,GetTurnBasedMyTime()/1000),COLOR_TEXT_DGREEN);
-	INTDRAW_MESSTAB_TEXT(IsTurnBased && !IsTurnBasedMyTurn(),FmtGameText(STR_TURN_BASED_TITLE),COLOR_TEXT_DGREEN);
 
 	// Hp
 	char bin_str[32];
@@ -2556,7 +2514,6 @@ void FOClient::IntDraw()
 	{
 		DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,0,IntWearTick,true,false);
 	}
-
 }
 
 int FOClient::IntLMouseDown()
@@ -2690,10 +2647,11 @@ void FOClient::IntLMouseUp()
 	{
 		Net_SendCombat(COMBAT_TB_END_TURN,1);
 		TurnBasedTime=0;
+		TurnBasedCurCritterId=0;
 	}
 	else if(IfaceHold==IFACE_INT_COMBAT_END && IsCurInRect(IntBCombatEnd) && IsTurnBased)
 	{
-		if(Chosen->IsPerk(MODE_END_COMBAT)) Net_SendCombat(COMBAT_TB_END_COMBAT,0);
+		if(Chosen->IsRawParam(MODE_END_COMBAT)) Net_SendCombat(COMBAT_TB_END_COMBAT,0);
 		else Net_SendCombat(COMBAT_TB_END_COMBAT,1);
 		Chosen->Params[MODE_END_COMBAT]=!Chosen->Params[MODE_END_COMBAT];
 	}
@@ -3114,7 +3072,7 @@ void FOClient::DlgDraw(bool is_dialog)
 		// Cost
 		DWORD c1,w1,v1,c2,w2,v2;
 		ContainerCalcInfo(BarterCont1o,c1,w1,v1,-BarterK,true);
-		ContainerCalcInfo(BarterCont2o,c2,w2,v2,Chosen->IsPerk(PE_MASTER_TRADER)?0:BarterK,false);
+		ContainerCalcInfo(BarterCont2o,c2,w2,v2,Chosen->IsRawParam(PE_MASTER_TRADER)?0:BarterK,false);
 		if(!BarterIsPlayers && BarterK)
 		{
 			SprMngr.DrawStr(INTRECT(BarterWCost1,DlgX,DlgY),Str::Format("$%u",c1),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
@@ -3131,7 +3089,7 @@ void FOClient::DlgDraw(bool is_dialog)
 	}
 
 	// Timer
-	if(!BarterIsPlayers && DlgEndTick>Timer::GameTick())
+	if(!BarterIsPlayers && DlgEndTick && DlgEndTick>Timer::GameTick())
 		SprMngr.DrawStr(INTRECT(DlgWTimer,DlgX,DlgY),Str::Format("%u",(DlgEndTick-Timer::GameTick())/1000),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_DGREEN);
 }
 
@@ -3297,7 +3255,7 @@ void FOClient::DlgLMouseUp(bool is_dialog)
 		else if(IfaceHold==IFACE_DLG_BARTER && IsCurInRect(DlgBBarter,DlgX,DlgY))
 		{
 			CritterCl* cr=GetCritter(DlgNpcId);
-			if(!cr || cr->IsPerk(MODE_NO_BARTER))
+			if(!cr || cr->IsRawParam(MODE_NO_BARTER))
 			{
 				DlgMainText=MsgGame->GetStr(STR_BARTER_NO_BARTER_MODE);
 				DlgMainTextCur=0;
@@ -3578,7 +3536,7 @@ void FOClient::BarterTryOffer()
 	{
 		DWORD c1,w1,v1,c2,w2,v2;
 		ContainerCalcInfo(BarterCont1oInit,c1,w1,v1,-BarterK,true);
-		ContainerCalcInfo(BarterCont2oInit,c2,w2,v2,Chosen->IsPerk(PE_MASTER_TRADER)?0:BarterK,false);
+		ContainerCalcInfo(BarterCont2oInit,c2,w2,v2,Chosen->IsRawParam(PE_MASTER_TRADER)?0:BarterK,false);
 		if(!c1 && !c2 && BarterK) return;
 		if(c1<c2 && BarterK) BarterText=MsgGame->GetStr(STR_BARTER_BAD_OFFER);
 		else if(Chosen->GetFreeWeight()+w1<w2) BarterText=MsgGame->GetStr(STR_BARTER_OVERWEIGHT);
@@ -4155,9 +4113,9 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 				{
 					// Npc
 					if(cr->IsToTalk()) LMenuCritNodes.push_back(LMENU_NODE_TALK);
-					if(cr->IsDead() && !cr->IsPerk(MODE_NO_LOOT)) LMenuCritNodes.push_back(LMENU_NODE_USE);
+					if(cr->IsDead() && !cr->IsRawParam(MODE_NO_LOOT)) LMenuCritNodes.push_back(LMENU_NODE_USE);
 					LMenuCritNodes.push_back(LMENU_NODE_LOOK);
-					if(cr->IsLife() && !cr->IsPerk(MODE_NO_PUSH)) LMenuCritNodes.push_back(LMENU_NODE_PUSH);
+					if(cr->IsLife() && !cr->IsRawParam(MODE_NO_PUSH)) LMenuCritNodes.push_back(LMENU_NODE_PUSH);
 					LMenuCritNodes.push_back(LMENU_NODE_BAG);
 					LMenuCritNodes.push_back(LMENU_NODE_SKILL);
 				}
@@ -4166,9 +4124,9 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 					if(cr!=Chosen)
 					{
 						// Player
-						if(cr->IsDead() && !cr->IsPerk(MODE_NO_LOOT)) LMenuCritNodes.push_back(LMENU_NODE_USE);
+						if(cr->IsDead() && !cr->IsRawParam(MODE_NO_LOOT)) LMenuCritNodes.push_back(LMENU_NODE_USE);
 						LMenuCritNodes.push_back(LMENU_NODE_LOOK);
-						if(cr->IsLife() && !cr->IsPerk(MODE_NO_PUSH)) LMenuCritNodes.push_back(LMENU_NODE_PUSH);
+						if(cr->IsLife() && !cr->IsRawParam(MODE_NO_PUSH)) LMenuCritNodes.push_back(LMENU_NODE_PUSH);
 						LMenuCritNodes.push_back(LMENU_NODE_BAG);
 						LMenuCritNodes.push_back(LMENU_NODE_SKILL);
 						LMenuCritNodes.push_back(LMENU_NODE_GMFOLLOW);
@@ -4177,7 +4135,7 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 							LMenuCritNodes.push_back(LMENU_NODE_BARTER_OPEN);
 							LMenuCritNodes.push_back(LMENU_NODE_BARTER_HIDE);
 						}
-						if(!Chosen->GetTimeout(TO_KARMA_VOTING))
+						if(!Chosen->GetParam(TO_KARMA_VOTING))
 						{
 							LMenuCritNodes.push_back(LMENU_NODE_VOTE_UP);
 							LMenuCritNodes.push_back(LMENU_NODE_VOTE_DOWN);
@@ -4197,7 +4155,7 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 			else
 			{
 				LMenuCritNodes.push_back(LMENU_NODE_LOOK);
-				if(LMenuMode!=LMENU_NPC && cr!=Chosen && !Chosen->GetTimeout(TO_KARMA_VOTING))
+				if(LMenuMode!=LMENU_NPC && cr!=Chosen && !Chosen->GetParam(TO_KARMA_VOTING))
 				{
 					LMenuCritNodes.push_back(LMENU_NODE_VOTE_UP);
 					LMenuCritNodes.push_back(LMENU_NODE_VOTE_DOWN);
@@ -4295,7 +4253,7 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 				if(!Chosen->IsGmapRule() && HexMngr.allCritters.size()>1 && !is_water) LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
 			}
 
-			if(cr->IsPlayer() && cr->GetId()!=Chosen->GetId() && !Chosen->GetTimeout(TO_KARMA_VOTING))
+			if(cr->IsPlayer() && cr->GetId()!=Chosen->GetId() && !Chosen->GetParam(TO_KARMA_VOTING))
 			{
 				LMenuNodes.push_back(LMENU_NODE_VOTE_UP);
 				LMenuNodes.push_back(LMENU_NODE_VOTE_DOWN);
@@ -4669,7 +4627,6 @@ void FOClient::ShowMainScreen(int new_screen)
 	{
 	case SCREEN_LOGIN:
 		SetCurMode(CUR_DEFAULT);
-		IntMessTabLevelUp=false;
 		LogFocus=IFACE_LOG_NAME;
 		ScreenFadeOut();
 		break;
@@ -4802,11 +4759,10 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 		break;
 	case SCREEN__CHARACTER:
 		SetCurMode(CUR_DEFAULT);
-		IntMessTabLevelUp=false;
 		ZeroMemory(ChaSkillUp,sizeof(ChaSkillUp));
 		if(Chosen) ChaUnspentSkillPoints=Chosen->Params[ST_UNSPENT_SKILL_POINTS];
 		ZeroMemory(ChaSwitchScroll,sizeof(ChaSwitchScroll));
-		if(!Chosen || (ChaSkilldexPic>=SKILLDEX_PARAM(PERK_BEGIN) && ChaSkilldexPic<=SKILLDEX_PARAM(PERK_END) && !Chosen->IsPerk(ChaSkilldexPic)))
+		if(!Chosen || (ChaSkilldexPic>=SKILLDEX_PARAM(PERK_BEGIN) && ChaSkilldexPic<=SKILLDEX_PARAM(PERK_END) && !Chosen->IsRawParam(ChaSkilldexPic)))
 		{
 			ChaSkilldexPic=-1;
 			ChaName[0]=0;
@@ -5232,8 +5188,8 @@ void FOClient::GmapProcess()
 			Item* car=GmapGetCar();
 			if(car) walk_type=car->Proto->MiscEx.Car.WalkType;
 
-			float kr=(walk_type==GM_WALK_GROUND?GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0xF]:1.0f);
-			if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0xF];
+			float kr=(walk_type==GM_WALK_GROUND?GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0]:1.0f);
+			if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0];
 			if(car && kr!=1.0f)
 			{
 				float n=car->Proto->MiscEx.Car.Negotiability;
@@ -5268,6 +5224,7 @@ void FOClient::GmapProcess()
 				}
 
 				// Move from old to new and find last correct position
+				int relief=(GmapRelief?GmapRelief->Get4Bit(old_x,old_y):0);
 				int steps=max(abs(GmapGroupX-old_x),abs(GmapGroupY-old_y));
 				int new_x_=old_x;
 				int new_y_=old_y;
@@ -5284,8 +5241,8 @@ void FOClient::GmapProcess()
 						yy+=oyy;
 						int xxi=(int)(xx>=0.0f?xx+0.5f:xx-0.5f);
 						int yyi=(int)(yy>=0.0f?yy+0.5f:yy-0.5f);
-						
-						if((walk_type==GM_WALK_GROUND && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0xF)==0xF) ||
+
+						if((walk_type==GM_WALK_GROUND && relief!=0xF && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0)==0xF) ||
 							(walk_type==GM_WALK_WATER && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0xF)!=0xF)) break;
 
 						new_x_=xxi;
@@ -5638,7 +5595,7 @@ void FOClient::GmapDraw()
 			}
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(CurPDef);
-			if(Chosen && (Chosen->IsPerk(PE_PATHFINDER)!=0 || Chosen->GetSkill(SK_OUTDOORSMAN)>99))
+			if(Chosen)
 			{
 				SprMngr.DrawStr(INTRECT(CurX+si->Width,CurY+si->Height,CurX+si->Width+200,CurY+si->Height+500),cur_loc?
 					FmtGameText(STR_GMAP_CUR_LOC_INFO,cx,cy,GM_ZONE(cx),GM_ZONE(cy),MsgGM->GetStr(STR_GM_NAME_(cur_loc->LocPid)),MsgGM->GetStr(STR_GM_INFO_(cur_loc->LocPid))):
@@ -6034,7 +5991,7 @@ void FOClient::SboxDraw()
 	// Skills
 #define SBOX_DRAW_SKILL(comp,skill) \
 	do{SprMngr.DrawStr(INTRECT(SboxB##comp,SboxX,SboxY-(IfaceHold==skill?1:0)),MsgGame->GetStr(STR_PARAM_NAME_SHORT_(skill)),FT_CENTERX|FT_CENTERY|FT_NOBREAK,COLOR_TEXT_SAND,FONT_FAT);\
-	int sk_val=(Chosen?Chosen->GetSkill(skill):0); if(sk_val<0) sk_val=-sk_val; sk_val=CLAMP(sk_val,0,MAX_SKILL_VAL); char str[16]; sprintf(str,"%03d",sk_val); if(Chosen && Chosen->GetSkill(skill)<0) Str::ChangeValue(str,0x10);\
+	int sk_val=(Chosen?Chosen->GetRawParam(skill):0); if(sk_val<0) sk_val=-sk_val; sk_val=CLAMP(sk_val,0,MAX_SKILL_VAL); char str[16]; sprintf(str,"%03d",sk_val); if(Chosen && Chosen->GetRawParam(skill)<0) Str::ChangeValue(str,0x10);\
 	SprMngr.DrawStr(INTRECT(SboxT##comp,SboxX,SboxY),str,0,COLOR_IFACE,FONT_BIG_NUM);}while(0)
 
 	SBOX_DRAW_SKILL(Sneak,SK_SNEAK);
@@ -6259,7 +6216,7 @@ void FOClient::ChaPrepareSwitch()
 	// Traits
 	for(int i=TRAIT_BEGIN;i<=TRAIT_END;i++)
 	{
-		if(!Chosen->IsPerk(i)) continue;
+		if(!Chosen->IsRawParam(i)) continue;
 		if(perks.empty()) perks.push_back(SwitchElement(STR_TRAITS_NAME,STR_TRAITS_DESC,SKILLDEX_TRAITS,FT_CENTERX));
 		perks.push_back(SwitchElement(STR_PARAM_NAME_(i),STR_PARAM_DESC_(i),SKILLDEX_PARAM(i),0));
 	}
@@ -6268,7 +6225,7 @@ void FOClient::ChaPrepareSwitch()
 	bool is_add=false;
 	for(int i=PERK_BEGIN;i<=PERK_END;i++)
 	{
-		if(!Chosen->IsPerk(i)) continue;
+		if(!Chosen->IsRawParam(i)) continue;
 
 		// Title
 		if(!is_add)
@@ -6301,7 +6258,7 @@ void FOClient::ChaPrepareSwitch()
 	// Karma perks
 	for(int i=KARMA_BEGIN;i<=KARMA_END;i++)
 	{
-		if(!Chosen->IsPerk(i)) continue;
+		if(!Chosen->IsRawParam(i)) continue;
 
 		// Karma perks info
 		karma.push_back(SwitchElement(STR_PARAM_NAME_(i),STR_PARAM_DESC_(i),SKILLDEX_PARAM(i),0));
@@ -6332,7 +6289,7 @@ void FOClient::ChaPrepareSwitch()
 	is_add=false;
 	for(int i=ADDICTION_BEGIN;i<=ADDICTION_END;i++)
 	{
-		if(!Chosen->IsPerk(i)) continue;
+		if(!Chosen->IsRawParam(i)) continue;
 
 		// Addiction title
 		if(!is_add)
@@ -6573,16 +6530,11 @@ void FOClient::ChaDraw(bool is_reg)
 	{
 		// Left
 		for(int i=TRAIT_BEGIN,k=0;i<TRAIT_BEGIN+TRAIT_COUNT/2;++i,++k)
-		{
-			DWORD col=(i==TRAIT_SEX_APPEAL?COLOR_TEXT_RED:COLOR_TEXT);
-			SprMngr.DrawStr(INTRECT(RegWTraitL,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,CHA_PARAM(i)?0xFFAAAAAA:col);
-		}
+			SprMngr.DrawStr(INTRECT(RegWTraitL,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,CHA_PARAM(i)?0xFFAAAAAA:COLOR_TEXT);
+
 		// Right
 		for(int i=TRAIT_BEGIN+TRAIT_COUNT/2,k=0;i<=TRAIT_END;++i,++k)
-		{
-			DWORD col=(i==TRAIT_SEX_APPEAL?COLOR_TEXT_RED:COLOR_TEXT);
-			SprMngr.DrawStr(INTRECT(RegWTraitR,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,CHA_PARAM(i)?0xFFAAAAAA:col);
-		}
+			SprMngr.DrawStr(INTRECT(RegWTraitR,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,CHA_PARAM(i)?0xFFAAAAAA:COLOR_TEXT);
 	}
 
 	// Slider
@@ -6888,7 +6840,7 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			if(!IsCurInRect(ChaBSliderPlus,ChaCurSkill*ChaWSkillNextX+ChaX,ChaCurSkill*ChaWSkillNextY+ChaY)) break;
 			if(!ChaUnspentSkillPoints) break;
 
-			int skill_val=cr->GetSkill(ChaCurSkill+SKILL_BEGIN)+ChaSkillUp[ChaCurSkill];
+			int skill_val=cr->GetRawParam(ChaCurSkill+SKILL_BEGIN)+ChaSkillUp[ChaCurSkill];
 			if(skill_val>=MAX_SKILL_VAL) break;
 			int need_sp;
 
@@ -6914,7 +6866,7 @@ void FOClient::ChaLMouseUp(bool is_reg)
 
 			ChaSkillUp[ChaCurSkill]--;
 			if(cr->IsTagSkill(ChaCurSkill+SKILL_BEGIN)) ChaSkillUp[ChaCurSkill]--;
-			int skill_val=cr->GetSkill(ChaCurSkill+SKILL_BEGIN)+ChaSkillUp[ChaCurSkill];
+			int skill_val=cr->GetRawParam(ChaCurSkill+SKILL_BEGIN)+ChaSkillUp[ChaCurSkill];
 
 			if(skill_val<=100) ChaUnspentSkillPoints+=1;
 			else if(skill_val>100 && skill_val<=125) ChaUnspentSkillPoints+=2;
@@ -7472,11 +7424,11 @@ void FOClient::PipDraw()
 			for(int j=TIMEOUT_END;j>=TIMEOUT_BEGIN;j--)
 			{
 				if(!MsgGame->Count(STR_PARAM_NAME_(j))) continue;
-				DWORD val=Chosen->GetTimeout(j);
+				DWORD val=Chosen->GetParam(j);
 
 				if(j==TO_REMOVE_FROM_GAME)
 				{
-					DWORD to_battle=Chosen->GetTimeout(TO_BATTLE);
+					DWORD to_battle=Chosen->GetParam(TO_BATTLE);
 					if(val<to_battle) val=to_battle;
 				}
 
@@ -8352,7 +8304,7 @@ CritVec& FOClient::PupGetLootCrits()
 	if(!loot_cr || !loot_cr->IsDead()) return loot;
 	Field& f=HexMngr.GetField(loot_cr->GetHexX(),loot_cr->GetHexY());
 	for(int i=0,j=f.DeadCrits.size();i<j;i++)
-		if(!f.DeadCrits[i]->IsPerk(MODE_NO_LOOT)) loot.push_back(f.DeadCrits[i]);
+		if(!f.DeadCrits[i]->IsRawParam(MODE_NO_LOOT)) loot.push_back(f.DeadCrits[i]);
 	return loot;
 }
 

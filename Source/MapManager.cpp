@@ -190,13 +190,16 @@ bool MapManager::LoadLocationsProtos()
 		return false;
 	}
 
+	city_txt.CacheApps();
+
 	int errors=0;
 	DWORD loaded=0;
 	char res[256];
 	for(int i=1;i<MAX_PROTO_LOCATIONS;i++)
 	{
 		ProtoLoc[i].IsInit=false;
-		if(!city_txt.GetStr(Str::Format("Area %u",i),"map_0","error",res)) continue;
+		const char* app=Str::Format("Area %u",i);
+		if(!city_txt.IsCachedApp(app) || !city_txt.GetStr(app,"map_0","error",res)) continue;
 
 		ProtoLocation& ploc=ProtoLoc[i];
 		if(!LoadLocationProto(city_txt,ploc,i))
@@ -341,6 +344,8 @@ bool MapManager::LoadMapsProtos()
 		return false;
 	}
 
+	maps_txt.CacheApps();
+
 	int errors=0;
 	DWORD loaded=0;
 	char res[256];
@@ -348,22 +353,22 @@ bool MapManager::LoadMapsProtos()
 //	double wtick2=0.0;
 	for(int i=1;i<MAX_PROTO_MAPS;i++)
 	{
-		if(maps_txt.GetStr(Str::Format("Map %u",i),"map_name","",res))
+		const char* app=Str::Format("Map %u",i);
+		if(!maps_txt.IsCachedApp(app) || !maps_txt.GetStr(app,"map_name","",res)) continue;
+
+//		double tick=Timer::AccurateTick();
+		ProtoMap& pmap=ProtoMaps[i];
+		if(!LoadMapProto(maps_txt,pmap,i))
 		{
-//			double tick=Timer::AccurateTick();
-			ProtoMap& pmap=ProtoMaps[i];
-			if(!LoadMapProto(maps_txt,pmap,i))
-			{
-				errors++;
-				WriteLog("Load proto map<%u> fail.\n",i);
-				continue;
-			}
-			pmapsLoaded.insert(StrWordMapVal(string(pmap.GetName()),i));
-			loaded++;
-//			tick=Timer::AccurateTick()-tick;
-//			wtick2+=tick;
-//			WriteLog("map<%s><%g>\n",pmap.GetName(),tick);
+			errors++;
+			WriteLog("Load proto map<%u> fail.\n",i);
+			continue;
 		}
+		pmapsLoaded.insert(StrWordMapVal(string(pmap.GetName()),i));
+		loaded++;
+//		tick=Timer::AccurateTick()-tick;
+//		wtick2+=tick;
+//		WriteLog("map<%s><%g>\n",pmap.GetName(),tick);
 	}
 //	wtick1=Timer::AccurateTick()-wtick1;
 //	WriteLog("wtick1 %g, wtick2 %g\n",wtick1,wtick2);
@@ -1132,6 +1137,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		}
 
 		// Move from old to new and find last correct position
+		int relief=GetGmRelief(old_x,old_y);
 		int steps=max(abs(xi-old_x),abs(yi-old_y));
 		int new_x_=old_x;
 		int new_y_=old_y;
@@ -1149,7 +1155,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 				int xxi=(int)(xx>=0.0f?xx+0.5f:xx-0.5f);
 				int yyi=(int)(yy>=0.0f?yy+0.5f:yy-0.5f);
 
-				if((walk_type==GM_WALK_GROUND && GetGmRelief(xxi,yyi)==0xF) ||
+				if((walk_type==GM_WALK_GROUND && relief!=0xF && GetGmRelief(xxi,yyi)==0xF) ||
 					(walk_type==GM_WALK_WATER && GetGmRelief(xxi,yyi)!=0xF)) break;
 
 				new_x_=xxi;
@@ -1388,7 +1394,7 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 		if(!cr->IsPlayer()) continue;
 		Client* cl=(Client*)cr;
 
-		int look_len=(cr->IsPerk(PE_SCOUT)?2:1);
+		int look_len=(cr->IsRawParam(PE_SCOUT)?2:1);
 
 		if(look_len==2 && !loc_ids2_founded)
 		{
@@ -2449,7 +2455,7 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWOR
 	// Check force
 	if(!force)
 	{
-		if(cr->GetTimeout(TO_TRANSFER) || cr->GetTimeout(TO_BATTLE)) return false;
+		if(cr->GetParam(TO_TRANSFER) || cr->GetParam(TO_BATTLE)) return false;
 		if(cr->IsDead()) return false;
 		if(cr->IsKnockout()) return false;
 	}

@@ -708,7 +708,7 @@ struct BindClass
 	static void Cl_SetFog(){}
 	static void Cl_GetFog(){}
 	static void Crit_SetTimeout(){}
-	static void Crit_GetTimeout(){}
+	static void Crit_GetParam(){}
 	static void Cl_ShowContainer(){}
 	static void Cl_ShowScreen(){}
 	static void Cl_RunClientScript(){}
@@ -974,6 +974,7 @@ struct BindClass
 	static void Crit_set_ContourColor(){}
 	static void Crit_get_ContourColor(){}
 	static void Crit_GetMultihex(){}
+	static void Crit_IsTurnBasedTurn(){}
 
 	static void Item_IsGrouped(){}
 	static void Item_IsWeared(){}
@@ -1001,6 +1002,7 @@ struct BindClass
 	static void Global_PlayMusic(){}
 	static void Global_PlayVideo(){}
 	static void Global_IsTurnBased(){}
+	static void Global_GetTurnBasedTime(){}
 	static void Global_GetCurrentMapPid(){}
 	static void Global_GetMessageFilters(){}
 	static void Global_SetMessageFilters(){}
@@ -1222,12 +1224,6 @@ struct GameOptions
 	int ApCostAimTorso;
 	int ApCostAimArms;
 	int ApCostAimLegs;
-	int HitAimEyes;
-	int HitAimHead;
-	int HitAimGroin;
-	int HitAimTorso;
-	int HitAimArms;
-	int HitAimLegs;
 	int RunOnCombat;
 	int RunOnTransfer;
 	int GlobalMapWidth;
@@ -1251,6 +1247,8 @@ struct GameOptions
 	int TalkDistance;
 	int MinNameLength;
 	int MaxNameLength;
+	int DlgTalkMinTime;
+	int DlgBarterMinTime;
 
 	int AbsoluteOffsets;
 	int SkillBegin;

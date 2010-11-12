@@ -21,7 +21,7 @@ class MapObject;
 extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 
 // Prototypes
-#define MAX_ITEM_PROTOTYPES         (12000)
+#define MAX_ITEM_PROTOTYPES         (30000)
 #define PROTO_ITEM_DEFAULT_EXT      ".pro"
 #define PROTO_ITEM_FILENAME         "proto.fopro_"
 
@@ -576,7 +576,6 @@ public:
 
 	short RefCounter;
 	bool IsNotValid;
-	bool Reserved1;
 
 #ifdef FONLINE_SERVER
 	int FuncId[ITEM_EVENT_MAX];
@@ -586,13 +585,12 @@ public:
 	SyncObject Sync;
 #endif
 #ifdef FONLINE_CLIENT
-	DWORD Dummy[3];
 	string Lexems;
 	int LexemsRefCounter;
 #endif
 
 	void AddRef(){RefCounter++;}
-	void Release(){RefCounter--; if(RefCounter<=0) delete this;}
+	void Release();
 
 #ifdef FONLINE_SERVER
 	void FullClear();
@@ -703,11 +701,7 @@ public:
 	int WeapGetNeedStrength(){return Proto->Weapon.MinSt;}
 	bool WeapIsUseAviable(int use){return use>=USE_PRIMARY && use<=USE_THIRD?(((Proto->Weapon.Uses>>use)&1)!=0):false;}
 	bool WeapIsCanAim(int use){return use<MAX_USES && Proto->Weapon.Aim[use];}
-	bool WeapIsHtHAttack(int use);
-	bool WeapIsGunAttack(int use);
-	bool WeapIsRangedAttack(int use);
 	void WeapLoadHolder();
-	bool WeapIsFastReload(){return Proto->Weapon.Perk==WEAPON_PERK_FAST_RELOAD;}
 
 	// Container
 	bool IsContainer(){return Proto->IsContainer();}
@@ -802,8 +796,8 @@ public:
 	Item(){ZeroMemory(this,sizeof(Item)); RefCounter=1; IsNotValid=false; MEMORY_PROCESS(MEMORY_ITEM,sizeof(Item));}
 	~Item(){Proto=NULL; if(PLexems) MEMORY_PROCESS(MEMORY_ITEM,-LEXEMS_SIZE); SAFEDELA(PLexems); MEMORY_PROCESS(MEMORY_ITEM,-(int)sizeof(Item));}
 #elif FONLINE_CLIENT
-	Item(){RefCounter=1;IsNotValid=false;}
-	virtual ~Item(){Proto=NULL;}
+	Item(){ZeroMemory(this,offsetof(Item,IsNotValid)); RefCounter=1; IsNotValid=false;}
+	~Item(){Proto=NULL;}
 #endif
 };
 

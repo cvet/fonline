@@ -906,6 +906,7 @@
 	if(engine->RegisterObjectMethod("CritterCl","void set_ContourColor(uint value)",asFUNCTION(BIND_CLASS Crit_set_ContourColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","uint get_ContourColor() const",asFUNCTION(BIND_CLASS Crit_get_ContourColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CritterCl","uint GetMultihex() const",asFUNCTION(BIND_CLASS Crit_GetMultihex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("CritterCl","bool IsTurnBasedTurn() const",asFUNCTION(BIND_CLASS Crit_IsTurnBasedTurn),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectProperty("CritterCl","const uint Id",offsetof(CritterCl,Id))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","const uint16 Pid",offsetof(CritterCl,Pid))<0) BIND_ERROR;
@@ -1015,6 +1016,7 @@
 	if(engine->RegisterGlobalFunction("void PlayMusic(string& musicName, uint pos, uint repeat)",asFUNCTION(BIND_CLASS Global_PlayMusic),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void PlayVideo(string& videoName, bool canStop)",asFUNCTION(BIND_CLASS Global_PlayVideo),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsTurnBased()",asFUNCTION(BIND_CLASS Global_IsTurnBased),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetTurnBasedTime()",asFUNCTION(BIND_CLASS Global_GetTurnBasedTime),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint16 GetCurrentMapPid()",asFUNCTION(BIND_CLASS Global_GetCurrentMapPid),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetMessageFilters(int[]@+ filters)",asFUNCTION(BIND_CLASS Global_GetMessageFilters),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetMessageFilters(int[]@+ filters)",asFUNCTION(BIND_CLASS Global_SetMessageFilters),asCALL_CDECL)<0) BIND_ERROR;
@@ -1234,12 +1236,6 @@
 	if(engine->RegisterGlobalProperty("uint __ApCostAimArms",&GameOpt.ApCostAimArms)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __ApCostAimLegs",&GameOpt.ApCostAimLegs)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __TbAlwaysRun",&GameOpt.TbAlwaysRun)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __HitAimEyes",&GameOpt.HitAimEyes)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __HitAimHead",&GameOpt.HitAimHead)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __HitAimGroin",&GameOpt.HitAimGroin)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __HitAimTorso",&GameOpt.HitAimTorso)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __HitAimArms",&GameOpt.HitAimArms)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __HitAimLegs",&GameOpt.HitAimLegs)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __RunOnCombat",&GameOpt.RunOnCombat)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __RunOnTransfer",&GameOpt.RunOnTransfer)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __GlobalMapWidth",&GameOpt.GlobalMapWidth)) BIND_ERROR;
@@ -1268,6 +1264,8 @@
 	if(engine->RegisterGlobalProperty("uint __TalkDistance",&GameOpt.TalkDistance)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __MinNameLength",&GameOpt.MinNameLength)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __MaxNameLength",&GameOpt.MaxNameLength)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __DlgTalkMinTime",&GameOpt.DlgTalkMinTime)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __DlgBarterMinTime",&GameOpt.DlgBarterMinTime)) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("bool __AbsoluteOffsets",&GameOpt.AbsoluteOffsets)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __SkillBegin",&GameOpt.SkillBegin)) BIND_ERROR;

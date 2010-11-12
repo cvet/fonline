@@ -73,9 +73,7 @@ bool FOServer::TransferAllItems()
 	{
 		Critter* cr=(*it).second;
 
-		if(!cr->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),
-			ItemMngr.GetProtoItem(ITEM_DEF_SLOT),
-			ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
+		if(!cr->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 		{
 			WriteLog("Unable to set default game_items to critter<%s>.\n",cr->GetInfo());
 			return false;

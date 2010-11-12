@@ -22,10 +22,9 @@ bool CritterCl::SlotEnabled[0x100]={true,true,true,true,false};
 
 CritterCl::CritterCl():
 CrDir(0),SprId(0),Id(0),Pid(0),NameColor(0),ContourColor(0),
-ItemSlotMain(&DefItemSlotMain),ItemSlotArmor(&DefItemSlotArmor),ItemSlotExt(&DefItemSlotExt),
 begSpr(0),endSpr(0),curSpr(0),animStartTick(0),
 SprOx(0),SprOy(0),StartTick(0),TickCount(0),ApRegenerationTick(0),
-tickTextDelay(0),textOnHeadColor(COLOR_TEXT),Human(false),Alpha(0),
+tickTextDelay(0),textOnHeadColor(COLOR_TEXT),Alpha(0),
 fadingEnable(false),FadingTick(0),fadeUp(false),finishingTime(0),
 staySprDir(0),staySprTick(0),needReSet(false),reSetTick(0),CurMoveStep(0),
 Visible(true),SprDrawValid(false),IsNotValid(false),RefCounter(1),NameRefCounter(1),NameOnHeadRefCounter(1),LexemsRefCounter(1),
@@ -36,9 +35,8 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 	NameOnHead="";
 	StringCopy(Pass,"");
 	ZeroMemory(Params,sizeof(Params));
-	ZeroMemory(&DefItemSlotMain,sizeof(Item));
-	ZeroMemory(&DefItemSlotExt,sizeof(Item));
-	ZeroMemory(&DefItemSlotArmor,sizeof(Item));
+	ItemSlotMain=ItemSlotExt=DefItemSlotHand=new Item();
+	ItemSlotArmor=DefItemSlotArmor=new Item();
 	tickFun=Timer::GameTick()+Random(STAY_WAIT_SHOW_TIME/2,STAY_WAIT_SHOW_TIME);
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
 	ZeroMemory(ParamsIsChanged,sizeof(ParamsIsChanged));
@@ -57,6 +55,9 @@ CritterCl::~CritterCl()
 		SAFEDELA(Layers3d);
 #endif
 	}
+
+	SAFEREL(DefItemSlotHand);
+	SAFEREL(DefItemSlotArmor);
 }
 
 void CritterCl::Init()
@@ -145,14 +146,14 @@ void CritterCl::AddItem(Item* item)
 	case SLOT_HAND2: ItemSlotExt=item; break;
 	case SLOT_ARMOR: ItemSlotArmor=item; break;
 	default:
-		if(item==ItemSlotMain) ItemSlotMain=&DefItemSlotMain;
-		else if(item==ItemSlotExt) ItemSlotExt=&DefItemSlotExt;
-		else if(item==ItemSlotArmor) ItemSlotArmor=&DefItemSlotArmor;
+		if(item==ItemSlotMain) ItemSlotMain=DefItemSlotHand;
+		else if(item==ItemSlotExt) ItemSlotExt=DefItemSlotHand;
+		else if(item==ItemSlotArmor) ItemSlotArmor=DefItemSlotArmor;
 		else anim_stay=false;
 		break;
 	}
 
-	InvItems.insert(ItemPtrMapVal(item->GetId(),item));
+	InvItems.push_back(item);
 	if(anim_stay && !IsAnim()) AnimateStay();
 }
 
@@ -160,63 +161,77 @@ void CritterCl::EraseItem(Item* item, bool animate)
 {
 	if(!item) return;
 
-	if(ItemSlotMain==item) ItemSlotMain=&DefItemSlotMain;
-	if(ItemSlotExt==item) ItemSlotExt=&DefItemSlotExt;
-	if(ItemSlotArmor==item) ItemSlotArmor=&DefItemSlotArmor;
+	if(ItemSlotMain==item) ItemSlotMain=DefItemSlotHand;
+	if(ItemSlotExt==item) ItemSlotExt=DefItemSlotHand;
+	if(ItemSlotArmor==item) ItemSlotArmor=DefItemSlotArmor;
 	item->Accessory=0;
-	InvItems.erase(item->GetId());
+
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	{
+		Item* item_=*it;
+		if(item_==item)
+		{
+			InvItems.erase(it);
+			break;
+		}
+	}
+
 	item->Release();
 	if(animate && !IsAnim()) AnimateStay();
 }
 
 void CritterCl::EraseAllItems()
 {
-	ItemPtrMap items=InvItems;
-	for(ItemPtrMapIt it=items.begin(),end=items.end();it!=end;++it) EraseItem((*it).second,false);
+	ItemPtrVec items=InvItems;
+	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) EraseItem(*it,false);
 	InvItems.clear();
 }
 
 Item* CritterCl::GetItem(DWORD item_id)
 {
-	ItemPtrMapIt it=InvItems.find(item_id);
-	return (it!=InvItems.end())?(*it).second:NULL;
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	{
+		Item* item=*it;
+		if(item->GetId()==item_id) return item;
+	}
+	return NULL;
 }
 
 Item* CritterCl::GetItemByPid(WORD item_pid)
 {
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it).second->GetProtoId()==item_pid) return (*it).second;
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		if((*it)->GetProtoId()==item_pid) return *it;
 	return NULL;
 }
 
 Item* CritterCl::GetAmmo(DWORD caliber)
 {
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it).second->GetType()==ITEM_TYPE_AMMO && (*it).second->Proto->Ammo.Caliber==caliber) return (*it).second;
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		if((*it)->GetType()==ITEM_TYPE_AMMO && (*it)->Proto->Ammo.Caliber==caliber) return *it;
 	return NULL;
 }
 
 Item* CritterCl::GetItemSlot(int slot)
 {
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it).second->ACC_CRITTER.Slot==slot) return (*it).second;
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		if((*it)->ACC_CRITTER.Slot==slot) return *it;
 	return NULL;
 }
 
 void CritterCl::GetItemsSlot(int slot, ItemPtrVec& items)
 {
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
+		Item* item=*it;
 		if(slot==-1 || item->ACC_CRITTER.Slot==slot) items.push_back(item);
 	}
 }
 
 void CritterCl::GetItemsType(int type, ItemPtrVec& items)
 {
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
+		Item* item=*it;
 		if(item->GetType()==type) items.push_back(item);
 	}
 }
@@ -224,36 +239,17 @@ void CritterCl::GetItemsType(int type, ItemPtrVec& items)
 DWORD CritterCl::CountItemPid(WORD item_pid)
 {
 	DWORD result=0;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it).second->GetProtoId()==item_pid) result+=(*it).second->GetCount();
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		if((*it)->GetProtoId()==item_pid) result+=(*it)->GetCount();
 	return result;
 }
 
 DWORD CritterCl::CountItemType(BYTE type)
 {
 	DWORD res=0;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it).second->GetType()==type) res+=(*it).second->GetCount();
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		if((*it)->GetType()==type) res+=(*it)->GetCount();
 	return res;
-}
-
-bool CritterCl::CheckKey(DWORD door_id)
-{
-	if(!door_id) return true;
-
-//Fingers, Eyes
-//#define _CritFingersDoorId #(critterId) (0x80000000|(critterId))
-//#define _CritEyesDoorId #(critterId) (0x40000000|(critterId))
-	if((0x80000000|GetId())==door_id) return !IsDmgTwoArm();
-	if((0x40000000|GetId())==door_id) return !IsDmgEye();
-
-//Keys items
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-	{
-		Item* key=(*it).second;
-		if(key->IsKey() && key->KeyDoorId()==door_id) return true;
-	}
-	return false;
 }
 
 bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
@@ -297,9 +293,9 @@ bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
 
 		if(to_slot!=SLOT_HAND1) Action(act,from_slot,item);
 
-		if(from_slot==SLOT_HAND1) ItemSlotMain=&DefItemSlotMain;
-		else if(from_slot==SLOT_HAND2) ItemSlotExt=&DefItemSlotExt;
-		else if(from_slot==SLOT_ARMOR) ItemSlotArmor=&DefItemSlotArmor;
+		if(from_slot==SLOT_HAND1) ItemSlotMain=DefItemSlotHand;
+		else if(from_slot==SLOT_HAND2) ItemSlotExt=DefItemSlotHand;
+		else if(from_slot==SLOT_ARMOR) ItemSlotArmor=DefItemSlotArmor;
 		if(to_slot==SLOT_HAND1) ItemSlotMain=item;
 		else if(to_slot==SLOT_HAND2) ItemSlotExt=item;
 		else if(to_slot==SLOT_ARMOR) ItemSlotArmor=item;
@@ -314,9 +310,9 @@ bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
 bool CritterCl::IsCanSortItems()
 {
 	DWORD inv_items=0;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		if((*it).second->ACC_CRITTER.Slot!=SLOT_INV) continue;
+		if((*it)->ACC_CRITTER.Slot!=SLOT_INV) continue;
 		inv_items++;
 		if(inv_items>1) return true;
 	}
@@ -326,9 +322,9 @@ bool CritterCl::IsCanSortItems()
 Item* CritterCl::GetItemHighSortValue()
 {
 	Item* result=NULL;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
+		Item* item=*it;
 		if(!result) result=item;
 		else if(item->GetSortValue()>result->GetSortValue()) result=item;
 	}
@@ -338,9 +334,9 @@ Item* CritterCl::GetItemHighSortValue()
 Item* CritterCl::GetItemLowSortValue()
 {
 	Item* result=NULL;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
+		Item* item=*it;
 		if(!result) result=item;
 		else if(item->GetSortValue()<result->GetSortValue()) result=item;
 	}
@@ -350,9 +346,9 @@ Item* CritterCl::GetItemLowSortValue()
 void CritterCl::GetInvItems(ItemVec& items)
 {
 	items.clear();
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
+		Item* item=*it;
 		if(item->ACC_CRITTER.Slot==SLOT_INV) items.push_back(*item);
 	}
 
@@ -362,24 +358,24 @@ void CritterCl::GetInvItems(ItemVec& items)
 DWORD CritterCl::GetItemsCount()
 {
 	DWORD count=0;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		count+=(*it).second->GetCount();
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		count+=(*it)->GetCount();
 	return count;
 }
 
 DWORD CritterCl::GetItemsCountInv()
 {
 	DWORD res=0;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it).second->ACC_CRITTER.Slot==SLOT_INV) res++;
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		if((*it)->ACC_CRITTER.Slot==SLOT_INV) res++;
 	return res;
 }
 
 DWORD CritterCl::GetItemsWeight()
 {
 	DWORD res=0;
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		res+=(*it).second->GetWeight();
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+		res+=(*it)->GetWeight();
 	return res;
 }
 
@@ -391,8 +387,8 @@ DWORD CritterCl::GetItemsWeightKg()
 DWORD CritterCl::GetItemsVolume()
 {
 	DWORD res=0;
-	for(ItemPtrMapIt it=InvItems.begin();it!=InvItems.end();++it)
-		res+=(*it).second->GetVolume();
+	for(ItemPtrVecIt it=InvItems.begin();it!=InvItems.end();++it)
+		res+=(*it)->GetVolume();
 	return res;
 }
 
@@ -496,12 +492,7 @@ DWORD CritterCl::GetAttackDist()
 	BYTE use;
 	Item* weap=GetSlotUse(SLOT_HAND1,use);
 	if(!weap->IsWeapon()) return 0;
-	int dist=weap->Proto->Weapon.MaxDist[use];
-	if(weap->Proto->Weapon.Skill[use]==SKILL_OFFSET(SK_THROWING)) dist=min(dist,3*min(10,GetParam(ST_STRENGTH)+2*GetPerk(PE_HEAVE_HO)));
-	if(weap->WeapIsHtHAttack(use) && IsPerk(MODE_RANGE_HTH)) dist++;
-	dist+=GetMultihex();
-	if(dist<0) dist=0;
-	return dist;
+	return GameOpt.GetAttackDistantion?GameOpt.GetAttackDistantion(this,weap,use):1;
 }
 
 DWORD CritterCl::GetUseDist()
@@ -526,35 +517,6 @@ int CritterCl::GetParam(DWORD index)
 		if(Script::RunPrepared()) return Script::GetReturnedDword();
 	}
 #endif
-
-	switch(index)
-	{
-	case ST_STRENGTH: return GetStrength();
-	case ST_PERCEPTION: return GetPerception();
-	case ST_ENDURANCE: return GetEndurance();
-	case ST_CHARISMA: return GetCharisma();
-	case ST_INTELLECT: return GetIntellegence();
-	case ST_AGILITY: return GetAgility();
-	case ST_LUCK: return GetLuck();
-	case ST_MAX_LIFE: return GetMaxLife();
-	case ST_SEQUENCE: return GetSequence();
-	case ST_ACTION_POINTS: return GetMaxAp();
-	case ST_ARMOR_CLASS: return GetAc();
-	case ST_MELEE_DAMAGE: return GetMeleeDmg();
-	case ST_CARRY_WEIGHT: return GetMaxWeight();
-	case ST_HEALING_RATE: return GetHealingRate();
-	case ST_CRITICAL_CHANCE: return GetCriticalChance();
-	case ST_MAX_CRITICAL: return GetMaxCritical();
-	case ST_RADIATION_RESISTANCE: return GetRadiationResist();
-	case ST_POISON_RESISTANCE: return GetPoisonResist();
-	case ST_CURRENT_AP: return GetAp();
-	default: break;
-	}
-
-	if(index>=ST_NORMAL_RESIST && index<=ST_EXPLODE_RESIST) return GetDamageResistance(index-ST_NORMAL_RESIST+1);
-	if(index>=ST_NORMAL_ABSORB && index<=ST_EXPLODE_ABSORB) return GetDamageThreshold(index-ST_NORMAL_ABSORB+1);
-	if(index>=TIMEOUT_BEGIN && index<=TIMEOUT_END) return GetTimeout(index);
-	if(index>=REPUTATION_BEGIN && index<=REPUTATION_END) return GetReputation(index);
 	return Params[index];
 }
 
@@ -593,8 +555,8 @@ void CritterCl::ProcessChangedParams()
 				ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
 				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) unarmed=NULL;
 				if(!unarmed) unarmed=GetUnarmedItem(0,0);
-				DefItemSlotMain.Init(unarmed);
-				DefItemSlotMain.SetMode(value&0xFF);
+				DefItemSlotHand->Init(unarmed);
+				DefItemSlotHand->SetMode(value&0xFF);
 			}
 			else if(index==ST_SCALE_FACTOR)
 			{
@@ -627,76 +589,6 @@ void CritterCl::ProcessChangedParams()
 			}
 		}
 	}
-}
-
-int CritterCl::GetReputation(DWORD index)
-{
-	return Params[index]!=0x80000000?Params[index]:0;
-}
-
-int CritterCl::GetAc()
-{
-	int val=Params[ST_ARMOR_CLASS]+Params[ST_ARMOR_CLASS_EXT]+GetAgility()+Params[ST_TURN_BASED_AC];
-	Item* armor=ItemSlotArmor;
-	if(!armor->GetId() || !armor->IsArmor()) armor=NULL;
-	int wearProc=(armor?100-armor->GetWearProc():0);
-	if(armor) val+=armor->Proto->Armor.AC*wearProc/100;
-	return CLAMP(val,0,90);
-}
-
-int CritterCl::GetDamageResistance(int dmg_type)
-{
-	Item* armor=ItemSlotArmor;
-	if(!armor->GetId() || !armor->IsArmor()) armor=NULL;
-	int wearProc=(armor?100-armor->GetWearProc():0);
-
-	int val=0;
-	switch(dmg_type)
-	{
-	case DAMAGE_TYPE_UNCALLED: break;
-	case DAMAGE_TYPE_NORMAL:   val=Params[ST_NORMAL_RESIST] +Params[ST_NORMAL_RESIST_EXT] +(armor?armor->Proto->Armor.DRNormal*wearProc/100:0); break;
-	case DAMAGE_TYPE_LASER:    val=Params[ST_LASER_RESIST]  +Params[ST_LASER_RESIST_EXT]  +(armor?armor->Proto->Armor.DRLaser*wearProc/100:0); break;
-	case DAMAGE_TYPE_FIRE:     val=Params[ST_FIRE_RESIST]   +Params[ST_FIRE_RESIST_EXT]   +(armor?armor->Proto->Armor.DRFire*wearProc/100:0); break;
-	case DAMAGE_TYPE_PLASMA:   val=Params[ST_PLASMA_RESIST] +Params[ST_PLASMA_RESIST_EXT] +(armor?armor->Proto->Armor.DRPlasma*wearProc/100:0); break;
-	case DAMAGE_TYPE_ELECTR:   val=Params[ST_ELECTRO_RESIST]+Params[ST_ELECTRO_RESIST_EXT]+(armor?armor->Proto->Armor.DRElectr*wearProc/100:0); break;
-	case DAMAGE_TYPE_EMP:      val=Params[ST_EMP_RESIST]    +Params[ST_EMP_RESIST_EXT]    +(armor?armor->Proto->Armor.DREmp:0); break;
-	case DAMAGE_TYPE_EXPLODE:  val=Params[ST_EXPLODE_RESIST]+Params[ST_EXPLODE_RESIST_EXT]+(armor?armor->Proto->Armor.DRExplode*wearProc/100:0); break;
-	default: break;
-	}
-
-	if(dmg_type==DAMAGE_TYPE_EMP) return CLAMP(val,0,999);
-	return CLAMP(val,0,90);
-}
-
-int CritterCl::GetDamageThreshold(int dmg_type)
-{
-	Item* armor=ItemSlotArmor;
-	if(!armor->GetId() || !armor->IsArmor()) armor=NULL;
-	int wearProc=(armor?100-armor->GetWearProc():0);
-
-	int val=0;
-	switch(dmg_type)
-	{
-	case DAMAGE_TYPE_UNCALLED: break;
-	case DAMAGE_TYPE_NORMAL:   val=Params[ST_NORMAL_ABSORB] +Params[ST_NORMAL_ABSORB_EXT] +(armor?armor->Proto->Armor.DTNormal*wearProc/100:0); break;
-	case DAMAGE_TYPE_LASER:    val=Params[ST_LASER_ABSORB]  +Params[ST_LASER_ABSORB_EXT]  +(armor?armor->Proto->Armor.DTLaser*wearProc/100:0); break;
-	case DAMAGE_TYPE_FIRE:     val=Params[ST_FIRE_ABSORB]   +Params[ST_FIRE_ABSORB_EXT]   +(armor?armor->Proto->Armor.DTFire*wearProc/100:0); break;
-	case DAMAGE_TYPE_PLASMA:   val=Params[ST_PLASMA_ABSORB] +Params[ST_PLASMA_ABSORB_EXT] +(armor?armor->Proto->Armor.DTPlasma*wearProc/100:0); break;
-	case DAMAGE_TYPE_ELECTR:   val=Params[ST_ELECTRO_ABSORB]+Params[ST_ELECTRO_ABSORB_EXT]+(armor?armor->Proto->Armor.DTElectr*wearProc/100:0); break;
-	case DAMAGE_TYPE_EMP:      val=Params[ST_EMP_ABSORB]    +Params[ST_EMP_ABSORB_EXT]    +(armor?armor->Proto->Armor.DTEmp:0); break;
-	case DAMAGE_TYPE_EXPLODE:  val=Params[ST_EXPLODE_ABSORB]+Params[ST_EXPLODE_ABSORB_EXT]+(armor?armor->Proto->Armor.DTExplode*wearProc/100:0); break;
-	default: break;
-	}
-
-	return CLAMP(val,0,999);
-}
-
-int CritterCl::GetNightPersonBonus()
-{
-	if(GameOpt.Hour<6 || GameOpt.Hour>18) return 1;
-	if(GameOpt.Hour==6 && GameOpt.Minute==0) return 1;
-	if(GameOpt.Hour==18 && GameOpt.Minute>0) return 1;
-	return -1;
 }
 
 void CritterCl::DrawStay(INTRECT r)
@@ -800,7 +692,7 @@ bool CritterCl::NextRateItem(bool prev)
 						unarmed=GetUnarmedItem(tree,priority);
 					}
 					ItemSlotMain->Init(unarmed);
-					if(IsItemAim(SLOT_HAND1) && !IsPerk(TRAIT_FAST_SHOT) && CritType::IsCanAim(GetCrType()))
+					if(IsItemAim(SLOT_HAND1) && !IsRawParam(MODE_NO_AIM) && CritType::IsCanAim(GetCrType()))
 					{
 						SetAim(HIT_LOCATION_TORSO);
 						break;
@@ -808,7 +700,7 @@ bool CritterCl::NextRateItem(bool prev)
 				}
 				else
 				{
-					if(IsItemAim(SLOT_HAND1) && !IsAim() && !IsPerk(TRAIT_FAST_SHOT) && CritType::IsCanAim(GetCrType()))
+					if(IsItemAim(SLOT_HAND1) && !IsAim() && !IsRawParam(MODE_NO_AIM) && CritType::IsCanAim(GetCrType()))
 					{
 						SetAim(HIT_LOCATION_TORSO);
 						break;
@@ -843,7 +735,7 @@ bool CritterCl::NextRateItem(bool prev)
 					}
 					if(!ItemSlotMain->Data.Mode) ItemSlotMain->Data.Mode=(ItemSlotMain->IsCanUseOnSmth()?USE_USE:USE_RELOAD);
 					else ItemSlotMain->Data.Mode--;
-					if(IsItemAim(SLOT_HAND1) && !IsPerk(TRAIT_FAST_SHOT) && CritType::IsCanAim(GetCrType()))
+					if(IsItemAim(SLOT_HAND1) && !IsRawParam(MODE_NO_AIM) && CritType::IsCanAim(GetCrType()))
 					{
 						SetAim(HIT_LOCATION_TORSO);
 						break;
@@ -851,7 +743,7 @@ bool CritterCl::NextRateItem(bool prev)
 				}
 				else
 				{
-					if(IsItemAim(SLOT_HAND1) && !IsAim() && !IsPerk(TRAIT_FAST_SHOT) && CritType::IsCanAim(GetCrType()))
+					if(IsItemAim(SLOT_HAND1) && !IsAim() && !IsRawParam(MODE_NO_AIM) && CritType::IsCanAim(GetCrType()))
 					{
 						SetAim(HIT_LOCATION_TORSO);
 						break;
@@ -886,21 +778,7 @@ void CritterCl::SetAim(BYTE hit_location)
 
 DWORD CritterCl::GetUseApCost(Item* item, BYTE rate)
 {
-	int use=(rate&0xF);
-	int aim=(rate>>4);
-
-	if(use==USE_USE) return GetApCostUseItem();
-	else if(use==USE_RELOAD) return GetApCostReload()-(item->IsWeapon() && item->WeapIsFastReload()?1:0);
-	else if(use>=USE_PRIMARY && use<=USE_THIRD && item->IsWeapon())
-	{
-		int ap_cost=item->Proto->Weapon.ApCost[use];
-		if(aim) ap_cost+=GameAimApCost(aim);
-		if(IsPerk(PE_BONUS_HTH_ATTACKS) && item->WeapIsHtHAttack(use)) ap_cost--;
-		if(IsPerk(PE_BONUS_RATE_OF_FIRE) && item->WeapIsRangedAttack(use)) ap_cost--;
-		if(IsPerk(TRAIT_FAST_SHOT) && !item->WeapIsHtHAttack(use)) ap_cost--;
-		return ap_cost>0?ap_cost:0;
-	}
-	return 0;
+	return GameOpt.GetUseApCost?GameOpt.GetUseApCost(this,item,rate):1;
 }
 
 ProtoItem* CritterCl::GetUnarmedItem(BYTE tree, BYTE priority)
@@ -912,7 +790,7 @@ ProtoItem* CritterCl::GetUnarmedItem(BYTE tree, BYTE priority)
 		if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) continue;
 		if(unarmed->Weapon.UnarmedTree!=tree || unarmed->Weapon.UnarmedPriority!=priority) continue;
 		if(GetParam(ST_STRENGTH)<unarmed->Weapon.MinSt || GetParam(ST_AGILITY)<unarmed->Weapon.UnarmedMinAgility) break;
-		if(GetParam(ST_LEVEL)<unarmed->Weapon.UnarmedMinLevel || GetSkill(SK_UNARMED)<unarmed->Weapon.UnarmedMinUnarmed) break;
+		if(GetParam(ST_LEVEL)<unarmed->Weapon.UnarmedMinLevel || GetRawParam(SK_UNARMED)<unarmed->Weapon.UnarmedMinUnarmed) break;
 		best_unarmed=unarmed;
 	}
 	return best_unarmed;
@@ -924,11 +802,6 @@ Item* CritterCl::GetAmmoAvialble(Item* weap)
 	if(!ammo && weap->WeapIsEmpty()) ammo=GetItemByPid(weap->Proto->Weapon.DefAmmo);
 	if(!ammo && weap->WeapIsEmpty()) ammo=GetAmmo(weap->Proto->Weapon.Caliber);
 	return ammo;
-}
-
-DWORD CritterCl::GetTimeout(int timeout)
-{
-	return Params[timeout]>GameOpt.FullSecond?Params[timeout]-GameOpt.FullSecond:0;
 }
 
 bool CritterCl::IsLastHexes()
@@ -1500,18 +1373,11 @@ void CritterCl::ClearAnim()
 	animSequence.clear();
 }
 
-Item* CritterCl::GetRadio()
-{
-	if(ItemSlotMain->IsRadio()) return ItemSlotMain;
-	if(ItemSlotExt->IsRadio()) return ItemSlotExt;
-	return NULL;
-}
-
 bool CritterCl::IsHaveLightSources()
 {
-	for(ItemPtrMapIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
+	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
-		Item* item=(*it).second;
+		Item* item=*it;
 		if(item->IsLight()) return true;
 	}
 	return false;

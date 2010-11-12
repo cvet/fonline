@@ -877,12 +877,6 @@ GameOptions::GameOptions()
 	ApCostAimTorso=1;
 	ApCostAimArms=1;
 	ApCostAimLegs=1;
-	HitAimEyes=60;
-	HitAimHead=40;
-	HitAimGroin=30;
-	HitAimTorso=0;
-	HitAimArms=30;
-	HitAimLegs=20;
 	RunOnCombat=false;
 	RunOnTransfer=false;
 	GlobalMapWidth=28;
@@ -911,6 +905,8 @@ GameOptions::GameOptions()
 	TalkDistance=3;
 	MinNameLength=4;
 	MaxNameLength=12;
+	DlgTalkMinTime=0;
+	DlgBarterMinTime=0;
 
 	AbsoluteOffsets=true;
 	SkillBegin=200;
@@ -1041,44 +1037,14 @@ GameOptions::GameOptions()
 	ClientPathRefCounter=1;
 	ServerPath=".\\";
 	ServerPathRefCounter=1;
-}
 
-DWORD GameAimApCost(int hit_location)
-{
-	switch(hit_location)
-	{
-	default: break;
-	case HIT_LOCATION_NONE: break;
-	case HIT_LOCATION_UNCALLED: break;
-	case HIT_LOCATION_TORSO: return GameOpt.ApCostAimTorso;
-	case HIT_LOCATION_EYES: return GameOpt.ApCostAimEyes;
-	case HIT_LOCATION_HEAD: return GameOpt.ApCostAimHead;
-	case HIT_LOCATION_LEFT_ARM:
-	case HIT_LOCATION_RIGHT_ARM: return GameOpt.ApCostAimArms;
-	case HIT_LOCATION_GROIN: return GameOpt.ApCostAimGroin;
-	case HIT_LOCATION_RIGHT_LEG:
-	case HIT_LOCATION_LEFT_LEG: return GameOpt.ApCostAimLegs;
-	}
-	return 0;
-}
+	// Engine functions
+	CritterChangeParameter=NULL;
+	CritterTypes=NULL;
 
-DWORD GameHitAim(int hit_location)
-{
-	switch(hit_location)
-	{
-	default: break;
-	case HIT_LOCATION_NONE: break;
-	case HIT_LOCATION_UNCALLED: break;
-	case HIT_LOCATION_TORSO: return GameOpt.HitAimTorso;
-	case HIT_LOCATION_EYES: return GameOpt.HitAimEyes;
-	case HIT_LOCATION_HEAD: return GameOpt.HitAimHead;
-	case HIT_LOCATION_LEFT_ARM:
-	case HIT_LOCATION_RIGHT_ARM: return GameOpt.HitAimArms;
-	case HIT_LOCATION_GROIN: return GameOpt.HitAimGroin;
-	case HIT_LOCATION_RIGHT_LEG:
-	case HIT_LOCATION_LEFT_LEG: return GameOpt.HitAimLegs;
-	}
-	return 0;
+	// Callbacks
+	GetUseApCost=NULL;
+	GetAttackDistantion=NULL;
 }
 
 /************************************************************************/

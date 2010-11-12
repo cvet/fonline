@@ -92,6 +92,8 @@ bool ConcurrentExecution=false;
 Mutex ConcurrentExecutionLocker;
 #endif
 
+bool LoadLibraryCompiler=false;
+
 // Contexts
 THREAD asIScriptContext* GlobalCtx[GLOBAL_CONTEXT_STACK_SIZE]={0};
 THREAD DWORD GlobalCtxIndex=0;
@@ -215,7 +217,7 @@ public:
 class BindFuncPragmaCallback : public Preprocessor::PragmaCallback
 {
 private:
-	static set<string> alreadyProcessed;
+	set<string> alreadyProcessed;
 
 public:
 	void pragma(const Preprocessor::PragmaInstance& instance)
@@ -282,7 +284,6 @@ public:
 		if(result<0) WriteLog("Error in bindfunc pragma<%s>, script registration fail, error<%d>.\n",instance.text.c_str(),result);
 	}
 };
-set<string> BindFuncPragmaCallback::alreadyProcessed;
 
 bool Init(bool with_log, PragmaCallbackFunc crdata)
 {
@@ -388,7 +389,7 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 		// Call init function
 		typedef void(*DllMainEx)(bool);
 		DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
-		if(func) (*func)(false);
+		if(func) (*func)(LoadLibraryCompiler);
 
 		alreadyLoadedDll.insert(dll_name_);
 	}
@@ -403,6 +404,11 @@ void SetWrongGlobalObjects(StrVec& names)
 void SetConcurrentExecution(bool enabled)
 {
 	ConcurrentExecution=enabled;
+}
+
+void SetLoadLibraryCompiler(bool enabled)
+{
+	LoadLibraryCompiler=enabled;
 }
 
 void UnloadScripts()

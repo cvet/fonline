@@ -117,6 +117,7 @@ private:
 	DWORD bufLen;
 	char lastApp[128];
 	DWORD lastAppPos;
+	StrSet cachedApps;
 	StrSet cachedKeys;
 
 	void GotoEol(DWORD& iter);
@@ -146,6 +147,8 @@ public:
 	bool GotoNextApp(const char* app_name);
 	void GetAppLines(StrVec& lines);
 
+	void CacheApps();
+	bool IsCachedApp(const char* app_name);
 	void CacheKeys();
 	bool IsCachedKey(const char* key_name);
 };

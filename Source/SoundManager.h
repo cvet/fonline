@@ -40,7 +40,6 @@
 #define SND_BUTTON2_OUT				"BUTOUT2"
 #define SND_BUTTON3_OUT				"BUTOUT3"
 #define SND_BUTTON4_OUT				"BUTOUT4"
-#define SND_LEVELUP					"LEVELUP"
 #define SND_LMENU					"IACCUXX1"
 #define SND_COMBAT_MODE_ON          "ICIBOXX1"
 #define SND_COMBAT_MODE_OFF         "ICIBCXX1"
