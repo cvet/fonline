@@ -16,27 +16,6 @@ SpriteManager SprMngr;
 /* Sprites                                                              */
 /************************************************************************/
 
-struct TreeSorter
-{
-	static bool Less(Sprite* spr1, Sprite* spr2)
-	{
-		// Flat placed first
-		if(spr1->Flat!=spr2->Flat) return spr1->Flat;
-
-		// Check conflicts
-		if(spr1->HexY==spr2->HexY)
-		{
-			if(spr1->HexX==spr2->HexX)
-			{
-				if(spr1->Layer!=spr2->Layer) return spr1->Layer<spr2->Layer;
-				return spr1->TreeIndex<spr2->TreeIndex;
-			}
-			return spr1->HexX<spr2->HexX;
-		}
-		return spr1->HexY<spr2->HexY;
-	}
-};
-
 void Sprite::Unvalidate()
 {
 	if(Valid)
@@ -123,7 +102,7 @@ void Sprites::ClearPool()
 	spritesPool.clear();
 }
 
-Sprite& Sprites::PutSprite(size_t index, bool flat, int layer, WORD hx, WORD hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
+Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
 {
 	if(index>=spritesTreeSize)
 	{
@@ -131,12 +110,10 @@ Sprite& Sprites::PutSprite(size_t index, bool flat, int layer, WORD hx, WORD hy,
 		if(spritesTreeSize>=spritesTree.size()) Resize(spritesTreeSize+SPRITES_RESIZE_COUNT);
 	}
 	Sprite* spr=spritesTree[index];
+	spr->TreeIndex=index;
 	spr->HexX=hx;
 	spr->HexY=hy;
 	spr->CutType=0;
-	spr->Flat=flat;
-	spr->TreeIndex=index*100;
-	spr->Layer=layer;
 	spr->ScrX=x;
 	spr->ScrY=y;
 	spr->SprId=id;
@@ -155,6 +132,12 @@ Sprite& Sprites::PutSprite(size_t index, bool flat, int layer, WORD hx, WORD hy,
 	spr->FlashMask=0;
 	spr->Parent=NULL;
 	spr->Child=NULL;
+
+	// Draw order
+	spr->DrawOrderType=draw_order;
+	spr->DrawOrderPos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
+		hy*MAXHEX_MAX+hx+MAXHEX_MAX*MAXHEX_MAX*(draw_order-DRAW_ORDER_FLAT):
+		MAXHEX_MAX*MAXHEX_MAX*DRAW_ORDER+hy*DRAW_ORDER*MAXHEX_MAX+hx*DRAW_ORDER+(draw_order-DRAW_ORDER));
 
 	// Cutting
 	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
@@ -190,7 +173,7 @@ Sprite& Sprites::PutSprite(size_t index, bool flat, int layer, WORD hx, WORD hy,
 			float ww=stepf;
 			if(xx+ww>widthf) ww=widthf-xx;
 
-			Sprite& spr_=(i!=h1?PutSprite(spritesTreeSize,flat,layer,hor?i:hx,hor?hy:i,0,x,y,id,id_ptr,ox,oy,alpha,NULL):*spr);
+			Sprite& spr_=(i!=h1?PutSprite(spritesTreeSize,draw_order,hor?i:hx,hor?hy:i,0,x,y,id,id_ptr,ox,oy,alpha,NULL):*spr);
 			if(i!=h1) spr_.Parent=parent;
 			parent->Child=&spr_;
 			parent=&spr_;
@@ -217,39 +200,35 @@ Sprite& Sprites::PutSprite(size_t index, bool flat, int layer, WORD hx, WORD hy,
 	return *spr;
 }
 
-Sprite& Sprites::AddSprite(bool flat, int layer, WORD hx, WORD hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
+Sprite& Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
 {
-	return PutSprite(spritesTreeSize,flat,layer,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
+	return PutSprite(spritesTreeSize,draw_order,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
 }
 
-Sprite& Sprites::InsertSprite(bool flat, int layer, WORD hx, WORD hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
+Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
 {
 	// For cutted sprites need resort all tree
 	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
 	{
-		Sprite& spr=PutSprite(spritesTreeSize,flat,layer,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
+		Sprite& spr=PutSprite(spritesTreeSize,draw_order,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
 		SortByMapPos();
 		return spr;
 	}
 
-	// Fill parameters only need for sorting
-	static Sprite tmp_spr;
-	tmp_spr.HexX=hx;
-	tmp_spr.HexY=hy;
-	tmp_spr.TreeIndex=-1;
-	tmp_spr.Flat=flat;
-	tmp_spr.Layer=layer;
-
 	// Find place
 	size_t index=0;
-	DWORD last_tree_index=0;
-	for(SpriteVecIt it=spritesTree.begin(),end=spritesTree.begin()+spritesTreeSize;it!=end;++it,++index)
+	DWORD pos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
+		hy*MAXHEX_MAX+hx+MAXHEX_MAX*MAXHEX_MAX*(draw_order-DRAW_ORDER_FLAT):
+		MAXHEX_MAX*MAXHEX_MAX*DRAW_ORDER+hy*DRAW_ORDER*MAXHEX_MAX+hx*DRAW_ORDER+(draw_order-DRAW_ORDER));
+	for(;index<spritesTreeSize;index++)
 	{
-		Sprite* spr=*it;
+		Sprite* spr=spritesTree[index];
 		if(!spr->Valid) continue;
-		if(TreeSorter::Less(&tmp_spr,spr)) break;
-		last_tree_index=spr->TreeIndex;
+		if(pos<spr->DrawOrderPos) break;
 	}
+
+	// Gain tree index to other sprites
+	for(size_t i=index;i<spritesTreeSize;i++)  spritesTree[i]->TreeIndex++;
 
 	// Insert to array
 	spritesTreeSize++;
@@ -260,9 +239,7 @@ Sprite& Sprites::InsertSprite(bool flat, int layer, WORD hx, WORD hy, int cut, i
 		spritesTree.pop_back();
 	}
 
-	Sprite& spr=PutSprite(index,flat,layer,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
-	spr.TreeIndex=last_tree_index+1;
-	return spr;
+	return PutSprite(index,draw_order,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
 }
 
 void Sprites::Resize(size_t size)
@@ -327,8 +304,16 @@ void Sprites::SortBySurfaces()
 
 void Sprites::SortByMapPos()
 {
-	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,TreeSorter::Less);
-	for(size_t i=0;i<spritesTreeSize;i++) spritesTree[i]->TreeIndex=i*100;
+	struct Sorter
+	{
+		static bool SortByMapPos(Sprite* spr1, Sprite* spr2)
+		{
+			if(spr1->DrawOrderPos==spr2->DrawOrderPos) return spr1->TreeIndex<spr2->TreeIndex;
+			return spr1->DrawOrderPos<spr2->DrawOrderPos;
+		}
+	};
+	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,Sorter::SortByMapPos);
+	for(size_t i=0;i<spritesTreeSize;i++) spritesTree[i]->TreeIndex=i;
 }
 
 /************************************************************************/
@@ -1941,7 +1926,7 @@ void SpriteManager::SetEgg(WORD hx, WORD hy, Sprite* spr)
 	eggValid=true;
 }
 
-bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, bool draw_flat, bool draw_not_flat)
+bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to)
 {
 	PointVec borders;
 
@@ -1957,8 +1942,8 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		Sprite* spr=*it;
 		if(!spr->Valid) continue;
 
-		if(!draw_flat && spr->Flat) continue;
-		if(!draw_not_flat && !spr->Flat) break;
+		if(spr->DrawOrderType<draw_oder_from) continue;
+		if(spr->DrawOrderType>draw_oder_to) break;
 
 		DWORD id=(spr->PSprId?*spr->PSprId:spr->SprId);
 		SpriteInfo* si=sprData[id];
@@ -2274,10 +2259,10 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 				y1=(spr->ScrY+spr->CutOyL+GameOpt.ScrOy)/z;
 			}
 
-			if(!spr->Flat) y1-=40/z;
+			if(spr->DrawOrderType>=DRAW_ORDER_FLAT && spr->DrawOrderType<DRAW_ORDER) y1-=40/z;
 
 			char str[32];
-			sprintf(str,"%u",spr->TreeIndex/100);
+			sprintf(str,"%u",spr->TreeIndex);
 			DrawStr(INTRECT(x1,y1,x1+100,y1+100),str,0);
 		}
 #endif
@@ -2609,7 +2594,7 @@ bool SpriteManager::DrawContours()
 	{
 		D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT)); // Zoom In
 		SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-		DrawSprites(spriteContours,false,false,true,true);
+		DrawSprites(spriteContours,false,false,0,0);
 		D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
 		spriteContours.Unvalidate();
 	}
@@ -2625,7 +2610,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 			DWORD contour_id=GetSpriteContour(si,spr);
 			if(contour_id)
 			{
-				Sprite& contour_spr=spriteContours.AddSprite(false,LAYER_TOP,0,0,0,spr->ScrX,spr->ScrY,contour_id,NULL,spr->OffsX,spr->OffsY,NULL,NULL);
+				Sprite& contour_spr=spriteContours.AddSprite(0,0,0,0,spr->ScrX,spr->ScrY,contour_id,NULL,spr->OffsX,spr->OffsY,NULL,NULL);
 				if(spr->ContourType==CONTOUR_RED)
 				{
 					contour_spr.SetFlash(0xFFFF0000);

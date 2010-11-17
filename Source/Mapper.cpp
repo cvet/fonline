@@ -5039,16 +5039,14 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
 	bool is_flat=(proto_item?FLAG(proto_item->Flags,ITEM_FLAT):false);
-	bool is_scen=(proto_item?proto_item->IsScen() || proto_item->IsGrid():false);
+	bool is_item=(proto_item?proto_item->IsItem():false);
 	bool is_wall=(proto_item?proto_item->IsWall():false);
-	bool no_light=(is_flat && is_scen);
+	bool no_light=(is_flat && !is_item);
 
 	Field& f=Self->HexMngr.GetField(hx,hy);
 	Sprites& tree=Self->HexMngr.GetDrawTree();
-	Sprite& spr=tree.InsertSprite(
-		is_flat,is_scen?LAYER_SCENERY:(is_wall?LAYER_WALL:LAYER_ITEM),hx,hy,0,
-		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),
-		NULL,NULL,NULL,NULL,NULL);
+	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT+3:DRAW_ORDER_FLAT+1):(is_item?DRAW_ORDER+2:DRAW_ORDER+1),hx,hy,0,
+		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
 	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 
 	if(proto_item)

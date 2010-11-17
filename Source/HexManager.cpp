@@ -336,7 +336,7 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 		// Draw
 		if(GetHexToDraw(hx,hy) && !item->IsHidden() && !item->IsFullyTransparent())
 		{
-			Sprite& spr=mainTree.InsertSprite(item->IsFlat(),LAYER_ITEM_AUTO(item),hx,hy,item->SpriteCut,
+			Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_ITEM(item),hx,hy,item->SpriteCut,
 				f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 			if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) spr.SetLight(hexLight,maxHexX,maxHexY);
 			item->SetSprite(&spr);
@@ -441,7 +441,7 @@ void HexManager::ProcessItems()
 				item->HexScrY=&f_.ScrY;
 				if(GetHexToDraw(step.first,step.second))
 				{
-					item->SprDraw=&mainTree.InsertSprite(item->IsFlat(),LAYER_ITEM_AUTO(item),step.first,step.second,item->SpriteCut,
+					item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),step.first,step.second,item->SpriteCut,
 						f_.ScrX+HEX_OX,f_.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 					if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) item->SprDraw->SetLight(hexLight,maxHexX,maxHexY);
 				}
@@ -588,7 +588,7 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 
 	if(GetHexToDraw(from_hx,from_hy))
 	{
-		item->SprDraw=&mainTree.InsertSprite(item->IsFlat(),LAYER_ITEM_AUTO(item),from_hx,from_hy,item->SpriteCut,
+		item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),from_hx,from_hy,item->SpriteCut,
 			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 		if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) item->SprDraw->SetLight(hexLight,maxHexX,maxHexY);
 	}
@@ -772,7 +772,7 @@ void HexManager::RebuildMap(int rx, int ry)
 			{
 				DWORD spr_id=(GetHexTrack(nx,ny)==1?picTrack1:picTrack2);
 				if(IsVisible(spr_id,f.ScrX+17,f.ScrY+14))
-					mainTree.AddSprite(true,LAYER_BOTTOM,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
+					mainTree.AddSprite(DRAW_ORDER_FLAT,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Hex Lines
@@ -793,7 +793,7 @@ void HexManager::RebuildMap(int rx, int ry)
 				DWORD spr_id=(thru?hexBlue:hexWhite);
 				//DWORD spr_id=(f.ScrollBlock?hexBlue:hexWhite);
 				//if(IsVisible(spr_id,f.ScrX+HEX_OX,f.ScrY+HEX_OY))
-					mainTree.AddSprite(true,LAYER_BOTTOM,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,spr_id,NULL,NULL,NULL,NULL,NULL);
+					mainTree.AddSprite(DRAW_ORDER_FLAT,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Rain
@@ -811,7 +811,7 @@ void HexManager::RebuildMap(int rx, int ry)
 						Drop* new_drop=new Drop(picRainDrop,Random(-10,10),-Random(0,200),0);
 						rainData.push_back(new_drop);
 
-						mainTree.AddSprite(false,LAYER_TOP,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
+						mainTree.AddSprite(DRAW_ORDER+4,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
 							&new_drop->OffsX,&new_drop->OffsY,NULL,NULL).SetLight(hexLight,maxHexX,maxHexY);
 					}
 					else if(!roofSkip || roofSkip!=GetField(rofx,rofy).RoofNum)
@@ -819,7 +819,7 @@ void HexManager::RebuildMap(int rx, int ry)
 						Drop* new_drop=new Drop(picRainDrop,Random(-10,10),-100-Random(0,100),-100);
 						rainData.push_back(new_drop);
 
-						roofRainTree.AddSprite(false,LAYER_TOP,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
+						roofRainTree.AddSprite(DRAW_ORDER+4,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
 							&new_drop->OffsX,&new_drop->OffsY,NULL,NULL).SetLight(hexLight,maxHexX,maxHexY);;
 					}
 				}
@@ -846,7 +846,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					if(ignorePids.count(item->GetProtoId())) continue;
 #endif
 
-					Sprite& spr=mainTree.AddSprite(item->IsFlat(),LAYER_ITEM_AUTO(item),nx,ny,item->SpriteCut,
+					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_ITEM(item),nx,ny,item->SpriteCut,
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 					if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) spr.SetLight(hexLight,maxHexX,maxHexY);
 					item->SetSprite(&spr);
@@ -857,7 +857,7 @@ void HexManager::RebuildMap(int rx, int ry)
 			CritterCl* cr=f.Crit;
 			if(cr && GameOpt.ShowCrit && cr->Visible)
 			{
-				Sprite& spr=mainTree.AddSprite(false,LAYER_CRITTER,nx,ny,0,
+				Sprite& spr=mainTree.AddSprite(DRAW_ORDER_CRIT(cr),nx,ny,0,
 					f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,
 					&cr->Alpha,&cr->SprDrawValid);
 				spr.SetLight(hexLight,maxHexX,maxHexY);
@@ -868,7 +868,7 @@ void HexManager::RebuildMap(int rx, int ry)
 				int contour=0;
 				if(cr->GetId()==critterContourCrId) contour=critterContour;
 				else if(!cr->IsChosen()) contour=crittersContour;
-				if(contour) spr.SetContour(contour,cr->ContourColor);
+				spr.SetContour(contour,cr->ContourColor);
 			}
 
 			// Dead critters
@@ -879,8 +879,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					CritterCl* cr=*it;
 					if(!cr->Visible) continue;
 
-					Sprite& spr=mainTree.AddSprite(
-						!cr->IsRawParam(MODE_NO_FLATTEN),LAYER_DEAD_CRITTER,nx,ny,0,
+					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_CRIT(cr),nx,ny,0,
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,
 						&cr->Alpha,&cr->SprDrawValid);
 					spr.SetLight(hexLight,maxHexX,maxHexY);
@@ -1372,13 +1371,13 @@ void HexManager::RebuildTiles()
 			if(f.SelTile)
 			{
 				if(IsVisible(f.SelTile,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
-					tilesTree.AddSprite(false,LAYER_BOTTOM,0,0,0,f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.SelTile,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL);
+					tilesTree.AddSprite(0,hx,hy,0,f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.SelTile,NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL);
 				continue;
 			}
 #endif
 
 			if(f.TileId && IsVisible(f.TileId,f.ScrX+TILE_OX,f.ScrY+TILE_OY))
-				tilesTree.AddSprite(false,LAYER_BOTTOM,0,0,0,f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.TileId,NULL,NULL,NULL,NULL,NULL);
+				tilesTree.AddSprite(0,hx,hy,0,f.ScrX+TILE_OX,f.ScrY+TILE_OY,f.TileId,NULL,NULL,NULL,NULL,NULL);
 		}
 		y2+=wVisible;
 	}
@@ -1417,7 +1416,7 @@ void HexManager::RebuildRoof()
 			{
 				if(IsVisible(f.SelRoof,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
 				{
-					roofTree.AddSprite(false,LAYER_BOTTOM,0,0,0,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.SelRoof,
+					roofTree.AddSprite(0,hx,hy,0,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.SelRoof,
 						NULL,NULL,NULL,(BYTE*)&SELECT_ALPHA,NULL).SetEgg(EGG_ALWAYS);
 				}
 				continue;
@@ -1426,7 +1425,7 @@ void HexManager::RebuildRoof()
 
 			if(f.RoofId && (!roofSkip || roofSkip!=f.RoofNum) && IsVisible(f.RoofId,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY))
 			{
-				roofTree.AddSprite(false,LAYER_BOTTOM,0,0,0,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.RoofId,
+				roofTree.AddSprite(0,hx,hy,0,f.ScrX+ROOF_OX,f.ScrY+ROOF_OY,f.RoofId,
 					NULL,NULL,NULL,&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
 			}
 		}
@@ -1721,7 +1720,7 @@ void HexManager::DrawMap()
 
 	// Flat sprites
 	SprMngr.SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-	SprMngr.DrawSprites(mainTree,false,false,true,false);
+	SprMngr.DrawSprites(mainTree,true,false,DRAW_ORDER_FLAT,DRAW_ORDER_FLAT+1);
 
 	// Light
 	for(int i=0;i<lightPointsCount;i++) SprMngr.DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&GameOpt.SpritesZoom);
@@ -1732,7 +1731,7 @@ void HexManager::DrawMap()
 
 	// Sprites
 	SprMngr.SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-	SprMngr.DrawSprites(mainTree,true,true,false,true);
+	SprMngr.DrawSprites(mainTree,true,true,DRAW_ORDER_FLAT+2,DRAW_ORDER+4);
 
 	// Roof
 	if(GameOpt.ShowRoof)
@@ -1741,12 +1740,12 @@ void HexManager::DrawMap()
 		device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT);
 		device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT);
 		SprMngr.SetCurEffect2D(DEFAULT_EFFECT_ROOF);
-		SprMngr.DrawSprites(roofTree,false,true,true,true);
+		SprMngr.DrawSprites(roofTree,false,true,0,0);
 		device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR);
 		device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_LINEAR);
 
 		SprMngr.SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-		if(rainCapacity) SprMngr.DrawSprites(roofRainTree,false,false,true,true);
+		if(rainCapacity) SprMngr.DrawSprites(roofRainTree,false,false,0,0);
 	}
 
 	// Contours
@@ -2025,15 +2024,18 @@ void HexManager::SetCrit(CritterCl* cr)
 
 	if(GetHexToDraw(hx,hy) && cr->Visible)
 	{
-		Sprite& spr=mainTree.InsertSprite(cr->IsDead() && !cr->IsRawParam(MODE_NO_FLATTEN),LAYER_CRITTER_AUTO(cr),hx,hy,0,
+		Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_CRIT(cr),hx,hy,0,
 			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,&cr->Alpha,&cr->SprDrawValid);
 		spr.SetLight(hexLight,maxHexX,maxHexY);
 		cr->SprDraw=&spr;
 
 		cr->SetSprRect();
 		cr->FixLastHexes();
-		if(cr->GetId()==critterContourCrId) spr.SetContour(critterContour,cr->ContourColor);
-		else if(!cr->IsDead() && !cr->IsChosen()) spr.SetContour(crittersContour,cr->ContourColor);
+
+		int contour=0;
+		if(cr->GetId()==critterContourCrId) contour=critterContour;
+		else if(!cr->IsDead() && !cr->IsChosen()) contour=crittersContour;
+		spr.SetContour(contour,cr->ContourColor);
 	}
 
 	f.ProcessCache();
