@@ -396,9 +396,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define MAXHEX_DEF              (200)
 #define MAXHEX_MIN              (10)
 #define MAXHEX_MAX              (30000)
-#define HEX_POS(hx,hy)          ((hy)*MAXHEX_MAX*3+(hx)*3)
-#define HEX_X_POS(pos)          ((pos)%(MAXHEX_MAX*3)/3)
-#define HEX_Y_POS(pos)          ((pos)/(MAXHEX_MAX*3))
 
 // Client parameters
 #define MAX_NAME				(30)
@@ -755,7 +752,7 @@ struct ScenToSend // 32 bytes
 {
 	WORD ProtoId;
 	BYTE Flags;
-	BYTE Reserved0;
+	BYTE SpriteCut;
 	WORD MapX;
 	WORD MapY;
 	short OffsetX;
@@ -795,8 +792,8 @@ typedef vector<ScenToSend> ScenToSendVec;
 // BN - Убит (горит и бежит)                                  BurnRun
 // BO - Убит (лежит на земле и истекает кровью (лицом вверх)) 
 // BP - Убит (лежит на земле и истекает кровью (лицом вниз))
-// _ABCDEFGHIJKLMNOPQRST
-// 012345678901234567890
+// _ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+// 0123456789012345678901234567890123456
 
 #define ABC_SIZE                        (26)
 

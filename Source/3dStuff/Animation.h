@@ -13,6 +13,7 @@
 #define ANIMATION_STAY             (0x01)
 #define ANIMATION_ONE_TIME         (0x02)
 #define ANIMATION_LAST_FRAME       (0x04)
+#define ANIMATION_NO_SMOOTH        (0x08)
 
 class Animation3d;
 typedef vector<Animation3d*> Animation3dVec;

@@ -85,7 +85,7 @@ void _PostRestore()
 	if(Singleplayer)
 	{
 		SAFEREL(FOClient::Self->SaveLoadDraft);
-		if(FAILED(FOClient::Self->SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
+		if(FAILED(SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
 			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&FOClient::Self->SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
 		FOClient::Self->SaveLoadDraftValid=false;
 	}
@@ -106,7 +106,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(ScenToSend)==32);
-	STATIC_ASSERT(sizeof(ProtoItem)==180);
+	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
 
 	GET_UID0(UID0);
@@ -191,9 +191,6 @@ bool FOClient::Init(HWND hwnd)
 	if(!SprMngr.Init(params)) return false;
 	GET_UID1(UID1);
 
-	// Set sprite manager pointer to critters class
-	CritterCl::SprMngr=&SprMngr;
-
 	// Fonts
 	if(!SprMngr.LoadFontOld(FONT_FO,"OldDefault",1)) return false;
 	if(!SprMngr.LoadFontOld(FONT_NUM,"Numbers",1)) return false;
@@ -256,7 +253,7 @@ bool FOClient::Init(HWND hwnd)
 	if(!_stricmp(lang_name,"russ")) Keyb::Lang=LANG_RUS;
 
 	// Resource manager
-	ResMngr.Refresh(&SprMngr);
+	ResMngr.Refresh();
 
 	// Wait screen
 	ScreenModeMain=SCREEN_WAIT;
@@ -294,7 +291,7 @@ bool FOClient::Init(HWND hwnd)
 	// Item prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("____item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("_____item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
@@ -315,7 +312,7 @@ bool FOClient::Init(HWND hwnd)
 	MrFixit.GenerateNames(*MsgGame,*MsgItem); // After Item manager init
 
 	// Hex manager
-	if(!HexMngr.Init(&SprMngr)) return false;
+	if(!HexMngr.Init()) return false;
 	GET_UID3(UID3);
 
 	// Other
@@ -4809,7 +4806,7 @@ void FOClient::Net_OnCritterParam()
 	{
 		TurnBasedTime=Timer::GameTick()+value;
 		TurnBasedCurCritterId=cr->GetId();
-		HexMngr.SetCritterContour(cr->GetId(),Sprite::ContourCustom);
+		HexMngr.SetCritterContour(cr->GetId(),CONTOUR_CUSTOM);
 	}
 }
 
@@ -4987,7 +4984,7 @@ void FOClient::Net_OnChosenParam()
 			ChosenAction.clear();
 			TurnBasedTime=Timer::GameTick()+value;
 			TurnBasedCurCritterId=Chosen->GetId();
-			HexMngr.SetCritterContour(0,Sprite::ContourNone);
+			HexMngr.SetCritterContour(0,0);
 			SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 		}
 		break;
@@ -5568,7 +5565,7 @@ void FOClient::Net_OnGameInfo()
 	HexMngr.SetWeather(time,rain);
 	SetDayTime(true);
 	IsTurnBased=turn_based;
-	if(!IsTurnBased) HexMngr.SetCritterContour(0,Sprite::ContourNone);
+	if(!IsTurnBased) HexMngr.SetCritterContour(0,0);
 	NoLogOut=no_log_out;
 }
 
@@ -6743,7 +6740,7 @@ void FOClient::Net_OnProtoItemData()
 		return;
 	}
 
-	Crypt.SetCache("____item_protos",proto_data,len);
+	Crypt.SetCache("_____item_protos",proto_data,len);
 	delete[] proto_data;
 
 	// Refresh craft names
@@ -8824,9 +8821,9 @@ void FOClient::StopVideo()
 
 DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 {
-	Self->SprMngr.SurfType=res_type;
+	SprMngr.SurfType=res_type;
 	AnyFrames* frm=ResMngr.GetAnim(name_hash,dir);
-	Self->SprMngr.SurfType=RES_NONE;
+	SprMngr.SurfType=RES_NONE;
 	if(!frm) return 0;
 	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
 	if(!ianim) return 0;
@@ -8839,9 +8836,9 @@ DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 
 DWORD FOClient::AnimLoad(const char* fname, int path_type, int res_type)
 {
-	Self->SprMngr.SurfType=res_type;
+	SprMngr.SurfType=res_type;
 	AnyFrames* frm=SprMngr.LoadAnyAnimation(fname,path_type,true,0);
-	Self->SprMngr.SurfType=RES_NONE;
+	SprMngr.SurfType=RES_NONE;
 	if(!frm) return 0;
 	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
 	if(!ianim) return 0;
@@ -9430,7 +9427,7 @@ bool FOClient::SScriptFunc::Crit_GetVisible(CritterCl* cr)
 void FOClient::SScriptFunc::Crit_set_ContourColor(CritterCl* cr, DWORD value)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(cr->SprDrawValid) cr->SprDraw->ContourColor=value;
+	if(cr->SprDrawValid) cr->SprDraw->SetContour(cr->SprDraw->ContourType,value);
 	cr->ContourColor=value;
 }
 
@@ -10138,12 +10135,12 @@ void FOClient::SScriptFunc::Global_WaitPing()
 
 bool FOClient::SScriptFunc::Global_LoadFont(int font_index, CScriptString& font_fname)
 {
-	return Self->SprMngr.LoadFontBMF(font_index,font_fname.c_str());
+	return SprMngr.LoadFontBMF(font_index,font_fname.c_str());
 }
 
 void FOClient::SScriptFunc::Global_SetDefaultFont(int font, DWORD color)
 {
-	Self->SprMngr.SetDefaultFont(font,color);
+	SprMngr.SetDefaultFont(font,color);
 }
 
 void FOClient::SScriptFunc::Global_SetEffect(int effect_type, int effect_subtype, CScriptString* effect_name)
@@ -10151,7 +10148,7 @@ void FOClient::SScriptFunc::Global_SetEffect(int effect_type, int effect_subtype
 	EffectEx* font_effect=NULL;
 	if(effect_name && effect_name->length())
 	{
-		font_effect=Loader3d::LoadEffect(Self->SprMngr.GetDevice(),effect_name->c_str());
+		font_effect=Loader3d::LoadEffect(SprMngr.GetDevice(),effect_name->c_str());
 		if(!font_effect) SCRIPT_ERROR_R("Effect not found.");
 	}
 
@@ -10166,9 +10163,9 @@ void FOClient::SScriptFunc::Global_SetEffect(int effect_type, int effect_subtype
 
 	if(effect_type==EFFECT_2D)
 	{
-		if(effect_subtype&EFFECT_2D_GENERIC) Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_GENERIC,font_effect);
-		if(effect_subtype&EFFECT_2D_TILE) Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_TILE,font_effect);
-		if(effect_subtype&EFFECT_2D_ROOF) Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_ROOF,font_effect);
+		if(effect_subtype&EFFECT_2D_GENERIC) SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_GENERIC,font_effect);
+		if(effect_subtype&EFFECT_2D_TILE) SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_TILE,font_effect);
+		if(effect_subtype&EFFECT_2D_ROOF) SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_ROOF,font_effect);
 	}
 	else if(effect_type==EFFECT_3D)
 	{
@@ -10176,15 +10173,15 @@ void FOClient::SScriptFunc::Global_SetEffect(int effect_type, int effect_subtype
 	}
 	else if(effect_type==EFFECT_INTERFACE)
 	{
-		Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_IFACE,font_effect);
+		SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_IFACE,font_effect);
 	}
 	else if(effect_type==EFFECT_FONT)
 	{
-		Self->SprMngr.SetFontEffect(effect_subtype,font_effect);
+		SprMngr.SetFontEffect(effect_subtype,font_effect);
 	}
 	else if(effect_type==EFFECT_PRIMITIVE)
 	{
-		Self->SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_POINT,font_effect);
+		SprMngr.SetDefaultEffect2D(DEFAULT_EFFECT_POINT,font_effect);
 	}
 
 	if((effect_type==EFFECT_2D || effect_type==EFFECT_3D) && Self->HexMngr.IsMapLoaded()) Self->HexMngr.RefreshMap();
@@ -10285,8 +10282,9 @@ bool FOClient::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 {
 	if(FileManager::LoadDataFile(dat_name.c_str()))
 	{
-		ResMngr.Refresh(NULL);
+		ResMngr.Refresh();
 		FONames::GenerateFoNames(PT_DATA);
+		Self->InitIfaceIni();
 		return true;
 	}
 	return false;
@@ -10363,7 +10361,7 @@ int FOClient::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return 0;
-	SpriteInfo* si=Self->SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Width;
 }
@@ -10372,7 +10370,7 @@ int FOClient::SScriptFunc::Global_GetSpriteHeight(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return 0;
-	SpriteInfo* si=Self->SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Height;
 }
@@ -10388,7 +10386,7 @@ void FOClient::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return;
-	Self->SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
+	SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
 }
 
 void FOClient::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color)
@@ -10396,13 +10394,13 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, i
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return;
-	Self->SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
+	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
 }
 
 void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags)
 {
 	if(!SpritesCanDraw) return;
-	Self->SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
+	SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
 }
 
 void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArray& data)
@@ -10435,7 +10433,7 @@ void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArra
 		//pp.PointOffsY=NULL;
 	}
 
-	Self->SprMngr.DrawPoints(points,prim);
+	SprMngr.DrawPoints(points,prim);
 }
 
 void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy)
@@ -10447,39 +10445,42 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	if(!anim || spr_index>=anim->GetCnt()) return;
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
-	DWORD pos=HEX_POS(hx,hy);
 	bool is_flat=(proto_item?FLAG(proto_item->Flags,ITEM_FLAT):false);
 	bool is_scen=(proto_item?proto_item->IsScen() || proto_item->IsGrid():false);
+	bool is_wall=(proto_item?proto_item->IsWall():false);
 	bool no_light=(is_flat && is_scen);
 
 	Field& f=Self->HexMngr.GetField(hx,hy);
 	Sprites& tree=Self->HexMngr.GetDrawTree();
-	Sprite& spr=tree.InsertSprite(is_flat?DRAW_ORDER_ITEM_FLAT(is_scen):DRAW_ORDER_ITEM(pos),
+	Sprite& spr=tree.InsertSprite(
+		is_flat,is_scen?LAYER_SCENERY:(is_wall?LAYER_WALL:LAYER_ITEM),hx,hy,0,
 		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),
-		NULL,NULL,NULL,NULL,no_light?NULL:Self->HexMngr.GetLightHex(hx,hy),NULL);
+		NULL,NULL,NULL,NULL,NULL);
+	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 
-	if(proto_item) // Copy from void ItemHex::SetEffects(Sprite* prep);
+	if(proto_item)
 	{
-		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
+		if(!is_flat && !proto_item->DisableEgg)
 		{
-			spr.Alpha=((BYTE*)&proto_item->LightColor)+3;
-			spr.Color=proto_item->LightColor&0xFFFFFF;
-		}
-
-		if(is_flat || proto_item->DisableEgg) spr.Egg=Sprite::EggNone;
-		else
-		{
+			int egg_type=0;
 			switch(proto_item->Corner)
 			{
-			case CORNER_SOUTH: spr.Egg=Sprite::EggXorY;
-			case CORNER_NORTH: spr.Egg=Sprite::EggXandY;
+			case CORNER_SOUTH: egg_type=EGG_X_OR_Y; break;
+			case CORNER_NORTH: egg_type=EGG_X_AND_Y; break;
 			case CORNER_EAST_WEST:
-			case CORNER_WEST: spr.Egg=Sprite::EggY;
-			default: spr.Egg=Sprite::EggX; // CORNER_NORTH_SOUTH, CORNER_EAST
+			case CORNER_WEST: egg_type=EGG_Y; break;
+			default: egg_type=EGG_X; break;// CORNER_NORTH_SOUTH, CORNER_EAST
 			}
+			spr.SetEgg(egg_type);
 		}
 
-		if(proto_item->Flags&ITEM_BAD_ITEM) spr.Contour=Sprite::ContourRed;
+		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
+		{
+			spr.SetAlpha(((BYTE*)&proto_item->LightColor)+3);
+			spr.SetColor(proto_item->LightColor&0xFFFFFF);
+		}
+
+		if(FLAG(proto_item->Flags,ITEM_BAD_ITEM)) spr.SetContour(CONTOUR_RED);
 	}
 }
 
@@ -10488,7 +10489,7 @@ void FOClient::SScriptFunc::Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWOR
 	if(CritType::IsEnabled(crtype))
 	{
 		AnyFrames* frm=CritterCl::LoadAnim(crtype,anim1,anim2,dir);
-		if(frm) Self->SprMngr.DrawSpriteSize(frm->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
+		if(frm) SprMngr.DrawSpriteSize(frm->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
 	}
 }
 
@@ -10556,7 +10557,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 			anim->SetScale(sx,sy,sz);
 			anim->SetSpeed(speed);
 			anim->SetAnimation(anim1,anim2,DrawCritter3dLayers,0);
-			Self->SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
+			SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
 		}
 	}
 }

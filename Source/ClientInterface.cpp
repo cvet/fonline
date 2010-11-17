@@ -896,7 +896,7 @@ int FOClient::InitIface()
 
 	// Hex field sprites
 	SprMngr.SurfType=RES_IFACE;
-	if(!HexMngr.ReloadSprites(&SprMngr))
+	if(!HexMngr.ReloadSprites())
 	{
 		WriteLog(__FUNCTION__" - Unable to reload hex field sprites.\n");
 		SprMngr.SurfType=RES_NONE;
@@ -1937,8 +1937,8 @@ void FOClient::ConsoleDraw()
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
 			SprMngr.DrawStr(INTRECT(450,5,650,300),Str::Format(
-				"Anim info: cur_id %d, cur_ox %d, cur_oy %d",
-				Chosen->SprId,Chosen->SprOx,Chosen->SprOy
+				"Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
+				Chosen->SprId,Chosen->SprOx,Chosen->SprOy,HexMngr.GetField(TargetX,TargetY).ScrX,HexMngr.GetField(TargetX,TargetY).ScrY
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
 			SprMngr.DrawStr(INTRECT(650,5,800,300),Str::Format(
@@ -3840,13 +3840,12 @@ void FOClient::LMenuStayOff()
 	if(TargetSmth.IsItem())
 	{
 		ItemHex* item=GetItem(TargetSmth.GetId());
-		if(item && item->IsDrawContour() && item->SprDrawValid) item->SprDraw->Contour=Sprite::ContourNone;
+		if(item && item->IsDrawContour() && item->SprDrawValid) item->SprDraw->SetContour(0);
 	}
 	if(TargetSmth.IsCritter())
 	{
 		CritterCl* cr=GetCritter(TargetSmth.GetId());
-		if(cr && cr->SprDrawValid && cr->SprDraw->Contour==Sprite::ContourYellow)
-			cr->SprDraw->Contour=Sprite::ContourNone;
+		if(cr && cr->SprDrawValid && cr->SprDraw->ContourType==CONTOUR_YELLOW) cr->SprDraw->SetContour(0);
 	}
 	TargetSmth.Clear();
 	LMenuCurNodes=NULL;
@@ -3922,12 +3921,12 @@ void FOClient::LMenuTryCreate()
 		if(TargetSmth.IsItem())
 		{
 			ItemHex* item=GetItem(TargetSmth.GetId());
-			if(item && item->IsDrawContour() && item->SprDrawValid) item->SprDraw->Contour=Sprite::ContourYellow;
+			if(item && item->IsDrawContour() && item->SprDrawValid) item->SprDraw->SetContour(CONTOUR_YELLOW);
 		}
 		if(TargetSmth.IsCritter())
 		{
 			CritterCl* cr=GetCritter(TargetSmth.GetId());
-			if(cr && cr->IsDead() && cr->SprDrawValid) cr->SprDraw->Contour=Sprite::ContourYellow;
+			if(cr && cr->IsDead() && cr->SprDrawValid) cr->SprDraw->SetContour(CONTOUR_YELLOW);
 		}
 	}
 	// Show LMenu
@@ -4971,11 +4970,14 @@ void FOClient::SetCurMode(int new_cur)
 	LMenuSet(LMENU_OFF);
 
 	if(CurMode==CUR_USE_WEAPON && IsMainScreen(SCREEN_GAME) && Chosen && Chosen->ItemSlotMain->IsWeapon())
-		HexMngr.SetCrittersContour(Sprite::ContourCustom);
+		HexMngr.SetCrittersContour(CONTOUR_CUSTOM);
 	else if(CurModeLast==CUR_USE_WEAPON)
-		HexMngr.SetCrittersContour(Sprite::ContourNone);
-	if(CurMode==CUR_MOVE) HexMngr.SetCursorVisible(true);
-	else if(CurModeLast==CUR_MOVE) HexMngr.SetCursorVisible(false);
+		HexMngr.SetCrittersContour(0);
+
+	if(CurMode==CUR_MOVE)
+		HexMngr.SetCursorVisible(true);
+	else if(CurModeLast==CUR_MOVE)
+		HexMngr.SetCursorVisible(false);
 }
 
 void FOClient::SetCurCastling(int cur1, int cur2)
@@ -7346,12 +7348,12 @@ void FOClient::TViewLMouseUp()
 		if(!TViewShowCountours)
 		{
 			// Show contours
-			HexMngr.SetCrittersContour(Sprite::ContourCustom);
+			HexMngr.SetCrittersContour(CONTOUR_CUSTOM);
 		}
 		else
 		{
 			// Hide contours
-			HexMngr.SetCrittersContour(Sprite::ContourNone);
+			HexMngr.SetCrittersContour(0);
 		}
 		TViewShowCountours=!TViewShowCountours;
 	}

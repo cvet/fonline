@@ -541,6 +541,9 @@ struct GameOptions
 	int ClientPathRefCounter;
 	string ServerPath;
 	int ServerPathRefCounter;
+	bool ShowCorners;
+	bool ShowSpriteCuts;
+	bool ShowDrawOrder;
 
 	// Engine data
 	void (*CritterChangeParameter)(void*,DWORD);

@@ -1420,6 +1420,7 @@
 	if(engine->RegisterObjectProperty("MapperObject","uint16 Scenery_ToMapX",offsetof(MapObject,MScenery.ToMapX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint16 Scenery_ToMapY",offsetof(MapObject,MScenery.ToMapY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_ToDir",offsetof(MapObject,MScenery.ToDir))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_SpriteCut",offsetof(MapObject,MScenery.SpriteCut))<0) BIND_ERROR;
 
 	// MapperMap
 	if(engine->RegisterObjectMethod("MapperMap","MapperObject@+ AddObject(uint16 hexX, uint16 hexY, int mapObjType, uint16 pid)",asFUNCTION(BIND_CLASS MapperMap_AddObject),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -1459,6 +1460,10 @@
 
 	if(engine->RegisterGlobalProperty("string __ClientPath",&GameOpt.ClientPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __ServerPath",&GameOpt.ServerPath)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __ShowCorners",&GameOpt.ShowCorners)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __ShowSpriteCuts",&GameOpt.ShowSpriteCuts)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __ShowDrawOrder",&GameOpt.ShowDrawOrder)) BIND_ERROR;
+
 #endif
 
 #if /*defined(BIND_CLIENT) || */defined(BIND_MAPPER)

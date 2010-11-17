@@ -8,7 +8,6 @@
 #include "Script.h"
 #endif
 
-SpriteManager* CritterCl::SprMngr=NULL;
 AnimMap CritterCl::crAnim;
 AnyFrames* CritterCl::DefaultAnim=NULL;
 int CritterCl::ParamsChangeScript[MAX_PARAMS]={0};
@@ -64,7 +63,7 @@ void CritterCl::Init()
 {
 	textOnHeadColor=COLOR_CRITTER_NAME;
 	AnimateStay();
-	SpriteInfo* si=SprMngr->GetSpriteInfo(SprId);
+	SpriteInfo* si=SprMngr.GetSpriteInfo(SprId);
 	if(si) textRect(0,0,si->Width,si->Height);
 	SetFade(true);
 }
@@ -611,14 +610,14 @@ void CritterCl::DrawStay(INTRECT r)
 		if(frm)
 		{
 			DWORD spr_id=(IsLife()?frm->Ind[0]:frm->Ind[frm->CntFrm-1]);
-			SprMngr->DrawSpriteSize(spr_id,r.L,r.T,r.W(),r.H(),false,true);
+			SprMngr.DrawSpriteSize(spr_id,r.L,r.T,r.W(),r.H(),false,true);
 		}
 	}
 	else if(Anim3dStay)
 	{
 		Anim3dStay->SetDir(dir);
-		Anim3dStay->SetAnimation(anim1,anim2,GetLayers3dData(),IsLife()?0:ANIMATION_STAY|ANIMATION_LAST_FRAME);
-		SprMngr->Draw3dSize(FLTRECT(r.L,r.T,r.R,r.B),false,true,Anim3dStay,&FLTRECT(r.L,r.T,r.R,r.B),COLOR_IFACE);
+		Anim3dStay->SetAnimation(anim1,anim2,GetLayers3dData(),IsLife()?0:ANIMATION_STAY|ANIMATION_LAST_FRAME|ANIMATION_NO_SMOOTH);
+		SprMngr.Draw3dSize(FLTRECT(r.L,r.T,r.R,r.B),false,true,Anim3dStay,&FLTRECT(r.L,r.T,r.R,r.B),COLOR_IFACE);
 	}
 }
 
@@ -1162,11 +1161,11 @@ bool CritterCl::LoadAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
 		if(!LoadAnimSpr(crtype,a1,a2,dir)) break;\
 		AnyFrames* stay_frm=GetAnimSpr(crtype,a1,a2,dir);\
 		AnyFrames* frm=frames;\
-		SpriteInfo* stay_si=SprMngr->GetSpriteInfo(stay_frm->Ind[0]);\
+		SpriteInfo* stay_si=SprMngr.GetSpriteInfo(stay_frm->Ind[0]);\
 		if(!stay_si) break;\
 		for(int i=0;i<frm->CntFrm;i++)\
 		{\
-			SpriteInfo* si=SprMngr->GetSpriteInfo(frm->Ind[i]);\
+			SpriteInfo* si=SprMngr.GetSpriteInfo(frm->Ind[i]);\
 			if(!si) continue;\
 			si->OffsX+=stay_si->OffsX;\
 			si->OffsY+=stay_si->OffsY;\
@@ -1177,7 +1176,7 @@ bool CritterCl::LoadAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
 		if(!LoadAnimSpr(crtype,a1,a2,dir)) break;\
 		AnyFrames* stay_frm=GetAnimSpr(crtype,a1,a2,dir);\
 		AnyFrames* frm=frames;\
-		SpriteInfo* stay_si=SprMngr->GetSpriteInfo(stay_frm->Ind[0]);\
+		SpriteInfo* stay_si=SprMngr.GetSpriteInfo(stay_frm->Ind[0]);\
 		if(!stay_si) break;\
 		short ox=0;\
 		short oy=0;\
@@ -1188,7 +1187,7 @@ bool CritterCl::LoadAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
 		}\
 		for(int i=0;i<frm->CntFrm;i++)\
 		{\
-			SpriteInfo* si=SprMngr->GetSpriteInfo(frm->Ind[i]);\
+			SpriteInfo* si=SprMngr.GetSpriteInfo(frm->Ind[i]);\
 			if(!si) continue;\
 			si->OffsX+=ox;\
 			si->OffsY+=oy;\
@@ -1524,10 +1523,10 @@ void CritterCl::SetBaseType(DWORD type)
 	BaseTypeAlias=CritType::GetAlias(type);
 
 	// Check 3d aviability
-	Anim3d=SprMngr->Load3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+	Anim3d=SprMngr.Load3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 	if(Anim3d)
 	{
-		Anim3dStay=SprMngr->Load3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+		Anim3dStay=SprMngr.Load3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 
 		Anim3d->SetDir(CrDir);
 		SprId=Anim3d->GetSprId();
@@ -1675,11 +1674,11 @@ void CritterCl::SetOffs(short set_ox, short set_oy, bool move_text)
 	{
 		if(!Anim3d)
 		{
-			SprMngr->GetDrawCntrRect(SprDraw,&DRect);
+			SprMngr.GetDrawCntrRect(SprDraw,&DRect);
 			if(move_text) textRect=DRect;
 		}
 		if(Anim3d) Anim3d->SetDrawPos(SprDraw->ScrX+SprOx+GameOpt.ScrOx,SprDraw->ScrY+SprOy+GameOpt.ScrOy);
-		if(IsChosen()) SprMngr->SetEgg(HexX,HexY,SprDraw);
+		if(IsChosen()) SprMngr.SetEgg(HexX,HexY,SprDraw);
 	}
 }
 
@@ -1690,7 +1689,7 @@ void CritterCl::SetSprRect()
 		if(!Anim3d)
 		{
 			INTRECT old=DRect;
-			SprMngr->GetDrawCntrRect(SprDraw,&DRect);
+			SprMngr.GetDrawCntrRect(SprDraw,&DRect);
 			textRect.L+=DRect.L-old.L;
 			textRect.R+=DRect.L-old.L;
 			textRect.T+=DRect.T-old.T;
@@ -1700,7 +1699,7 @@ void CritterCl::SetSprRect()
 		{
 			Anim3d->SetDrawPos(SprDraw->ScrX+SprOx+GameOpt.ScrOx,SprDraw->ScrY+SprOy+GameOpt.ScrOy);
 		}
-		if(IsChosen()) SprMngr->SetEgg(HexX,HexY,SprDraw);
+		if(IsChosen()) SprMngr.SetEgg(HexX,HexY,SprDraw);
 	}
 }
 
@@ -1710,7 +1709,7 @@ INTRECT CritterCl::GetTextRect()
 	{
 		if(Anim3d)
 		{
-			SprMngr->GetDrawCntrRect(SprDraw,&textRect);
+			SprMngr.GetDrawCntrRect(SprDraw,&textRect);
 			textRect(-GameOpt.ScrOx,-GameOpt.ScrOy-3);
 		}
 		return textRect;
@@ -1820,11 +1819,11 @@ void CritterCl::DrawTextOnHead()
 		if(fadingEnable)
 		{
 			DWORD alpha=GetFadeAlpha();
-			SprMngr->DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,(alpha<<24)|(color&0xFFFFFF));
+			SprMngr.DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,(alpha<<24)|(color&0xFFFFFF));
 		}
 		else if(!IsFinishing())
 		{
-			SprMngr->DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
+			SprMngr.DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
 		}
 	}
 

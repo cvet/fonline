@@ -2785,11 +2785,6 @@ void FOServer::Process_Command(Client* cl)
 			else
 			{
 				*var=value;
-				if(var->IsQuest())
-				{
-					Critter* cr=CrMngr.GetCritter(master_id,false);
-					if(cr) cr->Send_Quest(var->GetQuestStr());
-				}
 				cl->Send_Text(cl,"Var changed.",SAY_NETMSG);
 			}
 		}
@@ -3308,7 +3303,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);
 	STATIC_ASSERT(sizeof(GameVar)==28);
-	STATIC_ASSERT(sizeof(ProtoItem)==180);
+	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
 	STATIC_ASSERT(sizeof(GameOptions)==1088);

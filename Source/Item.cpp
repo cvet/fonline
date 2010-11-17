@@ -8,10 +8,6 @@
 #include "AI.h"
 #endif
 
-#ifdef FONLINE_CLIENT
-#include "ItemHex.h"
-#endif
-
 const char* ItemEventFuncName[ITEM_EVENT_MAX]=
 {
 	{"void %s(Item&,bool)"}, // ITEM_EVENT_FINISH
@@ -43,19 +39,6 @@ char Item::ItemData::SendMask[ITEM_DATA_MASK_MAX][92]=
 /************************************************************************/
 /* Item                                                                 */
 /************************************************************************/
-
-void Item::Release()
-{
-	if(--RefCounter<=0)
-	{
-#ifdef FONLINE_CLIENT
-		if(Accessory==ITEM_ACCESSORY_HEX) delete (ItemHex*)this;
-		else delete this;
-#else
-		delete this;
-#endif
-	}
-}
 
 void Item::Init(ProtoItem* proto)
 {

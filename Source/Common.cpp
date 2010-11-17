@@ -1037,6 +1037,9 @@ GameOptions::GameOptions()
 	ClientPathRefCounter=1;
 	ServerPath=".\\";
 	ServerPathRefCounter=1;
+	ShowCorners=false;
+	ShowSpriteCuts=false;
+	ShowDrawOrder=false;
 
 	// Engine functions
 	CritterChangeParameter=NULL;

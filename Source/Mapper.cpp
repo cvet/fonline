@@ -81,9 +81,6 @@ bool FOMapper::Init(HWND wnd)
 		SprMngr.SetFontEffect(FONT_BIG,font_effect);
 	}
 
-	// Critters sprite manager ptr
-	CritterCl::SprMngr=&SprMngr;
-
 	// Names
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 	FONames::GenerateFoNames(PT_SERVER_DATA);
@@ -93,7 +90,7 @@ bool FOMapper::Init(HWND wnd)
 	if(!InitDI()) return false;
 
 	// Resource manager
-	ResMngr.Refresh(&SprMngr);
+	ResMngr.Refresh();
 
 	if(SprMngr.BeginScene(D3DCOLOR_XRGB(100,100,100))) SprMngr.EndScene();
 
@@ -175,8 +172,8 @@ bool FOMapper::Init(HWND wnd)
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 
 	// Hex manager
-	if(!HexMngr.Init(&SprMngr)) return false;
-	if(!HexMngr.ReloadSprites(NULL)) return false;
+	if(!HexMngr.Init()) return false;
+	if(!HexMngr.ReloadSprites()) return false;
 	HexMngr.SwitchShowTrack();
 	DayTime=432720;
 	ChangeGameTime();
@@ -217,7 +214,7 @@ bool FOMapper::Init(HWND wnd)
 	InitScriptSystem();
 
 	// Refresh resources after start script executed
-	ResMngr.Refresh(NULL);
+	ResMngr.Refresh();
 	RefreshTiles();
 	IsMapperStarted=true;
 
@@ -543,9 +540,9 @@ void FOMapper::ChangeGameTime()
 
 DWORD FOMapper::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 {
-	Self->SprMngr.SurfType=res_type;
+	SprMngr.SurfType=res_type;
 	AnyFrames* frm=ResMngr.GetAnim(name_hash,dir);
-	Self->SprMngr.SurfType=RES_NONE;
+	SprMngr.SurfType=RES_NONE;
 	if(!frm) return 0;
 	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
 	if(!ianim) return 0;
@@ -558,9 +555,9 @@ DWORD FOMapper::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 
 DWORD FOMapper::AnimLoad(const char* fname, int path_type, int res_type)
 {
-	Self->SprMngr.SurfType=res_type;
+	SprMngr.SurfType=res_type;
 	AnyFrames* frm=SprMngr.LoadAnyAnimation(fname,path_type,true,0);
-	Self->SprMngr.SurfType=RES_NONE;
+	SprMngr.SurfType=RES_NONE;
 	if(!frm) return 0;
 	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
 	if(!ianim) return 0;
@@ -776,6 +773,9 @@ label_TryChangeLang:
 			case DIK_A: SelectAll(); break;
 			case DIK_S: GameOpt.ScrollCheck=!GameOpt.ScrollCheck; break;
 			case DIK_B: HexMngr.MarkPassedHexes(); break;
+			case DIK_Q: GameOpt.ShowCorners=!GameOpt.ShowCorners; break;
+			case DIK_W: GameOpt.ShowSpriteCuts=!GameOpt.ShowSpriteCuts; break;
+			case DIK_E: GameOpt.ShowDrawOrder=!GameOpt.ShowDrawOrder; break;
 			case DIK_M: DrawCrExtInfo++; if(DrawCrExtInfo>DRAW_CR_INFO_MAX) DrawCrExtInfo=0; break;
 			case DIK_L: SaveLogFile(); break;
 			default: break;
@@ -1317,22 +1317,8 @@ bool StringCompare(const string &left, const string &right)
 
 void FOMapper::RefreshTiles()
 {
-	StrVec formats;
-	formats.push_back("frm");
-	formats.push_back("fofrm");
-	formats.push_back("bmp");
-	formats.push_back("dds");
-	formats.push_back("dib");
-	formats.push_back("hdr");
-	formats.push_back("jpg");
-	formats.push_back("jpeg");
-	formats.push_back("pfm");
-	formats.push_back("png");
-	formats.push_back("ppm");
-	formats.push_back("tga");
-	formats.push_back("x");
-	formats.push_back("3ds");
-	formats.push_back("fo3d");
+	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg","jpeg","pfm","png","tga","x","3ds","fo3d"};
+	size_t formats_count=sizeof(formats)/sizeof(formats[0]);
 
 	StrVec tiles;
 	FileManager::GetFolderFileNames(PT_ART_TILES,NULL,tiles);
@@ -1347,7 +1333,19 @@ void FOMapper::RefreshTiles()
 	{
 		const string& str=*it;
 		const char* ext=FileManager::GetExtension(str.c_str());
-		if(ext && std::find(formats.begin(),formats.end(),ext)!=formats.end())
+		if(!ext) continue;
+
+		bool format_aviable=false;
+		for(size_t i=0;i<formats_count;i++)
+		{
+			if(!_stricmp(formats[i],ext))
+			{
+				format_aviable=true;
+				break;
+			}
+		}
+
+		if(format_aviable)
 		{
 			DWORD hash=Str::GetHash(str.c_str());
 			if(std::find(TilesPictures.begin(),TilesPictures.end(),hash)==TilesPictures.end())
@@ -1647,12 +1645,13 @@ void FOMapper::ObjDraw()
 	DRAW_COMPONENT("LightColor",o->LightColor,true,false);                              // 11
 	DRAW_COMPONENT("LightDirOff",o->LightDirOff,true,false);                            // 12
 	DRAW_COMPONENT("LightDay",o->LightDay,true,false);                                  // 13
+	y+=step;                                                                            // 14
 
 	if(o->MapObjType==MAP_OBJECT_CRITTER)
 	{
-		DRAW_COMPONENT("Cond",o->MCritter.Cond,true,false);                             // 14
-		DRAW_COMPONENT("CondExt",o->MCritter.CondExt,true,false);                       // 15
-		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)                                        // 16..30
+		DRAW_COMPONENT("Cond",o->MCritter.Cond,true,false);                             // 15
+		DRAW_COMPONENT("CondExt",o->MCritter.CondExt,true,false);                       // 16
+		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)                                        // 17..31
 		{
 			if(o->MCritter.ParamIndex[i]>=0 && o->MCritter.ParamIndex[i]<MAX_PARAMS)
 			{
@@ -1663,61 +1662,62 @@ void FOMapper::ObjDraw()
 	}
 	else if(o->MapObjType==MAP_OBJECT_ITEM || o->MapObjType==MAP_OBJECT_SCENERY)
 	{
-		DRAW_COMPONENT("OffsetX",o->MItem.OffsetX,false,false);                          // 14
-		DRAW_COMPONENT("OffsetY",o->MItem.OffsetY,false,false);                          // 15
-		DRAW_COMPONENT("AnimStayBegin",o->MItem.AnimStayBegin,true,false);               // 16
-		DRAW_COMPONENT("AnimStayEnd",o->MItem.AnimStayEnd,true,false);                   // 17
-		DRAW_COMPONENT("AnimWaitTime",o->MItem.AnimWait,true,false);                     // 18
-		DRAW_COMPONENT_TEXT("PicMap",o->RunTime.PicMapName,false);                       // 19
-		DRAW_COMPONENT_TEXT("PicInv",o->RunTime.PicInvName,false);                       // 20
-		DRAW_COMPONENT("InfoOffset",o->MItem.InfoOffset,true,false);                     // 21
+		DRAW_COMPONENT("OffsetX",o->MItem.OffsetX,false,false);                          // 15
+		DRAW_COMPONENT("OffsetY",o->MItem.OffsetY,false,false);                          // 16
+		DRAW_COMPONENT("AnimStayBegin",o->MItem.AnimStayBegin,true,false);               // 17
+		DRAW_COMPONENT("AnimStayEnd",o->MItem.AnimStayEnd,true,false);                   // 18
+		DRAW_COMPONENT("AnimWaitTime",o->MItem.AnimWait,true,false);                     // 19
+		DRAW_COMPONENT_TEXT("PicMap",o->RunTime.PicMapName,false);                       // 20
+		DRAW_COMPONENT_TEXT("PicInv",o->RunTime.PicInvName,false);                       // 21
+		DRAW_COMPONENT("InfoOffset",o->MItem.InfoOffset,true,false);                     // 22
+		y+=step;                                                                         // 23
 
 		if(o->MapObjType==MAP_OBJECT_ITEM)
 		{
-			DRAW_COMPONENT("TrapValue",o->MItem.TrapValue,false,false);                      // 22
-			DRAW_COMPONENT("Value0",o->MItem.Val[0],false,false);                            // 23
-			DRAW_COMPONENT("Value1",o->MItem.Val[1],false,false);                            // 24
-			DRAW_COMPONENT("Value2",o->MItem.Val[2],false,false);                            // 25
-			DRAW_COMPONENT("Value3",o->MItem.Val[3],false,false);                            // 26
-			DRAW_COMPONENT("Value4",o->MItem.Val[4],false,false);                            // 27
+			DRAW_COMPONENT("TrapValue",o->MItem.TrapValue,false,false);                      // 24
+			DRAW_COMPONENT("Value0",o->MItem.Val[0],false,false);                            // 25
+			DRAW_COMPONENT("Value1",o->MItem.Val[1],false,false);                            // 26
+			DRAW_COMPONENT("Value2",o->MItem.Val[2],false,false);                            // 27
+			DRAW_COMPONENT("Value3",o->MItem.Val[3],false,false);                            // 28
+			DRAW_COMPONENT("Value4",o->MItem.Val[4],false,false);                            // 29
 
 			switch(proto->GetType())
 			{
 			case ITEM_TYPE_ARMOR:
-				DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false);     // 28
-				DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false);     // 29
-				DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false);     // 30
+				DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false);     // 30
+				DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false);     // 31
+				DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false);     // 32
 				break;
 			case ITEM_TYPE_WEAPON:
 				if(proto->WeapIsGrouped())
 				{
-					DRAW_COMPONENT("Count",o->MItem.Count,true,false);                       // 28
+					DRAW_COMPONENT("Count",o->MItem.Count,true,false);                       // 30
 				}
 				else if(proto->WeapIsWeared())
 				{
-					DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false); // 28
-					DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false); // 29
-					DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false); // 30
+					DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false); // 30
+					DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false); // 31
+					DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false); // 32
 					if(proto->Weapon.VolHolder)
 					{
-						DRAW_COMPONENT("AmmoPid",o->MItem.AmmoPid,true,false);               // 31
-						DRAW_COMPONENT("AmmoCount",o->MItem.AmmoCount,true,false);           // 32
+						DRAW_COMPONENT("AmmoPid",o->MItem.AmmoPid,true,false);               // 33
+						DRAW_COMPONENT("AmmoCount",o->MItem.AmmoCount,true,false);           // 34
 					}
 				}
 				break;
 			case ITEM_TYPE_DRUG:
 			case ITEM_TYPE_AMMO:
 			case ITEM_TYPE_MISC:
-				DRAW_COMPONENT("Count",o->MItem.Count,true,false);                           // 28
+				DRAW_COMPONENT("Count",o->MItem.Count,true,false);                           // 30
 				break;
 			case ITEM_TYPE_KEY:
-				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 28
+				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 30
 				break;
 			case ITEM_TYPE_CONTAINER:
 			case ITEM_TYPE_DOOR:
-				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 28
-				DRAW_COMPONENT("LockerCondition",o->MItem.LockerCondition,true,false);       // 29
-				DRAW_COMPONENT("LockerComplexity",o->MItem.LockerComplexity,true,false);     // 30
+				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 30
+				DRAW_COMPONENT("LockerCondition",o->MItem.LockerCondition,true,false);       // 31
+				DRAW_COMPONENT("LockerComplexity",o->MItem.LockerComplexity,true,false);     // 32
 				break;
 			default:
 				break;
@@ -1725,33 +1725,35 @@ void FOMapper::ObjDraw()
 		}
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
+			DRAW_COMPONENT("SpriteCut",o->MScenery.SpriteCut,false,false);                   // 24
+
 			if(proto->GetType()==ITEM_TYPE_GRID)
 			{
-				DRAW_COMPONENT("ToMapPid",o->MScenery.ToMapPid,true,false);                  // 22
+				DRAW_COMPONENT("ToMapPid",o->MScenery.ToMapPid,true,false);                  // 25
 				if(o->ProtoId==SP_GRID_ENTIRE)
-					DRAW_COMPONENT("EntireNumber",o->MScenery.ToEntire,true,false);          // 23
+					DRAW_COMPONENT("EntireNumber",o->MScenery.ToEntire,true,false);          // 26
 				else
-					DRAW_COMPONENT("ToEntire",o->MScenery.ToEntire,true,false);              // 23
-				DRAW_COMPONENT("ToMapX",o->MScenery.ToMapX,true,false);                      // 24
-				DRAW_COMPONENT("ToMapY",o->MScenery.ToMapY,true,false);                      // 25
-				DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 26
+					DRAW_COMPONENT("ToEntire",o->MScenery.ToEntire,true,false);              // 26
+				DRAW_COMPONENT("ToMapX",o->MScenery.ToMapX,true,false);                      // 27
+				DRAW_COMPONENT("ToMapY",o->MScenery.ToMapY,true,false);                      // 28
+				DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 29
 			}
 			else if(proto->GetType()==ITEM_TYPE_GENERIC)
 			{
-				DRAW_COMPONENT("ParamsCount",o->MScenery.ParamsCount,true,false);            // 22
-				DRAW_COMPONENT("Parameter0",o->MScenery.Param[0],false,false);               // 23
-				DRAW_COMPONENT("Parameter1",o->MScenery.Param[1],false,false);               // 24
-				DRAW_COMPONENT("Parameter2",o->MScenery.Param[2],false,false);               // 25
-				DRAW_COMPONENT("Parameter3",o->MScenery.Param[3],false,false);               // 26
-				DRAW_COMPONENT("Parameter4",o->MScenery.Param[4],false,false);               // 27
+				DRAW_COMPONENT("ParamsCount",o->MScenery.ParamsCount,true,false);            // 25
+				DRAW_COMPONENT("Parameter0",o->MScenery.Param[0],false,false);               // 26
+				DRAW_COMPONENT("Parameter1",o->MScenery.Param[1],false,false);               // 27
+				DRAW_COMPONENT("Parameter2",o->MScenery.Param[2],false,false);               // 28
+				DRAW_COMPONENT("Parameter3",o->MScenery.Param[3],false,false);               // 29
+				DRAW_COMPONENT("Parameter4",o->MScenery.Param[4],false,false);               // 30
 				if(o->ProtoId==SP_SCEN_TRIGGER)
 				{
-					DRAW_COMPONENT("TriggerNum",o->MScenery.TriggerNum,true,false);          // 28
+					DRAW_COMPONENT("TriggerNum",o->MScenery.TriggerNum,true,false);          // 31
 				}
 				else
 				{
-					DRAW_COMPONENT("CanUse",o->MScenery.CanUse,true,false);                  // 28
-					DRAW_COMPONENT("CanTalk",o->MScenery.CanTalk,true,false);                // 29
+					DRAW_COMPONENT("CanUse",o->MScenery.CanUse,true,false);                  // 31
+					DRAW_COMPONENT("CanTalk",o->MScenery.CanTalk,true,false);                // 32
 				}
 			}
 		}
@@ -1829,28 +1831,29 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 	case 11: val_dw=&o->LightColor; break;
 	case 12: val_b=&o->LightDirOff; break;
 	case 13: val_b=&o->LightDay; break;
+	case 14: break;
 
-	case 14:
+	case 15:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) val_b=&o->MCritter.Cond;
 		else val_s=&o->MItem.OffsetX;
 		break;
-	case 15:
+	case 16:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) val_b=&o->MCritter.CondExt;
 		else val_s=&o->MItem.OffsetY;
 		break;
-	case 16:
+	case 17:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
 		else val_b=&o->MItem.AnimStayBegin;
 		break;
-	case 17:
+	case 18:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
 		else val_b=&o->MItem.AnimStayEnd;
 		break;
-	case 18:
+	case 19:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
 		else val_w=&o->MItem.AnimWait;
 		break;
-	case 19:
+	case 20:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
 		else
 		{
@@ -1858,7 +1861,7 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 			return;
 		}
 		break;
-	case 20:
+	case 21:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
 		else
 		{
@@ -1866,56 +1869,58 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 			return;
 		}
 		break;
-	case 21:
+	case 22:
 		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
 		else val_b=&o->MItem.InfoOffset;
 		break;
+	case 23:
+		break;
 
-	case 22:
+	case 24:
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_s=&o->MItem.TrapValue;
+		else if(o->MapObjType==MAP_OBJECT_SCENERY) val_b=&o->MScenery.SpriteCut;
+		break;
+	case 25:
+		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[0];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			if(proto->GetType()==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapPid;
 			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_b=&o->MScenery.ParamsCount;
 		}
 		break;
-	case 23:
-		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[0];
+	case 26:
+		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[1];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			if(proto->GetType()==ITEM_TYPE_GRID) val_dw=&o->MScenery.ToEntire;
 			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[0];
 		}
 		break;
-	case 24:
-		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[1];
+	case 27:
+		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[2];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			if(proto->GetType()==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapX;
 			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[1];
 		}
 		break;
-	case 25:
-		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[2];
+	case 28:
+		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[3];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			if(proto->GetType()==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapY;
 			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[2];
 		}
 		break;
-	case 26:
-		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[3];
+	case 29:
+		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[4];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			if(proto->GetType()==ITEM_TYPE_GRID) val_b=&o->MScenery.ToDir;
 			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[3];
 		}
 		break;
-	case 27:
-		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[4];
-		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[4];
-		break;
-	case 28:
+	case 30:
 		if(o->MapObjType==MAP_OBJECT_ITEM)
 		{
 			switch(proto->GetType())
@@ -1934,13 +1939,9 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 			default: break;
 			}
 		}
-		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC)
-		{
-			if(o->ProtoId==SP_SCEN_TRIGGER) val_dw=&o->MScenery.TriggerNum;
-			else val_bool=&o->MScenery.CanUse;
-		}
+		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[4];
 		break;
-	case 29:
+	case 31:
 		if(o->MapObjType==MAP_OBJECT_ITEM)
 		{
 			switch(proto->GetType())
@@ -1952,9 +1953,13 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 			default: break;
 			}
 		}
-		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC && o->ProtoId!=SP_SCEN_TRIGGER) val_bool=&o->MScenery.CanTalk;
+		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC)
+		{
+			if(o->ProtoId==SP_SCEN_TRIGGER) val_dw=&o->MScenery.TriggerNum;
+			else val_bool=&o->MScenery.CanUse;
+		}
 		break;
-	case 30:
+	case 32:
 		if(o->MapObjType==MAP_OBJECT_ITEM)
 		{
 			switch(proto->GetType())
@@ -1966,11 +1971,12 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 			default: break;
 			}
 		}
+		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC && o->ProtoId!=SP_SCEN_TRIGGER) val_bool=&o->MScenery.CanTalk;
 		break;
-	case 31:
+	case 33:
 		if(o->MapObjType==MAP_OBJECT_ITEM && proto->GetType()==ITEM_TYPE_WEAPON && proto->WeapIsWeared() && proto->Weapon.VolHolder) val_w=&o->MItem.AmmoPid;
 		break;
-	case 32:
+	case 34:
 		if(o->MapObjType==MAP_OBJECT_ITEM && proto->GetType()==ITEM_TYPE_WEAPON && proto->WeapIsWeared() && proto->Weapon.VolHolder) val_dw=&o->MItem.AmmoCount;
 		break;
 	default:
@@ -4925,7 +4931,7 @@ bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 		// Reload resource manager
 		if(Self->IsMapperStarted)
 		{
-			ResMngr.Refresh(NULL);
+			ResMngr.Refresh();
 			Self->RefreshTiles();
 		}
 		return true;
@@ -4948,7 +4954,7 @@ int FOMapper::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return 0;
-	SpriteInfo* si=Self->SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Width;
 }
@@ -4957,7 +4963,7 @@ int FOMapper::SScriptFunc::Global_GetSpriteHeight(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return 0;
-	SpriteInfo* si=Self->SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Height;
 }
@@ -4973,7 +4979,7 @@ void FOMapper::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return;
-	Self->SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
+	SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
 }
 
 void FOMapper::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color)
@@ -4981,13 +4987,13 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, i
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return;
-	Self->SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
+	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
 }
 
 void FOMapper::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags)
 {
 	if(!SpritesCanDraw) return;
-	Self->SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
+	SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
 }
 
 void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArray& data)
@@ -5020,7 +5026,7 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArra
 		//pp.PointOffsY=NULL;
 	}
 
-	Self->SprMngr.DrawPoints(points,prim);
+	SprMngr.DrawPoints(points,prim);
 }
 
 void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy)
@@ -5032,39 +5038,42 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	if(!anim || spr_index>=anim->GetCnt()) return;
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
-	DWORD pos=HEX_POS(hx,hy);
 	bool is_flat=(proto_item?FLAG(proto_item->Flags,ITEM_FLAT):false);
-	bool is_scen=(proto_item?proto_item->IsScen():false);
+	bool is_scen=(proto_item?proto_item->IsScen() || proto_item->IsGrid():false);
+	bool is_wall=(proto_item?proto_item->IsWall():false);
 	bool no_light=(is_flat && is_scen);
 
 	Field& f=Self->HexMngr.GetField(hx,hy);
 	Sprites& tree=Self->HexMngr.GetDrawTree();
-	Sprite& spr=tree.InsertSprite(is_flat?DRAW_ORDER_ITEM_FLAT(is_scen):DRAW_ORDER_ITEM(pos),
+	Sprite& spr=tree.InsertSprite(
+		is_flat,is_scen?LAYER_SCENERY:(is_wall?LAYER_WALL:LAYER_ITEM),hx,hy,0,
 		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),
-		NULL,NULL,NULL,NULL,no_light?NULL:Self->HexMngr.GetLightHex(hx,hy),NULL);
+		NULL,NULL,NULL,NULL,NULL);
+	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 
-	if(proto_item) // Copy from void ItemHex::SetEffects(Sprite* prep);
+	if(proto_item)
 	{
-		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
+		if(!is_flat && !proto_item->DisableEgg)
 		{
-			spr.Alpha=((BYTE*)&proto_item->LightColor)+3;
-			spr.Color=proto_item->LightColor&0xFFFFFF;
-		}
-
-		if(is_flat || proto_item->DisableEgg) spr.Egg=Sprite::EggNone;
-		else
-		{
+			int egg_type=0;
 			switch(proto_item->Corner)
 			{
-			case CORNER_SOUTH: spr.Egg=Sprite::EggXorY;
-			case CORNER_NORTH: spr.Egg=Sprite::EggXandY;
+			case CORNER_SOUTH: egg_type=EGG_X_OR_Y; break;
+			case CORNER_NORTH: egg_type=EGG_X_AND_Y; break;
 			case CORNER_EAST_WEST:
-			case CORNER_WEST: spr.Egg=Sprite::EggY;
-			default: spr.Egg=Sprite::EggX; // CORNER_NORTH_SOUTH, CORNER_EAST
+			case CORNER_WEST: egg_type=EGG_Y; break;
+			default: egg_type=EGG_X; break;// CORNER_NORTH_SOUTH, CORNER_EAST
 			}
+			spr.SetEgg(egg_type);
 		}
 
-		if(proto_item->Flags&ITEM_BAD_ITEM) spr.Contour=Sprite::ContourRed;
+		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
+		{
+			spr.SetAlpha(((BYTE*)&proto_item->LightColor)+3);
+			spr.SetColor(proto_item->LightColor&0xFFFFFF);
+		}
+
+		if(FLAG(proto_item->Flags,ITEM_BAD_ITEM)) spr.SetContour(CONTOUR_RED);
 	}
 }
 
@@ -5073,7 +5082,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWOR
 	if(CritType::IsEnabled(crtype))
 	{
 		AnyFrames* frm=CritterCl::LoadAnim(crtype,anim1,anim2,dir);
-		if(frm) Self->SprMngr.DrawSpriteSize(frm->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
+		if(frm) SprMngr.DrawSpriteSize(frm->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
 	}
 }
 
@@ -5141,7 +5150,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 			anim->SetScale(sx,sy,sz);
 			anim->SetSpeed(speed);
 			anim->SetAnimation(anim1,anim2,DrawCritter3dLayers,0);
-			Self->SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
+			SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
 		}
 	}
 }

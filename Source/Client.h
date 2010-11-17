@@ -68,7 +68,6 @@ public:
 	LPDIRECTINPUTDEVICE8 Keyboard;
 	LPDIRECTINPUTDEVICE8 Mouse;
 	FileManager FileMngr;
-	SpriteManager SprMngr;
 	HexManager HexMngr;
 	IniParser IfaceIni;
 

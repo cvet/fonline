@@ -630,7 +630,7 @@ void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2, b
 
 	// Postfix
 	char postfix[64];
-	const char abc[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	const char abc[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	if(anim1<sizeof(abc)) sprintf(postfix,"%c",abc[anim1]);
 	else sprintf(postfix,"%u-",anim1);
 	char* ppostfix=&postfix[strlen(postfix)];

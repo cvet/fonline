@@ -217,7 +217,7 @@ bool MapManager::LoadLocationsProtos()
 		return false;
 	}
 
-	WriteLog("Load locations prototypes success, loaded<%u> protos.\n",loaded);
+	WriteLog("Load locations prototypes complete, loaded<%u> protos.\n",loaded);
 	return true;
 }
 
@@ -1022,7 +1022,7 @@ bool MapManager::RefreshGmMask(const char* mask_path)
 					fm.SetCurPos(118+y*padd_len);
 				}
 			}
-			WriteLog("size<%u><%u>. Success.\n",mask_w,mask_h);
+			WriteLog("size<%u><%u>. complete.\n",mask_w,mask_h);
 			return true;
 		}
 	}

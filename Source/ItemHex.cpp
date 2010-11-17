@@ -5,15 +5,13 @@
 
 AnyFrames* ItemHex::DefaultAnim=NULL;
 
-ItemHex::ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y):
-HexX(hx),HexY(hy),StartScrX(scr_x),StartScrY(scr_y),ScrX(0),ScrY(0),HexScrX(hex_scr_x),HexScrY(hex_scr_y),
+ItemHex::ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut):
+HexX(hx),HexY(hy),StartScrX(scr_x),StartScrY(scr_y),ScrX(0),ScrY(0),HexScrX(hex_scr_x),HexScrY(hex_scr_y),SpriteCut(cut),
 curSpr(0),begSpr(0),endSpr(0),animBegSpr(0),animEndSpr(0),animTick(0),animNextTick(0),
-Alpha(0),maxAlpha(0xFF),Dir(dir),
-finishing(false),finishingTime(0),
-fading(false),fadingTick(0),fadeUp(false),
+Alpha(0),maxAlpha(0xFF),Dir(dir),finishing(false),finishingTime(0),fading(false),fadingTick(0),fadeUp(false),
 isEffect(false),effSx(0),effSy(0),EffOffsX(0),EffOffsY(0),effStartX(0),effStartY(0),effDist(0),effLastTick(0),effCurX(0),effCurY(0),
 isAnimated(false),ScenFlags(0)/*,IsFocused(false)*/,
-SprDrawValid(false)
+SprDraw(NULL),SprTemp(NULL),SprDrawValid(false)
 {
 	Init(proto);
 	Id=id;
@@ -21,6 +19,10 @@ SprDrawValid(false)
 	ACC_HEX.HexX=hx;
 	ACC_HEX.HexY=hy;
 	if(data) Data=*data;
+
+	if(!StartScrX) StartScrX=Proto->OffsetX;
+	if(!StartScrY) StartScrY=Proto->OffsetY;
+	if(!SpriteCut) SpriteCut=Proto->SpriteCut;
 
 	RefreshAnim();
 	RefreshAlpha();
@@ -172,24 +174,24 @@ void ItemHex::SetSprite(Sprite* spr)
 	if(spr) SprDraw=spr;
 	if(SprDrawValid)
 	{
-		SprDraw->Color=(IsColorize()?GetColor():0);
-		SprDraw->Egg=GetEggType();
-		if(IsBadItem()) SprDraw->Contour=Sprite::ContourRed;
+		SprDraw->SetColor(IsColorize()?GetColor():0);
+		SprDraw->SetEgg(GetEggType());
+		if(IsBadItem()) SprDraw->SetContour(CONTOUR_RED);
 	}
 }
 
-Sprite::EggType ItemHex::GetEggType()
+int ItemHex::GetEggType()
 {
-	if(Proto->DisableEgg || IsFlat()) return Sprite::EggNone;
+	if(Proto->DisableEgg || IsFlat()) return 0;
 	switch(Proto->Corner)
 	{
-	case CORNER_SOUTH: return Sprite::EggXorY;
-	case CORNER_NORTH: return Sprite::EggXandY;
+	case CORNER_SOUTH: return EGG_X_OR_Y;
+	case CORNER_NORTH: return EGG_X_AND_Y;
 	case CORNER_EAST_WEST:
-	case CORNER_WEST: return Sprite::EggY;
-	default: return Sprite::EggX; // CORNER_NORTH_SOUTH, CORNER_EAST
+	case CORNER_WEST: return EGG_Y;
+	default: return EGG_X; // CORNER_NORTH_SOUTH, CORNER_EAST
 	}
-	return Sprite::EggNone;
+	return 0;
 }
 
 void ItemHex::StartAnimate()

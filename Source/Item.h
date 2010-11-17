@@ -256,7 +256,9 @@ public:
 	BYTE AnimStay[2];
 	BYTE AnimShow[2];
 	BYTE AnimHide[2];
-	char DrawPosOffsY;
+	short OffsetX;
+	short OffsetY;
+	BYTE SpriteCut;
 
 	WORD RadioChannel;
 	WORD RadioFlags;
@@ -590,7 +592,7 @@ public:
 #endif
 
 	void AddRef(){RefCounter++;}
-	void Release();
+	void Release(){if(--RefCounter<=0) delete this;}
 
 #ifdef FONLINE_SERVER
 	void FullClear();

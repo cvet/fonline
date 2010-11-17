@@ -4469,10 +4469,13 @@ void Npc::RefreshBag()
 	{
 		Item* item=*it;
 		pids[item->GetProtoId()]+=item->GetCount();
-		// Repair weared bag_item
-		if(item->IsWeared() && item->IsBroken()) item->Repair();
-		// Load weapon holder
-		if(item->IsWeapon() && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty()) item->WeapLoadHolder();
+
+		// Repair/reload item in slots
+		if(item->ACC_CRITTER.Slot!=SLOT_INV)
+		{
+			if(item->IsWeared() && item->IsBroken()) item->Repair();
+			if(item->IsWeapon() && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty()) item->WeapLoadHolder();
+		}
 	}
 
 	// Item garbager

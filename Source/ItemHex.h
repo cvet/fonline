@@ -13,7 +13,8 @@ struct AnyFrames;
 class ItemHex : public Item
 {
 public:
-	ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y);
+	ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut);
+	// ~ItemHex() Destructor not been called because Item not have virtual destructor
 	bool operator==(const WORD& _right){return (GetProtoId()==_right);}
 
 public:
@@ -21,14 +22,14 @@ public:
 	int HexX,HexY,Dir;
 	short StartScrX,StartScrY;
 	short ScrX,ScrY;
-	int* HexScrX;
-	int* HexScrY;
+	int* HexScrX,*HexScrY;
+	int SpriteCut;
 	BYTE Alpha;
 	AnyFrames* Anim;
 	static AnyFrames* DefaultAnim;
 	BYTE ScenFlags;
 	bool SprDrawValid;
-	Sprite* SprDraw;
+	Sprite* SprDraw,*SprTemp;
 
 private:
 	short curSpr,begSpr,endSpr;
@@ -45,7 +46,6 @@ public:
 	WORD GetHexX(){return HexX;}
 	WORD GetHexY(){return HexY;}
 	int GetDir(){return Dir;}
-	DWORD GetPos(){return HEX_POS(HexX,HexY+Proto->DrawPosOffsY);}
 	bool IsAnimated(){return isAnimated;}
 	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid.Type==GRID_EXITGRID);}
 	bool IsUsable(){return !IsWall() && (IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_USE)));}
@@ -57,7 +57,7 @@ public:
 	void RestoreAlpha(){Alpha=maxAlpha;}
 	void RefreshAlpha(){maxAlpha=(IsColorize()?GetAlpha():0xFF);}
 	void SetSprite(Sprite* spr);
-	Sprite::EggType GetEggType();
+	int GetEggType();
 
 	// Finish
 private:

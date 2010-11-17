@@ -1055,8 +1055,7 @@ DWORD FOServer::Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer)
 				else if(tvar->Type==VAR_LOCAL_MAP) master_id=master->GetMap();
 				else if(tvar->Type==VAR_LOCAL_ITEM) master_id=master->ItemSlotMain->GetId();
 
-				GameVar* var=VarMngr.ChangeVar(index,master_id,slave_id,result.Op,result.Value);
-				if(var && var->IsQuest()) master->Send_Quest(var->GetQuestStr());
+				VarMngr.ChangeVar(index,master_id,slave_id,result.Op,result.Value);
 			}
 			continue;
 		case DR_ITEM:

@@ -76,7 +76,6 @@ public:
 	void FixLastHexes();
 	WORD PopLastHexX();
 	WORD PopLastHexY();
-	DWORD GetPos(){return HEX_POS(HexX,HexY);}
 	void SetBaseType(DWORD type);
 	void SetDir(BYTE dir);
 	BYTE GetDir(){return CrDir;}
@@ -207,7 +206,6 @@ public:
 
 	// Animation
 public:
-	static SpriteManager* SprMngr;
 	static AnyFrames* DefaultAnim;
 	void* Layers3d;
 	static void FreeAnimations();

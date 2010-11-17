@@ -3,6 +3,8 @@
 #include "Common.h"
 #include "F2Palette.h"
 
+SpriteManager SprMngr;
+
 #define TEX_FRMT                  D3DFMT_A8R8G8B8
 #define SPR_BUFFER_COUNT          (10000)
 #define SPRITES_POOL_GROW_SIZE    (10000)
@@ -14,7 +16,26 @@
 /* Sprites                                                              */
 /************************************************************************/
 
-SpriteVec Sprites::spritesPool;
+struct TreeSorter
+{
+	static bool Less(Sprite* spr1, Sprite* spr2)
+	{
+		// Flat placed first
+		if(spr1->Flat!=spr2->Flat) return spr1->Flat;
+
+		// Check conflicts
+		if(spr1->HexY==spr2->HexY)
+		{
+			if(spr1->HexX==spr2->HexX)
+			{
+				if(spr1->Layer!=spr2->Layer) return spr1->Layer<spr2->Layer;
+				return spr1->TreeIndex<spr2->TreeIndex;
+			}
+			return spr1->HexX<spr2->HexX;
+		}
+		return spr1->HexY<spr2->HexY;
+	}
+};
 
 void Sprite::Unvalidate()
 {
@@ -26,9 +47,65 @@ void Sprite::Unvalidate()
 			ValidCallback=NULL;
 		}
 		Valid=false;
+
+		if(Parent)
+		{
+			Parent->Child=NULL;
+			Parent->Unvalidate();
+		}
+		if(Child)
+		{
+			Child->Parent=NULL;
+			Child->Unvalidate();
+		}
 	}
 }
 
+Sprite* Sprite::GetIntersected(int ox, int oy)
+{
+	// Check for cutting
+	if(ox<0 || oy<0) return NULL;
+	if(!CutType) return SprMngr.IsPixNoTransp(PSprId?*PSprId:SprId,ox,oy)?this:NULL;
+
+	// Find root sprite
+	Sprite* spr=this;
+	while(spr->Parent) spr=spr->Parent;
+
+	// Check sprites
+	float oxf=(float)ox;
+	while(spr)
+	{
+		if(oxf>=spr->CutX && oxf<spr->CutX+spr->CutW) return SprMngr.IsPixNoTransp(spr->PSprId?*spr->PSprId:spr->SprId,ox,oy)?spr:NULL;
+		spr=spr->Child;
+	}
+	return NULL;
+}
+
+#define SPRITE_SETTER(func,type,val) void Sprite::func(type val##__){if(!Valid) return; Valid=false; val=val##__; if(Parent) Parent->func(val##__); if(Child) Child->func(val##__); Valid=true;}
+#define SPRITE_SETTER2(func,type,val,type2,val2) void Sprite::func(type val##__, type2 val2##__){if(!Valid) return; Valid=false; val=val##__; val2=val2##__; if(Parent) Parent->func(val##__,val2##__); if(Child) Child->func(val##__,val2##__); Valid=true;}
+SPRITE_SETTER(SetEgg,int,EggType);
+SPRITE_SETTER(SetContour,int,ContourType);
+SPRITE_SETTER2(SetContour,int,ContourType,DWORD,ContourColor);
+SPRITE_SETTER(SetColor,DWORD,Color);
+SPRITE_SETTER(SetAlpha,BYTE*,Alpha);
+SPRITE_SETTER(SetFlash,DWORD,FlashMask);
+
+void Sprite::SetLight(BYTE* light, int maxhx, int maxhy)
+{
+	if(!Valid) return;
+	Valid=false;
+
+	if(HexX>=0 && HexX<maxhx && HexY>=0 && HexY<maxhy)
+		Light=&light[HexY*maxhx*3+HexX*3];
+	else
+		Light=NULL;
+
+	if(Parent) Parent->SetLight(light,maxhx,maxhy);
+	if(Child) Child->SetLight(light,maxhx,maxhy);
+	Valid=true;
+}
+
+SpriteVec Sprites::spritesPool;
 void Sprites::GrowPool(size_t size)
 {
 	spritesPool.reserve(spritesPool.size()+size);
@@ -46,7 +123,7 @@ void Sprites::ClearPool()
 	spritesPool.clear();
 }
 
-Sprite& Sprites::PutSprite(size_t index, DWORD map_pos, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, BYTE* light, bool* callback)
+Sprite& Sprites::PutSprite(size_t index, bool flat, int layer, WORD hx, WORD hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
 {
 	if(index>=spritesTreeSize)
 	{
@@ -54,8 +131,12 @@ Sprite& Sprites::PutSprite(size_t index, DWORD map_pos, int x, int y, DWORD id, 
 		if(spritesTreeSize>=spritesTree.size()) Resize(spritesTreeSize+SPRITES_RESIZE_COUNT);
 	}
 	Sprite* spr=spritesTree[index];
-	spr->MapPos=map_pos;
-	spr->MapPosInd=index;
+	spr->HexX=hx;
+	spr->HexY=hy;
+	spr->CutType=0;
+	spr->Flat=flat;
+	spr->TreeIndex=index*100;
+	spr->Layer=layer;
 	spr->ScrX=x;
 	spr->ScrY=y;
 	spr->SprId=id;
@@ -63,32 +144,114 @@ Sprite& Sprites::PutSprite(size_t index, DWORD map_pos, int x, int y, DWORD id, 
 	spr->OffsX=ox;
 	spr->OffsY=oy;
 	spr->Alpha=alpha;
-	spr->Light=light;
+	spr->Light=NULL;
 	spr->Valid=true;
 	spr->ValidCallback=callback;
 	if(callback) *callback=true;
-	spr->Egg=Sprite::EggNone;
-	spr->Contour=Sprite::ContourNone;
+	spr->EggType=0;
+	spr->ContourType=0;
 	spr->ContourColor=0;
 	spr->Color=0;
 	spr->FlashMask=0;
+	spr->Parent=NULL;
+	spr->Child=NULL;
+
+	// Cutting
+	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
+	{
+		bool hor=(cut==SPRITE_CUT_HORIZONTAL);
+		int stepi=(hor?24:16);
+		float stepf=(float)stepi;
+
+		SpriteInfo* si=SprMngr.GetSpriteInfo(id_ptr?*id_ptr:id);
+		if(!si || si->Width<stepi*2) return *spr;
+
+		spr->CutType=cut;
+
+		int h1,h2;
+		if(hor)
+		{
+			h1=spr->HexX+si->Width/2/stepi;
+			h2=spr->HexX-si->Width/2/stepi-(si->Width/2%stepi?1:0);
+			spr->HexX=h1;
+		}
+		else
+		{
+			h1=spr->HexY-si->Width/2/stepi;
+			h2=spr->HexY+si->Width/2/stepi+(si->Width/2%stepi?1:0);
+			spr->HexY=h1;
+		}
+
+		float widthf=(float)si->Width;
+		float xx=0.0f;
+		Sprite* parent=spr;
+		for(int i=h1;;)
+		{
+			float ww=stepf;
+			if(xx+ww>widthf) ww=widthf-xx;
+
+			Sprite& spr_=(i!=h1?PutSprite(spritesTreeSize,flat,layer,hor?i:hx,hor?hy:i,0,x,y,id,id_ptr,ox,oy,alpha,NULL):*spr);
+			if(i!=h1) spr_.Parent=parent;
+			parent->Child=&spr_;
+			parent=&spr_;
+
+			spr_.CutX=xx;
+			spr_.CutW=ww;
+			spr_.CutTexL=si->SprRect.L+(si->SprRect.R-si->SprRect.L)*(xx/widthf);
+			spr_.CutTexR=si->SprRect.L+(si->SprRect.R-si->SprRect.L)*((xx+ww)/widthf);
+			spr_.CutType=cut;
+
+#ifdef FONLINE_MAPPER
+			spr_.CutOyL=(hor?-6:-12)*((hor?hx:hy)-i);
+			spr_.CutOyR=spr_.CutOyL;
+			if(ww<stepf) spr_.CutOyR+=(hor?3.6f:-8.0f)*(1.0f-(ww/stepf));
+#endif
+
+			xx+=stepf;
+			if(xx>widthf) break;
+
+			if((hor && --i<h2) || (!hor && ++i>h2)) break;
+		}
+	}
+
 	return *spr;
 }
 
-Sprite& Sprites::AddSprite(DWORD map_pos, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, BYTE* light, bool* callback)
+Sprite& Sprites::AddSprite(bool flat, int layer, WORD hx, WORD hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
 {
-	return PutSprite(spritesTreeSize,map_pos,x,y,id,id_ptr,ox,oy,alpha,light,callback);
+	return PutSprite(spritesTreeSize,flat,layer,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
 }
 
-Sprite& Sprites::InsertSprite(DWORD map_pos, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, BYTE* light, bool* callback)
+Sprite& Sprites::InsertSprite(bool flat, int layer, WORD hx, WORD hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
 {
+	// For cutted sprites need resort all tree
+	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
+	{
+		Sprite& spr=PutSprite(spritesTreeSize,flat,layer,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
+		SortByMapPos();
+		return spr;
+	}
+
+	// Fill parameters only need for sorting
+	static Sprite tmp_spr;
+	tmp_spr.HexX=hx;
+	tmp_spr.HexY=hy;
+	tmp_spr.TreeIndex=-1;
+	tmp_spr.Flat=flat;
+	tmp_spr.Layer=layer;
+
+	// Find place
 	size_t index=0;
-	for(SpriteVecIt it=spritesTree.begin(),end=spritesTree.begin()+spritesTreeSize;it!=end;++it)
+	DWORD last_tree_index=0;
+	for(SpriteVecIt it=spritesTree.begin(),end=spritesTree.begin()+spritesTreeSize;it!=end;++it,++index)
 	{
 		Sprite* spr=*it;
-		if(spr->MapPos>map_pos) break;
-		index++;
+		if(!spr->Valid) continue;
+		if(TreeSorter::Less(&tmp_spr,spr)) break;
+		last_tree_index=spr->TreeIndex;
 	}
+
+	// Insert to array
 	spritesTreeSize++;
 	if(spritesTreeSize>=spritesTree.size()) Resize(spritesTreeSize+SPRITES_RESIZE_COUNT);
 	if(index<spritesTreeSize-1)
@@ -96,7 +259,10 @@ Sprite& Sprites::InsertSprite(DWORD map_pos, int x, int y, DWORD id, DWORD* id_p
 		spritesTree.insert(spritesTree.begin()+index,spritesTree.back());
 		spritesTree.pop_back();
 	}
-	return PutSprite(index,map_pos,x,y,id,id_ptr,ox,oy,alpha,light,callback);
+
+	Sprite& spr=PutSprite(index,flat,layer,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
+	spr.TreeIndex=last_tree_index+1;
+	return spr;
 }
 
 void Sprites::Resize(size_t size)
@@ -145,25 +311,24 @@ void Sprites::Unvalidate()
 }
 
 SprInfoVec* SortSpritesSurfSprData=NULL;
-bool SortSpritesSurf(Sprite* spr1, Sprite* spr2)
-{
-	SpriteInfo* si1=(*SortSpritesSurfSprData)[spr1->PSprId?*spr1->PSprId:spr1->SprId];
-	SpriteInfo* si2=(*SortSpritesSurfSprData)[spr2->PSprId?*spr2->PSprId:spr2->SprId];
-	return si1->Surf && si2->Surf && si1->Surf->Texture<si2->Surf->Texture;
-}
 void Sprites::SortBySurfaces()
 {
-	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,SortSpritesSurf);
+	struct Sorter
+	{
+		static bool SortBySurfaces(Sprite* spr1, Sprite* spr2)
+		{
+			SpriteInfo* si1=(*SortSpritesSurfSprData)[spr1->PSprId?*spr1->PSprId:spr1->SprId];
+			SpriteInfo* si2=(*SortSpritesSurfSprData)[spr2->PSprId?*spr2->PSprId:spr2->SprId];
+			return si1->Surf && si2->Surf && si1->Surf->Texture<si2->Surf->Texture;
+		}
+	};
+	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,Sorter::SortBySurfaces);
 }
 
-bool SortSpritesMapPos(Sprite* spr1, Sprite* spr2)
-{
-	if(spr1->MapPos==spr2->MapPos) return spr1->MapPosInd<spr2->MapPosInd;
-	return spr1->MapPos<spr2->MapPos;
-}
 void Sprites::SortByMapPos()
 {
-	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,SortSpritesMapPos);
+	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,TreeSorter::Less);
+	for(size_t i=0;i<spritesTreeSize;i++) spritesTree[i]->TreeIndex=i*100;
 }
 
 /************************************************************************/
@@ -173,8 +338,8 @@ void Sprites::SortByMapPos()
 SpriteManager::SpriteManager():
 isInit(0),flushSprCnt(0),curSprCnt(0),hWnd(NULL),direct3D(NULL),SurfType(0),
 spr3dRT(NULL),spr3dRTEx(NULL),spr3dDS(NULL),spr3dRTData(NULL),spr3dSurfWidth(256),spr3dSurfHeight(256),sceneBeginned(false),
-d3dDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),vbPoints(NULL),vbPointsSize(0),PreRestore(NULL),PostRestore(NULL),
-baseTexture(0),eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
+d3dDevice(NULL),pVB(NULL),pIB(NULL),waitBuf(NULL),vbPoints(NULL),vbPointsSize(0),PreRestore(NULL),PostRestore(NULL),baseTexture(0),
+eggValid(false),eggHx(0),eggHy(0),eggX(0),eggY(0),eggOX(NULL),eggOY(NULL),sprEgg(NULL),eggSurfWidth(1.0f),eggSurfHeight(1.0f),eggSprWidth(1),eggSprHeight(1),
 contoursTexture(NULL),contoursTextureSurf(NULL),contoursMidTexture(NULL),contoursMidTextureSurf(NULL),contours3dRT(NULL),
 contoursPS(NULL),contoursCT(NULL),contoursAdded(false),
 modeWidth(0),modeHeight(0)
@@ -273,9 +438,11 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	if(deviceCaps.PixelShaderVersion>=D3DPS_VERSION(2,0))
 	{
 		// Contours shader
-		ID3DXBuffer* shader=NULL,*errors=NULL;
-		HRESULT hr=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",D3DXSHADER_SKIPVALIDATION,&shader,&errors,&contoursCT);
-		if(SUCCEEDED(hr))
+		ID3DXBuffer* shader=NULL,*errors=NULL,*errors31=NULL;
+		HRESULT hr=0,hr31=0;
+		hr=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",D3DXSHADER_SKIPVALIDATION,&shader,&errors,&contoursCT);
+		if(FAILED(hr)) hr31=D3DXCompileShaderFromResource(NULL,MAKEINTRESOURCE(IDR_PS_CONTOUR),NULL,NULL,"Main","ps_2_0",D3DXSHADER_SKIPVALIDATION|D3DXSHADER_USE_LEGACY_D3DX9_31_DLL,&shader,&errors31,&contoursCT);
+		if(SUCCEEDED(hr) || SUCCEEDED(hr31))
 		{
 			hr=d3dDevice->CreatePixelShader((DWORD*)shader->GetBufferPointer(),&contoursPS);
 			shader->Release();
@@ -287,10 +454,11 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		}
 		else
 		{
-			if(errors) WriteLog(__FUNCTION__" - Shader 2d contours compilation messages:\n<\n%s>\n",errors->GetBufferPointer());
-			WriteLog(__FUNCTION__" - Shader 2d contours compilation fail, error<%s>. Used old style contours.\n",DXGetErrorString(hr));
+			WriteLog(__FUNCTION__" - Shader 2d contours compilation fail, errors<%s\n%s>, legacy compiler errors<%s\n%s>. Used old style contours.\n",
+				DXGetErrorString(hr),errors?errors->GetBufferPointer():"",DXGetErrorString(hr31),errors31?errors31->GetBufferPointer():"");
 		}
 		SAFEREL(errors);
+		SAFEREL(errors31);
 
 		if(contoursPS)
 		{
@@ -314,8 +482,8 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	// Transparent egg
 	isInit=true;
 	eggValid=false;
-	eggX=0;
-	eggY=0;
+	sprEgg=NULL;
+	eggHx=eggHy=eggX=eggY=0;
 
 	DWORD egg_spr_id=LoadSprite("egg.png",PT_ART_MISC,0);
 	if(egg_spr_id)
@@ -1575,6 +1743,16 @@ void SpriteManager::PrepareSquare(PointVec& points, FLTRECT& r, DWORD color)
 	points.push_back(PrepPoint(r.R,r.B,color,NULL,NULL));
 }
 
+void SpriteManager::PrepareSquare(PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, DWORD color)
+{
+	points.push_back(PrepPoint(lb.X,lb.Y,color,NULL,NULL));
+	points.push_back(PrepPoint(lt.X,lt.Y,color,NULL,NULL));
+	points.push_back(PrepPoint(rb.X,rb.Y,color,NULL,NULL));
+	points.push_back(PrepPoint(lt.X,lt.Y,color,NULL,NULL));
+	points.push_back(PrepPoint(rt.X,rt.Y,color,NULL,NULL));
+	points.push_back(PrepPoint(rb.X,rb.Y,color,NULL,NULL));
+}
+
 bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE alpha)
 {
 	if(!dtree.Size()) return true;
@@ -1723,16 +1901,16 @@ void SpriteManager::GetDrawCntrRect(Sprite* prep, INTRECT* prect)
 	}
 }
 
-bool SpriteManager::CompareHexEgg(WORD hx, WORD hy, Sprite::EggType egg)
+bool SpriteManager::CompareHexEgg(WORD hx, WORD hy, int egg_type)
 {
-	if(egg==Sprite::EggAlways) return true;
+	if(egg_type==EGG_ALWAYS) return true;
 	if(eggHy==hy && hx&1 && !(eggHx&1)) hy--;
-	switch(egg)
+	switch(egg_type)
 	{
-	case Sprite::EggX: if(hx>=eggHx) return true; break;
-	case Sprite::EggY: if(hy>=eggHy) return true; break;
-	case Sprite::EggXandY: if(hx>=eggHx || hy>=eggHy) return true; break;
-	case Sprite::EggXorY: if(hx>=eggHx && hy>=eggHy) return true; break;
+	case EGG_X: if(hx>=eggHx) return true; break;
+	case EGG_Y: if(hy>=eggHy) return true; break;
+	case EGG_X_AND_Y: if(hx>=eggHx || hy>=eggHy) return true; break;
+	case EGG_X_OR_Y: if(hx>=eggHx && hy>=eggHy) return true; break;
 	default: break;
 	}
 	return false;
@@ -1763,7 +1941,7 @@ void SpriteManager::SetEgg(WORD hx, WORD hy, Sprite* spr)
 	eggValid=true;
 }
 
-bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DWORD pos_min, DWORD pos_max)
+bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, bool draw_flat, bool draw_not_flat)
 {
 	PointVec borders;
 
@@ -1777,10 +1955,10 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 	{
 		// Data
 		Sprite* spr=*it;
-		if(!spr->Valid || spr->MapPos<pos_min) continue;
+		if(!spr->Valid) continue;
 
-		DWORD pos=spr->MapPos;
-		if(pos>pos_max) break;
+		if(!draw_flat && spr->Flat) continue;
+		if(!draw_not_flat && !spr->Flat) break;
 
 		DWORD id=(spr->PSprId?*spr->PSprId:spr->SprId);
 		SpriteInfo* si=sprData[id];
@@ -1887,7 +2065,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			Draw3d(x/GameOpt.SpritesZoom,y/GameOpt.SpritesZoom,1.0f/GameOpt.SpritesZoom,si->Anim3d,NULL,cur_color);
 
 			// Process contour effect
-			if(collect_contours && spr->Contour!=Sprite::ContourNone) CollectContour(x,y,si,spr);
+			if(collect_contours && spr->ContourType) CollectContour(x,y,si,spr);
 
 			// Debug borders
 			if(GameOpt.DebugInfo)
@@ -1904,12 +2082,18 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		// 2d sprite
 		// Egg process
 		bool egg_added=false;
-		if(use_egg && spr->Egg!=Sprite::EggNone && CompareHexEgg(HEX_X_POS(pos),HEX_Y_POS(pos),spr->Egg))
+		if(use_egg && spr->EggType && CompareHexEgg(spr->HexX,spr->HexY,spr->EggType))
 		{
 			int x1=x-ex;
 			int y1=y-ey;
 			int x2=x1+si->Width;
 			int y2=y1+si->Height;
+
+			if(spr->CutType)
+			{
+				x1+=(int)spr->CutX;
+				x2=x1+(int)spr->CutW;
+			}
 
 			if(!(x1>=eggSprWidth || y1>=eggSprHeight || x2<0 || y2<0))
 			{
@@ -1940,6 +2124,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 				waitBuf[mulpos+2].tv2=y1f/eggSurfHeight;
 				waitBuf[mulpos+3].tu2=x2f/eggSurfWidth;
 				waitBuf[mulpos+3].tv2=y2f/eggSurfHeight;
+
 				egg_added=true;
 			}
 		}
@@ -1959,7 +2144,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			dipQueue.back().SprCount++;
 
 		// Process contour effect
-		if(collect_contours && spr->Contour!=Sprite::ContourNone) CollectContour(x,y,si,spr);
+		if(collect_contours && spr->ContourType) CollectContour(x,y,si,spr);
 
 		// Casts
 		float xf=(float)x/GameOpt.SpritesZoom-0.5f;
@@ -1994,6 +2179,21 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		waitBuf[mulpos].tv=si->SprRect.B;
 		waitBuf[mulpos++].Diffuse=cur_color;
 
+		// Cutted sprite
+		if(spr->CutType)
+		{
+			xf=(float)(x+spr->CutX)/GameOpt.SpritesZoom-0.5f;
+			wf=spr->CutW/GameOpt.SpritesZoom;
+			waitBuf[mulpos-4].x=xf;
+			waitBuf[mulpos-4].tu=spr->CutTexL;
+			waitBuf[mulpos-3].x=xf;
+			waitBuf[mulpos-3].tu=spr->CutTexL;
+			waitBuf[mulpos-2].x=xf+wf;
+			waitBuf[mulpos-2].tu=spr->CutTexR;
+			waitBuf[mulpos-1].x=xf+wf;
+			waitBuf[mulpos-1].tu=spr->CutTexR;
+		}
+
 		// Set default texture coordinates for egg texture
 		if(!egg_added)
 		{
@@ -2009,6 +2209,78 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
 		// Draw
 		if(++curSprCnt==flushSprCnt) Flush();
+
+#ifdef FONLINE_MAPPER
+		// Corners indication
+		if(GameOpt.ShowCorners && spr->EggType)
+		{
+			PointVec corner;
+			float cx=wf/2.0f;
+
+			switch(spr->EggType)
+			{
+			case EGG_ALWAYS:
+				PrepareSquare(corner,FLTRECT(xf+cx-2.0f,yf+hf-50.0f,xf+cx+2.0f,yf+hf),0x5FFFFF00);
+				break;
+			case EGG_X:
+				PrepareSquare(corner,FLTPOINT(xf+cx-5.0f,yf+hf-55.0f),FLTPOINT(xf+cx+5.0f,yf+hf-45.0f),FLTPOINT(xf+cx-5.0f,yf+hf-5.0f),FLTPOINT(xf+cx+5.0f,yf+hf+5.0f),0x5F00AF00);
+				break;
+			case EGG_Y:
+				PrepareSquare(corner,FLTPOINT(xf+cx-5.0f,yf+hf-49.0f),FLTPOINT(xf+cx+5.0f,yf+hf-52.0f),FLTPOINT(xf+cx-5.0f,yf+hf+1.0f),FLTPOINT(xf+cx+5.0f,yf+hf-2.0f),0x5F00FF00);
+				break;
+			case EGG_X_AND_Y:
+				PrepareSquare(corner,FLTPOINT(xf+cx-10.0f,yf+hf-49.0f),FLTPOINT(xf+cx,yf+hf-52.0f),FLTPOINT(xf+cx-10.0f,yf+hf+1.0f),FLTPOINT(xf+cx,yf+hf-2.0f),0x5FFF0000);
+				PrepareSquare(corner,FLTPOINT(xf+cx,yf+hf-55.0f),FLTPOINT(xf+cx+10.0f,yf+hf-45.0f),FLTPOINT(xf+cx,yf+hf-5.0f),FLTPOINT(xf+cx+10.0f,yf+hf+5.0f),0x5FFF0000);
+				break;
+			case EGG_X_OR_Y:
+				PrepareSquare(corner,FLTPOINT(xf+cx,yf+hf-49.0f),FLTPOINT(xf+cx+10.0f,yf+hf-52.0f),FLTPOINT(xf+cx,yf+hf+1.0f),FLTPOINT(xf+cx+10.0f,yf+hf-2.0f),0x5FAF0000);
+				PrepareSquare(corner,FLTPOINT(xf+cx-10.0f,yf+hf-55.0f),FLTPOINT(xf+cx,yf+hf-45.0f),FLTPOINT(xf+cx-10.0f,yf+hf-5.0f),FLTPOINT(xf+cx,yf+hf+5.0f),0x5FAF0000);
+			default:
+				break;
+			}
+
+			DrawPoints(corner,D3DPT_TRIANGLELIST);
+		}
+
+		// Cuts
+		if(GameOpt.ShowSpriteCuts && spr->CutType)
+		{
+			PointVec cut;
+			float z=GameOpt.SpritesZoom;
+			float oy=(spr->CutType==SPRITE_CUT_HORIZONTAL?3.0f:-5.2f)/z;
+			float x1=(float)(spr->ScrX-si->Width/2+spr->CutX+GameOpt.ScrOx+1.0f)/z-0.5f;
+			float y1=(float)(spr->ScrY+spr->CutOyL+GameOpt.ScrOy)/z-0.5f;
+			float x2=(float)(spr->ScrX-si->Width/2+spr->CutX+spr->CutW+GameOpt.ScrOx-1.0f)/z-0.5f;
+			float y2=(float)(spr->ScrY+spr->CutOyR+GameOpt.ScrOy)/z-0.5f;
+			PrepareSquare(cut,FLTPOINT(x1,y1-80.0f/z+oy),FLTPOINT(x2,y2-80.0f/z-oy),FLTPOINT(x1,y1+oy),FLTPOINT(x2,y2-oy),0x4FFFFF00);
+			DrawPoints(cut,D3DPT_TRIANGLELIST);
+		}
+
+		// Draw order
+		if(GameOpt.ShowDrawOrder)
+		{
+			float z=GameOpt.SpritesZoom;
+			int x1,y1;
+
+			if(!spr->CutType)
+			{
+				x1=(spr->ScrX+GameOpt.ScrOx)/z;
+				y1=(spr->ScrY+GameOpt.ScrOy)/z;
+			}
+			else
+			{
+
+				x1=(spr->ScrX-si->Width/2+spr->CutX+GameOpt.ScrOx+1.0f)/z;
+				y1=(spr->ScrY+spr->CutOyL+GameOpt.ScrOy)/z;
+			}
+
+			if(!spr->Flat) y1-=40/z;
+
+			char str[32];
+			sprintf(str,"%u",spr->TreeIndex/100);
+			DrawStr(INTRECT(x1,y1,x1+100,y1+100),str,0);
+		}
+#endif
 	}
 
 	Flush();
@@ -2337,7 +2609,7 @@ bool SpriteManager::DrawContours()
 	{
 		D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT)); // Zoom In
 		SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-		DrawSprites(spriteContours,false,false,0,-1);
+		DrawSprites(spriteContours,false,false,true,true);
 		D3D_HR(d3dDevice->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR)); // Zoom In
 		spriteContours.Unvalidate();
 	}
@@ -2353,14 +2625,21 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 			DWORD contour_id=GetSpriteContour(si,spr);
 			if(contour_id)
 			{
-				Sprite& contour_spr=spriteContours.AddSprite(0,spr->ScrX,spr->ScrY,contour_id,NULL,spr->OffsX,spr->OffsY,NULL,NULL,NULL);
-				contour_spr.Color=0xFFAFAFAF;
-				if(spr->Contour==Sprite::ContourRed) contour_spr.FlashMask=0xFFFF0000;
-				else if(spr->Contour==Sprite::ContourYellow) contour_spr.FlashMask=0xFFFFFF00;
+				Sprite& contour_spr=spriteContours.AddSprite(false,LAYER_TOP,0,0,0,spr->ScrX,spr->ScrY,contour_id,NULL,spr->OffsX,spr->OffsY,NULL,NULL);
+				if(spr->ContourType==CONTOUR_RED)
+				{
+					contour_spr.SetFlash(0xFFFF0000);
+					contour_spr.SetColor(0xFFAFAFAF);
+				}
+				else if(spr->ContourType==CONTOUR_YELLOW)
+				{
+					contour_spr.SetFlash(0xFFFFFF00);
+					contour_spr.SetColor(0xFFAFAFAF);
+				}
 				else
 				{
-					contour_spr.FlashMask=0xFFFFFFFF;
-					contour_spr.Color=spr->ContourColor;
+					contour_spr.SetFlash(0xFFFFFFFF);
+					contour_spr.SetColor(spr->ContourColor);
 				}
 				return true;
 			}
@@ -2502,14 +2781,14 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 
 	// Calculate contour color
 	DWORD contour_color=0;
-	if(spr->Contour==Sprite::ContourRed) contour_color=0xFFAF0000;
-	else if(spr->Contour==Sprite::ContourYellow)
+	if(spr->ContourType==CONTOUR_RED) contour_color=0xFFAF0000;
+	else if(spr->ContourType==CONTOUR_YELLOW)
 	{
 		contour_color=0xFFAFAF00;
 		tuvh.T=-1.0f; // Disable flashing
 		tuvh.B=-1.0f;
 	}
-	else if(spr->Contour==Sprite::ContourCustom) contour_color=spr->ContourColor;
+	else if(spr->ContourType==CONTOUR_CUSTOM) contour_color=spr->ContourColor;
 	else contour_color=0xFFAFAFAF;
 
 	static float color_offs=0.0f;

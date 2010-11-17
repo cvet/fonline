@@ -738,6 +738,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 							else if(field=="Scenery_ToMapX") mobj.MScenery.ToMapX=ivalue;
 							else if(field=="Scenery_ToMapY") mobj.MScenery.ToMapY=ivalue;
 							else if(field=="Scenery_ToDir") mobj.MScenery.ToDir=ivalue;
+							else if(field=="Scenery_SpriteCut") mobj.MScenery.SpriteCut=ivalue;
 						}
 					}
 				}
@@ -914,6 +915,7 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 				if(mobj.MScenery.ToMapX) fm->SetStr("%-20s %d\n","Scenery_ToMapX",mobj.MScenery.ToMapX);
 				if(mobj.MScenery.ToMapY) fm->SetStr("%-20s %d\n","Scenery_ToMapY",mobj.MScenery.ToMapY);
 				if(mobj.MScenery.ToDir) fm->SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
+				if(mobj.MScenery.SpriteCut) fm->SetStr("%-20s %d\n","SpriteCut",mobj.MScenery.SpriteCut);
 			}
 		}
 		fm->SetStr("\n");
@@ -1351,6 +1353,7 @@ bool ProtoMap::Refresh()
 				cur_wall.AnimStayEnd=mobj.MScenery.AnimStayEnd;
 				cur_wall.AnimWait=mobj.MScenery.AnimWait;
 				cur_wall.PicMapHash=mobj.MScenery.PicMapHash;
+				cur_wall.SpriteCut=mobj.MScenery.SpriteCut;
 
 				WallsToSend.push_back(cur_wall);
 			}
@@ -1443,6 +1446,7 @@ bool ProtoMap::Refresh()
 				cur_scen.AnimStayEnd=mobj.MScenery.AnimStayEnd;
 				cur_scen.AnimWait=mobj.MScenery.AnimWait;
 				cur_scen.PicMapHash=mobj.MScenery.PicMapHash;
+				cur_scen.SpriteCut=mobj.MScenery.SpriteCut;
 
 				SceneriesToSend.push_back(cur_scen);
 			}

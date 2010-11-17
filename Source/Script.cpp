@@ -111,8 +111,8 @@ ActiveContextVec ActiveContexts;
 Mutex ActiveGlobalCtxLocker;
 
 // Timeouts
-DWORD RunTimeoutSuspend=10000;
-DWORD RunTimeoutMessage=5000;
+DWORD RunTimeoutSuspend=600000; // 10 minutes
+DWORD RunTimeoutMessage=300000; // 5 minutes
 HANDLE RunTimeoutThreadHandle=NULL;
 unsigned int __stdcall RunTimeoutThread(void*);
 

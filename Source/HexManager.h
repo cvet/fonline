@@ -16,12 +16,6 @@ class Terrain;
 typedef vector<Terrain*> TerrainVec;
 typedef vector<Terrain*>::iterator TerrainVecIt;
 
-#define DRAW_ORDER_HEX(pos)         ((pos)+0)
-#define DRAW_ORDER_CRIT_DEAD(pos)   (1)
-#define DRAW_ORDER_ITEM_FLAT(scen)  ((scen)?0:2)
-#define DRAW_ORDER_ITEM(pos)        ((pos)+1)
-#define DRAW_ORDER_CRIT(pos)        ((pos)+2)
-
 #define FINDPATH_MAX_PATH           (600)
 
 #define TILE_ALPHA	(0xFF)
@@ -83,7 +77,6 @@ struct Field
 	DWORD TileId;
 	DWORD RoofId;
 	ItemHexVec Items;
-	DWORD Pos;
 	short RoofNum;
 	bool ScrollBlock;
 	bool IsWall;
@@ -96,7 +89,6 @@ struct Field
 	BYTE Corner;
 	bool IsNoLight;
 	BYTE LightValues[3];
-
 	bool IsMultihex;
 
 #ifdef FONLINE_MAPPER
@@ -200,10 +192,9 @@ public:
 
 	// Init, finish, restore
 private:
-	Sprites mainTree,mainTreeFlat;
+	Sprites mainTree;
 	ViewField* viewField;
 	FileManager fmMap;
-	SpriteManager* sprMngr;
 
 	int screenHexX,screenHexY;
 	int hTop,hBottom,wLeft,wRight;
@@ -223,8 +214,8 @@ public:
 	bool SpritesCanDrawMap;
 
 	HexManager();
-	bool Init(SpriteManager* sm);
-	bool ReloadSprites(SpriteManager* sm);
+	bool Init();
+	bool ReloadSprites();
 	void Clear();
 
 	void PreRestore();
@@ -265,7 +256,7 @@ public:
 	CritMap allCritters;
 	DWORD chosenId;
 	DWORD critterContourCrId;
-	Sprite::ContourType critterContour,crittersContour;
+	int critterContour,crittersContour;
 
 public:
 	CritterCl* GetCritter(DWORD crid){if(!crid) return NULL; CritMapIt it=allCritters.find(crid); return it!=allCritters.end()?(*it).second:NULL;}
@@ -276,8 +267,8 @@ public:
 	void ClearCritters();
 	void GetCritters(WORD hx, WORD hy, CritVec& crits, int find_type);
 	CritMap& GetCritters(){return allCritters;}
-	void SetCritterContour(DWORD crid, Sprite::ContourType contour);
-	void SetCrittersContour(Sprite::ContourType contour);
+	void SetCritterContour(DWORD crid, int contour);
+	void SetCrittersContour(int contour);
 	void SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set);
 
 	// Items

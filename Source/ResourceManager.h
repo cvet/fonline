@@ -47,7 +47,7 @@ private:
 	void AddNamesHash(StrVec& names);
 
 public:
-	void Refresh(SpriteManager* spr_mngr);
+	void Refresh();
 	void Finish();
 	void FreeResources(int type);
 
@@ -68,9 +68,9 @@ public:
 	AnyFrames* GetIfaceAnim(DWORD name_hash);
 	AnyFrames* GetInvAnim(DWORD name_hash);
 
-	AnyFrames* GetCrit2dAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
-	Animation3d* GetCrit3dAnim(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
-	DWORD GetCritSprId(DWORD crtype, BYTE anim1, BYTE anim2, BYTE dir);
+	AnyFrames* GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
+	Animation3d* GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
+	DWORD GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
 
 	DWORD GetAvatarSprId(const char* fname);
 	DWORD GetRandomSplash();

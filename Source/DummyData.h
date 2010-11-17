@@ -118,7 +118,9 @@ struct ProtoItem
 	int AnimStay[2];
 	int AnimShow[2];
 	int AnimHide[2];
-	int DrawPosOffsY;
+	int OffsetX;
+	int OffsetY;
+	int SpriteCut;
 
 	int RadioChannel;
 	int RadioFlags;
@@ -446,6 +448,8 @@ struct MapObject
 		int ToMapX;
 		int ToMapY;
 		int ToDir;
+
+		int SpriteCut;
 	} MScenery;
 
 	void AddRef(){}
@@ -1379,6 +1383,9 @@ struct GameOptions
 	int ClientPathRefCount;
 	int ServerPath;
 	int ServerPathRefCount;
+	int ShowCorners;
+	int ShowSpriteCuts;
+	int ShowDrawOrder;
 } GameOpt;
 
 

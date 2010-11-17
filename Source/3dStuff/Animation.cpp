@@ -228,10 +228,6 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		ID3DXAnimationSet* set;
 		animController->GetAnimationSet(index,&set);
 
-		// Note: for a smooth MoveTransitionTime between animation sets we can use two tracks and assign the new set to the track
-		// not currently playing then insert Keys into the KeyTrack to do the MoveTransitionTime between the tracks
-		// tracks can be mixed together so we can gradually change into the new animation
-
 		// Alternate tracks
 		DWORD new_track=(currentTrack==0?1:0);
 		double period=set->GetPeriod();
@@ -245,23 +241,26 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		animController->UnkeyAllTrackEvents(new_track);
 		animController->ResetTime();
 
-		// Add an event key to disable the currently playing track MoveTransitionTime seconds in the future
-		animController->KeyTrackEnable(currentTrack,FALSE,MoveTransitionTime);
-		// Add an event key to change the speed right away so the animation completes in MoveTransitionTime seconds
-		animController->KeyTrackSpeed(currentTrack,0.0f,0.0,MoveTransitionTime,D3DXTRANSITION_LINEAR);
+		// Smooth time
+		double stime=(FLAG(flags,ANIMATION_NO_SMOOTH)?0.001f:MoveTransitionTime);
+
+		// Add an event key to disable the currently playing track stime seconds in the future
+		animController->KeyTrackEnable(currentTrack,FALSE,stime);
+		// Add an event key to change the speed right away so the animation completes in stime seconds
+		animController->KeyTrackSpeed(currentTrack,0.0f,0.0,stime,D3DXTRANSITION_LINEAR);
 		// Add an event to change the weighting of the current track (the effect it has blended with the second track)
-		animController->KeyTrackWeight(currentTrack,0.0f,0.0,MoveTransitionTime,D3DXTRANSITION_LINEAR);
+		animController->KeyTrackWeight(currentTrack,0.0f,0.0,stime,D3DXTRANSITION_LINEAR);
 
 		// Enable the new track
 		animController->SetTrackEnable(new_track,TRUE);
 		animController->SetTrackPosition(new_track,FLAG(flags,ANIMATION_LAST_FRAME)?period:0.0);
 		// Add an event key to set the speed of the track
-		animController->KeyTrackSpeed(new_track,1.0f,0.0,MoveTransitionTime,D3DXTRANSITION_LINEAR);
+		animController->KeyTrackSpeed(new_track,1.0f,0.0,stime,D3DXTRANSITION_LINEAR);
 		if(FLAG(flags,ANIMATION_ONE_TIME) || FLAG(flags,ANIMATION_STAY)) animController->KeyTrackSpeed(new_track,0.0f,period-0.001,0.0,D3DXTRANSITION_LINEAR);
 		// Add an event to change the weighting of the current track (the effect it has blended with the first track)
-		// As you can see this will go from 0 effect to total effect(1.0f) in MoveTransitionTime seconds and the first track goes from 
+		// As you can see this will go from 0 effect to total effect(1.0f) in stime seconds and the first track goes from 
 		// total to 0.0f in the same time.
-		animController->KeyTrackWeight(new_track,1.0f,0.0,MoveTransitionTime,D3DXTRANSITION_LINEAR);
+		animController->KeyTrackWeight(new_track,1.0f,0.0,stime,D3DXTRANSITION_LINEAR);
 
 		if(FLAG(flags,ANIMATION_LAST_FRAME)) animController->AdvanceTime(period,NULL);
 
@@ -284,7 +283,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		if(!parentAnimation)
 		{
 			if(FLAG(flags,ANIMATION_ONE_TIME)) calcBordersTick=endTick;
-			else calcBordersTick=tick+DWORD(MoveTransitionTime*1000.0);
+			else calcBordersTick=tick+DWORD(stime*1000.0);
 		}
 	}
 
@@ -1290,8 +1289,8 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
 
 		// Indexing frames                          ||||||
-		static char frm_ind[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		//                     012345678901234567890123456
+		static char frm_ind[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+		//                     0123456789012345678901234567590123456
 		char key[32];
 		for(int i1=1;i1<=ABC_SIZE;i1++)
 		{

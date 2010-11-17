@@ -496,10 +496,15 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 		LPD3DXEFFECTCOMPILER ef_comp=NULL;
 		LPD3DXBUFFER ef_buf=NULL;
 		LPD3DXBUFFER errors=NULL;
+		LPD3DXBUFFER errors31=NULL;
+		HRESULT hr=0,hr31=0;
 
 		includeParser.RootPath=(char*)model_path;
 		includeParser.RootPathType=model_path_type;
-		if(SUCCEEDED(D3DXCreateEffectCompiler(buf,size,NULL,&includeParser,0/*D3DXSHADER_USE_LEGACY_D3DX9_31_DLL*/,&ef_comp,&errors)))
+		hr=D3DXCreateEffectCompiler(buf,size,NULL,&includeParser,0,&ef_comp,&errors);
+		if(FAILED(hr)) hr31=D3DXCreateEffectCompiler(buf,size,NULL,&includeParser,D3DXSHADER_USE_LEGACY_D3DX9_31_DLL,&ef_comp,&errors31);
+
+		if(SUCCEEDED(hr) || SUCCEEDED(hr31))
 		{
 			SAFEREL(errors);
 			if(SUCCEEDED(ef_comp->CompileEffect(0,&ef_buf,&errors)))
@@ -510,17 +515,19 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 			}
 			else
 			{
-				WriteLog(__FUNCTION__" - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+				WriteLog(__FUNCTION__" - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr\n");
 			}
 		}
 		else
 		{
-			WriteLog(__FUNCTION__" - Unable to create effect compiler, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+			WriteLog(__FUNCTION__" - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n",effect_name,
+				DXGetErrorString(hr),errors?errors->GetBufferPointer():"",DXGetErrorString(hr31),errors31?errors31->GetBufferPointer():"");
 		}
 
 		SAFEREL(ef_comp);
 		SAFEREL(ef_buf);
 		SAFEREL(errors);
+		SAFEREL(errors31);
 
 		if(!fm_cache.IsLoaded()) return NULL;
 	}

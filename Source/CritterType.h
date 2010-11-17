@@ -28,7 +28,7 @@ struct CritTypeType
 	bool CanArmor;
 	bool CanRotate;
 
-	bool Anim1[21];
+	bool Anim1[37]; // A..Z 0..9
 };
 
 namespace CritType

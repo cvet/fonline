@@ -221,7 +221,9 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	SERIALIZE_PROTO_(AnimShow_1,AnimShow[1],0);
 	SERIALIZE_PROTO_(AnimHide_0,AnimHide[0],0);
 	SERIALIZE_PROTO_(AnimHide_1,AnimHide[1],0);
-	SERIALIZE_PROTO(DrawPosOffsY,0);
+	SERIALIZE_PROTO(OffsetX,0);
+	SERIALIZE_PROTO(OffsetY,0);
+	SERIALIZE_PROTO(SpriteCut,0);
 
 	SERIALIZE_PROTO(RadioChannel,0);
 	SERIALIZE_PROTO(RadioFlags,0);

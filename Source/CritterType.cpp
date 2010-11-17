@@ -186,7 +186,7 @@ bool CritType::IsCanRotate(DWORD cr_type)
 
 bool CritType::IsAnim1(DWORD cr_type, DWORD anim1)
 {
-	if(anim1>=21) return false;
+	if(anim1>=37) return false;
 	return GetCritType(cr_type).Anim1[anim1];
 }
 

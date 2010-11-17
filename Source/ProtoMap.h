@@ -115,6 +115,8 @@ public:
 			WORD ToMapY;
 			BYTE ToDir;
 			// BYTE[3]
+
+			BYTE SpriteCut;
 		} MScenery;
 
 		struct
