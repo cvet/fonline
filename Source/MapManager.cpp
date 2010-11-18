@@ -1050,6 +1050,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		group->StartEncaunterTime(ENCOUNTERS_TIME);
 		group->EncounterDescriptor=0;
 		rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
+		group->MoveLastTick=tick;
 	}
 
 	if(!group->IsSetMove && tick>=group->TimeCanFollow)
@@ -1079,6 +1080,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 	if(dtime>=GM_MOVE_TIME)
 	{
 		group->MoveLastTick=tick;
+		if(dtime>GM_PROCESS_TIME) dtime=GM_PROCESS_TIME;
 
 		int cur_dist;
 		int last_dist=DistSqrt(xi,yi,mxi,myi);
@@ -1836,6 +1838,7 @@ void MapManager::GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, DWORD sp
 	}
 
 	group->Rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
+	if(Timer::GameTick()-group->MoveLastTick>GM_MOVE_TIME) group->MoveLastTick=Timer::GameTick();
 	if(group->IsEncaunterTime()) group->StartEncaunterTime(Random(1000,ENCOUNTERS_TIME));
 	if(!group->IsSetMove)
 	{
