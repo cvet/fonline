@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF095) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF096) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information

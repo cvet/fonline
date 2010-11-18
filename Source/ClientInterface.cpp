@@ -5184,7 +5184,7 @@ void FOClient::GmapProcess()
 	if(!GmapWait)
 	{
 		DWORD dtime_move=Timer::GameTick()-GmapMoveLastTick;
-		if(dtime_move>=GM_MOVE_PROCESS_TIME)
+		if(dtime_move>=GM_MOVE_TIME)
 		{
 			int walk_type=GM_WALK_GROUND;
 			Item* car=GmapGetCar();
@@ -5201,8 +5201,8 @@ void FOClient::GmapProcess()
 				else if(n<100 && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
 			}
 
-			GmapGroupXf+=GmapSpeedX*kr*((float)(dtime_move)/GM_MOVE_TIME);
-			GmapGroupYf+=GmapSpeedY*kr*((float)(dtime_move)/GM_MOVE_TIME);
+			GmapGroupXf+=GmapSpeedX*kr*((float)(dtime_move)/GM_PROCESS_TIME);
+			GmapGroupYf+=GmapSpeedY*kr*((float)(dtime_move)/GM_PROCESS_TIME);
 
 			int old_x=GmapGroupX;
 			int old_y=GmapGroupY;
@@ -5296,7 +5296,7 @@ void FOClient::GmapProcess()
 		}
 
 		DWORD dtime_proc=Timer::GameTick()-GmapProcLastTick;
-		if(dtime_proc>=GM_MOVE_TIME)
+		if(dtime_proc>=GM_PROCESS_TIME)
 		{
 			Item* car=GmapGetCar();
 			if(car && (GmapSpeedX || GmapSpeedY))

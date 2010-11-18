@@ -19,6 +19,7 @@ public:
 	DWORD NextEncaunter;
 	bool IsMultiply;
 	DWORD MoveLastTick;
+	DWORD ProcessLastTick;
 	DWORD EncounterDescriptor;
 	DWORD EncounterTick;
 	bool EncounterForce;
