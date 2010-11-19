@@ -772,7 +772,7 @@ void HexManager::RebuildMap(int rx, int ry)
 			{
 				DWORD spr_id=(GetHexTrack(nx,ny)==1?picTrack1:picTrack2);
 				if(IsVisible(spr_id,f.ScrX+17,f.ScrY+14))
-					mainTree.AddSprite(DRAW_ORDER_FLAT,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
+					mainTree.AddSprite(DRAW_ORDER_FLAT+4,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Hex Lines
@@ -837,7 +837,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					if(item->IsScenOrGrid() && !GameOpt.ShowScen) continue;
 					if(item->IsItem() && !GameOpt.ShowItem) continue;
 					if(item->IsWall() && !GameOpt.ShowWall) continue;
-#else // FONLINE_MAPPER
+#else
 					bool is_fast=fastPids.count(item->GetProtoId())!=0;
 					if(item->IsScenOrGrid() && !GameOpt.ShowScen && !is_fast) continue;
 					if(item->IsItem() && !GameOpt.ShowItem && !is_fast) continue;

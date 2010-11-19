@@ -513,8 +513,6 @@ void FOServer::ProcessAI(Npc* npc)
 					break;
 				}
 
-				if(!is_can_walk) npc->NextPlane(REASON_CANT_WALK);
-
 				// Find better position
 				if(is_range && is_can_walk)
 				{

@@ -1758,6 +1758,7 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE a
 	{
 		Sprite* spr=*it;
 		if(!spr->Valid) continue;
+
 		SpriteInfo* si=sprData[spr->SprId];
 		if(!si) continue;
 
@@ -1806,7 +1807,7 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE a
 		waitBuf[mulpos].y=yf+hf;
 		waitBuf[mulpos].tu=si->SprRect.R;
 		waitBuf[mulpos].tv=si->SprRect.B;
-		waitBuf[mulpos++].Diffuse=color;
+		waitBuf[mulpos].Diffuse=color;
 
 		if(++curSprCnt==flushSprCnt) Flush();
 	}
@@ -3793,11 +3794,11 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 
 	if(FLAG(flags,FT_COLORIZE))
 	{
-		for(int i=offs_col;i;i--)
+		for(int i=offs_col;i>=0;i--)
 		{
 			if(fi.ColorDots[i])
 			{
-				col=fi.ColorDots[i];
+				col=(col&0xFF000000)|(fi.ColorDots[i]&0xFFFFFF);
 				break;
 			}
 		}
@@ -3861,7 +3862,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 			waitBuf[mulpos].y=y+h-0.5f;
 			waitBuf[mulpos].tu=x2;
 			waitBuf[mulpos].tv=y2;
-			waitBuf[mulpos++].Diffuse=col;
+			waitBuf[mulpos].Diffuse=col;
 
 			if(++curSprCnt==flushSprCnt)
 			{
