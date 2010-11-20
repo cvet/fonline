@@ -162,7 +162,7 @@ void Item::FullClear()
 
 bool Item::ParseScript(const char* script, bool first_time)
 {
-	if(script)
+	if(script && script[0])
 	{
 		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Item&,bool)");
 		if(!func_num)

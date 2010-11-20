@@ -1546,7 +1546,7 @@ bool Map::PrepareScriptFunc(int num_scr_func)
 
 bool Map::ParseScript(const char* script, bool first_time)
 {
-	if(script)
+	if(script && script[0])
 	{
 		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Map&,bool)");
 		if(!func_num)

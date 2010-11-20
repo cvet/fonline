@@ -484,7 +484,17 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		WriteLog("Load sprite 'egg.png' fail. Egg disabled.\n");
 	}
 
+	// Default effects
+	curDefaultEffect=Loader3d::LoadEffect(d3dDevice,"2D_Default.fx");
+	sprDefaultEffect[DEFAULT_EFFECT_GENERIC]=curDefaultEffect;
+	sprDefaultEffect[DEFAULT_EFFECT_TILE]=curDefaultEffect;
+	sprDefaultEffect[DEFAULT_EFFECT_ROOF]=curDefaultEffect;
+	sprDefaultEffect[DEFAULT_EFFECT_IFACE]=Loader3d::LoadEffect(d3dDevice,"Interface_Default.fx");
+	sprDefaultEffect[DEFAULT_EFFECT_POINT]=Loader3d::LoadEffect(d3dDevice,"Primitive_Default.fx");
+
+	// Clear scene
 	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(0,0,0),1.0f,0));
+
 	WriteLog("Sprite manager initialization complete.\n");
 	return true;
 }
@@ -530,14 +540,6 @@ bool SpriteManager::InitBuffers()
 
 	waitBuf=new MYVERTEX[flushSprCnt*4];
 	if(!waitBuf) return false;
-
-	// Default effects
-	curDefaultEffect=Loader3d::LoadEffect(d3dDevice,"2D_Default.fx");
-	sprDefaultEffect[DEFAULT_EFFECT_GENERIC]=curDefaultEffect;
-	sprDefaultEffect[DEFAULT_EFFECT_TILE]=curDefaultEffect;
-	sprDefaultEffect[DEFAULT_EFFECT_ROOF]=curDefaultEffect;
-	sprDefaultEffect[DEFAULT_EFFECT_IFACE]=Loader3d::LoadEffect(d3dDevice,"Interface_Default.fx");
-	sprDefaultEffect[DEFAULT_EFFECT_POINT]=Loader3d::LoadEffect(d3dDevice,"Primitive_Default.fx");
 
 	// Contours
 	if(contoursPS)
@@ -678,12 +680,14 @@ bool SpriteManager::Restore()
 	SAFEREL(contours3dRT);
 	Animation3d::PreRestore();
 	if(PreRestore) (*PreRestore)();
+	Loader3d::EffectsPreRestore();
 
 	// Reset device
 	D3D_HR(d3dDevice->Reset(&presentParams));
 	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,D3DCOLOR_XRGB(0,0,0),1.0f,0));
 
 	// Create resources
+	Loader3d::EffectsPostRestore();
 	if(!InitRenderStates()) return false;
 	if(!InitBuffers()) return false;
 	if(PostRestore) (*PostRestore)();
@@ -1789,24 +1793,32 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE a
 		waitBuf[mulpos].y=yf+hf;
 		waitBuf[mulpos].tu=si->SprRect.L;
 		waitBuf[mulpos].tv=si->SprRect.B;
+		waitBuf[mulpos].tu2=0.0f;
+		waitBuf[mulpos].tv2=0.0f;
 		waitBuf[mulpos++].Diffuse=color;
 
 		waitBuf[mulpos].x=xf;
 		waitBuf[mulpos].y=yf;
 		waitBuf[mulpos].tu=si->SprRect.L;
 		waitBuf[mulpos].tv=si->SprRect.T;
+		waitBuf[mulpos].tu2=0.0f;
+		waitBuf[mulpos].tv2=0.0f;
 		waitBuf[mulpos++].Diffuse=color;
 
 		waitBuf[mulpos].x=xf+wf;
 		waitBuf[mulpos].y=yf;
 		waitBuf[mulpos].tu=si->SprRect.R;
 		waitBuf[mulpos].tv=si->SprRect.T;
+		waitBuf[mulpos].tu2=0.0f;
+		waitBuf[mulpos].tv2=0.0f;
 		waitBuf[mulpos++].Diffuse=color;
 
 		waitBuf[mulpos].x=xf+wf;
 		waitBuf[mulpos].y=yf+hf;
 		waitBuf[mulpos].tu=si->SprRect.R;
 		waitBuf[mulpos].tv=si->SprRect.B;
+		waitBuf[mulpos].tu2=0.0f;
+		waitBuf[mulpos].tv2=0.0f;
 		waitBuf[mulpos].Diffuse=color;
 
 		if(++curSprCnt==flushSprCnt) Flush();

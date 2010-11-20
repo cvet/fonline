@@ -4930,7 +4930,7 @@ bool FOServer::LoadScriptFunctionsFile(FILE* f)
 		char script[1024];
 		DWORD len=0;
 		if(!fread(&len,sizeof(len),1,f)) return false;
-		if(!fread(script,len,1,f)) return false;
+		if(len && !fread(script,len,1,f)) return false;
 		script[len]=0;
 
 		// Cut off decl

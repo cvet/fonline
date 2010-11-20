@@ -30,11 +30,12 @@ private:
 	static TextureExVec loadedTextures;
 
 	// Effects
-	// Todo: add free/restore
 public:
 	static EffectEx* LoadEffect(IDirect3DDevice9* device, const char* effect_name);
 	static EffectEx* LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path, int model_path_type);
 	static void EffectProcessVariables(EffectEx* effect, int pass);
+	static bool EffectsPreRestore();
+	static bool EffectsPostRestore();
 
 private:
 	static EffectExVec loadedEffects;

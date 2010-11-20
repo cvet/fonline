@@ -459,8 +459,8 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	// Try find already loaded texture
 	for(EffectExVecIt it=loadedEffects.begin(),end=loadedEffects.end();it!=end;++it)
 	{
-		EffectEx* effect=*it;
-		if(!_stricmp(effect->Name,effect_name)) return effect;
+		EffectEx* effect_ex=*it;
+		if(!_stricmp(effect_ex->Name,effect_name)) return effect_ex;
 	}
 
 	// First try load from effects folder
@@ -675,6 +675,26 @@ void Loader3d::EffectProcessVariables(EffectEx* effect, int pass)
 			if(effect->Random4Pass) effect->Effect->SetFloat(effect->Random4Pass,(double)Random(0,2000000000)/2000000000.0);
 		}
 	}
+}
+
+bool Loader3d::EffectsPreRestore()
+{
+	for(EffectExVecIt it=loadedEffects.begin(),end=loadedEffects.end();it!=end;++it)
+	{
+		EffectEx* effect_ex=*it;
+		D3D_HR(effect_ex->Effect->OnLostDevice());
+	}
+	return true;
+}
+
+bool Loader3d::EffectsPostRestore()
+{
+	for(EffectExVecIt it=loadedEffects.begin(),end=loadedEffects.end();it!=end;++it)
+	{
+		EffectEx* effect_ex=*it;
+		D3D_HR(effect_ex->Effect->OnResetDevice());
+	}
+	return true;
 }
 
 /*

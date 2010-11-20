@@ -1471,7 +1471,7 @@ void Critter::Heal()
 
 bool Critter::ParseScript(const char* script, bool first_time)
 {
-	if(script)
+	if(script && script[0])
 	{
 		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Critter&,bool)");
 		if(!func_num)

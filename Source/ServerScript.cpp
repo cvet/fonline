@@ -2314,6 +2314,7 @@ void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc(Critter* cr)
 bool FOServer::SScriptFunc::Crit_AddTimeEvent(Critter* cr, CScriptString& func_name, DWORD duration, int identifier)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(!func_name.length()) SCRIPT_ERROR_R0("Script name is empty.");
 	DWORD func_num=Script::GetScriptFuncNum(func_name.c_str(),"uint %s(Critter&,int,uint&)");
 	if(!func_num) SCRIPT_ERROR_R0("Function not found.");
 	cr->AddCrTimeEvent(func_num,0,duration,identifier);
@@ -2323,6 +2324,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent(Critter* cr, CScriptString& func_n
 bool FOServer::SScriptFunc::Crit_AddTimeEventRate(Critter* cr, CScriptString& func_name, DWORD duration, int identifier, DWORD rate)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(!func_name.length()) SCRIPT_ERROR_R0("Script name is empty.");
 	DWORD func_num=Script::GetScriptFuncNum(func_name.c_str(),"uint %s(Critter&,int,uint&)");
 	if(!func_num) SCRIPT_ERROR_R0("Function not found.");
 	cr->AddCrTimeEvent(func_num,rate,duration,identifier);

@@ -1091,10 +1091,9 @@ void Animation3d::BeginScene()
 	for(Animation3dVecIt it=generalAnimations.begin(),end=generalAnimations.end();it!=end;++it) (*it)->noDraw=true;
 }
 
-#pragma MESSAGE("Release all other need stuff.")
+#pragma MESSAGE("Release all need stuff.")
 void Animation3d::PreRestore()
 {
-	SAFEDEL(EffectMain);
 }
 
 Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_child)
