@@ -51,7 +51,7 @@ Sprite* Sprite::GetIntersected(int ox, int oy)
 	while(spr->Parent) spr=spr->Parent;
 
 	// Check sprites
-	float oxf=(float)ox;
+	float oxf=(float)ox*GameOpt.SpritesZoom;
 	while(spr)
 	{
 		if(oxf>=spr->CutX && oxf<spr->CutX+spr->CutW) return SprMngr.IsPixNoTransp(spr->PSprId?*spr->PSprId:spr->SprId,ox,oy)?spr:NULL;
