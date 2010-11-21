@@ -121,6 +121,7 @@ struct ProtoItem
 	int OffsetX;
 	int OffsetY;
 	int SpriteCut;
+	int DrawOrderOffsetHexY;
 
 	int RadioChannel;
 	int RadioFlags;

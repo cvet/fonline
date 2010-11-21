@@ -259,6 +259,7 @@ public:
 	short OffsetX;
 	short OffsetY;
 	BYTE SpriteCut;
+	char DrawOrderOffsetHexY;
 
 	WORD RadioChannel;
 	WORD RadioFlags;

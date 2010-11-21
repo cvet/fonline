@@ -224,6 +224,7 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	SERIALIZE_PROTO(OffsetX,0);
 	SERIALIZE_PROTO(OffsetY,0);
 	SERIALIZE_PROTO(SpriteCut,0);
+	SERIALIZE_PROTO(DrawOrderOffsetHexY,0);
 
 	SERIALIZE_PROTO(RadioChannel,0);
 	SERIALIZE_PROTO(RadioFlags,0);

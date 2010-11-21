@@ -336,7 +336,7 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 		// Draw
 		if(GetHexToDraw(hx,hy) && !item->IsHidden() && !item->IsFullyTransparent())
 		{
-			Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_ITEM(item),hx,hy,item->SpriteCut,
+			Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_ITEM(item),hx,hy+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 				f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 			if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) spr.SetLight(hexLight,maxHexX,maxHexY);
 			item->SetSprite(&spr);
@@ -441,7 +441,7 @@ void HexManager::ProcessItems()
 				item->HexScrY=&f_.ScrY;
 				if(GetHexToDraw(step.first,step.second))
 				{
-					item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),step.first,step.second,item->SpriteCut,
+					item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),step.first,step.second+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 						f_.ScrX+HEX_OX,f_.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 					if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) item->SprDraw->SetLight(hexLight,maxHexX,maxHexY);
 				}
@@ -588,7 +588,7 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 
 	if(GetHexToDraw(from_hx,from_hy))
 	{
-		item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),from_hx,from_hy,item->SpriteCut,
+		item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),from_hx,from_hy+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 		if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) item->SprDraw->SetLight(hexLight,maxHexX,maxHexY);
 	}
@@ -846,7 +846,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					if(ignorePids.count(item->GetProtoId())) continue;
 #endif
 
-					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_ITEM(item),nx,ny,item->SpriteCut,
+					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_ITEM(item),nx,ny+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 					if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) spr.SetLight(hexLight,maxHexX,maxHexY);
 					item->SetSprite(&spr);

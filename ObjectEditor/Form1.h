@@ -334,6 +334,10 @@ private: System::Windows::Forms::GroupBox^  groupBox7;
 private: System::Windows::Forms::RadioButton^  rbCutVertical;
 private: System::Windows::Forms::RadioButton^  rbCutHorizontal;
 private: System::Windows::Forms::RadioButton^  rbCutDisabled;
+private: System::Windows::Forms::GroupBox^  groupBox16;
+private: System::Windows::Forms::NumericUpDown^  numDrawOrderOffsetHexY;
+private: System::Windows::Forms::Label^  label98;
+
 
 
 
@@ -903,6 +907,15 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox10 = (gcnew System::Windows::Forms::GroupBox());
 			this->cbDisableEgg = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage3 = (gcnew System::Windows::Forms::TabPage());
+			this->groupBox7 = (gcnew System::Windows::Forms::GroupBox());
+			this->rbCutVertical = (gcnew System::Windows::Forms::RadioButton());
+			this->rbCutHorizontal = (gcnew System::Windows::Forms::RadioButton());
+			this->rbCutDisabled = (gcnew System::Windows::Forms::RadioButton());
+			this->groupBox15 = (gcnew System::Windows::Forms::GroupBox());
+			this->numOffsetY = (gcnew System::Windows::Forms::NumericUpDown());
+			this->numOffsetX = (gcnew System::Windows::Forms::NumericUpDown());
+			this->label56 = (gcnew System::Windows::Forms::Label());
+			this->label52 = (gcnew System::Windows::Forms::Label());
 			this->groupBox13 = (gcnew System::Windows::Forms::GroupBox());
 			this->cbHolodisk = (gcnew System::Windows::Forms::CheckBox());
 			this->numHolodisk = (gcnew System::Windows::Forms::NumericUpDown());
@@ -947,15 +960,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->numAnimWaitBase = (gcnew System::Windows::Forms::NumericUpDown());
 			this->cbShowAnim = (gcnew System::Windows::Forms::CheckBox());
 			this->cmbLog = (gcnew System::Windows::Forms::ComboBox());
-			this->groupBox15 = (gcnew System::Windows::Forms::GroupBox());
-			this->label52 = (gcnew System::Windows::Forms::Label());
-			this->label56 = (gcnew System::Windows::Forms::Label());
-			this->numOffsetX = (gcnew System::Windows::Forms::NumericUpDown());
-			this->numOffsetY = (gcnew System::Windows::Forms::NumericUpDown());
-			this->groupBox7 = (gcnew System::Windows::Forms::GroupBox());
-			this->rbCutDisabled = (gcnew System::Windows::Forms::RadioButton());
-			this->rbCutHorizontal = (gcnew System::Windows::Forms::RadioButton());
-			this->rbCutVertical = (gcnew System::Windows::Forms::RadioButton());
+			this->groupBox16 = (gcnew System::Windows::Forms::GroupBox());
+			this->numDrawOrderOffsetHexY = (gcnew System::Windows::Forms::NumericUpDown());
+			this->label98 = (gcnew System::Windows::Forms::Label());
 			this->tcType->SuspendLayout();
 			this->tArmor->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nArmDTexpl))->BeginInit();
@@ -1070,6 +1077,10 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox11->SuspendLayout();
 			this->groupBox10->SuspendLayout();
 			this->tabPage3->SuspendLayout();
+			this->groupBox7->SuspendLayout();
+			this->groupBox15->SuspendLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetY))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetX))->BeginInit();
 			this->groupBox13->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numHolodisk))->BeginInit();
 			this->groupBox12->SuspendLayout();
@@ -1090,10 +1101,8 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMax))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMin))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitBase))->BeginInit();
-			this->groupBox15->SuspendLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetX))->BeginInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetY))->BeginInit();
-			this->groupBox7->SuspendLayout();
+			this->groupBox16->SuspendLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawOrderOffsetHexY))->BeginInit();
 			this->SuspendLayout();
 			// 
 			// tcType
@@ -4579,6 +4588,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// tabPage3
 			// 
+			this->tabPage3->Controls->Add(this->groupBox16);
 			this->tabPage3->Controls->Add(this->groupBox7);
 			this->tabPage3->Controls->Add(this->groupBox15);
 			this->tabPage3->Controls->Add(this->groupBox13);
@@ -4593,6 +4603,100 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage3->TabIndex = 2;
 			this->tabPage3->Text = L"More ext info";
 			this->tabPage3->UseVisualStyleBackColor = true;
+			// 
+			// groupBox7
+			// 
+			this->groupBox7->Controls->Add(this->rbCutVertical);
+			this->groupBox7->Controls->Add(this->rbCutHorizontal);
+			this->groupBox7->Controls->Add(this->rbCutDisabled);
+			this->groupBox7->Location = System::Drawing::Point(329, 87);
+			this->groupBox7->Name = L"groupBox7";
+			this->groupBox7->Size = System::Drawing::Size(178, 76);
+			this->groupBox7->TabIndex = 74;
+			this->groupBox7->TabStop = false;
+			this->groupBox7->Text = L"Sprite cutting (for long walls)";
+			// 
+			// rbCutVertical
+			// 
+			this->rbCutVertical->AutoSize = true;
+			this->rbCutVertical->Location = System::Drawing::Point(14, 53);
+			this->rbCutVertical->Name = L"rbCutVertical";
+			this->rbCutVertical->Size = System::Drawing::Size(120, 17);
+			this->rbCutVertical->TabIndex = 2;
+			this->rbCutVertical->TabStop = true;
+			this->rbCutVertical->Text = L"Vertical (Y hex axis)";
+			this->rbCutVertical->UseVisualStyleBackColor = true;
+			// 
+			// rbCutHorizontal
+			// 
+			this->rbCutHorizontal->AutoSize = true;
+			this->rbCutHorizontal->Location = System::Drawing::Point(14, 36);
+			this->rbCutHorizontal->Name = L"rbCutHorizontal";
+			this->rbCutHorizontal->Size = System::Drawing::Size(133, 17);
+			this->rbCutHorizontal->TabIndex = 1;
+			this->rbCutHorizontal->TabStop = true;
+			this->rbCutHorizontal->Text = L"Horizontal (X hex axis)";
+			this->rbCutHorizontal->UseVisualStyleBackColor = true;
+			// 
+			// rbCutDisabled
+			// 
+			this->rbCutDisabled->AutoSize = true;
+			this->rbCutDisabled->Location = System::Drawing::Point(14, 19);
+			this->rbCutDisabled->Name = L"rbCutDisabled";
+			this->rbCutDisabled->Size = System::Drawing::Size(65, 17);
+			this->rbCutDisabled->TabIndex = 0;
+			this->rbCutDisabled->TabStop = true;
+			this->rbCutDisabled->Text = L"Disabled";
+			this->rbCutDisabled->UseVisualStyleBackColor = true;
+			// 
+			// groupBox15
+			// 
+			this->groupBox15->Controls->Add(this->numOffsetY);
+			this->groupBox15->Controls->Add(this->numOffsetX);
+			this->groupBox15->Controls->Add(this->label56);
+			this->groupBox15->Controls->Add(this->label52);
+			this->groupBox15->Location = System::Drawing::Point(329, 7);
+			this->groupBox15->Name = L"groupBox15";
+			this->groupBox15->Size = System::Drawing::Size(178, 74);
+			this->groupBox15->TabIndex = 73;
+			this->groupBox15->TabStop = false;
+			this->groupBox15->Text = L"Draw offsets";
+			// 
+			// numOffsetY
+			// 
+			this->numOffsetY->Location = System::Drawing::Point(83, 42);
+			this->numOffsetY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, 0});
+			this->numOffsetY->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, System::Int32::MinValue});
+			this->numOffsetY->Name = L"numOffsetY";
+			this->numOffsetY->Size = System::Drawing::Size(89, 20);
+			this->numOffsetY->TabIndex = 3;
+			// 
+			// numOffsetX
+			// 
+			this->numOffsetX->Location = System::Drawing::Point(83, 16);
+			this->numOffsetX->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, 0});
+			this->numOffsetX->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, System::Int32::MinValue});
+			this->numOffsetX->Name = L"numOffsetX";
+			this->numOffsetX->Size = System::Drawing::Size(89, 20);
+			this->numOffsetX->TabIndex = 2;
+			// 
+			// label56
+			// 
+			this->label56->AutoSize = true;
+			this->label56->Location = System::Drawing::Point(11, 44);
+			this->label56->Name = L"label56";
+			this->label56->Size = System::Drawing::Size(52, 13);
+			this->label56->TabIndex = 1;
+			this->label56->Text = L"Monitor Y";
+			// 
+			// label52
+			// 
+			this->label52->AutoSize = true;
+			this->label52->Location = System::Drawing::Point(11, 20);
+			this->label52->Name = L"label52";
+			this->label52->Size = System::Drawing::Size(52, 13);
+			this->label52->TabIndex = 0;
+			this->label52->Text = L"Monitor X";
 			// 
 			// groupBox13
 			// 
@@ -5019,99 +5123,34 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cmbLog->Size = System::Drawing::Size(668, 21);
 			this->cmbLog->TabIndex = 47;
 			// 
-			// groupBox15
+			// groupBox16
 			// 
-			this->groupBox15->Controls->Add(this->numOffsetY);
-			this->groupBox15->Controls->Add(this->numOffsetX);
-			this->groupBox15->Controls->Add(this->label56);
-			this->groupBox15->Controls->Add(this->label52);
-			this->groupBox15->Location = System::Drawing::Point(329, 7);
-			this->groupBox15->Name = L"groupBox15";
-			this->groupBox15->Size = System::Drawing::Size(178, 74);
-			this->groupBox15->TabIndex = 73;
-			this->groupBox15->TabStop = false;
-			this->groupBox15->Text = L"Draw offsets";
+			this->groupBox16->Controls->Add(this->label98);
+			this->groupBox16->Controls->Add(this->numDrawOrderOffsetHexY);
+			this->groupBox16->Location = System::Drawing::Point(329, 168);
+			this->groupBox16->Name = L"groupBox16";
+			this->groupBox16->Size = System::Drawing::Size(178, 54);
+			this->groupBox16->TabIndex = 75;
+			this->groupBox16->TabStop = false;
+			this->groupBox16->Text = L"Draw order offset";
 			// 
-			// label52
+			// numDrawOrderOffsetHexY
 			// 
-			this->label52->AutoSize = true;
-			this->label52->Location = System::Drawing::Point(11, 20);
-			this->label52->Name = L"label52";
-			this->label52->Size = System::Drawing::Size(52, 13);
-			this->label52->TabIndex = 0;
-			this->label52->Text = L"Monitor X";
+			this->numDrawOrderOffsetHexY->Location = System::Drawing::Point(83, 21);
+			this->numDrawOrderOffsetHexY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {120, 0, 0, 0});
+			this->numDrawOrderOffsetHexY->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {120, 0, 0, System::Int32::MinValue});
+			this->numDrawOrderOffsetHexY->Name = L"numDrawOrderOffsetHexY";
+			this->numDrawOrderOffsetHexY->Size = System::Drawing::Size(89, 20);
+			this->numDrawOrderOffsetHexY->TabIndex = 0;
 			// 
-			// label56
+			// label98
 			// 
-			this->label56->AutoSize = true;
-			this->label56->Location = System::Drawing::Point(11, 44);
-			this->label56->Name = L"label56";
-			this->label56->Size = System::Drawing::Size(52, 13);
-			this->label56->TabIndex = 1;
-			this->label56->Text = L"Monitor Y";
-			// 
-			// numOffsetX
-			// 
-			this->numOffsetX->Location = System::Drawing::Point(83, 16);
-			this->numOffsetX->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, 0});
-			this->numOffsetX->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, System::Int32::MinValue});
-			this->numOffsetX->Name = L"numOffsetX";
-			this->numOffsetX->Size = System::Drawing::Size(89, 20);
-			this->numOffsetX->TabIndex = 2;
-			// 
-			// numOffsetY
-			// 
-			this->numOffsetY->Location = System::Drawing::Point(83, 42);
-			this->numOffsetY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, 0});
-			this->numOffsetY->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {30000, 0, 0, System::Int32::MinValue});
-			this->numOffsetY->Name = L"numOffsetY";
-			this->numOffsetY->Size = System::Drawing::Size(89, 20);
-			this->numOffsetY->TabIndex = 3;
-			// 
-			// groupBox7
-			// 
-			this->groupBox7->Controls->Add(this->rbCutVertical);
-			this->groupBox7->Controls->Add(this->rbCutHorizontal);
-			this->groupBox7->Controls->Add(this->rbCutDisabled);
-			this->groupBox7->Location = System::Drawing::Point(329, 87);
-			this->groupBox7->Name = L"groupBox7";
-			this->groupBox7->Size = System::Drawing::Size(178, 76);
-			this->groupBox7->TabIndex = 74;
-			this->groupBox7->TabStop = false;
-			this->groupBox7->Text = L"Sprite cutting (for long walls)";
-			// 
-			// rbCutDisabled
-			// 
-			this->rbCutDisabled->AutoSize = true;
-			this->rbCutDisabled->Location = System::Drawing::Point(14, 19);
-			this->rbCutDisabled->Name = L"rbCutDisabled";
-			this->rbCutDisabled->Size = System::Drawing::Size(65, 17);
-			this->rbCutDisabled->TabIndex = 0;
-			this->rbCutDisabled->TabStop = true;
-			this->rbCutDisabled->Text = L"Disabled";
-			this->rbCutDisabled->UseVisualStyleBackColor = true;
-			// 
-			// rbCutHorizontal
-			// 
-			this->rbCutHorizontal->AutoSize = true;
-			this->rbCutHorizontal->Location = System::Drawing::Point(14, 36);
-			this->rbCutHorizontal->Name = L"rbCutHorizontal";
-			this->rbCutHorizontal->Size = System::Drawing::Size(133, 17);
-			this->rbCutHorizontal->TabIndex = 1;
-			this->rbCutHorizontal->TabStop = true;
-			this->rbCutHorizontal->Text = L"Horizontal (X hex axis)";
-			this->rbCutHorizontal->UseVisualStyleBackColor = true;
-			// 
-			// rbCutVertical
-			// 
-			this->rbCutVertical->AutoSize = true;
-			this->rbCutVertical->Location = System::Drawing::Point(14, 53);
-			this->rbCutVertical->Name = L"rbCutVertical";
-			this->rbCutVertical->Size = System::Drawing::Size(120, 17);
-			this->rbCutVertical->TabIndex = 2;
-			this->rbCutVertical->TabStop = true;
-			this->rbCutVertical->Text = L"Vertical (Y hex axis)";
-			this->rbCutVertical->UseVisualStyleBackColor = true;
+			this->label98->AutoSize = true;
+			this->label98->Location = System::Drawing::Point(21, 24);
+			this->label98->Name = L"label98";
+			this->label98->Size = System::Drawing::Size(35, 13);
+			this->label98->TabIndex = 1;
+			this->label98->Text = L"Hex Y";
 			// 
 			// Form1
 			// 
@@ -5264,6 +5303,12 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox10->ResumeLayout(false);
 			this->groupBox10->PerformLayout();
 			this->tabPage3->ResumeLayout(false);
+			this->groupBox7->ResumeLayout(false);
+			this->groupBox7->PerformLayout();
+			this->groupBox15->ResumeLayout(false);
+			this->groupBox15->PerformLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetY))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetX))->EndInit();
 			this->groupBox13->ResumeLayout(false);
 			this->groupBox13->PerformLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numHolodisk))->EndInit();
@@ -5289,12 +5334,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMax))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMin))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitBase))->EndInit();
-			this->groupBox15->ResumeLayout(false);
-			this->groupBox15->PerformLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetX))->EndInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetY))->EndInit();
-			this->groupBox7->ResumeLayout(false);
-			this->groupBox7->PerformLayout();
+			this->groupBox16->ResumeLayout(false);
+			this->groupBox16->PerformLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawOrderOffsetHexY))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -5728,6 +5770,8 @@ void ShowObject(ProtoItem* proto)
 	else if(proto->SpriteCut==SPRITE_CUT_VERTICAL) rbCutHorizontal->Checked=true;
 	else rbCutDisabled->Checked=true;
 
+	numDrawOrderOffsetHexY->Value=(int)proto->DrawOrderOffsetHexY;
+
 	// Radio
 	numRadioChannel->Value=(UINT)proto->RadioChannel;
 	numRadioBroadcastSend->Value=(UINT)proto->RadioBroadcastSend;
@@ -6056,6 +6100,7 @@ ProtoItem* CompileObject()
 	if(rbCutHorizontal->Checked) proto->SpriteCut=SPRITE_CUT_HORIZONTAL;
 	else if(rbCutVertical->Checked) proto->SpriteCut=SPRITE_CUT_VERTICAL;
 	else proto->SpriteCut=0;
+	proto->DrawOrderOffsetHexY=(int)numDrawOrderOffsetHexY->Value;
 
 	// Radio
 	proto->RadioChannel=(UINT)numRadioChannel->Value;

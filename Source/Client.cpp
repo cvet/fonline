@@ -10452,7 +10452,8 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 
 	Field& f=Self->HexMngr.GetField(hx,hy);
 	Sprites& tree=Self->HexMngr.GetDrawTree();
-	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT+3:DRAW_ORDER_FLAT+1):(is_item?DRAW_ORDER+2:DRAW_ORDER+1),hx,hy,0,
+	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT+3:DRAW_ORDER_FLAT+1):(is_item?DRAW_ORDER+2:DRAW_ORDER+1),
+		hx,hy+(proto_item?proto_item->DrawOrderOffsetHexY:0),0,
 		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
 	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 
@@ -10467,7 +10468,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 			case CORNER_NORTH: egg_type=EGG_X_AND_Y; break;
 			case CORNER_EAST_WEST:
 			case CORNER_WEST: egg_type=EGG_Y; break;
-			default: egg_type=EGG_X; break;// CORNER_NORTH_SOUTH, CORNER_EAST
+			default: egg_type=EGG_X; break; // CORNER_NORTH_SOUTH, CORNER_EAST
 			}
 			spr.SetEgg(egg_type);
 		}
