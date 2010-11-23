@@ -2251,6 +2251,8 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			float x2=(float)(spr->ScrX-si->Width/2+spr->CutX+spr->CutW+GameOpt.ScrOx-1.0f)/z-0.5f;
 			float y2=(float)(spr->ScrY+spr->CutOyR+GameOpt.ScrOy)/z-0.5f;
 			PrepareSquare(cut,FLTPOINT(x1,y1-80.0f/z+oy),FLTPOINT(x2,y2-80.0f/z-oy),FLTPOINT(x1,y1+oy),FLTPOINT(x2,y2-oy),0x4FFFFF00);
+			PrepareSquare(cut,FLTRECT(xf,yf,xf+1.0f,yf+hf),0x4F000000);
+			PrepareSquare(cut,FLTRECT(xf+wf,yf,xf+wf+1.0f,yf+hf),0x4F000000);
 			DrawPoints(cut,D3DPT_TRIANGLELIST);
 		}
 

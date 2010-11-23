@@ -6823,12 +6823,8 @@ void FOClient::Net_OnHoloInfo()
 
 void FOClient::Net_OnScores()
 {
-	ZeroMemory(BestScores,sizeof(BestScores));
-	for(int i=0;i<SCORES_MAX;i++)
-	{
-		Bin.Pop(&BestScores[i][0],SCORE_NAME_LEN);
-		BestScores[i][SCORE_NAME_LEN-1]='\0';
-	}
+	Bin.Pop(&BestScores[0][0],SCORE_NAME_LEN*SCORES_MAX);
+	for(int i=0;i<SCORES_MAX;i++) BestScores[i][SCORE_NAME_LEN-1]='\0';
 }
 
 void FOClient::Net_OnUserHoloStr()
