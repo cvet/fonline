@@ -1350,6 +1350,10 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
+	// Begin data encrypting
+	cl->Bin.SetEncryptKey(1234567890);
+	cl->Bout.SetEncryptKey(1234567890);
+
 	// Name
 	char name[MAX_NAME+1];
 	cl->Bin.Pop(name,MAX_NAME);
@@ -1644,6 +1648,10 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	DWORD uidxor,uidor,uidcalc;
 	DWORD uid[5];
 	cl->Bin >> uid[4];
+
+	// Begin data encrypting
+	cl->Bin.SetEncryptKey(uid[4]+12345);
+	cl->Bout.SetEncryptKey(uid[4]+12345);
 
 	// Login, password
 	char name[MAX_NAME+1];
@@ -2205,9 +2213,15 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Login ok
+	DWORD bin_seed=Random(100000,2000000000);
+	DWORD bout_seed=Random(100000,2000000000);
 	BOUT_BEGIN(cl);
 	cl->Bout << NETMSG_LOGIN_SUCCESS;
+	cl->Bout << bin_seed;
+	cl->Bout << bout_seed;
 	BOUT_END(cl);
+	cl->Bin.SetEncryptKey(bin_seed);
+	cl->Bout.SetEncryptKey(bout_seed);
 
 	InterlockedExchange(&cl->NetState,STATE_LOGINOK);
 	cl->Send_LoadMap(NULL);

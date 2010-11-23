@@ -3,6 +3,8 @@
 
 #include "Common.h"
 
+#define CRYPT_KEYS_COUNT      (50)
+
 class BufferManager
 {
 private:
@@ -12,6 +14,11 @@ private:
 	DWORD bufLen;
 	DWORD bufEndPos;
 	DWORD bufReadPos;
+	bool encryptActive;
+	int encryptKeyPos;
+	DWORD encryptKeys[CRYPT_KEYS_COUNT];
+
+	void CopyBuf(const char* from, char* to, const char* mask, DWORD crypt_key, DWORD len);
 
 public:
 	BufferManager();
@@ -19,12 +26,13 @@ public:
 	BufferManager& operator=(const BufferManager& r);
 	~BufferManager();
 
+	void SetEncryptKey(DWORD seed);
 	void Lock();
 	void Unlock();
 	void Refresh();
 	void Reset();
 	void LockReset();
-	void Push(const char* buf, DWORD len);
+	void Push(const char* buf, DWORD len, bool no_crypt = false);
 	void Push(const char* buf, const char* mask, DWORD len);
 	void Pop(char* buf, DWORD len);
 	void Pop(DWORD len);
@@ -36,7 +44,7 @@ public:
 	DWORD GetCurPos(){return bufReadPos;}
 	void SetEndPos(DWORD pos){bufEndPos=pos;}
 	DWORD GetEndPos()const{return bufEndPos;}
-	void MoveReadPos(int val){bufReadPos+=val;}
+	void MoveReadPos(int val){bufReadPos+=val; EncryptKey(val);}
 	bool IsError()const{return isError;}
 	bool IsEmpty()const{return bufReadPos>=bufEndPos;}
 	bool IsHaveSize(DWORD size)const{return bufReadPos+size<=bufEndPos;}
@@ -63,6 +71,20 @@ public:
 	BufferManager& operator>>(char& i);
 	BufferManager& operator<<(bool i);
 	BufferManager& operator>>(bool& i);
+
+private:
+	inline DWORD EncryptKey(int move)
+	{
+		if(!encryptActive) return 0;
+		DWORD key=encryptKeys[encryptKeyPos];
+		encryptKeyPos+=move;
+		if(encryptKeyPos<0 || encryptKeyPos>=CRYPT_KEYS_COUNT)
+		{
+			encryptKeyPos%=CRYPT_KEYS_COUNT;
+			if(encryptKeyPos<0) encryptKeyPos+=CRYPT_KEYS_COUNT;
+		}
+		return key;
+	}
 };
 
 #endif // __BUFFER_MANAGER__

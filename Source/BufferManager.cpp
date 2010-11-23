@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "BufferManager.h"
 #include "NetProtocol.h"
+#include "Randomizer.h"
 
 #define NET_BUFFER_SIZE             (2048)
 
@@ -11,6 +12,7 @@ BufferManager::BufferManager()
 	bufEndPos=0;
 	bufReadPos=0;
 	bufData=new char[bufLen];
+	encryptActive=false;
 	isError=false;
 }
 
@@ -21,6 +23,7 @@ BufferManager::BufferManager(DWORD alen)
 	bufEndPos=0;
 	bufReadPos=0;
 	bufData=new char[bufLen];
+	encryptActive=false;
 	isError=false;
 }
 
@@ -35,6 +38,9 @@ BufferManager& BufferManager::operator=(const BufferManager& r)
 	SAFEDELA(bufData);
 	bufData=new char[bufLen];
 	memcpy(bufData,r.bufData,bufLen);
+	encryptActive=r.encryptActive;
+	encryptKeyPos=r.encryptKeyPos;
+	memcpy(encryptKeys,r.encryptKeys,sizeof(encryptKeys));
 	return *this;
 }
 
@@ -42,6 +48,20 @@ BufferManager::~BufferManager()
 {
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,-(int)(bufLen+sizeof(BufferManager)));
 	SAFEDELA(bufData);
+}
+
+void BufferManager::SetEncryptKey(DWORD seed)
+{
+	if(!seed)
+	{
+		encryptActive=false;
+		return;
+	}
+
+	Randomizer rnd(seed);
+	for(int i=0;i<CRYPT_KEYS_COUNT;i++) encryptKeys[i]=(rnd.Random(0x1000,0xFFFF)|rnd.Random(0x1000,0xFFFF));
+	encryptKeyPos=0;
+	encryptActive=true;
 }
 
 void BufferManager::Lock()
@@ -98,11 +118,11 @@ void BufferManager::GrowBuf(DWORD len)
 	bufData=new_buf;
 }
 
-void BufferManager::Push(const char* buf, DWORD len)
+void BufferManager::Push(const char* buf, DWORD len, bool no_crypt /* = false */)
 {
 	if(isError || !len) return;
 	if(bufEndPos+len>=bufLen) GrowBuf(len);
-	memcpy(bufData+bufEndPos,buf,len);
+	CopyBuf(buf,bufData+bufEndPos,NULL,no_crypt?0:EncryptKey(len),len);
 	bufEndPos+=len;
 }
 
@@ -110,11 +130,7 @@ void BufferManager::Push(const char* buf, const char* mask, DWORD len)
 {
 	if(isError || !len || !mask) return;
 	if(bufEndPos+len>=bufLen) GrowBuf(len);
-	char* ptr=bufData+bufEndPos;
-	if(len%sizeof(size_t))
-		for(DWORD i=0;i<len;i++,ptr++,buf++,mask++) *ptr=*buf&*mask;
-	else
-		for(DWORD i=0,j=sizeof(size_t);i<len;i+=j,ptr+=j,buf+=j,mask+=j) *(size_t*)ptr=*(size_t*)buf&*(size_t*)mask;
+	CopyBuf(buf,bufData+bufEndPos,mask,EncryptKey(len),len);
 	bufEndPos+=len;
 }
 
@@ -122,7 +138,7 @@ void BufferManager::Pop(char* buf, DWORD len)
 {
 	if(isError || !len) return;
 	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return; }
-	memcpy(buf,bufData+bufReadPos,len);
+	CopyBuf(bufData+bufReadPos,buf,NULL,EncryptKey(len),len);
 	bufReadPos+=len;
 }
 
@@ -135,11 +151,29 @@ void BufferManager::Pop(DWORD len)
 	bufEndPos-=len;
 }
 
+void BufferManager::CopyBuf(const char* from, char* to, const char* mask, DWORD crypt_key, DWORD len)
+{
+	if(mask)
+	{
+		if(len%sizeof(size_t))
+			for(DWORD i=0;i<len;i++,to++,from++,mask++) *to=(*from&*mask)^crypt_key;
+		else
+			for(DWORD i=0,j=sizeof(size_t);i<len;i+=j,to+=j,from+=j,mask+=j) *(size_t*)to=(*(size_t*)from&*(size_t*)mask)^crypt_key;
+	}
+	else
+	{
+		if(len%sizeof(size_t))
+			for(DWORD i=0;i<len;i++,to++,from++) *to=*from^crypt_key;
+		else
+			for(DWORD i=0,j=sizeof(size_t);i<len;i+=j,to+=j,from+=j) *(size_t*)to=*(size_t*)from^crypt_key;
+	}
+}
+
 BufferManager& BufferManager::operator<<(DWORD i)
 {
 	if(isError) return *this;
 	if(bufEndPos+4>=bufLen) GrowBuf(4);
-	*(DWORD*)(bufData+bufEndPos)=i;
+	*(DWORD*)(bufData+bufEndPos)=i^EncryptKey(4);
 	bufEndPos+=4;
 	return *this;
 }
@@ -148,7 +182,7 @@ BufferManager& BufferManager::operator>>(DWORD& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(DWORD*)(bufData+bufReadPos);
+	i=*(DWORD*)(bufData+bufReadPos)^EncryptKey(4);
 	bufReadPos+=4;
 	return *this;
 }
@@ -157,7 +191,7 @@ BufferManager& BufferManager::operator<<(int i)
 {
 	if(isError) return *this;
 	if(bufEndPos+4>=bufLen) GrowBuf(4);
-	*(int*)(bufData+bufEndPos)=i;
+	*(int*)(bufData+bufEndPos)=i^EncryptKey(4);
 	bufEndPos+=4;
 	return *this;
 }
@@ -166,7 +200,7 @@ BufferManager& BufferManager::operator>>(int& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(int*)(bufData+bufReadPos);
+	i=*(int*)(bufData+bufReadPos)^EncryptKey(4);
 	bufReadPos+=4;
 	return *this;
 }
@@ -175,7 +209,7 @@ BufferManager& BufferManager::operator<<(WORD i)
 {
 	if(isError) return *this;
 	if(bufEndPos+2>=bufLen) GrowBuf(2);
-	*(WORD*)(bufData+bufEndPos)=i;
+	*(WORD*)(bufData+bufEndPos)=i^EncryptKey(2);
 	bufEndPos+=2;
 	return *this;
 }
@@ -184,7 +218,7 @@ BufferManager& BufferManager::operator>>(WORD& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(WORD*)(bufData+bufReadPos);
+	i=*(WORD*)(bufData+bufReadPos)^EncryptKey(2);
 	bufReadPos+=2;
 	return *this;
 }
@@ -193,7 +227,7 @@ BufferManager& BufferManager::operator<<(short i)
 {
 	if(isError) return *this;
 	if(bufEndPos+2>=bufLen) GrowBuf(2);
-	*(short*)(bufData+bufEndPos)=i;
+	*(short*)(bufData+bufEndPos)=i^EncryptKey(2);
 	bufEndPos+=2;
 	return *this;
 }
@@ -202,7 +236,7 @@ BufferManager& BufferManager::operator>>(short& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(short*)(bufData+bufReadPos);
+	i=*(short*)(bufData+bufReadPos)^EncryptKey(2);
 	bufReadPos+=2;
 	return *this;
 }
@@ -211,7 +245,7 @@ BufferManager& BufferManager::operator<<(BYTE i)
 {
 	if(isError) return *this;
 	if(bufEndPos+1>=bufLen) GrowBuf(1);
-	*(BYTE*)(bufData+bufEndPos)=i;
+	*(BYTE*)(bufData+bufEndPos)=i^EncryptKey(1);
 	bufEndPos+=1;
 	return *this;
 }
@@ -220,7 +254,7 @@ BufferManager& BufferManager::operator>>(BYTE& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(BYTE*)(bufData+bufReadPos);
+	i=*(BYTE*)(bufData+bufReadPos)^EncryptKey(1);
 	bufReadPos+=1;
 	return *this;
 }
@@ -229,7 +263,7 @@ BufferManager& BufferManager::operator<<(char i)
 {
 	if(isError) return *this;
 	if(bufEndPos+1>=bufLen) GrowBuf(1);
-	*(char*)(bufData+bufEndPos)=i;
+	*(char*)(bufData+bufEndPos)=i^EncryptKey(1);
 	bufEndPos+=1;
 	return *this;
 }
@@ -238,7 +272,7 @@ BufferManager& BufferManager::operator>>(char& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(char*)(bufData+bufReadPos);
+	i=*(char*)(bufData+bufReadPos)^EncryptKey(1);
 	bufReadPos+=1;
 	return *this;
 }
@@ -247,7 +281,7 @@ BufferManager& BufferManager::operator<<(bool i)
 {
 	if(isError) return *this;
 	if(bufEndPos+1>=bufLen) GrowBuf(1);
-	*(BYTE*)(bufData+bufEndPos)=(i?1:0);
+	*(BYTE*)(bufData+bufEndPos)=(i?1:0)^(EncryptKey(1)&0xFF);
 	bufEndPos+=1;
 	return *this;
 }
@@ -256,7 +290,7 @@ BufferManager& BufferManager::operator>>(bool& i)
 {
 	if(isError) return *this;
 	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=((*(BYTE*)(bufData+bufReadPos))?true:false);
+	i=((*(BYTE*)(bufData+bufReadPos)^(EncryptKey(1)&0xFF))?true:false);
 	bufReadPos+=1;
 	return *this;
 }
@@ -265,9 +299,7 @@ BufferManager& BufferManager::operator>>(bool& i)
 bool BufferManager::NeedProcess()
 {
 	if(bufReadPos+sizeof(MSGTYPE)>bufEndPos) return false;
-	MSGTYPE msg=*(MSGTYPE*)(bufData+bufReadPos);
-
-	//TODO: #ifdef FONLINE_SERVER, FONLINE_CLIENT
+	MSGTYPE msg=*(MSGTYPE*)(bufData+bufReadPos)^EncryptKey(0);
 
 	// Known size
 	switch(msg)
@@ -340,9 +372,11 @@ bool BufferManager::NeedProcess()
 	case NETMSG_SCORES:						return (NETMSG_SCORES_SIZE+bufReadPos<=bufEndPos);
 	}
 
-	// Changeable Size
+	// Changeable size
 	if(bufReadPos+sizeof(MSGTYPE)+sizeof(DWORD)>bufEndPos) return false;
-	DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(MSGTYPE));
+
+	EncryptKey(sizeof(MSGTYPE));
+	DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(MSGTYPE))^EncryptKey(-(int)sizeof(MSGTYPE));
 
 	switch(msg)
 	{
@@ -402,76 +436,78 @@ bool BufferManager::NeedProcess()
 void BufferManager::SkipMsg(MSGTYPE msg)
 {
 	bufReadPos-=sizeof(msg);
+	EncryptKey(-(int)sizeof(msg));
 
-	// Known Size
+	// Known size
+	DWORD size=0;
 	switch(msg)
 	{
-	case 0xFFFFFFFF:						bufReadPos+=16; return;
-	case NETMSG_LOGIN:						bufReadPos+=NETMSG_LOGIN_SIZE; return;
-	case NETMSG_LOGIN_SUCCESS:				bufReadPos+=NETMSG_LOGIN_SUCCESS_SIZE; return;
-	case NETMSG_REGISTER_SUCCESS:			bufReadPos+=NETMSG_REGISTER_SUCCESS_SIZE; return;
-	case NETMSG_PING:						bufReadPos+=NETMSG_PING_SIZE; return;
-	case NETMSG_REMOVE_CRITTER:				bufReadPos+=NETMSG_REMOVE_CRITTER_SIZE; return;
-	case NETMSG_MSG:						bufReadPos+=NETMSG_MSG_SIZE; return;
-	case NETMSG_MAP_TEXT_MSG:				bufReadPos+=NETMSG_MAP_TEXT_MSG_SIZE; return;
-	case NETMSG_DIR:						bufReadPos+=NETMSG_DIR_SIZE; return;
-	case NETMSG_CRITTER_DIR:				bufReadPos+=NETMSG_CRITTER_DIR_SIZE; return;
-	case NETMSG_SEND_MOVE_WALK:				bufReadPos+=NETMSG_SEND_MOVE_WALK_SIZE; return;
-	case NETMSG_SEND_MOVE_RUN:				bufReadPos+=NETMSG_SEND_MOVE_RUN_SIZE; return;
-	case NETMSG_CRITTER_MOVE:				bufReadPos+=NETMSG_CRITTER_MOVE_SIZE; return;
-	case NETMSG_CRITTER_XY:					bufReadPos+=NETMSG_CRITTER_XY_SIZE; return;
-	case NETMSG_ALL_PARAMS:					bufReadPos+=NETMSG_ALL_PARAMS_SIZE; return;
-	case NETMSG_PARAM:						bufReadPos+=NETMSG_PARAM_SIZE; return;
-	case NETMSG_CRITTER_PARAM:				bufReadPos+=NETMSG_CRITTER_PARAM_SIZE; return;
-	case NETMSG_SEND_CRAFT:					bufReadPos+=NETMSG_SEND_CRAFT_SIZE; return;
-	case NETMSG_CRAFT_RESULT:				bufReadPos+=NETMSG_CRAFT_RESULT_SIZE; return;	
-	case NETMSG_CLEAR_ITEMS:				bufReadPos+=NETMSG_CLEAR_ITEMS_SIZE; return;
-	case NETMSG_ADD_ITEM:					bufReadPos+=NETMSG_ADD_ITEM_SIZE; return;
-	case NETMSG_REMOVE_ITEM:				bufReadPos+=NETMSG_REMOVE_ITEM_SIZE; return;
-	case NETMSG_SEND_SORT_VALUE_ITEM:		bufReadPos+=NETMSG_SEND_SORT_VALUE_ITEM_SIZE; return;
-	case NETMSG_ADD_ITEM_ON_MAP:			bufReadPos+=NETMSG_ADD_ITEM_ON_MAP_SIZE; return;
-	case NETMSG_CHANGE_ITEM_ON_MAP:			bufReadPos+=NETMSG_CHANGE_ITEM_ON_MAP_SIZE; return;
-	case NETMSG_ERASE_ITEM_FROM_MAP:		bufReadPos+=NETMSG_ERASE_ITEM_FROM_MAP_SIZE; return;
-	case NETMSG_ANIMATE_ITEM:				bufReadPos+=NETMSG_ANIMATE_ITEM_SIZE; return;
-	case NETMSG_SEND_RATE_ITEM:				bufReadPos+=NETMSG_SEND_RATE_ITEM_SIZE; return;
-	case NETMSG_SEND_CHANGE_ITEM:			bufReadPos+=NETMSG_SEND_CHANGE_ITEM_SIZE; return;
-	case NETMSG_SEND_PICK_ITEM:				bufReadPos+=NETMSG_SEND_PICK_ITEM_SIZE; return;
-	case NETMSG_SEND_ITEM_CONT:				bufReadPos+=NETMSG_SEND_ITEM_CONT_SIZE; return;
-	case NETMSG_SEND_USE_ITEM:				bufReadPos+=NETMSG_SEND_USE_ITEM_SIZE; return;
-	case NETMSG_SEND_USE_SKILL:				bufReadPos+=NETMSG_SEND_USE_SKILL_SIZE; return;
-	case NETMSG_SEND_PICK_CRITTER:			bufReadPos+=NETMSG_SEND_PICK_CRITTER_SIZE; return;
-	case NETMSG_SOME_ITEM:					bufReadPos+=NETMSG_SOME_ITEM_SIZE; return;
-	case NETMSG_CRITTER_ACTION:				bufReadPos+=NETMSG_CRITTER_ACTION_SIZE; return;
-	case NETMSG_CRITTER_KNOCKOUT:			bufReadPos+=NETMSG_CRITTER_KNOCKOUT_SIZE; return;
-	case NETMSG_CRITTER_ITEM_DATA:			bufReadPos+=NETMSG_CRITTER_ITEM_DATA_SIZE; return;
-	case NETMSG_CRITTER_ANIMATE:			bufReadPos+=NETMSG_CRITTER_ANIMATE_SIZE; return;
-	case NETMSG_EFFECT:						bufReadPos+=NETMSG_EFFECT_SIZE; return;
-	case NETMSG_FLY_EFFECT:					bufReadPos+=NETMSG_FLY_EFFECT_SIZE; return;
-	case NETMSG_PLAY_SOUND:					bufReadPos+=NETMSG_PLAY_SOUND_SIZE; return;
-	case NETMSG_PLAY_SOUND_TYPE:			bufReadPos+=NETMSG_PLAY_SOUND_TYPE_SIZE; return;
-	case NETMSG_SEND_KARMA_VOTING:			bufReadPos+=NETMSG_SEND_KARMA_VOTING_SIZE; return;
-	case NETMSG_SEND_TALK_NPC:				bufReadPos+=NETMSG_SEND_TALK_NPC_SIZE; return;
-	case NETMSG_SEND_SAY_NPC:				bufReadPos+=NETMSG_SEND_SAY_NPC_SIZE; return;
-	case NETMSG_PLAYERS_BARTER:				bufReadPos+=NETMSG_PLAYERS_BARTER_SIZE; return;
-	case NETMSG_PLAYERS_BARTER_SET_HIDE:	bufReadPos+=NETMSG_PLAYERS_BARTER_SET_HIDE_SIZE; return;
-	case NETMSG_SEND_GET_INFO:				bufReadPos+=NETMSG_SEND_GET_TIME_SIZE; return;
-	case NETMSG_GAME_INFO:					bufReadPos+=NETMSG_GAME_INFO_SIZE; return;
-	case NETMSG_SEND_COMBAT:				bufReadPos+=NETMSG_SEND_COMBAT_SIZE; return;
-	case NETMSG_LOADMAP:					bufReadPos+=NETMSG_LOADMAP_SIZE; return;
-	case NETMSG_SEND_GIVE_MAP:				bufReadPos+=NETMSG_SEND_GIVE_MAP_SIZE; return;
-	case NETMSG_SEND_LOAD_MAP_OK:			bufReadPos+=NETMSG_SEND_LOAD_MAP_OK_SIZE; return;
-	case NETMSG_SHOW_SCREEN:				bufReadPos+=NETMSG_SHOW_SCREEN_SIZE; return;
-	case NETMSG_SEND_SCREEN_ANSWER:			bufReadPos+=NETMSG_SEND_SCREEN_ANSWER_SIZE; return;
-	case NETMSG_DROP_TIMERS:				bufReadPos+=NETMSG_DROP_TIMERS_SIZE; return;
-	case NETMSG_SEND_REFRESH_ME:			bufReadPos+=NETMSG_SEND_REFRESH_ME_SIZE; return;
-	case NETMSG_VIEW_MAP:					bufReadPos+=NETMSG_VIEW_MAP_SIZE; return;
-	case NETMSG_SEND_GIVE_GLOBAL_INFO:		bufReadPos+=NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE; return;
-	case NETMSG_SEND_RULE_GLOBAL:			bufReadPos+=NETMSG_SEND_RULE_GLOBAL_SIZE; return;
-	case NETMSG_FOLLOW:						bufReadPos+=NETMSG_FOLLOW_SIZE; return;
-	case NETMSG_QUEST:						bufReadPos+=NETMSG_QUEST_SIZE; return;
-	case NETMSG_SEND_GET_USER_HOLO_STR:		bufReadPos+=NETMSG_SEND_GET_USER_HOLO_STR_SIZE; return;
-	case NETMSG_SEND_GET_SCORES:			bufReadPos+=NETMSG_SEND_GET_SCORES_SIZE; return;
-	case NETMSG_SCORES:						bufReadPos+=NETMSG_SCORES_SIZE; return;
+	case 0xFFFFFFFF:						size=16; break;
+	case NETMSG_LOGIN:						size=NETMSG_LOGIN_SIZE; break;
+	case NETMSG_LOGIN_SUCCESS:				size=NETMSG_LOGIN_SUCCESS_SIZE; break;
+	case NETMSG_REGISTER_SUCCESS:			size=NETMSG_REGISTER_SUCCESS_SIZE; break;
+	case NETMSG_PING:						size=NETMSG_PING_SIZE; break;
+	case NETMSG_REMOVE_CRITTER:				size=NETMSG_REMOVE_CRITTER_SIZE; break;
+	case NETMSG_MSG:						size=NETMSG_MSG_SIZE; break;
+	case NETMSG_MAP_TEXT_MSG:				size=NETMSG_MAP_TEXT_MSG_SIZE; break;
+	case NETMSG_DIR:						size=NETMSG_DIR_SIZE; break;
+	case NETMSG_CRITTER_DIR:				size=NETMSG_CRITTER_DIR_SIZE; break;
+	case NETMSG_SEND_MOVE_WALK:				size=NETMSG_SEND_MOVE_WALK_SIZE; break;
+	case NETMSG_SEND_MOVE_RUN:				size=NETMSG_SEND_MOVE_RUN_SIZE; break;
+	case NETMSG_CRITTER_MOVE:				size=NETMSG_CRITTER_MOVE_SIZE; break;
+	case NETMSG_CRITTER_XY:					size=NETMSG_CRITTER_XY_SIZE; break;
+	case NETMSG_ALL_PARAMS:					size=NETMSG_ALL_PARAMS_SIZE; break;
+	case NETMSG_PARAM:						size=NETMSG_PARAM_SIZE; break;
+	case NETMSG_CRITTER_PARAM:				size=NETMSG_CRITTER_PARAM_SIZE; break;
+	case NETMSG_SEND_CRAFT:					size=NETMSG_SEND_CRAFT_SIZE; break;
+	case NETMSG_CRAFT_RESULT:				size=NETMSG_CRAFT_RESULT_SIZE; break;	
+	case NETMSG_CLEAR_ITEMS:				size=NETMSG_CLEAR_ITEMS_SIZE; break;
+	case NETMSG_ADD_ITEM:					size=NETMSG_ADD_ITEM_SIZE; break;
+	case NETMSG_REMOVE_ITEM:				size=NETMSG_REMOVE_ITEM_SIZE; break;
+	case NETMSG_SEND_SORT_VALUE_ITEM:		size=NETMSG_SEND_SORT_VALUE_ITEM_SIZE; break;
+	case NETMSG_ADD_ITEM_ON_MAP:			size=NETMSG_ADD_ITEM_ON_MAP_SIZE; break;
+	case NETMSG_CHANGE_ITEM_ON_MAP:			size=NETMSG_CHANGE_ITEM_ON_MAP_SIZE; break;
+	case NETMSG_ERASE_ITEM_FROM_MAP:		size=NETMSG_ERASE_ITEM_FROM_MAP_SIZE; break;
+	case NETMSG_ANIMATE_ITEM:				size=NETMSG_ANIMATE_ITEM_SIZE; break;
+	case NETMSG_SEND_RATE_ITEM:				size=NETMSG_SEND_RATE_ITEM_SIZE; break;
+	case NETMSG_SEND_CHANGE_ITEM:			size=NETMSG_SEND_CHANGE_ITEM_SIZE; break;
+	case NETMSG_SEND_PICK_ITEM:				size=NETMSG_SEND_PICK_ITEM_SIZE; break;
+	case NETMSG_SEND_ITEM_CONT:				size=NETMSG_SEND_ITEM_CONT_SIZE; break;
+	case NETMSG_SEND_USE_ITEM:				size=NETMSG_SEND_USE_ITEM_SIZE; break;
+	case NETMSG_SEND_USE_SKILL:				size=NETMSG_SEND_USE_SKILL_SIZE; break;
+	case NETMSG_SEND_PICK_CRITTER:			size=NETMSG_SEND_PICK_CRITTER_SIZE; break;
+	case NETMSG_SOME_ITEM:					size=NETMSG_SOME_ITEM_SIZE; break;
+	case NETMSG_CRITTER_ACTION:				size=NETMSG_CRITTER_ACTION_SIZE; break;
+	case NETMSG_CRITTER_KNOCKOUT:			size=NETMSG_CRITTER_KNOCKOUT_SIZE; break;
+	case NETMSG_CRITTER_ITEM_DATA:			size=NETMSG_CRITTER_ITEM_DATA_SIZE; break;
+	case NETMSG_CRITTER_ANIMATE:			size=NETMSG_CRITTER_ANIMATE_SIZE; break;
+	case NETMSG_EFFECT:						size=NETMSG_EFFECT_SIZE; break;
+	case NETMSG_FLY_EFFECT:					size=NETMSG_FLY_EFFECT_SIZE; break;
+	case NETMSG_PLAY_SOUND:					size=NETMSG_PLAY_SOUND_SIZE; break;
+	case NETMSG_PLAY_SOUND_TYPE:			size=NETMSG_PLAY_SOUND_TYPE_SIZE; break;
+	case NETMSG_SEND_KARMA_VOTING:			size=NETMSG_SEND_KARMA_VOTING_SIZE; break;
+	case NETMSG_SEND_TALK_NPC:				size=NETMSG_SEND_TALK_NPC_SIZE; break;
+	case NETMSG_SEND_SAY_NPC:				size=NETMSG_SEND_SAY_NPC_SIZE; break;
+	case NETMSG_PLAYERS_BARTER:				size=NETMSG_PLAYERS_BARTER_SIZE; break;
+	case NETMSG_PLAYERS_BARTER_SET_HIDE:	size=NETMSG_PLAYERS_BARTER_SET_HIDE_SIZE; break;
+	case NETMSG_SEND_GET_INFO:				size=NETMSG_SEND_GET_TIME_SIZE; break;
+	case NETMSG_GAME_INFO:					size=NETMSG_GAME_INFO_SIZE; break;
+	case NETMSG_SEND_COMBAT:				size=NETMSG_SEND_COMBAT_SIZE; break;
+	case NETMSG_LOADMAP:					size=NETMSG_LOADMAP_SIZE; break;
+	case NETMSG_SEND_GIVE_MAP:				size=NETMSG_SEND_GIVE_MAP_SIZE; break;
+	case NETMSG_SEND_LOAD_MAP_OK:			size=NETMSG_SEND_LOAD_MAP_OK_SIZE; break;
+	case NETMSG_SHOW_SCREEN:				size=NETMSG_SHOW_SCREEN_SIZE; break;
+	case NETMSG_SEND_SCREEN_ANSWER:			size=NETMSG_SEND_SCREEN_ANSWER_SIZE; break;
+	case NETMSG_DROP_TIMERS:				size=NETMSG_DROP_TIMERS_SIZE; break;
+	case NETMSG_SEND_REFRESH_ME:			size=NETMSG_SEND_REFRESH_ME_SIZE; break;
+	case NETMSG_VIEW_MAP:					size=NETMSG_VIEW_MAP_SIZE; break;
+	case NETMSG_SEND_GIVE_GLOBAL_INFO:		size=NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE; break;
+	case NETMSG_SEND_RULE_GLOBAL:			size=NETMSG_SEND_RULE_GLOBAL_SIZE; break;
+	case NETMSG_FOLLOW:						size=NETMSG_FOLLOW_SIZE; break;
+	case NETMSG_QUEST:						size=NETMSG_QUEST_SIZE; break;
+	case NETMSG_SEND_GET_USER_HOLO_STR:		size=NETMSG_SEND_GET_USER_HOLO_STR_SIZE; break;
+	case NETMSG_SEND_GET_SCORES:			size=NETMSG_SEND_GET_SCORES_SIZE; break;
+	case NETMSG_SCORES:						size=NETMSG_SCORES_SIZE; break;
 
 	case NETMSG_CHECK_UID0:
 	case NETMSG_CHECK_UID1:
@@ -510,15 +546,19 @@ void BufferManager::SkipMsg(MSGTYPE msg)
 	case NETMSG_USER_HOLO_STR:
 	case NETMSG_AUTOMAPS_INFO:
 		{
-			//Changeable Size
-			DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(msg));
-			bufReadPos+=msg_len;
+			// Changeable size
+			EncryptKey(sizeof(msg));
+			DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(msg))^EncryptKey(-(int)sizeof(msg));
+			size=msg_len;
 		}
 		break;
 	default:
 		Reset();
 		return;
 	}
+
+	bufReadPos+=size;
+	EncryptKey(size);
 }
 
 void BufferManager::SeekValidMsg()
@@ -530,7 +570,8 @@ void BufferManager::SeekValidMsg()
 			Reset();
 			return;
 		}
-		MSGTYPE msg=*(MSGTYPE*)(bufData+bufReadPos);
+
+		MSGTYPE msg=*(MSGTYPE*)(bufData+bufReadPos)^EncryptKey(0);
 		switch(msg)
 		{
 		case 0xFFFFFFFF:
@@ -637,8 +678,10 @@ void BufferManager::SeekValidMsg()
 			return;
 		default:
 			bufReadPos++;
+			EncryptKey(1);
 			continue;
 		}
 	}
 }
 #endif
+

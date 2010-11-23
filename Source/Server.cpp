@@ -925,7 +925,7 @@ void FOServer::Net_Input(WSAOVERLAPPED_EX* io)
 		InterlockedExchange(&io->Operation,WSAOP_FREE);
 		return;
 	}
-	cl->Bin.Push(io->Buffer.buf,io->Bytes);
+	cl->Bin.Push(io->Buffer.buf,io->Bytes,true);
 	cl->Bin.Unlock();
 
 	io->Flags=0;

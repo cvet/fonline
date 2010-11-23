@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF099) // Fallout Online Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF09A) // Fallout Online Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -57,9 +57,11 @@ MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*12/*Proto*/+sizeo
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN_SUCCESS        MAKE_NETMSG_HEADER(2)
-#define NETMSG_LOGIN_SUCCESS_SIZE   (sizeof(MSGTYPE))
+#define NETMSG_LOGIN_SUCCESS_SIZE   (sizeof(MSGTYPE)+sizeof(DWORD)*2)
 //////////////////////////////////////////////////////////////////////////
 // Login accepted
+// DWORD bin_seed
+// DWORD bout_seed
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CREATE_CLIENT        MAKE_NETMSG_HEADER(3)

@@ -3,6 +3,7 @@
 #include "Access.h"
 #include "Defence.h"
 #include "Version.h"
+#include <Tlhelp32.h>
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR \
@@ -334,6 +335,7 @@ bool FOClient::Init(HWND hwnd)
 	DrawShootBorders=false;
 	LookBorders.clear();
 	ShootBorders.clear();
+
 	WriteLog("Engine initialization complete.\n");
 	Active=true;
 	GET_UID4(UID4);
@@ -2054,6 +2056,9 @@ bool FOClient::NetConnect()
 	if(!Singleplayer) WriteLog("Connecting to server<%s:%d>.\n",GameOpt.Host.c_str(),GameOpt.Port);
 	else WriteLog("Connecting to server.\n");
 
+	Bin.SetEncryptKey(0);
+	Bout.SetEncryptKey(0);
+
 	if((Sock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,0))==INVALID_SOCKET)
 	{
 		WriteLog("Create socket error<%s>.\n",GetLastSocketError());
@@ -2262,6 +2267,8 @@ void FOClient::NetDisconnect()
 	QuestMngr.Clear();
 	Bin.Reset();
 	Bout.Reset();
+	Bin.SetEncryptKey(0);
+	Bout.SetEncryptKey(0);
 	WriteLog("Disconnect success.\n");
 }
 
@@ -2418,7 +2425,7 @@ int FOClient::NetInput(bool unpack)
 	}
 	else
 	{
-		Bin.Push(ComBuf,pos);
+		Bin.Push(ComBuf,pos,true);
 	}
 
 	BytesReceive+=pos;
@@ -2694,6 +2701,11 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	Bout << (WORD)FO_PROTOCOL_VERSION;
 	DWORD uid4=*UID4;
 	Bout << uid4; uid4=uid1;																	// UID4
+
+	// Begin data encrypting
+	Bout.SetEncryptKey(*UID4+12345);
+	Bin.SetEncryptKey(*UID4+12345);
+
 	Bout.Push(name_,MAX_NAME);
 	Bout << uid1; uid4^=uid1*Random(0,432157)+*UID3;											// UID1
 	Bout.Push(pass_,MAX_NAME);
@@ -2734,6 +2746,11 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 	Bout << msg_len;
 
 	Bout << (WORD)FO_PROTOCOL_VERSION;
+
+	// Begin data encrypting
+	Bout.SetEncryptKey(1234567890);
+	Bin.SetEncryptKey(1234567890);
+
 	Bout.Push(newcr->GetName(),MAX_NAME);
 	Bout.Push(newcr->GetPass(),MAX_NAME);
 
@@ -3906,6 +3923,12 @@ void FOClient::Net_OnLoginSuccess()
 	GmapFreeResources();
 	ResMngr.FreeResources(RES_ITEMS);
 	CritterCl::FreeAnimations();
+
+	DWORD bin_seed,bout_seed; // Server bin/bout == client bout/bin
+	Bin >> bin_seed;
+	Bin >> bout_seed;
+	Bout.SetEncryptKey(bin_seed);
+	Bin.SetEncryptKey(bout_seed);
 }
 
 void FOClient::Net_OnAddCritter(bool is_npc)
