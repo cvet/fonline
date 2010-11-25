@@ -1804,9 +1804,9 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 	ProtoItem* proto=(o->MapObjType!=MAP_OBJECT_CRITTER?ItemMngr.GetProtoItem(o->ProtoId):NULL);
 	if(o->MapObjType!=MAP_OBJECT_CRITTER && !proto) return;
 
-	if(o->MapObjType==MAP_OBJECT_CRITTER && ObjCurLine>=16 && ObjCurLine<=16+MAPOBJ_CRITTER_PARAMS-1)
+	if(o->MapObjType==MAP_OBJECT_CRITTER && ObjCurLine>=17 && ObjCurLine<=17+MAPOBJ_CRITTER_PARAMS-1)
 	{
-		int pos=ObjCurLine-16;
+		int pos=ObjCurLine-17;
 		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
 		{
 			if(o->MCritter.ParamIndex[i]>=0 && o->MCritter.ParamIndex[i]<MAX_PARAMS)

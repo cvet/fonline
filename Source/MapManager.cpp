@@ -1213,8 +1213,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 			group->EncounterDescriptor=0;
 			group->StartEncaunterTime(ENCOUNTERS_TIME);
 			if(rule->IsPlayer() && ((Client*)rule)->IsOffline()) goto label_GMStopMove;
-			if(walk_type!=GM_WALK_GROUND || IsLocationOnCoord(xi,yi)) return;
-			GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
+			if(!IsLocationOnCoord(xi,yi)) GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
 		}
 	}
 
