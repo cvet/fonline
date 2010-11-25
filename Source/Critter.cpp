@@ -65,14 +65,15 @@ bool Critter::ParamsSendEnabled[MAX_PARAMS]={0};
 int Critter::ParamsSendScript[MAX_PARAMS]={0};
 int Critter::ParamsChangeScript[MAX_PARAMS]={0};
 int Critter::ParamsGetScript[MAX_PARAMS]={0};
-bool Critter::SlotDataSendEnabled[0x100]={false};
+bool Critter::SlotDataSendEnabled[0x100]={0};
 int Critter::SlotDataSendScript[0x100]={0};
+DWORD Critter::ParamsChosenSendMask[MAX_PARAMS]={0};
 DWORD Critter::ParametersMin[MAX_PARAMETERS_ARRAYS]={0};
-DWORD Critter::ParametersMax[MAX_PARAMETERS_ARRAYS]={MAX_PARAMS-1};
-bool Critter::ParametersOffset[MAX_PARAMETERS_ARRAYS]={false};
-bool Critter::SlotEnabled[0x100]={true,true,true,true,false};
-Item* Critter::SlotEnabledCacheData[0x100]={NULL};
-Item* Critter::SlotEnabledCacheDataExt[0x100]={NULL};
+DWORD Critter::ParametersMax[MAX_PARAMETERS_ARRAYS]={MAX_PARAMS-1,0};
+bool Critter::ParametersOffset[MAX_PARAMETERS_ARRAYS]={0};
+bool Critter::SlotEnabled[0x100]={true,true,true,true,0};
+Item* Critter::SlotEnabledCacheData[0x100]={0};
+Item* Critter::SlotEnabledCacheDataExt[0x100]={0};
 
 Critter::Critter():
 CritterIsNpc(false),RefCounter(1),IsNotValid(false),NameStrRefCounter(0x80000000),
@@ -3516,13 +3517,14 @@ void Client::Send_AllParams()
 
 	BOUT_BEGIN(this);
 	Bout << NETMSG_ALL_PARAMS;
-	Bout.Push((char*)Data.Params,sizeof(Data.Params));
+	Bout.Push((char*)Data.Params,(char*)&ParamsChosenSendMask[0],sizeof(Data.Params));
 	BOUT_END(this);
 }
 
 void Client::Send_Param(WORD num_param)
 {
 	if(IsSendDisabled() || IsOffline()) return;
+	if(!ParamsChosenSendMask[num_param]) return;
 
 	BOUT_BEGIN(this);
 	Bout << NETMSG_PARAM;

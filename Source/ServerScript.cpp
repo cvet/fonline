@@ -4385,6 +4385,13 @@ DWORD FOServer::SScriptFunc::Global_GetBagItems(DWORD bag_id, CScriptArray* pids
 	return count;
 }
 
+void FOServer::SScriptFunc::Global_SetChosenSendParameter(int index, bool enabled)
+{
+	if(index<0 || index>=MAX_PARAMS) SCRIPT_ERROR_R("Invalid index arg.");
+
+	Critter::ParamsChosenSendMask[index]=(enabled?DWORD(-1):0);
+}
+
 void FOServer::SScriptFunc::Global_SetSendParameter(int index, bool enabled)
 {
 	Global_SetSendParameterFunc(index,enabled,NULL);
@@ -4412,10 +4419,7 @@ void FOServer::SScriptFunc::Global_SetSendParameterFunc(int index, bool enabled,
 		return;
 	}
 
-	if(index>=MAX_PARAMS)
-	{
-		SCRIPT_ERROR_R("Invalid index arg.");
-	}
+	if(index>=MAX_PARAMS) SCRIPT_ERROR_R("Invalid index arg.");
 
 	if(allow_func && allow_func->length())
 	{

@@ -852,6 +852,7 @@
 	//if(engine->RegisterGlobalFunction("uint8 ReverseDir(uint8 dir)",asFUNCTION(BIND_CLASS Global_ReverseDir),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("NpcPlane@ CreatePlane()",asFUNCTION(BIND_CLASS Global_CreatePlane),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetBagItems(uint bagId, uint16[]@+ pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots)",asFUNCTION(BIND_CLASS Global_GetBagItems),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void SetChosenSendParameter(int index, bool enabled)",asFUNCTION(BIND_CLASS Global_SetChosenSendParameter),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetSendParameter(int index, bool enabled)",asFUNCTION(BIND_CLASS Global_SetSendParameter),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetSendParameter(int index, bool enabled, string@+ allowFunc)",asFUNCTION(BIND_CLASS Global_SetSendParameterFunc),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory, bool withVars)",asFUNCTION(BIND_CLASS Global_SwapCritters),asCALL_CDECL)<0) BIND_ERROR;

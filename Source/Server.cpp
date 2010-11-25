@@ -3316,6 +3316,7 @@ bool FOServer::Init()
 	ZeroMemory(Critter::ParamsChangeScript,sizeof(Critter::ParamsChangeScript));
 	ZeroMemory(Critter::ParamsGetScript,sizeof(Critter::ParamsGetScript));
 	ZeroMemory(Critter::SlotDataSendEnabled,sizeof(Critter::SlotDataSendEnabled));
+	for(int i=0;i<MAX_PARAMS;i++) Critter::ParamsChosenSendMask[i]=DWORD(-1);
 
 	// Register dll script data
 	struct CritterChangeParameter_{static void CritterChangeParameter(void* cr, DWORD index){((Critter*)cr)->ChangeParam(index);}};

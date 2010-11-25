@@ -126,6 +126,7 @@ public:
 	static int ParamsGetScript[MAX_PARAMS];
 	static bool SlotDataSendEnabled[0x100];
 	static int SlotDataSendScript[0x100];
+	static DWORD ParamsChosenSendMask[MAX_PARAMS];
 	static DWORD ParametersMin[MAX_PARAMETERS_ARRAYS];
 	static DWORD ParametersMax[MAX_PARAMETERS_ARRAYS];
 	static bool ParametersOffset[MAX_PARAMETERS_ARRAYS];

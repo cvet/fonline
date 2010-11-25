@@ -879,6 +879,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static void Global_EraseTextListener(int say_type, CScriptString& first_str, WORD parameter);
 		static AIDataPlane* Global_CreatePlane();
 		static DWORD Global_GetBagItems(DWORD bag_id, CScriptArray* pids, CScriptArray* min_counts, CScriptArray* max_counts, CScriptArray* slots);
+		static void Global_SetChosenSendParameter(int index, bool enabled);
 		static void Global_SetSendParameter(int index, bool enabled);
 		static void Global_SetSendParameterFunc(int index, bool enabled, CScriptString* allow_func);
 		static bool Global_SwapCritters(Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars);
