@@ -2092,7 +2092,7 @@ bool Location::Init(ProtoLocation* proto, WORD wx, WORD wy)
 	Data.WY=wy;
 	Data.Radius=Proto->Radius;
 	Data.Visible=Proto->Visible;
-	Data.GeckEnabled=Proto->GeckEnabled;
+	Data.GeckVisible=Proto->GeckVisible;
 	Data.AutoGarbage=Proto->AutoGarbage;
 	GeckCount=0;
 	return true;
@@ -2220,7 +2220,7 @@ bool Location::IsNoNpc()
 
 bool Location::IsCanDelete()
 {
-	if(IsGeckAviable()) return false;
+	if(GeckCount>0) return false;
 
 	// Check for players
 	for(MapVecIt it=locMaps.begin(),end=locMaps.end();it!=end;++it)

@@ -325,10 +325,10 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 
 	// Other
 	ploc.Visible=city_txt.GetInt(key1,"visible",0)!=0;
+	ploc.GeckVisible=city_txt.GetInt(key1,"geck_visible",0)!=0;
 	ploc.AutoGarbage=city_txt.GetInt(key1,"auto_garbage",1)!=0;
-	ploc.GeckEnabled=city_txt.GetInt(key1,"geck_enabled",0)!=0;
 
-	// Init
+	// Initialize
 	ploc.LocPid=pid;
 	ploc.IsInit=true;
 	return true;
@@ -521,14 +521,14 @@ string MapManager::GetLocationsMapsStatistics()
 	result=str;
 	sprintf(str,"Maps count: %u\n",allMaps.size());
 	result+=str;
-	result+="Location Name        Id          Pid  X     Y     Radius Color    Visible GeckEnabled GeckCount AutoGarbage ToGarbage\n";
+	result+="Location Name        Id          Pid  X     Y     Radius Color    Visible GeckVisible GeckCount AutoGarbage ToGarbage\n";
 	result+="          Map Name            Id          Pid  Time Rain TbAviable TbOn   Script\n";
 	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
 	{
 		Location* loc=(*it).second;
 		sprintf(str,"%-20s %-09u   %-4u %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
 			loc->Proto->Name.c_str(),loc->Data.LocId,loc->Data.LocPid,loc->Data.WX,loc->Data.WY,loc->Data.Radius,loc->Data.Color,loc->Data.Visible?"true":"false",
-			loc->Data.GeckEnabled?"true":"false",loc->GeckCount,loc->Data.AutoGarbage?"true":"false",loc->Data.ToGarbage?"true":"false");
+			loc->Data.GeckVisible?"true":"false",loc->GeckCount,loc->Data.AutoGarbage?"true":"false",loc->Data.ToGarbage?"true":"false");
 		result+=str;
 
 		MapVec& maps=loc->GetMapsNoLock();
@@ -948,7 +948,7 @@ void MapManager::LocationGarbager()
 		for(LocMapIt it=locs.begin(),end=locs.end();it!=end;++it)
 		{
 			Location* loc=(*it).second;
-			if(loc->IsToGarbage() && (loc->Data.ToGarbage || loc->IsCanDelete()))
+			if(loc->Data.ToGarbage || (loc->Data.AutoGarbage && loc->IsCanDelete()))
 			{
 				SYNC_LOCK(loc);
 				loc->IsNotValid=true;

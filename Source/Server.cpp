@@ -3281,7 +3281,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(ScenToSend,PicMapHash)==24);
 	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==320);
 	STATIC_ASSERT(offsetof(Map,RefCounter)==794);
-	STATIC_ASSERT(offsetof(ProtoLocation,GeckEnabled)==92);
+	STATIC_ASSERT(offsetof(ProtoLocation,GeckVisible)==92);
 	STATIC_ASSERT(offsetof(Location,RefCounter)==286);
 
 	STATIC_ASSERT(sizeof(DWORD)==4);

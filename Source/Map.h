@@ -263,7 +263,7 @@ public:
 	WORD Radius;
 	bool Visible;
 	bool AutoGarbage;
-	bool GeckEnabled;
+	bool GeckVisible;
 
 	ProtoLocation():IsInit(false){};
 };
@@ -286,7 +286,7 @@ public:
 		WORD WY;
 		WORD Radius;
 		bool Visible;
-		bool GeckEnabled;
+		bool GeckVisible;
 		bool AutoGarbage;
 		bool ToGarbage;
 		DWORD Color;
@@ -299,9 +299,7 @@ public:
 	bool Init(ProtoLocation* proto, WORD wx, WORD wy);
 	void Clear(bool full);
 	void Update();
-	bool IsToGarbage(){return Data.AutoGarbage || Data.ToGarbage;}
-	bool IsVisible(){return Data.Visible || IsGeckAviable();}
-	bool IsGeckAviable(){return Data.GeckEnabled && GeckCount>0;}
+	bool IsVisible(){return Data.Visible || (Data.GeckVisible && GeckCount>0);}
 	DWORD GetId(){return Data.LocId;}
 	void SetId(DWORD _id){Data.LocId=_id;}
 	WORD GetPid(){return Data.LocPid;}
