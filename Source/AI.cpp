@@ -161,7 +161,7 @@ bool NpcAIMngr::LoadNpcBags()
 					for(int k=0;k<items.size();k++)
 					{
 						NpcBagItem& b=items[k];
-						if(b.ItemPid>2000 || b.MinCnt>b.MaxCnt)
+						if(b.ItemPid>=MAX_ITEM_PROTOTYPES || b.MinCnt>b.MaxCnt)
 						{
 							WriteLog("Invalid items combination<%s>, Item combination<%d>, number<%d>.\n",c.c_str(),l,k);
 							delete[] bag_str;
