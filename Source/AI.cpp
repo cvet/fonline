@@ -3,6 +3,7 @@
 #include "Text.h"
 #include "Names.h"
 #include "FileManager.h"
+#include "Item.h"
 
 NpcAIMngr AIMngr;
 
