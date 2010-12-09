@@ -69,6 +69,12 @@ typedef map<DWORD,DWORD,less<DWORD>>::value_type DwordMapVal;
 typedef map<int,int,less<int>> IntMap;
 typedef map<int,int,less<int>>::iterator IntMapIt;
 typedef map<int,int,less<int>>::value_type IntMapVal;
+typedef map<int,float,less<int>> IntFloatMap;
+typedef map<int,float,less<int>>::iterator IntFloatMapIt;
+typedef map<int,float,less<int>>::value_type IntFloatMapVal;
+typedef map<int,void*,less<int>> IntPtrMap;
+typedef map<int,void*,less<int>>::iterator IntPtrMapIt;
+typedef map<int,void*,less<int>>::value_type IntPtrMapVal;
 
 typedef multimap<DWORD,string,less<DWORD>> DwordStrMulMap;
 typedef multimap<DWORD,string,less<DWORD>>::iterator DwordStrMulMapIt;
@@ -173,6 +179,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define MAX_HOLO_INFO           (250)
 #define MAX_PARAMETERS_ARRAYS   (100)
 #define AMBIENT_SOUND_TIME      (60000) // Random(X/2,X);
+#define EFFECT_TEXTURES         (10)
+#define EFFECT_SCRIPT_VALUES    (10)
 
 // Critters
 #define GENDER_MALE             (0)

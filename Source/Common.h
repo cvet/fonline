@@ -150,7 +150,11 @@ bool CheckUserPass(const char* str);
 #include "Dx9/dxerr.h"
 #include "Dx9/dsound.h"
 #include "Dx8/DShow.h"
+#ifndef D3D_DEBUG_INFO
 #pragma comment(lib,"9_d3dx9.lib")
+#else
+#pragma comment(lib,"9_d3dx9d.lib")
+#endif
 #pragma comment(lib,"9_d3d9.lib")
 #pragma comment(lib,"9_dinput8.lib")
 #pragma comment(lib,"9_dxguid.lib")
@@ -439,7 +443,7 @@ struct GameOptions
 	int ReputationAntipathy;
 	int ReputationHated;
 
-	// Client
+	// Client and Mapper
 	bool Quit;
 	int ScrOx;
 	int ScrOy;
@@ -535,6 +539,7 @@ struct GameOptions
 	float SpritesZoom;
 	float SpritesZoomMax;
 	float SpritesZoomMin;
+	float EffectValues[EFFECT_SCRIPT_VALUES];
 
 	// Mapper
 	string ClientPath;

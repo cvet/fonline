@@ -12,8 +12,6 @@ HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
     D3DXFRAME_EXTENDED *newFrame=new D3DXFRAME_EXTENDED;
 	ZeroMemory(newFrame,sizeof(D3DXFRAME_EXTENDED));
 
-	// Now fill in the data members in the frame structure
-	
     // Now initialize other data members of the frame to defaults
     D3DXMatrixIdentity(&newFrame->TransformationMatrix);
     D3DXMatrixIdentity(&newFrame->exCombinedTransformationMatrix);
@@ -24,17 +22,10 @@ HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
 
 	// Assign the return pointer to our newly created frame
     *retNewFrame=newFrame;
-	
+
 	// The frame name (note: may be 0 or zero length)
-	if(Name && strlen(Name))
-	{
-		newFrame->Name=StringDuplicate(Name);	
-//		Utility3d::DebugString("Added frame: "+ToString(Name));
-	}
-	else
-	{
-//		Utility3d::DebugString("Added frame: no name given");
-	}
+	if(Name && strlen(Name)) newFrame->Name=StringDuplicate(Name);	
+
     return S_OK;
 }
 
@@ -157,10 +148,10 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	else
 	{
 		// No skin info so 0 all the pointers
-		newMeshContainer->pSkinInfo=0;
-		newMeshContainer->exBoneOffsets=0;
-		newMeshContainer->exSkinMesh=0;
-		newMeshContainer->exFrameCombinedMatrixPointer=0;
+		newMeshContainer->pSkinInfo=NULL;
+		newMeshContainer->exBoneOffsets=NULL;
+		newMeshContainer->exSkinMesh=NULL;
+		newMeshContainer->exFrameCombinedMatrixPointer=NULL;
 	}
 
 	// When we got the device we caused an internal reference count to be incremented

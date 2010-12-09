@@ -616,7 +616,7 @@ void CritterCl::DrawStay(INTRECT r)
 	else if(Anim3dStay)
 	{
 		Anim3dStay->SetDir(dir);
-		Anim3dStay->SetAnimation(anim1,anim2,GetLayers3dData(),IsLife()?0:ANIMATION_STAY|ANIMATION_LAST_FRAME|ANIMATION_NO_SMOOTH);
+		Anim3dStay->SetAnimation(anim1,anim2,GetLayers3dData(),IsLife()?0:ANIMATION_STAY|ANIMATION_PERIOD(100)|ANIMATION_NO_SMOOTH);
 		SprMngr.Draw3dSize(FLTRECT(r.L,r.T,r.R,r.B),false,true,Anim3dStay,&FLTRECT(r.L,r.T,r.R,r.B),COLOR_IFACE);
 	}
 }
@@ -1132,8 +1132,8 @@ void CritterCl::AnimateStay()
 	}
 	else
 	{
-		if(Cond==COND_LIFE || Cond==COND_KNOCKOUT) Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),GameOpt.Animation3dFPS?ANIMATION_STAY:0);
-		else Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),ANIMATION_STAY|ANIMATION_LAST_FRAME);
+		if(Cond==COND_LIFE || Cond==COND_KNOCKOUT) Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),Animation3d::Is2dEmulation()?ANIMATION_STAY:0);
+		else Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),ANIMATION_STAY|ANIMATION_PERIOD(100));
 	}
 }
 
@@ -1523,10 +1523,10 @@ void CritterCl::SetBaseType(DWORD type)
 	BaseTypeAlias=CritType::GetAlias(type);
 
 	// Check 3d aviability
-	Anim3d=SprMngr.Load3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+	Anim3d=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 	if(Anim3d)
 	{
-		Anim3dStay=SprMngr.Load3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+		Anim3dStay=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 
 		Anim3d->SetDir(CrDir);
 		SprId=Anim3d->GetSprId();

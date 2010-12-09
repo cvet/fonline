@@ -15,7 +15,7 @@ D3DCAPS9 D3DCaps;
 int ModeWidth=0,ModeHeight=0;
 float FixedZ=0.0f;
 D3DLIGHT9 GlobalLight;
-D3DXMATRIX MatrixProj,MatrixView,MatrixViewInv,MatrixEmpty;
+D3DXMATRIX MatrixProj,MatrixView,MatrixViewInv,MatrixEmpty,MatrixViewProj;
 double MoveTransitionTime=0.25;
 float GlobalSpeedAdjust=1.0f;
 D3DVIEWPORT9 ViewPort;
@@ -33,7 +33,8 @@ DWORD AnimDelay=0;
 Animation3dVec Animation3d::generalAnimations;
 
 Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSets(0),
-currentTrack(0),lastTick(0),endTick(0),speedAdjust(1.0f),shadowDisabled(false),dirAngle(150.0f),sprId(0),
+currentTrack(0),lastTick(0),endTick(0),speedAdjustBase(1.0f),speedAdjustCur(1.0f),speedAdjustLink(1.0f),
+shadowDisabled(false),dirAngle(150.0f),sprId(0),
 drawScale(0.0f),bordersDisabled(false),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),
 childChecker(true)
 {
@@ -41,6 +42,9 @@ childChecker(true)
 	groundPos.w=1.0f;
 	D3DXMatrixRotationX(&matRot,-25.7f*D3DX_PI/180.0f);
 	D3DXMatrixIdentity(&matScale);
+	D3DXMatrixIdentity(&matScaleBase);
+	D3DXMatrixIdentity(&matRotBase);
+	D3DXMatrixIdentity(&matTransBase);
 }
 
 Animation3d::~Animation3d()
@@ -66,62 +70,83 @@ Animation3d::~Animation3d()
 void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 {
 	// Get animation index
-	int index=animEntity->GetAnimationIndex(anim1,anim2);
-	if(index<0 && anim1>=ANIM1_KNIFE && anim1<=ANIM1_ROCKET_LAUNCHER) index=animEntity->GetAnimationIndex(ANIM1_UNARMED,anim2);
-	if(index<0) return;
+	float speed=1.0f;
+	int index=0;
+	double period_proc=0.0;
+	if(!FLAG(flags,ANIMATION_INIT))
+	{
+		if(anim1<0)
+		{
+			index=animEntity->renderAnim;
+			period_proc=(double)anim2/10.0;
+		}
+		else
+		{
+			index=animEntity->GetAnimationIndex(anim1,anim2,&speed);
+			if(index<0 && anim1>=ANIM1_KNIFE && anim1<=ANIM1_ROCKET_LAUNCHER) index=animEntity->GetAnimationIndex(ANIM1_UNARMED,anim2,&speed);
+		}
+	}
+
+	if(FLAG(flags,ANIMATION_PERIOD(0))) period_proc=(flags>>16);
 
 	// Check changes indices or not
 	if(!layers) layers=currentLayers;
 	bool layer_changed=false;
-	for(int i=0;i<LAYERS3D_COUNT;i++)
+	if(!FLAG(flags,ANIMATION_INIT))
 	{
-		if(currentLayers[i]!=layers[i])
+		for(int i=0;i<LAYERS3D_COUNT;i++)
 		{
-			layer_changed=true;
-			break;
+			if(currentLayers[i]!=layers[i])
+			{
+				layer_changed=true;
+				break;
+			}
 		}
+	}
+	else
+	{
+		layer_changed=true;
 	}
 
 	// Is not one time play and same action
 	int action=(anim1<<16)|anim2;
-	if(!FLAG(flags,ANIMATION_ONE_TIME) && currentLayers[LAYERS3D_COUNT]==action && !layer_changed) return;
+	if(!FLAG(flags,ANIMATION_INIT) && !FLAG(flags,ANIMATION_ONE_TIME) && currentLayers[LAYERS3D_COUNT]==action && !layer_changed) return;
 
 	memcpy(currentLayers,layers,sizeof(int)*LAYERS3D_COUNT);
 	currentLayers[LAYERS3D_COUNT]=action;
 
 	if(layer_changed)
 	{
+		// Set base data
+		SetAnimData(this,animEntity->animDataDefault,true);
+
+		// Append linked data
+		if(parentFrame) SetAnimData(this,animLink,false);
+
 		// Mark animations as unused
 		for(Animation3dVecIt it=childAnimations.begin(),end=childAnimations.end();it!=end;++it) (*it)->childChecker=false;
 
-		// Enable all subsets, set default texture
-		for(MeshOptionsVecIt it=meshOpt.begin(),end=meshOpt.end();it!=end;++it)
-		{
-			MeshOptions& mopt=*it;
-			for(DWORD i=0;i<mopt.SubsetsCount;i++)
-			{
-				mopt.DisabledSubsets[i]=false;
-				mopt.TexSubsets[i]=mopt.DefaultTexSubsets[i];
-			}
-		}
-
 		// Get unused layers and subsets
 		bool unused_layers[LAYERS3D_COUNT]={0};
-		for(int i=0;i<LAYERS3D_COUNT;i++)
+		for(int i=-1;i<LAYERS3D_COUNT;i++)
 		{
-			if(layers[i]!=0)
+			if(i<0 || layers[i]!=0)
 			{
-				for(AnimLinkVecIt it=animEntity->animBones.begin(),end=animEntity->animBones.end();it!=end;++it)
+				for(AnimParamsVecIt it=animEntity->animData.begin(),end=animEntity->animData.end();it!=end;++it)
 				{
-					AnimLink& link=*it;
-					if(link.Layer==i && link.LayerValue==layers[i])
+					AnimParams& link=*it;
+					if(link.Layer==i && (i<0 || link.LayerValue==layers[i]) && !link.ChildFName)
 					{
-						for(int j=0;j<link.DisabledLayersCount;j++) unused_layers[link.DisabledLayers[j]]=true;
+						for(int j=0;j<link.DisabledLayersCount;j++)
+						{
+							unused_layers[link.DisabledLayers[j]]=true;
+						}
 						for(int j=0;j<link.DisabledSubsetsCount;j++)
 						{
 							int mesh_ss=link.DisabledSubsets[j]%100;
 							int mesh_num=link.DisabledSubsets[j]/100;
-							if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].DisabledSubsets[mesh_ss]=true;
+							if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount)
+								meshOpt[mesh_num].DisabledSubsets[mesh_ss]=true;
 						}
 					}
 				}
@@ -133,15 +158,16 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		{
 			if(unused_layers[i] || layers[i]==0) continue;
 
-			for(AnimLinkVecIt it=animEntity->animBones.begin(),end=animEntity->animBones.end();it!=end;++it)
+			for(AnimParamsVecIt it=animEntity->animData.begin(),end=animEntity->animData.end();it!=end;++it)
 			{
-				AnimLink& link=*it;
+				AnimParams& link=*it;
 				if(link.Layer==i && link.LayerValue==layers[i])
 				{
-					if(link.RootTextureName) SetTexture(link.RootTextureName,-1);
-					if(link.RootEffectInst) SetEffect(link.RootEffectInst,-1);
-
-					if(!link.ChildFName) continue;
+					if(!link.ChildFName)
+					{
+						SetAnimData(this,link,false);
+						continue;
+					}
 
 					bool aviable=false;
 					for(Animation3dVecIt it=childAnimations.begin(),end=childAnimations.end();it!=end;++it)
@@ -198,12 +224,6 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 								childAnimations.push_back(anim3d);
 							}
 						}
-
-						// Set textures
-						if(anim3d && link.TextureName) anim3d->SetTexture(link.TextureName,link.TextureSubset);
-
-						// Set effects
-						if(anim3d && link.EffectInst) anim3d->SetEffect(link.EffectInst,link.EffectSubset);
 					}
 				}
 			}
@@ -222,7 +242,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		}
 	}
 
-	if(animController)
+	if(animController && index>=0)
 	{
 		// Get the animation set from the controller
 		ID3DXAnimationSet* set;
@@ -242,30 +262,35 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		animController->ResetTime();
 
 		// Smooth time
-		double stime=(FLAG(flags,ANIMATION_NO_SMOOTH)?0.001f:MoveTransitionTime);
+		double smooth_time=(FLAG(flags,ANIMATION_NO_SMOOTH) || FLAG(flags,ANIMATION_INIT)?0.001f:MoveTransitionTime);
+		double start_time=(period*CLAMP(period_proc,0.0,100.0)/100.0);
 
-		// Add an event key to disable the currently playing track stime seconds in the future
-		animController->KeyTrackEnable(currentTrack,FALSE,stime);
-		// Add an event key to change the speed right away so the animation completes in stime seconds
-		animController->KeyTrackSpeed(currentTrack,0.0f,0.0,stime,D3DXTRANSITION_LINEAR);
+		// Add an event key to disable the currently playing track smooth_time seconds in the future
+		animController->KeyTrackEnable(currentTrack,FALSE,smooth_time);
+		// Add an event key to change the speed right away so the animation completes in smooth_time seconds
+		animController->KeyTrackSpeed(currentTrack,0.0f,0.0,smooth_time,D3DXTRANSITION_LINEAR);
 		// Add an event to change the weighting of the current track (the effect it has blended with the second track)
-		animController->KeyTrackWeight(currentTrack,0.0f,0.0,stime,D3DXTRANSITION_LINEAR);
+		animController->KeyTrackWeight(currentTrack,0.0f,0.0,smooth_time,D3DXTRANSITION_LINEAR);
 
 		// Enable the new track
 		animController->SetTrackEnable(new_track,TRUE);
-		animController->SetTrackPosition(new_track,FLAG(flags,ANIMATION_LAST_FRAME)?period:0.0);
+		animController->SetTrackPosition(new_track,start_time);
 		// Add an event key to set the speed of the track
-		animController->KeyTrackSpeed(new_track,1.0f,0.0,stime,D3DXTRANSITION_LINEAR);
-		if(FLAG(flags,ANIMATION_ONE_TIME) || FLAG(flags,ANIMATION_STAY)) animController->KeyTrackSpeed(new_track,0.0f,period-0.001,0.0,D3DXTRANSITION_LINEAR);
+		animController->KeyTrackSpeed(new_track,1.0f,0.0,smooth_time,D3DXTRANSITION_LINEAR);
+		if(FLAG(flags,ANIMATION_ONE_TIME) || FLAG(flags,ANIMATION_STAY) || FLAG(flags,ANIMATION_INIT))
+			animController->KeyTrackSpeed(new_track,0.0f,period-0.001,0.0,D3DXTRANSITION_LINEAR);
 		// Add an event to change the weighting of the current track (the effect it has blended with the first track)
-		// As you can see this will go from 0 effect to total effect(1.0f) in stime seconds and the first track goes from 
+		// As you can see this will go from 0 effect to total effect(1.0f) in smooth_time seconds and the first track goes from 
 		// total to 0.0f in the same time.
-		animController->KeyTrackWeight(new_track,1.0f,0.0,stime,D3DXTRANSITION_LINEAR);
+		animController->KeyTrackWeight(new_track,1.0f,0.0,smooth_time,D3DXTRANSITION_LINEAR);
 
-		if(FLAG(flags,ANIMATION_LAST_FRAME)) animController->AdvanceTime(period,NULL);
+		if(start_time!=0.0) animController->AdvanceTime(start_time,NULL);
 
 		// Remember current track
 		currentTrack=new_track;
+
+		// Speed
+		speedAdjustCur=speed;
 
 		// End time
 		DWORD tick=Timer::GameTick();
@@ -283,7 +308,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		if(!parentAnimation)
 		{
 			if(FLAG(flags,ANIMATION_ONE_TIME)) calcBordersTick=endTick;
-			else calcBordersTick=tick+DWORD(stime*1000.0);
+			else calcBordersTick=tick+DWORD(smooth_time*1000.0);
 		}
 	}
 
@@ -434,8 +459,7 @@ bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
 		D3D_HR(mesh->GetVertexBuffer(&v));
 		D3D_HR(v->Lock(0,0,(void**)&data,D3DLOCK_READONLY));
 		D3DXVec3ProjectArray(&bordersResult[0],sizeof(D3DXVECTOR3),(D3DXVECTOR3*)data,v_size,
-			&ViewPort,&MatrixProj,&MatrixView,mesh_container_ex->pSkinInfo?&MatrixEmpty:&frame_ex->exCombinedTransformationMatrix,
-			count);
+			&ViewPort,&MatrixProj,&MatrixView,mesh_container_ex->pSkinInfo?&MatrixEmpty:&frame_ex->exCombinedTransformationMatrix,count);
 		D3D_HR(v->Unlock());
 
 		for(DWORD i=0;i<count;i++)
@@ -501,12 +525,26 @@ INTRECT Animation3d::GetExtraBorders()
 	return result;
 }
 
+void Animation3d::GetRenderFramesData(float& period, int& proc_from, int& proc_to)
+{
+	period=0.0f;
+	proc_from=animEntity->renderAnimProcFrom;
+	proc_to=animEntity->renderAnimProcTo;
+
+	if(animController)
+	{
+		ID3DXAnimationSet* set;
+		if(SUCCEEDED(animController->GetAnimationSet(animEntity->renderAnim,&set)))
+		{
+			period=set->GetPeriod();
+			set->Release();
+		}
+	}
+}
+
 double Animation3d::GetSpeed()
 {
-	double speed=speedAdjust;
-	if(animEntity->speedAdjust!=1.0f) speed*=animEntity->speedAdjust;
-	if(GlobalSpeedAdjust!=1.0f)  speed*=GlobalSpeedAdjust;
-	return speed;
+	return speedAdjustCur*speedAdjustBase*speedAdjustLink*GlobalSpeedAdjust;
 }
 
 MeshOptions* Animation3d::GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh)
@@ -519,71 +557,125 @@ MeshOptions* Animation3d::GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh)
 	return NULL;
 }
 
-void Animation3d::SetTexture(const char* texture_name, int subset)
+void Animation3d::SetAnimData(Animation3d* anim3d, AnimParams& data, bool clear)
 {
-	TextureEx* texture=NULL;
-	if(!_stricmp(texture_name,"root"))
+	// Transformations
+	if(clear)
 	{
-		if(parentAnimation && parentAnimation->meshOpt.size())
-		{
-			MeshOptions& mopt=*parentAnimation->meshOpt.begin();
-			if(mopt.SubsetsCount) texture=mopt.TexSubsets[0];
-		}
+		D3DXMatrixIdentity(&anim3d->matScaleBase);
+		D3DXMatrixIdentity(&anim3d->matRotBase);
+		D3DXMatrixIdentity(&anim3d->matTransBase);
 	}
-	else
-	{
-		texture=animEntity->xFile->GetTexture(texture_name);
-	}
+	D3DXMATRIX mat_tmp;
+	if(data.ScaleX!=0.0f) anim3d->matScaleBase=*D3DXMatrixScaling(&mat_tmp,data.ScaleX,1.0f,1.0f)*anim3d->matScaleBase;
+	if(data.ScaleY!=0.0f) anim3d->matScaleBase=*D3DXMatrixScaling(&mat_tmp,1.0f,data.ScaleY,1.0f)*anim3d->matScaleBase;
+	if(data.ScaleZ!=0.0f) anim3d->matScaleBase=*D3DXMatrixScaling(&mat_tmp,1.0f,1.0f,data.ScaleZ)*anim3d->matScaleBase;
+	if(data.RotX!=0.0f) anim3d->matRotBase=*D3DXMatrixRotationX(&mat_tmp,data.RotX*D3DX_PI/180.0f)*anim3d->matRotBase;
+	if(data.RotY!=0.0f) anim3d->matRotBase=*D3DXMatrixRotationY(&mat_tmp,data.RotY*D3DX_PI/180.0f)*anim3d->matRotBase;
+	if(data.RotZ!=0.0f) anim3d->matRotBase=*D3DXMatrixRotationZ(&mat_tmp,data.RotZ*D3DX_PI/180.0f)*anim3d->matRotBase;
+	if(data.MoveX!=0.0f) anim3d->matTransBase=*D3DXMatrixTranslation(&mat_tmp,data.MoveX,0.0f,0.0f)*anim3d->matTransBase;
+	if(data.MoveY!=0.0f) anim3d->matTransBase=*D3DXMatrixTranslation(&mat_tmp,0.0f,data.MoveY,0.0f)*anim3d->matTransBase;
+	if(data.MoveZ!=0.0f) anim3d->matTransBase=*D3DXMatrixTranslation(&mat_tmp,0.0f,0.0f,data.MoveZ)*anim3d->matTransBase;
 
-	if(texture)
+	// Speed
+	if(clear) anim3d->speedAdjustLink=1.0f;
+	if(data.SpeedAjust!=0.0f) anim3d->speedAdjustLink*=data.SpeedAjust;
+
+	// Textures
+	if(clear)
 	{
-		if(subset>=0)
+		// Enable all subsets, set default texture
+		for(MeshOptionsVecIt it=anim3d->meshOpt.begin(),end=anim3d->meshOpt.end();it!=end;++it)
 		{
-			DWORD mesh_ss=subset%100;
-			DWORD mesh_num=subset/100;
-			if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].TexSubsets[mesh_ss]=texture;
-		}
-		else
-		{
-			for(MeshOptionsVecIt it=meshOpt.begin(),end=meshOpt.end();it!=end;++it)
+			MeshOptions& mopt=*it;
+			if(mopt.SubsetsCount)
 			{
-				MeshOptions& mopt=*it;
-				for(DWORD i=0;i<mopt.SubsetsCount;i++) mopt.TexSubsets[i]=texture;
+				memcpy(mopt.TexSubsets,mopt.DefaultTexSubsets,mopt.SubsetsCount*sizeof(TextureEx*)*EFFECT_TEXTURES);
+				memset(mopt.DisabledSubsets,0,mopt.SubsetsCount*sizeof(bool));
 			}
 		}
 	}
-}
 
-void Animation3d::SetEffect(D3DXEFFECTINSTANCE* effect_inst, int subset)
-{
-	EffectEx* effect=NULL;
-	if(!_stricmp(effect_inst->pEffectFilename,"root"))
+	if(data.TextureNamesCount)
 	{
-		if(parentAnimation && parentAnimation->meshOpt.size())
+		for(int i=0;i<data.TextureNamesCount;i++)
 		{
-			MeshOptions& mopt=*parentAnimation->meshOpt.begin();
-			if(mopt.SubsetsCount) effect=mopt.EffectSubsets[0];
-		}
-	}
-	else
-	{
-		effect=animEntity->xFile->GetEffect(effect_inst);
-	}
+			DWORD mesh_ss=data.TextureSubsets[i]%100;
+			DWORD mesh_num=data.TextureSubsets[i]/100;
+			TextureEx* texture=NULL;
 
-	if(effect)
-	{
-		if(subset>=0)
-		{
-			DWORD mesh_ss=subset%100;
-			DWORD mesh_num=subset/100;
-			if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount) meshOpt[mesh_num].EffectSubsets[mesh_ss]=effect;
-		}
-		else
-		{
-			for(MeshOptionsVecIt it=meshOpt.begin(),end=meshOpt.end();it!=end;++it)
+			if(!_stricmp(data.TextureNames[i],"Parent"))
 			{
-				MeshOptions& mopt=*it;
-				for(DWORD i=0;i<mopt.SubsetsCount;i++) mopt.EffectSubsets[i]=effect;
+				if(anim3d->parentAnimation && anim3d->parentAnimation->meshOpt.size())
+				{
+					MeshOptions& mopt=*anim3d->parentAnimation->meshOpt.begin();
+					if(mesh_ss<mopt.SubsetsCount) texture=mopt.TexSubsets[mesh_ss];
+				}
+			}
+			else
+			{
+				texture=anim3d->animEntity->xFile->GetTexture(data.TextureNames[i]);
+			}
+
+			if(data.TextureSubsets[i]<0)
+			{
+				for(MeshOptionsVecIt it=anim3d->meshOpt.begin(),end=anim3d->meshOpt.end();it!=end;++it)
+				{
+					MeshOptions& mopt=*it;
+					for(DWORD j=0;j<mopt.SubsetsCount;j++) mopt.TexSubsets[j*EFFECT_TEXTURES+data.TextureNum[i]]=texture;
+				}
+			}
+			else if(mesh_num<anim3d->meshOpt.size())
+			{
+				MeshOptions& mopt=anim3d->meshOpt[mesh_num];
+				if(mesh_ss<mopt.SubsetsCount) mopt.TexSubsets[mesh_ss*EFFECT_TEXTURES+data.TextureNum[i]]=texture;
+			}
+		}
+	}
+
+	// Effects
+	if(clear)
+	{
+		for(MeshOptionsVecIt it=anim3d->meshOpt.begin(),end=anim3d->meshOpt.end();it!=end;++it)
+		{
+			MeshOptions& mopt=*it;
+			memcpy(mopt.EffectSubsets,mopt.DefaultEffectSubsets,mopt.SubsetsCount*sizeof(EffectEx*));
+		}
+	}
+
+	if(data.EffectInstSubsetsCount)
+	{
+		for(int i=0;i<data.EffectInstSubsetsCount;i++)
+		{
+			DWORD mesh_ss=data.EffectInstSubsets[i]%100;
+			DWORD mesh_num=data.EffectInstSubsets[i]/100;
+			EffectEx* effect=NULL;
+
+			if(!_stricmp(data.EffectInst[i].pEffectFilename,"Parent"))
+			{
+				if(anim3d->parentAnimation && anim3d->parentAnimation->meshOpt.size())
+				{
+					MeshOptions& mopt=*anim3d->parentAnimation->meshOpt.begin();
+					if(mesh_ss<mopt.SubsetsCount) effect=mopt.EffectSubsets[mesh_ss];
+				}
+			}
+			else
+			{
+				effect=anim3d->animEntity->xFile->GetEffect(&data.EffectInst[i]);
+			}
+
+			if(data.EffectInstSubsets[i]<0)
+			{
+				for(MeshOptionsVecIt it=anim3d->meshOpt.begin(),end=anim3d->meshOpt.end();it!=end;++it)
+				{
+					MeshOptions& mopt=*it;
+					for(DWORD i=0;i<mopt.SubsetsCount;i++) mopt.EffectSubsets[i]=effect;
+				}
+			}
+			else if(mesh_num<anim3d->meshOpt.size())
+			{
+				MeshOptions& mopt=anim3d->meshOpt[mesh_num];
+				if(mesh_ss<mopt.SubsetsCount) mopt.EffectSubsets[mesh_ss]=effect;
 			}
 		}
 	}
@@ -621,7 +713,7 @@ void Animation3d::SetScale(float sx, float sy, float sz)
 
 void Animation3d::SetSpeed(float speed)
 {
-	speedAdjust=speed;
+	speedAdjustBase=speed;
 }
 
 bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
@@ -694,12 +786,12 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	}
 
 	FrameMove(elapsed,x,y,scale,false);
-	DrawFrame(animEntity->xFile->frameRoot,shadowDisabled?false:true);
+	DrawFrame(animEntity->xFile->frameRoot,shadowDisabled || animEntity->shadowDisabled?false:true);
 	for(Animation3dVecIt it=childAnimations.begin(),end=childAnimations.end();it!=end;++it)
 	{
 		Animation3d* child=*it;
 		child->FrameMove(elapsed,x,y,1.0f,false);
-		child->DrawFrame(child->animEntity->xFile->frameRoot,shadowDisabled?false:true);
+		child->DrawFrame(child->animEntity->xFile->frameRoot,shadowDisabled || animEntity->shadowDisabled?false:true);
 	}
 
 	if(stencil) D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
@@ -724,15 +816,14 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 	if(!parentFrame)
 	{
 		FLTPOINT p3d=Convert2dTo3d(x,y);
-		D3DXMATRIX mat_rot_y,mat_scale,mat_scale2,mat_trans;
+		D3DXMATRIX mat_rot_y,mat_scale,mat_trans;
+		D3DXMatrixScaling(&mat_scale,scale,scale,scale);
 		D3DXMatrixRotationY(&mat_rot_y,-dirAngle*D3DX_PI/180.0f);
 		D3DXMatrixTranslation(&mat_trans,p3d.X,p3d.Y,0.0f);
-		D3DXMatrixScaling(&mat_scale,animEntity->scaleValue,animEntity->scaleValue,animEntity->scaleValue);
-		D3DXMatrixScaling(&mat_scale2,scale,scale,scale);
-		parentMatrix=mat_rot_y*matRot*mat_scale*matScale*mat_scale2*mat_trans;
-		groundPos.x=p3d.X;
-		groundPos.y=p3d.Y;
-		groundPos.z=FixedZ;
+		parentMatrix=matScaleBase*matScale*mat_scale*matRotBase*mat_rot_y*matRot*matTransBase*mat_trans;
+		groundPos.x=parentMatrix(3,0);
+		groundPos.y=parentMatrix(3,1);
+		groundPos.z=parentMatrix(3,2);
 	}
 
 	// Advance the time and set in the controller
@@ -809,13 +900,7 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 		Animation3d* child=*it;
 		child->groundPos=groundPos;
 		child->parentMatrix=child->parentFrame->exCombinedTransformationMatrix;
-
-		if(child->animLink.RotX!=0.0f) child->parentMatrix=*D3DXMatrixRotationX(&D3DXMATRIX(),child->animLink.RotX*D3DX_PI/180.0f)*child->parentMatrix;
-		if(child->animLink.RotY!=0.0f) child->parentMatrix=*D3DXMatrixRotationY(&D3DXMATRIX(),child->animLink.RotY*D3DX_PI/180.0f)*child->parentMatrix;
-		if(child->animLink.RotZ!=0.0f) child->parentMatrix=*D3DXMatrixRotationZ(&D3DXMATRIX(),child->animLink.RotZ*D3DX_PI/180.0f)*child->parentMatrix;
-		if(child->animLink.MoveX!=0.0f) child->parentMatrix=*D3DXMatrixTranslation(&D3DXMATRIX(),child->animLink.MoveX,0.0f,0.0f)*child->parentMatrix;
-		if(child->animLink.MoveY!=0.0f) child->parentMatrix=*D3DXMatrixTranslation(&D3DXMATRIX(),0.0f,child->animLink.MoveY,0.0f)*child->parentMatrix;
-		if(child->animLink.MoveZ!=0.0f) child->parentMatrix=*D3DXMatrixTranslation(&D3DXMATRIX(),0.0f,0.0f,child->animLink.MoveZ)*child->parentMatrix;
+		child->parentMatrix=child->matScaleBase*child->matRotBase*child->matTransBase*child->parentMatrix;
 	}
 	return true;
 }
@@ -869,7 +954,6 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 		if(mesh_container_ex->exSkinMeshBlended)
 		{
 			LPD3DXBONECOMBINATION bone_comb=(LPD3DXBONECOMBINATION)mesh_container_ex->exBoneCombinationBuf->GetBufferPointer();
-			D3DXMATRIX matrix;
 
 			for(DWORD i=0,j=mesh_container_ex->exNumAttributeGroups;i<j;i++)
 			{
@@ -881,16 +965,13 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				{
 					DWORD matrix_index=bone_comb[i].BoneId[k];
 					if(matrix_index!=UINT_MAX)
-					{
-						D3DXMatrixMultiply(&matrix,&mesh_container_ex->exBoneOffsets[matrix_index],mesh_container_ex->exFrameCombinedMatrixPointer[matrix_index]);
-						D3DXMatrixMultiply(&BoneMatrices[k],&matrix,&MatrixView);
-					}
+						D3DXMatrixMultiply(&BoneMatrices[k],&mesh_container_ex->exBoneOffsets[matrix_index],mesh_container_ex->exFrameCombinedMatrixPointer[matrix_index]);
 				}
 
 				EffectEx* effect=(mopt->EffectSubsets[attr_id]?mopt->EffectSubsets[attr_id]:EffectMain);
 
 				if(effect->EffectParams) D3D_HR(effect->Effect->ApplyParameterBlock(effect->EffectParams));
-				if(effect->ProjectionMatrix) D3D_HR(effect->Effect->SetMatrix(effect->ProjectionMatrix,&MatrixProj));
+				if(effect->ViewProjMatrix) D3D_HR(effect->Effect->SetMatrix(effect->ViewProjMatrix,&MatrixViewProj));
 				if(effect->GroundPosition) D3D_HR(effect->Effect->SetVector(effect->GroundPosition,&groundPos));
 				if(effect->LightDiffuse) D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
 				if(effect->WorldMatrices) D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,BoneMatrices,mesh_container_ex->exNumPaletteEntries));
@@ -903,14 +984,11 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				//D3D_HR(effect->SetVector("MaterialAmbient",(D3DXVECTOR4*)&amb_emm));
 				if(effect->MaterialDiffuse) D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&material.Diffuse));
 
-				// Setup the material of the mesh subset - REMEMBER to use the original pre-skinning attribute id to get the correct material id
-				D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[attr_id]?mopt->TexSubsets[attr_id]->Texture:NULL));
-
 				// Set NumBones to select the correct vertex shader for the number of bones
 				if(effect->BonesInfluences) D3D_HR(effect->Effect->SetInt(effect->BonesInfluences,mesh_container_ex->exNumInfl-1));
 
 				// Start the effect now all parameters have been updated
-				DrawMeshEffect(mesh_container_ex->exSkinMeshBlended,i,effect,with_shadow?effect->TechniqueSkinnedWithShadow:effect->TechniqueSkinned);
+				DrawMeshEffect(mesh_container_ex->exSkinMeshBlended,i,effect,&mopt->TexSubsets[attr_id*EFFECT_TEXTURES],with_shadow?effect->TechniqueSkinnedWithShadow:effect->TechniqueSkinned);
 			}
 		}
 		else
@@ -928,9 +1006,9 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				if(effect)
 				{
 					if(effect->EffectParams) D3D_HR(effect->Effect->ApplyParameterBlock(effect->EffectParams));
-					if(effect->ProjectionMatrix) D3D_HR(effect->Effect->SetMatrix(effect->ProjectionMatrix,&MatrixProj));
+					if(effect->ViewProjMatrix) D3D_HR(effect->Effect->SetMatrix(effect->ViewProjMatrix,&MatrixViewProj));
 					if(effect->GroundPosition) D3D_HR(effect->Effect->SetVector(effect->GroundPosition,&groundPos));
-					D3DXMATRIX wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty)*MatrixView;
+					D3DXMATRIX wmatrix=(!mesh_container_ex->pSkinInfo?frame_ex->exCombinedTransformationMatrix:MatrixEmpty);
 					if(effect->WorldMatrices) D3D_HR(effect->Effect->SetMatrixArray(effect->WorldMatrices,&wmatrix,1));
 					if(effect->LightDiffuse) D3D_HR(effect->Effect->SetVector(effect->LightDiffuse,&D3DXVECTOR4(GlobalLight.Diffuse.r,GlobalLight.Diffuse.g,GlobalLight.Diffuse.b,GlobalLight.Diffuse.a)));
 				}
@@ -944,13 +1022,12 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 				if(effect)
 				{
 					if(effect->MaterialDiffuse) D3D_HR(effect->Effect->SetVector(effect->MaterialDiffuse,(D3DXVECTOR4*)&mesh_container_ex->exMaterials[i].Diffuse));
-					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]?mopt->TexSubsets[i]->Texture:NULL));
-					DrawMeshEffect(draw_mesh,i,effect,with_shadow?effect->TechniqueSimpleWithShadow:effect->TechniqueSimple);
+					DrawMeshEffect(draw_mesh,i,effect,&mopt->TexSubsets[i*EFFECT_TEXTURES],with_shadow?effect->TechniqueSimpleWithShadow:effect->TechniqueSimple);
 				}
 				else
 				{
 					D3D_HR(D3DDevice->SetMaterial(&mesh_container_ex->exMaterials[i]));
-					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i]?mopt->TexSubsets[i]->Texture:NULL));
+					D3D_HR(D3DDevice->SetTexture(0,mopt->TexSubsets[i*EFFECT_TEXTURES]?mopt->TexSubsets[i*EFFECT_TEXTURES]->Texture:NULL));
 					D3D_HR(D3DDevice->SetVertexShader(NULL));
 					D3D_HR(D3DDevice->SetPixelShader(NULL));
 					D3D_HR(draw_mesh->DrawSubset(i));
@@ -968,11 +1045,13 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 	return true;
 }
 
-bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, EffectEx* effect_ex, D3DXHANDLE technique)
+bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, EffectEx* effect_ex, TextureEx** textures, D3DXHANDLE technique)
 {
+	D3D_HR(D3DDevice->SetTexture(0,textures && textures[0]?textures[0]->Texture:NULL));
+
 	ID3DXEffect* effect=effect_ex->Effect;
 	D3D_HR(effect->SetTechnique(technique));
-	if(effect_ex->IsNeedProcess) Loader3d::EffectProcessVariables(effect_ex,-1);
+	if(effect_ex->IsNeedProcess) Loader3d::EffectProcessVariables(effect_ex,-1,textures);
 
 	UINT passes;
 	D3D_HR(effect->Begin(&passes,effect_ex->EffectFlags));
@@ -1034,14 +1113,16 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	}
 
 	// FPS & Smooth
-	if(!GameOpt.Animation3dFPS)
+	if(GameOpt.Animation3dSmoothTime || !GameOpt.Animation3dFPS)
 	{
+		// Smoothing
 		AnimDelay=0;
 		MoveTransitionTime=(double)GameOpt.Animation3dSmoothTime/1000.0;
 		if(MoveTransitionTime<0.001) MoveTransitionTime=0.001;
 	}
 	else
 	{
+		// 2D emulation
 		AnimDelay=1000/GameOpt.Animation3dFPS;
 		MoveTransitionTime=0.001;
 	}
@@ -1058,16 +1139,19 @@ bool Animation3d::SetScreenSize(int width, int height)
 
 	// Projection
 	float k=(float)ModeHeight/768.0f;
-	D3DXMatrixOrthoLH(&MatrixProj,18.65f*k*(float)ModeWidth/ModeHeight,18.65f*k,0.0f,FixedZ*2);
+	D3DXMatrixOrthoLH(&MatrixProj,18.65f*k*(float)ModeWidth/ModeHeight,18.65f*k,0.0f,FixedZ*2.0f);
 	D3D_HR(D3DDevice->SetTransform(D3DTS_PROJECTION,&MatrixProj));
 
 	// View
 	D3DXMatrixLookAtLH(&MatrixView,&D3DXVECTOR3(0.0f,0.0f,-FixedZ),&D3DXVECTOR3(0.0f,0.0f,0.0f),&D3DXVECTOR3(0.0f,1.0f,0.0f));
 	D3D_HR(D3DDevice->SetTransform(D3DTS_VIEW,&MatrixView));
 	D3DXMatrixInverse(&MatrixViewInv,NULL,&MatrixView);
+	MatrixViewProj=MatrixView*MatrixProj;
 
 	// View port
-	D3D_HR(D3DDevice->GetViewport(&ViewPort));
+	D3DVIEWPORT9 vp={0,0,ModeWidth,ModeHeight,0.0f,1.0f};
+	D3D_HR(D3DDevice->SetViewport(&vp));
+	ViewPort=vp;
 
 	return true;
 }
@@ -1112,40 +1196,31 @@ Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_
 		mopt.MeshPtr=mesh;
 		mopt.SubsetsCount=mesh->NumMaterials;
 		mopt.DisabledSubsets=new(nothrow) bool[mesh->NumMaterials];
-		mopt.TexSubsets=new(nothrow) TextureEx*[mesh->NumMaterials];
-		mopt.DefaultTexSubsets=new(nothrow) TextureEx*[mesh->NumMaterials];
+		mopt.TexSubsets=new(nothrow) TextureEx*[mesh->NumMaterials*EFFECT_TEXTURES];
+		mopt.DefaultTexSubsets=new(nothrow) TextureEx*[mesh->NumMaterials*EFFECT_TEXTURES];
 		mopt.EffectSubsets=new(nothrow) EffectEx*[mesh->NumMaterials];
 		mopt.DefaultEffectSubsets=new(nothrow) EffectEx*[mesh->NumMaterials];
 		ZeroMemory(mopt.DisabledSubsets,mesh->NumMaterials*sizeof(bool));
-		ZeroMemory(mopt.TexSubsets,mesh->NumMaterials*sizeof(TextureEx*));
-		ZeroMemory(mopt.DefaultTexSubsets,mesh->NumMaterials*sizeof(TextureEx*));
+		ZeroMemory(mopt.TexSubsets,mesh->NumMaterials*sizeof(TextureEx*)*EFFECT_TEXTURES);
+		ZeroMemory(mopt.DefaultTexSubsets,mesh->NumMaterials*sizeof(TextureEx*)*EFFECT_TEXTURES);
 		ZeroMemory(mopt.EffectSubsets,mesh->NumMaterials*sizeof(EffectEx*));
 		ZeroMemory(mopt.DefaultEffectSubsets,mesh->NumMaterials*sizeof(EffectEx*));
 
 		// Set default textures and effects
 		for(DWORD k=0;k<mopt.SubsetsCount;k++)
 		{
-			const char* tex_name=(entity->defaultTexture!=""?entity->defaultTexture.c_str():mesh->exTexturesNames[k]);
-			mopt.DefaultTexSubsets[k]=(tex_name?entity->xFile->GetTexture(tex_name):NULL);
-			mopt.TexSubsets[k]=mopt.DefaultTexSubsets[k];
+			DWORD tex_num=k*EFFECT_TEXTURES;
+			const char* tex_name=mesh->exTexturesNames[k];
+			mopt.DefaultTexSubsets[tex_num]=(tex_name?entity->xFile->GetTexture(tex_name):NULL);
+			mopt.TexSubsets[tex_num]=mopt.DefaultTexSubsets[tex_num];
 
-			D3DXEFFECTINSTANCE* effect_inst=(entity->defaultEffect.pEffectFilename?&entity->defaultEffect:&mesh->exEffects[k]);
-			mopt.DefaultEffectSubsets[k]=(effect_inst->pEffectFilename?entity->xFile->GetEffect(effect_inst):NULL);
+			mopt.DefaultEffectSubsets[k]=(mesh->exEffects[k].pEffectFilename?entity->xFile->GetEffect(&mesh->exEffects[k]):NULL);
 			mopt.EffectSubsets[k]=mopt.DefaultEffectSubsets[k];
 		}
 	}
 
-	// Set default zero animation
-	if(anim3d->animController)
-	{
-		ID3DXAnimationSet* set;
-		anim3d->animController->GetAnimationSet(0,&set);
-		anim3d->animController->SetTrackAnimationSet(0,set);
-		set->Release();
-		anim3d->animController->SetTrackEnable(0,TRUE);
-		anim3d->animController->SetTrackSpeed(0,0.0f);
-		anim3d->animController->SetTrackWeight(0,1.0f);
-	}
+	// Set default data
+	anim3d->SetAnimation(0,0,NULL,ANIMATION_INIT);
 
 	if(!is_child) generalAnimations.push_back(anim3d);
 	return anim3d;
@@ -1180,46 +1255,52 @@ void Animation3d::SetDefaultEffect(EffectEx* effect)
 	EffectMain=effect;
 }
 
+bool Animation3d::Is2dEmulation()
+{
+	return AnimDelay!=0;
+}
+
 /************************************************************************/
 /* Animation3dEntity                                                    */
 /************************************************************************/
 
 Animation3dEntityVec Animation3dEntity::allEntities;
 
-Animation3dEntity::Animation3dEntity():pathType(0),xFile(NULL),scaleValue(1.0f),speedAdjust(1.0f)
+Animation3dEntity::Animation3dEntity():pathType(0),xFile(NULL),
+renderAnim(0),renderAnimProcFrom(0),renderAnimProcTo(100),
+shadowDisabled(false),calcualteTangetSpace(false)
 {
-	ZeroMemory(&defaultEffect,sizeof(defaultEffect));
+	ZeroMemory(&animDataDefault,sizeof(animDataDefault));
 }
 
 Animation3dEntity::~Animation3dEntity()
 {
-	SAFEDELA(defaultEffect.pEffectFilename);
-
-	for(AnimLinkVecIt it=animBones.begin(),end=animBones.end();it!=end;++it)
+	animData.push_back(animDataDefault);
+	ZeroMemory(&animDataDefault,sizeof(animDataDefault));
+	for(AnimParamsVecIt it=animData.begin(),end=animData.end();it!=end;++it)
 	{
-		AnimLink& link=*it;
+		AnimParams& link=*it;
 		SAFEDELA(link.LinkBone);
 		SAFEDELA(link.ChildFName);
 		SAFEDELA(link.DisabledLayers);
 		SAFEDELA(link.DisabledSubsets);
-		SAFEDELA(link.RootTextureName);
-		SAFEDELA(link.TextureName);
-		if(link.RootEffectInst)
+		for(int i=0;i<link.TextureNamesCount;i++)
+			SAFEDELA(link.TextureNames[i]);
+		SAFEDELA(link.TextureNames);
+		SAFEDELA(link.TextureSubsets);
+		SAFEDELA(link.TextureNum);
+		for(int i=0;i<link.EffectInstSubsetsCount;i++)
 		{
-			for(DWORD i=0;i<link.RootEffectInst->NumDefaults;i++)
-				SAFEDELA(link.RootEffectInst->pDefaults[i].pValue);
-			SAFEDELA(link.RootEffectInst->pDefaults);
-		}
-		SAFEDELA(link.RootEffectInst);
-		if(link.EffectInst)
-		{
-			for(DWORD i=0;i<link.EffectInst->NumDefaults;i++)
-				SAFEDELA(link.EffectInst->pDefaults[i].pValue);
-			SAFEDELA(link.EffectInst->pDefaults);
+			for(DWORD j=0;j<link.EffectInst[i].NumDefaults;j++)
+			{
+				SAFEDELA(link.EffectInst[i].pDefaults[j].pParamName);
+				SAFEDELA(link.EffectInst[i].pDefaults[j].pValue);
+				SAFEDELA(link.EffectInst[i].pDefaults);
+			}
 		}
 		SAFEDELA(link.EffectInst);
 	}
-	animBones.clear();
+	animData.clear();
 }
 
 bool Animation3dEntity::Load(const char* name, int path_type)
@@ -1230,55 +1311,443 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 	// Load fonline 3d file
 	if(!_stricmp(ext,"fo3d"))
 	{
-		char* big_buf=Str::GetBigBuf();
-
 		// Load main fo3d file
-		IniParser fo3d;
+		FileManager fo3d;
 		if(!fo3d.LoadFile(name,path_type)) return false;
+		char* big_buf=Str::GetBigBuf();
+		fo3d.CopyMem(big_buf,fo3d.GetFsize());
+		big_buf[fo3d.GetFsize()]=0;
 
-		// Load template and parse it
-		StrVec def;
-		char template_str[512]={0};
-		if(fo3d.GetStr("template","",template_str))
+		// Parse
+		char model[MAX_FOPATH]={0};
+		char anim_model[MAX_FOPATH]={0};
+		char render_anim[MAX_FOPATH]={0};
+		IntPtrMap anim_indexes;
+
+		int mesh=0;
+		int subset=-1;
+		int layer=-1;
+		int layer_val=0;
+		D3DXEFFECTINSTANCE* cur_effect=NULL;
+
+		AnimParams dummy_link;
+		AnimParams* link=&animDataDefault;
+		static DWORD link_id=0;
+
+		istrstream* istr=new istrstream(big_buf);
+		bool closed=false;
+		char token[MAX_FOTEXT];
+		char line[MAX_FOTEXT];
+		char buf[MAX_FOTEXT];
+		float valuei=0;
+		float valuef=0.0f;
+		while(!(*istr).eof())
 		{
-			Str::ParseLine(template_str,' ',def,Str::ParseLineDummy);
-			fo3d.AppendToEnd(def[0].c_str(),path_type);
-			for(size_t i=1,j=def.size();i<j-1;i+=2) def[i]=string("%").append(def[i]).append("%");
-		}
-		fo3d.CacheKeys();
+			(*istr) >> token;
+			if((*istr).fail()) break;
 
-		// Get x file name
-		char xfname[MAX_FOPATH];
-		if(!fo3d.GetStr("xfile","",xfname) || !xfname[0])
-		{
-			WriteLog(__FUNCTION__" - 'xfile' section not found in file<%s>.\n",name);
-			return false;
-		}
-		ProcessTemplateDefines(xfname,def);
+			char* comment=strstr(token,";");
+			if(!comment) comment=strstr(token,"#");
+			if(comment)
+			{
+				*comment=0;
+				(*istr).getline(line,MAX_FOTEXT);
+				if(!strlen(token)) continue;
+			}
 
-		// Get animation file name
-		char anim_xfname[MAX_FOPATH];
-		if(fo3d.GetStr("animation","",anim_xfname) && anim_xfname[0]) ProcessTemplateDefines(anim_xfname,def);
+			if(closed)
+			{
+				if(!_stricmp(token,"ContinueParsing")) closed=false;
+				continue;
+			}
+
+			if(!_stricmp(token,"StopParsing")) closed=true;
+			else if(!_stricmp(token,"Model")) (*istr) >> model;
+			else if(!_stricmp(token,"ModelAnimation")) (*istr) >> anim_model;
+			else if(!_stricmp(token,"Include"))
+			{
+				// Get swapped words
+				StrVec templates;
+				(*istr).getline(line,MAX_FOTEXT);
+				Str::EraseChars(line,'\r');
+				Str::EraseChars(line,'\n');
+				Str::ParseLine(line,' ',templates,Str::ParseLineDummy);
+				if(templates.empty()) continue;
+				for(size_t i=1,j=templates.size();i<j-1;i+=2) templates[i]=string("%").append(templates[i]).append("%");
+
+				// Load file
+				FileManager fo3d_ex;
+				if(!fo3d_ex.LoadFile(templates[0].c_str(),path_type))
+				{
+					WriteLog(__FUNCTION__" - Include file<%s> not found.\n",templates[0].c_str());
+					continue;
+				}
+
+				// Words swapping
+				DWORD len=fo3d_ex.GetFsize();
+				char* pbuf=(char*)fo3d_ex.ReleaseBuffer();
+				if(templates.size()>2)
+				{
+					// Grow buffer for longer swapped words
+					char* tmp_pbuf=new char[len+MAX_FOTEXT];
+					memcpy(tmp_pbuf,pbuf,len+1);
+					delete[] pbuf;
+					pbuf=tmp_pbuf;
+
+					// Swap words
+					for(int i=1,j=(int)templates.size();i<j-1;i+=2)
+					{
+						const char* from=templates[i].c_str();
+						const char* to=templates[i+1].c_str();
+
+						char* replace=strstr(pbuf,from);
+						while(replace)
+						{
+							Str::EraseInterval(replace,strlen(from));
+							Str::Insert(replace,to);
+							replace=strstr(pbuf,from);
+						}
+					}
+				}
+
+				// Insert new buffer to main file
+				int pos=(int)(*istr).tellg();
+				Str::Insert(&big_buf[pos]," ");
+				Str::Insert(&big_buf[pos+1],pbuf);
+				Str::Insert(&big_buf[pos+1+strlen(pbuf)]," ");
+				delete[] pbuf;
+
+				// Reinitialize stream
+				delete istr;
+				istr=new istrstream(&big_buf[pos]);
+			}
+			else if(!_stricmp(token,"Root"))
+			{
+				if(layer<0) link=&animDataDefault;
+				else if(layer_val<=0) link=&dummy_link;
+				else
+				{
+					animData.push_back(AnimParams());
+					link=&animData.back();
+					ZeroMemory(link,sizeof(AnimParams));
+					link->Id=++link_id;
+					link->Layer=layer;
+					link->LayerValue=layer_val;
+				}
+
+				mesh=0;
+				subset=-1;
+			}
+			else if(!_stricmp(token,"Mesh")) (*istr) >> mesh;
+			else if(!_stricmp(token,"Subset")) (*istr) >> subset;
+			else if(!_stricmp(token,"Layer") || !_stricmp(token,"Value"))
+			{
+				if(!_stricmp(token,"Layer")) (*istr) >> layer;
+				else (*istr) >> layer_val;
+
+				link=&dummy_link;
+				mesh=0;
+				subset=-1;
+			}
+			else if(!_stricmp(token,"Attach"))
+			{
+				(*istr) >> buf;
+				if(layer<0 || layer_val<=0) continue;
+
+				animData.push_back(AnimParams());
+				link=&animData.back();
+				ZeroMemory(link,sizeof(AnimParams));
+				link->Id=++link_id;
+				link->Layer=layer;
+				link->LayerValue=layer_val;
+				link->ChildFName=StringDuplicate(buf);
+
+				mesh=0;
+				subset=-1;
+			}
+			else if(!_stricmp(token,"Link"))
+			{
+				(*istr) >> buf;
+				if(link->Id) link->LinkBone=StringDuplicate(buf);
+			}
+			else if(!_stricmp(token,"RotX")) (*istr) >> link->RotX;
+			else if(!_stricmp(token,"RotY")) (*istr) >> link->RotY;
+			else if(!_stricmp(token,"RotZ")) (*istr) >> link->RotZ;
+			else if(!_stricmp(token,"MoveX")) (*istr) >> link->MoveX;
+			else if(!_stricmp(token,"MoveY")) (*istr) >> link->MoveY;
+			else if(!_stricmp(token,"MoveZ")) (*istr) >> link->MoveZ;
+			else if(!_stricmp(token,"ScaleX")) (*istr) >> link->ScaleX;
+			else if(!_stricmp(token,"ScaleY")) (*istr) >> link->ScaleY;
+			else if(!_stricmp(token,"ScaleZ")) (*istr) >> link->ScaleZ;
+			else if(!_stricmp(token,"Scale"))
+			{
+				(*istr) >> valuef;
+				link->ScaleX=link->ScaleY=link->ScaleZ=valuef;
+			}
+			else if(!_stricmp(token,"Speed")) (*istr) >> link->SpeedAjust;
+			else if(!_stricmp(token,"RotX+")) {(*istr) >> valuef; link->RotX=(link->RotX==0.0f?valuef:link->RotX+valuef);}
+			else if(!_stricmp(token,"RotY+")) {(*istr) >> valuef; link->RotY=(link->RotY==0.0f?valuef:link->RotY+valuef);}
+			else if(!_stricmp(token,"RotZ+")) {(*istr) >> valuef; link->RotZ=(link->RotZ==0.0f?valuef:link->RotZ+valuef);}
+			else if(!_stricmp(token,"MoveX+")) {(*istr) >> valuef; link->MoveX=(link->MoveX==0.0f?valuef:link->MoveX+valuef);}
+			else if(!_stricmp(token,"MoveY+")) {(*istr) >> valuef; link->MoveY=(link->MoveY==0.0f?valuef:link->MoveY+valuef);}
+			else if(!_stricmp(token,"MoveZ+")) {(*istr) >> valuef; link->MoveZ=(link->MoveZ==0.0f?valuef:link->MoveZ+valuef);}
+			else if(!_stricmp(token,"ScaleX+")) {(*istr) >> valuef; link->ScaleX=(link->ScaleX==0.0f?valuef:link->ScaleX+valuef);}
+			else if(!_stricmp(token,"ScaleY+")) {(*istr) >> valuef; link->ScaleY=(link->ScaleY==0.0f?valuef:link->ScaleY+valuef);}
+			else if(!_stricmp(token,"ScaleZ+")) {(*istr) >> valuef; link->ScaleZ=(link->ScaleZ==0.0f?valuef:link->ScaleZ+valuef);}
+			else if(!_stricmp(token,"Scale+"))
+			{
+				(*istr) >> valuef;
+				link->ScaleX=(link->ScaleX==0.0f?valuef:link->ScaleX+valuef);
+				link->ScaleY=(link->ScaleY==0.0f?valuef:link->ScaleY+valuef);
+				link->ScaleZ=(link->ScaleZ==0.0f?valuef:link->ScaleZ+valuef);
+			}
+			else if(!_stricmp(token,"Speed+")) {(*istr) >> valuef; link->SpeedAjust=(link->SpeedAjust==0.0f?valuef:link->SpeedAjust*valuef);}
+			else if(!_stricmp(token,"RotX*")) {(*istr) >> valuef; link->RotX=(link->RotX==0.0f?valuef:link->RotX*valuef);}
+			else if(!_stricmp(token,"RotY*")) {(*istr) >> valuef; link->RotY=(link->RotY==0.0f?valuef:link->RotY*valuef);}
+			else if(!_stricmp(token,"RotZ*")) {(*istr) >> valuef; link->RotZ=(link->RotZ==0.0f?valuef:link->RotZ*valuef);}
+			else if(!_stricmp(token,"MoveX*")) {(*istr) >> valuef; link->MoveX=(link->MoveX==0.0f?valuef:link->MoveX*valuef);}
+			else if(!_stricmp(token,"MoveY*")) {(*istr) >> valuef; link->MoveY=(link->MoveY==0.0f?valuef:link->MoveY*valuef);}
+			else if(!_stricmp(token,"MoveZ*")) {(*istr) >> valuef; link->MoveZ=(link->MoveZ==0.0f?valuef:link->MoveZ*valuef);}
+			else if(!_stricmp(token,"ScaleX*")) {(*istr) >> valuef; link->ScaleX=(link->ScaleX==0.0f?valuef:link->ScaleX*valuef);}
+			else if(!_stricmp(token,"ScaleY*")) {(*istr) >> valuef; link->ScaleY=(link->ScaleY==0.0f?valuef:link->ScaleY*valuef);}
+			else if(!_stricmp(token,"ScaleZ*")) {(*istr) >> valuef; link->ScaleZ=(link->ScaleZ==0.0f?valuef:link->ScaleZ*valuef);}
+			else if(!_stricmp(token,"Scale*"))
+			{
+				(*istr) >> valuef;
+				link->ScaleX=(link->ScaleX==0.0f?valuef:link->ScaleX*valuef);
+				link->ScaleY=(link->ScaleY==0.0f?valuef:link->ScaleY*valuef);
+				link->ScaleZ=(link->ScaleZ==0.0f?valuef:link->ScaleZ*valuef);
+			}
+			else if(!_stricmp(token,"Speed*")) {(*istr) >> valuef; link->SpeedAjust=(link->SpeedAjust==0.0f?valuef:link->SpeedAjust*valuef);}
+			else if(!_stricmp(token,"DisableLayer"))
+			{
+				(*istr) >> buf;
+				StrVec layers;
+				Str::ParseLine(buf,'-',layers,Str::ParseLineDummy);
+				for(size_t m=0,n=layers.size();m<n;m++)
+				{
+					int layer=atoi(layers[m].c_str());
+					if(layer>=0 && layer<LAYERS3D_COUNT)
+					{
+						int* tmp=link->DisabledLayers;
+						link->DisabledLayers=new int[link->DisabledLayersCount+1];
+						for(int h=0;h<link->DisabledLayersCount;h++) link->DisabledLayers[h]=tmp[h];
+						if(tmp) delete[] tmp;
+						link->DisabledLayers[link->DisabledLayersCount]=layer;
+						link->DisabledLayersCount++;
+					}
+				}
+			}
+			else if(!_stricmp(token,"DisableSubset"))
+			{
+				(*istr) >> buf;
+				StrVec subsets;
+				Str::ParseLine(buf,'-',subsets,Str::ParseLineDummy);
+				for(size_t m=0,n=subsets.size();m<n;m++)
+				{
+					int ss=atoi(subsets[m].c_str());
+					if(ss>=0)
+					{
+						int* tmp=link->DisabledSubsets;
+						link->DisabledSubsets=new int[link->DisabledSubsetsCount+1];
+						for(int h=0;h<link->DisabledSubsetsCount;h++) link->DisabledSubsets[h]=tmp[h];
+						if(tmp) delete[] tmp;
+						link->DisabledSubsets[link->DisabledSubsetsCount]=ss;
+						link->DisabledSubsetsCount++;
+					}
+				}
+			}
+			else if(!_stricmp(token,"Texture"))
+			{
+				(*istr) >> valuef;
+				(*istr) >> buf;
+				int index=(int)valuef;
+				if(index>=0 && index<EFFECT_TEXTURES)
+				{
+					char** tmp1=link->TextureNames;
+					int* tmp2=link->TextureSubsets;
+					int* tmp3=link->TextureNum;
+					link->TextureNames=new char*[link->TextureNamesCount+1];
+					link->TextureSubsets=new int[link->TextureNamesCount+1];
+					link->TextureNum=new int[link->TextureNamesCount+1];
+					for(int h=0;h<link->TextureNamesCount;h++)
+					{
+						link->TextureNames[h]=tmp1[h];
+						link->TextureSubsets[h]=tmp2[h];
+						link->TextureNum[h]=tmp3[h];
+					}
+					if(tmp1) delete[] tmp1;
+					if(tmp2) delete[] tmp2;
+					if(tmp3) delete[] tmp3;
+
+					link->TextureNames[link->TextureNamesCount]=StringDuplicate(buf);
+					link->TextureSubsets[link->TextureNamesCount]=mesh*100+subset;
+					link->TextureNum[link->TextureNamesCount]=index;
+					link->TextureNamesCount++;
+				}
+			}
+			else if(!_stricmp(token,"Effect"))
+			{
+				(*istr) >> buf;
+				D3DXEFFECTINSTANCE* effect_inst=new D3DXEFFECTINSTANCE;
+				ZeroMemory(effect_inst,sizeof(D3DXEFFECTINSTANCE));
+				effect_inst->pEffectFilename=StringDuplicate(buf);
+
+				D3DXEFFECTINSTANCE* tmp1=link->EffectInst;
+				int* tmp2=link->EffectInstSubsets;
+				link->EffectInst=new D3DXEFFECTINSTANCE[link->EffectInstSubsetsCount+1];
+				link->EffectInstSubsets=new int[link->EffectInstSubsetsCount+1];
+				for(int h=0;h<link->EffectInstSubsetsCount;h++)
+				{
+					link->EffectInst[h]=tmp1[h];
+					link->EffectInstSubsets[h]=tmp2[h];
+				}
+				if(tmp1) delete[] tmp1;
+				if(tmp2) delete[] tmp2;
+
+				link->EffectInst[link->EffectInstSubsetsCount]=*effect_inst;
+				link->EffectInstSubsets[link->EffectInstSubsetsCount]=mesh*100+subset;
+				link->EffectInstSubsetsCount++;
+
+				cur_effect=&link->EffectInst[link->EffectInstSubsetsCount-1];
+			}
+			else if(!_stricmp(token,"EffDef"))
+			{
+				char def_name[MAX_FOTEXT];
+				char def_value[MAX_FOTEXT];
+				(*istr) >> buf;
+				(*istr) >> def_name;
+				(*istr) >> def_value;
+
+				if(!cur_effect) continue;
+
+				D3DXEFFECTDEFAULTTYPE type;
+				char* data=NULL;
+				DWORD data_len=0;
+				if(!_stricmp(buf,"String"))
+				{
+					type=D3DXEDT_STRING;
+					data=StringDuplicate(def_value);
+					data_len=strlen(data);
+				}
+				else if(!_stricmp(buf,"Floats"))
+				{
+					type=D3DXEDT_FLOATS;
+					StrVec floats;
+					Str::ParseLine(def_value,'-',floats,Str::ParseLineDummy);
+					if(floats.empty()) continue;
+					data_len=floats.size()*sizeof(float);
+					data=new(nothrow) char[data_len];
+					for(size_t i=0,j=floats.size();i<j;i++) ((float*)data)[i]=atof(floats[i].c_str());
+				}
+				else if(!_stricmp(buf,"Dword"))
+				{
+					type=D3DXEDT_DWORD;
+					data_len=sizeof(DWORD);
+					data=new char[data_len];
+					*((DWORD*)data)=atoi(def_value);
+				}
+				else continue;
+
+				LPD3DXEFFECTDEFAULT tmp=cur_effect->pDefaults;
+				cur_effect->pDefaults=new D3DXEFFECTDEFAULT[cur_effect->NumDefaults+1];
+				for(int h=0;h<cur_effect->NumDefaults;h++) cur_effect->pDefaults[h]=tmp[h];
+				if(tmp) delete[] tmp;
+				cur_effect->pDefaults[cur_effect->NumDefaults].Type=type;
+				cur_effect->pDefaults[cur_effect->NumDefaults].pParamName=StringDuplicate(def_name);
+				cur_effect->pDefaults[cur_effect->NumDefaults].NumBytes=data_len;
+				cur_effect->pDefaults[cur_effect->NumDefaults].pValue=data;
+				cur_effect->NumDefaults++;
+			}
+			else if(!_stricmp(token,"Anim") || !_stricmp(token,"AnimSpeed"))
+			{
+				// Index animation
+				int ind1=0,ind2=0;
+				(*istr) >> buf;
+				Str::Upr(buf);
+				ind1=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+				(*istr) >> buf;
+				Str::Upr(buf);
+				ind2=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+
+				if(!_stricmp(token,"Anim"))
+				{
+					// Deferred loading
+					// Todo: Reverse play
+					(*istr) >> buf;
+					anim_indexes.insert(IntPtrMapVal((ind1<<8)|ind2,StringDuplicate(buf)));
+				}
+				else
+				{
+					(*istr) >> valuef;
+					animSpeed.insert(IntFloatMapVal((ind1<<8)|ind2,valuef));
+				}
+			}
+			else if(!_stricmp(token,"AnimEqual"))
+			{
+				(*istr) >> valuei;
+
+				int ind1=0,ind2=0;
+				(*istr) >> buf;
+				Str::Upr(buf);
+				ind1=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+				(*istr) >> buf;
+				Str::Upr(buf);
+				ind2=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+
+				if(valuei==1) anim1Equals.insert(IntMapVal(ind2,ind1));
+				else if(valuei==2) anim2Equals.insert(IntMapVal(ind2,ind1));
+			}
+			else if(!_stricmp(token,"RenderFrame") || !_stricmp(token,"RenderFrames"))
+			{
+				(*istr) >> buf;
+				(*istr) >> renderAnimProcFrom;
+
+				// One frame
+				StringCopy(render_anim,buf);
+				renderAnimProcTo=renderAnimProcFrom;
+
+				// Many frames
+				if(!_stricmp(token,"RenderFrames")) (*istr) >> renderAnimProcTo;
+
+				// Check
+				renderAnimProcFrom=CLAMP(renderAnimProcFrom,0,100);
+				renderAnimProcTo=CLAMP(renderAnimProcTo,0,100);
+			}
+			else if(!_stricmp(token,"DisableShadow")) shadowDisabled=true;
+			else if(!_stricmp(token,"CalculateTangentSpace")) calcualteTangetSpace=true;
+			else
+			{
+				WriteLog(__FUNCTION__" - Unknown token<%s> in file<%s>.\n",token,name);
+			}
+		}
 
 		// Process pathes
+		if(!model[0])
+		{
+			WriteLog(__FUNCTION__" - 'model' section not found in file<%s>.\n",name);
+			return false;
+		}
+
 		char name_path[MAX_FOPATH];
 		FileManager::ExtractPath(name,name_path);
 		if(name_path[0])
 		{
 			char tmp[MAX_FOPATH];
-			StringCopy(tmp,xfname);
-			StringCopy(xfname,name_path);
-			StringAppend(xfname,tmp);
-			if(anim_xfname[0])
+			StringCopy(tmp,model);
+			StringCopy(model,name_path);
+			StringAppend(model,tmp);
+			if(anim_model[0])
 			{
-				StringCopy(tmp,anim_xfname);
-				StringCopy(anim_xfname,name_path);
-				StringAppend(anim_xfname,tmp);
+				StringCopy(tmp,anim_model);
+				StringCopy(anim_model,name_path);
+				StringAppend(anim_model,tmp);
 			}
 		}
 
 		// Load x file
-		Animation3dXFile* xfile=Animation3dXFile::GetXFile(xfname,anim_xfname[0]?anim_xfname:NULL,path_type);
+		Animation3dXFile* xfile=Animation3dXFile::GetXFile(model,anim_model[0]?anim_model:NULL,
+			_stricmp(anim_model,"disable")!=0,calcualteTangetSpace,path_type);
 		if(!xfile) return false;
 
 		// Create animation
@@ -1287,200 +1756,33 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		xFile=xfile;
 		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
 
-		// Indexing frames                          ||||||
-		static char frm_ind[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-		//                     0123456789012345678901234567590123456
-		char key[32];
-		for(int i1=1;i1<=ABC_SIZE;i1++)
+		// Parse animation names
+		if(anim_indexes.size())
 		{
-			char ind1=frm_ind[i1];
-
-			// Check substitute
-			sprintf(key,"anim_%c",ind1);
-			if(fo3d.IsCachedKey(key) && fo3d.GetStr(key,"",big_buf)) ind1=big_buf[0];
-
-			for(int i2=1;i2<0x100;i2++)
+			for(IntPtrMapIt it=anim_indexes.begin(),end=anim_indexes.end();it!=end;++it)
 			{
-				sprintf(key,"anim_%c%d",ind1,i2);
-				if(fo3d.IsCachedKey(key) && fo3d.GetStr(key,"",big_buf))
+				int anim_index=(*it).first;
+				char* anim_name=(char*)(*it).second;
+				if(xfile->animController)
 				{
-					if(def.size()>2) ProcessTemplateDefines(big_buf,def);
-
-					int anim_ind=abs(atoi(big_buf));
-					if(!Str::IsNumber(big_buf)) anim_ind=GetAnimationIndex(big_buf[0]!='-'?big_buf:&big_buf[1]);
-					//if((DWORD)anim_ind<numAnimationSets) animIndexes.insert(IntMapVal((i1<<8)|i2,anim_ind*(big_buf[0]!='-'?1:-1)));
-					if(anim_ind>=0 && anim_ind<numAnimationSets) animIndexes.insert(IntMapVal((i1<<8)|i2,anim_ind));
+					int anim_set=abs(atoi(anim_name));
+					if(!Str::IsNumber(anim_name)) anim_set=GetAnimationIndex(anim_name[0]!='-'?anim_name:&anim_name[1]);
+					if(anim_set>=0 && anim_set<numAnimationSets) animIndexes.insert(IntMapVal(anim_index,anim_set));
 				}
+				delete[] anim_name;
 			}
 		}
-
-		// Indexing bones
-		bool last_effect_root=false;
-		for(int i=0;i<LAYERS3D_COUNT;i++)
+		if(render_anim[0])
 		{
-			sprintf(key,"layer_%d",i);
-			if(fo3d.IsCachedKey(key) && fo3d.GetStr(key,"",big_buf,';'))
-			{
-				if(def.size()>2) ProcessTemplateDefines(big_buf,def);
-
-				StrVec lines;
-				Str::ParseLine(big_buf,',',lines,Str::ParseLineDummy);
-				for(int j=0;j<lines.size();j++)
-				{
-					StrVec params;
-					Str::ParseLine(lines[j].c_str(),' ',params,Str::ParseLineDummy);
-					if(params.size()<3) continue;
-
-					// Initialize
-					AnimLink link;
-					ZeroMemory(&link,sizeof(link));
-
-					static DWORD id=0;
-					link.Id=++id;
-					link.Layer=i;
-					link.RotX=0.0f;
-					link.RotY=0.0f;
-					link.RotZ=0.0f;
-					link.MoveX=0.0f;
-					link.MoveY=0.0f;
-					link.MoveZ=0.0f;
-					link.LayerValue=atoi(params[0].c_str());
-
-					// Parameters
-					for(int k=1;k<params.size()-1;k+=2)
-					{
-						string& p1=params[k];
-						string& p2=params[k+1];
-						if(p1=="anim") link.ChildFName=StringDuplicate(p2.c_str());
-						else if(p1=="link") link.LinkBone=StringDuplicate(p2.c_str());
-						else if(p1=="rotx") link.RotX=atoi(p2.c_str());
-						else if(p1=="roty") link.RotY=atoi(p2.c_str());
-						else if(p1=="rotz") link.RotZ=atoi(p2.c_str());
-						else if(p1=="movex") link.MoveX=float(atoi(p2.c_str()))/1000.0f;
-						else if(p1=="movey") link.MoveY=float(atoi(p2.c_str()))/1000.0f;
-						else if(p1=="movez") link.MoveZ=float(atoi(p2.c_str()))/1000.0f;
-						else if(p1=="disable_layer")
-						{
-							StrVec layers;
-							Str::ParseLine(p2.c_str(),'-',layers,Str::ParseLineDummy);
-							for(size_t m=0,n=layers.size();m<n;m++)
-							{
-								int layer=atoi(layers[m].c_str());
-								if(layer>=0 && layer<LAYERS3D_COUNT)
-								{
-									int* tmp=link.DisabledLayers;
-									link.DisabledLayers=new int[link.DisabledLayersCount+1];
-									for(int h=0;h<link.DisabledLayersCount;h++) link.DisabledLayers[h]=tmp[h];
-									if(tmp) delete tmp;
-									link.DisabledLayers[link.DisabledLayersCount]=layer;
-									link.DisabledLayersCount++;
-								}
-							}
-						}
-						else if(p1=="disable_subset")
-						{
-							StrVec subsets;
-							Str::ParseLine(p2.c_str(),'-',subsets,Str::ParseLineDummy);
-							for(size_t m=0,n=subsets.size();m<n;m++)
-							{
-								int ss=atoi(subsets[m].c_str());
-								if(ss>=0)
-								{
-									int* tmp=link.DisabledSubsets;
-									link.DisabledSubsets=new int[link.DisabledSubsetsCount+1];
-									for(int h=0;h<link.DisabledSubsetsCount;h++) link.DisabledSubsets[h]=tmp[h];
-									if(tmp) delete tmp;
-									link.DisabledSubsets[link.DisabledSubsetsCount]=ss;
-									link.DisabledSubsetsCount++;
-								}
-							}
-						}
-						else if(p1=="root_texture")
-						{
-							link.RootTextureName=StringDuplicate(p2.c_str());
-						}
-						else if(p1=="texture")
-						{
-							link.TextureName=StringDuplicate(p2.c_str());
-							link.TextureSubset=-1;
-							if(k<params.size()-2 && Str::IsNumber(params[k+2].c_str())) link.TextureSubset=atoi(params[k+2].c_str());
-						}
-						else if(p1=="root_effect")
-						{
-							if(!link.RootEffectInst) link.RootEffectInst=new D3DXEFFECTINSTANCE;
-							ZeroMemory(link.RootEffectInst,sizeof(D3DXEFFECTINSTANCE));
-							link.RootEffectInst->pEffectFilename=StringDuplicate(p2.c_str());
-							last_effect_root=true;
-						}
-						else if(p1=="effect")
-						{
-							if(!link.EffectInst) link.EffectInst=new D3DXEFFECTINSTANCE;
-							ZeroMemory(link.EffectInst,sizeof(D3DXEFFECTINSTANCE));
-							link.EffectInst->pEffectFilename=StringDuplicate(p2.c_str());
-							link.EffectSubset=-1;
-							if(k<params.size()-2 && Str::IsNumber(params[k+2].c_str())) link.EffectSubset=atoi(params[k+2].c_str());
-							last_effect_root=false;
-						}
-						else if(p1=="def")
-						{
-							// Todo: parse defaults
-							/*D3DXEFFECTINSTANCE* inst=(last_effect_root?link.RootEffectInst:link.EffectInst);
-							if(!inst) continue;
-
-							LPD3DXEFFECTDEFAULT* tmp=inst->pDefaults;
-							link.DisabledSubsets=new int[link.DisabledSubsetsCount+1];
-							for(int h=0;h<link.DisabledSubsetsCount;h++) link.DisabledSubsets[h]=tmp[h];
-							if(tmp) delete tmp;
-							link.DisabledSubsets[link.DisabledSubsetsCount]=ss;
-							link.DisabledSubsetsCount++;
-
-							inst->NumDefaults
-
-							if(p2=="string")
-							{
-							}
-							else if(p2=="floats")
-							{
-							}
-							else if(p2=="dword")
-							{
-							}*/
-						}
-					}
-
-					// Add to sequence
-					animBones.push_back(link);
-				}
-			}
+			int anim_set=abs(atoi(render_anim));
+			if(!Str::IsNumber(render_anim)) anim_set=GetAnimationIndex(render_anim[0]!='-'?render_anim:&render_anim[1]);
+			if(anim_set>=0 && anim_set<numAnimationSets) renderAnim=anim_set;
 		}
-
-		// Default texture
-		if(fo3d.IsCachedKey("texture"))
-		{
-			char tex_name[MAX_FOPATH];
-			fo3d.GetStr("texture","",tex_name);
-			defaultTexture=tex_name;
-		}
-
-		// Default effect
-		if(fo3d.IsCachedKey("effect"))
-		{
-			char effect_name[MAX_FOPATH];
-			fo3d.GetStr("effect","",effect_name);
-			defaultEffect.pEffectFilename=StringDuplicate(effect_name);
-		}
-
-		// Other
-		if(fo3d.IsCachedKey("scale")) scaleValue=float(fo3d.GetInt("scale",1000))/1000.0f;
-		if(fo3d.IsCachedKey("speed")) speedAdjust=float(fo3d.GetInt("speed",1000))/1000.0f;
-	//	if(Str::IsCachedKey("rotate_x")) scaleValue=float(Str::GetInt("scale",1000))/1000.0f;
-	//	if(Str::IsCachedKey("rotate_y")) scaleValue=float(Str::GetInt("scale",1000))/1000.0f;
-	//	if(Str::IsCachedKey("rotate_z")) scaleValue=float(Str::GetInt("scale",1000))/1000.0f;
 	}
 	// Load just x file
 	else
 	{
-		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,NULL,path_type);
+		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,NULL,true,false,path_type);
 		if(!xfile) return false;
 
 		// Create animation
@@ -1534,9 +1836,29 @@ int Animation3dEntity::GetAnimationIndex(const char* anim_name)
 	return result;
 }
 
-int Animation3dEntity::GetAnimationIndex(int anim1, int anim2)
+int Animation3dEntity::GetAnimationIndex(int anim1, int anim2, float* speed)
 {
+	// Check equals
+	if(speed) // Not check on recursion
+	{
+		IntMapIt it1=anim1Equals.find(anim1);
+		if(it1!=anim1Equals.end()) anim1=(*it1).second;
+		IntMapIt it2=anim2Equals.find(anim2);
+		if(it2!=anim2Equals.end()) anim2=(*it2).second;
+	}
+
+	// Make index
 	int ii=(anim1<<8)|anim2;
+
+	// Speed
+	if(speed)
+	{
+		IntFloatMapIt it=animSpeed.find(ii);
+		if(it!=animSpeed.end()) *speed=(*it).second;
+		else *speed=1.0f;
+	}
+
+	// Find number of animation
 	IntMapIt it=animIndexes.find(ii);
 	if(it!=animIndexes.end()) return (*it).second;
 
@@ -1553,7 +1875,7 @@ int Animation3dEntity::GetAnimationIndex(int anim1, int anim2)
 		case ANIM2_3D_SWITCH_ITEMS: anim2=ANIM2_3D_USE; break;
 		default: swapped=false; break;
 		}
-		if(swapped) return GetAnimationIndex(anim1,anim2);
+		if(swapped) return GetAnimationIndex(anim1,anim2,NULL);
 	}
 
 	switch(anim2)
@@ -1607,7 +1929,7 @@ int Animation3dEntity::GetAnimationIndex(int anim1, int anim2)
 	default: return -1;
 	}
 
-	return GetAnimationIndex(anim1,anim2);
+	return GetAnimationIndex(anim1,anim2,NULL);
 }
 
 Animation3d* Animation3dEntity::CloneAnimation()
@@ -1673,7 +1995,7 @@ Animation3dEntity* Animation3dEntity::GetEntity(const char* name, int path_type)
 Animation3dXFileVec Animation3dXFile::xFiles;
 
 Animation3dXFile::Animation3dXFile():pathType(0),frameRoot(NULL),
-animController(NULL),facesCount(0)
+animController(NULL),facesCount(0),tangentsCalculated(false)
 {
 }
 
@@ -1684,7 +2006,7 @@ Animation3dXFile::~Animation3dXFile()
 	SAFEREL(animController);
 }
 
-Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim_xname, int path_type)
+Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim_xname, bool load_anim, bool calc_tangent, int path_type)
 {
 	Animation3dXFile* xfile=NULL;
 
@@ -1694,6 +2016,12 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 		if(x->fileName==xname && x->pathType==path_type)
 		{
 			xfile=x;
+
+			if(calc_tangent && !x->tangentsCalculated)
+			{
+				xfile->CalculateNormalTangent((D3DXFRAME_EXTENDED*)xfile->frameRoot);
+				xfile->tangentsCalculated=true;
+			}
 			break;
 		}
 	}
@@ -1701,7 +2029,7 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 	if(!xfile)
 	{
 		Animation3dXFile* anim_xfile=NULL;
-		if(anim_xname) anim_xfile=Animation3dXFile::GetXFile(anim_xname,NULL,path_type);
+		if(anim_xname && load_anim) anim_xfile=Animation3dXFile::GetXFile(anim_xname,NULL,true,calc_tangent,path_type);
 
 		FileManager fm;
 		if(!fm.LoadFile(xname,path_type))
@@ -1712,7 +2040,7 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 
 		// Load
 		ID3DXAnimationController* anim_controller=NULL;
-		D3DXFRAME* frame_root=Loader3d::Load(D3DDevice,xname,path_type,anim_xfile?NULL:&anim_controller);
+		D3DXFRAME* frame_root=Loader3d::Load(D3DDevice,xname,path_type,anim_xfile || !load_anim?NULL:&anim_controller);
 		if(!frame_root)
 		{
 			WriteLog(__FUNCTION__" - X file<%s> not contain any frames.\n",xname);
@@ -1771,10 +2099,13 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 		xfile->pathType=path_type;
 		xfile->animController=anim_controller;
 		xfile->frameRoot=frame_root;
+		xfile->tangentsCalculated=calc_tangent;
 
-		// Bones for skinning
-		// Set the bones up
-		xfile->SetupBoneMatrices((D3DXFRAME_EXTENDED*)xfile->frameRoot,(D3DXFRAME_EXTENDED*)xfile->frameRoot);
+		// Skinning
+		xfile->SetupSkinning(xfile,(D3DXFRAME_EXTENDED*)xfile->frameRoot,(D3DXFRAME_EXTENDED*)xfile->frameRoot);
+
+		// Setup normals and tangent space
+		if(calc_tangent) xfile->CalculateNormalTangent((D3DXFRAME_EXTENDED*)xfile->frameRoot);
 
 		// Faces count
 		xfile->SetupFacesCount((D3DXFRAME_EXTENDED*)xfile->frameRoot,xfile->facesCount);
@@ -1786,7 +2117,7 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 }
 
 // Need to go through the hierarchy and set the combined matrices calls itself recursively as it tareverses the hierarchy
-bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EXTENDED* frame_root)
+bool Animation3dXFile::SetupSkinning(Animation3dXFile* xfile, D3DXFRAME_EXTENDED* frame, D3DXFRAME_EXTENDED* frame_root)
 {
 	// Cast to our extended structure first
 	D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)frame->pMeshContainer;
@@ -1794,8 +2125,9 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 	// If this frame has a mesh
 	while(mesh_container)
 	{
-		if(mesh_container->MeshData.pMesh) allMeshes.push_back(mesh_container);
+		if(mesh_container->MeshData.pMesh) xfile->allMeshes.push_back(mesh_container);
 
+		// Skinned data
 		if(mesh_container->MeshData.pMesh && mesh_container->pSkinInfo)
 		{
 			if(SkinningMethod==SKINNING_HLSL_SHADER)
@@ -1803,20 +2135,26 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 				// Get palette size
 				mesh_container->exNumPaletteEntries=mesh_container->pSkinInfo->GetNumBones();
 
+				DWORD* new_adjency=new(nothrow) DWORD[mesh_container->MeshData.pMesh->GetNumFaces()*3];
+				if(!new_adjency) return false;
+
 				D3D_HR(mesh_container->pSkinInfo->ConvertToIndexedBlendedMesh(
 					mesh_container->MeshData.pMesh,
 					D3DXMESHOPT_VERTEXCACHE|D3DXMESH_MANAGED,
 					mesh_container->exNumPaletteEntries,
-					mesh_container->pAdjacency,
-					NULL,NULL,NULL,
+					mesh_container->pAdjacency,new_adjency,
+					NULL,NULL,
 					&mesh_container->exNumInfl,
 					&mesh_container->exNumAttributeGroups,
 					&mesh_container->exBoneCombinationBuf,
 					&mesh_container->exSkinMeshBlended));
 
+				delete[] mesh_container->pAdjacency;
+				mesh_container->pAdjacency=new_adjency;
+
 				// FVF has to match our declarator. Vertex shaders are not as forgiving as FF pipeline
 				DWORD fvf=(mesh_container->exSkinMeshBlended->GetFVF()&D3DFVF_POSITION_MASK)|D3DFVF_NORMAL|D3DFVF_TEX1|D3DFVF_LASTBETA_UBYTE4;
-				if(fvf!=mesh_container->exSkinMeshBlended->GetFVF() )
+				if(fvf!=mesh_container->exSkinMeshBlended->GetFVF())
 				{
 					LPD3DXMESH mesh;
 					D3D_HR(mesh_container->exSkinMeshBlended->CloneMeshFVF(mesh_container->exSkinMeshBlended->GetOptions(),fvf,D3DDevice,&mesh));
@@ -1851,7 +2189,8 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 				if(tmp_frame)
 				{
 					mesh_container->exFrameCombinedMatrixPointer[i]=&tmp_frame->exCombinedTransformationMatrix;
-					if(std::find(framesSkinned.begin(),framesSkinned.end(),tmp_frame)==framesSkinned.end()) framesSkinned.push_back(tmp_frame);
+					FrameVec& frames=xfile->framesSkinned;
+					if(std::find(frames.begin(),frames.end(),tmp_frame)==frames.end()) frames.push_back(tmp_frame);
 				}
 			}
 
@@ -1876,10 +2215,65 @@ bool Animation3dXFile::SetupBoneMatrices(D3DXFRAME_EXTENDED* frame, D3DXFRAME_EX
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	// Pass on to siblings
-	if(frame->pFrameSibling) SetupBoneMatrices((D3DXFRAME_EXTENDED*)frame->pFrameSibling,frame_root);
-	// Pass on to children
-	if(frame->pFrameFirstChild) SetupBoneMatrices((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild,frame_root);
+	if(frame->pFrameSibling) SetupSkinning(xfile,(D3DXFRAME_EXTENDED*)frame->pFrameSibling,frame_root);
+	if(frame->pFrameFirstChild) SetupSkinning(xfile,(D3DXFRAME_EXTENDED*)frame->pFrameFirstChild,frame_root);
+	return true;
+}
+
+bool Animation3dXFile::CalculateNormalTangent(D3DXFRAME_EXTENDED* frame)
+{
+	D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)frame->pMeshContainer;
+	while(mesh_container)
+	{
+		if(mesh_container->MeshData.pMesh && (!mesh_container->pSkinInfo || mesh_container->exSkinMeshBlended))
+		{
+			LPD3DXMESH& mesh=(mesh_container->exSkinMeshBlended?mesh_container->exSkinMeshBlended:mesh_container->MeshData.pMesh);
+
+			D3DVERTEXELEMENT9 declaration[MAX_FVF_DECL_SIZE];
+			LPD3DVERTEXELEMENT9 declaration_ptr=declaration;
+			D3D_HR(mesh->GetDeclaration(declaration));
+
+			bool is_texcoord=false,is_normal=false,is_tangent=false,is_binormal=false;
+			while(declaration_ptr->Stream!=0xFF)
+			{
+				if(declaration_ptr->Usage==D3DDECLUSAGE_TEXCOORD) is_texcoord=true;
+				else if(declaration_ptr->Usage==D3DDECLUSAGE_NORMAL) is_normal=true;
+				else if(declaration_ptr->Usage==D3DDECLUSAGE_TANGENT) is_tangent=true;
+				else if(declaration_ptr->Usage==D3DDECLUSAGE_BINORMAL) is_binormal=true;
+				declaration_ptr++;
+			}
+
+			if(!is_normal || (is_texcoord && (!is_tangent || !is_binormal)))
+			{
+#define ADD_FVF_DECL(d,s,o,t,m,u,ui) {d->Stream=s;d->Offset=o;d->Type=t;d->Method=m;d->Usage=u;d->UsageIndex=ui;d++; offs+=12;}
+				int offs=(declaration_ptr-1)->Offset+(((int)(declaration_ptr-1)->Type+1)*4);
+				if(!is_normal) ADD_FVF_DECL(declaration_ptr,0,offs,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0);
+				if(is_texcoord && !is_tangent) ADD_FVF_DECL(declaration_ptr,0,offs,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0);
+				if(is_texcoord && !is_binormal) ADD_FVF_DECL(declaration_ptr,0,offs,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0);
+				ADD_FVF_DECL(declaration_ptr,0xFF,0,D3DDECLTYPE_UNUSED,0,0,0);
+
+				LPD3DXMESH tmp_mesh=NULL;
+				D3D_HR(mesh->CloneMesh(D3DXMESH_MANAGED,declaration,D3DDevice,&tmp_mesh));
+				mesh->Release();
+				mesh=tmp_mesh;
+
+				D3D_HR(D3DXComputeTangentFrameEx(mesh,
+					is_texcoord?D3DDECLUSAGE_TEXCOORD:D3DX_DEFAULT,0,
+					is_texcoord && !is_tangent?D3DDECLUSAGE_TANGENT:D3DX_DEFAULT,0,
+					is_texcoord && !is_binormal?D3DDECLUSAGE_BINORMAL:D3DX_DEFAULT,0,
+					!is_normal?D3DDECLUSAGE_NORMAL:D3DX_DEFAULT,0,
+					(!is_normal?D3DXTANGENT_CALCULATE_NORMALS:0),
+					mesh_container->pAdjacency,0.01f,0.25f,0.01f,&tmp_mesh,NULL));
+				mesh->Release();
+				mesh=tmp_mesh;
+			}
+		}
+
+		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
+	}
+
+	if(frame->pFrameSibling) CalculateNormalTangent((D3DXFRAME_EXTENDED*)frame->pFrameSibling);
+	if(frame->pFrameFirstChild) CalculateNormalTangent((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild);
 	return true;
 }
 

@@ -262,7 +262,7 @@ Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD ani
 
 	char name[64];
 	sprintf(name,"%s.fo3d",CritType::GetName(crtype));
-	Animation3d* anim3d=SprMngr.Load3dAnimation(name,PT_ART_CRITTERS);
+	Animation3d* anim3d=SprMngr.LoadPure3dAnimation(name,PT_ART_CRITTERS);
 	if(!anim3d) return NULL;
 
 	if(crtype>=critter3d.size()) critter3d.resize(crtype+1);

@@ -1464,7 +1464,19 @@
 	if(engine->RegisterGlobalProperty("bool __ShowCorners",&GameOpt.ShowCorners)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __ShowSpriteCuts",&GameOpt.ShowSpriteCuts)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __ShowDrawOrder",&GameOpt.ShowDrawOrder)) BIND_ERROR;
+#endif
 
+#if defined(BIND_CLIENT) || defined(BIND_MAPPER)
+	if(engine->RegisterGlobalProperty("float __EffectValue0",&GameOpt.EffectValues[0])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue1",&GameOpt.EffectValues[1])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue2",&GameOpt.EffectValues[2])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue3",&GameOpt.EffectValues[3])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue4",&GameOpt.EffectValues[4])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue5",&GameOpt.EffectValues[5])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue6",&GameOpt.EffectValues[6])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue7",&GameOpt.EffectValues[7])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue8",&GameOpt.EffectValues[8])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __EffectValue9",&GameOpt.EffectValues[9])) BIND_ERROR;
 #endif
 
 #if /*defined(BIND_CLIENT) || */defined(BIND_MAPPER)

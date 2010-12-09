@@ -544,9 +544,9 @@ void GetClientOptions()
 	GameOpt.CombatMessagesType=cfg.GetInt(CLIENT_CONFIG_APP,"CombatMessagesType",0);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.CombatMessagesType,"-CombatMessagesType");
 	GETOPTIONS_CHECK(GameOpt.CombatMessagesType,0,1,0);
-	GameOpt.Animation3dFPS=cfg.GetInt(CLIENT_CONFIG_APP,"Animation3dFPS",0);
+	GameOpt.Animation3dFPS=cfg.GetInt(CLIENT_CONFIG_APP,"Animation3dFPS",10);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Animation3dFPS,"-Animation3dFPS");
-	GETOPTIONS_CHECK(GameOpt.Animation3dFPS,0,1000,0);
+	GETOPTIONS_CHECK(GameOpt.Animation3dFPS,0,1000,10);
 	GameOpt.Animation3dSmoothTime=cfg.GetInt(CLIENT_CONFIG_APP,"Animation3dSmoothTime",0);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.Animation3dSmoothTime,"-Animation3dSmoothTime");
 	GETOPTIONS_CHECK(GameOpt.Animation3dSmoothTime,0,10000,250);
@@ -935,7 +935,7 @@ GameOptions::GameOptions()
 	ReputationAntipathy=-14;
 	ReputationHated=-29;
 
-	// Client
+	// Client and Mapper
 	Quit=false;
 	ScrOx=0;
 	ScrOy=0;
@@ -1024,13 +1024,14 @@ GameOptions::GameOptions()
 	UserInterface="";
 	UserInterfaceRefCounter=1;
 	Animation3dSmoothTime=250;
-	Animation3dFPS=0;
+	Animation3dFPS=10;
 	RunModMul=1;
 	RunModDiv=3;
 	RunModAdd=0;
 	SpritesZoom=1.0f;
 	SpritesZoomMax=MAX_ZOOM;
 	SpritesZoomMin=MIN_ZOOM;
+	ZeroMemory(EffectValues,sizeof(EffectValues));
 
 	// Mapper
 	ClientPath=".\\";
@@ -1057,7 +1058,7 @@ GameOptions::GameOptions()
 FileLogger::FileLogger(const char* fname)
 {
 	logFile=NULL;
-	fopen_s(&logFile,fname,"wt");
+	fopen_s(&logFile,fname,"wb");
 	startTick=Timer::FastTick();
 }
 

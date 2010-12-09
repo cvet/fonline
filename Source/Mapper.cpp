@@ -3251,6 +3251,7 @@ MapObject* FOMapper::ParseMapObj(MapObject* mobj)
 		cr->Id=AnyId;
 		cr->Init();
 		HexMngr.AddCrit(cr);
+		HexMngr.AffectCritter(mobj,cr);
 		SelectAdd(mobj);
 	}
 	else if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
@@ -3259,12 +3260,16 @@ MapObject* FOMapper::ParseMapObj(MapObject* mobj)
 		if(!proto) return NULL;
 
 		CurProtoMap->MObjects.push_back(new MapObject(*mobj));
-		mobj=CurProtoMap->MObjects[CurProtoMap->MObjects.size()-1];
+		mobj=CurProtoMap->MObjects.back();
 		mobj->RunTime.FromMap=CurProtoMap;
 
 		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer) return mobj;
 		mobj->RunTime.MapObjId=++AnyId;
-		if(HexMngr.AddItem(AnyId,mobj->ProtoId,mobj->MapX,mobj->MapY,0,NULL)) SelectAdd(mobj);
+		if(HexMngr.AddItem(AnyId,mobj->ProtoId,mobj->MapX,mobj->MapY,0,NULL))
+		{
+			HexMngr.AffectItem(mobj,HexMngr.GetItemById(AnyId));
+			SelectAdd(mobj);
+		}
 	}
 	return mobj;
 }
@@ -4626,6 +4631,7 @@ DWORD FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, CScriptA
 
 		if(!FindNextFile(h,&fdata)) break;
 	}
+	FindClose(h);
 
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	return names->GetSize();

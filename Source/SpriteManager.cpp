@@ -990,7 +990,7 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 		return 0;
 	}
 
-	if(!_stricmp(ext,"x") || !_stricmp(ext,"3ds") || !_stricmp(ext,"fo3d")) return LoadSprite3d(fname,path_type,dir);
+	if(!_stricmp(ext,"x") || !_stricmp(ext,"3ds") || !_stricmp(ext,"fo3d")) return LoadSprite3d(fname,path_type,dir,0);
 	else if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
 		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type);
 
@@ -1085,9 +1085,9 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 	return result;
 }
 
-DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
+DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir, int time_proc)
 {
-	Animation3d* anim3d=Load3dAnimation(fname,path_type);
+	Animation3d* anim3d=LoadPure3dAnimation(fname,path_type);
 	if(!anim3d) return false;
 
 	// Render
@@ -1103,6 +1103,7 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 	anim3d->EnableSetupBorders(false);
 	if(dir<0 || dir>5) anim3d->SetDirAngle(dir);
 	else anim3d->SetDir(dir);
+	anim3d->SetAnimation(-1,time_proc,NULL,ANIMATION_ONE_TIME|ANIMATION_STAY);
 	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
 	anim3d->EnableSetupBorders(true);
 	anim3d->SetupBorders();
@@ -1137,7 +1138,7 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir)
 		D3D_HR(d3dDevice->CreateOffscreenPlainSurface(spr3dSurfWidth,spr3dSurfHeight,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&spr3dRTData,NULL));
 
 		// Try load again
-		return LoadSprite3d(fname,path_type,dir);
+		return LoadSprite3d(fname,path_type,dir,time_proc);
 	}
 
 	// Get render target data
@@ -1226,6 +1227,7 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5"))
 	{
 		if(!_stricmp(ext,"fofrm")) return LoadAnyAnimationFofrm(fname,path_type,dir);
+		if(!_stricmp(ext,"fo3d")) return LoadAnyAnimation3d(fname,path_type,dir);
 		return LoadAnyAnimationOneSpr(fname,path_type,dir);
 	}
 
@@ -1487,6 +1489,62 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 	return anim.Release();
 }
 
+AnyFrames* SpriteManager::LoadAnyAnimation3d(const char* fname, int path_type, int dir)
+{
+	Animation3d* anim3d=LoadPure3dAnimation(fname,path_type);
+	if(!anim3d) return NULL;
+
+	// Get animation data
+	float period;
+	int proc_from,proc_to;
+	anim3d->GetRenderFramesData(period,proc_from,proc_to);
+
+	// If not animations available than render just one
+	if(period==0.0f || proc_from==proc_to) return LoadAnyAnimationOneSpr(fname,path_type,dir);
+
+	// Calculate need information
+	float frame_time=1.0f/(float)(GameOpt.Animation3dFPS?GameOpt.Animation3dFPS:10); // 1 second / fps
+	float period_from=period*(float)proc_from/100.0f;
+	float period_to=period*(float)proc_to/100.0f;
+	float period_len=abs(period_to-period_from);
+	float proc_step=(float)(proc_to-proc_from)/(period_len/frame_time);
+	int frames_count=(int)ceil(period_len/frame_time);
+	if(frames_count<=1) return LoadAnyAnimationOneSpr(fname,path_type,dir);
+
+	AnyFrames* anim=new(nothrow) AnyFrames();
+	if(!anim) return NULL;
+
+	anim->Ind=new(nothrow) DWORD[frames_count];
+	anim->NextX=new(nothrow) short[frames_count];
+	anim->NextY=new(nothrow) short[frames_count];
+	ZeroMemory(anim->Ind,frames_count*sizeof(DWORD));
+	ZeroMemory(anim->NextX,frames_count*sizeof(short));
+	ZeroMemory(anim->NextY,frames_count*sizeof(short));
+
+	anim->OffsX=0;
+	anim->OffsY=0;
+	anim->CntFrm=frames_count;
+	anim->Ticks=(DWORD)(period_len*1000.0f);
+
+	float cur_proc=(float)proc_from;
+	int prev_cur_proci=-1;
+	for(int i=0;i<frames_count;i++)
+	{
+		int cur_proci=(proc_to>proc_from?(int)(10.0f*cur_proc+0.5):(int)(10.0f*cur_proc));
+		if(cur_proci!=prev_cur_proci) // Previous frame is different
+			anim->Ind[i]=LoadSprite3d(fname,path_type,dir,cur_proci);
+		else // Previous frame is same
+			anim->Ind[i]=anim->Ind[i-1];
+
+		if(!anim->Ind[i]) return NULL;
+
+		cur_proc+=proc_step;
+		prev_cur_proci=cur_proci;
+	}
+
+	return anim;
+}
+
 AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_type, int dir)
 {
 	DWORD spr_id=LoadSprite(fname,path_type,dir);
@@ -1512,7 +1570,7 @@ AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_typ
 	return anim;
 }
 
-Animation3d* SpriteManager::Load3dAnimation(const char* fname, int path_type)
+Animation3d* SpriteManager::LoadPure3dAnimation(const char* fname, int path_type)
 {
 	// Fill data
 	Animation3d* anim3d=Animation3d::GetAnimation(fname,path_type,false);

@@ -250,7 +250,7 @@ char* Str::DuplicateString(const char* str)
 	return result;
 }
 
-char BigBuf[0x10000];
+static char BigBuf[0x100000]; // 1 mb
 char* Str::GetBigBuf()
 {
 	return BigBuf;
@@ -551,9 +551,15 @@ bool IniParser::GetStr(const char* app_name, const char* key_name, const char* d
 		if(end)
 		{
 			if(bufPtr[iter]==end) break;
-			if(bufPtr[iter]=='\n' || bufPtr[iter]=='\r') continue;
+
+			if(bufPtr[iter]=='\n' || bufPtr[iter]=='\r')
+			{
+				if(j && ret_buf[j-1]!=' ') ret_buf[j++]=' ';
+				continue;
+			}
 			if(bufPtr[iter]==';' || bufPtr[iter]=='#')
 			{
+				if(j && ret_buf[j-1]!=' ') ret_buf[j++]=' ';
 				GotoEol(iter);
 				continue;
 			}
@@ -562,6 +568,7 @@ bool IniParser::GetStr(const char* app_name, const char* key_name, const char* d
 		{
 			if(!bufPtr[iter] || bufPtr[iter]=='\n' || bufPtr[iter]=='\r' || bufPtr[iter]=='#' || bufPtr[iter]==';') break;
 		}
+
 		ret_buf[j]=bufPtr[iter];
 		j++;
 	}

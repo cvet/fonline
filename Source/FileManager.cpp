@@ -711,7 +711,7 @@ void FileManager::RecursiveDirLook(const char* init_dir, const char* ext, StrVec
 
 		if(!FindNextFile(h,&fd)) break;
 	}
-	CloseHandle(h);
+	if(h!=INVALID_HANDLE_VALUE) FindClose(h);
 }
 
 void FileManager::GetFolderFileNames(int path_type, const char* ext, StrVec& result)

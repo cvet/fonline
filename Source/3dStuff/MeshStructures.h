@@ -1,6 +1,8 @@
 #ifndef __MESH_STRUCTURES__
 #define __MESH_STRUCTURES__
 
+#include "Defines.h"
+
 struct TextureEx
 {
 	const char* Name;
@@ -12,6 +14,7 @@ struct EffectEx
 	const char* Name;
 	ID3DXEffect* Effect;
 	DWORD EffectFlags;
+	LPD3DXEFFECTDEFAULT Defaults;
 	D3DXHANDLE EffectParams;
 	D3DXHANDLE TechniqueSkinned;
 	D3DXHANDLE TechniqueSkinnedWithShadow;
@@ -24,7 +27,7 @@ struct EffectEx
 	D3DXHANDLE MaterialAmbient;
 	D3DXHANDLE MaterialDiffuse;
 	D3DXHANDLE WorldMatrices;
-	D3DXHANDLE ProjectionMatrix;
+	D3DXHANDLE ViewProjMatrix;
 
 	// Automatic variables
 	bool IsNeedProcess;
@@ -46,6 +49,10 @@ struct EffectEx
 	D3DXHANDLE Random2Effect;
 	D3DXHANDLE Random3Effect;
 	D3DXHANDLE Random4Effect;
+	bool IsTextures;
+	D3DXHANDLE Textures[EFFECT_TEXTURES];
+	bool IsScriptValues;
+	D3DXHANDLE ScriptValues[EFFECT_SCRIPT_VALUES];
 };
 
 struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER

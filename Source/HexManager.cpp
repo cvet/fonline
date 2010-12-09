@@ -38,11 +38,11 @@ void Field::Clear()
 	IsNoLight=false;
 	IsMultihex=false;
 
-#ifdef FINLINE_MAPPER
+#ifdef FONLINE_MAPPER
 	SelTile=0;
 	SelRoof=0;
-	TerrainId=0;;
-	SelTettain=0;
+	TerrainId=0;
+	SelTerrain=0;
 #endif
 }
 
@@ -701,7 +701,7 @@ void HexManager::DrawCursor(const char* text)
 	if(GameOpt.HideCursor || !isShowCursor) return;
 	int x=(cursorX+GameOpt.ScrOx)/GameOpt.SpritesZoom;
 	int y=(cursorY+GameOpt.ScrOy)/GameOpt.SpritesZoom;
-	SprMngr.DrawStr(INTRECT(x,y,x+32,y+16),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(x,y,x+32.0f/GameOpt.SpritesZoom,y+16.0f/GameOpt.SpritesZoom),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
 }
 
 void HexManager::RebuildMap(int rx, int ry)

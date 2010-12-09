@@ -6,7 +6,7 @@
 AnyFrames* ItemHex::DefaultAnim=NULL;
 
 ItemHex::ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut):
-HexX(hx),HexY(hy),StartScrX(scr_x),StartScrY(scr_y),ScrX(0),ScrY(0),HexScrX(hex_scr_x),HexScrY(hex_scr_y),SpriteCut(cut),
+SprId(0),HexX(hx),HexY(hy),StartScrX(scr_x),StartScrY(scr_y),ScrX(0),ScrY(0),HexScrX(hex_scr_x),HexScrY(hex_scr_y),SpriteCut(cut),
 curSpr(0),begSpr(0),endSpr(0),animBegSpr(0),animEndSpr(0),animTick(0),animNextTick(0),
 Alpha(0),maxAlpha(0xFF),Dir(dir),finishing(false),finishingTime(0),fading(false),fadingTick(0),fadeUp(false),
 isEffect(false),effSx(0),effSy(0),EffOffsX(0),EffOffsY(0),effStartX(0),effStartY(0),effDist(0),effLastTick(0),effCurX(0),effCurY(0),
@@ -248,6 +248,7 @@ void ItemHex::SetSprEnd()
 	begSpr=curSpr;
 	endSpr=curSpr;
 }
+
 void ItemHex::SetSpr(short num_spr)
 {
 	curSpr=num_spr;

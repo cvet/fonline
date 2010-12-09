@@ -151,8 +151,9 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 				mesh.Subsets.push_back(Mesh3ds::Subset());
 				Mesh3ds::Subset& ss=mesh.Subsets.back();
 				fm.GetStr(ss.Name);
-				ss.Faces.resize(fm.GetLEWord());
-				fm.CopyMem(&ss.Faces[0],ss.Faces.size()*2);
+				WORD count=fm.GetLEWord();
+				ss.Faces.resize(count);
+				if(count) fm.CopyMem(&ss.Faces[0],ss.Faces.size()*2);
 			}
 			break;
 		case 0x4140: // MAPPING COORDINATES LIST (u,v)
@@ -245,7 +246,7 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 	}
 
 	// Create frames
-	D3DXFRAME* frame_root=NULL;
+	D3DXFRAME* frame_root=NULL,*frame_last=NULL;
 	for(size_t mi=0;mi<meshes.size();mi++)
 	{
 		Mesh3ds& mesh=meshes[mi];
@@ -256,6 +257,8 @@ D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
 			D3DXFRAME* frame;
 			D3D_HR(memAllocator.CreateFrame(mesh.Name,&frame));
 			if(!frame_root) frame_root=frame;
+			if(frame_last) frame_last->pFrameSibling=frame;
+			frame_last=frame;
 
 			// Model already positioned
 			D3DXMatrixIdentity(&frame->TransformationMatrix);
@@ -460,7 +463,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	for(EffectExVecIt it=loadedEffects.begin(),end=loadedEffects.end();it!=end;++it)
 	{
 		EffectEx* effect_ex=*it;
-		if(!_stricmp(effect_ex->Name,effect_name)) return effect_ex;
+		if(!_stricmp(effect_ex->Name,effect_name) && effect_ex->Defaults==effect_inst->pDefaults) return effect_ex;
 	}
 
 	// First try load from effects folder
@@ -548,6 +551,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	effect_ex->Name=StringDuplicate(effect_name);
 	effect_ex->Effect=effect;
 	effect_ex->EffectFlags=D3DXFX_DONOTSAVESTATE;
+	effect_ex->Defaults=NULL;
 	effect_ex->EffectParams=NULL;
 
 	effect_ex->TechniqueSkinned=effect->GetTechniqueByName("Skinned");
@@ -561,7 +565,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	effect_ex->MaterialAmbient=effect->GetParameterByName(NULL,"MaterialAmbient");
 	effect_ex->MaterialDiffuse=effect->GetParameterByName(NULL,"MaterialDiffuse");
 	effect_ex->WorldMatrices=effect->GetParameterByName(NULL,"WorldMatrices");
-	effect_ex->ProjectionMatrix=effect->GetParameterByName(NULL,"ProjectionMatrix");
+	effect_ex->ViewProjMatrix=effect->GetParameterByName(NULL,"ViewProjMatrix");
 
 	if(!effect_ex->TechniqueSimple)
 	{
@@ -593,7 +597,24 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	effect_ex->Random3Effect=effect->GetParameterByName(NULL,"Random3Effect");
 	effect_ex->Random4Effect=effect->GetParameterByName(NULL,"Random4Effect");
 	effect_ex->IsRandomEffect=(effect_ex->Random1Effect || effect_ex->Random2Effect || effect_ex->Random3Effect || effect_ex->Random4Effect);
-	effect_ex->IsNeedProcess=(effect_ex->PassIndex || effect_ex->IsTime || effect_ex->IsRandomPass || effect_ex->IsRandomEffect);
+	effect_ex->IsTextures=false;
+	for(int i=0;i<EFFECT_TEXTURES;i++)
+	{
+		char tex_name[32];
+		sprintf(tex_name,"Texture%d",i);
+		effect_ex->Textures[i]=effect->GetParameterByName(NULL,tex_name);
+		if(effect_ex->Textures[i]) effect_ex->IsTextures=true;
+	}
+	effect_ex->IsScriptValues=false;
+	for(int i=0;i<EFFECT_SCRIPT_VALUES;i++)
+	{
+		char val_name[32];
+		sprintf(val_name,"EffectValue%d",i);
+		effect_ex->ScriptValues[i]=effect->GetParameterByName(NULL,val_name);
+		if(effect_ex->ScriptValues[i]) effect_ex->IsScriptValues=true;
+	}
+	effect_ex->IsNeedProcess=(effect_ex->PassIndex || effect_ex->IsTime || effect_ex->IsRandomPass || effect_ex->IsRandomEffect ||
+		effect_ex->IsTextures || effect_ex->IsScriptValues);
 
 	if(effect_inst->NumDefaults)
 	{
@@ -601,8 +622,8 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 		for(DWORD d=0;d<effect_inst->NumDefaults;d++)
 		{
 			D3DXEFFECTDEFAULT& def=effect_inst->pDefaults[d];
-			D3DXHANDLE param=NULL;
-			effect->GetParameterByName(param,def.pParamName);
+			D3DXHANDLE param=effect->GetParameterByName(NULL,def.pParamName);
+			if(!param) continue;
 			switch(def.Type)
 			{
 			case D3DXEDT_STRING: // pValue points to a null terminated ASCII string 
@@ -615,64 +636,79 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 			}
 		}
 		effect_ex->EffectParams=effect->EndParameterBlock();
+		effect_ex->Defaults=effect_inst->pDefaults;
 	}
 
 	loadedEffects.push_back(effect_ex);
 	return loadedEffects.back();
 }
 
-void Loader3d::EffectProcessVariables(EffectEx* effect, int pass)
+void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass, TextureEx** textures /* = NULL */)
 {
 	// Process effect
 	if(pass==-1)
 	{
-		if(effect->IsTime)
+		if(effect_ex->IsTime)
 		{
 			double tick=Timer::AccurateTick();
-			if(effect->Time)
+			if(effect_ex->Time)
 			{
-				effect->TimeCurrent+=tick-effect->TimeLastTick;
-				effect->TimeLastTick=tick;
-				while(effect->TimeCurrent>=120.0f) effect->TimeCurrent-=120.0f;
+				effect_ex->TimeCurrent+=tick-effect_ex->TimeLastTick;
+				effect_ex->TimeLastTick=tick;
+				while(effect_ex->TimeCurrent>=120.0f) effect_ex->TimeCurrent-=120.0f;
 
-				effect->Effect->SetFloat(effect->Time,effect->TimeCurrent);
+				effect_ex->Effect->SetFloat(effect_ex->Time,effect_ex->TimeCurrent);
 			}
-			if(effect->TimeGame)
+			if(effect_ex->TimeGame)
 			{
 				if(!Timer::IsGamePaused())
 				{
-					effect->TimeGameCurrent+=tick-effect->TimeGameLastTick;
-					effect->TimeGameLastTick=tick;
-					while(effect->TimeGameCurrent>=120.0f) effect->TimeGameCurrent-=120.0f;
+					effect_ex->TimeGameCurrent+=tick-effect_ex->TimeGameLastTick;
+					effect_ex->TimeGameLastTick=tick;
+					while(effect_ex->TimeGameCurrent>=120.0f) effect_ex->TimeGameCurrent-=120.0f;
 				}
 				else
 				{
-					effect->TimeGameLastTick=tick;
+					effect_ex->TimeGameLastTick=tick;
 				}
 
-				effect->Effect->SetFloat(effect->TimeGame,effect->TimeGameCurrent);
+				effect_ex->Effect->SetFloat(effect_ex->TimeGame,effect_ex->TimeGameCurrent);
 			}
 		}
 
-		if(effect->IsRandomEffect)
+		if(effect_ex->IsRandomEffect)
 		{
-			if(effect->Random1Effect) effect->Effect->SetFloat(effect->Random1Effect,(double)Random(0,2000000000)/2000000000.0);
-			if(effect->Random2Effect) effect->Effect->SetFloat(effect->Random2Effect,(double)Random(0,2000000000)/2000000000.0);
-			if(effect->Random3Effect) effect->Effect->SetFloat(effect->Random3Effect,(double)Random(0,2000000000)/2000000000.0);
-			if(effect->Random4Effect) effect->Effect->SetFloat(effect->Random4Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random1Effect) effect_ex->Effect->SetFloat(effect_ex->Random1Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random2Effect) effect_ex->Effect->SetFloat(effect_ex->Random2Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random3Effect) effect_ex->Effect->SetFloat(effect_ex->Random3Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random4Effect) effect_ex->Effect->SetFloat(effect_ex->Random4Effect,(double)Random(0,2000000000)/2000000000.0);
+		}
+
+		if(effect_ex->IsTextures)
+		{
+			for(int i=0;i<EFFECT_TEXTURES;i++)
+				if(effect_ex->Textures[i])
+					effect_ex->Effect->SetTexture(effect_ex->Textures[i],textures && textures[i]?textures[i]->Texture:NULL);
+		}
+
+		if(effect_ex->IsScriptValues)
+		{
+			for(int i=0;i<EFFECT_SCRIPT_VALUES;i++)
+				if(effect_ex->ScriptValues[i])
+					effect_ex->Effect->SetFloat(effect_ex->ScriptValues[i],GameOpt.EffectValues[i]);
 		}
 	}
 	// Process pass
 	else
 	{
-		if(effect->PassIndex) effect->Effect->SetFloat(effect->Random1Pass,(float)pass);
+		if(effect_ex->PassIndex) effect_ex->Effect->SetFloat(effect_ex->Random1Pass,(float)pass);
 
-		if(effect->IsRandomPass)
+		if(effect_ex->IsRandomPass)
 		{
-			if(effect->Random1Pass) effect->Effect->SetFloat(effect->Random1Pass,(double)Random(0,2000000000)/2000000000.0);
-			if(effect->Random2Pass) effect->Effect->SetFloat(effect->Random2Pass,(double)Random(0,2000000000)/2000000000.0);
-			if(effect->Random3Pass) effect->Effect->SetFloat(effect->Random3Pass,(double)Random(0,2000000000)/2000000000.0);
-			if(effect->Random4Pass) effect->Effect->SetFloat(effect->Random4Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random1Pass) effect_ex->Effect->SetFloat(effect_ex->Random1Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random2Pass) effect_ex->Effect->SetFloat(effect_ex->Random2Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random3Pass) effect_ex->Effect->SetFloat(effect_ex->Random3Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random4Pass) effect_ex->Effect->SetFloat(effect_ex->Random4Pass,(double)Random(0,2000000000)/2000000000.0);
 		}
 	}
 }
