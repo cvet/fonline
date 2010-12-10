@@ -531,6 +531,8 @@ void GetClientOptions()
 	GETOPTIONS_CHECK(GameOpt.ProxyPort,0,0xFFFF,1080);
 	GameOpt.GlobalSound=cfg.GetInt(CLIENT_CONFIG_APP,"GlobalSound",true)!=0;
 	GETOPTIONS_CMD_LINE_BOOL(GameOpt.GlobalSound,"-GlobalSound");
+	GameOpt.AlwaysRun=cfg.GetInt(CLIENT_CONFIG_APP,"AlwaysRun",false)!=0;
+	GETOPTIONS_CMD_LINE_BOOL(GameOpt.AlwaysRun,"-AlwaysRun");
 	GameOpt.DefaultCombatMode=cfg.GetInt(CLIENT_CONFIG_APP,"DefaultCombatMode",COMBAT_MODE_ANY);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.DefaultCombatMode,"-DefaultCombatMode");
 	GETOPTIONS_CHECK(GameOpt.DefaultCombatMode,COMBAT_MODE_ANY,COMBAT_MODE_TURN_BASED,COMBAT_MODE_ANY);
@@ -1032,6 +1034,9 @@ GameOptions::GameOptions()
 	SpritesZoomMax=MAX_ZOOM;
 	SpritesZoomMin=MIN_ZOOM;
 	ZeroMemory(EffectValues,sizeof(EffectValues));
+	AlwaysRun=false;
+	AlwaysRunMoveDist=1;
+	AlwaysRunUseDist=5;
 
 	// Mapper
 	ClientPath=".\\";

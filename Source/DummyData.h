@@ -1379,7 +1379,10 @@ struct GameOptions
 	int SpritesZoom;
 	int SpritesZoomMax;
 	int SpritesZoomMin;
-	float EffectValues[10];
+	int EffectValues[10];
+	int AlwaysRun;
+	int AlwaysRunMoveDist;
+	int AlwaysRunUseDist;
 
 	// Mapper
 	int ClientPath;

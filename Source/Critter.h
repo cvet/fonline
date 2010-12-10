@@ -381,7 +381,6 @@ public:
 	void Send_AllQuests();
 	void Send_AllAutomapsInfo();
 
-public:
 	bool IsPlayer(){return !CritterIsNpc;}
 	bool IsNpc(){return CritterIsNpc;}
 	DWORD GetId(){return Data.Id;}
@@ -427,8 +426,6 @@ public:
 	void SubMoveAp(int val){ChangeParam(ST_CURRENT_AP);Data.Params[ST_MOVE_AP]-=val;}
 
 	// Turn based
-	DWORD AccessContainerId;
-
 	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetParam(TO_BATTLE));}
 	bool CheckMyTurn(Map* map);
 	int GetApCostCritterMove(bool is_run){return IsTurnBased()?GameOpt.TbApCostCritterMove*AP_DIVIDER*(IsDmgTwoLeg()?4:(IsDmgLeg()?2:1)):(GetParam(TO_BATTLE)?(is_run?GameOpt.RtApCostCritterRun:GameOpt.RtApCostCritterWalk):0);}
@@ -442,6 +439,10 @@ public:
 	// Timeouts
 	void SetTimeout(int timeout, DWORD game_seconds);
 	bool IsTransferTimeouts(bool send);
+
+	// Current container
+	DWORD AccessContainerId;
+	DWORD ItemTransferCount;
 
 	// Home
 	DWORD TryingGoHomeTick;

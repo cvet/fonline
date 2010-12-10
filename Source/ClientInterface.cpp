@@ -2259,9 +2259,11 @@ void FOClient::GameLMouseDown()
 			act->Param[2]=1/*run*/;
 			act->Param[4]=0;
 		}
-		else if(GetMouseHex())
+		else if(GetMouseHex() && Chosen)
 		{
-			SetAction(CHOSEN_MOVE,TargetX,TargetY,(act?0:0x100)|(Keyb::ShiftDwn==true?1/*run*/:0/*walk*/),0,Timer::FastTick());
+			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),TargetX,TargetY);
+			bool is_run=(Keyb::ShiftDwn?(!GameOpt.AlwaysRun):(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunMoveDist));
+			SetAction(CHOSEN_MOVE,TargetX,TargetY,(act?0:0x100)|(is_run?1:0),0,Timer::FastTick());
 		}
 	}
 	else if(IsCurMode(CUR_USE_ITEM) || IsCurMode(CUR_USE_WEAPON))

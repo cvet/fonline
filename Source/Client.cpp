@@ -7677,11 +7677,13 @@ label_EndMove:
 				if(need_move) 
 				{
 					// If target too far, then move to it	
-					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,max_dist))
+					DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+					if(dist>max_dist)
 					{
 						if(IsTurnBased) break;
-						if(target_cr) SetAction(CHOSEN_MOVE_TO_CRIT,target_cr->GetId(),0,0/*walk*/,max_dist);
-						else SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,max_dist,0);
+						bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+						if(target_cr) SetAction(CHOSEN_MOVE_TO_CRIT,target_cr->GetId(),0,is_run,max_dist);
+						else SetAction(CHOSEN_MOVE,hx,hy,is_run,max_dist,0);
 						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,max_dist)) AddActionBack(act);
 						return;
 					}
@@ -7843,7 +7845,8 @@ label_EndMove:
 
 			if(cr!=Chosen && HexMngr.IsMapLoaded())
 			{
-				// Check dist 1
+				// Check distantance
+				DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
 				switch(skill)
 				{
 				case SK_LOCKPICK:
@@ -7853,13 +7856,14 @@ label_EndMove:
 				case SK_DOCTOR:
 				case SK_SCIENCE:
 				case SK_REPAIR:
-					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetUseDist()+cr->GetMultihex()))
+					if(dist>Chosen->GetUseDist()+cr->GetMultihex())
 					{
 						if(IsTurnBased) break;
-						DWORD dist=Chosen->GetUseDist()+cr->GetMultihex();
-						SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,dist);
+						bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+						DWORD cut_dist=Chosen->GetUseDist()+cr->GetMultihex();
+						SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,is_run,cut_dist);
 						WORD hx=cr->GetHexX(),hy=cr->GetHexY();
-						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,dist)) AddActionBack(act);
+						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,cut_dist)) AddActionBack(act);
 						return;
 					}
 					break;
@@ -7923,10 +7927,12 @@ label_EndMove:
 
 				if(HexMngr.IsMapLoaded())
 				{
-					if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY(),Chosen->GetUseDist()))
+					DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
+					if(dist>Chosen->GetUseDist())
 					{
 						if(IsTurnBased) break;
-						SetAction(CHOSEN_MOVE,item->GetHexX(),item->GetHexY(),0/*walk*/,Chosen->GetUseDist(),0);
+						bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+						SetAction(CHOSEN_MOVE,item->GetHexX(),item->GetHexY(),is_run,Chosen->GetUseDist(),0);
 						WORD hx=item->GetHexX(),hy=item->GetHexY();
 						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 						return;
@@ -7963,10 +7969,12 @@ label_EndMove:
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
 			if(!item) break;
 
-			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
+			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+			if(dist>Chosen->GetUseDist())
 			{
 				if(IsTurnBased) break;
-				SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,Chosen->GetUseDist(),0);
+				bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+				SetAction(CHOSEN_MOVE,hx,hy,is_run,Chosen->GetUseDist(),0);
 				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 				return;
 			}
@@ -8004,11 +8012,13 @@ label_EndMove:
 				break;
 			}
 
+			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
 			DWORD talk_distance=cr->GetTalkDistance()+Chosen->GetMultihex();
-			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),talk_distance))
+			if(dist>talk_distance)
 			{
 				if(IsTurnBased) break;
-				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,talk_distance);
+				bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,is_run,talk_distance);
 				WORD hx=cr->GetHexX(),hy=cr->GetHexY();
 				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,talk_distance)) AddActionBack(act);
 				return;
@@ -8043,10 +8053,12 @@ label_EndMove:
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
 			if(!item) break;
 
-			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist()))
+			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+			if(dist>Chosen->GetUseDist())
 			{
 				if(IsTurnBased) break;
-				SetAction(CHOSEN_MOVE,hx,hy,0/*walk*/,Chosen->GetUseDist(),0);
+				bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+				SetAction(CHOSEN_MOVE,hx,hy,is_run,Chosen->GetUseDist(),0);
 				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 				AddActionBack(act);
 				return;
@@ -8081,13 +8093,15 @@ label_EndMove:
 			if(is_loot && (!cr->IsDead() || cr->IsRawParam(MODE_NO_LOOT))) break;
 			if(!is_loot && (!cr->IsLife() || cr->IsRawParam(MODE_NO_PUSH))) break;
 
-			DWORD dist=Chosen->GetUseDist()+cr->GetMultihex();
-			if(!CheckDist(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),dist))
+			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+			DWORD pick_dist=Chosen->GetUseDist()+cr->GetMultihex();
+			if(dist>pick_dist)
 			{
 				if(IsTurnBased) break;
-				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,0/*walk*/,dist);
+				bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
+				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,is_run,pick_dist);
 				WORD hx=cr->GetHexX(),hy=cr->GetHexY();
-				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,dist)) AddActionBack(act);
+				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,pick_dist)) AddActionBack(act);
 				return;
 			}
 

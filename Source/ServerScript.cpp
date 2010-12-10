@@ -4571,6 +4571,7 @@ bool FOServer::SScriptFunc::Global_SwapCritters(Critter* cr1, Critter* cr2, bool
 	cr1->SetBreakTime(0);
 	cr2->SetBreakTime(0);
 	std::swap(cr1->AccessContainerId,cr2->AccessContainerId);
+	std::swap(cr1->ItemTransferCount,cr2->ItemTransferCount);
 	std::swap(cr1->ApRegenerationTick,cr2->ApRegenerationTick);
 	std::swap(cr1->CrTimeEvents,cr2->CrTimeEvents);
 

@@ -340,7 +340,7 @@ public:
 public:
 	bool GetHexPixel(int x, int y, WORD& hx, WORD& hy);
 	ItemHex* GetItemPixel(int x, int y, bool& item_egg); // With transparent egg
-	CritterCl* GetCritterPixel(int x, int y, bool ignor_mode);
+	CritterCl* GetCritterPixel(int x, int y, bool ignore_dead_and_chosen);
 	void GetSmthPixel(int x, int y, ItemHex*& item, CritterCl*& cr);
 
 	// Effects

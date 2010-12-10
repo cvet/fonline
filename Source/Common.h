@@ -540,6 +540,9 @@ struct GameOptions
 	float SpritesZoomMax;
 	float SpritesZoomMin;
 	float EffectValues[EFFECT_SCRIPT_VALUES];
+	bool AlwaysRun;
+	DWORD AlwaysRunMoveDist;
+	DWORD AlwaysRunUseDist;
 
 	// Mapper
 	string ClientPath;

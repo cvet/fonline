@@ -2349,7 +2349,7 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 	return pix_item[0];
 }
 
-CritterCl* HexManager::GetCritterPixel(int x, int y, bool ignor_mode)
+CritterCl* HexManager::GetCritterPixel(int x, int y, bool ignore_dead_and_chosen)
 {
 	if(!IsMapLoaded() || !GameOpt.ShowCrit) return NULL;
 
@@ -2358,7 +2358,7 @@ CritterCl* HexManager::GetCritterPixel(int x, int y, bool ignor_mode)
 	{
 		CritterCl* cr=(*it).second;
 		if(!cr->Visible || cr->IsFinishing() || !cr->SprDrawValid) continue;
-		if(ignor_mode && (cr->IsDead() || cr->IsChosen())) continue;
+		if(ignore_dead_and_chosen && (cr->IsDead() || cr->IsChosen())) continue;
 
 		if(cr->Anim3d)
 		{

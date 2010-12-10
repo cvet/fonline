@@ -2885,6 +2885,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		cl->Send_Param(ST_CURRENT_AP);
 		return;
 	}
+	cl->ItemTransferCount=item_count;
 
 	int ap_cost=cl->GetApCostMoveItemContainer();
 	if(cl->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
