@@ -840,9 +840,9 @@ void ScriptGarbager()
 void CollectGarbage(asDWORD flags)
 {
 #ifdef SCRIPT_MULTITHREADING
-	GarbageLocker.LockCode();
+	if(LogicMT) GarbageLocker.LockCode();
 	Engine->GarbageCollect(flags);
-	GarbageLocker.UnlockCode();
+	if(LogicMT) GarbageLocker.UnlockCode();
 #else
 	Engine->GarbageCollect(flags);
 #endif
@@ -856,9 +856,9 @@ void CollectGarbage(bool force)
 	if(force || (GarbageCollectTime && Timer::FastTick()-last_tick>=GarbageCollectTime))
 	{
 #ifdef SCRIPT_MULTITHREADING
-		GarbageLocker.LockCode();
+		if(LogicMT) GarbageLocker.LockCode();
 		Engine->GarbageCollect(asGC_FULL_CYCLE);
-		GarbageLocker.UnlockCode();
+		if(LogicMT) GarbageLocker.UnlockCode();
 #else
 		Engine->GarbageCollect(asGC_FULL_CYCLE);
 #endif
@@ -1612,6 +1612,8 @@ THREAD EndExecutionCallbackVec* EndExecutionCallbacks;
 void BeginExecution()
 {
 #ifdef SCRIPT_MULTITHREADING
+	if(!LogicMT) return;
+
 	if(!ExecutionRecursionCounter)
 	{
 		GarbageLocker.EnterCode();
@@ -1636,6 +1638,8 @@ void BeginExecution()
 void EndExecution()
 {
 #ifdef SCRIPT_MULTITHREADING
+	if(!LogicMT) return;
+
 	ExecutionRecursionCounter--;
 	if(!ExecutionRecursionCounter)
 	{
@@ -1686,6 +1690,8 @@ void EndExecution()
 void AddEndExecutionCallback(EndExecutionCallback func)
 {
 #ifdef SCRIPT_MULTITHREADING
+	if(!LogicMT) return;
+
 	if(!EndExecutionCallbacks) EndExecutionCallbacks=new(nothrow) EndExecutionCallbackVec();
 	EndExecutionCallbackVecIt it=std::find(EndExecutionCallbacks->begin(),EndExecutionCallbacks->end(),func);
 	if(it==EndExecutionCallbacks->end()) EndExecutionCallbacks->push_back(func);
@@ -1694,25 +1700,27 @@ void AddEndExecutionCallback(EndExecutionCallback func)
 
 bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 {
-	bool is_script;
-	int func_id;
-	size_t func_addr;
-	{
 #ifdef SCRIPT_MULTITHREADING
-		SCOPE_LOCK(BindedFunctionsLocker);
+	if(LogicMT) BindedFunctionsLocker.Lock();
 #endif
 
-		if(bind_id<=0 || bind_id>=BindedFunctions.size())
-		{
-			WriteLog(__FUNCTION__" - Invalid bind id<%d>.\n",bind_id);
-			return false;
-		}
-
-		BindFunction& bf=BindedFunctions[bind_id];
-		is_script=bf.IsScriptCall;
-		func_id=bf.ScriptFuncId;
-		func_addr=bf.NativeFuncAddr;
+	if(bind_id<=0 || bind_id>=BindedFunctions.size())
+	{
+		WriteLog(__FUNCTION__" - Invalid bind id<%d>.\n",bind_id);
+#ifdef SCRIPT_MULTITHREADING
+		if(LogicMT) BindedFunctionsLocker.Unlock();
+#endif
+		return false;
 	}
+
+	BindFunction& bf=BindedFunctions[bind_id];
+	bool is_script=bf.IsScriptCall;
+	int func_id=bf.ScriptFuncId;
+	size_t func_addr=bf.NativeFuncAddr;
+
+#ifdef SCRIPT_MULTITHREADING
+	if(LogicMT) BindedFunctionsLocker.Unlock();
+#endif
 
 	if(is_script)
 	{

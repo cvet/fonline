@@ -4694,7 +4694,7 @@ bool FOServer::GetTimeEvent(DWORD num, DWORD& duration, CScriptArray* values)
 	te->InProcess=tid;
 
 	// Add end of script execution callback to unlock event if SetTimeEvent not be called
-	if(LogicThreadCount>1) Script::AddEndExecutionCallback(TimeEventEndScriptCallback);
+	if(LogicMT) Script::AddEndExecutionCallback(TimeEventEndScriptCallback);
 
 	TimeEventsLocker.Unlock();
 	return true;

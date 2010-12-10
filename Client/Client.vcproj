@@ -156,7 +156,7 @@
 				InlineFunctionExpansion="0"
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO;AS_NO_THREADS"
+				PreprocessorDefinitions="WIN32;_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO;AS_NO_THREADS"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"

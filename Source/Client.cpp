@@ -4325,7 +4325,7 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 
 	// Dialogbox
 	if(how_say==SAY_DIALOGBOX_TEXT) StringCopy(DlgboxText,fstr);
-	else if(how_say>=SAY_DIALOGBOX_BUTTON(0) && how_say<=SAY_DIALOGBOX_BUTTON(MAX_DLGBOX_BUTTONS)) DlgboxButtonText[how_say-SAY_DIALOGBOX_BUTTON(0)]=fstr;
+	else if(how_say>=SAY_DIALOGBOX_BUTTON(0) && how_say<SAY_DIALOGBOX_BUTTON(MAX_DLGBOX_BUTTONS)) DlgboxButtonText[how_say-SAY_DIALOGBOX_BUTTON(0)]=fstr;
 
 	// Say box
 	if(how_say==SAY_SAY_TITLE) SayTitle=fstr;
