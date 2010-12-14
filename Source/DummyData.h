@@ -540,7 +540,7 @@ struct Location
 		int WY;
 		int Radius;
 		int Visible;
-		int GeckEnabled;
+		int GeckVisible;
 		int AutoGarbage;
 		int Reserved0;
 		int Color;

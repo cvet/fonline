@@ -108,6 +108,8 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(ScenToSend)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
+	STATIC_ASSERT(sizeof(Field)==68);
+	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
 
 	GET_UID0(UID0);
@@ -5594,7 +5596,7 @@ void FOClient::Net_OnGameInfo()
 
 void FOClient::Net_OnLoadMap()
 {
-	WriteLog("Change map...");
+	WriteLog("Change map...\n");
 
 	WORD map_pid;
 	int map_time;
@@ -5613,17 +5615,12 @@ void FOClient::Net_OnLoadMap()
 	GmapZoom=1.0f;
 
 	GameMapTexts.clear();
-	WriteLog("Unload map...");
 	HexMngr.UnloadMap();
-	WriteLog("Clear sounds...");
 	SndMngr.ClearSounds();
 	SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 	ShowMainScreen(SCREEN_WAIT);
-	WriteLog("Clear critters...");
 	ClearCritters();
-	WriteLog("Complete.\n");
 
-	WriteLog("Free resources...");
 	ResMngr.FreeResources(RES_IFACE_EXT);
 	if(map_pid) // Free global map resources
 	{
@@ -5634,7 +5631,6 @@ void FOClient::Net_OnLoadMap()
 		ResMngr.FreeResources(RES_ITEMS);
 		CritterCl::FreeAnimations();
 	}
-	WriteLog("Complete.\n");
 
 	DropScroll();
 	IsTurnBased=false;
@@ -5665,7 +5661,7 @@ void FOClient::Net_OnLoadMap()
 
 	if(!HexMngr.LoadMap(map_pid))
 	{
-		WriteLog("Disconnect.\n");
+		WriteLog("Map not loaded. Disconnect.\n");
 		NetState=STATE_DISCONNECT;
 		return;
 	}

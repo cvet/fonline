@@ -1047,9 +1047,13 @@ GameOptions::GameOptions()
 	ShowSpriteCuts=false;
 	ShowDrawOrder=false;
 
-	// Engine functions
+	// Engine data
 	CritterChangeParameter=NULL;
 	CritterTypes=NULL;
+
+	ClientMap=NULL;
+	ClientMapWidth=0;
+	ClientMapHeight=0;
 
 	// Callbacks
 	GetUseApCost=NULL;

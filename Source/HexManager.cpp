@@ -1524,6 +1524,10 @@ void HexManager::SetWeather(int time, BYTE rain)
 
 bool HexManager::ResizeField(WORD w, WORD h)
 {
+	GameOpt.ClientMap=NULL;
+	GameOpt.ClientMapWidth=0;
+	GameOpt.ClientMapHeight=0;
+
 	maxHexX=w;
 	maxHexY=h;
 	SAFEDELA(hexField);
@@ -1543,6 +1547,10 @@ bool HexManager::ResizeField(WORD w, WORD h)
 	hexLight=new BYTE[w*h*3];
 	if(!hexLight) return false;
 	ZeroMemory(hexLight,w*h*3*sizeof(BYTE));
+
+	GameOpt.ClientMap=hexField;
+	GameOpt.ClientMapWidth=w;
+	GameOpt.ClientMapHeight=h;
 	return true;
 }
 

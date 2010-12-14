@@ -557,6 +557,10 @@ struct GameOptions
 	void (*CritterChangeParameter)(void*,DWORD);
 	void* CritterTypes;
 
+	void* ClientMap;
+	DWORD ClientMapWidth;
+	DWORD ClientMapHeight;
+
 	// Callbacks
 	DWORD (*GetUseApCost)(void*,void*,BYTE);
 	DWORD (*GetAttackDistantion)(void*,void*,BYTE);
