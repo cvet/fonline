@@ -268,8 +268,8 @@ bool FOClient::Init(HWND hwnd)
 		SprMngr.EndScene();
 	}
 
-	// Ini options
-	if(!InitIfaceIni()) return false;
+	// Base ini options
+	if(!AppendIfaceIni(NULL)) return false;
 
 	// Scripts
 	if(!ReloadScripts()) refresh_cache=true;
@@ -9125,7 +9125,6 @@ bool FOClient::ReloadScripts()
 		return false;
 	}
 
-	Crypt.SetCache("_user_interface",(BYTE*)GameOpt.UserInterface.c_str(),GameOpt.UserInterface.length()+1);
 	WriteLog("Load scripts complete.\n");
 	return true;
 }
@@ -10144,6 +10143,11 @@ void FOClient::SScriptFunc::Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DW
 	}
 }
 
+bool FOClient::SScriptFunc::Global_AppendIfaceIni(string& ini_name)
+{
+	return Self->AppendIfaceIni(ini_name.c_str());
+}
+
 CScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr(CScriptString& key)
 {
 	char* big_buf=Str::GetBigBuf();
@@ -10313,7 +10317,6 @@ bool FOClient::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 	{
 		ResMngr.Refresh();
 		FONames::GenerateFoNames(PT_DATA);
-		Self->InitIfaceIni();
 		return true;
 	}
 	return false;

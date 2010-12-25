@@ -1665,10 +1665,10 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				int ind1=0,ind2=0;
 				(*istr) >> buf;
 				Str::Upr(buf);
-				ind1=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+				ind1=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
 				(*istr) >> buf;
 				Str::Upr(buf);
-				ind2=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+				ind2=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
 
 				if(!_stricmp(token,"Anim"))
 				{
@@ -1690,13 +1690,13 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				int ind1=0,ind2=0;
 				(*istr) >> buf;
 				Str::Upr(buf);
-				ind1=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+				ind1=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
 				(*istr) >> buf;
 				Str::Upr(buf);
-				ind2=(Str::IsNumber(buf)?atoi(buf):'A'-buf[0]+1);
+				ind2=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
 
-				if(valuei==1) anim1Equals.insert(IntMapVal(ind2,ind1));
-				else if(valuei==2) anim2Equals.insert(IntMapVal(ind2,ind1));
+				if(valuei==1) anim1Equals.insert(IntMapVal(ind1,ind2));
+				else if(valuei==2) anim2Equals.insert(IntMapVal(ind1,ind2));
 			}
 			else if(!_stricmp(token,"RenderFrame") || !_stricmp(token,"RenderFrames"))
 			{

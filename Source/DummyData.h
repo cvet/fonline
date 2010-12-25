@@ -1132,6 +1132,7 @@ struct BindClass
 	static void Global_ReplaceTextInt(){}
 	static void Global_MoveScreen(){}
 	static void Global_MoveHexByDir(){}
+	static void Global_AppendIfaceIni(){}
 	static void Global_GetIfaceIniStr(){}
 	static void Global_LoadSprite(){}
 	static void Global_LoadSpriteHash(){}
@@ -1368,8 +1369,6 @@ struct GameOptions
 	int PlayerOffAppendix;
 	int PlayerOffAppendixRefCount;
 	int CombatMessagesType;
-	int UserInterface;
-	int UserInterfaceRefCount;
 	int DisableDrawScreens;
 	int Animation3dSmoothTime;
 	int Animation3dFPS;

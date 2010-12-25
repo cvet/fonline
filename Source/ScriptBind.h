@@ -1074,6 +1074,7 @@
 	if(engine->RegisterGlobalFunction("int GetLastCursor()",asFUNCTION(BIND_CLASS Global_GetLastCursor),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void ChangeCursor(int cursor)",asFUNCTION(BIND_CLASS Global_ChangeCursor),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)",asFUNCTION(BIND_CLASS Global_MoveHexByDir),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool AppendIfaceIni(string& iniName)",asFUNCTION(BIND_CLASS Global_AppendIfaceIni),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetIfaceIniStr(string& key)",asFUNCTION(BIND_CLASS Global_GetIfaceIniStr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool Load3dFile(string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_Load3dFile),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void WaitPing()",asFUNCTION(BIND_CLASS Global_WaitPing),asCALL_CDECL)<0) BIND_ERROR;
@@ -1127,7 +1128,6 @@
 	if(engine->RegisterGlobalProperty("uint __GlobalMapMaxGroupCount",&GameOpt.GlobalMapMaxGroupCount)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __CritterIdleTick",&GameOpt.CritterIdleTick)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __TurnBasedTick",&GameOpt.TurnBasedTick)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("string __UserInterface",&GameOpt.UserInterface)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __DeadHitPoints",&GameOpt.DeadHitPoints)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __Breaktime",&GameOpt.Breaktime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __TimeoutTransfer",&GameOpt.TimeoutTransfer)) BIND_ERROR;

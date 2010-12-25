@@ -69,7 +69,6 @@ public:
 	LPDIRECTINPUTDEVICE8 Mouse;
 	FileManager FileMngr;
 	HexManager HexMngr;
-	IniParser IfaceIni;
 
 	int InitDInput();
 	void ParseKeyboard();
@@ -572,6 +571,7 @@ public:
 		static int Global_GetLastCursor();
 		static void Global_ChangeCursor(int cursor);
 		static void Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps);
+		static bool Global_AppendIfaceIni(string& ini_name);
 		static CScriptString* Global_GetIfaceIniStr(CScriptString& key);
 		static bool Global_Load3dFile(CScriptString& fname, int path_type);
 		static void Global_WaitPing();
@@ -587,8 +587,11 @@ public:
 /* Interface                                                            */
 /************************************************************************/
 	int IfaceHold;
+	StrVec IfaceIniNames;
+	IniParser IfaceIni;
 
-	bool InitIfaceIni();
+	bool AppendIfaceIni(const char* ini_name);
+	void AppendIfaceIni(BYTE* data, DWORD len);
 	int InitIface();
 	bool IfaceLoadRect(INTRECT& comp, const char* name);
 	void IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy);

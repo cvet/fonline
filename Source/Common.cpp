@@ -1023,8 +1023,6 @@ GameOptions::GameOptions()
 	PlayerOffAppendixRefCounter=1;
 	CombatMessagesType=0;
 	DisableDrawScreens=false;
-	UserInterface="";
-	UserInterfaceRefCounter=1;
 	Animation3dSmoothTime=250;
 	Animation3dFPS=10;
 	RunModMul=1;

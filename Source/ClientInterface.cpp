@@ -52,49 +52,91 @@ void FOClient::IfaceFreeResources()
 	ResMngr.FreeResources(RES_IFACE_EXT);
 }
 
-bool FOClient::InitIfaceIni()
+bool FOClient::AppendIfaceIni(const char* ini_name)
 {
-	if(!IfaceIni.LoadFile("default.ini",PT_ART_INTRFACE))
-	{
-		WriteLog(__FUNCTION__" - File \"default.ini\" not found.\n");
-		return false;
-	}
+	// Process names collection
+	static char default_name[]="default.ini";
+	if(!ini_name || !ini_name[0]) ini_name=default_name;
 
-	FileManager fm;
-	if(!fm.LoadFile("resolutions.lst",PT_ART_INTRFACE))
+	bool founded=false;
+	for(size_t i=0,j=IfaceIniNames.size();i<j;i++)
 	{
-		WriteLog(__FUNCTION__" - File \"resolutions.lst\" not found.\n");
-		return false;
-	}
-
-	if(GameOpt.UserInterface=="") GameOpt.UserInterface="default";
-	DWORD data_len;
-	char* data=(char*)Crypt.GetCache("_user_interface",data_len);
-	if(data) GameOpt.UserInterface=data;
-
-	char line[256];
-	while(fm.GetLine(line,255))
-	{
-		char fname[256];
-		DWORD w,h;
-		if(sscanf(line,"%s %u %u",fname,&w,&h)==3)
+		if(!_stricmp(IfaceIniNames[i].c_str(),ini_name))
 		{
-			if((GameOpt.UserInterface==fname || !_stricmp("default",fname)) && MODE_WIDTH>=w && MODE_HEIGHT>=h)
+			founded=true;
+			break;
+		}
+	}
+	if(!founded) IfaceIniNames.push_back(string(ini_name));
+
+	// Build ini file
+	IfaceIni.UnloadFile();
+	for(size_t i=0,j=IfaceIniNames.size();i<j;i++)
+	{
+		// Create name
+		string file_name=IfaceIniNames[i];
+		if(!strstr(ini_name,"\\") && !strstr(ini_name,"/"))
+			file_name=string(FileManager::GetPath(PT_ART_INTRFACE))+file_name;
+
+		// Data files
+		DataFileVec& pfiles=FileManager::GetDataFiles();
+		for(DataFileVecIt it=pfiles.begin(),end=pfiles.end();it!=end;++it)
+		{
+			DataFile* pfile=*it;
+			DWORD len;
+			BYTE* data=pfile->OpenFile(file_name.c_str(),len);
+			IniParser ini;
+
+			if(data)
 			{
-				sprintf(line,"%s%ux%u.ini",fname,w,h);
-				IfaceIni.AppendToBegin(line,PT_ART_INTRFACE);
+				AppendIfaceIni(data,len);
+				delete[] data;
 			}
 		}
+
+		// Folder
+		file_name=string(FileManager::GetDataPath(PT_ART_INTRFACE))+file_name;
+		FileManager fm;
+		if(fm.LoadFile(file_name.c_str(),-1))
+			AppendIfaceIni(fm.GetBuf(),fm.GetFsize());
 	}
 
 	return true;
 }
 
+void FOClient::AppendIfaceIni(BYTE* data, DWORD len)
+{
+	typedef multimap<int,pair<char*,DWORD>,less<int>> IniMMap;
+	IniMMap sections;
+
+	int w=0,h=0;
+	char* begin=(char*)data;
+	char* end=strstr(begin,"\nresolution ");
+	while(true)
+	{
+		if(w<=MODE_WIDTH && h<=MODE_HEIGHT)
+		{
+			DWORD l=end?(DWORD)end-(DWORD)begin:(DWORD)(data+len)-(DWORD)begin;
+			sections.insert(IniMMap::value_type(w,pair<char*,DWORD>(begin,l)));
+		}
+
+		if(!end) break;
+
+		end+=strlen("\nresolution ");
+		if(sscanf(end,"%d%d",&w,&h)!=2) break;
+		Str::GoTo(end,'\n',true);
+
+		begin=end;
+		end=strstr(begin,"\nresolution ");
+	}
+
+	for(IniMMap::iterator it=sections.begin(),end=sections.end();it!=end;++it)
+		IfaceIni.AppendPtrToBegin((*it).second.first,(*it).second.second);
+}
+
 int FOClient::InitIface()
 {
 	WriteLog("Interface initialization.\n");
-
-	if(!InitIfaceIni()) return false;
 
 /************************************************************************/
 /* Data                                                                 */

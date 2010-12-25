@@ -3306,7 +3306,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(sizeof(GameOptions)==1120);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 
 	// Critters parameters

@@ -528,8 +528,6 @@ struct GameOptions
 	string PlayerOffAppendix;
 	int PlayerOffAppendixRefCounter;
 	int CombatMessagesType;
-	string UserInterface;
-	int UserInterfaceRefCounter;
 	bool DisableDrawScreens;
 	DWORD Animation3dSmoothTime;
 	DWORD Animation3dFPS;

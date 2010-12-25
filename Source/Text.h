@@ -133,6 +133,7 @@ public:
 	bool LoadFilePtr(const char* buf, DWORD len);
 	bool AppendToBegin(const char* fname, int path_type);
 	bool AppendToEnd(const char* fname, int path_type);
+	bool AppendPtrToBegin(const char* buf, DWORD len);
 	void UnloadFile();
 	char* GetBuffer();
 	int GetInt(const char* app_name, const char* key_name, int def_val);

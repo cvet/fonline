@@ -407,6 +407,21 @@ bool IniParser::AppendToEnd(const char* fname, int path_type)
 	return true;
 }
 
+bool IniParser::AppendPtrToBegin(const char* buf, DWORD len)
+{
+	char* grow_buf=new char[bufLen+len+1];
+	memcpy(grow_buf,buf,len);
+	memcpy(grow_buf+len,bufPtr,bufLen);
+	grow_buf[bufLen+len]='\0';
+
+	SAFEDELA(bufPtr);
+	bufPtr=grow_buf;
+	bufLen+=len;
+	lastApp[0]=0;
+	lastAppPos=0;
+	return true;
+}
+
 void IniParser::UnloadFile()
 {
 	SAFEDELA(bufPtr);
@@ -431,6 +446,10 @@ bool IniParser::GotoApp(const char* app_name, DWORD& iter)
 	DWORD j;
 	for(;iter<bufLen;++iter)
 	{
+		// Skip white spaces and tabs
+		while(iter<bufLen && (bufPtr[iter]==' ' || bufPtr[iter]=='\t')) ++iter;
+		if(iter>=bufLen) break;
+
 		if(bufPtr[iter]==STR_PRIVATE_APP_BEGIN)
 		{
 			++iter;
@@ -463,8 +482,14 @@ bool IniParser::GotoKey(const char* key_name, DWORD& iter)
 	{
 		if(bufPtr[iter]==STR_PRIVATE_APP_BEGIN) return false;
 
+		// Skip white spaces and tabs
+		while(iter<bufLen && (bufPtr[iter]==' ' || bufPtr[iter]=='\t')) ++iter;
+		if(iter>=bufLen) break;
+
+		// Compare first character
 		if(bufPtr[iter]==key_name[0])
 		{
+			// Compare others
 			++iter;
 			for(j=1;key_name[j];++iter,++j)
 			{
@@ -472,7 +497,11 @@ bool IniParser::GotoKey(const char* key_name, DWORD& iter)
 				if(key_name[j]!=bufPtr[iter]) goto label_NextLine;
 			}
 
+			// Skip white spaces and tabs
+			while(iter<bufLen && (bufPtr[iter]==' ' || bufPtr[iter]=='\t')) ++iter;
+			if(iter>=bufLen) break;
 
+			// Check for '='
 			if(bufPtr[iter]!=STR_PRIVATE_KEY_CHAR) goto label_NextLine;
 			++iter;
 
@@ -544,6 +573,10 @@ bool IniParser::GetStr(const char* app_name, const char* key_name, const char* d
 	DWORD iter=0;
 	if(!GetPos(app_name,key_name,iter)) goto label_DefVal;
 
+	// Skip white spaces and tabs
+	while(iter<bufLen && (bufPtr[iter]==' ' || bufPtr[iter]=='\t')) ++iter;
+	if(iter>=bufLen) goto label_DefVal;
+
 	// Read string
 	DWORD j=0;
 	for(;iter<bufLen && bufPtr[iter];++iter)
@@ -573,7 +606,9 @@ bool IniParser::GetStr(const char* app_name, const char* key_name, const char* d
 		j++;
 	}
 
-	for(;j;j--) if(ret_buf[j-1]!=' ') break;
+	// Erase white spaces and tabs from end
+	for(;j;j--) if(ret_buf[j-1]!=' ' && ret_buf[j-1]!='\t') break;
+
 	ret_buf[j]='\0';
 	return true;
 

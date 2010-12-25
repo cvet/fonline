@@ -567,7 +567,7 @@ bool SpriteManager::InitRenderStates()
 {
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_LIGHTING,FALSE));
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
-	D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
+	D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESS));
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
 	D3D_HR(d3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE));
@@ -1988,8 +1988,10 @@ void SpriteManager::SetEgg(WORD hx, WORD hy, Sprite* spr)
 	else
 	{
 		INTRECT bb=si->Anim3d->GetBaseBorders();
-		eggX=bb.CX()-sprEgg->Width/2-GameOpt.ScrOx;
-		eggY=bb.CY()-sprEgg->Height/2-GameOpt.ScrOy;
+		int w=(float)bb.W()*GameOpt.SpritesZoom;
+		int h=(float)bb.H()*GameOpt.SpritesZoom;
+		eggX=spr->ScrX-w/2+si->OffsX+w/2-sprEgg->Width/2+*spr->OffsX;
+		eggY=spr->ScrY-h+si->OffsY+h/2-sprEgg->Height/2+*spr->OffsY;
 	}
 
 	eggHx=hx;
@@ -2828,7 +2830,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		D3D_HR(d3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST,2,(void*)vb,sizeof(Vertex)));
 
 		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZENABLE,FALSE));
-		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
+		D3D_HR(d3dDevice->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESS));
 		D3D_HR(d3dDevice->SetRenderTarget(0,old_rt));
 		old_rt->Release();
 
