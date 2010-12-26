@@ -2298,7 +2298,7 @@ void FOClient::GameLMouseDown()
 		ActionEvent* act=(IsAction(CHOSEN_MOVE)?&ChosenAction[0]:NULL);
 		if(act && Timer::FastTick()-act->Param[4]<GetDoubleClickTime())
 		{
-			act->Param[2]=1/*run*/;
+			act->Param[2]=(GameOpt.AlwaysRun?0:1);
 			act->Param[4]=0;
 		}
 		else if(GetMouseHex() && Chosen)

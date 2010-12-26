@@ -103,6 +103,7 @@ private:
 	Vector3Vec bordersResult;
 	bool noDraw;
 	MeshOptionsVec meshOpt;
+	bool useGameTimer;
 
 	// Derived animations
 	Animation3dVec childAnimations;
@@ -123,6 +124,7 @@ private:
 	bool SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders);
 	void ProcessBorders();
 	double GetSpeed();
+	DWORD GetTick();
 	MeshOptions* GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh);
 	static void SetAnimData(Animation3d* anim3d, AnimParams& data, bool clear);
 
@@ -139,6 +141,7 @@ public:
 	void SetRotation(float rx, float ry, float rz);
 	void SetScale(float sx, float sy, float sz);
 	void SetSpeed(float speed);
+	void SetTimer(bool use_game_timer);
 	void EnableShadow(bool enabled){shadowDisabled=!enabled;}
 	bool Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color);
 	void SetDrawPos(int x, int y){drawXY.X=x; drawXY.Y=y;}

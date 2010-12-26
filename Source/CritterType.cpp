@@ -668,6 +668,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 		sound_name[strlen(sound_name)-1]=0;
 
 		StringCopy(ct.Name,name);
+		StringCopy(ct.SoundName,sound_name);
 		ct.Anim1[0]=true;
 		ct.Enabled=true;
 		success++;

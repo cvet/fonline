@@ -36,7 +36,7 @@ Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSet
 currentTrack(0),lastTick(0),endTick(0),speedAdjustBase(1.0f),speedAdjustCur(1.0f),speedAdjustLink(1.0f),
 shadowDisabled(false),dirAngle(150.0f),sprId(0),
 drawScale(0.0f),bordersDisabled(false),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),
-childChecker(true)
+childChecker(true),useGameTimer(true)
 {
 	ZeroMemory(currentLayers,sizeof(currentLayers));
 	groundPos.w=1.0f;
@@ -197,6 +197,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 									anim3d->parentAnimation=this;
 									anim3d->parentFrame=to_frame;
 									anim3d->animLink=link;
+									SetAnimData(anim3d,link,false);
 									childAnimations.push_back(anim3d);
 								}
 							}
@@ -221,6 +222,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 								anim3d->parentAnimation=this;
 								anim3d->parentFrame=(D3DXFRAME_EXTENDED*)animEntity->xFile->frameRoot;
 								anim3d->animLink=link;
+								SetAnimData(anim3d,link,false);
 								childAnimations.push_back(anim3d);
 							}
 						}
@@ -251,6 +253,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		// Alternate tracks
 		DWORD new_track=(currentTrack==0?1:0);
 		double period=set->GetPeriod();
+		if(FLAG(flags,ANIMATION_INIT)) period=0.001f;
 
 		// Assign to our track
 		animController->SetTrackAnimationSet(new_track,set);
@@ -293,7 +296,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		speedAdjustCur=speed;
 
 		// End time
-		DWORD tick=Timer::GameTick();
+		DWORD tick=GetTick();
 		if(FLAG(flags,ANIMATION_ONE_TIME)) endTick=tick+DWORD(period/GetSpeed()*1000.0);
 		else endTick=0;
 
@@ -342,7 +345,7 @@ int Animation3d::GetAnim2()
 
 bool Animation3d::IsAnimationPlaying()
 {
-	return Timer::GameTick()<endTick;
+	return GetTick()<endTick;
 }
 
 bool Animation3d::IsIntersect(int x, int y)
@@ -483,7 +486,7 @@ bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
 
 void Animation3d::ProcessBorders()
 {
-	if(calcBordersTick && Timer::GameTick()>=calcBordersTick)
+	if(calcBordersTick && GetTick()>=calcBordersTick)
 	{
 		SetupBorders();
 		calcBordersTick=0;
@@ -545,6 +548,12 @@ void Animation3d::GetRenderFramesData(float& period, int& proc_from, int& proc_t
 double Animation3d::GetSpeed()
 {
 	return speedAdjustCur*speedAdjustBase*speedAdjustLink*GlobalSpeedAdjust;
+}
+
+DWORD Animation3d::GetTick()
+{
+	if(useGameTimer) return Timer::GameTick();
+	return Timer::FastTick();
 }
 
 MeshOptions* Animation3d::GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh)
@@ -716,6 +725,11 @@ void Animation3d::SetSpeed(float speed)
 	speedAdjustBase=speed;
 }
 
+void Animation3d::SetTimer(bool use_game_timer)
+{
+	useGameTimer=use_game_timer;
+}
+
 bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 {
 	// Apply stencil
@@ -770,7 +784,7 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 	D3D_HR(D3DDevice->Clear(0,NULL,D3DCLEAR_ZBUFFER,0,0.99999f,0));
 
 	double elapsed=0.0f;
-	DWORD tick=Timer::GameTick();
+	DWORD tick=GetTick();
 	if(AnimDelay && animController)
 	{
 		while(lastTick+AnimDelay<=tick)

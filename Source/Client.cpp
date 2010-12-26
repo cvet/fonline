@@ -10560,6 +10560,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 				return;
 			}
 			anim->EnableShadow(false);
+			anim->SetTimer(false);
 		}
 
 		if(anim)
