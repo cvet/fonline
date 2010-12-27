@@ -407,7 +407,7 @@ void Animation3d::SetupBorders()
 {
 	if(bordersDisabled) return;
 
-	FLTRECT borders(FLT_MAX,FLT_MAX,FLT_MIN,FLT_MIN);
+	FLTRECT borders(1000000.0f,1000000.0f,-1000000.0f,-1000000.0f);
 
 	// Root
 	FrameMove(0.0,drawXY.X,drawXY.Y,drawScale,true);
