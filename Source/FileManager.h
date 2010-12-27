@@ -55,6 +55,7 @@ class FileManager
 {
 public:
 	static void SetDataPath(const char* path);
+	static void InitDataFiles(const char* path);
 	static bool LoadDataFile(const char* path);
 	static void EndOfWork();
 

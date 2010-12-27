@@ -67,6 +67,49 @@ void FileManager::SetDataPath(const char* path)
 	if(dataPath[strlen(path)-1]!='\\') StringAppend(dataPath,"\\");
 }
 
+void FileManager::InitDataFiles(const char* path)
+{
+	char list_path[MAX_FOPATH];
+	sprintf(list_path,"%sDataFiles.cfg",path);
+
+	FileManager list;
+	if(list.LoadFile(list_path,-1))
+	{
+		char line[1024];
+		while(list.GetLine(line,1024))
+		{
+			// Cut off comments
+			char* comment1=strstr(line,"#");
+			char* comment2=strstr(line,";");
+			if(comment1) *comment1=0;
+			if(comment2) *comment2=0;
+
+			// Skip white spaces and tabs
+			char* str=line;
+			while(*str && (*str==' ' || *str=='\t')) str++;
+			if(!*str) continue;
+
+			// Cut off white spaces and tabs in end of line
+			char* str_=&str[strlen(str)-1];
+			while(*str_==' ' || *str_=='\t') str_--;
+			*(str_+1)=0;
+			if(!*str) continue;
+
+			// Try load
+			char fpath[MAX_FOPATH];
+			sprintf(fpath,"%s%s",path,str);
+			if(!LoadDataFile(fpath))
+			{
+				char errmsg[1024];
+				sprintf(errmsg,"Data file '%s' not found. Run Updater.exe.",str);
+				HWND wnd=GetActiveWindow();
+				if(wnd) MessageBox(wnd,errmsg,"FOnline",MB_OK);
+				WriteLog(__FUNCTION__" - %s\n",errmsg);
+			}
+		}
+	}
+}
+
 bool FileManager::LoadDataFile(const char* path)
 {
 	if(!path)
@@ -75,18 +118,27 @@ bool FileManager::LoadDataFile(const char* path)
 		return false;
 	}
 
+	// Extract full path
+	char path_[MAX_FOPATH];
+	StringCopy(path_,path);
+	if(!GetFullPathName(path,MAX_FOPATH,path_,NULL))
+	{
+		WriteLog(__FUNCTION__" - Extract full path file<%s> fail.\n",path);
+		return false;
+	}
+
 	// Find already loaded
 	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
 	{
 		DataFile* pfile=*it;
-		if(pfile->GetPackName()==path) return true;
+		if(pfile->GetPackName()==path_) return true;
 	}
 
 	// Add new
-	DataFile* pfile=OpenDataFile(path);
+	DataFile* pfile=OpenDataFile(path_);
 	if(!pfile)
 	{
-		WriteLog(__FUNCTION__" - Load packed file<%s> fail.\n",path);
+		WriteLog(__FUNCTION__" - Load packed file<%s> fail.\n",path_);
 		return false;
 	}
 

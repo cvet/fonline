@@ -500,7 +500,7 @@ struct GameOptions
 	int MasterPathRefCounter;
 	string CritterPath;
 	int CritterPathRefCounter;
-	string FoPatchPath;
+	string FoPatchPath;         // Todo: can be removed
 	int FoPatchPathRefCounter;
 	string FoDataPath;
 	int FoDataPathRefCounter;

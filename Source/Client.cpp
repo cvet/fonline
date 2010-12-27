@@ -130,18 +130,18 @@ bool FOClient::Init(HWND hwnd)
 	CreateDirectory(FileManager::GetFullPath("",PT_CACHE),NULL);
 	if(Singleplayer) CreateDirectory(FileManager::GetFullPath("",PT_SAVE),NULL);
 
-	// Main data files
+	// Data files
 	if(!FileManager::LoadDataFile(GameOpt.MasterPath.c_str()))
 	{
-		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online",MB_OK);
+		MessageBox(Wnd,"Data file 'MASTER.DAT' not found.","FOnline",MB_OK);
 		return false;
 	}
 	if(!FileManager::LoadDataFile(GameOpt.CritterPath.c_str()))
 	{
-		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online",MB_OK);
+		MessageBox(Wnd,"Data file 'CRITTER.DAT' not found.","FOnline",MB_OK);
 		return false;
 	}
-	FileManager::LoadDataFile(GameOpt.FoPatchPath.c_str());
+	FileManager::InitDataFiles(".\\");
 
 	// Cache
 	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)));

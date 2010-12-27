@@ -565,9 +565,6 @@ void GetClientOptions()
 	cfg.GetStr(CLIENT_CONFIG_APP,"CritterDatPath","critter.dat",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-CritterDatPath");
 	GameOpt.CritterPath=buf;
-	cfg.GetStr(CLIENT_CONFIG_APP,"PatchDatPath","fopatch.dat",buf);
-	GETOPTIONS_CMD_LINE_STR(buf,"-PatchDatPath");
-	GameOpt.FoPatchPath=buf;
 	cfg.GetStr(CLIENT_CONFIG_APP,"FonlineDataPath",".\\data",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPath");
 	GameOpt.FoDataPath=buf;

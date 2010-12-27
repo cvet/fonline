@@ -39,15 +39,16 @@ bool FOMapper::Init(HWND wnd)
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	if(!FileManager::LoadDataFile(GameOpt.MasterPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.MasterPath).c_str():GameOpt.MasterPath.c_str()))
 	{
-		MessageBox(Wnd,"MASTER.DAT not found.","Fallout Online Mapper",MB_OK);
+		MessageBox(Wnd,"MASTER.DAT not found.","FOnline Mapper",MB_OK);
 		return false;
 	}
 	if(!FileManager::LoadDataFile(GameOpt.CritterPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.CritterPath).c_str():GameOpt.CritterPath.c_str()))
 	{
-		MessageBox(Wnd,"CRITTER.DAT not found.","Fallout Online Mapper",MB_OK);
+		MessageBox(Wnd,"CRITTER.DAT not found.","FOnline Mapper",MB_OK);
 		return false;
 	}
-	FileManager::LoadDataFile(GameOpt.FoPatchPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.FoPatchPath).c_str():GameOpt.FoPatchPath.c_str());
+	FileManager::InitDataFiles(GameOpt.ClientPath.c_str());
+	FileManager::InitDataFiles(".\\");
 
 	// Sprite manager
 	SpriteMngrParams params;

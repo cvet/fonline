@@ -1436,7 +1436,6 @@
 	if(engine->RegisterGlobalProperty("bool __GlobalSound",&GameOpt.GlobalSound)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __MasterPath",&GameOpt.MasterPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __CritterPath",&GameOpt.CritterPath)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("string __FoPatchPath",&GameOpt.FoPatchPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __FoDataPath",&GameOpt.FoDataPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __Host",&GameOpt.Host)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __Port",&GameOpt.Port)) BIND_ERROR;

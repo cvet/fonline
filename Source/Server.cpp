@@ -3243,6 +3243,8 @@ bool FOServer::Init()
 	if(Active) return true;
 	Active=0;
 
+	FileManager::InitDataFiles(".\\");
+
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
