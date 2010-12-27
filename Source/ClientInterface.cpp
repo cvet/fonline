@@ -80,9 +80,9 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 
 		// Data files
 		DataFileVec& pfiles=FileManager::GetDataFiles();
-		for(DataFileVecIt it=pfiles.begin(),end=pfiles.end();it!=end;++it)
+		for(int k=(int)pfiles.size()-1;k>=0;k--)
 		{
-			DataFile* pfile=*it;
+			DataFile* pfile=pfiles[k];
 			DWORD len;
 			BYTE* data=pfile->OpenFile(file_name.c_str(),len);
 			IniParser ini;
