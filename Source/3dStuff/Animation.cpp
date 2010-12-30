@@ -188,7 +188,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 						// Link to main frame
 						if(link.LinkBone)
 						{
-							D3DXFRAME_EXTENDED* to_frame=(D3DXFRAME_EXTENDED*)D3DXFrameFind(animEntity->xFile->frameRoot,link.LinkBone);
+							FrameEx* to_frame=(FrameEx*)D3DXFrameFind(animEntity->xFile->frameRoot,link.LinkBone);
 							if(to_frame)
 							{
 								anim3d=Animation3d::GetAnimation(link.ChildFName,animEntity->pathType,true);
@@ -210,8 +210,8 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 							{
 								for(FrameVecIt it=anim3d->animEntity->xFile->framesSkinned.begin(),end=anim3d->animEntity->xFile->framesSkinned.end();it!=end;++it)
 								{
-									D3DXFRAME_EXTENDED* child_frame=*it;
-									D3DXFRAME_EXTENDED* root_frame=(D3DXFRAME_EXTENDED*)D3DXFrameFind(animEntity->xFile->frameRoot,child_frame->Name);
+									FrameEx* child_frame=*it;
+									FrameEx* root_frame=(FrameEx*)D3DXFrameFind(animEntity->xFile->frameRoot,child_frame->Name);
 									if(root_frame)
 									{
 										anim3d->linkFrames.push_back(root_frame);
@@ -220,7 +220,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 								}
 
 								anim3d->parentAnimation=this;
-								anim3d->parentFrame=(D3DXFRAME_EXTENDED*)animEntity->xFile->frameRoot;
+								anim3d->parentFrame=(FrameEx*)animEntity->xFile->frameRoot;
 								anim3d->animLink=link;
 								SetAnimData(anim3d,link,false);
 								childAnimations.push_back(anim3d);
@@ -377,7 +377,7 @@ bool Animation3d::IsIntersectFrame(LPD3DXFRAME frame, const D3DXVECTOR3& ray_ori
 	LPD3DXMESHCONTAINER mesh_container=frame->pMeshContainer;
 	while(mesh_container)
 	{
-		D3DXFRAME_EXTENDED* frame_ex=(D3DXFRAME_EXTENDED*)frame;		
+		FrameEx* frame_ex=(FrameEx*)frame;
 		D3DXMESHCONTAINER_EXTENDED* mesh_container_ex=(D3DXMESHCONTAINER_EXTENDED*)mesh_container;
 		LPD3DXMESH mesh=(mesh_container_ex->pSkinInfo?mesh_container_ex->exSkinMesh:mesh_container_ex->MeshData.pMesh);
 
@@ -449,7 +449,7 @@ bool Animation3d::SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders)
 	LPD3DXMESHCONTAINER mesh_container=frame->pMeshContainer;
 	while(mesh_container)
 	{
-		D3DXFRAME_EXTENDED* frame_ex=(D3DXFRAME_EXTENDED*)frame;		
+		FrameEx* frame_ex=(FrameEx*)frame;
 		D3DXMESHCONTAINER_EXTENDED* mesh_container_ex=(D3DXMESHCONTAINER_EXTENDED*)mesh_container;
 		LPD3DXMESH mesh=(mesh_container_ex->pSkinInfo?mesh_container_ex->exSkinMesh:mesh_container_ex->MeshData.pMesh);
 
@@ -609,16 +609,24 @@ void Animation3d::SetAnimData(Animation3d* anim3d, AnimParams& data, bool clear)
 	{
 		for(int i=0;i<data.TextureNamesCount;i++)
 		{
-			DWORD mesh_ss=data.TextureSubsets[i]%100;
 			DWORD mesh_num=data.TextureSubsets[i]/100;
+			DWORD mesh_ss=data.TextureSubsets[i]%100;
 			TextureEx* texture=NULL;
 
-			if(!_stricmp(data.TextureNames[i],"Parent"))
+			if(!_strnicmp(data.TextureNames[i],"Parent",6)) // ParentX-Y, X mesh number, Y mesh subset, optional
 			{
-				if(anim3d->parentAnimation && anim3d->parentAnimation->meshOpt.size())
+				DWORD parent_mesh_num=0;
+				DWORD parent_mesh_ss=0;
+
+				const char* parent=data.TextureNames[i]+6;
+				if(*parent && *parent!='-') parent_mesh_num=atoi(parent);
+				while(*parent && *parent!='-') parent++;
+				if(*parent=='-' && *(parent+1)) parent_mesh_ss=atoi(parent+1);
+
+				if(anim3d->parentAnimation && parent_mesh_num<anim3d->parentAnimation->meshOpt.size())
 				{
-					MeshOptions& mopt=*anim3d->parentAnimation->meshOpt.begin();
-					if(mesh_ss<mopt.SubsetsCount) texture=mopt.TexSubsets[mesh_ss];
+					MeshOptions& mopt=anim3d->parentAnimation->meshOpt[parent_mesh_num];
+					if(parent_mesh_ss<mopt.SubsetsCount) texture=mopt.TexSubsets[parent_mesh_ss*EFFECT_TEXTURES+data.TextureNum[i]];
 				}
 			}
 			else
@@ -662,10 +670,18 @@ void Animation3d::SetAnimData(Animation3d* anim3d, AnimParams& data, bool clear)
 
 			if(!_stricmp(data.EffectInst[i].pEffectFilename,"Parent"))
 			{
-				if(anim3d->parentAnimation && anim3d->parentAnimation->meshOpt.size())
+				DWORD parent_mesh_num=0;
+				DWORD parent_mesh_ss=0;
+
+				const char* parent=data.TextureNames[i]+6;
+				if(*parent && *parent!='-') parent_mesh_num=atoi(parent);
+				while(*parent && *parent!='-') parent++;
+				if(*parent=='-' && *(parent+1)) parent_mesh_ss=atoi(parent+1);
+
+				if(anim3d->parentAnimation && parent_mesh_num<anim3d->parentAnimation->meshOpt.size())
 				{
-					MeshOptions& mopt=*anim3d->parentAnimation->meshOpt.begin();
-					if(mesh_ss<mopt.SubsetsCount) effect=mopt.EffectSubsets[mesh_ss];
+					MeshOptions& mopt=anim3d->parentAnimation->meshOpt[parent_mesh_num];
+					if(parent_mesh_ss<mopt.SubsetsCount) effect=mopt.EffectSubsets[parent_mesh_ss];
 				}
 			}
 			else
@@ -848,14 +864,6 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 		if(animController->GetTime()>60.0) animController->ResetTime();
 	}
 
-	// Store linked matrices
-//	if(parentFrame && linkFrames.size())
-//	{
-//		linkMatricles.clear();
-//		for(size_t i=0,j=linkFrames.size()/2;i<j;i++)
-//			linkMatricles.push_back(linkFrames[i*2]->exCombinedTransformationMatrix);
-//	}
-
 	// Now update the model matrices in the hierarchy
 	UpdateFrameMatrices(animEntity->xFile->frameRoot,&parentMatrix);
 
@@ -922,7 +930,7 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 // Called to update the frame_base matrices in the hierarchy to reflect current animation stage
 void Animation3d::UpdateFrameMatrices(const D3DXFRAME* frame_base, const D3DXMATRIX* parent_matrix)
 {
-	D3DXFRAME_EXTENDED* cur_frame=(D3DXFRAME_EXTENDED*)frame_base;
+	FrameEx* cur_frame=(FrameEx*)frame_base;
 
 	// If parent matrix exists multiply our frame matrix by it
 	D3DXMatrixMultiply(&cur_frame->exCombinedTransformationMatrix,&cur_frame->TransformationMatrix,parent_matrix);
@@ -934,7 +942,7 @@ void Animation3d::UpdateFrameMatrices(const D3DXFRAME* frame_base, const D3DXMAT
 	if(cur_frame->pFrameFirstChild) UpdateFrameMatrices(cur_frame->pFrameFirstChild,&cur_frame->exCombinedTransformationMatrix);
 }
 
-void Animation3d::BuildShadowVolume(D3DXFRAME_EXTENDED* frame)
+void Animation3d::BuildShadowVolume(FrameEx* frame)
 {
 	D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)frame->pMeshContainer;
 	while(mesh_container)
@@ -947,8 +955,8 @@ void Animation3d::BuildShadowVolume(D3DXFRAME_EXTENDED* frame)
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	if(frame->pFrameSibling) BuildShadowVolume((D3DXFRAME_EXTENDED*)frame->pFrameSibling);
-	if(frame->pFrameFirstChild) BuildShadowVolume((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild);
+	if(frame->pFrameSibling) BuildShadowVolume((FrameEx*)frame->pFrameSibling);
+	if(frame->pFrameFirstChild) BuildShadowVolume((FrameEx*)frame->pFrameFirstChild);
 }
 
 // Called to render a frame in the hierarchy
@@ -959,7 +967,7 @@ bool Animation3d::DrawFrame(LPD3DXFRAME frame, bool with_shadow)
 	while(mesh_container && mesh_container->MeshData.pMesh)
 	{
 		// Cast to our extended frame type
-		D3DXFRAME_EXTENDED* frame_ex=(D3DXFRAME_EXTENDED*)frame;		
+		FrameEx* frame_ex=(FrameEx*)frame;
 		// Cast to our extended mesh container
 		D3DXMESHCONTAINER_EXTENDED* mesh_container_ex=(D3DXMESHCONTAINER_EXTENDED*)mesh_container;
 		// Get mesh options for this animation instance
@@ -1280,11 +1288,12 @@ bool Animation3d::Is2dEmulation()
 
 Animation3dEntityVec Animation3dEntity::allEntities;
 
-Animation3dEntity::Animation3dEntity():pathType(0),xFile(NULL),
+Animation3dEntity::Animation3dEntity():pathType(0),xFile(NULL),animController(NULL),
 renderAnim(0),renderAnimProcFrom(0),renderAnimProcTo(100),
 shadowDisabled(false),calcualteTangetSpace(false)
 {
 	ZeroMemory(&animDataDefault,sizeof(animDataDefault));
+	SAFEREL(animController);
 }
 
 Animation3dEntity::~Animation3dEntity()
@@ -1334,9 +1343,9 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 
 		// Parse
 		char model[MAX_FOPATH]={0};
-		char anim_model[MAX_FOPATH]={0};
+		char render_fname[MAX_FOPATH]={0};
 		char render_anim[MAX_FOPATH]={0};
-		IntPtrMap anim_indexes;
+		vector<size_t> anim_indexes;
 
 		int mesh=0;
 		int subset=-1;
@@ -1377,7 +1386,6 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 
 			if(!_stricmp(token,"StopParsing")) closed=true;
 			else if(!_stricmp(token,"Model")) (*istr) >> model;
-			else if(!_stricmp(token,"ModelAnimation")) (*istr) >> anim_model;
 			else if(!_stricmp(token,"Include"))
 			{
 				// Get swapped words
@@ -1688,8 +1696,12 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				{
 					// Deferred loading
 					// Todo: Reverse play
+
+					anim_indexes.push_back((ind1<<8)|ind2);
 					(*istr) >> buf;
-					anim_indexes.insert(IntPtrMapVal((ind1<<8)|ind2,StringDuplicate(buf)));
+					anim_indexes.push_back((size_t)StringDuplicate(buf));
+					(*istr) >> buf;
+					anim_indexes.push_back((size_t)StringDuplicate(buf));
 				}
 				else
 				{
@@ -1714,11 +1726,17 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 			}
 			else if(!_stricmp(token,"RenderFrame") || !_stricmp(token,"RenderFrames"))
 			{
+				anim_indexes.push_back(0);
 				(*istr) >> buf;
+				StringCopy(render_fname,buf);
+				anim_indexes.push_back((size_t)StringDuplicate(buf));
+				(*istr) >> buf;
+				StringCopy(render_anim,buf);
+				anim_indexes.push_back((size_t)StringDuplicate(buf));
+
 				(*istr) >> renderAnimProcFrom;
 
 				// One frame
-				StringCopy(render_anim,buf);
 				renderAnimProcTo=renderAnimProcFrom;
 
 				// Many frames
@@ -1739,71 +1757,94 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		// Process pathes
 		if(!model[0])
 		{
-			WriteLog(__FUNCTION__" - 'model' section not found in file<%s>.\n",name);
+			WriteLog(__FUNCTION__" - 'Model' section not found in file<%s>.\n",name);
 			return false;
 		}
 
-		char name_path[MAX_FOPATH];
-		FileManager::ExtractPath(name,name_path);
-		if(name_path[0])
-		{
-			char tmp[MAX_FOPATH];
-			StringCopy(tmp,model);
-			StringCopy(model,name_path);
-			StringAppend(model,tmp);
-			if(anim_model[0])
-			{
-				StringCopy(tmp,anim_model);
-				StringCopy(anim_model,name_path);
-				StringAppend(anim_model,tmp);
-			}
-		}
-
 		// Load x file
-		Animation3dXFile* xfile=Animation3dXFile::GetXFile(model,anim_model[0]?anim_model:NULL,
-			_stricmp(anim_model,"disable")!=0,calcualteTangetSpace,path_type);
+		Animation3dXFile* xfile=Animation3dXFile::GetXFile(model,path_type,calcualteTangetSpace);
 		if(!xfile) return false;
 
 		// Create animation
 		fileName=name;
 		pathType=path_type;
 		xFile=xfile;
-		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
 
-		// Parse animation names
-		if(anim_indexes.size())
+		// Parse animations
+		AnimSetVec animations;
+		DWORD max_matrices=0;
+		for(size_t i=0,j=anim_indexes.size();i<j;i+=3)
 		{
-			for(IntPtrMapIt it=anim_indexes.begin(),end=anim_indexes.end();it!=end;++it)
+			char* anim_fname=(char*)anim_indexes[i+1];
+			char* anim_name=(char*)anim_indexes[i+2];
+
+			char anim_path[MAX_FOPATH];
+			StringCopy(anim_path,FileManager::GetPath(path_type));
+			if(!_stricmp(anim_fname,"ModelFile"))
+				StringAppend(anim_path,model);
+			else
+				StringAppend(anim_path,anim_fname);
+
+			AnimSet* set=Loader3d::LoadAnimation(D3DDevice,anim_path,anim_name);
+			if(set)
 			{
-				int anim_index=(*it).first;
-				char* anim_name=(char*)(*it).second;
-				if(xfile->animController)
-				{
-					int anim_set=abs(atoi(anim_name));
-					if(!Str::IsNumber(anim_name)) anim_set=GetAnimationIndex(anim_name[0]!='-'?anim_name:&anim_name[1]);
-					if(anim_set>=0 && anim_set<numAnimationSets) animIndexes.insert(IntMapVal(anim_index,anim_set));
-				}
-				delete[] anim_name;
+				animations.push_back(set);
+				max_matrices=max(max_matrices,set->GetNumAnimations());
 			}
 		}
-		if(render_anim[0])
+
+		if(animations.size())
+		{
+			if(SUCCEEDED(D3DXCreateAnimationController(max_matrices,animations.size(),2,10,&animController)))
+			{
+				numAnimationSets=animations.size();
+				for(size_t i=0,j=animations.size();i<j;i++)
+					animController->RegisterAnimationSet(animations[i]);
+			}
+			else
+			{
+				WriteLog(__FUNCTION__" - Unable to create animation controller, file<%s>.\n",name);
+			}
+		}
+
+		for(size_t i=0,j=anim_indexes.size();i<j;i+=3)
+		{
+			int anim_index=anim_indexes[i+0];
+			char* anim_fname=(char*)anim_indexes[i+1];
+			char* anim_name=(char*)anim_indexes[i+2];
+
+			if(anim_index && animController)
+			{
+				int anim_set=abs(atoi(anim_name));
+				if(!Str::IsNumber(anim_name)) anim_set=GetAnimationIndex(anim_name[0]!='-'?anim_name:&anim_name[1]);
+				if(anim_set>=0 && anim_set<numAnimationSets) animIndexes.insert(IntMapVal(anim_index,anim_set));
+			}
+
+			delete[] anim_fname;
+			delete[] anim_name;
+		}
+
+		if(render_fname[0] && render_anim[0] && animController)
 		{
 			int anim_set=abs(atoi(render_anim));
 			if(!Str::IsNumber(render_anim)) anim_set=GetAnimationIndex(render_anim[0]!='-'?render_anim:&render_anim[1]);
 			if(anim_set>=0 && anim_set<numAnimationSets) renderAnim=anim_set;
 		}
+
+		if(animController) Animation3dXFile::SetupAnimationOutput(xFile->frameRoot,animController);
 	}
 	// Load just x file
 	else
 	{
-		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,NULL,true,false,path_type);
+		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,path_type,false);
 		if(!xfile) return false;
 
 		// Create animation
 		fileName=name;
 		pathType=path_type;
 		xFile=xfile;
-		if(xfile->animController) numAnimationSets=xfile->animController->GetMaxNumAnimationSets();
+
+		// Todo: process default animations
 	}
 
 	return true;
@@ -1828,16 +1869,16 @@ void Animation3dEntity::ProcessTemplateDefines(char* str, StrVec& def)
 
 int Animation3dEntity::GetAnimationIndex(const char* anim_name)
 {
-	if(!xFile->animController) return -1;
+	if(!animController) return -1;
 
 	ID3DXAnimationSet* set;
-	if(xFile->animController->GetAnimationSetByName(anim_name,&set)!=S_OK) return -1;
+	if(animController->GetAnimationSetByName(anim_name,&set)!=S_OK) return -1;
 
 	int result=0;
 	for(int i=0;i<numAnimationSets;i++)
 	{
 		ID3DXAnimationSet* set_;
-		xFile->animController->GetAnimationSet(i,&set_);
+		animController->GetAnimationSet(i,&set_);
 		if(!strcmp(set->GetName(),set_->GetName()))
 		{
 			result=i;
@@ -1955,18 +1996,18 @@ Animation3d* Animation3dEntity::CloneAnimation()
 	a3d->animEntity=this;
 	a3d->lastTick=Timer::GameTick();
 
-	if(xFile->animController)
+	if(animController)
 	{
-		a3d->numAnimationSets=xFile->animController->GetMaxNumAnimationSets();
+		a3d->numAnimationSets=animController->GetMaxNumAnimationSets();
 
 		// Clone the original AC.  This clone is what we will use to animate
 		// this mesh; the original never gets used except to clone, since we
 		// always need to be able to add another instance at any time.
-		D3D_HR(xFile->animController->CloneAnimationController(
-			xFile->animController->GetMaxNumAnimationOutputs(),
-			xFile->animController->GetMaxNumAnimationSets(),
-			xFile->animController->GetMaxNumTracks(),
-			xFile->animController->GetMaxNumEvents(),
+		D3D_HR(animController->CloneAnimationController(
+			animController->GetMaxNumAnimationOutputs(),
+			animController->GetMaxNumAnimationSets(),
+			animController->GetMaxNumTracks(),
+			animController->GetMaxNumEvents(),
 			&a3d->animController));
 	}
 
@@ -1996,6 +2037,7 @@ Animation3dEntity* Animation3dEntity::GetEntity(const char* name, int path_type)
 			SAFEDEL(entity);
 			return NULL;
 		}
+
 		allEntities.push_back(entity);
 	}
 
@@ -2009,7 +2051,7 @@ Animation3dEntity* Animation3dEntity::GetEntity(const char* name, int path_type)
 Animation3dXFileVec Animation3dXFile::xFiles;
 
 Animation3dXFile::Animation3dXFile():pathType(0),frameRoot(NULL),
-animController(NULL),facesCount(0),tangentsCalculated(false)
+facesCount(0),tangentsCalculated(false)
 {
 }
 
@@ -2017,10 +2059,9 @@ Animation3dXFile::~Animation3dXFile()
 {
 	Loader3d::Free(frameRoot);
 	frameRoot=NULL;
-	SAFEREL(animController);
 }
 
-Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim_xname, bool load_anim, bool calc_tangent, int path_type)
+Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, int path_type, bool calc_tangent)
 {
 	Animation3dXFile* xfile=NULL;
 
@@ -2033,7 +2074,7 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 
 			if(calc_tangent && !x->tangentsCalculated)
 			{
-				xfile->CalculateNormalTangent((D3DXFRAME_EXTENDED*)xfile->frameRoot);
+				xfile->CalculateNormalTangent((FrameEx*)xfile->frameRoot);
 				xfile->tangentsCalculated=true;
 			}
 			break;
@@ -2042,87 +2083,43 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 
 	if(!xfile)
 	{
-		Animation3dXFile* anim_xfile=NULL;
-		if(anim_xname && load_anim) anim_xfile=Animation3dXFile::GetXFile(anim_xname,NULL,true,calc_tangent,path_type);
-
-		FileManager fm;
-		if(!fm.LoadFile(xname,path_type))
-		{
-			WriteLog(__FUNCTION__" - X file not found, file<%s>.\n",xname);
-			return NULL;
-		}
+		// Make path
+		char path[MAX_FOPATH];
+		StringCopy(path,FileManager::GetPath(path_type));
+		StringAppend(path,xname);
 
 		// Load
-		ID3DXAnimationController* anim_controller=NULL;
-		D3DXFRAME* frame_root=Loader3d::Load(D3DDevice,xname,path_type,anim_xfile || !load_anim?NULL:&anim_controller);
+		D3DXFRAME* frame_root=Loader3d::LoadModel(D3DDevice,path,calc_tangent);
 		if(!frame_root)
 		{
-			WriteLog(__FUNCTION__" - X file<%s> not contain any frames.\n",xname);
-			SAFEDEL(anim_controller);
+			WriteLog(__FUNCTION__" - Unable to load 3d file<%s>.\n",path);
 			return NULL;
 		}
 
 		xfile=new(nothrow) Animation3dXFile();
 		if(!xfile)
 		{
-			WriteLog(__FUNCTION__" - Allocation fail, x file<%s>.\n",xname);
-			SAFEDEL(anim_controller);
+			WriteLog(__FUNCTION__" - Allocation fail, x file<%s>.\n",path);
 			return NULL;
-		}
-
-		// Copy animation from another x file
-		if(anim_xfile && anim_xfile->animController)
-		{
-			// Create controller
-			if(D3DXCreateAnimationController(
-				anim_xfile->animController->GetMaxNumAnimationOutputs(),
-				anim_xfile->animController->GetMaxNumAnimationSets(),
-				anim_xfile->animController->GetMaxNumTracks(),
-				anim_xfile->animController->GetMaxNumEvents(),
-				&anim_controller)!=D3D_OK)
-			{
-				WriteLog(__FUNCTION__" - Can't create animation controller.\n");
-				SAFEDEL(xfile);
-				return NULL;
-			}
-
-			// Copy animation sets
-			for(UINT i=0,j=anim_xfile->animController->GetMaxNumAnimationSets();i<j;i++)
-			{
-				ID3DXAnimationSet* set;
-				if(anim_xfile->animController->GetAnimationSet(i,&set)!=D3D_OK)
-				{
-					WriteLog(__FUNCTION__" - Can't read animation set.\n");
-					SAFEDEL(xfile);
-					return NULL;
-				}
-
-				if(anim_controller->RegisterAnimationSet(set)!=D3D_OK)
-				{
-					WriteLog(__FUNCTION__" - Can't register copy of animation set.\n");
-					SAFEDEL(xfile);
-					return NULL;
-				}
-			}
-
-			// Register animation outputs
-			SetupAnimationOutput(frame_root,anim_controller);
 		}
 
 		xfile->fileName=xname;
 		xfile->pathType=path_type;
-		xfile->animController=anim_controller;
 		xfile->frameRoot=frame_root;
 		xfile->tangentsCalculated=calc_tangent;
 
 		// Skinning
-		xfile->SetupSkinning(xfile,(D3DXFRAME_EXTENDED*)xfile->frameRoot,(D3DXFRAME_EXTENDED*)xfile->frameRoot);
+		xfile->SetupSkinning(xfile,(FrameEx*)xfile->frameRoot,(FrameEx*)xfile->frameRoot);
 
 		// Setup normals and tangent space
-		if(calc_tangent) xfile->CalculateNormalTangent((D3DXFRAME_EXTENDED*)xfile->frameRoot);
+		if(calc_tangent)
+		{
+			const char* ext=FileManager::GetExtension(xname);
+			if(ext && !_stricmp(ext,"x")) xfile->CalculateNormalTangent((FrameEx*)xfile->frameRoot);
+		}
 
 		// Faces count
-		xfile->SetupFacesCount((D3DXFRAME_EXTENDED*)xfile->frameRoot,xfile->facesCount);
+		xfile->SetupFacesCount((FrameEx*)xfile->frameRoot,xfile->facesCount);
 
 		xFiles.push_back(xfile);
 	}
@@ -2131,7 +2128,7 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, const char* anim
 }
 
 // Need to go through the hierarchy and set the combined matrices calls itself recursively as it tareverses the hierarchy
-bool Animation3dXFile::SetupSkinning(Animation3dXFile* xfile, D3DXFRAME_EXTENDED* frame, D3DXFRAME_EXTENDED* frame_root)
+bool Animation3dXFile::SetupSkinning(Animation3dXFile* xfile, FrameEx* frame, FrameEx* frame_root)
 {
 	// Cast to our extended structure first
 	D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)frame->pMeshContainer;
@@ -2197,7 +2194,7 @@ bool Animation3dXFile::SetupSkinning(Animation3dXFile* xfile, D3DXFRAME_EXTENDED
 			for(DWORD i=0,j=mesh_container->pSkinInfo->GetNumBones();i<j;i++)
 			{
 				// Find the frame containing the bone
-				D3DXFRAME_EXTENDED* tmp_frame=(D3DXFRAME_EXTENDED*)D3DXFrameFind(frame_root,mesh_container->pSkinInfo->GetBoneName(i));
+				FrameEx* tmp_frame=(FrameEx*)D3DXFrameFind(frame_root,mesh_container->pSkinInfo->GetBoneName(i));
 
 				// Set the bone part - point it at the transformation matrix
 				if(tmp_frame)
@@ -2229,12 +2226,12 @@ bool Animation3dXFile::SetupSkinning(Animation3dXFile* xfile, D3DXFRAME_EXTENDED
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	if(frame->pFrameSibling) SetupSkinning(xfile,(D3DXFRAME_EXTENDED*)frame->pFrameSibling,frame_root);
-	if(frame->pFrameFirstChild) SetupSkinning(xfile,(D3DXFRAME_EXTENDED*)frame->pFrameFirstChild,frame_root);
+	if(frame->pFrameSibling) SetupSkinning(xfile,(FrameEx*)frame->pFrameSibling,frame_root);
+	if(frame->pFrameFirstChild) SetupSkinning(xfile,(FrameEx*)frame->pFrameFirstChild,frame_root);
 	return true;
 }
 
-bool Animation3dXFile::CalculateNormalTangent(D3DXFRAME_EXTENDED* frame)
+bool Animation3dXFile::CalculateNormalTangent(FrameEx* frame)
 {
 	D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)frame->pMeshContainer;
 	while(mesh_container)
@@ -2286,12 +2283,12 @@ bool Animation3dXFile::CalculateNormalTangent(D3DXFRAME_EXTENDED* frame)
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	if(frame->pFrameSibling) CalculateNormalTangent((D3DXFRAME_EXTENDED*)frame->pFrameSibling);
-	if(frame->pFrameFirstChild) CalculateNormalTangent((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild);
+	if(frame->pFrameSibling) CalculateNormalTangent((FrameEx*)frame->pFrameSibling);
+	if(frame->pFrameFirstChild) CalculateNormalTangent((FrameEx*)frame->pFrameFirstChild);
 	return true;
 }
 
-void Animation3dXFile::SetupFacesCount(D3DXFRAME_EXTENDED* frame, DWORD& count)
+void Animation3dXFile::SetupFacesCount(FrameEx* frame, DWORD& count)
 {
 	D3DXMESHCONTAINER_EXTENDED* mesh_container=(D3DXMESHCONTAINER_EXTENDED*)frame->pMeshContainer;
 	while(mesh_container)
@@ -2301,8 +2298,8 @@ void Animation3dXFile::SetupFacesCount(D3DXFRAME_EXTENDED* frame, DWORD& count)
 		mesh_container=(D3DXMESHCONTAINER_EXTENDED*)mesh_container->pNextMeshContainer;
 	}
 
-	if(frame->pFrameSibling) SetupFacesCount((D3DXFRAME_EXTENDED*)frame->pFrameSibling,count);
-	if(frame->pFrameFirstChild) SetupFacesCount((D3DXFRAME_EXTENDED*)frame->pFrameFirstChild,count);
+	if(frame->pFrameSibling) SetupFacesCount((FrameEx*)frame->pFrameSibling,count);
+	if(frame->pFrameFirstChild) SetupFacesCount((FrameEx*)frame->pFrameFirstChild,count);
 }
 
 void Animation3dXFile::SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationController* anim_controller)

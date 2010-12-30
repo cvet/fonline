@@ -1,11 +1,11 @@
 #ifndef __VERSION__
 #define __VERSION__
 
-#define SERVER_VERSION               0x00000395 // server_0395
-#define CLIENT_VERSION               0x00000303 // client_0303
-#define MAPPER_VERSION               0x00000150 // mapper_0150
+#define SERVER_VERSION               0x00000396 // server_0396
+#define CLIENT_VERSION               0x00000304 // client_0304
+#define MAPPER_VERSION               0x00000151 // mapper_0151
 
-#define MAPPER_VERSION_STR           "v.1.23.29"
+#define MAPPER_VERSION_STR           "v.1.23.30"
 #define DIALOG_EDITOR_VERSION_STR    "v.2.18.3"
 #define OBJECT_EDITOR_VERSION_STR    "v.2.14.2"
 

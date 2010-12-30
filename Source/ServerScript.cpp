@@ -2171,7 +2171,7 @@ void FOServer::SScriptFunc::Cl_ShowScreen(Critter* cl, int screen_type, DWORD pa
 	int bind_id=0;
 	if(func_name && func_name->length())
 	{
-		bind_id=Script::Bind(func_name->c_str(),"void %s(Critter&,uint,string&)",true);
+		bind_id=Script::Bind(func_name->c_str(),"void %s(Critter&,uint,string&)",false);
 		if(bind_id<=0) SCRIPT_ERROR_R("Function not found.");
 	}
 

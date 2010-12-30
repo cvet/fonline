@@ -3,350 +3,490 @@
 #include "Text.h"
 #include "Timer.h"
 
+#include "Assimp/aiScene.h"
+#include "Assimp/aiAnim.h"
+#include "Assimp/aiPostProcess.h"
+#include "Assimp/assimp.hpp"
+#pragma comment (lib, "assimp.lib")
+
 /************************************************************************/
 /* Models                                                               */
 /************************************************************************/
 
 MeshHierarchy Loader3d::memAllocator;
+PCharVec Loader3d::processedFiles;
+FrameVec Loader3d::loadedModels;
+PCharVec Loader3d::loadedAnimationsFNames;
+AnimSetVec Loader3d::loadedAnimations;
 
-D3DXFRAME* Loader3d::Load(IDirect3DDevice9* device, const char* fname, int path_type, ID3DXAnimationController** anim)
+FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool calc_tangent)
 {
+	for(FrameVecIt it=loadedModels.begin(),end=loadedModels.end();it!=end;++it)
+	{
+		FrameEx* frame=*it;
+		if(!_stricmp(frame->exFileName,fname)) return frame;
+	}
+
+	for(size_t i=0,j=processedFiles.size();i<j;i++)
+		if(!_stricmp(processedFiles[i],fname)) return NULL;
+	processedFiles.push_back(StringDuplicate(fname));
+
 	FileManager fm;
-	if(!fm.LoadFile(fname,path_type))
+	if(!fm.LoadFile(fname,PT_DATA))
 	{
 		WriteLog(__FUNCTION__" - 3d file not found, name<%s>.\n",fname);
 		return NULL;
 	}
 
+	// Standart direct x loader
 	const char* ext=FileManager::GetExtension(fname);
-	if(!ext)
+	if(ext && !_stricmp(ext,"x"))
 	{
-		WriteLog(__FUNCTION__" - Extension of 3d file not found, name<%s>.\n",fname);
+		FrameEx* frame_root=LoadX(device,fm,fname);
+		if(frame_root)
+		{
+			frame_root->exFileName=StringDuplicate(fname);
+			loadedModels.push_back(frame_root);
+		}
+		else
+		{
+			WriteLog(__FUNCTION__" - Can't load 3d X file, name<%s>.\n",fname);
+		}
+		return frame_root;
+	}
+
+	// Assimp loader
+	static Assimp::Importer* importer=NULL;
+	if(!importer)
+	{
+		// Check dll availability
+		HMODULE dll=LoadLibrary("Assimp32.dll");
+		if(!dll)
+		{
+			if(GameOpt.ClientPath!="") dll=LoadLibrary((GameOpt.ClientPath+"Assimp32.dll").c_str());
+
+			if(!dll)
+			{
+				WriteLog(__FUNCTION__" - Assimp32.dll not found.\n");
+				return NULL;
+			}
+		}
+
+		// Create importer instance
+		importer=new(nothrow) Assimp::Importer();
+		if(!importer) return NULL;
+	}
+
+	const aiScene* scene=importer->ReadFileFromMemory(fm.GetBuf(),fm.GetFsize(),
+		(calc_tangent?aiProcess_CalcTangentSpace:0)|aiProcess_GenNormals|aiProcess_GenUVCoords|
+		aiProcess_ConvertToLeftHanded|aiProcess_Triangulate|aiProcess_JoinIdenticalVertices|
+		aiProcess_SortByPType|aiProcess_SplitLargeMeshes|aiProcess_LimitBoneWeights|
+		aiProcess_ImproveCacheLocality);
+	// Todo: optional aiProcess_ValidateDataStructure|aiProcess_FindInvalidData
+
+	if(!scene)
+	{
+		WriteLog(__FUNCTION__" - Can't load 3d file, name<%s>, error<%s>.\n",fname,importer->GetErrorString());
 		return NULL;
 	}
 
-	//double t=Timer::AccurateTick();
+	// Extract frames
+	FrameEx* frame_root=FillNode(device,scene->mRootNode,scene,calc_tangent);
+	if(!frame_root)
+	{
+		WriteLog(__FUNCTION__" - Conversion fail, name<%s>.\n",fname);
+		importer->FreeScene();
+		return NULL;
+	}
+	frame_root->exFileName=StringDuplicate(fname);
+	loadedModels.push_back(frame_root);
 
-	D3DXFRAME* frame=NULL;
-	if(!_stricmp(ext,"x")) frame=Load_X(fm,device,anim);
-	else if(!_stricmp(ext,"3ds")) frame=Load_3ds(fm,device);
-	else WriteLog(__FUNCTION__" - Unknown file format.\n");
+	// Extract animations
+	vector<D3DXKEY_VECTOR3> scale;
+	vector<D3DXKEY_QUATERNION> rot;
+	vector<D3DXKEY_VECTOR3> pos;
+	for(unsigned int i=0;i<scene->mNumAnimations;i++)
+	{
+		aiAnimation* anim=scene->mAnimations[i];
 
-	//WriteLog("Load 3d file<%s> time<%g>.\n",fname,Timer::AccurateTick()-t);
+		ID3DXKeyframedAnimationSet* set;
+		if(FAILED(D3DXCreateKeyframedAnimationSet(anim->mName.data,anim->mTicksPerSecond,D3DXPLAY_LOOP,anim->mNumChannels,0,NULL,&set)))
+		{
+			WriteLog(__FUNCTION__" - Can't extract animation<%s> from file<%s>.\n",anim->mName.data,fname);
+			continue;
+		}
 
-	if(!frame) WriteLog(__FUNCTION__" - Can't load 3d file, name<%s>.\n",fname);
+		for(unsigned int j=0;j<anim->mNumChannels;j++)
+		{
+			aiNodeAnim* na=anim->mChannels[j];
+
+			if(scale.size()<na->mNumScalingKeys) scale.resize(na->mNumScalingKeys);
+			for(unsigned int k=0;k<na->mNumScalingKeys;k++)
+			{
+				scale[k].Time=na->mScalingKeys[k].mTime;
+				scale[k].Value.x=na->mScalingKeys[k].mValue.x;
+				scale[k].Value.y=na->mScalingKeys[k].mValue.y;
+				scale[k].Value.z=na->mScalingKeys[k].mValue.z;
+			}
+			if(rot.size()<na->mNumRotationKeys) rot.resize(na->mNumRotationKeys);
+			for(unsigned int k=0;k<na->mNumRotationKeys;k++)
+			{
+				rot[k].Time=na->mRotationKeys[k].mTime;
+				rot[k].Value.x=na->mRotationKeys[k].mValue.x;
+				rot[k].Value.y=na->mRotationKeys[k].mValue.y;
+				rot[k].Value.z=na->mRotationKeys[k].mValue.z;
+				rot[k].Value.w=-na->mRotationKeys[k].mValue.w;
+			}
+			if(pos.size()<na->mNumPositionKeys) pos.resize(na->mNumPositionKeys);
+			for(unsigned int k=0;k<na->mNumPositionKeys;k++)
+			{
+				pos[k].Time=na->mPositionKeys[k].mTime;
+				pos[k].Value.x=na->mPositionKeys[k].mValue.x;
+				pos[k].Value.y=na->mPositionKeys[k].mValue.y;
+				pos[k].Value.z=na->mPositionKeys[k].mValue.z;
+			}
+
+			DWORD index;
+			set->RegisterAnimationSRTKeys(na->mNodeName.data,na->mNumScalingKeys,na->mNumRotationKeys,na->mNumPositionKeys,
+				na->mNumScalingKeys?&scale[0]:NULL,na->mNumRotationKeys?&rot[0]:NULL,na->mNumPositionKeys?&pos[0]:NULL,&index);
+		}
+
+		ID3DXBuffer* buf;
+		ID3DXCompressedAnimationSet* cset;
+		if(FAILED(set->Compress(D3DXCOMPRESS_DEFAULT,0.0f,NULL,&buf))) continue;
+		if(FAILED(D3DXCreateCompressedAnimationSet(anim->mName.data,anim->mTicksPerSecond,D3DXPLAY_LOOP,buf,0,NULL,&cset))) continue;
+		buf->Release();
+		set->Release();
+
+		loadedAnimationsFNames.push_back(StringDuplicate(fname));
+		loadedAnimations.push_back(cset);
+	}
+
+	importer->FreeScene();
+	return frame_root;
+}
+
+D3DXMATRIX ConvertMatrix(const aiMatrix4x4& mat)
+{
+	D3DXMATRIX m;
+	aiVector3D scale;
+	aiQuaternion rot;
+	aiVector3D pos;
+	mat.Decompose(scale,rot,pos);
+
+	D3DXMATRIX ms,mr,mp;
+	D3DXMatrixIdentity(&m);
+	D3DXMatrixScaling(&ms,scale.x,scale.y,scale.z);
+	D3DXMatrixRotationQuaternion(&mr,&D3DXQUATERNION(rot.x,rot.y,rot.z,rot.w));
+	D3DXMatrixTranslation(&mp,pos.x,pos.y,pos.z);
+	return ms*mr*mp;
+}
+
+FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const aiScene* scene, bool with_tangent)
+{
+	// Create frame
+	FrameEx* frame;
+	D3D_HR(memAllocator.CreateFrame(node->mName.data,(D3DXFRAME**)&frame));
+
+	frame->TransformationMatrix=ConvertMatrix(node->mTransformation);
+
+	// Merge meshes, because Assimp split subsets
+	if(node->mNumMeshes)
+	{
+		// Calculate whole data
+		DWORD faces_count=0;
+		DWORD vertices_count=0;
+		vector<aiBone*> all_bones;
+		vector<D3DXMATERIAL> materials;
+		for(unsigned int m=0;m<node->mNumMeshes;m++)
+		{
+			aiMesh* mesh=scene->mMeshes[node->mMeshes[m]];
+
+			// Faces and vertices
+			faces_count+=mesh->mNumFaces;
+			vertices_count+=mesh->mNumVertices;
+
+			// Shared bones
+			for(unsigned int i=0;i<mesh->mNumBones;i++)
+			{
+				aiBone* bone=mesh->mBones[i];
+				bool bone_aviable=false;
+				for(size_t b=0,bb=all_bones.size();b<bb;b++)
+				{
+					if(!strcmp(all_bones[b]->mName.data,bone->mName.data))
+					{
+						bone_aviable=true;
+						break;
+					}
+				}
+				if(!bone_aviable) all_bones.push_back(bone);
+			}
+
+			// Material
+			D3DXMATERIAL material;
+			ZeroMemory(&material,sizeof(material));
+			aiMaterial* mtrl=scene->mMaterials[mesh->mMaterialIndex];
+
+			aiString path;
+			if(mtrl->GetTextureCount(aiTextureType_DIFFUSE))
+			{
+				mtrl->GetTexture(aiTextureType_DIFFUSE,0,&path);
+				material.pTextureFilename=StringDuplicate(path.data);
+			}
+
+			mtrl->Get(AI_MATKEY_COLOR_DIFFUSE,material.MatD3D.Diffuse);
+			mtrl->Get(AI_MATKEY_COLOR_AMBIENT,material.MatD3D.Ambient);
+			mtrl->Get(AI_MATKEY_COLOR_SPECULAR,material.MatD3D.Specular);
+			mtrl->Get(AI_MATKEY_COLOR_EMISSIVE,material.MatD3D.Emissive);
+			mtrl->Get(AI_MATKEY_SHININESS,material.MatD3D.Power);
+
+			materials.push_back(material);
+		}
+
+		// Mesh declarations
+		D3DVERTEXELEMENT9 delc_simple[]=
+		{
+			{0, 0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},
+			{0,12,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL  ,0},
+			{0,24,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},
+			D3DDECL_END()
+		};
+		D3DVERTEXELEMENT9 delc_tangent[]=
+		{
+			{0, 0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},
+			{0,12,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL  ,0},
+			{0,24,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},
+			{0,32,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT ,0},
+			{0,44,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},
+			D3DDECL_END()
+		};
+		D3DVERTEXELEMENT9* declaration=(with_tangent?delc_tangent:delc_simple);
+
+		// Create mesh
+		D3DXMESHDATA dxmesh;
+		dxmesh.Type=D3DXMESHTYPE_MESH;
+		D3D_HR(D3DXCreateMesh(faces_count,vertices_count,D3DXMESH_MANAGED,declaration,device,&dxmesh.pMesh));
+
+		// Skinning
+		ID3DXSkinInfo* skin_info=NULL;
+		D3D_HR(D3DXCreateSkinInfo(vertices_count,declaration,all_bones.size(),&skin_info));
+
+		// Fill data
+		struct Vertex
+		{
+			float x,y,z;
+			float nx,ny,nz;
+			float u,v;
+			float tx,ty,tz;
+			float bx,by,bz;
+		} *vb;
+		int vsize=(with_tangent?56:32);
+		WORD* ib;
+		DWORD* att;
+		D3D_HR(dxmesh.pMesh->LockVertexBuffer(0,(void**)&vb));
+		D3D_HR(dxmesh.pMesh->LockIndexBuffer(0,(void**)&ib));
+		D3D_HR(dxmesh.pMesh->LockAttributeBuffer(0,&att));
+
+		DWORD cur_vertices=0;
+		DWORD cur_faces=0;
+		for(unsigned int m=0;m<node->mNumMeshes;m++)
+		{
+			aiMesh* mesh=scene->mMeshes[node->mMeshes[m]];
+
+			for(unsigned int i=0;i<mesh->mNumVertices;i++)
+			{
+				Vertex& v=*vb;
+				vb=(Vertex*)(((char*)vb)+vsize);
+				ZeroMemory(&v,vsize);
+
+				// Vertices data
+				v.x=mesh->mVertices[i].x;
+				v.y=mesh->mVertices[i].y;
+				v.z=mesh->mVertices[i].z;
+
+				if(mesh->mTextureCoords)
+				{
+					v.u=mesh->mTextureCoords[0][i].x;
+					v.v=mesh->mTextureCoords[0][i].y;
+				}
+				if(mesh->mNormals)
+				{
+					v.nx=mesh->mNormals[i].x;
+					v.ny=mesh->mNormals[i].y;
+					v.nz=mesh->mNormals[i].z;
+				}
+				if(with_tangent && mesh->mTangents)
+				{
+					v.tx=mesh->mTangents[i].x;
+					v.ty=mesh->mTangents[i].y;
+					v.tz=mesh->mTangents[i].z;
+					v.bx=mesh->mBitangents[i].x;
+					v.by=mesh->mBitangents[i].y;
+					v.bz=mesh->mBitangents[i].z;
+				}
+			}
+
+			// Indices
+			for(unsigned int i=0;i<mesh->mNumFaces;i++)
+			{
+				aiFace& face=mesh->mFaces[i];
+				for(unsigned int j=0;j<face.mNumIndices;j++)
+				{
+					*ib=face.mIndices[j]+cur_vertices;
+					ib++;
+				}
+
+				*(att+cur_faces+i)=m;
+			}
+
+			cur_vertices+=mesh->mNumVertices;
+			cur_faces+=mesh->mNumFaces;
+		}
+
+		// Skin info
+		if(all_bones.size())
+		{
+			D3D_HR(D3DXCreateSkinInfo(vertices_count,declaration,all_bones.size(),&skin_info));
+
+			vector<DwordVec> vertices(all_bones.size());
+			vector<FloatVec> weights(all_bones.size());
+
+			for(size_t b=0,bb=all_bones.size();b<bb;b++)
+			{
+				aiBone* bone=all_bones[b];
+
+				// Bone options
+				skin_info->SetBoneName(b,bone->mName.data);
+				skin_info->SetBoneOffsetMatrix(b,&ConvertMatrix(bone->mOffsetMatrix));
+
+				// Reserve memory
+				vertices.reserve(vertices_count);
+				weights.reserve(vertices_count);
+			}
+
+			cur_vertices=0;
+			for(unsigned int m=0;m<node->mNumMeshes;m++)
+			{
+				aiMesh* mesh=scene->mMeshes[node->mMeshes[m]];
+
+				for(unsigned int i=0;i<mesh->mNumBones;i++)
+				{
+					aiBone* bone=mesh->mBones[i];
+
+					// Get bone id
+					DWORD bone_id=0;
+					for(size_t b=0,bb=all_bones.size();b<bb;b++)
+					{
+						if(!strcmp(all_bones[b]->mName.data,bone->mName.data))
+						{
+							bone_id=b;
+							break;
+						}
+					}
+
+					// Fill weights
+					if(bone->mNumWeights)
+					{
+						for(unsigned int j=0;j<bone->mNumWeights;j++)
+						{
+							aiVertexWeight& vw=bone->mWeights[j];
+							vertices[bone_id].push_back(vw.mVertexId+cur_vertices);
+							weights[bone_id].push_back(vw.mWeight);
+						}
+					}
+				}
+
+				cur_vertices+=mesh->mNumVertices;
+			}
+
+			// Set influences
+			for(size_t b=0,bb=all_bones.size();b<bb;b++)
+			{
+				if(vertices[b].size())
+					skin_info->SetBoneInfluence(b,vertices[b].size(),&vertices[b][0],&weights[b][0]);
+			}
+		}
+
+		D3D_HR(dxmesh.pMesh->UnlockVertexBuffer());
+		D3D_HR(dxmesh.pMesh->UnlockIndexBuffer());
+		D3D_HR(dxmesh.pMesh->UnlockAttributeBuffer());
+		
+		// Create container
+		D3DXMESHCONTAINER* mesh_container;
+		D3D_HR(memAllocator.CreateMeshContainer(node->mName.data,&dxmesh,&materials[0],NULL,materials.size(),NULL,skin_info,&mesh_container));
+		dxmesh.pMesh->Release();
+		if(skin_info) skin_info->Release();
+
+		frame->pMeshContainer=mesh_container;
+	}
+
+	// Childs
+	FrameEx* frame_last=NULL;
+	for(unsigned int i=0;i<node->mNumChildren;i++)
+	{
+		aiNode* node_child=node->mChildren[i];
+		FrameEx* frame_child=FillNode(device,node_child,scene,with_tangent);
+		if(!i) frame->pFrameFirstChild=frame_child;
+		else frame_last->pFrameSibling=frame_child;
+		frame_last=frame_child;
+	}
+
 	return frame;
+}
+
+AnimSet* Loader3d::LoadAnimation(IDirect3DDevice9* device, const char* anim_fname, const char* anim_name)
+{
+	// Find in already loaded
+	for(size_t i=0,j=loadedAnimations.size();i<j;i++)
+	{
+		if(!_stricmp(loadedAnimationsFNames[i],anim_fname) &&
+			!_stricmp(loadedAnimations[i]->GetName(),anim_name)) return loadedAnimations[i];
+	}
+
+	// Check maybe file already processed and nothing founded
+	for(size_t i=0,j=processedFiles.size();i<j;i++)
+		if(!_stricmp(processedFiles[i],anim_fname)) return NULL;
+
+	// File not processed, load and recheck animations
+	if(LoadModel(device,anim_fname,false)) return LoadAnimation(device,anim_fname,anim_name);
+
+	return NULL;
 }
 
 void Loader3d::Free(D3DXFRAME* frame)
 {
+	// Free frame
 	if(frame) D3DXFrameDestroy(frame,&memAllocator);
 }
 
-/************************************************************************/
-/* Direct X file format                                                 */
-/************************************************************************/
-
-D3DXFRAME* Loader3d::Load_X(FileManager& fm, IDirect3DDevice9* device, ID3DXAnimationController** anim)
+FrameEx* Loader3d::LoadX(IDirect3DDevice9* device, FileManager& fm, const char* fname)
 {
-	D3DXFRAME* frame_root=NULL;
-	HRESULT hr=D3DXLoadMeshHierarchyFromXInMemory(fm.GetBuf(),fm.GetFsize(),D3DXMESH_MANAGED,device,&memAllocator,NULL,&frame_root,anim);
+	// Load model
+	ID3DXAnimationController* anim=NULL;
+	FrameEx* frame_root=NULL;
+	HRESULT hr=D3DXLoadMeshHierarchyFromXInMemory(fm.GetBuf(),fm.GetFsize(),D3DXMESH_MANAGED,device,&memAllocator,NULL,
+		(D3DXFRAME**)&frame_root,&anim);
 	if(hr!=D3D_OK)
 	{
 		WriteLog(__FUNCTION__" - Can't load X file hierarchy, error<%s>.\n",DXGetErrorString(hr));
 		return NULL;
 	}
-	return frame_root;
-}
 
-/************************************************************************/
-/* 3ds file format                                                      */
-/************************************************************************/
-
-D3DXFRAME* Loader3d::Load_3ds(FileManager& fm, IDirect3DDevice9* device)
-{
-	class Material3ds
+	// If animation aviable than store it
+	if(anim)
 	{
-	public:
-		char Name[256];
-		char TextureName[256];
-		float Ambient[3];
-		float Diffuse[3];
-		float Specular[3];
-	};
-	vector<Material3ds> materials;
-
-	class Mesh3ds
-	{
-	public:
-		char Name[256];
-		bool IsTriangularMesh;
-		float Matrix[4][3];
-		FloatVec Vertices;
-		WordVec Faces;
-		FloatVec TexCoords;
-		class Subset
+		for(DWORD i=0,j=anim->GetNumAnimationSets();i<j;i++)
 		{
-		public:
-			char Name[256];
-			WordVec Faces;
-		};
-		vector<Subset> Subsets;
-		Mesh3ds(){Name[0]=0;IsTriangularMesh=false;}
-	};
-	vector<Mesh3ds> meshes;
-
-	float* cur_color=NULL;
-	while(!fm.IsEOF())
-	{
-		WORD chunk=fm.GetLEWord();
-		DWORD len=fm.GetLEDWord();
-
-		switch(chunk)
-		{
-		case 0x4D4D: // MAIN3DS
-			break;
-		case 0x3D3D: // 3D EDITOR
-			break;
-		case 0x4000: // OBJECT BLOCK
-			{
-				meshes.push_back(Mesh3ds());
-				Mesh3ds& mesh=meshes.back();
-				fm.GetStr(mesh.Name);
-			}
-			break;
-		case 0x4100: // TRIANGULAR MESH
-			{
-				meshes.back().IsTriangularMesh=true;
-			}
-			break;
-		case 0x4110: // VERTICES LIST (x,y,z)
-			{
-				Mesh3ds& mesh=meshes.back();
-				mesh.Vertices.resize(fm.GetLEWord()*3);
-				for(size_t i=0,j=mesh.Vertices.size()/3;i<j;i++)
-				{
-					mesh.Vertices[i*3+0]=fm.GetLEFloat();
-					mesh.Vertices[i*3+1]=fm.GetLEFloat();
-					mesh.Vertices[i*3+2]=fm.GetLEFloat();
-				}
-			}
-			break;
-		case 0x4120: // FACES DESCRIPTION (a,b,c,flag)
-			{
-				Mesh3ds& mesh=meshes.back();
-				mesh.Faces.resize(fm.GetLEWord()*3);
-				for(size_t i=0,j=mesh.Faces.size()/3;i<j;i++)
-				{
-					mesh.Faces[i*3+0]=fm.GetLEWord();
-					mesh.Faces[i*3+1]=fm.GetLEWord();
-					mesh.Faces[i*3+2]=fm.GetLEWord();
-					fm.GetLEWord();
-				}
-			}
-			break;
-		case 0x4130: // MSH_MAT_GROUP
-			{
-				Mesh3ds& mesh=meshes.back();
-				mesh.Subsets.push_back(Mesh3ds::Subset());
-				Mesh3ds::Subset& ss=mesh.Subsets.back();
-				fm.GetStr(ss.Name);
-				WORD count=fm.GetLEWord();
-				ss.Faces.resize(count);
-				if(count) fm.CopyMem(&ss.Faces[0],ss.Faces.size()*2);
-			}
-			break;
-		case 0x4140: // MAPPING COORDINATES LIST (u,v)
-			{
-				Mesh3ds& mesh=meshes.back();
-				mesh.TexCoords.resize(fm.GetLEWord()*2);
-				for(size_t i=0,j=mesh.TexCoords.size()/2;i<j;i++)
-				{
-					mesh.TexCoords[i*2+0]=fm.GetLEFloat();
-					mesh.TexCoords[i*2+1]=1.0f-fm.GetLEFloat();
-				}
-			}
-			break;
-		case 0x4160: // MESH_MATRIX
-			{
-				Mesh3ds& mesh=meshes.back();
-				fm.CopyMem(mesh.Matrix,48);
-			}
-			break;
-		case 0xAFFF: // MAT_ENTRY
-			materials.push_back(Material3ds());
-			ZeroMemory(&materials.back(),sizeof(Material3ds));
-			break;
-		case 0xA200: // MAT_TEXMAP
-			break;
-		case 0xA000: // MAT_NAME
-			fm.GetStr(materials.back().Name);
-			break;
-		case 0xA300: // MAT_MAPNAME
-			fm.GetStr(materials.back().TextureName);
-			break;
-		case 0xA010: // MAT_AMBIENT
-			cur_color=materials.back().Ambient;
-			break;
-		case 0xA020: // MAT_DIFFUSE
-			cur_color=materials.back().Diffuse;
-			break;
-		case 0xA030: // MAT_SPECULAR
-			cur_color=materials.back().Specular;
-			break;
-		case 0x0011: // COLOR_24
-		case 0x0012: // LIN_COLOR_24
-			if(cur_color) for(int i=0;i<3;i++) cur_color[i]=(float)fm.GetByte()/255.0f;
-			else fm.GoForward(3);
-			cur_color=NULL;
-			break;
-		case 0x0010: // COLOR_F
-		case 0x0013: // LIN_COLOR_F
-			if(cur_color) for(int i=0;i<3;i++) cur_color[i]=fm.GetLEFloat();
-			else fm.GoForward(12);
-			cur_color=NULL;
-			break;
-		case 0x0100: // MASTER_SCALE
-		case 0xA040: // MAT_SHININESS
-		case 0xA050: // MAT_TRANSPARENCY
-		default: // Unknown chunk, skip
-			fm.GoForward(len-6);
-			break;
+			AnimSet* set;
+			anim->GetAnimationSet(i,&set); // AddRef
+			loadedAnimationsFNames.push_back(StringDuplicate(fname));
+			loadedAnimations.push_back(set);
 		}
-	}
-
-	if(meshes.empty())
-	{
-		WriteLog(__FUNCTION__" - Not found any meshes in 3ds file.\n");
-		return NULL;
-	}
-
-	// Fill materials
-	static vector<D3DXMATERIAL> dxmaterials;
-	for(size_t i=0,j=dxmaterials.size();i<j;i++) SAFEDELA(dxmaterials[i].pTextureFilename);
-	dxmaterials.resize(materials.size());
-	for(size_t i=0,j=materials.size();i<j;i++)
-	{
-		Material3ds& mtrl=materials[i];
-		D3DXMATERIAL& dxmtrl=dxmaterials[i];
-		ZeroMemory(&dxmtrl,sizeof(dxmtrl));
-		dxmtrl.pTextureFilename=StringDuplicate(mtrl.TextureName);
-		dxmtrl.MatD3D.Ambient.r=mtrl.Ambient[0];
-		dxmtrl.MatD3D.Ambient.g=mtrl.Ambient[1];
-		dxmtrl.MatD3D.Ambient.b=mtrl.Ambient[2];
-		dxmtrl.MatD3D.Ambient.a=1.0f;
-		dxmtrl.MatD3D.Diffuse.r=mtrl.Diffuse[0];
-		dxmtrl.MatD3D.Diffuse.g=mtrl.Diffuse[1];
-		dxmtrl.MatD3D.Diffuse.b=mtrl.Diffuse[2];
-		dxmtrl.MatD3D.Diffuse.a=1.0f;
-		dxmtrl.MatD3D.Specular.r=mtrl.Specular[0];
-		dxmtrl.MatD3D.Specular.g=mtrl.Specular[1];
-		dxmtrl.MatD3D.Specular.b=mtrl.Specular[2];
-		dxmtrl.MatD3D.Specular.a=1.0f;
-	}
-
-	// Create frames
-	D3DXFRAME* frame_root=NULL,*frame_last=NULL;
-	for(size_t mi=0;mi<meshes.size();mi++)
-	{
-		Mesh3ds& mesh=meshes[mi];
-
-		if(mesh.IsTriangularMesh)
-		{
-			// Create frame
-			D3DXFRAME* frame;
-			D3D_HR(memAllocator.CreateFrame(mesh.Name,&frame));
-			if(!frame_root) frame_root=frame;
-			if(frame_last) frame_last->pFrameSibling=frame;
-			frame_last=frame;
-
-			// Model already positioned
-			D3DXMatrixIdentity(&frame->TransformationMatrix);
-
-			// Create mesh
-			D3DXMESHDATA dxmesh;
-			dxmesh.Type=D3DXMESHTYPE_MESH;
-			D3D_HR(D3DXCreateMeshFVF(mesh.Faces.size()/3,mesh.Vertices.size()/3,D3DXMESH_MANAGED,D3DFVF_XYZ|D3DFVF_NORMAL|D3DFVF_TEX1,device,&dxmesh.pMesh));
-
-			// Fill data
-			struct
-			{
-				float x,y,z;
-				float nx,ny,nz;
-				float u,v;
-			} *vb;
-			WORD* ib;
-			DWORD* att;
-			D3D_HR(dxmesh.pMesh->LockVertexBuffer(0,(void**)&vb));
-			D3D_HR(dxmesh.pMesh->LockIndexBuffer(0,(void**)&ib));
-			D3D_HR(dxmesh.pMesh->LockAttributeBuffer(0,&att));
-
-			for(DWORD i=0;i<mesh.Vertices.size()/3;i++)
-			{
-				vb[i].x=mesh.Vertices[i*3+0];
-				vb[i].y=mesh.Vertices[i*3+2];
-				vb[i].z=mesh.Vertices[i*3+1];
-				vb[i].u=(i*2+0<mesh.TexCoords.size()?mesh.TexCoords[i*2+0]:0.0f);
-				vb[i].v=(i*2+1<mesh.TexCoords.size()?mesh.TexCoords[i*2+1]:0.0f);
-			}
-
-			for(DWORD i=0;i<mesh.Faces.size()/3;i++)
-			{
-				ib[i*3+0]=mesh.Faces[i*3+2];
-				ib[i*3+1]=mesh.Faces[i*3+1];
-				ib[i*3+2]=mesh.Faces[i*3+0];
-
-				// Compute normals
-				int v1=ib[i*3+0];
-				int v2=ib[i*3+1];
-				int v3=ib[i*3+2];
-				D3DXVECTOR3 a(mesh.Vertices[v1*3+0],mesh.Vertices[v1*3+2],mesh.Vertices[v1*3+1]);
-				D3DXVECTOR3 b(mesh.Vertices[v2*3+0],mesh.Vertices[v2*3+2],mesh.Vertices[v2*3+1]);
-				D3DXVECTOR3 c(mesh.Vertices[v3*3+0],mesh.Vertices[v3*3+2],mesh.Vertices[v3*3+1]);
-				D3DXVECTOR3 p=b-a;
-				D3DXVECTOR3 q=c-a;
-				D3DXVECTOR3 n;
-				D3DXVec3Cross(&n,&p,&q);
-				D3DXVec3Normalize(&n,&n);
-				vb[v1].nx=n.x; vb[v1].ny=n.y; vb[v1].nz=n.z;
-				vb[v2].nx=n.x; vb[v2].ny=n.y; vb[v2].nz=n.z;
-				vb[v3].nx=n.x; vb[v3].ny=n.y; vb[v3].nz=n.z;
-			}
-
-			ZeroMemory(att,sizeof(DWORD)*mesh.Faces.size()/3);
-			for(size_t i=0,j=mesh.Subsets.size();i<j;i++)
-			{
-				DWORD mat_ind=0;
-				for(size_t k=0,l=materials.size();k<l;k++)
-				{
-					if(!strcmp(mesh.Subsets[i].Name,materials[k].Name))
-					{
-						mat_ind=k;
-						break;
-					}
-				}
-
-				for(size_t n=0,m=mesh.Subsets[i].Faces.size();n<m;n++)
-					att[mesh.Subsets[i].Faces[n]]=mat_ind;
-			}
-
-			D3D_HR(dxmesh.pMesh->UnlockVertexBuffer());
-			D3D_HR(dxmesh.pMesh->UnlockIndexBuffer());
-			D3D_HR(dxmesh.pMesh->UnlockAttributeBuffer());
-
-			// Normals smoothing
-			DwordVec adjacency;
-			adjacency.resize(mesh.Faces.size());
-			dxmesh.pMesh->GenerateAdjacency(0.0000125f,&adjacency[0]);
-			D3D_HR(D3DXComputeNormals(dxmesh.pMesh,&adjacency[0]));
-
-			// Create container
-			D3D_HR(memAllocator.CreateMeshContainer(mesh.Name,&dxmesh,&dxmaterials[0],NULL,dxmaterials.size(),&adjacency[0],NULL,&frame->pMeshContainer));
-		}
+		anim->Release();
 	}
 
 	return frame_root;
-};
+}
 
 /************************************************************************/
 /* Textures                                                             */

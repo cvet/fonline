@@ -77,15 +77,31 @@ struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER
 	DWORD               exNumInfl;
 };
 
-struct D3DXFRAME_EXTENDED: public D3DXFRAME
+struct FrameEx: public D3DXFRAME
 {
+	const char* exFileName;
     D3DXMATRIX exCombinedTransformationMatrix;
 };
 
+typedef vector<D3DXMESHCONTAINER_EXTENDED*> MeshContainerVec;
+typedef vector<D3DXMESHCONTAINER_EXTENDED*>::iterator MeshContainerVecIt;
+typedef vector<FrameEx*> FrameVec;
+typedef vector<FrameEx*>::iterator FrameVecIt;
+typedef vector<D3DXVECTOR3> Vector3Vec;
+typedef vector<D3DXVECTOR3>::iterator Vector3VecIt;
+typedef vector<D3DXMATRIX> MatrixVec;
+typedef vector<D3DXMATRIX>::iterator MatrixVecIt;
 
 typedef vector<TextureEx*> TextureExVec;
 typedef vector<TextureEx*>::iterator TextureExVecIt;
 typedef vector<EffectEx*> EffectExVec;
 typedef vector<EffectEx*>::iterator EffectExVecIt;
+
+typedef D3DXFRAME Frame;
+typedef FrameEx FrameEx;
+
+typedef ID3DXAnimationSet AnimSet;
+typedef vector<AnimSet*> AnimSetVec;
+typedef vector<AnimSet*>::iterator AnimSetVecIt;
 
 #endif // __MESH_STRUCTURES__

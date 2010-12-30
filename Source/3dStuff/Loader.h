@@ -7,19 +7,26 @@
 #include "MeshHierarchy.h"
 #include "MeshStructures.h"
 
+struct aiNode;
+struct aiScene;
 
 class Loader3d
 {
 	// Models
 public:
-	static D3DXFRAME* Load(IDirect3DDevice9* device, const char* fname, int path_type, ID3DXAnimationController** anim);
+	static FrameEx* LoadModel(IDirect3DDevice9* device, const char* fname, bool calc_tangent);
+	static AnimSet* LoadAnimation(IDirect3DDevice9* device, const char* anim_fname, const char* anim_name);
 	static void Free(D3DXFRAME* frame);
 
 private:
 	static MeshHierarchy memAllocator;
+	static PCharVec processedFiles;
+	static FrameVec loadedModels;
+	static PCharVec loadedAnimationsFNames;
+	static AnimSetVec loadedAnimations;
 
-	static D3DXFRAME* Load_X(FileManager& fm, IDirect3DDevice9* device, ID3DXAnimationController** anim);
-	static D3DXFRAME* Load_3ds(FileManager& fm, IDirect3DDevice9* device);
+	static FrameEx* FillNode(IDirect3DDevice9* device, const aiNode* node, const aiScene* scene, bool with_tangent);
+	static FrameEx* LoadX(IDirect3DDevice9* device, FileManager& fm, const char* fname);
 
 	// Textures
 public:

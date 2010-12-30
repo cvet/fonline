@@ -2024,7 +2024,7 @@ void Log(const char* str)
 
 void LogA(const char* str)
 {
-	WriteLog(str);
+	WriteLog("%s",str);
 	if(!EngineLogFile) return;
 	DWORD br;
 	WriteFile(EngineLogFile,str,strlen(str),&br,NULL);

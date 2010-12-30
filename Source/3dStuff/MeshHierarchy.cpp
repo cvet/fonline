@@ -9,8 +9,8 @@ HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
 	*retNewFrame=0;
 
 	// Create a new frame using the derived version of the structure
-    D3DXFRAME_EXTENDED *newFrame=new D3DXFRAME_EXTENDED;
-	ZeroMemory(newFrame,sizeof(D3DXFRAME_EXTENDED));
+    FrameEx *newFrame=new FrameEx;
+	ZeroMemory(newFrame,sizeof(FrameEx));
 
     // Now initialize other data members of the frame to defaults
     D3DXMatrixIdentity(&newFrame->TransformationMatrix);
@@ -41,8 +41,8 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 {
 	// Create a mesh container structure to fill and initilaise to zero values
 	// Note: I use my extended version of the structure (D3DXMESHCONTAINER_EXTENDED) defined in MeshStructures.h
-	D3DXMESHCONTAINER_EXTENDED *newMeshContainer=new D3DXMESHCONTAINER_EXTENDED;
-	ZeroMemory(newMeshContainer, sizeof(D3DXMESHCONTAINER_EXTENDED));
+	D3DXMESHCONTAINER_EXTENDED* newMeshContainer=new D3DXMESHCONTAINER_EXTENDED;
+	ZeroMemory(newMeshContainer,sizeof(D3DXMESHCONTAINER_EXTENDED));
 
 	// Always a good idea to initialise return pointer before proceeding
 	*retNewMeshContainer=0;
@@ -64,11 +64,11 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	// Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
 	DWORD dwFaces=meshData->pMesh->GetNumFaces();
 	newMeshContainer->pAdjacency=new DWORD[dwFaces*3];
-	if(adjacency) memcpy(newMeshContainer->pAdjacency, adjacency, sizeof(DWORD)*dwFaces*3);
+	if(adjacency) memcpy(newMeshContainer->pAdjacency,adjacency,sizeof(DWORD)*dwFaces*3);
 	else meshData->pMesh->GenerateAdjacency(0.0000125f,newMeshContainer->pAdjacency);
 
 	// Get the Direct3D device, luckily this is held in the mesh itself (Note: must release it when done with it)
-	LPDIRECT3DDEVICE9 pd3dDevice=0;
+	LPDIRECT3DDEVICE9 pd3dDevice=NULL;
 	meshData->pMesh->GetDevice(&pd3dDevice);
 
 	// Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
@@ -129,7 +129,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	// If there is skin data associated with the mesh copy it over
 	if(pSkinInfo)
 	{
-		// save off the SkinInfo
+		// Save off the SkinInfo
 	    newMeshContainer->pSkinInfo=pSkinInfo;
 	    pSkinInfo->AddRef();
 
@@ -142,12 +142,12 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 		ZeroMemory(newMeshContainer->exFrameCombinedMatrixPointer,sizeof(D3DXMATRIX*)*numBones);
 
 	    // get each of the bone offset matrices so that we don't need to get them later
-	    for (UINT i=0; i < numBones; i++)
-	        newMeshContainer->exBoneOffsets[i]=*(newMeshContainer->pSkinInfo->GetBoneOffsetMatrix(i));
+	    for(UINT i=0;i<numBones;i++)
+			newMeshContainer->exBoneOffsets[i]=*(newMeshContainer->pSkinInfo->GetBoneOffsetMatrix(i));
 	}
 	else
 	{
-		// No skin info so 0 all the pointers
+		// No skin info so NULL all the pointers
 		newMeshContainer->pSkinInfo=NULL;
 		newMeshContainer->exBoneOffsets=NULL;
 		newMeshContainer->exSkinMesh=NULL;
@@ -167,7 +167,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 HRESULT MeshHierarchy::DestroyFrame(LPD3DXFRAME frameToFree) 
 {
 	// Convert to our extended type. OK to do this as we know for sure it is:
-	D3DXFRAME_EXTENDED* frame=(D3DXFRAME_EXTENDED*)frameToFree;
+	FrameEx* frame=(FrameEx*)frameToFree;
 
 	SAFEDELA(frame->Name);
 	delete frame;

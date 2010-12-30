@@ -86,6 +86,7 @@
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
 				IgnoreDefaultLibraryNames=""
+				DelayLoadDLLs="Assimp32.dll"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release\FOnline.pdb"
 				GenerateMapFile="true"
@@ -194,6 +195,7 @@
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
 				IgnoreDefaultLibraryNames="libcmt.lib"
+				DelayLoadDLLs="Assimp32.dll"
 				GenerateDebugInformation="true"
 				AssemblyDebug="0"
 				ProgramDatabaseFile="E:\FOnline\client\FOnlineDbg.pdb"
@@ -2203,6 +2205,146 @@
 				RelativePath="..\Source\3dStuff\TerrainGrid.h"
 				>
 			</File>
+			<Filter
+				Name="Assimp"
+				>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiAnim.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiAssert.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiCamera.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiColor4D.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiColor4D.inl"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiConfig.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiDefines.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiFileIO.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiLight.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMaterial.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMaterial.inl"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMatrix3x3.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMatrix3x3.inl"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMatrix4x4.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMatrix4x4.inl"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiMesh.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiPostProcess.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiQuaternion.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiScene.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiTexture.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiTypes.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiVector2D.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiVector3D.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiVector3D.inl"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\aiVersion.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\assimp.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\assimp.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\DefaultLogger.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\IOStream.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\IOSystem.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\Logger.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\LogStream.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\NullLogger.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Source\3dStuff\Assimp\ProgressHandler.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>
