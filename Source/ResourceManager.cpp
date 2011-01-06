@@ -213,6 +213,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 {
 	if(CritType::IsAnim3d(crtype)) return NULL;
 
+	if(!CritType::IsCanRotate(crtype)) dir=0;
 	DWORD id=(crtype<<19)|(anim1<<11)|(anim2<<3)|(dir&7);
 
 	AnimMapIt it=critterFrames.find(id);
@@ -252,6 +253,8 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
 {
 	if(!CritType::IsAnim3d(crtype)) return NULL;
+
+	if(!CritType::IsCanRotate(crtype)) dir=0;
 
 	if(crtype<critter3d.size() && critter3d[crtype])
 	{

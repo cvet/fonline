@@ -5981,6 +5981,7 @@ void FOClient::GmapKeyDown(BYTE dik)
 
 void FOClient::GmapChangeZoom(float offs)
 {
+	if(!GmapIsProc) return;
 	if(!IsCurInRect(GmapWMap)) return;
 	if(GmapZoom+offs>2.0f) return;
 	if(GmapZoom+offs<0.2f) return;
@@ -5996,7 +5997,7 @@ void FOClient::GmapChangeZoom(float offs)
 	GMAP_CHECK_MAPSCR;
 
 	if(GmapMapScrX>GmapWMap.L || GmapMapScrY>GmapWMap.T ||
-	   GmapMapScrX<GmapWMap.R-GM_MAXX/GmapZoom || GmapMapScrY<GmapWMap.B-GM_MAXY/GmapZoom) GmapChangeZoom(-offs);
+		GmapMapScrX<GmapWMap.R-GM_MAXX/GmapZoom || GmapMapScrY<GmapWMap.B-GM_MAXY/GmapZoom) GmapChangeZoom(-offs);
 }
 
 Item* FOClient::GmapGetCar()

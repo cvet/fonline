@@ -89,18 +89,18 @@ object MainForm: TMainForm
         Caption = 'GbLanguage'
         TabOrder = 0
         object RbRussian: TRadioButton
-          Left = 37
+          Left = 25
           Top = 16
-          Width = 188
+          Width = 100
           Height = 17
           Caption = 'RbRussian'
           TabOrder = 0
           OnClick = RbRussianClick
         end
         object RbEnglish: TRadioButton
-          Left = 37
+          Left = 25
           Top = 39
-          Width = 188
+          Width = 100
           Height = 17
           Caption = 'RbEnglish'
           TabOrder = 1
@@ -181,7 +181,8 @@ object MainForm: TMainForm
           Top = 140
           Width = 69
           Height = 22
-          MaxValue = 10
+          MaxValue = 100
+          MinValue = -1
           TabOrder = 5
         end
       end
@@ -193,7 +194,7 @@ object MainForm: TMainForm
         Left = 3
         Top = 3
         Width = 246
-        Height = 122
+        Height = 136
         Caption = 'GbGame'
         TabOrder = 0
         object LabelTextDelay: TLabel
@@ -250,10 +251,10 @@ object MainForm: TMainForm
           Top = 64
           Width = 83
           Height = 22
-          MaxValue = 5
-          MinValue = 1
+          MaxValue = 1000
+          MinValue = 10
           TabOrder = 2
-          Value = 1
+          Value = 100
         end
         object SeTextDelay: TCSpinEdit
           Left = 160
@@ -266,24 +267,32 @@ object MainForm: TMainForm
           TabOrder = 3
           Value = 1000
         end
+        object CbAlwaysRun: TCheckBox
+          Left = 13
+          Top = 112
+          Width = 97
+          Height = 21
+          Caption = 'CbAlwaysRun'
+          TabOrder = 4
+        end
       end
       object GbPath: TGroupBox
         Left = 3
         Top = 176
         Width = 246
-        Height = 63
+        Height = 64
         Caption = 'GbPath'
         TabOrder = 1
         object LabelMasterPath: TLabel
           Left = 13
-          Top = 16
+          Top = 15
           Width = 80
           Height = 13
           Caption = 'LabelMasterPath'
         end
         object LabelCritterPath: TLabel
           Left = 13
-          Top = 39
+          Top = 38
           Width = 78
           Height = 13
           Caption = 'LabelCritterPath'
@@ -298,7 +307,7 @@ object MainForm: TMainForm
         end
         object EditCritterPath: TEdit
           Left = 122
-          Top = 39
+          Top = 36
           Width = 121
           Height = 21
           TabOrder = 1
@@ -315,7 +324,7 @@ object MainForm: TMainForm
         end
         object BtnCritterPath: TButton
           Left = 97
-          Top = 40
+          Top = 37
           Width = 27
           Height = 18
           Caption = 'BtnCritterPath'
@@ -325,24 +334,24 @@ object MainForm: TMainForm
       end
       object GbLangSwitch: TGroupBox
         Left = 3
-        Top = 131
+        Top = 142
         Width = 246
-        Height = 39
+        Height = 33
         Caption = 'GbLangSwitch'
         TabOrder = 2
         object RbCtrlShift: TRadioButton
-          Left = 3
-          Top = 16
-          Width = 113
+          Left = 13
+          Top = 13
+          Width = 102
           Height = 17
           Caption = 'RbCtrlShift'
           TabOrder = 0
         end
         object RbAltShift: TRadioButton
-          Left = 122
-          Top = 16
-          Width = 113
-          Height = 17
+          Left = 133
+          Top = 15
+          Width = 102
+          Height = 14
           Caption = 'RbAltShift'
           TabOrder = 1
         end

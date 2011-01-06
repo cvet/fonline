@@ -1539,12 +1539,18 @@ void FOServer::SScriptFunc::Crit_ViewMap(Critter* cr, Map* map, DWORD look, WORD
 	cr->Send_LoadMap(map);
 }
 
-void FOServer::SScriptFunc::Crit_AddScore(Critter* cr, int score, int val)
+void FOServer::SScriptFunc::Crit_AddScore(Critter* cr, DWORD score, int val)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(score<0) SCRIPT_ERROR_R("Score arg is negative.");
 	if(score>=SCORES_MAX) SCRIPT_ERROR_R("Score arg is greater than max scores.");
 	SetScore(score,cr,val);
+}
+
+int FOServer::SScriptFunc::Crit_GetScore(Critter* cr, DWORD score)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(score>=SCORES_MAX) SCRIPT_ERROR_R0("Score arg is greater than max scores.");
+	return cr->Data.Scores[score];
 }
 
 void FOServer::SScriptFunc::Crit_AddHolodiskInfo(Critter* cr, DWORD holodisk_num)

@@ -69,6 +69,7 @@ void ItemManager::Clear()
 	gameItems.clear();
 	radioItems.clear();
 	itemToDelete.clear();
+	itemToDeleteCount.clear();
 	lastItemId=0;
 #endif
 
@@ -1122,6 +1123,7 @@ void ItemManager::ItemToGarbage(Item* item)
 {
 	SCOPE_LOCK(itemLocker);
 	itemToDelete.push_back(item->GetId());
+	itemToDeleteCount.push_back(item->GetCount());
 }
 
 void ItemManager::ItemGarbager()
@@ -1130,25 +1132,42 @@ void ItemManager::ItemGarbager()
 	{
 		itemLocker.Lock();
 		DwordVec to_del=itemToDelete;
+		DwordVec to_del_count=itemToDeleteCount;
 		itemToDelete.clear();
+		itemToDeleteCount.clear();
 		itemLocker.Unlock();
 
-		for(DwordVecIt it=to_del.begin(),end=to_del.end();it!=end;++it)
+		for(size_t i=0,j=to_del.size();i<j;i++)
 		{
+			DWORD id=to_del[i];
+			DWORD count=to_del_count[i];
+
 			// Erase from main collection
 			itemLocker.Lock();
-			ItemPtrMapIt it_=gameItems.find(*it);
-			if(it_==gameItems.end())
+			ItemPtrMapIt it=gameItems.find(id);
+			if(it==gameItems.end())
 			{
 				itemLocker.Unlock();
 				continue;
 			}
-			Item* item=(*it_).second;
-			gameItems.erase(it_);
+			Item* item=(*it).second;
+			gameItems.erase(it);
 			itemLocker.Unlock();
 
 			// Synchronize
 			SYNC_LOCK(item);
+
+			// Maybe some items added
+			if(item->IsGrouped() && item->GetCount()>count)
+			{
+				itemLocker.Lock();
+				gameItems.insert(ItemPtrMapVal(item->Id,item));
+				itemLocker.Unlock();
+
+				item->Count_Sub(count);
+				NotifyChangeItem(item);
+				continue;
+			}
 
 			// Call finish event
 			if(item->IsValidAccessory()) EraseItemHolder(item);

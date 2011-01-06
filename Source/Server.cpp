@@ -2301,10 +2301,26 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(Script::ReloadScripts(SCRIPTS_LST,"server",false))
-				cl->Send_Text(cl,"Success.",SAY_NETMSG);
+			SynchronizeLogicThreads();
+
+			// Get config file
+			FileManager scripts_cfg;
+			if(scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS))
+			{
+				// Reload script modules
+				Script::Undefine(NULL);
+				Script::Define("__SERVER");
+				if(Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"server",false))
+					cl->Send_Text(cl,"Success.",SAY_NETMSG);
+				else
+					cl->Send_Text(cl,"Fail.",SAY_NETMSG);
+			}
 			else
-				cl->Send_Text(cl,"Fail.",SAY_NETMSG);
+			{
+				cl->Send_Text(cl,"Scripts config file not found.",SAY_NETMSG);
+			}
+
+			ResynchronizeLogicThreads();
 		}
 		break;
 /************************************************************************/
@@ -3887,8 +3903,22 @@ bool FOServer::LoadClientsData()
 		char pass[MAX_NAME+1]={0};
 		DWORD id=-1;
 		bool read_ok=(fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
+
+		// Decrypt password
+		if(read_ok && pass[sizeof(pass)-1]) // Last char not zero
+		{
+			DWORD key=0;
+			read_ok=(fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
+			if(read_ok)
+			{
+				read_ok=(fread(&key,sizeof(key),1,f)!=0);
+				if(read_ok) Crypt.DecryptPassword(pass,sizeof(pass),key);
+			}
+		}
+
 		fclose(f);
 
+		// Verify
 		DWORD pass_len=strlen(pass);
 		if(!read_ok || !IS_USER_ID(id) || pass_len<MIN_NAME || pass_len>MAX_NAME || !CheckUserPass(pass))
 		{
@@ -3897,6 +3927,7 @@ bool FOServer::LoadClientsData()
 			continue;
 		}
 
+		// Check uniqueness of id
 		if(id_already.count(id))
 		{
 			WriteLog("Id<%u> of user<%s> already used by another client.\n",id,name);
@@ -3954,13 +3985,21 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 			return false;
 		}
 
-		_fwrite_nolock(cl->Pass,sizeof(cl->Pass),1,f);
+		// Encrypt password
+		char pass[sizeof(cl->Pass)]={0};
+		StringCopy(pass,cl->Pass);
+		cl->Data.Temp=Random(1000000000,2000000000);
+		Crypt.EncryptPassword(pass,sizeof(cl->Pass),cl->Data.Temp);
+
+		_fwrite_nolock(pass,sizeof(pass),1,f);
 		_fwrite_nolock(&cl->Data,sizeof(cl->Data),1,f);
 		_fwrite_nolock(data_ext,sizeof(CritDataExt),1,f);
 		DWORD te_count=cl->CrTimeEvents.size();
 		_fwrite_nolock(&te_count,sizeof(te_count),1,f);
 		if(te_count) _fwrite_nolock(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f);
 		fclose(f);
+
+		cl->Data.Temp=0;
 	}
 	return true;
 }
@@ -3997,6 +4036,14 @@ bool FOServer::LoadClient(Client* cl)
 	}
 
 	fclose(f);
+
+	// Decrypt password
+	if(cl->Pass[sizeof(cl->Pass)-1]) // Last char not zero
+	{
+		Crypt.DecryptPassword(cl->Pass,sizeof(cl->Pass),cl->Data.Temp);
+		cl->Data.Temp=0;
+	}
+
 	return true;
 
 label_FileTruncated:
@@ -4303,9 +4350,12 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 	{
 		if(WaitForSingleObject(DumpBeginEvent,INFINITE)!=WAIT_OBJECT_0) break;
 
+		char save_path[MAX_FOPATH];
+		FileManager::GetFullPath(NULL,PT_SERVER_SAVE,save_path);
+
 		// Save world data
 		FILE* fworld=NULL;
-		sprintf(fname,".\\save\\world%04d.fo",SaveWorldIndex+1);
+		sprintf(fname,"%sworld%04d.fo",save_path,SaveWorldIndex+1);
 		if(!fopen_s(&fworld,fname,"wb"))
 		{
 			for(size_t i=0;i<WorldSaveDataBufCount;i++)
@@ -4331,12 +4381,16 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 			ClientSaveData& csd=ClientsSaveData[i];
 
 			FILE* fc=NULL;
-			sprintf(fname,".\\save\\clients\\%s.client",csd.Name);
+			sprintf(fname,"%sclients\\%s.client",save_path,csd.Name);
 			if(fopen_s(&fc,fname,"wb"))
 			{
 				WriteLog(__FUNCTION__" - Unable to open client save file<%s>.\n",fname);
 				continue;
 			}
+
+			// Encrypt password
+			csd.Data.Temp=Random(1000000000,2000000000);
+			Crypt.EncryptPassword(csd.Password,sizeof(csd.Password),csd.Data.Temp);
 
 			fwrite(csd.Password,sizeof(csd.Password),1,fc);
 			fwrite(&csd.Data,sizeof(csd.Data),1,fc);
@@ -4352,7 +4406,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 		for(DwordVecIt it=SaveWorldDeleteIndexes.begin(),end=SaveWorldDeleteIndexes.end();it!=end;++it)
 		{
 			FILE* fold=NULL;
-			sprintf_s(fname,".\\save\\world%04d.fo",*it);
+			sprintf_s(fname,"%sworld%04d.fo",save_path,*it);
 			if(!fopen_s(&fold,fname,"rb"))
 			{
 				fclose(fold);

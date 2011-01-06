@@ -254,7 +254,7 @@ public:
 	WORD LocPid;
 	string Name;
 
-	WORD MaxCopy;
+	DWORD MaxPlayers;
 	WordVec ProtoMapPids;
 	WordVec AutomapsPids;
 	DwordPairVec Entrance;
@@ -312,6 +312,7 @@ public:
 	bool IsAutomaps(){return !Proto->AutomapsPids.empty();}
 	bool IsAutomap(WORD map_pid){return std::find(Proto->AutomapsPids.begin(),Proto->AutomapsPids.end(),map_pid)!=Proto->AutomapsPids.end();}
 	WordVec& GetAutomaps(){return Proto->AutomapsPids;}
+	bool IsCanEnter(DWORD players_count);
 
 	bool IsNoCrit();
 	bool IsNoPlayer();

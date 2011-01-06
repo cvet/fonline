@@ -197,6 +197,7 @@ bool HexManager::ReloadSprites()
 	if(!(picRainDropA[6]=SprMngr.LoadSprite("adrop7.png",PT_ART_MISC))) return false;
 	if(!(picTrack1=SprMngr.LoadSprite("track1.png",PT_ART_MISC))) return false;
 	if(!(picTrack2=SprMngr.LoadSprite("track2.png",PT_ART_MISC))) return false;
+	picHexMask=SprMngr.LoadSprite("hex_mask.png",PT_ART_MISC);
 	return true;
 }
 
@@ -1585,6 +1586,7 @@ void HexManager::InitView(int cx, int cy)
 	int y2=0;
 	int vpos;
 	int hx,hy;
+	int wx=MODE_WIDTH*GameOpt.SpritesZoom;
 
 	for(int j=0;j<hVisible;j++)
 	{
@@ -1595,7 +1597,7 @@ void HexManager::InitView(int cx, int cy)
 		for(int i=0;i<wVisible;i++)
 		{
 			vpos=y2+i;
-			viewField[vpos].ScrX=MODE_WIDTH*GameOpt.SpritesZoom-x;
+			viewField[vpos].ScrX=wx-x;
 			viewField[vpos].ScrY=y;
 			viewField[vpos].ScrXf=(float)viewField[vpos].ScrX;
 			viewField[vpos].ScrYf=(float)viewField[vpos].ScrY;
@@ -2236,8 +2238,8 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 {
 	if(!IsMapLoaded()) return false;
 
-	float xf=(float)x;
-	float yf=(float)y;
+	float xf=(float)x-(float)GameOpt.ScrOx/GameOpt.SpritesZoom;
+	float yf=(float)y-(float)GameOpt.ScrOy/GameOpt.SpritesZoom;
 	float ox=32.0f/GameOpt.SpritesZoom;
 	float oy=16.0f/GameOpt.SpritesZoom;
 	int y2=0;
@@ -2252,16 +2254,24 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 			float x_=viewField[vpos].ScrXf/GameOpt.SpritesZoom;
 			float y_=viewField[vpos].ScrYf/GameOpt.SpritesZoom;
 
-			if(xf<=x_) continue;
-			if(xf>x_+ox) continue;
-			if(yf<=y_) continue;
-			if(yf>y_+oy) continue;
+			if(xf>=x_ && xf<x_+ox && yf>=y_ && yf<y_+oy)
+			{
+				hx=viewField[vpos].HexX;
+				hy=viewField[vpos].HexY;
 
-			hx=viewField[vpos].HexX;
-			hy=viewField[vpos].HexY;
+				// Correct with hex color mask
+				if(picHexMask)
+				{
+					DWORD r=(SprMngr.GetPixColor(picHexMask,xf-x_,yf-y_)&0x00FF0000)>>16;
+					if(r==50) MoveHexByDir(hx,hy,5,maxHexX,maxHexY);
+					else if(r==100) MoveHexByDir(hx,hy,0,maxHexX,maxHexY);
+					else if(r==150) MoveHexByDir(hx,hy,3,maxHexX,maxHexY);
+					else if(r==200) MoveHexByDir(hx,hy,2,maxHexX,maxHexY);
+				}
 
-			if(hx>=maxHexX || hy>=maxHexY) return false;
-			return true;
+				if(hx>=maxHexX || hy>=maxHexY) return false;
+				return true;
+			}
 		}
 		y2+=wVisible;
 	}

@@ -1702,6 +1702,7 @@ bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */)
 	return true;
 }
 
+#pragma MESSAGE("Add 3d auto scaling.")
 bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, bool stretch_up, bool center, DWORD color /* = 0 */)
 {
 	if(!id) return false;
@@ -2356,14 +2357,20 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
 bool SpriteManager::IsPixNoTransp(DWORD spr_id, int offs_x, int offs_y, bool with_zoom)
 {
-	if(offs_x<0 || offs_y<0) return false;
+	DWORD color=GetPixColor(spr_id,offs_x,offs_y,with_zoom);
+	return (color&0xFF000000)!=0;
+}
+
+DWORD SpriteManager::GetPixColor(DWORD spr_id, int offs_x, int offs_y, bool with_zoom)
+{
+	if(offs_x<0 || offs_y<0) return 0;
 	SpriteInfo* si=GetSpriteInfo(spr_id);
-	if(!si) return false;
+	if(!si) return 0;
 
 	// 3d animation
 	if(si->Anim3d)
 	{
-		/*if(!si->Anim3d->GetDrawIndex()) return false;
+		/*if(!si->Anim3d->GetDrawIndex()) return 0;
 
 		IDirect3DSurface9* zstencil;
 		D3D_HR(d3dDevice->GetDepthStencilSurface(&zstencil));
@@ -2382,19 +2389,19 @@ bool SpriteManager::IsPixNoTransp(DWORD spr_id, int offs_x, int offs_y, bool wit
 		WriteLog("===========%d %d====%u\n",offs_x,offs_y,ptr[stencil_offset]);
 		if(stencil_offset<pitch*height && ptr[stencil_offset]==si->Anim3d->GetDrawIndex())
 		{
-		D3D_HR(zstencil->UnlockRect());
-		D3D_HR(zstencil->Release());
-		return true;
+			D3D_HR(zstencil->UnlockRect());
+			D3D_HR(zstencil->Release());
+			return 1;
 		}
 
 		D3D_HR(zstencil->UnlockRect());
 		D3D_HR(zstencil->Release());*/
-		return false;
+		return 0;
 	}
 
 	// 2d animation
-	if(with_zoom && (offs_x>si->Width/GameOpt.SpritesZoom || offs_y>si->Height/GameOpt.SpritesZoom)) return false;
-	if(!with_zoom && (offs_x>si->Width || offs_y>si->Height)) return false;
+	if(with_zoom && (offs_x>si->Width/GameOpt.SpritesZoom || offs_y>si->Height/GameOpt.SpritesZoom)) return 0;
+	if(!with_zoom && (offs_x>si->Width || offs_y>si->Height)) return 0;
 
 	if(with_zoom)
 	{
@@ -2414,22 +2421,16 @@ bool SpriteManager::IsPixNoTransp(DWORD spr_id, int offs_x, int offs_y, bool wit
 
 	offs_x+=si->SprRect.L*(float)width;
 	offs_y+=si->SprRect.T*(float)height;
-	int alpha_offset=offs_y*pitch+offs_x*4+3;
-	if(alpha_offset<pitch*height && ptr[alpha_offset]>0)
+	int offset=offs_y*pitch+offs_x*4;
+	if(offset<pitch*height)
 	{
+		DWORD color=*(DWORD*)(ptr+offset);
 		D3D_HR(si->Surf->Texture->UnlockRect(0));
-		return true;
+		return color;
 	}
 
 	D3D_HR(si->Surf->Texture->UnlockRect(0));
-	return false;
-
-	//	pDst[i] - есть байт 
-	//	b       - pDst[ y*iHeight*4 + x*4];
-	//	g       - pDst[ y*iHeight*4 + x*4+1];
-	//	r       - pDst[ y*iHeight*4 + x*4+2];
-	//	alpha	- pDst[ y*iHeight*4 + x*4+3];
-	//	x, y - координаты точки
+	return 0;
 }
 
 bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
@@ -3069,8 +3070,7 @@ struct FontFormatInfo
 	char* PStr;
 	DWORD LinesAll;
 	DWORD LinesInRect;
-	int CurX;
-	int CurY;
+	int CurX,CurY,MaxCurX;
 	DWORD ColorDots[FONT_BUF_LEN];
 	short LineWidth[FONT_MAX_LINES];
 	WORD LineSpaceWidth[FONT_MAX_LINES];
@@ -3086,8 +3086,7 @@ struct FontFormatInfo
 		LinesAll=1;
 		LinesInRect=0;
 		IsError=false;
-		CurX=0;
-		CurY=0;
+		CurX=CurY=MaxCurX=0;
 		Rect=rect;
 		ZeroMemory(ColorDots,sizeof(ColorDots));
 		ZeroMemory(LineWidth,sizeof(LineWidth));
@@ -3108,6 +3107,7 @@ struct FontFormatInfo
 		IsError=_fi.IsError;
 		CurX=_fi.CurX;
 		CurY=_fi.CurY;
+		MaxCurX=_fi.MaxCurX;
 		Rect=_fi.Rect;
 		memcpy(Str,_fi.Str,sizeof(Str));
 		memcpy(ColorDots,_fi.ColorDots,sizeof(ColorDots));
@@ -3608,6 +3608,8 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 
 		if(curx+lett_len>r.R)
 		{
+			if(curx-r.L>fi.MaxCurX) fi.MaxCurX=curx-r.L;
+
 			if(fmt_type==FORMAT_TYPE_DRAW && FLAG(flags,FT_NOBREAK))
 			{
 				str[i]='\0';
@@ -3981,6 +3983,25 @@ int SpriteManager::GetLinesHeight(int width, int height, const char* str, int nu
 	int cnt=GetLinesCount(width,height,str,num_font);
 	if(cnt<=0) return 0;
 	return cnt*font->MaxLettHeight+(cnt-1)*font->EmptyVer;
+}
+
+void SpriteManager::GetTextInfo(int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines)
+{
+	tw=th=lines=0;
+	if(width<=0) width=GameOpt.ScreenWidth;
+	if(height<=0) height=GameOpt.ScreenHeight;
+
+	Font* font=GetFont(num_font);
+	if(!font) return;
+
+	static FontFormatInfo fi;
+	fi.Init(font,flags,INTRECT(0,0,width,height),str);
+	FormatText(fi,FORMAT_TYPE_LCOUNT);
+	if(fi.IsError) return;
+
+	lines=fi.LinesInRect;
+	th=fi.LinesInRect*font->MaxLettHeight+(fi.LinesInRect-1)*font->EmptyVer;
+	tw=fi.MaxCurX;
 }
 
 int SpriteManager::SplitLines(INTRECT& r, const char* cstr, int num_font, StrVec& str_vec)

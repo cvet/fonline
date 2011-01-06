@@ -54,6 +54,7 @@ public:
 private:
 	ItemPtrMap gameItems;
 	DwordVec itemToDelete;
+	DwordVec itemToDeleteCount;
 	DWORD lastItemId;
 	Mutex itemLocker;
 

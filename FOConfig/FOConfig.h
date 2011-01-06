@@ -41,9 +41,6 @@ __published:	// IDE-managed Components
 	TGroupBox *GbPath;
 	TLabel *LabelMasterPath;
 	TLabel *LabelCritterPath;
-	TGroupBox *GbLangSwitch;
-	TRadioButton *RbCtrlShift;
-	TRadioButton *RbAltShift;
 	TEdit *EditMasterPath;
 	TEdit *EditCritterPath;
 	TButton *BtnMasterPath;
@@ -117,6 +114,10 @@ __published:	// IDE-managed Components
 	TLabel *LabelAnimation3dSmoothTime;
 	TCSpinEdit *SeAnimation3dFPS;
 	TCSpinEdit *SeAnimation3dSmoothTime;
+	TCheckBox *CbAlwaysRun;
+	TGroupBox *GbLangSwitch;
+	TRadioButton *RbCtrlShift;
+	TRadioButton *RbAltShift;
 	void __fastcall FormCreate(TObject *Sender);
 	void __fastcall BtnExitClick(TObject *Sender);
 	void __fastcall RbEnglishClick(TObject *Sender);

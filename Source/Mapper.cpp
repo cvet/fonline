@@ -674,17 +674,17 @@ void FOMapper::ParseKeyboard()
 	if(Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0)!=DI_OK)
 	{
 		Keyboard->Acquire();
-		Keyb::CtrlDwn=false;
-		Keyb::AltDwn=false;
-		Keyb::ShiftDwn=false;
+		Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); // Clear buffer
+		Keyb::Lost();
+		IntHold=INT_NONE;
 		if(MapperFunctions.InputLost && Script::PrepareContext(MapperFunctions.InputLost,__FUNCTION__,"Mapper")) Script::RunPrepared();
 		return;
 	}
 
 	for(int i=0;i<elements;i++) 
 	{
-		BYTE dikdw=(didod[i].dwData&0x80?didod[i].dwOfs:0);
-		BYTE dikup=(!(didod[i].dwData&0x80)?didod[i].dwOfs:0);
+		BYTE dikdw=Keyb::KeysMap[(didod[i].dwData&0x80?didod[i].dwOfs:0)&0xFF];
+		BYTE dikup=Keyb::KeysMap[(!(didod[i].dwData&0x80)?didod[i].dwOfs:0)&0xFF];
 
 		bool script_result=false;
 		if(dikdw && MapperFunctions.KeyDown && Script::PrepareContext(MapperFunctions.KeyDown,__FUNCTION__,"Mapper"))
@@ -855,6 +855,9 @@ void FOMapper::ParseMouse()
 	if(Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0)!=DI_OK)
 	{
 		Mouse->Acquire();
+		Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); // Clear buffer
+		Keyb::Lost();
+		IntHold=INT_NONE;
 		if(MapperFunctions.InputLost && Script::PrepareContext(MapperFunctions.InputLost,__FUNCTION__,"Mapper")) Script::RunPrepared();
 		return;
 	}
@@ -881,132 +884,133 @@ void FOMapper::ParseMouse()
 		}
 	}
 
-	bool ismoved=false;
-	for(int i=0;i<elements;i++) 
+	static float ox=0.0f,oy=0.0f;
+	float speed=(float)GameOpt.MouseSpeed/100.0f;
+	for(int i=0;i<elements;i++)
 	{
 		// Mouse Move
-		// Direct input move cursor in fullscreen mode
+		// Direct input move cursor in full screen mode
 		if(GameOpt.FullScreen)
 		{
-			DI_ONMOUSE( DIMOFS_X, CurX+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
-			DI_ONMOUSE( DIMOFS_Y, CurY+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
+			DI_ONMOUSE(DIMOFS_X, ox+=(float)(int)didod[i].dwData*speed; continue;);
+			DI_ONMOUSE(DIMOFS_Y, oy+=(float)(int)didod[i].dwData*speed; continue;);
 		}
 
 		// Scripts
 		bool script_result=false;
-		DI_ONMOUSE( DIMOFS_Z,
+		DI_ONMOUSE(DIMOFS_Z,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON0,
+		DI_ONDOWN(DIMOFS_BUTTON0,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_LEFT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON0,
+		DI_ONUP(DIMOFS_BUTTON0,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_LEFT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON1,
+		DI_ONDOWN(DIMOFS_BUTTON1,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_RIGHT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON1,
+		DI_ONUP(DIMOFS_BUTTON1,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_RIGHT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON2,
+		DI_ONDOWN(DIMOFS_BUTTON2,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON2,
+		DI_ONUP(DIMOFS_BUTTON2,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON3,
+		DI_ONDOWN(DIMOFS_BUTTON3,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT0);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON3,
+		DI_ONUP(DIMOFS_BUTTON3,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT0);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON4,
+		DI_ONDOWN(DIMOFS_BUTTON4,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT1);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON4,
+		DI_ONUP(DIMOFS_BUTTON4,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT1);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON5,
+		DI_ONDOWN(DIMOFS_BUTTON5,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT2);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON5,
+		DI_ONUP(DIMOFS_BUTTON5,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT2);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON6,
+		DI_ONDOWN(DIMOFS_BUTTON6,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT3);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON6,
+		DI_ONUP(DIMOFS_BUTTON6,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT3);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON7,
+		DI_ONDOWN(DIMOFS_BUTTON7,
 			if(MapperFunctions.MouseDown && Script::PrepareContext(MapperFunctions.MouseDown,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT4);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON7,
+		DI_ONUP(DIMOFS_BUTTON7,
 			if(MapperFunctions.MouseUp && Script::PrepareContext(MapperFunctions.MouseUp,__FUNCTION__,"Mapper"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT4);
@@ -1016,7 +1020,7 @@ void FOMapper::ParseMouse()
 		if(script_result || GameOpt.DisableMouseEvents) continue;
 
 		// Wheel
-		DI_ONMOUSE( DIMOFS_Z,
+		DI_ONMOUSE(DIMOFS_Z,
 			if(IntVisible && IsCurInRect(IntWWork,IntX,IntY) && (IsObjectMode() || IsTileMode() || IsCritMode()))
 			{
 				int step=1;
@@ -1072,38 +1076,45 @@ void FOMapper::ParseMouse()
 			);
 
 		// Middle down
-		DI_ONDOWN( DIMOFS_BUTTON2,
+		DI_ONDOWN(DIMOFS_BUTTON2,
 			CurMMouseDown();
 			continue;
 			);
 
 		// Left Button Down
-		DI_ONDOWN( DIMOFS_BUTTON0,
+		DI_ONDOWN(DIMOFS_BUTTON0,
 			IntLMouseDown();
 			continue;	
 		);
 
 		// Left Button Up
-		DI_ONUP( DIMOFS_BUTTON0,
+		DI_ONUP(DIMOFS_BUTTON0,
 			IntLMouseUp();
 			continue;
 		);
 
 		// Right Button Down
-		DI_ONDOWN( DIMOFS_BUTTON1,
+		DI_ONDOWN(DIMOFS_BUTTON1,
 			continue;
 		);
 
 		// Right Button Up
-		DI_ONUP( DIMOFS_BUTTON1,
+		DI_ONUP(DIMOFS_BUTTON1,
 			CurRMouseUp();
 			continue;
 		);
 	}
 
-	// Direct input move cursor in fulscreen mode
-	if(ismoved)
+	// Direct input move cursor in full screen mode
+	if(GameOpt.FullScreen && (fabs(ox)>=1.0f || fabs(oy)>=1.0f))
 	{
+		int oxi=(int)ox;
+		int oyi=(int)oy;
+		CurX+=oxi;
+		CurY+=oyi;
+		ox-=(float)oxi;
+		oy-=(float)oyi;
+
 		if(CurX>=MODE_WIDTH) CurX=MODE_WIDTH;
 		if(CurX<0) CurX=0;
 		if(CurY>=MODE_HEIGHT) CurY=MODE_HEIGHT;
@@ -1237,7 +1248,6 @@ void FOMapper::MainLoop()
 	if(HexMngr.IsMapLoaded())
 	{
 		HexMngr.DrawMap();
-		SprMngr.Flush();
 
 		// Texts on heads
 		if(DrawCrExtInfo)
@@ -1477,12 +1487,6 @@ void FOMapper::IntDraw()
 
 			SprMngr.DrawSpriteSize(spr_id,x,y,w,h/2,false,true,col);
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",pnpc->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
-
-// 			if(i==CurProto[IntMode])
-// 			{
-// 				sprintf(str,"%s",MsgItem->GetStr(proto_item->GetInfoId()));
-// 				FntMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),str,FT_COLORIZE);
-// 			}
 		}
 	}
 	else if(IntMode==INT_MODE_INCONT && !SelectedObj.empty())
@@ -1506,7 +1510,6 @@ void FOMapper::IntDraw()
 			if(mobj==InContObject) col=COLOR_IFACE_RED;
 
 			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h,false,true,col);
-			SprMngr.Flush();
 
 			DWORD cnt=(proto_item->IsGrouped()?mobj->MItem.Count:1);
 			if(proto_item->GetType()==ITEM_TYPE_AMMO && !cnt) cnt=proto_item->Ammo.StartCount;
@@ -1523,8 +1526,6 @@ void FOMapper::IntDraw()
 	}
 	else if(IntMode==INT_MODE_LIST)
 	{
-		SprMngr.Flush();
-
 		int i=ListScroll;
 		int j=LoadedProtoMaps.size();
 
@@ -1534,8 +1535,6 @@ void FOMapper::IntDraw()
 			SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),Str::Format("<%s>",pm->GetName()),0,pm==CurProtoMap?COLOR_IFACE_RED:COLOR_TEXT);
 		}
 	}
-
-	SprMngr.Flush();
 
 	switch(IntMode)
 	{
@@ -1585,8 +1584,6 @@ void FOMapper::ObjDraw()
 			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),x+w-ProtoWidth,y+ProtoWidth,ProtoWidth,ProtoWidth,false,true);
 		}
 	}
-
-	SprMngr.Flush();
 
 	int step=DRAW_NEXT_HEIGHT;
 	DWORD col=COLOR_TEXT;
@@ -2568,21 +2565,16 @@ void FOMapper::IntMouseMove()
 					int ty=max(SelectHY1,SelectHY2);
 
 					for(int i=fx;i<=tx;i++)
-					{
 						for(int j=fy;j<=ty;j++)
-						{
 							HexMngr.GetHexTrack(i,j)=1;
-						}
-					}
 				}
 				else if(SelectType==SELECT_TYPE_NEW)
 				{
 					WordPairVec h;
 					HexMngr.GetHexesRect(INTRECT(SelectHX1,SelectHY1,SelectHX2,SelectHY2),h);
+
 					for(int i=0,j=h.size();i<j;i++)
-					{
 						HexMngr.GetHexTrack(h[i].first,h[i].second)=1;
-					}
 				}
 			}
 			else if(CurMode==CUR_MODE_MOVE)
@@ -3469,8 +3461,6 @@ bool FOMapper::GetMouseHex(WORD& hx, WORD& hy)
 void FOMapper::ConsoleDraw()
 {
 	if(ConsoleEdit) SprMngr.DrawSprite(ConsolePic,IntX+ConsolePicX,(IntVisible?IntY:MODE_HEIGHT)+ConsolePicY);
-
-	SprMngr.Flush();
 
 	if(ConsoleEdit)
 	{
@@ -4882,8 +4872,8 @@ bool FOMapper::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
 	{
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
-		x+=GameOpt.ScrOx;
-		y+=GameOpt.ScrOy;
+		x+=GameOpt.ScrOx+16;
+		y+=GameOpt.ScrOy+6;
 		x/=GameOpt.SpritesZoom;
 		y/=GameOpt.SpritesZoom;
 		return true;
@@ -4981,6 +4971,11 @@ DWORD FOMapper::SScriptFunc::Global_GetSpriteCount(DWORD spr_id)
 	return anim?anim->CntFrm:0;
 }
 
+void FOMapper::SScriptFunc::Global_GetTextInfo(CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
+{
+	SprMngr.GetTextInfo(w,h,text.c_str(),font,flags,tw,th,lines);
+}
+
 void FOMapper::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color)
 {
 	if(!SpritesCanDraw || !spr_id) return;
@@ -5000,6 +4995,8 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, i
 void FOMapper::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags)
 {
 	if(!SpritesCanDraw) return;
+	if(!w && x<GameOpt.ScreenWidth) w=GameOpt.ScreenWidth-x;
+	if(!h && y<GameOpt.ScreenHeight) h=GameOpt.ScreenHeight-y;
 	SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
 }
 

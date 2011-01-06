@@ -232,8 +232,8 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 	ploc.IsInit=false;
 	city_txt.GetStr(key1,"name","",res);
 	ploc.Name=res;
-	ploc.MaxCopy=city_txt.GetInt(key1,"max_copy",0); // Max copy
-	ploc.Radius=city_txt.GetInt(key1,"size",24); // Radius
+	ploc.MaxPlayers=city_txt.GetInt(key1,"max_players",0);
+	ploc.Radius=city_txt.GetInt(key1,"size",24);
 
 	// Maps
 	ploc.ProtoMapPids.clear();
@@ -1775,6 +1775,12 @@ bool MapManager::GM_GroupToLoc(Critter* rule, DWORD loc_id, BYTE entrance, bool 
 		return false;
 	}
 
+	if(!force && !loc->IsCanEnter(rule->GroupSelf->GetSize()))
+	{
+		rule->Send_TextMsg(rule,STR_GLOBAL_PLAYERS_OVERFLOW,SAY_NETMSG,TEXTMSG_GAME);
+		return false;
+	}
+
 	if(!loc->GetMapsCount())
 	{
 		if(rule->IsPlayer()) ((Client*)rule)->EraseKnownLoc(loc_id);
@@ -2449,7 +2455,8 @@ bool MapManager::TransitToGlobal(Critter* cr, DWORD rule, BYTE follow_type, bool
 bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWORD radius, bool force)
 {
 	// Check location deletion
-	if(map && map->GetLocation(true)->Data.ToGarbage)
+	Location* loc=(map?map->GetLocation(true):NULL);
+	if(loc && loc->Data.ToGarbage)
 	{
 		WriteLog(__FUNCTION__" - Transfer to deleted location, critter<%s>.\n",cr->GetInfo());
 		return false;
@@ -2468,6 +2475,7 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWOR
 		if(cr->GetParam(TO_TRANSFER) || cr->GetParam(TO_BATTLE)) return false;
 		if(cr->IsDead()) return false;
 		if(cr->IsKnockout()) return false;
+		if(loc && !loc->IsCanEnter(1)) return false;
 	}
 
 	DWORD map_id=(map?map->GetId():0);

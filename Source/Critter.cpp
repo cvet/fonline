@@ -1406,7 +1406,10 @@ void Critter::ToKnockout(bool face_up, DWORD lose_ap, WORD knock_hx, WORD knock_
 
 void Critter::TryUpOnKnockout()
 {
+	// Critter lie on ground
 	if(GetParam(ST_CURRENT_HP)<=0) return;
+
+	// Subtract knockout ap
 	if(KnockoutAp)
 	{
 		int cur_ap=GetParam(ST_CURRENT_AP);
@@ -1416,7 +1419,11 @@ void Critter::TryUpOnKnockout()
 		KnockoutAp-=ap;
 		if(KnockoutAp) return;
 	}
-	else if(GetParam(ST_CURRENT_AP)<0) return;
+
+	// Wait when ap regenerated to zero
+	if(GetParam(ST_CURRENT_AP)<0) return;
+
+	// Stand up
 	Data.Cond=COND_LIFE;
 	Data.CondExt=COND_LIFE_NONE;
 	SendAA_Action(ACTION_STANDUP,0,NULL);

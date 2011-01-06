@@ -480,8 +480,8 @@
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobal(Critter@[]& group)",asFUNCTION(BIND_CLASS Crit_TransitToGlobalWithGroup),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobalGroup(uint critterId)",asFUNCTION(BIND_CLASS Crit_TransitToGlobalGroup),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
-	if(engine->RegisterObjectMethod("Critter","void AddScore(int score, int val)",asFUNCTION(BIND_CLASS Crit_AddScore),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	//if(engine->RegisterObjectMethod("Critter","void ClearScore(int score)",asFUNCTION(BIND_CLASS Cl_AddScore),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void AddScore(uint score, int val)",asFUNCTION(BIND_CLASS Crit_AddScore),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","int GetScore(uint score)",asFUNCTION(BIND_CLASS Crit_GetScore),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectMethod("Critter","void AddHolodiskInfo(uint holodiskNum)",asFUNCTION(BIND_CLASS Crit_AddHolodiskInfo),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EraseHolodiskInfo(uint holodiskNum)",asFUNCTION(BIND_CLASS Crit_EraseHolodiskInfo),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -1051,6 +1051,7 @@
 	if(engine->RegisterGlobalFunction("int GetSpriteWidth(uint sprId, int sprIndex)",asFUNCTION(BIND_CLASS Global_GetSpriteWidth),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetSpriteHeight(uint sprId, int sprIndex)",asFUNCTION(BIND_CLASS Global_GetSpriteHeight),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetSpriteCount(uint sprId)",asFUNCTION(BIND_CLASS Global_GetSpriteCount),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)",asFUNCTION(BIND_CLASS Global_GetTextInfo),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)",asFUNCTION(BIND_CLASS Global_DrawSprite),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)",asFUNCTION(BIND_CLASS Global_DrawSpriteSize),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)",asFUNCTION(BIND_CLASS Global_DrawText),asCALL_CDECL)<0) BIND_ERROR;
@@ -1504,6 +1505,7 @@
 	if(engine->RegisterGlobalFunction("int GetSpriteWidth(uint sprId, int sprIndex)",asFUNCTION(BIND_CLASS Global_GetSpriteWidth),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetSpriteHeight(uint sprId, int sprIndex)",asFUNCTION(BIND_CLASS Global_GetSpriteHeight),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetSpriteCount(uint sprId)",asFUNCTION(BIND_CLASS Global_GetSpriteCount),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)",asFUNCTION(BIND_CLASS Global_GetTextInfo),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)",asFUNCTION(BIND_CLASS Global_DrawSprite),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)",asFUNCTION(BIND_CLASS Global_DrawSpriteSize),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)",asFUNCTION(BIND_CLASS Global_DrawText),asCALL_CDECL)<0) BIND_ERROR;

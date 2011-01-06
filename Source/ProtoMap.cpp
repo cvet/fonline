@@ -550,7 +550,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 		Header.MaxHexX<1 || Header.MaxHexY<1) return false;
 
 	// Tiles
-	Tiles=new DWORD[GetTilesSize()/sizeof(DWORD)];
+	Tiles=new(nothrow) DWORD[GetTilesSize()/sizeof(DWORD)];
+	ZeroMemory(Tiles,GetTilesSize());
 	if(!Tiles) return false;
 	char* tiles_str=map_ini.GetApp(APP_TILES);
 	if(tiles_str)

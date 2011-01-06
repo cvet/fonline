@@ -452,6 +452,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static int Global_GetSpriteWidth(DWORD spr_id, int spr_index);
 		static int Global_GetSpriteHeight(DWORD spr_id, int spr_index);
 		static DWORD Global_GetSpriteCount(DWORD spr_id);
+		static void Global_GetTextInfo(CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines);
 		static void Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color);
 		static void Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color);
 		static void Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags);

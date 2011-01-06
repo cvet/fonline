@@ -122,7 +122,7 @@ void FOServer::ProcessCritter(Critter* cr)
 	}
 
 	// Knockout
-	if(cr->IsKnockout() && !cr->IsTurnBased()) cr->TryUpOnKnockout();
+	if(cr->IsKnockout()) cr->TryUpOnKnockout();
 
 	// Process changed parameters
 	cr->ProcessChangedParams();

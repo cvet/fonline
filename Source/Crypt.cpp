@@ -75,6 +75,27 @@ void CryptManager::TextXOR(char* data, DWORD len, char* xor, DWORD xor_len)
 	}
 }
 
+void CryptManager::EncryptPassword(char* data, DWORD len, DWORD key)
+{
+	static Randomizer rnd;
+	DWORD slen=strlen(data);
+	data[len-1]=slen;
+	for(DWORD i=slen;i<len-1;i++) data[i]=rnd.Random(1,255);
+	for(DWORD i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
+	XOR(data,len,(char*)&key,sizeof(key));
+	for(DWORD i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
+}
+
+void CryptManager::DecryptPassword(char* data, DWORD len, DWORD key)
+{
+	for(DWORD i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
+	XOR(data,len,(char*)&key,sizeof(key));
+	for(DWORD i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
+	DWORD slen=data[len-1];
+	for(DWORD i=slen;i<len;i++) data[i]=0;
+	data[len-1]=0;
+}
+
 BYTE* CryptManager::Compress(const BYTE* data, DWORD& data_len)
 {
 	DWORD buf_len=data_len*110/100+12;

@@ -17,6 +17,7 @@ extern bool ShiftDwn;
 extern bool CtrlDwn;
 extern bool AltDwn;
 extern bool KeyPressed[0x100];
+extern int KeysMap[0x100];
 
 void InitKeyb();
 void ClearKeyb();

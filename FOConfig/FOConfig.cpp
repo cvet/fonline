@@ -84,13 +84,14 @@ void TMainForm::Serialize(bool save)
 	SE_INT(CbInvertMessBox->State,"InvertMessBox",0,1,0);
 	SE_INT(CbLogging->State,"Logging",0,1,1);
 	SE_INT(CbLoggingTime->State,"LoggingTime",0,1,0);
-	SE_INT(SeSleep->Value,"Sleep",0,10,1);
+	SE_INT(SeSleep->Value,"Sleep",-1,100,0);
 	SE_INT(SeScrollDelay->Value,"ScrollDelay",1,32,4);
 	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,32);
-	SE_INT(SeMouseSpeed->Value,"MouseSpeed",1,5,1);
+	SE_INT(SeMouseSpeed->Value,"MouseSpeed",10,1000,100);
 	SE_INT(SeTextDelay->Value,"TextDelay",1000,30000,3000);
 	SE_RBTN(RbCtrlShift,"LangChange",0,0);
 	SE_RBTN(RbAltShift,"LangChange",1,0);
+	SE_INT(CbAlwaysRun->State,"AlwaysRun",0,1,0);
 	SE_STR(EditMasterPath->Text,"MasterDatPath","master.dat");
 	SE_STR(EditCritterPath->Text,"CritterDatPath","critter.dat");
 	SE_COMBO(CbServerHost,"RemoteHost","localhost");
@@ -106,8 +107,8 @@ void TMainForm::Serialize(bool save)
 	SE_INTSTR(CbScreenWidth->Text,"ScreenWidth",100,10000,800);
 	SE_INTSTR(CbScreenHeight->Text,"ScreenHeight",100,10000,600);
 	SE_INT(SeLight->Value,"Light",0,50,20);
-	SE_INT(SeSprites->Value,"FlushValue",1,1000,50);
-	SE_INT(SeTexture->Value,"BaseTexture",128,8192,512);
+	SE_INT(SeSprites->Value,"FlushValue",1,1000,100);
+	SE_INT(SeTexture->Value,"BaseTexture",128,8192,1024);
 	SE_INT(CbFullScreen->State,"FullScreen",0,1,0);
 	SE_INT(CbClearScreen->State,"BackGroundClear",0,1,0);
 	SE_INT(CbVSync->State,"VSync",0,1,0);
@@ -139,7 +140,7 @@ void TMainForm::Translate()
 {
 	if(Lang=="russ") RbRussian->Checked=true;
 	else RbEnglish->Checked=true;
-	TR_(MainForm,"FOnline конфигуратор   v2.2.0","FOnline configurator   v2.2.0");
+	TR_(MainForm,"FOnline конфигуратор   v2.3.0","FOnline configurator   v2.3.0");
 	TR_(BtnExecute,"Играть","Play");
 	TR_(BtnParse,"Сохранить","Save");
 	TR_(BtnExit,"Выход","Exit");
@@ -158,8 +159,9 @@ void TMainForm::Translate()
 	TR_(GbGame,"Игра","Game");
 	TR_(LabelScrollDelay,"Задержка скроллинга","Scroll delay");
 	TR_(LabelScrollStep,"Шаг скроллинга","Scroll step");
-	TR_(LabelMouseSpeed,"Скорость мышки","Mouse speed");
+	TR_(LabelMouseSpeed,"Скорость мышки (%)","Mouse speed (%)");
 	TR_(LabelTextDelay,"Время задержки текста (мс)","Text delay (ms)");
+	TR_(CbAlwaysRun,"Постоянный бег","Always run");
 	TR_(GbLangSwitch,"Переключение раскладки","Keyboard language switch");
 	TR_(RbCtrlShift,"Ctrl + Shift","Ctrl + Shift");
 	TR_(RbAltShift,"Alt + Shift","Alt + Shift");

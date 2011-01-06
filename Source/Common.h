@@ -200,6 +200,7 @@ struct ClientScriptFunctions
 	int InMessage;
 	int OutMessage;
 	int ToHit;
+	int HitAim;
 	int CombatResult;
 	int GenericDesc;
 	int ItemLook;
@@ -500,8 +501,6 @@ struct GameOptions
 	int MasterPathRefCounter;
 	string CritterPath;
 	int CritterPathRefCounter;
-	string FoPatchPath;         // Todo: can be removed
-	int FoPatchPathRefCounter;
 	string FoDataPath;
 	int FoDataPathRefCounter;
 	int Sleep;
@@ -541,6 +540,8 @@ struct GameOptions
 	bool AlwaysRun;
 	DWORD AlwaysRunMoveDist;
 	DWORD AlwaysRunUseDist;
+	string KeyboardRemap;
+	int KeyboardRemapRefCounter;
 
 	// Mapper
 	string ClientPath;

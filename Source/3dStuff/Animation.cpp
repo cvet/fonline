@@ -128,28 +128,42 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 
 		// Get unused layers and subsets
 		bool unused_layers[LAYERS3D_COUNT]={0};
-		for(int i=-1;i<LAYERS3D_COUNT;i++)
+		for(int i=0;i<LAYERS3D_COUNT;i++)
 		{
-			if(i<0 || layers[i]!=0)
+			if(layers[i]==0) continue;
+
+			for(AnimParamsVecIt it=animEntity->animData.begin(),end=animEntity->animData.end();it!=end;++it)
 			{
-				for(AnimParamsVecIt it=animEntity->animData.begin(),end=animEntity->animData.end();it!=end;++it)
+				AnimParams& link=*it;
+				if(link.Layer==i && link.LayerValue==layers[i] && !link.ChildFName)
 				{
-					AnimParams& link=*it;
-					if(link.Layer==i && (i<0 || link.LayerValue==layers[i]) && !link.ChildFName)
+					for(int j=0;j<link.DisabledLayersCount;j++)
 					{
-						for(int j=0;j<link.DisabledLayersCount;j++)
-						{
-							unused_layers[link.DisabledLayers[j]]=true;
-						}
-						for(int j=0;j<link.DisabledSubsetsCount;j++)
-						{
-							int mesh_ss=link.DisabledSubsets[j]%100;
-							int mesh_num=link.DisabledSubsets[j]/100;
-							if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount)
-								meshOpt[mesh_num].DisabledSubsets[mesh_ss]=true;
-						}
+						unused_layers[link.DisabledLayers[j]]=true;
+					}
+					for(int j=0;j<link.DisabledSubsetsCount;j++)
+					{
+						int mesh_ss=link.DisabledSubsets[j]%100;
+						int mesh_num=link.DisabledSubsets[j]/100;
+						if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount)
+							meshOpt[mesh_num].DisabledSubsets[mesh_ss]=true;
 					}
 				}
+			}
+		}
+
+		if(parentFrame)
+		{
+			for(int j=0;j<animLink.DisabledLayersCount;j++)
+			{
+				unused_layers[animLink.DisabledLayers[j]]=true;
+			}
+			for(int j=0;j<animLink.DisabledSubsetsCount;j++)
+			{
+				int mesh_ss=animLink.DisabledSubsets[j]%100;
+				int mesh_num=animLink.DisabledSubsets[j]/100;
+				if(mesh_num<meshOpt.size() && mesh_ss<meshOpt[mesh_num].SubsetsCount)
+					meshOpt[mesh_num].DisabledSubsets[mesh_ss]=true;
 			}
 		}
 
@@ -253,7 +267,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		// Alternate tracks
 		DWORD new_track=(currentTrack==0?1:0);
 		double period=set->GetPeriod();
-		if(FLAG(flags,ANIMATION_INIT)) period=0.001f;
+		if(FLAG(flags,ANIMATION_INIT)) period=0.0001;
 
 		// Assign to our track
 		animController->SetTrackAnimationSet(new_track,set);
@@ -265,8 +279,9 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		animController->ResetTime();
 
 		// Smooth time
-		double smooth_time=(FLAG(flags,ANIMATION_NO_SMOOTH) || FLAG(flags,ANIMATION_INIT)?0.001f:MoveTransitionTime);
+		double smooth_time=(FLAG(flags,ANIMATION_NO_SMOOTH|ANIMATION_STAY|ANIMATION_INIT)?0.0001:MoveTransitionTime);
 		double start_time=(period*CLAMP(period_proc,0.0,100.0)/100.0);
+		if(FLAG(flags,ANIMATION_STAY)) period=start_time+0.0002;
 
 		// Add an event key to disable the currently playing track smooth_time seconds in the future
 		animController->KeyTrackEnable(currentTrack,FALSE,smooth_time);
@@ -280,8 +295,8 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		animController->SetTrackPosition(new_track,start_time);
 		// Add an event key to set the speed of the track
 		animController->KeyTrackSpeed(new_track,1.0f,0.0,smooth_time,D3DXTRANSITION_LINEAR);
-		if(FLAG(flags,ANIMATION_ONE_TIME) || FLAG(flags,ANIMATION_STAY) || FLAG(flags,ANIMATION_INIT))
-			animController->KeyTrackSpeed(new_track,0.0f,period-0.001,0.0,D3DXTRANSITION_LINEAR);
+		if(FLAG(flags,ANIMATION_ONE_TIME|ANIMATION_STAY|ANIMATION_INIT))
+			animController->KeyTrackSpeed(new_track,0.0f,period-0.0001,0.0,D3DXTRANSITION_LINEAR);
 		// Add an event to change the weighting of the current track (the effect it has blended with the first track)
 		// As you can see this will go from 0 effect to total effect(1.0f) in smooth_time seconds and the first track goes from 
 		// total to 0.0f in the same time.
@@ -304,7 +319,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		if(AnimDelay)
 		{
 			lastTick=tick+1;
-			animController->AdvanceTime(0.001,NULL);
+			animController->AdvanceTime(0.0001,NULL);
 		}
 
 		// Borders
@@ -1574,7 +1589,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 						link->DisabledSubsets=new int[link->DisabledSubsetsCount+1];
 						for(int h=0;h<link->DisabledSubsetsCount;h++) link->DisabledSubsets[h]=tmp[h];
 						if(tmp) delete[] tmp;
-						link->DisabledSubsets[link->DisabledSubsetsCount]=ss;
+						link->DisabledSubsets[link->DisabledSubsetsCount]=mesh*100+ss;
 						link->DisabledSubsetsCount++;
 					}
 				}

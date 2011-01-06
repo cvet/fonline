@@ -655,6 +655,7 @@ struct BindClass
 	static void Crit_RefreshVisible(){}
 	static void Crit_ViewMap(){}
 	static void Crit_AddScore(){}
+	static void Crit_GetScore(){}
 	static void Crit_AddHolodiskInfo(){}
 	static void Crit_EraseHolodiskInfo(){}
 	static void Crit_IsHolodiskInfo(){}
@@ -1139,6 +1140,7 @@ struct BindClass
 	static void Global_GetSpriteWidth(){}
 	static void Global_GetSpriteHeight(){}
 	static void Global_GetSpriteCount(){}
+	static void Global_GetTextInfo(){}
 	static void Global_DrawSprite(){}
 	static void Global_DrawSpriteSize(){}
 	static void Global_DrawText(){}

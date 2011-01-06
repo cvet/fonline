@@ -1889,6 +1889,12 @@ void Map::EndTurnBased()
 
 void Map::ProcessTurnBased()
 {
+	if(!IsTurnBasedTimeout)
+	{
+		Critter* cr=GetCritter(GetCritterTurnId(),true);
+		if(!cr || (cr->IsDead() || cr->GetAllAp()<=0 || cr->GetParam(ST_CURRENT_HP)<=0)) EndCritterTurn();
+	}
+
 	if(Timer::GameTick()>=TurnBasedEndTick)
 	{
 		IsTurnBasedTimeout=!IsTurnBasedTimeout;
@@ -1911,7 +1917,8 @@ DWORD Map::GetCritterTurnId()
 
 DWORD Map::GetCritterTurnTime()
 {
-	return TurnBasedEndTick-Timer::GameTick();
+	DWORD tick=Timer::GameTick();
+	return TurnBasedEndTick>tick?TurnBasedEndTick-tick:0;
 }
 
 void Map::EndCritterTurn()
@@ -2186,6 +2193,18 @@ bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE
 	if(ori>5) ori=Random(0,5);
 	if(hx>=to_map->GetMaxHexX() || hy>=to_map->GetMaxHexY() || ori>5) return false;
 	return true;
+}
+
+bool Location::IsCanEnter(DWORD players_count)
+{
+	if(!Proto->MaxPlayers) return true;
+
+	for(MapVecIt it=locMaps.begin(),end=locMaps.end();it!=end;++it)
+	{
+		Map* map=*it;
+		players_count+=map->GetPlayersCount();
+	}
+	return players_count<=Proto->MaxPlayers;
 }
 
 bool Location::IsNoCrit()

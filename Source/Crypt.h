@@ -25,6 +25,10 @@ public:
 	// Xor the data
 	void XOR(char* data, DWORD len, char* xor, DWORD xor_len);
 
+	// Password encrypt
+	void EncryptPassword(char* data, DWORD len, DWORD key);
+	void DecryptPassword(char* data, DWORD len, DWORD key);
+
 	// Xor the text
 	void TextXOR(char* data, DWORD len, char* xor, DWORD xor_len);
 

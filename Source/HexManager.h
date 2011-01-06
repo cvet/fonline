@@ -157,6 +157,7 @@ private:
 	char* hexTrack;
 	DWORD picTrack1;
 	DWORD picTrack2;
+	DWORD picHexMask;
 	bool isShowTrack;
 	bool isShowHex;
 	DWORD hexWhite,hexBlue;

@@ -210,41 +210,24 @@ LRESULT APIENTRY WndProc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 		if(wparam==VK_F12)
 		{
 			ShowWindow(Wnd,SW_MINIMIZE);
-			/*if(OptFullScr) SendMessage(Wnd,WM_ACTIVATE,WA_INACTIVE,NULL);
-			else
-			{
-				FOEngine->DoLost();
-				ShowWindow(Wnd,SW_MINIMIZE);
-				UpdateWindow(Wnd);
-			}*/
 			return 0;
 		}
 		break;
 	case WM_SHOWWINDOW:
 		if(GameOpt.AlwaysOnTop) SetWindowPos(Wnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
 		break;
-	/*case WM_ACTIVATE:
-		if(LOWORD(wparam)==WA_INACTIVE && !HIWORD(wparam))
+	case WM_SIZE:
+		if(!GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio)
 		{
-			if(!FOEngine) break;
-			if(!OptFullScr) break;
-			FOEngine->DoLost();
-			ShowWindow(Wnd,SW_MINIMIZE);
-			UpdateWindow(Wnd);
+			if(wparam==SIZE_MINIMIZED) FOEngine->BasicAudio->put_Volume(-10000);
+			else if(wparam==SIZE_RESTORED) FOEngine->BasicAudio->put_Volume(0);
 		}
-		else if((LOWORD(wparam)==WA_ACTIVE || LOWORD(wparam)==WA_CLICKACTIVE))
-		{
-			if(!FOEngine) break;
-			FOEngine->Restore();
-			FOEngine->RestoreDI();
-		}
-		break;*/
-
+		break;
 	case WM_ACTIVATE:
 		if(!GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio)
 		{
 			if(LOWORD(wparam)==WA_INACTIVE && !HIWORD(wparam)) FOEngine->BasicAudio->put_Volume(-10000);
-			else if((LOWORD(wparam)==WA_ACTIVE || LOWORD(wparam)==WA_CLICKACTIVE)) FOEngine->BasicAudio->put_Volume(0);
+			else if(LOWORD(wparam)==WA_ACTIVE || LOWORD(wparam)==WA_CLICKACTIVE) FOEngine->BasicAudio->put_Volume(0);
 		}
 		break;
 	case WM_FLASH_WINDOW:

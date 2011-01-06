@@ -1522,10 +1522,14 @@ void CritterCl::SetBaseType(DWORD type)
 	BaseType=type;
 	BaseTypeAlias=CritType::GetAlias(type);
 
-	// Check 3d aviability
-	Anim3d=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
-	if(Anim3d)
+	// Check 3d availability
+	Animation3d* anim3d=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+	if(anim3d)
 	{
+		SAFEDEL(Anim3d);
+		SAFEDEL(Anim3dStay);
+
+		Anim3d=anim3d;
 		Anim3dStay=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 
 		Anim3d->SetDir(CrDir);
@@ -1542,6 +1546,8 @@ void CritterCl::SetBaseType(DWORD type)
 		if(!Layers3d) Layers3d=new int[LAYERS3D_COUNT];
 		ZeroMemory(Layers3d,LAYERS3D_COUNT*sizeof(int));
 #endif
+
+		Anim3d->SetAnimation(ANIM1_UNARMED,ANIM2_3D_IDLE,GetLayers3dData(),0);
 	}
 
 	// Allow influence of scale factor

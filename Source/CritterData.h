@@ -41,7 +41,7 @@ struct CritData
 	bool ClientToDelete;
 	BYTE Reserved5;
 	WORD Reserved6;
-	DWORD Reserved7;
+	DWORD Temp;
 	WORD Reserved8;
 	WORD HoloInfoCount;
 	DWORD HoloInfo[MAX_HOLO_INFO];

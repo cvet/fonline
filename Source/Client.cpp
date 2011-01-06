@@ -111,6 +111,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==68);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
+	STATIC_ASSERT(sizeof(GameOptions)==1120);
 
 	GET_UID0(UID0);
 	Wnd=hwnd;
@@ -393,6 +394,7 @@ int FOClient::InitDInput()
 		WriteLog("Can't create GUID_SysMouse.\n");
 		return false;
 	}
+
     // Set the data format to "keyboard format" - a predefined data format 
     // This tells DirectInput that we will be passing an array
     // of 256 bytes to IDirectInputDevice::GetDeviceState.
@@ -410,16 +412,14 @@ int FOClient::InitDInput()
 		return false;
 	}
 
-
-    hr=Keyboard->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    hr=Keyboard->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|DISCL_NONEXCLUSIVE);
 	if(hr!=DI_OK)
 	{
 		WriteLog("Unable to set cooperative level for keyboard.\n");
 		return false;
 	}
 
-	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | (GameOpt.FullScreen?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
-//	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_EXCLUSIVE);
+	hr=Mouse->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|(GameOpt.FullScreen?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
 	if(hr!=DI_OK)
 	{
 		WriteLog("Unable to set cooperative level for mouse.\n");
@@ -1007,7 +1007,7 @@ void FOClient::ParseKeyboard()
 	if(/*GetTopWindow(NULL)!=Wnd || */Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0)!=DI_OK)
 	{
 		Keyboard->Acquire();
-		Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); //Clear buffer
+		Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); // Clear buffer
 		Keyb::Lost();
 		Timer::StartAccelerator(ACCELERATE_NONE);
 		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
@@ -1022,8 +1022,8 @@ void FOClient::ParseKeyboard()
 
 	for(int i=0;i<elements;i++) 
 	{
-		BYTE dikdw=(didod[i].dwData&0x80?didod[i].dwOfs:0);
-		BYTE dikup=(!(didod[i].dwData&0x80)?didod[i].dwOfs:0);
+		BYTE dikdw=Keyb::KeysMap[(didod[i].dwData&0x80?didod[i].dwOfs:0)&0xFF];
+		BYTE dikup=Keyb::KeysMap[(!(didod[i].dwData&0x80)?didod[i].dwOfs:0)&0xFF];
 
 		if(IsVideoPlayed())
 		{
@@ -1269,7 +1269,7 @@ void FOClient::ParseMouse()
 	if(Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0)!=DI_OK)
 	{
 		Mouse->Acquire();
-		Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); //Clear buffer
+		Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); // Clear buffer
 		IfaceHold=IFACE_NONE;
 		Timer::StartAccelerator(ACCELERATE_NONE);
 		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
@@ -1374,15 +1374,16 @@ void FOClient::ParseMouse()
 		}	
 	}
 
-	bool ismoved=false;
+	static float ox=0.0f,oy=0.0f;
+	float speed=(float)GameOpt.MouseSpeed/100.0f;
 	for(int i=0;i<elements;i++) 
 	{
 		// Mouse Move
 		// Direct input move cursor in full screen mode
 		if(GameOpt.FullScreen)
 		{
-			DI_ONMOUSE( DIMOFS_X, CurX+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
-			DI_ONMOUSE( DIMOFS_Y, CurY+=didod[i].dwData*GameOpt.MouseSpeed; ismoved=true; continue;);
+			DI_ONMOUSE(DIMOFS_X, ox+=(float)(int)didod[i].dwData*speed; continue;);
+			DI_ONMOUSE(DIMOFS_Y, oy+=(float)(int)didod[i].dwData*speed; continue;);
 		}
 
 		if(IsVideoPlayed())
@@ -1399,49 +1400,49 @@ void FOClient::ParseMouse()
 
 		// Scripts
 		bool script_result=false;
-		DI_ONMOUSE( DIMOFS_Z,
+		DI_ONMOUSE(DIMOFS_Z,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON0,
+		DI_ONDOWN(DIMOFS_BUTTON0,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_LEFT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON0,
+		DI_ONUP(DIMOFS_BUTTON0,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_LEFT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON1,
+		DI_ONDOWN(DIMOFS_BUTTON1,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_RIGHT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON1,
+		DI_ONUP(DIMOFS_BUTTON1,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_RIGHT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON2,
+		DI_ONDOWN(DIMOFS_BUTTON2,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON2,
+		DI_ONUP(DIMOFS_BUTTON2,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
@@ -1457,70 +1458,70 @@ void FOClient::ParseMouse()
 				}
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON3,
+		DI_ONDOWN(DIMOFS_BUTTON3,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT0);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON3,
+		DI_ONUP(DIMOFS_BUTTON3,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT0);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON4,
+		DI_ONDOWN(DIMOFS_BUTTON4,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT1);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON4,
+		DI_ONUP(DIMOFS_BUTTON4,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT1);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON5,
+		DI_ONDOWN(DIMOFS_BUTTON5,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT2);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON5,
+		DI_ONUP(DIMOFS_BUTTON5,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT2);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON6,
+		DI_ONDOWN(DIMOFS_BUTTON6,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT3);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON6,
+		DI_ONUP(DIMOFS_BUTTON6,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT3);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONDOWN( DIMOFS_BUTTON7,
+		DI_ONDOWN(DIMOFS_BUTTON7,
 			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT4);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
-		DI_ONUP( DIMOFS_BUTTON7,
+		DI_ONUP(DIMOFS_BUTTON7,
 			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
 			{
 				Script::SetArgDword(MOUSE_CLICK_EXT4);
@@ -1532,13 +1533,13 @@ void FOClient::ParseMouse()
 		if(IsCurMode(CUR_WAIT)) continue;
 
 		// Wheel
-		DI_ONMOUSE( DIMOFS_Z,
+		DI_ONMOUSE(DIMOFS_Z,
 			ProcessMouseWheel((int)didod[i].dwData);
 			continue;
 		);
 
 		// Left Button Down
-		DI_ONDOWN( DIMOFS_BUTTON0,
+		DI_ONDOWN(DIMOFS_BUTTON0,
 			if(GetActiveScreen())
 			{
 				switch(GetActiveScreen())
@@ -1589,7 +1590,7 @@ void FOClient::ParseMouse()
 		);
 
 		// Left Button Up
-		DI_ONUP( DIMOFS_BUTTON0,
+		DI_ONUP(DIMOFS_BUTTON0,
 			if(GetActiveScreen())
 			{
 				switch(GetActiveScreen())
@@ -1639,7 +1640,7 @@ void FOClient::ParseMouse()
 		);
 
 		// Right Button Down
-		DI_ONDOWN( DIMOFS_BUTTON1,
+		DI_ONDOWN(DIMOFS_BUTTON1,
 			if(GetActiveScreen())
 			{
 				switch(GetActiveScreen())
@@ -1666,7 +1667,7 @@ void FOClient::ParseMouse()
 		);
 
 		// Right Button Up
-		DI_ONUP( DIMOFS_BUTTON1,
+		DI_ONUP(DIMOFS_BUTTON1,
 			if(!GetActiveScreen())
 			{
 				switch(GetMainScreen())
@@ -1681,8 +1682,15 @@ void FOClient::ParseMouse()
 	}
 
 	// Direct input move cursor in full screen mode
-	if(ismoved)
+	if(GameOpt.FullScreen && (fabs(ox)>=1.0f || fabs(oy)>=1.0f))
 	{
+		int oxi=(int)ox;
+		int oyi=(int)oy;
+		CurX+=oxi;
+		CurY+=oyi;
+		ox-=(float)oxi;
+		oy-=(float)oyi;
+
 		if(CurX>=MODE_WIDTH) CurX=MODE_WIDTH-1;
 		if(CurX<0) CurX=0;
 		if(CurY>=MODE_HEIGHT) CurY=MODE_HEIGHT-1;
@@ -7552,9 +7560,6 @@ label_EndMove:
 				item->Init(proto_item);
 			}
 
-			// Calculate ap cost
-			int ap_cost=Chosen->GetUseApCost(item,rate);
-
 			// Find target
 			CritterCl* target_cr=NULL;
 			ItemHex* target_item=NULL;
@@ -7579,6 +7584,21 @@ label_EndMove:
 			bool is_reload=(target_type==TARGET_SELF_ITEM && use==USE_RELOAD && item->IsWeapon());
 			bool is_self=(target_type==TARGET_SELF || target_type==TARGET_SELF_ITEM);
 			if(!is_attack && !is_reload && (IsCurMode(CUR_USE_ITEM) || IsCurMode(CUR_USE_WEAPON))) SetCurMode(CUR_DEFAULT);
+
+			// Aim overriding
+			if(is_attack && ClientFunctions.HitAim && Script::PrepareContext(ClientFunctions.HitAim,CALL_FUNC_STR,"Game"))
+			{
+				BYTE new_aim=aim;
+				Script::SetArgAddress(&new_aim);
+				if(Script::RunPrepared() && new_aim!=aim)
+				{
+					aim=new_aim;
+					rate=MAKE_ITEM_MODE(use,aim);
+				}
+			}
+
+			// Calculate ap cost
+			int ap_cost=Chosen->GetUseApCost(item,rate);
 
 			// Check weapon
 			if(is_attack)
@@ -7710,7 +7730,6 @@ label_EndMove:
 			else Chosen->Action(ACTION_USE_ITEM,0,item);
 
 			Chosen->SubAp(ap_cost);
-			//WaitPing(); TODO: need???
 
 			if(is_attack && !aim && Keyb::ShiftDwn) // Continue battle after attack
 			{
@@ -8802,6 +8821,9 @@ void FOClient::PlayVideo(ShowVideo& video)
 	// Run the graph.
 	CHECK_VIDEO_HR(MediaControl->Run());
 
+	// Check global sound
+	if(!GameOpt.GlobalSound && GetActiveWindow()!=Wnd) BasicAudio->put_Volume(-10000);
+
 	// Start sound
 	if(video.SoundName!="")
 	{
@@ -9093,6 +9115,7 @@ bool FOClient::ReloadScripts()
 		{&ClientFunctions.InMessage,"in_message","bool %s(string&,int&,uint&,uint&)"},
 		{&ClientFunctions.OutMessage,"out_message","bool %s(string&,int&)"},
 		{&ClientFunctions.ToHit,"to_hit","int %s(CritterCl&,CritterCl&,ProtoItem&,uint8)"},
+		{&ClientFunctions.HitAim,"hit_aim","void %s(uint8&)"},
 		{&ClientFunctions.CombatResult,"combat_result","void %s(uint[]&)"},
 		{&ClientFunctions.GenericDesc,"generic_description","string %s(int,int&,int&)"},
 		{&ClientFunctions.ItemLook,"item_description","string %s(ItemCl&,int)"},
@@ -10413,6 +10436,11 @@ DWORD FOClient::SScriptFunc::Global_GetSpriteCount(DWORD spr_id)
 	return anim?anim->CntFrm:0;
 }
 
+void FOClient::SScriptFunc::Global_GetTextInfo(CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
+{
+	SprMngr.GetTextInfo(w,h,text.c_str(),font,flags,tw,th,lines);
+}
+
 void FOClient::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color)
 {
 	if(!SpritesCanDraw || !spr_id) return;
@@ -10432,6 +10460,8 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, i
 void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags)
 {
 	if(!SpritesCanDraw) return;
+	if(!w && x<GameOpt.ScreenWidth) w=GameOpt.ScreenWidth-x;
+	if(!h && y<GameOpt.ScreenHeight) h=GameOpt.ScreenHeight-y;
 	SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),text.c_str(),flags,color,font);
 }
 
@@ -10681,8 +10711,8 @@ bool FOClient::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
 	{
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
-		x+=GameOpt.ScrOx;
-		y+=GameOpt.ScrOy;
+		x+=GameOpt.ScrOx+16;
+		y+=GameOpt.ScrOy+6;
 		x/=GameOpt.SpritesZoom;
 		y/=GameOpt.SpritesZoom;
 		return true;

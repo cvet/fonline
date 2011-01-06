@@ -480,9 +480,9 @@ void GetClientOptions()
 	GameOpt.ScrollStep=cfg.GetInt(CLIENT_CONFIG_APP,"ScrollStep",32);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.ScrollStep,"-ScrollStep");
 	GETOPTIONS_CHECK(GameOpt.ScrollStep,4,32,32);
-	GameOpt.MouseSpeed=cfg.GetInt(CLIENT_CONFIG_APP,"MouseSpeed",1);
+	GameOpt.MouseSpeed=cfg.GetInt(CLIENT_CONFIG_APP,"MouseSpeed",100);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.MouseSpeed,"-MouseSpeed");
-	GETOPTIONS_CHECK(GameOpt.MouseSpeed,1,5,1);
+	GETOPTIONS_CHECK(GameOpt.MouseSpeed,10,1000,100);
 	GameOpt.TextDelay=cfg.GetInt(CLIENT_CONFIG_APP,"TextDelay",3000);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.TextDelay,"-TextDelay");
 	GETOPTIONS_CHECK(GameOpt.TextDelay,1000,3000,30000);
@@ -586,6 +586,9 @@ void GetClientOptions()
 	cfg.GetStr(CLIENT_CONFIG_APP,"UserPass","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-UserPass");
 	GameOpt.Pass=buf;
+	cfg.GetStr(CLIENT_CONFIG_APP,"KeyboardRemap","",buf);
+	GETOPTIONS_CMD_LINE_STR(buf,"-KeyboardRemap");
+	GameOpt.KeyboardRemap=buf;
 
 	// Logging
 	bool logging=cfg.GetInt(CLIENT_CONFIG_APP,"Logging",1)!=0;
@@ -985,15 +988,13 @@ GameOptions::GameOptions()
 	ScrollDelay=0;
 	ScrollStep=1;
 	ScrollCheck=true;
-	MouseSpeed=1;
+	MouseSpeed=100;
 	GlobalSound=true;
-	MasterPath;
+	MasterPath="";
 	MasterPathRefCounter=1;
-	CritterPath;
+	CritterPath="";
 	CritterPathRefCounter=1;
-	FoPatchPath;
-	FoPatchPathRefCounter=1;
-	FoDataPath;
+	FoDataPath="";
 	FoDataPathRefCounter=1;
 	Sleep=0;
 	MsgboxInvert=false;
@@ -1032,6 +1033,8 @@ GameOptions::GameOptions()
 	AlwaysRun=false;
 	AlwaysRunMoveDist=1;
 	AlwaysRunUseDist=5;
+	KeyboardRemap="";
+	KeyboardRemapRefCounter=1;
 
 	// Mapper
 	ClientPath=".\\";

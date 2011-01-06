@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Keyboard.h"
-
+#include <strstream>
 
 namespace Keyb
 {
@@ -21,6 +21,7 @@ namespace Keyb
 	bool CtrlDwn=false;
 	bool AltDwn=false;
 	bool KeyPressed[0x100]={0};
+	int KeysMap[0x100]={0};
 }
 
 void Keyb::InitKeyb()
@@ -94,6 +95,19 @@ void Keyb::InitKeyb()
 	Data[DIK_NUMPADENTER]=	KeybData('\n','\n','\n','\n');
 	Data[DIK_TAB]=			KeybData('\t','\t','\t','\t');
 	Data[DIK_BACKSLASH]=	KeybData('\\','\\','\\','\\');
+
+	// Keys remapping
+	for(int i=0;i<0x100;i++) KeysMap[i]=i;
+	istrstream str(GameOpt.KeyboardRemap.c_str());
+	while(!str.eof())
+	{
+		int from,to;
+		str >> from >> to;
+		if(str.fail()) break;
+		from&=0xFF;
+		to&=0xFF;
+		KeysMap[from]=to;
+	}
 }
 
 void Keyb::ClearKeyb()
