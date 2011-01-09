@@ -636,8 +636,8 @@ int FOClient::InitIface()
 	IfaceLoadRect2(GmapBCha,"GmapCha",GmapX,GmapY);
 	IfaceLoadRect2(GmapBPip,"GmapPip",GmapX,GmapY);
 	IfaceLoadRect2(GmapBFix,"GmapFix",GmapX,GmapY);
-	GmapMapScrX=GmapWMap.W()/2+GmapWMap.L;
-	GmapMapScrY=GmapWMap.H()/2+GmapWMap.T;
+	GmapOffsetX=GmapWMap.W()/2+GmapWMap.L;
+	GmapOffsetY=GmapWMap.H()/2+GmapWMap.T;
 	IfaceLoadRect2(GmapWLock,"GmapLock",GmapX,GmapY);
 	GmapWNameStepX=IfaceIni.GetInt("GmapNameStepX",0);
 	GmapWNameStepY=IfaceIni.GetInt("GmapNameStepY",22);
@@ -5185,12 +5185,19 @@ void FOClient::LmapLMouseUp()
 //******************************************************************************************************************************
 //==============================================================================================================================
 
+bool FOClient::GmapActive;
+float FOClient::GmapZoom;
+int FOClient::GmapOffsetX,FOClient::GmapOffsetY;
+int FOClient::GmapGroupX,FOClient::GmapGroupY,FOClient::GmapMoveX,FOClient::GmapMoveY;
+float FOClient::GmapSpeedX,FOClient::GmapSpeedY;
+bool FOClient::GmapWait;
+
 #define GMAP_CHECK_MAPSCR \
 	do{\
-		if(GmapMapScrX>GmapWMap[0]) GmapMapScrX=GmapWMap[0];\
-		if(GmapMapScrY>GmapWMap[1]) GmapMapScrY=GmapWMap[1];\
-		if(GmapMapScrX<GmapWMap[2]-GM_MAXX/GmapZoom) GmapMapScrX=GmapWMap[2]-GM_MAXX/GmapZoom;\
-		if(GmapMapScrY<GmapWMap[3]-GM_MAXY/GmapZoom) GmapMapScrY=GmapWMap[3]-GM_MAXY/GmapZoom;\
+		if(GmapOffsetX>GmapWMap[0]) GmapOffsetX=GmapWMap[0];\
+		if(GmapOffsetY>GmapWMap[1]) GmapOffsetY=GmapWMap[1];\
+		if(GmapOffsetX<GmapWMap[2]-GM_MAXX/GmapZoom) GmapOffsetX=GmapWMap[2]-GM_MAXX/GmapZoom;\
+		if(GmapOffsetY<GmapWMap[3]-GM_MAXY/GmapZoom) GmapOffsetY=GmapWMap[3]-GM_MAXY/GmapZoom;\
 	}while(0)
 
 #define GMAP_LOC_ALPHA   (60)
@@ -5212,14 +5219,14 @@ void FOClient::GmapNullParams()
 	SAFEREL(GmapCar.Car);
 	GmapCar.MasterId=0;
 	GmapFog.Fill(0);
-	GmapIsProc=false;
+	GmapActive=false;
 	ClearCritters();
 	GmapTrace.clear();
 }
 
 void FOClient::GmapProcess()
 {
-	if(GmapIsProc==false)
+	if(GmapActive==false)
 	{
 		SetCurMode(CUR_WAIT);
 		return;
@@ -5305,8 +5312,8 @@ void FOClient::GmapProcess()
 				}
 
 				// Process scroll
-				GmapMapScrX+=(old_x-GmapGroupX)/GmapZoom;
-				GmapMapScrY+=(old_y-GmapGroupY)/GmapZoom;
+				GmapOffsetX+=(old_x-GmapGroupX)/GmapZoom;
+				GmapOffsetY+=(old_y-GmapGroupY)/GmapZoom;
 
 				GMAP_CHECK_MAPSCR;
 
@@ -5413,7 +5420,7 @@ void FOClient::GmapProcess()
 
 void FOClient::GmapDraw()
 {
-	if(!GmapIsProc)
+	if(!GmapActive)
 	{
 		SprMngr.DrawSprite(GmapWMainPic,0,0);
 		return;
@@ -5441,8 +5448,8 @@ void FOClient::GmapDraw()
 			int w=spr_inf->Width;
 			int h=spr_inf->Height;
 
-			int mx1=wmx/GmapZoom+GmapMapScrX;
-			int my1=wmy/GmapZoom+GmapMapScrY;
+			int mx1=wmx/GmapZoom+GmapOffsetX;
+			int my1=wmy/GmapZoom+GmapOffsetY;
 			int mx2=mx1+w/GmapZoom;
 			int my2=my1+h/GmapZoom;
 
@@ -5482,8 +5489,8 @@ void FOClient::GmapDraw()
 			DWORD color=D3DCOLOR_ARGB(0xFF,0,0,0); //GM_FOG_FULL
 			if(val==GM_FOG_SELF) color=D3DCOLOR_ARGB(0x7F,0,0,0);
 			else if(val==GM_FOG_SELF2) color=D3DCOLOR_ARGB(0x3F,0,0,0);
-			float x=float(zx*GM_ZONE_LEN)/GmapZoom+GmapMapScrX;
-			float y=float(zy*GM_ZONE_LEN)/GmapZoom+GmapMapScrY;
+			float x=float(zx*GM_ZONE_LEN)/GmapZoom+GmapOffsetX;
+			float y=float(zy*GM_ZONE_LEN)/GmapZoom+GmapOffsetY;
 			SprMngr.PrepareSquare(GmapFogPix,FLTRECT(x,y,x+GM_ZONE_LEN/GmapZoom,y+GM_ZONE_LEN/GmapZoom),color);
 		}
 	}
@@ -5495,10 +5502,10 @@ void FOClient::GmapDraw()
 		GmapLocation& loc=(*it);
 		int radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
 		if(radius<=0) radius=6;
-		int loc_pic_x1=loc.LocWx/GmapZoom+GmapMapScrX-radius/GmapZoom;
-		int loc_pic_y1=loc.LocWy/GmapZoom+GmapMapScrY-radius/GmapZoom;
-		int loc_pic_x2=loc.LocWx/GmapZoom+GmapMapScrX+radius/GmapZoom;
-		int loc_pic_y2=loc.LocWy/GmapZoom+GmapMapScrY+radius/GmapZoom;
+		int loc_pic_x1=loc.LocWx/GmapZoom+GmapOffsetX-radius/GmapZoom;
+		int loc_pic_y1=loc.LocWy/GmapZoom+GmapOffsetY-radius/GmapZoom;
+		int loc_pic_x2=loc.LocWx/GmapZoom+GmapOffsetX+radius/GmapZoom;
+		int loc_pic_y2=loc.LocWy/GmapZoom+GmapOffsetY+radius/GmapZoom;
 		if(loc_pic_x1<=GmapWMap[2] && loc_pic_y1<=GmapWMap[3] && loc_pic_x2>=GmapWMap[0] && loc_pic_y2>=GmapWMap[1])
 			SprMngr.DrawSpriteSize(GmapLocPic,loc_pic_x1,loc_pic_y1,loc_pic_x2-loc_pic_x1,loc_pic_y2-loc_pic_y1,true,false,loc.Color?loc.Color:D3DCOLOR_ARGB(GMAP_LOC_ALPHA,0,255,0));
 	}
@@ -5508,7 +5515,7 @@ void FOClient::GmapDraw()
 	{
 		DWORD pic=((Timer::GameTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
 		SpriteInfo* si=SprMngr.GetSpriteInfo(pic);
-		if(si) SprMngr.DrawSprite(pic,GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2,GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2);
+		if(si) SprMngr.DrawSprite(pic,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 	}
 	else
 	{
@@ -5516,9 +5523,9 @@ void FOClient::GmapDraw()
 		{
 			SpriteInfo* si;
 			if(si=SprMngr.GetSpriteInfo(GmapPGr))
-				SprMngr.DrawSprite(GmapPGr,GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2,GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2);
+				SprMngr.DrawSprite(GmapPGr,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 			if(si=SprMngr.GetSpriteInfo(GmapPTarg))
-				SprMngr.DrawSprite(GmapPTarg,GmapMoveX/GmapZoom+GmapMapScrX-si->Width/2,GmapMoveY/GmapZoom+GmapMapScrY-si->Height/2);
+				SprMngr.DrawSprite(GmapPTarg,GmapMoveX/GmapZoom+GmapOffsetX-si->Width/2,GmapMoveY/GmapZoom+GmapOffsetY-si->Height/2);
 		}
 		else
 		{
@@ -5526,12 +5533,12 @@ void FOClient::GmapDraw()
 			if(IfaceHold==IFACE_GMAP_TOLOC)
 			{
 				if(si=SprMngr.GetSpriteInfo(GmapPStayDn))
-					SprMngr.DrawSprite(GmapPStayDn,GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2,GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2);
+					SprMngr.DrawSprite(GmapPStayDn,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 			}
 			else
 			{
 				if(si=SprMngr.GetSpriteInfo(GmapPStay))
-					SprMngr.DrawSprite(GmapPStay,GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2,GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2);
+					SprMngr.DrawSprite(GmapPStay,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 			}
 		}
 	}
@@ -5540,8 +5547,11 @@ void FOClient::GmapDraw()
 	static PointVec gt;
 	gt.clear();
 	for(IntPairVecIt it=GmapTrace.begin(),end=GmapTrace.end();it!=end;++it)
-		gt.push_back(PrepPoint((*it).first/GmapZoom+GmapMapScrX,(*it).second/GmapZoom+GmapMapScrY,0xFFFF0000));
+		gt.push_back(PrepPoint((*it).first/GmapZoom+GmapOffsetX,(*it).second/GmapZoom+GmapOffsetY,0xFFFF0000));
 	SprMngr.DrawPoints(gt,D3DPT_POINTLIST);
+
+	// Script draw
+	DrawIfaceLayer(100);
 
 	// Cut off map
 	SprMngr.DrawPoints(GmapMapCutOff,D3DPT_TRIANGLELIST);
@@ -5623,8 +5633,8 @@ void FOClient::GmapDraw()
 	// Map coord
 	if(GetActiveScreen()==SCREEN_NONE && IsCurInRect(GmapWMap) && !IsLMenu())
 	{
-		int cx=(CurX-GmapMapScrX)*GmapZoom;
-		int cy=(CurY-GmapMapScrY)*GmapZoom;
+		int cx=(CurX-GmapOffsetX)*GmapZoom;
+		int cy=(CurY-GmapOffsetY)*GmapZoom;
 		if(GmapFog.Get2Bit(GM_ZONE(cx),GM_ZONE(cy))!=GM_FOG_FULL)
 		{
 			GmapLocation* cur_loc=NULL;
@@ -5665,7 +5675,7 @@ void FOClient::GmapDraw()
 
 void FOClient::GmapTownDraw()
 {
-	if(!GmapIsProc)
+	if(!GmapActive)
 	{
 		ShowScreen(SCREEN_NONE);
 		return;
@@ -5747,8 +5757,8 @@ void FOClient::GmapLMouseDown()
 			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask);
 			if(si)
 			{
-				int x=GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2;
-				int y=GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2;
+				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
+				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
 
 				if(CurX>=x && CurX<=x+si->Width && CurY>=y && CurY<=y+si->Height && SprMngr.IsPixNoTransp(GmapPStayMask,CurX-x,CurY-y,false))
 				{
@@ -5855,8 +5865,8 @@ void FOClient::GmapLMouseUp()
 			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask);
 			if(si)
 			{
-				int x=GmapGroupX/GmapZoom+GmapMapScrX-si->Width/2;
-				int y=GmapGroupY/GmapZoom+GmapMapScrY-si->Height/2;
+				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
+				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
 
 				if(CurX>=x && CurX<=x+si->Width && CurY>=y && CurY<=y+si->Height && SprMngr.IsPixNoTransp(GmapPStayMask,CurX-x,CurY-y,false))
 				{
@@ -5880,7 +5890,7 @@ void FOClient::GmapLMouseUp()
 		}
 		else if(IfaceHold==IFACE_GMAP_MAP)
 		{
-			Net_SendRuleGlobal(GM_CMD_SETMOVE,(CurX-GmapMapScrX)*GmapZoom,(CurY-GmapMapScrY)*GmapZoom);
+			Net_SendRuleGlobal(GM_CMD_SETMOVE,(CurX-GmapOffsetX)*GmapZoom,(CurY-GmapOffsetY)*GmapZoom);
 		}
 	}
 	else if(IfaceHold==IFACE_GMAP_TOWN && IsCurInRect(GmapBTown))
@@ -5925,8 +5935,8 @@ void FOClient::GmapRMouseDown()
 	if(IsCurInRect(GmapWMap))
 	{
 		IfaceHold=IFACE_GMAP_MOVE_MAP;
-		GmapVectX=CurX-GmapMapScrX;
-		GmapVectY=CurY-GmapMapScrY;
+		GmapVectX=CurX-GmapOffsetX;
+		GmapVectY=CurY-GmapOffsetY;
 	}
 }
 
@@ -5946,8 +5956,8 @@ void FOClient::GmapMouseMove()
 
 		SetCurPos(CurX,CurY);
 
-		GmapMapScrX=CurX-GmapVectX;
-		GmapMapScrY=CurY-GmapVectY;
+		GmapOffsetX=CurX-GmapVectX;
+		GmapOffsetY=CurY-GmapVectY;
 
 		GMAP_CHECK_MAPSCR;
 	}
@@ -5961,8 +5971,8 @@ void FOClient::GmapKeyDown(BYTE dik)
 	switch(dik)
 	{
 	case DIK_HOME:
-		GmapMapScrX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX/GmapZoom;
-		GmapMapScrY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY/GmapZoom;
+		GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX/GmapZoom;
+		GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY/GmapZoom;
 		GMAP_CHECK_MAPSCR;
 		break;
 	case DIK_C: ShowScreen(SCREEN__CHARACTER); if(Chosen && Chosen->Params[ST_UNSPENT_PERKS]) ShowScreen(SCREEN__PERK); break;
@@ -5981,23 +5991,23 @@ void FOClient::GmapKeyDown(BYTE dik)
 
 void FOClient::GmapChangeZoom(float offs)
 {
-	if(!GmapIsProc) return;
+	if(!GmapActive) return;
 	if(!IsCurInRect(GmapWMap)) return;
 	if(GmapZoom+offs>2.0f) return;
 	if(GmapZoom+offs<0.2f) return;
 
-	float scr_x=(float)(GmapWMap.CX()-GmapMapScrX)*GmapZoom;
-	float scr_y=(float)(GmapWMap.CY()-GmapMapScrY)*GmapZoom;
+	float scr_x=(float)(GmapWMap.CX()-GmapOffsetX)*GmapZoom;
+	float scr_y=(float)(GmapWMap.CY()-GmapOffsetY)*GmapZoom;
 
 	GmapZoom+=offs;
 
-	GmapMapScrX=(float)GmapWMap.CX()-scr_x/GmapZoom;
-	GmapMapScrY=(float)GmapWMap.CY()-scr_y/GmapZoom;
+	GmapOffsetX=(float)GmapWMap.CX()-scr_x/GmapZoom;
+	GmapOffsetY=(float)GmapWMap.CY()-scr_y/GmapZoom;
 
 	GMAP_CHECK_MAPSCR;
 
-	if(GmapMapScrX>GmapWMap.L || GmapMapScrY>GmapWMap.T ||
-		GmapMapScrX<GmapWMap.R-GM_MAXX/GmapZoom || GmapMapScrY<GmapWMap.B-GM_MAXY/GmapZoom) GmapChangeZoom(-offs);
+	if(GmapOffsetX>GmapWMap.L || GmapOffsetY>GmapWMap.T ||
+		GmapOffsetX<GmapWMap.R-GM_MAXX/GmapZoom || GmapOffsetY<GmapWMap.B-GM_MAXY/GmapZoom) GmapChangeZoom(-offs);
 }
 
 Item* FOClient::GmapGetCar()

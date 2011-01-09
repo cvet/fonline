@@ -580,6 +580,12 @@ public:
 		static void Global_SetDefaultFont(int font, DWORD color);
 		static void Global_SetEffect(int effect_type, int effect_subtype, CScriptString* effect_name);
 		static void Global_RefreshMap(bool only_tiles, bool only_roof, bool only_light);
+
+		static bool& GmapActive,&GmapWait;
+		static float& GmapZoom;
+		static int& GmapOffsetX,&GmapOffsetY;
+		static int& GmapGroupX,&GmapGroupY,&GmapMoveX,&GmapMoveY;
+		static float& GmapSpeedX,&GmapSpeedY;
 	} ScriptFunc;
 
 	static bool SpritesCanDraw;
@@ -901,15 +907,17 @@ public:
 	DWORD GmapPWTab,GmapPWBlankTab,GmapPBTabLoc,GmapPTabScrUpDw,GmapPTabScrDwDw; //Tabs pics
 	DWORD GmapBInvPicDown,GmapBMenuPicDown,GmapBChaPicDown,GmapBPipPicDown,GmapBFixPicDown;
 	DWORD GmapPLightPic0,GmapPLightPic1;
-	int GmapX,GmapY,GmapVectX,GmapVectY,GmapMapScrX,GmapMapScrY,GmapWNameStepX,GmapWNameStepY;
+	int GmapX,GmapY,GmapVectX,GmapVectY,GmapWNameStepX,GmapWNameStepY;
 	INTRECT GmapWMain,GmapWMap,GmapBTown,GmapWName,GmapWChat,GmapWPanel,GmapWCar,GmapWLock,GmapWTime,GmapWDayTime;
 	INTRECT GmapBInv,GmapBMenu,GmapBCha,GmapBPip,GmapBFix;
 	PointVec GmapMapCutOff;
-	bool GmapIsProc;
-	float GmapZoom;
+	static bool GmapActive;
+	static float GmapZoom;
+	static int GmapOffsetX,GmapOffsetY;
 
 	void GmapNullParams();
 	void GmapProcess();
+
 	// Town
 	DWORD GmapTownPicId;
 	INTRECT GmapTownPicPos;
@@ -950,9 +958,9 @@ public:
 	// Params
 	float GmapGroupXf,GmapGroupYf;
 	DWORD GmapProcLastTick,GmapMoveLastTick;
-	int GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY;
-	float GmapSpeedX,GmapSpeedY;
-	bool GmapWait;
+	static int GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY;
+	static float GmapSpeedX,GmapSpeedY;
+	static bool GmapWait;
 
 	// Cars
 	struct

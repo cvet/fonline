@@ -1083,6 +1083,18 @@
 	if(engine->RegisterGlobalFunction("void SetDefaultFont(int font, uint color)",asFUNCTION(BIND_CLASS Global_SetDefaultFont),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetEffect(int effectType, int effectSubtype, string@+ effectName)",asFUNCTION(BIND_CLASS Global_SetEffect),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void RefreshMap(bool onlyTiles, bool onlyRoof, bool onlyLight)",asFUNCTION(BIND_CLASS Global_RefreshMap),asCALL_CDECL)<0) BIND_ERROR;
+
+	if(engine->RegisterGlobalProperty("bool __GmapActive",&BIND_CLASS GmapActive)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __GmapWait",&BIND_CLASS GmapWait)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __GmapZoom",&BIND_CLASS GmapZoom)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapOffsetX",&BIND_CLASS GmapOffsetX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapOffsetY",&BIND_CLASS GmapOffsetY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapGroupX",&BIND_CLASS GmapGroupX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapGroupY",&BIND_CLASS GmapGroupY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapMoveX",&BIND_CLASS GmapMoveX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapMoveY",&BIND_CLASS GmapMoveY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __GmapSpeedX",&BIND_CLASS GmapSpeedX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __GmapSpeedY",&BIND_CLASS GmapSpeedY)) BIND_ERROR;
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)

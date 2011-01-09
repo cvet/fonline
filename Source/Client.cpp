@@ -1123,9 +1123,8 @@ label_TryChangeLang:
 			case DIK_F11: if(GameOpt.DebugInfo) SprMngr.SaveSufaces(); break;
 			//case DIK_F11: HexMngr.SwitchShowRain(); break;
 
-			case DIK_ESCAPE: TryExit(); break;
-			default:
-				break;
+			case DIK_ESCAPE: TryExit(); continue;
+			default: break;
 			}
 
 			if(!ConsoleEdit)
@@ -1193,9 +1192,10 @@ label_TryChangeLang:
 		// Key down
 		if(dikdw)
 		{
-			if(GetActiveScreen())
+			int active=GetActiveScreen();
+			if(active!=SCREEN_NONE)
 			{
-				switch(GetActiveScreen())
+				switch(active)
 				{
 				case SCREEN__SPLIT: SplitKeyDown(dikdw); break;
 				case SCREEN__TIMER: TimerKeyDown(dikdw); break;
@@ -5957,17 +5957,17 @@ void FOClient::Net_OnGlobalInfo()
 		GmapGroupY=group_y;
 		GmapWait=(wait!=0);
 
-		if(GmapIsProc==false)
+		if(GmapActive==false)
 		{
-			GmapMapScrX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX;
-			GmapMapScrY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY;
+			GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX;
+			GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY;
 
 			int w=GM_MAXX;
 			int h=GM_MAXY;
-			if(GmapMapScrX>GmapWMap[0]) GmapMapScrX=GmapWMap[0];
-			if(GmapMapScrY>GmapWMap[1]) GmapMapScrY=GmapWMap[1];
-			if(GmapMapScrX<GmapWMap[2]-w) GmapMapScrX=GmapWMap[2]-w;
-			if(GmapMapScrY<GmapWMap[3]-h) GmapMapScrY=GmapWMap[3]-h;
+			if(GmapOffsetX>GmapWMap[0]) GmapOffsetX=GmapWMap[0];
+			if(GmapOffsetY>GmapWMap[1]) GmapOffsetY=GmapWMap[1];
+			if(GmapOffsetX<GmapWMap[2]-w) GmapOffsetX=GmapWMap[2]-w;
+			if(GmapOffsetY<GmapWMap[3]-h) GmapOffsetY=GmapWMap[3]-h;
 
 			SetCurMode(CUR_DEFAULT);
 		}
@@ -5984,7 +5984,7 @@ void FOClient::Net_OnGlobalInfo()
 
 		SAFEREL(GmapCar.Car);
 
-		GmapIsProc=true;
+		GmapActive=true;
 	}
 
 	if(FLAG(info_flags,GM_INFO_ZONES_FOG))
@@ -8190,8 +8190,8 @@ void FOClient::TryExit()
 		case SCREEN__TIMER: TimerClose(false); break;
 		case SCREEN__SPLIT: SplitClose(false); break;
 		case SCREEN__TOWN_VIEW: Net_SendRefereshMe(); break;
-		case SCREEN__DIALOG: break; // Processed in DlgKeyDown
-		case SCREEN__BARTER: break; // Processed in DlgKeyDown
+		case SCREEN__DIALOG: DlgKeyDown(true,DIK_ESCAPE); break;
+		case SCREEN__BARTER: DlgKeyDown(false,DIK_ESCAPE); break;
 		case SCREEN__DIALOGBOX:
 			if(DlgboxType>=DIALOGBOX_ENCOUNTER_ANY && DlgboxType<=DIALOGBOX_ENCOUNTER_TB) Net_SendRuleGlobal(GM_CMD_ANSWER,-1);
 		case SCREEN__PERK:
@@ -10788,3 +10788,14 @@ void FOClient::SScriptFunc::Global_ChangeCursor(int cursor)
 	Self->SetCurMode(cursor);
 }
 
+bool& FOClient::SScriptFunc::GmapActive=FOClient::GmapActive;
+bool& FOClient::SScriptFunc::GmapWait=FOClient::GmapWait;
+float& FOClient::SScriptFunc::GmapZoom=FOClient::GmapZoom;
+int& FOClient::SScriptFunc::GmapOffsetX=FOClient::GmapOffsetX;
+int& FOClient::SScriptFunc::GmapOffsetY=FOClient::GmapOffsetY;
+int& FOClient::SScriptFunc::GmapGroupX=FOClient::GmapGroupX;
+int& FOClient::SScriptFunc::GmapGroupY=FOClient::GmapGroupY;
+int& FOClient::SScriptFunc::GmapMoveX=FOClient::GmapMoveX;
+int& FOClient::SScriptFunc::GmapMoveY=FOClient::GmapMoveY;
+float& FOClient::SScriptFunc::GmapSpeedX=FOClient::GmapSpeedX;
+float& FOClient::SScriptFunc::GmapSpeedY=FOClient::GmapSpeedY;

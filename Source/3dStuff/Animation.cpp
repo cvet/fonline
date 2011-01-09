@@ -110,7 +110,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 
 	// Is not one time play and same action
 	int action=(anim1<<16)|anim2;
-	if(!FLAG(flags,ANIMATION_INIT) && !FLAG(flags,ANIMATION_ONE_TIME) && currentLayers[LAYERS3D_COUNT]==action && !layer_changed) return;
+	if(!FLAG(flags,ANIMATION_INIT|ANIMATION_ONE_TIME) && currentLayers[LAYERS3D_COUNT]==action && !layer_changed) return;
 
 	memcpy(currentLayers,layers,sizeof(int)*LAYERS3D_COUNT);
 	currentLayers[LAYERS3D_COUNT]=action;
@@ -267,7 +267,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		// Alternate tracks
 		DWORD new_track=(currentTrack==0?1:0);
 		double period=set->GetPeriod();
-		if(FLAG(flags,ANIMATION_INIT)) period=0.0001;
+		if(FLAG(flags,ANIMATION_INIT)) period=0.0002;
 
 		// Assign to our track
 		animController->SetTrackAnimationSet(new_track,set);
@@ -319,7 +319,7 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		if(AnimDelay)
 		{
 			lastTick=tick+1;
-			animController->AdvanceTime(0.0001,NULL);
+			animController->AdvanceTime(0.001,NULL);
 		}
 
 		// Borders
@@ -830,13 +830,15 @@ bool Animation3d::Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color)
 		lastTick=tick;
 	}
 
+	bool shadow_disabled=(shadowDisabled || animEntity->shadowDisabled);
+
 	FrameMove(elapsed,x,y,scale,false);
-	DrawFrame(animEntity->xFile->frameRoot,shadowDisabled || animEntity->shadowDisabled?false:true);
+	DrawFrame(animEntity->xFile->frameRoot,!shadow_disabled);
 	for(Animation3dVecIt it=childAnimations.begin(),end=childAnimations.end();it!=end;++it)
 	{
 		Animation3d* child=*it;
 		child->FrameMove(elapsed,x,y,1.0f,false);
-		child->DrawFrame(child->animEntity->xFile->frameRoot,shadowDisabled || animEntity->shadowDisabled?false:true);
+		child->DrawFrame(child->animEntity->xFile->frameRoot,!shadow_disabled);
 	}
 
 	if(stencil) D3D_HR(D3DDevice->SetRenderState(D3DRS_STENCILENABLE,FALSE));
@@ -1150,7 +1152,7 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	}
 
 	// FPS & Smooth
-	if(GameOpt.Animation3dSmoothTime || !GameOpt.Animation3dFPS)
+	if(GameOpt.Animation3dSmoothTime)
 	{
 		// Smoothing
 		AnimDelay=0;
@@ -1160,7 +1162,7 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 	else
 	{
 		// 2D emulation
-		AnimDelay=1000/GameOpt.Animation3dFPS;
+		AnimDelay=1000/(GameOpt.Animation3dFPS?GameOpt.Animation3dFPS:10);
 		MoveTransitionTime=0.001;
 	}
 

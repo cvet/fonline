@@ -1045,6 +1045,12 @@ struct BindClass
 	static void Global_SetDefaultFont(){}
 	static void Global_SetEffect(){}
 	static void Global_RefreshMap(){}
+
+	static int GmapActive,GmapWait;
+	static int GmapZoom;
+	static int GmapOffsetX,GmapOffsetY;
+	static int GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY;
+	static int GmapSpeedX,GmapSpeedY;
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)
@@ -1167,6 +1173,20 @@ struct BindClass
 	static void Global_GetStrHash(){}
 	static void Global_LoadDataFile(){}
 };
+
+#ifdef BIND_CLIENT
+int BindClass::GmapActive;
+int BindClass::GmapWait;
+int BindClass::GmapZoom;
+int BindClass::GmapOffsetX;
+int BindClass::GmapOffsetY;
+int BindClass::GmapGroupX;
+int BindClass::GmapGroupY;
+int BindClass::GmapMoveX;
+int BindClass::GmapMoveY;
+int BindClass::GmapSpeedX;
+int BindClass::GmapSpeedY;
+#endif
 
 void Random(){}
 
