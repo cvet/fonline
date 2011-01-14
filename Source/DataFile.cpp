@@ -157,15 +157,62 @@ FalloutDatFile::~FalloutDatFile()
 
 bool FalloutDatFile::ReadTree()
 {
+	DWORD dw,version;
+	if(SetFilePointer(datHandle,-12,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
+	if(!ReadFile(datHandle,&version,4,&dw,NULL)) return false;
+
+	// DAT 2.1 Arcanum
+	if(version==0x44415431) // 1TAD
+	{
+		// Readed data
+		DWORD files_total,tree_size;
+
+		// Read info
+		if(SetFilePointer(datHandle,-4,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
+		if(!ReadFile(datHandle,&tree_size,4,&dw,NULL)) return false;
+
+		// Read tree
+		if(SetFilePointer(datHandle,-(LONG)tree_size,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
+		if(!ReadFile(datHandle,&files_total,4,&dw,NULL)) return false;
+		tree_size-=28+4; // Subtract information block and files total
+		if((memTree=new(nothrow) BYTE[tree_size])==NULL) return false;
+		ZeroMemory(memTree,tree_size);
+		if(!ReadFile(datHandle,memTree,tree_size,&dw,NULL)) return false;
+
+		// Indexing tree
+		char name[MAX_FOPATH];
+		BYTE* ptr=memTree;
+		BYTE* end_ptr=memTree+tree_size;
+		while(true)
+		{
+			DWORD fnsz=*(DWORD*)ptr; // Include zero
+			DWORD type=*(DWORD*)(ptr+4+fnsz+4);
+
+			if(fnsz>1 && fnsz<MAX_FOPATH && type!=0x400) // Not folder
+			{
+				memcpy(name,ptr+4,fnsz);
+				_strlwr_s(name);
+				if(type==2) *(ptr+4+fnsz+7)=1; // Compressed
+				filesTree.insert(IndexMapVal(name,ptr+4+fnsz+7));
+			}
+
+			if(ptr+fnsz+24>=end_ptr) break;
+			ptr+=fnsz+24;
+		}
+
+		return true;
+	}
+
+	// DAT 2.0 Fallout2
 	// Readed data
-	DWORD dw,dir_count,dat_size,files_total,tree_size;
+	DWORD dir_count,dat_size,files_total,tree_size;
 
 	// Read info
 	if(SetFilePointer(datHandle,-8,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
 	if(!ReadFile(datHandle,&tree_size,4,&dw,NULL)) return false;
 	if(!ReadFile(datHandle,&dat_size,4,&dw,NULL)) return false;
 
-	// Check for Fallout1 dat file
+	// Check for DAT1.0 Fallout1 dat file
 	if(SetFilePointer(datHandle,0,NULL,FILE_BEGIN)==INVALID_SET_FILE_POINTER) return false;
 	if(!ReadFile(datHandle,&dir_count,4,&dw,NULL)) return false;
 	dir_count>>=24;
@@ -190,7 +237,7 @@ bool FalloutDatFile::ReadTree()
 	{
 		DWORD fnsz=*(DWORD*)ptr;
 
-		if(fnsz && fnsz<MAX_FOPATH)
+		if(fnsz && fnsz+1<MAX_FOPATH)
 		{
 			memcpy(name,ptr+4,fnsz);
 			name[fnsz]=0;

@@ -549,7 +549,9 @@ public:
 		static DWORD Global_GetSpriteCount(DWORD spr_id);
 		static void Global_GetTextInfo(CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines);
 		static void Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color);
+		static void Global_DrawSpriteOffs(DWORD spr_id, int spr_index, int x, int y, DWORD color, bool offs);
 		static void Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color);
+		static void Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color, bool offs);
 		static void Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags);
 		static void Global_DrawPrimitive(int primitive_type, CScriptArray& data);
 		static void Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy);

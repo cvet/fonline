@@ -1148,7 +1148,9 @@ struct BindClass
 	static void Global_GetSpriteCount(){}
 	static void Global_GetTextInfo(){}
 	static void Global_DrawSprite(){}
+	static void Global_DrawSpriteOffs(){}
 	static void Global_DrawSpriteSize(){}
+	static void Global_DrawSpriteSizeOffs(){}
 	static void Global_DrawText(){}
 	static void Global_DrawPrimitive(){}
 	static void Global_DrawMapSprite(){}

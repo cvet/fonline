@@ -814,9 +814,10 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 		cl->Zstrm.zalloc=zlib_alloc;
 		cl->Zstrm.zfree=zlib_free;
 		cl->Zstrm.opaque=NULL;
-		if(deflateInit(&cl->Zstrm,Z_DEFAULT_COMPRESSION)!=Z_OK)
+		int result=deflateInit(&cl->Zstrm,Z_DEFAULT_COMPRESSION);
+		if(result!=Z_OK)
 		{
-			WriteLog(__FUNCTION__" - Client Zlib deflateInit fail.\n");
+			WriteLog(__FUNCTION__" - Client Zlib deflateInit fail, error<%d, %s>.\n",result,zError(result));
 			closesocket(sock);
 			delete cl;
 			continue;

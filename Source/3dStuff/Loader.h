@@ -17,6 +17,7 @@ public:
 	static FrameEx* LoadModel(IDirect3DDevice9* device, const char* fname, bool calc_tangent);
 	static AnimSet* LoadAnimation(IDirect3DDevice9* device, const char* anim_fname, const char* anim_name);
 	static void Free(D3DXFRAME* frame);
+	static bool IsExtensionSupported(const char* ext);
 
 private:
 	static MeshHierarchy memAllocator;

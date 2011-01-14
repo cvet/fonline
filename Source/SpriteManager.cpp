@@ -849,7 +849,7 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 	// Parameters
 	DWORD w,h;
 	bool fast=(*(DWORD*)data==MAKEFOURCC('F','0','F','A'));
-	if(!si) si=new SpriteInfo();
+	if(!si) si=new(nothrow) SpriteInfo();
 
 	// Get width, height
 	// FOnline fast format
@@ -990,14 +990,19 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 		return 0;
 	}
 
-	if(!_stricmp(ext,"x") || !_stricmp(ext,"3ds") || !_stricmp(ext,"fo3d")) return LoadSprite3d(fname,path_type,dir,0);
-	else if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
-		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5")) return LoadSpriteAlt(fname,path_type);
+	if(strlen(ext)!=3 || ext[0]!='f' || ext[1]!='r')
+	{
+		if(!_stricmp(ext,"rix")) return LoadSpriteRix(fname,path_type);
+		if(!_stricmp(ext,"art")) return LoadSpriteArt(fname,path_type,dir);
+		if(Loader3d::IsExtensionSupported(ext)) return LoadSprite3d(fname,path_type,dir,0);
+		return LoadSpriteAlt(fname,path_type);
+	}
 
+	// FRM loading
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return 0;
 
-	SpriteInfo* si=new SpriteInfo();
+	SpriteInfo* si=new(nothrow) SpriteInfo();
 
 	short offs_x, offs_y;
 	fm.SetCurPos(0xA);
@@ -1014,7 +1019,7 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 
 	// Create FOnline fast format
 	DWORD size=12+h*w*4;
-	BYTE* data=new BYTE[size];
+	BYTE* data=new(nothrow) BYTE[size];
 	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); //FOnline FAst
 	*((DWORD*)data+1)=w;
 	*((DWORD*)data+2)=h;
@@ -1068,16 +1073,12 @@ DWORD SpriteManager::LoadSpriteAlt(const char* fname, int path_type)
 
 		return spr_id;
 	}
-	else if(!_stricmp(ext,"rix"))
-	{
-		return LoadRix(fname,path_type);
-	}
 
 	// Dx8, Dx9: .bmp, .dds, .dib, .hdr, .jpg, .pfm, .png, .ppm, .tga
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return 0;
 
-	SpriteInfo* si=new SpriteInfo();
+	SpriteInfo* si=new(nothrow) SpriteInfo();
 	si->OffsX=0;
 	si->OffsY=0;
 
@@ -1158,7 +1159,7 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir, int
 	DWORD w=fb.W();
 	DWORD h=fb.H();
 	DWORD size=12+h*w*4;
-	BYTE* data=new BYTE[size];
+	BYTE* data=new(nothrow) BYTE[size];
 	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
 	*((DWORD*)data+1)=w;
 	*((DWORD*)data+2)=h;
@@ -1166,7 +1167,7 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir, int
 	D3D_HR(spr3dRTData->UnlockRect());
 
 	// Fill from memory
-	SpriteInfo* si=new SpriteInfo();
+	SpriteInfo* si=new(nothrow) SpriteInfo();
 	INTPOINT p=anim3d->GetFullBordersPivot();
 	si->OffsX=fb.W()/2-p.X;
 	si->OffsY=fb.H()-p.Y;
@@ -1175,7 +1176,7 @@ DWORD SpriteManager::LoadSprite3d(const char* fname, int path_type, int dir, int
 	return result;
 }
 
-DWORD SpriteManager::LoadRix(const char* fname, int path_type)
+DWORD SpriteManager::LoadSpriteRix(const char* fname, int path_type)
 {
 	if(!isInit) return 0;
 	if(!fname || !fname[0]) return 0;
@@ -1183,14 +1184,14 @@ DWORD SpriteManager::LoadRix(const char* fname, int path_type)
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return 0;
 
-	SpriteInfo* si=new SpriteInfo();
+	SpriteInfo* si=new(nothrow) SpriteInfo();
 	fm.SetCurPos(0x4);
 	WORD w;fm.CopyMem(&w,2);
 	WORD h;fm.CopyMem(&h,2);
 
 	// Create FOnline fast format
 	DWORD size=12+h*w*4;
-	BYTE* data=new BYTE[size];
+	BYTE* data=new(nothrow) BYTE[size];
 	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); //FOnline FAst
 	*((DWORD*)data+1)=w;
 	*((DWORD*)data+2)=h;
@@ -1212,6 +1213,140 @@ DWORD SpriteManager::LoadRix(const char* fname, int path_type)
 	return result;
 }
 
+DWORD SpriteManager::LoadSpriteArt(const char* fname, int path_type, int dir)
+{
+	if(dir<0 || dir>7) return 0;
+
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return 0;
+
+	struct ArtHeader
+	{
+		unsigned int flags;
+		// 	0x00000001 = Static - no rotation, contains frames only for south direction.
+		// 	0x00000002 = Critter - uses delta attribute, while playing walking animation.
+		// 	0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next character.
+		// 	0x00000008 = Facade - requires fackwalk file.
+		// 	0x00000010 = Unknown - used in eye candy, for example, DIVINATION.art.	
+		unsigned int frameRate;
+		unsigned int rotationCount;
+		unsigned int paletteList[4]; 
+		unsigned int actionFrame;
+		unsigned int frameCount;
+		unsigned int infoList[8];
+		unsigned int sizeList[8];
+		unsigned int dataList[8];
+	} header;
+	struct ArtFrameInfo
+	{
+		unsigned int frameWidth;
+		unsigned int frameHeight;
+		unsigned int frameSize;
+		signed int offsetX;
+		signed int offsetY;
+		signed int deltaX;
+		signed int deltaY;
+	} frame_info;
+	typedef unsigned int ArtPalette[256];
+	ArtPalette palette[4];
+
+	if(!fm.CopyMem(&header,sizeof(header))) return 0;
+	if(header.flags&0x00000001) header.rotationCount=1;
+	if(dir>=header.rotationCount) return 0;
+
+	int palette_index=0; // 0..3
+	int palette_count=0;
+	for(int i=0;i<4;i++)
+	{
+		if(header.paletteList[i])
+		{
+			if(!fm.CopyMem(&palette[i],sizeof(ArtPalette))) return 0;
+			palette_count++;
+		}
+	}
+
+	DWORD frm_count=header.frameCount;
+	DWORD dir_count=header.rotationCount;
+
+	// Calculate data offset
+	DWORD data_offset=sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+sizeof(ArtFrameInfo)*dir_count*frm_count;
+	for(int i=0;i<dir;i++)
+	{
+		for(int j=0;j<frm_count;j++)
+		{
+			fm.SetCurPos(sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+
+				sizeof(ArtFrameInfo)*i*frm_count+sizeof(ArtFrameInfo)*j+sizeof(unsigned int)*2);
+			data_offset+=fm.GetLEDWord();
+		}
+	}
+
+	// Read data
+	fm.SetCurPos(sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+
+		sizeof(ArtFrameInfo)*dir*frm_count);
+
+	SpriteInfo* si=new(nothrow) SpriteInfo();
+	if(!si) return 0;
+
+	if(!fm.CopyMem(&frame_info,sizeof(frame_info)))
+	{
+		delete si;
+		return 0;
+	}
+
+	si->OffsX=-frame_info.offsetX;
+	si->OffsY=-frame_info.offsetY;
+
+	// Create FOnline fast format
+	DWORD w=frame_info.frameWidth;
+	DWORD h=frame_info.frameHeight;
+	DWORD size=12+h*w*4;
+	BYTE* data=new(nothrow) BYTE[size];
+	if(!data)
+	{
+		delete si;
+		return 0;
+	}
+	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+	*((DWORD*)data+1)=w;
+	*((DWORD*)data+2)=h;
+	DWORD* ptr=(DWORD*)data+3;
+
+	fm.SetCurPos(data_offset);
+	data_offset+=frame_info.frameSize;
+
+	// Decode
+	DWORD pos=0;
+	for(DWORD i=0;i<frame_info.frameSize;i++)
+	{
+		BYTE cmd=fm.GetByte();
+		if(cmd>128)
+		{
+			cmd-=128;
+			i+=cmd;
+			for(;cmd>0;cmd--,pos++)
+			{
+				DWORD color=palette[palette_index][fm.GetByte()];
+				if(color==0xFF) color=0;
+				else color|=0xFF000000;
+				*(ptr+pos)=color;
+			}
+		}
+		else
+		{
+			DWORD color=palette[palette_index][fm.GetByte()];
+			if(color==0xFF) color=0;
+			else color|=0xFF000000;
+			for(;cmd>0;cmd--,pos++) *(ptr+pos)=color;
+			i++;
+		}
+	}
+
+	// Fill
+	DWORD result=FillSurfaceFromMemory(si,data,size);
+	delete[] data;
+	return result;
+}
+
 AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, bool anim_pix, int dir)
 {
 	if(!isInit || !fname || !fname[0]) return NULL;
@@ -1223,25 +1358,22 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		return NULL;
 	}
 
-	if(_stricmp(ext,"frm") && _stricmp(ext,"fr0") && _stricmp(ext,"fr1") && _stricmp(ext,"fr2") &&
-		_stricmp(ext,"fr3") && _stricmp(ext,"fr4") && _stricmp(ext,"fr5"))
+	if(strlen(ext)!=3 || ext[0]!='f' || ext[1]!='r')
 	{
 		if(!_stricmp(ext,"fofrm")) return LoadAnyAnimationFofrm(fname,path_type,dir);
-		if(!_stricmp(ext,"fo3d")) return LoadAnyAnimation3d(fname,path_type,dir);
+		if(!_stricmp(ext,"art")) return LoadAnyAnimationArt(fname,path_type,dir);
+		if(Loader3d::IsExtensionSupported(ext)) return LoadAnyAnimation3d(fname,path_type,dir);
 		return LoadAnyAnimationOneSpr(fname,path_type,dir);
 	}
 
+	// FRM loading
 	if(dir<0 || dir>5) return NULL;
 
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return NULL;
 
 	AnyFrames* anim=new(nothrow) AnyFrames();
-	if(!anim)
-	{
-		WriteLog(__FUNCTION__" - Memory allocation fail.\n");
-		return NULL;
-	}
+	if(!anim) return NULL;
 
 	fm.SetCurPos(0x4);
 	WORD frm_fps=fm.GetBEWord();
@@ -1288,7 +1420,7 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 
 	for(int frm=0;frm<frm_num;frm++)
 	{
-		SpriteInfo* si=new SpriteInfo(); // TODO: Memory leak
+		SpriteInfo* si=new(nothrow) SpriteInfo(); // TODO: Memory leak
 		if(!si) return NULL;
 		fm.SetCurPos(offset);
 		WORD w=fm.GetBEWord();
@@ -1304,10 +1436,9 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 
 		// Create FOnline fast format
 		DWORD size=12+h*w*4;
-		BYTE* data=new BYTE[size];
+		BYTE* data=new(nothrow) BYTE[size];
 		if(!data)
 		{
-			WriteLog(__FUNCTION__" - Not enough memory, size<%u>.\n",size);
 			delete anim;
 			return NULL;
 		}
@@ -1430,11 +1561,7 @@ AnyFrames* SpriteManager::LoadAnyAnimationFofrm(const char* fname, int path_type
 	if(!frm_num) frm_num=1;
 
 	AutoPtr<AnyFrames> anim(new AnyFrames());
-	if(!anim.IsValid())
-	{
-		WriteLog(__FUNCTION__" - Memory allocation fail.\n");
-		return NULL;
-	}
+	if(!anim.IsValid()) return NULL;
 
 	anim->OffsX=fofrm.GetInt("offs_x",0);
 	anim->OffsY=fofrm.GetInt("offs_y",0);
@@ -1551,11 +1678,7 @@ AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_typ
 	if(!spr_id) return NULL;
 
 	AnyFrames* anim=new(nothrow) AnyFrames();
-	if(!anim)
-	{
-		WriteLog(__FUNCTION__" - Memory allocation fail.\n");
-		return NULL;
-	}
+	if(!anim) return NULL;
 
 	anim->OffsX=0;
 	anim->OffsY=0;
@@ -1570,13 +1693,182 @@ AnyFrames* SpriteManager::LoadAnyAnimationOneSpr(const char* fname, int path_typ
 	return anim;
 }
 
+AnyFrames* SpriteManager::LoadAnyAnimationArt(const char* fname, int path_type, int dir)
+{
+	if(dir<0 || dir>7) return NULL;
+
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return NULL;
+
+	AnyFrames* anim=new(nothrow) AnyFrames();
+	if(!anim) return NULL;
+
+	struct ArtHeader
+	{
+		unsigned int flags;
+		// 	0x00000001 = Static - no rotation, contains frames only for south direction.
+		// 	0x00000002 = Critter - uses delta attribute, while playing walking animation.
+		// 	0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next character.
+		// 	0x00000008 = Facade - requires fackwalk file.
+		// 	0x00000010 = Unknown - used in eye candy, for example, DIVINATION.art.	
+		unsigned int frameRate;
+		unsigned int rotationCount;
+		unsigned int paletteList[4]; 
+		unsigned int actionFrame;
+		unsigned int frameCount;
+		unsigned int infoList[8];
+		unsigned int sizeList[8];
+		unsigned int dataList[8];
+	} header;
+	struct ArtFrameInfo
+	{
+		unsigned int frameWidth;
+		unsigned int frameHeight;
+		unsigned int frameSize;
+		signed int offsetX;
+		signed int offsetY;
+		signed int deltaX;
+		signed int deltaY;
+	} frame_info;
+	typedef unsigned int ArtPalette[256];
+	ArtPalette palette[4];
+
+	if(!fm.CopyMem(&header,sizeof(header))) return NULL;
+	if(header.flags&0x00000001) header.rotationCount=1;
+	if(dir>=header.rotationCount) return NULL;
+
+	int palette_index=0; // 0..3
+	int palette_count=0;
+	for(int i=0;i<4;i++)
+	{
+		if(header.paletteList[i])
+		{
+			if(!fm.CopyMem(&palette[i],sizeof(ArtPalette))) return NULL;
+			palette_count++;
+		}
+	}
+
+	DWORD frm_fps=header.frameRate;
+	if(!frm_fps) frm_fps=10;
+	DWORD frm_count=header.frameCount;
+	DWORD dir_count=header.rotationCount;
+
+	anim->OffsX=0;
+	anim->OffsY=0;
+	anim->CntFrm=frm_count; 
+	anim->Ticks=1000/frm_fps*frm_count;
+
+	anim->Ind=new DWORD[frm_count];
+	if(!anim->Ind) return NULL;
+	anim->NextX=new short[frm_count];
+	if(!anim->NextX) return NULL;
+	anim->NextY=new short[frm_count];
+	if(!anim->NextY) return NULL;
+
+	// Calculate data offset
+	DWORD data_offset=sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+sizeof(ArtFrameInfo)*dir_count*frm_count;
+	for(int i=0;i<dir;i++)
+	{
+		for(int j=0;j<frm_count;j++)
+		{
+			fm.SetCurPos(sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+
+				sizeof(ArtFrameInfo)*i*frm_count+sizeof(ArtFrameInfo)*j+sizeof(unsigned int)*2);
+			data_offset+=fm.GetLEDWord();
+		}
+	}
+
+	// Read data
+	for(int frm=0;frm<frm_count;frm++)
+	{
+		fm.SetCurPos(sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+
+			sizeof(ArtFrameInfo)*dir*frm_count+sizeof(ArtFrameInfo)*frm);
+
+		SpriteInfo* si=new(nothrow) SpriteInfo();
+		if(!si)
+		{
+			delete anim;
+			return NULL;
+		}
+
+		if(!fm.CopyMem(&frame_info,sizeof(frame_info)))
+		{
+			delete si;
+			delete anim;
+			return NULL;
+		}
+
+		si->OffsX=-frame_info.offsetX;
+		si->OffsY=-frame_info.offsetY;
+		anim->NextX[frm]=frame_info.deltaX;
+		anim->NextY[frm]=frame_info.deltaY;
+
+		// Create FOnline fast format
+		DWORD w=frame_info.frameWidth;
+		DWORD h=frame_info.frameHeight;
+		DWORD size=12+h*w*4;
+		BYTE* data=new(nothrow) BYTE[size];
+		if(!data)
+		{
+			delete si;
+			delete anim;
+			return NULL;
+		}
+		*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+		*((DWORD*)data+1)=w;
+		*((DWORD*)data+2)=h;
+		DWORD* ptr=(DWORD*)data+3;
+
+		fm.SetCurPos(data_offset);
+		data_offset+=frame_info.frameSize;
+
+		// Decode
+		DWORD pos=0;
+		for(DWORD i=0;i<frame_info.frameSize;i++)
+		{
+			BYTE cmd=fm.GetByte();
+			if(cmd>128)
+			{
+				cmd-=128;
+				i+=cmd;
+				for(;cmd>0;cmd--,pos++)
+				{
+					DWORD color=palette[palette_index][fm.GetByte()];
+					if(color==0xFF) color=0;
+					else color|=0xFF000000;
+					*(ptr+pos)=color;
+				}
+			}
+			else
+			{
+				DWORD color=palette[palette_index][fm.GetByte()];
+				if(color==0xFF) color=0;
+				else color|=0xFF000000;
+				for(;cmd>0;cmd--,pos++) *(ptr+pos)=color;
+				i++;
+			}
+		}
+
+		// Fill
+		DWORD result=FillSurfaceFromMemory(si,data,size);
+		delete[] data;
+		if(!result)
+		{
+			delete anim;
+			return NULL;
+		}
+		anim->Ind[frm]=result;
+	}
+
+	return anim;
+}
+
 Animation3d* SpriteManager::LoadPure3dAnimation(const char* fname, int path_type)
 {
 	// Fill data
 	Animation3d* anim3d=Animation3d::GetAnimation(fname,path_type,false);
 	if(!anim3d) return NULL;
 
-	SpriteInfo* si=new SpriteInfo();
+	SpriteInfo* si=new(nothrow) SpriteInfo();
 	size_t index=1;
 	for(size_t j=sprData.size();index<j;index++) if(!sprData[index]) break;
 	if(index<sprData.size()) sprData[index]=si;
@@ -2935,7 +3227,7 @@ DWORD SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
 
 	// Create FOnline fast format
 	DWORD size=12+ih*iw*4;
-	BYTE* data=new BYTE[size];
+	BYTE* data=new(nothrow) BYTE[size];
 	memset(data,0,size);
 	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
 	*((DWORD*)data+1)=iw;
@@ -2948,7 +3240,7 @@ DWORD SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
 	surf->Release();
 
 	// End
-	SpriteInfo* contour_si=new SpriteInfo();
+	SpriteInfo* contour_si=new(nothrow) SpriteInfo();
 	contour_si->OffsX=si->OffsX;
 	contour_si->OffsY=si->OffsY+1;
 	int st=SurfType;

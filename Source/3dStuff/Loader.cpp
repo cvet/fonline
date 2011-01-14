@@ -488,6 +488,20 @@ FrameEx* Loader3d::LoadX(IDirect3DDevice9* device, FileManager& fm, const char* 
 	return frame_root;
 }
 
+bool Loader3d::IsExtensionSupported(const char* ext)
+{
+	static const char* arr[]=
+	{
+		"fo3d","x","3ds","obj","dae","blend","ase","ply","dxf","lwo","lxo","stl","ac","ms3d",
+		"scn","smd","vta","mdl","md2","md3","pk3","mdc","md5","bvh","csm","b3d","q3d","cob",
+		"q3s","mesh","xml","irrmesh","irr","nff","nff","off","raw","ter","mdl","hmp","ndo"
+	};
+
+	for(int i=0,j=sizeof(arr)/sizeof(arr[0]);i<j;i++)
+		if(!_stricmp(ext,arr[i])) return true;
+	return false;
+}
+
 /************************************************************************/
 /* Textures                                                             */
 /************************************************************************/

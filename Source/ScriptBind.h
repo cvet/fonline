@@ -1053,7 +1053,9 @@
 	if(engine->RegisterGlobalFunction("uint GetSpriteCount(uint sprId)",asFUNCTION(BIND_CLASS Global_GetSpriteCount),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)",asFUNCTION(BIND_CLASS Global_GetTextInfo),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)",asFUNCTION(BIND_CLASS Global_DrawSprite),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color, bool applyOffsets)",asFUNCTION(BIND_CLASS Global_DrawSpriteOffs),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)",asFUNCTION(BIND_CLASS Global_DrawSpriteSize),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color, bool applyOffsets)",asFUNCTION(BIND_CLASS Global_DrawSpriteSizeOffs),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)",asFUNCTION(BIND_CLASS Global_DrawText),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawPrimitive(int primitiveType, int[]& data)",asFUNCTION(BIND_CLASS Global_DrawPrimitive),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY)",asFUNCTION(BIND_CLASS Global_DrawMapSprite),asCALL_CDECL)<0) BIND_ERROR;
@@ -1519,7 +1521,9 @@
 	if(engine->RegisterGlobalFunction("uint GetSpriteCount(uint sprId)",asFUNCTION(BIND_CLASS Global_GetSpriteCount),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)",asFUNCTION(BIND_CLASS Global_GetTextInfo),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)",asFUNCTION(BIND_CLASS Global_DrawSprite),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color, bool applyOffsets)",asFUNCTION(BIND_CLASS Global_DrawSpriteOffs),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)",asFUNCTION(BIND_CLASS Global_DrawSpriteSize),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color, bool applyOffsets)",asFUNCTION(BIND_CLASS Global_DrawSpriteSizeOffs),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)",asFUNCTION(BIND_CLASS Global_DrawText),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawPrimitive(int primitiveType, int[]& data)",asFUNCTION(BIND_CLASS Global_DrawPrimitive),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY)",asFUNCTION(BIND_CLASS Global_DrawMapSprite),asCALL_CDECL)<0) BIND_ERROR;

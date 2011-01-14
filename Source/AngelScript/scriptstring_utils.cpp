@@ -270,6 +270,71 @@ void StringSplit_Generic(asIScriptGeneric *gen)
     *(CScriptArray**)gen->GetAddressOfReturnLocation() = array;
 }
 
+// This function takes an input string and splits it into parts by looking
+// for a specified delimiter. Example:
+//
+// string str = "A| B\t\t||D| E|F   ";
+// string@[]@ array = splitEx(str, "|");
+//
+// The resulting array has the following elements:
+//
+// {"A", "B", "D", "E", "F"}
+//
+// AngelScript signature:
+// string@[]@ split(const string &in str, const string &in delim)
+void StringSplitEx_Generic(asIScriptGeneric *gen)
+{
+	// Obtain a pointer to the engine
+	asIScriptContext *ctx = asGetActiveContext();
+	asIScriptEngine *engine = ctx->GetEngine();
+
+	// TODO: This should only be done once
+	// TODO: This assumes that CScriptArray was already registered
+	asIObjectType *arrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl("array<string@>"));
+
+	// Create the array object
+	CScriptArray *array = new CScriptArray(0, arrayType);
+
+	// Get the arguments
+	CScriptString *str = *(CScriptString**)gen->GetAddressOfArg(0);
+	CScriptString *delim = *(CScriptString**)gen->GetAddressOfArg(1);
+
+	// Find the existence of the delimiter in the input string
+	const char* cstr=str->c_str();
+	int pos = 0, prev = 0, count = 0;
+	while( (pos = (int)str->c_std_str().find(delim->c_std_str(), prev)) != (int)std::string::npos )
+	{
+		// Manage part
+		int pos_=pos;
+		for(int i=prev;i<pos && (cstr[i]==' ' || cstr[i]=='\t' || cstr[i]=='\n' || cstr[i]=='\n');i++) prev++;
+		for(int i=pos-1;i>prev && (cstr[i]==' ' || cstr[i]=='\t' || cstr[i]=='\n' || cstr[i]=='\n');i--) pos--;
+		if(prev==pos)
+		{
+			prev=pos_+(int)delim->length();
+			continue;
+		}
+
+		// Add the part to the array
+		CScriptString *part = new CScriptString();
+		part->assign(str->c_str(prev), pos-prev);
+		array->Resize(array->GetSize()+1);
+		*(CScriptString**)array->At(count) = part;
+
+		// Find the next part
+		count++;
+		prev=pos_+(int)delim->length();
+	}
+
+	// Add the remaining part
+	CScriptString *part = new CScriptString();
+	part->assign(str->c_str(prev));
+	array->Resize(array->GetSize()+1);
+	*(CScriptString**)array->At(count) = part;
+
+	// Return the array by handle
+	*(CScriptArray**)gen->GetAddressOfReturnLocation() = array;
+}
+
 // This function takes as input an array of string handles as well as a
 // delimiter and concatenates the array elements into one delimited string.
 // Example:
@@ -361,7 +426,8 @@ void RegisterScriptStringUtils(asIScriptEngine *engine)
     r = engine->RegisterGlobalFunction("int findLastNotOf(const string &in, const string &in)", asFUNCTION(StringFindLastNotOf0_Generic), asCALL_GENERIC); assert(r >= 0);
     r = engine->RegisterGlobalFunction("int findLastNotOf(const string &in, const string &in, int)", asFUNCTION(StringFindLastNotOf_Generic), asCALL_GENERIC); assert(r >= 0);
     r = engine->RegisterGlobalFunction("array<string@>@ split(const string &in, const string &in)", asFUNCTION(StringSplit_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterGlobalFunction("string@ join(const array<string@> &in, const string &in)", asFUNCTION(StringJoin_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("array<string@>@ splitEx(const string &in, const string &in)", asFUNCTION(StringSplitEx_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string@ join(const array<string@> &in, const string &in)", asFUNCTION(StringJoin_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string@ strlwr(const string &in)", asFUNCTION(StringStrLwr_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string@ strupr(const string &in)", asFUNCTION(StringStrUpr_Generic), asCALL_GENERIC); assert(r >= 0);
 }

@@ -10449,12 +10449,44 @@ void FOClient::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x
 	SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
 }
 
+void FOClient::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, int x, int y, DWORD color, bool offs)
+{
+	if(!SpritesCanDraw || !spr_id) return;
+	AnyFrames* anim=Self->AnimGetFrames(spr_id);
+	if(!anim || spr_index>=anim->GetCnt()) return;
+	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	if(offs)
+	{
+		SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id_);
+		if(!si) return;
+		x+=si->OffsX;
+		y+=si->OffsY;
+	}
+	SprMngr.DrawSprite(spr_id_,x,y,color);
+}
+
 void FOClient::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color)
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=anim->GetCnt()) return;
 	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
+}
+
+void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color, bool offs)
+{
+	if(!SpritesCanDraw || !spr_id) return;
+	AnyFrames* anim=Self->AnimGetFrames(spr_id);
+	if(!anim || spr_index>=anim->GetCnt()) return;
+	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	if(offs)
+	{
+		SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id_);
+		if(!si) return;
+		x+=si->OffsX;
+		y+=si->OffsY;
+	}
+	SprMngr.DrawSpriteSize(spr_id_,x,y,w,h,scratch,true,color);
 }
 
 void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags)
