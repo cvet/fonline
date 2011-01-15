@@ -990,7 +990,7 @@ DWORD SpriteManager::LoadSprite(const char* fname, int path_type, int dir /* = 0
 		return 0;
 	}
 
-	if(strlen(ext)!=3 || ext[0]!='f' || ext[1]!='r')
+	if(_strnicmp(ext,"fr",2))
 	{
 		if(!_stricmp(ext,"rix")) return LoadSpriteRix(fname,path_type);
 		if(!_stricmp(ext,"art")) return LoadSpriteArt(fname,path_type,dir);
@@ -1358,7 +1358,7 @@ AnyFrames* SpriteManager::LoadAnyAnimation(const char* fname, int path_type, boo
 		return NULL;
 	}
 
-	if(strlen(ext)!=3 || ext[0]!='f' || ext[1]!='r')
+	if(_strnicmp(ext,"fr",2))
 	{
 		if(!_stricmp(ext,"fofrm")) return LoadAnyAnimationFofrm(fname,path_type,dir);
 		if(!_stricmp(ext,"art")) return LoadAnyAnimationArt(fname,path_type,dir);
