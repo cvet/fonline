@@ -3901,41 +3901,15 @@ bool FOServer::LoadClientsData()
 			return false;
 		}
 
-		DWORD version=0; // Client data version
 		char pass[MAX_NAME+1]={0};
+		DWORD key=0;
 		DWORD id=-1;
-		bool read_ok=(fread(&version,sizeof(version),1,f) && fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
+		bool read_ok=(fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f) &&
+			fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0 && fread(&key,sizeof(key),1,f));
+		fclose(f);
 
 		// Decrypt password
-		if(read_ok)
-		{
-			if(version==0xFFFFFFFF)
-			{
-				DWORD key=0;
-				read_ok=(fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
-				if(read_ok)
-				{
-					read_ok=(fread(&key,sizeof(key),1,f)!=0);
-					if(read_ok) Crypt.DecryptPassword(pass,sizeof(pass),key);
-				}
-			}
-			else
-			{
-				read_ok=(fseek(f,0,SEEK_SET)==0 && fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
-				if(read_ok && pass[sizeof(pass)-1])
-				{
-					DWORD key=0;
-					read_ok=(fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
-					if(read_ok)
-					{
-						read_ok=(fread(&key,sizeof(key),1,f)!=0);
-						if(read_ok) Crypt.DecryptPassword(pass,sizeof(pass),key);
-					}
-				}
-			}
-		}
-
-		fclose(f);
+		if(read_ok && key) Crypt.DecryptPassword(pass,sizeof(pass),key);
 
 		// Verify
 		DWORD pass_len=strlen(pass);
@@ -4005,19 +3979,17 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 		}
 
 		// Encrypt password
-		DWORD version=0xFFFFFFFF; // Client data version
 		char pass[sizeof(cl->Pass)]={0};
 		StringCopy(pass,cl->Pass);
 		cl->Data.Temp=Random(1000000000,2000000000);
 		Crypt.EncryptPassword(pass,sizeof(cl->Pass),cl->Data.Temp);
 
-		_fwrite_nolock(&version,sizeof(version),1,f);
-		_fwrite_nolock(pass,sizeof(pass),1,f);
-		_fwrite_nolock(&cl->Data,sizeof(cl->Data),1,f);
-		_fwrite_nolock(data_ext,sizeof(CritDataExt),1,f);
+		fwrite(pass,sizeof(pass),1,f);
+		fwrite(&cl->Data,sizeof(cl->Data),1,f);
+		fwrite(data_ext,sizeof(CritDataExt),1,f);
 		DWORD te_count=cl->CrTimeEvents.size();
-		_fwrite_nolock(&te_count,sizeof(te_count),1,f);
-		if(te_count) _fwrite_nolock(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f);
+		fwrite(&te_count,sizeof(te_count),1,f);
+		if(te_count) fwrite(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f);
 		fclose(f);
 
 		cl->Data.Temp=0;
@@ -4059,7 +4031,7 @@ bool FOServer::LoadClient(Client* cl)
 	fclose(f);
 
 	// Decrypt password
-	if(cl->Pass[sizeof(cl->Pass)-1]) // Last char not zero
+	if(cl->Data.Temp) // Last char not zero
 	{
 		Crypt.DecryptPassword(cl->Pass,sizeof(cl->Pass),cl->Data.Temp);
 		cl->Data.Temp=0;
@@ -4319,7 +4291,7 @@ void FOServer::AddWorldSaveData(void* data, size_t size)
 {
 	if(!WorldSaveManager)
 	{
-		_fwrite_nolock(data,size,1,DumpFile);
+		fwrite(data,size,1,DumpFile);
 		return;
 	}
 
@@ -4410,11 +4382,9 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 			}
 
 			// Encrypt password
-			DWORD version=0xFFFFFFFF; // Client data version
 			csd.Data.Temp=Random(1000000000,2000000000);
 			Crypt.EncryptPassword(csd.Password,sizeof(csd.Password),csd.Data.Temp);
 
-			fwrite(&version,sizeof(version),1,fc);
 			fwrite(csd.Password,sizeof(csd.Password),1,fc);
 			fwrite(&csd.Data,sizeof(csd.Data),1,fc);
 			fwrite(&csd.DataExt,sizeof(csd.DataExt),1,fc);
