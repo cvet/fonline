@@ -3901,19 +3901,37 @@ bool FOServer::LoadClientsData()
 			return false;
 		}
 
+		DWORD version=0; // Client data version
 		char pass[MAX_NAME+1]={0};
 		DWORD id=-1;
-		bool read_ok=(fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
+		bool read_ok=(fread(&version,sizeof(version),1,f) && fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
 
 		// Decrypt password
-		if(read_ok && pass[sizeof(pass)-1]) // Last char not zero
+		if(read_ok)
 		{
-			DWORD key=0;
-			read_ok=(fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
-			if(read_ok)
+			if(version==0xFFFFFFFF)
 			{
-				read_ok=(fread(&key,sizeof(key),1,f)!=0);
-				if(read_ok) Crypt.DecryptPassword(pass,sizeof(pass),key);
+				DWORD key=0;
+				read_ok=(fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
+				if(read_ok)
+				{
+					read_ok=(fread(&key,sizeof(key),1,f)!=0);
+					if(read_ok) Crypt.DecryptPassword(pass,sizeof(pass),key);
+				}
+			}
+			else
+			{
+				read_ok=(fseek(f,0,SEEK_SET)==0 && fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f));
+				if(read_ok && pass[sizeof(pass)-1])
+				{
+					DWORD key=0;
+					read_ok=(fseek(f,offsetof(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
+					if(read_ok)
+					{
+						read_ok=(fread(&key,sizeof(key),1,f)!=0);
+						if(read_ok) Crypt.DecryptPassword(pass,sizeof(pass),key);
+					}
+				}
 			}
 		}
 
@@ -3987,11 +4005,13 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 		}
 
 		// Encrypt password
+		DWORD version=0xFFFFFFFF; // Client data version
 		char pass[sizeof(cl->Pass)]={0};
 		StringCopy(pass,cl->Pass);
 		cl->Data.Temp=Random(1000000000,2000000000);
 		Crypt.EncryptPassword(pass,sizeof(cl->Pass),cl->Data.Temp);
 
+		_fwrite_nolock(&version,sizeof(version),1,f);
 		_fwrite_nolock(pass,sizeof(pass),1,f);
 		_fwrite_nolock(&cl->Data,sizeof(cl->Data),1,f);
 		_fwrite_nolock(data_ext,sizeof(CritDataExt),1,f);
@@ -4390,9 +4410,11 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 			}
 
 			// Encrypt password
+			DWORD version=0xFFFFFFFF; // Client data version
 			csd.Data.Temp=Random(1000000000,2000000000);
 			Crypt.EncryptPassword(csd.Password,sizeof(csd.Password),csd.Data.Temp);
 
+			fwrite(&version,sizeof(version),1,fc);
 			fwrite(csd.Password,sizeof(csd.Password),1,fc);
 			fwrite(&csd.Data,sizeof(csd.Data),1,fc);
 			fwrite(&csd.DataExt,sizeof(csd.DataExt),1,fc);
