@@ -1068,7 +1068,6 @@
 	if(engine->RegisterGlobalFunction("int GetKeybLang()",asFUNCTION(BIND_CLASS Global_GetKeybLang),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)",asFUNCTION(BIND_CLASS Global_GetHexPos),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)",asFUNCTION(BIND_CLASS Global_GetMonitorHex),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void GetMousePosition(int& x, int& y)",asFUNCTION(BIND_CLASS Global_GetMousePosition),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("ItemCl@+ GetMonitorItem(int x, int y)",asFUNCTION(BIND_CLASS Global_GetMonitorItem),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("CritterCl@+ GetMonitorCritter(int x, int y)",asFUNCTION(BIND_CLASS Global_GetMonitorCritter),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint16 GetMapWidth()",asFUNCTION(BIND_CLASS Global_GetMapWidth),asCALL_CDECL)<0) BIND_ERROR;
@@ -1086,6 +1085,7 @@
 	if(engine->RegisterGlobalFunction("void SetEffect(int effectType, int effectSubtype, string@+ effectName)",asFUNCTION(BIND_CLASS Global_SetEffect),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void RefreshMap(bool onlyTiles, bool onlyRoof, bool onlyLight)",asFUNCTION(BIND_CLASS Global_RefreshMap),asCALL_CDECL)<0) BIND_ERROR;
 
+	if(engine->RegisterGlobalProperty("bool __ConsoleActive",&BIND_CLASS ConsoleActive)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __GmapActive",&BIND_CLASS GmapActive)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __GmapWait",&BIND_CLASS GmapWait)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("float __GmapZoom",&BIND_CLASS GmapZoom)) BIND_ERROR;
@@ -1405,6 +1405,8 @@
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_MAPPER)
+	if(engine->RegisterGlobalProperty("int __MouseX",&GameOpt.MouseX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MouseY",&GameOpt.MouseY)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint8 __RoofAlpha",&GameOpt.RoofAlpha)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __HideCursor",&GameOpt.HideCursor)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const int __ScreenWidth",&GameOpt.ScreenWidth)) BIND_ERROR;
@@ -1533,7 +1535,6 @@
 	if(engine->RegisterGlobalFunction("int GetKeybLang()",asFUNCTION(BIND_CLASS Global_GetKeybLang),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)",asFUNCTION(BIND_CLASS Global_GetHexPos),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)",asFUNCTION(BIND_CLASS Global_GetMonitorHex),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void GetMousePosition(int& x, int& y)",asFUNCTION(BIND_CLASS Global_GetMousePosition),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalFunction("void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)",asFUNCTION(BIND_CLASS Global_MoveHexByDir),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetIfaceIniStr(string& key)",asFUNCTION(BIND_CLASS Global_GetIfaceIniStr),asCALL_CDECL)<0) BIND_ERROR;

@@ -74,8 +74,8 @@ struct Field
 	CritVec DeadCrits;
 	int ScrX;
 	int ScrY;
-	DWORD TileId;
-	DWORD RoofId;
+	AnyFrames* Tile;
+	AnyFrames* Roof;
 	ItemHexVec Items;
 	short RoofNum;
 	bool ScrollBlock;
@@ -92,8 +92,8 @@ struct Field
 	bool IsMultihex;
 
 #ifdef FONLINE_MAPPER
-	DWORD SelTile;
-	DWORD SelRoof;
+	AnyFrames* SelTile;
+	AnyFrames* SelRoof;
 	DWORD TerrainId;
 	DWORD SelTerrain;
 #endif
@@ -121,7 +121,7 @@ struct Drop
 	short DropCnt;
 
 	Drop():CurSprId(0),OffsX(0),OffsY(0),DropCnt(0),GroundOffsY(0){};
-	Drop(WORD id, short x, short y, short ground_y):CurSprId(id),OffsX(x),OffsY(y),DropCnt(0),GroundOffsY(ground_y){};
+	Drop(WORD id, short x, short y, short ground_y):CurSprId(id),OffsX(x),OffsY(y),DropCnt(-1),GroundOffsY(ground_y){};
 };
 
 typedef vector<Drop*> DropVec;
@@ -155,12 +155,11 @@ private:
 	Field* hexField;
 	bool* hexToDraw;
 	char* hexTrack;
-	DWORD picTrack1;
-	DWORD picTrack2;
-	DWORD picHexMask;
+	AnyFrames* picTrack1,*picTrack2;
+	AnyFrames* picHexMask;
 	bool isShowTrack;
 	bool isShowHex;
-	DWORD hexWhite,hexBlue;
+	AnyFrames* hexWhite,*hexBlue;
 
 	// Center
 public:
@@ -195,7 +194,6 @@ public:
 private:
 	Sprites mainTree;
 	ViewField* viewField;
-	FileManager fmMap;
 
 	int screenHexX,screenHexY;
 	int hTop,hBottom,wLeft,wRight;
@@ -216,7 +214,7 @@ public:
 
 	HexManager();
 	bool Init();
-	bool ReloadSprites();
+	void ReloadSprites();
 	void Clear();
 
 	void PreRestore();
@@ -352,8 +350,8 @@ public:
 private:
 	DropVec rainData;
 	int rainCapacity;
-	WORD picRainDrop;
-	WORD picRainDropA[7];
+	AnyFrames* picRainDrop;
+	AnyFrames* picRainDropA[7];
 	Sprites roofRainTree;
 
 public:
@@ -369,7 +367,7 @@ public:
 private:
 	bool isShowCursor;
 	int drawCursorX;
-	DWORD cursorPrePic,cursorPostPic,cursorXPic;
+	AnyFrames* cursorPrePic,*cursorPostPic,*cursorXPic;
 	int cursorX,cursorY;
 
 /************************************************************************/

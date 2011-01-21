@@ -44,8 +44,9 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 
 CritterCl::~CritterCl()
 {
-	SAFEDEL(Anim3d);
-	SAFEDEL(Anim3dStay);
+	SprMngr.FreePure3dAnimation(Anim3d);
+	SprMngr.FreePure3dAnimation(Anim3dStay);
+
 	if(Layers3d)
 	{
 #ifdef FONLINE_CLIENT
@@ -426,7 +427,7 @@ Item* CritterCl::GetSlotUse(BYTE num_slot, BYTE& use)
 	return item;
 }
 
-int CritterCl::GetUsePic(BYTE num_slot)
+DWORD CritterCl::GetUsePicName(BYTE num_slot)
 {
 	static DWORD use_on_pic=Str::GetHash("art\\intrface\\useon.frm");
 	static DWORD use_pic=Str::GetHash("art\\intrface\\uset.frm");
@@ -1526,8 +1527,8 @@ void CritterCl::SetBaseType(DWORD type)
 	Animation3d* anim3d=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 	if(anim3d)
 	{
-		SAFEDEL(Anim3d);
-		SAFEDEL(Anim3dStay);
+		SprMngr.FreePure3dAnimation(Anim3d);
+		SprMngr.FreePure3dAnimation(Anim3dStay);
 
 		Anim3d=anim3d;
 		Anim3dStay=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);

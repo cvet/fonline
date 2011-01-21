@@ -377,7 +377,7 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 	if(!alreadyLoadedDll.count(dll_name_))
 	{
 		// Register variables
-		size_t* ptr=(size_t*)GetProcAddress(dll,"GameOpt");
+		size_t* ptr=(size_t*)GetProcAddress(dll,"Game");
 		if(ptr) *ptr=(size_t)&GameOpt;
 		ptr=(size_t*)GetProcAddress(dll,"ASEngine");
 		if(ptr) *ptr=(size_t)Engine;

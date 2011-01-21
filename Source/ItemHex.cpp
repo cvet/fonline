@@ -154,8 +154,8 @@ void ItemHex::RefreshAnim()
 	DWORD name_hash=Proto->PicMapHash;
 	if(Data.PicMapHash) name_hash=Data.PicMapHash;
 	Anim=NULL;
-	if(name_hash) Anim=ResMngr.GetAnim(name_hash,dir);
-	if(name_hash && !Anim && dir) Anim=ResMngr.GetAnim(name_hash,0);
+	if(name_hash) Anim=ResMngr.GetItemAnim(name_hash,dir);
+	if(name_hash && !Anim && dir) Anim=ResMngr.GetItemAnim(name_hash,0);
 	if(!Anim) Anim=DefaultAnim;
 
 	SetStayAnim();

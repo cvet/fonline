@@ -1046,6 +1046,7 @@ struct BindClass
 	static void Global_SetEffect(){}
 	static void Global_RefreshMap(){}
 
+	static int ConsoleActive;
 	static int GmapActive,GmapWait;
 	static int GmapZoom;
 	static int GmapOffsetX,GmapOffsetY;
@@ -1159,7 +1160,6 @@ struct BindClass
 	static void Global_GetKeybLang(){}
 	static void Global_GetHexPos(){}
 	static void Global_GetMonitorHex(){}
-	static void Global_GetMousePosition(){}
 #endif
 
 	static void Global_GetLastError(){}
@@ -1177,6 +1177,7 @@ struct BindClass
 };
 
 #ifdef BIND_CLIENT
+int BindClass::ConsoleActive;
 int BindClass::GmapActive;
 int BindClass::GmapWait;
 int BindClass::GmapZoom;
@@ -1310,6 +1311,8 @@ struct GameOptions
 
 	// Client
 	int Quit;
+	int MouseX;
+	int MouseY;
 	int ScrOx;
 	int ScrOy;
 	int ShowTile;

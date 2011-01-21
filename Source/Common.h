@@ -446,6 +446,8 @@ struct GameOptions
 
 	// Client and Mapper
 	bool Quit;
+	int MouseX;
+	int MouseY;
 	int ScrOx;
 	int ScrOy;
 	bool ShowTile;
@@ -559,6 +561,11 @@ struct GameOptions
 	void* ClientMap;
 	DWORD ClientMapWidth;
 	DWORD ClientMapHeight;
+
+	void* (*GetDrawingSprites)(DWORD&);
+	void* (*GetSpriteInfo)(DWORD);
+	DWORD (*GetSpriteColor)(DWORD,int,int,bool);
+	bool (*IsSpriteHit)(void*,int,int,bool);
 
 	// Callbacks
 	DWORD (*GetUseApCost)(void*,void*,BYTE);

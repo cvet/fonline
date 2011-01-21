@@ -167,24 +167,9 @@ void ResourceManager::FreeResources(int type)
 	}
 }
 
-DWORD ResourceManager::GetSprId(DWORD name_hash, int dir)
+AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir, int res_type)
 {
-	if(!name_hash) return 0;
-	AnyFrames* anim=GetAnim(name_hash,dir);
-	if(!anim) return 0;
-	return anim->GetSprId(0);
-}
-
-SpriteInfo* ResourceManager::GetSprInfo(DWORD name_hash, int dir)
-{
-	DWORD id=GetSprId(name_hash,dir);
-	return id?SprMngr.GetSpriteInfo(id):NULL;
-}
-
-AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir)
-{
-	int res_type=(SprMngr.SurfType==RES_NONE?RES_ITEMS:SprMngr.SurfType);
-	SprMngr.SurfType=RES_NONE;
+	// Find already loaded
 	DWORD id=name_hash+dir;
 	LoadedAnimMapIt it=loadedAnims.find(id);
 	if(it!=loadedAnims.end()) return (*it).second.Anim;
@@ -192,27 +177,20 @@ AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir)
 	// Load new animation
 	const char* fname=GetName(name_hash);
 	if(!fname) return NULL;
+
 	SprMngr.SurfType=res_type;
-	AnyFrames* anim=SprMngr.LoadAnyAnimation(fname,PT_DATA,true,dir);
+	AnyFrames* anim=SprMngr.LoadAnimation(fname,PT_DATA,ANIM_DIR(dir)|ANIM_FRM_ANIM_PIX);
 	SprMngr.SurfType=RES_NONE;
-	if(!anim) return NULL;
+
 	loadedAnims.insert(LoadedAnimMapVal(id,LoadedAnim(res_type,anim)));
 	return anim;
 }
 
-DWORD ResourceManager::GetIfaceSprId(DWORD name_hash){SprMngr.SurfType=RES_IFACE; return GetSprId(name_hash,0);}
-DWORD ResourceManager::GetInvSprId(DWORD name_hash){SprMngr.SurfType=RES_IFACE_EXT; return GetSprId(name_hash,0);}
-DWORD ResourceManager::GetSkDxSprId(DWORD name_hash){SprMngr.SurfType=RES_IFACE_EXT; return GetSprId(name_hash,0);}
-SpriteInfo* ResourceManager::GetIfaceSprInfo(DWORD name_hash){SprMngr.SurfType=RES_IFACE; return GetSprInfo(name_hash,0);}
-SpriteInfo* ResourceManager::GetInvSprInfo(DWORD name_hash){SprMngr.SurfType=RES_IFACE_EXT; return GetSprInfo(name_hash,0);}
-SpriteInfo* ResourceManager::GetSkDxSprInfo(DWORD name_hash){SprMngr.SurfType=RES_IFACE_EXT; return GetSprInfo(name_hash,0);}
-AnyFrames* ResourceManager::GetIfaceAnim(DWORD name_hash){SprMngr.SurfType=RES_IFACE; return GetAnim(name_hash,0);}
-AnyFrames* ResourceManager::GetInvAnim(DWORD name_hash){SprMngr.SurfType=RES_IFACE_EXT; return GetAnim(name_hash,0);}
-
-AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
+AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
 {
 	if(CritType::IsAnim3d(crtype)) return NULL;
 
+	dir=CLAMP(dir,0,5);
 	if(!CritType::IsCanRotate(crtype)) dir=0;
 	DWORD id=(crtype<<19)|(anim1<<11)|(anim2<<3)|(dir&7);
 
@@ -226,17 +204,17 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 	// Try load fofrm
 	const char* name=CritType::GetName(crtype);
 	sprintf(spr_name,"%s%c%c.fofrm",name,frm_ind[anim1],frm_ind[anim2]);
-	AnyFrames* cr_frm=SprMngr.LoadAnyAnimation(spr_name,PT_ART_CRITTERS,false,dir);
+	AnyFrames* cr_frm=SprMngr.LoadAnimation(spr_name,PT_ART_CRITTERS,ANIM_DIR(dir));
 
 	// Try load fallout frames
 	if(!cr_frm)
 	{
 		sprintf(spr_name,"%s%c%c.frm",name,frm_ind[anim1],frm_ind[anim2]);
-		cr_frm=SprMngr.LoadAnyAnimation(spr_name,PT_ART_CRITTERS,false,dir);
+		cr_frm=SprMngr.LoadAnimation(spr_name,PT_ART_CRITTERS,ANIM_DIR(dir));
 		if(!cr_frm)
 		{
 			sprintf(spr_name,"%s%c%c.fr%u",name,frm_ind[anim1],frm_ind[anim2],dir);
-			cr_frm=SprMngr.LoadAnyAnimation(spr_name,PT_ART_CRITTERS,false,0);
+			cr_frm=SprMngr.LoadAnimation(spr_name,PT_ART_CRITTERS,ANIM_DIR(0));
 			if(!cr_frm)
 			{
 				SprMngr.SurfType=RES_NONE;
@@ -250,7 +228,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 	return cr_frm;
 }
 
-Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
+Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
 {
 	if(!CritType::IsAnim3d(crtype)) return NULL;
 
@@ -276,7 +254,7 @@ Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD ani
 	return anim3d;
 }
 
-DWORD ResourceManager::GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
+DWORD ResourceManager::GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
 {
 	DWORD spr_id=0;
 	if(!CritType::IsAnim3d(crtype))
@@ -292,25 +270,13 @@ DWORD ResourceManager::GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, BYTE
 	return spr_id;
 }
 
-DWORD ResourceManager::GetAvatarSprId(const char* fname)
-{
-	static DWORD avatar_id=0;
-	static string avatar_name;
-	if(avatar_name==fname) return avatar_id;
-	avatar_name=fname;
-	SprMngr.SurfType=RES_AVATAR;
-	avatar_id=SprMngr.ReloadSprite(avatar_id,fname,PT_ART_INTRFACE);
-	SprMngr.SurfType=RES_NONE;
-	return avatar_id;
-}
-
-DWORD ResourceManager::GetRandomSplash()
+AnyFrames* ResourceManager::GetRandomSplash()
 {
 	if(splashNames.empty()) return 0;
 	int rnd=Random(0,splashNames.size()-1);
-	static DWORD splash=0;
+	static AnyFrames* splash=NULL;
 	SprMngr.SurfType=RES_SPLASH;
-	splash=SprMngr.ReloadSprite(splash,splashNames[rnd].c_str(),PT_DATA);
+	splash=SprMngr.ReloadAnimation(splash,splashNames[rnd].c_str(),PT_DATA);
 	SprMngr.SurfType=RES_NONE;
 	return splash;
 }

@@ -116,22 +116,21 @@ typedef vector<MapText>::iterator MapTextVecIt;
 
 	// Cursor
 	int CurMode;
-#define CUR_MODE_DEF		0
-#define CUR_MODE_MOVE		1
-#define CUR_MODE_DRAW		2
-#define MAX_CUR_MODES		3
+#define CUR_MODE_DEF		(0)
+#define CUR_MODE_MOVE		(1)
+#define CUR_MODE_DRAW		(2)
+#define MAX_CUR_MODES		(3)
 
-	DWORD CurPDef,CurPHand;
-	int CurX,CurY;
+	AnyFrames* CurPDef,*CurPHand;
 
 	void CurDraw();
 	void CurRMouseUp();
 	void CurMMouseDown();
 
 	bool GetMouseHex(WORD& hx, WORD& hy);
-	bool IsCurInRect(INTRECT& rect, int ax, int ay){return (CurX>=rect[0]+ax && CurY>=rect[1]+ay && CurX<=rect[2]+ax && CurY<=rect[3]+ay);}
-	bool IsCurInRect(INTRECT& rect){return (CurX>=rect[0] && CurY>=rect[1] && CurX<=rect[2] && CurY<=rect[3]);}
-	bool IsCurInRectNoTransp(DWORD spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,CurX-rect.L-ax,CurY-rect.T-ay,false);}
+	bool IsCurInRect(INTRECT& rect, int ax, int ay){return (GameOpt.MouseX>=rect[0]+ax && GameOpt.MouseY>=rect[1]+ay && GameOpt.MouseX<=rect[2]+ax && GameOpt.MouseY<=rect[3]+ay);}
+	bool IsCurInRect(INTRECT& rect){return (GameOpt.MouseX>=rect[0] && GameOpt.MouseY>=rect[1] && GameOpt.MouseX<=rect[2] && GameOpt.MouseY<=rect[3]);}
+	bool IsCurInRectNoTransp(DWORD spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,GameOpt.MouseX-rect.L-ax,GameOpt.MouseY-rect.T-ay,false);}
 
 	int IntMode;
 #define INT_MODE_NONE       (0)
@@ -140,7 +139,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 #define INT_MODE_WEAPON     (3)
 #define INT_MODE_AMMO       (4)
 #define INT_MODE_MISC       (5)
-#define INT_MODE_MISC_EX      (6)
+#define INT_MODE_MISC_EX    (6)
 #define INT_MODE_KEY        (7)
 #define INT_MODE_CONT       (8)
 #define INT_MODE_DOOR       (9)
@@ -162,7 +161,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 #define INT_SELECT          (3)
 #define INT_OBJECT          (4)
 
-	DWORD IntMainPic,IntPTab,IntPSelect,IntPShow;
+	AnyFrames* IntMainPic,*IntPTab,*IntPSelect,*IntPShow;
 	int IntX,IntY;
 	int IntVectX,IntVectY;
 	WORD SelectHX1,SelectHY1,SelectHX2,SelectHY2;
@@ -299,7 +298,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	// Object
 #define DRAW_NEXT_HEIGHT			12
 
-	DWORD ObjWMainPic,ObjPBToAllDn;
+	AnyFrames* ObjWMainPic,*ObjPBToAllDn;
 	INTRECT ObjWMain,ObjWWork,ObjBToAll;
 	int ObjX,ObjY;
 	int ItemVectX,ItemVectY;
@@ -312,7 +311,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	void ObjKeyDownA(MapObject* o, BYTE dik);
 
 	// Console
-	DWORD ConsolePic;
+	AnyFrames* ConsolePic;
 	int ConsolePicX,ConsolePicY,ConsoleTextX,ConsoleTextY;
 	bool ConsoleEdit;
 	char ConsoleStr[MAX_NET_TEXT+1];
@@ -445,7 +444,6 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static DWORD Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
 		static bool Global_GetHexPos(WORD hx, WORD hy, int& x, int& y);
 		static bool Global_GetMonitorHex(int x, int y, WORD& hx, WORD& hy);
-		static void Global_GetMousePosition(int& x, int& y);
 
 		static DWORD Global_LoadSprite(CScriptString& spr_name, int path_index);
 		static DWORD Global_LoadSpriteHash(DWORD name_hash, BYTE dir);

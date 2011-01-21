@@ -567,7 +567,6 @@ public:
 		static bool Global_GetMonitorHex(int x, int y, WORD& hx, WORD& hy);
 		static Item* Global_GetMonitorItem(int x, int y);
 		static CritterCl* Global_GetMonitorCritter(int x, int y);
-		static void Global_GetMousePosition(int& x, int& y);
 		static WORD Global_GetMapWidth();
 		static WORD Global_GetMapHeight();
 		static int Global_GetCurrentCursor();
@@ -583,6 +582,7 @@ public:
 		static void Global_SetEffect(int effect_type, int effect_subtype, CScriptString* effect_name);
 		static void Global_RefreshMap(bool only_tiles, bool only_roof, bool only_light);
 
+		static bool& ConsoleActive;
 		static bool& GmapActive,&GmapWait;
 		static float& GmapZoom;
 		static int& GmapOffsetX,&GmapOffsetY;
@@ -604,13 +604,13 @@ public:
 	int InitIface();
 	bool IfaceLoadRect(INTRECT& comp, const char* name);
 	void IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy);
-	void IfaceLoadSpr(DWORD& comp, const char* name);
+	void IfaceLoadSpr(AnyFrames*& comp, const char* name);
 	void IfaceLoadAnim(DWORD& comp, const char* name);
 	void IfaceFreeResources();
 
-	bool IsCurInRect(INTRECT& rect, int ax, int ay){return !rect.IsZero() && (CurX>=rect[0]+ax && CurY>=rect[1]+ay && CurX<=rect[2]+ax && CurY<=rect[3]+ay);}
-	bool IsCurInRect(INTRECT& rect){return !rect.IsZero() && (CurX>=rect[0] && CurY>=rect[1] && CurX<=rect[2] && CurY<=rect[3]);}
-	bool IsCurInRectNoTransp(DWORD spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,CurX-rect.L-ax,CurY-rect.T-ay,false);}
+	bool IsCurInRect(INTRECT& rect, int ax, int ay){return !rect.IsZero() && (GameOpt.MouseX>=rect[0]+ax && GameOpt.MouseY>=rect[1]+ay && GameOpt.MouseX<=rect[2]+ax && GameOpt.MouseY<=rect[3]+ay);}
+	bool IsCurInRect(INTRECT& rect){return !rect.IsZero() && (GameOpt.MouseX>=rect[0] && GameOpt.MouseY>=rect[1] && GameOpt.MouseX<=rect[2] && GameOpt.MouseY<=rect[3]);}
+	bool IsCurInRectNoTransp(DWORD spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,GameOpt.MouseX-rect.L-ax,GameOpt.MouseY-rect.T-ay,false);}
 	int GetSprCX(DWORD spr_id){SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id); return si?(si->Width/2)+si->OffsX:0;};
 	int GetSprCY(DWORD spr_id){SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id); return si?(si->Height/2)+si->OffsY:0;};
 
@@ -635,9 +635,9 @@ public:
 /************************************************************************/
 /* Console                                                              */
 /************************************************************************/
-	DWORD ConsolePic;
+	AnyFrames* ConsolePic;
 	int ConsolePicX,ConsolePicY,ConsoleTextX,ConsoleTextY;
-	bool ConsoleEdit;
+	static bool ConsoleActive;
 	char ConsoleStr[MAX_NET_TEXT+1];
 	int ConsoleCur;
 	StrVec ConsoleHistory;
@@ -656,7 +656,8 @@ public:
 #define INVF_NONE           (0)
 #define INVF_RAD_CHANNEL    (1)
 
-	DWORD InvPWMain,InvPBOkDw,InvPBOkUp,InvPBScrUpDw,InvPBScrUpUp,InvPBScrUpOff,InvPBScrDwDw,InvPBScrDwUp,InvPBScrDwOff;
+	AnyFrames* InvPWMain,*InvPBOkDw,*InvPBOkUp,*InvPBScrUpDw,*InvPBScrUpUp,
+		*InvPBScrUpOff,*InvPBScrDwDw,*InvPBScrDwUp,*InvPBScrDwOff;
 	DWORD InvHoldId;
 	string InvItemInfo;
 	int InvItemInfoScroll,InvItemInfoMaxScroll;
@@ -688,8 +689,8 @@ public:
 /************************************************************************/
 /* Use                                                                  */
 /************************************************************************/
-	DWORD UseWMainPicNone,UseBCancelPicDown,UseBScrUpPicDown,UseBScrDownPicDown,
-		UseBScrUpPicUp,UseBScrDownPicUp,UseBScrUpPicOff,UseBScrDownPicOff;
+	AnyFrames* UseWMainPicNone,*UseBCancelPicDown,*UseBScrUpPicDown,*UseBScrDownPicDown,
+		*UseBScrUpPicUp,*UseBScrDownPicUp,*UseBScrUpPicOff,*UseBScrDownPicOff;
 	int UseX,UseY,UseVectX,UseVectY;
 	int UseScroll,UseHeightItem;
 	INTRECT UseWMain,UseWChosen,UseWInv,UseBScrUp,UseBScrDown,UseBCancel;
@@ -732,10 +733,10 @@ public:
 /************************************************************************/
 /* Main iface                                                           */
 /************************************************************************/
-	DWORD IntMainPic,IntPWAddMess,IntPBAddMessDn,IntPBMessFilter1Dn,IntPBMessFilter2Dn,IntPBMessFilter3Dn,
-	IntPBScrUpDn,IntPBScrDnDn,IntPBSlotsDn,
-	IntPBInvDn,IntPBMenuDn,IntPBSkillDn,IntPBMapDn,IntPBChaDn,IntPBPipDn,IntPBFixDn;
-	DWORD IntDiodeG,IntDiodeY,IntDiodeR,IntBreakTimePic,IntWApCostPicNone;
+	AnyFrames* IntMainPic,*IntPWAddMess,*IntPBAddMessDn,*IntPBMessFilter1Dn,*IntPBMessFilter2Dn,*IntPBMessFilter3Dn,
+		*IntPBScrUpDn,*IntPBScrDnDn,*IntPBSlotsDn,
+		*IntPBInvDn,*IntPBMenuDn,*IntPBSkillDn,*IntPBMapDn,*IntPBChaDn,*IntPBPipDn,*IntPBFixDn,
+		*IntDiodeG,*IntDiodeY,*IntDiodeR,*IntBreakTimePic,*IntWApCostPicNone;
 
 	int IntX,IntY;
 	bool IntVisible,IntAddMess;
@@ -745,12 +746,13 @@ public:
 	INTRECT IntWMess,IntWMessLarge;
 	INTRECT IntAP,IntHP,IntAC,IntBreakTime; //15 зеленых(200мс) 3 желтых(1000мс) 2 красных(10000мс)
 	int IntAPstepX,IntAPstepY,IntAPMax;
-	DWORD IntBItemPicDn;
+	AnyFrames* IntBItemPicDn;
 	int IntBItemOffsX,IntBItemOffsY;
-	DWORD IntAimPic;
+	AnyFrames* IntAimPic;
 	int IntAimX,IntAimY;
 	int IntUseX,IntUseY;
-	DWORD IntWCombatAnim,IntBCombatTurnPicDown,IntBCombatEndPicDown;
+	AnyFrames* IntBCombatTurnPicDown,*IntBCombatEndPicDown;
+	DWORD IntWCombatAnim;
 	INTRECT IntWCombat,IntBCombatTurn,IntBCombatEnd;
 
 	INTRECT IntWAmmoCount,IntWWearProcent,IntWAmmoCountStr,IntWWearProcentStr;
@@ -766,15 +768,15 @@ public:
 /************************************************************************/
 /* LMenu                                                                */
 /************************************************************************/
-	DWORD LmenuPTalkOff,LmenuPTalkOn,LmenuPLookOff,LmenuPLookOn,LmenuPBreakOff,LmenuPBreakOn,
-		LmenuPUseOff,LmenuPUseOn,LmenuPGMFollowOff,LmenuPGMFollowOn,
-		LmenuPRotateOn,LmenuPRotateOff,LmenuPDropOn,LmenuPDropOff,LmenuPUnloadOn,LmenuPUnloadOff,
-		LmenuPSortUpOn,LmenuPSortUpOff,LmenuPSortDownOn,LmenuPSortDownOff,
-		LmenuPPickItemOn,LmenuPPickItemOff,LmenuPPushOn,LmenuPPushOff,
-		LmenuPBagOn,LmenuPBagOff,LmenuPSkillOn,LmenuPSkillOff,
-		LmenuPBarterOpenOn,LmenuPBarterOpenOff,LmenuPBarterHideOn,LmenuPBarterHideOff,
-		LmenuPGmapKickOff,LmenuPGmapKickOn,LmenuPGmapRuleOff,LmenuPGmapRuleOn,
-		LmenuPVoteUpOff,LmenuPVoteUpOn,LmenuPVoteDownOff,LmenuPVoteDownOn;
+	AnyFrames* LmenuPTalkOff,*LmenuPTalkOn,*LmenuPLookOff,*LmenuPLookOn,*LmenuPBreakOff,*LmenuPBreakOn,
+		*LmenuPUseOff,*LmenuPUseOn,*LmenuPGMFollowOff,*LmenuPGMFollowOn,
+		*LmenuPRotateOn,*LmenuPRotateOff,*LmenuPDropOn,*LmenuPDropOff,*LmenuPUnloadOn,*LmenuPUnloadOff,
+		*LmenuPSortUpOn,*LmenuPSortUpOff,*LmenuPSortDownOn,*LmenuPSortDownOff,
+		*LmenuPPickItemOn,*LmenuPPickItemOff,*LmenuPPushOn,*LmenuPPushOff,
+		*LmenuPBagOn,*LmenuPBagOff,*LmenuPSkillOn,*LmenuPSkillOff,
+		*LmenuPBarterOpenOn,*LmenuPBarterOpenOff,*LmenuPBarterHideOn,*LmenuPBarterHideOff,
+		*LmenuPGmapKickOff,*LmenuPGmapKickOn,*LmenuPGmapRuleOff,*LmenuPGmapRuleOn,
+		*LmenuPVoteUpOff,*LmenuPVoteUpOn,*LmenuPVoteDownOff,*LmenuPVoteDownOn;
 
 	bool LMenuActive;
 	bool LMenuTryActivated;
@@ -799,7 +801,7 @@ public:
 /************************************************************************/
 /* Login                                                                */
 /************************************************************************/
-	DWORD LogPMain,LogPSingleplayerMain,LogPBLogin,LogPBReg,LogPBOptions,LogPBCredits,LogPBExit;
+	AnyFrames* LogPMain,*LogPSingleplayerMain,*LogPBLogin,*LogPBReg,*LogPBOptions,*LogPBCredits,*LogPBExit;
 	int LogFocus;
 
 	int LogX,LogY;
@@ -815,7 +817,7 @@ public:
 /************************************************************************/
 /* Dialog                                                               */
 /************************************************************************/
-	DWORD DlgPMain,DlgPAnsw,DlgPBBarter,DlgPBSay,DlgAvatarSprId;
+	AnyFrames* DlgPMain,*DlgPAnsw,*DlgPBBarter,*DlgPBSay,*DlgAvatarPic;
 	int DlgNextAnswX,DlgNextAnswY;
 	int DlgCurAnsw,DlgHoldAnsw;
 	DWORD DlgCurAnswPage,DlgMaxAnswPage;
@@ -842,9 +844,9 @@ public:
 		DlgBBarterText,DlgBSay,DlgBSayText,DlgWAvatar,DlgWTimer;
 
 	//Barter
-	DWORD BarterPMain,BarterPBOfferDn,BarterPBTalkDn,
-		BarterPBC1ScrUpDn,BarterPBC2ScrUpDn,BarterPBC1oScrUpDn,BarterPBC2oScrUpDn,
-		BarterPBC1ScrDnDn,BarterPBC2ScrDnDn,BarterPBC1oScrDnDn,BarterPBC2oScrDnDn;
+	AnyFrames* BarterPMain,*BarterPBOfferDn,*BarterPBTalkDn,
+		*BarterPBC1ScrUpDn,*BarterPBC2ScrUpDn,*BarterPBC1oScrUpDn,*BarterPBC2oScrUpDn,
+		*BarterPBC1ScrDnDn,*BarterPBC2ScrDnDn,*BarterPBC1oScrDnDn,*BarterPBC2oScrDnDn;
 	INTRECT BarterWMain,BarterBOffer,BarterBOfferText,BarterBTalk,BarterBTalkText,BarterWCont1Pic,BarterWCont2Pic,
 		BarterWCont1,BarterWCont2,BarterWCont1o,BarterWCont2o,
 		BarterBCont1ScrUp,BarterBCont2ScrUp,BarterBCont1oScrUp,BarterBCont2oScrUp,
@@ -880,7 +882,7 @@ public:
 /* Mini-map                                                             */
 /************************************************************************/
 #define MINIMAP_PREPARE_TICK      (1000)
-	DWORD LmapPMain,LmapPBOkDw,LmapPBScanDw,LmapPBLoHiDw,LmapPPix;
+	AnyFrames* LmapPMain,*LmapPBOkDw,*LmapPBScanDw,*LmapPBLoHiDw,*LmapPPix;
 	PointVec LmapPrepPix;
 	INTRECT LmapMain,LmapWMap,LmapBOk,LmapBScan,LmapBLoHi;
 	short LmapX,LmapY;
@@ -899,16 +901,17 @@ public:
 /* Global map                                                           */
 /************************************************************************/
 	DWORD GmapTilesX,GmapTilesY;
-	DwordVec GmapPic;
-	char GmapTilesPic[64];
+	AnimVec GmapPic;
+	char GmapTilesPic[MAX_FOPATH];
 
-	DWORD GmapPBTownDw,GmapWMainPic,GmapPGr,GmapPTarg,GmapPStay,GmapPStayDn,GmapPStayMask,GmapWDayTimeAnim,GmapLocPic;
-	DWORD GmapPTownInPic,GmapPTownInPicDn,GmapPTownInPicMask,GmapPTownViewPic,GmapPTownViewPicDn,GmapPTownViewPicMask;
+	DWORD GmapWDayTimeAnim;
+	AnyFrames* GmapPBTownDw,*GmapWMainPic,*GmapPGr,*GmapPTarg,*GmapPStay,*GmapPStayDn,*GmapPStayMask,*GmapLocPic;
+	AnyFrames* GmapPTownInPic,*GmapPTownInPicDn,*GmapPTownInPicMask,*GmapPTownViewPic,*GmapPTownViewPicDn,*GmapPTownViewPicMask;
 	int GmapPTownInOffsX,GmapPTownInOffsY,GmapPTownViewOffsX,GmapPTownViewOffsY;
-	DWORD GmapPFollowCrit,GmapPFollowCritSelf;
-	DWORD GmapPWTab,GmapPWBlankTab,GmapPBTabLoc,GmapPTabScrUpDw,GmapPTabScrDwDw; //Tabs pics
-	DWORD GmapBInvPicDown,GmapBMenuPicDown,GmapBChaPicDown,GmapBPipPicDown,GmapBFixPicDown;
-	DWORD GmapPLightPic0,GmapPLightPic1;
+	AnyFrames* GmapPFollowCrit,*GmapPFollowCritSelf;
+	AnyFrames* GmapPWTab,*GmapPWBlankTab,*GmapPBTabLoc,*GmapPTabScrUpDw,*GmapPTabScrDwDw;
+	AnyFrames* GmapBInvPicDown,*GmapBMenuPicDown,*GmapBChaPicDown,*GmapBPipPicDown,*GmapBFixPicDown;
+	AnyFrames* GmapPLightPic0,*GmapPLightPic1;
 	int GmapX,GmapY,GmapVectX,GmapVectY,GmapWNameStepX,GmapWNameStepY;
 	INTRECT GmapWMain,GmapWMap,GmapBTown,GmapWName,GmapWChat,GmapWPanel,GmapWCar,GmapWLock,GmapWTime,GmapWDayTime;
 	INTRECT GmapBInv,GmapBMenu,GmapBCha,GmapBPip,GmapBFix;
@@ -921,7 +924,7 @@ public:
 	void GmapProcess();
 
 	// Town
-	DWORD GmapTownPicId;
+	AnyFrames* GmapTownPic;
 	INTRECT GmapTownPicPos;
 	IntRectVec GmapTownButtonPos;
 	IntRectVec GmapTownTextPos;
@@ -991,8 +994,8 @@ public:
 /************************************************************************/
 /* Skillbox                                                             */
 /************************************************************************/
-	DWORD SboxPMain,SboxPBCancelDn,SboxPBSneakDn,SboxPBLockPickDn,SboxPBStealDn,
-		SboxPBTrapsDn,SboxPBFirstaidDn,SboxPBDoctorDn,SboxPBScienceDn,SboxPBRepairDn;
+	AnyFrames* SboxPMain,*SboxPBCancelDn,*SboxPBSneakDn,*SboxPBLockPickDn,*SboxPBStealDn,
+		*SboxPBTrapsDn,*SboxPBFirstaidDn,*SboxPBDoctorDn,*SboxPBScienceDn,*SboxPBRepairDn;
 	INTRECT SboxWMain,SboxWMainText,SboxBCancel,SboxBCancelText,SboxBSneak,SboxBLockpick,SboxBSteal,
 		SboxBTrap,SboxBFirstAid,SboxBDoctor,SboxBScience,SboxBRepair;
 	INTRECT SboxTSneak,SboxTLockpick,SboxTSteal,SboxTTrap,SboxTFirstAid,
@@ -1011,8 +1014,8 @@ public:
 /************************************************************************/
 /* Menu Options                                                         */
 /************************************************************************/
-	DWORD MoptMainPic,MoptSingleplayerMainPic,MoptSaveGamePicDown,MoptLoadGamePicDown,
-		MoptOptionsPicDown,MoptExitPicDown,MoptResumePicDown;
+	AnyFrames* MoptMainPic,*MoptSingleplayerMainPic,*MoptSaveGamePicDown,*MoptLoadGamePicDown,
+		*MoptOptionsPicDown,*MoptExitPicDown,*MoptResumePicDown;
 	INTRECT MoptMain,MoptSaveGame,MoptLoadGame,MoptOptions,MoptExit,MoptResume;
 	int MoptX,MoptY;
 
@@ -1038,8 +1041,8 @@ public:
 #define CHA_SWITCH_KARMA (1)
 #define CHA_SWITCH_KILLS (2)
 
-	DWORD ChaPBSwitchPerks,ChaPBSwitchKarma,ChaPBSwitchKills,ChaPBSwitchMask,
-		ChaPBSwitchScrUpUp,ChaPBSwitchScrUpDn,ChaPBSwitchScrDnUp,ChaPBSwitchScrDnDn;
+	AnyFrames* ChaPBSwitchPerks,*ChaPBSwitchKarma,*ChaPBSwitchKills,*ChaPBSwitchMask,
+		*ChaPBSwitchScrUpUp,*ChaPBSwitchScrUpDn,*ChaPBSwitchScrDnUp,*ChaPBSwitchScrDnDn;
 	INTRECT ChaBSwitch,ChaTSwitch,ChaBSwitchScrUp,ChaBSwitchScrDn;
 
 	struct SwitchElement
@@ -1060,7 +1063,7 @@ public:
 	void ChaPrepareSwitch();
 
 	// Pics
-	DWORD ChaPMain,ChaPBPrintDn,ChaPBOkDn,ChaPBCancelDn;
+	AnyFrames* ChaPMain,*ChaPBPrintDn,*ChaPBOkDn,*ChaPBCancelDn;
 	int ChaX,ChaY;
 	int ChaVectX,ChaVectY;
 	INTRECT ChaWMain,ChaBPrint,ChaBPrintText,ChaBOk,ChaBOkText,ChaBCancel,ChaBCancelText;
@@ -1077,7 +1080,7 @@ public:
 	int ChaUnspentSkillPoints;
 
 	// Slider
-	DWORD ChaPWSlider,ChaPBSliderPlusDn,ChaPBSliderMinusDn;
+	AnyFrames* ChaPWSlider,*ChaPBSliderPlusDn,*ChaPBSliderMinusDn;
 	INTRECT ChaBSliderPlus,ChaBSliderMinus;
 	int ChaWSliderX,ChaWSliderY;
 	int ChaCurSkill;
@@ -1100,18 +1103,18 @@ public:
 	int ChaSkilldexPic;
 
 	// Buttons
-	DWORD ChaPBNameDn,ChaPBAgeDn,ChaPBSexDn,RegPBAccDn;
+	AnyFrames* ChaPBNameDn,*ChaPBAgeDn,*ChaPBSexDn,*RegPBAccDn;
 	INTRECT ChaBName,ChaBAge,ChaBSex;
 
 	// Registration
-	DWORD RegPMain,RegPBSpecialPlusDn,RegPBSpecialMinusDn,RegPBTagSkillDn;
+	AnyFrames* RegPMain,*RegPBSpecialPlusDn,*RegPBSpecialMinusDn,*RegPBTagSkillDn;
 	INTRECT RegWMain,RegBSpecialPlus,RegBSpecialMinus,RegBTagSkill,RegWUnspentSpecial,RegWUnspentSpecialText;
 	int RegBSpecialNextX,RegBSpecialNextY,RegBTagSkillNextX,RegBTagSkillNextY;
 	int RegCurSpecial,RegCurTagSkill;
 	CritterCl* RegNewCr;
 
 	// Trait
-	DWORD RegPBTraitDn;
+	AnyFrames* RegPBTraitDn;
 	INTRECT RegBTraitL,RegBTraitR,RegWTraitL,RegWTraitR;
 	int RegTraitNextX,RegTraitNextY;
 	int RegTraitNum;
@@ -1126,7 +1129,7 @@ public:
 /************************************************************************/
 /* Character name                                                       */
 /************************************************************************/
-	DWORD ChaNameMainPic,ChaNameSingleplayerMainPic;
+	AnyFrames* ChaNameMainPic,*ChaNameSingleplayerMainPic;
 	INTRECT ChaNameWMain,ChaNameWName,ChaNameWNameText,ChaNameWPass,ChaNameWPassText;
 	int ChaNameX,ChaNameY;
 
@@ -1137,7 +1140,7 @@ public:
 /************************************************************************/
 /* Character age                                                        */
 /************************************************************************/
-	DWORD ChaAgePic,ChaAgeBUpDn,ChaAgeBDownDn;
+	AnyFrames* ChaAgePic,*ChaAgeBUpDn,*ChaAgeBDownDn;
 	INTRECT ChaAgeWMain,ChaAgeBUp,ChaAgeBDown,ChaAgeWAge;
 	int ChaAgeX,ChaAgeY;
 
@@ -1148,7 +1151,7 @@ public:
 /************************************************************************/
 /* Character sex                                                        */
 /************************************************************************/
-	DWORD ChaSexPic,ChaSexBMaleDn,ChaSexBFemaleDn;
+	AnyFrames* ChaSexPic,*ChaSexBMaleDn,*ChaSexBFemaleDn;
 	INTRECT ChaSexWMain,ChaSexBMale,ChaSexBFemale;
 	int ChaSexX,ChaSexY;
 
@@ -1159,7 +1162,7 @@ public:
 /************************************************************************/
 /* Perk                                                                 */
 /************************************************************************/
-	DWORD PerkPMain,PerkPBScrUpDn,PerkPBScrDnDn,PerkPBOkDn,PerkPBCancelDn;
+	AnyFrames* PerkPMain,*PerkPBScrUpDn,*PerkPBScrDnDn,*PerkPBOkDn,*PerkPBCancelDn;
 	INTRECT PerkWMain,PerkWText,PerkWPerks,PerkWPic,PerkBScrUp,PerkBScrDn,PerkBOk,PerkBCancel,PerkBOkText,PerkBCancelText;
 	int PerkX,PerkY;
 	int PerkVectX,PerkVectY;
@@ -1177,7 +1180,7 @@ public:
 /************************************************************************/
 /* Town view                                                            */
 /************************************************************************/
-	DWORD TViewWMainPic,TViewBBackPicDn,TViewBEnterPicDn,TViewBContoursPicDn;
+	AnyFrames* TViewWMainPic,*TViewBBackPicDn,*TViewBEnterPicDn,*TViewBContoursPicDn;
 	INTRECT TViewWMain,TViewBBack,TViewBEnter,TViewBContours;
 	int TViewX,TViewY,TViewVectX,TViewVectY;
 	bool TViewShowCountours;
@@ -1207,7 +1210,7 @@ public:
 #define PIP__ARCHIVES       (8)
 #define PIP__ARCHIVES_INFO  (9)
 
-	DWORD PipPMain,PipPBStatusDn/*,PipPBGamesDn*/,PipPBAutomapsDn,PipPBArchivesDn,PipPBCloseDn,PipPWMonitor;
+	AnyFrames* PipPMain,*PipPBStatusDn/*,*PipPBGamesDn*/,*PipPBAutomapsDn,*PipPBArchivesDn,*PipPBCloseDn,*PipPWMonitor;
 	int PipX,PipY;
 	int PipVectX,PipVectY;
 	INTRECT PipWMain,PipWMonitor,PipBStatus/*,PipBGames*/,PipBAutomaps,PipBArchives,PipBClose,PipWTime;
@@ -1256,8 +1259,7 @@ public:
 /************************************************************************/
 /* Aim                                                                  */
 /************************************************************************/
-	DWORD AimPWMain,AimPBCancelDn,AimPic;
-
+	AnyFrames* AimPWMain,*AimPBCancelDn,*AimPic;
 	int AimX,AimY;
 	int AimVectX,AimVectY;
 	int AimPicX,AimPicY;
@@ -1265,24 +1267,23 @@ public:
 		AimWHeadT,AimWLArmT,AimWRArmT,AimWTorsoT,AimWRLegT,AimWLLegT,AimWEyesT,AimWGroinT,
 		AimWHeadP,AimWLArmP,AimWRArmP,AimWTorsoP,AimWRLegP,AimWLLegP,AimWEyesP,AimWGroinP;
 	int AimHeadP,AimLArmP,AimRArmP,AimTorsoP,AimRLegP,AimLLegP,AimEyesP,AimGroinP;
-	StrDwordMap AimLoadedPics;
 	DWORD AimTargetId;
 
 	void AimDraw();
 	void AimLMouseDown();
 	void AimLMouseUp();
 	void AimMouseMove();
-	DWORD AimGetPic(CritterCl* cr, const char* ext);
+	AnyFrames* AimGetPic(CritterCl* cr, const char* ext);
 
 /************************************************************************/
 /* PickUp                                                               */
 /************************************************************************/
-	DWORD PupPMain,PupPTakeAllOn,PupPBOkOn,
-		PupPBScrUpOn1,PupPBScrUpOff1,PupPBScrDwOn1,PupPBScrDwOff1,
-		PupPBScrUpOn2,PupPBScrUpOff2,PupPBScrDwOn2,PupPBScrDwOff2,
-		PupBNextCritLeftPicUp,PupBNextCritLeftPicDown,PupBNextCritRightPicUp,PupBNextCritRightPicDown;
+	AnyFrames* PupPMain,*PupPTakeAllOn,*PupPBOkOn,
+		*PupPBScrUpOn1,*PupPBScrUpOff1,*PupPBScrDwOn1,*PupPBScrDwOff1,
+		*PupPBScrUpOn2,*PupPBScrUpOff2,*PupPBScrDwOn2,*PupPBScrDwOff2,
+		*PupBNextCritLeftPicUp,*PupBNextCritLeftPicDown,
+		*PupBNextCritRightPicUp,*PupBNextCritRightPicDown;
 	DWORD PupHoldId;
-
 	int PupScroll1,PupScroll2,PupScrollCrit;
 	int PupX,PupY;
 	int PupVectX,PupVectY;
@@ -1308,7 +1309,7 @@ public:
 /************************************************************************/
 /* Dialog box                                                           */
 /************************************************************************/
-	DWORD DlgboxWTopPicNone,DlgboxWMiddlePicNone,DlgboxWBottomPicNone,DlgboxBButtonPicDown;
+	AnyFrames* DlgboxWTopPicNone,*DlgboxWMiddlePicNone,*DlgboxWBottomPicNone,*DlgboxBButtonPicDown;
 	INTRECT DlgboxWTop,DlgboxWMiddle,DlgboxWBottom,DlgboxWText,DlgboxBButton,DlgboxBButtonText;
 	int DlgboxX,DlgboxY;
 	int DlgboxVectX,DlgboxVectY;
@@ -1341,9 +1342,10 @@ public:
 /************************************************************************/
 /* Elevator                                                             */
 /************************************************************************/
-	DWORD ElevatorMainPic,ElevatorExtPic,ElevatorIndicatorAnim;
+	AnyFrames* ElevatorMainPic,*ElevatorExtPic,*ElevatorButtonPicDown;
+	DWORD ElevatorIndicatorAnim;
 	INTRECT ElevatorMain,ElevatorExt,ElevatorIndicator;
-	DWORD ElevatorButtonPicDown,ElevatorButtonsCount;
+	DWORD ElevatorButtonsCount;
 	INTRECT ElevatorButtons[MAX_DLGBOX_BUTTONS];
 	DWORD ElevatorType,ElevatorLevelsCount,ElevatorStartLevel,ElevatorCurrentLevel;
 	int ElevatorX,ElevatorY,ElevatorVectX,ElevatorVectY;
@@ -1362,7 +1364,7 @@ public:
 /************************************************************************/
 /* Say dialog                                                           */
 /************************************************************************/
-	DWORD SayWMainPicNone,SayBOkPicDown,SayBCancelPicDown;
+	AnyFrames* SayWMainPicNone,*SayBOkPicDown,*SayBCancelPicDown;
 	int SayX,SayY;
 	int SayVectX,SayVectY;
 	INTRECT SayWMain,SayWMainText,SayWSay,SayBOk,SayBOkText,SayBCancel,SayBCancelText;
@@ -1383,7 +1385,7 @@ public:
 /************************************************************************/
 /* Wait                                                                 */
 /************************************************************************/
-	DWORD WaitPic;
+	AnyFrames* WaitPic;
 
 	void WaitDraw();
 
@@ -1392,10 +1394,13 @@ public:
 /************************************************************************/
 #define MAX_SPLIT_VALUE        (100000)
 
-	DWORD SplitMainPic,SplitPBUpDn,SplitPBDnDn,SplitPBAllDn,SplitPBDoneDn,SplitPBCancelDn,SplitItemPic,SplitItemColor;
+	AnyFrames* SplitMainPic,*SplitPBUpDn,*SplitPBDnDn,*SplitPBAllDn,*SplitPBDoneDn,
+		*SplitPBCancelDn,*SplitItemPic;
+	DWORD SplitItemColor;
 	int SplitX,SplitY;
 	int SplitVectX,SplitVectY;
-	INTRECT SplitWMain,SplitWTitle,SplitWItem,SplitBUp,SplitBDown,SplitBAll,SplitWValue,SplitBDone,SplitBCancel;
+	INTRECT SplitWMain,SplitWTitle,SplitWItem,SplitBUp,SplitBDown,SplitBAll,
+		SplitWValue,SplitBDone,SplitBCancel;
 	DWORD SplitItemId,SplitCont;
 	int SplitValue,SplitMinValue,SplitMaxValue;
 	bool SplitValueKeyPressed;
@@ -1415,14 +1420,17 @@ public:
 #define TIMER_MIN_VALUE       (1)
 #define TIMER_MAX_VALUE       (599)
 
-	DWORD TimerMainPic,TimerBUpPicDown,TimerBDownPicDown,TimerBDonePicDown,TimerBCancelPicDown,TimerItemPic,TimerItemColor;
+	AnyFrames* TimerMainPic,*TimerBUpPicDown,*TimerBDownPicDown,*TimerBDonePicDown,
+		*TimerBCancelPicDown,*TimerItemPic;
+	DWORD TimerItemColor;
 	int TimerX,TimerY;
 	int TimerVectX,TimerVectY;
-	INTRECT TimerWMain,TimerWTitle,TimerWItem,TimerBUp,TimerBDown,TimerWValue,TimerBDone,TimerBCancel;
+	INTRECT TimerWMain,TimerWTitle,TimerWItem,TimerBUp,TimerBDown,TimerWValue,
+		TimerBDone,TimerBCancel;
 	int TimerValue;
 	DWORD TimerItemId;
 
-	void TimerStart(DWORD item_id, DWORD pic, DWORD pic_color);
+	void TimerStart(DWORD item_id, AnyFrames* pic, DWORD pic_color);
 	void TimerClose(bool done);
 	void TimerDraw();
 	void TimerKeyDown(BYTE dik);
@@ -1438,7 +1446,7 @@ public:
 #define FIX_MODE_FIXIT       (1)
 #define FIX_MODE_RESULT      (2)
 
-	DWORD FixMainPic,FixPBDoneDn,FixPBScrUpDn,FixPBScrDnDn,FixPBFixDn;
+	AnyFrames* FixMainPic,*FixPBDoneDn,*FixPBScrUpDn,*FixPBScrDnDn,*FixPBFixDn;
 	INTRECT FixWMain,FixBDone,FixBScrUp,FixBScrDn,FixWWin,FixBFix;
 	int FixX,FixY,FixVectX,FixVectY;
 	int FixCurCraft;
@@ -1469,10 +1477,10 @@ public:
 		INTRECT Rect;
 
 		string Text;
-		DWORD SprId;
+		AnyFrames* Anim;
 
-		FixDrawComponent(INTRECT& r, string& text):IsText(true),SprId(0){Rect=r;Text=text;}
-		FixDrawComponent(INTRECT& r, DWORD spr_id):IsText(false),SprId(spr_id){Rect=r;}
+		FixDrawComponent(INTRECT& r, string& text):IsText(true),Anim(NULL){Rect=r;Text=text;}
+		FixDrawComponent(INTRECT& r, AnyFrames* anim):IsText(false),Anim(anim){Rect=r;}
 	};
 	typedef vector<FixDrawComponent*> FixDrawComponentVec;
 #define FIX_DRAW_PIC_WIDTH          (40)
@@ -1501,7 +1509,7 @@ public:
 #define IBOX_MODE_NONE         (0)
 #define IBOX_MODE_HOLO         (1)
 
-	DWORD IboxWMainPicNone,IboxBDonePicDown,IboxBCancelPicDown;
+	AnyFrames* IboxWMainPicNone,*IboxBDonePicDown,*IboxBCancelPicDown;
 	INTRECT IboxWMain,IboxWTitle,IboxWText,IboxBDone,IboxBDoneText,IboxBCancel,IboxBCancelText;
 	int IboxX,IboxY,IboxVectX,IboxVectY;
 	string IboxTitle,IboxText;
@@ -1525,8 +1533,8 @@ public:
 #define SAVE_LOAD_IMAGE_WIDTH            (400)
 #define SAVE_LOAD_IMAGE_HEIGHT           (300)
 
-	DWORD SaveLoadMainPic,SaveLoadScrUpPicDown,SaveLoadScrDownPicDown,
-		SaveLoadDonePicDown,SaveLoadBackPicDown;
+	AnyFrames* SaveLoadMainPic,*SaveLoadScrUpPicDown,*SaveLoadScrDownPicDown,
+		*SaveLoadDonePicDown,*SaveLoadBackPicDown;
 	INTRECT SaveLoadMain,SaveLoadText,SaveLoadScrUp,SaveLoadScrDown,SaveLoadSlots,SaveLoadPic,
 		SaveLoadInfo,SaveLoadDone,SaveLoadDoneText,SaveLoadBack,SaveLoadBackText;
 	int SaveLoadX,SaveLoadY,SaveLoadCX,SaveLoadCY,SaveLoadVectX,SaveLoadVectY;
@@ -1566,9 +1574,8 @@ public:
 /************************************************************************/
 /* Cursor                                                               */
 /************************************************************************/
-	DWORD CurPDef,CurPMove,CurPMoveBlock,CurPHand,CurPUseItem,CurPUseSkill,CurPWait;
-	DWORD CurPScrRt,CurPScrLt,CurPScrUp,CurPScrDw,CurPScrRU,CurPScrLU,CurPScrRD,CurPScrLD;
-	int CurX,CurY;
+	AnyFrames* CurPDef,*CurPMove,*CurPMoveBlock,*CurPHand,*CurPUseItem,*CurPUseSkill,*CurPWait,
+		*CurPScrRt,*CurPScrLt,*CurPScrUp,*CurPScrDw,*CurPScrRU,*CurPScrLU,*CurPScrRD,*CurPScrLD;
 
 	void CurDraw();
 

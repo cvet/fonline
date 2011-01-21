@@ -111,15 +111,66 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==68);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
-	STATIC_ASSERT(sizeof(GameOptions)==1120);
+	STATIC_ASSERT(sizeof(GameOptions)==1144);
+	STATIC_ASSERT(sizeof(SpriteInfo)==36);
+	STATIC_ASSERT(sizeof(Sprite)==108);
 
 	GET_UID0(UID0);
 	Wnd=hwnd;
 
 	// Register dll script data
-	struct CritterChangeParameter_{static void CritterChangeParameter(void*, DWORD){}}; // Dummy
+	struct CritterChangeParameter_{static void CritterChangeParameter(void*,DWORD){}}; // Dummy
 	GameOpt.CritterChangeParameter=&CritterChangeParameter_::CritterChangeParameter;
+
 	GameOpt.CritterTypes=&CritType::GetRealCritType(0);
+
+	struct GetDrawingSprites_
+	{
+		static void* GetDrawingSprites(DWORD& count)
+		{
+			Sprites& tree=Self->HexMngr.GetDrawTree();
+			count=tree.Size();
+			if(!count) return NULL;
+			return *tree.Begin();
+		}
+	};
+	GameOpt.GetDrawingSprites=&GetDrawingSprites_::GetDrawingSprites;
+
+	struct GetSpriteInfo_
+	{
+		static void* GetSpriteInfo(DWORD spr_id)
+		{
+			return SprMngr.GetSpriteInfo(spr_id);
+		}
+	};
+	GameOpt.GetSpriteInfo=&GetSpriteInfo_::GetSpriteInfo;
+
+	struct GetSpriteColor_
+	{
+		static DWORD GetSpriteColor(DWORD spr_id, int x, int y, bool with_zoom)
+		{
+			return SprMngr.GetPixColor(spr_id,x,y,with_zoom);
+		}
+	};
+	GameOpt.GetSpriteColor=&GetSpriteColor_::GetSpriteColor;
+
+	struct IsSpriteHit_
+	{
+		static bool IsSpriteHit(void* sprite, int x, int y, bool check_egg)
+		{
+			Sprite* sprite_=(Sprite*)sprite;
+			if(!sprite_ || !sprite_->Valid) return false;
+			SpriteInfo* si=SprMngr.GetSpriteInfo(sprite_->PSprId?*sprite_->PSprId:sprite_->SprId);
+			if(!si) return false;
+			if(si->Anim3d) return si->Anim3d->IsIntersect(x,y);
+			int sx=sprite_->ScrX-si->Width/2+si->OffsX+GameOpt.ScrOx+(sprite_->OffsX?*sprite_->OffsX:0);
+			int sy=sprite_->ScrY-si->Height+si->OffsY+GameOpt.ScrOy+(sprite_->OffsY?*sprite_->OffsY:0);
+			if(!(sprite_=sprite_->GetIntersected(x-sx,y-sy))) return false;
+			if(check_egg && SprMngr.CompareHexEgg(sprite_->HexX,sprite_->HexY,sprite_->EggType) && SprMngr.IsEggTransp(x,y)) return false;
+			return true;
+		}
+	};
+	GameOpt.IsSpriteHit=&IsSpriteHit_::IsSpriteHit;
 
 	// Input
 	Keyb::InitKeyb();
@@ -1127,7 +1178,7 @@ label_TryChangeLang:
 			default: break;
 			}
 
-			if(!ConsoleEdit)
+			if(!ConsoleActive)
 			{
 				switch(dikdw)
 				{
@@ -1154,18 +1205,19 @@ label_TryChangeLang:
 			{
 			case DIK_F6: if(GameOpt.DebugInfo && Keyb::CtrlDwn) GameOpt.ShowCritId=!GameOpt.ShowCritId; break;
 			case DIK_F7: if(GameOpt.DebugInfo && Keyb::CtrlDwn) GameOpt.ShowCritId=!GameOpt.ShowCritId; break;
+			case DIK_F11: if(Keyb::ShiftDwn) SprMngr.SaveSufaces(); break;
 
 				// Num Pad
 			case DIK_EQUALS:
 			case DIK_ADD:
-				if(ConsoleEdit) break;
+				if(ConsoleActive) break;
 				if(Keyb::CtrlDwn) SndMngr.SetSoundVolume(SndMngr.GetSoundVolume()+2);
 				else if(Keyb::ShiftDwn) SndMngr.SetMusicVolume(SndMngr.GetMusicVolume()+2);
 				else if(Keyb::AltDwn && GameOpt.Sleep<100) GameOpt.Sleep++;
 				break;
 			case DIK_MINUS:
 			case DIK_SUBTRACT:
-				if(ConsoleEdit) break;
+				if(ConsoleActive) break;
 				if(Keyb::CtrlDwn) SndMngr.SetSoundVolume(SndMngr.GetSoundVolume()-2);
 				else if(Keyb::ShiftDwn) SndMngr.SetMusicVolume(SndMngr.GetMusicVolume()-2);
 				else if(Keyb::AltDwn && GameOpt.Sleep>-1) GameOpt.Sleep--;
@@ -1186,7 +1238,7 @@ label_TryChangeLang:
 		}
 
 		// Cursor steps
-		if(HexMngr.IsMapLoaded() && (dikdw==DIK_RCONTROL || dikdw==DIK_LCONTROL || dikup==DIK_RCONTROL || dikup==DIK_LCONTROL)) HexMngr.SetCursorPos(CurX,CurY,Keyb::CtrlDwn,true);
+		if(HexMngr.IsMapLoaded() && (dikdw==DIK_RCONTROL || dikdw==DIK_LCONTROL || dikup==DIK_RCONTROL || dikup==DIK_LCONTROL)) HexMngr.SetCursorPos(GameOpt.MouseX,GameOpt.MouseY,Keyb::CtrlDwn,true);
 
 		// Other by screens
 		// Key down
@@ -1254,13 +1306,13 @@ void FOClient::ParseMouse()
 		GetWindowInfo(Wnd,&wi);
 		POINT p;
 		GetCursorPos(&p);
-		CurX=p.x-wi.rcClient.left;
-		CurY=p.y-wi.rcClient.top;
+		GameOpt.MouseX=p.x-wi.rcClient.left;
+		GameOpt.MouseY=p.y-wi.rcClient.top;
 
-		if(CurX>=MODE_WIDTH) CurX=MODE_WIDTH-1;
-		if(CurX<0) CurX=0;
-		if(CurY>=MODE_HEIGHT) CurY=MODE_HEIGHT-1;
-		if(CurY<0) CurY=0;
+		if(GameOpt.MouseX>=MODE_WIDTH) GameOpt.MouseX=MODE_WIDTH-1;
+		if(GameOpt.MouseX<0) GameOpt.MouseX=0;
+		if(GameOpt.MouseY>=MODE_HEIGHT) GameOpt.MouseY=MODE_HEIGHT-1;
+		if(GameOpt.MouseY<0) GameOpt.MouseY=0;
 	}
 
 	// DirectInput mouse
@@ -1318,13 +1370,13 @@ void FOClient::ParseMouse()
 	// Windows mouse move in windowed mode
 	if(!GameOpt.FullScreen)
 	{
-		static int old_cur_x=CurX;
-		static int old_cur_y=CurY;
+		static int old_cur_x=GameOpt.MouseX;
+		static int old_cur_y=GameOpt.MouseY;
 
-		if(old_cur_x!=CurX || old_cur_y!=CurY)
+		if(old_cur_x!=GameOpt.MouseX || old_cur_y!=GameOpt.MouseY)
 		{
-			old_cur_x=CurX;
-			old_cur_y=CurY;
+			old_cur_x=GameOpt.MouseX;
+			old_cur_y=GameOpt.MouseY;
 
 			if(GetActiveScreen())
 			{
@@ -1367,8 +1419,8 @@ void FOClient::ParseMouse()
 
 			if(Script::PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
 			{
-				Script::SetArgDword(CurX);
-				Script::SetArgDword(CurY);
+				Script::SetArgDword(GameOpt.MouseX);
+				Script::SetArgDword(GameOpt.MouseY);
 				Script::RunPrepared();
 			}
 		}	
@@ -1447,7 +1499,7 @@ void FOClient::ParseMouse()
 			{
 				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
-				if(!script_result && !GameOpt.DisableMouseEvents && !ConsoleEdit && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
+				if(!script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 				{
 					int screen=GetActiveScreen();
 					if(IsMainScreen(SCREEN_GAME) && (screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW))
@@ -1686,15 +1738,15 @@ void FOClient::ParseMouse()
 	{
 		int oxi=(int)ox;
 		int oyi=(int)oy;
-		CurX+=oxi;
-		CurY+=oyi;
+		GameOpt.MouseX+=oxi;
+		GameOpt.MouseY+=oyi;
 		ox-=(float)oxi;
 		oy-=(float)oyi;
 
-		if(CurX>=MODE_WIDTH) CurX=MODE_WIDTH-1;
-		if(CurX<0) CurX=0;
-		if(CurY>=MODE_HEIGHT) CurY=MODE_HEIGHT-1;
-		if(CurY<0) CurY=0;
+		if(GameOpt.MouseX>=MODE_WIDTH) GameOpt.MouseX=MODE_WIDTH-1;
+		if(GameOpt.MouseX<0) GameOpt.MouseX=0;
+		if(GameOpt.MouseY>=MODE_HEIGHT) GameOpt.MouseY=MODE_HEIGHT-1;
+		if(GameOpt.MouseY<0) GameOpt.MouseY=0;
 
 		if(GetActiveScreen())
 		{
@@ -1737,8 +1789,8 @@ void FOClient::ParseMouse()
 
 		if(Script::PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
 		{
-			Script::SetArgDword(CurX);
-			Script::SetArgDword(CurY);
+			Script::SetArgDword(GameOpt.MouseX);
+			Script::SetArgDword(GameOpt.MouseY);
 			Script::RunPrepared();
 		}
 	}
@@ -1827,7 +1879,7 @@ void FOClient::ProcessMouseWheel(int data)
 				if(send) Net_SendRateItem();
 			}
 
-			if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME) && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
+			if(!ConsoleActive && Keyb::KeyPressed[DIK_Z] && IsMainScreen(SCREEN_GAME) && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 			{
 				HexMngr.ChangeZoom(data>0?-1:1);
 				RebuildLookBorders=true;
@@ -1854,7 +1906,7 @@ void FOClient::ProcessMouseWheel(int data)
 					for(int i=0,j=GmapLoc.size();i<j;i++)
 					{
 						GmapLocation& loc=GmapLoc[i];
-						if(MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid)) && ResMngr.GetIfaceSprId(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))))) tabs_count++;
+						if(MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid)) && ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))))) tabs_count++;
 					}
 					if(GmapTabNextX && GmapTabsScrX>GmapWTab.W()*tabs_count) GmapTabsScrX=GmapWTab.W()*tabs_count;
 					if(GmapTabNextY && GmapTabsScrY>GmapWTab.H()*tabs_count) GmapTabsScrY=GmapWTab.H()*tabs_count;
@@ -5458,8 +5510,9 @@ void FOClient::Net_OnChosenTalk()
 	CritterCl* npc=(is_npc?GetCritter(talk_id):NULL);
 
 	// Avatar
-	DlgAvatarSprId=0;
-	if(npc && !npc->Avatar.empty()) DlgAvatarSprId=ResMngr.GetAvatarSprId(npc->Avatar.c_str());
+	DlgAvatarPic=NULL;
+	if(npc && !npc->Avatar.empty())
+		DlgAvatarPic=ResMngr.GetAnim(Str::GetHash(npc->Avatar.c_str()),0,RES_IFACE_EXT);
 
 	// Main text
 	Bin >> text_id;
@@ -5957,7 +6010,7 @@ void FOClient::Net_OnGlobalInfo()
 		GmapGroupY=group_y;
 		GmapWait=(wait!=0);
 
-		if(GmapActive==false)
+		if(!GmapActive)
 		{
 			GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX;
 			GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY;
@@ -6454,7 +6507,7 @@ void FOClient::Net_OnShowScreen()
 	switch(screen_type)
 	{
 	case SHOW_SCREEN_TIMER:
-		TimerStart(0,ResMngr.GetInvSprId(param),0);
+		TimerStart(0,ResMngr.GetInvAnim(param),0);
 		break;
 	case SHOW_SCREEN_DIALOGBOX:
 		ShowScreen(SCREEN__DIALOGBOX);
@@ -6997,12 +7050,12 @@ bool FOClient::GetMouseHex()
 
 	if(IntVisible)
 	{
-		if(IsCurInRectNoTransp(IntMainPic,IntWMain,0,0)) return false;
-		if(IntAddMess && IsCurInRectNoTransp(IntPWAddMess,IntWAddMess,0,0)) return false;
+		if(IsCurInRectNoTransp(IntMainPic->GetCurSprId(),IntWMain,0,0)) return false;
+		if(IntAddMess && IsCurInRectNoTransp(IntPWAddMess->GetCurSprId(),IntWAddMess,0,0)) return false;
 	}
 
-	//if(ConsoleEdit && IsCurInRectNoTransp(ConsolePic,Main,0,0)) //TODO:
-	return HexMngr.GetHexPixel(CurX,CurY,TargetX,TargetY);
+	//if(ConsoleActive && IsCurInRectNoTransp(ConsolePic,Main,0,0)) //TODO:
+	return HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,TargetX,TargetY);
 }
 
 bool FOClient::RegCheckData(CritterCl* newcr)
@@ -7482,7 +7535,7 @@ label_EndMove:
 					Chosen->Params[ST_CURRENT_AP]-=ap_cost_real;
 				}
 				Chosen->ApRegenerationTick=0;
-				HexMngr.SetCursorPos(CurX,CurY,Keyb::CtrlDwn,true);
+				HexMngr.SetCursorPos(GameOpt.MouseX,GameOpt.MouseY,Keyb::CtrlDwn,true);
 				RebuildLookBorders=true;
 			}
 
@@ -8243,22 +8296,22 @@ void FOClient::ProcessMouseScroll()
 {
 	if(IsLMenu() || !GameOpt.MouseScroll) return;
 
-	if(CurX>=MODE_WIDTH-1)
+	if(GameOpt.MouseX>=MODE_WIDTH-1)
 		GameOpt.ScrollMouseRight=true;
 	else
 		GameOpt.ScrollMouseRight=false;
 
-	if(CurX<=0)
+	if(GameOpt.MouseX<=0)
 		GameOpt.ScrollMouseLeft=true;
 	else
 		GameOpt.ScrollMouseLeft=false;
 
-	if(CurY>=MODE_HEIGHT-1)
+	if(GameOpt.MouseY>=MODE_HEIGHT-1)
 		GameOpt.ScrollMouseDown=true;
 	else
 		GameOpt.ScrollMouseDown=false;
 
-	if(CurY<=0)
+	if(GameOpt.MouseY<=0)
 		GameOpt.ScrollMouseUp=true;
 	else
 		GameOpt.ScrollMouseUp=false;
@@ -8266,7 +8319,7 @@ void FOClient::ProcessMouseScroll()
 
 void FOClient::ProcessKeybScroll(bool down, BYTE dik)
 {
-	if(down && IsMainScreen(SCREEN_GAME) && ConsoleEdit) return;
+	if(down && IsMainScreen(SCREEN_GAME) && ConsoleActive) return;
 
 	switch(dik)
 	{
@@ -8872,11 +8925,9 @@ void FOClient::StopVideo()
 
 DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 {
-	SprMngr.SurfType=res_type;
-	AnyFrames* frm=ResMngr.GetAnim(name_hash,dir);
-	SprMngr.SurfType=RES_NONE;
-	if(!frm) return 0;
-	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
+	AnyFrames* anim=ResMngr.GetAnim(name_hash,dir,res_type);
+	if(!anim) return 0;
+	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
@@ -8887,11 +8938,9 @@ DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 
 DWORD FOClient::AnimLoad(const char* fname, int path_type, int res_type)
 {
-	SprMngr.SurfType=res_type;
-	AnyFrames* frm=SprMngr.LoadAnyAnimation(fname,path_type,true,0);
-	SprMngr.SurfType=RES_NONE;
-	if(!frm) return 0;
-	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
+	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(fname),0,res_type);
+	if(!anim) return 0;
+	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
@@ -10763,12 +10812,6 @@ bool FOClient::SScriptFunc::Global_GetMonitorHex(int x, int y, WORD& hx, WORD& h
 	return false;
 }
 
-void FOClient::SScriptFunc::Global_GetMousePosition(int& x, int& y)
-{
-	x=Self->CurX;
-	y=Self->CurY;
-}
-
 Item* FOClient::SScriptFunc::Global_GetMonitorItem(int x, int y)
 {
 	if(Self->GetMouseHex())
@@ -10820,6 +10863,7 @@ void FOClient::SScriptFunc::Global_ChangeCursor(int cursor)
 	Self->SetCurMode(cursor);
 }
 
+bool& FOClient::SScriptFunc::ConsoleActive=FOClient::ConsoleActive;
 bool& FOClient::SScriptFunc::GmapActive=FOClient::GmapActive;
 bool& FOClient::SScriptFunc::GmapWait=FOClient::GmapWait;
 float& FOClient::SScriptFunc::GmapZoom=FOClient::GmapZoom;

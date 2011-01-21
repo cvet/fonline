@@ -30,12 +30,13 @@ void FOClient::IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy)
 	if(IfaceLoadRect(comp,name)) comp=INTRECT(comp,ox,oy);
 }
 
-void FOClient::IfaceLoadSpr(DWORD& comp, const char* name)
+void FOClient::IfaceLoadSpr(AnyFrames*& comp, const char* name)
 {
 	char res[256];
 	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
 	SprMngr.SurfType=RES_IFACE;
-	if(!(comp=SprMngr.LoadSprite(res,PT_ART_INTRFACE))) WriteLog("File<%s> not found.\n",res);
+	comp=SprMngr.LoadAnimation(res,PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	if(comp==SpriteManager::DummyAnimation) WriteLog("File<%s> not found.\n",res);
 	SprMngr.SurfType=RES_NONE;
 }
 
@@ -259,7 +260,7 @@ int FOClient::InitIface()
 	ConsolePicY=IfaceIni.GetInt("ConsoleMainPicY",0);
 	ConsoleTextX=IfaceIni.GetInt("ConsoleTextX",0);
 	ConsoleTextY=IfaceIni.GetInt("ConsoleTextY",0);
-	ConsoleEdit=false;
+	ConsoleActive=false;
 	ConsoleLastKey=0;
 	ConsoleStr[0]=0;
 	ConsoleCur=0;
@@ -751,8 +752,7 @@ int FOClient::InitIface()
 	AimY=(MODE_HEIGHT-AimWMain.H())/2;
 	AimVectX=0;
 	AimVectY=0;
-	AimPic=0;
-	AimLoadedPics.clear();
+	AimPic=NULL;
 	AimTargetId=0;
 
 	// Dialog box
@@ -938,12 +938,7 @@ int FOClient::InitIface()
 
 	// Hex field sprites
 	SprMngr.SurfType=RES_IFACE;
-	if(!HexMngr.ReloadSprites())
-	{
-		WriteLog(__FUNCTION__" - Unable to reload hex field sprites.\n");
-		SprMngr.SurfType=RES_NONE;
-		return __LINE__;
-	}
+	HexMngr.ReloadSprites();
 	SprMngr.SurfType=RES_NONE;
 
 	// Interface
@@ -979,21 +974,9 @@ int FOClient::InitIface()
 
 	// Default animations
 	SprMngr.SurfType=RES_IFACE;
-	ItemHex::DefaultAnim=ResMngr.GetAnim(Str::GetHash("art\\items\\reserved.frm"),0);
-	if(!ItemHex::DefaultAnim)
-	{
-		WriteLog(__FUNCTION__" - Default item animation not found.\n");
-		return __LINE__;
-	}
-
-	SprMngr.SurfType=RES_IFACE;
-	CritterCl::DefaultAnim=SprMngr.LoadAnyAnimation("reservaa.frm",PT_ART_CRITTERS,true,0);
+	ItemHex::DefaultAnim=SprMngr.LoadAnimation("art\\items\\reserved.frm",PT_DATA,ANIM_USE_DUMMY|ANIM_FRM_ANIM_PIX);
+	CritterCl::DefaultAnim=SprMngr.LoadAnimation("art\\critters\\reservaa.frm",PT_DATA,ANIM_USE_DUMMY|ANIM_FRM_ANIM_PIX);
 	SprMngr.SurfType=RES_NONE;
-	if(!CritterCl::DefaultAnim)
-	{
-		WriteLog(__FUNCTION__" - Default critter animation not found.\n");
-		return __LINE__;
-	}
 
 	// Inventory
 	IfaceLoadSpr(InvPWMain,"InvMainPic");
@@ -1031,7 +1014,7 @@ int FOClient::InitIface()
 	IfaceLoadSpr(DlgPAnsw,"DlgAnswPic");
 	IfaceLoadSpr(DlgPBBarter,"DlgBarterPicDn");
 	IfaceLoadSpr(DlgPBSay,"DlgSayPicDn");
-	DlgAvatarSprId=0;
+	DlgAvatarPic=NULL;
 	// Barter
 	IfaceLoadSpr(BarterPMain,"BarterMainPic");
 	IfaceLoadSpr(BarterPBOfferDn,"BarterOfferPic");
@@ -1047,21 +1030,21 @@ int FOClient::InitIface()
 
 	// Cursors
 	SprMngr.SurfType=RES_IFACE;
-	CurPMove=SprMngr.LoadSprite("msef001.frm",PT_ART_INTRFACE);
-	CurPMoveBlock=SprMngr.LoadSprite("msef002.frm",PT_ART_INTRFACE);
-	CurPUseItem=SprMngr.LoadSprite("acttohit.frm",PT_ART_INTRFACE);
-	CurPUseSkill=SprMngr.LoadSprite("crossuse.frm",PT_ART_INTRFACE);
-	CurPWait=SprMngr.LoadSprite("wait2.frm",PT_ART_INTRFACE);
-	CurPHand=SprMngr.LoadSprite("hand.frm",PT_ART_INTRFACE);
-	CurPDef=SprMngr.LoadSprite("actarrow.frm",PT_ART_INTRFACE);
-	CurPScrRt=SprMngr.LoadSprite("screast.frm",PT_ART_INTRFACE);
-	CurPScrLt=SprMngr.LoadSprite("scrwest.frm",PT_ART_INTRFACE);
-	CurPScrUp=SprMngr.LoadSprite("scrnorth.frm",PT_ART_INTRFACE);
-	CurPScrDw=SprMngr.LoadSprite("scrsouth.frm",PT_ART_INTRFACE);
-	CurPScrRU=SprMngr.LoadSprite("scrneast.frm",PT_ART_INTRFACE);
-	CurPScrLU=SprMngr.LoadSprite("scrnwest.frm",PT_ART_INTRFACE);
-	CurPScrRD=SprMngr.LoadSprite("scrseast.frm",PT_ART_INTRFACE);
-	CurPScrLD=SprMngr.LoadSprite("scrswest.frm",PT_ART_INTRFACE);
+	CurPMove=SprMngr.LoadAnimation("msef001.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPMoveBlock=SprMngr.LoadAnimation("msef002.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPUseItem=SprMngr.LoadAnimation("acttohit.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPUseSkill=SprMngr.LoadAnimation("crossuse.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPWait=SprMngr.LoadAnimation("wait2.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPHand=SprMngr.LoadAnimation("hand.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPDef=SprMngr.LoadAnimation("actarrow.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrRt=SprMngr.LoadAnimation("screast.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrLt=SprMngr.LoadAnimation("scrwest.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrUp=SprMngr.LoadAnimation("scrnorth.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrDw=SprMngr.LoadAnimation("scrsouth.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrRU=SprMngr.LoadAnimation("scrneast.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrLU=SprMngr.LoadAnimation("scrnwest.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrRD=SprMngr.LoadAnimation("scrseast.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPScrLD=SprMngr.LoadAnimation("scrswest.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
 	SprMngr.SurfType=RES_NONE;
 	if(!CurPMove) return __LINE__;
 	if(!CurPMoveBlock) return __LINE__;
@@ -1127,7 +1110,7 @@ int FOClient::InitIface()
 	IfaceLoadSpr(LmapPBScanDw,"LmapScanPicDn");
 	IfaceLoadSpr(LmapPBLoHiDw,"LmapLoHiPicDn");
 	SprMngr.SurfType=RES_IFACE;
-	LmapPPix=SprMngr.LoadSprite("green_pix.png",PT_ART_INTRFACE);
+	LmapPPix=SprMngr.LoadAnimation("green_pix.png",PT_ART_INTRFACE,ANIM_USE_DUMMY);
 	SprMngr.SurfType=RES_NONE;
 	if(!LmapPPix) return __LINE__;
 
@@ -1359,7 +1342,7 @@ DWORD FOClient::GetCurContainerItemId(INTRECT& pos, int height, int scroll, Item
 {
 	if(!IsCurInRect(pos)) return 0;
 	ItemVecIt it=cont.begin();
-	int pos_cur=(CurY-pos.T)/height;
+	int pos_cur=(GameOpt.MouseY-pos.T)/height;
 	for(int i=0;it!=cont.end();++it,++i)
 	{
 		if(i-scroll!=pos_cur) continue;
@@ -1656,8 +1639,8 @@ void FOClient::InvLMouseDown()
 			// Move screen
 			if(IfaceHold==IFACE_NONE)
 			{
-				InvVectX=CurX-InvX;
-				InvVectY=CurY-InvY;
+				InvVectX=GameOpt.MouseX-InvX;
+				InvVectY=GameOpt.MouseY-InvY;
 				IfaceHold=IFACE_INV_MAIN;
 			}
 		}
@@ -1786,8 +1769,8 @@ void FOClient::InvMouseMove()
 {
 	if(IfaceHold==IFACE_INV_MAIN)
 	{
-		InvX=CurX-InvVectX;
-		InvY=CurY-InvVectY;
+		InvX=GameOpt.MouseX-InvVectX;
+		InvY=GameOpt.MouseY-InvVectY;
 
 		if(InvX<0) InvX=0;
 		if(InvX+InvWMain[2]>MODE_WIDTH) InvX=MODE_WIDTH-InvWMain[2];
@@ -1866,8 +1849,8 @@ void FOClient::UseLMouseDown()
 	else if(IsCurInRect(UseBCancel,UseX,UseY)) IfaceHold=IFACE_USE_CANCEL;
 	else
 	{
-		UseVectX=CurX-UseX;
-		UseVectY=CurY-UseY;
+		UseVectX=GameOpt.MouseX-UseX;
+		UseVectY=GameOpt.MouseY-UseY;
 		IfaceHold=IFACE_USE_MAIN;
 	}
 }
@@ -1927,8 +1910,8 @@ void FOClient::UseMouseMove()
 {
 	if(IfaceHold==IFACE_USE_MAIN)
 	{
-		UseX=CurX-UseVectX;
-		UseY=CurY-UseVectY;
+		UseX=GameOpt.MouseX-UseVectX;
+		UseY=GameOpt.MouseY-UseVectY;
 		if(UseX<0) UseX=0;
 		if(UseX+UseWMain[2]>MODE_WIDTH) UseX=MODE_WIDTH-UseWMain[2];
 		if(UseY<0) UseY=0;
@@ -1939,6 +1922,7 @@ void FOClient::UseMouseMove()
 //==============================================================================================================================
 //******************************************************************************************************************************
 //==============================================================================================================================
+bool FOClient::ConsoleActive;
 
 void FOClient::ConsoleDraw()
 {
@@ -1949,7 +1933,7 @@ void FOClient::ConsoleDraw()
 		SprMngr.DrawStr(INTRECT(0,20,MODE_WIDTH,MODE_HEIGHT),MsgGame->GetStr(STR_GAME_PAUSED),FT_CENTERX|FT_COLORIZE,COLOR_TEXT_DRED,FONT_BIG);
 
 	// Console
-	if(ConsoleEdit && is_game_screen)
+	if(ConsoleActive && is_game_screen)
 	{
 		if(IsMainScreen(SCREEN_GAME)) SprMngr.DrawSprite(ConsolePic,IntX+ConsolePicX,(IntVisible?(IntAddMess?IntWAddMess[1]:IntY):MODE_HEIGHT)+ConsolePicY);
 
@@ -1971,10 +1955,10 @@ void FOClient::ConsoleDraw()
 		if(GameOpt.DebugInfo)
 		{
 			GetMouseHex();
-			FLTPOINT p=Animation3d::Convert2dTo3d(CurX,CurY);
+			FLTPOINT p=Animation3d::Convert2dTo3d(GameOpt.MouseX,GameOpt.MouseY);
 			SprMngr.DrawStr(INTRECT(250,5,450,300),Str::Format(
 				"cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>, CondExt<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
-				Chosen->HexX,Chosen->HexY,TargetX,TargetY,CurX,CurY,Chosen->Cond,Chosen->CondExt,GameOpt.ScrOx,GameOpt.ScrOy,
+				Chosen->HexX,Chosen->HexY,TargetX,TargetY,GameOpt.MouseX,GameOpt.MouseY,Chosen->Cond,Chosen->CondExt,GameOpt.ScrOx,GameOpt.ScrOy,
 				GetFarDir(Chosen->HexX,Chosen->HexY,TargetX,TargetY),p.X,p.Y
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
@@ -2024,9 +2008,9 @@ void FOClient::ConsoleKeyDown(BYTE dik)
 
 	if(dik==DIK_RETURN || dik==DIK_NUMPADENTER)
 	{
-		if(!ConsoleEdit)
+		if(!ConsoleActive)
 		{
-			ConsoleEdit=true;
+			ConsoleActive=true;
 			ConsoleStr[0]=0;
 			ConsoleCur=0;
 			ConsoleHistoryCur=ConsoleHistory.size();
@@ -2035,7 +2019,7 @@ void FOClient::ConsoleKeyDown(BYTE dik)
 		
 		if(!ConsoleStr[0])
 		{
-			ConsoleEdit=false;
+			ConsoleActive=false;
 			return;
 		}
 
@@ -2059,7 +2043,7 @@ void FOClient::ConsoleKeyDown(BYTE dik)
 		ConsoleCur=0;
 	}
 
-	if(!ConsoleEdit) return;
+	if(!ConsoleActive) return;
 
 	switch(dik)
 	{
@@ -2113,7 +2097,7 @@ void FOClient::GameDraw()
 		else
 		{
 			HexMngr.SetCursorVisible(true);
-			HexMngr.SetCursorPos(CurX,CurY,Keyb::CtrlDwn,false);
+			HexMngr.SetCursorPos(GameOpt.MouseX,GameOpt.MouseY,Keyb::CtrlDwn,false);
 		}
 	}
 
@@ -2133,7 +2117,7 @@ void FOClient::GameDraw()
 		{
 			if(cr->GetId()==(DWORD)Chosen->Params[ST_FOLLOW_CRIT])
 			{
-				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCrit);
+				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCrit->GetCurSprId());
 				INTRECT tr=cr->GetTextRect();
 				int x=(tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(si?si->Width/2:0);
 				int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(si?si->Height:0);
@@ -2142,7 +2126,7 @@ void FOClient::GameDraw()
 			}
 			if(Chosen->GetId()==(DWORD)cr->Params[ST_FOLLOW_CRIT])
 			{
-				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCritSelf);
+				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCritSelf->GetCurSprId());
 				INTRECT tr=cr->GetTextRect();
 				int x=(tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(si?si->Width/2:0);
 				int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(si?si->Height:0);
@@ -2190,7 +2174,7 @@ void FOClient::GameDraw()
 
 void FOClient::GameKeyDown(BYTE dik)
 {
-	if(ConsoleEdit) return;
+	if(ConsoleActive) return;
 
 	if(Keyb::AltDwn)
 	{
@@ -2314,13 +2298,13 @@ void FOClient::GameLMouseDown()
 		ItemHex* item;
 		if(Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse()<MAX_USES)
 		{
-			cr=HexMngr.GetCritterPixel(CurX,CurY,true);
+			cr=HexMngr.GetCritterPixel(GameOpt.MouseX,GameOpt.MouseY,true);
 			if(cr==Chosen) cr=NULL;
 			item=NULL;
 		}
 		else
 		{
-			HexMngr.GetSmthPixel(CurX,CurY,item,cr);
+			HexMngr.GetSmthPixel(GameOpt.MouseX,GameOpt.MouseY,item,cr);
 		}
 
 		if(cr)
@@ -2349,7 +2333,7 @@ void FOClient::GameLMouseDown()
 	{
 		CritterCl* cr;
 		ItemHex* item;
-		HexMngr.GetSmthPixel(CurX,CurY,item,cr);
+		HexMngr.GetSmthPixel(GameOpt.MouseX,GameOpt.MouseY,item,cr);
 
 		// Use skill
 		if(cr)
@@ -2377,8 +2361,8 @@ void FOClient::GameRMouseDown()
 {
 	IfaceHold=IFACE_NONE;
 
-	if(!(IntVisible && ((IsCurInRect(IntWMain) && SprMngr.IsPixNoTransp(IntMainPic,CurX-IntWMain[0],CurY-IntWMain[1],false)) ||
-		(IntAddMess && IsCurInRect(IntWAddMess) && SprMngr.IsPixNoTransp(IntPWAddMess,CurX-IntWAddMess[0],CurY-IntWAddMess[1],false))))) IfaceHold=IFACE_GAME_MNEXT;
+	if(!(IntVisible && ((IsCurInRect(IntWMain) && SprMngr.IsPixNoTransp(IntMainPic->GetCurSprId(),GameOpt.MouseX-IntWMain[0],GameOpt.MouseY-IntWMain[1],false)) ||
+		(IntAddMess && IsCurInRect(IntWAddMess) && SprMngr.IsPixNoTransp(IntPWAddMess->GetCurSprId(),GameOpt.MouseX-IntWAddMess[0],GameOpt.MouseY-IntWAddMess[1],false))))) IfaceHold=IFACE_GAME_MNEXT;
 }
 
 void FOClient::GameRMouseUp()
@@ -2409,7 +2393,7 @@ void FOClient::GameRMouseUp()
 
 void FOClient::IntDraw()
 {
-	if(!ConsoleEdit && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
+	if(!ConsoleActive && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 	{
 		int screen=GetActiveScreen();
 		if(screen==SCREEN_NONE || screen==SCREEN__TOWN_VIEW)
@@ -2465,15 +2449,19 @@ void FOClient::IntDraw()
 	if(Chosen->ItemSlotMain->GetId())
 	{
 		SprMngr.DrawSpriteSize(
-			ResMngr.GetInvSprId(Chosen->ItemSlotMain->GetPicInv()),
+			ResMngr.GetInvAnim(Chosen->ItemSlotMain->GetPicInv()),
 			IntBItem[0]+item_offsx,IntBItem[1]+item_offsy,
 			IntBItem[2]-IntBItem[0],IntBItem[3]-IntBItem[1],
 			false,true,Chosen->ItemSlotMain->GetInvColor());
 	}
 
 	// Use
-	SpriteInfo* si=ResMngr.GetIfaceSprInfo(Chosen->GetUsePic(SLOT_HAND1));
-	if(si) SprMngr.DrawSprite(ResMngr.GetIfaceSprId(Chosen->GetUsePic(SLOT_HAND1)),IntUseX+item_offsx-si->Width,IntUseY+item_offsy);
+	AnyFrames* use_anim=ResMngr.GetIfaceAnim(Chosen->GetUsePicName(SLOT_HAND1));
+	if(use_anim)
+	{
+		SpriteInfo* si=SprMngr.GetSpriteInfo(use_anim->GetCurSprId());
+		if(si) SprMngr.DrawSprite(use_anim,IntUseX+item_offsx-si->Width,IntUseY+item_offsy);
+	}
 
 	// Aim
 	if(Chosen->IsAim()) SprMngr.DrawSprite(IntAimPic,IntAimX+item_offsx,IntAimY+item_offsy);
@@ -2587,8 +2575,8 @@ int FOClient::IntLMouseDown()
 	else if(IsCurInRect(IntBMessFilter3)) IfaceHold=IFACE_INT_FILTER3;
 	else if(IsCurInRect(IntBCombatTurn) && IsTurnBasedMyTurn()) IfaceHold=IFACE_INT_COMBAT_TURN;
 	else if(IsCurInRect(IntBCombatEnd) && IsTurnBased) IfaceHold=IFACE_INT_COMBAT_END;
-	else if(IsCurInRectNoTransp(IntMainPic,IntWMain,0,0)) IfaceHold=IFACE_INT_MAIN;
-	else if(IntAddMess && IsCurInRectNoTransp(IntPWAddMess,IntWAddMess,0,0)) IfaceHold=IFACE_INT_MAIN;
+	else if(IsCurInRectNoTransp(IntMainPic->GetCurSprId(),IntWMain,0,0)) IfaceHold=IFACE_INT_MAIN;
+	else if(IntAddMess && IsCurInRectNoTransp(IntPWAddMess->GetCurSprId(),IntWAddMess,0,0)) IfaceHold=IFACE_INT_MAIN;
 
 	return IfaceHold;
 }
@@ -2655,7 +2643,7 @@ void FOClient::IntLMouseUp()
 		else if(Chosen->GetUse()==USE_USE && Chosen->ItemSlotMain->IsCanUse())
 		{
 			if(!Chosen->ItemSlotMain->IsHasTimer()) SetAction(CHOSEN_USE_ITEM,Chosen->ItemSlotMain->GetId(),0,TARGET_SELF,0,USE_USE);
-			else TimerStart(Chosen->ItemSlotMain->GetId(),ResMngr.GetInvSprId(Chosen->ItemSlotMain->GetPicInv()),Chosen->ItemSlotMain->GetInvColor());
+			else TimerStart(Chosen->ItemSlotMain->GetId(),ResMngr.GetInvAnim(Chosen->ItemSlotMain->GetPicInv()),Chosen->ItemSlotMain->GetInvColor());
 		}
 	}
 	else if(IfaceHold==IFACE_INT_ADDMESS && IsCurInRect(IntBAddMess))
@@ -3025,7 +3013,7 @@ void FOClient::LogTryConnect()
 void FOClient::DlgDraw(bool is_dialog)
 {
 	SprMngr.DrawSprite(DlgPMain,DlgX,DlgY);
-	if(!BarterIsPlayers && DlgAvatarSprId) SprMngr.DrawSpriteSize(DlgAvatarSprId,DlgWAvatar.L+DlgX,DlgWAvatar.T+DlgY,DlgWAvatar.W(),DlgWAvatar.H(),true,true);
+	if(!BarterIsPlayers && DlgAvatarPic) SprMngr.DrawSpriteSize(DlgAvatarPic,DlgWAvatar.L+DlgX,DlgWAvatar.T+DlgY,DlgWAvatar.W(),DlgWAvatar.H(),true,true);
 	if(!Chosen) return;
 
 	// Main pic
@@ -3260,8 +3248,8 @@ void FOClient::DlgLMouseDown(bool is_dialog)
 
 	if(IfaceHold==IFACE_NONE)
 	{
-		DlgVectX=CurX-DlgX;
-		DlgVectY=CurY-DlgY;
+		DlgVectX=GameOpt.MouseX-DlgX;
+		DlgVectY=GameOpt.MouseY-DlgY;
 		IfaceHold=IFACE_DLG_MAIN;
 	}
 }
@@ -3472,8 +3460,8 @@ void FOClient::DlgMouseMove(bool is_dialog)
 
 	if(IfaceHold==IFACE_DLG_MAIN)
 	{
-		DlgX=CurX-DlgVectX;
-		DlgY=CurY-DlgVectY;
+		DlgX=GameOpt.MouseX-DlgVectX;
+		DlgY=GameOpt.MouseY-DlgVectY;
 
 		if(DlgX<0) DlgX=0;
 		if(DlgX+DlgWMain[2]>MODE_WIDTH) DlgX=MODE_WIDTH-DlgWMain[2];
@@ -3995,11 +3983,11 @@ void FOClient::LMenuCollect()
 	LMenuStayOff();
 	GameMouseStay=Timer::FastTick();
 
-	SpriteInfo* si_cur=SprMngr.GetSpriteInfo(CurPDef);
-	LMenuX=CurX+(si_cur?si_cur->Width:0);
-	LMenuY=CurY;
-	LMenuRestoreCurX=CurX;
-	LMenuRestoreCurY=CurY;
+	SpriteInfo* si_cur=SprMngr.GetSpriteInfo(CurPDef->GetCurSprId());
+	LMenuX=GameOpt.MouseX+(si_cur?si_cur->Width:0);
+	LMenuY=GameOpt.MouseY;
+	LMenuRestoreCurX=GameOpt.MouseX;
+	LMenuRestoreCurY=GameOpt.MouseY;
 
 	int screen=GetActiveScreen();
 	if(screen)
@@ -4085,13 +4073,13 @@ void FOClient::LMenuCollect()
 			{
 				if(IntVisible)
 				{
-					if(IsCurInRectNoTransp(IntMainPic,IntWMain,0,0)) break;
-					if(IntAddMess && IsCurInRectNoTransp(IntPWAddMess,IntWAddMess,0,0)) break;
+					if(IsCurInRectNoTransp(IntMainPic->GetCurSprId(),IntWMain,0,0)) break;
+					if(IntAddMess && IsCurInRectNoTransp(IntPWAddMess->GetCurSprId(),IntWAddMess,0,0)) break;
 				}
 
 				CritterCl* cr;
 				ItemHex* item;
-				HexMngr.GetSmthPixel(CurX,CurY,item,cr);
+				HexMngr.GetSmthPixel(GameOpt.MouseX,GameOpt.MouseY,item,cr);
 
 				if(cr)
 				{
@@ -4364,7 +4352,7 @@ void FOClient::LMenuMouseMove()
 {
 	if(IsLMenu())
 	{
-		LMenuCurNode=(CurY-LMenuY)/LMenuNodeHeight;
+		LMenuCurNode=(GameOpt.MouseY-LMenuY)/LMenuNodeHeight;
 		if(LMenuCurNode<0) LMenuCurNode=0;
 		if(LMenuCurNode>LMenuCurNodes->size()-1) LMenuCurNode=LMenuCurNodes->size()-1;
 	}
@@ -4568,7 +4556,7 @@ void FOClient::LMenuMouseUp()
 				break;
 			case LMENU_NODE_USE:
 				if(!inv_item) break;
-				if(inv_item->IsHasTimer()) TimerStart(inv_item->GetId(),ResMngr.GetInvSprId(inv_item->GetPicInv()),inv_item->GetInvColor());
+				if(inv_item->IsHasTimer()) TimerStart(inv_item->GetId(),ResMngr.GetInvAnim(inv_item->GetPicInv()),inv_item->GetInvColor());
 				else SetAction(CHOSEN_USE_ITEM,inv_item->GetId(),0,TARGET_SELF,0,USE_USE);
 				break;
 			case LMENU_NODE_SKILL:
@@ -4899,7 +4887,7 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 			GmapTownTextPos.clear();
 			GmapTownText.clear();
 
-			GmapTownPicId=0;
+			GmapTownPic=NULL;
 			GmapTownPicPos[0]=0;
 			GmapTownPicPos[1]=0;
 			GmapTownPicPos[2]=MODE_WIDTH;
@@ -4908,16 +4896,16 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 			int pic_offsy=0;
 			WORD loc_pid=GmapTownLoc.LocPid;
 
-			DWORD spr_id=ResMngr.GetIfaceSprId(Str::GetHash(MsgGM->GetStr(STR_GM_PIC_(loc_pid))));
-			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
-			if(!si)
+			AnyFrames* anim=ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_PIC_(loc_pid))));
+			if(!anim)
 			{
 				RunScreenScript(true,screen,p0,p1,p2);
 				ShowScreen(SCREEN_NONE);
 				return;
 			}
+			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
 
-			GmapTownPicId=spr_id;
+			GmapTownPic=anim;
 			pic_offsx=(MODE_WIDTH-si->Width)/2;
 			pic_offsy=(MODE_HEIGHT-si->Height)/2;
 			GmapTownPicPos[0]=pic_offsx;
@@ -5041,14 +5029,14 @@ void FOClient::SetLastCurMode()
 
 void FOClient::SetCurPos(int x, int y)
 {
-	CurX=x;
-	CurY=y;
+	GameOpt.MouseX=x;
+	GameOpt.MouseY=y;
 	if(!GameOpt.FullScreen)
 	{
 		WINDOWINFO wi;
 		wi.cbSize=sizeof(wi);
 		GetWindowInfo(Wnd,&wi);
-		SetCursorPos(wi.rcClient.left+CurX,wi.rcClient.top+CurY);
+		SetCursorPos(wi.rcClient.left+GameOpt.MouseX,wi.rcClient.top+GameOpt.MouseY);
 
 		//POINT pp;
 		//GetCursorPos(&pp);
@@ -5141,8 +5129,8 @@ void FOClient::LmapLMouseDown()
 	else if(IsCurInRect(LmapBLoHi,LmapX,LmapY)) IfaceHold=IFACE_LMAP_LOHI;
 	else if(IsCurInRect(LmapMain,LmapX,LmapY))
 	{
-		LmapVectX=CurX-LmapX;
-		LmapVectY=CurY-LmapY;
+		LmapVectX=GameOpt.MouseX-LmapX;
+		LmapVectY=GameOpt.MouseY-LmapY;
 		IfaceHold=IFACE_LMAP_MAIN;
 	}
 }
@@ -5151,8 +5139,8 @@ void FOClient::LmapMouseMove()
 {
 	if(IfaceHold==IFACE_LMAP_MAIN)
 	{
-		LmapX=CurX-LmapVectX;
-		LmapY=CurY-LmapVectY;
+		LmapX=GameOpt.MouseX-LmapVectX;
+		LmapY=GameOpt.MouseY-LmapVectY;
 		if(LmapX<0) LmapX=0;
 		if(LmapX+LmapMain[2]>MODE_WIDTH) LmapX=MODE_WIDTH-LmapMain[2];
 		if(LmapY<0) LmapY=0;
@@ -5393,7 +5381,7 @@ void FOClient::GmapProcess()
 			for(int i=0,j=GmapLoc.size();i<j;i++)
 			{
 				GmapLocation& loc=GmapLoc[i];
-				if(MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid)) && ResMngr.GetIfaceSprId(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))))) tabs_count++;
+				if(MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid)) && ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))))) tabs_count++;
 			}
 
 			if(Timer::FastTick()-GmapTabsLastScr>=10)
@@ -5438,11 +5426,12 @@ void FOClient::GmapDraw()
 			if(!GmapPic[index])
 			{
 				SprMngr.SurfType=RES_GLOBAL_MAP;
-				GmapPic[index]=SprMngr.LoadSprite(Str::Format(GmapTilesPic,index),PT_ART_INTRFACE);
+				GmapPic[index]=SprMngr.LoadAnimation(Str::Format(GmapTilesPic,index),PT_ART_INTRFACE,ANIM_USE_DUMMY);
 				SprMngr.SurfType=RES_NONE;
 			}
 			if(!GmapPic[index]) continue;
-			SpriteInfo* spr_inf=SprMngr.GetSpriteInfo(GmapPic[index]);
+
+			SpriteInfo* spr_inf=SprMngr.GetSpriteInfo(GmapPic[index]->GetCurSprId());
 			if(!spr_inf) continue;
 
 			int w=spr_inf->Width;
@@ -5513,8 +5502,8 @@ void FOClient::GmapDraw()
 	// On map
 	if(GmapWait)
 	{
-		DWORD pic=((Timer::GameTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
-		SpriteInfo* si=SprMngr.GetSpriteInfo(pic);
+		AnyFrames* pic=((Timer::GameTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
+		SpriteInfo* si=SprMngr.GetSpriteInfo(pic->GetCurSprId());
 		if(si) SprMngr.DrawSprite(pic,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 	}
 	else
@@ -5522,9 +5511,9 @@ void FOClient::GmapDraw()
 		if(GmapSpeedX || GmapSpeedY)
 		{
 			SpriteInfo* si;
-			if(si=SprMngr.GetSpriteInfo(GmapPGr))
+			if(si=SprMngr.GetSpriteInfo(GmapPGr->GetCurSprId()))
 				SprMngr.DrawSprite(GmapPGr,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
-			if(si=SprMngr.GetSpriteInfo(GmapPTarg))
+			if(si=SprMngr.GetSpriteInfo(GmapPTarg->GetCurSprId()))
 				SprMngr.DrawSprite(GmapPTarg,GmapMoveX/GmapZoom+GmapOffsetX-si->Width/2,GmapMoveY/GmapZoom+GmapOffsetY-si->Height/2);
 		}
 		else
@@ -5532,12 +5521,12 @@ void FOClient::GmapDraw()
 			SpriteInfo* si;
 			if(IfaceHold==IFACE_GMAP_TOLOC)
 			{
-				if(si=SprMngr.GetSpriteInfo(GmapPStayDn))
+				if(si=SprMngr.GetSpriteInfo(GmapPStayDn->GetCurSprId()))
 					SprMngr.DrawSprite(GmapPStayDn,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 			}
 			else
 			{
-				if(si=SprMngr.GetSpriteInfo(GmapPStay))
+				if(si=SprMngr.GetSpriteInfo(GmapPStay->GetCurSprId()))
 					SprMngr.DrawSprite(GmapPStay,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
 			}
 		}
@@ -5565,7 +5554,7 @@ void FOClient::GmapDraw()
 		GmapLocation& loc=GmapLoc[i];
 
 		if(!MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid))) continue;
-		DWORD tab_pic=ResMngr.GetIfaceSprId(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))));
+		AnyFrames* tab_pic=ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))));
 		if(!tab_pic) continue;
 
 		SprMngr.DrawSprite(GmapPWTab,cur_tabx,cur_taby);
@@ -5608,7 +5597,7 @@ void FOClient::GmapDraw()
 	Item* car=GmapGetCar();
 	if(car)
 	{
-		SprMngr.DrawSpriteSize(ResMngr.GetSprId(car->GetPicMap(),car->Proto->Dir),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
+		SprMngr.DrawSpriteSize(ResMngr.GetAnim(car->GetPicMap(),car->Proto->Dir,RES_IFACE_EXT),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
 		SprMngr.DrawStr(GmapWCar,FmtItemLook(car,ITEM_LOOK_WM_CAR),FT_CENTERX|FT_BOTTOM,COLOR_TEXT,FONT_DEFAULT);
 	}
 
@@ -5633,8 +5622,8 @@ void FOClient::GmapDraw()
 	// Map coord
 	if(GetActiveScreen()==SCREEN_NONE && IsCurInRect(GmapWMap) && !IsLMenu())
 	{
-		int cx=(CurX-GmapOffsetX)*GmapZoom;
-		int cy=(CurY-GmapOffsetY)*GmapZoom;
+		int cx=(GameOpt.MouseX-GmapOffsetX)*GmapZoom;
+		int cy=(GameOpt.MouseY-GmapOffsetY)*GmapZoom;
 		if(GmapFog.Get2Bit(GM_ZONE(cx),GM_ZONE(cy))!=GM_FOG_FULL)
 		{
 			GmapLocation* cur_loc=NULL;
@@ -5650,16 +5639,16 @@ void FOClient::GmapDraw()
 				}
 			}
 
-			SpriteInfo* si=SprMngr.GetSpriteInfo(CurPDef);
+			SpriteInfo* si=SprMngr.GetSpriteInfo(CurPDef->GetCurSprId());
 			if(Chosen)
 			{
-				SprMngr.DrawStr(INTRECT(CurX+si->Width,CurY+si->Height,CurX+si->Width+200,CurY+si->Height+500),cur_loc?
+				SprMngr.DrawStr(INTRECT(GameOpt.MouseX+si->Width,GameOpt.MouseY+si->Height,GameOpt.MouseX+si->Width+200,GameOpt.MouseY+si->Height+500),cur_loc?
 					FmtGameText(STR_GMAP_CUR_LOC_INFO,cx,cy,GM_ZONE(cx),GM_ZONE(cy),MsgGM->GetStr(STR_GM_NAME_(cur_loc->LocPid)),MsgGM->GetStr(STR_GM_INFO_(cur_loc->LocPid))):
 					FmtGameText(STR_GMAP_CUR_INFO,cx,cy,GM_ZONE(cx),GM_ZONE(cy)),0);
 			}
 			else if(cur_loc)
 			{
-				SprMngr.DrawStr(INTRECT(CurX+si->Width,CurY+si->Height,CurX+si->Width+200,CurY+si->Height+500),
+				SprMngr.DrawStr(INTRECT(GameOpt.MouseX+si->Width,GameOpt.MouseY+si->Height,GameOpt.MouseX+si->Width+200,GameOpt.MouseY+si->Height+500),
 					FmtGameText(STR_GMAP_LOC_INFO,MsgGM->GetStr(STR_GM_NAME_(cur_loc->LocPid)),MsgGM->GetStr(STR_GM_INFO_(cur_loc->LocPid))),0);
 			}
 		}
@@ -5689,8 +5678,8 @@ void FOClient::GmapTownDraw()
 		return;
 	}
 
-	SpriteInfo* si=SprMngr.GetSpriteInfo(GmapTownPicId);
-	if(si) SprMngr.DrawSprite(GmapTownPicId,(MODE_WIDTH-si->Width)/2,(MODE_HEIGHT-si->Height)/2);
+	SpriteInfo* si=SprMngr.GetSpriteInfo(GmapTownPic->GetCurSprId());
+	if(si) SprMngr.DrawSprite(GmapTownPic,(MODE_WIDTH-si->Width)/2,(MODE_HEIGHT-si->Height)/2);
 
 	if(!Chosen || !Chosen->IsGmapRule()) return;
 
@@ -5701,13 +5690,13 @@ void FOClient::GmapTownDraw()
 		// Enter to entrance
 		if(Chosen && Chosen->IsGmapRule())
 		{
-			DWORD pic=GmapPTownInPic;
+			AnyFrames* pic=GmapPTownInPic;
 			if(IfaceHold==IFACE_GMAP_TOWN_BUT && GmapTownCurButton==i) pic=GmapPTownInPicDn;
 			SprMngr.DrawSprite(pic,GmapTownTextPos[i][0]+GmapPTownInOffsX,GmapTownTextPos[i][1]+GmapPTownInOffsY);
 		}
 
 		// View entrance
-		DWORD pic=GmapPTownViewPic;
+		AnyFrames* pic=GmapPTownViewPic;
 		if(IfaceHold==IFACE_GMAP_VIEW_BUT && GmapTownCurButton==i) pic=GmapPTownViewPicDn;
 		SprMngr.DrawSprite(pic,GmapTownTextPos[i][0]+GmapPTownViewOffsX,GmapTownTextPos[i][1]+GmapPTownViewOffsY);
 	}
@@ -5731,7 +5720,8 @@ void FOClient::GmapLMouseDown()
 			INTRECT& r=GmapTownTextPos[i];
 
 			// Enter to entrance
-			if(Chosen && Chosen->IsGmapRule() && IsCurInRect(r,GmapPTownInOffsX,GmapPTownInOffsY) && SprMngr.IsPixNoTransp(GmapPTownInPicMask,CurX-r[0]-GmapPTownInOffsX,CurY-r[1]-GmapPTownInOffsY,false))
+			if(Chosen && Chosen->IsGmapRule() && IsCurInRect(r,GmapPTownInOffsX,GmapPTownInOffsY) &&
+				SprMngr.IsPixNoTransp(GmapPTownInPicMask->GetCurSprId(),GameOpt.MouseX-r[0]-GmapPTownInOffsX,GameOpt.MouseY-r[1]-GmapPTownInOffsY,false))
 			{
 				IfaceHold=IFACE_GMAP_TOWN_BUT;
 				GmapTownCurButton=i;
@@ -5739,7 +5729,8 @@ void FOClient::GmapLMouseDown()
 			}
 
 			// View entrance
-			if(IsCurInRect(r,GmapPTownViewOffsX,GmapPTownViewOffsY) && SprMngr.IsPixNoTransp(GmapPTownViewPicMask,CurX-r[0]-GmapPTownViewOffsX,CurY-r[1]-GmapPTownViewOffsY,false))
+			if(IsCurInRect(r,GmapPTownViewOffsX,GmapPTownViewOffsY) &&
+				SprMngr.IsPixNoTransp(GmapPTownViewPicMask->GetCurSprId(),GameOpt.MouseX-r[0]-GmapPTownViewOffsX,GameOpt.MouseY-r[1]-GmapPTownViewOffsY,false))
 			{
 				IfaceHold=IFACE_GMAP_VIEW_BUT;
 				GmapTownCurButton=i;
@@ -5754,13 +5745,14 @@ void FOClient::GmapLMouseDown()
 	{
 		if(!GmapSpeedX && !GmapSpeedY)
 		{
-			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask);
+			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
 			if(si)
 			{
 				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
 				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
 
-				if(CurX>=x && CurX<=x+si->Width && CurY>=y && CurY<=y+si->Height && SprMngr.IsPixNoTransp(GmapPStayMask,CurX-x,CurY-y,false))
+				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
+					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
 				{
 					IfaceHold=IFACE_GMAP_TOLOC;
 					return;
@@ -5802,13 +5794,13 @@ void FOClient::GmapLMouseDown()
 	if(IsCurInRect(GmapBTown)) IfaceHold=IFACE_GMAP_TOWN;
 	else if(IsCurInRect(GmapWTabs))
 	{
-		int tab_x=(CurX-(GmapWTabs[0]-GmapTabsScrX))%GmapWTab.W();
-		int tab_y=(CurY-(GmapWTabs[1]-GmapTabsScrY))%GmapWTab.H();
+		int tab_x=(GameOpt.MouseX-(GmapWTabs[0]-GmapTabsScrX))%GmapWTab.W();
+		int tab_y=(GameOpt.MouseY-(GmapWTabs[1]-GmapTabsScrY))%GmapWTab.H();
 
 		if(tab_x>=GmapBTabLoc[0] && tab_y>=GmapBTabLoc[1] && tab_x<=GmapBTabLoc[2] && tab_y<=GmapBTabLoc[3])
 		{
-			if(GmapTabNextX) GmapCurHoldBLoc=(CurX-(GmapWTabs[0]-GmapTabsScrX))/GmapWTab.W();
-			else if(GmapTabNextY) GmapCurHoldBLoc=(CurY-(GmapWTabs[1]-GmapTabsScrY))/GmapWTab.H();
+			if(GmapTabNextX) GmapCurHoldBLoc=(GameOpt.MouseX-(GmapWTabs[0]-GmapTabsScrX))/GmapWTab.W();
+			else if(GmapTabNextY) GmapCurHoldBLoc=(GameOpt.MouseY-(GmapWTabs[1]-GmapTabsScrY))/GmapWTab.H();
 			else GmapCurHoldBLoc=-1;
 
 			int cur_city=0;
@@ -5818,7 +5810,7 @@ void FOClient::GmapLMouseDown()
 
 				// Skip na
 				if(!MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid))) continue;
-				DWORD tab_pic=ResMngr.GetIfaceSprId(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))));
+				AnyFrames* tab_pic=ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))));
 				if(!tab_pic) continue;
 
 				// Get
@@ -5843,13 +5835,15 @@ void FOClient::GmapLMouseUp()
 		{
 			ShowScreen(SCREEN_NONE);
 		}
-		else if(IfaceHold==IFACE_GMAP_TOWN_BUT && GmapTownCurButton>=0 && GmapTownCurButton<GmapTownTextPos.size()
-			&& IsCurInRect(GmapTownTextPos[GmapTownCurButton],GmapPTownInOffsX,GmapPTownInOffsY) && SprMngr.IsPixNoTransp(GmapPTownInPicMask,CurX-GmapTownTextPos[GmapTownCurButton][0]-GmapPTownInOffsX,CurY-GmapTownTextPos[GmapTownCurButton][1]-GmapPTownInOffsY,false))
+		else if(IfaceHold==IFACE_GMAP_TOWN_BUT && GmapTownCurButton>=0 && GmapTownCurButton<GmapTownTextPos.size() &&
+			IsCurInRect(GmapTownTextPos[GmapTownCurButton],GmapPTownInOffsX,GmapPTownInOffsY) &&
+			SprMngr.IsPixNoTransp(GmapPTownInPicMask->GetCurSprId(),GameOpt.MouseX-GmapTownTextPos[GmapTownCurButton][0]-GmapPTownInOffsX,GameOpt.MouseY-GmapTownTextPos[GmapTownCurButton][1]-GmapPTownInOffsY,false))
 		{
 			Net_SendRuleGlobal(GM_CMD_TOLOCAL,GmapTownLoc.LocId,GmapTownCurButton);
 		}
-		else if(IfaceHold==IFACE_GMAP_VIEW_BUT && GmapTownCurButton>=0 && GmapTownCurButton<GmapTownTextPos.size()
-			&& IsCurInRect(GmapTownTextPos[GmapTownCurButton],GmapPTownViewOffsX,GmapPTownViewOffsY)  && SprMngr.IsPixNoTransp(GmapPTownViewPicMask,CurX-GmapTownTextPos[GmapTownCurButton][0]-GmapPTownViewOffsX,CurY-GmapTownTextPos[GmapTownCurButton][1]-GmapPTownViewOffsY,false))
+		else if(IfaceHold==IFACE_GMAP_VIEW_BUT && GmapTownCurButton>=0 && GmapTownCurButton<GmapTownTextPos.size() &&
+			IsCurInRect(GmapTownTextPos[GmapTownCurButton],GmapPTownViewOffsX,GmapPTownViewOffsY) &&
+			SprMngr.IsPixNoTransp(GmapPTownViewPicMask->GetCurSprId(),GameOpt.MouseX-GmapTownTextPos[GmapTownCurButton][0]-GmapPTownViewOffsX,GameOpt.MouseY-GmapTownTextPos[GmapTownCurButton][1]-GmapPTownViewOffsY,false))
 		{
 			Net_SendRuleGlobal(GM_CMD_VIEW_MAP,GmapTownLoc.LocId,GmapTownCurButton);
 		}
@@ -5862,13 +5856,14 @@ void FOClient::GmapLMouseUp()
 	{
 		if(IfaceHold==IFACE_GMAP_TOLOC)
 		{
-			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask);
+			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
 			if(si)
 			{
 				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
 				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
 
-				if(CurX>=x && CurX<=x+si->Width && CurY>=y && CurY<=y+si->Height && SprMngr.IsPixNoTransp(GmapPStayMask,CurX-x,CurY-y,false))
+				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
+					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
 				{
 					DWORD loc_id=0;
 					for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
@@ -5890,7 +5885,7 @@ void FOClient::GmapLMouseUp()
 		}
 		else if(IfaceHold==IFACE_GMAP_MAP)
 		{
-			Net_SendRuleGlobal(GM_CMD_SETMOVE,(CurX-GmapOffsetX)*GmapZoom,(CurY-GmapOffsetY)*GmapZoom);
+			Net_SendRuleGlobal(GM_CMD_SETMOVE,(GameOpt.MouseX-GmapOffsetX)*GmapZoom,(GameOpt.MouseY-GmapOffsetY)*GmapZoom);
 		}
 	}
 	else if(IfaceHold==IFACE_GMAP_TOWN && IsCurInRect(GmapBTown))
@@ -5935,8 +5930,8 @@ void FOClient::GmapRMouseDown()
 	if(IsCurInRect(GmapWMap))
 	{
 		IfaceHold=IFACE_GMAP_MOVE_MAP;
-		GmapVectX=CurX-GmapOffsetX;
-		GmapVectY=CurY-GmapOffsetY;
+		GmapVectX=GameOpt.MouseX-GmapOffsetX;
+		GmapVectY=GameOpt.MouseY-GmapOffsetY;
 	}
 }
 
@@ -5949,15 +5944,15 @@ void FOClient::GmapMouseMove()
 {
 	if(IfaceHold==IFACE_GMAP_MOVE_MAP)
 	{
-		if(CurX<GmapWMap[0]) CurX=GmapWMap[0];
-		if(CurY<GmapWMap[1]) CurY=GmapWMap[1];
-		if(CurX>GmapWMap[2]) CurX=GmapWMap[2];
-		if(CurY>GmapWMap[3]) CurY=GmapWMap[3];
+		if(GameOpt.MouseX<GmapWMap[0]) GameOpt.MouseX=GmapWMap[0];
+		if(GameOpt.MouseY<GmapWMap[1]) GameOpt.MouseY=GmapWMap[1];
+		if(GameOpt.MouseX>GmapWMap[2]) GameOpt.MouseX=GmapWMap[2];
+		if(GameOpt.MouseY>GmapWMap[3]) GameOpt.MouseY=GmapWMap[3];
 
-		SetCurPos(CurX,CurY);
+		SetCurPos(GameOpt.MouseX,GameOpt.MouseY);
 
-		GmapOffsetX=CurX-GmapVectX;
-		GmapOffsetY=CurY-GmapVectY;
+		GmapOffsetX=GameOpt.MouseX-GmapVectX;
+		GmapOffsetY=GameOpt.MouseY-GmapVectY;
 
 		GMAP_CHECK_MAPSCR;
 	}
@@ -5965,7 +5960,7 @@ void FOClient::GmapMouseMove()
 
 void FOClient::GmapKeyDown(BYTE dik)
 {
-	if(ConsoleEdit) return;
+	if(ConsoleActive) return;
 	if(Keyb::CtrlDwn || Keyb::ShiftDwn || Keyb::AltDwn) return;
 
 	switch(dik)
@@ -6075,8 +6070,8 @@ void FOClient::SboxLMouseDown()
 	else if(IsCurInRect(SboxBRepair,SboxX,SboxY)) IfaceHold=IFACE_SBOX_REPAIR;
 	else if(IsCurInRect(SboxWMain,SboxX,SboxY))
 	{
-		SboxVectX=CurX-SboxX;
-		SboxVectY=CurY-SboxY;
+		SboxVectX=GameOpt.MouseX-SboxX;
+		SboxVectY=GameOpt.MouseY-SboxY;
 		IfaceHold=IFACE_SBOX_MAIN;
 	}
 }
@@ -6166,8 +6161,8 @@ void FOClient::SboxMouseMove()
 {
 	if(IfaceHold==IFACE_SBOX_MAIN)
 	{
-		SboxX=CurX-SboxVectX;
-		SboxY=CurY-SboxVectY;
+		SboxX=GameOpt.MouseX-SboxVectX;
+		SboxY=GameOpt.MouseY-SboxVectY;
 
 		if(SboxX<0) SboxX=0;
 		if(SboxX+SboxWMain[2]>MODE_WIDTH) SboxX=MODE_WIDTH-SboxWMain[2];
@@ -6393,8 +6388,8 @@ void FOClient::ChaDraw(bool is_reg)
 
 	if(ChaSkilldexPic>=0)
 	{
-		DWORD spr_id=ResMngr.GetSkDxSprId(Str::GetHash(FONames::GetPictureName(ChaSkilldexPic)));
-		if(spr_id) SprMngr.DrawSprite(spr_id,ChaWPic[0]+ChaX,ChaWPic[1]+ChaY);
+		AnyFrames* anim=ResMngr.GetSkDxAnim(Str::GetHash(FONames::GetPictureName(ChaSkilldexPic)));
+		if(anim) SprMngr.DrawSprite(anim,ChaWPic[0]+ChaX,ChaWPic[1]+ChaY);
 		else ChaSkilldexPic=-1;
 	}
 
@@ -6742,9 +6737,9 @@ label_DrawTrait:
 	if(!is_reg)
 	{
 		// 3 Buttons
-		if(IsCurInRect(ChaBSwitch,ChaX,ChaY) && SprMngr.IsPixNoTransp(ChaPBSwitchMask,CurX-ChaX-ChaBSwitch[0],CurY-ChaY-ChaBSwitch[1],false))
+		if(IsCurInRect(ChaBSwitch,ChaX,ChaY) && SprMngr.IsPixNoTransp(ChaPBSwitchMask->GetCurSprId(),GameOpt.MouseX-ChaX-ChaBSwitch[0],GameOpt.MouseY-ChaY-ChaBSwitch[1],false))
 		{
-			int sw=(CurX-ChaX-ChaBSwitch[0])/((ChaBSwitch[2]-ChaBSwitch[0])/3);
+			int sw=(GameOpt.MouseX-ChaX-ChaBSwitch[0])/((ChaBSwitch[2]-ChaBSwitch[0])/3);
 			switch(sw)
 			{
 			case 0:
@@ -6774,7 +6769,7 @@ label_DrawTrait:
 		{
 			SwitchElementVec& text=ChaSwitchText[ChaCurSwitch];
 			int scroll=ChaSwitchScroll[ChaCurSwitch];
-			int cur_line=scroll+(CurY-ChaTSwitch[1]-ChaY)/11;
+			int cur_line=scroll+(GameOpt.MouseY-ChaTSwitch[1]-ChaY)/11;
 			if(cur_line<text.size())
 			{
 				SwitchElement& e=text[cur_line];
@@ -6834,8 +6829,8 @@ label_DrawTrait:
 	else if(is_reg && IsCurInRect(ChaBSex,ChaX,ChaY)) IfaceHold=IFACE_CHA_SEX;
 	else if(!is_reg && IsCurInRect(ChaWMain,ChaX,ChaY))
 	{
-		ChaVectX=CurX-ChaX;
-		ChaVectY=CurY-ChaY;
+		ChaVectX=GameOpt.MouseX-ChaX;
+		ChaVectY=GameOpt.MouseY-ChaY;
 		IfaceHold=IFACE_CHA_MAIN;
 	}
 }
@@ -7018,8 +7013,8 @@ void FOClient::ChaMouseMove(bool is_reg)
 {
 	if(IfaceHold!=IFACE_CHA_MAIN) return;
 
-	ChaX=CurX-ChaVectX;
-	ChaY=CurY-ChaVectY;
+	ChaX=GameOpt.MouseX-ChaVectX;
+	ChaY=GameOpt.MouseY-ChaVectY;
 
 	if(ChaX<0) ChaX=0;
 	if(ChaX+ChaWMain[2]>MODE_WIDTH) ChaX=MODE_WIDTH-ChaWMain[2];
@@ -7057,7 +7052,8 @@ void FOClient::ChaNameLMouseDown()
 {
 	IfaceHold=IFACE_NONE;
 
-	if(!IsCurInRectNoTransp(Singleplayer?ChaNameSingleplayerMainPic:ChaNameMainPic,ChaNameWMain,ChaX,ChaY))
+	AnyFrames* anim=(Singleplayer?ChaNameSingleplayerMainPic:ChaNameMainPic);
+	if(!IsCurInRectNoTransp(anim->GetCurSprId(),ChaNameWMain,ChaX,ChaY))
 	{
 		ShowScreen(SCREEN_NONE);
 		return;
@@ -7255,8 +7251,8 @@ void FOClient::PerkDraw()
 		const char* name=FONames::GetPictureName(SKILLDEX_PARAM(PerkCurPerk));
 		if(name)
 		{
-			DWORD spr_id=ResMngr.GetSkDxSprId(Str::GetHash(name));
-			if(spr_id) SprMngr.DrawSprite(spr_id,PerkWPic[0]+PerkX,PerkWPic[1]+PerkY);
+			AnyFrames* anim=ResMngr.GetSkDxAnim(Str::GetHash(name));
+			if(anim) SprMngr.DrawSprite(anim,PerkWPic[0]+PerkX,PerkWPic[1]+PerkY);
 		}
 	}
 
@@ -7286,8 +7282,8 @@ void FOClient::PerkLMouseDown()
 		IfaceHold=IFACE_PERK_PERKS;
 		int cur_perk=-1;
 
-		if(PerkNextX) cur_perk=PerkScroll+(CurX-PerkWPerks[0]-PerkX)/PerkNextX;
-		if(PerkNextY) cur_perk=PerkScroll+(CurY-PerkWPerks[1]-PerkY)/PerkNextY;
+		if(PerkNextX) cur_perk=PerkScroll+(GameOpt.MouseX-PerkWPerks[0]-PerkX)/PerkNextX;
+		if(PerkNextY) cur_perk=PerkScroll+(GameOpt.MouseY-PerkWPerks[1]-PerkY)/PerkNextY;
 
 		if(cur_perk>=0 && cur_perk<PerkCollection.size()) PerkCurPerk=PerkCollection[cur_perk];
 		else PerkCurPerk=-1;
@@ -7306,8 +7302,8 @@ void FOClient::PerkLMouseDown()
 	else if(IsCurInRect(PerkBCancel,PerkX,PerkY)) IfaceHold=IFACE_PERK_CANCEL;
 	else
 	{
-		PerkVectX=CurX-PerkX;
-		PerkVectY=CurY-PerkY;
+		PerkVectX=GameOpt.MouseX-PerkX;
+		PerkVectY=GameOpt.MouseY-PerkY;
 		IfaceHold=IFACE_PERK_MAIN;
 	}
 }
@@ -7344,8 +7340,8 @@ void FOClient::PerkMouseMove()
 {
 	if(IfaceHold==IFACE_PERK_MAIN)
 	{
-		PerkX=CurX-PerkVectX;
-		PerkY=CurY-PerkVectY;
+		PerkX=GameOpt.MouseX-PerkVectX;
+		PerkY=GameOpt.MouseY-PerkVectY;
 
 		if(PerkX<0) PerkX=0;
 		if(PerkX+PerkWMain[2]>MODE_WIDTH) PerkX=MODE_WIDTH-PerkWMain[2];
@@ -7380,8 +7376,8 @@ void FOClient::TViewLMouseDown()
 	else if(IsCurInRect(TViewBContours,TViewX,TViewY)) IfaceHold=IFACE_TOWN_VIEW_CONTOUR;
 	else if(IsCurInRect(TViewWMain,TViewX,TViewY))
 	{
-		TViewVectX=CurX-TViewX;
-		TViewVectY=CurY-TViewY;
+		TViewVectX=GameOpt.MouseX-TViewX;
+		TViewVectY=GameOpt.MouseY-TViewY;
 		IfaceHold=IFACE_TOWN_VIEW_MAIN;
 	}
 }
@@ -7420,8 +7416,8 @@ void FOClient::TViewMouseMove()
 {
 	if(IfaceHold==IFACE_TOWN_VIEW_MAIN)
 	{
-		TViewX=CurX-TViewVectX;
-		TViewY=CurY-TViewVectY;
+		TViewX=GameOpt.MouseX-TViewVectX;
+		TViewY=GameOpt.MouseY-TViewVectY;
 
 		if(TViewX<0) TViewX=0;
 		if(TViewX+TViewWMain[2]>MODE_WIDTH) TViewX=MODE_WIDTH-TViewWMain[2];
@@ -7460,7 +7456,7 @@ void FOClient::PipDraw()
 	{
 	case PIP__NONE:
 		{
-			SpriteInfo* si=SprMngr.GetSpriteInfo(PipPWMonitor);
+			SpriteInfo* si=SprMngr.GetSpriteInfo(PipPWMonitor->GetCurSprId());
 			SprMngr.DrawSprite(PipPWMonitor,PipWMonitor[0]+(PipWMonitor[2]-PipWMonitor[0]-si->Width)/2+PipX,PipWMonitor[1]+(PipWMonitor[3]-PipWMonitor[1]-si->Height)/2+PipY);
 		}
 		break;
@@ -7768,8 +7764,8 @@ void FOClient::PipLMouseDown()
 			break;
 		case PIP__AUTOMAPS_MAP:
 			{
-				PipVectX=CurX-AutomapScrX;
-				PipVectY=CurY-AutomapScrY;
+				PipVectX=GameOpt.MouseX-AutomapScrX;
+				PipVectY=GameOpt.MouseY-AutomapScrY;
 				IfaceHold=IFACE_PIP_AUTOMAPS_SCR;
 			}
 			break;
@@ -7796,8 +7792,8 @@ void FOClient::PipLMouseDown()
 	}
 	else if(IsCurInRect(PipWMain,PipX,PipY))
 	{
-		PipVectX=CurX-PipX;
-		PipVectY=CurY-PipY;
+		PipVectX=GameOpt.MouseX-PipX;
+		PipVectY=GameOpt.MouseY-PipY;
 		IfaceHold=IFACE_PIP_MAIN;
 	}
 }
@@ -7866,8 +7862,8 @@ void FOClient::PipMouseMove()
 	{
 		AutomapScrX-=(float)PipX;
 		AutomapScrY-=(float)PipY;
-		PipX=CurX-PipVectX;
-		PipY=CurY-PipVectY;
+		PipX=GameOpt.MouseX-PipVectX;
+		PipY=GameOpt.MouseY-PipVectY;
 
 		if(PipX<0) PipX=0;
 		if(PipX+PipWMain[2]>MODE_WIDTH) PipX=MODE_WIDTH-PipWMain[2];
@@ -7878,8 +7874,8 @@ void FOClient::PipMouseMove()
 	}
 	else if(IfaceHold==IFACE_PIP_AUTOMAPS_SCR)
 	{
-		AutomapScrX=CurX-PipVectX;
-		AutomapScrY=CurY-PipVectY;
+		AutomapScrX=GameOpt.MouseX-PipVectX;
+		AutomapScrY=GameOpt.MouseY-PipVectY;
 	}
 }
 
@@ -7948,8 +7944,8 @@ void FOClient::AimLMouseDown()
 	else if(IsCurInRect(AimWGroinT,AimX,AimY)) IfaceHold=IFACE_AIM_GROIN;
 	else if(IsCurInRect(AimWMain,AimX,AimY))
 	{
-		AimVectX=CurX-AimX;
-		AimVectY=CurY-AimY;
+		AimVectX=GameOpt.MouseX-AimX;
+		AimVectY=GameOpt.MouseY-AimY;
 		IfaceHold=IFACE_AIM_MAIN;
 	}
 }
@@ -8027,8 +8023,8 @@ void FOClient::AimMouseMove()
 {
 	if(IfaceHold==IFACE_AIM_MAIN)
 	{
-		AimX=CurX-AimVectX;
-		AimY=CurY-AimVectY;
+		AimX=GameOpt.MouseX-AimVectX;
+		AimY=GameOpt.MouseY-AimVectY;
 
 		if(AimX<0) AimX=0;
 		if(AimX+AimWMain[2]>MODE_WIDTH) AimX=MODE_WIDTH-AimWMain[2];
@@ -8037,23 +8033,18 @@ void FOClient::AimMouseMove()
 	}
 }
 
-DWORD FOClient::AimGetPic(CritterCl* cr, const char* ext)
+AnyFrames* FOClient::AimGetPic(CritterCl* cr, const char* ext)
 {
+	// Make names
 	char aim_name[MAX_FOPATH];
 	char aim_name_alias[MAX_FOPATH];
-	sprintf(aim_name,"%sna.%s",CritType::GetName(cr->GetCrType()),ext);
-	sprintf(aim_name_alias,"%sna.%s",CritType::GetName(cr->GetCrTypeAlias()),ext);
+	sprintf(aim_name,"%s%sna.%s",FileManager::GetPath(PT_ART_CRITTERS),CritType::GetName(cr->GetCrType()),ext);
+	sprintf(aim_name_alias,"%s%sna.%s",FileManager::GetPath(PT_ART_CRITTERS),CritType::GetName(cr->GetCrTypeAlias()),ext);
 
-	StrDwordMapIt it=AimLoadedPics.find(string(aim_name));
-	if(it!=AimLoadedPics.end()) return (*it).second;
-	it=AimLoadedPics.find(string(aim_name_alias));
-	if(it!=AimLoadedPics.end()) return (*it).second;
-
-	DWORD aim_pic=SprMngr.LoadSprite(aim_name,PT_ART_CRITTERS);
-	if(!aim_pic) aim_pic=SprMngr.LoadSprite(aim_name_alias,PT_ART_CRITTERS);
-
-	AimLoadedPics.insert(StrDwordMapVal(string(aim_name),aim_pic));
-	return aim_pic;
+	// Load
+	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(aim_name),0,RES_IFACE_EXT);
+	if(!anim) anim=ResMngr.GetAnim(Str::GetHash(aim_name_alias),0,RES_IFACE_EXT);
+	return anim;
 }
 
 //==============================================================================================================================
@@ -8072,8 +8063,8 @@ void FOClient::PupDraw()
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(PupContPid);
 		if(proto_item)
 		{
-			DWORD spr_id=ResMngr.GetSprId(proto_item->PicMapHash,proto_item->Dir);
-			if(spr_id) SprMngr.DrawSpriteSize(spr_id,PupWInfo[0]+PupX,PupWInfo[1]+PupY,PupWInfo.W(),PupWInfo.H(),false,true);
+			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMapHash,proto_item->Dir);
+			if(anim) SprMngr.DrawSpriteSize(anim,PupWInfo[0]+PupX,PupWInfo[1]+PupY,PupWInfo.W(),PupWInfo.H(),false,true);
 		}
 	}
 	else if(PupTransferType==TRANSFER_CRIT_STEAL || PupTransferType==TRANSFER_CRIT_LOOT || PupTransferType==TRANSFER_FAR_CRIT)
@@ -8179,8 +8170,8 @@ void FOClient::PupLMouseDown()
 	}
 	else if(IsCurInRect(PupWMain,PupX,PupY))
 	{
-		PupVectX=CurX-PupX;
-		PupVectY=CurY-PupY;
+		PupVectX=GameOpt.MouseX-PupX;
+		PupVectY=GameOpt.MouseY-PupY;
 		IfaceHold=IFACE_PUP_MAIN;
 	}
 
@@ -8304,8 +8295,8 @@ void FOClient::PupMouseMove()
 {
 	if(IfaceHold==IFACE_PUP_MAIN)
 	{
-		PupX=CurX-PupVectX;
-		PupY=CurY-PupVectY;
+		PupX=GameOpt.MouseX-PupVectX;
+		PupY=GameOpt.MouseY-PupVectY;
 
 		if(PupX<0) PupX=0;
 		if(PupX+PupWMain[2]>MODE_WIDTH) PupX=MODE_WIDTH-PupWMain[2];
@@ -8383,51 +8374,52 @@ void FOClient::CurDraw()
 {
 	if(GameOpt.HideCursor) return;
 
-	DWORD spr_id;
 	SpriteInfo* si=NULL;
 	int x=0,y=0;
 
 	// Wait
 	if(IsCurMode(CUR_WAIT))
 	{
-		if(!(si=SprMngr.GetSpriteInfo(CurPWait))) return;
-		x=CurX-(si->Width/2)+si->OffsX;
-		y=CurY-si->Height+si->OffsY;
-		SprMngr.DrawSprite(CurPWait,x,y);
+		if(si=SprMngr.GetSpriteInfo(CurPWait->GetCurSprId()))
+		{
+			x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+			y=GameOpt.MouseY-si->Height+si->OffsY;
+			SprMngr.DrawSprite(CurPWait,x,y);
+		}
 		return;
 	}
 
 	// Game scroll
 	if(IsMainScreen(SCREEN_GAME) && GetActiveScreen()==SCREEN_NONE)
 	{
-		DWORD cur_di=0;
+		AnyFrames* cur_di=NULL;
 
 		if(GameOpt.ScrollMouseRight) cur_di=CurPScrRt;
 		else if(GameOpt.ScrollMouseLeft) cur_di=CurPScrLt;
 		else if(GameOpt.ScrollMouseUp) cur_di=CurPScrUp;
 		else if(GameOpt.ScrollMouseDown) cur_di=CurPScrDw;
 
-		if		(GameOpt.ScrollMouseRight&& GameOpt.ScrollMouseUp	) cur_di=CurPScrRU;
-		else if	(GameOpt.ScrollMouseLeft	&& GameOpt.ScrollMouseUp	) cur_di=CurPScrLU;
-		else if	(GameOpt.ScrollMouseRight&& GameOpt.ScrollMouseDown) cur_di=CurPScrRD;
-		else if	(GameOpt.ScrollMouseLeft	&& GameOpt.ScrollMouseDown) cur_di=CurPScrLD;
+		if(GameOpt.ScrollMouseRight && GameOpt.ScrollMouseUp) cur_di=CurPScrRU;
+		else if	(GameOpt.ScrollMouseLeft && GameOpt.ScrollMouseUp) cur_di=CurPScrLU;
+		else if	(GameOpt.ScrollMouseRight && GameOpt.ScrollMouseDown) cur_di=CurPScrRD;
+		else if	(GameOpt.ScrollMouseLeft && GameOpt.ScrollMouseDown) cur_di=CurPScrLD;
 
 		if(cur_di)
 		{
-			if(!(si=SprMngr.GetSpriteInfo(CurPDef))) return;
+			if(!(si=SprMngr.GetSpriteInfo(CurPDef->GetCurSprId()))) return;
 
 			//	x=cur_x-si->offs_x;
 			//	y=cur_y-si->offs_y;
-			x=CurX-(si->Width/2)+si->OffsX;
-			y=CurY-si->Height+si->OffsY;
+			x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+			y=GameOpt.MouseY-si->Height+si->OffsY;
 
 			if(cur_di==CurPScrRt) {x-=si->Width; y-=si->Height/2;}
-			else if(cur_di==CurPScrLt) y-=si->Height/2;
-			else if(cur_di==CurPScrUp) x-=si->Width/2;
+			else if(cur_di==CurPScrLt) {y-=si->Height/2;}
+			else if(cur_di==CurPScrUp) {x-=si->Width/2;}
 			else if(cur_di==CurPScrDw) {x-=si->Width/2; y-=si->Height;}
-			else if(cur_di==CurPScrRU) x-=si->Width;
+			else if(cur_di==CurPScrRU) {x-=si->Width;}
 			else if(cur_di==CurPScrRD) {x-=si->Width; y-=si->Height;}
-			else if(cur_di==CurPScrLD) y-=si->Height;
+			else if(cur_di==CurPScrLD) {y-=si->Height;}
 
 			SprMngr.DrawSprite(cur_di,x,y);
 			return;
@@ -8438,14 +8430,11 @@ void FOClient::CurDraw()
 	INTRECT rmb=MessBoxCurRectScroll();
 	if(!rmb.IsZero() && IsCurInRect(rmb))
 	{
-		spr_id=IntPBScrDnDn;
-		if(IsCurInRect(INTRECT(rmb.L,rmb.T,rmb.R,rmb.CY()))) spr_id=IntPBScrUpDn;
-		si=SprMngr.GetSpriteInfo(spr_id);
-		if(si)
-		{
-			SprMngr.DrawSprite(spr_id,CurX-si->Width/2,CurY-si->Height/2);
-			return;
-		}
+		AnyFrames* anim=IntPBScrDnDn;
+		if(IsCurInRect(INTRECT(rmb.L,rmb.T,rmb.R,rmb.CY()))) anim=IntPBScrUpDn;
+		if(si=SprMngr.GetSpriteInfo(anim->GetCurSprId()))
+			SprMngr.DrawSprite(anim,GameOpt.MouseX-si->Width/2,GameOpt.MouseY-si->Height/2);
+		return;
 	}
 
 	// Other cursors
@@ -8453,12 +8442,12 @@ void FOClient::CurDraw()
 	{
 	case CUR_USE_WEAPON:
 		{
-			if(!(si=SprMngr.GetSpriteInfo(CurPUseItem))) return;
-			x=CurX-(si->Width/2)+si->OffsX;
-			y=CurY-si->Height+si->OffsY;
+			if(!(si=SprMngr.GetSpriteInfo(CurPUseItem->GetCurSprId()))) return;
+			x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+			y=GameOpt.MouseY-si->Height+si->OffsY;
 			SprMngr.DrawSprite(CurPUseItem,x,y);
 
-			CritterCl* cr=HexMngr.GetCritterPixel(CurX,CurY,true);
+			CritterCl* cr=HexMngr.GetCritterPixel(GameOpt.MouseX,GameOpt.MouseY,true);
 			if(!cr || !Chosen || cr==Chosen) break;
 
 			if(!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetAttackDist(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true)) break;
@@ -8470,15 +8459,15 @@ void FOClient::CurDraw()
 			sprintf(str,"%d%%",hit);
 
 			SprMngr.Flush();
-			SprMngr.DrawStr(INTRECT(CurX+6,CurY+6,x+500,y+500),str,0,COLOR_TEXT_RED);
+			SprMngr.DrawStr(INTRECT(GameOpt.MouseX+6,GameOpt.MouseY+6,x+500,y+500),str,0,COLOR_TEXT_RED);
 		}
 		break;
 	case CUR_USE_ITEM:
 	case CUR_USE_SKILL:
 		{
-			if(!(si=SprMngr.GetSpriteInfo(CurPUseSkill))) return;
-			x=CurX-(si->Width/2)+si->OffsX;
-			y=CurY-si->Height+si->OffsY;
+			if(!(si=SprMngr.GetSpriteInfo(CurPUseSkill->GetCurSprId()))) return;
+			x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+			y=GameOpt.MouseY-si->Height+si->OffsY;
 			SprMngr.DrawSprite(CurPUseSkill,x,y);
 		}
 		break;
@@ -8497,7 +8486,7 @@ void FOClient::CurDraw()
 		}*/
 		// Draw default
 	case CUR_DEFAULT:
-		if(!(si=SprMngr.GetSpriteInfo(CurPDef))) return;
+		if(!(si=SprMngr.GetSpriteInfo(CurPDef->GetCurSprId()))) return;
 		if(IsLMenu())
 		{
 			x=LMenuRestoreCurX-(si->Width/2)+si->OffsX;
@@ -8505,8 +8494,8 @@ void FOClient::CurDraw()
 		}
 		else
 		{
-			x=CurX-(si->Width/2)+si->OffsX;
-			y=CurY-si->Height+si->OffsY;
+			x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+			y=GameOpt.MouseY-si->Height+si->OffsY;
 		}
 		SprMngr.DrawSprite(CurPDef,x,y);
 		break;
@@ -8521,18 +8510,17 @@ void FOClient::CurDraw()
 				if(!item) break;
 				AnyFrames* anim=ResMngr.GetInvAnim(item->GetPicInv());
 				if(!anim) break;
-				spr_id=anim->GetCurSprId();
-				if(!(si=SprMngr.GetSpriteInfo(spr_id))) return;
-				x=CurX-(si->Width/2)+si->OffsX;
-				y=CurY-(si->Height/2)+si->OffsY;
-				SprMngr.DrawSprite(spr_id,x,y,item->GetInvColor());
+				if(!(si=SprMngr.GetSpriteInfo(anim->GetCurSprId()))) return;
+				x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+				y=GameOpt.MouseY-(si->Height/2)+si->OffsY;
+				SprMngr.DrawSprite(anim,x,y,item->GetInvColor());
 			}
 			else
 			{
 DrawCurHand:
-				if(!(si=SprMngr.GetSpriteInfo(CurPHand))) return;
-				x=CurX-(si->Width/2)+si->OffsX;
-				y=CurY-si->Height+si->OffsY;
+				if(!(si=SprMngr.GetSpriteInfo(CurPHand->GetCurSprId()))) return;
+				x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+				y=GameOpt.MouseY-si->Height+si->OffsY;
 				SprMngr.DrawSprite(CurPHand,x,y);
 				break;
 			}
@@ -8557,11 +8545,11 @@ DrawCurHand:
 
 				AnyFrames* anim=ResMngr.GetInvAnim(item->GetPicInv());
 				if(!anim) goto DrawCurHand;
-				spr_id=anim->GetCurSprId();
-				if(!(si=SprMngr.GetSpriteInfo(spr_id))) goto DrawCurHand;
-				x=CurX-(si->Width/2)+si->OffsX;
-				y=CurY-(si->Height/2)+si->OffsY;
-				SprMngr.DrawSprite(spr_id,x,y,item->GetInvColor());
+
+				if(!(si=SprMngr.GetSpriteInfo(anim->GetCurSprId()))) goto DrawCurHand;
+				x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+				y=GameOpt.MouseY-(si->Height/2)+si->OffsY;
+				SprMngr.DrawSprite(anim,x,y,item->GetInvColor());
 			}
 			else goto DrawCurHand;
 		}
@@ -8573,11 +8561,10 @@ DrawCurHand:
 				AnyFrames* anim=ResMngr.GetInvAnim(item->GetPicInv());
 				if(anim)
 				{
-					spr_id=anim->GetCurSprId();
-					if(!(si=SprMngr.GetSpriteInfo(spr_id))) return;
-					x=CurX-(si->Width/2)+si->OffsX;
-					y=CurY-(si->Height/2)+si->OffsY;
-					SprMngr.DrawSprite(spr_id,x,y,item->GetInvColor());
+					if(!(si=SprMngr.GetSpriteInfo(anim->GetCurSprId()))) return;
+					x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+					y=GameOpt.MouseY-(si->Height/2)+si->OffsY;
+					SprMngr.DrawSprite(anim,x,y,item->GetInvColor());
 				}
 			}
 		}
@@ -8633,8 +8620,8 @@ void FOClient::DlgboxLMouseDown()
 		}
 		if(IsCurInRect(DlgboxWMiddle,DlgboxX,DlgboxY+y_offs))
 		{
-			DlgboxVectX=CurX-DlgboxX;
-			DlgboxVectY=CurY-DlgboxY;
+			DlgboxVectX=GameOpt.MouseX-DlgboxX;
+			DlgboxVectY=GameOpt.MouseY-DlgboxY;
 			IfaceHold=IFACE_DIALOG_MAIN;
 			return;
 		}
@@ -8643,8 +8630,8 @@ void FOClient::DlgboxLMouseDown()
 
 	if(IsCurInRect(DlgboxWTop,DlgboxX,DlgboxY) || IsCurInRect(DlgboxWBottom,DlgboxX,DlgboxY+y_offs))
 	{
-		DlgboxVectX=CurX-DlgboxX;
-		DlgboxVectY=CurY-DlgboxY;
+		DlgboxVectX=GameOpt.MouseX-DlgboxX;
+		DlgboxVectY=GameOpt.MouseY-DlgboxY;
 		IfaceHold=IFACE_DIALOG_MAIN;
 	}
 }
@@ -8705,8 +8692,8 @@ void FOClient::DlgboxMouseMove()
 {
 	if(IfaceHold==IFACE_DIALOG_MAIN)
 	{
-		DlgboxX=CurX-DlgboxVectX;
-		DlgboxY=CurY-DlgboxVectY;
+		DlgboxX=GameOpt.MouseX-DlgboxVectX;
+		DlgboxY=GameOpt.MouseY-DlgboxVectY;
 
 		DWORD height=DlgboxWTop.H()+DlgboxButtonsCount*DlgboxWMiddle.H()+DlgboxWBottom.H();
 		if(DlgboxX<0) DlgboxX=0;
@@ -8722,7 +8709,7 @@ void FOClient::DlgboxMouseMove()
 
 void FOClient::ElevatorDraw()
 {
-	SprMngr.DrawSprite(ElevatorMainPic,ElevatorMain[0]+ElevatorX,ElevatorMain[1]+ElevatorY);
+	if(ElevatorMainPic) SprMngr.DrawSprite(ElevatorMainPic,ElevatorMain[0]+ElevatorX,ElevatorMain[1]+ElevatorY);
 	if(ElevatorExtPic) SprMngr.DrawSprite(ElevatorExtPic,ElevatorExt[0]+ElevatorX,ElevatorExt[1]+ElevatorY);
 	if(ElevatorIndicatorAnim) SprMngr.DrawSprite(AnimGetCurSpr(ElevatorIndicatorAnim),ElevatorIndicator[0]+ElevatorX,ElevatorIndicator[1]+ElevatorY);
 
@@ -8731,7 +8718,7 @@ void FOClient::ElevatorDraw()
 		for(int i=0;i<ElevatorButtonsCount;i++)
 		{
 			INTRECT& r=ElevatorButtons[i];
-			if(i==ElevatorSelectedButton) SprMngr.DrawSprite(ElevatorButtonPicDown,r[0]+ElevatorX,r[1]+ElevatorY);
+			if(i==ElevatorSelectedButton && ElevatorButtonPicDown) SprMngr.DrawSprite(ElevatorButtonPicDown,r[0]+ElevatorX,r[1]+ElevatorY);
 		}
 	}
 }
@@ -8746,8 +8733,8 @@ void FOClient::ElevatorLMouseDown()
 	}
 	else if(IsCurInRect(ElevatorMain,ElevatorX,ElevatorY))
 	{
-		ElevatorVectX=CurX-ElevatorX;
-		ElevatorVectY=CurY-ElevatorY;
+		ElevatorVectX=GameOpt.MouseX-ElevatorX;
+		ElevatorVectY=GameOpt.MouseY-ElevatorY;
 		IfaceHold=IFACE_ELEVATOR_MAIN;
 	}
 }
@@ -8783,8 +8770,8 @@ void FOClient::ElevatorMouseMove()
 {
 	if(IfaceHold==IFACE_ELEVATOR_MAIN)
 	{
-		ElevatorX=CurX-ElevatorVectX;
-		ElevatorY=CurY-ElevatorVectY;
+		ElevatorX=GameOpt.MouseX-ElevatorVectX;
+		ElevatorY=GameOpt.MouseY-ElevatorVectY;
 
 		if(ElevatorX<0) ElevatorX=0;
 		if(ElevatorX+ElevatorMain[2]>MODE_WIDTH) ElevatorX=MODE_WIDTH-ElevatorMain[2];
@@ -8795,10 +8782,10 @@ void FOClient::ElevatorMouseMove()
 
 void FOClient::ElevatorGenerate(DWORD param)
 {
-	ElevatorMainPic=0;
-	ElevatorExtPic=0;
+	ElevatorMainPic=NULL;
+	ElevatorExtPic=NULL;
+	ElevatorButtonPicDown=NULL;
 	ElevatorIndicatorAnim=0;
-	ElevatorButtonPicDown=0;
 	ElevatorButtonsCount=0;
 	ElevatorLevelsCount=0;
 	ElevatorStartLevel=0;
@@ -8816,6 +8803,7 @@ void FOClient::ElevatorGenerate(DWORD param)
 	}
 
 	DWORD added_buttons=0;
+	DWORD main_pic=0,ext_pic=0,button_pic=0;
 	for(int i=0,j=arr->GetSize();i<j;i++)
 	{
 		if(i>100) break;
@@ -8826,16 +8814,16 @@ void FOClient::ElevatorGenerate(DWORD param)
 		case 0: ElevatorCurrentLevel=val; break;
 		case 1: ElevatorStartLevel=val; break;
 		case 2: ElevatorLevelsCount=val; break;
-		case 3: ElevatorMainPic=val; break;
+		case 3: main_pic=val; break;
 		case 4: ElevatorMain.R=val; break;
 		case 5: ElevatorMain.B=val; break;
-		case 6: ElevatorExtPic=val; break;
+		case 6: ext_pic=val; break;
 		case 7: ElevatorExt.L=val; break;
 		case 8: ElevatorExt.T=val; break;
 		case 9: ElevatorIndicatorAnim=val; break;
 		case 10: ElevatorIndicator.L=val; break;
 		case 11: ElevatorIndicator.T=val; break;
-		case 12: ElevatorButtonPicDown=val; break;
+		case 12: button_pic=val; break;
 		case 13: ElevatorButtonsCount=val; break;
 		default: ElevatorButtons[(i-14)/4][(i-14)%4]=val; if((i-14)%4==3) added_buttons++; break;
 		}
@@ -8845,10 +8833,10 @@ void FOClient::ElevatorGenerate(DWORD param)
 	if(!ElevatorLevelsCount || ElevatorLevelsCount>MAX_DLGBOX_BUTTONS) return;
 	if(ElevatorCurrentLevel<ElevatorStartLevel || ElevatorCurrentLevel>=ElevatorStartLevel+ElevatorLevelsCount) return;
 	if(ElevatorButtonsCount>MAX_DLGBOX_BUTTONS || ElevatorButtonsCount!=added_buttons) return;
-	if(ElevatorMainPic && !(ElevatorMainPic=ResMngr.GetIfaceSprId(ElevatorMainPic))) return;
-	if(ElevatorExtPic && !(ElevatorExtPic=ResMngr.GetIfaceSprId(ElevatorExtPic))) return;
+	if(main_pic && !(ElevatorMainPic=ResMngr.GetIfaceAnim(main_pic))) return;
+	if(ext_pic && !(ElevatorExtPic=ResMngr.GetIfaceAnim(ext_pic))) return;
+	if(button_pic && !(ElevatorButtonPicDown=ResMngr.GetIfaceAnim(button_pic))) return;
 	if(ElevatorIndicatorAnim && !(ElevatorIndicatorAnim=AnimLoad(ElevatorIndicatorAnim,0,RES_IFACE))) return;
-	if(ElevatorButtonPicDown && !(ElevatorButtonPicDown=ResMngr.GetIfaceSprId(ElevatorButtonPicDown))) return;
 
 	AnimRun(ElevatorIndicatorAnim,ANIMRUN_SET_FRM(AnimGetSprCount(ElevatorIndicatorAnim)*Procent(ElevatorLevelsCount-1,ElevatorCurrentLevel-ElevatorStartLevel)/100)|ANIMRUN_STOP);
 	ElevatorX=(MODE_WIDTH-ElevatorMain.W())/2;
@@ -8879,7 +8867,11 @@ void FOClient::ElevatorProcess()
 
 int FOClient::ElevatorGetCurButton()
 {
-	for(int i=0;i<ElevatorButtonsCount;i++) if(IsCurInRectNoTransp(ElevatorButtonPicDown,ElevatorButtons[i],ElevatorX,ElevatorY)) return i;
+	if(ElevatorButtonPicDown)
+	{
+		for(int i=0;i<ElevatorButtonsCount;i++)
+			if(IsCurInRectNoTransp(ElevatorButtonPicDown->GetCurSprId(),ElevatorButtons[i],ElevatorX,ElevatorY)) return i;
+	}
 	return -1;
 }
 
@@ -8912,8 +8904,8 @@ void FOClient::SayLMouseDown()
 	else if(IsCurInRect(SayBCancel,SayX,SayY)) IfaceHold=IFACE_SAY_CANCEL;
 
 	if(IfaceHold!=IFACE_NONE) return;
-	SayVectX=CurX-SayX;
-	SayVectY=CurY-SayY;
+	SayVectX=GameOpt.MouseX-SayX;
+	SayVectY=GameOpt.MouseY-SayY;
 	IfaceHold=IFACE_SAY_MAIN;
 }
 
@@ -8951,8 +8943,8 @@ void FOClient::SayMouseMove()
 {
 	if(IfaceHold==IFACE_SAY_MAIN)
 	{
-		SayX=CurX-SayVectX;
-		SayY=CurY-SayVectY;
+		SayX=GameOpt.MouseX-SayVectX;
+		SayY=GameOpt.MouseY-SayVectY;
 
 		if(SayX<0) SayX=0;
 		if(SayX+SayWMain[2]>MODE_WIDTH) SayX=MODE_WIDTH-SayWMain[2];
@@ -9006,7 +8998,7 @@ void FOClient::SplitStart(Item* item, int to_cont)
 	SplitMinValue=1;
 	SplitMaxValue=item->GetCount();
 	SplitValueKeyPressed=false;
-	SplitItemPic=ResMngr.GetInvSprId(item->GetPicInv());
+	SplitItemPic=ResMngr.GetInvAnim(item->GetPicInv());
 	SplitItemColor=item->GetInvColor();
 	SplitParentScreen=GetActiveScreen();
 
@@ -9141,8 +9133,8 @@ void FOClient::SplitLMouseDown()
 	else if(IsCurInRect(SplitBCancel,SplitX,SplitY)) IfaceHold=IFACE_SPLIT_CANCEL;
 	else
 	{
-		SplitVectX=CurX-SplitX;
-		SplitVectY=CurY-SplitY;
+		SplitVectX=GameOpt.MouseX-SplitX;
+		SplitVectY=GameOpt.MouseY-SplitY;
 		IfaceHold=IFACE_SPLIT_MAIN;
 	}
 }
@@ -9183,8 +9175,8 @@ void FOClient::SplitMouseMove()
 {
 	if(IfaceHold==IFACE_SPLIT_MAIN)
 	{
-		SplitX=CurX-SplitVectX;
-		SplitY=CurY-SplitVectY;
+		SplitX=GameOpt.MouseX-SplitVectX;
+		SplitY=GameOpt.MouseY-SplitVectY;
 
 		if(SplitX<0) SplitX=0;
 		if(SplitX+SplitWMain[2]>MODE_WIDTH) SplitX=MODE_WIDTH-SplitWMain[2];
@@ -9197,7 +9189,7 @@ void FOClient::SplitMouseMove()
 //******************************************************************************************************************************
 //==============================================================================================================================
 
-void FOClient::TimerStart(DWORD item_id, DWORD pic, DWORD pic_color)
+void FOClient::TimerStart(DWORD item_id, AnyFrames* pic, DWORD pic_color)
 {
 	TimerItemId=item_id;
 	TimerValue=TIMER_MIN_VALUE;
@@ -9296,8 +9288,8 @@ void FOClient::TimerLMouseDown()
 	else if(IsCurInRect(TimerBCancel,TimerX,TimerY)) IfaceHold=IFACE_TIMER_CANCEL;
 	else
 	{
-		TimerVectX=CurX-TimerX;
-		TimerVectY=CurY-TimerY;
+		TimerVectX=GameOpt.MouseX-TimerX;
+		TimerVectY=GameOpt.MouseY-TimerY;
 		IfaceHold=IFACE_TIMER_MAIN;
 	}
 }
@@ -9333,8 +9325,8 @@ void FOClient::TimerMouseMove()
 {
 	if(IfaceHold==IFACE_TIMER_MAIN)
 	{
-		TimerX=CurX-TimerVectX;
-		TimerY=CurY-TimerVectY;
+		TimerX=GameOpt.MouseX-TimerVectX;
+		TimerY=GameOpt.MouseY-TimerVectY;
 
 		if(TimerX<0) TimerX=0;
 		if(TimerX+TimerWMain[2]>MODE_WIDTH) TimerX=MODE_WIDTH-TimerWMain[2];
@@ -9560,15 +9552,15 @@ void FOClient::FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& 
 		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec[i]);
 		if(!proto) continue;
 
-		DWORD spr_id=ResMngr.GetInvSprId(proto->PicInvHash);
-		if(!spr_id) continue;
+		AnyFrames* anim=ResMngr.GetInvAnim(proto->PicInvHash);
+		if(!anim) continue;
 
 		INTRECT r2=r;
 		r2.L=x;
 		r2.R=x+FIX_DRAW_PIC_WIDTH;
 		r2.B+=FIX_DRAW_PIC_HEIGHT;
 
-		FixDrawComp.push_back(new FixDrawComponent(r2,spr_id));
+		FixDrawComp.push_back(new FixDrawComponent(r2,anim));
 	}
 	r.B+=FIX_DRAW_PIC_HEIGHT;
 	r.T=r.B;
@@ -9619,7 +9611,7 @@ void FOClient::FixDraw()
 		for(int i=0,j=FixDrawComp.size();i<j;i++)
 		{
 			FixDrawComponent* c=FixDrawComp[i];
-			if(!c->IsText) SprMngr.DrawSpriteSize(c->SprId,c->Rect.L+FixX,c->Rect.T+FixY,c->Rect.W(),c->Rect.H(),false,true);
+			if(!c->IsText) SprMngr.DrawSpriteSize(c->Anim,c->Rect.L+FixX,c->Rect.T+FixY,c->Rect.W(),c->Rect.H(),false,true);
 		}
 	}
 
@@ -9689,8 +9681,8 @@ void FOClient::FixLMouseDown()
 
 	if(IfaceHold!=IFACE_NONE) return;
 
-	FixVectX=CurX-FixX;
-	FixVectY=CurY-FixY;
+	FixVectX=GameOpt.MouseX-FixX;
+	FixVectY=GameOpt.MouseY-FixY;
 	IfaceHold=IFACE_FIX_MAIN;
 }
 
@@ -9778,8 +9770,8 @@ void FOClient::FixMouseMove()
 
 	if(IfaceHold==IFACE_FIX_MAIN)
 	{
-		FixX=CurX-FixVectX;
-		FixY=CurY-FixVectY;
+		FixX=GameOpt.MouseX-FixVectX;
+		FixY=GameOpt.MouseY-FixVectY;
 
 		if(FixX<0) FixX=0;
 		if(FixX+FixWMain[2]>MODE_WIDTH) FixX=MODE_WIDTH-FixWMain[2];
@@ -9826,8 +9818,8 @@ void FOClient::IboxLMouseDown()
 
 	if(IfaceHold==IFACE_NONE)
 	{
-		IboxVectX=CurX-IboxX;
-		IboxVectY=CurY-IboxY;
+		IboxVectX=GameOpt.MouseX-IboxX;
+		IboxVectY=GameOpt.MouseY-IboxY;
 		IfaceHold=IFACE_IBOX_MAIN;
 	}
 }
@@ -9887,8 +9879,8 @@ void FOClient::IboxMouseMove()
 {
 	if(IfaceHold==IFACE_IBOX_MAIN)
 	{
-		IboxX=CurX-IboxVectX;
-		IboxY=CurY-IboxVectY;
+		IboxX=GameOpt.MouseX-IboxVectX;
+		IboxY=GameOpt.MouseY-IboxVectY;
 
 		if(IboxX<0) IboxX=0;
 		if(IboxX+IboxWMain[2]>MODE_WIDTH) IboxX=MODE_WIDTH-IboxWMain[2];
@@ -10173,7 +10165,7 @@ void FOClient::SaveLoadLMouseDown()
 	int ox=(SaveLoadLoginScreen?SaveLoadCX:SaveLoadX);
 	int oy=(SaveLoadLoginScreen?SaveLoadCY:SaveLoadY);
 
-	if(!IsCurInRectNoTransp(SaveLoadMainPic,SaveLoadMain,ox,oy)) return;
+	if(!IsCurInRectNoTransp(SaveLoadMainPic->GetCurSprId(),SaveLoadMain,ox,oy)) return;
 
 	if(IsCurInRect(SaveLoadScrUp,ox,oy))
 	{
@@ -10190,7 +10182,7 @@ void FOClient::SaveLoadLMouseDown()
 	else if(IsCurInRect(SaveLoadSlots,ox,oy))
 	{
 		int line_height=SprMngr.GetLinesHeight(0,0,"");
-		int line=(CurY-SaveLoadSlots.T-oy)/line_height;
+		int line=(GameOpt.MouseY-SaveLoadSlots.T-oy)/line_height;
 		int index=line/SAVE_LOAD_LINES_PER_SLOT;
 		if(index<SaveLoadSlotsMax)
 		{
@@ -10210,8 +10202,8 @@ void FOClient::SaveLoadLMouseDown()
 	}
 	else if(!SaveLoadLoginScreen)
 	{
-		SaveLoadVectX=CurX-SaveLoadX;
-		SaveLoadVectY=CurY-SaveLoadY;
+		SaveLoadVectX=GameOpt.MouseX-SaveLoadX;
+		SaveLoadVectY=GameOpt.MouseY-SaveLoadY;
 		IfaceHold=IFACE_SAVELOAD_MAIN;
 	}
 }
@@ -10246,8 +10238,8 @@ void FOClient::SaveLoadMouseMove()
 {
 	if(IfaceHold==IFACE_SAVELOAD_MAIN)
 	{
-		SaveLoadX=CurX-SaveLoadVectX;
-		SaveLoadY=CurY-SaveLoadVectY;
+		SaveLoadX=GameOpt.MouseX-SaveLoadVectX;
+		SaveLoadY=GameOpt.MouseY-SaveLoadVectY;
 
 		if(SaveLoadX<0) SaveLoadX=0;
 		if(SaveLoadX+SaveLoadMain[2]>MODE_WIDTH) SaveLoadX=MODE_WIDTH-SaveLoadMain[2];

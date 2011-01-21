@@ -96,7 +96,7 @@ DataFile* OpenDataFile(const char* fname)
 		}
 		return dat;
 	}
-	else if(!_stricmp(ext,".zip")) // Try open ZIP
+	else if(!_stricmp(ext,".zip") || !_stricmp(ext,".bos")) // Try open ZIP, BOS
 	{
 		ZipFile* zip=new(nothrow) ZipFile();
 		if(!zip || !zip->Init(fname))
@@ -387,7 +387,7 @@ bool ZipFile::ReadTree()
 		if(unzGetFilePos(zipHandle,&pos)!=UNZ_OK) return false;
 		if(unzGetCurrentFileInfo(zipHandle,&info,name,MAX_FOPATH,NULL,0,NULL,0)!=UNZ_OK) return false;
 
-		if(info.external_fa&0x20) // File == 0x20, Folder == 0x10
+		if(!(info.external_fa&0x10)) // Not folder
 		{
 			_strlwr_s(name);
 			for(char* str=name;*str;str++) if(*str=='/') *str='\\';

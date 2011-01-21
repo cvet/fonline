@@ -274,6 +274,39 @@ void FileManager::GoForward(DWORD offs)
 	curPos+=offs;
 }
 
+void FileManager::GoBack(DWORD offs)
+{
+	curPos-=offs;
+}
+
+bool FileManager::FindFragment(const BYTE* fragment, DWORD fragment_len, DWORD begin_offs)
+{
+	if(!fileBuf || fragment_len>fileSize) return false;
+
+	for(DWORD i=begin_offs;i<fileSize-fragment_len;i++)
+	{
+		if(fileBuf[i]==fragment[0])
+		{
+			bool not_match=false;
+			for(DWORD j=1;j<fragment_len;j++)
+			{
+				if(fileBuf[i+j]!=fragment[j])
+				{
+					not_match=true;
+					break;
+				}
+			}
+
+			if(!not_match)
+			{
+				curPos=i;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool FileManager::GetLine(char* str, DWORD len)
 {
 	if(curPos>=fileSize) return false;

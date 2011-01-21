@@ -159,7 +159,7 @@ public:
 	int GetFreeVolume();
 	bool IsHaveLightSources();
 	Item* GetSlotUse(BYTE num_slot, BYTE& use);
-	int GetUsePic(BYTE num_slot);
+	DWORD GetUsePicName(BYTE num_slot);
 	bool IsItemAim(BYTE num_slot);
 	BYTE GetUse(){return ItemSlotMain->Data.Mode&0xF;}
 	BYTE GetFullRate(){return ItemSlotMain->Data.Mode;}

@@ -66,6 +66,8 @@ public:
 
 	void SetCurPos(DWORD pos);
 	void GoForward(DWORD offs);
+	void GoBack(DWORD offs);
+	bool FindFragment(const BYTE* fragment, DWORD fragment_len, DWORD begin_offs);
 
 	bool GetLine(char* str, DWORD len);
 	bool CopyMem(void* ptr, size_t size);

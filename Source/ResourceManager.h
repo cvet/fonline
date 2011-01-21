@@ -13,7 +13,6 @@
 #define RES_SPLASH         (5)
 #define RES_GLOBAL_MAP     (6)
 #define RES_IFACE_EXT      (7)
-#define RES_AVATAR         (8)
 
 class SpriteManager;
 struct SpriteInfo;
@@ -53,27 +52,18 @@ public:
 
 	const char* GetName(DWORD name_hash);
 
-	DWORD GetSprId(DWORD name_hash, int dir);
-	SpriteInfo* GetSprInfo(DWORD name_hash, int dir);
-	AnyFrames* GetAnim(DWORD name_hash, int dir);
+	AnyFrames* GetAnim(DWORD name_hash, int dir, int res_type);
+	AnyFrames* GetIfaceAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE);}
+	AnyFrames* GetInvAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE_EXT);}
+	AnyFrames* GetSkDxAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE_EXT);}
+	AnyFrames* GetItemAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_ITEMS);}
+	AnyFrames* GetItemAnim(DWORD name_hash, int dir){return GetAnim(name_hash,dir,RES_ITEMS);}
 
-	DWORD GetIfaceSprId(DWORD name_hash);
-	DWORD GetInvSprId(DWORD name_hash);
-	DWORD GetSkDxSprId(DWORD name_hash);
+	AnyFrames* GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
+	Animation3d* GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
+	DWORD GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
 
-	SpriteInfo* GetIfaceSprInfo(DWORD name_hash);
-	SpriteInfo* GetInvSprInfo(DWORD name_hash);
-	SpriteInfo* GetSkDxSprInfo(DWORD name_hash);
-
-	AnyFrames* GetIfaceAnim(DWORD name_hash);
-	AnyFrames* GetInvAnim(DWORD name_hash);
-
-	AnyFrames* GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
-	Animation3d* GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
-	DWORD GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
-
-	DWORD GetAvatarSprId(const char* fname);
-	DWORD GetRandomSplash();
+	AnyFrames* GetRandomSplash();
 
 	StrMap& GetSoundNames(){return soundNames;}
 };

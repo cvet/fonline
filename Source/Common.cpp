@@ -939,6 +939,8 @@ GameOptions::GameOptions()
 
 	// Client and Mapper
 	Quit=false;
+	MouseX=0;
+	MouseY=0;
 	ScrOx=0;
 	ScrOy=0;
 	ShowTile=true;
@@ -1052,6 +1054,11 @@ GameOptions::GameOptions()
 	ClientMap=NULL;
 	ClientMapWidth=0;
 	ClientMapHeight=0;
+
+	GetDrawingSprites=NULL;
+	GetSpriteInfo=NULL;
+	GetSpriteColor=NULL;
+	IsSpriteHit=NULL;
 
 	// Callbacks
 	GetUseApCost=NULL;

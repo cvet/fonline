@@ -27,8 +27,65 @@ bool FOMapper::Init(HWND wnd)
 	WriteLog("Mapper initialization...\n");
 
 	STATIC_ASSERT(sizeof(MapObject)-sizeof(MapObject::_RunTime)==MAP_OBJECT_SIZE);
-
+	STATIC_ASSERT(sizeof(SpriteInfo)==36);
+	STATIC_ASSERT(sizeof(Sprite)==116);
 	Wnd=wnd;
+
+	// Register dll script data
+	struct CritterChangeParameter_{static void CritterChangeParameter(void*,DWORD){}}; // Dummy
+	GameOpt.CritterChangeParameter=&CritterChangeParameter_::CritterChangeParameter;
+
+	GameOpt.CritterTypes=&CritType::GetRealCritType(0);
+
+	struct GetDrawingSprites_
+	{
+		static void* GetDrawingSprites(DWORD& count)
+		{
+			Sprites& tree=Self->HexMngr.GetDrawTree();
+			count=tree.Size();
+			if(!count) return NULL;
+			return *tree.Begin();
+		}
+	};
+	GameOpt.GetDrawingSprites=&GetDrawingSprites_::GetDrawingSprites;
+
+	struct GetSpriteInfo_
+	{
+		static void* GetSpriteInfo(DWORD spr_id)
+		{
+			return SprMngr.GetSpriteInfo(spr_id);
+		}
+	};
+	GameOpt.GetSpriteInfo=&GetSpriteInfo_::GetSpriteInfo;
+
+	struct GetSpriteColor_
+	{
+		static DWORD GetSpriteColor(DWORD spr_id, int x, int y, bool with_zoom)
+		{
+			return SprMngr.GetPixColor(spr_id,x,y,with_zoom);
+		}
+	};
+	GameOpt.GetSpriteColor=&GetSpriteColor_::GetSpriteColor;
+
+	struct IsSpriteHit_
+	{
+		static bool IsSpriteHit(void* sprite, int x, int y, bool check_egg)
+		{
+			Sprite* sprite_=(Sprite*)sprite;
+			if(!sprite_ || !sprite_->Valid) return false;
+			SpriteInfo* si=SprMngr.GetSpriteInfo(sprite_->PSprId?*sprite_->PSprId:sprite_->SprId);
+			if(!si) return false;
+			if(si->Anim3d) return si->Anim3d->IsIntersect(x,y);
+			int sx=sprite_->ScrX-si->Width/2+si->OffsX+GameOpt.ScrOx+(sprite_->OffsX?*sprite_->OffsX:0);
+			int sy=sprite_->ScrY-si->Height+si->OffsY+GameOpt.ScrOy+(sprite_->OffsY?*sprite_->OffsY:0);
+			if(!(sprite_=sprite_->GetIntersected(x-sx,y-sy))) return false;
+			if(check_egg && SprMngr.CompareHexEgg(sprite_->HexX,sprite_->HexY,sprite_->EggType) && SprMngr.IsEggTransp(x,y)) return false;
+			return true;
+		}
+	};
+	GameOpt.IsSpriteHit=&IsSpriteHit_::IsSpriteHit;
+
+	// Input
 	Keyb::InitKeyb();
 
 	// Options
@@ -174,7 +231,7 @@ bool FOMapper::Init(HWND wnd)
 
 	// Hex manager
 	if(!HexMngr.Init()) return false;
-	if(!HexMngr.ReloadSprites()) return false;
+	HexMngr.ReloadSprites();
 	HexMngr.SwitchShowTrack();
 	DayTime=432720;
 	ChangeGameTime();
@@ -192,8 +249,8 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	ShowCursor(FALSE);
-	CurX=320;
-	CurY=240;
+	GameOpt.MouseX=320;
+	GameOpt.MouseY=240;
 
 	WriteLog("Mapper initialization complete.\n");
 
@@ -376,48 +433,36 @@ int FOMapper::InitIface()
 	ConsoleHistory.clear();
 	ConsoleHistoryCur=0;
 
+	ItemHex::DefaultAnim=SprMngr.LoadAnimation("art\\items\\reserved.frm",PT_DATA,ANIM_USE_DUMMY|ANIM_FRM_ANIM_PIX);
+	CritterCl::DefaultAnim=SprMngr.LoadAnimation("art\\critters\\reservaa.frm",PT_DATA,ANIM_USE_DUMMY|ANIM_FRM_ANIM_PIX);
+
 	// Messbox
 	MessBoxScroll=0;
 
-	ItemHex::DefaultAnim=ResMngr.GetAnim(Str::GetHash("art\\items\\reserved.frm"),0);
-	if(!ItemHex::DefaultAnim)
-	{
-		WriteLog(__FUNCTION__" - Default item animation not found.\n");
-		return __LINE__;
-	}
-
-	CritterCl::DefaultAnim=SprMngr.LoadAnyAnimation("reservaa.frm",PT_ART_CRITTERS,true,0);
-	if(!CritterCl::DefaultAnim)
-	{
-		WriteLog(__FUNCTION__" - Default critter animation not found.\n");
-		return __LINE__;
-	}
-
-	char f_name[1024];
-
 	// Cursor
-	if(!(CurPDef=SprMngr.LoadSprite("actarrow.frm",PT_ART_INTRFACE))) return __LINE__;
-	if(!(CurPHand=SprMngr.LoadSprite("hand.frm",PT_ART_INTRFACE))) return __LINE__;
+	CurPDef=SprMngr.LoadAnimation("actarrow.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
+	CurPHand=SprMngr.LoadAnimation("hand.frm",PT_ART_INTRFACE,ANIM_USE_DUMMY);
 
 	// Iface
+	char f_name[1024];
 	ini.GetStr("IntMainPic","error",f_name);
-	if(!(IntMainPic=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	IntMainPic=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 	ini.GetStr("IntTabPic","error",f_name);
-	if(!(IntPTab=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	IntPTab=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 	ini.GetStr("IntSelectPic","error",f_name);
-	if(!(IntPSelect=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	IntPSelect=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 	ini.GetStr("IntShowPic","error",f_name);
-	if(!(IntPShow=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	IntPShow=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 
 	// Object
 	ini.GetStr("ObjMainPic","error",f_name);
-	if(!(ObjWMainPic=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	ObjWMainPic=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 	ini.GetStr("ObjToAllPicDn","error",f_name);
-	if(!(ObjPBToAllDn=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	ObjPBToAllDn=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 
 	// Console
 	ini.GetStr("ConsolePic","error",f_name);
-	if(!(ConsolePic=SprMngr.LoadSprite(f_name,PT_MAPPER_DATA))) return __LINE__;
+	ConsolePic=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 
 	WriteLog("Init interface complete.\n");
 	return 0;
@@ -541,11 +586,9 @@ void FOMapper::ChangeGameTime()
 
 DWORD FOMapper::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 {
-	SprMngr.SurfType=res_type;
-	AnyFrames* frm=ResMngr.GetAnim(name_hash,dir);
-	SprMngr.SurfType=RES_NONE;
-	if(!frm) return 0;
-	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
+	AnyFrames* anim=ResMngr.GetAnim(name_hash,dir,res_type);
+	if(!anim) return 0;
+	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
@@ -557,10 +600,10 @@ DWORD FOMapper::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 DWORD FOMapper::AnimLoad(const char* fname, int path_type, int res_type)
 {
 	SprMngr.SurfType=res_type;
-	AnyFrames* frm=SprMngr.LoadAnyAnimation(fname,path_type,true,0);
+	AnyFrames* frm=SprMngr.LoadAnimation(fname,path_type,ANIM_FRM_ANIM_PIX);
 	SprMngr.SurfType=RES_NONE;
 	if(!frm) return 0;
-	IfaceAnim* ianim=new IfaceAnim(frm,res_type);
+	IfaceAnim* ianim=new(nothrow) IfaceAnim(frm,res_type);
 	if(!ianim) return 0;
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
@@ -840,13 +883,13 @@ void FOMapper::ParseMouse()
 		GetWindowInfo(Wnd,&wi);
 		POINT p;
 		GetCursorPos(&p);
-		CurX=p.x-wi.rcClient.left;
-		CurY=p.y-wi.rcClient.top;
+		GameOpt.MouseX=p.x-wi.rcClient.left;
+		GameOpt.MouseY=p.y-wi.rcClient.top;
 
-		if(CurX>=MODE_WIDTH) CurX=MODE_WIDTH-1;
-		if(CurX<0) CurX=0;
-		if(CurY>=MODE_HEIGHT) CurY=MODE_HEIGHT-1;
-		if(CurY<0) CurY=0;
+		if(GameOpt.MouseX>=MODE_WIDTH) GameOpt.MouseX=MODE_WIDTH-1;
+		if(GameOpt.MouseX<0) GameOpt.MouseX=0;
+		if(GameOpt.MouseY>=MODE_HEIGHT) GameOpt.MouseY=MODE_HEIGHT-1;
+		if(GameOpt.MouseY<0) GameOpt.MouseY=0;
 	}
 
 	// DirectInput mouse
@@ -865,20 +908,20 @@ void FOMapper::ParseMouse()
 	// Windows move cursor in windowed mode
 	if(!GameOpt.FullScreen)
 	{
-		static int old_cur_x=CurX;
-		static int old_cur_y=CurY;
+		static int old_cur_x=GameOpt.MouseX;
+		static int old_cur_y=GameOpt.MouseY;
 
-		if(old_cur_x!=CurX || old_cur_y!=CurY)
+		if(old_cur_x!=GameOpt.MouseX || old_cur_y!=GameOpt.MouseY)
 		{
-			old_cur_x=CurX;
-			old_cur_y=CurY;
+			old_cur_x=GameOpt.MouseX;
+			old_cur_y=GameOpt.MouseY;
 
 			IntMouseMove();
 
 			if(MapperFunctions.MouseMove && Script::PrepareContext(MapperFunctions.MouseMove,__FUNCTION__,"Mapper"))
 			{
-				Script::SetArgDword(CurX);
-				Script::SetArgDword(CurY);
+				Script::SetArgDword(GameOpt.MouseX);
+				Script::SetArgDword(GameOpt.MouseY);
 				Script::RunPrepared();
 			}
 		}
@@ -1110,22 +1153,22 @@ void FOMapper::ParseMouse()
 	{
 		int oxi=(int)ox;
 		int oyi=(int)oy;
-		CurX+=oxi;
-		CurY+=oyi;
+		GameOpt.MouseX+=oxi;
+		GameOpt.MouseY+=oyi;
 		ox-=(float)oxi;
 		oy-=(float)oyi;
 
-		if(CurX>=MODE_WIDTH) CurX=MODE_WIDTH;
-		if(CurX<0) CurX=0;
-		if(CurY>=MODE_HEIGHT) CurY=MODE_HEIGHT;
-		if(CurY<0) CurY=0;
+		if(GameOpt.MouseX>=MODE_WIDTH) GameOpt.MouseX=MODE_WIDTH;
+		if(GameOpt.MouseX<0) GameOpt.MouseX=0;
+		if(GameOpt.MouseY>=MODE_HEIGHT) GameOpt.MouseY=MODE_HEIGHT;
+		if(GameOpt.MouseY<0) GameOpt.MouseY=0;
 
 		IntMouseMove();
 
 		if(MapperFunctions.MouseMove && Script::PrepareContext(MapperFunctions.MouseMove,__FUNCTION__,"Mapper"))
 		{
-			Script::SetArgDword(CurX);
-			Script::SetArgDword(CurY);
+			Script::SetArgDword(GameOpt.MouseX);
+			Script::SetArgDword(GameOpt.MouseY);
 			Script::RunPrepared();
 		}
 	}
@@ -1133,22 +1176,22 @@ void FOMapper::ParseMouse()
 	// Scroll
 	if(GameOpt.MouseScroll==false) return;
 
-	if(CurX>=MODE_WIDTH-1)
+	if(GameOpt.MouseX>=MODE_WIDTH-1)
 		GameOpt.ScrollMouseRight=true;
 	else
 		GameOpt.ScrollMouseRight=false;
 
-	if(CurX<=0)
+	if(GameOpt.MouseX<=0)
 		GameOpt.ScrollMouseLeft=true;
 	else
 		GameOpt.ScrollMouseLeft=false;
 
-	if(CurY>=MODE_HEIGHT-1)
+	if(GameOpt.MouseY>=MODE_HEIGHT-1)
 		GameOpt.ScrollMouseDown=true;
 	else
 		GameOpt.ScrollMouseDown=false;
 
-	if(CurY<=0)
+	if(GameOpt.MouseY<=0)
 		GameOpt.ScrollMouseUp=true;
 	else
 		GameOpt.ScrollMouseUp=false;
@@ -1430,11 +1473,11 @@ void FOMapper::IntDraw()
 		for(;i<j;i++,x+=w)
 		{
 			ProtoItem* proto_item=&(*CurItemProtos)[i];
-			DWORD spr_id=ResMngr.GetSprId(proto_item->PicMapHash,proto_item->Dir);
-			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
+			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMapHash,proto_item->Dir);
+			if(!anim) anim=ItemHex::DefaultAnim;
 
 			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
-			SprMngr.DrawSpriteSize(spr_id,x,y,w,h/2,false,true,col);
+			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h/2,false,true,col);
 
 			if(proto_item->IsItem())
 			{
@@ -1461,11 +1504,11 @@ void FOMapper::IntDraw()
 
 		for(;i<j;i++,x+=w)
 		{
-			DWORD spr_id=ResMngr.GetSprId(TilesPictures[i],0);
-			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
+			AnyFrames* anim=ResMngr.GetItemAnim(TilesPictures[i]);
+			if(!anim) anim=ItemHex::DefaultAnim;
 
 			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
-			SprMngr.DrawSpriteSize(spr_id,x,y,w,h/2,false,true,col);
+			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h/2,false,true,col);
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),TilesPicturesNames[i].c_str(),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 	}
@@ -1544,7 +1587,7 @@ void FOMapper::IntDraw()
 	}
 
 	WORD hx,hy;
-	if(HexMngr.GetHexPixel(CurX,CurY,hx,hy))
+	if(HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy))
 	{
 		char str[256];
 		sprintf(str,"hx<%u>\nhy<%u>\ntime<%u:%u>\nfps<%u>\n%s",hx,hy,DayTime/60%24,DayTime%60,FPS,GameOpt.ScrollCheck?"ScrollCheck":"");
@@ -1574,9 +1617,9 @@ void FOMapper::ObjDraw()
 
 	if(proto)
 	{
-		DWORD spr_id=ResMngr.GetSprId(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMapHash,o->Dir);
-		if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
-		SprMngr.DrawSpriteSize(spr_id,x+w-ProtoWidth,y,ProtoWidth,ProtoWidth,false,true);
+		AnyFrames* anim=ResMngr.GetItemAnim(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMapHash,o->Dir);
+		if(!anim) anim=ItemHex::DefaultAnim;
+		SprMngr.DrawSpriteSize(anim->GetCurSprId(),x+w-ProtoWidth,y,ProtoWidth,ProtoWidth,false,true);
 
 		if(proto->IsItem())
 		{
@@ -2052,7 +2095,7 @@ void FOMapper::IntLMouseDown()
 	{
 		InContObject=NULL;
 
-		if(!HexMngr.GetHexPixel(CurX,CurY,SelectHX1,SelectHY1)) return;
+		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX1,SelectHY1)) return;
 		SelectHX2=SelectHX1;
 		SelectHY2=SelectHY1;
 
@@ -2112,7 +2155,7 @@ void FOMapper::IntLMouseDown()
 	{
 		if(IsCurInRect(ObjWWork,ObjX,ObjY))
 		{
-			ObjCurLine=(CurY-ObjY-ObjWWork[1])/DRAW_NEXT_HEIGHT;
+			ObjCurLine=(GameOpt.MouseY-ObjY-ObjWWork[1])/DRAW_NEXT_HEIGHT;
 	//		return;
 		}
 
@@ -2125,8 +2168,8 @@ void FOMapper::IntLMouseDown()
 		else if(!ObjFix)
 		{
 			IntHold=INT_OBJECT;
-			ItemVectX=CurX-ObjX;
-			ItemVectY=CurY-ObjY;
+			ItemVectX=GameOpt.MouseX-ObjX;
+			ItemVectY=GameOpt.MouseY-ObjY;
 		}
 
 		return;
@@ -2138,7 +2181,7 @@ void FOMapper::IntLMouseDown()
 
 	if(IsCurInRect(IntWWork,IntX,IntY))
 	{
-		int ind=(CurX-IntX-IntWWork[0])/ProtoWidth;
+		int ind=(GameOpt.MouseX-IntX-IntWWork[0])/ProtoWidth;
 
 		if(IsObjectMode() && (*CurItemProtos).size())
 		{
@@ -2432,8 +2475,8 @@ void FOMapper::IntLMouseDown()
 	else if(!IntFix)
 	{
 		IntHold=INT_MAIN;
-		IntVectX=CurX-IntX;
-		IntVectY=CurY-IntY;
+		IntVectX=GameOpt.MouseX-IntX;
+		IntVectY=GameOpt.MouseY-IntY;
 		return;
 	}
 	else return;
@@ -2448,7 +2491,7 @@ void FOMapper::IntLMouseUp()
 {
 	if(IntHold==INT_SELECT)
 	{
-		if(!HexMngr.GetHexPixel(CurX,CurY,SelectHX2,SelectHY2)) return;
+		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2)) return;
 
 		if(CurMode==CUR_MODE_DEF)
 		{
@@ -2522,7 +2565,7 @@ void FOMapper::IntLMouseUp()
 			{
 				ItemHex* item;
 				CritterCl* cr;
-				HexMngr.GetSmthPixel(CurX,CurY,item,cr);
+				HexMngr.GetSmthPixel(GameOpt.MouseX,GameOpt.MouseY,item,cr);
 
 				if(item)
 				{
@@ -2551,7 +2594,7 @@ void FOMapper::IntMouseMove()
 	if(IntHold==INT_SELECT)
 	{
 		HexMngr.ClearHexTrack();
-		if(!HexMngr.GetHexPixel(CurX,CurY,SelectHX2,SelectHY2)) return;
+		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2)) return;
 
 		if(SelectHX1!=SelectHX2 || SelectHY1!=SelectHY2)
 		{
@@ -2595,13 +2638,13 @@ void FOMapper::IntMouseMove()
 	}
 	else if(IntHold==INT_MAIN)
 	{
-		IntX=CurX-IntVectX;
-		IntY=CurY-IntVectY;
+		IntX=GameOpt.MouseX-IntVectX;
+		IntY=GameOpt.MouseY-IntVectY;
 	}
 	else if(IntHold==INT_OBJECT)
 	{
-		ObjX=CurX-ItemVectX;
-		ObjY=CurY-ItemVectY;
+		ObjX=GameOpt.MouseX-ItemVectX;
+		ObjY=GameOpt.MouseY-ItemVectY;
 	}
 }
 
@@ -2846,28 +2889,28 @@ void FOMapper::SelectAddTile(WORD tx, WORD ty, DWORD name_hash, bool is_roof, bo
 
 	if(HexMngr.GetField(tx*2,ty*2).TerrainId) return;
 
-	DWORD spr_id=ResMngr.GetSprId(name_hash,0);
-	if(!spr_id) return;
+	AnyFrames* anim=ResMngr.GetItemAnim(name_hash);
+	if(!anim) return;
 
 	if(!is_roof)
 	{
 		if(null_old)
 		{
-			HexMngr.GetField(tx*2,ty*2).TileId=0;
+			HexMngr.GetField(tx*2,ty*2).Tile=NULL;
 			CurProtoMap->SetTile(tx,ty,0);
 		}
 
-		HexMngr.GetField(tx*2,ty*2).SelTile=spr_id;
+		HexMngr.GetField(tx*2,ty*2).SelTile=anim;
 	}
 	else
 	{
 		if(null_old)
 		{
-			HexMngr.GetField(tx*2,ty*2).RoofId=0;
+			HexMngr.GetField(tx*2,ty*2).Roof=NULL;
 			CurProtoMap->SetRoof(tx,ty,0);
 		}
 
-		HexMngr.GetField(tx*2,ty*2).SelRoof=spr_id;
+		HexMngr.GetField(tx*2,ty*2).SelRoof=anim;
 	}
 
 	SelectedTile.push_back(SelMapTile(tx,ty,name_hash,is_roof));
@@ -3058,10 +3101,12 @@ void FOMapper::SelectMove(int vect_hx, int vect_hy)
 				is_clear=true;
 			}
 
-			DWORD spr_id=ResMngr.GetSprId(t->PicId,0);
+			AnyFrames* anim=ResMngr.GetItemAnim(t->PicId);
 
-			if(!t->IsRoof) HexMngr.GetField(new_tx*2,new_ty*2).SelTile=spr_id;
-			else HexMngr.GetField(new_tx*2,new_ty*2).SelRoof=spr_id;
+			if(!t->IsRoof)
+				HexMngr.GetField(new_tx*2,new_ty*2).SelTile=anim;
+			else
+				HexMngr.GetField(new_tx*2,new_ty*2).SelRoof=anim;
 
 			t->TileX=new_tx;
 			t->TileY=new_ty;
@@ -3114,7 +3159,7 @@ void FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont)
 	if(in_cont && !proto_item->IsCanPickUp()) return;
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return;
 
-	AnyFrames* anim=ResMngr.GetAnim(proto_item->PicMapHash,0);
+	AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMapHash);
 	if(!anim) return;
 
 	SelectClear();
@@ -3316,46 +3361,46 @@ void FOMapper::BufferPaste(int hx, int hy)
 
 void FOMapper::CurDraw()
 {
-	DWORD spr_id;
+	AnyFrames* anim=NULL;
 	switch(CurMode)
 	{
-	case CUR_MODE_DEF: spr_id=CurPDef; break;
-	case CUR_MODE_MOVE: spr_id=CurPHand; break;
+	case CUR_MODE_DEF: anim=CurPDef; break;
+	case CUR_MODE_MOVE: anim=CurPHand; break;
 	case CUR_MODE_DRAW:
 		if(IsObjectMode() && (*CurItemProtos).size())
 		{
 			ProtoItem& proto_item=(*CurItemProtos)[CurProto[IntMode]];
-			spr_id=ResMngr.GetSprId(proto_item.PicMapHash,proto_item.Dir);
-			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
+			anim=ResMngr.GetItemAnim(proto_item.PicMapHash,proto_item.Dir);
+			if(!anim) anim=ItemHex::DefaultAnim;
 
 			WORD hx,hy;
-			if(!HexMngr.GetHexPixel(CurX,CurY,hx,hy)) return;
+			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
 
-			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
+			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+			SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
 				si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 		}
 		else if(IsTileMode() && TilesPictures.size())
 		{
-			spr_id=ResMngr.GetSprId(TilesPictures[CurProto[IntMode]],0);
-			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
+			anim=ResMngr.GetItemAnim(TilesPictures[CurProto[IntMode]]);
+			if(!anim) anim=ItemHex::DefaultAnim;
 
 			WORD hx,hy;
-			if(!HexMngr.GetHexPixel(CurX,CurY,hx,hy)) return;
+			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
 			if(hx&1) hx--;
 			if(hy&1) hy--;
 
-			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
+			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 			x=x-16-8;
 			y=y-6+32;
 			if(DrawRoof) y-=98;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+			SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 		}
 		else if(IsCritMode() && NpcProtos.size())
 		{
@@ -3363,7 +3408,7 @@ void FOMapper::CurDraw()
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			WORD hx,hy;
-			if(!HexMngr.GetHexPixel(CurX,CurY,hx,hy)) return;
+			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
@@ -3381,10 +3426,13 @@ void FOMapper::CurDraw()
 		return;
 	}
 
-	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
-	int x=CurX-(si->Width/2)+si->OffsX;
-	int y=CurY-si->Height+si->OffsY;
-	SprMngr.DrawSprite(spr_id,x,y,COLOR_IFACE);
+	if(anim)
+	{
+		SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
+		int x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+		int y=GameOpt.MouseY-si->Height+si->OffsY;
+		SprMngr.DrawSprite(anim,x,y,COLOR_IFACE);
+	}
 }
 
 void FOMapper::CurRMouseUp()
@@ -3451,11 +3499,11 @@ void FOMapper::CurMMouseDown()
 bool FOMapper::GetMouseHex(WORD& hx, WORD& hy)
 {
 	hx=hy=0;
-	if(IntVisible && IsCurInRectNoTransp(IntMainPic,IntWMain,IntX,IntY)) return false;
-	if(ObjVisible && !SelectedObj.empty() && IsCurInRectNoTransp(ObjWMainPic,ObjWMain,0,0)) return false;
+	if(IntVisible && IsCurInRectNoTransp(IntMainPic->GetCurSprId(),IntWMain,IntX,IntY)) return false;
+	if(ObjVisible && !SelectedObj.empty() && IsCurInRectNoTransp(ObjWMainPic->GetCurSprId(),ObjWMain,0,0)) return false;
 
 	//if(ConsoleEdit && IsCurInRectNoTransp(ConsolePic,Main,0,0)) //TODO:
-	return HexMngr.GetHexPixel(CurX,CurY,hx,hy);
+	return HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy);
 }
 
 void FOMapper::ConsoleDraw()
@@ -4891,12 +4939,6 @@ bool FOMapper::SScriptFunc::Global_GetMonitorHex(int x, int y, WORD& hx, WORD& h
 		return true;
 	}
 	return false;
-}
-
-void FOMapper::SScriptFunc::Global_GetMousePosition(int& x, int& y)
-{
-	x=Self->CurX;
-	y=Self->CurY;
 }
 
 DWORD FOMapper::SScriptFunc::Global_GetAngelScriptProperty(int property)
