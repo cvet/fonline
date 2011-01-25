@@ -7,10 +7,7 @@
 #include "ItemManager.h"
 #include "CritterCl.h"
 #include "ItemHex.h"
-
-#ifdef FONLINE_MAPPER
 #include "ProtoMap.h"
-#endif
 
 class Terrain;
 typedef vector<Terrain*> TerrainVec;
@@ -32,6 +29,8 @@ typedef vector<Terrain*>::iterator TerrainVecIt;
 #define TILE_OY     (32)
 #define ROOF_OX     (-8)
 #define ROOF_OY     (32-98)
+#define MAX_MOVE_OX (100)
+#define MAX_MOVE_OY (100)
 
 /************************************************************************/
 /* ViewField                                                            */
@@ -70,12 +69,20 @@ typedef vector<LightSource>::iterator LightSourceVecIt;
 
 struct Field
 {
+	struct Tile
+	{
+		AnyFrames* Anim;
+		short OffsX;
+		short OffsY;
+	};
+	typedef vector<Tile> TileVec;
+
 	CritterCl* Crit;
 	CritVec DeadCrits;
 	int ScrX;
 	int ScrY;
-	AnyFrames* Tile;
-	AnyFrames* Roof;
+	TileVec Tiles;
+	TileVec Roofs;
 	ItemHexVec Items;
 	short RoofNum;
 	bool ScrollBlock;
@@ -91,17 +98,11 @@ struct Field
 	BYTE LightValues[3];
 	bool IsMultihex;
 
-#ifdef FONLINE_MAPPER
-	AnyFrames* SelTile;
-	AnyFrames* SelRoof;
-	DWORD TerrainId;
-	DWORD SelTerrain;
-#endif
-
 	void Clear();
 	void AddItem(ItemHex* item);
 	void EraseItem(ItemHex* item);
 	void ProcessCache();
+	void AddTile(AnyFrames* anim, short ox, short oy, bool is_roof);
 	Field(){Clear();}
 };
 
@@ -184,7 +185,7 @@ public:
 	void UnloadMap();
 	void GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen);
 	bool GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy);
-	bool ParseScenery(ScenToSend& scen);
+	bool ParseScenery(SceneryCl& scen);
 	int GetDayTime();
 	int GetMapTime();
 	int* GetMapDayTime();
@@ -326,7 +327,7 @@ private:
 	Sprites roofTree;
 	TerrainVec tilesTerrain;
 
-	bool CheckTilesBorder(DWORD spr_id, bool is_roof);
+	bool CheckTilesBorder(Field::Tile& tile, bool is_roof);
 	bool AddTerrain(DWORD name_hash, int hx, int hy);
 
 public:
@@ -379,15 +380,14 @@ public:
 	// Proto map
 	ProtoMap* CurProtoMap;
 	bool SetProtoMap(ProtoMap& pmap);
-	bool GetProtoMap(ProtoMap& pmap);
 
 	// Selected tile, roof
 public:
-	void ClearSelTiles(){for(DWORD i=0,j=maxHexX*maxHexY;i<j;i++) {hexField[i].SelTile=0; hexField[i].SelRoof=0; hexField[i].SelTerrain=0;}}
+	void ClearSelTiles();
 	void ParseSelTiles();
-	void SetTile(WORD hx, WORD hy, DWORD name_hash, bool is_roof);
-	void SetTerrain(WORD hx, WORD hy, DWORD name_hash);
-	void RebuildTerrain();
+	void SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, bool is_roof, bool select);
+	//void SetTerrain(WORD hx, WORD hy, DWORD name_hash);
+	//void RebuildTerrain();
 
 	// Ignore pids to draw
 private:

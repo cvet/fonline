@@ -151,46 +151,79 @@ typedef vector<MapObject*>::iterator MapObjectPtrVecIt;
 typedef vector<MapObject> MapObjectVec;
 typedef vector<MapObject>::iterator MapObjectVecIt;
 
-/*class Scenery
+struct SceneryCl
 {
 	WORD ProtoId;
+	BYTE Flags;
+	BYTE SpriteCut;
 	WORD MapX;
 	WORD MapY;
-	bool IsGrid;
-};*/
+	short OffsetX;
+	short OffsetY;
+	DWORD LightColor;
+	BYTE LightDistance;
+	BYTE LightFlags;
+	char LightIntensity;
+	BYTE InfoOffset;
+	BYTE AnimStayBegin;
+	BYTE AnimStayEnd;
+	WORD AnimWait;
+	DWORD PicMapHash;
+	short Dir;
+	WORD Reserved1;
+};
+typedef vector<SceneryCl> SceneryClVec;
 
 class ProtoMap
 {
 public:
+	// Header
 	struct
 	{
 		DWORD Version;
-		bool Packed;
-		bool NoLogOut;
-		WORD HeaderSize;
-		int PlayersLimit;
-		DWORD UnpackedDataLen;
-		WORD MaxHexX;
-		WORD MaxHexY;
-		int Time;
-		int CenterX;
-		int CenterY;
+		WORD MaxHexX,MaxHexY;
+		int WorkHexX,WorkHexY;
 		char ScriptModule[MAX_SCRIPT_NAME+1];
 		char ScriptFunc[MAX_SCRIPT_NAME+1];
+		int Time;
+		bool NoLogOut;
 		int DayTime[4];
 		BYTE DayColor[12];
+
+		// Deprecated
+		WORD HeaderSize;
+		bool Packed;
+		DWORD UnpackedDataLen;
 	} Header;
 
+	// Objects
 	MapObjectPtrVec MObjects;
-	DWORD* Tiles;
-
 	DWORD GetObjectsSize(){return MObjects.size()*MAP_OBJECT_SIZE;}
-	DWORD GetTilesSize(){return (Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2;}
 
-	DWORD GetTile(WORD tx, WORD ty){return Tiles[ty*(Header.MaxHexX/2)*2+tx*2];}
-	DWORD GetRoof(WORD tx, WORD ty){return Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1];}
-	void SetTile(WORD tx, WORD ty, DWORD pic_hash){Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=pic_hash;}
-	void SetRoof(WORD tx, WORD ty, DWORD pic_hash){Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=pic_hash;}
+	// Tiles
+	struct Tile // 12 bytes
+	{
+		DWORD NameHash;
+		WORD HexX,HexY;
+		char OffsX,OffsY;
+		bool IsRoof;
+#ifdef FONLINE_MAPPER
+		bool IsSelected;
+#endif
+
+		Tile(){}
+		Tile(DWORD name, WORD hx, WORD hy, char ox, char oy, bool is_roof):
+			NameHash(name),HexX(hx),HexY(hy),OffsX(ox),OffsY(oy),IsRoof(is_roof){}
+	};
+	typedef vector<Tile> TileVec;
+	TileVec Tiles;
+#ifdef FONLINE_MAPPER
+	// For fast access
+	typedef vector<TileVec> TileVecVec;
+	TileVecVec TilesField;
+	TileVecVec RoofsField;
+	TileVec& GetTiles(WORD hx, WORD hy, bool is_roof){return is_roof?RoofsField[hy*Header.MaxHexX+hx]:TilesField[hy*Header.MaxHexX+hx];}
+#endif
 
 private:
 	bool ReadHeader(int version);
@@ -204,8 +237,8 @@ private:
 #ifdef FONLINE_SERVER
 public:
 	// To Client
-	ScenToSendVec WallsToSend;
-	ScenToSendVec SceneriesToSend;
+	SceneryClVec WallsToSend;
+	SceneryClVec SceneriesToSend;
 	DWORD HashTiles;
 	DWORD HashWalls;
 	DWORD HashScen;
@@ -262,7 +295,7 @@ public:
 
 #ifdef FONLINE_MAPPER
 	void GenNew(FileManager* fm);
-	bool Save(const char* f_name, int path_type, bool text, bool pack);
+	bool Save(const char* f_name, int path_type);
 	static bool IsMapFile(const char* fname);
 #endif
 
@@ -280,12 +313,12 @@ public:
 	void GetMapSceneriesHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, MapObjectPtrVec& mobjs);
 	void GetMapSceneriesByPid(WORD pid, MapObjectPtrVec& mobjs);
 	MapObject* GetMapGrid(WORD hx, WORD hy);
-	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),HexFlags(NULL),Tiles(NULL){MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
+	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),HexFlags(NULL){MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
 	ProtoMap(const ProtoMap& r){*this=r;MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
-	~ProtoMap(){pmapFm=NULL;isInit=false;HexFlags=NULL;Tiles=NULL;MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)sizeof(ProtoMap));}
+	~ProtoMap(){pmapFm=NULL;isInit=false;HexFlags=NULL;MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)sizeof(ProtoMap));}
 #else
-	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),RefCounter(1){Tiles=NULL;}
-	~ProtoMap(){pmapFm=NULL;isInit=false;Tiles=NULL;}
+	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),RefCounter(1){}
+	~ProtoMap(){pmapFm=NULL;isInit=false;}
 #endif
 };
 typedef vector<ProtoMap> ProtoMapVec;

@@ -2504,8 +2504,29 @@ void FOServer::Process_Command(Client* cl)
 
 			SynchronizeLogicThreads();
 
-			if(MapMngr.LoadMapsProtos()) cl->Send_Text(cl,"Reload proto maps success.",SAY_NETMSG);
-			else cl->Send_Text(cl,"Reload proto maps fail.",SAY_NETMSG);
+			int fails=0;
+			for(int map_pid=0;map_pid<MAX_PROTO_MAPS;map_pid++)
+			{
+				if(MapMngr.ProtoMaps[map_pid].IsInit())
+				{
+					ProtoMap pmap;
+					const char* map_name=MapMngr.ProtoMaps[map_pid].GetName();
+					if(pmap.Init(map_pid,map_name,PT_SERVER_MAPS))
+					{
+						MapMngr.ProtoMaps[map_pid].Clear();
+						MapMngr.ProtoMaps[map_pid]=pmap;
+					}
+					else
+					{
+						fails++;
+					}
+				}
+			}
+
+			if(!fails)
+				cl->Send_Text(cl,"Reload proto maps complete, without fails.",SAY_NETMSG);
+			else
+				cl->Send_Text(cl,"Reload proto maps complete, with fails.",SAY_NETMSG);
 
 			ResynchronizeLogicThreads();
 		}
@@ -2524,29 +2545,27 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!map_pid || map_pid>=MAX_PROTO_MAPS)
-			{
-				cl->Send_Text(cl,"Invalid proto map pid.",SAY_NETMSG);
-				break;
-			}
-
 			SynchronizeLogicThreads();
 
-			IniParser maps_txt;
-			if(maps_txt.LoadFile("Maps.cfg",PT_SERVER_MAPS))
+			if(map_pid>0 && map_pid<MAX_PROTO_MAPS && MapMngr.ProtoMaps[map_pid].IsInit())
 			{
 				ProtoMap pmap;
-				if(!MapMngr.LoadMapProto(maps_txt,pmap,map_pid)) cl->Send_Text(cl,"Load proto map fail.",SAY_NETMSG);
+				const char* map_name=MapMngr.ProtoMaps[map_pid].GetName();
+				if(pmap.Init(map_pid,map_name,PT_SERVER_MAPS))
+				{
+					MapMngr.ProtoMaps[map_pid].Clear();
+					MapMngr.ProtoMaps[map_pid]=pmap;
+
+					cl->Send_Text(cl,"Load proto map success.",SAY_NETMSG);
+				}
 				else
 				{
-					MapMngr.ProtoMaps[map_pid]=pmap;
-					cl->Send_Text(cl,"Load proto map success.",SAY_NETMSG);
+					cl->Send_Text(cl,"Load proto map fail.",SAY_NETMSG);
 				}
 			}
 			else
 			{
-				cl->Send_Text(cl,"Maps.cfg not found.",SAY_NETMSG);
-				WriteLog("File<%s> not found.\n",Str::Format("%sMaps.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
+				cl->Send_Text(cl,"Invalid proto map pid.",SAY_NETMSG);
 			}
 
 			ResynchronizeLogicThreads();
@@ -3297,8 +3316,8 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(GlobalMapGroup,EncounterForce)==88);
 	STATIC_ASSERT(offsetof(MapObject,RunTime.RefCounter)==244);
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);
-	STATIC_ASSERT(offsetof(ScenToSend,PicMapHash)==24);
-	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==320);
+	STATIC_ASSERT(offsetof(SceneryCl,PicMapHash)==24);
+	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==332);
 	STATIC_ASSERT(offsetof(Map,RefCounter)==794);
 	STATIC_ASSERT(offsetof(ProtoLocation,GeckVisible)==92);
 	STATIC_ASSERT(offsetof(Location,RefCounter)==286);
@@ -3317,7 +3336,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(IntPair)==8);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(MapObject)==MAP_OBJECT_SIZE+sizeof(MapObject::_RunTime));
-	STATIC_ASSERT(sizeof(ScenToSend)==32);
+	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(NpcBagItem)==16);
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);
@@ -3327,6 +3346,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
 	STATIC_ASSERT(sizeof(GameOptions)==1144);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
+	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 
 	// Critters parameters
 	Critter::SendDataCallback=&Net_Output;
@@ -3408,8 +3428,7 @@ bool FOServer::Init()
 	// Prototypes
 	if(!ItemMngr.LoadProtos()) goto label_Error; // Proto items
 	if(!CrMngr.LoadProtos()) goto label_Error; // Proto critters
-	if(!MapMngr.LoadMapsProtos()) goto label_Error; // Proto maps
-	if(!MapMngr.LoadLocationsProtos()) goto label_Error; // Proto locations
+	if(!MapMngr.LoadLocationsProtos()) goto label_Error; // Proto locations and maps
 	if(!ItemMngr.CheckProtoFunctions()) goto label_Error; // Check valid of proto functions
 
 	// World loading

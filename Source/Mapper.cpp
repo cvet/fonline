@@ -29,6 +29,7 @@ bool FOMapper::Init(HWND wnd)
 	STATIC_ASSERT(sizeof(MapObject)-sizeof(MapObject::_RunTime)==MAP_OBJECT_SIZE);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
+	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 	Wnd=wnd;
 
 	// Register dll script data
@@ -262,7 +263,7 @@ bool FOMapper::Init(HWND wnd)
 		ProtoMap* pmap=new ProtoMap();
 		if(pmap->Init(0xFFFF,map_name,PT_MAPS) && HexMngr.SetProtoMap(*pmap))
 		{
-			HexMngr.FindSetCenter(pmap->Header.CenterX,pmap->Header.CenterY);
+			HexMngr.FindSetCenter(pmap->Header.WorkHexX,pmap->Header.WorkHexY);
 			CurProtoMap=pmap;
 			LoadedProtoMaps.push_back(pmap);
 		}
@@ -389,6 +390,8 @@ int FOMapper::InitIface()
 	SelectHY1=0;
 	SelectHX2=0;
 	SelectHY2=0;
+	SelectX=0;
+	SelectY=0;
 
 	InContScroll=0;
 	InContObject=NULL;
@@ -590,6 +593,7 @@ DWORD FOMapper::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 	if(!anim) return 0;
 	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
+
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
 	if(index<Animations.size()) Animations[index]=ianim;
@@ -599,12 +603,15 @@ DWORD FOMapper::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 
 DWORD FOMapper::AnimLoad(const char* fname, int path_type, int res_type)
 {
-	SprMngr.SurfType=res_type;
-	AnyFrames* frm=SprMngr.LoadAnimation(fname,path_type,ANIM_FRM_ANIM_PIX);
-	SprMngr.SurfType=RES_NONE;
-	if(!frm) return 0;
-	IfaceAnim* ianim=new(nothrow) IfaceAnim(frm,res_type);
+	char full_name[MAX_FOPATH];
+	StringCopy(full_name,FileManager::GetPath(path_type));
+	StringAppend(full_name,fname);
+
+	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(full_name),0,res_type);
+	if(!anim) return 0;
+	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
+
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
 	if(index<Animations.size()) Animations[index]=ianim;
@@ -1347,6 +1354,8 @@ void FOMapper::MainLoop()
 	CurDraw();
 	DrawIfaceLayer(5);
 	SprMngr.EndScene();
+
+	Script::CollectGarbage(true);
 }
 
 void FOMapper::AddFastProto(WORD pid)
@@ -2098,38 +2107,39 @@ void FOMapper::IntLMouseDown()
 		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX1,SelectHY1)) return;
 		SelectHX2=SelectHX1;
 		SelectHY2=SelectHY1;
-
-		if(Keyb::ShiftDwn)
-		{
-			for(int i=0,j=SelectedObj.size();i<j;i++)
-			{
-				SelMapObj& so=SelectedObj[i];
-				if(so.MapNpc)
-				{
-					BYTE crtype=so.MapNpc->GetCrType();
-					bool is_run=(so.MapNpc->MoveSteps.size() && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].first==SelectHX1 && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].second==SelectHY1/* && CritType::IsCanRun(crtype)*/);
-					so.MapNpc->MoveSteps.clear();
-					if(!is_run && !CritType::IsCanWalk(crtype)) break;
-					WORD hx=so.MapNpc->GetHexX();
-					WORD hy=so.MapNpc->GetHexY();
-					ByteVec steps;
-					if(HexMngr.FindPath(NULL,hx,hy,SelectHX1,SelectHY1,steps,-1))
-					{
-						for(int k=0;k<steps.size();k++)
-						{
-							MoveHexByDir(hx,hy,steps[k],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
-							so.MapNpc->MoveSteps.push_back(WordPair(hx,hy));
-						}
-						so.MapNpc->IsRunning=is_run;
-					}
-					break;
-				}
-			}
-			return;
-		}
+		SelectX=GameOpt.MouseX;
+		SelectY=GameOpt.MouseY;
 
 		if(CurMode==CUR_MODE_DEF)
 		{
+			if(Keyb::ShiftDwn)
+			{
+				for(int i=0,j=SelectedObj.size();i<j;i++)
+				{
+					SelMapObj& so=SelectedObj[i];
+					if(so.MapNpc)
+					{
+						BYTE crtype=so.MapNpc->GetCrType();
+						bool is_run=(so.MapNpc->MoveSteps.size() && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].first==SelectHX1 && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].second==SelectHY1/* && CritType::IsCanRun(crtype)*/);
+						so.MapNpc->MoveSteps.clear();
+						if(!is_run && !CritType::IsCanWalk(crtype)) break;
+						WORD hx=so.MapNpc->GetHexX();
+						WORD hy=so.MapNpc->GetHexY();
+						ByteVec steps;
+						if(HexMngr.FindPath(NULL,hx,hy,SelectHX1,SelectHY1,steps,-1))
+						{
+							for(int k=0;k<steps.size();k++)
+							{
+								MoveHexByDir(hx,hy,steps[k],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
+								so.MapNpc->MoveSteps.push_back(WordPair(hx,hy));
+							}
+							so.MapNpc->IsRunning=is_run;
+						}
+						break;
+					}
+				}
+			}
+
 			if(!Keyb::CtrlDwn) SelectClear();
 			//HexMngr.ClearHexTrack();
 			//HexMngr.RefreshMap();
@@ -2142,7 +2152,7 @@ void FOMapper::IntLMouseDown()
 		else if(CurMode==CUR_MODE_DRAW)
 		{
 			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[CurProto[IntMode]].GetPid(),SelectHX1,SelectHY1,false);
-			else if(IsTileMode() && TilesPictures.size()) ParseTile(TilesPictures[CurProto[IntMode]],SelectHX1,SelectHY1);
+			else if(IsTileMode() && TilesPictures.size()) ParseTile(TilesPictures[CurProto[IntMode]],SelectHX1,SelectHY1,0,0,DrawRoof);
 			else if(IsCritMode() && NpcProtos.size()) ParseNpc(NpcProtos[CurProto[IntMode]]->ProtoId,SelectHX1,SelectHY1);
 		}
 
@@ -2353,13 +2363,13 @@ void FOMapper::IntLMouseDown()
 
 			if(ind<LoadedProtoMaps.size() && CurProtoMap!=LoadedProtoMaps[ind])
 			{
-				HexMngr.GetScreenHexes(CurProtoMap->Header.CenterX,CurProtoMap->Header.CenterY);
+				HexMngr.GetScreenHexes(CurProtoMap->Header.WorkHexX,CurProtoMap->Header.WorkHexY);
 				SelectClear();
 
 				if(HexMngr.SetProtoMap(*LoadedProtoMaps[ind]))
 				{
 					CurProtoMap=LoadedProtoMaps[ind];
-					HexMngr.FindSetCenter(CurProtoMap->Header.CenterX,CurProtoMap->Header.CenterY);
+					HexMngr.FindSetCenter(CurProtoMap->Header.WorkHexX,CurProtoMap->Header.WorkHexY);
 				}
 			}
 		}
@@ -2534,14 +2544,8 @@ void FOMapper::IntLMouseUp()
 					HexMngr.GetCritters(hx,hy,critters,FIND_ALL);
 
 					// Tile, roof
-					if(!(hx&1) && !(hy&1))
-					{
-						DWORD tile=CurProtoMap->GetTile(hx/2,hy/2);
-						DWORD roof=CurProtoMap->GetRoof(hx/2,hy/2);
-
-						if(IsSelectTile && GameOpt.ShowTile /*&& !HexMngr.IsIgnorePid(tile)*/) SelectAddTile(hx/2,hy/2,tile,false,true);
-						if(IsSelectRoof && GameOpt.ShowRoof /*&& !HexMngr.IsIgnorePid(roof)*/) SelectAddTile(hx/2,hy/2,roof,true,true);
-					}
+					if(IsSelectTile && GameOpt.ShowTile) SelectAddTile(hx,hy,false);
+					if(IsSelectRoof && GameOpt.ShowRoof) SelectAddTile(hx,hy,true);
 				}
 
 				for(int k=0;k<items.size();k++)
@@ -2595,10 +2599,10 @@ void FOMapper::IntMouseMove()
 	{
 		HexMngr.ClearHexTrack();
 		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2)) return;
-
-		if(SelectHX1!=SelectHX2 || SelectHY1!=SelectHY2)
+		
+		if(CurMode==CUR_MODE_DEF)
 		{
-			if(CurMode==CUR_MODE_DEF)
+			if(SelectHX1!=SelectHX2 || SelectHY1!=SelectHY2)
 			{
 				if(SelectType==SELECT_TYPE_OLD)
 				{
@@ -2619,22 +2623,24 @@ void FOMapper::IntMouseMove()
 					for(int i=0,j=h.size();i<j;i++)
 						HexMngr.GetHexTrack(h[i].first,h[i].second)=1;
 				}
+
+				HexMngr.RefreshMap();
 			}
-			else if(CurMode==CUR_MODE_MOVE)
-			{
-				int offs_hx=(int)SelectHX2-(int)SelectHX1;
-				int offs_hy=(int)SelectHY2-(int)SelectHY1;
+		}
+		else if(CurMode==CUR_MODE_MOVE)
+		{
+			int offs_hx=(int)SelectHX2-(int)SelectHX1;
+			int offs_hy=(int)SelectHY2-(int)SelectHY1;
+			SelectHX1=SelectHX2;
+			SelectHY1=SelectHY2;
+			int offs_x=GameOpt.MouseX-SelectX;
+			int offs_y=GameOpt.MouseY-SelectY;
+			SelectX=GameOpt.MouseX;
+			SelectY=GameOpt.MouseY;
 
-				SelectHX1=SelectHX2;
-				SelectHY1=SelectHY2;
-
-				SelectMove(offs_hx,offs_hy);
-			}
-
+			SelectMove(offs_hx,offs_hy,offs_x,offs_y);
 			HexMngr.RefreshMap();
 		}
-
-		return;
 	}
 	else if(IntHold==INT_MAIN)
 	{
@@ -2841,22 +2847,17 @@ void FOMapper::SelectClear()
 {
 	if(!CurProtoMap) return;
 
+	// Clear map objects
 	for(size_t i=0,j=SelectedObj.size();i<j;i++)
 	{
-		SelMapObj* obj=&SelectedObj[i];
-		if(obj->IsItem()) obj->MapItem->RestoreAlpha();
-		else if(obj->IsNpc()) obj->MapNpc->Alpha=0xFF;
+		SelMapObj& sobj=SelectedObj[i];
+		if(sobj.IsItem()) sobj.MapItem->RestoreAlpha();
+		else if(sobj.IsNpc()) sobj.MapNpc->Alpha=0xFF;
 	}
-
-	for(size_t i=0,j=SelectedTile.size();i<j;i++)
-	{
-		SelMapTile* obj=&SelectedTile[i];
-		if(!obj->IsRoof) CurProtoMap->SetTile(obj->TileX,obj->TileY,obj->PicId);
-		else CurProtoMap->SetRoof(obj->TileX,obj->TileY,obj->PicId);
-	}
-
-	if(SelectedTile.size()) HexMngr.ParseSelTiles();
 	SelectedObj.clear();
+
+	// Clear tiles
+	if(SelectedTile.size()) HexMngr.ParseSelTiles();
 	SelectedTile.clear();
 }
 
@@ -2877,43 +2878,23 @@ void FOMapper::SelectAddCrit(CritterCl* npc)
 	SelectAdd(mobj);
 }
 
-void FOMapper::SelectAddTile(WORD tx, WORD ty, DWORD name_hash, bool is_roof, bool null_old)
+void FOMapper::SelectAddTile(WORD hx, WORD hy, bool is_roof)
 {
-	if(tx>=HexMngr.GetMaxHexX()/2 || ty>=HexMngr.GetMaxHexY()/2) return;
+	Field& f=HexMngr.GetField(hx,hy);
+	if(!is_roof && f.Tiles.empty()) return;
+	if(is_roof && f.Roofs.empty()) return;
 
-	for(int i=0,j=SelectedTile.size();i<j;i++)
+	// Helper
+	for(size_t i=0,j=SelectedTile.size();i<j;i++)
 	{
-		SelMapTile* t=&SelectedTile[i];
-		if(t->TileX==tx && t->TileY==ty && t->IsRoof==is_roof) return;
+		SelMapTile& stile=SelectedTile[i];
+		if(stile.HexX==hx && stile.HexY==hy && stile.IsRoof==is_roof) return;
 	}
+	SelectedTile.push_back(SelMapTile(hx,hy,is_roof));
 
-	if(HexMngr.GetField(tx*2,ty*2).TerrainId) return;
-
-	AnyFrames* anim=ResMngr.GetItemAnim(name_hash);
-	if(!anim) return;
-
-	if(!is_roof)
-	{
-		if(null_old)
-		{
-			HexMngr.GetField(tx*2,ty*2).Tile=NULL;
-			CurProtoMap->SetTile(tx,ty,0);
-		}
-
-		HexMngr.GetField(tx*2,ty*2).SelTile=anim;
-	}
-	else
-	{
-		if(null_old)
-		{
-			HexMngr.GetField(tx*2,ty*2).Roof=NULL;
-			CurProtoMap->SetRoof(tx,ty,0);
-		}
-
-		HexMngr.GetField(tx*2,ty*2).SelRoof=anim;
-	}
-
-	SelectedTile.push_back(SelMapTile(tx,ty,name_hash,is_roof));
+	// Select
+	ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,is_roof);
+	for(size_t i=0,j=tiles.size();i<j;i++) tiles[i].IsSelected=true;
 }
 
 void FOMapper::SelectAdd(MapObject* mobj)
@@ -2999,12 +2980,12 @@ void FOMapper::SelectAll()
 {
 	SelectClear();
 
-	for(int i=0;i<HexMngr.GetMaxHexX()/2;i++)
+	for(int i=0;i<HexMngr.GetMaxHexX();i++)
 	{
-		for(int j=0;j<HexMngr.GetMaxHexY()/2;j++)
+		for(int j=0;j<HexMngr.GetMaxHexY();j++)
 		{
-			if(IsSelectTile && GameOpt.ShowTile) SelectAddTile(i,j,CurProtoMap->GetTile(i,j),false,true);
-			if(IsSelectRoof && GameOpt.ShowRoof) SelectAddTile(i,j,CurProtoMap->GetRoof(i,j),true,true);
+			if(IsSelectTile && GameOpt.ShowTile) SelectAddTile(i,j,false);
+			if(IsSelectRoof && GameOpt.ShowRoof) SelectAddTile(i,j,true);
 		}
 	}
 
@@ -3027,90 +3008,169 @@ void FOMapper::SelectAll()
 	HexMngr.RefreshMap();
 }
 
-void FOMapper::SelectMove(int vect_hx, int vect_hy)
+void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 {
+	if(Keyb::ShiftDwn && (!offs_x && !offs_y)) return;
+	if(!Keyb::ShiftDwn && (!offs_hx && !offs_hy)) return;
+
+	// Change moving speed on zooming
+	if(Keyb::ShiftDwn)
+	{
+		static float small_ox=0.0f,small_oy=0.0f;
+		float ox=(float)offs_x*GameOpt.SpritesZoom+small_ox;
+		float oy=(float)offs_y*GameOpt.SpritesZoom+small_oy;
+		if(offs_x && fabs(ox)<1.0f) small_ox=ox;
+		else small_ox=0.0f;
+		if(offs_y && fabs(oy)<1.0f) small_oy=oy;
+		else small_oy=0.0f;
+		offs_x=(int)ox;
+		offs_y=(int)oy;
+	}
+
+	// Move map objects
 	for(size_t i=0,j=SelectedObj.size();i<j;i++)
 	{
 		SelMapObj* obj=&SelectedObj[i];
 
-		int hx=obj->MapObj->MapX;
-		int hy=obj->MapObj->MapY;
-		hx+=vect_hx;
-		hy+=vect_hy;
-
-		if(hx<0) hx=0;
-		if(hx>=HexMngr.GetMaxHexX()) hx=HexMngr.GetMaxHexX()-1;
-		if(hy<0) hy=0;
-		if(hy>=HexMngr.GetMaxHexY()) hy=HexMngr.GetMaxHexY()-1;
-
-		obj->MapObj->MapX=hx;
-		obj->MapObj->MapY=hy;
-
-		if(obj->IsItem())
+		if(Keyb::ShiftDwn)
 		{
-			HexMngr.DeleteItem(obj->MapItem,false);
-			obj->MapItem->HexX=hx;
-			obj->MapItem->HexY=hy;
-			HexMngr.PushItem(obj->MapItem);
-		}
-		else if(obj->IsNpc())
-		{
-			HexMngr.RemoveCrit(obj->MapNpc);
-			obj->MapNpc->HexX=hx;
-			obj->MapNpc->HexY=hy;
-			HexMngr.SetCrit(obj->MapNpc);
+			if(!obj->IsItem()) continue;
+
+			int ox=obj->MapObj->MItem.OffsetX+offs_x;
+			int oy=obj->MapObj->MItem.OffsetY+offs_y;
+			ox=CLAMP(ox,-MAX_MOVE_OX,MAX_MOVE_OX);
+			oy=CLAMP(oy,-MAX_MOVE_OY,MAX_MOVE_OY);
+			if(Keyb::AltDwn) ox=oy=0;
+
+			obj->MapObj->MItem.OffsetX=ox;
+			obj->MapObj->MItem.OffsetY=oy;
+			obj->MapItem->StartScrX=ox;
+			obj->MapItem->StartScrY=oy;
+			obj->MapItem->RefreshAnim();
 		}
 		else
 		{
-			continue;
-		}
+			int hx=obj->MapObj->MapX;
+			int hy=obj->MapObj->MapY;
+			hx+=offs_hx;
+			hy+=offs_hy;
 
-		for(int k=0,m=obj->Childs.size();k<m;k++)
-		{
-			MapObject* mobj=obj->Childs[k];
-			mobj->MapX=hx;
-			mobj->MapY=hy;
+			if(hx<0) hx=0;
+			if(hx>=HexMngr.GetMaxHexX()) hx=HexMngr.GetMaxHexX()-1;
+			if(hy<0) hy=0;
+			if(hy>=HexMngr.GetMaxHexY()) hy=HexMngr.GetMaxHexY()-1;
+
+			obj->MapObj->MapX=hx;
+			obj->MapObj->MapY=hy;
+
+			if(obj->IsItem())
+			{
+				HexMngr.DeleteItem(obj->MapItem,false);
+				obj->MapItem->HexX=hx;
+				obj->MapItem->HexY=hy;
+				HexMngr.PushItem(obj->MapItem);
+			}
+			else if(obj->IsNpc())
+			{
+				HexMngr.RemoveCrit(obj->MapNpc);
+				obj->MapNpc->HexX=hx;
+				obj->MapNpc->HexY=hy;
+				HexMngr.SetCrit(obj->MapNpc);
+			}
+			else
+			{
+				continue;
+			}
+
+			for(int k=0,m=obj->Childs.size();k<m;k++)
+			{
+				MapObject* mobj=obj->Childs[k];
+				mobj->MapX=hx;
+				mobj->MapY=hy;
+			}
 		}
 	}
 
-	bool is_clear=false;
+	// Move tiles
+	struct TileToMove
+	{
+		Field* field;
+		Field::Tile tile;
+		ProtoMap::TileVec* ptiles;
+		ProtoMap::Tile ptile;
+		bool roof;
+		TileToMove(Field* f, Field::Tile& t, ProtoMap::TileVec* pts, ProtoMap::Tile& pt, bool r)
+			:field(f),tile(t),ptiles(pts),ptile(pt),roof(r){}
+	};
+	vector<TileToMove> tiles_to_move;
+
 	for(size_t i=0,j=SelectedTile.size();i<j;i++)
 	{
-		SelMapTile* t=&SelectedTile[i];
+		SelMapTile& stile=SelectedTile[i];
 
-		int hx=t->HexX;
-		int hy=t->HexY;
-		hx+=vect_hx;
-		hy+=vect_hy;
-
-		if(hx<0) hx=0;
-		if(hx>=HexMngr.GetMaxHexX()) hx=HexMngr.GetMaxHexX()-1;
-		if(hy<0) hy=0;
-		if(hy>=HexMngr.GetMaxHexY()) hy=HexMngr.GetMaxHexY()-1;
-
-		t->HexX=hx;
-		t->HexY=hy;
-		WORD new_tx=t->HexX/2;
-		WORD new_ty=t->HexY/2;	
-
-		if(t->TileX!=new_tx || t->TileY!=new_ty)
+		if(Keyb::ShiftDwn)
 		{
-			if(!is_clear)
+			Field& f=HexMngr.GetField(stile.HexX,stile.HexY);
+			Field::TileVec& ftiles=(stile.IsRoof?f.Roofs:f.Tiles);
+			ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(stile.HexX,stile.HexY,stile.IsRoof);
+
+			for(size_t k=0,l=tiles.size();k<l;k++)
 			{
-				HexMngr.ClearSelTiles();
-				is_clear=true;
+				if(tiles[k].IsSelected)
+				{
+					int ox=tiles[k].OffsX+offs_x;
+					int oy=tiles[k].OffsY+offs_y;
+					ox=CLAMP(ox,-MAX_MOVE_OX,MAX_MOVE_OX);
+					oy=CLAMP(oy,-MAX_MOVE_OY,MAX_MOVE_OY);
+					if(Keyb::AltDwn) ox=oy=0;
+
+					tiles[k].OffsX=ox;
+					tiles[k].OffsY=oy;
+					ftiles[k].OffsX=ox;
+					ftiles[k].OffsY=oy;
+				}
 			}
-
-			AnyFrames* anim=ResMngr.GetItemAnim(t->PicId);
-
-			if(!t->IsRoof)
-				HexMngr.GetField(new_tx*2,new_ty*2).SelTile=anim;
-			else
-				HexMngr.GetField(new_tx*2,new_ty*2).SelRoof=anim;
-
-			t->TileX=new_tx;
-			t->TileY=new_ty;
 		}
+		else
+		{
+			int hx=stile.HexX;
+			int hy=stile.HexY;
+			hx+=offs_hx;
+			hy+=offs_hy;
+			hx=CLAMP(hx,0,HexMngr.GetMaxHexX()-1);
+			hy=CLAMP(hy,0,HexMngr.GetMaxHexY()-1);
+			if(stile.HexX==hx && stile.HexY==hy) continue;
+
+			Field& f=HexMngr.GetField(stile.HexX,stile.HexY);
+			Field::TileVec& ftiles=(stile.IsRoof?f.Roofs:f.Tiles);
+			ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(stile.HexX,stile.HexY,stile.IsRoof);
+
+			for(size_t k=0;k<tiles.size();)
+			{
+				if(tiles[k].IsSelected)
+				{
+					tiles[k].HexX=hx;
+					tiles[k].HexY=hy;
+					tiles_to_move.push_back(TileToMove(&HexMngr.GetField(hx,hy),ftiles[k],
+						&CurProtoMap->GetTiles(hx,hy,stile.IsRoof),tiles[k],stile.IsRoof));
+					tiles.erase(tiles.begin()+k);
+					ftiles.erase(ftiles.begin()+k);
+				}
+				else k++;
+			}
+			stile.HexX=hx;
+			stile.HexY=hy;
+		}
+	}
+
+	for(size_t i=0,j=tiles_to_move.size();i<j;i++)
+	{
+		TileToMove& ttm=tiles_to_move[i];
+		if(!ttm.roof)
+			ttm.field->Tiles.push_back(ttm.tile);
+		else
+			ttm.field->Roofs.push_back(ttm.tile);
+		ttm.ptiles->push_back(ttm.ptile);
 	}
 }
 
@@ -3140,6 +3200,24 @@ void FOMapper::SelectDelete()
 				SAFEREL(o->Childs[k]);
 				CurProtoMap->MObjects.erase(it);
 			}
+		}
+	}
+
+	for(size_t i=0,j=SelectedTile.size();i<j;i++)
+	{
+		SelMapTile& stile=SelectedTile[i];
+		Field& f=HexMngr.GetField(stile.HexX,stile.HexY);
+		Field::TileVec& ftiles=(stile.IsRoof?f.Roofs:f.Tiles);
+		ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(stile.HexX,stile.HexY,stile.IsRoof);
+
+		for(size_t k=0;k<tiles.size();)
+		{
+			if(tiles[k].IsSelected)
+			{
+				tiles.erase(tiles.begin()+k);
+				ftiles.erase(ftiles.begin()+k);
+			}
+			else k++;
 		}
 	}
 
@@ -3199,21 +3277,13 @@ void FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont)
 	CurMode=CUR_MODE_DEF;
 }
 
-void FOMapper::ParseTile(DWORD name_hash, WORD hx, WORD hy)
+void FOMapper::ParseTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, bool is_roof)
 {
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return;
 
 	SelectClear();
 
-	if(HexMngr.GetField(hx,hy).TerrainId)
-	{
-		HexMngr.GetField(hx,hy).TerrainId=0;
-		HexMngr.RebuildTerrain();
-	}
-
-	if(hx&1) hx--;
-	if(hy&1) hy--;
-	HexMngr.SetTile(hx,hy,name_hash,DrawRoof);
+	HexMngr.SetTile(name_hash,hx,hy,ox,oy,is_roof,true);
 	CurMode=CUR_MODE_DEF;
 }
 
@@ -3328,7 +3398,26 @@ void FOMapper::BufferCopy()
 
 	for(int i=0,j=SelectedTile.size();i<j;i++)
 	{
-		TilesBuffer.push_back(SelectedTile[i]);
+		WORD hx=SelectedTile[i].HexX;
+		WORD hy=SelectedTile[i].HexY;
+		Field& f=HexMngr.GetField(hx,hy);
+		Field::TileVec& ftiles=(SelectedTile[i].IsRoof?f.Roofs:f.Tiles);
+		ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,SelectedTile[i].IsRoof);
+
+		for(size_t k=0,l=tiles.size();k<l;k++)
+		{
+			if(tiles[k].IsSelected)
+			{
+				TileBuf tb;
+				tb.NameHash=tiles[k].NameHash;
+				tb.HexX=hx;
+				tb.HexY=hy;
+				tb.OffsX=tiles[k].OffsX;
+				tb.OffsY=tiles[k].OffsY;
+				tb.IsRoof=SelectedTile[i].IsRoof;
+				TilesBuffer.push_back(tb);
+			}
+		}
 	}
 }
 
@@ -3345,17 +3434,37 @@ void FOMapper::BufferPaste(int hx, int hy)
 	if(!CurProtoMap) return;
 
 	SelectClear();
-	CurProtoMap->MObjects.reserve(CurProtoMap->MObjects.size()+MapObjBuffer.size()*2);
 
+	// Paste map objects
+	CurProtoMap->MObjects.reserve(CurProtoMap->MObjects.size()+MapObjBuffer.size()*2);
 	for(int i=0,j=MapObjBuffer.size();i<j;i++)
 	{
 		ParseMapObj(MapObjBuffer[i]);
 	}
 
+	// Paste tiles
 	for(int i=0,j=TilesBuffer.size();i<j;i++)
 	{
-		SelMapTile* t=&TilesBuffer[i];
-		SelectAddTile(t->TileX,t->TileY,t->PicId,t->IsRoof,false);	
+		TileBuf& tb=TilesBuffer[i];
+
+		if(tb.HexX<HexMngr.GetMaxHexX() && tb.HexY<HexMngr.GetMaxHexY())
+		{
+			// Create
+			HexMngr.SetTile(tb.NameHash,tb.HexX,tb.HexY,tb.OffsX,tb.OffsY,tb.IsRoof,true);
+
+			// Select helper
+			bool sel_added=false;
+			for(size_t i=0,j=SelectedTile.size();i<j;i++)
+			{
+				SelMapTile& stile=SelectedTile[i];
+				if(stile.HexX==tb.HexX && stile.HexY==tb.HexY && stile.IsRoof==tb.IsRoof)
+				{
+					sel_added=true;
+					break;
+				}
+			}
+			if(!sel_added) SelectedTile.push_back(SelMapTile(tb.HexX,tb.HexY,tb.IsRoof));
+		}
 	}
 }
 
@@ -3390,8 +3499,6 @@ void FOMapper::CurDraw()
 
 			WORD hx,hy;
 			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
-			if(hx&1) hx--;
-			if(hy&1) hy--;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
 			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
@@ -3668,7 +3775,7 @@ void FOMapper::ParseCommand(const char* cmd)
 			return;
 		}
 
-		HexMngr.FindSetCenter(pmap->Header.CenterX,pmap->Header.CenterY);
+		HexMngr.FindSetCenter(pmap->Header.WorkHexX,pmap->Header.WorkHexY);
 		CurProtoMap=pmap;
 		LoadedProtoMaps.push_back(pmap);
 
@@ -3696,7 +3803,7 @@ void FOMapper::ParseCommand(const char* cmd)
 		SelectClear();
 		HexMngr.RefreshMap();
 		FileManager::SetDataPath(GameOpt.ServerPath.c_str());
-		if(CurProtoMap->Save(map_name,PT_SERVER_MAPS,strstr(cmd,"/text")!=NULL,strstr(cmd,"/nopack")==NULL)) AddMess("Save map success.");
+		if(CurProtoMap->Save(map_name,PT_SERVER_MAPS)) AddMess("Save map success.");
 		else AddMess("Save map fail, see log.");
 		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	}
@@ -3825,7 +3932,7 @@ void FOMapper::ParseCommand(const char* cmd)
 			CurProtoMap=LoadedProtoMaps[0];
 			if(HexMngr.SetProtoMap(*CurProtoMap))
 			{
-				HexMngr.FindSetCenter(CurProtoMap->Header.CenterX,CurProtoMap->Header.CenterY);
+				HexMngr.FindSetCenter(CurProtoMap->Header.WorkHexX,CurProtoMap->Header.WorkHexY);
 				return;
 			}
 		}
@@ -3919,38 +4026,50 @@ void FOMapper::ParseCommand(const char* cmd)
 			WORD old_maxhy=CurProtoMap->Header.MaxHexY;
 			maxhx=CLAMP(maxhx,MAXHEX_MIN,MAXHEX_MAX);
 			maxhy=CLAMP(maxhy,MAXHEX_MIN,MAXHEX_MAX);
-			if(CurProtoMap->Header.CenterX>=maxhx) CurProtoMap->Header.CenterX=maxhx-1;
-			if(CurProtoMap->Header.CenterY>=maxhy) CurProtoMap->Header.CenterY=maxhy-1;
+			if(CurProtoMap->Header.WorkHexX>=maxhx) CurProtoMap->Header.WorkHexX=maxhx-1;
+			if(CurProtoMap->Header.WorkHexY>=maxhy) CurProtoMap->Header.WorkHexY=maxhy-1;
 			CurProtoMap->Header.MaxHexX=maxhx;
 			CurProtoMap->Header.MaxHexY=maxhy;
 
-			// Delete truncated objects
-			for(MapObjectPtrVecIt it=CurProtoMap->MObjects.begin();it!=CurProtoMap->MObjects.end();)
+			// Delete truncated map objects
+			if(maxhx<old_maxhx || maxhy<old_maxhy)
 			{
-				MapObject* mobj=*it;
-				if(mobj->MapX>=maxhx || mobj->MapY>=maxhy)
+				for(MapObjectPtrVecIt it=CurProtoMap->MObjects.begin();it!=CurProtoMap->MObjects.end();)
 				{
-					SAFEREL(mobj);
-					it=CurProtoMap->MObjects.erase(it);
+					MapObject* mobj=*it;
+					if(mobj->MapX>=maxhx || mobj->MapY>=maxhy)
+					{
+						SAFEREL(mobj);
+						it=CurProtoMap->MObjects.erase(it);
+					}
+					else ++it;
 				}
-				else ++it;
 			}
 
-			// Reload map
-			DWORD* old_tiles=CurProtoMap->Tiles;
-			CurProtoMap->Tiles=new DWORD[CurProtoMap->GetTilesSize()/sizeof(DWORD)];
-			ZeroMemory(CurProtoMap->Tiles,CurProtoMap->GetTilesSize());
-			for(int tx=0,ex=min(old_maxhx/2,CurProtoMap->Header.MaxHexX/2);tx<ex;tx++)
+			// Resize tiles
+			ProtoMap::TileVecVec tiles_field=CurProtoMap->TilesField;
+			ProtoMap::TileVecVec roofs_field=CurProtoMap->RoofsField;
+			CurProtoMap->TilesField.clear();
+			CurProtoMap->TilesField.resize(maxhx*maxhy);
+			CurProtoMap->RoofsField.clear();
+			CurProtoMap->RoofsField.resize(maxhx*maxhy);
+			for(int hy=0;hy<min(maxhy,old_maxhy);hy++)
 			{
-				for(int ty=0,ey=min(old_maxhy/2,CurProtoMap->Header.MaxHexY/2);ty<ey;ty++)
+				for(int hx=0;hx<min(maxhx,old_maxhx);hx++)
 				{
-					CurProtoMap->Tiles[ty*(CurProtoMap->Header.MaxHexX/2)*2+tx*2]=old_tiles[ty*(old_maxhx/2)*2+tx*2];
-					CurProtoMap->Tiles[ty*(CurProtoMap->Header.MaxHexX/2)*2+tx*2+1]=old_tiles[ty*(old_maxhx/2)*2+tx*2+1];
+					for(int r=0;r<=1;r++)
+					{
+						ProtoMap::TileVecVec& field_from=(!r?tiles_field:roofs_field);
+						ProtoMap::TileVecVec& field_to=(!r?CurProtoMap->TilesField:CurProtoMap->RoofsField);
+						ProtoMap::TileVec& tiles_from=field_from[hy*old_maxhx+hx];
+						ProtoMap::TileVec& tiles_to=field_to[hy*maxhx+hx];
+						tiles_to=tiles_from;
+					}
 				}
 			}
-			delete[] old_tiles;
+
 			HexMngr.SetProtoMap(*CurProtoMap);
-			HexMngr.FindSetCenter(CurProtoMap->Header.CenterX,CurProtoMap->Header.CenterY);
+			HexMngr.FindSetCenter(CurProtoMap->Header.WorkHexX,CurProtoMap->Header.WorkHexY);
 		}
 		else if(strstr(cmd,"hex"))
 		{
@@ -4395,106 +4514,150 @@ void FOMapper::SScriptFunc::MapperMap_Resize(ProtoMap& pmap, WORD width, WORD he
 	int old_maxhy=pmap.Header.MaxHexY;
 	maxhx=CLAMP(maxhx,MAXHEX_MIN,MAXHEX_MAX);
 	maxhy=CLAMP(maxhy,MAXHEX_MIN,MAXHEX_MAX);
-	if(pmap.Header.CenterX>=maxhx) pmap.Header.CenterX=maxhx-1;
-	if(pmap.Header.CenterY>=maxhy) pmap.Header.CenterY=maxhy-1;
+	if(pmap.Header.WorkHexX>=maxhx) pmap.Header.WorkHexX=maxhx-1;
+	if(pmap.Header.WorkHexY>=maxhy) pmap.Header.WorkHexY=maxhy-1;
 	pmap.Header.MaxHexX=maxhx;
 	pmap.Header.MaxHexY=maxhy;
 
-	// Delete truncated objects
-	for(MapObjectPtrVecIt it=pmap.MObjects.begin();it!=pmap.MObjects.end();)
+	if(maxhx<old_maxhx || maxhy<old_maxhy)
 	{
-		MapObject* mobj=*it;
-		if(mobj->MapX>=maxhx || mobj->MapY>=maxhy)
+		// Delete truncated map objects
+		if(maxhx<old_maxhx || maxhy<old_maxhy)
 		{
-			SAFEREL(mobj);
-			it=pmap.MObjects.erase(it);
+			for(MapObjectPtrVecIt it=pmap.MObjects.begin();it!=pmap.MObjects.end();)
+			{
+				MapObject* mobj=*it;
+				if(mobj->MapX>=maxhx || mobj->MapY>=maxhy)
+				{
+					SAFEREL(mobj);
+					it=pmap.MObjects.erase(it);
+				}
+				else ++it;
+			}
 		}
-		else ++it;
-	}
 
-	// Resize tiles
-	DWORD* old_tiles=pmap.Tiles;
-	pmap.Tiles=new DWORD[pmap.GetTilesSize()/sizeof(DWORD)];
-	ZeroMemory(pmap.Tiles,pmap.GetTilesSize());
-	for(int tx=0,ex=min(old_maxhx/2,pmap.Header.MaxHexX/2);tx<ex;tx++)
-	{
-		for(int ty=0,ey=min(old_maxhy/2,pmap.Header.MaxHexY/2);ty<ey;ty++)
+		// Resize tiles
+		ProtoMap::TileVecVec tiles_field=pmap.TilesField;
+		ProtoMap::TileVecVec roofs_field=pmap.RoofsField;
+		pmap.TilesField.clear();
+		pmap.TilesField.resize(maxhx*maxhy);
+		pmap.RoofsField.clear();
+		pmap.RoofsField.resize(maxhx*maxhy);
+		for(int hy=0;hy<min(maxhy,old_maxhy);hy++)
 		{
-			pmap.Tiles[ty*(pmap.Header.MaxHexX/2)*2+tx*2]=old_tiles[ty*(old_maxhx/2)*2+tx*2];
-			pmap.Tiles[ty*(pmap.Header.MaxHexX/2)*2+tx*2+1]=old_tiles[ty*(old_maxhx/2)*2+tx*2+1];
+			for(int hx=0;hx<min(maxhx,old_maxhx);hx++)
+			{
+				for(int r=0;r<=1;r++)
+				{
+					ProtoMap::TileVecVec& field_from=(!r?tiles_field:roofs_field);
+					ProtoMap::TileVecVec& field_to=(!r?pmap.TilesField:pmap.RoofsField);
+					ProtoMap::TileVec& tiles_from=field_from[hy*old_maxhx+hx];
+					ProtoMap::TileVec& tiles_to=field_to[hy*maxhx+hx];
+					tiles_to=tiles_from;
+				}
+			}
 		}
 	}
-	delete[] old_tiles;
 
 	// Update visibility
 	if(Self->CurProtoMap==&pmap)
 	{
 		Self->HexMngr.SetProtoMap(pmap);
-		Self->HexMngr.FindSetCenter(pmap.Header.CenterX,pmap.Header.CenterY);
+		Self->HexMngr.FindSetCenter(pmap.Header.WorkHexX,pmap.Header.WorkHexY);
 	}
 }
 
-DWORD FOMapper::SScriptFunc::MapperMap_GetTileHash(ProtoMap& pmap, WORD tx, WORD ty, bool roof)
+DWORD FOMapper::SScriptFunc::MapperMap_GetTilesCount(ProtoMap& pmap, WORD hx, WORD hy, bool roof)
 {
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R0("Invalid tile x arg.");
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R0("Invalid tile y arg.");
-	if(roof) return pmap.GetRoof(tx,ty);
-	return pmap.GetTile(tx,ty);
+	if(hx>=pmap.Header.MaxHexX) SCRIPT_ERROR_R0("Invalid hex x arg.");
+	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_R0("Invalid hex y arg.");
+
+	ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
+	return tiles.size();
 }
 
-void FOMapper::SScriptFunc::MapperMap_SetTileHash(ProtoMap& pmap, WORD tx, WORD ty, bool roof, DWORD pic_hash)
+void FOMapper::SScriptFunc::MapperMap_DeleteTile(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index)
 {
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R("Invalid tile x arg.");
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R("Invalid tile y arg.");
-	if(Self->CurProtoMap==&pmap) Self->HexMngr.SetTile(tx*2,ty*2,pic_hash,roof);
+	if(hx>=pmap.Header.MaxHexX) SCRIPT_ERROR_R("Invalid hex x arg.");
+	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_R("Invalid hex y arg.");
+
+	ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
+	Field& f=Self->HexMngr.GetField(hx,hy);
+	Field::TileVec& ftiles=(roof?f.Roofs:f.Tiles);
+	if(index==DWORD(-1))
+	{
+		ftiles.clear();
+		tiles.clear();
+	}
+	else if(index<tiles.size())
+	{
+		ftiles.erase(ftiles.begin()+index);
+		tiles.erase(tiles.begin()+index);
+	}
+
+	if(Self->CurProtoMap==&pmap)
+	{
+		if(roof)
+			Self->HexMngr.RebuildRoof();
+		else
+			Self->HexMngr.RebuildTiles();
+	}
+}
+
+DWORD FOMapper::SScriptFunc::MapperMap_GetTileHash(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index)
+{
+	if(hx>=pmap.Header.MaxHexX) SCRIPT_ERROR_R0("Invalid hex x arg.");
+	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_R0("Invalid hex y arg.");
+
+	ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
+	return index<tiles.size()?tiles[index].NameHash:0;
+}
+
+void FOMapper::SScriptFunc::MapperMap_AddTileHash(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, bool roof, DWORD pic_hash)
+{
+	if(hx>=pmap.Header.MaxHexX) SCRIPT_ERROR_R("Invalid hex x arg.");
+	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_R("Invalid hex y arg.");
+	if(!pic_hash) return;
+	ox=CLAMP(ox,-MAX_MOVE_OX,MAX_MOVE_OX);
+	oy=CLAMP(oy,-MAX_MOVE_OY,MAX_MOVE_OY);
+
+	if(Self->CurProtoMap==&pmap)
+		Self->HexMngr.SetTile(pic_hash,hx,hy,ox,oy,roof,false);
 	else
 	{
-		if(roof) pmap.SetRoof(tx,ty,pic_hash);
-		else pmap.SetTile(tx,ty,pic_hash);
+		ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
+		tiles.push_back(ProtoMap::Tile(pic_hash,hx,hy,ox,oy,roof));
+		tiles.back().IsSelected=false;
 	}
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof)
+CScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index)
 {
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_RX("Invalid tile x arg.",new CScriptString(""));
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_RX("Invalid tile y arg.",new CScriptString(""));
-	DWORD hash=(roof?pmap.GetRoof(tx,ty):pmap.GetTile(tx,ty));
-	const char* name=ResMngr.GetName(hash);
+	if(hx>=pmap.Header.MaxHexX) SCRIPT_ERROR_RX("Invalid hex x arg.",new CScriptString(""));
+	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_RX("Invalid hex y arg.",new CScriptString(""));
+
+	ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
+	if(index>=tiles.size()) return new CScriptString("");
+	const char* name=ResMngr.GetName(tiles[index].NameHash);
 	return new CScriptString(name?name:"");
 }
 
-void FOMapper::SScriptFunc::MapperMap_SetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof, CScriptString* pic_name)
+void FOMapper::SScriptFunc::MapperMap_AddTileName(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, bool roof, CScriptString* pic_name)
 {
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R("Invalid tile x arg.");
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R("Invalid tile y arg.");
-	DWORD hash=Str::GetHash(pic_name && pic_name->length()?pic_name->c_str():NULL);
-	if(Self->CurProtoMap==&pmap) Self->HexMngr.SetTile(tx*2,ty*2,hash,roof);
+	if(hx>=pmap.Header.MaxHexX) SCRIPT_ERROR_R("Invalid hex x arg.");
+	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_R("Invalid hex y arg.");
+	if(!pic_name || !pic_name->length()) return;
+	ox=CLAMP(ox,-MAX_MOVE_OX,MAX_MOVE_OX);
+	oy=CLAMP(oy,-MAX_MOVE_OY,MAX_MOVE_OY);
+
+	DWORD pic_hash=Str::GetHash(pic_name->c_str());
+	if(Self->CurProtoMap==&pmap)
+		Self->HexMngr.SetTile(pic_hash,hx,hy,ox,oy,roof,false);
 	else
 	{
-		if(roof) pmap.SetRoof(tx,ty,hash);
-		else pmap.SetTile(tx,ty,hash);
-	}
-}
-
-CScriptString* FOMapper::SScriptFunc::MapperMap_GetTerrainName(ProtoMap& pmap, WORD tx, WORD ty)
-{
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_RX("Invalid tile x arg.",new CScriptString(""));
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_RX("Invalid tile y arg.",new CScriptString(""));
-	if(pmap.GetRoof(tx,ty)!=0xAAAAAAAA) return new CScriptString("");
-	const char* name=ResMngr.GetName(pmap.GetTile(tx,ty));
-	return new CScriptString(name?name:"");
-}
-
-void FOMapper::SScriptFunc::MapperMap_SetTerrainName(ProtoMap& pmap, WORD tx, WORD ty, CScriptString* terrain_name)
-{
-	if(tx>=pmap.Header.MaxHexX/2) SCRIPT_ERROR_R("Invalid tile x arg.");
-	if(ty>=pmap.Header.MaxHexY/2) SCRIPT_ERROR_R("Invalid tile y arg.");
-	DWORD hash=Str::GetHash(terrain_name && terrain_name->length()?terrain_name->c_str():NULL);
-	if(Self->CurProtoMap==&pmap) Self->HexMngr.SetTerrain(tx*2,ty*2,hash);
-	else
-	{
-		pmap.SetRoof(tx,ty,hash?0xAAAAAAAA:0);
-		pmap.SetTile(tx,ty,hash);
+		ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
+		tiles.push_back(ProtoMap::Tile(pic_hash,hx,hy,ox,oy,roof));
+		tiles.back().IsSelected=false;
 	}
 }
 
@@ -4546,6 +4709,26 @@ void FOMapper::SScriptFunc::MapperMap_SetDayColor(ProtoMap& pmap, DWORD day_part
 		for(int i=0;i<12;i++) dc[i]=pmap.Header.DayColor[i];
 		Self->HexMngr.RefreshMap();
 	}
+}
+
+CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptModule(ProtoMap& pmap)
+{
+	return new CScriptString(pmap.Header.ScriptModule);
+}
+
+void FOMapper::SScriptFunc::MapperMap_set_ScriptModule(ProtoMap& pmap, CScriptString* str)
+{
+	StringCopy(pmap.Header.ScriptModule,str?str->c_str():"");
+}
+
+CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptFunc(ProtoMap& pmap)
+{
+	return new CScriptString(pmap.Header.ScriptFunc);
+}
+
+void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc(ProtoMap& pmap, CScriptString* str)
+{
+	StringCopy(pmap.Header.ScriptFunc,str?str->c_str():"");
 }
 
 void FOMapper::SScriptFunc::Global_SetDefaultCritterParam(DWORD index, int param)
@@ -4603,11 +4786,11 @@ void FOMapper::SScriptFunc::Global_UnloadMap(ProtoMap* pmap)
 	pmap->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type, bool text, bool pack)
+bool FOMapper::SScriptFunc::Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type)
 {
 	if(!pmap) SCRIPT_ERROR_R0("Proto map arg nullptr.");
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
-	bool result=pmap->Save(file_name.c_str(),path_type,text,pack);
+	bool result=pmap->Save(file_name.c_str(),path_type);
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 	return result;
 }
@@ -4619,7 +4802,7 @@ bool FOMapper::SScriptFunc::Global_ShowMap(ProtoMap* pmap)
 
 	Self->SelectClear();
 	if(!Self->HexMngr.SetProtoMap(*pmap)) return false;
-	Self->HexMngr.FindSetCenter(pmap->Header.CenterX,pmap->Header.CenterY);
+	Self->HexMngr.FindSetCenter(pmap->Header.WorkHexX,pmap->Header.WorkHexY);
 	Self->CurProtoMap=pmap;
 	return true;
 }

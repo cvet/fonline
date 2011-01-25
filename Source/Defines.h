@@ -201,6 +201,10 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define UNARMED_PUNCH           (1000)
 #define UNARMED_KICK            (1020)
 
+// SceneryCl flags
+#define SCEN_CAN_USE            (0x01)
+#define SCEN_CAN_TALK           (0x02)
+
 // Maps
 #define TIME_CAN_FOLLOW_GM      (20000) // Can less than Map timeout
 
@@ -213,7 +217,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define FIND_ALL                (0x0F)
 
 // Proto maps
-#define MAP_PROTO_EXT			".map"
+#define MAP_PROTO_EXT			".fomap"
 #define MAX_PROTO_MAPS          (30000)
 
 // Type entires
@@ -398,7 +402,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Client map
 #define SERVER_MAP_EXT			".map"
-#define CLIENT_MAP_FORMAT_VER	(6)
+#define CLIENT_MAP_FORMAT_VER	(7)
 
 // Coordinates
 #define MAXHEX_DEF              (200)
@@ -755,35 +759,7 @@ struct ScoreType
 #define SKILL_PUSH_CRITTER          (-6)
 #define SKILL_TALK                  (-7)
 
-// Cached scenery
-struct ScenToSend // 32 bytes
-{
-	WORD ProtoId;
-	BYTE Flags;
-	BYTE SpriteCut;
-	WORD MapX;
-	WORD MapY;
-	short OffsetX;
-	short OffsetY;
-	DWORD LightColor;
-	BYTE LightDistance;
-	BYTE LightFlags;
-	char LightIntensity;
-	BYTE InfoOffset;
-	BYTE AnimStayBegin;
-	BYTE AnimStayEnd;
-	WORD AnimWait;
-	DWORD PicMapHash;
-	short Dir;
-	WORD Reserved1;
-};
-typedef vector<ScenToSend> ScenToSendVec;
-
-#define SCEN_CAN_USE                (0x01)
-#define SCEN_CAN_TALK               (0x02)
-
 // Animations
-
 // BA - В нокдауне (падает назад) 
 // BB - В нокдауне (падает вперед) 
 // BC - В нокдауне (падает назад - только HFCMBT) 

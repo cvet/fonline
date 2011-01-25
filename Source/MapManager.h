@@ -134,8 +134,6 @@ public:
 
 	bool LoadLocationsProtos();
 	bool LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WORD pid);
-	bool LoadMapsProtos();
-	bool LoadMapProto(IniParser& maps_txt, ProtoMap& pmap, WORD pid);
 	void SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t));
 	bool LoadAllLocationsAndMapsFile(FILE* f);
 	string GetLocationsMapsStatistics();
@@ -198,7 +196,6 @@ public:
 	// Maps
 private:
 	MapMap allMaps;
-	StrWordMap pmapsLoaded;
 	PathStepVec pathesPool[FPATH_DATA_SIZE];
 	DWORD pathNumCur;
 

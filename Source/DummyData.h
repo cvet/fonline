@@ -562,6 +562,10 @@ struct ProtoMap
 	{
 		int MaxHexX;
 		int MaxHexY;
+		int WorkHexX;
+		int WorkHexY;
+		int Time;
+		int NoLogOut;
 	} Header;
 
 	void AddRef(){}
@@ -1095,16 +1099,22 @@ struct BindClass
 	static void MapperMap_GetObjects(){}
 	static void MapperMap_UpdateObjects(){}
 	static void MapperMap_Resize(){}
+	static void MapperMap_GetTilesCount(){}
+	static void MapperMap_DeleteTile(){}
 	static void MapperMap_GetTileHash(){}
-	static void MapperMap_SetTileHash(){}
+	static void MapperMap_AddTileHash(){}
 	static void MapperMap_GetTileName(){}
-	static void MapperMap_SetTileName(){}
+	static void MapperMap_AddTileName(){}
 	static void MapperMap_GetTerrainName(){}
 	static void MapperMap_SetTerrainName(){}
 	static void MapperMap_GetDayTime(){}
 	static void MapperMap_SetDayTime(){}
 	static void MapperMap_GetDayColor(){}
 	static void MapperMap_SetDayColor(){}
+	static void MapperMap_get_ScriptModule(){}
+	static void MapperMap_set_ScriptModule(){}
+	static void MapperMap_get_ScriptFunc(){}
+	static void MapperMap_set_ScriptFunc(){}
 
 	static void Global_SetDefaultCritterParam(){}
 	static void Global_GetFastPrototypes(){}

@@ -165,6 +165,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	int IntX,IntY;
 	int IntVectX,IntVectY;
 	WORD SelectHX1,SelectHY1,SelectHX2,SelectHY2;
+	int SelectX,SelectY;
 
 #define SELECT_TYPE_OLD     (0)
 #define SELECT_TYPE_NEW     (1)
@@ -245,16 +246,12 @@ typedef vector<SelMapObj> SelMapProtoItemVec;
 	SelMapProtoItemVec SelectedObj;
 
 	// Select Tile, Roof
-	struct SelMapTile 
+	struct SelMapTile
 	{
-		WORD TileX;
-		WORD TileY;
-		DWORD PicId;
+		WORD HexX,HexY;
 		bool IsRoof;
-		WORD HexX;
-		WORD HexY;
 
-		SelMapTile(WORD tx, WORD ty, DWORD name, bool is_roof):TileX(tx),TileY(ty),PicId(name),IsRoof(is_roof){HexX=TileX*2;HexY=TileY*2;}
+		SelMapTile(WORD hx, WORD hy, bool is_roof):HexX(hx),HexY(hy),IsRoof(is_roof){}
 		SelMapTile(const SelMapTile& r){memcpy(this,&r,sizeof(SelMapTile));}
 		SelMapTile& operator=(const SelMapTile& r){memcpy(this,&r,sizeof(SelMapTile)); return *this;}
 	};
@@ -271,11 +268,11 @@ typedef vector<SelMapTile> SelMapTileVec;
 	void SelectClear();
 	void SelectAddItem(ItemHex* item);
 	void SelectAddCrit(CritterCl* npc);
-	void SelectAddTile(WORD tx, WORD ty, DWORD name_hash, bool is_roof, bool null_old);
+	void SelectAddTile(WORD hx, WORD hy, bool is_roof);
 	void SelectAdd(MapObject* mobj);
 	void SelectErase(MapObject* mobj);
 	void SelectAll();
-	void SelectMove(int vect_hx, int vect_hy);
+	void SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y);
 	void SelectDelete();
 
 	// Parse new
@@ -283,13 +280,22 @@ typedef vector<SelMapTile> SelMapTileVec;
 	int DefaultCritterParam[MAPOBJ_CRITTER_PARAMS];
 
 	void ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont);
-	void ParseTile(DWORD name_hash, WORD hx, WORD hy);
+	void ParseTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, bool is_roof);
 	void ParseNpc(WORD pid, WORD hx, WORD hy);
 	MapObject* ParseMapObj(MapObject* mobj);
 
 	// Buffer
+	struct TileBuf
+	{
+		DWORD NameHash;
+		WORD HexX,HexY;
+		short OffsX,OffsY;
+		bool IsRoof;
+	};
+	typedef vector<TileBuf> TileBufVec;
+
 	MapObjectPtrVec MapObjBuffer;
-	SelMapTileVec TilesBuffer;
+	TileBufVec TilesBuffer;
 
 	void BufferCopy();
 	void BufferCut();
@@ -385,23 +391,27 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static DWORD MapperMap_GetObjects(ProtoMap& pmap, WORD hx, WORD hy, DWORD radius, int mobj_type, WORD pid, CScriptArray* objects);
 		static void MapperMap_UpdateObjects(ProtoMap& pmap);
 		static void MapperMap_Resize(ProtoMap& pmap, WORD width, WORD height);
-		static DWORD MapperMap_GetTileHash(ProtoMap& pmap, WORD tx, WORD ty, bool roof);
-		static void MapperMap_SetTileHash(ProtoMap& pmap, WORD tx, WORD ty, bool roof, DWORD pic_hash);
-		static CScriptString* MapperMap_GetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof);
-		static void MapperMap_SetTileName(ProtoMap& pmap, WORD tx, WORD ty, bool roof, CScriptString* pic_name);
-		static CScriptString* MapperMap_GetTerrainName(ProtoMap& pmap, WORD tx, WORD ty);
-		static void MapperMap_SetTerrainName(ProtoMap& pmap, WORD tx, WORD ty, CScriptString* terrain_name);
+		static DWORD MapperMap_GetTilesCount(ProtoMap& pmap, WORD hx, WORD hy, bool roof);
+		static void MapperMap_DeleteTile(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index);
+		static DWORD MapperMap_GetTileHash(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index);
+		static void MapperMap_AddTileHash(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, bool roof, DWORD pic_hash);
+		static CScriptString* MapperMap_GetTileName(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index);
+		static void MapperMap_AddTileName(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, bool roof, CScriptString* pic_name);
 		static DWORD MapperMap_GetDayTime(ProtoMap& pmap, DWORD day_part);
 		static void MapperMap_SetDayTime(ProtoMap& pmap, DWORD day_part, DWORD time);
 		static void MapperMap_GetDayColor(ProtoMap& pmap, DWORD day_part, BYTE& r, BYTE& g, BYTE& b);
 		static void MapperMap_SetDayColor(ProtoMap& pmap, DWORD day_part, BYTE r, BYTE g, BYTE b);
+		static CScriptString* MapperMap_get_ScriptModule(ProtoMap& pmap);
+		static void MapperMap_set_ScriptModule(ProtoMap& pmap, CScriptString* str);
+		static CScriptString* MapperMap_get_ScriptFunc(ProtoMap& pmap);
+		static void MapperMap_set_ScriptFunc(ProtoMap& pmap, CScriptString* str);
 
 		static void Global_SetDefaultCritterParam(DWORD index, int param);
 		static DWORD Global_GetFastPrototypes(CScriptArray* pids);
 		static void Global_SetFastPrototypes(CScriptArray* pids);
 		static ProtoMap* Global_LoadMap(CScriptString& file_name, int path_type);
 		static void Global_UnloadMap(ProtoMap* pmap);
-		static bool Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type, bool text, bool pack);
+		static bool Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type);
 		static bool Global_ShowMap(ProtoMap* pmap);
 		static int Global_GetLoadedMaps(CScriptArray* maps);
 		static DWORD Global_GetMapFileNames(CScriptString* dir, CScriptArray* names);

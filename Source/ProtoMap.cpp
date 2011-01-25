@@ -22,6 +22,9 @@
 #define FO_MAP_VERSION_V8       (0xFF100000)
 #define FO_MAP_VERSION_V9       (0xFF200000)
 
+#define FO_MAP_VERSION_TEXT1    (1)
+#define FO_MAP_VERSION_TEXT2    (2)
+
 #define APP_HEADER              "Header"
 #define APP_TILES               "Tiles"
 #define APP_OBJECTS             "Objects"
@@ -186,6 +189,25 @@ public:
 	};
 };
 
+struct HeaderV9
+{
+	DWORD Version;
+	bool Packed;
+	bool NoLogOut;
+	WORD HeaderSize;
+	int PlayersLimit;
+	DWORD UnpackedDataLen;
+	WORD MaxHexX;
+	WORD MaxHexY;
+	int Time;
+	int CenterX;
+	int CenterY;
+	char ScriptModule[MAX_SCRIPT_NAME+1];
+	char ScriptFunc[MAX_SCRIPT_NAME+1];
+	int DayTime[4];
+	BYTE DayColor[12];
+};
+
 /************************************************************************/
 /* ProtoMap                                                             */
 /************************************************************************/
@@ -212,15 +234,15 @@ bool ProtoMap::Init(WORD pid, const char* name, int path_type)
 void ProtoMap::Clear()
 {
 #ifdef FONLINE_SERVER
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)SceneriesToSend.capacity()*sizeof(ScenToSend));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)WallsToSend.capacity()*sizeof(ScenToSend));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)SceneriesToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)WallsToSend.capacity()*sizeof(SceneryCl));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)mapEntires.capacity()*sizeof(MapEntire));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)CrittersVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)ItemsVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)SceneryVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)GridsVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)Header.MaxHexX*Header.MaxHexY);
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)GetTilesSize());
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)Tiles.capacity()*sizeof(MapEntire));
 
 	SAFEDELA(HexFlags);
 
@@ -245,7 +267,11 @@ void ProtoMap::Clear()
 	}
 	MObjects.clear();
 	SAFEDEL(pmapFm);
-	SAFEDELA(Tiles);
+	Tiles.clear();
+#ifdef FONLINE_MAPPER
+	TilesField.clear();
+	RoofsField.clear();
+#endif
 	ZeroMemory(&Header,sizeof(Header));
 	pmapName="";
 	pathType=0;
@@ -254,58 +280,60 @@ void ProtoMap::Clear()
 
 bool ProtoMap::ReadHeader(int version)
 {
-	ZeroMemory(&Header,sizeof(Header));
+	HeaderV9 header9;
+	ZeroMemory(&header9,sizeof(header9));
+	header9.DayTime[0]=300; header9.DayTime[1]=600;  header9.DayTime[2]=1140; header9.DayTime[3]=1380;
+	header9.DayColor[0]=18; header9.DayColor[1]=128; header9.DayColor[2]=103; header9.DayColor[3]=51;
+	header9.DayColor[4]=18; header9.DayColor[5]=128; header9.DayColor[6]=95;  header9.DayColor[7]=40;
+	header9.DayColor[8]=53; header9.DayColor[9]=128; header9.DayColor[10]=86; header9.DayColor[11]=29;
 
 	if(version>=9)
 	{
 		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&Header,8)) return false;
+		if(!pmapFm->CopyMem(&header9,8)) return false;
 		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&Header,Header.HeaderSize)) return false;
+		if(!pmapFm->CopyMem(&header9,header9.HeaderSize)) return false;
 	}
 	else if(version>=7)
 	{
 		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&Header,8)) return false;
+		if(!pmapFm->CopyMem(&header9,8)) return false;
 		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&Header,Header.HeaderSize)) return false;
-
-		Header.DayTime[0]=300; Header.DayTime[1]=600;  Header.DayTime[2]=1140; Header.DayTime[3]=1380;
-		Header.DayColor[0]=18; Header.DayColor[1]=128; Header.DayColor[2]=103; Header.DayColor[3]=51;
-		Header.DayColor[4]=18; Header.DayColor[5]=128; Header.DayColor[6]=95;  Header.DayColor[7]=40;
-		Header.DayColor[8]=53; Header.DayColor[9]=128; Header.DayColor[10]=86; Header.DayColor[11]=29;
+		if(!pmapFm->CopyMem(&header9,header9.HeaderSize)) return false;
 	}
-	else
+	else // Version < 7
 	{
 		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&Header,96)) return false;
-		Header.HeaderSize=96;
-
-		if(version<6)
-		{
-			Header.Packed=true;
-			Header.Time=-1;
-		}
-
-		Header.DayTime[0]=300; Header.DayTime[1]=600;  Header.DayTime[2]=1140; Header.DayTime[3]=1380;
-		Header.DayColor[0]=18; Header.DayColor[1]=128; Header.DayColor[2]=103; Header.DayColor[3]=51;
-		Header.DayColor[4]=18; Header.DayColor[5]=128; Header.DayColor[6]=95;  Header.DayColor[7]=40;
-		Header.DayColor[8]=53; Header.DayColor[9]=128; Header.DayColor[10]=86; Header.DayColor[11]=29;
+		if(!pmapFm->CopyMem(&header9,96)) return false;
 	}
 
+	ZeroMemory(&Header,sizeof(Header));
+	Header.Version=header9.Version;
+	Header.NoLogOut=false;
+	Header.Time=-1;
+	Header.MaxHexX=header9.MaxHexX;
+	Header.MaxHexY=header9.MaxHexY;
+	Header.WorkHexX=header9.CenterX;
+	Header.WorkHexY=header9.CenterY;
+	memcpy(Header.DayTime,header9.DayTime,sizeof(Header.DayTime));
+	memcpy(Header.DayColor,header9.DayColor,sizeof(Header.DayColor));
+
+	Header.HeaderSize=header9.HeaderSize;
+	Header.Packed=header9.Packed;
+	Header.UnpackedDataLen=header9.UnpackedDataLen;
 	return true;
 }
 
 bool ProtoMap::ReadTiles(int version)
 {
-	Tiles=new(nothrow) DWORD[GetTilesSize()/sizeof(DWORD)];
-	if(!Tiles) return false;
+	DWORD* tiles=new(nothrow) DWORD[((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2)/sizeof(DWORD)];
+	if(!tiles) return false;
 	pmapFm->SetCurPos(Header.Packed?0:Header.HeaderSize);
 
 	if(version<8)
 	{
 		// Convert lst offsets to name hashes
-		ZeroMemory(Tiles,GetTilesSize());
+		ZeroMemory(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2);
 		DWORD size=(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD);
 		DWORD* ptr=new(nothrow) DWORD[size/sizeof(DWORD)];
 		if(!pmapFm->CopyMem(ptr,size)) return false;
@@ -315,15 +343,30 @@ bool ProtoMap::ReadTiles(int version)
 			{
 				WORD tile=(ptr[y*(Header.MaxHexX/2)+x]>>16);
 				WORD roof=(ptr[y*(Header.MaxHexX/2)+x]&0xFFFF);
-				if(tile>1) Tiles[y*(Header.MaxHexX/2)*2+x*2]=Deprecated_GetPicHash(-2,0,tile);
-				if(roof>1) Tiles[y*(Header.MaxHexX/2)*2+x*2+1]=Deprecated_GetPicHash(-2,0,roof);
+				if(tile>1 && (tile=Deprecated_GetPicHash(-2,0,tile))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,false));
+				if(roof>1 && (roof=Deprecated_GetPicHash(-2,0,roof))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,true));
 			}
 		}
 		delete[] ptr;
+		delete[] tiles;
 		return true;
 	}
 
-	return pmapFm->CopyMem(Tiles,GetTilesSize());
+	// Version 8, 9
+	if(!pmapFm->CopyMem(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2)) return false;
+
+	for(int tx=0;tx<Header.MaxHexX/2;tx++)
+	{
+		for(int ty=0;ty<Header.MaxHexY/2;ty++)
+		{
+			DWORD tile=tiles[ty*(Header.MaxHexX/2)*2+tx*2];
+			DWORD roof=tiles[ty*(Header.MaxHexX/2)*2+tx*2+1];
+			if(tile) Tiles.push_back(Tile(tile,tx*2,ty*2,0,0,false));
+			if(roof) Tiles.push_back(Tile(roof,tx*2,ty*2,0,0,true));
+		}
+	}
+	delete[] tiles;
+	return true;
 }
 
 bool ProtoMap::ReadObjects(int version)
@@ -480,9 +523,10 @@ bool ProtoMap::ReadObjects(int version)
 		}
 		return true;
 	}
-	else // version 8
+	else // Version 8, 9
 	{
-		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+GetTilesSize());
+		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+
+			((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2));
 		DWORD count=pmapFm->GetLEDWord();
 		if(!count) return true;
 
@@ -516,63 +560,114 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 			if(!istr.fail())
 			{
 				ivalue=atoi(value.c_str());
-				if(field=="Version") Header.Version=(ivalue<<20);
+				if(field=="Version")
+				{
+					Header.Version=ivalue;
+					DWORD old_version=(ivalue<<20);
+					if(old_version==FO_MAP_VERSION_V6 || old_version==FO_MAP_VERSION_V7 ||
+						old_version==FO_MAP_VERSION_V8 || old_version==FO_MAP_VERSION_V9)
+					{
+						Header.Version=FO_MAP_VERSION_TEXT1;
+						Header.DayTime[0]=300; Header.DayTime[1]=600;  Header.DayTime[2]=1140; Header.DayTime[3]=1380;
+						Header.DayColor[0]=18; Header.DayColor[1]=128; Header.DayColor[2]=103; Header.DayColor[3]=51;
+						Header.DayColor[4]=18; Header.DayColor[5]=128; Header.DayColor[6]=95;  Header.DayColor[7]=40;
+						Header.DayColor[8]=53; Header.DayColor[9]=128; Header.DayColor[10]=86; Header.DayColor[11]=29;
+					}
+				}
 				if(field=="MaxHexX") Header.MaxHexX=ivalue;
 				if(field=="MaxHexY") Header.MaxHexY=ivalue;
-				if(field=="CenterX") Header.CenterX=ivalue;
-				if(field=="CenterY") Header.CenterY=ivalue;
-				if(field=="PlayersLimit") Header.PlayersLimit=ivalue;
+				if(field=="WorkHexX" || field=="CenterX") Header.WorkHexX=ivalue;
+				if(field=="WorkHexY" || field=="CenterY") Header.WorkHexY=ivalue;
 				if(field=="Time") Header.Time=ivalue;
 				if(field=="NoLogOut") Header.NoLogOut=(ivalue!=0);
-				if(field=="ScriptModule") StringCopy(Header.ScriptModule,value.c_str());
-				if(field=="ScriptFunc") StringCopy(Header.ScriptFunc,value.c_str());
-				if(field=="DayTime0") Header.DayTime[0]=ivalue;
-				if(field=="DayTime1") Header.DayTime[1]=ivalue;
-				if(field=="DayTime2") Header.DayTime[2]=ivalue;
-				if(field=="DayTime3") Header.DayTime[3]=ivalue;
-				if(field=="DayColorR0") Header.DayColor[0]=ivalue;
-				if(field=="DayColorR1") Header.DayColor[1]=ivalue;
-				if(field=="DayColorR2") Header.DayColor[2]=ivalue;
-				if(field=="DayColorR3") Header.DayColor[3]=ivalue;
-				if(field=="DayColorG0") Header.DayColor[4]=ivalue;
-				if(field=="DayColorG1") Header.DayColor[5]=ivalue;
-				if(field=="DayColorG2") Header.DayColor[6]=ivalue;
-				if(field=="DayColorG3") Header.DayColor[7]=ivalue;
-				if(field=="DayColorB0") Header.DayColor[8]=ivalue;
-				if(field=="DayColorB1") Header.DayColor[9]=ivalue;
-				if(field=="DayColorB2") Header.DayColor[10]=ivalue;
-				if(field=="DayColorB3") Header.DayColor[11]=ivalue;
+				if(field=="ScriptModule" && value!="-") StringCopy(Header.ScriptModule,value.c_str());
+				if(field=="ScriptFunc" && value!="-") StringCopy(Header.ScriptFunc,value.c_str());
+				if(field=="DayTime")
+				{
+					Header.DayTime[0]=ivalue;
+					istr >> Header.DayTime[1];
+					istr >> Header.DayTime[2];
+					istr >> Header.DayTime[3];
+				}
+				if(field=="DayColor0")
+				{
+					Header.DayColor[0]=ivalue;
+					istr >> ivalue; Header.DayColor[4]=ivalue;
+					istr >> ivalue; Header.DayColor[8]=ivalue;
+				}
+				if(field=="DayColor1")
+				{
+					Header.DayColor[1]=ivalue;
+					istr >> ivalue; Header.DayColor[5]=ivalue;
+					istr >> ivalue; Header.DayColor[9]=ivalue;
+				}
+				if(field=="DayColor2")
+				{
+					Header.DayColor[2]=ivalue;
+					istr >> ivalue; Header.DayColor[6]=ivalue;
+					istr >> ivalue; Header.DayColor[10]=ivalue;
+				}
+				if(field=="DayColor3")
+				{
+					Header.DayColor[3]=ivalue;
+					istr >> ivalue; Header.DayColor[7]=ivalue;
+					istr >> ivalue; Header.DayColor[11]=ivalue;
+				}
 			}
 		}
 		delete[] header_str;
 	}
-	if((Header.Version!=FO_MAP_VERSION_V6 && Header.Version!=FO_MAP_VERSION_V7 && Header.Version!=FO_MAP_VERSION_V8 && Header.Version!=FO_MAP_VERSION_V9) ||
+	if((Header.Version!=FO_MAP_VERSION_TEXT1 && Header.Version!=FO_MAP_VERSION_TEXT2) ||
 		Header.MaxHexX<1 || Header.MaxHexY<1) return false;
 
 	// Tiles
-	Tiles=new(nothrow) DWORD[GetTilesSize()/sizeof(DWORD)];
-	ZeroMemory(Tiles,GetTilesSize());
-	if(!Tiles) return false;
 	char* tiles_str=map_ini.GetApp(APP_TILES);
 	if(tiles_str)
 	{
 		istrstream istr(tiles_str);
 		string type,name;
-		while(!istr.eof() && !istr.fail())
+		if(Header.Version==FO_MAP_VERSION_TEXT1)
 		{
-			DWORD tx,ty;
-			istr >> type >> tx >> ty >> name;
-			if(!istr.fail() && tx>=0 && tx<Header.MaxHexX/2 && ty>=0 && ty<Header.MaxHexY/2)
+			// Deprecated
+			while(!istr.eof() && !istr.fail())
 			{
-				if(type=="tile") Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=Str::GetHash(name.c_str());
-				else if(type=="roof") Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=Str::GetHash(name.c_str());
-				else if(type=="terrain")
+				DWORD hx,hy;
+				istr >> type >> hx >> hy >> name;
+				if(!istr.fail() && hx>=0 && hx<Header.MaxHexX && hy>=0 && hy<Header.MaxHexY)
 				{
-					Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=0xAAAAAAAA;
-					Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=Str::GetHash(name.c_str());
+					hx*=2;
+					hy*=2;
+					if(type=="tile") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,false));
+					else if(type=="roof") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,true));
+					//else if(type=="terr" || type=="terrain") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,));
+					else if(type=="0") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,false));
+					else if(type=="1") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,true));
 				}
-				else if(type=="0") Tiles[ty*(Header.MaxHexX/2)*2+tx*2]=(DWORD)_atoi64(name.c_str()); // Deprecated
-				else if(type=="1") Tiles[ty*(Header.MaxHexX/2)*2+tx*2+1]=(DWORD)_atoi64(name.c_str()); // Deprecated
+			}
+		}
+		else
+		{
+			while(!istr.eof() && !istr.fail())
+			{
+				DWORD hx,hy;
+				int ox,oy;
+				istr >> type >> hx >> hy;
+				if(!istr.fail() && hx>=0 && hx<Header.MaxHexX && hy>=0 && hy<Header.MaxHexY)
+				{
+					int typei;
+					if(type=="tile") typei=0;
+					else if(type=="roof") typei=1;
+					else if(type=="tile_o") typei=2;
+					else if(type=="roof_o") typei=3;
+					else continue;
+
+					if(typei>1) istr >> ox >> oy;
+					else ox=oy=0;
+
+					istr >> name;
+
+					Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,ox,oy,typei==1 || typei==3));
+				}
 			}
 		}
 		delete[] tiles_str;
@@ -590,7 +685,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 			istr >> field >> value;
 			if(!istr.fail())
 			{
-				if(field!="ScriptName" && field!="FuncName") ivalue=_atoi64(value.c_str());
+				ivalue=(int)_atoi64(value.c_str());
 
 				if(field=="MapObjType")
 				{
@@ -756,59 +851,43 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 {
 	// Header
 	fm->SetStr("[%s]\n",APP_HEADER);
-	fm->SetStr("%-20s %d\n","Version",FO_MAP_VERSION_V9>>20);
+	fm->SetStr("%-20s %d\n","Version",Header.Version);
 	fm->SetStr("%-20s %d\n","MaxHexX",Header.MaxHexX);
 	fm->SetStr("%-20s %d\n","MaxHexY",Header.MaxHexY);
-	fm->SetStr("%-20s %d\n","CenterX",Header.CenterX);
-	fm->SetStr("%-20s %d\n","CenterY",Header.CenterY);
-	fm->SetStr("%-20s %d\n","PlayersLimit",Header.PlayersLimit);
+	fm->SetStr("%-20s %d\n","WorkHexX",Header.WorkHexX);
+	fm->SetStr("%-20s %d\n","WorkHexY",Header.WorkHexY);
+	fm->SetStr("%-20s %s\n","ScriptModule",Header.ScriptModule[0]?Header.ScriptModule:"-");
+	fm->SetStr("%-20s %s\n","ScriptFunc",Header.ScriptFunc[0]?Header.ScriptFunc:"-");
+	fm->SetStr("%-20s %d\n","NoLogOut",Header.NoLogOut);
 	fm->SetStr("%-20s %d\n","Time",Header.Time);
-	fm->SetStr("%-20s %d\n","DayTime0",Header.DayTime[0]);
-	fm->SetStr("%-20s %d\n","DayTime1",Header.DayTime[1]);
-	fm->SetStr("%-20s %d\n","DayTime2",Header.DayTime[2]);
-	fm->SetStr("%-20s %d\n","DayTime3",Header.DayTime[3]);
-	fm->SetStr("%-20s %d\n","DayColorR0",Header.DayColor[0]);
-	fm->SetStr("%-20s %d\n","DayColorR1",Header.DayColor[1]);
-	fm->SetStr("%-20s %d\n","DayColorR2",Header.DayColor[2]);
-	fm->SetStr("%-20s %d\n","DayColorR3",Header.DayColor[3]);
-	fm->SetStr("%-20s %d\n","DayColorG0",Header.DayColor[4]);
-	fm->SetStr("%-20s %d\n","DayColorG1",Header.DayColor[5]);
-	fm->SetStr("%-20s %d\n","DayColorG2",Header.DayColor[6]);
-	fm->SetStr("%-20s %d\n","DayColorG3",Header.DayColor[7]);
-	fm->SetStr("%-20s %d\n","DayColorB0",Header.DayColor[8]);
-	fm->SetStr("%-20s %d\n","DayColorB1",Header.DayColor[9]);
-	fm->SetStr("%-20s %d\n","DayColorB2",Header.DayColor[10]);
-	fm->SetStr("%-20s %d\n","DayColorB3",Header.DayColor[11]);
+	fm->SetStr("%-20s %-4d %-4d %-4d %-4d\n","DayTime",Header.DayTime[0],Header.DayTime[1],Header.DayTime[2],Header.DayTime[3]);
+	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor0",Header.DayColor[0],Header.DayColor[4],Header.DayColor[8]);
+	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor1",Header.DayColor[1],Header.DayColor[5],Header.DayColor[9]);
+	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor2",Header.DayColor[2],Header.DayColor[6],Header.DayColor[10]);
+	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor3",Header.DayColor[3],Header.DayColor[7],Header.DayColor[11]);
 	fm->SetStr("\n");
 
 	// Tiles
 	fm->SetStr("[%s]\n",APP_TILES);
-	for(int x=0,x_=Header.MaxHexX/2;x<x_;x++)
+	for(size_t i=0,j=Tiles.size();i<j;i++)
 	{
-		for(int y=0,y_=Header.MaxHexY/2;y<y_;y++)
+		Tile& tile=Tiles[i];
+		const char* name=ResMngr.GetName(tile.NameHash);
+		if(name)
 		{
-			DWORD tile=GetTile(x,y);
-			DWORD roof=GetRoof(x,y);
-
-			// Terrain
-			if(roof==0xAAAAAAAA)
+			if(tile.OffsX || tile.OffsY)
 			{
-				const char* name=ResMngr.GetName(tile);
-				if(name) fm->SetStr("%-10s %-4d %-4d %s\n","terrain",x,y,name);
+				if(!tile.IsRoof)
+					fm->SetStr("%-10s %-4d %-4d %-4d %-4d %s\n","tile_o",tile.HexX,tile.HexY,tile.OffsX,tile.OffsY,name);
+				else
+					fm->SetStr("%-10s %-4d %-4d %-4d %-4d %s\n","roof_o",tile.HexX,tile.HexY,tile.OffsX,tile.OffsY,name);
 			}
-			// Simple tiles
 			else
 			{
-				if(tile)
-				{
-					const char* name=ResMngr.GetName(tile);
-					if(name) fm->SetStr("%-10s %-4d %-4d %s\n","tile",x,y,name);
-				}
-				if(roof)
-				{
-					const char* name=ResMngr.GetName(roof);
-					if(name) fm->SetStr("%-10s %-4d %-4d %s\n","roof",x,y,name);
-				}
+				if(!tile.IsRoof)
+					fm->SetStr("%-10s %-4d %-4d           %s\n","tile",tile.HexX,tile.HexY,name);
+				else
+					fm->SetStr("%-10s %-4d %-4d           %s\n","roof",tile.HexX,tile.HexY,name);
 			}
 		}
 	}
@@ -939,9 +1018,12 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	if(!fm->CopyMem(&Header,sizeof(Header))) return false;
 
 	// Tiles
-	Tiles=new DWORD[GetTilesSize()/sizeof(DWORD)];
-	if(!Tiles) return false;
-	fm->CopyMem(Tiles,GetTilesSize());
+	DWORD tiles_count=fm->GetBEDWord();
+	if(tiles_count)
+	{
+		Tiles.resize(tiles_count);
+		fm->CopyMem(&Tiles[0],tiles_count*sizeof(Tile));
+	}
 
 	// Critters
 	DWORD count=fm->GetBEDWord();
@@ -993,13 +1075,13 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	if(count)
 	{
 		WallsToSend.resize(count);
-		if(!fm->CopyMem(&WallsToSend[0],count*sizeof(ScenToSend))) return false;
+		if(!fm->CopyMem(&WallsToSend[0],count*sizeof(SceneryCl))) return false;
 	}
 	count=fm->GetBEDWord();
 	if(count)
 	{
 		SceneriesToSend.resize(count);
-		if(!fm->CopyMem(&SceneriesToSend[0],count*sizeof(ScenToSend))) return false;
+		if(!fm->CopyMem(&SceneriesToSend[0],count*sizeof(SceneryCl))) return false;
 	}
 
 	// Hashes
@@ -1020,15 +1102,15 @@ bool ProtoMap::LoadCache(FileManager* fm)
 		if(!fm->CopyMem(&mapEntires[0],count*sizeof(MapEntire))) return false;
 	}
 
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(ScenToSend));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(ScenToSend));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(SceneryCl));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,mapEntires.capacity()*sizeof(MapEntire));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,CrittersVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,ItemsVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneryVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,GridsVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,Header.MaxHexX*Header.MaxHexY);
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,GetTilesSize());
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,Tiles.capacity()*sizeof(Tile));
 	return true;
 }
 
@@ -1044,7 +1126,8 @@ void ProtoMap::SaveCache(FileManager* fm)
 	fm->SetData(&Header,sizeof(Header));
 
 	// Tiles
-	fm->SetData(Tiles,GetTilesSize());
+	fm->SetBEDWord(Tiles.size());
+	if(Tiles.size()) fm->SetData(&Tiles[0],Tiles.size()*sizeof(Tile));
 
 	// Critters
 	fm->SetBEDWord(CrittersVec.size());
@@ -1068,9 +1151,9 @@ void ProtoMap::SaveCache(FileManager* fm)
 
 	// To send
 	fm->SetBEDWord(WallsToSend.size());
-	fm->SetData(&WallsToSend[0],WallsToSend.size()*sizeof(ScenToSend));
+	fm->SetData(&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl));
 	fm->SetBEDWord(SceneriesToSend.size());
-	fm->SetData(&SceneriesToSend[0],SceneriesToSend.size()*sizeof(ScenToSend));
+	fm->SetData(&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl));
 
 	// Hashes
 	fm->SetBEDWord(HashTiles);
@@ -1086,7 +1169,7 @@ void ProtoMap::SaveCache(FileManager* fm)
 
 	// Save
 	char fname[MAX_PATH];
-	sprintf(fname,"%s.mapb",pmapName.c_str());
+	sprintf(fname,"%s%sb",pmapName.c_str(),MAP_PROTO_EXT);
 	fm->SaveOutBufToFile(fname,pathType);
 }
 
@@ -1129,21 +1212,21 @@ bool ProtoMap::Refresh()
 	sprintf(map_info,"pid<%u>, name<%s>",GetPid(),pmapName.c_str());
 
 	// Read
-	string fname_txt=pmapName+".txt";
-	string fname_map=pmapName+".map";
-	string fname_bin=pmapName+".mapb";
+	string fname_txt=pmapName+MAP_PROTO_EXT;
+	string fname_bin=pmapName+string(MAP_PROTO_EXT)+"b";
+	string fname_map=pmapName+".map"; // Deprecated
 
 #ifdef FONLINE_SERVER
 	// Cached binary
 	FileManager cached;
 	cached.LoadFile(fname_bin.c_str(),pathType);
 
-	// Load binary or text
-	bool text=false;
-	if(!pmapFm->LoadFile(fname_map.c_str(),pathType))
+	// Load text or binary
+	bool text=true;
+	if(!pmapFm->LoadFile(fname_txt.c_str(),pathType))
 	{
-		text=true;
-		if(!pmapFm->LoadFile(fname_txt.c_str(),pathType) && !cached.IsLoaded())
+		text=false;
+		if(!pmapFm->LoadFile(fname_map.c_str(),pathType) && !cached.IsLoaded())
 		{
 			WriteLog(__FUNCTION__" - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
 			return false;
@@ -1176,11 +1259,11 @@ bool ProtoMap::Refresh()
 #endif // FONLINE_SERVER
 #ifdef FONLINE_MAPPER
 	// Load binary or text
-	bool text=false;
-	if(!pmapFm->LoadFile(fname_map.c_str(),pathType))
+	bool text=true;
+	if(!pmapFm->LoadFile(fname_txt.c_str(),pathType))
 	{
-		text=true;
-		if(!pmapFm->LoadFile(fname_txt.c_str(),pathType))
+		text=false;
+		if(!pmapFm->LoadFile(fname_map.c_str(),pathType))
 		{
 			WriteLog(__FUNCTION__" - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
 			return false;
@@ -1199,6 +1282,7 @@ bool ProtoMap::Refresh()
 	}
 	else
 	{
+		// Deprecated
 		// Check map format version
 		// Read version
 		DWORD version_full=pmapFm->GetLEDWord();
@@ -1336,8 +1420,8 @@ bool ProtoMap::Refresh()
 				SETFLAG(HexFlags[hy*maxhx+hx],FH_WALL);
 
 				// To client
-				ScenToSend cur_wall;
-				ZeroMemory(&cur_wall,sizeof(ScenToSend));
+				SceneryCl cur_wall;
+				ZeroMemory(&cur_wall,sizeof(SceneryCl));
 
 				cur_wall.ProtoId=mobj.ProtoId;
 				cur_wall.MapX=mobj.MapX;
@@ -1423,8 +1507,8 @@ bool ProtoMap::Refresh()
 				}
 
 				// To client
-				ScenToSend cur_scen;
-				ZeroMemory(&cur_scen,sizeof(ScenToSend));
+				SceneryCl cur_scen;
+				ZeroMemory(&cur_scen,sizeof(SceneryCl));
 
 				// Flags
 				if(type==ITEM_TYPE_GENERIC && mobj.MScenery.CanUse) SETFLAG(cur_scen.Flags,SCEN_CAN_USE);
@@ -1462,26 +1546,27 @@ bool ProtoMap::Refresh()
 
 	// Generate hashes
 	HashTiles=maxhx*maxhy;
-	Crypt.Crc32((BYTE*)Tiles,GetTilesSize(),HashTiles);
+	if(Tiles.size()) Crypt.Crc32((BYTE*)&Tiles[0],Tiles.size()*sizeof(Tile),HashTiles);
 	HashWalls=maxhx*maxhy;
-	if(WallsToSend.size()) Crypt.Crc32((BYTE*)&WallsToSend[0],WallsToSend.size()*sizeof(ScenToSend),HashWalls);
+	if(WallsToSend.size()) Crypt.Crc32((BYTE*)&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl),HashWalls);
 	HashScen=maxhx*maxhy;
-	if(SceneriesToSend.size()) Crypt.Crc32((BYTE*)&SceneriesToSend[0],SceneriesToSend.size()*sizeof(ScenToSend),HashScen);
+	if(SceneriesToSend.size()) Crypt.Crc32((BYTE*)&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl),HashScen);
 
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(ScenToSend));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(ScenToSend));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(SceneryCl));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,mapEntires.capacity()*sizeof(MapEntire));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,CrittersVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,ItemsVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneryVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,GridsVec.size()*sizeof(MapObject));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,Header.MaxHexX*Header.MaxHexY);
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,GetTilesSize());
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,Tiles.capacity()*sizeof(Tile));
 
 	SaveCache(pmapFm);
 #endif
 
 #ifdef FONLINE_MAPPER
+	// Convert hashes to names
 	for(int i=0,j=MObjects.size();i<j;i++)
 	{
 		MapObject* mobj=MObjects[i];
@@ -1492,6 +1577,24 @@ bool ProtoMap::Refresh()
 			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) StringCopy(mobj->RunTime.PicInvName,ResMngr.GetName(mobj->MItem.PicInvHash));
 		}
 	}
+
+	// Create cached fields
+	TilesField.resize(Header.MaxHexX*Header.MaxHexY);
+	RoofsField.resize(Header.MaxHexX*Header.MaxHexY);
+	for(size_t i=0,j=Tiles.size();i<j;i++)
+	{
+		if(!Tiles[i].IsRoof)
+		{
+			TilesField[Tiles[i].HexY*Header.MaxHexX+Tiles[i].HexX].push_back(Tiles[i]);
+			TilesField[Tiles[i].HexY*Header.MaxHexX+Tiles[i].HexX].back().IsSelected=false;
+		}
+		else
+		{
+			RoofsField[Tiles[i].HexY*Header.MaxHexX+Tiles[i].HexX].push_back(Tiles[i]);
+			RoofsField[Tiles[i].HexY*Header.MaxHexX+Tiles[i].HexX].back().IsSelected=false;
+		}
+	}
+	Tiles.clear();
 #endif
 	return true;
 }
@@ -1500,16 +1603,12 @@ bool ProtoMap::Refresh()
 void ProtoMap::GenNew(FileManager* fm)
 {
 	Clear();
-	Header.PlayersLimit=30;
 	Header.Version=FO_MAP_VERSION_V5;
 	Header.MaxHexX=MAXHEX_DEF;
 	Header.MaxHexY=MAXHEX_DEF;
 	pmapPid=0xFFFF;
 	pmapFm=fm;
 	pathType=PT_MAPS;
-	static int number=0;
-	Tiles=new DWORD[GetTilesSize()/sizeof(DWORD)];
-	ZeroMemory(Tiles,GetTilesSize());
 
 	// Morning	 5.00 -  9.59	 300 - 599
 	// Day		10.00 - 18.59	 600 - 1139
@@ -1523,48 +1622,32 @@ void ProtoMap::GenNew(FileManager* fm)
 	isInit=true;
 }
 
-bool ProtoMap::Save(const char* f_name, int path_type, bool text, bool pack)
+bool ProtoMap::Save(const char* f_name, int path_type)
 {
 	if(f_name && *f_name) pmapName=f_name;
 	if(path_type>=0) pathType=path_type;
 
-	string fname=pmapName;
-	Header.Version=FO_MAP_VERSION_V9;
-	pmapFm->ClearOutBuf();
-
-	if(text)
+	// Fill tiles from cached fields
+	TilesField.resize(Header.MaxHexX*Header.MaxHexY);
+	RoofsField.resize(Header.MaxHexX*Header.MaxHexY);
+	for(WORD hy=0;hy<Header.MaxHexY;hy++)
 	{
-		SaveTextFormat(pmapFm);
-		fname+=".txt";
-	}
-	else
-	{
-		Header.HeaderSize=sizeof(Header);
-		Header.Packed=pack;
-		Header.UnpackedDataLen=GetTilesSize()+sizeof(DWORD)+GetObjectsSize();
-
-		DWORD data_len=Header.UnpackedDataLen;
-		BYTE* data=new BYTE[data_len];
-		memcpy(data,Tiles,GetTilesSize());
-		*(DWORD*)(data+GetTilesSize())=MObjects.size();
-		for(size_t i=0,j=MObjects.size();i<j;i++) memcpy(data+GetTilesSize()+sizeof(DWORD)+i*MAP_OBJECT_SIZE,MObjects[i],MAP_OBJECT_SIZE);
-		if(pack)
+		for(WORD hx=0;hx<Header.MaxHexX;hx++)
 		{
-			BYTE* data_=Crypt.Compress(data,data_len);
-			delete[] data;
-			if(!data_)
-			{
-				WriteLog(__FUNCTION__" - Unable to pack data.\n");
-				return false;
-			}
-			data=data_;
+			TileVec& tiles=TilesField[hy*Header.MaxHexX+hx];
+			for(size_t i=0,j=tiles.size();i<j;i++) Tiles.push_back(tiles[i]);
+			TileVec& roofs=RoofsField[hy*Header.MaxHexX+hx];
+			for(size_t i=0,j=roofs.size();i<j;i++) Tiles.push_back(roofs[i]);
 		}
-
-		pmapFm->SetData(&Header,sizeof(Header));
-		pmapFm->SetData(data,data_len);
-		fname+=".map";
 	}
 
+	// Save
+	pmapFm->ClearOutBuf();
+	Header.Version=FO_MAP_VERSION_TEXT2;
+	SaveTextFormat(pmapFm);
+	Tiles.clear();
+
+	string fname=pmapName+MAP_PROTO_EXT;
 	if(!pmapFm->SaveOutBufToFile(fname.c_str(),pathType))
 	{
 		WriteLog(__FUNCTION__" - Unable write file.\n");
@@ -1584,6 +1667,13 @@ bool ProtoMap::IsMapFile(const char* fname)
 
 	if(!_stricmp(ext,MAP_PROTO_EXT))
 	{
+		// Check text format
+		IniParser txt;
+		if(!txt.LoadFile(fname,PT_ROOT)) return false;
+		return txt.IsApp(APP_HEADER) && txt.IsApp(APP_TILES) && txt.IsApp(APP_OBJECTS);
+	}
+	else if(!_stricmp(ext,".map"))
+	{
 		// Check binary format
 		FileManager file;
 		if(!file.LoadFile(fname,PT_ROOT)) return false;
@@ -1592,13 +1682,7 @@ bool ProtoMap::IsMapFile(const char* fname)
 			version==FO_MAP_VERSION_V6 || version==FO_MAP_VERSION_V7 ||
 			version==FO_MAP_VERSION_V8 || version==FO_MAP_VERSION_V9;
 	}
-	else if(!_stricmp(ext,".txt"))
-	{
-		// Check text format
-		IniParser txt;
-		if(!txt.LoadFile(fname,PT_MAPS)) return false;
-		return txt.IsApp(APP_HEADER) && txt.IsApp(APP_TILES) && txt.IsApp(APP_OBJECTS);
-	}
+	
 	return false;
 }
 #endif // FONLINE_MAPPER

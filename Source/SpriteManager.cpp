@@ -1325,13 +1325,17 @@ label_Fail:
 	{
 		AnyFrames* anim=anims[0];
 		anim->Ticks=1000/frm_fps*frm_num;
-		anim->OffsX=ox;
-		anim->OffsY=oy;
+
+		SpriteInfo* si=GetSpriteInfo(anim->Ind[0]);
+		si->OffsX+=ox;
+		si->OffsY+=oy;
+		si->Effect=effect;
+
 		return anim;
 	}
 
 	// Merge many animations in one
-	AnyFrames* anim=CreateAnimation(frames,1000/frm_fps*frm_num,ox,oy);
+	AnyFrames* anim=CreateAnimation(frames,1000/frm_fps*frm_num,0,0);
 	if(!anim) goto label_Fail;
 
 	DWORD frm=0;
@@ -1346,10 +1350,12 @@ label_Fail:
 			anim->NextY[frm]+=anims_offs[frm*2+1];
 
 			SpriteInfo* si=GetSpriteInfo(anim->Ind[frm]);
-			si->OffsX+=anim->OffsX;
-			si->OffsY+=anim->OffsY;
+			si->OffsX+=ox;
+			si->OffsY+=oy;
 			si->Effect=effect;
 		}
+
+		delete part;
 	}
 
 	return anim;

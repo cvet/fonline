@@ -1248,9 +1248,9 @@
 	if(engine->RegisterObjectMethod("MapperObject","MapperObject@+ AddChild(uint16 pid)",asFUNCTION(BIND_CLASS MapperObject_AddChild),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","uint GetChilds(MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS MapperObject_Update),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","string@ get_ScriptName() const",asFUNCTION(BIND_CLASS MapperObject_get_ScriptName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperObject","void set_ScriptName(string@+ name)",asFUNCTION(BIND_CLASS MapperObject_set_ScriptName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","void set_ScriptName(const string& name)",asFUNCTION(BIND_CLASS MapperObject_set_ScriptName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","string@ get_FuncName() const",asFUNCTION(BIND_CLASS MapperObject_get_FuncName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperObject","void set_FuncName(string@+ name)",asFUNCTION(BIND_CLASS MapperObject_set_FuncName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","void set_FuncName(const string& name)",asFUNCTION(BIND_CLASS MapperObject_set_FuncName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","uint8 get_Critter_Cond() const",asFUNCTION(BIND_CLASS MapperObject_get_Critter_Cond),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","void set_Critter_Cond(uint8 value)",asFUNCTION(BIND_CLASS MapperObject_set_Critter_Cond),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","void MoveToHex(uint16 hexX, uint16 hexY)",asFUNCTION(BIND_CLASS MapperObject_MoveToHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -1317,9 +1317,9 @@
 	if(engine->RegisterObjectProperty("MapperObject","uint8 AnimStayEnd",offsetof(MapObject,MItem.AnimStayEnd))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint16 AnimWait",offsetof(MapObject,MItem.AnimWait))<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","string@ get_PicMap() const",asFUNCTION(BIND_CLASS MapperObject_get_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperObject","void set_PicMap(string@+ name)",asFUNCTION(BIND_CLASS MapperObject_set_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","void set_PicMap(const string& name)",asFUNCTION(BIND_CLASS MapperObject_set_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","string@ get_PicInv() const",asFUNCTION(BIND_CLASS MapperObject_get_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperObject","void set_PicInv(string@+ name)",asFUNCTION(BIND_CLASS MapperObject_set_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","void set_PicInv(const string& name)",asFUNCTION(BIND_CLASS MapperObject_set_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 InfoOffset",offsetof(MapObject,MItem.InfoOffset))<0) BIND_ERROR;
 	// Item
 	if(engine->RegisterObjectProperty("MapperObject","uint Item_Count",offsetof(MapObject,MItem.Count))<0) BIND_ERROR;
@@ -1367,18 +1367,26 @@
 	if(engine->RegisterObjectMethod("MapperMap","uint GetObjects(uint16 hexX, uint16 hexY, uint radius, int mapObjType, uint16 pid, MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS MapperMap_GetObjects),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void UpdateObjects() const",asFUNCTION(BIND_CLASS MapperMap_UpdateObjects),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void Resize(uint16 width, uint16 height)",asFUNCTION(BIND_CLASS MapperMap_Resize),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","uint GetTile(uint16 tileX, uint16 tileY, bool roof) const",asFUNCTION(BIND_CLASS MapperMap_GetTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","void SetTile(uint16 tileX, uint16 tileY, bool roof, uint picHash)",asFUNCTION(BIND_CLASS MapperMap_SetTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","string@ GetTileName(uint16 tileX, uint16 tileY, bool roof) const",asFUNCTION(BIND_CLASS MapperMap_GetTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","void SetTileName(uint16 tileX, uint16 tileY, bool roof, string@+ picName)",asFUNCTION(BIND_CLASS MapperMap_SetTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","string@ GetTerrainName(uint16 tileX, uint16 tileY) const",asFUNCTION(BIND_CLASS MapperMap_GetTerrainName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","void SetTerrainName(uint16 tileX, uint16 tileY, string@+ terrainName)",asFUNCTION(BIND_CLASS MapperMap_SetTerrainName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","uint GetTilesCount(uint16 hexX, uint16 hexY, bool roof) const",asFUNCTION(BIND_CLASS MapperMap_GetTilesCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void DeleteTile(uint16 hexX, uint16 hexY, bool roof, uint index)",asFUNCTION(BIND_CLASS MapperMap_DeleteTile),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","uint GetTile(uint16 hexX, uint16 hexY, bool roof, uint index) const",asFUNCTION(BIND_CLASS MapperMap_GetTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, bool roof, uint picHash)",asFUNCTION(BIND_CLASS MapperMap_AddTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","string@ GetTileName(uint16 hexX, uint16 hexY, bool roof, uint index) const",asFUNCTION(BIND_CLASS MapperMap_GetTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, bool roof, string@+ picName)",asFUNCTION(BIND_CLASS MapperMap_AddTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","uint GetDayTime(uint dayPart) const",asFUNCTION(BIND_CLASS MapperMap_GetDayTime),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void SetDayTime(uint dayPart, uint time)",asFUNCTION(BIND_CLASS MapperMap_SetDayTime),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b) const",asFUNCTION(BIND_CLASS MapperMap_GetDayColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void SetDayColor(uint dayPart, uint8 r, uint8 g, uint8 b)",asFUNCTION(BIND_CLASS MapperMap_SetDayColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperMap","const uint16 Width",offsetof(ProtoMap,Header.MaxHexX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperMap","const uint16 Height",offsetof(ProtoMap,Header.MaxHexY))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperMap","const int WorkHexX",offsetof(ProtoMap,Header.WorkHexX))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperMap","const int WorkHexY",offsetof(ProtoMap,Header.WorkHexY))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperMap","int Time",offsetof(ProtoMap,Header.Time))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperMap","bool NoLogOut",offsetof(ProtoMap,Header.NoLogOut))<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","string@ get_ScriptModule() const",asFUNCTION(BIND_CLASS MapperMap_get_ScriptModule),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void set_ScriptModule(const string& name)",asFUNCTION(BIND_CLASS MapperMap_set_ScriptModule),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","string@ get_ScriptFunc() const",asFUNCTION(BIND_CLASS MapperMap_get_ScriptFunc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void set_ScriptFunc(const string& name)",asFUNCTION(BIND_CLASS MapperMap_set_ScriptFunc),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	// Global
 	if(engine->RegisterGlobalFunction("void SetDefaultCritterParam(uint index, int param)",asFUNCTION(BIND_CLASS Global_SetDefaultCritterParam),asCALL_CDECL)<0) BIND_ERROR;
@@ -1386,7 +1394,7 @@
 	if(engine->RegisterGlobalFunction("void SetFastPrototypes(uint16[]@+ pids)",asFUNCTION(BIND_CLASS Global_SetFastPrototypes),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("MapperMap@+ LoadMap(string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_LoadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void UnloadMap(MapperMap@+ map)",asFUNCTION(BIND_CLASS Global_UnloadMap),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("bool SaveMap(MapperMap@+ map, string& fileName, int pathType, bool text, bool pack)",asFUNCTION(BIND_CLASS Global_SaveMap),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool SaveMap(MapperMap@+ map, string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_SaveMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool ShowMap(MapperMap@+ map)",asFUNCTION(BIND_CLASS Global_ShowMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetLoadedMaps(MapperMap@[]@+ maps)",asFUNCTION(BIND_CLASS Global_GetLoadedMaps),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetMapFileNames(string@+ dir, string@[]@+ names)",asFUNCTION(BIND_CLASS Global_GetMapFileNames),asCALL_CDECL)<0) BIND_ERROR;

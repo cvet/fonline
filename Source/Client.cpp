@@ -106,14 +106,15 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(bool)==1);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
-	STATIC_ASSERT(sizeof(ScenToSend)==32);
+	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
-	STATIC_ASSERT(sizeof(Field)==68);
+	STATIC_ASSERT(sizeof(Field)==92);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
 	STATIC_ASSERT(sizeof(GameOptions)==1144);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
+	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 
 	GET_UID0(UID0);
 	Wnd=hwnd;
@@ -5774,7 +5775,7 @@ void FOClient::Net_OnMap()
 		Bin >> count_tiles;
 		if(count_tiles)
 		{
-			tiles_len=count_tiles*sizeof(DWORD)*2;
+			tiles_len=count_tiles*sizeof(ProtoMap::Tile);
 			tiles_data=new char[tiles_len];
 			Bin.Pop(tiles_data,tiles_len);
 		}
@@ -5788,7 +5789,7 @@ void FOClient::Net_OnMap()
 		Bin >> count_walls;
 		if(count_walls)
 		{
-			walls_len=count_walls*sizeof(ScenToSend);
+			walls_len=count_walls*sizeof(SceneryCl);
 			walls_data=new char[walls_len];
 			Bin.Pop(walls_data,walls_len);
 		}
@@ -5802,7 +5803,7 @@ void FOClient::Net_OnMap()
 		Bin >> count_scen;
 		if(count_scen)
 		{
-			scen_len=count_scen*sizeof(ScenToSend);
+			scen_len=count_scen*sizeof(SceneryCl);
 			scen_data=new char[scen_len];
 			Bin.Pop(scen_data,scen_len);
 		}
@@ -5886,9 +5887,9 @@ void FOClient::Net_OnMap()
 		fm.SetBEDWord(0);
 		fm.SetBEDWord(0);
 
-		fm.SetBEDWord(tiles_len/sizeof(DWORD)/2);
-		fm.SetBEDWord(walls_len/sizeof(ScenToSend));
-		fm.SetBEDWord(scen_len/sizeof(ScenToSend));
+		fm.SetBEDWord(tiles_len/sizeof(ProtoMap::Tile));
+		fm.SetBEDWord(walls_len/sizeof(SceneryCl));
+		fm.SetBEDWord(scen_len/sizeof(SceneryCl));
 		fm.SetBEDWord(tiles_len);
 		fm.SetBEDWord(walls_len);
 		fm.SetBEDWord(scen_len);
@@ -8930,6 +8931,7 @@ DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
 	size_t index=1;
+
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
 	if(index<Animations.size()) Animations[index]=ianim;
 	else Animations.push_back(ianim);
@@ -8938,10 +8940,15 @@ DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 
 DWORD FOClient::AnimLoad(const char* fname, int path_type, int res_type)
 {
-	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(fname),0,res_type);
+	char full_name[MAX_FOPATH];
+	StringCopy(full_name,FileManager::GetPath(path_type));
+	StringAppend(full_name,fname);
+
+	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(full_name),0,res_type);
 	if(!anim) return 0;
 	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
+
 	size_t index=1;
 	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
 	if(index<Animations.size()) Animations[index]=ianim;

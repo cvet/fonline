@@ -134,7 +134,6 @@ bool MapManager::Init()
 	pathNumCur=0;
 	for(int i=1;i<FPATH_DATA_SIZE;i++) pathesPool[i].reserve(100);
 
-	pmapsLoaded.clear();
 	WriteLog("Map manager initialization complete.\n");
 	return true;
 }
@@ -153,7 +152,6 @@ void MapManager::Finish()
 	allMaps.clear();
 
 	for(int i=0;i<MAX_PROTO_MAPS;i++) ProtoMaps[i].Clear();
-	pmapsLoaded.clear();
 	SAFEDEL(gmMask);
 
 	WriteLog("Map manager finish complete.\n");
@@ -182,8 +180,9 @@ DwordPair EntranceParser(const char* str)
 
 bool MapManager::LoadLocationsProtos()
 {
-	WriteLog("Load locations prototypes...\n");
+	WriteLog("Load location and map prototypes...\n");
 
+	// Load location prototypes
 	IniParser city_txt;
 	if(!city_txt.LoadFile("Locations.cfg",PT_SERVER_MAPS))
 	{
@@ -212,13 +211,14 @@ bool MapManager::LoadLocationsProtos()
 		loaded++;
 	}
 
+	// Check for errors
 	if(errors)
 	{
-		WriteLog("Load locations prototypes fail, errors<%d>.\n",errors);
+		WriteLog("Load location and map prototypes fail, errors<%d>.\n",errors);
 		return false;
 	}
 
-	WriteLog("Load locations prototypes complete, loaded<%u> protos.\n",loaded);
+	WriteLog("Load location and map prototypes complete, loaded<%u> location protos.\n",loaded);
 	return true;
 }
 
@@ -232,42 +232,62 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 	ploc.IsInit=false;
 	city_txt.GetStr(key1,"name","",res);
 	ploc.Name=res;
+	if(!ploc.Name.length()) ploc.Name=Str::Format("Location %u",pid);
 	ploc.MaxPlayers=city_txt.GetInt(key1,"max_players",0);
 	ploc.Radius=city_txt.GetInt(key1,"size",24);
 
 	// Maps
 	ploc.ProtoMapPids.clear();
-	int cur_map=0;
+	DWORD cur_map=0;
 	while(true)
 	{
 		sprintf(key2,"map_%u",cur_map);
 		if(!city_txt.GetStr(key1,key2,"",res)) break;
-		size_t len=strlen(res);
-		if(!len) break;
 
-		bool is_automap=false;
-		if(res[len-1]=='*')
+		char map_name[MAX_FOPATH];
+		WORD map_pid=0;
+		if(sscanf(res,"%s%u",map_name,&map_pid)!=2)
 		{
-			if(len==1) break;
-			is_automap=true;
-			res[len-1]=0;
-		}
-
-		StrWordMapIt it=pmapsLoaded.find(string(res));
-		if(it==pmapsLoaded.end())
-		{
-			WriteLog(__FUNCTION__" - Proto map is not loaded, location pid<%u>, name<%s>.\n",pid,res);
+			WriteLog(__FUNCTION__" - Can't parse data in location<%s>, map index<%u>.\n",ploc.Name.c_str(),cur_map);
 			return false;
 		}
 
-		ploc.ProtoMapPids.push_back((*it).second);
-		if(is_automap) ploc.AutomapsPids.push_back((*it).second);
+		if(!map_name[0] || !map_pid || map_pid>=MAX_PROTO_MAPS)
+		{
+			WriteLog(__FUNCTION__" - Invalid data in location<%s>, map index<%u>.\n",ploc.Name.c_str(),cur_map);
+			return false;
+		}
+
+		size_t len=strlen(map_name);
+		bool is_automap=false;
+		if(map_name[len-1]=='*')
+		{
+			if(len==1) break;
+			is_automap=true;
+			map_name[len-1]=0;
+		}
+
+		ProtoMap& pmap=ProtoMaps[map_pid];
+		if(pmap.IsInit() && _stricmp(pmap.GetName(),map_name))
+		{
+			WriteLog(__FUNCTION__" - Pid<%u> for map<%s> in location<%s>, already in use.\n",map_pid,map_name,ploc.Name.c_str());
+			return false;
+		}
+
+		if(!pmap.IsInit() && !pmap.Init(map_pid,map_name,PT_SERVER_MAPS))
+		{
+			WriteLog(__FUNCTION__" - Init proto map<%s> for location<%s> fail.\n",map_name,ploc.Name.c_str());
+			return false;
+		}
+
+		ploc.ProtoMapPids.push_back(map_pid);
+		if(is_automap) ploc.AutomapsPids.push_back(map_pid);
 		cur_map++;
 	}
 
 	if(!cur_map)
 	{
-		WriteLog(__FUNCTION__" - Not found no one map, location pid<%u>.\n",pid);
+		WriteLog(__FUNCTION__" - Not found no one map, location<%s>.\n",ploc.Name.c_str());
 		return false;
 	}
 
@@ -282,7 +302,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 			DWORD map_num=ploc.Entrance[k].first;
 			if(map_num>cur_map)
 			{
-				WriteLog(__FUNCTION__" - Invalid map number<%u>, entrance<%s>, location pid<%u>.\n",map_num,res,pid);
+				WriteLog(__FUNCTION__" - Invalid map number<%u>, entrance<%s>, location<%s>.\n",map_num,res,ploc.Name.c_str());
 				return false;
 			}
 		}
@@ -292,7 +312,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 		int val=atoi(res);
 		if(val<=0 || val>cur_map)
 		{
-			WriteLog(__FUNCTION__" - Invalid entrance value<%d>, location pid<%u>.\n",val,pid);
+			WriteLog(__FUNCTION__" - Invalid entrance value<%d>, location<%s>.\n",val,ploc.Name.c_str());
 			return false;
 		}
 		for(int k=0;k<val;k++) ploc.Entrance.push_back(DwordPairVecVal(k,0));
@@ -304,7 +324,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 		DWORD entire=ploc.Entrance[k].second;
 		if(!GetProtoMap(ploc.ProtoMapPids[map_num])->CountEntire(entire))
 		{
-			WriteLog(__FUNCTION__" - Entire<%u> not found on map<%u>, location pid<%u>.\n",entire,map_num,pid);
+			WriteLog(__FUNCTION__" - Entire<%u> not found on map<%u>, location<%s>.\n",entire,map_num,ploc.Name.c_str());
 			return false;
 		}
 	}
@@ -317,7 +337,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 		int bind_id=Script::Bind(res,"bool %s(Critter@[]&, uint8)",false);
 		if(bind_id<=0)
 		{
-			WriteLog(__FUNCTION__" - Function<%s> not found, location pid<%u>.\n",res,pid);
+			WriteLog(__FUNCTION__" - Function<%s> not found, location<%s>.\n",res,ploc.Name.c_str());
 			return false;
 		}
 		ploc.ScriptBindId=bind_id;
@@ -331,86 +351,6 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 	// Initialize
 	ploc.LocPid=pid;
 	ploc.IsInit=true;
-	return true;
-}
-
-bool MapManager::LoadMapsProtos()
-{
-	WriteLog("Load maps prototypes...\n");
-
-	IniParser maps_txt;
-	if(!maps_txt.LoadFile("Maps.cfg",PT_SERVER_MAPS))
-	{
-		WriteLog("File<%s> not found.\n",FileManager::GetFullPath("Maps.cfg",PT_SERVER_MAPS));
-		return false;
-	}
-
-	maps_txt.CacheApps();
-
-	int errors=0;
-	DWORD loaded=0;
-	char res[256];
-//	double wtick1=Timer::AccurateTick();
-//	double wtick2=0.0;
-	for(int i=1;i<MAX_PROTO_MAPS;i++)
-	{
-		const char* app=Str::Format("Map %u",i);
-		if(!maps_txt.IsCachedApp(app) || !maps_txt.GetStr(app,"map_name","",res)) continue;
-
-//		double tick=Timer::AccurateTick();
-		ProtoMap& pmap=ProtoMaps[i];
-		if(!LoadMapProto(maps_txt,pmap,i))
-		{
-			errors++;
-			WriteLog("Load proto map<%u> fail.\n",i);
-			continue;
-		}
-		pmapsLoaded.insert(StrWordMapVal(string(pmap.GetName()),i));
-		loaded++;
-//		tick=Timer::AccurateTick()-tick;
-//		wtick2+=tick;
-//		WriteLog("map<%s><%g>\n",pmap.GetName(),tick);
-	}
-//	wtick1=Timer::AccurateTick()-wtick1;
-//	WriteLog("wtick1 %g, wtick2 %g\n",wtick1,wtick2);
-
-	if(errors)
-	{
-		WriteLog("Load proto maps fail, errors<%d>.\n",errors);
-		return false;
-	}
-
-	WriteLog("Load maps prototypes complete, loaded<%u> protos.\n",loaded);
-	return true;
-}
-
-bool MapManager::LoadMapProto(IniParser& maps_txt, ProtoMap& pmap, WORD pid)
-{
-	char map_name[256];
-	char key1[256];
-	sprintf(key1,"Map %u",pid);
-	maps_txt.GetStr(key1,"map_name","",map_name);
-
-	if(!pmap.Init(pid,map_name,PT_SERVER_MAPS))
-	{
-		WriteLog(__FUNCTION__" - Proto map init fail, pid<%u>, name<%s>.\n",pid,map_name);
-		return false;
-	}
-
-	if(maps_txt.IsKey(key1,"time")) pmap.Header.Time=maps_txt.GetInt(key1,"time",-1);
-	if(maps_txt.IsKey(key1,"no_log_out")) pmap.Header.NoLogOut=(maps_txt.GetInt(key1,"no_log_out",0)!=0);
-	if(maps_txt.IsKey(key1,"script"))
-	{
-		char script[MAX_SCRIPT_NAME*2+2];
-		if(maps_txt.GetStr(key1,"script","",script))
-		{
-			if(!Script::ReparseScriptName(script,pmap.Header.ScriptModule,pmap.Header.ScriptFunc))
-			{
-				WriteLog(__FUNCTION__" - Proto map script name parsing fail, pid<%u>, name<%s>.\n",pid,map_name);
-				return false;
-			}
-		}
-	}
 	return true;
 }
 

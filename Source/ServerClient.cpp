@@ -2483,11 +2483,11 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(map_pid)+sizeof(maxhx)+sizeof(maxhy)+sizeof(send_info);
 
 	if(FLAG(send_info,SENDMAP_TILES))
-		msg_len+=sizeof(DWORD)+pmap->GetTilesSize();
+		msg_len+=sizeof(DWORD)+pmap->Tiles.size()*sizeof(ProtoMap::Tile);
 	if(FLAG(send_info,SENDMAP_WALLS))
-		msg_len+=sizeof(DWORD)+pmap->WallsToSend.size()*sizeof(ScenToSend);
+		msg_len+=sizeof(DWORD)+pmap->WallsToSend.size()*sizeof(SceneryCl);
 	if(FLAG(send_info,SENDMAP_SCENERY))
-		msg_len+=sizeof(DWORD)+pmap->SceneriesToSend.size()*sizeof(ScenToSend);
+		msg_len+=sizeof(DWORD)+pmap->SceneriesToSend.size()*sizeof(SceneryCl);
 
 	// Header
 	BOUT_BEGIN(cl);
@@ -2501,8 +2501,9 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	// Tiles
 	if(FLAG(send_info,SENDMAP_TILES))
 	{
-		cl->Bout << (DWORD)pmap->GetTilesSize()/sizeof(DWORD)/2;
-		cl->Bout.Push((char*)pmap->Tiles,pmap->GetTilesSize());
+		cl->Bout << (DWORD)pmap->Tiles.size();
+		if(pmap->Tiles.size())
+			cl->Bout.Push((char*)&pmap->Tiles[0],pmap->Tiles.size()*sizeof(ProtoMap::Tile));
 	}
 
 	// Walls
@@ -2510,7 +2511,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	{
 		cl->Bout << (DWORD)pmap->WallsToSend.size();
 		if(pmap->WallsToSend.size())
-			cl->Bout.Push((char*)&pmap->WallsToSend[0],pmap->WallsToSend.size()*sizeof(ScenToSend));
+			cl->Bout.Push((char*)&pmap->WallsToSend[0],pmap->WallsToSend.size()*sizeof(SceneryCl));
 	}
 
 	// Scenery
@@ -2518,7 +2519,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	{
 		cl->Bout << (DWORD)pmap->SceneriesToSend.size();
 		if(pmap->SceneriesToSend.size())
-			cl->Bout.Push((char*)&pmap->SceneriesToSend[0],pmap->SceneriesToSend.size()*sizeof(ScenToSend));
+			cl->Bout.Push((char*)&pmap->SceneriesToSend[0],pmap->SceneriesToSend.size()*sizeof(SceneryCl));
 	}
 	BOUT_END(cl);
 }
