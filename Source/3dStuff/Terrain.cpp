@@ -135,7 +135,7 @@ __int64 Terrain::FileGetTimeWrite(void* file)
 bool Terrain::SaveData(const char* fname, int folder, void* buffer, size_t size)
 {
 	int path_type=PT_DATA;
-	if(folder==FOLDER_TERRAIN) path_type=PT_TERRAIN;
+	if(folder==FOLDER_TERRAIN) path_type=0;//PT_TERRAIN;
 	else if(folder==FOLDER_EFFECT) path_type=PT_EFFECTS;
 	else if(folder==FOLDER_TEXTURE) path_type=PT_TEXTURES;
 

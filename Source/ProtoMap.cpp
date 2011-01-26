@@ -343,8 +343,8 @@ bool ProtoMap::ReadTiles(int version)
 			{
 				WORD tile=(ptr[y*(Header.MaxHexX/2)+x]>>16);
 				WORD roof=(ptr[y*(Header.MaxHexX/2)+x]&0xFFFF);
-				if(tile>1 && (tile=Deprecated_GetPicHash(-2,0,tile))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,false));
-				if(roof>1 && (roof=Deprecated_GetPicHash(-2,0,roof))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,true));
+				if(tile>1 && (tile=Deprecated_GetPicHash(-2,0,tile))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,0,false));
+				if(roof>1 && (roof=Deprecated_GetPicHash(-2,0,roof))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,0,true));
 			}
 		}
 		delete[] ptr;
@@ -361,8 +361,8 @@ bool ProtoMap::ReadTiles(int version)
 		{
 			DWORD tile=tiles[ty*(Header.MaxHexX/2)*2+tx*2];
 			DWORD roof=tiles[ty*(Header.MaxHexX/2)*2+tx*2+1];
-			if(tile) Tiles.push_back(Tile(tile,tx*2,ty*2,0,0,false));
-			if(roof) Tiles.push_back(Tile(roof,tx*2,ty*2,0,0,true));
+			if(tile) Tiles.push_back(Tile(tile,tx*2,ty*2,0,0,0,false));
+			if(roof) Tiles.push_back(Tile(roof,tx*2,ty*2,0,0,0,true));
 		}
 	}
 	delete[] tiles;
@@ -637,36 +637,55 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 				{
 					hx*=2;
 					hy*=2;
-					if(type=="tile") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,false));
-					else if(type=="roof") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,true));
-					//else if(type=="terr" || type=="terrain") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,));
-					else if(type=="0") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,false));
-					else if(type=="1") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,true));
+					if(type=="tile") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,false));
+					else if(type=="roof") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,true));
+					//else if(type=="terr" || type=="terrain") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,));
+					else if(type=="0") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,0,false));
+					else if(type=="1") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,0,true));
 				}
 			}
 		}
 		else
 		{
+			DWORD hx,hy;
+			int ox,oy,layer;
+			bool is_roof;
+			size_t len;
+			bool has_offs;
+			bool has_layer;
 			while(!istr.eof() && !istr.fail())
 			{
-				DWORD hx,hy;
-				int ox,oy;
 				istr >> type >> hx >> hy;
 				if(!istr.fail() && hx>=0 && hx<Header.MaxHexX && hy>=0 && hy<Header.MaxHexY)
 				{
-					int typei;
-					if(type=="tile") typei=0;
-					else if(type=="roof") typei=1;
-					else if(type=="tile_o") typei=2;
-					else if(type=="roof_o") typei=3;
+					if(!type.compare(0,4,"tile")) is_roof=false;
+					else if(!type.compare(0,4,"roof")) is_roof=true;
 					else continue;
 
-					if(typei>1) istr >> ox >> oy;
+					len=type.length();
+					has_offs=false;
+					has_layer=false;
+					if(len>5)
+					{
+						while(--len>=5)
+						{
+							switch(type[len])
+							{
+							case 'o': has_offs=true; break;
+							case 'l': has_layer=true; break;
+							default: break;
+							}
+						}
+					}
+
+					if(has_offs) istr >> ox >> oy;
 					else ox=oy=0;
+					if(has_layer) istr >> layer;
+					else layer=0;
 
 					istr >> name;
 
-					Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,ox,oy,typei==1 || typei==3));
+					Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,ox,oy,layer,is_roof));
 				}
 			}
 		}
@@ -869,26 +888,34 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 
 	// Tiles
 	fm->SetStr("[%s]\n",APP_TILES);
+	char tile_str[256];
 	for(size_t i=0,j=Tiles.size();i<j;i++)
 	{
 		Tile& tile=Tiles[i];
 		const char* name=ResMngr.GetName(tile.NameHash);
 		if(name)
 		{
-			if(tile.OffsX || tile.OffsY)
-			{
-				if(!tile.IsRoof)
-					fm->SetStr("%-10s %-4d %-4d %-4d %-4d %s\n","tile_o",tile.HexX,tile.HexY,tile.OffsX,tile.OffsY,name);
-				else
-					fm->SetStr("%-10s %-4d %-4d %-4d %-4d %s\n","roof_o",tile.HexX,tile.HexY,tile.OffsX,tile.OffsY,name);
-			}
+			bool has_offs=(tile.OffsX || tile.OffsY);
+			bool has_layer=(tile.Layer!=0);
+
+			StringCopy(tile_str,tile.IsRoof?"roof":"tile");
+			if(has_offs || has_layer) StringAppend(tile_str,"_");
+			if(has_offs)  StringAppend(tile_str,"o");
+			if(has_layer)  StringAppend(tile_str,"l");
+
+			fm->SetStr("%-10s %-4d %-4d ",tile_str,tile.HexX,tile.HexY);
+
+			if(has_offs)
+				fm->SetStr("%-3d %-3d ",tile.OffsX,tile.OffsY);
 			else
-			{
-				if(!tile.IsRoof)
-					fm->SetStr("%-10s %-4d %-4d           %s\n","tile",tile.HexX,tile.HexY,name);
-				else
-					fm->SetStr("%-10s %-4d %-4d           %s\n","roof",tile.HexX,tile.HexY,name);
-			}
+				fm->SetStr("        ");
+
+			if(has_layer)
+				fm->SetStr("%d ",tile.Layer);
+			else
+				fm->SetStr("  ");
+
+			fm->SetStr("%s\n",name);
 		}
 	}
 	fm->SetStr("\n");
@@ -1618,6 +1645,11 @@ void ProtoMap::GenNew(FileManager* fm)
 	Header.DayColor[0]=18; Header.DayColor[1]=128; Header.DayColor[2]=103; Header.DayColor[3]=51;
 	Header.DayColor[4]=18; Header.DayColor[5]=128; Header.DayColor[6]=95;  Header.DayColor[7]=40;
 	Header.DayColor[8]=53; Header.DayColor[9]=128; Header.DayColor[10]=86; Header.DayColor[11]=29;
+
+#ifdef FONLINE_MAPPER
+	TilesField.resize(Header.MaxHexX*Header.MaxHexY);
+	RoofsField.resize(Header.MaxHexX*Header.MaxHexY);
+#endif
 
 	isInit=true;
 }

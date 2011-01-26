@@ -172,7 +172,7 @@ public:
 	void GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type);
 	void GM_GlobalInvite(GlobalMapGroup* group, int combat_mode);
 	void GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy);
-	bool GM_CheckEntrance(int bind_id, CScriptArray* arr, BYTE entrance);
+	bool GM_CheckEntrance(Location* loc, CScriptArray* arr, BYTE entrance);
 	CScriptArray* GM_CreateGroupArray(GlobalMapGroup* group);
 
 	// Locations

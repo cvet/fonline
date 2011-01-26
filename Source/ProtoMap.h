@@ -206,14 +206,15 @@ public:
 		DWORD NameHash;
 		WORD HexX,HexY;
 		char OffsX,OffsY;
+		BYTE Layer;
 		bool IsRoof;
 #ifdef FONLINE_MAPPER
 		bool IsSelected;
 #endif
 
 		Tile(){}
-		Tile(DWORD name, WORD hx, WORD hy, char ox, char oy, bool is_roof):
-			NameHash(name),HexX(hx),HexY(hy),OffsX(ox),OffsY(oy),IsRoof(is_roof){}
+		Tile(DWORD name, WORD hx, WORD hy, char ox, char oy, BYTE layer, bool is_roof):
+			NameHash(name),HexX(hx),HexY(hy),OffsX(ox),OffsY(oy),Layer(layer),IsRoof(is_roof){}
 	};
 	typedef vector<Tile> TileVec;
 	TileVec Tiles;

@@ -210,6 +210,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	int ListScroll;
 	MapObject* InContObject;
 	bool DrawRoof;
+	int TileLayer;
 
 	bool IsObjectMode(){return (IntMode==INT_MODE_ARMOR || IntMode==INT_MODE_DRUG ||
 		IntMode==INT_MODE_WEAPON || IntMode==INT_MODE_AMMO || IntMode==INT_MODE_MISC ||
@@ -280,7 +281,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	int DefaultCritterParam[MAPOBJ_CRITTER_PARAMS];
 
 	void ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont);
-	void ParseTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, bool is_roof);
+	void ParseTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof);
 	void ParseNpc(WORD pid, WORD hx, WORD hy);
 	MapObject* ParseMapObj(MapObject* mobj);
 
@@ -290,6 +291,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 		DWORD NameHash;
 		WORD HexX,HexY;
 		short OffsX,OffsY;
+		BYTE Layer;
 		bool IsRoof;
 	};
 	typedef vector<TileBuf> TileBufVec;
@@ -394,9 +396,9 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static DWORD MapperMap_GetTilesCount(ProtoMap& pmap, WORD hx, WORD hy, bool roof);
 		static void MapperMap_DeleteTile(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index);
 		static DWORD MapperMap_GetTileHash(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index);
-		static void MapperMap_AddTileHash(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, bool roof, DWORD pic_hash);
+		static void MapperMap_AddTileHash(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, int layer, bool roof, DWORD pic_hash);
 		static CScriptString* MapperMap_GetTileName(ProtoMap& pmap, WORD hx, WORD hy, bool roof, DWORD index);
-		static void MapperMap_AddTileName(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, bool roof, CScriptString* pic_name);
+		static void MapperMap_AddTileName(ProtoMap& pmap, WORD hx, WORD hy, int ox, int oy, int layer, bool roof, CScriptString* pic_name);
 		static DWORD MapperMap_GetDayTime(ProtoMap& pmap, DWORD day_part);
 		static void MapperMap_SetDayTime(ProtoMap& pmap, DWORD day_part, DWORD time);
 		static void MapperMap_GetDayColor(ProtoMap& pmap, DWORD day_part, BYTE& r, BYTE& g, BYTE& b);

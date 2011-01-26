@@ -611,7 +611,9 @@
 	if(engine->RegisterObjectMethod("Critter","bool EventStealing(Critter& thief, Item& item, uint count)",asFUNCTION(BIND_CLASS Crit_EventStealing),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventMessage(Critter& fromCr, int message, int value)",asFUNCTION(BIND_CLASS Crit_EventMessage),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventUseItem(Item& item, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)",asFUNCTION(BIND_CLASS Crit_EventUseItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool EventUseItemOnMe(Critter& whoUse, Item& item)",asFUNCTION(BIND_CLASS Crit_EventUseItemOnMe),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventUseSkill(int skill, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)",asFUNCTION(BIND_CLASS Crit_EventUseSkill),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool EventUseSkillOnMe(Critter& whoUse, int skill)",asFUNCTION(BIND_CLASS Crit_EventUseSkillOnMe),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventDropItem(Item& item)",asFUNCTION(BIND_CLASS Crit_EventDropItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventMoveItem(Item& item, uint8 fromSlot)",asFUNCTION(BIND_CLASS Crit_EventMoveItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventKnockout(uint breaktime, bool faceUp, uint knockDist)",asFUNCTION(BIND_CLASS Crit_EventKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -1000,6 +1002,8 @@
 	if(engine->RegisterObjectProperty("ItemCl","const uint HolodiskNumber",offsetof(Item,Data.Holodisk.Number))<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalFunction("CritterCl@+ GetChosen()",asFUNCTION(BIND_CLASS Global_GetChosen),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetChosenActions(uint[]@+ actions)",asFUNCTION(BIND_CLASS Global_GetChosenActions),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void SetChosenActions(uint[]@+ actions)",asFUNCTION(BIND_CLASS Global_SetChosenActions),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("ItemCl@+ GetItem(uint itemId)",asFUNCTION(BIND_CLASS Global_GetItem),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetCrittersDistantion(CritterCl& cr1, CritterCl& cr2)",asFUNCTION(BIND_CLASS Global_GetCrittersDistantion),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("CritterCl@+ GetCritter(uint critterId)",asFUNCTION(BIND_CLASS Global_GetCritter),asCALL_CDECL)<0) BIND_ERROR;
@@ -1370,9 +1374,9 @@
 	if(engine->RegisterObjectMethod("MapperMap","uint GetTilesCount(uint16 hexX, uint16 hexY, bool roof) const",asFUNCTION(BIND_CLASS MapperMap_GetTilesCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void DeleteTile(uint16 hexX, uint16 hexY, bool roof, uint index)",asFUNCTION(BIND_CLASS MapperMap_DeleteTile),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","uint GetTile(uint16 hexX, uint16 hexY, bool roof, uint index) const",asFUNCTION(BIND_CLASS MapperMap_GetTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, bool roof, uint picHash)",asFUNCTION(BIND_CLASS MapperMap_AddTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, uint picHash)",asFUNCTION(BIND_CLASS MapperMap_AddTileHash),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","string@ GetTileName(uint16 hexX, uint16 hexY, bool roof, uint index) const",asFUNCTION(BIND_CLASS MapperMap_GetTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperMap","void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, bool roof, string@+ picName)",asFUNCTION(BIND_CLASS MapperMap_AddTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperMap","void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, string@+ picName)",asFUNCTION(BIND_CLASS MapperMap_AddTileName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","uint GetDayTime(uint dayPart) const",asFUNCTION(BIND_CLASS MapperMap_GetDayTime),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void SetDayTime(uint dayPart, uint time)",asFUNCTION(BIND_CLASS MapperMap_SetDayTime),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperMap","void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b) const",asFUNCTION(BIND_CLASS MapperMap_GetDayColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

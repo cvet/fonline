@@ -771,7 +771,9 @@ struct BindClass
 	static void Crit_EventStealing(){}
 	static void Crit_EventMessage(){}
 	static void Crit_EventUseItem(){}
+	static void Crit_EventUseItemOnMe(){}
 	static void Crit_EventUseSkill(){}
+	static void Crit_EventUseSkillOnMe(){}
 	static void Crit_EventDropItem(){}
 	static void Crit_EventMoveItem(){}
 	static void Crit_EventKnockout(){}
@@ -999,6 +1001,8 @@ struct BindClass
 	static void Item_CarGetBag(){}
 
 	static void Global_GetChosen(){}
+	static void Global_GetChosenActions(){}
+	static void Global_SetChosenActions(){}
 	static void Global_GetItem(){}
 	static void Global_GetCrittersDistantion(){}
 	static void Global_GetCritter(){}

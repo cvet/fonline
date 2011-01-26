@@ -567,6 +567,9 @@ struct GameOptions
 	DWORD (*GetSpriteColor)(DWORD,int,int,bool);
 	bool (*IsSpriteHit)(void*,int,int,bool);
 
+	const char* (*GetNameByHash)(DWORD);
+	DWORD (*GetHashByName)(const char*);
+
 	// Callbacks
 	DWORD (*GetUseApCost)(void*,void*,BYTE);
 	DWORD (*GetAttackDistantion)(void*,void*,BYTE);

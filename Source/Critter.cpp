@@ -28,7 +28,9 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 	{"void %s(Critter&,Critter&,bool,Item&,uint)"}, // CRITTER_EVENT_STEALING
 	{"void %s(Critter&,Critter&,int,int)"}, // CRITTER_EVENT_MESSAGE
 	{"bool %s(Critter&,Item&,Critter@,Item@,Scenery@)"}, // CRITTER_EVENT_USE_ITEM
+	{"bool %s(Critter&,Critter&,Item&)"}, // CRITTER_EVENT_USE_ITEM_ON_ME
 	{"bool %s(Critter&,int,Critter@,Item@,Scenery@)"}, // CRITTER_EVENT_USE_SKILL
+	{"bool %s(Critter&,Critter&,int)"}, // CRITTER_EVENT_USE_SKILL_ON_ME
 	{"void %s(Critter&,Item&)"}, // CRITTER_EVENT_DROP_ITEM
 	{"void %s(Critter&,Item&,uint8)"}, // CRITTER_EVENT_MOVE_ITEM
 	{"void %s(Critter&,bool,uint,uint)"}, // CRITTER_EVENT_KNOCKOUT
@@ -1756,6 +1758,19 @@ bool Critter::EventUseItem(Item* item, Critter* on_critter, Item* on_item, MapOb
 	return result;
 }
 
+bool Critter::EventUseItemOnMe(Critter* who_use, Item* item)
+{
+	bool result=false;
+	if(PrepareScriptFunc(CRITTER_EVENT_USE_ITEM_ON_ME))
+	{
+		Script::SetArgObject(this);
+		Script::SetArgObject(who_use);
+		Script::SetArgObject(item);
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
+	}
+	return result;
+}
+
 bool Critter::EventUseSkill(int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery)
 {
 	bool result=false;
@@ -1777,6 +1792,19 @@ bool Critter::EventUseSkill(int skill, Critter* on_critter, Item* on_item, MapOb
 		if(cr->FuncId[CRITTER_EVENT_SMTH_USE_SKILL]>0) cr->EventSmthUseSkill(this,skill,on_critter,on_item,on_scenery);
 	}
 
+	return result;
+}
+
+bool Critter::EventUseSkillOnMe(Critter* who_use, int skill)
+{
+	bool result=false;
+	if(PrepareScriptFunc(CRITTER_EVENT_USE_SKILL_ON_ME))
+	{
+		Script::SetArgObject(this);
+		Script::SetArgObject(who_use);
+		Script::SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
+		if(Script::RunPrepared()) result=Script::GetReturnedBool();
+	}
 	return result;
 }
 

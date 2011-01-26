@@ -407,7 +407,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 // Coordinates
 #define MAXHEX_DEF              (200)
 #define MAXHEX_MIN              (10)
-#define MAXHEX_MAX              (20000)
+#define MAXHEX_MAX              (10000)
 
 // Client parameters
 #define MAX_NAME				(30)

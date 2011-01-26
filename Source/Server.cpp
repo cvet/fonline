@@ -3307,9 +3307,9 @@ bool FOServer::Init()
 	// Check the sizes of struct and classes
 	STATIC_ASSERT(offsetof(Item,IsNotValid)==118);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
-	STATIC_ASSERT(offsetof(Critter,RefCounter)==9308);
-	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9376);
-	STATIC_ASSERT(offsetof(Npc,Reserved)==9332);
+	STATIC_ASSERT(offsetof(Critter,RefCounter)==9316);
+	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9384);
+	STATIC_ASSERT(offsetof(Npc,Reserved)==9340);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
 	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);
@@ -3344,7 +3344,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1144);
+	STATIC_ASSERT(sizeof(GameOptions)==1152);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 

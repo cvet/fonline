@@ -2701,12 +2701,26 @@ bool FOServer::SScriptFunc::Crit_EventUseItem(Critter* cr, Item* item, Critter* 
 	return cr->EventUseItem(item,on_critter,on_item,on_scenery);
 }
 
+bool FOServer::SScriptFunc::Crit_EventUseItemOnMe(Critter* cr, Critter* who_use, Item* item)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(who_use->IsNotValid) SCRIPT_ERROR_R0("Who use critter arg nullptr.");
+	return cr->EventUseItemOnMe(who_use,item);
+}
+
 bool FOServer::SScriptFunc::Crit_EventUseSkill(Critter* cr, int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(on_critter && on_critter->IsNotValid) SCRIPT_ERROR_R0("On critter arg nullptr.");
 	if(on_item && on_item->IsNotValid) SCRIPT_ERROR_R0("On item arg nullptr.");
 	return cr->EventUseSkill(skill,on_critter,on_item,on_scenery);
+}
+
+bool FOServer::SScriptFunc::Crit_EventUseSkillOnMe(Critter* cr, Critter* who_use, int skill)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(who_use->IsNotValid) SCRIPT_ERROR_R0("Who use critter arg nullptr.");
+	return cr->EventUseSkillOnMe(who_use,skill);
 }
 
 void FOServer::SScriptFunc::Crit_EventDropItem(Critter* cr, Item* item)

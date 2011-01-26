@@ -111,7 +111,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==92);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
-	STATIC_ASSERT(sizeof(GameOptions)==1144);
+	STATIC_ASSERT(sizeof(GameOptions)==1152);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -172,6 +172,11 @@ bool FOClient::Init(HWND hwnd)
 		}
 	};
 	GameOpt.IsSpriteHit=&IsSpriteHit_::IsSpriteHit;
+
+	struct GetNameByHash_{static const char* GetNameByHash(DWORD hash){return ResMngr.GetName(hash);}};
+	GameOpt.GetNameByHash=&GetNameByHash_::GetNameByHash;
+	struct GetHashByName_{static DWORD GetHashByName(const char* name){return Str::GetHash(name);}};
+	GameOpt.GetHashByName=&GetHashByName_::GetHashByName;
 
 	// Input
 	Keyb::InitKeyb();
@@ -7410,10 +7415,10 @@ void FOClient::CrittersProcess()
 		{
 			WORD hx=act.Param[0];
 			WORD hy=act.Param[1];
-			bool is_run=(act.Param[2]&0xFF)!=0;
-			bool wait_click=(act.Param[2]>>8)!=0;
+			bool is_run=act.Param[2]!=0;
 			int cut=act.Param[3];
-			DWORD start_tick=act.Param[4];
+			bool wait_click=act.Param[4]!=0;
+			DWORD start_tick=act.Param[5];
 
 			if(!HexMngr.IsMapLoaded()) break;
 
@@ -9654,6 +9659,51 @@ CritterCl* FOClient::SScriptFunc::Global_GetChosen()
 	return Self->Chosen;
 }
 
+DWORD FOClient::SScriptFunc::Global_GetChosenActions(CScriptArray* actions)
+{
+	if(actions) actions->Resize(0);
+
+	if(Self->Chosen)
+	{
+		actions->Resize(Self->ChosenAction.size()*7);
+		for(size_t i=0,j=Self->ChosenAction.size();i<j;i++)
+		{
+			ActionEvent& act=Self->ChosenAction[i];
+			*(DWORD*)actions->At(i*7+0)=act.Type;
+			*(DWORD*)actions->At(i*7+1)=act.Param[0];
+			*(DWORD*)actions->At(i*7+2)=act.Param[1];
+			*(DWORD*)actions->At(i*7+3)=act.Param[2];
+			*(DWORD*)actions->At(i*7+4)=act.Param[3];
+			*(DWORD*)actions->At(i*7+5)=act.Param[4];
+			*(DWORD*)actions->At(i*7+6)=act.Param[5];
+		}
+		return Self->ChosenAction.size();
+	}
+	return 0;
+}
+
+void FOClient::SScriptFunc::Global_SetChosenActions(CScriptArray* actions)
+{
+	if(actions && actions->GetSize()%7) SCRIPT_ERROR_R("Wrong action array size.");
+	Self->ChosenAction.clear();
+
+	if(Self->Chosen && actions)
+	{
+		Self->ChosenAction.resize(actions->GetSize()/7);
+		for(size_t i=0,j=actions->GetSize()/7;i<j;i++)
+		{
+			ActionEvent& act=Self->ChosenAction[i];
+			act.Type=*(DWORD*)actions->At(i*7+0);
+			act.Param[0]=*(DWORD*)actions->At(i*7+1);
+			act.Param[1]=*(DWORD*)actions->At(i*7+2);
+			act.Param[2]=*(DWORD*)actions->At(i*7+3);
+			act.Param[3]=*(DWORD*)actions->At(i*7+4);
+			act.Param[4]=*(DWORD*)actions->At(i*7+5);
+			act.Param[5]=*(DWORD*)actions->At(i*7+6);
+		}
+	}
+}
+
 Item* FOClient::SScriptFunc::Global_GetItem(DWORD item_id)
 {
 	if(!item_id) SCRIPT_ERROR_R0("Item id arg is zero.");
@@ -10602,7 +10652,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 
 	Field& f=Self->HexMngr.GetField(hx,hy);
 	Sprites& tree=Self->HexMngr.GetDrawTree();
-	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT+3:DRAW_ORDER_FLAT+1):(is_item?DRAW_ORDER+2:DRAW_ORDER+1),
+	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT_ITEM:DRAW_ORDER_FLAT_SCENERY):(is_item?DRAW_ORDER_ITEM:DRAW_ORDER_SCENERY),
 		hx,hy+(proto_item?proto_item->DrawOrderOffsetHexY:0),0,
 		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
 	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());

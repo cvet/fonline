@@ -291,6 +291,7 @@ public:
 		DWORD Type;
 		DWORD Param[6];
 		bool operator==(const ActionEvent& r){return Type==r.Type && Param[0]==r.Param[0] && Param[1]==r.Param[1] && Param[2]==r.Param[2] && Param[3]==r.Param[3] && Param[4]==r.Param[4] && Param[4]==r.Param[5];}
+		ActionEvent(){}
 		ActionEvent(DWORD type, DWORD param0, DWORD param1, DWORD param2, DWORD param3, DWORD param4, DWORD param5):
 			Type(type){Param[0]=param0;Param[1]=param1;Param[2]=param2;Param[3]=param3;Param[4]=param4;Param[5]=param5;}
 		ActionEvent(const ActionEvent& r){memcpy(this,&r,sizeof(ActionEvent));}
@@ -468,6 +469,8 @@ public:
 		static Item* Item_CarGetBag(Item* item, int num_bag);
 
 		static CritterCl* Global_GetChosen();
+		static DWORD Global_GetChosenActions(CScriptArray* actions);
+		static void Global_SetChosenActions(CScriptArray* actions);
 		static Item* Global_GetItem(DWORD item_id);
 		static DWORD Global_GetCrittersDistantion(CritterCl* cr1, CritterCl* cr2);
 		static CritterCl* Global_GetCritter(DWORD critter_id);
@@ -1738,22 +1741,22 @@ public:
 #define LMENU_NODE_VOTE_DOWN    (21)
 
 // Chosen actions
-#define CHOSEN_NONE               (0)
-#define CHOSEN_MOVE               (1)  // XXXX, YYYY, (Wait double click >> 8, Move type 0xFF), Cut path, Double click tick
-#define CHOSEN_MOVE_TO_CRIT       (2)  // Crit Id, -, Move type, Cut path
-#define CHOSEN_DIR                (3)  // CW - 0, CCW - 1
+#define CHOSEN_NONE               (0)  //
+#define CHOSEN_MOVE               (1)  // HexX, HexY, Is run, Cut path, Wait double click, Double click tick
+#define CHOSEN_MOVE_TO_CRIT       (2)  // Critter id, None, Is run, Cut path, Wait double click, Double click tick
+#define CHOSEN_DIR                (3)  // 0 (CW) or 1 (CCW)
 #define CHOSEN_SHOW_ITEM          (4)  // Item id
 #define CHOSEN_HIDE_ITEM          (5)  // Item id
-#define CHOSEN_USE_ITEM           (6)  // Item id, Item pid, Target type, Target id, Rate item, Some param
+#define CHOSEN_USE_ITEM           (6)  // Item id, Item pid, Target type, Target id, Item mode, Some param (timer)
 #define CHOSEN_MOVE_ITEM          (7)  // Item id, Item count, To slot
-#define CHOSEN_MOVE_ITEM_CONT     (8)  // From cont, Item id, Count
-#define CHOSEN_TAKE_ALL           (9)
-#define CHOSEN_USE_SKL_ON_CRITTER (10) // Skill, Crit id
-#define CHOSEN_USE_SKL_ON_ITEM    (11) // IsInventory, Skill, Id
-#define CHOSEN_USE_SKL_ON_SCEN    (12) // Skill, Pid, XXXX, YYYY
-#define CHOSEN_TALK_NPC           (13) // Crit id
+#define CHOSEN_MOVE_ITEM_CONT     (8)  // From container, Item id, Count
+#define CHOSEN_TAKE_ALL           (9)  //
+#define CHOSEN_USE_SKL_ON_CRITTER (10) // Skill, Critter id
+#define CHOSEN_USE_SKL_ON_ITEM    (11) // Is inventory, Skill index, Item id
+#define CHOSEN_USE_SKL_ON_SCEN    (12) // Skill, Pid, HexX, HexY
+#define CHOSEN_TALK_NPC           (13) // Critter id
 #define CHOSEN_PICK_ITEM          (14) // Pid, HexX, HexY
-#define CHOSEN_PICK_CRIT          (15) // Crit id, (loot - 0, push - 1)
+#define CHOSEN_PICK_CRIT          (15) // Critter id, (loot - 0, push - 1)
 #define CHOSEN_WRITE_HOLO         (16) // Holodisk id
 
 // Proxy types

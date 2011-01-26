@@ -1060,6 +1060,9 @@ GameOptions::GameOptions()
 	GetSpriteColor=NULL;
 	IsSpriteHit=NULL;
 
+	GetNameByHash=NULL;
+	GetHashByName=NULL;
+
 	// Callbacks
 	GetUseApCost=NULL;
 	GetAttackDistantion=NULL;

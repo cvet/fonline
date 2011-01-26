@@ -91,7 +91,7 @@ void Field::ProcessCache()
 	}
 }
 
-void Field::AddTile(AnyFrames* anim, short ox, short oy, bool is_roof)
+void Field::AddTile(AnyFrames* anim, short ox, short oy, BYTE layer, bool is_roof)
 {
 	if(is_roof) Roofs.push_back(Tile());
 	else Tiles.push_back(Tile());
@@ -99,6 +99,7 @@ void Field::AddTile(AnyFrames* anim, short ox, short oy, bool is_roof)
 	tile.Anim=anim;
 	tile.OffsX=ox;
 	tile.OffsY=oy;
+	tile.Layer=layer;
 }
 
 /************************************************************************/
@@ -344,7 +345,7 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 		// Draw
 		if(GetHexToDraw(hx,hy) && !item->IsHidden() && !item->IsFullyTransparent())
 		{
-			Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_ITEM(item),hx,hy+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
+			Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item),hx,hy+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 				f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 			if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) spr.SetLight(hexLight,maxHexX,maxHexY);
 			item->SetSprite(&spr);
@@ -449,7 +450,7 @@ void HexManager::ProcessItems()
 				item->HexScrY=&f_.ScrY;
 				if(GetHexToDraw(step.first,step.second))
 				{
-					item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),step.first,step.second+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
+					item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item),step.first,step.second+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 						f_.ScrX+HEX_OX,f_.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 					if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) item->SprDraw->SetLight(hexLight,maxHexX,maxHexY);
 				}
@@ -596,7 +597,7 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 
 	if(GetHexToDraw(from_hx,from_hy))
 	{
-		item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM(item),from_hx,from_hy+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
+		item->SprDraw=&mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item),from_hx,from_hy+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 		if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) item->SprDraw->SetLight(hexLight,maxHexX,maxHexY);
 	}
@@ -784,7 +785,7 @@ void HexManager::RebuildMap(int rx, int ry)
 			{
 				DWORD spr_id=(GetHexTrack(nx,ny)==1?picTrack1->GetCurSprId():picTrack2->GetCurSprId());
 				if(IsVisible(spr_id,f.ScrX+17,f.ScrY+14))
-					mainTree.AddSprite(DRAW_ORDER_FLAT+4,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
+					mainTree.AddSprite(DRAW_ORDER_TRACK,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Hex Lines
@@ -805,7 +806,7 @@ void HexManager::RebuildMap(int rx, int ry)
 				DWORD spr_id=(thru?hexBlue->GetCurSprId():hexWhite->GetCurSprId());
 				//DWORD spr_id=(f.ScrollBlock?hexBlue->GetCurSprId():hexWhite->GetCurSprId());
 				//if(IsVisible(spr_id,f.ScrX+HEX_OX,f.ScrY+HEX_OY))
-					mainTree.AddSprite(DRAW_ORDER_FLAT,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,spr_id,NULL,NULL,NULL,NULL,NULL);
+					mainTree.AddSprite(DRAW_ORDER_HEX_GRID,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Rain
@@ -823,7 +824,7 @@ void HexManager::RebuildMap(int rx, int ry)
 						Drop* new_drop=new Drop(picRainDrop->GetCurSprId(),Random(-10,10),-Random(0,200),0);
 						rainData.push_back(new_drop);
 
-						mainTree.AddSprite(DRAW_ORDER+4,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
+						mainTree.AddSprite(DRAW_ORDER_RAIN,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
 							&new_drop->OffsX,&new_drop->OffsY,NULL,NULL).SetLight(hexLight,maxHexX,maxHexY);
 					}
 					else if(!roofSkip || roofSkip!=GetField(rofx,rofy).RoofNum)
@@ -831,7 +832,7 @@ void HexManager::RebuildMap(int rx, int ry)
 						Drop* new_drop=new Drop(picRainDrop->GetCurSprId(),Random(-10,10),-100-Random(0,100),-100);
 						rainData.push_back(new_drop);
 
-						roofRainTree.AddSprite(DRAW_ORDER+4,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
+						roofRainTree.AddSprite(DRAW_ORDER_RAIN,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&new_drop->CurSprId,
 							&new_drop->OffsX,&new_drop->OffsY,NULL,NULL).SetLight(hexLight,maxHexX,maxHexY);;
 					}
 				}
@@ -858,7 +859,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					if(ignorePids.count(item->GetProtoId())) continue;
 #endif
 
-					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_ITEM(item),nx,ny+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
+					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_ITEM_AUTO(item),nx,ny+item->Proto->DrawOrderOffsetHexY,item->SpriteCut,
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&item->SprId,&item->ScrX,&item->ScrY,&item->Alpha,&item->SprDrawValid);
 					if(!item->IsNoLightInfluence() && !(item->IsFlat() && item->IsScenOrGrid())) spr.SetLight(hexLight,maxHexX,maxHexY);
 					item->SetSprite(&spr);
@@ -869,7 +870,7 @@ void HexManager::RebuildMap(int rx, int ry)
 			CritterCl* cr=f.Crit;
 			if(cr && GameOpt.ShowCrit && cr->Visible)
 			{
-				Sprite& spr=mainTree.AddSprite(DRAW_ORDER_CRIT(cr),nx,ny,0,
+				Sprite& spr=mainTree.AddSprite(DRAW_ORDER_CRIT_AUTO(cr),nx,ny,0,
 					f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,
 					&cr->Alpha,&cr->SprDrawValid);
 				spr.SetLight(hexLight,maxHexX,maxHexY);
@@ -891,7 +892,7 @@ void HexManager::RebuildMap(int rx, int ry)
 					CritterCl* cr=*it;
 					if(!cr->Visible) continue;
 
-					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_CRIT(cr),nx,ny,0,
+					Sprite& spr=mainTree.AddSprite(DRAW_ORDER_CRIT_AUTO(cr),nx,ny,0,
 						f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,
 						&cr->Alpha,&cr->SprDrawValid);
 					spr.SetLight(hexLight,maxHexX,maxHexY);
@@ -1388,10 +1389,10 @@ void HexManager::RebuildTiles()
 #ifdef FONLINE_MAPPER
 				{
 					ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-					tilesTree.AddSprite(0,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,tiles[i].IsSelected?(BYTE*)&SELECT_ALPHA:NULL,NULL);
+					tilesTree.AddSprite(DRAW_ORDER_TILE+tile.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,tiles[i].IsSelected?(BYTE*)&SELECT_ALPHA:NULL,NULL);
 				}
 #else
-					tilesTree.AddSprite(0,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,NULL,NULL);
+					tilesTree.AddSprite(DRAW_ORDER_TILE+tile.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,NULL,NULL);
 #endif
 			}
 		}
@@ -1438,10 +1439,10 @@ void HexManager::RebuildRoof()
 #ifdef FONLINE_MAPPER
 					{
 						ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-						roofTree.AddSprite(0,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:NULL,NULL).SetEgg(EGG_ALWAYS);
+						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:NULL,NULL).SetEgg(EGG_ALWAYS);
 					}
 #else
-						roofTree.AddSprite(0,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
+						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
 #endif
 				}
 			}
@@ -1746,7 +1747,7 @@ void HexManager::DrawMap()
 
 	// Flat sprites
 	SprMngr.SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-	SprMngr.DrawSprites(mainTree,true,false,DRAW_ORDER_FLAT,DRAW_ORDER_FLAT+1);
+	SprMngr.DrawSprites(mainTree,true,false,DRAW_ORDER_FLAT,DRAW_ORDER_LIGHT-1);
 
 	// Light
 	for(int i=0;i<lightPointsCount;i++) SprMngr.DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&GameOpt.SpritesZoom);
@@ -1757,7 +1758,7 @@ void HexManager::DrawMap()
 
 	// Sprites
 	SprMngr.SetCurEffect2D(DEFAULT_EFFECT_GENERIC);
-	SprMngr.DrawSprites(mainTree,true,true,DRAW_ORDER_FLAT+2,DRAW_ORDER+4);
+	SprMngr.DrawSprites(mainTree,true,true,DRAW_ORDER_LIGHT,DRAW_ORDER_LAST);
 
 	// Roof
 	if(GameOpt.ShowRoof)
@@ -2050,7 +2051,7 @@ void HexManager::SetCrit(CritterCl* cr)
 
 	if(GetHexToDraw(hx,hy) && cr->Visible)
 	{
-		Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_CRIT(cr),hx,hy,0,
+		Sprite& spr=mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr),hx,hy,0,
 			f.ScrX+HEX_OX,f.ScrY+HEX_OY,0,&cr->SprId,&cr->SprOx,&cr->SprOy,&cr->Alpha,&cr->SprDrawValid);
 		spr.SetLight(hexLight,maxHexX,maxHexY);
 		cr->SprDraw=&spr;
@@ -2895,9 +2896,9 @@ bool HexManager::LoadMap(WORD map_pid)
 		if(anim)
 		{
 			if(!tile.IsRoof)
-				f.AddTile(anim,tile.OffsX,tile.OffsY,false);
+				f.AddTile(anim,tile.OffsX,tile.OffsY,tile.Layer,false);
 			else
-				f.AddTile(anim,tile.OffsX,tile.OffsY,true);
+				f.AddTile(anim,tile.OffsX,tile.OffsY,tile.Layer,true);
 
 			CheckTilesBorder(tile.IsRoof?f.Roofs.back():f.Tiles.back(),tile.IsRoof);
 		}
@@ -3341,6 +3342,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 						ftile.Anim=anim;
 						ftile.OffsX=tile.OffsX;
 						ftile.OffsY=tile.OffsY;
+						ftile.Layer=tile.Layer;
 
 						if(!tile.IsRoof)
 							f.Tiles.push_back(ftile);
@@ -3526,7 +3528,7 @@ void HexManager::ParseSelTiles()
 	}
 }
 
-void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, bool is_roof, bool select)
+void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof, bool select)
 {
 	Field& f=GetField(hx,hy);
 
@@ -3535,16 +3537,16 @@ void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, 
 
 	if(is_roof)
 	{
-		f.AddTile(anim,0,0,true);
+		f.AddTile(anim,0,0,layer,true);
 		ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-		roofs.push_back(ProtoMap::Tile(name_hash,hx,hy,ox,oy,true));
+		roofs.push_back(ProtoMap::Tile(name_hash,hx,hy,ox,oy,layer,true));
 		roofs.back().IsSelected=select;
 	}
 	else
 	{
-		f.AddTile(anim,0,0,false);
+		f.AddTile(anim,0,0,layer,false);
 		ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-		tiles.push_back(ProtoMap::Tile(name_hash,hx,hy,ox,oy,false));
+		tiles.push_back(ProtoMap::Tile(name_hash,hx,hy,ox,oy,layer,false));
 		tiles.back().IsSelected=select;
 	}
 

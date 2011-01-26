@@ -32,29 +32,31 @@
 #define CRITTER_EVENT_STEALING                (17)
 #define CRITTER_EVENT_MESSAGE                 (18)
 #define CRITTER_EVENT_USE_ITEM                (19)
-#define CRITTER_EVENT_USE_SKILL               (20)
-#define CRITTER_EVENT_DROP_ITEM               (21)
-#define CRITTER_EVENT_MOVE_ITEM               (22)
-#define CRITTER_EVENT_KNOCKOUT                (23)
-#define CRITTER_EVENT_SMTH_DEAD               (24)
-#define CRITTER_EVENT_SMTH_STEALING           (25)
-#define CRITTER_EVENT_SMTH_ATTACK             (26)
-#define CRITTER_EVENT_SMTH_ATTACKED           (27)
-#define CRITTER_EVENT_SMTH_USE_ITEM           (28)
-#define CRITTER_EVENT_SMTH_USE_SKILL          (29)
-#define CRITTER_EVENT_SMTH_DROP_ITEM          (30)
-#define CRITTER_EVENT_SMTH_MOVE_ITEM          (31)
-#define CRITTER_EVENT_SMTH_KNOCKOUT           (32)
-#define CRITTER_EVENT_PLANE_BEGIN             (33)
-#define CRITTER_EVENT_PLANE_END               (34)
-#define CRITTER_EVENT_PLANE_RUN               (35)
-#define CRITTER_EVENT_BARTER                  (36)
-#define CRITTER_EVENT_TALK                    (37)
-#define CRITTER_EVENT_GLOBAL_PROCESS          (38)
-#define CRITTER_EVENT_GLOBAL_INVITE           (39)
-#define CRITTER_EVENT_TURN_BASED_PROCESS      (40)
-#define CRITTER_EVENT_SMTH_TURN_BASED_PROCESS (41)
-#define CRITTER_EVENT_MAX                     (42)
+#define CRITTER_EVENT_USE_ITEM_ON_ME          (20)
+#define CRITTER_EVENT_USE_SKILL               (21)
+#define CRITTER_EVENT_USE_SKILL_ON_ME         (22)
+#define CRITTER_EVENT_DROP_ITEM               (23)
+#define CRITTER_EVENT_MOVE_ITEM               (24)
+#define CRITTER_EVENT_KNOCKOUT                (25)
+#define CRITTER_EVENT_SMTH_DEAD               (26)
+#define CRITTER_EVENT_SMTH_STEALING           (27)
+#define CRITTER_EVENT_SMTH_ATTACK             (28)
+#define CRITTER_EVENT_SMTH_ATTACKED           (29)
+#define CRITTER_EVENT_SMTH_USE_ITEM           (30)
+#define CRITTER_EVENT_SMTH_USE_SKILL          (31)
+#define CRITTER_EVENT_SMTH_DROP_ITEM          (32)
+#define CRITTER_EVENT_SMTH_MOVE_ITEM          (33)
+#define CRITTER_EVENT_SMTH_KNOCKOUT           (34)
+#define CRITTER_EVENT_PLANE_BEGIN             (35)
+#define CRITTER_EVENT_PLANE_END               (36)
+#define CRITTER_EVENT_PLANE_RUN               (37)
+#define CRITTER_EVENT_BARTER                  (38)
+#define CRITTER_EVENT_TALK                    (39)
+#define CRITTER_EVENT_GLOBAL_PROCESS          (40)
+#define CRITTER_EVENT_GLOBAL_INVITE           (41)
+#define CRITTER_EVENT_TURN_BASED_PROCESS      (42)
+#define CRITTER_EVENT_SMTH_TURN_BASED_PROCESS (43)
+#define CRITTER_EVENT_MAX                     (44)
 extern const char* CritterEventFuncName[CRITTER_EVENT_MAX];
 
 #define PLANE_RUN_GLOBAL                      (0)
@@ -250,7 +252,9 @@ public:
 	bool EventStealing(Critter* thief, Item* item, DWORD count);
 	void EventMessage(Critter* from_cr, int num, int val);
 	bool EventUseItem(Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery);
+	bool EventUseItemOnMe(Critter* who_use, Item* item);
 	bool EventUseSkill(int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery);
+	bool EventUseSkillOnMe(Critter* who_use, int skill);
 	void EventDropItem(Item* item);
 	void EventMoveItem(Item* item, BYTE from_slot);
 	void EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist);

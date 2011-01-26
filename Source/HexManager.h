@@ -29,8 +29,8 @@ typedef vector<Terrain*>::iterator TerrainVecIt;
 #define TILE_OY     (32)
 #define ROOF_OX     (-8)
 #define ROOF_OY     (32-98)
-#define MAX_MOVE_OX (100)
-#define MAX_MOVE_OY (100)
+#define MAX_MOVE_OX (99)
+#define MAX_MOVE_OY (99)
 
 /************************************************************************/
 /* ViewField                                                            */
@@ -74,6 +74,7 @@ struct Field
 		AnyFrames* Anim;
 		short OffsX;
 		short OffsY;
+		BYTE Layer;
 	};
 	typedef vector<Tile> TileVec;
 
@@ -102,7 +103,7 @@ struct Field
 	void AddItem(ItemHex* item);
 	void EraseItem(ItemHex* item);
 	void ProcessCache();
-	void AddTile(AnyFrames* anim, short ox, short oy, bool is_roof);
+	void AddTile(AnyFrames* anim, short ox, short oy, BYTE layer, bool is_roof);
 	Field(){Clear();}
 };
 
@@ -385,7 +386,7 @@ public:
 public:
 	void ClearSelTiles();
 	void ParseSelTiles();
-	void SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, bool is_roof, bool select);
+	void SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof, bool select);
 	//void SetTerrain(WORD hx, WORD hy, DWORD name_hash);
 	//void RebuildTerrain();
 

@@ -932,6 +932,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		if(target_item && target_item->EventUseOnMe(cr,item)) return true;
 		if(item->EventUse(cr,target_cr,target_item,target_scen)) return true;
 		if(cr->EventUseItem(item,target_cr,target_item,target_scen)) return true;
+		if(target_cr && target_cr->EventUseItemOnMe(cr,item)) return true;
 		if(Script::PrepareContext(ServerFunctions.CritterUseItem,CALL_FUNC_STR,cr->GetInfo()))
 		{
 			Script::SetArgObject(cr);
@@ -959,6 +960,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	{
 		if(target_item && target_item->EventSkill(cr,skill)) return true;
 		if(cr->EventUseSkill(skill,target_cr,target_item,target_scen)) return true;
+		if(target_cr && target_cr->EventUseSkillOnMe(cr,skill)) return true;
 		if(!Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo())) return false;
 		Script::SetArgObject(cr);
 		Script::SetArgDword(SKILL_OFFSET(skill));
@@ -2815,6 +2817,7 @@ void FOServer::Process_PickCritter(Client* cl)
 
 		// Script events
 		if(cl->EventUseSkill(SKILL_LOOT_CRITTER,cr,NULL,NULL)) return;
+		if(cr->EventUseSkillOnMe(cl,SKILL_LOOT_CRITTER)) return;
 		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
@@ -2840,6 +2843,7 @@ void FOServer::Process_PickCritter(Client* cl)
 
 		// Script events
 		if(cl->EventUseSkill(SKILL_PUSH_CRITTER,cr,NULL,NULL)) return;
+		if(cr->EventUseSkillOnMe(cl,SKILL_PUSH_CRITTER)) return;
 		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
@@ -3342,6 +3346,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Script events
 				if(cl->EventUseSkill(SKILL_TAKE_ALL_CONT,cr,NULL,NULL)) return;
+				if(cr->EventUseSkillOnMe(cl,SKILL_TAKE_ALL_CONT)) return;
 				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
@@ -4244,8 +4249,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			cl->LastSendEntrancesLocId=loc_id;
 			cl->LastSendEntrancesTick=tick;
 
-			int bind_id=loc->Proto->ScriptBindId;
-			if(bind_id>0)
+			if(loc->Proto->ScriptBindId>0)
 			{
 				BYTE count=0;
 				BYTE show[0x100];
@@ -4253,7 +4257,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 				if(!arr) break;
 				for(BYTE i=0,j=(BYTE)loc->Proto->Entrance.size();i<j;i++)
 				{
-					if(MapMngr.GM_CheckEntrance(bind_id,arr,i))
+					if(MapMngr.GM_CheckEntrance(loc,arr,i))
 					{
 						show[count]=i;
 						count++;
@@ -4298,11 +4302,11 @@ void FOServer::Process_RuleGlobal(Client* cl)
 
 			DWORD entrance=param2;
 			if(entrance>=loc->Proto->Entrance.size()) break;
-			if(loc->Proto->ScriptBindId)
+			if(loc->Proto->ScriptBindId>0)
 			{
 				CScriptArray* arr=MapMngr.GM_CreateGroupArray(cl->GroupMove);
 				if(!arr) break;
-				bool result=MapMngr.GM_CheckEntrance(loc->Proto->ScriptBindId,arr,entrance);
+				bool result=MapMngr.GM_CheckEntrance(loc,arr,entrance);
 				arr->Release();
 				if(!result) break;
 			}

@@ -334,7 +334,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WOR
 	city_txt.GetStr(key1,"entrance_script","",res);
 	if(res[0])
 	{
-		int bind_id=Script::Bind(res,"bool %s(Critter@[]&, uint8)",false);
+		int bind_id=Script::Bind(res,"bool %s(Location&,Critter@[]&,uint8)",false);
 		if(bind_id<=0)
 		{
 			WriteLog(__FUNCTION__" - Function<%s> not found, location<%s>.\n",res,ploc.Name.c_str());
@@ -1391,10 +1391,13 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 	}
 }
 
-bool MapManager::GM_CheckEntrance(int bind_id, CScriptArray* arr, BYTE entrance)
+bool MapManager::GM_CheckEntrance(Location* loc, CScriptArray* arr, BYTE entrance)
 {
-	if(Script::PrepareContext(bind_id,CALL_FUNC_STR,(*(Critter**)arr->At(0))->GetInfo()))
+	if(!loc->Proto->ScriptBindId) return true;
+
+	if(Script::PrepareContext(loc->Proto->ScriptBindId,CALL_FUNC_STR,(*(Critter**)arr->At(0))->GetInfo()))
 	{
+		Script::SetArgObject(loc);
 		Script::SetArgObject(arr);
 		Script::SetArgByte(entrance);
 		if(Script::RunPrepared()) return Script::GetReturnedBool();
@@ -1738,7 +1741,7 @@ bool MapManager::GM_GroupToLoc(Critter* rule, DWORD loc_id, BYTE entrance, bool 
 	{
 		CScriptArray* arr=GM_CreateGroupArray(rule->GroupMove);
 		if(!arr) return false;
-		bool result=GM_CheckEntrance(loc->Proto->ScriptBindId,arr,entrance);
+		bool result=GM_CheckEntrance(loc,arr,entrance);
 		arr->Release();
 		if(!result)
 		{
