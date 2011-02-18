@@ -37,7 +37,7 @@ private:
 
 public:
 	void SaveCrittersFile(void(*save_func)(void*,size_t));
-	bool LoadCrittersFile(FILE* f);
+	bool LoadCrittersFile(FILE* f, DWORD version);
 
 	void RunInitScriptCritters();
 

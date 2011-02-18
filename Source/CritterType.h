@@ -11,6 +11,9 @@
 #define CRIT_DWELLER_FEMALE       (4)
 #define CRIT_RAT                  (24)
 
+#define ANIM_TYPE_FALLOUT         (0)
+#define ANIM_TYPE_3D              (1)
+
 class FOMsg;
 
 struct CritTypeType
@@ -20,8 +23,8 @@ struct CritTypeType
 	char SoundName[64];
 	DWORD Alias;
 	DWORD Multihex;
+	int AnimType;
 
-	bool Is3d;
 	bool CanWalk;
 	bool CanRun;
 	bool CanAim;
@@ -43,13 +46,13 @@ namespace CritType
 	const char* GetSoundName(DWORD cr_type);
 	DWORD GetAlias(DWORD cr_type);
 	DWORD GetMultihex(DWORD cr_type);
+	int GetAnimType(DWORD cr_type);
 	bool IsCanWalk(DWORD cr_type);
 	bool IsCanRun(DWORD cr_type);
 	bool IsCanAim(DWORD cr_type);
 	bool IsCanArmor(DWORD cr_type);
 	bool IsCanRotate(DWORD cr_type);
 	bool IsAnim1(DWORD cr_type, DWORD anim1);
-	bool IsAnim3d(DWORD cr_type);
 
 	void SetWalkParams(DWORD cr_type, DWORD time_walk, DWORD time_run, DWORD step0, DWORD step1, DWORD step2, DWORD step3);
 	DWORD GetTimeWalk(DWORD cr_type);

@@ -24,6 +24,7 @@
 
 #define FO_MAP_VERSION_TEXT1    (1)
 #define FO_MAP_VERSION_TEXT2    (2)
+#define FO_MAP_VERSION_TEXT3    (3)
 
 #define APP_HEADER              "Header"
 #define APP_TILES               "Tiles"
@@ -60,8 +61,8 @@ public:
 	short OffsetX;
 	short OffsetY;
 
-	char ScriptName[MAPOBJ_SCRIPT_NAME+1];
-	char FuncName[MAPOBJ_SCRIPT_NAME+1];
+	char ScriptName[25+1];
+	char FuncName[25+1];
 
 	DWORD LightRGB;
 	BYTE Reserved5;
@@ -202,10 +203,99 @@ struct HeaderV9
 	int Time;
 	int CenterX;
 	int CenterY;
-	char ScriptModule[MAX_SCRIPT_NAME+1];
-	char ScriptFunc[MAX_SCRIPT_NAME+1];
+	char ScriptModule[64+1];
+	char ScriptFunc[64+1];
 	int DayTime[4];
 	BYTE DayColor[12];
+};
+
+class MapObjectV9
+{
+public:
+	BYTE MapObjType;
+	WORD ProtoId;
+	WORD MapX;
+	WORD MapY;
+	short Dir;
+	DWORD LightColor;
+	BYTE LightDay;
+	BYTE LightDirOff;
+	BYTE LightDistance;
+	char LightIntensity;
+	char ScriptName[25+1];
+	char FuncName[25+1];
+	DWORD Reserved[7];
+	int UserData[10];
+
+	union
+	{
+		struct
+		{
+			BYTE Cond;
+			BYTE CondExt;
+			short ParamIndex[15];
+			int ParamValue[15];
+		} MCritter;
+
+		struct
+		{
+			short OffsetX;
+			short OffsetY;
+			BYTE AnimStayBegin;
+			BYTE AnimStayEnd;
+			WORD AnimWait;
+			WORD PicMapDeprecated;
+			WORD PicInvDeprecated;
+			BYTE InfoOffset;
+			BYTE Reserved[3];
+			DWORD PicMapHash;
+			DWORD PicInvHash;
+			DWORD Count;
+			BYTE DeteorationFlags;
+			BYTE DeteorationCount;
+			WORD DeteorationValue;
+			bool InContainer;
+			BYTE ItemSlot;
+			WORD AmmoPid;
+			DWORD AmmoCount;
+			DWORD LockerDoorId;
+			WORD LockerCondition;
+			WORD LockerComplexity;
+			short TrapValue;
+			int Val[10];
+		} MItem;
+
+		struct
+		{
+			short OffsetX;
+			short OffsetY;
+			BYTE AnimStayBegin;
+			BYTE AnimStayEnd;
+			WORD AnimWait;
+			WORD PicMapDeprecated;
+			WORD PicInvDeprecated;
+			BYTE InfoOffset;
+			BYTE Reserved[3];
+			DWORD PicMapHash;
+			DWORD PicInvHash;
+			bool CanUse;
+			bool CanTalk;
+			DWORD TriggerNum;
+			BYTE ParamsCount;
+			int Param[5];
+			WORD ToMapPid;
+			DWORD ToEntire;
+			WORD ToMapX;
+			WORD ToMapY;
+			BYTE ToDir;
+			BYTE SpriteCut;
+		} MScenery;
+
+		struct
+		{
+			DWORD Buffer[25];
+		} MAlign;
+	};
 };
 
 /************************************************************************/
@@ -419,7 +509,7 @@ bool ProtoMap::ReadObjects(int version)
 			if(obj_v6.MapObjType==MAP_OBJECT_CRITTER)
 			{
 				obj_v6.MCritter.Cond=obj_v5.CRITTER.Cond;
-				obj_v6.MCritter.CondExt=obj_v5.CRITTER.CondExt;
+				Deprecated_CondExtToAnim2(obj_v5.CRITTER.Cond,obj_v5.CRITTER.CondExt,obj_v6.MCritter.Anim2,obj_v6.MCritter.Anim2);
 				for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++) obj_v6.MCritter.ParamIndex[i]=-1;
 				obj_v6.MCritter.ParamIndex[0]=ST_DIALOG_ID;
 				obj_v6.MCritter.ParamIndex[1]=ST_AI_ID;
@@ -492,8 +582,6 @@ bool ProtoMap::ReadObjects(int version)
 				{
 					obj_v6.MScenery.ToEntire=obj_v5.GRID.ToEntire;
 					obj_v6.MScenery.ToMapPid=obj_v5.GRID.ToMapPid;
-					obj_v6.MScenery.ToMapX=obj_v5.GRID.ToMapX;
-					obj_v6.MScenery.ToMapY=obj_v5.GRID.ToMapY;
 					obj_v6.MScenery.ToDir=obj_v5.GRID.ToDir;
 				}
 				else if(proto->GetType()==ITEM_TYPE_GENERIC)
@@ -509,31 +597,86 @@ bool ProtoMap::ReadObjects(int version)
 		}
 		return true;
 	}
-	else if(version<8)
-	{
-		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD));
-		DWORD count=pmapFm->GetLEDWord();
-		if(!count) return true;
-
-		for(DWORD i=0;i<count;i++)
-		{
-			MapObject* mobj=new MapObject();
-			if(!pmapFm->CopyMem(mobj,MAP_OBJECT_SIZE)) return false;
-			MObjects.push_back(mobj);
-		}
-		return true;
-	}
-	else // Version 8, 9
+	else // Version 6, 7, 8, 9
 	{
 		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+
-			((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2));
+			((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*(version<8?1:2)));
 		DWORD count=pmapFm->GetLEDWord();
 		if(!count) return true;
 
 		for(DWORD i=0;i<count;i++)
 		{
+			MapObjectV9 mobj_v9;
+			if(!pmapFm->CopyMem(&mobj_v9,240)) return false;
+
 			MapObject* mobj=new MapObject();
-			if(!pmapFm->CopyMem(mobj,MAP_OBJECT_SIZE)) return false;
+			mobj->MapObjType=mobj_v9.MapObjType;
+			mobj->ProtoId=mobj_v9.ProtoId;
+			mobj->MapX=mobj_v9.MapX;
+			mobj->MapY=mobj_v9.MapY;
+			mobj->Dir=mobj_v9.Dir;
+			mobj->LightColor=mobj_v9.LightColor;
+			mobj->LightDay=mobj_v9.LightDay;
+			mobj->LightDirOff=mobj_v9.LightDirOff;
+			mobj->LightDistance=mobj_v9.LightDistance;
+			mobj->LightIntensity=mobj_v9.LightIntensity;
+			StringCopy(mobj->ScriptName,mobj_v9.ScriptName);
+			StringCopy(mobj->FuncName,mobj_v9.FuncName);
+			for(int i=0;i<10;i++) mobj->UserData[i]=mobj_v9.UserData[i];
+			mobj->MapObjType=mobj_v9.MapObjType;
+
+			if(mobj->MapObjType==MAP_OBJECT_CRITTER)
+			{
+				mobj->MCritter.Cond=mobj_v9.MCritter.Cond;
+				Deprecated_CondExtToAnim2(mobj_v9.MCritter.Cond,mobj_v9.MCritter.CondExt,mobj->MCritter.Anim2,mobj->MCritter.Anim2);
+				for(int i=0;i<15;i++) mobj->MCritter.ParamIndex[i]=mobj_v9.MCritter.ParamIndex[i];
+				for(int i=0;i<15;i++) mobj->MCritter.ParamValue[i]=mobj_v9.MCritter.ParamValue[i];
+			}
+			else if(mobj->MapObjType==MAP_OBJECT_ITEM)
+			{
+				mobj->MItem.OffsetX=mobj_v9.MItem.OffsetX;
+				mobj->MItem.OffsetY=mobj_v9.MItem.OffsetY;
+				mobj->MItem.AnimStayBegin=mobj_v9.MItem.AnimStayBegin;
+				mobj->MItem.AnimStayEnd=mobj_v9.MItem.AnimStayEnd;
+				mobj->MItem.AnimWait=mobj_v9.MItem.AnimWait;
+				mobj->MItem.InfoOffset=mobj_v9.MItem.InfoOffset;
+				mobj->MItem.PicMapHash=mobj_v9.MItem.PicMapHash;
+				mobj->MItem.PicInvHash=mobj_v9.MItem.PicInvHash;
+				mobj->MItem.Count=mobj_v9.MItem.Count;
+				mobj->MItem.DeteorationFlags=mobj_v9.MItem.DeteorationFlags;
+				mobj->MItem.DeteorationCount=mobj_v9.MItem.DeteorationCount;
+				mobj->MItem.DeteorationValue=mobj_v9.MItem.DeteorationValue;
+				mobj->MItem.InContainer=mobj_v9.MItem.InContainer;
+				mobj->MItem.ItemSlot=mobj_v9.MItem.ItemSlot;
+				mobj->MItem.AmmoPid=mobj_v9.MItem.AmmoPid;
+				mobj->MItem.AmmoCount=mobj_v9.MItem.AmmoCount;
+				mobj->MItem.LockerDoorId=mobj_v9.MItem.LockerDoorId;
+				mobj->MItem.LockerCondition=mobj_v9.MItem.LockerCondition;
+				mobj->MItem.LockerComplexity=mobj_v9.MItem.LockerComplexity;
+				mobj->MItem.TrapValue=mobj_v9.MItem.TrapValue;
+				for(int i=0;i<10;i++) mobj->MItem.Val[i]=mobj_v9.MItem.Val[i];
+			}
+			else if(mobj->MapObjType==MAP_OBJECT_SCENERY)
+			{
+				mobj->MScenery.OffsetX=mobj_v9.MScenery.OffsetX;
+				mobj->MScenery.OffsetY=mobj_v9.MScenery.OffsetY;
+				mobj->MScenery.AnimStayBegin=mobj_v9.MScenery.AnimStayBegin;
+				mobj->MScenery.AnimStayEnd=mobj_v9.MScenery.AnimStayEnd;
+				mobj->MScenery.AnimWait=mobj_v9.MScenery.AnimWait;
+				mobj->MScenery.InfoOffset=mobj_v9.MScenery.InfoOffset;
+				mobj->MScenery.PicMapHash=mobj_v9.MScenery.PicMapHash;
+				mobj->MScenery.PicInvHash=mobj_v9.MScenery.PicInvHash;
+				mobj->MScenery.CanUse=mobj_v9.MScenery.CanUse;
+				mobj->MScenery.CanTalk=mobj_v9.MScenery.CanTalk;
+				mobj->MScenery.TriggerNum=mobj_v9.MScenery.TriggerNum;
+				mobj->MScenery.ParamsCount=mobj_v9.MScenery.ParamsCount;
+				for(int i=0;i<5;i++) mobj->MScenery.Param[i]=mobj_v9.MScenery.Param[i];
+				mobj->MScenery.ToMapPid=mobj_v9.MScenery.ToMapPid;
+				mobj->MScenery.ToEntire=mobj_v9.MScenery.ToEntire;
+				mobj->MScenery.ToDir=mobj_v9.MScenery.ToDir;
+				mobj->MScenery.SpriteCut=mobj_v9.MScenery.SpriteCut;
+			}
+
 			MObjects.push_back(mobj);
 		}
 		return true;
@@ -617,7 +760,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 		}
 		delete[] header_str;
 	}
-	if((Header.Version!=FO_MAP_VERSION_TEXT1 && Header.Version!=FO_MAP_VERSION_TEXT2) ||
+	if((Header.Version!=FO_MAP_VERSION_TEXT1 && Header.Version!=FO_MAP_VERSION_TEXT2 && Header.Version!=FO_MAP_VERSION_TEXT3) ||
 		Header.MaxHexX<1 || Header.MaxHexY<1) return false;
 
 	// Tiles
@@ -714,7 +857,6 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					if(ivalue==MAP_OBJECT_CRITTER)
 					{
 						mobj->MCritter.Cond=COND_LIFE;
-						mobj->MCritter.CondExt=COND_LIFE_NONE;
 						for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++) mobj->MCritter.ParamIndex[i]=-1;
 					}
 					else if(ivalue!=MAP_OBJECT_ITEM && ivalue!=MAP_OBJECT_SCENERY)
@@ -753,7 +895,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					else if(mobj.MapObjType==MAP_OBJECT_CRITTER)
 					{
 						if(field=="Critter_Cond") mobj.MCritter.Cond=ivalue;
-						else if(field=="Critter_CondExt") mobj.MCritter.CondExt=ivalue;
+						else if(field=="Critter_Anim1") mobj.MCritter.Anim1=ivalue;
+						else if(field=="Critter_Anim2") mobj.MCritter.Anim2=ivalue;
 						else if(field=="Critter_ParamIndex0") mobj.MCritter.ParamIndex[0]=FONames::GetParamId(value.c_str());
 						else if(field=="Critter_ParamIndex1") mobj.MCritter.ParamIndex[1]=FONames::GetParamId(value.c_str());
 						else if(field=="Critter_ParamIndex2") mobj.MCritter.ParamIndex[2]=FONames::GetParamId(value.c_str());
@@ -784,6 +927,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						else if(field=="Critter_ParamValue12") mobj.MCritter.ParamValue[12]=ivalue;
 						else if(field=="Critter_ParamValue13") mobj.MCritter.ParamValue[13]=ivalue;
 						else if(field=="Critter_ParamValue14") mobj.MCritter.ParamValue[14]=ivalue;
+						// Deprecated
+						else if(field=="Critter_CondExt") Deprecated_CondExtToAnim2(mobj.MCritter.Cond,ivalue,mobj.MCritter.Anim2,mobj.MCritter.Anim2);
 					}
 					// Item/Scenery
 					else if(mobj.MapObjType==MAP_OBJECT_ITEM || mobj.MapObjType==MAP_OBJECT_SCENERY)
@@ -850,8 +995,6 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 							else if(field=="Scenery_Param4") mobj.MScenery.Param[4]=ivalue;
 							else if(field=="Scenery_ToMapPid") mobj.MScenery.ToMapPid=ivalue;
 							else if(field=="Scenery_ToEntire") mobj.MScenery.ToEntire=ivalue;
-							else if(field=="Scenery_ToMapX") mobj.MScenery.ToMapX=ivalue;
-							else if(field=="Scenery_ToMapY") mobj.MScenery.ToMapY=ivalue;
 							else if(field=="Scenery_ToDir") mobj.MScenery.ToDir=ivalue;
 							else if(field=="Scenery_SpriteCut") mobj.MScenery.SpriteCut=ivalue;
 						}
@@ -866,6 +1009,18 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 }
 
 #ifdef FONLINE_MAPPER
+char* FixName(char* name)
+{
+	if(name[0])
+	{
+		Str::EraseChars(name,' ');
+		Str::EraseChars(name,'\t');
+		Str::EraseChars(name,'\n');
+		Str::EraseChars(name,'\r');
+	}
+	return name;
+}
+
 void ProtoMap::SaveTextFormat(FileManager* fm)
 {
 	// Header
@@ -936,8 +1091,8 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		if(mobj.LightDirOff) fm->SetStr("%-20s %d\n","LightDirOff",mobj.LightDirOff);
 		if(mobj.LightDistance) fm->SetStr("%-20s %d\n","LightDistance",mobj.LightDistance);
 		if(mobj.LightIntensity) fm->SetStr("%-20s %d\n","LightIntensity",mobj.LightIntensity);
-		if(mobj.ScriptName[0]) fm->SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
-		if(mobj.FuncName[0]) fm->SetStr("%-20s %s\n","FuncName",mobj.FuncName);
+		if(FixName(mobj.ScriptName)[0]) fm->SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
+		if(FixName(mobj.FuncName)[0]) fm->SetStr("%-20s %s\n","FuncName",mobj.FuncName);
 		if(mobj.UserData[0]) fm->SetStr("%-20s %d\n","UserData0",mobj.UserData[0]);
 		if(mobj.UserData[1]) fm->SetStr("%-20s %d\n","UserData1",mobj.UserData[1]);
 		if(mobj.UserData[2]) fm->SetStr("%-20s %d\n","UserData2",mobj.UserData[2]);
@@ -952,7 +1107,8 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		if(mobj.MapObjType==MAP_OBJECT_CRITTER)
 		{
 			fm->SetStr("%-20s %d\n","Critter_Cond",mobj.MCritter.Cond);
-			fm->SetStr("%-20s %d\n","Critter_CondExt",mobj.MCritter.CondExt);
+			fm->SetStr("%-20s %d\n","Critter_Anim1",mobj.MCritter.Anim1);
+			fm->SetStr("%-20s %d\n","Critter_Anim2",mobj.MCritter.Anim2);
 			for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
 			{
 				if(mobj.MCritter.ParamIndex[i]>=0 && mobj.MCritter.ParamIndex[i]<MAX_PARAMS)
@@ -977,8 +1133,8 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			if(mobj.MItem.AnimStayBegin) fm->SetStr("%-20s %d\n","AnimStayBegin",mobj.MItem.AnimStayBegin);
 			if(mobj.MItem.AnimStayEnd) fm->SetStr("%-20s %d\n","AnimStayEnd",mobj.MItem.AnimStayEnd);
 			if(mobj.MItem.AnimWait) fm->SetStr("%-20s %d\n","AnimWait",mobj.MItem.AnimWait);
-			if(mobj.RunTime.PicMapName[0]) fm->SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
-			if(mobj.RunTime.PicInvName[0]) fm->SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
+			if(FixName(mobj.RunTime.PicMapName)[0]) fm->SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
+			if(FixName(mobj.RunTime.PicInvName)[0]) fm->SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
 			if(mobj.MItem.InfoOffset) fm->SetStr("%-20s %d\n","InfoOffset",mobj.MItem.InfoOffset);
 			if(mobj.MapObjType==MAP_OBJECT_ITEM)
 			{
@@ -1019,8 +1175,6 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 				if(mobj.MScenery.Param[4]) fm->SetStr("%-20s %d\n","Scenery_Param4",mobj.MScenery.Param[4]);
 				if(mobj.MScenery.ToMapPid) fm->SetStr("%-20s %d\n","Scenery_ToMapPid",mobj.MScenery.ToMapPid);
 				if(mobj.MScenery.ToEntire) fm->SetStr("%-20s %d\n","Scenery_ToEntire",mobj.MScenery.ToEntire);
-				if(mobj.MScenery.ToMapX) fm->SetStr("%-20s %d\n","Scenery_ToMapX",mobj.MScenery.ToMapX);
-				if(mobj.MScenery.ToMapY) fm->SetStr("%-20s %d\n","Scenery_ToMapY",mobj.MScenery.ToMapY);
 				if(mobj.MScenery.ToDir) fm->SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
 				if(mobj.MScenery.SpriteCut) fm->SetStr("%-20s %d\n","SpriteCut",mobj.MScenery.SpriteCut);
 			}
@@ -1675,7 +1829,7 @@ bool ProtoMap::Save(const char* f_name, int path_type)
 
 	// Save
 	pmapFm->ClearOutBuf();
-	Header.Version=FO_MAP_VERSION_TEXT2;
+	Header.Version=FO_MAP_VERSION_TEXT3;
 	SaveTextFormat(pmapFm);
 	Tiles.clear();
 

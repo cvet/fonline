@@ -314,12 +314,12 @@ void FOServer::ProcessAI(Npc* npc)
 			}
 			else if(bind_id>0)
 			{
+				plane->Misc.ScriptBindId=0;
 				if(Script::PrepareContext(bind_id,CALL_FUNC_STR,npc->GetInfo()))
 				{
 					Script::SetArgObject(npc);
 					Script::RunPrepared();
 				}
-				plane->Misc.ScriptBindId=0;
 			}
 			else
 			{

@@ -1037,6 +1037,10 @@ GameOptions::GameOptions()
 	AlwaysRunUseDist=5;
 	KeyboardRemap="";
 	KeyboardRemapRefCounter=1;
+	CritterFidgetTime=50000;
+	Anim2CombatBegin=0;
+	Anim2CombatIdle=0;
+	Anim2CombatEnd=0;
 
 	// Mapper
 	ClientPath=".\\";
@@ -1360,4 +1364,31 @@ DWORD Deprecated_GetPicHash(int pid, int type, WORD pic_num)
 	return Str::GetHash(name.c_str());
 }
 
-
+void Deprecated_CondExtToAnim2(BYTE cond, BYTE cond_ext, DWORD& anim2ko, DWORD& anim2dead)
+{
+	if(cond==COND_KNOCKOUT)
+	{
+		if(cond_ext==2) anim2ko=ANIM2_IDLE_PRONE_FRONT; // COND_KNOCKOUT_FRONT
+		anim2ko=ANIM2_IDLE_PRONE_BACK; // COND_KNOCKOUT_BACK
+	}
+	else if(cond==COND_DEAD)
+	{
+		switch(cond_ext)
+		{
+		case 1: anim2dead=ANIM2_DEAD_FRONT; // COND_DEAD_FRONT
+		case 2: anim2dead=ANIM2_DEAD_BACK; // COND_DEAD_BACK
+		case 3: anim2dead=112; // COND_DEAD_BURST -> ANIM2_DEAD_BURST
+		case 4: anim2dead=110; // COND_DEAD_BLOODY_SINGLE -> ANIM2_DEAD_BLOODY_SINGLE
+		case 5: anim2dead=111; // COND_DEAD_BLOODY_BURST -> ANIM2_DEAD_BLOODY_BURST
+		case 6: anim2dead=113; // COND_DEAD_PULSE -> ANIM2_DEAD_PULSE
+		case 7: anim2dead=114; // COND_DEAD_PULSE_DUST -> ANIM2_DEAD_PULSE_DUST
+		case 8: anim2dead=115; // COND_DEAD_LASER -> ANIM2_DEAD_LASER
+		case 9: anim2dead=117; // COND_DEAD_EXPLODE -> ANIM2_DEAD_EXPLODE
+		case 10: anim2dead=116; // COND_DEAD_FUSED -> ANIM2_DEAD_FUSED
+		case 11: anim2dead=118; // COND_DEAD_BURN -> ANIM2_DEAD_BURN
+		case 12: anim2dead=118; // COND_DEAD_BURN2 -> ANIM2_DEAD_BURN
+		case 13: anim2dead=119; // COND_DEAD_BURN_RUN -> ANIM2_DEAD_BURN_RUN
+		default: anim2dead=ANIM2_DEAD_FRONT;
+		}
+	}
+}

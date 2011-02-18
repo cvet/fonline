@@ -4,6 +4,9 @@
 #include "ShadowVolume.h"
 #include "Common.h"
 #include "Text.h"
+#include "Names.h"
+#include "Script.h"
+#include "CritterType.h"
 
 #define CONTOURS_EXTRA_SIZE     (20)
 
@@ -67,7 +70,7 @@ Animation3d::~Animation3d()
 }
 
 // Handles transitions between animations to make it smooth and not a sudden jerk to a new position
-void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
+void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 {
 	// Get animation index
 	float speed=1.0f;
@@ -83,7 +86,6 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 		else
 		{
 			index=animEntity->GetAnimationIndex(anim1,anim2,&speed);
-			if(index<0 && anim1>=ANIM1_KNIFE && anim1<=ANIM1_ROCKET_LAUNCHER) index=animEntity->GetAnimationIndex(ANIM1_UNARMED,anim2,&speed);
 		}
 	}
 
@@ -341,11 +343,22 @@ void Animation3d::SetAnimation(int anim1, int anim2, int* layers, int flags)
 	SetupBorders();
 }
 
-bool Animation3d::IsAnimation(int anim1, int anim2)
+bool Animation3d::IsAnimation(DWORD anim1, DWORD anim2)
 {
 	int ii=(anim1<<8)|anim2;
 	IntMapIt it=animEntity->animIndexes.find(ii);
 	return it!=animEntity->animIndexes.end();
+}
+
+bool Animation3d::CheckAnimation(DWORD& anim1, DWORD& anim2)
+{
+	if(animEntity->GetAnimationIndex(anim1,anim2,NULL)==-1)
+	{
+		anim1=ANIM1_UNARMED;
+		anim2=ANIM2_IDLE;
+		return false;
+	}
+	return true;
 }
 
 int Animation3d::GetAnim1()
@@ -1477,12 +1490,21 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				mesh=0;
 				subset=-1;
 			}
-			else if(!_stricmp(token,"Mesh")) (*istr) >> mesh;
-			else if(!_stricmp(token,"Subset")) (*istr) >> subset;
+			else if(!_stricmp(token,"Mesh"))
+			{
+				(*istr) >> buf;
+				mesh=FONames::GetDefineValue(buf);
+			}
+			else if(!_stricmp(token,"Subset"))
+			{
+				(*istr) >> buf;
+				subset=FONames::GetDefineValue(buf);
+			}
 			else if(!_stricmp(token,"Layer") || !_stricmp(token,"Value"))
 			{
-				if(!_stricmp(token,"Layer")) (*istr) >> layer;
-				else (*istr) >> layer_val;
+				(*istr) >> buf;
+				if(!_stricmp(token,"Layer")) layer=FONames::GetDefineValue(buf);
+				else layer_val=FONames::GetDefineValue(buf);
 
 				link=&dummy_link;
 				mesh=0;
@@ -1565,7 +1587,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				Str::ParseLine(buf,'-',layers,Str::ParseLineDummy);
 				for(size_t m=0,n=layers.size();m<n;m++)
 				{
-					int layer=atoi(layers[m].c_str());
+					int layer=FONames::GetDefineValue(layers[m].c_str());
 					if(layer>=0 && layer<LAYERS3D_COUNT)
 					{
 						int* tmp=link->DisabledLayers;
@@ -1584,7 +1606,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				Str::ParseLine(buf,'-',subsets,Str::ParseLineDummy);
 				for(size_t m=0,n=subsets.size();m<n;m++)
 				{
-					int ss=atoi(subsets[m].c_str());
+					int ss=FONames::GetDefineValue(subsets[m].c_str());
 					if(ss>=0)
 					{
 						int* tmp=link->DisabledSubsets;
@@ -1598,9 +1620,9 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 			}
 			else if(!_stricmp(token,"Texture"))
 			{
-				(*istr) >> valuef;
 				(*istr) >> buf;
-				int index=(int)valuef;
+				int index=FONames::GetDefineValue(buf);
+				(*istr) >> buf;
 				if(index>=0 && index<EFFECT_TEXTURES)
 				{
 					char** tmp1=link->TextureNames;
@@ -1684,7 +1706,7 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 					type=D3DXEDT_DWORD;
 					data_len=sizeof(DWORD);
 					data=new char[data_len];
-					*((DWORD*)data)=atoi(def_value);
+					*((DWORD*)data)=FONames::GetDefineValue(def_value);
 				}
 				else continue;
 
@@ -1703,11 +1725,9 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				// Index animation
 				int ind1=0,ind2=0;
 				(*istr) >> buf;
-				Str::Upr(buf);
-				ind1=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
+				ind1=FONames::GetDefineValue(buf);
 				(*istr) >> buf;
-				Str::Upr(buf);
-				ind2=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
+				ind2=FONames::GetDefineValue(buf);
 
 				if(!_stricmp(token,"Anim"))
 				{
@@ -1732,11 +1752,9 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 
 				int ind1=0,ind2=0;
 				(*istr) >> buf;
-				Str::Upr(buf);
-				ind1=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
+				ind1=FONames::GetDefineValue(buf);
 				(*istr) >> buf;
-				Str::Upr(buf);
-				ind2=(Str::IsNumber(buf)?atoi(buf):buf[0]-'A'+1);
+				ind2=FONames::GetDefineValue(buf);
 
 				if(valuei==1) anim1Equals.insert(IntMapVal(ind1,ind2));
 				else if(valuei==2) anim2Equals.insert(IntMapVal(ind1,ind2));
@@ -1908,16 +1926,44 @@ int Animation3dEntity::GetAnimationIndex(const char* anim_name)
 	return result;
 }
 
-int Animation3dEntity::GetAnimationIndex(int anim1, int anim2, float* speed)
+int Animation3dEntity::GetAnimationIndex(DWORD& anim1, DWORD& anim2, float* speed)
+{
+	// Find index
+	int index=GetAnimationIndexEx(anim1,anim2,speed);
+	if(index!=-1) return index;
+
+	// Find substitute animation
+	DWORD crtype=0;
+	DWORD crtype_base=crtype,anim1_base=anim1,anim2_base=anim2;
+#ifdef FONLINE_CLIENT
+	while(index==-1 && Script::PrepareContext(ClientFunctions.CritterAnimationSubstitute,CALL_FUNC_STR,"Anim"))
+#else // FONLINE_MAPPER
+	while(index==-1 && Script::PrepareContext(MapperFunctions.CritterAnimationSubstitute,CALL_FUNC_STR,"Anim"))
+#endif
+	{
+		DWORD crtype_=crtype,anim1_=anim1,anim2_=anim2;
+		Script::SetArgDword(ANIM_TYPE_3D);
+		Script::SetArgDword(crtype_base);
+		Script::SetArgDword(anim1_base);
+		Script::SetArgDword(anim2_base);
+		Script::SetArgAddress(&crtype);
+		Script::SetArgAddress(&anim1);
+		Script::SetArgAddress(&anim2);
+		if(Script::RunPrepared() && Script::GetReturnedBool() &&
+			(crtype_!=crtype || anim1!=anim1_ || anim2!=anim2_)) index=GetAnimationIndexEx(anim1,anim2,speed);
+		else break;
+	}
+
+	return index;
+}
+
+int Animation3dEntity::GetAnimationIndexEx(DWORD anim1, DWORD anim2, float* speed)
 {
 	// Check equals
-	if(speed) // Not check on recursion
-	{
-		IntMapIt it1=anim1Equals.find(anim1);
-		if(it1!=anim1Equals.end()) anim1=(*it1).second;
-		IntMapIt it2=anim2Equals.find(anim2);
-		if(it2!=anim2Equals.end()) anim2=(*it2).second;
-	}
+	IntMapIt it1=anim1Equals.find(anim1);
+	if(it1!=anim1Equals.end()) anim1=(*it1).second;
+	IntMapIt it2=anim2Equals.find(anim2);
+	if(it2!=anim2Equals.end()) anim2=(*it2).second;
 
 	// Make index
 	int ii=(anim1<<8)|anim2;
@@ -1934,74 +1980,7 @@ int Animation3dEntity::GetAnimationIndex(int anim1, int anim2, float* speed)
 	IntMapIt it=animIndexes.find(ii);
 	if(it!=animIndexes.end()) return (*it).second;
 
-	if(anim1==ANIM1_UNARMED)
-	{
-		bool swapped=true;
-		switch(anim2)
-		{
-		case ANIM2_3D_IDLE_STUNNED: anim2=ANIM2_3D_IDLE; break;
-		case ANIM2_3D_LIMP: anim2=ANIM2_3D_WALK; break;
-		case ANIM2_3D_RUN: anim2=ANIM2_3D_WALK; break;
-		case ANIM2_3D_PANIC_RUN: anim2=ANIM2_3D_RUN; break;
-		case ANIM2_3D_PICKUP: anim2=ANIM2_3D_USE; break;
-		case ANIM2_3D_SWITCH_ITEMS: anim2=ANIM2_3D_USE; break;
-		default: swapped=false; break;
-		}
-		if(swapped) return GetAnimationIndex(anim1,anim2,NULL);
-	}
-
-	switch(anim2)
-	{
-	case ANIM2_3D_IDLE_COMBAT: anim2=ANIM2_3D_IDLE; break;
-	case ANIM2_3D_FIDGET2: anim2=ANIM2_3D_FIDGET1; break;
-	case ANIM2_3D_CLIMBING: anim2=ANIM2_3D_USE; break;
-	case ANIM2_3D_PUNCH_LEFT: anim2=ANIM2_3D_PUNCH_RIGHT; break;
-	case ANIM2_3D_KICK_LO: anim2=ANIM2_3D_KICK_HI; break;
-	case ANIM2_3D_PUNCH_COMBO: anim2=ANIM2_3D_PUNCH_LEFT; break;
-	case ANIM2_3D_KICK_COMBO: anim2=ANIM2_3D_KICK_HI; break;
-	case ANIM2_3D_SLASH_1H: anim2=ANIM2_3D_THRUST_1H; break;
-	case ANIM2_3D_THRUST_2H: anim2=ANIM2_3D_THRUST_1H; break;
-	case ANIM2_3D_SLASH_2H: anim2=ANIM2_3D_SLASH_1H; break;
-	case ANIM2_3D_SWEEP: anim2=ANIM2_3D_BURST; break;
-	case ANIM2_3D_BURST: anim2=ANIM2_3D_SINGLE; break;
-	case ANIM2_3D_BUTT: anim2=ANIM2_3D_PUNCH_RIGHT; break;
-	case ANIM2_3D_FLAME: anim2=ANIM2_3D_SINGLE; break;
-	case ANIM2_3D_NO_RECOIL: anim2=ANIM2_3D_USE; break;
-	case ANIM2_3D_THROW: anim2=ANIM2_3D_PUNCH_RIGHT; break;
-	case ANIM2_3D_RELOAD: anim2=ANIM2_3D_USE; break;
-	case ANIM2_3D_REPAIR: anim2=ANIM2_3D_RELOAD; break;
-	case ANIM2_3D_DODGE_BACK: anim2=ANIM2_3D_DODGE_FRONT; break;
-	case ANIM2_3D_DAMAGE_BACK: anim2=ANIM2_3D_DAMAGE_FRONT; break;
-	case ANIM2_3D_DAMAGE_MUL_BACK: anim2=ANIM2_3D_DAMAGE_MUL_FRONT; break;
-	case ANIM2_3D_WALK_DAMAGE_BACK: anim2=ANIM2_3D_WALK_DAMAGE_FRONT; break;
-	case ANIM2_3D_LIMP_DAMAGE_BACK: anim2=ANIM2_3D_LIMP_DAMAGE_FRONT; break;
-	case ANIM2_3D_RUN_DAMAGE_BACK: anim2=ANIM2_3D_RUN_DAMAGE_FRONT; break;
-
-	case ANIM2_3D_KNOCK_BACK: anim2=ANIM2_3D_KNOCK_FRONT; break;
-	case ANIM2_3D_LAYDOWN_BACK: anim2=ANIM2_3D_LAYDOWN_FRONT; break;
-	case ANIM2_3D_IDLE_PRONE_BACK: anim2=ANIM2_3D_IDLE_PRONE_FRONT; break;
-	case ANIM2_3D_STANDUP_BACK: anim2=ANIM2_3D_STANDUP_FRONT; break;
-	case ANIM2_3D_DEAD_PRONE_BACK: anim2=ANIM2_3D_DEAD_PRONE_FRONT; break;
-	case ANIM2_3D_DAMAGE_PRONE_BACK: anim2=ANIM2_3D_DAMAGE_PRONE_FRONT; break;
-	case ANIM2_3D_DAMAGE_MUL_PRONE_BACK: anim2=ANIM2_3D_DAMAGE_MUL_PRONE_FRONT; break;
-	case ANIM2_3D_TWITCH_PRONE_BACK: anim2=ANIM2_3D_TWITCH_PRONE_FRONT; break;
-	case ANIM2_3D_DEAD_BLOODY_SINGLE:
-	case ANIM2_3D_DEAD_BLOODY_BURST:
-	case ANIM2_3D_DEAD_BURST:
-	case ANIM2_3D_DEAD_PULSE:
-	case ANIM2_3D_DEAD_PULSE_DUST:
-	case ANIM2_3D_DEAD_LASER:
-	case ANIM2_3D_DEAD_FUSED:
-	case ANIM2_3D_DEAD_EXPLODE:
-	case ANIM2_3D_DEAD_BURN:
-	case ANIM2_3D_DEAD_BURN_RUN: anim2=ANIM2_3D_DEAD_PRONE_FRONT; break;
-	case ANIM2_3D_KNOCK_FRONT: anim2=ANIM2_3D_DEAD_PRONE_FRONT; break;
-	// ANIM2_3D_DEAD_PRONE_FRONT to default -1
-
-	default: return -1;
-	}
-
-	return GetAnimationIndex(anim1,anim2,NULL);
+	return -1;
 }
 
 Animation3d* Animation3dEntity::CloneAnimation()

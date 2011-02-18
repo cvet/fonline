@@ -1065,7 +1065,7 @@ void FOServer::Process(ClientPtr& cl)
 
 		if(cl->NetState==STATE_CONN && cl->ConnectTime && Timer::FastTick()-cl->ConnectTime>PING_CLIENT_LIFE_TIME) // Kick bot
 		{
-			WriteLog(__FUNCTION__" - Connection timeout, client kicked, maybe bot.\n");
+			WriteLog(__FUNCTION__" - Connection timeout, client kicked, maybe bot. Ip<%s>, name<%s>.\n",cl->GetIpStr(),cl->GetName());
 			cl->Disconnect();
 		}
 	}
@@ -1752,7 +1752,7 @@ void FOServer::Process_Command(Client* cl)
 				break;
 			}
 
-			KillCritter(cr,COND_DEAD_BURN_RUN,NULL);
+			KillCritter(cr,ANIM2_DEAD_FRONT,NULL);
 			cl->Send_Text(cl,"Critter is dead.",SAY_NETMSG);
 		}
 		break;
@@ -2056,7 +2056,6 @@ void FOServer::Process_Command(Client* cl)
 					if(cr)
 					{
 						WriteLog("Cond %u\n",cr->Data.Cond);
-						WriteLog("CondExt %u\n",cr->Data.CondExt);
 						for(int i=0;i<MAX_PARAMS;i++) WriteLog("%s %u\n",FONames::GetParamName(i),cr->Data.Params[i]);
 					}
 				}
@@ -3314,7 +3313,6 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
 	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);
 	STATIC_ASSERT(offsetof(GlobalMapGroup,EncounterForce)==88);
-	STATIC_ASSERT(offsetof(MapObject,RunTime.RefCounter)==244);
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);
 	STATIC_ASSERT(offsetof(SceneryCl,PicMapHash)==24);
 	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==332);
@@ -3335,7 +3333,6 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(IntSet)==12);
 	STATIC_ASSERT(sizeof(IntPair)==8);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
-	STATIC_ASSERT(sizeof(MapObject)==MAP_OBJECT_SIZE+sizeof(MapObject::_RunTime));
 	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(NpcBagItem)==16);
 	STATIC_ASSERT(sizeof(CritData)==7404);
@@ -3344,7 +3341,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(sizeof(GameOptions)==1176);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 
@@ -4056,6 +4053,13 @@ bool FOServer::LoadClient(Client* cl)
 		cl->Data.Temp=0;
 	}
 
+	// Deprecated, CondExt to Anim2
+	if(cl->Data.ReservedCE)
+	{
+		Deprecated_CondExtToAnim2(cl->Data.Cond,cl->Data.ReservedCE,cl->Data.Anim2Knockout,cl->Data.Anim2Dead);
+		cl->Data.ReservedCE=0;
+	}
+
 	return true;
 
 label_FileTruncated:
@@ -4225,7 +4229,7 @@ bool FOServer::LoadWorld(const char* name)
 	fread(&version,sizeof(version),1,f);
 	if(version!=WORLD_SAVE_V1 && version!=WORLD_SAVE_V2 && version!=WORLD_SAVE_V3 && version!=WORLD_SAVE_V4 &&
 		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8 &&
-		version!=WORLD_SAVE_V9 && version!=WORLD_SAVE_V10 && version!=WORLD_SAVE_V11)
+		version!=WORLD_SAVE_V9 && version!=WORLD_SAVE_V10 && version!=WORLD_SAVE_V11 && version!=WORLD_SAVE_V12)
 	{
 		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
@@ -4241,7 +4245,7 @@ bool FOServer::LoadWorld(const char* name)
 	// Main data
 	if(!LoadGameInfoFile(f)) return false;
 	if(!MapMngr.LoadAllLocationsAndMapsFile(f)) return false;
-	if(!CrMngr.LoadCrittersFile(f)) return false;
+	if(!CrMngr.LoadCrittersFile(f,version)) return false;
 	if(!ItemMngr.LoadAllItemsFile(f,version)) return false;
 	if(!VarMngr.LoadVarsDataFile(f,version)) return false;
 	if(!LoadHoloInfoFile(f)) return false;

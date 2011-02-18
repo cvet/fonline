@@ -435,7 +435,7 @@ void UnloadScripts()
 	CollectGarbage();
 }
 
-bool ReloadScripts(const char* config, const char* key, bool skip_binaries)
+bool ReloadScripts(const char* config, const char* key, bool skip_binaries, const char* file_pefix /* = NULL */)
 {
 	WriteLog("Reload scripts...\n");
 
@@ -458,7 +458,7 @@ bool ReloadScripts(const char* config, const char* key, bool skip_binaries)
 		if(str.fail() || value!="module") continue;
 
 		str >> value;
-		if(str.fail() || !LoadScript(value.c_str(),NULL,skip_binaries))
+		if(str.fail() || !LoadScript(value.c_str(),NULL,skip_binaries,file_pefix))
 		{
 			WriteLog("Load module fail, name<%s>.\n",value.c_str());
 			errors++;
@@ -495,6 +495,7 @@ bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFu
 		{
 			config_.getline(buf,1024);
 			if(buf[0]!='@') continue;
+
 			istrstream str(&buf[1]);
 			str >> value;
 			if(str.fail() || key!=value) continue;

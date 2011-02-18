@@ -20,6 +20,7 @@ private:
 
 	IniParser txtFile;
 	int GetProtoValue(const char* key);
+	string GetProtoValueStr(const char* key);
 	bool SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, ProtoItemVec* protos);
 
 public:

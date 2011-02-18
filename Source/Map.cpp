@@ -155,23 +155,36 @@ bool Map::Generate()
 			continue;
 		}
 
-		if((mobj.MCritter.Cond!=COND_LIFE || mobj.MCritter.CondExt!=COND_LIFE_NONE) && npc->Data.Cond==COND_LIFE && npc->Data.CondExt==COND_LIFE_NONE && npc->GetMap()==GetId())
+		if(mobj.MCritter.Cond!=COND_LIFE && npc->Data.Cond==COND_LIFE && npc->GetMap()==GetId())
 		{
 			npc->Data.Cond=CLAMP(mobj.MCritter.Cond,COND_LIFE,COND_DEAD);
-			npc->Data.CondExt=mobj.MCritter.CondExt;
-			if(npc->Data.Cond==COND_LIFE) npc->Data.CondExt=COND_LIFE_NONE;
-			else if(npc->Data.Cond==COND_KNOCKOUT) npc->Data.CondExt=CLAMP(npc->Data.CondExt,COND_KNOCKOUT_FRONT,COND_KNOCKOUT_BACK);
-			else if(npc->Data.Cond==COND_DEAD)
-			{
-				npc->Data.CondExt=CLAMP(npc->Data.CondExt,COND_DEAD_FRONT,COND_DEAD_BURN_RUN);
-				npc->Data.Params[ST_CURRENT_HP]=GameOpt.DeadHitPoints-1;
-			}
 
 			if(npc->Data.Cond==COND_DEAD)
 			{
+				npc->Data.Params[ST_CURRENT_HP]=GameOpt.DeadHitPoints-1;
+
 				DWORD multihex=npc->GetMultihex();
 				UnsetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,false);
 				SetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,true);
+			}
+		}
+
+		if(mobj.MCritter.Cond==npc->Data.Cond)
+		{
+			if(npc->Data.Cond==COND_LIFE)
+			{
+				npc->Data.Anim1Life=mobj.MCritter.Anim1;
+				npc->Data.Anim2Life=mobj.MCritter.Anim2;
+			}
+			else if(npc->Data.Cond==COND_KNOCKOUT)
+			{
+				npc->Data.Anim1Knockout=mobj.MCritter.Anim1;
+				npc->Data.Anim2Knockout=mobj.MCritter.Anim2;
+			}
+			else
+			{
+				npc->Data.Anim1Dead=mobj.MCritter.Anim1;
+				npc->Data.Anim2Dead=mobj.MCritter.Anim2;
 			}
 		}
 	}
@@ -2146,7 +2159,7 @@ Map* Location::GetMap(DWORD count)
 	return map;
 }
 
-bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& ori)
+bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& dir)
 {
 	if(!from_map || hx>=from_map->GetMaxHexX() || hy>=from_map->GetMaxHexY()) return false;
 
@@ -2174,24 +2187,16 @@ bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE
 	SYNC_LOCK(to_map);
 
 	id_map=to_map->GetId();
-	if(!mobj->MScenery.ToMapX || !mobj->MScenery.ToMapY)
-	{
-		ProtoMap::MapEntire* ent=to_map->Proto->GetEntire(mobj->MScenery.ToEntire,0);
-		if(!ent) return false;
 
-		hx=ent->HexX;
-		hy=ent->HexY;
-		ori=ent->Dir;
-	}
-	else
-	{
-		hx=mobj->MScenery.ToMapX;
-		hy=mobj->MScenery.ToMapY;
-		ori=mobj->MScenery.ToDir;
-	}
+	ProtoMap::MapEntire* ent=to_map->Proto->GetEntire(mobj->MScenery.ToEntire,0);
+	if(!ent) return false;
 
-	if(ori>5) ori=Random(0,5);
-	if(hx>=to_map->GetMaxHexX() || hy>=to_map->GetMaxHexY() || ori>5) return false;
+	hx=ent->HexX;
+	hy=ent->HexY;
+	dir=ent->Dir;
+
+	if(dir>5) dir=Random(0,5);
+	if(hx>=to_map->GetMaxHexX() || hy>=to_map->GetMaxHexY() || dir>5) return false;
 	return true;
 }
 

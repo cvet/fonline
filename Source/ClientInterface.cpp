@@ -1957,8 +1957,8 @@ void FOClient::ConsoleDraw()
 			GetMouseHex();
 			FLTPOINT p=Animation3d::Convert2dTo3d(GameOpt.MouseX,GameOpt.MouseY);
 			SprMngr.DrawStr(INTRECT(250,5,450,300),Str::Format(
-				"cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>, CondExt<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
-				Chosen->HexX,Chosen->HexY,TargetX,TargetY,GameOpt.MouseX,GameOpt.MouseY,Chosen->Cond,Chosen->CondExt,GameOpt.ScrOx,GameOpt.ScrOy,
+				"cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
+				Chosen->HexX,Chosen->HexY,TargetX,TargetY,GameOpt.MouseX,GameOpt.MouseY,Chosen->Cond,GameOpt.ScrOx,GameOpt.ScrOy,
 				GetFarDir(Chosen->HexX,Chosen->HexY,TargetX,TargetY),p.X,p.Y
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
@@ -2176,46 +2176,39 @@ void FOClient::GameKeyDown(BYTE dik)
 {
 	if(ConsoleActive) return;
 
-	if(Keyb::AltDwn)
+	if(Keyb::AltDwn && GameOpt.DebugInfo)
 	{
+		static int anim_offs=0;
 		switch(dik)
 		{
-#ifdef DEV_VESRION
 		// Show/Hide sprites
-		case DIK_1: GameOpt.ShowItem=!GameOpt.ShowItem; HexMngr.RefreshMap(); break;
-		case DIK_2: GameOpt.ShowScen=!GameOpt.ShowScen; HexMngr.RefreshMap(); break;
-		case DIK_3: GameOpt.ShowWall=!GameOpt.ShowWall; HexMngr.RefreshMap(); break;
-		case DIK_4: GameOpt.ShowCrit=!GameOpt.ShowCrit; HexMngr.RefreshMap(); break;
-		case DIK_5: GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); break;
-		case DIK_6: GameOpt.ShowRoof=!GameOpt.ShowRoof; HexMngr.RefreshMap(); break;
+// 		case DIK_1: GameOpt.ShowItem=!GameOpt.ShowItem; HexMngr.RefreshMap(); break;
+// 		case DIK_2: GameOpt.ShowScen=!GameOpt.ShowScen; HexMngr.RefreshMap(); break;
+// 		case DIK_3: GameOpt.ShowWall=!GameOpt.ShowWall; HexMngr.RefreshMap(); break;
+// 		case DIK_4: GameOpt.ShowCrit=!GameOpt.ShowCrit; HexMngr.RefreshMap(); break;
+// 		case DIK_5: GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); break;
+// 		case DIK_6: GameOpt.ShowRoof=!GameOpt.ShowRoof; HexMngr.RefreshMap(); break;
 
-		// Chosen animate
-#define CHOSEN_ANIMATE(anim2) if(Chosen) Chosen->Animate(0,anim2,NULL)
-		case DIK_A: CHOSEN_ANIMATE(1); break;
-		case DIK_B: CHOSEN_ANIMATE(2); break;
-		case DIK_C: CHOSEN_ANIMATE(3); break;
-		case DIK_D: CHOSEN_ANIMATE(4); break;
-		case DIK_E: CHOSEN_ANIMATE(5); break;
-		case DIK_F: CHOSEN_ANIMATE(6); break;
-		case DIK_G: CHOSEN_ANIMATE(7); break;
-		case DIK_H: CHOSEN_ANIMATE(8); break;
-		case DIK_I: CHOSEN_ANIMATE(9); break;
-		case DIK_J: CHOSEN_ANIMATE(10); break;
-		case DIK_K: CHOSEN_ANIMATE(11); break;
-		case DIK_L: CHOSEN_ANIMATE(12); break;
-		case DIK_M: CHOSEN_ANIMATE(13); break;
-		case DIK_N: CHOSEN_ANIMATE(14); break;
-		case DIK_O: CHOSEN_ANIMATE(15); break;
-		case DIK_P: CHOSEN_ANIMATE(16); break;
-		case DIK_Q: CHOSEN_ANIMATE(17); break;
-		case DIK_R: CHOSEN_ANIMATE(18); break;
-		case DIK_S: CHOSEN_ANIMATE(19); break;
-		case DIK_T: CHOSEN_ANIMATE(20); break;
-#endif
-		case -1: break;
+#define CHOSEN_ANIMATE(anim2) if(Chosen) Chosen->Animate(0,anim_offs+(anim2),NULL)
+		case DIK_0: if(Keyb::CtrlDwn) anim_offs=0; else CHOSEN_ANIMATE(0); break;
+		case DIK_1: if(Keyb::CtrlDwn) anim_offs=10; else CHOSEN_ANIMATE(1); break;
+		case DIK_2: if(Keyb::CtrlDwn) anim_offs=20; else CHOSEN_ANIMATE(2); break;
+		case DIK_3: if(Keyb::CtrlDwn) anim_offs=30; else CHOSEN_ANIMATE(3); break;
+		case DIK_4: if(Keyb::CtrlDwn) anim_offs=40; else CHOSEN_ANIMATE(4); break;
+		case DIK_5: if(Keyb::CtrlDwn) anim_offs=50; else CHOSEN_ANIMATE(5); break;
+		case DIK_6: if(Keyb::CtrlDwn) anim_offs=60; else CHOSEN_ANIMATE(6); break;
+		case DIK_7: if(Keyb::CtrlDwn) anim_offs=70; else CHOSEN_ANIMATE(7); break;
+		case DIK_8: if(Keyb::CtrlDwn) anim_offs=80; else CHOSEN_ANIMATE(8); break;
+		case DIK_9: if(Keyb::CtrlDwn) anim_offs=90; else CHOSEN_ANIMATE(9); break;
+		case DIK_A: if(Keyb::CtrlDwn) anim_offs=100; else CHOSEN_ANIMATE(10); break;
+		case DIK_B: if(Keyb::CtrlDwn) anim_offs=110; else CHOSEN_ANIMATE(11); break;
+		case DIK_C: if(Keyb::CtrlDwn) anim_offs=120; else CHOSEN_ANIMATE(12); break;
+		case DIK_D: if(Keyb::CtrlDwn) anim_offs=130; else CHOSEN_ANIMATE(13); break;
+		case DIK_E: if(Keyb::CtrlDwn) anim_offs=140; else CHOSEN_ANIMATE(14); break;
+		case DIK_F: if(Keyb::CtrlDwn) anim_offs=150; else CHOSEN_ANIMATE(15); break;
 		default: break;
 		}
-	
+
 		return;
 	}
 
@@ -5712,6 +5705,7 @@ void FOClient::GmapLMouseDown()
 {
 	IfaceHold=IFACE_NONE;
 
+	// Town picture
 	if(GetActiveScreen()==SCREEN__GM_TOWN)
 	{
 		for(int i=0;i<GmapTownTextPos.size();i++)
@@ -5741,28 +5735,8 @@ void FOClient::GmapLMouseDown()
 		return;
 	}
 
-	if(IsCurInRect(GmapWMap))
-	{
-		if(!GmapSpeedX && !GmapSpeedY)
-		{
-			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
-			if(si)
-			{
-				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
-				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
-
-				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
-					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
-				{
-					IfaceHold=IFACE_GMAP_TOLOC;
-					return;
-				}
-			}
-		}
-
-		IfaceHold=IFACE_GMAP_MAP;
-	}
-	else if(IsCurInRect(GmapBInv)) IfaceHold=IFACE_GMAP_INV;
+	// Main screen
+	if(IsCurInRect(GmapBInv)) IfaceHold=IFACE_GMAP_INV;
 	else if(IsCurInRect(GmapBMenu)) IfaceHold=IFACE_GMAP_MENU;
 	else if(IsCurInRect(GmapBCha)) IfaceHold=IFACE_GMAP_CHA;
 	else if(IsCurInRect(GmapBPip)) IfaceHold=IFACE_GMAP_PIP;
@@ -5785,45 +5759,68 @@ void FOClient::GmapLMouseDown()
 			CritterCl* cr=(*it).second;
 			if(!IsCurInRect(INTRECT(GmapWName,GmapWNameStepX*pos,GmapWNameStepY*pos))) continue;
 			LMenuTryActivate();
-			break;
+			return;
 		}
 	}
 
-	if(!Chosen || !Chosen->IsGmapRule()) return;
-
-	if(IsCurInRect(GmapBTown)) IfaceHold=IFACE_GMAP_TOWN;
-	else if(IsCurInRect(GmapWTabs))
+	if(IfaceHold==IFACE_NONE && Chosen && Chosen->IsGmapRule())
 	{
-		int tab_x=(GameOpt.MouseX-(GmapWTabs[0]-GmapTabsScrX))%GmapWTab.W();
-		int tab_y=(GameOpt.MouseY-(GmapWTabs[1]-GmapTabsScrY))%GmapWTab.H();
-
-		if(tab_x>=GmapBTabLoc[0] && tab_y>=GmapBTabLoc[1] && tab_x<=GmapBTabLoc[2] && tab_y<=GmapBTabLoc[3])
+		if(IsCurInRect(GmapBTown)) IfaceHold=IFACE_GMAP_TOWN;
+		else if(IsCurInRect(GmapWTabs))
 		{
-			if(GmapTabNextX) GmapCurHoldBLoc=(GameOpt.MouseX-(GmapWTabs[0]-GmapTabsScrX))/GmapWTab.W();
-			else if(GmapTabNextY) GmapCurHoldBLoc=(GameOpt.MouseY-(GmapWTabs[1]-GmapTabsScrY))/GmapWTab.H();
-			else GmapCurHoldBLoc=-1;
+			int tab_x=(GameOpt.MouseX-(GmapWTabs[0]-GmapTabsScrX))%GmapWTab.W();
+			int tab_y=(GameOpt.MouseY-(GmapWTabs[1]-GmapTabsScrY))%GmapWTab.H();
 
-			int cur_city=0;
-			for(int i=0,j=GmapLoc.size();i<j;i++)
+			if(tab_x>=GmapBTabLoc[0] && tab_y>=GmapBTabLoc[1] && tab_x<=GmapBTabLoc[2] && tab_y<=GmapBTabLoc[3])
 			{
-				GmapLocation& loc=GmapLoc[i];
+				if(GmapTabNextX) GmapCurHoldBLoc=(GameOpt.MouseX-(GmapWTabs[0]-GmapTabsScrX))/GmapWTab.W();
+				else if(GmapTabNextY) GmapCurHoldBLoc=(GameOpt.MouseY-(GmapWTabs[1]-GmapTabsScrY))/GmapWTab.H();
+				else GmapCurHoldBLoc=-1;
 
-				// Skip na
-				if(!MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid))) continue;
-				AnyFrames* tab_pic=ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))));
-				if(!tab_pic) continue;
-
-				// Get
-				if(GmapCurHoldBLoc==cur_city)
+				int cur_city=0;
+				for(int i=0,j=GmapLoc.size();i<j;i++)
 				{
-					GmapCurHoldBLoc=i;
-					IfaceHold=IFACE_GMAP_TABBTN;
-					break;
-				}
+					GmapLocation& loc=GmapLoc[i];
 
-				cur_city++;
+					// Skip na
+					if(!MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid))) continue;
+					AnyFrames* tab_pic=ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))));
+					if(!tab_pic) continue;
+
+					// Get
+					if(GmapCurHoldBLoc==cur_city)
+					{
+						GmapCurHoldBLoc=i;
+						IfaceHold=IFACE_GMAP_TABBTN;
+						break;
+					}
+
+					cur_city++;
+				}
 			}
 		}
+	}
+
+	if(IfaceHold==IFACE_NONE && IsCurInRect(GmapWMap))
+	{
+		if(!GmapSpeedX && !GmapSpeedY)
+		{
+			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
+			if(si)
+			{
+				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
+				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
+
+				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
+					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
+				{
+					IfaceHold=IFACE_GMAP_TOLOC;
+					return;
+				}
+			}
+		}
+
+		IfaceHold=IFACE_GMAP_MAP;
 	}
 }
 
@@ -5852,7 +5849,7 @@ void FOClient::GmapLMouseUp()
 		return;
 	}
 
-	if(IsCurInRect(GmapWMap))
+	if((IfaceHold==IFACE_GMAP_TOLOC || IfaceHold==IFACE_GMAP_MAP) && IsCurInRect(GmapWMap))
 	{
 		if(IfaceHold==IFACE_GMAP_TOLOC)
 		{

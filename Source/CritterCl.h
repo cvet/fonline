@@ -9,10 +9,6 @@
 #include "ItemManager.h"
 #include "3dStuff\Animation.h"
 
-#define FIRST_FRAME               (0)
-#define LAST_FRAME                (255)
-#define STAY_WAIT_SHOW_TIME       (50000)
-#define ANIM_MAP_ID(t,a1,a2,d)    (((t)<<19)|((a1)<<11)|((a2)<<3)|(d))
 
 class CritterCl
 {
@@ -26,7 +22,12 @@ public:
 	DWORD ContourColor;
 	WordVec LastHexX,LastHexY;
 	BYTE Cond;
-	BYTE CondExt;
+	DWORD Anim1Life;
+	DWORD Anim1Knockout;
+	DWORD Anim1Dead;
+	DWORD Anim2Life;
+	DWORD Anim2Knockout;
+	DWORD Anim2Dead;
 	DWORD Flags;
 	DWORD BaseType,BaseTypeAlias;
 	DWORD ApRegenerationTick;
@@ -87,7 +88,6 @@ public:
 	void Process();
 
 	int GetCond(){return Cond;}
-	int GetCondExt(){return CondExt;}
 	void DrawStay(INTRECT r);
 	const char* GetName(){return Name.c_str();}
 	const char* GetPass(){return Pass;}
@@ -99,11 +99,10 @@ public:
 	bool IsOnline(){return !FLAG(Flags,FCRIT_DISCONNECT);}
 	bool IsOffline(){return FLAG(Flags,FCRIT_DISCONNECT);}
 	bool IsLife(){return Cond==COND_LIFE;}
-	bool IsLifeNone(){return Cond==COND_LIFE && CondExt==COND_LIFE_NONE;}
 	bool IsKnockout(){return Cond==COND_KNOCKOUT;}
 	bool IsDead(){return Cond==COND_DEAD;}
 	bool CheckFind(int find_type);
-	bool IsToTalk(){return IsNpc() && IsLifeNone() && Params[ST_DIALOG_ID];}
+	bool IsToTalk(){return IsNpc() && IsLife() && Params[ST_DIALOG_ID];}
 	bool IsCombatMode(){return GetParam(TO_BATTLE)!=0;}
 	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetParam(TO_BATTLE));}
 
@@ -131,6 +130,7 @@ public:
 	int GetAllAp(){return GetParam(ST_CURRENT_AP)+GetParam(ST_MOVE_AP);}
 	void SubMoveAp(int val){ChangeParam(ST_CURRENT_AP);Params[ST_MOVE_AP]-=val;}
 	void SubAp(int val){ChangeParam(ST_CURRENT_AP);Params[ST_CURRENT_AP]-=val*AP_DIVIDER;ApRegenerationTick=0;}
+	bool IsHideMode(){return GetRawParam(MODE_HIDE)!=0;}
 
 	// Items
 public:
@@ -184,7 +184,7 @@ public:
 	int CurMoveStep;
 	bool IsNeedMove(){return MoveSteps.size() && !IsWalkAnim();}
 	void ZeroSteps(){MoveSteps.clear(); CurMoveStep=0;}
-	void Move(BYTE dir);
+	void Move(int dir);
 
 	// ReSet
 private:
@@ -208,22 +208,14 @@ public:
 public:
 	static AnyFrames* DefaultAnim;
 	void* Layers3d;
-	static void FreeAnimations();
-	BYTE GetAnim1();
-	BYTE GetAnim2();
-	void ProcessAnim(bool is2d, DWORD anim1, DWORD anim2, Item* item);
+	DWORD GetAnim1();
+	DWORD GetAnim2();
+	void ProcessAnim(bool animate_stay, bool is2d, DWORD anim1, DWORD anim2, Item* item);
 	int* GetLayers3dData();
 	bool IsAnimAviable(DWORD anim1, DWORD anim2);
-	static AnyFrames* LoadAnim(DWORD& crtype, DWORD& anim1, DWORD& anim2, BYTE dir);
 
 private:
-	static AnimMap crAnim;
-	static bool LoadAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
-	static AnyFrames* GetAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir);
-
-	short begSpr;
-	short endSpr;
-	short curSpr;
+	DWORD curSpr,lastEndSpr;
 	DWORD animStartTick;
 
 	struct CritterAnim
@@ -233,14 +225,19 @@ private:
 		int BeginFrm;
 		int EndFrm;
 		bool MoveText;
+		int DirOffs;
 		DWORD IndCrType,IndAnim1,IndAnim2;
 		Item* ActiveItem;
-		CritterAnim(AnyFrames* anim, DWORD tick, int beg_frm, int end_frm, bool move_text, DWORD ind_crtype, DWORD ind_anim1, DWORD ind_anim2, Item* item):
-			Anim(anim),AnimTick(tick),BeginFrm(beg_frm),EndFrm(end_frm),MoveText(move_text),IndCrType(ind_crtype),IndAnim1(ind_anim1),IndAnim2(ind_anim2),ActiveItem(item){}
+		CritterAnim(){}
+		CritterAnim(AnyFrames* anim, DWORD tick, int beg_frm, int end_frm, bool move_text, int dir_offs,
+			DWORD ind_crtype, DWORD ind_anim1, DWORD ind_anim2, Item* item):
+			Anim(anim),AnimTick(tick),BeginFrm(beg_frm),EndFrm(end_frm),MoveText(move_text),DirOffs(dir_offs),
+			IndCrType(ind_crtype),IndAnim1(ind_anim1),IndAnim2(ind_anim2),ActiveItem(item){}
 	};
 typedef vector<CritterAnim> CritterAnimVec;
 
 	CritterAnimVec animSequence;
+	CritterAnim stayAnim;
 
 	CritterAnim* GetCurAnim(){return IsAnim()?&animSequence[0]:NULL;}
 	void NextAnim(bool erase_front);
@@ -305,7 +302,7 @@ public:
 
 private:
 	INTRECT textRect;
-	DWORD tickFun;
+	DWORD tickFidget;
 	string strTextOnHead;
 	DWORD tickStartText;
 	DWORD tickTextDelay;

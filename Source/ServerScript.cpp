@@ -1118,12 +1118,6 @@ bool FOServer::SScriptFunc::Crit_IsAnim1(Critter* cr, DWORD index)
 	return CritType::IsAnim1(cr->GetCrType(),index);
 }
 
-bool FOServer::SScriptFunc::Crit_IsAnim3d(Critter* cr)
-{
-	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return CritType::IsAnim3d(cr->GetCrType());
-}
-
 int FOServer::SScriptFunc::Cl_GetAccess(Critter* cl)
 {
 	if(cl->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
@@ -1454,11 +1448,11 @@ void FOServer::SScriptFunc::Crit_Wait(Critter* cr, DWORD ms)
 	}
 }*/
 
-void FOServer::SScriptFunc::Crit_ToDead(Critter* cr, BYTE dead_type, Critter* killer)
+void FOServer::SScriptFunc::Crit_ToDead(Critter* cr, DWORD anim2, Critter* killer)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(cr->IsDead()) SCRIPT_ERROR_R("Critter already dead.");
-	KillCritter(cr,dead_type,killer);
+	KillCritter(cr,anim2,killer);
 }
 
 bool FOServer::SScriptFunc::Crit_ToLife(Critter* cr)
@@ -1474,14 +1468,14 @@ bool FOServer::SScriptFunc::Crit_ToLife(Critter* cr)
 	return true;
 }
 
-bool FOServer::SScriptFunc::Crit_ToKnockout(Critter* cr, bool face_up, DWORD lose_ap, WORD knock_hx, WORD knock_hy)
+bool FOServer::SScriptFunc::Crit_ToKnockout(Critter* cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, WORD knock_hx, WORD knock_hy)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!cr->IsLife())
 	{
 		if(cr->IsKnockout())
 		{
-			cr->KnockoutAp+=lose_ap;
+			cr->KnockoutAp+=lost_ap;
 			return true;
 		}
 		SCRIPT_ERROR_R0("Critter is dead.");
@@ -1508,7 +1502,7 @@ bool FOServer::SScriptFunc::Crit_ToKnockout(Critter* cr, bool face_up, DWORD los
 		if(!passed) SCRIPT_ERROR_R0("Knock hexes is busy.");
 	}
 
-	KnockoutCritter(cr,face_up,lose_ap,knock_hx,knock_hy);
+	KnockoutCritter(cr,anim2begin,anim2idle,anim2end,lost_ap,knock_hx,knock_hy);
 	return true;
 }
 
@@ -2048,6 +2042,27 @@ void FOServer::SScriptFunc::Crit_Animate(Critter* cr, DWORD anim1, DWORD anim2, 
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	cr->SendAA_Animate(anim1,anim2,item,clear_sequence,delay_play);
+}
+
+void FOServer::SScriptFunc::Crit_SetAnims(Critter* cr, int cond, DWORD anim1, DWORD anim2)
+{
+	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
+	if(cond==0 || cond==COND_LIFE)
+	{
+		cr->Data.Anim1Life=anim1;
+		cr->Data.Anim2Life=anim2;
+	}
+	else if(cond==0 || cond==COND_KNOCKOUT)
+	{
+		cr->Data.Anim1Knockout=anim1;
+		cr->Data.Anim2Knockout=anim2;
+	}
+	else if(cond==0 || cond==COND_DEAD)
+	{
+		cr->Data.Anim1Dead=anim1;
+		cr->Data.Anim2Dead=anim2;
+	}
+	cr->SendAA_SetAnims(cond,anim1,anim2);
 }
 
 void FOServer::SScriptFunc::Crit_PlaySound(Critter* cr, CScriptString& sound_name, bool send_self)
@@ -2737,10 +2752,10 @@ void FOServer::SScriptFunc::Crit_EventMoveItem(Critter* cr, Item* item, BYTE fro
 	cr->EventMoveItem(item,from_slot);
 }
 
-void FOServer::SScriptFunc::Crit_EventKnockout(Critter* cr, bool face_up, DWORD lost_ap, DWORD knock_dist)
+void FOServer::SScriptFunc::Crit_EventKnockout(Critter* cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, DWORD knock_dist)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	cr->EventKnockout(face_up,lost_ap,knock_dist);
+	cr->EventKnockout(anim2begin,anim2idle,anim2end,lost_ap,knock_dist);
 }
 
 void FOServer::SScriptFunc::Crit_EventSmthDead(Critter* cr, Critter* from_cr, Critter* killer)
@@ -2811,11 +2826,11 @@ void FOServer::SScriptFunc::Crit_EventSmthMoveItem(Critter* cr, Critter* from_cr
 	cr->EventSmthMoveItem(from_cr,item,from_slot);
 }
 
-void FOServer::SScriptFunc::Crit_EventSmthKnockout(Critter* cr, Critter* from_cr, bool face_up, DWORD lost_ap, DWORD knock_dist)
+void FOServer::SScriptFunc::Crit_EventSmthKnockout(Critter* cr, Critter* from_cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, DWORD knock_dist)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(from_cr->IsNotValid) SCRIPT_ERROR_R("From critter arg nullptr.");
-	cr->EventSmthKnockout(from_cr,face_up,lost_ap,knock_dist);
+	cr->EventSmthKnockout(from_cr,anim2begin,anim2idle,anim2end,lost_ap,knock_dist);
 }
 
 int FOServer::SScriptFunc::Crit_EventPlaneBegin(Critter* cr, AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item)
@@ -4847,10 +4862,28 @@ bool FOServer::SScriptFunc::Global_IsCritterAnim1(DWORD cr_type, DWORD index)
 	return CritType::IsAnim1(cr_type,index);
 }
 
-bool FOServer::SScriptFunc::Global_IsCritterAnim3d(DWORD cr_type)
+int FOServer::SScriptFunc::Global_GetCritterAnimType(DWORD cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
-	return CritType::IsAnim3d(cr_type);
+	return CritType::GetAnimType(cr_type);
+}
+
+DWORD FOServer::SScriptFunc::Global_GetCritterAlias(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::GetAlias(cr_type);
+}
+
+CScriptString* FOServer::SScriptFunc::Global_GetCritterTypeName(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
+	return new CScriptString(CritType::GetCritType(cr_type).Name);
+}
+
+CScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
+	return new CScriptString(CritType::GetSoundName(cr_type));
 }
 
 int FOServer::SScriptFunc::Global_GetGlobalMapRelief(DWORD x, DWORD y)

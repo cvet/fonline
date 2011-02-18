@@ -27,17 +27,6 @@ extern const char* MapEventFuncName[MAP_EVENT_MAX];
 #define MAP_LOOP_DEFAULT_TICK   (60*60000)
 #define MAP_MAX_DATA            (100)
 
-// Encaunters
-#define ENCOUNTERS_TIME			(5000)
-
-// Encaunters District
-#define DISTRICT_WASTELAND      (0x01)
-#define DISTRICT_MOUNTAINS      (0x02)
-#define DISTRICT_FOREST         (0x04)
-#define DISTRICT_CITY           (0x08)
-#define DISTRICT_SHORELINE      (0x10)
-#define DISTRICT_OCEAN          (0x20)
-
 class Map;
 class Location;
 
@@ -308,7 +297,7 @@ public:
 	void GetMaps(MapVec& maps, bool lock);
 	DWORD GetMapsCount(){return locMaps.size();}
 	Map* GetMap(DWORD count);
-	bool GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& ori);
+	bool GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& dir);
 	bool IsAutomaps(){return !Proto->AutomapsPids.empty();}
 	bool IsAutomap(WORD map_pid){return std::find(Proto->AutomapsPids.begin(),Proto->AutomapsPids.end(),map_pid)!=Proto->AutomapsPids.end();}
 	WordVec& GetAutomaps(){return Proto->AutomapsPids;}

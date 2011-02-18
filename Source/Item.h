@@ -300,7 +300,6 @@ public:
 		struct
 		{
 			bool NoWear;
-			bool IsNeedAct;
 
 			bool IsUnarmed;
 			BYTE UnarmedTree;
@@ -434,7 +433,6 @@ public:
 	bool IsGrouped(){return IsDrug() || IsAmmo() || IsMisc() || (IsWeapon() && WeapIsGrouped());}
 	bool IsWeared(){return Type==ITEM_TYPE_ARMOR || (Type==ITEM_TYPE_WEAPON && WeapIsWeared());}
 
-	bool WeapIsNeedAct(){return Weapon.IsNeedAct;}
 	bool WeapIsWeared(){return !Weapon.NoWear;}
 	bool WeapIsGrouped(){return Weapon.NoWear;}
 
@@ -455,6 +453,7 @@ public:
 	string PicMapStr;
 	string PicInvStr;
 	string WeaponPicStr[MAX_USES];
+	string Weapon_Anim2[MAX_USES];
 #endif
 };
 

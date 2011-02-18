@@ -80,9 +80,16 @@ void ItemManager::Clear()
 #define PROTO_APP "Proto"
 int ItemManager::GetProtoValue(const char* key)
 {
-	char str[128];
+	char str[MAX_FOTEXT];
 	if(!txtFile.GetStr(PROTO_APP,key,"",str)) return 0;
 	return FONames::GetDefineValue(str);
+}
+
+string ItemManager::GetProtoValueStr(const char* key)
+{
+	char str[MAX_FOTEXT];
+	if(!txtFile.GetStr(PROTO_APP,key,"",str)) return "";
+	return str;
 }
 
 bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, ProtoItemVec* protos)
@@ -106,6 +113,8 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 #define SERIALIZE_PROTOB(field,def) if(save && proto_item.field) fprintf(f,"%s=%d\n",#field,proto_item.field?1:0); else if(!save) proto_item.field=GetProtoValue(#field)!=0
 #define SERIALIZE_PROTO_(field,field_,def) if(save && proto_item.field_) fprintf(f,"%s=%d\n",#field,proto_item.field_); else if(!save) proto_item.field_=GetProtoValue(#field)
 #define SERIALIZE_PROTOB_(field,field_,def) if(save && proto_item.field_) fprintf(f,"%s=%d\n",#field,proto_item.field_?1:0); else if(!save) proto_item.field_=GetProtoValue(#field)!=0
+#define SERIALIZE_PROTOS_(field,field_) if(save && proto_item.field_.length()) fprintf(f,"%s=%s\n",#field,proto_item.field_.c_str()); else if(!save) proto_item.field_=GetProtoValueStr(#field)
+
 	SERIALIZE_PROTO(Pid,0);
 	if(!proto_item.Pid || proto_item.Pid>=MAX_ITEM_PROTOTYPES) return false;
 
@@ -286,7 +295,6 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 	case ITEM_TYPE_WEAPON:
 		if(!save && txtFile.IsKey(PROTO_APP,"WEAPON.IsNeedAct")) // Deprecated
 		{
-			SERIALIZE_PROTOB_(WEAPON.IsNeedAct,Weapon.IsNeedAct,0);
 			SERIALIZE_PROTOB_(WEAPON.IsUnarmed,Weapon.IsUnarmed,0);
 			SERIALIZE_PROTO_(WEAPON.UnarmedTree,Weapon.UnarmedTree,0);
 			SERIALIZE_PROTO_(WEAPON.UnarmedPriority,Weapon.UnarmedPriority,0);
@@ -357,7 +365,6 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 		}
 		else
 		{
-			SERIALIZE_PROTOB(Weapon.IsNeedAct,0);
 			SERIALIZE_PROTOB(Weapon.IsUnarmed,0);
 			SERIALIZE_PROTO(Weapon.UnarmedTree,0);
 			SERIALIZE_PROTO(Weapon.UnarmedPriority,0);
@@ -384,9 +391,16 @@ bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, 
 			SERIALIZE_PROTO_(Weapon.DmgType_0,Weapon.DmgType[0],0);
 			SERIALIZE_PROTO_(Weapon.DmgType_1,Weapon.DmgType[1],0);
 			SERIALIZE_PROTO_(Weapon.DmgType_2,Weapon.DmgType[2],0);
+
+#ifdef FONLINE_OBJECT_EDITOR
+			SERIALIZE_PROTOS_(Weapon.Anim2_0,Weapon_Anim2[0]);
+			SERIALIZE_PROTOS_(Weapon.Anim2_1,Weapon_Anim2[1]);
+			SERIALIZE_PROTOS_(Weapon.Anim2_2,Weapon_Anim2[2]);
+#else
 			SERIALIZE_PROTO_(Weapon.Anim2_0,Weapon.Anim2[0],0);
 			SERIALIZE_PROTO_(Weapon.Anim2_1,Weapon.Anim2[1],0);
 			SERIALIZE_PROTO_(Weapon.Anim2_2,Weapon.Anim2[2],0);
+#endif
 
 			if(save)
 			{

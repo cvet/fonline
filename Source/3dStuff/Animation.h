@@ -124,8 +124,9 @@ public:
 	Animation3d();
 	~Animation3d();
 
-	void SetAnimation(int anim1, int anim2, int* layers, int flags);
-	bool IsAnimation(int anim1, int anim2);
+	void SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags);
+	bool IsAnimation(DWORD anim1, DWORD anim2);
+	bool CheckAnimation(DWORD& anim1, DWORD& anim2);
 	int GetAnim1();
 	int GetAnim2();
 	void SetDir(int dir);
@@ -188,7 +189,8 @@ private:
 
 	void ProcessTemplateDefines(char* str, StrVec& def);
 	int GetAnimationIndex(const char* anim_name);
-	int GetAnimationIndex(int anim1, int anim2, float* speed);
+	int GetAnimationIndex(DWORD& anim1, DWORD& anim2, float* speed);
+	int GetAnimationIndexEx(DWORD anim1, DWORD anim2, float* speed);
 
 	bool Load(const char* name, int path_type);
 	Animation3d* CloneAnimation();

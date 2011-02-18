@@ -241,7 +241,6 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 		(!_stricmp(ext,".acm") && LoadACM(sound,fmt,sample_data,path_type==PT_SND_MUSIC?false:true)) ||
 		(!_stricmp(ext,".ogg") && LoadOGG(sound,fmt,sample_data))))
 	{
-		WriteLog(__FUNCTION__" - Unable to load sound<%s>.\n",fname);
 		delete sound;
 		return NULL;
 	}
@@ -282,11 +281,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data)
 {
 	FileManager fm;
-	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType))
-	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",sound->FileName.c_str());	
-		return NULL;
-	}
+	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType)) return NULL;
 
 	DWORD dw_buf=fm.GetLEDWord();
 	if(dw_buf!=MAKEFOURCC('R','I','F','F'))
@@ -360,11 +355,7 @@ bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data, bool mono)
 {
 	FileManager fm;
-	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType))
-	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",sound->FileName.c_str());	
-		return NULL;
-	}
+	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType)) return NULL;
 
 	int channels=0;
 	int freq=0;
@@ -453,7 +444,6 @@ bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	FileManager* fm=new(nothrow) FileManager();
 	if(!fm || !fm->LoadFile(sound->FileName.c_str(),sound->PathType))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",sound->FileName.c_str());	
 		SAFEDEL(fm);
 		return NULL;
 	}
@@ -617,49 +607,18 @@ bool SoundManager::StreamingOGG(Sound* sound, BYTE*& sample_data, DWORD& size_da
 /* FOnline API                                                          */
 /************************************************************************/
 
-void SoundManager::PlaySound(const char* name)
+bool SoundManager::PlaySound(const char* name)
 {
-	if(!isActive || !GetSoundVolume()) return;
+	if(!isActive || !GetSoundVolume()) return true;
 	Sound* sound=Load(name,PT_SND_SFX);
-	if(sound) Play(sound,soundVolDb,0);
+	if(!sound) return false;
+	Play(sound,soundVolDb,0);
+	return true;
 }
 
-void SoundManager::PlayAction(const char* body_type, DWORD anim1, DWORD anim2, bool anim2_by_val)
+bool SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext)
 {
-	if(!isActive || !GetSoundVolume() || !body_type) return;
-
-	// Postfix
-	char postfix[64];
-	const char abc[]="_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	if(anim1<sizeof(abc)) sprintf(postfix,"%c",abc[anim1]);
-	else sprintf(postfix,"%u-",anim1);
-	char* ppostfix=&postfix[strlen(postfix)];
-	if(anim2<sizeof(abc) && !anim2_by_val) sprintf(ppostfix,"%c",abc[anim2]);
-	else sprintf(ppostfix,"%u",anim2);
-
-	// Name
-	char name[64];
-	StringCopy(name,body_type);
-	Str::Upr(name);
-	StringAppend(name,postfix);
-
-	// Find as it
-	StrMap& names=ResMngr.GetSoundNames();
-	StrMapIt it=names.find(name);
-	if(it==names.end())
-	{
-		// Try find by mask (12XXXXAB)
-		for(int i=2,j=(int)strlen(body_type);i<j;i++) name[i]='X';
-		it=names.find(name);
-		if(it==names.end()) return;
-	}
-
-	PlaySound((*it).second.c_str());
-}
-
-void SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext)
-{
-	if(!isActive || !GetSoundVolume()) return;
+	if(!isActive || !GetSoundVolume()) return true;
 
 	// Generate name of the sound
 	StrMap& names=ResMngr.GetSoundNames();
@@ -711,26 +670,26 @@ void SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE soun
 	Str::Upr(name);
 
 	StrMapIt it=names.find(name);
-	if(it==names.end()) return;
+	if(it==names.end()) return false;
 
 	// Play
-	PlaySound((*it).second.c_str());
+	return PlaySound((*it).second.c_str());
 }
 
-void SoundManager::PlayMusic(const char* fname, DWORD pos, DWORD repeat)
+bool SoundManager::PlayMusic(const char* fname, DWORD pos, DWORD repeat)
 {
-	if(!isActive || !GetMusicVolume()) return;
+	if(!isActive || !GetMusicVolume()) return true;
 
 	StopMusic();
 
 	// Load new
 	Sound* sound=Load(fname,PT_SND_MUSIC);
-	if(sound)
-	{
-		sound->IsMusic=true;
-		sound->RepeatTime=repeat;
-		Play(sound,musicVolDb,0);
-	}
+	if(!sound) return false;
+
+	sound->IsMusic=true;
+	sound->RepeatTime=repeat;
+	Play(sound,musicVolDb,0);
+	return true;
 }
 
 void SoundManager::StopMusic()

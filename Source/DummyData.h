@@ -160,7 +160,6 @@ struct ProtoItem
 	struct
 	{
 		int NoWear;
-		int IsNeedAct;
 
 		int IsUnarmed;
 		int UnarmedTree;
@@ -383,7 +382,8 @@ struct MapObject
 	struct
 	{
 		int Cond;
-		int CondExt;
+		int Anim1;
+		int Anim2;
 		int ParamIndex[15];
 		int ParamValue[15];
 	} MCritter;
@@ -467,7 +467,12 @@ struct CritData
 	int BaseType;
 	int Dir;
 	int Cond;
-	int CondExt;
+	int Anim1Life;
+	int Anim1Knockout;
+	int Anim1Dead;
+	int Anim2Life;
+	int Anim2Knockout;
+	int Anim2Dead;
 	int ShowCritterDist1;
 	int ShowCritterDist2;
 	int ShowCritterDist3;
@@ -481,7 +486,13 @@ struct Critter
 	int BaseTypeAlias;
 	int HexX,HexY;
 	int CrDir;
-	int Cond,CondExt;
+	int Cond;
+	int Anim1Life;
+	int Anim1Knockout;
+	int Anim1Dead;
+	int Anim2Life;
+	int Anim2Knockout;
+	int Anim2Dead;
 	int Name;
 	int NameOnHead;
 	int Lexems;
@@ -709,6 +720,7 @@ struct BindClass
 	static void Crit_SendCombatResult(){}
 	static void Crit_Action(){}
 	static void Crit_Animate(){}
+	static void Crit_SetAnims(){}
 	static void Crit_PlaySound(){}
 	static void Crit_PlaySoundType(){}
 
@@ -1076,7 +1088,10 @@ struct BindClass
 	static void Global_IsCritterCanRotate(){}
 	static void Global_IsCritterCanAim(){}
 	static void Global_IsCritterAnim1(){}
-	static void Global_IsCritterAnim3d(){}
+	static void Global_GetCritterAnimType(){}
+	static void Global_GetCritterAlias(){}
+	static void Global_GetCritterTypeName(){}
+	static void Global_GetCritterSoundName(){}
 	static void Global_GetGlobalMapRelief(){}
 #endif
 
@@ -1135,6 +1150,16 @@ struct BindClass
 	static void Global_SelectObjects(){}
 	static void Global_GetSelectedObject(){}
 	static void Global_GetSelectedObjects(){}
+
+	static void Global_IsCritterCanWalk(){}
+	static void Global_IsCritterCanRun(){}
+	static void Global_IsCritterCanRotate(){}
+	static void Global_IsCritterCanAim(){}
+	static void Global_IsCritterAnim1(){}
+	static void Global_GetCritterAnimType(){}
+	static void Global_GetCritterAlias(){}
+	static void Global_GetCritterTypeName(){}
+	static void Global_GetCritterSoundName(){}
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_MAPPER)
@@ -1275,6 +1300,7 @@ struct GameOptions
 	int GlobalMapWidth;
 	int GlobalMapHeight;
 	int GlobalMapZoneLength;
+	int EncounterTime;
 	int BagRefreshTime;
 	int AttackAnimationsMinDist;
 	int WhisperDist;
@@ -1423,6 +1449,10 @@ struct GameOptions
 	int AlwaysRun;
 	int AlwaysRunMoveDist;
 	int AlwaysRunUseDist;
+	int CritterFidgetTime;
+	int Anim2CombatBegin;
+	int Anim2CombatIdle;
+	int Anim2CombatEnd;
 
 	// Mapper
 	int ClientPath;

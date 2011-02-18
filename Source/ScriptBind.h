@@ -93,7 +93,6 @@
 
 	// Weapon
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_Uses",offsetof(ProtoItem,Weapon.Uses))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_RequiresActivation",offsetof(ProtoItem,Weapon.IsNeedAct))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_IsUnarmed",offsetof(ProtoItem,Weapon.IsUnarmed))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_UnarmedCriticalBonus",offsetof(ProtoItem,Weapon.UnarmedCriticalBonus))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_UnarmedArmorPiercing",offsetof(ProtoItem,Weapon.UnarmedArmorPiercing))<0) BIND_ERROR;
@@ -458,7 +457,6 @@
 	if(engine->RegisterObjectMethod("Critter","bool IsCanRotate() const",asFUNCTION(BIND_CLASS Crit_IsCanRotate),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool IsCanAim() const",asFUNCTION(BIND_CLASS Crit_IsCanAim),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool IsAnim1(uint index) const",asFUNCTION(BIND_CLASS Crit_IsAnim1),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool IsAnim3d() const",asFUNCTION(BIND_CLASS Crit_IsAnim3d),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","int GetAccess() const",asFUNCTION(BIND_CLASS Cl_GetAccess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectMethod("Critter","bool SetEvent(int eventType, string@+ funcName)",asFUNCTION(BIND_CLASS Crit_SetEvent),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -493,9 +491,9 @@
 	if(engine->RegisterObjectMethod("Critter","bool IsFree() const",asFUNCTION(BIND_CLASS Crit_IsFree),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool IsBusy() const",asFUNCTION(BIND_CLASS Crit_IsBusy),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void Wait(uint ms)",asFUNCTION(BIND_CLASS Crit_Wait),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","void ToDead(uint8 deadType, Critter@+ killer)",asFUNCTION(BIND_CLASS Crit_ToDead),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void ToDead(uint anim2, Critter@+ killer)",asFUNCTION(BIND_CLASS Crit_ToDead),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool ToLife()",asFUNCTION(BIND_CLASS Crit_ToLife),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool ToKnockout(bool faceUp, uint lostAp, uint16 knockHx, uint16 knockHy)",asFUNCTION(BIND_CLASS Crit_ToKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool ToKnockout(uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint16 knockHx, uint16 knockHy)",asFUNCTION(BIND_CLASS Crit_ToKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 //	if(engine->RegisterObjectMethod("Critter","void GetProtoData(int[]& data)",asFUNCTION(BIND_CLASS Npc_GetProtoData),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void RefreshVisible()",asFUNCTION(BIND_CLASS Crit_RefreshVisible),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void ViewMap(Map& map, uint look, uint16 hx, uint16 hy, uint8 dir)",asFUNCTION(BIND_CLASS Crit_ViewMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -549,6 +547,7 @@
 	if(engine->RegisterObjectMethod("Critter","void SendMessage(int num, int val, int to)",asFUNCTION(BIND_CLASS Crit_SendMessage),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void Action(int action, int actionExt, Item@+ item)",asFUNCTION(BIND_CLASS Crit_Action),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void Animate(uint anim1, uint anim2, Item@+ item, bool clearSequence, bool delayPlay)",asFUNCTION(BIND_CLASS Crit_Animate),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void SetAnims(int cond, uint anim1, uint anim2)",asFUNCTION(BIND_CLASS Crit_SetAnims),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void PlaySound(string& soundName, bool sendSelf)",asFUNCTION(BIND_CLASS Crit_PlaySound),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt, bool sendSelf)",asFUNCTION(BIND_CLASS Crit_PlaySoundType),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
@@ -616,7 +615,7 @@
 	if(engine->RegisterObjectMethod("Critter","bool EventUseSkillOnMe(Critter& whoUse, int skill)",asFUNCTION(BIND_CLASS Crit_EventUseSkillOnMe),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventDropItem(Item& item)",asFUNCTION(BIND_CLASS Crit_EventDropItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventMoveItem(Item& item, uint8 fromSlot)",asFUNCTION(BIND_CLASS Crit_EventMoveItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","void EventKnockout(uint breaktime, bool faceUp, uint knockDist)",asFUNCTION(BIND_CLASS Crit_EventKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void EventKnockout(uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist)",asFUNCTION(BIND_CLASS Crit_EventKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthDead(Critter& fromCr, Critter@+ killer)",asFUNCTION(BIND_CLASS Crit_EventSmthDead),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthStealing(Critter& fromCr, Critter& thief, bool success, Item& item, uint count)",asFUNCTION(BIND_CLASS Crit_EventSmthStealing),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthAttack(Critter& fromCr, Critter& target)",asFUNCTION(BIND_CLASS Crit_EventSmthAttack),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -625,7 +624,7 @@
 	if(engine->RegisterObjectMethod("Critter","void EventSmthUseSkill(Critter& fromCr, int skill, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)",asFUNCTION(BIND_CLASS Crit_EventSmthUseSkill),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthDropItem(Critter& fromCr, Item& item)",asFUNCTION(BIND_CLASS Crit_EventSmthDropItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthMoveItem(Critter& fromCr, Item& item, uint8 fromSlot)",asFUNCTION(BIND_CLASS Crit_EventSmthMoveItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","void EventSmthKnockout(Critter& fromCr, uint breaktime, bool faceUp, uint knockDist)",asFUNCTION(BIND_CLASS Crit_EventSmthKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","void EventSmthKnockout(Critter& fromCr, uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist)",asFUNCTION(BIND_CLASS Crit_EventSmthKnockout),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","int EventPlaneBegin(NpcPlane& plane, int reason, Critter@+ someCr, Item@+ someItem)",asFUNCTION(BIND_CLASS Crit_EventPlaneBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","int EventPlaneEnd(NpcPlane& plane, int reason, Critter@+ someCr, Item@+ someItem)",asFUNCTION(BIND_CLASS Crit_EventPlaneEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","int EventPlaneRun(NpcPlane& plane, int reason, uint& p0, uint& p1, uint& p2)",asFUNCTION(BIND_CLASS Crit_EventPlaneRun),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -645,7 +644,12 @@
 	if(engine->RegisterObjectProperty("Critter","const uint16 WorldY",offsetof(Critter,Data)+offsetof(CritData,WorldY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const uint8 Dir",offsetof(Critter,Data)+offsetof(CritData,Dir))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const uint8 Cond",offsetof(Critter,Data)+offsetof(CritData,Cond))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("Critter","const uint8 CondExt",offsetof(Critter,Data)+offsetof(CritData,CondExt))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Anim1Life",offsetof(Critter,Data)+offsetof(CritData,Anim1Life))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Anim1Knockout",offsetof(Critter,Data)+offsetof(CritData,Anim1Knockout))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Anim1Dead",offsetof(Critter,Data)+offsetof(CritData,Anim1Dead))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Anim2Life",offsetof(Critter,Data)+offsetof(CritData,Anim2Life))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Anim2Knockout",offsetof(Critter,Data)+offsetof(CritData,Anim2Knockout))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Anim2Dead",offsetof(Critter,Data)+offsetof(CritData,Anim2Dead))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const uint16 FlagsExt",offsetof(Critter,Flags)+2)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const string Name",offsetof(Critter,NameStr))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","uint ShowCritterDist1",offsetof(Critter,Data)+offsetof(CritData,ShowCritterDist1))<0) BIND_ERROR;
@@ -919,7 +923,12 @@
 	if(engine->RegisterObjectProperty("CritterCl","const uint16 HexY",offsetof(CritterCl,HexY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","const uint8 Dir",offsetof(CritterCl,CrDir))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","const uint8 Cond",offsetof(CritterCl,Cond))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("CritterCl","const uint8 CondExt",offsetof(CritterCl,CondExt))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CritterCl","const uint Anim1Life",offsetof(CritterCl,Anim1Life))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CritterCl","const uint Anim1Knockout",offsetof(CritterCl,Anim1Knockout))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CritterCl","const uint Anim1Dead",offsetof(CritterCl,Anim1Dead))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CritterCl","const uint Anim2Life",offsetof(CritterCl,Anim2Life))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CritterCl","const uint Anim2Knockout",offsetof(CritterCl,Anim2Knockout))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CritterCl","const uint Anim2Dead",offsetof(CritterCl,Anim2Dead))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","const uint Flags",offsetof(CritterCl,Flags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","string Name",offsetof(CritterCl,Name))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","string NameOnHead",offsetof(CritterCl,NameOnHead))<0) BIND_ERROR;
@@ -1016,9 +1025,9 @@
 	if(engine->RegisterGlobalFunction("uint GetPathLength(CritterCl& cr, uint16 toHx, uint16 toHy, uint cut)",asFUNCTION(BIND_CLASS Global_GetPathLengthCr),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void FlushScreen(uint fromColor, uint toColor, uint timeMs)",asFUNCTION(BIND_CLASS Global_FlushScreen),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void QuakeScreen(uint noise, uint timeMs)",asFUNCTION(BIND_CLASS Global_QuakeScreen),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void PlaySound(string& soundName)",asFUNCTION(BIND_CLASS Global_PlaySound),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt)",asFUNCTION(BIND_CLASS Global_PlaySoundType),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void PlayMusic(string& musicName, uint pos, uint repeat)",asFUNCTION(BIND_CLASS Global_PlayMusic),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool PlaySound(string& soundName)",asFUNCTION(BIND_CLASS Global_PlaySound),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt)",asFUNCTION(BIND_CLASS Global_PlaySoundType),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool PlayMusic(string& musicName, uint pos, uint repeat)",asFUNCTION(BIND_CLASS Global_PlayMusic),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void PlayVideo(string& videoName, bool canStop)",asFUNCTION(BIND_CLASS Global_PlayVideo),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsTurnBased()",asFUNCTION(BIND_CLASS Global_IsTurnBased),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetTurnBasedTime()",asFUNCTION(BIND_CLASS Global_GetTurnBasedTime),asCALL_CDECL)<0) BIND_ERROR;
@@ -1119,7 +1128,10 @@
 	if(engine->RegisterGlobalFunction("bool IsCritterCanRotate(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanRotate),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsCritterCanAim(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanAim),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsCritterAnim1(uint crType, uint anim1)",asFUNCTION(BIND_CLASS Global_IsCritterAnim1),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("bool IsCritterAnim3d(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterAnim3d),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("int GetCritterAnimType(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterAnimType),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetCritterAlias(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterAlias),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("string@ GetCritterTypeName(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterTypeName),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("string@ GetCritterSoundName(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterSoundName),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int GetGlobalMapRelief(uint x, uint y)",asFUNCTION(BIND_CLASS Global_GetGlobalMapRelief),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("const uint16 __Year",&GameOpt.Year)) BIND_ERROR;
@@ -1184,6 +1196,7 @@
 	if(engine->RegisterGlobalProperty("uint __GlobalMapWidth",&GameOpt.GlobalMapWidth)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __GlobalMapHeight",&GameOpt.GlobalMapHeight)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __GlobalMapZoneLength",&GameOpt.GlobalMapZoneLength)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __EncounterTime",&GameOpt.EncounterTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __BagRefreshTime",&GameOpt.BagRefreshTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __AttackAnimationsMinDist",&GameOpt.AttackAnimationsMinDist)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __WisperDist",&GameOpt.WhisperDist)) BIND_ERROR;
@@ -1283,7 +1296,8 @@
 	if(engine->RegisterObjectProperty("MapperObject","int UserData8",offsetof(MapObject,UserData[8]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int UserData9",offsetof(MapObject,UserData[9]))<0) BIND_ERROR;
 	// Critter
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Critter_CondExt",offsetof(MapObject,MCritter.CondExt))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 Critter_Anim1",offsetof(MapObject,MCritter.Anim1))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 Critter_Anim2",offsetof(MapObject,MCritter.Anim2))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex0",offsetof(MapObject,MCritter.ParamIndex[0]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex1",offsetof(MapObject,MCritter.ParamIndex[1]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex2",offsetof(MapObject,MCritter.ParamIndex[2]))<0) BIND_ERROR;
@@ -1360,8 +1374,6 @@
 	if(engine->RegisterObjectProperty("MapperObject","int Scenery_Param4",offsetof(MapObject,MScenery.Param[4]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint16 Scenery_ToMapPid",offsetof(MapObject,MScenery.ToMapPid))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint Scenery_ToEntire",offsetof(MapObject,MScenery.ToEntire))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint16 Scenery_ToMapX",offsetof(MapObject,MScenery.ToMapX))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint16 Scenery_ToMapY",offsetof(MapObject,MScenery.ToMapY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_ToDir",offsetof(MapObject,MScenery.ToDir))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Scenery_SpriteCut",offsetof(MapObject,MScenery.SpriteCut))<0) BIND_ERROR;
 
@@ -1408,6 +1420,16 @@
 	if(engine->RegisterGlobalFunction("void SelectObjects(MapperObject@[]& objects, bool set)",asFUNCTION(BIND_CLASS Global_SelectObjects),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("MapperObject@+ GetSelectedObject()",asFUNCTION(BIND_CLASS Global_GetSelectedObject),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetSelectedObjects(MapperObject@[]@+ objects)",asFUNCTION(BIND_CLASS Global_GetSelectedObjects),asCALL_CDECL)<0) BIND_ERROR;
+
+	if(engine->RegisterGlobalFunction("bool IsCritterCanWalk(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanWalk),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool IsCritterCanRun(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanRun),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool IsCritterCanRotate(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanRotate),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool IsCritterCanAim(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanAim),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool IsCritterAnim1(uint crType, uint anim1)",asFUNCTION(BIND_CLASS Global_IsCritterAnim1),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("int GetCritterAnimType(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterAnimType),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetCritterAlias(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterAlias),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("string@ GetCritterTypeName(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterTypeName),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("string@ GetCritterSoundName(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterSoundName),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("string __ClientPath",&GameOpt.ClientPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __ServerPath",&GameOpt.ServerPath)) BIND_ERROR;
@@ -1507,6 +1529,10 @@
 	if(engine->RegisterGlobalProperty("bool __AlwaysRun",&GameOpt.AlwaysRun)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __AlwaysRunMoveDist",&GameOpt.AlwaysRunMoveDist)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __AlwaysRunUseDist",&GameOpt.AlwaysRunUseDist)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __CritterFidgetTime",&GameOpt.CritterFidgetTime)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __Anim2CombatBegin",&GameOpt.Anim2CombatBegin)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __Anim2CombatIdle",&GameOpt.Anim2CombatIdle)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __Anim2CombatEnd",&GameOpt.Anim2CombatEnd)) BIND_ERROR;
 #endif
 
 #if /*defined(BIND_CLIENT) || */defined(BIND_MAPPER)

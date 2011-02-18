@@ -110,8 +110,8 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Field)==92);
 	STATIC_ASSERT(sizeof(CScriptArray)==28);
-	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4264);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4288);
+	STATIC_ASSERT(sizeof(GameOptions)==1176);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -326,14 +326,14 @@ bool FOClient::Init(HWND hwnd)
 		SprMngr.EndScene();
 	}
 
+	// Names
+	FONames::GenerateFoNames(PT_DATA);
+
 	// Base ini options
 	if(!AppendIfaceIni(NULL)) return false;
 
 	// Scripts
 	if(!ReloadScripts()) refresh_cache=true;
-
-	// Names
-	FONames::GenerateFoNames(PT_DATA);
 
 	// Load interface
 	int res=InitIface();
@@ -352,7 +352,7 @@ bool FOClient::Init(HWND hwnd)
 	// Item prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("_____item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("______item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
@@ -2573,6 +2573,9 @@ void FOClient::NetProcess()
 		case NETMSG_CRITTER_ANIMATE:
 			Net_OnCritterAnimate();
 			break;
+		case NETMSG_CRITTER_SET_ANIMS:
+			Net_OnCritterSetAnims();
+			break;
 		case NETMSG_CRITTER_PARAM:
 			Net_OnCritterParam();
 			break;
@@ -3990,7 +3993,7 @@ void FOClient::Net_OnLoginSuccess()
 
 	GmapFreeResources();
 	ResMngr.FreeResources(RES_ITEMS);
-	CritterCl::FreeAnimations();
+	ResMngr.FreeResources(RES_CRITTERS);
 
 	DWORD bin_seed,bout_seed; // Server bin/bout == client bout/bin
 	Bin >> bin_seed;
@@ -4015,11 +4018,18 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 	Bin >> hy;
 	Bin >> dir;
 
-	BYTE cond,cond_ext;
+	BYTE cond;
+	DWORD anim1life,anim1ko,anim1dead;
+	DWORD anim2life,anim2ko,anim2dead;
 	DWORD flags;
 	short multihex;
 	Bin >> cond;
-	Bin >> cond_ext;
+	Bin >> anim1life;
+	Bin >> anim1ko;
+	Bin >> anim1dead;
+	Bin >> anim2life;
+	Bin >> anim2ko;
+	Bin >> anim2dead;
 	Bin >> flags;
 	Bin >> multihex;
 
@@ -4065,7 +4075,12 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 		cr->HexY=hy;
 		cr->CrDir=dir;
 		cr->Cond=cond;
-		cr->CondExt=cond_ext;
+		cr->Anim1Life=anim1life;
+		cr->Anim1Knockout=anim1ko;
+		cr->Anim1Dead=anim1dead;
+		cr->Anim2Life=anim2life;
+		cr->Anim2Knockout=anim2ko;
+		cr->Anim2Dead=anim2dead;
 		cr->Flags=flags;
 		cr->Multihex=multihex;
 		memcpy(cr->Params,params,sizeof(params));
@@ -4669,18 +4684,21 @@ void FOClient::Net_OnCritterAction()
 void FOClient::Net_OnCritterKnockout()
 {
 	DWORD crid;
-	bool face_up;
+	DWORD anim2begin;
+	DWORD anim2idle;
 	WORD knock_hx;
 	WORD knock_hy;
 	Bin >> crid;
-	Bin >> face_up;
+	Bin >> anim2begin;
+	Bin >> anim2idle;
 	Bin >> knock_hx;
 	Bin >> knock_hy;
 
 	CritterCl* cr=GetCritter(crid);
 	if(!cr) return;
 
-	cr->Action(ACTION_KNOCKOUT,face_up?0:1,NULL,false);
+	cr->Action(ACTION_KNOCKOUT,anim2begin,NULL,false);
+	cr->Anim2Knockout=anim2idle;
 
 	if(cr->GetHexX()!=knock_hx || cr->GetHexY()!=knock_hy)
 	{
@@ -4813,6 +4831,39 @@ void FOClient::Net_OnCritterAnimate()
 
 	if(clear_sequence) cr->ClearAnim();
 	if(delay_play || !cr->IsAnim()) cr->Animate(anim1,anim2,is_item?&SomeItem:NULL);
+}
+
+void FOClient::Net_OnCritterSetAnims()
+{
+	DWORD crid;
+	int cond;
+	DWORD anim1;
+	DWORD anim2;
+	Bin >> crid;
+	Bin >> cond;
+	Bin >> anim1;
+	Bin >> anim2;
+
+	CritterCl* cr=GetCritter(crid);
+	if(cr)
+	{
+		if(cond==0 || cond==COND_LIFE)
+		{
+			cr->Anim1Life=anim1;
+			cr->Anim2Life=anim2;
+		}
+		else if(cond==0 || cond==COND_KNOCKOUT)
+		{
+			cr->Anim1Knockout=anim1;
+			cr->Anim2Knockout=anim2;
+		}
+		else if(cond==0 || cond==COND_DEAD)
+		{
+			cr->Anim1Dead=anim1;
+			cr->Anim2Dead=anim2;
+		}
+		if(!cr->IsAnim()) cr->AnimateStay();
+	}
 }
 
 void FOClient::Net_OnCheckUID0()
@@ -5696,7 +5747,7 @@ void FOClient::Net_OnLoadMap()
 	else // Free local map resources
 	{
 		ResMngr.FreeResources(RES_ITEMS);
-		CritterCl::FreeAnimations();
+		ResMngr.FreeResources(RES_CRITTERS);
 	}
 
 	DropScroll();
@@ -6771,7 +6822,7 @@ void FOClient::Net_OnMsgData()
 	case TEXTMSG_INTERNAL:
 		// Reload critter types
 		CritType::InitFromMsg(MsgInternal);
-		CritterCl::FreeAnimations(); // Free animations, maybe critters table is changed
+		ResMngr.FreeResources(RES_CRITTERS); // Free animations, maybe critters table is changed
 
 		// Reload scripts
 		if(!ReloadScripts()) NetState=STATE_DISCONNECT;
@@ -6826,7 +6877,7 @@ void FOClient::Net_OnProtoItemData()
 		return;
 	}
 
-	Crypt.SetCache("_____item_protos",proto_data,len);
+	Crypt.SetCache("______item_protos",proto_data,len);
 	delete[] proto_data;
 
 	// Refresh craft names
@@ -8194,7 +8245,7 @@ label_EndMove:
 				Net_SendPickCritter(cr->GetId(),PICK_CRIT_LOOT);
 				Chosen->Action(ACTION_PICK_CRITTER,0,NULL);
 			}
-			else if(cr->IsLifeNone())
+			else if(cr->IsLife())
 			{
 				Net_SendPickCritter(cr->GetId(),PICK_CRIT_PUSH);
 				Chosen->Action(ACTION_PICK_CRITTER,2,NULL);
@@ -9187,9 +9238,12 @@ bool FOClient::ReloadScripts()
 		{&ClientFunctions.PlayerGeneration,"player_data_generate","void %s(int[]&)"},
 		{&ClientFunctions.PlayerGenerationCheck,"player_data_check","bool %s(int[]&)"},
 		{&ClientFunctions.CritterAction,"critter_action","void %s(bool,CritterCl&,int,int,ItemCl@)"},
-		{&ClientFunctions.Animation2dProcess,"animation2d_process","void %s(CritterCl&,uint,uint,ItemCl@)"},
-		{&ClientFunctions.Animation3dProcess,"animation3d_process","void %s(CritterCl&,uint,uint,ItemCl@)"},
+		{&ClientFunctions.Animation2dProcess,"animation2d_process","void %s(bool,CritterCl&,uint,uint,ItemCl@)"},
+		{&ClientFunctions.Animation3dProcess,"animation3d_process","void %s(bool,CritterCl&,uint,uint,ItemCl@)"},
 		{&ClientFunctions.ItemsCollection,"items_collection","void %s(int,ItemCl@[]&)"},
+		{&ClientFunctions.CritterAnimation,"critter_animation","string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)"},
+		{&ClientFunctions.CritterAnimationSubstitute,"critter_animation_substitute","bool %s(int,uint,uint,uint,uint&,uint&,uint&)"},
+		{&ClientFunctions.CritterAnimationFallout,"critter_animation_fallout","bool %s(uint,uint&,uint&,uint&,uint&,uint&)"},
 	};
 	const char* config=msg_script.GetStr(STR_INTERNAL_SCRIPT_CONFIG);
 	if(!Script::BindReservedFunctions(config,"client",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]))) errors++;
@@ -9834,19 +9888,19 @@ void FOClient::SScriptFunc::Global_QuakeScreen(DWORD noise, DWORD ms)
 	Self->ScreenQuake(noise,ms);
 }
 
-void FOClient::SScriptFunc::Global_PlaySound(CScriptString& sound_name)
+bool FOClient::SScriptFunc::Global_PlaySound(CScriptString& sound_name)
 {
-	SndMngr.PlaySound(sound_name.c_str());
+	return SndMngr.PlaySound(sound_name.c_str());
 }
 
-void FOClient::SScriptFunc::Global_PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext)
+bool FOClient::SScriptFunc::Global_PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext)
 {
-	SndMngr.PlaySoundType(sound_type,sound_type_ext,sound_id,sound_id_ext);
+	return SndMngr.PlaySoundType(sound_type,sound_type_ext,sound_id,sound_id_ext);
 }
 
-void FOClient::SScriptFunc::Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat)
+bool FOClient::SScriptFunc::Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat)
 {
-	SndMngr.PlayMusic(music_name.c_str(),pos,repeat);
+	return SndMngr.PlayMusic(music_name.c_str(),pos,repeat);
 }
 
 void FOClient::SScriptFunc::Global_PlayVideo(CScriptString& video_name, bool can_stop)
@@ -10481,10 +10535,28 @@ bool FOClient::SScriptFunc::Global_IsCritterAnim1(DWORD cr_type, DWORD index)
 	return CritType::IsAnim1(cr_type,index);
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterAnim3d(DWORD cr_type)
+int FOClient::SScriptFunc::Global_GetCritterAnimType(DWORD cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
-	return CritType::IsAnim3d(cr_type);
+	return CritType::GetAnimType(cr_type);
+}
+
+DWORD FOClient::SScriptFunc::Global_GetCritterAlias(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::GetAlias(cr_type);
+}
+
+CScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
+	return new CScriptString(CritType::GetCritType(cr_type).Name);
+}
+
+CScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
+	return new CScriptString(CritType::GetSoundName(cr_type));
 }
 
 int FOClient::SScriptFunc::Global_GetGlobalMapRelief(DWORD x, DWORD y)
@@ -10521,7 +10593,7 @@ DWORD FOClient::SScriptFunc::Global_LoadSpriteHash(DWORD name_hash, BYTE dir)
 int FOClient::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return 0;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return 0;
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Width;
@@ -10530,7 +10602,7 @@ int FOClient::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 int FOClient::SScriptFunc::Global_GetSpriteHeight(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return 0;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return 0;
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Height;
@@ -10551,7 +10623,7 @@ void FOClient::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
 }
 
@@ -10559,7 +10631,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, i
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(offs)
 	{
@@ -10575,7 +10647,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, i
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
 }
 
@@ -10583,7 +10655,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_inde
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(offs)
 	{
@@ -10642,7 +10714,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	if(!Self->HexMngr.GetHexToDraw(hx,hy)) return;
 
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
 	bool is_flat=(proto_item?FLAG(proto_item->Flags,ITEM_FLAT):false);
@@ -10687,8 +10759,8 @@ void FOClient::SScriptFunc::Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWOR
 {
 	if(CritType::IsEnabled(crtype))
 	{
-		AnyFrames* frm=CritterCl::LoadAnim(crtype,anim1,anim2,dir);
-		if(frm) SprMngr.DrawSpriteSize(frm->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
+		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
+		if(anim) SprMngr.DrawSpriteSize(anim->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
 	}
 }
 

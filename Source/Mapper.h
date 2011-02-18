@@ -472,6 +472,16 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static void Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy);
 		static void Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir, int l, int t, int r, int b, bool scratch, bool center, DWORD color);
 		static void Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, CScriptArray* layers, CScriptArray* position, DWORD color);
+
+		static bool Global_IsCritterCanWalk(DWORD cr_type);
+		static bool Global_IsCritterCanRun(DWORD cr_type);
+		static bool Global_IsCritterCanRotate(DWORD cr_type);
+		static bool Global_IsCritterCanAim(DWORD cr_type);
+		static bool Global_IsCritterAnim1(DWORD cr_type, DWORD index);
+		static int Global_GetCritterAnimType(DWORD cr_type);
+		static DWORD Global_GetCritterAlias(DWORD cr_type);
+		static CScriptString* Global_GetCritterTypeName(DWORD cr_type);
+		static CScriptString* Global_GetCritterSoundName(DWORD cr_type);
 	};
 };
 

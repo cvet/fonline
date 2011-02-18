@@ -257,7 +257,7 @@ public:
 	bool EventUseSkillOnMe(Critter* who_use, int skill);
 	void EventDropItem(Item* item);
 	void EventMoveItem(Item* item, BYTE from_slot);
-	void EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist);
+	void EventKnockout(DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, DWORD knock_dist);
 	void EventSmthDead(Critter* from_cr, Critter* killer);
 	void EventSmthStealing(Critter* from_cr, Critter* thief, bool success, Item* item, DWORD count);
 	void EventSmthAttack(Critter* from_cr, Critter* target);
@@ -266,7 +266,7 @@ public:
 	void EventSmthUseSkill(Critter* from_cr, int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery);
 	void EventSmthDropItem(Critter* from_cr, Item* item);
 	void EventSmthMoveItem(Critter* from_cr, Item* item, BYTE from_slot);
-	void EventSmthKnockout(Critter* from_cr, bool face_up, DWORD lost_ap, DWORD knock_dist);
+	void EventSmthKnockout(Critter* from_cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, DWORD knock_dist);
 	int EventPlaneBegin(AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item);
 	int EventPlaneEnd(AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item);
 	int EventPlaneRun(AIDataPlane* plane, int reason, DWORD& p0, DWORD& p1, DWORD& p2);
@@ -280,11 +280,11 @@ public:
 	// Knockout
 	DWORD KnockoutAp;
 
-	void ToKnockout(bool face_up, DWORD lose_ap, WORD knock_hx, WORD knock_hy);
+	void ToKnockout(DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, WORD knock_hx, WORD knock_hy);
 	void TryUpOnKnockout();
 
 	// Respawn, Dead
-	void ToDead(BYTE dead_type, bool send_all);
+	void ToDead(DWORD anim2, bool send_all);
 
 	// Heal
 	DWORD LastHealTick;
@@ -346,10 +346,11 @@ public:
 	void Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void Send_TextMsgLex(DWORD from_id, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
+	void Send_Knockout(Critter* from_cr, DWORD anim2begin, DWORD anim2idle, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
 	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data);
 	void Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
+	void Send_SetAnims(Critter* from_cr, int cond, DWORD anim1, DWORD anim2);
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);
 	void Send_Quests(DwordVec& nums);
@@ -367,10 +368,11 @@ public:
 	void SendA_XY();
 	void SendA_Action(int action, int action_ext, Item* item);
 	void SendAA_Action(int action, int action_ext, Item* item);
-	void SendA_Knockout(bool face_up, WORD knock_hx, WORD knock_hy);
+	void SendA_Knockout(DWORD anim2begin, DWORD anim2idle, WORD knock_hx, WORD knock_hy);
 	void SendAA_MoveItem(Item* item, BYTE action, BYTE prev_slot);
 	void SendAA_ItemData(Item* item);
 	void SendAA_Animate(DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
+	void SendAA_SetAnims(int cond, DWORD anim1, DWORD anim2);
 	void SendA_GlobalInfo(GlobalMapGroup* group, BYTE info_flags);
 	void SendAA_Text(CrVec& to_cr, const char* str, BYTE how_say, bool unsafe_text);
 	void SendAA_Msg(CrVec& to_cr, DWORD num_str, BYTE how_say, WORD num_msg);
@@ -581,10 +583,11 @@ public:
 	void Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void Send_TextMsgLex(DWORD from_id, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems);
 	void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-	void Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy);
+	void Send_Knockout(Critter* from_cr, DWORD anim2begin, DWORD anim2idle, WORD knock_hx, WORD knock_hy);
 	void Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot);
 	void Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data);
 	void Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play);
+	void Send_SetAnims(Critter* from_cr, int cond, DWORD anim1, DWORD anim2);
 	void Send_CombatResult(DWORD* combat_res, DWORD len);
 	void Send_Quest(DWORD num);
 	void Send_Quests(DwordVec& nums);

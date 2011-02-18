@@ -500,7 +500,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	// Generate dummy animation
 	if(!DummyAnimation)
 	{
-		DummyAnimation=CreateAnimation(1,100,0,0);
+		DummyAnimation=CreateAnimation(1,100);
 		if(!DummyAnimation)
 		{
 			WriteLog("Can't create dummy animation.\n");
@@ -1024,7 +1024,7 @@ AnyFrames* SpriteManager::ReloadAnimation(AnyFrames* anim, const char* fname, in
 	return LoadAnimation(fname,path_type);
 }
 
-AnyFrames* SpriteManager::CreateAnimation(DWORD frames, DWORD ticks, int ox, int oy)
+AnyFrames* SpriteManager::CreateAnimation(DWORD frames, DWORD ticks)
 {
 	if(!frames || frames>10000) return NULL;
 
@@ -1043,8 +1043,6 @@ AnyFrames* SpriteManager::CreateAnimation(DWORD frames, DWORD ticks, int ox, int
 
 	anim->CntFrm=frames;
 	anim->Ticks=ticks;
-	anim->OffsX=ox;
-	anim->OffsY=oy;
 	return anim;
 }
 
@@ -1065,17 +1063,12 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 	fm.SetCurPos(0x16+dir*2);
 	short offs_y=fm.GetBEWord();
 
-	AnyFrames* anim=CreateAnimation(frm_num,1000/frm_fps*frm_num,offs_x,offs_y);
-	if(!anim) return NULL;
-
 	fm.SetCurPos(0x22+dir*4);
 	DWORD offset=0x3E+fm.GetBEDWord();
+	if(offset==0x3E && dir) return NULL;
 
-	if(offset==0x3E && dir)
-	{
-		delete anim;
-		return NULL;
-	}
+	AnyFrames* anim=CreateAnimation(frm_num,1000/frm_fps*frm_num);
+	if(!anim) return NULL;
 
 	int anim_pix_type=0;
 	// 0x00 - None
@@ -1251,7 +1244,7 @@ AnyFrames* SpriteManager::LoadAnimationRix(const char* fname, int path_type)
 	delete[] data;
 	if(!result) return NULL;
 
-	AnyFrames* anim=CreateAnimation(1,100,0,0);
+	AnyFrames* anim=CreateAnimation(1,100);
 	if(!anim) return NULL;
 	anim->Ind[0]=result;
 	return anim;
@@ -1335,7 +1328,7 @@ label_Fail:
 	}
 
 	// Merge many animations in one
-	AnyFrames* anim=CreateAnimation(frames,1000/frm_fps*frm_num,0,0);
+	AnyFrames* anim=CreateAnimation(frames,1000/frm_fps*frm_num);
 	if(!anim) goto label_Fail;
 
 	DWORD frm=0;
@@ -1387,13 +1380,13 @@ AnyFrames* SpriteManager::LoadAnimation3d(const char* fname, int path_type, int 
 label_LoadOneSpr:
 		DWORD spr_id=Render3dSprite(anim3d,dir,proc_from*10);
 		if(!spr_id) return NULL;
-		AnyFrames* anim=CreateAnimation(1,100,0,0);
+		AnyFrames* anim=CreateAnimation(1,100);
 		if(!anim) return NULL;
 		anim->Ind[0]=spr_id;
 		return anim;
 	}
 
-	AnyFrames* anim=CreateAnimation(frames_count,period_len*1000.0f,0,0);
+	AnyFrames* anim=CreateAnimation(frames_count,period_len*1000.0f);
 	if(!anim) return NULL;
 
 	float cur_proc=(float)proc_from;
@@ -1418,7 +1411,24 @@ label_LoadOneSpr:
 AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int dir)
 {
 	if(dir<0 || dir>7) return NULL;
-	dir=(dir+1)%8; // Convert dir
+	// Todo: Hex/Square
+	if(true)
+	{
+		switch(dir)
+		{
+		case 0: dir=1; break;
+		case 1: dir=2; break;
+		case 2: dir=3; break;
+		case 3: dir=5; break;
+		case 4: dir=6; break;
+		case 5: dir=7; break;
+		default: dir=0; break;
+		}
+	}
+	else
+	{
+		dir=(dir+1)%8;
+	}
 
 	char file_name[MAX_FOPATH];
 	int palette_index=0; // 0..3
@@ -1472,8 +1482,12 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 
 	if(!fm.CopyMem(&header,sizeof(header))) return NULL;
 	if(header.flags&0x00000001) header.rotationCount=1;
-	if(dir>=header.rotationCount) return NULL;
 
+	// Fix dir
+	if(header.rotationCount!=8) dir=dir*(header.rotationCount*100/8)/100;
+	if(dir>=header.rotationCount) dir=0;
+
+	// Load palettes
 	int palette_count=0;
 	for(int i=0;i<4;i++)
 	{
@@ -1489,7 +1503,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 	DWORD frm_count=header.frameCount;
 	DWORD dir_count=header.rotationCount;
 
-	AnyFrames* anim=CreateAnimation(frm_count,1000/frm_fps*frm_count,0,0);
+	AnyFrames* anim=CreateAnimation(frm_count,1000/frm_fps*frm_count);
 	if(!anim) return NULL;
 
 	// Calculate data offset
@@ -1524,10 +1538,10 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 			return NULL;
 		}
 
-		si->OffsX=-frame_info.offsetX;
-		si->OffsY=-frame_info.offsetY;
-		anim->NextX[frm]=frame_info.deltaX;
-		anim->NextY[frm]=frame_info.deltaY;
+		si->OffsX=-frame_info.offsetX+frame_info.frameWidth/2;
+		si->OffsY=-frame_info.offsetY+frame_info.frameHeight;
+		anim->NextX[frm]=0;//frame_info.deltaX;
+		anim->NextY[frm]=0;//frame_info.deltaY;
 
 		// Create FOnline fast format
 		DWORD w=frame_info.frameWidth;
@@ -1559,17 +1573,21 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 				i+=cmd;
 				for(;cmd>0;cmd--,pos++)
 				{
-					DWORD color=palette[palette_index][fm.GetByte()];
-					if(color==0xFF) color=0;
+					BYTE index=fm.GetByte();
+					DWORD color=palette[palette_index][index];
+					if(!index) color=0;
 					else color|=0xFF000000;
+
 					*(ptr+pos)=color;
 				}
 			}
 			else
 			{
-				DWORD color=palette[palette_index][fm.GetByte()];
-				if(color==0xFF) color=0;
+				BYTE index=fm.GetByte();
+				DWORD color=palette[palette_index][index];
+				if(!index) color=0;
 				else color|=0xFF000000;
+
 				for(;cmd>0;cmd--,pos++) *(ptr+pos)=color;
 				i++;
 			}
@@ -1593,7 +1611,24 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int dir)
 {
 	if(dir<0 || dir>7) return NULL;
-	dir=(dir+2)%8; // Convert dir
+	// Todo: Hex/Square
+	if(true)
+	{
+		switch(dir)
+		{
+		case 0: dir=2; break;
+		case 1: dir=3; break;
+		case 2: dir=4; break;
+		case 3: dir=6; break;
+		case 4: dir=7; break;
+		case 5: dir=0; break;
+		default: dir=0; break;
+		}
+	}
+	else
+	{
+		dir=(dir+2)%8;
+	}
 
 	char file_name[MAX_FOPATH];
 	char seq_name[MAX_FOPATH]={0};
@@ -1669,11 +1704,17 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	char head[11];
 	if(!fm.CopyMem(head,11) || head[8] || strcmp(head,"<sprite>")) return NULL;
 
-	fm.GoForward(3); // CHAR unknown0[3]
+	float dimension_left=(float)fm.GetByte()*6.7f;
+	float dimension_up=(float)fm.GetByte()*7.6f;
+	float dimension_right=(float)fm.GetByte()*6.7f;
 	int center_x=fm.GetLEDWord();
 	int center_y=fm.GetLEDWord();
 	fm.GoForward(2); // WORD unknown1  sometimes it is 0, and sometimes it is 3
 	fm.GoForward(1); // CHAR unknown2  0x64, other values were not observed
+
+	float ta=RAD(127.0f/2.0f); // Tactics grid angle
+	int center_x_ex=(int)((dimension_left*sinf(ta)+dimension_right*sinf(ta))/2.0f-dimension_left*sinf(ta));
+	int center_y_ex=(int)((dimension_left*cosf(ta)+dimension_right*cosf(ta))/2.0f);
 
 	DWORD anim_index=0;
 	DwordVec frames;
@@ -1682,6 +1723,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	// Find sequence
 	if(seq_name[0])
 	{
+		bool seq_founded=false;
 		char name[MAX_FOTEXT];
 		DWORD seq_cnt=fm.GetLEDWord();
 		for(DWORD seq=0;seq<seq_cnt;seq++)
@@ -1717,9 +1759,11 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 				}
 
 				// Animation founded, go forward
+				seq_founded=true;
 				break;
 			}
 		}
+		if(!seq_founded) return false;
 	}
 
 	// Find animation
@@ -1737,6 +1781,17 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	DwordVec bboxes;
 	bboxes.resize(frame_cnt*dir_cnt*4);
 	fm.CopyMem(&bboxes[0],sizeof(DWORD)*frame_cnt*dir_cnt*4);
+
+	// Fix dir
+	if(dir_cnt!=8) dir=dir*(dir_cnt*100/8)/100;
+	if(dir>=dir_cnt) dir=0;
+
+	// Check wrong frames
+	for(size_t i=0;i<frames.size();)
+	{
+		if(frames[i]>=frame_cnt) frames.erase(frames.begin()+i);
+		else i++;
+	}
 
 	// Get images file
 	fm.SetCurPos(file_offset);
@@ -1798,7 +1853,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	// Create animation
 	if(frames.empty()) frames.push_back(0);
 
-	AnyFrames* anim=CreateAnimation(frames.size(),1000/10*frames.size(),0,0);
+	AnyFrames* anim=CreateAnimation(frames.size(),1000/10*frames.size());
 	if(!anim) return NULL;
 
 	for(size_t f=0,ff=frames.size();f<ff;f++)
@@ -1931,8 +1986,8 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		}
 
 		SpriteInfo* si=new(nothrow) SpriteInfo();
-		si->OffsX=bboxes[frm*dir_cnt*4+dir*4+0]-center_x;
-		si->OffsY=bboxes[frm*dir_cnt*4+dir*4+1]-center_y;
+		si->OffsX=bboxes[frm*dir_cnt*4+dir*4+0]-center_x+center_x_ex+whole_w/2;
+		si->OffsY=bboxes[frm*dir_cnt*4+dir*4+1]-center_y+center_y_ex+whole_h;
 		DWORD result=FillSurfaceFromMemory(si,img_data,img_size);
 		delete[] img_data;
 		if(!result)
@@ -2039,7 +2094,7 @@ AnyFrames* SpriteManager::LoadAnimationZar(const char* fname, int path_type)
 	delete[] img_data;
 	if(!result) return NULL;
 
-	AnyFrames* anim=CreateAnimation(1,100,0,0);
+	AnyFrames* anim=CreateAnimation(1,100);
 	if(!anim) return NULL;
 	anim->Ind[0]=result;
 	return anim;
@@ -2064,7 +2119,7 @@ AnyFrames* SpriteManager::LoadAnimationTil(const char* fname, int path_type)
 	DWORD frames_count=fm.GetLEDWord();
 
 	// Create animation
-	AnyFrames* anim=CreateAnimation(frames_count,1000/10*frames_count,0,0);
+	AnyFrames* anim=CreateAnimation(frames_count,1000/10*frames_count);
 	if(!anim) return NULL;
 
 	for(DWORD frm=0;frm<frames_count;frm++)
@@ -2172,7 +2227,7 @@ AnyFrames* SpriteManager::LoadAnimationOther(const char* fname, int path_type)
 	DWORD result=FillSurfaceFromMemory(si,fm.GetBuf(),fm.GetFsize());
 	if(!result) return NULL;
 
-	AnyFrames* anim=CreateAnimation(1,100,0,0);
+	AnyFrames* anim=CreateAnimation(1,100);
 	if(!anim) return NULL;
 	anim->Ind[0]=result;
 	return anim;

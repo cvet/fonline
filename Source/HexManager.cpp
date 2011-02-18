@@ -1439,7 +1439,7 @@ void HexManager::RebuildRoof()
 #ifdef FONLINE_MAPPER
 					{
 						ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:NULL,NULL).SetEgg(EGG_ALWAYS);
+						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
 					}
 #else
 						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
@@ -3762,16 +3762,26 @@ void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 void HexManager::AffectCritter(MapObject* mobj, CritterCl* cr)
 {
 	if(mobj->MCritter.Cond<COND_LIFE || mobj->MCritter.Cond>COND_DEAD)
-	{
 		mobj->MCritter.Cond=COND_LIFE;
-		mobj->MCritter.CondExt=COND_LIFE_NONE;
-	}
 
 	bool refresh=false;
-	if(cr->Cond!=mobj->MCritter.Cond || cr->CondExt!=mobj->MCritter.CondExt) refresh=true;
+	if(cr->Cond!=mobj->MCritter.Cond)
+	{
+		cr->Cond=mobj->MCritter.Cond;
+		cr->Anim1Life=0;
+		cr->Anim1Knockout=0;
+		cr->Anim1Dead=0;
+		cr->Anim2Life=0;
+		cr->Anim2Knockout=0;
+		cr->Anim2Dead=0;
+		refresh=true;
+	}
 
-	cr->Cond=mobj->MCritter.Cond;
-	cr->CondExt=mobj->MCritter.CondExt;
+	DWORD& anim1=(cr->Cond==COND_LIFE?cr->Anim1Life:(cr->Cond==COND_KNOCKOUT?cr->Anim1Knockout:cr->Anim1Dead));
+	DWORD& anim2=(cr->Cond==COND_LIFE?cr->Anim2Life:(cr->Cond==COND_KNOCKOUT?cr->Anim2Knockout:cr->Anim2Dead));
+	if(anim1!=mobj->MCritter.Anim1 || anim2!=mobj->MCritter.Anim2) refresh=true;
+	anim1=mobj->MCritter.Anim1;
+	anim2=mobj->MCritter.Anim2;
 
 	for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
 	{

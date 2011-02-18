@@ -1111,7 +1111,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 	return true;
 }
 
-void FOServer::KillCritter(Critter* cr, BYTE dead_type, Critter* attacker)
+void FOServer::KillCritter(Critter* cr, DWORD anim2, Critter* attacker)
 {
 	if(cr->Data.Params[MODE_INVULNERABLE]) return;
 
@@ -1129,7 +1129,7 @@ void FOServer::KillCritter(Critter* cr, BYTE dead_type, Critter* attacker)
 	}
 
 	// Process dead
-	cr->ToDead(dead_type,true);
+	cr->ToDead(anim2,true);
 	cr->EventDead(attacker);
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(map) map->EventCritterDead(cr,attacker);
@@ -1163,7 +1163,6 @@ void FOServer::RespawnCritter(Critter* cr)
 	map->SetFlagCritter(hx,hy,multihex,false);
 
 	cr->Data.Cond=COND_LIFE;
-	cr->Data.CondExt=COND_LIFE_NONE;
 	if(cr->Data.Params[ST_CURRENT_HP]<1)
 	{
 		cr->ChangeParam(ST_CURRENT_HP);
@@ -1179,7 +1178,7 @@ void FOServer::RespawnCritter(Critter* cr)
 	}
 }
 
-void FOServer::KnockoutCritter(Critter* cr, bool face_up, DWORD lose_ap, WORD knock_hx, WORD knock_hy)
+void FOServer::KnockoutCritter(Critter* cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, WORD knock_hx, WORD knock_hy)
 {
 	// Close talk
 	if(cr->IsPlayer())
@@ -1223,8 +1222,8 @@ void FOServer::KnockoutCritter(Critter* cr, bool face_up, DWORD lose_ap, WORD kn
 		map->SetFlagCritter(x2,y2,multihex,is_dead);
 	}
 
-	cr->ToKnockout(face_up,lose_ap,knock_hx,knock_hy);
-	cr->EventKnockout(face_up,lose_ap,DistGame(x1,y1,x2,y2));
+	cr->ToKnockout(anim2begin,anim2idle,anim2end,lost_ap,knock_hx,knock_hy);
+	cr->EventKnockout(anim2begin,anim2idle,anim2end,lost_ap,DistGame(x1,y1,x2,y2));
 }
 
 bool FOServer::MoveRandom(Critter* cr)
@@ -1549,7 +1548,6 @@ void FOServer::Process_CreateClient(Client* cl)
 	cl->Data.WorldX=GM_MAXX/2;
 	cl->Data.WorldY=GM_MAXY/2;
 	cl->Data.Cond=COND_LIFE;
-	cl->Data.CondExt=COND_LIFE_NONE;
 	cl->Data.Multihex=-1;
 
 	CritDataExt* data_ext=cl->GetDataExt();
@@ -4175,7 +4173,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		}
 		else if(cl->GroupMove->EncounterDescriptor) // No
 		{
-			cl->GroupMove->StartEncaunterTime(ENCOUNTERS_TIME);
+			cl->GroupMove->StartEncaunterTime(GameOpt.EncounterTime);
 			cl->GroupMove->EncounterDescriptor=0;
 			cl->SendA_GlobalInfo(cl->GroupMove,GM_INFO_GROUP_PARAM);
 		}

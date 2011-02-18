@@ -19,7 +19,7 @@ struct CritData
 	DWORD BaseType;
 	BYTE Dir;
 	BYTE Cond;
-	BYTE CondExt;
+	BYTE ReservedCE;
 	char Reserved0;
 	DWORD ScriptId;
 	DWORD ShowCritterDist1;
@@ -35,7 +35,14 @@ struct CritData
 	WORD MapPid;
 	WORD Reserved2;
 	int Params[MAX_PARAMS];
-	DWORD Reserved3[10];
+	DWORD Anim1Life;
+	DWORD Anim1Knockout;
+	DWORD Anim1Dead;
+	DWORD Anim2Life;
+	DWORD Anim2Knockout;
+	DWORD Anim2Dead;
+	DWORD Anim2KnockoutEnd;
+	DWORD Reserved3[3];
 	char Lexems[LEXEMS_SIZE];
 	DWORD Reserved4[8];
 	bool ClientToDelete;

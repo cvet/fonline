@@ -111,7 +111,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 #ifndef DEV_VESRION
 	if(!Singleplayer && FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
 	{
-		MessageBox(NULL,"FOnline already run.","FOnline",MB_OK);
+		MessageBox(NULL,"FOnline is running already.","FOnline",MB_OK);
 		return 0;
 	}
 #endif

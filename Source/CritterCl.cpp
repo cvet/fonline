@@ -8,7 +8,6 @@
 #include "Script.h"
 #endif
 
-AnimMap CritterCl::crAnim;
 AnyFrames* CritterCl::DefaultAnim=NULL;
 int CritterCl::ParamsChangeScript[MAX_PARAMS]={0};
 int CritterCl::ParamsGetScript[MAX_PARAMS]={0};
@@ -21,7 +20,7 @@ bool CritterCl::SlotEnabled[0x100]={true,true,true,true,false};
 
 CritterCl::CritterCl():
 CrDir(0),SprId(0),Id(0),Pid(0),NameColor(0),ContourColor(0),
-begSpr(0),endSpr(0),curSpr(0),animStartTick(0),
+curSpr(0),lastEndSpr(0),animStartTick(0),
 SprOx(0),SprOy(0),StartTick(0),TickCount(0),ApRegenerationTick(0),
 tickTextDelay(0),textOnHeadColor(COLOR_TEXT),Alpha(0),
 fadingEnable(false),FadingTick(0),fadeUp(false),finishingTime(0),
@@ -36,10 +35,11 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 	ZeroMemory(Params,sizeof(Params));
 	ItemSlotMain=ItemSlotExt=DefItemSlotHand=new Item();
 	ItemSlotArmor=DefItemSlotArmor=new Item();
-	tickFun=Timer::GameTick()+Random(STAY_WAIT_SHOW_TIME/2,STAY_WAIT_SHOW_TIME);
+	tickFidget=Timer::GameTick()+Random(GameOpt.CritterFidgetTime,GameOpt.CritterFidgetTime*2);
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
 	ZeroMemory(ParamsIsChanged,sizeof(ParamsIsChanged));
 	ParamLocked=-1;
+	ZeroMemory(&stayAnim,sizeof(stayAnim));
 }
 
 CritterCl::~CritterCl()
@@ -607,10 +607,10 @@ void CritterCl::DrawStay(INTRECT r)
 	if(!Anim3d)
 	{
 		DWORD crtype=GetCrType();
-		AnyFrames* frm=LoadAnim(crtype,anim1,anim2,dir);
-		if(frm)
+		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
+		if(anim)
 		{
-			DWORD spr_id=(IsLife()?frm->Ind[0]:frm->Ind[frm->CntFrm-1]);
+			DWORD spr_id=(IsLife()?anim->Ind[0]:anim->Ind[anim->CntFrm-1]);
 			SprMngr.DrawSpriteSize(spr_id,r.L,r.T,r.W(),r.H(),false,true);
 		}
 	}
@@ -830,9 +830,9 @@ WORD CritterCl::PopLastHexY()
 	return hy;
 }
 
-void CritterCl::Move(BYTE dir)
+void CritterCl::Move(int dir)
 {
-	if(dir>5 || !CritType::IsCanRotate(GetCrType())) dir=0;
+	if(dir<0 || dir>5 || !CritType::IsCanRotate(GetCrType())) dir=0;
 	CrDir=dir;
 
 	DWORD crtype=GetCrType();
@@ -840,13 +840,13 @@ void CritterCl::Move(BYTE dir)
 
 	if(!IsRunning)
 	{
-		time_move=CritType::GetTimeWalk(GetCrType());
+		time_move=CritType::GetTimeWalk(crtype);
 		if(!time_move) time_move=400;
 		//if(IsTurnBased()) time_move/=2;
 	}
 	else
 	{
-		time_move=CritType::GetTimeRun(GetCrType());
+		time_move=CritType::GetTimeRun(crtype);
 		if(!time_move) time_move=200;
 	}
 	TickStart(IsDmgTwoLeg()?GameOpt.Breaktime:time_move);
@@ -854,79 +854,116 @@ void CritterCl::Move(BYTE dir)
 
 	if(!Anim3d)
 	{
-		DWORD anim1=(IsRunning?ANIM1_UNARMED:GetAnim1());
-		DWORD anim2=(IsRunning?ANIM2_2D_RUN:ANIM2_2D_WALK);
-		AnyFrames* anim=LoadAnim(crtype,anim1,anim2,dir);
-		int step=0;
-		curSpr=endSpr;
-
-		if(!IsRunning)
+		if(CritType::GetAnimType(crtype)==ANIM_TYPE_FALLOUT)
 		{
-			int s0=CritType::GetWalkFrmCnt(crtype,0);
-			int s1=CritType::GetWalkFrmCnt(crtype,1);
-			int s2=CritType::GetWalkFrmCnt(crtype,2);
-			int s3=CritType::GetWalkFrmCnt(crtype,3);
+			DWORD anim1=(IsRunning?ANIM1_UNARMED:GetAnim1());
+			DWORD anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
+			AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
+			if(!anim) anim=DefaultAnim;
 
-			if(curSpr==s0-1 && s1)
+			int step,beg_spr,end_spr;
+			curSpr=lastEndSpr;
+
+			if(!IsRunning)
 			{
-				begSpr=s0;
-				endSpr=s1-1;
-				step=2;
-			}
-			else if(curSpr==s1-1 && s2)
-			{
-				begSpr=s1;
-				endSpr=s2-1;
-				step=3;
-			}
-			else if(curSpr==s2-1 && s3)
-			{
-				begSpr=s2;
-				endSpr=s3-1;
-				step=4;
+				int s0=CritType::GetWalkFrmCnt(crtype,0);
+				int s1=CritType::GetWalkFrmCnt(crtype,1);
+				int s2=CritType::GetWalkFrmCnt(crtype,2);
+				int s3=CritType::GetWalkFrmCnt(crtype,3);
+
+				if(curSpr==s0-1 && s1)
+				{
+					beg_spr=s0;
+					end_spr=s1-1;
+					step=2;
+				}
+				else if(curSpr==s1-1 && s2)
+				{
+					beg_spr=s1;
+					end_spr=s2-1;
+					step=3;
+				}
+				else if(curSpr==s2-1 && s3)
+				{
+					beg_spr=s2;
+					end_spr=s3-1;
+					step=4;
+				}
+				else
+				{
+					beg_spr=0;
+					end_spr=s0-1;
+					step=1;
+				}
 			}
 			else
 			{
-				begSpr=0;
-				endSpr=s0-1;
-				step=1;
+				switch(curSpr)
+				{
+				default:
+				case 0:
+					beg_spr=0;
+					end_spr=1;
+					step=1;
+					break;
+				case 1:
+					beg_spr=2;
+					end_spr=3;
+					step=2;
+					break;
+				case 3:
+					beg_spr=4;
+					end_spr=6;
+					step=3;
+					break;
+				case 6:
+					beg_spr=7;
+					end_spr=anim->CntFrm-1;
+					step=4;
+					break;
+				}
+			}
+
+			ClearAnim();
+			animSequence.push_back(CritterAnim(anim,time_move,beg_spr,end_spr,true,0,crtype,anim1,anim2,NULL));
+			NextAnim(false);
+
+			for(int i=0;i<step;i++)
+			{
+				switch(dir)
+				{
+				case 0: ChangeOffs(-16,12,true); break;
+				case 1: ChangeOffs(-32,0,true); break;
+				case 2: ChangeOffs(-16,-12,true); break;
+				case 3: ChangeOffs(16,-12,true); break;
+				case 4: ChangeOffs(32,0,true); break;
+				case 5: ChangeOffs(16,12,true); break;
+				default: break;
+				}
 			}
 		}
 		else
 		{
-			switch(curSpr)
-			{
-			default:
-			case 0:
-				begSpr=0;
-				endSpr=1;
-				step=1;
-				break;
-			case 1:
-				begSpr=2;
-				endSpr=3;
-				step=2;
-				break;
-			case 3:
-				begSpr=4;
-				endSpr=6;
-				step=3;
-				break;
-			case 6:
-				begSpr=7;
-				endSpr=anim->CntFrm-1;
-				step=4;
-				break;
-			}
-		}
-		curSpr=begSpr;
+			DWORD anim1=GetAnim1();
+			DWORD anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
+			if(IsHideMode()) anim2=(IsRunning?ANIM2_SNEAK_RUN:ANIM2_SNEAK_WALK);
+			if(IsDmgLeg()) anim2=ANIM2_LIMP;
 
-		SetOffs(0,0,true);
-		for(int i=0;i<=begSpr;++i)
-			ChangeOffs(anim->NextX[i],anim->NextY[i],true);
+			AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
+			if(!anim) anim=DefaultAnim;
 
-		for(int i=0;i<step;i++)
-		{
+			int m1=CritType::GetWalkFrmCnt(crtype,0);
+			if(m1<=0) m1=5;
+			int m2=CritType::GetWalkFrmCnt(crtype,1);
+			if(m2<=0) m2=2;
+
+			int beg_spr=lastEndSpr+1;
+			int end_spr=beg_spr+(IsRunning?m2:m1);
+
+			ClearAnim();
+			animSequence.push_back(CritterAnim(anim,time_move,beg_spr,end_spr,true,dir+1,crtype,anim1,anim2,NULL));
+			NextAnim(false);
+
 			switch(dir)
 			{
 			case 0: ChangeOffs(-16,12,true); break;
@@ -938,32 +975,29 @@ void CritterCl::Move(BYTE dir)
 			default: break;
 			}
 		}
-
-		if(curSpr>=anim->CntFrm) curSpr=0;
-		SprId=anim->Ind[curSpr];
-		ClearAnim();
-		animSequence.push_back(CritterAnim(anim,time_move,begSpr,anim->CntFrm-1,true,crtype,anim1,anim2,NULL));
 	}
 	else
 	{
-		BYTE anim1=GetAnim1();
-		BYTE anim2=(IsRunning?ANIM2_3D_RUN:ANIM2_3D_WALK);
-		if(IsDmgLeg()) anim2=ANIM2_3D_LIMP;
+		DWORD anim1=GetAnim1();
+		DWORD anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
+		if(IsHideMode()) anim2=(IsRunning?ANIM2_SNEAK_RUN:ANIM2_SNEAK_WALK);
+		if(IsDmgLeg()) anim2=ANIM2_LIMP;
 
+		Anim3d->CheckAnimation(anim1,anim2);
 		Anim3d->SetDir(dir);
 
 		ClearAnim();
-		animSequence.push_back(CritterAnim(NULL,time_move,dir+1,0,true,crtype,anim1,anim2,NULL));
+		animSequence.push_back(CritterAnim(NULL,time_move,0,0,true,dir+1,crtype,anim1,anim2,NULL));
 		NextAnim(false);
 
 		switch(dir)
 		{
-		case 0: SetOffs(-16,12,true); break;
-		case 1: SetOffs(-32,0,true); break;
-		case 2: SetOffs(-16,-12,true); break;
-		case 3: SetOffs(16,-12,true); break;
-		case 4: SetOffs(32,0,true); break;
-		case 5: SetOffs(16,12,true); break;
+		case 0: ChangeOffs(-16,12,true); break;
+		case 1: ChangeOffs(-32,0,true); break;
+		case 2: ChangeOffs(-16,-12,true); break;
+		case 3: ChangeOffs(16,-12,true); break;
+		case 4: ChangeOffs(32,0,true); break;
+		case 5: ChangeOffs(16,12,true); break;
 		default: break;
 		}
 	}
@@ -990,25 +1024,16 @@ void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /
 	switch(action)
 	{
 	case ACTION_KNOCKOUT:
-		if(action_ext==0)
-		{
-			Cond=COND_KNOCKOUT;
-			CondExt=COND_KNOCKOUT_FRONT;
-		}
-		else
-		{
-			Cond=COND_KNOCKOUT;
-			CondExt=COND_KNOCKOUT_BACK;
-		}
+		Cond=COND_KNOCKOUT;
+		Anim2Knockout=action_ext;
 		break;
 	case ACTION_STANDUP:
 		Cond=COND_LIFE;
-		CondExt=COND_LIFE_NONE;
 		break;
 	case ACTION_DEAD:
 		{
 			Cond=COND_DEAD;
-			CondExt=action_ext;
+			Anim2Dead=action_ext;
 			CritterAnim* anim=GetCurAnim();
 			needReSet=true;
 			reSetTick=Timer::GameTick()+(anim && anim->Anim?anim->Anim->Ticks:1000);
@@ -1022,7 +1047,6 @@ void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /
 		break;
 	case ACTION_RESPAWN:
 		Cond=COND_LIFE;
-		CondExt=COND_LIFE_NONE;
 		Alpha=0;
 		SetFade(true);
 		AnimateStay();
@@ -1035,6 +1059,8 @@ void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /
 	default:
 		break;
 	}
+
+	if(!IsAnim()) AnimateStay();
 }
 
 void CritterCl::NextAnim(bool erase_front)
@@ -1047,57 +1073,66 @@ void CritterCl::NextAnim(bool erase_front)
 	}
 	if(animSequence.empty()) return;
 
-	CritterAnim* anim=&animSequence[0];
+	CritterAnim& cr_anim=animSequence[0];
 	animStartTick=Timer::GameTick();
-	SetOffs(0,0,anim->MoveText);
 
-	ProcessAnim(!Anim3d,anim->IndAnim1,anim->IndAnim2,anim->ActiveItem);
+	ProcessAnim(false,!Anim3d,cr_anim.IndAnim1,cr_anim.IndAnim2,cr_anim.ActiveItem);
 
 	if(!Anim3d)
 	{
-		begSpr=anim->BeginFrm;
-		endSpr=anim->EndFrm;
-		curSpr=begSpr;
-		if(curSpr>=anim->Anim->CntFrm) curSpr=0;
-		SprId=anim->Anim->Ind[curSpr];
+		lastEndSpr=cr_anim.EndFrm;
+		curSpr=cr_anim.BeginFrm;
+		SprId=cr_anim.Anim->GetSprId(curSpr);
 
-		for(int i=0;i<=begSpr;++i)
-			ChangeOffs(anim->Anim->NextX[i],anim->Anim->NextY[i],anim->MoveText);
+		short ox=0,oy=0;
+		for(int i=0,j=curSpr%cr_anim.Anim->GetCnt();i<=j;i++)
+		{
+			ox+=cr_anim.Anim->NextX[i];
+			oy+=cr_anim.Anim->NextY[i];
+		}
+		SetOffs(ox,oy,cr_anim.MoveText);
 	}
 	else
 	{
-		Anim3d->SetAnimation(anim->IndAnim1,anim->IndAnim2,GetLayers3dData(),anim->BeginFrm?0:ANIMATION_ONE_TIME);
+		SetOffs(0,0,cr_anim.MoveText);
+		Anim3d->SetAnimation(cr_anim.IndAnim1,cr_anim.IndAnim2,GetLayers3dData(),cr_anim.DirOffs?0:ANIMATION_ONE_TIME);
 	}
-
-#ifdef FONLINE_CLIENT
-	SndMngr.PlayAction(CritType::GetSoundName(anim->IndCrType),anim->IndAnim1,anim->IndAnim2,Anim3d?true:false);
-#endif
 }
 
 void CritterCl::Animate(DWORD anim1, DWORD anim2, Item* item)
 {
 	DWORD crtype=GetCrType();
 	BYTE dir=GetDir();
-	int num_frame=0;
 	if(!anim1) anim1=GetAnim1();
-
 	if(item) item=item->Clone();
 
 	if(!Anim3d)
 	{
-		AnyFrames* anim=LoadAnim(crtype,anim1,anim2,dir);
-		if(num_frame>=anim->CntFrm) num_frame=0;
+		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
+		if(!anim)
+		{
+			if(!IsAnim()) AnimateStay();
+			return;
+		}
 
-		bool move_text=((anim1==ANIM1_DEAD || anim1==ANIM1_KNOCKOUT/* || anim1==ANIM1_RIP*/) ||
-			(anim2!=ANIM2_2D_SHOW && anim2!=ANIM2_2D_HIDE && anim2!=ANIM2_2D_PREPARE_WEAPON && anim2!=ANIM2_2D_TURNOFF_WEAPON &&
-			anim2!=ANIM2_2D_DODGE_WEAPON && anim2!=ANIM2_2D_DODGE_EMPTY && anim2!=ANIM2_2D_USE && anim2!=ANIM2_2D_PICKUP &&
-			anim2!=ANIM2_2D_DAMAGE_FRONT && anim2!=ANIM2_2D_DAMAGE_BACK && anim2!=ANIM2_2D_STAY));
+		// Todo: Migrate to scripts
+		bool move_text=true;
+//			(Cond==COND_DEAD || Cond==COND_KNOCKOUT ||
+//			(anim2!=ANIM2_SHOW_WEAPON && anim2!=ANIM2_HIDE_WEAPON && anim2!=ANIM2_PREPARE_WEAPON && anim2!=ANIM2_TURNOFF_WEAPON &&
+//			anim2!=ANIM2_DODGE_FRONT && anim2!=ANIM2_DODGE_BACK && anim2!=ANIM2_USE && anim2!=ANIM2_PICKUP &&
+//			anim2!=ANIM2_DAMAGE_FRONT && anim2!=ANIM2_DAMAGE_BACK && anim2!=ANIM2_IDLE && anim2!=ANIM2_IDLE_COMBAT));
 
-		animSequence.push_back(CritterAnim(anim,anim->Ticks,num_frame,anim->CntFrm-1,move_text,crtype,anim1,anim2,item));
+		animSequence.push_back(CritterAnim(anim,anim->Ticks,0,anim->GetCnt()-1,move_text,0,crtype,anim->Anim1,anim->Anim2,item));
 	}
 	else
 	{
-		animSequence.push_back(CritterAnim(NULL,0,0,0,true,crtype,anim1,anim2,item));
+		if(!Anim3d->CheckAnimation(anim1,anim2))
+		{
+			if(!IsAnim()) AnimateStay();
+			return;
+		}
+
+		animSequence.push_back(CritterAnim(NULL,0,0,0,true,0,crtype,anim1,anim2,item));
 	}
 
 	if(animSequence.size()==1) NextAnim(false);
@@ -1105,255 +1140,48 @@ void CritterCl::Animate(DWORD anim1, DWORD anim2, Item* item)
 
 void CritterCl::AnimateStay()
 {
-	BYTE num_frame=LAST_FRAME;
-	if(Cond==COND_LIFE && CondExt==COND_LIFE_NONE) num_frame=FIRST_FRAME;
-
 	DWORD crtype=GetCrType();
 	DWORD anim1=GetAnim1();
 	DWORD anim2=GetAnim2();
 
-	ProcessAnim(!Anim3d,anim1,anim2,NULL);
-
 	if(!Anim3d)
 	{
-		AnyFrames* frm=LoadAnim(crtype,anim1,anim2,CrDir);
-		if(num_frame==LAST_FRAME) num_frame=frm->CntFrm-1;
-		else if(num_frame==FIRST_FRAME) num_frame=0;
+		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,CrDir);
+		if(!anim) anim=DefaultAnim;
 
-		if(num_frame>=frm->CntFrm) num_frame=0;
-		SprId=frm->Ind[num_frame];
+		if(stayAnim.Anim!=anim)
+		{
+			ProcessAnim(true,true,anim1,anim2,NULL);
+
+			stayAnim.Anim=anim;
+			stayAnim.AnimTick=anim->Ticks;
+			stayAnim.BeginFrm=0;
+			stayAnim.EndFrm=anim->GetCnt()-1;
+			if(Cond==COND_DEAD) stayAnim.BeginFrm=stayAnim.EndFrm;
+			curSpr=stayAnim.BeginFrm;
+		}
+
+		SprId=anim->GetSprId(curSpr);
 
 		SetOffs(0,0,true);
-		for(int i=0;i<=num_frame;++i)
-			ChangeOffs(frm->NextX[i],frm->NextY[i],true);
-
-		curSpr=0;
-		begSpr=0;
-		endSpr=0;
+		short ox=0,oy=0;
+		for(DWORD i=0,j=curSpr%anim->GetCnt();i<=j;i++)
+		{
+			ox+=anim->NextX[i];
+			oy+=anim->NextY[i];
+		}
+		ChangeOffs(ox,oy,false);
 	}
 	else
 	{
-		if(Cond==COND_LIFE || Cond==COND_KNOCKOUT) Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),Animation3d::Is2dEmulation()?ANIMATION_STAY:0);
-		else Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),ANIMATION_STAY|ANIMATION_PERIOD(100));
-	}
-}
+		ProcessAnim(true,false,anim1,anim2,NULL);
+		SetOffs(0,0,true);
 
-AnyFrames* CritterCl::GetAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
-{
-	AnimMapIt it=crAnim.find(ANIM_MAP_ID(crtype,anim1,anim2,dir));
-	return it!=crAnim.end()?(*it).second:NULL;
-}
-
-bool CritterCl::LoadAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir)
-{
-	AnimMapIt it=crAnim.find(ANIM_MAP_ID(crtype,anim1,anim2,dir));
-	if(it!=crAnim.end()) return (*it).second!=NULL;
-
-	AnyFrames* frames=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
-	crAnim.insert(AnimMapVal(ANIM_MAP_ID(crtype,anim1,anim2,dir),frames));
-	if(!frames) return false;
-
-	if(anim2==ANIM2_2D_WALK) frames->Ticks=CritType::GetTimeWalk(crtype);
-	if(anim2==ANIM2_2D_RUN) frames->Ticks=CritType::GetTimeRun(crtype);
-
-//*****************************************
-#define LOADSPR_ADDOFFS(a1,a2) \
-	do{\
-		if(!LoadAnimSpr(crtype,a1,a2,dir)) break;\
-		AnyFrames* stay_frm=GetAnimSpr(crtype,a1,a2,dir);\
-		AnyFrames* frm=frames;\
-		SpriteInfo* stay_si=SprMngr.GetSpriteInfo(stay_frm->Ind[0]);\
-		if(!stay_si) break;\
-		for(int i=0;i<frm->CntFrm;i++)\
-		{\
-			SpriteInfo* si=SprMngr.GetSpriteInfo(frm->Ind[i]);\
-			if(!si) continue;\
-			si->OffsX+=stay_si->OffsX;\
-			si->OffsY+=stay_si->OffsY;\
-		}\
-	}while(0)
-#define LOADSPR_ADDOFFS_NEXT(a1,a2) \
-	do{\
-		if(!LoadAnimSpr(crtype,a1,a2,dir)) break;\
-		AnyFrames* stay_frm=GetAnimSpr(crtype,a1,a2,dir);\
-		AnyFrames* frm=frames;\
-		SpriteInfo* stay_si=SprMngr.GetSpriteInfo(stay_frm->Ind[0]);\
-		if(!stay_si) break;\
-		short ox=0;\
-		short oy=0;\
-		for(int i=0;i<stay_frm->CntFrm;i++)\
-		{\
-			ox+=stay_frm->NextX[i];\
-			oy+=stay_frm->NextY[i];\
-		}\
-		for(int i=0;i<frm->CntFrm;i++)\
-		{\
-			SpriteInfo* si=SprMngr.GetSpriteInfo(frm->Ind[i]);\
-			if(!si) continue;\
-			si->OffsX+=ox;\
-			si->OffsY+=oy;\
-		}\
-	}while(0)
-//*****************************************
-
-	if(anim1==ANIM1_AIM) return true;
-
-	// Empty offsets
-	if(anim1==ANIM1_UNARMED)
-	{
-		if(anim2==ANIM2_2D_STAY || anim2==ANIM2_2D_WALK || anim2==ANIM2_2D_RUN) return true;
-		LOADSPR_ADDOFFS(ANIM1_UNARMED,ANIM2_2D_STAY);
-	}
-
-	// Weapon offsets
-	if(anim1>=ANIM1_KNIFE && anim1<=ANIM1_ROCKET_LAUNCHER)
-	{
-		if(anim2==ANIM2_2D_SHOW) LOADSPR_ADDOFFS(ANIM1_UNARMED,ANIM2_2D_STAY);
-		else if(anim2==ANIM2_2D_WALK) return true;
-		else if(anim2==ANIM2_2D_STAY)
-		{
-			LOADSPR_ADDOFFS(ANIM1_UNARMED,ANIM2_2D_STAY);
-			LOADSPR_ADDOFFS_NEXT(anim1,ANIM2_2D_SHOW);
-		}
-		else if(anim2==ANIM2_2D_SHOOT || anim2==ANIM2_2D_BURST || anim2==ANIM2_2D_FLAME)
-		{
-			LOADSPR_ADDOFFS(anim1,ANIM2_2D_PREPARE_WEAPON);
-			LOADSPR_ADDOFFS_NEXT(anim1,ANIM2_2D_PREPARE_WEAPON);
-		}
-		else if(anim2==ANIM2_2D_TURNOFF_WEAPON)
-		{
-			if(anim1==ANIM1_MINIGUN)
-			{
-				LOADSPR_ADDOFFS(anim1,ANIM2_2D_BURST);
-				LOADSPR_ADDOFFS_NEXT(anim1,ANIM2_2D_BURST);
-			}
-			else
-			{
-				LOADSPR_ADDOFFS(anim1,ANIM2_2D_SHOOT);
-				LOADSPR_ADDOFFS_NEXT(anim1,ANIM2_2D_SHOOT);
-			}
-		}
-		else LOADSPR_ADDOFFS(anim1,ANIM2_2D_STAY);
-	}
-
-	// Dead & Ko offsets
-	if(anim1==ANIM1_DEAD)
-	{
-		if(anim2==ANIM2_2D_DEAD_FRONT2)
-		{
-			LOADSPR_ADDOFFS(ANIM1_DEAD,ANIM2_2D_DEAD_FRONT);
-			LOADSPR_ADDOFFS_NEXT(ANIM1_DEAD,ANIM2_2D_DEAD_FRONT);
-		}
-		else if(anim2==ANIM2_2D_DEAD_BACK2)
-		{
-			LOADSPR_ADDOFFS(ANIM1_DEAD,ANIM2_2D_DEAD_BACK);
-			LOADSPR_ADDOFFS_NEXT(ANIM1_DEAD,ANIM2_2D_DEAD_BACK);
-		}
+		if(Cond==COND_LIFE || Cond==COND_KNOCKOUT)
+			Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),Animation3d::Is2dEmulation()?ANIMATION_STAY:0);
 		else
-		{
-			LOADSPR_ADDOFFS(ANIM1_UNARMED,ANIM2_2D_STAY);
-		}
+			Anim3d->SetAnimation(anim1,anim2,GetLayers3dData(),ANIMATION_STAY|ANIMATION_PERIOD(100));
 	}
-
-	// Ko rise offsets
-	if(anim1==ANIM1_KNOCKOUT)
-	{
-		BYTE anim2_=ANIM2_2D_KNOCK_FRONT;
-		if(anim2==ANIM2_2D_STANDUP_BACK) anim2_=ANIM2_2D_KNOCK_BACK;
-		LOADSPR_ADDOFFS(ANIM1_DEAD,anim2_);
-		LOADSPR_ADDOFFS_NEXT(ANIM1_DEAD,anim2_);
-	}
-
-// 	// Rip offsets
-// 	if(anim1==ANIM1_RIP)
-// 	{
-// 		LOADSPR_ADDOFFS(ANIM1_DEAD,anim2);
-// 		LOADSPR_ADDOFFS_NEXT(ANIM1_DEAD,anim2);
-// 	}
-
-	return true;
-}
-
-AnyFrames* CritterCl::LoadAnim(DWORD& crtype, DWORD& anim1, DWORD& anim2, BYTE dir)
-{
-	// Check
-	if(crtype>=MAX_CRIT_TYPES || anim1>ABC_SIZE || anim2>ABC_SIZE || dir>5) return CritterCl::DefaultAnim;
-	if(!CritType::IsCanRotate(crtype)) dir=0;
-
-	bool with_alias=false;
-	if(anim1==ANIM1_UNARMED)
-	{
-		switch(anim2)
-		{
-		case ANIM2_2D_THROW_WEAPON: anim2=ANIM2_2D_THROW_EMPTY; break;
-		case ANIM2_2D_DODGE_WEAPON: anim2=ANIM2_2D_DODGE_EMPTY; break;
-		default: break;
-		}
-	}
-	else if(anim1==ANIM1_DEAD) // Also Knockout
-	{
-		switch(anim2)
-		{
-		case ANIM2_2D_DEAD_PULSE:
-		case ANIM2_2D_DEAD_PULSE_DUST:
-		case ANIM2_2D_DEAD_BURN:
-		case ANIM2_2D_DEAD_BURN2:
-		case ANIM2_2D_DEAD_BURN_RUN: with_alias=true; break;
-		default: break;
-		}
-	}
-
-	// Base
-	if(!LoadAnimSpr(crtype,anim1,anim2,dir))
-	{
-		// Alias
-		if(with_alias && LoadAnimSpr(CritType::GetAlias(crtype),anim1,anim2,dir))
-		{
-			crtype=CritType::GetAlias(crtype);
-			return GetAnimSpr(crtype,anim1,anim2,dir);
-		}
-
-		// Default animations
-		if(anim1==ANIM1_UNARMED)
-		{
-			switch(anim2)
-			{
-			case ANIM2_2D_STAY: return CritterCl::DefaultAnim;
-			case ANIM2_2D_RUN: anim2=ANIM2_2D_WALK; break;
-			case ANIM2_2D_KICK: anim2=ANIM2_2D_PUNCH; break;
-			default: anim2=ANIM2_2D_STAY; break;
-			}
-		}
-		else if(anim1==ANIM1_DEAD) // Also Knockout
-		{
-			switch(anim2)
-			{
-			case ANIM2_2D_DEAD_FRONT: anim1=ANIM1_UNARMED; anim2=ANIM2_2D_USE; break;
-			case ANIM2_2D_DEAD_BACK2: anim2=ANIM2_2D_DEAD_FRONT2; break;
-			case ANIM2_2D_DEAD_PULSE_DUST: anim2=ANIM2_2D_DEAD_PULSE; break;
-			case ANIM2_2D_DEAD_BURN2: anim2=ANIM2_2D_DEAD_BURN; break;
-			case ANIM2_2D_DEAD_BURN_RUN: anim2=ANIM2_2D_DEAD_BURN2; break;
-			default:
-				anim1=ANIM1_DEAD;
-				anim2=ANIM2_2D_DEAD_FRONT;
-				break;
-			}
-		}
-		else
-		{
-			anim1=ANIM1_UNARMED;
-			anim2=ANIM2_2D_USE;
-		}
-		return LoadAnim(crtype,anim1,anim2,dir);
-	}
-	return GetAnimSpr(crtype,anim1,anim2,dir);
-}
-
-void CritterCl::FreeAnimations()
-{
-	ResMngr.FreeResources(RES_CRITTERS);
-	for(AnimMapIt it=crAnim.begin(),end=crAnim.end();it!=end;++it) SAFEDEL((*it).second);
-	crAnim.clear();
 }
 
 bool CritterCl::IsWalkAnim()
@@ -1361,8 +1189,7 @@ bool CritterCl::IsWalkAnim()
 	if(animSequence.size())
 	{
 		int anim2=animSequence[0].IndAnim2;
-		if(!Anim3d) return anim2==ANIM2_2D_WALK || anim2==ANIM2_2D_RUN;
-		else return anim2==ANIM2_3D_WALK || anim2==ANIM2_3D_RUN || anim2==ANIM2_3D_LIMP || anim2==ANIM2_3D_PANIC_RUN;
+		return anim2==ANIM2_WALK || anim2==ANIM2_RUN || anim2==ANIM2_LIMP || anim2==ANIM2_PANIC_RUN;
 	}
 	return false;
 }
@@ -1393,100 +1220,36 @@ DWORD CritterCl::GetCrTypeAlias()
 	return CritType::GetAlias(GetCrType());
 }
 
-BYTE CritterCl::GetAnim1()
+DWORD CritterCl::GetAnim1()
 {
-	if(!Anim3d)
+	switch(Cond)
 	{
-		switch(Cond)
-		{
-		case COND_LIFE: return ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED;
-		case COND_KNOCKOUT: return ANIM1_DEAD;
-		case COND_DEAD: return ANIM1_DEAD;
-		}
-	}
-	else
-	{
-		return ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED;
+	case COND_LIFE: return (Anim1Life)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED);
+	case COND_KNOCKOUT: return (Anim1Knockout)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED);
+	case COND_DEAD: return (Anim1Dead)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED);
+	default: break;
 	}
 	return ANIM1_UNARMED;
 }
 
-BYTE CritterCl::GetAnim2()
+DWORD CritterCl::GetAnim2()
 {
-	if(!Anim3d)
+	switch(Cond)
 	{
-		switch(Cond)
-		{
-		case COND_LIFE: return ANIM2_2D_STAY;
-		case COND_KNOCKOUT:
-			switch(CondExt)
-			{
-			default:
-			case COND_KNOCKOUT_FRONT: return ANIM2_2D_KNOCK_FRONT;
-			case COND_KNOCKOUT_BACK: return ANIM2_2D_KNOCK_BACK;
-			}
-		case COND_DEAD:
-			switch(CondExt)
-			{
-			default:
-			case COND_DEAD_FRONT: return ANIM2_2D_DEAD_FRONT2;
-			case COND_DEAD_BACK: return ANIM2_2D_DEAD_BACK2;
-			case COND_DEAD_BLOODY_SINGLE: return ANIM2_2D_DEAD_BLOODY_SINGLE;
-			case COND_DEAD_BLOODY_BURST: return ANIM2_2D_DEAD_BLOODY_BURST;
-			case COND_DEAD_BURST: return ANIM2_2D_DEAD_BURST;
-			case COND_DEAD_PULSE: return ANIM2_2D_DEAD_PULSE;
-			case COND_DEAD_PULSE_DUST: return ANIM2_2D_DEAD_PULSE_DUST;
-			case COND_DEAD_LASER: return ANIM2_2D_DEAD_LASER;
-			case COND_DEAD_EXPLODE: return ANIM2_2D_DEAD_EXPLODE;
-			case COND_DEAD_FUSED: return ANIM2_2D_DEAD_FUSED;
-			case COND_DEAD_BURN: return ANIM2_2D_DEAD_BURN;
-			case COND_DEAD_BURN2: return ANIM2_2D_DEAD_BURN2;
-			case COND_DEAD_BURN_RUN: return ANIM2_2D_DEAD_BURN2;
-			}
-		default: break;
-		}
+	case COND_LIFE: return Anim2Life?Anim2Life:((IsCombatMode() && GameOpt.Anim2CombatIdle)?GameOpt.Anim2CombatIdle:ANIM2_IDLE);
+	case COND_KNOCKOUT: return Anim2Knockout?Anim2Knockout:ANIM2_IDLE_PRONE_FRONT;
+	case COND_DEAD: return Anim2Dead?Anim2Dead:ANIM2_DEAD_FRONT;
+	default: break;
 	}
-	else
-	{
-		switch(Cond)
-		{
-		case COND_LIFE: return IsCombatMode()?ANIM2_3D_IDLE_COMBAT:ANIM2_3D_IDLE;
-		case COND_KNOCKOUT:
-			switch(CondExt)
-			{
-			default:
-			case COND_KNOCKOUT_FRONT: return ANIM2_3D_IDLE_PRONE_FRONT;
-			case COND_KNOCKOUT_BACK: return ANIM2_3D_IDLE_PRONE_BACK;
-			}
-		case COND_DEAD:
-			switch(CondExt)
-			{
-			default:
-			case COND_DEAD_FRONT: return ANIM2_3D_DEAD_PRONE_FRONT;
-			case COND_DEAD_BACK: return ANIM2_3D_DEAD_PRONE_BACK;
-			case COND_DEAD_BLOODY_SINGLE: return ANIM2_3D_DEAD_BLOODY_SINGLE;
-			case COND_DEAD_BLOODY_BURST: return ANIM2_3D_DEAD_BLOODY_BURST;
-			case COND_DEAD_BURST: return ANIM2_3D_DEAD_BURST;
-			case COND_DEAD_PULSE: return ANIM2_3D_DEAD_PULSE;
-			case COND_DEAD_PULSE_DUST: return ANIM2_3D_DEAD_PULSE_DUST;
-			case COND_DEAD_LASER: return ANIM2_3D_DEAD_LASER;
-			case COND_DEAD_EXPLODE: return ANIM2_3D_DEAD_EXPLODE;
-			case COND_DEAD_FUSED: return ANIM2_3D_DEAD_FUSED;
-			case COND_DEAD_BURN: return ANIM2_3D_DEAD_BURN;
-			case COND_DEAD_BURN2: return ANIM2_3D_DEAD_BURN;
-			case COND_DEAD_BURN_RUN: return ANIM2_3D_DEAD_BURN_RUN;
-			}
-		default: break;
-		}
-	}
-	return ANIM2_2D_STAY;
+	return ANIM2_IDLE;
 }
 
-void CritterCl::ProcessAnim(bool is2d, DWORD anim1, DWORD anim2, Item* item)
+void CritterCl::ProcessAnim(bool animate_stay, bool is2d, DWORD anim1, DWORD anim2, Item* item)
 {
 #ifdef FONLINE_CLIENT
 	if(Script::PrepareContext(is2d?ClientFunctions.Animation2dProcess:ClientFunctions.Animation3dProcess,CALL_FUNC_STR,"AnimationProcess"))
 	{
+		Script::SetArgBool(animate_stay);
 		Script::SetArgObject(this);
 		Script::SetArgDword(anim1);
 		Script::SetArgDword(anim2);
@@ -1514,8 +1277,7 @@ bool CritterCl::IsAnimAviable(DWORD anim1, DWORD anim2)
 	// 3d
 	if(Anim3d) return Anim3d->IsAnimation(anim1,anim2);
 	// 2d
-	DWORD crtype=GetCrType();
-	return LoadAnim(crtype,anim1,anim2,GetDir())!=NULL;
+	return ResMngr.GetCrit2dAnim(GetCrType(),anim1,anim2,GetDir())!=NULL;
 }
 
 void CritterCl::SetBaseType(DWORD type)
@@ -1548,7 +1310,7 @@ void CritterCl::SetBaseType(DWORD type)
 		ZeroMemory(Layers3d,LAYERS3D_COUNT*sizeof(int));
 #endif
 
-		Anim3d->SetAnimation(ANIM1_UNARMED,ANIM2_3D_IDLE,GetLayers3dData(),0);
+		Anim3d->SetAnimation(ANIM1_UNARMED,ANIM2_IDLE,GetLayers3dData(),0);
 	}
 
 	// Allow influence of scale factor
@@ -1562,7 +1324,7 @@ void CritterCl::SetDir(BYTE dir)
 	if(CrDir==dir) return;
 	CrDir=dir;
 	if(Anim3d) Anim3d->SetDir(dir);
-	AnimateStay();
+	if(!IsAnim()) AnimateStay();
 }
 
 void CritterCl::Process()
@@ -1596,75 +1358,93 @@ void CritterCl::Process()
 	}
 
 	// Animation
+	CritterAnim& cr_anim=(animSequence.size()?animSequence[0]:stayAnim);
+	int anim_proc=(Timer::GameTick()-animStartTick)*100/(cr_anim.AnimTick?cr_anim.AnimTick:1);
+	if(anim_proc>=100)
+	{
+		if(animSequence.size()) anim_proc=100;
+		else anim_proc%=100;
+	}
+
+	// Change frames
+	if(!Anim3d && anim_proc<100)
+	{
+		DWORD cur_spr=cr_anim.BeginFrm+((cr_anim.EndFrm-cr_anim.BeginFrm+1)*anim_proc)/100;
+		if(cur_spr!=curSpr)
+		{
+			// Change frame
+			DWORD old_spr=curSpr;
+			curSpr=cur_spr;
+			SprId=cr_anim.Anim->GetSprId(curSpr);
+
+			// Change offsets
+			short ox=0,oy=0;
+			for(DWORD i=0,j=old_spr%cr_anim.Anim->GetCnt();i<=j;i++)
+			{
+				ox-=cr_anim.Anim->NextX[i];
+				oy-=cr_anim.Anim->NextY[i];
+			}
+			for(DWORD i=0,j=cur_spr%cr_anim.Anim->GetCnt();i<=j;i++)
+			{
+				ox+=cr_anim.Anim->NextX[i];
+				oy+=cr_anim.Anim->NextY[i];
+			}
+			ChangeOffs(ox,oy,cr_anim.MoveText);
+		}
+	}
+
 	if(animSequence.size())
 	{
-		CritterAnim* anim=&animSequence[0];
-		int anim_proc=Procent(anim->AnimTick,Timer::GameTick()-animStartTick);
-		if(!Anim3d)
+		// Move offsets
+		if(cr_anim.DirOffs)
 		{
-			if(anim_proc<100)
+#define WALK_OFFSET(x,y) (x)-((x)*anim_proc/100),(y)-((y)*anim_proc/100),true
+			switch(cr_anim.DirOffs-1)
 			{
-				short cur_spr=begSpr+((endSpr-begSpr+1)*anim_proc)/100;
-				if(cur_spr!=curSpr)
-				{
-					curSpr=cur_spr;
-					//TODO: animation cycle
-					if(curSpr>=anim->Anim->CntFrm) curSpr=0;
-					SprId=anim->Anim->Ind[curSpr];
-					ChangeOffs(anim->Anim->NextX[curSpr],anim->Anim->NextY[curSpr],anim->MoveText);
-				}
+			case 0: SetOffs(WALK_OFFSET(-16,12)); break;
+			case 1: SetOffs(WALK_OFFSET(-32,0)); break;
+			case 2: SetOffs(WALK_OFFSET(-16,-12)); break;
+			case 3: SetOffs(WALK_OFFSET(16,-12)); break;
+			case 4: SetOffs(WALK_OFFSET(32,0)); break;
+			case 5: SetOffs(WALK_OFFSET(16,12)); break;
+			default: break;
 			}
-			else
+
+			if(anim_proc>=100)
 			{
-				bool is_move=(anim->IndAnim2==ANIM2_2D_WALK || anim->IndAnim2==ANIM2_2D_RUN);
 				NextAnim(true);
-				if(is_move && MoveSteps.size()) return;
+				if(MoveSteps.size()) return;
 			}
 		}
 		else
 		{
-			if(anim->BeginFrm)
+			if(!Anim3d)
 			{
-#define WALK_OFFSET(x,y) (x)-((x)*anim_proc/100),(y)-((y)*anim_proc/100),true
-				if(anim_proc>=100) anim_proc=100;
-				switch(anim->BeginFrm-1)
-				{
-				case 0: SetOffs(WALK_OFFSET(-16,12)); break;
-				case 1: SetOffs(WALK_OFFSET(-32,0)); break;
-				case 2: SetOffs(WALK_OFFSET(-16,-12)); break;
-				case 3: SetOffs(WALK_OFFSET(16,-12)); break;
-				case 4: SetOffs(WALK_OFFSET(32,0)); break;
-				case 5: SetOffs(WALK_OFFSET(16,12)); break;
-				default: break;
-				}
-
-				if(anim_proc>=100)
-				{
-					NextAnim(true);
-					if(MoveSteps.size()) return;
-				}
+				if(anim_proc>=100) NextAnim(true);
 			}
-			else if(!Anim3d->IsAnimationPlaying())
+			else
 			{
-				NextAnim(true);
+				if(!Anim3d->IsAnimationPlaying()) NextAnim(true);
 			}
 		}
 
+		if(MoveSteps.size()) return;
 		if(!animSequence.size()) AnimateStay();
 	}
 
 	// Battle 3d mode
-	if(Anim3d && !animSequence.size() && Cond==COND_LIFE)
+	// Todo: do same for 2d animations
+	if(Anim3d && GameOpt.Anim2CombatIdle && !animSequence.size() && Cond==COND_LIFE && !Anim2Life)
 	{
-		if(IsCombatMode() && Anim3d->GetAnim2()!=ANIM2_3D_IDLE_COMBAT) Animate(0,ANIM2_3D_BEGIN_COMBAT,NULL);
-		else if(!IsCombatMode() && Anim3d->GetAnim2()==ANIM2_3D_IDLE_COMBAT) Animate(0,ANIM2_3D_END_COMBAT,NULL);
+		if(GameOpt.Anim2CombatBegin && IsCombatMode() && Anim3d->GetAnim2()!=GameOpt.Anim2CombatIdle) Animate(0,GameOpt.Anim2CombatBegin,NULL);
+		else if(GameOpt.Anim2CombatEnd && !IsCombatMode() && Anim3d->GetAnim2()==GameOpt.Anim2CombatIdle) Animate(0,GameOpt.Anim2CombatEnd,NULL);
 	}
 
 	// Fidget animation
-	if(!animSequence.size() && Cond==COND_LIFE && Timer::GameTick()>tickFun && IsFree() && !MoveSteps.size())
+	if(!animSequence.size() && Cond==COND_LIFE && Timer::GameTick()>=tickFidget && IsFree() && !MoveSteps.size())
 	{
 		Action(ACTION_FIDGET,0,NULL);
-		tickFun=Timer::GameTick()+Random(STAY_WAIT_SHOW_TIME,STAY_WAIT_SHOW_TIME*2);
+		tickFidget=Timer::GameTick()+Random(GameOpt.CritterFidgetTime,GameOpt.CritterFidgetTime*2);
 	}
 }
 

@@ -33,7 +33,7 @@ namespace Script
 	void SetLoadLibraryCompiler(bool enabled);
 
 	void UnloadScripts();
-	bool ReloadScripts(const char* config, const char* key, bool skip_binaries);
+	bool ReloadScripts(const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL);
 	bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count);
 
 	void AddRef(void*); // Dummy

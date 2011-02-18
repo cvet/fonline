@@ -191,7 +191,7 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 	}
 }
 
-bool CritterManager::LoadCrittersFile(FILE* f)
+bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 {
 	WriteLog("Load npc...\n");
 
@@ -236,6 +236,13 @@ bool CritterManager::LoadCrittersFile(FILE* f)
 		npc->NextRefreshBagTick=Timer::GameTick()+(npc->Data.BagRefreshTime?npc->Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 		npc->NameStr="Npc_";
 		npc->NameStr+=Str::Format("%u",npc->GetId());
+
+		if(version<WORLD_SAVE_V12)
+		{
+			Deprecated_CondExtToAnim2(npc->Data.Cond,npc->Data.ReservedCE,npc->Data.Anim2Knockout,npc->Data.Anim2Dead);
+			npc->Data.ReservedCE=0;
+		}
+
 		AddCritter(npc);
 	}
 
@@ -492,7 +499,6 @@ Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
 	npc->Data.EnemyStackCount=MAX_ENEMY_STACK;
 	npc->Data.ProtoId=proto_id;
 	npc->Data.Cond=COND_LIFE;
-	npc->Data.CondExt=COND_LIFE_NONE;
 	npc->Data.Multihex=-1;
 
 	SYNC_LOCK(npc);

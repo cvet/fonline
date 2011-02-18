@@ -214,6 +214,9 @@ struct ClientScriptFunctions
 	int Animation2dProcess;
 	int Animation3dProcess;
 	int ItemsCollection;
+	int CritterAnimation;
+	int CritterAnimationSubstitute;
+	int CritterAnimationFallout;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -229,6 +232,9 @@ struct MapperScriptFunctions
 	int KeyDown;
 	int KeyUp;
 	int InputLost;
+	int CritterAnimation;
+	int CritterAnimationSubstitute;
+	int CritterAnimationFallout;
 } extern MapperFunctions;
 
 #endif
@@ -397,6 +403,7 @@ struct GameOptions
 	DWORD GlobalMapWidth;
 	DWORD GlobalMapHeight;
 	DWORD GlobalMapZoneLength;
+	DWORD EncounterTime;
 	DWORD BagRefreshTime;
 	DWORD AttackAnimationsMinDist;
 	DWORD WhisperDist;
@@ -544,6 +551,10 @@ struct GameOptions
 	DWORD AlwaysRunUseDist;
 	string KeyboardRemap;
 	int KeyboardRemapRefCounter;
+	DWORD CritterFidgetTime;
+	DWORD Anim2CombatBegin;
+	DWORD Anim2CombatIdle;
+	DWORD Anim2CombatEnd;
 
 	// Mapper
 	string ClientPath;
@@ -700,5 +711,6 @@ extern HANDLE SingleplayerClientProcess;
 // pid == -3 - inventory
 string Deprecated_GetPicName(int pid, int type, WORD pic_num);
 DWORD Deprecated_GetPicHash(int pid, int type, WORD pic_num);
+void Deprecated_CondExtToAnim2(BYTE cond, BYTE cond_ext, DWORD& anim2ko, DWORD& anim2dead);
 
 #endif // __COMMON__

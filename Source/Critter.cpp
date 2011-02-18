@@ -33,7 +33,7 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 	{"bool %s(Critter&,Critter&,int)"}, // CRITTER_EVENT_USE_SKILL_ON_ME
 	{"void %s(Critter&,Item&)"}, // CRITTER_EVENT_DROP_ITEM
 	{"void %s(Critter&,Item&,uint8)"}, // CRITTER_EVENT_MOVE_ITEM
-	{"void %s(Critter&,bool,uint,uint)"}, // CRITTER_EVENT_KNOCKOUT
+	{"void %s(Critter&,uint,uint,uint,uint,uint)"}, // CRITTER_EVENT_KNOCKOUT
 	{"void %s(Critter&,Critter&,Critter@)"}, // CRITTER_EVENT_SMTH_DEAD
 	{"void %s(Critter&,Critter&,Critter&,bool,Item&,uint)"}, // CRITTER_EVENT_SMTH_STEALING
 	{"void %s(Critter&,Critter&,Critter&)"}, // CRITTER_EVENT_SMTH_ATTACK
@@ -42,7 +42,7 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 	{"void %s(Critter&,Critter&,int,Critter@,Item@,Scenery@)"}, // CRITTER_EVENT_SMTH_USE_SKILL
 	{"void %s(Critter&,Critter&,Item&)"}, // CRITTER_EVENT_SMTH_DROP_ITEM
 	{"void %s(Critter&,Critter&,Item&,uint8)"}, // CRITTER_EVENT_SMTH_MOVE_ITEM
-	{"void %s(Critter&,Critter&,bool,uint,uint)"}, // CRITTER_EVENT_SMTH_KNOCKOUT
+	{"void %s(Critter&,Critter&,uint,uint,uint,uint,uint)"}, // CRITTER_EVENT_SMTH_KNOCKOUT
 	{"int %s(Critter&,NpcPlane&,int,Critter@,Item@)"}, // CRITTER_EVENT_PLANE_BEGIN
 	{"int %s(Critter&,NpcPlane&,int,Critter@,Item@)"}, // CRITTER_EVENT_PLANE_END
 	{"int %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)"}, // CRITTER_EVENT_PLANE_RUN
@@ -1397,13 +1397,14 @@ bool Critter::IsHaveGeckItem()
 	return false;
 }
 
-void Critter::ToKnockout(bool face_up, DWORD lose_ap, WORD knock_hx, WORD knock_hy)
+void Critter::ToKnockout(DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, WORD knock_hx, WORD knock_hy)
 {
 	Data.Cond=COND_KNOCKOUT;
-	Data.CondExt=(face_up?COND_KNOCKOUT_FRONT:COND_KNOCKOUT_BACK);
-	KnockoutAp=lose_ap;
-	Send_Knockout(this,face_up,knock_hx,knock_hy);
-	SendA_Knockout(face_up,knock_hx,knock_hy);
+	Data.Anim2Knockout=anim2idle;
+	Data.Anim2KnockoutEnd=anim2end;
+	KnockoutAp=lost_ap;
+	Send_Knockout(this,anim2begin,anim2idle,knock_hx,knock_hy);
+	SendA_Knockout(anim2begin,anim2idle,knock_hx,knock_hy);
 }
 
 void Critter::TryUpOnKnockout()
@@ -1427,18 +1428,17 @@ void Critter::TryUpOnKnockout()
 
 	// Stand up
 	Data.Cond=COND_LIFE;
-	Data.CondExt=COND_LIFE_NONE;
-	SendAA_Action(ACTION_STANDUP,0,NULL);
+	SendAA_Action(ACTION_STANDUP,Data.Anim2KnockoutEnd,NULL);
 	SetBreakTime(GameOpt.Breaktime);
 }
 
-void Critter::ToDead(BYTE dead_type, bool send_all)
+void Critter::ToDead(DWORD anim2, bool send_all)
 {
 	bool already_dead=IsDead();
 
 	if(GetParam(ST_CURRENT_HP)>0) Data.Params[ST_CURRENT_HP]=0;
 	Data.Cond=COND_DEAD;
-	Data.CondExt=dead_type;
+	Data.Anim2Dead=anim2;
 
 	Item* item=ItemSlotMain;
 	if(item->GetId()) MoveItem(SLOT_HAND1,SLOT_INV,item->GetId(),item->GetCount());
@@ -1448,7 +1448,7 @@ void Critter::ToDead(BYTE dead_type, bool send_all)
 
 	if(send_all)
 	{
-		SendAA_Action(ACTION_DEAD,dead_type,NULL);
+		SendAA_Action(ACTION_DEAD,anim2,NULL);
 		if(IsPlayer()) Send_AllParams();
 	}
 
@@ -1853,12 +1853,14 @@ void Critter::EventMoveItem(Item* item, BYTE from_slot)
 	}
 }
 
-void Critter::EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist)
+void Critter::EventKnockout(DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, DWORD knock_dist)
 {
 	if(PrepareScriptFunc(CRITTER_EVENT_KNOCKOUT))
 	{
 		Script::SetArgObject(this);
-		Script::SetArgBool(face_up);
+		Script::SetArgDword(anim2begin);
+		Script::SetArgDword(anim2idle);
+		Script::SetArgDword(anim2end);
 		Script::SetArgDword(lost_ap);
 		Script::SetArgDword(knock_dist);
 		Script::RunPrepared();
@@ -1869,7 +1871,7 @@ void Critter::EventKnockout(bool face_up, DWORD lost_ap, DWORD knock_dist)
 	{
 		Critter* cr=*it;
 		SYNC_LOCK(cr);
-		if(cr->FuncId[CRITTER_EVENT_SMTH_KNOCKOUT]>0) cr->EventSmthKnockout(this,face_up,lost_ap,knock_dist);
+		if(cr->FuncId[CRITTER_EVENT_SMTH_KNOCKOUT]>0) cr->EventSmthKnockout(this,anim2begin,anim2idle,anim2end,lost_ap,knock_dist);
 	}
 }
 
@@ -1955,12 +1957,14 @@ void Critter::EventSmthMoveItem(Critter* from_cr, Item* item, BYTE from_slot)
 	Script::RunPrepared();
 }
 
-void Critter::EventSmthKnockout(Critter* from_cr, bool face_up, DWORD lost_ap, DWORD knock_dist)
+void Critter::EventSmthKnockout(Critter* from_cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, DWORD knock_dist)
 {
 	if(!PrepareScriptFunc(CRITTER_EVENT_SMTH_KNOCKOUT)) return;
 	Script::SetArgObject(this);
 	Script::SetArgObject(from_cr);
-	Script::SetArgBool(face_up);
+	Script::SetArgDword(anim2begin);
+	Script::SetArgDword(anim2idle);
+	Script::SetArgDword(anim2end);
 	Script::SetArgDword(lost_ap);
 	Script::SetArgDword(knock_dist);
 	Script::RunPrepared();
@@ -2132,10 +2136,11 @@ void Critter::Send_TextMsg(DWORD from_id, DWORD str_num, BYTE how_say, WORD num_
 void Critter::Send_TextMsgLex(Critter* from_cr, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems){if(IsPlayer()) ((Client*)this)->Send_TextMsgLex(from_cr,num_str,how_say,num_msg,lexems);}
 void Critter::Send_TextMsgLex(DWORD from_id, DWORD num_str, BYTE how_say, WORD num_msg, const char* lexems){if(IsPlayer()) ((Client*)this)->Send_TextMsgLex(from_id,num_str,how_say,num_msg,lexems);}
 void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item){if(IsPlayer()) ((Client*)this)->Send_Action(from_cr,action,action_ext,item);}
-void Critter::Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy){if(IsPlayer()) ((Client*)this)->Send_Knockout(from_cr,face_up,knock_hx,knock_hy);}
+void Critter::Send_Knockout(Critter* from_cr, DWORD anim2begin, DWORD anim2idle, WORD knock_hx, WORD knock_hy){if(IsPlayer()) ((Client*)this)->Send_Knockout(from_cr,anim2begin,anim2idle,knock_hx,knock_hy);}
 void Critter::Send_MoveItem(Critter* from_cr, Item* item, BYTE action, BYTE prev_slot){if(IsPlayer()) ((Client*)this)->Send_MoveItem(from_cr,item,action,prev_slot);}
 void Critter::Send_ItemData(Critter* from_cr, BYTE slot, Item* item, bool ext_data){if(IsPlayer()) ((Client*)this)->Send_ItemData(from_cr,slot,item,ext_data);}
 void Critter::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item, bool clear_sequence, bool delay_play){if(IsPlayer()) ((Client*)this)->Send_Animate(from_cr,anim1,anim2,item,clear_sequence,delay_play);}
+void Critter::Send_SetAnims(Critter* from_cr, int cond, DWORD anim1, DWORD anim2){if(IsPlayer()) ((Client*)this)->Send_SetAnims(from_cr,cond,anim1,anim2);}
 void Critter::Send_CombatResult(DWORD* combat_res, DWORD len){if(IsPlayer()) ((Client*)this)->Send_CombatResult(combat_res,len);}
 void Critter::Send_Quest(DWORD num){if(IsPlayer()) ((Client*)this)->Send_Quest(num);}
 void Critter::Send_Quests(DwordVec& nums){if(IsPlayer()) ((Client*)this)->Send_Quests(nums);}
@@ -2198,7 +2203,7 @@ void Critter::SendAA_Action(int action, int action_ext, Item* item)
 	}
 }
 
-void Critter::SendA_Knockout(bool face_up, WORD knock_hx, WORD knock_hy)
+void Critter::SendA_Knockout(DWORD anim2begin, DWORD anim2idle, WORD knock_hx, WORD knock_hy)
 {
 	if(VisCr.empty()) return;
 	//SyncLockCritters(true);
@@ -2206,7 +2211,7 @@ void Critter::SendA_Knockout(bool face_up, WORD knock_hx, WORD knock_hy)
 	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
 	{
 		Critter* cr=*it;
-		if(cr->IsPlayer()) cr->Send_Knockout(this,face_up,knock_hx,knock_hy);
+		if(cr->IsPlayer()) cr->Send_Knockout(this,anim2begin,anim2idle,knock_hx,knock_hy);
 	}
 }
 
@@ -2284,6 +2289,20 @@ void Critter::SendAA_Animate(DWORD anim1, DWORD anim2, Item* item, bool clear_se
 	{
 		Critter* cr=*it;
 		if(cr->IsPlayer()) cr->Send_Animate(this,anim1,anim2,item,clear_sequence,delay_play);
+	}
+}
+
+void Critter::SendAA_SetAnims(int cond, DWORD anim1, DWORD anim2)
+{
+	if(IsPlayer()) Send_SetAnims(this,cond,anim1,anim2);
+
+	if(VisCr.empty()) return;
+	//SyncLockCritters(true);
+
+	for(CrVecIt it=VisCr.begin(),end=VisCr.end();it!=end;++it)
+	{
+		Critter* cr=*it;
+		if(cr->IsPlayer()) cr->Send_SetAnims(this,cond,anim1,anim2);
 	}
 }
 
@@ -2984,7 +3003,7 @@ void Client::Send_AddCritter(Critter* cr)
 	bool is_npc=cr->IsNpc();
 	MSGTYPE msg=(is_npc?NETMSG_ADD_NPC:NETMSG_ADD_PLAYER);
 	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(DWORD)+sizeof(DWORD)+sizeof(WORD)*2+
-		sizeof(BYTE)+sizeof(BYTE)*2+sizeof(DWORD)+sizeof(short)+
+		sizeof(BYTE)+sizeof(BYTE)+sizeof(DWORD)*6+sizeof(DWORD)+sizeof(short)+
 		(is_npc?sizeof(WORD)+sizeof(DWORD):MAX_NAME)+ParamsSendMsgLen;
 	int dialog_id=(is_npc?cr->Data.Params[ST_DIALOG_ID]:0);
 
@@ -2997,7 +3016,12 @@ void Client::Send_AddCritter(Critter* cr)
 	Bout << cr->GetHexY();
 	Bout << cr->GetDir();
 	Bout << cr->Data.Cond;
-	Bout << cr->Data.CondExt;
+	Bout << cr->Data.Anim1Life;
+	Bout << cr->Data.Anim1Knockout;
+	Bout << cr->Data.Anim1Dead;
+	Bout << cr->Data.Anim2Life;
+	Bout << cr->Data.Anim2Knockout;
+	Bout << cr->Data.Anim2Dead;
 	Bout << cr->Flags;
 	Bout << cr->Data.Multihex;
 
@@ -3116,7 +3140,7 @@ void Client::Send_Action(Critter* from_cr, int action, int action_ext, Item* ite
 	BOUT_END(this);
 }
 
-void Client::Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD knock_hy)
+void Client::Send_Knockout(Critter* from_cr, DWORD anim2begin, DWORD anim2idle, WORD knock_hx, WORD knock_hy)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 	Send_XY(from_cr);
@@ -3124,7 +3148,8 @@ void Client::Send_Knockout(Critter* from_cr, bool face_up, WORD knock_hx, WORD k
 	BOUT_BEGIN(this);
 	Bout << NETMSG_CRITTER_KNOCKOUT;
 	Bout << from_cr->GetId();
-	Bout << face_up;
+	Bout << anim2begin;
+	Bout << anim2idle;
 	Bout << knock_hx;
 	Bout << knock_hy;
 	BOUT_END(this);
@@ -3222,6 +3247,19 @@ void Client::Send_Animate(Critter* from_cr, DWORD anim1, DWORD anim2, Item* item
 	Bout << (bool)(item?true:false);
 	Bout << clear_sequence;
 	Bout << delay_play;
+	BOUT_END(this);
+}
+
+void Client::Send_SetAnims(Critter* from_cr, int cond, DWORD anim1, DWORD anim2)
+{
+	if(IsSendDisabled() || IsOffline()) return;
+
+	BOUT_BEGIN(this);
+	Bout << NETMSG_CRITTER_SET_ANIMS;
+	Bout << from_cr->GetId();
+	Bout << cond;
+	Bout << anim1;
+	Bout << anim2;
 	BOUT_END(this);
 }
 

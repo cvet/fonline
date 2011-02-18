@@ -987,7 +987,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		}
 
 		// Continue walk
-		group->StartEncaunterTime(ENCOUNTERS_TIME);
+		group->StartEncaunterTime(GameOpt.EncounterTime);
 		group->EncounterDescriptor=0;
 		rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
 		group->MoveLastTick=tick;
@@ -1151,7 +1151,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		if(group->IsEncaunterTime())
 		{
 			group->EncounterDescriptor=0;
-			group->StartEncaunterTime(ENCOUNTERS_TIME);
+			group->StartEncaunterTime(GameOpt.EncounterTime);
 			if(rule->IsPlayer() && ((Client*)rule)->IsOffline()) goto label_GMStopMove;
 			if(!IsLocationOnCoord(xi,yi)) GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
 		}
@@ -1325,7 +1325,7 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 	}
 	else
 	{
-		group->StartEncaunterTime(ENCOUNTERS_TIME);
+		group->StartEncaunterTime(GameOpt.EncounterTime);
 		rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
 	}
 }
@@ -1465,7 +1465,7 @@ void MapManager::GM_GroupStartMove(Critter* cr, bool send)
 	Item* car=cr->GetItemCar();
 	if(car) group->CarId=car->GetId();
 
-	group->StartEncaunterTime(ENCOUNTERS_TIME);
+	group->StartEncaunterTime(GameOpt.EncounterTime);
 	group->TimeCanFollow=Timer::GameTick()+TIME_CAN_FOLLOW_GM;
 	SETFLAG(cr->Flags,FCRIT_RULEGROUP);
 
@@ -1787,7 +1787,7 @@ void MapManager::GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, DWORD sp
 
 	group->Rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
 	if(Timer::GameTick()-group->MoveLastTick>GM_MOVE_TIME) group->MoveLastTick=Timer::GameTick();
-	if(group->IsEncaunterTime()) group->StartEncaunterTime(Random(1000,ENCOUNTERS_TIME));
+	if(group->IsEncaunterTime()) group->StartEncaunterTime(Random(GameOpt.EncounterTime/10,GameOpt.EncounterTime));
 	if(!group->IsSetMove)
 	{
 		group->IsSetMove=true;

@@ -163,6 +163,7 @@ public:
 	void Net_OnCritterMoveItem();
 	void Net_OnCritterItemData();
 	void Net_OnCritterAnimate();
+	void Net_OnCritterSetAnims();
 	void Net_OnCritterParam();
 	void Net_OnCheckUID1();
 
@@ -483,9 +484,9 @@ public:
 		static DWORD Global_GetPathLengthCr(CritterCl* cr, WORD to_hx, WORD to_hy, DWORD cut);
 		static void Global_FlushScreen(DWORD from_color, DWORD to_color, DWORD ms);
 		static void Global_QuakeScreen(DWORD noise, DWORD ms);
-		static void Global_PlaySound(CScriptString& sound_name);
-		static void Global_PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
-		static void Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat);
+		static bool Global_PlaySound(CScriptString& sound_name);
+		static bool Global_PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
+		static bool Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat);
 		static void Global_PlayVideo(CScriptString& video_name, bool can_stop);
 		static bool Global_IsTurnBased();
 		static DWORD Global_GetTurnBasedTime();
@@ -540,7 +541,10 @@ public:
 		static bool Global_IsCritterCanRotate(DWORD cr_type);
 		static bool Global_IsCritterCanAim(DWORD cr_type);
 		static bool Global_IsCritterAnim1(DWORD cr_type, DWORD index);
-		static bool Global_IsCritterAnim3d(DWORD cr_type);
+		static int Global_GetCritterAnimType(DWORD cr_type);
+		static DWORD Global_GetCritterAlias(DWORD cr_type);
+		static CScriptString* Global_GetCritterTypeName(DWORD cr_type);
+		static CScriptString* Global_GetCritterSoundName(DWORD cr_type);
 		static int Global_GetGlobalMapRelief(DWORD x, DWORD y);
 		static void Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 		static void Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);

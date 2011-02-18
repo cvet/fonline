@@ -5,8 +5,7 @@
 #include "NetProtocol.h"
 #include "FileManager.h"
 
-// Other
-#define MAP_OBJECT_SIZE         (240)
+// Generic
 #define MAPOBJ_SCRIPT_NAME      (25)
 #define MAPOBJ_CRITTER_PARAMS   (15)
 
@@ -16,16 +15,14 @@
 #define MAP_OBJECT_SCENERY      (2)
 
 class ProtoMap;
-class MapObject
+class MapObject // Available in fonline.h
 {
 public:
 	BYTE MapObjType;
-	// BYTE
 	WORD ProtoId;
 	WORD MapX;
 	WORD MapY;
 	short Dir;
-	// BYTE[2]
 
 	DWORD LightColor;
 	BYTE LightDay;
@@ -44,7 +41,8 @@ public:
 		struct
 		{
 			BYTE Cond;
-			BYTE CondExt;
+			DWORD Anim1;
+			DWORD Anim2;
 			short ParamIndex[MAPOBJ_CRITTER_PARAMS];
 			int ParamValue[MAPOBJ_CRITTER_PARAMS];
 		} MCritter;
@@ -56,10 +54,7 @@ public:
 			BYTE AnimStayBegin;
 			BYTE AnimStayEnd;
 			WORD AnimWait;
-			WORD PicMapDeprecated;
-			WORD PicInvDeprecated;
 			BYTE InfoOffset;
-			BYTE Reserved[3];
 			DWORD PicMapHash;
 			DWORD PicInvHash;
 
@@ -80,7 +75,6 @@ public:
 			WORD LockerComplexity;
 
 			short TrapValue;
-			// WORD
 
 			int Val[10];
 		} MItem;
@@ -92,37 +86,23 @@ public:
 			BYTE AnimStayBegin;
 			BYTE AnimStayEnd;
 			WORD AnimWait;
-			WORD PicMapDeprecated;
-			WORD PicInvDeprecated;
 			BYTE InfoOffset;
-			BYTE Reserved[3];
 			DWORD PicMapHash;
 			DWORD PicInvHash;
 
 			bool CanUse;
 			bool CanTalk;
-			// BYTE[2]
 			DWORD TriggerNum;
 
-			// BYTE[3]
 			BYTE ParamsCount;
 			int Param[5];
 
 			WORD ToMapPid;
-			// WORD
 			DWORD ToEntire;
-			WORD ToMapX;
-			WORD ToMapY;
 			BYTE ToDir;
-			// BYTE[3]
 
 			BYTE SpriteCut;
 		} MScenery;
-
-		struct
-		{
-			DWORD Buffer[25];
-		} MAlign;
 	};
 
 	struct _RunTime
@@ -198,7 +178,6 @@ public:
 
 	// Objects
 	MapObjectPtrVec MObjects;
-	DWORD GetObjectsSize(){return MObjects.size()*MAP_OBJECT_SIZE;}
 
 	// Tiles
 	struct Tile // 12 bytes

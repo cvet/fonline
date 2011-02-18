@@ -93,12 +93,13 @@ void Str::EraseWords(char* str, char begin_char, char end_char)
 	}
 }
 
-void Str::EraseChars(char* str, char c)
+void Str::EraseChars(char* str, char ch)
 {
 	if(!str) return;
-	for(int i=0;str[i];++i)
+	while(*str)
 	{
-		if(str[i]==c) CopyBack(&str[i]);
+		if(*str==ch) CopyBack(str);
+		else ++str;
 	}
 }
 

@@ -46,7 +46,7 @@ void Copy(char* to_str, const char* from_str);
 //void StrEraseWords(char* str, char* word);
 // Erase all words from beginn_char to first end_char
 void EraseWords(char* str, char begin_char, char end_char);
-void EraseChars(char* str, char c);
+void EraseChars(char* str, char ch);
 // Copy word to to_str from from_str to first end_char
 void CopyWord(char* to_str, const char* from_str, char end_char, bool include_end_char=false);
 // Parse characters in upper

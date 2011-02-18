@@ -44,6 +44,8 @@ private:
 	StrMap soundNames;
 
 	void AddNamesHash(StrVec& names);
+	AnyFrames* LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
+	AnyFrames* LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
 
 public:
 	void Refresh();

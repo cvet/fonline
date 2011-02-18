@@ -156,6 +156,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 // Other stuff
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
 #define CONVERT_GRAMM(x)  ((x)*453)
+#define RAD(deg)          ((deg)*3.141592654f/180.0f)
 
 // World dump versions
 #define WORLD_SAVE_V1           (0x01AB0F01)
@@ -169,7 +170,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define WORLD_SAVE_V9           (0x01AB0F09)
 #define WORLD_SAVE_V10          (0x01AB0F10)
 #define WORLD_SAVE_V11          (0x01AB0F11)
-#define WORLD_SAVE_LAST         WORLD_SAVE_V11
+#define WORLD_SAVE_V12          (0x01AB0F12)
+#define WORLD_SAVE_LAST         WORLD_SAVE_V12
 
 // Generic
 #define WORLD_START_TIME        "07:00 30:10:2246 x00"
@@ -181,6 +183,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define AMBIENT_SOUND_TIME      (60000) // Random(X/2,X);
 #define EFFECT_TEXTURES         (10)
 #define EFFECT_SCRIPT_VALUES    (10)
+#define ABC_SIZE                (26)
 
 // Critters
 #define GENDER_MALE             (0)
@@ -461,25 +464,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Crit conditions
 #define COND_LIFE               (1)
-#define COND_LIFE_NONE           (1)
 #define COND_KNOCKOUT           (2)
-#define COND_KNOCKOUT_FRONT      (1)
-#define COND_KNOCKOUT_BACK       (2)
 #define COND_DEAD               (3)
-#define COND_DEAD_FRONT          (1)
-#define COND_DEAD_BACK           (2)
-#define COND_DEAD_BURST          (3)
-#define COND_DEAD_BLOODY_SINGLE  (4)
-#define COND_DEAD_BLOODY_BURST   (5)
-#define COND_DEAD_PULSE          (6)
-#define COND_DEAD_PULSE_DUST     (7)
-#define COND_DEAD_LASER          (8)
-#define COND_DEAD_EXPLODE        (9)
-#define COND_DEAD_FUSED          (10)
-#define COND_DEAD_BURN           (11)
-#define COND_DEAD_BURN2          (12)
-#define COND_DEAD_BURN_RUN       (13)
-#define COND_NOT_IN_GAME        (4)
 
 // Run-time critters flags
 #define FCRIT_PLAYER            (0x00010000) // Player
@@ -728,10 +714,11 @@ struct ScoreType
 #define ACTION_BARTER               (13) //   s      0 - item taken, 1 - item given                                 +
 #define ACTION_DODGE                (14) //          0 - front, 1 - back
 #define ACTION_DAMAGE               (15) //          0 - front, 1 - back
-#define ACTION_KNOCKOUT             (16) //   s      0 - front, 1 - back
-#define ACTION_STANDUP              (17) //   s
+#define ACTION_DAMAGE_FORCE			(24) //          0 - front, 1 - back
+#define ACTION_KNOCKOUT             (16) //   s      0 - knockout anim2begin
+#define ACTION_STANDUP              (17) //   s      0 - knockout anim2end
 #define ACTION_FIDGET               (18) // l
-#define ACTION_DEAD                 (19) //   s      dead type (see COND_DEAD_*)
+#define ACTION_DEAD                 (19) //   s      dead type anim2 (see Anim2 in _animation.fos)
 #define ACTION_CONNECT              (20) //
 #define ACTION_DISCONNECT           (21) //
 #define ACTION_RESPAWN              (22) //   s
@@ -759,160 +746,19 @@ struct ScoreType
 #define SKILL_PUSH_CRITTER          (-6)
 #define SKILL_TALK                  (-7)
 
-// Animations
-// BA - В нокдауне (падает назад) 
-// BB - В нокдауне (падает вперед) 
-// BC - В нокдауне (падает назад - только HFCMBT) 
-// BD - Убит (в режиме Bloody Mess - отлетает часть туловища) BloodySingle
-// BE - Убит (сгорает до смерти)                              Burn
-// BF - Убит (отлетает голова)                                BloodyBurst
-// BG - Убит (из пулемета)                                    Burst
-// BH - Убит (импульсным оружием)                             Pulse
-// BI - Убит (лазерным оружием - напополам)                   Laser
-// BJ - Убит (сгорает до смерти)                              Burn
-// BK - Убит (импульсным оружием - кучка пепла)               PulseDust
-// BL - Убит (взрывом)                                        Explode
-// BM - Убит (расплавлен)                                     Fused
-// BN - Убит (горит и бежит)                                  BurnRun
-// BO - Убит (лежит на земле и истекает кровью (лицом вверх)) 
-// BP - Убит (лежит на земле и истекает кровью (лицом вниз))
-// _ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
-// 0123456789012345678901234567890123456
-
-#define ABC_SIZE                        (26)
-
 // Anim1
-#define ANIM1_UNARMED                   (1)
-#define ANIM1_DEAD                      (2) // Not used in 3d animations
-#define ANIM1_KNOCKOUT                  (3) // Not used in 3d animations
-#define ANIM1_KNIFE                     (4)
-#define ANIM1_CLUB                      (5)
-#define ANIM1_HAMMER                    (6)
-#define ANIM1_SPEAR                     (7)
-#define ANIM1_PISTOL                    (8)
-#define ANIM1_UZI                       (9)
-#define ANIM1_SHOOTGUN                  (10)
-#define ANIM1_RIFLE                     (11)
-#define ANIM1_MINIGUN                   (12)
-#define ANIM1_ROCKET_LAUNCHER           (13)
-#define ANIM1_AIM                       (14) // Not used in 3d animations
+#define ANIM1_UNARMED                (1)
 // Anim2
-	// 2d animations
-#define ANIM2_2D_STAY                   (1)
-#define ANIM2_2D_WALK                   (2)
-#define ANIM2_2D_SHOW                   (3)
-#define ANIM2_2D_HIDE                   (4)
-#define ANIM2_2D_DODGE_WEAPON           (5)
-#define ANIM2_2D_THRUST                 (6)
-#define ANIM2_2D_SWING                  (7)
-#define ANIM2_2D_PREPARE_WEAPON         (8)
-#define ANIM2_2D_TURNOFF_WEAPON         (9)
-#define ANIM2_2D_SHOOT                  (10)
-#define ANIM2_2D_BURST                  (11)
-#define ANIM2_2D_FLAME                  (12)
-#define ANIM2_2D_THROW_WEAPON           (13)
-#define ANIM2_2D_DAMAGE_FRONT           (15)
-#define ANIM2_2D_DAMAGE_BACK            (16)
-#define ANIM2_2D_KNOCK_FRONT            (1)  // Only with ANIM1_DEAD
-#define ANIM2_2D_KNOCK_BACK             (2)
-#define ANIM2_2D_STANDUP_BACK           (8)  // Only with ANIM1_KO
-#define ANIM2_2D_STANDUP_FRONT          (10)
-#define ANIM2_2D_PICKUP                 (11) // Only with ANIM1_UNARMED
-#define ANIM2_2D_USE                    (12)
-#define ANIM2_2D_DODGE_EMPTY            (14)
-#define ANIM2_2D_PUNCH                  (17)
-#define ANIM2_2D_KICK                   (18)
-#define ANIM2_2D_THROW_EMPTY            (19)
-#define ANIM2_2D_RUN                    (20)
-#define ANIM2_2D_DEAD_FRONT             (1)  // Only with ANIM1_DEAD
-#define ANIM2_2D_DEAD_BACK              (2)
-#define ANIM2_2D_DEAD_BLOODY_SINGLE     (4)
-#define ANIM2_2D_DEAD_BURN              (5)
-#define ANIM2_2D_DEAD_BLOODY_BURST      (6)
-#define ANIM2_2D_DEAD_BURST             (7)
-#define ANIM2_2D_DEAD_PULSE             (8)
-#define ANIM2_2D_DEAD_LASER             (9)
-#define ANIM2_2D_DEAD_BURN2             (10)
-#define ANIM2_2D_DEAD_PULSE_DUST        (11)
-#define ANIM2_2D_DEAD_EXPLODE           (12)
-#define ANIM2_2D_DEAD_FUSED             (13)
-#define ANIM2_2D_DEAD_BURN_RUN          (14)
-#define ANIM2_2D_DEAD_FRONT2            (15)
-#define ANIM2_2D_DEAD_BACK2             (16)
-	// 3d animations
-#define ANIM2_3D_IDLE                   (1)
-#define ANIM2_3D_IDLE_STUNNED           (2)
-#define ANIM2_3D_WALK                   (3)
-#define ANIM2_3D_LIMP                   (4)
-#define ANIM2_3D_RUN                    (5)
-#define ANIM2_3D_PANIC_RUN              (6)
-#define ANIM2_3D_SHOW                   (7)
-#define ANIM2_3D_HIDE                   (8)
-#define ANIM2_3D_FIDGET1                (9)
-#define ANIM2_3D_FIDGET2                (10)
-#define ANIM2_3D_CLIMBING               (11)
-#define ANIM2_3D_PICKUP                 (12)
-#define ANIM2_3D_USE                    (13)
-#define ANIM2_3D_SWITCH_ITEMS           (14)
-#define ANIM2_3D_BEGIN_COMBAT           (15)
-#define ANIM2_3D_IDLE_COMBAT            (16)
-#define ANIM2_3D_END_COMBAT             (17)
-#define ANIM2_3D_PUNCH_RIGHT            (18)
-#define ANIM2_3D_PUNCH_LEFT             (19)
-#define ANIM2_3D_PUNCH_COMBO            (20)
-#define ANIM2_3D_KICK_HI                (21)
-#define ANIM2_3D_KICK_LO                (22)
-#define ANIM2_3D_KICK_COMBO             (23)
-#define ANIM2_3D_THRUST_1H              (24)
-#define ANIM2_3D_THRUST_2H              (25)
-#define ANIM2_3D_SLASH_1H               (26)
-#define ANIM2_3D_SLASH_2H               (27)
-#define ANIM2_3D_THROW                  (28)
-#define ANIM2_3D_SINGLE                 (29)
-#define ANIM2_3D_BURST                  (30)
-#define ANIM2_3D_SWEEP                  (31)
-#define ANIM2_3D_BUTT                   (32)
-#define ANIM2_3D_FLAME                  (33)
-#define ANIM2_3D_NO_RECOIL              (34)
-#define ANIM2_3D_RELOAD                 (35)
-#define ANIM2_3D_REPAIR                 (36)
-#define ANIM2_3D_DODGE_FRONT            (40)
-#define ANIM2_3D_DODGE_BACK             (41)
-#define ANIM2_3D_DAMAGE_FRONT           (42)
-#define ANIM2_3D_DAMAGE_BACK            (43)
-#define ANIM2_3D_DAMAGE_MUL_FRONT       (44)
-#define ANIM2_3D_DAMAGE_MUL_BACK        (45)
-#define ANIM2_3D_WALK_DAMAGE_FRONT      (46)
-#define ANIM2_3D_WALK_DAMAGE_BACK       (47)
-#define ANIM2_3D_LIMP_DAMAGE_FRONT      (48)
-#define ANIM2_3D_LIMP_DAMAGE_BACK       (49)
-#define ANIM2_3D_RUN_DAMAGE_FRONT       (50)
-#define ANIM2_3D_RUN_DAMAGE_BACK        (51)
-#define ANIM2_3D_KNOCK_FRONT            (52)
-#define ANIM2_3D_KNOCK_BACK             (53)
-#define ANIM2_3D_LAYDOWN_FRONT          (54)
-#define ANIM2_3D_LAYDOWN_BACK           (55)
-#define ANIM2_3D_IDLE_PRONE_FRONT       (56)
-#define ANIM2_3D_IDLE_PRONE_BACK        (57)
-#define ANIM2_3D_STANDUP_FRONT          (58)
-#define ANIM2_3D_STANDUP_BACK           (59)
-#define ANIM2_3D_DAMAGE_PRONE_FRONT     (60)
-#define ANIM2_3D_DAMAGE_PRONE_BACK      (61)
-#define ANIM2_3D_DAMAGE_MUL_PRONE_FRONT (62)
-#define ANIM2_3D_DAMAGE_MUL_PRONE_BACK  (63)
-#define ANIM2_3D_TWITCH_PRONE_FRONT     (64)
-#define ANIM2_3D_TWITCH_PRONE_BACK      (65)
-#define ANIM2_3D_DEAD_PRONE_FRONT       (66)
-#define ANIM2_3D_DEAD_PRONE_BACK        (67)
-#define ANIM2_3D_DEAD_BLOODY_SINGLE     (70)
-#define ANIM2_3D_DEAD_BLOODY_BURST      (71)
-#define ANIM2_3D_DEAD_BURST             (72)
-#define ANIM2_3D_DEAD_PULSE             (73)
-#define ANIM2_3D_DEAD_PULSE_DUST        (74)
-#define ANIM2_3D_DEAD_LASER             (75)
-#define ANIM2_3D_DEAD_FUSED             (76)
-#define ANIM2_3D_DEAD_EXPLODE           (77)
-#define ANIM2_3D_DEAD_BURN              (78)
-#define ANIM2_3D_DEAD_BURN_RUN          (79)
+#define ANIM2_IDLE                   (1)
+#define ANIM2_WALK                   (3)
+#define ANIM2_LIMP                   (4)
+#define ANIM2_RUN                    (5)
+#define ANIM2_PANIC_RUN              (6)
+#define ANIM2_SNEAK_WALK             (7)
+#define ANIM2_SNEAK_RUN              (8)
+#define ANIM2_IDLE_PRONE_FRONT       (86)
+#define ANIM2_IDLE_PRONE_BACK        (87)
+#define ANIM2_DEAD_FRONT             (102)
+#define ANIM2_DEAD_BACK              (103)
 
 #endif // __DEFINES__

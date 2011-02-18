@@ -165,7 +165,7 @@ private: System::Windows::Forms::NumericUpDown^  numMisc2SV2;
 	private: System::Windows::Forms::Label^  label111;
 private: System::Windows::Forms::CheckBox^  cbContIsNoOpen;
 private: System::Windows::Forms::CheckBox^  cbDoorIsNoOpen;
-private: System::Windows::Forms::CheckBox^  cbWeapIsNeedAct;
+
 private: System::Windows::Forms::NumericUpDown^  nWeapTAdmgmax;
 private: System::Windows::Forms::NumericUpDown^  nWeapTAround;
 private: System::Windows::Forms::RadioButton^  rbMisc2CarWater;
@@ -337,6 +337,12 @@ private: System::Windows::Forms::RadioButton^  rbCutDisabled;
 private: System::Windows::Forms::GroupBox^  groupBox16;
 private: System::Windows::Forms::NumericUpDown^  numDrawOrderOffsetHexY;
 private: System::Windows::Forms::Label^  label98;
+private: System::Windows::Forms::ComboBox^  cbWeapPAanim2;
+private: System::Windows::Forms::ComboBox^  cbWeapSAanim2;
+private: System::Windows::Forms::ComboBox^  cbWeapTAanim2;
+
+
+
 
 
 
@@ -449,7 +455,7 @@ private: System::Windows::Forms::NumericUpDown^  nWeapPAEffect;
 	private: System::Windows::Forms::NumericUpDown^  nWeapPAdmgmax;
 	private: System::Windows::Forms::Label^  label64;
 	private: System::Windows::Forms::Label^  label63;
-	private: System::Windows::Forms::NumericUpDown^  nWeapPAanim2;
+
 	private: System::Windows::Forms::Label^  label62;
 	private: System::Windows::Forms::CheckBox^  cbWeapPAremove;
 	private: System::Windows::Forms::CheckBox^  cbWeapPAaim;
@@ -468,7 +474,7 @@ private: System::Windows::Forms::NumericUpDown^  nWeapSAEffect;
 	private: System::Windows::Forms::NumericUpDown^  nWeapSAdmgmax;
 	private: System::Windows::Forms::Label^  label69;
 	private: System::Windows::Forms::Label^  label70;
-	private: System::Windows::Forms::NumericUpDown^  nWeapSAanim2;
+
 	private: System::Windows::Forms::Label^  label71;
 	private: System::Windows::Forms::CheckBox^  cbWeapSAremove;
 	private: System::Windows::Forms::CheckBox^  cbWeapSAaim;
@@ -487,7 +493,7 @@ private: System::Windows::Forms::NumericUpDown^  nWeapTAEffect;
 	private: System::Windows::Forms::NumericUpDown^  nWeapTAdmgmin;
 	private: System::Windows::Forms::Label^  label79;
 	private: System::Windows::Forms::Label^  label80;
-	private: System::Windows::Forms::NumericUpDown^  nWeapTAanim2;
+
 	private: System::Windows::Forms::Label^  label81;
 	private: System::Windows::Forms::CheckBox^  cbWeapTAremove;
 	private: System::Windows::Forms::CheckBox^  cbWeapTAaim;
@@ -622,7 +628,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label103 = (gcnew System::Windows::Forms::Label());
 			this->numWeapUnarmedTree = (gcnew System::Windows::Forms::NumericUpDown());
 			this->cbWeapUnarmed = (gcnew System::Windows::Forms::CheckBox());
-			this->cbWeapIsNeedAct = (gcnew System::Windows::Forms::CheckBox());
 			this->numWeapMinAg = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label108 = (gcnew System::Windows::Forms::Label());
 			this->numWeapMinSt = (gcnew System::Windows::Forms::NumericUpDown());
@@ -641,6 +646,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label44 = (gcnew System::Windows::Forms::Label());
 			this->label46 = (gcnew System::Windows::Forms::Label());
 			this->tabPage11 = (gcnew System::Windows::Forms::TabPage());
+			this->cbWeapPAanim2 = (gcnew System::Windows::Forms::ComboBox());
 			this->txtWeapPApic = (gcnew System::Windows::Forms::TextBox());
 			this->label41 = (gcnew System::Windows::Forms::Label());
 			this->txtWeapPASoundId = (gcnew System::Windows::Forms::TextBox());
@@ -655,7 +661,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->nWeapPAdmgmax = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label64 = (gcnew System::Windows::Forms::Label());
 			this->label63 = (gcnew System::Windows::Forms::Label());
-			this->nWeapPAanim2 = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label62 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapPAremove = (gcnew System::Windows::Forms::CheckBox());
 			this->cbWeapPAaim = (gcnew System::Windows::Forms::CheckBox());
@@ -668,6 +673,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label57 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapPA = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage12 = (gcnew System::Windows::Forms::TabPage());
+			this->cbWeapSAanim2 = (gcnew System::Windows::Forms::ComboBox());
 			this->textBox3 = (gcnew System::Windows::Forms::TextBox());
 			this->label42 = (gcnew System::Windows::Forms::Label());
 			this->txtWeapSASoundId = (gcnew System::Windows::Forms::TextBox());
@@ -682,7 +688,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->nWeapSAdmgmax = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label69 = (gcnew System::Windows::Forms::Label());
 			this->label70 = (gcnew System::Windows::Forms::Label());
-			this->nWeapSAanim2 = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label71 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapSAremove = (gcnew System::Windows::Forms::CheckBox());
 			this->cbWeapSAaim = (gcnew System::Windows::Forms::CheckBox());
@@ -695,6 +700,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label76 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapSA = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage13 = (gcnew System::Windows::Forms::TabPage());
+			this->cbWeapTAanim2 = (gcnew System::Windows::Forms::ComboBox());
 			this->txtWeapTApic = (gcnew System::Windows::Forms::TextBox());
 			this->label43 = (gcnew System::Windows::Forms::Label());
 			this->txtWeapTASoundId = (gcnew System::Windows::Forms::TextBox());
@@ -709,7 +715,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->nWeapTAdmgmax = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label79 = (gcnew System::Windows::Forms::Label());
 			this->label80 = (gcnew System::Windows::Forms::Label());
-			this->nWeapTAanim2 = (gcnew System::Windows::Forms::NumericUpDown());
 			this->label81 = (gcnew System::Windows::Forms::Label());
 			this->cbWeapTAremove = (gcnew System::Windows::Forms::CheckBox());
 			this->cbWeapTAaim = (gcnew System::Windows::Forms::CheckBox());
@@ -907,6 +912,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox10 = (gcnew System::Windows::Forms::GroupBox());
 			this->cbDisableEgg = (gcnew System::Windows::Forms::CheckBox());
 			this->tabPage3 = (gcnew System::Windows::Forms::TabPage());
+			this->groupBox16 = (gcnew System::Windows::Forms::GroupBox());
+			this->label98 = (gcnew System::Windows::Forms::Label());
+			this->numDrawOrderOffsetHexY = (gcnew System::Windows::Forms::NumericUpDown());
 			this->groupBox7 = (gcnew System::Windows::Forms::GroupBox());
 			this->rbCutVertical = (gcnew System::Windows::Forms::RadioButton());
 			this->rbCutHorizontal = (gcnew System::Windows::Forms::RadioButton());
@@ -960,9 +968,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->numAnimWaitBase = (gcnew System::Windows::Forms::NumericUpDown());
 			this->cbShowAnim = (gcnew System::Windows::Forms::CheckBox());
 			this->cmbLog = (gcnew System::Windows::Forms::ComboBox());
-			this->groupBox16 = (gcnew System::Windows::Forms::GroupBox());
-			this->numDrawOrderOffsetHexY = (gcnew System::Windows::Forms::NumericUpDown());
-			this->label98 = (gcnew System::Windows::Forms::Label());
 			this->tcType->SuspendLayout();
 			this->tArmor->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nArmDTexpl))->BeginInit();
@@ -1006,7 +1011,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAdistmax))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAdmgmin))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAdmgmax))->BeginInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAanim2))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAround))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAskill))->BeginInit();
 			this->tabPage12->SuspendLayout();
@@ -1015,7 +1019,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAdistmax))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAdmgmin))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAdmgmax))->BeginInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAanim2))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAround))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAskill))->BeginInit();
 			this->tabPage13->SuspendLayout();
@@ -1024,7 +1027,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAdistmax))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAdmgmin))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAdmgmax))->BeginInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAanim2))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAround))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAskill))->BeginInit();
 			this->tAmmo->SuspendLayout();
@@ -1077,6 +1079,8 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox11->SuspendLayout();
 			this->groupBox10->SuspendLayout();
 			this->tabPage3->SuspendLayout();
+			this->groupBox16->SuspendLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawOrderOffsetHexY))->BeginInit();
 			this->groupBox7->SuspendLayout();
 			this->groupBox15->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numOffsetY))->BeginInit();
@@ -1101,8 +1105,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMax))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMin))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitBase))->BeginInit();
-			this->groupBox16->SuspendLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawOrderOffsetHexY))->BeginInit();
 			this->SuspendLayout();
 			// 
 			// tcType
@@ -1542,7 +1544,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbWeapMain->Controls->Add(this->label103);
 			this->cbWeapMain->Controls->Add(this->numWeapUnarmedTree);
 			this->cbWeapMain->Controls->Add(this->cbWeapUnarmed);
-			this->cbWeapMain->Controls->Add(this->cbWeapIsNeedAct);
 			this->cbWeapMain->Controls->Add(this->numWeapMinAg);
 			this->cbWeapMain->Controls->Add(this->label108);
 			this->cbWeapMain->Controls->Add(this->numWeapMinSt);
@@ -1671,16 +1672,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cbWeapUnarmed->TabIndex = 57;
 			this->cbWeapUnarmed->Text = L"Unarmed attack";
 			this->cbWeapUnarmed->UseVisualStyleBackColor = true;
-			// 
-			// cbWeapIsNeedAct
-			// 
-			this->cbWeapIsNeedAct->AutoSize = true;
-			this->cbWeapIsNeedAct->Location = System::Drawing::Point(9, 78);
-			this->cbWeapIsNeedAct->Name = L"cbWeapIsNeedAct";
-			this->cbWeapIsNeedAct->Size = System::Drawing::Size(150, 17);
-			this->cbWeapIsNeedAct->TabIndex = 56;
-			this->cbWeapIsNeedAct->Text = L"IsNeedAct (for animation)";
-			this->cbWeapIsNeedAct->UseVisualStyleBackColor = true;
 			// 
 			// numWeapMinAg
 			// 
@@ -1830,6 +1821,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// tabPage11
 			// 
+			this->tabPage11->Controls->Add(this->cbWeapPAanim2);
 			this->tabPage11->Controls->Add(this->txtWeapPApic);
 			this->tabPage11->Controls->Add(this->label41);
 			this->tabPage11->Controls->Add(this->txtWeapPASoundId);
@@ -1844,7 +1836,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage11->Controls->Add(this->nWeapPAdmgmax);
 			this->tabPage11->Controls->Add(this->label64);
 			this->tabPage11->Controls->Add(this->label63);
-			this->tabPage11->Controls->Add(this->nWeapPAanim2);
 			this->tabPage11->Controls->Add(this->label62);
 			this->tabPage11->Controls->Add(this->cbWeapPAremove);
 			this->tabPage11->Controls->Add(this->cbWeapPAaim);
@@ -1863,6 +1854,17 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage11->TabIndex = 0;
 			this->tabPage11->Text = L"Attack 1";
 			this->tabPage11->UseVisualStyleBackColor = true;
+			// 
+			// cbWeapPAanim2
+			// 
+			this->cbWeapPAanim2->FormattingEnabled = true;
+			this->cbWeapPAanim2->Items->AddRange(gcnew cli::array< System::Object^  >(17) {L"Anim2PunchRight", L"Anim2PunchLeft", L"Anim2PunchCombo", 
+				L"Anim2KickHi", L"Anim2KickLo", L"Anim2KickCombo", L"Anim2Thrust1H", L"Anim2Thrust2H", L"Anim2Swing1H", L"Anim2Swing2H", L"Anim2Throw", 
+				L"Anim2Single", L"Anim2Burst", L"Anim2Sweep", L"Anim2Butt", L"Anim2Flame", L"Anim2NoRecoil"});
+			this->cbWeapPAanim2->Location = System::Drawing::Point(47, 105);
+			this->cbWeapPAanim2->Name = L"cbWeapPAanim2";
+			this->cbWeapPAanim2->Size = System::Drawing::Size(100, 21);
+			this->cbWeapPAanim2->TabIndex = 63;
 			// 
 			// txtWeapPApic
 			// 
@@ -1985,22 +1987,14 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label63->TabIndex = 44;
 			this->label63->Text = L"Damage max";
 			// 
-			// nWeapPAanim2
-			// 
-			this->nWeapPAanim2->Location = System::Drawing::Point(100, 103);
-			this->nWeapPAanim2->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {1000000, 0, 0, 0});
-			this->nWeapPAanim2->Name = L"nWeapPAanim2";
-			this->nWeapPAanim2->Size = System::Drawing::Size(47, 20);
-			this->nWeapPAanim2->TabIndex = 43;
-			// 
 			// label62
 			// 
 			this->label62->AutoSize = true;
 			this->label62->Location = System::Drawing::Point(2, 105);
 			this->label62->Name = L"label62";
-			this->label62->Size = System::Drawing::Size(83, 13);
+			this->label62->Size = System::Drawing::Size(36, 13);
 			this->label62->TabIndex = 42;
-			this->label62->Text = L"Animation index";
+			this->label62->Text = L"Anim2";
 			// 
 			// cbWeapPAremove
 			// 
@@ -2099,6 +2093,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// tabPage12
 			// 
+			this->tabPage12->Controls->Add(this->cbWeapSAanim2);
 			this->tabPage12->Controls->Add(this->textBox3);
 			this->tabPage12->Controls->Add(this->label42);
 			this->tabPage12->Controls->Add(this->txtWeapSASoundId);
@@ -2113,7 +2108,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage12->Controls->Add(this->nWeapSAdmgmax);
 			this->tabPage12->Controls->Add(this->label69);
 			this->tabPage12->Controls->Add(this->label70);
-			this->tabPage12->Controls->Add(this->nWeapSAanim2);
 			this->tabPage12->Controls->Add(this->label71);
 			this->tabPage12->Controls->Add(this->cbWeapSAremove);
 			this->tabPage12->Controls->Add(this->cbWeapSAaim);
@@ -2132,6 +2126,17 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage12->TabIndex = 1;
 			this->tabPage12->Text = L"Attack 2";
 			this->tabPage12->UseVisualStyleBackColor = true;
+			// 
+			// cbWeapSAanim2
+			// 
+			this->cbWeapSAanim2->FormattingEnabled = true;
+			this->cbWeapSAanim2->Items->AddRange(gcnew cli::array< System::Object^  >(17) {L"Anim2PunchRight", L"Anim2PunchLeft", L"Anim2PunchCombo", 
+				L"Anim2KickHi", L"Anim2KickLo", L"Anim2KickCombo", L"Anim2Thrust1H", L"Anim2Thrust2H", L"Anim2Swing1H", L"Anim2Swing2H", L"Anim2Throw", 
+				L"Anim2Single", L"Anim2Burst", L"Anim2Sweep", L"Anim2Butt", L"Anim2Flame", L"Anim2NoRecoil"});
+			this->cbWeapSAanim2->Location = System::Drawing::Point(47, 105);
+			this->cbWeapSAanim2->Name = L"cbWeapSAanim2";
+			this->cbWeapSAanim2->Size = System::Drawing::Size(100, 21);
+			this->cbWeapSAanim2->TabIndex = 64;
 			// 
 			// textBox3
 			// 
@@ -2254,22 +2259,14 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label70->TabIndex = 44;
 			this->label70->Text = L"Damage max";
 			// 
-			// nWeapSAanim2
-			// 
-			this->nWeapSAanim2->Location = System::Drawing::Point(100, 103);
-			this->nWeapSAanim2->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {1000000, 0, 0, 0});
-			this->nWeapSAanim2->Name = L"nWeapSAanim2";
-			this->nWeapSAanim2->Size = System::Drawing::Size(47, 20);
-			this->nWeapSAanim2->TabIndex = 43;
-			// 
 			// label71
 			// 
 			this->label71->AutoSize = true;
 			this->label71->Location = System::Drawing::Point(2, 105);
 			this->label71->Name = L"label71";
-			this->label71->Size = System::Drawing::Size(83, 13);
+			this->label71->Size = System::Drawing::Size(36, 13);
 			this->label71->TabIndex = 42;
-			this->label71->Text = L"Animation index";
+			this->label71->Text = L"Anim2";
 			// 
 			// cbWeapSAremove
 			// 
@@ -2368,6 +2365,7 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			// 
 			// tabPage13
 			// 
+			this->tabPage13->Controls->Add(this->cbWeapTAanim2);
 			this->tabPage13->Controls->Add(this->txtWeapTApic);
 			this->tabPage13->Controls->Add(this->label43);
 			this->tabPage13->Controls->Add(this->txtWeapTASoundId);
@@ -2382,7 +2380,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage13->Controls->Add(this->nWeapTAdmgmax);
 			this->tabPage13->Controls->Add(this->label79);
 			this->tabPage13->Controls->Add(this->label80);
-			this->tabPage13->Controls->Add(this->nWeapTAanim2);
 			this->tabPage13->Controls->Add(this->label81);
 			this->tabPage13->Controls->Add(this->cbWeapTAremove);
 			this->tabPage13->Controls->Add(this->cbWeapTAaim);
@@ -2400,6 +2397,17 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage13->TabIndex = 2;
 			this->tabPage13->Text = L"Attack 3";
 			this->tabPage13->UseVisualStyleBackColor = true;
+			// 
+			// cbWeapTAanim2
+			// 
+			this->cbWeapTAanim2->FormattingEnabled = true;
+			this->cbWeapTAanim2->Items->AddRange(gcnew cli::array< System::Object^  >(17) {L"Anim2PunchRight", L"Anim2PunchLeft", L"Anim2PunchCombo", 
+				L"Anim2KickHi", L"Anim2KickLo", L"Anim2KickCombo", L"Anim2Thrust1H", L"Anim2Thrust2H", L"Anim2Swing1H", L"Anim2Swing2H", L"Anim2Throw", 
+				L"Anim2Single", L"Anim2Burst", L"Anim2Sweep", L"Anim2Butt", L"Anim2Flame", L"Anim2NoRecoil"});
+			this->cbWeapTAanim2->Location = System::Drawing::Point(47, 105);
+			this->cbWeapTAanim2->Name = L"cbWeapTAanim2";
+			this->cbWeapTAanim2->Size = System::Drawing::Size(100, 21);
+			this->cbWeapTAanim2->TabIndex = 64;
 			// 
 			// txtWeapTApic
 			// 
@@ -2523,22 +2531,14 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->label80->TabIndex = 44;
 			this->label80->Text = L"Damage max";
 			// 
-			// nWeapTAanim2
-			// 
-			this->nWeapTAanim2->Location = System::Drawing::Point(100, 103);
-			this->nWeapTAanim2->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {1000000, 0, 0, 0});
-			this->nWeapTAanim2->Name = L"nWeapTAanim2";
-			this->nWeapTAanim2->Size = System::Drawing::Size(47, 20);
-			this->nWeapTAanim2->TabIndex = 43;
-			// 
 			// label81
 			// 
 			this->label81->AutoSize = true;
 			this->label81->Location = System::Drawing::Point(2, 105);
 			this->label81->Name = L"label81";
-			this->label81->Size = System::Drawing::Size(83, 13);
+			this->label81->Size = System::Drawing::Size(36, 13);
 			this->label81->TabIndex = 42;
-			this->label81->Text = L"Animation index";
+			this->label81->Text = L"Anim2";
 			// 
 			// cbWeapTAremove
 			// 
@@ -4604,6 +4604,35 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->tabPage3->Text = L"More ext info";
 			this->tabPage3->UseVisualStyleBackColor = true;
 			// 
+			// groupBox16
+			// 
+			this->groupBox16->Controls->Add(this->label98);
+			this->groupBox16->Controls->Add(this->numDrawOrderOffsetHexY);
+			this->groupBox16->Location = System::Drawing::Point(329, 168);
+			this->groupBox16->Name = L"groupBox16";
+			this->groupBox16->Size = System::Drawing::Size(178, 54);
+			this->groupBox16->TabIndex = 75;
+			this->groupBox16->TabStop = false;
+			this->groupBox16->Text = L"Draw order offset";
+			// 
+			// label98
+			// 
+			this->label98->AutoSize = true;
+			this->label98->Location = System::Drawing::Point(21, 24);
+			this->label98->Name = L"label98";
+			this->label98->Size = System::Drawing::Size(35, 13);
+			this->label98->TabIndex = 1;
+			this->label98->Text = L"Hex Y";
+			// 
+			// numDrawOrderOffsetHexY
+			// 
+			this->numDrawOrderOffsetHexY->Location = System::Drawing::Point(83, 21);
+			this->numDrawOrderOffsetHexY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {120, 0, 0, 0});
+			this->numDrawOrderOffsetHexY->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {120, 0, 0, System::Int32::MinValue});
+			this->numDrawOrderOffsetHexY->Name = L"numDrawOrderOffsetHexY";
+			this->numDrawOrderOffsetHexY->Size = System::Drawing::Size(89, 20);
+			this->numDrawOrderOffsetHexY->TabIndex = 0;
+			// 
 			// groupBox7
 			// 
 			this->groupBox7->Controls->Add(this->rbCutVertical);
@@ -5123,35 +5152,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->cmbLog->Size = System::Drawing::Size(668, 21);
 			this->cmbLog->TabIndex = 47;
 			// 
-			// groupBox16
-			// 
-			this->groupBox16->Controls->Add(this->label98);
-			this->groupBox16->Controls->Add(this->numDrawOrderOffsetHexY);
-			this->groupBox16->Location = System::Drawing::Point(329, 168);
-			this->groupBox16->Name = L"groupBox16";
-			this->groupBox16->Size = System::Drawing::Size(178, 54);
-			this->groupBox16->TabIndex = 75;
-			this->groupBox16->TabStop = false;
-			this->groupBox16->Text = L"Draw order offset";
-			// 
-			// numDrawOrderOffsetHexY
-			// 
-			this->numDrawOrderOffsetHexY->Location = System::Drawing::Point(83, 21);
-			this->numDrawOrderOffsetHexY->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) {120, 0, 0, 0});
-			this->numDrawOrderOffsetHexY->Minimum = System::Decimal(gcnew cli::array< System::Int32 >(4) {120, 0, 0, System::Int32::MinValue});
-			this->numDrawOrderOffsetHexY->Name = L"numDrawOrderOffsetHexY";
-			this->numDrawOrderOffsetHexY->Size = System::Drawing::Size(89, 20);
-			this->numDrawOrderOffsetHexY->TabIndex = 0;
-			// 
-			// label98
-			// 
-			this->label98->AutoSize = true;
-			this->label98->Location = System::Drawing::Point(21, 24);
-			this->label98->Name = L"label98";
-			this->label98->Size = System::Drawing::Size(35, 13);
-			this->label98->TabIndex = 1;
-			this->label98->Text = L"Hex Y";
-			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -5214,7 +5214,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAdistmax))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAdmgmin))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAdmgmax))->EndInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAanim2))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAround))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapPAskill))->EndInit();
 			this->tabPage12->ResumeLayout(false);
@@ -5224,7 +5223,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAdistmax))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAdmgmin))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAdmgmax))->EndInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAanim2))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAround))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapSAskill))->EndInit();
 			this->tabPage13->ResumeLayout(false);
@@ -5234,7 +5232,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAdistmax))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAdmgmin))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAdmgmax))->EndInit();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAanim2))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAround))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->nWeapTAskill))->EndInit();
 			this->tAmmo->ResumeLayout(false);
@@ -5303,6 +5300,9 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			this->groupBox10->ResumeLayout(false);
 			this->groupBox10->PerformLayout();
 			this->tabPage3->ResumeLayout(false);
+			this->groupBox16->ResumeLayout(false);
+			this->groupBox16->PerformLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawOrderOffsetHexY))->EndInit();
 			this->groupBox7->ResumeLayout(false);
 			this->groupBox7->PerformLayout();
 			this->groupBox15->ResumeLayout(false);
@@ -5334,9 +5334,6 @@ private: System::Windows::Forms::CheckBox^  cbShowKey;
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMax))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitRndMin))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numAnimWaitBase))->EndInit();
-			this->groupBox16->ResumeLayout(false);
-			this->groupBox16->PerformLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numDrawOrderOffsetHexY))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -5843,7 +5840,6 @@ void ShowObject(ProtoItem* proto)
 		numWeapUnarmedCritBonus->Value=(UINT)proto->Weapon.UnarmedCriticalBonus;
 		cbWeapArmorPiercing->Checked=proto->Weapon.UnarmedArmorPiercing;
 
-		cbWeapIsNeedAct->Checked=proto->Weapon.IsNeedAct;
 		nWeapAnim1->Value=(UINT)proto->Weapon.Anim1;
 		nWeapHolder->Value=(UINT)proto->Weapon.VolHolder;
 		nWeapCaliber->Value=(UINT)proto->Weapon.Caliber;
@@ -5863,7 +5859,7 @@ void ShowObject(ProtoItem* proto)
 		nWeapPAdmgmax->Value=(UINT)proto->Weapon.DmgMax[0];
 		nWeapPAdistmax->Value=(UINT)proto->Weapon.MaxDist[0];
 		nWeapPAEffect->Value=(UINT)proto->Weapon.Effect[0];
-		nWeapPAanim2->Value=(UINT)proto->Weapon.Anim2[0];
+		cbWeapPAanim2->Text=ToClrString(proto->Weapon_Anim2[0]);
 		nWeapPAtime->Value=(UINT)proto->Weapon.ApCost[0];
 		cbWeapPAaim->Checked=proto->Weapon.Aim[0]?true:false;
 		nWeapPAround->Value=(UINT)proto->Weapon.Round[0];
@@ -5878,7 +5874,7 @@ void ShowObject(ProtoItem* proto)
 		nWeapSAdmgmax->Value=(UINT)proto->Weapon.DmgMax[1];
 		nWeapSAdistmax->Value=(UINT)proto->Weapon.MaxDist[1];
 		nWeapSAEffect->Value=(UINT)proto->Weapon.Effect[1];
-		nWeapSAanim2->Value=(UINT)proto->Weapon.Anim2[1];
+		cbWeapSAanim2->Text=ToClrString(proto->Weapon_Anim2[1]);
 		nWeapSAtime->Value=(UINT)proto->Weapon.ApCost[1];
 		cbWeapSAaim->Checked=proto->Weapon.Aim[1]?true:false;
 		nWeapSAround->Value=(UINT)proto->Weapon.Round[1];
@@ -5893,7 +5889,7 @@ void ShowObject(ProtoItem* proto)
 		nWeapTAdmgmax->Value=(UINT)proto->Weapon.DmgMax[2];
 		nWeapTAdistmax->Value=(UINT)proto->Weapon.MaxDist[2];
 		nWeapTAEffect->Value=(UINT)proto->Weapon.Effect[2];
-		nWeapTAanim2->Value=(UINT)proto->Weapon.Anim2[2];
+		cbWeapTAanim2->Text=ToClrString(proto->Weapon_Anim2[2]);
 		nWeapTAtime->Value=(UINT)proto->Weapon.ApCost[2];
 		cbWeapTAaim->Checked=proto->Weapon.Aim[2]?true:false;
 		nWeapTAround->Value=(UINT)proto->Weapon.Round[2];
@@ -6168,7 +6164,6 @@ ProtoItem* CompileObject()
 		proto->Weapon.UnarmedCriticalBonus=(BYTE)numWeapUnarmedCritBonus->Value;
 		proto->Weapon.UnarmedArmorPiercing=cbWeapArmorPiercing->Checked;
 
-		proto->Weapon.IsNeedAct=cbWeapIsNeedAct->Checked;
 		proto->Weapon.Anim1=(BYTE)nWeapAnim1->Value;
 		proto->Weapon.VolHolder=(WORD)nWeapHolder->Value;
 		proto->Weapon.Caliber=(UINT)nWeapCaliber->Value;
@@ -6190,7 +6185,7 @@ ProtoItem* CompileObject()
 		proto->Weapon.DmgMax[0]=(WORD)nWeapPAdmgmax->Value;
 		proto->Weapon.MaxDist[0]=(WORD)nWeapPAdistmax->Value;
 		proto->Weapon.Effect[0]=(WORD)nWeapPAEffect->Value;
-		proto->Weapon.Anim2[0]=(BYTE)nWeapPAanim2->Value;
+		proto->Weapon_Anim2[0]=ToAnsi(cbWeapPAanim2->Text);
 		proto->Weapon.ApCost[0]=(UINT)nWeapPAtime->Value;
 		proto->Weapon.Aim[0]=(BYTE)cbWeapPAaim->Checked;
 		proto->Weapon.Round[0]=(WORD)nWeapPAround->Value;
@@ -6205,7 +6200,7 @@ ProtoItem* CompileObject()
 		proto->Weapon.DmgMax[1]=(WORD)nWeapSAdmgmax->Value;
 		proto->Weapon.MaxDist[1]=(WORD)nWeapSAdistmax->Value;
 		proto->Weapon.Effect[1]=(WORD)nWeapSAEffect->Value;
-		proto->Weapon.Anim2[1]=(BYTE)nWeapSAanim2->Value;
+		proto->Weapon_Anim2[1]=ToAnsi(cbWeapSAanim2->Text);
 		proto->Weapon.ApCost[1]=(UINT)nWeapSAtime->Value;
 		proto->Weapon.Aim[1]=(BYTE)cbWeapSAaim->Checked;
 		proto->Weapon.Round[1]=(WORD)nWeapSAround->Value;
@@ -6220,7 +6215,7 @@ ProtoItem* CompileObject()
 		proto->Weapon.DmgMax[2]=(WORD)nWeapTAdmgmax->Value;
 		proto->Weapon.MaxDist[2]=(WORD)nWeapTAdistmax->Value;
 		proto->Weapon.Effect[2]=(WORD)nWeapTAEffect->Value;
-		proto->Weapon.Anim2[2]=(BYTE)nWeapTAanim2->Value;
+		proto->Weapon_Anim2[2]=ToAnsi(cbWeapTAanim2->Text);
 		proto->Weapon.ApCost[2]=(UINT)nWeapTAtime->Value;
 		proto->Weapon.Aim[2]=(BYTE)cbWeapTAaim->Checked;
 		proto->Weapon.Round[2]=(WORD)nWeapTAround->Value;

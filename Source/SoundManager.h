@@ -94,10 +94,9 @@ public:
 	void SetSoundVolume(int vol_proc);
 	void SetMusicVolume(int vol_proc);
 
-	void PlaySound(const char* name);
-	void PlayAction(const char* body_type, DWORD anim1, DWORD anim2, bool anim2_by_val);
-	void PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
-	void PlayMusic(const char* fname, DWORD pos = 0, DWORD repeat = MUSIC_PLAY_PAUSE);
+	bool PlaySound(const char* name);
+	bool PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
+	bool PlayMusic(const char* fname, DWORD pos = 0, DWORD repeat = MUSIC_PLAY_PAUSE);
 	void StopMusic();
 	void PlayAmbient(const char* str);
 

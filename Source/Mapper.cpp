@@ -26,10 +26,9 @@ bool FOMapper::Init(HWND wnd)
 {
 	WriteLog("Mapper initialization...\n");
 
-	STATIC_ASSERT(sizeof(MapObject)-sizeof(MapObject::_RunTime)==MAP_OBJECT_SIZE);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(sizeof(GameOptions)==1176);
 	Wnd=wnd;
 
 	// Register dll script data
@@ -1506,14 +1505,15 @@ void FOMapper::IntDraw()
 			}
 
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",proto_item->GetPid()),FT_NOBREAK,COLOR_TEXT_WHITE);
+		}
 
-			if(i==CurProto[IntMode])
-			{
-				string info=MsgItem->GetStr(proto_item->GetInfo());
-				info+=" - ";
-				info+=MsgItem->GetStr(proto_item->GetInfo()+1);
-				SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),info.c_str(),FT_COLORIZE);
-			}
+		if(CurProto[IntMode]<(*CurItemProtos).size())
+		{
+			ProtoItem* proto_item=&(*CurItemProtos)[CurProto[IntMode]];
+			string info=MsgItem->GetStr(proto_item->GetInfo());
+			info+=" - ";
+			info+=MsgItem->GetStr(proto_item->GetInfo()+1);
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),info.c_str(),FT_COLORIZE);
 		}
 	}
 	else if(IsTileMode())
@@ -1531,6 +1531,9 @@ void FOMapper::IntDraw()
 			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h/2,false,true,col);
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),TilesPicturesNames[i].c_str(),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
+
+		if(CurProto[IntMode]<TilesPicturesNames.size())
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),TilesPicturesNames[CurProto[IntMode]].c_str(),FT_COLORIZE);
 	}
 	else if(IsCritMode())
 	{
@@ -1550,6 +1553,12 @@ void FOMapper::IntDraw()
 
 			SprMngr.DrawSpriteSize(spr_id,x,y,w,h/2,false,true,col);
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",pnpc->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
+		}
+
+		if(CurProto[IntMode]<NpcProtos.size())
+		{
+			CritData* pnpc=NpcProtos[CurProto[IntMode]];
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),MsgDlg->GetStr(STR_NPC_NAME_(pnpc->Params[ST_DIALOG_ID],pnpc->ProtoId)),FT_COLORIZE);
 		}
 	}
 	else if(IntMode==INT_MODE_INCONT && !SelectedObj.empty())
@@ -1725,8 +1734,9 @@ void FOMapper::ObjDraw()
 	if(o->MapObjType==MAP_OBJECT_CRITTER)
 	{
 		DRAW_COMPONENT("Cond",o->MCritter.Cond,true,false);                             // 15
-		DRAW_COMPONENT("CondExt",o->MCritter.CondExt,true,false);                       // 16
-		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)                                        // 17..31
+		DRAW_COMPONENT("Anim1",o->MCritter.Anim1,true,false);                           // 16
+		DRAW_COMPONENT("Anim2",o->MCritter.Anim2,true,false);                           // 17
+		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)                                        // 18..32
 		{
 			if(o->MCritter.ParamIndex[i]>=0 && o->MCritter.ParamIndex[i]<MAX_PARAMS)
 			{
@@ -1809,9 +1819,7 @@ void FOMapper::ObjDraw()
 					DRAW_COMPONENT("EntireNumber",o->MScenery.ToEntire,true,false);          // 26
 				else
 					DRAW_COMPONENT("ToEntire",o->MScenery.ToEntire,true,false);              // 26
-				DRAW_COMPONENT("ToMapX",o->MScenery.ToMapX,true,false);                      // 27
-				DRAW_COMPONENT("ToMapY",o->MScenery.ToMapY,true,false);                      // 28
-				DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 29
+				DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 27
 			}
 			else if(proto->GetType()==ITEM_TYPE_GENERIC)
 			{
@@ -1879,9 +1887,9 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 	ProtoItem* proto=(o->MapObjType!=MAP_OBJECT_CRITTER?ItemMngr.GetProtoItem(o->ProtoId):NULL);
 	if(o->MapObjType!=MAP_OBJECT_CRITTER && !proto) return;
 
-	if(o->MapObjType==MAP_OBJECT_CRITTER && ObjCurLine>=17 && ObjCurLine<=17+MAPOBJ_CRITTER_PARAMS-1)
+	if(o->MapObjType==MAP_OBJECT_CRITTER && ObjCurLine>=18 && ObjCurLine<=18+MAPOBJ_CRITTER_PARAMS-1)
 	{
-		int pos=ObjCurLine-17;
+		int pos=ObjCurLine-18;
 		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
 		{
 			if(o->MCritter.ParamIndex[i]>=0 && o->MCritter.ParamIndex[i]<MAX_PARAMS)
@@ -1913,11 +1921,11 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 		else val_s=&o->MItem.OffsetX;
 		break;
 	case 16:
-		if(o->MapObjType==MAP_OBJECT_CRITTER) val_b=&o->MCritter.CondExt;
+		if(o->MapObjType==MAP_OBJECT_CRITTER) val_dw=&o->MCritter.Anim1;
 		else val_s=&o->MItem.OffsetY;
 		break;
 	case 17:
-		if(o->MapObjType==MAP_OBJECT_CRITTER) break;
+		if(o->MapObjType==MAP_OBJECT_CRITTER) val_dw=&o->MCritter.Anim2;
 		else val_b=&o->MItem.AnimStayBegin;
 		break;
 	case 18:
@@ -1975,7 +1983,7 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[2];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapX;
+			if(proto->GetType()==ITEM_TYPE_GRID) val_b=&o->MScenery.ToDir;
 			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[1];
 		}
 		break;
@@ -1983,16 +1991,14 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[3];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapY;
-			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[2];
+			if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[2];
 		}
 		break;
 	case 29:
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[4];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GRID) val_b=&o->MScenery.ToDir;
-			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[3];
+			if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[3];
 		}
 		break;
 	case 30:
@@ -3344,7 +3350,6 @@ void FOMapper::ParseNpc(WORD pid, WORD hx, WORD hy)
 	cr->HexY=hy;
 	cr->SetDir(NpcDir);
 	cr->Cond=COND_LIFE;
-	cr->CondExt=COND_LIFE_NONE;
 	cr->Flags=pid;
 	memcpy(cr->Params,pnpc->Params,sizeof(pnpc->Params));
 	cr->Id=AnyId;
@@ -3378,7 +3383,6 @@ MapObject* FOMapper::ParseMapObj(MapObject* mobj)
 		cr->HexY=mobj->MapY;
 		cr->SetDir(mobj->Dir);
 		cr->Cond=COND_LIFE;
-		cr->CondExt=COND_LIFE_NONE;
 		cr->Flags=mobj->ProtoId;
 		memcpy(cr->Params,pnpc->Params,sizeof(pnpc->Params));
 		cr->Id=AnyId;
@@ -3512,11 +3516,14 @@ void FOMapper::CurDraw()
 			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
-			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
-			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
+			if(si)
+			{
+				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
+				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
-				si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+				SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+			}
 		}
 		else if(IsTileMode() && TilesPictures.size())
 		{
@@ -3527,13 +3534,17 @@ void FOMapper::CurDraw()
 			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
-			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
-			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
-			x=x-16-8;
-			y=y-6+32;
-			if(DrawRoof) y-=98;
+			if(si)
+			{
+				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
+				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
+				x=x-16-8;
+				y=y-6+32;
+				if(DrawRoof) y-=98;
 
-			SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+				SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+			}
 		}
 		else if(IsCritMode() && NpcProtos.size())
 		{
@@ -3544,10 +3555,14 @@ void FOMapper::CurDraw()
 			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
-			int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
-			int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
+			if(si)
+			{
+				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
+				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-			SprMngr.DrawSpriteSize(spr_id,(x+GameOpt.ScrOx+16)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+				SprMngr.DrawSpriteSize(spr_id,(x+GameOpt.ScrOx+16)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+			}
 		}
 		else
 		{
@@ -3562,9 +3577,12 @@ void FOMapper::CurDraw()
 	if(anim)
 	{
 		SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
-		int x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
-		int y=GameOpt.MouseY-si->Height+si->OffsY;
-		SprMngr.DrawSprite(anim,x,y,COLOR_IFACE);
+		if(si)
+		{
+			int x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+			int y=GameOpt.MouseY-si->Height+si->OffsY;
+			SprMngr.DrawSprite(anim,x,y,COLOR_IFACE);
+		}
 	}
 }
 
@@ -4242,21 +4260,24 @@ void FOMapper::InitScriptSystem()
 #include <ScriptBind.h>
 
 	// Load scripts
-	Script::SetScriptsPath(PT_MAPPER_DATA);
+	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
+	Script::SetScriptsPath(PT_SERVER_SCRIPTS);
 
 	// Get config file
 	FileManager scripts_cfg;
-	scripts_cfg.LoadFile(SCRIPTS_LST,PT_MAPPER_DATA);
+	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS);
 	if(!scripts_cfg.IsLoaded())
 	{
 		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);
+		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 		return;
 	}
 
 	// Load script modules
 	Script::Undefine(NULL);
 	Script::Define("__MAPPER");
-	Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"mapper",false);
+	Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"mapper",false,"MAPPER_");
+	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 
 	// Bind game functions
 	ReservedScriptFunction BindGameFunc[]={
@@ -4271,6 +4292,9 @@ void FOMapper::InitScriptSystem()
 		{&MapperFunctions.KeyDown,"key_down","bool %s(uint8)"},
 		{&MapperFunctions.KeyUp,"key_up","bool %s(uint8)"},
 		{&MapperFunctions.InputLost,"input_lost","void %s()"},
+		{&MapperFunctions.CritterAnimation,"critter_animation","string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)"},
+		{&MapperFunctions.CritterAnimationSubstitute,"critter_animation_substitute","bool %s(int,uint,uint,uint,uint&,uint&,uint&)"},
+		{&MapperFunctions.CritterAnimationFallout,"critter_animation_fallout","bool %s(uint,uint&,uint&,uint&,uint&,uint&)"},
 	};
 	Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"mapper",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]));
 
@@ -4490,10 +4514,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject(ProtoMap& pmap, WORD hx, W
 	mobj->MapX=hx;
 	mobj->MapY=hy;
 	if(mobj_type==MAP_OBJECT_CRITTER)
-	{
 		mobj->MCritter.Cond=COND_LIFE;
-		mobj->MCritter.CondExt=COND_LIFE_NONE;
-	}
 
 	if(Self->CurProtoMap==&pmap)
 	{
@@ -5203,7 +5224,7 @@ DWORD FOMapper::SScriptFunc::Global_LoadSpriteHash(DWORD name_hash, BYTE dir)
 int FOMapper::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return 0;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return 0;
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Width;
@@ -5212,7 +5233,7 @@ int FOMapper::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 int FOMapper::SScriptFunc::Global_GetSpriteHeight(DWORD spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return 0;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return 0;
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(!si) return 0;
 	return si->Height;
@@ -5233,7 +5254,7 @@ void FOMapper::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
 }
 
@@ -5241,7 +5262,7 @@ void FOMapper::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, i
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(offs)
 	{
@@ -5257,7 +5278,7 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, i
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
 }
 
@@ -5265,7 +5286,7 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_inde
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(offs)
 	{
@@ -5324,7 +5345,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	if(!Self->HexMngr.GetHexToDraw(hx,hy)) return;
 
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
-	if(!anim || spr_index>=anim->GetCnt()) return;
+	if(!anim || spr_index>=(int)anim->GetCnt()) return;
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
 	bool is_flat=(proto_item?FLAG(proto_item->Flags,ITEM_FLAT):false);
@@ -5369,8 +5390,8 @@ void FOMapper::SScriptFunc::Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWOR
 {
 	if(CritType::IsEnabled(crtype))
 	{
-		AnyFrames* frm=CritterCl::LoadAnim(crtype,anim1,anim2,dir);
-		if(frm) SprMngr.DrawSpriteSize(frm->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
+		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
+		if(anim) SprMngr.DrawSpriteSize(anim->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
 	}
 }
 
@@ -5443,8 +5464,59 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 	}
 }
 
+bool FOMapper::SScriptFunc::Global_IsCritterCanWalk(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::IsCanWalk(cr_type);
+}
 
+bool FOMapper::SScriptFunc::Global_IsCritterCanRun(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::IsCanRun(cr_type);
+}
 
+bool FOMapper::SScriptFunc::Global_IsCritterCanRotate(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::IsCanRotate(cr_type);
+}
+
+bool FOMapper::SScriptFunc::Global_IsCritterCanAim(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::IsCanAim(cr_type);
+}
+
+bool FOMapper::SScriptFunc::Global_IsCritterAnim1(DWORD cr_type, DWORD index)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::IsAnim1(cr_type,index);
+}
+
+int FOMapper::SScriptFunc::Global_GetCritterAnimType(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::GetAnimType(cr_type);
+}
+
+DWORD FOMapper::SScriptFunc::Global_GetCritterAlias(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
+	return CritType::GetAlias(cr_type);
+}
+
+CScriptString* FOMapper::SScriptFunc::Global_GetCritterTypeName(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
+	return new CScriptString(CritType::GetCritType(cr_type).Name);
+}
+
+CScriptString* FOMapper::SScriptFunc::Global_GetCritterSoundName(DWORD cr_type)
+{
+	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
+	return new CScriptString(CritType::GetSoundName(cr_type));
+}
 
 
 
