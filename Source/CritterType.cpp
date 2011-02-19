@@ -235,7 +235,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 
 	if(errors) return false;
 
-	if(!CrTypes[0].Enabled)
+	if(!CrTypesReserved.Get()[0].Enabled)
 	{
 		WriteLog(__FUNCTION__" - Default zero type not loaded.\n");
 		return false;
