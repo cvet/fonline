@@ -515,15 +515,52 @@ void CritterManager::AddCritter(Critter* cr)
 	else npcCount++;
 }
 
+void CritterManager::GetCopyCritters(CrVec& critters, bool sync_lock)
+{
+	crLocker.Lock();
+	CrMap all_critters=allCritters;
+	crLocker.Unlock();
+
+	CrVec find_critters;
+	find_critters.reserve(all_critters.size());
+	for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
+		find_critters.push_back((*it).second);
+
+	if(sync_lock && LogicMT)
+	{
+		// Synchronize
+		for(CrVecIt it=find_critters.begin(),end=find_critters.end();it!=end;++it) SYNC_LOCK(*it);
+
+		// Recheck
+		crLocker.Lock();
+		all_critters=allCritters;
+		crLocker.Unlock();
+
+		CrVec find_critters2;
+		find_critters2.reserve(find_critters.size());
+		for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
+			find_critters2.push_back((*it).second);
+
+		// Search again, if different
+		if(!CompareContainers(find_critters,find_critters2))
+		{
+			GetCopyCritters(critters,sync_lock);
+			return;
+		}
+	}
+
+	critters=find_critters;
+}
+
 void CritterManager::GetCopyNpcs(PcVec& npcs, bool sync_lock)
 {
 	crLocker.Lock();
-	CrMap critters=allCritters;
+	CrMap all_critters=allCritters;
 	crLocker.Unlock();
 
 	PcVec find_npcs;
-	find_npcs.reserve(critters.size());
-	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+	find_npcs.reserve(all_critters.size());
+	for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(cr->IsNpc()) find_npcs.push_back((Npc*)cr);
@@ -536,12 +573,12 @@ void CritterManager::GetCopyNpcs(PcVec& npcs, bool sync_lock)
 
 		// Recheck
 		crLocker.Lock();
-		CrMap critters=allCritters;
+		all_critters=allCritters;
 		crLocker.Unlock();
 
 		PcVec find_npcs2;
 		find_npcs2.reserve(find_npcs.size());
-		for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+		for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
 		{
 			Critter* cr=(*it).second;
 			if(cr->IsNpc()) find_npcs2.push_back((Npc*)cr);
@@ -561,12 +598,12 @@ void CritterManager::GetCopyNpcs(PcVec& npcs, bool sync_lock)
 void CritterManager::GetCopyPlayers(ClVec& players, bool sync_lock)
 {
 	crLocker.Lock();
-	CrMap critters=allCritters;
+	CrMap all_critters=allCritters;
 	crLocker.Unlock();
 
 	ClVec find_players;
-	find_players.reserve(critters.size());
-	for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+	find_players.reserve(all_critters.size());
+	for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
 		if(cr->IsPlayer()) find_players.push_back((Client*)cr);
@@ -579,12 +616,12 @@ void CritterManager::GetCopyPlayers(ClVec& players, bool sync_lock)
 
 		// Recheck
 		crLocker.Lock();
-		CrMap critters=allCritters;
+		all_critters=allCritters;
 		crLocker.Unlock();
 
 		ClVec find_players2;
 		find_players2.reserve(find_players.size());
-		for(CrMapIt it=critters.begin(),end=critters.end();it!=end;++it)
+		for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
 		{
 			Critter* cr=(*it).second;
 			if(cr->IsPlayer()) find_players2.push_back((Client*)cr);
@@ -599,6 +636,51 @@ void CritterManager::GetCopyPlayers(ClVec& players, bool sync_lock)
 	}
 
 	players=find_players;
+}
+
+void CritterManager::GetGlobalMapCritters(WORD wx, WORD wy, DWORD radius, int find_type, CrVec& critters, bool sync_lock)
+{
+	crLocker.Lock();
+	CrMap all_critters=allCritters;
+	crLocker.Unlock();
+
+	CrVec find_critters;
+	find_critters.reserve(all_critters.size());
+	for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
+	{
+		Critter* cr=(*it).second;
+		if(!cr->GetMap() && cr->GroupMove && DistSqrt(cr->GroupMove->WXi,cr->GroupMove->WYi,wx,wy)<=radius &&
+			cr->CheckFind(find_type)) find_critters.push_back(cr);
+	}
+
+	if(sync_lock && LogicMT)
+	{
+		// Synchronize
+		for(CrVecIt it=find_critters.begin(),end=find_critters.end();it!=end;++it) SYNC_LOCK(*it);
+
+		// Recheck
+		crLocker.Lock();
+		all_critters=allCritters;
+		crLocker.Unlock();
+
+		CrVec find_critters2;
+		find_critters2.reserve(find_critters.size());
+		for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
+		{
+			Critter* cr=(*it).second;
+			if(!cr->GetMap() && cr->GroupMove && DistSqrt(cr->GroupMove->WXi,cr->GroupMove->WYi,wx,wy)<=radius &&
+				cr->CheckFind(find_type)) find_critters2.push_back(cr);
+		}
+
+		// Search again, if different
+		if(!CompareContainers(find_critters,find_critters2))
+		{
+			GetGlobalMapCritters(wx,wy,radius,find_type,critters,sync_lock);
+			return;
+		}
+	}
+
+	critters=find_critters;
 }
 
 Critter* CritterManager::GetCritter(DWORD crid, bool sync_lock)

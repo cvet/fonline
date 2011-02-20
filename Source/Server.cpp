@@ -3306,9 +3306,9 @@ bool FOServer::Init()
 	// Check the sizes of struct and classes
 	STATIC_ASSERT(offsetof(Item,IsNotValid)==118);
 	STATIC_ASSERT(offsetof(Critter::CrTimeEvent,Identifier)==12);
-	STATIC_ASSERT(offsetof(Critter,RefCounter)==9316);
-	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9384);
-	STATIC_ASSERT(offsetof(Npc,Reserved)==9340);
+	STATIC_ASSERT(offsetof(Critter,RefCounter)==9312);
+	STATIC_ASSERT(offsetof(Client,LanguageMsg)==9380);
+	STATIC_ASSERT(offsetof(Npc,Reserved)==9336);
 	STATIC_ASSERT(offsetof(GameVar,RefCount)==22);
 	STATIC_ASSERT(offsetof(TemplateVar,Flags)==76);
 	STATIC_ASSERT(offsetof(AIDataPlane,RefCounter)==88);

@@ -2864,7 +2864,7 @@ void FOClient::LogDraw()
 	{
 		SprMngr.DrawStr(LogWName,GameOpt.Name.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_NAME?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 
-		if(Keyb::CtrlDwn)
+		if(Keyb::CtrlDwn || !GameOpt.HidePassword)
 		{
 			SprMngr.DrawStr(LogWPass,GameOpt.Pass.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 		}
@@ -5013,8 +5013,6 @@ void FOClient::SetCurCastling(int cur1, int cur2)
 
 void FOClient::SetLastCurMode()
 {
-//	AddMess(0,Str::Format("SetLastCurMode Cur %u",CurMode));
-//	AddMess(0,Str::Format("SetLastCurMode Last %u",CurModeLast));
 	if(CurModeLast==CUR_WAIT) return;
 	if(CurMode==CurModeLast) return;
 	SetCurMode(CurModeLast);

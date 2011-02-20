@@ -297,7 +297,7 @@ void Sprites::SortBySurfaces()
 		{
 			SpriteInfo* si1=(*SortSpritesSurfSprData)[spr1->PSprId?*spr1->PSprId:spr1->SprId];
 			SpriteInfo* si2=(*SortSpritesSurfSprData)[spr2->PSprId?*spr2->PSprId:spr2->SprId];
-			return si1->Surf && si2->Surf && si1->Surf->Texture<si2->Surf->Texture;
+			return si1 && si2 && si1->Surf && si2->Surf && si1->Surf->Texture<si2->Surf->Texture;
 		}
 	};
 	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,Sorter::SortBySurfaces);

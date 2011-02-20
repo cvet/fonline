@@ -80,7 +80,7 @@ Item* Critter::SlotEnabledCacheDataExt[0x100]={0};
 Critter::Critter():
 CritterIsNpc(false),RefCounter(1),IsNotValid(false),NameStrRefCounter(0x80000000),
 GroupMove(NULL),PrevHexTick(0),PrevHexX(0),PrevHexY(0),
-startBreakTime(0),breakTime(0),waitEndTick(0),KnockoutAp(0),LastHealTick(0),CacheValuesNextTick(0),IntellectCacheValue(0),
+startBreakTime(0),breakTime(0),waitEndTick(0),KnockoutAp(0),CacheValuesNextTick(0),IntellectCacheValue(0),
 Flags(0),AccessContainerId(0),ItemTransferCount(0),
 TryingGoHomeTick(0),ApRegenerationTick(0),GlobalIdleNextTick(0),LockMapTransfers(0),
 ViewMapId(0),ViewMapPid(0),ViewMapLook(0),ViewMapHx(0),ViewMapHy(0),ViewMapDir(0),
@@ -1462,22 +1462,6 @@ void Critter::ToDead(DWORD anim2, bool send_all)
 			map->SetFlagCritter(GetHexX(),GetHexY(),multihex,true);
 		}
 	}
-}
-
-void Critter::Heal()
-{
-	DWORD tick=Timer::GameTick();
-	if(IsDead() || IsRawParam(MODE_NO_HEAL) || GetParam(TO_BATTLE) || GetParam(ST_CURRENT_HP)>=GetParam(ST_MAX_LIFE))
-	{
-		LastHealTick=tick;
-		return;
-	}
-
-	if(tick<LastHealTick+CRIT_HEAL_TIME) return;
-
-	ChangeParam(ST_CURRENT_HP);
-	Data.Params[ST_CURRENT_HP]+=GetParam(ST_HEALING_RATE);
-	LastHealTick=tick;
 }
 
 bool Critter::ParseScript(const char* script, bool first_time)

@@ -49,8 +49,10 @@ public:
 
 	void AddCritter(Critter* cr);
 	CrMap& GetCrittersNoLock(){return allCritters;}
+	void GetCopyCritters(CrVec& critters, bool sync_lock);
 	void GetCopyNpcs(PcVec& npcs, bool sync_lock);
 	void GetCopyPlayers(ClVec& players, bool sync_lock);
+	void GetGlobalMapCritters(WORD wx, WORD wy, DWORD radius, int find_type, CrVec& critters, bool sync_lock);
 	Critter* GetCritter(DWORD crid, bool sync_lock);
 	Client* GetPlayer(DWORD crid, bool sync_lock);
 	Client* GetPlayer(const char* name, bool sync_lock);

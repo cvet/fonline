@@ -429,7 +429,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define USERS_START_ID          (1)
 #define IS_USER_ID(id)          ((id)>0 && (id)<NPC_START_ID)
 #define IS_NPC_ID(id)           ((id)>=NPC_START_ID)
-#define CRIT_HEAL_TIME          (2*60*1000)
 #define CLIENT_KICK_TIME        (3*60*1000)
 #define MAX_ANSWERS				(100)
 #define PROCESS_TALK_TICK       (1000)
@@ -664,7 +663,6 @@ struct ScoreType
 #define MODE_NO_ITEM_GARBAGER       (520)
 #define MODE_DLG_SCRIPT_BARTER      (521)
 #define MODE_UNLIMITED_AMMO         (522)
-#define MODE_NO_HEAL                (526)
 #define MODE_INVULNERABLE           (527)
 #define MODE_NO_FLATTEN             (528) // Client
 #define MODE_RANGE_HTH              (530)

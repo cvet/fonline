@@ -3559,6 +3559,17 @@ bool FOServer::SScriptFunc::Map_GetEntireCoords(Map* map, int entire, DWORD skip
 	return true;
 }
 
+bool FOServer::SScriptFunc::Map_GetEntireCoordsDir(Map* map, int entire, DWORD skip, WORD& hx, WORD& hy, BYTE& dir)
+{
+	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	ProtoMap::MapEntire* e=map->Proto->GetEntire(entire,skip);
+	if(!e) return false; //SCRIPT_ERROR_R0("Entire not found.");
+	hx=e->HexX;
+	hy=e->HexY;
+	dir=e->Dir;
+	return true;
+}
+
 bool FOServer::SScriptFunc::Map_GetNearEntireCoords(Map* map, int& entire, WORD& hx, WORD& hy)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
@@ -3568,6 +3579,21 @@ bool FOServer::SScriptFunc::Map_GetNearEntireCoords(Map* map, int& entire, WORD&
 		entire=near_entire->Number;
 		hx=near_entire->HexX;
 		hy=near_entire->HexY;
+		return true;
+	}
+	return false;
+}
+
+bool FOServer::SScriptFunc::Map_GetNearEntireCoordsDir(Map* map, int& entire, WORD& hx, WORD& hy, BYTE& dir)
+{
+	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	ProtoMap::MapEntire* near_entire=map->Proto->GetEntireNear(entire,hx,hy);
+	if(near_entire)
+	{
+		entire=near_entire->Number;
+		hx=near_entire->HexX;
+		hy=near_entire->HexY;
+		dir=near_entire->Dir;
 		return true;
 	}
 	return false;
@@ -4170,6 +4196,14 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 	return new CScriptString(data->ClientName);
 }
 
+DWORD FOServer::SScriptFunc::Global_GetGlobalMapCritters(WORD wx, WORD wy, DWORD radius, int find_type, CScriptArray* critters)
+{
+	CrVec critters_;
+	CrMngr.GetGlobalMapCritters(wx,wy,radius,find_type,critters_,true);
+	if(critters) Script::AppendVectorToArrayRef(critters_,critters);
+	return critters_.size();
+}
+
 DWORD FOServer::SScriptFunc::Global_CreateTimeEventEmpty(DWORD begin_second, CScriptString& script_name, bool save)
 {
 	return CreateTimeEvent(begin_second,script_name.c_str(),0,0,NULL,save);
@@ -4602,7 +4636,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters(Critter* cr1, Critter* cr2, bool
 	std::swap(cr1->KnockoutAp,cr2->KnockoutAp);
 	std::swap(cr1->Flags,cr2->Flags);
 	SwapArray(cr1->FuncId,cr2->FuncId);
-	std::swap(cr1->LastHealTick,cr2->LastHealTick);
 	cr1->SetBreakTime(0);
 	cr2->SetBreakTime(0);
 	std::swap(cr1->AccessContainerId,cr2->AccessContainerId);

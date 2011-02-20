@@ -242,20 +242,13 @@ bool FOMapper::Init(HWND wnd)
 	ChangeGameTime();
 	AnyId=0x7FFFFFFF;
 
-	if(!GameOpt.FullScreen)
+	if(GameOpt.FullScreen)
 	{
-		RECT r;
-		GetWindowRect(Wnd,&r);
-		SetCursorPos(r.left+100,r.top+100);
+		SetCursorPos(MODE_WIDTH/2,MODE_HEIGHT/2);
+		GameOpt.MouseX=MODE_WIDTH/2;
+		GameOpt.MouseY=MODE_HEIGHT/2;
 	}
-	else 
-	{
-		SetCursorPos(100,100);
-	}
-
 	ShowCursor(FALSE);
-	GameOpt.MouseX=320;
-	GameOpt.MouseY=240;
 
 	WriteLog("Mapper initialization complete.\n");
 
@@ -3339,6 +3332,7 @@ void FOMapper::ParseNpc(WORD pid, WORD hx, WORD hy)
 	mobj->MapX=hx;
 	mobj->MapY=hy;
 	mobj->Dir=NpcDir;
+	mobj->MCritter.Cond=COND_LIFE;
 	for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++) mobj->MCritter.ParamIndex[i]=DefaultCritterParam[i];
 	CurProtoMap->MObjects.push_back(mobj);
 

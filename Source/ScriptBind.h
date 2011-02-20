@@ -721,7 +721,9 @@
 	if(engine->RegisterObjectMethod("Map","uint CountEntire(int entire) const",asFUNCTION(BIND_CLASS Map_CountEntire),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","uint GetEntires(int entire, uint[]@+ entires, uint16[]@+ hexX, uint16[]@+ hexY) const",asFUNCTION(BIND_CLASS Map_GetEntires),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool GetEntireCoords(int entire, uint skip, uint16& hexX, uint16& hexY) const",asFUNCTION(BIND_CLASS Map_GetEntireCoords),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","bool GetEntireCoords(int entire, uint skip, uint16& hexX, uint16& hexY, uint8& dir) const",asFUNCTION(BIND_CLASS Map_GetEntireCoordsDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY) const",asFUNCTION(BIND_CLASS Map_GetNearEntireCoords),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY, uint8& dir) const",asFUNCTION(BIND_CLASS Map_GetNearEntireCoordsDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool IsHexPassed(uint16 hexX, uint16 hexY) const",asFUNCTION(BIND_CLASS Map_IsHexPassed),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","bool IsHexRaked(uint16 hexX, uint16 hexY) const",asFUNCTION(BIND_CLASS Map_IsHexRaked),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void SetText(uint16 hexX, uint16 hexY, uint color, string& text) const",asFUNCTION(BIND_CLASS Map_SetText),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -806,6 +808,7 @@
 	if(engine->RegisterGlobalFunction("Critter@+ GetPlayer(string& name)",asFUNCTION(BIND_CLASS Global_GetPlayer),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetPlayerId(string& name)",asFUNCTION(BIND_CLASS Global_GetPlayerId),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetPlayerName(uint playerId)",asFUNCTION(BIND_CLASS Global_GetPlayerName),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetGlobalMapCritters(uint16 worldX, uint16 worldY, uint radius, int findType, Critter@[]@+ critters)",asFUNCTION(BIND_CLASS Global_GetGlobalMapCritters),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventEmpty),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, uint value, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventValue),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint CreateTimeEvent(uint beginSecond, string& funcName, int value, bool save)",asFUNCTION(BIND_CLASS Global_CreateTimeEventValue),asCALL_CDECL)<0) BIND_ERROR;
@@ -1450,6 +1453,7 @@
 	if(engine->RegisterGlobalProperty("bool __DisableLMenu",&GameOpt.DisableLMenu)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __DisableMouseEvents",&GameOpt.DisableMouseEvents)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __DisableKeyboardEvents",&GameOpt.DisableKeyboardEvents)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __HidePassword",&GameOpt.HidePassword)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __PlayerOffAppendix",&GameOpt.PlayerOffAppendix)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __DamageHitDelay",&GameOpt.DamageHitDelay)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __CombatMessagesType",&GameOpt.CombatMessagesType)) BIND_ERROR;

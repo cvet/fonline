@@ -379,8 +379,8 @@ bool FOClient::Init(HWND hwnd)
 	// Other
 	NetState=STATE_DISCONNECT;
 	SetGameColor(COLOR_IFACE);
-	SetCurPos(MODE_WIDTH/2,MODE_HEIGHT/2);
-	ShowCursor(0);
+	if(GameOpt.FullScreen) SetCurPos(MODE_WIDTH/2,MODE_HEIGHT/2);
+	ShowCursor(FALSE);
 	ScreenOffsX=0;
 	ScreenOffsY=0;
 	ScreenOffsXf=0.0f;

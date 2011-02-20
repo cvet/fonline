@@ -865,7 +865,9 @@ struct BindClass
 	static void Map_CountEntire(){}
 	static void Map_GetEntires(){}
 	static void Map_GetEntireCoords(){}
+	static void Map_GetEntireCoordsDir(){}
 	static void Map_GetNearEntireCoords(){}
+	static void Map_GetNearEntireCoordsDir(){}
 	static void Map_IsHexPassed(){}
 	static void Map_IsHexRaked(){}
 	static void Map_SetText(){}
@@ -927,6 +929,7 @@ struct BindClass
 	static void Global_GetPlayer(){}
 	static void Global_GetPlayerId(){}
 	static void Global_GetPlayerName(){}
+	static void Global_GetGlobalMapCritters(){}
 	static void Global_CreateTimeEventEmpty(){}
 	static void Global_CreateTimeEventValue(){}
 	static void Global_CreateTimeEventValues(){}
@@ -1433,6 +1436,7 @@ struct GameOptions
 	int DisableLMenu;
 	int DisableMouseEvents;
 	int DisableKeyboardEvents;
+	int HidePassword;
 	int PlayerOffAppendix;
 	int PlayerOffAppendixRefCount;
 	int CombatMessagesType;

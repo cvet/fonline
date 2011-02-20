@@ -46,6 +46,7 @@ CritterCl::~CritterCl()
 {
 	SprMngr.FreePure3dAnimation(Anim3d);
 	SprMngr.FreePure3dAnimation(Anim3dStay);
+	Anim3d=Anim3dStay=NULL;
 
 	if(Layers3d)
 	{
@@ -1286,12 +1287,12 @@ void CritterCl::SetBaseType(DWORD type)
 	BaseTypeAlias=CritType::GetAlias(type);
 
 	// Check 3d availability
+	SprMngr.FreePure3dAnimation(Anim3d);
+	SprMngr.FreePure3dAnimation(Anim3dStay);
+	Anim3d=Anim3dStay=NULL;
 	Animation3d* anim3d=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 	if(anim3d)
 	{
-		SprMngr.FreePure3dAnimation(Anim3d);
-		SprMngr.FreePure3dAnimation(Anim3dStay);
-
 		Anim3d=anim3d;
 		Anim3dStay=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 

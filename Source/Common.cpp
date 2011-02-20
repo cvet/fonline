@@ -28,7 +28,7 @@ DWORD DistSqrt(int x1, int y1, int x2, int y2)
 {
 	int dx=x1-x2;
 	int dy=y1-y2;
-	return (int)sqrt(double(dx*dx+dy*dy));
+	return (DWORD)sqrt(double(dx*dx+dy*dy));
 }
 
 DWORD DistGame(int x1, int y1, int x2, int y2)
@@ -1019,6 +1019,7 @@ GameOptions::GameOptions()
 	DisableLMenu=false;
 	DisableMouseEvents=false;
 	DisableKeyboardEvents=false;
+	HidePassword=true;
 	PlayerOffAppendix="_off";
 	PlayerOffAppendixRefCounter=1;
 	CombatMessagesType=0;

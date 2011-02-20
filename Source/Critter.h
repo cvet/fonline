@@ -286,10 +286,6 @@ public:
 	// Respawn, Dead
 	void ToDead(DWORD anim2, bool send_all);
 
-	// Heal
-	DWORD LastHealTick;
-	void Heal();
-
 	// Cached values to avoid synchronization
 	DWORD CacheValuesNextTick;
 	WORD IntellectCacheValue; // Players talking

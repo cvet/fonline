@@ -59,9 +59,6 @@ void FOServer::ProcessCritter(Critter* cr)
 		}
 	}
 
-	// Heal
-	cr->Heal();
-
 	// Global map
 	if(!cr->GetMap() && cr->GroupMove && cr==cr->GroupMove->Rule) MapMngr.GM_GroupMove(cr->GroupMove);
 

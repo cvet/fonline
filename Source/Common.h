@@ -533,6 +533,7 @@ struct GameOptions
 	bool DisableLMenu;
 	bool DisableMouseEvents;
 	bool DisableKeyboardEvents;
+	bool HidePassword;
 	string PlayerOffAppendix;
 	int PlayerOffAppendixRefCounter;
 	int CombatMessagesType;
