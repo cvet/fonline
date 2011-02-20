@@ -394,6 +394,8 @@ public:
 	WORD GetHexX(){return Data.HexX;}
 	WORD GetHexY(){return Data.HexY;}
 	BYTE GetDir(){return Data.Dir;}
+	bool IsCanWalk();
+	bool IsCanRun();
 	DWORD GetTimeWalk();
 	DWORD GetTimeRun();
 	DWORD GetItemsWeight();

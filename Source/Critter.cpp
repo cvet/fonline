@@ -2623,16 +2623,28 @@ void Critter::ProcessChangedParams()
 	}
 }
 
+bool Critter::IsCanWalk()
+{
+	return CritType::IsCanWalk(GetCrType()) && !IsRawParam(MODE_NO_WALK);
+}
+
+bool Critter::IsCanRun()
+{
+	return CritType::IsCanRun(GetCrType()) && !IsRawParam(MODE_NO_RUN);
+}
+
 DWORD Critter::GetTimeWalk()
 {
-	if(IsDmgTwoLeg()) return GameOpt.Breaktime;
-	return CritType::GetTimeWalk(GetCrType());
+	int walk_time=GetRawParam(ST_WALK_TIME);
+	if(walk_time<=0) walk_time=CritType::GetTimeWalk(GetCrType());
+	return walk_time>0?walk_time:400;
 }
 
 DWORD Critter::GetTimeRun()
 {
-	if(IsDmgTwoLeg()) return GameOpt.Breaktime;
-	return CritType::GetTimeRun(GetCrType());
+	int walk_time=GetRawParam(ST_RUN_TIME);
+	if(walk_time<=0) walk_time=CritType::GetTimeRun(GetCrType());
+	return walk_time>0?walk_time:200;
 }
 
 DWORD Critter::GetItemsWeight()

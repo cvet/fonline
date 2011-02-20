@@ -20,7 +20,8 @@ bool CritterCl::SlotEnabled[0x100]={true,true,true,true,false};
 
 CritterCl::CritterCl():
 CrDir(0),SprId(0),Id(0),Pid(0),NameColor(0),ContourColor(0),
-curSpr(0),lastEndSpr(0),animStartTick(0),
+Cond(0),Anim1Life(0),Anim1Knockout(0),Anim1Dead(0),Anim2Life(0),Anim2Knockout(0),Anim2Dead(0),
+Flags(0),BaseType(0),BaseTypeAlias(0),curSpr(0),lastEndSpr(0),animStartTick(0),
 SprOx(0),SprOy(0),StartTick(0),TickCount(0),ApRegenerationTick(0),
 tickTextDelay(0),textOnHeadColor(COLOR_TEXT),Alpha(0),
 fadingEnable(false),FadingTick(0),fadeUp(false),finishingTime(0),
@@ -837,20 +838,23 @@ void CritterCl::Move(int dir)
 	CrDir=dir;
 
 	DWORD crtype=GetCrType();
-	DWORD time_move=0;
+	int time_move=0;
 
 	if(!IsRunning)
 	{
-		time_move=CritType::GetTimeWalk(crtype);
-		if(!time_move) time_move=400;
-		//if(IsTurnBased()) time_move/=2;
+		time_move=GetRawParam(ST_WALK_TIME);
+		if(time_move<=0) time_move=CritType::GetTimeWalk(crtype);
+		if(time_move<=0) time_move=400;
 	}
 	else
 	{
-		time_move=CritType::GetTimeRun(crtype);
-		if(!time_move) time_move=200;
+		time_move=GetRawParam(ST_RUN_TIME);
+		if(time_move<=0) time_move=CritType::GetTimeRun(crtype);
+		if(time_move<=0) time_move=200;
 	}
-	TickStart(IsDmgTwoLeg()?GameOpt.Breaktime:time_move);
+
+	// Todo: move faster in turn-based, if(IsTurnBased()) time_move/=2;
+	TickStart(time_move);
 	animStartTick=Timer::GameTick();
 
 	if(!Anim3d)

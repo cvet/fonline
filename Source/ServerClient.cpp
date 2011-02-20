@@ -267,9 +267,16 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 {
 	DWORD map_id=cr->GetMap();
 	if(!map_id) return false;
+
+	// Check run/walk
 	bool is_run=FLAG(move_params,0x8000);
-	if(is_run && !CritType::IsCanRun(cr->GetCrType())) return false;
-	if(!is_run && !CritType::IsCanWalk(cr->GetCrType())) return false;
+	if(is_run && !cr->IsCanRun())
+	{
+		// Switch to walk
+		move_params^=0x8000;
+		is_run=false;
+	}
+	if(!is_run && !cr->IsCanWalk()) return false;
 
 	// Check
 	Map* map=MapMngr.GetMap(map_id,true);
@@ -2545,18 +2552,26 @@ void FOServer::Process_Move(Client* cl)
 		return;
 	}
 
-	// Timeout
+	// Check running availability
 	if(is_run)
 	{
-		DWORD to1=(GameOpt.RunOnCombat?0:cl->GetParam(TO_BATTLE));
-		DWORD to2=(GameOpt.RunOnTransfer?0:cl->GetParam(TO_TRANSFER));
-		if(to1 || to2)
+		if(!cl->IsCanRun() ||
+			(GameOpt.RunOnCombat?0:cl->GetParam(TO_BATTLE)) ||
+			(GameOpt.RunOnTransfer?0:cl->GetParam(TO_TRANSFER)))
 		{
+			// Switch to walk
 			move_params^=0x8000;
 			is_run=false;
-			//WriteLog(__FUNCTION__" - Client run on timeout, info<%s>.\n",cl->GetInfo());
-			//cl->Send_XY(cl);
-			//return;
+		}
+	}
+
+	// Check walking availability
+	if(!is_run)
+	{
+		if(!cl->IsCanWalk())
+		{
+			cl->Send_XY(cl);
+			return;
 		}
 	}
 

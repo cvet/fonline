@@ -7499,13 +7499,17 @@ void FOClient::CrittersProcess()
 			else if(Chosen->IsDmgLeg() || Chosen->IsOverweight()) is_run=false;
 			else if(wait_click && Timer::GameTick()-start_tick<GameOpt.DoubleClickTime) return;
 			else if(is_run && !IsTurnBased && Chosen->GetApCostCritterMove(is_run)>0 && Chosen->GetRealAp()<(GameOpt.RunModMul*Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER)/GameOpt.RunModDiv+GameOpt.RunModAdd) is_run=false;
+
 			if(is_run && !CritType::IsCanRun(Chosen->GetCrType())) is_run=false;
-			if(!is_run && !CritType::IsCanWalk(Chosen->GetCrType()))
+			if(is_run && Chosen->IsRawParam(MODE_NO_RUN)) is_run=false;
+
+			if(!is_run && (!CritType::IsCanWalk(Chosen->GetCrType()) || Chosen->IsRawParam(MODE_NO_WALK)))
 			{
 				AddMess(FOMB_GAME,MsgGame->GetStr(STR_CRITTER_CANT_MOVE));
 				SetAction(CHOSEN_NONE);
 				goto label_EndMove;
 			}
+
 			int ap_cost_real=Chosen->GetApCostCritterMove(is_run);
 			if(!(IsTurnBasedMyTurn() && Chosen->GetAllAp()>=ap_cost_real/AP_DIVIDER)) CHECK_NEED_REAL_AP(ap_cost_real);
 			Chosen->IsRunning=is_run;
@@ -10637,8 +10641,8 @@ void FOClient::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, i
 	{
 		SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id_);
 		if(!si) return;
-		x+=si->OffsX;
-		y+=si->OffsY;
+		x+=-si->Width/2+si->OffsX;
+		y+=-si->Height+si->OffsY;
 	}
 	SprMngr.DrawSprite(spr_id_,x,y,color);
 }

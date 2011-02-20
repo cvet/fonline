@@ -579,6 +579,8 @@ struct ScoreType
 #define ST_BASE_CRTYPE              (112)
 #define ST_TALK_DISTANCE            (115)
 #define ST_SCALE_FACTOR             (116)
+#define ST_WALK_TIME                (117)
+#define ST_RUN_TIME                 (118)
 #define ST_ANIM3D_LAYER_BEGIN       (150)
 #define ST_ANIM3D_LAYER_END         (179)
 
@@ -670,6 +672,8 @@ struct ScoreType
 #define MODE_NO_PUSH                (536)
 #define MODE_NO_UNARMED             (537)
 #define MODE_NO_AIM                 (538)
+#define MODE_NO_WALK                (539)
+#define MODE_NO_RUN                 (540)
 
 // Traits
 #define TRAIT_BEGIN                 (GameOpt.TraitBegin)

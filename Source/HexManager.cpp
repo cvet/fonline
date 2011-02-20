@@ -3151,7 +3151,7 @@ void HexManager::GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, 
 	hash_scen=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),scen_len,hash_scen);
 
-	WriteLog("Hashes: tiles<%u>, walls<%u>, scenery<%u>.\n",hash_tiles,hash_walls,hash_scen);
+	WriteLog("complete.\n");
 }
 
 bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy)

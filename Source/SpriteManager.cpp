@@ -1432,6 +1432,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 
 	char file_name[MAX_FOPATH];
 	int palette_index=0; // 0..3
+	bool transparent=false;
 	StringCopy(file_name,fname);
 
 	char* delim=strstr(file_name,"$");
@@ -1439,11 +1440,22 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 	{
 		const char* ext=FileManager::GetExtension(file_name)-1;
 		size_t len=(size_t)ext-(size_t)delim;
-		char palette_name[MAX_FOPATH]={0};
-		if(len>1) memcpy(palette_name,delim+1,len-1);
+
+		for(size_t i=1;i<len;i++)
+		{
+			switch(delim[i])
+			{
+			case '0': palette_index=0; break;
+			case '1': palette_index=1; break;
+			case '2': palette_index=2; break;
+			case '3': palette_index=3; break;
+			case 'T':
+			case 't': transparent=true; break;
+			default: break;
+			}
+		}
+
 		Str::EraseInterval(delim,len);
-		palette_index=atoi(palette_name);
-		palette_index=CLAMP(palette_index,0,3);
 	}
 	if(!file_name[0]) return NULL;
 
@@ -1497,6 +1509,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 			palette_count++;
 		}
 	}
+	if(palette_index>=palette_count) palette_index=0;
 
 	DWORD frm_fps=header.frameRate;
 	if(!frm_fps) frm_fps=10;
@@ -1563,33 +1576,51 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		data_offset+=frame_info.frameSize;
 
 		// Decode
-		DWORD pos=0;
-		for(DWORD i=0;i<frame_info.frameSize;i++)
+		if(w*h==frame_info.frameSize)
 		{
-			BYTE cmd=fm.GetByte();
-			if(cmd>128)
-			{
-				cmd-=128;
-				i+=cmd;
-				for(;cmd>0;cmd--,pos++)
-				{
-					BYTE index=fm.GetByte();
-					DWORD color=palette[palette_index][index];
-					if(!index) color=0;
-					else color|=0xFF000000;
-
-					*(ptr+pos)=color;
-				}
-			}
-			else
+			DWORD pos=0;
+			for(DWORD i=0;i<frame_info.frameSize;i++,pos++)
 			{
 				BYTE index=fm.GetByte();
 				DWORD color=palette[palette_index][index];
 				if(!index) color=0;
+				else if(transparent) color|=(255-index)<<24;
 				else color|=0xFF000000;
+				*(ptr+pos)=color;
+			}
+		}
+		else
+		{
+			DWORD pos=0;
+			for(DWORD i=0;i<frame_info.frameSize;i++)
+			{
+				BYTE cmd=fm.GetByte();
+				if(cmd>128)
+				{
+					cmd-=128;
+					i+=cmd;
+					for(;cmd>0;cmd--,pos++)
+					{
+						BYTE index=fm.GetByte();
+						DWORD color=palette[palette_index][index];
+						if(!index) color=0;
+						else if(transparent) color|=(255-index)<<24;
+						else color|=0xFF000000;
 
-				for(;cmd>0;cmd--,pos++) *(ptr+pos)=color;
-				i++;
+						*(ptr+pos)=color;
+					}
+				}
+				else
+				{
+					BYTE index=fm.GetByte();
+					DWORD color=palette[palette_index][index];
+					if(!index) color=0;
+					else if(transparent) color|=(255-index)<<24;
+					else color|=0xFF000000;
+
+					for(;cmd>0;cmd--,pos++) *(ptr+pos)=color;
+					i++;
+				}
 			}
 		}
 

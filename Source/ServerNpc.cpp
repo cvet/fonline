@@ -205,8 +205,8 @@ void FOServer::ProcessAI(Npc* npc)
 			pfd.CheckCrit=true;
 			pfd.CheckGagItems=true;
 
-			if(pfd.IsRun && !CritType::IsCanRun(npc->GetCrType())) pfd.IsRun=false;
-			if(!pfd.IsRun && !CritType::IsCanWalk(npc->GetCrType()))
+			if(pfd.IsRun && !npc->IsCanRun()) pfd.IsRun=false;
+			if(!pfd.IsRun && !npc->IsCanWalk())
 			{
 				plane->IsMove=false;
 				if(map->IsTurnBasedOn && map->IsCritterTurn(npc)) map->EndCritterTurn();

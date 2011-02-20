@@ -306,8 +306,8 @@ void StringSplitEx_Generic(asIScriptGeneric *gen)
 	{
 		// Manage part
 		int pos_=pos;
-		for(int i=prev;i<pos && (cstr[i]==' ' || cstr[i]=='\t' || cstr[i]=='\n' || cstr[i]=='\n');i++) prev++;
-		for(int i=pos-1;i>prev && (cstr[i]==' ' || cstr[i]=='\t' || cstr[i]=='\n' || cstr[i]=='\n');i--) pos--;
+		for(int i=prev;i<pos && (cstr[i]==' ' || cstr[i]=='\t' || cstr[i]=='\r' || cstr[i]=='\n');i++) prev++;
+		for(int i=pos-1;i>prev && (cstr[i]==' ' || cstr[i]=='\t' || cstr[i]=='\r' || cstr[i]=='\n');i--) pos--;
 		if(prev==pos)
 		{
 			prev=pos_+(int)delim->length();

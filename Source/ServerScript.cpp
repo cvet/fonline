@@ -1091,13 +1091,13 @@ bool FOServer::SScriptFunc::Crit_IsNpc(Critter* cr)
 bool FOServer::SScriptFunc::Crit_IsCanWalk(Critter* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return CritType::IsCanWalk(cr->GetCrType());
+	return cr->IsCanWalk();
 }
 
 bool FOServer::SScriptFunc::Crit_IsCanRun(Critter* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return CritType::IsCanRun(cr->GetCrType());
+	return cr->IsCanRun();
 }
 
 bool FOServer::SScriptFunc::Crit_IsCanRotate(Critter* cr)

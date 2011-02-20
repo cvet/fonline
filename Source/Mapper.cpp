@@ -5262,8 +5262,8 @@ void FOMapper::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, i
 	{
 		SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id_);
 		if(!si) return;
-		x+=si->OffsX;
-		y+=si->OffsY;
+		x+=-si->Width/2+si->OffsX;
+		y+=-si->Height+si->OffsY;
 	}
 	SprMngr.DrawSprite(spr_id_,x,y,color);
 }

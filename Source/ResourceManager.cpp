@@ -6,9 +6,6 @@
 #include "CritterType.h"
 #include "Script.h"
 
-#define ANIM_MAP_ID(t,a1,a2,d)    (((t)<<21)|((a1)<<10)|((a2)<<3)|(d))
-#define ANIM_MAP_ID_F2(t,a1,a2,d) ((1<<31)|((t)<<21)|((a1)<<10)|((a2)<<3)|(d))
-
 ResourceManager ResMngr;
 
 void ResourceManager::AddNamesHash(StrVec& names)
@@ -191,6 +188,12 @@ AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir, int res_type)
 	return anim;
 }
 
+DWORD AnimMapId(DWORD crtype, DWORD anim1, DWORD anim2, int dir, bool is_fallout)
+{
+	DWORD dw[5]={crtype,anim1,anim2,dir,is_fallout?-1:1};
+	return Crypt.Crc32((BYTE*)&dw[0],sizeof(dw));
+}
+
 AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
 {
 	// Check for 3d
@@ -203,7 +206,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 	if(!CritType::IsCanRotate(crtype)) dir=0;
 
 	// Make animation id
-	DWORD id=ANIM_MAP_ID(crtype,anim1,anim2,dir);
+	DWORD id=AnimMapId(crtype,anim1,anim2,dir,false);
 
 	// Check already loaded
 	AnimMapIt it=critterFrames.find(id);
@@ -435,7 +438,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD ani
 
 AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
 {
-	AnimMapIt it=critterFrames.find(ANIM_MAP_ID_F2(crtype,anim1,anim2,dir));
+	AnimMapIt it=critterFrames.find(AnimMapId(crtype,anim1,anim2,dir,true));
 	if(it!=critterFrames.end()) return (*it).second;
 
 	// Load file
@@ -461,7 +464,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD 
 	}
 	SprMngr.SurfType=RES_NONE;
 
-	critterFrames.insert(AnimMapVal(ANIM_MAP_ID_F2(crtype,anim1,anim2,dir),frames));
+	critterFrames.insert(AnimMapVal(AnimMapId(crtype,anim1,anim2,dir,true),frames));
 	if(!frames) return NULL;
 
 //////////////////////////////////////////////////////////////////////////
