@@ -407,6 +407,9 @@ int CALLBACK DlgProc(HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch(msg)
 	{
+	case WM_CLOSE:
+		ExitProcess(0);
+		return 0;
 	case WM_INITDIALOG:
 		PostMessage(Dlg,WM_SIZE,0,0);
 		return 1;

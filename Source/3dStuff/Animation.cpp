@@ -39,7 +39,7 @@ Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSet
 currentTrack(0),lastTick(0),endTick(0),speedAdjustBase(1.0f),speedAdjustCur(1.0f),speedAdjustLink(1.0f),
 shadowDisabled(false),dirAngle(150.0f),sprId(0),
 drawScale(0.0f),bordersDisabled(false),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),
-childChecker(true),useGameTimer(true)
+childChecker(true),useGameTimer(true),animPosProc(0.0f),animPosTime(0.0f),animPosPeriod(0.0f)
 {
 	ZeroMemory(currentLayers,sizeof(currentLayers));
 	groundPos.w=1.0f;
@@ -269,6 +269,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 		// Alternate tracks
 		DWORD new_track=(currentTrack==0?1:0);
 		double period=set->GetPeriod();
+		animPosPeriod=period;
 		if(FLAG(flags,ANIMATION_INIT)) period=0.0002;
 
 		// Assign to our track
@@ -892,6 +893,15 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 		elapsed*=GetSpeed();
 		animController->AdvanceTime(elapsed,NULL);
 		if(animController->GetTime()>60.0) animController->ResetTime();
+
+		D3DXTRACK_DESC tdesc;
+		if(SUCCEEDED(animController->GetTrackDesc(currentTrack,&tdesc)) && animPosPeriod>0.0f)
+		{
+			animPosProc=(float)tdesc.Position/animPosPeriod;
+			if(animPosProc>=1.0f) animPosProc=fmod(animPosProc,1.0f);
+			animPosTime=(float)tdesc.Position;
+			if(animPosTime>=animPosPeriod) animPosTime=fmod(animPosTime,animPosPeriod);
+		}
 	}
 
 	// Now update the model matrices in the hierarchy
@@ -1103,7 +1113,7 @@ bool Animation3d::DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, EffectEx* effect
 
 	ID3DXEffect* effect=effect_ex->Effect;
 	D3D_HR(effect->SetTechnique(technique));
-	if(effect_ex->IsNeedProcess) Loader3d::EffectProcessVariables(effect_ex,-1,textures);
+	if(effect_ex->IsNeedProcess) Loader3d::EffectProcessVariables(effect_ex,-1,animPosProc,animPosTime,textures);
 
 	UINT passes;
 	D3D_HR(effect->Begin(&passes,effect_ex->EffectFlags));

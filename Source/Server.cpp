@@ -975,7 +975,7 @@ void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 		DWORD compr=cl->Zstrm.next_out-(UCHAR*)io->Buffer.buf;
 		DWORD real=cl->Zstrm.next_in-(UCHAR*)cl->Bout.GetCurData();
 		io->Buffer.len=compr;
-		cl->Bout.Pop(real);
+		cl->Bout.Cut(real);
 		Statistics.DataReal+=real;
 		Statistics.DataCompressed+=compr;
 	}
@@ -986,7 +986,7 @@ void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 		if(len>WSA_BUF_SIZE) len=WSA_BUF_SIZE;
 		memcpy(io->Buffer.buf,cl->Bout.GetCurData(),len);
 		io->Buffer.len=len;
-		cl->Bout.Pop(len);
+		cl->Bout.Cut(len);
 		Statistics.DataReal+=len;
 		Statistics.DataCompressed+=len;
 	}

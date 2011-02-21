@@ -96,6 +96,7 @@ private:
 	bool noDraw;
 	MeshOptionsVec meshOpt;
 	bool useGameTimer;
+	float animPosProc,animPosTime,animPosPeriod;
 
 	// Derived animations
 	Animation3dVec childAnimations;

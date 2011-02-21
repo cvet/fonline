@@ -4164,7 +4164,7 @@ void FOClient::Net_OnText()
 
 	Bin >> len;
 	Bin.Pop(str,min(len,MAX_FOTEXT));
-	if(len>MAX_FOTEXT) Bin.Pop(len-MAX_FOTEXT);
+	if(len>MAX_FOTEXT) Bin.Pop(Str::GetBigBuf(),len-MAX_FOTEXT);
 	str[min(len,MAX_FOTEXT)]=0;
 
 	CHECK_IN_BUFF_ERROR;
@@ -4477,7 +4477,7 @@ void FOClient::Net_OnMapText()
 
 	Bin >> len;
 	Bin.Pop(str,min(len,MAX_FOTEXT));
-	if(len>MAX_FOTEXT) Bin.Pop(len-MAX_FOTEXT);
+	if(len>MAX_FOTEXT) Bin.Pop(Str::GetBigBuf(),len-MAX_FOTEXT);
 	str[min(len,MAX_FOTEXT)]=0;
 
 	Bin >> intellect;
@@ -5216,7 +5216,8 @@ void FOClient::Net_OnChosenAddItem()
 	if(!item) 
 	{
 		WriteLog(__FUNCTION__" - Can't create item, pid<%u>.\n",pid);
-		Bin.Pop(sizeof(item->Data));
+		Item::ItemData dummy;
+		Bin.Pop((char*)&dummy,sizeof(dummy));
 		return;
 	}
 

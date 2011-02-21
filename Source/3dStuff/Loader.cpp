@@ -767,8 +767,11 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 		effect_ex->ScriptValues[i]=effect->GetParameterByName(NULL,val_name);
 		if(effect_ex->ScriptValues[i]) effect_ex->IsScriptValues=true;
 	}
+	effect_ex->AnimPosProc=effect->GetParameterByName(NULL,"AnimPosProc");
+	effect_ex->AnimPosTime=effect->GetParameterByName(NULL,"AnimPosTime");
+	effect_ex->IsAnimPos=(effect_ex->AnimPosProc || effect_ex->AnimPosTime);
 	effect_ex->IsNeedProcess=(effect_ex->PassIndex || effect_ex->IsTime || effect_ex->IsRandomPass || effect_ex->IsRandomEffect ||
-		effect_ex->IsTextures || effect_ex->IsScriptValues);
+		effect_ex->IsTextures || effect_ex->IsScriptValues || effect_ex->IsAnimPos);
 
 	if(effect_inst->NumDefaults)
 	{
@@ -797,7 +800,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	return loadedEffects.back();
 }
 
-void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass, TextureEx** textures /* = NULL */)
+void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, TextureEx** textures /* = NULL */)
 {
 	// Process effect
 	if(pass==-1)
@@ -809,7 +812,7 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass, TextureEx**
 			{
 				effect_ex->TimeCurrent+=tick-effect_ex->TimeLastTick;
 				effect_ex->TimeLastTick=tick;
-				while(effect_ex->TimeCurrent>=120.0f) effect_ex->TimeCurrent-=120.0f;
+				if(effect_ex->TimeCurrent>=120.0f) effect_ex->TimeCurrent=fmod(effect_ex->TimeCurrent,120.0f);
 
 				effect_ex->Effect->SetFloat(effect_ex->Time,effect_ex->TimeCurrent);
 			}
@@ -819,7 +822,7 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass, TextureEx**
 				{
 					effect_ex->TimeGameCurrent+=tick-effect_ex->TimeGameLastTick;
 					effect_ex->TimeGameLastTick=tick;
-					while(effect_ex->TimeGameCurrent>=120.0f) effect_ex->TimeGameCurrent-=120.0f;
+					if(effect_ex->TimeGameCurrent>=120.0f) effect_ex->TimeGameCurrent=fmod(effect_ex->TimeGameCurrent,120.0f);
 				}
 				else
 				{
@@ -850,6 +853,12 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass, TextureEx**
 			for(int i=0;i<EFFECT_SCRIPT_VALUES;i++)
 				if(effect_ex->ScriptValues[i])
 					effect_ex->Effect->SetFloat(effect_ex->ScriptValues[i],GameOpt.EffectValues[i]);
+		}
+
+		if(effect_ex->IsAnimPos)
+		{
+			if(effect_ex->AnimPosProc) effect_ex->Effect->SetFloat(effect_ex->AnimPosProc,anim_proc);
+			if(effect_ex->AnimPosTime) effect_ex->Effect->SetFloat(effect_ex->AnimPosTime,anim_time);
 		}
 	}
 	// Process pass

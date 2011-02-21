@@ -142,7 +142,7 @@ void BufferManager::Pop(char* buf, DWORD len)
 	bufReadPos+=len;
 }
 
-void BufferManager::Pop(DWORD len)
+void BufferManager::Cut(DWORD len)
 {
 	if(isError || !len) return;
 	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return; }

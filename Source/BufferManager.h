@@ -35,7 +35,7 @@ public:
 	void Push(const char* buf, DWORD len, bool no_crypt = false);
 	void Push(const char* buf, const char* mask, DWORD len);
 	void Pop(char* buf, DWORD len);
-	void Pop(DWORD len);
+	void Cut(DWORD len);
 	void GrowBuf(DWORD len);
 
 	char* GetData(){return bufData;}

@@ -251,10 +251,11 @@ char* Str::DuplicateString(const char* str)
 	return result;
 }
 
-static char BigBuf[0x100000]; // 1 mb
 char* Str::GetBigBuf()
 {
-	return BigBuf;
+	static char* big_buf=NULL;
+	if(!big_buf) big_buf=new(nothrow) char[0x100000]; // 1 mb
+	return big_buf;
 }
 
 bool Str::IsNumber(const char* str)

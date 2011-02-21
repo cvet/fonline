@@ -53,6 +53,9 @@ struct EffectEx
 	D3DXHANDLE Textures[EFFECT_TEXTURES];
 	bool IsScriptValues;
 	D3DXHANDLE ScriptValues[EFFECT_SCRIPT_VALUES];
+	bool IsAnimPos;
+	D3DXHANDLE AnimPosProc;
+	D3DXHANDLE AnimPosTime;
 };
 
 struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER
