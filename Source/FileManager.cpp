@@ -180,27 +180,22 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 
 	if(path_type>=0 && path_type<PATH_LIST_COUNT)
 	{
+		// Make data path
 		StringCopy(dat_path,PathLst[path_type]);
 		StringAppend(dat_path,fname);
 		FormatPath(dat_path);
+
+		// Make folder path
 		StringCopy(folder_path,GetDataPath(path_type));
+		FormatPath(folder_path);
 		StringAppend(folder_path,dat_path);
 
-		// Erase '.\'
-		while(folder_path[0]=='.' && folder_path[1]=='\\')
-		{
-			char* str=folder_path;
-			char* str_=folder_path+2;
-			for(;*str_;str++,str_++) *str=*str_;
-			*str=0;
-		}
-
 		// Check for full path
-		if(folder_path[1]==':') only_folder=true;
-		if(folder_path[0]=='.' && folder_path[1]=='.' && folder_path[2]=='\\') only_folder=true;
+		if(dat_path[1]==':') only_folder=true; // C:/folder/file.ext
+		if(dat_path[0]=='.' && dat_path[1]=='.' && dat_path[2]=='\\') only_folder=true; // ../folder/file.ext
 
 		// Check for empty
-		if(!folder_path[0]) return false;
+		if(!dat_path[0] || !folder_path[0]) return false;
 	}
 	else if(path_type==-1)
 	{
@@ -622,7 +617,8 @@ void FileManager::SetLEDWord(DWORD data)
 const char* FileManager::GetFullPath(const char* fname, int path_type)
 {
 	static THREAD char buf[MAX_FOPATH];
-	StringCopy(buf,GetDataPath(path_type));
+	buf[0]=0;
+	if(path_type>=0) StringAppend(buf,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(buf,PathLst[path_type]);
 	if(fname) StringAppend(buf,fname);
 	FormatPath(buf);
@@ -632,7 +628,8 @@ const char* FileManager::GetFullPath(const char* fname, int path_type)
 void FileManager::GetFullPath(const char* fname, int path_type, char* get_path)
 {
 	if(!get_path) return;
-	StringCopy(get_path,MAX_FOPATH,GetDataPath(path_type));
+	get_path[0]=0;
+	if(path_type>=0) StringAppend(get_path,MAX_FOPATH,GetDataPath(path_type));
 	if(path_type>=0) StringAppend(get_path,MAX_FOPATH,PathLst[path_type]);
 	if(fname) StringAppend(get_path,MAX_FOPATH,fname);
 	FormatPath(get_path);
@@ -664,12 +661,13 @@ void FileManager::FormatPath(char* path)
 	// Change '/' to '\'
 	for(char* str=path;*str;str++) if(*str=='/') *str='\\';
 
+	// Skip first '..\'
+	while(path[0]=='.' && path[1]=='.' && path[2]=='\\') path+=3;
+
 	// Erase 'folder\..\'
 	char* str=strstr(path,"..\\");
 	if(str)
 	{
-		if(str==path) return;
-
 		// Erase interval
 		char* str_=str+3;
 		str-=2;
@@ -681,6 +679,21 @@ void FileManager::FormatPath(char* path)
 
 		// Recursive look
 		FormatPath(path);
+		return;
+	}
+
+	// Erase '.\'
+	str=strstr(path,".\\");
+	if(str)
+	{
+		// Erase interval
+		char* str_=str+2;
+		for(;*str_;str++,str_++) *str=*str_;
+		*str=0;
+
+		// Recursive look
+		FormatPath(path);
+		return;
 	}
 }
 

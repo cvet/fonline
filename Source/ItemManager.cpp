@@ -655,9 +655,9 @@ bool ItemManager::LoadProtos()
 bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 {
 	protos.clear();
-	if(!txtFile.LoadFile(fname,PT_SERVER_ROOT))
+	if(!txtFile.LoadFile(fname,-1))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",FileManager::GetFullPath(fname,PT_SERVER_ROOT));
+		WriteLog(__FUNCTION__" - File<%s> not found.\n",fname);
 		return false;
 	}
 
