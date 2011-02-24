@@ -78,7 +78,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 	double period_proc=0.0;
 	if(!FLAG(flags,ANIMATION_INIT))
 	{
-		if(anim1<0)
+		if(!anim1)
 		{
 			index=animEntity->renderAnim;
 			period_proc=(double)anim2/10.0;
@@ -90,6 +90,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 	}
 
 	if(FLAG(flags,ANIMATION_PERIOD(0))) period_proc=(flags>>16);
+	period_proc=CLAMP(period_proc,0.0,99.9);
 
 	// Check changes indices or not
 	if(!layers) layers=currentLayers;
@@ -207,7 +208,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 							FrameEx* to_frame=(FrameEx*)D3DXFrameFind(animEntity->xFile->frameRoot,link.LinkBone);
 							if(to_frame)
 							{
-								anim3d=Animation3d::GetAnimation(link.ChildFName,animEntity->pathType,true);
+								anim3d=Animation3d::GetAnimation(link.ChildFName,true);
 								if(anim3d)
 								{
 									anim3d->parentAnimation=this;
@@ -221,7 +222,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 						// Link all bones
 						else
 						{
-							anim3d=Animation3d::GetAnimation(link.ChildFName,animEntity->pathType,true);
+							anim3d=Animation3d::GetAnimation(link.ChildFName,true);
 							if(anim3d)
 							{
 								for(FrameVecIt it=anim3d->animEntity->xFile->framesSkinned.begin(),end=anim3d->animEntity->xFile->framesSkinned.end();it!=end;++it)
@@ -283,7 +284,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 
 		// Smooth time
 		double smooth_time=(FLAG(flags,ANIMATION_NO_SMOOTH|ANIMATION_STAY|ANIMATION_INIT)?0.0001:MoveTransitionTime);
-		double start_time=(period*CLAMP(period_proc,0.0,100.0)/100.0);
+		double start_time=period*period_proc/100.0;
 		if(FLAG(flags,ANIMATION_STAY)) period=start_time+0.0002;
 
 		// Add an event key to disable the currently playing track smooth_time seconds in the future
@@ -295,7 +296,7 @@ void Animation3d::SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags)
 
 		// Enable the new track
 		animController->SetTrackEnable(new_track,TRUE);
-		animController->SetTrackPosition(new_track,start_time);
+		animController->SetTrackPosition(new_track,0.0);
 		// Add an event key to set the speed of the track
 		animController->KeyTrackSpeed(new_track,1.0f,0.0,smooth_time,D3DXTRANSITION_LINEAR);
 		if(FLAG(flags,ANIMATION_ONE_TIME|ANIMATION_STAY|ANIMATION_INIT))
@@ -1244,7 +1245,15 @@ void Animation3d::PreRestore()
 
 Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_child)
 {
-	Animation3dEntity* entity=Animation3dEntity::GetEntity(name,path_type);
+	char fname[MAX_FOPATH];
+	StringCopy(fname,FileManager::GetPath(path_type));
+	StringAppend(fname,name);
+	return GetAnimation(fname,is_child);
+}
+
+Animation3d* Animation3d::GetAnimation(const char* name, bool is_child)
+{
+	Animation3dEntity* entity=Animation3dEntity::GetEntity(name);
 	if(!entity) return NULL;
 	Animation3d* anim3d=entity->CloneAnimation();
 	if(!anim3d) return NULL;
@@ -1328,7 +1337,7 @@ bool Animation3d::Is2dEmulation()
 
 Animation3dEntityVec Animation3dEntity::allEntities;
 
-Animation3dEntity::Animation3dEntity():pathType(0),xFile(NULL),animController(NULL),
+Animation3dEntity::Animation3dEntity():xFile(NULL),animController(NULL),
 renderAnim(0),renderAnimProcFrom(0),renderAnimProcTo(100),
 shadowDisabled(false),calcualteTangetSpace(false)
 {
@@ -1366,7 +1375,7 @@ Animation3dEntity::~Animation3dEntity()
 	animData.clear();
 }
 
-bool Animation3dEntity::Load(const char* name, int path_type)
+bool Animation3dEntity::Load(const char* name)
 {
 	const char* ext=FileManager::GetExtension(name);
 	if(!ext) return false;
@@ -1376,10 +1385,14 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 	{
 		// Load main fo3d file
 		FileManager fo3d;
-		if(!fo3d.LoadFile(name,path_type)) return false;
+		if(!fo3d.LoadFile(name,PT_DATA)) return false;
 		char* big_buf=Str::GetBigBuf();
 		fo3d.CopyMem(big_buf,fo3d.GetFsize());
 		big_buf[fo3d.GetFsize()]=0;
+
+		// Extract file path
+		char path[MAX_FOPATH];
+		FileManager::ExtractPath(name,path);
 
 		// Parse
 		char model[MAX_FOPATH]={0};
@@ -1425,7 +1438,11 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 			}
 
 			if(!_stricmp(token,"StopParsing")) closed=true;
-			else if(!_stricmp(token,"Model")) (*istr) >> model;
+			else if(!_stricmp(token,"Model"))
+			{
+				(*istr) >> buf;
+				FileManager::MakeFilePath(buf,path,model);
+			}
 			else if(!_stricmp(token,"Include"))
 			{
 				// Get swapped words
@@ -1437,11 +1454,15 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				if(templates.empty()) continue;
 				for(size_t i=1,j=templates.size();i<j-1;i+=2) templates[i]=string("%").append(templates[i]).append("%");
 
+				// Include file path
+				char fname[MAX_FOPATH];
+				FileManager::MakeFilePath(templates[0].c_str(),path,fname);
+
 				// Load file
 				FileManager fo3d_ex;
-				if(!fo3d_ex.LoadFile(templates[0].c_str(),path_type))
+				if(!fo3d_ex.LoadFile(fname,PT_DATA))
 				{
-					WriteLog(__FUNCTION__" - Include file<%s> not found.\n",templates[0].c_str());
+					WriteLog(__FUNCTION__" - Include file<%s> not found.\n",fname);
 					continue;
 				}
 
@@ -1531,7 +1552,10 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 				link->Id=++link_id;
 				link->Layer=layer;
 				link->LayerValue=layer_val;
-				link->ChildFName=StringDuplicate(buf);
+
+				char fname[MAX_FOPATH];
+				FileManager::MakeFilePath(buf,path,fname);
+				link->ChildFName=StringDuplicate(fname);
 
 				mesh=0;
 				subset=-1;
@@ -1807,12 +1831,11 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 		}
 
 		// Load x file
-		Animation3dXFile* xfile=Animation3dXFile::GetXFile(model,path_type,calcualteTangetSpace);
+		Animation3dXFile* xfile=Animation3dXFile::GetXFile(model,calcualteTangetSpace);
 		if(!xfile) return false;
 
 		// Create animation
 		fileName=name;
-		pathType=path_type;
 		xFile=xfile;
 
 		// Parse animations
@@ -1824,11 +1847,10 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 			char* anim_name=(char*)anim_indexes[i+2];
 
 			char anim_path[MAX_FOPATH];
-			StringCopy(anim_path,FileManager::GetPath(path_type));
 			if(!_stricmp(anim_fname,"ModelFile"))
-				StringAppend(anim_path,model);
+				StringCopy(anim_path,model);
 			else
-				StringAppend(anim_path,anim_fname);
+				FileManager::MakeFilePath(anim_fname,path,anim_path);
 
 			AnimSet* set=Loader3d::LoadAnimation(D3DDevice,anim_path,anim_name);
 			if(set)
@@ -1881,12 +1903,11 @@ bool Animation3dEntity::Load(const char* name, int path_type)
 	// Load just x file
 	else
 	{
-		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,path_type,false);
+		Animation3dXFile* xfile=Animation3dXFile::GetXFile(name,false);
 		if(!xfile) return false;
 
 		// Create animation
 		fileName=name;
-		pathType=path_type;
 		xFile=xfile;
 
 		// Todo: process default animations
@@ -2020,14 +2041,14 @@ Animation3d* Animation3dEntity::CloneAnimation()
 	return a3d;
 }
 
-Animation3dEntity* Animation3dEntity::GetEntity(const char* name, int path_type)
+Animation3dEntity* Animation3dEntity::GetEntity(const char* name)
 {
 	// Try find instance
 	Animation3dEntity* entity=NULL;
 	for(Animation3dEntityVecIt it=allEntities.begin(),end=allEntities.end();it!=end;++it)
 	{
 		Animation3dEntity* e=*it;
-		if(e->fileName==name && e->pathType==path_type)
+		if(e->fileName==name)
 		{
 			entity=e;
 			break;
@@ -2038,7 +2059,7 @@ Animation3dEntity* Animation3dEntity::GetEntity(const char* name, int path_type)
 	if(!entity)
 	{
 		entity=new(nothrow) Animation3dEntity();
-		if(!entity || !entity->Load(name,path_type))
+		if(!entity || !entity->Load(name))
 		{
 			SAFEDEL(entity);
 			return NULL;
@@ -2067,14 +2088,14 @@ Animation3dXFile::~Animation3dXFile()
 	frameRoot=NULL;
 }
 
-Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, int path_type, bool calc_tangent)
+Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, bool calc_tangent)
 {
 	Animation3dXFile* xfile=NULL;
 
 	for(Animation3dXFileVecIt it=xFiles.begin(),end=xFiles.end();it!=end;++it)
 	{
 		Animation3dXFile* x=*it;
-		if(x->fileName==xname && x->pathType==path_type)
+		if(x->fileName==xname)
 		{
 			xfile=x;
 
@@ -2089,28 +2110,22 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, int path_type, b
 
 	if(!xfile)
 	{
-		// Make path
-		char path[MAX_FOPATH];
-		StringCopy(path,FileManager::GetPath(path_type));
-		StringAppend(path,xname);
-
 		// Load
-		D3DXFRAME* frame_root=Loader3d::LoadModel(D3DDevice,path,calc_tangent);
+		D3DXFRAME* frame_root=Loader3d::LoadModel(D3DDevice,xname,calc_tangent);
 		if(!frame_root)
 		{
-			WriteLog(__FUNCTION__" - Unable to load 3d file<%s>.\n",path);
+			WriteLog(__FUNCTION__" - Unable to load 3d file<%s>.\n",xname);
 			return NULL;
 		}
 
 		xfile=new(nothrow) Animation3dXFile();
 		if(!xfile)
 		{
-			WriteLog(__FUNCTION__" - Allocation fail, x file<%s>.\n",path);
+			WriteLog(__FUNCTION__" - Allocation fail, x file<%s>.\n",xname);
 			return NULL;
 		}
 
 		xfile->fileName=xname;
-		xfile->pathType=path_type;
 		xfile->frameRoot=frame_root;
 		xfile->tangentsCalculated=calc_tangent;
 

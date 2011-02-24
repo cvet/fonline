@@ -22,6 +22,7 @@ const char* NamesFile[]=
 	{"ItemNames.lst"},
 	{"DefineNames.lst"},
 	{"PictureNames.lst"},
+	{"HashNames.lst"},
 };
 
 StrVec FONames::GetNames(int names)
@@ -89,6 +90,8 @@ const char* FONames::GetPictureName(DWORD index)
 
 void FONames::GenerateFoNames(int path_type, const char* path /* = NULL */)
 {
+	char line[MAX_FOTEXT];
+	char name[MAX_FOTEXT];
 	for(int i=0;i<FONAME_MAX;i++)
 	{
 		SomeNameVec& names=Names[i];
@@ -103,9 +106,8 @@ void FONames::GenerateFoNames(int path_type, const char* path /* = NULL */)
 			if(!fm.LoadFile(NamesFile[i],path_type)) continue;
 		}
 
-		char line[512];
 		int offset=0;
-		while(fm.GetLine(line,512))
+		while(fm.GetLine(line,MAX_FOTEXT))
 		{
 			if(line[0]=='*')
 			{
@@ -114,7 +116,6 @@ void FONames::GenerateFoNames(int path_type, const char* path /* = NULL */)
 			else
 			{
 				int num;
-				char name[512];
 				istrstream str(line);
 
 				str >> num;
@@ -122,7 +123,10 @@ void FONames::GenerateFoNames(int path_type, const char* path /* = NULL */)
 				str >> name;
 				if(str.fail()) continue;
 
-				names.push_back(SomeName(num+offset,name));
+				if(i==FONAME_HASH)
+					Str::AddNameHash(name);
+				else
+					names.push_back(SomeName(num+offset,name));
 			}
 		}
 	}

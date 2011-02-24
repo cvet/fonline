@@ -105,6 +105,7 @@ public:
 	static void FormatPath(char* path);
 	static void ExtractPath(const char* fname, char* path);
 	static void ExtractFileName(const char* fname, char* name);
+	static void MakeFilePath(const char* name, const char* path, char* result);
 	static const char* GetExtension(const char* fname);
 
 	bool IsLoaded(){return fileBuf!=NULL;}

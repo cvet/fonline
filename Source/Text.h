@@ -36,27 +36,16 @@ namespace Str
 /* Format string                                                        */
 /************************************************************************/
 
-// Adding value to all characters in string
+// Strings
 void ChangeValue(char* str, int value);
-// Erase selected string
 void EraseInterval(char* str, int len);
-// Insert selected string
-void Insert(char* to_str, const char* from_str);
-void Copy(char* to_str, const char* from_str);
-//void StrEraseWords(char* str, char* word);
-// Erase all words from beginn_char to first end_char
-void EraseWords(char* str, char begin_char, char end_char);
+void Insert(char* to, const char* from);
+void Copy(char* to, const char* from);
+void EraseWords(char* str, char begin, char end);
 void EraseChars(char* str, char ch);
-// Copy word to to_str from from_str to first end_char
-void CopyWord(char* to_str, const char* from_str, char end_char, bool include_end_char=false);
-// Parse characters in upper
+void CopyWord(char* to, const char* from, char end, bool include_end = false);
 char* Upr(char* str);
-// Parse characters in lower
 char* Lwr(char* str);
-//BOOL StrCmp(const char* str1, const char* str2);
-//BOOL StriCmp(const char* str1, const char* str2);
-//char* StrCpy(char* dest, const char* src);
-//char* StrCat(char* dest, const char* src);
 void CopyBack(char* str);
 void Replacement(char* str, char ch);
 void Replacement(char* str, char from, char to);
@@ -67,6 +56,22 @@ const char* ItoA(int i);
 const char* DWtoA(DWORD dw);
 const char* Format(const char* fmt, ...);
 const char* SFormat(char* stream, const char* fmt, ...);
+
+// Msg files
+int GetMsgType(const char* type_name);
+
+// Just big buffer, 1mb
+char* GetBigBuf();
+
+// Numbers
+bool IsNumber(const char* str);
+bool StrToInt(const char* str, int& i);
+
+// Name hash
+DWORD GetHash(const char* str);
+const char* GetName(DWORD hash);
+void AddNameHash(const char* name);
+
 // Parse str
 const char* ParseLineDummy(const char* str);
 template<typename Cont, class Func>
@@ -94,16 +99,6 @@ void ParseLine(const char* str, char divider, Cont& result, Func f)
 		buf_pos++;
 	}
 }
-// Msg files
-int GetMsgType(const char* type_name);
-// Copy of data
-char* DuplicateString(const char* str);
-// Just big buffer, 65536 bytes
-char* GetBigBuf();
-// Number or not
-bool IsNumber(const char* str);
-bool StrToInt(const char* str, int& i);
-DWORD GetHash(const char* str);
 }
 
 /************************************************************************/

@@ -5,7 +5,8 @@
 #define FONAME_ITEM     (1)
 #define FONAME_DEFINE   (2)
 #define FONAME_PICTURE  (3)
-#define FONAME_MAX      (4)
+#define FONAME_HASH     (4)
+#define FONAME_MAX      (5)
 
 namespace FONames
 {

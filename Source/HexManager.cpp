@@ -1346,7 +1346,7 @@ bool HexManager::CheckTilesBorder(Field::Tile& tile, bool is_roof)
 
 bool HexManager::AddTerrain(DWORD name_hash, int hx, int hy)
 {
-	Terrain* terrain=new(nothrow) Terrain(SprMngr.GetDevice(),hx,hy,ResMngr.GetName(name_hash));
+	Terrain* terrain=new(nothrow) Terrain(SprMngr.GetDevice(),hx,hy,Str::GetName(name_hash));
 	if(terrain && !terrain->IsError())
 	{
 		tilesTerrain.push_back(terrain);
@@ -2906,9 +2906,9 @@ bool HexManager::LoadMap(WORD map_pid)
 
 	// Roof indexes
 	int roof_num=1;
-	for(int hx=0;hx<maxHexX;hx+=2)
+	for(int hx=0;hx<maxHexX;hx++)
 	{
-		for(int hy=0;hy<maxHexY;hy+=2)
+		for(int hy=0;hy<maxHexY;hy++)
 		{
 			if(GetField(hx,hy).Roofs.size())
 			{

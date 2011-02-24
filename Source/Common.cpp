@@ -437,8 +437,6 @@ void GetClientOptions()
 	char buf[MAX_FOTEXT];
 
 	// Load config file
-	IniParser cfg;
-
 #ifdef FONLINE_MAPPER
 	IniParser cfg_mapper;
 	cfg_mapper.LoadFile(MAPPER_CONFIG_FILE,PT_ROOT);
@@ -453,10 +451,10 @@ void GetClientOptions()
 	if(GameOpt.ServerPath.length() && GameOpt.ServerPath[GameOpt.ServerPath.length()-1]!='\\') GameOpt.ServerPath+="\\";
 
 	FileManager::SetDataPath(GameOpt.ClientPath.c_str());
-	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_DATA);
-#else
-	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
 #endif
+
+	IniParser cfg;
+	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
 
 	// Language
 	cfg.GetStr(CLIENT_CONFIG_APP,"Language","russ",buf);

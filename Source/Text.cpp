@@ -37,52 +37,52 @@ void Str::EraseInterval(char* str, int len)
 		++str2;
 	}
 
-	*str='\0';
+	*str=0;
 }
 
-void Str::Insert(char* to_str, const char* from_str)
+void Str::Insert(char* to, const char* from)
 {
-	if(!to_str || !from_str) return;
+	if(!to || !from) return;
 
-	int flen=strlen(from_str);
+	int flen=strlen(from);
 	if(!flen) return;
 
-	char* end_to=to_str;
+	char* end_to=to;
 	while(*end_to) ++end_to;
 
-	for(;end_to>=to_str;--end_to) *(end_to+flen)=*end_to;
+	for(;end_to>=to;--end_to) *(end_to+flen)=*end_to;
 
-	while(*from_str)
+	while(*from)
 	{
-		*to_str=*from_str;
-		++to_str;
-		++from_str;
+		*to=*from;
+		++to;
+		++from;
 	}
 }
 
-void Str::Copy(char* to_str, const char* from_str)
+void Str::Copy(char* to, const char* from)
 {
-	if(!to_str) return;
-	if(!from_str) return;
+	if(!to || !from) return;
 
-	while(*from_str)
+	while(*from)
 	{
-		*to_str=*from_str;
-		++to_str;
-		++from_str;
+		*to=*from;
+		++to;
+		++from;
 	}
 }
 
-void Str::EraseWords(char* str, char begin_char, char end_char)
+void Str::EraseWords(char* str, char begin, char end)
 {
 	if(!str) return;
+
 	for(int i=0;str[i];++i)
 	{
-		if(str[i]==begin_char)
+		if(str[i]==begin)
 		{
 			for(int k=i+1;;++k)
 			{
-				if(!str[k] || str[k]==end_char)
+				if(!str[k] || str[k]==end)
 				{
 					Str::EraseInterval(&str[i],k-i+1);
 					break;
@@ -96,6 +96,7 @@ void Str::EraseWords(char* str, char begin_char, char end_char)
 void Str::EraseChars(char* str, char ch)
 {
 	if(!str) return;
+
 	while(*str)
 	{
 		if(*str==ch) CopyBack(str);
@@ -103,26 +104,26 @@ void Str::EraseChars(char* str, char ch)
 	}
 }
 
-void Str::CopyWord(char* to_str, const char* from_str, char end_char, bool include_end_char /*=false*/)
+void Str::CopyWord(char* to, const char* from, char end, bool include_end /* = false */)
 {
-	if(!from_str || !to_str) return;
+	if(!from || !to) return;
 
-	*to_str='\0';
+	*to=0;
 
-	while(*from_str && *from_str!=end_char)
+	while(*from && *from!=end)
 	{
-		*to_str=*from_str;
-		to_str++;
-		from_str++;
+		*to=*from;
+		to++;
+		from++;
 	}
 
-	if(include_end_char && *from_str)
+	if(include_end && *from)
 	{
-		*to_str=*from_str;
-		to_str++;
+		*to=*from;
+		to++;
 	}
 
-	*to_str='\0';
+	*to=0;
 }
 
 char* Str::Lwr(char* str)
@@ -242,20 +243,10 @@ int Str::GetMsgType(const char* type_name)
 	return -1;
 }
 
-char* Str::DuplicateString(const char* str)
-{
-	if(!str) return NULL;
-	DWORD len=strlen(str);
-	char* result=new char[len+1];
-	memcpy(result,str,len+1);
-	return result;
-}
-
+static char BigBuf[0x100000]; // 1 mb
 char* Str::GetBigBuf()
 {
-	static char* big_buf=NULL;
-	if(!big_buf) big_buf=new(nothrow) char[0x100000]; // 1 mb
-	return big_buf;
+	return BigBuf;
 }
 
 bool Str::IsNumber(const char* str)
@@ -289,6 +280,7 @@ bool Str::StrToInt(const char* str, int& i)
 	return false;
 }
 
+DwordStrMap NamesHash;
 DWORD Str::GetHash(const char* str)
 {
 	if(!str) return 0;
@@ -296,27 +288,29 @@ DWORD Str::GetHash(const char* str)
 	char str_[MAX_FOPATH];
 	StringCopy(str_,str);
 	Str::Lwr(str_);
-	int len=0;
+	DWORD len=0;
 	for(char* s=str_;*s;s++,len++) if(*s=='/') *s='\\';
+
 	return Crypt.Crc32((BYTE*)str_,len);
+}
 
-	/* TODO: Must be faster, need test
-	int len=0;
-	for(int i=0;i<MAX_FOPATH;i++)
-	{
-		const char& from=str[i];
-		char& to=str_[i];
-		if(from>='À' && from<='ß') to=from+0x20;
-		else if(from>='A' && from<='Z') to=from+0x20;
-		else if(from=='¨') to='¸';
-		else if(from=='/') to='\\';
-		else to=from;
+const char* Str::GetName(DWORD hash)
+{
+	if(!hash) return NULL;
 
-		if(!from) break;
-		len++;
-	}
-	str_[MAX_FOPATH-1]=0;
-	return Crypt.Crc32((BYTE*)str_,len);*/
+	DwordStrMapIt it=NamesHash.find(hash);
+	return it!=NamesHash.end()?(*it).second.c_str():NULL;
+}
+
+void Str::AddNameHash(const char* name)
+{
+	DWORD hash=GetHash(name);
+
+	DwordStrMapIt it=NamesHash.find(hash);
+	if(it==NamesHash.end())
+		NamesHash.insert(DwordStrMapVal(hash,name));
+	else if(_stricmp(name,(*it).second.c_str()))
+		WriteLog(__FUNCTION__" - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",name,(*it).second.c_str(),hash);
 }
 
 /************************************************************************/
@@ -364,7 +358,7 @@ bool IniParser::LoadFilePtr(const char* buf, DWORD len)
 	if(!bufPtr) return false;
 
 	memcpy(bufPtr,buf,len);
-	bufPtr[len]='\0';
+	bufPtr[len]=0;
 	bufLen=len;
 	return true;
 }
@@ -379,7 +373,7 @@ bool IniParser::AppendToBegin(const char* fname, int path_type)
 	char* grow_buf=new char[bufLen+len+1];
 	memcpy(grow_buf,buf,len);
 	memcpy(grow_buf+len,bufPtr,bufLen);
-	grow_buf[bufLen+len]='\0';
+	grow_buf[bufLen+len]=0;
 
 	SAFEDELA(bufPtr);
 	bufPtr=grow_buf;
@@ -399,7 +393,7 @@ bool IniParser::AppendToEnd(const char* fname, int path_type)
 	char* grow_buf=new char[bufLen+len+1];
 	memcpy(grow_buf,bufPtr,bufLen);
 	memcpy(grow_buf+bufLen,buf,len);
-	grow_buf[bufLen+len]='\0';
+	grow_buf[bufLen+len]=0;
 
 	SAFEDELA(bufPtr);
 	bufPtr=grow_buf;
@@ -414,7 +408,7 @@ bool IniParser::AppendPtrToBegin(const char* buf, DWORD len)
 	char* grow_buf=new char[bufLen+len+1];
 	memcpy(grow_buf,buf,len);
 	memcpy(grow_buf+len,bufPtr,bufLen);
-	grow_buf[bufLen+len]='\0';
+	grow_buf[bufLen+len]=0;
 
 	SAFEDELA(bufPtr);
 	bufPtr=grow_buf;
@@ -428,7 +422,7 @@ void IniParser::UnloadFile()
 {
 	SAFEDELA(bufPtr);
 	bufLen=0;
-	lastApp[0]='\0';
+	lastApp[0]=0;
 	lastAppPos=0;
 }
 
@@ -556,7 +550,7 @@ int IniParser::GetInt(const char* app_name, const char* key_name, int def_val)
 	}
 
 	if(!j) return def_val;
-	num[j]='\0';
+	num[j]=0;
 	return atoi(num);
 }
 
@@ -611,11 +605,11 @@ bool IniParser::GetStr(const char* app_name, const char* key_name, const char* d
 	// Erase white spaces and tabs from end
 	for(;j;j--) if(ret_buf[j-1]!=' ' && ret_buf[j-1]!='\t') break;
 
-	ret_buf[j]='\0';
+	ret_buf[j]=0;
 	return true;
 
 label_DefVal:
-	ret_buf[0]='\0';
+	ret_buf[0]=0;
 	if(def_val) StringCopy(ret_buf,MAX_FOTEXT,def_val);
 	return false;
 }
@@ -657,7 +651,7 @@ char* IniParser::GetApp(const char* app_name)
 
 	char* ret_buf=new char[len+1];
 	if(len) memcpy(ret_buf,&bufPtr[iter],len);
-	ret_buf[len]='\0';
+	ret_buf[len]=0;
 	return ret_buf;
 }
 
@@ -780,7 +774,7 @@ void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 	for(int i=0;i<len;i++)
 	{
 		char c=(char)binary[i];
-		if(c=='\0' || c=='}')
+		if(c==0 || c=='}')
 		{
 			str.push_back(2);
 			str.push_back(c+1);
@@ -791,7 +785,7 @@ void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 			str.push_back(c);
 		}
 	}
-	str.push_back('\0');
+	str.push_back(0);
 
 	AddStr(num,(char*)&str[0]);
 }
@@ -1083,7 +1077,7 @@ int FOMsg::LoadMsgFileBuf(char* data, DWORD data_len)
 		char* _pbuf=pbuf;
 		Str::GoTo(pbuf,'}');
 		if(!*pbuf) break;
-		*pbuf='\0';
+		*pbuf=0;
 
 #ifndef FONLINE_CLIENT
 		if(num_info<last_num)

@@ -1047,7 +1047,7 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 	for(size_t i=0,j=Tiles.size();i<j;i++)
 	{
 		Tile& tile=Tiles[i];
-		const char* name=ResMngr.GetName(tile.NameHash);
+		const char* name=Str::GetName(tile.NameHash);
 		if(name)
 		{
 			bool has_offs=(tile.OffsX || tile.OffsY);
@@ -1754,8 +1754,8 @@ bool ProtoMap::Refresh()
 		mobj->RunTime.FromMap=this;
 		if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[0]) StringCopy(mobj->RunTime.PicMapName,ResMngr.GetName(mobj->MItem.PicMapHash));
-			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) StringCopy(mobj->RunTime.PicInvName,ResMngr.GetName(mobj->MItem.PicInvHash));
+			if(mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[0]) StringCopy(mobj->RunTime.PicMapName,Str::GetName(mobj->MItem.PicMapHash));
+			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) StringCopy(mobj->RunTime.PicInvName,Str::GetName(mobj->MItem.PicInvHash));
 		}
 	}
 

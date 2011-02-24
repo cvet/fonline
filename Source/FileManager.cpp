@@ -197,6 +197,10 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 
 		// Check for full path
 		if(folder_path[1]==':') only_folder=true;
+		if(folder_path[0]=='.' && folder_path[1]=='.' && folder_path[2]=='\\') only_folder=true;
+
+		// Check for empty
+		if(!folder_path[0]) return false;
 	}
 	else if(path_type==-1)
 	{
@@ -643,7 +647,15 @@ const char* FileManager::GetPath(int path_type)
 const char* FileManager::GetDataPath(int path_type)
 {
 	static const char root_path[]=".\\";
-	if(path_type==PT_ROOT || path_type==PT_SERVER_ROOT || path_type==PT_MAPPER_DATA) return root_path;
+
+#if defined(FONLINE_SERVER)
+	if(path_type==PT_SERVER_ROOT) return root_path;
+#elif defined(FONLINE_CLIENT)
+	if(path_type==PT_ROOT) return root_path;
+#elif defined(FONLINE_MAPPER)
+	if(path_type==PT_MAPPER_DATA) return root_path;
+#endif
+
 	return dataPath;
 }
 
@@ -652,17 +664,22 @@ void FileManager::FormatPath(char* path)
 	// Change '/' to '\'
 	for(char* str=path;*str;str++) if(*str=='/') *str='\\';
 
-	// Erase 'folder..\'
+	// Erase 'folder\..\'
 	char* str=strstr(path,"..\\");
 	if(str)
 	{
+		if(str==path) return;
+
+		// Erase interval
 		char* str_=str+3;
 		str-=2;
-		if(str<=path) return;
-		for(;str!=path;str--) if(*str=='\\') break;
-		str++;
+		for(;str>=path;str--) if(*str=='\\') break;
+		if(str<path) str=path;
+		else str++;
 		for(;*str_;str++,str_++) *str=*str_;
 		*str=0;
+
+		// Recursive look
 		FormatPath(path);
 	}
 }
@@ -727,6 +744,22 @@ void FileManager::ExtractFileName(const char* fname, char* name)
 	}
 
 	if(dup) delete[] fname;
+}
+
+void FileManager::MakeFilePath(const char* name, const char* path, char* result)
+{
+	if((strstr(name,"\\") || strstr(name,"/")) && name[0]!='.')
+	{
+		// Direct
+		StringCopy(result,MAX_FOPATH,name);
+	}
+	else
+	{
+		// Relative
+		if(path) StringCopy(result,MAX_FOPATH,path);
+		StringAppend(result,MAX_FOPATH,name);
+		FormatPath(result);
+	}
 }
 
 const char* FileManager::GetExtension(const char* fname)

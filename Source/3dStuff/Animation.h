@@ -158,6 +158,7 @@ public:
 	static void BeginScene();
 	static void PreRestore();
 	static Animation3d* GetAnimation(const char* name, int path_type, bool is_child);
+	static Animation3d* GetAnimation(const char* name, bool is_child);
 	static void AnimateFaster();
 	static void AnimateSlower();
 	static FLTPOINT Convert2dTo3d(int x, int y);
@@ -174,7 +175,7 @@ private:
 	static Animation3dEntityVec allEntities;
 
 	string fileName;
-	int pathType;
+	string pathName;
 	Animation3dXFile* xFile;
 	ID3DXAnimationController* animController;
 	DWORD numAnimationSets;
@@ -193,13 +194,13 @@ private:
 	int GetAnimationIndex(DWORD& anim1, DWORD& anim2, float* speed);
 	int GetAnimationIndexEx(DWORD anim1, DWORD anim2, float* speed);
 
-	bool Load(const char* name, int path_type);
+	bool Load(const char* name);
 	Animation3d* CloneAnimation();
 
 public:
 	Animation3dEntity();
 	~Animation3dEntity();
-	static Animation3dEntity* GetEntity(const char* name, int path_type);
+	static Animation3dEntity* GetEntity(const char* name);
 };
 
 class Animation3dXFile
@@ -217,7 +218,7 @@ private:
 	DWORD facesCount;
 	bool tangentsCalculated;
 
-	static Animation3dXFile* GetXFile(const char* xname, int path_type, bool calc_tangent);
+	static Animation3dXFile* GetXFile(const char* xname, bool calc_tangent);
 	static bool CalculateNormalTangent(FrameEx* frame);
 	static bool SetupSkinning(Animation3dXFile* xfile, FrameEx* frame, FrameEx* frame_root);
 	static void SetupFacesCount(FrameEx* frame, DWORD& count);

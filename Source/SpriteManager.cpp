@@ -1394,6 +1394,7 @@ label_LoadOneSpr:
 	for(int i=0;i<frames_count;i++)
 	{
 		int cur_proci=(proc_to>proc_from?(int)(10.0f*cur_proc+0.5):(int)(10.0f*cur_proc));
+
 		if(cur_proci!=prev_cur_proci) // Previous frame is different
 			anim->Ind[i]=Render3dSprite(anim3d,dir,cur_proci);
 		else // Previous frame is same
@@ -2279,7 +2280,7 @@ DWORD SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
 	anim3d->EnableSetupBorders(false);
 	if(dir<0 || dir>5) anim3d->SetDirAngle(dir);
 	else anim3d->SetDir(dir);
-	anim3d->SetAnimation(-1,time_proc,NULL,ANIMATION_ONE_TIME|ANIMATION_STAY);
+	anim3d->SetAnimation(0,time_proc,NULL,ANIMATION_ONE_TIME|ANIMATION_STAY);
 	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
 	anim3d->EnableSetupBorders(true);
 	anim3d->SetupBorders();

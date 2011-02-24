@@ -173,7 +173,7 @@ bool FOClient::Init(HWND hwnd)
 	};
 	GameOpt.IsSpriteHit=&IsSpriteHit_::IsSpriteHit;
 
-	struct GetNameByHash_{static const char* GetNameByHash(DWORD hash){return ResMngr.GetName(hash);}};
+	struct GetNameByHash_{static const char* GetNameByHash(DWORD hash){return Str::GetName(hash);}};
 	GameOpt.GetNameByHash=&GetNameByHash_::GetNameByHash;
 	struct GetHashByName_{static DWORD GetHashByName(const char* name){return Str::GetHash(name);}};
 	GameOpt.GetHashByName=&GetHashByName_::GetHashByName;
@@ -4355,22 +4355,22 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	bool is_barter=IsScreenPresent(SCREEN__BARTER);
 	if((how_say==SAY_DIALOG || how_say==SAY_APPEND) && (is_dialog || is_barter))
 	{
+		CritterCl* npc=GetCritter(DlgNpcId);
+		FormatTags(fstr,MAX_FOTEXT,Chosen,npc,"");
+
 		if(is_dialog)
 		{
-			CritterCl* npc=GetCritter(DlgNpcId);
-			FormatTags(fstr,MAX_FOTEXT,Chosen,npc,"");
-			if(how_say==SAY_APPEND)
-			{
-				DlgMainText+=fstr;
-				DlgMainTextLinesReal=SprMngr.GetLinesCount(DlgWText.W(),0,str);
-			}
+			if(how_say==SAY_APPEND) DlgMainText+=fstr;
+			else DlgMainText=fstr;
+			DlgMainTextLinesReal=SprMngr.GetLinesCount(DlgWText.W(),0,DlgMainText.c_str());
 		}
 		else if(is_barter)
 		{
-			BarterText=str;
-			DlgMainTextCur=0;
+			if(how_say==SAY_APPEND) BarterText+=fstr;
+			else BarterText=fstr;
 			DlgMainTextLinesReal=SprMngr.GetLinesCount(DlgWText.W(),0,BarterText.c_str());
 		}
+		if(how_say!=SAY_APPEND) DlgMainTextCur=0;
 	}
 
 	// Encounter question
@@ -10345,7 +10345,10 @@ CScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr(CScriptString& key)
 
 bool FOClient::SScriptFunc::Global_Load3dFile(CScriptString& fname, int path_type)
 {
-	Animation3dEntity* entity=Animation3dEntity::GetEntity(fname.c_str(),path_type);
+	char fname_[MAX_FOPATH];
+	StringCopy(fname_,FileManager::GetPath(path_type));
+	StringAppend(fname_,fname.c_str());
+	Animation3dEntity* entity=Animation3dEntity::GetEntity(fname_);
 	return entity!=NULL;
 }
 
@@ -10466,7 +10469,7 @@ void FOClient::SScriptFunc::Global_AllowSlot(BYTE index, CScriptString& ini_opti
 	CritterCl::SlotEnabled[index]=true;
 	SlotExt se;
 	se.Index=index;
-	se.IniName=Str::DuplicateString(ini_option.c_str());
+	se.IniName=StringDuplicate(ini_option.c_str());
 	Self->IfaceLoadRect(se.Rect,se.IniName);
 	Self->SlotsExt.push_back(se);
 }

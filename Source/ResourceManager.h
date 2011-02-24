@@ -32,9 +32,6 @@ typedef map<DWORD,LoadedAnim,less<DWORD>>::value_type LoadedAnimMapVal;
 class ResourceManager
 {
 private:
-	SpriteManager* sprMngr;
-	FileManager fileMngr;
-
 	PtrVec processedDats;
 	DwordStrMap namesHash;
 	LoadedAnimMap loadedAnims;
@@ -51,8 +48,6 @@ public:
 	void Refresh();
 	void Finish();
 	void FreeResources(int type);
-
-	const char* GetName(DWORD name_hash);
 
 	AnyFrames* GetAnim(DWORD name_hash, int dir, int res_type);
 	AnyFrames* GetIfaceAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE);}

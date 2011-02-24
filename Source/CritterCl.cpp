@@ -1179,6 +1179,8 @@ void CritterCl::AnimateStay()
 	}
 	else
 	{
+		Anim3d->CheckAnimation(anim1,anim2);
+
 		ProcessAnim(true,false,anim1,anim2,NULL);
 		SetOffs(0,0,true);
 
@@ -1446,9 +1448,10 @@ void CritterCl::Process()
 	}
 
 	// Fidget animation
-	if(!animSequence.size() && Cond==COND_LIFE && Timer::GameTick()>=tickFidget && IsFree() && !MoveSteps.size())
+	if(Timer::GameTick()>=tickFidget)
 	{
-		Action(ACTION_FIDGET,0,NULL);
+		if(!animSequence.size() && Cond==COND_LIFE && IsFree() && !MoveSteps.size() && !IsCombatMode())
+			Action(ACTION_FIDGET,0,NULL);
 		tickFidget=Timer::GameTick()+Random(GameOpt.CritterFidgetTime,GameOpt.CritterFidgetTime*2);
 	}
 }

@@ -8,28 +8,6 @@
 
 ResourceManager ResMngr;
 
-void ResourceManager::AddNamesHash(StrVec& names)
-{
-	for(StrVecIt it=names.begin(),end=names.end();it!=end;++it)
-	{
-		const string& fname=*it;
-		DWORD hash=Str::GetHash(fname.c_str());
-
-		DwordStrMapIt it_=namesHash.find(hash);
-		if(it_==namesHash.end())
-			namesHash.insert(DwordStrMapVal(hash,fname));
-		else if(_stricmp(fname.c_str(),(*it_).second.c_str()))
-			WriteLog(__FUNCTION__" - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",fname.c_str(),(*it_).second.c_str(),hash);
-	}
-}
-
-const char* ResourceManager::GetName(DWORD name_hash)
-{
-	if(!name_hash) return NULL;
-	DwordStrMapIt it=namesHash.find(name_hash);
-	return it!=namesHash.end()?(*it).second.c_str():NULL;
-}
-
 void ResourceManager::Refresh()
 {
 	// Folders, unpacked data
@@ -39,7 +17,7 @@ void ResourceManager::Refresh()
 		// All names
 		StrVec file_names;
 		FileManager::GetFolderFileNames(PT_DATA,NULL,file_names);
-		AddNamesHash(file_names);
+		for(StrVecIt it=file_names.begin(),end=file_names.end();it!=end;++it) Str::AddNameHash((*it).c_str());
 
 		// Splashes
 		StrVec splashes;
@@ -81,7 +59,7 @@ void ResourceManager::Refresh()
 			// All names
 			StrVec file_names;
 			pfile->GetFileNames(FileManager::GetPath(PT_DATA),NULL,file_names);
-			AddNamesHash(file_names);
+			for(StrVecIt it=file_names.begin(),end=file_names.end();it!=end;++it) Str::AddNameHash((*it).c_str());
 
 			// Splashes
 			StrVec splashes;
@@ -177,7 +155,7 @@ AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir, int res_type)
 	if(it!=loadedAnims.end()) return (*it).second.Anim;
 
 	// Load new animation
-	const char* fname=GetName(name_hash);
+	const char* fname=Str::GetName(name_hash);
 	if(!fname) return NULL;
 
 	SprMngr.SurfType=res_type;
@@ -265,6 +243,18 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 								if(FLAG(flags,ANIM_FLAG_FIRST_FRAME) || FLAG(flags,ANIM_FLAG_LAST_FRAME))
 								{
 									bool first=FLAG(flags,ANIM_FLAG_FIRST_FRAME);
+
+									// Append offsets
+									if(!first)
+									{
+										for(DWORD i=0;i<anim->CntFrm-1;i++)
+										{
+											anim->NextX[anim->CntFrm-1]+=anim->NextX[i];
+											anim->NextY[anim->CntFrm-1]+=anim->NextY[i];
+										}
+									}
+
+									// Change size
 									DWORD spr_id=(first?anim->Ind[0]:anim->Ind[anim->CntFrm-1]);
 									short nx=(first?anim->NextX[0]:anim->NextX[anim->CntFrm-1]);
 									short ny=(first?anim->NextY[0]:anim->NextY[anim->CntFrm-1]);
@@ -427,6 +417,16 @@ AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD ani
 					anim_->Ind[0]=anim->Ind[FLAG(flags,ANIM_FLAG_FIRST_FRAME)?0:anim->CntFrm-1];
 					anim_->NextX[0]=anim->NextX[FLAG(flags,ANIM_FLAG_FIRST_FRAME)?0:anim->CntFrm-1];
 					anim_->NextY[0]=anim->NextY[FLAG(flags,ANIM_FLAG_FIRST_FRAME)?0:anim->CntFrm-1];
+
+					// Append offsets
+					if(FLAG(flags,ANIM_FLAG_LAST_FRAME))
+					{
+						for(DWORD i=0;i<anim->CntFrm-1;i++)
+						{
+							anim_->NextX[0]+=anim->NextX[i];
+							anim_->NextY[0]+=anim->NextY[i];
+						}
+					}
 				}
 				anim=anim_;
 			}

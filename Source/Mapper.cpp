@@ -85,7 +85,7 @@ bool FOMapper::Init(HWND wnd)
 	};
 	GameOpt.IsSpriteHit=&IsSpriteHit_::IsSpriteHit;
 
-	struct GetNameByHash_{static const char* GetNameByHash(DWORD hash){return ResMngr.GetName(hash);}};
+	struct GetNameByHash_{static const char* GetNameByHash(DWORD hash){return Str::GetName(hash);}};
 	GameOpt.GetNameByHash=&GetNameByHash_::GetNameByHash;
 	struct GetHashByName_{static DWORD GetHashByName(const char* name){return Str::GetHash(name);}};
 	GameOpt.GetHashByName=&GetHashByName_::GetHashByName;
@@ -145,6 +145,7 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Names
+	FONames::GenerateFoNames(PT_DATA);
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 	FONames::GenerateFoNames(PT_SERVER_DATA);
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
@@ -1383,7 +1384,7 @@ bool StringCompare(const string &left, const string &right)
 
 void FOMapper::RefreshTiles()
 {
-	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg","jpeg","pfm","png","tga","x","3ds","fo3d"};
+	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg","jpeg","pfm","png","tga"};
 	size_t formats_count=sizeof(formats)/sizeof(formats[0]);
 
 	StrVec tiles;
@@ -1410,6 +1411,7 @@ void FOMapper::RefreshTiles()
 				break;
 			}
 		}
+		if(!format_aviable) format_aviable=Loader3d::IsExtensionSupported(ext);
 
 		if(format_aviable)
 		{
@@ -1704,8 +1706,8 @@ void FOMapper::ObjDraw()
 	}
 	else if(so.MapItem && proto)
 	{
-		DRAW_COMPONENT_TEXT("PicMap",ResMngr.GetName(proto->PicMapHash),true);          // 0
-		DRAW_COMPONENT_TEXT("PicInv",ResMngr.GetName(proto->PicInvHash),true);          // 1
+		DRAW_COMPONENT_TEXT("PicMap",Str::GetName(proto->PicMapHash),true);          // 0
+		DRAW_COMPONENT_TEXT("PicInv",Str::GetName(proto->PicInvHash),true);          // 1
 	}
 
 	if(o->MapObjType==MAP_OBJECT_CRITTER) DRAW_COMPONENT_TEXT("MapObjType","Critter",true); // 2
@@ -4367,7 +4369,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap(MapObject& mobj)
 	if(mobj.RunTime.PicMapName[0]) return new CScriptString(mobj.RunTime.PicMapName);
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj.ProtoId);
 	if(!proto_item) SCRIPT_ERROR_RX("Proto item not found.",new CScriptString(""));
-	const char* name=ResMngr.GetName(proto_item->PicMapHash);
+	const char* name=Str::GetName(proto_item->PicMapHash);
 	if(!name) SCRIPT_ERROR_RX("Name not found.",new CScriptString(""));
 	return new CScriptString(name);
 }
@@ -4386,7 +4388,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv(MapObject& mobj)
 	if(mobj.RunTime.PicMapName[0]) return new CScriptString(mobj.RunTime.PicInvName);
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj.ProtoId);
 	if(!proto_item) SCRIPT_ERROR_RX("Proto item not found.",new CScriptString(""));
-	const char* name=ResMngr.GetName(proto_item->PicInvHash);
+	const char* name=Str::GetName(proto_item->PicInvHash);
 	if(!name) SCRIPT_ERROR_RX("Name not found.",new CScriptString(""));
 	return new CScriptString(name);
 }
@@ -4680,7 +4682,7 @@ CScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName(ProtoMap& pmap, WORD
 
 	ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
 	if(index>=tiles.size()) return new CScriptString("");
-	const char* name=ResMngr.GetName(tiles[index].NameHash);
+	const char* name=Str::GetName(tiles[index].NameHash);
 	return new CScriptString(name?name:"");
 }
 

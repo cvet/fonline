@@ -269,7 +269,6 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 
 		// Skinning
 		ID3DXSkinInfo* skin_info=NULL;
-		D3D_HR(D3DXCreateSkinInfo(vertices_count,declaration,all_bones.size(),&skin_info));
 
 		// Fill data
 		struct Vertex
