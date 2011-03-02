@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2010 Andreas Jonsson
+   Copyright (c) 2003-2011 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -292,6 +292,16 @@
 // Some compilers always pass certain objects by reference. GNUC for example does
 // this if the the class has a defined destructor.
 
+// AS_LARGE_OBJS_PASSED_BY_REF
+// If this is defined large objects are passed by reference, whether they are complex or not
+
+// AS_LARGE_OBJ_MIN_SIZE
+// This is the size of objects determined as large ones
+
+// AS_CALLEE_DESTROY_OBJ_BY_VAL
+// When an object is passed by value the called function is the one responsible
+// for calling the destructor before returning.
+
 // HAS_128_BIT_PRIMITIVES
 // 64bit processors often support 128bit primitives. These may require special
 // treatment when passed in function arguments or returned by functions.
@@ -397,6 +407,9 @@
 			#define AS_X86
 		#elif defined(_M_X64)
 			#define AS_X64_MSVC
+			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
+			#define AS_LARGE_OBJS_PASSED_BY_REF
+			#define AS_LARGE_OBJ_MIN_SIZE 3
 		#endif
 	#endif
 
@@ -406,14 +419,15 @@
 		#define I64(x) x##ll
 	#endif
 
-    #ifdef _ARM_
-        #define AS_ALIGN
-        #define AS_ARM
-        #define CDECL_RETURN_SIMPLE_IN_MEMORY
-        #define STDCALL_RETURN_SIMPLE_IN_MEMORY
-        #define COMPLEX_OBJS_PASSED_BY_REF
-        #define COMPLEX_MASK asOBJ_APP_CLASS_ASSIGNMENT
-    #endif
+	#ifdef _ARM_
+		#define AS_ALIGN
+		#define AS_ARM
+		#define AS_CALLEE_DESTROY_OBJ_BY_VAL
+		#define CDECL_RETURN_SIMPLE_IN_MEMORY
+		#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+		#define COMPLEX_OBJS_PASSED_BY_REF
+		#define COMPLEX_MASK asOBJ_APP_CLASS_ASSIGNMENT
+	#endif
 
 	#ifndef COMPLEX_MASK
 		#define COMPLEX_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
@@ -490,8 +504,8 @@
 	#define UNREACHABLE_RETURN
 #endif
 
-// GNU C (and MinGW on Windows)
-#if (defined(__GNUC__) && !defined(__SNC__)) || defined(EPPC) // JWC -- use this instead for Wii
+// GNU C (and MinGW or Cygwin on Windows)
+#if (defined(__GNUC__) && !defined(__SNC__)) || defined(EPPC) || defined(__CYGWIN__) // JWC -- use this instead for Wii
 	#define GNU_STYLE_VIRTUAL_METHOD
 #if !defined( __amd64__ )
 	#define MULTI_BASE_OFFSET(x) (*((asDWORD*)(&x)+1))
@@ -531,11 +545,16 @@
 		#if defined(i386) && !defined(__LP64__)
 			// Support native calling conventions on Mac OS X + Intel 32bit CPU
 			#define AS_X86
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 		#elif defined(__LP64__) && !defined(__ppc__) && !defined(__PPC__)
+			// http://developer.apple.com/library/mac/#documentation/DeveloperTools/Conceptual/LowLevelABI/140-x86-64_Function_Calling_Conventions/x86_64.html#//apple_ref/doc/uid/TP40005035-SW1
 			#define AS_NO_THREADS
 			#define AS_X64_GCC
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			// STDCALL is not available on 64bit Mac
 			#undef STDCALL
 			#define STDCALL
@@ -545,6 +564,8 @@
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 		#elif (defined(__ppc__) || defined(__PPC__)) && defined(__LP64__)
 			#define AS_PPC_64
 		#elif (defined(_ARM_) || defined(__arm__))
@@ -552,6 +573,7 @@
 			#define AS_ARM
 			#define AS_IPHONE
 			#define AS_ALIGN
+			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
@@ -573,7 +595,7 @@
 		#define AS_POSIX_THREADS
  
 	// Windows
-	#elif defined(WIN32) || defined(_WIN64)
+	#elif defined(WIN32) || defined(_WIN64) || defined(__CYGWIN__)
 		// On Windows the simple classes are returned in the EAX:EDX registers
 		//#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 		//#define CDECL_RETURN_SIMPLE_IN_MEMORY
@@ -591,8 +613,8 @@
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
-        #define AS_WIN
-        #define AS_WINDOWS_THREADS
+		#define AS_WIN
+		#define AS_WINDOWS_THREADS
 
 	// Linux
 	#elif defined(__linux__)
@@ -607,14 +629,33 @@
 			#define AS_X64_GCC
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			// STDCALL is not available on 64bit Linux
 			#undef STDCALL
 			#define STDCALL
+		#elif defined(__ARMEL__) || defined(__arm__)
+			#define AS_ARM
+			#define AS_ALIGN
+			#define AS_NO_ATOMIC
+			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
+
+			#define CDECL_RETURN_SIMPLE_IN_MEMORY
+			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+
+			#undef THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+			#undef CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+			#undef STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
+
+			#define THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+			#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+			#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
-       	#define AS_LINUX
-       	#define AS_POSIX_THREADS
+		#define AS_LINUX
+		#define AS_POSIX_THREADS
 
 		#if !( ( (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) || __GNUC__ > 4) )
 			// Only with GCC 4.1 was the atomic instructions available
@@ -627,12 +668,13 @@
 		#if defined(i386) && !defined(__LP64__)
 			#define AS_X86
 		#elif defined(__LP64__)
-		    #define AS_X64_GCC
-            #define HAS_128_BIT_PRIMITIVES
-            #define SPLIT_OBJS_BY_MEMBER_TYPES
-    
-            #undef STDCALL
-            #define STDCALL
+			#define AS_X64_GCC
+			#define HAS_128_BIT_PRIMITIVES
+			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef STDCALL
+			#define STDCALL
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
@@ -679,7 +721,7 @@
 		#undef STDCALL
 		#define STDCALL
 
-    // Android
+	// Android
 	#elif defined(ANDROID)
 		#define AS_ANDROID
 		#define AS_NO_ATOMIC
@@ -697,7 +739,8 @@
 		#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
 
 		#if (defined(_ARM_) || defined(__arm__))
-		    #define AS_ARM
+			#define AS_ARM
+			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 			#define AS_ALIGN
 		#endif
 
@@ -715,7 +758,7 @@
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
-	        
+
 		#define AS_POSIX_THREADS
 		#if !( ( (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) || __GNUC__ > 4) )
 			// Only with GCC 4.1 was the atomic instructions available
@@ -798,8 +841,24 @@
 
 
 // The assert macro
-#include <assert.h>
-#define asASSERT(x) assert(x)
+#if defined(ANDROID)
+	#if defined(AS_DEBUG)
+		#include <android/log.h>
+		#include <stdlib.h>
+		#define asASSERT(x) \
+			do { \
+			    if (!(x)) { \
+			        __android_log_print(ANDROID_LOG_ERROR, "AngelScript", "Assert failed at %s:%d - %s", __FILE__, __LINE__, #x); \
+			        exit(1); \
+			    } \
+			} while (0)
+	#else
+		#define asASSERT(x)
+	#endif
+#else
+	#include <assert.h>
+	#define asASSERT(x) assert(x)
+#endif
 
 
 

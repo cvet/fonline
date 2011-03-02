@@ -2787,7 +2787,7 @@ void HexManager::FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps)
 
 bool HexManager::LoadMap(WORD map_pid)
 {
-	WriteLog("Load FO map...");
+	WriteLog("Load map...");
 	UnloadMap();
 
 	char map_name[256];
@@ -2832,7 +2832,7 @@ bool HexManager::LoadMap(WORD map_pid)
 
 	if(fm.GetBEDWord()!=map_pid)
 	{
-		WriteLog("Pid Map != Name Map.\n");
+		WriteLog("Data truncated.\n");
 		return false;
 	}
 
@@ -2997,7 +2997,7 @@ bool HexManager::LoadMap(WORD map_pid)
 	curPidMap=map_pid;
 	curMapTime=-1;
 	AutoScroll.Active=false;
-	WriteLog("Load FO map success.\n");
+	WriteLog("Load map success.\n");
 	return true;
 }
 

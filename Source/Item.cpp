@@ -622,3 +622,50 @@ Item* Item::CarGetBag(int num_bag)
 	return NULL;
 }
 #endif // FONLINE_SERVER
+
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+#include "ResourceManager.h"
+#include "SpriteManager.h"
+
+DWORD ProtoItem::GetCurSprId()
+{
+	AnyFrames* anim=ResMngr.GetItemAnim(PicMapHash,Dir);
+	if(!anim) return 0;
+
+	DWORD beg=0,end=0;
+	if(FLAG(Flags,ITEM_SHOW_ANIM)) end=anim->CntFrm-1;
+	if(FLAG(Flags,ITEM_SHOW_ANIM_EXT))
+	{
+		beg=AnimStay[0];
+		end=AnimStay[1];
+	}
+
+	if(beg>=anim->CntFrm) beg=anim->CntFrm-1;
+	if(end>=anim->CntFrm) end=anim->CntFrm-1;
+	if(beg>end) std::swap(beg,end);
+	DWORD count=end-beg+1;
+	DWORD ticks=anim->Ticks/anim->CntFrm*count;
+	return anim->Ind[beg+((Timer::GameTick()%ticks)*100/ticks)*count/100];
+}
+
+DWORD Item::GetCurSprId()
+{
+	AnyFrames* anim=ResMngr.GetItemAnim(GetPicMap(),Proto->Dir);
+	if(!anim) return 0;
+
+	DWORD beg=0,end=0;
+	if(IsShowAnim()) end=anim->CntFrm-1;
+	if(IsShowAnimExt())
+	{
+		beg=Data.AnimStay[0];
+		end=Data.AnimStay[1];
+	}
+
+	if(beg>=anim->CntFrm) beg=anim->CntFrm-1;
+	if(end>=anim->CntFrm) end=anim->CntFrm-1;
+	if(beg>end) std::swap(beg,end);
+	DWORD count=end-beg+1;
+	DWORD ticks=anim->Ticks/anim->CntFrm*count;
+	return anim->Ind[beg+((Timer::GameTick()%ticks)*100/ticks)*count/100];
+}
+#endif

@@ -90,7 +90,7 @@ void FOServer::ProcessCritter(Critter* cr)
 
 		// Kick from game
 		if(cl->IsOffline() && cl->IsLife() && !cl->GetParam(TO_BATTLE) &&
-		   !cl->GetParam(TO_REMOVE_FROM_GAME) && cl->GetOfflineTime()>=CLIENT_KICK_TIME &&
+		   !cl->GetParam(TO_REMOVE_FROM_GAME) && cl->GetOfflineTime()>=GameOpt.MinimumOfflineTime &&
 		   !MapMngr.IsProtoMapNoLogOut(cl->GetProtoMap()))
 		{
 			cl->RemoveFromGame();

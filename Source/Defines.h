@@ -429,7 +429,6 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define USERS_START_ID          (1)
 #define IS_USER_ID(id)          ((id)>0 && (id)<NPC_START_ID)
 #define IS_NPC_ID(id)           ((id)>=NPC_START_ID)
-#define CLIENT_KICK_TIME        (3*60*1000)
 #define MAX_ANSWERS				(100)
 #define PROCESS_TALK_TICK       (1000)
 #define DIALOGS_LST_NAME		"dialogs.lst"

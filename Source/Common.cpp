@@ -907,6 +907,7 @@ GameOptions::GameOptions()
 	MaxNameLength=12;
 	DlgTalkMinTime=0;
 	DlgBarterMinTime=0;
+	MinimumOfflineTime=180000;
 
 	AbsoluteOffsets=true;
 	SkillBegin=200;

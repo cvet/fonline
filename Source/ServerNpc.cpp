@@ -828,7 +828,7 @@ bool FOServer::TransferAllNpc()
 
 		if(cr->GetMap() && !map)
 		{
-			WriteLog("Map not found, critter<%s>, map id<%u>, hx<%u>, hy<%u>. Transfered to global map.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
+			WriteLog("Map not found, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>. Transfered to global map.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
 			errors++;
 			cr->SetMaps(0,0);
 			cr->Data.HexX=0;
@@ -837,7 +837,7 @@ bool FOServer::TransferAllNpc()
 
 		if(!MapMngr.AddCrToMap(cr,map,cr->GetHexX(),cr->GetHexY(),2))
 		{
-			WriteLog("Error parsing npc to map, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
+			WriteLog("Error parsing npc to map, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
 			errors++;
 			continue;
 		}
@@ -850,7 +850,7 @@ bool FOServer::TransferAllNpc()
 		Critter* cr=*it;
 		if(!MapMngr.AddCrToMap(cr,NULL,cr->GetHexX(),cr->GetHexY(),2))
 		{
-			WriteLog("Error parsing npc to global group, critter<%s>, map id<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->GetHexX(),cr->GetHexY());
+			WriteLog("Error parsing npc to global group, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
 			errors++;
 			continue;
 		}

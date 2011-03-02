@@ -1225,6 +1225,7 @@
 	if(engine->RegisterGlobalProperty("uint __MaxNameLength",&GameOpt.MaxNameLength)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __DlgTalkMinTime",&GameOpt.DlgTalkMinTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __DlgBarterMinTime",&GameOpt.DlgBarterMinTime)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __MinimumOfflineTime",&GameOpt.MinimumOfflineTime)) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("bool __AbsoluteOffsets",&GameOpt.AbsoluteOffsets)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __SkillBegin",&GameOpt.SkillBegin)) BIND_ERROR;

@@ -4647,6 +4647,8 @@ void FOClient::ShowMainScreen(int new_screen)
 	ScreenModeMain=new_screen;
 	RunScreenScript(true,new_screen,-1,0,0);
 
+	GmapActive=false;
+
 	switch(GetMainScreen())
 	{
 	case SCREEN_LOGIN:
@@ -5205,7 +5207,7 @@ void FOClient::GmapNullParams()
 
 void FOClient::GmapProcess()
 {
-	if(GmapActive==false)
+	if(!GmapActive)
 	{
 		SetCurMode(CUR_WAIT);
 		return;
@@ -5438,14 +5440,14 @@ void FOClient::GmapDraw()
 			int sx2=GmapWMap[2];
 			int sy2=GmapWMap[3];
 
-			if((sx1>=mx1 && sx1<=mx2 && sy1>=my1 && sy1<=my2)
-			|| (sx2>=mx1 && sx2<=mx2 && sy1>=my1 && sy1<=my2)
-			|| (sx1>=mx1 && sx1<=mx2 && sy2>=my1 && sy2<=my2)
-			|| (sx2>=mx1 && sx2<=mx2 && sy2>=my1 && sy2<=my2)
-			|| (mx1>=sx1 && mx1<=sx2 && my1>=sy1 && my1<=sy2)
-			|| (mx2>=sx1 && mx2<=sx2 && my1>=sy1 && my1<=sy2)
-			|| (mx1>=sx1 && mx1<=sx2 && my2>=sy1 && my2<=sy2)
-			|| (mx2>=sx1 && mx2<=sx2 && my2>=sy1 && my2<=sy2))
+			if((sx1>=mx1 && sx1<=mx2 && sy1>=my1 && sy1<=my2) ||
+				(sx2>=mx1 && sx2<=mx2 && sy1>=my1 && sy1<=my2) ||
+				(sx1>=mx1 && sx1<=mx2 && sy2>=my1 && sy2<=my2) ||
+				(sx2>=mx1 && sx2<=mx2 && sy2>=my1 && sy2<=my2) ||
+				(mx1>=sx1 && mx1<=sx2 && my1>=sy1 && my1<=sy2) ||
+				(mx2>=sx1 && mx2<=sx2 && my1>=sy1 && my1<=sy2) ||
+				(mx1>=sx1 && mx1<=sx2 && my2>=sy1 && my2<=sy2) ||
+				(mx2>=sx1 && mx2<=sx2 && my2>=sy1 && my2<=sy2))
 				SprMngr.DrawSpriteSize(GmapPic[index],
 					mx1,my1,w/GmapZoom,h/GmapZoom,true,false);
 
@@ -5571,6 +5573,7 @@ void FOClient::GmapDraw()
 	// Main pic
 	SprMngr.DrawSprite(GmapWMainPic,0,0);
 
+	// Buttons
 	switch(IfaceHold)
 	{
 	case IFACE_GMAP_TOWN: SprMngr.DrawSprite(GmapPBTownDw,GmapBTown[0],GmapBTown[1]); break;
@@ -5588,7 +5591,7 @@ void FOClient::GmapDraw()
 	Item* car=GmapGetCar();
 	if(car)
 	{
-		SprMngr.DrawSpriteSize(ResMngr.GetAnim(car->GetPicMap(),car->Proto->Dir,RES_IFACE_EXT),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
+		SprMngr.DrawSpriteSize(car->GetCurSprId(),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
 		SprMngr.DrawStr(GmapWCar,FmtItemLook(car,ITEM_LOOK_WM_CAR),FT_CENTERX|FT_BOTTOM,COLOR_TEXT,FONT_DEFAULT);
 	}
 
@@ -7481,8 +7484,8 @@ void FOClient::PipDraw()
 				}
 
 				val/=(GameOpt.TimeMultiplier?GameOpt.TimeMultiplier:1); // Convert to seconds
-				if(j==TO_REMOVE_FROM_GAME && val<CLIENT_KICK_TIME/1000) val=CLIENT_KICK_TIME/1000;
-				if(j==TO_REMOVE_FROM_GAME && NoLogOut) val=1000000;
+				if(j==TO_REMOVE_FROM_GAME && val<GameOpt.MinimumOfflineTime/1000) val=GameOpt.MinimumOfflineTime/1000;
+				if(j==TO_REMOVE_FROM_GAME && NoLogOut) val=1000000; // Infinity
 
 				DWORD str_num=STR_TIMEOUT_SECONDS;
 				if(val>300)

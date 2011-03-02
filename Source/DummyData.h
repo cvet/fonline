@@ -1324,6 +1324,7 @@ struct GameOptions
 	int MaxNameLength;
 	int DlgTalkMinTime;
 	int DlgBarterMinTime;
+	int MinimumOfflineTime;
 
 	int AbsoluteOffsets;
 	int SkillBegin;

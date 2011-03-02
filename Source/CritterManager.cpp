@@ -201,6 +201,7 @@ bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 	fread(&count,sizeof(count),1,f);
 	if(!count) return true;
 
+	DWORD errors=0;
 	for(DWORD i=0;i<count;i++)
 	{
 		CritData data;
@@ -218,13 +219,16 @@ bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 			fread(&tevents[0],te_count*sizeof(Critter::CrTimeEvent),1,f);
 		}
 
+		if(data.Id>lastNpcId) lastNpcId=data.Id;
+
 		Npc* npc=CreateNpc(data.ProtoId,false);
 		if(!npc)
 		{
-			WriteLog("Unable to create npc with id<%u>, pid<%u>.\n",data.Id,data.ProtoId);
-			return false;
+			WriteLog("Unable to create npc with id<%u>, pid<%u> on map with id<%u>, pid<%u>.\n",data.Id,data.ProtoId,data.MapId,data.MapPid);
+			errors++;
+			continue;
 		}
-		if(data.Id>lastNpcId) lastNpcId=data.Id;
+
 		npc->Data=data;
 		if(data.IsDataExt)
 		{
@@ -246,7 +250,8 @@ bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 		AddCritter(npc);
 	}
 
-	WriteLog("Load npc complete, count<%u>.\n",count);
+	if(errors) WriteLog("Load npc complete, count<%u>, errors<%u>.\n",count-errors,errors);
+	else WriteLog("Load npc complete, count<%u>.\n",count);
 	return true;	
 }
 
@@ -470,28 +475,28 @@ Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
 {
 	if(!IsInit())
 	{
-		WriteLog(__FUNCTION__" - Critter Manager is not initialized.\n");
+		WriteLog(__FUNCTION__" - Critter manager is not initialized.\n");
 		return false;
 	}
 
 	CritData* data=GetProto(proto_id);
 	if(!data)
 	{
-		WriteLog(__FUNCTION__" - Critter data not found, proto id<%u>.\n",proto_id);
+		WriteLog(__FUNCTION__" - Critter data not found, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
 	Npc* npc=new Npc();
 	if(!npc)
 	{
-		WriteLog(__FUNCTION__" - Allocation fail, proto id<%u>.\n",proto_id);
+		WriteLog(__FUNCTION__" - Allocation fail, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
 	if(!npc->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 	{
 		delete npc;
-		WriteLog(__FUNCTION__" - Can't set default items of proto id<%u>.\n",proto_id);
+		WriteLog(__FUNCTION__" - Can't set default items, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 

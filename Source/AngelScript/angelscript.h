@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2010 Andreas Jonsson
+   Copyright (c) 2003-2011 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -55,8 +55,8 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-#define ANGELSCRIPT_VERSION        22000
-#define ANGELSCRIPT_VERSION_STRING "2.20.0 WIP"
+#define ANGELSCRIPT_VERSION        22003
+#define ANGELSCRIPT_VERSION_STRING "2.20.3"
 
 // Data types
 
@@ -106,28 +106,37 @@ enum asECallConvTypes
 // Object type flags
 enum asEObjTypeFlags
 {
-	asOBJ_REF                   = 0x01,
-	asOBJ_VALUE                 = 0x02,
-	asOBJ_GC                    = 0x04,
-	asOBJ_POD                   = 0x08,
-	asOBJ_NOHANDLE              = 0x10,
-	asOBJ_SCOPED                = 0x20,
-	asOBJ_TEMPLATE              = 0x40,
-	asOBJ_APP_CLASS             = 0x100,
-	asOBJ_APP_CLASS_CONSTRUCTOR = 0x200,
-	asOBJ_APP_CLASS_DESTRUCTOR  = 0x400,
-	asOBJ_APP_CLASS_ASSIGNMENT  = 0x800,
-	asOBJ_APP_CLASS_C           = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR),
-	asOBJ_APP_CLASS_CD          = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_DESTRUCTOR),
-	asOBJ_APP_CLASS_CA          = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT),
-	asOBJ_APP_CLASS_CDA         = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT),
-	asOBJ_APP_CLASS_D           = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_DESTRUCTOR),
-	asOBJ_APP_CLASS_A           = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_ASSIGNMENT),
-	asOBJ_APP_CLASS_DA          = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT),
-	asOBJ_APP_PRIMITIVE         = 0x1000,
-	asOBJ_APP_FLOAT             = 0x2000,
-	asOBJ_MASK_VALID_FLAGS      = 0x3F7F,
-	asOBJ_SCRIPT_OBJECT         = 0x10000
+	asOBJ_REF                        = 0x01,
+	asOBJ_VALUE                      = 0x02,
+	asOBJ_GC                         = 0x04,
+	asOBJ_POD                        = 0x08,
+	asOBJ_NOHANDLE                   = 0x10,
+	asOBJ_SCOPED                     = 0x20,
+	asOBJ_TEMPLATE                   = 0x40,
+	asOBJ_APP_CLASS                  = 0x100,
+	asOBJ_APP_CLASS_CONSTRUCTOR      = 0x200,
+	asOBJ_APP_CLASS_DESTRUCTOR       = 0x400,
+	asOBJ_APP_CLASS_ASSIGNMENT       = 0x800,
+	asOBJ_APP_CLASS_COPY_CONSTRUCTOR = 0x1000,
+	asOBJ_APP_CLASS_C                = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR),
+	asOBJ_APP_CLASS_CD               = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_DESTRUCTOR),
+	asOBJ_APP_CLASS_CA               = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT),
+	asOBJ_APP_CLASS_CK               = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_CDA              = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT),
+	asOBJ_APP_CLASS_CDK              = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_CAK              = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_CDAK             = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_CONSTRUCTOR + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_D                = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_DESTRUCTOR),
+	asOBJ_APP_CLASS_DA               = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT),
+	asOBJ_APP_CLASS_DK               = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_DAK              = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_DESTRUCTOR + asOBJ_APP_CLASS_ASSIGNMENT + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_A                = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_ASSIGNMENT),
+	asOBJ_APP_CLASS_AK               = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_ASSIGNMENT + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_CLASS_K                = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
+	asOBJ_APP_PRIMITIVE              = 0x2000,
+	asOBJ_APP_FLOAT                  = 0x4000,
+	asOBJ_MASK_VALID_FLAGS           = 0x7F7F,
+	asOBJ_SCRIPT_OBJECT              = 0x10000
 };
 
 // Behaviours
@@ -294,6 +303,7 @@ enum asECompileFlags
 // Function types
 enum asEFuncType
 {
+	asFUNC_DUMMY     =-1,
 	asFUNC_SYSTEM    = 0,
 	asFUNC_SCRIPT    = 1,
 	asFUNC_INTERFACE = 2,
@@ -420,7 +430,7 @@ struct asSMessageInfo
 // ANGELSCRIPT_DLL_MANUAL_IMPORT is defined when manually loading the dll
 // Don't define anything when linking statically to the lib
 
-#ifdef WIN32
+#if defined(WIN32) || defined(__CYGWIN__)
   #if defined(ANGELSCRIPT_EXPORT)
     #define AS_API __declspec(dllexport)
   #elif defined(ANGELSCRIPT_DLL_LIBRARY_IMPORT)
@@ -694,24 +704,28 @@ public:
 	virtual void        ClearExceptionCallback() = 0;
 
 	// Debugging
-	virtual int         SetLineCallback(asSFuncPtr callback, void *obj, int callConv) = 0;
-	virtual void        ClearLineCallback() = 0;
-	virtual int         GetCurrentLineNumber(int *column = 0, const char **sectionName = 0) = 0;
-	virtual int         GetCurrentFunction() = 0;
-	virtual int         GetCallstackSize() = 0;
-	virtual int         GetCallstackFunction(int index) = 0;
-	virtual int         GetCallstackLineNumber(int index, int *column = 0, const char **sectionName = 0) = 0;
-	virtual int         GetVarCount(int stackLevel = -1) = 0;
-	virtual const char *GetVarName(int varIndex, int stackLevel = -1) = 0;
-	virtual const char *GetVarDeclaration(int varIndex, int stackLevel = -1) = 0;
-	virtual int         GetVarTypeId(int varIndex, int stackLevel = -1) = 0;
-	virtual void       *GetAddressOfVar(int varIndex, int stackLevel = -1) = 0;
-	virtual int         GetThisTypeId(int stackLevel = -1) = 0;
-	virtual void       *GetThisPointer(int stackLevel = -1) = 0;
+	virtual int                SetLineCallback(asSFuncPtr callback, void *obj, int callConv) = 0;
+	virtual void               ClearLineCallback() = 0;
+	virtual asUINT             GetCallstackSize() = 0;
+	virtual asIScriptFunction *GetFunction(asUINT stackLevel = 0) = 0;
+	virtual int                GetLineNumber(asUINT stackLevel = 0, int *column = 0, const char **sectionName = 0) = 0;
+	virtual int                GetVarCount(asUINT stackLevel = 0) = 0;
+	virtual const char        *GetVarName(int varIndex, asUINT stackLevel = 0) = 0;
+	virtual const char        *GetVarDeclaration(int varIndex, asUINT stackLevel = 0) = 0;
+	virtual int                GetVarTypeId(int varIndex, asUINT stackLevel = 0) = 0;
+	virtual void              *GetAddressOfVar(int varIndex, asUINT stackLevel = 0) = 0;
+	virtual int                GetThisTypeId(asUINT stackLevel = 0) = 0;
+	virtual void              *GetThisPointer(asUINT stackLevel = 0) = 0;
 
 	// User data
 	virtual void *SetUserData(void *data) = 0;
 	virtual void *GetUserData() const = 0;
+
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.20.0
+	virtual int         GetCurrentLineNumber(int *column = 0, const char **sectionName = 0) = 0;
+	virtual int         GetCurrentFunction() = 0;
+#endif
 
 protected:
 	virtual ~asIScriptContext() {}
@@ -897,7 +911,7 @@ public:
 // Function pointers
 
 // Use our own memset() and memcpy() implementations for better portability
-inline void asMemClear(void *_p, int size)
+inline void asMemClear(void *_p, size_t size)
 {
 	char *p = (char *)_p;
 	const char *e = p + size;
@@ -905,7 +919,7 @@ inline void asMemClear(void *_p, int size)
 		*p = 0;
 }
 
-inline void asMemCopy(void *_d, const void *_s, int size)
+inline void asMemCopy(void *_d, const void *_s, size_t size)
 {
 	char *d = (char *)_d;
 	const char *s = (const char *)_s;
@@ -1305,11 +1319,16 @@ enum asEBCInstr
 	asBC_FuncPtr        = 177,
 	asBC_LoadThisR      = 178,
 	asBC_PshV8          = 179,
+	asBC_DIVu			= 180,
+	asBC_MODu			= 181,
+	asBC_DIVu64			= 182,
+	asBC_MODu64			= 183,
 
-	asBC_MAXBYTECODE	= 180,
+	asBC_MAXBYTECODE	= 184,
 
 	// Temporary tokens. Can't be output to the final program
-	asBC_PSP			= 253,
+	asBC_Block          = 252,
+	asBC_ObjInfo		= 253,
 	asBC_LINE			= 254,
 	asBC_LABEL			= 255
 };
@@ -1332,15 +1351,14 @@ enum asEBCType
 	asBCTYPE_wW_DW_ARG    = 12,
 	asBCTYPE_wW_rW_DW_ARG = 13,
 	asBCTYPE_rW_rW_ARG    = 14,
-	asBCTYPE_W_rW_ARG     = 15,
-	asBCTYPE_wW_W_ARG     = 16,
-	asBCTYPE_QW_DW_ARG    = 17,
-	asBCTYPE_rW_QW_ARG    = 18,
-	asBCTYPE_W_DW_ARG     = 19
+	asBCTYPE_wW_W_ARG     = 15,
+	asBCTYPE_QW_DW_ARG    = 16,
+	asBCTYPE_rW_QW_ARG    = 17,
+	asBCTYPE_W_DW_ARG     = 18
 };
 
 // Instruction type sizes
-const int asBCTypeSize[20] =
+const int asBCTypeSize[19] =
 {
     0, // asBCTYPE_INFO
     1, // asBCTYPE_NO_ARG
@@ -1357,7 +1375,6 @@ const int asBCTypeSize[20] =
     2, // asBCTYPE_wW_DW_ARG
     3, // asBCTYPE_wW_rW_DW_ARG
     2, // asBCTYPE_rW_rW_ARG
-    2, // asBCTYPE_W_rW_ARG
     2, // asBCTYPE_wW_W_ARG
     4, // asBCTYPE_QW_DW_ARG
     3, // asBCTYPE_rW_QW_ARG
@@ -1442,7 +1459,7 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(BSLL,		wW_rW_rW_ARG,	0),
 	asBCINFO(BSRL,		wW_rW_rW_ARG,	0),
 	asBCINFO(BSRA,		wW_rW_rW_ARG,	0),
-	asBCINFO(COPY,		W_ARG,			-AS_PTR_SIZE),
+	asBCINFO(COPY,		W_DW_ARG,		-AS_PTR_SIZE),
 	asBCINFO(PshC8,		QW_ARG,			2),
 	asBCINFO(RDS8,		NO_ARG,			2-AS_PTR_SIZE),
 	asBCINFO(SWAP8,		NO_ARG,			0),
@@ -1576,11 +1593,11 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(FuncPtr,   PTR_ARG,        AS_PTR_SIZE),
 	asBCINFO(LoadThisR, W_DW_ARG,       0),
 	asBCINFO(PshV8,		rW_ARG,			2),
+	asBCINFO(DIVu,		wW_rW_rW_ARG,	0),
+	asBCINFO(MODu,		wW_rW_rW_ARG,	0),
+	asBCINFO(DIVu64,	wW_rW_rW_ARG,	0),
+	asBCINFO(MODu64,	wW_rW_rW_ARG,	0),
 
-	asBCINFO_DUMMY(180),
-	asBCINFO_DUMMY(181),
-	asBCINFO_DUMMY(182),
-	asBCINFO_DUMMY(183),
 	asBCINFO_DUMMY(184),
 	asBCINFO_DUMMY(185),
 	asBCINFO_DUMMY(186),
@@ -1649,11 +1666,11 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO_DUMMY(249),
 	asBCINFO_DUMMY(250),
 	asBCINFO_DUMMY(251),
-	asBCINFO_DUMMY(252),
 
-	asBCINFO(PSP,		W_ARG,			AS_PTR_SIZE),
-	asBCINFO(LINE,		INFO,			0xFFFF),
-	asBCINFO(LABEL,		INFO,			0xFFFF)
+	asBCINFO(Block,     INFO,           0),
+	asBCINFO(ObjInfo,	rW_DW_ARG,		0),
+	asBCINFO(LINE,		INFO,			0),
+	asBCINFO(LABEL,		INFO,			0)
 };
 
 // Macros to access bytecode instruction arguments

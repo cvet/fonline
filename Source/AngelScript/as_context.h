@@ -93,10 +93,6 @@ public:
 	int  Abort();
 	int  Suspend();
 
-	// TODO: These two should be deprecated. They do the same thing as the GetCallstackXXX
-	int  GetCurrentLineNumber(int *column, const char **sectionName);
-	int  GetCurrentFunction();
-
 	int  SetException(const char *descr);
 	int  GetExceptionLineNumber(int *column, const char **sectionName);
 	int  GetExceptionFunction();
@@ -107,20 +103,25 @@ public:
 	int  SetExceptionCallback(asSFuncPtr callback, void *obj, int callConv);
 	void ClearExceptionCallback();
 
-	int GetCallstackSize();
-	int GetCallstackFunction(int index);
-	int GetCallstackLineNumber(int index, int *column, const char **sectionName);
-
-	int         GetVarCount(int stackLevel);
-	const char *GetVarName(int varIndex, int stackLevel);
-	const char *GetVarDeclaration(int varIndex, int stackLevel);
-	int         GetVarTypeId(int varIndex, int stackLevel);
-	void       *GetAddressOfVar(int varIndex, int stackLevel);
-	int         GetThisTypeId(int stackLevel);
-    void       *GetThisPointer(int stackLevel);
+	asUINT             GetCallstackSize();
+	asIScriptFunction *GetFunction(asUINT stackLevel);
+	int                GetLineNumber(asUINT stackLevel, int *column, const char **sectionName);
+	int                GetVarCount(asUINT stackLevel);
+	const char        *GetVarName(int varIndex, asUINT stackLevel);
+	const char        *GetVarDeclaration(int varIndex, asUINT stackLevel);
+	int                GetVarTypeId(int varIndex, asUINT stackLevel);
+	void              *GetAddressOfVar(int varIndex, asUINT stackLevel);
+	int                GetThisTypeId(asUINT stackLevel);
+    void              *GetThisPointer(asUINT stackLevel);
 
 	void *SetUserData(void *data);
 	void *GetUserData() const;
+
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.20.0
+	int  GetCurrentLineNumber(int *column, const char **sectionName);
+	int  GetCurrentFunction();
+#endif
 
 public:
 	// Internal public functions
@@ -141,6 +142,7 @@ public:
 	void CleanStack();
 	void CleanStackFrame();
 	void CleanReturnObject();
+	void DetermineLiveObjects(asCArray<int> &liveObjects, asUINT stackLevel);
 
 	void PushCallState();
 	void PopCallState();

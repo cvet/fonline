@@ -1487,11 +1487,8 @@ void FOMapper::IntDraw()
 		for(;i<j;i++,x+=w)
 		{
 			ProtoItem* proto_item=&(*CurItemProtos)[i];
-			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMapHash,proto_item->Dir);
-			if(!anim) anim=ItemHex::DefaultAnim;
-
 			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
-			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h/2,false,true,col);
+			SprMngr.DrawSpriteSize(proto_item->GetCurSprId(),x,y,w,h/2,false,true,col);
 
 			if(proto_item->IsItem())
 			{
@@ -3496,38 +3493,50 @@ void FOMapper::BufferPaste(int hx, int hy)
 
 void FOMapper::CurDraw()
 {
-	AnyFrames* anim=NULL;
 	switch(CurMode)
 	{
-	case CUR_MODE_DEF: anim=CurPDef; break;
-	case CUR_MODE_MOVE: anim=CurPHand; break;
+	case CUR_MODE_DEF:
+	case CUR_MODE_MOVE:
+		{
+			AnyFrames* anim=(CurMode==CUR_MODE_DEF?CurPDef:CurPHand);
+			if(anim)
+			{
+				SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
+				if(si)
+				{
+					int x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
+					int y=GameOpt.MouseY-si->Height+si->OffsY;
+					SprMngr.DrawSprite(anim,x,y,COLOR_IFACE);
+				}
+			}
+		}
+		break;
 	case CUR_MODE_DRAW:
 		if(IsObjectMode() && (*CurItemProtos).size())
 		{
 			ProtoItem& proto_item=(*CurItemProtos)[CurProto[IntMode]];
-			anim=ResMngr.GetItemAnim(proto_item.PicMapHash,proto_item.Dir);
-			if(!anim) anim=ItemHex::DefaultAnim;
 
 			WORD hx,hy;
-			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
+			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) break;
 
-			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
+			DWORD spr_id=proto_item.GetCurSprId();
+			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 			if(si)
 			{
 				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-				SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+				SprMngr.DrawSpriteSize(spr_id,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
 					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 			}
 		}
 		else if(IsTileMode() && TilesPictures.size())
 		{
-			anim=ResMngr.GetItemAnim(TilesPictures[CurProto[IntMode]]);
+			AnyFrames* anim=ResMngr.GetItemAnim(TilesPictures[CurProto[IntMode]]);
 			if(!anim) anim=ItemHex::DefaultAnim;
 
 			WORD hx,hy;
-			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
+			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) break;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
 			if(si)
@@ -3548,7 +3557,7 @@ void FOMapper::CurDraw()
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			WORD hx,hy;
-			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) return;
+			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) break;
 
 			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 			if(si)
@@ -3564,21 +3573,10 @@ void FOMapper::CurDraw()
 		{
 			CurMode=CUR_MODE_DEF;
 		}
-		return;
+		break;
 	default:
 		CurMode=CUR_MODE_DEF;
-		return;
-	}
-
-	if(anim)
-	{
-		SpriteInfo* si=SprMngr.GetSpriteInfo(anim->GetCurSprId());
-		if(si)
-		{
-			int x=GameOpt.MouseX-(si->Width/2)+si->OffsX;
-			int y=GameOpt.MouseY-si->Height+si->OffsY;
-			SprMngr.DrawSprite(anim,x,y,COLOR_IFACE);
-		}
+		break;
 	}
 }
 

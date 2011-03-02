@@ -646,32 +646,29 @@ asIScriptContext* GetGlobalContext()
 void PrintContextCallstack(asIScriptContext* ctx)
 {
 	int line,column;
-	int func_id;
 	const asIScriptFunction* func;
 	int stack_size=ctx->GetCallstackSize();
-	WriteLog("Context<%s>, state<%s>, call stack<%d>:\n",ctx->GetUserData(),ContextStatesStr[(int)ctx->GetState()],stack_size+1);
+	WriteLog("Context<%s>, state<%s>, call stack<%d>:\n",ctx->GetUserData(),ContextStatesStr[(int)ctx->GetState()],stack_size);
 
 	// Print current function
 	if(ctx->GetState()==asEXECUTION_EXCEPTION)
 	{
 		line=ctx->GetExceptionLineNumber(&column);
-		func_id=ctx->GetExceptionFunction();
+		func=Engine->GetFunctionDescriptorById(ctx->GetExceptionFunction());
 	}
 	else
 	{
-		line=ctx->GetCurrentLineNumber(&column);
-		func_id=ctx->GetCurrentFunction();
+		line=ctx->GetLineNumber(0,&column);
+		func=ctx->GetFunction(0);
 	}
-	func=Engine->GetFunctionDescriptorById(func_id);
-	if(func) WriteLog("  %d) %s : %s : %d, %d.\n",stack_size,func->GetModuleName(),func->GetDeclaration(),line,column);
+	if(func) WriteLog("  %d) %s : %s : %d, %d.\n",stack_size-1,func->GetModuleName(),func->GetDeclaration(),line,column);
 
 	// Print call stack
-	for(int i=stack_size-1;i>=0;i--)
+	for(int i=1;i<stack_size;i++)
 	{
-		func_id=ctx->GetCallstackFunction(i);
-		line=ctx->GetCallstackLineNumber(i,&column);
-		func=Engine->GetFunctionDescriptorById(func_id);
-		if(func) WriteLog("  %d) %s : %s : %d, %d.\n",i,func->GetModuleName(),func->GetDeclaration(),line,column);
+		func=ctx->GetFunction(i);
+		line=ctx->GetLineNumber(i,&column);
+		if(func) WriteLog("  %d) %s : %s : %d, %d.\n",stack_size-i-1,func->GetModuleName(),func->GetDeclaration(),line,column);
 	}
 }
 
@@ -680,7 +677,7 @@ const char* GetActiveModuleName()
 	static const char error[]="<error>";
 	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
-	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
+	asIScriptFunction* func=ctx->GetFunction(0);
 	if(!func) return error;
 	return func->GetModuleName();
 }
@@ -690,7 +687,7 @@ const char* GetActiveFuncName()
 	static const char error[]="<error>";
 	asIScriptContext* ctx=asGetActiveContext();
 	if(!ctx) return error;
-	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
+	asIScriptFunction* func=ctx->GetFunction(0);
 	if(!func) return error;
 	return func->GetName();
 }
@@ -1864,7 +1861,8 @@ bool RunPrepared()
 			// We must save registers that are used
 			push ecx
 			// Clear the FPU stack, in case the called function doesn't do it by itself
-			fninit
+			// Use emms instead of fninit to preserve FPU control word
+			emms
 			// Copy arguments from script stack to application stack
 			mov  ecx, args_size
 			mov  eax, args
@@ -2008,7 +2006,7 @@ void Log(const char* str)
 		LogA(str);
 		return;
 	}
-	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
+	asIScriptFunction* func=ctx->GetFunction(0);
 	if(!func)
 	{
 		LogA(str);
@@ -2017,7 +2015,7 @@ void Log(const char* str)
 	if(LogDebugInfo)
 	{
 		int line,column;
-		line=ctx->GetCurrentLineNumber(&column);
+		line=ctx->GetLineNumber(0,&column);
 		LogA(Str::Format("Script callback: %s : %s : %s : %d, %d : %s.\n",str,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
 	}
 	else LogA(Str::Format("%s : %s\n",func->GetModuleName(),str));
@@ -2039,14 +2037,14 @@ void LogError(const char* error)
 		LogA(error);
 		return;
 	}
-	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetCurrentFunction());
+	asIScriptFunction* func=ctx->GetFunction(0);
 	if(!func)
 	{
 		LogA(error);
 		return;
 	}
 	int line,column;
-	line=ctx->GetCurrentLineNumber(&column);
+	line=ctx->GetLineNumber(0,&column);
 	LogA(Str::Format("Script error: %s : %s : %s : %d, %d : %s.\n",error,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
 }
 

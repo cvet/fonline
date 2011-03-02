@@ -447,6 +447,10 @@ public:
 		return is_ground;
 	}
 
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+	DWORD GetCurSprId();
+#endif
+
 #ifdef FONLINE_OBJECT_EDITOR
 	string ScriptModule;
 	string ScriptFunc;
@@ -662,6 +666,10 @@ public:
 	DWORD GetCost(){return GetCount()*GetCost1st();}
 	DWORD GetCost1st();
 	//DWORD GetCost1st(){return Data.Cost?Data.Cost:Proto->Cost;}
+
+#if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
+	DWORD GetCurSprId();
+#endif
 
 #ifdef FONLINE_SERVER
 	void SetLexems(const char* lexems);

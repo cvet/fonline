@@ -55,12 +55,25 @@ class asCGlobalProperty;
 
 struct asSScriptVariable
 {
-	asCString name;
+	asCString   name;
 	asCDataType type;
-	int stackOffset;
+	int         stackOffset;
 };
 
-const asEFuncType asFUNC_DUMMY = asEFuncType(-1);
+enum asEObjVarInfoOption
+{
+	asOBJ_UNINIT,
+	asOBJ_INIT,
+	asBLOCK_BEGIN,
+	asBLOCK_END
+};
+
+struct asSObjectVariableInfo
+{
+	asUINT programPos;
+	int    variableOffset;
+	asUINT option;
+};
 
 struct asSSystemFunctionInterface;
 
@@ -175,14 +188,16 @@ public:
 	asEFuncType                  funcType;
 
 	// Used by asFUNC_SCRIPT
-	asCArray<asDWORD>            byteCode;
-	asCArray<asCObjectType*>     objVariableTypes;
-	asCArray<int>	             objVariablePos;
-	int                          stackNeeded;
-	asCArray<int>                lineNumbers;      // debug info
-	asCArray<asSScriptVariable*> variables;        // debug info
-	int                          scriptSectionIdx; // debug info
-	bool                         dontCleanUpOnException;   // Stub functions don't own the object and parameters
+	asCArray<asDWORD>               byteCode;
+	asCArray<asCObjectType*>        objVariableTypes;
+	asCArray<int>	                objVariablePos;
+	asCArray<bool>                  objVariableIsOnHeap;
+	asCArray<asSObjectVariableInfo> objVariableInfo;
+	int                             stackNeeded;
+	asCArray<int>                   lineNumbers;      // debug info
+	asCArray<asSScriptVariable*>    variables;        // debug info
+	int                             scriptSectionIdx; // debug info
+	bool                            dontCleanUpOnException;   // Stub functions don't own the object and parameters
 
 	// Used by asFUNC_VIRTUAL
 	int                          vfTableIdx;
