@@ -1662,16 +1662,47 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		dir=(dir+2)%8;
 	}
 
+	// Parameters
 	char file_name[MAX_FOPATH];
-	char seq_name[MAX_FOPATH]={0};
 	StringCopy(file_name,fname);
+
+	// Animation
+	char seq_name[MAX_FOPATH]={0};
+
+	// Color offsets
+	// 0 - other
+	// 1 - skin
+	// 2 - hair
+	// 3 - armor
+	int rgb_offs[4][3]={0,0,0,0,0,0,0,0,0,0,0,0};
 
 	char* delim=strstr(file_name,"$");
 	if(delim)
 	{
+		// Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
 		const char* ext=FileManager::GetExtension(file_name)-1;
 		size_t len=(size_t)ext-(size_t)delim;
-		if(len>1) memcpy(seq_name,delim+1,len-1);
+		if(len>1)
+		{
+			memcpy(seq_name,delim+1,len-1);
+			seq_name[len-1]=0;
+
+			// Parse rgb offsets
+			char* rgb_beg=strstr(seq_name,"[");
+			while(rgb_beg)
+			{
+				char* rgb_end=strstr(rgb_beg+1,"]");
+				if(!rgb_end) break;
+				int rgb[4];
+				if(sscanf(rgb_beg+1,"%d,%d,%d,%d",&rgb[0],&rgb[1],&rgb[2],&rgb[3])!=4) break;
+				int part=CLAMP(rgb[0],0,3); // Part
+				rgb_offs[part][0]=rgb[1]; // R
+				rgb_offs[part][1]=rgb[2]; // G
+				rgb_offs[part][2]=rgb[3]; // B
+				Str::EraseInterval(rgb_beg,rgb_end-rgb_beg+1);
+				rgb_beg=strstr(seq_name,"[");
+			}
+		}
 		Str::EraseInterval(delim,len);
 	}
 	if(!file_name[0]) return NULL;
@@ -1990,6 +2021,15 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 						break;
 					default:
 						break;
+					}
+
+					for(int j=0;j<3;j++)
+					{
+						if(rgb_offs[part][j])
+						{
+							int val=(int)(((BYTE*)&col)[2-j])+rgb_offs[part][j];
+							((BYTE*)&col)[2-j]=CLAMP(val,0,255);
+						}
 					}
 
 					if(!part) *ptr=col;
