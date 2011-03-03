@@ -304,7 +304,7 @@ bool BufferManager::NeedProcess()
 	// Known size
 	switch(msg)
 	{
-	case 0xFFFFFFFF:						return true;
+	case 0xFFFFFFFF:						return true; // Ping
 	case NETMSG_LOGIN:						return (NETMSG_LOGIN_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_LOGIN_SUCCESS:				return (NETMSG_LOGIN_SUCCESS_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_REGISTER_SUCCESS:			return (NETMSG_REGISTER_SUCCESS_SIZE+bufReadPos<=bufEndPos);
@@ -371,6 +371,7 @@ bool BufferManager::NeedProcess()
 	case NETMSG_SEND_GET_USER_HOLO_STR:		return (NETMSG_SEND_GET_USER_HOLO_STR_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SEND_GET_SCORES:			return (NETMSG_SEND_GET_SCORES_SIZE+bufReadPos<=bufEndPos);
 	case NETMSG_SCORES:						return (NETMSG_SCORES_SIZE+bufReadPos<=bufEndPos);
+	default: break;
 	}
 
 	// Changeable size

@@ -4177,8 +4177,8 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer(CScriptString& name)
 DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 {
 	DWORD len=name.length();
-	if(len<MIN_NAME || len<GameOpt.MinNameLength) SCRIPT_ERROR_R0("Name length is less than minimum.");
-	if(len>MAX_NAME || len>GameOpt.MaxNameLength) SCRIPT_ERROR_R0("Name length is greater than maximum.");
+	if(len<MIN_NAME || len<GameOpt.MinNameLength) return 0; //SCRIPT_ERROR_R0("Name length is less than minimum.");
+	if(len>MAX_NAME || len>GameOpt.MaxNameLength) return 0; //SCRIPT_ERROR_R0("Name length is greater than maximum.");
 
 	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(name.c_str());
@@ -4188,11 +4188,11 @@ DWORD FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 
 CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(DWORD id)
 {
-	if(!id) SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
+	if(!id) return 0; //SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
 
 	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(id);
-	if(!data) SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
+	if(!data) return NULL; //SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
 	return new CScriptString(data->ClientName);
 }
 
