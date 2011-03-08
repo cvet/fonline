@@ -1861,8 +1861,7 @@ bool RunPrepared()
 			// We must save registers that are used
 			push ecx
 			// Clear the FPU stack, in case the called function doesn't do it by itself
-			// Use emms instead of fninit to preserve FPU control word
-			emms
+			fninit
 			// Copy arguments from script stack to application stack
 			mov  ecx, args_size
 			mov  eax, args

@@ -37,13 +37,13 @@ Animation3dVec Animation3d::generalAnimations;
 
 Animation3d::Animation3d():animEntity(NULL),animController(NULL),numAnimationSets(0),
 currentTrack(0),lastTick(0),endTick(0),speedAdjustBase(1.0f),speedAdjustCur(1.0f),speedAdjustLink(1.0f),
-shadowDisabled(false),dirAngle(150.0f),sprId(0),
+shadowDisabled(false),dirAngle(GameOpt.MapHexagonal?150.0f:135.0f),sprId(0),
 drawScale(0.0f),bordersDisabled(false),calcBordersTick(0),noDraw(true),parentAnimation(NULL),parentFrame(NULL),
 childChecker(true),useGameTimer(true),animPosProc(0.0f),animPosTime(0.0f),animPosPeriod(0.0f)
 {
 	ZeroMemory(currentLayers,sizeof(currentLayers));
 	groundPos.w=1.0f;
-	D3DXMatrixRotationX(&matRot,-25.7f*D3DX_PI/180.0f);
+	D3DXMatrixRotationX(&matRot,-GameOpt.MapCameraAngle*D3DX_PI/180.0f);
 	D3DXMatrixIdentity(&matScale);
 	D3DXMatrixIdentity(&matScaleBase);
 	D3DXMatrixIdentity(&matRotBase);
@@ -738,7 +738,7 @@ void Animation3d::SetAnimData(Animation3d* anim3d, AnimParams& data, bool clear)
 
 void Animation3d::SetDir(int dir)
 {
-	float angle=150-dir*60;
+	float angle=(GameOpt.MapHexagonal?150-dir*60:135-dir*45);
 	if(angle!=dirAngle)
 	{
 		dirAngle=angle;

@@ -1353,6 +1353,20 @@ struct GameOptions
 	int ReputationAntipathy;
 	int ReputationHated;
 
+	int MapHexagonal;
+	int MapHexWidth;
+	int MapHexHeight;
+	int MapHexLineHeight;
+	int MapTileOffsX;
+	int MapTileOffsY;
+	int MapRoofOffsX;
+	int MapRoofOffsY;
+	int MapRoofSkipSize;
+	int MapCameraAngle;
+	int MapSmoothPath;
+	int MapDataPrefix;
+	int MapDataPrefixRefCounter;
+
 	// Client
 	int Quit;
 	int MouseX;

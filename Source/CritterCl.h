@@ -102,7 +102,7 @@ public:
 	bool IsKnockout(){return Cond==COND_KNOCKOUT;}
 	bool IsDead(){return Cond==COND_DEAD;}
 	bool CheckFind(int find_type);
-	bool IsToTalk(){return IsNpc() && IsLife() && Params[ST_DIALOG_ID];}
+	bool IsCanTalk(){return IsNpc() && IsLife() && IsRawParam(ST_DIALOG_ID) && !IsRawParam(MODE_NO_TALK);}
 	bool IsCombatMode(){return GetParam(TO_BATTLE)!=0;}
 	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetParam(TO_BATTLE));}
 
@@ -269,6 +269,7 @@ public:
 	void ChangeOffs(short change_ox, short change_oy, bool move_text);
 	void AccamulateOffs();
 	void AddOffsExt(short ox, short oy);
+	void GetWalkHexOffsets(int dir, int& ox, int& oy);
 
 	// Stay sprite
 private:

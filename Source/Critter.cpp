@@ -317,6 +317,7 @@ void Critter::ProcessVisibleCritters()
 	int vis;
 	int look_base_self=GetLook();
 	int dir_self=GetDir();
+	int dirs_count=DIRS_COUNT;
 	bool show_cr1=((FuncId[CRITTER_EVENT_SHOW_CRITTER_1]>0 || FuncId[CRITTER_EVENT_HIDE_CRITTER_1]>0) && Data.ShowCritterDist1>0);
 	bool show_cr2=((FuncId[CRITTER_EVENT_SHOW_CRITTER_2]>0 || FuncId[CRITTER_EVENT_HIDE_CRITTER_2]>0) && Data.ShowCritterDist2>0);
 	bool show_cr3=((FuncId[CRITTER_EVENT_SHOW_CRITTER_3]>0 || FuncId[CRITTER_EVENT_HIDE_CRITTER_3]>0) && Data.ShowCritterDist3>0);
@@ -437,13 +438,13 @@ void Critter::ProcessVisibleCritters()
 			// Self
 			int real_dir=GetFarDir(GetHexX(),GetHexY(),cr->GetHexX(),cr->GetHexY());
 			int i=(dir_self>real_dir?dir_self-real_dir:real_dir-dir_self);
-			if(i>3) i=6-i;
+			if(i>dirs_count/2) i=dirs_count-i;
 			look_self-=look_self*GameOpt.LookDir[i]/100;
 			// Opponent
 			int dir_opp=cr->GetDir();
-			real_dir=((real_dir+3)%6);
+			real_dir=((real_dir+dirs_count/2)%dirs_count);
 			i=(dir_opp>real_dir?dir_opp-real_dir:real_dir-dir_opp);
-			if(i>3) i=6-i;
+			if(i>dirs_count/2) i=dirs_count-i;
 			look_opp-=look_opp*GameOpt.LookDir[i]/100;
 		}
 
@@ -471,7 +472,7 @@ void Critter::ProcessVisibleCritters()
 			{
 				int real_dir=GetFarDir(GetHexX(),GetHexY(),cr->GetHexX(),cr->GetHexY());
 				int i=(dir_self>real_dir?dir_self-real_dir:real_dir-dir_self);
-				if(i>3) i=6-i;
+				if(i>dirs_count/2) i=dirs_count-i;
 				sneak_opp-=sneak_opp*GameOpt.LookSneakDir[i]/100;
 			}
 			sneak_opp/=(int)GameOpt.SneakDivider;
@@ -526,7 +527,7 @@ void Critter::ProcessVisibleCritters()
 				int dir_opp=cr->GetDir();
 				int real_dir=GetFarDir(cr->GetHexX(),cr->GetHexY(),GetHexX(),GetHexY());
 				int i=(dir_opp>real_dir?dir_opp-real_dir:real_dir-dir_opp);
-				if(i>3) i=6-i;
+				if(i>dirs_count/2) i=dirs_count-i;
 				sneak_self-=sneak_self*GameOpt.LookSneakDir[i]/100;
 			}
 			sneak_self/=(int)GameOpt.SneakDivider;
@@ -628,6 +629,7 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 	Send_GameInfo(map);
 
 	// Critters
+	int dirs_count=DIRS_COUNT;
 	int vis;
 	CrVec critters;
 	map->GetCritters(critters,true);
@@ -657,7 +659,7 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 		{
 			int real_dir=GetFarDir(hx,hy,cr->GetHexX(),cr->GetHexY());
 			int i=(dir>real_dir?dir-real_dir:real_dir-dir);
-			if(i>3) i=6-i;
+			if(i>dirs_count/2) i=dirs_count-i;
 			look_self-=look_self*GameOpt.LookDir[i]/100;
 		}
 
@@ -685,7 +687,7 @@ void Critter::ViewMap(Map* map, int look, WORD hx, WORD hy, int dir)
 			{
 				int real_dir=GetFarDir(hx,hy,cr->GetHexX(),cr->GetHexY());
 				int i=(dir>real_dir?dir-real_dir:real_dir-dir);
-				if(i>3) i=6-i;
+				if(i>dirs_count/2) i=dirs_count-i;
 				sneak_opp-=sneak_opp*GameOpt.LookSneakDir[i]/100;
 			}
 			sneak_opp/=(int)GameOpt.SneakDivider;
@@ -2089,7 +2091,7 @@ void Critter::EventSmthTurnBasedProcess(Critter* from_cr, Map* map, bool begin_t
 	}
 }
 
-void Critter::Send_Move(Critter* from_cr, WORD move_params){if(IsPlayer()) ((Client*)this)->Send_Move(from_cr,move_params);}
+void Critter::Send_Move(Critter* from_cr, DWORD move_params){if(IsPlayer()) ((Client*)this)->Send_Move(from_cr,move_params);}
 void Critter::Send_Dir(Critter* from_cr){if(IsPlayer()) ((Client*)this)->Send_Dir(from_cr);}
 void Critter::Send_AddCritter(Critter* cr){if(IsPlayer()) ((Client*)this)->Send_AddCritter(cr);}
 void Critter::Send_RemoveCritter(Critter* cr){if(IsPlayer()) ((Client*)this)->Send_RemoveCritter(cr);}
@@ -2137,7 +2139,7 @@ void Critter::Send_PlaySound(DWORD crid_synchronize, const char* sound_name){if(
 void Critter::Send_PlaySoundType(DWORD crid_synchronize, BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext){if(IsPlayer()) ((Client*)this)->Send_PlaySoundType(crid_synchronize,sound_type,sound_type_ext,sound_id,sound_id_ext);}
 void Critter::Send_CritterLexems(Critter* cr){if(IsPlayer()) ((Client*)this)->Send_CritterLexems(cr);}
 
-void Critter::SendA_Move(WORD move_params)
+void Critter::SendA_Move(DWORD move_params)
 {
 	if(VisCr.empty()) return;
 	//SyncLockCritters(true);
@@ -3097,7 +3099,7 @@ void Client::Send_LoadMap(Map* map)
 	InterlockedExchange(&NetState,STATE_LOGINOK); // TODO:
 }
 
-void Client::Send_Move(Critter* from_cr, WORD move_params)
+void Client::Send_Move(Critter* from_cr, DWORD move_params)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 

@@ -826,6 +826,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					if(has_layer) istr >> layer;
 					else layer=0;
 
+#pragma MESSAGE("Map text format, load to end of line, because may be spaces.")
+					//istr.getline()
 					istr >> name;
 
 					Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,ox,oy,layer,is_roof));

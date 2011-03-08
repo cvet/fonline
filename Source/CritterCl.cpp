@@ -598,7 +598,7 @@ void CritterCl::DrawStay(INTRECT r)
 	if(Timer::FastTick()-staySprTick>500)
 	{
 		staySprDir++;
-		if(staySprDir>5) staySprDir=0;
+		if(staySprDir>=DIRS_COUNT) staySprDir=0;
 		staySprTick=Timer::FastTick();
 	}
 
@@ -834,7 +834,7 @@ WORD CritterCl::PopLastHexY()
 
 void CritterCl::Move(int dir)
 {
-	if(dir<0 || dir>5 || !CritType::IsCanRotate(GetCrType())) dir=0;
+	if(dir<0 || dir>=DIRS_COUNT || !CritType::IsCanRotate(GetCrType())) dir=0;
 	CrDir=dir;
 
 	DWORD crtype=GetCrType();
@@ -935,16 +935,9 @@ void CritterCl::Move(int dir)
 
 			for(int i=0;i<step;i++)
 			{
-				switch(dir)
-				{
-				case 0: ChangeOffs(-16,12,true); break;
-				case 1: ChangeOffs(-32,0,true); break;
-				case 2: ChangeOffs(-16,-12,true); break;
-				case 3: ChangeOffs(16,-12,true); break;
-				case 4: ChangeOffs(32,0,true); break;
-				case 5: ChangeOffs(16,12,true); break;
-				default: break;
-				}
+				int ox,oy;
+				GetWalkHexOffsets(dir,ox,oy);
+				ChangeOffs(ox,oy,true);
 			}
 		}
 		else
@@ -969,16 +962,9 @@ void CritterCl::Move(int dir)
 			animSequence.push_back(CritterAnim(anim,time_move,beg_spr,end_spr,true,dir+1,crtype,anim1,anim2,NULL));
 			NextAnim(false);
 
-			switch(dir)
-			{
-			case 0: ChangeOffs(-16,12,true); break;
-			case 1: ChangeOffs(-32,0,true); break;
-			case 2: ChangeOffs(-16,-12,true); break;
-			case 3: ChangeOffs(16,-12,true); break;
-			case 4: ChangeOffs(32,0,true); break;
-			case 5: ChangeOffs(16,12,true); break;
-			default: break;
-			}
+			int ox,oy;
+			GetWalkHexOffsets(dir,ox,oy);
+			ChangeOffs(ox,oy,true);
 		}
 	}
 	else
@@ -995,16 +981,9 @@ void CritterCl::Move(int dir)
 		animSequence.push_back(CritterAnim(NULL,time_move,0,0,true,dir+1,crtype,anim1,anim2,NULL));
 		NextAnim(false);
 
-		switch(dir)
-		{
-		case 0: ChangeOffs(-16,12,true); break;
-		case 1: ChangeOffs(-32,0,true); break;
-		case 2: ChangeOffs(-16,-12,true); break;
-		case 3: ChangeOffs(16,-12,true); break;
-		case 4: ChangeOffs(32,0,true); break;
-		case 5: ChangeOffs(16,12,true); break;
-		default: break;
-		}
+		int ox,oy;
+		GetWalkHexOffsets(dir,ox,oy);
+		ChangeOffs(ox,oy,true);
 	}
 }
 
@@ -1327,7 +1306,7 @@ void CritterCl::SetBaseType(DWORD type)
 
 void CritterCl::SetDir(BYTE dir)
 {
-	if(dir>5 || !CritType::IsCanRotate(GetCrType())) dir=0;
+	if(dir>=DIRS_COUNT || !CritType::IsCanRotate(GetCrType())) dir=0;
 	if(CrDir==dir) return;
 	CrDir=dir;
 	if(Anim3d) Anim3d->SetDir(dir);
@@ -1405,17 +1384,9 @@ void CritterCl::Process()
 		// Move offsets
 		if(cr_anim.DirOffs)
 		{
-#define WALK_OFFSET(x,y) (x)-((x)*anim_proc/100),(y)-((y)*anim_proc/100),true
-			switch(cr_anim.DirOffs-1)
-			{
-			case 0: SetOffs(WALK_OFFSET(-16,12)); break;
-			case 1: SetOffs(WALK_OFFSET(-32,0)); break;
-			case 2: SetOffs(WALK_OFFSET(-16,-12)); break;
-			case 3: SetOffs(WALK_OFFSET(16,-12)); break;
-			case 4: SetOffs(WALK_OFFSET(32,0)); break;
-			case 5: SetOffs(WALK_OFFSET(16,12)); break;
-			default: break;
-			}
+			int ox,oy;
+			GetWalkHexOffsets(cr_anim.DirOffs-1,ox,oy);
+			SetOffs(ox-(ox*anim_proc/100),oy-(oy*anim_proc/100),true);
 
 			if(anim_proc>=100)
 			{
@@ -1559,6 +1530,13 @@ void CritterCl::AddOffsExt(short ox, short oy)
 	OyExtSpeed=-OyExtSpeed;
 	OffsExtNextTick=Timer::GameTick()+30;
 	SetOffs(SprOx,SprOy,true);
+}
+
+void CritterCl::GetWalkHexOffsets(int dir, int& ox, int& oy)
+{
+	int hx=1,hy=1;
+	MoveHexByDirUnsafe(hx,hy,dir);
+	GetHexInterval(hx,hy,1,1,ox,oy);
 }
 
 void CritterCl::SetText(const char* str, DWORD color, DWORD text_delay)

@@ -184,6 +184,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define EFFECT_TEXTURES         (10)
 #define EFFECT_SCRIPT_VALUES    (10)
 #define ABC_SIZE                (26)
+#define DIRS_COUNT              (GameOpt.MapHexagonal?6:8)
+#define IS_DIR_CORNER(dir)      (((dir)&1)!=0) // 1, 3, 5, 7
 
 // Critters
 #define GENDER_MALE             (0)
@@ -329,8 +331,8 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define GM__MAXZONEY            (100)
 #define GM_ZONES_FOG_SIZE       (((GM__MAXZONEX/4)+((GM__MAXZONEX%4)?1:0))*GM__MAXZONEY)
 #define GM_FOG_FULL             (0)
-#define GM_FOG_SELF             (1)
-#define GM_FOG_SELF2            (2)
+#define GM_FOG_HALF             (1)
+#define GM_FOG_HALF_EX          (2)
 #define GM_FOG_NONE             (3)
 #define GM_MAX_GROUP_COUNT      (GameOpt.GlobalMapMaxGroupCount)
 #define GM_PROCESS_TIME         (500)
@@ -673,6 +675,7 @@ struct ScoreType
 #define MODE_NO_AIM                 (538)
 #define MODE_NO_WALK                (539)
 #define MODE_NO_RUN                 (540)
+#define MODE_NO_TALK                (541)
 
 // Traits
 #define TRAIT_BEGIN                 (GameOpt.TraitBegin)
@@ -761,5 +764,15 @@ struct ScoreType
 #define ANIM2_IDLE_PRONE_BACK        (87)
 #define ANIM2_DEAD_FRONT             (102)
 #define ANIM2_DEAD_BACK              (103)
+
+// Move params
+// 6 next steps (each 5 bit) + stop bit + run bit
+// Step bits: 012 - dir, 3 - allow, 4 - disallow
+#define MOVE_PARAM_STEP_COUNT        (6)
+#define MOVE_PARAM_STEP_BITS         (5)
+#define MOVE_PARAM_STEP_DIR          (0x7)
+#define MOVE_PARAM_STEP_ALLOW        (0x8)
+#define MOVE_PARAM_STEP_DISALLOW     (0x10)
+#define MOVE_PARAM_RUN               (0x80000000)
 
 #endif // __DEFINES__

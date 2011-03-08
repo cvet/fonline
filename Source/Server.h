@@ -105,7 +105,7 @@ typedef map<DWORD,HoloInfo*,less<DWORD>>::value_type HoloInfoMapVal;
 	static void Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text);
 
 	// Actions
-	static bool Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params);
+	static bool Act_Move(Critter* cr, WORD hx, WORD hy, DWORD move_params);
 	static bool Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id);
 	static bool Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id);
 	static bool Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, DWORD target_id, WORD target_pid, DWORD param);
@@ -836,7 +836,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static DWORD Global_GetCrittersDistantion(Critter* cr1, Critter* cr2);
 		static DWORD Global_GetDistantion(WORD hx1, WORD hy1, WORD hx2, WORD hy2);
 		static BYTE Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
-		static BYTE Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset);
+		static BYTE Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset);
 		static void Global_MoveItemCr(Item* item, DWORD count, Critter* to_cr);
 		static void Global_MoveItemMap(Item* item, DWORD count, Map* to_map, WORD to_hx, WORD to_hy);
 		static void Global_MoveItemCont(Item* item, DWORD count, Item* to_cont, DWORD special_id);

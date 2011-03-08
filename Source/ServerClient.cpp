@@ -263,17 +263,17 @@ void FOServer::Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text)
 	}
 }
 
-bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
+bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, DWORD move_params)
 {
 	DWORD map_id=cr->GetMap();
 	if(!map_id) return false;
 
 	// Check run/walk
-	bool is_run=FLAG(move_params,0x8000);
+	bool is_run=FLAG(move_params,MOVE_PARAM_RUN);
 	if(is_run && !cr->IsCanRun())
 	{
 		// Switch to walk
-		move_params^=0x8000;
+		move_params^=MOVE_PARAM_RUN;
 		is_run=false;
 	}
 	if(!is_run && !cr->IsCanWalk()) return false;
@@ -304,8 +304,8 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 				cr->Send_Param(ST_MOVE_AP);
 				return false;
 			}
-			int steps=(cr->GetParam(ST_CURRENT_AP)+move_ap)/ap_cost;
-			if(steps<5) move_params|=(7<<(steps*3));
+			int steps=(cr->GetParam(ST_CURRENT_AP)+move_ap)/ap_cost-1;
+			if(steps<MOVE_PARAM_STEP_COUNT) move_params|=(MOVE_PARAM_STEP_DISALLOW<<(steps*MOVE_PARAM_STEP_BITS)); // Cut steps
 			if(move_ap)
 			{
 				if(ap_cost>move_ap)
@@ -330,8 +330,8 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 		}
 		if(ap_cost)
 		{
-			int steps=cr->GetRealAp()/ap_cost;
-			if(steps<5) move_params|=(7<<(steps*3));
+			int steps=cr->GetRealAp()/ap_cost-1;
+			if(steps<MOVE_PARAM_STEP_COUNT) move_params|=(MOVE_PARAM_STEP_DISALLOW<<(steps*MOVE_PARAM_STEP_BITS)); // Cut steps
 			cr->Data.Params[ST_CURRENT_AP]-=ap_cost;
 			cr->ApRegenerationTick=0;
 		}
@@ -340,7 +340,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, WORD move_params)
 	// Check passed
 	WORD fx=cr->GetHexX();
 	WORD fy=cr->GetHexY();
-	BYTE dir=GetDir(fx,fy,hx,hy);
+	BYTE dir=GetNearDir(fx,fy,hx,hy);
 	DWORD multihex=cr->GetMultihex();
 
 	if(!map->IsMovePassed(hx,hy,dir,multihex))
@@ -1250,10 +1250,9 @@ bool FOServer::MoveRandom(Critter* cr)
 		WORD hy=cr->GetHexY();
 		if(MoveHexByDir(hx,hy,dir,maxhx,maxhy) && map->IsMovePassed(hx,hy,dir,multihex))
 		{
-			WORD move_flags=BIN16(00000000,00111000)|dir;
-			if(Act_Move(cr,hx,hy,move_flags))
+			if(Act_Move(cr,hx,hy,0))
 			{
-				cr->Send_Move(cr,move_flags);
+				cr->Send_Move(cr,0);
 				return true;
 			}
 			return false;
@@ -2530,7 +2529,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 
 void FOServer::Process_Move(Client* cl)
 {
-	WORD move_params;
+	DWORD move_params;
 	WORD hx;
 	WORD hy;
 
@@ -2541,11 +2540,8 @@ void FOServer::Process_Move(Client* cl)
 
 	if(!cl->GetMap()) return;
 
-	BYTE dir=(move_params&BIN8(00000111));
-	bool is_run=FLAG(move_params,0x8000);
-
 	// The player informs that has stopped
-	if(dir>5)
+	if(!FLAG(move_params,MOVE_PARAM_STEP_ALLOW))
 	{
 		//cl->Send_XY(cl);
 		cl->SendA_XY();
@@ -2553,6 +2549,7 @@ void FOServer::Process_Move(Client* cl)
 	}
 
 	// Check running availability
+	bool is_run=FLAG(move_params,MOVE_PARAM_RUN);
 	if(is_run)
 	{
 		if(!cl->IsCanRun() ||
@@ -2560,7 +2557,7 @@ void FOServer::Process_Move(Client* cl)
 			(GameOpt.RunOnTransfer?0:cl->GetParam(TO_TRANSFER)))
 		{
 			// Switch to walk
-			move_params^=0x8000;
+			move_params^=MOVE_PARAM_RUN;
 			is_run=false;
 		}
 	}
@@ -2596,13 +2593,6 @@ void FOServer::Process_Move(Client* cl)
 
 	// Check dist
 	if(!CheckDist(cl->GetHexX(),cl->GetHexY(),hx,hy,1))
-	{
-		cl->Send_XY(cl);
-		return;
-	}
-
-	// Check valid of step
-	if(GetDir(cl->GetHexX(),cl->GetHexY(),hx,hy)!=dir)
 	{
 		cl->Send_XY(cl);
 		return;
@@ -3497,7 +3487,7 @@ void FOServer::Process_Dir(Client* cl)
 	cl->Bin >> dir;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	if(!cl->GetMap() || dir>5 || cl->GetDir()==dir || cl->IsTalking() || !cl->CheckMyTurn(NULL))
+	if(!cl->GetMap() || dir>=DIRS_COUNT || cl->GetDir()==dir || cl->IsTalking() || !cl->CheckMyTurn(NULL))
 	{
 		cl->Send_Dir(cl);
 		return;

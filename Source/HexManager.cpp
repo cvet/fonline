@@ -2,6 +2,7 @@
 #include "HexManager.h"
 #include "ResourceManager.h"
 #include "3dStuff\Terrain.h"
+#include "LineTracer.h"
 
 #ifdef FONLINE_MAPPER
 #include "CritterData.h"
@@ -111,6 +112,7 @@ HexManager::HexManager()
 	viewField=NULL;
 	reprepareTiles=false;
 	tileSurf=NULL;
+	tileSurfWidth=tileSurfHeight=0;
 	isShowHex=false;
 	roofSkip=0;
 	rainCapacity=0;
@@ -177,36 +179,8 @@ bool HexManager::Init()
 	CurProtoMap=NULL;
 #endif
 
-	if(!SprMngr.CreateRenderTarget(tileSurf,MODE_WIDTH+(int)(64.0f/MIN_ZOOM),MODE_HEIGHT+(int)(48.0f/MIN_ZOOM)))
-	{
-		WriteLog("Can't create tiles surface, width<%d>, height<%d>.\n",MODE_WIDTH+(int)(64.0f/MIN_ZOOM),MODE_HEIGHT+(int)(48.0f/MIN_ZOOM));
-		return false;
-	}
-
 	WriteLog("Hex field initialization complete.\n");
 	return true;
-}
-
-void HexManager::ReloadSprites()
-{
-	// Must be valid
-	hexWhite=SprMngr.LoadAnimation("hex.frm",PT_ART_MISC,ANIM_USE_DUMMY);
-	hexBlue=SprMngr.LoadAnimation("hexb.frm",PT_ART_MISC,ANIM_USE_DUMMY);
-	cursorPrePic=SprMngr.LoadAnimation("move_pre.png",PT_ART_MISC,ANIM_USE_DUMMY);
-	cursorPostPic=SprMngr.LoadAnimation("move_post.png",PT_ART_MISC,ANIM_USE_DUMMY);
-	cursorXPic=SprMngr.LoadAnimation("move_x.png",PT_ART_MISC,ANIM_USE_DUMMY);
-	picRainDrop=SprMngr.LoadAnimation("drop.png",PT_ART_MISC,ANIM_USE_DUMMY);
-	for(int i=0;i<=6;i++)
-	{
-		char name[64];
-		sprintf(name,"adrop%d.png",i);
-		picRainDropA[i]=SprMngr.LoadAnimation(name,PT_ART_MISC,ANIM_USE_DUMMY);
-	}
-	picTrack1=SprMngr.LoadAnimation("track1.png",PT_ART_MISC,ANIM_USE_DUMMY);
-	picTrack2=SprMngr.LoadAnimation("track2.png",PT_ART_MISC,ANIM_USE_DUMMY);
-
-	// May be null
-	picHexMask=SprMngr.LoadAnimation("hex_mask.png",PT_ART_MISC);
 }
 
 void HexManager::Clear()
@@ -237,6 +211,33 @@ void HexManager::Clear()
 	WriteLog("Hex field finish complete.\n");
 }
 
+void HexManager::ReloadSprites()
+{
+	curDataPrefix=GameOpt.MapDataPrefix;
+
+	// Must be valid
+	picHex[0]=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"hex1.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	picHex[1]=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"hex2.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	picHex[2]=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"hex3.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	cursorPrePic=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"move_pre.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	cursorPostPic=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"move_post.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	cursorXPic=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"move_x.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	picTrack1=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"track1.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+	picTrack2=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"track2.png").c_str(),PT_DATA,ANIM_USE_DUMMY);
+
+	// May be nullsdsd
+	picHexMask=SprMngr.LoadAnimation((GameOpt.MapDataPrefix+"hex_mask.png").c_str(),PT_DATA);
+
+	// Rain
+	picRainDrop=SprMngr.LoadAnimation("drop.png",PT_ART_MISC,ANIM_USE_DUMMY);
+	for(int i=0;i<=6;i++)
+	{
+		char name[64];
+		sprintf(name,"adrop%d.png",i);
+		picRainDropA[i]=SprMngr.LoadAnimation(name,PT_ART_MISC,ANIM_USE_DUMMY);
+	}
+}
+
 void HexManager::PlaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 {
 	if(!proto_item) return;
@@ -247,7 +248,7 @@ void HexManager::PlaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 	for(int i=0;i<CAR_MAX_BLOCKS;i++)
 	{
 		dir=proto_item->MiscEx.Car.GetBlockDir(i);
-		if(dir>5) return;
+		if(dir>=DIRS_COUNT) return;
 
 		i++;
 		steps=proto_item->MiscEx.Car.GetBlockDir(i);
@@ -271,7 +272,7 @@ void HexManager::ReplaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 	for(int i=0;i<CAR_MAX_BLOCKS;i++)
 	{
 		dir=proto_item->MiscEx.Car.GetBlockDir(i);
-		if(dir>5) return;
+		if(dir>=DIRS_COUNT) return;
 
 		i++;
 		steps=proto_item->MiscEx.Car.GetBlockDir(i);
@@ -435,7 +436,7 @@ void HexManager::ProcessItems()
 				WORD hx=item->GetHexX();
 				WORD hy=item->GetHexY();
 				int x,y;
-				GetHexOffset(hx,hy,step.first,step.second,x,y);
+				GetHexInterval(hx,hy,step.first,step.second,x,y);
 				item->EffOffsX-=x;
 				item->EffOffsY-=y;
 				Field& f=GetField(hx,hy);
@@ -584,7 +585,7 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 		item->EffSteps.push_back(WordPairVecVal(from_hx,from_hy));
 		TraceBullet(from_hx,from_hy,to_hx,to_hy,0,0.0f,NULL,false,NULL,0,NULL,NULL,&item->EffSteps,false);
 		int x,y;
-		GetHexOffset(from_hx,from_hy,to_hx,to_hy,x,y);
+		GetHexInterval(from_hx,from_hy,to_hx,to_hy,x,y);
 		y+=Random(5,25); // Center of body
 		GetStepsXY(sx,sy,0,0,x,y);
 		dist=DistSqrt(0,0,x,y);
@@ -714,7 +715,7 @@ void HexManager::DrawCursor(const char* text)
 	if(GameOpt.HideCursor || !isShowCursor) return;
 	int x=(cursorX+GameOpt.ScrOx)/GameOpt.SpritesZoom;
 	int y=(cursorY+GameOpt.ScrOy)/GameOpt.SpritesZoom;
-	SprMngr.DrawStr(INTRECT(x,y,x+32.0f/GameOpt.SpritesZoom,y+16.0f/GameOpt.SpritesZoom),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(x,y,x+HEX_W/GameOpt.SpritesZoom,y+HEX_REAL_H/GameOpt.SpritesZoom),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
 }
 
 void HexManager::RebuildMap(int rx, int ry)
@@ -784,8 +785,8 @@ void HexManager::RebuildMap(int rx, int ry)
 			if(isShowTrack && GetHexTrack(nx,ny))
 			{
 				DWORD spr_id=(GetHexTrack(nx,ny)==1?picTrack1->GetCurSprId():picTrack2->GetCurSprId());
-				if(IsVisible(spr_id,f.ScrX+17,f.ScrY+14))
-					mainTree.AddSprite(DRAW_ORDER_TRACK,nx,ny,0,f.ScrX+17,f.ScrY+14,spr_id,NULL,NULL,NULL,NULL,NULL);
+				SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
+				mainTree.AddSprite(DRAW_ORDER_TRACK,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY+(si?si->Height/2:0),spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Hex Lines
@@ -803,10 +804,9 @@ void HexManager::RebuildMap(int rx, int ry)
 				bool thru=(vpos==lt_pos || vpos==lb_pos || vpos==rb_pos || vpos==rt_pos ||
 					vpos==lt_pos2 || vpos==lb_pos2 || vpos==rb_pos2 || vpos==rt_pos2);
 
-				DWORD spr_id=(thru?hexBlue->GetCurSprId():hexWhite->GetCurSprId());
-				//DWORD spr_id=(f.ScrollBlock?hexBlue->GetCurSprId():hexWhite->GetCurSprId());
-				//if(IsVisible(spr_id,f.ScrX+HEX_OX,f.ScrY+HEX_OY))
-					mainTree.AddSprite(DRAW_ORDER_HEX_GRID,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY,spr_id,NULL,NULL,NULL,NULL,NULL);
+				DWORD spr_id=(thru?picHex[1]->GetCurSprId():picHex[0]->GetCurSprId());
+				SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
+				mainTree.AddSprite(DRAW_ORDER_HEX_GRID,nx,ny,0,f.ScrX+(si?si->Width/2:0),f.ScrY+(si?si->Height:0),spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
 
 			// Rain
@@ -943,6 +943,7 @@ void HexManager::RebuildMap(int rx, int ry)
 #define MAX_LIGHT_VALUE      (10000)
 #define MAX_LIGHT_HEX        (200)
 #define MAX_LIGHT_ALPHA      (100)
+#define LIGHT_SOFT_LENGTH    (HEX_W)
 int LightCapacity=0;
 int LightMinHx=0;
 int LightMaxHx=0;
@@ -1161,37 +1162,38 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 	MarkLight(hx,hy,inten);
 	int base_x,base_y;
 	GetHexCurrentPosition(hx,hy,base_x,base_y);
-	base_x+=16;
-	base_y+=6;
+	base_x+=HEX_OX;
+	base_y+=HEX_OY;
 
 	lightPointsCount++;
 	if(lightPoints.size()<lightPointsCount) lightPoints.push_back(PointVec());
 	PointVec& points=lightPoints[lightPointsCount-1];
 	points.clear();
-	points.reserve(3+dist*6);
+	points.reserve(3+dist*DIRS_COUNT);
 	points.push_back(PrepPoint(base_x,base_y,color,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy)); // Center of light
 	color=D3DCOLOR_ARGB(0,(color>>16)&0xFF,(color>>8)&0xFF,color&0xFF);
 
-	const int dirs[6]={2,3,4,5,0,1};
 	int hx_far=hx,hy_far=hy;
 	bool seek_start=true;
 	WORD last_hx=-1,last_hy=-1;
 
-	for(int i=0;i<6;i++)
+	for(int i=0,ii=(GameOpt.MapHexagonal?6:4);i<ii;i++)
 	{
-		for(int j=0;j<dist;j++)
+		int dir=(GameOpt.MapHexagonal?(i+2)%6:((i+1)*2)%8);
+
+		for(int j=0,jj=(GameOpt.MapHexagonal?dist:dist*2);j<jj;j++)
 		{
 			if(seek_start)
 			{
 				// Move to start position
-				for(int l=0;l<dist;l++) MoveHexByDirUnsafe(hx_far,hy_far,0);
+				for(int l=0;l<dist;l++) MoveHexByDirUnsafe(hx_far,hy_far,GameOpt.MapHexagonal?0:7);
 				seek_start=false;
 				j=-1;
 			}
 			else
 			{
 				// Move to next hex
-				MoveHexByDirUnsafe(hx_far,hy_far,dirs[i]);
+				MoveHexByDirUnsafe(hx_far,hy_far,dir);
 			}
 
 			WORD hx_=CLAMP(hx_far,0,maxHexX-1);
@@ -1216,7 +1218,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 				}
 				else color=D3DCOLOR_ARGB(0,(color>>16)&0xFF,(color>>8)&0xFF,color&0xFF);
 				int x,y;
-				GetHexOffset(hx,hy,hx_,hy_,x,y);
+				GetHexInterval(hx,hy,hx_,hy_,x,y);
 				points.push_back(PrepPoint(base_x+x,base_y+y,color,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
 				last_hx=hx_;
 				last_hy=hy_;
@@ -1228,7 +1230,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 	{
 		PrepPoint& cur=points[i];
 		PrepPoint& next=points[i>=points.size()-1?1:i+1];
-		if(DistSqrt(cur.PointX,cur.PointY,next.PointX,next.PointY)>32)
+		if(DistSqrt(cur.PointX,cur.PointY,next.PointX,next.PointY)>LIGHT_SOFT_LENGTH)
 		{
 			bool dist_comp=(DistSqrt(base_x,base_y,cur.PointX,cur.PointY)>DistSqrt(base_x,base_y,next.PointX,next.PointY));
 			lightSoftPoints.push_back(PrepPoint(next.PointX,next.PointY,next.PointColor,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
@@ -1356,6 +1358,28 @@ bool HexManager::AddTerrain(DWORD name_hash, int hx, int hy)
 	return false;
 }
 
+bool HexManager::InitTilesSurf()
+{
+	int w=MODE_WIDTH+((SCROLL_OX*2)/MIN_ZOOM+1);
+	int h=MODE_HEIGHT+((SCROLL_OY*2)/MIN_ZOOM+1);
+
+	if(tileSurf && tileSurfWidth==w && tileSurfHeight==h) return true;
+
+	SAFEREL(tileSurf);
+	tileSurfWidth=0;
+	tileSurfHeight=0;
+
+	if(!SprMngr.CreateRenderTarget(tileSurf,w,h))
+	{
+		WriteLog("Can't create tiles surface, width<%d>, height<%d>.\n",w,h);
+		return false;
+	}
+
+	tileSurfWidth=w;
+	tileSurfHeight=h;
+	return true;
+}
+
 void HexManager::RebuildTiles()
 {
 	if(!GameOpt.ShowTile) return;
@@ -1439,10 +1463,10 @@ void HexManager::RebuildRoof()
 #ifdef FONLINE_MAPPER
 					{
 						ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
+						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:&GameOpt.RoofAlpha,NULL).SetEgg(EGG_ALWAYS);
 					}
 #else
-						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,&ROOF_ALPHA,NULL).SetEgg(EGG_ALWAYS);
+						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,&GameOpt.RoofAlpha,NULL).SetEgg(EGG_ALWAYS);
 #endif
 				}
 			}
@@ -1471,15 +1495,15 @@ void HexManager::MarkRoofNum(int hx, int hy, int num)
 	if(GetField(hx,hy).Roofs.empty()) return;
 	if(GetField(hx,hy).RoofNum) return;
 
-	GetField(hx,hy).RoofNum=num;
-	GetField(hx+1,hy).RoofNum=num;
-	GetField(hx,hy+1).RoofNum=num;
-	GetField(hx+1,hy+1).RoofNum=num;
+	for(int x=0;x<GameOpt.MapRoofSkipSize;x++)
+		for(int y=0;y<GameOpt.MapRoofSkipSize;y++)
+			if(hx+x>=0 && hx+x<maxHexX && hy+y>=0 && hy+y<maxHexY)
+				GetField(hx+x,hy+y).RoofNum=num;
 
-	MarkRoofNum(hx+2,hy,num);
-	MarkRoofNum(hx-2,hy,num);
-	MarkRoofNum(hx,hy+2,num);
-	MarkRoofNum(hx,hy-2,num);
+	MarkRoofNum(hx+GameOpt.MapRoofSkipSize,hy,num);
+	MarkRoofNum(hx-GameOpt.MapRoofSkipSize,hy,num);
+	MarkRoofNum(hx,hy+GameOpt.MapRoofSkipSize,num);
+	MarkRoofNum(hx,hy-GameOpt.MapRoofSkipSize,num);
 }
 
 bool HexManager::IsVisible(DWORD spr_id, int ox, int oy)
@@ -1501,22 +1525,22 @@ bool HexManager::ProcessHexBorders(DWORD spr_id, int ox, int oy)
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 	if(!si) return false;
 
-	int top=si->OffsY+oy-hTop*12+SCROLL_OY;
+	int top=si->OffsY+oy-hTop*HEX_LINE_H+SCROLL_OY;
 	if(top<0) top=0;
-	int bottom=si->Height-si->OffsY-oy-hBottom*12+SCROLL_OY;
+	int bottom=si->Height-si->OffsY-oy-hBottom*HEX_LINE_H+SCROLL_OY;
 	if(bottom<0) bottom=0;
-	int left=si->Width/2+si->OffsX+ox-wLeft*32+SCROLL_OX;
+	int left=si->Width/2+si->OffsX+ox-wLeft*HEX_W+SCROLL_OX;
 	if(left<0) left=0;
-	int right=si->Width/2-si->OffsX-ox-wRight*32+SCROLL_OX;
+	int right=si->Width/2-si->OffsX-ox-wRight*HEX_W+SCROLL_OX;
 	if(right<0) right=0;
 
 	if(top || bottom || left || right)
 	{
 		// Resize
-		hTop+=top/12+(top%12?1:0);
-		hBottom+=bottom/12+(bottom%12?1:0);
-		wLeft+=left/32+(left%32?1:0);
-		wRight+=right/32+(right%32?1:0);
+		hTop+=top/HEX_LINE_H+((top%HEX_LINE_H)?1:0);
+		hBottom+=bottom/HEX_LINE_H+((bottom%HEX_LINE_H)?1:0);
+		wLeft+=left/HEX_W+((left%HEX_W)?1:0);
+		wRight+=right/HEX_W+((right%HEX_W)?1:0);
 		return true;
 	}
 	return false;
@@ -1581,52 +1605,100 @@ void HexManager::SwitchShowTrack()
 
 void HexManager::InitView(int cx, int cy)
 {
-	// Get center offset
-	int hw=VIEW_WIDTH/2+wRight;
-	int hv=VIEW_HEIGHT/2+hTop;
-	int vw=hv/2+(hv&1)+1;
-	int vh=hv-vw/2-1;
- 	for(int i=0;i<hw;i++)
- 	{
- 		if(vw&1) vh--;
- 		vw++;
- 	}
-
-	// Substract offset
-	cx-=abs(vw);
-	cy-=abs(vh);
-
-	int x;
-	int xa=-(wRight*32);
-	int xb=-16-(wRight*32);
-	int y=-12*hTop;
-	int y2=0;
-	int vpos;
-	int hx,hy;
-	int wx=MODE_WIDTH*GameOpt.SpritesZoom;
-
-	for(int j=0;j<hVisible;j++)
+	if(GameOpt.MapHexagonal)
 	{
-		hx=cx+j/2+(j&1);
-		hy=cy+(j-(hx-cx-(cx&1))/2);
-		x=((j&1)?xa:xb);
+		// Get center offset
+		int hw=VIEW_WIDTH/2+wRight;
+		int hv=VIEW_HEIGHT/2+hTop;
+		int vw=hv/2+(hv&1)+1;
+		int vh=hv-vw/2-1;
+ 		for(int i=0;i<hw;i++)
+ 		{
+ 			if(vw&1) vh--;
+ 			vw++;
+ 		}
 
-		for(int i=0;i<wVisible;i++)
+		// Subtract offset
+		cx-=abs(vw);
+		cy-=abs(vh);
+
+		int x;
+		int xa=-(wRight*HEX_W);
+		int xb=-(HEX_W/2)-(wRight*HEX_W);
+		int y=-HEX_LINE_H*hTop;
+		int y2=0;
+		int vpos;
+		int hx,hy;
+		int wx=MODE_WIDTH*GameOpt.SpritesZoom;
+
+		for(int j=0;j<hVisible;j++)
 		{
-			vpos=y2+i;
-			viewField[vpos].ScrX=wx-x;
-			viewField[vpos].ScrY=y;
-			viewField[vpos].ScrXf=(float)viewField[vpos].ScrX;
-			viewField[vpos].ScrYf=(float)viewField[vpos].ScrY;
-			viewField[vpos].HexX=hx;
-			viewField[vpos].HexY=hy;
+			hx=cx+j/2+(j&1);
+			hy=cy+(j-(hx-cx-(cx&1))/2);
+			x=((j&1)?xa:xb);
 
-			if(hx&1) hy--;
-			hx++;
-			x+=32;
+			for(int i=0;i<wVisible;i++)
+			{
+				vpos=y2+i;
+				viewField[vpos].ScrX=wx-x;
+				viewField[vpos].ScrY=y;
+				viewField[vpos].ScrXf=(float)viewField[vpos].ScrX;
+				viewField[vpos].ScrYf=(float)viewField[vpos].ScrY;
+				viewField[vpos].HexX=hx;
+				viewField[vpos].HexY=hy;
+
+				if(hx&1) hy--;
+				hx++;
+				x+=HEX_W;
+			}
+			y+=HEX_LINE_H;
+			y2+=wVisible;
 		}
-		y+=12;
-		y2+=wVisible;
+	}
+	else
+	{
+		// Calculate data
+		int halfw=VIEW_WIDTH/2+wRight;
+		int halfh=VIEW_HEIGHT/2+hTop;
+		int basehx=cx-halfh/2-halfw;
+		int basehy=cy-halfh/2+halfw;
+		int y2=0;
+		int vpos;
+		int x;
+		int xa=-HEX_W*wRight;
+		int xb=-HEX_W*wRight-HEX_W/2;
+		int y=-HEX_LINE_H*hTop;
+		int wx=MODE_WIDTH*GameOpt.SpritesZoom;
+		int hx,hy;
+
+		// Initialize field
+		for(int j=0;j<hVisible;j++)
+		{
+			x=((j&1)?xa:xb);
+			hx=basehx;
+			hy=basehy;
+
+			for(int i=0;i<wVisible;i++)
+			{
+				vpos=y2+i;
+				viewField[vpos].ScrX=wx-x;
+				viewField[vpos].ScrY=y;
+				viewField[vpos].ScrXf=(float)viewField[vpos].ScrX;
+				viewField[vpos].ScrYf=(float)viewField[vpos].ScrY;
+				viewField[vpos].HexX=hx;
+				viewField[vpos].HexY=hy;
+
+				hx++;
+				hy--;
+				x+=HEX_W;
+			}
+
+			if(j&1) basehy++;
+			else basehx++;
+
+			y+=HEX_LINE_H;
+			y2+=wVisible;
+		}
 	}
 }
 
@@ -1653,7 +1725,7 @@ void HexManager::ChangeZoom(int zoom)
 	if(zoom || GameOpt.SpritesZoom<1.0f)
 	{
 		float old_zoom=GameOpt.SpritesZoom;
-		float w=MODE_WIDTH/32+((MODE_WIDTH%32)?1:0);
+		float w=MODE_WIDTH/HEX_W+((MODE_WIDTH%HEX_W)?1:0);
 		GameOpt.SpritesZoom=(w*GameOpt.SpritesZoom+(zoom>=0?2.0f:-2.0f))/w;
 
 		if(GameOpt.SpritesZoom<max(GameOpt.SpritesZoomMin,MIN_ZOOM) || GameOpt.SpritesZoom>min(GameOpt.SpritesZoomMax,MAX_ZOOM))
@@ -1676,29 +1748,13 @@ void HexManager::ChangeZoom(int zoom)
 	if(zoom==0 && GameOpt.SpritesZoom!=1.0f) ChangeZoom(0);
 }
 
-void HexManager::GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y)
-{
-	int dx=to_hx-from_hx;
-	int dy=to_hy-from_hy;
-	x=dy*16-dx*32;
-	y=dy*12;
-	if(from_hx&1)
-	{
-		if(dx>0) dx++;
-	}
-	else if(dx<0) dx--;
-	dx/=2;
-	x+=16*dx;
-	y+=12*dx;
-}
-
 void HexManager::GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y)
 {
 	ViewField& center_hex=viewField[hVisible/2*wVisible+wVisible/2];
 	int center_hx=center_hex.HexX;
 	int center_hy=center_hex.HexY;
 
-	GetHexOffset(center_hx,center_hy,hx,hy,x,y);
+	GetHexInterval(center_hx,center_hy,hx,hy,x,y);
 	x+=center_hex.ScrX;
 	y+=center_hex.ScrY;
 
@@ -1736,13 +1792,13 @@ void HexManager::DrawMap()
 
 			// Draw simple tiles
 			SprMngr.SetCurEffect2D(DEFAULT_EFFECT_TILE);
-			SprMngr.PrepareBuffer(tilesTree,tileSurf,TILE_ALPHA);
+			SprMngr.PrepareBuffer(tilesTree,tileSurf,SCROLL_OX,SCROLL_OY,TILE_ALPHA);
 
 			// Done
 			reprepareTiles=false;
 		}
 
-		SprMngr.DrawPrepared(tileSurf);
+		SprMngr.DrawPrepared(tileSurf,SCROLL_OX,SCROLL_OY);
 	}
 
 	// Flat sprites
@@ -1859,7 +1915,7 @@ bool HexManager::Scroll()
 		if(!xscroll && !yscroll) return false;
 
 		scr_ox+=xscroll*GameOpt.ScrollStep*GameOpt.SpritesZoom;
-		scr_oy+=yscroll*(GameOpt.ScrollStep*75/100)*GameOpt.SpritesZoom;
+		scr_oy+=yscroll*(GameOpt.ScrollStep*SCROLL_OY/SCROLL_OX)*GameOpt.SpritesZoom;
 	}
 
 	if(GameOpt.ScrollCheck)
@@ -1976,10 +2032,24 @@ bool HexManager::ScrollCheck(int xmod, int ymod)
 		(hTop+1)*wVisible+wRight+1, // Right top 2
 	};
 
-	if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true; // Up
-	else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true; // Down
-	if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true; // Left
-	else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true; // Right
+	int dirs[8]={0,5,2,3,4,-1,1,-1}; // Hexagonal
+	if(!GameOpt.MapHexagonal) dirs[0]=7,dirs[1]=-1,dirs[2]=3,dirs[3]=-1,
+		dirs[4]=5,dirs[5]=-1,dirs[6]=1,dirs[7]=-1; // Square
+
+	if(GameOpt.MapHexagonal)
+	{
+		if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true; // Up
+		else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true; // Down
+		if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true; // Left
+		else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true; // Right
+	}
+	else
+	{
+		if(ymod<0 && (ScrollCheckPos(positions_left,0,6) || ScrollCheckPos(positions_right,6,0))) return true; // Up
+		else if(ymod>0 && (ScrollCheckPos(positions_left,2,4) || ScrollCheckPos(positions_right,4,2))) return true; // Down
+		if(xmod>0 && (ScrollCheckPos(positions_left,6,4) || ScrollCheckPos(positions_right,4,6))) return true; // Left
+		else if(xmod<0 && (ScrollCheckPos(positions_right,0,2) || ScrollCheckPos(positions_left,2,0))) return true; // Right
+	}
 
 	// Add precise for zooming infelicity
 	if(GameOpt.SpritesZoom!=1.0f)
@@ -1987,10 +2057,20 @@ bool HexManager::ScrollCheck(int xmod, int ymod)
 		for(int i=0;i<4;i++) positions_left[i]--;
 		for(int i=0;i<4;i++) positions_right[i]++;
 
-		if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true; // Up
-		else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true; // Down
-		if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true; // Left
-		else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true; // Right
+		if(GameOpt.MapHexagonal)
+		{
+			if(ymod<0 && (ScrollCheckPos(positions_left,0,5) || ScrollCheckPos(positions_right,5,0))) return true; // Up
+			else if(ymod>0 && (ScrollCheckPos(positions_left,2,3) || ScrollCheckPos(positions_right,3,2))) return true; // Down
+			if(xmod>0 && (ScrollCheckPos(positions_left,4,-1) || ScrollCheckPos(positions_right,4,-1))) return true; // Left
+			else if(xmod<0 && (ScrollCheckPos(positions_right,1,-1) || ScrollCheckPos(positions_left,1,-1))) return true; // Right
+		}
+		else
+		{
+			if(ymod<0 && (ScrollCheckPos(positions_left,0,6) || ScrollCheckPos(positions_right,6,0))) return true; // Up
+			else if(ymod>0 && (ScrollCheckPos(positions_left,2,4) || ScrollCheckPos(positions_right,4,2))) return true; // Down
+			if(xmod>0 && (ScrollCheckPos(positions_left,6,4) || ScrollCheckPos(positions_right,4,6))) return true; // Left
+			else if(xmod<0 && (ScrollCheckPos(positions_right,0,2) || ScrollCheckPos(positions_left,2,0))) return true; // Right
+		}
 	}
 	return false;
 }
@@ -2002,7 +2082,7 @@ void HexManager::ScrollToHex(int hx, int hy, double speed, bool can_stop)
 	int sx,sy;
 	GetScreenHexes(sx,sy);
 	int x,y;
-	GetHexOffset(sx,sy,hx,hy,x,y);
+	GetHexInterval(sx,sy,hx,hy,x,y);
 	AutoScroll.Active=true;
 	AutoScroll.CanStop=can_stop;
 	AutoScroll.OffsX=-x;
@@ -2020,7 +2100,7 @@ void HexManager::PreRestore()
 
 void HexManager::PostRestore()
 {
-	SprMngr.CreateRenderTarget(tileSurf,MODE_WIDTH+(int)(64.0f/MIN_ZOOM),MODE_HEIGHT+(int)(48.0f/MIN_ZOOM));
+	InitTilesSurf();
 	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) (*it)->PostRestore();
 	RefreshMap();
 }
@@ -2215,14 +2295,14 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 			WORD hy_=hy;
 			MoveHexByDir(hx_,hy_,ReverseDir(dir),maxHexX,maxHexY);
 			int ox,oy;
-			GetHexOffset(hx_,hy_,old_hx,old_hy,ox,oy);
+			GetHexInterval(hx_,hy_,old_hx,old_hy,ox,oy);
 			cr->AddOffsExt(ox,oy);
 		}
 	}
 	else
 	{
 		int ox,oy;
-		GetHexOffset(hx,hy,old_hx,old_hy,ox,oy);
+		GetHexInterval(hx,hy,old_hx,old_hy,ox,oy);
 		cr->AddOffsExt(ox,oy);
 	}
 
@@ -2234,10 +2314,9 @@ void HexManager::SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set)
 {
 	if(IsMapLoaded() && multihex)
 	{
-		bool odd=(hx&1)!=0;
-		short* sx=(odd?SXOdd:SXEven);
-		short* sy=(odd?SYOdd:SYEven);
-		for(int i=0,j=NumericalNumber(multihex)*6;i<j;i++)
+		short* sx,*sy;
+		GetHexOffsets(hx&1,sx,sy);
+		for(int i=0,j=NumericalNumber(multihex)*DIRS_COUNT;i<j;i++)
 		{
 			short cx=(short)hx+sx[i];
 			short cy=(short)hy+sy[i];
@@ -2257,8 +2336,8 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 
 	float xf=(float)x-(float)GameOpt.ScrOx/GameOpt.SpritesZoom;
 	float yf=(float)y-(float)GameOpt.ScrOy/GameOpt.SpritesZoom;
-	float ox=32.0f/GameOpt.SpritesZoom;
-	float oy=16.0f/GameOpt.SpritesZoom;
+	float ox=(float)HEX_W/GameOpt.SpritesZoom;
+	float oy=(float)HEX_REAL_H/GameOpt.SpritesZoom;
 	int y2=0;
 	int vpos=0;
 
@@ -2273,21 +2352,25 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 
 			if(xf>=x_ && xf<x_+ox && yf>=y_ && yf<y_+oy)
 			{
-				hx=viewField[vpos].HexX;
-				hy=viewField[vpos].HexY;
+				int hx_=viewField[vpos].HexX;
+				int hy_=viewField[vpos].HexY;
 
 				// Correct with hex color mask
 				if(picHexMask)
 				{
 					DWORD r=(SprMngr.GetPixColor(picHexMask->Ind[0],xf-x_,yf-y_)&0x00FF0000)>>16;
-					if(r==50) MoveHexByDir(hx,hy,5,maxHexX,maxHexY);
-					else if(r==100) MoveHexByDir(hx,hy,0,maxHexX,maxHexY);
-					else if(r==150) MoveHexByDir(hx,hy,3,maxHexX,maxHexY);
-					else if(r==200) MoveHexByDir(hx,hy,2,maxHexX,maxHexY);
+					if(r==50) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?5:6);
+					else if(r==100) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?0:0);
+					else if(r==150) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?3:4);
+					else if(r==200) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?2:2);
 				}
 
-				if(hx>=maxHexX || hy>=maxHexY) return false;
-				return true;
+				if(hx_>=0 && hy_>=0 && hx_<maxHexX && hy_<maxHexY)
+				{
+					hx=hx_;
+					hy=hy_;
+					return true;
+				}
 			}
 		}
 		y2+=wVisible;
@@ -2335,10 +2418,10 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 			continue;
 		}
 
-		int l=(*item->HexScrX+item->ScrX+si->OffsX+16+GameOpt.ScrOx-si->Width/2)/GameOpt.SpritesZoom;
-		int r=(*item->HexScrX+item->ScrX+si->OffsX+16+GameOpt.ScrOx+si->Width/2)/GameOpt.SpritesZoom;
-		int t=(*item->HexScrY+item->ScrY+si->OffsY+6+GameOpt.ScrOy-si->Height)/GameOpt.SpritesZoom;
-		int b=(*item->HexScrY+item->ScrY+si->OffsY+6+GameOpt.ScrOy)/GameOpt.SpritesZoom;
+		int l=(*item->HexScrX+item->ScrX+si->OffsX+HEX_OX+GameOpt.ScrOx-si->Width/2)/GameOpt.SpritesZoom;
+		int r=(*item->HexScrX+item->ScrX+si->OffsX+HEX_OX+GameOpt.ScrOx+si->Width/2)/GameOpt.SpritesZoom;
+		int t=(*item->HexScrY+item->ScrY+si->OffsY+HEX_OY+GameOpt.ScrOy-si->Height)/GameOpt.SpritesZoom;
+		int b=(*item->HexScrY+item->ScrY+si->OffsY+HEX_OY+GameOpt.ScrOy)/GameOpt.SpritesZoom;
 
 		if(x>=l && x<=r && y>=t && y<=b)
 		{
@@ -2435,7 +2518,7 @@ void HexManager::GetSmthPixel(int pix_x, int pix_y, ItemHex*& item, CritterCl*& 
 bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut)
 {
 	// Static data
-#define GRID(x,y) grid[((FINDPATH_MAX_PATH+1)+(y)-grid_oy)*(FINDPATH_MAX_PATH*2+2)+((FINDPATH_MAX_PATH+1)+(x)-grid_ox)]
+#define GRID(x,y) grid[((MAX_FIND_PATH+1)+(y)-grid_oy)*(MAX_FIND_PATH*2+2)+((MAX_FIND_PATH+1)+(x)-grid_ox)]
 	static int grid_ox=0,grid_oy=0;
 	static short* grid=NULL;
 	static WordPairVec coords;
@@ -2443,7 +2526,7 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 	// Allocate temporary grid
 	if(!grid)
 	{
-		grid=new(nothrow) short[(FINDPATH_MAX_PATH*2+2)*(FINDPATH_MAX_PATH*2+2)];
+		grid=new(nothrow) short[(MAX_FIND_PATH*2+2)*(MAX_FIND_PATH*2+2)];
 		if(!grid) return false;
 	}
 
@@ -2451,7 +2534,7 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 	if(start_x==end_x && start_y==end_y) return true;
 
 	short numindex=1;
-	ZeroMemory(grid,(FINDPATH_MAX_PATH*2+2)*(FINDPATH_MAX_PATH*2+2)*sizeof(short));
+	ZeroMemory(grid,(MAX_FIND_PATH*2+2)*(MAX_FIND_PATH*2+2)*sizeof(short));
 	grid_ox=start_x;
 	grid_oy=start_y;
 	GRID(start_x,start_y)=numindex;
@@ -2462,7 +2545,7 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 	int p=0;
 	while(true)
 	{
-		if(++numindex>FINDPATH_MAX_PATH) return false;
+		if(++numindex>MAX_FIND_PATH) return false;
 
 		int p_togo=coords.size()-p;
 		if(!p_togo) return false;
@@ -2471,12 +2554,14 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 		{
 			int hx=coords[p].first;
 			int hy=coords[p].second;
-			bool odd=(hx&1)!=0;
 
-			for(int j=0;j<6;++j)
+			short* sx,*sy;
+			GetHexOffsets(hx&1,sx,sy);
+
+			for(int j=0,jj=DIRS_COUNT;j<jj;j++)
 			{
-				int nx=hx+(odd?SXOdd[j]:SXEven[j]);
-				int ny=hy+(odd?SYOdd[j]:SYEven[j]);
+				int nx=hx+sx[j];
+				int ny=hy+sy[j];
 				if(nx<0 || ny<0 || nx>=maxHexX || ny>=maxHexY || GRID(nx,ny)) continue;
 				GRID(nx,ny)=-1;
 
@@ -2493,10 +2578,13 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 					if(GetField(nx_,ny_).IsNotPassed) continue;
 
 					// Clock wise hexes
+					bool is_square_corner=(!GameOpt.MapHexagonal && IS_DIR_CORNER(j));
+					DWORD steps_count=(is_square_corner?mh*2:mh);
 					bool not_passed=false;
-					int dir_=(j+2)%6;
+					int dir_=(GameOpt.MapHexagonal?((j+2)%6):((j+2)%8));
+					if(is_square_corner) dir_=(dir_+1)%8;
 					int nx__=nx_,ny__=ny_;
-					for(DWORD k=0;k<mh && !not_passed;k++)
+					for(DWORD k=0;k<steps_count && !not_passed;k++)
 					{
 						MoveHexByDirUnsafe(nx__,ny__,dir_);
 						not_passed=GetField(nx__,ny__).IsNotPassed;
@@ -2504,9 +2592,10 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 					if(not_passed) continue;
 
 					// Counter clock wise hexes
-					dir_=(j+4)%6;
+					dir_=(GameOpt.MapHexagonal?((j+4)%6):((j+6)%8));
+					if(is_square_corner) dir_=(dir_+7)%8;
 					nx__=nx_,ny__=ny_;
-					for(DWORD k=0;k<mh && !not_passed;k++)
+					for(DWORD k=0;k<steps_count && !not_passed;k++)
 					{
 						MoveHexByDirUnsafe(nx__,ny__,dir_);
 						not_passed=GetField(nx__,ny__).IsNotPassed;
@@ -2536,55 +2625,122 @@ label_FindOk:
 	steps.resize(numindex-1);
 
 	// From end
-	static bool switcher=false;
-	while(numindex>1)
+	if(GameOpt.MapHexagonal)
 	{
-		if(numindex&1) switcher=!switcher;
-		numindex--;
+		static bool switcher=false;
+		if(!GameOpt.MapSmoothPath) switcher=false;
 
-		if(switcher)
+		while(numindex>1)
 		{
-			if(x1&1)
+			if(GameOpt.MapSmoothPath && numindex&1) switcher=!switcher;
+			numindex--;
+
+			if(switcher)
 			{
-				if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=GetDir(x1-1,y1-1,x1,y1); x1--; y1--; continue; } // 0
-				if(GRID(x1,y1-1)==numindex)   { steps[numindex-1]=GetDir(x1,y1-1,x1,y1); y1--; continue; } // 5
-				if(GRID(x1,y1+1)==numindex)   { steps[numindex-1]=GetDir(x1,y1+1,x1,y1); y1++; continue; } // 2
-				if(GRID(x1+1,y1)==numindex)   { steps[numindex-1]=GetDir(x1+1,y1,x1,y1); x1++; continue; } // 3
-				if(GRID(x1-1,y1)==numindex)   { steps[numindex-1]=GetDir(x1-1,y1,x1,y1); x1--; continue; } // 1
-				if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=GetDir(x1+1,y1-1,x1,y1); x1++; y1--; continue; } // 4
+				if(x1&1)
+				{
+					if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=3; x1--; y1--; continue; } // 0
+					if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2; y1--;       continue; } // 5
+					if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=5; y1++;       continue; } // 2
+					if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=0; x1++;       continue; } // 3
+					if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=4; x1--;       continue; } // 1
+					if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=1; x1++; y1--; continue; } // 4
+				}
+				else
+				{
+					if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=3; x1--;       continue; } // 0
+					if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2; y1--;       continue; } // 5
+					if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=5; y1++;       continue; } // 2
+					if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=0; x1++; y1++; continue; } // 3
+					if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=4; x1--; y1++; continue; } // 1
+					if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=1; x1++;       continue; } // 4
+				}
 			}
 			else
 			{
-				if(GRID(x1-1,y1)==numindex)   { steps[numindex-1]=GetDir(x1-1,y1,x1,y1); x1--; continue; } // 0
-				if(GRID(x1,y1-1)==numindex)   { steps[numindex-1]=GetDir(x1,y1-1,x1,y1); y1--; continue; } // 5
-				if(GRID(x1,y1+1)==numindex)   { steps[numindex-1]=GetDir(x1,y1+1,x1,y1); y1++; continue; } // 2
-				if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=GetDir(x1+1,y1+1,x1,y1); x1++; y1++; continue; } // 3
-				if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=GetDir(x1-1,y1+1,x1,y1); x1--; y1++; continue; } // 1
-				if(GRID(x1+1,y1)==numindex)   { steps[numindex-1]=GetDir(x1+1,y1,x1,y1); x1++; continue; } // 4
+				if(x1&1)
+				{
+					if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=4; x1--;       continue; } // 1
+					if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=1; x1++; y1--; continue; } // 4
+					if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2; y1--;       continue; } // 5
+					if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=3; x1--; y1--; continue; } // 0
+					if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=0; x1++;       continue; } // 3
+					if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=5; y1++;       continue; } // 2
+				}
+				else
+				{
+					if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=4; x1--; y1++; continue; } // 1
+					if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=1; x1++;       continue; } // 4
+					if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2; y1--;       continue; } // 5
+					if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=3; x1--;       continue; } // 0
+					if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=0; x1++; y1++; continue; } // 3
+					if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=5; y1++;       continue; } // 2
+				}
 			}
+			return false;
 		}
-		else
+	}
+	else
+	{
+		// Smooth data
+		int switch_count,switch_begin;
+		if(GameOpt.MapSmoothPath)
 		{
-			if(x1&1)
+			int x2=start_x,y2=start_y;
+			int dx=abs(x1-x2);
+			int dy=abs(y1-y2);
+			int d=max(dx,dy);
+			int h1=abs(dx-dy);
+			int h2=d-h1;
+			switch_count=((h1 && h2)?max(h1,h2)/min(h1,h2)+1:0);
+			if(h1 && h2 && switch_count<2) switch_count=2;
+			switch_begin=((h1 && h2)?min(h1,h2)%max(h1,h2):0);
+		}
+
+		for(int i=switch_begin;numindex>1;i++)
+		{
+			numindex--;
+
+			// Without smoothing
+			if(!GameOpt.MapSmoothPath)
 			{
-				if(GRID(x1-1,y1)==numindex)   { steps[numindex-1]=GetDir(x1-1,y1,x1,y1); x1--; continue; } // 1
-				if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=GetDir(x1+1,y1-1,x1,y1); x1++; y1--; continue; } // 4
-				if(GRID(x1,y1-1)==numindex)   { steps[numindex-1]=GetDir(x1,y1-1,x1,y1); y1--; continue; } // 5
-				if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=GetDir(x1-1,y1-1,x1,y1); x1--; y1--; continue; } // 0
-				if(GRID(x1+1,y1)==numindex)   { steps[numindex-1]=GetDir(x1+1,y1,x1,y1); x1++; continue; } // 3
-				if(GRID(x1,y1+1)==numindex)   { steps[numindex-1]=GetDir(x1,y1+1,x1,y1); y1++; continue; } // 2
+				if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=4; x1--;       continue; } // 0
+				if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2;       y1--; continue; } // 6
+				if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=6;       y1++; continue; } // 2
+				if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=0; x1++;       continue; } // 4
+				if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=5; x1--; y1++; continue; } // 1
+				if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=1; x1++; y1--; continue; } // 5
+				if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=7; x1++; y1++; continue; } // 3
+				if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=3; x1--; y1--; continue; } // 7
 			}
+			// With smoothing
 			else
 			{
-				if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=GetDir(x1-1,y1+1,x1,y1); x1--; y1++; continue; } // 1
-				if(GRID(x1+1,y1)==numindex)   { steps[numindex-1]=GetDir(x1+1,y1,x1,y1); x1++; continue; } // 4
-				if(GRID(x1,y1-1)==numindex)   { steps[numindex-1]=GetDir(x1,y1-1,x1,y1); y1--; continue; } // 5
-				if(GRID(x1-1,y1)==numindex)   { steps[numindex-1]=GetDir(x1-1,y1,x1,y1); x1--; continue; } // 0
-				if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=GetDir(x1+1,y1+1,x1,y1); x1++; y1++; continue; } // 3
-				if(GRID(x1,y1+1)==numindex)   { steps[numindex-1]=GetDir(x1,y1+1,x1,y1); y1++; continue; } // 2
+				if(switch_count<2 || i%switch_count)
+				{
+					if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=4; x1--;       continue; } // 0
+					if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=6;       y1++; continue; } // 2
+					if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=0; x1++;       continue; } // 4
+					if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2;       y1--; continue; } // 6
+					if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=7; x1++; y1++; continue; } // 3
+					if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=3; x1--; y1--; continue; } // 7
+					if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=5; x1--; y1++; continue; } // 1
+					if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=1; x1++; y1--; continue; } // 5
+				}
+				else
+				{
+					if(GRID(x1+1,y1+1)==numindex) { steps[numindex-1]=7; x1++; y1++; continue; } // 3
+					if(GRID(x1-1,y1-1)==numindex) { steps[numindex-1]=3; x1--; y1--; continue; } // 7
+					if(GRID(x1-1,y1  )==numindex) { steps[numindex-1]=4; x1--;       continue; } // 0
+					if(GRID(x1  ,y1+1)==numindex) { steps[numindex-1]=6;       y1++; continue; } // 2
+					if(GRID(x1+1,y1  )==numindex) { steps[numindex-1]=0; x1++;       continue; } // 4
+					if(GRID(x1  ,y1-1)==numindex) { steps[numindex-1]=2;       y1--; continue; } // 6
+					if(GRID(x1-1,y1+1)==numindex) { steps[numindex-1]=5; x1--; y1++; continue; } // 1
+					if(GRID(x1+1,y1-1)==numindex) { steps[numindex-1]=1; x1++; y1--; continue; } // 5
+				}
 			}
+			return false;
 		}
-		return false;
 	}
 	return true;
 }
@@ -2595,79 +2751,32 @@ bool HexManager::CutPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x,
 	return FindPath(cr,start_x,start_y,end_x,end_y,dummy,cut);
 }
 
-bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed)
+bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe,
+							 CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed)
 {
 	if(IsShowTrack()) ClearHexTrack();
 
 	if(!dist) dist=DistGame(hx,hy,tx,ty);
-	float nx=3.0f*(float(tx)-float(hx));
-	float ny=(float(ty)-float(hy))*SQRT3T2_FLOAT-(float(tx&1)-float(hx&1))*SQRT3_FLOAT;
-	float dir=180.0f+RAD2DEG*atan2f(ny,nx);
-
-	if(angle!=0.0f)
-	{
-		dir+=angle;
-		if(dir<0.0f) dir+=360.0f;
-		else if(dir>360.0f) dir-=360.0f;
-	}
-
-	BYTE dir1,dir2;
-	if(dir>=30.0f && dir<90.0f) { dir1=5; dir2=0; }
-	else if(dir>=90.0f && dir<150.0f) { dir1=4; dir2=5; }
-	else if(dir>=150.0f && dir<210.0f) { dir1=3; dir2=4; }
-	else if(dir>=210.0f && dir<270.0f) { dir1=2; dir2=3; }
-	else if(dir>=270.0f && dir<330.0f) { dir1=1; dir2=2; }
-	else { dir1=0; dir2=1; }
 
 	WORD cx=hx;
 	WORD cy=hy;
 	WORD old_cx=cx;
 	WORD old_cy=cy;
-	WORD t1x,t1y,t2x,t2y;
+	BYTE dir;
 
-	float x1=3.0f*float(hx)+BIAS_FLOAT;
-	float y1=SQRT3T2_FLOAT*float(hy)-SQRT3_FLOAT*(float(hx&1))+BIAS_FLOAT;
-	float x2=3.0f*float(tx)+BIAS_FLOAT+BIAS_FLOAT;
-	float y2=SQRT3T2_FLOAT*float(ty)-SQRT3_FLOAT*(float(tx&1))+BIAS_FLOAT;
-	if(angle!=0.0f)
-	{
-		x2-=x1;
-		y2-=y1;
-		float xp=cos(angle/RAD2DEG)*x2-sin(angle/RAD2DEG)*y2;
-		float yp=sin(angle/RAD2DEG)*x2+cos(angle/RAD2DEG)*y2;
-		x2=x1+xp;
-		y2=y1+yp;
-	}
+	LineTracer line_tracer(hx,hy,tx,ty,maxHexX,maxHexY,angle,!GameOpt.MapHexagonal);
 
-	float dx=x2-x1;
-	float dy=y2-y1;
-	float c1x,c1y,c2x,c2y;
-	float dist1,dist2;
 	for(DWORD i=0;i<dist;i++)
 	{
-		t1x=cx;
-		t2x=cx;
-		t1y=cy;
-		t2y=cy;
-		MoveHexByDir(t1x,t1y,dir1,maxHexX,maxHexY);
-		MoveHexByDir(t2x,t2y,dir2,maxHexX,maxHexY);
-		c1x=3.0f*float(t1x);
-		c1y=SQRT3T2_FLOAT*float(t1y)-(float(t1x&1))*SQRT3_FLOAT;
-		c2x=3.0f*float(t2x);
-		c2y=SQRT3T2_FLOAT*float(t2y)-(float(t2x&1))*SQRT3_FLOAT;
-		dist1=dx*(y1-c1y)-dy*(x1-c1x);
-		dist2=dx*(y1-c2y)-dy*(x1-c2x);
-		dist1=(dist1>0?dist1:-dist1);
-		dist2=(dist2>0?dist2:-dist2);
-		if(dist1<=dist2) // Left hand biased
+		if(GameOpt.MapHexagonal)
 		{
-			cx=t1x;
-			cy=t1y;
+			dir=line_tracer.GetNextHex(cx,cy);
+			WriteLog("%u) dir<%u>\n",i,dir);
 		}
 		else
 		{
-			cx=t2x;
-			cy=t2y;
+			line_tracer.GetNextSquare(cx,cy);
+			dir=GetNearDir(old_cx,old_cy,cx,cy);
 		}
 
 		if(IsShowTrack()) GetHexTrack(cx,cy)=(cx==tx && cy==ty?1:2);
@@ -2788,14 +2897,23 @@ void HexManager::FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps)
 bool HexManager::LoadMap(WORD map_pid)
 {
 	WriteLog("Load map...");
+
+	// Unload previous
 	UnloadMap();
 
+	// Check data sprites reloading
+	if(curDataPrefix!=GameOpt.MapDataPrefix) ReloadSprites();
+
+	// Tiles surface
+	InitTilesSurf();
+
+	// Make name
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);
 
+	// Find in cache
 	DWORD cache_len;
 	BYTE* cache=Crypt.GetCache(map_name,cache_len);
-
 	if(!cache)
 	{
 		WriteLog("Load map<%s> from cache fail.\n",map_name);
@@ -3312,6 +3430,10 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 	UnloadMap();
 	CurProtoMap=NULL;
 
+	if(curDataPrefix!=GameOpt.MapDataPrefix) ReloadSprites();
+
+	InitTilesSurf();
+
 	if(!ResizeField(pmap.Header.MaxHexX,pmap.Header.MaxHexY))
 	{
 		WriteLog("Buffer allocation fail.\n");
@@ -3621,49 +3743,104 @@ bool HexManager::IsIgnorePid(WORD pid)
 	return ignorePids.count(pid)!=0;
 }
 
-void HexManager::GetHexesRect(INTRECT& r, WordPairVec& h)
+void HexManager::GetHexesRect(INTRECT& rect, WordPairVec& hexes)
 {
-	h.clear();
+	hexes.clear();
 
-	int x,y;
-	GetHexOffset(r[0],r[1],r[2],r[3],x,y);
-	x=-x;
-
-	int dx=x/32;
-	int dy=y/12;
-
-	int adx=abs(dx);
-	int ady=abs(dy);
-
-	int hx,hy;
-	for(int j=0;j<=ady;j++)
+	if(GameOpt.MapHexagonal)
 	{
-		if(dy>=0)
-		{
-			hx=r[0]+j/2+(j&1);
-			hy=r[1]+(j-(hx-r[0]-((r[0]&1)?1:0))/2);
-		}
-		else
-		{
-			hx=r[0]-j/2-(j&1);
-			hy=r[1]-(j-(r[0]-hx-((r[0]&1)?0:1))/2);
-		}
+		int x,y;
+		GetHexInterval(rect[0],rect[1],rect[2],rect[3],x,y);
+		x=-x;
 
-		for(int i=0;i<=adx;i++)
+		int dx=x/HEX_W;
+		int dy=y/HEX_LINE_H;
+		int adx=abs(dx);
+		int ady=abs(dy);
+
+		int hx,hy;
+		for(int j=0;j<=ady;j++)
 		{
-			if(hx<0 || hx>=maxHexX || hy<0 || hy>=maxHexY) continue;
-
-			h.push_back(WordPairVecVal(hx,hy));
-
-			if(dx>=0)
+			if(dy>=0)
 			{
-				if(hx&1) hy--;
-				hx++;
+				hx=rect[0]+j/2+(j&1);
+				hy=rect[1]+(j-(hx-rect[0]-((rect[0]&1)?1:0))/2);
 			}
 			else
 			{
-				hx--;
-				if(hx&1) hy++;
+				hx=rect[0]-j/2-(j&1);
+				hy=rect[1]-(j-(rect[0]-hx-((rect[0]&1)?0:1))/2);
+			}
+
+			for(int i=0;i<=adx;i++)
+			{
+				if(hx>=0 && hy>=0 && hx<maxHexX && hy<maxHexY)
+					hexes.push_back(WordPairVecVal(hx,hy));
+
+				if(dx>=0)
+				{
+					if(hx&1) hy--;
+					hx++;
+				}
+				else
+				{
+					hx--;
+					if(hx&1) hy++;
+				}
+			}
+		}
+	}
+	else
+	{
+		int rw,rh; // Rect width/height
+		GetHexInterval(rect[0],rect[1],rect[2],rect[3],rw,rh);
+		if(!rw) rw=1;
+		if(!rh) rh=1;
+
+		int hw=abs(rw/(HEX_W/2))+((rw%(HEX_W/2))?1:0)+(abs(rw)>=HEX_W/2?1:0); // Hexes width
+		int hh=abs(rh/HEX_LINE_H)+((rh%HEX_LINE_H)?1:0)+(abs(rh)>=HEX_LINE_H?1:0); // Hexes height
+		int shx=rect[0];
+		int shy=rect[1];
+
+		for(int i=0;i<hh;i++)
+		{
+			int hx=shx;
+			int hy=shy;
+
+			if(rh>0)
+			{
+				if(rw>0)
+				{
+					if(i&1) shx++;
+					else shy++;
+				}
+				else
+				{
+					if(i&1) shy++;
+					else shx++;
+				}
+			}
+			else
+			{
+				if(rw>0)
+				{
+					if(i&1) shy--;
+					else shx--;
+				}
+				else
+				{
+					if(i&1) shx--;
+					else shy--;
+				}
+			}
+
+			for(int j=(i&1)?1:0;j<hw;j+=2)
+			{
+				if(hx>=0 && hy>=0 && hx<maxHexX && hy<maxHexY)
+					hexes.push_back(WordPairVecVal(hx,hy));
+
+				if(rw>0) hx--,hy++;
+				else hx++,hy--;
 			}
 		}
 	}

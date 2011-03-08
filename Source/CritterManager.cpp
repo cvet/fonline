@@ -382,9 +382,8 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		static THREAD int cur_step=0;
 		short hx_=hx;
 		short hy_=hy;
-		bool odd=(hx&1)!=0;
-		short* sx=(odd?SXOdd:SXEven);
-		short* sy=(odd?SYOdd:SYEven);
+		short* sx,*sy;
+		GetHexOffsets(hx&1,sx,sy);
 
 		// Find in 2 hex radius
 		for(int i=0;;i++)
@@ -423,7 +422,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	// Flags and coords
 	Location* loc=map->GetLocation(true);
 
-	if(dir>5) dir=Random(0,5);
+	if(dir>=DIRS_COUNT) dir=Random(0,DIRS_COUNT-1);
 	npc->Data.Dir=dir;
 	npc->Data.WorldX=(loc?loc->Data.WX:100);
 	npc->Data.WorldY=(loc?loc->Data.WY:100);

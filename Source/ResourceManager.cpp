@@ -179,8 +179,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 	if(anim_type==ANIM_TYPE_3D) return NULL;
 
 	// Process dir
-	// Todo: fix hex/square
-	dir=CLAMP(dir,0,5);
+	dir=CLAMP(dir,0,DIRS_COUNT-1);
 	if(!CritType::IsCanRotate(crtype)) dir=0;
 
 	// Make animation id

@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF0AC) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF0AD) // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -333,34 +333,34 @@ sizeof(DWORD)+sizeof(WORD)+sizeof(DWORD))
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_MOVE_WALK       MAKE_NETMSG_HEADER(43)
-#define NETMSG_SEND_MOVE_WALK_SIZE (sizeof(MSGTYPE)+sizeof(WORD)*3)
+#define NETMSG_SEND_MOVE_WALK_SIZE (sizeof(MSGTYPE)+sizeof(DWORD)+sizeof(WORD)*2)
 //////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// WORD move_params
+// DWORD move_params
 // WORD hx
 // WORD hy
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_MOVE_RUN        MAKE_NETMSG_HEADER(44)
-#define NETMSG_SEND_MOVE_RUN_SIZE   (sizeof(MSGTYPE)+sizeof(WORD)*3)
+#define NETMSG_SEND_MOVE_RUN_SIZE   (sizeof(MSGTYPE)+sizeof(DWORD)+sizeof(WORD)*2)
 //////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// WORD move_params
+// DWORD move_params
 // WORD hx
 // WORD hy
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_MOVE         MAKE_NETMSG_HEADER(45)
-#define NETMSG_CRITTER_MOVE_SIZE    (sizeof(MSGTYPE)+sizeof(DWORD)+sizeof(WORD)*3)
+#define NETMSG_CRITTER_MOVE_SIZE    (sizeof(MSGTYPE)+sizeof(DWORD)*2+sizeof(WORD)*2)
 //////////////////////////////////////////////////////////////////////////
 // передача направления для других криттеров
 // Params:
-// CrID id
-// WORD move_params
-// WORD x
-// WORD y
+// DWORD id
+// DWORD move_params
+// WORD hx
+// WORD hy
 //////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_XY           MAKE_NETMSG_HEADER(46)

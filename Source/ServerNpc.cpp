@@ -575,9 +575,9 @@ void FOServer::ProcessAI(Npc* npc)
 						if(!is_can_walk) npc->NextPlane(REASON_CANT_WALK);
 						else if(max_dist>1 && best_dist==1) // Check busy ring
 						{
-							bool odd=(t_hx&1)!=0;
-							short* rsx=(odd?SXOdd:SXEven);
-							short* rsy=(odd?SYOdd:SYEven);
+							short* rsx,*rsy;
+							GetHexOffsets(t_hx&1,rsx,rsy);
+
 							int i;
 							for(i=0;i<6;i++,rsx++,rsy++) if(map->IsHexPassed(t_hx+*rsx,t_hy+*rsy)) break;
 
@@ -1104,6 +1104,8 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, DWORD dlg_pack_id, WORD hx, WO
 	// Talk with npc
 	if(npc)
 	{
+		if(npc->IsRawParam(MODE_NO_TALK)) return;
+
 		if(!dlg_pack_id)
 		{
 			int npc_dlg_id=npc->Data.Params[ST_DIALOG_ID];

@@ -4,6 +4,7 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Script.h"
+#include "LineTracer.h"
 
 MapManager MapMngr;
 
@@ -1321,7 +1322,7 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 	if(map_id)
 	{
 		Map* map=GetMap(map_id);
-		if(map) GM_GroupToMap(group,map,0,hx,hy,dir<6?dir:rule->GetDir());
+		if(map) GM_GroupToMap(group,map,0,hx,hy,dir<DIRS_COUNT?dir:rule->GetDir());
 	}
 	else
 	{
@@ -1361,7 +1362,7 @@ void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
 				if(zx_>=0 && zx_<GameOpt.GlobalMapWidth && zy_>=0 && zy_<GameOpt.GlobalMapHeight)
 				{
 					// Open fog
-					int fog=(zx==zx_ && zy==zy_?GM_FOG_NONE:GM_FOG_SELF);
+					int fog=(zx==zx_ && zy==zy_?GM_FOG_NONE:GM_FOG_HALF);
 					cl->GetDataExt(); // Generate ext data
 					if(cl->GMapFog.Get2Bit(zx_,zy_)<fog)
 					{
@@ -1619,7 +1620,7 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, DWORD entire, WO
 		}
 	}
 
-	if(mx>=map->GetMaxHexX() || my>=map->GetMaxHexY() || mdir>5)
+	if(mx>=map->GetMaxHexX() || my>=map->GetMaxHexY() || mdir>=DIRS_COUNT)
 	{
 		if(car)
 		{
@@ -1630,7 +1631,7 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, DWORD entire, WO
 			}
 			hx=car_hx;
 			hy=car_hy;
-			if(mdir<6) dir=mdir;
+			if(mdir<DIRS_COUNT) dir=mdir;
 		}
 		else
 		{
@@ -1808,49 +1809,13 @@ void MapManager::TraceBullet(TraceData& trace)
 	DWORD dist=trace.Dist;
 	if(!dist) dist=DistGame(hx,hy,tx,ty);
 
-	float nx=3.0f*(float(tx)-float(hx));
-	float ny=(float(ty)-float(hy))*SQRT3T2_FLOAT-(float(tx&1)-float(hx&1))*SQRT3_FLOAT;
-	float dir=180.0f+RAD2DEG*atan2f(ny,nx);
-
-	if(trace.Angle!=0.0f)
-	{
-		dir+=trace.Angle;
-		if(dir<0.0f) dir+=360.0f;
-		else if(dir>360.0f) dir-=360.0f;
-	}
-
-	BYTE dir1,dir2;
-	if(dir>=30.0f && dir<90.0f) { dir1=5; dir2=0; }
-	else if(dir>=90.0f && dir<150.0f) { dir1=4; dir2=5; }
-	else if(dir>=150.0f && dir<210.0f) { dir1=3; dir2=4; }
-	else if(dir>=210.0f && dir<270.0f) { dir1=2; dir2=3; }
-	else if(dir>=270.0f && dir<330.0f) { dir1=1; dir2=2; }
-	else { dir1=0; dir2=1; }
-
 	WORD cx=hx;
 	WORD cy=hy;
 	WORD old_cx=cx;
 	WORD old_cy=cy;
-	WORD t1x,t1y,t2x,t2y;
+	BYTE dir;
 
-	float x1=3.0f*float(hx)+BIAS_FLOAT;
-	float y1=SQRT3T2_FLOAT*float(hy)-SQRT3_FLOAT*(float(hx&1))+BIAS_FLOAT;
-	float x2=3.0f*float(tx)+BIAS_FLOAT+BIAS_FLOAT;
-	float y2=SQRT3T2_FLOAT*float(ty)-SQRT3_FLOAT*(float(tx&1))+BIAS_FLOAT;
-	if(trace.Angle!=0.0f)
-	{
-		x2-=x1;
-		y2-=y1;
-		float xp=cos(trace.Angle/RAD2DEG)*x2-sin(trace.Angle/RAD2DEG)*y2;
-		float yp=sin(trace.Angle/RAD2DEG)*x2+cos(trace.Angle/RAD2DEG)*y2;
-		x2=x1+xp;
-		y2=y1+yp;
-	}
-	float dx=x2-x1;
-	float dy=y2-y1;
-
-	float c1x,c1y,c2x,c2y;
-	float dist1,dist2;
+	LineTracer line_tracer(hx,hy,tx,ty,maxhx,maxhy,trace.Angle,!GameOpt.MapHexagonal);
 
 	trace.IsFullTrace=false;
 	trace.IsCritterFounded=false;
@@ -1865,34 +1830,19 @@ void MapManager::TraceBullet(TraceData& trace)
 			break;
 		}
 
-		t1x=cx;
-		t2x=cx;
-		t1y=cy;
-		t2y=cy;
-		MoveHexByDir(t1x,t1y,dir1,maxhx,maxhy);
-		MoveHexByDir(t2x,t2y,dir2,maxhx,maxhy);
-		c1x=3*float(t1x);
-		c1y=SQRT3T2_FLOAT*float(t1y)-(float(t1x&1))*SQRT3_FLOAT;
-		c2x=3*float(t2x);
-		c2y=SQRT3T2_FLOAT*float(t2y)-(float(t2x&1))*SQRT3_FLOAT;
-		dist1=dx*(y1-c1y)-dy*(x1-c1x);
-		dist2=dx*(y1-c2y)-dy*(x1-c2x);
-		dist1=(dist1>0?dist1:-dist1);
-		dist2=(dist2>0?dist2:-dist2);
-		if(dist1<=dist2) // Left hand biased
+		if(GameOpt.MapHexagonal)
 		{
-			cx=t1x;
-			cy=t1y;
+			dir=line_tracer.GetNextHex(cx,cy);
 		}
 		else
 		{
-			cx=t2x;
-			cy=t2y;
+			line_tracer.GetNextSquare(cx,cy);
+			dir=GetNearDir(old_cx,old_cy,cx,cy);
 		}
 
 		if(trace.HexCallback)
 		{
-			trace.HexCallback(map,trace.FindCr,old_cx,old_cy,cx,cy,GetFarDir(old_cx,old_cy,cx,cy));
+			trace.HexCallback(map,trace.FindCr,old_cx,old_cy,cx,cy,dir);
 			old_cx=cx;
 			old_cy=cy;
 			continue;
@@ -1970,6 +1920,7 @@ int MapManager::FindPath(PathFindData& pfd)
 	bool is_run=pfd.IsRun;
 	bool check_cr=pfd.CheckCrit;
 	bool check_gag_items=pfd.CheckGagItems;
+	int dirs_count=DIRS_COUNT;
 
 	// Checks
 	if(trace && !pfd.TraceCr) return FPATH_TRACE_TARG_NULL_PTR;
@@ -1987,25 +1938,23 @@ int MapManager::FindPath(PathFindData& pfd)
 	// Ring check
 	if(cut<=1 && !multihex)
 	{
-		bool odd=(to_hx&1)!=0;
-		short* rsx=(odd?SXOdd:SXEven);
-		short* rsy=(odd?SYOdd:SYEven);
+		short* rsx,*rsy;
+		GetHexOffsets(to_hx&1,rsx,rsy);
 
-		int i;
-		for(i=0;i<6;i++,rsx++,rsy++)
+		int i=0;
+		for(;i<dirs_count;i++,rsx++,rsy++)
 		{
 			short xx=to_hx+*rsx;
 			short yy=to_hy+*rsy;
 			if(xx>=0 && xx<maxhx && yy>=0 && yy<maxhy && !FLAG(map->GetHexFlags(xx,yy),FH_NOWAY)) break;
 		}
-
-		if(i==6) return FPATH_HEX_BUSY_RING;
+		if(i==dirs_count) return FPATH_HEX_BUSY_RING;
 	}
 
 	// Parse previous move params
 	/*WordPairVec first_steps;
 	BYTE first_dir=pfd.MoveParams&7;
-	if(first_dir<6)
+	if(first_dir<DIRS_COUNT)
 	{
 		WORD hx_=from_hx;
 		WORD hy_=from_hy;
@@ -2049,11 +1998,13 @@ int MapManager::FindPath(PathFindData& pfd)
 			if(CheckDist(cx,cy,to_hx,to_hy,cut)) goto label_FindOk;
 			if(++numindex>FPATH_MAX_PATH) return FPATH_TOOFAR;
 
-			bool odd=(cx&1)!=0;
-			for(int j=0;j<6;j++)
+			short* sx,*sy;
+			GetHexOffsets(cx&1,sx,sy);
+
+			for(int j=0;j<dirs_count;j++)
 			{
-				short nx=(short)cx+(odd?SXOdd[j]:SXEven[j]);
-				short ny=(short)cy+(odd?SYOdd[j]:SYEven[j]);
+				short nx=(short)cx+sx[j];
+				short ny=(short)cy+sy[j];
 				if(nx<0 || ny<0 || nx>=maxhx || ny>=maxhy) continue;
 
 				short& g=GRID(nx,ny);
@@ -2093,18 +2044,22 @@ int MapManager::FindPath(PathFindData& pfd)
 					//if(!IsHexPassed(hx_,hy_)) return false;
 
 					// Clock wise hexes
-					int dir_=(j+2)%6;
+					bool is_square_corner=(!GameOpt.MapHexagonal && IS_DIR_CORNER(j));
+					DWORD steps_count=(is_square_corner?multihex*2:multihex);
+					int dir_=(GameOpt.MapHexagonal?((j+2)%6):((j+2)%8));
+					if(is_square_corner) dir_=(dir_+1)%8;
 					int hx__=hx_,hy__=hy_;
-					for(DWORD k=0;k<multihex;k++)
+					for(DWORD k=0;k<steps_count;k++)
 					{
 						MoveHexByDirUnsafe(hx__,hy__,dir_);
 						//if(!IsHexPassed(hx__,hy__)) return false;
 					}
 
 					// Counter clock wise hexes
-					dir_=(j+4)%6;
+					dir_=(GameOpt.MapHexagonal?((j+4)%6):((j+6)%8));
+					if(is_square_corner) dir_=(dir_+7)%8;
 					hx__=hx_,hy__=hy_;
-					for(DWORD k=0;k<multihex;k++)
+					for(DWORD k=0;k<steps_count;k++)
 					{
 						MoveHexByDirUnsafe(hx__,hy__,dir_);
 						//if(!IsHexPassed(hx__,hy__)) return false;
@@ -2168,18 +2123,52 @@ label_FindOk:
 	PathStepVec& path=pathesPool[pathNumCur];
 	path.resize(numindex-1);
 
-	// Parse full path
-	static THREAD bool switcher=false;
+	// Smooth data
+	static THREAD bool smooth_switcher=false;
+	if(!GameOpt.MapSmoothPath) smooth_switcher=false;
+
+	int smooth_count=0,smooth_iteration=0;
+	if(GameOpt.MapSmoothPath && !GameOpt.MapHexagonal)
+	{
+		int x1=cx,y1=cy;
+		int x2=from_hx,y2=from_hy;
+		int dx=abs(x1-x2);
+		int dy=abs(y1-y2);
+		int d=max(dx,dy);
+		int h1=abs(dx-dy);
+		int h2=d-h1;
+		if(dy<dx) std::swap(h1,h2);
+		smooth_count=((h1 && h2)?h1/h2+1:3);
+		if(smooth_count<3) smooth_count=3;
+
+		smooth_count=((h1 && h2)?max(h1,h2)/min(h1,h2)+1:0);
+		if(h1 && h2 && smooth_count<2) smooth_count=2;
+		smooth_iteration=((h1 && h2)?min(h1,h2)%max(h1,h2):0);
+	}
+
 	while(numindex>1)
 	{
-		if(numindex&1) switcher=!switcher;
+		if(GameOpt.MapSmoothPath)
+		{
+			if(GameOpt.MapHexagonal)
+			{
+				if(numindex&1) smooth_switcher=!smooth_switcher;
+			}
+			else
+			{
+				smooth_switcher=(smooth_count<2 || smooth_iteration%smooth_count);
+			}
+		}
+
 		numindex--;
 		PathStep& ps=path[numindex-1];
 		ps.HexX=cx;
 		ps.HexY=cy;
-		int dir=FindPathGrid(cx,cy,numindex,switcher);
+		int dir=FindPathGrid(cx,cy,numindex,smooth_switcher);
 		if(dir==-1) return FPATH_ERROR;
 		ps.Dir=dir;
+
+		smooth_iteration++;
 	}
 
 	// Check for closed door and critter
@@ -2283,48 +2272,94 @@ label_TraceOk:
 	return FPATH_OK;
 }
 
-int MapManager::FindPathGrid(WORD& hx, WORD& hy, int index, bool switcher)
+int MapManager::FindPathGrid(WORD& hx, WORD& hy, int index, bool smooth_switcher)
 {
-	if(switcher)
+	// Hexagonal
+	if(GameOpt.MapHexagonal)
 	{
-		if(hx&1)
+		if(smooth_switcher)
 		{
-			if(GRID(hx-1,hy-1)==index) { hx--; hy--; return GetDir(hx,hy,hx+1,hy+1); } // 0
-			if(GRID(hx,hy-1)==index)   { hy--; return GetDir(hx,hy,hx,hy+1); } // 5
-			if(GRID(hx,hy+1)==index)   { hy++; return GetDir(hx,hy,hx,hy-1); } // 2
-			if(GRID(hx+1,hy)==index)   { hx++; return GetDir(hx,hy,hx-1,hy); } // 3
-			if(GRID(hx-1,hy)==index)   { hx--; return GetDir(hx,hy,hx+1,hy); } // 1
-			if(GRID(hx+1,hy-1)==index) { hx++; hy--; return GetDir(hx,hy,hx-1,hy+1); } // 4
+			if(hx&1)
+			{
+				if(GRID(hx-1,hy-1)==index) { hx--; hy--; return 3; } // 0
+				if(GRID(hx  ,hy-1)==index) {       hy--; return 2; } // 5
+				if(GRID(hx  ,hy+1)==index) {       hy++; return 5; } // 2
+				if(GRID(hx+1,hy  )==index) { hx++;       return 0; } // 3
+				if(GRID(hx-1,hy  )==index) { hx--;       return 4; } // 1
+				if(GRID(hx+1,hy-1)==index) { hx++; hy--; return 1; } // 4
+			}
+			else
+			{
+				if(GRID(hx-1,hy  )==index) { hx--;       return 3; } // 0
+				if(GRID(hx  ,hy-1)==index) {       hy--; return 2; } // 5
+				if(GRID(hx  ,hy+1)==index) {       hy++; return 5; } // 2
+				if(GRID(hx+1,hy+1)==index) { hx++; hy++; return 0; } // 3
+				if(GRID(hx-1,hy+1)==index) { hx--; hy++; return 4; } // 1
+				if(GRID(hx+1,hy  )==index) { hx++;       return 1; } // 4
+			}
 		}
 		else
 		{
-			if(GRID(hx-1,hy)==index)   { hx--; return GetDir(hx,hy,hx+1,hy); } // 0
-			if(GRID(hx,hy-1)==index)   { hy--; return GetDir(hx,hy,hx,hy+1); } // 5
-			if(GRID(hx,hy+1)==index)   { hy++; return GetDir(hx,hy,hx,hy-1); } // 2
-			if(GRID(hx+1,hy+1)==index) { hx++; hy++; return GetDir(hx,hy,hx-1,hy-1); } // 3
-			if(GRID(hx-1,hy+1)==index) { hx--; hy++; return GetDir(hx,hy,hx+1,hy-1); } // 1
-			if(GRID(hx+1,hy)==index)   { hx++; return GetDir(hx,hy,hx-1,hy); } // 4
+			if(hx&1)
+			{
+				if(GRID(hx-1,hy  )==index) { hx--;       return 4; } // 1
+				if(GRID(hx+1,hy-1)==index) { hx++; hy--; return 1; } // 4
+				if(GRID(hx  ,hy-1)==index) {       hy--; return 2; } // 5
+				if(GRID(hx-1,hy-1)==index) { hx--; hy--; return 3; } // 0
+				if(GRID(hx+1,hy  )==index) { hx++;       return 0; } // 3
+				if(GRID(hx  ,hy+1)==index) {       hy++; return 5; } // 2
+			}
+			else
+			{
+				if(GRID(hx-1,hy+1)==index) { hx--; hy++; return 4; } // 1
+				if(GRID(hx+1,hy  )==index) { hx++;       return 1; } // 4
+				if(GRID(hx  ,hy-1)==index) {       hy--; return 2; } // 5
+				if(GRID(hx-1,hy  )==index) { hx--;       return 3; } // 0
+				if(GRID(hx+1,hy+1)==index) { hx++; hy++; return 0; } // 3
+				if(GRID(hx  ,hy+1)==index) {       hy++; return 5; } // 2
+			}
 		}
 	}
+	// Square
 	else
 	{
-		if(hx&1)
+		// Without smoothing
+		if(!GameOpt.MapSmoothPath)
 		{
-			if(GRID(hx-1,hy)==index)   { hx--; return GetDir(hx,hy,hx+1,hy); } // 1
-			if(GRID(hx+1,hy-1)==index) { hx++; hy--; return GetDir(hx,hy,hx-1,hy+1); } // 4
-			if(GRID(hx,hy-1)==index)   { hy--; return GetDir(hx,hy,hx,hy+1); } // 5
-			if(GRID(hx-1,hy-1)==index) { hx--; hy--; return GetDir(hx,hy,hx+1,hy+1); } // 0
-			if(GRID(hx+1,hy)==index)   { hx++; return GetDir(hx,hy,hx-1,hy); } // 3
-			if(GRID(hx,hy+1)==index)   { hy++; return GetDir(hx,hy,hx,hy-1); } // 2
+			if(GRID(hx-1,hy  )==index) { hx--;       return 0; } // 0
+			if(GRID(hx  ,hy-1)==index) {       hy--; return 6; } // 6
+			if(GRID(hx  ,hy+1)==index) {       hy++; return 2; } // 2
+			if(GRID(hx+1,hy  )==index) { hx++;       return 4; } // 4
+			if(GRID(hx-1,hy+1)==index) { hx--; hy++; return 1; } // 1
+			if(GRID(hx+1,hy-1)==index) { hx++; hy--; return 5; } // 5
+			if(GRID(hx+1,hy+1)==index) { hx++; hy++; return 3; } // 3
+			if(GRID(hx-1,hy-1)==index) { hx--; hy--; return 7; } // 7
 		}
+		// With smoothing
 		else
 		{
-			if(GRID(hx-1,hy+1)==index) { hx--; hy++; return GetDir(hx,hy,hx+1,hy-1); } // 1
-			if(GRID(hx+1,hy)==index)   { hx++; return GetDir(hx,hy,hx-1,hy); } // 4
-			if(GRID(hx,hy-1)==index)   { hy--; return GetDir(hx,hy,hx,hy+1); } // 5
-			if(GRID(hx-1,hy)==index)   { hx--; return GetDir(hx,hy,hx+1,hy); } // 0
-			if(GRID(hx+1,hy+1)==index) { hx++; hy++; return GetDir(hx,hy,hx-1,hy-1); } // 3
-			if(GRID(hx,hy+1)==index)   { hy++; return GetDir(hx,hy,hx,hy-1); } // 2
+			if(smooth_switcher)
+			{
+				if(GRID(hx-1,hy  )==index) { hx--;       return 0; } // 0
+				if(GRID(hx  ,hy+1)==index) {       hy++; return 2; } // 2
+				if(GRID(hx+1,hy  )==index) { hx++;       return 4; } // 4
+				if(GRID(hx  ,hy-1)==index) {       hy--; return 6; } // 6
+				if(GRID(hx+1,hy+1)==index) { hx++; hy++; return 3; } // 3
+				if(GRID(hx-1,hy-1)==index) { hx--; hy--; return 7; } // 7
+				if(GRID(hx-1,hy+1)==index) { hx--; hy++; return 1; } // 1
+				if(GRID(hx+1,hy-1)==index) { hx++; hy--; return 5; } // 5
+			}
+			else
+			{
+				if(GRID(hx+1,hy+1)==index) { hx++; hy++; return 3; } // 3
+				if(GRID(hx-1,hy-1)==index) { hx--; hy--; return 7; } // 7
+				if(GRID(hx-1,hy  )==index) { hx--;       return 0; } // 0
+				if(GRID(hx  ,hy+1)==index) {       hy++; return 2; } // 2
+				if(GRID(hx+1,hy  )==index) { hx++;       return 4; } // 4
+				if(GRID(hx  ,hy-1)==index) {       hy--; return 6; } // 6
+				if(GRID(hx-1,hy+1)==index) { hx--; hy++; return 1; } // 1
+				if(GRID(hx+1,hy-1)==index) { hx++; hy--; return 5; } // 5
+			}
 		}
 	}
 
@@ -2333,14 +2368,20 @@ int MapManager::FindPathGrid(WORD& hx, WORD& hy, int index, bool switcher)
 
 void MapManager::PathSetMoveParams(PathStepVec& path, bool is_run)
 {
-	WORD move_params=0xFFFF;
-	for(int i=(int)path.size()-1;i>=0;i--)
+	DWORD move_params=0; // Base parameters
+	for(int i=(int)path.size()-1;i>=0;i--) // From end to beginning
 	{
 		PathStep& ps=path[i];
-		move_params=(move_params<<3)|ps.Dir;
-		if(is_run) SETFLAG(move_params,0x8000);
-		else UNSETFLAG(move_params,0x8000);
+
+		// Walk flags
+		if(is_run) SETFLAG(move_params,MOVE_PARAM_RUN);
+		else UNSETFLAG(move_params,MOVE_PARAM_RUN);
+
+		// Store
 		ps.MoveParams=move_params;
+
+		// Add dir to sequence
+		move_params=(move_params<<MOVE_PARAM_STEP_BITS)|ps.Dir|MOVE_PARAM_STEP_ALLOW;
 	}
 }
 
@@ -2443,7 +2484,7 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWOR
 		if(!map->FindStartHex(hx,hy,multihex,radius,true) && !map->FindStartHex(hx,hy,multihex,radius,false)) return false;
 
 		cr->LockMapTransfers++; // Transfer begin critical section
-		cr->Data.Dir=(dir>5?0:dir);
+		cr->Data.Dir=(dir>=DIRS_COUNT?0:dir);
 		bool is_dead=cr->IsDead();
 		map->UnsetFlagCritter(old_hx,old_hy,multihex,is_dead);
 		cr->Data.HexX=hx;
@@ -2472,7 +2513,7 @@ bool MapManager::Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWOR
 		// Local
 		else
 		{
-			cr->Data.Dir=(dir>5?0:dir);
+			cr->Data.Dir=(dir>=DIRS_COUNT?0:dir);
 		}
 
 		if(!old_map_id || old_map) EraseCrFromMap(cr,old_map,old_hx,old_hy);

@@ -111,7 +111,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==92);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4288);
-	STATIC_ASSERT(sizeof(GameOptions)==1176);
+	STATIC_ASSERT(sizeof(GameOptions)==1264);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -605,23 +605,24 @@ void FOClient::LookBordersPrepare()
 		DWORD dist_shoot=Chosen->GetAttackDist();
 		WORD maxhx=HexMngr.GetMaxHexX();
 		WORD maxhy=HexMngr.GetMaxHexY();
-		const int dirs[6]={2,3,4,5,0,1};
 		bool seek_start=true;
-		for(int i=0;i<6;i++)
+		for(int i=0,ii=(GameOpt.MapHexagonal?6:4);i<ii;i++)
 		{
-			for(DWORD j=0;j<dist;j++)
+			int dir=(GameOpt.MapHexagonal?(i+2)%6:((i+1)*2)%8);
+
+			for(DWORD j=0,jj=(GameOpt.MapHexagonal?dist:dist*2);j<jj;j++)
 			{
 				if(seek_start)
 				{
 					// Move to start position
-					for(DWORD l=0;l<dist;l++) MoveHexByDirUnsafe(hx,hy,0);
+					for(DWORD l=0;l<dist;l++) MoveHexByDirUnsafe(hx,hy,GameOpt.MapHexagonal?0:7);
 					seek_start=false;
 					j=-1;
 				}
 				else
 				{
 					// Move to next hex
-					MoveHexByDirUnsafe(hx,hy,dirs[i]);
+					MoveHexByDirUnsafe(hx,hy,dir);
 				}
 
 				WORD hx_=CLAMP(hx,0,maxhx-1);
@@ -630,7 +631,7 @@ void FOClient::LookBordersPrepare()
 				{
 					int dir_=GetFarDir(base_hx,base_hy,hx_,hy_);
 					int ii=(dir>dir_?dir-dir_:dir_-dir);
-					if(ii>3) ii=6-ii;
+					if(ii>DIRS_COUNT/2) ii=DIRS_COUNT-ii;
 					DWORD dist_=dist-dist*GameOpt.LookDir[ii]/100;
 					WordPair block;
 					HexMngr.TraceBullet(base_hx,base_hy,hx_,hy_,dist_,0.0f,NULL,false,NULL,0,NULL,&block,NULL,false);
@@ -657,8 +658,8 @@ void FOClient::LookBordersPrepare()
 				int x,y,x_,y_;
 				HexMngr.GetHexCurrentPosition(hx_,hy_,x,y);
 				HexMngr.GetHexCurrentPosition(hx__,hy__,x_,y_);
-				LookBorders.push_back(PrepPoint(x+16,y+6,D3DCOLOR_ARGB(80,0,255,0),(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
-				ShootBorders.push_back(PrepPoint(x_+16,y_+6,D3DCOLOR_ARGB(80,255,0,0),(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
+				LookBorders.push_back(PrepPoint(x+HEX_OX,y+HEX_OY,D3DCOLOR_ARGB(80,0,255,0),(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
+				ShootBorders.push_back(PrepPoint(x_+HEX_OX,y_+HEX_OY,D3DCOLOR_ARGB(80,255,0,0),(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
 			}
 		}
 
@@ -790,7 +791,7 @@ int FOClient::MainLoop()
 	static DWORD next_call=0;
 	if(Timer::FastTick()>=next_call)
 	{
-		DWORD wait_tick=60000;
+		DWORD wait_tick=1000;
 		if(Script::PrepareContext(ClientFunctions.Loop,CALL_FUNC_STR,"Game") && Script::RunPrepared()) wait_tick=Script::GetReturnedDword();
 		next_call=Timer::FastTick()+wait_tick;
 	}
@@ -3616,25 +3617,16 @@ void FOClient::Net_SendMove(ByteVec steps)
 {
 	if(!Chosen) return;
 
-	WORD move_params=0;
-	for(int p=0;p<5;p++)
+	DWORD move_params=0;
+	for(int i=0;i<MOVE_PARAM_STEP_COUNT;i++)
 	{
-		if(p>=steps.size()) steps.push_back(0xFF);
+		if(i>=steps.size()) break;
 
-		switch(steps[p])
-		{
-		case 0: SETFLAG(move_params,0<<(3*p)); break;
-		case 1: SETFLAG(move_params,1<<(3*p)); break;
-		case 2: SETFLAG(move_params,2<<(3*p)); break;
-		case 3: SETFLAG(move_params,3<<(3*p)); break;
-		case 4: SETFLAG(move_params,4<<(3*p)); break;
-		case 5: SETFLAG(move_params,5<<(3*p)); break;
-		case 0xFF: SETFLAG(move_params,0x7<<(3*p));  break;
-		default: return;
-		}
+		SETFLAG(move_params,steps[i]<<(i*MOVE_PARAM_STEP_BITS));
+		SETFLAG(move_params,MOVE_PARAM_STEP_ALLOW<<(i*MOVE_PARAM_STEP_BITS));
 	}
 
-	if(Chosen->IsRunning) SETFLAG(move_params,0x8000);
+	if(Chosen->IsRunning) SETFLAG(move_params,MOVE_PARAM_RUN);
 
 	Bout << (Chosen->IsRunning?NETMSG_SEND_MOVE_RUN:NETMSG_SEND_MOVE_WALK);
 	Bout << move_params;
@@ -4045,7 +4037,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 	// Player
 	char cl_name[MAX_NAME+1];
 	if(!is_npc)
-	{	
+	{
 		Bin.Pop(cl_name,MAX_NAME);
 		cl_name[MAX_NAME]=0;
 	}
@@ -4066,7 +4058,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 	if(!CritType::IsEnabled(base_type)) base_type=DEFAULT_CRTYPE;
 
 	if(!crid) WriteLog(__FUNCTION__" - CritterCl id is zero.\n");
-	else if(HexMngr.IsMapLoaded() && (hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>5)) WriteLog(__FUNCTION__" - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n",hx,hy,dir);
+	else if(HexMngr.IsMapLoaded() && (hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)) WriteLog(__FUNCTION__" - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n",hx,hy,dir);
 	else
 	{
 		CritterCl* cr=new CritterCl();
@@ -4568,10 +4560,10 @@ void FOClient::Net_OnCritterDir()
 	Bin >> crid;
 	Bin >> dir;
 
-	if(dir>5)
+	if(dir>=DIRS_COUNT)
 	{
 		WriteLog(__FUNCTION__" - Invalid dir<%u>.\n",dir);
-		return;
+		dir=0;
 	}
 
 	CritterCl* cr=GetCritter(crid);
@@ -4582,7 +4574,7 @@ void FOClient::Net_OnCritterDir()
 void FOClient::Net_OnCritterMove()
 {
 	DWORD crid;
-	WORD move_params;
+	DWORD move_params;
 	WORD new_hx;
 	WORD new_hy;
 	Bin >> crid;
@@ -4597,16 +4589,18 @@ void FOClient::Net_OnCritterMove()
 
 	WORD last_hx=cr->GetHexX();
 	WORD last_hy=cr->GetHexY();
-	cr->IsRunning=FLAG(move_params,0x8000);
+	cr->IsRunning=FLAG(move_params,MOVE_PARAM_RUN);
 
 	if(cr!=Chosen)
 	{
 		cr->MoveSteps.resize(cr->CurMoveStep>0?cr->CurMoveStep:0);
 		if(cr->CurMoveStep>=0) cr->MoveSteps.push_back(WordPairVecVal(new_hx,new_hy));
-		for(int i=1,j=cr->CurMoveStep+1;i<5;i++,j++)
+		for(int i=0,j=cr->CurMoveStep+1;i<MOVE_PARAM_STEP_COUNT;i++,j++)
 		{
-			int dir=(move_params>>(i*3))&7;
-			if(dir>5)
+			int step=(move_params>>(i*MOVE_PARAM_STEP_BITS))&(MOVE_PARAM_STEP_DIR|MOVE_PARAM_STEP_ALLOW|MOVE_PARAM_STEP_DISALLOW);
+			int dir=step&MOVE_PARAM_STEP_DIR;
+			bool disallow=(!FLAG(step,MOVE_PARAM_STEP_ALLOW) || FLAG(step,MOVE_PARAM_STEP_DISALLOW));
+			if(disallow)
 			{
 				if(j<=0 && (cr->GetHexX()!=new_hx || cr->GetHexY()!=new_hy))
 				{
@@ -4975,7 +4969,7 @@ void FOClient::Net_OnCritterXY()
 	CritterCl* cr=GetCritter(crid);
 	if(!cr) return;
 
-	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>5)
+	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)
 	{
 		WriteLog(__FUNCTION__" - Error data, hx<%d>, hy<%d>, dir<%d>.\n",hx,hy,dir);
 		return;
@@ -5417,10 +5411,9 @@ void FOClient::Net_OnEffect()
 
 	// Radius hexes effect
 	if(radius>MAX_HEX_OFFSET) radius=MAX_HEX_OFFSET;
-	int cnt=NumericalNumber(radius)*6;
-	bool odd=(hx&1)!=0;
-	short* sx=(odd?SXOdd:SXEven);
-	short* sy=(odd?SYOdd:SYEven);
+	int cnt=NumericalNumber(radius)*DIRS_COUNT;
+	short* sx,*sy;
+	GetHexOffsets(hx&1,sx,sy);
 	int maxhx=HexMngr.GetMaxHexX();
 	int maxhy=HexMngr.GetMaxHexY();
 
@@ -7633,12 +7626,12 @@ label_EndMove:
 			if(cw==0)
 			{
 				dir++;
-				if(dir>5) dir=0;
+				if(dir>=DIRS_COUNT) dir=0;
 			}
 			else
 			{
 				dir--;
-				if(dir<0) dir=5;
+				if(dir<0) dir=DIRS_COUNT-1;
 			}
 			Chosen->SetDir(dir);
 			Net_SendDir();
@@ -10259,25 +10252,14 @@ DWORD FOClient::SScriptFunc::Global_GetDistantion(WORD hex_x1, WORD hex_y1, WORD
 	return DistGame(hex_x1,hex_y1,hex_x2,hex_y2);
 }
 
-BYTE FOClient::SScriptFunc::Global_GetDirection(WORD from_x, WORD from_y, WORD to_x, WORD to_y)
+BYTE FOClient::SScriptFunc::Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy)
 {
-	return GetFarDir(from_x,from_y,to_x,to_y);
+	return GetFarDir(from_hx,from_hy,to_hx,to_hy);
 }
 
-BYTE FOClient::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset)
+BYTE FOClient::SScriptFunc::Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset)
 {
-	float nx=3.0f*(float(tx)-float(hx));
-	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx&1)-float(hx&1));
-	float dir=180.0f+RAD2DEG*atan2(ny,nx);
-	dir+=offset;
-	if(dir>360.0f) dir-=360.0f;
-	else if(dir<0.0f) dir+=360.0f;
-	if(dir>=60.0f  && dir<120.0f) return 5;
-	if(dir>=120.0f && dir<180.0f) return 4;
-	if(dir>=180.0f && dir<240.0f) return 3;
-	if(dir>=240.0f && dir<300.0f) return 2;
-	if(dir>=300.0f && dir<360.0f) return 1;
-	return 0;
+	return GetFarDir(from_hx,from_hy,to_hx,to_hy,offset);
 }
 
 DWORD FOClient::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
@@ -10319,7 +10301,7 @@ bool FOClient::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 void FOClient::SScriptFunc::Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps)
 {
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R("Map not loaded.");
-	if(dir>5) SCRIPT_ERROR_R("Invalid dir arg.");
+	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R("Invalid dir arg.");
 	if(!steps) SCRIPT_ERROR_R("Steps arg is zero.");
 	if(steps>1)
 	{
@@ -10734,7 +10716,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	Sprites& tree=Self->HexMngr.GetDrawTree();
 	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT_ITEM:DRAW_ORDER_FLAT_SCENERY):(is_item?DRAW_ORDER_ITEM:DRAW_ORDER_SCENERY),
 		hx,hy+(proto_item?proto_item->DrawOrderOffsetHexY:0),0,
-		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
+		f.ScrX+HEX_OX+ox,f.ScrY+HEX_OY+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
 	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 
 	if(proto_item)
@@ -10929,8 +10911,8 @@ bool FOClient::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
 	{
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
-		x+=GameOpt.ScrOx+16;
-		y+=GameOpt.ScrOy+6;
+		x+=GameOpt.ScrOx+HEX_OX;
+		y+=GameOpt.ScrOy+HEX_OY;
 		x/=GameOpt.SpritesZoom;
 		y/=GameOpt.SpritesZoom;
 		return true;

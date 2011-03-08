@@ -1190,7 +1190,7 @@ void FOServer::SScriptFunc::Crit_SetHomePos(Critter* cr, WORD hx, WORD hy, BYTE 
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R("Invalid hexes args.");
-	if(dir>5) SCRIPT_ERROR_R("Invalid dir arg.");
+	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R("Invalid dir arg.");
 	cr->SetHome(cr->GetMap(),hx,hy,dir);
 }
 
@@ -1253,7 +1253,7 @@ bool FOServer::SScriptFunc::Crit_MoveToDir(Critter* cr, BYTE direction)
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) SCRIPT_ERROR_R0("Critter is on global.");
-	if(direction>5) SCRIPT_ERROR_R0("Invalid direction arg.");
+	if(direction>=DIRS_COUNT) SCRIPT_ERROR_R0("Invalid direction arg.");
 
 	WORD hx=cr->GetHexX();
 	WORD hy=cr->GetHexY();
@@ -1274,10 +1274,10 @@ bool FOServer::SScriptFunc::Crit_TransitToHex(Critter* cr, WORD hx, WORD hy, BYT
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 	if(hx!=cr->GetHexX() || hy!=cr->GetHexY())
 	{
-		if(dir<6 && cr->Data.Dir!=dir) cr->Data.Dir=dir;
+		if(dir<DIRS_COUNT && cr->Data.Dir!=dir) cr->Data.Dir=dir;
 		if(!MapMngr.Transit(cr,map,hx,hy,cr->GetDir(),2,true)) SCRIPT_ERROR_R0("Transit fail.");
 	}
-	else if(dir<6 && cr->Data.Dir!=dir)
+	else if(dir<DIRS_COUNT && cr->Data.Dir!=dir)
 	{
 		cr->Data.Dir=dir;
 		cr->Send_Dir(cr);
@@ -1297,17 +1297,17 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, DWORD map_id, WORD
 
 	if(!cr->GetMap())
 	{
-		if(dir<6 && cr->Data.Dir!=dir) cr->Data.Dir=dir;
+		if(dir<DIRS_COUNT && cr->Data.Dir!=dir) cr->Data.Dir=dir;
 		if(!MapMngr.GM_GroupToMap(cr->GroupMove,map,0,hx,hy,cr->GetDir())) SCRIPT_ERROR_R0("Transit from global to map fail.");
 	}
 	else
 	{
 		if(cr->GetMap()!=map_id || cr->GetHexX()!=hx || cr->GetHexY()!=hy)
 		{
-			if(dir<6 && cr->Data.Dir!=dir) cr->Data.Dir=dir;
+			if(dir<DIRS_COUNT && cr->Data.Dir!=dir) cr->Data.Dir=dir;
 			if(!MapMngr.Transit(cr,map,hx,hy,cr->GetDir(),2,true)) SCRIPT_ERROR_R0("Transit from map to map fail.");
 		}
-		else if(dir<6 && cr->Data.Dir!=dir)
+		else if(dir<DIRS_COUNT && cr->Data.Dir!=dir)
 		{
 			cr->Data.Dir=dir;
 			cr->Send_Dir(cr);
@@ -1519,7 +1519,7 @@ void FOServer::SScriptFunc::Crit_ViewMap(Critter* cr, Map* map, DWORD look, WORD
 	if(map->IsNotValid) SCRIPT_ERROR_R("Map arg nullptr.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R("Invalid hexes args.");
 	if(!cr->IsPlayer()) return;
-	if(dir>5) dir=cr->GetDir();
+	if(dir>=DIRS_COUNT) dir=cr->GetDir();
 	if(!look) look=cr->GetLook();
 
 	cr->ViewMapId=map->GetId();
@@ -1600,7 +1600,7 @@ void FOServer::SScriptFunc::Crit_SayMsgLex(Critter* cr, BYTE how_say, WORD text_
 void FOServer::SScriptFunc::Crit_SetDir(Critter* cr, BYTE dir)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(dir>5) SCRIPT_ERROR_R("Invalid direction arg.");
+	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R("Invalid direction arg.");
 	if(cr->Data.Dir==dir) return;//SCRIPT_ERROR_R("Direction already set.");
 
 	cr->Data.Dir=dir;
@@ -2119,7 +2119,7 @@ bool FOServer::SScriptFunc::Cl_SetKnownLoc(Critter* cl, bool by_id, DWORD loc_nu
 	int zy=GM_ZONE(loc->Data.WY);
 	if(cl_->GMapFog.Get2Bit(zx,zy)==GM_FOG_FULL)
 	{
-		cl_->GMapFog.Set2Bit(zx,zy,GM_FOG_SELF);
+		cl_->GMapFog.Set2Bit(zx,zy,GM_FOG_HALF);
 		if(!cl_->GetMap()) cl_->Send_GlobalMapFog(zx,zy,cl_->GMapFog.Get2Bit(zx,zy));
 	}
 	return true;
@@ -3735,7 +3735,7 @@ WORD FOServer::SScriptFunc::Map_GetHeight(Map* map)
 void FOServer::SScriptFunc::Map_MoveHexByDir(Map* map, WORD& hx, WORD& hy, BYTE dir, DWORD steps)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(dir>5) SCRIPT_ERROR_R("Invalid dir arg.");
+	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R("Invalid dir arg.");
 	if(!steps) SCRIPT_ERROR_R("Steps arg is zero.");
 	WORD maxhx=map->GetMaxHexX();
 	WORD maxhy=map->GetMaxHexY();
@@ -3754,7 +3754,7 @@ bool FOServer::SScriptFunc::Map_VerifyTrigger(Map* map, Critter* cr, WORD hx, WO
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
-	if(dir>5) SCRIPT_ERROR_R0("Invalid dir arg.");
+	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R0("Invalid dir arg.");
 	WORD from_hx=hx,from_hy=hy;
 	MoveHexByDir(from_hx,from_hy,ReverseDir(dir),map->GetMaxHexX(),map->GetMaxHexY());
 	return VerifyTrigger(map,cr,from_hx,from_hy,hx,hy,dir);
@@ -3927,20 +3927,9 @@ BYTE FOServer::SScriptFunc::Global_GetDirection(WORD from_hx, WORD from_hy, WORD
 	return GetFarDir(from_hx,from_hy,to_hx,to_hy);
 }
 
-BYTE FOServer::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset)
+BYTE FOServer::SScriptFunc::Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset)
 {
-	float nx=3.0f*(float(tx)-float(hx));
-	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx&1)-float(hx&1));
-	float dir=180.0f+RAD2DEG*atan2(ny,nx);
-	dir+=offset;
-	if(dir>360.0f) dir-=360.0f;
-	else if(dir<0.0f) dir+=360.0f;
-	if(dir>=60.0f  && dir<120.0f) return 5;
-	if(dir>=120.0f && dir<180.0f) return 4;
-	if(dir>=180.0f && dir<240.0f) return 3;
-	if(dir>=240.0f && dir<300.0f) return 2;
-	if(dir>=300.0f && dir<360.0f) return 1;
-	return 0;
+	return GetFarDir(from_hx,from_hy,to_hx,to_hy,offset);
 }
 
 void FOServer::SScriptFunc::Global_Log(CScriptString& text)
@@ -4133,8 +4122,8 @@ DWORD FOServer::SScriptFunc::Global_CreateLocation(WORD loc_pid, WORD wx, WORD w
 			WORD zy=GM_ZONE(loc->Data.WY);
 			if(cl->GMapFog.Get2Bit(zx,zy)==GM_FOG_FULL)
 			{
-				cl->GMapFog.Set2Bit(zx,zy,GM_FOG_SELF);
-				if(!cl->GetMap()) cl->Send_GlobalMapFog(zx,zy,GM_FOG_SELF);
+				cl->GMapFog.Set2Bit(zx,zy,GM_FOG_HALF);
+				if(!cl->GetMap()) cl->Send_GlobalMapFog(zx,zy,GM_FOG_HALF);
 			}
 		}
 	}

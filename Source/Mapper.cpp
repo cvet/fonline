@@ -28,7 +28,7 @@ bool FOMapper::Init(HWND wnd)
 
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
-	STATIC_ASSERT(sizeof(GameOptions)==1176);
+	STATIC_ASSERT(sizeof(GameOptions)==1264);
 	Wnd=wnd;
 
 	// Register dll script data
@@ -1337,8 +1337,8 @@ void FOMapper::MainLoop()
 				int procent=Procent(t.Tick,tick-t.StartTick);
 				INTRECT r=AverageFlexRect(t.Rect,t.EndRect,procent);
 				Field& f=HexMngr.GetField(t.HexX,t.HexY);
-				int x=(f.ScrX+32/2+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(t.Rect.L-r.L);
-				int y=(f.ScrY+12/2-t.Rect.H()-(t.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
+				int x=(f.ScrX+HEX_W/2+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(t.Rect.L-r.L);
+				int y=(f.ScrY+HEX_LINE_H/2-t.Rect.H()-(t.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
 				DWORD color=t.Color;
 				if(t.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
 				SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),t.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
@@ -1384,7 +1384,7 @@ bool StringCompare(const string &left, const string &right)
 
 void FOMapper::RefreshTiles()
 {
-	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg","jpeg","pfm","png","tga"};
+	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg","jpeg","pfm","png","tga","spr","til","zar","art"};
 	size_t formats_count=sizeof(formats)/sizeof(formats[0]);
 
 	StrVec tiles;
@@ -1416,7 +1416,7 @@ void FOMapper::RefreshTiles()
 		if(format_aviable)
 		{
 			DWORD hash=Str::GetHash(str.c_str());
-			if(std::find(TilesPictures.begin(),TilesPictures.end(),hash)==TilesPictures.end())
+			if(std::find(TilesPictures.begin(),TilesPictures.end(),hash)==TilesPictures.end() && str.find(' ')==string::npos)
 			{
 				TilesPictures.push_back(hash);
 				size_t pos=str.find_last_of('\\');
@@ -2142,10 +2142,13 @@ void FOMapper::IntLMouseDown()
 					SelMapObj& so=SelectedObj[i];
 					if(so.MapNpc)
 					{
-						BYTE crtype=so.MapNpc->GetCrType();
-						bool is_run=(so.MapNpc->MoveSteps.size() && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].first==SelectHX1 && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].second==SelectHY1/* && CritType::IsCanRun(crtype)*/);
+						DWORD crtype=so.MapNpc->GetCrType();
+						bool is_run=(so.MapNpc->MoveSteps.size() && so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].first==SelectHX1 &&
+							so.MapNpc->MoveSteps[so.MapNpc->MoveSteps.size()-1].second==SelectHY1/* && CritType::IsCanRun(crtype)*/);
+
 						so.MapNpc->MoveSteps.clear();
 						if(!is_run && !CritType::IsCanWalk(crtype)) break;
+
 						WORD hx=so.MapNpc->GetHexX();
 						WORD hy=so.MapNpc->GetHexY();
 						ByteVec steps;
@@ -2158,12 +2161,13 @@ void FOMapper::IntLMouseDown()
 							}
 							so.MapNpc->IsRunning=is_run;
 						}
+
 						break;
 					}
 				}
 			}
+			else if(!Keyb::CtrlDwn) SelectClear();
 
-			if(!Keyb::CtrlDwn) SelectClear();
 			//HexMngr.ClearHexTrack();
 			//HexMngr.RefreshMap();
 			IntHold=INT_SELECT;
@@ -2522,10 +2526,8 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-	if(IntHold==INT_SELECT)
+	if(IntHold==INT_SELECT && HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2))
 	{
-		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2)) return;
-
 		if(CurMode==CUR_MODE_DEF)
 		{
 			if(SelectHX1!=SelectHX2 || SelectHY1!=SelectHY2)
@@ -2548,12 +2550,10 @@ void FOMapper::IntLMouseUp()
 						}
 					}
 				}
-				else if(SelectType==SELECT_TYPE_NEW)
+				else // SELECT_TYPE_NEW
 				{
 					HexMngr.GetHexesRect(INTRECT(SelectHX1,SelectHY1,SelectHX2,SelectHY2),h);
 				}
-				else
-					return;
 
 				ItemHexVec items;
 				CritVec critters;
@@ -2621,7 +2621,15 @@ void FOMapper::IntMouseMove()
 	if(IntHold==INT_SELECT)
 	{
 		HexMngr.ClearHexTrack();
-		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2)) return;
+		if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,SelectHX2,SelectHY2))
+		{
+			if(SelectHX2 || SelectHY2)
+			{
+				HexMngr.RefreshMap();
+				SelectHX2=SelectHY2=0;
+			}
+			return;
+		}
 		
 		if(CurMode==CUR_MODE_DEF)
 		{
@@ -3523,10 +3531,10 @@ void FOMapper::CurDraw()
 			SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 			if(si)
 			{
-				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
-				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
+				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX+HEX_OX+GameOpt.ScrOx;
+				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY+HEX_OY+GameOpt.ScrOy;
 
-				SprMngr.DrawSpriteSize(spr_id,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+				SprMngr.DrawSpriteSize(spr_id,x/GameOpt.SpritesZoom,y/GameOpt.SpritesZoom,
 					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 			}
 		}
@@ -3543,11 +3551,18 @@ void FOMapper::CurDraw()
 			{
 				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
-				x=x-16-8;
-				y=y-6+32;
-				if(DrawRoof) y-=98;
+				if(!DrawRoof)
+				{
+					x+=TILE_OX;
+					y+=TILE_OY;
+				}
+				else
+				{
+					x+=ROOF_OX;
+					y+=ROOF_OY;
+				}
 
-				SprMngr.DrawSpriteSize(anim,(x+16+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+				SprMngr.DrawSpriteSize(anim,(x+GameOpt.ScrOx)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy)/GameOpt.SpritesZoom,
 					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 			}
 		}
@@ -3565,7 +3580,7 @@ void FOMapper::CurDraw()
 				int x=HexMngr.GetField(hx,hy).ScrX-(si->Width/2)+si->OffsX;
 				int y=HexMngr.GetField(hx,hy).ScrY-si->Height+si->OffsY;
 
-				SprMngr.DrawSpriteSize(spr_id,(x+GameOpt.ScrOx+16)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+6)/GameOpt.SpritesZoom,
+				SprMngr.DrawSpriteSize(spr_id,(x+GameOpt.ScrOx+HEX_OX)/GameOpt.SpritesZoom,(y+GameOpt.ScrOy+HEX_OY)/GameOpt.SpritesZoom,
 					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 			}
 		}
@@ -3620,7 +3635,7 @@ void FOMapper::CurMMouseDown()
 	if(SelectedObj.empty())
 	{
 		NpcDir++;
-		if(NpcDir>5) NpcDir=0;
+		if(NpcDir>=DIRS_COUNT) NpcDir=0;
 
 		DrawRoof=!DrawRoof;
 	}
@@ -3633,7 +3648,7 @@ void FOMapper::CurMMouseDown()
 			if(o->IsNpc())
 			{
 				int dir=o->MapNpc->GetDir()+1;
-				if(dir>5) dir=0;
+				if(dir>=DIRS_COUNT) dir=0;
 				o->MapNpc->SetDir(dir);
 				o->MapObj->Dir=dir;
 			}
@@ -4975,7 +4990,7 @@ void FOMapper::SScriptFunc::Global_MoveScreen(WORD hx, WORD hy, DWORD speed)
 void FOMapper::SScriptFunc::Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps)
 {
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R("Map not loaded.");
-	if(dir>5) SCRIPT_ERROR_R("Invalid dir arg.");
+	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R("Invalid dir arg.");
 	if(!steps) SCRIPT_ERROR_R("Steps arg is zero.");
 	int hx_=hx,hy_=hy;
 	if(steps>1)
@@ -5100,25 +5115,14 @@ DWORD FOMapper::SScriptFunc::Global_GetDistantion(WORD hex_x1, WORD hex_y1, WORD
 	return DistGame(hex_x1,hex_y1,hex_x2,hex_y2);
 }
 
-BYTE FOMapper::SScriptFunc::Global_GetDirection(WORD from_x, WORD from_y, WORD to_x, WORD to_y)
+BYTE FOMapper::SScriptFunc::Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy)
 {
-	return GetFarDir(from_x,from_y,to_x,to_y);
+	return GetFarDir(from_hx,from_hy,to_hx,to_hy);
 }
 
-BYTE FOMapper::SScriptFunc::Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset)
+BYTE FOMapper::SScriptFunc::Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset)
 {
-	float nx=3.0f*(float(tx)-float(hx));
-	float ny=SQRT3T2_FLOAT*(float(ty)-float(hy))-SQRT3_FLOAT*(float(tx&1)-float(hx&1));
-	float dir=180.0f+RAD2DEG*atan2(ny,nx);
-	dir+=offset;
-	if(dir>360.0f) dir-=360.0f;
-	else if(dir<0.0f) dir+=360.0f;
-	if(dir>=60.0f  && dir<120.0f) return 5;
-	if(dir>=120.0f && dir<180.0f) return 4;
-	if(dir>=180.0f && dir<240.0f) return 3;
-	if(dir>=240.0f && dir<300.0f) return 2;
-	if(dir>=300.0f && dir<360.0f) return 1;
-	return 0;
+	return GetFarDir(from_hx,from_hy,to_hx,to_hy,offset);
 }
 
 void FOMapper::SScriptFunc::Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist)
@@ -5146,8 +5150,8 @@ bool FOMapper::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
 	{
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
-		x+=GameOpt.ScrOx+16;
-		y+=GameOpt.ScrOy+6;
+		x+=GameOpt.ScrOx+HEX_OX;
+		y+=GameOpt.ScrOy+HEX_OY;
 		x/=GameOpt.SpritesZoom;
 		y/=GameOpt.SpritesZoom;
 		return true;
@@ -5351,7 +5355,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	Sprites& tree=Self->HexMngr.GetDrawTree();
 	Sprite& spr=tree.InsertSprite(is_flat?(is_item?DRAW_ORDER_FLAT_ITEM:DRAW_ORDER_FLAT_SCENERY):(is_item?DRAW_ORDER_ITEM:DRAW_ORDER_SCENERY),
 		hx,hy+(proto_item?proto_item->DrawOrderOffsetHexY:0),0,
-		f.ScrX+16+ox,f.ScrY+6+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
+		f.ScrX+HEX_OX+ox,f.ScrY+HEX_OY+oy,spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),NULL,NULL,NULL,NULL,NULL);
 	if(!no_light) spr.SetLight(Self->HexMngr.GetLightHex(0,0),Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 
 	if(proto_item)

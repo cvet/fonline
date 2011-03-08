@@ -72,13 +72,12 @@ extern Randomizer DefaultRandomizer;
 int Random(int minimum, int maximum);
 
 int Procent(int full, int peace);
+DWORD NumericalNumber(DWORD num);
 DWORD DistSqrt(int x1, int y1, int x2, int y2);
 DWORD DistGame(int x1, int y1, int x2, int y2);
-DWORD NumericalNumber(DWORD num);
-int NextLevel(int cur_level);
-int GetDir(int x1, int y1, int x2, int y2);
+int GetNearDir(int x1, int y1, int x2, int y2);
 int GetFarDir(int x1, int y1, int x2, int y2);
-bool GetCoords(WORD x1, WORD y1, BYTE ori, WORD& x2, WORD& y2);
+int GetFarDir(int x1, int y1, int x2, int y2, float offset);
 bool CheckDist(WORD x1, WORD y1, WORD x2, WORD y2, DWORD dist);
 int ReverseDir(int dir);
 void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
@@ -88,15 +87,13 @@ void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir);
 bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
 void RestoreMainDirectory();
 
+// Containers comparator template
 template<class T> inline bool CompareContainers(const T& a, const T& b){return a.size()==b.size() && (a.empty() || !memcmp(&a[0],&b[0],a.size()*sizeof(a[0])));}
 
-// Hex offset
+// Hex offsets
 #define MAX_HEX_OFFSET    (50) // Must be not odd
-#define HEX_OFFSET_SIZE   ((MAX_HEX_OFFSET*MAX_HEX_OFFSET/2+MAX_HEX_OFFSET/2)*6) // 7650
-extern short SXEven[HEX_OFFSET_SIZE];
-extern short SYEven[HEX_OFFSET_SIZE];
-extern short SXOdd[HEX_OFFSET_SIZE];
-extern short SYOdd[HEX_OFFSET_SIZE];
+void GetHexOffsets(bool odd, short*& sx, short*& sy);
+void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
 
 // Relief
 const float GlobalMapKRelief[16]={1.5f,1.4f,1.3f,1.2f,1.1f,1.0f,0.95f,0.9f,0.85f,0.8f,0.75f,0.7f,0.65f,0.6f,0.55f,1.0f};
@@ -409,8 +406,8 @@ struct GameOptions
 	DWORD WhisperDist;
 	DWORD ShoutDist;
 	int LookChecks;
-	DWORD LookDir[4];
-	DWORD LookSneakDir[4];
+	DWORD LookDir[5];
+	DWORD LookSneakDir[5];
 	DWORD LookWeight;
 	bool CustomItemCost;
 	DWORD RegistrationTimeout;
@@ -451,6 +448,20 @@ struct GameOptions
 	int ReputationNeutral;
 	int ReputationAntipathy;
 	int ReputationHated;
+
+	bool MapHexagonal;
+	int MapHexWidth;
+	int MapHexHeight;
+	int MapHexLineHeight;
+	int MapTileOffsX;
+	int MapTileOffsY;
+	int MapRoofOffsX;
+	int MapRoofOffsY;
+	int MapRoofSkipSize;
+	float MapCameraAngle;
+	bool MapSmoothPath;
+	string MapDataPrefix;
+	int MapDataPrefixRefCounter;
 
 	// Client and Mapper
 	bool Quit;

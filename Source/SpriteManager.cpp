@@ -144,7 +144,9 @@ Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut
 	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
 	{
 		bool hor=(cut==SPRITE_CUT_HORIZONTAL);
-		int stepi=(hor?24:16);
+
+		int stepi=GameOpt.MapHexWidth/2;
+		if(GameOpt.MapHexagonal && hor) stepi=(GameOpt.MapHexWidth+GameOpt.MapHexWidth/2)/2;
 		float stepf=(float)stepi;
 
 		SpriteInfo* si=SprMngr.GetSpriteInfo(id_ptr?*id_ptr:id);
@@ -1048,7 +1050,23 @@ AnyFrames* SpriteManager::CreateAnimation(DWORD frames, DWORD ticks)
 
 AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int dir, bool anim_pix)
 {
-	if(dir<0 || dir>5) return NULL;
+	if(dir<0 || dir>=DIRS_COUNT) return NULL;
+
+	if(!GameOpt.MapHexagonal)
+	{
+		switch(dir)
+		{
+		case 0: dir=0; break;
+		case 1: dir=1; break;
+		case 2: dir=2; break;
+		case 3: dir=2; break;
+		case 4: dir=3; break;
+		case 5: dir=4; break;
+		case 6: dir=5; break;
+		case 7: dir=5; break;
+		default: dir=0; break;
+		}
+	}
 
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return NULL;
@@ -1411,9 +1429,9 @@ label_LoadOneSpr:
 
 AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int dir)
 {
-	if(dir<0 || dir>7) return NULL;
-	// Todo: Hex/Square
-	if(true)
+	if(dir<0 || dir>=DIRS_COUNT) return NULL;
+
+	if(GameOpt.MapHexagonal)
 	{
 		switch(dir)
 		{
@@ -1642,9 +1660,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 #define SPR_CACHED_COUNT         (10)
 AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int dir)
 {
-	if(dir<0 || dir>7) return NULL;
-	// Todo: Hex/Square
-	if(true)
+	if(GameOpt.MapHexagonal)
 	{
 		switch(dir)
 		{
@@ -1707,18 +1723,17 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	}
 	if(!file_name[0]) return NULL;
 
-	// Cache last 10 SPR files because its so big
+	// Cache last 10 big SPR files (for critters)
 	struct SprCache
 	{
 		char fileName[MAX_FOPATH];
 		int pathType;
 		FileManager fm;
-		int calls;
-	} static *cached[SPR_CACHED_COUNT]={0};
+	} static *cached[SPR_CACHED_COUNT+1]={0}; // Last index for last loaded
 
 	// Find already opened
 	int index=-1;
-	for(int i=0;i<SPR_CACHED_COUNT;i++)
+	for(int i=0;i<=SPR_CACHED_COUNT;i++)
 	{
 		if(!cached[i]) break;
 		if(!_stricmp(file_name,cached[i]->fileName) && path_type==cached[i]->pathType)
@@ -1734,30 +1749,43 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		FileManager fm;
 		if(!fm.LoadFile(file_name,path_type)) return NULL;
 
-		// Find place in cache
-		for(int i=0;i<SPR_CACHED_COUNT;i++)
+		if(fm.GetFsize()>1000000) // 1mb
 		{
-			if(!cached[i])
+			// Find place in cache
+			for(int i=0;i<SPR_CACHED_COUNT;i++)
 			{
-				index=i;
-				break;
+				if(!cached[i])
+				{
+					index=i;
+					break;
+				}
 			}
-		}
 
-		// Delete old element
-		if(index==-1)
+			// Delete old element
+			if(index==-1)
+			{
+				delete cached[0];
+				index=SPR_CACHED_COUNT-1;
+				for(int i=0;i<SPR_CACHED_COUNT-1;i++) cached[i]=cached[i+1];
+			}
+
+			cached[index]=new(nothrow) SprCache();
+			if(!cached[index]) return NULL;
+			StringCopy(cached[index]->fileName,file_name);
+			cached[index]->pathType=path_type;
+			cached[index]->fm=fm;
+			fm.ReleaseBuffer();
+		}
+		else
 		{
-			delete cached[0];
-			index=SPR_CACHED_COUNT-1;
-			for(int i=0;i<SPR_CACHED_COUNT-1;i++) cached[i]=cached[i+1];
+			index=SPR_CACHED_COUNT;
+			if(!cached[index]) cached[index]=new(nothrow) SprCache();
+			else cached[index]->fm.UnloadFile();
+			StringCopy(cached[index]->fileName,file_name);
+			cached[index]->pathType=path_type;
+			cached[index]->fm=fm;
+			fm.ReleaseBuffer();
 		}
-
-		cached[index]=new(nothrow) SprCache();
-		if(!cached[index]) return NULL;
-		StringCopy(cached[index]->fileName,file_name);
-		cached[index]->pathType=path_type;
-		cached[index]->fm=fm;
-		fm.ReleaseBuffer();
 	}
 
 	FileManager& fm=cached[index]->fm;
@@ -1925,24 +1953,6 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		anim->NextX[f]=0;
 		anim->NextY[f]=0;
 
-		// Compute whole image size
-		DWORD whole_w=0,whole_h=0;
-		for(DWORD part=0;part<4;part++)
-		{
-			if(!image_indices[frame_cnt*dir_cnt*part+dir*frame_cnt+frm]) continue;
-			fm_images.SetCurPos(image_indices[frame_cnt*dir_cnt*part+dir*frame_cnt+frm]);
-
-			DWORD posx=fm_images.GetLEDWord();
-			DWORD posy=fm_images.GetLEDWord();
-			fm_images.GoForward(8);
-			DWORD w=fm_images.GetLEDWord();
-			DWORD h=fm_images.GetLEDWord();
-			if(w+posx>whole_w) whole_w=w+posx;
-			if(h+posy>whole_h) whole_h=h+posy;
-		}
-		if(!whole_w) whole_w=1;
-		if(!whole_h) whole_h=1;
-
 		// Optimization, share frames
 		bool founded=false;
 		for(size_t i=0,j=f;i<j;i++)
@@ -1956,6 +1966,25 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		}
 		if(founded) continue;
 
+		// Compute whole image size
+		DWORD whole_w=0,whole_h=0;
+		for(DWORD part=0;part<4;part++)
+		{
+			DWORD frm_index=(type==0x32?frame_cnt*dir_cnt*part+dir*frame_cnt+frm:((frm*dir_cnt+dir)<<2)+part);
+			if(!image_indices[frm_index]) continue;
+			fm_images.SetCurPos(image_indices[frm_index]);
+
+			DWORD posx=fm_images.GetLEDWord();
+			DWORD posy=fm_images.GetLEDWord();
+			fm_images.GoForward(8);
+			DWORD w=fm_images.GetLEDWord();
+			DWORD h=fm_images.GetLEDWord();
+			if(w+posx>whole_w) whole_w=w+posx;
+			if(h+posy>whole_h) whole_h=h+posy;
+		}
+		if(!whole_w) whole_w=1;
+		if(!whole_h) whole_h=1;
+
 		// Create FOnline fast format
 		DWORD img_size=12+whole_h*whole_w*4;
 		BYTE* img_data=new(nothrow) BYTE[img_size];
@@ -1967,8 +1996,9 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 
 		for(DWORD part=0;part<4;part++)
 		{
-			if(!image_indices[frame_cnt*dir_cnt*part+dir*frame_cnt+frm]) continue;
-			fm_images.SetCurPos(image_indices[frame_cnt*dir_cnt*part+dir*frame_cnt+frm]);
+			DWORD frm_index=(type==0x32?frame_cnt*dir_cnt*part+dir*frame_cnt+frm:((frm*dir_cnt+dir)<<2)+part);
+			if(!image_indices[frm_index]) continue;
+			fm_images.SetCurPos(image_indices[frm_index]);
 
 			DWORD posx=fm_images.GetLEDWord();
 			DWORD posy=fm_images.GetLEDWord();
@@ -2033,7 +2063,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 					}
 
 					if(!part) *ptr=col;
-					else if((col>>24)>128) *ptr=col;
+					else if((col>>24)>=128) *ptr=col;
 					ptr++;
 
 					if(++x>=w+posx)
@@ -2318,7 +2348,7 @@ DWORD SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
 
 	Animation3d::SetScreenSize(spr3dSurfWidth,spr3dSurfHeight);
 	anim3d->EnableSetupBorders(false);
-	if(dir<0 || dir>5) anim3d->SetDirAngle(dir);
+	if(dir<0 || dir>=DIRS_COUNT) anim3d->SetDirAngle(dir);
 	else anim3d->SetDir(dir);
 	anim3d->SetAnimation(0,time_proc,NULL,ANIMATION_ONE_TIME|ANIMATION_STAY);
 	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
@@ -2633,7 +2663,7 @@ void SpriteManager::PrepareSquare(PointVec& points, FLTPOINT& lt, FLTPOINT& rt, 
 	points.push_back(PrepPoint(rb.X,rb.Y,color,NULL,NULL));
 }
 
-bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE alpha)
+bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, int ox, int oy, BYTE alpha)
 {
 	if(!dtree.Size()) return true;
 	if(!surf) return false;
@@ -2657,8 +2687,8 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE a
 		SpriteInfo* si=sprData[spr->SprId];
 		if(!si) continue;
 
-		int x=spr->ScrX-si->Width/2+si->OffsX+32;
-		int y=spr->ScrY-si->Height+si->OffsY+24;
+		int x=spr->ScrX-si->Width/2+si->OffsX+ox;
+		int y=spr->ScrY-si->Height+si->OffsY+oy;
 		if(spr->OffsX) x+=*spr->OffsX;
 		if(spr->OffsY) y+=*spr->OffsY;
 
@@ -2726,14 +2756,14 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, BYTE a
 	return true;
 }
 
-bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf)
+bool SpriteManager::DrawPrepared(LPDIRECT3DSURFACE& surf, int ox, int oy)
 {
 	if(!surf) return true;
 	Flush();
 
-	int ox=(int)((float)(32-GameOpt.ScrOx)/GameOpt.SpritesZoom);
-	int oy=(int)((float)(24-GameOpt.ScrOy)/GameOpt.SpritesZoom);
-	RECT src={ox,oy,ox+modeWidth,oy+modeHeight};
+	int ox_=(int)((float)(ox-GameOpt.ScrOx)/GameOpt.SpritesZoom);
+	int oy_=(int)((float)(oy-GameOpt.ScrOy)/GameOpt.SpritesZoom);
+	RECT src={ox_,oy_,ox_+modeWidth,oy_+modeHeight};
 
 	LPDIRECT3DSURFACE backbuf=NULL;
 	D3D_HR(d3dDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuf));

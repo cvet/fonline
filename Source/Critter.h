@@ -311,7 +311,7 @@ public:
 	// Send
 	volatile int DisableSend;
 	bool IsSendDisabled(){return DisableSend>0;}
-	void Send_Move(Critter* from_cr, WORD move_params);
+	void Send_Move(Critter* from_cr, DWORD move_params);
 	void Send_Dir(Critter* from_cr);
 	void Send_AddCritter(Critter* cr);
 	void Send_RemoveCritter(Critter* cr);
@@ -360,7 +360,7 @@ public:
 	void Send_CritterLexems(Critter* cr);
 
 	// Send all
-	void SendA_Move(WORD move_params);
+	void SendA_Move(DWORD move_params);
 	void SendA_XY();
 	void SendA_Action(int action, int action_ext, Item* item);
 	void SendAA_Action(int action, int action_ext, Item* item);
@@ -550,7 +550,7 @@ public:
 	void PingOk(DWORD next_ping){pingOk=true; pingNextTick=Timer::FastTick()+next_ping;}
 
 	// Sends
-	void Send_Move(Critter* from_cr, WORD move_params);
+	void Send_Move(Critter* from_cr, DWORD move_params);
 	void Send_Dir(Critter* from_cr);
 	void Send_AddCritter(Critter* cr);
 	void Send_RemoveCritter(Critter* cr);

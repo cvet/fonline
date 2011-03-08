@@ -840,6 +840,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\LineTracer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Log.cpp"
 				>
 			</File>

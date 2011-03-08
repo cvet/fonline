@@ -433,7 +433,7 @@ bool Map::GetStartCoord(WORD& hx, WORD& hy, BYTE& dir, DWORD entire)
 	dir=ent->Dir;
 
 	if(hx>=GetMaxHexX() || hy>=GetMaxHexY()) return false;
-	if(dir>5) dir=Random(0,5);
+	if(dir>=DIRS_COUNT) dir=Random(0,DIRS_COUNT-1);
 	return true;
 }
 
@@ -467,10 +467,9 @@ bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD multihex, DWORD seek_radius, bo
 	static THREAD int cur_step=0;
 	short hx_=hx;
 	short hy_=hy;
-	bool odd=(hx&1)!=0;
-	short* sx=(odd?SXOdd:SXEven);
-	short* sy=(odd?SYOdd:SYEven);
-	int cnt=NumericalNumber(seek_radius)*6;
+	short* sx,*sy;
+	GetHexOffsets(hx&1,sx,sy);
+	int cnt=NumericalNumber(seek_radius)*DIRS_COUNT;
 
 	for(int i=0;;i++)
 	{
@@ -988,10 +987,9 @@ bool Map::IsHexesPassed(WORD hx, WORD hy, DWORD radius)
 	if(!radius) return true;
 
 	// Neighbors
-	bool odd=(hx&1)!=0;
-	short* sx=(odd?SXOdd:SXEven);
-	short* sy=(odd?SYOdd:SYEven);
-	DWORD count=NumericalNumber(radius)*6;
+	short* sx,*sy;
+	GetHexOffsets(hx&1,sx,sy);
+	DWORD count=NumericalNumber(radius)*DIRS_COUNT;
 	short maxhx=GetMaxHexX();
 	short maxhy=GetMaxHexY();
 	for(DWORD i=0;i<count;i++)
@@ -1016,18 +1014,22 @@ bool Map::IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex)
 	if(!IsHexPassed(hx_,hy_)) return false;
 
 	// Clock wise hexes
-	int dir_=(dir+2)%6;
+	bool is_square_corner=(!GameOpt.MapHexagonal && IS_DIR_CORNER(dir));
+	DWORD steps_count=(is_square_corner?multihex*2:multihex);
+	int dir_=(GameOpt.MapHexagonal?((dir+2)%6):((dir+2)%8));
+	if(is_square_corner) dir_=(dir_+1)%8;
 	int hx__=hx_,hy__=hy_;
-	for(DWORD k=0;k<multihex;k++)
+	for(DWORD k=0;k<steps_count;k++)
 	{
 		MoveHexByDirUnsafe(hx__,hy__,dir_);
 		if(!IsHexPassed(hx__,hy__)) return false;
 	}
 
 	// Counter clock wise hexes
-	dir_=(dir+4)%6;
+	dir_=(GameOpt.MapHexagonal?((dir+4)%6):((dir+6)%8));
+	if(is_square_corner) dir_=(dir_+7)%8;
 	hx__=hx_,hy__=hy_;
-	for(DWORD k=0;k<multihex;k++)
+	for(DWORD k=0;k<steps_count;k++)
 	{
 		MoveHexByDirUnsafe(hx__,hy__,dir_);
 		if(!IsHexPassed(hx__,hy__)) return false;
@@ -1055,10 +1057,9 @@ void Map::SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
 
 		if(multihex)
 		{
-			bool odd=(hx&1)!=0;
-			short* sx=(odd?SXOdd:SXEven);
-			short* sy=(odd?SYOdd:SYEven);
-			int count=NumericalNumber(multihex)*6;
+			short* sx,*sy;
+			GetHexOffsets(hx&1,sx,sy);
+			int count=NumericalNumber(multihex)*DIRS_COUNT;
 			short maxhx=GetMaxHexX();
 			short maxhy=GetMaxHexY();
 			for(int i=0;i<count;i++)
@@ -1093,10 +1094,9 @@ void Map::UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
 
 		if(multihex>0)
 		{
-			bool odd=(hx&1)!=0;
-			short* sx=(odd?SXOdd:SXEven);
-			short* sy=(odd?SYOdd:SYEven);
-			int count=NumericalNumber(multihex)*6;
+			short* sx,*sy;
+			GetHexOffsets(hx&1,sx,sy);
+			int count=NumericalNumber(multihex)*DIRS_COUNT;
 			short maxhx=GetMaxHexX();
 			short maxhy=GetMaxHexY();
 			for(int i=0;i<count;i++)
@@ -1453,14 +1453,14 @@ void ParseCarBlocks(const char* str, BYTE* blocks)
 	for(int i=0;*str && i<CAR_MAX_BLOCKS/2;str++,i++)
 	{
 		dir=*str-'0';
-		if(dir>5) return;
+		if(dir>=DIRS_COUNT) return;
 		blocks[i]&=0xF;
 		blocks[i]|=dir<<4;
 
 		str++;
 		if(!*str) return;
 		dir=*str-'0';
-		if(dir>5) return;
+		if(dir>=DIRS_COUNT) return;
 		blocks[i]&=0xF0;
 		blocks[i]|=dir;
 	}
@@ -1472,7 +1472,7 @@ void ParseCarBlocks(const char* str, BYTE* blocks)
 	for(int i=0;i<CAR_MAX_BLOCKS;i++)\
 	{\
 		dir=proto_car->MiscEx.Car.GetBlockDir(i);\
-		if(dir>5) break;\
+		if(dir>=DIRS_COUNT) break;\
 		i++;\
 		steps=proto_car->MiscEx.Car.GetBlockDir(i);\
 		for(int j=0;j<steps;j++)\
@@ -1532,7 +1532,7 @@ void Map::GetCarBagPos(WORD& hx, WORD& hy, ProtoItem* pcar, int num_bag)
 	for(int i=0;i<CAR_MAX_BAG_POSITION;i++)
 	{
 		dir=(!num_bag?pcar->MiscEx.Car.GetBag0Dir(i):pcar->MiscEx.Car.GetBag1Dir(i));
-		if(dir>5) break;
+		if(dir>=DIRS_COUNT) break;
 		MoveHexByDir(hx,hy,dir,GetMaxHexX(),GetMaxHexY());
 	}
 }
@@ -2195,8 +2195,8 @@ bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE
 	hy=ent->HexY;
 	dir=ent->Dir;
 
-	if(dir>5) dir=Random(0,5);
-	if(hx>=to_map->GetMaxHexX() || hy>=to_map->GetMaxHexY() || dir>5) return false;
+	if(dir>=DIRS_COUNT) dir=Random(0,DIRS_COUNT-1);
+	if(hx>=to_map->GetMaxHexX() || hy>=to_map->GetMaxHexY()) return false;
 	return true;
 }
 

@@ -13,24 +13,23 @@ class Terrain;
 typedef vector<Terrain*> TerrainVec;
 typedef vector<Terrain*>::iterator TerrainVecIt;
 
-#define FINDPATH_MAX_PATH           (600)
-
-#define TILE_ALPHA	(0xFF)
-#define ROOF_ALPHA	(GameOpt.RoofAlpha)
-#define VIEW_WIDTH  ((int)((MODE_WIDTH/32+((MODE_WIDTH%32)?1:0))*GameOpt.SpritesZoom))
-#define VIEW_HEIGHT ((int)((MODE_HEIGHT/12+((MODE_HEIGHT%12)?1:0))*GameOpt.SpritesZoom))
-#define HEX_WIDTH   (32)
-#define HEX_HEIGHT  (12)
-#define SCROLL_OX   (32)
-#define SCROLL_OY   (24)
-#define HEX_OX      (16)
-#define HEX_OY      (6)
-#define TILE_OX     (-8)
-#define TILE_OY     (32)
-#define ROOF_OX     (-8)
-#define ROOF_OY     (32-98)
-#define MAX_MOVE_OX (99)
-#define MAX_MOVE_OY (99)
+#define MAX_FIND_PATH   (600)
+#define TILE_ALPHA	    (0xFF)
+#define VIEW_WIDTH      ((int)((MODE_WIDTH/GameOpt.MapHexWidth+((MODE_WIDTH%GameOpt.MapHexWidth)?1:0))*GameOpt.SpritesZoom))
+#define VIEW_HEIGHT     ((int)((MODE_HEIGHT/GameOpt.MapHexLineHeight+((MODE_HEIGHT%GameOpt.MapHexLineHeight)?1:0))*GameOpt.SpritesZoom))
+#define SCROLL_OX       (GameOpt.MapHexWidth)
+#define SCROLL_OY       (GameOpt.MapHexLineHeight*2)
+#define HEX_W           (GameOpt.MapHexWidth)
+#define HEX_LINE_H      (GameOpt.MapHexLineHeight)
+#define HEX_REAL_H      (GameOpt.MapHexHeight)
+#define HEX_OX          (GameOpt.MapHexWidth/2)
+#define HEX_OY          (GameOpt.MapHexHeight/2)
+#define TILE_OX         (GameOpt.MapTileOffsX)
+#define TILE_OY         (GameOpt.MapTileOffsY)
+#define ROOF_OX         (GameOpt.MapRoofOffsX)
+#define ROOF_OY         (GameOpt.MapRoofOffsY)
+#define MAX_MOVE_OX     (99)
+#define MAX_MOVE_OY     (99)
 
 /************************************************************************/
 /* ViewField                                                            */
@@ -150,7 +149,8 @@ public:
 
 	bool FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut);
 	bool CutPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut);
-	bool TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed);
+	bool TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe,
+		CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed);
 
 private:
 	WORD maxHexX,maxHexY;
@@ -161,11 +161,13 @@ private:
 	AnyFrames* picHexMask;
 	bool isShowTrack;
 	bool isShowHex;
-	AnyFrames* hexWhite,*hexBlue;
+	AnyFrames* picHex[3];
+	string curDataPrefix;
 
 	// Center
 public:
 	void FindSetCenter(int x, int y);
+
 private:
 	void FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps);
 
@@ -208,7 +210,6 @@ private:
 public:
 	void ChangeZoom(int zoom); // <0 in, >0 out, 0 normalize
 	void GetScreenHexes(int& sx, int& sy){sx=screenHexX;sy=screenHexY;}
-	void GetHexOffset(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
 	void GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y);
 
 public:
@@ -216,8 +217,8 @@ public:
 
 	HexManager();
 	bool Init();
-	void ReloadSprites();
 	void Clear();
+	void ReloadSprites();
 
 	void PreRestore();
 	void PostRestore();
@@ -228,7 +229,7 @@ public:
 	Sprites& GetDrawTree(){return mainTree;}
 	void RefreshMap(){RebuildMap(screenHexX,screenHexY);}
 
-	struct
+	struct AutoScroll_
 	{
 		bool Active;
 		bool CanStop;
@@ -324,6 +325,7 @@ private:
 	bool reprepareTiles;
 	Sprites tilesTree;
 	LPDIRECT3DSURFACE tileSurf;
+	int tileSurfWidth,tileSurfHeight;
 	int roofSkip;
 	Sprites roofTree;
 	TerrainVec tilesTerrain;
@@ -332,6 +334,7 @@ private:
 	bool AddTerrain(DWORD name_hash, int hx, int hy);
 
 public:
+	bool InitTilesSurf();
 	void RebuildTiles();
 	void RebuildRoof();
 	void SetSkipRoof(int hx, int hy);
@@ -402,7 +405,7 @@ public:
 	void SwitchIgnorePid(WORD pid);
 	bool IsIgnorePid(WORD pid);
 
-	void GetHexesRect(INTRECT& r, WordPairVec& h);
+	void GetHexesRect(INTRECT& rect, WordPairVec& hexes);
 	void MarkPassedHexes();
 	void AffectItem(MapObject* mobj, ItemHex* item);
 	void AffectCritter(MapObject* mobj, CritterCl* cr);

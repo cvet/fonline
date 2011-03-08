@@ -521,8 +521,8 @@ public:
 		static void Global_Log(CScriptString& text);
 		static ProtoItem* Global_GetProtoItem(WORD proto_id);
 		static DWORD Global_GetDistantion(WORD hex_x1, WORD hex_y1, WORD hex_x2, WORD hex_y2);
-		static BYTE Global_GetDirection(WORD from_x, WORD from_y, WORD to_x, WORD to_y);
-		static BYTE Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset);
+		static BYTE Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
+		static BYTE Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset);
 		static DWORD Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second);
 		static void Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second);
 		static bool Global_StrToInt(CScriptString& text, int& result);

@@ -1209,10 +1209,12 @@
 	if(engine->RegisterGlobalProperty("uint __LookDir1",&GameOpt.LookDir[1])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookDir2",&GameOpt.LookDir[2])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookDir3",&GameOpt.LookDir[3])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __LookDir4",&GameOpt.LookDir[4])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookSneakDir0",&GameOpt.LookSneakDir[0])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookSneakDir1",&GameOpt.LookSneakDir[1])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookSneakDir2",&GameOpt.LookSneakDir[2])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookSneakDir3",&GameOpt.LookSneakDir[3])) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __LookSneakDir4",&GameOpt.LookSneakDir[4])) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __LookWeight",&GameOpt.LookWeight)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __CustomItemCost",&GameOpt.CustomItemCost)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __RegistrationTimeout",&GameOpt.RegistrationTimeout)) BIND_ERROR;
@@ -1583,14 +1585,27 @@
 	if(engine->RegisterGlobalFunction("string@ GetIfaceIniStr(string& key)",asFUNCTION(BIND_CLASS Global_GetIfaceIniStr),asCALL_CDECL)<0) BIND_ERROR;
 #endif
 
+	if(engine->RegisterGlobalProperty("bool __MapHexagonal",&GameOpt.MapHexagonal)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapHexWidth",&GameOpt.MapHexWidth)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapHexHeight",&GameOpt.MapHexHeight)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapHexLineHeight",&GameOpt.MapHexLineHeight)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapTileOffsX",&GameOpt.MapTileOffsX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapTileOffsY",&GameOpt.MapTileOffsY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapRoofOffsX",&GameOpt.MapRoofOffsX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapRoofOffsY",&GameOpt.MapRoofOffsY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __MapRoofSkipSize",&GameOpt.MapRoofSkipSize)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __MapCameraAngle",&GameOpt.MapCameraAngle)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __MapSmoothPath",&GameOpt.MapSmoothPath)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("string __MapDataPrefix",&GameOpt.MapDataPrefix)) BIND_ERROR;
+
 	if(engine->RegisterGlobalFunction("void Log(string& text)",asFUNCTION(BIND_CLASS Global_Log),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetLastError()",asFUNCTION(BIND_CLASS Global_GetLastError),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int Random(int minimum, int maximum)",asFUNCTION(Random),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("ProtoItem@+ GetProtoItem(uint16 protoId)",asFUNCTION(BIND_CLASS Global_GetProtoItem),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool StrToInt(string& text, int& result)",asFUNCTION(BIND_CLASS Global_StrToInt),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2)",asFUNCTION(BIND_CLASS Global_GetDistantion),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint8 GetDirection(uint16 fromX, uint16 fromY, uint16 toX, uint16 toY)",asFUNCTION(BIND_CLASS Global_GetDirection),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint8 GetOffsetDir(uint16 hx, uint16 hy, uint16 tx, uint16 ty, float offset)",asFUNCTION(BIND_CLASS Global_GetOffsetDir),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint8 GetDirection(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY)",asFUNCTION(BIND_CLASS Global_GetDirection),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint8 GetOffsetDir(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY, float offset)",asFUNCTION(BIND_CLASS Global_GetOffsetDir),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetTick()",asFUNCTION(BIND_CLASS Global_GetTick),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetAngelScriptProperty(int property)",asFUNCTION(BIND_CLASS Global_GetAngelScriptProperty),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetAngelScriptProperty(int property, uint value)",asFUNCTION(BIND_CLASS Global_SetAngelScriptProperty),asCALL_CDECL)<0) BIND_ERROR;

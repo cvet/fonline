@@ -19,6 +19,7 @@ private:
 	DWORD encryptKeys[CRYPT_KEYS_COUNT];
 
 	void CopyBuf(const char* from, char* to, const char* mask, DWORD crypt_key, DWORD len);
+	bool IsValidMsg(DWORD msg);
 
 public:
 	BufferManager();

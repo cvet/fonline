@@ -450,8 +450,8 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static CScriptString* Global_ReplaceTextInt(CScriptString& text, CScriptString& replace, int i);		
 
 		static DWORD Global_GetDistantion(WORD hex_x1, WORD hex_y1, WORD hex_x2, WORD hex_y2);
-		static BYTE Global_GetDirection(WORD from_x, WORD from_y, WORD to_x, WORD to_y);
-		static BYTE Global_GetOffsetDir(WORD hx, WORD hy, WORD tx, WORD ty, float offset);
+		static BYTE Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
+		static BYTE Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset);
 		static void Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist);
 		static DWORD Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
 		static bool Global_GetHexPos(WORD hx, WORD hy, int& x, int& y);

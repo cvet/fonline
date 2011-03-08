@@ -106,13 +106,12 @@ struct PathFindData
 	void Clear(){ZeroMemory(this,sizeof(PathFindData));MoveParams=0xFFFF;}
 };
 
-struct PathStep // 8 bytes
+struct PathStep
 {
 	WORD HexX;
 	WORD HexY;
-	WORD MoveParams;
+	DWORD MoveParams;
 	BYTE Dir;
-	BYTE Reserved;
 };
 typedef vector<PathStep> PathStepVec;
 
@@ -210,7 +209,7 @@ public:
 	bool IsProtoMapNoLogOut(WORD pid_map);
 	void TraceBullet(TraceData& trace);
 	int FindPath(PathFindData& pfd);
-	int FindPathGrid(WORD& hx, WORD& hy, int index, bool switcher);
+	int FindPathGrid(WORD& hx, WORD& hy, int index, bool smooth_switcher);
 	PathStepVec& GetPath(DWORD num){return pathesPool[num];}
 	void PathSetMoveParams(PathStepVec& path, bool is_run);
 };

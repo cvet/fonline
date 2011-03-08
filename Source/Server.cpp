@@ -3341,7 +3341,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1176);
+	STATIC_ASSERT(sizeof(GameOptions)==1264);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 
@@ -3688,14 +3688,16 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 				FOMsg* msg=pack->Texts[i];
 				FOMsg* msg_dlg=&lang.Msg[TEXTMSG_DLG];
 
-				// Npc texts
+				// Npc names, descriptions
+				// 100000..10100000
 				for(int n=100;n<300;n+=10)
 				{
 					for(int l=0,k=msg->Count(n);l<k;l++)
-						msg_dlg->AddStr(pack->PackId*1000+n,msg->GetStr(n,l));
+						msg_dlg->AddStr(100000+pack->PackId*1000+n,msg->GetStr(n,l));
 				}
 
 				// Dialogs text
+				// 100000000..999999999
 				for(int i_=0;i_<pack->Dialogs.size();i_++)
 				{
 					Dialog& dlg=pack->Dialogs[i_];
@@ -3710,6 +3712,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 				}
 
 				// Any texts
+				// 1000000000..
 				DwordStrMulMap& data=msg->GetData();
 				DwordStrMulMapIt it__=data.upper_bound(99999999);
 				for(;it__!=data.end();++it__) msg_dlg->AddStr(1000000000+pack->PackId*100000+((*it__).first-100000000),(*it__).second);

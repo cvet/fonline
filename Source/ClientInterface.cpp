@@ -2151,8 +2151,8 @@ void FOClient::GameDraw()
 			int procent=Procent(mt.Tick,dt);
 			INTRECT r=AverageFlexRect(mt.Rect,mt.EndRect,procent);
 			Field& f=HexMngr.GetField(mt.HexX,mt.HexY);
-			int x=(f.ScrX+16+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(mt.Rect.L-r.L);
-			int y=(f.ScrY+6-mt.Rect.H()-(mt.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
+			int x=(f.ScrX+HEX_OX+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(mt.Rect.L-r.L);
+			int y=(f.ScrY+HEX_OY-mt.Rect.H()-(mt.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
 
 			DWORD color=mt.Color;
 			if(mt.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
@@ -2273,7 +2273,7 @@ void FOClient::GameLMouseDown()
 	else if(IsCurMode(CUR_MOVE))
 	{
 		ActionEvent* act=(IsAction(CHOSEN_MOVE)?&ChosenAction[0]:NULL);
-		if(act && Timer::FastTick()-act->Param[4]<GetDoubleClickTime())
+		if(act && Timer::FastTick()-act->Param[5]<GetDoubleClickTime())
 		{
 			act->Param[2]=(GameOpt.AlwaysRun?0:1);
 			act->Param[4]=0;
@@ -4136,7 +4136,7 @@ void FOClient::LMenuSet(BYTE set_lmenu)
 				if(LMenuMode==LMENU_NPC)
 				{
 					// Npc
-					if(cr->IsToTalk()) LMenuCritNodes.push_back(LMENU_NODE_TALK);
+					if(cr->IsCanTalk()) LMenuCritNodes.push_back(LMENU_NODE_TALK);
 					if(cr->IsDead() && !cr->IsRawParam(MODE_NO_LOOT)) LMenuCritNodes.push_back(LMENU_NODE_USE);
 					LMenuCritNodes.push_back(LMENU_NODE_LOOK);
 					if(cr->IsLife() && !cr->IsRawParam(MODE_NO_PUSH)) LMenuCritNodes.push_back(LMENU_NODE_PUSH);
@@ -5469,8 +5469,8 @@ void FOClient::GmapDraw()
 			int val=GmapFog.Get2Bit(zx,zy);
 			if(val==GM_FOG_NONE) continue;
 			DWORD color=D3DCOLOR_ARGB(0xFF,0,0,0); //GM_FOG_FULL
-			if(val==GM_FOG_SELF) color=D3DCOLOR_ARGB(0x7F,0,0,0);
-			else if(val==GM_FOG_SELF2) color=D3DCOLOR_ARGB(0x3F,0,0,0);
+			if(val==GM_FOG_HALF) color=D3DCOLOR_ARGB(0x7F,0,0,0);
+			else if(val==GM_FOG_HALF_EX) color=D3DCOLOR_ARGB(0x3F,0,0,0);
 			float x=float(zx*GM_ZONE_LEN)/GmapZoom+GmapOffsetX;
 			float y=float(zy*GM_ZONE_LEN)/GmapZoom+GmapOffsetY;
 			SprMngr.PrepareSquare(GmapFogPix,FLTRECT(x,y,x+GM_ZONE_LEN/GmapZoom,y+GM_ZONE_LEN/GmapZoom),color);
@@ -6524,7 +6524,7 @@ void FOClient::ChaDraw(bool is_reg)
 	{
 		SprMngr.DrawStr(INTRECT(ChaWLevel,ChaX,ChaY),FmtGameText(STR_CHA_LEVEL,cr->GetParam(ST_LEVEL)),FT_COLORIZE);
 		SprMngr.DrawStr(INTRECT(ChaWExp,ChaX,ChaY),FmtGameText(STR_CHA_EXPERIENCE,cr->GetParam(ST_EXPERIENCE)),FT_COLORIZE);
-		SprMngr.DrawStr(INTRECT(ChaWNextLevel,ChaX,ChaY),FmtGameText(STR_CHA_NEXT_LEVEL,NextLevel(cr->GetParam(ST_LEVEL))),FT_COLORIZE);
+		SprMngr.DrawStr(INTRECT(ChaWNextLevel,ChaX,ChaY),FmtGameText(STR_CHA_NEXT_LEVEL,NumericalNumber(cr->GetParam(ST_LEVEL))*1000),FT_COLORIZE);
 	}
 
 	// Name
