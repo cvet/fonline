@@ -107,6 +107,7 @@ public:
 	static void ExtractFileName(const char* fname, char* name);
 	static void MakeFilePath(const char* name, const char* path, char* result);
 	static const char* GetExtension(const char* fname);
+	static void EraseExtension(char* fname);
 
 	bool IsLoaded(){return fileBuf!=NULL;}
 	BYTE* GetBuf(){return fileBuf;}
@@ -118,8 +119,8 @@ public:
 	int ParseLinesInt(const char* fname, int path_type, IntVec& lines);
 
 	static DataFileVec& GetDataFiles(){return dataFiles;}
-	static void GetFolderFileNames(int path_type, const char* ext, StrVec& result); // Note: include subdirs
-	static void GetDatsFileNames(int path_type, const char* ext, StrVec& result); // Note: include subdirs
+	static void GetFolderFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
+	static void GetDatsFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
 
 	FileManager():dataOutBuf(NULL),posOutBuf(0),endOutBuf(0),lenOutBuf(0),fileSize(0),curPos(0),fileBuf(NULL){};
 	~FileManager(){UnloadFile(); ClearOutBuf();}
@@ -139,7 +140,7 @@ private:
 
 	FILETIME timeCreate,timeAccess,timeWrite;
 
-	static void RecursiveDirLook(const char* init_dir, const char* ext, StrVec& result);
+	static void RecursiveDirLook(const char* init_dir, bool include_subdirs, const char* ext, StrVec& result);
 };
 
 #endif // __FILE_MANAGER__

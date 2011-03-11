@@ -3732,6 +3732,11 @@ void HexManager::ClearFastPids()
 	fastPids.clear();
 }
 
+void HexManager::AddIgnorePid(WORD pid)
+{
+	ignorePids.insert(pid);
+}
+
 void HexManager::SwitchIgnorePid(WORD pid)
 {
 	if(ignorePids.count(pid)) ignorePids.erase(pid);
@@ -3741,6 +3746,11 @@ void HexManager::SwitchIgnorePid(WORD pid)
 bool HexManager::IsIgnorePid(WORD pid)
 {
 	return ignorePids.count(pid)!=0;
+}
+
+void HexManager::ClearIgnorePids()
+{
+	ignorePids.clear();
 }
 
 void HexManager::GetHexesRect(INTRECT& rect, WordPairVec& hexes)

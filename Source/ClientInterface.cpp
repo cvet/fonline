@@ -9899,7 +9899,7 @@ void FOClient::SaveLoadCollect()
 
 	// For each all saves in folder
 	StrVec fnames;
-	FileManager::GetFolderFileNames(PT_SAVE,"fo",fnames);
+	FileManager::GetFolderFileNames(FileManager::GetPath(PT_SAVE),true,"fo",fnames);
 	PtrVec open_handles;
 	for(size_t i=0;i<fnames.size();i++)
 	{

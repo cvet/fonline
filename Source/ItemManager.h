@@ -42,10 +42,11 @@ public:
 	void SaveProtos(ProtoItemVec& protos, const char* full_path);
 #endif
 
-	void ParseProtos(ProtoItemVec& protos);
+	void ParseProtos(ProtoItemVec& protos, const char* collection_name = NULL);
 	void PrintProtosHash();
 	ProtoItem* GetProtoItem(WORD pid);
-	void GetAllProtos(ProtoItemVec& protos);
+	ProtoItem* GetAllProtos();
+	void GetCopyAllProtos(ProtoItemVec& protos);
 	bool IsInitProto(WORD pid);
 	const char* GetProtoScript(WORD pid);
 	void ClearProtos(BYTE type = 0xFF); // 0xFF - All
@@ -105,7 +106,10 @@ public:
 	void RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_map_id, WORD from_wx, WORD from_wy,
 		const char* text, WORD text_len, WORD intellect, bool unsafe_text,
 		WORD text_msg, DWORD num_str);
+#endif // FONLINE_SERVER
 
+#ifdef FONLINE_MAPPER
+	string ProtosCollectionName[MAX_ITEM_PROTOTYPES];
 #endif
 
 	// Items statistics

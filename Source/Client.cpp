@@ -6862,7 +6862,7 @@ void FOClient::Net_OnProtoItemData()
 	//ItemMngr.PrintProtosHash();
 
 	ProtoItemVec proto_items;
-	ItemMngr.GetAllProtos(proto_items);
+	ItemMngr.GetCopyAllProtos(proto_items);
 	DWORD len=proto_items.size()*sizeof(ProtoItem);
 	BYTE* proto_data=Crypt.Compress((BYTE*)&proto_items[0],len);
 	if(!proto_data)

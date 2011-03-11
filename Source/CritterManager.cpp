@@ -106,6 +106,13 @@ bool CritterManager::LoadProtos()
 	for(int i=0,k=fnames.size();i<k;i++)
 	{
 		const char* fname=fnames[i].c_str();
+
+#ifdef FONLINE_MAPPER
+		char collection_name[MAX_FOPATH];
+		StringFormat(collection_name,"%03d - %s",i+1,fname);
+		FileManager::EraseExtension(collection_name);
+#endif
+
 		if(protos_txt.LoadFile(fname,PT_SERVER_PRO_CRITTERS))
 		{
 			while(protos_txt.GotoNextApp(CRPROTO_APP))
@@ -144,9 +151,12 @@ bool CritterManager::LoadProtos()
 				{
 					CritData& proto=allProtos[pid];
 					if(!proto.ProtoId) loaded_count++;
-					//else WriteLog("Prototype is already parsed, pid<%u>. Rewrite.\n",pid);
 					proto.ProtoId=pid;
 					memcpy(proto.Params,params,sizeof(params));
+
+#ifdef FONLINE_MAPPER
+					ProtosCollectionName[pid]=collection_name;
+#endif
 				}
 				else
 				{
@@ -165,6 +175,11 @@ CritData* CritterManager::GetProto(WORD proto_id)
 {
 	if(!proto_id || proto_id>=MAX_CRIT_PROTOS || !allProtos[proto_id].ProtoId) return NULL;
 	return &allProtos[proto_id];
+}
+
+CritData* CritterManager::GetAllProtos()
+{
+	return allProtos;
 }
 
 #ifdef FONLINE_SERVER

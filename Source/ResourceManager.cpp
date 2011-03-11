@@ -16,23 +16,23 @@ void ResourceManager::Refresh()
 	{
 		// All names
 		StrVec file_names;
-		FileManager::GetFolderFileNames(PT_DATA,NULL,file_names);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_DATA),true,NULL,file_names);
 		for(StrVecIt it=file_names.begin(),end=file_names.end();it!=end;++it) Str::AddNameHash((*it).c_str());
 
 		// Splashes
 		StrVec splashes;
-		FileManager::GetFolderFileNames(PT_ART_SPLASH,"rix",splashes);
-		FileManager::GetFolderFileNames(PT_ART_SPLASH,"png",splashes);
-		FileManager::GetFolderFileNames(PT_ART_SPLASH,"jpg",splashes);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_ART_SPLASH),true,"rix",splashes);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_ART_SPLASH),true,"png",splashes);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_ART_SPLASH),true,"jpg",splashes);
 		for(StrVecIt it=splashes.begin(),end=splashes.end();it!=end;++it)
 			if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end())
 				splashNames.push_back(*it);
 
 		// Sound names
 		StrVec sounds;
-		FileManager::GetFolderFileNames(PT_SND_SFX,"wav",sounds);
-		FileManager::GetFolderFileNames(PT_SND_SFX,"acm",sounds);
-		FileManager::GetFolderFileNames(PT_SND_SFX,"ogg",sounds);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_SND_SFX),true,"wav",sounds);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_SND_SFX),true,"acm",sounds);
+		FileManager::GetFolderFileNames(FileManager::GetPath(PT_SND_SFX),true,"ogg",sounds);
 		char fname[MAX_FOPATH];
 		char name[MAX_FOPATH];
 		for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)
@@ -58,23 +58,23 @@ void ResourceManager::Refresh()
 		{
 			// All names
 			StrVec file_names;
-			pfile->GetFileNames(FileManager::GetPath(PT_DATA),NULL,file_names);
+			pfile->GetFileNames(FileManager::GetPath(PT_DATA),true,NULL,file_names);
 			for(StrVecIt it=file_names.begin(),end=file_names.end();it!=end;++it) Str::AddNameHash((*it).c_str());
 
 			// Splashes
 			StrVec splashes;
-			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"rix",splashes);
-			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"png",splashes);
-			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),"jpg",splashes);
+			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),true,"rix",splashes);
+			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),true,"png",splashes);
+			pfile->GetFileNames(FileManager::GetPath(PT_ART_SPLASH),true,"jpg",splashes);
 			for(StrVecIt it=splashes.begin(),end=splashes.end();it!=end;++it)
 				if(std::find(splashNames.begin(),splashNames.end(),*it)==splashNames.end())
 					splashNames.push_back(*it);
 
 			// Sound names
 			StrVec sounds;
-			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),"wav",sounds);
-			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),"acm",sounds);
-			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),"ogg",sounds);
+			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),true,"wav",sounds);
+			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),true,"acm",sounds);
+			pfile->GetFileNames(FileManager::GetPath(PT_SND_SFX),true,"ogg",sounds);
 			char fname[MAX_FOPATH];
 			char name[MAX_FOPATH];
 			for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)

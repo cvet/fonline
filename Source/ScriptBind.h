@@ -1412,8 +1412,6 @@
 
 	// Global
 	if(engine->RegisterGlobalFunction("void SetDefaultCritterParam(uint index, int param)",asFUNCTION(BIND_CLASS Global_SetDefaultCritterParam),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("uint GetFastPrototypes(uint16[]@+ pids)",asFUNCTION(BIND_CLASS Global_GetFastPrototypes),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void SetFastPrototypes(uint16[]@+ pids)",asFUNCTION(BIND_CLASS Global_SetFastPrototypes),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("MapperMap@+ LoadMap(string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_LoadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void UnloadMap(MapperMap@+ map)",asFUNCTION(BIND_CLASS Global_UnloadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SaveMap(MapperMap@+ map, string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_SaveMap),asCALL_CDECL)<0) BIND_ERROR;
@@ -1426,6 +1424,16 @@
 	if(engine->RegisterGlobalFunction("void SelectObjects(MapperObject@[]& objects, bool set)",asFUNCTION(BIND_CLASS Global_SelectObjects),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("MapperObject@+ GetSelectedObject()",asFUNCTION(BIND_CLASS Global_GetSelectedObject),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetSelectedObjects(MapperObject@[]@+ objects)",asFUNCTION(BIND_CLASS Global_GetSelectedObjects),asCALL_CDECL)<0) BIND_ERROR;
+
+	if(engine->RegisterGlobalFunction("uint TabGetTileDirs(int tab, string@[]@+ dirNames, bool[]@+ includeSubdirs)",asFUNCTION(BIND_CLASS Global_TabGetTileDirs),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint TabGetItemPids(int tab, string@+ subTab, uint16[]@+ itemPids)",asFUNCTION(BIND_CLASS Global_TabGetItemPids),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint TabGetCritterPids(int tab, string@+ subTab, uint16[]@+ critterPids)",asFUNCTION(BIND_CLASS Global_TabGetCritterPids),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void TabSetTileDirs(int tab, string@[]@+ dirNames, bool[]@+ includeSubdirs)",asFUNCTION(BIND_CLASS Global_TabSetTileDirs),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void TabSetItemPids(int tab, string@+ subTab, uint16[]@+ itemPids)",asFUNCTION(BIND_CLASS Global_TabSetItemPids),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void TabSetCritterPids(int tab, string@+ subTab, uint16[]@+ critterPids)",asFUNCTION(BIND_CLASS Global_TabSetCritterPids),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void TabDelete(int tab)",asFUNCTION(BIND_CLASS Global_TabDelete),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void TabSelect(int tab, string@+ subTab)",asFUNCTION(BIND_CLASS Global_TabSelect),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void TabSetName(int tab, string@+ tabName)",asFUNCTION(BIND_CLASS Global_TabSetName),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalFunction("bool IsCritterCanWalk(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanWalk),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsCritterCanRun(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanRun),asCALL_CDECL)<0) BIND_ERROR;
@@ -1442,6 +1450,7 @@
 	if(engine->RegisterGlobalProperty("bool __ShowCorners",&GameOpt.ShowCorners)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __ShowSpriteCuts",&GameOpt.ShowSpriteCuts)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __ShowDrawOrder",&GameOpt.ShowDrawOrder)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("bool __SplitTilesCollection",&GameOpt.SplitTilesCollection)) BIND_ERROR;
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_MAPPER)

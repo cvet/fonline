@@ -768,9 +768,11 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 	if(tiles_str)
 	{
 		istrstream istr(tiles_str);
-		string type,name;
+		string type;
 		if(Header.Version==FO_MAP_VERSION_TEXT1)
 		{
+			string name;
+
 			// Deprecated
 			while(!istr.eof() && !istr.fail())
 			{
@@ -790,6 +792,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 		}
 		else
 		{
+			char name[MAX_FOTEXT];
 			DWORD hx,hy;
 			int ox,oy,layer;
 			bool is_roof;
@@ -826,11 +829,10 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					if(has_layer) istr >> layer;
 					else layer=0;
 
-#pragma MESSAGE("Map text format, load to end of line, because may be spaces.")
-					//istr.getline()
-					istr >> name;
+					istr.getline(name,MAX_FOTEXT);
+					Str::EraseFrontBackSpecificChars(name);
 
-					Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,ox,oy,layer,is_roof));
+					Tiles.push_back(Tile(Str::GetHash(name),hx,hy,ox,oy,layer,is_roof));
 				}
 			}
 		}
@@ -842,14 +844,17 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 	if(objects_str)
 	{
 		istrstream istr(objects_str);
-		string field,value;
+		string field;
+		char svalue[MAX_FOTEXT];
 		int ivalue;
 		while(!istr.eof() && !istr.fail())
 		{
-			istr >> field >> value;
+			istr >> field;
+			istr.getline(svalue,MAX_FOTEXT);
+
 			if(!istr.fail())
 			{
-				ivalue=(int)_atoi64(value.c_str());
+				ivalue=(int)_atoi64(svalue);
 
 				if(field=="MapObjType")
 				{
@@ -881,8 +886,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					else if(field=="LightDirOff") mobj.LightDirOff=ivalue;
 					else if(field=="LightDistance") mobj.LightDistance=ivalue;
 					else if(field=="LightIntensity") mobj.LightIntensity=ivalue;
-					else if(field=="ScriptName") StringCopy(mobj.ScriptName,value.c_str());
-					else if(field=="FuncName") StringCopy(mobj.FuncName,value.c_str());
+					else if(field=="ScriptName") StringCopy(mobj.ScriptName,Str::EraseFrontBackSpecificChars(svalue));
+					else if(field=="FuncName") StringCopy(mobj.FuncName,Str::EraseFrontBackSpecificChars(svalue));
 					else if(field=="UserData0") mobj.UserData[0]=ivalue;
 					else if(field=="UserData1") mobj.UserData[1]=ivalue;
 					else if(field=="UserData2") mobj.UserData[2]=ivalue;
@@ -899,21 +904,21 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						if(field=="Critter_Cond") mobj.MCritter.Cond=ivalue;
 						else if(field=="Critter_Anim1") mobj.MCritter.Anim1=ivalue;
 						else if(field=="Critter_Anim2") mobj.MCritter.Anim2=ivalue;
-						else if(field=="Critter_ParamIndex0") mobj.MCritter.ParamIndex[0]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex1") mobj.MCritter.ParamIndex[1]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex2") mobj.MCritter.ParamIndex[2]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex3") mobj.MCritter.ParamIndex[3]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex4") mobj.MCritter.ParamIndex[4]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex5") mobj.MCritter.ParamIndex[5]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex6") mobj.MCritter.ParamIndex[6]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex7") mobj.MCritter.ParamIndex[7]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex8") mobj.MCritter.ParamIndex[8]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex9") mobj.MCritter.ParamIndex[9]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex10") mobj.MCritter.ParamIndex[10]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex11") mobj.MCritter.ParamIndex[11]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex12") mobj.MCritter.ParamIndex[12]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex13") mobj.MCritter.ParamIndex[13]=FONames::GetParamId(value.c_str());
-						else if(field=="Critter_ParamIndex14") mobj.MCritter.ParamIndex[14]=FONames::GetParamId(value.c_str());
+						else if(field=="Critter_ParamIndex0") mobj.MCritter.ParamIndex[0]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex1") mobj.MCritter.ParamIndex[1]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex2") mobj.MCritter.ParamIndex[2]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex3") mobj.MCritter.ParamIndex[3]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex4") mobj.MCritter.ParamIndex[4]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex5") mobj.MCritter.ParamIndex[5]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex6") mobj.MCritter.ParamIndex[6]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex7") mobj.MCritter.ParamIndex[7]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex8") mobj.MCritter.ParamIndex[8]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex9") mobj.MCritter.ParamIndex[9]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex10") mobj.MCritter.ParamIndex[10]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex11") mobj.MCritter.ParamIndex[11]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex12") mobj.MCritter.ParamIndex[12]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex13") mobj.MCritter.ParamIndex[13]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex14") mobj.MCritter.ParamIndex[14]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
 						else if(field=="Critter_ParamValue0") mobj.MCritter.ParamValue[0]=ivalue;
 						else if(field=="Critter_ParamValue1") mobj.MCritter.ParamValue[1]=ivalue;
 						else if(field=="Critter_ParamValue2") mobj.MCritter.ParamValue[2]=ivalue;
@@ -944,16 +949,16 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						else if(field=="PicMapName")
 						{
 #ifdef FONLINE_MAPPER
-							StringCopy(mobj.RunTime.PicMapName,value.c_str());
+							StringCopy(mobj.RunTime.PicMapName,Str::EraseFrontBackSpecificChars(svalue));
 #endif
-							mobj.MItem.PicMapHash=Str::GetHash(value.c_str());
+							mobj.MItem.PicMapHash=Str::GetHash(Str::EraseFrontBackSpecificChars(svalue));
 						}
 						else if(field=="PicInvName")
 						{
 #ifdef FONLINE_MAPPER
-							StringCopy(mobj.RunTime.PicInvName,value.c_str());
+							StringCopy(mobj.RunTime.PicInvName,Str::EraseFrontBackSpecificChars(svalue));
 #endif
-							mobj.MItem.PicInvHash=Str::GetHash(value.c_str());
+							mobj.MItem.PicInvHash=Str::GetHash(Str::EraseFrontBackSpecificChars(svalue));
 						}
 						else if(field=="InfoOffset") mobj.MItem.InfoOffset=ivalue;
 						// Item
@@ -1011,18 +1016,6 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 }
 
 #ifdef FONLINE_MAPPER
-char* FixName(char* name)
-{
-	if(name[0])
-	{
-		Str::EraseChars(name,' ');
-		Str::EraseChars(name,'\t');
-		Str::EraseChars(name,'\n');
-		Str::EraseChars(name,'\r');
-	}
-	return name;
-}
-
 void ProtoMap::SaveTextFormat(FileManager* fm)
 {
 	// Header
@@ -1093,8 +1086,8 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		if(mobj.LightDirOff) fm->SetStr("%-20s %d\n","LightDirOff",mobj.LightDirOff);
 		if(mobj.LightDistance) fm->SetStr("%-20s %d\n","LightDistance",mobj.LightDistance);
 		if(mobj.LightIntensity) fm->SetStr("%-20s %d\n","LightIntensity",mobj.LightIntensity);
-		if(FixName(mobj.ScriptName)[0]) fm->SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
-		if(FixName(mobj.FuncName)[0]) fm->SetStr("%-20s %s\n","FuncName",mobj.FuncName);
+		if(mobj.ScriptName[0]) fm->SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
+		if(mobj.FuncName[0]) fm->SetStr("%-20s %s\n","FuncName",mobj.FuncName);
 		if(mobj.UserData[0]) fm->SetStr("%-20s %d\n","UserData0",mobj.UserData[0]);
 		if(mobj.UserData[1]) fm->SetStr("%-20s %d\n","UserData1",mobj.UserData[1]);
 		if(mobj.UserData[2]) fm->SetStr("%-20s %d\n","UserData2",mobj.UserData[2]);
@@ -1135,8 +1128,8 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			if(mobj.MItem.AnimStayBegin) fm->SetStr("%-20s %d\n","AnimStayBegin",mobj.MItem.AnimStayBegin);
 			if(mobj.MItem.AnimStayEnd) fm->SetStr("%-20s %d\n","AnimStayEnd",mobj.MItem.AnimStayEnd);
 			if(mobj.MItem.AnimWait) fm->SetStr("%-20s %d\n","AnimWait",mobj.MItem.AnimWait);
-			if(FixName(mobj.RunTime.PicMapName)[0]) fm->SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
-			if(FixName(mobj.RunTime.PicInvName)[0]) fm->SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
+			if(mobj.RunTime.PicMapName[0]) fm->SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
+			if(mobj.RunTime.PicInvName[0]) fm->SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
 			if(mobj.MItem.InfoOffset) fm->SetStr("%-20s %d\n","InfoOffset",mobj.MItem.InfoOffset);
 			if(mobj.MapObjType==MAP_OBJECT_ITEM)
 			{

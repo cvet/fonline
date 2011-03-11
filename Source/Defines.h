@@ -100,6 +100,8 @@ typedef vector<float> FloatVec;
 typedef vector<float>::iterator FloatVecIt;
 typedef vector<ULONGLONG> UInt64Vec;
 typedef vector<ULONGLONG>::iterator UInt64VecIt;
+typedef vector<bool>BoolVec;
+typedef vector<bool>::iterator BoolVecIt;
 
 typedef set<string> StrSet;
 typedef set<BYTE> ByteSet;

@@ -402,8 +402,10 @@ public:
 	void AddFastPid(WORD pid);
 	bool IsFastPid(WORD pid);
 	void ClearFastPids();
+	void AddIgnorePid(WORD pid);
 	void SwitchIgnorePid(WORD pid);
 	bool IsIgnorePid(WORD pid);
+	void ClearIgnorePids();
 
 	void GetHexesRect(INTRECT& rect, WordPairVec& hexes);
 	void MarkPassedHexes();

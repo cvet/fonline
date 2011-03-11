@@ -1154,6 +1154,16 @@ struct BindClass
 	static void Global_GetSelectedObject(){}
 	static void Global_GetSelectedObjects(){}
 
+	static void Global_TabGetTileDirs(){}
+	static void Global_TabGetItemPids(){}
+	static void Global_TabGetCritterPids(){}
+	static void Global_TabSetTileDirs(){}
+	static void Global_TabSetItemPids(){}
+	static void Global_TabSetCritterPids(){}
+	static void Global_TabDelete(){}
+	static void Global_TabSelect(){}
+	static void Global_TabSetName(){}
+
 	static void Global_IsCritterCanWalk(){}
 	static void Global_IsCritterCanRun(){}
 	static void Global_IsCritterCanRotate(){}
@@ -1481,6 +1491,7 @@ struct GameOptions
 	int ShowCorners;
 	int ShowSpriteCuts;
 	int ShowDrawOrder;
+	int SplitTilesCollection;
 } GameOpt;
 
 

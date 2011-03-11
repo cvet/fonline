@@ -52,8 +52,7 @@ public:
 	void ParseKeyboard();
 	void ParseMouse();
 	void MainLoop();
-	void AddFastProto(WORD pid);
-	void RefreshTiles();
+	void RefreshTiles(int tab);
 
 #define DRAW_CR_INFO_MAX      (3)
 	int DrawCrExtInfo;
@@ -133,26 +132,26 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	bool IsCurInRectNoTransp(DWORD spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,GameOpt.MouseX-rect.L-ax,GameOpt.MouseY-rect.T-ay,false);}
 
 	int IntMode;
-#define INT_MODE_NONE       (0)
-#define INT_MODE_ARMOR      (1)
-#define INT_MODE_DRUG       (2)
-#define INT_MODE_WEAPON     (3)
-#define INT_MODE_AMMO       (4)
-#define INT_MODE_MISC       (5)
-#define INT_MODE_MISC_EX    (6)
-#define INT_MODE_KEY        (7)
-#define INT_MODE_CONT       (8)
-#define INT_MODE_DOOR       (9)
-#define INT_MODE_GRID       (10)
-#define INT_MODE_GENERIC    (11)
-#define INT_MODE_WALL       (12)
-#define INT_MODE_TILE       (13)
-#define INT_MODE_CRIT       (14)
-#define INT_MODE_FAST       (15)
-#define INT_MODE_IGNORE     (16)
-#define INT_MODE_INCONT     (17)
-#define INT_MODE_MESS       (18)
-#define INT_MODE_LIST       (19)
+#define INT_MODE_CUSTOM0    (0)
+#define INT_MODE_CUSTOM1    (1)
+#define INT_MODE_CUSTOM2    (2)
+#define INT_MODE_CUSTOM3    (3)
+#define INT_MODE_CUSTOM4    (4)
+#define INT_MODE_CUSTOM5    (5)
+#define INT_MODE_CUSTOM6    (6)
+#define INT_MODE_CUSTOM7    (7)
+#define INT_MODE_CUSTOM8    (8)
+#define INT_MODE_CUSTOM9    (9)
+#define INT_MODE_ITEM       (10)
+#define INT_MODE_TILE       (11)
+#define INT_MODE_CRIT       (12)
+#define INT_MODE_FAST       (13)
+#define INT_MODE_IGNORE     (14)
+#define INT_MODE_INCONT     (15)
+#define INT_MODE_MESS       (16)
+#define INT_MODE_LIST       (17)
+#define INT_MODE_COUNT      (18)
+#define TAB_COUNT           (15)
 
 	int IntHold;
 #define INT_NONE            (0)
@@ -160,6 +159,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 #define INT_MAIN            (2)
 #define INT_SELECT          (3)
 #define INT_OBJECT          (4)
+#define INT_SUB_TAB         (5)
 
 	AnyFrames* IntMainPic,*IntPTab,*IntPSelect,*IntPShow;
 	int IntX,IntY;
@@ -176,9 +176,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	INTRECT IntWMain;
 	INTRECT IntWWork,IntWHint;
 
-	INTRECT IntBArm,IntBDrug,IntBWpn,IntBAmmo,IntBMisc,IntBMiscEx,IntBKey,IntBCont,IntBDoor,
-		IntBGrid,IntBGen,IntBWall,IntBTile,IntBCrit,
-		IntBFast,IntBIgnore,IntBInCont,IntBMess,IntBList,
+	INTRECT IntBCust[10],IntBItem,IntBTile,IntBCrit,IntBFast,IntBIgnore,IntBInCont,IntBMess,IntBList,
 		IntBScrBack,IntBScrBackFst,IntBScrFront,IntBScrFrontFst;
 
 	INTRECT IntBShowItem,IntBShowScen,IntBShowWall,IntBShowCrit,IntBShowTile,IntBShowRoof,IntBShowFast;
@@ -193,34 +191,60 @@ typedef vector<MapText>::iterator MapTextVecIt;
 	ProtoMapPtrVec LoadedProtoMaps;
 	ProtoMap* CurProtoMap;
 
-	// Proto
+	// Tabs
+#define DEFAULT_SUB_TAB     "000 - all"
+	struct SubTab
+	{
+		ProtoItemVec ItemProtos;
+		CritDataVec NpcProtos;
+		StrVec TileNames;
+		DwordVec TileHashes;
+		int Index,Scroll;
+		SubTab():Index(0),Scroll(0){}
+	};
+	typedef map<string,SubTab> SubTabMap;
+	typedef map<string,SubTab>::iterator SubTabMapIt;
+
+	struct TileTab
+	{
+		StrVec TileDirs;
+		BoolVec TileSubDirs;
+	};
+
+	SubTabMap Tabs[TAB_COUNT];
+	SubTab* TabsActive[TAB_COUNT];
+	TileTab TabsTiles[TAB_COUNT];
+	string TabsName[INT_MODE_COUNT];
+	int TabsScroll[INT_MODE_COUNT];
+
+	bool SubTabsActive;
+	int SubTabsActiveTab;
+	AnyFrames* SubTabsPic;
+	INTRECT SubTabsRect;
+	int SubTabsX,SubTabsY;
+
+	// Prototypes
 	ProtoItemVec* CurItemProtos;
-	ProtoItemVec FastItemProto;
-	ProtoItemVec IgnoreItemProto;
-	DwordVec TilesPictures;
-	StrVec TilesPicturesNames;
-	CritDataVec NpcProtos;
+	DwordVec* CurTileHashes;
+	StrVec* CurTileNames;
+	CritDataVec* CurNpcProtos;
 	int NpcDir;
-	int ProtoScroll[20];
 	int* CurProtoScroll;
 	int ProtoWidth;
 	int ProtosOnScreen;
-	int CurProto[20];
+	int TabIndex[INT_MODE_COUNT];
 	int InContScroll;
 	int ListScroll;
 	MapObject* InContObject;
 	bool DrawRoof;
 	int TileLayer;
 
-	bool IsObjectMode(){return (IntMode==INT_MODE_ARMOR || IntMode==INT_MODE_DRUG ||
-		IntMode==INT_MODE_WEAPON || IntMode==INT_MODE_AMMO || IntMode==INT_MODE_MISC ||
-		IntMode==INT_MODE_MISC_EX || IntMode==INT_MODE_KEY || IntMode==INT_MODE_CONT ||
-		IntMode==INT_MODE_DOOR || IntMode==INT_MODE_GRID || IntMode==INT_MODE_GENERIC ||
-		IntMode==INT_MODE_WALL || IntMode==INT_MODE_FAST ||
-		IntMode==INT_MODE_IGNORE) &&
-		(CurItemProtos && CurProtoScroll);}
-	bool IsTileMode(){return IntMode==INT_MODE_TILE;}
-	bool IsCritMode(){return IntMode==INT_MODE_CRIT && CurProtoScroll;}
+	int GetTabIndex();
+	void SetTabIndex(int index);
+	void RefreshCurProtos();
+	bool IsObjectMode(){return CurItemProtos && CurProtoScroll;}
+	bool IsTileMode(){return CurTileHashes && CurTileNames && CurProtoScroll;}
+	bool IsCritMode(){return CurNpcProtos && CurProtoScroll;}
 
 	// Select
 	INTRECT IntBSelectItem,IntBSelectScen,IntBSelectWall,IntBSelectCrit,IntBSelectTile,IntBSelectRoof;
@@ -304,7 +328,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	void BufferPaste(int hx, int hy);
 
 	// Object
-#define DRAW_NEXT_HEIGHT			12
+#define DRAW_NEXT_HEIGHT			(12)
 
 	AnyFrames* ObjWMainPic,*ObjPBToAllDn;
 	INTRECT ObjWMain,ObjWWork,ObjBToAll;
@@ -409,8 +433,6 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static void MapperMap_set_ScriptFunc(ProtoMap& pmap, CScriptString* str);
 
 		static void Global_SetDefaultCritterParam(DWORD index, int param);
-		static DWORD Global_GetFastPrototypes(CScriptArray* pids);
-		static void Global_SetFastPrototypes(CScriptArray* pids);
 		static ProtoMap* Global_LoadMap(CScriptString& file_name, int path_type);
 		static void Global_UnloadMap(ProtoMap* pmap);
 		static bool Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type);
@@ -423,6 +445,17 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static void Global_SelectObjects(CScriptArray& objects, bool set);
 		static MapObject* Global_GetSelectedObject();
 		static DWORD Global_GetSelectedObjects(CScriptArray* objects);
+
+		static DWORD Global_TabGetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs);
+		static DWORD Global_TabGetItemPids(int tab, CScriptString* sub_tab, CScriptArray* item_pids);
+		static DWORD Global_TabGetCritterPids(int tab, CScriptString* sub_tab, CScriptArray* critter_pids);
+		static void Global_TabSetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs);
+		static void Global_TabSetItemPids(int tab, CScriptString* sub_tab, CScriptArray* item_pids);
+		static void Global_TabSetCritterPids(int tab, CScriptString* sub_tab, CScriptArray* critter_pids);
+		static void Global_TabDelete(int tab);
+		static void Global_TabSelect(int tab, CScriptString* sub_tab);
+		static void Global_TabSetName(int tab, CScriptString* tab_name);
+
 		static ProtoItem* Global_GetProtoItem(WORD proto_id);
 		static void Global_MoveScreen(WORD hx, WORD hy, DWORD speed);
 		static void Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps);

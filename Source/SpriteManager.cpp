@@ -1452,6 +1452,8 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 	char file_name[MAX_FOPATH];
 	int palette_index=0; // 0..3
 	bool transparent=false;
+	bool mirror_hor=false;
+	bool mirror_ver=false;
 	StringCopy(file_name,fname);
 
 	char* delim=strstr(file_name,"$");
@@ -1468,8 +1470,9 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 			case '1': palette_index=1; break;
 			case '2': palette_index=2; break;
 			case '3': palette_index=3; break;
-			case 'T':
-			case 't': transparent=true; break;
+			case 'T': case 't': transparent=true; break;
+			case 'H': case 'h': mirror_hor=true; break;
+			case 'V': case 'v': mirror_ver=true; break;
 			default: break;
 			}
 		}
@@ -1595,9 +1598,27 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		data_offset+=frame_info.frameSize;
 
 		// Decode
+//=======================================================================
+#define ART_WRITE_COLOR \
+		if(mirror)\
+		{\
+			*(ptr+((mirror_ver?h-y-1:y)*w+(mirror_hor?w-x-1:x)))=color;\
+			x++;\
+			if(x>=w) x=0,y++;\
+		}\
+		else\
+		{\
+			*(ptr+pos)=color;\
+			pos++;\
+		}
+//=======================================================================
+
+		DWORD pos=0;
+		int x=0,y=0;
+		bool mirror=(mirror_hor || mirror_ver);
+
 		if(w*h==frame_info.frameSize)
 		{
-			DWORD pos=0;
 			for(DWORD i=0;i<frame_info.frameSize;i++,pos++)
 			{
 				BYTE index=fm.GetByte();
@@ -1605,12 +1626,12 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 				if(!index) color=0;
 				else if(transparent) color|=(255-index)<<24;
 				else color|=0xFF000000;
-				*(ptr+pos)=color;
+
+				ART_WRITE_COLOR;
 			}
 		}
 		else
 		{
-			DWORD pos=0;
 			for(DWORD i=0;i<frame_info.frameSize;i++)
 			{
 				BYTE cmd=fm.GetByte();
@@ -1618,7 +1639,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 				{
 					cmd-=128;
 					i+=cmd;
-					for(;cmd>0;cmd--,pos++)
+					for(;cmd>0;cmd--)
 					{
 						BYTE index=fm.GetByte();
 						DWORD color=palette[palette_index][index];
@@ -1626,7 +1647,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 						else if(transparent) color|=(255-index)<<24;
 						else color|=0xFF000000;
 
-						*(ptr+pos)=color;
+						ART_WRITE_COLOR;
 					}
 				}
 				else
@@ -1637,7 +1658,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 					else if(transparent) color|=(255-index)<<24;
 					else color|=0xFF000000;
 
-					for(;cmd>0;cmd--,pos++) *(ptr+pos)=color;
+					for(;cmd>0;cmd--) ART_WRITE_COLOR;
 					i++;
 				}
 			}
@@ -1707,14 +1728,33 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 			char* rgb_beg=strstr(seq_name,"[");
 			while(rgb_beg)
 			{
+				// Find end of offsets data
 				char* rgb_end=strstr(rgb_beg+1,"]");
 				if(!rgb_end) break;
+
+				// Parse numbers
 				int rgb[4];
 				if(sscanf(rgb_beg+1,"%d,%d,%d,%d",&rgb[0],&rgb[1],&rgb[2],&rgb[3])!=4) break;
-				int part=CLAMP(rgb[0],0,3); // Part
-				rgb_offs[part][0]=rgb[1]; // R
-				rgb_offs[part][1]=rgb[2]; // G
-				rgb_offs[part][2]=rgb[3]; // B
+
+				// To one part
+				if(rgb[0]>=0 && rgb[0]<=3)
+				{
+					rgb_offs[rgb[0]][0]=rgb[1]; // R
+					rgb_offs[rgb[0]][1]=rgb[2]; // G
+					rgb_offs[rgb[0]][2]=rgb[3]; // B
+				}
+				// To all parts
+				else
+				{
+					for(int i=0;i<4;i++)
+					{
+						rgb_offs[i][0]=rgb[1]; // R
+						rgb_offs[i][1]=rgb[2]; // G
+						rgb_offs[i][2]=rgb[3]; // B
+					}
+				}
+
+				// Erase from name and find again
 				Str::EraseInterval(rgb_beg,rgb_end-rgb_beg+1);
 				rgb_beg=strstr(seq_name,"[");
 			}
@@ -4823,7 +4863,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 	return true;
 }
 
-int SpriteManager::GetLinesCount(int width, int height, const char* str, int num_font)
+int SpriteManager::GetLinesCount(int width, int height, const char* str, int num_font /* = -1 */)
 {
 	Font* font=GetFont(num_font);
 	if(!font) return 0;
@@ -4837,13 +4877,20 @@ int SpriteManager::GetLinesCount(int width, int height, const char* str, int num
 	return fi.LinesInRect;
 }
 
-int SpriteManager::GetLinesHeight(int width, int height, const char* str, int num_font)
+int SpriteManager::GetLinesHeight(int width, int height, const char* str, int num_font /* = -1 */)
 {
 	Font* font=GetFont(num_font);
 	if(!font) return 0;
 	int cnt=GetLinesCount(width,height,str,num_font);
 	if(cnt<=0) return 0;
 	return cnt*font->MaxLettHeight+(cnt-1)*font->EmptyVer;
+}
+
+int SpriteManager::GetLineHeight(int num_font /* = -1 */)
+{
+	Font* font=GetFont(num_font);
+	if(!font) return 0;
+	return font->MaxLettHeight;
 }
 
 void SpriteManager::GetTextInfo(int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines)

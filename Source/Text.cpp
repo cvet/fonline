@@ -221,6 +221,26 @@ const char* Str::SFormat(char* stream, const char* fmt, ...)
 	return stream;
 }
 
+char* Str::EraseFrontBackSpecificChars(char* str)
+{
+	char* front=str;
+	while(*front && (*front==' ' || *front=='\t' || *front=='\n' || *front=='\r')) front++;
+	if(front!=str)
+	{
+		char* str_=str;
+		while(*front) *str_++=*front++;
+		*str_=0;
+	}
+
+	char* back=str;
+	while(*back) back++;
+	back--;
+	while(back>=str && (*back==' ' || *back=='\t' || *back=='\n' || *back=='\r')) back--;
+	*(back+1)=0;
+
+	return str;
+}
+
 const char* Str::ParseLineDummy(const char* str)
 {
 	return str;
@@ -551,6 +571,8 @@ int IniParser::GetInt(const char* app_name, const char* key_name, int def_val)
 
 	if(!j) return def_val;
 	num[j]=0;
+	if(!_stricmp(num,"true")) return 1;
+	if(!_stricmp(num,"false")) return 0;
 	return atoi(num);
 }
 

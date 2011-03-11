@@ -195,20 +195,6 @@ bool FOMapper::Init(HWND wnd)
 	if(!ItemMngr.Init()) return false;
 	if(!ItemMngr.LoadProtos()) return false;
 
-	// Get fast protos
-	AddFastProto(SP_GRID_EXITGRID);
-	AddFastProto(SP_GRID_ENTIRE);
-	AddFastProto(SP_SCEN_LIGHT);
-	AddFastProto(SP_SCEN_LIGHT_STOP);
-	AddFastProto(SP_SCEN_BLOCK);
-	AddFastProto(SP_SCEN_IBLOCK);
-	AddFastProto(SP_WALL_BLOCK);
-	AddFastProto(SP_WALL_BLOCK_LIGHT);
-	AddFastProto(SP_MISC_SCRBLOCK);
-	AddFastProto(SP_SCEN_TRIGGER);
-	for(int j=SP_MISC_GRID_MAP_BEG;j<=SP_MISC_GRID_MAP_END;j++) AddFastProto(j);
-	for(int j=SP_MISC_GRID_GM_BEG;j<=SP_MISC_GRID_GM_END;j++) AddFastProto(j);
-
 	// Fill default critter parameters
 	for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++) DefaultCritterParam[i]=-1;
 	DefaultCritterParam[0]=ST_DIALOG_ID;
@@ -222,15 +208,50 @@ bool FOMapper::Init(HWND wnd)
 	if(!CrMngr.Init()) return false;
 	if(!CrMngr.LoadProtos()) return false;
 
+	// Initialize tabs
+	CritData* cr_protos=CrMngr.GetAllProtos();
 	for(int i=1;i<MAX_CRIT_PROTOS;i++)
 	{
-		CritData* data=CrMngr.GetProto(i);
-		if(data)
+		CritData* data=&cr_protos[i];
+		if(data->ProtoId)
 		{
 			data->BaseType=data->Params[ST_BASE_CRTYPE];
-			NpcProtos.push_back(data);
+			Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.push_back(data);
+			Tabs[INT_MODE_CRIT][CrMngr.ProtosCollectionName[i]].NpcProtos.push_back(data);
 		}
 	}
+
+	ProtoItem* item_protos=ItemMngr.GetAllProtos();
+	for(int i=1;i<MAX_ITEM_PROTOTYPES;i++)
+	{
+		ProtoItem* proto=&item_protos[i];
+		if(proto->IsInit())
+		{
+			Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(*proto);
+			Tabs[INT_MODE_ITEM][ItemMngr.ProtosCollectionName[i]].ItemProtos.push_back(*proto);
+		}
+	}
+
+	for(int i=0;i<TAB_COUNT;i++)
+	{
+		if(Tabs[i].empty()) Tabs[i][DEFAULT_SUB_TAB].Scroll=0;
+		TabsActive[i]=&(*Tabs[i].begin()).second;
+	}
+
+	TabsTiles[INT_MODE_TILE].TileDirs.push_back(FileManager::GetPath(PT_ART_TILES));
+	TabsTiles[INT_MODE_TILE].TileSubDirs.push_back(true);
+
+	// Initialize tabs scroll and names
+	ZeroMemory(TabsScroll,sizeof(TabsScroll));
+	for(int i=INT_MODE_CUSTOM0;i<=INT_MODE_CUSTOM9;i++) TabsName[i]="-";
+	TabsName[INT_MODE_ITEM]="Item";
+	TabsName[INT_MODE_TILE]="Tile";
+	TabsName[INT_MODE_CRIT]="Crit";
+	TabsName[INT_MODE_FAST]="Fast";
+	TabsName[INT_MODE_IGNORE]="Ign";
+	TabsName[INT_MODE_INCONT]="Inv";
+	TabsName[INT_MODE_MESS]="Msg";
+	TabsName[INT_MODE_LIST]="Maps";
 
 	// Restore to client path
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
@@ -251,8 +272,6 @@ bool FOMapper::Init(HWND wnd)
 	}
 	ShowCursor(FALSE);
 
-	WriteLog("Mapper initialization complete.\n");
-
 	if(strstr(GetCommandLine(),"-Map"))
 	{
 		char map_name[256];
@@ -272,9 +291,10 @@ bool FOMapper::Init(HWND wnd)
 
 	// Refresh resources after start script executed
 	ResMngr.Refresh();
-	RefreshTiles();
-	IsMapperStarted=true;
+	for(int tab=0;tab<TAB_COUNT;tab++) RefreshTiles(tab);
+	RefreshCurProtos();
 
+	IsMapperStarted=true;
 	WriteLog("Mapper initialization complete.\n");
 	return true;
 }
@@ -326,18 +346,17 @@ int FOMapper::InitIface()
 	IfaceLoadRect(IntWWork,"IntWork");
 	IfaceLoadRect(IntWHint,"IntHint");
 
-	IfaceLoadRect(IntBArm,"IntArm");
-	IfaceLoadRect(IntBDrug,"IntDrug");
-	IfaceLoadRect(IntBWpn,"IntWpn");
-	IfaceLoadRect(IntBAmmo,"IntAmmo");
-	IfaceLoadRect(IntBMisc,"IntMisc");
-	IfaceLoadRect(IntBMiscEx,"IntMiscEx");
-	IfaceLoadRect(IntBKey,"IntKey");
-	IfaceLoadRect(IntBCont,"IntCont");
-	IfaceLoadRect(IntBDoor,"IntDoor");
-	IfaceLoadRect(IntBGrid,"IntGrid");
-	IfaceLoadRect(IntBGen,"IntGen");
-	IfaceLoadRect(IntBWall,"IntWall");
+	IfaceLoadRect(IntBCust[0],"IntCustom0");
+	IfaceLoadRect(IntBCust[1],"IntCustom1");
+	IfaceLoadRect(IntBCust[2],"IntCustom2");
+	IfaceLoadRect(IntBCust[3],"IntCustom3");
+	IfaceLoadRect(IntBCust[4],"IntCustom4");
+	IfaceLoadRect(IntBCust[5],"IntCustom5");
+	IfaceLoadRect(IntBCust[6],"IntCustom6");
+	IfaceLoadRect(IntBCust[7],"IntCustom7");
+	IfaceLoadRect(IntBCust[8],"IntCustom8");
+	IfaceLoadRect(IntBCust[9],"IntCustom9");
+	IfaceLoadRect(IntBItem,"IntItem");
 	IfaceLoadRect(IntBTile,"IntTile");
 	IfaceLoadRect(IntBCrit,"IntCrit");
 	IfaceLoadRect(IntBFast,"IntFast");
@@ -365,6 +384,8 @@ int FOMapper::InitIface()
 	IfaceLoadRect(IntBSelectTile,"IntSelectTile");
 	IfaceLoadRect(IntBSelectRoof,"IntSelectRoof");
 
+	IfaceLoadRect(SubTabsRect,"SubTabs");
+
 	IntVisible=true;
 	IntFix=true;
 	IntMode=INT_MODE_MESS;
@@ -372,13 +393,22 @@ int FOMapper::InitIface()
 	IntVectY=0;
 	SelectType=SELECT_TYPE_NEW;
 
+	SubTabsActive=false;
+	SubTabsActiveTab=0;
+	SubTabsPic=NULL;
+	SubTabsX=0;
+	SubTabsY=0;
+
 	CurProtoMap=NULL;
 	CurItemProtos=NULL;
+	CurTileHashes=NULL;
+	CurTileNames=NULL;
+	CurNpcProtos=NULL;
 	CurProtoScroll=NULL;
-	ZeroMemory(ProtoScroll,sizeof(ProtoScroll));
+
 	ProtoWidth=ini.GetInt("ProtoWidth",50);
 	ProtosOnScreen=(IntWWork[2]-IntWWork[0])/ProtoWidth;
-	ZeroMemory(CurProto,sizeof(CurProto));
+	ZeroMemory(TabIndex,sizeof(TabIndex));
 	NpcDir=3;
 	ListScroll=0;
 
@@ -461,6 +491,10 @@ int FOMapper::InitIface()
 	ObjWMainPic=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 	ini.GetStr("ObjToAllPicDn","error",f_name);
 	ObjPBToAllDn=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
+
+	// Sub tabs
+	ini.GetStr("SubTabsPic","error",f_name);
+	SubTabsPic=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 
 	// Console
 	ini.GetStr("ConsolePic","error",f_name);
@@ -1075,7 +1109,19 @@ void FOMapper::ParseMouse()
 
 		// Wheel
 		DI_ONMOUSE(DIMOFS_Z,
-			if(IntVisible && IsCurInRect(IntWWork,IntX,IntY) && (IsObjectMode() || IsTileMode() || IsCritMode()))
+			if(IntVisible && SubTabsActive && IsCurInRect(SubTabsRect,SubTabsX,SubTabsY))
+			{
+				int step=4;
+				if(Keyb::ShiftDwn) step=8;
+				else if(Keyb::CtrlDwn) step=20;
+				else if(Keyb::AltDwn) step=50;
+
+				int data=didod[i].dwData;
+				if(data>0) TabsScroll[SubTabsActiveTab]+=step;
+				else TabsScroll[SubTabsActiveTab]-=step;
+				if(TabsScroll[SubTabsActiveTab]<0) TabsScroll[SubTabsActiveTab]=0;
+			}
+			else if(IntVisible && IsCurInRect(IntWWork,IntX,IntY) && (IsObjectMode() || IsTileMode() || IsCritMode()))
 			{
 				int step=1;
 				if(Keyb::ShiftDwn) step=ProtosOnScreen;
@@ -1108,15 +1154,15 @@ void FOMapper::ParseMouse()
 						(*CurProtoScroll)+=step;
 						if(*CurProtoScroll>=(*CurItemProtos).size()) *CurProtoScroll=(*CurItemProtos).size()-1;
 					}
-					else if(IsTileMode() && TilesPictures.size())
+					else if(IsTileMode() && CurTileHashes->size())
 					{
 						(*CurProtoScroll)+=step;
-						if(*CurProtoScroll>=TilesPictures.size()) *CurProtoScroll=TilesPictures.size()-1;
+						if(*CurProtoScroll>=CurTileHashes->size()) *CurProtoScroll=CurTileHashes->size()-1;
 					}
-					else if(IsCritMode() && NpcProtos.size())
+					else if(IsCritMode() && CurNpcProtos->size())
 					{
 						(*CurProtoScroll)+=step;
-						if(*CurProtoScroll>=NpcProtos.size()) *CurProtoScroll=NpcProtos.size()-1;
+						if(*CurProtoScroll>=CurNpcProtos->size()) *CurProtoScroll=CurNpcProtos->size()-1;
 					}
 					else if(IntMode==INT_MODE_INCONT) InContScroll+=step;
 					else if(IntMode==INT_MODE_LIST) ListScroll+=step;
@@ -1362,69 +1408,130 @@ void FOMapper::MainLoop()
 	Script::CollectGarbage(true);
 }
 
-void FOMapper::AddFastProto(WORD pid)
+void FOMapper::RefreshTiles(int tab)
 {
-	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
-	if(!proto_item) return;
-	FastItemProto.push_back(*proto_item);
-	HexMngr.AddFastPid(pid);
-}
-
-bool StringCompare(const string &left, const string &right)
-{
-	for(string::const_iterator lit=left.begin(),rit=right.begin();lit!=left.end() && rit!=right.end();++lit,++rit)
-	{
-		int lc=tolower(*lit);
-		int rc=tolower(*rit);
-		if(lc<rc) return true;
-		else if(lc>rc) return false;
-	}
-	return left.size()<right.size();
-}
-
-void FOMapper::RefreshTiles()
-{
-	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg","jpeg","pfm","png","tga","spr","til","zar","art"};
+	char* formats[]={"frm","fofrm","bmp","dds","dib","hdr","jpg",
+		"jpeg","pfm","png","tga","spr","til","zar","art"};
 	size_t formats_count=sizeof(formats)/sizeof(formats[0]);
 
-	StrVec tiles;
-	FileManager::GetFolderFileNames(PT_ART_TILES,NULL,tiles);
-	FileManager::GetDatsFileNames(PT_ART_TILES,NULL,tiles);
-	TilesPictures.clear();
-	TilesPicturesNames.clear();
-	TilesPictures.reserve(tiles.size());
-	TilesPicturesNames.reserve(tiles.size());
-	std::sort(tiles.begin(),tiles.end(),StringCompare);
-
-	for(StrVecIt it=tiles.begin(),end=tiles.end();it!=end;++it)
+	// Clear old tile names
+	for(SubTabMapIt it=Tabs[tab].begin();it!=Tabs[tab].end();)
 	{
-		const string& str=*it;
-		const char* ext=FileManager::GetExtension(str.c_str());
-		if(!ext) continue;
-
-		bool format_aviable=false;
-		for(size_t i=0;i<formats_count;i++)
+		SubTab& stab=(*it).second;
+		if(stab.TileNames.size())
 		{
-			if(!_stricmp(formats[i],ext))
-			{
-				format_aviable=true;
-				break;
-			}
+			if(TabsActive[tab]==&stab) TabsActive[tab]=NULL;
+			it=Tabs[tab].erase(it);
 		}
-		if(!format_aviable) format_aviable=Loader3d::IsExtensionSupported(ext);
+		else ++it;
+	}
 
-		if(format_aviable)
+	// Find names
+	TileTab& ttab=TabsTiles[tab];
+	if(ttab.TileDirs.empty()) return;
+
+	Tabs[tab].clear();
+	Tabs[tab][DEFAULT_SUB_TAB].Index=0; // Add default
+
+	StrDwordMap PathIndex;
+
+	for(size_t t=0,tt=ttab.TileDirs.size();t<tt;t++)
+	{
+		string& path=ttab.TileDirs[t];
+		bool include_subdirs=ttab.TileSubDirs[t];
+
+		StrVec tiles;
+		FileManager::GetFolderFileNames(path.c_str(),include_subdirs,NULL,tiles);
+		FileManager::GetDatsFileNames(path.c_str(),include_subdirs,NULL,tiles);
+
+		struct StrComparator_
 		{
-			DWORD hash=Str::GetHash(str.c_str());
-			if(std::find(TilesPictures.begin(),TilesPictures.end(),hash)==TilesPictures.end() && str.find(' ')==string::npos)
+			static bool StrComparator(const string &left, const string &right)
 			{
-				TilesPictures.push_back(hash);
-				size_t pos=str.find_last_of('\\');
-				if(pos!=string::npos) TilesPicturesNames.push_back(str.substr(pos+1));
-				else TilesPicturesNames.push_back(str);
+				for(string::const_iterator lit=left.begin(),rit=right.begin();lit!=left.end() && rit!=right.end();++lit,++rit)
+				{
+					int lc=tolower(*lit);
+					int rc=tolower(*rit);
+					if(lc<rc) return true;
+					else if(lc>rc) return false;
+				}
+				return left.size()<right.size();
+			}
+		};
+		std::sort(tiles.begin(),tiles.end(),StrComparator_::StrComparator);
+
+		for(StrVecIt it=tiles.begin(),end=tiles.end();it!=end;++it)
+		{
+			const string& fname=*it;
+			const char* ext=FileManager::GetExtension(fname.c_str());
+			if(!ext) continue;
+
+			// Check format availability
+			bool format_aviable=false;
+			for(size_t i=0;i<formats_count;i++)
+			{
+				if(!_stricmp(formats[i],ext))
+				{
+					format_aviable=true;
+					break;
+				}
+			}
+			if(!format_aviable) format_aviable=Loader3d::IsExtensionSupported(ext);
+
+			if(format_aviable)
+			{
+				// Make primary collection name
+				char path_[MAX_FOPATH];
+				FileManager::ExtractPath(fname.c_str(),path_);
+				if(!path_[0]) StringCopy(path_,"root");
+				DWORD path_index=PathIndex[path_];
+				if(!path_index)
+				{
+					path_index=PathIndex.size();
+					PathIndex[path_]=path_index;
+				}
+				string collection_name=Str::Format("%03d - %s",path_index,path_);
+
+				// Make secondary collection name
+				string collection_name_ex;
+				if(GameOpt.SplitTilesCollection)
+				{
+					size_t pos=fname.find_last_of('\\');
+					if(pos==string::npos) pos=0;
+					else pos++;
+					for(size_t i=pos,j=fname.size();i<j;i++)
+					{
+						if(fname[i]>='0' && fname[i]<='9')
+						{
+							if(i-pos)
+							{
+								collection_name_ex+=collection_name;
+								collection_name_ex+=fname.substr(pos,i-pos);
+							}
+							break;
+						}
+					}
+					if(!collection_name_ex.length())
+					{
+						collection_name_ex+=collection_name;
+						collection_name_ex+="<other>";
+					}
+				}
+
+				// Write tile
+				DWORD hash=Str::GetHash(fname.c_str());
+				Tabs[tab][DEFAULT_SUB_TAB].TileHashes.push_back(hash);
+				Tabs[tab][DEFAULT_SUB_TAB].TileNames.push_back(fname);
+				Tabs[tab][collection_name].TileHashes.push_back(hash);
+				Tabs[tab][collection_name].TileNames.push_back(fname);
+				Tabs[tab][collection_name_ex].TileHashes.push_back(hash);
+				Tabs[tab][collection_name_ex].TileNames.push_back(fname);
 			}
 		}
 	}
+
+	// Set default active tab
+	TabsActive[tab]=&(*Tabs[tab].begin()).second;
 }
 
 void FOMapper::IntDraw()
@@ -1435,19 +1542,17 @@ void FOMapper::IntDraw()
 
 	switch(IntMode)
 	{
-	case INT_MODE_NONE: break;
-	case INT_MODE_ARMOR: SprMngr.DrawSprite(IntPTab,IntBArm[0]+IntX,IntBArm[1]+IntY); break;
-	case INT_MODE_DRUG: SprMngr.DrawSprite(IntPTab,IntBDrug[0]+IntX,IntBDrug[1]+IntY); break;
-	case INT_MODE_WEAPON: SprMngr.DrawSprite(IntPTab,IntBWpn[0]+IntX,IntBWpn[1]+IntY); break;
-	case INT_MODE_AMMO: SprMngr.DrawSprite(IntPTab,IntBAmmo[0]+IntX,IntBAmmo[1]+IntY); break;
-	case INT_MODE_MISC: SprMngr.DrawSprite(IntPTab,IntBMisc[0]+IntX,IntBMisc[1]+IntY); break;
-	case INT_MODE_MISC_EX: SprMngr.DrawSprite(IntPTab,IntBMiscEx[0]+IntX,IntBMiscEx[1]+IntY); break;
-	case INT_MODE_KEY: SprMngr.DrawSprite(IntPTab,IntBKey[0]+IntX,IntBKey[1]+IntY); break;
-	case INT_MODE_CONT: SprMngr.DrawSprite(IntPTab,IntBCont[0]+IntX,IntBCont[1]+IntY); break;
-	case INT_MODE_DOOR: SprMngr.DrawSprite(IntPTab,IntBDoor[0]+IntX,IntBDoor[1]+IntY); break;
-	case INT_MODE_GRID: SprMngr.DrawSprite(IntPTab,IntBGrid[0]+IntX,IntBGrid[1]+IntY); break;
-	case INT_MODE_GENERIC: SprMngr.DrawSprite(IntPTab,IntBGen[0]+IntX,IntBGen[1]+IntY); break;
-	case INT_MODE_WALL: SprMngr.DrawSprite(IntPTab,IntBWall[0]+IntX,IntBWall[1]+IntY); break;
+	case INT_MODE_CUSTOM0: SprMngr.DrawSprite(IntPTab,IntBCust[0][0]+IntX,IntBCust[0][1]+IntY); break;
+	case INT_MODE_CUSTOM1: SprMngr.DrawSprite(IntPTab,IntBCust[1][0]+IntX,IntBCust[1][1]+IntY); break;
+	case INT_MODE_CUSTOM2: SprMngr.DrawSprite(IntPTab,IntBCust[2][0]+IntX,IntBCust[2][1]+IntY); break;
+	case INT_MODE_CUSTOM3: SprMngr.DrawSprite(IntPTab,IntBCust[3][0]+IntX,IntBCust[3][1]+IntY); break;
+	case INT_MODE_CUSTOM4: SprMngr.DrawSprite(IntPTab,IntBCust[4][0]+IntX,IntBCust[4][1]+IntY); break;
+	case INT_MODE_CUSTOM5: SprMngr.DrawSprite(IntPTab,IntBCust[5][0]+IntX,IntBCust[5][1]+IntY); break;
+	case INT_MODE_CUSTOM6: SprMngr.DrawSprite(IntPTab,IntBCust[6][0]+IntX,IntBCust[6][1]+IntY); break;
+	case INT_MODE_CUSTOM7: SprMngr.DrawSprite(IntPTab,IntBCust[7][0]+IntX,IntBCust[7][1]+IntY); break;
+	case INT_MODE_CUSTOM8: SprMngr.DrawSprite(IntPTab,IntBCust[8][0]+IntX,IntBCust[8][1]+IntY); break;
+	case INT_MODE_CUSTOM9: SprMngr.DrawSprite(IntPTab,IntBCust[9][0]+IntX,IntBCust[9][1]+IntY); break;
+	case INT_MODE_ITEM: SprMngr.DrawSprite(IntPTab,IntBItem[0]+IntX,IntBItem[1]+IntY); break;
 	case INT_MODE_TILE: SprMngr.DrawSprite(IntPTab,IntBTile[0]+IntX,IntBTile[1]+IntY); break;
 	case INT_MODE_CRIT: SprMngr.DrawSprite(IntPTab,IntBCrit[0]+IntX,IntBCrit[1]+IntY); break;
 	case INT_MODE_FAST: SprMngr.DrawSprite(IntPTab,IntBFast[0]+IntX,IntBFast[1]+IntY); break;
@@ -1457,6 +1562,17 @@ void FOMapper::IntDraw()
 	case INT_MODE_LIST: SprMngr.DrawSprite(IntPTab,IntBList[0]+IntX,IntBList[1]+IntY); break;
 	default: break;
 	}
+
+	for(int i=INT_MODE_CUSTOM0;i<=INT_MODE_CUSTOM9;i++)
+		SprMngr.DrawStr(INTRECT(IntBCust[i],IntX,IntY),TabsName[INT_MODE_CUSTOM0+i].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBItem,IntX,IntY),TabsName[INT_MODE_ITEM].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBTile,IntX,IntY),TabsName[INT_MODE_TILE].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBCrit,IntX,IntY),TabsName[INT_MODE_CRIT].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBFast,IntX,IntY),TabsName[INT_MODE_FAST].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBIgnore,IntX,IntY),TabsName[INT_MODE_IGNORE].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBInCont,IntX,IntY),TabsName[INT_MODE_INCONT].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBMess,IntX,IntY),TabsName[INT_MODE_MESS].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	SprMngr.DrawStr(INTRECT(IntBList,IntX,IntY),TabsName[INT_MODE_LIST].c_str(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
 
 	if(GameOpt.ShowItem) SprMngr.DrawSprite(IntPShow,IntBShowItem[0]+IntX,IntBShowItem[1]+IntY);
 	if(GameOpt.ShowScen) SprMngr.DrawSprite(IntPShow,IntBShowScen[0]+IntX,IntBShowScen[1]+IntY);
@@ -1487,7 +1603,7 @@ void FOMapper::IntDraw()
 		for(;i<j;i++,x+=w)
 		{
 			ProtoItem* proto_item=&(*CurItemProtos)[i];
-			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
+			DWORD col=(i==GetTabIndex()?COLOR_IFACE_RED:COLOR_IFACE);
 			SprMngr.DrawSpriteSize(proto_item->GetCurSprId(),x,y,w,h/2,false,true,col);
 
 			if(proto_item->IsItem())
@@ -1499,9 +1615,9 @@ void FOMapper::IntDraw()
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",proto_item->GetPid()),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 
-		if(CurProto[IntMode]<(*CurItemProtos).size())
+		if(GetTabIndex()<(*CurItemProtos).size())
 		{
-			ProtoItem* proto_item=&(*CurItemProtos)[CurProto[IntMode]];
+			ProtoItem* proto_item=&(*CurItemProtos)[GetTabIndex()];
 			string info=MsgItem->GetStr(proto_item->GetInfo());
 			info+=" - ";
 			info+=MsgItem->GetStr(proto_item->GetInfo()+1);
@@ -1512,44 +1628,50 @@ void FOMapper::IntDraw()
 	{
 		int i=*CurProtoScroll;
 		int j=i+ProtosOnScreen;
-		if(j>TilesPictures.size()) j=TilesPictures.size();
+		if(j>CurTileHashes->size()) j=CurTileHashes->size();
 
 		for(;i<j;i++,x+=w)
 		{
-			AnyFrames* anim=ResMngr.GetItemAnim(TilesPictures[i]);
+			AnyFrames* anim=ResMngr.GetItemAnim((*CurTileHashes)[i]);
 			if(!anim) anim=ItemHex::DefaultAnim;
 
-			DWORD col=(i==CurProto[IntMode]?COLOR_IFACE_RED:COLOR_IFACE);
+			DWORD col=(i==GetTabIndex()?COLOR_IFACE_RED:COLOR_IFACE);
 			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h/2,false,true,col);
-			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),TilesPicturesNames[i].c_str(),FT_NOBREAK,COLOR_TEXT_WHITE);
+
+			string& name=(*CurTileNames)[i];
+			size_t pos=name.find_last_of('\\');
+			if(pos!=string::npos)
+				SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),name.substr(pos+1).c_str(),FT_NOBREAK,COLOR_TEXT_WHITE);
+			else
+				SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),name.c_str(),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 
-		if(CurProto[IntMode]<TilesPicturesNames.size())
-			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),TilesPicturesNames[CurProto[IntMode]].c_str(),FT_COLORIZE);
+		if(GetTabIndex()<CurTileNames->size())
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),(*CurTileNames)[GetTabIndex()].c_str(),FT_COLORIZE);
 	}
 	else if(IsCritMode())
 	{
 		int i=*CurProtoScroll;
 		int j=i+ProtosOnScreen;
-		if(j>NpcProtos.size()) j=NpcProtos.size();
+		if(j>CurNpcProtos->size()) j=CurNpcProtos->size();
 
 		for(;i<j;i++,x+=w)
 		{
-			CritData* pnpc=NpcProtos[i];
+			CritData* pnpc=(*CurNpcProtos)[i];
 
 			DWORD spr_id=ResMngr.GetCritSprId(pnpc->BaseType,1,1,NpcDir);
 			if(!spr_id) continue;
 
 			DWORD col=COLOR_IFACE;
-			if(i==CurProto[IntMode]) col=COLOR_IFACE_RED;
+			if(i==GetTabIndex()) col=COLOR_IFACE_RED;
 
 			SprMngr.DrawSpriteSize(spr_id,x,y,w,h/2,false,true,col);
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",pnpc->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 
-		if(CurProto[IntMode]<NpcProtos.size())
+		if(GetTabIndex()<CurNpcProtos->size())
 		{
-			CritData* pnpc=NpcProtos[CurProto[IntMode]];
+			CritData* pnpc=(*CurNpcProtos)[GetTabIndex()];
 			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),MsgDlg->GetStr(STR_NPC_NAME_(pnpc->Params[ST_DIALOG_ID],pnpc->ProtoId)),FT_COLORIZE);
 		}
 	}
@@ -1600,13 +1722,43 @@ void FOMapper::IntDraw()
 		}
 	}
 
-	switch(IntMode)
+	// Message box
+	if(IntMode==INT_MODE_MESS) MessBoxDraw();
+
+	// Sub tabs
+	if(SubTabsActive)
 	{
-	case INT_MODE_NONE: break;
-	case INT_MODE_MESS: MessBoxDraw(); break;	
-	default: break;
+		SprMngr.DrawSprite(SubTabsPic,SubTabsX,SubTabsY);
+
+		int line_height=SprMngr.GetLineHeight()+1;
+		int posy=SubTabsRect.H()-line_height-2;
+		int i=0;
+		SubTabMap& stabs=Tabs[SubTabsActiveTab];
+		for(SubTabMapIt it=stabs.begin(),end=stabs.end();it!=end;++it)
+		{
+			i++;
+			if(i-1<TabsScroll[SubTabsActiveTab]) continue;
+
+			string name=(*it).first;
+			SubTab& stab=(*it).second;
+
+			DWORD color=(TabsActive[SubTabsActiveTab]==&stab?COLOR_TEXT_WHITE:COLOR_TEXT);
+			INTRECT r=INTRECT(SubTabsRect.L+SubTabsX+5,SubTabsRect.T+SubTabsY+posy,
+				SubTabsRect.L+SubTabsX+5+MODE_WIDTH,SubTabsRect.T+SubTabsY+posy+line_height-1);
+			if(IsCurInRect(r)) color=COLOR_TEXT_DWHITE;
+
+			DWORD count=stab.TileNames.size();
+			if(!count) count=stab.NpcProtos.size();
+			if(!count) count=stab.ItemProtos.size();
+			name+=Str::Format(" (%u)",count);
+			SprMngr.DrawStr(r,name.c_str(),0,color);
+
+			posy-=line_height;
+			if(posy<0) break;
+		}
 	}
 
+	// Map info
 	if(HexMngr.IsMapLoaded())
 	{
 		bool hex_thru=false;
@@ -2120,9 +2272,46 @@ void FOMapper::IntLMouseDown()
 {
 	IntHold=INT_NONE;
 
-/************************************************************************/
-/* MAP                                                                  */
-/************************************************************************/
+	// Sub tabs
+	if(IntVisible && SubTabsActive)
+	{
+		if(IsCurInRect(SubTabsRect,SubTabsX,SubTabsY))
+		{
+			int line_height=SprMngr.GetLineHeight()+1;
+			int posy=SubTabsRect.H()-line_height-2;
+			int i=0;
+			SubTabMap& stabs=Tabs[SubTabsActiveTab];
+			for(SubTabMapIt it=stabs.begin(),end=stabs.end();it!=end;++it)
+			{
+				i++;
+				if(i-1<TabsScroll[SubTabsActiveTab]) continue;
+
+				const string& name=(*it).first;
+				SubTab& stab=(*it).second;
+
+				if(IsCurInRect(INTRECT(SubTabsRect.L+SubTabsX+5,SubTabsRect.T+SubTabsY+posy,
+					SubTabsRect.L+SubTabsX+5+SubTabsRect.W(),SubTabsRect.T+SubTabsY+posy+line_height-1)))
+				{
+					TabsActive[SubTabsActiveTab]=&stab;
+					RefreshCurProtos();
+					break;
+				}
+
+				posy-=line_height;
+				if(posy<0) break;
+			}
+
+			return;
+		}
+
+		if(!IsCurInRect(IntWMain,IntX,IntY))
+		{
+			SubTabsActive=false;
+			return;
+		}
+	}
+
+	// Map
 	if((!IntVisible || !IsCurInRect(IntWMain,IntX,IntY)) && (!ObjVisible || SelectedObj.empty() || !IsCurInRect(ObjWMain,ObjX,ObjY)))
 	{
 		InContObject=NULL;
@@ -2178,16 +2367,15 @@ void FOMapper::IntLMouseDown()
 		}
 		else if(CurMode==CUR_MODE_DRAW)
 		{
-			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[CurProto[IntMode]].GetPid(),SelectHX1,SelectHY1,false);
-			else if(IsTileMode() && TilesPictures.size()) ParseTile(TilesPictures[CurProto[IntMode]],SelectHX1,SelectHY1,0,0,TileLayer,DrawRoof);
-			else if(IsCritMode() && NpcProtos.size()) ParseNpc(NpcProtos[CurProto[IntMode]]->ProtoId,SelectHX1,SelectHY1);
+			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[GetTabIndex()].GetPid(),SelectHX1,SelectHY1,false);
+			else if(IsTileMode() && CurTileHashes->size()) ParseTile((*CurTileHashes)[GetTabIndex()],SelectHX1,SelectHY1,0,0,TileLayer,DrawRoof);
+			else if(IsCritMode() && CurNpcProtos->size()) ParseNpc((*CurNpcProtos)[GetTabIndex()]->ProtoId,SelectHX1,SelectHY1);
 		}
 
 		return;
 	}
-/************************************************************************/
-/* OBJECT EDITOR                                                        */
-/************************************************************************/
+
+	// Object editor
 	if(ObjVisible && !SelectedObj.empty() && IsCurInRect(ObjWMain,ObjX,ObjY))
 	{
 		if(IsCurInRect(ObjWWork,ObjX,ObjY))
@@ -2211,9 +2399,8 @@ void FOMapper::IntLMouseDown()
 
 		return;
 	}
-/************************************************************************/
-/* INTERFACE                                                            */
-/************************************************************************/
+
+	// Interface
 	if(!IntVisible || !IsCurInRect(IntWMain,IntX,IntY)) return;
 
 	if(IsCurInRect(IntWWork,IntX,IntY))
@@ -2224,16 +2411,17 @@ void FOMapper::IntLMouseDown()
 		{
 			ind+=*CurProtoScroll;
 			if(ind>=(*CurItemProtos).size()) ind=(*CurItemProtos).size()-1;
-			CurProto[IntMode]=ind;
+			SetTabIndex(ind);
 
 			// Switch ignore pid to draw
 			if(Keyb::CtrlDwn)
 			{
 				WORD pid=(*CurItemProtos)[ind].GetPid();
 
-				ProtoItemVecIt it=std::find(IgnoreItemProto.begin(),IgnoreItemProto.end(),pid);
-				if(it!=IgnoreItemProto.end()) IgnoreItemProto.erase(it);
-				else IgnoreItemProto.push_back((*CurItemProtos)[ind]);
+				SubTab& stab=Tabs[INT_MODE_IGNORE][DEFAULT_SUB_TAB];
+ 				ProtoItemVecIt it=std::find(stab.ItemProtos.begin(),stab.ItemProtos.end(),pid);
+ 				if(it!=stab.ItemProtos.end()) stab.ItemProtos.erase(it);
+ 				else stab.ItemProtos.push_back((*CurItemProtos)[ind]);
 
 				HexMngr.SwitchIgnorePid(pid);
 				HexMngr.RefreshMap();
@@ -2264,17 +2452,17 @@ void FOMapper::IntLMouseDown()
 				}
 			}
 		}
-		else if(IsTileMode() && TilesPictures.size())
+		else if(IsTileMode() && CurTileHashes->size())
 		{
 			ind+=*CurProtoScroll;
-			if(ind>=TilesPictures.size()) ind=TilesPictures.size()-1;
-			CurProto[IntMode]=ind;
+			if(ind>=CurTileHashes->size()) ind=CurTileHashes->size()-1;
+			SetTabIndex(ind);
 		}
-		else if(IsCritMode() && NpcProtos.size())
+		else if(IsCritMode() && CurNpcProtos->size())
 		{
 			ind+=*CurProtoScroll;
-			if(ind>=NpcProtos.size()) ind=NpcProtos.size()-1;
-			CurProto[IntMode]=ind;
+			if(ind>=CurNpcProtos->size()) ind=CurNpcProtos->size()-1;
+			SetTabIndex(ind);
 		}
 		else if(IntMode==INT_MODE_INCONT)
 		{
@@ -2401,18 +2589,17 @@ void FOMapper::IntLMouseDown()
 			}
 		}
 	}
-	else if(IsCurInRect(IntBArm,IntX,IntY)) IntSetMode(INT_MODE_ARMOR);
-	else if(IsCurInRect(IntBDrug,IntX,IntY)) IntSetMode(INT_MODE_DRUG);
-	else if(IsCurInRect(IntBWpn,IntX,IntY)) IntSetMode(INT_MODE_WEAPON);
-	else if(IsCurInRect(IntBAmmo,IntX,IntY)) IntSetMode(INT_MODE_AMMO);
-	else if(IsCurInRect(IntBMisc,IntX,IntY)) IntSetMode(INT_MODE_MISC);
-	else if(IsCurInRect(IntBMiscEx,IntX,IntY)) IntSetMode(INT_MODE_MISC_EX);
-	else if(IsCurInRect(IntBKey,IntX,IntY)) IntSetMode(INT_MODE_KEY);
-	else if(IsCurInRect(IntBCont,IntX,IntY)) IntSetMode(INT_MODE_CONT);
-	else if(IsCurInRect(IntBDoor,IntX,IntY)) IntSetMode(INT_MODE_DOOR);
-	else if(IsCurInRect(IntBGrid,IntX,IntY)) IntSetMode(INT_MODE_GRID);
-	else if(IsCurInRect(IntBGen,IntX,IntY)) IntSetMode(INT_MODE_GENERIC);
-	else if(IsCurInRect(IntBWall,IntX,IntY)) IntSetMode(INT_MODE_WALL);
+	else if(IsCurInRect(IntBCust[0],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM0);
+	else if(IsCurInRect(IntBCust[1],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM1);
+	else if(IsCurInRect(IntBCust[2],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM2);
+	else if(IsCurInRect(IntBCust[3],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM3);
+	else if(IsCurInRect(IntBCust[4],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM4);
+	else if(IsCurInRect(IntBCust[5],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM5);
+	else if(IsCurInRect(IntBCust[6],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM6);
+	else if(IsCurInRect(IntBCust[7],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM7);
+	else if(IsCurInRect(IntBCust[8],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM8);
+	else if(IsCurInRect(IntBCust[9],IntX,IntY)) IntSetMode(INT_MODE_CUSTOM9);
+	else if(IsCurInRect(IntBItem,IntX,IntY)) IntSetMode(INT_MODE_ITEM);
 	else if(IsCurInRect(IntBTile,IntX,IntY)) IntSetMode(INT_MODE_TILE);
 	else if(IsCurInRect(IntBCrit,IntX,IntY)) IntSetMode(INT_MODE_CRIT);
 	else if(IsCurInRect(IntBFast,IntX,IntY)) IntSetMode(INT_MODE_FAST);
@@ -2463,15 +2650,15 @@ void FOMapper::IntLMouseDown()
 			(*CurProtoScroll)++;
 			if(*CurProtoScroll>=(*CurItemProtos).size()) *CurProtoScroll=(*CurItemProtos).size()-1;
 		}
-		else if(IsTileMode() && TilesPictures.size())
+		else if(IsTileMode() && CurTileHashes->size())
 		{
 			(*CurProtoScroll)++;
-			if(*CurProtoScroll>=TilesPictures.size()) *CurProtoScroll=TilesPictures.size()-1;
+			if(*CurProtoScroll>=CurTileHashes->size()) *CurProtoScroll=CurTileHashes->size()-1;
 		}
-		else if(IsCritMode() && NpcProtos.size())
+		else if(IsCritMode() && CurNpcProtos->size())
 		{
 			(*CurProtoScroll)++;
-			if(*CurProtoScroll>=NpcProtos.size()) *CurProtoScroll=NpcProtos.size()-1;
+			if(*CurProtoScroll>=CurNpcProtos->size()) *CurProtoScroll=CurNpcProtos->size()-1;
 		}
 		else if(IntMode==INT_MODE_INCONT) InContScroll++;
 		else if(IntMode==INT_MODE_LIST) ListScroll++;
@@ -2483,15 +2670,15 @@ void FOMapper::IntLMouseDown()
 			(*CurProtoScroll)+=ProtosOnScreen;
 			if(*CurProtoScroll>=(*CurItemProtos).size()) *CurProtoScroll=(*CurItemProtos).size()-1;
 		}
-		else if(IsTileMode() && TilesPictures.size())
+		else if(IsTileMode() && CurTileHashes->size())
 		{
 			(*CurProtoScroll)+=ProtosOnScreen;
-			if(*CurProtoScroll>=TilesPictures.size()) *CurProtoScroll=TilesPictures.size()-1;
+			if(*CurProtoScroll>=CurTileHashes->size()) *CurProtoScroll=CurTileHashes->size()-1;
 		}
-		else if(IsCritMode() && NpcProtos.size())
+		else if(IsCritMode() && CurNpcProtos->size())
 		{
 			(*CurProtoScroll)+=ProtosOnScreen;
-			if(*CurProtoScroll>=NpcProtos.size()) *CurProtoScroll=NpcProtos.size()-1;
+			if(*CurProtoScroll>=CurNpcProtos->size()) *CurProtoScroll=CurNpcProtos->size()-1;
 		}
 		else if(IntMode==INT_MODE_INCONT) InContScroll+=ProtosOnScreen;
 		else if(IntMode==INT_MODE_LIST) ListScroll+=ProtosOnScreen;
@@ -2519,9 +2706,6 @@ void FOMapper::IntLMouseDown()
 	else return;
 
 	IntHold=INT_BUTTON;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 }
 
 void FOMapper::IntLMouseUp()
@@ -2685,38 +2869,106 @@ void FOMapper::IntMouseMove()
 	}
 }
 
-void FOMapper::IntSetMode(int mode)
+int FOMapper::GetTabIndex()
 {
+	if(IntMode<TAB_COUNT) return TabsActive[IntMode]->Index;
+	return TabIndex[IntMode];
+}
+
+void FOMapper::SetTabIndex(int index)
+{
+	if(IntMode<TAB_COUNT) TabsActive[IntMode]->Index=index;
+	TabIndex[IntMode]=index;
+}
+
+void FOMapper::RefreshCurProtos()
+{
+	// Select protos and scroll
 	CurItemProtos=NULL;
 	CurProtoScroll=NULL;
+	CurTileHashes=NULL;
+	CurTileNames=NULL;
+	CurNpcProtos=NULL;
 	InContObject=NULL;
 
-	switch(mode)
+	if(IntMode>=0 && IntMode<TAB_COUNT)
 	{
-	case INT_MODE_NONE: break;
-	case INT_MODE_ARMOR: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_ARMOR); CurProtoScroll=&ProtoScroll[INT_MODE_ARMOR]; break;
-	case INT_MODE_DRUG: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_DRUG); CurProtoScroll=&ProtoScroll[INT_MODE_DRUG]; break;
-	case INT_MODE_WEAPON: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_WEAPON); CurProtoScroll=&ProtoScroll[INT_MODE_WEAPON]; break;
-	case INT_MODE_AMMO: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_AMMO); CurProtoScroll=&ProtoScroll[INT_MODE_AMMO]; break;
-	case INT_MODE_MISC: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_MISC); CurProtoScroll=&ProtoScroll[INT_MODE_MISC]; break;
-	case INT_MODE_MISC_EX: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_MISC_EX); CurProtoScroll=&ProtoScroll[INT_MODE_MISC_EX]; break;
-	case INT_MODE_KEY: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_KEY); CurProtoScroll=&ProtoScroll[INT_MODE_KEY]; break;
-	case INT_MODE_CONT: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_CONTAINER); CurProtoScroll=&ProtoScroll[INT_MODE_CONT]; break;
-	case INT_MODE_DOOR: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_DOOR); CurProtoScroll=&ProtoScroll[INT_MODE_DOOR]; break;
-	case INT_MODE_GRID: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_GRID); CurProtoScroll=&ProtoScroll[INT_MODE_GRID]; break;
-	case INT_MODE_GENERIC: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_GENERIC); CurProtoScroll=&ProtoScroll[INT_MODE_GENERIC]; break;
-	case INT_MODE_WALL: CurItemProtos=&ItemMngr.GetProtos(ITEM_TYPE_WALL); CurProtoScroll=&ProtoScroll[INT_MODE_WALL]; break;
-	case INT_MODE_TILE: CurProtoScroll=&ProtoScroll[INT_MODE_TILE]; break;
-	case INT_MODE_CRIT: CurProtoScroll=&ProtoScroll[INT_MODE_CRIT]; break;
-	case INT_MODE_FAST: CurItemProtos=&FastItemProto; CurProtoScroll=&ProtoScroll[INT_MODE_FAST]; break;
-	case INT_MODE_IGNORE: CurItemProtos=&IgnoreItemProto; CurProtoScroll=&ProtoScroll[INT_MODE_IGNORE]; break;
-	case INT_MODE_INCONT: InContScroll=0; InContObject=NULL; break;
-	case INT_MODE_MESS:
-	default: break;
+		SubTab* stab=TabsActive[IntMode];
+		if(stab->TileNames.size())
+		{
+			CurTileNames=&stab->TileNames;
+			CurTileHashes=&stab->TileHashes;
+		}
+		else if(stab->NpcProtos.size())
+		{
+			CurNpcProtos=&stab->NpcProtos;
+		}
+		else
+		{
+			CurItemProtos=&stab->ItemProtos;
+		}
+		CurProtoScroll=&stab->Scroll;
+	}
+
+	if(IntMode==INT_MODE_INCONT) InContScroll=0;
+
+	// Update fast pids
+	HexMngr.ClearFastPids();
+	ProtoItemVec& fast_pids=TabsActive[INT_MODE_FAST]->ItemProtos;
+	for(size_t i=0,j=fast_pids.size();i<j;i++) HexMngr.AddFastPid(fast_pids[i].Pid);
+
+	// Update ignore pids
+	HexMngr.ClearIgnorePids();
+	ProtoItemVec& ignore_pids=TabsActive[INT_MODE_IGNORE]->ItemProtos;
+	for(size_t i=0,j=ignore_pids.size();i<j;i++) HexMngr.AddIgnorePid(ignore_pids[i].Pid);
+
+	// Refresh map
+	if(HexMngr.IsMapLoaded()) HexMngr.RefreshMap();
+}
+
+void FOMapper::IntSetMode(int mode)
+{
+	if(SubTabsActive && mode==SubTabsActiveTab)
+	{
+		SubTabsActive=false;
+		return;
+	}
+
+	if(!SubTabsActive && mode==IntMode && mode>=0 && mode<TAB_COUNT)
+	{
+		// Show sub tabs screen
+		SubTabsActive=true;
+		SubTabsActiveTab=mode;
+
+		// Calculate position
+		if(mode<=INT_MODE_CUSTOM9) SubTabsX=IntBCust[mode-INT_MODE_CUSTOM0].CX(),SubTabsY=IntBCust[mode-INT_MODE_CUSTOM0].T;
+		else if(mode==INT_MODE_ITEM) SubTabsX=IntBItem.CX(),SubTabsY=IntBItem.T;
+		else if(mode==INT_MODE_TILE) SubTabsX=IntBTile.CX(),SubTabsY=IntBTile.T;
+		else if(mode==INT_MODE_CRIT) SubTabsX=IntBCrit.CX(),SubTabsY=IntBCrit.T;
+		else if(mode==INT_MODE_FAST) SubTabsX=IntBFast.CX(),SubTabsY=IntBFast.T;
+		else if(mode==INT_MODE_IGNORE) SubTabsX=IntBIgnore.CX(),SubTabsY=IntBIgnore.T;
+		else SubTabsX=SubTabsY=0;
+		SubTabsX+=IntX-SubTabsRect.W()/2;
+		SubTabsY+=IntY-SubTabsRect.H();
+		if(SubTabsX<0) SubTabsX=0;
+		if(SubTabsX+SubTabsRect.W()>MODE_WIDTH) SubTabsX-=SubTabsX+SubTabsRect.W()-MODE_WIDTH;
+		if(SubTabsY<0) SubTabsY=0;
+		if(SubTabsY+SubTabsRect.H()>MODE_HEIGHT) SubTabsY-=SubTabsY+SubTabsRect.H()-MODE_HEIGHT;
+
+		return;
 	}
 
 	IntMode=mode;
 	IntHold=INT_NONE;
+
+	RefreshCurProtos();
+
+	if(SubTabsActive)
+	{
+		// Reinit sub tabs
+		SubTabsActive=false;
+		IntSetMode(IntMode);
+	}
 }
 
 MapObject* FOMapper::FindMapObject(ProtoMap& pmap, WORD hx, WORD hy, BYTE mobj_type, WORD pid, DWORD skip)
@@ -3522,7 +3774,7 @@ void FOMapper::CurDraw()
 	case CUR_MODE_DRAW:
 		if(IsObjectMode() && (*CurItemProtos).size())
 		{
-			ProtoItem& proto_item=(*CurItemProtos)[CurProto[IntMode]];
+			ProtoItem& proto_item=(*CurItemProtos)[GetTabIndex()];
 
 			WORD hx,hy;
 			if(!HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) break;
@@ -3538,9 +3790,9 @@ void FOMapper::CurDraw()
 					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 			}
 		}
-		else if(IsTileMode() && TilesPictures.size())
+		else if(IsTileMode() && CurTileHashes->size())
 		{
-			AnyFrames* anim=ResMngr.GetItemAnim(TilesPictures[CurProto[IntMode]]);
+			AnyFrames* anim=ResMngr.GetItemAnim((*CurTileHashes)[GetTabIndex()]);
 			if(!anim) anim=ItemHex::DefaultAnim;
 
 			WORD hx,hy;
@@ -3566,9 +3818,9 @@ void FOMapper::CurDraw()
 					si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
 			}
 		}
-		else if(IsCritMode() && NpcProtos.size())
+		else if(IsCritMode() && CurNpcProtos->size())
 		{
-			DWORD spr_id=ResMngr.GetCritSprId(NpcProtos[CurProto[IntMode]]->BaseType,1,1,NpcDir);
+			DWORD spr_id=ResMngr.GetCritSprId((*CurNpcProtos)[GetTabIndex()]->BaseType,1,1,NpcDir);
 			if(!spr_id) spr_id=ItemHex::DefaultAnim->GetSprId(0);
 
 			WORD hx,hy;
@@ -4795,26 +5047,6 @@ void FOMapper::SScriptFunc::Global_SetDefaultCritterParam(DWORD index, int param
 	Self->DefaultCritterParam[index]=param;
 }
 
-DWORD FOMapper::SScriptFunc::Global_GetFastPrototypes(CScriptArray* pids)
-{
-	WordVec pids_;
-	for(size_t i=0,j=Self->FastItemProto.size();i<j;i++) pids_.push_back(Self->FastItemProto[i].GetPid());
-	if(pids) Script::AppendVectorToArray(pids_,pids);
-	return pids_.size();
-}
-
-void FOMapper::SScriptFunc::Global_SetFastPrototypes(CScriptArray* pids)
-{
-	Self->HexMngr.ClearFastPids();
-	Self->FastItemProto.clear();
-	if(pids)
-	{
-		WordVec pids_;
-		Script::AssignScriptArrayInVector(pids_,pids);
-		for(size_t i=0,j=pids_.size();i<j;i++) Self->AddFastProto(pids_[i]);
-	}
-}
-
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap(CScriptString& file_name, int path_type)
 {
 	ProtoMap* pmap=new ProtoMap();
@@ -4965,6 +5197,190 @@ DWORD FOMapper::SScriptFunc::Global_GetSelectedObjects(CScriptArray* objects)
 	for(size_t i=0,j=Self->SelectedObj.size();i<j;i++) objects_.push_back(Self->SelectedObj[i].MapObj);
 	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
 	return objects_.size();
+}
+
+DWORD FOMapper::SScriptFunc::Global_TabGetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs)
+{
+	if(tab<0 || tab>=TAB_COUNT) return 0;
+
+	TileTab& ttab=Self->TabsTiles[tab];
+	if(dir_names)
+	{
+		asUINT i=dir_names->GetSize();
+		dir_names->Resize(dir_names->GetSize()+ttab.TileDirs.size());
+		for(size_t k=0,l=ttab.TileDirs.size();k<l;k++,i++)
+		{
+			CScriptString** p=(CScriptString**)dir_names->At(i);
+			*p=new CScriptString(ttab.TileDirs[k]);
+		}
+	}
+	if(include_subdirs) Script::AppendVectorToArray(ttab.TileSubDirs,include_subdirs);
+	return ttab.TileDirs.size();
+}
+
+DWORD FOMapper::SScriptFunc::Global_TabGetItemPids(int tab, CScriptString* sub_tab, CScriptArray* item_pids)
+{
+	if(tab<0 || tab>=TAB_COUNT) return 0;
+	if(sub_tab && sub_tab->length() && !Self->Tabs[tab].count(sub_tab->c_std_str())) return 0;
+
+	SubTab& stab=Self->Tabs[tab][sub_tab && sub_tab->length()?sub_tab->c_std_str():DEFAULT_SUB_TAB];
+	if(item_pids) Script::AppendVectorToArray(stab.ItemProtos,item_pids);
+	return stab.ItemProtos.size();
+}
+
+DWORD FOMapper::SScriptFunc::Global_TabGetCritterPids(int tab, CScriptString* sub_tab, CScriptArray* critter_pids)
+{
+	if(tab<0 || tab>=TAB_COUNT) return 0;
+	if(sub_tab && sub_tab->length() && !Self->Tabs[tab].count(sub_tab->c_std_str())) return 0;
+
+	SubTab& stab=Self->Tabs[tab][sub_tab && sub_tab->length()?sub_tab->c_std_str():DEFAULT_SUB_TAB];
+	if(critter_pids) Script::AppendVectorToArray(stab.NpcProtos,critter_pids);
+	return stab.NpcProtos.size();
+}
+
+void FOMapper::SScriptFunc::Global_TabSetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs)
+{
+	if(tab<0 || tab>=TAB_COUNT) return;
+	if(dir_names && include_subdirs && dir_names->GetSize()!=include_subdirs->GetSize()) return;
+
+	TileTab& ttab=Self->TabsTiles[tab];
+	ttab.TileDirs.clear();
+	ttab.TileSubDirs.clear();
+
+	if(dir_names)
+	{
+		for(size_t i=0,j=dir_names->GetSize();i<j;i++)
+		{
+			CScriptString* name=*(CScriptString**)dir_names->At(i);
+			if(name && name->length())
+			{
+				ttab.TileDirs.push_back(name->c_std_str());
+				ttab.TileSubDirs.push_back(include_subdirs?*(bool*)include_subdirs->At(i):false);
+			}
+		}
+	}
+
+	if(Self->IsMapperStarted) Self->RefreshTiles(tab);
+}
+
+void FOMapper::SScriptFunc::Global_TabSetItemPids(int tab, CScriptString* sub_tab, CScriptArray* item_pids)
+{
+	if(tab<0 || tab>=TAB_COUNT) return;
+	if(!sub_tab || !sub_tab->length() || sub_tab->c_std_str()==DEFAULT_SUB_TAB) return;
+
+	// Add protos to sub tab
+	if(item_pids && item_pids->GetSize())
+	{
+		ProtoItemVec proto_items;
+		for(int i=0,j=item_pids->GetSize();i<j;i++)
+		{
+			WORD pid=*(WORD*)item_pids->At(i);
+			ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
+			if(proto_item) proto_items.push_back(*proto_item);
+		}
+
+		if(proto_items.size())
+		{
+			SubTab& stab=Self->Tabs[tab][sub_tab->c_std_str()];
+			stab.ItemProtos=proto_items;
+		}
+	}
+	// Delete sub tab
+	else
+	{
+		SubTabMapIt it=Self->Tabs[tab].find(sub_tab->c_std_str());
+		if(it!=Self->Tabs[tab].end())
+		{
+			if(Self->TabsActive[tab]==&(*it).second) Self->TabsActive[tab]=NULL;
+			Self->Tabs[tab].erase(it);
+		}
+	}
+
+	// Recalculate whole pids
+	SubTab& stab_default=Self->Tabs[tab][DEFAULT_SUB_TAB];
+	stab_default.ItemProtos.clear();
+	for(SubTabMapIt it=Self->Tabs[tab].begin(),end=Self->Tabs[tab].end();it!=end;++it)
+	{
+		SubTab& stab=(*it).second;
+		if(&stab==&stab_default) continue;
+		for(size_t i=0,j=stab.ItemProtos.size();i<j;i++)
+			stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
+	}
+	if(!Self->TabsActive[tab]) Self->TabsActive[tab]=&stab_default;
+
+	// Refresh
+	if(Self->IsMapperStarted) Self->RefreshCurProtos();
+}
+
+void FOMapper::SScriptFunc::Global_TabSetCritterPids(int tab, CScriptString* sub_tab, CScriptArray* critter_pids)
+{
+	if(tab<0 || tab>=TAB_COUNT) return;
+	if(!sub_tab || !sub_tab->length() || sub_tab->c_std_str()==DEFAULT_SUB_TAB) return;
+
+	// Add protos to sub tab
+	if(critter_pids && critter_pids->GetSize())
+	{
+		CritDataVec cr_protos;
+		for(int i=0,j=critter_pids->GetSize();i<j;i++)
+		{
+			WORD pid=*(WORD*)critter_pids->At(i);
+			CritData* cr_data=CrMngr.GetProto(pid);
+			if(cr_data) cr_protos.push_back(cr_data);
+		}
+
+		if(cr_protos.size())
+		{
+			SubTab& stab=Self->Tabs[tab][sub_tab->c_std_str()];
+			stab.NpcProtos=cr_protos;
+		}
+	}
+	// Delete sub tab
+	else
+	{
+		SubTabMapIt it=Self->Tabs[tab].find(sub_tab->c_std_str());
+		if(it!=Self->Tabs[tab].end())
+		{
+			if(Self->TabsActive[tab]==&(*it).second) Self->TabsActive[tab]=NULL;
+			Self->Tabs[tab].erase(it);
+		}
+	}
+
+	// Recalculate whole pids
+	SubTab& stab_default=Self->Tabs[tab][DEFAULT_SUB_TAB];
+	stab_default.NpcProtos.clear();
+	for(SubTabMapIt it=Self->Tabs[tab].begin(),end=Self->Tabs[tab].end();it!=end;++it)
+	{
+		SubTab& stab=(*it).second;
+		if(&stab==&stab_default) continue;
+		for(size_t i=0,j=stab.NpcProtos.size();i<j;i++)
+			stab_default.NpcProtos.push_back(stab.NpcProtos[i]);
+	}
+	if(!Self->TabsActive[tab]) Self->TabsActive[tab]=&stab_default;
+
+	// Refresh
+	if(Self->IsMapperStarted) Self->RefreshCurProtos();
+}
+
+void FOMapper::SScriptFunc::Global_TabDelete(int tab)
+{
+	if(tab<0 || tab>=TAB_COUNT) return;
+
+	Self->Tabs[tab].clear();
+	SubTab& stab_default=Self->Tabs[tab][DEFAULT_SUB_TAB];
+	Self->TabsActive[tab]=&stab_default;
+}
+
+void FOMapper::SScriptFunc::Global_TabSelect(int tab, CScriptString* sub_tab)
+{
+	if(tab<0 || tab>=TAB_COUNT) return;
+	SubTabMapIt it=Self->Tabs[tab].find(sub_tab && sub_tab->length()?sub_tab->c_std_str():DEFAULT_SUB_TAB);
+	if(it!=Self->Tabs[tab].end()) Self->TabsActive[tab]=&(*it).second;
+}
+
+void FOMapper::SScriptFunc::Global_TabSetName(int tab, CScriptString* tab_name)
+{
+	if(tab<0 || tab>=INT_MODE_COUNT) return;
+	Self->TabsName[tab]=(tab_name?tab_name->c_std_str():"");
 }
 
 CScriptString* FOMapper::SScriptFunc::Global_GetLastError()
@@ -5201,7 +5617,7 @@ bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 		if(Self->IsMapperStarted)
 		{
 			ResMngr.Refresh();
-			Self->RefreshTiles();
+			for(int tab=0;tab<TAB_COUNT;tab++) Self->RefreshTiles(tab);
 		}
 		return true;
 	}

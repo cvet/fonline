@@ -56,6 +56,7 @@ const char* ItoA(int i);
 const char* DWtoA(DWORD dw);
 const char* Format(const char* fmt, ...);
 const char* SFormat(char* stream, const char* fmt, ...);
+char* EraseFrontBackSpecificChars(char* str);
 
 // Msg files
 int GetMsgType(const char* type_name);

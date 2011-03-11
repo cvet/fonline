@@ -29,7 +29,7 @@ public:
 
 	const string& GetPackName(){return fileName;}
 	BYTE* OpenFile(const char* fname, DWORD& len);
-	void GetFileNames(const char* path, const char* ext, StrVec& result);
+	void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
 	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 };
 
@@ -59,7 +59,7 @@ public:
 
 	const string& GetPackName(){return fileName;}
 	BYTE* OpenFile(const char* fname, DWORD& len);
-	void GetFileNames(const char* path, const char* ext, StrVec& result);
+	void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
 	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 };
 
@@ -294,13 +294,13 @@ BYTE* FalloutDatFile::OpenFile(const char* fname, DWORD& len)
 	return buf;
 }
 
-void FalloutDatFile::GetFileNames(const char* path, const char* ext, StrVec& result)
+void FalloutDatFile::GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result)
 {
 	size_t path_len=strlen(path);
 	for(IndexMapIt it=filesTree.begin(),end=filesTree.end();it!=end;++it)
 	{
 		const string& fname=(*it).first;
-		if(!fname.compare(0,path_len,path))
+		if(!fname.compare(0,path_len,path) && (include_subdirs || (int)fname.find_last_of('\\')<(int)path_len))
 		{
 			if(ext && *ext)
 			{
@@ -434,13 +434,13 @@ BYTE* ZipFile::OpenFile(const char* fname, DWORD& len)
 	return buf;
 }
 
-void ZipFile::GetFileNames(const char* path, const char* ext, StrVec& result)
+void ZipFile::GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result)
 {
 	size_t path_len=strlen(path);
 	for(IndexMapIt it=filesTree.begin(),end=filesTree.end();it!=end;++it)
 	{
 		const string& fname=(*it).first;
-		if(!fname.compare(0,path_len,path))
+		if(!fname.compare(0,path_len,path) && (include_subdirs || (int)fname.find_last_of('\\')<(int)path_len))
 		{
 			if(ext && *ext)
 			{

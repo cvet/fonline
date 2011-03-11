@@ -641,9 +641,14 @@ bool ItemManager::LoadProtos()
 	{
 		char fname[MAX_FOPATH];
 		StringCopy(fname,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS));
+
+		char collection_name[MAX_FOPATH];
+		StringFormat(collection_name,"%03d - %s",i+1,fnames[i].c_str());
+		FileManager::EraseExtension(collection_name);
+
 		if(LoadProtos(item_protos,fname))
 		{
-			ParseProtos(item_protos);
+			ParseProtos(item_protos,collection_name);
 			loaded+=item_protos.size();
 		}
 	}
@@ -713,7 +718,7 @@ void ItemManager::SaveProtos(ProtoItemVec& protos, const char* full_path)
 #endif
 
 bool CompProtoByPid(ProtoItem o1, ProtoItem o2){return o1.GetPid()<o2.GetPid();}
-void ItemManager::ParseProtos(ProtoItemVec& protos)
+void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name /* = NULL*/)
 {
 	if(protos.empty())
 	{
@@ -747,6 +752,10 @@ void ItemManager::ParseProtos(ProtoItemVec& protos)
 
 		typeProto[type].push_back(proto_item);
 		allProto[pid]=proto_item;
+
+#ifdef FONLINE_MAPPER
+		ProtosCollectionName[pid]=collection_name;
+#endif
 	}
 
 	for(int i=0;i<ITEM_MAX_TYPES;i++)
@@ -786,7 +795,12 @@ ProtoItem* ItemManager::GetProtoItem(WORD pid)
 	return &allProto[pid];
 }
 
-void ItemManager::GetAllProtos(ProtoItemVec& protos)
+ProtoItem* ItemManager::GetAllProtos()
+{
+	return allProto;
+}
+
+void ItemManager::GetCopyAllProtos(ProtoItemVec& protos)
 {
 	for(int i=0;i<ITEM_MAX_TYPES;i++)
 	{

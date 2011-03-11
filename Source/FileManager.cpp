@@ -786,6 +786,13 @@ const char* FileManager::GetExtension(const char* fname)
 	return last_dot;
 }
 
+void FileManager::EraseExtension(char* fname)
+{
+	if(!fname) return;
+	char* ext=(char*)GetExtension(fname);
+	if(ext) *(ext-1)=0;
+}
+
 int FileManager::ParseLinesInt(const char* fname, int path_type, IntVec& lines)
 {
 	lines.clear();
@@ -804,7 +811,7 @@ void FileManager::GetTime(FILETIME* create, FILETIME* access, FILETIME* write)
 	if(write) *write=timeWrite;
 }
 
-void FileManager::RecursiveDirLook(const char* init_dir, const char* ext, StrVec& result)
+void FileManager::RecursiveDirLook(const char* init_dir, bool include_subdirs, const char* ext, StrVec& result)
 {
 	WIN32_FIND_DATA fd;
 	char buf[MAX_FOPATH];
@@ -816,8 +823,11 @@ void FileManager::RecursiveDirLook(const char* init_dir, const char* ext, StrVec
 		{
 			if(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)
 			{
-				sprintf(buf,"%s%s\\",init_dir,fd.cFileName);
-				RecursiveDirLook(buf,ext,result);
+				if(include_subdirs)
+				{
+					sprintf(buf,"%s%s\\",init_dir,fd.cFileName);
+					RecursiveDirLook(buf,include_subdirs,ext,result);
+				}
 			}
 			else
 			{
@@ -845,22 +855,28 @@ void FileManager::RecursiveDirLook(const char* init_dir, const char* ext, StrVec
 	if(h!=INVALID_HANDLE_VALUE) FindClose(h);
 }
 
-void FileManager::GetFolderFileNames(int path_type, const char* ext, StrVec& result)
+void FileManager::GetFolderFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result)
 {
-	if(path_type<0 || path_type>=PATH_LIST_COUNT || path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return;
+	// Format path
+	char path_[MAX_FOPATH];
+	StringCopy(path_,path);
+	FormatPath(path_);
 
 	// Find in folder files
-	RecursiveDirLook(PathLst[path_type],ext,result);
+	RecursiveDirLook(path_,include_subdirs,ext,result);
 }
 
-void FileManager::GetDatsFileNames(int path_type, const char* ext, StrVec& result)
+void FileManager::GetDatsFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result)
 {
-	if(path_type<0 || path_type>=PATH_LIST_COUNT || path_type==PT_ROOT || path_type==PT_SERVER_ROOT) return;
+	// Format path
+	char path_[MAX_FOPATH];
+	StringCopy(path_,path);
+	FormatPath(path_);
 
 	// Find in dat files
 	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)
 	{
 		DataFile* dat=*it;
-		dat->GetFileNames(PathLst[path_type],ext,result);
+		dat->GetFileNames(path_,include_subdirs,ext,result);
 	}
 }

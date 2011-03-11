@@ -26,6 +26,7 @@ public:
 
 	bool LoadProtos();
 	CritData* GetProto(WORD proto_id);
+	CritData* GetAllProtos();
 
 #ifdef FONLINE_SERVER
 private:
@@ -65,6 +66,10 @@ public:
 	DWORD CrittersInGame();
 
 #endif // FONLINE_SERVER
+
+#ifdef FONLINE_MAPPER
+	string ProtosCollectionName[MAX_CRIT_PROTOS];
+#endif
 };
 
 extern CritterManager CrMngr;

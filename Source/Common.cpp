@@ -1157,6 +1157,7 @@ GameOptions::GameOptions()
 	ShowCorners=false;
 	ShowSpriteCuts=false;
 	ShowDrawOrder=false;
+	SplitTilesCollection=true;
 
 	// Engine data
 	CritterChangeParameter=NULL;
@@ -1278,6 +1279,17 @@ char* StringDuplicate(const char* str)
 	if(len) memcpy(dup,str,len);
 	dup[len]=0;
 	return dup;
+}
+
+const char* StringFormat(char* output, const char* format, ...)
+{
+	if(!output || !format) return NULL;
+
+	va_list list;
+	va_start(list,format);
+	vsprintf_s(output,MAX_FOTEXT,format,list);
+	va_end(list);
+	return output;
 }
 
 /************************************************************************/

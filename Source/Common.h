@@ -577,6 +577,7 @@ struct GameOptions
 	bool ShowCorners;
 	bool ShowSpriteCuts;
 	bool ShowDrawOrder;
+	bool SplitTilesCollection;
 
 	// Engine data
 	void (*CritterChangeParameter)(void*,DWORD);
@@ -684,6 +685,7 @@ template<int Size> inline void StringCopy(char (&to)[Size], const char* from){re
 void StringAppend(char* to, size_t size, const char* from);
 template<int Size> inline void StringAppend(char (&to)[Size], const char* from){return StringAppend(to,Size,from);}
 char* StringDuplicate(const char* str);
+const char* StringFormat(char* output, const char* format, ...);
 
 /************************************************************************/
 /* Single player                                                        */
