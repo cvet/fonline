@@ -18,7 +18,7 @@ bool IsServer=false;
 bool IsClient=false;
 bool IsMapper=false;
 char* Buf=NULL;
-IntVec Lines;
+Preprocessor::LineNumberTranslator* LNT = NULL;
 
 void CallBack(const asSMessageInfo* msg, void* param)
 {
@@ -30,16 +30,7 @@ void CallBack(const asSMessageInfo* msg, void* param)
 	{
 		if(msg->row)
 		{
-			const char* line=Buf+Lines[msg->row-1];
-			int col_offs=0;
-			while(*line==' ' || *line=='\t')
-			{
-				line++;
-				col_offs++;
-			}
-
-			printf("%s : %s : Line %d, Column %d.\n",type,msg->message,msg->row,msg->col-col_offs);
-			printf("\tIn line '%s'.\n",line); // Show preprocessed line
+			printf("%s(%d) : %s : %s.\n",LNT->ResolveOriginalFile(msg->row).c_str(),LNT->ResolveOriginalLine(msg->row),type,msg->message);
 		}
 		else
 		{
@@ -48,7 +39,7 @@ void CallBack(const asSMessageInfo* msg, void* param)
 	}
 	else
 	{
-		printf("%s : %s : Line %d.\n",type,msg->message,msg->row);
+		printf("%s(%d) : %s : %s.\n",LNT->ResolveOriginalFile(msg->row).c_str(),LNT->ResolveOriginalLine(msg->row),type,msg->message);
 	}
 }
 
@@ -119,7 +110,7 @@ public:
 			value=(ch=='='?value:"false");
 			if(value!="true" && value!="false")
 			{
-				printf("Invalid start value of boolean type, pragma<%s>.\n",instance.text.c_str());
+				printf("Invalid initial value of boolean type, pragma<%s>.\n",instance.text.c_str());
 				return;
 			}
 			list<char>::iterator it=boolArray.insert(boolArray.begin(),value=="true"?true:false);
@@ -147,7 +138,7 @@ public:
 
 	void pragma(const Preprocessor::PragmaInstance& instance)
 	{
-		if(!(*CallFunc)(instance.text.c_str())) printf("Unable parse critter data pragma<%s>.\n",instance.text.c_str());
+		if(!(*CallFunc)(instance.text.c_str())) printf("Unable to parse critter data pragma<%s>.\n",instance.text.c_str());
 	}
 };
 bool PragmaCallbackCrData(const char* text);
@@ -260,7 +251,7 @@ public:
 			string::size_type j=func_name.find("::");
 			if(i==string::npos || i+1>=j)
 			{
-				printf("Error in bindfunc pragma<%s>, parse class name fail.\n",instance.text.c_str());
+				printf("Error in bindfunc pragma<%s>, unable to parse class name.\n",instance.text.c_str());
 				return;
 			}
 			i++;
@@ -269,7 +260,7 @@ public:
 			func_name.erase(i,j-i+2);
 			result=Engine->RegisterObjectMethod(class_name.c_str(),func_name.c_str(),asFUNCTION(func),asCALL_CDECL_OBJFIRST);
 		}
-		if(result<0) printf("Error in bindfunc pragma<%s>, script registration fail, error<%d>.\n",instance.text.c_str(),result);
+		if(result<0) printf("Error in bindfunc pragma<%s>, script registration failed, error<%d>.\n",instance.text.c_str(),result);
 	}
 };
 set<string> BindFuncPragmaCallback::alreadyProcessed;
@@ -305,7 +296,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	HINSTANCE comp_dll;
 	if((comp_dll=LoadLibrary(str_comp_dll))==NULL)
 	{
-		printf("AngelScript library<%s> load fail.\n",str_comp_dll);
+		printf("AngelScript library<%s> loading fail.\n",str_comp_dll);
 		return 0;
 	}
 
@@ -319,7 +310,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	Engine=(*create_func)();
 	if(!Engine)
 	{
-		printf("Register fail.\n");
+		printf("Register failed.\n");
 		return 0;
 	}
 	Engine->SetMessageCallback(asFUNCTION(CallBack),NULL,asCALL_CDECL);
@@ -368,7 +359,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	Preprocessor::RegisterPragma("crdata",new CrDataPragmaCallback());
 	Preprocessor::RegisterPragma("bindfunc",new BindFuncPragmaCallback());
 	for(size_t i=0;i<defines.size();i++) Preprocessor::Define(string(defines[i]));
-	int res=Preprocessor::Preprocess(str_fname,fsrc,vos,true,vos_err);
+	LNT = new Preprocessor::LineNumberTranslator();
+	int res=Preprocessor::Preprocess(str_fname,fsrc,vos,true,vos_err,LNT);
 	if(res)
 	{
 		vos_err.PushNull();
@@ -376,22 +368,24 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 0;
 	}
 
-	vos.Format();
-
 	Buf=new char[vos.GetSize()+1];
 	memcpy(Buf,vos.GetData(),vos.GetSize());
 	Buf[vos.GetSize()]='\0';
-
-	Lines.push_back(0);
-	for(int i=0,j=vos.GetSize();i<j;i++) if(Buf[i]=='\n') Lines.push_back(i+1);
 
 	if(str_prep)
 	{
 		FILE* f=NULL;
 		if(!fopen_s(&f,str_prep,"wt"))
 		{
-			fwrite(Buf,sizeof(char),strlen(Buf),f);
+			Preprocessor::VectorOutStream vos_formatted;
+			vos_formatted<<string(vos.GetData(),vos.GetSize());
+			vos_formatted.Format();
+			char* buf_formatted=new char[vos_formatted.GetSize()+1];
+			memcpy(buf_formatted,vos_formatted.GetData(),vos_formatted.GetSize());
+			buf_formatted[vos_formatted.GetSize()]='\0';
+			fwrite(buf_formatted,sizeof(char),strlen(buf_formatted),f);
 			fclose(f);
+			delete buf_formatted;
 		}
 		else
 		{
@@ -422,7 +416,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	if(module->Build()<0)
 	{
-		printf("Unable to build.\nRow and col see in preprocessed file.\n");
+		printf("Unable to build.\n");
 		return 0;
 	}
 
@@ -504,7 +498,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			if(!g_fail_class) printf("Erase global variable listed above.\n");
 			else printf("Erase global variable or class property listed above.\n");
 			printf("Classes that cannot be stored in global scope: Critter, Item, ProtoItem, Map, Location, GlobalVar.\n");
-			printf("Hint: store their Ids, instead pointers.\n");
+			printf("Hint: store their Ids, instead of pointers.\n");
 			return 0;
 		}
 	}
@@ -515,6 +509,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	FreeLibrary(comp_dll);
 	if(Buf) delete Buf;
 	Buf=NULL;
+	if(LNT) delete LNT;
 	/************************************************************************/
 	/*                                                                      */
 	/************************************************************************/
