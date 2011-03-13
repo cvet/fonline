@@ -531,14 +531,19 @@ static void recursivePreprocess(
 
 	LexemList::iterator ITR = lexems.begin();
 	LexemList::iterator END = lexems.end();
+	LLITR old=END;
 	while ( ITR != END )
 	{
 		if (ITR->type == NEWLINE)
 		{
-			current_line++;
-			lines_this_file++;
+			if(ITR!=old)
+			{
+				current_line++;
+				lines_this_file++;
+				setLineMacro(define_table,lines_this_file);
+			}
+			old=ITR;
 			++ITR;
-			setLineMacro(define_table,lines_this_file);
 		}
 		else if (ITR->type == PREPROCESSOR)
 		{
