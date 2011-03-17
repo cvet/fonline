@@ -308,6 +308,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 // Locker
 #define LOCKER_ISOPEN           (0x01)
+#define LOCKER_NOOPEN           (0x10)
 
 // Hit locations
 #define HIT_LOCATION_NONE       (0)

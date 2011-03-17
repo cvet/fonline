@@ -57,9 +57,7 @@ typedef std::vector<asIScriptModule*>::iterator ScriptModuleVecIt;
 struct EngineData
 {
 	ScriptModuleVec Modules;
-	Preprocessor::PragmaCallback* PrGlobalVar;
-	Preprocessor::PragmaCallback* PrCrData;
-	Preprocessor::PragmaCallback* PrBindFunc;
+	Preprocessor::PragmaCallback* PragmaCB;
 };
 
 asIScriptEngine* Engine=NULL;
@@ -116,176 +114,8 @@ DWORD RunTimeoutMessage=300000; // 5 minutes
 HANDLE RunTimeoutThreadHandle=NULL;
 unsigned int __stdcall RunTimeoutThread(void*);
 
-// #pragma globalvar "int __MyGlobalVar = 100"
-class GvarPragmaCallback : public Preprocessor::PragmaCallback
-{
-private:
-	set<string> addedVars;
-	list<int> intArray;
-	list<__int64> int64Array;
-	list<CScriptString*> stringArray;
-	list<float> floatArray;
-	list<double> doubleArray;
-	list<char> boolArray;
 
-public:
-	void pragma(const Preprocessor::PragmaInstance& instance)
-	{
-		string type,decl,value;
-		char ch=0;
-		istrstream str(instance.text.c_str());
-		str >> type;
-		str >> decl;
-		str >> ch;
-		str >> value;
-
-		if(decl=="")
-		{
-			WriteLog("Global var name not found, pragma<%s>.\n",instance.text.c_str());
-			return;
-		}
-
-		int int_value=(ch=='='?atoi(value.c_str()):0);
-		double float_value=(ch=='='?atof(value.c_str()):0.0);
-		string name=type+" "+decl;
-
-		// Check for exists
-		if(addedVars.count(name)) return;
-
-		// Register
-		if(type=="int8" || type=="int16" || type=="int32" || type=="int" || type=="uint8" || type=="uint16" || type=="uint32" || type=="uint")
-		{
-			list<int>::iterator it=intArray.insert(intArray.begin(),int_value);
-			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register integer global var, pragma<%s>.\n",instance.text.c_str());
-		}
-		else if(type=="int64" || type=="uint64")
-		{
-			list<__int64>::iterator it=int64Array.insert(int64Array.begin(),int_value);
-			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register integer64 global var, pragma<%s>.\n",instance.text.c_str());
-		}
-		else if(type=="string")
-		{
-			if(value!="") value=instance.text.substr(instance.text.find(value),string::npos);
-			list<CScriptString*>::iterator it=stringArray.insert(stringArray.begin(),new CScriptString(value));
-			if(Engine->RegisterGlobalProperty(name.c_str(),(*it))<0) WriteLog("Unable to register string global var, pragma<%s>.\n",instance.text.c_str());
-		}
-		else if(type=="float")
-		{
-			list<float>::iterator it=floatArray.insert(floatArray.begin(),(float)float_value);
-			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register float global var, pragma<%s>.\n",instance.text.c_str());
-		}
-		else if(type=="double")
-		{
-			list<double>::iterator it=doubleArray.insert(doubleArray.begin(),float_value);
-			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register double global var, pragma<%s>.\n",instance.text.c_str());
-		}
-		else if(type=="bool")
-		{
-			value=(ch=='='?value:"false");
-			if(value!="true" && value!="false")
-			{
-				WriteLog("Invalid start value of boolean type, pragma<%s>.\n",instance.text.c_str());
-				return;
-			}
-			list<char>::iterator it=boolArray.insert(boolArray.begin(),value=="true"?true:false);
-			if(Engine->RegisterGlobalProperty(name.c_str(),&(*it))<0) WriteLog("Unable to register boolean global var, pragma<%s>.\n",instance.text.c_str());
-		}
-		else
-		{
-			WriteLog("Global var not registered, unknown type, pragma<%s>.\n",instance.text.c_str());
-		}
-		addedVars.insert(name);
-	}
-};
-
-// #pragma crdata "Stat 0 199"
-class CrDataPragmaCallback : public Preprocessor::PragmaCallback
-{
-public:
-	PragmaCallbackFunc CallFunc;
-
-	CrDataPragmaCallback(PragmaCallbackFunc call_func):CallFunc(call_func){}
-
-	void pragma(const Preprocessor::PragmaInstance& instance)
-	{
-		if(CallFunc && !(*CallFunc)(instance.text.c_str())) WriteLog("Unable to parse crdata pragma<%s>.\n",instance.text.c_str());
-	}
-};
-
-// #pragma bindfunc "int MyFunc(int, uint) -> my.dll MyDllFunc"
-// #pragma bindfunc "int MyObject::MyMethod(int, uint) -> my.dll MyDllFunc"
-class BindFuncPragmaCallback : public Preprocessor::PragmaCallback
-{
-private:
-	set<string> alreadyProcessed;
-
-public:
-	void pragma(const Preprocessor::PragmaInstance& instance)
-	{
-		if(alreadyProcessed.count(instance.text)) return;
-		alreadyProcessed.insert(instance.text);
-
-		string func_name,dll_name,func_dll_name;
-		istrstream str(instance.text.c_str());
-		while(true)
-		{
-			string s;
-			str >> s;
-			if(str.fail() || s=="->") break;
-			if(func_name!="") func_name+=" ";
-			func_name+=s;
-		}
-		str >> dll_name;
-		str >> func_dll_name;
-
-		if(str.fail())
-		{
-			WriteLog("Error in bindfunc pragma<%s>, parse fail.\n",instance.text.c_str());
-			return;
-		}
-
-		HMODULE dll=LoadDynamicLibrary(dll_name.c_str());
-		if(!dll)
-		{
-			WriteLog("Error in bindfunc pragma<%s>, dll not found, error<%u>.\n",instance.text.c_str(),GetLastError());
-			return;
-		}
-
-		// Find function
-		FARPROC func=GetProcAddress(dll,func_dll_name.c_str());
-		if(!func)
-		{
-			WriteLog("Error in bindfunc pragma<%s>, function not found, error<%u>.\n",instance.text.c_str(),GetLastError());
-			return;
-		}
-
-		int result=0;
-		if(func_name.find("::")==string::npos)
-		{
-			// Register global function
-			result=Engine->RegisterGlobalFunction(func_name.c_str(),asFUNCTION(func),asCALL_CDECL);
-		}
-		else
-		{
-			// Register class method
-			string::size_type i=func_name.find(" ");
-			string::size_type j=func_name.find("::");
-			if(i==string::npos || i+1>=j)
-			{
-				WriteLog("Error in bindfunc pragma<%s>, parse class name fail.\n",instance.text.c_str());
-				return;
-			}
-			i++;
-			string class_name;
-			class_name.assign(func_name,i,j-i);
-			func_name.erase(i,j-i+2);
-			result=Engine->RegisterObjectMethod(class_name.c_str(),func_name.c_str(),asFUNCTION(func),asCALL_CDECL_OBJFIRST);
-		}
-		if(result<0) WriteLog("Error in bindfunc pragma<%s>, script registration fail, error<%d>.\n",instance.text.c_str(),result);
-	}
-};
-
-bool Init(bool with_log, PragmaCallbackFunc crdata)
+bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback)
 {
 	if(with_log && !StartLog())
 	{
@@ -294,7 +124,7 @@ bool Init(bool with_log, PragmaCallbackFunc crdata)
 	}
 
 	// Create default engine
-	Engine=CreateEngine(crdata);
+	Engine=CreateEngine(pragma_callback);
 	if(!Engine)
 	{
 		WriteLog(__FUNCTION__" - Can't create AS engine.\n");
@@ -324,7 +154,7 @@ void Finish()
 	RunTimeoutThreadHandle=NULL;
 
 	BindedFunctions.clear();
-	Preprocessor::ClearPragmas();
+	Preprocessor::SetPragmaCallback(NULL);
 	Preprocessor::UndefAll();
 	UnloadScripts();
 
@@ -550,7 +380,7 @@ void SetEngine(asIScriptEngine* engine)
 	Engine=engine;
 }
 
-asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata)
+asIScriptEngine* CreateEngine(Preprocessor::PragmaCallback* pragma_callback)
 {
 	asIScriptEngine* engine=asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	if(!engine)
@@ -570,9 +400,7 @@ asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata)
 	RegisterScriptMath3D(engine);
 
 	EngineData* edata=new EngineData();
-	edata->PrGlobalVar=new GvarPragmaCallback();
-	edata->PrCrData=new CrDataPragmaCallback(crdata);
-	edata->PrBindFunc=new BindFuncPragmaCallback();
+	edata->PragmaCB=pragma_callback;
 	engine->SetUserData(edata);
 	return engine;
 }
@@ -582,9 +410,7 @@ void FinishEngine(asIScriptEngine*& engine)
 	if(engine)
 	{
 		EngineData* edata=(EngineData*)engine->SetUserData(NULL);
-		delete edata->PrGlobalVar;
-		delete edata->PrCrData;
-		delete edata->PrBindFunc;
+		delete edata->PragmaCB;
 		delete edata;
 		engine->Release();
 		engine=NULL;
@@ -931,9 +757,7 @@ char* Preprocess(const char* fname, bool process_pragmas)
 
 	// Set current pragmas
 	EngineData* edata=(EngineData*)Engine->GetUserData();
-	Preprocessor::RegisterPragma("globalvar",edata->PrGlobalVar);
-	Preprocessor::RegisterPragma("crdata",edata->PrCrData);
-	Preprocessor::RegisterPragma("bindfunc",edata->PrBindFunc);
+	Preprocessor::SetPragmaCallback(edata->PragmaCB);
 
 	// Preprocess
 	if(Preprocessor::Preprocess(fname,fsrc,vos,process_pragmas))
@@ -954,9 +778,7 @@ void CallPragmas(const StrVec& pragmas)
 	EngineData* edata=(EngineData*)Engine->GetUserData();
 
 	// Set current pragmas
-	Preprocessor::RegisterPragma("globalvar",edata->PrGlobalVar);
-	Preprocessor::RegisterPragma("crdata",edata->PrCrData);
-	Preprocessor::RegisterPragma("bindfunc",edata->PrBindFunc);
+	Preprocessor::SetPragmaCallback(edata->PragmaCB);
 
 	// Call pragmas
 	for(size_t i=0,j=pragmas.size()/2;i<j;i++)
@@ -991,9 +813,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 	StringAppend(fname_script,".fos");
 
 	// Set current pragmas
-	Preprocessor::RegisterPragma("globalvar",edata->PrGlobalVar);
-	Preprocessor::RegisterPragma("crdata",edata->PrCrData);
-	Preprocessor::RegisterPragma("bindfunc",edata->PrBindFunc);
+	Preprocessor::SetPragmaCallback(edata->PragmaCB);
 
 	// Try load precompiled script
 	FileManager file_bin;

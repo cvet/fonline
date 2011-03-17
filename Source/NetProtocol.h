@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF0AE) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF0AF) // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((MSGTYPE)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -35,7 +35,7 @@
 
 #define NETMSG_LOGIN                MAKE_NETMSG_HEADER(1)
 #define NETMSG_LOGIN_SIZE           (sizeof(MSGTYPE)+sizeof(WORD)+sizeof(DWORD)*8/*UIDs*/+\
-MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*12/*Proto*/+sizeof(BYTE))
+MAX_NAME*2+sizeof(DWORD)+sizeof(DWORD)*10/*MSG*/+sizeof(DWORD)*13/*Proto*/+sizeof(BYTE))
 //////////////////////////////////////////////////////////////////////////
 // Enter to game
 // Params:

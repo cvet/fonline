@@ -9,6 +9,11 @@
 #include "Map.h"
 #include "CritterManager.h"
 #include "MapManager.h"
+#include "Script.h"
+#endif
+
+#ifdef FONLINE_MAPPER
+#include "Script.h"
 #endif
 
 ItemManager ItemMngr;
@@ -77,540 +82,13 @@ void ItemManager::Clear()
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_OBJECT_EDITOR) || defined(FONLINE_MAPPER)
-#define PROTO_APP "Proto"
-int ItemManager::GetProtoValue(const char* key)
+
+template<class T>
+T ResolveProtoValue(const char* str)
 {
-	char str[MAX_FOTEXT];
-	if(!txtFile.GetStr(PROTO_APP,key,"",str)) return 0;
-	return FONames::GetDefineValue(str);
-}
-
-string ItemManager::GetProtoValueStr(const char* key)
-{
-	char str[MAX_FOTEXT];
-	if(!txtFile.GetStr(PROTO_APP,key,"",str)) return "";
-	return str;
-}
-
-bool ItemManager::SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, ProtoItemVec* protos)
-{
-	char str[MAX_FOPATH];
-
-	if(save)
-	{
-#ifndef FONLINE_OBJECT_EDITOR
-		return false;
-#endif
-		fprintf(f,"[%s]\n",PROTO_APP);
-	}
-	else
-	{
-		if(!txtFile.GotoNextApp(PROTO_APP)) return false;
-		proto_item.Clear();
-	}
-
-#define SERIALIZE_PROTO(field,def) if(save && proto_item.field) fprintf(f,"%s=%d\n",#field,proto_item.field); else if(!save) proto_item.field=GetProtoValue(#field)
-#define SERIALIZE_PROTOB(field,def) if(save && proto_item.field) fprintf(f,"%s=%d\n",#field,proto_item.field?1:0); else if(!save) proto_item.field=GetProtoValue(#field)!=0
-#define SERIALIZE_PROTO_(field,field_,def) if(save && proto_item.field_) fprintf(f,"%s=%d\n",#field,proto_item.field_); else if(!save) proto_item.field_=GetProtoValue(#field)
-#define SERIALIZE_PROTOB_(field,field_,def) if(save && proto_item.field_) fprintf(f,"%s=%d\n",#field,proto_item.field_?1:0); else if(!save) proto_item.field_=GetProtoValue(#field)!=0
-#define SERIALIZE_PROTOS_(field,field_) if(save && proto_item.field_.length()) fprintf(f,"%s=%s\n",#field,proto_item.field_.c_str()); else if(!save) proto_item.field_=GetProtoValueStr(#field)
-
-	SERIALIZE_PROTO(Pid,0);
-	if(!proto_item.Pid || proto_item.Pid>=MAX_ITEM_PROTOTYPES) return false;
-
-	SERIALIZE_PROTO(Type,0);
-
-	// Pictures
-	if(save)
-	{
-#ifdef FONLINE_OBJECT_EDITOR
-		if(proto_item.PicMapStr.length()) fprintf(f,"PicMapName=%s\n",proto_item.PicMapStr.c_str());
-		if(proto_item.PicInvStr.length()) fprintf(f,"PicInvName=%s\n",proto_item.PicInvStr.c_str());
-#endif
-	}
-	else
-	{
-#ifdef FONLINE_OBJECT_EDITOR
-		if(txtFile.GetStr(PROTO_APP,"PicMapName","",str)) proto_item.PicMapStr=str;
-		else if(txtFile.GetStr(PROTO_APP,"PicMap","",str)) proto_item.PicMapStr=Deprecated_GetPicName(proto_item.Pid,proto_item.Type,atoi(str));
-		if(txtFile.GetStr(PROTO_APP,"PicInvName","",str)) proto_item.PicInvStr=str;
-		else if(txtFile.GetStr(PROTO_APP,"PicInv","",str)) proto_item.PicInvStr=Deprecated_GetPicName(-3,0,atoi(str));
-#else
-		if(txtFile.GetStr(PROTO_APP,"PicMapName","",str)) proto_item.PicMapHash=Str::GetHash(str);
-		else if(txtFile.GetStr(PROTO_APP,"PicMap","",str)) proto_item.PicMapHash=Str::GetHash(Deprecated_GetPicName(proto_item.Pid,proto_item.Type,atoi(str)).c_str());
-		if(txtFile.GetStr(PROTO_APP,"PicInvName","",str)) proto_item.PicInvHash=Str::GetHash(str);
-		else if(txtFile.GetStr(PROTO_APP,"PicInv","",str)) proto_item.PicInvHash=Str::GetHash(Deprecated_GetPicName(-3,0,atoi(str)).c_str());
-#endif
-	}
-
-	// Script
-	if(save)
-	{
-#ifdef FONLINE_OBJECT_EDITOR
-		if(proto_item.ScriptModule.length()) fprintf(f,"ScriptModule=%s\n",proto_item.ScriptModule.c_str());
-		if(proto_item.ScriptFunc.length()) fprintf(f,"ScriptFunc=%s\n",proto_item.ScriptFunc.c_str());
-#endif
-	}
-	else
-	{
-#ifdef FONLINE_OBJECT_EDITOR
-		txtFile.GetStr(PROTO_APP,"ScriptModule","",str);
-		proto_item.ScriptModule=str;
-		txtFile.GetStr(PROTO_APP,"ScriptFunc","",str);
-		proto_item.ScriptFunc=str;
-#else
-		SAFEDELA(protoScript[proto_item.Pid]);
-		char script_module[MAX_SCRIPT_NAME+1];
-		char script_func[MAX_SCRIPT_NAME+1];
-		if(txtFile.GetStr(PROTO_APP,"ScriptModule","",script_module) && script_module[0] &&
-			txtFile.GetStr(PROTO_APP,"ScriptFunc","",script_func) && script_func[0])
-			protoScript[proto_item.Pid]=StringDuplicate(Str::Format("%s@%s",script_module,script_func));
-#endif
-
-	}
-
-	SERIALIZE_PROTO(Slot,0);
-	SERIALIZE_PROTO(Corner,0);
-	SERIALIZE_PROTO(LightDistance,0);
-	SERIALIZE_PROTO(LightIntensity,0);
-	SERIALIZE_PROTO(LightColor,0);
-	SERIALIZE_PROTO(LightFlags,0);
-	SERIALIZE_PROTO(Flags,0);
-	SERIALIZE_PROTOB(DisableEgg,0);
-
-	if(!save && txtFile.IsKey(PROTO_APP,"TransType")) // Deprecated
-	{
-		int alpha=GetProtoValue("TransVal");
-		int trans=GetProtoValue("TransType");
-		int corner=GetProtoValue("LightType");
-
-		if(trans!=0) proto_item.DisableEgg=true; // Egg
-		else proto_item.DisableEgg=false;
-
-		proto_item.LightColor=0;
-		if(trans==3) proto_item.LightColor=0x7F000000; // Glass
-		else if(trans==4) proto_item.LightColor=0x6FFFFFFF; // Steam
-		else if(trans==5) proto_item.LightColor=0x7FFFFF00; // Energy
-		else if(trans==6) proto_item.LightColor=0x7FFF0000; // Red
-		else proto_item.LightColor=((0xFF-CLAMP(alpha,0,0xFF))<<24);
-		if(trans>=3 && trans<=6) SETFLAG(proto_item.Flags,ITEM_COLORIZE);
-
-		if(corner==0x80) proto_item.Corner=CORNER_WEST;
-		else if(corner==0x40) proto_item.Corner=CORNER_EAST;
-		else if(corner==0x20) proto_item.Corner=CORNER_SOUTH;
-		else if(corner==0x10) proto_item.Corner=CORNER_NORTH;
-		else if(corner==0x08) proto_item.Corner=CORNER_EAST_WEST;
-		else proto_item.Corner=CORNER_NORTH_SOUTH;
-
-		SERIALIZE_PROTO_(DistanceLight,LightDistance,0);
-		int inten=GetProtoValue("IntensityLight");
-		if(inten<0 || inten>100) inten=50;
-		proto_item.LightIntensity=inten;
-		if(proto_item.LightIntensity || proto_item.LightDistance)
-		{
-			SETFLAG(proto_item.Flags,ITEM_LIGHT);
-			if(!proto_item.LightIntensity) proto_item.LightIntensity=50;
-			if(!proto_item.LightDistance) proto_item.LightDistance=1;
-		}
-	}
-
-	if(!save && proto_item.LightColor==0xFF000000 && !FLAG(proto_item.Flags,ITEM_LIGHT|ITEM_COLORIZE|ITEM_COLORIZE)) proto_item.LightColor=0;
-
-	SERIALIZE_PROTO(Weight,0);
-	SERIALIZE_PROTO(Volume,0);
-	SERIALIZE_PROTO(SoundId,0);
-	SERIALIZE_PROTO(Cost,0);
-	SERIALIZE_PROTO(Material,0);
-
-	SERIALIZE_PROTO(AnimWaitBase,0);
-	SERIALIZE_PROTO(AnimWaitRndMin,0);
-	SERIALIZE_PROTO(AnimWaitRndMax,0);
-	SERIALIZE_PROTO_(AnimStay_0,AnimStay[0],0);
-	SERIALIZE_PROTO_(AnimStay_1,AnimStay[1],0);
-	SERIALIZE_PROTO_(AnimShow_0,AnimShow[0],0);
-	SERIALIZE_PROTO_(AnimShow_1,AnimShow[1],0);
-	SERIALIZE_PROTO_(AnimHide_0,AnimHide[0],0);
-	SERIALIZE_PROTO_(AnimHide_1,AnimHide[1],0);
-	SERIALIZE_PROTO(OffsetX,0);
-	SERIALIZE_PROTO(OffsetY,0);
-	SERIALIZE_PROTO(SpriteCut,0);
-	SERIALIZE_PROTO(DrawOrderOffsetHexY,0);
-
-	SERIALIZE_PROTO(RadioChannel,0);
-	SERIALIZE_PROTO(RadioFlags,0);
-	SERIALIZE_PROTO(RadioBroadcastSend,0);
-	SERIALIZE_PROTO(RadioBroadcastRecv,0);
-
-	SERIALIZE_PROTO(IndicatorStart,0);
-	SERIALIZE_PROTO(IndicatorMax,0);
-
-	SERIALIZE_PROTO(HolodiskNum,0);
-
-	switch(proto_item.Type)
-	{
-	case ITEM_TYPE_ARMOR:
-		if(!save && txtFile.IsKey(PROTO_APP,"ARMOR.Anim0Male")) // Deprecated
-		{
-			SERIALIZE_PROTO_(ARMOR.Anim0Male,Armor.Anim0Male,0);
-			SERIALIZE_PROTO_(ARMOR.Anim0Female,Armor.Anim0Female,0);
-			SERIALIZE_PROTO_(ARMOR.AC,Armor.AC,0);
-			SERIALIZE_PROTO_(ARMOR.DRNormal,Armor.DRNormal,0);
-			SERIALIZE_PROTO_(ARMOR.DRLaser,Armor.DRLaser,0);
-			SERIALIZE_PROTO_(ARMOR.DRFire,Armor.DRFire,0);
-			SERIALIZE_PROTO_(ARMOR.DRPlasma,Armor.DRPlasma,0);
-			SERIALIZE_PROTO_(ARMOR.DRElectr,Armor.DRElectr,0);
-			SERIALIZE_PROTO_(ARMOR.DREmp,Armor.DREmp,0);
-			SERIALIZE_PROTO_(ARMOR.DRExplode,Armor.DRExplode,0);
-			SERIALIZE_PROTO_(ARMOR.DTNormal,Armor.DTNormal,0);
-			SERIALIZE_PROTO_(ARMOR.DTLaser,Armor.DTLaser,0);
-			SERIALIZE_PROTO_(ARMOR.DTFire,Armor.DTFire,0);
-			SERIALIZE_PROTO_(ARMOR.DTPlasma,Armor.DTPlasma,0);
-			SERIALIZE_PROTO_(ARMOR.DTElectr,Armor.DTElectr,0);
-			SERIALIZE_PROTO_(ARMOR.DTEmp,Armor.DTEmp,0);
-			SERIALIZE_PROTO_(ARMOR.DTExplode,Armor.DTExplode,0);
-			SERIALIZE_PROTO_(ARMOR.Perk,Armor.Perk,0);
-		}
-		else
-		{
-			SERIALIZE_PROTO(Armor.Anim0Male,0);
-			SERIALIZE_PROTO(Armor.Anim0Female,0);
-			SERIALIZE_PROTO(Armor.AC,0);
-			SERIALIZE_PROTO(Armor.DRNormal,0);
-			SERIALIZE_PROTO(Armor.DRLaser,0);
-			SERIALIZE_PROTO(Armor.DRFire,0);
-			SERIALIZE_PROTO(Armor.DRPlasma,0);
-			SERIALIZE_PROTO(Armor.DRElectr,0);
-			SERIALIZE_PROTO(Armor.DREmp,0);
-			SERIALIZE_PROTO(Armor.DRExplode,0);
-			SERIALIZE_PROTO(Armor.DTNormal,0);
-			SERIALIZE_PROTO(Armor.DTLaser,0);
-			SERIALIZE_PROTO(Armor.DTFire,0);
-			SERIALIZE_PROTO(Armor.DTPlasma,0);
-			SERIALIZE_PROTO(Armor.DTElectr,0);
-			SERIALIZE_PROTO(Armor.DTEmp,0);
-			SERIALIZE_PROTO(Armor.DTExplode,0);
-			SERIALIZE_PROTO(Armor.Perk,0);
-		}
-		break;
-	case ITEM_TYPE_WEAPON:
-		if(!save && txtFile.IsKey(PROTO_APP,"WEAPON.IsNeedAct")) // Deprecated
-		{
-			SERIALIZE_PROTOB_(WEAPON.IsUnarmed,Weapon.IsUnarmed,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedTree,Weapon.UnarmedTree,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedPriority,Weapon.UnarmedPriority,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedCriticalBonus,Weapon.UnarmedCriticalBonus,0);
-			SERIALIZE_PROTOB_(WEAPON.UnarmedArmorPiercing,Weapon.UnarmedArmorPiercing,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedMinAgility,Weapon.UnarmedMinAgility,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedMinUnarmed,Weapon.UnarmedMinUnarmed,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedMinLevel,Weapon.UnarmedMinLevel,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedTree,Weapon.UnarmedTree,0);
-			SERIALIZE_PROTO_(WEAPON.UnarmedPriority,Weapon.UnarmedPriority,0);
-			SERIALIZE_PROTO_(WEAPON.VolHolder,Weapon.VolHolder,0);
-			SERIALIZE_PROTO_(WEAPON.Caliber,Weapon.Caliber,0);
-			SERIALIZE_PROTO_(WEAPON.DefAmmo,Weapon.DefAmmo,0);
-			SERIALIZE_PROTO_(WEAPON.ReloadAp,Weapon.ReloadAp,0);
-			SERIALIZE_PROTO_(WEAPON.Anim1,Weapon.Anim1,0);
-			SERIALIZE_PROTO_(WEAPON.CrFailture,Weapon.CrFailture,0);
-			SERIALIZE_PROTO_(WEAPON.MinSt,Weapon.MinSt,0);
-			SERIALIZE_PROTO_(WEAPON.Perk,Weapon.Perk,0);
-			SERIALIZE_PROTOB_(WEAPON.NoWear,Weapon.NoWear,0);
-			SERIALIZE_PROTO_(WEAPON.CountAttack,Weapon.Uses,0);
-			SERIALIZE_PROTO_(WEAPON.aSkill_0,Weapon.Skill[0],0);
-			SERIALIZE_PROTO_(WEAPON.aSkill_1,Weapon.Skill[1],0);
-			SERIALIZE_PROTO_(WEAPON.aSkill_2,Weapon.Skill[2],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgType_0,Weapon.DmgType[0],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgType_1,Weapon.DmgType[1],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgType_2,Weapon.DmgType[2],0);
-			SERIALIZE_PROTO_(WEAPON.aAnim2_0,Weapon.Anim2[0],0);
-			SERIALIZE_PROTO_(WEAPON.aAnim2_1,Weapon.Anim2[1],0);
-			SERIALIZE_PROTO_(WEAPON.aAnim2_2,Weapon.Anim2[2],0);
-
-#ifdef FONLINE_OBJECT_EDITOR
-			if(txtFile.GetStr(PROTO_APP,"WEAPON.aPic_0","",str)) proto_item.WeaponPicStr[0]=Deprecated_GetPicName(-1,0,atoi(str));
-			if(txtFile.GetStr(PROTO_APP,"WEAPON.aPic_1","",str)) proto_item.WeaponPicStr[1]=Deprecated_GetPicName(-1,0,atoi(str));
-			if(txtFile.GetStr(PROTO_APP,"WEAPON.aPic_2","",str)) proto_item.WeaponPicStr[2]=Deprecated_GetPicName(-1,0,atoi(str));
-#else
-			if(txtFile.GetStr(PROTO_APP,"WEAPON.aPic_0","",str)) proto_item.Weapon.PicHash[0]=Str::GetHash(Deprecated_GetPicName(-1,0,atoi(str)).c_str());
-			if(txtFile.GetStr(PROTO_APP,"WEAPON.aPic_1","",str)) proto_item.Weapon.PicHash[1]=Str::GetHash(Deprecated_GetPicName(-1,0,atoi(str)).c_str());
-			if(txtFile.GetStr(PROTO_APP,"WEAPON.aPic_2","",str)) proto_item.Weapon.PicHash[2]=Str::GetHash(Deprecated_GetPicName(-1,0,atoi(str)).c_str());
-#endif
-
-			SERIALIZE_PROTO_(WEAPON.aDmgMin_0,Weapon.DmgMin[0],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgMin_1,Weapon.DmgMin[1],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgMin_2,Weapon.DmgMin[2],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgMax_0,Weapon.DmgMax[0],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgMax_1,Weapon.DmgMax[1],0);
-			SERIALIZE_PROTO_(WEAPON.aDmgMax_2,Weapon.DmgMax[2],0);
-			SERIALIZE_PROTO_(WEAPON.aMaxDist_0,Weapon.MaxDist[0],0);
-			SERIALIZE_PROTO_(WEAPON.aMaxDist_1,Weapon.MaxDist[1],0);
-			SERIALIZE_PROTO_(WEAPON.aMaxDist_2,Weapon.MaxDist[2],0);
-			SERIALIZE_PROTO_(WEAPON.aEffect_0,Weapon.Effect[0],0);
-			SERIALIZE_PROTO_(WEAPON.aEffect_1,Weapon.Effect[1],0);
-			SERIALIZE_PROTO_(WEAPON.aEffect_2,Weapon.Effect[2],0);
-			SERIALIZE_PROTO_(WEAPON.aRound_0,Weapon.Round[0],0);
-			SERIALIZE_PROTO_(WEAPON.aRound_1,Weapon.Round[1],0);
-			SERIALIZE_PROTO_(WEAPON.aRound_2,Weapon.Round[2],0);
-			SERIALIZE_PROTO_(WEAPON.aTime_0,Weapon.ApCost[0],0);
-			SERIALIZE_PROTO_(WEAPON.aTime_1,Weapon.ApCost[1],0);
-			SERIALIZE_PROTO_(WEAPON.aTime_2,Weapon.ApCost[2],0);
-			SERIALIZE_PROTOB_(WEAPON.aAim_0,Weapon.Aim[0],0);
-			SERIALIZE_PROTOB_(WEAPON.aAim_1,Weapon.Aim[1],0);
-			SERIALIZE_PROTOB_(WEAPON.aAim_2,Weapon.Aim[2],0);
-			SERIALIZE_PROTOB_(WEAPON.aRemove_0,Weapon.Remove[0],0);
-			SERIALIZE_PROTOB_(WEAPON.aRemove_1,Weapon.Remove[1],0);
-			SERIALIZE_PROTOB_(WEAPON.aRemove_2,Weapon.Remove[2],0);
-			SERIALIZE_PROTO_(WEAPON.aSound_0,Weapon.SoundId[0],0);
-			SERIALIZE_PROTO_(WEAPON.aSound_1,Weapon.SoundId[1],0);
-			SERIALIZE_PROTO_(WEAPON.aSound_2,Weapon.SoundId[2],0);
-		}
-		else
-		{
-			SERIALIZE_PROTOB(Weapon.IsUnarmed,0);
-			SERIALIZE_PROTO(Weapon.UnarmedTree,0);
-			SERIALIZE_PROTO(Weapon.UnarmedPriority,0);
-			SERIALIZE_PROTO(Weapon.UnarmedCriticalBonus,0);
-			SERIALIZE_PROTOB(Weapon.UnarmedArmorPiercing,0);
-			SERIALIZE_PROTO(Weapon.UnarmedMinAgility,0);
-			SERIALIZE_PROTO(Weapon.UnarmedMinUnarmed,0);
-			SERIALIZE_PROTO(Weapon.UnarmedMinLevel,0);
-			SERIALIZE_PROTO(Weapon.UnarmedTree,0);
-			SERIALIZE_PROTO(Weapon.UnarmedPriority,0);
-			SERIALIZE_PROTO(Weapon.VolHolder,0);
-			SERIALIZE_PROTO(Weapon.Caliber,0);
-			SERIALIZE_PROTO(Weapon.DefAmmo,0);
-			SERIALIZE_PROTO(Weapon.ReloadAp,0);
-			SERIALIZE_PROTO(Weapon.Anim1,0);
-			SERIALIZE_PROTO(Weapon.CrFailture,0);
-			SERIALIZE_PROTO(Weapon.MinSt,0);
-			SERIALIZE_PROTO(Weapon.Perk,0);
-			SERIALIZE_PROTOB(Weapon.NoWear,0);
-			SERIALIZE_PROTO_(Weapon.CountAttack,Weapon.Uses,0);
-			SERIALIZE_PROTO_(Weapon.Skill_0,Weapon.Skill[0],0);
-			SERIALIZE_PROTO_(Weapon.Skill_1,Weapon.Skill[1],0);
-			SERIALIZE_PROTO_(Weapon.Skill_2,Weapon.Skill[2],0);
-			SERIALIZE_PROTO_(Weapon.DmgType_0,Weapon.DmgType[0],0);
-			SERIALIZE_PROTO_(Weapon.DmgType_1,Weapon.DmgType[1],0);
-			SERIALIZE_PROTO_(Weapon.DmgType_2,Weapon.DmgType[2],0);
-
-#ifdef FONLINE_OBJECT_EDITOR
-			SERIALIZE_PROTOS_(Weapon.Anim2_0,Weapon_Anim2[0]);
-			SERIALIZE_PROTOS_(Weapon.Anim2_1,Weapon_Anim2[1]);
-			SERIALIZE_PROTOS_(Weapon.Anim2_2,Weapon_Anim2[2]);
-#else
-			SERIALIZE_PROTO_(Weapon.Anim2_0,Weapon.Anim2[0],0);
-			SERIALIZE_PROTO_(Weapon.Anim2_1,Weapon.Anim2[1],0);
-			SERIALIZE_PROTO_(Weapon.Anim2_2,Weapon.Anim2[2],0);
-#endif
-
-			if(save)
-			{
-#ifdef FONLINE_OBJECT_EDITOR
-				if(proto_item.WeaponPicStr[0].length()) fprintf(f,"Weapon.PicName_0=%s\n",proto_item.WeaponPicStr[0].c_str());
-				if(proto_item.WeaponPicStr[1].length()) fprintf(f,"Weapon.PicName_1=%s\n",proto_item.WeaponPicStr[1].c_str());
-				if(proto_item.WeaponPicStr[2].length()) fprintf(f,"Weapon.PicName_2=%s\n",proto_item.WeaponPicStr[2].c_str());
-#endif
-			}
-			else
-			{
-#ifdef FONLINE_OBJECT_EDITOR
-				if(txtFile.GetStr(PROTO_APP,"Weapon.PicName_0","",str)) proto_item.WeaponPicStr[0]=str;
-				if(txtFile.GetStr(PROTO_APP,"Weapon.PicName_1","",str)) proto_item.WeaponPicStr[1]=str;
-				if(txtFile.GetStr(PROTO_APP,"Weapon.PicName_2","",str)) proto_item.WeaponPicStr[2]=str;
-#else
-				if(txtFile.GetStr(PROTO_APP,"Weapon.PicName_0","",str)) proto_item.Weapon.PicHash[0]=Str::GetHash(str);
-				if(txtFile.GetStr(PROTO_APP,"Weapon.PicName_1","",str)) proto_item.Weapon.PicHash[1]=Str::GetHash(str);
-				if(txtFile.GetStr(PROTO_APP,"Weapon.PicName_2","",str)) proto_item.Weapon.PicHash[2]=Str::GetHash(str);
-#endif
-			}
-
-			SERIALIZE_PROTO_(Weapon.DmgMin_0,Weapon.DmgMin[0],0);
-			SERIALIZE_PROTO_(Weapon.DmgMin_1,Weapon.DmgMin[1],0);
-			SERIALIZE_PROTO_(Weapon.DmgMin_2,Weapon.DmgMin[2],0);
-			SERIALIZE_PROTO_(Weapon.DmgMax_0,Weapon.DmgMax[0],0);
-			SERIALIZE_PROTO_(Weapon.DmgMax_1,Weapon.DmgMax[1],0);
-			SERIALIZE_PROTO_(Weapon.DmgMax_2,Weapon.DmgMax[2],0);
-			SERIALIZE_PROTO_(Weapon.MaxDist_0,Weapon.MaxDist[0],0);
-			SERIALIZE_PROTO_(Weapon.MaxDist_1,Weapon.MaxDist[1],0);
-			SERIALIZE_PROTO_(Weapon.MaxDist_2,Weapon.MaxDist[2],0);
-			SERIALIZE_PROTO_(Weapon.Effect_0,Weapon.Effect[0],0);
-			SERIALIZE_PROTO_(Weapon.Effect_1,Weapon.Effect[1],0);
-			SERIALIZE_PROTO_(Weapon.Effect_2,Weapon.Effect[2],0);
-			SERIALIZE_PROTO_(Weapon.Round_0,Weapon.Round[0],0);
-			SERIALIZE_PROTO_(Weapon.Round_1,Weapon.Round[1],0);
-			SERIALIZE_PROTO_(Weapon.Round_2,Weapon.Round[2],0);
-			SERIALIZE_PROTO_(Weapon.Time_0,Weapon.ApCost[0],0);
-			SERIALIZE_PROTO_(Weapon.Time_1,Weapon.ApCost[1],0);
-			SERIALIZE_PROTO_(Weapon.Time_2,Weapon.ApCost[2],0);
-			SERIALIZE_PROTOB_(Weapon.Aim_0,Weapon.Aim[0],0);
-			SERIALIZE_PROTOB_(Weapon.Aim_1,Weapon.Aim[1],0);
-			SERIALIZE_PROTOB_(Weapon.Aim_2,Weapon.Aim[2],0);
-			SERIALIZE_PROTOB_(Weapon.Remove_0,Weapon.Remove[0],0);
-			SERIALIZE_PROTOB_(Weapon.Remove_1,Weapon.Remove[1],0);
-			SERIALIZE_PROTOB_(Weapon.Remove_2,Weapon.Remove[2],0);
-			SERIALIZE_PROTO_(Weapon.SoundId_0,Weapon.SoundId[0],0);
-			SERIALIZE_PROTO_(Weapon.SoundId_1,Weapon.SoundId[1],0);
-			SERIALIZE_PROTO_(Weapon.SoundId_2,Weapon.SoundId[2],0);
-		}
-		break;
-	case ITEM_TYPE_AMMO:
-		if(!save && txtFile.IsKey(PROTO_APP,"AMMO.StartCount")) // Deprecated
-		{
-			SERIALIZE_PROTO_(AMMO.StartCount,Ammo.StartCount,0);
-			SERIALIZE_PROTO_(AMMO.Caliber,Ammo.Caliber,0);
-			SERIALIZE_PROTO_(AMMO.ACMod,Ammo.ACMod,0);
-			SERIALIZE_PROTO_(AMMO.DRMod,Ammo.DRMod,0);
-			SERIALIZE_PROTO_(AMMO.DmgMult,Ammo.DmgMult,0);
-			SERIALIZE_PROTO_(AMMO.DmgDiv,Ammo.DmgDiv,0);
-		}
-		else
-		{
-			SERIALIZE_PROTO(Ammo.StartCount,0);
-			SERIALIZE_PROTO(Ammo.Caliber,0);
-			SERIALIZE_PROTO(Ammo.ACMod,0);
-			SERIALIZE_PROTO(Ammo.DRMod,0);
-			SERIALIZE_PROTO(Ammo.DmgMult,0);
-			SERIALIZE_PROTO(Ammo.DmgDiv,0);
-		}
-		break;
-	case ITEM_TYPE_MISC:
-		break;
-	case ITEM_TYPE_MISC_EX:
-//===============================================================================================
-#define PARSE_CAR_BLOCKS(data) \
-	memset(proto_item.MiscEx.Car.data,0xFF,sizeof(proto_item.MiscEx.Car.data));\
-	for(int i=0,j=strlen(buf);i<j;i++)\
-	{\
-		BYTE dir=buf[i]-'0';\
-		if(i&1) proto_item.MiscEx.Car.data[i/2]=(proto_item.MiscEx.Car.data[i/2]&0xF0)|dir;\
-		else proto_item.MiscEx.Car.data[i/2]=(proto_item.MiscEx.Car.data[i/2]&0x0F)|(dir<<4);\
-	}
-//===============================================================================================
-
-		if(!save && txtFile.IsKey(PROTO_APP,"MISC2.StartVal1")) // Deprecated
-		{
-			SERIALIZE_PROTO_(MISC2.StartVal1,MiscEx.StartVal1,0);
-			SERIALIZE_PROTO_(MISC2.StartVal2,MiscEx.StartVal2,0);
-			SERIALIZE_PROTO_(MISC2.StartVal3,MiscEx.StartVal3,0);
-			SERIALIZE_PROTOB_(MISC2.IsCar,MiscEx.IsCar,0);
-
-			if(proto_item.MiscEx.IsCar)
-			{
-				SERIALIZE_PROTO_(MISC2.CAR.Speed,MiscEx.Car.Speed,0);
-				SERIALIZE_PROTO_(MISC2.CAR.Negotiability,MiscEx.Car.Negotiability,0);
-				SERIALIZE_PROTO_(MISC2.CAR.WearConsumption,MiscEx.Car.WearConsumption,0);
-				SERIALIZE_PROTO_(MISC2.CAR.CritCapacity,MiscEx.Car.CritCapacity,0);
-				SERIALIZE_PROTO_(MISC2.CAR.FuelTank,MiscEx.Car.FuelTank,0);
-				SERIALIZE_PROTO_(MISC2.CAR.RunToBreak,MiscEx.Car.RunToBreak,0);
-				SERIALIZE_PROTO_(MISC2.CAR.Entire,MiscEx.Car.Entire,0);
-				SERIALIZE_PROTO_(MISC2.CAR.WalkType,MiscEx.Car.WalkType,0);
-				SERIALIZE_PROTO_(MISC2.CAR.FuelConsumption,MiscEx.Car.FuelConsumption,0);
-
-				char buf[256];
-				txtFile.GetStr(PROTO_APP,"MISC2.CAR.Bag_0","",buf);
-				PARSE_CAR_BLOCKS(Bag0);
-				txtFile.GetStr(PROTO_APP,"MISC2.CAR.Bag_1","",buf);
-				PARSE_CAR_BLOCKS(Bag1);
-				txtFile.GetStr(PROTO_APP,"MISC2.CAR.Blocks","",buf);
-				PARSE_CAR_BLOCKS(Blocks);
-			}
-		}
-		else
-		{
-			SERIALIZE_PROTO(MiscEx.StartVal1,0);
-			SERIALIZE_PROTO(MiscEx.StartVal2,0);
-			SERIALIZE_PROTO(MiscEx.StartVal3,0);
-			SERIALIZE_PROTOB(MiscEx.IsCar,0);
-
-			if(proto_item.MiscEx.IsCar)
-			{
-				SERIALIZE_PROTO(MiscEx.Car.Speed,0);
-				SERIALIZE_PROTO(MiscEx.Car.Negotiability,0);
-				SERIALIZE_PROTO(MiscEx.Car.WearConsumption,0);
-				SERIALIZE_PROTO(MiscEx.Car.CritCapacity,0);
-				SERIALIZE_PROTO(MiscEx.Car.FuelTank,0);
-				SERIALIZE_PROTO(MiscEx.Car.RunToBreak,0);
-				SERIALIZE_PROTO(MiscEx.Car.Entire,0);
-				SERIALIZE_PROTO(MiscEx.Car.WalkType,0);
-				SERIALIZE_PROTO(MiscEx.Car.FuelConsumption,0);
-
-				if(save)
-				{
-					char buf[256]={0};
-					for(int i=0;i<CAR_MAX_BAG_POSITION;i++) if(proto_item.MiscEx.Car.GetBag0Dir(i)<10) StringAppend(buf,Str::Format("%d",proto_item.MiscEx.Car.GetBag0Dir(i)));
-					fprintf(f,"MiscEx.Car.Bag_0=%s\n",buf);
-					buf[0]=0;
-					for(int i=0;i<CAR_MAX_BAG_POSITION;i++) if(proto_item.MiscEx.Car.GetBag1Dir(i)<10) StringAppend(buf,Str::Format("%d",proto_item.MiscEx.Car.GetBag1Dir(i)));
-					fprintf(f,"MiscEx.Car.Bag_1=%s\n",buf);
-					buf[0]=0;
-					for(int i=0;i<CAR_MAX_BLOCKS;i++) if(proto_item.MiscEx.Car.GetBlockDir(i)<10) StringAppend(buf,Str::Format("%d",proto_item.MiscEx.Car.GetBlockDir(i)));
-					fprintf(f,"MiscEx.Car.Blocks=%s\n",buf);
-				}
-				else
-				{
-					char buf[256];
-					txtFile.GetStr(PROTO_APP,"MiscEx.Car.Bag_0","",buf);
-					PARSE_CAR_BLOCKS(Bag0);
-					txtFile.GetStr(PROTO_APP,"MiscEx.Car.Bag_1","",buf);
-					PARSE_CAR_BLOCKS(Bag1);
-					txtFile.GetStr(PROTO_APP,"MiscEx.Car.Blocks","",buf);
-					PARSE_CAR_BLOCKS(Blocks);
-				}
-			}
-		}
-		break;
-	case ITEM_TYPE_KEY:
-		break;
-	case ITEM_TYPE_CONTAINER:
-		if(!save && txtFile.IsKey(PROTO_APP,"CONTAINER.ContVolume")) // Deprecated
-		{
-			SERIALIZE_PROTO_(CONTAINER.ContVolume,Container.ContVolume,0);
-			SERIALIZE_PROTO_(CONTAINER.CannotPickUp,Container.CannotPickUp,0);
-			SERIALIZE_PROTO_(CONTAINER.MagicHandsGrnd,Container.MagicHandsGrnd,0);
-			SERIALIZE_PROTO_(CONTAINER.Changeble,Container.Changeble,0);
-			SERIALIZE_PROTOB_(CONTAINER.IsNoOpen,Container.IsNoOpen,0);
-		}
-		else
-		{
-			SERIALIZE_PROTO(Container.ContVolume,0);
-			SERIALIZE_PROTO(Container.CannotPickUp,0);
-			SERIALIZE_PROTO(Container.MagicHandsGrnd,0);
-			SERIALIZE_PROTO(Container.Changeble,0);
-			SERIALIZE_PROTOB(Container.IsNoOpen,0);
-		}
-		break;
-	case ITEM_TYPE_DOOR:
-		if(!save && txtFile.IsKey(PROTO_APP,"DOOR.WalkThru")) // Deprecated
-		{
-			SERIALIZE_PROTO_(DOOR.WalkThru,Door.WalkThru,0);
-			SERIALIZE_PROTOB_(DOOR.IsNoOpen,Door.IsNoOpen,0);
-		}
-		else
-		{
-			SERIALIZE_PROTO(Door.WalkThru,0);
-			SERIALIZE_PROTOB(Door.IsNoOpen,0);
-		}
-		break;
-	case ITEM_TYPE_GRID:
-		if(!save && txtFile.IsKey(PROTO_APP,"GRID.Type")) // Deprecated
-		{
-			SERIALIZE_PROTO_(GRID.Type,Grid.Type,0);
-		}
-		else
-		{
-			SERIALIZE_PROTO(Grid.Type,0);
-		}
-		break;
-	case ITEM_TYPE_GENERIC:
-		break;
-	case ITEM_TYPE_WALL:
-		break;
-	default:
-		break;
-	}
-
-	if(save && f) fprintf(f,"\n");
-	if(!save && protos && proto_item.Pid) protos->push_back(proto_item);
-	return true;
+	if(Str::IsNumber(str)) return (T)_atoi64(str);
+	else if(strstr(str,"\\") || strstr(str,"/")) return (T)Str::GetHash(str);
+	return (T)FONames::GetDefineValue(str);
 }
 
 bool ItemManager::LoadProtos()
@@ -660,18 +138,212 @@ bool ItemManager::LoadProtos()
 bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 {
 	protos.clear();
-	if(!txtFile.LoadFile(fname,-1))
+
+	IniParser fopro;
+	if(!fopro.LoadFile(fname,-1))
 	{
 		WriteLog(__FUNCTION__" - File<%s> not found.\n",fname);
 		return false;
 	}
 
+	ProtoItem proto_item;
+	char svalue[MAX_FOTEXT];
+	char name_[MAX_FOTEXT]; // For deprecated conversion
 	while(true)
 	{
-		ProtoItem proto_item;
-		if(!SerializeTextProto(false,proto_item,NULL,&protos)) break;
+		if(!fopro.GotoNextApp("Proto")) break;
+
+		proto_item.Clear();
+		bool deprecated=fopro.GetStr("Proto","Pid","",svalue); // Detect deprecated by 'Pid', instead new 'ProtoId'
+		asIScriptEngine* engine=Script::GetEngine();
+		asIObjectType* ot=engine->GetObjectTypeById(engine->GetTypeIdByDecl("ProtoItem"));
+
+		for(int i=0,j=ot->GetPropertyCount();i<j;i++)
+		{
+			const char* name;
+			int type_id;
+			int offset;
+			ot->GetProperty(i,&name,&type_id,NULL,&offset);
+
+			if(!fopro.GetStr("Proto",name,"",svalue))
+			{
+				if(deprecated)
+				{
+					// Convert '_' to '.' and try again
+					StringCopy(name_,name);
+					bool swapped=false;
+					char* str=name_;
+					while(*str)
+					{
+						if(*str=='_')
+						{
+							*str='.';
+							swapped=true;
+							break;
+						}
+						++str;
+					}
+
+					if(!swapped || !fopro.GetStr("Proto",name_,"",svalue))
+					{
+						if(!strcmp(name,"ProtoId")) StringCopy(name_,"Pid");
+						else if(!strcmp(name,"PicInv") || !strcmp(name_,"PicMap")) StringAppend(name_,"Name");
+						else if(!strcmp(name,"Armor_CrTypeMale")) StringCopy(name_,"Armor.Anim0Male");
+						else if(!strcmp(name,"Armor_CrTypeFemale")) StringCopy(name_,"Armor.Anim0Female");
+						else if(!strcmp(name,"Weapon_CriticalFailture")) StringCopy(name_,"Weapon.CrFailture");
+						else if(!strcmp(name,"Weapon_MinStrength")) StringCopy(name_,"Weapon.MinSt");
+						else if(!strcmp(name,"Stackable")) StringCopy(name_,"Weapon.NoWear");
+						else if(!strcmp(name,"Weapon_ActiveUses")) StringCopy(name_,"Weapon.CountAttack");
+						else if(!strcmp(name,"Weapon_PicUse_0")) StringCopy(name_,"Weapon.PicName_0");
+						else if(!strcmp(name,"Weapon_PicUse_1")) StringCopy(name_,"Weapon.PicName_1");
+						else if(!strcmp(name,"Weapon_PicUse_2")) StringCopy(name_,"Weapon.PicName_2");
+						else if(!strcmp(name,"Weapon_ApCost_0")) StringCopy(name_,"Weapon.Time_0");
+						else if(!strcmp(name,"Weapon_ApCost_1")) StringCopy(name_,"Weapon.Time_1");
+						else if(!strcmp(name,"Weapon_ApCost_2")) StringCopy(name_,"Weapon.Time_2");
+						else if(!strcmp(name,"Car_Speed")) StringCopy(name_,"MiscEx.Car.Speed");
+						else if(!strcmp(name,"Car_Passability")) StringCopy(name_,"MiscEx.Car.Negotiability");
+						else if(!strcmp(name,"Car_DeteriorationRate")) StringCopy(name_,"MiscEx.Car.WearConsumption");
+						else if(!strcmp(name,"Car_CrittersCapacity")) StringCopy(name_,"MiscEx.Car.CritCapacity");
+						else if(!strcmp(name,"Car_TankVolume")) StringCopy(name_,"MiscEx.Car.FuelTank");
+						else if(!strcmp(name,"Car_MaxDeterioration")) StringCopy(name_,"MiscEx.Car.RunToBreak");
+						else if(!strcmp(name,"Car_FuelConsumption")) StringCopy(name_,"MiscEx.Car.FuelConsumption");
+						else if(!strcmp(name,"Car_Entrance")) StringCopy(name_,"MiscEx.Car.Entire");
+						else if(!strcmp(name,"Car_MovementType")) StringCopy(name_,"MiscEx.Car.WalkType");
+						else if(!strcmp(name,"ChildLines_0")) StringCopy(name_,"MiscEx.Car.Bag_0");
+						else if(!strcmp(name,"ChildLines_1")) StringCopy(name_,"MiscEx.Car.Bag_1");
+						else if(!strcmp(name,"BlockLines")) StringCopy(name_,"MiscEx.Car.Blocks");
+						else if(!strcmp(name,"StartValue_1")) StringCopy(name_,"MiscEx.StartVal1");
+						else if(!strcmp(name,"StartValue_2")) StringCopy(name_,"MiscEx.StartVal2");
+						else if(!strcmp(name,"StartValue_3")) StringCopy(name_,"MiscEx.StartVal3");
+						else if(!strcmp(name,"StartCount")) StringCopy(name_,"Ammo.StartCount");
+						else if(!strcmp(name,"Weapon_MaxAmmoCount")) StringCopy(name_,"Weapon.VolHolder");
+						else if(!strcmp(name,"Weapon_DefaultAmmoPid")) StringCopy(name_,"Weapon.DefAmmo");
+						else if(!strcmp(name,"Container_Volume")) StringCopy(name_,"Container.ContVolume");
+						else if(!strcmp(name,"Ammo_AcMod")) StringCopy(name_,"Ammo.ACMod");
+						else if(!strcmp(name,"Ammo_DrMod")) StringCopy(name_,"Ammo.DRMod");
+						else continue;
+
+						fopro.GetStr("Proto",name_,"",svalue);
+					}
+
+					if(!svalue[0]) continue;
+				}
+				else
+				{
+					continue;
+				}
+			}
+
+			// Blocks, childs
+			if(!strcmp(name,"BlockLines") || !strncmp(name,"ChildLines_",11))
+			{
+				// Get lines destination
+				BYTE* lines;
+				DWORD max_count;
+				if(!strcmp(name,"BlockLines"))
+				{
+					lines=proto_item.BlockLines;
+					max_count=sizeof(proto_item.BlockLines);
+				}
+				else
+				{
+					int child_index=name[11]-'0';
+					if(child_index<0 || child_index>=ITEM_MAX_CHILDS) continue;
+					lines=proto_item.ChildLines[child_index];
+					max_count=sizeof(proto_item.ChildLines[child_index]);
+
+					// Convert dir-dir-dir to dir-1-dir-1-dir-1
+					if(deprecated)
+					{
+						char step1[]="1";
+						for(int k=0,l=strlen(svalue);k<l;k++) Str::Insert(&svalue[k*2+1],step1);
+					}
+				}
+
+				// Parse lines
+				int svalue_len=strlen(svalue);
+				for(int k=0;k/2<max_count && k+1<svalue_len;k+=2)
+				{
+					BYTE dir=(svalue[k]-'0')&0xF;
+					BYTE steps=(svalue[k+1]-'0')&0xF;
+					if(dir>=DIRS_COUNT || !steps) break;
+					lines[k/2]=(dir<<4)|steps;
+				}
+			}
+			// Resolve value
+			else
+			{
+				int size=engine->GetSizeOfPrimitiveType(type_id);
+				switch(size)
+				{
+				case sizeof(BYTE): *(BYTE*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<BYTE>(svalue); break;
+				case sizeof(WORD): *(WORD*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<WORD>(svalue); break;
+				case sizeof(DWORD): *(DWORD*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<DWORD>(svalue); break;
+				case sizeof(__int64): *(__int64*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<__int64>(svalue); break;
+				default: break;
+				}
+			}
+		}
+
+		if(deprecated)
+		{
+			// Car
+			if(fopro.GetStr("Proto","MiscEx.IsCar","",svalue))
+			{
+				proto_item.Type=ITEM_TYPE_CAR;
+				proto_item.ChildPid[0]=proto_item.StartValue[1];
+				proto_item.ChildPid[1]=proto_item.StartValue[2];
+				proto_item.ChildPid[2]=proto_item.StartValue[3];
+				proto_item.StartValue[1]=proto_item.StartValue[2]=proto_item.StartValue[3];
+			}
+
+			// Stacking, Deteriorating
+			if(proto_item.Type==ITEM_TYPE_AMMO || proto_item.Type==ITEM_TYPE_DRUG ||
+				proto_item.Type==ITEM_TYPE_MISC) proto_item.Stackable=true;
+			if(proto_item.Type==ITEM_TYPE_WEAPON)
+			{
+				if(fopro.GetStr("Proto","Weapon.NoWear","",svalue))
+					proto_item.Stackable=true;
+				else
+					proto_item.Deteriorable=true;
+
+			}
+			if(proto_item.Type==ITEM_TYPE_ARMOR) proto_item.Deteriorable=true;
+
+			// ITEM_TYPE_MISC_EX (6)
+			if(proto_item.Type==6) proto_item.Type=ITEM_TYPE_MISC;
+
+			// IsGroundLevel
+			proto_item.GroundLevel=true;
+			if(proto_item.Type==ITEM_TYPE_CONTAINER) proto_item.GroundLevel=(proto_item.Container_MagicHandsGrnd?true:false);
+			else if(proto_item.IsDoor() || proto_item.IsCar() || proto_item.IsScen() ||
+				proto_item.IsGrid() || !proto_item.IsCanPickUp()) proto_item.GroundLevel=false;
+
+			// Unarmed
+			if(proto_item.Weapon_IsUnarmed)
+			{
+				proto_item.Stackable=false;
+				proto_item.Deteriorable=false;
+			}
+
+			// No open container
+			if(fopro.GetStr("Proto","Container.IsNoOpen","",svalue)) SETFLAG(proto_item.Locker_Condition,LOCKER_NOOPEN);
+		}
+
+		if(proto_item.ProtoId)
+		{
+			// Check script
+			SAFEDELA(protoScript[proto_item.ProtoId]);
+			char script_module[MAX_SCRIPT_NAME+1];
+			char script_func[MAX_SCRIPT_NAME+1];
+			fopro.GetStr("Proto","ScriptModule","",script_module);
+			fopro.GetStr("Proto","ScriptFunc","",script_func);
+			if(script_module[0] && script_func[0]) protoScript[proto_item.ProtoId]=StringDuplicate(Str::Format("%s@%s",script_module,script_func));
+
+			// Add to collection
+			protos.push_back(proto_item);
+		}
 	}
-	txtFile.UnloadFile();
 
 	if(protos.empty())
 	{
@@ -682,42 +354,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 }
 #endif
 
-#ifdef FONLINE_OBJECT_EDITOR
-void ItemManager::SaveProtos(const char* full_path)
-{
-	ProtoItemVec protos;
-	protos.reserve(MAX_ITEM_PROTOTYPES);
-	for(int i=1;i<MAX_ITEM_PROTOTYPES;i++)
-	{
-		ProtoItem* proto_item=GetProtoItem(i);
-		if(proto_item) protos.push_back(*proto_item);
-	}
-	SaveProtos(protos,full_path);
-}
-
-void ItemManager::SaveProtos(ProtoItemVec& protos, const char* full_path)
-{
-	WriteLog("Preservation of item prototypes in a new format in <%s>.\n",full_path);
-
-	FILE* f=NULL;
-	if(fopen_s(&f,full_path,"wt"))
-	{
-		WriteLog("Unable to open file.\n");
-		return;
-	}
-
-	for(size_t i=0,j=protos.size();i<j;i++)
-	{
-		ProtoItem& proto_item=protos[i];
-		SerializeTextProto(true,proto_item,f,NULL);
-	}
-
-	fclose(f);
-	WriteLog("Preservation of item prototypes in a new format is completed.\n");
-}
-#endif
-
-bool CompProtoByPid(ProtoItem o1, ProtoItem o2){return o1.GetPid()<o2.GetPid();}
+bool CompProtoByPid(ProtoItem o1, ProtoItem o2){return o1.ProtoId<o2.ProtoId;}
 void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name /* = NULL*/)
 {
 	if(protos.empty())
@@ -729,7 +366,7 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 	for(size_t i=0,j=protos.size();i<j;i++)
 	{
 		ProtoItem& proto_item=protos[i];
-		WORD pid=proto_item.GetPid();
+		WORD pid=proto_item.ProtoId;
 
 		if(!pid || pid>=MAX_ITEM_PROTOTYPES)
 		{
@@ -737,18 +374,10 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 			continue;
 		}
 
-		if(IsInitProto(pid))
-		{
-			//WriteLog(__FUNCTION__" - Prototype is already parsed, pid<%u>. Rewrite.\n",pid);
-			ClearProto(pid);
-		}
+		if(IsInitProto(pid)) ClearProto(pid);
 
-		BYTE type=protos[i].GetType();
-		if(type>=ITEM_MAX_TYPES)
-		{
-			WriteLog(__FUNCTION__" - Unknown type<%u> of prototype<%u>.\n",type,pid);
-			continue;
-		}
+		int type=protos[i].Type;
+		if(type<0 || type>=ITEM_MAX_TYPES) type=ITEM_TYPE_OTHER;
 
 		typeProto[type].push_back(proto_item);
 		allProto[pid]=proto_item;
@@ -767,26 +396,6 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 			protoHash[i]=Crypt.Crc32((BYTE*)&typeProto[i][0],sizeof(ProtoItem)*typeProto[i].size());
 		}
 	}
-}
-
-void ItemManager::PrintProtosHash()
-{
-	WriteLog("Hashes of prototypes:\n"
-		"\t\tCRC32 of protos Armor: <%u>\n"
-		"\t\tCRC32 of protos Drug: <%u>\n"
-		"\t\tCRC32 of protos Weapon: <%u>\n"
-		"\t\tCRC32 of protos Ammo: <%u>\n"
-		"\t\tCRC32 of protos Misc: <%u>\n"
-		"\t\tCRC32 of protos MiscEx: <%u>\n"
-		"\t\tCRC32 of protos Key: <%u>\n"
-		"\t\tCRC32 of protos Container: <%u>\n"
-		"\t\tCRC32 of protos Door: <%u>\n"
-		"\t\tCRC32 of protos Grid: <%u>\n"
-		"\t\tCRC32 of protos Generic: <%u>\n"
-		"\t\tCRC32 of protos Wall: <%u>\n",
-		protoHash[ITEM_TYPE_ARMOR],protoHash[ITEM_TYPE_DRUG],protoHash[ITEM_TYPE_WEAPON],protoHash[ITEM_TYPE_AMMO],
-		protoHash[ITEM_TYPE_MISC],protoHash[ITEM_TYPE_MISC_EX],protoHash[ITEM_TYPE_KEY],protoHash[ITEM_TYPE_CONTAINER],
-		protoHash[ITEM_TYPE_DOOR],protoHash[ITEM_TYPE_GRID],protoHash[ITEM_TYPE_GENERIC],protoHash[ITEM_TYPE_WALL]);
 }
 
 ProtoItem* ItemManager::GetProtoItem(WORD pid)
@@ -814,7 +423,7 @@ void ItemManager::GetCopyAllProtos(ProtoItemVec& protos)
 bool ItemManager::IsInitProto(WORD pid)
 {
 	if(!pid || pid>=MAX_ITEM_PROTOTYPES) return false;
-	return allProto[pid].IsInit();
+	return allProto[pid].ProtoId!=0;
 }
 
 const char* ItemManager::GetProtoScript(WORD pid)
@@ -823,7 +432,7 @@ const char* ItemManager::GetProtoScript(WORD pid)
 	return protoScript[pid];
 }
 
-void ItemManager::ClearProtos(BYTE type /* = 0xFF */ )
+void ItemManager::ClearProtos(int type /* = 0xFF */)
 {
 	if(type==0xFF)
 	{
@@ -839,7 +448,7 @@ void ItemManager::ClearProtos(BYTE type /* = 0xFF */ )
 	{
 		for(int i=0;i<typeProto[type].size();++i)
 		{
-			WORD pid=(typeProto[type])[i].GetPid();
+			WORD pid=(typeProto[type])[i].ProtoId;
 			if(IsInitProto(pid))
 			{
 				allProto[pid].Clear();
@@ -860,8 +469,11 @@ void ItemManager::ClearProto(WORD pid)
 	ProtoItem* proto_item=GetProtoItem(pid);
 	if(!proto_item) return;
 
-	ProtoItemVec& protos=typeProto[proto_item->GetType()];
-	DWORD& hash=protoHash[proto_item->GetType()];
+	int type=proto_item->Type;
+	if(type<0 || type>=ITEM_MAX_TYPES) type=ITEM_TYPE_OTHER;
+
+	ProtoItemVec& protos=typeProto[type];
+	DWORD& hash=protoHash[type];
 
 	allProto[pid].Clear();
 
@@ -880,7 +492,7 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 	{
 		Item* item=(*it).second;
 		save_func(&item->Id,sizeof(item->Id));
-		save_func(&item->Proto->Pid,sizeof(item->Proto->Pid));
+		save_func(&item->Proto->ProtoId,sizeof(item->Proto->ProtoId));
 		save_func(&item->Accessory,sizeof(item->Accessory));
 		save_func(&item->ACC_BUFFER.Buffer[0],sizeof(item->ACC_BUFFER.Buffer[0]));
 		save_func(&item->ACC_BUFFER.Buffer[1],sizeof(item->ACC_BUFFER.Buffer[1]));
@@ -1078,7 +690,7 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 		lastItemId++;
 	}
 
-	if(item->IsGrouped()) item->Count_Set(count);
+	if(item->IsStackable()) item->Count_Set(count);
 	else AddItemStatistics(pid,1);
 
 	SYNC_LOCK(item);
@@ -1102,9 +714,9 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 
 Item* ItemManager::SplitItem(Item* item, DWORD count)
 {
-	if(!item->IsGrouped())
+	if(!item->IsStackable())
 	{
-		WriteLog(__FUNCTION__" - Splitted item is not grouped, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
+		WriteLog(__FUNCTION__" - Splitted item is not stackable, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
 		return NULL;
 	}
 
@@ -1186,7 +798,7 @@ void ItemManager::ItemGarbager()
 			SYNC_LOCK(item);
 
 			// Maybe some items added
-			if(item->IsGrouped() && item->GetCount()>count)
+			if(item->IsStackable() && item->GetCount()>count)
 			{
 				itemLocker.Lock();
 				gameItems.insert(ItemPtrMapVal(item->Id,item));
@@ -1205,7 +817,7 @@ void ItemManager::ItemGarbager()
 			if(item->IsValidAccessory()) EraseItemHolder(item);
 
 			// Erase from statistics
-			if(item->IsGrouped()) item->Count_Set(0);
+			if(item->IsStackable()) item->Count_Set(0);
 			else SubItemStatistics(item->GetProtoId(),1);
 
 			// Erase from radio collection
@@ -1272,7 +884,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Critter* to_cr)
 {
 	if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==to_cr->GetId()) return;
 
-	if(count>=item->GetCount() || !item->IsGrouped())
+	if(count>=item->GetCount() || !item->IsStackable())
 	{
 		EraseItemHolder(item);
 		to_cr->AddItem(item,true);
@@ -1292,7 +904,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WOR
 {
 	if(item->Accessory==ITEM_ACCESSORY_HEX && item->ACC_HEX.MapId==to_map->GetId() && item->ACC_HEX.HexX==to_hx && item->ACC_HEX.HexY==to_hy) return;
 
-	if(count>=item->GetCount() || !item->IsGrouped())
+	if(count>=item->GetCount() || !item->IsStackable())
 	{
 		EraseItemHolder(item);
 		to_map->AddItem(item,to_hx,to_hy);
@@ -1312,7 +924,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_i
 {
 	if(item->Accessory==ITEM_ACCESSORY_CONTAINER && item->ACC_CONTAINER.ContainerId==to_cont->GetId() && item->ACC_CONTAINER.SpecialId==stack_id) return;
 
-	if(count>=item->GetCount() || !item->IsGrouped())
+	if(count>=item->GetCount() || !item->IsStackable())
 	{
 		EraseItemHolder(item);
 		to_cont->ContAddItem(item,stack_id);
@@ -1337,7 +949,7 @@ Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD sta
 
 	if(item)
 	{
-		if(item->IsGrouped())
+		if(item->IsStackable())
 		{
 			item->Count_Add(count);
 			result=item;
@@ -1359,7 +971,7 @@ Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD sta
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 		if(!proto_item) return result;
 
-		if(proto_item->IsGrouped())
+		if(proto_item->Stackable)
 		{
 			item=ItemMngr.CreateItem(pid,count);
 			if(!item) return result;
@@ -1391,7 +1003,7 @@ Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
 
 	if(item)
 	{
-		if(item->IsGrouped())
+		if(item->IsStackable())
 		{
 			item->Count_Add(count);
 			cr->SendAA_ItemData(item);
@@ -1414,7 +1026,7 @@ Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 		if(!proto_item) return result;
 
-		if(proto_item->IsGrouped())
+		if(proto_item->Stackable)
 		{
 			item=ItemMngr.CreateItem(pid,count);
 			if(!item) return result;
@@ -1444,7 +1056,7 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 	Item* item=cr->GetItemByPidInvPriority(pid);
 	if(!item) return true;
 
-	if(item->IsGrouped())
+	if(item->IsStackable())
 	{
 		if(count>=item->GetCount())
 		{
@@ -1496,7 +1108,7 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 
 	if(!count || count>item->GetCount()) count=item->GetCount();
 
-	if(item->IsGrouped() && item->GetCount()>count)
+	if(item->IsStackable() && item->GetCount()>count)
 	{
 		Item* item_=to_cr->GetItemByPid(item->GetProtoId());
 		if(!item_)
@@ -1537,7 +1149,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 
 	if(!count || count>item->GetCount()) count=item->GetCount();
 
-	if(item->IsGrouped() && item->GetCount()>count)
+	if(item->IsStackable() && item->GetCount()>count)
 	{
 		Item* item_=to_cont->ContGetItemByPid(item->GetProtoId(),stack_id);
 		if(!item_)
@@ -1578,7 +1190,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 
 	if(!count || count>item->GetCount()) count=item->GetCount();
 
-	if(item->IsGrouped() && item->GetCount()>count)
+	if(item->IsStackable() && item->GetCount()>count)
 	{
 		Item* item_=to_cr->GetItemByPid(item->GetProtoId());
 		if(!item_)

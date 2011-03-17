@@ -458,16 +458,15 @@ public:
 		static DWORD Crit_GetMultihex(CritterCl* cr);
 		static bool Crit_IsTurnBasedTurn(CritterCl* cr);
 
-		static bool Item_IsGrouped(Item* item);
-		static bool Item_IsWeared(Item* item);
+		static bool Item_IsStackable(Item* item);
+		static bool Item_IsDeteriorable(Item* item);
 		static DWORD Item_GetScriptId(Item* item);
 		static BYTE Item_GetType(Item* item);
 		static WORD Item_GetProtoId(Item* item);
 		static DWORD Item_GetCount(Item* item);
 		static bool Item_GetMapPosition(Item* item, WORD& hx, WORD& hy);
 		static void Item_Animate(Item* item, BYTE from_frame, BYTE to_frame);
-		static bool Item_IsCar(Item* item);
-		static Item* Item_CarGetBag(Item* item, int num_bag);
+		static Item* Item_GetChild(Item* item, DWORD childIndex);
 
 		static CritterCl* Global_GetChosen();
 		static DWORD Global_GetChosenActions(CScriptArray* actions);

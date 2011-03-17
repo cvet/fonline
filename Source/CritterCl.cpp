@@ -209,7 +209,7 @@ Item* CritterCl::GetItemByPid(WORD item_pid)
 Item* CritterCl::GetAmmo(DWORD caliber)
 {
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
-		if((*it)->GetType()==ITEM_TYPE_AMMO && (*it)->Proto->Ammo.Caliber==caliber) return *it;
+		if((*it)->GetType()==ITEM_TYPE_AMMO && (*it)->Proto->Ammo_Caliber==caliber) return *it;
 	return NULL;
 }
 
@@ -275,7 +275,7 @@ bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
 	if(!SlotEnabled[to_slot]) return false;
 	if(to_slot!=SLOT_INV && !is_castling && GetItemSlot(to_slot)) return false;
 	if(to_slot>SLOT_ARMOR && to_slot!=item->Proto->Slot) return false;
-	if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon.Anim1)) return false;
+	if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon_Anim1)) return false;
 	if(to_slot==SLOT_ARMOR && (!item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor(GetCrType()))) return false;
 
 	if(is_castling && ItemSlotMain->GetId() && ItemSlotExt->GetId())
@@ -443,7 +443,7 @@ DWORD CritterCl::GetUsePicName(BYTE num_slot)
 		if(use==USE_RELOAD) return reload_pic;
 		if(use==USE_USE) return use_on_pic;
 		if(use>=MAX_USES) return 0;
-		return item->Proto->Weapon.PicHash[use];
+		return item->Proto->Weapon_PicUse[use];
 	}
 	if(item->IsCanUseOnSmth()) return use_on_pic;
 	if(item->IsCanUse()) return use_pic;
@@ -455,7 +455,7 @@ bool CritterCl::IsItemAim(BYTE num_slot)
 	BYTE use;
 	Item* item=GetSlotUse(num_slot,use);
 	if(!item) return false;
-	if(item->IsWeapon() && use<MAX_USES) return item->Proto->Weapon.Aim[use]!=0;
+	if(item->IsWeapon() && use<MAX_USES) return item->Proto->Weapon_Aim[use]!=0;
 	return false;
 }
 
@@ -555,7 +555,7 @@ void CritterCl::ProcessChangedParams()
 			{
 				int value=Params[ST_HANDS_ITEM_AND_MODE];
 				ProtoItem* unarmed=ItemMngr.GetProtoItem(value>>16);
-				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) unarmed=NULL;
+				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed) unarmed=NULL;
 				if(!unarmed) unarmed=GetUnarmedItem(0,0);
 				DefItemSlotHand->Init(unarmed);
 				DefItemSlotHand->SetMode(value&0xFF);
@@ -650,8 +650,8 @@ bool CritterCl::NextRateItem(bool prev)
 		{
 			ProtoItem* old_unarmed=ItemSlotMain->Proto;
 			ProtoItem* unarmed=ItemSlotMain->Proto;
-			BYTE tree=ItemSlotMain->Proto->Weapon.UnarmedTree;
-			BYTE priority=ItemSlotMain->Proto->Weapon.UnarmedPriority;
+			BYTE tree=ItemSlotMain->Proto->Weapon_UnarmedTree;
+			BYTE priority=ItemSlotMain->Proto->Weapon_UnarmedPriority;
 			while(true)
 			{
 				if(prev)
@@ -677,7 +677,7 @@ bool CritterCl::NextRateItem(bool prev)
 								if(ua) unarmed=ua;
 								else break;
 							}
-							tree=unarmed->Weapon.UnarmedTree;
+							tree=unarmed->Weapon_UnarmedTree;
 						}
 
 						// Find last priority
@@ -756,10 +756,10 @@ bool CritterCl::NextRateItem(bool prev)
 
 				switch(GetUse())
 				{
-				case USE_PRIMARY: if(ItemSlotMain->Proto->Weapon.Uses&0x1) break; continue;
-				case USE_SECONDARY: if(ItemSlotMain->Proto->Weapon.Uses&0x2) break; continue;
-				case USE_THIRD: if(ItemSlotMain->Proto->Weapon.Uses&0x4) break; continue;
-				case USE_RELOAD: if(ItemSlotMain->Proto->Weapon.VolHolder) break; continue;
+				case USE_PRIMARY: if(ItemSlotMain->Proto->Weapon_ActiveUses&0x1) break; continue;
+				case USE_SECONDARY: if(ItemSlotMain->Proto->Weapon_ActiveUses&0x2) break; continue;
+				case USE_THIRD: if(ItemSlotMain->Proto->Weapon_ActiveUses&0x4) break; continue;
+				case USE_RELOAD: if(ItemSlotMain->Proto->Weapon_MaxAmmoCount) break; continue;
 				case USE_USE: if(ItemSlotMain->IsCanUseOnSmth()) break; continue;
 				default: ItemSlotMain->Data.Mode=USE_PRIMARY; break;
 				}
@@ -789,10 +789,10 @@ ProtoItem* CritterCl::GetUnarmedItem(BYTE tree, BYTE priority)
 	for(int i=ITEM_SLOT_BEGIN;i<=ITEM_SLOT_END;i++)
 	{
 		ProtoItem* unarmed=ItemMngr.GetProtoItem(i);
-		if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) continue;
-		if(unarmed->Weapon.UnarmedTree!=tree || unarmed->Weapon.UnarmedPriority!=priority) continue;
-		if(GetParam(ST_STRENGTH)<unarmed->Weapon.MinSt || GetParam(ST_AGILITY)<unarmed->Weapon.UnarmedMinAgility) break;
-		if(GetParam(ST_LEVEL)<unarmed->Weapon.UnarmedMinLevel || GetRawParam(SK_UNARMED)<unarmed->Weapon.UnarmedMinUnarmed) break;
+		if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed) continue;
+		if(unarmed->Weapon_UnarmedTree!=tree || unarmed->Weapon_UnarmedPriority!=priority) continue;
+		if(GetParam(ST_STRENGTH)<unarmed->Weapon_MinStrength || GetParam(ST_AGILITY)<unarmed->Weapon_UnarmedMinAgility) break;
+		if(GetParam(ST_LEVEL)<unarmed->Weapon_UnarmedMinLevel || GetRawParam(SK_UNARMED)<unarmed->Weapon_UnarmedMinUnarmed) break;
 		best_unarmed=unarmed;
 	}
 	return best_unarmed;
@@ -801,8 +801,8 @@ ProtoItem* CritterCl::GetUnarmedItem(BYTE tree, BYTE priority)
 Item* CritterCl::GetAmmoAvialble(Item* weap)
 {
 	Item* ammo=GetItemByPid(weap->Data.TechInfo.AmmoPid);
-	if(!ammo && weap->WeapIsEmpty()) ammo=GetItemByPid(weap->Proto->Weapon.DefAmmo);
-	if(!ammo && weap->WeapIsEmpty()) ammo=GetAmmo(weap->Proto->Weapon.Caliber);
+	if(!ammo && weap->WeapIsEmpty()) ammo=GetItemByPid(weap->Proto->Weapon_DefaultAmmoPid);
+	if(!ammo && weap->WeapIsEmpty()) ammo=GetAmmo(weap->Proto->Weapon_Caliber);
 	return ammo;
 }
 
@@ -1210,9 +1210,9 @@ DWORD CritterCl::GetAnim1()
 {
 	switch(Cond)
 	{
-	case COND_LIFE: return (Anim1Life)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED);
-	case COND_KNOCKOUT: return (Anim1Knockout)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED);
-	case COND_DEAD: return (Anim1Dead)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon.Anim1:ANIM1_UNARMED);
+	case COND_LIFE: return (Anim1Life)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon_Anim1:ANIM1_UNARMED);
+	case COND_KNOCKOUT: return (Anim1Knockout)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon_Anim1:ANIM1_UNARMED);
+	case COND_DEAD: return (Anim1Dead)|(ItemSlotMain->IsWeapon()?ItemSlotMain->Proto->Weapon_Anim1:ANIM1_UNARMED);
 	default: break;
 	}
 	return ANIM1_UNARMED;

@@ -47,7 +47,7 @@ public:
 	WORD GetHexY(){return HexY;}
 	int GetDir(){return Dir;}
 	bool IsAnimated(){return isAnimated;}
-	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid.Type==GRID_EXITGRID);}
+	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid_Type==GRID_EXITGRID);}
 	bool IsUsable(){return !IsWall() && (IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_USE)));}
 	bool IsTalkable(){return !IsWall() && (IsCanTalk() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_TALK)));}
 	bool IsDrawContour(){return /*IsFocused && */IsItem() && !IsNoHighlight() && !IsBadItem();}

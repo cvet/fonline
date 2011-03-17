@@ -18,11 +18,6 @@ private:
 	DWORD protoHash[ITEM_MAX_TYPES]; // Hash types protos
 	char* protoScript[MAX_ITEM_PROTOTYPES];
 
-	IniParser txtFile;
-	int GetProtoValue(const char* key);
-	string GetProtoValueStr(const char* key);
-	bool SerializeTextProto(bool save, ProtoItem& proto_item, FILE* f, ProtoItemVec* protos);
-
 public:
 	ProtoItemVec& GetProtos(int type){return typeProto[type];}
 	DWORD GetProtosHash(int type){return protoHash[type];}
@@ -43,13 +38,12 @@ public:
 #endif
 
 	void ParseProtos(ProtoItemVec& protos, const char* collection_name = NULL);
-	void PrintProtosHash();
 	ProtoItem* GetProtoItem(WORD pid);
 	ProtoItem* GetAllProtos();
 	void GetCopyAllProtos(ProtoItemVec& protos);
 	bool IsInitProto(WORD pid);
 	const char* GetProtoScript(WORD pid);
-	void ClearProtos(BYTE type = 0xFF); // 0xFF - All
+	void ClearProtos(int type = 0xFF); // 0xFF - All
 	void ClearProto(WORD pid);
 
 #ifdef FONLINE_SERVER

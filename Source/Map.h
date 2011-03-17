@@ -175,11 +175,10 @@ public:
 public:
 	void GetCritterCar(Critter* cr, Item* car);
 	void SetCritterCar(WORD hx, WORD hy, Critter* cr, Item* car);
-	bool IsPlaceForCar(WORD hx, WORD hy, ProtoItem* proto_item);
-	void PlaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
-	void ReplaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
-	void GetCarBagPos(WORD& hx, WORD& hy, ProtoItem* pcar, int num_bag);
-	Item* GetCarBag(WORD hx, WORD hy, ProtoItem* pcar, int num_bag);
+	bool IsPlaceForItem(WORD hx, WORD hy, ProtoItem* proto_item);
+	void PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
+	void ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
+	Item* GetItemChild(WORD hx, WORD hy, ProtoItem* proto_item, DWORD child_index);
 
 	// Events
 private:

@@ -92,7 +92,7 @@ void FOServer::ProcessAI(Npc* npc)
 					AI_MoveItem(npc,map,npc->ItemSlotMain->ACC_CRITTER.Slot,SLOT_INV,npc->ItemSlotMain->GetId(),npc->ItemSlotMain->GetCount());
 					return;
 				}
-				else if(favor_item_pid && (favor_item=npc->GetItemByPid(favor_item_pid)) && (!favor_item->IsWeapon() || CritType::IsAnim1(npc->GetCrType(),favor_item->Proto->Weapon.Anim1)))
+				else if(favor_item_pid && (favor_item=npc->GetItemByPid(favor_item_pid)) && (!favor_item->IsWeapon() || CritType::IsAnim1(npc->GetCrType(),favor_item->Proto->Weapon_Anim1)))
 				{
 					AI_MoveItem(npc,map,favor_item->ACC_CRITTER.Slot,SLOT_HAND1,favor_item->GetId(),favor_item->GetCount());
 					return;
@@ -399,7 +399,7 @@ void FOServer::ProcessAI(Npc* npc)
 
 					SETFLAG(sss,0x000002);
 					ProtoItem* unarmed=ItemMngr.GetProtoItem(r2);
-					if(unarmed && unarmed->Weapon.IsUnarmed)
+					if(unarmed && unarmed->Weapon_IsUnarmed)
 					{
 						SETFLAG(sss,0x000004);
 						Item* def_item_main=npc->GetDefaultItemSlotMain();
@@ -493,7 +493,7 @@ void FOServer::ProcessAI(Npc* npc)
 				WORD res_hx=t_hx;
 				WORD res_hy=t_hy;
 				bool is_run=plane->Attack.IsRun;
-				bool is_range=(weap->Proto->Weapon.MaxDist[use]>2);
+				bool is_range=(weap->Proto->Weapon_MaxDist[use]>2);
 
 				TraceData trace;
 				trace.TraceMap=map;
@@ -1753,9 +1753,9 @@ void FOServer::Process_Barter(Client* cl)
 			return;
 		}
 
-		if(sale_item_count[i]>1 && !item->IsGrouped())
+		if(sale_item_count[i]>1 && !item->IsStackable())
 		{
-			WriteLog(__FUNCTION__" - Sale item is not grouped, id<%u>, count<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],sale_item_count[i],cl->GetInfo(),npc->GetInfo());
+			WriteLog(__FUNCTION__" - Sale item is not stackable, id<%u>, count<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],sale_item_count[i],cl->GetInfo(),npc->GetInfo());
 			cl->Send_ContainerInfo();
 			return;
 		}
@@ -1801,9 +1801,9 @@ void FOServer::Process_Barter(Client* cl)
 			return;
 		}
 
-		if(buy_item_count[i]>1 && !item->IsGrouped())
+		if(buy_item_count[i]>1 && !item->IsStackable())
 		{
-			WriteLog(__FUNCTION__" - Buy item is not grouped, id<%u>, count<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],buy_item_count[i],cl->GetInfo(),npc->GetInfo());
+			WriteLog(__FUNCTION__" - Buy item is not stackable, id<%u>, count<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],buy_item_count[i],cl->GetInfo(),npc->GetInfo());
 			cl->Send_ContainerInfo();
 			return;
 		}

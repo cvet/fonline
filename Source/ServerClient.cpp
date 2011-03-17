@@ -504,7 +504,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		return false;
 	}
 
-	if(!(weap->Proto->Weapon.Uses & (1<<use)))
+	if(!(weap->Proto->Weapon_ActiveUses&(1<<use)))
 	{
 		WriteLog(__FUNCTION__" - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
 		return false;
@@ -534,9 +534,9 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		return false;
 	}
 
-	if(!CritType::IsAnim1(cr->GetCrType(),weap->Proto->Weapon.Anim1))
+	if(!CritType::IsAnim1(cr->GetCrType(),weap->Proto->Weapon_Anim1))
 	{
-		WriteLog(__FUNCTION__" - Anim1 is not available for this critter type, crtype<%u>, anim1<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),weap->Proto->Weapon.Anim1,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(__FUNCTION__" - Anim1 is not available for this critter type, crtype<%u>, anim1<%d>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),weap->Proto->Weapon_Anim1,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
@@ -554,7 +554,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	trace.BeginHy=hy;
 	trace.EndHx=tx;
 	trace.EndHy=ty;
-	trace.Dist=(weap->Proto->Weapon.MaxDist[use]>2?max_dist:0);
+	trace.Dist=(weap->Proto->Weapon_MaxDist[use]>2?max_dist:0);
 	trace.FindCr=t_cr;
 	MapMngr.TraceBullet(trace);
 	if(!trace.IsCritterFounded)
@@ -581,7 +581,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		ammo=ItemMngr.GetProtoItem(weap->Data.TechInfo.AmmoPid);
 		if(!ammo)
 		{
-			weap->Data.TechInfo.AmmoPid=weap->Proto->Weapon.DefAmmo;
+			weap->Data.TechInfo.AmmoPid=weap->Proto->Weapon_DefaultAmmoPid;
 			ammo=ItemMngr.GetProtoItem(weap->Data.TechInfo.AmmoPid);
 		}
 
@@ -598,9 +598,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		}
 	}
 
-	// Get Params
-	WORD ammo_round=weap->Proto->Weapon.Round[use];
-	bool wpn_is_remove=(weap->GetId() && weap->Proto->Weapon.Remove[use]);
+	// No ammo
 	if(weap->WeapGetMaxAmmoCount() && !cr->IsRawParam(MODE_UNLIMITED_AMMO))
 	{
 		if(!weap->Data.TechInfo.AmmoCount)
@@ -610,6 +608,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 		}
 	}
 
+	WORD ammo_round=weap->Proto->Weapon_Round[use];
 	if(!ammo_round) ammo_round=1;
 
 	// Script events
@@ -1082,7 +1081,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 	}
 	else if(proto->IsGrid())
 	{
-		switch(proto->Grid.Type)
+		switch(proto->Grid_Type)
 		{
 		case GRID_STAIRS:
 		case GRID_LADDERBOT:
@@ -1684,7 +1683,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	cl->Bin >> uid[3];
 	cl->Bin >> uid[2];
 	cl->Bin >> uidor;
-	for(int i=1;i<ITEM_MAX_TYPES;i++) cl->Bin >> item_hash[i];
+	for(int i=0;i<ITEM_MAX_TYPES;i++) cl->Bin >> item_hash[i];
 	cl->Bin >> uidcalc;
 	cl->Bin >> default_combat_mode;
 	cl->Bin >> uid[0];
@@ -1710,7 +1709,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	if(default_lang) cl->Send_TextMsg(cl,STR_NET_LANGUAGE_NOT_SUPPORTED,SAY_NETMSG,TEXTMSG_GAME);
 
 	// Proto item data
-	for(int i=1;i<ITEM_MAX_TYPES;i++)
+	for(int i=0;i<ITEM_MAX_TYPES;i++)
 	{
 		if(ItemMngr.GetProtosHash(i)!=item_hash[i]) Send_ProtoItemData(cl,i,ItemMngr.GetProtos(i),ItemMngr.GetProtosHash(i));
 	}
@@ -2726,9 +2725,9 @@ void FOServer::Process_UseItem(Client* cl)
 			{
 				if(use!=USE_PRIMARY) break;
 				ProtoItem* unarmed=ItemMngr.GetProtoItem(item_pid);
-				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon.IsUnarmed) break;
-				if(cl->GetParam(ST_STRENGTH)<unarmed->Weapon.MinSt || cl->GetParam(ST_AGILITY)<unarmed->Weapon.UnarmedMinAgility) break;
-				if(cl->Data.Params[ST_LEVEL]<unarmed->Weapon.UnarmedMinLevel || cl->GetRawParam(SK_UNARMED)<unarmed->Weapon.UnarmedMinUnarmed) break;
+				if(!unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed) break;
+				if(cl->GetParam(ST_STRENGTH)<unarmed->Weapon_MinStrength || cl->GetParam(ST_AGILITY)<unarmed->Weapon_UnarmedMinAgility) break;
+				if(cl->Data.Params[ST_LEVEL]<unarmed->Weapon_UnarmedMinLevel || cl->GetRawParam(SK_UNARMED)<unarmed->Weapon_UnarmedMinUnarmed) break;
 				cl->ItemSlotMain->Init(unarmed);
 			}
 
@@ -2945,7 +2944,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			}
 
 			// Check for close
-			if(cont->Proto->Container.Changeble && !cont->LockerIsOpen())
+			if(cont->Proto->Container_Changeble && !cont->LockerIsOpen())
 			{
 				cl->Send_ContainerInfo();
 				WriteLog(__FUNCTION__" - Container is not open.\n");
@@ -3489,7 +3488,7 @@ void FOServer::Process_Dir(Client* cl)
 
 	if(!cl->GetMap() || dir>=DIRS_COUNT || cl->GetDir()==dir || cl->IsTalking() || !cl->CheckMyTurn(NULL))
 	{
-		cl->Send_Dir(cl);
+		if(cl->GetDir()!=dir) cl->Send_Dir(cl);
 		return;
 	}
 

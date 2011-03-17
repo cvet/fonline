@@ -72,6 +72,9 @@ int FONames::GetDefineValue(const char* str)
 {
 	if(Str::IsNumber(str)) return atoi(str);
 
+	if(!_stricmp(str,"true")) return 1;
+	else if(!_stricmp(str,"false")) return 0;
+
 	SomeNameVecIt it=std::find(Names[FONAME_DEFINE].begin(),Names[FONAME_DEFINE].end(),str);
 	if(it==Names[FONAME_DEFINE].end())
 	{

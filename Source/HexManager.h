@@ -277,8 +277,8 @@ public:
 private:
 	ItemHexVec hexItems;
 
-	void PlaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
-	void ReplaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
+	void PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
+	void ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
 
 public:
 	bool AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, Item::ItemData* data);

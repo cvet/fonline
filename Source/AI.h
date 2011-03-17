@@ -89,8 +89,6 @@ struct AIDataPlane
 
 	AIDataPlane* GetCurPlane(){return ChildPlane?ChildPlane->GetCurPlane():this;}
 	bool IsSelfOrHas(int type){return Type==type || (ChildPlane?ChildPlane->IsSelfOrHas(type):false);}
-	DWORD GetChildIndex(AIDataPlane* child){DWORD index=0; for(AIDataPlane* child_=this;child_;index++) {if(child_==child) break; else child_=child_->ChildPlane;} return index;}
-	DWORD GetChildsCount(){DWORD count=0; AIDataPlane* child=ChildPlane; for(;child;count++,child=child->ChildPlane); return count;}
 	void DeleteLast(){if(ChildPlane){if(ChildPlane->ChildPlane) ChildPlane->DeleteLast(); else SAFEREL(ChildPlane);}}
 
 	AIDataPlane* GetCopy()

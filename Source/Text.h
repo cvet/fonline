@@ -148,6 +148,7 @@ public:
 	bool IsCachedApp(const char* app_name);
 	void CacheKeys();
 	bool IsCachedKey(const char* key_name);
+	StrSet& GetCachedKeys();
 };
 
 /************************************************************************/

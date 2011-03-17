@@ -1416,8 +1416,8 @@ void FOClient::CollectContItems()
 				item_.Data=item.Data;
 				item_.Count_Set(count);
 
-				if(item.IsGrouped()) item.Count_Sub(item_.GetCount());
-				if(!item.IsGrouped() || !item.GetCount())
+				if(item.IsStackable()) item.Count_Sub(item_.GetCount());
+				if(!item.IsStackable() || !item.GetCount())
 				{
 					it=InvContInit.erase(it);
 					continue;
@@ -1718,7 +1718,7 @@ void FOClient::InvLMouseUp()
 		// Load weapon
 		if(item->IsAmmo() && to_weap)
 		{
-			if(item->Proto->Ammo.Caliber==to_weap->Proto->Weapon.Caliber && (to_weap->Data.TechInfo.AmmoCount<to_weap->Proto->Weapon.VolHolder || to_weap->Data.TechInfo.AmmoPid!=item->GetProtoId()))
+			if(item->Proto->Ammo_Caliber==to_weap->Proto->Weapon_Caliber && (to_weap->Data.TechInfo.AmmoCount<to_weap->Proto->Weapon_MaxAmmoCount || to_weap->Data.TechInfo.AmmoPid!=item->GetProtoId()))
 			{
 				AddActionBack(CHOSEN_USE_ITEM,to_weap->GetId(),0,TARGET_SELF_ITEM,item->GetId(),USE_RELOAD);
 			}
@@ -1727,7 +1727,7 @@ void FOClient::InvLMouseUp()
 		else
 		{
 			// Split
-			if(to_slot==SLOT_GROUND && item->IsGrouped() && item->GetCount()>1)
+			if(to_slot==SLOT_GROUND && item->IsStackable() && item->GetCount()>1)
 			{
 				SplitStart(item,to_slot);
 				return;
@@ -2528,12 +2528,12 @@ void FOClient::IntDraw()
 	}
 
 	// Deteoration indicator
-	if(item->IsWeared())
+	if(item->IsDeteriorable())
 	{
 		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
-			DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetWearProc(),IntWearTick,true,false);
+			DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetDeteriorationProc(),IntWearTick,true,false);
 		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH)
-			SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetWearProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
+			SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetDeteriorationProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
 	}
 	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
 	{
@@ -3614,7 +3614,7 @@ void FOClient::BarterTransfer(DWORD item_id, int item_cont, DWORD item_count)
 
 	if(item->GetCount()<item_count) return;
 
-	if(item->IsGrouped())
+	if(item->IsStackable())
 	{
 		ItemVecIt it_to=std::find(to_cont->begin(),to_cont->end(),item->GetId());
 		if(it_to!=to_cont->end()) to_item=&(*it_to);
@@ -3632,7 +3632,7 @@ void FOClient::BarterTransfer(DWORD item_id, int item_cont, DWORD item_count)
 	}
 
 	item->Count_Sub(item_count);
-	if(!item->GetCount() || !item->IsGrouped()) from_cont->erase(it);
+	if(!item->GetCount() || !item->IsStackable()) from_cont->erase(it);
 	CollectContItems();
 
 	switch(item_cont)
@@ -4538,7 +4538,7 @@ void FOClient::LMenuMouseUp()
 			case LMENU_NODE_DROP:
 				if(!cont_item) break;
 				if(!Chosen->IsLife() || !Chosen->IsFree()) break;
-				if(cont_item->IsGrouped() && cont_item->GetCount()>1)
+				if(cont_item->IsStackable() && cont_item->GetCount()>1)
 					SplitStart(cont_item,0xFF|(TargetSmth.GetParam()<<16));
 				else
 					AddActionBack(CHOSEN_MOVE_ITEM,cont_item->GetId(),cont_item->GetCount(),0xFF,TargetSmth.GetParam());
@@ -5220,13 +5220,13 @@ void FOClient::GmapProcess()
 		{
 			int walk_type=GM_WALK_GROUND;
 			Item* car=GmapGetCar();
-			if(car) walk_type=car->Proto->MiscEx.Car.WalkType;
+			if(car) walk_type=car->Proto->Car_MovementType;
 
 			float kr=(walk_type==GM_WALK_GROUND?GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0]:1.0f);
 			if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0];
 			if(car && kr!=1.0f)
 			{
-				float n=car->Proto->MiscEx.Car.Negotiability;
+				float n=car->Proto->Car_Passability;
 				if(n>100 && kr<1.0f) kr+=(1.0f-kr)*(n-100.0f)/100.0f;
 				else if(n>100 && kr>1.0f) kr-=(kr-1.0f)*(n-100.0f)/100.0f;
 				else if(n<100 && kr<1.0f) kr-=(1.0f-kr)*(100.0f-n)/100.0f;
@@ -5334,13 +5334,13 @@ void FOClient::GmapProcess()
 			if(car && (GmapSpeedX || GmapSpeedY))
 			{
 				int fuel=car->Data.Car.Fuel;
-				int wear=car->Data.Car.Deteoration;
-				fuel-=car->Proto->MiscEx.Car.FuelConsumption;
-				wear+=car->Proto->MiscEx.Car.WearConsumption;
+				int deterioration=car->Data.Car.Deterioration;
+				fuel-=car->Proto->Car_FuelConsumption;
+				deterioration+=car->Proto->Car_DeteriorationRate;
 				if(fuel<0) fuel=0;
-				if(wear>car->Proto->MiscEx.Car.RunToBreak) wear=car->Proto->MiscEx.Car.RunToBreak;
+				if(deterioration>car->Proto->Car_MaxDeterioration) deterioration=car->Proto->Car_MaxDeterioration;
 				car->Data.Car.Fuel=fuel;
-				car->Data.Car.Deteoration=wear;
+				car->Data.Car.Deterioration=deterioration;
 			}
 
 			GmapProcLastTick=Timer::GameTick();
@@ -8061,7 +8061,7 @@ void FOClient::PupDraw()
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(PupContPid);
 		if(proto_item)
 		{
-			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMapHash,proto_item->Dir);
+			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMap,proto_item->Dir);
 			if(anim) SprMngr.DrawSpriteSize(anim,PupWInfo[0]+PupX,PupWInfo[1]+PupY,PupWInfo.W(),PupWInfo.H(),false,true);
 		}
 	}
@@ -8330,7 +8330,7 @@ void FOClient::PupTransfer(DWORD item_id, DWORD cont, DWORD count)
 		if(it==PupCont2Init.end()) return;
 		Item& item=*it;
 
-		if(item.IsGrouped() && count<item.GetCount())
+		if(item.IsStackable() && count<item.GetCount())
 			item.Count_Sub(count);
 		else
 			PupCont2Init.erase(it);
@@ -9529,7 +9529,7 @@ void FOClient::FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& 
 		if(!proto)
 			str+="???";
 		else
-			str+=MsgItem->GetStr(proto->GetInfo());
+			str+=MsgItem->GetStr(proto->ProtoId*100);
 
 		if(val_vec[i]>1)
 		{
@@ -9550,7 +9550,7 @@ void FOClient::FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& 
 		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec[i]);
 		if(!proto) continue;
 
-		AnyFrames* anim=ResMngr.GetInvAnim(proto->PicInvHash);
+		AnyFrames* anim=ResMngr.GetInvAnim(proto->PicInv);
 		if(!anim) continue;
 
 		INTRECT r2=r;

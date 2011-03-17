@@ -916,7 +916,7 @@ void Critter::AddItem(Item*& item, bool send)
 	}
 
 	// Add
-	if(item->IsGrouped())
+	if(item->IsStackable())
 	{
 		Item* item_already=GetItemByPid(item->GetProtoId());
 		if(item_already)
@@ -975,7 +975,7 @@ label_InvSlot:
 		break;
 	case SLOT_HAND1:
 		if(ItemSlotMain->GetId()) goto label_InvSlot;
-		if(item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon.Anim1)) goto label_InvSlot;
+		if(item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon_Anim1)) goto label_InvSlot;
 		ItemSlotMain=item;
 		break;
 	case SLOT_HAND2:
@@ -1072,6 +1072,7 @@ void Critter::GetInvItems(ItemPtrVec& items, int transfer_type, bool lock)
 	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
+#pragma MESSAGE("Add explicit sync lock.")
 Item* Critter::GetItemByPid(WORD item_pid)
 {
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
@@ -1091,7 +1092,7 @@ Item* Critter::GetItemByPidInvPriority(WORD item_pid)
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(item_pid);
 	if(!proto_item) return NULL;
 
-	if(proto_item->IsGrouped())
+	if(proto_item->Stackable)
 	{
 		for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 		{
@@ -1131,9 +1132,9 @@ Item* Critter::GetAmmoForWeapon(Item* weap)
 
 	Item* ammo=GetItemByPid(weap->Data.TechInfo.AmmoPid);
 	if(ammo) return ammo;
-	ammo=GetItemByPid(weap->Proto->Weapon.DefAmmo);
+	ammo=GetItemByPid(weap->Proto->Weapon_DefaultAmmoPid);
 	if(ammo) return ammo;
-	ammo=GetAmmo(weap->Proto->Weapon.Caliber);
+	ammo=GetAmmo(weap->Proto->Weapon_Caliber);
 
 	// Already synchronized
 	return ammo;
@@ -1144,7 +1145,7 @@ Item* Critter::GetAmmo(DWORD caliber)
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->GetType()==ITEM_TYPE_AMMO && item->Proto->Ammo.Caliber==caliber)
+		if(item->GetType()==ITEM_TYPE_AMMO && item->Proto->Ammo_Caliber==caliber)
 		{
 			SYNC_LOCK(item);
 			return item;
@@ -1254,7 +1255,7 @@ bool Critter::MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count)
 			return false;
 		}
 
-		bool full_drop=(!item->IsGrouped() || count>=item->GetCount());
+		bool full_drop=(!item->IsStackable() || count>=item->GetCount());
 		if(!full_drop)
 		{
 			if(GetMap())
@@ -1325,9 +1326,9 @@ bool Critter::MoveItem(BYTE from_slot, BYTE to_slot, DWORD item_id, DWORD count)
 		return false;
 	}
 
-	if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon.Anim1))
+	if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon_Anim1))
 	{
-		WriteLog(__FUNCTION__" - Critter<%s> not have animations for anim1 index<%u>.\n",GetInfo(),item->Proto->Weapon.Anim1);
+		WriteLog(__FUNCTION__" - Critter<%s> not have animations for anim1 index<%u>.\n",GetInfo(),item->Proto->Weapon_Anim1);
 		return false;
 	}
 
@@ -4547,7 +4548,7 @@ void Npc::RefreshBag()
 		// Repair/reload item in slots
 		if(item->ACC_CRITTER.Slot!=SLOT_INV)
 		{
-			if(item->IsWeared() && item->IsBroken()) item->Repair();
+			if(item->IsDeteriorable() && item->IsBroken()) item->Repair();
 			if(item->IsWeapon() && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty()) item->WeapLoadHolder();
 		}
 	}
@@ -4561,7 +4562,7 @@ void Npc::RefreshBag()
 		{
 			if(pids[i]<=need_count) continue;
 			ProtoItem* proto_item=ItemMngr.GetProtoItem(i);
-			if(!proto_item || proto_item->IsGrouped()) continue;
+			if(!proto_item || proto_item->Stackable) continue;
 			ItemMngr.SetItemCritter(this,i,need_count);
 			pids[i]=need_count;
 			need_count=Random(2,4);
@@ -4686,7 +4687,6 @@ bool Npc::AddPlane(int reason, AIDataPlane* plane, bool is_child, Critter* some_
 		}
 	}
 
-	DWORD child_index=(is_child?aiPlanes[0]->GetChildsCount()+1:0);
 	int result=EventPlaneBegin(plane,reason,some_cr,some_item);
 	if(result==PLANE_RUN_GLOBAL && Script::PrepareContext(ServerFunctions.NpcPlaneBegin,CALL_FUNC_STR,GetInfo()))
 	{

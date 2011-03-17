@@ -311,6 +311,8 @@ DWORD Str::GetHash(const char* str)
 	DWORD len=0;
 	for(char* s=str_;*s;s++,len++) if(*s=='/') *s='\\';
 
+	EraseFrontBackSpecificChars(str_);
+
 	return Crypt.Crc32((BYTE*)str_,len);
 }
 
@@ -663,9 +665,11 @@ bool IniParser::IsKey(const char* key_name)
 char* IniParser::GetApp(const char* app_name)
 {
 	if(!bufPtr) return NULL;
+	if(!app_name) return NULL;
 
 	DWORD iter=0;
-	if(!GotoApp(app_name,iter)) return NULL;
+	if(lastAppPos && !strcmp(app_name,lastApp)) iter=lastAppPos;
+	else if(!GotoApp(app_name,iter)) return NULL;
 
 	DWORD i=iter,len=0;
 	for(;i<bufLen;i++,len++) if(i>0 && bufPtr[i-1]=='\n' && bufPtr[i]==STR_PRIVATE_APP_BEGIN) break;
@@ -691,7 +695,7 @@ void IniParser::GetAppLines(StrVec& lines)
 	for(;len;i--,len--) if(i>0 && bufPtr[i-1]!='\n' && bufPtr[i-1]!='\r') break;
 
 	istrstream str(&bufPtr[lastAppPos],len);
-	char line[256];
+	char line[MAX_FOTEXT];
 	while(!str.eof())
 	{
 		str.getline(line,sizeof(line),'\n');
@@ -702,8 +706,9 @@ void IniParser::GetAppLines(StrVec& lines)
 void IniParser::CacheApps()
 {
 	if(!bufPtr) return;
+
 	istrstream str(bufPtr,bufLen);
-	char line[256];
+	char line[MAX_FOTEXT];
 	while(!str.eof())
 	{
 		str.getline(line,sizeof(line),'\n');
@@ -732,21 +737,18 @@ bool IniParser::IsCachedApp(const char* app_name)
 void IniParser::CacheKeys()
 {
 	if(!bufPtr) return;
+
 	istrstream str(bufPtr,bufLen);
-	char line[256];
+	char line[MAX_FOTEXT];
 	while(!str.eof())
 	{
 		str.getline(line,sizeof(line),'\n');
 		char* key_end=strstr(line,"=");
 		if(key_end)
 		{
-			DWORD len=key_end-line;
-			if(len)
-			{
-				string key;
-				key.assign(line,len);
-				cachedKeys.insert(key);
-			}
+			*key_end=0;
+			Str::EraseFrontBackSpecificChars(line);
+			if(strlen(line)) cachedKeys.insert(line);
 		}
 	}
 }
@@ -754,6 +756,11 @@ void IniParser::CacheKeys()
 bool IniParser::IsCachedKey(const char* key_name)
 {
 	return cachedKeys.count(string(key_name))!=0;
+}
+
+StrSet& IniParser::GetCachedKeys()
+{
+	return cachedKeys;
 }
 
 FOMsg::FOMsg()

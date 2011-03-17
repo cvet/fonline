@@ -22,8 +22,10 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 
 // Prototypes
 #define MAX_ITEM_PROTOTYPES         (30000)
+#define PROTO_ITEM_USER_DATA_SIZE   (500)
 #define PROTO_ITEM_DEFAULT_EXT      ".pro"
 #define PROTO_ITEM_FILENAME         "proto.fopro_"
+#define ITEM_MAX_SCRIPT_VALUES      (10)
 
 // F2 types
 #define F2_TYPE_ITEMS               (0)
@@ -49,20 +51,20 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define F2_GENERICMISC				(1)
 
 // Types
-#define ITEM_TYPE_RESERVED          (0)  // Disabled in LogIn
-#define ITEM_TYPE_ARMOR             (1)  // item			weared
-#define ITEM_TYPE_DRUG              (2)  // item grouped
-#define ITEM_TYPE_WEAPON            (3)	 // item			weared
-#define ITEM_TYPE_AMMO              (4)  // item grouped
-#define ITEM_TYPE_MISC              (5)  // item grouped
-#define ITEM_TYPE_MISC_EX           (6)  // item
-#define ITEM_TYPE_KEY               (7)  // item
-#define ITEM_TYPE_CONTAINER         (8)  // item
-#define ITEM_TYPE_DOOR              (9)  // item
-#define ITEM_TYPE_GRID              (10) // scenery
-#define ITEM_TYPE_GENERIC           (11) // scenery
-#define ITEM_TYPE_WALL              (12) // scenery
-#define ITEM_MAX_TYPES              (13)
+#define ITEM_TYPE_OTHER             (0)
+#define ITEM_TYPE_ARMOR             (1)
+#define ITEM_TYPE_DRUG              (2) // stacked
+#define ITEM_TYPE_WEAPON            (3) // combined
+#define ITEM_TYPE_AMMO              (4) // stacked
+#define ITEM_TYPE_MISC              (5) // combined
+#define ITEM_TYPE_KEY               (7)
+#define ITEM_TYPE_CONTAINER         (8)
+#define ITEM_TYPE_DOOR              (9)
+#define ITEM_TYPE_GRID              (10)
+#define ITEM_TYPE_GENERIC           (11)
+#define ITEM_TYPE_WALL              (12)
+#define ITEM_TYPE_CAR               (13)
+#define ITEM_MAX_TYPES              (14)
 
 // Grid Types
 #define GRID_EXITGRID               (1)
@@ -149,18 +151,9 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define MATERIAL_CEMENT				(6)
 #define MATERIAL_LEATHER			(7)
 
-// Broken info
-#define WEAR_MAX					(30000)
-#define BROKEN_MAX					(10)
-	// Flags
-#define BI_LOWBROKEN				(0x01)
-#define BI_NORMBROKEN				(0x02)
-#define BI_HIGHBROKEN				(0x04)
-#define BI_NOTRESC					(0x08)
+// Item deterioration info
+#define MAX_DETERIORATION           (10000)
 #define BI_BROKEN					(0x0F)
-#define BI_SERVICE					(0x10)
-#define BI_SERVICE_EXT				(0x20)
-#define BI_ETERNAL					(0x40)
 
 // Radio
 	// Flags
@@ -181,10 +174,10 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define F2PROTO_OFFSET_TILE			(8000)
 #define MISC_MAX					(200)
 
-// Car
-#define CAR_MAX_BLOCKS              (80)
-#define CAR_MAX_BAG_POSITION        (12)
-#define CAR_MAX_BAGS                (3)
+// Blocks, childs
+#define ITEM_MAX_BLOCK_LINES        (50)
+#define ITEM_MAX_CHILDS             (5)
+#define ITEM_MAX_CHILD_LINES        (6)
 
 // Light flags
 #define LIGHT_DISABLE_DIR(dir)      (1<<CLAMP(dir,0,5))
@@ -230,26 +223,29 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 class ProtoItem
 {
 public:
-	WORD Pid;
-	BYTE Type;
-	BYTE Slot;
+	// Internal data
+	WORD ProtoId;
+	int Type;
+	DWORD PicMap;
+	DWORD PicInv;
 	DWORD Flags;
-	BYTE Corner;
-	bool DisableEgg;
-	short Dir;
-	DWORD PicMapHash;
-	DWORD PicInvHash;
+	bool Stackable;
+	bool Deteriorable;
+	bool GroundLevel;
+	int Corner;
+	int Dir;
+	BYTE Slot;
 	DWORD Weight;
 	DWORD Volume;
 	DWORD Cost;
+	DWORD StartCount;
 	BYTE SoundId;
 	BYTE Material;
-
 	BYTE LightFlags;
 	BYTE LightDistance;
 	char LightIntensity;
 	DWORD LightColor;
-
+	bool DisableEgg;
 	WORD AnimWaitBase;
 	WORD AnimWaitRndMin;
 	WORD AnimWaitRndMax;
@@ -260,159 +256,69 @@ public:
 	short OffsetY;
 	BYTE SpriteCut;
 	char DrawOrderOffsetHexY;
-
 	WORD RadioChannel;
 	WORD RadioFlags;
 	BYTE RadioBroadcastSend;
 	BYTE RadioBroadcastRecv;
-
 	BYTE IndicatorStart;
 	BYTE IndicatorMax;
-
 	DWORD HolodiskNum;
+	DWORD StartValue[ITEM_MAX_SCRIPT_VALUES];
+	BYTE BlockLines[ITEM_MAX_BLOCK_LINES];
+	WORD ChildPid[ITEM_MAX_CHILDS];
+	BYTE ChildLines[ITEM_MAX_CHILDS][ITEM_MAX_CHILD_LINES];
 
-	union
-	{
-		struct
-		{
-			BYTE Anim0Male;
-			BYTE Anim0Female;
-			WORD AC;
-			BYTE Perk;
+	// User data, binded with 'bindfield' pragma
+	int UserData[PROTO_ITEM_USER_DATA_SIZE/sizeof(int)];
 
-			WORD DRNormal;
-			WORD DRLaser;
-			WORD DRFire;
-			WORD DRPlasma;
-			WORD DRElectr;
-			WORD DREmp;
-			WORD DRExplode;
-
-			WORD DTNormal;
-			WORD DTLaser;
-			WORD DTFire;
-			WORD DTPlasma;
-			WORD DTElectr;
-			WORD DTEmp;
-			WORD DTExplode;
-		} Armor;
-
-		struct
-		{
-			bool NoWear;
-
-			bool IsUnarmed;
-			BYTE UnarmedTree;
-			BYTE UnarmedPriority;
-			BYTE UnarmedCriticalBonus;
-			bool UnarmedArmorPiercing;
-			BYTE UnarmedMinAgility;
-			BYTE UnarmedMinUnarmed;
-			BYTE UnarmedMinLevel;
-
-			BYTE Anim1;
-			WORD VolHolder;
-			WORD Caliber;
-			WORD DefAmmo;
-			BYTE ReloadAp;
-			BYTE CrFailture;
-			BYTE MinSt;
-			BYTE Perk;
-
-			BYTE Uses;
-			WORD Skill[MAX_USES];
-			WORD DmgType[MAX_USES];
-			WORD Anim2[MAX_USES];
-			WORD PicDeprecated[MAX_USES];
-			DWORD PicHash[MAX_USES];
-			WORD DmgMin[MAX_USES];
-			WORD DmgMax[MAX_USES];
-			WORD MaxDist[MAX_USES];
-			WORD Effect[MAX_USES];
-			WORD Round[MAX_USES];
-			WORD ApCost[MAX_USES];
-			bool Aim[MAX_USES];
-			bool Remove[MAX_USES];
-			BYTE SoundId[MAX_USES];
-		} Weapon;
-
-		struct
-		{
-			DWORD StartCount;
-			DWORD Caliber;
-			int ACMod;
-			int DRMod;
-			DWORD DmgMult;
-			DWORD DmgDiv;
-		} Ammo;
-
-		struct
-		{
-			DWORD StartVal1;
-			DWORD StartVal2;
-			DWORD StartVal3;
-
-			bool IsCar;
-
-			struct _CAR
-			{
-				BYTE Speed; 
-				BYTE Negotiability;
-				BYTE WearConsumption;
-				BYTE CritCapacity;
-				WORD FuelTank;
-				WORD RunToBreak;
-				BYTE Entire;
-				BYTE WalkType;
-				BYTE FuelConsumption;
-
-				BYTE Bag0[CAR_MAX_BAG_POSITION/2]; // 6
-				BYTE Bag1[CAR_MAX_BAG_POSITION/2]; // 6
-				BYTE Blocks[CAR_MAX_BLOCKS/2]; // 40
-
-				BYTE GetBag0Dir(int num){return ((num&1)?(Bag0[num/2]&0xF):(Bag0[num/2]>>4));}
-				BYTE GetBag1Dir(int num){return ((num&1)?(Bag1[num/2]&0xF):(Bag1[num/2]>>4));}
-				BYTE GetBlockDir(int num){return ((num&1)?(Blocks[num/2]&0xF):(Blocks[num/2]>>4));}
-			} Car;
-		} MiscEx;
-
-		struct
-		{
-			DWORD ContVolume;
-			DWORD CannotPickUp;
-			DWORD MagicHandsGrnd;
-			DWORD Changeble;
-			bool IsNoOpen;
-		} Container;
-		
-		struct
-		{
-			DWORD WalkThru;
-			bool IsNoOpen;
-			bool NoBlockMove;
-			bool NoBlockShoot;
-			bool NoBlockLight;
-		} Door;
-
-		struct
-		{
-			BYTE Type;
-		} Grid;
-	};
+	// Type specific data
+	bool Weapon_IsUnarmed;
+	int Weapon_UnarmedTree;
+	int Weapon_UnarmedPriority;
+	int Weapon_UnarmedMinAgility;
+	int Weapon_UnarmedMinUnarmed;
+	int Weapon_UnarmedMinLevel;
+	DWORD Weapon_Anim1;
+	DWORD Weapon_MaxAmmoCount;
+	int Weapon_Caliber;
+	WORD Weapon_DefaultAmmoPid;
+	int Weapon_MinStrength;
+	int Weapon_Perk;
+	DWORD Weapon_ActiveUses;
+	int Weapon_Skill[MAX_USES];
+	DWORD Weapon_PicUse[MAX_USES];
+	DWORD Weapon_MaxDist[MAX_USES];
+	DWORD Weapon_Round[MAX_USES];
+	DWORD Weapon_ApCost[MAX_USES];
+	bool Weapon_Aim[MAX_USES];
+	BYTE Weapon_SoundId[MAX_USES];
+	int Ammo_Caliber;
+	bool Door_NoBlockMove;
+	bool Door_NoBlockShoot;
+	bool Door_NoBlockLight;
+	DWORD Container_Volume;
+	bool Container_CannotPickUp;
+	bool Container_MagicHandsGrnd;
+	bool Container_Changeble;
+	WORD Locker_Condition;
+	int Grid_Type;
+	DWORD Car_Speed; 
+	DWORD Car_Passability;
+	DWORD Car_DeteriorationRate;
+	DWORD Car_CrittersCapacity;
+	DWORD Car_TankVolume;
+	DWORD Car_MaxDeterioration;
+	DWORD Car_FuelConsumption;
+	DWORD Car_Entrance;
+	DWORD Car_MovementType;
 
 	void AddRef(){}
 	void Release(){}
 
 	void Clear(){ZeroMemory(this,sizeof(ProtoItem));}
-	bool IsInit(){return Pid!=0;}
-	WORD GetPid(){return Pid;}
-	DWORD GetInfo(){return Pid*100;}
 	DWORD GetHash(){return Crypt.Crc32((BYTE*)this,sizeof(ProtoItem));}
-	void SetPid(WORD val){Pid=val;}
-	void SetType(BYTE val){Type=val;}
-	BYTE GetType(){return Type;}
 
-	bool IsItem(){return Type>=ITEM_TYPE_ARMOR && Type<=ITEM_TYPE_DOOR;}
+	bool IsItem(){return !IsScen() && !IsWall();}
 	bool IsScen(){return Type==ITEM_TYPE_GENERIC;}
 	bool IsWall(){return Type==ITEM_TYPE_WALL;}
 	bool IsArmor(){return Type==ITEM_TYPE_ARMOR;}
@@ -420,32 +326,24 @@ public:
 	bool IsWeapon(){return Type==ITEM_TYPE_WEAPON;}
 	bool IsAmmo(){return Type==ITEM_TYPE_AMMO;}
 	bool IsMisc(){return Type==ITEM_TYPE_MISC;}
-	bool IsMisc2(){return Type==ITEM_TYPE_MISC_EX;}
 	bool IsKey(){return Type==ITEM_TYPE_KEY;}
 	bool IsContainer(){return Type==ITEM_TYPE_CONTAINER;}
 	bool IsDoor(){return Type==ITEM_TYPE_DOOR;}
 	bool IsGrid(){return Type==ITEM_TYPE_GRID;}
 	bool IsGeneric(){return Type==ITEM_TYPE_GENERIC;}
-	bool IsCar(){return Type==ITEM_TYPE_MISC_EX && MiscEx.IsCar;}
+	bool IsCar(){return Type==ITEM_TYPE_CAR;}
 
-	bool LockerIsChangeble(){if(IsDoor()) return true; if(IsContainer()) return Container.Changeble!=0; return false;}
+	bool IsBlocks(){return BlockLines[0]!=0;}
+	bool LockerIsChangeble(){if(IsDoor()) return true; if(IsContainer()) return Container_Changeble; return false;}
 	bool IsCanPickUp(){return FLAG(Flags,ITEM_CAN_PICKUP);}
-	bool IsGrouped(){return IsDrug() || IsAmmo() || IsMisc() || (IsWeapon() && WeapIsGrouped());}
-	bool IsWeared(){return Type==ITEM_TYPE_ARMOR || (Type==ITEM_TYPE_WEAPON && WeapIsWeared());}
 
-	bool WeapIsWeared(){return !Weapon.NoWear;}
-	bool WeapIsGrouped(){return Weapon.NoWear;}
+	BYTE Car_GetChildDir(DWORD child, DWORD step){return ChildLines[child][step]>>4;}
+	BYTE Car_GetChildLength(DWORD child, DWORD step){return ChildLines[child][step]&0xF;}
+	BYTE Car_GetBlockDir(DWORD step){return BlockLines[step]>>4;}
+	BYTE Car_GetBlockLength(DWORD step){return BlockLines[step]&0xF;}
 
-	bool operator==(const WORD& _r){return (Pid==_r);}
+	bool operator==(const WORD& _r){return (ProtoId==_r);}
 	ProtoItem(){Clear();}
-
-	bool Container_IsGroundLevel()
-	{
-		bool is_ground=true;
-		if(IsContainer()) is_ground=(Container.MagicHandsGrnd?true:false);
-		else if(IsDoor() || IsCar() || IsScen() || IsGrid() || !IsCanPickUp()) is_ground=false;
-		return is_ground;
-	}
 
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 	DWORD GetCurSprId();
@@ -538,15 +436,15 @@ public:
 		short TrapValue;
 		DWORD Count;
 		DWORD Cost;
-		int ScriptValues[10];
+		int ScriptValues[ITEM_MAX_SCRIPT_VALUES];
 
 		union // 8
 		{
 			struct
 			{
-				BYTE DeteorationFlags;
-				BYTE DeteorationCount;
-				WORD DeteorationValue;
+				BYTE BrokenFlags;
+				BYTE BrokenCount;
+				WORD Deterioration;
 				WORD AmmoPid;
 				WORD AmmoCount;
 			} TechInfo;
@@ -562,7 +460,7 @@ public:
 			{
 				DWORD DoorId;
 				WORD Fuel;
-				WORD Deteoration;
+				WORD Deterioration;
 			} Car;
 
 			struct
@@ -620,10 +518,10 @@ public:
 
 	// All
 	DWORD GetId(){return Id;}
-	WORD GetProtoId(){return Proto->GetPid();}
-	DWORD GetInfo(){return Proto->GetInfo()+Data.Info;}
-	DWORD GetPicMap(){return Data.PicMapHash?Data.PicMapHash:Proto->PicMapHash;}
-	DWORD GetPicInv(){return Data.PicInvHash?Data.PicInvHash:Proto->PicInvHash;}
+	WORD GetProtoId(){return Proto->ProtoId;}
+	DWORD GetInfo(){return Proto->ProtoId*100+Data.Info;}
+	DWORD GetPicMap(){return Data.PicMapHash?Data.PicMapHash:Proto->PicMap;}
+	DWORD GetPicInv(){return Data.PicInvHash?Data.PicInvHash:Proto->PicInv;}
 	bool IsValidAccessory(){return Accessory==ITEM_ACCESSORY_CRITTER || Accessory==ITEM_ACCESSORY_HEX || Accessory==ITEM_ACCESSORY_CONTAINER;}
 
 	DWORD GetCount();
@@ -631,10 +529,12 @@ public:
 	void Count_Add(DWORD val);
 	void Count_Sub(DWORD val);
 
-	BYTE GetType(){return Proto->GetType();}
+	int GetType(){return Proto->Type;}
 	void SetMode(BYTE mode);
 	WORD GetSortValue(){return Data.SortValue;}
-	bool IsGrouped(){return Proto->IsGrouped();}
+
+	bool IsStackable(){return Proto->Stackable;}
+	bool IsBlocks(){return Proto->IsBlocks();}
 
 	bool IsPassed(){return FLAG(Data.Flags,ITEM_NO_BLOCK) && FLAG(Data.Flags,ITEM_SHOOT_THRU);}
 	bool IsRaked(){return FLAG(Data.Flags,ITEM_SHOOT_THRU);}
@@ -675,23 +575,14 @@ public:
 	void SetLexems(const char* lexems);
 #endif
 
-	// Deteoration
+	// Deterioration
 #ifdef FONLINE_SERVER
-	bool Wear(int count);
 	void Repair();
 #endif
 
-	bool IsWeared()     {return GetId() && Proto->IsWeared();}
-	bool IsBroken()     {return (IsWeared()?FLAG(Data.TechInfo.DeteorationFlags,BI_BROKEN):false);}
-	bool IsNoResc()     {return (IsWeared()?FLAG(Data.TechInfo.DeteorationFlags,BI_NOTRESC):false);}
-	bool IsService()    {return (IsWeared()?FLAG(Data.TechInfo.DeteorationFlags,BI_SERVICE):false);}
-	bool IsServiceExt() {return (IsWeared()?FLAG(Data.TechInfo.DeteorationFlags,BI_SERVICE_EXT):false);}
-	bool IsEternal()    {return (IsWeared()?FLAG(Data.TechInfo.DeteorationFlags,BI_ETERNAL):false);}
-	int GetBrokenCount(){return (IsWeared()?Data.TechInfo.DeteorationCount:0);}
-	int GetWear()       {return (IsWeared()?Data.TechInfo.DeteorationValue:0);}
-	int GetMaxWear()    {return WEAR_MAX;}
-	int GetWearProc()   {int val=GetWear()*100/WEAR_MAX; return CLAMP(val,0,100);}
-	void SetWear(WORD wear){if(IsWeared()) Data.TechInfo.DeteorationValue=wear;}
+	bool IsDeteriorable(){return Proto->Deteriorable;}
+ 	bool IsBroken(){return FLAG(Data.TechInfo.BrokenFlags,BI_BROKEN);}
+	int GetDeteriorationProc(){int val=Data.TechInfo.Deterioration*100/MAX_DETERIORATION; return CLAMP(val,0,100);}
 
 	// Armor
 	bool IsArmor(){return GetType()==ITEM_TYPE_ARMOR;}
@@ -699,25 +590,20 @@ public:
 	// Weapon
 	bool IsWeapon(){return GetType()==ITEM_TYPE_WEAPON;}
 	bool WeapIsEmpty(){return !Data.TechInfo.AmmoCount;}
-	bool WeapIsFull(){return Data.TechInfo.AmmoCount>=Proto->Weapon.VolHolder;}
+	bool WeapIsFull(){return Data.TechInfo.AmmoCount>=Proto->Weapon_MaxAmmoCount;}
 	DWORD WeapGetAmmoCount(){return Data.TechInfo.AmmoCount;}
 	DWORD WeapGetAmmoPid(){return Data.TechInfo.AmmoPid;}
-	DWORD WeapGetMaxAmmoCount(){return Proto->Weapon.VolHolder;}
-	int WeapGetAmmoCaliber(){return Proto->Weapon.Caliber;}
-	bool WeapIsWeared(){return Proto->WeapIsWeared();}
-	bool WeapIsGrouped(){return Proto->WeapIsGrouped();}
-	bool WeapIsEffect(int use){return Proto->Weapon.Effect[use]!=0;}
-	WORD WeapGetEffectPid(int use){return Proto->Weapon.Effect[use];}
-	int WeapGetNeedStrength(){return Proto->Weapon.MinSt;}
-	bool WeapIsUseAviable(int use){return use>=USE_PRIMARY && use<=USE_THIRD?(((Proto->Weapon.Uses>>use)&1)!=0):false;}
-	bool WeapIsCanAim(int use){return use<MAX_USES && Proto->Weapon.Aim[use];}
+	DWORD WeapGetMaxAmmoCount(){return Proto->Weapon_MaxAmmoCount;}
+	int WeapGetAmmoCaliber(){return Proto->Weapon_Caliber;}
+	bool WeapIsUseAviable(int use){return use>=USE_PRIMARY && use<=USE_THIRD?(((Proto->Weapon_ActiveUses>>use)&1)!=0):false;}
+	bool WeapIsCanAim(int use){return use>=0 && use<MAX_USES && Proto->Weapon_Aim[use];}
 	void WeapLoadHolder();
 
 	// Container
 	bool IsContainer(){return Proto->IsContainer();}
-	bool ContIsCannotPickUp(){return Proto->Container.CannotPickUp!=0;}
-	bool ContIsMagicHandsGrnd(){return Proto->Container.MagicHandsGrnd!=0;}
-	bool ContIsChangeble(){return Proto->Container.Changeble!=0;}
+	bool ContIsCannotPickUp(){return Proto->Container_CannotPickUp;}
+	bool ContIsMagicHandsGrnd(){return Proto->Container_MagicHandsGrnd;}
+	bool ContIsChangeble(){return Proto->Container_Changeble;}
 #ifdef FONLINE_SERVER
 	void ContAddItem(Item*& item, DWORD special_id);
 	void ContSetItem(Item* item);
@@ -743,7 +629,7 @@ public:
 
 	// Ammo
 	bool IsAmmo(){return Proto->IsAmmo();}
-	int AmmoGetCaliber(){return Proto->Ammo.Caliber;}
+	int AmmoGetCaliber(){return Proto->Ammo_Caliber;}
 
 	// Key
 	bool IsKey(){return Proto->IsKey();}
@@ -776,18 +662,9 @@ public:
 
 	// Car
 	bool IsCar(){return Proto->IsCar();}
-	DWORD CarGetDoorId(){return Data.Car.DoorId;}
-	WORD CarGetFuel(){return Data.Car.Fuel;}
-	WORD CarGetFuelTank(){return Proto->MiscEx.Car.FuelTank;}
-	BYTE CarGetFuelConsumption(){return Proto->MiscEx.Car.FuelConsumption;}
-	WORD CarGetWear(){return Data.Car.Deteoration;}
-	WORD CarGetRunToBreak(){return Proto->MiscEx.Car.RunToBreak;}
-	BYTE CarGetWearConsumption(){return Proto->MiscEx.Car.WearConsumption;}
-	DWORD CarGetSpeed(){return Proto->MiscEx.Car.Speed;}
-	BYTE CarGetCritCapacity(){return Proto->MiscEx.Car.CritCapacity;}
 
 #ifdef FONLINE_SERVER
-	Item* CarGetBag(int num_bag);
+	Item* GetChild(DWORD child_index);
 #endif
 
 	// Holodisk
@@ -810,6 +687,29 @@ public:
 	~Item(){Proto=NULL;}
 #endif
 };
+
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
+
+#define FOREACH_PROTO_ITEM_LINES(lines,hx,hy,maxhx,maxhy,work) \
+	int hx_=hx,hy_=hy;\
+	int maxhx_=maxhx,maxhy_=maxhy;\
+	for(int i=0;i<sizeof(lines);i++)\
+	{\
+		BYTE block=lines[i];\
+		BYTE dir=(block>>4);\
+		if(dir>=DIRS_COUNT) break;\
+		BYTE steps=(block&0xF);\
+		if(!steps) break;\
+		for(BYTE j=0;j<steps;j++)\
+		{\
+			MoveHexByDirUnsafe(hx_,hy_,dir);\
+			if(hx_<0 || hy_<0 || hx_>=maxhx_ || hy_>=maxhy_) continue;\
+			hx=hx_,hy=hy_;\
+			work\
+		}\
+	}
 
 /************************************************************************/
 /*                                                                      */

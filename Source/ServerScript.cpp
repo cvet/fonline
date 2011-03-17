@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "AngelScript/Preprocessor/preprocess.h"
 #include "Version.h"
+#include "ScriptPragmas.h"
 
 void* dbg_malloc(size_t size)
 {
@@ -67,11 +68,6 @@ void dbg_free2(void* ptr)
 	free(ptr_);
 }
 
-StrSet ParametersAlready;
-DWORD ParametersIndex=1; // 0 is ParamBase
-StrSet ParametersClAlready;
-DWORD ParametersClIndex=1; // 0 is ParamBase
-
 bool FOServer::InitScriptSystem()
 {
 	WriteLog("Script system initialization...\n");
@@ -84,9 +80,9 @@ bool FOServer::InitScriptSystem()
 #endif
 
 	// Init
-	if(!Script::Init(false,PragmaCallbackCrData))
+	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_SERVER)))
 	{
-		WriteLog("Script System Init fail.\n");
+		WriteLog("Script System initialization failed.\n");
 		return false;
 	}
 	Script::SetScriptsPath(PT_SERVER_SCRIPTS);
@@ -256,7 +252,7 @@ bool FOServer::ReloadClientScripts()
 #endif
 
 	asIScriptEngine* old_engine=Script::GetEngine();
-	asIScriptEngine* engine=Script::CreateEngine(PragmaCallbackCrClData);
+	asIScriptEngine* engine=Script::CreateEngine(new ScriptPragmaCallback(PRAGMA_CLIENT));
 	if(engine) Script::SetEngine(engine);
 
 	// Bind vars and functions
@@ -281,8 +277,6 @@ bool FOServer::ReloadClientScripts()
 	// Load script modules
 	Script::Undefine("__SERVER");
 	Script::Define("__CLIENT");
-	ParametersClAlready.clear();
-	ParametersClIndex=1;
 
 	StrVec empty;
 	Script::SetWrongGlobalObjects(empty);
@@ -408,57 +402,6 @@ bool FOServer::ReloadClientScripts()
 }
 
 /************************************************************************/
-/* Pragma callbacks                                                     */
-/************************************************************************/
-
-bool FOServer::PragmaCallbackCrData(const char* text)
-{
-	string name;
-	DWORD min,max;
-	istrstream str(text);
-	str >> name >> min >> max;
-	if(str.fail()) return false;
-	if(min>max || max>=MAX_PARAMS) return false;
-	if(ParametersAlready.count(name)) return true;
-	if(ParametersIndex>=MAX_PARAMETERS_ARRAYS) return false;
-
-	asIScriptEngine* engine=Script::GetEngine();
-	char decl[128];
-	sprintf_s(decl,"DataVal %s",name.c_str());
-	if(engine->RegisterObjectProperty("Critter",decl,offsetof(Critter,ThisPtr[ParametersIndex]))<0) return false;
-	sprintf_s(decl,"DataRef %sBase",name.c_str());
-	if(engine->RegisterObjectProperty("Critter",decl,offsetof(Critter,ThisPtr[ParametersIndex]))<0) return false;
-	Critter::ParametersMin[ParametersIndex]=min;
-	Critter::ParametersMax[ParametersIndex]=max;
-	Critter::ParametersOffset[ParametersIndex]=(strstr(text,"+")!=NULL);
-	ParametersIndex++;
-	ParametersAlready.insert(name);
-	return true;
-}
-
-bool FOServer::PragmaCallbackCrClData(const char* text)
-{
-	string name;
-	DWORD min,max;
-	istrstream str(text);
-	str >> name >> min >> max;
-	if(str.fail()) return false;
-	if(min>max || max>=MAX_PARAMS) return false;
-	if(ParametersClAlready.count(name)) return true;
-	if(ParametersClIndex>=MAX_PARAMETERS_ARRAYS) return false;
-
-	asIScriptEngine* engine=Script::GetEngine();
-	char decl[128];
-	sprintf_s(decl,"DataVal %s",name.c_str());
-	if(engine->RegisterObjectProperty("CritterCl",decl,10000+ParametersClIndex*4)<0) return false;
-	sprintf_s(decl,"DataRef %sBase",name.c_str());
-	if(engine->RegisterObjectProperty("CritterCl",decl,10000+ParametersClIndex*4)<0) return false;
-	ParametersClIndex++;
-	ParametersClAlready.insert(name);
-	return true;
-}
-
-/************************************************************************/
 /* Wrapper functions                                                    */
 /************************************************************************/
 
@@ -577,16 +520,16 @@ Item* FOServer::SScriptFunc::Container_GetItem(Item* cont, WORD pid, DWORD speci
 	return cont->ContGetItemByPid(pid,special_id);
 }
 
-bool FOServer::SScriptFunc::Item_IsGrouped(Item* item)
+bool FOServer::SScriptFunc::Item_IsStackable(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->IsGrouped();
+	return item->IsStackable();
 }
 
-bool FOServer::SScriptFunc::Item_IsWeared(Item* item)
+bool FOServer::SScriptFunc::Item_IsDeteriorable(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->IsWeared();
+	return item->IsDeteriorable();
 }
 
 bool FOServer::SScriptFunc::Item_SetScript(Item* item, CScriptString* script)
@@ -649,7 +592,7 @@ DWORD FOServer::SScriptFunc::Item_GetCount(Item* item)
 void FOServer::SScriptFunc::Item_SetCount(Item* item, DWORD count)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(!item->IsGrouped()) SCRIPT_ERROR_R("Item is not grouped.");
+	if(!item->IsStackable()) SCRIPT_ERROR_R("Item is not grouped.");
 	if(count==0) SCRIPT_ERROR_R("Count arg is zero.");
 	if(item->GetCount()==count) return;
 	item->Count_Set(count);
@@ -712,7 +655,7 @@ bool FOServer::SScriptFunc::Item_ChangeProto(Item* item, WORD pid)
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!pid) SCRIPT_ERROR_R0("Proto item not found.");
-	if(item->GetType()!=proto_item->GetType()) SCRIPT_ERROR_R0("Different types.");
+	if(item->GetType()!=proto_item->Type) SCRIPT_ERROR_R0("Different types.");
 
 	ProtoItem* old_proto_item=item->Proto;
 	item->Proto=proto_item;
@@ -836,6 +779,13 @@ void FOServer::SScriptFunc::Item_SetLexems(Item* item, CScriptString* lexems)
 	}
 }
 
+Item* FOServer::SScriptFunc::Item_GetChild(Item* item, DWORD child_index)
+{
+	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
+	if(child_index>=ITEM_MAX_CHILDS) SCRIPT_ERROR_R0("Wrong child index.");
+	return item->GetChild(child_index);
+}
+
 bool FOServer::SScriptFunc::Item_LockerOpen(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("Door arg nullptr.");
@@ -847,17 +797,17 @@ bool FOServer::SScriptFunc::Item_LockerOpen(Item* item)
 	{
 		bool recache_block=false;
 		bool recache_shoot=false;
-		if(!item->Proto->Door.NoBlockMove)
+		if(!item->Proto->Door_NoBlockMove)
 		{
 			SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
 			recache_block=true;
 		}
-		if(!item->Proto->Door.NoBlockShoot)
+		if(!item->Proto->Door_NoBlockShoot)
 		{
 			SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
 			recache_shoot=true;
 		}
-		if(!item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+		if(!item->Proto->Door_NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
 
 		if(item->Accessory==ITEM_ACCESSORY_HEX && (recache_block || recache_shoot))
 		{
@@ -885,17 +835,17 @@ bool FOServer::SScriptFunc::Item_LockerClose(Item* item)
 	{
 		bool recache_block=false;
 		bool recache_shoot=false;
-		if(!item->Proto->Door.NoBlockMove)
+		if(!item->Proto->Door_NoBlockMove)
 		{
 			UNSETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
 			recache_block=true;
 		}
-		if(!item->Proto->Door.NoBlockShoot)
+		if(!item->Proto->Door_NoBlockShoot)
 		{
 			UNSETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
 			recache_shoot=true;
 		}
-		if(!item->Proto->Door.NoBlockLight) UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+		if(!item->Proto->Door_NoBlockLight) UNSETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
 
 		if(item->Accessory==ITEM_ACCESSORY_HEX && (recache_block || recache_shoot))
 		{
@@ -909,18 +859,6 @@ bool FOServer::SScriptFunc::Item_LockerClose(Item* item)
 	}
 	ItemMngr.NotifyChangeItem(item);
 	return true;
-}
-
-bool FOServer::SScriptFunc::Item_IsCar(Item* item)
-{
-	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->IsCar();
-}
-
-Item* FOServer::SScriptFunc::Item_CarGetBag(Item* item, int num_bag)
-{
-	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->CarGetBag(num_bag);
 }
 
 void FOServer::SScriptFunc::Item_EventFinish(Item* item, bool deleted)
@@ -3103,7 +3041,7 @@ Item* FOServer::SScriptFunc::Map_AddItem(Map* map, WORD hx, WORD hy, WORD proto_
 	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
 	if(!proto_item) SCRIPT_ERROR_R0("Invalid proto id arg.");
-	if(proto_item->IsCar() && !map->IsPlaceForCar(hx,hy,proto_item)) SCRIPT_ERROR_R0("No place for car.");
+	if(proto_item->IsBlocks() && !map->IsPlaceForItem(hx,hy,proto_item)) SCRIPT_ERROR_R0("No place for item.");
 	if(!count) count=1;
 	return CreateItemOnHex(map,hx,hy,proto_id,count);
 }
@@ -3655,13 +3593,12 @@ void FOServer::SScriptFunc::Map_RunFlyEffect(Map* map, WORD eff_pid, Critter* fr
 	map->SendFlyEffect(eff_pid,from_crid,to_crid,from_hx,from_hy,to_hx,to_hy);
 }
 
-bool FOServer::SScriptFunc::Map_CheckPlaceForCar(Map* map, WORD hx, WORD hy, WORD pid)
+bool FOServer::SScriptFunc::Map_CheckPlaceForItem(Map* map, WORD hx, WORD hy, WORD pid)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item) SCRIPT_ERROR_R0("Proto item not found.");
-	if(!proto_item->IsCar()) SCRIPT_ERROR_R0("Proto item is not car.");
-	return map->IsPlaceForCar(hx,hy,proto_item);
+	return map->IsPlaceForItem(hx,hy,proto_item);
 }
 
 void FOServer::SScriptFunc::Map_BlockHex(Map* map, WORD hx, WORD hy, bool full)
@@ -4020,18 +3957,11 @@ void FOServer::SScriptFunc::Global_DeleteItem(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R("Item arg nullptr.");
 
-	// Delete car bags
-	if(item->IsCar() && item->Accessory==ITEM_ACCESSORY_HEX)
+	// Delete childs
+	for(int i=0;i<ITEM_MAX_CHILDS;i++)
 	{
-		Map* map=MapMngr.GetMap(item->ACC_HEX.MapId);
-		if(map)
-		{
-			for(int i=0;i<CAR_MAX_BAGS;i++)
-			{
-				Item* bag=map->GetCarBag(item->ACC_HEX.HexX,item->ACC_HEX.HexY,item->Proto,i);
-				if(bag && !bag->IsNotValid) ItemMngr.ItemToGarbage(bag);
-			}
-		}
+		Item* child=item->GetChild(i);
+		if(child && !child->IsNotValid) ItemMngr.ItemToGarbage(child);
 	}
 
 	// Delete item

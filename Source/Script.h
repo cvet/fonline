@@ -1,16 +1,18 @@
 #ifndef __SCRIPT__
 #define __SCRIPT__
 
+#include "Common.h"
 #include "AngelScript/angelscript.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/scriptstring.h"
+#include "AngelScript/Preprocessor/pragma.h"
 #include <vector>
+#include <string>
 
 #define GLOBAL_CONTEXT_STACK_SIZE      (10)
 #define CONTEXT_BUFFER_SIZE            (512)
 #define CALL_FUNC_STR                  __FUNCTION__" : "
 
-typedef bool(*PragmaCallbackFunc)(const char*);
 typedef void(*EndExecutionCallback)();
 
 struct ReservedScriptFunction
@@ -22,7 +24,7 @@ struct ReservedScriptFunction
 
 namespace Script
 {
-	bool Init(bool with_log, PragmaCallbackFunc crdata);
+	bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback);
 	void Finish();
 	bool InitThread();
 	void FinisthThread();
@@ -41,7 +43,7 @@ namespace Script
 
 	asIScriptEngine* GetEngine();
 	void SetEngine(asIScriptEngine* engine);
-	asIScriptEngine* CreateEngine(PragmaCallbackFunc crdata);
+	asIScriptEngine* CreateEngine(Preprocessor::PragmaCallback* pragma_callback);
 	void FinishEngine(asIScriptEngine*& engine);
 
 	asIScriptContext* CreateContext();

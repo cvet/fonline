@@ -97,9 +97,9 @@ public:
 		struct
 		{
 			DWORD Val1;
-			BYTE DeteorationFlags;
-			BYTE DeteorationCount;
-			WORD DeteorationValue;
+			BYTE BrokenFlags;
+			BYTE BrokenCount;
+			WORD Deterioration;
 		} ARMOR;
 
 		struct
@@ -119,9 +119,9 @@ public:
 		struct
 		{
 			DWORD Reserved;
-			BYTE DeteorationFlags;
-			BYTE DeteorationCount;
-			WORD DeteorationValue;
+			BYTE BrokenFlags;
+			BYTE BrokenCount;
+			WORD Deterioration;
 			WORD AmmoPid;
 			DWORD AmmoCount;
 		} WEAPON;
@@ -251,9 +251,9 @@ public:
 			DWORD PicMapHash;
 			DWORD PicInvHash;
 			DWORD Count;
-			BYTE DeteorationFlags;
-			BYTE DeteorationCount;
-			WORD DeteorationValue;
+			BYTE BrokenFlags;
+			BYTE BrokenCount;
+			WORD Deterioration;
 			bool InContainer;
 			BYTE ItemSlot;
 			WORD AmmoPid;
@@ -542,28 +542,28 @@ bool ProtoMap::ReadObjects(int version)
 				obj_v6.MItem.Val[4]=obj_v5.ITEM_VAL.Val4;
 				obj_v6.MItem.Val[5]=obj_v5.ITEM_VAL.Val5;
 
-				if(proto->GetType()==ITEM_TYPE_AMMO) obj_v6.MItem.Count=obj_v5.AMMO.Count;
-				else if(proto->GetType()==ITEM_TYPE_MISC) obj_v6.MItem.Count=obj_v5.MISC.Count;
-				else if(proto->GetType()==ITEM_TYPE_DRUG) obj_v6.MItem.Count=obj_v5.DRUG.Count;
-				else if(proto->GetType()==ITEM_TYPE_ARMOR)
+				if(proto->Type==ITEM_TYPE_AMMO) obj_v6.MItem.Count=obj_v5.AMMO.Count;
+				else if(proto->Type==ITEM_TYPE_MISC) obj_v6.MItem.Count=obj_v5.MISC.Count;
+				else if(proto->Type==ITEM_TYPE_DRUG) obj_v6.MItem.Count=obj_v5.DRUG.Count;
+				else if(proto->Type==ITEM_TYPE_ARMOR)
 				{
-					obj_v6.MItem.DeteorationFlags=obj_v5.ARMOR.DeteorationFlags;
-					obj_v6.MItem.DeteorationCount=obj_v5.ARMOR.DeteorationCount;
-					obj_v6.MItem.DeteorationValue=obj_v5.ARMOR.DeteorationValue;
+					obj_v6.MItem.BrokenFlags=obj_v5.ARMOR.BrokenFlags;
+					obj_v6.MItem.BrokenCount=obj_v5.ARMOR.BrokenCount;
+					obj_v6.MItem.Deterioration=obj_v5.ARMOR.Deterioration;
 				}
-				else if(proto->GetType()==ITEM_TYPE_WEAPON)
+				else if(proto->Type==ITEM_TYPE_WEAPON)
 				{
-					obj_v6.MItem.DeteorationFlags=obj_v5.WEAPON.DeteorationFlags;
-					obj_v6.MItem.DeteorationFlags=obj_v5.WEAPON.DeteorationFlags;
-					obj_v6.MItem.DeteorationFlags=obj_v5.WEAPON.DeteorationFlags;
+					obj_v6.MItem.BrokenFlags=obj_v5.WEAPON.BrokenFlags;
+					obj_v6.MItem.BrokenCount=obj_v5.WEAPON.BrokenCount;
+					obj_v6.MItem.Deterioration=obj_v5.WEAPON.Deterioration;
 					obj_v6.MItem.AmmoPid=obj_v5.WEAPON.AmmoPid;
 					obj_v6.MItem.AmmoCount=obj_v5.WEAPON.AmmoCount;
 				}
-				else if(proto->GetType()==ITEM_TYPE_KEY)
+				else if(proto->Type==ITEM_TYPE_KEY)
 				{
 					obj_v6.MItem.LockerDoorId=obj_v5.KEY.DoorId;
 				}
-				else if(proto->GetType()==ITEM_TYPE_CONTAINER || proto->GetType()==ITEM_TYPE_DOOR)
+				else if(proto->Type==ITEM_TYPE_CONTAINER || proto->Type==ITEM_TYPE_DOOR)
 				{
 					obj_v6.MItem.LockerDoorId=obj_v5.CONTAINER.DoorId;
 					obj_v6.MItem.LockerCondition=obj_v5.CONTAINER.Condition;
@@ -578,13 +578,13 @@ bool ProtoMap::ReadObjects(int version)
 				obj_v6.MScenery.OffsetX=obj_v5.OffsetX;
 				obj_v6.MScenery.OffsetY=obj_v5.OffsetY;
 
-				if(proto->GetType()==ITEM_TYPE_GRID)
+				if(proto->Type==ITEM_TYPE_GRID)
 				{
 					obj_v6.MScenery.ToEntire=obj_v5.GRID.ToEntire;
 					obj_v6.MScenery.ToMapPid=obj_v5.GRID.ToMapPid;
 					obj_v6.MScenery.ToDir=obj_v5.GRID.ToDir;
 				}
-				else if(proto->GetType()==ITEM_TYPE_GENERIC)
+				else if(proto->Type==ITEM_TYPE_GENERIC)
 				{
 					obj_v6.MScenery.CanUse=obj_v5.GENERIC.CanUse!=0;
 					obj_v6.MScenery.TriggerNum=obj_v5.GENERIC.TriggerNum;
@@ -643,9 +643,9 @@ bool ProtoMap::ReadObjects(int version)
 				mobj->MItem.PicMapHash=mobj_v9.MItem.PicMapHash;
 				mobj->MItem.PicInvHash=mobj_v9.MItem.PicInvHash;
 				mobj->MItem.Count=mobj_v9.MItem.Count;
-				mobj->MItem.DeteorationFlags=mobj_v9.MItem.DeteorationFlags;
-				mobj->MItem.DeteorationCount=mobj_v9.MItem.DeteorationCount;
-				mobj->MItem.DeteorationValue=mobj_v9.MItem.DeteorationValue;
+				mobj->MItem.BrokenFlags=mobj_v9.MItem.BrokenFlags;
+				mobj->MItem.BrokenCount=mobj_v9.MItem.BrokenCount;
+				mobj->MItem.Deterioration=mobj_v9.MItem.Deterioration;
 				mobj->MItem.InContainer=mobj_v9.MItem.InContainer;
 				mobj->MItem.ItemSlot=mobj_v9.MItem.ItemSlot;
 				mobj->MItem.AmmoPid=mobj_v9.MItem.AmmoPid;
@@ -966,9 +966,9 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						{
 							if(field=="Item_InfoOffset") mobj.MItem.InfoOffset=ivalue;
 							else if(field=="Item_Count") mobj.MItem.Count=ivalue;
-							else if(field=="Item_DeteorationFlags") mobj.MItem.DeteorationFlags=ivalue;
-							else if(field=="Item_DeteorationCount") mobj.MItem.DeteorationCount=ivalue;
-							else if(field=="Item_DeteorationValue") mobj.MItem.DeteorationValue=ivalue;
+							else if(field=="Item_BrokenFlags") mobj.MItem.BrokenFlags=ivalue;
+							else if(field=="Item_BrokenCount") mobj.MItem.BrokenCount=ivalue;
+							else if(field=="Item_Deterioration") mobj.MItem.Deterioration=ivalue;
 							else if(field=="Item_InContainer") mobj.MItem.InContainer=(ivalue!=0);
 							else if(field=="Item_ItemSlot") mobj.MItem.ItemSlot=ivalue;
 							else if(field=="Item_AmmoPid") mobj.MItem.AmmoPid=ivalue;
@@ -987,6 +987,10 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 							else if(field=="Item_Val7") mobj.MItem.Val[7]=ivalue;
 							else if(field=="Item_Val8") mobj.MItem.Val[8]=ivalue;
 							else if(field=="Item_Val9") mobj.MItem.Val[9]=ivalue;
+							// Deprecated
+							else if(field=="Item_DeteorationFlags") mobj.MItem.BrokenFlags=ivalue;
+							else if(field=="Item_DeteorationCount") mobj.MItem.BrokenCount=ivalue;
+							else if(field=="Item_DeteorationValue") mobj.MItem.Deterioration=ivalue;
 						}
 						// Scenery
 						else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
@@ -1134,9 +1138,9 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			if(mobj.MapObjType==MAP_OBJECT_ITEM)
 			{
 				if(mobj.MItem.Count) fm->SetStr("%-20s %d\n","Item_Count",mobj.MItem.Count);
-				if(mobj.MItem.DeteorationFlags) fm->SetStr("%-20s %d\n","Item_DeteorationFlags",mobj.MItem.DeteorationFlags);
-				if(mobj.MItem.DeteorationCount) fm->SetStr("%-20s %d\n","Item_DeteorationCount",mobj.MItem.DeteorationCount);
-				if(mobj.MItem.DeteorationValue) fm->SetStr("%-20s %d\n","Item_DeteorationValue",mobj.MItem.DeteorationValue);
+				if(mobj.MItem.BrokenFlags) fm->SetStr("%-20s %d\n","Item_BrokenFlags",mobj.MItem.BrokenFlags);
+				if(mobj.MItem.BrokenCount) fm->SetStr("%-20s %d\n","Item_BrokenCount",mobj.MItem.BrokenCount);
+				if(mobj.MItem.Deterioration) fm->SetStr("%-20s %d\n","Item_Deterioration",mobj.MItem.Deterioration);
 				if(mobj.MItem.InContainer) fm->SetStr("%-20s %d\n","Item_InContainer",mobj.MItem.InContainer);
 				if(mobj.MItem.ItemSlot) fm->SetStr("%-20s %d\n","Item_ItemSlot",mobj.MItem.ItemSlot);
 				if(mobj.MItem.AmmoPid) fm->SetStr("%-20s %d\n","Item_AmmoPid",mobj.MItem.AmmoPid);
@@ -1581,7 +1585,7 @@ bool ProtoMap::Refresh()
 			continue;
 		}
 
-		WORD type=proto_item->GetType();
+		int type=proto_item->Type;
 		switch(type)
 		{
 		case ITEM_TYPE_WALL:
@@ -1689,7 +1693,7 @@ bool ProtoMap::Refresh()
 				// Flags
 				if(type==ITEM_TYPE_GENERIC && mobj.MScenery.CanUse) SETFLAG(cur_scen.Flags,SCEN_CAN_USE);
 				if(type==ITEM_TYPE_GENERIC && mobj.MScenery.CanTalk) SETFLAG(cur_scen.Flags,SCEN_CAN_TALK);
-				if(type==ITEM_TYPE_GRID && proto_item->Grid.Type!=GRID_EXITGRID) SETFLAG(cur_scen.Flags,SCEN_CAN_USE);
+				if(type==ITEM_TYPE_GRID && proto_item->Grid_Type!=GRID_EXITGRID) SETFLAG(cur_scen.Flags,SCEN_CAN_USE);
 
 				// Other
 				cur_scen.ProtoId=mobj.ProtoId;

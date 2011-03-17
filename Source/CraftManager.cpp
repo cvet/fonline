@@ -127,7 +127,7 @@ void CraftItem::SetName(FOMsg& msg_game, FOMsg& msg_item)
 		if(!proto)
 			Name+="???";
 		else
-			Name+=msg_item.GetStr(proto->GetInfo());
+			Name+=msg_item.GetStr(proto->ProtoId*100);
 
 		if(OutItemsVal[i]>1)
 		{
@@ -959,7 +959,7 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 			ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 			if(!proto_item) continue;
 
-			if(proto_item->IsGrouped())
+			if(proto_item->Stackable)
 			{
 				Item* item=ItemMngr.AddItemCritter(cr,pid,count);
 				if(item)

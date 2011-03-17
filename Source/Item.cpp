@@ -69,22 +69,24 @@ void Item::Init(ProtoItem* proto)
 	Data.Flags=Proto->Flags;
 	Data.Indicator=Proto->IndicatorStart;
 
+	for(int i=0;i<ITEM_MAX_SCRIPT_VALUES;i++)
+		Data.ScriptValues[i]=Proto->StartValue[i];
+
 	switch(GetType())
 	{
 	case ITEM_TYPE_WEAPON:
-		Data.TechInfo.AmmoCount=Proto->Weapon.VolHolder;
-		Data.TechInfo.AmmoPid=Proto->Weapon.DefAmmo;
-		break;
-	case ITEM_TYPE_MISC_EX:
-		Data.ScriptValues[1]=Proto->MiscEx.StartVal1;
-		Data.ScriptValues[2]=Proto->MiscEx.StartVal2;
-		Data.ScriptValues[3]=Proto->MiscEx.StartVal3;
+		Data.TechInfo.AmmoCount=Proto->Weapon_MaxAmmoCount;
+		Data.TechInfo.AmmoPid=Proto->Weapon_DefaultAmmoPid;
 		break;
 	case ITEM_TYPE_DOOR:
 		SETFLAG(Data.Flags,ITEM_GAG);
-		if(!Proto->Door.NoBlockMove) UNSETFLAG(Data.Flags,ITEM_NO_BLOCK);
-		if(!Proto->Door.NoBlockShoot) UNSETFLAG(Data.Flags,ITEM_SHOOT_THRU);
-		if(!Proto->Door.NoBlockLight) UNSETFLAG(Data.Flags,ITEM_LIGHT_THRU);
+		if(!Proto->Door_NoBlockMove) UNSETFLAG(Data.Flags,ITEM_NO_BLOCK);
+		if(!Proto->Door_NoBlockShoot) UNSETFLAG(Data.Flags,ITEM_SHOOT_THRU);
+		if(!Proto->Door_NoBlockLight) UNSETFLAG(Data.Flags,ITEM_LIGHT_THRU);
+		Data.Locker.Condition=Proto->Locker_Condition;
+		break;
+	case  ITEM_TYPE_CONTAINER:
+		Data.Locker.Condition=Proto->Locker_Condition;
 		break;
 	default:
 		break;
@@ -298,12 +300,12 @@ void Item::SortItems(ItemVec& items){std::sort(items.begin(),items.end(),SortIte
 
 DWORD Item::GetCount()
 {
-	return IsGrouped()?Data.Count:1;
+	return IsStackable()?Data.Count:1;
 }
 
 void Item::Count_Set(DWORD val)
 {
-	if(!IsGrouped()) return;
+	if(!IsStackable()) return;
 
 	if(Data.Count>val) ItemMngr.SubItemStatistics(GetProtoId(),Data.Count-val);
 	else if(Data.Count<val) ItemMngr.AddItemStatistics(GetProtoId(),val-Data.Count);
@@ -312,7 +314,7 @@ void Item::Count_Set(DWORD val)
 
 void Item::Count_Add(DWORD val)
 {
-	if(!IsGrouped()) return;
+	if(!IsStackable()) return;
 
 	Data.Count+=val;
 	ItemMngr.AddItemStatistics(GetProtoId(),val);
@@ -320,7 +322,7 @@ void Item::Count_Add(DWORD val)
 
 void Item::Count_Sub(DWORD val)
 {
-	if(!IsGrouped()) return;
+	if(!IsStackable()) return;
 
 	if(val>Data.Count) val=Data.Count;
 	Data.Count-=val;
@@ -328,45 +330,19 @@ void Item::Count_Sub(DWORD val)
 }
 
 #ifdef FONLINE_SERVER
-bool Item::Wear(int count)
-{
-	if(!IsWeared()) return false;
-	if(count<0) return false;
-
-	BYTE& flags=Data.TechInfo.DeteorationFlags;
-	BYTE& broken_count=Data.TechInfo.DeteorationCount;
-	WORD& wear_count=Data.TechInfo.DeteorationValue;
-
-	if(FLAG(flags,BI_ETERNAL)) return false;
-	if(FLAG(flags,BI_BROKEN)) return false;
-
-	wear_count+=count;
-
-	if(wear_count>=WEAR_MAX)
-	{
-		wear_count=WEAR_MAX;
-		broken_count++;
-
-		int broken_lvl=Random(0,broken_count/(BROKEN_MAX/4));
-
-		if(broken_count>=BROKEN_MAX || broken_lvl>=3) SETFLAG(flags,BI_NOTRESC);
-		else if(broken_lvl==2) SETFLAG(flags,BI_HIGHBROKEN);
-		else if(broken_lvl==1) SETFLAG(flags,BI_NORMBROKEN);
-		else SETFLAG(flags,BI_LOWBROKEN);
-	}
-
-	return true;
-}
-
 void Item::Repair()
 {
-	BYTE& flags=Data.TechInfo.DeteorationFlags;
-	BYTE& broken_count=Data.TechInfo.DeteorationCount;
-	WORD& wear_count=Data.TechInfo.DeteorationValue;
+	BYTE& flags=Data.TechInfo.BrokenFlags;
+	BYTE& broken_count=Data.TechInfo.BrokenCount;
+	WORD& deterioration=Data.TechInfo.Deterioration;
 
-	if(FLAG(flags,BI_ETERNAL)) return;
-	flags=0;
-	wear_count=0;
+	if(FLAG(flags,BI_BROKEN))
+	{
+		UNSETFLAG(flags,BI_BROKEN);
+		deterioration=0;
+	}
+
+	STATIC_ASSERT(offsetof(ProtoItem,UserData)==228);
 }
 #endif
 
@@ -386,15 +362,15 @@ void Item::SetMode(BYTE mode)
 
 		switch(use)
 		{
-		case USE_PRIMARY: if(Proto->Weapon.Uses&0x1) break; use=0xF; aim=0; break;
-		case USE_SECONDARY: if(Proto->Weapon.Uses&0x2) break; use=USE_PRIMARY; aim=0; break;
-		case USE_THIRD: if(Proto->Weapon.Uses&0x4) break; use=USE_PRIMARY; aim=0; break;
-		case USE_RELOAD: aim=0; if(Proto->Weapon.VolHolder) break; use=USE_PRIMARY; break;
+		case USE_PRIMARY: if(Proto->Weapon_ActiveUses&0x1) break; use=0xF; aim=0; break;
+		case USE_SECONDARY: if(Proto->Weapon_ActiveUses&0x2) break; use=USE_PRIMARY; aim=0; break;
+		case USE_THIRD: if(Proto->Weapon_ActiveUses&0x4) break; use=USE_PRIMARY; aim=0; break;
+		case USE_RELOAD: aim=0; if(Proto->Weapon_MaxAmmoCount) break; use=USE_PRIMARY; break;
 		case USE_USE: aim=0; if(IsCanUseOnSmth()) break; use=USE_PRIMARY; break;
 		default: use=USE_PRIMARY; aim=0; break;
 		}
 
-		if(use<MAX_USES && aim && !Proto->Weapon.Aim[use]) aim=0;
+		if(use<MAX_USES && aim && !Proto->Weapon_Aim[use]) aim=0;
 		mode=(aim<<4)|(use&0xF);
 	}
 	Data.Mode=mode;
@@ -403,7 +379,7 @@ void Item::SetMode(BYTE mode)
 DWORD Item::GetCost1st()
 {
 	DWORD cost=(Data.Cost?Data.Cost:Proto->Cost);
-	//if(IsWeared()) cost-=cost*GetWearProc()/100;
+	//if(IsDeteriorable()) cost-=cost*GetWearProc()/100;
 	if(IsWeapon() && Data.TechInfo.AmmoCount)
 	{
 		ProtoItem* ammo=ItemMngr.GetProtoItem(Data.TechInfo.AmmoPid);
@@ -445,8 +421,8 @@ void Item::SetLexems(const char* lexems)
 
 void Item::WeapLoadHolder()
 {
-	if(!Data.TechInfo.AmmoPid) Data.TechInfo.AmmoPid=Proto->Weapon.DefAmmo;
-	Data.TechInfo.AmmoCount=Proto->Weapon.VolHolder;
+	if(!Data.TechInfo.AmmoPid) Data.TechInfo.AmmoPid=Proto->Weapon_DefaultAmmoPid;
+	Data.TechInfo.AmmoCount=Proto->Weapon_MaxAmmoCount;
 }
 
 #ifdef FONLINE_SERVER
@@ -461,7 +437,7 @@ void Item::ContAddItem(Item*& item, DWORD special_id)
 		if(!ChildItems) return;
 	}
 
-	if(item->IsGrouped())
+	if(item->IsStackable())
 	{
 		Item* item_=ContGetItemByPid(item->GetProtoId(),special_id);
 		if(item_)
@@ -558,6 +534,7 @@ void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool sync_lock)
 	if(sync_lock && LogicMT) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
+#pragma MESSAGE("Add explicit sync lock.")
 Item* Item::ContGetItemByPid(WORD pid, DWORD special_id)
 {
 	if(!IsContainer() || !ChildItems) return NULL;
@@ -593,7 +570,7 @@ int Item::ContGetFreeVolume(DWORD special_id)
 	if(!IsContainer()) return 0;
 
 	int cur_volume=0;
-	int max_volume=Proto->Container.ContVolume;
+	int max_volume=Proto->Container_Volume;
 	if(!ChildItems) return max_volume;
 
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
@@ -609,15 +586,25 @@ bool Item::ContIsItems()
 	return ChildItems && ChildItems->size();
 }
 
-Item* Item::CarGetBag(int num_bag)
+Item* Item::GetChild(DWORD child_index)
 {
-	if(!IsCar()) return NULL;
+	if(child_index>=ITEM_MAX_CHILDS || !Proto->ChildPid[child_index]) return NULL;
 
 	if(Accessory==ITEM_ACCESSORY_HEX)
 	{
 		Map* map=MapMngr.GetMap(ACC_HEX.MapId);
 		if(!map) return NULL;
-		return map->GetCarBag(ACC_HEX.HexX,ACC_HEX.HexY,Proto,num_bag);
+		return map->GetItemChild(ACC_HEX.HexX,ACC_HEX.HexY,Proto,child_index);
+	}
+	else if(Accessory==ITEM_ACCESSORY_CRITTER)
+	{
+		Critter* cr=CrMngr.GetCritter(ACC_CRITTER.Id,true);
+		if(cr) return cr->GetItemByPid(Proto->ChildPid[child_index]);
+	}
+	else if(Accessory==ITEM_ACCESSORY_CONTAINER)
+	{
+		Item* cont=ItemMngr.GetItem(ACC_CONTAINER.ContainerId,true);
+		if(cont) return cont->ContGetItemByPid(Proto->ChildPid[child_index],ACC_CONTAINER.SpecialId);
 	}
 	return NULL;
 }
@@ -629,7 +616,7 @@ Item* Item::CarGetBag(int num_bag)
 
 DWORD ProtoItem::GetCurSprId()
 {
-	AnyFrames* anim=ResMngr.GetItemAnim(PicMapHash,Dir);
+	AnyFrames* anim=ResMngr.GetItemAnim(PicMap,Dir);
 	if(!anim) return 0;
 
 	DWORD beg=0,end=0;

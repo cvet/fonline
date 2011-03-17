@@ -2206,7 +2206,14 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!CreateItemToHexCr(cl,hex_x,hex_y,pid,count))
+			Map* map=MapMngr.GetMap(cl->GetMap());
+			if(!map || hex_x>=map->GetMaxHexX() || hex_y>=map->GetMaxHexY())
+			{
+				cl->Send_Text(cl,"Wrong hexes or critter on global map.",SAY_NETMSG);
+				return;
+			}
+
+			if(!CreateItemOnHex(map,hex_x,hex_y,pid,count))
 			{
 				cl->Send_Text(cl,"Item(s) not added.",SAY_NETMSG);
 			}
@@ -3332,18 +3339,19 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(IntMap)==12);
 	STATIC_ASSERT(sizeof(IntSet)==12);
 	STATIC_ASSERT(sizeof(IntPair)==8);
+	STATIC_ASSERT(sizeof(ProtoItem)==908);
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(NpcBagItem)==16);
 	STATIC_ASSERT(sizeof(CritData)==7404);
 	STATIC_ASSERT(sizeof(CritDataExt)==6944);
 	STATIC_ASSERT(sizeof(GameVar)==28);
-	STATIC_ASSERT(sizeof(ProtoItem)==184);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
 	STATIC_ASSERT(sizeof(GameOptions)==1264);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
+	STATIC_ASSERT(PROTO_ITEM_USER_DATA_SIZE==500); // Used in ASCompiler
 
 	// Critters parameters
 	Critter::SendDataCallback=&Net_Output;

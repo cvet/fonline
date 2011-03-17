@@ -215,8 +215,7 @@ typedef vector<TextListen>::iterator TextListenVecIt;
 //	void GlobalEventCritterDead(Critter* cr);
 
 	// Items
-	static Item* CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count);
-	static Item* CreateItemToHexCr(Critter* cr, WORD hx, WORD hy, WORD pid, DWORD count);
+	static Item* CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count, bool check_blocks = true);
 	static bool TransferAllItems();
 
 	// Npc
@@ -469,8 +468,8 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static DWORD Container_GetItems(Item* cont, DWORD special_id, CScriptArray* items);
 		static Item* Container_GetItem(Item* cont, WORD pid, DWORD special_id);
 
-		static bool Item_IsGrouped(Item* item);
-		static bool Item_IsWeared(Item* item);
+		static bool Item_IsStackable(Item* item);
+		static bool Item_IsDeteriorable(Item* item);
 		static bool Item_SetScript(Item* item, CScriptString* script);
 		static DWORD Item_GetScriptId(Item* item);
 		static bool Item_SetEvent(Item* item, int event_type, CScriptString* func_name);
@@ -484,10 +483,9 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static void Item_Update(Item* item);
 		static void Item_Animate(Item* item, BYTE from_frm, BYTE to_frm);
 		static void Item_SetLexems(Item* item, CScriptString* lexems);
+		static Item* Item_GetChild(Item* item, DWORD child_index);
 		static bool Item_LockerOpen(Item* item);
 		static bool Item_LockerClose(Item* item);
-		static bool Item_IsCar(Item* item);
-		static Item* Item_CarGetBag(Item* item, int num_bag);
 
 		static void Item_EventFinish(Item* item, bool deleted);
 		static bool Item_EventAttack(Item* item, Critter* attacker, Critter* target);
@@ -502,56 +500,6 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static DWORD Item_get_Flags(Item* item);
 		static void Item_set_TrapValue(Item* item, short value);
 		static short Item_get_TrapValue(Item* item);
-		
-/*#define ITEM_CHANGED_FUNC(prop,data_prop,type) \
-	static type Item_get_##prop(Item* item)\
-	{\
-		return item->Data.data_prop;\
-	}\
-	static void Item_set_##prop(Item* item, type val)\
-	{\
-		item->Data.data_prop=val;\
-		ItemMngr.AddChangedItem(item);\
-	}
-		ITEM_CHANGED_FUNC(SortValue,SortValue,WORD);
-		ITEM_CHANGED_FUNC(Info,Info,BYTE);
-		ITEM_CHANGED_FUNC(PicMap,PicMap,WORD);
-		ITEM_CHANGED_FUNC(PicInv,PicInv,WORD);
-		ITEM_CHANGED_FUNC(AnimWaitBase,AnimWaitBase,WORD);
-		ITEM_CHANGED_FUNC(AnimStayBegin,AnimStay[0],BYTE);
-		ITEM_CHANGED_FUNC(AnimStayEnd,AnimStay[1],BYTE);
-		ITEM_CHANGED_FUNC(AnimShowBegin,AnimShow[0],BYTE);
-		ITEM_CHANGED_FUNC(AnimShowEnd,AnimShow[1],BYTE);
-		ITEM_CHANGED_FUNC(AnimHideBegin,AnimHide[0],BYTE);
-		ITEM_CHANGED_FUNC(AnimHideEnd,AnimHide[1],BYTE);
-		ITEM_CHANGED_FUNC(Cost,Cost,DWORD);
-		ITEM_CHANGED_FUNC(Val0,ScriptValues[0],int);
-		ITEM_CHANGED_FUNC(Val1,ScriptValues[1],int);
-		ITEM_CHANGED_FUNC(Val2,ScriptValues[2],int);
-		ITEM_CHANGED_FUNC(Val3,ScriptValues[3],int);
-		ITEM_CHANGED_FUNC(Val4,ScriptValues[4],int);
-		ITEM_CHANGED_FUNC(Val5,ScriptValues[5],int);
-		ITEM_CHANGED_FUNC(Val6,ScriptValues[6],int);
-		ITEM_CHANGED_FUNC(Val7,ScriptValues[7],int);
-		ITEM_CHANGED_FUNC(Val8,ScriptValues[8],int);
-		ITEM_CHANGED_FUNC(Val9,ScriptValues[9],int);
-		ITEM_CHANGED_FUNC(LightIntensity,LightIntensity,char);
-		ITEM_CHANGED_FUNC(LightRadius,LightRadius,BYTE);
-		ITEM_CHANGED_FUNC(LightFlags,LightFlags,BYTE);
-		ITEM_CHANGED_FUNC(LightColor,LightColor,DWORD);
-		ITEM_CHANGED_FUNC(TrapValue,TrapValue,short);
-		ITEM_CHANGED_FUNC(BrokenFlags,TechInfo.DeteorationFlags,BYTE);
-		ITEM_CHANGED_FUNC(BrokenCount,TechInfo.DeteorationCount,BYTE);
-		ITEM_CHANGED_FUNC(BrokenWear,TechInfo.DeteorationValue,WORD);
-		ITEM_CHANGED_FUNC(WeaponAmmoPid,TechInfo.AmmoPid,WORD);
-		ITEM_CHANGED_FUNC(WeaponAmmoCount,TechInfo.AmmoCount,WORD);
-		ITEM_CHANGED_FUNC(LockerId,Locker.DoorId,DWORD);
-		ITEM_CHANGED_FUNC(LockerCondition,Locker.Condition,WORD);
-		ITEM_CHANGED_FUNC(LockerComplexity,Locker.Complexity,WORD);
-		ITEM_CHANGED_FUNC(CarFuel,Car.Fuel,WORD);
-		ITEM_CHANGED_FUNC(CarDeteoration,Car.Deteoration,WORD);
-		ITEM_CHANGED_FUNC(RadioChannel,Radio.Channel,WORD);
-		ITEM_CHANGED_FUNC(HolodiskNumber,Holodisk.Number,DWORD);*/
 
 		static bool Crit_IsPlayer(Critter* cr);
 		static bool Crit_IsNpc(Critter* cr);
@@ -797,7 +745,7 @@ typedef vector<ClientData>::iterator ClientDataVecIt;
 		static void Map_SetTextMsgLex(Map* map, WORD hex_x, WORD hex_y, DWORD color, WORD text_msg, DWORD str_num, CScriptString& lexems);
 		static void Map_RunEffect(Map* map, WORD eff_pid, WORD hx, WORD hy, DWORD radius);
 		static void Map_RunFlyEffect(Map* map, WORD eff_pid, Critter* from_cr, Critter* to_cr, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
-		static bool Map_CheckPlaceForCar(Map* map, WORD hx, WORD hy, WORD pid);
+		static bool Map_CheckPlaceForItem(Map* map, WORD hx, WORD hy, WORD pid);
 		static void Map_BlockHex(Map* map, WORD hx, WORD hy, bool full);
 		static void Map_UnblockHex(Map* map, WORD hx, WORD hy);
 		static void Map_PlaySound(Map* map, CScriptString& sound_name);

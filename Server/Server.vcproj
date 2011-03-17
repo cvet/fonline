@@ -916,6 +916,30 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\ScriptPragmas.cpp"
+				>
+				<FileConfiguration
+					Name="App Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="App MaxOptimize|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Source\ScriptPragmas.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Server.cpp"
 				>
 			</File>

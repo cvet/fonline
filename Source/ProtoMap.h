@@ -60,9 +60,9 @@ public:
 
 			DWORD Count;
 
-			BYTE DeteorationFlags;
-			BYTE DeteorationCount;
-			WORD DeteorationValue;
+			BYTE BrokenFlags;
+			BYTE BrokenCount;
+			WORD Deterioration;
 
 			bool InContainer;
 			BYTE ItemSlot;

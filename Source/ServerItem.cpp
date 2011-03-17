@@ -5,56 +5,45 @@
 /* Create / Delete game_items from critters and hexes, uses in scripts  */
 /************************************************************************/
 
-Item* FOServer::CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count)
+Item* FOServer::CreateItemOnHex(Map* map, WORD hx, WORD hy, WORD pid, DWORD count, bool check_blocks /* = true */)
 {
+	// Checks
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item || !count) return NULL;
 
-	if(proto_item->IsCar() && !map->IsPlaceForCar(hx,hy,proto_item)) return NULL;
+	// Check blockers
+	if(check_blocks && proto_item->IsBlocks() && !map->IsPlaceForItem(hx,hy,proto_item)) return NULL;
 
-	Item* item=ItemMngr.CreateItem(pid,proto_item->IsGrouped()?count:1);
+	// Create instance
+	Item* item=ItemMngr.CreateItem(pid,proto_item->Stackable?count:1);
 	if(!item) return NULL;
 
+	// Add on map
 	if(!map->AddItem(item,hx,hy))
 	{
 		ItemMngr.ItemToGarbage(item);
 		return NULL;
 	}
 
-	// Create car bags
-	if(item->IsCar())
+	// Create childs
+	for(int i=0;i<ITEM_MAX_CHILDS;i++)
 	{
-		ProtoItem* pbag;
-		WORD bag_pid;
-		for(int i=0;i<CAR_MAX_BAGS;i++)
-		{
-			if(i==0) bag_pid=item->Proto->MiscEx.StartVal1;
-			else if(i==1) bag_pid=item->Proto->MiscEx.StartVal2;
-			else if(i==2) bag_pid=item->Proto->MiscEx.StartVal3;
-			else break;
+		WORD child_pid=item->Proto->ChildPid[i];
+		if(!child_pid) continue;
 
-			if(!bag_pid) continue;
-			pbag=ItemMngr.GetProtoItem(bag_pid);
-			if(!pbag || pbag->IsCar()) continue;
+		ProtoItem* child=ItemMngr.GetProtoItem(child_pid);
+		if(!child) continue;
 
-			WORD bag_hx=hx;
-			WORD bag_hy=hy;
+		WORD child_hx=hx,child_hy=hy;
+		FOREACH_PROTO_ITEM_LINES(item->Proto->ChildLines[i],child_hx,child_hy,map->GetMaxHexX(),map->GetMaxHexY(),;);
 
-			map->GetCarBagPos(hx,hy,item->Proto,i);
-			CreateItemOnHex(map,hx,hy,bag_pid,1);
-		}
+		CreateItemOnHex(map,child_hx,child_hy,child_pid,1,false);
 	}
 
-	if(!proto_item->IsGrouped() && count>1) return CreateItemOnHex(map,hx,hy,pid,count-1);
-	return item;
-}
+	// Recursive non-stacked items
+	if(!proto_item->Stackable && count>1) return CreateItemOnHex(map,hx,hy,pid,count-1);
 
-Item* FOServer::CreateItemToHexCr(Critter* cr, WORD hx, WORD hy, WORD pid, DWORD count)
-{
-	if(!cr) return NULL;
-	Map* map=MapMngr.GetMap(cr->GetMap());
-	if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) return NULL;
-	return CreateItemOnHex(map,hx,hy,pid,count);
+	return item;
 }
 
 bool FOServer::TransferAllItems()

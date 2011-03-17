@@ -238,51 +238,25 @@ void HexManager::ReloadSprites()
 	}
 }
 
-void HexManager::PlaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void HexManager::PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 {
 	if(!proto_item) return;
 
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
-	BYTE dir;
-	int steps;
-	for(int i=0;i<CAR_MAX_BLOCKS;i++)
-	{
-		dir=proto_item->MiscEx.Car.GetBlockDir(i);
-		if(dir>=DIRS_COUNT) return;
-
-		i++;
-		steps=proto_item->MiscEx.Car.GetBlockDir(i);
-
-		for(int j=0;j<steps;j++)
-		{
-			MoveHexByDir(hx,hy,dir,maxHexX,maxHexY);
-			GetField(hx,hy).IsNotPassed=true;
-			if(!raked) GetField(hx,hy).IsNotRaked=true;
-		}
-	}
+	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
+		GetField(hx,hy).IsNotPassed=true;
+		if(!raked) GetField(hx,hy).IsNotRaked=true;
+	);
 }
 
-void HexManager::ReplaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void HexManager::ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 {
 	if(!proto_item) return;
 
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
-	BYTE dir;
-	int steps;
-	for(int i=0;i<CAR_MAX_BLOCKS;i++)
-	{
-		dir=proto_item->MiscEx.Car.GetBlockDir(i);
-		if(dir>=DIRS_COUNT) return;
-
-		i++;
-		steps=proto_item->MiscEx.Car.GetBlockDir(i);
-
-		for(int j=0;j<steps;j++)
-		{
-			MoveHexByDir(hx,hy,dir,maxHexX,maxHexY);
-			GetField(hx,hy).ProcessCache();
-		}
-	}
+	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
+		GetField(hx,hy).ProcessCache();
+	);
 }
 
 bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, Item::ItemData* data)
@@ -408,7 +382,7 @@ ItemHexVecIt HexManager::DeleteItem(ItemHex* item, bool with_delete /* = true */
 	WORD hx=item->GetHexX();
 	WORD hy=item->GetHexY();
 
-	if(item->Proto->IsCar()) ReplaceCarBlocks(item->HexX,item->HexY,item->Proto);
+	if(item->IsBlocks()) ReplaceItemBlocks(item->HexX,item->HexY,item->Proto);
 	if(item->SprDrawValid) item->SprDraw->Unvalidate();
 
 	ItemHexVecIt it=std::find(hexItems.begin(),hexItems.end(),item);
@@ -479,7 +453,8 @@ void HexManager::PushItem(ItemHex* item)
 	item->HexScrY=&f.ScrY;
 	f.AddItem(item);
 
-	if(item->Proto->IsCar()) PlaceCarBlocks(hx,hy,item->Proto);
+	// Blocks
+	if(item->IsBlocks()) PlaceItemBlocks(hx,hy,item->Proto);
 
 	// Sort
 	std::sort(f.Items.begin(),f.Items.end(),ItemCompScen);
@@ -2771,7 +2746,6 @@ bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, flo
 		if(GameOpt.MapHexagonal)
 		{
 			dir=line_tracer.GetNextHex(cx,cy);
-			WriteLog("%u) dir<%u>\n",i,dir);
 		}
 		else
 		{

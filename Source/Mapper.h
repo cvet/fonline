@@ -15,6 +15,7 @@
 #include "ResourceManager.h"
 #include "CritterType.h"
 #include "Script.h"
+#include "ScriptPragmas.h"
 
 // Fonts
 #define FONT_FO                 (0)
@@ -265,7 +266,7 @@ typedef vector<MapText>::iterator MapTextVecIt;
 		bool operator==(const MapObject* r){return MapObj==r;}
 		bool IsItem(){return MapItem!=NULL;}
 		bool IsNpc(){return MapNpc!=NULL;}
-		bool IsContainer(){return IsNpc() || (IsItem() && MapItem->Proto->GetType()==ITEM_TYPE_CONTAINER);}
+		bool IsContainer(){return IsNpc() || (IsItem() && MapItem->Proto->Type==ITEM_TYPE_CONTAINER);}
 	};
 typedef vector<SelMapObj> SelMapProtoItemVec;
 	SelMapProtoItemVec SelectedObj;
@@ -391,6 +392,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	static bool SpritesCanDraw;
 	void InitScriptSystem();
 	void FinishScriptSystem();
+	void RunStartScript();
 	void DrawIfaceLayer(DWORD layer);
 
 	struct SScriptFunc

@@ -165,6 +165,9 @@ bool FOMapper::Init(HWND wnd)
 		return false;
 	}
 
+	// Script system
+	InitScriptSystem();
+
 	// Server path
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 
@@ -225,7 +228,7 @@ bool FOMapper::Init(HWND wnd)
 	for(int i=1;i<MAX_ITEM_PROTOTYPES;i++)
 	{
 		ProtoItem* proto=&item_protos[i];
-		if(proto->IsInit())
+		if(proto->ProtoId!=0)
 		{
 			Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(*proto);
 			Tabs[INT_MODE_ITEM][ItemMngr.ProtosCollectionName[i]].ItemProtos.push_back(*proto);
@@ -286,8 +289,8 @@ bool FOMapper::Init(HWND wnd)
 		}
 	}
 
-	// Script system
-	InitScriptSystem();
+	// Start script
+	RunStartScript();
 
 	// Refresh resources after start script executed
 	ResMngr.Refresh();
@@ -1608,19 +1611,19 @@ void FOMapper::IntDraw()
 
 			if(proto_item->IsItem())
 			{
-				AnyFrames* anim=ResMngr.GetInvAnim(proto_item->PicInvHash);
+				AnyFrames* anim=ResMngr.GetInvAnim(proto_item->PicInv);
 				if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y+h/2,w,h/2,false,true,col);
 			}
 
-			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",proto_item->GetPid()),FT_NOBREAK,COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",proto_item->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 
 		if(GetTabIndex()<(*CurItemProtos).size())
 		{
 			ProtoItem* proto_item=&(*CurItemProtos)[GetTabIndex()];
-			string info=MsgItem->GetStr(proto_item->GetInfo());
+			string info=MsgItem->GetStr(proto_item->ProtoId*100);
 			info+=" - ";
-			info+=MsgItem->GetStr(proto_item->GetInfo()+1);
+			info+=MsgItem->GetStr(proto_item->ProtoId*100+1);
 			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),info.c_str(),FT_COLORIZE);
 		}
 	}
@@ -1689,7 +1692,7 @@ void FOMapper::IntDraw()
 			ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj->ProtoId);
 			if(!proto_item) continue;
 
-			AnyFrames* anim=ResMngr.GetInvAnim(proto_item->PicInvHash);
+			AnyFrames* anim=ResMngr.GetInvAnim(proto_item->PicInv);
 			if(!anim) continue;
 
 			DWORD col=COLOR_IFACE;
@@ -1697,8 +1700,8 @@ void FOMapper::IntDraw()
 
 			SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y,w,h,false,true,col);
 
-			DWORD cnt=(proto_item->IsGrouped()?mobj->MItem.Count:1);
-			if(proto_item->GetType()==ITEM_TYPE_AMMO && !cnt) cnt=proto_item->Ammo.StartCount;
+			DWORD cnt=(proto_item->Stackable?mobj->MItem.Count:1);
+			if(proto_item->Stackable && !cnt) cnt=proto_item->StartCount;
 			if(!cnt) cnt=1;
 			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("x%u",cnt),FT_NOBREAK,COLOR_TEXT_WHITE);
 			if(mobj->MItem.ItemSlot!=SLOT_INV)
@@ -1804,13 +1807,13 @@ void FOMapper::ObjDraw()
 
 	if(proto)
 	{
-		AnyFrames* anim=ResMngr.GetItemAnim(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMapHash,o->Dir);
+		AnyFrames* anim=ResMngr.GetItemAnim(o->MItem.PicMapHash?o->MItem.PicMapHash:proto->PicMap,o->Dir);
 		if(!anim) anim=ItemHex::DefaultAnim;
 		SprMngr.DrawSpriteSize(anim->GetCurSprId(),x+w-ProtoWidth,y,ProtoWidth,ProtoWidth,false,true);
 
 		if(proto->IsItem())
 		{
-			AnyFrames* anim=ResMngr.GetInvAnim(o->MItem.PicInvHash?o->MItem.PicInvHash:proto->PicInvHash);
+			AnyFrames* anim=ResMngr.GetInvAnim(o->MItem.PicInvHash?o->MItem.PicInvHash:proto->PicInv);
 			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),x+w-ProtoWidth,y+ProtoWidth,ProtoWidth,ProtoWidth,false,true);
 		}
 	}
@@ -1855,8 +1858,8 @@ void FOMapper::ObjDraw()
 	}
 	else if(so.MapItem && proto)
 	{
-		DRAW_COMPONENT_TEXT("PicMap",Str::GetName(proto->PicMapHash),true);          // 0
-		DRAW_COMPONENT_TEXT("PicInv",Str::GetName(proto->PicInvHash),true);          // 1
+		DRAW_COMPONENT_TEXT("PicMap",Str::GetName(proto->PicMap),true);                 // 0
+		DRAW_COMPONENT_TEXT("PicInv",Str::GetName(proto->PicInv),true);                 // 1
 	}
 
 	if(o->MapObjType==MAP_OBJECT_CRITTER) DRAW_COMPONENT_TEXT("MapObjType","Critter",true); // 2
@@ -1910,43 +1913,43 @@ void FOMapper::ObjDraw()
 			DRAW_COMPONENT("Value3",o->MItem.Val[3],false,false);                            // 28
 			DRAW_COMPONENT("Value4",o->MItem.Val[4],false,false);                            // 29
 
-			switch(proto->GetType())
+			if(proto->Stackable)
 			{
-			case ITEM_TYPE_ARMOR:
-				DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false);     // 30
-				DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false);     // 31
-				DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false);     // 32
-				break;
-			case ITEM_TYPE_WEAPON:
-				if(proto->WeapIsGrouped())
-				{
-					DRAW_COMPONENT("Count",o->MItem.Count,true,false);                       // 30
-				}
-				else if(proto->WeapIsWeared())
-				{
-					DRAW_COMPONENT("DeteorationFlags",o->MItem.DeteorationFlags,true,false); // 30
-					DRAW_COMPONENT("DeteorationCount",o->MItem.DeteorationCount,true,false); // 31
-					DRAW_COMPONENT("DeteorationValue",o->MItem.DeteorationValue,true,false); // 32
-					if(proto->Weapon.VolHolder)
-					{
-						DRAW_COMPONENT("AmmoPid",o->MItem.AmmoPid,true,false);               // 33
-						DRAW_COMPONENT("AmmoCount",o->MItem.AmmoCount,true,false);           // 34
-					}
-				}
-				break;
-			case ITEM_TYPE_DRUG:
-			case ITEM_TYPE_AMMO:
-			case ITEM_TYPE_MISC:
 				DRAW_COMPONENT("Count",o->MItem.Count,true,false);                           // 30
+			}
+			else
+			{
+				y+=step;                                                                     // 30
+			}
+
+			if(proto->Deteriorable)
+			{
+				DRAW_COMPONENT("BrokenFlags",o->MItem.BrokenFlags,true,false);               // 31
+				DRAW_COMPONENT("BrokenCount",o->MItem.BrokenCount,true,false);               // 32
+				DRAW_COMPONENT("Deterioration",o->MItem.Deterioration,true,false);           // 33
+			}
+			else
+			{
+				y+=step;                                                                     // 31
+				y+=step;                                                                     // 32
+				y+=step;                                                                     // 33
+			}
+
+			switch(proto->Type)
+			{
+			case ITEM_TYPE_WEAPON:
+				if(!proto->Weapon_MaxAmmoCount) break;
+				DRAW_COMPONENT("AmmoPid",o->MItem.AmmoPid,true,false);                       // 34
+				DRAW_COMPONENT("AmmoCount",o->MItem.AmmoCount,true,false);                   // 35
 				break;
 			case ITEM_TYPE_KEY:
-				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 30
+				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 34
 				break;
 			case ITEM_TYPE_CONTAINER:
 			case ITEM_TYPE_DOOR:
-				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 30
-				DRAW_COMPONENT("LockerCondition",o->MItem.LockerCondition,true,false);       // 31
-				DRAW_COMPONENT("LockerComplexity",o->MItem.LockerComplexity,true,false);     // 32
+				DRAW_COMPONENT("LockerDoorId",o->MItem.LockerDoorId,true,false);             // 34
+				DRAW_COMPONENT("LockerCondition",o->MItem.LockerCondition,true,false);       // 35
+				DRAW_COMPONENT("LockerComplexity",o->MItem.LockerComplexity,true,false);     // 36
 				break;
 			default:
 				break;
@@ -1956,7 +1959,7 @@ void FOMapper::ObjDraw()
 		{
 			DRAW_COMPONENT("SpriteCut",o->MScenery.SpriteCut,false,false);                   // 24
 
-			if(proto->GetType()==ITEM_TYPE_GRID)
+			if(proto->Type==ITEM_TYPE_GRID)
 			{
 				DRAW_COMPONENT("ToMapPid",o->MScenery.ToMapPid,true,false);                  // 25
 				if(o->ProtoId==SP_GRID_ENTIRE)
@@ -1965,7 +1968,7 @@ void FOMapper::ObjDraw()
 					DRAW_COMPONENT("ToEntire",o->MScenery.ToEntire,true,false);              // 26
 				DRAW_COMPONENT("ToDir",o->MScenery.ToDir,true,false);                        // 27
 			}
-			else if(proto->GetType()==ITEM_TYPE_GENERIC)
+			else if(proto->Type==ITEM_TYPE_GENERIC)
 			{
 				DRAW_COMPONENT("ParamsCount",o->MScenery.ParamsCount,true,false);            // 25
 				DRAW_COMPONENT("Parameter0",o->MScenery.Param[0],false,false);               // 26
@@ -2008,7 +2011,7 @@ void FOMapper::ObjKeyDown(BYTE dik)
 		MapObject* o2=SelectedObj[i].MapObj;
 		ProtoItem* proto2=ItemMngr.GetProtoItem(o2->ProtoId);
 
-		if(o->MapObjType==o2->MapObjType && (o->MapObjType==MAP_OBJECT_CRITTER || (proto && proto2 && proto->GetType()==proto2->GetType())))
+		if(o->MapObjType==o2->MapObjType && (o->MapObjType==MAP_OBJECT_CRITTER || (proto && proto2 && proto->Type==proto2->Type)))
 		{
 			ObjKeyDownA(o2,dik);
 
@@ -2111,98 +2114,69 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[0];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapPid;
-			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_b=&o->MScenery.ParamsCount;
+			if(proto->Type==ITEM_TYPE_GRID) val_w=&o->MScenery.ToMapPid;
+			else if(proto->Type==ITEM_TYPE_GENERIC) val_b=&o->MScenery.ParamsCount;
 		}
 		break;
 	case 26:
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[1];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GRID) val_dw=&o->MScenery.ToEntire;
-			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[0];
+			if(proto->Type==ITEM_TYPE_GRID) val_dw=&o->MScenery.ToEntire;
+			else if(proto->Type==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[0];
 		}
 		break;
 	case 27:
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[2];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GRID) val_b=&o->MScenery.ToDir;
-			else if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[1];
+			if(proto->Type==ITEM_TYPE_GRID) val_b=&o->MScenery.ToDir;
+			else if(proto->Type==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[1];
 		}
 		break;
 	case 28:
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[3];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[2];
+			if(proto->Type==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[2];
 		}
 		break;
 	case 29:
 		if(o->MapObjType==MAP_OBJECT_ITEM) val_i=&o->MItem.Val[4];
 		else if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[3];
+			if(proto->Type==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[3];
 		}
 		break;
 	case 30:
-		if(o->MapObjType==MAP_OBJECT_ITEM)
-		{
-			switch(proto->GetType())
-			{
-			case ITEM_TYPE_WEAPON:
-				if(proto->WeapIsGrouped()) val_dw=&o->MItem.Count;
-				else if(proto->WeapIsWeared()) val_b=&o->MItem.DeteorationFlags;
-				break;
-			case ITEM_TYPE_ARMOR: val_b=&o->MItem.DeteorationFlags; break;
-			case ITEM_TYPE_KEY:
-			case ITEM_TYPE_CONTAINER:
-			case ITEM_TYPE_DOOR: val_dw=&o->MItem.LockerDoorId; break;
-			case ITEM_TYPE_DRUG:
-			case ITEM_TYPE_AMMO:
-			case ITEM_TYPE_MISC: val_dw=&o->MItem.Count; break;
-			default: break;
-			}
-		}
-		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[4];
+		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Stackable) val_dw=&o->MItem.Count;
+		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->Type==ITEM_TYPE_GENERIC) val_i=&o->MScenery.Param[4];
 		break;
 	case 31:
-		if(o->MapObjType==MAP_OBJECT_ITEM)
-		{
-			switch(proto->GetType())
-			{
-			case ITEM_TYPE_WEAPON: if(proto->WeapIsWeared()) val_b=&o->MItem.DeteorationCount; break;
-			case ITEM_TYPE_ARMOR: val_b=&o->MItem.DeteorationCount; break;
-			case ITEM_TYPE_CONTAINER:
-			case ITEM_TYPE_DOOR: val_w=&o->MItem.LockerCondition; break;
-			default: break;
-			}
-		}
-		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC)
+		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Deteriorable) val_b=&o->MItem.BrokenFlags;
+		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->Type==ITEM_TYPE_GENERIC)
 		{
 			if(o->ProtoId==SP_SCEN_TRIGGER) val_dw=&o->MScenery.TriggerNum;
 			else val_bool=&o->MScenery.CanUse;
 		}
 		break;
 	case 32:
-		if(o->MapObjType==MAP_OBJECT_ITEM)
-		{
-			switch(proto->GetType())
-			{
-			case ITEM_TYPE_WEAPON: if(proto->WeapIsWeared()) val_w=&o->MItem.DeteorationValue; break;
-			case ITEM_TYPE_ARMOR: val_w=&o->MItem.DeteorationValue; break;
-			case ITEM_TYPE_CONTAINER:
-			case ITEM_TYPE_DOOR: val_w=&o->MItem.LockerComplexity; break;
-			default: break;
-			}
-		}
-		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->GetType()==ITEM_TYPE_GENERIC && o->ProtoId!=SP_SCEN_TRIGGER) val_bool=&o->MScenery.CanTalk;
+		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Deteriorable) val_b=&o->MItem.BrokenCount;
+		else if(o->MapObjType==MAP_OBJECT_SCENERY && proto->Type==ITEM_TYPE_GENERIC && o->ProtoId!=SP_SCEN_TRIGGER) val_bool=&o->MScenery.CanTalk;
 		break;
 	case 33:
-		if(o->MapObjType==MAP_OBJECT_ITEM && proto->GetType()==ITEM_TYPE_WEAPON && proto->WeapIsWeared() && proto->Weapon.VolHolder) val_w=&o->MItem.AmmoPid;
+		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Deteriorable) val_w=&o->MItem.Deterioration;
 		break;
 	case 34:
-		if(o->MapObjType==MAP_OBJECT_ITEM && proto->GetType()==ITEM_TYPE_WEAPON && proto->WeapIsWeared() && proto->Weapon.VolHolder) val_dw=&o->MItem.AmmoCount;
+		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Type==ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount) val_w=&o->MItem.AmmoPid;
+		if(o->MapObjType==ITEM_TYPE_KEY || o->MapObjType==ITEM_TYPE_CONTAINER || o->MapObjType==ITEM_TYPE_DOOR) val_dw=&o->MItem.LockerDoorId;
+		break;
+	case 35:
+		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Type==ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount) val_dw=&o->MItem.AmmoCount;
+		if(o->MapObjType==ITEM_TYPE_KEY || o->MapObjType==ITEM_TYPE_CONTAINER || o->MapObjType==ITEM_TYPE_DOOR) val_w=&o->MItem.LockerCondition;
+		break;
+	case 36:
+		if(o->MapObjType==ITEM_TYPE_KEY || o->MapObjType==ITEM_TYPE_CONTAINER || o->MapObjType==ITEM_TYPE_DOOR) val_w=&o->MItem.LockerComplexity;
 		break;
 	default:
 		break;
@@ -2367,7 +2341,7 @@ void FOMapper::IntLMouseDown()
 		}
 		else if(CurMode==CUR_MODE_DRAW)
 		{
-			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[GetTabIndex()].GetPid(),SelectHX1,SelectHY1,false);
+			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[GetTabIndex()].ProtoId,SelectHX1,SelectHY1,false);
 			else if(IsTileMode() && CurTileHashes->size()) ParseTile((*CurTileHashes)[GetTabIndex()],SelectHX1,SelectHY1,0,0,TileLayer,DrawRoof);
 			else if(IsCritMode() && CurNpcProtos->size()) ParseNpc((*CurNpcProtos)[GetTabIndex()]->ProtoId,SelectHX1,SelectHY1);
 		}
@@ -2416,7 +2390,7 @@ void FOMapper::IntLMouseDown()
 			// Switch ignore pid to draw
 			if(Keyb::CtrlDwn)
 			{
-				WORD pid=(*CurItemProtos)[ind].GetPid();
+				WORD pid=(*CurItemProtos)[ind].ProtoId;
 
 				SubTab& stab=Tabs[INT_MODE_IGNORE][DEFAULT_SUB_TAB];
  				ProtoItemVecIt it=std::find(stab.ItemProtos.begin(),stab.ItemProtos.end(),pid);
@@ -2432,11 +2406,11 @@ void FOMapper::IntLMouseDown()
 				bool add=true;
 				ProtoItem* proto_item=&(*CurItemProtos)[ind];
 
-				if(proto_item->IsGrouped())
+				if(proto_item->Stackable)
 				{
 					for(int i=0,j=SelectedObj[0].Childs.size();i<j;i++)
 					{
-						if(proto_item->GetPid()==SelectedObj[0].Childs[i]->ProtoId)
+						if(proto_item->ProtoId==SelectedObj[0].Childs[i]->ProtoId)
 						{
 							add=false;
 							break;
@@ -2447,7 +2421,7 @@ void FOMapper::IntLMouseDown()
 				if(add)
 				{
 					MapObject* mobj=SelectedObj[0].MapObj;
-					ParseProto(proto_item->GetPid(),mobj->MapX,mobj->MapY,true);
+					ParseProto(proto_item->ProtoId,mobj->MapX,mobj->MapY,true);
 					SelectAdd(mobj);
 				}
 			}
@@ -2494,7 +2468,7 @@ void FOMapper::IntLMouseDown()
 				{
 					ProtoItem* proto_item=ItemMngr.GetProtoItem(InContObject->ProtoId);
 					BYTE crtype=SelectedObj[0].MapNpc->GetCrType();
-					BYTE anim1=(proto_item->IsWeapon()?proto_item->Weapon.Anim1:0);
+					BYTE anim1=(proto_item->IsWeapon()?proto_item->Weapon_Anim1:0);
 
 					if(proto_item->IsArmor() && CritType::IsCanArmor(crtype))
 					{
@@ -2558,7 +2532,7 @@ void FOMapper::IntLMouseDown()
 						if(child->MItem.ItemSlot==SLOT_HAND1)
 						{
 							pitem_main=ItemMngr.GetProtoItem(child->ProtoId);
-							BYTE anim1=(pitem_main->IsWeapon()?pitem_main->Weapon.Anim1:0);
+							BYTE anim1=(pitem_main->IsWeapon()?pitem_main->Weapon_Anim1:0);
 							if(anim1 && !CritType::IsAnim1(SelectedObj[0].MapNpc->GetCrType(),anim1))
 							{
 								pitem_main=NULL;
@@ -2915,12 +2889,12 @@ void FOMapper::RefreshCurProtos()
 	// Update fast pids
 	HexMngr.ClearFastPids();
 	ProtoItemVec& fast_pids=TabsActive[INT_MODE_FAST]->ItemProtos;
-	for(size_t i=0,j=fast_pids.size();i<j;i++) HexMngr.AddFastPid(fast_pids[i].Pid);
+	for(size_t i=0,j=fast_pids.size();i<j;i++) HexMngr.AddFastPid(fast_pids[i].ProtoId);
 
 	// Update ignore pids
 	HexMngr.ClearIgnorePids();
 	ProtoItemVec& ignore_pids=TabsActive[INT_MODE_IGNORE]->ItemProtos;
-	for(size_t i=0,j=ignore_pids.size();i<j;i++) HexMngr.AddIgnorePid(ignore_pids[i].Pid);
+	for(size_t i=0,j=ignore_pids.size();i<j;i++) HexMngr.AddIgnorePid(ignore_pids[i].ProtoId);
 
 	// Refresh map
 	if(HexMngr.IsMapLoaded()) HexMngr.RefreshMap();
@@ -3213,7 +3187,7 @@ void FOMapper::SelectAdd(MapObject* mobj)
 				item->Alpha=SELECT_ALPHA;
 
 				// In container
-				if(item->Proto->GetType()!=ITEM_TYPE_CONTAINER) return;
+				if(item->Proto->Type!=ITEM_TYPE_CONTAINER) return;
 
 				SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
 				for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
@@ -3520,7 +3494,7 @@ void FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont)
 	if(in_cont && !proto_item->IsCanPickUp()) return;
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return;
 
-	AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMapHash);
+	AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMap);
 	if(!anim) return;
 
 	SelectClear();
@@ -4245,6 +4219,7 @@ void FOMapper::ParseCommand(const char* cmd)
 		{
 			FinishScriptSystem();
 			InitScriptSystem();
+			RunStartScript();
 			AddMess("Scripts reloaded.");
 		}
 		else if(!CurProtoMap) return;
@@ -4507,7 +4482,7 @@ void FOMapper::InitScriptSystem()
 	WriteLog("Script system initialization...\n");
 
 	// Init
-	if(!Script::Init(false,NULL))
+	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_MAPPER)))
 	{
 		WriteLog("Script system initialization fail.\n");
 		return;
@@ -4559,7 +4534,6 @@ void FOMapper::InitScriptSystem()
 	};
 	Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"mapper",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]));
 
-	if(MapperFunctions.Start && Script::PrepareContext(MapperFunctions.Start,__FUNCTION__,"Mapper")) Script::RunPrepared();
 	WriteLog("Script system initialization complete.\n");
 }
 
@@ -4567,6 +4541,11 @@ void FOMapper::FinishScriptSystem()
 {
 	Script::Finish();
 	ZeroMemory(&MapperFunctions,sizeof(MapperFunctions));
+}
+
+void FOMapper::RunStartScript()
+{
+	if(MapperFunctions.Start && Script::PrepareContext(MapperFunctions.Start,__FUNCTION__,"Mapper")) Script::RunPrepared();
 }
 
 void FOMapper::DrawIfaceLayer(DWORD layer)
@@ -4634,7 +4613,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap(MapObject& mobj)
 	if(mobj.RunTime.PicMapName[0]) return new CScriptString(mobj.RunTime.PicMapName);
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj.ProtoId);
 	if(!proto_item) SCRIPT_ERROR_RX("Proto item not found.",new CScriptString(""));
-	const char* name=Str::GetName(proto_item->PicMapHash);
+	const char* name=Str::GetName(proto_item->PicMap);
 	if(!name) SCRIPT_ERROR_RX("Name not found.",new CScriptString(""));
 	return new CScriptString(name);
 }
@@ -4653,7 +4632,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv(MapObject& mobj)
 	if(mobj.RunTime.PicMapName[0]) return new CScriptString(mobj.RunTime.PicInvName);
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj.ProtoId);
 	if(!proto_item) SCRIPT_ERROR_RX("Proto item not found.",new CScriptString(""));
-	const char* name=Str::GetName(proto_item->PicInvHash);
+	const char* name=Str::GetName(proto_item->PicInv);
 	if(!name) SCRIPT_ERROR_RX("Name not found.",new CScriptString(""));
 	return new CScriptString(name);
 }

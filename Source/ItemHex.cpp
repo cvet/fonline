@@ -151,7 +151,7 @@ void ItemHex::SetFade(bool fade_up)
 void ItemHex::RefreshAnim()
 {
 	int dir=GetDir();
-	DWORD name_hash=Proto->PicMapHash;
+	DWORD name_hash=Proto->PicMap;
 	if(Data.PicMapHash) name_hash=Data.PicMapHash;
 	Anim=NULL;
 	if(name_hash) Anim=ResMngr.GetItemAnim(name_hash,dir);
@@ -162,7 +162,7 @@ void ItemHex::RefreshAnim()
 	animBegSpr=begSpr;
 	animEndSpr=endSpr;
 
-	if(Proto->GetType()==ITEM_TYPE_CONTAINER || Proto->GetType()==ITEM_TYPE_DOOR)
+	if(Proto->Type==ITEM_TYPE_CONTAINER || Proto->Type==ITEM_TYPE_DOOR)
 	{
 		if(FLAG(Data.Locker.Condition,LOCKER_ISOPEN)) SetSprEnd();
 		else SetSprStart();

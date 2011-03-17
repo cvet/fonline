@@ -230,40 +230,30 @@ bool Map::Generate()
 			continue;
 		}
 
-		for(int i=0;i<10;i++) item->Data.ScriptValues[i]=mobj.MItem.Val[i];
+		// Script values
+		for(int i=0;i<10;i++) if(mobj.MItem.Val[i]) item->Data.ScriptValues[i]=mobj.MItem.Val[i];
+
+		// Deterioration
+		if(item->IsDeteriorable())
+		{
+			item->Data.TechInfo.BrokenFlags=mobj.MItem.BrokenFlags;
+			item->Data.TechInfo.BrokenCount=mobj.MItem.BrokenCount;
+			item->Data.TechInfo.Deterioration=mobj.MItem.Deterioration;
+		}
+
+		// Stacking
+		if(item->IsStackable())
+		{
+			if(mobj.MItem.Count) item->Count_Set(mobj.MItem.Count);
+			else if(item->Proto->StartCount) item->Count_Set(item->Proto->StartCount);
+			else item->Count_Set(1);
+		}
+
 		switch(item->GetType())
 		{
-		case ITEM_TYPE_ARMOR:
-			item->Data.TechInfo.DeteorationFlags=mobj.MItem.DeteorationFlags;
-			item->Data.TechInfo.DeteorationCount=mobj.MItem.DeteorationCount;
-			item->Data.TechInfo.DeteorationValue=mobj.MItem.DeteorationValue;
-			break;
 		case ITEM_TYPE_WEAPON:
-			if(item->IsGrouped())
-			{
-				DWORD count=*(DWORD*)&mobj.MItem.DeteorationFlags;
-				item->Count_Set(count?count:1);
-			}
-			else
-			{
-				item->Data.TechInfo.DeteorationFlags=mobj.MItem.DeteorationFlags;
-				item->Data.TechInfo.DeteorationCount=mobj.MItem.DeteorationCount;
-				item->Data.TechInfo.DeteorationValue=mobj.MItem.DeteorationValue;
-			}
 			item->Data.TechInfo.AmmoPid=mobj.MItem.AmmoPid;
 			item->Data.TechInfo.AmmoCount=mobj.MItem.AmmoCount;
-			break;
-		case ITEM_TYPE_AMMO:
-			if(!mobj.MItem.Count) item->Count_Set(item->Proto->Ammo.StartCount);
-			else item->Count_Set(mobj.MItem.Count);
-			break;
-		case ITEM_TYPE_MISC:
-			if(!mobj.MItem.Count) item->Count_Set(1);
-			else item->Count_Set(mobj.MItem.Count);
-			break;
-		case ITEM_TYPE_DRUG:
-			if(!mobj.MItem.Count) item->Count_Set(1);
-			else item->Count_Set(mobj.MItem.Count);
 			break;
 		case ITEM_TYPE_KEY:
 			item->Data.Locker.DoorId=mobj.MItem.LockerDoorId;
@@ -274,9 +264,9 @@ bool Map::Generate()
 			item->Data.Locker.Complexity=mobj.MItem.LockerComplexity;
 			if(FLAG(item->Data.Locker.Condition,LOCKER_ISOPEN))
 			{
-				if(!item->Proto->Door.NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
-				if(!item->Proto->Door.NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
-				if(!item->Proto->Door.NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
+				if(!item->Proto->Door_NoBlockMove) SETFLAG(item->Data.Flags,ITEM_NO_BLOCK);
+				if(!item->Proto->Door_NoBlockShoot) SETFLAG(item->Data.Flags,ITEM_SHOOT_THRU);
+				if(!item->Proto->Door_NoBlockLight) SETFLAG(item->Data.Flags,ITEM_LIGHT_THRU);
 			}
 			break;
 		case ITEM_TYPE_CONTAINER:
@@ -287,8 +277,6 @@ bool Map::Generate()
 		default:
 			break;
 		}
-
-		if(!item->GetCount()) item->Count_Set(1);
 
 		// Mapper additional parameters
 		if(mobj.MItem.InfoOffset) item->Data.Info=mobj.MItem.InfoOffset;
@@ -442,13 +430,13 @@ bool Map::GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item)
 	if(!proto_item->IsCar()) return false;
 
 	ProtoMap::EntiresVec entires;
-	Proto->GetEntires(proto_item->MiscEx.Car.Entire,entires);
+	Proto->GetEntires(proto_item->Car_Entrance,entires);
 	std::random_shuffle(entires.begin(),entires.end());
 
 	for(int i=0,j=entires.size();i<j;i++)
 	{
 		ProtoMap::MapEntire* ent=&entires[i];
-		if(ent->HexX<GetMaxHexX() && ent->HexY<GetMaxHexY() && IsPlaceForCar(ent->HexX,ent->HexY,proto_item))
+		if(ent->HexX<GetMaxHexX() && ent->HexY<GetMaxHexY() && IsPlaceForItem(ent->HexX,ent->HexY,proto_item))
 		{
 			hx=ent->HexX;
 			hy=ent->HexY;
@@ -628,7 +616,7 @@ void Map::SetItem(Item* item, WORD hx, WORD hy)
 	if(!item->IsPassed()) SetHexFlag(hx,hy,FH_BLOCK_ITEM);
 	if(!item->IsRaked()) SetHexFlag(hx,hy,FH_NRAKE_ITEM);
 	if(item->IsGag()) SetHexFlag(hx,hy,FH_GAG_ITEM);
-	if(item->IsCar()) PlaceCarBlocks(hx,hy,item->Proto);
+	if(item->IsBlocks()) PlaceItemBlocks(hx,hy,item->Proto);
 
 	if(item->FuncId[ITEM_EVENT_WALK]>0) SetHexFlag(hx,hy,FH_WALK_ITEM);
 	if(item->IsGeck()) mapLocation->GeckCount++;
@@ -663,7 +651,7 @@ void Map::EraseItem(DWORD item_id)
 	if(!item->IsPassed() && !item->IsRaked()) RecacheHexBlockShoot(hx,hy);
 	else if(!item->IsPassed()) RecacheHexBlock(hx,hy);
 	else if(!item->IsRaked()) RecacheHexShoot(hx,hy);
-	if(item->IsCar()) ReplaceCarBlocks(hx,hy,item->Proto);
+	if(item->IsBlocks()) ReplaceItemBlocks(hx,hy,item->Proto);
 
 	// Process critters view
 	CrVec critters;
@@ -756,6 +744,7 @@ void Map::AnimateItem(Item* item, BYTE from_frm, BYTE to_frm)
 	}
 }
 
+#pragma MESSAGE("Add explicit sync lock.")
 Item* Map::GetItem(DWORD item_id)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
@@ -1396,14 +1385,14 @@ void Map::GetCritterCar(Critter* cr, Item* car)
 	cr->AddItem(car,false);
 
 	// Move car bags from map to inventory
-	for(int i=0;i<CAR_MAX_BAGS;i++)
+	for(int i=0;i<ITEM_MAX_CHILDS;i++)
 	{
-		Item* car_bag=GetCarBag(hx,hy,car->Proto,i);
-		if(!car_bag) continue;
+		Item* child=GetItemChild(hx,hy,car->Proto,i);
+		if(!child) continue;
 
-		EraseItem(car_bag->GetId());
-		SETFLAG(car_bag->Data.Flags,ITEM_HIDDEN);
-		cr->AddItem(car_bag,false);
+		EraseItem(child->GetId());
+		SETFLAG(child->Data.Flags,ITEM_HIDDEN);
+		cr->AddItem(child,false);
 	}
 }
 
@@ -1422,133 +1411,74 @@ void Map::SetCritterCar(WORD hx, WORD hy, Critter* cr, Item* car)
 	AddItem(car,hx,hy);
 
 	// Move car bags from inventory to map
-	WORD bag_pid;
-	for(int i=0;i<CAR_MAX_BAGS;i++)
+	for(int i=0;i<ITEM_MAX_CHILDS;i++)
 	{
-		if(i==0) bag_pid=car->Proto->MiscEx.StartVal1;
-		else if(i==1) bag_pid=car->Proto->MiscEx.StartVal2;
-		else if(i==2) bag_pid=car->Proto->MiscEx.StartVal3;
-		else break;
+		WORD child_pid=car->Proto->ChildPid[i];
+		if(!child_pid) continue;
 
-		Item* car_bag=cr->GetItemByPid(bag_pid);
-		if(!car_bag) continue;
+		Item* child=cr->GetItemByPid(child_pid);
+		if(!child) continue;
 
-		WORD bag_hx=hx;
-		WORD bag_hy=hy;
+		// Move to position
+		WORD child_hx=hx;
+		WORD child_hy=hy;
+		FOREACH_PROTO_ITEM_LINES(car->Proto->ChildLines[i],child_hx,child_hy,GetMaxHexX(),GetMaxHexY(),;);
 
-		GetCarBagPos(bag_hx,bag_hy,car->Proto,i);
-
-		cr->EraseItem(car_bag,false);
-		UNSETFLAG(car_bag->Data.Flags,ITEM_HIDDEN);
-		AddItem(car_bag,bag_hx,bag_hy);
+		cr->EraseItem(child,false);
+		UNSETFLAG(child->Data.Flags,ITEM_HIDDEN);
+		AddItem(child,child_hx,child_hy);
 	}
 }
 
-void ParseCarBlocks(const char* str, BYTE* blocks)
+bool Map::IsPlaceForItem(WORD hx, WORD hy, ProtoItem* proto_item)
 {
-	memset(blocks,0xFF,CAR_MAX_BLOCKS/2);
-	if(!str) return;
-
-	BYTE dir;
-	for(int i=0;*str && i<CAR_MAX_BLOCKS/2;str++,i++)
-	{
-		dir=*str-'0';
-		if(dir>=DIRS_COUNT) return;
-		blocks[i]&=0xF;
-		blocks[i]|=dir<<4;
-
-		str++;
-		if(!*str) return;
-		dir=*str-'0';
-		if(dir>=DIRS_COUNT) return;
-		blocks[i]&=0xF0;
-		blocks[i]|=dir;
-	}
-}
-
-#define CAR_WORK(proto_car,work) \
-	BYTE dir;\
-	int steps;\
-	for(int i=0;i<CAR_MAX_BLOCKS;i++)\
-	{\
-		dir=proto_car->MiscEx.Car.GetBlockDir(i);\
-		if(dir>=DIRS_COUNT) break;\
-		i++;\
-		steps=proto_car->MiscEx.Car.GetBlockDir(i);\
-		for(int j=0;j<steps;j++)\
-		{\
-			MoveHexByDir(hx,hy,dir,GetMaxHexX(),GetMaxHexY());\
-			work\
-		}\
-	}
-
-bool Map::IsPlaceForCar(WORD hx, WORD hy, ProtoItem* proto_item)
-{
-	if(!proto_item) return false;
-
 	if(!IsHexPassed(hx,hy)) return false;
-	CAR_WORK(proto_item,
+
+	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
 		if(IsHexCritter(hx,hy)) return false;
-		);
+		//if(!IsHexPassed(hx,hy)) return false;
+	);
 
 	return true;
 }
 
-void Map::PlaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void Map::PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 {
-	if(!proto_item) return;
-
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
-	CAR_WORK(proto_item,
-			SetHexFlag(hx,hy,FH_BLOCK_ITEM);
-			if(!raked) SetHexFlag(hx,hy,FH_NRAKE_ITEM);
-		);
+	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
+		SetHexFlag(hx,hy,FH_BLOCK_ITEM);
+		if(!raked) SetHexFlag(hx,hy,FH_NRAKE_ITEM);
+	);
 }
 
-void Map::ReplaceCarBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void Map::ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 {
-	if(!proto_item) return;
-
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
-	CAR_WORK(proto_item,
-			UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
-			if(!raked)
-			{
-				UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
-				if(IsHexItem(hx,hy)) RecacheHexBlockShoot(hx,hy);
-			}
-			else
-			{
-				if(IsHexItem(hx,hy)) RecacheHexBlock(hx,hy);
-			}
-		);
+	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
+		UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
+		if(!raked)
+		{
+			UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
+			if(IsHexItem(hx,hy)) RecacheHexBlockShoot(hx,hy);
+		}
+		else
+		{
+			if(IsHexItem(hx,hy)) RecacheHexBlock(hx,hy);
+		}
+	);
 }
 
-void Map::GetCarBagPos(WORD& hx, WORD& hy, ProtoItem* pcar, int num_bag)
+Item* Map::GetItemChild(WORD hx, WORD hy, ProtoItem* proto_item, DWORD child_index)
 {
-	if(num_bag!=0 && num_bag!=1) return;
+	// Get child pid
+	WORD child_pid=proto_item->ChildPid[child_index];
+ 	if(!child_pid) return NULL;
 
-	BYTE dir;
-	for(int i=0;i<CAR_MAX_BAG_POSITION;i++)
-	{
-		dir=(!num_bag?pcar->MiscEx.Car.GetBag0Dir(i):pcar->MiscEx.Car.GetBag1Dir(i));
-		if(dir>=DIRS_COUNT) break;
-		MoveHexByDir(hx,hy,dir,GetMaxHexX(),GetMaxHexY());
-	}
-}
+	// Move to position
+ 	FOREACH_PROTO_ITEM_LINES(proto_item->ChildLines[child_index],hx,hy,GetMaxHexX(),GetMaxHexY(),;);
 
-Item* Map::GetCarBag(WORD hx, WORD hy, ProtoItem* pcar, int num_bag)
-{
-	if(!pcar || !pcar->IsCar()) return NULL;
-
-	WORD bag_pid=0;
-	if(num_bag==0) bag_pid=pcar->MiscEx.StartVal1;
-	else if(num_bag==1) bag_pid=pcar->MiscEx.StartVal2;
-	else if(num_bag==2) bag_pid=pcar->MiscEx.StartVal3;
-
-	if(!bag_pid) return NULL;
-	GetCarBagPos(hx,hy,pcar,num_bag);
-	return GetItemHex(hx,hy,bag_pid,NULL);
+	// Find on map
+	return GetItemHex(hx,hy,child_pid,NULL);
 }
 
 bool Map::PrepareScriptFunc(int num_scr_func)

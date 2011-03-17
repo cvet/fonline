@@ -1014,7 +1014,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 	float& sxf=group->SpeedX;
 	float& syf=group->SpeedY;
 	Item* car=group->GetCar();
-	int walk_type=(car?car->Proto->MiscEx.Car.WalkType:GM_WALK_GROUND);
+	int walk_type=(car?car->Proto->Car_MovementType:GM_WALK_GROUND);
 
 	// Move
 	DWORD dtime=tick-group->MoveLastTick;
@@ -1030,7 +1030,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GetGmRelief(xi,yi)];
 		if(car && kr!=1.0f)
 		{
-			float n=car->Proto->MiscEx.Car.Negotiability;
+			float n=car->Proto->Car_Passability;
 			if(n>100 && kr<1.0f) kr+=(1.0f-kr)*(n-100.0f)/100.0f;
 			else if(n>100 && kr>1.0f) kr-=(kr-1.0f)*(n-100.0f)/100.0f;
 			else if(n<100 && kr<1.0f) kr-=(1.0f-kr)*(100.0f-n)/100.0f;
@@ -1133,20 +1133,20 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 
 		if(car)
 		{
-			int fuel=car->CarGetFuel();
-			int wear=car->CarGetWear();
-			if(!fuel || wear>=car->CarGetRunToBreak())
+			int fuel=car->Data.Car.Fuel;
+			int deterioration=car->Data.Car.Deterioration;
+			if(!fuel || deterioration>=car->Proto->Car_MaxDeterioration)
 			{
 				DWORD str=(!fuel?STR_CAR_FUEL_EMPTY:STR_CAR_BROKEN);
 				for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it) (*it)->Send_TextMsg(*it,str,SAY_NETMSG,TEXTMSG_GAME);
 				goto label_GMStopMove;
 			}
-			fuel-=car->CarGetFuelConsumption();
-			wear+=car->CarGetWearConsumption();
+			fuel-=car->Proto->Car_FuelConsumption;
+			deterioration+=car->Proto->Car_DeteriorationRate;
 			if(fuel<0) fuel=0;
-			if(wear>car->CarGetRunToBreak()) wear=car->CarGetRunToBreak();
+			if(deterioration>car->Proto->Car_MaxDeterioration) deterioration=car->Proto->Car_MaxDeterioration;
 			car->Data.Car.Fuel=fuel;
-			car->Data.Car.Deteoration=wear;
+			car->Data.Car.Deterioration=deterioration;
 		}
 
 		if(group->IsEncaunterTime())

@@ -53,10 +53,7 @@ namespace {
 
 	OutStream* error_stream;
 
-	typedef std::map<std::string,PragmaCallback*> PragmaMap;
-	typedef PragmaMap::iterator PragmaIterator;
-
-	PragmaMap registered_pragmas;
+	PragmaCallback* pragma_callback;
 
 	LineNumberTranslator::Table* LNT;
 	std::string root_file;
@@ -85,43 +82,16 @@ namespace {
 	{
 		return in.substr(1,in.size()-2);
 	}
-
-	class CleanUpPragmas
-	{
-	public:
-		~CleanUpPragmas()
-		{
-			PragmaIterator I = registered_pragmas.begin();
-			for (; I != registered_pragmas.end(); ++I) delete I->second;
-			registered_pragmas.clear();
-		}
-	};
-
-	CleanUpPragmas nasty_little_hack_this_is;
 }
 
-void Preprocessor::RegisterPragma(const std::string& name, Preprocessor::PragmaCallback* pc)
+void Preprocessor::SetPragmaCallback(PragmaCallback* callback)
 {
-	if (pc == 0) return;
-	PragmaIterator I = registered_pragmas.find(name);
-	if (I != registered_pragmas.end()) registered_pragmas.erase(I);
-	registered_pragmas[name] = pc;
+	pragma_callback = callback;
 }
 
-void Preprocessor::CallPragma(const std::string& name, const Preprocessor::PragmaInstance& parms)
+void Preprocessor::CallPragma(const std::string& name, const PragmaInstance& instance)
 {
-	PragmaIterator I = registered_pragmas.find(name);
-	if (I == registered_pragmas.end())
-	{
-		PrintErrorMessage("Unknown pragma command.");
-		return;
-	}
-	if (I->second) I->second->pragma(parms);
-}
-
-void Preprocessor::ClearPragmas()
-{
-	registered_pragmas.clear();
+	if(pragma_callback) pragma_callback->CallPragma(name,instance);
 }
 
 class Preprocessor::LineNumberTranslator::Table
@@ -477,7 +447,7 @@ static void parsePragma(LexemList& args)
 	PI.current_file_line = lines_this_file;
 	PI.root_file = root_file;
 	PI.global_line = current_line;
-	CallPragma(p_name,PI);
+	if(pragma_callback) CallPragma(p_name,PI);
 }
 
 static void setLineMacro(DefineTable& define_table, unsigned int line)

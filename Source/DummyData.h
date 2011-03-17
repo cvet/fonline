@@ -93,25 +93,28 @@ void GameVarCmpGameVar(){}
 
 struct ProtoItem
 {
-	int Pid;
+	int ProtoId;
+	int PicMap;
+	int PicInv;
 	int Type;
+	int Stackable;
+	int Deteriorable;
+	int GroundLevel;
 	int Slot;
 	int Flags;
 	int Corner;
 	int DisableEgg;
-	int PicMapHash;
-	int PicInvHash;
+	int Dir;
 	int Weight;
 	int Volume;
 	int Cost;
+	int StartCount;
 	int SoundId;
 	int Material;
-
 	int LightFlags;
 	int LightDistance;
 	int LightIntensity;
 	int LightColor;
-
 	int AnimWaitBase;
 	int AnimWaitRndMin;
 	int AnimWaitRndMax;
@@ -122,144 +125,57 @@ struct ProtoItem
 	int OffsetY;
 	int SpriteCut;
 	int DrawOrderOffsetHexY;
-
 	int RadioChannel;
 	int RadioFlags;
 	int RadioBroadcastSend;
 	int RadioBroadcastRecv;
-
 	int IndicatorStart;
 	int IndicatorMax;
-
 	int HolodiskNum;
-
-	struct
-	{
-		int Anim0Male;
-		int Anim0Female;
-		int AC;
-		int Perk;
-
-		int DRNormal;
-		int DRLaser;
-		int DRFire;
-		int DRPlasma;
-		int DRElectr;
-		int DREmp;
-		int DRExplode;
-
-		int DTNormal;
-		int DTLaser;
-		int DTFire;
-		int DTPlasma;
-		int DTElectr;
-		int DTEmp;
-		int DTExplode;
-	} Armor;
-
-	struct
-	{
-		int NoWear;
-
-		int IsUnarmed;
-		int UnarmedTree;
-		int UnarmedPriority;
-		int UnarmedCriticalBonus;
-		int UnarmedArmorPiercing;
-		int UnarmedMinAgility;
-		int UnarmedMinUnarmed;
-		int UnarmedMinLevel;
-
-		int Anim1;
-		int VolHolder;
-		int Caliber;
-		int DefAmmo;
-		int ReloadAp;
-		int CrFailture;
-		int MinSt;
-		int Perk;
-
-		int Uses;
-		int Skill[10];
-		int DmgType[10];
-		int Anim2[10];
-		int PicDeprecated[10];
-		int PicHash[10];
-		int DmgMin[10];
-		int DmgMax[10];
-		int MaxDist[10];
-		int Effect[10];
-		int Round[10];
-		int ApCost[10];
-		int Aim[10];
-		int Remove[10];
-		int SoundId[10];
-	} Weapon;
-
-	struct
-	{
-		int StartCount;
-		int Caliber;
-		int ACMod;
-		int DRMod;
-		int DmgMult;
-		int DmgDiv;
-	} Ammo;
-
-	struct
-	{
-		int StartVal1;
-		int StartVal2;
-		int StartVal3;
-
-		int IsCar;
-
-		struct _CAR
-		{
-			int Speed; 
-			int Negotiability;
-			int WearConsumption;
-			int CritCapacity;
-			int FuelTank;
-			int RunToBreak;
-			int Entire;
-			int WalkType;
-			int FuelConsumption;
-
-			int Bag0[1];
-			int Bag1[1];
-			int Blocks[1];
-		} Car;
-	} MiscEx;
-
-	struct
-	{
-		int ContVolume;
-		int CannotPickUp;
-		int MagicHandsGrnd;
-		int Changeble;
-		int IsNoOpen;
-	} Container;
-
-	struct
-	{
-		int WalkThru;
-		int IsNoOpen;
-		int NoBlockMove;
-		int NoBlockShoot;
-		int NoBlockLight;
-	} Door;
-
-	struct
-	{
-		int Type;
-	} Grid;
-
-	void GetPid(){}
-	void GetType(){}
-	void IsWeared(){}
-	void IsGrouped(){}
-	void Container_IsGroundLevel(){}
+	int StartValue[10];
+	int BlockLines[10];
+	int ChildPid[10];
+	int ChildLines[10][10];
+	int UserData[100];
+	int Weapon_IsUnarmed;
+	int Weapon_UnarmedTree;
+	int Weapon_UnarmedPriority;
+	int Weapon_UnarmedMinAgility;
+	int Weapon_UnarmedMinUnarmed;
+	int Weapon_UnarmedMinLevel;
+	int Weapon_Anim1;
+	int Weapon_MaxAmmoCount;
+	int Weapon_Caliber;
+	int Weapon_DefaultAmmoPid;
+	int Weapon_MinStrength;
+	int Weapon_Perk;
+	int Weapon_ActiveUses;
+	int Weapon_Skill[3];
+	int Weapon_PicUse[3];
+	int Weapon_MaxDist[3];
+	int Weapon_Round[3];
+	int Weapon_ApCost[3];
+	int Weapon_Aim[3];
+	int Weapon_SoundId[3];
+	int Ammo_Caliber;
+	int Container_Volume;
+	int Container_CannotPickUp;
+	int Container_MagicHandsGrnd;
+	int Container_Changeble;
+	int Door_NoBlockMove;
+	int Door_NoBlockShoot;
+	int Door_NoBlockLight;
+	int Locker_Condition;
+	int Grid_Type;
+	int Car_Speed; 
+	int Car_Passability;
+	int Car_DeteriorationRate;
+	int Car_CrittersCapacity;
+	int Car_TankVolume;
+	int Car_MaxDeterioration;
+	int Car_FuelConsumption;
+	int Car_Entrance;
+	int Car_MovementType;
 
 	void AddRef(){}
 	void Release(){}
@@ -322,9 +238,9 @@ struct Item
 
 		struct
 		{
-			int DeteorationFlags;
-			int DeteorationCount;
-			int DeteorationValue;
+			int BrokenFlags;
+			int BrokenCount;
+			int Deterioration;
 			int AmmoPid;
 			int AmmoCount;
 		} TechInfo;
@@ -340,7 +256,7 @@ struct Item
 		{
 			int DoorId;
 			int Fuel;
-			int Deteoration;
+			int Deterioration;
 		} Car;
 
 		struct
@@ -404,9 +320,9 @@ struct MapObject
 
 		int Count;
 
-		int DeteorationFlags;
-		int DeteorationCount;
-		int DeteorationValue;
+		int BrokenFlags;
+		int BrokenCount;
+		int Deterioration;
 
 		int InContainer;
 		int ItemSlot;
@@ -598,8 +514,8 @@ struct BindClass
 	static void Container_GetItems(){}
 	static void Container_GetItem(){}
 
-	static void Item_IsGrouped(){}
-	static void Item_IsWeared(){}
+	static void Item_IsStackable(){}
+	static void Item_IsDeteriorable(){}
 	static void Item_SetScript(){}
 	static void Item_GetScriptId(){}
 	static void Item_SetEvent(){}
@@ -613,10 +529,9 @@ struct BindClass
 	static void Item_Update(){}
 	static void Item_Animate(){}
 	static void Item_SetLexems(){}
+	static void Item_GetChild(){}
 	static void Item_LockerOpen(){}
 	static void Item_LockerClose(){}
-	static void Item_IsCar(){}
-	static void Item_CarGetBag(){}
 
 	static void Item_EventFinish(){}
 	static void Item_EventAttack(){}
@@ -875,7 +790,7 @@ struct BindClass
 	static void Map_SetTextMsgLex(){}
 	static void Map_RunEffect(){}
 	static void Map_RunFlyEffect(){}
-	static void Map_CheckPlaceForCar(){}
+	static void Map_CheckPlaceForItem(){}
 	static void Map_BlockHex(){}
 	static void Map_UnblockHex(){}
 	static void Map_PlaySound(){}
@@ -1004,16 +919,15 @@ struct BindClass
 	static void Crit_GetMultihex(){}
 	static void Crit_IsTurnBasedTurn(){}
 
-	static void Item_IsGrouped(){}
-	static void Item_IsWeared(){}
+	static void Item_IsStackable(){}
+	static void Item_IsDeteriorable(){}
 	static void Item_GetScriptId(){}
 	static void Item_GetType(){}
 	static void Item_GetProtoId(){}
 	static void Item_GetCount(){}
 	static void Item_GetMapPosition(){}
 	static void Item_Animate(){}
-	static void Item_IsCar(){}
-	static void Item_CarGetBag(){}
+	static void Item_GetChild(){}
 
 	static void Global_GetChosen(){}
 	static void Global_GetChosenActions(){}

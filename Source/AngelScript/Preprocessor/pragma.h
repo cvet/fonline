@@ -50,7 +50,7 @@ namespace Preprocessor
 	class PragmaCallback
 	{
 	public:
-		virtual void pragma(const PragmaInstance&) = 0;
+		virtual void CallPragma(const std::string&, const PragmaInstance&) = 0;
 	};
 };
 

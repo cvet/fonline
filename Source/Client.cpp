@@ -107,7 +107,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Item::ItemData)==92);
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(SceneryCl)==32);
-	STATIC_ASSERT(sizeof(ProtoItem)==184);
+	STATIC_ASSERT(sizeof(ProtoItem)==908);
 	STATIC_ASSERT(sizeof(Field)==92);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4288);
@@ -352,18 +352,32 @@ bool FOClient::Init(HWND hwnd)
 	// Item prototypes
 	ItemMngr.ClearProtos();
 	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("______item_protos",protos_len);
+	BYTE* protos=Crypt.GetCache("item_protos",protos_len);
 	if(protos)
 	{
 		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
 		delete[] protos;
+
+		DWORD protos_count_len;
+		BYTE* protos_count=Crypt.GetCache("item_protos_count",protos_count_len);
+		DWORD count=0;
+		if(protos_count)
+		{
+			count=*(DWORD*)protos_count;
+			delete[] protos_count;
+			if(count!=protos_len/sizeof(ProtoItem)) count=0;
+		}
+
 		if(protos_uc)
 		{
-			ProtoItemVec proto_items;
-			proto_items.resize(protos_len/sizeof(ProtoItem));
-			memcpy((void*)&proto_items[0],protos_uc,protos_len);
-			ItemMngr.ParseProtos(proto_items);
-			//ItemMngr.PrintProtosHash();
+			if(count)
+			{
+				ProtoItemVec proto_items;
+				proto_items.resize(count);
+				memcpy((void*)&proto_items[0],protos_uc,protos_len);
+				ItemMngr.ParseProtos(proto_items);
+			}
+
 			delete[] protos_uc;
 		}
 	}
@@ -606,7 +620,7 @@ void FOClient::LookBordersPrepare()
 		WORD maxhx=HexMngr.GetMaxHexX();
 		WORD maxhy=HexMngr.GetMaxHexY();
 		bool seek_start=true;
-		for(int i=0,ii=(GameOpt.MapHexagonal?6:4);i<ii;i++)
+		for(int i=0;i<(GameOpt.MapHexagonal?6:4);i++)
 		{
 			int dir=(GameOpt.MapHexagonal?(i+2)%6:((i+1)*2)%8);
 
@@ -2789,7 +2803,7 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	Bout << uid3; uid3^=uid1; uid1|=uid3/Random(2,53);											// UID3
 	Bout << uid2; uid3^=uid2; uid1|=uid4+222-*UID2;												// UID2
 	Bout << UIDOR;																				// UID or
-	for(int i=1;i<ITEM_MAX_TYPES;i++) Bout << ItemMngr.GetProtosHash(i);
+	for(int i=0;i<ITEM_MAX_TYPES;i++) Bout << ItemMngr.GetProtosHash(i);
 	Bout << UIDCALC;																			// UID uidcalc
 	Bout << GameOpt.DefaultCombatMode;
 	DWORD uid0=*UID0;
@@ -6396,7 +6410,7 @@ void FOClient::Net_OnPlayersBarter()
 				}
 				(*it_).Count_Add(param_ext);
 				citem.Count_Sub(param_ext);
-				if(!citem.GetCount() || !citem.IsGrouped()) cont.erase(it);
+				if(!citem.GetCount() || !citem.IsStackable()) cont.erase(it);
 			}
 			else // Hide
 			{
@@ -6440,7 +6454,7 @@ void FOClient::Net_OnPlayersBarter()
 				}
 				(*it_).Count_Add(param_ext);
 				citem.Count_Sub(param_ext);
-				if(!citem.GetCount() || !citem.IsGrouped()) cont_o.erase(it);
+				if(!citem.GetCount() || !citem.IsStackable()) cont_o.erase(it);
 			}
 			else // Hide
 			{
@@ -6451,7 +6465,7 @@ void FOClient::Net_OnPlayersBarter()
 					break;
 				}
 				citem->Count_Sub(param_ext);
-				if(!citem->GetCount() || !citem->IsGrouped())
+				if(!citem->GetCount() || !citem->IsStackable())
 				{
 					ItemVecIt it=std::find(cont_o.begin(),cont_o.end(),param);
 					cont_o.erase(it);
@@ -6859,7 +6873,6 @@ void FOClient::Net_OnProtoItemData()
 
 	ItemMngr.ClearProtos(type);
 	ItemMngr.ParseProtos(data);
-	//ItemMngr.PrintProtosHash();
 
 	ProtoItemVec proto_items;
 	ItemMngr.GetCopyAllProtos(proto_items);
@@ -6870,9 +6883,11 @@ void FOClient::Net_OnProtoItemData()
 		WriteLog(__FUNCTION__" - Compression fail.\n");
 		return;
 	}
-
-	Crypt.SetCache("______item_protos",proto_data,len);
+	Crypt.SetCache("item_protos",proto_data,len);
 	delete[] proto_data;
+
+	DWORD count=proto_items.size();
+	Crypt.SetCache("item_protos_count",(BYTE*)&count,sizeof(count));
 
 	// Refresh craft names
 	MrFixit.GenerateNames(*MsgGame,*MsgItem);
@@ -7325,7 +7340,7 @@ void FOClient::ChosenChangeSlot()
 		AddActionBack(CHOSEN_MOVE_ITEM,Chosen->ItemSlotExt->GetId(),Chosen->ItemSlotExt->GetCount(),SLOT_HAND1);
 	else
 	{
-		BYTE tree=Chosen->DefItemSlotHand->Proto->Weapon.UnarmedTree+1;
+		BYTE tree=Chosen->DefItemSlotHand->Proto->Weapon_UnarmedTree+1;
 		ProtoItem* unarmed=Chosen->GetUnarmedItem(tree,0);
 		if(!unarmed) unarmed=Chosen->GetUnarmedItem(0,0);
 		Chosen->DefItemSlotHand->Init(unarmed);
@@ -7717,7 +7732,7 @@ label_EndMove:
 				if(target_cr->IsDead()) break;
 				if(!Chosen->IsRawParam(MODE_UNLIMITED_AMMO) && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty())
 				{
-					SndMngr.PlaySoundType('W',SOUND_WEAPON_EMPTY,item->Proto->Weapon.SoundId[use],'1');
+					SndMngr.PlaySoundType('W',SOUND_WEAPON_EMPTY,item->Proto->Weapon_SoundId[use],'1');
 					break;
 				}
 				if(item->IsTwoHands() && Chosen->IsDmgArm())
@@ -7730,7 +7745,7 @@ label_EndMove:
 					AddMess(FOMB_GAME,FmtCombatText(STR_COMBAT_NEED_DMG_TWO_ARMS));
 					break;
 				}
-				if(item->IsWeared() && item->IsBroken())
+				if(item->IsDeteriorable() && item->IsBroken())
 				{
 					AddMess(FOMB_GAME,FmtGameText(STR_INV_WEAR_WEAPON_BROKEN));
 					break;
@@ -7865,7 +7880,7 @@ label_EndMove:
 			{
 				if(!CritterCl::SlotEnabled[to_slot]) break;
 				if(to_slot>SLOT_ARMOR && to_slot!=item->Proto->Slot) break;
-				if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(Chosen->GetCrType(),item->Proto->Weapon.Anim1)) break;
+				if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(Chosen->GetCrType(),item->Proto->Weapon_Anim1)) break;
 				if(to_slot==SLOT_ARMOR && (!item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor(Chosen->GetCrType()))) break;
 			}
 
@@ -9112,8 +9127,7 @@ void FOClient::AnimFree(int res_type)
 /* Scripts                                                              */
 /************************************************************************/
 
-StrSet ParametersAlready_;
-DWORD ParametersIndex_=1; // 0 is ParamBase
+#include "ScriptPragmas.h"
 
 bool FOClient::ReloadScripts()
 {
@@ -9139,7 +9153,7 @@ bool FOClient::ReloadScripts()
 
 	// Reinitialize engine
 	Script::Finish();
-	if(!Script::Init(false,PragmaCallbackCrData))
+	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_CLIENT)))
 	{
 		WriteLog("Unable to start script engine.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
@@ -9165,8 +9179,6 @@ bool FOClient::ReloadScripts()
 	// Options
 	Script::SetScriptsPath(PT_SCRIPTS);
 	Script::Define("__CLIENT");
-	ParametersAlready_.clear();
-	ParametersIndex_=1;
 
 	// Pragmas
 	StrVec pragmas;
@@ -9292,31 +9304,6 @@ void FOClient::DrawIfaceLayer(DWORD layer)
 		Script::RunPrepared();
 		SpritesCanDraw=false;
 	}
-}
-
-bool FOClient::PragmaCallbackCrData(const char* text)
-{
-	string name;
-	DWORD min,max;
-	istrstream str(text);
-	str >> name >> min >> max;
-	if(str.fail()) return false;
-	if(min>max || max>=MAX_PARAMS) return false;
-	if(ParametersAlready_.count(name)) return true;
-	if(ParametersIndex_>=MAX_PARAMETERS_ARRAYS) return false;
-
-	asIScriptEngine* engine=Script::GetEngine();
-	char decl[128];
-	sprintf_s(decl,"DataVal %s",name.c_str());
-	if(engine->RegisterObjectProperty("CritterCl",decl,offsetof(CritterCl,ThisPtr[ParametersIndex_]))<0) return false;
-	sprintf_s(decl,"DataRef %sBase",name.c_str());
-	if(engine->RegisterObjectProperty("CritterCl",decl,offsetof(CritterCl,ThisPtr[ParametersIndex_]))<0) return false;
-	CritterCl::ParametersMin[ParametersIndex_]=min;
-	CritterCl::ParametersMax[ParametersIndex_]=max;
-	CritterCl::ParametersOffset[ParametersIndex_]=(strstr(text,"+")!=NULL);
-	ParametersIndex_++;
-	ParametersAlready_.insert(name);
-	return true;
 }
 
 template<typename Type>
@@ -9613,16 +9600,16 @@ bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn(CritterCl* cr)
 	return Self->IsTurnBased && cr->GetId()==Self->TurnBasedCurCritterId;
 }
 
-bool FOClient::SScriptFunc::Item_IsGrouped(Item* item)
+bool FOClient::SScriptFunc::Item_IsStackable(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->IsGrouped();
+	return item->IsStackable();
 }
 
-bool FOClient::SScriptFunc::Item_IsWeared(Item* item)
+bool FOClient::SScriptFunc::Item_IsDeteriorable(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->IsWeared();
+	return item->IsDeteriorable();
 }
 
 DWORD FOClient::SScriptFunc::Item_GetScriptId(Item* item)
@@ -9688,20 +9675,14 @@ bool FOClient::SScriptFunc::Item_GetMapPosition(Item* item, WORD& hx, WORD& hy)
 void FOClient::SScriptFunc::Item_Animate(Item* item, BYTE from_frame, BYTE to_frame)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-#pragma MESSAGE("Add item animation.")
+#pragma MESSAGE("Implement Item_Animate.")
 }
 
-bool FOClient::SScriptFunc::Item_IsCar(Item* item)
+Item* FOClient::SScriptFunc::Item_GetChild(Item* item, DWORD childIndex)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	return item->IsCar();
-}
-
-Item* FOClient::SScriptFunc::Item_CarGetBag(Item* item, int num_bag)
-{
-	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	//return item->CarGetBag(num_bag);
 	// Need implement
+#pragma MESSAGE("Implement Item_GetChild.")
 	return NULL;
 }
 

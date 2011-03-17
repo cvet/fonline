@@ -20,26 +20,41 @@
 	if(engine->RegisterObjectBehaviour("ProtoItem",asBEHAVE_ADDREF,"void f()",asMETHOD(ProtoItem,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectBehaviour("ProtoItem",asBEHAVE_RELEASE,"void f()",asMETHOD(ProtoItem,Release),asCALL_THISCALL)<0) BIND_ERROR;
 
-	if(engine->RegisterObjectMethod("ProtoItem","uint8 GetType() const",asMETHOD(ProtoItem,GetType),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ProtoItem","uint16 GetProtoId() const",asMETHOD(ProtoItem,GetPid),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ProtoItem","bool IsGrouped() const",asMETHOD(ProtoItem,IsGrouped),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ProtoItem","bool IsWeared() const",asMETHOD(ProtoItem,IsWeared),asCALL_THISCALL)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ProtoItem","bool Container_IsGroundLevel() const",asMETHOD(ProtoItem,Container_IsGroundLevel),asCALL_THISCALL)<0) BIND_ERROR;
-
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 ProtoId",offsetof(ProtoItem,ProtoId))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Type",offsetof(ProtoItem,Type))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint PicMap",offsetof(ProtoItem,PicMap))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint PicInv",offsetof(ProtoItem,PicInv))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint Flags",offsetof(ProtoItem,Flags))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Corner",offsetof(ProtoItem,Corner))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 LightDistance",offsetof(ProtoItem,LightDistance))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint LightIntensity",offsetof(ProtoItem,LightIntensity))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint LightColor",offsetof(ProtoItem,LightColor))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Weight",offsetof(ProtoItem,Weight))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Volume",offsetof(ProtoItem,Volume))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint PicMap",offsetof(ProtoItem,PicMapHash))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint PicInv",offsetof(ProtoItem,PicInvHash))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Sound",offsetof(ProtoItem,SoundId))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Cost",offsetof(ProtoItem,Cost))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Material",offsetof(ProtoItem,Material))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Stackable",offsetof(ProtoItem,Stackable))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Deteriorable",offsetof(ProtoItem,Deteriorable))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool GroundLevel",offsetof(ProtoItem,GroundLevel))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Corner",offsetof(ProtoItem,Corner))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Dir",offsetof(ProtoItem,Dir))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Slot",offsetof(ProtoItem,Slot))<0) BIND_ERROR;
-
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weight",offsetof(ProtoItem,Weight))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Volume",offsetof(ProtoItem,Volume))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Cost",offsetof(ProtoItem,Cost))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartCount",offsetof(ProtoItem,StartCount))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 SoundId",offsetof(ProtoItem,SoundId))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Material",offsetof(ProtoItem,Material))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 LightFlags",offsetof(ProtoItem,LightFlags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 LightDistance",offsetof(ProtoItem,LightDistance))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int8 LightIntensity",offsetof(ProtoItem,LightIntensity))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint LightColor",offsetof(ProtoItem,LightColor))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool DisableEgg",offsetof(ProtoItem,DisableEgg))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 AnimWaitBase",offsetof(ProtoItem,AnimWaitBase))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 AnimWaitRndMin",offsetof(ProtoItem,AnimWaitRndMin))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 AnimWaitRndMax",offsetof(ProtoItem,AnimWaitRndMax))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 AnimStay_0",offsetof(ProtoItem,AnimStay[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 AnimStay_1",offsetof(ProtoItem,AnimStay[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 AnimShow_0",offsetof(ProtoItem,AnimShow[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 AnimShow_1",offsetof(ProtoItem,AnimShow[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 AnimHide_0",offsetof(ProtoItem,AnimHide[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 AnimHide_1",offsetof(ProtoItem,AnimHide[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int16 OffsetX",offsetof(ProtoItem,OffsetX))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int16 OffsetY",offsetof(ProtoItem,OffsetY))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 SpriteCut",offsetof(ProtoItem,SpriteCut))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int8 DrawOrderOffsetHexY",offsetof(ProtoItem,DrawOrderOffsetHexY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint16 RadioChannel",offsetof(ProtoItem,RadioChannel))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint16 RadioFlags",offsetof(ProtoItem,RadioFlags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 RadioBroadcastSend",offsetof(ProtoItem,RadioBroadcastSend))<0) BIND_ERROR;
@@ -47,108 +62,80 @@
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 IndicatorStart",offsetof(ProtoItem,IndicatorStart))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint8 IndicatorMax",offsetof(ProtoItem,IndicatorMax))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ProtoItem","const uint HolodiskNum",offsetof(ProtoItem,HolodiskNum))<0) BIND_ERROR;
-
-	// Misc2
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Misc2_StartVal1",offsetof(ProtoItem,MiscEx.StartVal1))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Misc2_StartVal2",offsetof(ProtoItem,MiscEx.StartVal2))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Misc2_StartVal3",offsetof(ProtoItem,MiscEx.StartVal3))<0) BIND_ERROR;
-
-	// Car
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Car_Speed",offsetof(ProtoItem,MiscEx.Car.Speed))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Car_Negotiability",offsetof(ProtoItem,MiscEx.Car.Negotiability))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Car_WearConsumption",offsetof(ProtoItem,MiscEx.Car.WearConsumption))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Car_CritCapacity",offsetof(ProtoItem,MiscEx.Car.CritCapacity))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Car_FuelTank",offsetof(ProtoItem,MiscEx.Car.FuelTank))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Car_RunToBreak",offsetof(ProtoItem,MiscEx.Car.RunToBreak))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Car_WalkType",offsetof(ProtoItem,MiscEx.Car.WalkType))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Car_FuelConsumption",offsetof(ProtoItem,MiscEx.Car.FuelConsumption))<0) BIND_ERROR;
-
-	// Armor
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Armor_CrTypeMale",offsetof(ProtoItem,Armor.Anim0Male))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Armor_CrTypeFemale",offsetof(ProtoItem,Armor.Anim0Female))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_AC",offsetof(ProtoItem,Armor.AC))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DRNormal",offsetof(ProtoItem,Armor.DRNormal))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DRLaser",offsetof(ProtoItem,Armor.DRLaser))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DRFire",offsetof(ProtoItem,Armor.DRFire))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DRPlasma",offsetof(ProtoItem,Armor.DRPlasma))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DRElectro",offsetof(ProtoItem,Armor.DRElectr))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DREmp",offsetof(ProtoItem,Armor.DREmp))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DRExplode",offsetof(ProtoItem,Armor.DRExplode))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTNormal",offsetof(ProtoItem,Armor.DTNormal))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTLaser",offsetof(ProtoItem,Armor.DTLaser))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTFire",offsetof(ProtoItem,Armor.DTFire))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTPlasma",offsetof(ProtoItem,Armor.DTPlasma))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTElectro",offsetof(ProtoItem,Armor.DTElectr))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTEmp",offsetof(ProtoItem,Armor.DTEmp))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Armor_DTExplode",offsetof(ProtoItem,Armor.DTExplode))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Armor_Perk",offsetof(ProtoItem,Armor.Perk))<0) BIND_ERROR;
-
-	// Door
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockMove",offsetof(ProtoItem,Door.NoBlockMove))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockShoot",offsetof(ProtoItem,Door.NoBlockShoot))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockLight",offsetof(ProtoItem,Door.NoBlockLight))<0) BIND_ERROR;
-
-	// Container
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Container_IsChangeble",offsetof(ProtoItem,Container.Changeble))<0) BIND_ERROR;
-
-	// Weapon
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_Uses",offsetof(ProtoItem,Weapon.Uses))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_IsUnarmed",offsetof(ProtoItem,Weapon.IsUnarmed))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_UnarmedCriticalBonus",offsetof(ProtoItem,Weapon.UnarmedCriticalBonus))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_UnarmedArmorPiercing",offsetof(ProtoItem,Weapon.UnarmedArmorPiercing))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_MinStrength",offsetof(ProtoItem,Weapon.MinSt))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_Perk",offsetof(ProtoItem,Weapon.Perk))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_Anim1",offsetof(ProtoItem,Weapon.Anim1))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_VolumeHolder",offsetof(ProtoItem,Weapon.VolHolder))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Caliber",offsetof(ProtoItem,Weapon.Caliber))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_CriticalFailture",offsetof(ProtoItem,Weapon.CrFailture))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DefAmmo",offsetof(ProtoItem,Weapon.DefAmmo))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_ReloadAp",offsetof(ProtoItem,Weapon.ReloadAp))<0) BIND_ERROR;
-	// Uses
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Skill_F",offsetof(ProtoItem,Weapon.Skill[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Skill_S",offsetof(ProtoItem,Weapon.Skill[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Skill_T",offsetof(ProtoItem,Weapon.Skill[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgType_F",offsetof(ProtoItem,Weapon.DmgType[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgType_S",offsetof(ProtoItem,Weapon.DmgType[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgType_T",offsetof(ProtoItem,Weapon.DmgType[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Anim2_F",offsetof(ProtoItem,Weapon.Anim2[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Anim2_S",offsetof(ProtoItem,Weapon.Anim2[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Anim2_T",offsetof(ProtoItem,Weapon.Anim2[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgMin_F",offsetof(ProtoItem,Weapon.DmgMin[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgMin_S",offsetof(ProtoItem,Weapon.DmgMin[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgMin_T",offsetof(ProtoItem,Weapon.DmgMin[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgMax_F",offsetof(ProtoItem,Weapon.DmgMax[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgMax_S",offsetof(ProtoItem,Weapon.DmgMax[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DmgMax_T",offsetof(ProtoItem,Weapon.DmgMax[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_MaxDist_F",offsetof(ProtoItem,Weapon.MaxDist[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_MaxDist_S",offsetof(ProtoItem,Weapon.MaxDist[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_MaxDist_T",offsetof(ProtoItem,Weapon.MaxDist[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Effect_F",offsetof(ProtoItem,Weapon.Effect[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Effect_S",offsetof(ProtoItem,Weapon.Effect[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Effect_T",offsetof(ProtoItem,Weapon.Effect[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Round_F",offsetof(ProtoItem,Weapon.Round[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Round_S",offsetof(ProtoItem,Weapon.Round[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_Round_T",offsetof(ProtoItem,Weapon.Round[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_ApCost_F",offsetof(ProtoItem,Weapon.ApCost[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_ApCost_S",offsetof(ProtoItem,Weapon.ApCost[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_ApCost_T",offsetof(ProtoItem,Weapon.ApCost[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_SoundId_F",offsetof(ProtoItem,Weapon.SoundId[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_SoundId_S",offsetof(ProtoItem,Weapon.SoundId[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_SoundId_T",offsetof(ProtoItem,Weapon.SoundId[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Remove_F",offsetof(ProtoItem,Weapon.Remove[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Remove_S",offsetof(ProtoItem,Weapon.Remove[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Remove_T",offsetof(ProtoItem,Weapon.Remove[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Aim_F",offsetof(ProtoItem,Weapon.Aim[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Aim_S",offsetof(ProtoItem,Weapon.Aim[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Aim_T",offsetof(ProtoItem,Weapon.Aim[2]))<0) BIND_ERROR;
-
-	// Ammo
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Ammo_StartCount",offsetof(ProtoItem,Ammo.StartCount))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Ammo_Caliber",offsetof(ProtoItem,Ammo.Caliber))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const int Ammo_AcMod",offsetof(ProtoItem,Ammo.ACMod))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const int Ammo_DrMod",offsetof(ProtoItem,Ammo.DRMod))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Ammo_DmgMult",offsetof(ProtoItem,Ammo.DmgMult))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ProtoItem","const uint Ammo_DmgDiv",offsetof(ProtoItem,Ammo.DmgDiv))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_0",offsetof(ProtoItem,StartValue[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_1",offsetof(ProtoItem,StartValue[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_2",offsetof(ProtoItem,StartValue[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_3",offsetof(ProtoItem,StartValue[3]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_4",offsetof(ProtoItem,StartValue[4]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_5",offsetof(ProtoItem,StartValue[5]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_6",offsetof(ProtoItem,StartValue[6]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_7",offsetof(ProtoItem,StartValue[7]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_8",offsetof(ProtoItem,StartValue[8]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint StartValue_9",offsetof(ProtoItem,StartValue[9]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 BlockLines",offsetof(ProtoItem,BlockLines))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 ChildPid_0",offsetof(ProtoItem,ChildPid[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 ChildPid_1",offsetof(ProtoItem,ChildPid[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 ChildPid_2",offsetof(ProtoItem,ChildPid[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 ChildPid_3",offsetof(ProtoItem,ChildPid[3]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 ChildPid_4",offsetof(ProtoItem,ChildPid[4]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 ChildLines_0",offsetof(ProtoItem,ChildLines[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 ChildLines_1",offsetof(ProtoItem,ChildLines[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 ChildLines_2",offsetof(ProtoItem,ChildLines[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 ChildLines_3",offsetof(ProtoItem,ChildLines[3]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 ChildLines_4",offsetof(ProtoItem,ChildLines[4]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_IsUnarmed",offsetof(ProtoItem,Weapon_IsUnarmed))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_UnarmedTree",offsetof(ProtoItem,Weapon_UnarmedTree))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_UnarmedPriority",offsetof(ProtoItem,Weapon_UnarmedPriority))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_UnarmedMinAgility",offsetof(ProtoItem,Weapon_UnarmedMinAgility))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_UnarmedMinUnarmed",offsetof(ProtoItem,Weapon_UnarmedMinUnarmed))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_UnarmedMinLevel",offsetof(ProtoItem,Weapon_UnarmedMinLevel))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_Anim1",offsetof(ProtoItem,Weapon_Anim1))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_MaxAmmoCount",offsetof(ProtoItem,Weapon_MaxAmmoCount))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_Caliber",offsetof(ProtoItem,Weapon_Caliber))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Weapon_DefaultAmmoPid",offsetof(ProtoItem,Weapon_DefaultAmmoPid))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_MinStrength",offsetof(ProtoItem,Weapon_MinStrength))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_Perk",offsetof(ProtoItem,Weapon_Perk))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_ActiveUses",offsetof(ProtoItem,Weapon_ActiveUses))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_Skill_0",offsetof(ProtoItem,Weapon_Skill[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_Skill_1",offsetof(ProtoItem,Weapon_Skill[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Weapon_Skill_2",offsetof(ProtoItem,Weapon_Skill[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_PicUse_0",offsetof(ProtoItem,Weapon_PicUse[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_PicUse_1",offsetof(ProtoItem,Weapon_PicUse[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_PicUse_2",offsetof(ProtoItem,Weapon_PicUse[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_MaxDist_0",offsetof(ProtoItem,Weapon_MaxDist[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_MaxDist_1",offsetof(ProtoItem,Weapon_MaxDist[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_MaxDist_2",offsetof(ProtoItem,Weapon_MaxDist[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_Round_0",offsetof(ProtoItem,Weapon_Round[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_Round_1",offsetof(ProtoItem,Weapon_Round[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_Round_2",offsetof(ProtoItem,Weapon_Round[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_ApCost_0",offsetof(ProtoItem,Weapon_ApCost[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_ApCost_1",offsetof(ProtoItem,Weapon_ApCost[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Weapon_ApCost_2",offsetof(ProtoItem,Weapon_ApCost[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Aim_0",offsetof(ProtoItem,Weapon_Aim[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Aim_1",offsetof(ProtoItem,Weapon_Aim[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Weapon_Aim_2",offsetof(ProtoItem,Weapon_Aim[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_SoundId_0",offsetof(ProtoItem,Weapon_SoundId[0]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_SoundId_1",offsetof(ProtoItem,Weapon_SoundId[1]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint8 Weapon_SoundId_2",offsetof(ProtoItem,Weapon_SoundId[2]))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Ammo_Caliber",offsetof(ProtoItem,Ammo_Caliber))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockMove",offsetof(ProtoItem,Door_NoBlockMove))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockShoot",offsetof(ProtoItem,Door_NoBlockShoot))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Door_NoBlockLight",offsetof(ProtoItem,Door_NoBlockLight))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Container_Volume",offsetof(ProtoItem,Container_Volume))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Container_Changeble",offsetof(ProtoItem,Container_Changeble))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Container_CannotPickUp",offsetof(ProtoItem,Container_CannotPickUp))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const bool Container_MagicHandsGrnd",offsetof(ProtoItem,Container_MagicHandsGrnd))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint16 Locker_Condition",offsetof(ProtoItem,Locker_Condition))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const int Grid_Type",offsetof(ProtoItem,Grid_Type))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_Speed",offsetof(ProtoItem,Car_Speed))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_Passability",offsetof(ProtoItem,Car_Passability))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_DeteriorationRate",offsetof(ProtoItem,Car_DeteriorationRate))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_CrittersCapacity",offsetof(ProtoItem,Car_CrittersCapacity))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_TankVolume",offsetof(ProtoItem,Car_TankVolume))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_MaxDeterioration",offsetof(ProtoItem,Car_MaxDeterioration))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_FuelConsumption",offsetof(ProtoItem,Car_FuelConsumption))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_Entrance",offsetof(ProtoItem,Car_Entrance))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ProtoItem","const uint Car_MovementType",offsetof(ProtoItem,Car_MovementType))<0) BIND_ERROR;
 
 #ifdef BIND_SERVER
 /************************************************************************/
@@ -261,8 +248,8 @@
 /* Item                                                                 */
 /************************************************************************/
 	// Methods
-	if(engine->RegisterObjectMethod("Item","bool IsGrouped() const",asFUNCTION(BIND_CLASS Item_IsGrouped),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Item","bool IsWeared() const",asFUNCTION(BIND_CLASS Item_IsWeared),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Item","bool IsStackable() const",asFUNCTION(BIND_CLASS Item_IsStackable),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Item","bool IsDeteriorable() const",asFUNCTION(BIND_CLASS Item_IsDeteriorable),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool SetScript(string@+ script)",asFUNCTION(BIND_CLASS Item_SetScript),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","uint GetScriptId() const",asFUNCTION(BIND_CLASS Item_GetScriptId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool SetEvent(int eventType, string@+ funcName)",asFUNCTION(BIND_CLASS Item_SetEvent),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -279,6 +266,7 @@
 	if(engine->RegisterObjectMethod("Item","void Update() const",asFUNCTION(BIND_CLASS Item_Update),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","void Animate(uint8 fromFrame, uint8 toFrame)",asFUNCTION(BIND_CLASS Item_Animate),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","void SetLexems(string@+ lexems)",asFUNCTION(BIND_CLASS Item_SetLexems),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Item","Item@+ GetChild(uint childIndex) const",asFUNCTION(BIND_CLASS Item_GetChild),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 	if(engine->RegisterObjectMethod("Item","void EventFinish(bool deleted)",asFUNCTION(BIND_CLASS Item_EventFinish),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool EventAttack(Critter& attacker, Critter& target)",asFUNCTION(BIND_CLASS Item_EventAttack),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -304,141 +292,58 @@
 	if(engine->RegisterObjectProperty("Item","const uint8 Mode",offsetof(Item,Data.Mode))<0) BIND_ERROR;
 
 	if(engine->RegisterObjectProperty("Item","uint16 SortValue",offsetof(Item,Data.SortValue))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_SortValue(uint16 val)",asFUNCTION(BIND_CLASS Item_set_SortValue),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_SortValue() const",asFUNCTION(BIND_CLASS Item_get_SortValue),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 Info",offsetof(Item,Data.Info))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Info(uint8 val)",asFUNCTION(BIND_CLASS Item_set_Info),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_Info() const",asFUNCTION(BIND_CLASS Item_get_Info),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint PicMap",offsetof(Item,Data.PicMapHash))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_PicMap(uint val)",asFUNCTION(BIND_CLASS Item_set_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint get_PicMap() const",asFUNCTION(BIND_CLASS Item_get_PicMap),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint PicInv",offsetof(Item,Data.PicInvHash))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_PicInv(uint val)",asFUNCTION(BIND_CLASS Item_set_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint get_PicInv() const",asFUNCTION(BIND_CLASS Item_get_PicInv),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 AnimWaitBase",offsetof(Item,Data.AnimWaitBase))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimWaitBase(uint16 val)",asFUNCTION(BIND_CLASS Item_set_AnimWaitBase),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimWaitBase() const",asFUNCTION(BIND_CLASS Item_get_AnimWaitBase),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 AnimStayBegin",offsetof(Item,Data.AnimStay[0]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimStayBegin(uint8 val)",asFUNCTION(BIND_CLASS Item_set_AnimStayBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimStayBegin() const",asFUNCTION(BIND_CLASS Item_get_AnimStayBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 AnimStayEnd",offsetof(Item,Data.AnimStay[1]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimStayEnd(uint8 val)",asFUNCTION(BIND_CLASS Item_set_AnimStayEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimStayEnd() const",asFUNCTION(BIND_CLASS Item_get_AnimStayEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 AnimShowBegin",offsetof(Item,Data.AnimShow[0]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimShowBegin(uint8 val)",asFUNCTION(BIND_CLASS Item_set_AnimShowBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimShowBegin() const",asFUNCTION(BIND_CLASS Item_get_AnimShowBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 AnimShowEnd",offsetof(Item,Data.AnimShow[1]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimShowEnd(uint8 val)",asFUNCTION(BIND_CLASS Item_set_AnimShowEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimShowEnd() const",asFUNCTION(BIND_CLASS Item_get_AnimShowEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 AnimHideBegin",offsetof(Item,Data.AnimHide[0]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimHideBegin(uint8 val)",asFUNCTION(BIND_CLASS Item_set_AnimHideBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimHideBegin() const",asFUNCTION(BIND_CLASS Item_get_AnimHideBegin),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 AnimHideEnd",offsetof(Item,Data.AnimHide[1]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_AnimHideEnd(uint8 val)",asFUNCTION(BIND_CLASS Item_set_AnimHideEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_AnimHideEnd() const",asFUNCTION(BIND_CLASS Item_get_AnimHideEnd),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-
 	if(engine->RegisterObjectMethod("Item","void set_Flags(uint value)",asFUNCTION(BIND_CLASS Item_set_Flags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","uint get_Flags() const",asFUNCTION(BIND_CLASS Item_get_Flags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","void set_TrapValue(int16 val)",asFUNCTION(BIND_CLASS Item_set_TrapValue),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","int16 get_TrapValue() const",asFUNCTION(BIND_CLASS Item_get_TrapValue),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-
-//	if(engine->RegisterObjectProperty("Item","uint Flags",offsetof(Item,Data.Flags))<0) BIND_ERROR;
-//	if(engine->RegisterObjectProperty("Item","int16 TrapValue",offsetof(Item,Data.TrapValue))<0) BIND_ERROR;
-
 	if(engine->RegisterObjectProperty("Item","uint Cost",offsetof(Item,Data.Cost))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Cost(uint val)",asFUNCTION(BIND_CLASS Item_set_Cost),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint get_Cost() const",asFUNCTION(BIND_CLASS Item_get_Cost),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val0",offsetof(Item,Data.ScriptValues[0]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val0(int val)",asFUNCTION(BIND_CLASS Item_set_Val0),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val0() const",asFUNCTION(BIND_CLASS Item_get_Val0),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val1",offsetof(Item,Data.ScriptValues[1]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val1(int val)",asFUNCTION(BIND_CLASS Item_set_Val1),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val1() const",asFUNCTION(BIND_CLASS Item_get_Val1),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val2",offsetof(Item,Data.ScriptValues[2]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val2(int val)",asFUNCTION(BIND_CLASS Item_set_Val2),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val2() const",asFUNCTION(BIND_CLASS Item_get_Val2),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val3",offsetof(Item,Data.ScriptValues[3]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val3(int val)",asFUNCTION(BIND_CLASS Item_set_Val3),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val3() const",asFUNCTION(BIND_CLASS Item_get_Val3),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val4",offsetof(Item,Data.ScriptValues[4]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val4(int val)",asFUNCTION(BIND_CLASS Item_set_Val4),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val4() const",asFUNCTION(BIND_CLASS Item_get_Val4),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val5",offsetof(Item,Data.ScriptValues[5]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val5(int val)",asFUNCTION(BIND_CLASS Item_set_Val5),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val5() const",asFUNCTION(BIND_CLASS Item_get_Val5),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val6",offsetof(Item,Data.ScriptValues[6]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val6(int val)",asFUNCTION(BIND_CLASS Item_set_Val6),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val6() const",asFUNCTION(BIND_CLASS Item_get_Val6),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val7",offsetof(Item,Data.ScriptValues[7]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val7(int val)",asFUNCTION(BIND_CLASS Item_set_Val7),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val7() const",asFUNCTION(BIND_CLASS Item_get_Val7),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val8",offsetof(Item,Data.ScriptValues[8]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val8(int val)",asFUNCTION(BIND_CLASS Item_set_Val8),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val8() const",asFUNCTION(BIND_CLASS Item_get_Val8),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int Val9",offsetof(Item,Data.ScriptValues[9]))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_Val9(int val)",asFUNCTION(BIND_CLASS Item_set_Val9),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int get_Val9() const",asFUNCTION(BIND_CLASS Item_get_Val9),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","int8 LightIntensity",offsetof(Item,Data.LightIntensity))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LightIntensity(int8 val)",asFUNCTION(BIND_CLASS Item_set_LightIntensity),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","int8 get_LightIntensity() const",asFUNCTION(BIND_CLASS Item_get_LightIntensity),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 LightDistance",offsetof(Item,Data.LightDistance))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LightDistance(uint8 val)",asFUNCTION(BIND_CLASS Item_set_LightDistance),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_LightDistance() const",asFUNCTION(BIND_CLASS Item_get_LightDistance),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 LightFlags",offsetof(Item,Data.LightFlags))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LightFlags(uint8 val)",asFUNCTION(BIND_CLASS Item_set_LightFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_LightFlags() const",asFUNCTION(BIND_CLASS Item_get_LightFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint LightColor",offsetof(Item,Data.LightColor))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LightColor(uint val)",asFUNCTION(BIND_CLASS Item_set_LightColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint get_LightColor() const",asFUNCTION(BIND_CLASS Item_get_LightColor),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 Indicator",offsetof(Item,Data.Indicator))<0) BIND_ERROR;
 	// Tech info
-	if(engine->RegisterObjectProperty("Item","uint8 BrokenFlags",offsetof(Item,Data.TechInfo.DeteorationFlags))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_BrokenFlags(uint8 val)",asFUNCTION(BIND_CLASS Item_set_BrokenFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_BrokenFlags() const",asFUNCTION(BIND_CLASS Item_get_BrokenFlags),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("Item","uint8 BrokenCount",offsetof(Item,Data.TechInfo.DeteorationCount))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_BrokenCount(uint8 val)",asFUNCTION(BIND_CLASS Item_set_BrokenCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint8 get_BrokenCount() const",asFUNCTION(BIND_CLASS Item_get_BrokenCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("Item","uint16 BrokenWear",offsetof(Item,Data.TechInfo.DeteorationValue))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_BrokenWear(uint16 val)",asFUNCTION(BIND_CLASS Item_set_BrokenWear),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_BrokenWear() const",asFUNCTION(BIND_CLASS Item_get_BrokenWear),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint8 BrokenFlags",offsetof(Item,Data.TechInfo.BrokenFlags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint8 BrokenCount",offsetof(Item,Data.TechInfo.BrokenCount))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint16 Deterioration",offsetof(Item,Data.TechInfo.Deterioration))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 WeaponAmmoPid",offsetof(Item,Data.TechInfo.AmmoPid))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_WeaponAmmoPid(uint16 val)",asFUNCTION(BIND_CLASS Item_set_WeaponAmmoPid),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_WeaponAmmoPid() const",asFUNCTION(BIND_CLASS Item_get_WeaponAmmoPid),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 WeaponAmmoCount",offsetof(Item,Data.TechInfo.AmmoCount))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_WeaponAmmoCount(uint16 val)",asFUNCTION(BIND_CLASS Item_set_WeaponAmmoCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_WeaponAmmoCount() const",asFUNCTION(BIND_CLASS Item_get_WeaponAmmoCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	// Locker
 	if(engine->RegisterObjectMethod("Item","bool LockerOpen()",asFUNCTION(BIND_CLASS Item_LockerOpen),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Item","bool LockerClose()",asFUNCTION(BIND_CLASS Item_LockerClose),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint LockerId",offsetof(Item,Data.Locker.DoorId))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LockerId(uint val)",asFUNCTION(BIND_CLASS Item_set_LockerId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint get_LockerId() const",asFUNCTION(BIND_CLASS Item_get_LockerId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 LockerCondition",offsetof(Item,Data.Locker.Condition))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LockerCondition(uint16 val)",asFUNCTION(BIND_CLASS Item_set_LockerCondition),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_LockerCondition() const",asFUNCTION(BIND_CLASS Item_get_LockerCondition),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 LockerComplexity",offsetof(Item,Data.Locker.Complexity))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_LockerComplexity(uint16 val)",asFUNCTION(BIND_CLASS Item_set_LockerComplexity),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_LockerComplexity() const",asFUNCTION(BIND_CLASS Item_get_LockerComplexity),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	// Car
-	if(engine->RegisterObjectMethod("Item","bool IsCar()",asFUNCTION(BIND_CLASS Item_IsCar),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Item","Item@+ CarGetBag(int numBag)",asFUNCTION(BIND_CLASS Item_CarGetBag),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 CarFuel",offsetof(Item,Data.Car.Fuel))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_CarFuel(uint16 val)",asFUNCTION(BIND_CLASS Item_set_CarFuel),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_CarFuel() const",asFUNCTION(BIND_CLASS Item_get_CarFuel),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("Item","uint16 CarDeteoration",offsetof(Item,Data.Car.Deteoration))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_CarDeteoration(uint16 val)",asFUNCTION(BIND_CLASS Item_set_CarDeteoration),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_CarDeteoration() const",asFUNCTION(BIND_CLASS Item_get_CarDeteoration),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Item","uint16 CarDeterioration",offsetof(Item,Data.Car.Deterioration))<0) BIND_ERROR;
 	// Radio
 	if(engine->RegisterObjectProperty("Item","uint16 RadioChannel",offsetof(Item,Data.Radio.Channel))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_RadioChannel(uint16 val)",asFUNCTION(BIND_CLASS Item_set_RadioChannel),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint16 get_RadioChannel() const",asFUNCTION(BIND_CLASS Item_get_RadioChannel),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint16 RadioFlags",offsetof(Item,Data.Radio.Flags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 RadioBroadcastSend",offsetof(Item,Data.Radio.BroadcastSend))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Item","uint8 RadioBroadcastRecv",offsetof(Item,Data.Radio.BroadcastRecv))<0) BIND_ERROR;
 	// Holodisk
 	if(engine->RegisterObjectProperty("Item","uint HolodiskNumber",offsetof(Item,Data.Holodisk.Number))<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","void set_HolodiskNumber(uint val)",asFUNCTION(BIND_CLASS Item_set_HolodiskNumber),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-//	if(engine->RegisterObjectMethod("Item","uint get_HolodiskNumber()",asFUNCTION(BIND_CLASS Item_get_HolodiskNumber),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 
 /************************************************************************/
 /* Scenery                                                              */
@@ -731,7 +636,7 @@
 	if(engine->RegisterObjectMethod("Map","void SetTextMsg(uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum, string& lexems) const",asFUNCTION(BIND_CLASS Map_SetTextMsgLex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void RunEffect(uint16 effectPid, uint16 hexX, uint16 hexY, uint16 radius) const",asFUNCTION(BIND_CLASS Map_RunEffect),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void RunFlyEffect(uint16 effectPid, Critter@+ fromCr, Critter@+ toCr, uint16 fromX, uint16 fromY, uint16 toX, uint16 toY) const",asFUNCTION(BIND_CLASS Map_RunFlyEffect),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Map","bool CheckPlaceForCar(uint16 hexX, uint16 hexY, uint16 protoCar) const",asFUNCTION(BIND_CLASS Map_CheckPlaceForCar),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Map","bool CheckPlaceForItem(uint16 hexX, uint16 hexY, uint16 pid) const",asFUNCTION(BIND_CLASS Map_CheckPlaceForItem),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void BlockHex(uint16 hexX, uint16 hexY, bool full)",asFUNCTION(BIND_CLASS Map_BlockHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void UnblockHex(uint16 hexX, uint16 hexY)",asFUNCTION(BIND_CLASS Map_UnblockHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Map","void PlaySound(string& soundName) const",asFUNCTION(BIND_CLASS Map_PlaySound),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -942,16 +847,14 @@
 	if(engine->RegisterObjectProperty("CritterCl","DataRef ParamBase",offsetof(CritterCl,ThisPtr[0]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CritterCl","int[]@ Anim3dLayer",offsetof(CritterCl,Layers3d))<0) BIND_ERROR;
 
-	if(engine->RegisterObjectMethod("ItemCl","bool IsGrouped() const",asFUNCTION(BIND_CLASS Item_IsGrouped),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ItemCl","bool IsWeared() const",asFUNCTION(BIND_CLASS Item_IsWeared),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("ItemCl","bool IsStackable() const",asFUNCTION(BIND_CLASS Item_IsStackable),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("ItemCl","bool IsDeteriorable() const",asFUNCTION(BIND_CLASS Item_IsDeteriorable),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","uint GetScriptId() const",asFUNCTION(BIND_CLASS Item_GetScriptId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","uint8 GetType() const",asFUNCTION(BIND_CLASS Item_GetType),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","uint16 GetProtoId() const",asFUNCTION(BIND_CLASS Item_GetProtoId),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","uint GetCount() const",asFUNCTION(BIND_CLASS Item_GetCount),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","bool GetMapPosition(uint16& hexX, uint16& hexY) const",asFUNCTION(BIND_CLASS Item_GetMapPosition),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("ItemCl","void Animate(uint8 fromFrame, uint8 toFrame)",asFUNCTION(BIND_CLASS Item_Animate),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ItemCl","bool IsCar() const",asFUNCTION(BIND_CLASS Item_IsCar),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("ItemCl","ItemCl@+ CarGetBag(int numBag) const",asFUNCTION(BIND_CLASS Item_CarGetBag),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint Id",offsetof(Item,Id))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const ProtoItem@ Proto",offsetof(Item,Proto))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const string Lexems",offsetof(Item,Lexems))<0) BIND_ERROR;
@@ -993,9 +896,9 @@
 	if(engine->RegisterObjectProperty("ItemCl","const int16 TrapValue",offsetof(Item,Data.TrapValue))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint8 Indicator",offsetof(Item,Data.Indicator))<0) BIND_ERROR;
 	// Tech info
-	if(engine->RegisterObjectProperty("ItemCl","const uint8 BrokenFlags",offsetof(Item,Data.TechInfo.DeteorationFlags))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ItemCl","const uint8 BrokenCount",offsetof(Item,Data.TechInfo.DeteorationCount))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ItemCl","const uint16 BrokenWear",offsetof(Item,Data.TechInfo.DeteorationValue))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint8 BrokenFlags",offsetof(Item,Data.TechInfo.BrokenFlags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint8 BrokenCount",offsetof(Item,Data.TechInfo.BrokenCount))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint16 Deterioration",offsetof(Item,Data.TechInfo.Deterioration))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 WeaponAmmoPid",offsetof(Item,Data.TechInfo.AmmoPid))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 WeaponAmmoCount",offsetof(Item,Data.TechInfo.AmmoCount))<0) BIND_ERROR;
 	// Locker
@@ -1004,7 +907,7 @@
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 LockerComplexity",offsetof(Item,Data.Locker.Complexity))<0) BIND_ERROR;
 	// Car
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 CarFuel",offsetof(Item,Data.Car.Fuel))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("ItemCl","const uint16 CarDeteoration",offsetof(Item,Data.Car.Deteoration))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("ItemCl","const uint16 CarDeterioration",offsetof(Item,Data.Car.Deterioration))<0) BIND_ERROR;
 	// Radio
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 RadioChannel",offsetof(Item,Data.Radio.Channel))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("ItemCl","const uint16 RadioFlags",offsetof(Item,Data.Radio.Flags))<0) BIND_ERROR;
@@ -1347,9 +1250,9 @@
 	if(engine->RegisterObjectProperty("MapperObject","uint8 InfoOffset",offsetof(MapObject,MItem.InfoOffset))<0) BIND_ERROR;
 	// Item
 	if(engine->RegisterObjectProperty("MapperObject","uint Item_Count",offsetof(MapObject,MItem.Count))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_DeteorationFlags",offsetof(MapObject,MItem.DeteorationFlags))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_DeteorationCount",offsetof(MapObject,MItem.DeteorationCount))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","uint16 Item_DeteorationValue",offsetof(MapObject,MItem.DeteorationValue))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_BrokenFlags",offsetof(MapObject,MItem.BrokenFlags))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_BrokenCount",offsetof(MapObject,MItem.BrokenCount))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","uint16 Item_Deterioration",offsetof(MapObject,MItem.Deterioration))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","const bool Item_InContainer",offsetof(MapObject,MItem.InContainer))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_ItemSlot",offsetof(MapObject,MItem.ItemSlot))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint16 Item_AmmoPid",offsetof(MapObject,MItem.AmmoPid))<0) BIND_ERROR;
