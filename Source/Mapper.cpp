@@ -3591,6 +3591,8 @@ void FOMapper::ParseNpc(WORD pid, WORD hx, WORD hy)
 
 MapObject* FOMapper::ParseMapObj(MapObject* mobj)
 {
+	if(mobj->MapX>=HexMngr.GetMaxHexX() || mobj->MapY>=HexMngr.GetMaxHexY()) return NULL;
+
 	if(mobj->MapObjType==MAP_OBJECT_CRITTER)
 	{
 		if(HexMngr.GetField(mobj->MapX,mobj->MapY).Crit) return NULL;

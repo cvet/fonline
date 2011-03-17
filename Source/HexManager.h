@@ -166,10 +166,10 @@ private:
 
 	// Center
 public:
-	void FindSetCenter(int x, int y);
+	void FindSetCenter(int cx, int cy);
 
 private:
-	void FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps);
+	void FindSetCenterDir(WORD& hx, WORD& hy, int dirs[2], int steps);
 
 	// Map load
 private:

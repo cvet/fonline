@@ -1599,6 +1599,12 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 
 		// Decode
 //=======================================================================
+#define ART_GET_COLOR \
+		BYTE index=fm.GetByte();\
+		DWORD color=palette[palette_index][index];\
+		if(!index) color=0;\
+		else if(transparent) color|=max((color>>16)&0xFF,max((color>>8)&0xFF,color&0xFF))<<24;\
+		else color|=0xFF000000
 #define ART_WRITE_COLOR \
 		if(mirror)\
 		{\
@@ -1619,14 +1625,9 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 
 		if(w*h==frame_info.frameSize)
 		{
-			for(DWORD i=0;i<frame_info.frameSize;i++,pos++)
+			for(DWORD i=0;i<frame_info.frameSize;i++)
 			{
-				BYTE index=fm.GetByte();
-				DWORD color=palette[palette_index][index];
-				if(!index) color=0;
-				else if(transparent) color|=(255-index)<<24;
-				else color|=0xFF000000;
-
+				ART_GET_COLOR;
 				ART_WRITE_COLOR;
 			}
 		}
@@ -1641,23 +1642,13 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 					i+=cmd;
 					for(;cmd>0;cmd--)
 					{
-						BYTE index=fm.GetByte();
-						DWORD color=palette[palette_index][index];
-						if(!index) color=0;
-						else if(transparent) color|=(255-index)<<24;
-						else color|=0xFF000000;
-
+						ART_GET_COLOR;
 						ART_WRITE_COLOR;
 					}
 				}
 				else
 				{
-					BYTE index=fm.GetByte();
-					DWORD color=palette[palette_index][index];
-					if(!index) color=0;
-					else if(transparent) color|=(255-index)<<24;
-					else color|=0xFF000000;
-
+					ART_GET_COLOR;
 					for(;cmd>0;cmd--) ART_WRITE_COLOR;
 					i++;
 				}

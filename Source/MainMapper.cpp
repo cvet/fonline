@@ -93,7 +93,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 			Mapper->MainLoop();
 
 			// Sleep
-			if(GameOpt.Sleep) Sleep(GameOpt.Sleep);
+			if(GameOpt.Sleep>=0) Sleep(GameOpt.Sleep);
 		}
 	}
 

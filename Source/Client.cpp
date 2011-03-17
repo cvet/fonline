@@ -227,12 +227,12 @@ bool FOClient::Init(HWND hwnd)
 
 		DWORD len;
 		char* str=(char*)Crypt.GetCache("__name",len);
-		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) GameOpt.Name=str;
+		if(str && len<=MAX_NAME+1) GameOpt.Name=str;
 		else fail=true;
 		delete[] str;
 
 		str=(char*)Crypt.GetCache("__pass",len);
-		if(str && len<=min(GameOpt.MaxNameLength,MAX_NAME)+1) GameOpt.Pass=str;
+		if(str && len<=MAX_NAME+1) GameOpt.Pass=str;
 		else fail=true;
 		delete[] str;
 

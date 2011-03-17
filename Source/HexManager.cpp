@@ -2788,84 +2788,73 @@ bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, flo
 	return false;
 }
 
-void HexManager::FindSetCenter(int x, int y)
+void HexManager::FindSetCenter(int cx, int cy)
 {
 	if(!viewField) return;
-	RebuildMap(x,y);
+	RebuildMap(cx,cy);
 
 #ifdef FONLINE_CLIENT
 	int iw=VIEW_WIDTH/2+2;
 	int ih=VIEW_HEIGHT/2+2;
-	WORD hx=x;
-	WORD hy=y;
-	ByteVec dirs;
+	WORD hx=cx;
+	WORD hy=cy;
+	int dirs[2];
 
 	// Up
-	dirs.clear();
-	dirs.push_back(0);
-	dirs.push_back(5);
+	if(GameOpt.MapHexagonal) dirs[0]=0,dirs[1]=5;
+	else dirs[0]=0,dirs[1]=6;
 	FindSetCenterDir(hx,hy,dirs,ih);
 	// Down
-	dirs.clear();
-	dirs.push_back(3);
-	dirs.push_back(2);
+	if(GameOpt.MapHexagonal) dirs[0]=3,dirs[1]=2;
+	else dirs[0]=4,dirs[1]=2;
 	FindSetCenterDir(hx,hy,dirs,ih);
-	// Left
-	dirs.clear();
-	dirs.push_back(1);
-	FindSetCenterDir(hx,hy,dirs,iw);
 	// Right
-	dirs.clear();
-	dirs.push_back(4);
+	if(GameOpt.MapHexagonal) dirs[0]=1,dirs[1]=-1;
+	else dirs[0]=1,dirs[1]=-1;
+	FindSetCenterDir(hx,hy,dirs,iw);
+	// Left
+	if(GameOpt.MapHexagonal) dirs[0]=4,dirs[1]=-1;
+	else dirs[0]=5,dirs[1]=-1;
 	FindSetCenterDir(hx,hy,dirs,iw);
 
 	// Up-Right
-	dirs.clear();
-	dirs.push_back(0);
+	if(GameOpt.MapHexagonal) dirs[0]=0,dirs[1]=-1;
+	else dirs[0]=0,dirs[1]=-1;
 	FindSetCenterDir(hx,hy,dirs,ih);
 	// Down-Left
-	dirs.clear();
-	dirs.push_back(3);
+	if(GameOpt.MapHexagonal) dirs[0]=3,dirs[1]=-1;
+	else dirs[0]=4,dirs[1]=-1;
 	FindSetCenterDir(hx,hy,dirs,ih);
 	// Up-Left
-	dirs.clear();
-	dirs.push_back(5);
+	if(GameOpt.MapHexagonal) dirs[0]=5,dirs[1]=-1;
+	else dirs[0]=6,dirs[1]=-1;
 	FindSetCenterDir(hx,hy,dirs,ih);
 	// Down-Right
-	dirs.clear();
-	dirs.push_back(2);
+	if(GameOpt.MapHexagonal) dirs[0]=2,dirs[1]=-1;
+	else dirs[0]=2,dirs[1]=-1;
 	FindSetCenterDir(hx,hy,dirs,ih);
 
 	RebuildMap(hx,hy);
-#endif //FONLINE_CLIENT
+#endif // FONLINE_CLIENT
 }
 
-void HexManager::FindSetCenterDir(WORD& x, WORD& y, ByteVec& dirs, int steps)
+void HexManager::FindSetCenterDir(WORD& hx, WORD& hy, int dirs[2], int steps)
 {
-	if(dirs.empty()) return;
-
-	WORD sx=x;
-	WORD sy=y;
-	int cur_dir=0;
+	WORD sx=hx;
+	WORD sy=hy;
+	int dirs_count=(dirs[1]==-1?1:2);
 
 	int i;
 	for(i=0;i<steps;i++)
 	{
-		MoveHexByDir(sx,sy,dirs[cur_dir],maxHexX,maxHexY);
-		cur_dir++;
-		if(cur_dir>=dirs.size()) cur_dir=0;
+		if(!MoveHexByDir(sx,sy,dirs[i%dirs_count],maxHexX,maxHexY)) break;
 
 		GetHexTrack(sx,sy)=1;
 		if(GetField(sx,sy).ScrollBlock) break;
 		GetHexTrack(sx,sy)=2;
 	}
 
-	for(;i<steps;i++)
-	{
-		MoveHexByDir(x,y,ReverseDir(dirs[cur_dir]),maxHexX,maxHexY);
-		cur_dir++;
-		if(cur_dir>=dirs.size()) cur_dir=0;
-	}
+	for(;i<steps;i++) MoveHexByDir(hx,hy,ReverseDir(dirs[i%dirs_count]),maxHexX,maxHexY);
 }
 
 bool HexManager::LoadMap(WORD map_pid)
@@ -3626,6 +3615,7 @@ void HexManager::ParseSelTiles()
 
 void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof, bool select)
 {
+	if(hx>=maxHexX || hy>=maxHexY) return;
 	Field& f=GetField(hx,hy);
 
 	AnyFrames* anim=ResMngr.GetItemAnim(name_hash);
