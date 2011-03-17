@@ -2169,14 +2169,14 @@ void FOMapper::ObjKeyDownA(MapObject* o, BYTE dik)
 		break;
 	case 34:
 		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Type==ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount) val_w=&o->MItem.AmmoPid;
-		if(o->MapObjType==ITEM_TYPE_KEY || o->MapObjType==ITEM_TYPE_CONTAINER || o->MapObjType==ITEM_TYPE_DOOR) val_dw=&o->MItem.LockerDoorId;
+		else if(o->MapObjType==MAP_OBJECT_ITEM && (proto->Type==ITEM_TYPE_KEY || proto->Type==ITEM_TYPE_CONTAINER || proto->Type==ITEM_TYPE_DOOR)) val_dw=&o->MItem.LockerDoorId;
 		break;
 	case 35:
 		if(o->MapObjType==MAP_OBJECT_ITEM && proto->Type==ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount) val_dw=&o->MItem.AmmoCount;
-		if(o->MapObjType==ITEM_TYPE_KEY || o->MapObjType==ITEM_TYPE_CONTAINER || o->MapObjType==ITEM_TYPE_DOOR) val_w=&o->MItem.LockerCondition;
+		else if(o->MapObjType==MAP_OBJECT_ITEM && (proto->Type==ITEM_TYPE_CONTAINER || proto->Type==ITEM_TYPE_DOOR)) val_w=&o->MItem.LockerCondition;
 		break;
 	case 36:
-		if(o->MapObjType==ITEM_TYPE_KEY || o->MapObjType==ITEM_TYPE_CONTAINER || o->MapObjType==ITEM_TYPE_DOOR) val_w=&o->MItem.LockerComplexity;
+		if(o->MapObjType==MAP_OBJECT_ITEM && (proto->Type==ITEM_TYPE_CONTAINER || proto->Type==ITEM_TYPE_DOOR)) val_w=&o->MItem.LockerComplexity;
 		break;
 	default:
 		break;
