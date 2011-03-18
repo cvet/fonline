@@ -2,7 +2,7 @@
 #include "ItemManager.h"
 #include "Log.h"
 #include "Text.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 
 #ifdef FONLINE_SERVER
 #include "Critter.h"
@@ -88,7 +88,7 @@ T ResolveProtoValue(const char* str)
 {
 	if(Str::IsNumber(str)) return (T)_atoi64(str);
 	else if(strstr(str,"\\") || strstr(str,"/")) return (T)Str::GetHash(str);
-	return (T)FONames::GetDefineValue(str);
+	return (T)ConstantsManager::GetDefineValue(str);
 }
 
 bool ItemManager::LoadProtos()
@@ -1452,7 +1452,7 @@ string ItemManager::GetItemsStatistics()
 			ProtoItem* proto_item=GetProtoItem(i);
 			if(proto_item && proto_item->IsItem())
 			{
-				char* s=(char*)FONames::GetItemName(i);
+				char* s=(char*)ConstantsManager::GetItemName(i);
 				sprintf(str,"%-6u %-40s %-20s\n",i,s?s:_itoa(i,str_,10),_i64toa(itemCount[i],str__,10));
 				result+=str;
 			}

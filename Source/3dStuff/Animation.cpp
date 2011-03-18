@@ -4,7 +4,7 @@
 #include "ShadowVolume.h"
 #include "Common.h"
 #include "Text.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "Script.h"
 #include "CritterType.h"
 
@@ -1524,18 +1524,18 @@ bool Animation3dEntity::Load(const char* name)
 			else if(!_stricmp(token,"Mesh"))
 			{
 				(*istr) >> buf;
-				mesh=FONames::GetDefineValue(buf);
+				mesh=ConstantsManager::GetDefineValue(buf);
 			}
 			else if(!_stricmp(token,"Subset"))
 			{
 				(*istr) >> buf;
-				subset=FONames::GetDefineValue(buf);
+				subset=ConstantsManager::GetDefineValue(buf);
 			}
 			else if(!_stricmp(token,"Layer") || !_stricmp(token,"Value"))
 			{
 				(*istr) >> buf;
-				if(!_stricmp(token,"Layer")) layer=FONames::GetDefineValue(buf);
-				else layer_val=FONames::GetDefineValue(buf);
+				if(!_stricmp(token,"Layer")) layer=ConstantsManager::GetDefineValue(buf);
+				else layer_val=ConstantsManager::GetDefineValue(buf);
 
 				link=&dummy_link;
 				mesh=0;
@@ -1621,7 +1621,7 @@ bool Animation3dEntity::Load(const char* name)
 				Str::ParseLine(buf,'-',layers,Str::ParseLineDummy);
 				for(size_t m=0,n=layers.size();m<n;m++)
 				{
-					int layer=FONames::GetDefineValue(layers[m].c_str());
+					int layer=ConstantsManager::GetDefineValue(layers[m].c_str());
 					if(layer>=0 && layer<LAYERS3D_COUNT)
 					{
 						int* tmp=link->DisabledLayers;
@@ -1640,7 +1640,7 @@ bool Animation3dEntity::Load(const char* name)
 				Str::ParseLine(buf,'-',subsets,Str::ParseLineDummy);
 				for(size_t m=0,n=subsets.size();m<n;m++)
 				{
-					int ss=FONames::GetDefineValue(subsets[m].c_str());
+					int ss=ConstantsManager::GetDefineValue(subsets[m].c_str());
 					if(ss>=0)
 					{
 						int* tmp=link->DisabledSubsets;
@@ -1655,7 +1655,7 @@ bool Animation3dEntity::Load(const char* name)
 			else if(!_stricmp(token,"Texture"))
 			{
 				(*istr) >> buf;
-				int index=FONames::GetDefineValue(buf);
+				int index=ConstantsManager::GetDefineValue(buf);
 				(*istr) >> buf;
 				if(index>=0 && index<EFFECT_TEXTURES)
 				{
@@ -1740,7 +1740,7 @@ bool Animation3dEntity::Load(const char* name)
 					type=D3DXEDT_DWORD;
 					data_len=sizeof(DWORD);
 					data=new char[data_len];
-					*((DWORD*)data)=FONames::GetDefineValue(def_value);
+					*((DWORD*)data)=ConstantsManager::GetDefineValue(def_value);
 				}
 				else continue;
 
@@ -1759,9 +1759,9 @@ bool Animation3dEntity::Load(const char* name)
 				// Index animation
 				int ind1=0,ind2=0;
 				(*istr) >> buf;
-				ind1=FONames::GetDefineValue(buf);
+				ind1=ConstantsManager::GetDefineValue(buf);
 				(*istr) >> buf;
-				ind2=FONames::GetDefineValue(buf);
+				ind2=ConstantsManager::GetDefineValue(buf);
 
 				if(!_stricmp(token,"Anim"))
 				{
@@ -1786,9 +1786,9 @@ bool Animation3dEntity::Load(const char* name)
 
 				int ind1=0,ind2=0;
 				(*istr) >> buf;
-				ind1=FONames::GetDefineValue(buf);
+				ind1=ConstantsManager::GetDefineValue(buf);
 				(*istr) >> buf;
-				ind2=FONames::GetDefineValue(buf);
+				ind2=ConstantsManager::GetDefineValue(buf);
 
 				if(valuei==1) anim1Equals.insert(IntMapVal(ind1,ind2));
 				else if(valuei==2) anim2Equals.insert(IntMapVal(ind1,ind2));

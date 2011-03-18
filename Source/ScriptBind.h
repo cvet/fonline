@@ -1404,8 +1404,6 @@
 	if(engine->RegisterGlobalProperty("bool __ScrollCheck",&GameOpt.ScrollCheck)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __MouseSpeed",&GameOpt.MouseSpeed)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __GlobalSound",&GameOpt.GlobalSound)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("string __MasterPath",&GameOpt.MasterPath)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("string __CritterPath",&GameOpt.CritterPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __FoDataPath",&GameOpt.FoDataPath)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __Host",&GameOpt.Host)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __Port",&GameOpt.Port)) BIND_ERROR;
@@ -1523,6 +1521,10 @@
 	if(engine->RegisterGlobalFunction("void SetAngelScriptProperty(int property, uint value)",asFUNCTION(BIND_CLASS Global_SetAngelScriptProperty),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetStrHash(string@+ str)",asFUNCTION(BIND_CLASS Global_GetStrHash),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool LoadDataFile(string& dataFileName)",asFUNCTION(BIND_CLASS Global_LoadDataFile),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("int GetConstantValue(int constCollection, string@+ name)",asFUNCTION(BIND_CLASS Global_GetConstantValue),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("string@ GetConstantName(int constCollection, int value)",asFUNCTION(BIND_CLASS Global_GetConstantName),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void AddConstant(int constCollection, string@+ name, int value)",asFUNCTION(BIND_CLASS Global_AddConstant),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool LoadConstants(int constCollection, string@+ fileName, int pathType)",asFUNCTION(BIND_CLASS Global_LoadConstants),asCALL_CDECL)<0) BIND_ERROR;
 
 /************************************************************************/
 /*                                                                      */

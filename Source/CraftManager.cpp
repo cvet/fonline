@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "CraftManager.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "FileManager.h"
 
 #ifdef FONLINE_SERVER
@@ -298,7 +298,7 @@ int CraftItem::SetStrParam(const char*& pstr_in, DwordVec& num_vec, IntVec& val_
 		{
 			*pstr='\0';
 
-			if((param_num=FONames::GetParamId(str))<0) return -3;
+			if((param_num=ConstantsManager::GetParamId(str))<0) return -3;
 
 			pstr=str;
 			pstr_in++;
@@ -348,7 +348,7 @@ int CraftItem::SetStrItem(const char*& pstr_in, WordVec& pid_vec, DwordVec& coun
 		{
 			*pstr='\0';
 
-			item_pid=FONames::GetItemPid(str);
+			item_pid=ConstantsManager::GetItemPid(str);
 			if(item_pid==-1) return -2;
 
 			pstr=str;
@@ -451,7 +451,7 @@ void CraftItem::GetStrParam(char* pstr_out, DwordVec& num_vec, IntVec& val_vec, 
 {
 	for(size_t i=0,j=num_vec.size();i<j;i++)
 	{
-		const char* s=FONames::GetParamName(num_vec[i]);
+		const char* s=ConstantsManager::GetParamName(num_vec[i]);
 		if(!s) continue;
 
 		char str[128];
@@ -473,7 +473,7 @@ void CraftItem::GetStrItem(char* pstr_out, WordVec& pid_vec, DwordVec& count_vec
 {
 	for(size_t i=0,j=pid_vec.size();i<j;i++)
 	{
-		const char* s=FONames::GetItemName(pid_vec[i]);
+		const char* s=ConstantsManager::GetItemName(pid_vec[i]);
 		if(!s) continue;
 
 		char str[128];

@@ -38,13 +38,6 @@ __published:	// IDE-managed Components
 	TLabel *LabelMouseSpeed;
 	TLabel *LabelScrollStep;
 	TLabel *LabelScrollDelay;
-	TGroupBox *GbPath;
-	TLabel *LabelMasterPath;
-	TLabel *LabelCritterPath;
-	TEdit *EditMasterPath;
-	TEdit *EditCritterPath;
-	TButton *BtnMasterPath;
-	TButton *BtnCritterPath;
 	TGroupBox *GbSoundVolume;
 	TTrackBar *TbMusicVolume;
 	TTrackBar *TbSoundVolume;
@@ -125,8 +118,6 @@ __published:	// IDE-managed Components
 	void __fastcall BtnParseClick(TObject *Sender);
 	void __fastcall CbScreenWidthChange(TObject *Sender);
 	void __fastcall CbScreenHeightChange(TObject *Sender);
-	void __fastcall BtnMasterPathClick(TObject *Sender);
-	void __fastcall BtnCritterPathClick(TObject *Sender);
 	void __fastcall BtnExecuteClick(TObject *Sender);
 private:	// User declarations
 	void Serialize(bool save);

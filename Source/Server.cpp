@@ -2056,7 +2056,7 @@ void FOServer::Process_Command(Client* cl)
 					if(cr)
 					{
 						WriteLog("Cond %u\n",cr->Data.Cond);
-						for(int i=0;i<MAX_PARAMS;i++) WriteLog("%s %u\n",FONames::GetParamName(i),cr->Data.Params[i]);
+						for(int i=0;i<MAX_PARAMS;i++) WriteLog("%s %u\n",ConstantsManager::GetParamName(i),cr->Data.Params[i]);
 					}
 				}
 				else if(param_type==90)
@@ -3348,7 +3348,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(GameVar)==28);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1264);
+	STATIC_ASSERT(sizeof(GameOptions)==1200);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 	STATIC_ASSERT(PROTO_ITEM_USER_DATA_SIZE==500); // Used in ASCompiler
@@ -3411,7 +3411,7 @@ bool FOServer::Init()
 	CreateDirectory(FileManager::GetFullPath("",PT_SERVER_CLIENTS),NULL);
 	CreateDirectory(FileManager::GetFullPath("",PT_SERVER_BANS),NULL);
 
-	FONames::GenerateFoNames(PT_SERVER_DATA); // Generate name of defines
+	ConstantsManager::Initialize(PT_SERVER_DATA); // Generate name of defines
 	if(!InitScriptSystem()) goto label_Error; // Script system
 	if(!InitLangPacks(LangPacks)) goto label_Error; // Language packs
 	if(!ReloadClientScripts()) goto label_Error; // Client scripts, after language packs initialization

@@ -4778,10 +4778,37 @@ bool FOServer::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 {
 	if(FileManager::LoadDataFile(dat_name.c_str()))
 	{
-		FONames::GenerateFoNames(PT_SERVER_DATA);
+		ConstantsManager::Initialize(PT_SERVER_DATA);
 		return true;
 	}
 	return false;
+}
+
+int FOServer::SScriptFunc::Global_GetConstantValue(int const_collection, CScriptString* name)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	if(!name || !name->length()) SCRIPT_ERROR_R0("Invalid name arg.");
+	return ConstantsManager::GetValue(const_collection,name->c_str());
+}
+
+CScriptString* FOServer::SScriptFunc::Global_GetConstantName(int const_collection, int value)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	return new CScriptString(ConstantsManager::GetName(const_collection,value));
+}
+
+void FOServer::SScriptFunc::Global_AddConstant(int const_collection, CScriptString* name, int value)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R("Invalid namesFile arg.");
+	if(!name || !name->length()) SCRIPT_ERROR_R("Invalid name arg.");
+	ConstantsManager::AddConstant(const_collection,name->c_str(),value);
+}
+
+bool FOServer::SScriptFunc::Global_LoadConstants(int const_collection, CScriptString* file_name, int path_type)
+{
+	if(const_collection<0 || const_collection>1000) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	if(!file_name || !file_name->length()) SCRIPT_ERROR_R0("Invalid fileName arg.");
+	return ConstantsManager::AddCollection(const_collection,file_name->c_str(),path_type);
 }
 
 bool FOServer::SScriptFunc::Global_IsCritterCanWalk(DWORD cr_type)

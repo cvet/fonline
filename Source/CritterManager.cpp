@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "CritterManager.h"
 #include "Log.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "ItemManager.h"
 
 #ifdef FONLINE_SERVER
@@ -136,7 +136,7 @@ bool CritterManager::LoadProtos()
 						if(!strcmp(indent,"Pid")) pid=value;
 						else
 						{
-							int param_id=FONames::GetParamId(indent);
+							int param_id=ConstantsManager::GetParamId(indent);
 							if(param_id>=0 && param_id<MAX_PARAMS) params[param_id]=value;
 							else
 							{

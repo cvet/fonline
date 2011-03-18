@@ -1140,6 +1140,10 @@ struct BindClass
 	static void Global_SetAngelScriptProperty(){}
 	static void Global_GetStrHash(){}
 	static void Global_LoadDataFile(){}
+	static void Global_GetConstantValue(){}
+	static void Global_GetConstantName(){}
+	static void Global_AddConstant(){}
+	static void Global_LoadConstants(){}
 };
 
 #ifdef BIND_CLIENT

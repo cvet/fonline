@@ -9,7 +9,7 @@
 #include "Item.h"
 #include "CritterCl.h"
 #include "Text.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "CritterData.h"
 #include "CritterManager.h"
 #include "ResourceManager.h"
@@ -467,6 +467,10 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static bool Global_SetAngelScriptProperty(int property, DWORD value);
 		static DWORD Global_GetStrHash(CScriptString* str);
 		static bool Global_LoadDataFile(CScriptString& dat_name);
+		static int Global_GetConstantValue(int const_collection, CScriptString* name);
+		static CScriptString* Global_GetConstantName(int const_collection, int value);
+		static void Global_AddConstant(int const_collection, CScriptString* name, int value);
+		static bool Global_LoadConstants(int const_collection, CScriptString* file_name, int path_type);
 		static int Global_GetKeybLang(){return Keyb::Lang;}
 
 		static CScriptString* Global_GetLastError();

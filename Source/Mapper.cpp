@@ -28,7 +28,7 @@ bool FOMapper::Init(HWND wnd)
 
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
-	STATIC_ASSERT(sizeof(GameOptions)==1264);
+	STATIC_ASSERT(sizeof(GameOptions)==1200);
 	Wnd=wnd;
 
 	// Register dll script data
@@ -99,16 +99,6 @@ bool FOMapper::Init(HWND wnd)
 
 	// File manager
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
-	if(!FileManager::LoadDataFile(GameOpt.MasterPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.MasterPath).c_str():GameOpt.MasterPath.c_str()))
-	{
-		MessageBox(Wnd,"MASTER.DAT not found.","FOnline Mapper",MB_OK);
-		return false;
-	}
-	if(!FileManager::LoadDataFile(GameOpt.CritterPath.find(':')==string::npos?(GameOpt.ClientPath+GameOpt.CritterPath).c_str():GameOpt.CritterPath.c_str()))
-	{
-		MessageBox(Wnd,"CRITTER.DAT not found.","FOnline Mapper",MB_OK);
-		return false;
-	}
 	FileManager::InitDataFiles(GameOpt.ClientPath.c_str());
 	FileManager::InitDataFiles(".\\");
 
@@ -145,9 +135,9 @@ bool FOMapper::Init(HWND wnd)
 	}
 
 	// Names
-	FONames::GenerateFoNames(PT_DATA);
+	ConstantsManager::Initialize(PT_DATA);
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
-	FONames::GenerateFoNames(PT_SERVER_DATA);
+	ConstantsManager::Initialize(PT_SERVER_DATA);
 	FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 
 	// Input
@@ -1887,7 +1877,7 @@ void FOMapper::ObjDraw()
 		{
 			if(o->MCritter.ParamIndex[i]>=0 && o->MCritter.ParamIndex[i]<MAX_PARAMS)
 			{
-				const char* param_name=FONames::GetParamName(o->MCritter.ParamIndex[i]);
+				const char* param_name=ConstantsManager::GetParamName(o->MCritter.ParamIndex[i]);
 				DRAW_COMPONENT(param_name?param_name:"???",o->MCritter.ParamValue[i],false,false);
 			}
 		}
@@ -5603,6 +5593,33 @@ bool FOMapper::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 		return true;
 	}
 	return false;
+}
+
+int FOMapper::SScriptFunc::Global_GetConstantValue(int const_collection, CScriptString* name)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	if(!name || !name->length()) SCRIPT_ERROR_R0("Invalid name arg.");
+	return ConstantsManager::GetValue(const_collection,name->c_str());
+}
+
+CScriptString* FOMapper::SScriptFunc::Global_GetConstantName(int const_collection, int value)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	return new CScriptString(ConstantsManager::GetName(const_collection,value));
+}
+
+void FOMapper::SScriptFunc::Global_AddConstant(int const_collection, CScriptString* name, int value)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R("Invalid namesFile arg.");
+	if(!name || !name->length()) SCRIPT_ERROR_R("Invalid name arg.");
+	ConstantsManager::AddConstant(const_collection,name->c_str(),value);
+}
+
+bool FOMapper::SScriptFunc::Global_LoadConstants(int const_collection, CScriptString* file_name, int path_type)
+{
+	if(const_collection<0 || const_collection>1000) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	if(!file_name || !file_name->length()) SCRIPT_ERROR_R0("Invalid fileName arg.");
+	return ConstantsManager::AddCollection(const_collection,file_name->c_str(),path_type);
 }
 
 DWORD FOMapper::SScriptFunc::Global_LoadSprite(CScriptString& spr_name, int path_index)

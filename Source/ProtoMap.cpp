@@ -2,7 +2,7 @@
 #include "ProtoMap.h"
 #include "ItemManager.h"
 #include "Crypt.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "Version.h"
 #include <strstream>
 
@@ -904,21 +904,21 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						if(field=="Critter_Cond") mobj.MCritter.Cond=ivalue;
 						else if(field=="Critter_Anim1") mobj.MCritter.Anim1=ivalue;
 						else if(field=="Critter_Anim2") mobj.MCritter.Anim2=ivalue;
-						else if(field=="Critter_ParamIndex0") mobj.MCritter.ParamIndex[0]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex1") mobj.MCritter.ParamIndex[1]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex2") mobj.MCritter.ParamIndex[2]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex3") mobj.MCritter.ParamIndex[3]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex4") mobj.MCritter.ParamIndex[4]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex5") mobj.MCritter.ParamIndex[5]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex6") mobj.MCritter.ParamIndex[6]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex7") mobj.MCritter.ParamIndex[7]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex8") mobj.MCritter.ParamIndex[8]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex9") mobj.MCritter.ParamIndex[9]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex10") mobj.MCritter.ParamIndex[10]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex11") mobj.MCritter.ParamIndex[11]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex12") mobj.MCritter.ParamIndex[12]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex13") mobj.MCritter.ParamIndex[13]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex14") mobj.MCritter.ParamIndex[14]=FONames::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex0") mobj.MCritter.ParamIndex[0]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex1") mobj.MCritter.ParamIndex[1]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex2") mobj.MCritter.ParamIndex[2]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex3") mobj.MCritter.ParamIndex[3]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex4") mobj.MCritter.ParamIndex[4]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex5") mobj.MCritter.ParamIndex[5]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex6") mobj.MCritter.ParamIndex[6]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex7") mobj.MCritter.ParamIndex[7]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex8") mobj.MCritter.ParamIndex[8]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex9") mobj.MCritter.ParamIndex[9]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex10") mobj.MCritter.ParamIndex[10]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex11") mobj.MCritter.ParamIndex[11]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex12") mobj.MCritter.ParamIndex[12]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex13") mobj.MCritter.ParamIndex[13]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+						else if(field=="Critter_ParamIndex14") mobj.MCritter.ParamIndex[14]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
 						else if(field=="Critter_ParamValue0") mobj.MCritter.ParamValue[0]=ivalue;
 						else if(field=="Critter_ParamValue1") mobj.MCritter.ParamValue[1]=ivalue;
 						else if(field=="Critter_ParamValue2") mobj.MCritter.ParamValue[2]=ivalue;
@@ -1112,7 +1112,7 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			{
 				if(mobj.MCritter.ParamIndex[i]>=0 && mobj.MCritter.ParamIndex[i]<MAX_PARAMS)
 				{
-					const char* param_name=FONames::GetParamName(mobj.MCritter.ParamIndex[i]);
+					const char* param_name=ConstantsManager::GetParamName(mobj.MCritter.ParamIndex[i]);
 					if(param_name)
 					{
 						char str[128];

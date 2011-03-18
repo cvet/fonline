@@ -648,12 +648,6 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL_ON(GameOpt.DebugSprites,"-DebugSprites");
 
 	// Str
-	cfg.GetStr(CLIENT_CONFIG_APP,"MasterDatPath","master.dat",buf);
-	GETOPTIONS_CMD_LINE_STR(buf,"-MasterDatPath");
-	GameOpt.MasterPath=buf;
-	cfg.GetStr(CLIENT_CONFIG_APP,"CritterDatPath","critter.dat",buf);
-	GETOPTIONS_CMD_LINE_STR(buf,"-CritterDatPath");
-	GameOpt.CritterPath=buf;
 	cfg.GetStr(CLIENT_CONFIG_APP,"FonlineDataPath",".\\data",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-FonlineDataPath");
 	GameOpt.FoDataPath=buf;
@@ -1098,10 +1092,6 @@ GameOptions::GameOptions()
 	ScrollCheck=true;
 	MouseSpeed=100;
 	GlobalSound=true;
-	MasterPath="";
-	MasterPathRefCounter=1;
-	CritterPath="";
-	CritterPathRefCounter=1;
 	FoDataPath="";
 	FoDataPathRefCounter=1;
 	Sleep=0;

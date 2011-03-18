@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "AI.h"
 #include "Text.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "FileManager.h"
 #include "Item.h"
 
@@ -29,7 +29,7 @@ label_ParseNext:
 	// Parse pid
 	for(;*str!=':' && *str!='+' && *str!='^' && *str;str++,pbuf++) *pbuf=*str;
 	*pbuf=0;
-	int pid=FONames::GetItemPid(buf);
+	int pid=ConstantsManager::GetItemPid(buf);
 	if(pid<0) return items;
 	i.ItemPid=pid;
 	// Parse place

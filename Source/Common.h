@@ -518,10 +518,6 @@ struct GameOptions
 	bool ScrollCheck;
 	int MouseSpeed;
 	bool GlobalSound;
-	string MasterPath;
-	int MasterPathRefCounter;
-	string CritterPath;
-	int CritterPathRefCounter;
 	string FoDataPath;
 	int FoDataPathRefCounter;
 	int Sleep;

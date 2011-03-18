@@ -14,7 +14,7 @@
 #include "Text.h"
 #include "QuestManager.h"
 #include "CraftManager.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "ResourceManager.h"
 #include "CritterType.h"
 #include "DataMask.h"
@@ -535,6 +535,10 @@ public:
 		static bool Global_SetAngelScriptProperty(int property, DWORD value);
 		static DWORD Global_GetStrHash(CScriptString* str);
 		static bool Global_LoadDataFile(CScriptString& dat_name);
+		static int Global_GetConstantValue(int const_collection, CScriptString* name);
+		static CScriptString* Global_GetConstantName(int const_collection, int value);
+		static void Global_AddConstant(int const_collection, CScriptString* name, int value);
+		static bool Global_LoadConstants(int const_collection, CScriptString* file_name, int path_type);
 		static bool Global_IsCritterCanWalk(DWORD cr_type);
 		static bool Global_IsCritterCanRun(DWORD cr_type);
 		static bool Global_IsCritterCanRotate(DWORD cr_type);

@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Dialogs.h"
-#include "Names.h"
+#include "ConstantsManager.h"
 #include "FileManager.h"
 #include <strstream>
 
@@ -372,7 +372,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	bool no_recheck=false;
 	bool ret_value=false;
 
-#define READ_VALUE if(!deprecated){input >> svalue; ivalue=FONames::GetDefineValue(svalue);}else{input >> ivalue; sprintf(svalue,"%d",ivalue);}
+#define READ_VALUE if(!deprecated){input >> svalue; ivalue=ConstantsManager::GetDefineValue(svalue);}else{input >> ivalue; sprintf(svalue,"%d",ivalue);}
 
 #ifdef FONLINE_NPCEDITOR
 	string script_val[5];
@@ -419,7 +419,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 
 			// Name
 			input >> name;
-			if((id=FONames::GetParamId(name))<0)
+			if((id=ConstantsManager::GetParamId(name))<0)
 			{
 				AddError("Invalid DR parameter<%s>.",name);
 				errors++;
@@ -479,11 +479,11 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 
 			// Name
 			input >> name;
-			id=FONames::GetItemPid(name);
+			id=ConstantsManager::GetItemPid(name);
 			if(id==-1)
 			{
 				id=atoi(name);
-				const char* name_=FONames::GetItemName(id);
+				const char* name_=ConstantsManager::GetItemName(id);
 				if(!name_)
 				{
 					AddError("Invalid DR item<%s>.",name);
@@ -521,7 +521,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 #ifdef FONLINE_NPCEDITOR
 #define READ_SCRIPT_VALUE_(val) {input >> value_str; val=value_str;}
 #else
-#define READ_SCRIPT_VALUE_(val) {input >> value_str; val=FONames::GetDefineValue(value_str);}
+#define READ_SCRIPT_VALUE_(val) {input >> value_str; val=ConstantsManager::GetDefineValue(value_str);}
 #endif
 				char value_str[256];
 				if(values_count>0) READ_SCRIPT_VALUE_(script_val[0]);

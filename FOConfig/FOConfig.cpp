@@ -92,8 +92,6 @@ void TMainForm::Serialize(bool save)
 	SE_RBTN(RbCtrlShift,"LangChange",0,0);
 	SE_RBTN(RbAltShift,"LangChange",1,0);
 	SE_INT(CbAlwaysRun->State,"AlwaysRun",0,1,0);
-	SE_STR(EditMasterPath->Text,"MasterDatPath","master.dat");
-	SE_STR(EditCritterPath->Text,"CritterDatPath","critter.dat");
 	SE_COMBO(CbServerHost,"RemoteHost","localhost");
 	SE_INT(SeServerPort->Value,"RemotePort",0,0xFFFF,4000);
 	SE_RBTN(RbProxyNone,"ProxyType",0,0);
@@ -140,7 +138,7 @@ void TMainForm::Translate()
 {
 	if(Lang=="russ") RbRussian->Checked=true;
 	else RbEnglish->Checked=true;
-	TR_(MainForm,"FOnline конфигуратор   v2.3.0","FOnline configurator   v2.3.0");
+	TR_(MainForm,"FOnline конфигуратор   v2.4.0","FOnline configurator   v2.4.0");
 	TR_(BtnExecute,"Играть","Play");
 	TR_(BtnParse,"Сохранить","Save");
 	TR_(BtnExit,"Выход","Exit");
@@ -165,11 +163,6 @@ void TMainForm::Translate()
 	TR_(GbLangSwitch,"Переключение раскладки","Keyboard language switch");
 	TR_(RbCtrlShift,"Ctrl + Shift","Ctrl + Shift");
 	TR_(RbAltShift,"Alt + Shift","Alt + Shift");
-	TR_(GbPath,"Пути к Fallout2 DAT'ам","Pathes to Fallout2 DAT's");
-	TR_(LabelMasterPath,"master.dat","master.dat");
-	TR_(LabelCritterPath,"critter.dat","critter.dat");
-	TR_(BtnMasterPath,">",">");
-	TR_(BtnCritterPath,">",">");
 	TR_(TabNet,"Сеть","Net");
 	TR_(GbServer,"Игровой сервер","Game server");
 	TR_(LabelServerHost,"Хост","Host");
@@ -258,28 +251,6 @@ void __fastcall TMainForm::CbScreenWidthChange(TObject *Sender)
 void __fastcall TMainForm::CbScreenHeightChange(TObject *Sender)
 {
 	CbScreenWidth->ItemIndex=CbScreenHeight->ItemIndex;
-}
-//---------------------------------------------------------------------------
-void __fastcall TMainForm::BtnMasterPathClick(TObject *Sender)
-{
-//Master
-	TOpenDialog* dlg=new TOpenDialog((TComponent*)Sender);
-	dlg->InitialDir=EditMasterPath->Text;
-	dlg->Filter="Fallout2 Master.dat file|master.dat";
-	dlg->Options=(TOpenOptions)((1<<(int)ofNoChangeDir)|524292);
-	if(dlg->Execute()) EditMasterPath->Text=dlg->FileName;
-	delete dlg;
-}
-//---------------------------------------------------------------------------
-void __fastcall TMainForm::BtnCritterPathClick(TObject *Sender)
-{
-//Critter
-	TOpenDialog* dlg=new TOpenDialog((TComponent*)Sender);
-	dlg->InitialDir=EditCritterPath->Text;
-	dlg->Filter="Fallout2 Critter.dat file|critter.dat";
-	dlg->Options=(TOpenOptions)((1<<(int)ofNoChangeDir)|524292);
-	if(dlg->Execute()) EditCritterPath->Text=dlg->FileName;
-	delete dlg;
 }
 //---------------------------------------------------------------------------
 

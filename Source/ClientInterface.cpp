@@ -6386,7 +6386,7 @@ void FOClient::ChaDraw(bool is_reg)
 
 	if(ChaSkilldexPic>=0)
 	{
-		AnyFrames* anim=ResMngr.GetSkDxAnim(Str::GetHash(FONames::GetPictureName(ChaSkilldexPic)));
+		AnyFrames* anim=ResMngr.GetSkDxAnim(Str::GetHash(ConstantsManager::GetPictureName(ChaSkilldexPic)));
 		if(anim) SprMngr.DrawSprite(anim,ChaWPic[0]+ChaX,ChaWPic[1]+ChaY);
 		else ChaSkilldexPic=-1;
 	}
@@ -7246,7 +7246,7 @@ void FOClient::PerkDraw()
 
 	if(PerkCurPerk>=0)
 	{
-		const char* name=FONames::GetPictureName(SKILLDEX_PARAM(PerkCurPerk));
+		const char* name=ConstantsManager::GetPictureName(SKILLDEX_PARAM(PerkCurPerk));
 		if(name)
 		{
 			AnyFrames* anim=ResMngr.GetSkDxAnim(Str::GetHash(name));

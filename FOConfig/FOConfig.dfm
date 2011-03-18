@@ -194,7 +194,7 @@ object MainForm: TMainForm
         Left = 3
         Top = 3
         Width = 246
-        Height = 136
+        Height = 138
         Caption = 'GbGame'
         TabOrder = 0
         object LabelTextDelay: TLabel
@@ -276,72 +276,16 @@ object MainForm: TMainForm
           TabOrder = 4
         end
       end
-      object GbPath: TGroupBox
-        Left = 3
-        Top = 176
-        Width = 246
-        Height = 64
-        Caption = 'GbPath'
-        TabOrder = 1
-        object LabelMasterPath: TLabel
-          Left = 13
-          Top = 15
-          Width = 80
-          Height = 13
-          Caption = 'LabelMasterPath'
-        end
-        object LabelCritterPath: TLabel
-          Left = 13
-          Top = 38
-          Width = 78
-          Height = 13
-          Caption = 'LabelCritterPath'
-        end
-        object EditMasterPath: TEdit
-          Left = 122
-          Top = 12
-          Width = 121
-          Height = 21
-          TabOrder = 0
-          Text = 'EditMasterPath'
-        end
-        object EditCritterPath: TEdit
-          Left = 122
-          Top = 36
-          Width = 121
-          Height = 21
-          TabOrder = 1
-          Text = 'EditCritterPath'
-        end
-        object BtnMasterPath: TButton
-          Left = 97
-          Top = 13
-          Width = 27
-          Height = 18
-          Caption = 'BtnMasterPath'
-          TabOrder = 2
-          OnClick = BtnMasterPathClick
-        end
-        object BtnCritterPath: TButton
-          Left = 97
-          Top = 37
-          Width = 27
-          Height = 18
-          Caption = 'BtnCritterPath'
-          TabOrder = 3
-          OnClick = BtnCritterPathClick
-        end
-      end
       object GbLangSwitch: TGroupBox
         Left = 3
-        Top = 142
+        Top = 147
         Width = 246
-        Height = 33
+        Height = 43
         Caption = 'GbLangSwitch'
-        TabOrder = 2
+        TabOrder = 1
         object RbCtrlShift: TRadioButton
           Left = 13
-          Top = 13
+          Top = 17
           Width = 102
           Height = 17
           Caption = 'RbCtrlShift'
@@ -349,7 +293,7 @@ object MainForm: TMainForm
         end
         object RbAltShift: TRadioButton
           Left = 133
-          Top = 15
+          Top = 19
           Width = 102
           Height = 14
           Caption = 'RbAltShift'

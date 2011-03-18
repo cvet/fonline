@@ -111,7 +111,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==92);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4288);
-	STATIC_ASSERT(sizeof(GameOptions)==1264);
+	STATIC_ASSERT(sizeof(GameOptions)==1200);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -189,16 +189,6 @@ bool FOClient::Init(HWND hwnd)
 	if(Singleplayer) CreateDirectory(FileManager::GetFullPath("",PT_SAVE),NULL);
 
 	// Data files
-	if(!FileManager::LoadDataFile(GameOpt.MasterPath.c_str()))
-	{
-		MessageBox(Wnd,"Data file 'MASTER.DAT' not found.","FOnline",MB_OK);
-		return false;
-	}
-	if(!FileManager::LoadDataFile(GameOpt.CritterPath.c_str()))
-	{
-		MessageBox(Wnd,"Data file 'CRITTER.DAT' not found.","FOnline",MB_OK);
-		return false;
-	}
 	FileManager::InitDataFiles(".\\");
 
 	// Cache
@@ -326,8 +316,8 @@ bool FOClient::Init(HWND hwnd)
 		SprMngr.EndScene();
 	}
 
-	// Names
-	FONames::GenerateFoNames(PT_DATA);
+	// Constants
+	ConstantsManager::Initialize(PT_DATA);
 
 	// Base ini options
 	if(!AppendIfaceIni(NULL)) return false;
@@ -6836,7 +6826,7 @@ void FOClient::Net_OnMsgData()
 		if(!ReloadScripts()) NetState=STATE_DISCONNECT;
 
 		// Names
-		FONames::GenerateFoNames(PT_DATA);
+		ConstantsManager::Initialize(PT_DATA);
 
 		// Reload interface
 		if(int res=InitIface())
@@ -10470,10 +10460,37 @@ bool FOClient::SScriptFunc::Global_LoadDataFile(CScriptString& dat_name)
 	if(FileManager::LoadDataFile(dat_name.c_str()))
 	{
 		ResMngr.Refresh();
-		FONames::GenerateFoNames(PT_DATA);
+		ConstantsManager::Initialize(PT_DATA);
 		return true;
 	}
 	return false;
+}
+
+int FOClient::SScriptFunc::Global_GetConstantValue(int const_collection, CScriptString* name)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	if(!name || !name->length()) SCRIPT_ERROR_R0("Invalid name arg.");
+	return ConstantsManager::GetValue(const_collection,name->c_str());
+}
+
+CScriptString* FOClient::SScriptFunc::Global_GetConstantName(int const_collection, int value)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	return new CScriptString(ConstantsManager::GetName(const_collection,value));
+}
+
+void FOClient::SScriptFunc::Global_AddConstant(int const_collection, CScriptString* name, int value)
+{
+	if(!ConstantsManager::IsCollectionInit(const_collection)) SCRIPT_ERROR_R("Invalid namesFile arg.");
+	if(!name || !name->length()) SCRIPT_ERROR_R("Invalid name arg.");
+	ConstantsManager::AddConstant(const_collection,name->c_str(),value);
+}
+
+bool FOClient::SScriptFunc::Global_LoadConstants(int const_collection, CScriptString* file_name, int path_type)
+{
+	if(const_collection<0 || const_collection>1000) SCRIPT_ERROR_R0("Invalid namesFile arg.");
+	if(!file_name || !file_name->length()) SCRIPT_ERROR_R0("Invalid fileName arg.");
+	return ConstantsManager::AddCollection(const_collection,file_name->c_str(),path_type);
 }
 
 bool FOClient::SScriptFunc::Global_IsCritterCanWalk(DWORD cr_type)

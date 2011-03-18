@@ -696,6 +696,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\ConstantsManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\ConstantsManager.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\CraftManager.cpp"
 				>
 			</File>
@@ -877,14 +885,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\Mutex.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\Names.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\Names.h"
 				>
 			</File>
 			<File
