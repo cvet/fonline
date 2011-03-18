@@ -58,6 +58,7 @@ struct EngineData
 {
 	ScriptModuleVec Modules;
 	Preprocessor::PragmaCallback* PragmaCB;
+	map<string,HMODULE> LoadedDlls;
 };
 
 asIScriptEngine* Engine=NULL;
@@ -195,6 +196,11 @@ void FinisthThread()
 
 HMODULE LoadDynamicLibrary(const char* dll_name)
 {
+	// Find in already loaded
+	EngineData* edata=(EngineData*)Engine->GetUserData();
+	map<string,HMODULE>::iterator it=edata->LoadedDlls.find(dll_name);
+	if(it!=edata->LoadedDlls.end()) return (*it).second;
+
 	// Load dynamic library
 	char dll_name_[256];
 	StringCopy(dll_name_,FileManager::GetFullPath("",ScriptsPath));
@@ -202,27 +208,24 @@ HMODULE LoadDynamicLibrary(const char* dll_name)
 	HMODULE dll=LoadLibrary(dll_name_);
 	if(!dll) return NULL;
 
-	// Register global function and vars
-	static StrSet alreadyLoadedDll;
-	if(!alreadyLoadedDll.count(dll_name_))
-	{
-		// Register variables
-		size_t* ptr=(size_t*)GetProcAddress(dll,"Game");
-		if(ptr) *ptr=(size_t)&GameOpt;
-		ptr=(size_t*)GetProcAddress(dll,"ASEngine");
-		if(ptr) *ptr=(size_t)Engine;
+	// Register variables
+	size_t* ptr=(size_t*)GetProcAddress(dll,"Game");
+	if(ptr) *ptr=(size_t)&GameOpt;
+	ptr=(size_t*)GetProcAddress(dll,"ASEngine");
+	if(ptr) *ptr=(size_t)Engine;
 
-		// Register functions
-		ptr=(size_t*)GetProcAddress(dll,"Log");
-		if(ptr) *ptr=(size_t)&WriteLog;
+	// Register functions
+	ptr=(size_t*)GetProcAddress(dll,"Log");
+	if(ptr) *ptr=(size_t)&WriteLog;
 
-		// Call init function
-		typedef void(*DllMainEx)(bool);
-		DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
-		if(func) (*func)(LoadLibraryCompiler);
+	// Call init function
+	typedef void(*DllMainEx)(bool);
+	DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
+	if(func) (*func)(LoadLibraryCompiler);
 
-		alreadyLoadedDll.insert(dll_name_);
-	}
+	// Add to collection for current engine
+	edata->LoadedDlls.insert(map<string,HMODULE>::value_type(dll_name,dll));
+
 	return dll;
 }
 
@@ -411,6 +414,8 @@ void FinishEngine(asIScriptEngine*& engine)
 	{
 		EngineData* edata=(EngineData*)engine->SetUserData(NULL);
 		delete edata->PragmaCB;
+		for(map<string,HMODULE>::iterator it=edata->LoadedDlls.begin(),end=edata->LoadedDlls.end();it!=end;++it)
+			FreeLibrary((*it).second);
 		delete edata;
 		engine->Release();
 		engine=NULL;
