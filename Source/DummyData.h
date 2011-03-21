@@ -287,6 +287,11 @@ struct MapObject
 	int MapY;
 	int Dir;
 
+	int UID;
+	int ContainerUID;
+	int ParentUID;
+	int ParentChildIndex;
+
 	int LightColor;
 	int LightDay;
 	int LightDirOff;

@@ -295,7 +295,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	void SelectAddItem(ItemHex* item);
 	void SelectAddCrit(CritterCl* npc);
 	void SelectAddTile(WORD hx, WORD hy, bool is_roof);
-	void SelectAdd(MapObject* mobj);
+	void SelectAdd(MapObject* mobj, bool select_childs = true);
 	void SelectErase(MapObject* mobj);
 	void SelectAll();
 	void SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y);
@@ -305,7 +305,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 	DWORD AnyId;
 	int DefaultCritterParam[MAPOBJ_CRITTER_PARAMS];
 
-	void ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont);
+	MapObject* ParseProto(WORD pid, WORD hx, WORD hy, MapObject* owner, bool is_child = false);
 	void ParseTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof);
 	void ParseNpc(WORD pid, WORD hx, WORD hy);
 	MapObject* ParseMapObj(MapObject* mobj);

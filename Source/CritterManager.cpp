@@ -12,10 +12,6 @@ CritterManager CrMngr;
 
 #define CRPROTO_APP   "Critter proto"
 
-//***************************************************************************************
-//   CritterManager
-//***************************************************************************************
-
 bool CritterManager::Init()
 {
 	WriteLog("Critter manager initialization...\n");
@@ -150,7 +146,10 @@ bool CritterManager::LoadProtos()
 				if(pid>0 && pid<MAX_CRIT_PROTOS)
 				{
 					CritData& proto=allProtos[pid];
+
 					if(!proto.ProtoId) loaded_count++;
+					else WriteLog(__FUNCTION__" - Critter prototype is already parsed, pid<%u>. Rewrite.\n",pid);
+
 					proto.ProtoId=pid;
 					memcpy(proto.Params,params,sizeof(params));
 
@@ -160,7 +159,7 @@ bool CritterManager::LoadProtos()
 				}
 				else
 				{
-					WriteLog("Invalid pid<%d> in<%s>.\n",pid,fname);
+					WriteLog(__FUNCTION__" - Invalid pid<%u> of critter prototype.\n",pid);
 					errors++;
 				}
 			}

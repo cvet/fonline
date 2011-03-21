@@ -25,6 +25,7 @@
 #define FO_MAP_VERSION_TEXT1    (1)
 #define FO_MAP_VERSION_TEXT2    (2)
 #define FO_MAP_VERSION_TEXT3    (3)
+#define FO_MAP_VERSION_TEXT4    (4)
 
 #define APP_HEADER              "Header"
 #define APP_TILES               "Tiles"
@@ -311,6 +312,7 @@ bool ProtoMap::Init(WORD pid, const char* name, int path_type)
 	pmapFm=new FileManager();
 	pathType=path_type;
 	pmapName=name;
+	LastObjectUID=0;
 
 	isInit=true;
 	if(!Refresh())
@@ -532,8 +534,8 @@ bool ProtoMap::ReadObjects(int version)
 				obj_v6.MItem.OffsetY=obj_v5.OffsetY;
 				obj_v6.MItem.AnimStayBegin=obj_v5.FrameNum;
 				obj_v6.MItem.AnimStayEnd=obj_v5.FrameNum;
-				obj_v6.MItem.InContainer=obj_v5.InContainer;
-				if(obj_v6.MItem.InContainer) obj_v6.MItem.ItemSlot=obj_v5.ItemSlot;
+				obj_v6.ContainerUID=obj_v5.InContainer;
+				if(obj_v6.ContainerUID) obj_v6.MItem.ItemSlot=obj_v5.ItemSlot;
 				for(int i=0;i<10;i++) obj_v6.MItem.Val[i]=0;
 				obj_v6.MItem.Val[0]=obj_v5.ITEM_VAL.Val0;
 				obj_v6.MItem.Val[1]=obj_v5.ITEM_VAL.Val1;
@@ -646,7 +648,7 @@ bool ProtoMap::ReadObjects(int version)
 				mobj->MItem.BrokenFlags=mobj_v9.MItem.BrokenFlags;
 				mobj->MItem.BrokenCount=mobj_v9.MItem.BrokenCount;
 				mobj->MItem.Deterioration=mobj_v9.MItem.Deterioration;
-				mobj->MItem.InContainer=mobj_v9.MItem.InContainer;
+				mobj->ContainerUID=mobj_v9.MItem.InContainer;
 				mobj->MItem.ItemSlot=mobj_v9.MItem.ItemSlot;
 				mobj->MItem.AmmoPid=mobj_v9.MItem.AmmoPid;
 				mobj->MItem.AmmoCount=mobj_v9.MItem.AmmoCount;
@@ -760,7 +762,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 		}
 		delete[] header_str;
 	}
-	if((Header.Version!=FO_MAP_VERSION_TEXT1 && Header.Version!=FO_MAP_VERSION_TEXT2 && Header.Version!=FO_MAP_VERSION_TEXT3) ||
+	if((Header.Version!=FO_MAP_VERSION_TEXT1 && Header.Version!=FO_MAP_VERSION_TEXT2 &&
+		Header.Version!=FO_MAP_VERSION_TEXT3 && Header.Version!=FO_MAP_VERSION_TEXT4) ||
 		Header.MaxHexX<1 || Header.MaxHexY<1) return false;
 
 	// Tiles
@@ -881,6 +884,10 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					else if(field=="MapX") mobj.MapX=ivalue;
 					else if(field=="MapY") mobj.MapY=ivalue;
 					else if(field=="Dir") mobj.Dir=ivalue;
+					else if(field=="UID") mobj.UID=ivalue;
+					else if(field=="ContainerUID") mobj.ContainerUID=ivalue;
+					else if(field=="ParentUID") mobj.ParentUID=ivalue;
+					else if(field=="ParentChildIndex") mobj.ParentChildIndex=ivalue;
 					else if(field=="LightColor") mobj.LightColor=ivalue;
 					else if(field=="LightDay") mobj.LightDay=ivalue;
 					else if(field=="LightDirOff") mobj.LightDirOff=ivalue;
@@ -969,7 +976,6 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 							else if(field=="Item_BrokenFlags") mobj.MItem.BrokenFlags=ivalue;
 							else if(field=="Item_BrokenCount") mobj.MItem.BrokenCount=ivalue;
 							else if(field=="Item_Deterioration") mobj.MItem.Deterioration=ivalue;
-							else if(field=="Item_InContainer") mobj.MItem.InContainer=(ivalue!=0);
 							else if(field=="Item_ItemSlot") mobj.MItem.ItemSlot=ivalue;
 							else if(field=="Item_AmmoPid") mobj.MItem.AmmoPid=ivalue;
 							else if(field=="Item_AmmoCount") mobj.MItem.AmmoCount=ivalue;
@@ -991,6 +997,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 							else if(field=="Item_DeteorationFlags") mobj.MItem.BrokenFlags=ivalue;
 							else if(field=="Item_DeteorationCount") mobj.MItem.BrokenCount=ivalue;
 							else if(field=="Item_DeteorationValue") mobj.MItem.Deterioration=ivalue;
+							else if(field=="Item_InContainer") mobj.ContainerUID=ivalue;
 						}
 						// Scenery
 						else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
@@ -1085,6 +1092,10 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		if(mobj.MapX) fm->SetStr("%-20s %d\n","MapX",mobj.MapX);
 		if(mobj.MapY) fm->SetStr("%-20s %d\n","MapY",mobj.MapY);
 		if(mobj.Dir) fm->SetStr("%-20s %d\n","Dir",mobj.Dir);
+		if(mobj.UID) fm->SetStr("%-20s %d\n","UID",mobj.UID);
+		if(mobj.ContainerUID) fm->SetStr("%-20s %d\n","ContainerUID",mobj.ContainerUID);
+		if(mobj.ParentUID) fm->SetStr("%-20s %d\n","ParentUID",mobj.ParentUID);
+		if(mobj.ParentChildIndex) fm->SetStr("%-20s %d\n","ParentChildIndex",mobj.ParentChildIndex);
 		if(mobj.LightColor) fm->SetStr("%-20s %d\n","LightColor",mobj.LightColor);
 		if(mobj.LightDay) fm->SetStr("%-20s %d\n","LightDay",mobj.LightDay);
 		if(mobj.LightDirOff) fm->SetStr("%-20s %d\n","LightDirOff",mobj.LightDirOff);
@@ -1141,7 +1152,6 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 				if(mobj.MItem.BrokenFlags) fm->SetStr("%-20s %d\n","Item_BrokenFlags",mobj.MItem.BrokenFlags);
 				if(mobj.MItem.BrokenCount) fm->SetStr("%-20s %d\n","Item_BrokenCount",mobj.MItem.BrokenCount);
 				if(mobj.MItem.Deterioration) fm->SetStr("%-20s %d\n","Item_Deterioration",mobj.MItem.Deterioration);
-				if(mobj.MItem.InContainer) fm->SetStr("%-20s %d\n","Item_InContainer",mobj.MItem.InContainer);
 				if(mobj.MItem.ItemSlot) fm->SetStr("%-20s %d\n","Item_ItemSlot",mobj.MItem.ItemSlot);
 				if(mobj.MItem.AmmoPid) fm->SetStr("%-20s %d\n","Item_AmmoPid",mobj.MItem.AmmoPid);
 				if(mobj.MItem.AmmoCount) fm->SetStr("%-20s %d\n","Item_AmmoCount",mobj.MItem.AmmoCount);
@@ -1537,8 +1547,80 @@ bool ProtoMap::Refresh()
 			WriteLog(__FUNCTION__" - Map<%s>. Can't read Objects.\n",map_info);
 			return false;
 		}
+
+		Header.Version=FO_MAP_VERSION_TEXT1;
 	}
 	pmapFm->UnloadFile();
+
+	// Deprecated, add UIDs
+	if(Header.Version<FO_MAP_VERSION_TEXT4)
+	{
+		DWORD uid=0;
+		for(size_t i=0,j=MObjects.size();i<j;i++)
+		{
+			MapObject* mobj=MObjects[i];
+
+			// Find item in container
+			if(mobj->MapObjType!=MAP_OBJECT_ITEM || !mobj->ContainerUID) continue;
+
+			// Find container
+			for(size_t k=0,l=MObjects.size();k<l;k++)
+			{
+				MapObject* mobj_=MObjects[k];
+				if(mobj_->MapX!=mobj->MapX || mobj_->MapY!=mobj->MapY) continue;
+				if(mobj_->MapObjType!=MAP_OBJECT_ITEM && mobj_->MapObjType!=MAP_OBJECT_CRITTER) continue;
+				if(mobj_==mobj) continue;
+				if(mobj_->MapObjType!=MAP_OBJECT_ITEM)
+				{
+					ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj_->ProtoId);
+					if(!proto_item || proto_item->Type!=ITEM_TYPE_CONTAINER) continue;
+				}
+				if(!mobj_->UID) mobj_->UID=++uid;
+				mobj->ContainerUID=mobj_->UID;
+			}
+		}
+	}
+
+	// Fix child objects positions
+	for(size_t i=0,j=MObjects.size();i<j;)
+	{
+		MapObject* mobj_child=MObjects[i];
+		if(!mobj_child->ParentUID)
+		{
+			i++;
+			continue;
+		}
+
+		bool delete_child=true;
+		for(size_t k=0,l=MObjects.size();k<l;k++)
+		{
+			MapObject* mobj_parent=MObjects[k];
+			if(!mobj_parent->UID || mobj_parent->UID!=mobj_child->ParentUID || mobj_parent==mobj_child) continue;
+
+			ProtoItem* proto_parent=ItemMngr.GetProtoItem(mobj_parent->ProtoId);
+			if(!proto_parent || !proto_parent->ChildPid[mobj_child->ParentChildIndex]) break;
+
+			WORD child_hx=mobj_parent->MapX,child_hy=mobj_parent->MapY;
+			FOREACH_PROTO_ITEM_LINES(proto_parent->ChildLines[mobj_child->ParentChildIndex],child_hx,child_hy,Header.MaxHexX,Header.MaxHexY,;);
+
+			mobj_child->MapX=child_hx;
+			mobj_child->MapY=child_hy;
+			mobj_child->ProtoId=proto_parent->ChildPid[mobj_child->ParentChildIndex];
+			delete_child=false;
+			break;
+		}
+
+		if(delete_child)
+		{
+			MObjects[i]->Release();
+			MObjects.erase(MObjects.begin()+i);
+			j=MObjects.size();
+		}
+		else
+		{
+			i++;
+		}
+	}
 
 #ifdef FONLINE_SERVER
 	// Parse objects
@@ -1746,16 +1828,23 @@ bool ProtoMap::Refresh()
 #endif
 
 #ifdef FONLINE_MAPPER
-	// Convert hashes to names
-	for(int i=0,j=MObjects.size();i<j;i++)
+	// Post process objects
+	for(size_t i=0,j=MObjects.size();i<j;i++)
 	{
 		MapObject* mobj=MObjects[i];
+
+		// Map link
 		mobj->RunTime.FromMap=this;
+
+		// Convert hashes to names
 		if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			if(mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[0]) StringCopy(mobj->RunTime.PicMapName,Str::GetName(mobj->MItem.PicMapHash));
 			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) StringCopy(mobj->RunTime.PicInvName,Str::GetName(mobj->MItem.PicInvHash));
 		}
+
+		// Last UID
+		if(mobj->UID>LastObjectUID) LastObjectUID=mobj->UID;
 	}
 
 	// Create cached fields
@@ -1826,9 +1915,28 @@ bool ProtoMap::Save(const char* f_name, int path_type)
 		}
 	}
 
+	// Delete non used UIDs
+	for(size_t i=0,j=MObjects.size();i<j;i++)
+	{
+		MapObject* mobj=MObjects[i];
+		if(!mobj->UID) continue;
+
+		bool founded=false;
+		for(size_t k=0,l=MObjects.size();k<l;k++)
+		{
+			MapObject* mobj_=MObjects[k];
+			if(mobj_->ContainerUID==mobj->UID || mobj_->ParentUID==mobj->UID)
+			{
+				founded=true;
+				break;
+			}
+		}
+		if(!founded) mobj->UID=0;
+	}
+
 	// Save
 	pmapFm->ClearOutBuf();
-	Header.Version=FO_MAP_VERSION_TEXT3;
+	Header.Version=FO_MAP_VERSION_TEXT4;
 	SaveTextFormat(pmapFm);
 	Tiles.clear();
 

@@ -337,11 +337,6 @@ public:
 	bool LockerIsChangeble(){if(IsDoor()) return true; if(IsContainer()) return Container_Changeble; return false;}
 	bool IsCanPickUp(){return FLAG(Flags,ITEM_CAN_PICKUP);}
 
-	BYTE Car_GetChildDir(DWORD child, DWORD step){return ChildLines[child][step]>>4;}
-	BYTE Car_GetChildLength(DWORD child, DWORD step){return ChildLines[child][step]&0xF;}
-	BYTE Car_GetBlockDir(DWORD step){return BlockLines[step]>>4;}
-	BYTE Car_GetBlockLength(DWORD step){return BlockLines[step]&0xF;}
-
 	bool operator==(const WORD& _r){return (ProtoId==_r);}
 	ProtoItem(){Clear();}
 
@@ -693,20 +688,20 @@ public:
 /************************************************************************/
 
 #define FOREACH_PROTO_ITEM_LINES(lines,hx,hy,maxhx,maxhy,work) \
-	int hx_=hx,hy_=hy;\
-	int maxhx_=maxhx,maxhy_=maxhy;\
-	for(int i=0;i<sizeof(lines);i++)\
+	int hx__=hx,hy__=hy;\
+	int maxhx__=maxhx,maxhy__=maxhy;\
+	for(int i__=0;i__<sizeof(lines);i__++)\
 	{\
-		BYTE block=lines[i];\
-		BYTE dir=(block>>4);\
-		if(dir>=DIRS_COUNT) break;\
-		BYTE steps=(block&0xF);\
-		if(!steps) break;\
-		for(BYTE j=0;j<steps;j++)\
+		BYTE block__=lines[i__];\
+		BYTE dir__=(block__>>4);\
+		if(dir__>=DIRS_COUNT) break;\
+		BYTE steps__=(block__&0xF);\
+		if(!steps__) break;\
+		for(BYTE j__=0;j__<steps__;j__++)\
 		{\
-			MoveHexByDirUnsafe(hx_,hy_,dir);\
-			if(hx_<0 || hy_<0 || hx_>=maxhx_ || hy_>=maxhy_) continue;\
-			hx=hx_,hy=hy_;\
+			MoveHexByDirUnsafe(hx__,hy__,dir__);\
+			if(hx__<0 || hy__<0 || hx__>=maxhx__ || hy__>=maxhy__) continue;\
+			hx=hx__,hy=hy__;\
 			work\
 		}\
 	}

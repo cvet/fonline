@@ -3322,7 +3322,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(offsetof(GlobalMapGroup,EncounterForce)==88);
 	STATIC_ASSERT(offsetof(ProtoMap::MapEntire,Dir)==8);
 	STATIC_ASSERT(offsetof(SceneryCl,PicMapHash)==24);
-	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==332);
+	STATIC_ASSERT(offsetof(ProtoMap,HexFlags)==336);
 	STATIC_ASSERT(offsetof(Map,RefCounter)==794);
 	STATIC_ASSERT(offsetof(ProtoLocation,GeckVisible)==92);
 	STATIC_ASSERT(offsetof(Location,RefCounter)==286);

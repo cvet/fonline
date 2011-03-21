@@ -24,6 +24,11 @@ public:
 	WORD MapY;
 	short Dir;
 
+	DWORD UID;
+	DWORD ContainerUID;
+	DWORD ParentUID;
+	DWORD ParentChildIndex;
+
 	DWORD LightColor;
 	BYTE LightDay;
 	BYTE LightDirOff;
@@ -59,13 +64,11 @@ public:
 			DWORD PicInvHash;
 
 			DWORD Count;
+			BYTE ItemSlot;
 
 			BYTE BrokenFlags;
 			BYTE BrokenCount;
 			WORD Deterioration;
-
-			bool InContainer;
-			BYTE ItemSlot;
 
 			WORD AmmoPid;
 			DWORD AmmoCount;
@@ -178,6 +181,7 @@ public:
 
 	// Objects
 	MapObjectPtrVec MObjects;
+	DWORD LastObjectUID;
 
 	// Tiles
 	struct Tile // 12 bytes

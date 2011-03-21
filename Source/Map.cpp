@@ -111,15 +111,30 @@ bool Map::Generate()
 	sprintf(map_info,"Map id<%u>, pid<%u>",GetId(),GetPid());
 	//WriteLog("Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
 
+	// Map data
 	dataLocker.Lock();
 	for(int i=0;i<4;i++) Data.MapDayTime[i]=Proto->Header.DayTime[i];
 	for(int i=0;i<12;i++) Data.MapDayColor[i]=Proto->Header.DayColor[i];
 	dataLocker.Unlock();
 
+	// Associated UID -> Item or Critter
+	struct ItemNpcPtr
+	{
+		Item* item;
+		Npc* npc;
+		ItemNpcPtr(Item* i, Npc* n):item(i),npc(n){}
+	};
+	typedef map<DWORD,ItemNpcPtr> UIDtoPtrMap;
+	typedef map<DWORD,ItemNpcPtr>::iterator UIDtoPtrMapIt;
+	typedef map<DWORD,ItemNpcPtr>::value_type UIDtoPtrMapVal;
+	UIDtoPtrMap UIDtoPtr;
+
 	// Generate npc
 	for(MapObjectPtrVecIt it=Proto->CrittersVec.begin(),end=Proto->CrittersVec.end();it!=end;++it)
 	{
 		MapObject& mobj=*(*it);
+
+		// Make script name
 		char script[MAX_SCRIPT_NAME*2+1]={0};
 		if(mobj.ScriptName[0])
 		{
@@ -135,6 +150,7 @@ bool Map::Generate()
 			}
 		}
 
+		// Make params array
 		int params[MAPOBJ_CRITTER_PARAMS*2];
 		int params_count=0;
 		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
@@ -148,6 +164,7 @@ bool Map::Generate()
 			}
 		}
 
+		// Create npc
 		Npc* npc=CrMngr.CreateNpc(mobj.ProtoId,params_count,params,0,NULL,script[0]?script:NULL,this,mobj.MapX,mobj.MapY,mobj.Dir,true);
 		if(!npc)
 		{
@@ -155,6 +172,7 @@ bool Map::Generate()
 			continue;
 		}
 
+		// Check condition
 		if(mobj.MCritter.Cond!=COND_LIFE && npc->Data.Cond==COND_LIFE && npc->GetMap()==GetId())
 		{
 			npc->Data.Cond=CLAMP(mobj.MCritter.Cond,COND_LIFE,COND_DEAD);
@@ -169,6 +187,7 @@ bool Map::Generate()
 			}
 		}
 
+		// Set condition animation
 		if(mobj.MCritter.Cond==npc->Data.Cond)
 		{
 			if(npc->Data.Cond==COND_LIFE)
@@ -187,6 +206,9 @@ bool Map::Generate()
 				npc->Data.Anim2Dead=mobj.MCritter.Anim2;
 			}
 		}
+
+		// Store UID association
+		if(mobj.UID) UIDtoPtr.insert(UIDtoPtrMapVal(mobj.UID,ItemNpcPtr(NULL,npc)));
 	}
 
 	// Generate items
@@ -207,19 +229,12 @@ bool Map::Generate()
 		Item* item_cont=NULL;
 
 		// Find container
-		if(mobj.MItem.InContainer)
+		if(mobj.ContainerUID)
 		{
-			// First find critter
-			// Try live critter
-			cr_cont=(Npc*)GetHexCritter(mobj.MapX,mobj.MapY,false,true);
-			// Try dead critter
-			if(!cr_cont) cr_cont=(Npc*)GetHexCritter(mobj.MapX,mobj.MapY,true,true);
-
-			// After item container
-			if(!cr_cont) item_cont=GetItemContainer(mobj.MapX,mobj.MapY);
-
-			// Check for find
-			if(!cr_cont && !item_cont) continue;
+			UIDtoPtrMapIt it=UIDtoPtr.find(mobj.ContainerUID);
+			if(it==UIDtoPtr.end()) continue;
+			cr_cont=(*it).second.npc;
+			item_cont=(*it).second.item;
 		}
 
 		// Create item
@@ -249,6 +264,10 @@ bool Map::Generate()
 			else item->Count_Set(1);
 		}
 
+		// Trap value
+		if(mobj.MItem.TrapValue) item->Data.TrapValue=mobj.MItem.TrapValue;
+
+		// Other values
 		switch(item->GetType())
 		{
 		case ITEM_TYPE_WEAPON:
@@ -310,9 +329,11 @@ bool Map::Generate()
 			}
 		}
 
-		// Transfer
-		// To container
-		if(mobj.MItem.InContainer)
+		// Store UID association
+		if(mobj.UID) UIDtoPtr.insert(UIDtoPtrMapVal(mobj.UID,ItemNpcPtr(item,NULL)));
+
+		// Transfer to container
+		if(mobj.ContainerUID)
 		{
 			if(cr_cont)
 			{
@@ -321,11 +342,14 @@ bool Map::Generate()
 				else if(mobj.MItem.ItemSlot==SLOT_HAND2) cr_cont->Data.FavoriteItemPid[SLOT_HAND2]=item->GetProtoId();
 				else if(mobj.MItem.ItemSlot==SLOT_ARMOR) cr_cont->Data.FavoriteItemPid[SLOT_ARMOR]=item->GetProtoId();
 			}
-			else if(item_cont) item_cont->ContAddItem(item,0);
+			else if(item_cont)
+			{
+				item_cont->ContAddItem(item,0);
+			}
 			continue;
 		}
 
-		// To hex
+		// Transfer to hex
 		if(!AddItem(item,mobj.MapX,mobj.MapY))
 		{
 			WriteLog(__FUNCTION__" - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);

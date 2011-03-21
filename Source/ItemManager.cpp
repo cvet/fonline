@@ -257,6 +257,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 					{
 						char step1[]="1";
 						for(int k=0,l=strlen(svalue);k<l;k++) Str::Insert(&svalue[k*2+1],step1);
+						for(char* s=svalue;s[0] && s[2];) if(s[0]==s[2]){s[1]++; Str::EraseInterval(s+2,2);}else{s+=2;}
 					}
 				}
 
@@ -370,11 +371,15 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 
 		if(!pid || pid>=MAX_ITEM_PROTOTYPES)
 		{
-			WriteLog(__FUNCTION__" - Invalid pid<%u> of prototype.\n",pid);
+			WriteLog(__FUNCTION__" - Invalid pid<%u> of item prototype.\n",pid);
 			continue;
 		}
 
-		if(IsInitProto(pid)) ClearProto(pid);
+		if(IsInitProto(pid))
+		{
+			ClearProto(pid);
+			WriteLog(__FUNCTION__" - Item prototype is already parsed, pid<%u>. Rewrite.\n",pid);
+		}
 
 		int type=protos[i].Type;
 		if(type<0 || type>=ITEM_MAX_TYPES) type=ITEM_TYPE_OTHER;

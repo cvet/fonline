@@ -1255,19 +1255,11 @@ void HexManager::CollectLightSources()
 		if(o->MapObjType==MAP_OBJECT_CRITTER || !o->LightIntensity) continue;
 
 		bool allow_light=false;
-		if(o->MapObjType==MAP_OBJECT_ITEM && o->MItem.InContainer && o->MItem.ItemSlot!=SLOT_INV)
+		if(o->MapObjType==MAP_OBJECT_ITEM && o->ContainerUID && o->MItem.ItemSlot!=SLOT_INV)
 		{
-			for(MapObjectPtrVecIt it_=CurProtoMap->MObjects.begin(),end_=CurProtoMap->MObjects.end();it_!=end_;++it_)
-			{
-				MapObject* oo=*it_;
-				if(oo->MapObjType==MAP_OBJECT_CRITTER && oo->MapX==o->MapX && oo->MapY==o->MapY)
-				{
-					allow_light=true;
-					break;
-				}
-			}
+			allow_light=true;
 		}
-		else if(o->LightIntensity && !(o->MapObjType==MAP_OBJECT_ITEM && o->MItem.InContainer))
+		else if(o->LightIntensity && !o->ContainerUID)
 		{
 			allow_light=true;
 		}
@@ -3452,6 +3444,8 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			continue;
 		}
 
+		if(o->ContainerUID) continue;
+
 		if(o->MapObjType==MAP_OBJECT_SCENERY)
 		{
 			SceneryCl s;
@@ -3480,8 +3474,6 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 		}
 		else if(o->MapObjType==MAP_OBJECT_ITEM)
 		{
-			if(o->MItem.InContainer) continue;
-
 			ProtoItem* proto=ItemMngr.GetProtoItem(o->ProtoId);
 			if(!proto) continue;
 
@@ -3508,7 +3500,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			for(int k=0,l=pmap.MObjects.size();k<l;k++)
 			{
 				MapObject* child=pmap.MObjects[k];
-				if(child->MapObjType==MAP_OBJECT_ITEM && child->MItem.InContainer && child->MapX==o->MapX && child->MapY==o->MapY)
+				if(child->MapObjType==MAP_OBJECT_ITEM && child->ContainerUID && child->ContainerUID==o->UID)
 				{
 					if(child->MItem.ItemSlot==SLOT_HAND1) pitem_main=ItemMngr.GetProtoItem(child->ProtoId);
 					else if(child->MItem.ItemSlot==SLOT_HAND2) pitem_ext=ItemMngr.GetProtoItem(child->ProtoId);

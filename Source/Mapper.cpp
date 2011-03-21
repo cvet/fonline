@@ -1305,14 +1305,14 @@ void FOMapper::MainLoop()
 					mobj->MapY=cr->GetHexY();
 					mobj->Dir=cr->GetDir();
 
-					// Move In container items
+					// Move inventory items
 					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
 					{
 						MapObject* mo=CurProtoMap->MObjects[i];
-						if(mo->MapObjType==MAP_OBJECT_ITEM && mo->MItem.InContainer && mo->MapX==old_hx && mo->MapY==old_hy)
+						if(mo->ContainerUID && mo->ContainerUID==mobj->UID)
 						{
-							mo->MapX=cr->GetHexX();
-							mo->MapY=cr->GetHexY();
+							mo->MapX=mobj->MapX;
+							mo->MapY=mobj->MapY;
 						}
 					}
 				}
@@ -2331,7 +2331,7 @@ void FOMapper::IntLMouseDown()
 		}
 		else if(CurMode==CUR_MODE_DRAW)
 		{
-			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[GetTabIndex()].ProtoId,SelectHX1,SelectHY1,false);
+			if(IsObjectMode() && (*CurItemProtos).size()) ParseProto((*CurItemProtos)[GetTabIndex()].ProtoId,SelectHX1,SelectHY1,NULL);
 			else if(IsTileMode() && CurTileHashes->size()) ParseTile((*CurTileHashes)[GetTabIndex()],SelectHX1,SelectHY1,0,0,TileLayer,DrawRoof);
 			else if(IsCritMode() && CurNpcProtos->size()) ParseNpc((*CurNpcProtos)[GetTabIndex()]->ProtoId,SelectHX1,SelectHY1);
 		}
@@ -2411,7 +2411,7 @@ void FOMapper::IntLMouseDown()
 				if(add)
 				{
 					MapObject* mobj=SelectedObj[0].MapObj;
-					ParseProto(proto_item->ProtoId,mobj->MapX,mobj->MapY,true);
+					ParseProto(proto_item->ProtoId,mobj->MapX,mobj->MapY,mobj);
 					SelectAdd(mobj);
 				}
 			}
@@ -2941,8 +2941,7 @@ MapObject* FOMapper::FindMapObject(ProtoMap& pmap, WORD hx, WORD hy, BYTE mobj_t
 	{
 		MapObject* mo=pmap.MObjects[i];
 
-		if(mo->MapX==hx && mo->MapY==hy && mo->MapObjType==mobj_type &&
-			(!pid || mo->ProtoId==pid) && !(mo->MapObjType==MAP_OBJECT_ITEM && mo->MItem.InContainer))
+		if(mo->MapX==hx && mo->MapY==hy && mo->MapObjType==mobj_type && (!pid || mo->ProtoId==pid) && !mo->ContainerUID)
 		{
 			if(skip) skip--;
 			else return mo;
@@ -2957,8 +2956,7 @@ void FOMapper::FindMapObjects(ProtoMap& pmap, WORD hx, WORD hy, DWORD radius, BY
 	{
 		MapObject* mo=pmap.MObjects[i];
 
-		if(mo->MapObjType==mobj_type && DistGame(mo->MapX,mo->MapY,hx,hy)<=radius &&
-			(!pid || mo->ProtoId==pid) && !(mo->MapObjType==MAP_OBJECT_ITEM && mo->MItem.InContainer))
+		if(mo->MapObjType==mobj_type && DistGame(mo->MapX,mo->MapY,hx,hy)<=radius && (!pid || mo->ProtoId==pid) && !mo->ContainerUID)
 		{
 			objects.push_back(mo);
 		}
@@ -2971,8 +2969,7 @@ MapObject* FOMapper::FindMapObject(WORD hx, WORD hy, BYTE mobj_type, WORD pid, b
 	{
 		MapObject* mo=CurProtoMap->MObjects[i];
 
-		if(mo->MapX==hx && mo->MapY==hy && mo->MapObjType==mobj_type && mo->ProtoId==pid &&
-			!(mo->MapObjType==MAP_OBJECT_ITEM && mo->MItem.InContainer) &&
+		if(mo->MapX==hx && mo->MapY==hy && mo->MapObjType==mobj_type && mo->ProtoId==pid && !mo->ContainerUID &&
 			(!skip_selected || std::find(SelectedObj.begin(),SelectedObj.end(),mo)==SelectedObj.end()))
 		{
 			return mo;
@@ -3054,23 +3051,23 @@ void FOMapper::DeleteMapObject(MapObject* mobj)
 	if(!pmap) return;
 
 	SelectClear();
-	if(!(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer))
+
+	// Delete container items
+	if(mobj->UID)
 	{
-		if(mobj->MapObjType==MAP_OBJECT_CRITTER || mobj->MapObjType==MAP_OBJECT_ITEM)
+		for(MapObjectPtrVecIt it=pmap->MObjects.begin();it!=pmap->MObjects.end();)
 		{
-			for(MapObjectPtrVecIt it=pmap->MObjects.begin();it!=pmap->MObjects.end();)
+			MapObject* mobj_=*it;
+			if(mobj_->ContainerUID && mobj_->ContainerUID==mobj->UID)
 			{
-				MapObject* mobj_=*it;
-				if(mobj_->MapObjType==MAP_OBJECT_ITEM && mobj_->MItem.InContainer && mobj_->MapX==mobj->MapX && mobj_->MapY==mobj->MapY)
-				{
-					mobj_->Release();
-					it=pmap->MObjects.erase(it);
-				}
-				else ++it;
+				mobj_->Release();
+				it=pmap->MObjects.erase(it);
 			}
+			else ++it;
 		}
 	}
 
+	// Delete on active map
 	if(pmap==CurProtoMap && mobj->RunTime.MapObjId)
 	{
 		if(mobj->MapObjType==MAP_OBJECT_CRITTER)
@@ -3085,8 +3082,25 @@ void FOMapper::DeleteMapObject(MapObject* mobj)
 		}
 	}
 
+	// Delete
 	MapObjectPtrVecIt it=std::find(pmap->MObjects.begin(),pmap->MObjects.end(),mobj);
 	if(it!=pmap->MObjects.end()) pmap->MObjects.erase(it);
+
+	// Delete childs
+	if(mobj->ParentUID || mobj->UID)
+	{
+		for(size_t i=0,j=pmap->MObjects.size();i<j;i++)
+		{
+			MapObject* mobj_=*it;
+			if((mobj->ParentUID && mobj_->UID==mobj->ParentUID) || (mobj->UID && mobj_->ParentUID==mobj->UID))
+			{
+				DeleteMapObject(mobj_); // Recursive deleting
+				return;
+			}
+		}
+	}
+
+	// Free
 	mobj->Release();
 }
 
@@ -3144,7 +3158,7 @@ void FOMapper::SelectAddTile(WORD hx, WORD hy, bool is_roof)
 	for(size_t i=0,j=tiles.size();i<j;i++) tiles[i].IsSelected=true;
 }
 
-void FOMapper::SelectAdd(MapObject* mobj)
+void FOMapper::SelectAdd(MapObject* mobj, bool select_childs /* = true */)
 {
 	if(mobj->RunTime.FromMap==CurProtoMap && mobj->RunTime.MapObjId)
 	{
@@ -3157,18 +3171,20 @@ void FOMapper::SelectAdd(MapObject* mobj)
 				cr->Alpha=SELECT_ALPHA;
 
 				// In container
-				SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
-				for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+				if(mobj->UID)
 				{
-					MapObject* mobj_=CurProtoMap->MObjects[i];
-					if(mobj!=mobj_ && mobj_->MapObjType==MAP_OBJECT_ITEM && mobj_->MItem.InContainer &&
-						mobj->MapX==mobj_->MapX && mobj->MapY==mobj_->MapY) sobj->Childs.push_back(mobj_);
+					SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
+					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					{
+						MapObject* mobj_=CurProtoMap->MObjects[i];
+						if(mobj_->ContainerUID==mobj->UID && mobj_!=mobj) sobj->Childs.push_back(mobj_);
+					}
 				}
 			}
 		}
 		else if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer) return;
+			if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->ContainerUID) return;
 
 			ItemHex* item=HexMngr.GetItemById(mobj->RunTime.MapObjId);
 			if(item)
@@ -3177,14 +3193,28 @@ void FOMapper::SelectAdd(MapObject* mobj)
 				item->Alpha=SELECT_ALPHA;
 
 				// In container
-				if(item->Proto->Type!=ITEM_TYPE_CONTAINER) return;
-
-				SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
-				for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+				if(mobj->UID)
 				{
-					MapObject* mobj1=CurProtoMap->MObjects[i];
-					if(mobj!=mobj1 && mobj1->MapObjType==MAP_OBJECT_ITEM && mobj1->MItem.InContainer &&
-						mobj->MapX==mobj1->MapX && mobj->MapY==mobj1->MapY) sobj->Childs.push_back(mobj1);
+					SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
+					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					{
+						MapObject* mobj_=CurProtoMap->MObjects[i];
+						if(mobj_->ContainerUID==mobj->UID && mobj_!=mobj) sobj->Childs.push_back(mobj_);
+					}
+				}
+
+				// Childs
+				if(select_childs && (mobj->UID || mobj->ParentUID))
+				{
+					SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
+					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					{
+						MapObject* mobj_=CurProtoMap->MObjects[i];
+						if(((mobj->UID && mobj_->ParentUID==mobj->UID) || (mobj->ParentUID && mobj_->UID==mobj->ParentUID)) && mobj_!=mobj)
+						{
+							SelectAdd(mobj_,false);
+						}
+					}
 				}
 			}
 		}
@@ -3195,7 +3225,7 @@ void FOMapper::SelectErase(MapObject* mobj)
 {
 	if(mobj->RunTime.FromMap==CurProtoMap)
 	{
-		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer) return;
+		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->ContainerUID) return;
 
 		for(size_t i=0,j=SelectedObj.size();i<j;i++)
 		{
@@ -3273,8 +3303,53 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 		offs_x=(int)ox;
 		offs_y=(int)oy;
 	}
+	// Check borders
+	else
+	{
+		// Objects
+		int switcher=(SelectedObj.size()?SelectedObj[0].MapObj->MapX%2:0);
+		for(size_t i=0,j=SelectedObj.size();i<j;i++)
+		{
+			SelMapObj* obj=&SelectedObj[i];
+			int hx=obj->MapObj->MapX;
+			int hy=obj->MapObj->MapY;
+			if(GameOpt.MapHexagonal)
+			{
+				int sw=switcher;
+				for(int k=0,l=abs(offs_hx);k<l;k++,sw++) MoveHexByDirUnsafe(hx,hy,offs_hx>0?((sw&1)?4:3):((sw&1)?0:1));
+				for(int k=0,l=abs(offs_hy);k<l;k++) MoveHexByDirUnsafe(hx,hy,offs_hy>0?2:5);
+			}
+			else
+			{
+				hx+=offs_hx;
+				hy+=offs_hy;
+			}
+			if(hx<0 || hy<0 || hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return; // Disable moving
+		}
+
+		// Tiles
+		for(size_t i=0,j=SelectedTile.size();i<j;i++)
+		{
+			SelMapTile& stile=SelectedTile[i];
+			int hx=stile.HexX;
+			int hy=stile.HexY;
+			if(GameOpt.MapHexagonal)
+			{
+				int sw=switcher;
+				for(int k=0,l=abs(offs_hx);k<l;k++,sw++) MoveHexByDirUnsafe(hx,hy,offs_hx>0?((sw&1)?4:3):((sw&1)?0:1));
+				for(int k=0,l=abs(offs_hy);k<l;k++) MoveHexByDirUnsafe(hx,hy,offs_hy>0?2:5);
+			}
+			else
+			{
+				hx+=offs_hx;
+				hy+=offs_hy;
+			}
+			if(hx<0 || hy<0 || hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return; // Disable moving
+		}
+	}
 
 	// Move map objects
+	int switcher=(SelectedObj.size()?SelectedObj[0].MapObj->MapX%2:0);
 	for(size_t i=0,j=SelectedObj.size();i<j;i++)
 	{
 		SelMapObj* obj=&SelectedObj[i];
@@ -3299,14 +3374,19 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 		{
 			int hx=obj->MapObj->MapX;
 			int hy=obj->MapObj->MapY;
-			hx+=offs_hx;
-			hy+=offs_hy;
-
-			if(hx<0) hx=0;
-			if(hx>=HexMngr.GetMaxHexX()) hx=HexMngr.GetMaxHexX()-1;
-			if(hy<0) hy=0;
-			if(hy>=HexMngr.GetMaxHexY()) hy=HexMngr.GetMaxHexY()-1;
-
+			if(GameOpt.MapHexagonal)
+			{
+				int sw=switcher;
+				for(int k=0,l=abs(offs_hx);k<l;k++,sw++) MoveHexByDirUnsafe(hx,hy,offs_hx>0?((sw&1)?4:3):((sw&1)?0:1));
+				for(int k=0,l=abs(offs_hy);k<l;k++) MoveHexByDirUnsafe(hx,hy,offs_hy>0?2:5);
+			}
+			else
+			{
+				hx+=offs_hx;
+				hy+=offs_hy;
+			}
+			hx=CLAMP(hx,0,HexMngr.GetMaxHexX()-1);
+			hy=CLAMP(hy,0,HexMngr.GetMaxHexY()-1);
 			obj->MapObj->MapX=hx;
 			obj->MapObj->MapY=hy;
 
@@ -3382,8 +3462,17 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 		{
 			int hx=stile.HexX;
 			int hy=stile.HexY;
-			hx+=offs_hx;
-			hy+=offs_hy;
+			if(GameOpt.MapHexagonal)
+			{
+				int sw=switcher;
+				for(int k=0,l=abs(offs_hx);k<l;k++,sw++) MoveHexByDirUnsafe(hx,hy,offs_hx>0?((sw&1)?4:3):((sw&1)?0:1));
+				for(int k=0,l=abs(offs_hy);k<l;k++) MoveHexByDirUnsafe(hx,hy,offs_hy>0?2:5);
+			}
+			else
+			{
+				hx+=offs_hx;
+				hy+=offs_hy;
+			}
 			hx=CLAMP(hx,0,HexMngr.GetMaxHexX()-1);
 			hy=CLAMP(hy,0,HexMngr.GetMaxHexY()-1);
 			if(stile.HexX==hx && stile.HexY==hy) continue;
@@ -3477,51 +3566,77 @@ void FOMapper::SelectDelete()
 	CurMode=CUR_MODE_DEF;
 }
 
-void FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, bool in_cont)
+MapObject* FOMapper::ParseProto(WORD pid, WORD hx, WORD hy, MapObject* owner, bool is_child /* = false */)
 {
+	// Checks
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
-	if(!proto_item) return;
-	if(in_cont && !proto_item->IsCanPickUp()) return;
-	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return;
+	if(!proto_item) return NULL;
+	if(owner && !proto_item->IsCanPickUp()) return NULL;
+	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY()) return NULL;
+	if((proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall()) && owner) return NULL;
 
-	AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMap);
-	if(!anim) return;
-
+	// Clear selection
 	SelectClear();
 
-	if(proto_item->IsItem() || proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall())
+	// Create object
+	MapObject* mobj=new MapObject();
+	mobj->RunTime.FromMap=CurProtoMap;
+	mobj->MapObjType=MAP_OBJECT_ITEM;
+	if(proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall()) mobj->MapObjType=MAP_OBJECT_SCENERY;
+	mobj->ProtoId=pid;
+	mobj->MapX=hx;
+	mobj->MapY=hy;
+	mobj->Dir=proto_item->Dir;
+	mobj->LightDistance=proto_item->LightDistance;
+	mobj->LightIntensity=proto_item->LightIntensity;
+
+	// Object in container or inventory
+	if(owner)
 	{
-		MapObject* mobj=new MapObject();
-		mobj->RunTime.FromMap=CurProtoMap;
-
-		mobj->MapObjType=MAP_OBJECT_ITEM;
-		if(proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall())
-		{
-			if(in_cont)
-			{
-				SAFEREL(mobj);
-				return;
-			}
-			mobj->MapObjType=MAP_OBJECT_SCENERY;
-		}
-
-		mobj->ProtoId=pid;
-		mobj->MapX=hx;
-		mobj->MapY=hy;
-		mobj->Dir=proto_item->Dir;
-		mobj->LightDistance=proto_item->LightDistance;
-		mobj->LightIntensity=proto_item->LightIntensity;
-		if(in_cont) mobj->MItem.InContainer=in_cont;
+		if(!owner->UID) owner->UID=++CurProtoMap->LastObjectUID;
+		mobj->ContainerUID=owner->UID;
 		CurProtoMap->MObjects.push_back(mobj);
-
-		if(in_cont) return;
-
-		mobj->RunTime.MapObjId=++AnyId;
-		if(HexMngr.AddItem(AnyId,pid,hx,hy,0,NULL)) SelectAdd(mobj);
+		return mobj;
 	}
 
-	HexMngr.RefreshMap();
-	CurMode=CUR_MODE_DEF;
+	// Add base object
+	mobj->RunTime.MapObjId=++AnyId;
+	if(!HexMngr.AddItem(AnyId,pid,hx,hy,0,NULL)) return NULL;
+	CurProtoMap->MObjects.push_back(mobj);
+
+	// Add childs
+	for(int i=0;i<ITEM_MAX_CHILDS;i++)
+	{
+		if(!proto_item->ChildPid[i]) continue;
+
+		ProtoItem* child=ItemMngr.GetProtoItem(proto_item->ChildPid[i]);
+		if(!child) continue;
+
+		WORD child_hx=hx,child_hy=hy;
+		FOREACH_PROTO_ITEM_LINES(proto_item->ChildLines[i],child_hx,child_hy,HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY(),;);
+
+		MapObject* mobj_child=ParseProto(proto_item->ChildPid[i],child_hx,child_hy,false,true);
+		if(mobj_child)
+		{
+			if(!mobj->UID) mobj->UID=++CurProtoMap->LastObjectUID;
+			mobj_child->ParentUID=mobj->UID;
+			mobj_child->ParentChildIndex=i;
+		}
+	}
+
+	// Finish
+	if(!is_child)
+	{
+		SelectAdd(mobj);
+		HexMngr.RefreshMap();
+		CurMode=CUR_MODE_DEF;
+	}
+	else
+	{
+		//mobj->Ru
+	}
+
+	return mobj;
 }
 
 void FOMapper::ParseTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof)
@@ -3619,7 +3734,8 @@ MapObject* FOMapper::ParseMapObj(MapObject* mobj)
 		mobj=CurProtoMap->MObjects.back();
 		mobj->RunTime.FromMap=CurProtoMap;
 
-		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer) return mobj;
+		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->ContainerUID) return mobj;
+
 		mobj->RunTime.MapObjId=++AnyId;
 		if(HexMngr.AddItem(AnyId,mobj->ProtoId,mobj->MapX,mobj->MapY,0,NULL))
 		{
@@ -3634,6 +3750,7 @@ void FOMapper::BufferCopy()
 {
 	if(!CurProtoMap) return;
 
+	for(int i=0,j=MapObjBuffer.size();i<j;i++) MapObjBuffer[i]->Release();
 	MapObjBuffer.clear();
 	TilesBuffer.clear();
 
@@ -3683,6 +3800,22 @@ void FOMapper::BufferPaste(int hx, int hy)
 	if(!CurProtoMap) return;
 
 	SelectClear();
+
+	// Fix UIDs
+	for(int i=0,j=MapObjBuffer.size();i<j;i++)
+	{
+		MapObject* mobj=MapObjBuffer[i];
+		if(mobj->UID)
+		{
+			DWORD old_uid=mobj->UID;
+			mobj->UID=++CurProtoMap->LastObjectUID;
+			for(int k=0,l=MapObjBuffer.size();k<l;k++)
+			{
+				MapObject* mobj_=MapObjBuffer[k];
+				if(mobj_->ContainerUID==old_uid) mobj_->ContainerUID=mobj->UID;
+			}
+		}
+	}
 
 	// Paste map objects
 	CurProtoMap->MObjects.reserve(CurProtoMap->MObjects.size()+MapObjBuffer.size()*2);
@@ -4276,7 +4409,7 @@ void FOMapper::ParseCommand(const char* cmd)
 				MapObject* mobj=*it;
 				if(mobj->ProtoId==pid)
 				{
-					AddMessFormat("%04u) %03d:%03d %s",count,mobj->MapX,mobj->MapY,mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer?"in container":"");
+					AddMessFormat("%04u) %03d:%03d %s",count,mobj->MapX,mobj->MapY,mobj->ContainerUID?"in container":"");
 					count++;
 				}
 			}
@@ -4362,7 +4495,7 @@ void FOMapper::ParseCommand(const char* cmd)
 				MapObject* mobj=*it;
 				if(mobj->MapX==hx && mobj->MapY==hy)
 				{
-					AddMessFormat("%04u) pid %03d %s",count,mobj->ProtoId,mobj->MapObjType==MAP_OBJECT_ITEM && mobj->MItem.InContainer?"in container":"");
+					AddMessFormat("%04u) pid %03d %s",count,mobj->ProtoId,mobj->ContainerUID?"in container":"");
 					count++;
 				}
 			}
@@ -4643,8 +4776,6 @@ void FOMapper::SScriptFunc::MapperObject_Update(MapObject& mobj)
 
 MapObject* FOMapper::SScriptFunc::MapperObject_AddChild(MapObject& mobj, WORD pid)
 {
-	if(mobj.MapObjType!=MAP_OBJECT_CRITTER && mobj.MapObjType!=MAP_OBJECT_ITEM) SCRIPT_ERROR_R0("Invalid map object type.");
-	if(mobj.MapObjType==MAP_OBJECT_ITEM && mobj.MItem.InContainer) SCRIPT_ERROR_R0("Object already in container.");
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item || !proto_item->IsContainer()) SCRIPT_ERROR_R0("Object is not container item.");
 	ProtoItem* proto_item_=ItemMngr.GetProtoItem(pid);
@@ -4657,7 +4788,8 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild(MapObject& mobj, WORD pi
 	mobj_->ProtoId=pid;
 	mobj_->MapX=mobj.MapX;
 	mobj_->MapY=mobj.MapY;
-	mobj_->MItem.InContainer;
+	if(!mobj.UID) mobj.UID=++mobj.RunTime.FromMap->LastObjectUID;
+	mobj_->ContainerUID=mobj.UID;
 	return mobj_;
 }
 
@@ -4666,11 +4798,13 @@ DWORD FOMapper::SScriptFunc::MapperObject_GetChilds(MapObject& mobj, CScriptArra
 	if(!mobj.RunTime.FromMap) return 0;
 	if(mobj.MapObjType!=MAP_OBJECT_ITEM) return 0;
 	MapObjectPtrVec objects_;
-	for(MapObjectPtrVecIt it=mobj.RunTime.FromMap->MObjects.begin();it!=mobj.RunTime.FromMap->MObjects.end();++it)
+	if(mobj.UID)
 	{
-		MapObject* mobj_=*it;
-		if(mobj_->MapObjType==MAP_OBJECT_ITEM && mobj_->MapX==mobj.MapX && mobj_->MapY==mobj.MapY && mobj_->MItem.InContainer)
-			objects_.push_back(mobj_);
+		for(MapObjectPtrVecIt it=mobj.RunTime.FromMap->MObjects.begin();it!=mobj.RunTime.FromMap->MObjects.end();++it)
+		{
+			MapObject* mobj_=*it;
+			if(mobj_->ContainerUID==mobj.UID) objects_.push_back(mobj_);
+		}
 	}
 	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
 	return objects_.size();
@@ -4680,7 +4814,7 @@ void FOMapper::SScriptFunc::MapperObject_MoveToHex(MapObject& mobj, WORD hx, WOR
 {
 	ProtoMap* pmap=mobj.RunTime.FromMap;
 	if(!pmap) return;
-	if(mobj.MapObjType==MAP_OBJECT_ITEM && mobj.MItem.InContainer) return;
+	if(mobj.ContainerUID) return;
 
 	hx=CLAMP(hx,0,pmap->Header.MaxHexX-1);
 	hy=CLAMP(hy,0,pmap->Header.MaxHexY-1);
@@ -4691,7 +4825,7 @@ void FOMapper::SScriptFunc::MapperObject_MoveToHexOffset(MapObject& mobj, int x,
 {
 	ProtoMap* pmap=mobj.RunTime.FromMap;
 	if(!pmap) return;
-	if(mobj.MapObjType==MAP_OBJECT_ITEM && mobj.MItem.InContainer) return;
+	if(mobj.ContainerUID) return;
 
 	int hx=(int)mobj.MapX+x;
 	int hy=(int)mobj.MapY+y;
@@ -4704,7 +4838,7 @@ void FOMapper::SScriptFunc::MapperObject_MoveToDir(MapObject& mobj, BYTE dir)
 {
 	ProtoMap* pmap=mobj.RunTime.FromMap;
 	if(!pmap) return;
-	if(mobj.MapObjType==MAP_OBJECT_ITEM && mobj.MItem.InContainer) return;
+	if(mobj.ContainerUID) return;
 
 	int hx=mobj.MapX;
 	int hy=mobj.MapY;

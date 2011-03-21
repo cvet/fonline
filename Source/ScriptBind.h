@@ -1189,6 +1189,10 @@
 	if(engine->RegisterObjectProperty("MapperObject","const uint16 MapX",offsetof(MapObject,MapX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","const uint16 MapY",offsetof(MapObject,MapY))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Dir",offsetof(MapObject,Dir))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","const uint UID",offsetof(MapObject,UID))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","const uint ContainerUID",offsetof(MapObject,ContainerUID))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","const uint ParentUID",offsetof(MapObject,ParentUID))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("MapperObject","const uint ParentChildIndex",offsetof(MapObject,ParentChildIndex))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint LightColor",offsetof(MapObject,LightColor))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 LightDay",offsetof(MapObject,LightDay))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 LightDirOff",offsetof(MapObject,LightDirOff))<0) BIND_ERROR;
@@ -1253,7 +1257,6 @@
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_BrokenFlags",offsetof(MapObject,MItem.BrokenFlags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_BrokenCount",offsetof(MapObject,MItem.BrokenCount))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint16 Item_Deterioration",offsetof(MapObject,MItem.Deterioration))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","const bool Item_InContainer",offsetof(MapObject,MItem.InContainer))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Item_ItemSlot",offsetof(MapObject,MItem.ItemSlot))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint16 Item_AmmoPid",offsetof(MapObject,MItem.AmmoPid))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint Item_AmmoCount",offsetof(MapObject,MItem.AmmoCount))<0) BIND_ERROR;
