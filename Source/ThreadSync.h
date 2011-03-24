@@ -15,7 +15,7 @@ typedef vector<SyncManager*>::iterator SyncManagerVecIt;
 class SyncObject
 {
 private:
-	friend SyncManager;
+	friend class SyncManager;
 	SyncManager* curMngr;
 
 public:
@@ -27,7 +27,7 @@ public:
 class SyncManager
 {
 private:
-	friend SyncObject;
+	friend class SyncObject;
 	volatile bool isWaiting;
 	volatile int threadPriority;
 	SyncObjectVec lockedObjects;

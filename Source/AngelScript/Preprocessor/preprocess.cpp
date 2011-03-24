@@ -2,23 +2,23 @@
    Preprocessor 0.5
    Copyright (c) 2005 Anthony Casteel
 
-   This software is provided 'as-is', without any express or implied 
-   warranty. In no event will the authors be held liable for any 
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
    damages arising from the use of this software.
 
-   Permission is granted to anyone to use this software for any 
-   purpose, including commercial applications, and to alter it and 
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
    redistribute it freely, subject to the following restrictions:
 
-   1. The origin of this software must not be misrepresented; you 
+   1. The origin of this software must not be misrepresented; you
       must not claim that you wrote the original software. If you use
-	  this software in a product, an acknowledgment in the product 
+	  this software in a product, an acknowledgment in the product
 	  documentation would be appreciated but is not required.
 
-   2. Altered source versions must be plainly marked as such, and 
+   2. Altered source versions must be plainly marked as such, and
       must not be misrepresented as being the original software.
 
-   3. This notice may not be removed or altered from any source 
+   3. This notice may not be removed or altered from any source
       distribution.
 
    The original version of this library can be located at:
@@ -189,7 +189,7 @@ static LLITR parseStatement(LLITR ITR, LLITR END, LexemList& dest)
 
 static LLITR parseDefineArguments(LLITR ITR, LLITR END, LexemList& lexems, std::vector<LexemList>& args)
 {
-	if (ITR == END || ITR->value != "(") 
+	if (ITR == END || ITR->value != "(")
 	{
 		PrintErrorMessage("Expected argument list.");
 		return ITR;
@@ -239,7 +239,7 @@ static LLITR expandDefine(LLITR ITR, LLITR END, LexemList& lexems, DefineTable& 
 	LLITR ITR_BEGIN = ITR;
 	ITR_BEGIN--;
 
-	if (define_entry->second.arguments.size() == 0) 
+	if (define_entry->second.arguments.size() == 0)
 	{
 		lexems.insert(ITR,
 			define_entry->second.lexems.begin(),
@@ -252,7 +252,7 @@ static LLITR expandDefine(LLITR ITR, LLITR END, LexemList& lexems, DefineTable& 
 	std::vector<LexemList> arguments;
 	ITR = parseDefineArguments(ITR,END,lexems,arguments);
 
-	if (define_entry->second.arguments.size() != arguments.size()) 
+	if (define_entry->second.arguments.size() != arguments.size())
 	{
 		PrintErrorMessage("Didn't supply right number of arguments to define.");
 		return END;
@@ -264,7 +264,7 @@ static LLITR expandDefine(LLITR ITR, LLITR END, LexemList& lexems, DefineTable& 
 	while (TLI != temp_list.end())
 	{
 		ArgSet::iterator arg = define_entry->second.arguments.find(TLI->value);
-		if (arg == define_entry->second.arguments.end()) 
+		if (arg == define_entry->second.arguments.end())
 		{
 			++TLI;
 			continue;
@@ -288,7 +288,7 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 		return;
 	}
 	Lexem name = *def_lexems.begin();
-	if (name.type != IDENTIFIER) 
+	if (name.type != IDENTIFIER)
 	{
 		PrintErrorMessage("Define's name was not an identifier.");
 		return;
@@ -303,7 +303,7 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 		{
 			//Macro has arguments
 			def_lexems.pop_front();
-			if (def_lexems.empty()) 
+			if (def_lexems.empty())
 			{
 				PrintErrorMessage("Expected arguments.");
 				return;
@@ -318,7 +318,7 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 			int num_args = 0;
 			while(!def_lexems.empty() && def_lexems.begin()->value != ")")
 			{
-				if (def_lexems.begin()->type != IDENTIFIER) 
+				if (def_lexems.begin()->type != IDENTIFIER)
 				{
 					PrintErrorMessage("Expected identifier.");
 					return;
@@ -332,7 +332,7 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 				num_args++;
 			}
 
-			if (!def_lexems.empty()) 
+			if (!def_lexems.empty())
 			{
 				if (def_lexems.begin()->value != ")")
 				{
@@ -341,7 +341,7 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 				}
 				def_lexems.pop_front();
 			}
-			else 
+			else
 			{
 				PrintErrorMessage("0x0FA3 Unexpected end of line.");
 				return;
@@ -369,7 +369,7 @@ static LLITR parseIfDef(LLITR ITR, LLITR END)
 		if (ITR->type == NEWLINE) newlines++;
 		else if (ITR->type == PREPROCESSOR)
 		{
-			if (ITR->value == "#endif" && depth == 0) 
+			if (ITR->value == "#endif" && depth == 0)
 			{
 				++ITR;
 				found_end = true;
@@ -380,7 +380,7 @@ static LLITR parseIfDef(LLITR ITR, LLITR END)
 		}
 		++ITR;
 	}
-	if (ITR == END && !found_end) 
+	if (ITR == END && !found_end)
 	{
 		PrintErrorMessage("0x0FA4 Unexpected end of file.");
 		return ITR;
@@ -398,7 +398,7 @@ static LLITR parseIfDef(LLITR ITR, LLITR END)
 static void parseIf(LexemList& directive, std::string& name_out)
 {
 	directive.pop_front();
-	if (directive.empty()) 
+	if (directive.empty())
 	{
 		PrintErrorMessage("Expected argument.");
 		return;
@@ -431,7 +431,7 @@ static void parsePragma(LexemList& args)
 	std::string p_args;
 	if (!args.empty())
 	{
-		if (args.begin()->type != STRING) 
+		if (args.begin()->type != STRING)
 			PrintErrorMessage("Pragma parameter should be a string literal.");
 		p_args = removeQuotes(args.begin()->value);
 		args.pop_front();
@@ -470,9 +470,9 @@ static void setFileMacro(DefineTable& define_table, const std::string& file)
 	l.value = std::string("\"")+file+"\"";
 	def.lexems.push_back(l);
 	define_table["__FILE__"] = def;
-}	
+}
 
-static void recursivePreprocess(	
+static void recursivePreprocess(
 	std::string filename,
 	FileSource& file_source,
 	LexemList& lexems,
@@ -488,7 +488,7 @@ static void recursivePreprocess(
 
 	bool loaded = file_source.LoadFile(filename,data);
 
-	if (!loaded) 
+	if (!loaded)
 	{
 		PrintErrorMessage(std::string("Could not open file ")+filename);
 		return;
@@ -538,12 +538,12 @@ static void recursivePreprocess(
 			}
 
 			ITR = lexems.erase(start_of_line,end_of_line);
-			
+
 			std::string value = directive.begin()->value;
 			if (value == "#define")
 			{
 				parseDefine(define_table,directive);
-			} 
+			}
 			else if (value == "#ifdef")
 			{
 				std::string def_name;
@@ -554,7 +554,7 @@ static void recursivePreprocess(
 					LLITR splice_to = parseIfDef(ITR,END);
 					ITR = lexems.erase(ITR,splice_to);
 				}
-			} 
+			}
 			else if (value == "#ifndef")
 			{
 				std::string def_name;
@@ -604,15 +604,15 @@ static void recursivePreprocess(
 				parseIf(directive,msg);
 				PrintWarningMessage(msg);
 			}
-			else 
+			else
 			{
 				PrintErrorMessage("Unknown directive.");
 			}
-		} 
+		}
 		else if (ITR->type == IDENTIFIER)
-		{ 
+		{
 			ITR = expandDefine(ITR,END,lexems,define_table);
-		} 
+		}
 		else { ++ITR; }
 	}
 
@@ -620,11 +620,11 @@ static void recursivePreprocess(
 }
 
 int Preprocessor::Preprocess(
-	std::string source_file, 
+	std::string source_file,
 	FileSource& file_source,
 	OutStream& destination,
 	bool process_pragmas,
-	OutStream& err,
+	OutStream* err,
 	LineNumberTranslator* trans)
 {
 	if (trans) LNT = new LineNumberTranslator::Table;
@@ -633,17 +633,18 @@ int Preprocessor::Preprocess(
 	current_line = 0;
 	DefineTable define_table = application_specified;
 	LexemList lexems;
-	error_stream = &err;
+	static NullOutStream null_err;
+	error_stream = (err ? err : &null_err);
 	number_of_errors = 0;
 	root_file = source_file;
 	ProcessPragmas = process_pragmas;
 	FileDependencies.clear();
 	Pragmas.clear();
-	
+
 	recursivePreprocess(source_file,file_source,lexems,define_table);
 	printLexemList(lexems,destination);
-	
-	if (trans) 
+
+	if (trans)
 	{
 		trans->SetTable(LNT);
 		LNT = 0;

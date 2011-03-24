@@ -13,38 +13,38 @@ struct AnyFrames;
 class ItemHex : public Item
 {
 public:
-	ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut);
+	ItemHex(uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut);
 	// ~ItemHex() Destructor not been called because Item not have virtual destructor
-	bool operator==(const WORD& _right){return (GetProtoId()==_right);}
+	bool operator==(const ushort& _right){return (GetProtoId()==_right);}
 
 public:
-	DWORD SprId;
+	uint SprId;
 	int HexX,HexY,Dir;
 	short StartScrX,StartScrY;
 	short ScrX,ScrY;
 	int* HexScrX,*HexScrY;
 	int SpriteCut;
-	BYTE Alpha;
+	uchar Alpha;
 	AnyFrames* Anim;
 	static AnyFrames* DefaultAnim;
-	BYTE ScenFlags;
+	uchar ScenFlags;
 	bool SprDrawValid;
 	Sprite* SprDraw,*SprTemp;
 
 private:
-	short curSpr,begSpr,endSpr;
-	short animBegSpr,animEndSpr;
-	DWORD animTick;
-	BYTE maxAlpha;
+	uint curSpr,begSpr,endSpr;
+	uint animBegSpr,animEndSpr;
+	uint animTick;
+	uchar maxAlpha;
 	bool isAnimated;
-	DWORD animNextTick;
+	uint animNextTick;
 
 public:
 	bool IsScenOrGrid(){return Proto->IsScen() || Proto->IsGrid();}
 	bool IsItem(){return Proto->IsItem();}
 	bool IsWall(){return Proto->IsWall();}
-	WORD GetHexX(){return HexX;}
-	WORD GetHexY(){return HexY;}
+	ushort GetHexX(){return HexX;}
+	ushort GetHexY(){return HexY;}
 	int GetDir(){return Dir;}
 	bool IsAnimated(){return isAnimated;}
 	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid_Type==GRID_EXITGRID);}
@@ -62,7 +62,7 @@ public:
 	// Finish
 private:
 	bool finishing;
-	DWORD finishingTime;
+	uint finishingTime;
 
 public:
 	void Finish();
@@ -80,21 +80,21 @@ private:
 	float effSx,effSy;
 	int effStartX,effStartY;
 	float effCurX,effCurY;
-	DWORD effDist;
-	DWORD effLastTick;
+	uint effDist;
+	uint effLastTick;
 
 public:
 	float EffOffsX,EffOffsY;
 
 	bool IsEffect(){return isEffect;}
 	bool IsDynamicEffect(){return IsEffect() && (effSx || effSy);}
-	void SetEffect(float sx, float sy, DWORD dist);
-	WordPair GetEffectStep();
+	void SetEffect(float sx, float sy, uint dist);
+	UShortPair GetEffectStep();
 
 	// Fade
 private:
 	bool fading;
-	DWORD fadingTick;
+	uint fadingTick;
 	bool fadeUp;
 
 	void SetFade(bool fade_up);
@@ -105,17 +105,17 @@ public:
 	void StopAnimate();
 	void SetAnimFromEnd();
 	void SetAnimFromStart();
-	void SetAnim(short beg, short end);
+	void SetAnim(uint beg, uint end);
 	void SetSprStart();
 	void SetSprEnd();
-	void SetSpr(short num_spr);
+	void SetSpr(uint num_spr);
 	void SetAnimOffs();
 	void SetStayAnim();
 	void SetShowAnim();
 	void SetHideAnim();
 
 public: // Move some specific types to end
-	WordPairVec EffSteps;
+	UShortPairVec EffSteps;
 };
 
 typedef vector<ItemHex*> ItemHexVec;

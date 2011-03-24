@@ -24,7 +24,7 @@ int Procent(int full, int peace)
 	return CLAMP(procent,0,100);
 }
 
-DWORD NumericalNumber(DWORD num)
+uint NumericalNumber(uint num)
 {
 	if(num&1)
 		return num*(num/2+1);
@@ -32,14 +32,14 @@ DWORD NumericalNumber(DWORD num)
 		return num*num/2+num/2;
 }
 
-DWORD DistSqrt(int x1, int y1, int x2, int y2)
+uint DistSqrt(int x1, int y1, int x2, int y2)
 {
 	int dx=x1-x2;
 	int dy=y1-y2;
-	return (DWORD)sqrt(double(dx*dx+dy*dy));
+	return (uint)sqrt(double(dx*dx+dy*dy));
 }
 
-DWORD DistGame(int x1, int y1, int x2, int y2)
+uint DistGame(int x1, int y1, int x2, int y2)
 {
 	if(GameOpt.MapHexagonal)
 	{
@@ -75,7 +75,7 @@ DWORD DistGame(int x1, int y1, int x2, int y2)
 	{
 		int dx=abs(x2-x1);
 		int dy=abs(y2-y1);
-		return max(dx,dy);
+		return MAX(dx,dy);
 	}
 }
 
@@ -123,10 +123,10 @@ int GetFarDir(int x1, int y1, int x2, int y2)
 {
 	if(GameOpt.MapHexagonal)
 	{
-		float hx=x1;
-		float hy=y1;
-		float tx=x2;
-		float ty=y2;
+		float hx=(float)x1;
+		float hy=(float)y1;
+		float tx=(float)x2;
+		float ty=(float)y2;
 		float nx=3*(tx-hx);
 		float ny=(ty-hy)*SQRT3T2_FLOAT-(float(x2&1)-float(x1&1))*SQRT3_FLOAT;
 		float dir=180.0f+RAD2DEG*atan2f(ny,nx);
@@ -157,10 +157,10 @@ int GetFarDir(int x1, int y1, int x2, int y2, float offset)
 {
 	if(GameOpt.MapHexagonal)
 	{
-		float hx=x1;
-		float hy=y1;
-		float tx=x2;
-		float ty=y2;
+		float hx=(float)x1;
+		float hy=(float)y1;
+		float tx=(float)x2;
+		float ty=(float)y2;
 		float nx=3*(tx-hx);
 		float ny=(ty-hy)*SQRT3T2_FLOAT-(float(x2&1)-float(x1&1))*SQRT3_FLOAT;
 		float dir=180.0f+RAD2DEG*atan2f(ny,nx)+offset;
@@ -191,7 +191,7 @@ int GetFarDir(int x1, int y1, int x2, int y2, float offset)
 	}
 }
 
-bool CheckDist(WORD x1, WORD y1, WORD x2, WORD y2, DWORD dist)
+bool CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist)
 {
 	return DistGame(x1,y1,x2,y2)<=dist;
 }
@@ -204,8 +204,8 @@ int ReverseDir(int dir)
 
 void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2)
 {
-	float dx=abs(x2-x1);
-	float dy=abs(y2-y1);
+	float dx=(float)abs(x2-x1);
+	float dy=(float)abs(y2-y1);
 
 	sx=1.0f;
 	sy=1.0f;
@@ -223,7 +223,7 @@ void ChangeStepsXY(float& sx, float& sy, float deq)
 	sy=sx*sin(rad)+sy*cos(rad);
 }
 
-bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy)
+bool MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy)
 {
 	int hx_=hx;
 	int hy_=hy;
@@ -238,7 +238,7 @@ bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy)
 	return false;
 }
 
-void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir)
+void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir)
 {
 	if(GameOpt.MapHexagonal)
 	{
@@ -281,8 +281,8 @@ bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int
 	int a=dx*dx+dy*dy;
 	int b=2*(x01*dx+y01*dy);
 	int c=x01*x01+y01*y01-radius*radius;
-	if(-b<0)return c<0;
-	if(-b<2*a)return 4*a*c-b*b<0;
+	if(-b<0) return c<0;
+	if(-b<2*a) return 4*a*c-b*b<0;
 	return a+b+c<0;
 }
 
@@ -436,8 +436,8 @@ public:
 	{
 		for(int i=0;i<0x100;i++) NameTrueChar[i]=false;
 		for(int i=0;i<0x100;i++) PassTrueChar[i]=false;
-		const BYTE name_char[]=" _.-1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
-		const BYTE pass_char[]=" _-,.=[]{}?!@#$^&()|`~:;1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
+		const uchar name_char[]=" _.-1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
+		const uchar pass_char[]=" _-,.=[]{}?!@#$^&()|`~:;1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
 		for(int i=0,j=sizeof(name_char);i<j;i++) NameTrueChar[name_char[i]]=true;
 		for(int i=0,j=sizeof(pass_char);i<j;i++) PassTrueChar[pass_char[i]]=true;
 	}
@@ -445,13 +445,13 @@ public:
 
 bool CheckUserName(const char* str)
 {
-	for(;*str;str++) if(!NameTrueChar[(BYTE)*str]) return false;
+	for(;*str;str++) if(!NameTrueChar[(uchar)*str]) return false;
 	return true;
 }
 
 bool CheckUserPass(const char* str)
 {
-	for(;*str;str++) if(!PassTrueChar[(BYTE)*str]) return false;
+	for(;*str;str++) if(!PassTrueChar[(uchar)*str]) return false;
 	return true;
 }
 
@@ -460,9 +460,9 @@ bool CheckUserPass(const char* str)
 /************************************************************************/
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
 
-DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light)
+uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light)
 {
-	BYTE result[3];
+	uchar result[3];
 	int color_r[4]={colors[0],colors[1],colors[2],colors[3]};
 	int color_g[4]={colors[4],colors[5],colors[6],colors[7]};
 	int color_b[4]={colors[8],colors[9],colors[10],colors[11]};
@@ -502,12 +502,12 @@ DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light)
 
 	if(light)
 	{
-		int max_light=(max(max(max(color_r[0],color_r[1]),color_r[2]),color_r[3])+
-			max(max(max(color_g[0],color_g[1]),color_g[2]),color_g[3])+
-			max(max(max(color_b[0],color_b[1]),color_b[2]),color_b[3]))/3;
-		int min_light=(min(min(min(color_r[0],color_r[1]),color_r[2]),color_r[3])+
-			min(min(min(color_g[0],color_g[1]),color_g[2]),color_g[3])+
-			min(min(min(color_b[0],color_b[1]),color_b[2]),color_b[3]))/3;
+		int max_light=(MAX(MAX(MAX(color_r[0],color_r[1]),color_r[2]),color_r[3])+
+			MAX(MAX(MAX(color_g[0],color_g[1]),color_g[2]),color_g[3])+
+			MAX(MAX(MAX(color_b[0],color_b[1]),color_b[2]),color_b[3]))/3;
+		int min_light=(MIN(MIN(MIN(color_r[0],color_r[1]),color_r[2]),color_r[3])+
+			MIN(MIN(MIN(color_g[0],color_g[1]),color_g[2]),color_g[3])+
+			MIN(MIN(MIN(color_b[0],color_b[1]),color_b[2]),color_b[3]))/3;
 		int cur_light=(result[0]+result[1]+result[2])/3;
 		*light=Procent(max_light-min_light,max_light-cur_light);
 		*light=CLAMP(*light,0,100);
@@ -678,7 +678,7 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-Logging");
 	if(!logging)
 	{
-		WriteLog("File logging off.\n");
+		WriteLog(NULL,"File logging off.\n");
 		LogFinish(-1);
 	}
 
@@ -715,7 +715,7 @@ HANDLE UpdateEvent=NULL;
 HANDLE LogEvent=NULL;
 int ServerGameSleep=10;
 int MemoryDebugLevel=10;
-DWORD VarsGarbageTime=3600000;
+uint VarsGarbageTime=3600000;
 bool WorldSaveManager=true;
 bool LogicMT=false;
 
@@ -826,7 +826,7 @@ const char* GetLastSocketError()
 	CASE_SOCK_ERROR(WSA_QOS_EFILTERCOUNT,"An incorrect number of QOS FILTERSPECs were specified in the FLOWDESCRIPTOR.");
 	CASE_SOCK_ERROR(WSA_QOS_EOBJLENGTH,"An object with an invalid ObjectLength field was specified in the QOS provider-specific buffer.");
 	CASE_SOCK_ERROR(WSA_QOS_EFLOWCOUNT,"An incorrect number of flow descriptors was specified in the QOS structure.");
-	CASE_SOCK_ERROR(WSA_QOS_EUNKOWNPSOBJ,"An unrecognized object was found in the QOS provider-specific buffer.");
+//	CASE_SOCK_ERROR(WSA_QOS_EUNKOWNPSOBJ,"An unrecognized object was found in the QOS provider-specific buffer.");
 	CASE_SOCK_ERROR(WSA_QOS_EPOLICYOBJ,"An invalid policy object was found in the QOS provider-specific buffer.");
 	CASE_SOCK_ERROR(WSA_QOS_EFLOWDESC,"An invalid QOS flow descriptor was found in the flow descriptor list.");
 	CASE_SOCK_ERROR(WSA_QOS_EPSFLOWSPEC,"An invalid or inconsistent flowspec was found in the QOS provider specific buffer.");
@@ -844,25 +844,25 @@ const char* GetLastSocketError()
 /************************************************************************/
 #ifdef GAME_TIME
 
-DWORD GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
+uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
 	SYSTEMTIME st={year,month,0,day,hour,minute,second,0};
-	FILETIMELI ft;
-	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(__FUNCTION__" - Error<%u>, args<%u,%u,%u,%u,%u,%u>.\n",GetLastError(),year,month,day,hour,minute,second);
+	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
+	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - Error<%u>, args<%u,%u,%u,%u,%u,%u>.\n",GetLastError(),year,month,day,hour,minute,second);
 	ft.ul.QuadPart-=GameOpt.YearStartFT;
-	return DWORD(ft.ul.QuadPart/10000000);
+	return uint(ft.ul.QuadPart/10000000);
 }
 
-SYSTEMTIME GetGameTime(DWORD full_second)
+SYSTEMTIME GetGameTime(uint full_second)
 {
 	SYSTEMTIME st;
-	FILETIMELI ft;
-	ft.ul.QuadPart=GameOpt.YearStartFT+ULONGLONG(full_second)*10000000;
-	if(!FileTimeToSystemTime(&ft.ft,&st)) WriteLog(__FUNCTION__" - Error<%u>, full second<%u>.\n",GetLastError(),full_second);
+	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
+	ft.ul.QuadPart=GameOpt.YearStartFT+uint64(full_second)*10000000;
+	if(!FileTimeToSystemTime(&ft.ft,&st)) WriteLog(_FUNC_," - Error<%u>, full second<%u>.\n",GetLastError(),full_second);
 	return st;
 }
 
-DWORD GameTimeMonthDay(WORD year, WORD month)
+uint GameTimeMonthDay(ushort year, ushort month)
 {
 	switch(month)
 	{
@@ -879,10 +879,10 @@ DWORD GameTimeMonthDay(WORD year, WORD month)
 
 void ProcessGameTime()
 {
-	DWORD tick=Timer::GameTick();
-	DWORD dt=tick-GameOpt.GameTimeTick;
-	DWORD delta_second=dt/1000*GameOpt.TimeMultiplier+dt%1000*GameOpt.TimeMultiplier/1000;
-	DWORD fs=GameOpt.FullSecondStart+delta_second;
+	uint tick=Timer::GameTick();
+	uint dt=tick-GameOpt.GameTimeTick;
+	uint delta_second=dt/1000*GameOpt.TimeMultiplier+dt%1000*GameOpt.TimeMultiplier/1000;
+	uint fs=GameOpt.FullSecondStart+delta_second;
 	if(GameOpt.FullSecond!=fs)
 	{
 		GameOpt.FullSecond=fs;
@@ -1176,8 +1176,7 @@ GameOptions::GameOptions()
 
 FileLogger::FileLogger(const char* fname)
 {
-	logFile=NULL;
-	fopen_s(&logFile,fname,"wb");
+	logFile=fopen(fname,"wb");
 	startTick=Timer::FastTick();
 }
 
@@ -1209,7 +1208,7 @@ void FileLogger::Write(const char* fmt, ...)
 void StringCopy(char* to, size_t size, const char* from)
 {
 	if(!to) return;
-	
+
 	if(!from)
 	{
 		to[0]=0;
@@ -1277,7 +1276,11 @@ const char* StringFormat(char* output, const char* format, ...)
 
 	va_list list;
 	va_start(list,format);
+#ifdef FO_MSVC
 	vsprintf_s(output,MAX_FOTEXT,format,list);
+#else
+    vsprintf(output,format,list);
+#endif
 	va_end(list);
 	return output;
 }
@@ -1286,7 +1289,7 @@ const char* StringFormat(char* output, const char* format, ...)
 /* Single player                                                        */
 /************************************************************************/
 
-#define INTERPROCESS_DATA_SIZE          (offsetof(InterprocessData,mapFileMutex))
+#define INTERPROCESS_DATA_SIZE          (OFFSETOF(InterprocessData,mapFileMutex))
 
 HANDLE InterprocessData::Init()
 {
@@ -1333,7 +1336,7 @@ bool InterprocessData::Lock()
 {
 	if(!mapFile) return false;
 
-	DWORD result=WaitForSingleObject(mapFileMutex,INFINITE);
+	uint result=WaitForSingleObject(mapFileMutex,INFINITE);
 	if(result!=WAIT_OBJECT_0) return false;
 
 	mapFilePtr=MapViewOfFile(mapFile,FILE_MAP_WRITE,0,0,0);
@@ -1365,13 +1368,81 @@ InterprocessData SingleplayerData;
 HANDLE SingleplayerClientProcess=NULL;
 
 /************************************************************************/
+/* File system                                                          */
+/************************************************************************/
+
+#ifdef FO_WINDOWS
+	void* FileOpen(const char* fname, bool write)
+	{
+		HANDLE file;
+		if(write)
+			file=CreateFile(fname,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
+		else
+			file=CreateFile(fname,GENERIC_READ,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_READONLY|FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+		if(file==INVALID_HANDLE_VALUE) return NULL;
+		return file;
+	}
+
+	void FileClose(void* file)
+	{
+		CloseHandle((HANDLE)file);
+	}
+
+	bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
+	{
+		DWORD dw=0;
+		BOOL result=ReadFile((HANDLE)file,buf,len,&dw,NULL);
+		if(rb) *rb=dw;
+		return result && dw==len;
+	}
+
+	bool FileWrite(void* file, const void* buf, uint len)
+	{
+		DWORD dw=0;
+		return WriteFile((HANDLE)file,buf,len,&dw,NULL) && dw==len;
+	}
+
+	bool FileSetPointer(void* file, int offset, int origin)
+	{
+		return SetFilePointer((HANDLE)file,offset,NULL,origin)!=INVALID_SET_FILE_POINTER;
+	}
+#else
+	void* FileOpen(const char* fname, bool write)
+	{
+		return (void*)fopen(fname,write?"wb":"rb");
+	}
+
+	void FileClose(void* file)
+	{
+		fclose((FILE*)file);
+	}
+
+	bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
+	{
+		uint rb_=fread(buf,sizeof(char),len,(FILE*)file);
+		if(rb) *rb=rb_;
+		return rb_==len;
+	}
+
+	bool FileWrite(void* file, void* buf, uint len)
+	{
+		return fwrite(buf,sizeof(char),len,(FILE*)file)==len;
+	}
+
+	bool FileSetPointer(void* file, int offset, int origin)
+	{
+		return fseek((FILE*)file,offset,origin)==0;
+	}
+#endif
+
+/************************************************************************/
 /*                                                                      */
 /************************************************************************/
 
 // Deprecated stuff
-#include <Item.h>
 #include <FileManager.h>
 #include <Text.h>
+#include <Item.h>
 
 bool ListsLoaded=false;
 PCharVec LstNames[PATH_LIST_COUNT];
@@ -1382,17 +1453,17 @@ void LoadList(const char* lst_name, int path_type)
 	if(!fm.LoadFile(lst_name,PT_ROOT)) return;
 
 	char str[1024];
-	DWORD str_cnt=0;
+	uint str_cnt=0;
 	const char* path=FileManager::GetPath(path_type);
 
 	PCharVec& lst=LstNames[path_type];
-	for(size_t i=0,j=lst.size();i<j;i++) SAFEDELA(lst[i]);
+	for(uint i=0,j=lst.size();i<j;i++) SAFEDELA(lst[i]);
 	lst.clear();
 
 	while(fm.GetLine(str,1023))
 	{
 		// Lower text
-		_strlwr_s(str);
+		_strlwr(str);
 
 		// Skip comments
 		if(!strlen(str) || str[0]=='#' || str[0]==';') continue;
@@ -1409,7 +1480,7 @@ void LoadList(const char* lst_name, int path_type)
 		if(!ext)
 		{
 			str_cnt++;
-			WriteLog(__FUNCTION__" - Extension not found in line<%s>, skip.\n",str);
+			WriteLog(_FUNC_," - Extension not found in line<%s>, skip.\n",str);
 			continue;
 		}
 
@@ -1419,10 +1490,10 @@ void LoadList(const char* lst_name, int path_type)
 		ext[j]='\0';
 
 		// Create name
-		size_t len=strlen(path)+strlen(str)+1;
+		uint len=strlen(path)+strlen(str)+1;
 		char* rec=new char[len];
-		strcpy_s(rec,len,path);
-		strcat_s(rec,len,str);
+		StringCopy(rec,len,path);
+		StringCopy(rec,len,str);
 
 		// Check for size
 		if(str_cnt>=lst.size()) lst.resize(str_cnt+1);
@@ -1433,13 +1504,13 @@ void LoadList(const char* lst_name, int path_type)
 	}
 }
 
-string GetPicName(DWORD lst_num, WORD pic_num)
+string GetPicName(uint lst_num, ushort pic_num)
 {
 	if(pic_num>=LstNames[lst_num].size() || !LstNames[lst_num][pic_num]) return "";
 	return string(LstNames[lst_num][pic_num]);
 }
 
-string Deprecated_GetPicName(int pid, int type, WORD pic_num)
+string Deprecated_GetPicName(int pid, int type, ushort pic_num)
 {
 	if(!ListsLoaded)
 	{
@@ -1466,14 +1537,14 @@ string Deprecated_GetPicName(int pid, int type, WORD pic_num)
 	return "";
 }
 
-DWORD Deprecated_GetPicHash(int pid, int type, WORD pic_num)
+uint Deprecated_GetPicHash(int pid, int type, ushort pic_num)
 {
 	string name=Deprecated_GetPicName(pid,type,pic_num);
 	if(!name.length()) return 0;
 	return Str::GetHash(name.c_str());
 }
 
-void Deprecated_CondExtToAnim2(BYTE cond, BYTE cond_ext, DWORD& anim2ko, DWORD& anim2dead)
+void Deprecated_CondExtToAnim2(uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead)
 {
 	if(cond==COND_KNOCKOUT)
 	{

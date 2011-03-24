@@ -5,7 +5,7 @@
 
 AnyFrames* ItemHex::DefaultAnim=NULL;
 
-ItemHex::ItemHex(DWORD id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut):
+ItemHex::ItemHex(uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut):
 SprId(0),HexX(hx),HexY(hy),StartScrX(scr_x),StartScrY(scr_y),ScrX(0),ScrY(0),HexScrX(hex_scr_x),HexScrY(hex_scr_y),SpriteCut(cut),
 curSpr(0),begSpr(0),endSpr(0),animBegSpr(0),animEndSpr(0),animTick(0),animNextTick(0),
 Alpha(0),maxAlpha(0xFF),Dir(dir),finishing(false),finishingTime(0),fading(false),fadingTick(0),fadeUp(false),
@@ -94,7 +94,7 @@ void ItemHex::Process()
 			effCurY+=effSy*EFFECT_0_SPEED_MUL;
 			SetAnimOffs();
 			effLastTick=Timer::GameTick();
-			if(DistSqrt(effCurX,effCurY,effStartX,effStartY)>=effDist) Finish();
+			if(DistSqrt((int)effCurX,(int)effCurY,effStartX,effStartY)>=effDist) Finish();
 		}
 	}
 
@@ -114,7 +114,7 @@ void ItemHex::Process()
 	}
 }
 
-void ItemHex::SetEffect(float sx, float sy, DWORD dist)
+void ItemHex::SetEffect(float sx, float sy, uint dist)
 {
 	// Init effect
 	effSx=sx;
@@ -131,9 +131,9 @@ void ItemHex::SetEffect(float sx, float sy, DWORD dist)
 	Alpha=maxAlpha;
 }
 
-WordPair ItemHex::GetEffectStep()
+UShortPair ItemHex::GetEffectStep()
 {
-	DWORD dist=DistSqrt(effCurX,effCurY,effStartX,effStartY);
+	uint dist=DistSqrt((int)effCurX,(int)effCurY,effStartX,effStartY);
 	if(dist>effDist) dist=effDist;
 	int proc=Procent(effDist,dist);
 	if(proc>99) proc=99;
@@ -142,7 +142,7 @@ WordPair ItemHex::GetEffectStep()
 
 void ItemHex::SetFade(bool fade_up)
 {
-	int tick=Timer::GameTick();
+	uint tick=Timer::GameTick();
 	fadingTick=tick+FADING_PERIOD-(fadingTick>tick?fadingTick-tick:0);
 	fadeUp=fade_up;
 	fading=true;
@@ -151,7 +151,7 @@ void ItemHex::SetFade(bool fade_up)
 void ItemHex::RefreshAnim()
 {
 	int dir=GetDir();
-	DWORD name_hash=Proto->PicMap;
+	uint name_hash=Proto->PicMap;
 	if(Data.PicMapHash) name_hash=Data.PicMapHash;
 	Anim=NULL;
 	if(name_hash) Anim=ResMngr.GetItemAnim(name_hash,dir);
@@ -225,7 +225,7 @@ void ItemHex::SetAnimFromStart()
 	animTick=Timer::GameTick();
 }
 
-void ItemHex::SetAnim(short beg, short end)
+void ItemHex::SetAnim(uint beg, uint end)
 {
 	if(beg>Anim->CntFrm-1) beg=Anim->CntFrm-1;
 	if(end>Anim->CntFrm-1) end=Anim->CntFrm-1;
@@ -249,7 +249,7 @@ void ItemHex::SetSprEnd()
 	endSpr=curSpr;
 }
 
-void ItemHex::SetSpr(short num_spr)
+void ItemHex::SetSpr(uint num_spr)
 {
 	curSpr=num_spr;
 	SprId=Anim->GetSprId(curSpr);
@@ -260,7 +260,7 @@ void ItemHex::SetAnimOffs()
 {
 	ScrX=StartScrX;
 	ScrY=StartScrY;
-	for(int i=1;i<=curSpr;i++)
+	for(uint i=1;i<=curSpr;i++)
 	{
 		ScrX+=Anim->NextX[i];
 		ScrY+=Anim->NextY[i];

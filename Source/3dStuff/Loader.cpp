@@ -27,14 +27,14 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		if(!_stricmp(frame->exFileName,fname)) return frame;
 	}
 
-	for(size_t i=0,j=processedFiles.size();i<j;i++)
+	for(uint i=0,j=processedFiles.size();i<j;i++)
 		if(!_stricmp(processedFiles[i],fname)) return NULL;
 	processedFiles.push_back(StringDuplicate(fname));
 
 	FileManager fm;
 	if(!fm.LoadFile(fname,PT_DATA))
 	{
-		WriteLog(__FUNCTION__" - 3d file not found, name<%s>.\n",fname);
+		WriteLog(_FUNC_," - 3d file not found, name<%s>.\n",fname);
 		return NULL;
 	}
 
@@ -50,7 +50,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		}
 		else
 		{
-			WriteLog(__FUNCTION__" - Can't load 3d X file, name<%s>.\n",fname);
+			WriteLog(_FUNC_," - Can't load 3d X file, name<%s>.\n",fname);
 		}
 		return frame_root;
 	}
@@ -67,7 +67,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 
 			if(!dll)
 			{
-				WriteLog(__FUNCTION__" - Assimp32.dll not found.\n");
+				WriteLog(_FUNC_," - Assimp32.dll not found.\n");
 				return NULL;
 			}
 		}
@@ -86,7 +86,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 
 	if(!scene)
 	{
-		WriteLog(__FUNCTION__" - Can't load 3d file, name<%s>, error<%s>.\n",fname,importer->GetErrorString());
+		WriteLog(_FUNC_," - Can't load 3d file, name<%s>, error<%s>.\n",fname,importer->GetErrorString());
 		return NULL;
 	}
 
@@ -94,7 +94,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 	FrameEx* frame_root=FillNode(device,scene->mRootNode,scene,calc_tangent);
 	if(!frame_root)
 	{
-		WriteLog(__FUNCTION__" - Conversion fail, name<%s>.\n",fname);
+		WriteLog(_FUNC_," - Conversion fail, name<%s>.\n",fname);
 		importer->FreeScene();
 		return NULL;
 	}
@@ -112,7 +112,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		ID3DXKeyframedAnimationSet* set;
 		if(FAILED(D3DXCreateKeyframedAnimationSet(anim->mName.data,anim->mTicksPerSecond,D3DXPLAY_LOOP,anim->mNumChannels,0,NULL,&set)))
 		{
-			WriteLog(__FUNCTION__" - Can't extract animation<%s> from file<%s>.\n",anim->mName.data,fname);
+			WriteLog(_FUNC_," - Can't extract animation<%s> from file<%s>.\n",anim->mName.data,fname);
 			continue;
 		}
 
@@ -123,27 +123,27 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 			if(scale.size()<na->mNumScalingKeys) scale.resize(na->mNumScalingKeys);
 			for(unsigned int k=0;k<na->mNumScalingKeys;k++)
 			{
-				scale[k].Time=na->mScalingKeys[k].mTime;
-				scale[k].Value.x=na->mScalingKeys[k].mValue.x;
-				scale[k].Value.y=na->mScalingKeys[k].mValue.y;
-				scale[k].Value.z=na->mScalingKeys[k].mValue.z;
+				scale[k].Time=(float)na->mScalingKeys[k].mTime;
+				scale[k].Value.x=(float)na->mScalingKeys[k].mValue.x;
+				scale[k].Value.y=(float)na->mScalingKeys[k].mValue.y;
+				scale[k].Value.z=(float)na->mScalingKeys[k].mValue.z;
 			}
 			if(rot.size()<na->mNumRotationKeys) rot.resize(na->mNumRotationKeys);
 			for(unsigned int k=0;k<na->mNumRotationKeys;k++)
 			{
-				rot[k].Time=na->mRotationKeys[k].mTime;
-				rot[k].Value.x=na->mRotationKeys[k].mValue.x;
-				rot[k].Value.y=na->mRotationKeys[k].mValue.y;
-				rot[k].Value.z=na->mRotationKeys[k].mValue.z;
-				rot[k].Value.w=-na->mRotationKeys[k].mValue.w;
+				rot[k].Time=(float)na->mRotationKeys[k].mTime;
+				rot[k].Value.x=(float)na->mRotationKeys[k].mValue.x;
+				rot[k].Value.y=(float)na->mRotationKeys[k].mValue.y;
+				rot[k].Value.z=(float)na->mRotationKeys[k].mValue.z;
+				rot[k].Value.w=-(float)na->mRotationKeys[k].mValue.w;
 			}
 			if(pos.size()<na->mNumPositionKeys) pos.resize(na->mNumPositionKeys);
 			for(unsigned int k=0;k<na->mNumPositionKeys;k++)
 			{
-				pos[k].Time=na->mPositionKeys[k].mTime;
-				pos[k].Value.x=na->mPositionKeys[k].mValue.x;
-				pos[k].Value.y=na->mPositionKeys[k].mValue.y;
-				pos[k].Value.z=na->mPositionKeys[k].mValue.z;
+				pos[k].Time=(float)na->mPositionKeys[k].mTime;
+				pos[k].Value.x=(float)na->mPositionKeys[k].mValue.x;
+				pos[k].Value.y=(float)na->mPositionKeys[k].mValue.y;
+				pos[k].Value.z=(float)na->mPositionKeys[k].mValue.z;
 			}
 
 			DWORD index;
@@ -194,8 +194,8 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 	if(node->mNumMeshes)
 	{
 		// Calculate whole data
-		DWORD faces_count=0;
-		DWORD vertices_count=0;
+		uint faces_count=0;
+		uint vertices_count=0;
 		vector<aiBone*> all_bones;
 		vector<D3DXMATERIAL> materials;
 		for(unsigned int m=0;m<node->mNumMeshes;m++)
@@ -211,7 +211,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 			{
 				aiBone* bone=mesh->mBones[i];
 				bool bone_aviable=false;
-				for(size_t b=0,bb=all_bones.size();b<bb;b++)
+				for(uint b=0,bb=all_bones.size();b<bb;b++)
 				{
 					if(!strcmp(all_bones[b]->mName.data,bone->mName.data))
 					{
@@ -286,8 +286,8 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 		D3D_HR(dxmesh.pMesh->LockIndexBuffer(0,(void**)&ib));
 		D3D_HR(dxmesh.pMesh->LockAttributeBuffer(0,&att));
 
-		DWORD cur_vertices=0;
-		DWORD cur_faces=0;
+		uint cur_vertices=0;
+		uint cur_faces=0;
 		for(unsigned int m=0;m<node->mNumMeshes;m++)
 		{
 			aiMesh* mesh=scene->mMeshes[node->mMeshes[m]];
@@ -347,10 +347,10 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 		{
 			D3D_HR(D3DXCreateSkinInfo(vertices_count,declaration,all_bones.size(),&skin_info));
 
-			vector<DwordVec> vertices(all_bones.size());
+			vector<vector<DWORD>> vertices(all_bones.size());
 			vector<FloatVec> weights(all_bones.size());
 
-			for(size_t b=0,bb=all_bones.size();b<bb;b++)
+			for(uint b=0,bb=all_bones.size();b<bb;b++)
 			{
 				aiBone* bone=all_bones[b];
 
@@ -373,8 +373,8 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 					aiBone* bone=mesh->mBones[i];
 
 					// Get bone id
-					DWORD bone_id=0;
-					for(size_t b=0,bb=all_bones.size();b<bb;b++)
+					uint bone_id=0;
+					for(uint b=0,bb=all_bones.size();b<bb;b++)
 					{
 						if(!strcmp(all_bones[b]->mName.data,bone->mName.data))
 						{
@@ -399,7 +399,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 			}
 
 			// Set influences
-			for(size_t b=0,bb=all_bones.size();b<bb;b++)
+			for(uint b=0,bb=all_bones.size();b<bb;b++)
 			{
 				if(vertices[b].size())
 					skin_info->SetBoneInfluence(b,vertices[b].size(),&vertices[b][0],&weights[b][0]);
@@ -436,14 +436,14 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 AnimSet* Loader3d::LoadAnimation(IDirect3DDevice9* device, const char* anim_fname, const char* anim_name)
 {
 	// Find in already loaded
-	for(size_t i=0,j=loadedAnimations.size();i<j;i++)
+	for(uint i=0,j=loadedAnimations.size();i<j;i++)
 	{
 		if(!_stricmp(loadedAnimationsFNames[i],anim_fname) &&
 			!_stricmp(loadedAnimations[i]->GetName(),anim_name)) return loadedAnimations[i];
 	}
 
 	// Check maybe file already processed and nothing founded
-	for(size_t i=0,j=processedFiles.size();i<j;i++)
+	for(uint i=0,j=processedFiles.size();i<j;i++)
 		if(!_stricmp(processedFiles[i],anim_fname)) return NULL;
 
 	// File not processed, load and recheck animations
@@ -467,14 +467,14 @@ FrameEx* Loader3d::LoadX(IDirect3DDevice9* device, FileManager& fm, const char* 
 		(D3DXFRAME**)&frame_root,&anim);
 	if(hr!=D3D_OK)
 	{
-		WriteLog(__FUNCTION__" - Can't load X file hierarchy, error<%s>.\n",DXGetErrorString(hr));
+		WriteLog(_FUNC_," - Can't load X file hierarchy, error<%s>.\n",DXGetErrorString(hr));
 		return NULL;
 	}
 
 	// If animation aviable than store it
 	if(anim)
 	{
-		for(DWORD i=0,j=anim->GetNumAnimationSets();i<j;i++)
+		for(uint i=0,j=anim->GetNumAnimationSets();i<j;i++)
 		{
 			AnimSet* set;
 			anim->GetAnimationSet(i,&set); // AddRef
@@ -647,7 +647,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	if(!fm_cache.IsLoaded())
 	{
 		char* buf=(char*)fm.GetBuf();
-		DWORD size=fm.GetFsize();
+		uint size=fm.GetFsize();
 
 		LPD3DXEFFECTCOMPILER ef_comp=NULL;
 		LPD3DXBUFFER ef_buf=NULL;
@@ -671,12 +671,12 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 			}
 			else
 			{
-				WriteLog(__FUNCTION__" - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr\n");
+				WriteLog(_FUNC_," - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr\n");
 			}
 		}
 		else
 		{
-			WriteLog(__FUNCTION__" - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n",effect_name,
+			WriteLog(_FUNC_," - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n",effect_name,
 				DXGetErrorString(hr),errors?errors->GetBufferPointer():"",DXGetErrorString(hr31),errors31?errors31->GetBufferPointer():"");
 		}
 
@@ -693,7 +693,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	LPD3DXBUFFER errors=NULL;
 	if(FAILED(D3DXCreateEffect(device,fm_cache.GetBuf(),fm_cache.GetFsize(),NULL,NULL,/*D3DXSHADER_SKIPVALIDATION|*/D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
 	{
-		WriteLog(__FUNCTION__" - Unable to create effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+		WriteLog(_FUNC_," - Unable to create effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
 		SAFEREL(effect);
 		SAFEREL(errors);
 		return NULL;
@@ -722,7 +722,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 
 	if(!effect_ex->TechniqueSimple)
 	{
-		WriteLog(__FUNCTION__" - Technique 'Simple' not founded, effect<%s>.\n",effect_name);
+		WriteLog(_FUNC_," - Technique 'Simple' not founded, effect<%s>.\n",effect_name);
 		delete effect_ex;
 		SAFEREL(effect);
 		return NULL;
@@ -775,7 +775,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	if(effect_inst->NumDefaults)
 	{
 		effect->BeginParameterBlock();
-		for(DWORD d=0;d<effect_inst->NumDefaults;d++)
+		for(uint d=0;d<effect_inst->NumDefaults;d++)
 		{
 			D3DXEFFECTDEFAULT& def=effect_inst->pDefaults[d];
 			D3DXHANDLE param=effect->GetParameterByName(NULL,def.pParamName);
@@ -786,8 +786,8 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 				effect->SetString(param,(LPCSTR)def.pValue); break;
 			case D3DXEDT_FLOATS: // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
 				effect->SetFloatArray(param,(FLOAT*)def.pValue,def.NumBytes/sizeof(FLOAT)); break;
-			case D3DXEDT_DWORD:  // pValue points to a DWORD
-				effect->SetInt(param,*(DWORD*)def.pValue); break;
+			case D3DXEDT_DWORD:  // pValue points to a uint
+				effect->SetInt(param,*(uint*)def.pValue); break;
 			default: break;
 			}
 		}
@@ -809,7 +809,7 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass,  float anim
 			double tick=Timer::AccurateTick();
 			if(effect_ex->Time)
 			{
-				effect_ex->TimeCurrent+=tick-effect_ex->TimeLastTick;
+				effect_ex->TimeCurrent+=(float)(tick-effect_ex->TimeLastTick);
 				effect_ex->TimeLastTick=tick;
 				if(effect_ex->TimeCurrent>=120.0f) effect_ex->TimeCurrent=fmod(effect_ex->TimeCurrent,120.0f);
 
@@ -819,7 +819,7 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass,  float anim
 			{
 				if(!Timer::IsGamePaused())
 				{
-					effect_ex->TimeGameCurrent+=tick-effect_ex->TimeGameLastTick;
+					effect_ex->TimeGameCurrent+=(float)(tick-effect_ex->TimeGameLastTick);
 					effect_ex->TimeGameLastTick=tick;
 					if(effect_ex->TimeGameCurrent>=120.0f) effect_ex->TimeGameCurrent=fmod(effect_ex->TimeGameCurrent,120.0f);
 				}
@@ -834,10 +834,10 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass,  float anim
 
 		if(effect_ex->IsRandomEffect)
 		{
-			if(effect_ex->Random1Effect) effect_ex->Effect->SetFloat(effect_ex->Random1Effect,(double)Random(0,2000000000)/2000000000.0);
-			if(effect_ex->Random2Effect) effect_ex->Effect->SetFloat(effect_ex->Random2Effect,(double)Random(0,2000000000)/2000000000.0);
-			if(effect_ex->Random3Effect) effect_ex->Effect->SetFloat(effect_ex->Random3Effect,(double)Random(0,2000000000)/2000000000.0);
-			if(effect_ex->Random4Effect) effect_ex->Effect->SetFloat(effect_ex->Random4Effect,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random1Effect) effect_ex->Effect->SetFloat(effect_ex->Random1Effect,(float)((double)Random(0,2000000000)/2000000000.0));
+			if(effect_ex->Random2Effect) effect_ex->Effect->SetFloat(effect_ex->Random2Effect,(float)((double)Random(0,2000000000)/2000000000.0));
+			if(effect_ex->Random3Effect) effect_ex->Effect->SetFloat(effect_ex->Random3Effect,(float)((double)Random(0,2000000000)/2000000000.0));
+			if(effect_ex->Random4Effect) effect_ex->Effect->SetFloat(effect_ex->Random4Effect,(float)((double)Random(0,2000000000)/2000000000.0));
 		}
 
 		if(effect_ex->IsTextures)
@@ -867,10 +867,10 @@ void Loader3d::EffectProcessVariables(EffectEx* effect_ex, int pass,  float anim
 
 		if(effect_ex->IsRandomPass)
 		{
-			if(effect_ex->Random1Pass) effect_ex->Effect->SetFloat(effect_ex->Random1Pass,(double)Random(0,2000000000)/2000000000.0);
-			if(effect_ex->Random2Pass) effect_ex->Effect->SetFloat(effect_ex->Random2Pass,(double)Random(0,2000000000)/2000000000.0);
-			if(effect_ex->Random3Pass) effect_ex->Effect->SetFloat(effect_ex->Random3Pass,(double)Random(0,2000000000)/2000000000.0);
-			if(effect_ex->Random4Pass) effect_ex->Effect->SetFloat(effect_ex->Random4Pass,(double)Random(0,2000000000)/2000000000.0);
+			if(effect_ex->Random1Pass) effect_ex->Effect->SetFloat(effect_ex->Random1Pass,(float)((double)Random(0,2000000000)/2000000000.0));
+			if(effect_ex->Random2Pass) effect_ex->Effect->SetFloat(effect_ex->Random2Pass,(float)((double)Random(0,2000000000)/2000000000.0));
+			if(effect_ex->Random3Pass) effect_ex->Effect->SetFloat(effect_ex->Random3Pass,(float)((double)Random(0,2000000000)/2000000000.0));
+			if(effect_ex->Random4Pass) effect_ex->Effect->SetFloat(effect_ex->Random4Pass,(float)((double)Random(0,2000000000)/2000000000.0));
 		}
 	}
 }

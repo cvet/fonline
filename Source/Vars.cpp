@@ -12,7 +12,7 @@ FileLogger* DbgLog=NULL;
 
 bool VarManager::Init(const char* fpath)
 {
-	WriteLog("Var Manager initialization.\n");
+	WriteLog(NULL,"Var manager initialization.\n");
 
 	if(!fpath) varsPath=".\\";
 	else varsPath=string(fpath);
@@ -24,7 +24,7 @@ bool VarManager::Init(const char* fpath)
 	if(GameOpt.LoggingVars) DbgLog=new FileLogger("vars.log");
 
 	isInit=true;
-	WriteLog("Var Manager initialization complete.\n");
+	WriteLog(NULL,"Var manager initialization complete.\n");
 	return true;
 }
 
@@ -59,19 +59,19 @@ void VarManager::SaveVarsDataFile(void(*save_func)(void*,size_t))
 
 bool VarManager::LoadVarsDataFile(FILE* f, int version)
 {
-	WriteLog("Load vars...");
+	WriteLog(NULL,"Load vars...");
 	allQuestVars.reserve(10000); // 40kb
 
-	DWORD count=0;
+	uint count=0;
 	fread(&count,sizeof(count),1,f);
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
-		WORD temp_id;
-		DWORD master_id,slave_id;
+		ushort temp_id;
+		uint master_id,slave_id;
 		int val;
 		if(version<WORLD_SAVE_V10)
 		{
-			ULONGLONG id;
+			uint64 id;
 			fread(&id,sizeof(id),1,f);
 			fread(&temp_id,sizeof(temp_id),1,f);
 			fread(&val,sizeof(val),1,f);
@@ -89,37 +89,37 @@ bool VarManager::LoadVarsDataFile(FILE* f, int version)
 		TemplateVar* tvar=GetTemplateVar(temp_id);
 		if(!tvar)
 		{
-			WriteLog("Template var not found, tid<%u>.\n",temp_id);
+			WriteLog(NULL,"Template var not found, tid<%u>.\n",temp_id);
 			continue;
 		}
 
 		if(tvar->IsError())
 		{
-			WriteLog("Template var have invalid data, tid<%u>.\n",temp_id);
+			WriteLog(NULL,"Template var have invalid data, tid<%u>.\n",temp_id);
 			continue;
 		}
 
 		GameVar* var;
 		if(tvar->IsNotUnicum()) var=CreateVar(master_id,tvar);
-		else var=CreateVarUnicum((((ULONGLONG)slave_id)<<32)|((ULONGLONG)master_id),master_id,slave_id,tvar);
+		else var=CreateVarUnicum((((uint64)slave_id)<<32)|((uint64)master_id),master_id,slave_id,tvar);
 
 		if(!var)
 		{
-			WriteLog("Can't create var, tid<%u>.\n",temp_id);
+			WriteLog(NULL,"Can't create var, tid<%u>.\n",temp_id);
 			continue;
 		}
 
 		var->VarValue=val;
 	}
 
-	WriteLog("complete, count<%u>.\n",count);
+	WriteLog(NULL,"complete, count<%u>.\n",count);
 	return true;
 }
 #endif // FONLINE_SERVER
 
 void VarManager::Finish()
 {
-	WriteLog("Var manager finish...\n");
+	WriteLog(NULL,"Var manager finish...\n");
 
 	Clear();
 
@@ -129,7 +129,7 @@ void VarManager::Finish()
 	varsPath="";
 	SAFEDEL(DbgLog);
 	isInit=false;
-	WriteLog("Var manager finish complete.\n");
+	WriteLog(NULL,"Var manager finish complete.\n");
 }
 
 void VarManager::Clear()
@@ -154,7 +154,7 @@ void VarManager::Clear()
 
 bool VarManager::UpdateVarsTemplate()
 {
-	WriteLog("Update template vars...\n");
+	WriteLog(NULL,"Update template vars...\n");
 
 	FileManager fm;
 #ifdef FONLINE_SERVER
@@ -163,7 +163,7 @@ bool VarManager::UpdateVarsTemplate()
 	if(!fm.LoadFile(varsPath.c_str(),-1))
 #endif
 	{
-		WriteLog("Template vars file<%s> not found.\n",varsPath.c_str());
+		WriteLog(NULL,"Template vars file<%s> not found.\n",varsPath.c_str());
 		return false;
 	}
 
@@ -173,20 +173,20 @@ bool VarManager::UpdateVarsTemplate()
 	for(TempVarVecIt it=load_vars.begin(),it_end=load_vars.end();it!=it_end;++it)
 		if(!AddTemplateVar(*it)) return false;
 
-	WriteLog("Update template vars complete.\n");
+	WriteLog(NULL,"Update template vars complete.\n");
 	return true;
 }
 
 bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 {
-	WORD var_id;
+	ushort var_id;
 	int var_type;
 	char var_name[VAR_NAME_LEN];
 	char var_desc[VAR_DESC_LEN];
 	int var_start;
 	int var_min;
 	int var_max;
-	DWORD var_flags;
+	uint var_flags;
 
 	char* buf_begin=StringDuplicate(str);
 	Str::Replacement(buf_begin,'\r','\n','\n');
@@ -199,7 +199,7 @@ bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 
 		if(sscanf(buf,"%u%d%s%d%d%d%u",&var_id,&var_type,var_name,&var_start,&var_min,&var_max,&var_flags)!=7)
 		{
-			WriteLog("Fail to scan var.\n");
+			WriteLog(NULL,"Fail to scan var.\n");
 			return false;
 		}
 
@@ -241,25 +241,25 @@ bool VarManager::AddTemplateVar(TemplateVar* var)
 {
 	if(!var)
 	{
-		WriteLog(__FUNCTION__" - Template var nullptr.\n");
+		WriteLog(_FUNC_," - Template var nullptr.\n");
 		return false;
 	}
 
 	if(var->IsError())
 	{
-		WriteLog(__FUNCTION__" - IsError, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
+		WriteLog(_FUNC_," - IsError, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
 	if(IsTemplateVarAviable(var->Name.c_str()))
 	{
-		WriteLog(__FUNCTION__" - Name already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
+		WriteLog(_FUNC_," - Name already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
 	if(var->TempId<tempVars.size() && tempVars[var->TempId])
 	{
-		WriteLog(__FUNCTION__" - Id already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
+		WriteLog(_FUNC_," - Id already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
@@ -268,7 +268,7 @@ bool VarManager::AddTemplateVar(TemplateVar* var)
 	return true;
 }
 
-void VarManager::EraseTemplateVar(WORD temp_id)
+void VarManager::EraseTemplateVar(ushort temp_id)
 {
 	TemplateVar* var=GetTemplateVar(temp_id);
 	if(!var) return;
@@ -277,7 +277,7 @@ void VarManager::EraseTemplateVar(WORD temp_id)
 	tempVars[temp_id]=NULL;
 }
 
-WORD VarManager::GetTemplateVarId(const char* var_name)
+ushort VarManager::GetTemplateVarId(const char* var_name)
 {
 	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
 	{
@@ -287,7 +287,7 @@ WORD VarManager::GetTemplateVarId(const char* var_name)
 	return false;
 }
 
-TemplateVar* VarManager::GetTemplateVar(WORD temp_id)
+TemplateVar* VarManager::GetTemplateVar(ushort temp_id)
 {
 	if(temp_id<tempVars.size()) return tempVars[temp_id];
 	return NULL;
@@ -305,11 +305,11 @@ bool VarManager::IsTemplateVarAviable(const char* var_name)
 
 void VarManager::SaveTemplateVars()
 {
-	WriteLog("Save vars...");
+	WriteLog(NULL,"Save vars...");
 
 	FileManager fm;
 
-	DWORD count=0;
+	uint count=0;
 	for(TempVarVecIt it=tempVars.begin();it!=tempVars.end();++it) if(*it) count++;
 
 	fm.SetStr("#ifndef __VARS__\n");
@@ -334,7 +334,7 @@ void VarManager::SaveTemplateVars()
 		else fm.SetStr("?VAR_");
 		fm.SetStr("%s",var->Name.c_str());
 		int spaces=var->Name.length()+(var->Type==VAR_LOCAL_LOCATION || var->Type==VAR_LOCAL_MAP || var->Type==VAR_LOCAL_ITEM?1:0);
-		for(int i=0,j=max(1,40-spaces);i<j;i++) fm.SetStr(" ");
+		for(int i=0,j=MAX(1,40-spaces);i<j;i++) fm.SetStr(" ");
 		fm.SetStr("(%u)\n",var->TempId);
 	}
 
@@ -368,7 +368,7 @@ void VarManager::SaveTemplateVars()
 	fm.LoadFile(varsPath.c_str(),-1);
 #endif
 
-	WriteLog("complete.\n");
+	WriteLog(NULL,"complete.\n");
 }
 
 /**************************************************************************************************
@@ -376,25 +376,25 @@ void VarManager::SaveTemplateVars()
 **************************************************************************************************/
 #ifdef FONLINE_SERVER
 
-bool VarManager::CheckVar(const char* var_name, DWORD master_id, DWORD slave_id, char oper, int val)
+bool VarManager::CheckVar(const char* var_name, uint master_id, uint slave_id, char oper, int val)
 {
-	WORD temp_id=GetTemplateVarId(var_name);
+	ushort temp_id=GetTemplateVarId(var_name);
 	if(!temp_id) return false;
 	GameVar* uvar=GetVar(temp_id,master_id,slave_id,true);
 	if(!uvar) return false;
 	return CheckVar(uvar,oper,val);
 }
 
-bool VarManager::CheckVar(WORD temp_id, DWORD master_id, DWORD slave_id, char oper, int val)
+bool VarManager::CheckVar(ushort temp_id, uint master_id, uint slave_id, char oper, int val)
 {
 	GameVar* var=GetVar(temp_id,master_id,slave_id,true);
 	if(!var) return false;
 	return CheckVar(var,oper,val);
 }
 
-GameVar* VarManager::ChangeVar(const char* var_name, DWORD master_id, DWORD slave_id, char oper, int val)
+GameVar* VarManager::ChangeVar(const char* var_name, uint master_id, uint slave_id, char oper, int val)
 {
-	WORD temp_id=GetTemplateVarId(var_name);
+	ushort temp_id=GetTemplateVarId(var_name);
 	if(!temp_id) return NULL;
 	GameVar* var=GetVar(temp_id,master_id,slave_id,true);
 	if(!var) return NULL;
@@ -402,7 +402,7 @@ GameVar* VarManager::ChangeVar(const char* var_name, DWORD master_id, DWORD slav
 	return var;
 }
 
-GameVar* VarManager::ChangeVar(WORD temp_id, DWORD master_id, DWORD slave_id, char oper, int val)
+GameVar* VarManager::ChangeVar(ushort temp_id, uint master_id, uint slave_id, char oper, int val)
 {
 	GameVar* var=GetVar(temp_id,master_id,slave_id,true);
 	if(!var) return NULL;
@@ -445,14 +445,14 @@ void VarManager::ChangeVar(GameVar* var, char oper, int val)
 ***************************************************************************************************
 **************************************************************************************************/
 
-GameVar* VarManager::GetVar(const char* name, DWORD master_id, DWORD slave_id,  bool create)
+GameVar* VarManager::GetVar(const char* name, uint master_id, uint slave_id,  bool create)
 {
-	WORD temp_id=GetTemplateVarId(name);
+	ushort temp_id=GetTemplateVarId(name);
 	if(!temp_id) return NULL;
 	return GetVar(temp_id,master_id,slave_id,create);
 }
 
-GameVar* VarManager::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool create)
+GameVar* VarManager::GetVar(ushort temp_id, uint master_id, uint slave_id,  bool create)
 {
 	TemplateVar* tvar=GetTemplateVar(temp_id);
 	if(!tvar) return NULL;
@@ -506,7 +506,7 @@ GameVar* VarManager::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool
 	{
 		SCOPE_LOCK(varsLocker);
 
-		ULONGLONG id=(((ULONGLONG)slave_id)<<32)|((ULONGLONG)master_id);
+		uint64 id=(((uint64)slave_id)<<32)|((uint64)master_id);
 		VarsMap64It it=tvar->VarsUnicum.find(id);
 		if(it==tvar->VarsUnicum.end())
 		{
@@ -536,7 +536,7 @@ GameVar* VarManager::GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool
 	return var;
 }
 
-GameVar* VarManager::CreateVar(DWORD master_id, TemplateVar* tvar)
+GameVar* VarManager::CreateVar(uint master_id, TemplateVar* tvar)
 {
 	GameVar* var=new(nothrow) GameVar(master_id,0,tvar,tvar->IsRandom()?Random(tvar->MinVal,tvar->MaxVal):tvar->StartVal);
 	if(!var) return NULL;
@@ -546,7 +546,7 @@ GameVar* VarManager::CreateVar(DWORD master_id, TemplateVar* tvar)
 	if(tvar->IsQuest())
 	{
 		bool founded=false;
-		for(size_t i=0,j=allQuestVars.size();i<j;i++)
+		for(uint i=0,j=allQuestVars.size();i<j;i++)
 		{
 			if(!allQuestVars[i])
 			{
@@ -568,7 +568,7 @@ GameVar* VarManager::CreateVar(DWORD master_id, TemplateVar* tvar)
 	return var;
 }
 
-GameVar* VarManager::CreateVarUnicum(ULONGLONG id, DWORD master_id, DWORD slave_id, TemplateVar* tvar)
+GameVar* VarManager::CreateVarUnicum(uint64 id, uint master_id, uint slave_id, TemplateVar* tvar)
 {
 	GameVar* var=new(nothrow) GameVar(master_id,slave_id,tvar,tvar->IsRandom()?Random(tvar->MinVal,tvar->MaxVal):tvar->StartVal);
 	if(!var) return NULL;
@@ -579,7 +579,7 @@ GameVar* VarManager::CreateVarUnicum(ULONGLONG id, DWORD master_id, DWORD slave_
 	return var;
 }
 
-void VarManager::SwapVars(DWORD id1, DWORD id2)
+void VarManager::SwapVars(uint id1, uint id2)
 {
 	if(!id1 || !id2 || id1==id2) return;
 
@@ -688,7 +688,7 @@ void VarManager::SwapVars(DWORD id1, DWORD id2)
 	varsLocker.Unlock();
 }
 
-DWORD VarManager::ClearUnusedVars(DwordSet& ids1, DwordSet& ids2, DwordSet& ids_locs, DwordSet& ids_maps, DwordSet& ids_items)
+uint VarManager::ClearUnusedVars(UIntSet& ids1, UIntSet& ids2, UIntSet& ids_locs, UIntSet& ids_maps, UIntSet& ids_items)
 {
 	// Collect all vars
 	varsLocker.Lock();
@@ -792,7 +792,7 @@ DWORD VarManager::ClearUnusedVars(DwordSet& ids1, DwordSet& ids2, DwordSet& ids_
 	return del_count;
 }
 
-void VarManager::GetQuestVars(DWORD master_id, DwordVec& vars)
+void VarManager::GetQuestVars(uint master_id, UIntVec& vars)
 {
 	SCOPE_LOCK(varsLocker);
 
@@ -809,8 +809,8 @@ void VarManager::GetQuestVars(DWORD master_id, DwordVec& vars)
 
 void DebugLog(GameVar* var, const char* op, int value)
 {
-	DWORD master_id=var->MasterId;
-	DWORD slave_id=var->SlaveId;
+	uint master_id=var->MasterId;
+	uint slave_id=var->SlaveId;
 	TemplateVar* tvar=var->GetTemplateVar();
 	if(tvar->Type==VAR_GLOBAL) DbgLog->Write("Changing gvar<%s> op<%s> value<%d> result<%d>.\n",tvar->Name.c_str(),op,value,var->GetValue());
 	else if(tvar->Type==VAR_LOCAL) DbgLog->Write("Changing lvar<%s> masterId<%u> op<%s> value<%d> result<%d>.\n",tvar->Name.c_str(),master_id,op,value,var->GetValue());

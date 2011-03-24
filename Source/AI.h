@@ -25,9 +25,9 @@
 struct AIDataPlane
 {
 	int Type;
-	DWORD Priority;
+	uint Priority;
 	int Identifier;
-	DWORD IdentifierExt;
+	uint IdentifierExt;
 	AIDataPlane* ChildPlane;
 	bool IsMove;
 
@@ -36,55 +36,55 @@ struct AIDataPlane
 		struct
 		{
 			bool IsRun;
-			DWORD WaitSecond;
+			uint WaitSecond;
 			int ScriptBindId;
 		} Misc;
 
 		struct
 		{
 			bool IsRun;
-			DWORD TargId;
+			uint TargId;
 			int MinHp;
 			bool IsGag;
-			WORD GagHexX,GagHexY;
-			WORD LastHexX,LastHexY;
+			ushort GagHexX,GagHexY;
+			ushort LastHexX,LastHexY;
 		} Attack;
 
 		struct
 		{
 			bool IsRun;
-			WORD HexX;
-			WORD HexY;
-			BYTE Dir;
-			DWORD Cut;
+			ushort HexX;
+			ushort HexY;
+			uchar Dir;
+			uint Cut;
 		} Walk;
 
 		struct
 		{
 			bool IsRun;
-			WORD HexX;
-			WORD HexY;
-			WORD Pid;
-			DWORD UseItemId;
+			ushort HexX;
+			ushort HexY;
+			ushort Pid;
+			uint UseItemId;
 			bool ToOpen;
 		} Pick;
 
 		struct 
 		{
-			DWORD Buffer[8];
+			uint Buffer[8];
 		} Buffer;
 	};
 
 	struct 
 	{
-		DWORD PathNum;
-		DWORD Iter;
+		uint PathNum;
+		uint Iter;
 		bool IsRun;
-		DWORD TargId;
-		WORD HexX;
-		WORD HexY;
-		DWORD Cut;
-		DWORD Trace;
+		uint TargId;
+		ushort HexX;
+		ushort HexY;
+		uint Cut;
+		uint Trace;
 	} Move;
 
 	AIDataPlane* GetCurPlane(){return ChildPlane?ChildPlane->GetCurPlane():this;}
@@ -114,7 +114,7 @@ struct AIDataPlane
 	int RefCounter;
 	void AddRef(){RefCounter++;}
 	void Release(){RefCounter--; if(!RefCounter) delete this;}
-	AIDataPlane(DWORD type, DWORD priority):Type(type),Priority(priority),Identifier(0),IdentifierExt(0),ChildPlane(NULL),IsMove(false),Assigned(false),RefCounter(1){ZeroMemory(&Buffer,sizeof(Buffer));ZeroMemory(&Move,sizeof(Move)); MEMORY_PROCESS(MEMORY_NPC_PLANE,sizeof(AIDataPlane));}
+	AIDataPlane(uint type, uint priority):Type(type),Priority(priority),Identifier(0),IdentifierExt(0),ChildPlane(NULL),IsMove(false),Assigned(false),RefCounter(1){ZeroMemory(&Buffer,sizeof(Buffer));ZeroMemory(&Move,sizeof(Move)); MEMORY_PROCESS(MEMORY_NPC_PLANE,sizeof(AIDataPlane));}
 	~AIDataPlane(){SAFEREL(ChildPlane); MEMORY_PROCESS(MEMORY_NPC_PLANE,-(int)sizeof(AIDataPlane));}
 	private: AIDataPlane(){} // Disable default constructor
 };
@@ -124,10 +124,10 @@ typedef vector<AIDataPlane*>::iterator AIDataPlaneVecIt;
 class NpcBagItem
 {
 public:
-	DWORD ItemPid;
-	DWORD MinCnt;
-	DWORD MaxCnt;
-	DWORD ItemSlot;
+	uint ItemPid;
+	uint MinCnt;
+	uint MaxCnt;
+	uint ItemSlot;
 
 	NpcBagItem():ItemPid(0),MinCnt(0),MaxCnt(0),ItemSlot(SLOT_INV){}
 	NpcBagItem(const NpcBagItem& r):ItemPid(r.ItemPid),MinCnt(r.MinCnt),MaxCnt(r.MaxCnt),ItemSlot(r.ItemSlot){}
@@ -148,7 +148,7 @@ public:
 	bool Init();
 	void Finish();
 
-	NpcBag& GetBag(DWORD num);
+	NpcBag& GetBag(uint num);
 
 private:
 	NpcBagVec npcBags;

@@ -7,8 +7,8 @@ CryptManager Crypt;
 CryptManager::CryptManager()
 {
 	// Create crc32 mass
-	const DWORD CRC_POLY=0xEDB88320;
-	DWORD i,j,r;
+	const uint CRC_POLY=0xEDB88320;
+	uint i,j,r;
 	for(i=0;i<0x100;i++)
 	{
 		for(r=i,j=0x8;j;j--)
@@ -17,89 +17,89 @@ CryptManager::CryptManager()
 	}
 }
 
-DWORD CryptManager::Crc32(BYTE* data, DWORD len)
+uint CryptManager::Crc32(uchar* data, uint len)
 {
-	const DWORD CRC_MASK=0xD202EF8D;
-	DWORD value=0;
+	const uint CRC_MASK=0xD202EF8D;
+	uint value=0;
 	while(len--)
 	{
-		value=crcTable[(BYTE)value^*data++]^value>>8;
+		value=crcTable[(uchar)value^*data++]^value>>8;
 		value^=CRC_MASK;
 	}
 	return value;
 }
 
-void CryptManager::Crc32(BYTE* data, DWORD len, DWORD& crc)
+void CryptManager::Crc32(uchar* data, uint len, uint& crc)
 {
-	const DWORD CRC_MASK=0xD202EF8D;
+	const uint CRC_MASK=0xD202EF8D;
 	while(len--)
 	{
-		crc=crcTable[(BYTE)crc^*data++]^crc>>8;
+		crc=crcTable[(uchar)crc^*data++]^crc>>8;
 		crc^=CRC_MASK;
 	}
 }
 
-DWORD CryptManager::CheckSum(BYTE* data, DWORD len)
+uint CryptManager::CheckSum(uchar* data, uint len)
 {
-	DWORD value=0;
+	uint value=0;
 	while(len--) value+=*data++;
 	return value;
 }
 
-void CryptManager::XOR(char* data, DWORD len, char* xor, DWORD xor_len)
+void CryptManager::XOR(char* data, uint len, char* xor_key, uint xor_len)
 {
-	for(DWORD i=0,k=0;i<len;++i,++k)
+	for(uint i=0,k=0;i<len;++i,++k)
 	{
 		if(k>=xor_len) k=0;
-		data[i]^=xor[k];
+		data[i]^=xor_key[k];
 	}
 }
 
-void CryptManager::TextXOR(char* data, DWORD len, char* xor, DWORD xor_len)
+void CryptManager::TextXOR(char* data, uint len, char* xor_key, uint xor_len)
 {
 	char cur_char;
-	for(DWORD i=0,k=0;i<len;++i,++k)
+	for(uint i=0,k=0;i<len;++i,++k)
 	{
 		if(k>=xor_len) k=0;
 
-		cur_char=(data[i]-(i+5)*(i*5))^xor[k];
+		cur_char=(data[i]-(i+5)*(i*5))^xor_key[k];
 
 #define TRUECHAR(a) \
 	(((a)>=32 && (a)<=126) ||\
-	((a)>=-64 && (a)<=-1))	
+	((a)>=-64 && (a)<=-1))
 
-	//	WriteLog("%c",cur_char);
+	//	WriteLog(NULL,"%c",cur_char);
 
 		if(TRUECHAR(cur_char)) data[i]=cur_char;
 	//	if(cur_char) data[i]=cur_char;
 	}
 }
 
-void CryptManager::EncryptPassword(char* data, DWORD len, DWORD key)
+void CryptManager::EncryptPassword(char* data, uint len, uint key)
 {
 	static Randomizer rnd;
-	DWORD slen=strlen(data);
+	uint slen=strlen(data);
 	data[len-1]=slen;
-	for(DWORD i=slen;i<len-1;i++) data[i]=rnd.Random(1,255);
-	for(DWORD i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
+	for(uint i=slen;i<len-1;i++) data[i]=rnd.Random(1,255);
+	for(uint i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
 	XOR(data,len,(char*)&key,sizeof(key));
-	for(DWORD i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
+	for(uint i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
 }
 
-void CryptManager::DecryptPassword(char* data, DWORD len, DWORD key)
+void CryptManager::DecryptPassword(char* data, uint len, uint key)
 {
-	for(DWORD i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
+	for(uint i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
 	XOR(data,len,(char*)&key,sizeof(key));
-	for(DWORD i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
-	DWORD slen=data[len-1];
-	for(DWORD i=slen;i<len;i++) data[i]=0;
+	for(uint i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
+	uint slen=data[len-1];
+	for(uint i=slen;i<len;i++) data[i]=0;
 	data[len-1]=0;
 }
 
-BYTE* CryptManager::Compress(const BYTE* data, DWORD& data_len)
+uchar* CryptManager::Compress(const uchar* data, uint& data_len)
 {
-	DWORD buf_len=data_len*110/100+12;
-	AutoPtrArr<BYTE> buf(new(nothrow) BYTE[buf_len]);
+	uLongf buf_len=data_len*110/100+12;
+	AutoPtrArr<uchar> buf(new(nothrow) uchar[buf_len]);
 	if(!buf.IsValid()) return NULL;
 
 	if(compress(buf.Get(),&buf_len,data,data_len)!=Z_OK) return NULL;
@@ -110,39 +110,39 @@ BYTE* CryptManager::Compress(const BYTE* data, DWORD& data_len)
 	return buf.Release();
 }
 
-BYTE* CryptManager::Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_approx)
+uchar* CryptManager::Uncompress(const uchar* data, uint& data_len, uint mul_approx)
 {
-	DWORD buf_len=data_len*mul_approx;
+	uLongf buf_len=data_len*mul_approx;
 	if(buf_len>100000000) // 100mb
 	{
-		WriteLog("Unpack - Buffer length is too large, data length<%u>, multiplier<%u>.\n",data_len,mul_approx);
+		WriteLog(_FUNC_,"Unpack - Buffer length is too large, data length<%u>, multiplier<%u>.\n",data_len,mul_approx);
 		return NULL;
 	}
 
-	AutoPtrArr<BYTE> buf(new(nothrow) BYTE[buf_len]);
+	AutoPtrArr<uchar> buf(new(nothrow) uchar[buf_len]);
 	if(!buf.IsValid())
 	{
-		WriteLog("Unpack - Bad alloc, size<%u>.\n",buf_len);
+		WriteLog(NULL,"Unpack - Bad alloc, size<%u>.\n",buf_len);
 		return NULL;
 	}
 
-	AutoPtrArr<BYTE> data_(new(nothrow) BYTE[data_len]);
+	AutoPtrArr<uchar> data_(new(nothrow) uchar[data_len]);
 	if(!data_.IsValid())
 	{
-		WriteLog("Unpack - Bad alloc, size<%u>.\n",data_len);
+		WriteLog(NULL,"Unpack - Bad alloc, size<%u>.\n",data_len);
 		return NULL;
 	}
 
 	memcpy(data_.Get(),data,data_len);
-	if(*(WORD*)data_.Get()!=0x9C78)
+	if(*(ushort*)data_.Get()!=0x9C78)
 	{
 		XOR((char*)data_.Get(),4,(char*)data_.Get()+4,4);
 		XOR((char*)data_.Get(),data_len,(char*)&crcTable[1],sizeof(crcTable)-4);
 	}
 
-	if(*(WORD*)data_.Get()!=0x9C78)
+	if(*(ushort*)data_.Get()!=0x9C78)
 	{
-		WriteLog("Unpack - Signature not found.\n");
+		WriteLog(NULL,"Unpack - Signature not found.\n");
 		return NULL;
 	}
 
@@ -152,16 +152,16 @@ BYTE* CryptManager::Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_appr
 		if(result==Z_BUF_ERROR)
 		{
 			buf_len*=2;
-			buf.Reset(new(nothrow) BYTE[buf_len]);
+			buf.Reset(new(nothrow) uchar[buf_len]);
 			if(!buf.IsValid())
 			{
-				WriteLog("Unpack - Bad alloc, size<%u>.\n",buf_len);
+				WriteLog(NULL,"Unpack - Bad alloc, size<%u>.\n",buf_len);
 				return NULL;
 			}
 		}
 		else if(result!=Z_OK)
 		{
-			WriteLog("Unpack error<%d>.\n",result);
+			WriteLog(NULL,"Unpack error<%d>.\n",result);
 			return NULL;
 		}
 		else break;
@@ -173,8 +173,8 @@ BYTE* CryptManager::Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_appr
 
 /*void CryptManager::CryptText(char* text)
 {
-	DWORD len=strlen(text);
-	char* buf=(char*)Compress((BYTE*)text,len);
+	uint len=strlen(text);
+	char* buf=(char*)Compress((uchar*)text,len);
 	if(!buf) len=0;
 	/ *for(int i=0;i<len;i++)
 	{
@@ -188,8 +188,8 @@ BYTE* CryptManager::Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_appr
 
 void CryptManager::UncryptText(char* text)
 {
-	DWORD len=strlen(text);
-	char* buf=(char*)Uncompress((BYTE*)text,len,2);
+	uint len=strlen(text);
+	char* buf=(char*)Uncompress((uchar*)text,len,2);
 	if(buf) memcpy(text,buf,len);
 	else len=0;
 	text[len]=0;
@@ -200,41 +200,41 @@ void CryptManager::UncryptText(char* text)
 #define CACHE_DATA_VALID            (0x08)
 #define CACHE_SIZE_VALID            (0x10)
 
-struct CacheDescriptor 
+struct CacheDescriptor
 {
-	DWORD Rnd2[2];
-	BYTE Flags;
+	uint Rnd2[2];
+	uchar Flags;
 	char Rnd0;
-	WORD Rnd1;
-	DWORD DataOffset;
-	DWORD DataCurLen;
-	DWORD DataMaxLen;
-	DWORD Rnd3;
-	DWORD DataCrc;
-	DWORD Rnd4;
+	ushort Rnd1;
+	uint DataOffset;
+	uint DataCurLen;
+	uint DataMaxLen;
+	uint Rnd3;
+	uint DataCrc;
+	uint Rnd4;
 	char DataName[32];
-	DWORD TableSize;
-	DWORD XorKey[5];
-	DWORD Crc;
+	uint TableSize;
+	uint XorKey[5];
+	uint Crc;
 } CacheTable[MAX_CACHE_DESCRIPTORS];
 string CacheTableName;
 
-bool CryptManager::IsCacheTable(const char* chache_fname)
+bool CryptManager::IsCacheTable(const char* cache_fname)
 {
-	if(!chache_fname || !chache_fname[0]) return false;
-	FILE* f=NULL;
-	if(fopen_s(&f,chache_fname,"rb")) return false;
+	if(!cache_fname || !cache_fname[0]) return false;
+	FILE* f=fopen(cache_fname,"rb");
+	if(!f) return false;
 	fclose(f);
 	return true;
 }
 
-bool CryptManager::CreateCacheTable(const char* chache_fname)
+bool CryptManager::CreateCacheTable(const char* cache_fname)
 {
-	FILE* f=NULL;
-	if(fopen_s(&f,chache_fname,"wb")) return false;
+	FILE* f=fopen(cache_fname,"wb");
+	if(!f) return false;
 
-	for(int i=0;i<sizeof(CacheTable);i++) ((BYTE*)&CacheTable[0])[i]=Random(0,255);
-	for(int i=0;i<MAX_CACHE_DESCRIPTORS;i++)
+	for(uint i=0;i<sizeof(CacheTable);i++) ((uchar*)&CacheTable[0])[i]=Random(0,255);
+	for(uint i=0;i<MAX_CACHE_DESCRIPTORS;i++)
 	{
 		CacheDescriptor& desc=CacheTable[i];
 		UNSETFLAG(desc.Flags,CACHE_DATA_VALID);
@@ -242,41 +242,41 @@ bool CryptManager::CreateCacheTable(const char* chache_fname)
 		desc.TableSize=MAX_CACHE_DESCRIPTORS;
 		CacheDescriptor desc_=desc;
 		XOR((char*)&desc_,sizeof(CacheDescriptor)-24,(char*)&desc_.XorKey[0],20);
-		fwrite((void*)&desc_,sizeof(BYTE),sizeof(CacheDescriptor),f);
+		fwrite((void*)&desc_,sizeof(uchar),sizeof(CacheDescriptor),f);
 	}
 
 	fclose(f);
-	CacheTableName=chache_fname;
+	CacheTableName=cache_fname;
 	return true;
 }
 
-bool CryptManager::SetCacheTable(const char* chache_fname)
+bool CryptManager::SetCacheTable(const char* cache_fname)
 {
-	if(!chache_fname || !chache_fname[0]) return false;
+	if(!cache_fname || !cache_fname[0]) return false;
 
-	FILE* f=NULL;
-	if(fopen_s(&f,chache_fname,"rb"))
+	FILE* f=fopen(cache_fname,"rb");
+	if(!f)
 	{
 		if(CacheTableName.length()) // default.cache
 		{
-			FILE* fr=NULL;
-			if(fopen_s(&fr,CacheTableName.c_str(),"rb")) return CreateCacheTable(chache_fname);
+			FILE* fr=fopen(CacheTableName.c_str(),"rb");
+			if(!fr) return CreateCacheTable(cache_fname);
 
-			FILE* fw=NULL;;
-			if(fopen_s(&fw,chache_fname,"wb"))
+			FILE* fw=fopen(cache_fname,"wb");
+			if(!fw)
 			{
 				fclose(fr);
-				return CreateCacheTable(chache_fname);
+				return CreateCacheTable(cache_fname);
 			}
 
-			CacheTableName=chache_fname;
+			CacheTableName=cache_fname;
 			fseek(fr,0,SEEK_END);
-			DWORD len=ftell(fr);
+			uint len=ftell(fr);
 			fseek(fr,0,SEEK_SET);
-			BYTE* buf=new(nothrow) BYTE[len];
+			uchar* buf=new(nothrow) uchar[len];
 			if(!buf) return false;
-			fread(buf,sizeof(BYTE),len,fr);
-			fwrite(buf,sizeof(BYTE),len,fw);
+			fread(buf,sizeof(uchar),len,fr);
+			fwrite(buf,sizeof(uchar),len,fw);
 			delete[] buf;
 			fclose(fr);
 			fclose(fw);
@@ -284,36 +284,36 @@ bool CryptManager::SetCacheTable(const char* chache_fname)
 		}
 		else
 		{
-			return CreateCacheTable(chache_fname);
+			return CreateCacheTable(cache_fname);
 		}
 	}
 
 	fseek(f,0,SEEK_END);
-	DWORD len=ftell(f);
+	uint len=ftell(f);
 	fseek(f,0,SEEK_SET);
 
 	if(len<sizeof(CacheTable))
 	{
 		fclose(f);
-		return CreateCacheTable(chache_fname);
+		return CreateCacheTable(cache_fname);
 	}
 
-	fread((void*)&CacheTable[0],sizeof(BYTE),sizeof(CacheTable),f);
+	fread((void*)&CacheTable[0],sizeof(uchar),sizeof(CacheTable),f);
 	fclose(f);
-	CacheTableName=chache_fname;
+	CacheTableName=cache_fname;
 	for(int i=0;i<MAX_CACHE_DESCRIPTORS;i++)
 	{
 		CacheDescriptor& desc=CacheTable[i];
 		XOR((char*)&desc,sizeof(CacheDescriptor)-24,(char*)&desc.XorKey[0],20);
-		if(desc.TableSize!=MAX_CACHE_DESCRIPTORS) return CreateCacheTable(chache_fname);
+		if(desc.TableSize!=MAX_CACHE_DESCRIPTORS) return CreateCacheTable(cache_fname);
 	}
 	return true;
 }
 
-void CryptManager::SetCache(const char* data_name, const BYTE* data, DWORD data_len)
+void CryptManager::SetCache(const char* data_name, const uchar* data, uint data_len)
 {
-	FILE* f=NULL;
-	if(fopen_s(&f,CacheTableName.c_str(),"r+b")) return;
+	FILE* f=fopen(CacheTableName.c_str(),"r+b");
+	if(!f) return;
 
 	CacheDescriptor desc_;
 	int desc_place=-1;
@@ -331,7 +331,7 @@ void CryptManager::SetCache(const char* data_name, const BYTE* data, DWORD data_
 			CacheDescriptor desc__=desc;
 			XOR((char*)&desc__,sizeof(CacheDescriptor)-24,(char*)&desc__.XorKey[0],20);
 			fseek(f,i*sizeof(CacheDescriptor),SEEK_SET);
-			fwrite((void*)&desc__,sizeof(BYTE),sizeof(CacheDescriptor),f);
+			fwrite((void*)&desc__,sizeof(uchar),sizeof(CacheDescriptor),f);
 			break;
 		}
 
@@ -372,16 +372,16 @@ void CryptManager::SetCache(const char* data_name, const BYTE* data, DWORD data_
 			return;
 		}
 
-		DWORD max_len=data_len*2;
+		uint max_len=data_len*2;
  		if(max_len<128)
  		{
  			max_len=128;
- 			fwrite((void*)&crcTable[1],sizeof(BYTE),max_len,f);
+ 			fwrite((void*)&crcTable[1],sizeof(uchar),max_len,f);
  		}
  		else
 		{
-			fwrite(data,sizeof(BYTE),data_len,f);
-			fwrite(data,sizeof(BYTE),data_len,f);
+			fwrite(data,sizeof(uchar),data_len,f);
+			fwrite(data,sizeof(uchar),data_len,f);
 		}
 
 		SETFLAG(desc.Flags,CACHE_DATA_VALID);
@@ -402,13 +402,13 @@ label_PlaceFound:
 	CacheDescriptor desc__=desc_;
 	XOR((char*)&desc__,sizeof(CacheDescriptor)-24,(char*)&desc__.XorKey[0],20);
 	fseek(f,desc_place*sizeof(CacheDescriptor),SEEK_SET);
-	fwrite((void*)&desc__,sizeof(BYTE),sizeof(CacheDescriptor),f);
+	fwrite((void*)&desc__,sizeof(uchar),sizeof(CacheDescriptor),f);
 	fseek(f,sizeof(CacheTable)+desc_.DataOffset,SEEK_SET);
-	fwrite(data,sizeof(BYTE),data_len,f);
+	fwrite(data,sizeof(uchar),data_len,f);
 	fclose(f);
 }
 
-BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
+uchar* CryptManager::GetCache(const char* data_name, uint& data_len)
 {
 	for(int i=0;i<MAX_CACHE_DESCRIPTORS;i++)
 	{
@@ -416,8 +416,8 @@ BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
 		if(!FLAG(desc.Flags,CACHE_DATA_VALID)) continue;
 		if(strcmp(data_name,desc.DataName)) continue;
 
-		FILE* f=NULL;
-		if(fopen_s(&f,CacheTableName.c_str(),"rb")) return NULL;
+		FILE* f=fopen(CacheTableName.c_str(),"rb");
+		if(!f) return NULL;
 
 		if(desc.DataCurLen>0xFFFFFF)
 		{
@@ -428,7 +428,7 @@ BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
 		}
 
 		fseek(f,0,SEEK_END);
-		DWORD file_len=ftell(f)+1;
+		uint file_len=ftell(f)+1;
 		fseek(f,0,SEEK_SET);
 
 		if(file_len<sizeof(CacheTable)+desc.DataOffset+desc.DataCurLen)
@@ -439,7 +439,7 @@ BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
 			return NULL;
 		}
 
-		BYTE* data=new(nothrow) BYTE[desc.DataCurLen];
+		uchar* data=new(nothrow) uchar[desc.DataCurLen];
 		if(!data)
 		{
 			fclose(f);
@@ -448,7 +448,7 @@ BYTE* CryptManager::GetCache(const char* data_name, DWORD& data_len)
 
 		data_len=desc.DataCurLen;
 		fseek(f,sizeof(CacheTable)+desc.DataOffset,SEEK_SET);
-		fread(data,sizeof(BYTE),desc.DataCurLen,f);
+		fread(data,sizeof(uchar),desc.DataCurLen,f);
 		fclose(f);
 		return data;
 	}

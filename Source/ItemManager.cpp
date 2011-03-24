@@ -20,11 +20,11 @@ ItemManager ItemMngr;
 
 bool ItemManager::Init()
 {
-	WriteLog("Item manager initialization...\n");
+	WriteLog(NULL,"Item manager initialization...\n");
 
 	if(IsInit())
 	{
-		WriteLog("already init.\n");
+		WriteLog(NULL,"already init.\n");
 		return true;
 	}
 
@@ -32,17 +32,17 @@ bool ItemManager::Init()
 	ClearProtos();
 
 	isActive=true;
-	WriteLog("Item manager initialization complete.\n");
+	WriteLog(NULL,"Item manager initialization complete.\n");
 	return true;
 }
 
 void ItemManager::Finish()
 {
-	WriteLog("Item manager finish...\n");
+	WriteLog(NULL,"Item manager finish...\n");
 
 	if(!isActive)
 	{
-		WriteLog("already finish or not init.\n");
+		WriteLog(NULL,"already finish or not init.\n");
 		return;
 	}
 
@@ -63,7 +63,7 @@ void ItemManager::Finish()
 	ClearProtos();
 
 	isActive=false;
-	WriteLog("Item manager finish complete.\n");
+	WriteLog(NULL,"Item manager finish complete.\n");
 }
 
 void ItemManager::Clear()
@@ -93,12 +93,12 @@ T ResolveProtoValue(const char* str)
 
 bool ItemManager::LoadProtos()
 {
-	WriteLog("Loading items prototypes...\n");
+	WriteLog(NULL,"Loading items prototypes...\n");
 
 	FileManager fm;
 	if(!fm.LoadFile("items.lst",PT_SERVER_PRO_ITEMS))
 	{
-		WriteLog("Can't open \"items.lst\".\n");
+		WriteLog(NULL,"Can't open \"items.lst\".\n");
 		return false;
 	}
 
@@ -112,7 +112,7 @@ bool ItemManager::LoadProtos()
 	}
 	fm.UnloadFile();
 
-	DWORD loaded=0;
+	uint loaded=0;
 	ProtoItemVec item_protos;
 	ClearProtos();
 	for(int i=0;i<count;i++)
@@ -131,7 +131,7 @@ bool ItemManager::LoadProtos()
 		}
 	}
 
-	WriteLog("Items prototypes successfully loaded, count<%u>.\n",loaded);
+	WriteLog(NULL,"Items prototypes successfully loaded, count<%u>.\n",loaded);
 	return true;
 }
 
@@ -142,7 +142,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 	IniParser fopro;
 	if(!fopro.LoadFile(fname,-1))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",fname);
+		WriteLog(_FUNC_," - File<%s> not found.\n",fname);
 		return false;
 	}
 
@@ -238,8 +238,8 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 			if(!strcmp(name,"BlockLines") || !strncmp(name,"ChildLines_",11))
 			{
 				// Get lines destination
-				BYTE* lines;
-				DWORD max_count;
+				uchar* lines;
+				uint max_count;
 				if(!strcmp(name,"BlockLines"))
 				{
 					lines=proto_item.BlockLines;
@@ -262,11 +262,11 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 				}
 
 				// Parse lines
-				int svalue_len=strlen(svalue);
-				for(int k=0;k/2<max_count && k+1<svalue_len;k+=2)
+				uint svalue_len=strlen(svalue);
+				for(uint k=0;k/2<max_count && k+1<svalue_len;k+=2)
 				{
-					BYTE dir=(svalue[k]-'0')&0xF;
-					BYTE steps=(svalue[k+1]-'0')&0xF;
+					uchar dir=(svalue[k]-'0')&0xF;
+					uchar steps=(svalue[k+1]-'0')&0xF;
 					if(dir>=DIRS_COUNT || !steps) break;
 					lines[k/2]=(dir<<4)|steps;
 				}
@@ -277,10 +277,10 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 				int size=engine->GetSizeOfPrimitiveType(type_id);
 				switch(size)
 				{
-				case sizeof(BYTE): *(BYTE*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<BYTE>(svalue); break;
-				case sizeof(WORD): *(WORD*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<WORD>(svalue); break;
-				case sizeof(DWORD): *(DWORD*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<DWORD>(svalue); break;
-				case sizeof(__int64): *(__int64*)(((BYTE*)&proto_item)+offset)=ResolveProtoValue<__int64>(svalue); break;
+				case sizeof(uchar): *(uchar*)(((uchar*)&proto_item)+offset)=ResolveProtoValue<uchar>(svalue); break;
+				case sizeof(ushort): *(ushort*)(((uchar*)&proto_item)+offset)=ResolveProtoValue<ushort>(svalue); break;
+				case sizeof(uint): *(uint*)(((uchar*)&proto_item)+offset)=ResolveProtoValue<uint>(svalue); break;
+				case sizeof(int64): *(int64*)(((uchar*)&proto_item)+offset)=ResolveProtoValue<int64>(svalue); break;
 				default: break;
 				}
 			}
@@ -343,12 +343,16 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 
 			// Add to collection
 			protos.push_back(proto_item);
+
+		//	if(FLAG(proto_item.Flags,ITEM_MULTI_HEX)) WriteLog(NULL,"pid<%u> ITEM_MULTI_HEX\n",proto_item.ProtoId);
+		//	if(FLAG(proto_item.Flags,ITEM_WALL_TRANS_END)) WriteLog(NULL,"pid<%u> ITEM_WALL_TRANS_END\n",proto_item.ProtoId);
+		//	if(FLAG(proto_item.Flags,ITEM_CACHED)) WriteLog(NULL,"pid<%u> ITEM_CACHED\n",proto_item.ProtoId);
 		}
 	}
 
 	if(protos.empty())
 	{
-		WriteLog(__FUNCTION__" - Proto items not found<%s>.\n",fname);
+		WriteLog(_FUNC_," - Proto items not found<%s>.\n",fname);
 		return false;
 	}
 	return true;
@@ -360,25 +364,25 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 {
 	if(protos.empty())
 	{
-		WriteLog(__FUNCTION__" - List is empty, parsing ended.\n");
+		WriteLog(_FUNC_," - List is empty, parsing ended.\n");
 		return;
 	}
 
-	for(size_t i=0,j=protos.size();i<j;i++)
+	for(uint i=0,j=protos.size();i<j;i++)
 	{
 		ProtoItem& proto_item=protos[i];
-		WORD pid=proto_item.ProtoId;
+		ushort pid=proto_item.ProtoId;
 
 		if(!pid || pid>=MAX_ITEM_PROTOTYPES)
 		{
-			WriteLog(__FUNCTION__" - Invalid pid<%u> of item prototype.\n",pid);
+			WriteLog(_FUNC_," - Invalid pid<%u> of item prototype.\n",pid);
 			continue;
 		}
 
 		if(IsInitProto(pid))
 		{
 			ClearProto(pid);
-			WriteLog(__FUNCTION__" - Item prototype is already parsed, pid<%u>. Rewrite.\n",pid);
+			WriteLog(_FUNC_," - Item prototype is already parsed, pid<%u>. Rewrite.\n",pid);
 		}
 
 		int type=protos[i].Type;
@@ -398,12 +402,12 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 		if(typeProto[i].size())
 		{
 			std::sort(typeProto[i].begin(),typeProto[i].end(),CompProtoByPid);
-			protoHash[i]=Crypt.Crc32((BYTE*)&typeProto[i][0],sizeof(ProtoItem)*typeProto[i].size());
+			protoHash[i]=Crypt.Crc32((uchar*)&typeProto[i][0],sizeof(ProtoItem)*typeProto[i].size());
 		}
 	}
 }
 
-ProtoItem* ItemManager::GetProtoItem(WORD pid)
+ProtoItem* ItemManager::GetProtoItem(ushort pid)
 {
 	if(!IsInitProto(pid)) return NULL;
 	return &allProto[pid];
@@ -418,20 +422,20 @@ void ItemManager::GetCopyAllProtos(ProtoItemVec& protos)
 {
 	for(int i=0;i<ITEM_MAX_TYPES;i++)
 	{
-		for(int j=0;j<typeProto[i].size();j++)
+		for(uint j=0;j<typeProto[i].size();j++)
 		{
 			protos.push_back(typeProto[i][j]);
 		}
 	}
 }
 
-bool ItemManager::IsInitProto(WORD pid)
+bool ItemManager::IsInitProto(ushort pid)
 {
 	if(!pid || pid>=MAX_ITEM_PROTOTYPES) return false;
 	return allProto[pid].ProtoId!=0;
 }
 
-const char* ItemManager::GetProtoScript(WORD pid)
+const char* ItemManager::GetProtoScript(ushort pid)
 {
 	if(!IsInitProto(pid)) return NULL;
 	return protoScript[pid];
@@ -451,9 +455,9 @@ void ItemManager::ClearProtos(int type /* = 0xFF */)
 	}
 	else if(type<ITEM_MAX_TYPES)
 	{
-		for(int i=0;i<typeProto[type].size();++i)
+		for(uint i=0;i<typeProto[type].size();++i)
 		{
-			WORD pid=(typeProto[type])[i].ProtoId;
+			ushort pid=(typeProto[type])[i].ProtoId;
 			if(IsInitProto(pid))
 			{
 				allProto[pid].Clear();
@@ -465,11 +469,11 @@ void ItemManager::ClearProtos(int type /* = 0xFF */)
 	}
 	else
 	{
-		WriteLog(__FUNCTION__" - Wrong proto type<%u>.\n",type);
+		WriteLog(_FUNC_," - Wrong proto type<%u>.\n",type);
 	}
 }
 
-void ItemManager::ClearProto(WORD pid)
+void ItemManager::ClearProto(ushort pid)
 {
 	ProtoItem* proto_item=GetProtoItem(pid);
 	if(!proto_item) return;
@@ -478,20 +482,20 @@ void ItemManager::ClearProto(WORD pid)
 	if(type<0 || type>=ITEM_MAX_TYPES) type=ITEM_TYPE_OTHER;
 
 	ProtoItemVec& protos=typeProto[type];
-	DWORD& hash=protoHash[type];
+	uint& hash=protoHash[type];
 
 	allProto[pid].Clear();
 
 	ProtoItemVecIt it=std::find(protos.begin(),protos.end(),pid);
 	if(it!=protos.end()) protos.erase(it);
 
-	hash=Crypt.Crc32((BYTE*)&protos[0],sizeof(ProtoItem)*protos.size());
+	hash=Crypt.Crc32((uchar*)&protos[0],sizeof(ProtoItem)*protos.size());
 }
 
 #ifdef FONLINE_SERVER
 void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 {
-	DWORD count=gameItems.size();
+	uint count=gameItems.size();
 	save_func(&count,sizeof(count));
 	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
 	{
@@ -504,13 +508,13 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 		save_func(&item->Data,sizeof(item->Data));
 		if(item->PLexems)
 		{
-			BYTE lex_len=strlen(item->PLexems);
+			uchar lex_len=strlen(item->PLexems);
 			save_func(&lex_len,sizeof(lex_len));
 			save_func(item->PLexems,lex_len);
 		}
 		else
 		{
-			BYTE zero=0;
+			uchar zero=0;
 			save_func(&zero,sizeof(zero));
 		}
 	}
@@ -518,34 +522,34 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 
 bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 {
-	WriteLog("Load items...");
+	WriteLog(NULL,"Load items...");
 
 	lastItemId=0;
 
-	DWORD count;
+	uint count;
 	fread(&count,sizeof(count),1,f);
 	if(!count)
 	{
-		WriteLog("items not found.\n");
+		WriteLog(NULL,"items not found.\n");
 		return true;
 	}
 
 	int errors=0;
-	for(DWORD i=0;i<count;++i)
+	for(uint i=0;i<count;++i)
 	{
-		DWORD id;
+		uint id;
 		fread(&id,sizeof(id),1,f);
-		WORD pid;
+		ushort pid;
 		fread(&pid,sizeof(pid),1,f);
-		BYTE acc;
+		uchar acc;
 		fread(&acc,sizeof(acc),1,f);
-		DWORD acc0;
+		uint acc0;
 		fread(&acc0,sizeof(acc0),1,f);
-		DWORD acc1;
+		uint acc1;
 		fread(&acc1,sizeof(acc1),1,f);
 		Item::ItemData data;
 		fread(&data,sizeof(data),1,f);
-		BYTE lex_len;
+		uchar lex_len;
 		char lexems[1024]={0};
 		fread(&lex_len,sizeof(lex_len),1,f);
 		if(lex_len)
@@ -557,7 +561,7 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 		Item* item=CreateItem(pid,0,id);
 		if(!item)
 		{
-			WriteLog("Create item error id<%u>, pid<%u>.\n",id,pid);
+			WriteLog(NULL,"Create item error id<%u>, pid<%u>.\n",id,pid);
 			errors++;
 			continue;
 		}
@@ -577,13 +581,13 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 		// Patches
 		if(version<WORLD_SAVE_V11)
 		{
-			if(item->GetProtoId()==PID_RADIO && FLAG(item->Proto->Flags,ITEM_RADIO)) SETFLAG(item->Data.Flags,ITEM_RADIO);
-			else if(item->GetProtoId()==PID_HOLODISK && FLAG(item->Proto->Flags,ITEM_HOLODISK)) SETFLAG(item->Data.Flags,ITEM_HOLODISK);
+			if(item->GetProtoId()==100/*PID_RADIO*/ && FLAG(item->Proto->Flags,ITEM_RADIO)) SETFLAG(item->Data.Flags,ITEM_RADIO);
+			else if(item->GetProtoId()==58/*PID_HOLODISK*/ && FLAG(item->Proto->Flags,ITEM_HOLODISK)) SETFLAG(item->Data.Flags,ITEM_HOLODISK);
 		}
 	}
 	if(errors) return false;
 
-	WriteLog("complete, count<%u>.\n",count);
+	WriteLog(NULL,"complete, count<%u>.\n",count);
 	return true;
 }
 
@@ -620,17 +624,17 @@ void ItemManager::GetGameItems(ItemPtrVec& items)
 	}
 }
 
-DWORD ItemManager::GetItemsCount()
+uint ItemManager::GetItemsCount()
 {
 	SCOPE_LOCK(itemLocker);
-	DWORD count=gameItems.size();
+	uint count=gameItems.size();
 	return count;
 }
 
 void ItemManager::SetCritterItems(Critter* cr)
 {
 	ItemPtrVec items;
-	DWORD crid=cr->GetId();
+	uint crid=cr->GetId();
 
 	itemLocker.Lock();
 	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
@@ -654,7 +658,7 @@ void ItemManager::SetCritterItems(Critter* cr)
 	}
 }
 
-void ItemManager::GetItemIds(DwordSet& item_ids)
+void ItemManager::GetItemIds(UIntSet& item_ids)
 {
 	SCOPE_LOCK(itemLocker);
 
@@ -662,14 +666,14 @@ void ItemManager::GetItemIds(DwordSet& item_ids)
 		item_ids.insert((*it).second->GetId());
 }
 
-Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
+Item* ItemManager::CreateItem(ushort pid, uint count, uint item_id /* = 0 */)
 {
 	if(!IsInitProto(pid)) return NULL;
 
 	Item* item=new Item();
 	if(!item)
 	{
-		WriteLog(__FUNCTION__" - Allocation fail.\n");
+		WriteLog(_FUNC_," - Allocation fail.\n");
 		return NULL;
 	}
 
@@ -680,7 +684,7 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 
 		if(gameItems.count(item_id))
 		{
-			WriteLog(__FUNCTION__" - Item already created, id<%u>.\n",item_id);
+			WriteLog(_FUNC_," - Item already created, id<%u>.\n",item_id);
 			delete item;
 			return NULL;
 		}
@@ -717,25 +721,25 @@ Item* ItemManager::CreateItem(WORD pid, DWORD count, DWORD item_id /* = 0 */)
 	return item;
 }
 
-Item* ItemManager::SplitItem(Item* item, DWORD count)
+Item* ItemManager::SplitItem(Item* item, uint count)
 {
 	if(!item->IsStackable())
 	{
-		WriteLog(__FUNCTION__" - Splitted item is not stackable, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
+		WriteLog(_FUNC_," - Splitted item is not stackable, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
 		return NULL;
 	}
 
-	DWORD item_count=item->GetCount();
+	uint item_count=item->GetCount();
 	if(!count || count>=item_count)
 	{
-		WriteLog(__FUNCTION__" - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n",item->GetId(),item->GetProtoId(),item_count,count);
+		WriteLog(_FUNC_," - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n",item->GetId(),item->GetProtoId(),item_count,count);
 		return NULL;
 	}
 
 	Item* new_item=CreateItem(item->GetProtoId(),0); // Ignore init script
 	if(!new_item)
 	{
-		WriteLog(__FUNCTION__" - Create item fail, pid<%u>, count<%u>.\n",item->GetProtoId(),count);
+		WriteLog(_FUNC_," - Create item fail, pid<%u>, count<%u>.\n",item->GetProtoId(),count);
 		return NULL;
 	}
 
@@ -751,7 +755,7 @@ Item* ItemManager::SplitItem(Item* item, DWORD count)
 	return new_item;
 }
 
-Item* ItemManager::GetItem(DWORD item_id, bool sync_lock)
+Item* ItemManager::GetItem(uint item_id, bool sync_lock)
 {
 	Item* item=NULL;
 
@@ -776,16 +780,16 @@ void ItemManager::ItemGarbager()
 	if(!itemToDelete.empty())
 	{
 		itemLocker.Lock();
-		DwordVec to_del=itemToDelete;
-		DwordVec to_del_count=itemToDeleteCount;
+		UIntVec to_del=itemToDelete;
+		UIntVec to_del_count=itemToDeleteCount;
 		itemToDelete.clear();
 		itemToDeleteCount.clear();
 		itemLocker.Unlock();
 
-		for(size_t i=0,j=to_del.size();i<j;i++)
+		for(uint i=0,j=to_del.size();i<j;i++)
 		{
-			DWORD id=to_del[i];
-			DWORD count=to_del_count[i];
+			uint id=to_del[i];
+			uint count=to_del_count[i];
 
 			// Erase from main collection
 			itemLocker.Lock();
@@ -885,7 +889,7 @@ void ItemManager::EraseItemHolder(Item* item)
 	item->Accessory=45;
 }
 
-void ItemManager::MoveItem(Item* item, DWORD count, Critter* to_cr)
+void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr)
 {
 	if(item->Accessory==ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id==to_cr->GetId()) return;
 
@@ -905,7 +909,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Critter* to_cr)
 	}
 }
 
-void ItemManager::MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WORD to_hy)
+void ItemManager::MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy)
 {
 	if(item->Accessory==ITEM_ACCESSORY_HEX && item->ACC_HEX.MapId==to_map->GetId() && item->ACC_HEX.HexX==to_hx && item->ACC_HEX.HexY==to_hy) return;
 
@@ -925,7 +929,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WOR
 	}
 }
 
-void ItemManager::MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_id)
+void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id)
 {
 	if(item->Accessory==ITEM_ACCESSORY_CONTAINER && item->ACC_CONTAINER.ContainerId==to_cont->GetId() && item->ACC_CONTAINER.SpecialId==stack_id) return;
 
@@ -945,7 +949,7 @@ void ItemManager::MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_i
 	}
 }
 
-Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD stack_id)
+Item* ItemManager::AddItemContainer(Item* cont, ushort pid, uint count, uint stack_id)
 {
 	if(!cont || !cont->IsContainer()) return NULL;
 
@@ -962,7 +966,7 @@ Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD sta
 		else
 		{
 			if(count>MAX_ADDED_NOGROUP_ITEMS) count=MAX_ADDED_NOGROUP_ITEMS;
-			for(int i=0;i<count;++i)
+			for(uint i=0;i<count;++i)
 			{
 				item=ItemMngr.CreateItem(pid,1);
 				if(!item) continue;
@@ -986,7 +990,7 @@ Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD sta
 		else
 		{
 			if(count>MAX_ADDED_NOGROUP_ITEMS) count=MAX_ADDED_NOGROUP_ITEMS;
-			for(int i=0;i<count;++i)
+			for(uint i=0;i<count;++i)
 			{
 				item=ItemMngr.CreateItem(pid,1);
 				if(!item) continue;
@@ -999,7 +1003,7 @@ Item* ItemManager::AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD sta
 	return result;
 }
 
-Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
+Item* ItemManager::AddItemCritter(Critter* cr, ushort pid, uint count)
 {
 	if(!count) return NULL;
 
@@ -1017,7 +1021,7 @@ Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
 		else
 		{
 			if(count>MAX_ADDED_NOGROUP_ITEMS) count=MAX_ADDED_NOGROUP_ITEMS;
-			for(int i=0;i<count;++i)
+			for(uint i=0;i<count;++i)
 			{
 				item=ItemMngr.CreateItem(pid,1);
 				if(!item) break;
@@ -1041,7 +1045,7 @@ Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
 		else
 		{
 			if(count>MAX_ADDED_NOGROUP_ITEMS) count=MAX_ADDED_NOGROUP_ITEMS;
-			for(int i=0;i<count;++i)
+			for(uint i=0;i<count;++i)
 			{
 				item=ItemMngr.CreateItem(pid,1);
 				if(!item) break;
@@ -1054,7 +1058,7 @@ Item* ItemManager::AddItemCritter(Critter* cr, WORD pid, DWORD count)
 	return result;
 }
 
-bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec* erased_items)
+bool ItemManager::SubItemCritter(Critter* cr, ushort pid, uint count, ItemPtrVec* erased_items)
 {
 	if(!count) return true;
 
@@ -1085,7 +1089,7 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 	}
 	else
 	{
-		for(int i=0;i<count;++i)
+		for(uint i=0;i<count;++i)
 		{
 			cr->EraseItem(item,true);
 			if(!erased_items) ItemMngr.ItemToGarbage(item);
@@ -1098,15 +1102,15 @@ bool ItemManager::SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec*
 	return true;
 }
 
-bool ItemManager::SetItemCritter(Critter* cr, WORD pid, DWORD count)
+bool ItemManager::SetItemCritter(Critter* cr, ushort pid, uint count)
 {
-	DWORD cur_count=cr->CountItemPid(pid);
+	uint cur_count=cr->CountItemPid(pid);
 	if(cur_count>count) return SubItemCritter(cr,pid,cur_count-count);
 	else if(cur_count<count) return AddItemCritter(cr,pid,count-cur_count)!=NULL;
 	return true;
 }
 
-bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_id, DWORD count)
+bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, uint item_id, uint count)
 {
 	Item* item=from_cr->GetItem(item_id,false);
 	if(!item) return false;
@@ -1121,7 +1125,7 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
-				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
+				WriteLog(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
@@ -1145,7 +1149,7 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_
 	return true;
 }
 
-bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD item_id, DWORD count, DWORD stack_id)
+bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id)
 {
 	if(!to_cont->IsContainer()) return false;
 
@@ -1162,7 +1166,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
-				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
+				WriteLog(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
@@ -1186,7 +1190,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD i
 	return true;
 }
 
-bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD item_id, DWORD count)
+bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, uint item_id, uint count)
 {
 	if(!from_cont->IsContainer()) return false;
 
@@ -1203,7 +1207,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
-				WriteLog(__FUNCTION__" - Create item fail, pid<%u>.\n",item->GetProtoId());
+				WriteLog(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
@@ -1226,7 +1230,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD
 	return true;
 }
 
-bool ItemManager::MoveItemsContainers(Item* from_cont, Item* to_cont, DWORD from_stack_id, DWORD to_stack_id)
+bool ItemManager::MoveItemsContainers(Item* from_cont, Item* to_cont, uint from_stack_id, uint to_stack_id)
 {
 	if(!from_cont->IsContainer() || !to_cont->IsContainer()) return false;
 	if(!from_cont->ContIsItems()) return true;
@@ -1243,7 +1247,7 @@ bool ItemManager::MoveItemsContainers(Item* from_cont, Item* to_cont, DWORD from
 	return true;
 }
 
-bool ItemManager::MoveItemsContToCritter(Item* from_cont, Critter* to_cr, DWORD stack_id)
+bool ItemManager::MoveItemsContToCritter(Item* from_cont, Critter* to_cr, uint stack_id)
 {
 	if(!from_cont->IsContainer()) return false;
 	if(!from_cont->ContIsItems()) return true;
@@ -1276,7 +1280,7 @@ void ItemManager::RadioRegister(Item* radio, bool add)
 	}
 }
 
-void ItemManager::RadioSendText(Critter* cr, const char* text, WORD text_len, bool unsafe_text, WORD text_msg, DWORD num_str, WordVec& channels)
+void ItemManager::RadioSendText(Critter* cr, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels)
 {
 	ItemPtrVec radios;
 	ItemPtrVec items=cr->GetItemsNoLock();
@@ -1293,7 +1297,7 @@ void ItemManager::RadioSendText(Critter* cr, const char* text, WORD text_len, bo
 		}
 	}
 
-	for(size_t i=0,j=radios.size();i<j;i++)
+	for(uint i=0,j=radios.size();i<j;i++)
 	{
 		RadioSendTextEx(channels[i],
 			radios[i]->Data.Radio.BroadcastSend,cr->GetMap(),cr->Data.WorldX,cr->Data.WorldY,
@@ -1301,9 +1305,9 @@ void ItemManager::RadioSendText(Critter* cr, const char* text, WORD text_len, bo
 	}
 }
 
-void ItemManager::RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_map_id, WORD from_wx, WORD from_wy,
-								  const char* text, WORD text_len, WORD intellect, bool unsafe_text,
-								  WORD text_msg, DWORD num_str)
+void ItemManager::RadioSendTextEx(ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy,
+								  const char* text, ushort text_len, ushort intellect, bool unsafe_text,
+								  ushort text_msg, uint num_str)
 {
 	// Broadcast
 	if(broadcast_type!=RADIO_BROADCAST_FORCE_ALL && broadcast_type!=RADIO_BROADCAST_WORLD &&
@@ -1312,8 +1316,8 @@ void ItemManager::RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_m
 	if((broadcast_type==RADIO_BROADCAST_MAP || broadcast_type==RADIO_BROADCAST_LOCATION) && !from_map_id) return;
 
 	int broadcast=0;
-	DWORD broadcast_map_id=0;
-	DWORD broadcast_loc_id=0;
+	uint broadcast_map_id=0;
+	uint broadcast_loc_id=0;
 
 	// Get copy of all radios
 	radioItemsLocker.Lock();
@@ -1322,7 +1326,7 @@ void ItemManager::RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_m
 
 	// Multiple sending controlling
 	// Not thread safe, but this not so important in this case
-	static DWORD msg_count=0;
+	static uint msg_count=0;
 	msg_count++;
 
 	// Send
@@ -1336,7 +1340,7 @@ void ItemManager::RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_m
 			{
 				if(broadcast_type==RADIO_BROADCAST_WORLD) broadcast=radio->Data.Radio.BroadcastRecv;
 				else if(radio->Data.Radio.BroadcastRecv==RADIO_BROADCAST_WORLD) broadcast=broadcast_type;
-				else broadcast=min(broadcast_type,radio->Data.Radio.BroadcastRecv);
+				else broadcast=MIN(broadcast_type,radio->Data.Radio.BroadcastRecv);
 
 				if(broadcast==RADIO_BROADCAST_WORLD) broadcast=RADIO_BROADCAST_FORCE_ALL;
 				else if(broadcast==RADIO_BROADCAST_MAP || broadcast==RADIO_BROADCAST_LOCATION)
@@ -1416,29 +1420,29 @@ void ItemManager::RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_m
 }
 #endif // FONLINE_SERVER
 
-void ItemManager::AddItemStatistics(WORD pid, DWORD val)
+void ItemManager::AddItemStatistics(ushort pid, uint val)
 {
 	if(!IsInitProto(pid)) return;
 
 	SCOPE_SPINLOCK(itemCountLocker);
 
-	itemCount[pid]+=(__int64)val;
+	itemCount[pid]+=(int64)val;
 }
 
-void ItemManager::SubItemStatistics(WORD pid, DWORD val)
+void ItemManager::SubItemStatistics(ushort pid, uint val)
 {
 	if(!IsInitProto(pid)) return;
 
 	SCOPE_SPINLOCK(itemCountLocker);
 
-	itemCount[pid]-=(__int64)val;
+	itemCount[pid]-=(int64)val;
 }
 
-__int64 ItemManager::GetItemStatistics(WORD pid)
+int64 ItemManager::GetItemStatistics(ushort pid)
 {
 	SCOPE_SPINLOCK(itemCountLocker);
 
-	__int64 count=itemCount[pid];
+	int64 count=itemCount[pid];
 	return count;
 }
 

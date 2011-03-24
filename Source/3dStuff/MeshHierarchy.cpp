@@ -62,9 +62,9 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	newMeshContainer->MeshData.Type=D3DXMESHTYPE_MESH;
 	
 	// Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
-	DWORD dwFaces=meshData->pMesh->GetNumFaces();
+	uint dwFaces=meshData->pMesh->GetNumFaces();
 	newMeshContainer->pAdjacency=new DWORD[dwFaces*3];
-	if(adjacency) memcpy(newMeshContainer->pAdjacency,adjacency,sizeof(DWORD)*dwFaces*3);
+	if(adjacency) memcpy(newMeshContainer->pAdjacency,adjacency,sizeof(uint)*dwFaces*3);
 	else meshData->pMesh->GenerateAdjacency(0.0000125f,newMeshContainer->pAdjacency);
 
 	// Get the Direct3D device, luckily this is held in the mesh itself (Note: must release it when done with it)
@@ -84,7 +84,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	if(numMaterials>0)
 	{
 		// Load all the textures and copy the materials over		
-		for(DWORD i=0;i<numMaterials;i++)
+		for(uint i=0;i<numMaterials;i++)
 		{
 			newMeshContainer->exTexturesNames[i]=StringDuplicate(materials[i].pTextureFilename);
 			newMeshContainer->exMaterials[i]=materials[i].MatD3D;
@@ -97,11 +97,11 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 				newMeshContainer->exEffects[i].NumDefaults=effectInstances[i].NumDefaults;
 				newMeshContainer->exEffects[i].pDefaults=NULL;
 
-				DWORD defaults=newMeshContainer->exEffects[i].NumDefaults;
+				uint defaults=newMeshContainer->exEffects[i].NumDefaults;
 				if(defaults)
 				{
 					newMeshContainer->exEffects[i].pDefaults=new D3DXEFFECTDEFAULT[defaults];
-					for(DWORD j=0;j<defaults;j++)
+					for(uint j=0;j<defaults;j++)
 					{
 						newMeshContainer->exEffects[i].pDefaults[j].pParamName=StringDuplicate(effectInstances[i].pDefaults[j].pParamName);
 						newMeshContainer->exEffects[i].pDefaults[j].Type=effectInstances[i].pDefaults[j].Type;
@@ -188,16 +188,16 @@ HRESULT MeshHierarchy::DestroyMeshContainer(LPD3DXMESHCONTAINER meshContainerBas
 	// Release the textures before deleting the array
 	if(mesh_container->exTexturesNames)
 	{
-		for(DWORD i=0;i<mesh_container->NumMaterials;i++)
+		for(uint i=0;i<mesh_container->NumMaterials;i++)
 			SAFEDELA(mesh_container->exTexturesNames[i]);
 	}
 	SAFEDELA(mesh_container->exTexturesNames);
 	// Delete effect
 	if(mesh_container->exEffects)
 	{
-		for(DWORD i=0;i<mesh_container->NumMaterials;i++)
+		for(uint i=0;i<mesh_container->NumMaterials;i++)
 		{
-			for(DWORD j=0;j<mesh_container->exEffects[i].NumDefaults;j++)
+			for(uint j=0;j<mesh_container->exEffects[i].NumDefaults;j++)
 				SAFEDELA(mesh_container->exEffects[i].pDefaults[j].pValue);
 			SAFEDELA(mesh_container->exEffects[i].pDefaults);
 		}

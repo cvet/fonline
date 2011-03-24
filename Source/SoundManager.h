@@ -53,15 +53,15 @@
 struct Sound
 {
 	IDirectSoundBuffer* SndBuf;
-	DWORD BufSize;
+	uint BufSize;
 	bool IsMusic;
-	DWORD NextPlay;
-	DWORD RepeatTime;
+	uint NextPlay;
+	uint RepeatTime;
 
 	// Streaming data
 	bool IsNeedStreaming;
-	DWORD BufOffs;
-	DWORD Decoded;
+	uint BufOffs;
+	uint Decoded;
 	int MediaType;
 	OggVorbis_File OggDescriptor;
 
@@ -87,29 +87,29 @@ public:
 	void ClearSounds();
 	void Process();
 
-	DWORD GetSoundVolume();
-	DWORD GetMusicVolume();
-	DWORD GetSoundVolumeDb();
-	DWORD GetMusicVolumeDb();
+	uint GetSoundVolume();
+	uint GetMusicVolume();
+	uint GetSoundVolumeDb();
+	uint GetMusicVolumeDb();
 	void SetSoundVolume(int vol_proc);
 	void SetMusicVolume(int vol_proc);
 
 	bool PlaySound(const char* name);
-	bool PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
-	bool PlayMusic(const char* fname, DWORD pos = 0, DWORD repeat = MUSIC_PLAY_PAUSE);
+	bool PlaySoundType(uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext);
+	bool PlayMusic(const char* fname, uint pos = 0, uint repeat = MUSIC_PLAY_PAUSE);
 	void StopMusic();
 	void PlayAmbient(const char* str);
 
 private:
-	void Play(Sound* sound, int vol_db, DWORD flags);
+	void Play(Sound* sound, int vol_db, uint flags);
 	Sound* Load(const char* fname, int path_type);
-	bool LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data);
-	bool LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data, bool mono);
-	bool LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data);
+	bool LoadWAV(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data);
+	bool LoadACM(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data, bool mono);
+	bool LoadOGG(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data);
 	bool Streaming(Sound* sound);
-	bool StreamingWAV(Sound* sound, BYTE*& sample_data, DWORD& size_data);
-	bool StreamingACM(Sound* sound, BYTE*& sample_data, DWORD& size_data);
-	bool StreamingOGG(Sound* sound, BYTE*& sample_data, DWORD& size_data);
+	bool StreamingWAV(Sound* sound, uchar*& sample_data, uint& size_data);
+	bool StreamingACM(Sound* sound, uchar*& sample_data, uint& size_data);
+	bool StreamingOGG(Sound* sound, uchar*& sample_data, uint& size_data);
 
 	bool isActive;
 	int soundVolDb;

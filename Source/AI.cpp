@@ -85,24 +85,24 @@ label_ParseNext:
 
 bool NpcAIMngr::Init()
 {
-	WriteLog("AI manager initialization...\n");
+	WriteLog(NULL,"AI manager initialization...\n");
 	if(!LoadNpcBags()) return false;
-	WriteLog("AI manager initialization complete.\n");
+	WriteLog(NULL,"AI manager initialization complete.\n");
 	return true;
 }
 
 void NpcAIMngr::Finish()
 {
-	WriteLog("AI manager finish.\n");
+	WriteLog(NULL,"AI manager finish.\n");
 	npcBags.clear();
-	WriteLog("AI manager finish success.\n");
+	WriteLog(NULL,"AI manager finish success.\n");
 }
 
 /************************************************************************/
 /* Get                                                                  */
 /************************************************************************/
 
-NpcBag& NpcAIMngr::GetBag(DWORD num)
+NpcBag& NpcAIMngr::GetBag(uint num)
 {
 	return num<npcBags.size()?npcBags[num]:npcBags[0];
 }
@@ -113,12 +113,12 @@ NpcBag& NpcAIMngr::GetBag(DWORD num)
 
 bool NpcAIMngr::LoadNpcBags()
 {
-	WriteLog("Find bags...\n");
+	WriteLog(NULL,"Find bags...\n");
 
 	IniParser bags_txt;
 	if(!bags_txt.LoadFile(BAGS_FILE_NAME,PT_SERVER_DATA))
 	{
-		WriteLog("<%s> not found.\n",FileManager::GetFullPath(BAGS_FILE_NAME,PT_SERVER_DATA));
+		WriteLog(NULL,"<%s> not found.\n",FileManager::GetFullPath(BAGS_FILE_NAME,PT_SERVER_DATA));
 		return false;
 	}
 
@@ -138,7 +138,7 @@ bool NpcAIMngr::LoadNpcBags()
 		StrVec comb;
 		Str::ParseLine<StrVec,string(*)(const char*)>(bag_str,' ',comb,ParseBagComb);
 
-		for(int j=0;j<comb.size();j++)
+		for(uint j=0;j<comb.size();j++)
 		{
 			string& c=comb[j];
 			StringNpcBagCombMap::iterator it=loaded_comb.find(c);
@@ -147,7 +147,7 @@ bool NpcAIMngr::LoadNpcBags()
 				// Get combination line
 				if(!bags_txt.GetStr(c.c_str(),"",bag_str))
 				{
-					WriteLog("Items combination<%s> not found.\n",c.c_str());
+					WriteLog(NULL,"Items combination<%s> not found.\n",c.c_str());
 					delete[] bag_str;
 					return false;
 				}
@@ -156,15 +156,15 @@ bool NpcAIMngr::LoadNpcBags()
 				NpcBagCombination items_comb;
 				Str::ParseLine<NpcBagCombination,NpcBagItems(*)(const char*)>(bag_str,' ',items_comb,ParseBagItems);
 				// Check
-				for(int l=0;l<items_comb.size();l++)
+				for(uint l=0;l<items_comb.size();l++)
 				{
 					NpcBagItems& items=items_comb[l];
-					for(int k=0;k<items.size();k++)
+					for(uint k=0;k<items.size();k++)
 					{
 						NpcBagItem& b=items[k];
 						if(b.ItemPid>=MAX_ITEM_PROTOTYPES || b.MinCnt>b.MaxCnt)
 						{
-							WriteLog("Invalid items combination<%s>, Item combination<%d>, number<%d>.\n",c.c_str(),l,k);
+							WriteLog(NULL,"Invalid items combination<%s>, Item combination<%d>, number<%d>.\n",c.c_str(),l,k);
 							delete[] bag_str;
 							return false;
 						}
@@ -183,7 +183,7 @@ bool NpcAIMngr::LoadNpcBags()
 	// LogSetProperty(LogProp_WithTime,1);
 
 	delete[] bag_str;
-	WriteLog("Loaded<%d> bags.\n",bag_count);
+	WriteLog(NULL,"Loaded<%d> bags.\n",bag_count);
 	return true;
 }
 

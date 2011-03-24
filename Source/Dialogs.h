@@ -37,7 +37,7 @@ class DemandResult
 public:
 	char    Type;           // Type of demand or result
 	char    Who;            // Direction ('p' - player, 'n' - npc)
-	WORD    ParamId;        // Parameter Id
+	ushort    ParamId;        // Parameter Id
 	bool    NoRecheck;      // Disable demand rechecking
 	bool    RetValue;       // Reserved
 	char    Op;             // Operation
@@ -66,8 +66,8 @@ typedef vector<DemandResult>::iterator DemandResultVecIt;
 class DialogAnswer
 {
 public:
-	DWORD Link;
-	DWORD TextId;
+	uint Link;
+	uint TextId;
 	DemandResultVec Demands;
 	DemandResultVec Results;
 
@@ -85,10 +85,10 @@ typedef vector<DialogAnswer>::iterator AnswersVecIt;
 class Dialog
 {
 public:
-	DWORD Id;
-	DWORD TextId;
+	uint Id;
+	uint TextId;
 	AnswersVec Answers;
-	DWORD Flags;
+	uint Flags;
 	bool RetVal;
 
 #ifdef FONLINE_NPCEDITOR
@@ -107,7 +107,7 @@ public:
 	Dialog(const Dialog& r){*this=r; MEMORY_PROCESS(MEMORY_DIALOG,sizeof(Dialog));}
 	~Dialog(){MEMORY_PROCESS(MEMORY_DIALOG,-(int)sizeof(Dialog));}
 #endif
-	bool operator==(const DWORD& r){return Id==r;}
+	bool operator==(const uint& r){return Id==r;}
 };
 typedef vector<Dialog> DialogsVec;
 typedef vector<Dialog>::iterator DialogsVecIt;
@@ -115,19 +115,19 @@ typedef vector<Dialog>::iterator DialogsVecIt;
 class DialogPack
 {
 public:
-	DWORD PackId;
+	uint PackId;
 	string PackName;
-	WORD MaxTalk;
+	ushort MaxTalk;
 	DialogsVec Dialogs;
 	StrVec TextsLang;
 	FOMsgVec Texts;
 	string Comment;
 
-	DialogPack(DWORD id, string& name):PackId(id),MaxTalk(1),PackName(name){}
+	DialogPack(uint id, string name):PackId(id),MaxTalk(1),PackName(name){}
 };
-typedef map<DWORD,DialogPack*,less<DWORD>> DialogPackMap;
-typedef map<DWORD,DialogPack*,less<DWORD>>::iterator DialogPackMapIt;
-typedef map<DWORD,DialogPack*,less<DWORD>>::value_type DialogPackMapVal;
+typedef map<uint,DialogPack*> DialogPackMap;
+typedef map<uint,DialogPack*>::iterator DialogPackMapIt;
+typedef map<uint,DialogPack*>::value_type DialogPackMapVal;
 
 struct Talking
 {
@@ -135,15 +135,15 @@ struct Talking
 #define TALK_NONE           (0)
 #define TALK_WITH_NPC       (1)
 #define TALK_WITH_HEX       (2)
-	DWORD TalkNpc;
-	DWORD TalkHexMap;
-	WORD TalkHexX,TalkHexY;
+	uint TalkNpc;
+	uint TalkHexMap;
+	ushort TalkHexX,TalkHexY;
 
-	DWORD DialogPackId;
+	uint DialogPackId;
 	Dialog CurDialog;
-	DWORD LastDialogId;
-	DWORD StartTick;
-	DWORD TalkTime;
+	uint LastDialogId;
+	uint StartTick;
+	uint TalkTime;
 	bool Barter;
 	bool IgnoreDistance;
 	string Lexems;
@@ -171,7 +171,7 @@ class DialogManager
 {
 public:
 	DialogPackMap DialogsPacks;
-	StrDwordMap DlgPacksNames;
+	StrUIntMap DlgPacksNames;
 	string LastErrors;
 
 	bool LoadDialogs(const char* list_name);
@@ -180,14 +180,14 @@ public:
 
 	bool AddDialogs(DialogPack* pack);
 
-	DialogPack* GetDialogPack(DWORD num_pack);
-	DialogsVec* GetDialogs(DWORD num_pack);
+	DialogPack* GetDialogPack(uint num_pack);
+	DialogsVec* GetDialogs(uint num_pack);
 
-	void EraseDialogs(DWORD num_pack);
+	void EraseDialogs(uint num_pack);
 	void EraseDialogs(string name_pack);
 
-	DialogPack* ParseDialog(const char* name, DWORD id, const char* data);
-	WORD GetTempVarId(const char* str);
+	DialogPack* ParseDialog(const char* name, uint id, const char* data);
+	ushort GetTempVarId(const char* str);
 
 private:
 	DemandResult* LoadDemandResult(istrstream& input, bool is_demand);

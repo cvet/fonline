@@ -11,7 +11,7 @@ class DataFile
 {
 public:
 	virtual const string& GetPackName() = 0;
-	virtual BYTE* OpenFile(const char* fname, DWORD& len) = 0;
+	virtual uchar* OpenFile(const char* fname, uint& len) = 0;
 	virtual void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result) = 0;
 	virtual void GetTime(FILETIME* create, FILETIME* access, FILETIME* write) = 0;
 	virtual ~DataFile(){}

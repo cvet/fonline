@@ -25,45 +25,45 @@ public:
 	void Clear();
 
 	bool LoadProtos();
-	CritData* GetProto(WORD proto_id);
+	CritData* GetProto(ushort proto_id);
 	CritData* GetAllProtos();
 
 #ifdef FONLINE_SERVER
 private:
 	CrMap allCritters;
-	DwordVec crToDelete;
-	DWORD lastNpcId;
-	DWORD playersCount,npcCount;
+	UIntVec crToDelete;
+	uint lastNpcId;
+	uint playersCount,npcCount;
 	Mutex crLocker;
 
 public:
 	void SaveCrittersFile(void(*save_func)(void*,size_t));
-	bool LoadCrittersFile(FILE* f, DWORD version);
+	bool LoadCrittersFile(FILE* f, uint version);
 
 	void RunInitScriptCritters();
 
 	void CritterToGarbage(Critter* cr);
 	void CritterGarbager();
 
-	Npc* CreateNpc(WORD proto_id, DWORD params_count, int* params, DWORD items_count, int* items, const char* script, Map* map, WORD hx, WORD hy, BYTE dir, bool accuracy);
-	Npc* CreateNpc(WORD proto_id, bool copy_data);
+	Npc* CreateNpc(ushort proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy);
+	Npc* CreateNpc(ushort proto_id, bool copy_data);
 
 	void AddCritter(Critter* cr);
 	CrMap& GetCrittersNoLock(){return allCritters;}
 	void GetCopyCritters(CrVec& critters, bool sync_lock);
 	void GetCopyNpcs(PcVec& npcs, bool sync_lock);
 	void GetCopyPlayers(ClVec& players, bool sync_lock);
-	void GetGlobalMapCritters(WORD wx, WORD wy, DWORD radius, int find_type, CrVec& critters, bool sync_lock);
-	Critter* GetCritter(DWORD crid, bool sync_lock);
-	Client* GetPlayer(DWORD crid, bool sync_lock);
+	void GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int find_type, CrVec& critters, bool sync_lock);
+	Critter* GetCritter(uint crid, bool sync_lock);
+	Client* GetPlayer(uint crid, bool sync_lock);
 	Client* GetPlayer(const char* name, bool sync_lock);
-	Npc* GetNpc(DWORD crid, bool sync_lock);
+	Npc* GetNpc(uint crid, bool sync_lock);
 	void EraseCritter(Critter* cr);
-	void GetNpcIds(DwordSet& npc_ids);
+	void GetNpcIds(UIntSet& npc_ids);
 
-	DWORD PlayersInGame();
-	DWORD NpcInGame();
-	DWORD CrittersInGame();
+	uint PlayersInGame();
+	uint NpcInGame();
+	uint CrittersInGame();
 
 #endif // FONLINE_SERVER
 

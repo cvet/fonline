@@ -13,24 +13,24 @@
 class CritterCl
 {
 public:
-	DWORD Id;
-	WORD Pid;
-	WORD HexX,HexY;
-	BYTE CrDir;
+	uint Id;
+	ushort Pid;
+	ushort HexX,HexY;
+	uchar CrDir;
 	int Params[MAX_PARAMS];
-	DWORD NameColor;
-	DWORD ContourColor;
-	WordVec LastHexX,LastHexY;
-	BYTE Cond;
-	DWORD Anim1Life;
-	DWORD Anim1Knockout;
-	DWORD Anim1Dead;
-	DWORD Anim2Life;
-	DWORD Anim2Knockout;
-	DWORD Anim2Dead;
-	DWORD Flags;
-	DWORD BaseType,BaseTypeAlias;
-	DWORD ApRegenerationTick;
+	uint NameColor;
+	uint ContourColor;
+	UShortVec LastHexX,LastHexY;
+	uchar Cond;
+	uint Anim1Life;
+	uint Anim1Knockout;
+	uint Anim1Dead;
+	uint Anim2Life;
+	uint Anim2Knockout;
+	uint Anim2Dead;
+	uint Flags;
+	uint BaseType,BaseTypeAlias;
+	uint ApRegenerationTick;
 	short Multihex;
 
 	string Name;
@@ -54,8 +54,8 @@ public:
 	CritterCl* ThisPtr[MAX_PARAMETERS_ARRAYS];
 	static int ParamsChangeScript[MAX_PARAMS];
 	static int ParamsGetScript[MAX_PARAMS];
-	static DWORD ParametersMin[MAX_PARAMETERS_ARRAYS];
-	static DWORD ParametersMax[MAX_PARAMETERS_ARRAYS];
+	static uint ParametersMin[MAX_PARAMETERS_ARRAYS];
+	static uint ParametersMax[MAX_PARAMETERS_ARRAYS];
 	static bool ParametersOffset[MAX_PARAMETERS_ARRAYS];
 	bool ParamsIsChanged[MAX_PARAMS];
 	IntVec ParamsChanged;
@@ -69,20 +69,20 @@ public:
 	void Finish();
 	void GenParams();
 
-	DWORD GetId(){return Id;}
+	uint GetId(){return Id;}
 	const char* GetInfo(){return Name.c_str();}
-	WORD GetHexX(){return HexX;}
-	WORD GetHexY(){return HexY;}
+	ushort GetHexX(){return HexX;}
+	ushort GetHexY(){return HexY;}
 	bool IsLastHexes();
 	void FixLastHexes();
-	WORD PopLastHexX();
-	WORD PopLastHexY();
-	void SetBaseType(DWORD type);
-	void SetDir(BYTE dir);
-	BYTE GetDir(){return CrDir;}
-	DWORD GetCrTypeAlias();
+	ushort PopLastHexX();
+	ushort PopLastHexY();
+	void SetBaseType(uint type);
+	void SetDir(uchar dir);
+	uchar GetDir(){return CrDir;}
+	uint GetCrTypeAlias();
 
-	void Animate(DWORD anim1, DWORD anim2, Item* item);
+	void Animate(uint anim1, uint anim2, Item* item);
 	void AnimateStay();
 	void Action(int action, int action_ext, Item* item, bool local_call = true);
 	void Process();
@@ -106,22 +106,22 @@ public:
 	bool IsCombatMode(){return GetParam(TO_BATTLE)!=0;}
 	bool IsTurnBased(){return TB_BATTLE_TIMEOUT_CHECK(GetParam(TO_BATTLE));}
 
-	DWORD GetLook();
-	DWORD GetTalkDistance();
-	DWORD GetAttackDist();
-	DWORD GetUseDist();
-	DWORD GetMultihex();
+	uint GetLook();
+	uint GetTalkDistance();
+	uint GetAttackDist();
+	uint GetUseDist();
+	uint GetMultihex();
 
-	int GetParam(DWORD index);
-	bool IsRawParam(DWORD index){return Params[index]!=0;}
-	int GetRawParam(DWORD index){return Params[index];}
-	void ChangeParam(DWORD index);
+	int GetParam(uint index);
+	bool IsRawParam(uint index){return Params[index]!=0;}
+	int GetRawParam(uint index){return Params[index];}
+	void ChangeParam(uint index);
 	void ProcessChangedParams();
 
-	bool IsTagSkill(DWORD index){return Params[TAG_SKILL1]==index || Params[TAG_SKILL2]==index || Params[TAG_SKILL3]==index || Params[TAG_SKILL4]==index;}
-	DWORD GetMaxWeightKg(){return GetParam(ST_CARRY_WEIGHT)/1000;}
-	DWORD GetMaxVolume(){return CRITTER_INV_VOLUME;}
-	DWORD GetCrType();
+	bool IsTagSkill(uint index){return Params[TAG_SKILL1]==index || Params[TAG_SKILL2]==index || Params[TAG_SKILL3]==index || Params[TAG_SKILL4]==index;}
+	uint GetMaxWeightKg(){return GetParam(ST_CARRY_WEIGHT)/1000;}
+	uint GetMaxVolume(){return CRITTER_INV_VOLUME;}
+	uint GetCrType();
 	bool IsDmgLeg(){return IsRawParam(DAMAGE_RIGHT_LEG) || IsRawParam(DAMAGE_LEFT_LEG);}
 	bool IsDmgTwoLeg(){return IsRawParam(DAMAGE_RIGHT_LEG) && IsRawParam(DAMAGE_LEFT_LEG);}
 	bool IsDmgArm(){return IsRawParam(DAMAGE_RIGHT_ARM) || IsRawParam(DAMAGE_LEFT_ARM);}
@@ -137,50 +137,50 @@ public:
 	void AddItem(Item* item);
 	void EraseItem(Item* item, bool animate);
 	void EraseAllItems();
-	Item* GetItem(DWORD item_id);
-	Item* GetItemByPid(WORD item_pid);
-	Item* GetAmmo(DWORD caliber);
+	Item* GetItem(uint item_id);
+	Item* GetItemByPid(ushort item_pid);
+	Item* GetAmmo(uint caliber);
 	Item* GetItemSlot(int slot);
 	void GetItemsSlot(int slot, ItemPtrVec& items);
 	void GetItemsType(int slot, ItemPtrVec& items);
-	DWORD CountItemPid(WORD item_pid);
-	DWORD CountItemType(BYTE type);
-	bool MoveItem(DWORD item_id, BYTE to_slot, DWORD count);
+	uint CountItemPid(ushort item_pid);
+	uint CountItemType(uchar type);
+	bool MoveItem(uint item_id, uchar to_slot, uint count);
 	bool IsCanSortItems();
 	Item* GetItemHighSortValue();
 	Item* GetItemLowSortValue();
 	void GetInvItems(ItemVec& items);
-	DWORD GetItemsCount();
-	DWORD GetItemsCountInv();
-	DWORD GetItemsWeight();
-	DWORD GetItemsWeightKg();
-	DWORD GetItemsVolume();
+	uint GetItemsCount();
+	uint GetItemsCountInv();
+	uint GetItemsWeight();
+	uint GetItemsWeightKg();
+	uint GetItemsVolume();
 	int GetFreeWeight();
 	int GetFreeVolume();
 	bool IsHaveLightSources();
-	Item* GetSlotUse(BYTE num_slot, BYTE& use);
-	DWORD GetUsePicName(BYTE num_slot);
-	bool IsItemAim(BYTE num_slot);
-	BYTE GetUse(){return ItemSlotMain->Data.Mode&0xF;}
-	BYTE GetFullRate(){return ItemSlotMain->Data.Mode;}
+	Item* GetSlotUse(uchar num_slot, uchar& use);
+	uint GetUsePicName(uchar num_slot);
+	bool IsItemAim(uchar num_slot);
+	uchar GetUse(){return ItemSlotMain->Data.Mode&0xF;}
+	uchar GetFullRate(){return ItemSlotMain->Data.Mode;}
 	bool NextRateItem(bool prev);
-	BYTE GetAim(){return (ItemSlotMain->Data.Mode>>4)&0xF;}
+	uchar GetAim(){return (ItemSlotMain->Data.Mode>>4)&0xF;}
 	bool IsAim(){return GetAim()>0;}
-	void SetAim(BYTE hit_location);
-	DWORD GetUseApCost(Item* item, BYTE rate);
-	ProtoItem* GetUnarmedItem(BYTE tree, BYTE priority);
+	void SetAim(uchar hit_location);
+	uint GetUseApCost(Item* item, uchar rate);
+	ProtoItem* GetUnarmedItem(uchar tree, uchar priority);
 	ProtoItem* GetProtoMain(){return ItemSlotMain->Proto;}
 	ProtoItem* GetProtoExt(){return ItemSlotExt->Proto;}
 	ProtoItem* GetProtoArm(){return ItemSlotArmor->Proto;}
 	const char* GetMoneyStr();
 	Item* GetAmmoAvialble(Item* weap);
-	bool IsOverweight(){return GetItemsWeight()>GetParam(ST_CARRY_WEIGHT);}
-	bool IsDoubleOverweight(){return GetItemsWeight()>GetParam(ST_CARRY_WEIGHT)*2;}
+	bool IsOverweight(){return (int)GetItemsWeight()>GetParam(ST_CARRY_WEIGHT);}
+	bool IsDoubleOverweight(){return (int)GetItemsWeight()>GetParam(ST_CARRY_WEIGHT)*2;}
 
 	// Moving
 public:
 	bool IsRunning;
-	WordPairVec MoveSteps;
+	UShortPairVec MoveSteps;
 	int CurMoveStep;
 	bool IsNeedMove(){return MoveSteps.size() && !IsWalkAnim();}
 	void ZeroSteps(){MoveSteps.clear(); CurMoveStep=0;}
@@ -189,7 +189,7 @@ public:
 	// ReSet
 private:
 	bool needReSet;
-	DWORD reSetTick;
+	uint reSetTick;
 
 public:
 	bool IsNeedReSet(){return needReSet && Timer::GameTick()>=reSetTick;}
@@ -197,10 +197,10 @@ public:
 
 	// Time
 public:
-	DWORD TickCount;
-	DWORD StartTick;
+	uint TickCount;
+	uint StartTick;
 
-	void TickStart(DWORD ms){TickCount=ms; StartTick=Timer::GameTick();}
+	void TickStart(uint ms){TickCount=ms; StartTick=Timer::GameTick();}
 	void TickNull(){TickCount=0;}
 	bool IsFree(){return (Timer::GameTick()-StartTick>=TickCount);}
 
@@ -208,29 +208,29 @@ public:
 public:
 	static AnyFrames* DefaultAnim;
 	void* Layers3d;
-	DWORD GetAnim1();
-	DWORD GetAnim2();
-	void ProcessAnim(bool animate_stay, bool is2d, DWORD anim1, DWORD anim2, Item* item);
+	uint GetAnim1();
+	uint GetAnim2();
+	void ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item);
 	int* GetLayers3dData();
-	bool IsAnimAviable(DWORD anim1, DWORD anim2);
+	bool IsAnimAviable(uint anim1, uint anim2);
 
 private:
-	DWORD curSpr,lastEndSpr;
-	DWORD animStartTick;
+	uint curSpr,lastEndSpr;
+	uint animStartTick;
 
 	struct CritterAnim
 	{
 		AnyFrames* Anim;
-		DWORD AnimTick;
+		uint AnimTick;
 		int BeginFrm;
 		int EndFrm;
 		bool MoveText;
 		int DirOffs;
-		DWORD IndCrType,IndAnim1,IndAnim2;
+		uint IndCrType,IndAnim1,IndAnim2;
 		Item* ActiveItem;
 		CritterAnim(){}
-		CritterAnim(AnyFrames* anim, DWORD tick, int beg_frm, int end_frm, bool move_text, int dir_offs,
-			DWORD ind_crtype, DWORD ind_anim1, DWORD ind_anim2, Item* item):
+		CritterAnim(AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs,
+			uint ind_crtype, uint ind_anim1, uint ind_anim2, Item* item):
 			Anim(anim),AnimTick(tick),BeginFrm(beg_frm),EndFrm(end_frm),MoveText(move_text),DirOffs(dir_offs),
 			IndCrType(ind_crtype),IndAnim1(ind_anim1),IndAnim2(ind_anim2),ActiveItem(item){}
 	};
@@ -246,17 +246,17 @@ public:
 	Animation3d* Anim3d;
 	Animation3d* Anim3dStay;
 	bool Visible;
-	BYTE Alpha;
+	uchar Alpha;
 	INTRECT DRect;
 	bool SprDrawValid;
 	Sprite* SprDraw;
-	DWORD SprId;
+	uint SprId;
 	short SprOx,SprOy;
 	// Extra offsets
 	short OxExtI,OyExtI;
 	float OxExtF,OyExtF;
 	float OxExtSpeed,OyExtSpeed;
-	DWORD OffsExtNextTick;
+	uint OffsExtNextTick;
 
 	void SetSprRect();
 	bool Is3dAnim(){return Anim3d!=NULL;}
@@ -274,11 +274,11 @@ public:
 	// Stay sprite
 private:
 	int staySprDir;
-	DWORD staySprTick;
+	uint staySprTick;
 
 	// Finish
 private:
-	DWORD finishingTime;
+	uint finishingTime;
 
 public:
 	bool IsFinishing(){return finishingTime!=0;}
@@ -290,24 +290,24 @@ private:
 	bool fadeUp;
 
 	void SetFade(bool fade_up);
-	BYTE GetFadeAlpha();
+	uchar GetFadeAlpha();
 
 public:
-	DWORD FadingTick;
+	uint FadingTick;
 
 	// Text
 public:
 	INTRECT GetTextRect();
-	void SetText(const char* str, DWORD color, DWORD text_delay);
+	void SetText(const char* str, uint color, uint text_delay);
 	void DrawTextOnHead();
 
 private:
 	INTRECT textRect;
-	DWORD tickFidget;
+	uint tickFidget;
 	string strTextOnHead;
-	DWORD tickStartText;
-	DWORD tickTextDelay;
-	DWORD textOnHeadColor;
+	uint tickStartText;
+	uint tickTextDelay;
+	uint textOnHeadColor;
 
 	// Ap cost
 public:
@@ -327,9 +327,9 @@ public:
 	void Release(){RefCounter--; if(RefCounter<=0) delete this;}
 };
 
-typedef map<DWORD,CritterCl*,less<DWORD>> CritMap;
-typedef map<DWORD,CritterCl*,less<DWORD>>::iterator CritMapIt;
-typedef map<DWORD,CritterCl*,less<DWORD>>::value_type CritMapVal;
+typedef map<uint,CritterCl*,less<uint>> CritMap;
+typedef map<uint,CritterCl*,less<uint>>::iterator CritMapIt;
+typedef map<uint,CritterCl*,less<uint>>::value_type CritMapVal;
 typedef vector<CritterCl*> CritVec;
 typedef vector<CritterCl*>::iterator CritVecIt;
 typedef CritterCl* CritterClPtr;

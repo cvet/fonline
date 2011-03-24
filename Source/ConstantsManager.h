@@ -18,11 +18,11 @@ namespace ConstantsManager
 	int GetValue(int collection, const char* str);
 	const char* GetName(int collection, int value);
 	int GetParamId(const char* str);
-	const char* GetParamName(DWORD index);
+	const char* GetParamName(uint index);
 	int GetItemPid(const char* str);
-	const char* GetItemName(WORD pid);
+	const char* GetItemName(ushort pid);
 	int GetDefineValue(const char* str);
-	const char* GetPictureName(DWORD index);
+	const char* GetPictureName(uint index);
 };
 
 #endif // __CONSTANTS_MANAGER__

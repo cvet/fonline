@@ -37,11 +37,11 @@ int VolumeToDb(int vol_level)
 	return (int)(-2000.0*log10(1.0/level));
 }
 
-DWORD DbToVolume(int vol_db)
+uint DbToVolume(int vol_db)
 {
 	if(vol_db<=-9600) return 0;
 	else if(vol_db>=0) return 100;
-	return (DWORD)(pow(10,double(vol_db+2000)/2000.0)*10.0);
+	return (uint)(pow(10,double(vol_db+2000)/2000.0)*10.0);
 }
 
 /************************************************************************/
@@ -52,31 +52,31 @@ bool SoundManager::Init(HWND wnd)
 {
 	if(isActive) return true;
 
-	WriteLog("Sound manager initialization...\n");
+	WriteLog(NULL,"Sound manager initialization...\n");
 	if(DirectSoundCreate8(0,&soundDevice,0)!=DS_OK)
 	{
-		WriteLog("Create DirectSound fail!\n");
+		WriteLog(NULL,"Create DirectSound fail!\n");
 		return false;
 	}
 
 	if(soundDevice->SetCooperativeLevel(wnd,DSSCL_NORMAL)!=DS_OK)
 	{
-		WriteLog("SetCooperativeLevel fail.\n");
+		WriteLog(NULL,"SetCooperativeLevel fail.\n");
 		return false;
 	}
 
 	isActive=true;
-	WriteLog("Sound manager initialization complete.\n");
+	WriteLog(NULL,"Sound manager initialization complete.\n");
 	return true;
 }
 
 void SoundManager::Clear()
 {
-	WriteLog("Sound manager finish.\n");
+	WriteLog(NULL,"Sound manager finish.\n");
 	ClearSounds();
 	SAFEREL(soundDevice);
 	isActive=false;
-	WriteLog("Sound manager finish complete.\n");
+	WriteLog(NULL,"Sound manager finish complete.\n");
 }
 
 void SoundManager::ClearSounds()
@@ -89,8 +89,8 @@ void SoundManager::Process()
 {
 	if(!isActive) return;
 
-	DWORD tick=Timer::FastTick();
-	static DWORD call_tick=0;
+	uint tick=Timer::FastTick();
+	static uint call_tick=0;
 	if(tick<call_tick) return;
 	call_tick=tick+MUSIC_PROCESS_TIME;
 
@@ -127,7 +127,7 @@ void SoundManager::Process()
 			DWORD play_cur;
 			if(sound->SndBuf->GetCurrentPosition(&play_cur,NULL)==DS_OK)
 			{
-				DWORD free_buf=0;
+				uint free_buf=0;
 				if(sound->BufOffs>=play_cur) free_buf=sound->BufSize-sound->BufOffs+play_cur;
 				else free_buf=play_cur-sound->BufOffs;
 				if(free_buf>=sound->BufSize*75/100 && !Streaming(sound))
@@ -148,22 +148,22 @@ void SoundManager::Process()
 	}
 }
 
-DWORD SoundManager::GetSoundVolume()
+uint SoundManager::GetSoundVolume()
 {
 	return DbToVolume(soundVolDb);
 }
 
-DWORD SoundManager::GetMusicVolume()
+uint SoundManager::GetMusicVolume()
 {
 	return DbToVolume(musicVolDb);
 }
 
-DWORD SoundManager::GetSoundVolumeDb()
+uint SoundManager::GetSoundVolumeDb()
 {
 	return soundVolDb;
 }
 
-DWORD SoundManager::GetMusicVolumeDb()
+uint SoundManager::GetMusicVolumeDb()
 {
 	return musicVolDb;
 }
@@ -194,7 +194,7 @@ void SoundManager::SetMusicVolume(int vol_proc)
 /* Loader                                                               */
 /************************************************************************/
 
-void SoundManager::Play(Sound* sound, int vol_db, DWORD flags)
+void SoundManager::Play(Sound* sound, int vol_db, uint flags)
 {
 	if(!sound) return;
 	if(sound->IsNeedStreaming) flags|=DSBPLAY_LOOPING;
@@ -226,7 +226,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 	Sound* sound=new(nothrow) Sound();
 	if(!sound)
 	{
-		WriteLog(__FUNCTION__" - Allocation error.\n");
+		WriteLog(_FUNC_," - Allocation error.\n");
 		return NULL;
 	}
 
@@ -255,7 +255,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 
 	if(soundDevice->CreateSoundBuffer(&dsbd,&sound->SndBuf,NULL)!=DS_OK)
 	{
-		WriteLog(__FUNCTION__" - CreateSoundBuffer error.\n");
+		WriteLog(_FUNC_," - CreateSoundBuffer error.\n");
 		delete sound;
 		delete[] sample_data;
 		return NULL;
@@ -265,7 +265,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 	DWORD size=0;
 	if(sound->SndBuf->Lock(0,sound->Decoded,&dst,&size,NULL,NULL,sound->IsNeedStreaming?0:DSBLOCK_ENTIREBUFFER)!=DS_OK)
 	{
-		WriteLog(__FUNCTION__" - Lock error.\n");
+		WriteLog(_FUNC_," - Lock error.\n");
 		delete sound;
 		delete[] sample_data;
 		return NULL;
@@ -278,38 +278,38 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 	return sound;
 }
 
-bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data)
+bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data)
 {
 	FileManager fm;
 	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType)) return NULL;
 
-	DWORD dw_buf=fm.GetLEDWord();
+	uint dw_buf=fm.GetLEUInt();
 	if(dw_buf!=MAKEFOURCC('R','I','F','F'))
 	{
-		WriteLog(__FUNCTION__" - <RIFF> not found.\n");
+		WriteLog(_FUNC_," - <RIFF> not found.\n");
 		return false;
 	}
 
 	fm.GoForward(4);
 
-	dw_buf=fm.GetLEDWord();
+	dw_buf=fm.GetLEUInt();
 	if(dw_buf!=MAKEFOURCC('W','A','V','E'))
 	{
-		WriteLog(__FUNCTION__" - <WAVE> not found.\n");
+		WriteLog(_FUNC_," - <WAVE> not found.\n");
 		return false;
 	}
 
-	dw_buf=fm.GetLEDWord();
+	dw_buf=fm.GetLEUInt();
 	if(dw_buf!=MAKEFOURCC('f','m','t',' '))
 	{
-		WriteLog(__FUNCTION__" - <fmt > not found.\n");
+		WriteLog(_FUNC_," - <fmt > not found.\n");
 		return false;
 	}
 
-	dw_buf=fm.GetLEDWord();
+	dw_buf=fm.GetLEUInt();
 	if(!dw_buf)
 	{
-		WriteLog(__FUNCTION__" - Unknown format.\n");
+		WriteLog(_FUNC_," - Unknown format.\n");
 		return false;
 	}
 
@@ -318,33 +318,33 @@ bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 
 	if(fformat.wFormatTag!=1)
 	{
-		WriteLog(__FUNCTION__" - Compressed files not supported.\n");
+		WriteLog(_FUNC_," - Compressed files not supported.\n");
 		return false;
 	}
 
 	fm.GoForward(dw_buf-16);
 
-	dw_buf=fm.GetLEDWord();
+	dw_buf=fm.GetLEUInt();
 	if(dw_buf==MAKEFOURCC('f','a','c','t'))
 	{
-		dw_buf=fm.GetLEDWord();
+		dw_buf=fm.GetLEUInt();
 		fm.GoForward(dw_buf);
-		dw_buf=fm.GetLEDWord();
+		dw_buf=fm.GetLEUInt();
 	}
 
 	if(dw_buf!=MAKEFOURCC('d','a','t','a'))
 	{
-		WriteLog(__FUNCTION__" - Unknown format2.\n");
+		WriteLog(_FUNC_," - Unknown format2.\n");
 		return false;
 	}
 
-	dw_buf=fm.GetLEDWord();
+	dw_buf=fm.GetLEUInt();
 	sound->BufSize=dw_buf;
 	sample_data=new(nothrow) unsigned char[dw_buf];
 
 	if(!fm.CopyMem(sample_data,dw_buf))
 	{
-		WriteLog(__FUNCTION__" - File truncated.\n");
+		WriteLog(_FUNC_," - File truncated.\n");
 		delete[] sample_data;
 		return false;
 	}
@@ -352,7 +352,7 @@ bool SoundManager::LoadWAV(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	return true;
 }
 
-bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data, bool mono)
+bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data, bool mono)
 {
 	FileManager fm;
 	if(!fm.LoadFile(sound->FileName.c_str(),sound->PathType)) return NULL;
@@ -366,7 +366,7 @@ bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 
 	if(!acm.IsValid())
 	{
-		WriteLog(__FUNCTION__" - ACMUnpacker init fail.\n");
+		WriteLog(_FUNC_," - ACMUnpacker init fail.\n");
 		return false;
 	}
 
@@ -396,10 +396,10 @@ bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 
 	sound->BufSize=samples;
 	sample_data=new(nothrow) unsigned char[samples];
-	int dec_data=acm->readAndDecompress((WORD*)sample_data,samples);
+	int dec_data=acm->readAndDecompress((ushort*)sample_data,samples);
 	if(dec_data!=samples)
 	{
-		WriteLog(__FUNCTION__" - Decode Acm error.\n");
+		WriteLog(_FUNC_," - Decode Acm error.\n");
 		delete[] sample_data;
 		return false;
 	}
@@ -418,8 +418,8 @@ int Ogg_seek_func(void* datasource, ogg_int64_t offset, int whence)
 	FileManager* fm=(FileManager*)datasource;
 	switch(whence)
 	{
-	case SEEK_SET: fm->SetCurPos(offset); break;
-	case SEEK_CUR: fm->GoForward(offset); break;
+	case SEEK_SET: fm->SetCurPos((uint)offset); break;
+	case SEEK_CUR: fm->GoForward((uint)offset); break;
 	case SEEK_END: fm->SetCurPos(fm->GetFsize()); break;
 	default: return -1;
 	}
@@ -439,7 +439,7 @@ long Ogg_tell_func(void* datasource)
 	return fm->GetCurPos();
 }
 
-bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_data)
+bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data)
 {
 	FileManager* fm=new(nothrow) FileManager();
 	if(!fm || !fm->LoadFile(sound->FileName.c_str(),sound->PathType))
@@ -457,15 +457,15 @@ bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 	int error=ov_open_callbacks(fm,&sound->OggDescriptor,NULL,0,callbacks);
 	if(error)
 	{
-		WriteLog(__FUNCTION__" - Open OGG file<%s> fail, error");
+		WriteLog(_FUNC_," - Open OGG file<%s> fail, error");
 		switch(error)
 		{
-		case OV_EREAD: WriteLog("<A read from media returned an error>.\n"); break;
-		case OV_ENOTVORBIS: WriteLog("<Bitstream does not contain any Vorbis data>.\n"); break;
-		case OV_EVERSION: WriteLog("<Vorbis version mismatch>.\n"); break;
-		case OV_EBADHEADER: WriteLog("<Invalid Vorbis bitstream header>.\n"); break;
-		case OV_EFAULT: WriteLog("<Internal logic fault; indicates a bug or heap/stack corruption>.\n"); break;
-		default: WriteLog("<Unknown error code %d>.\n",error); break;
+		case OV_EREAD: WriteLog(NULL,"<A read from media returned an error>.\n"); break;
+		case OV_ENOTVORBIS: WriteLog(NULL,"<Bitstream does not contain any Vorbis data>.\n"); break;
+		case OV_EVERSION: WriteLog(NULL,"<Vorbis version mismatch>.\n"); break;
+		case OV_EBADHEADER: WriteLog(NULL,"<Invalid Vorbis bitstream header>.\n"); break;
+		case OV_EFAULT: WriteLog(NULL,"<Internal logic fault; indicates a bug or heap/stack corruption>.\n"); break;
+		default: WriteLog(NULL,"<Unknown error code %d>.\n",error); break;
 		}
 		return false;
 	}
@@ -473,7 +473,7 @@ bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
     vorbis_info* vi=ov_info(&sound->OggDescriptor,-1);
 	if(!vi)
 	{
-		WriteLog(__FUNCTION__" - ov_info error.\n");
+		WriteLog(_FUNC_," - ov_info error.\n");
 		ov_clear(&sound->OggDescriptor);
 		return false;
 	}
@@ -522,14 +522,14 @@ bool SoundManager::LoadOGG(Sound* sound, WAVEFORMATEX& fformat, BYTE*& sample_da
 bool SoundManager::Streaming(Sound* sound)
 {
 	unsigned char* smpl_data=NULL;
-	DWORD size_data=0;
-	DWORD decoded=0;
+	uint size_data=0;
+	uint decoded=0;
 
 	if(!((sound->MediaType==SOUND_FILE_WAV && StreamingWAV(sound,smpl_data,size_data))
 	|| (sound->MediaType==SOUND_FILE_ACM && StreamingACM(sound,smpl_data,size_data))
 	|| (sound->MediaType==SOUND_FILE_OGG && StreamingOGG(sound,smpl_data,size_data))))
 	{
-		WriteLog(__FUNCTION__" - Unable to stream sound.\n");
+		WriteLog(_FUNC_," - Unable to stream sound.\n");
 		SAFEDELA(smpl_data);
 		return false;
 	}
@@ -541,7 +541,7 @@ bool SoundManager::Streaming(Sound* sound)
 	HRESULT hr;
 	if((hr=sound->SndBuf->Lock(sound->BufOffs,size_data,&dst,&size,&dst_,&size_,0))!=DS_OK)
 	{
-		WriteLog(__FUNCTION__" - Lock error<%u>.\n",hr);
+		WriteLog(_FUNC_," - Lock error<%u>.\n",hr);
 		delete[] smpl_data;
 		return false;
 	}
@@ -550,7 +550,7 @@ bool SoundManager::Streaming(Sound* sound)
 	if(dst_) memcpy(dst_,smpl_data+size,size_);
 	if((hr=sound->SndBuf->Unlock(dst,size,dst_,size_))!=DS_OK)
 	{
-		WriteLog(__FUNCTION__" - Unlock error<%u>.\n",hr);
+		WriteLog(_FUNC_," - Unlock error<%u>.\n",hr);
 		delete[] smpl_data;
 		return false;
 	}
@@ -560,23 +560,23 @@ bool SoundManager::Streaming(Sound* sound)
 	return true;
 }
 
-bool SoundManager::StreamingWAV(Sound* sound, BYTE*& sample_data, DWORD& size_data)
+bool SoundManager::StreamingWAV(Sound* sound, uchar*& sample_data, uint& size_data)
 {
 	return false;
 }
 
-bool SoundManager::StreamingACM(Sound* sound, BYTE*& sample_data, DWORD& size_data)
+bool SoundManager::StreamingACM(Sound* sound, uchar*& sample_data, uint& size_data)
 {
 	return false;
 }
 
-bool SoundManager::StreamingOGG(Sound* sound, BYTE*& sample_data, DWORD& size_data)
+bool SoundManager::StreamingOGG(Sound* sound, uchar*& sample_data, uint& size_data)
 {
 	sample_data=new(nothrow) unsigned char[sound->BufSize];
 	if(!sample_data) return false;
 
 	int result=0;
-	DWORD decoded=0;
+	uint decoded=0;
 	while(true)
 	{
 		result=ov_read(&sound->OggDescriptor,(char*)(sample_data)+decoded,4096,0,2,1,NULL);
@@ -616,7 +616,7 @@ bool SoundManager::PlaySound(const char* name)
 	return true;
 }
 
-bool SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext)
+bool SoundManager::PlaySoundType(uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext)
 {
 	if(!isActive || !GetSoundVolume()) return true;
 
@@ -676,7 +676,7 @@ bool SoundManager::PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE soun
 	return PlaySound((*it).second.c_str());
 }
 
-bool SoundManager::PlayMusic(const char* fname, DWORD pos, DWORD repeat)
+bool SoundManager::PlayMusic(const char* fname, uint pos, uint repeat)
 {
 	if(!isActive || !GetMusicVolume()) return true;
 

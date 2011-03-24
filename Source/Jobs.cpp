@@ -109,16 +109,16 @@ size_t Job::Count()
 
 // Deferred releasing
 static CrVec DeferredReleaseCritters;
-static DwordVec DeferredReleaseCrittersCycle;
+static UIntVec DeferredReleaseCrittersCycle;
 static MapVec DeferredReleaseMaps;
-static DwordVec DeferredReleaseMapsCycle;
+static UIntVec DeferredReleaseMapsCycle;
 static LocVec DeferredReleaseLocs;
-static DwordVec DeferredReleaseLocsCycle;
+static UIntVec DeferredReleaseLocsCycle;
 static ItemPtrVec DeferredReleaseItems;
-static DwordVec DeferredReleaseItemsCycle;
+static UIntVec DeferredReleaseItemsCycle;
 static VarsVec DeferredReleaseVars;
-static DwordVec DeferredReleaseVarsCycle;
-static DWORD DeferredReleaseCycle=0;
+static UIntVec DeferredReleaseVarsCycle;
+static uint DeferredReleaseCycle=0;
 static Mutex DeferredReleaseLocker;
 
 void Job::DeferredRelease(Critter* cr)
@@ -161,11 +161,28 @@ void Job::DeferredRelease(GameVar* var)
 	DeferredReleaseVarsCycle.push_back(DeferredReleaseCycle);
 }
 
-void Job::SetDeferredReleaseCycle(DWORD cycle)
+void Job::SetDeferredReleaseCycle(uint cycle)
 {
 	SCOPE_LOCK(DeferredReleaseLocker);
 
 	DeferredReleaseCycle=cycle;
+}
+
+template<class T1, class T2>
+void ProcessDeferredReleasing_(T1& cont, T2& cont_cycle)
+{
+	uint del_count=0;
+	for(uint i=0,j=cont_cycle.size();i<j;i++)
+	{
+		if(cont_cycle[i]>=DeferredReleaseCycle-2) break;
+		else del_count++;
+	}
+	if(del_count)
+	{
+		for(uint i=0;i<del_count;i++) cont[i]->Release();
+		cont.erase(cont.begin(),cont.begin()+del_count);
+		cont_cycle.erase(cont_cycle.begin(),cont_cycle.begin()+del_count);
+	}
 }
 
 void Job::ProcessDeferredReleasing()
@@ -175,27 +192,9 @@ void Job::ProcessDeferredReleasing()
 	// Wait at least 3 cycles
 	if(DeferredReleaseCycle<3) return;
 
-//================================================================================================
-#define PROCESS_DEFERRED_RELEASING(name) \
-	{\
-		size_t del_count=0;\
-		for(size_t i=0,j=DeferredRelease##name##Cycle.size();i<j;i++)\
-		{\
-			if(DeferredRelease##name##Cycle[i]>=DeferredReleaseCycle-2) break;\
-			else del_count++;\
-		}\
-		if(del_count)\
-		{\
-			for(size_t i=0;i<del_count;i++) DeferredRelease##name##[i]->Release();\
-			DeferredRelease##name##.erase(DeferredRelease##name##.begin(),DeferredRelease##name##.begin()+del_count);\
-			DeferredRelease##name##Cycle.erase(DeferredRelease##name##Cycle.begin(),DeferredRelease##name##Cycle.begin()+del_count);\
-		}\
-	}\
-//================================================================================================
-
-	PROCESS_DEFERRED_RELEASING(Critters);
-	PROCESS_DEFERRED_RELEASING(Maps);
-	PROCESS_DEFERRED_RELEASING(Locs);
-	PROCESS_DEFERRED_RELEASING(Items);
-	PROCESS_DEFERRED_RELEASING(Vars);
+	ProcessDeferredReleasing_(DeferredReleaseCritters,DeferredReleaseCrittersCycle);
+	ProcessDeferredReleasing_(DeferredReleaseMaps,DeferredReleaseMapsCycle);
+	ProcessDeferredReleasing_(DeferredReleaseLocs,DeferredReleaseLocsCycle);
+	ProcessDeferredReleasing_(DeferredReleaseItems,DeferredReleaseItemsCycle);
+	ProcessDeferredReleasing_(DeferredReleaseVars,DeferredReleaseVarsCycle);
 }

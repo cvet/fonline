@@ -1,30 +1,46 @@
 #ifndef __COMMON__
 #define __COMMON__
 
-// Disable some warnings, erase in future
-#pragma warning (disable : 4786)
-#pragma warning (disable : 4018) // Signed-Unsigned mismatch
-#pragma warning (disable : 4244) // Conversion
-#pragma warning (disable : 4696) // Unsafe functions
+// Some platform specific definitions
+#include "PlatformSpecific.h"
 
-// Memory debug
-#ifdef _DEBUG
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
+// API
+#if defined(FO_WINDOWS)
+	#define WINVER 0x0501 // Windows XP
+	#define WIN32_LEAN_AND_MEAN
+	#include <Windows.h>
+#elif defined(FO_LINUX)
+	//
 #endif
 
-// WinSock
+// Network
 #if defined(FONLINE_CLIENT) || defined(FONLINE_SERVER)
-#include <winsock2.h>
-#pragma comment(lib,"Ws2_32.lib")
-const char* GetLastSocketError();
+	#if defined(FO_WINDOWS)
+		#include <winsock2.h>
+		#if defined(FO_MSVC)
+            #pragma comment(lib,"Ws2_32.lib")
+        #elif defined(FO_GCC)
+            // Linker option: -lws2_32
+        #endif
+	#elif defined(FO_LINUX)
+		// Todo: epoll/kqueue, libevent
+	#endif
 #endif
 
-// Windows API
-#include <Windows.h>
+// STL Port
+#if defined(FO_MSVC)
+	#ifndef _DEBUG
+		#pragma comment(lib,"stlport_static.lib")
+	#else
+		#pragma comment(lib,"stlportd_static.lib")
+	#endif
+#elif defined(FO_GCC)
+	// Linker option: -lstlport
+	// Define: _STLP_USE_STATIC_LIB
+#endif
 
-// STL
+// Standart stuff
+#include <stdio.h>
 #include <map>
 #include <string>
 #include <set>
@@ -34,6 +50,20 @@ const char* GetLastSocketError();
 #include <algorithm>
 #include <math.h>
 using namespace std;
+
+// Memory debug
+#ifdef _DEBUG
+	#define _CRTDBG_MAP_ALLOC
+	#include <stdlib.h>
+	#include <crtdbg.h>
+#endif
+
+// WinSock
+#if defined(FONLINE_CLIENT) || defined(FONLINE_SERVER)
+	#include <winsock2.h>
+	#pragma comment(lib,"Ws2_32.lib")
+	const char* GetLastSocketError();
+#endif
 
 // FOnline stuff
 #include "Defines.h"
@@ -54,7 +84,7 @@ using namespace std;
 #define SAFEDELA(x) {if(x) delete[] (x);   (x)=NULL;}
 
 #define STATIC_ASSERT(a) {static int static_assert_array__[(a)?1:-1];}
-#define D3D_HR(expr)     {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(__FUNCTION__" - "#expr", error<%s - %s>.\n",DXGetErrorString(hr__),DXGetErrorDescription(hr__)); return 0;}}
+#define D3D_HR(expr)     {HRESULT hr__=expr; if(hr__!=D3D_OK){WriteLog(_FUNC_," - "#expr", error<%s - %s>.\n",DXGetErrorString(hr__),DXGetErrorDescription(hr__)); return 0;}}
 
 #define PI_FLOAT       (3.14159265f)
 #define PIBY2_FLOAT    (1.5707963f)
@@ -63,7 +93,10 @@ using namespace std;
 #define BIAS_FLOAT     (0.02f)
 #define RAD2DEG        (57.29577951f)
 
-#define THREAD __declspec(thread)
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
+#define OFFSETOF(type,member) offsetof(type,member)
 
 typedef vector<INTRECT> IntRectVec;
 typedef vector<FLTRECT> FltRectVec;
@@ -72,18 +105,18 @@ extern Randomizer DefaultRandomizer;
 int Random(int minimum, int maximum);
 
 int Procent(int full, int peace);
-DWORD NumericalNumber(DWORD num);
-DWORD DistSqrt(int x1, int y1, int x2, int y2);
-DWORD DistGame(int x1, int y1, int x2, int y2);
+uint NumericalNumber(uint num);
+uint DistSqrt(int x1, int y1, int x2, int y2);
+uint DistGame(int x1, int y1, int x2, int y2);
 int GetNearDir(int x1, int y1, int x2, int y2);
 int GetFarDir(int x1, int y1, int x2, int y2);
 int GetFarDir(int x1, int y1, int x2, int y2, float offset);
-bool CheckDist(WORD x1, WORD y1, WORD x2, WORD y2, DWORD dist);
+bool CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist);
 int ReverseDir(int dir);
 void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
 void ChangeStepsXY(float& sx, float& sy, float deq);
-bool MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, WORD maxhx, WORD maxhy);
-void MoveHexByDirUnsafe(int& hx, int& hy, BYTE dir);
+bool MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy);
+void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir);
 bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
 void RestoreMainDirectory();
 
@@ -132,7 +165,7 @@ bool CheckUserPass(const char* str);
 	#include "ResourceMapper.h"
 	#define WINDOW_CLASS_NAME   "FOnline Mapper"
 	#define WINDOW_NAME         "FOnline Mapper"
-	const BYTE SELECT_ALPHA		=100;
+	const uchar SELECT_ALPHA		=100;
 	#define CFG_DEF_INT_FILE    "mapper_default.ini"
 #endif
 
@@ -141,24 +174,30 @@ bool CheckUserPass(const char* str);
 #define PATH_LOG_FILE		".\\"
 #define PATH_SCREENS_FILE	".\\"
 
+#ifdef FONLINE_CLIENT
+	
+	#include <audiodefs.h>
+	#include "Dx9/dsound.h"
+	#include "Dx8/DShow.h"
+	#pragma comment(lib,"9_dsound.lib")
+	#pragma comment(lib,"8_strmiids.lib")
+	#pragma comment(lib,"8_quartz.lib")
+#endif
+
 #define DIRECTINPUT_VERSION 0x0800
-#include "Dx9/d3dx9.h"
 #include "Dx9/dinput.h"
 #include "Dx9/dxerr.h"
-#include "Dx9/dsound.h"
-#include "Dx8/DShow.h"
+#include "Dx9/d3dx9.h"
+
 #ifndef D3D_DEBUG_INFO
-#pragma comment(lib,"9_d3dx9.lib")
+	#pragma comment(lib,"9_d3dx9.lib")
 #else
-#pragma comment(lib,"9_d3dx9d.lib")
+	#pragma comment(lib,"9_d3dx9d.lib")
 #endif
 #pragma comment(lib,"9_d3d9.lib")
 #pragma comment(lib,"9_dinput8.lib")
 #pragma comment(lib,"9_dxguid.lib")
 #pragma comment(lib,"9_dxerr.lib")
-#pragma comment(lib,"9_dsound.lib")
-#pragma comment(lib,"8_strmiids.lib")
-#pragma comment(lib,"8_quartz.lib")
 #pragma comment(lib,"9_d3dxof.lib")
 typedef LPDIRECT3D9 LPDIRECT3D;
 typedef LPDIRECT3DDEVICE9 LPDIRECT3DDEVICE;
@@ -169,7 +208,7 @@ typedef LPDIRECT3DINDEXBUFFER9 LPDIRECT3DINDEXBUFFER;
 typedef D3DMATERIAL9 D3DMATERIAL;
 #define Direct3DCreate Direct3DCreate9
 
-DWORD GetColorDay(int* day_time, BYTE* colors, int game_time, int* light);
+uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light);
 void GetClientOptions();
 
 struct ClientScriptFunctions
@@ -245,25 +284,7 @@ struct MapperScriptFunctions
 #include "ThreadSync.h"
 #include "Jobs.h"
 
-//#define FOSERVER_DUMP
 #define GAME_TIME
-
-struct WSAOVERLAPPED_EX
-{
-	WSAOVERLAPPED OV;
-	Mutex Locker;
-	void* PClient;
-	WSABUF Buffer;
-	long Operation;
-	DWORD Flags;
-	DWORD Bytes;
-};
-#define WSA_BUF_SIZE       (4096)
-#define WSAOP_END          (0)
-#define WSAOP_FREE         (1)
-#define WSAOP_SEND         (2)
-#define WSAOP_RECV         (3)
-typedef void(*WSASendCallback)(WSAOVERLAPPED_EX*);
 
 extern volatile bool FOAppQuit;
 extern volatile bool FOQuit;
@@ -271,7 +292,7 @@ extern HANDLE UpdateEvent;
 extern HANDLE LogEvent;
 extern int ServerGameSleep;
 extern int MemoryDebugLevel;
-extern DWORD VarsGarbageTime;
+extern uint VarsGarbageTime;
 extern bool WorldSaveManager;
 extern bool LogicMT;
 
@@ -317,6 +338,25 @@ struct ServerScriptFunctions
 	int PlayerGetAccess;
 } extern ServerFunctions;
 
+#ifdef FO_WINDOWS
+struct WSAOVERLAPPED_EX
+{
+	WSAOVERLAPPED OV;
+	Mutex Locker;
+	void* PClient;
+	WSABUF Buffer;
+	long Operation;
+	DWORD Flags;
+	DWORD Bytes;
+};
+#define WSA_BUF_SIZE       (4096)
+#define WSAOP_END          (0)
+#define WSAOP_FREE         (1)
+#define WSAOP_SEND         (2)
+#define WSAOP_RECV         (3)
+typedef void(*WSASendCallback)(WSAOVERLAPPED_EX*);
+#endif
+
 #endif
 /************************************************************************/
 /* Npc editor                                                           */
@@ -334,113 +374,113 @@ struct ServerScriptFunctions
 
 struct GameOptions
 {
-	WORD YearStart;
-	ULONGLONG YearStartFT;
-	WORD Year;
-	WORD Month;
-	WORD Day;
-	WORD Hour;
-	WORD Minute;
-	WORD Second;
-	DWORD FullSecondStart;
-	DWORD FullSecond;
-	WORD TimeMultiplier;
-	DWORD GameTimeTick;
+	ushort YearStart;
+	uint64 YearStartFT;
+	ushort Year;
+	ushort Month;
+	ushort Day;
+	ushort Hour;
+	ushort Minute;
+	ushort Second;
+	uint FullSecondStart;
+	uint FullSecond;
+	ushort TimeMultiplier;
+	uint GameTimeTick;
 
 	bool DisableTcpNagle;
 	bool DisableZlibCompression;
-	DWORD FloodSize;
+	uint FloodSize;
 	bool FreeExp;
 	bool RegulatePvP;
 	bool NoAnswerShuffle;
 	bool DialogDemandRecheck;
-	DWORD FixBoyDefaultExperience;
-	DWORD SneakDivider;
-	DWORD LevelCap;
+	uint FixBoyDefaultExperience;
+	uint SneakDivider;
+	uint LevelCap;
 	bool LevelCapAddExperience;
-	DWORD LookNormal;
-	DWORD LookMinimum;
-	DWORD GlobalMapMaxGroupCount;
-	DWORD CritterIdleTick;
-	DWORD TurnBasedTick;
+	uint LookNormal;
+	uint LookMinimum;
+	uint GlobalMapMaxGroupCount;
+	uint CritterIdleTick;
+	uint TurnBasedTick;
 	int DeadHitPoints;
-	DWORD Breaktime;
-	DWORD TimeoutTransfer;
-	DWORD TimeoutBattle;
-	DWORD ApRegeneration;
-	DWORD RtApCostCritterWalk;
-	DWORD RtApCostCritterRun;
-	DWORD RtApCostMoveItemContainer;
-	DWORD RtApCostMoveItemInventory;
-	DWORD RtApCostPickItem;
-	DWORD RtApCostDropItem;
-	DWORD RtApCostReloadWeapon;
-	DWORD RtApCostPickCritter;
-	DWORD RtApCostUseItem;
-	DWORD RtApCostUseSkill;
+	uint Breaktime;
+	uint TimeoutTransfer;
+	uint TimeoutBattle;
+	uint ApRegeneration;
+	uint RtApCostCritterWalk;
+	uint RtApCostCritterRun;
+	uint RtApCostMoveItemContainer;
+	uint RtApCostMoveItemInventory;
+	uint RtApCostPickItem;
+	uint RtApCostDropItem;
+	uint RtApCostReloadWeapon;
+	uint RtApCostPickCritter;
+	uint RtApCostUseItem;
+	uint RtApCostUseSkill;
 	bool RtAlwaysRun;
-	DWORD TbApCostCritterMove;
-	DWORD TbApCostMoveItemContainer;
-	DWORD TbApCostMoveItemInventory;
-	DWORD TbApCostPickItem;
-	DWORD TbApCostDropItem;
-	DWORD TbApCostReloadWeapon;
-	DWORD TbApCostPickCritter;
-	DWORD TbApCostUseItem;
-	DWORD TbApCostUseSkill;
+	uint TbApCostCritterMove;
+	uint TbApCostMoveItemContainer;
+	uint TbApCostMoveItemInventory;
+	uint TbApCostPickItem;
+	uint TbApCostDropItem;
+	uint TbApCostReloadWeapon;
+	uint TbApCostPickCritter;
+	uint TbApCostUseItem;
+	uint TbApCostUseSkill;
 	bool TbAlwaysRun;
-	DWORD ApCostAimEyes;
-	DWORD ApCostAimHead;
-	DWORD ApCostAimGroin;
-	DWORD ApCostAimTorso;
-	DWORD ApCostAimArms;
-	DWORD ApCostAimLegs;
+	uint ApCostAimEyes;
+	uint ApCostAimHead;
+	uint ApCostAimGroin;
+	uint ApCostAimTorso;
+	uint ApCostAimArms;
+	uint ApCostAimLegs;
 	bool RunOnCombat;
 	bool RunOnTransfer;
-	DWORD GlobalMapWidth;
-	DWORD GlobalMapHeight;
-	DWORD GlobalMapZoneLength;
-	DWORD EncounterTime;
-	DWORD BagRefreshTime;
-	DWORD AttackAnimationsMinDist;
-	DWORD WhisperDist;
-	DWORD ShoutDist;
+	uint GlobalMapWidth;
+	uint GlobalMapHeight;
+	uint GlobalMapZoneLength;
+	uint EncounterTime;
+	uint BagRefreshTime;
+	uint AttackAnimationsMinDist;
+	uint WhisperDist;
+	uint ShoutDist;
 	int LookChecks;
-	DWORD LookDir[5];
-	DWORD LookSneakDir[5];
-	DWORD LookWeight;
+	uint LookDir[5];
+	uint LookSneakDir[5];
+	uint LookWeight;
 	bool CustomItemCost;
-	DWORD RegistrationTimeout;
-	DWORD AccountPlayTime;
+	uint RegistrationTimeout;
+	uint AccountPlayTime;
 	bool LoggingVars;
-	DWORD ScriptRunSuspendTimeout;
-	DWORD ScriptRunMessageTimeout;
-	DWORD TalkDistance;
-	DWORD MinNameLength;
-	DWORD MaxNameLength;
-	DWORD DlgTalkMinTime;
-	DWORD DlgBarterMinTime;
-	DWORD MinimumOfflineTime;
+	uint ScriptRunSuspendTimeout;
+	uint ScriptRunMessageTimeout;
+	uint TalkDistance;
+	uint MinNameLength;
+	uint MaxNameLength;
+	uint DlgTalkMinTime;
+	uint DlgBarterMinTime;
+	uint MinimumOfflineTime;
 
 	bool AbsoluteOffsets;
-	DWORD SkillBegin;
-	DWORD SkillEnd;
-	DWORD TimeoutBegin;
-	DWORD TimeoutEnd;
-	DWORD KillBegin;
-	DWORD KillEnd;
-	DWORD PerkBegin;
-	DWORD PerkEnd;
-	DWORD AddictionBegin;
-	DWORD AddictionEnd;
-	DWORD KarmaBegin;
-	DWORD KarmaEnd;
-	DWORD DamageBegin;
-	DWORD DamageEnd;
-	DWORD TraitBegin;
-	DWORD TraitEnd;
-	DWORD ReputationBegin;
-	DWORD ReputationEnd;
+	uint SkillBegin;
+	uint SkillEnd;
+	uint TimeoutBegin;
+	uint TimeoutEnd;
+	uint KillBegin;
+	uint KillEnd;
+	uint PerkBegin;
+	uint PerkEnd;
+	uint AddictionBegin;
+	uint AddictionEnd;
+	uint KarmaBegin;
+	uint KarmaEnd;
+	uint DamageBegin;
+	uint DamageEnd;
+	uint TraitBegin;
+	uint TraitEnd;
+	uint ReputationBegin;
+	uint ReputationEnd;
 
 	int ReputationLoved;
 	int ReputationLiked;
@@ -500,11 +540,11 @@ struct GameOptions
 	int Light;
 	string Host;
 	int HostRefCounter;
-	DWORD Port;
-	DWORD ProxyType;
+	uint Port;
+	uint ProxyType;
 	string ProxyHost;
 	int ProxyHostRefCounter;
-	DWORD ProxyPort;
+	uint ProxyPort;
 	string ProxyUser;
 	int ProxyUserRefCounter;
 	string ProxyPass;
@@ -523,20 +563,20 @@ struct GameOptions
 	int Sleep;
 	bool MsgboxInvert;
 	int ChangeLang;
-	BYTE DefaultCombatMode;
+	uchar DefaultCombatMode;
 	bool MessNotify;
 	bool SoundNotify;
 	bool AlwaysOnTop;
-	DWORD TextDelay;
-	DWORD DamageHitDelay;
+	uint TextDelay;
+	uint DamageHitDelay;
 	int ScreenWidth;
 	int ScreenHeight;
 	int MultiSampling;
 	bool SoftwareSkinning;
 	bool MouseScroll;
 	int IndicatorType;
-	DWORD DoubleClickTime;
-	BYTE RoofAlpha;
+	uint DoubleClickTime;
+	uchar RoofAlpha;
 	bool HideCursor;
 	bool DisableLMenu;
 	bool DisableMouseEvents;
@@ -546,8 +586,8 @@ struct GameOptions
 	int PlayerOffAppendixRefCounter;
 	int CombatMessagesType;
 	bool DisableDrawScreens;
-	DWORD Animation3dSmoothTime;
-	DWORD Animation3dFPS;
+	uint Animation3dSmoothTime;
+	uint Animation3dFPS;
 	int RunModMul;
 	int RunModDiv;
 	int RunModAdd;
@@ -556,14 +596,14 @@ struct GameOptions
 	float SpritesZoomMin;
 	float EffectValues[EFFECT_SCRIPT_VALUES];
 	bool AlwaysRun;
-	DWORD AlwaysRunMoveDist;
-	DWORD AlwaysRunUseDist;
+	uint AlwaysRunMoveDist;
+	uint AlwaysRunUseDist;
 	string KeyboardRemap;
 	int KeyboardRemapRefCounter;
-	DWORD CritterFidgetTime;
-	DWORD Anim2CombatBegin;
-	DWORD Anim2CombatIdle;
-	DWORD Anim2CombatEnd;
+	uint CritterFidgetTime;
+	uint Anim2CombatBegin;
+	uint Anim2CombatIdle;
+	uint Anim2CombatEnd;
 
 	// Mapper
 	string ClientPath;
@@ -576,24 +616,24 @@ struct GameOptions
 	bool SplitTilesCollection;
 
 	// Engine data
-	void (*CritterChangeParameter)(void*,DWORD);
+	void (*CritterChangeParameter)(void*,uint);
 	void* CritterTypes;
 
 	void* ClientMap;
-	DWORD ClientMapWidth;
-	DWORD ClientMapHeight;
+	uint ClientMapWidth;
+	uint ClientMapHeight;
 
-	void* (*GetDrawingSprites)(DWORD&);
-	void* (*GetSpriteInfo)(DWORD);
-	DWORD (*GetSpriteColor)(DWORD,int,int,bool);
+	void* (*GetDrawingSprites)(uint&);
+	void* (*GetSpriteInfo)(uint);
+	uint (*GetSpriteColor)(uint,int,int,bool);
 	bool (*IsSpriteHit)(void*,int,int,bool);
 
-	const char* (*GetNameByHash)(DWORD);
-	DWORD (*GetHashByName)(const char*);
+	const char* (*GetNameByHash)(uint);
+	uint (*GetHashByName)(const char*);
 
 	// Callbacks
-	DWORD (*GetUseApCost)(void*,void*,BYTE);
-	DWORD (*GetAttackDistantion)(void*,void*,BYTE);
+	uint (*GetUseApCost)(void*,void*,uchar);
+	uint (*GetAttackDistantion)(void*,void*,uchar);
 
 	GameOptions();
 } extern GameOpt;
@@ -613,9 +653,9 @@ struct GameOptions
 /* Game time                                                            */
 /************************************************************************/
 
-DWORD GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second);
-SYSTEMTIME GetGameTime(DWORD full_second);
-DWORD GameTimeMonthDay(WORD year, WORD month);
+uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
+SYSTEMTIME GetGameTime(uint full_second);
+uint GameTimeMonthDay(ushort year, ushort month);
 void ProcessGameTime();
 
 /************************************************************************/
@@ -664,7 +704,7 @@ class FileLogger
 {
 private:
 	FILE* logFile;
-	DWORD startTick;
+	uint startTick;
 
 public:
 	FileLogger(const char* fname);
@@ -690,7 +730,7 @@ const char* StringFormat(char* output, const char* format, ...);
 class InterprocessData
 {
 public:
-	WORD NetPort;
+	ushort NetPort;
 	bool Pause;
 
 private:
@@ -712,6 +752,18 @@ extern InterprocessData SingleplayerData;
 extern HANDLE SingleplayerClientProcess;
 
 /************************************************************************/
+/* File system                                                          */
+/************************************************************************/
+
+void* FileOpen(const char* fname, bool write);
+void FileClose(void* file);
+bool FileRead(void* file, void* buf, uint len, uint* rb = NULL);
+bool FileWrite(void* file, const void* buf, uint len);
+bool FileSetPointer(void* file, int offset, int origin);
+// Todo: FileFindFirst, FileFindNext, FileGetTime, FileGetSize, FileDelete
+// Todo: replace all fopen/fclose/etc on this functions
+
+/************************************************************************/
 /*                                                                      */
 /************************************************************************/
 
@@ -720,8 +772,8 @@ extern HANDLE SingleplayerClientProcess;
 // pid == -1 - interface
 // pid == -2 - tiles
 // pid == -3 - inventory
-string Deprecated_GetPicName(int pid, int type, WORD pic_num);
-DWORD Deprecated_GetPicHash(int pid, int type, WORD pic_num);
-void Deprecated_CondExtToAnim2(BYTE cond, BYTE cond_ext, DWORD& anim2ko, DWORD& anim2dead);
+string Deprecated_GetPicName(int pid, int type, ushort pic_num);
+uint Deprecated_GetPicHash(int pid, int type, ushort pic_num);
+void Deprecated_CondExtToAnim2(uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead);
 
 #endif // __COMMON__

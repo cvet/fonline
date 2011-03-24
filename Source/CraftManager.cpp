@@ -163,14 +163,14 @@ void GetStrMetadata(T& v, char* str)
 	char buf[32];
 	StringAppend(str,MAX_FOTEXT,_itoa(v.size(),buf,10));
 	StringAppend(str,MAX_FOTEXT," ");
-	for(int i=0;i<v.size();i++)
+	for(uint i=0;i<v.size();i++)
 	{
 		StringAppend(str,MAX_FOTEXT,_itoa(v[i],buf,10));
 		StringAppend(str,MAX_FOTEXT," ");
 	}
 }
 
-int CraftItem::SetStr(DWORD num, const char* str_in)
+int CraftItem::SetStr(uint num, const char* str_in)
 {
 	// Prepare
 	const char* pstr_in=str_in;
@@ -259,7 +259,7 @@ int CraftItem::SetStr(DWORD num, const char* str_in)
 	if(res<0) return num-40;
 
 	// Parse out items
-	ByteVec tmp_vec;
+	UCharVec tmp_vec;
 	res=SetStrItem(pstr_in,OutItems,OutItemsVal,tmp_vec);
 	if(res<0) return num-50;
 
@@ -275,16 +275,14 @@ int CraftItem::SetStr(DWORD num, const char* str_in)
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
-int CraftItem::SetStrParam(const char*& pstr_in, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec)
+int CraftItem::SetStrParam(const char*& pstr_in, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
 	char str[MAX_FOTEXT];
 	char* pstr=str;
 
-	int param_num;
-	char param_name[128];
-	int param_val;
-
-	param_name[0]='\0';
+	int param_num=0;
+	char param_name[128]={0};
+	int param_val=0;
 
 	while(*pstr_in!=MRFIXIT_NEXT)
 	{
@@ -328,13 +326,13 @@ int CraftItem::SetStrParam(const char*& pstr_in, DwordVec& num_vec, IntVec& val_
 	return 0;
 }
 
-int CraftItem::SetStrItem(const char*& pstr_in, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec)
+int CraftItem::SetStrItem(const char*& pstr_in, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
 	char str[MAX_FOTEXT];
 	char* pstr=str;
 
 	int item_pid=0;
-	DWORD item_count;
+	uint item_count=0;
 
 	while(*pstr_in!=MRFIXIT_NEXT)
 	{
@@ -359,7 +357,7 @@ int CraftItem::SetStrItem(const char*& pstr_in, WordVec& pid_vec, DwordVec& coun
 			*pstr='\0';
 
 			item_count=atoi(str);
-			if(!item_count) return -3;	
+			if(!item_count) return -3;
 
 			pid_vec.push_back(item_pid);
 			count_vec.push_back(item_count);
@@ -423,8 +421,8 @@ const char* CraftItem::GetStr(bool metadata)
 	GetStrItem(str,NeedTools,NeedToolsVal,NeedToolsOr);
 
 	// New items
-	ByteVec or_vec; //Temp vector
-	for(int i=0;i<OutItems.size();i++) or_vec.push_back(0);
+	UCharVec or_vec; //Temp vector
+	for(uint i=0;i<OutItems.size();i++) or_vec.push_back(0);
 	GetStrItem(str,OutItems,OutItemsVal,or_vec);
 
 	// Experience
@@ -447,9 +445,9 @@ const char* CraftItem::GetStr(bool metadata)
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
-void CraftItem::GetStrParam(char* pstr_out, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec)
+void CraftItem::GetStrParam(char* pstr_out, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
-	for(size_t i=0,j=num_vec.size();i<j;i++)
+	for(uint i=0,j=num_vec.size();i<j;i++)
 	{
 		const char* s=ConstantsManager::GetParamName(num_vec[i]);
 		if(!s) continue;
@@ -469,9 +467,9 @@ void CraftItem::GetStrParam(char* pstr_out, DwordVec& num_vec, IntVec& val_vec, 
 	StringAppend(pstr_out,MAX_FOTEXT,MRFIXIT_NEXT_S);
 }
 
-void CraftItem::GetStrItem(char* pstr_out, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec)
+void CraftItem::GetStrItem(char* pstr_out, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
-	for(size_t i=0,j=pid_vec.size();i<j;i++)
+	for(uint i=0,j=pid_vec.size();i<j;i++)
 	{
 		const char* s=ConstantsManager::GetItemName(pid_vec[i]);
 		if(!s) continue;
@@ -496,7 +494,7 @@ bool CraftManager::operator==(const CraftManager& r)
 {
 	if(itemCraft.size()!=r.itemCraft.size())
 	{
-		WriteLog(__FUNCTION__" - Different sizes.\n");
+		WriteLog(_FUNC_," - Different sizes.\n");
 		return false;
 	}
 
@@ -507,7 +505,7 @@ bool CraftManager::operator==(const CraftManager& r)
 		CraftItem* craft=(*it).second;
 		CraftItem* rcraft=(*it_).second;
 
-#define COMPARE_CRAFT(p) if(craft->p!=rcraft->p){WriteLog(__FUNCTION__" - Different<"#p">, craft<%u>.\n",craft->Num); return false;}
+#define COMPARE_CRAFT(p) if(craft->p!=rcraft->p){WriteLog(_FUNC_," - Different<"#p">, craft<%u>.\n",craft->Num); return false;}
 		COMPARE_CRAFT(Num);
 		COMPARE_CRAFT(ShowPNum);
 		COMPARE_CRAFT(ShowPVal);
@@ -555,7 +553,7 @@ bool CraftManager::SaveCrafts(const char* path)
 	return true;
 }
 
-void CraftManager::EraseCraft(DWORD num)
+void CraftManager::EraseCraft(uint num)
 {
 	if(!IsCraftExist(num)) return;
 
@@ -566,20 +564,20 @@ void CraftManager::EraseCraft(DWORD num)
 bool CraftManager::LoadCrafts(FOMsg& msg)
 {
 	int load_fail=0;
-	DwordStrMulMap& msg_str=msg.GetData();
-	DwordStrMulMapIt it=msg_str.begin();
-	DwordStrMulMapIt it_end=msg_str.end();
+	UIntStrMulMap& msg_str=msg.GetData();
+	UIntStrMulMapIt it=msg_str.begin();
+	UIntStrMulMapIt it_end=msg_str.end();
 
 	it++; // Skip ERROR
 
 	for(;it!=it_end;++it)
 	{
-		DWORD num=(*it).first;
+		uint num=(*it).first;
 		string& str=(*it).second;
-		
+
 		if(!AddCraft(num,str.c_str()))
 		{
-			WriteLog(__FUNCTION__" - Craft<%d> string<%s> load fail.\n",num,str.c_str());
+			WriteLog(_FUNC_," - Craft<%d> string<%s> load fail.\n",num,str.c_str());
 			load_fail++;
 			continue;
 		}
@@ -619,14 +617,14 @@ void CraftManager::Finish()
 	itemCraft.clear();
 }
 
-bool CraftManager::AddCraft(DWORD num, const char* str)
+bool CraftManager::AddCraft(uint num, const char* str)
 {
 	// Create new craft item
 	CraftItem* craft=new CraftItem;
 	if(!craft)
 	{
 		delete craft;
-		WriteLog(__FUNCTION__" - Allocation fail.\n");
+		WriteLog(_FUNC_," - Allocation fail.\n");
 		return false;
 	}
 
@@ -634,7 +632,7 @@ bool CraftManager::AddCraft(DWORD num, const char* str)
 	if(craft->SetStr(num,str)<0)
 	{
 		delete craft;
-		WriteLog(__FUNCTION__" - Parse fail.\n");
+		WriteLog(_FUNC_," - Parse fail.\n");
 		return false;
 	}
 
@@ -645,7 +643,7 @@ bool CraftManager::AddCraft(DWORD num, const char* str)
 		if(!craft->ScriptBindId)
 		{
 			delete craft;
-			WriteLog(__FUNCTION__" - Bind function fail.\n");
+			WriteLog(_FUNC_," - Bind function fail.\n");
 			return false;
 		}
 	}
@@ -672,13 +670,13 @@ bool CraftManager::AddCraft(CraftItem* craft, bool make_copy)
 	return true;
 }
 
-CraftItem* CraftManager::GetCraft(DWORD num)
+CraftItem* CraftManager::GetCraft(uint num)
 {
 	CraftItemMapIt it=itemCraft.find(num);
 	return it!=itemCraft.end()?(*it).second:NULL;
 }
 
-bool CraftManager::IsCraftExist(DWORD num)
+bool CraftManager::IsCraftExist(uint num)
 {
 	return itemCraft.count(num)!=0;
 }
@@ -686,19 +684,19 @@ bool CraftManager::IsCraftExist(DWORD num)
 #if defined(FONLINE_SERVER) || defined(FONLINE_CLIENT)
 
 #ifdef FONLINE_SERVER
-bool CraftManager::IsShowCraft(Critter* cr, DWORD num)
+bool CraftManager::IsShowCraft(Critter* cr, uint num)
 {
 	CraftItem* craft=GetCraft(num);
 	if(!craft) return false;
 
-	DWORD flags=0xFFFFFFFF;
+	uint flags=0xFFFFFFFF;
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return false;
+		if(!Script::PrepareContext(craft->ScriptBindId,_FUNC_,cr->GetInfo())) return false;
 		Script::SetArgObject(cr);
-		Script::SetArgDword(FIXBOY_LIST);
+		Script::SetArgUInt(FIXBOY_LIST);
 		if(!Script::RunPrepared()) return false;
-		flags=Script::GetReturnedDword();
+		flags=Script::GetReturnedUInt();
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) return false;
@@ -707,12 +705,12 @@ bool CraftManager::IsShowCraft(Critter* cr, DWORD num)
 }
 #endif
 #ifdef FONLINE_CLIENT
-bool CraftManager::IsShowCraft(CritterCl* cr, DWORD num)
+bool CraftManager::IsShowCraft(CritterCl* cr, uint num)
 {
 	CraftItem* craft=GetCraft(num);
 	if(!craft) return false;
 
-	DWORD flags=0xFFFFFFFF;
+	uint flags=0xFFFFFFFF;
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) return false;
 	if(FLAG(flags,FIXBOY_CHECK_PARAMS) && !IsTrueParams(cr,craft->ShowPNum,craft->ShowPVal,craft->ShowPOr)) return false;
 	return true;
@@ -739,7 +737,7 @@ void CraftManager::GetShowCrafts(CritterCl* cr, CraftItemVec& craft_vec)
 }
 #endif
 #ifdef FONLINE_SERVER
-bool CraftManager::IsTrueCraft(Critter* cr, DWORD num)
+bool CraftManager::IsTrueCraft(Critter* cr, uint num)
 {
 	CraftItem* craft=GetCraft(num);
 	if(!craft) return false;
@@ -751,7 +749,7 @@ bool CraftManager::IsTrueCraft(Critter* cr, DWORD num)
 }
 #endif
 #ifdef FONLINE_CLIENT
-bool CraftManager::IsTrueCraft(CritterCl* cr, DWORD num)
+bool CraftManager::IsTrueCraft(CritterCl* cr, uint num)
 {
 	CraftItem* craft=GetCraft(num);
 	if(!craft) return false;
@@ -787,13 +785,13 @@ void CraftManager::GetTrueCrafts(CritterCl* cr, CraftItemVec& craft_vec)
 }
 #endif
 #ifdef FONLINE_SERVER
-bool CraftManager::IsTrueParams(Critter* cr, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec)
+bool CraftManager::IsTrueParams(Critter* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
 	for(int i=0,j=num_vec.size();i<j;i++)
 	{
-		DWORD param_num=num_vec[i];
+		uint param_num=num_vec[i];
 		int param_val=val_vec[i];
-		BYTE param_or=or_vec[i];
+		uchar param_or=or_vec[i];
 
 		if(param_num>=MAX_PARAMS || cr->GetParam(param_num)<param_val) // Fail
 		{
@@ -812,13 +810,13 @@ bool CraftManager::IsTrueParams(Critter* cr, DwordVec& num_vec, IntVec& val_vec,
 }
 #endif
 #ifdef FONLINE_CLIENT
-bool CraftManager::IsTrueParams(CritterCl* cr, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec)
+bool CraftManager::IsTrueParams(CritterCl* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
 	for(int i=0,j=num_vec.size();i<j;i++)
 	{
-		DWORD param_num=num_vec[i];
+		uint param_num=num_vec[i];
 		int param_val=val_vec[i];
-		BYTE param_or=or_vec[i];
+		uchar param_or=or_vec[i];
 
 		if(param_num>=MAX_PARAMS || cr->GetParam(param_num)<param_val) // Fail
 		{
@@ -837,15 +835,15 @@ bool CraftManager::IsTrueParams(CritterCl* cr, DwordVec& num_vec, IntVec& val_ve
 }
 #endif
 #ifdef FONLINE_SERVER
-bool CraftManager::IsTrueItems(Critter* cr, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec)
+bool CraftManager::IsTrueItems(Critter* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
 	for(int i=0,j=pid_vec.size();i<j;i++)
 	{
 		bool next=true;
 
-		WORD item_pid=pid_vec[i];
-		DWORD item_count=count_vec[i];
-		BYTE item_or=or_vec[i];
+		ushort item_pid=pid_vec[i];
+		uint item_count=count_vec[i];
+		uchar item_or=or_vec[i];
 
 		if(cr->CountItemPid(item_pid)<item_count) next=false;
 
@@ -867,15 +865,15 @@ bool CraftManager::IsTrueItems(Critter* cr, WordVec& pid_vec, DwordVec& count_ve
 }
 #endif
 #ifdef FONLINE_CLIENT
-bool CraftManager::IsTrueItems(CritterCl* cr, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec)
+bool CraftManager::IsTrueItems(CritterCl* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
 	for(int i=0,j=pid_vec.size();i<j;i++)
 	{
 		bool next=true;
 
-		WORD item_pid=pid_vec[i];
-		DWORD item_count=count_vec[i];
-		BYTE item_or=or_vec[i];
+		ushort item_pid=pid_vec[i];
+		uint item_count=count_vec[i];
+		uchar item_or=or_vec[i];
 
 		if(cr->CountItemPid(item_pid)<item_count) next=false;
 
@@ -898,19 +896,19 @@ bool CraftManager::IsTrueItems(CritterCl* cr, WordVec& pid_vec, DwordVec& count_
 #endif
 
 #ifdef FONLINE_SERVER
-int CraftManager::ProcessCraft(Critter* cr, DWORD num)
+int CraftManager::ProcessCraft(Critter* cr, uint num)
 {
 	CraftItem* craft=GetCraft(num);
 	if(!craft) return CRAFT_RESULT_FAIL;
 
-	DWORD flags=0xFFFFFFFF;
+	uint flags=0xFFFFFFFF;
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return CRAFT_RESULT_FAIL;
+		if(!Script::PrepareContext(craft->ScriptBindId,_FUNC_,cr->GetInfo())) return CRAFT_RESULT_FAIL;
 		Script::SetArgObject(cr);
-		Script::SetArgDword(FIXBOY_BUTTON);
+		Script::SetArgUInt(FIXBOY_BUTTON);
 		if(!Script::RunPrepared()) return CRAFT_RESULT_FAIL;
-		flags=Script::GetReturnedDword();
+		flags=Script::GetReturnedUInt();
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;
@@ -922,11 +920,11 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,CALL_FUNC_STR,cr->GetInfo())) return CRAFT_RESULT_FAIL;
+		if(!Script::PrepareContext(craft->ScriptBindId,_FUNC_,cr->GetInfo())) return CRAFT_RESULT_FAIL;
 		Script::SetArgObject(cr);
-		Script::SetArgDword(FIXBOY_CRAFT);
+		Script::SetArgUInt(FIXBOY_CRAFT);
 		if(!Script::RunPrepared()) return CRAFT_RESULT_FAIL;
-		flags=Script::GetReturnedDword();
+		flags=Script::GetReturnedUInt();
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;
@@ -936,26 +934,26 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 	{
 		for(int i=0,j=craft->NeedItems.size();i<j;i++)
 		{
-			WORD pid=craft->NeedItems[i];
-			DWORD count=craft->NeedItemsVal[i];
-			BYTE or=craft->NeedItemsOr[i];
+			ushort pid=craft->NeedItems[i];
+			uint count=craft->NeedItemsVal[i];
+			uchar or_cmd=craft->NeedItemsOr[i];
 
 			if(cr->CountItemPid(pid)<count) continue;
 			ItemMngr.SubItemCritter(cr,pid,count,&sub_items);
 
 			// Skip or
-			if(or) for(;i<j-1 && craft->NeedItemsOr[i];i++);
+			if(or_cmd) for(;i<j-1 && craft->NeedItemsOr[i];i++);
 		}
 	}
 
 	if(FLAG(flags,FIXBOY_ADD_CRAFT_ITEMS)) // Add items
 	{
 		ItemPtrVec crafted;
-		DwordVec crafted_count;
+		UIntVec crafted_count;
 		for(int i=0,j=craft->OutItems.size();i<j;i++)
 		{
-			WORD pid=craft->OutItems[i];
-			DWORD count=craft->OutItemsVal[i];
+			ushort pid=craft->OutItems[i];
+			uint count=craft->OutItemsVal[i];
 			ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 			if(!proto_item) continue;
 
@@ -970,7 +968,7 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 			}
 			else
 			{
-				for(int j=0;j<count;j++)
+				for(uint j=0;j<count;j++)
 				{
 					Item* item=ItemMngr.AddItemCritter(cr,pid,1);
 					if(item)
@@ -982,7 +980,7 @@ int CraftManager::ProcessCraft(Critter* cr, DWORD num)
 			}
 		}
 
-		if(crafted.size() && Script::PrepareContext(ServerFunctions.ItemsCrafted,CALL_FUNC_STR,cr->GetInfo()))
+		if(crafted.size() && Script::PrepareContext(ServerFunctions.ItemsCrafted,_FUNC_,cr->GetInfo()))
 		{
 			CScriptArray* crafted_=Script::CreateArray("Item@[]");
 			CScriptArray* crafted_count_=Script::CreateArray("uint[]");

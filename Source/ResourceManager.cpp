@@ -95,9 +95,9 @@ void ResourceManager::Refresh()
 
 void ResourceManager::Finish()
 {
-	WriteLog("Resource manager finish...\n");
+	WriteLog(NULL,"Resource manager finish...\n");
 	loadedAnims.clear();
-	WriteLog("Resource manager finish complete.\n");
+	WriteLog(NULL,"Resource manager finish complete.\n");
 }
 
 void ResourceManager::FreeResources(int type)
@@ -107,7 +107,8 @@ void ResourceManager::FreeResources(int type)
 		SprMngr.FreeSurfaces(RES_IFACE);
 		for(LoadedAnimMapIt it=loadedAnims.begin();it!=loadedAnims.end();)
 		{
-			if((*it).second.ResType==RES_IFACE) it=loadedAnims.erase(it);
+			int res_type=(*it).second.ResType;
+			if(res_type==RES_IFACE) loadedAnims.erase(it++);
 			else ++it;
 		}
 	}
@@ -116,7 +117,8 @@ void ResourceManager::FreeResources(int type)
 		SprMngr.FreeSurfaces(RES_IFACE_EXT);
 		for(LoadedAnimMapIt it=loadedAnims.begin();it!=loadedAnims.end();)
 		{
-			if((*it).second.ResType==RES_IFACE_EXT) it=loadedAnims.erase(it);
+			int res_type=(*it).second.ResType;
+			if(res_type==RES_IFACE_EXT) loadedAnims.erase(it++);
 			else ++it;
 		}
 	}
@@ -132,7 +134,8 @@ void ResourceManager::FreeResources(int type)
 		SprMngr.FreeSurfaces(RES_ITEMS);
 		for(LoadedAnimMapIt it=loadedAnims.begin();it!=loadedAnims.end();)
 		{
-			if((*it).second.ResType==RES_ITEMS) it=loadedAnims.erase(it);
+			int res_type=(*it).second.ResType;
+			if(res_type==RES_ITEMS) loadedAnims.erase(it++);
 			else ++it;
 		}
 	}
@@ -141,16 +144,17 @@ void ResourceManager::FreeResources(int type)
 		SprMngr.FreeSurfaces(RES_SCRIPT);
 		for(LoadedAnimMapIt it=loadedAnims.begin();it!=loadedAnims.end();)
 		{
-			if((*it).second.ResType==RES_SCRIPT) it=loadedAnims.erase(it);
+			int res_type=(*it).second.ResType;
+			if(res_type==RES_SCRIPT) loadedAnims.erase(it++);
 			else ++it;
 		}
 	}
 }
 
-AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir, int res_type)
+AnyFrames* ResourceManager::GetAnim(uint name_hash, int dir, int res_type)
 {
 	// Find already loaded
-	DWORD id=name_hash+dir;
+	uint id=name_hash+dir;
 	LoadedAnimMapIt it=loadedAnims.find(id);
 	if(it!=loadedAnims.end()) return (*it).second.Anim;
 
@@ -166,16 +170,16 @@ AnyFrames* ResourceManager::GetAnim(DWORD name_hash, int dir, int res_type)
 	return anim;
 }
 
-DWORD AnimMapId(DWORD crtype, DWORD anim1, DWORD anim2, int dir, bool is_fallout)
+uint AnimMapId(uint crtype, uint anim1, uint anim2, int dir, bool is_fallout)
 {
-	DWORD dw[5]={crtype,anim1,anim2,dir,is_fallout?-1:1};
-	return Crypt.Crc32((BYTE*)&dw[0],sizeof(dw));
+	uint dw[5]={crtype,anim1,anim2,dir,is_fallout?-1:1};
+	return Crypt.Crc32((uchar*)&dw[0],sizeof(dw));
 }
 
-AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
+AnyFrames* ResourceManager::GetCrit2dAnim(uint crtype, uint anim1, uint anim2, int dir)
 {
 	// Check for 3d
-	DWORD anim_type=CritType::GetAnimType(crtype);
+	uint anim_type=CritType::GetAnimType(crtype);
 	if(anim_type==ANIM_TYPE_3D) return NULL;
 
 	// Process dir
@@ -183,14 +187,14 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 	if(!CritType::IsCanRotate(crtype)) dir=0;
 
 	// Make animation id
-	DWORD id=AnimMapId(crtype,anim1,anim2,dir,false);
+	uint id=AnimMapId(crtype,anim1,anim2,dir,false);
 
 	// Check already loaded
 	AnimMapIt it=critterFrames.find(id);
 	if(it!=critterFrames.end()) return (*it).second;
 
 	// Process loading
-	DWORD crtype_base=crtype,anim1_base=anim1,anim2_base=anim2;
+	uint crtype_base=crtype,anim1_base=anim1,anim2_base=anim2;
 	AnyFrames* anim=NULL;
 	while(true)
 	{
@@ -203,23 +207,23 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 		else
 		{
 			// Script specific
-			DWORD pass_base=0;
+			uint pass_base=0;
 #ifdef FONLINE_CLIENT
-			while(Script::PrepareContext(ClientFunctions.CritterAnimation,CALL_FUNC_STR,"Anim"))
+			while(Script::PrepareContext(ClientFunctions.CritterAnimation,_FUNC_,"Anim"))
 #else // FONLINE_MAPPER
-			while(Script::PrepareContext(MapperFunctions.CritterAnimation,CALL_FUNC_STR,"Anim"))
+			while(Script::PrepareContext(MapperFunctions.CritterAnimation,_FUNC_,"Anim"))
 #endif
 			{
 #define ANIM_FLAG_FIRST_FRAME        (0x01)
 #define ANIM_FLAG_LAST_FRAME         (0x02)
 
-				DWORD pass=pass_base;
-				DWORD flags=0;
+				uint pass=pass_base;
+				uint flags=0;
 				int ox=0,oy=0;
-				Script::SetArgDword(anim_type);
-				Script::SetArgDword(crtype);
-				Script::SetArgDword(anim1);
-				Script::SetArgDword(anim2);
+				Script::SetArgUInt(anim_type);
+				Script::SetArgUInt(crtype);
+				Script::SetArgUInt(anim1);
+				Script::SetArgUInt(anim2);
 				Script::SetArgAddress(&pass);
 				Script::SetArgAddress(&flags);
 				Script::SetArgAddress(&ox);
@@ -246,7 +250,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 									// Append offsets
 									if(!first)
 									{
-										for(DWORD i=0;i<anim->CntFrm-1;i++)
+										for(uint i=0;i<anim->CntFrm-1;i++)
 										{
 											anim->NextX[anim->CntFrm-1]+=anim->NextX[i];
 											anim->NextY[anim->CntFrm-1]+=anim->NextY[i];
@@ -254,13 +258,13 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 									}
 
 									// Change size
-									DWORD spr_id=(first?anim->Ind[0]:anim->Ind[anim->CntFrm-1]);
+									uint spr_id=(first?anim->Ind[0]:anim->Ind[anim->CntFrm-1]);
 									short nx=(first?anim->NextX[0]:anim->NextX[anim->CntFrm-1]);
 									short ny=(first?anim->NextY[0]:anim->NextY[anim->CntFrm-1]);
 									delete[] anim->Ind;
 									delete[] anim->NextX;
 									delete[] anim->NextY;
-									anim->Ind=new DWORD[1];
+									anim->Ind=new uint[1];
 									anim->NextX=new short[1];
 									anim->NextY=new short[1];
 									anim->Ind[0]=spr_id;
@@ -273,11 +277,11 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 							// Add offsets
 							if(anim && (ox || oy) && false)
 							{
-								for(DWORD i=0;i<anim->CntFrm;i++)
+								for(uint i=0;i<anim->CntFrm;i++)
 								{
-									DWORD spr_id=anim->Ind[i];
+									uint spr_id=anim->Ind[i];
 									bool fixed=false;
-									for(DWORD j=0;j<i;j++)
+									for(uint j=0;j<i;j++)
 									{
 										if(anim->Ind[j]==spr_id)
 										{
@@ -312,16 +316,16 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 
 		// Find substitute animation
 #ifdef FONLINE_CLIENT
-		if(!anim && Script::PrepareContext(ClientFunctions.CritterAnimationSubstitute,CALL_FUNC_STR,"Anim"))
+		if(!anim && Script::PrepareContext(ClientFunctions.CritterAnimationSubstitute,_FUNC_,"Anim"))
 #else // FONLINE_MAPPER
-		if(!anim && Script::PrepareContext(MapperFunctions.CritterAnimationSubstitute,CALL_FUNC_STR,"Anim"))
+		if(!anim && Script::PrepareContext(MapperFunctions.CritterAnimationSubstitute,_FUNC_,"Anim"))
 #endif
 		{
-			DWORD crtype_=crtype,anim1_=anim1,anim2_=anim2;
-			Script::SetArgDword(anim_type);
-			Script::SetArgDword(crtype_base);
-			Script::SetArgDword(anim1_base);
-			Script::SetArgDword(anim2_base);
+			uint crtype_=crtype,anim1_=anim1,anim2_=anim2;
+			Script::SetArgUInt(anim_type);
+			Script::SetArgUInt(crtype_base);
+			Script::SetArgUInt(anim1_base);
+			Script::SetArgUInt(anim2_base);
 			Script::SetArgAddress(&crtype);
 			Script::SetArgAddress(&anim1);
 			Script::SetArgAddress(&anim2);
@@ -345,17 +349,17 @@ AnyFrames* ResourceManager::GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2
 	return anim;
 }
 
-AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
+AnyFrames* ResourceManager::LoadFalloutAnim(uint crtype, uint anim1, uint anim2, int dir)
 {
 	// Convert from common to fallout specific
 #ifdef FONLINE_CLIENT
-	if(Script::PrepareContext(ClientFunctions.CritterAnimationFallout,CALL_FUNC_STR,"Anim"))
+	if(Script::PrepareContext(ClientFunctions.CritterAnimationFallout,_FUNC_,"Anim"))
 #else // FONLINE_MAPPER
-	if(Script::PrepareContext(MapperFunctions.CritterAnimationFallout,CALL_FUNC_STR,"Anim"))
+	if(Script::PrepareContext(MapperFunctions.CritterAnimationFallout,_FUNC_,"Anim"))
 #endif
 	{
-		DWORD anim1ex=0,anim2ex=0,flags=0;
-		Script::SetArgDword(crtype);
+		uint anim1ex=0,anim2ex=0,flags=0;
+		Script::SetArgUInt(crtype);
 		Script::SetArgAddress(&anim1);
 		Script::SetArgAddress(&anim2);
 		Script::SetArgAddress(&anim1ex);
@@ -376,17 +380,17 @@ AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD ani
 				AnyFrames* anim_=new AnyFrames();
 				anim_->CntFrm=anim->CntFrm+animex->CntFrm;
 				anim_->Ticks=anim->Ticks+animex->Ticks;
-				anim_->Ind=new DWORD[anim_->CntFrm];
+				anim_->Ind=new uint[anim_->CntFrm];
 				anim_->NextX=new short[anim_->CntFrm];
 				anim_->NextY=new short[anim_->CntFrm];
-				memcpy(anim_->Ind,anim->Ind,anim->CntFrm*sizeof(DWORD));
+				memcpy(anim_->Ind,anim->Ind,anim->CntFrm*sizeof(uint));
 				memcpy(anim_->NextX,anim->NextX,anim->CntFrm*sizeof(short));
 				memcpy(anim_->NextY,anim->NextY,anim->CntFrm*sizeof(short));
-				memcpy(anim_->Ind+anim->CntFrm,animex->Ind,animex->CntFrm*sizeof(DWORD));
+				memcpy(anim_->Ind+anim->CntFrm,animex->Ind,animex->CntFrm*sizeof(uint));
 				memcpy(anim_->NextX+anim->CntFrm,animex->NextX,animex->CntFrm*sizeof(short));
 				memcpy(anim_->NextY+anim->CntFrm,animex->NextY,animex->CntFrm*sizeof(short));
 				short ox=0,oy=0;
-				for(DWORD i=0;i<anim->CntFrm;i++)
+				for(uint i=0;i<anim->CntFrm;i++)
 				{
 					ox+=anim->NextX[i];
 					oy+=anim->NextY[i];
@@ -402,12 +406,12 @@ AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD ani
 				AnyFrames* anim_=new AnyFrames();
 				anim_->CntFrm=(!FLAG(flags,ANIM_FLAG_FIRST_FRAME|ANIM_FLAG_LAST_FRAME)?anim->CntFrm:1);
 				anim_->Ticks=anim->Ticks;
-				anim_->Ind=new DWORD[anim_->CntFrm];
+				anim_->Ind=new uint[anim_->CntFrm];
 				anim_->NextX=new short[anim_->CntFrm];
 				anim_->NextY=new short[anim_->CntFrm];
 				if(!FLAG(flags,ANIM_FLAG_FIRST_FRAME|ANIM_FLAG_LAST_FRAME))
 				{
-					memcpy(anim_->Ind,anim->Ind,anim->CntFrm*sizeof(DWORD));
+					memcpy(anim_->Ind,anim->Ind,anim->CntFrm*sizeof(uint));
 					memcpy(anim_->NextX,anim->NextX,anim->CntFrm*sizeof(short));
 					memcpy(anim_->NextY,anim->NextY,anim->CntFrm*sizeof(short));
 				}
@@ -420,7 +424,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD ani
 					// Append offsets
 					if(FLAG(flags,ANIM_FLAG_LAST_FRAME))
 					{
-						for(DWORD i=0;i<anim->CntFrm-1;i++)
+						for(uint i=0;i<anim->CntFrm-1;i++)
 						{
 							anim_->NextX[0]+=anim->NextX[i];
 							anim_->NextY[0]+=anim->NextY[i];
@@ -435,7 +439,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD ani
 	return NULL;
 }
 
-AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
+AnyFrames* ResourceManager::LoadFalloutAnimSpr(uint crtype, uint anim1, uint anim2, int dir)
 {
 	AnimMapIt it=critterFrames.find(AnimMapId(crtype,anim1,anim2,dir,true));
 	if(it!=critterFrames.end()) return (*it).second;
@@ -474,7 +478,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD 
 		AnyFrames* frm=frames;\
 		SpriteInfo* stay_si=SprMngr.GetSpriteInfo(stay_frm->Ind[0]);\
 		if(!stay_si) break;\
-		for(int i=0;i<frm->CntFrm;i++)\
+		for(uint i=0;i<frm->CntFrm;i++)\
 		{\
 			SpriteInfo* si=SprMngr.GetSpriteInfo(frm->Ind[i]);\
 			if(!si) continue;\
@@ -491,12 +495,12 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD 
 		if(!stay_si) break;\
 		short ox=0;\
 		short oy=0;\
-		for(int i=0;i<stay_frm->CntFrm;i++)\
+		for(uint i=0;i<stay_frm->CntFrm;i++)\
 		{\
 			ox+=stay_frm->NextX[i];\
 			oy+=stay_frm->NextY[i];\
 		}\
-		for(int i=0;i<frm->CntFrm;i++)\
+		for(uint i=0;i<frm->CntFrm;i++)\
 		{\
 			SpriteInfo* si=SprMngr.GetSpriteInfo(frm->Ind[i]);\
 			if(!si) continue;\
@@ -625,7 +629,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD 
 	// Ko rise offsets
 	if(anim1==ANIM1_FALLOUT_KNOCKOUT)
 	{
-		BYTE anim2_=ANIM2_FALLOUT_KNOCK_FRONT;
+		uchar anim2_=ANIM2_FALLOUT_KNOCK_FRONT;
 		if(anim2==ANIM2_FALLOUT_STANDUP_BACK) anim2_=ANIM2_FALLOUT_KNOCK_BACK;
 		LOADSPR_ADDOFFS(ANIM1_FALLOUT_DEAD,anim2_);
 		LOADSPR_ADDOFFS_NEXT(ANIM1_FALLOUT_DEAD,anim2_);
@@ -634,7 +638,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD 
 	return frames;
 }
 
-Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
+Animation3d* ResourceManager::GetCrit3dAnim(uint crtype, uint anim1, uint anim2, int dir)
 {
 	if(CritType::GetAnimType(crtype)!=ANIM_TYPE_3D) return NULL;
 
@@ -660,9 +664,9 @@ Animation3d* ResourceManager::GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD ani
 	return anim3d;
 }
 
-DWORD ResourceManager::GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, int dir)
+uint ResourceManager::GetCritSprId(uint crtype, uint anim1, uint anim2, int dir)
 {
-	DWORD spr_id=0;
+	uint spr_id=0;
 	if(CritType::GetAnimType(crtype)!=ANIM_TYPE_3D)
 	{
 		AnyFrames* anim=GetCrit2dAnim(crtype,anim1,anim2,dir);

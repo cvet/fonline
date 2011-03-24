@@ -24,16 +24,16 @@ struct LoadedAnim
 	AnyFrames* Anim;
 	LoadedAnim(int res_type, AnyFrames* anim):ResType(res_type),Anim(anim){}
 };
-typedef map<DWORD,LoadedAnim,less<DWORD>> LoadedAnimMap;
-typedef map<DWORD,LoadedAnim,less<DWORD>>::iterator LoadedAnimMapIt;
-typedef map<DWORD,LoadedAnim,less<DWORD>>::value_type LoadedAnimMapVal;
+typedef map<uint,LoadedAnim,less<uint>> LoadedAnimMap;
+typedef map<uint,LoadedAnim,less<uint>>::iterator LoadedAnimMapIt;
+typedef map<uint,LoadedAnim,less<uint>>::value_type LoadedAnimMapVal;
 
 
 class ResourceManager
 {
 private:
 	PtrVec processedDats;
-	DwordStrMap namesHash;
+	UIntStrMap namesHash;
 	LoadedAnimMap loadedAnims;
 	AnimMap critterFrames;
 	Animation3dVec critter3d;
@@ -41,24 +41,24 @@ private:
 	StrMap soundNames;
 
 	void AddNamesHash(StrVec& names);
-	AnyFrames* LoadFalloutAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
-	AnyFrames* LoadFalloutAnimSpr(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
+	AnyFrames* LoadFalloutAnim(uint crtype, uint anim1, uint anim2, int dir);
+	AnyFrames* LoadFalloutAnimSpr(uint crtype, uint anim1, uint anim2, int dir);
 
 public:
 	void Refresh();
 	void Finish();
 	void FreeResources(int type);
 
-	AnyFrames* GetAnim(DWORD name_hash, int dir, int res_type);
-	AnyFrames* GetIfaceAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE);}
-	AnyFrames* GetInvAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE_EXT);}
-	AnyFrames* GetSkDxAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_IFACE_EXT);}
-	AnyFrames* GetItemAnim(DWORD name_hash){return GetAnim(name_hash,0,RES_ITEMS);}
-	AnyFrames* GetItemAnim(DWORD name_hash, int dir){return GetAnim(name_hash,dir,RES_ITEMS);}
+	AnyFrames* GetAnim(uint name_hash, int dir, int res_type);
+	AnyFrames* GetIfaceAnim(uint name_hash){return GetAnim(name_hash,0,RES_IFACE);}
+	AnyFrames* GetInvAnim(uint name_hash){return GetAnim(name_hash,0,RES_IFACE_EXT);}
+	AnyFrames* GetSkDxAnim(uint name_hash){return GetAnim(name_hash,0,RES_IFACE_EXT);}
+	AnyFrames* GetItemAnim(uint name_hash){return GetAnim(name_hash,0,RES_ITEMS);}
+	AnyFrames* GetItemAnim(uint name_hash, int dir){return GetAnim(name_hash,dir,RES_ITEMS);}
 
-	AnyFrames* GetCrit2dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
-	Animation3d* GetCrit3dAnim(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
-	DWORD GetCritSprId(DWORD crtype, DWORD anim1, DWORD anim2, int dir);
+	AnyFrames* GetCrit2dAnim(uint crtype, uint anim1, uint anim2, int dir);
+	Animation3d* GetCrit3dAnim(uint crtype, uint anim1, uint anim2, int dir);
+	uint GetCritSprId(uint crtype, uint anim1, uint anim2, int dir);
 
 	AnyFrames* GetRandomSplash();
 

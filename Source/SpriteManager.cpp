@@ -11,7 +11,7 @@ AnyFrames* SpriteManager::DummyAnimation=NULL;
 #define SPRITES_POOL_GROW_SIZE    (10000)
 #define SPRITES_RESIZE_COUNT      (100)
 #define SURF_SPRITES_OFFS         (2)
-#define SURF_POINT(lr,x,y)        (*((DWORD*)((BYTE*)lr.pBits+lr.Pitch*(y)+(x)*4)))
+#define SURF_POINT(lr,x,y)        (*((uint*)((uchar*)lr.pBits+lr.Pitch*(y)+(x)*4)))
 
 /************************************************************************/
 /* Sprites                                                              */
@@ -65,12 +65,12 @@ Sprite* Sprite::GetIntersected(int ox, int oy)
 #define SPRITE_SETTER2(func,type,val,type2,val2) void Sprite::func(type val##__, type2 val2##__){if(!Valid) return; Valid=false; val=val##__; val2=val2##__; if(Parent) Parent->func(val##__,val2##__); if(Child) Child->func(val##__,val2##__); Valid=true;}
 SPRITE_SETTER(SetEgg,int,EggType);
 SPRITE_SETTER(SetContour,int,ContourType);
-SPRITE_SETTER2(SetContour,int,ContourType,DWORD,ContourColor);
-SPRITE_SETTER(SetColor,DWORD,Color);
-SPRITE_SETTER(SetAlpha,BYTE*,Alpha);
-SPRITE_SETTER(SetFlash,DWORD,FlashMask);
+SPRITE_SETTER2(SetContour,int,ContourType,uint,ContourColor);
+SPRITE_SETTER(SetColor,uint,Color);
+SPRITE_SETTER(SetAlpha,uchar*,Alpha);
+SPRITE_SETTER(SetFlash,uint,FlashMask);
 
-void Sprite::SetLight(BYTE* light, int maxhx, int maxhy)
+void Sprite::SetLight(uchar* light, int maxhx, int maxhy)
 {
 	if(!Valid) return;
 	Valid=false;
@@ -89,7 +89,7 @@ SpriteVec Sprites::spritesPool;
 void Sprites::GrowPool(size_t size)
 {
 	spritesPool.reserve(spritesPool.size()+size);
-	for(size_t i=0;i<size;i++) spritesPool.push_back(new Sprite());
+	for(uint i=0;i<size;i++) spritesPool.push_back(new Sprite());
 }
 
 void Sprites::ClearPool()
@@ -103,7 +103,7 @@ void Sprites::ClearPool()
 	spritesPool.clear();
 }
 
-Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
+Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback)
 {
 	if(index>=spritesTreeSize)
 	{
@@ -190,7 +190,7 @@ Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut
 #ifdef FONLINE_MAPPER
 			spr_.CutOyL=(hor?-6:-12)*((hor?hx:hy)-i);
 			spr_.CutOyR=spr_.CutOyL;
-			if(ww<stepf) spr_.CutOyR+=(hor?3.6f:-8.0f)*(1.0f-(ww/stepf));
+			if(ww<stepf) spr_.CutOyR+=(int)((hor?3.6f:-8.0f)*(1.0f-(ww/stepf)));
 #endif
 
 			xx+=stepf;
@@ -203,12 +203,12 @@ Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut
 	return *spr;
 }
 
-Sprite& Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
+Sprite& Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback)
 {
 	return PutSprite(spritesTreeSize,draw_order,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
 }
 
-Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, DWORD id, DWORD* id_ptr, short* ox, short* oy, BYTE* alpha, bool* callback)
+Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback)
 {
 	// For cutted sprites need resort all tree
 	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
@@ -220,7 +220,7 @@ Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, in
 
 	// Find place
 	size_t index=0;
-	DWORD pos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
+	uint pos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
 		hy*MAXHEX_MAX+hx+MAXHEX_MAX*MAXHEX_MAX*(draw_order-DRAW_ORDER_FLAT):
 		MAXHEX_MAX*MAXHEX_MAX*DRAW_ORDER+hy*DRAW_ORDER*MAXHEX_MAX+hx*DRAW_ORDER+(draw_order-DRAW_ORDER));
 	for(;index<spritesTreeSize;index++)
@@ -231,7 +231,7 @@ Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, in
 	}
 
 	// Gain tree index to other sprites
-	for(size_t i=index;i<spritesTreeSize;i++)  spritesTree[i]->TreeIndex++;
+	for(uint i=index;i<spritesTreeSize;i++)  spritesTree[i]->TreeIndex++;
 
 	// Insert to array
 	spritesTreeSize++;
@@ -256,7 +256,7 @@ void Sprites::Resize(size_t size)
 		spritesTree.reserve(tree_size+diff);
 		//spritesTree.insert(spritesTree.end(),spritesPool.rbegin(),spritesPool.rbegin()+diff);
 		//spritesPool.erase(spritesPool.begin()+tree_size-diff,spritesPool.end());
-		for(size_t i=0;i<diff;i++)
+		for(uint i=0;i<diff;i++)
 		{
 			spritesTree.push_back(spritesPool.back());
 			spritesPool.pop_back();
@@ -275,7 +275,7 @@ void Sprites::Resize(size_t size)
 		spritesPool.reserve(pool_size+diff);
 		//spritesPool.insert(spritesPool.end(),spritesTree.rbegin(),spritesTree.rbegin()+diff);
 		//spritesTree.erase(spritesTree.begin()+tree_size-diff,spritesTree.end());
-		for(size_t i=0;i<diff;i++)
+		for(uint i=0;i<diff;i++)
 		{
 			spritesPool.push_back(spritesTree.back());
 			spritesTree.pop_back();
@@ -316,7 +316,7 @@ void Sprites::SortByMapPos()
 		}
 	};
 	std::sort(spritesTree.begin(),spritesTree.begin()+spritesTreeSize,Sorter::SortByMapPos);
-	for(size_t i=0;i<spritesTreeSize;i++) spritesTree[i]->TreeIndex=i;
+	for(uint i=0;i<spritesTreeSize;i++) spritesTree[i]->TreeIndex=i;
 }
 
 /************************************************************************/
@@ -353,7 +353,7 @@ modeWidth(0),modeHeight(0)
 bool SpriteManager::Init(SpriteMngrParams& params)
 {
 	if(isInit) return false;
-	WriteLog("Sprite manager initialization...\n");
+	WriteLog(NULL,"Sprite manager initialization...\n");
 
 	mngrParams=params;
 	PreRestore=params.PreRestoreFunc;
@@ -367,7 +367,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	direct3D=Direct3DCreate(D3D_SDK_VERSION);
 	if(!direct3D)
 	{
-		WriteLog("Create Direct3D fail.\n");
+		WriteLog(NULL,"Create Direct3D fail.\n");
 		return false;
 	}
 
@@ -408,7 +408,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 			presentParams.MultiSampleType,&presentParams.MultiSampleQuality);
 		if(FAILED(hr))
 		{
-			WriteLog("Multisampling %dx not supported. Disabled.\n",(int)presentParams.MultiSampleType);
+			WriteLog(NULL,"Multisampling %dx not supported. Disabled.\n",(int)presentParams.MultiSampleType);
 			presentParams.MultiSampleType=D3DMULTISAMPLE_NONE;
 			presentParams.MultiSampleQuality=0;
 		}
@@ -436,13 +436,13 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 			shader->Release();
 			if(FAILED(hr))
 			{
-				WriteLog(__FUNCTION__" - Can't create contours pixel shader, error<%s>. Used old style contours.\n",DXGetErrorString(hr));
+				WriteLog(_FUNC_," - Can't create contours pixel shader, error<%s>. Used old style contours.\n",DXGetErrorString(hr));
 				contoursPS=NULL;
 			}
 		}
 		else
 		{
-			WriteLog(__FUNCTION__" - Shader 2d contours compilation fail, errors<%s\n%s>, legacy compiler errors<%s\n%s>. Used old style contours.\n",
+			WriteLog(_FUNC_," - Shader 2d contours compilation fail, errors<%s\n%s>, legacy compiler errors<%s\n%s>. Used old style contours.\n",
 				DXGetErrorString(hr),errors?errors->GetBufferPointer():"",DXGetErrorString(hr31),errors31?errors31->GetBufferPointer():"");
 		}
 		SAFEREL(errors);
@@ -485,7 +485,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	}
 	else
 	{
-		WriteLog("Load sprite 'egg.png' fail. Egg disabled.\n");
+		WriteLog(NULL,"Load sprite 'egg.png' fail. Egg disabled.\n");
 	}
 
 	// Default effects
@@ -505,12 +505,12 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		DummyAnimation=CreateAnimation(1,100);
 		if(!DummyAnimation)
 		{
-			WriteLog("Can't create dummy animation.\n");
+			WriteLog(NULL,"Can't create dummy animation.\n");
 			return false;
 		}
 	}
 
-	WriteLog("Sprite manager initialization complete.\n");
+	WriteLog(NULL,"Sprite manager initialization complete.\n");
 	return true;
 }
 
@@ -533,9 +533,9 @@ bool SpriteManager::InitBuffers()
 	D3D_HR(d3dDevice->CreateVertexBuffer(flushSprCnt*4*sizeof(MYVERTEX),D3DUSAGE_WRITEONLY|D3DUSAGE_DYNAMIC,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&pVB,NULL));
 
 	// Index buffer
-	D3D_HR(d3dDevice->CreateIndexBuffer(flushSprCnt*6*sizeof(WORD),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
+	D3D_HR(d3dDevice->CreateIndexBuffer(flushSprCnt*6*sizeof(ushort),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&pIB,NULL));
 
-	WORD* ind=new WORD[6*flushSprCnt];
+	ushort* ind=new ushort[6*flushSprCnt];
 	if(!ind) return false;
 	for(int i=0;i<flushSprCnt;i++)
 	{
@@ -549,7 +549,7 @@ bool SpriteManager::InitBuffers()
 
 	void* buf;
 	D3D_HR(pIB->Lock(0,0,(void**)&buf,0));
-	memcpy(buf,ind,flushSprCnt*6*sizeof(WORD));
+	memcpy(buf,ind,flushSprCnt*6*sizeof(ushort));
 	D3D_HR(pIB->Unlock());
 	delete[] ind;
 
@@ -625,7 +625,7 @@ bool SpriteManager::InitRenderStates()
 
 void SpriteManager::Clear()
 {
-	WriteLog("Sprite manager finish...\n");
+	WriteLog(NULL,"Sprite manager finish...\n");
 
 	for(SurfVecIt it=surfList.begin(),end=surfList.end();it!=end;++it) SAFEDEL(*it);
 	surfList.clear();
@@ -653,10 +653,10 @@ void SpriteManager::Clear()
 	SAFEREL(direct3D);
 
 	isInit=false;
-	WriteLog("Sprite manager finish complete.\n");
+	WriteLog(NULL,"Sprite manager finish complete.\n");
 }
 
-bool SpriteManager::BeginScene(DWORD clear_color)
+bool SpriteManager::BeginScene(uint clear_color)
 {
 	HRESULT hr=d3dDevice->TestCooperativeLevel();
 	if(hr!=D3D_OK && (hr!=D3DERR_DEVICENOTRESET || !Restore())) return false;
@@ -718,7 +718,7 @@ bool SpriteManager::CreateRenderTarget(LPDIRECT3DSURFACE& surf, int w, int h)
 	return true;
 }
 
-bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, DWORD color)
+bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, uint color)
 {
 	if(!surf) return true;
 
@@ -735,7 +735,7 @@ bool SpriteManager::ClearRenderTarget(LPDIRECT3DSURFACE& surf, DWORD color)
 	return true;
 }
 
-bool SpriteManager::ClearCurRenderTarget(DWORD color)
+bool SpriteManager::ClearCurRenderTarget(uint color)
 {
 	D3D_HR(d3dDevice->Clear(0,NULL,D3DCLEAR_TARGET,color,1.0f,0));
 	return true;
@@ -771,8 +771,8 @@ Surface* SpriteManager::CreateNewSurface(int w, int h)
 Surface* SpriteManager::FindSurfacePlace(SpriteInfo* si, int& x, int& y)
 {
 	// Find place in already created surface
-	int w=si->Width+SURF_SPRITES_OFFS*2;
-	int h=si->Height+SURF_SPRITES_OFFS*2;
+	uint w=si->Width+SURF_SPRITES_OFFS*2;
+	uint h=si->Height+SURF_SPRITES_OFFS*2;
 	for(SurfVecIt it=surfList.begin(),end=surfList.end();it!=end;++it)
 	{
 		Surface* surf=*it;
@@ -859,19 +859,19 @@ void SpriteManager::SaveSufaces()
 	folder_cnt++;
 }
 
-DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD size)
+uint SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, uint size)
 {
 	// Parameters
-	DWORD w,h;
-	bool fast=(*(DWORD*)data==MAKEFOURCC('F','0','F','A'));
+	uint w,h;
+	bool fast=(*(uint*)data==MAKEFOURCC('F','0','F','A'));
 	if(!si) si=new(nothrow) SpriteInfo();
 
 	// Get width, height
 	// FOnline fast format
 	if(fast)
 	{
-		w=*((DWORD*)data+1);
-		h=*((DWORD*)data+2);
+		w=*((uint*)data+1);
+		h=*((uint*)data+2);
 	}
 	// From file in memory
 	else
@@ -899,8 +899,8 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 	{
 		RECT r={x-1,y-1,x+w+1,y+h+1};
 		D3D_HR(dst_surf->LockRect(&rdst,&r,0));
-		BYTE* ptr=(BYTE*)((DWORD*)data+3);
-		for(int i=0;i<h;i++) memcpy((BYTE*)rdst.pBits+rdst.Pitch*(i+1)+4,ptr+w*4*i,w*4);
+		uchar* ptr=(uchar*)((uint*)data+3);
+		for(uint i=0;i<h;i++) memcpy((uchar*)rdst.pBits+rdst.Pitch*(i+1)+4,ptr+w*4*i,w*4);
 	}
 	// From file in memory
 	else
@@ -917,7 +917,7 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 		RECT dest_r={x-1,y-1,x+w+1,y+h+1};
 		D3D_HR(dst_surf->LockRect(&rdst,&dest_r,0));
 
-		for(int i=0;i<h;i++) memcpy((BYTE*)rdst.pBits+rdst.Pitch*(i+1)+4,(BYTE*)rsrc.pBits+rsrc.Pitch*i,w*4);
+		for(uint i=0;i<h;i++) memcpy((uchar*)rdst.pBits+rdst.Pitch*(i+1)+4,(uchar*)rsrc.pBits+rsrc.Pitch*i,w*4);
 
 		D3D_HR(src_surf->UnlockRect());
 		src_surf->Release();
@@ -925,12 +925,12 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 
 	if(GameOpt.DebugSprites)
 	{
-		DWORD rnd_color=D3DCOLOR_XRGB(Random(0,255),Random(0,255),Random(0,255));
-		for(DWORD yy=1;yy<h+1;yy++)
+		uint rnd_color=D3DCOLOR_XRGB(Random(0,255),Random(0,255),Random(0,255));
+		for(uint yy=1;yy<h+1;yy++)
 		{
-			for(DWORD xx=1;xx<w+1;xx++)
+			for(uint xx=1;xx<w+1;xx++)
 			{
-				DWORD& p=SURF_POINT(rdst,xx,yy);
+				uint& p=SURF_POINT(rdst,xx,yy);
 				if(p && (!SURF_POINT(rdst,xx-1,yy-1) || !SURF_POINT(rdst,xx,yy-1) || !SURF_POINT(rdst,xx+1,yy-1) ||
 					!SURF_POINT(rdst,xx-1,yy) || !SURF_POINT(rdst,xx+1,yy) || !SURF_POINT(rdst,xx-1,yy+1) ||
 					!SURF_POINT(rdst,xx,yy+1) || !SURF_POINT(rdst,xx+1,yy+1))) p=rnd_color;
@@ -938,10 +938,10 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 		}
 	}
 
-	for(int i=0;i<h+2;i++) SURF_POINT(rdst,0,i)=SURF_POINT(rdst,1,i); // Left
-	for(int i=0;i<h+2;i++) SURF_POINT(rdst,w+1,i)=SURF_POINT(rdst,w,i); // Right
-	for(int i=0;i<w+2;i++) SURF_POINT(rdst,i,0)=SURF_POINT(rdst,i,1); // Top
-	for(int i=0;i<w+2;i++) SURF_POINT(rdst,i,h+1)=SURF_POINT(rdst,i,h); // Bottom
+	for(uint i=0;i<h+2;i++) SURF_POINT(rdst,0,i)=SURF_POINT(rdst,1,i); // Left
+	for(uint i=0;i<h+2;i++) SURF_POINT(rdst,w+1,i)=SURF_POINT(rdst,w,i); // Right
+	for(uint i=0;i<w+2;i++) SURF_POINT(rdst,i,0)=SURF_POINT(rdst,i,1); // Top
+	for(uint i=0;i<w+2;i++) SURF_POINT(rdst,i,h+1)=SURF_POINT(rdst,i,h); // Bottom
 
 	D3D_HR(dst_surf->UnlockRect());
 	dst_surf->Release();
@@ -958,7 +958,7 @@ DWORD SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, DWORD siz
 
 	// Store sprite
 	size_t index=1;
-	for(size_t j=sprData.size();index<j;index++) if(!sprData[index]) break;
+	for(uint j=sprData.size();index<j;index++) if(!sprData[index]) break;
 	if(index<sprData.size()) sprData[index]=si;
 	else sprData.push_back(si);
 	return index;
@@ -973,7 +973,7 @@ AnyFrames* SpriteManager::LoadAnimation(const char* fname, int path_type, int fl
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
 	{
-		WriteLog(__FUNCTION__" - Extension not found, file<%s>.\n",fname);
+		WriteLog(_FUNC_," - Extension not found, file<%s>.\n",fname);
 		return dummy;
 	}
 
@@ -1001,7 +1001,7 @@ AnyFrames* SpriteManager::ReloadAnimation(AnyFrames* anim, const char* fname, in
 	// Release old images
 	if(anim)
 	{
-		for(DWORD i=0;i<anim->CntFrm;i++)
+		for(uint i=0;i<anim->CntFrm;i++)
 		{
 			SpriteInfo* si=GetSpriteInfo(anim->Ind[i]);
 			if(!si) continue;
@@ -1026,16 +1026,16 @@ AnyFrames* SpriteManager::ReloadAnimation(AnyFrames* anim, const char* fname, in
 	return LoadAnimation(fname,path_type);
 }
 
-AnyFrames* SpriteManager::CreateAnimation(DWORD frames, DWORD ticks)
+AnyFrames* SpriteManager::CreateAnimation(uint frames, uint ticks)
 {
 	if(!frames || frames>10000) return NULL;
 
 	AnyFrames* anim=new(nothrow) AnyFrames();
 	if(!anim) return NULL;
 
-	anim->Ind=new(nothrow) DWORD[frames];
+	anim->Ind=new(nothrow) uint[frames];
 	if(!anim->Ind) return NULL;
-	ZeroMemory(anim->Ind,sizeof(DWORD)*frames);
+	ZeroMemory(anim->Ind,sizeof(uint)*frames);
 	anim->NextX=new(nothrow) short[frames];
 	if(!anim->NextX) return NULL;
 	ZeroMemory(anim->NextX,sizeof(short)*frames);
@@ -1072,17 +1072,17 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 	if(!fm.LoadFile(fname,path_type)) return NULL;
 
 	fm.SetCurPos(0x4);
-	WORD frm_fps=fm.GetBEWord();
+	ushort frm_fps=fm.GetBEUShort();
 	if(!frm_fps) frm_fps=10;
 	fm.SetCurPos(0x8);
-	WORD frm_num=fm.GetBEWord();
+	ushort frm_num=fm.GetBEUShort();
 	fm.SetCurPos(0xA+dir*2);
-	short offs_x=fm.GetBEWord();
+	short offs_x=fm.GetBEUShort();
 	fm.SetCurPos(0x16+dir*2);
-	short offs_y=fm.GetBEWord();
+	short offs_y=fm.GetBEUShort();
 
 	fm.SetCurPos(0x22+dir*4);
-	DWORD offset=0x3E+fm.GetBEDWord();
+	uint offset=0x3E+fm.GetBEUInt();
 	if(offset==0x3E && dir) return NULL;
 
 	AnyFrames* anim=CreateAnimation(frm_num,1000/frm_fps*frm_num);
@@ -1096,48 +1096,48 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 	// 0x08 - FireFast, 243 - 247, 5
 	// 0x10 - Shoreline, 248 - 253, 6
 	// 0x20 - BlinkingRed, 254, parse on 15 frames
-	const BYTE blinking_red_vals[10]={254,210,165,120,75,45,90,135,180,225};
+	const uchar blinking_red_vals[10]={254,210,165,120,75,45,90,135,180,225};
 
 	for(int frm=0;frm<frm_num;frm++)
 	{
 		SpriteInfo* si=new(nothrow) SpriteInfo(); // TODO: Memory leak
 		if(!si) return NULL;
 		fm.SetCurPos(offset);
-		WORD w=fm.GetBEWord();
-		WORD h=fm.GetBEWord();
+		ushort w=fm.GetBEUShort();
+		ushort h=fm.GetBEUShort();
 
 		fm.GoForward(4); // Frame size
 
 		si->OffsX=offs_x;
 		si->OffsY=offs_y;
 
-		anim->NextX[frm]=fm.GetBEWord();
-		anim->NextY[frm]=fm.GetBEWord();
+		anim->NextX[frm]=fm.GetBEUShort();
+		anim->NextY[frm]=fm.GetBEUShort();
 
 		// Create FOnline fast format
-		DWORD size=12+h*w*4;
-		BYTE* data=new(nothrow) BYTE[size];
+		uint size=12+h*w*4;
+		uchar* data=new(nothrow) uchar[size];
 		if(!data)
 		{
 			delete anim;
 			return NULL;
 		}
-		*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-		*((DWORD*)data+1)=w;
-		*((DWORD*)data+2)=h;
-		DWORD* ptr=(DWORD*)data+3;
-		DWORD* palette=(DWORD*)FoPalette;
+		*((uint*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+		*((uint*)data+1)=w;
+		*((uint*)data+2)=h;
+		uint* ptr=(uint*)data+3;
+		uint* palette=(uint*)FoPalette;
 		fm.SetCurPos(offset+12);
 
 		if(!anim_pix_type)
 		{
-			for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fm.GetByte()];
+			for(int i=0,j=w*h;i<j;i++) *(ptr+i)=palette[fm.GetUChar()];
 		}
 		else
 		{
 			for(int i=0,j=w*h;i<j;i++)
 			{
-				BYTE index=fm.GetByte();
+				uchar index=fm.GetUChar();
 				if(index>=229 && index<255)
 				{
 					if(index>=229 && index<=232) {index-=frm%4; if(index<229) index+=4;}
@@ -1161,7 +1161,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 			fm.SetCurPos(offset+12);
 			for(int i=0,j=w*h;i<j;i++)
 			{
-				BYTE index=fm.GetByte();
+				uchar index=fm.GetUChar();
 				if(index<229 || index==255) continue;
 				if(index>=229 && index<=232) anim_pix_type|=0x01;
 				else if(index>=233 && index<=237) anim_pix_type|=0x02;
@@ -1203,7 +1203,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 				SAFEDELA(anim->Ind);
 				SAFEDELA(anim->NextX);
 				SAFEDELA(anim->NextY);
-				anim->Ind=new(nothrow) DWORD[frm_num];
+				anim->Ind=new(nothrow) uint[frm_num];
 				if(!anim->Ind) return NULL;
 				anim->NextX=new(nothrow) short[frm_num];
 				if(!anim->NextX) return NULL;
@@ -1216,7 +1216,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 
 		if(!anim_pix_type) offset+=w*h+12;
 
-		DWORD result=FillSurfaceFromMemory(si,data,size);
+		uint result=FillSurfaceFromMemory(si,data,size);
 		delete[] data;
 		if(!result)
 		{
@@ -1236,29 +1236,29 @@ AnyFrames* SpriteManager::LoadAnimationRix(const char* fname, int path_type)
 
 	SpriteInfo* si=new(nothrow) SpriteInfo();
 	fm.SetCurPos(0x4);
-	WORD w;fm.CopyMem(&w,2);
-	WORD h;fm.CopyMem(&h,2);
+	ushort w;fm.CopyMem(&w,2);
+	ushort h;fm.CopyMem(&h,2);
 
 	// Create FOnline fast format
-	DWORD size=12+h*w*4;
-	BYTE* data=new(nothrow) BYTE[size];
-	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); //FOnline FAst
-	*((DWORD*)data+1)=w;
-	*((DWORD*)data+2)=h;
-	DWORD* ptr=(DWORD*)data+3;
+	uint size=12+h*w*4;
+	uchar* data=new(nothrow) uchar[size];
+	*((uint*)data)=MAKEFOURCC('F','0','F','A'); //FOnline FAst
+	*((uint*)data+1)=w;
+	*((uint*)data+2)=h;
+	uint* ptr=(uint*)data+3;
 	fm.SetCurPos(0xA);
-	BYTE* palette=fm.GetCurBuf();
+	uchar* palette=fm.GetCurBuf();
 	fm.SetCurPos(0xA+256*3);
 	for(int i=0,j=w*h;i<j;i++)
 	{
-		DWORD index=fm.GetByte();
-		DWORD r=*(palette+index*3+0)*4;
-		DWORD g=*(palette+index*3+1)*4;
-		DWORD b=*(palette+index*3+2)*4;
+		uint index=fm.GetUChar();
+		uint r=*(palette+index*3+0)*4;
+		uint g=*(palette+index*3+1)*4;
+		uint b=*(palette+index*3+2)*4;
 		*(ptr+i)=D3DCOLOR_XRGB(r,g,b);
 	}
 
-	DWORD result=FillSurfaceFromMemory(si,data,size);
+	uint result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
 	if(!result) return NULL;
 
@@ -1273,10 +1273,10 @@ AnyFrames* SpriteManager::LoadAnimationFofrm(const char* fname, int path_type, i
 	IniParser fofrm;
 	if(!fofrm.LoadFile(fname,path_type)) return NULL;
 
-	WORD frm_fps=fofrm.GetInt("fps",0);
+	ushort frm_fps=fofrm.GetInt("fps",0);
 	if(!frm_fps) frm_fps=10;
 
-	WORD frm_num=fofrm.GetInt("count",0);
+	ushort frm_num=fofrm.GetInt("count",0);
 	if(!frm_num) frm_num=1;
 
 	int ox=fofrm.GetInt("offs_x",0);
@@ -1307,7 +1307,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm(const char* fname, int path_type, i
 	IntVec anims_offs;
 	anims.reserve(50);
 	anims_offs.reserve(100);
-	DWORD frames=0;
+	uint frames=0;
 	for(int frm=0;frm<frm_num;frm++)
 	{
 		anims_offs.push_back(fofrm.GetInt(no_app?NULL:dir_str,Str::Format("next_x_%d",frm),0));
@@ -1327,7 +1327,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm(const char* fname, int path_type, i
 	if(anims.empty())
 	{
 label_Fail:
-		for(size_t i=0,j=anims.size();i<j;i++) delete anims[i];
+		for(uint i=0,j=anims.size();i<j;i++) delete anims[i];
 		return NULL;
 	}
 
@@ -1349,12 +1349,12 @@ label_Fail:
 	AnyFrames* anim=CreateAnimation(frames,1000/frm_fps*frm_num);
 	if(!anim) goto label_Fail;
 
-	DWORD frm=0;
-	for(size_t i=0,j=anims.size();i<j;i++)
+	uint frm=0;
+	for(uint i=0,j=anims.size();i<j;i++)
 	{
 		AnyFrames* part=anims[i];
 
-		for(DWORD j=0;j<part->CntFrm;j++,frm++)
+		for(uint j=0;j<part->CntFrm;j++,frm++)
 		{
 			anim->Ind[frm]=part->Ind[j];
 			anim->NextX[frm]+=anims_offs[frm*2+0];
@@ -1396,7 +1396,7 @@ AnyFrames* SpriteManager::LoadAnimation3d(const char* fname, int path_type, int 
 	if(frames_count<=1)
 	{
 label_LoadOneSpr:
-		DWORD spr_id=Render3dSprite(anim3d,dir,proc_from*10);
+		uint spr_id=Render3dSprite(anim3d,dir,proc_from*10);
 		if(!spr_id) return NULL;
 		AnyFrames* anim=CreateAnimation(1,100);
 		if(!anim) return NULL;
@@ -1404,7 +1404,7 @@ label_LoadOneSpr:
 		return anim;
 	}
 
-	AnyFrames* anim=CreateAnimation(frames_count,period_len*1000.0f);
+	AnyFrames* anim=CreateAnimation(frames_count,(uint)(period_len*1000.0f));
 	if(!anim) return NULL;
 
 	float cur_proc=(float)proc_from;
@@ -1462,7 +1462,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		const char* ext=FileManager::GetExtension(file_name)-1;
 		size_t len=(size_t)ext-(size_t)delim;
 
-		for(size_t i=1;i<len;i++)
+		for(uint i=1;i<len;i++)
 		{
 			switch(delim[i])
 			{
@@ -1519,7 +1519,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 
 	// Fix dir
 	if(header.rotationCount!=8) dir=dir*(header.rotationCount*100/8)/100;
-	if(dir>=header.rotationCount) dir=0;
+	if((uint)dir>=header.rotationCount) dir=0;
 
 	// Load palettes
 	int palette_count=0;
@@ -1533,28 +1533,28 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 	}
 	if(palette_index>=palette_count) palette_index=0;
 
-	DWORD frm_fps=header.frameRate;
+	uint frm_fps=header.frameRate;
 	if(!frm_fps) frm_fps=10;
-	DWORD frm_count=header.frameCount;
-	DWORD dir_count=header.rotationCount;
+	uint frm_count=header.frameCount;
+	uint dir_count=header.rotationCount;
 
 	AnyFrames* anim=CreateAnimation(frm_count,1000/frm_fps*frm_count);
 	if(!anim) return NULL;
 
 	// Calculate data offset
-	DWORD data_offset=sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+sizeof(ArtFrameInfo)*dir_count*frm_count;
-	for(int i=0;i<dir;i++)
+	uint data_offset=sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+sizeof(ArtFrameInfo)*dir_count*frm_count;
+	for(uint i=0;i<(uint)dir;i++)
 	{
-		for(int j=0;j<frm_count;j++)
+		for(uint j=0;j<frm_count;j++)
 		{
 			fm.SetCurPos(sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+
 				sizeof(ArtFrameInfo)*i*frm_count+sizeof(ArtFrameInfo)*j+sizeof(unsigned int)*2);
-			data_offset+=fm.GetLEDWord();
+			data_offset+=fm.GetLEUInt();
 		}
 	}
 
 	// Read data
-	for(int frm=0;frm<frm_count;frm++)
+	for(uint frm=0;frm<frm_count;frm++)
 	{
 		fm.SetCurPos(sizeof(ArtHeader)+sizeof(ArtPalette)*palette_count+
 			sizeof(ArtFrameInfo)*dir*frm_count+sizeof(ArtFrameInfo)*frm);
@@ -1579,20 +1579,20 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		anim->NextY[frm]=0;//frame_info.deltaY;
 
 		// Create FOnline fast format
-		DWORD w=frame_info.frameWidth;
-		DWORD h=frame_info.frameHeight;
-		DWORD size=12+h*w*4;
-		BYTE* data=new(nothrow) BYTE[size];
+		uint w=frame_info.frameWidth;
+		uint h=frame_info.frameHeight;
+		uint size=12+h*w*4;
+		uchar* data=new(nothrow) uchar[size];
 		if(!data)
 		{
 			delete si;
 			delete anim;
 			return NULL;
 		}
-		*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-		*((DWORD*)data+1)=w;
-		*((DWORD*)data+2)=h;
-		DWORD* ptr=(DWORD*)data+3;
+		*((uint*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+		*((uint*)data+1)=w;
+		*((uint*)data+2)=h;
+		uint* ptr=(uint*)data+3;
 
 		fm.SetCurPos(data_offset);
 		data_offset+=frame_info.frameSize;
@@ -1600,8 +1600,8 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		// Decode
 //=======================================================================
 #define ART_GET_COLOR \
-		BYTE index=fm.GetByte();\
-		DWORD color=palette[palette_index][index];\
+		uchar index=fm.GetUChar();\
+		uint color=palette[palette_index][index];\
 		if(!index) color=0;\
 		else if(transparent) color|=max((color>>16)&0xFF,max((color>>8)&0xFF,color&0xFF))<<24;\
 		else color|=0xFF000000
@@ -1610,7 +1610,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		{\
 			*(ptr+((mirror_ver?h-y-1:y)*w+(mirror_hor?w-x-1:x)))=color;\
 			x++;\
-			if(x>=w) x=0,y++;\
+			if(x>=(int)w) x=0,y++;\
 		}\
 		else\
 		{\
@@ -1619,13 +1619,13 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		}
 //=======================================================================
 
-		DWORD pos=0;
+		uint pos=0;
 		int x=0,y=0;
 		bool mirror=(mirror_hor || mirror_ver);
 
 		if(w*h==frame_info.frameSize)
 		{
-			for(DWORD i=0;i<frame_info.frameSize;i++)
+			for(uint i=0;i<frame_info.frameSize;i++)
 			{
 				ART_GET_COLOR;
 				ART_WRITE_COLOR;
@@ -1633,9 +1633,9 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		}
 		else
 		{
-			for(DWORD i=0;i<frame_info.frameSize;i++)
+			for(uint i=0;i<frame_info.frameSize;i++)
 			{
-				BYTE cmd=fm.GetByte();
+				uchar cmd=fm.GetUChar();
 				if(cmd>128)
 				{
 					cmd-=128;
@@ -1656,7 +1656,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 		}
 
 		// Fill
-		DWORD result=FillSurfaceFromMemory(si,data,size);
+		uint result=FillSurfaceFromMemory(si,data,size);
 		delete[] data;
 		if(!result)
 		{
@@ -1826,20 +1826,20 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	char head[11];
 	if(!fm.CopyMem(head,11) || head[8] || strcmp(head,"<sprite>")) return NULL;
 
-	float dimension_left=(float)fm.GetByte()*6.7f;
-	float dimension_up=(float)fm.GetByte()*7.6f;
-	float dimension_right=(float)fm.GetByte()*6.7f;
-	int center_x=fm.GetLEDWord();
-	int center_y=fm.GetLEDWord();
-	fm.GoForward(2); // WORD unknown1  sometimes it is 0, and sometimes it is 3
+	float dimension_left=(float)fm.GetUChar()*6.7f;
+	float dimension_up=(float)fm.GetUChar()*7.6f;
+	float dimension_right=(float)fm.GetUChar()*6.7f;
+	int center_x=fm.GetLEUInt();
+	int center_y=fm.GetLEUInt();
+	fm.GoForward(2); // ushort unknown1  sometimes it is 0, and sometimes it is 3
 	fm.GoForward(1); // CHAR unknown2  0x64, other values were not observed
 
 	float ta=RAD(127.0f/2.0f); // Tactics grid angle
 	int center_x_ex=(int)((dimension_left*sinf(ta)+dimension_right*sinf(ta))/2.0f-dimension_left*sinf(ta));
 	int center_y_ex=(int)((dimension_left*cosf(ta)+dimension_right*cosf(ta))/2.0f);
 
-	DWORD anim_index=0;
-	DwordVec frames;
+	uint anim_index=0;
+	UIntVec frames;
 	frames.reserve(1000);
 
 	// Find sequence
@@ -1847,31 +1847,31 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	{
 		bool seq_founded=false;
 		char name[MAX_FOTEXT];
-		DWORD seq_cnt=fm.GetLEDWord();
-		for(DWORD seq=0;seq<seq_cnt;seq++)
+		uint seq_cnt=fm.GetLEUInt();
+		for(uint seq=0;seq<seq_cnt;seq++)
 		{
 			// Find by name
-			DWORD item_cnt=fm.GetLEDWord();
+			uint item_cnt=fm.GetLEUInt();
 			fm.GoForward(sizeof(short)*item_cnt);
-			fm.GoForward(sizeof(DWORD)*item_cnt); // DWORD  unknown3[item_cnt]
+			fm.GoForward(sizeof(uint)*item_cnt); // uint  unknown3[item_cnt]
 
-			DWORD len=fm.GetLEDWord();
+			uint len=fm.GetLEUInt();
 			fm.CopyMem(name,len);
 			name[len]=0;
 
-			WORD index=fm.GetLEWord();
+			ushort index=fm.GetLEUShort();
 
 			if(!_stricmp(name,seq_name))
 			{
 				anim_index=index;
 
 				// Read frame numbers
-				fm.GoBack(sizeof(WORD)+len+sizeof(DWORD)+
-					sizeof(DWORD)*item_cnt+sizeof(short)*item_cnt);
+				fm.GoBack(sizeof(ushort)+len+sizeof(uint)+
+					sizeof(uint)*item_cnt+sizeof(short)*item_cnt);
 
-				for(DWORD i=0;i<item_cnt;i++)
+				for(uint i=0;i<item_cnt;i++)
 				{
-					short val=fm.GetLEWord();
+					short val=fm.GetLEUShort();
 					if(val>=0) frames.push_back(val);
 					else if(val==-43)
 					{
@@ -1890,26 +1890,26 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 
 	// Find animation
 	fm.SetCurPos(0);
-	for(DWORD i=0;i<=anim_index;i++)
+	for(uint i=0;i<=anim_index;i++)
 	{
-		if(!fm.FindFragment((BYTE*)"<spranim>",9,fm.GetCurPos())) return NULL;
+		if(!fm.FindFragment((uchar*)"<spranim>",9,fm.GetCurPos())) return NULL;
 		fm.GoForward(12);
 	}
 
-	DWORD file_offset=fm.GetLEDWord();
-	fm.GoForward(fm.GetLEDWord()); // Collection name
-	DWORD frame_cnt=fm.GetLEDWord();
-	DWORD dir_cnt=fm.GetLEDWord();
-	DwordVec bboxes;
+	uint file_offset=fm.GetLEUInt();
+	fm.GoForward(fm.GetLEUInt()); // Collection name
+	uint frame_cnt=fm.GetLEUInt();
+	uint dir_cnt=fm.GetLEUInt();
+	UIntVec bboxes;
 	bboxes.resize(frame_cnt*dir_cnt*4);
-	fm.CopyMem(&bboxes[0],sizeof(DWORD)*frame_cnt*dir_cnt*4);
+	fm.CopyMem(&bboxes[0],sizeof(uint)*frame_cnt*dir_cnt*4);
 
 	// Fix dir
 	if(dir_cnt!=8) dir=dir*(dir_cnt*100/8)/100;
-	if(dir>=dir_cnt) dir=0;
+	if((uint)dir>=dir_cnt) dir=0;
 
 	// Check wrong frames
-	for(size_t i=0;i<frames.size();)
+	for(uint i=0;i<frames.size();)
 	{
 		if(frames[i]>=frame_cnt) frames.erase(frames.begin()+i);
 		else i++;
@@ -1918,21 +1918,21 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	// Get images file
 	fm.SetCurPos(file_offset);
 	fm.GoForward(14); // <spranim_img>\0
-	BYTE type=fm.GetByte();
+	uchar type=fm.GetUChar();
 	fm.GoForward(1); // \0
 
-	DWORD data_len;
-	DWORD cur_pos=fm.GetCurPos();
-	if(fm.FindFragment((BYTE*)"<spranim_img>",13,cur_pos)) data_len=fm.GetCurPos()-cur_pos;
+	uint data_len;
+	uint cur_pos=fm.GetCurPos();
+	if(fm.FindFragment((uchar*)"<spranim_img>",13,cur_pos)) data_len=fm.GetCurPos()-cur_pos;
 	else data_len=fm.GetFsize()-cur_pos;
 	fm.SetCurPos(cur_pos);
 
 	bool packed=(type==0x32);
-	BYTE* data=fm.GetCurBuf();
+	uchar* data=fm.GetCurBuf();
 	if(packed)
 	{
 		// Unpack with zlib
-		DWORD unpacked_len=fm.GetLEDWord();
+		uint unpacked_len=fm.GetLEUInt();
 		data=Crypt.Uncompress(fm.GetCurBuf(),data_len,unpacked_len/data_len+1);
 		if(!data) return NULL;
 		data_len=unpacked_len;
@@ -1942,26 +1942,26 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	if(packed) delete[] data;
 
 	// Read palette
-	typedef DWORD Palette[256];
+	typedef uint Palette[256];
 	Palette palette[4];
 	for(int i=0;i<4;i++)
 	{
-		DWORD palette_count=fm_images.GetLEDWord();
+		uint palette_count=fm_images.GetLEUInt();
 		if(palette_count<=256) fm_images.CopyMem(&palette[i],palette_count*4);
 	}
 
 	// Index data offsets
-	DwordVec image_indices;
+	UIntVec image_indices;
 	image_indices.resize(frame_cnt*dir_cnt*4);
-	for(DWORD cur=0;!fm_images.IsEOF();)
+	for(uint cur=0;!fm_images.IsEOF();)
 	{
-		BYTE tag=fm_images.GetByte();
+		uchar tag=fm_images.GetUChar();
 		if(tag==1)
 		{
 			// Valid index
 			image_indices[cur]=fm_images.GetCurPos();
 			fm_images.GoForward(8+8+8+1);
-			fm_images.GoForward(fm_images.GetLEDWord());
+			fm_images.GoForward(fm_images.GetLEUInt());
 			cur++;
 		}
 		else if(tag==0)
@@ -1978,15 +1978,15 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	AnyFrames* anim=CreateAnimation(frames.size(),1000/10*frames.size());
 	if(!anim) return NULL;
 
-	for(size_t f=0,ff=frames.size();f<ff;f++)
+	for(uint f=0,ff=frames.size();f<ff;f++)
 	{
-		DWORD frm=frames[f];
+		uint frm=frames[f];
 		anim->NextX[f]=0;
 		anim->NextY[f]=0;
 
 		// Optimization, share frames
 		bool founded=false;
-		for(size_t i=0,j=f;i<j;i++)
+		for(uint i=0,j=f;i<j;i++)
 		{
 			if(frames[i]==frm)
 			{
@@ -1998,18 +1998,18 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		if(founded) continue;
 
 		// Compute whole image size
-		DWORD whole_w=0,whole_h=0;
-		for(DWORD part=0;part<4;part++)
+		uint whole_w=0,whole_h=0;
+		for(uint part=0;part<4;part++)
 		{
-			DWORD frm_index=(type==0x32?frame_cnt*dir_cnt*part+dir*frame_cnt+frm:((frm*dir_cnt+dir)<<2)+part);
+			uint frm_index=(type==0x32?frame_cnt*dir_cnt*part+dir*frame_cnt+frm:((frm*dir_cnt+dir)<<2)+part);
 			if(!image_indices[frm_index]) continue;
 			fm_images.SetCurPos(image_indices[frm_index]);
 
-			DWORD posx=fm_images.GetLEDWord();
-			DWORD posy=fm_images.GetLEDWord();
+			uint posx=fm_images.GetLEUInt();
+			uint posy=fm_images.GetLEUInt();
 			fm_images.GoForward(8);
-			DWORD w=fm_images.GetLEDWord();
-			DWORD h=fm_images.GetLEDWord();
+			uint w=fm_images.GetLEUInt();
+			uint h=fm_images.GetLEUInt();
 			if(w+posx>whole_w) whole_w=w+posx;
 			if(h+posy>whole_h) whole_h=h+posy;
 		}
@@ -2017,34 +2017,34 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		if(!whole_h) whole_h=1;
 
 		// Create FOnline fast format
-		DWORD img_size=12+whole_h*whole_w*4;
-		BYTE* img_data=new(nothrow) BYTE[img_size];
+		uint img_size=12+whole_h*whole_w*4;
+		uchar* img_data=new(nothrow) uchar[img_size];
 		if(!img_data) return NULL;
 		ZeroMemory(img_data,img_size);
-		*((DWORD*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-		*((DWORD*)img_data+1)=whole_w;
-		*((DWORD*)img_data+2)=whole_h;
+		*((uint*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+		*((uint*)img_data+1)=whole_w;
+		*((uint*)img_data+2)=whole_h;
 
-		for(DWORD part=0;part<4;part++)
+		for(uint part=0;part<4;part++)
 		{
-			DWORD frm_index=(type==0x32?frame_cnt*dir_cnt*part+dir*frame_cnt+frm:((frm*dir_cnt+dir)<<2)+part);
+			uint frm_index=(type==0x32?frame_cnt*dir_cnt*part+dir*frame_cnt+frm:((frm*dir_cnt+dir)<<2)+part);
 			if(!image_indices[frm_index]) continue;
 			fm_images.SetCurPos(image_indices[frm_index]);
 
-			DWORD posx=fm_images.GetLEDWord();
-			DWORD posy=fm_images.GetLEDWord();
+			uint posx=fm_images.GetLEUInt();
+			uint posy=fm_images.GetLEUInt();
 
 			char zar[8]={0};
 			fm_images.CopyMem(zar,8);
-			BYTE subtype=zar[6];
+			uchar subtype=zar[6];
 
-			DWORD w=fm_images.GetLEDWord();
-			DWORD h=fm_images.GetLEDWord();
-			BYTE palette_present=fm_images.GetByte();
-			DWORD rle_size=fm_images.GetLEDWord();
-			BYTE* rle_buf=fm_images.GetCurBuf();
+			uint w=fm_images.GetLEUInt();
+			uint h=fm_images.GetLEUInt();
+			uchar palette_present=fm_images.GetUChar();
+			uint rle_size=fm_images.GetLEUInt();
+			uchar* rle_buf=fm_images.GetCurBuf();
 			fm_images.GoForward(rle_size);
-			BYTE def_color=0;
+			uchar def_color=0;
 
 			if(zar[5] || strcmp(zar,"<zar>") || (subtype!=0x34 && subtype!=0x35) || palette_present==1)
 			{
@@ -2052,8 +2052,8 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 				return NULL;
 			}
 
-			DWORD* ptr=(DWORD*)img_data+3+(posy*whole_w)+posx;
-			DWORD x=posx,y=posy;
+			uint* ptr=(uint*)img_data+3+(posy*whole_w)+posx;
+			uint x=posx,y=posy;
 			while(rle_size)
 			{
 				int control=*rle_buf;
@@ -2065,20 +2065,20 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 
 				for(int i=0;i<control_count;i++)
 				{
-					DWORD col=0;
+					uint col=0;
 					switch(control_mode)
 					{
 					case 1:
 						col=palette[part][rle_buf[i]];
-						((BYTE*)&col)[3]=0xFF;
+						((uchar*)&col)[3]=0xFF;
 						break;
 					case 2:
 						col=palette[part][rle_buf[2*i]];
-						((BYTE*)&col)[3]=rle_buf[2*i+1];
+						((uchar*)&col)[3]=rle_buf[2*i+1];
 						break;
 					case 3:
 						col=palette[part][def_color];
-						((BYTE*)&col)[3]=rle_buf[i];
+						((uchar*)&col)[3]=rle_buf[i];
 						break;
 					default:
 						break;
@@ -2088,8 +2088,8 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 					{
 						if(rgb_offs[part][j])
 						{
-							int val=(int)(((BYTE*)&col)[2-j])+rgb_offs[part][j];
-							((BYTE*)&col)[2-j]=CLAMP(val,0,255);
+							int val=(int)(((uchar*)&col)[2-j])+rgb_offs[part][j];
+							((uchar*)&col)[2-j]=CLAMP(val,0,255);
 						}
 					}
 
@@ -2101,7 +2101,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 					{
 						x=posx;
 						y++;
-						ptr=(DWORD*)img_data+3+(y*whole_w)+x;
+						ptr=(uint*)img_data+3+(y*whole_w)+x;
 					}
 				}
 
@@ -2121,7 +2121,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 		SpriteInfo* si=new(nothrow) SpriteInfo();
 		si->OffsX=bboxes[frm*dir_cnt*4+dir*4+0]-center_x+center_x_ex+whole_w/2;
 		si->OffsY=bboxes[frm*dir_cnt*4+dir*4+1]-center_y+center_y_ex+whole_h;
-		DWORD result=FillSurfaceFromMemory(si,img_data,img_size);
+		uint result=FillSurfaceFromMemory(si,img_data,img_size);
 		delete[] img_data;
 		if(!result)
 		{
@@ -2143,37 +2143,37 @@ AnyFrames* SpriteManager::LoadAnimationZar(const char* fname, int path_type)
 	// Read header
 	char head[6];
 	if(!fm.CopyMem(head,6) || head[5] || strcmp(head,"<zar>")) return NULL;
-	BYTE type=fm.GetByte();
+	uchar type=fm.GetUChar();
 	fm.GoForward(1); // \0
-	DWORD w=fm.GetLEDWord();
-	DWORD h=fm.GetLEDWord();
-	BYTE palette_present=fm.GetByte();
+	uint w=fm.GetLEUInt();
+	uint h=fm.GetLEUInt();
+	uchar palette_present=fm.GetUChar();
 
 	// Read palette
-	DWORD palette[256]={0};
-	BYTE def_color=0;
+	uint palette[256]={0};
+	uchar def_color=0;
 	if(palette_present)
 	{
-		DWORD palette_count=fm.GetLEDWord();
+		uint palette_count=fm.GetLEUInt();
 		if(palette_count>256) return NULL;
-		fm.CopyMem(palette,sizeof(DWORD)*palette_count);
-		if(type==0x34) def_color=fm.GetByte();
+		fm.CopyMem(palette,sizeof(uint)*palette_count);
+		if(type==0x34) def_color=fm.GetUChar();
 	}
 
 	// Read image
-	DWORD rle_size=fm.GetLEDWord();
-	BYTE* rle_buf=fm.GetCurBuf();
+	uint rle_size=fm.GetLEUInt();
+	uchar* rle_buf=fm.GetCurBuf();
 	fm.GoForward(rle_size);
 
 	// Create FOnline fast format
-	DWORD img_size=12+h*w*4;
-	BYTE* img_data=new(nothrow) BYTE[img_size];
+	uint img_size=12+h*w*4;
+	uchar* img_data=new(nothrow) uchar[img_size];
 	if(!img_data) return NULL;
 	ZeroMemory(img_data,img_size);
-	*((DWORD*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-	*((DWORD*)img_data+1)=w;
-	*((DWORD*)img_data+2)=h;
-	DWORD* ptr=(DWORD*)img_data+3;
+	*((uint*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+	*((uint*)img_data+1)=w;
+	*((uint*)img_data+2)=h;
+	uint* ptr=(uint*)img_data+3;
 
 	// Decode
 	while(rle_size)
@@ -2187,20 +2187,20 @@ AnyFrames* SpriteManager::LoadAnimationZar(const char* fname, int path_type)
 
 		for(int i=0;i<control_count;i++)
 		{
-			DWORD col=0;
+			uint col=0;
 			switch(control_mode)
 			{
 			case 1:
 				col=palette[rle_buf[i]];
-				((BYTE*)&col)[3]=0xFF;
+				((uchar*)&col)[3]=0xFF;
 				break;
 			case 2:
 				col=palette[rle_buf[2*i]];
-				((BYTE*)&col)[3]=rle_buf[2*i+1];
+				((uchar*)&col)[3]=rle_buf[2*i+1];
 				break;
 			case 3:
 				col=palette[def_color];
-				((BYTE*)&col)[3]=rle_buf[i];
+				((uchar*)&col)[3]=rle_buf[i];
 				break;
 			default:
 				break;
@@ -2223,7 +2223,7 @@ AnyFrames* SpriteManager::LoadAnimationZar(const char* fname, int path_type)
 
 	// Fill animation
 	SpriteInfo* si=new(nothrow) SpriteInfo();
-	DWORD result=FillSurfaceFromMemory(si,img_data,img_size);
+	uint result=FillSurfaceFromMemory(si,img_data,img_size);
 	delete[] img_data;
 	if(!result) return NULL;
 
@@ -2242,55 +2242,55 @@ AnyFrames* SpriteManager::LoadAnimationTil(const char* fname, int path_type)
 	// Read header
 	char head[7];
 	if(!fm.CopyMem(head,7) || head[6] || strcmp(head,"<tile>")) return NULL;
-	while(fm.GetByte());
+	while(fm.GetUChar());
 	fm.GoForward(7+4); // Unknown
-	DWORD w=fm.GetLEDWord();
-	DWORD h=fm.GetLEDWord();
+	uint w=fm.GetLEUInt();
+	uint h=fm.GetLEUInt();
 
-	if(!fm.FindFragment((BYTE*)"<tiledata>",10,fm.GetCurPos())) return NULL;
+	if(!fm.FindFragment((uchar*)"<tiledata>",10,fm.GetCurPos())) return NULL;
 	fm.GoForward(10+3); // Signature
-	DWORD frames_count=fm.GetLEDWord();
+	uint frames_count=fm.GetLEUInt();
 
 	// Create animation
 	AnyFrames* anim=CreateAnimation(frames_count,1000/10*frames_count);
 	if(!anim) return NULL;
 
-	for(DWORD frm=0;frm<frames_count;frm++)
+	for(uint frm=0;frm<frames_count;frm++)
 	{
 		// Read header
 		char head[6];
 		if(!fm.CopyMem(head,6) || head[5] || strcmp(head,"<zar>")) return NULL;
-		BYTE type=fm.GetByte();
+		uchar type=fm.GetUChar();
 		fm.GoForward(1); // \0
-		DWORD w=fm.GetLEDWord();
-		DWORD h=fm.GetLEDWord();
-		BYTE palette_present=fm.GetByte();
+		uint w=fm.GetLEUInt();
+		uint h=fm.GetLEUInt();
+		uchar palette_present=fm.GetUChar();
 
 		// Read palette
-		DWORD palette[256]={0};
-		BYTE def_color=0;
+		uint palette[256]={0};
+		uchar def_color=0;
 		if(palette_present)
 		{
-			DWORD palette_count=fm.GetLEDWord();
+			uint palette_count=fm.GetLEUInt();
 			if(palette_count>256) return NULL;
-			fm.CopyMem(palette,sizeof(DWORD)*palette_count);
-			if(type==0x34) def_color=fm.GetByte();
+			fm.CopyMem(palette,sizeof(uint)*palette_count);
+			if(type==0x34) def_color=fm.GetUChar();
 		}
 
 		// Read image
-		DWORD rle_size=fm.GetLEDWord();
-		BYTE* rle_buf=fm.GetCurBuf();
+		uint rle_size=fm.GetLEUInt();
+		uchar* rle_buf=fm.GetCurBuf();
 		fm.GoForward(rle_size);
 
 		// Create FOnline fast format
-		DWORD img_size=12+h*w*4;
-		BYTE* img_data=new(nothrow) BYTE[img_size];
+		uint img_size=12+h*w*4;
+		uchar* img_data=new(nothrow) uchar[img_size];
 		if(!img_data) return NULL;
 		ZeroMemory(img_data,img_size);
-		*((DWORD*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-		*((DWORD*)img_data+1)=w;
-		*((DWORD*)img_data+2)=h;
-		DWORD* ptr=(DWORD*)img_data+3;
+		*((uint*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+		*((uint*)img_data+1)=w;
+		*((uint*)img_data+2)=h;
+		uint* ptr=(uint*)img_data+3;
 
 		// Decode
 		while(rle_size)
@@ -2304,20 +2304,20 @@ AnyFrames* SpriteManager::LoadAnimationTil(const char* fname, int path_type)
 
 			for(int i=0;i<control_count;i++)
 			{
-				DWORD col=0;
+				uint col=0;
 				switch(control_mode)
 				{
 				case 1:
 					col=palette[rle_buf[i]];
-					((BYTE*)&col)[3]=0xFF;
+					((uchar*)&col)[3]=0xFF;
 					break;
 				case 2:
 					col=palette[rle_buf[2*i]];
-					((BYTE*)&col)[3]=rle_buf[2*i+1];
+					((uchar*)&col)[3]=rle_buf[2*i+1];
 					break;
 				case 3:
 					col=palette[def_color];
-					((BYTE*)&col)[3]=rle_buf[i];
+					((uchar*)&col)[3]=rle_buf[i];
 					break;
 				default:
 					break;
@@ -2340,7 +2340,7 @@ AnyFrames* SpriteManager::LoadAnimationTil(const char* fname, int path_type)
 
 		// Fill animation
 		SpriteInfo* si=new(nothrow) SpriteInfo();
-		DWORD result=FillSurfaceFromMemory(si,img_data,img_size);
+		uint result=FillSurfaceFromMemory(si,img_data,img_size);
 		delete[] img_data;
 		if(!result) return NULL;
 
@@ -2357,7 +2357,7 @@ AnyFrames* SpriteManager::LoadAnimationOther(const char* fname, int path_type)
 
 	// .bmp, .dds, .dib, .hdr, .jpg, .pfm, .png, .ppm, .tga
 	SpriteInfo* si=new(nothrow) SpriteInfo();
-	DWORD result=FillSurfaceFromMemory(si,fm.GetBuf(),fm.GetFsize());
+	uint result=FillSurfaceFromMemory(si,fm.GetBuf(),fm.GetFsize());
 	if(!result) return NULL;
 
 	AnyFrames* anim=CreateAnimation(1,100);
@@ -2366,7 +2366,7 @@ AnyFrames* SpriteManager::LoadAnimationOther(const char* fname, int path_type)
 	return anim;
 }
 
-DWORD SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
+uint SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
 {
 	// Render
 	if(!sceneBeginned) D3D_HR(d3dDevice->BeginScene());
@@ -2433,14 +2433,14 @@ DWORD SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
 	// Copy to system memory
 	D3DLOCKED_RECT lr;
 	D3D_HR(spr3dRTData->LockRect(&lr,&r_,D3DLOCK_READONLY));
-	DWORD w=fb.W();
-	DWORD h=fb.H();
-	DWORD size=12+h*w*4;
-	BYTE* data=new(nothrow) BYTE[size];
-	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-	*((DWORD*)data+1)=w;
-	*((DWORD*)data+2)=h;
-	for(int i=0;i<h;i++) memcpy(data+12+w*4*i,(BYTE*)lr.pBits+lr.Pitch*i,w*4);
+	uint w=fb.W();
+	uint h=fb.H();
+	uint size=12+h*w*4;
+	uchar* data=new(nothrow) uchar[size];
+	*((uint*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+	*((uint*)data+1)=w;
+	*((uint*)data+2)=h;
+	for(uint i=0;i<h;i++) memcpy(data+12+w*4*i,(uchar*)lr.pBits+lr.Pitch*i,w*4);
 	D3D_HR(spr3dRTData->UnlockRect());
 
 	// Fill from memory
@@ -2448,7 +2448,7 @@ DWORD SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
 	INTPOINT p=anim3d->GetFullBordersPivot();
 	si->OffsX=fb.W()/2-p.X;
 	si->OffsY=fb.H()-p.Y;
-	DWORD result=FillSurfaceFromMemory(si,data,size);
+	uint result=FillSurfaceFromMemory(si,data,size);
 	delete[] data;
 	return result;
 }
@@ -2461,7 +2461,7 @@ Animation3d* SpriteManager::LoadPure3dAnimation(const char* fname, int path_type
 
 	SpriteInfo* si=new(nothrow) SpriteInfo();
 	size_t index=1;
-	for(size_t j=sprData.size();index<j;index++) if(!sprData[index]) break;
+	for(uint j=sprData.size();index<j;index++) if(!sprData[index]) break;
 	if(index<sprData.size()) sprData[index]=si;
 	else sprData.push_back(si);
 
@@ -2475,7 +2475,7 @@ void SpriteManager::FreePure3dAnimation(Animation3d* anim3d)
 {
 	if(anim3d)
 	{
-		DWORD spr_id=anim3d->GetSprId();
+		uint spr_id=anim3d->GetSprId();
 		if(spr_id) SAFEDEL(sprData[spr_id]);
 		SAFEDEL(anim3d);
 	}
@@ -2498,7 +2498,7 @@ bool SpriteManager::Flush()
 		D3D_HR(d3dDevice->SetStreamSource(0,pVB,0,sizeof(MYVERTEX)));
 		D3D_HR(d3dDevice->SetFVF(D3DFVF_MYVERTEX));
 
-		DWORD rpos=0;
+		uint rpos=0;
 		for(DipDataVecIt it=dipQueue.begin(),end=dipQueue.end();it!=end;++it)
 		{
 			DipData& dip=*it;
@@ -2543,7 +2543,7 @@ bool SpriteManager::Flush()
 	return true;
 }
 
-bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */)
+bool SpriteManager::DrawSprite(uint id, int x, int y, uint color /* = 0 */)
 {
 	if(!id) return false;
 
@@ -2596,7 +2596,7 @@ bool SpriteManager::DrawSprite(DWORD id, int x, int y, DWORD color /* = 0 */)
 }
 
 #pragma MESSAGE("Add 3d auto scaling.")
-bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, bool stretch_up, bool center, DWORD color /* = 0 */)
+bool SpriteManager::DrawSpriteSize(uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color /* = 0 */)
 {
 	if(!id) return false;
 
@@ -2625,8 +2625,8 @@ bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, boo
 
 	if(center)
 	{
-		x+=(w-wf)/2.0f;
-		y+=(h-hf)/2.0f;
+		x+=(int)((w-wf)/2.0f);
+		y+=(int)((h-hf)/2.0f);
 	}
 
 	if(si->Anim3d)
@@ -2674,27 +2674,27 @@ bool SpriteManager::DrawSpriteSize(DWORD id, int x, int y, float w, float h, boo
 	return true;
 }
 
-void SpriteManager::PrepareSquare(PointVec& points, FLTRECT& r, DWORD color)
+void SpriteManager::PrepareSquare(PointVec& points, FLTRECT& r, uint color)
 {
-	points.push_back(PrepPoint(r.L,r.B,color,NULL,NULL));
-	points.push_back(PrepPoint(r.L,r.T,color,NULL,NULL));
-	points.push_back(PrepPoint(r.R,r.B,color,NULL,NULL));
-	points.push_back(PrepPoint(r.L,r.T,color,NULL,NULL));
-	points.push_back(PrepPoint(r.R,r.T,color,NULL,NULL));
-	points.push_back(PrepPoint(r.R,r.B,color,NULL,NULL));
+	points.push_back(PrepPoint((short)r.L,(short)r.B,color,NULL,NULL));
+	points.push_back(PrepPoint((short)r.L,(short)r.T,color,NULL,NULL));
+	points.push_back(PrepPoint((short)r.R,(short)r.B,color,NULL,NULL));
+	points.push_back(PrepPoint((short)r.L,(short)r.T,color,NULL,NULL));
+	points.push_back(PrepPoint((short)r.R,(short)r.T,color,NULL,NULL));
+	points.push_back(PrepPoint((short)r.R,(short)r.B,color,NULL,NULL));
 }
 
-void SpriteManager::PrepareSquare(PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, DWORD color)
+void SpriteManager::PrepareSquare(PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, uint color)
 {
-	points.push_back(PrepPoint(lb.X,lb.Y,color,NULL,NULL));
-	points.push_back(PrepPoint(lt.X,lt.Y,color,NULL,NULL));
-	points.push_back(PrepPoint(rb.X,rb.Y,color,NULL,NULL));
-	points.push_back(PrepPoint(lt.X,lt.Y,color,NULL,NULL));
-	points.push_back(PrepPoint(rt.X,rt.Y,color,NULL,NULL));
-	points.push_back(PrepPoint(rb.X,rb.Y,color,NULL,NULL));
+	points.push_back(PrepPoint((short)lb.X,(short)lb.Y,color,NULL,NULL));
+	points.push_back(PrepPoint((short)lt.X,(short)lt.Y,color,NULL,NULL));
+	points.push_back(PrepPoint((short)rb.X,(short)rb.Y,color,NULL,NULL));
+	points.push_back(PrepPoint((short)lt.X,(short)lt.Y,color,NULL,NULL));
+	points.push_back(PrepPoint((short)rt.X,(short)rt.Y,color,NULL,NULL));
+	points.push_back(PrepPoint((short)rb.X,(short)rb.Y,color,NULL,NULL));
 }
 
-bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, int ox, int oy, BYTE alpha)
+bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, int ox, int oy, uchar alpha)
 {
 	if(!dtree.Size()) return true;
 	if(!surf) return false;
@@ -2728,9 +2728,9 @@ bool SpriteManager::PrepareBuffer(Sprites& dtree, LPDIRECT3DSURFACE surf, int ox
 		else
 			dipQueue.back().SprCount++;
 
-		DWORD color=baseColor;
-		if(spr->Alpha) ((BYTE*)&color)[3]=*spr->Alpha;
-		else if(alpha) ((BYTE*)&color)[3]=alpha;
+		uint color=baseColor;
+		if(spr->Alpha) ((uchar*)&color)[3]=*spr->Alpha;
+		else if(alpha) ((uchar*)&color)[3]=alpha;
 
 		// Casts
 		float xf=(float)x/GameOpt.SpritesZoom-0.5f;
@@ -2815,7 +2815,7 @@ bool SpriteManager::DrawSurface(LPDIRECT3DSURFACE& surf, RECT& dst)
 	return true;
 }
 
-DWORD SpriteManager::GetColor(int r, int g, int b)
+uint SpriteManager::GetColor(int r, int g, int b)
 {
 	r=CLAMP(r,0,255);
 	g=CLAMP(g,0,255);
@@ -2825,7 +2825,7 @@ DWORD SpriteManager::GetColor(int r, int g, int b)
 
 void SpriteManager::GetDrawCntrRect(Sprite* prep, INTRECT* prect)
 {
-	DWORD id=(prep->PSprId?*prep->PSprId:prep->SprId);
+	uint id=(prep->PSprId?*prep->PSprId:prep->SprId);
 	if(id>=sprData.size()) return;
 	SpriteInfo* si=sprData[id];
 	if(!si) return;
@@ -2844,14 +2844,15 @@ void SpriteManager::GetDrawCntrRect(Sprite* prep, INTRECT* prect)
 	else
 	{
 		*prect=si->Anim3d->GetBaseBorders();
-		(*prect).L*=GameOpt.SpritesZoom;
-		(*prect).T*=GameOpt.SpritesZoom;
-		(*prect).R*=GameOpt.SpritesZoom;
-		(*prect).B*=GameOpt.SpritesZoom;
+		INTRECT& r=*prect;
+		r.L*=(int)(r.L*GameOpt.SpritesZoom);
+		r.T*=(int)(r.T*GameOpt.SpritesZoom);
+		r.R*=(int)(r.R*GameOpt.SpritesZoom);
+		r.B*=(int)(r.B*GameOpt.SpritesZoom);
 	}
 }
 
-bool SpriteManager::CompareHexEgg(WORD hx, WORD hy, int egg_type)
+bool SpriteManager::CompareHexEgg(ushort hx, ushort hy, int egg_type)
 {
 	if(egg_type==EGG_ALWAYS) return true;
 	if(eggHy==hy && hx&1 && !(eggHx&1)) hy--;
@@ -2866,11 +2867,11 @@ bool SpriteManager::CompareHexEgg(WORD hx, WORD hy, int egg_type)
 	return false;
 }
 
-void SpriteManager::SetEgg(WORD hx, WORD hy, Sprite* spr)
+void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
 {
 	if(!sprEgg) return;
 
-	DWORD id=(spr->PSprId?*spr->PSprId:spr->SprId);
+	uint id=(spr->PSprId?*spr->PSprId:spr->SprId);
 	SpriteInfo* si=sprData[id];
 	if(!si) return;
 
@@ -2882,8 +2883,8 @@ void SpriteManager::SetEgg(WORD hx, WORD hy, Sprite* spr)
 	else
 	{
 		INTRECT bb=si->Anim3d->GetBaseBorders();
-		int w=(float)bb.W()*GameOpt.SpritesZoom;
-		int h=(float)bb.H()*GameOpt.SpritesZoom;
+		int w=(int)((float)bb.W()*GameOpt.SpritesZoom);
+		int h=(int)((float)bb.H()*GameOpt.SpritesZoom);
 		eggX=spr->ScrX-w/2+si->OffsX+w/2-sprEgg->Width/2+*spr->OffsX;
 		eggY=spr->ScrY-h+si->OffsY+h/2-sprEgg->Height/2+*spr->OffsY;
 	}
@@ -2901,7 +2902,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 	bool egg_trans=false;
 	int ex=eggX+GameOpt.ScrOx;
 	int ey=eggY+GameOpt.ScrOy;
-	DWORD cur_tick=Timer::FastTick();
+	uint cur_tick=Timer::FastTick();
 
 	for(SpriteVecIt it=dtree.Begin(),end=dtree.End();it!=end;++it)
 	{
@@ -2912,7 +2913,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		if(spr->DrawOrderType<draw_oder_from) continue;
 		if(spr->DrawOrderType>draw_oder_to) break;
 
-		DWORD id=(spr->PSprId?*spr->PSprId:spr->SprId);
+		uint id=(spr->PSprId?*spr->PSprId:spr->SprId);
 		SpriteInfo* si=sprData[id];
 		if(!si) continue;
 
@@ -2936,7 +2937,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		}
 
 		// Base color
-		DWORD cur_color;
+		uint cur_color;
 		if(spr->Color)
 			cur_color=(spr->Color|0xFF000000);
 		else
@@ -2948,9 +2949,9 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			int lr=*spr->Light;
 			int lg=*(spr->Light+1);
 			int lb=*(spr->Light+2);
-			BYTE& r=((BYTE*)&cur_color)[2];
-			BYTE& g=((BYTE*)&cur_color)[1];
-			BYTE& b=((BYTE*)&cur_color)[0];
+			uchar& r=((uchar*)&cur_color)[2];
+			uchar& g=((uchar*)&cur_color)[1];
+			uchar& b=((uchar*)&cur_color)[0];
 			int ir=(int)r+lr;
 			int ig=(int)g+lg;
 			int ib=(int)b+lb;
@@ -2965,14 +2966,14 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 		// Alpha
 		if(spr->Alpha)
 		{
-			((BYTE*)&cur_color)[3]=*spr->Alpha;
+			((uchar*)&cur_color)[3]=*spr->Alpha;
 		}
 
 		// Process flashing
 		if(spr->FlashMask)
 		{
 			static int cnt=0;
-			static DWORD tick=cur_tick+100;
+			static uint tick=cur_tick+100;
 			static bool add=true;
 			if(cur_tick>=tick)
 			{
@@ -2995,9 +2996,9 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			r=CLAMP(r,0,0xFF);
 			g=CLAMP(g,0,0xFF);
 			b=CLAMP(b,0,0xFF);
-			((BYTE*)&cur_color)[2]=r;
-			((BYTE*)&cur_color)[1]=g;
-			((BYTE*)&cur_color)[0]=b;
+			((uchar*)&cur_color)[2]=r;
+			((uchar*)&cur_color)[1]=g;
+			((uchar*)&cur_color)[0]=b;
 			cur_color&=spr->FlashMask;
 		}
 
@@ -3014,7 +3015,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			}
 
 			// Draw 3d animation
-			Draw3d(x/GameOpt.SpritesZoom,y/GameOpt.SpritesZoom,1.0f/GameOpt.SpritesZoom,si->Anim3d,NULL,cur_color);
+			Draw3d((int)(x/GameOpt.SpritesZoom),(int)(y/GameOpt.SpritesZoom),1.0f/GameOpt.SpritesZoom,si->Anim3d,NULL,cur_color);
 
 			// Process contour effect
 			if(collect_contours && spr->ContourType) CollectContour(x,y,si,spr);
@@ -3024,8 +3025,8 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 			{
 				INTRECT eb=si->Anim3d->GetExtraBorders();
 				INTRECT bb=si->Anim3d->GetBaseBorders();
-				PrepareSquare(borders,FLTRECT(eb.L,eb.T,eb.R,eb.B),0x5f750075);
-				PrepareSquare(borders,FLTRECT(bb.L,bb.T,bb.R,bb.B),0x5f757575);
+				PrepareSquare(borders,FLTRECT((float)eb.L,(float)eb.T,(float)eb.R,(float)eb.B),0x5f750075);
+				PrepareSquare(borders,FLTRECT((float)bb.L,(float)bb.T,(float)bb.R,(float)bb.B),0x5f757575);
 			}
 
 			continue;
@@ -3218,17 +3219,17 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
 			if(!spr->CutType)
 			{
-				x1=(spr->ScrX+GameOpt.ScrOx)/z;
-				y1=(spr->ScrY+GameOpt.ScrOy)/z;
+				x1=(int)((spr->ScrX+GameOpt.ScrOx)/z);
+				y1=(int)((spr->ScrY+GameOpt.ScrOy)/z);
 			}
 			else
 			{
 
-				x1=(spr->ScrX-si->Width/2+spr->CutX+GameOpt.ScrOx+1.0f)/z;
-				y1=(spr->ScrY+spr->CutOyL+GameOpt.ScrOy)/z;
+				x1=(int)((spr->ScrX-si->Width/2+spr->CutX+GameOpt.ScrOx+1.0f)/z);
+				y1=(int)((spr->ScrY+spr->CutOyL+GameOpt.ScrOy)/z);
 			}
 
-			if(spr->DrawOrderType>=DRAW_ORDER_FLAT && spr->DrawOrderType<DRAW_ORDER) y1-=40/z;
+			if(spr->DrawOrderType>=DRAW_ORDER_FLAT && spr->DrawOrderType<DRAW_ORDER) y1-=(int)(40.0f/z);
 
 			char str[32];
 			sprintf(str,"%u",spr->TreeIndex);
@@ -3248,13 +3249,13 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 	return true;
 }
 
-bool SpriteManager::IsPixNoTransp(DWORD spr_id, int offs_x, int offs_y, bool with_zoom)
+bool SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom)
 {
-	DWORD color=GetPixColor(spr_id,offs_x,offs_y,with_zoom);
+	uint color=GetPixColor(spr_id,offs_x,offs_y,with_zoom);
 	return (color&0xFF000000)!=0;
 }
 
-DWORD SpriteManager::GetPixColor(DWORD spr_id, int offs_x, int offs_y, bool with_zoom)
+uint SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom)
 {
 	if(offs_x<0 || offs_y<0) return 0;
 	SpriteInfo* si=GetSpriteInfo(spr_id);
@@ -3275,11 +3276,11 @@ DWORD SpriteManager::GetPixColor(DWORD spr_id, int offs_x, int offs_y, bool with
 
 		D3DLOCKED_RECT desc;
 		D3D_HR(zstencil->LockRect(&desc,NULL,D3DLOCK_READONLY));
-		BYTE* ptr=(BYTE*)desc.pBits;
+		uchar* ptr=(uchar*)desc.pBits;
 		int pitch=desc.Pitch;
 
 		int stencil_offset=offs_y*pitch+offs_x*4+3;
-		WriteLog("===========%d %d====%u\n",offs_x,offs_y,ptr[stencil_offset]);
+		WriteLog(NULL,"===========%d %d====%u\n",offs_x,offs_y,ptr[stencil_offset]);
 		if(stencil_offset<pitch*height && ptr[stencil_offset]==si->Anim3d->GetDrawIndex())
 		{
 			D3D_HR(zstencil->UnlockRect());
@@ -3298,8 +3299,8 @@ DWORD SpriteManager::GetPixColor(DWORD spr_id, int offs_x, int offs_y, bool with
 
 	if(with_zoom)
 	{
-		offs_x*=GameOpt.SpritesZoom;
-		offs_y*=GameOpt.SpritesZoom;
+		offs_x=(int)(offs_x*GameOpt.SpritesZoom);
+		offs_y=(int)(offs_y*GameOpt.SpritesZoom);
 	}
 
 	D3DSURFACE_DESC sDesc;
@@ -3309,15 +3310,15 @@ DWORD SpriteManager::GetPixColor(DWORD spr_id, int offs_x, int offs_y, bool with
 
 	D3DLOCKED_RECT desc;
 	D3D_HR(si->Surf->Texture->LockRect(0,&desc,NULL,D3DLOCK_READONLY));
-	BYTE* ptr=(BYTE*)desc.pBits;
+	uchar* ptr=(uchar*)desc.pBits;
 	int pitch=desc.Pitch;
 
-	offs_x+=si->SprRect.L*(float)width;
-	offs_y+=si->SprRect.T*(float)height;
+	offs_x+=(int)(width*si->SprRect.L);
+	offs_y+=(int)(height*si->SprRect.T);
 	int offset=offs_y*pitch+offs_x*4;
 	if(offset<pitch*height)
 	{
-		DWORD color=*(DWORD*)(ptr+offset);
+		uint color=*(uint*)(ptr+offset);
 		D3D_HR(si->Surf->Texture->UnlockRect(0));
 		return color;
 	}
@@ -3332,13 +3333,13 @@ bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
 
 	int ex=eggX+GameOpt.ScrOx;
 	int ey=eggY+GameOpt.ScrOy;
-	int ox=pix_x-ex/GameOpt.SpritesZoom;
-	int oy=pix_y-ey/GameOpt.SpritesZoom;
+	int ox=pix_x-(int)(ex/GameOpt.SpritesZoom);
+	int oy=pix_y-(int)(ey/GameOpt.SpritesZoom);
 
 	if(ox<0 || oy<0 || ox>=int(eggSurfWidth/GameOpt.SpritesZoom) || oy>=int(eggSurfHeight/GameOpt.SpritesZoom)) return false;
 
-	ox*=GameOpt.SpritesZoom;
-	oy*=GameOpt.SpritesZoom;
+	ox=(int)(ox*GameOpt.SpritesZoom);
+	oy=(int)(oy*GameOpt.SpritesZoom);
 
 	D3DSURFACE_DESC sDesc;
 	D3D_HR(sprEgg->Surf->Texture->GetLevelDesc(0,&sDesc));
@@ -3349,7 +3350,7 @@ bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
 	D3DLOCKED_RECT lrDst;
 	D3D_HR(sprEgg->Surf->Texture->LockRect(0,&lrDst,NULL,D3DLOCK_READONLY));
 
-	BYTE* pDst=(BYTE*)lrDst.pBits;
+	uchar* pDst=(uchar*)lrDst.pBits;
 
 	if(pDst[oy*sHeight*4+ox*4+3]<170)
 	{
@@ -3374,7 +3375,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 		struct Vertex
 		{
 			FLOAT x,y,z,rhw;
-			DWORD diffuse;
+			uint diffuse;
 		} vb[6]=
 		{
 			{stencil->L-0.5f,stencil->B-0.5f,1.0f,1.0f,-1},
@@ -3415,7 +3416,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	// Copy data
 	void* vertices;
 	D3D_HR(vbPoints->Lock(0,count*sizeof(MYVERTEX_PRIMITIVE),(void**)&vertices,D3DLOCK_DISCARD));
-	for(size_t i=0,j=points.size();i<j;i++)
+	for(uint i=0,j=points.size();i<j;i++)
 	{
 		PrepPoint& point=points[i];
 		MYVERTEX_PRIMITIVE* vertex=(MYVERTEX_PRIMITIVE*)vertices+i;
@@ -3492,7 +3493,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	return true;
 }
 
-bool SpriteManager::Draw3d(int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, DWORD color)
+bool SpriteManager::Draw3d(int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color)
 {
 	// Draw previous sprites
 	Flush();
@@ -3506,7 +3507,7 @@ bool SpriteManager::Draw3d(int x, int y, float scale, Animation3d* anim3d, FLTRE
 	return true;
 }
 
-bool SpriteManager::Draw3dSize(FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, DWORD color)
+bool SpriteManager::Draw3dSize(FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color)
 {
 	Flush();
 
@@ -3518,11 +3519,11 @@ bool SpriteManager::Draw3dSize(FLTRECT rect, bool stretch_up, bool center, Anima
 	if(scale>1.0f && !stretch_up) scale=1.0f;
 	if(center)
 	{
-		xy.X+=(rect.W()-w_real*scale)/2.0f;
-		xy.Y+=(rect.H()-h_real*scale)/2.0f;
+		xy.X+=(int)((rect.W()-w_real*scale)/2.0f);
+		xy.Y+=(int)((rect.H()-h_real*scale)/2.0f);
 	}
 
-	anim3d->Draw(rect.L+(float)xy.X*scale,rect.T+(float)xy.Y*scale,scale,stencil,color);
+	anim3d->Draw((int)(rect.L+(float)xy.X*scale),(int)(rect.T+(float)xy.Y*scale),scale,stencil,color);
 
 	// Restore 2d stream
 	D3D_HR(d3dDevice->SetIndices(pIB));
@@ -3576,7 +3577,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 	{
 		if(!si->Anim3d)
 		{
-			DWORD contour_id=GetSpriteContour(si,spr);
+			uint contour_id=GetSpriteContour(si,spr);
 			if(contour_id)
 			{
 				Sprite& contour_spr=spriteContours.AddSprite(0,0,0,0,spr->ScrX,spr->ScrY,contour_id,NULL,spr->OffsX,spr->OffsY,NULL,NULL);
@@ -3622,7 +3623,8 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		}
 		else
 		{
-			borders(x/GameOpt.SpritesZoom,y/GameOpt.SpritesZoom,(x+si->Width)/GameOpt.SpritesZoom,(y+si->Height)/GameOpt.SpritesZoom);
+			borders((int)(x/GameOpt.SpritesZoom),(int)(y/GameOpt.SpritesZoom),
+				(int)((x+si->Width)/GameOpt.SpritesZoom),(int)((y+si->Height)/GameOpt.SpritesZoom));
 			struct Vertex
 			{
 				FLOAT x,y,z,rhw;
@@ -3662,8 +3664,8 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 			old_rt->Release();
 			old_ds->Release();
 
-			float w=modeWidth;
-			float h=modeHeight;
+			float w=(float)modeWidth;
+			float h=(float)modeHeight;
 			ws=1.0f/modeWidth;
 			hs=1.0f/modeHeight;
 			tuv=FLTRECT((float)borders.L/w,(float)borders.T/h,(float)borders.R/w,(float)borders.B/h);
@@ -3681,8 +3683,8 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		if(borders.R>=modeWidth) borders.R=modeWidth-1;
 		if(borders.B>=modeHeight) borders.B=modeHeight-1;
 
-		float w=modeWidth;
-		float h=modeHeight;
+		float w=(float)modeWidth;
+		float h=(float)modeHeight;
 		tuv.L=(float)borders.L/w;
 		tuv.T=(float)borders.T/h;
 		tuv.R=(float)borders.R/w;
@@ -3697,7 +3699,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 		struct Vertex
 		{
 			FLOAT x,y,z,rhw;
-			DWORD diffuse;
+			uint diffuse;
 		} vb[6]=
 		{
 			{(float)borders.L-0.5f,(float)borders.B-0.5f,0.99999f,1.0f,0xFFFF00FF},
@@ -3734,7 +3736,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 	}
 
 	// Calculate contour color
-	DWORD contour_color=0;
+	uint contour_color=0;
 	if(spr->ContourType==CONTOUR_RED) contour_color=0xFFAF0000;
 	else if(spr->ContourType==CONTOUR_YELLOW)
 	{
@@ -3746,8 +3748,8 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 	else contour_color=0xFFAFAFAF;
 
 	static float color_offs=0.0f;
-	static DWORD last_tick=0;
-	DWORD tick=Timer::FastTick();
+	static uint last_tick=0;
+	uint tick=Timer::FastTick();
 	if(tick-last_tick>=50)
 	{
 		color_offs-=0.05f;
@@ -3805,11 +3807,11 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 	return true;
 }
 
-DWORD SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
+uint SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
 {
 	// Find created
-	DWORD spr_id=(spr->PSprId?*spr->PSprId:spr->SprId);
-	DwordMapIt it=createdSpriteContours.find(spr_id);
+	uint spr_id=(spr->PSprId?*spr->PSprId:spr->SprId);
+	UIntMapIt it=createdSpriteContours.find(spr_id);
 	if(it!=createdSpriteContours.end()) return (*it).second;
 
 	// Create new
@@ -3817,23 +3819,24 @@ DWORD SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
 	D3D_HR(si->Surf->Texture->GetSurfaceLevel(0,&surf));
 	D3DSURFACE_DESC desc;
 	D3D_HR(surf->GetDesc(&desc));
-	RECT r={desc.Width*si->SprRect.L,desc.Height*si->SprRect.T,desc.Width*si->SprRect.R,desc.Height*si->SprRect.B};
+	RECT r={(uint)(desc.Width*si->SprRect.L),(uint)(desc.Height*si->SprRect.T),
+		(uint)(desc.Width*si->SprRect.R),(uint)(desc.Height*si->SprRect.B)};
 	D3DLOCKED_RECT lr;
 	D3D_HR(surf->LockRect(&lr,&r,D3DLOCK_READONLY));
 
-	DWORD sw=si->Width;
-	DWORD sh=si->Height;
-	DWORD iw=sw+2;
-	DWORD ih=sh+2;
+	uint sw=si->Width;
+	uint sh=si->Height;
+	uint iw=sw+2;
+	uint ih=sh+2;
 
 	// Create FOnline fast format
-	DWORD size=12+ih*iw*4;
-	BYTE* data=new(nothrow) BYTE[size];
+	uint size=12+ih*iw*4;
+	uchar* data=new(nothrow) uchar[size];
 	memset(data,0,size);
-	*((DWORD*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
-	*((DWORD*)data+1)=iw;
-	*((DWORD*)data+2)=ih;
-	DWORD* ptr=(DWORD*)data+3+iw+1;
+	*((uint*)data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+	*((uint*)data+1)=iw;
+	*((uint*)data+2)=ih;
+	uint* ptr=(uint*)data+3+iw+1;
 
 	// Write contour
 	WriteContour4(ptr,iw,lr,sw,sh,D3DCOLOR_XRGB(0x7F,0x7F,0x7F));
@@ -3846,21 +3849,21 @@ DWORD SpriteManager::GetSpriteContour(SpriteInfo* si, Sprite* spr)
 	contour_si->OffsY=si->OffsY+1;
 	int st=SurfType;
 	SurfType=si->Surf->Type;
-	DWORD result=FillSurfaceFromMemory(contour_si,data,size);
+	uint result=FillSurfaceFromMemory(contour_si,data,size);
 	SurfType=st;
 	delete[] data;
-	createdSpriteContours.insert(DwordMapVal(spr_id,result));
+	createdSpriteContours.insert(UIntMapVal(spr_id,result));
 	return result;
 }
 
 #define SET_IMAGE_POINT(x,y) *(buf+(y)*buf_w+(x))=color
-void SpriteManager::WriteContour4(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DWORD w, DWORD h, DWORD color)
+void SpriteManager::WriteContour4(uint* buf, uint buf_w, D3DLOCKED_RECT& r, uint w, uint h, uint color)
 {
-	for(DWORD y=0;y<h;y++)
+	for(uint y=0;y<h;y++)
 	{
-		for(DWORD x=0;x<w;x++)
+		for(uint x=0;x<w;x++)
 		{
-			DWORD p=SURF_POINT(r,x,y);
+			uint p=SURF_POINT(r,x,y);
 			if(!p) continue;
 			if(!x || !SURF_POINT(r,x-1,y)) SET_IMAGE_POINT(x-1,y);
 			if(x==w-1 || !SURF_POINT(r,x+1,y)) SET_IMAGE_POINT(x+1,y);
@@ -3870,13 +3873,13 @@ void SpriteManager::WriteContour4(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DW
 	}
 }
 
-void SpriteManager::WriteContour8(DWORD* buf, DWORD buf_w, D3DLOCKED_RECT& r, DWORD w, DWORD h, DWORD color)
+void SpriteManager::WriteContour8(uint* buf, uint buf_w, D3DLOCKED_RECT& r, uint w, uint h, uint color)
 {
-	for(DWORD y=0;y<h;y++)
+	for(uint y=0;y<h;y++)
 	{
-		for(DWORD x=0;x<w;x++)
+		for(uint x=0;x<w;x++)
 		{
-			DWORD p=SURF_POINT(r,x,y);
+			uint p=SURF_POINT(r,x,y);
 			if(!p) continue;
 			if(!x || !SURF_POINT(r,x-1,y)) SET_IMAGE_POINT(x-1,y);
 			if(x==w-1 || !SURF_POINT(r,x+1,y)) SET_IMAGE_POINT(x+1,y);
@@ -3945,34 +3948,34 @@ typedef vector<Font*>::iterator FontVecIt;
 FontVec Fonts;
 
 int DefFontIndex=-1;
-DWORD DefFontColor=0;
+uint DefFontColor=0;
 
 Font* GetFont(int num)
 {
 	if(num<0) num=DefFontIndex;
-	if(num<0 || num>=Fonts.size()) return NULL;
+	if(num<0 || num>=(int)Fonts.size()) return NULL;
 	return Fonts[num];
 }
 
 struct FontFormatInfo
 {
 	Font* CurFont;
-	DWORD Flags;
+	uint Flags;
 	INTRECT Rect;
 	char Str[FONT_BUF_LEN];
 	char* PStr;
-	DWORD LinesAll;
-	DWORD LinesInRect;
+	uint LinesAll;
+	uint LinesInRect;
 	int CurX,CurY,MaxCurX;
-	DWORD ColorDots[FONT_BUF_LEN];
+	uint ColorDots[FONT_BUF_LEN];
 	short LineWidth[FONT_MAX_LINES];
-	WORD LineSpaceWidth[FONT_MAX_LINES];
-	DWORD OffsColDots;
-	DWORD DefColor;
+	ushort LineSpaceWidth[FONT_MAX_LINES];
+	uint OffsColDots;
+	uint DefColor;
 	StrVec* StrLines;
 	bool IsError;
 
-	void Init(Font* font, DWORD flags, INTRECT& rect, const char* str_in)
+	void Init(Font* font, uint flags, INTRECT& rect, const char* str_in)
 	{
 		CurFont=font;
 		Flags=flags;
@@ -4014,7 +4017,7 @@ struct FontFormatInfo
 	}
 };
 
-void SpriteManager::SetDefaultFont(int index, DWORD color)
+void SpriteManager::SetDefaultFont(int index, uint color)
 {
 	DefFontIndex=index;
 	DefFontColor=color;
@@ -4030,7 +4033,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 {
 	if(index<0)
 	{
-		WriteLog(__FUNCTION__" - Invalid index.\n");
+		WriteLog(_FUNC_," - Invalid index.\n");
 		return false;
 	}
 
@@ -4038,10 +4041,10 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	int tex_w=256*size_mod;
 	int tex_h=256*size_mod;
 
-	BYTE* data=new BYTE[tex_w*tex_h*4]; // TODO: Leak
+	uchar* data=new uchar[tex_w*tex_h*4]; // TODO: Leak
 	if(!data)
 	{
-		WriteLog(__FUNCTION__" - Data allocation fail.\n");
+		WriteLog(_FUNC_," - Data allocation fail.\n");
 		return false;
 	}
 	ZeroMemory(data,tex_w*tex_h*4);
@@ -4049,7 +4052,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	FileManager fm;
 	if(!fm.LoadFile(Str::Format("%s.bmp",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",Str::Format("%s.bmp",font_name));
+		WriteLog(_FUNC_," - File<%s> not found.\n",Str::Format("%s.bmp",font_name));
 		delete[] data;
 		return false;
 	}
@@ -4063,29 +4066,29 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 
 	if(!fm.LoadFile(Str::Format("%s.fnt0",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",Str::Format("%s.fnt0",font_name));
+		WriteLog(_FUNC_," - File<%s> not found.\n",Str::Format("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
 	}
 
-	int empty_hor=fm.GetBEDWord();
-	font.EmptyVer=fm.GetBEDWord();
-	font.MaxLettHeight=fm.GetBEDWord();
-	font.SpaceWidth=fm.GetBEDWord();
+	int empty_hor=fm.GetBEUInt();
+	font.EmptyVer=fm.GetBEUInt();
+	font.MaxLettHeight=fm.GetBEUInt();
+	font.SpaceWidth=fm.GetBEUInt();
 
 	struct LetterOldFont
 	{
-		WORD Dx;
-		WORD Dy;
-		BYTE W;
-		BYTE H;
+		ushort Dx;
+		ushort Dy;
+		uchar W;
+		uchar H;
 		short OffsH;
 	} letters[256];
 
 	if(!fm.CopyMem(letters,sizeof(LetterOldFont)*256))
 	{
-		WriteLog(__FUNCTION__" - Incorrect size in file<%s>.\n",Str::Format("%s.fnt0",font_name));
+		WriteLog(_FUNC_," - Incorrect size in file<%s>.\n",Str::Format("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
@@ -4093,7 +4096,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 
 	D3DSURFACE_DESC sd;
 	D3D_HR(image->GetLevelDesc(0,&sd));
-	DWORD wd=sd.Width;
+	uint wd=sd.Width;
 
 	int cur_x=0;
 	int cur_y=0;
@@ -4119,12 +4122,12 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 			{
 				delete[] data;
 				SAFEREL(image);
-				//WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
+				//WriteLog(NULL,"<%s> growed to %d\n",font_name,size_mod*2);
 				return LoadFontOld(index,font_name,size_mod*2);
 			}
 		}
 
-		for(int j=0;j<h;j++) memcpy(data+(cur_y+j+1)*tex_w*4+(cur_x+1)*4,(BYTE*)lr.pBits+(letter_old.Dy+j)*sd.Width*4+letter_old.Dx*4,w*4);
+		for(int j=0;j<h;j++) memcpy(data+(cur_y+j+1)*tex_w*4+(cur_x+1)*4,(uchar*)lr.pBits+(letter_old.Dy+j)*sd.Width*4+letter_old.Dx*4,w*4);
 
 		font.ArrXY[i][0]=(FLOAT)cur_x/tex_w;
 		font.ArrXY[i][1]=(FLOAT)cur_y/tex_h;
@@ -4140,7 +4143,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	D3D_HR(D3DXCreateTexture(d3dDevice,tex_w,tex_h,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&font.FontTex));
 	D3D_HR(font.FontTex->LockRect(0,&lr,NULL,0));
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
-	WriteContour8((DWORD*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
+	WriteContour8((uint*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
 	D3D_HR(font.FontTex->UnlockRect(0));
 
 	// Create bordered texture
@@ -4151,7 +4154,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	delete[] data;
 
 	// Register
-	if(index>=Fonts.size()) Fonts.resize(index+1);
+	if(index>=(int)Fonts.size()) Fonts.resize(index+1);
 	SAFEDEL(Fonts[index]);
 	Fonts[index]=new Font(font);
 	return true;
@@ -4165,7 +4168,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	// Read file in buffer
 	if(index<0)
 	{
-		WriteLog(__FUNCTION__" - Invalid index.\n");
+		WriteLog(_FUNC_," - Invalid index.\n");
 		return false;
 	}
 
@@ -4174,41 +4177,41 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 
 	if(!fm.LoadFile(Str::Format("%s.aaf",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",Str::Format("%s.aaf",font_name));
+		WriteLog(_FUNC_," - File<%s> not found.\n",Str::Format("%s.aaf",font_name));
 		return false;
 	}
 
 	// Check signature
-	DWORD sign=fm.GetBEDWord();
+	uint sign=fm.GetBEUInt();
 	if(sign!=MAKEFOURCC('F','F','A','A'))
 	{
-		WriteLog(__FUNCTION__" - Signature AAFF not found.\n");
+		WriteLog(_FUNC_," - Signature AAFF not found.\n");
 		return false;
 	}
 
 	// Read params
 	// Максимальная высота изображения символа, включая надстрочные и подстрочные элементы.
-	font.MaxLettHeight=fm.GetBEWord();
+	font.MaxLettHeight=fm.GetBEUShort();
 	// Горизонтальный зазор.
 	// Зазор (в пикселах) между соседними изображениями символов.
-	int empty_hor=fm.GetBEWord();
+	int empty_hor=fm.GetBEUShort();
 	// Ширина пробела.
 	// Ширина символа 'Пробел'.
-	font.SpaceWidth=fm.GetBEWord();
+	font.SpaceWidth=fm.GetBEUShort();
 	// Вертикальный зазор.
 	// Зазор (в пикселах) между двумя строками символов.
-	font.EmptyVer=fm.GetBEWord();
+	font.EmptyVer=fm.GetBEUShort();
 
 	// Write font image
-	const DWORD pix_light[9]={0x22808080,0x44808080,0x66808080,0x88808080,0xAA808080,0xDD808080,0xFF808080,0xFF808080,0xFF808080};
-	BYTE* data=new BYTE[tex_w*tex_h*4];
+	const uint pix_light[9]={0x22808080,0x44808080,0x66808080,0x88808080,0xAA808080,0xDD808080,0xFF808080,0xFF808080,0xFF808080};
+	uchar* data=new uchar[tex_w*tex_h*4];
 	if(!data)
 	{
-		WriteLog(__FUNCTION__" - Data allocation fail.\n");
+		WriteLog(_FUNC_," - Data allocation fail.\n");
 		return false;
 	}
 	ZeroMemory(data,tex_w*tex_h*4);
-	BYTE* begin_buf=fm.GetBuf();
+	uchar* begin_buf=fm.GetBuf();
 	int cur_x=0;
 	int cur_y=0;
 
@@ -4216,9 +4219,9 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	{
 		Letter& l=font.Letters[i];
 
-		l.W=fm.GetBEWord();
-		l.H=fm.GetBEWord();
-		DWORD offs=fm.GetBEDWord();
+		l.W=fm.GetBEUShort();
+		l.H=fm.GetBEUShort();
+		uint offs=fm.GetBEUInt();
 		l.OffsH=-(font.MaxLettHeight-l.H);
 
 		if(cur_x+l.W+2>=tex_w)
@@ -4228,16 +4231,16 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 			if(cur_y+font.MaxLettHeight+2>=tex_h)
 			{
 				delete[] data;
-				//WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
+				//WriteLog(NULL,"<%s> growed to %d\n",font_name,size_mod*2);
 				return LoadFontAAF(index,font_name,size_mod*2);
 			}
 		}
 
-		BYTE* pix=&begin_buf[offs+0x080C];
+		uchar* pix=&begin_buf[offs+0x080C];
 
 		for(int h=0;h<l.H;h++)
 		{
-			DWORD* cur_data=(DWORD*)(data+(cur_y+h+1)*tex_w*4+(cur_x+1)*4);
+			uint* cur_data=(uint*)(data+(cur_y+h+1)*tex_w*4+(cur_x+1)*4);
 
 			for(int w=0;w<l.W;w++,pix++,cur_data++)
 			{
@@ -4262,7 +4265,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	D3DLOCKED_RECT lr;
 	D3D_HR(font.FontTex->LockRect(0,&lr,NULL,0));
 	memcpy(lr.pBits,data,tex_w*tex_h*4);
-	WriteContour8((DWORD*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
+	WriteContour8((uint*)data,tex_w,lr,tex_w,tex_h,D3DCOLOR_ARGB(0xFF,0,0,0)); // Create border
 	D3D_HR(font.FontTex->UnlockRect(0));
 
 	// Create bordered texture
@@ -4273,7 +4276,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	delete[] data;
 
 	// Register
-	if(index>=Fonts.size()) Fonts.resize(index+1);
+	if(index>=(int)Fonts.size()) Fonts.resize(index+1);
 	SAFEDEL(Fonts[index]);
 	Fonts[index]=new Font(font);
 	return true;
@@ -4283,7 +4286,7 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 {
 	if(index<0)
 	{
-		WriteLog(__FUNCTION__" - Invalid index.\n");
+		WriteLog(_FUNC_," - Invalid index.\n");
 		return false;
 	}
 
@@ -4293,50 +4296,50 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 
 	if(!fm.LoadFile(Str::Format("%s.fnt",font_name),PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - Font file<%s> not found.\n",Str::Format("%s.fnt",font_name));
+		WriteLog(_FUNC_," - Font file<%s> not found.\n",Str::Format("%s.fnt",font_name));
 		return false;
 	}
 
-	DWORD signature=fm.GetLEDWord();
+	uint signature=fm.GetLEUInt();
 	if(signature!=MAKEFOURCC('B','M','F',3))
 	{
-		WriteLog(__FUNCTION__" - Invalid signature of font<%s>.\n",font_name);
+		WriteLog(_FUNC_," - Invalid signature of font<%s>.\n",font_name);
 		return false;
 	}
 
 	// Info
-	fm.GetByte();
-	DWORD block_len=fm.GetLEDWord();
-	DWORD next_block=block_len+fm.GetCurPos()+1;
+	fm.GetUChar();
+	uint block_len=fm.GetLEUInt();
+	uint next_block=block_len+fm.GetCurPos()+1;
 
 	fm.GoForward(7);
-	if(fm.GetByte()!=1 || fm.GetByte()!=1 || fm.GetByte()!=1 || fm.GetByte()!=1)
+	if(fm.GetUChar()!=1 || fm.GetUChar()!=1 || fm.GetUChar()!=1 || fm.GetUChar()!=1)
 	{
-		WriteLog(__FUNCTION__" - Wrong padding in font<%s>.\n",font_name);
+		WriteLog(_FUNC_," - Wrong padding in font<%s>.\n",font_name);
 		return false;
 	}
 
 	// Common
 	fm.SetCurPos(next_block);
-	block_len=fm.GetLEDWord();
+	block_len=fm.GetLEUInt();
 	next_block=block_len+fm.GetCurPos()+1;
 
-	int line_height=fm.GetLEWord();
-	int base_height=fm.GetLEWord();
+	int line_height=fm.GetLEUShort();
+	int base_height=fm.GetLEUShort();
 	font.MaxLettHeight=base_height;
 
-	int tex_w=fm.GetLEWord();
-	int tex_h=fm.GetLEWord();
+	uint tex_w=fm.GetLEUShort();
+	uint tex_h=fm.GetLEUShort();
 
-	if(fm.GetLEWord()!=1)
+	if(fm.GetLEUShort()!=1)
 	{
-		WriteLog(__FUNCTION__" - Texture for font<%s> must be single.\n",font_name);
+		WriteLog(_FUNC_," - Texture for font<%s> must be single.\n",font_name);
 		return false;
 	}
 
 	// Pages
 	fm.SetCurPos(next_block);
-	block_len=fm.GetLEDWord();
+	block_len=fm.GetLEUInt();
 	next_block=block_len+fm.GetCurPos()+1;
 
 	char texture_name[MAX_FOPATH]={0};
@@ -4344,25 +4347,25 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 
 	if(!fm_tex.LoadFile(texture_name,PT_FONTS))
 	{
-		WriteLog(__FUNCTION__" - Texture file<%s> not found.\n",texture_name);
+		WriteLog(_FUNC_," - Texture file<%s> not found.\n",texture_name);
 		return false;
 	}
 
 	// Chars
 	fm.SetCurPos(next_block);
 
-	int count=fm.GetLEDWord()/20;
+	int count=fm.GetLEUInt()/20;
 	for(int i=0;i<count;i++)
 	{
 		// Read data
-		int id=fm.GetLEDWord();
-		int x=fm.GetLEWord();
-		int y=fm.GetLEWord();
-		int w=fm.GetLEWord();
-		int h=fm.GetLEWord();
-		int ox=fm.GetLEWord();
-		int oy=fm.GetLEWord();
-		int xa=fm.GetLEWord();
+		int id=fm.GetLEUInt();
+		int x=fm.GetLEUShort();
+		int y=fm.GetLEUShort();
+		int w=fm.GetLEUShort();
+		int h=fm.GetLEUShort();
+		int ox=fm.GetLEUShort();
+		int oy=fm.GetLEUShort();
+		int xa=fm.GetLEUShort();
 		fm.GoForward(2);
 
 		if(id<0 || id>255) continue;
@@ -4396,8 +4399,8 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 	D3D_HR(font.FontTex->LockRect(0,&lr,NULL,0));
 	D3D_HR(font.FontTexBordered->LockRect(0,&lrb,NULL,0));
 
-	for(DWORD y=0;y<tex_h;y++)
-		for(DWORD x=0;x<tex_w;x++)
+	for(uint y=0;y<tex_h;y++)
+		for(uint x=0;x<tex_w;x++)
 			if(SURF_POINT(lr,x,y)&0xFF000000)
 				SURF_POINT(lr,x,y)=(SURF_POINT(lr,x,y)&0xFF000000)|(0x7F7F7F);
 			else
@@ -4405,8 +4408,8 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 
 	memcpy(lrb.pBits,lr.pBits,lr.Pitch*tex_h);
 
-	for(DWORD y=0;y<tex_h;y++)
-		for(DWORD x=0;x<tex_w;x++)
+	for(uint y=0;y<tex_h;y++)
+		for(uint x=0;x<tex_w;x++)
 			if(SURF_POINT(lr,x,y))
 				for(int xx=-1;xx<=1;xx++)
 					for(int yy=-1;yy<=1;yy++)
@@ -4417,7 +4420,7 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 	D3D_HR(font.FontTex->UnlockRect(0));
 
 	// Register
-	if(index>=Fonts.size()) Fonts.resize(index+1);
+	if(index>=(int)Fonts.size()) Fonts.resize(index+1);
 	SAFEDEL(Fonts[index]);
 	Fonts[index]=new Font(font);
 	return true;
@@ -4426,12 +4429,12 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 void FormatText(FontFormatInfo& fi, int fmt_type)
 {
 	char* str=fi.PStr;
-	DWORD flags=fi.Flags;
+	uint flags=fi.Flags;
 	Font* font=fi.CurFont;
 	INTRECT& r=fi.Rect;
 	int& curx=fi.CurX;
 	int& cury=fi.CurY;
-	DWORD& offs_col=fi.OffsColDots;
+	uint& offs_col=fi.OffsColDots;
 
 	if(fmt_type!=FORMAT_TYPE_DRAW && fmt_type!=FORMAT_TYPE_LCOUNT && fmt_type!=FORMAT_TYPE_SPLIT)
 	{
@@ -4446,8 +4449,8 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	}
 
 	// Colorize
-	DWORD* dots=NULL;
-	DWORD d_offs=0;
+	uint* dots=NULL;
+	uint d_offs=0;
 	char* str_=str;
 	char* big_buf=Str::GetBigBuf();
 	big_buf[0]=0;
@@ -4465,10 +4468,10 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		// if(!_str[0] && !*s1) break;
 		if(dots)
 		{
-			DWORD d_len=(DWORD)s2-(DWORD)s1+1;
-			DWORD d=strtoul(s1+1,NULL,0);
+			uint d_len=(uint)s2-(uint)s1+1;
+			uint d=strtoul(s1+1,NULL,0);
 
-			dots[(DWORD)s1-(DWORD)str-d_offs]=d;
+			dots[(uint)s1-(uint)str-d_offs]=d;
 			d_offs+=d_len;
 		}
 
@@ -4482,7 +4485,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	StringCopy(str,FONT_BUF_LEN,big_buf);
 
 	// Skip lines
-	DWORD skip_line=(FLAG(flags,FT_SKIPLINES(0))?flags>>16:0);
+	uint skip_line=(FLAG(flags,FT_SKIPLINES(0))?flags>>16:0);
 
 	// Format
 	curx=r.L;
@@ -4496,7 +4499,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		case '\r': continue;
 		case ' ': lett_len=font->SpaceWidth; break;
 		case '\t': lett_len=font->SpaceWidth*4; break;
-		default: lett_len=font->Letters[(BYTE)str[i]].XAdvance; break;
+		default: lett_len=font->Letters[(uchar)str[i]].XAdvance; break;
 		}
 
 		if(curx+lett_len>r.R)
@@ -4636,9 +4639,9 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	// Up text
 	if(FLAG(flags,FT_UPPER) && fi.LinesAll>fi.LinesInRect)
 	{
-		int j=0;
-		int line_cur=0;
-		DWORD last_col=0;
+		uint j=0;
+		uint line_cur=0;
+		uint last_col=0;
 		for(;str[j];++j)
 		{
 			if(str[j]=='\n')
@@ -4666,7 +4669,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	curx=r.L;
 	cury=r.T;
 
-	for(int i=0;i<fi.LinesAll;i++) fi.LineWidth[i]=curx;
+	for(uint i=0;i<fi.LinesAll;i++) fi.LineWidth[i]=curx;
 
 	bool can_count=false;
 	int spaces=0;
@@ -4703,7 +4706,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 			if(fi.LineSpaceWidth[curstr]==1 && spaces>0)
 			{
 				fi.LineSpaceWidth[curstr]=font->SpaceWidth+(r.R-fi.LineWidth[curstr])/spaces;
-				//WriteLog("%d) %d + ( %d - %d ) / %d = %u\n",curstr,font->SpaceWidth,r.R,fi.LineWidth[curstr],spaces,fi.LineSpaceWidth[curstr]);
+				//WriteLog(NULL,"%d) %d + ( %d - %d ) / %d = %u\n",curstr,font->SpaceWidth,r.R,fi.LineWidth[curstr],spaces,fi.LineSpaceWidth[curstr]);
 			}
 			else fi.LineSpaceWidth[curstr]=font->SpaceWidth;
 
@@ -4714,7 +4717,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		case '\r':
 			break;
 		default:
-			curx+=font->Letters[(BYTE)str[i]].XAdvance;
+			curx+=font->Letters[(uchar)str[i]].XAdvance;
 			//if(curx>fi.LineWidth[curstr]) fi.LineWidth[curstr]=curx;
 			can_count=true;
 			break;
@@ -4734,7 +4737,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	else if(FLAG(flags,FT_BOTTOM)) cury=r.B-(fi.LinesAll*font->MaxLettHeight+(fi.LinesAll-1)*font->EmptyVer);
 }
 
-bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col /* = 0 */, int num_font /* = -1 */)
+bool SpriteManager::DrawStr(INTRECT& r, const char* str, uint flags, uint col /* = 0 */, int num_font /* = -1 */)
 {
 	// Check
 	if(!str || !str[0]) return false;
@@ -4753,7 +4756,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 	if(fi.IsError) return false;
 
 	char* str_=fi.PStr;
-	DWORD offs_col=fi.OffsColDots;
+	uint offs_col=fi.OffsColDots;
 	int curx=fi.CurX;
 	int cury=fi.CurY;
 	int curstr=0;
@@ -4796,17 +4799,17 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, DWORD flags, DWORD col 
 		case '\r':
 			continue;
 		default:
-			Letter& l=font->Letters[(BYTE)str_[i]];
+			Letter& l=font->Letters[(uchar)str_[i]];
 			int mulpos=curSprCnt*4;
 			int x=curx-l.OffsW-1;
 			int y=cury-l.OffsH-1;
 			int w=l.W+2;
 			int h=l.H+2;
 
-			FLOAT x1=font->ArrXY[(BYTE)str_[i]][0];
-			FLOAT y1=font->ArrXY[(BYTE)str_[i]][1];
-			FLOAT x2=font->ArrXY[(BYTE)str_[i]][2];
-			FLOAT y2=font->ArrXY[(BYTE)str_[i]][3];
+			FLOAT x1=font->ArrXY[(uchar)str_[i]][0];
+			FLOAT y1=font->ArrXY[(uchar)str_[i]][1];
+			FLOAT x2=font->ArrXY[(uchar)str_[i]][2];
+			FLOAT y2=font->ArrXY[(uchar)str_[i]][3];
 
 			waitBuf[mulpos].x=x-0.5f;
 			waitBuf[mulpos].y=y+h-0.5f;

@@ -1,26 +1,32 @@
 #include "StdAfx.h"
 #include "Timer.h"
-#pragma comment(lib,"Winmm.lib")
+#include <Mmsystem.h>
 
-__int64 QPC_StartValue=0;
-__int64 QPC_Freq=0;
+#if defined(FO_MSVC)
+    #pragma comment(lib,"Winmm.lib")
+#elif defined(FO_GCC)
+    // Linker option: -lwinmm
+#endif
+
+int64 QPC_StartValue=0;
+int64 QPC_Freq=0;
 bool QPC_error=false;
 
-DWORD LastGameTick=0;
-DWORD SkipGameTick=0;
+uint LastGameTick=0;
+uint SkipGameTick=0;
 bool GameTickPaused=false;
 
 #define MAX_ACCELERATE_TICK      (500)
 #define MIN_ACCELERATE_TICK      (40)
 int AcceleratorNum=0;
-DWORD AcceleratorLastTick=0;
-DWORD AcceleratorAccelerate=0;
+uint AcceleratorLastTick=0;
+uint AcceleratorAccelerate=0;
 
 void Timer::Init()
 {
-//	DWORD oldmask = SetThreadAffinityMask(GetCurrentThread(), 1); 
-//	QueryPerformanceCounter(...); 
-//	QueryPerformanceFrequency(...); 
+//	uint oldmask = SetThreadAffinityMask(GetCurrentThread(), 1);
+//	QueryPerformanceCounter(...);
+//	QueryPerformanceFrequency(...);
 //	SetThreadAffinityMask(GetCurrentThread(), oldmask);
 
 	if(!QueryPerformanceCounter((LARGE_INTEGER*)&QPC_StartValue) ||
@@ -29,14 +35,14 @@ void Timer::Init()
 	timeBeginPeriod(1);
 //	TIMECAPS ptc;
 //	timeGetDevCaps(&ptc,sizeof(ptc));
-//	WriteLog("<%u,%u>\n",ptc.wPeriodMin,ptc.wPeriodMax);
+//	WriteLog(NULL,"<%u,%u>\n",ptc.wPeriodMin,ptc.wPeriodMax);
 
 	LastGameTick=timeGetTime();
 	SkipGameTick=LastGameTick;
 	GameTickPaused=false;
 }
 
-DWORD Timer::FastTick()
+uint Timer::FastTick()
 {
 	return timeGetTime();
 }
@@ -46,13 +52,13 @@ double Timer::AccurateTick()
 //	return timeGetTime();
 //	if(QPC_error) return GetTickCount();
 
-	__int64 qpc_value;
+	int64 qpc_value;
 	QueryPerformanceCounter((LARGE_INTEGER*)&qpc_value);
 //	return (qpc_value-QPC_StartValue)/QPC_Freq;
 	return (double)((double)(qpc_value-QPC_StartValue)/(double)QPC_Freq*1000.0);
 }
 
-DWORD Timer::GameTick()
+uint Timer::GameTick()
 {
 	if(GameTickPaused) return LastGameTick-SkipGameTick;
 	return timeGetTime()-SkipGameTick;
@@ -96,19 +102,19 @@ int Timer::GetAcceleratorNum()
 
 int Timer::GetTimeDifference(SYSTEMTIME& st1, SYSTEMTIME& st2)
 {
-	FILETIMELI ft1,ft2;
+	union {FILETIME ft; ULARGE_INTEGER ul;} ft1,ft2;
 	SystemTimeToFileTime(&st1,&ft1.ft);
 	SystemTimeToFileTime(&st2,&ft2.ft);
 
-	__int64 result=(ft1.ul.QuadPart-ft2.ul.QuadPart)/10000000;
+	int64 result=(ft1.ul.QuadPart-ft2.ul.QuadPart)/10000000;
 	return (int)result;
 }
 
 void Timer::ContinueTime(SYSTEMTIME& st, int seconds)
 {
-	FILETIMELI ft;
+	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
 	SystemTimeToFileTime(&st,&ft.ft);
-	ft.ul.QuadPart+=__int64(seconds)*10000000;
+	ft.ul.QuadPart+=int64(seconds)*10000000;
 	FileTimeToSystemTime(&ft.ft,&st);
 }
 

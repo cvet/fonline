@@ -2,11 +2,49 @@
 #define __MUTEX__
 
 #include "Common.h"
-#include <intrin.h>
 
 #define DEFAULT_SPIN_COUNT    (4000)
 #define SCOPE_LOCK(mutex)     volatile MutexLocker scope_lock__(mutex)
 #define SCOPE_SPINLOCK(mutex) volatile MutexSpinlockLocker scope_lock__(mutex)
+
+
+#ifdef FO_WINDOWS
+
+	#ifdef FO_MSVC
+		#include <intrin.h>
+		#define InterlockedCompareExchange _InterlockedCompareExchange
+		#define InterlockedExchange        _InterlockedExchange
+		#define InterlockedIncrement       _InterlockedIncrement
+		#define InterlockedDecrement       _InterlockedDecrement
+	#endif
+
+#elif FO_LINUX
+
+	#include <pthread.h>
+	#define CRITICAL_SECTION pthread_mutex_t
+	#define EnterCriticalSection pthread_mutex_lock(pthread_mutex_t *);
+	#define LeaveCriticalSection pthread_mutex_unlock(pthread_mutex_t *);
+	#define DeleteCriticalSection pthread_mutex_destroy(pthread_mutex_t *);
+
+pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *);
+InitializeCriticalSectionAndSpinCount
+SetCriticalSectionSpinCount
+
+InterlockedCompareExchange __sync_val_compare_and_swap
+InterlockedExchange __sync_lock_test_and_set
+InterlockedIncrement __sync_add_and_fetch(&value, 1);
+InterlockedDecrement __sync_sub_and_fetch(&value, 1);
+
+CreateEvent 
+CloseHandle 
+ResetEvent 
+SetEvent 
+WaitForSingleObject 
+
+http://pubs.opengroup.org/onlinepubs/007908799/xsh/pthread.h.html
+
+#endif
+
 
 class Mutex
 {
@@ -50,10 +88,10 @@ private:
 public:
 	MutexCode():mcCounter(0){mcEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
 	~MutexCode(){CloseHandle(mcEvent);}
-	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(_InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
+	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
 	void UnlockCode(){SetEvent(mcEvent);}
-	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); _InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
-	void LeaveCode(){_InterlockedDecrement(&mcCounter);}
+	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
+	void LeaveCode(){InterlockedDecrement(&mcCounter);}
 };
 
 class MutexSynchronizer
@@ -68,9 +106,9 @@ private:
 public:
 	MutexSynchronizer():msCounter(0){msEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
 	~MutexSynchronizer(){CloseHandle(msEvent);}
-	void Synchronize(long count){_InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); _InterlockedDecrement(&msCounter); ResetEvent(msEvent); while(_InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
+	void Synchronize(long count){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); ResetEvent(msEvent); while(InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
 	void Resynchronize(){SetEvent(msEvent);}
-	void SynchronizePoint(){_InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); _InterlockedDecrement(&msCounter); msLocker.Unlock();}
+	void SynchronizePoint(){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); msLocker.Unlock();}
 };
 
 class MutexEvent
@@ -98,9 +136,9 @@ private:
 
 public:
 	MutexSpinlock():spinCounter(0){}
-	void Lock(){while(_InterlockedCompareExchange(&spinCounter,1,0)) /*Wait*/;}
-	bool TryLock(){return _InterlockedCompareExchange(&spinCounter,1,0)==0;}
-	void Unlock(){_InterlockedExchange(&spinCounter,0);}
+	void Lock(){while(InterlockedCompareExchange(&spinCounter,1,0)) /*Wait*/;}
+	bool TryLock(){return InterlockedCompareExchange(&spinCounter,1,0)==0;}
+	void Unlock(){InterlockedExchange(&spinCounter,0);}
 };
 
 class MutexSpinlockLocker

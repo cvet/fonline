@@ -8,13 +8,13 @@
 
 struct Quest
 {
-	WORD num;
+	ushort num;
 	string str;
 	string info;
 	bool isInfo;
 
-	bool operator==(const WORD& _num){return _num==num;}
-	Quest(DWORD _num, string _info):num(_num),info(_info),isInfo(false){}
+	bool operator==(const ushort& _num){return _num==num;}
+	Quest(uint _num, string _info):num(_num),info(_info),isInfo(false){}
 };
 typedef vector<Quest> QuestVec;
 typedef vector<Quest>::iterator QuestVecIt;
@@ -32,7 +32,7 @@ private:
 		text="";
 
 		char str[128];
-		for(DWORD i=0;i<quests.size();++i)
+		for(uint i=0;i<quests.size();++i)
 		{
 			sprintf(str,msg->GetStr(STR_QUEST_NUMBER),i+1);
 
@@ -47,10 +47,10 @@ private:
 
 public:
 	bool IsEmpty(){return quests.empty();}
-	Quest* AddQuest(WORD num, string& info){quests.push_back(Quest(num,info)); return &quests[quests.size()-1]; ReparseText();}
-	void RefreshQuest(WORD num, string& str){Quest* quest=GetQuest(num); if(!quest) return; quest->str=str; ReparseText();}
-	Quest* GetQuest(WORD num){QuestVecIt it=std::find(quests.begin(),quests.end(),num); return it!=quests.end()?&(*it):NULL;}
-	void EraseQuest(WORD num){QuestVecIt it=std::find(quests.begin(),quests.end(),num); if(it!=quests.end()) quests.erase(it); ReparseText();}
+	Quest* AddQuest(ushort num, string& info){quests.push_back(Quest(num,info)); return &quests[quests.size()-1]; ReparseText();}
+	void RefreshQuest(ushort num, string& str){Quest* quest=GetQuest(num); if(!quest) return; quest->str=str; ReparseText();}
+	Quest* GetQuest(ushort num){QuestVecIt it=std::find(quests.begin(),quests.end(),num); return it!=quests.end()?&(*it):NULL;}
+	void EraseQuest(ushort num){QuestVecIt it=std::find(quests.begin(),quests.end(),num); if(it!=quests.end()) quests.erase(it); ReparseText();}
 	QuestVec* GetQuests(){return &quests;}
 	const char* GetText(){return text.c_str();}
 	QuestTab(FOMsg* _msg):msg(_msg){}
@@ -76,11 +76,11 @@ public:
 		tabs.clear();
 	}
 
-	void OnQuest(DWORD num)
+	void OnQuest(uint num)
 	{
 		// Split	
-		WORD q_num=num/QUEST_MUL;
-		WORD val=num%QUEST_MUL;
+		ushort q_num=num/QUEST_MUL;
+		ushort val=num%QUEST_MUL;
 
 		// Check valid Name of Tab
 		if(!msg->Count(STR_QUEST_MAP_(q_num))) return;
@@ -123,7 +123,7 @@ public:
 		return &tabs;
 	}
 
-	QuestTab* GetTab(DWORD tab_num)
+	QuestTab* GetTab(uint tab_num)
 	{
 		if(tabs.empty()) return NULL;
 
@@ -138,13 +138,13 @@ public:
 		return &(*it).second;
 	}
 
-	Quest* GetQuest(DWORD tab_num, WORD quest_num)
+	Quest* GetQuest(uint tab_num, ushort quest_num)
 	{
 		QuestTab* tab=GetTab(tab_num);
 		return tab?tab->GetQuest(quest_num):NULL;
 	}
 
-	Quest* GetQuest(DWORD num)
+	Quest* GetQuest(uint num)
 	{
 		if(!msg->Count(STR_QUEST_MAP_(num/QUEST_MUL))) return NULL;
 		string tab_name=string(msg->GetStr(STR_QUEST_MAP_(num/QUEST_MUL)));

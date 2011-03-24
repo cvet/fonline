@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include "HexManager.h"
 #include "ResourceManager.h"
-#include "3dStuff\Terrain.h"
 #include "LineTracer.h"
 
 #ifdef FONLINE_MAPPER
@@ -71,7 +70,7 @@ void Field::ProcessCache()
 	for(ItemHexVecIt it=Items.begin(),end=Items.end();it!=end;++it)
 	{
 		ItemHex* item=*it;
-		WORD pid=item->GetProtoId();
+		ushort pid=item->GetProtoId();
 		if(item->IsWall())
 		{
 			IsWall=true;
@@ -92,7 +91,7 @@ void Field::ProcessCache()
 	}
 }
 
-void Field::AddTile(AnyFrames* anim, short ox, short oy, BYTE layer, bool is_roof)
+void Field::AddTile(AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof)
 {
 	if(is_roof) Roofs.push_back(Tile());
 	else Tiles.push_back(Tile());
@@ -152,11 +151,11 @@ HexManager::HexManager()
 
 bool HexManager::Init()
 {
-	WriteLog("Hex field initialization...\n");
+	WriteLog(NULL,"Hex field initialization...\n");
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog("Item manager is not init.\n");
+		WriteLog(NULL,"Item manager is not init.\n");
 		return false;
 	}
 
@@ -179,13 +178,13 @@ bool HexManager::Init()
 	CurProtoMap=NULL;
 #endif
 
-	WriteLog("Hex field initialization complete.\n");
+	WriteLog(NULL,"Hex field initialization complete.\n");
 	return true;
 }
 
 void HexManager::Clear()
 {
-	WriteLog("Hex field finish...\n");
+	WriteLog(NULL,"Hex field finish...\n");
 
 	mainTree.Clear();
 	roofRainTree.Clear();
@@ -208,7 +207,7 @@ void HexManager::Clear()
 	ResizeField(0,0);
 
 	chosenId=0;
-	WriteLog("Hex field finish complete.\n");
+	WriteLog(NULL,"Hex field finish complete.\n");
 }
 
 void HexManager::ReloadSprites()
@@ -238,7 +237,7 @@ void HexManager::ReloadSprites()
 	}
 }
 
-void HexManager::PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void HexManager::PlaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item)
 {
 	if(!proto_item) return;
 
@@ -249,7 +248,7 @@ void HexManager::PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 	);
 }
 
-void HexManager::ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void HexManager::ReplaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item)
 {
 	if(!proto_item) return;
 
@@ -259,30 +258,30 @@ void HexManager::ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 	);
 }
 
-bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, Item::ItemData* data)
+bool HexManager::AddItem(uint id, ushort pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data)
 {
 	if(!id)
 	{
-		WriteLog(__FUNCTION__" - Item id is zero.\n");
+		WriteLog(_FUNC_," - Item id is zero.\n");
 		return false;
 	}
 
 	if(!IsMapLoaded())
 	{
-		WriteLog(__FUNCTION__" - Map is not loaded.");
+		WriteLog(_FUNC_," - Map is not loaded.");
 		return false;
 	}
 
 	if(hx>=maxHexX || hy>=maxHexY)
 	{
-		WriteLog(__FUNCTION__" - Position hx<%u> or hy<%u> error value.\n",hx,hy);
+		WriteLog(_FUNC_," - Position hx<%u> or hy<%u> error value.\n",hx,hy);
 		return false;
 	}
 
 	ProtoItem* proto=ItemMngr.GetProtoItem(pid);
 	if(!proto)
 	{
-		WriteLog(__FUNCTION__" - Proto not found<%u>.\n",pid);
+		WriteLog(_FUNC_," - Proto not found<%u>.\n",pid);
 		return false;
 	}
 
@@ -332,7 +331,7 @@ bool HexManager::AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, It
 	return true;
 }
 
-void HexManager::ChangeItem(DWORD id, const Item::ItemData& data)
+void HexManager::ChangeItem(uint id, const Item::ItemData& data)
 {
 	ItemHex* item=GetItemById(id);
 	if(!item) return;
@@ -344,8 +343,8 @@ void HexManager::ChangeItem(DWORD id, const Item::ItemData& data)
 	if(old_data.PicMapHash!=data.PicMapHash) item->RefreshAnim();
 	if(proto->IsDoor() || proto->IsContainer())
 	{
-		WORD old_cond=old_data.Locker.Condition;
-		WORD new_cond=data.Locker.Condition;
+		ushort old_cond=old_data.Locker.Condition;
+		ushort new_cond=data.Locker.Condition;
 		if(!FLAG(old_cond,LOCKER_ISOPEN) && FLAG(new_cond,LOCKER_ISOPEN)) item->SetAnimFromStart();
 		if(FLAG(old_cond,LOCKER_ISOPEN) && !FLAG(new_cond,LOCKER_ISOPEN)) item->SetAnimFromEnd();
 	}
@@ -357,18 +356,18 @@ void HexManager::ChangeItem(DWORD id, const Item::ItemData& data)
 	GetField(item->GetHexX(),item->GetHexY()).ProcessCache();
 }
 
-void HexManager::FinishItem(DWORD id, bool is_deleted)
+void HexManager::FinishItem(uint id, bool is_deleted)
 {
 	if(!id)
 	{
-		WriteLog(__FUNCTION__" - Item zero id.\n");
+		WriteLog(_FUNC_," - Item zero id.\n");
 		return;
 	}
 
 	ItemHex* item=GetItemById(id);
 	if(!item)
 	{
-		WriteLog(__FUNCTION__" - Item<%d> not found.\n",id);
+		WriteLog(_FUNC_," - Item<%d> not found.\n",id);
 		return;
 	}
 
@@ -378,9 +377,9 @@ void HexManager::FinishItem(DWORD id, bool is_deleted)
 
 ItemHexVecIt HexManager::DeleteItem(ItemHex* item, bool with_delete /* = true */)
 {
-	WORD pid=item->GetProtoId();
-	WORD hx=item->GetHexX();
-	WORD hy=item->GetHexY();
+	ushort pid=item->GetProtoId();
+	ushort hx=item->GetHexX();
+	ushort hy=item->GetHexY();
 
 	if(item->IsBlocks()) ReplaceItemBlocks(item->HexX,item->HexY,item->Proto);
 	if(item->SprDrawValid) item->SprDraw->Unvalidate();
@@ -404,11 +403,11 @@ void HexManager::ProcessItems()
 
 		if(item->IsDynamicEffect() && !item->IsFinishing())
 		{
-			WordPair step=item->GetEffectStep();
+			UShortPair step=item->GetEffectStep();
 			if(item->GetHexX()!=step.first || item->GetHexY()!=step.second)
 			{
-				WORD hx=item->GetHexX();
-				WORD hy=item->GetHexY();
+				ushort hx=item->GetHexX();
+				ushort hy=item->GetHexY();
 				int x,y;
 				GetHexInterval(hx,hy,step.first,step.second,x,y);
 				item->EffOffsX-=x;
@@ -445,8 +444,8 @@ void HexManager::PushItem(ItemHex* item)
 {
 	hexItems.push_back(item);
 
-	WORD hx=item->GetHexX();
-	WORD hy=item->GetHexY();
+	ushort hx=item->GetHexX();
+	ushort hy=item->GetHexY();
 
 	Field& f=GetField(hx,hy);
 	item->HexScrX=&f.ScrX;
@@ -461,7 +460,7 @@ void HexManager::PushItem(ItemHex* item)
 	std::sort(f.Items.begin(),f.Items.end(),ItemCompWall);
 }
 
-ItemHex* HexManager::GetItem(WORD hx, WORD hy, WORD pid)
+ItemHex* HexManager::GetItem(ushort hx, ushort hy, ushort pid)
 {
 	if(!IsMapLoaded() || hx>=maxHexX || hy>=maxHexY) return NULL;
 
@@ -473,7 +472,7 @@ ItemHex* HexManager::GetItem(WORD hx, WORD hy, WORD pid)
 	return NULL;
 }
 
-ItemHex* HexManager::GetItemById(WORD hx, WORD hy, DWORD id)
+ItemHex* HexManager::GetItemById(ushort hx, ushort hy, uint id)
 {
 	if(!IsMapLoaded() || hx>=maxHexX || hy>=maxHexY) return NULL;
 
@@ -485,7 +484,7 @@ ItemHex* HexManager::GetItemById(WORD hx, WORD hy, DWORD id)
 	return NULL;
 }
 
-ItemHex* HexManager::GetItemById(DWORD id)
+ItemHex* HexManager::GetItemById(uint id)
 {
 	for(ItemHexVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -495,7 +494,7 @@ ItemHex* HexManager::GetItemById(DWORD id)
 	return NULL;
 }
 
-void HexManager::GetItems(WORD hx, WORD hy, ItemHexVec& items)
+void HexManager::GetItems(ushort hx, ushort hy, ItemHexVec& items)
 {
 	if(!IsMapLoaded()) return;
 
@@ -506,7 +505,7 @@ void HexManager::GetItems(WORD hx, WORD hy, ItemHexVec& items)
 	}
 }
 
-INTRECT HexManager::GetRectForText(WORD hx, WORD hy)
+INTRECT HexManager::GetRectForText(ushort hx, ushort hy)
 {
 	if(!IsMapLoaded()) return INTRECT();
 	Field& f=GetField(hx,hy);
@@ -531,19 +530,19 @@ INTRECT HexManager::GetRectForText(WORD hx, WORD hy)
 	return r;
 }
 
-bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy)
+bool HexManager::RunEffect(ushort eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
 	if(!IsMapLoaded()) return false;
 	if(from_hx>=maxHexX || from_hy>=maxHexY || to_hx>=maxHexX || to_hy>=maxHexY)
 	{
-		WriteLog(__FUNCTION__" - Incorrect value of from_x<%d> or from_y<%d> or to_x<%d> or to_y<%d>.\n",from_hx,from_hy,to_hx,to_hy);
+		WriteLog(_FUNC_," - Incorrect value of from_x<%d> or from_y<%d> or to_x<%d> or to_y<%d>.\n",from_hx,from_hy,to_hx,to_hy);
 		return false;
 	}
 
 	ProtoItem* proto=ItemMngr.GetProtoItem(eff_pid);
 	if(!proto)
 	{
-		WriteLog(__FUNCTION__" - Proto not found, pid<%d>.\n",eff_pid);
+		WriteLog(_FUNC_," - Proto not found, pid<%d>.\n",eff_pid);
 		return false;
 	}
 
@@ -553,11 +552,11 @@ bool HexManager::RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx,
 
 	float sx=0;
 	float sy=0;
-	DWORD dist=0;
+	uint dist=0;
 
 	if(from_hx!=to_hx || from_hy!=to_hy)
 	{
-		item->EffSteps.push_back(WordPairVecVal(from_hx,from_hy));
+		item->EffSteps.push_back(UShortPairVecVal(from_hx,from_hy));
 		TraceBullet(from_hx,from_hy,to_hx,to_hy,0,0.0f,NULL,false,NULL,0,NULL,NULL,&item->EffSteps,false);
 		int x,y;
 		GetHexInterval(from_hx,from_hy,to_hx,to_hy,x,y);
@@ -585,8 +584,8 @@ void HexManager::ProcessRain()
 {
 	if(!rainCapacity) return;
 
-	static DWORD last_tick=Timer::GameTick();
-	DWORD delta=Timer::GameTick()-last_tick;
+	static uint last_tick=Timer::GameTick();
+	uint delta=Timer::GameTick()-last_tick;
 	if(delta<=RAIN_TICK) return;
 
 	for(DropVecIt it=rainData.begin(),end=rainData.end();it!=end;++it)
@@ -620,7 +619,7 @@ void HexManager::ProcessRain()
 
 void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 {
-	WORD hx,hy;
+	ushort hx,hy;
 	if(GetHexPixel(x,y,hx,hy))
 	{
 		Field& f=GetField(hx,hy);
@@ -636,7 +635,7 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 
 		int cx=chosen->GetHexX();
 		int cy=chosen->GetHexY();
-		DWORD mh=chosen->GetMultihex();
+		uint mh=chosen->GetMultihex();
 
 		if((cx==hx && cy==hy) || (f.IsNotPassed && (!mh || !CheckDist(cx,cy,hx,hy,mh))))
 		{
@@ -645,13 +644,13 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 		else
 		{
 			static int last_cur_x=0;
-			static WORD last_hx=0,last_hy=0;
+			static ushort last_hx=0,last_hy=0;
 			if(refresh || hx!=last_hx || hy!=last_hy)
 			{
 				bool is_tb=chosen->IsTurnBased();
 				if(chosen->IsLife() && (!is_tb || chosen->GetAllAp()>0))
 				{
-					ByteVec steps;
+					UCharVec steps;
 					if(!FindPath(chosen,cx,cy,hx,hy,steps,-1)) drawCursorX=-1;
 					else if(!is_tb) drawCursorX=(show_steps?steps.size():0);
 					else
@@ -677,20 +676,25 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 	}
 }
 
-void HexManager::DrawCursor(DWORD spr_id)
+void HexManager::DrawCursor(uint spr_id)
 {
 	if(GameOpt.HideCursor || !isShowCursor) return;
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 	if(!si) return;
-	SprMngr.DrawSpriteSize(spr_id,(cursorX+GameOpt.ScrOx)/GameOpt.SpritesZoom,(cursorY+GameOpt.ScrOy)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,true,false);
+	SprMngr.DrawSpriteSize(spr_id,
+		(int)((float)(cursorX+GameOpt.ScrOx)/GameOpt.SpritesZoom),
+		(int)((float)(cursorY+GameOpt.ScrOy)/GameOpt.SpritesZoom),
+		(float)si->Width/GameOpt.SpritesZoom,
+		(float)si->Height/GameOpt.SpritesZoom,true,false);
 }
 
 void HexManager::DrawCursor(const char* text)
 {
 	if(GameOpt.HideCursor || !isShowCursor) return;
-	int x=(cursorX+GameOpt.ScrOx)/GameOpt.SpritesZoom;
-	int y=(cursorY+GameOpt.ScrOy)/GameOpt.SpritesZoom;
-	SprMngr.DrawStr(INTRECT(x,y,x+HEX_W/GameOpt.SpritesZoom,y+HEX_REAL_H/GameOpt.SpritesZoom),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
+	int x=(int)((float)(cursorX+GameOpt.ScrOx)/GameOpt.SpritesZoom);
+	int y=(int)((float)(cursorY+GameOpt.ScrOy)/GameOpt.SpritesZoom);
+	SprMngr.DrawStr(INTRECT(x,y,(int)((float)(x+HEX_W)/GameOpt.SpritesZoom),
+		(int)((float)(y+HEX_REAL_H)/GameOpt.SpritesZoom)),text,FT_CENTERX|FT_CENTERY,COLOR_TEXT_WHITE);
 }
 
 void HexManager::RebuildMap(int rx, int ry)
@@ -759,7 +763,7 @@ void HexManager::RebuildMap(int rx, int ry)
 			// Track
 			if(isShowTrack && GetHexTrack(nx,ny))
 			{
-				DWORD spr_id=(GetHexTrack(nx,ny)==1?picTrack1->GetCurSprId():picTrack2->GetCurSprId());
+				uint spr_id=(GetHexTrack(nx,ny)==1?picTrack1->GetCurSprId():picTrack2->GetCurSprId());
 				SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 				mainTree.AddSprite(DRAW_ORDER_TRACK,nx,ny,0,f.ScrX+HEX_OX,f.ScrY+HEX_OY+(si?si->Height/2:0),spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
@@ -779,7 +783,7 @@ void HexManager::RebuildMap(int rx, int ry)
 				bool thru=(vpos==lt_pos || vpos==lb_pos || vpos==rb_pos || vpos==rt_pos ||
 					vpos==lt_pos2 || vpos==lb_pos2 || vpos==rb_pos2 || vpos==rt_pos2);
 
-				DWORD spr_id=(thru?picHex[1]->GetCurSprId():picHex[0]->GetCurSprId());
+				uint spr_id=(thru?picHex[1]->GetCurSprId():picHex[0]->GetCurSprId());
 				SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 				mainTree.AddSprite(DRAW_ORDER_HEX_GRID,nx,ny,0,f.ScrX+(si?si->Width/2:0),f.ScrY+(si?si->Height:0),spr_id,NULL,NULL,NULL,NULL,NULL);
 			}
@@ -883,7 +887,7 @@ void HexManager::RebuildMap(int rx, int ry)
 	mainTree.SortByMapPos();
 
 #ifdef FONLINE_MAPPER
-	if(MapperFunctions.RenderMap && Script::PrepareContext(MapperFunctions.RenderMap,CALL_FUNC_STR,"Game"))
+	if(MapperFunctions.RenderMap && Script::PrepareContext(MapperFunctions.RenderMap,_FUNC_,"Game"))
 	{
 		SpritesCanDrawMap=true;
 		Script::RunPrepared();
@@ -891,7 +895,7 @@ void HexManager::RebuildMap(int rx, int ry)
 	}
 #endif
 #ifdef FONLINE_CLIENT
-	if(Script::PrepareContext(ClientFunctions.RenderMap,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.RenderMap,_FUNC_,"Game"))
 	{
 		SpritesCanDrawMap=true;
 		Script::RunPrepared();
@@ -928,19 +932,19 @@ int LightProcentR=0;
 int LightProcentG=0;
 int LightProcentB=0;
 
-void HexManager::MarkLight(WORD hx, WORD hy, DWORD inten)
+void HexManager::MarkLight(ushort hx, ushort hy, uint inten)
 {
 	int light=inten*MAX_LIGHT_HEX/MAX_LIGHT_VALUE*LightCapacity/100;
 	int lr=light*LightProcentR/100;
 	int lg=light*LightProcentG/100;
 	int lb=light*LightProcentB/100;
-	BYTE* p=GetLightHex(hx,hy);
+	uchar* p=GetLightHex(hx,hy);
 	if(lr>*p) *p=lr;
 	if(lg>*(p+1)) *(p+1)=lg;
 	if(lb>*(p+2)) *(p+2)=lb;
 }
 
-void HexManager::MarkLightEndNeighbor(WORD hx, WORD hy, bool north_south, DWORD inten)
+void HexManager::MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, uint inten)
 {
 	Field& f=GetField(hx,hy);
 	if(f.IsWall)
@@ -950,7 +954,7 @@ void HexManager::MarkLightEndNeighbor(WORD hx, WORD hy, bool north_south, DWORD 
 			(!north_south && (lt==CORNER_EAST_WEST || lt==CORNER_EAST)) ||
 			lt==CORNER_SOUTH)
 		{
-			BYTE* p=GetLightHex(hx,hy);
+			uchar* p=GetLightHex(hx,hy);
 			int light_full=inten*MAX_LIGHT_HEX/MAX_LIGHT_VALUE*LightCapacity/100;
 			int light_self=(inten/2)*MAX_LIGHT_HEX/MAX_LIGHT_VALUE*LightCapacity/100;
 			int lr_full=light_full*LightProcentR/100;
@@ -969,7 +973,7 @@ void HexManager::MarkLightEndNeighbor(WORD hx, WORD hy, bool north_south, DWORD 
 	}
 }
 
-void HexManager::MarkLightEnd(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD inten)
+void HexManager::MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten)
 {
 	bool is_wall=false;
 	bool north_south=false;
@@ -1010,7 +1014,7 @@ void HexManager::MarkLightEnd(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy
 	}
 }
 
-void HexManager::MarkLightStep(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD inten)
+void HexManager::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten)
 {
 	Field& f=GetField(to_hx,to_hy);
 	if(f.IsWallTransp)
@@ -1025,7 +1029,7 @@ void HexManager::MarkLightStep(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_h
 	}
 }
 
-void HexManager::TraceLight(WORD from_hx, WORD from_hy, WORD& hx, WORD& hy, int dist, DWORD inten)
+void HexManager::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten)
 {
 	float base_sx,base_sy;
 	GetStepsXY(base_sx,base_sy,from_hx,from_hy,hx,hy);
@@ -1039,7 +1043,7 @@ void HexManager::TraceLight(WORD from_hx, WORD from_hy, WORD& hx, WORD& hy, int 
 	int old_cury1i=cury1i;
 	bool right_barr=false;
 	bool left_barr=false;
-	DWORD inten_sub=inten/dist;
+	uint inten_sub=inten/dist;
 
 	for(;;)
 	{
@@ -1111,8 +1115,8 @@ void HexManager::TraceLight(WORD from_hx, WORD from_hy, WORD& hx, WORD& hy, int 
 
 void HexManager::ParseLightTriangleFan(LightSource& ls)
 {
-	WORD hx=ls.HexX;
-	WORD hy=ls.HexY;
+	ushort hx=ls.HexX;
+	ushort hy=ls.HexY;
 	// Distance
 	int dist=ls.Distance;
 	if(dist<1) dist=1;
@@ -1125,7 +1129,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 	else LightCapacity=100;
 	if(FLAG(ls.Flags,LIGHT_INVERSE)) LightCapacity=100-LightCapacity;
 	// Color
-	DWORD color=ls.ColorRGB;
+	uint color=ls.ColorRGB;
 	if(color==0) color=0xFFFFFF;
 	int alpha=MAX_LIGHT_ALPHA*LightCapacity/100*inten/MAX_LIGHT_VALUE;
 	color=D3DCOLOR_ARGB(alpha,(color>>16)&0xFF,(color>>8)&0xFF,color&0xFF);
@@ -1150,7 +1154,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 
 	int hx_far=hx,hy_far=hy;
 	bool seek_start=true;
-	WORD last_hx=-1,last_hy=-1;
+	ushort last_hx=-1,last_hy=-1;
 
 	for(int i=0,ii=(GameOpt.MapHexagonal?6:4);i<ii;i++)
 	{
@@ -1171,8 +1175,8 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 				MoveHexByDirUnsafe(hx_far,hy_far,dir);
 			}
 
-			WORD hx_=CLAMP(hx_far,0,maxHexX-1);
-			WORD hy_=CLAMP(hy_far,0,maxHexY-1);
+			ushort hx_=CLAMP(hx_far,0,maxHexX-1);
+			ushort hy_=CLAMP(hy_far,0,maxHexY-1);
 			if(j>=0 && FLAG(ls.Flags,LIGHT_DISABLE_DIR(i)))
 			{
 				hx_=hx;
@@ -1201,17 +1205,17 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 		}
 	}
 
-	for(int i=1,j=points.size();i<j;i++)
+	for(uint i=1,j=points.size();i<j;i++)
 	{
 		PrepPoint& cur=points[i];
 		PrepPoint& next=points[i>=points.size()-1?1:i+1];
-		if(DistSqrt(cur.PointX,cur.PointY,next.PointX,next.PointY)>LIGHT_SOFT_LENGTH)
+		if(DistSqrt(cur.PointX,cur.PointY,next.PointX,next.PointY)>(uint)LIGHT_SOFT_LENGTH)
 		{
 			bool dist_comp=(DistSqrt(base_x,base_y,cur.PointX,cur.PointY)>DistSqrt(base_x,base_y,next.PointX,next.PointY));
 			lightSoftPoints.push_back(PrepPoint(next.PointX,next.PointY,next.PointColor,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
 			lightSoftPoints.push_back(PrepPoint(cur.PointX,cur.PointY,cur.PointColor,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
-			float x=(dist_comp?next.PointX-cur.PointX:cur.PointX-next.PointX);
-			float y=(dist_comp?next.PointY-cur.PointY:cur.PointY-next.PointY);
+			float x=(float)(dist_comp?next.PointX-cur.PointX:cur.PointX-next.PointX);
+			float y=(float)(dist_comp?next.PointY-cur.PointY:cur.PointY-next.PointY);
 			ChangeStepsXY(x,y,dist_comp?-2.5f:2.5f);
 			if(dist_comp) lightSoftPoints.push_back(PrepPoint(cur.PointX+int(x),cur.PointY+int(y),cur.PointColor,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
 			else lightSoftPoints.push_back(PrepPoint(next.PointX+int(x),next.PointY+int(y),next.PointColor,(short*)&GameOpt.ScrOx,(short*)&GameOpt.ScrOy));
@@ -1313,22 +1317,10 @@ bool HexManager::CheckTilesBorder(Field::Tile& tile, bool is_roof)
 	return ProcessHexBorders(tile.Anim->GetSprId(0),ox,oy);
 }
 
-bool HexManager::AddTerrain(DWORD name_hash, int hx, int hy)
-{
-	Terrain* terrain=new(nothrow) Terrain(SprMngr.GetDevice(),hx,hy,Str::GetName(name_hash));
-	if(terrain && !terrain->IsError())
-	{
-		tilesTerrain.push_back(terrain);
-		return true;
-	}
-	delete terrain;
-	return false;
-}
-
 bool HexManager::InitTilesSurf()
 {
-	int w=MODE_WIDTH+((SCROLL_OX*2)/MIN_ZOOM+1);
-	int h=MODE_HEIGHT+((SCROLL_OY*2)/MIN_ZOOM+1);
+	int w=MODE_WIDTH+(int)((SCROLL_OX*2)/MIN_ZOOM+1.0f);
+	int h=MODE_HEIGHT+(int)((SCROLL_OY*2)/MIN_ZOOM+1.0f);
 
 	if(tileSurf && tileSurfWidth==w && tileSurfHeight==h) return true;
 
@@ -1338,7 +1330,7 @@ bool HexManager::InitTilesSurf()
 
 	if(!SprMngr.CreateRenderTarget(tileSurf,w,h))
 	{
-		WriteLog("Can't create tiles surface, width<%d>, height<%d>.\n",w,h);
+		WriteLog(NULL,"Can't create tiles surface, width<%d>, height<%d>.\n",w,h);
 		return false;
 	}
 
@@ -1369,10 +1361,10 @@ void HexManager::RebuildTiles()
 			Field& f=GetField(hx,hy);
 			if(f.Tiles.empty()) continue;
 
-			for(size_t i=0,j=f.Tiles.size();i<j;i++)
+			for(uint i=0,j=f.Tiles.size();i<j;i++)
 			{
 				Field::Tile& tile=f.Tiles[i];
-				DWORD spr_id=tile.Anim->GetSprId(0);
+				uint spr_id=tile.Anim->GetSprId(0);
 				int ox=f.ScrX+tile.OffsX+TILE_OX;
 				int oy=f.ScrY+tile.OffsY+TILE_OY;
 
@@ -1380,7 +1372,7 @@ void HexManager::RebuildTiles()
 #ifdef FONLINE_MAPPER
 				{
 					ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-					tilesTree.AddSprite(DRAW_ORDER_TILE+tile.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,tiles[i].IsSelected?(BYTE*)&SELECT_ALPHA:NULL,NULL);
+					tilesTree.AddSprite(DRAW_ORDER_TILE+tile.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,tiles[i].IsSelected?(uchar*)&SELECT_ALPHA:NULL,NULL);
 				}
 #else
 					tilesTree.AddSprite(DRAW_ORDER_TILE+tile.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,NULL,NULL);
@@ -1419,10 +1411,10 @@ void HexManager::RebuildRoof()
 
 			if(!roofSkip || roofSkip!=f.RoofNum)
 			{
-				for(size_t i=0,j=f.Roofs.size();i<j;i++)
+				for(uint i=0,j=f.Roofs.size();i<j;i++)
 				{
 					Field::Tile& roof=f.Roofs[i];
-					DWORD spr_id=roof.Anim->GetSprId(0);
+					uint spr_id=roof.Anim->GetSprId(0);
 					int ox=f.ScrX+roof.OffsX+ROOF_OX;
 					int oy=f.ScrY+roof.OffsY+ROOF_OY;
 
@@ -1430,7 +1422,7 @@ void HexManager::RebuildRoof()
 #ifdef FONLINE_MAPPER
 					{
 						ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(BYTE*)&SELECT_ALPHA:&GameOpt.RoofAlpha,NULL).SetEgg(EGG_ALWAYS);
+						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,roofs[i].IsSelected?(uchar*)&SELECT_ALPHA:&GameOpt.RoofAlpha,NULL).SetEgg(EGG_ALWAYS);
 					}
 #else
 						roofTree.AddSprite(DRAW_ORDER_TILE+roof.Layer,hx,hy,0,ox,oy,spr_id,NULL,NULL,NULL,&GameOpt.RoofAlpha,NULL).SetEgg(EGG_ALWAYS);
@@ -1473,7 +1465,7 @@ void HexManager::MarkRoofNum(int hx, int hy, int num)
 	MarkRoofNum(hx,hy-GameOpt.MapRoofSkipSize,num);
 }
 
-bool HexManager::IsVisible(DWORD spr_id, int ox, int oy)
+bool HexManager::IsVisible(uint spr_id, int ox, int oy)
 {
 	if(!spr_id) return false;
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
@@ -1487,7 +1479,7 @@ bool HexManager::IsVisible(DWORD spr_id, int ox, int oy)
 	return !(top>MODE_HEIGHT*GameOpt.SpritesZoom || bottom<0 || left>MODE_WIDTH*GameOpt.SpritesZoom || right<0);
 }
 
-bool HexManager::ProcessHexBorders(DWORD spr_id, int ox, int oy)
+bool HexManager::ProcessHexBorders(uint spr_id, int ox, int oy)
 {
 	SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id);
 	if(!si) return false;
@@ -1525,13 +1517,13 @@ void HexManager::SwitchShowRain()
 	RefreshMap();
 }
 
-void HexManager::SetWeather(int time, BYTE rain)
+void HexManager::SetWeather(int time, uchar rain)
 {
 	curMapTime=time;
 	rainCapacity=rain;
 }
 
-bool HexManager::ResizeField(WORD w, WORD h)
+bool HexManager::ResizeField(ushort w, ushort h)
 {
 	GameOpt.ClientMap=NULL;
 	GameOpt.ClientMapWidth=0;
@@ -1553,9 +1545,9 @@ bool HexManager::ResizeField(WORD w, WORD h)
 	hexTrack=new char[w*h];
 	if(!hexTrack) return false;
 	ZeroMemory(hexTrack,w*h*sizeof(char));
-	hexLight=new BYTE[w*h*3];
+	hexLight=new uchar[w*h*3];
 	if(!hexLight) return false;
-	ZeroMemory(hexLight,w*h*3*sizeof(BYTE));
+	ZeroMemory(hexLight,w*h*3*sizeof(uchar));
 
 	GameOpt.ClientMap=hexField;
 	GameOpt.ClientMapWidth=w;
@@ -1596,7 +1588,7 @@ void HexManager::InitView(int cx, int cy)
 		int y2=0;
 		int vpos;
 		int hx,hy;
-		int wx=MODE_WIDTH*GameOpt.SpritesZoom;
+		int wx=(int)(MODE_WIDTH*GameOpt.SpritesZoom);
 
 		for(int j=0;j<hVisible;j++)
 		{
@@ -1635,7 +1627,7 @@ void HexManager::InitView(int cx, int cy)
 		int xa=-HEX_W*wRight;
 		int xb=-HEX_W*wRight-HEX_W/2;
 		int y=-HEX_LINE_H*hTop;
-		int wx=MODE_WIDTH*GameOpt.SpritesZoom;
+		int wx=(int)(MODE_WIDTH*GameOpt.SpritesZoom);
 		int hx,hy;
 
 		// Initialize field
@@ -1692,7 +1684,7 @@ void HexManager::ChangeZoom(int zoom)
 	if(zoom || GameOpt.SpritesZoom<1.0f)
 	{
 		float old_zoom=GameOpt.SpritesZoom;
-		float w=MODE_WIDTH/HEX_W+((MODE_WIDTH%HEX_W)?1:0);
+		float w=(float)(MODE_WIDTH/HEX_W+((MODE_WIDTH%HEX_W)?1:0));
 		GameOpt.SpritesZoom=(w*GameOpt.SpritesZoom+(zoom>=0?2.0f:-2.0f))/w;
 
 		if(GameOpt.SpritesZoom<max(GameOpt.SpritesZoomMin,MIN_ZOOM) || GameOpt.SpritesZoom>min(GameOpt.SpritesZoomMax,MAX_ZOOM))
@@ -1715,7 +1707,7 @@ void HexManager::ChangeZoom(int zoom)
 	if(zoom==0 && GameOpt.SpritesZoom!=1.0f) ChangeZoom(0);
 }
 
-void HexManager::GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y)
+void HexManager::GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y)
 {
 	ViewField& center_hex=viewField[hVisible/2*wVisible+wVisible/2];
 	int center_hx=center_hex.HexX;
@@ -1748,15 +1740,6 @@ void HexManager::DrawMap()
 			// Clear
 			if(GameOpt.ScreenClear) SprMngr.ClearRenderTarget(tileSurf,D3DCOLOR_XRGB(100,100,100));
 
-			// Draw terrain
-			for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it)
-			{
-				Terrain* terrain=*it;
-				int x,y;
-				GetHexCurrentPosition(terrain->GetHexX(),terrain->GetHexY(),x,y);
-				terrain->Draw(tileSurf,NULL,x+33,y+20,GameOpt.SpritesZoom);
-			}
-
 			// Draw simple tiles
 			SprMngr.SetCurEffect2D(DEFAULT_EFFECT_TILE);
 			SprMngr.PrepareBuffer(tilesTree,tileSurf,SCROLL_OX,SCROLL_OY,TILE_ALPHA);
@@ -1773,7 +1756,7 @@ void HexManager::DrawMap()
 	SprMngr.DrawSprites(mainTree,true,false,DRAW_ORDER_FLAT,DRAW_ORDER_LIGHT-1);
 
 	// Light
-	for(int i=0;i<lightPointsCount;i++) SprMngr.DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&GameOpt.SpritesZoom);
+	for(uint i=0;i<lightPointsCount;i++) SprMngr.DrawPoints(lightPoints[i],D3DPT_TRIANGLEFAN,&GameOpt.SpritesZoom);
 	SprMngr.DrawPoints(lightSoftPoints,D3DPT_TRIANGLELIST,&GameOpt.SpritesZoom);
 
 	// Cursor flat
@@ -1813,7 +1796,7 @@ bool HexManager::Scroll()
 {
 	if(!IsMapLoaded()) return false;
 
-	static DWORD last_call=Timer::AccurateTick();
+	static double last_call=Timer::AccurateTick();
 	if(Timer::AccurateTick()-last_call<GameOpt.ScrollDelay) return false;
 	else last_call=Timer::AccurateTick();
 
@@ -1863,7 +1846,7 @@ bool HexManager::Scroll()
 		AutoScroll.OffsXStep-=xscroll;
 		AutoScroll.OffsYStep-=yscroll;
 		if(!xscroll && !yscroll) return false;
-		if(!DistSqrt(0,0,AutoScroll.OffsX,AutoScroll.OffsY)) AutoScroll.Active=false;
+		if(!DistSqrt(0,0,(int)AutoScroll.OffsX,(int)AutoScroll.OffsY)) AutoScroll.Active=false;
 
 		scr_ox+=xscroll;
 		scr_oy+=yscroll;
@@ -1881,8 +1864,8 @@ bool HexManager::Scroll()
 		if(GameOpt.ScrollMouseDown || GameOpt.ScrollKeybDown) yscroll-=1;
 		if(!xscroll && !yscroll) return false;
 
-		scr_ox+=xscroll*GameOpt.ScrollStep*GameOpt.SpritesZoom;
-		scr_oy+=yscroll*(GameOpt.ScrollStep*SCROLL_OY/SCROLL_OX)*GameOpt.SpritesZoom;
+		scr_ox+=(int)(xscroll*GameOpt.ScrollStep*GameOpt.SpritesZoom);
+		scr_oy+=(int)(yscroll*(GameOpt.ScrollStep*SCROLL_OY/SCROLL_OX)*GameOpt.SpritesZoom);
 	}
 
 	if(GameOpt.ScrollCheck)
@@ -1969,8 +1952,8 @@ bool HexManager::ScrollCheckPos(int (&positions)[4], int dir1, int dir2)
 		int pos=positions[i];
 		if(pos<0 || pos>=max_pos) return true;
 
-		WORD hx=viewField[pos].HexX;
-		WORD hy=viewField[pos].HexY;
+		ushort hx=viewField[pos].HexX;
+		ushort hy=viewField[pos].HexY;
 		if(hx>=maxHexX || hy>=maxHexY) return true;
 
 		MoveHexByDir(hx,hy,dir1,maxHexX,maxHexY);
@@ -2062,13 +2045,11 @@ void HexManager::ScrollToHex(int hx, int hy, double speed, bool can_stop)
 void HexManager::PreRestore()
 {
 	SAFEREL(tileSurf);
-	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) (*it)->PreRestore();
 }
 
 void HexManager::PostRestore()
 {
 	InitTilesSurf();
-	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) (*it)->PostRestore();
 	RefreshMap();
 }
 
@@ -2076,8 +2057,8 @@ void HexManager::SetCrit(CritterCl* cr)
 {
 	if(!IsMapLoaded()) return;
 
-	WORD hx=cr->GetHexX();
-	WORD hy=cr->GetHexY();
+	ushort hx=cr->GetHexX();
+	ushort hy=cr->GetHexY();
 	Field& f=GetField(hx,hy);
 
 	if(cr->IsDead())
@@ -2088,7 +2069,7 @@ void HexManager::SetCrit(CritterCl* cr)
 	{
 		if(f.Crit && f.Crit!=cr)
 		{
-			WriteLog(__FUNCTION__" - Hex<%u><%u> busy, critter old<%u>, new<%u>.\n",hx,hy,f.Crit->GetId(),cr->GetId());
+			WriteLog(_FUNC_," - Hex<%u><%u> busy, critter old<%u>, new<%u>.\n",hx,hy,f.Crit->GetId(),cr->GetId());
 			return;
 		}
 
@@ -2119,8 +2100,8 @@ void HexManager::RemoveCrit(CritterCl* cr)
 {
 	if(!IsMapLoaded()) return;
 
-	WORD hx=cr->GetHexX();
-	WORD hy=cr->GetHexY();
+	ushort hx=cr->GetHexX();
+	ushort hy=cr->GetHexY();
 
 	Field& f=GetField(hx,hy);
 	if(f.Crit==cr)
@@ -2147,7 +2128,7 @@ void HexManager::AddCrit(CritterCl* cr)
 	SetCrit(cr);
 }
 
-void HexManager::EraseCrit(DWORD crid)
+void HexManager::EraseCrit(uint crid)
 {
 	CritMapIt it=allCritters.find(crid);
 	if(it==allCritters.end()) return;
@@ -2174,14 +2155,14 @@ void HexManager::ClearCritters()
 	chosenId=0;
 }
 
-void HexManager::GetCritters(WORD hx, WORD hy, CritVec& crits, int find_type)
+void HexManager::GetCritters(ushort hx, ushort hy, CritVec& crits, int find_type)
 {
 	Field* f=&GetField(hx,hy);
 	if(f->Crit && f->Crit->CheckFind(find_type)) crits.push_back(f->Crit);
 	for(CritVecIt it=f->DeadCrits.begin(),end=f->DeadCrits.end();it!=end;++it) if((*it)->CheckFind(find_type)) crits.push_back(*it);
 }
 
-void HexManager::SetCritterContour(DWORD crid, int contour)
+void HexManager::SetCritterContour(uint crid, int contour)
 {
 	if(critterContourCrId)
 	{
@@ -2258,8 +2239,8 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 		cr->Move(dir);
 		if(DistGame(old_hx,old_hy,hx,hy)>1)
 		{
-			WORD hx_=hx;
-			WORD hy_=hy;
+			ushort hx_=hx;
+			ushort hy_=hy;
 			MoveHexByDir(hx_,hy_,ReverseDir(dir),maxHexX,maxHexY);
 			int ox,oy;
 			GetHexInterval(hx_,hy_,old_hx,old_hy,ox,oy);
@@ -2277,7 +2258,7 @@ bool HexManager::TransitCritter(CritterCl* cr, int hx, int hy, bool animate, boo
 	return true;
 }
 
-void HexManager::SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set)
+void HexManager::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
 {
 	if(IsMapLoaded() && multihex)
 	{
@@ -2297,7 +2278,7 @@ void HexManager::SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set)
 	}
 }
 
-bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
+bool HexManager::GetHexPixel(int x, int y, ushort& hx, ushort& hy)
 {
 	if(!IsMapLoaded()) return false;
 
@@ -2325,7 +2306,7 @@ bool HexManager::GetHexPixel(int x, int y, WORD& hx, WORD& hy)
 				// Correct with hex color mask
 				if(picHexMask)
 				{
-					DWORD r=(SprMngr.GetPixColor(picHexMask->Ind[0],xf-x_,yf-y_)&0x00FF0000)>>16;
+					uint r=(SprMngr.GetPixColor(picHexMask->Ind[0],(int)(xf-x_),(int)(yf-y_))&0x00FF0000)>>16;
 					if(r==50) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?5:6);
 					else if(r==100) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?0:0);
 					else if(r==150) MoveHexByDirUnsafe(hx_,hy_,GameOpt.MapHexagonal?3:4);
@@ -2357,8 +2338,8 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 	for(ItemHexVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
 		ItemHex* item=(*it);
-		WORD hx=item->GetHexX();
-		WORD hy=item->GetHexY();
+		ushort hx=item->GetHexX();
+		ushort hy=item->GetHexY();
 
 		if(item->IsFinishing() || !item->SprDrawValid) continue;
 
@@ -2385,10 +2366,10 @@ ItemHex* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 			continue;
 		}
 
-		int l=(*item->HexScrX+item->ScrX+si->OffsX+HEX_OX+GameOpt.ScrOx-si->Width/2)/GameOpt.SpritesZoom;
-		int r=(*item->HexScrX+item->ScrX+si->OffsX+HEX_OX+GameOpt.ScrOx+si->Width/2)/GameOpt.SpritesZoom;
-		int t=(*item->HexScrY+item->ScrY+si->OffsY+HEX_OY+GameOpt.ScrOy-si->Height)/GameOpt.SpritesZoom;
-		int b=(*item->HexScrY+item->ScrY+si->OffsY+HEX_OY+GameOpt.ScrOy)/GameOpt.SpritesZoom;
+		int l=(int)((*item->HexScrX+item->ScrX+si->OffsX+HEX_OX+GameOpt.ScrOx-si->Width/2)/GameOpt.SpritesZoom);
+		int r=(int)((*item->HexScrX+item->ScrX+si->OffsX+HEX_OX+GameOpt.ScrOx+si->Width/2)/GameOpt.SpritesZoom);
+		int t=(int)((*item->HexScrY+item->ScrY+si->OffsY+HEX_OY+GameOpt.ScrOy-si->Height)/GameOpt.SpritesZoom);
+		int b=(int)((*item->HexScrY+item->ScrY+si->OffsY+HEX_OY+GameOpt.ScrOy)/GameOpt.SpritesZoom);
 
 		if(x>=l && x<=r && y>=t && y<=b)
 		{
@@ -2445,15 +2426,17 @@ CritterCl* HexManager::GetCritterPixel(int x, int y, bool ignore_dead_and_chosen
 		if(!cr->Visible || cr->IsFinishing() || !cr->SprDrawValid) continue;
 		if(ignore_dead_and_chosen && (cr->IsDead() || cr->IsChosen())) continue;
 
+		// Check 3d model hit
 		if(cr->Anim3d)
 		{
 			if(cr->Anim3d->IsIntersect(x,y)) crits.push_back(cr);
 			continue;
 		}
 
+		// Check sprite hit
 		if(x>=(cr->DRect.L+GameOpt.ScrOx)/GameOpt.SpritesZoom && x<=(cr->DRect.R+GameOpt.ScrOx)/GameOpt.SpritesZoom &&
 			y>=(cr->DRect.T+GameOpt.ScrOy)/GameOpt.SpritesZoom && y<=(cr->DRect.B+GameOpt.ScrOy)/GameOpt.SpritesZoom &&
-			SprMngr.IsPixNoTransp(cr->SprId,x-(cr->DRect.L+GameOpt.ScrOx)/GameOpt.SpritesZoom,y-(cr->DRect.T+GameOpt.ScrOy)/GameOpt.SpritesZoom))
+			SprMngr.IsPixNoTransp(cr->SprId,(int)(x-(cr->DRect.L+GameOpt.ScrOx)/GameOpt.SpritesZoom),(int)(y-(cr->DRect.T+GameOpt.ScrOy)/GameOpt.SpritesZoom)))
 		{
 			crits.push_back(cr);
 		}
@@ -2482,13 +2465,13 @@ void HexManager::GetSmthPixel(int pix_x, int pix_y, ItemHex*& item, CritterCl*& 
 	}
 }
 
-bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut)
+bool HexManager::FindPath(CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut)
 {
 	// Static data
 #define GRID(x,y) grid[((MAX_FIND_PATH+1)+(y)-grid_oy)*(MAX_FIND_PATH*2+2)+((MAX_FIND_PATH+1)+(x)-grid_ox)]
 	static int grid_ox=0,grid_oy=0;
 	static short* grid=NULL;
-	static WordPairVec coords;
+	static UShortPairVec coords;
 
 	// Allocate temporary grid
 	if(!grid)
@@ -2506,9 +2489,9 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 	grid_oy=start_y;
 	GRID(start_x,start_y)=numindex;
 	coords.clear();
-	coords.push_back(WordPairVecVal(start_x,start_y));
+	coords.push_back(UShortPairVecVal(start_x,start_y));
 
-	DWORD mh=(cr?cr->GetMultihex():0);
+	uint mh=(cr?cr->GetMultihex():0);
 	int p=0;
 	while(true)
 	{
@@ -2540,18 +2523,18 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 				{
 					// Base hex
 					int nx_=nx,ny_=ny;
-					for(DWORD k=0;k<mh;k++) MoveHexByDirUnsafe(nx_,ny_,j);
+					for(uint k=0;k<mh;k++) MoveHexByDirUnsafe(nx_,ny_,j);
 					if(nx_<0 || ny_<0 || nx_>=maxHexX || ny_>=maxHexY) continue;
 					if(GetField(nx_,ny_).IsNotPassed) continue;
 
 					// Clock wise hexes
 					bool is_square_corner=(!GameOpt.MapHexagonal && IS_DIR_CORNER(j));
-					DWORD steps_count=(is_square_corner?mh*2:mh);
+					uint steps_count=(is_square_corner?mh*2:mh);
 					bool not_passed=false;
 					int dir_=(GameOpt.MapHexagonal?((j+2)%6):((j+2)%8));
 					if(is_square_corner) dir_=(dir_+1)%8;
 					int nx__=nx_,ny__=ny_;
-					for(DWORD k=0;k<steps_count && !not_passed;k++)
+					for(uint k=0;k<steps_count && !not_passed;k++)
 					{
 						MoveHexByDirUnsafe(nx__,ny__,dir_);
 						not_passed=GetField(nx__,ny__).IsNotPassed;
@@ -2562,7 +2545,7 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 					dir_=(GameOpt.MapHexagonal?((j+4)%6):((j+6)%8));
 					if(is_square_corner) dir_=(dir_+7)%8;
 					nx__=nx_,ny__=ny_;
-					for(DWORD k=0;k<steps_count && !not_passed;k++)
+					for(uint k=0;k<steps_count && !not_passed;k++)
 					{
 						MoveHexByDirUnsafe(nx__,ny__,dir_);
 						not_passed=GetField(nx__,ny__).IsNotPassed;
@@ -2571,7 +2554,7 @@ bool HexManager::FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x
 				}
 
 				GRID(nx,ny)=numindex;
-				coords.push_back(WordPairVecVal(nx,ny));
+				coords.push_back(UShortPairVecVal(nx,ny));
 
 				if(cut>=0 && CheckDist(nx,ny,end_x,end_y,cut))
 				{
@@ -2712,28 +2695,28 @@ label_FindOk:
 	return true;
 }
 
-bool HexManager::CutPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut)
+bool HexManager::CutPath(CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut)
 {
-	static ByteVec dummy;
+	static UCharVec dummy;
 	return FindPath(cr,start_x,start_y,end_x,end_y,dummy,cut);
 }
 
-bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe,
-							 CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed)
+bool HexManager::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe,
+							 CritVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed)
 {
 	if(IsShowTrack()) ClearHexTrack();
 
 	if(!dist) dist=DistGame(hx,hy,tx,ty);
 
-	WORD cx=hx;
-	WORD cy=hy;
-	WORD old_cx=cx;
-	WORD old_cy=cy;
-	BYTE dir;
+	ushort cx=hx;
+	ushort cy=hy;
+	ushort old_cx=cx;
+	ushort old_cy=cy;
+	uchar dir;
 
 	LineTracer line_tracer(hx,hy,tx,ty,maxHexX,maxHexY,angle,!GameOpt.MapHexagonal);
 
-	for(DWORD i=0;i<dist;i++)
+	for(uint i=0;i<dist;i++)
 	{
 		if(GameOpt.MapHexagonal)
 		{
@@ -2749,7 +2732,7 @@ bool HexManager::TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, flo
 
 		if(steps)
 		{
-			steps->push_back(WordPairVecVal(cx,cy));
+			steps->push_back(UShortPairVecVal(cx,cy));
 			continue;
 		}
 
@@ -2788,8 +2771,8 @@ void HexManager::FindSetCenter(int cx, int cy)
 #ifdef FONLINE_CLIENT
 	int iw=VIEW_WIDTH/2+2;
 	int ih=VIEW_HEIGHT/2+2;
-	WORD hx=cx;
-	WORD hy=cy;
+	ushort hx=cx;
+	ushort hy=cy;
 	int dirs[2];
 
 	// Up
@@ -2830,10 +2813,10 @@ void HexManager::FindSetCenter(int cx, int cy)
 #endif // FONLINE_CLIENT
 }
 
-void HexManager::FindSetCenterDir(WORD& hx, WORD& hy, int dirs[2], int steps)
+void HexManager::FindSetCenterDir(ushort& hx, ushort& hy, int dirs[2], int steps)
 {
-	WORD sx=hx;
-	WORD sy=hy;
+	ushort sx=hx;
+	ushort sy=hy;
 	int dirs_count=(dirs[1]==-1?1:2);
 
 	int i;
@@ -2849,9 +2832,9 @@ void HexManager::FindSetCenterDir(WORD& hx, WORD& hy, int dirs[2], int steps)
 	for(;i<steps;i++) MoveHexByDir(hx,hy,ReverseDir(dirs[i%dirs_count]),maxHexX,maxHexY);
 }
 
-bool HexManager::LoadMap(WORD map_pid)
+bool HexManager::LoadMap(ushort map_pid)
 {
-	WriteLog("Load map...");
+	WriteLog(NULL,"Load map...");
 
 	// Unload previous
 	UnloadMap();
@@ -2867,29 +2850,29 @@ bool HexManager::LoadMap(WORD map_pid)
 	sprintf(map_name,"map%u",map_pid);
 
 	// Find in cache
-	DWORD cache_len;
-	BYTE* cache=Crypt.GetCache(map_name,cache_len);
+	uint cache_len;
+	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	if(!cache)
 	{
-		WriteLog("Load map<%s> from cache fail.\n",map_name);
+		WriteLog(NULL,"Load map<%s> from cache fail.\n",map_name);
 		return false;
 	}
 
 	FileManager fm;
 	if(!fm.LoadStream(cache,cache_len))
 	{
-		WriteLog("Load map<%s> from stream fail.\n",map_name);
+		WriteLog(NULL,"Load map<%s> from stream fail.\n",map_name);
 		delete[] cache;
 		return false;
 	}
 	delete[] cache;
 
 	// Header
-	DWORD buf_len=fm.GetFsize();
-	BYTE* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
+	uint buf_len=fm.GetFsize();
+	uchar* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
 	if(!buf)
 	{
-		WriteLog("Uncompress map fail.\n");
+		WriteLog(NULL,"Uncompress map fail.\n");
 		return false;
 	}
 
@@ -2897,55 +2880,55 @@ bool HexManager::LoadMap(WORD map_pid)
 	fm.LoadStream(buf,buf_len);
 	delete[] buf;
 
-	if(fm.GetBEDWord()!=CLIENT_MAP_FORMAT_VER)
+	if(fm.GetBEUInt()!=CLIENT_MAP_FORMAT_VER)
 	{
-		WriteLog("Map Format is not supported.\n");
+		WriteLog(NULL,"Map Format is not supported.\n");
 		return false;
 	}
 
-	if(fm.GetBEDWord()!=map_pid)
+	if(fm.GetBEUInt()!=map_pid)
 	{
-		WriteLog("Data truncated.\n");
+		WriteLog(NULL,"Data truncated.\n");
 		return false;
 	}
 
 	// Reserved
-	WORD maxhx=fm.GetBEWord();
+	ushort maxhx=fm.GetBEUShort();
 	if(maxhx==0xAABB) maxhx=400;
-	WORD maxhy=fm.GetBEWord();
+	ushort maxhy=fm.GetBEUShort();
 	if(maxhy==0xCCDD) maxhy=400;
-	fm.GetBEDWord();
-	fm.GetBEDWord();
+	fm.GetBEUInt();
+	fm.GetBEUInt();
 
-	DWORD tiles_count=fm.GetBEDWord();
-	DWORD walls_count=fm.GetBEDWord();
-	DWORD scen_count=fm.GetBEDWord();
-	DWORD tiles_len=fm.GetBEDWord();
-	DWORD walls_len=fm.GetBEDWord();
-	DWORD scen_len=fm.GetBEDWord();
+	uint tiles_count=fm.GetBEUInt();
+	uint walls_count=fm.GetBEUInt();
+	uint scen_count=fm.GetBEUInt();
+	uint tiles_len=fm.GetBEUInt();
+	uint walls_len=fm.GetBEUInt();
+	uint scen_len=fm.GetBEUInt();
 
 	if(tiles_count*sizeof(ProtoMap::Tile)!=tiles_len)
 	{
-		WriteLog("Tiles data truncated.\n");
+		WriteLog(NULL,"Tiles data truncated.\n");
 		return false;
 	}
 
 	if(walls_count*sizeof(SceneryCl)!=walls_len)
 	{
-		WriteLog("Walls data truncated.\n");
+		WriteLog(NULL,"Walls data truncated.\n");
 		return false;
 	}
 
 	if(scen_count*sizeof(SceneryCl)!=scen_len)
 	{
-		WriteLog("Scenery data truncated.\n");
+		WriteLog(NULL,"Scenery data truncated.\n");
 		return false;
 	}
 
 	// Create field
 	if(!ResizeField(maxhx,maxhy))
 	{
-		WriteLog("Buffer allocation fail.\n");
+		WriteLog(NULL,"Buffer allocation fail.\n");
 		return false;
 	}
 
@@ -2954,12 +2937,12 @@ bool HexManager::LoadMap(WORD map_pid)
 	curHashTiles=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),tiles_len,curHashTiles);
 
-	for(DWORD i=0;i<tiles_count;i++)
+	for(uint i=0;i<tiles_count;i++)
 	{
 		ProtoMap::Tile tile;
 		if(!fm.CopyMem(&tile,sizeof(tile)))
 		{
-			WriteLog("Unable to read tile.\n");
+			WriteLog(NULL,"Unable to read tile.\n");
 			continue;
 		}
 		if(tile.HexX>=maxHexX || tile.HexY>=maxHexY) continue;
@@ -2996,20 +2979,20 @@ bool HexManager::LoadMap(WORD map_pid)
 	curHashWalls=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),walls_len,curHashWalls);
 
-	for(DWORD i=0;i<walls_count;i++)
+	for(uint i=0;i<walls_count;i++)
 	{
 		SceneryCl cur_wall;
 		ZeroMemory(&cur_wall,sizeof(cur_wall));
 
 		if(!fm.CopyMem(&cur_wall,sizeof(cur_wall)))
 		{
-			WriteLog("Unable to read wall item.\n");
+			WriteLog(NULL,"Unable to read wall item.\n");
 			continue;
 		}
 
 		if(!ParseScenery(cur_wall))
 		{
-			WriteLog("Unable to parse wall item.\n");
+			WriteLog(NULL,"Unable to parse wall item.\n");
 			continue;
 		}
 	}
@@ -3019,20 +3002,20 @@ bool HexManager::LoadMap(WORD map_pid)
 	curHashScen=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),scen_len,curHashScen);
 
-	for(DWORD i=0;i<scen_count;i++)
+	for(uint i=0;i<scen_count;i++)
 	{
 		SceneryCl cur_scen;
 		ZeroMemory(&cur_scen,sizeof(cur_scen));
 
 		if(!fm.CopyMem(&cur_scen,sizeof(cur_scen)))
 		{
-			WriteLog("Unable to read scenery item.\n");
+			WriteLog(NULL,"Unable to read scenery item.\n");
 			continue;
 		}
 
 		if(!ParseScenery(cur_scen))
 		{
-			WriteLog("Unable to parse scenery item<%d>.\n",cur_scen.ProtoId);
+			WriteLog(NULL,"Unable to parse scenery item<%d>.\n",cur_scen.ProtoId);
 			continue;
 		}
 	}
@@ -3047,7 +3030,7 @@ bool HexManager::LoadMap(WORD map_pid)
 			{
 				for(int i=0;i<6;i++)
 				{
-					WORD hx_=hx,hy_=hy;
+					ushort hx_=hx,hy_=hy;
 					MoveHexByDir(hx_,hy_,i,maxHexX,maxHexY);
 					GetField(hx_,hy_).IsNotPassed=true;
 				}
@@ -3070,7 +3053,7 @@ bool HexManager::LoadMap(WORD map_pid)
 	curPidMap=map_pid;
 	curMapTime=-1;
 	AutoScroll.Active=false;
-	WriteLog("Load map success.\n");
+	WriteLog(NULL,"Load map success.\n");
 	return true;
 }
 
@@ -3115,14 +3098,11 @@ void HexManager::UnloadMap()
 
 	crittersContour=0;
 	critterContour=0;
-
-	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) delete *it;
-	tilesTerrain.clear();
 }
 
-void HexManager::GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen)
+void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen)
 {
-	WriteLog("Get hash of map, pid<%u>...",map_pid);
+	WriteLog(NULL,"Get hash of map, pid<%u>...",map_pid);
 
 	hash_tiles=0;
 	hash_walls=0;
@@ -3134,83 +3114,83 @@ void HexManager::GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, 
 		hash_walls=curHashWalls;
 		hash_scen=curHashScen;
 
-		WriteLog("Hashes of loaded map: tiles<%u>, walls<%u>, scenery<%u>.\n",hash_tiles,hash_walls,hash_scen);
+		WriteLog(NULL,"Hashes of loaded map: tiles<%u>, walls<%u>, scenery<%u>.\n",hash_tiles,hash_walls,hash_scen);
 		return;
 	}
 
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);
 
-	DWORD cache_len;
-	BYTE* cache=Crypt.GetCache(map_name,cache_len);
+	uint cache_len;
+	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	if(!cache)
 	{
-		WriteLog("Load map<%s> from cache fail.\n",map_name);
+		WriteLog(NULL,"Load map<%s> from cache fail.\n",map_name);
 		return;
 	}
 
 	FileManager fm;
 	if(!fm.LoadStream(cache,cache_len))
 	{
-		WriteLog("Load map<%s> from stream fail.\n",map_name);
+		WriteLog(NULL,"Load map<%s> from stream fail.\n",map_name);
 		delete[] cache;
 		return;
 	}
 	delete[] cache;
 
-	DWORD buf_len=fm.GetFsize();
-	BYTE* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
+	uint buf_len=fm.GetFsize();
+	uchar* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
 	if(!buf)
 	{
-		WriteLog("Uncompress map fail.\n");
+		WriteLog(NULL,"Uncompress map fail.\n");
 		return;
 	}
 
 	fm.LoadStream(buf,buf_len);
 	delete[] buf;
 
-	if(fm.GetBEDWord()!=CLIENT_MAP_FORMAT_VER)
+	if(fm.GetBEUInt()!=CLIENT_MAP_FORMAT_VER)
 	{
-		WriteLog("Map format is not supported.\n");
+		WriteLog(NULL,"Map format is not supported.\n");
 		return;
 	}
 
-	if(fm.GetBEDWord()!=map_pid)
+	if(fm.GetBEUInt()!=map_pid)
 	{
-		WriteLog("Invalid proto number.\n");
+		WriteLog(NULL,"Invalid proto number.\n");
 		return;
 	}
 
 	// Reserved
-	WORD maxhx=fm.GetBEWord();
+	ushort maxhx=fm.GetBEUShort();
 	if(maxhx==0xAABB) maxhx=400;
-	WORD maxhy=fm.GetBEWord();
+	ushort maxhy=fm.GetBEUShort();
 	if(maxhy==0xCCDD) maxhy=400;
-	fm.GetBEDWord();
-	fm.GetBEDWord();
-	DWORD tiles_count=fm.GetBEDWord();
-	DWORD walls_count=fm.GetBEDWord();
-	DWORD scen_count=fm.GetBEDWord();
-	DWORD tiles_len=fm.GetBEDWord();
-	DWORD walls_len=fm.GetBEDWord();
-	DWORD scen_len=fm.GetBEDWord();
+	fm.GetBEUInt();
+	fm.GetBEUInt();
+	uint tiles_count=fm.GetBEUInt();
+	uint walls_count=fm.GetBEUInt();
+	uint scen_count=fm.GetBEUInt();
+	uint tiles_len=fm.GetBEUInt();
+	uint walls_len=fm.GetBEUInt();
+	uint scen_len=fm.GetBEUInt();
 
 	// Data Check Sum
 	if(tiles_count*sizeof(ProtoMap::Tile)!=tiles_len)
 	{
-		WriteLog("Invalid check sum tiles.\n");
+		WriteLog(NULL,"Invalid check sum tiles.\n");
 		return;
 	}
 	
 	if(walls_count*sizeof(SceneryCl)!=walls_len)
 	{
-		WriteLog("Invalid check sum walls.\n");
+		WriteLog(NULL,"Invalid check sum walls.\n");
 		return;
 	}
 	
 	if(scen_count*sizeof(SceneryCl)!=scen_len)
 	{
-		WriteLog("Invalid check sum scenery.\n");
+		WriteLog(NULL,"Invalid check sum scenery.\n");
 		return;
 	}
 
@@ -3224,16 +3204,16 @@ void HexManager::GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, 
 	hash_scen=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),scen_len,hash_scen);
 
-	WriteLog("complete.\n");
+	WriteLog(NULL,"complete.\n");
 }
 
-bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy)
+bool HexManager::GetMapData(ushort map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy)
 {
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);
 
-	DWORD cache_len;
-	BYTE* cache=Crypt.GetCache(map_name,cache_len);
+	uint cache_len;
+	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	if(!cache) return false;
 
 	FileManager fm;
@@ -3244,8 +3224,8 @@ bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& max
 	}
 	delete[] cache;
 
-	DWORD buf_len=fm.GetFsize();
-	BYTE* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
+	uint buf_len=fm.GetFsize();
+	uchar* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
 	if(!buf) return false;
 
 	if(!fm.LoadStream(buf,buf_len))
@@ -3255,24 +3235,24 @@ bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& max
 	}
 	delete[] buf;
 
-	if(fm.GetBEDWord()!=CLIENT_MAP_FORMAT_VER) return false;
+	if(fm.GetBEUInt()!=CLIENT_MAP_FORMAT_VER) return false;
 
-	fm.GetBEDWord();
-	maxhx=fm.GetBEWord();
-	maxhy=fm.GetBEWord();
-	fm.GetBEDWord();
-	fm.GetBEDWord();
-	fm.GetBEDWord();
-	DWORD walls_count=fm.GetBEDWord();
-	DWORD scen_count=fm.GetBEDWord();
-	DWORD tiles_len=fm.GetBEDWord();
-	DWORD walls_len=fm.GetBEDWord();
+	fm.GetBEUInt();
+	maxhx=fm.GetBEUShort();
+	maxhy=fm.GetBEUShort();
+	fm.GetBEUInt();
+	fm.GetBEUInt();
+	fm.GetBEUInt();
+	uint walls_count=fm.GetBEUInt();
+	uint scen_count=fm.GetBEUInt();
+	uint tiles_len=fm.GetBEUInt();
+	uint walls_len=fm.GetBEUInt();
 
 	items.reserve(walls_count+scen_count);
 
 	// Walls
 	fm.SetCurPos(0x2C+tiles_len);
-	for(DWORD i=0;i<walls_count+scen_count;i++)
+	for(uint i=0;i<walls_count+scen_count;i++)
 	{
 		if(i==walls_count) fm.SetCurPos(0x2C+tiles_len+walls_len);
 		SceneryCl scenwall;
@@ -3295,24 +3275,24 @@ bool HexManager::GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& max
 
 bool HexManager::ParseScenery(SceneryCl& scen)
 {
-	WORD pid=scen.ProtoId;
-	WORD hx=scen.MapX;
-	WORD hy=scen.MapY;
+	ushort pid=scen.ProtoId;
+	ushort hx=scen.MapX;
+	ushort hy=scen.MapY;
 
 	if(hx>=maxHexX || hy>=maxHexY)
 	{
-		WriteLog(__FUNCTION__" - Invalid coord<%d,%d>.\n",hx,hy);
+		WriteLog(_FUNC_," - Invalid coord<%d,%d>.\n",hx,hy);
 		return false;
 	}
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item)
 	{
-		WriteLog(__FUNCTION__" - Proto item not found<%d>.\n",pid);
+		WriteLog(_FUNC_," - Proto item not found<%d>.\n",pid);
 		return false;
 	}
 
-	static DWORD scen_id=0;
+	static uint scen_id=0;
 	scen_id--;
 
 	ItemHex* scenery=new ItemHex(scen_id,proto_item,NULL,hx,hy,scen.Dir,
@@ -3372,7 +3352,7 @@ int* HexManager::GetMapDayTime()
 	return dayTime;
 }
 
-BYTE* HexManager::GetMapDayColor()
+uchar* HexManager::GetMapDayColor()
 {
 	return dayColor;
 }
@@ -3380,7 +3360,7 @@ BYTE* HexManager::GetMapDayColor()
 #ifdef FONLINE_MAPPER
 bool HexManager::SetProtoMap(ProtoMap& pmap)
 {
-	WriteLog("Create map from prototype.\n");
+	WriteLog(NULL,"Create map from prototype.\n");
 
 	UnloadMap();
 	CurProtoMap=NULL;
@@ -3391,7 +3371,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 	if(!ResizeField(pmap.Header.MaxHexX,pmap.Header.MaxHexY))
 	{
-		WriteLog("Buffer allocation fail.\n");
+		WriteLog(NULL,"Buffer allocation fail.\n");
 		return false;
 	}
 
@@ -3399,9 +3379,9 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 	for(int i=0;i<12;i++) dayColor[i]=pmap.Header.DayColor[i];
 
 	// Tiles
-	for(WORD hy=0;hy<pmap.Header.MaxHexY;hy++)
+	for(ushort hy=0;hy<pmap.Header.MaxHexY;hy++)
 	{
-		for(WORD hx=0;hx<pmap.Header.MaxHexX;hx++)
+		for(ushort hx=0;hx<pmap.Header.MaxHexX;hx++)
 		{
 			Field& f=GetField(hx,hy);
 
@@ -3409,7 +3389,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			{
 				ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,r!=0);
 
-				for(size_t i=0,j=tiles.size();i<j;i++)
+				for(uint i=0,j=tiles.size();i<j;i++)
 				{
 					ProtoMap::Tile& tile=tiles[i];
 					AnyFrames* anim=ResMngr.GetItemAnim(tile.NameHash);
@@ -3434,13 +3414,13 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 	}
 
 	// Objects
-	DWORD cur_id=0;
+	uint cur_id=0;
 	for(int i=0,j=pmap.MObjects.size();i<j;i++)
 	{
 		MapObject* o=pmap.MObjects[i];
 		if(o->MapX>=maxHexX || o->MapY>=maxHexY)
 		{
-			WriteLog("Invalid position of map object. Skip.\n");
+			WriteLog(NULL,"Invalid position of map object. Skip.\n");
 			continue;
 		}
 
@@ -3465,7 +3445,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 			if(!ParseScenery(s))
 			{
-				WriteLog("Unable to parse scen or wall object.\n");
+				WriteLog(NULL,"Unable to parse scen or wall object.\n");
 				continue;
 			}
 			ItemHex* item=hexItems.back();
@@ -3490,7 +3470,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			CritData* pnpc=CrMngr.GetProto(o->ProtoId);
 			if(!pnpc)
 			{
-				WriteLog("Proto<%u> npc not found.\n",o->ProtoId);
+				WriteLog(NULL,"Proto<%u> npc not found.\n",o->ProtoId);
 				continue;
 			}
 
@@ -3516,7 +3496,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			cr->HexX=o->MapX;
 			cr->HexY=o->MapY;
 			cr->Flags=o->ProtoId;
-			cr->SetDir(o->Dir);
+			cr->SetDir((uchar)o->Dir);
 			cr->Id=++cur_id;
 			cr->Init();
 			AffectCritter(o,cr);
@@ -3536,7 +3516,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 	curHashWalls=0xFFFF;
 	curHashScen=0xFFFF;
 	CurProtoMap=&pmap;
-	WriteLog("Create map from prototype complete.\n");
+	WriteLog(NULL,"Create map from prototype complete.\n");
 	return true;
 }
 
@@ -3552,7 +3532,7 @@ void HexManager::ClearSelTiles()
 			if(f.Tiles.size())
 			{
 				ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-				for(size_t i=0;i<tiles.size();)
+				for(uint i=0;i<tiles.size();)
 				{
 					if(tiles[i].IsSelected)
 					{
@@ -3565,7 +3545,7 @@ void HexManager::ClearSelTiles()
 			if(f.Roofs.size())
 			{
 				ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-				for(size_t i=0;i<roofs.size();)
+				for(uint i=0;i<roofs.size();)
 				{
 					if(roofs[i].IsSelected)
 					{
@@ -3592,20 +3572,20 @@ void HexManager::ParseSelTiles()
 			if(f.Tiles.size())
 			{
 				ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-				for(size_t i=0,j=tiles.size();i<j;i++)
+				for(uint i=0,j=tiles.size();i<j;i++)
 					if(tiles[i].IsSelected) tiles[i].IsSelected=false;
 			}
 			if(f.Roofs.size())
 			{
 				ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-				for(size_t i=0,j=roofs.size();i<j;i++)
+				for(uint i=0,j=roofs.size();i<j;i++)
 					if(roofs[i].IsSelected) roofs[i].IsSelected=false;
 			}
 		}
 	}
 }
 
-void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof, bool select)
+void HexManager::SetTile(uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select)
 {
 	if(hx>=maxHexX || hy>=maxHexY) return;
 	Field& f=GetField(hx,hy);
@@ -3617,14 +3597,14 @@ void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, 
 	{
 		f.AddTile(anim,0,0,layer,true);
 		ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-		roofs.push_back(ProtoMap::Tile(name_hash,hx,hy,ox,oy,layer,true));
+		roofs.push_back(ProtoMap::Tile(name_hash,hx,hy,(char)ox,(char)oy,layer,true));
 		roofs.back().IsSelected=select;
 	}
 	else
 	{
 		f.AddTile(anim,0,0,layer,false);
 		ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-		tiles.push_back(ProtoMap::Tile(name_hash,hx,hy,ox,oy,layer,false));
+		tiles.push_back(ProtoMap::Tile(name_hash,hx,hy,(char)ox,(char)oy,layer,false));
 		tiles.back().IsSelected=select;
 	}
 
@@ -3645,40 +3625,12 @@ void HexManager::SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, 
 	}
 }
 
-/*void HexManager::SetTerrain(WORD hx, WORD hy, DWORD name_hash)
-{
-	Field& f=GetField(hx,hy);
-	f.TerrainId=name_hash;
-	CurProtoMap->SetRoof(hx/2,hy/2,name_hash?0xAAAAAAAA:0);
-	CurProtoMap->SetTile(hx/2,hy/2,name_hash);
-	RebuildTerrain();
-	RebuildTiles();
-	RebuildRoof();
-}
-
-void HexManager::RebuildTerrain()
-{
-	for(TerrainVecIt it=tilesTerrain.begin(),end=tilesTerrain.end();it!=end;++it) delete *it;
-	tilesTerrain.clear();
-
-	for(int tx=0;tx<maxHexX/2;tx++)
-	{
-		for(int ty=0;ty<maxHexY/2;ty++)
-		{
-			Field& f=GetField(tx*2,ty*2);
-			if(f.TerrainId) AddTerrain(f.TerrainId,tx*2,ty*2);
-			if(f.SelTerrain) AddTerrain(f.SelTerrain,tx*2,ty*2);
-		}
-	}
-	reprepareTiles=true;
-}*/
-
-void HexManager::AddFastPid(WORD pid)
+void HexManager::AddFastPid(ushort pid)
 {
 	fastPids.insert(pid);
 }
 
-bool HexManager::IsFastPid(WORD pid)
+bool HexManager::IsFastPid(ushort pid)
 {
 	return fastPids.count(pid)!=0;
 }
@@ -3688,18 +3640,18 @@ void HexManager::ClearFastPids()
 	fastPids.clear();
 }
 
-void HexManager::AddIgnorePid(WORD pid)
+void HexManager::AddIgnorePid(ushort pid)
 {
 	ignorePids.insert(pid);
 }
 
-void HexManager::SwitchIgnorePid(WORD pid)
+void HexManager::SwitchIgnorePid(ushort pid)
 {
 	if(ignorePids.count(pid)) ignorePids.erase(pid);
 	else ignorePids.insert(pid);
 }
 
-bool HexManager::IsIgnorePid(WORD pid)
+bool HexManager::IsIgnorePid(ushort pid)
 {
 	return ignorePids.count(pid)!=0;
 }
@@ -3709,7 +3661,7 @@ void HexManager::ClearIgnorePids()
 	ignorePids.clear();
 }
 
-void HexManager::GetHexesRect(INTRECT& rect, WordPairVec& hexes)
+void HexManager::GetHexesRect(INTRECT& rect, UShortPairVec& hexes)
 {
 	hexes.clear();
 
@@ -3741,7 +3693,7 @@ void HexManager::GetHexesRect(INTRECT& rect, WordPairVec& hexes)
 			for(int i=0;i<=adx;i++)
 			{
 				if(hx>=0 && hy>=0 && hx<maxHexX && hy<maxHexY)
-					hexes.push_back(WordPairVecVal(hx,hy));
+					hexes.push_back(UShortPairVecVal(hx,hy));
 
 				if(dx>=0)
 				{
@@ -3803,7 +3755,7 @@ void HexManager::GetHexesRect(INTRECT& rect, WordPairVec& hexes)
 			for(int j=(i&1)?1:0;j<hw;j+=2)
 			{
 				if(hx>=0 && hy>=0 && hx<maxHexX && hy<maxHexY)
-					hexes.push_back(WordPairVecVal(hx,hy));
+					hexes.push_back(UShortPairVecVal(hx,hy));
 
 				if(rw>0) hx--,hy++;
 				else hx++,hy--;
@@ -3830,7 +3782,7 @@ void HexManager::MarkPassedHexes()
 
 void HexManager::AffectItem(MapObject* mobj, ItemHex* item)
 {
-	DWORD old_spr_id=item->SprId;
+	uint old_spr_id=item->SprId;
 	short old_ox=item->StartScrX;
 	short old_oy=item->StartScrY;
 
@@ -3920,8 +3872,8 @@ void HexManager::AffectCritter(MapObject* mobj, CritterCl* cr)
 		refresh=true;
 	}
 
-	DWORD& anim1=(cr->Cond==COND_LIFE?cr->Anim1Life:(cr->Cond==COND_KNOCKOUT?cr->Anim1Knockout:cr->Anim1Dead));
-	DWORD& anim2=(cr->Cond==COND_LIFE?cr->Anim2Life:(cr->Cond==COND_KNOCKOUT?cr->Anim2Knockout:cr->Anim2Dead));
+	uint& anim1=(cr->Cond==COND_LIFE?cr->Anim1Life:(cr->Cond==COND_KNOCKOUT?cr->Anim1Knockout:cr->Anim1Dead));
+	uint& anim2=(cr->Cond==COND_LIFE?cr->Anim2Life:(cr->Cond==COND_KNOCKOUT?cr->Anim2Knockout:cr->Anim2Dead));
 	if(anim1!=mobj->MCritter.Anim1 || anim2!=mobj->MCritter.Anim2) refresh=true;
 	anim1=mobj->MCritter.Anim1;
 	anim2=mobj->MCritter.Anim2;

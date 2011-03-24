@@ -16,9 +16,9 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="App Release|Win32"
-			OutputDirectory=".\Release_app"
-			IntermediateDirectory=".\Release_app"
+			Name="Release|Win32"
+			OutputDirectory=".\Release_MSVC"
+			IntermediateDirectory=".\Release_MSVC"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -62,11 +62,11 @@
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Release_app/FOserver.pch"
+				PrecompiledHeaderFile=".\Release_MSVC/FOserver.pch"
 				AssemblerOutput="2"
-				AssemblerListingLocation=".\Release_app/"
-				ObjectFile=".\Release_app/"
-				ProgramDataBaseFileName=".\Release_app/"
+				AssemblerListingLocation=".\Release_MSVC\"
+				ObjectFile=".\Release_MSVC\"
+				ProgramDataBaseFileName=".\Release_MSVC\"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -89,9 +89,9 @@
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Release_app/FOserv.pdb"
+				ProgramDatabaseFile=".\Release_MSVC/FOserv.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Release_app/FOserv.map"
+				MapFileName=".\Release_MSVC/FOserv.map"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -109,7 +109,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release_app/FOserver.bsc"
+				OutputFile=".\Release_MSVC/FOserver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -122,9 +122,9 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="App MaxOptimize|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			Name="Release_MaxOptimize|Win32"
+			OutputDirectory=".\ReleaseO_MSVC"
+			IntermediateDirectory=".\ReleaseO_MSVC"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -171,11 +171,11 @@
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Release_app/FOserver.pch"
+				PrecompiledHeaderFile=".\ReleaseO_MSVC/FOserver.pch"
 				AssemblerOutput="2"
-				AssemblerListingLocation=".\Release_app/"
-				ObjectFile=".\Release_app/"
-				ProgramDataBaseFileName=".\Release_app/"
+				AssemblerListingLocation=".\ReleaseO_MSVC\"
+				ObjectFile=".\ReleaseO_MSVC\"
+				ProgramDataBaseFileName=".\ReleaseO_MSVC\"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -198,9 +198,9 @@
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
 				GenerateDebugInformation="false"
-				ProgramDatabaseFile=".\Release_app/FOserv.pdb"
+				ProgramDatabaseFile=".\ReleaseO_MSVC\FOserv.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Release_app/FOserv.map"
+				MapFileName=".\ReleaseO_MSVC\FOserv.map"
 				SubSystem="2"
 				LinkTimeCodeGeneration="1"
 				RandomizedBaseAddress="1"
@@ -219,7 +219,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release_app/FOserver.bsc"
+				OutputFile=".\ReleaseO_MSVC/FOserver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -251,7 +251,7 @@
 				RelativePath="Server.rc"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCResourceCompilerTool"
@@ -259,7 +259,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCResourceCompilerTool"
@@ -275,7 +275,7 @@
 				RelativePath="..\Source\Zlib\adler32.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -283,7 +283,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -295,7 +295,7 @@
 				RelativePath="..\Source\Zlib\compress.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -303,7 +303,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -315,7 +315,7 @@
 				RelativePath="..\Source\Zlib\crc32.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -323,7 +323,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -339,7 +339,7 @@
 				RelativePath="..\Source\Zlib\deflate.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -347,7 +347,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -363,7 +363,7 @@
 				RelativePath="..\Source\Zlib\gzclose.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -371,7 +371,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -387,7 +387,7 @@
 				RelativePath="..\Source\Zlib\gzlib.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -395,7 +395,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -407,7 +407,7 @@
 				RelativePath="..\Source\Zlib\gzread.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -415,7 +415,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -427,7 +427,7 @@
 				RelativePath="..\Source\Zlib\gzwrite.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -435,7 +435,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -447,7 +447,7 @@
 				RelativePath="..\Source\Zlib\infback.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -455,7 +455,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -467,7 +467,7 @@
 				RelativePath="..\Source\Zlib\inffast.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -475,7 +475,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -495,7 +495,7 @@
 				RelativePath="..\Source\Zlib\inflate.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -503,7 +503,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -519,7 +519,7 @@
 				RelativePath="..\Source\Zlib\inftrees.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -527,7 +527,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -543,7 +543,7 @@
 				RelativePath="..\Source\Zlib\ioapi.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -551,7 +551,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -567,7 +567,7 @@
 				RelativePath="..\Source\Zlib\trees.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -575,7 +575,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -591,7 +591,7 @@
 				RelativePath="..\Source\Zlib\uncompr.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -599,7 +599,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -611,7 +611,7 @@
 				RelativePath="..\Source\Zlib\unzip.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -619,7 +619,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -643,7 +643,7 @@
 				RelativePath="..\Source\Zlib\zutil.c"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -651,7 +651,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -787,7 +787,7 @@
 				RelativePath="..\Source\Exception.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -795,7 +795,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -833,10 +833,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\ItemManager.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\ItemPid.h"
 				>
 			</File>
 			<File
@@ -892,6 +888,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\PlatformSpecific.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\ProtoMap.cpp"
 				>
 			</File>
@@ -919,7 +919,7 @@
 				RelativePath="..\Source\ScriptPragmas.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -927,7 +927,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -967,7 +967,7 @@
 				RelativePath="..\Source\StdAfx.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -975,7 +975,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1039,7 +1039,7 @@
 				RelativePath="..\Source\AngelScript\as_atomic.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1047,7 +1047,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1063,7 +1063,7 @@
 				RelativePath="..\Source\AngelScript\as_builder.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1071,7 +1071,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1087,7 +1087,7 @@
 				RelativePath="..\Source\AngelScript\as_bytecode.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1095,7 +1095,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1111,7 +1111,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1119,7 +1119,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1135,7 +1135,7 @@
 				RelativePath="..\Source\AngelScript\as_callfunc_x86.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1143,7 +1143,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1155,7 +1155,7 @@
 				RelativePath="..\Source\AngelScript\as_compiler.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1163,7 +1163,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1183,7 +1183,7 @@
 				RelativePath="..\Source\AngelScript\as_configgroup.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1191,7 +1191,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1207,7 +1207,7 @@
 				RelativePath="..\Source\AngelScript\as_context.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1215,7 +1215,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1231,7 +1231,7 @@
 				RelativePath="..\Source\AngelScript\as_datatype.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1239,7 +1239,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1259,7 +1259,7 @@
 				RelativePath="..\Source\AngelScript\as_gc.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1267,7 +1267,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1283,7 +1283,7 @@
 				RelativePath="..\Source\AngelScript\as_generic.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1291,7 +1291,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1307,7 +1307,7 @@
 				RelativePath="..\Source\AngelScript\as_globalproperty.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1315,7 +1315,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1331,7 +1331,7 @@
 				RelativePath="..\Source\AngelScript\as_memory.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1339,7 +1339,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1355,7 +1355,7 @@
 				RelativePath="..\Source\AngelScript\as_module.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1363,7 +1363,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1379,7 +1379,7 @@
 				RelativePath="..\Source\AngelScript\as_objecttype.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1387,7 +1387,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1403,7 +1403,7 @@
 				RelativePath="..\Source\AngelScript\as_outputbuffer.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1411,7 +1411,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1427,7 +1427,7 @@
 				RelativePath="..\Source\AngelScript\as_parser.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1435,7 +1435,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1455,7 +1455,7 @@
 				RelativePath="..\Source\AngelScript\as_restore.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1463,7 +1463,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1479,7 +1479,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptcode.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1487,7 +1487,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1503,7 +1503,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptengine.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1511,7 +1511,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1527,7 +1527,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptfunction.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1535,7 +1535,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1551,7 +1551,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptnode.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1559,7 +1559,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1575,7 +1575,7 @@
 				RelativePath="..\Source\AngelScript\as_scriptobject.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1583,7 +1583,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1599,7 +1599,7 @@
 				RelativePath="..\Source\AngelScript\as_string.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1607,7 +1607,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1623,7 +1623,7 @@
 				RelativePath="..\Source\AngelScript\as_string_util.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1631,7 +1631,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1651,7 +1651,7 @@
 				RelativePath="..\Source\AngelScript\as_thread.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1659,7 +1659,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1679,7 +1679,7 @@
 				RelativePath="..\Source\AngelScript\as_tokenizer.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1687,7 +1687,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1703,7 +1703,7 @@
 				RelativePath="..\Source\AngelScript\as_typeinfo.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1711,7 +1711,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1727,7 +1727,7 @@
 				RelativePath="..\Source\AngelScript\as_variablescope.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1735,7 +1735,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1751,7 +1751,7 @@
 				RelativePath="..\Source\AngelScript\scriptany.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1759,7 +1759,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1775,7 +1775,7 @@
 				RelativePath="..\Source\AngelScript\scriptarray.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1783,7 +1783,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1799,7 +1799,7 @@
 				RelativePath="..\Source\AngelScript\scriptdictionary.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1807,7 +1807,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1823,7 +1823,7 @@
 				RelativePath="..\Source\AngelScript\scriptfile.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1831,7 +1831,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1847,7 +1847,7 @@
 				RelativePath="..\Source\AngelScript\scriptmath.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1855,7 +1855,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1871,7 +1871,7 @@
 				RelativePath="..\Source\AngelScript\scriptmath3d.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1879,7 +1879,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1895,7 +1895,7 @@
 				RelativePath="..\Source\AngelScript\scriptstring.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1903,7 +1903,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1919,7 +1919,7 @@
 				RelativePath="..\Source\AngelScript\scriptstring_utils.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1927,7 +1927,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1946,7 +1946,7 @@
 					RelativePath="..\Source\AngelScript\Preprocessor\lex.cpp"
 					>
 					<FileConfiguration
-						Name="App Release|Win32"
+						Name="Release|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -1954,7 +1954,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="App MaxOptimize|Win32"
+						Name="Release_MaxOptimize|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -1970,7 +1970,7 @@
 					RelativePath="..\Source\AngelScript\Preprocessor\lexem_list.cpp"
 					>
 					<FileConfiguration
-						Name="App Release|Win32"
+						Name="Release|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -1978,7 +1978,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="App MaxOptimize|Win32"
+						Name="Release_MaxOptimize|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -2002,7 +2002,7 @@
 					RelativePath="..\Source\AngelScript\Preprocessor\preprocess.cpp"
 					>
 					<FileConfiguration
-						Name="App Release|Win32"
+						Name="Release|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -2010,7 +2010,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="App MaxOptimize|Win32"
+						Name="Release_MaxOptimize|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -2035,7 +2035,7 @@
 				RelativePath="..\Source\datfile\cfile.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2043,7 +2043,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2059,7 +2059,7 @@
 				RelativePath="..\Source\datfile\unlzss.cpp"
 				>
 				<FileConfiguration
-					Name="App Release|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2067,7 +2067,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="App MaxOptimize|Win32"
+					Name="Release_MaxOptimize|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"

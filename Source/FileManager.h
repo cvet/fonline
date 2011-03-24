@@ -59,24 +59,24 @@ public:
 	static void EndOfWork();
 
 	bool LoadFile(const char* fname, int path_type);
-	bool LoadStream(BYTE* stream, DWORD length);
+	bool LoadStream(uchar* stream, uint length);
 	void UnloadFile();
-	BYTE* ReleaseBuffer();
+	uchar* ReleaseBuffer();
 
-	void SetCurPos(DWORD pos);
-	void GoForward(DWORD offs);
-	void GoBack(DWORD offs);
-	bool FindFragment(const BYTE* fragment, DWORD fragment_len, DWORD begin_offs);
+	void SetCurPos(uint pos);
+	void GoForward(uint offs);
+	void GoBack(uint offs);
+	bool FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs);
 
-	bool GetLine(char* str, DWORD len);
+	bool GetLine(char* str, uint len);
 	bool CopyMem(void* ptr, size_t size);
 	void GetStr(char* str);
-	BYTE GetByte();
-	WORD GetBEWord();
-	WORD GetLEWord();
-	DWORD GetBEDWord();
-	DWORD GetLEDWord();
-	DWORD GetLE3Bytes();
+	uchar GetUChar();
+	ushort GetBEUShort();
+	ushort GetLEUShort();
+	uint GetBEUInt();
+	uint GetLEUInt();
+	uint GetLE3UChar();
 	float GetBEFloat();
 	float GetLEFloat();
 	int GetNum();
@@ -85,18 +85,18 @@ public:
 	void SwitchToWrite();
 	void ClearOutBuf();
 	bool ResizeOutBuf();
-	void SetPosOutBuf(DWORD pos);
+	void SetPosOutBuf(uint pos);
 	bool SaveOutBufToFile(const char* fname, int path_type);
-	BYTE* GetOutBuf(){return dataOutBuf;}
-	DWORD GetOutBufLen(){return endOutBuf;}
+	uchar* GetOutBuf(){return dataOutBuf;}
+	uint GetOutBufLen(){return endOutBuf;}
 
-	void SetData(void* data, DWORD len);
+	void SetData(void* data, uint len);
 	void SetStr(const char* fmt, ...);
-	void SetByte(BYTE data);
-	void SetBEWord(WORD data);
-	void SetLEWord(WORD data);
-	void SetBEDWord(DWORD data);
-	void SetLEDWord(DWORD data);
+	void SetUChar(uchar data);
+	void SetBEUShort(ushort data);
+	void SetLEUShort(ushort data);
+	void SetBEUInt(uint data);
+	void SetLEUInt(uint data);
 
 	static const char* GetFullPath(const char* fname, int path_type);
 	static void GetFullPath(const char* fname, int path_type, char* get_path);
@@ -110,10 +110,10 @@ public:
 	static void EraseExtension(char* fname);
 
 	bool IsLoaded(){return fileBuf!=NULL;}
-	BYTE* GetBuf(){return fileBuf;}
-	BYTE* GetCurBuf(){return fileBuf+curPos;}
-	DWORD GetCurPos(){return curPos;}
-	DWORD GetFsize(){return fileSize;}
+	uchar* GetBuf(){return fileBuf;}
+	uchar* GetCurBuf(){return fileBuf+curPos;}
+	uint GetCurPos(){return curPos;}
+	uint GetFsize(){return fileSize;}
 	bool IsEOF(){return curPos>=fileSize;}
 	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 	int ParseLinesInt(const char* fname, int path_type, IntVec& lines);
@@ -129,14 +129,14 @@ private:
 	static char dataPath[MAX_FOPATH];
 	static DataFileVec dataFiles;
 
-	DWORD fileSize;
-	BYTE* fileBuf;
-	DWORD curPos;
+	uint fileSize;
+	uchar* fileBuf;
+	uint curPos;
 
-	BYTE* dataOutBuf;
-	DWORD posOutBuf;
-	DWORD endOutBuf;
-	DWORD lenOutBuf;
+	uchar* dataOutBuf;
+	uint posOutBuf;
+	uint endOutBuf;
+	uint lenOutBuf;
 
 	FILETIME timeCreate,timeAccess,timeWrite;
 

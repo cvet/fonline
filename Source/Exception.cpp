@@ -2,7 +2,13 @@
 #include "Exception.h"
 #include <windows.h>
 #include <stdio.h>
-#include <dbghelp.h>
+
+// #include <dbghelp.h>
+typedef struct _MINIDUMP_EXCEPTION_INFORMATION {
+	DWORD ThreadId;
+	PEXCEPTION_POINTERS ExceptionPointers;
+	BOOL ClientPointers;
+} MINIDUMP_EXCEPTION_INFORMATION, *PMINIDUMP_EXCEPTION_INFORMATION;
 
 char DumpMessRus[]=
 {
@@ -39,8 +45,10 @@ void CatchExceptions(const char* app_name, unsigned int app_ver)
 	SetUnhandledExceptionFilter(TopLevelFilterDump);
 }
 
-typedef bool (WINAPI *MINIDUMPWRITEDUMP)(HANDLE,DWORD,HANDLE,MINIDUMP_TYPE,const PMINIDUMP_EXCEPTION_INFORMATION,\
-											const PMINIDUMP_USER_STREAM_INFORMATION,const PMINIDUMP_CALLBACK_INFORMATION);
+typedef bool (WINAPI *MINIDUMPWRITEDUMP)(HANDLE, DWORD, HANDLE, int/*MINIDUMP_TYPE*/,
+										 const PMINIDUMP_EXCEPTION_INFORMATION,
+										 const void* /*PMINIDUMP_USER_STREAM_INFORMATION*/,
+										 const void* /*PMINIDUMP_CALLBACK_INFORMATION*/);
 
 LONG WINAPI TopLevelFilterDump(struct _EXCEPTION_POINTERS* except)
 {
@@ -74,7 +82,7 @@ LONG WINAPI TopLevelFilterDump(struct _EXCEPTION_POINTERS* except)
 				ex_info.ClientPointers=NULL;
 
 				bool ok=dump(GetCurrentProcess(),GetCurrentProcessId(),
-					f,MiniDumpNormal,&ex_info,NULL,NULL);
+					f,0/*MiniDumpNormal*/,&ex_info,NULL,NULL);
 
 				if(ok)
 				{
@@ -120,10 +128,8 @@ LONG WINAPI TopLevelFilterSimple(struct _EXCEPTION_POINTERS* except)
 		local_time.wDay,local_time.wMonth,
 		local_time.wHour,local_time.wMinute);
 
-	HANDLE f=CreateFile(dump_path,GENERIC_WRITE,FILE_SHARE_WRITE,NULL,
-				                CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
-
-	if(f!=INVALID_HANDLE_VALUE)
+	void* file=FileOpen(dump_path,true);
+	if(file)
 	{
 		char str[128];
 		char dump_str[512];
@@ -137,8 +143,7 @@ LONG WINAPI TopLevelFilterSimple(struct _EXCEPTION_POINTERS* except)
 		sprintf(str,"ExceptionFlags <0x%0x>\n",except->ExceptionRecord->ExceptionFlags);
 		StringAppend(dump_str,str);
 
-		DWORD dw;
-		if(WriteFile(f,dump_str,strlen(dump_str),&dw,NULL))
+		if(FileWrite(file,dump_str,strlen(dump_str)))
 		{
 			sprintf(mess,DumpMess,&dump_path[2]);
 			retval=EXCEPTION_EXECUTE_HANDLER;
@@ -148,7 +153,7 @@ LONG WINAPI TopLevelFilterSimple(struct _EXCEPTION_POINTERS* except)
 			sprintf(mess,"Error while create dump file - file save error, path<%s>, err<%d>.",dump_path,GetLastError());
 		}
 
-		CloseHandle(f);
+		FileClose(file);
 	}
 	else
 	{
@@ -180,7 +185,7 @@ void CreateDump(const char* appendix)
 			HANDLE f=CreateFile(dump_path,GENERIC_WRITE,FILE_SHARE_WRITE,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
 			if(f!=INVALID_HANDLE_VALUE)
 			{
-				dump(GetCurrentProcess(),GetCurrentProcessId(),f,MiniDumpNormal,NULL,NULL,NULL);
+				dump(GetCurrentProcess(),GetCurrentProcessId(),f,0/*MiniDumpNormal*/,NULL,NULL,NULL);
 				CloseHandle(f);
 			}
 		}

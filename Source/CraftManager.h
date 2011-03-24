@@ -22,38 +22,38 @@ struct CraftItem
 {
 public:
 	// Number, name, info
-	DWORD Num;
+	uint Num;
 	string Name;
 	string Info;
 
 	// Need parameters to show craft
-	DwordVec ShowPNum;
+	UIntVec ShowPNum;
 	IntVec ShowPVal;
-	ByteVec ShowPOr;
+	UCharVec ShowPOr;
 
 	// Need parameters to craft
-	DwordVec NeedPNum;
+	UIntVec NeedPNum;
 	IntVec NeedPVal;
-	ByteVec NeedPOr;
+	UCharVec NeedPOr;
 
 	// Need items to craft
-	WordVec NeedItems;
-	DwordVec NeedItemsVal;
-	ByteVec NeedItemsOr;
+	UShortVec NeedItems;
+	UIntVec NeedItemsVal;
+	UCharVec NeedItemsOr;
 
 	// Need tools to craft
-	WordVec NeedTools;
-	DwordVec NeedToolsVal;
-	ByteVec NeedToolsOr;
+	UShortVec NeedTools;
+	UIntVec NeedToolsVal;
+	UCharVec NeedToolsOr;
 
 	// New items
-	WordVec OutItems;
-	DwordVec OutItemsVal;
+	UShortVec OutItems;
+	UIntVec OutItemsVal;
 
 	// Other
 	string Script;
-	DWORD ScriptBindId; //In runtime
-	DWORD Experience;
+	uint ScriptBindId; //In runtime
+	uint Experience;
 
 	// Operator =
 	CraftItem();
@@ -66,21 +66,21 @@ public:
 	void SetName(FOMsg& msg_game, FOMsg& msg_item);
 #endif
 	
-	int SetStr(DWORD num, const char* str);
+	int SetStr(uint num, const char* str);
 	const char* GetStr(bool metadata);
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 private:
-	int SetStrParam(const char*& pstr_in, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec);
-	int SetStrItem(const char*& pstr_in, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec);
-	void GetStrParam(char* pstr_out, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec);
-	void GetStrItem(char* pstr_out, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec);
+	int SetStrParam(const char*& pstr_in, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec);
+	int SetStrItem(const char*& pstr_in, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec);
+	void GetStrParam(char* pstr_out, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec);
+	void GetStrItem(char* pstr_out, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec);
 #endif
 };
 
-typedef map<DWORD,CraftItem*,less<DWORD> > CraftItemMap;
-typedef map<DWORD,CraftItem*,less<DWORD> >::iterator CraftItemMapIt;
-typedef map<DWORD,CraftItem*,less<DWORD> >::value_type CraftItemMapVal;
+typedef map<uint,CraftItem*,less<uint> > CraftItemMap;
+typedef map<uint,CraftItem*,less<uint> >::iterator CraftItemMapIt;
+typedef map<uint,CraftItem*,less<uint> >::value_type CraftItemMapVal;
 typedef vector<CraftItem*> CraftItemVec;
 
 #ifdef FONLINE_SERVER
@@ -105,7 +105,7 @@ public:
 
 	CraftItemMap& GetAllCrafts(){return itemCraft;}
 
-	void EraseCraft(DWORD num);
+	void EraseCraft(uint num);
 #endif
 
 	// Return fail crafts
@@ -118,35 +118,35 @@ public:
 
 	void Finish();
 
-	bool AddCraft(DWORD num, const char* str);
+	bool AddCraft(uint num, const char* str);
 	bool AddCraft(CraftItem* craft, bool make_copy);
-	CraftItem* GetCraft(DWORD num);
-	bool IsCraftExist(DWORD num);
+	CraftItem* GetCraft(uint num);
+	bool IsCraftExist(uint num);
 
 #ifdef FONLINE_SERVER
 public:
-	bool IsShowCraft(Critter* cr, DWORD num);
+	bool IsShowCraft(Critter* cr, uint num);
 	void GetShowCrafts(Critter* cr, CraftItemVec& craft_vec);
-	bool IsTrueCraft(Critter* cr, DWORD num);
+	bool IsTrueCraft(Critter* cr, uint num);
 	void GetTrueCrafts(Critter* cr, CraftItemVec& craft_vec);
 private:
-	bool IsTrueParams(Critter* cr, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec);
-	bool IsTrueItems(Critter* cr, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec);
+	bool IsTrueParams(Critter* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec);
+	bool IsTrueItems(Critter* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec);
 #endif
 #ifdef FONLINE_CLIENT
 public:
-	bool IsShowCraft(CritterCl* cr, DWORD num);
+	bool IsShowCraft(CritterCl* cr, uint num);
 	void GetShowCrafts(CritterCl* cr, CraftItemVec& craft_vec);
-	bool IsTrueCraft(CritterCl* cr, DWORD num);
+	bool IsTrueCraft(CritterCl* cr, uint num);
 	void GetTrueCrafts(CritterCl* cr, CraftItemVec& craft_vec);
 private:
-	bool IsTrueParams(CritterCl* cr, DwordVec& num_vec, IntVec& val_vec, ByteVec& or_vec);
-	bool IsTrueItems(CritterCl* cr, WordVec& pid_vec, DwordVec& count_vec, ByteVec& or_vec);
+	bool IsTrueParams(CritterCl* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec);
+	bool IsTrueItems(CritterCl* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec);
 #endif
 
 #ifdef FONLINE_SERVER
 public:
-	int ProcessCraft(Critter* cr, DWORD num);
+	int ProcessCraft(Critter* cr, uint num);
 #endif
 };
 

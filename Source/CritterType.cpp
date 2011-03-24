@@ -3,83 +3,83 @@
 #include "Text.h"
 #include "FileManager.h"
 
-CritTypeType CrTypes[MAX_CRIT_TYPES]={0};
+CritTypeType CrTypes[MAX_CRIT_TYPES];
 int MoveWalk[MAX_CRIT_TYPES][6]={0};
 
-bool CritType::IsEnabled(DWORD cr_type)
+bool CritType::IsEnabled(uint cr_type)
 {
 	return cr_type && cr_type<MAX_CRIT_TYPES && CrTypes[cr_type].Enabled;
 }
 
-CritTypeType& CritType::GetCritType(DWORD cr_type)
+CritTypeType& CritType::GetCritType(uint cr_type)
 {
 	return cr_type<MAX_CRIT_TYPES && CrTypes[cr_type].Enabled?CrTypes[cr_type]:CrTypes[DEFAULT_CRTYPE];
 }
 
-CritTypeType& CritType::GetRealCritType(DWORD cr_type)
+CritTypeType& CritType::GetRealCritType(uint cr_type)
 {
 	return CrTypes[cr_type];
 }
 
-const char* CritType::GetName(DWORD cr_type)
+const char* CritType::GetName(uint cr_type)
 {
 	return GetCritType(cr_type).Name;
 }
 
-const char* CritType::GetSoundName(DWORD cr_type)
+const char* CritType::GetSoundName(uint cr_type)
 {
 	CritTypeType& type=GetCritType(cr_type);
 	if(type.SoundName[0]) return type.SoundName;
 	return type.Name;
 }
 
-DWORD CritType::GetAlias(DWORD cr_type)
+uint CritType::GetAlias(uint cr_type)
 {
 	return GetCritType(cr_type).Alias;
 }
 
-DWORD CritType::GetMultihex(DWORD cr_type)
+uint CritType::GetMultihex(uint cr_type)
 {
 	return GetCritType(cr_type).Multihex;
 }
 
-int CritType::GetAnimType(DWORD cr_type)
+int CritType::GetAnimType(uint cr_type)
 {
 	return GetCritType(cr_type).AnimType;
 }
 
-bool CritType::IsCanWalk(DWORD cr_type)
+bool CritType::IsCanWalk(uint cr_type)
 {
 	return GetCritType(cr_type).CanWalk;
 }
 
-bool CritType::IsCanRun(DWORD cr_type)
+bool CritType::IsCanRun(uint cr_type)
 {
 	return GetCritType(cr_type).CanRun;
 }
 
-bool CritType::IsCanAim(DWORD cr_type)
+bool CritType::IsCanAim(uint cr_type)
 {
 	return GetCritType(cr_type).CanAim;
 }
 
-bool CritType::IsCanArmor(DWORD cr_type)
+bool CritType::IsCanArmor(uint cr_type)
 {
 	return GetCritType(cr_type).CanArmor;
 }
 
-bool CritType::IsCanRotate(DWORD cr_type)
+bool CritType::IsCanRotate(uint cr_type)
 {
 	return GetCritType(cr_type).CanRotate;
 }
 
-bool CritType::IsAnim1(DWORD cr_type, DWORD anim1)
+bool CritType::IsAnim1(uint cr_type, uint anim1)
 {
 	if(anim1>=37) return false;
 	return GetCritType(cr_type).Anim1[anim1];
 }
 
-void CritType::SetWalkParams(DWORD cr_type, DWORD time_walk, DWORD time_run, DWORD step0, DWORD step1, DWORD step2, DWORD step3)
+void CritType::SetWalkParams(uint cr_type, uint time_walk, uint time_run, uint step0, uint step1, uint step2, uint step3)
 {
 	if(cr_type>=MAX_CRIT_TYPES) return;
 	MoveWalk[cr_type][0]=step0;
@@ -90,22 +90,22 @@ void CritType::SetWalkParams(DWORD cr_type, DWORD time_walk, DWORD time_run, DWO
 	MoveWalk[cr_type][5]=time_run;
 }
 
-DWORD CritType::GetTimeWalk(DWORD cr_type)
+uint CritType::GetTimeWalk(uint cr_type)
 {
 	return cr_type<MAX_CRIT_TYPES && CrTypes[cr_type].Enabled?MoveWalk[cr_type][4]:0;
 }
 
-DWORD CritType::GetTimeRun(DWORD cr_type)
+uint CritType::GetTimeRun(uint cr_type)
 {
 	return cr_type<MAX_CRIT_TYPES && CrTypes[cr_type].Enabled?MoveWalk[cr_type][5]:0;
 }
 
-int CritType::GetWalkFrmCnt(DWORD cr_type, DWORD step)
+int CritType::GetWalkFrmCnt(uint cr_type, uint step)
 {
 	return cr_type<MAX_CRIT_TYPES && CrTypes[cr_type].Enabled && step<4?MoveWalk[cr_type][step]:0;
 }
 
-int CritType::GetRunFrmCnt(DWORD cr_type, DWORD step)
+int CritType::GetRunFrmCnt(uint cr_type, uint step)
 {
 	return 0;
 /*
@@ -128,7 +128,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 	FileManager file;
 	if(!file.LoadFile(CRTYPE_FILE_NAME,PT_SERVER_DATA))
 	{
-		WriteLog(__FUNCTION__" - File<%s> not found.\n",FileManager::GetFullPath(CRTYPE_FILE_NAME,PT_SERVER_DATA));
+		WriteLog(_FUNC_," - File<%s> not found.\n",FileManager::GetFullPath(CRTYPE_FILE_NAME,PT_SERVER_DATA));
 		return false;
 	}
 
@@ -142,7 +142,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 	{
 		if(prev_fail)
 		{
-			WriteLog(__FUNCTION__" - Bad data for critter type information, number<%d>.\n",number);
+			WriteLog(_FUNC_," - Bad data for critter type information, number<%d>.\n",number);
 			prev_fail=false;
 			errors++;
 		}
@@ -237,7 +237,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 
 	if(!CrTypesReserved.Get()[0].Enabled)
 	{
-		WriteLog(__FUNCTION__" - Default zero type not loaded.\n");
+		WriteLog(_FUNC_," - Default zero type not loaded.\n");
 		return false;
 	}
 
@@ -266,7 +266,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 		}
 	}
 
-	WriteLog("Loaded<%d> critter types.\n",success);
+	WriteLog(NULL,"Loaded<%d> critter types.\n",success);
 	return true;
 }
 
@@ -274,7 +274,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 {
 	if(!msg)
 	{
-		WriteLog(__FUNCTION__" - Msg nullptr.\n");
+		WriteLog(_FUNC_," - Msg nullptr.\n");
 		return false;
 	}
 
@@ -304,7 +304,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 			&MoveWalkReserved[i][0],&MoveWalkReserved[i][1],&MoveWalkReserved[i][2],&MoveWalkReserved[i][3],
 			sound_name)!=41)
 		{
-			WriteLog(__FUNCTION__" - Bad data for critter type information, number<%d>, line<%s>.\n",i,str);
+			WriteLog(_FUNC_," - Bad data for critter type information, number<%d>, line<%s>.\n",i,str);
 			errors++;
 			continue;
 		}
@@ -321,12 +321,12 @@ bool CritType::InitFromMsg(FOMsg* msg)
 
 	if(!CrTypesReserved.Get()[0].Enabled)
 	{
-		WriteLog(__FUNCTION__" - Default zero type not loaded.\n");
+		WriteLog(_FUNC_," - Default zero type not loaded.\n");
 		return false;
 	}
 
 	memcpy(CrTypes,CrTypesReserved.Get(),sizeof(CrTypes));
 	memcpy(MoveWalk,MoveWalkReserved,sizeof(MoveWalk));
-	WriteLog("Loaded<%d> critter types.\n",success);
+	WriteLog(NULL,"Loaded<%d> critter types.\n",success);
 	return true;
 }

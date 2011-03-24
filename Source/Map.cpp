@@ -6,18 +6,18 @@
 
 const char* MapEventFuncName[MAP_EVENT_MAX]=
 {
-	{"void %s(Map&,bool)"}, // MAP_EVENT_FINISH
-	{"void %s(Map&)"}, // MAP_EVENT_LOOP_0
-	{"void %s(Map&)"}, // MAP_EVENT_LOOP_1
-	{"void %s(Map&)"}, // MAP_EVENT_LOOP_2
-	{"void %s(Map&)"}, // MAP_EVENT_LOOP_3
-	{"void %s(Map&)"}, // MAP_EVENT_LOOP_4
-	{"void %s(Map&,Critter&)"}, // MAP_EVENT_IN_CRITTER
-	{"void %s(Map&,Critter&)"}, // MAP_EVENT_OUT_CRITTER
-	{"void %s(Map&,Critter&,Critter@)"}, // MAP_EVENT_CRITTER_DEAD
-	{"void %s(Map&)"}, // MAP_EVENT_TURN_BASED_BEGIN
-	{"void %s(Map&)"}, // MAP_EVENT_TURN_BASED_END
-	{"void %s(Map&,Critter&,bool)"}, // MAP_EVENT_TURN_BASED_PROCESS
+	"void %s(Map&,bool)", // MAP_EVENT_FINISH
+	"void %s(Map&)", // MAP_EVENT_LOOP_0
+	"void %s(Map&)", // MAP_EVENT_LOOP_1
+	"void %s(Map&)", // MAP_EVENT_LOOP_2
+	"void %s(Map&)", // MAP_EVENT_LOOP_3
+	"void %s(Map&)", // MAP_EVENT_LOOP_4
+	"void %s(Map&,Critter&)", // MAP_EVENT_IN_CRITTER
+	"void %s(Map&,Critter&)", // MAP_EVENT_OUT_CRITTER
+	"void %s(Map&,Critter&,Critter@)", // MAP_EVENT_CRITTER_DEAD
+	"void %s(Map&)", // MAP_EVENT_TURN_BASED_BEGIN
+	"void %s(Map&)", // MAP_EVENT_TURN_BASED_END
+	"void %s(Map&,Critter&,bool)", // MAP_EVENT_TURN_BASED_PROCESS
 };
 
 /************************************************************************/
@@ -50,7 +50,7 @@ bool Map::Init(ProtoMap* proto, Location* location)
 	if(!proto || !location) return false;
 
 	MEMORY_PROCESS(MEMORY_MAP_FIELD,proto->Header.MaxHexX*proto->Header.MaxHexY);
-	hexFlags=new BYTE[proto->Header.MaxHexX*proto->Header.MaxHexY];
+	hexFlags=new uchar[proto->Header.MaxHexX*proto->Header.MaxHexY];
 	if(!hexFlags) return false;
 	ZeroMemory(hexFlags,proto->Header.MaxHexX*proto->Header.MaxHexY);
 	ZeroMemory(&Data,sizeof(Data));
@@ -105,11 +105,21 @@ void Map::Clear(bool full)
 	}
 }
 
+struct ItemNpcPtr
+{
+	Item* item;
+	Npc* npc;
+	ItemNpcPtr(Item* i, Npc* n):item(i),npc(n){}
+};
+typedef map<uint,ItemNpcPtr> UIDtoPtrMap;
+typedef map<uint,ItemNpcPtr>::iterator UIDtoPtrMapIt;
+typedef map<uint,ItemNpcPtr>::value_type UIDtoPtrMapVal;
+
 bool Map::Generate()
 {
 	char map_info[512];
 	sprintf(map_info,"Map id<%u>, pid<%u>",GetId(),GetPid());
-	//WriteLog("Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
+	//WriteLog(NULL,"Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
 
 	// Map data
 	dataLocker.Lock();
@@ -118,15 +128,6 @@ bool Map::Generate()
 	dataLocker.Unlock();
 
 	// Associated UID -> Item or Critter
-	struct ItemNpcPtr
-	{
-		Item* item;
-		Npc* npc;
-		ItemNpcPtr(Item* i, Npc* n):item(i),npc(n){}
-	};
-	typedef map<DWORD,ItemNpcPtr> UIDtoPtrMap;
-	typedef map<DWORD,ItemNpcPtr>::iterator UIDtoPtrMapIt;
-	typedef map<DWORD,ItemNpcPtr>::value_type UIDtoPtrMapVal;
 	UIDtoPtrMap UIDtoPtr;
 
 	// Generate npc
@@ -146,7 +147,7 @@ bool Map::Generate()
 			}
 			else
 			{
-				WriteLog("Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
+				WriteLog(NULL,"Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
 			}
 		}
 
@@ -165,10 +166,10 @@ bool Map::Generate()
 		}
 
 		// Create npc
-		Npc* npc=CrMngr.CreateNpc(mobj.ProtoId,params_count,params,0,NULL,script[0]?script:NULL,this,mobj.MapX,mobj.MapY,mobj.Dir,true);
+		Npc* npc=CrMngr.CreateNpc(mobj.ProtoId,params_count,params,0,NULL,script[0]?script:NULL,this,mobj.MapX,mobj.MapY,(uchar)mobj.Dir,true);
 		if(!npc)
 		{
-			WriteLog(__FUNCTION__" - Create npc on map<%s> with pid<%u> failture - continue generate.\n",map_info,mobj.ProtoId);
+			WriteLog(_FUNC_," - Create npc on map<%s> with pid<%u> failture - continue generate.\n",map_info,mobj.ProtoId);
 			continue;
 		}
 
@@ -181,7 +182,7 @@ bool Map::Generate()
 			{
 				npc->Data.Params[ST_CURRENT_HP]=GameOpt.DeadHitPoints-1;
 
-				DWORD multihex=npc->GetMultihex();
+				uint multihex=npc->GetMultihex();
 				UnsetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,false);
 				SetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,true);
 			}
@@ -215,11 +216,11 @@ bool Map::Generate()
 	for(MapObjectPtrVecIt it=Proto->ItemsVec.begin(),end=Proto->ItemsVec.end();it!=end;++it)
 	{
 		MapObject& mobj=*(*it);
-		WORD pid=mobj.ProtoId;
+		ushort pid=mobj.ProtoId;
 		ProtoItem* proto=ItemMngr.GetProtoItem(pid);
 		if(!proto)
 		{
-			WriteLog(__FUNCTION__" - Proto object on map<%s> with pid<%u> not found, continue generate.\n",map_info,pid);
+			WriteLog(_FUNC_," - Proto object on map<%s> with pid<%u> not found, continue generate.\n",map_info,pid);
 			continue;
 		}
 
@@ -241,7 +242,7 @@ bool Map::Generate()
 		Item* item=ItemMngr.CreateItem(pid,1);
 		if(!item)
 		{
-			WriteLog(__FUNCTION__" - Create item on map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
+			WriteLog(_FUNC_," - Create item on map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
 			continue;
 		}
 
@@ -325,7 +326,7 @@ bool Map::Generate()
 			}
 			else
 			{
-				WriteLog("Map<%s> empty item function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
+				WriteLog(NULL,"Map<%s> empty item function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
 			}
 		}
 
@@ -352,7 +353,7 @@ bool Map::Generate()
 		// Transfer to hex
 		if(!AddItem(item,mobj.MapX,mobj.MapY))
 		{
-			WriteLog(__FUNCTION__" - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
+			WriteLog(_FUNC_," - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
 			ItemMngr.ItemToGarbage(item);
 			continue;
 		}
@@ -370,7 +371,7 @@ bool Map::Generate()
 		Npc* npc=*it;
 
 		// Generate internal bag
-		ItemPtrVec& items=npc->GetInventory(); 
+		ItemPtrVec& items=npc->GetInventory();
 		if(!npc->Data.Params[ST_BAG_ID])
 		{
 			int cur_item=0;
@@ -415,7 +416,7 @@ void Map::Process()
 
 	if(NeedProcess)
 	{
-		DWORD tick=Timer::GameTick();
+		uint tick=Timer::GameTick();
 		for(int i=0;i<MAP_LOOP_FUNC_MAX;i++)
 		{
 			if(LoopEnabled[i] && tick-LoopLastTick[i]>=LoopWaitTick[i])
@@ -433,7 +434,7 @@ Location* Map::GetLocation(bool lock)
 	return mapLocation;
 }
 
-bool Map::GetStartCoord(WORD& hx, WORD& hy, BYTE& dir, DWORD entire)
+bool Map::GetStartCoord(ushort& hx, ushort& hy, uchar& dir, uint entire)
 {
 	ProtoMap::MapEntire* ent;
 	ent=Proto->GetEntireRandom(entire);
@@ -449,7 +450,7 @@ bool Map::GetStartCoord(WORD& hx, WORD& hy, BYTE& dir, DWORD entire)
 	return true;
 }
 
-bool Map::GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item)
+bool Map::GetStartCoordCar(ushort& hx, ushort& hy, ProtoItem* proto_item)
 {
 	if(!proto_item->IsCar()) return false;
 
@@ -470,7 +471,7 @@ bool Map::GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item)
 	return false;
 }
 
-bool Map::FindStartHex(WORD& hx, WORD& hy, DWORD multihex, DWORD seek_radius, bool skip_unsafe)
+bool Map::FindStartHex(ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe)
 {
 	if(IsHexesPassed(hx,hy,multihex) && !(skip_unsafe && (IsHexTrigger(hx,hy) || IsHexTrap(hx,hy)))) return true;
 	if(!seek_radius) return false;
@@ -513,7 +514,7 @@ void Map::AddCritter(Critter* cr)
 
 		if(std::find(mapCritters.begin(),mapCritters.end(),cr)!=mapCritters.end())
 		{
-			WriteLog(__FUNCTION__" - Critter already added!\n");
+			WriteLog(_FUNC_," - Critter already added!\n");
 			return;
 		}
 
@@ -531,7 +532,7 @@ void Map::AddCritter(Critter* cr)
 void Map::AddCritterEvents(Critter* cr)
 {
 	EventInCritter(cr);
-	if(Script::PrepareContext(ServerFunctions.MapCritterIn,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.MapCritterIn,_FUNC_,cr->GetInfo()))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgObject(cr);
@@ -563,7 +564,7 @@ void Map::EraseCritter(Critter* cr)
 	cr->SetTimeout(TO_BATTLE,0);
 
 	EventOutCritter(cr);
-	if(Script::PrepareContext(ServerFunctions.MapCritterOut,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.MapCritterOut,_FUNC_,cr->GetInfo()))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgObject(cr);
@@ -586,7 +587,7 @@ void Map::KickPlayersToGlobalMap()
 	}
 }
 
-bool Map::AddItem(Item* item, WORD hx, WORD hy)
+bool Map::AddItem(Item* item, ushort hx, ushort hy)
 {
 	if(!item) return false;
 	if(!item->Proto->IsItem()) return false;
@@ -621,11 +622,11 @@ bool Map::AddItem(Item* item, WORD hx, WORD hy)
 	return true;
 }
 
-void Map::SetItem(Item* item, WORD hx, WORD hy)
+void Map::SetItem(Item* item, ushort hx, ushort hy)
 {
 	if(GetItem(item->GetId()))
 	{
-		WriteLog(__FUNCTION__" - Item already added!\n");
+		WriteLog(_FUNC_," - Item already added!\n");
 		return;
 	}
 
@@ -646,11 +647,11 @@ void Map::SetItem(Item* item, WORD hx, WORD hy)
 	if(item->IsGeck()) mapLocation->GeckCount++;
 }
 
-void Map::EraseItem(DWORD item_id)
+void Map::EraseItem(uint item_id)
 {
 	if(!item_id)
 	{
-		WriteLog(__FUNCTION__" - Item id is zero, id<%u>.\n",item_id);
+		WriteLog(_FUNC_," - Item id is zero, id<%u>.\n",item_id);
 		return;
 	}
 
@@ -659,15 +660,15 @@ void Map::EraseItem(DWORD item_id)
 	for(;it!=end;++it) if((*it)->GetId()==item_id) break;
 	if(it==hexItems.end())
 	{
-		WriteLog(__FUNCTION__" - Item not found, id<%u>.\n",item_id);
+		WriteLog(_FUNC_," - Item not found, id<%u>.\n",item_id);
 		return;
 	}
 
 	Item* item=*it;
 	hexItems.erase(it);
 
-	WORD hx=item->ACC_HEX.HexX;
-	WORD hy=item->ACC_HEX.HexY;
+	ushort hx=item->ACC_HEX.HexX;
+	ushort hy=item->ACC_HEX.HexY;
 
 	item->Accessory=0xd1;
 
@@ -757,7 +758,7 @@ void Map::ChangeViewItem(Item* item)
 	}
 }
 
-void Map::AnimateItem(Item* item, BYTE from_frm, BYTE to_frm)
+void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
 	SCOPE_LOCK(dataLocker);
 
@@ -769,7 +770,7 @@ void Map::AnimateItem(Item* item, BYTE from_frm, BYTE to_frm)
 }
 
 #pragma MESSAGE("Add explicit sync lock.")
-Item* Map::GetItem(DWORD item_id)
+Item* Map::GetItem(uint item_id)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -783,7 +784,7 @@ Item* Map::GetItem(DWORD item_id)
 	return NULL;
 }
 
-Item* Map::GetItemHex(WORD hx, WORD hy, WORD item_pid, Critter* picker)
+Item* Map::GetItemHex(ushort hx, ushort hy, ushort item_pid, Critter* picker)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -798,7 +799,7 @@ Item* Map::GetItemHex(WORD hx, WORD hy, WORD item_pid, Critter* picker)
 	return NULL;
 }
 
-Item* Map::GetItemDoor(WORD hx, WORD hy)
+Item* Map::GetItemDoor(ushort hx, ushort hy)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -812,7 +813,7 @@ Item* Map::GetItemDoor(WORD hx, WORD hy)
 	return NULL;
 }
 
-Item* Map::GetItemCar(WORD hx, WORD hy)
+Item* Map::GetItemCar(ushort hx, ushort hy)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -826,7 +827,7 @@ Item* Map::GetItemCar(WORD hx, WORD hy)
 	return NULL;
 }
 
-Item* Map::GetItemContainer(WORD hx, WORD hy)
+Item* Map::GetItemContainer(ushort hx, ushort hy)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -840,7 +841,7 @@ Item* Map::GetItemContainer(WORD hx, WORD hy)
 	return NULL;
 }
 
-Item* Map::GetItemGag(WORD hx, WORD hy)
+Item* Map::GetItemGag(ushort hx, ushort hy)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -854,7 +855,7 @@ Item* Map::GetItemGag(WORD hx, WORD hy)
 	return NULL;
 }
 
-void Map::GetItemsHex(WORD hx, WORD hy, ItemPtrVec& items, bool lock)
+void Map::GetItemsHex(ushort hx, ushort hy, ItemPtrVec& items, bool lock)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -865,7 +866,7 @@ void Map::GetItemsHex(WORD hx, WORD hy, ItemPtrVec& items, bool lock)
 	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-void Map::GetItemsHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, ItemPtrVec& items, bool lock)
+void Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, ushort pid, ItemPtrVec& items, bool lock)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -876,7 +877,7 @@ void Map::GetItemsHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, ItemPtrVec& it
 	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-void Map::GetItemsPid(WORD pid, ItemPtrVec& items, bool lock)
+void Map::GetItemsPid(ushort pid, ItemPtrVec& items, bool lock)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -898,7 +899,7 @@ void Map::GetItemsType(int type, ItemPtrVec& items, bool lock)
 	if(lock) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-void Map::GetItemsTrap(WORD hx, WORD hy, ItemPtrVec& traps, bool lock)
+void Map::GetItemsTrap(ushort hx, ushort hy, ItemPtrVec& traps, bool lock)
 {
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
 	{
@@ -910,7 +911,7 @@ void Map::GetItemsTrap(WORD hx, WORD hy, ItemPtrVec& traps, bool lock)
 	if(lock) for(ItemPtrVecIt it=traps.begin(),end=traps.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-void Map::RecacheHexBlock(WORD hx, WORD hy)
+void Map::RecacheHexBlock(ushort hx, ushort hy)
 {
 	UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
 	UnsetHexFlag(hx,hy,FH_GAG_ITEM);
@@ -930,7 +931,7 @@ void Map::RecacheHexBlock(WORD hx, WORD hy)
 	if(is_gag) SetHexFlag(hx,hy,FH_GAG_ITEM);
 }
 
-void Map::RecacheHexShoot(WORD hx, WORD hy)
+void Map::RecacheHexShoot(ushort hx, ushort hy)
 {
 	UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
 	for(ItemPtrVecIt it=hexItems.begin(),end=hexItems.end();it!=end;++it)
@@ -944,7 +945,7 @@ void Map::RecacheHexShoot(WORD hx, WORD hy)
 	}
 }
 
-void Map::RecacheHexBlockShoot(WORD hx, WORD hy)
+void Map::RecacheHexBlockShoot(ushort hx, ushort hy)
 {
 	UnsetHexFlag(hx,hy,FH_BLOCK_ITEM);
 	UnsetHexFlag(hx,hy,FH_NRAKE_ITEM);
@@ -968,32 +969,32 @@ void Map::RecacheHexBlockShoot(WORD hx, WORD hy)
 	if(is_gag) SetHexFlag(hx,hy,FH_GAG_ITEM);
 }
 
-WORD Map::GetHexFlags(WORD hx, WORD hy)
+ushort Map::GetHexFlags(ushort hx, ushort hy)
 {
 	return (hexFlags[hy*GetMaxHexX()+hx]<<8)|Proto->HexFlags[hy*GetMaxHexX()+hx];
 }
 
-void Map::SetHexFlag(WORD hx, WORD hy, BYTE flag)
+void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
 {
 	SETFLAG(hexFlags[hy*GetMaxHexX()+hx],flag);
 }
 
-void Map::UnsetHexFlag(WORD hx, WORD hy, BYTE flag)
+void Map::UnsetHexFlag(ushort hx, ushort hy, uchar flag)
 {
 	UNSETFLAG(hexFlags[hy*GetMaxHexX()+hx],flag);
 }
 
-bool Map::IsHexPassed(WORD hx, WORD hy)
+bool Map::IsHexPassed(ushort hx, ushort hy)
 {
 	return !FLAG(GetHexFlags(hx,hy),FH_NOWAY);
 }
 
-bool Map::IsHexRaked(WORD hx, WORD hy)
+bool Map::IsHexRaked(ushort hx, ushort hy)
 {
 	return !FLAG(GetHexFlags(hx,hy),FH_NOSHOOT);
 }
 
-bool Map::IsHexesPassed(WORD hx, WORD hy, DWORD radius)
+bool Map::IsHexesPassed(ushort hx, ushort hy, uint radius)
 {
 	// Base
 	if(FLAG(GetHexFlags(hx,hy),FH_NOWAY)) return false;
@@ -1002,10 +1003,10 @@ bool Map::IsHexesPassed(WORD hx, WORD hy, DWORD radius)
 	// Neighbors
 	short* sx,*sy;
 	GetHexOffsets(hx&1,sx,sy);
-	DWORD count=NumericalNumber(radius)*DIRS_COUNT;
+	uint count=NumericalNumber(radius)*DIRS_COUNT;
 	short maxhx=GetMaxHexX();
 	short maxhy=GetMaxHexY();
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
 		short hx_=(short)hx+sx[i];
 		short hy_=(short)hy+sy[i];
@@ -1014,7 +1015,7 @@ bool Map::IsHexesPassed(WORD hx, WORD hy, DWORD radius)
 	return true;
 }
 
-bool Map::IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex)
+bool Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex)
 {
 	// Single hex
 	if(!multihex) return IsHexPassed(hx,hy);
@@ -1022,17 +1023,17 @@ bool Map::IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex)
 	// Multihex
 	// Base hex
 	int hx_=hx,hy_=hy;
-	for(DWORD k=0;k<multihex;k++) MoveHexByDirUnsafe(hx_,hy_,dir);
+	for(uint k=0;k<multihex;k++) MoveHexByDirUnsafe(hx_,hy_,dir);
 	if(hx_<0 || hy_<0 || hx_>=GetMaxHexX() || hy_>=GetMaxHexY()) return false;
 	if(!IsHexPassed(hx_,hy_)) return false;
 
 	// Clock wise hexes
 	bool is_square_corner=(!GameOpt.MapHexagonal && IS_DIR_CORNER(dir));
-	DWORD steps_count=(is_square_corner?multihex*2:multihex);
+	uint steps_count=(is_square_corner?multihex*2:multihex);
 	int dir_=(GameOpt.MapHexagonal?((dir+2)%6):((dir+2)%8));
 	if(is_square_corner) dir_=(dir_+1)%8;
 	int hx__=hx_,hy__=hy_;
-	for(DWORD k=0;k<steps_count;k++)
+	for(uint k=0;k<steps_count;k++)
 	{
 		MoveHexByDirUnsafe(hx__,hy__,dir_);
 		if(!IsHexPassed(hx__,hy__)) return false;
@@ -1042,7 +1043,7 @@ bool Map::IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex)
 	dir_=(GameOpt.MapHexagonal?((dir+4)%6):((dir+6)%8));
 	if(is_square_corner) dir_=(dir_+7)%8;
 	hx__=hx_,hy__=hy_;
-	for(DWORD k=0;k<steps_count;k++)
+	for(uint k=0;k<steps_count;k++)
 	{
 		MoveHexByDirUnsafe(hx__,hy__,dir_);
 		if(!IsHexPassed(hx__,hy__)) return false;
@@ -1050,7 +1051,7 @@ bool Map::IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex)
 	return true;
 }
 
-bool Map::IsFlagCritter(WORD hx, WORD hy, bool dead)
+bool Map::IsFlagCritter(ushort hx, ushort hy, bool dead)
 {
 	if(dead)
 		return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_DEAD_CRITTER);
@@ -1058,7 +1059,7 @@ bool Map::IsFlagCritter(WORD hx, WORD hy, bool dead)
 		return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_CRITTER);
 }
 
-void Map::SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
+void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 {
 	if(dead)
 	{
@@ -1085,11 +1086,11 @@ void Map::SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
 	}
 }
 
-void Map::UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
+void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 {
 	if(dead)
 	{
-		DWORD dead_count=0;
+		uint dead_count=0;
 
 		dataLocker.Lock();
 		for(CrVecIt it=mapCritters.begin(),end=mapCritters.end();it!=end;++it)
@@ -1122,12 +1123,12 @@ void Map::UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead)
 	}
 }
 
-DWORD Map::GetNpcCount(int npc_role, int find_type)
+uint Map::GetNpcCount(int npc_role, int find_type)
 {
 	PcVec npcs;
 	GetNpcs(npcs,true);
 
-	DWORD result=0;
+	uint result=0;
 	for(PcVecIt it=npcs.begin(),end=npcs.end();it!=end;++it)
 	{
 		Npc* npc=*it;
@@ -1136,7 +1137,7 @@ DWORD Map::GetNpcCount(int npc_role, int find_type)
 	return result;
 }
 
-Critter* Map::GetCritter(DWORD crid, bool sync_lock)
+Critter* Map::GetCritter(uint crid, bool sync_lock)
 {
 	Critter* cr=NULL;
 
@@ -1164,7 +1165,7 @@ Critter* Map::GetCritter(DWORD crid, bool sync_lock)
 	return cr;
 }
 
-Critter* Map::GetNpc(int npc_role, int find_type, DWORD skip_count, bool sync_lock)
+Critter* Map::GetNpc(int npc_role, int find_type, uint skip_count, bool sync_lock)
 {
 	Npc* npc=NULL;
 
@@ -1196,7 +1197,7 @@ Critter* Map::GetNpc(int npc_role, int find_type, DWORD skip_count, bool sync_lo
 	return npc;
 }
 
-Critter* Map::GetHexCritter(WORD hx, WORD hy, bool dead, bool sync_lock)
+Critter* Map::GetHexCritter(ushort hx, ushort hy, bool dead, bool sync_lock)
 {
 	if(!IsFlagCritter(hx,hy,dead)) return NULL;
 
@@ -1238,7 +1239,7 @@ Critter* Map::GetHexCritter(WORD hx, WORD hy, bool dead, bool sync_lock)
 	return cr;
 }
 
-void Map::GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool sync_lock)
+void Map::GetCrittersHex(ushort hx, ushort hy, uint radius, int find_type, CrVec& critters, bool sync_lock)
 {
 	dataLocker.Lock();
 	CrVec find_critters;
@@ -1351,28 +1352,28 @@ void Map::GetNpcs(PcVec& npcs, bool sync_lock)
 	}
 }
 
-DWORD Map::GetCrittersCount()
+uint Map::GetCrittersCount()
 {
 	SCOPE_LOCK(dataLocker);
-	DWORD count=mapCritters.size();
+	uint count=mapCritters.size();
 	return count;
 }
 
-DWORD Map::GetPlayersCount()
+uint Map::GetPlayersCount()
 {
 	SCOPE_LOCK(dataLocker);
-	DWORD count=mapPlayers.size();
+	uint count=mapPlayers.size();
 	return count;
 }
 
-DWORD Map::GetNpcsCount()
+uint Map::GetNpcsCount()
 {
 	SCOPE_LOCK(dataLocker);
-	DWORD count=mapNpcs.size();
+	uint count=mapNpcs.size();
 	return count;
 }
 
-void Map::SendEffect(WORD eff_pid, WORD hx, WORD hy, WORD radius)
+void Map::SendEffect(ushort eff_pid, ushort hx, ushort hy, ushort radius)
 {
 	SCOPE_LOCK(dataLocker);
 
@@ -1383,7 +1384,7 @@ void Map::SendEffect(WORD eff_pid, WORD hx, WORD hy, WORD radius)
 	}
 }
 
-void Map::SendFlyEffect(WORD eff_pid, DWORD from_crid, DWORD to_crid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy)
+void Map::SendFlyEffect(ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
 	SCOPE_LOCK(dataLocker);
 
@@ -1400,8 +1401,8 @@ void Map::GetCritterCar(Critter* cr, Item* car)
 	if(!cr || !car || !car->IsCar()) return;
 
 	// Car position
-	WORD hx=car->ACC_HEX.HexX;
-	WORD hy=car->ACC_HEX.HexY;
+	ushort hx=car->ACC_HEX.HexX;
+	ushort hy=car->ACC_HEX.HexY;
 
 	// Move car from map to inventory
 	EraseItem(car->GetId());
@@ -1420,12 +1421,12 @@ void Map::GetCritterCar(Critter* cr, Item* car)
 	}
 }
 
-void Map::SetCritterCar(WORD hx, WORD hy, Critter* cr, Item* car)
+void Map::SetCritterCar(ushort hx, ushort hy, Critter* cr, Item* car)
 {
 	// Check
 	if(hx>=GetMaxHexX() || hy>=GetMaxHexY() || !cr || !car || !car->IsCar())
 	{
-		WriteLog(__FUNCTION__" - Generic error, hx<%u>, hy<%u>, critter pointer<%p>, car pointer<%p>, is car<%d>.\n",hx,hy,cr,car,car && car->IsCar()?1:0);
+		WriteLog(_FUNC_," - Generic error, hx<%u>, hy<%u>, critter pointer<%p>, car pointer<%p>, is car<%d>.\n",hx,hy,cr,car,car && car->IsCar()?1:0);
 		return;
 	}
 
@@ -1437,15 +1438,15 @@ void Map::SetCritterCar(WORD hx, WORD hy, Critter* cr, Item* car)
 	// Move car bags from inventory to map
 	for(int i=0;i<ITEM_MAX_CHILDS;i++)
 	{
-		WORD child_pid=car->Proto->ChildPid[i];
+		ushort child_pid=car->Proto->ChildPid[i];
 		if(!child_pid) continue;
 
 		Item* child=cr->GetItemByPid(child_pid);
 		if(!child) continue;
 
 		// Move to position
-		WORD child_hx=hx;
-		WORD child_hy=hy;
+		ushort child_hx=hx;
+		ushort child_hy=hy;
 		FOREACH_PROTO_ITEM_LINES(car->Proto->ChildLines[i],child_hx,child_hy,GetMaxHexX(),GetMaxHexY(),;);
 
 		cr->EraseItem(child,false);
@@ -1454,7 +1455,7 @@ void Map::SetCritterCar(WORD hx, WORD hy, Critter* cr, Item* car)
 	}
 }
 
-bool Map::IsPlaceForItem(WORD hx, WORD hy, ProtoItem* proto_item)
+bool Map::IsPlaceForItem(ushort hx, ushort hy, ProtoItem* proto_item)
 {
 	if(!IsHexPassed(hx,hy)) return false;
 
@@ -1466,7 +1467,7 @@ bool Map::IsPlaceForItem(WORD hx, WORD hy, ProtoItem* proto_item)
 	return true;
 }
 
-void Map::PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void Map::PlaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item)
 {
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
 	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
@@ -1475,7 +1476,7 @@ void Map::PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 	);
 }
 
-void Map::ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
+void Map::ReplaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item)
 {
 	bool raked=FLAG(proto_item->Flags,ITEM_SHOOT_THRU);
 	FOREACH_PROTO_ITEM_LINES(proto_item->BlockLines,hx,hy,GetMaxHexX(),GetMaxHexY(),
@@ -1492,10 +1493,10 @@ void Map::ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item)
 	);
 }
 
-Item* Map::GetItemChild(WORD hx, WORD hy, ProtoItem* proto_item, DWORD child_index)
+Item* Map::GetItemChild(ushort hx, ushort hy, ProtoItem* proto_item, uint child_index)
 {
 	// Get child pid
-	WORD child_pid=proto_item->ChildPid[child_index];
+	ushort child_pid=proto_item->ChildPid[child_index];
  	if(!child_pid) return NULL;
 
 	// Move to position
@@ -1508,23 +1509,23 @@ Item* Map::GetItemChild(WORD hx, WORD hy, ProtoItem* proto_item, DWORD child_ind
 bool Map::PrepareScriptFunc(int num_scr_func)
 {
 	if(FuncId[num_scr_func]<=0) return false;
-	return Script::PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid()));
+	return Script::PrepareContext(FuncId[num_scr_func],_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid()));
 }
 
 bool Map::ParseScript(const char* script, bool first_time)
 {
 	if(script && script[0])
 	{
-		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Map&,bool)");
+		uint func_num=Script::GetScriptFuncNum(script,"void %s(Map&,bool)");
 		if(!func_num)
 		{
-			WriteLog(__FUNCTION__" - Script<%s> bind fail, map pid<%u>.\n",script,GetPid());
+			WriteLog(_FUNC_," - Script<%s> bind fail, map pid<%u>.\n",script,GetPid());
 			return false;
 		}
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgBool(first_time);
@@ -1612,18 +1613,18 @@ void Map::EventTurnBasedProcess(Critter* cr, bool begin_turn)
 	}
 }
 
-void Map::SetLoopTime(DWORD loop_num, DWORD ms)
+void Map::SetLoopTime(uint loop_num, uint ms)
 {
 	if(loop_num>=MAP_LOOP_FUNC_MAX) return;
 	LoopWaitTick[loop_num]=ms;
 }
 
-BYTE Map::GetRain()
+uchar Map::GetRain()
 {
 	return Data.MapRain;
 }
 
-void Map::SetRain(BYTE capacity)
+void Map::SetRain(uchar capacity)
 {
 	if(Data.MapRain==capacity) return;
 	Data.MapRain=capacity;
@@ -1656,15 +1657,15 @@ void Map::SetTime(int time)
 	}
 }
 
-DWORD Map::GetDayTime(DWORD day_part)
+uint Map::GetDayTime(uint day_part)
 {
 	SCOPE_LOCK(dataLocker);
 
-	DWORD result=(day_part<4?Data.MapDayTime[day_part]:0);
+	uint result=(day_part<4?Data.MapDayTime[day_part]:0);
 	return result;
 }
 
-void Map::SetDayTime(DWORD day_part, DWORD time)
+void Map::SetDayTime(uint day_part, uint time)
 {
 	if(day_part<4)
 	{
@@ -1684,7 +1685,7 @@ void Map::SetDayTime(DWORD day_part, DWORD time)
 	}
 }
 
-void Map::GetDayColor(DWORD day_part, BYTE& r, BYTE& g, BYTE& b)
+void Map::GetDayColor(uint day_part, uchar& r, uchar& g, uchar& b)
 {
 	if(day_part<4)
 	{
@@ -1696,7 +1697,7 @@ void Map::GetDayColor(DWORD day_part, BYTE& r, BYTE& g, BYTE& b)
 	}
 }
 
-void Map::SetDayColor(DWORD day_part, BYTE r, BYTE g, BYTE b)
+void Map::SetDayColor(uint day_part, uchar r, uchar g, uchar b)
 {
 	if(day_part<4)
 	{
@@ -1714,15 +1715,15 @@ void Map::SetDayColor(DWORD day_part, BYTE r, BYTE g, BYTE b)
 	}
 }
 
-int Map::GetData(DWORD index)
+int Map::GetData(uint index)
 {
 	SCOPE_LOCK(dataLocker);
 
-	DWORD result=(index<MAP_MAX_DATA?Data.UserData[index]:0);
+	uint result=(index<MAP_MAX_DATA?Data.UserData[index]:0);
 	return result;
 }
 
-void Map::SetData(DWORD index, int value)
+void Map::SetData(uint index, int value)
 {
 	if(index<MAP_MAX_DATA)
 	{
@@ -1732,7 +1733,7 @@ void Map::SetData(DWORD index, int value)
 	}
 }
 
-void Map::SetText(WORD hx, WORD hy, DWORD color, const char* text, WORD text_len, WORD intellect, bool unsafe_text)
+void Map::SetText(ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text)
 {
 	if(hx>=GetMaxHexX() || hy>=GetMaxHexY()) return;
 
@@ -1745,7 +1746,7 @@ void Map::SetText(WORD hx, WORD hy, DWORD color, const char* text, WORD text_len
 	}
 }
 
-void Map::SetTextMsg(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str)
+void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str)
 {
 	if(hx>=GetMaxHexX() || hy>=GetMaxHexY() || !num_str) return;
 
@@ -1758,7 +1759,7 @@ void Map::SetTextMsg(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str
 	}
 }
 
-void Map::SetTextMsgLex(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str, const char* lexems, WORD lexems_len)
+void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len)
 {
 	if(hx>=GetMaxHexX() || hy>=GetMaxHexY() || !num_str) return;
 
@@ -1812,7 +1813,7 @@ void Map::BeginTurnBased(Critter* first_cr)
 	IsTurnBasedTimeout=false;
 
 	EventTurnBasedBegin();
-	if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
 		Script::SetArgObject(this);
 		Script::RunPrepared();
@@ -1828,7 +1829,7 @@ void Map::EndTurnBased()
 	GetCritters(critters,true);
 
 	EventTurnBasedEnd();
-	if(Script::PrepareContext(ServerFunctions.TurnBasedEnd,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Script::PrepareContext(ServerFunctions.TurnBasedEnd,_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
 		Script::SetArgObject(this);
 		Script::RunPrepared();
@@ -1872,19 +1873,19 @@ void Map::ProcessTurnBased()
 
 bool Map::IsCritterTurn(Critter* cr)
 {
-	if(TurnSequenceCur>=TurnSequence.size()) return false;
+	if(TurnSequenceCur>=(int)TurnSequence.size()) return false;
 	return TurnSequence[TurnSequenceCur]==cr->GetId();
 }
 
-DWORD Map::GetCritterTurnId()
+uint Map::GetCritterTurnId()
 {
-	if(TurnSequenceCur>=TurnSequence.size()) return 0;
+	if(TurnSequenceCur>=(int)TurnSequence.size()) return 0;
 	return TurnSequence[TurnSequenceCur];
 }
 
-DWORD Map::GetCritterTurnTime()
+uint Map::GetCritterTurnTime()
 {
-	DWORD tick=Timer::GameTick();
+	uint tick=Timer::GameTick();
 	return TurnBasedEndTick>tick?TurnBasedEndTick-tick:0;
 }
 
@@ -1903,7 +1904,7 @@ void Map::NextCritterTurn()
 		{
 			cr->EventTurnBasedProcess(this,false);
 			EventTurnBasedProcess(cr,false);
-			if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,_FUNC_,cr->GetInfo()))
 			{
 				Script::SetArgObject(this);
 				Script::SetArgObject(cr);
@@ -1926,7 +1927,7 @@ void Map::NextCritterTurn()
 
 	// Begin next
 	TurnSequenceCur++;
-	if(TurnSequenceCur>=TurnSequence.size()) // Next round
+	if(TurnSequenceCur>=(int)TurnSequence.size()) // Next round
 	{
 		CrVec critters;
 		GetCritters(critters,true);
@@ -1938,7 +1939,7 @@ void Map::NextCritterTurn()
 		TurnBasedTurn=0;
 
 		EventTurnBasedBegin();
-		if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,CALL_FUNC_STR,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+		if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
 		{
 			Script::SetArgObject(this);
 			Script::RunPrepared();
@@ -1996,7 +1997,7 @@ void Map::NextCritterTurn()
 
 		cr->EventTurnBasedProcess(this,true);
 		EventTurnBasedProcess(cr,true);
-		if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.TurnBasedProcess,_FUNC_,cr->GetInfo()))
 		{
 			Script::SetArgObject(this);
 			Script::SetArgObject(cr);
@@ -2056,7 +2057,7 @@ void Map::GenerateSequence(CrVec& critters, Critter* first_cr)
 /* Location                                                             */
 /************************************************************************/
 
-bool Location::Init(ProtoLocation* proto, WORD wx, WORD wy)
+bool Location::Init(ProtoLocation* proto, ushort wx, ushort wy)
 {
 	if(!proto) return false;
 	Proto=proto;
@@ -2105,7 +2106,7 @@ void Location::GetMaps(MapVec& maps, bool lock)
 	if(lock) for(MapVecIt it=maps.begin(),end=maps.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-Map* Location::GetMap(DWORD count)
+Map* Location::GetMap(uint count)
 {
 	if(count>=locMaps.size()) return NULL;
 	Map* map=locMaps[count];
@@ -2113,14 +2114,14 @@ Map* Location::GetMap(DWORD count)
 	return map;
 }
 
-bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& dir)
+bool Location::GetTransit(Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir)
 {
 	if(!from_map || hx>=from_map->GetMaxHexX() || hy>=from_map->GetMaxHexY()) return false;
 
 	MapObject* mobj=from_map->Proto->GetMapGrid(hx,hy);
 	if(!mobj) return false;
 
-	if(mobj->MScenery.ToMapPid==0 || mobj->MScenery.ToMapPid>0xFFFF)
+	if(mobj->MScenery.ToMapPid==0 || mobj->MScenery.ToMapPid>=MAX_PROTO_MAPS)
 	{
 		id_map=0;
 		return true;
@@ -2154,7 +2155,7 @@ bool Location::GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE
 	return true;
 }
 
-bool Location::IsCanEnter(DWORD players_count)
+bool Location::IsCanEnter(uint players_count)
 {
 	if(!Proto->MaxPlayers) return true;
 

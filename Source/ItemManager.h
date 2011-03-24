@@ -15,12 +15,12 @@ private:
 	bool isActive;
 	ProtoItem allProto[MAX_ITEM_PROTOTYPES]; // All
 	ProtoItemVec typeProto[ITEM_MAX_TYPES]; // By type
-	DWORD protoHash[ITEM_MAX_TYPES]; // Hash types protos
+	uint protoHash[ITEM_MAX_TYPES]; // Hash types protos
 	char* protoScript[MAX_ITEM_PROTOTYPES];
 
 public:
 	ProtoItemVec& GetProtos(int type){return typeProto[type];}
-	DWORD GetProtosHash(int type){return protoHash[type];}
+	uint GetProtosHash(int type){return protoHash[type];}
 
 	bool Init();
 	bool IsInit(){return isActive;}
@@ -38,20 +38,20 @@ public:
 #endif
 
 	void ParseProtos(ProtoItemVec& protos, const char* collection_name = NULL);
-	ProtoItem* GetProtoItem(WORD pid);
+	ProtoItem* GetProtoItem(ushort pid);
 	ProtoItem* GetAllProtos();
 	void GetCopyAllProtos(ProtoItemVec& protos);
-	bool IsInitProto(WORD pid);
-	const char* GetProtoScript(WORD pid);
+	bool IsInitProto(ushort pid);
+	const char* GetProtoScript(ushort pid);
 	void ClearProtos(int type = 0xFF); // 0xFF - All
-	void ClearProto(WORD pid);
+	void ClearProto(ushort pid);
 
 #ifdef FONLINE_SERVER
 private:
 	ItemPtrMap gameItems;
-	DwordVec itemToDelete;
-	DwordVec itemToDeleteCount;
-	DWORD lastItemId;
+	UIntVec itemToDelete;
+	UIntVec itemToDeleteCount;
+	uint lastItemId;
 	Mutex itemLocker;
 
 public:
@@ -61,13 +61,13 @@ public:
 	void RunInitScriptItems();
 
 	void GetGameItems(ItemPtrVec& items);
-	DWORD GetItemsCount();
+	uint GetItemsCount();
 	void SetCritterItems(Critter* cr);
-	void GetItemIds(DwordSet& item_ids);
+	void GetItemIds(UIntSet& item_ids);
 
-	Item* CreateItem(WORD pid, DWORD count, DWORD item_id = 0);
-	Item* SplitItem(Item* item, DWORD count);
-	Item* GetItem(DWORD item_id, bool sync_lock);
+	Item* CreateItem(ushort pid, uint count, uint item_id = 0);
+	Item* SplitItem(Item* item, uint count);
+	Item* GetItem(uint item_id, bool sync_lock);
 
 	void ItemToGarbage(Item* item);
 	void ItemGarbager();
@@ -75,19 +75,19 @@ public:
 	void NotifyChangeItem(Item* item);
 
 	void EraseItemHolder(Item* item);
-	void MoveItem(Item* item, DWORD count, Critter* to_cr);
-	void MoveItem(Item* item, DWORD count, Map* to_map, WORD to_hx, WORD to_hy);
-	void MoveItem(Item* item, DWORD count, Item* to_cont, DWORD stack_id);
+	void MoveItem(Item* item, uint count, Critter* to_cr);
+	void MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy);
+	void MoveItem(Item* item, uint count, Item* to_cont, uint stack_id);
 
-	Item* AddItemContainer(Item* cont, WORD pid, DWORD count, DWORD stack_id);
-	Item* AddItemCritter(Critter* cr, WORD pid, DWORD count);
-	bool SubItemCritter(Critter* cr, WORD pid, DWORD count, ItemPtrVec* erased_items = NULL);
-	bool SetItemCritter(Critter* cr, WORD pid, DWORD count);
-	bool MoveItemCritters(Critter* from_cr, Critter* to_cr, DWORD item_id, DWORD count);
-	bool MoveItemCritterToCont(Critter* from_cr, Item* to_cont, DWORD item_id, DWORD count, DWORD stack_id);
-	bool MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, DWORD item_id, DWORD count);
-	bool MoveItemsContainers(Item* from_cont, Item* to_cont, DWORD from_stack_id, DWORD to_stack_id);
-	bool MoveItemsContToCritter(Item* from_cont, Critter* to_cr, DWORD stack_id);
+	Item* AddItemContainer(Item* cont, ushort pid, uint count, uint stack_id);
+	Item* AddItemCritter(Critter* cr, ushort pid, uint count);
+	bool SubItemCritter(Critter* cr, ushort pid, uint count, ItemPtrVec* erased_items = NULL);
+	bool SetItemCritter(Critter* cr, ushort pid, uint count);
+	bool MoveItemCritters(Critter* from_cr, Critter* to_cr, uint item_id, uint count);
+	bool MoveItemCritterToCont(Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id);
+	bool MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, uint item_id, uint count);
+	bool MoveItemsContainers(Item* from_cont, Item* to_cont, uint from_stack_id, uint to_stack_id);
+	bool MoveItemsContToCritter(Item* from_cont, Critter* to_cr, uint stack_id);
 
 	// Radio
 private:
@@ -96,10 +96,10 @@ private:
 
 public:
 	void RadioRegister(Item* radio, bool add);
-	void RadioSendText(Critter* cr, const char* text, WORD text_len, bool unsafe_text, WORD text_msg, DWORD num_str, WordVec& channels);
-	void RadioSendTextEx(WORD channel, int broadcast_type, DWORD from_map_id, WORD from_wx, WORD from_wy,
-		const char* text, WORD text_len, WORD intellect, bool unsafe_text,
-		WORD text_msg, DWORD num_str);
+	void RadioSendText(Critter* cr, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels);
+	void RadioSendTextEx(ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy,
+		const char* text, ushort text_len, ushort intellect, bool unsafe_text,
+		ushort text_msg, uint num_str);
 #endif // FONLINE_SERVER
 
 #ifdef FONLINE_MAPPER
@@ -108,13 +108,13 @@ public:
 
 	// Items statistics
 private:
-	__int64 itemCount[MAX_ITEM_PROTOTYPES];
+	int64 itemCount[MAX_ITEM_PROTOTYPES];
 	MutexSpinlock itemCountLocker;
 
 public:
-	void AddItemStatistics(WORD pid, DWORD val);
-	void SubItemStatistics(WORD pid, DWORD val);
-	__int64 GetItemStatistics(WORD pid);
+	void AddItemStatistics(ushort pid, uint val);
+	void SubItemStatistics(ushort pid, uint val);
+	int64 GetItemStatistics(ushort pid);
 	string GetItemsStatistics();
 
 	ItemManager():isActive(false){MEMORY_PROCESS(MEMORY_STATIC,sizeof(ItemManager));};

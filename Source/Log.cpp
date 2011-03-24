@@ -7,7 +7,7 @@
 
 Mutex LogLocker;
 int LoggingType=0;
-static HANDLE LogFileHadle=NULL;
+void* LogFileHandle=NULL;
 LogFuncPtr LogFunction=NULL;
 HWND LogDlgItem=NULL;
 std::string LogBufferStr;
@@ -15,17 +15,17 @@ HANDLE LogBufferEvent;
 bool LoggingWithTime=false;
 bool LoggingWithThread=false;
 THREAD char LogThreadName[64]={0};
-DWORD StartLogTime=Timer::FastTick();
+uint StartLogTime=Timer::FastTick();
 
 void LogToFile(const char* fname)
 {
 	LogFinish(LOG_FILE);
 	if(!fname) return;
 
-	LogFileHadle=CreateFile(fname,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
-	if(LogFileHadle==INVALID_HANDLE_VALUE)
+	LogFileHandle=FileOpen(fname,true);
+	if(!LogFileHandle)
 	{
-		LogFileHadle=NULL;
+		LogFileHandle=NULL;
 		return;
 	}
 	LoggingType|=LOG_FILE;
@@ -76,8 +76,8 @@ void LogFinish(int log_type)
 	log_type&=LoggingType;
 	if(log_type&LOG_FILE)
 	{
-		if(LogFileHadle) CloseHandle(LogFileHadle);
-		LogFileHadle=NULL;
+		if(LogFileHandle) FileClose(LogFileHandle);
+		LogFileHandle=NULL;
 	}
 	if(log_type&LOG_FUNC) LogFunction=NULL;
 	if(log_type&LOG_DLG) LogDlgItem=NULL;
@@ -89,7 +89,7 @@ void LogFinish(int log_type)
 	LoggingType^=log_type;
 }
 
-void WriteLog(const char* frmt, ...)
+void WriteLog(const char* func, const char* frmt, ...)
 {
 	if(!LoggingType) return;
 
@@ -105,10 +105,10 @@ void WriteLog(const char* frmt, ...)
 	char str_time[64]={0};
 	if(LoggingWithTime)
 	{
-		DWORD delta=Timer::FastTick()-StartLogTime;
-		DWORD seconds=delta/1000;
-		DWORD minutes=seconds/60%60;
-		DWORD hours=seconds/60/60;
+		uint delta=Timer::FastTick()-StartLogTime;
+		uint seconds=delta/1000;
+		uint minutes=seconds/60%60;
+		uint hours=seconds/60/60;
 		if(hours) sprintf(str_time,"[%03u:%02u:%02u:%03u]",hours,minutes,seconds%60,delta%1000);
 		else if(minutes) sprintf(str_time,"[%02u:%02u:%03u]",minutes,seconds%60,delta%1000);
 		else sprintf(str_time,"[%02u:%03u]",seconds%60,delta%1000);
@@ -118,17 +118,21 @@ void WriteLog(const char* frmt, ...)
 	if(str_tid[0]) StringAppend(str,str_tid);
 	if(str_time[0]) StringAppend(str,str_time);
 	if(str_tid[0] || str_time[0]) StringAppend(str," ");
+	if(func) StringAppend(str,func);
 
 	size_t len=strlen(str);
 	va_list list;
 	va_start(list,frmt);
+#ifdef FO_MSVC
 	vsprintf_s(&str[len],MAX_LOGTEXT-len,frmt,list);
+#else
+    vsprintf(&str[len],frmt,list);
+#endif
 	va_end(list);
 
 	if(LoggingType&LOG_FILE)
 	{
-		DWORD br;
-		WriteFile(LogFileHadle,str,strlen(str),&br,NULL);
+		FileWrite(LogFileHandle,str,strlen(str));
 	}
 	if(LoggingType&LOG_FUNC)
 	{
@@ -169,12 +173,3 @@ void LogGetBuffer(std::string& buf)
 	buf=LogBufferStr;
 	LogBufferStr.clear();
 }
-
-
-
-
-
-
-
-
-

@@ -37,7 +37,7 @@ public:
 
 private:
 	Mutex dataLocker;
-	BYTE* hexFlags;
+	uchar* hexFlags;
 	CrVec mapCritters;
 	ClVec mapPlayers;
 	PcVec mapNpcs;
@@ -47,25 +47,25 @@ private:
 public:
 	struct MapData
 	{
-		DWORD MapId;
-		WORD MapPid;
-		BYTE MapRain;
+		uint MapId;
+		ushort MapPid;
+		uchar MapRain;
 		bool IsTurnBasedAviable;
 		int MapTime;
-		DWORD ScriptId;
+		uint ScriptId;
 		int MapDayTime[4];
-		BYTE MapDayColor[12];
-		DWORD Reserved[20];
+		uchar MapDayColor[12];
+		uint Reserved[20];
 		int UserData[MAP_MAX_DATA];
 	} Data;
 
 	ProtoMap* Proto;
 
 	bool NeedProcess;
-	DWORD FuncId[MAP_EVENT_MAX];
-	DWORD LoopEnabled[MAP_LOOP_FUNC_MAX];
-	DWORD LoopLastTick[MAP_LOOP_FUNC_MAX];
-	DWORD LoopWaitTick[MAP_LOOP_FUNC_MAX];
+	uint FuncId[MAP_EVENT_MAX];
+	uint LoopEnabled[MAP_LOOP_FUNC_MAX];
+	uint LoopLastTick[MAP_LOOP_FUNC_MAX];
+	uint LoopWaitTick[MAP_LOOP_FUNC_MAX];
 
 	bool Init(ProtoMap* proto, Location* location);
 	bool Generate();
@@ -75,85 +75,85 @@ public:
 	void Unlock(){dataLocker.Unlock();}
 
 	Location* GetLocation(bool lock);
-	WORD GetMaxHexX(){return Proto->Header.MaxHexX;}
-	WORD GetMaxHexY(){return Proto->Header.MaxHexY;}
-	void SetLoopTime(DWORD loop_num, DWORD ms);
-	BYTE GetRain();
-	void SetRain(BYTE capacity);
+	ushort GetMaxHexX(){return Proto->Header.MaxHexX;}
+	ushort GetMaxHexY(){return Proto->Header.MaxHexY;}
+	void SetLoopTime(uint loop_num, uint ms);
+	uchar GetRain();
+	void SetRain(uchar capacity);
 	int GetTime();
 	void SetTime(int time);
-	DWORD GetDayTime(DWORD day_part);
-	void SetDayTime(DWORD day_part, DWORD time);
-	void GetDayColor(DWORD day_part, BYTE& r, BYTE& g, BYTE& b);
-	void SetDayColor(DWORD day_part, BYTE r, BYTE g, BYTE b);
-	int GetData(DWORD index);
-	void SetData(DWORD index, int value);
+	uint GetDayTime(uint day_part);
+	void SetDayTime(uint day_part, uint time);
+	void GetDayColor(uint day_part, uchar& r, uchar& g, uchar& b);
+	void SetDayColor(uint day_part, uchar r, uchar g, uchar b);
+	int GetData(uint index);
+	void SetData(uint index, int value);
 
-	void SetText(WORD hx, WORD hy, DWORD color, const char* text, WORD text_len, WORD intellect, bool unsafe_text);
-	void SetTextMsg(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str);
-	void SetTextMsgLex(WORD hx, WORD hy, DWORD color, WORD text_msg, DWORD num_str, const char* lexems, WORD lexems_len);
+	void SetText(ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text);
+	void SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str);
+	void SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len);
 
-	bool GetStartCoord(WORD& hx, WORD& hy, BYTE& dir, DWORD entire);
-	bool GetStartCoordCar(WORD& hx, WORD& hy, ProtoItem* proto_item);
-	bool FindStartHex(WORD& hx, WORD& hy, DWORD multihex, DWORD seek_radius, bool skip_unsafe);
+	bool GetStartCoord(ushort& hx, ushort& hy, uchar& dir, uint entire);
+	bool GetStartCoordCar(ushort& hx, ushort& hy, ProtoItem* proto_item);
+	bool FindStartHex(ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe);
 
-	void SetId(DWORD id, WORD pid){Data.MapId=id; Data.MapPid=pid;}
-	DWORD GetId(){return Data.MapId;}
-	WORD GetPid(){return Data.MapPid;}
+	void SetId(uint id, ushort pid){Data.MapId=id; Data.MapPid=pid;}
+	uint GetId(){return Data.MapId;}
+	ushort GetPid(){return Data.MapPid;}
 
 	void AddCritter(Critter* cr);
 	void AddCritterEvents(Critter* cr);
 	void EraseCritter(Critter* cr);
 	void KickPlayersToGlobalMap();
 
-	bool AddItem(Item* item, WORD hx, WORD hy);
-	void SetItem(Item* item, WORD hx, WORD hy);
-	void EraseItem(DWORD item_id);
+	bool AddItem(Item* item, ushort hx, ushort hy);
+	void SetItem(Item* item, ushort hx, ushort hy);
+	void EraseItem(uint item_id);
 	void ChangeDataItem(Item* item);
 	void ChangeViewItem(Item* item);
-	void AnimateItem(Item* item, BYTE from_frm, BYTE to_frm);
+	void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
 
-	Item* GetItem(DWORD item_id);
-	Item* GetItemHex(WORD hx, WORD hy, WORD item_pid, Critter* picker);
-	Item* GetItemDoor(WORD hx, WORD hy);
-	Item* GetItemCar(WORD hx, WORD hy);
-	Item* GetItemContainer(WORD hx, WORD hy);
-	Item* GetItemGag(WORD hx, WORD hy);
+	Item* GetItem(uint item_id);
+	Item* GetItemHex(ushort hx, ushort hy, ushort item_pid, Critter* picker);
+	Item* GetItemDoor(ushort hx, ushort hy);
+	Item* GetItemCar(ushort hx, ushort hy);
+	Item* GetItemContainer(ushort hx, ushort hy);
+	Item* GetItemGag(ushort hx, ushort hy);
 
 	ItemPtrVec& GetItemsNoLock(){return hexItems;}
-	void GetItemsHex(WORD hx, WORD hy, ItemPtrVec& items, bool lock);
-	void GetItemsHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, ItemPtrVec& items, bool lock);
-	void GetItemsPid(WORD pid, ItemPtrVec& items, bool lock);
+	void GetItemsHex(ushort hx, ushort hy, ItemPtrVec& items, bool lock);
+	void GetItemsHexEx(ushort hx, ushort hy, uint radius, ushort pid, ItemPtrVec& items, bool lock);
+	void GetItemsPid(ushort pid, ItemPtrVec& items, bool lock);
 	void GetItemsType(int type, ItemPtrVec& items, bool lock);
-	void GetItemsTrap(WORD hx, WORD hy, ItemPtrVec& items, bool lock);
-	void RecacheHexBlock(WORD hx, WORD hy);
-	void RecacheHexShoot(WORD hx, WORD hy);
-	void RecacheHexBlockShoot(WORD hx, WORD hy);
+	void GetItemsTrap(ushort hx, ushort hy, ItemPtrVec& items, bool lock);
+	void RecacheHexBlock(ushort hx, ushort hy);
+	void RecacheHexShoot(ushort hx, ushort hy);
+	void RecacheHexBlockShoot(ushort hx, ushort hy);
 
-	WORD GetHexFlags(WORD hx, WORD hy);
-	void SetHexFlag(WORD hx, WORD hy, BYTE flag);
-	void UnsetHexFlag(WORD hx, WORD hy, BYTE flag);
+	ushort GetHexFlags(ushort hx, ushort hy);
+	void SetHexFlag(ushort hx, ushort hy, uchar flag);
+	void UnsetHexFlag(ushort hx, ushort hy, uchar flag);
 
-	bool IsHexPassed(WORD hx, WORD hy);
-	bool IsHexRaked(WORD hx, WORD hy);
-	bool IsHexesPassed(WORD hx, WORD hy, DWORD radius);
-	bool IsMovePassed(WORD hx, WORD hy, BYTE dir, DWORD multihex);
-	bool IsHexItem(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_ITEM);}
+	bool IsHexPassed(ushort hx, ushort hy);
+	bool IsHexRaked(ushort hx, ushort hy);
+	bool IsHexesPassed(ushort hx, ushort hy, uint radius);
+	bool IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex);
+	bool IsHexItem(ushort hx, ushort hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_ITEM);}
 
-	bool IsHexTrigger(WORD hx, WORD hy){return FLAG(Proto->HexFlags[hy*GetMaxHexX()+hx],FH_TRIGGER);}
-	bool IsHexTrap(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_WALK_ITEM);}
+	bool IsHexTrigger(ushort hx, ushort hy){return FLAG(Proto->HexFlags[hy*GetMaxHexX()+hx],FH_TRIGGER);}
+	bool IsHexTrap(ushort hx, ushort hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_WALK_ITEM);}
 
-	bool IsHexCritter(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_CRITTER|FH_DEAD_CRITTER);}
-	bool IsHexGag(WORD hx, WORD hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_GAG_ITEM);}
+	bool IsHexCritter(ushort hx, ushort hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_CRITTER|FH_DEAD_CRITTER);}
+	bool IsHexGag(ushort hx, ushort hy){return FLAG(hexFlags[hy*GetMaxHexX()+hx],FH_GAG_ITEM);}
 
-	bool IsFlagCritter(WORD hx, WORD hy, bool dead);
-	void SetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead);
-	void UnsetFlagCritter(WORD hx, WORD hy, DWORD multihex, bool dead);
-	DWORD GetNpcCount(int npc_role, int find_type);
-	Critter* GetCritter(DWORD crid, bool sync_lock);
-	Critter* GetNpc(int npc_role, int find_type, DWORD skip_count, bool sync_lock);
-	Critter* GetHexCritter(WORD hx, WORD hy, bool dead, bool sync_lock);
-	void GetCrittersHex(WORD hx, WORD hy, DWORD radius, int find_type, CrVec& critters, bool sync_lock); // Critters append
+	bool IsFlagCritter(ushort hx, ushort hy, bool dead);
+	void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
+	void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
+	uint GetNpcCount(int npc_role, int find_type);
+	Critter* GetCritter(uint crid, bool sync_lock);
+	Critter* GetNpc(int npc_role, int find_type, uint skip_count, bool sync_lock);
+	Critter* GetHexCritter(ushort hx, ushort hy, bool dead, bool sync_lock);
+	void GetCrittersHex(ushort hx, ushort hy, uint radius, int find_type, CrVec& critters, bool sync_lock); // Critters append
 
 	void GetCritters(CrVec& critters, bool sync_lock);
 	void GetPlayers(ClVec& players, bool sync_lock);
@@ -161,24 +161,24 @@ public:
 	CrVec& GetCrittersNoLock(){return mapCritters;}
 	ClVec& GetPlayersNoLock(){return mapPlayers;}
 	PcVec& GetNpcsNoLock(){return mapNpcs;}
-	DWORD GetCrittersCount();
-	DWORD GetPlayersCount();
-	DWORD GetNpcsCount();
+	uint GetCrittersCount();
+	uint GetPlayersCount();
+	uint GetNpcsCount();
 
 	bool IsNoLogOut(){return Proto->Header.NoLogOut;}
 
 	// Sends
-	void SendEffect(WORD eff_pid, WORD hx, WORD hy, WORD radius);
-	void SendFlyEffect(WORD eff_pid, DWORD from_crid, DWORD to_crid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
+	void SendEffect(ushort eff_pid, ushort hx, ushort hy, ushort radius);
+	void SendFlyEffect(ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
 
 	// Cars
 public:
 	void GetCritterCar(Critter* cr, Item* car);
-	void SetCritterCar(WORD hx, WORD hy, Critter* cr, Item* car);
-	bool IsPlaceForItem(WORD hx, WORD hy, ProtoItem* proto_item);
-	void PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
-	void ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
-	Item* GetItemChild(WORD hx, WORD hy, ProtoItem* proto_item, DWORD child_index);
+	void SetCritterCar(ushort hx, ushort hy, Critter* cr, Item* car);
+	bool IsPlaceForItem(ushort hx, ushort hy, ProtoItem* proto_item);
+	void PlaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item);
+	void ReplaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item);
+	Item* GetItemChild(ushort hx, ushort hy, ProtoItem* proto_item, uint child_index);
 
 	// Events
 private:
@@ -198,23 +198,23 @@ public:
 	// Turn based game
 public:
 	bool IsTurnBasedOn;
-	DWORD TurnBasedEndTick;
+	uint TurnBasedEndTick;
 	int TurnSequenceCur;
-	DwordVec TurnSequence;
+	UIntVec TurnSequence;
 	bool IsTurnBasedTimeout;
-	DWORD TurnBasedBeginSecond;
+	uint TurnBasedBeginSecond;
 	bool NeedEndTurnBased;
-	DWORD TurnBasedRound;
-	DWORD TurnBasedTurn;
-	DWORD TurnBasedWholeTurn;
+	uint TurnBasedRound;
+	uint TurnBasedTurn;
+	uint TurnBasedWholeTurn;
 
 	void BeginTurnBased(Critter* first_cr);
 	void EndTurnBased();
 	bool TryEndTurnBased();
 	void ProcessTurnBased();
 	bool IsCritterTurn(Critter* cr);
-	DWORD GetCritterTurnId();
-	DWORD GetCritterTurnTime();
+	uint GetCritterTurnId();
+	uint GetCritterTurnTime();
 	void EndCritterTurn();
 	void NextCritterTurn();
 	void GenerateSequence(CrVec& critters, Critter* first_cr);
@@ -229,9 +229,9 @@ public:
 	void AddRef(){RefCounter++;}
 	void Release(){RefCounter--; if(RefCounter<=0) delete this;}
 };
-typedef map<DWORD,Map*,less<DWORD>> MapMap;
-typedef map<DWORD,Map*,less<DWORD>>::iterator MapMapIt;
-typedef map<DWORD,Map*,less<DWORD>>::value_type MapMapVal;
+typedef map<uint,Map*> MapMap;
+typedef map<uint,Map*>::iterator MapMapIt;
+typedef map<uint,Map*>::value_type MapMapVal;
 typedef vector<Map*> MapVec;
 typedef vector<Map*>::iterator MapVecIt;
 
@@ -239,16 +239,16 @@ class ProtoLocation
 {
 public:
 	bool IsInit;
-	WORD LocPid;
+	ushort LocPid;
 	string Name;
 
-	DWORD MaxPlayers;
-	WordVec ProtoMapPids;
-	WordVec AutomapsPids;
-	DwordPairVec Entrance;
+	uint MaxPlayers;
+	UShortVec ProtoMapPids;
+	UShortVec AutomapsPids;
+	UIntPairVec Entrance;
 	int ScriptBindId;
 
-	WORD Radius;
+	ushort Radius;
 	bool Visible;
 	bool AutoGarbage;
 	bool GeckVisible;
@@ -268,39 +268,39 @@ private:
 public:
 	struct LocData
 	{
-		DWORD LocId;
-		WORD LocPid;
-		WORD WX;
-		WORD WY;
-		WORD Radius;
+		uint LocId;
+		ushort LocPid;
+		ushort WX;
+		ushort WY;
+		ushort Radius;
 		bool Visible;
 		bool GeckVisible;
 		bool AutoGarbage;
 		bool ToGarbage;
-		DWORD Color;
-		DWORD Reserved3[59];
+		uint Color;
+		uint Reserved3[59];
 	} Data;
 
 	ProtoLocation* Proto;
 	volatile int GeckCount;
 
-	bool Init(ProtoLocation* proto, WORD wx, WORD wy);
+	bool Init(ProtoLocation* proto, ushort wx, ushort wy);
 	void Clear(bool full);
 	void Update();
 	bool IsVisible(){return Data.Visible || (Data.GeckVisible && GeckCount>0);}
-	DWORD GetId(){return Data.LocId;}
-	void SetId(DWORD _id){Data.LocId=_id;}
-	WORD GetPid(){return Data.LocPid;}
-	int GetRadius(){return Data.Radius;}
+	uint GetId(){return Data.LocId;}
+	void SetId(uint _id){Data.LocId=_id;}
+	ushort GetPid(){return Data.LocPid;}
+	uint GetRadius(){return Data.Radius;}
 	MapVec& GetMapsNoLock(){return locMaps;};
 	void GetMaps(MapVec& maps, bool lock);
-	DWORD GetMapsCount(){return locMaps.size();}
-	Map* GetMap(DWORD count);
-	bool GetTransit(Map* from_map, DWORD& id_map, WORD& hx, WORD& hy, BYTE& dir);
+	uint GetMapsCount(){return locMaps.size();}
+	Map* GetMap(uint count);
+	bool GetTransit(Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir);
 	bool IsAutomaps(){return !Proto->AutomapsPids.empty();}
-	bool IsAutomap(WORD map_pid){return std::find(Proto->AutomapsPids.begin(),Proto->AutomapsPids.end(),map_pid)!=Proto->AutomapsPids.end();}
-	WordVec& GetAutomaps(){return Proto->AutomapsPids;}
-	bool IsCanEnter(DWORD players_count);
+	bool IsAutomap(ushort map_pid){return std::find(Proto->AutomapsPids.begin(),Proto->AutomapsPids.end(),map_pid)!=Proto->AutomapsPids.end();}
+	UShortVec& GetAutomaps(){return Proto->AutomapsPids;}
+	bool IsCanEnter(uint players_count);
 
 	bool IsNoCrit();
 	bool IsNoPlayer();
@@ -313,9 +313,9 @@ public:
 	void Release(){RefCounter--; if(RefCounter<=0) delete this;}
 	Location():RefCounter(1),Proto(NULL),IsNotValid(false){ZeroMemory((void*)&Data,sizeof(Data));}
 };
-typedef map<DWORD,Location*,less<DWORD>> LocMap;
-typedef map<DWORD,Location*,less<DWORD>>::iterator LocMapIt;
-typedef map<DWORD,Location*,less<DWORD>>::value_type LocMapVal;
+typedef map<uint,Location*> LocMap;
+typedef map<uint,Location*>::iterator LocMapIt;
+typedef map<uint,Location*>::value_type LocMapVal;
 typedef vector<Location*> LocVec;
 typedef vector<Location*>::iterator LocVecIt;
 

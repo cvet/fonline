@@ -1,7 +1,7 @@
 #ifndef _GAP_FDAT_CFILE_H
 #define _GAP_FDAT_CFILE_H
 
-#include <windows.h>
+#include <Common.h>
 #include <zlib/zlib.h>
 #include "unlzss.h"
 
@@ -17,14 +17,14 @@
 // abstract class, parent to different File Handlers
 class CFile {
 protected:
-	HANDLE hFile; // archive file descriptor
+	void* hFile; // archive file descriptor
 	long beginPos, fileSize;
 		// starting position in archive and size of real file image
 public:
-	CFile (HANDLE file, long pos, long size):
+	CFile (void* file, long pos, long size):
 		hFile (file),
 		beginPos (pos),
-		fileSize (size) { SetFilePointer (hFile, beginPos, NULL, FILE_BEGIN); };
+		fileSize (size) { FileSetPointer (hFile, beginPos, SEEK_SET); };
 	virtual ~CFile() {};
 
 	virtual long getSize() { return fileSize; };
@@ -36,23 +36,23 @@ public:
 
 class CPlainFile: public CFile {
 public:
-	CPlainFile (HANDLE file, long pos, long size):
+	CPlainFile (void* file, long pos, long size):
 		CFile (file, pos, size) {};
 	virtual long seek (long dist, int from);
-	virtual long tell() { return SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - beginPos; };
+	virtual long tell() { return FileSetPointer(hFile, 0, SEEK_CUR) - beginPos; };
 	virtual int read (void* buf, long toRead, long* read);
 };
 
 class CPackedFile: public CFile {
 protected:
-	BYTE *skipper,
+	uchar *skipper,
 		*inBuf;
 	long packedSize;
 	long curPos; // position from beginning of unpacked image
 	virtual void skip (long dist);
 	virtual void reset() = 0;
 public:
-	CPackedFile (HANDLE file, long pos, long size, long packed):
+	CPackedFile (void* file, long pos, long size, long packed):
 		CFile (file, pos, size),
 		packedSize (packed),
 		curPos (0),
@@ -71,7 +71,7 @@ class C_Z_PackedFile: public CPackedFile {
 protected:
 	z_stream stream;
 public:
-	C_Z_PackedFile (HANDLE file, long pos, long size, long packed):
+	C_Z_PackedFile (void* file, long pos, long size, long packed):
 		CPackedFile (file, pos, size, packed) {
 			stream. zalloc = Z_NULL;
 			stream. zfree = Z_NULL;
@@ -88,7 +88,7 @@ public:
 protected:
 	virtual void reset() {
 		inflateReset (&stream);
-		SetFilePointer (hFile, beginPos, NULL, FILE_BEGIN);
+		FileSetPointer (hFile, beginPos, SEEK_SET);
 		curPos = 0;
 		stream. next_in = Z_NULL;
 		stream. avail_in = 0;
@@ -110,7 +110,7 @@ protected:
 	#endif
 	CunLZSS* decompressor;
 public:
-	C_LZ_BlockFile (HANDLE file, long pos, long size, long packed):
+	C_LZ_BlockFile (void* file, long pos, long size, long packed):
 		CPackedFile (file, pos, size, packed)
 		#ifdef USE_LZ_BLOCKS
 			,
@@ -129,7 +129,7 @@ public:
 	virtual int read (void* buf, long toRead, long* read);
 protected:
 	virtual void reset() {
-		SetFilePointer (hFile, beginPos, NULL, FILE_BEGIN);
+		FileSetPointer (hFile, beginPos, SEEK_SET);
 		curPos = 0;
 		#ifdef USE_LZ_BLOCKS
 			currentBlock = 0;

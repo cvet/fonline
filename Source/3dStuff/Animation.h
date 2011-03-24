@@ -29,7 +29,7 @@ typedef vector<Animation3dXFile*>::iterator Animation3dXFileVecIt;
 
 struct AnimParams
 {
-	DWORD Id;
+	uint Id;
 	int Layer;
 	int LayerValue;
 	char* LinkBone;
@@ -39,16 +39,16 @@ struct AnimParams
 	float ScaleX,ScaleY,ScaleZ;
 	float SpeedAjust;
 	int* DisabledLayers;
-	int DisabledLayersCount;
+	uint DisabledLayersCount;
 	int* DisabledSubsets;
-	int DisabledSubsetsCount;
+	uint DisabledSubsetsCount;
 	char** TextureNames;
 	int* TextureSubsets;
 	int* TextureNum;
-	int TextureNamesCount;
+	uint TextureNamesCount;
 	D3DXEFFECTINSTANCE* EffectInst;
 	int* EffectInstSubsets;
-	int EffectInstSubsetsCount;
+	uint EffectInstSubsetsCount;
 };
 typedef vector<AnimParams> AnimParamsVec;
 typedef vector<AnimParams>::iterator AnimParamsVecIt;
@@ -56,7 +56,7 @@ typedef vector<AnimParams>::iterator AnimParamsVecIt;
 struct MeshOptions
 {
 	D3DXMESHCONTAINER_EXTENDED* MeshPtr;
-	DWORD SubsetsCount;
+	uint SubsetsCount;
 	bool* DisabledSubsets;
 	TextureEx** TexSubsets;
 	TextureEx** DefaultTexSubsets;
@@ -76,22 +76,22 @@ private:
 	Animation3dEntity* animEntity;
 	ID3DXAnimationController* animController;
 	int currentLayers[LAYERS3D_COUNT+1]; // +1 for actions
-	DWORD numAnimationSets;
-	DWORD currentTrack;
-	DWORD lastTick;
-	DWORD endTick;
+	uint numAnimationSets;
+	uint currentTrack;
+	uint lastTick;
+	uint endTick;
 	D3DXMATRIX matRot,matScale;
 	D3DXMATRIX matScaleBase,matRotBase,matTransBase;
 	float speedAdjustBase,speedAdjustCur,speedAdjustLink;
 	bool shadowDisabled;
 	float dirAngle;
-	DWORD sprId;
+	uint sprId;
 	INTPOINT drawXY,bordersXY;
 	float drawScale;
 	D3DXVECTOR4 groundPos;
 	bool bordersDisabled;
 	INTRECT baseBorders,fullBorders;
-	DWORD calcBordersTick;
+	uint calcBordersTick;
 	Vector3Vec bordersResult;
 	bool noDraw;
 	MeshOptionsVec meshOpt;
@@ -110,14 +110,13 @@ private:
 
 	bool FrameMove(double elapsed, int x, int y, float scale, bool software_skinning);
 	void UpdateFrameMatrices(const D3DXFRAME* frame_base, const D3DXMATRIX* parent_matrix);
-	void BuildShadowVolume(FrameEx* frame);
 	bool DrawFrame(LPD3DXFRAME frame, bool with_shadow);
-	bool DrawMeshEffect(ID3DXMesh* mesh, DWORD subset, EffectEx* effect_ex, TextureEx** textures, D3DXHANDLE technique);
+	bool DrawMeshEffect(ID3DXMesh* mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, D3DXHANDLE technique);
 	bool IsIntersectFrame(LPD3DXFRAME frame, const D3DXVECTOR3& ray_origin, const D3DXVECTOR3& ray_dir);
 	bool SetupBordersFrame(LPD3DXFRAME frame, FLTRECT& borders);
 	void ProcessBorders();
 	double GetSpeed();
-	DWORD GetTick();
+	uint GetTick();
 	MeshOptions* GetMeshOptions(D3DXMESHCONTAINER_EXTENDED* mesh);
 	static void SetAnimData(Animation3d* anim3d, AnimParams& data, bool clear);
 
@@ -125,9 +124,9 @@ public:
 	Animation3d();
 	~Animation3d();
 
-	void SetAnimation(DWORD anim1, DWORD anim2, int* layers, int flags);
-	bool IsAnimation(DWORD anim1, DWORD anim2);
-	bool CheckAnimation(DWORD& anim1, DWORD& anim2);
+	void SetAnimation(uint anim1, uint anim2, int* layers, int flags);
+	bool IsAnimation(uint anim1, uint anim2);
+	bool CheckAnimation(uint& anim1, uint& anim2);
 	int GetAnim1();
 	int GetAnim2();
 	void SetDir(int dir);
@@ -137,12 +136,12 @@ public:
 	void SetSpeed(float speed);
 	void SetTimer(bool use_game_timer);
 	void EnableShadow(bool enabled){shadowDisabled=!enabled;}
-	bool Draw(int x, int y, float scale, FLTRECT* stencil, DWORD color);
+	bool Draw(int x, int y, float scale, FLTRECT* stencil, uint color);
 	void SetDrawPos(int x, int y){drawXY.X=x; drawXY.Y=y;}
 	bool IsAnimationPlaying();
 	bool IsIntersect(int x, int y);
-	void SetSprId(DWORD value){sprId=value;}
-	DWORD GetSprId(){return sprId;}
+	void SetSprId(uint value){sprId=value;}
+	uint GetSprId(){return sprId;}
 	void EnableSetupBorders(bool enabled){bordersDisabled=!enabled;}
 	void SetupBorders();
 	INTPOINT GetBaseBordersPivot();
@@ -178,7 +177,7 @@ private:
 	string pathName;
 	Animation3dXFile* xFile;
 	ID3DXAnimationController* animController;
-	DWORD numAnimationSets;
+	uint numAnimationSets;
 	IntMap anim1Equals,anim2Equals;
 	IntMap animIndexes;
 	IntFloatMap animSpeed;
@@ -191,8 +190,8 @@ private:
 
 	void ProcessTemplateDefines(char* str, StrVec& def);
 	int GetAnimationIndex(const char* anim_name);
-	int GetAnimationIndex(DWORD& anim1, DWORD& anim2, float* speed);
-	int GetAnimationIndexEx(DWORD anim1, DWORD anim2, float* speed);
+	int GetAnimationIndex(uint& anim1, uint& anim2, float* speed);
+	int GetAnimationIndexEx(uint anim1, uint anim2, float* speed);
 
 	bool Load(const char* name);
 	Animation3d* CloneAnimation();
@@ -215,13 +214,13 @@ private:
 	D3DXFRAME* frameRoot;
 	FrameVec framesSkinned;
 	MeshContainerVec allMeshes;
-	DWORD facesCount;
+	uint facesCount;
 	bool tangentsCalculated;
 
 	static Animation3dXFile* GetXFile(const char* xname, bool calc_tangent);
 	static bool CalculateNormalTangent(FrameEx* frame);
 	static bool SetupSkinning(Animation3dXFile* xfile, FrameEx* frame, FrameEx* frame_root);
-	static void SetupFacesCount(FrameEx* frame, DWORD& count);
+	static void SetupFacesCount(FrameEx* frame, uint& count);
 	static void SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationController* anim_controller);
 
 	TextureEx* GetTexture(const char* tex_name);

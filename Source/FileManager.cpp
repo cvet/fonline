@@ -104,7 +104,7 @@ void FileManager::InitDataFiles(const char* path)
 				sprintf(errmsg,"Data file '%s' not found. Run Updater.exe.",str);
 				HWND wnd=GetActiveWindow();
 				if(wnd) MessageBox(wnd,errmsg,"FOnline",MB_OK);
-				WriteLog(__FUNCTION__" - %s\n",errmsg);
+				WriteLog(_FUNC_," - %s\n",errmsg);
 			}
 		}
 	}
@@ -114,7 +114,7 @@ bool FileManager::LoadDataFile(const char* path)
 {
 	if(!path)
 	{
-		WriteLog(__FUNCTION__" - Path empty or nullptr.\n");
+		WriteLog(_FUNC_," - Path empty or nullptr.\n");
 		return false;
 	}
 
@@ -123,7 +123,7 @@ bool FileManager::LoadDataFile(const char* path)
 	StringCopy(path_,path);
 	if(!GetFullPathName(path,MAX_FOPATH,path_,NULL))
 	{
-		WriteLog(__FUNCTION__" - Extract full path file<%s> fail.\n",path);
+		WriteLog(_FUNC_," - Extract full path file<%s> fail.\n",path);
 		return false;
 	}
 
@@ -138,7 +138,7 @@ bool FileManager::LoadDataFile(const char* path)
 	DataFile* pfile=OpenDataFile(path_);
 	if(!pfile)
 	{
-		WriteLog(__FUNCTION__" - Load packed file<%s> fail.\n",path_);
+		WriteLog(_FUNC_," - Load packed file<%s> fail.\n",path_);
 		return false;
 	}
 
@@ -159,9 +159,9 @@ void FileManager::UnloadFile()
 	curPos=0;
 }
 
-BYTE* FileManager::ReleaseBuffer()
+uchar* FileManager::ReleaseBuffer()
 {
-	BYTE* tmp=fileBuf;
+	uchar* tmp=fileBuf;
 	fileBuf=NULL;
 	fileSize=0;
 	curPos=0;
@@ -204,32 +204,25 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	}
 	else
 	{
-		WriteLog(__FUNCTION__" - Invalid path<%d>.\n",path_type);
+		WriteLog(_FUNC_," - Invalid path<%d>.\n",path_type);
 		return false;
 	}
 
-	WIN32_FIND_DATA fd;
-	HANDLE f=FindFirstFile(folder_path,&fd);
-	if(f!=INVALID_HANDLE_VALUE)
+	void* file=FileOpen(folder_path,false);
+	if(file)
 	{
-		FindClose(f);
-		HANDLE h_file=CreateFile(folder_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
-		if(h_file!=INVALID_HANDLE_VALUE)
-		{
-			GetFileTime(h_file,&timeCreate,&timeAccess,&timeWrite);
-			DWORD size=GetFileSize(h_file,NULL);
-			BYTE* buf=new(nothrow) BYTE[size+1];
-			if(!buf) return false;
-			DWORD br;
-			BOOL result=ReadFile(h_file,buf,size,&br,NULL);
-			CloseHandle(h_file);
-			if(!result || size!=br) return false;
-			fileSize=size;
-			fileBuf=buf;
-			fileBuf[fileSize]=0;
-			curPos=0;
-			return true;
-		}
+		GetFileTime((HANDLE)file,&timeCreate,&timeAccess,&timeWrite);
+		uint size=GetFileSize((HANDLE)file,NULL);
+		uchar* buf=new(nothrow) uchar[size+1];
+		if(!buf) return false;
+		bool result=FileRead(file,buf,size);
+		FileClose(file);
+		if(!result) return false;
+		fileSize=size;
+		fileBuf=buf;
+		fileBuf[fileSize]=0;
+		curPos=0;
+		return true;
 	}
 
 	if(only_folder) return false;
@@ -250,12 +243,12 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	return false;
 }
 
-bool FileManager::LoadStream(BYTE* stream, DWORD length)
+bool FileManager::LoadStream(uchar* stream, uint length)
 {
 	UnloadFile();
 	if(!length) return false;
 	fileSize=length;
-	fileBuf=new(nothrow) BYTE[fileSize+1];
+	fileBuf=new(nothrow) uchar[fileSize+1];
 	if(!fileBuf) return false;
 	memcpy(fileBuf,stream,fileSize);
 	fileBuf[fileSize]=0;
@@ -263,31 +256,31 @@ bool FileManager::LoadStream(BYTE* stream, DWORD length)
 	return true;
 }
 
-void FileManager::SetCurPos(DWORD pos)
+void FileManager::SetCurPos(uint pos)
 {
 	curPos=pos;
 }
 
-void FileManager::GoForward(DWORD offs)
+void FileManager::GoForward(uint offs)
 {
 	curPos+=offs;
 }
 
-void FileManager::GoBack(DWORD offs)
+void FileManager::GoBack(uint offs)
 {
 	curPos-=offs;
 }
 
-bool FileManager::FindFragment(const BYTE* fragment, DWORD fragment_len, DWORD begin_offs)
+bool FileManager::FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs)
 {
 	if(!fileBuf || fragment_len>fileSize) return false;
 
-	for(DWORD i=begin_offs;i<fileSize-fragment_len;i++)
+	for(uint i=begin_offs;i<fileSize-fragment_len;i++)
 	{
 		if(fileBuf[i]==fragment[0])
 		{
 			bool not_match=false;
-			for(DWORD j=1;j<fragment_len;j++)
+			for(uint j=1;j<fragment_len;j++)
 			{
 				if(fileBuf[i+j]!=fragment[j])
 				{
@@ -306,11 +299,11 @@ bool FileManager::FindFragment(const BYTE* fragment, DWORD fragment_len, DWORD b
 	return false;
 }
 
-bool FileManager::GetLine(char* str, DWORD len)
+bool FileManager::GetLine(char* str, uint len)
 {
 	if(curPos>=fileSize) return false;
 
-	int wpos=0;
+	uint wpos=0;
 	for(;wpos<len && curPos<fileSize;curPos++,wpos++)
 	{
 		if(fileBuf[curPos]=='\r' || fileBuf[curPos]=='\n' || fileBuf[curPos]=='#' || fileBuf[curPos]==';')
@@ -340,63 +333,63 @@ bool FileManager::CopyMem(void* ptr, size_t size)
 void FileManager::GetStr(char* str)
 {
 	if(!str || curPos+1>fileSize) return;
-	DWORD len=1; // Zero terminated
+	uint len=1; // Zero terminated
 	while(*(fileBuf+curPos+len-1)) len++;
 	memcpy(str,fileBuf+curPos,len);
 	curPos+=len;
 }
 
-BYTE FileManager::GetByte()
+uchar FileManager::GetUChar()
 {
-	if(curPos+sizeof(BYTE)>fileSize) return 0;
-	BYTE res=0;
+	if(curPos+sizeof(uchar)>fileSize) return 0;
+	uchar res=0;
 	res=fileBuf[curPos++];
 	return res;
 }
 
-WORD FileManager::GetBEWord()
+ushort FileManager::GetBEUShort()
 {
-	if(curPos+sizeof(WORD)>fileSize) return 0;
-	WORD res=0;
-	BYTE* cres=(BYTE*)&res;
+	if(curPos+sizeof(ushort)>fileSize) return 0;
+	ushort res=0;
+	uchar* cres=(uchar*)&res;
 	cres[1]=fileBuf[curPos++];
 	cres[0]=fileBuf[curPos++];
 	return res;
 }
 
-WORD FileManager::GetLEWord()
+ushort FileManager::GetLEUShort()
 {
-	if(curPos+sizeof(WORD)>fileSize) return 0;
-	WORD res=0;
-	BYTE* cres=(BYTE*)&res;
+	if(curPos+sizeof(ushort)>fileSize) return 0;
+	ushort res=0;
+	uchar* cres=(uchar*)&res;
 	cres[0]=fileBuf[curPos++];
 	cres[1]=fileBuf[curPos++];
 	return res;
 }
 
-DWORD FileManager::GetBEDWord()
+uint FileManager::GetBEUInt()
 {
-	if(curPos+sizeof(DWORD)>fileSize) return 0;
-	DWORD res=0;
-	BYTE* cres=(BYTE*)&res;
+	if(curPos+sizeof(uint)>fileSize) return 0;
+	uint res=0;
+	uchar* cres=(uchar*)&res;
 	for(int i=3;i>=0;i--) cres[i]=fileBuf[curPos++];
 	return res;
 }
 
-DWORD FileManager::GetLEDWord()
+uint FileManager::GetLEUInt()
 {
-	if(curPos+sizeof(DWORD)>fileSize) return 0;
-	DWORD res=0;
-	BYTE* cres=(BYTE*)&res;
+	if(curPos+sizeof(uint)>fileSize) return 0;
+	uint res=0;
+	uchar* cres=(uchar*)&res;
 	for(int i=0;i<=3;i++) cres[i]=fileBuf[curPos++];
 	return res;
 }
 
-DWORD FileManager::GetLE3Bytes()
+uint FileManager::GetLE3UChar()
 {
-	if(curPos+sizeof(BYTE)*3>fileSize) return 0;
-	DWORD res=0;
-	BYTE* cres=(BYTE*)&res;
+	if(curPos+sizeof(uchar)*3>fileSize) return 0;
+	uint res=0;
+	uchar* cres=(uchar*)&res;
 	for(int i=0;i<=2;i++) cres[i]=fileBuf[curPos++];
 	return res;
 }
@@ -405,7 +398,7 @@ float FileManager::GetBEFloat()
 {
 	if(curPos+sizeof(float)>fileSize) return 0.0f;
 	float res;
-	BYTE* cres=(BYTE*)&res;
+	uchar* cres=(uchar*)&res;
 	for(int i=3;i>=0;i--) cres[i]=fileBuf[curPos++];
 	return res;
 }
@@ -414,7 +407,7 @@ float FileManager::GetLEFloat()
 {
 	if(curPos+sizeof(float)>fileSize) return 0.0f;
 	float res;
-	BYTE* cres=(BYTE*)&res;
+	uchar* cres=(uchar*)&res;
 	for(int i=0;i<=3;i++) cres[i]=fileBuf[curPos++];
 	return res;
 }
@@ -477,15 +470,15 @@ bool FileManager::ResizeOutBuf()
 {
 	if(!lenOutBuf)
 	{
-		dataOutBuf=new(nothrow) BYTE[OUT_BUF_START_SIZE];
+		dataOutBuf=new(nothrow) uchar[OUT_BUF_START_SIZE];
 		if(!dataOutBuf) return false;
 		lenOutBuf=OUT_BUF_START_SIZE;
 		ZeroMemory((void*)dataOutBuf,lenOutBuf);
 		return true;
 	}
 
-	BYTE* old_obuf=dataOutBuf;
-	dataOutBuf=new(nothrow) BYTE[lenOutBuf*2];
+	uchar* old_obuf=dataOutBuf;
+	dataOutBuf=new(nothrow) uchar[lenOutBuf*2];
 	if(!dataOutBuf) return false;
 	ZeroMemory((void*)dataOutBuf,lenOutBuf*2);
 	memcpy((void*)dataOutBuf,(void*)old_obuf,lenOutBuf);
@@ -494,7 +487,7 @@ bool FileManager::ResizeOutBuf()
 	return true;
 }
 
-void FileManager::SetPosOutBuf(DWORD pos)
+void FileManager::SetPosOutBuf(uint pos)
 {
 	if(pos>lenOutBuf)
 	{
@@ -521,27 +514,25 @@ bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 	}
 	else
 	{
-		WriteLog(__FUNCTION__" - Invalid path<%d>.\n",path_type);
+		WriteLog(_FUNC_," - Invalid path<%d>.\n",path_type);
 		return false;
 	}
 
-	HANDLE h_file=CreateFile(fpath,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,FILE_FLAG_WRITE_THROUGH,NULL);
-	if(h_file==INVALID_HANDLE_VALUE) return false;
+	void* file=FileOpen(fpath,true);
+	if(!file) return false;
 
-	DWORD bw;
-	if(!WriteFile(h_file,dataOutBuf,endOutBuf,&bw,NULL) || bw!=endOutBuf)
+	if(!FileWrite(file,dataOutBuf,endOutBuf))
 	{
-		CloseHandle(h_file);
-		h_file=NULL;
+		FileClose(file);
 		DeleteFile(fpath);
 		return false;
 	}
 
-	CloseHandle(h_file);
+	FileClose(file);
 	return true;
 }
 
-void FileManager::SetData(void* data, DWORD len)
+void FileManager::SetData(void* data, uint len)
 {
 	if(!len) return;
 	if(posOutBuf+len>lenOutBuf)
@@ -561,41 +552,45 @@ void FileManager::SetStr(const char* fmt, ...)
 
 	va_list list;
 	va_start(list,fmt);
+#ifdef FO_MSVC
 	vsprintf_s(str,fmt,list);
+#else
+    vsprintf(str,fmt,list);
+#endif
 	va_end(list);
 
 	SetData(str,strlen(str));
 }
 
-void FileManager::SetByte(BYTE data)
+void FileManager::SetUChar(uchar data)
 {
-	if(posOutBuf+sizeof(BYTE)>lenOutBuf && !ResizeOutBuf()) return;
+	if(posOutBuf+sizeof(uchar)>lenOutBuf && !ResizeOutBuf()) return;
 	dataOutBuf[posOutBuf++]=data;
 	if(posOutBuf>endOutBuf) endOutBuf=posOutBuf;
 }
 
-void FileManager::SetBEWord(WORD data)
+void FileManager::SetBEUShort(ushort data)
 {
-	if(posOutBuf+sizeof(WORD)>lenOutBuf && !ResizeOutBuf()) return;
-	BYTE* pdata=(BYTE*)&data;
+	if(posOutBuf+sizeof(ushort)>lenOutBuf && !ResizeOutBuf()) return;
+	uchar* pdata=(uchar*)&data;
 	dataOutBuf[posOutBuf++]=pdata[1];
 	dataOutBuf[posOutBuf++]=pdata[0];
 	if(posOutBuf>endOutBuf) endOutBuf=posOutBuf;
 }
 
-void FileManager::SetLEWord(WORD data)
+void FileManager::SetLEUShort(ushort data)
 {
-	if(posOutBuf+sizeof(WORD)>lenOutBuf && !ResizeOutBuf()) return;
-	BYTE* pdata=(BYTE*)&data;
+	if(posOutBuf+sizeof(ushort)>lenOutBuf && !ResizeOutBuf()) return;
+	uchar* pdata=(uchar*)&data;
 	dataOutBuf[posOutBuf++]=pdata[0];
 	dataOutBuf[posOutBuf++]=pdata[1];
 	if(posOutBuf>endOutBuf) endOutBuf=posOutBuf;
 }
 
-void FileManager::SetBEDWord(DWORD data)
+void FileManager::SetBEUInt(uint data)
 {
-	if(posOutBuf+sizeof(DWORD)>lenOutBuf && !ResizeOutBuf()) return;
-	BYTE* pdata=(BYTE*)&data;
+	if(posOutBuf+sizeof(uint)>lenOutBuf && !ResizeOutBuf()) return;
+	uchar* pdata=(uchar*)&data;
 	dataOutBuf[posOutBuf++]=pdata[3];
 	dataOutBuf[posOutBuf++]=pdata[2];
 	dataOutBuf[posOutBuf++]=pdata[1];
@@ -603,10 +598,10 @@ void FileManager::SetBEDWord(DWORD data)
 	if(posOutBuf>endOutBuf) endOutBuf=posOutBuf;
 }
 
-void FileManager::SetLEDWord(DWORD data)
+void FileManager::SetLEUInt(uint data)
 {
-	if(posOutBuf+sizeof(DWORD)>lenOutBuf && !ResizeOutBuf()) return;
-	BYTE* pdata=(BYTE*)&data;
+	if(posOutBuf+sizeof(uint)>lenOutBuf && !ResizeOutBuf()) return;
+	uchar* pdata=(uchar*)&data;
 	dataOutBuf[posOutBuf++]=pdata[0];
 	dataOutBuf[posOutBuf++]=pdata[1];
 	dataOutBuf[posOutBuf++]=pdata[2];
@@ -638,7 +633,7 @@ void FileManager::GetFullPath(const char* fname, int path_type, char* get_path)
 const char* FileManager::GetPath(int path_type)
 {
 	static const char any[]="error";
-	return (DWORD)path_type>=PATH_LIST_COUNT?any:PathLst[path_type];
+	return (uint)path_type>=PATH_LIST_COUNT?any:PathLst[path_type];
 }
 
 const char* FileManager::GetDataPath(int path_type)

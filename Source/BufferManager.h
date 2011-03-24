@@ -11,73 +11,73 @@ private:
 	bool isError;
 	Mutex bufLocker;
 	char* bufData;
-	DWORD bufLen;
-	DWORD bufEndPos;
-	DWORD bufReadPos;
+	uint bufLen;
+	uint bufEndPos;
+	uint bufReadPos;
 	bool encryptActive;
 	int encryptKeyPos;
-	DWORD encryptKeys[CRYPT_KEYS_COUNT];
+	uint encryptKeys[CRYPT_KEYS_COUNT];
 
-	void CopyBuf(const char* from, char* to, const char* mask, DWORD crypt_key, DWORD len);
-	bool IsValidMsg(DWORD msg);
+	void CopyBuf(const char* from, char* to, const char* mask, uint crypt_key, uint len);
+	bool IsValidMsg(uint msg);
 
 public:
 	BufferManager();
-	BufferManager(DWORD alen);
+	BufferManager(uint alen);
 	BufferManager& operator=(const BufferManager& r);
 	~BufferManager();
 
-	void SetEncryptKey(DWORD seed);
+	void SetEncryptKey(uint seed);
 	void Lock();
 	void Unlock();
 	void Refresh();
 	void Reset();
 	void LockReset();
-	void Push(const char* buf, DWORD len, bool no_crypt = false);
-	void Push(const char* buf, const char* mask, DWORD len);
-	void Pop(char* buf, DWORD len);
-	void Cut(DWORD len);
-	void GrowBuf(DWORD len);
+	void Push(const char* buf, uint len, bool no_crypt = false);
+	void Push(const char* buf, const char* mask, uint len);
+	void Pop(char* buf, uint len);
+	void Cut(uint len);
+	void GrowBuf(uint len);
 
 	char* GetData(){return bufData;}
 	char* GetCurData(){return bufData+bufReadPos;}
-	DWORD GetLen(){return bufLen;}
-	DWORD GetCurPos(){return bufReadPos;}
-	void SetEndPos(DWORD pos){bufEndPos=pos;}
-	DWORD GetEndPos()const{return bufEndPos;}
+	uint GetLen(){return bufLen;}
+	uint GetCurPos(){return bufReadPos;}
+	void SetEndPos(uint pos){bufEndPos=pos;}
+	uint GetEndPos()const{return bufEndPos;}
 	void MoveReadPos(int val){bufReadPos+=val; EncryptKey(val);}
 	bool IsError()const{return isError;}
 	bool IsEmpty()const{return bufReadPos>=bufEndPos;}
-	bool IsHaveSize(DWORD size)const{return bufReadPos+size<=bufEndPos;}
+	bool IsHaveSize(uint size)const{return bufReadPos+size<=bufEndPos;}
 
 #if (defined(FONLINE_SERVER)) || (defined(FONLINE_CLIENT))
 	bool NeedProcess();
-	void SkipMsg(MSGTYPE msg);
+	void SkipMsg(uint msg);
 	void SeekValidMsg();
 #else
 	bool NeedProcess() {return (bufReadPos<bufEndPos);}
 #endif
 
-	BufferManager& operator<<(DWORD i);
-	BufferManager& operator>>(DWORD& i);
+	BufferManager& operator<<(uint i);
+	BufferManager& operator>>(uint& i);
 	BufferManager& operator<<(int i);
 	BufferManager& operator>>(int& i);
-	BufferManager& operator<<(WORD i);
-	BufferManager& operator>>(WORD& i);
+	BufferManager& operator<<(ushort i);
+	BufferManager& operator>>(ushort& i);
 	BufferManager& operator<<(short i);
 	BufferManager& operator>>(short& i);
-	BufferManager& operator<<(BYTE i);
-	BufferManager& operator>>(BYTE& i);
+	BufferManager& operator<<(uchar i);
+	BufferManager& operator>>(uchar& i);
 	BufferManager& operator<<(char i);
 	BufferManager& operator>>(char& i);
 	BufferManager& operator<<(bool i);
 	BufferManager& operator>>(bool& i);
 
 private:
-	inline DWORD EncryptKey(int move)
+	inline uint EncryptKey(int move)
 	{
 		if(!encryptActive) return 0;
-		DWORD key=encryptKeys[encryptKeyPos];
+		uint key=encryptKeys[encryptKeyPos];
 		encryptKeyPos+=move;
 		if(encryptKeyPos<0 || encryptKeyPos>=CRYPT_KEYS_COUNT)
 		{

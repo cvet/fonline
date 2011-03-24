@@ -41,23 +41,23 @@
 class MapObjectV5
 {
 public:
-	BYTE MapObjType;
+	uchar MapObjType;
 	bool InContainer;
-	WORD ProtoId;
+	ushort ProtoId;
 
-	WORD MapX;
-	WORD MapY;
+	ushort MapX;
+	ushort MapY;
 
-	BYTE FrameNum;
-	BYTE Dir;
+	uchar FrameNum;
+	uchar Dir;
 
-	BYTE Reserved0;
-	BYTE Reserved1;
+	uchar Reserved0;
+	uchar Reserved1;
 
-	BYTE ItemSlot;
-	BYTE Reserved2;
-	WORD Reserved3;
-	DWORD Reserved4;
+	uchar ItemSlot;
+	uchar Reserved2;
+	ushort Reserved3;
+	uint Reserved4;
 
 	short OffsetX;
 	short OffsetY;
@@ -65,11 +65,11 @@ public:
 	char ScriptName[25+1];
 	char FuncName[25+1];
 
-	DWORD LightRGB;
-	BYTE Reserved5;
-	BYTE LightDay;
-	BYTE LightDirOff;
-	BYTE LightDistance;
+	uint LightRGB;
+	uchar Reserved5;
+	uchar LightDay;
+	uchar LightDirOff;
+	uchar LightDistance;
 	int LightIntensity;
 
 	int BindScriptId; // For script bind in runtime
@@ -79,67 +79,67 @@ public:
 		// Critter
 		struct
 		{
-			DWORD DialogId;
-			DWORD AiPack;
-			WORD Reserved0;
-			WORD Reserved1;
-			BYTE Cond;
-			BYTE CondExt;
-			BYTE Reserved2; // Level
-			BYTE Reserved3;
-			WORD BagId;
-			WORD TeamId;
+			uint DialogId;
+			uint AiPack;
+			ushort Reserved0;
+			ushort Reserved1;
+			uchar Cond;
+			uchar CondExt;
+			uchar Reserved2; // Level
+			uchar Reserved3;
+			ushort BagId;
+			ushort TeamId;
 			int NpcRole;
 			short RespawnTime;
-			WORD Reserved11;
+			ushort Reserved11;
 		} CRITTER;
 
 		// Item
 		struct
 		{
-			DWORD Val1;
-			BYTE BrokenFlags;
-			BYTE BrokenCount;
-			WORD Deterioration;
+			uint Val1;
+			uchar BrokenFlags;
+			uchar BrokenCount;
+			ushort Deterioration;
 		} ARMOR;
 
 		struct
 		{
-			DWORD DoorId;
-			WORD Condition;
-			WORD Complexity;
-			BYTE IsOpen;
-			DWORD Reserved;
+			uint DoorId;
+			ushort Condition;
+			ushort Complexity;
+			uchar IsOpen;
+			uint Reserved;
 		} CONTAINER;
 
 		struct
 		{
-			DWORD Count;
+			uint Count;
 		} DRUG;
 
 		struct
 		{
-			DWORD Reserved;
-			BYTE BrokenFlags;
-			BYTE BrokenCount;
-			WORD Deterioration;
-			WORD AmmoPid;
-			DWORD AmmoCount;
+			uint Reserved;
+			uchar BrokenFlags;
+			uchar BrokenCount;
+			ushort Deterioration;
+			ushort AmmoPid;
+			uint AmmoCount;
 		} WEAPON;
 
 		struct
 		{
-			DWORD Count;
+			uint Count;
 		} AMMO;
 
 		struct
 		{
-			DWORD Count;
+			uint Count;
 		} MISC;
 
 		struct
 		{
-			DWORD Reserved[4];
+			uint Reserved[4];
 			int Val1;
 			int Val2;
 			int Val3;
@@ -150,90 +150,90 @@ public:
 
 		struct
 		{
-			DWORD DoorId;
+			uint DoorId;
 		} KEY;
 
 		struct
 		{
-			DWORD DoorId;
-			WORD Condition;
-			WORD Complexity;
-			BYTE IsOpen;
+			uint DoorId;
+			ushort Condition;
+			ushort Complexity;
+			uchar IsOpen;
 		} DOOR;
 
 		// Scenery
 		struct
 		{
-			DWORD ElevatorType;
-			DWORD ToMapPid;
-			WORD ToMapX;
-			WORD ToMapY;
-			BYTE ToDir;
-			BYTE ToEntire;
+			uint ElevatorType;
+			uint ToMapPid;
+			ushort ToMapX;
+			ushort ToMapY;
+			uchar ToDir;
+			uchar ToEntire;
 		} GRID;
 
 		struct
 		{
-			BYTE CanUse;
-			BYTE TriggerNum;
-			WORD Reserved0;
-			DWORD Reserved1[3]; // Trash
-			WORD Reserved2;
-			BYTE Reserved3;
-			BYTE ParamsCount;
+			uchar CanUse;
+			uchar TriggerNum;
+			ushort Reserved0;
+			uint Reserved1[3]; // Trash
+			ushort Reserved2;
+			uchar Reserved3;
+			uchar ParamsCount;
 			int Param[5];
 		} GENERIC;
 
 		struct
 		{
-			DWORD Buffer[10];
+			uint Buffer[10];
 		} ALIGN;
 	};
 };
 
 struct HeaderV9
 {
-	DWORD Version;
+	uint Version;
 	bool Packed;
 	bool NoLogOut;
-	WORD HeaderSize;
+	ushort HeaderSize;
 	int PlayersLimit;
-	DWORD UnpackedDataLen;
-	WORD MaxHexX;
-	WORD MaxHexY;
+	uint UnpackedDataLen;
+	ushort MaxHexX;
+	ushort MaxHexY;
 	int Time;
 	int CenterX;
 	int CenterY;
 	char ScriptModule[64+1];
 	char ScriptFunc[64+1];
 	int DayTime[4];
-	BYTE DayColor[12];
+	uchar DayColor[12];
 };
 
 class MapObjectV9
 {
 public:
-	BYTE MapObjType;
-	WORD ProtoId;
-	WORD MapX;
-	WORD MapY;
+	uchar MapObjType;
+	ushort ProtoId;
+	ushort MapX;
+	ushort MapY;
 	short Dir;
-	DWORD LightColor;
-	BYTE LightDay;
-	BYTE LightDirOff;
-	BYTE LightDistance;
+	uint LightColor;
+	uchar LightDay;
+	uchar LightDirOff;
+	uchar LightDistance;
 	char LightIntensity;
 	char ScriptName[25+1];
 	char FuncName[25+1];
-	DWORD Reserved[7];
+	uint Reserved[7];
 	int UserData[10];
 
 	union
 	{
 		struct
 		{
-			BYTE Cond;
-			BYTE CondExt;
+			uchar Cond;
+			uchar CondExt;
 			short ParamIndex[15];
 			int ParamValue[15];
 		} MCritter;
@@ -242,26 +242,26 @@ public:
 		{
 			short OffsetX;
 			short OffsetY;
-			BYTE AnimStayBegin;
-			BYTE AnimStayEnd;
-			WORD AnimWait;
-			WORD PicMapDeprecated;
-			WORD PicInvDeprecated;
-			BYTE InfoOffset;
-			BYTE Reserved[3];
-			DWORD PicMapHash;
-			DWORD PicInvHash;
-			DWORD Count;
-			BYTE BrokenFlags;
-			BYTE BrokenCount;
-			WORD Deterioration;
+			uchar AnimStayBegin;
+			uchar AnimStayEnd;
+			ushort AnimWait;
+			ushort PicMapDeprecated;
+			ushort PicInvDeprecated;
+			uchar InfoOffset;
+			uchar Reserved[3];
+			uint PicMapHash;
+			uint PicInvHash;
+			uint Count;
+			uchar BrokenFlags;
+			uchar BrokenCount;
+			ushort Deterioration;
 			bool InContainer;
-			BYTE ItemSlot;
-			WORD AmmoPid;
-			DWORD AmmoCount;
-			DWORD LockerDoorId;
-			WORD LockerCondition;
-			WORD LockerComplexity;
+			uchar ItemSlot;
+			ushort AmmoPid;
+			uint AmmoCount;
+			uint LockerDoorId;
+			ushort LockerCondition;
+			ushort LockerComplexity;
 			short TrapValue;
 			int Val[10];
 		} MItem;
@@ -270,31 +270,31 @@ public:
 		{
 			short OffsetX;
 			short OffsetY;
-			BYTE AnimStayBegin;
-			BYTE AnimStayEnd;
-			WORD AnimWait;
-			WORD PicMapDeprecated;
-			WORD PicInvDeprecated;
-			BYTE InfoOffset;
-			BYTE Reserved[3];
-			DWORD PicMapHash;
-			DWORD PicInvHash;
+			uchar AnimStayBegin;
+			uchar AnimStayEnd;
+			ushort AnimWait;
+			ushort PicMapDeprecated;
+			ushort PicInvDeprecated;
+			uchar InfoOffset;
+			uchar Reserved[3];
+			uint PicMapHash;
+			uint PicInvHash;
 			bool CanUse;
 			bool CanTalk;
-			DWORD TriggerNum;
-			BYTE ParamsCount;
+			uint TriggerNum;
+			uchar ParamsCount;
 			int Param[5];
-			WORD ToMapPid;
-			DWORD ToEntire;
-			WORD ToMapX;
-			WORD ToMapY;
-			BYTE ToDir;
-			BYTE SpriteCut;
+			ushort ToMapPid;
+			uint ToEntire;
+			ushort ToMapX;
+			ushort ToMapY;
+			uchar ToDir;
+			uchar SpriteCut;
 		} MScenery;
 
 		struct
 		{
-			DWORD Buffer[25];
+			uint Buffer[25];
 		} MAlign;
 	};
 };
@@ -303,7 +303,7 @@ public:
 /* ProtoMap                                                             */
 /************************************************************************/
 
-bool ProtoMap::Init(WORD pid, const char* name, int path_type)
+bool ProtoMap::Init(ushort pid, const char* name, int path_type)
 {
 	Clear();
 	if(!name || !name[0]) return false;
@@ -418,23 +418,23 @@ bool ProtoMap::ReadHeader(int version)
 
 bool ProtoMap::ReadTiles(int version)
 {
-	DWORD* tiles=new(nothrow) DWORD[((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2)/sizeof(DWORD)];
+	uint* tiles=new(nothrow) uint[((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2)/sizeof(uint)];
 	if(!tiles) return false;
 	pmapFm->SetCurPos(Header.Packed?0:Header.HeaderSize);
 
 	if(version<8)
 	{
 		// Convert lst offsets to name hashes
-		ZeroMemory(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2);
-		DWORD size=(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD);
-		DWORD* ptr=new(nothrow) DWORD[size/sizeof(DWORD)];
+		ZeroMemory(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2);
+		uint size=(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint);
+		uint* ptr=new(nothrow) uint[size/sizeof(uint)];
 		if(!pmapFm->CopyMem(ptr,size)) return false;
 		for(int x=0;x<Header.MaxHexX/2;x++)
 		{
 			for(int y=0;y<Header.MaxHexY/2;y++)
 			{
-				WORD tile=(ptr[y*(Header.MaxHexX/2)+x]>>16);
-				WORD roof=(ptr[y*(Header.MaxHexX/2)+x]&0xFFFF);
+				ushort tile=(ptr[y*(Header.MaxHexX/2)+x]>>16);
+				ushort roof=(ptr[y*(Header.MaxHexX/2)+x]&0xFFFF);
 				if(tile>1 && (tile=Deprecated_GetPicHash(-2,0,tile))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,0,false));
 				if(roof>1 && (roof=Deprecated_GetPicHash(-2,0,roof))) Tiles.push_back(Tile(tile,x*2,y*2,0,0,0,true));
 			}
@@ -445,14 +445,14 @@ bool ProtoMap::ReadTiles(int version)
 	}
 
 	// Version 8, 9
-	if(!pmapFm->CopyMem(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*2)) return false;
+	if(!pmapFm->CopyMem(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2)) return false;
 
 	for(int tx=0;tx<Header.MaxHexX/2;tx++)
 	{
 		for(int ty=0;ty<Header.MaxHexY/2;ty++)
 		{
-			DWORD tile=tiles[ty*(Header.MaxHexX/2)*2+tx*2];
-			DWORD roof=tiles[ty*(Header.MaxHexX/2)*2+tx*2+1];
+			uint tile=tiles[ty*(Header.MaxHexX/2)*2+tx*2];
+			uint roof=tiles[ty*(Header.MaxHexX/2)*2+tx*2+1];
 			if(tile) Tiles.push_back(Tile(tile,tx*2,ty*2,0,0,0,false));
 			if(roof) Tiles.push_back(Tile(roof,tx*2,ty*2,0,0,0,true));
 		}
@@ -465,15 +465,15 @@ bool ProtoMap::ReadObjects(int version)
 {
 	if(version<6)
 	{
-		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD));
-		DWORD count=pmapFm->GetLEDWord();
+		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint));
+		uint count=pmapFm->GetLEUInt();
 		if(!count) return true;
 
 		vector<MapObjectV5> objects_v5;
 		objects_v5.resize(count);
 		if(!pmapFm->CopyMem(&objects_v5[0],count*sizeof(MapObjectV5))) return false;
 
-		for(int k=0;k<count;k++)
+		for(uint k=0;k<count;k++)
 		{
 			MapObjectV5& obj_v5=objects_v5[k];
 			MapObject obj_v6;
@@ -602,11 +602,11 @@ bool ProtoMap::ReadObjects(int version)
 	else // Version 6, 7, 8, 9
 	{
 		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+
-			((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(DWORD)*(version<8?1:2)));
-		DWORD count=pmapFm->GetLEDWord();
+			((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*(version<8?1:2)));
+		uint count=pmapFm->GetLEUInt();
 		if(!count) return true;
 
-		for(DWORD i=0;i<count;i++)
+		for(uint i=0;i<count;i++)
 		{
 			MapObjectV9 mobj_v9;
 			if(!pmapFm->CopyMem(&mobj_v9,240)) return false;
@@ -708,7 +708,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 				if(field=="Version")
 				{
 					Header.Version=ivalue;
-					DWORD old_version=(ivalue<<20);
+					uint old_version=(ivalue<<20);
 					if(old_version==FO_MAP_VERSION_V6 || old_version==FO_MAP_VERSION_V7 ||
 						old_version==FO_MAP_VERSION_V8 || old_version==FO_MAP_VERSION_V9)
 					{
@@ -779,7 +779,7 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 			// Deprecated
 			while(!istr.eof() && !istr.fail())
 			{
-				DWORD hx,hy;
+				int hx,hy;
 				istr >> type >> hx >> hy >> name;
 				if(!istr.fail() && hx>=0 && hx<Header.MaxHexX && hy>=0 && hy<Header.MaxHexY)
 				{
@@ -788,15 +788,15 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					if(type=="tile") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,false));
 					else if(type=="roof") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,true));
 					//else if(type=="terr" || type=="terrain") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,));
-					else if(type=="0") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,0,false));
-					else if(type=="1") Tiles.push_back(Tile((DWORD)_atoi64(name.c_str()),hx,hy,0,0,0,true));
+					else if(type=="0") Tiles.push_back(Tile((uint)_atoi64(name.c_str()),hx,hy,0,0,0,false));
+					else if(type=="1") Tiles.push_back(Tile((uint)_atoi64(name.c_str()),hx,hy,0,0,0,true));
 				}
 			}
 		}
 		else
 		{
 			char name[MAX_FOTEXT];
-			DWORD hx,hy;
+			int hx,hy;
 			int ox,oy,layer;
 			bool is_roof;
 			size_t len;
@@ -1050,7 +1050,7 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 	// Tiles
 	fm->SetStr("[%s]\n",APP_TILES);
 	char tile_str[256];
-	for(size_t i=0,j=Tiles.size();i<j;i++)
+	for(uint i=0,j=Tiles.size();i<j;i++)
 	{
 		Tile& tile=Tiles[i];
 		const char* name=Str::GetName(tile.NameHash);
@@ -1083,7 +1083,7 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 
 	// Objects
 	fm->SetStr("[%s]\n",APP_OBJECTS);
-	for(size_t k=0;k<MObjects.size();k++)
+	for(uint k=0;k<MObjects.size();k++)
 	{
 		MapObject& mobj=*MObjects[k];
 		// Shared
@@ -1198,17 +1198,17 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 bool ProtoMap::LoadCache(FileManager* fm)
 {
 	// Server version
-	DWORD version=fm->GetBEDWord();
+	uint version=fm->GetBEUInt();
 	if(version!=SERVER_VERSION) return false;
-	fm->GetBEDWord();
-	fm->GetBEDWord();
-	fm->GetBEDWord();
+	fm->GetBEUInt();
+	fm->GetBEUInt();
+	fm->GetBEUInt();
 
 	// Header
 	if(!fm->CopyMem(&Header,sizeof(Header))) return false;
 
 	// Tiles
-	DWORD tiles_count=fm->GetBEDWord();
+	uint tiles_count=fm->GetBEUInt();
 	if(tiles_count)
 	{
 		Tiles.resize(tiles_count);
@@ -1216,9 +1216,9 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// Critters
-	DWORD count=fm->GetBEDWord();
+	uint count=fm->GetBEUInt();
 	CrittersVec.reserve(count);
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
 		fm->CopyMem(mobj,sizeof(MapObject)-sizeof(MapObject::_RunTime));
@@ -1226,9 +1226,9 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// Items
-	count=fm->GetBEDWord();
+	count=fm->GetBEUInt();
 	ItemsVec.reserve(count);
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
 		fm->CopyMem(mobj,sizeof(MapObject)-sizeof(MapObject::_RunTime));
@@ -1236,9 +1236,9 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// Scenery
-	count=fm->GetBEDWord();
+	count=fm->GetBEUInt();
 	SceneryVec.reserve(count);
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
 		fm->CopyMem(mobj,sizeof(MapObject));
@@ -1249,9 +1249,9 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// Grids
-	count=fm->GetBEDWord();
+	count=fm->GetBEUInt();
 	GridsVec.reserve(count);
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
 		fm->CopyMem(mobj,sizeof(MapObject));
@@ -1261,13 +1261,13 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// To send
-	count=fm->GetBEDWord();
+	count=fm->GetBEUInt();
 	if(count)
 	{
 		WallsToSend.resize(count);
 		if(!fm->CopyMem(&WallsToSend[0],count*sizeof(SceneryCl))) return false;
 	}
-	count=fm->GetBEDWord();
+	count=fm->GetBEUInt();
 	if(count)
 	{
 		SceneriesToSend.resize(count);
@@ -1275,17 +1275,17 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// Hashes
-	HashTiles=fm->GetBEDWord();
-	HashWalls=fm->GetBEDWord();
-	HashScen=fm->GetBEDWord();
+	HashTiles=fm->GetBEUInt();
+	HashWalls=fm->GetBEUInt();
+	HashScen=fm->GetBEUInt();
 
 	// Hex flags
-	HexFlags=new BYTE[Header.MaxHexX*Header.MaxHexY];
+	HexFlags=new uchar[Header.MaxHexX*Header.MaxHexY];
 	if(!HexFlags) return false;
 	if(!fm->CopyMem(HexFlags,Header.MaxHexX*Header.MaxHexY)) return false;
 
 	// Entires
-	count=fm->GetBEDWord();
+	count=fm->GetBEUInt();
 	if(count)
 	{
 		mapEntires.resize(count);
@@ -1307,54 +1307,54 @@ bool ProtoMap::LoadCache(FileManager* fm)
 void ProtoMap::SaveCache(FileManager* fm)
 {
 	// Server version
-	fm->SetBEDWord(SERVER_VERSION);
-	fm->SetBEDWord(0);
-	fm->SetBEDWord(0);
-	fm->SetBEDWord(0);
+	fm->SetBEUInt(SERVER_VERSION);
+	fm->SetBEUInt(0);
+	fm->SetBEUInt(0);
+	fm->SetBEUInt(0);
 
 	// Header
 	fm->SetData(&Header,sizeof(Header));
 
 	// Tiles
-	fm->SetBEDWord(Tiles.size());
+	fm->SetBEUInt(Tiles.size());
 	if(Tiles.size()) fm->SetData(&Tiles[0],Tiles.size()*sizeof(Tile));
 
 	// Critters
-	fm->SetBEDWord(CrittersVec.size());
+	fm->SetBEUInt(CrittersVec.size());
 	for(MapObjectPtrVecIt it=CrittersVec.begin(),end=CrittersVec.end();it!=end;++it)
 		fm->SetData(*it,sizeof(MapObject)-sizeof(MapObject::_RunTime));
 
 	// Items
-	fm->SetBEDWord(ItemsVec.size());
+	fm->SetBEUInt(ItemsVec.size());
 	for(MapObjectPtrVecIt it=ItemsVec.begin(),end=ItemsVec.end();it!=end;++it)
 		fm->SetData(*it,sizeof(MapObject)-sizeof(MapObject::_RunTime));
 
 	// Scenery
-	fm->SetBEDWord(SceneryVec.size());
+	fm->SetBEUInt(SceneryVec.size());
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
 		fm->SetData(*it,sizeof(MapObject));
 
 	// Grids
-	fm->SetBEDWord(GridsVec.size());
+	fm->SetBEUInt(GridsVec.size());
 	for(MapObjectPtrVecIt it=GridsVec.begin(),end=GridsVec.end();it!=end;++it)
 		fm->SetData(*it,sizeof(MapObject));
 
 	// To send
-	fm->SetBEDWord(WallsToSend.size());
+	fm->SetBEUInt(WallsToSend.size());
 	fm->SetData(&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl));
-	fm->SetBEDWord(SceneriesToSend.size());
+	fm->SetBEUInt(SceneriesToSend.size());
 	fm->SetData(&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl));
 
 	// Hashes
-	fm->SetBEDWord(HashTiles);
-	fm->SetBEDWord(HashWalls);
-	fm->SetBEDWord(HashScen);
+	fm->SetBEUInt(HashTiles);
+	fm->SetBEUInt(HashWalls);
+	fm->SetBEUInt(HashScen);
 
 	// Hex flags
 	fm->SetData(HexFlags,Header.MaxHexX*Header.MaxHexY);
 
 	// Entires
-	fm->SetBEDWord(mapEntires.size());
+	fm->SetBEUInt(mapEntires.size());
 	fm->SetData(&mapEntires[0],mapEntires.size()*sizeof(MapEntire));
 
 	// Save
@@ -1387,7 +1387,7 @@ void ProtoMap::BindSceneryScript(MapObject* mobj)
 	{
 		char map_info[128];
 		sprintf(map_info,"pid<%u>, name<%s>",GetPid(),pmapName.c_str());
-		WriteLog(__FUNCTION__" - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",map_info,
+		WriteLog(_FUNC_," - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",map_info,
 			mobj->FuncName,mobj->ScriptName,mobj->MapX,mobj->MapY);
 		mobj->RunTime.BindScriptId=0;
 	}
@@ -1418,7 +1418,7 @@ bool ProtoMap::Refresh()
 		text=false;
 		if(!pmapFm->LoadFile(fname_map.c_str(),pathType) && !cached.IsLoaded())
 		{
-			WriteLog(__FUNCTION__" - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
+			WriteLog(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
 			return false;
 		}
 	}
@@ -1441,7 +1441,7 @@ bool ProtoMap::Refresh()
 
 			if(!pmapFm->IsLoaded())
 			{
-				WriteLog(__FUNCTION__" - Map<%s>. Can't read cached map file.\n",map_info);
+				WriteLog(_FUNC_," - Map<%s>. Can't read cached map file.\n",map_info);
 				return false;
 			}
 		}
@@ -1455,7 +1455,7 @@ bool ProtoMap::Refresh()
 		text=false;
 		if(!pmapFm->LoadFile(fname_map.c_str(),pathType))
 		{
-			WriteLog(__FUNCTION__" - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
+			WriteLog(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
 			return false;
 		}
 	}
@@ -1466,7 +1466,7 @@ bool ProtoMap::Refresh()
 	{
 		if(!LoadTextFormat((const char*)pmapFm->GetBuf()))
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. Can't read text map format.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. Can't read text map format.\n",map_info);
 			return false;
 		}
 	}
@@ -1475,18 +1475,18 @@ bool ProtoMap::Refresh()
 		// Deprecated
 		// Check map format version
 		// Read version
-		DWORD version_full=pmapFm->GetLEDWord();
+		uint version_full=pmapFm->GetLEUInt();
 
 		// Check version
 		if(version_full==F1_MAP_VERSION)
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. FOnline not support F1 map format.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. FOnline not support F1 map format.\n",map_info);
 			return false;
 		}
 
 		if(version_full==F2_MAP_VERSION)
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. FOnline not support F2 map format.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. FOnline not support F2 map format.\n",map_info);
 			return false;
 		}
 
@@ -1501,20 +1501,20 @@ bool ProtoMap::Refresh()
 		else if(version_full==FO_MAP_VERSION_V8) version=8;
 		else if(version_full!=FO_MAP_VERSION_V9)
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. Unknown map format<%u>.\n",map_info,version_full);
+			WriteLog(_FUNC_," - Map<%s>. Unknown map format<%u>.\n",map_info,version_full);
 			return false;
 		}
 
 		if(version<0)
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. Map format not supproted, resave in Mapper v.1.17.2, than open again.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. Map format not supproted, resave in Mapper v.1.17.2, than open again.\n",map_info);
 			return false;
 		}
 
 		// Read Header
 		if(!ReadHeader(version))
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. Can't read Header.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. Can't read Header.\n",map_info);
 			return false;
 		}
 
@@ -1522,12 +1522,12 @@ bool ProtoMap::Refresh()
 		if(Header.Packed)
 		{
 			pmapFm->SetCurPos(Header.HeaderSize);
-			DWORD pack_len=pmapFm->GetFsize()-Header.HeaderSize;
-			DWORD unpack_len=Header.UnpackedDataLen;
-			BYTE* data=Crypt.Uncompress(pmapFm->GetCurBuf(),pack_len,unpack_len/pack_len+1);
+			uint pack_len=pmapFm->GetFsize()-Header.HeaderSize;
+			uint unpack_len=Header.UnpackedDataLen;
+			uchar* data=Crypt.Uncompress(pmapFm->GetCurBuf(),pack_len,unpack_len/pack_len+1);
 			if(!data)
 			{
-				WriteLog(__FUNCTION__" - Map<%s>. Unable unpack data.\n",map_info);
+				WriteLog(_FUNC_," - Map<%s>. Unable unpack data.\n",map_info);
 				return false;
 			}
 			pmapFm->LoadStream(data,pack_len);
@@ -1537,14 +1537,14 @@ bool ProtoMap::Refresh()
 		// Read Tiles
 		if(!ReadTiles(version))
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. Can't read Tiles.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. Can't read Tiles.\n",map_info);
 			return false;
 		}
 
 		// Read Objects
-		if(!ReadObjects(version))	
+		if(!ReadObjects(version))
 		{
-			WriteLog(__FUNCTION__" - Map<%s>. Can't read Objects.\n",map_info);
+			WriteLog(_FUNC_," - Map<%s>. Can't read Objects.\n",map_info);
 			return false;
 		}
 
@@ -1555,8 +1555,8 @@ bool ProtoMap::Refresh()
 	// Deprecated, add UIDs
 	if(Header.Version<FO_MAP_VERSION_TEXT4)
 	{
-		DWORD uid=0;
-		for(size_t i=0,j=MObjects.size();i<j;i++)
+		uint uid=0;
+		for(uint i=0,j=MObjects.size();i<j;i++)
 		{
 			MapObject* mobj=MObjects[i];
 
@@ -1564,7 +1564,7 @@ bool ProtoMap::Refresh()
 			if(mobj->MapObjType!=MAP_OBJECT_ITEM || !mobj->ContainerUID) continue;
 
 			// Find container
-			for(size_t k=0,l=MObjects.size();k<l;k++)
+			for(uint k=0,l=MObjects.size();k<l;k++)
 			{
 				MapObject* mobj_=MObjects[k];
 				if(mobj_->MapX!=mobj->MapX || mobj_->MapY!=mobj->MapY) continue;
@@ -1582,7 +1582,7 @@ bool ProtoMap::Refresh()
 	}
 
 	// Fix child objects positions
-	for(size_t i=0,j=MObjects.size();i<j;)
+	for(uint i=0,j=MObjects.size();i<j;)
 	{
 		MapObject* mobj_child=MObjects[i];
 		if(!mobj_child->ParentUID)
@@ -1592,7 +1592,7 @@ bool ProtoMap::Refresh()
 		}
 
 		bool delete_child=true;
-		for(size_t k=0,l=MObjects.size();k<l;k++)
+		for(uint k=0,l=MObjects.size();k<l;k++)
 		{
 			MapObject* mobj_parent=MObjects[k];
 			if(!mobj_parent->UID || mobj_parent->UID!=mobj_child->ParentUID || mobj_parent==mobj_child) continue;
@@ -1600,7 +1600,7 @@ bool ProtoMap::Refresh()
 			ProtoItem* proto_parent=ItemMngr.GetProtoItem(mobj_parent->ProtoId);
 			if(!proto_parent || !proto_parent->ChildPid[mobj_child->ParentChildIndex]) break;
 
-			WORD child_hx=mobj_parent->MapX,child_hy=mobj_parent->MapY;
+			ushort child_hx=mobj_parent->MapX,child_hy=mobj_parent->MapY;
 			FOREACH_PROTO_ITEM_LINES(proto_parent->ChildLines[mobj_child->ParentChildIndex],child_hx,child_hy,Header.MaxHexX,Header.MaxHexY,;);
 
 			mobj_child->MapX=child_hx;
@@ -1626,10 +1626,10 @@ bool ProtoMap::Refresh()
 	// Parse objects
 	WallsToSend.clear();
 	SceneriesToSend.clear();
-	WORD maxhx=Header.MaxHexX;
-	WORD maxhy=Header.MaxHexY;
+	ushort maxhx=Header.MaxHexX;
+	ushort maxhy=Header.MaxHexY;
 
-	HexFlags=new BYTE[Header.MaxHexX*Header.MaxHexY];
+	HexFlags=new uchar[Header.MaxHexX*Header.MaxHexY];
 	if(!HexFlags) return false;
 	ZeroMemory(HexFlags,Header.MaxHexX*Header.MaxHexY);
 
@@ -1650,20 +1650,20 @@ bool ProtoMap::Refresh()
 			continue;
 		}
 
-		WORD pid=mobj.ProtoId;
-		WORD hx=mobj.MapX;
-		WORD hy=mobj.MapY;
+		ushort pid=mobj.ProtoId;
+		ushort hx=mobj.MapX;
+		ushort hy=mobj.MapY;
 
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 		if(!proto_item)
 		{
-			WriteLog(__FUNCTION__" - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
+			WriteLog(_FUNC_," - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
 			continue;
 		}
 
 		if(hx>=maxhx || hy>=maxhy)
 		{
-			WriteLog(__FUNCTION__" - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
+			WriteLog(_FUNC_," - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
 			continue;
 		}
 
@@ -1729,7 +1729,7 @@ bool ProtoMap::Refresh()
 					// Block around
 					for(int k=0;k<6;k++)
 					{
-						WORD hx_=hx,hy_=hy;
+						ushort hx_=hx,hy_=hy;
 						MoveHexByDir(hx_,hy_,k,Header.MaxHexX,Header.MaxHexY);
 						SETFLAG(HexFlags[hy_*maxhx+hx_],FH_BLOCK);
 					}
@@ -1808,11 +1808,11 @@ bool ProtoMap::Refresh()
 
 	// Generate hashes
 	HashTiles=maxhx*maxhy;
-	if(Tiles.size()) Crypt.Crc32((BYTE*)&Tiles[0],Tiles.size()*sizeof(Tile),HashTiles);
+	if(Tiles.size()) Crypt.Crc32((uchar*)&Tiles[0],Tiles.size()*sizeof(Tile),HashTiles);
 	HashWalls=maxhx*maxhy;
-	if(WallsToSend.size()) Crypt.Crc32((BYTE*)&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl),HashWalls);
+	if(WallsToSend.size()) Crypt.Crc32((uchar*)&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl),HashWalls);
 	HashScen=maxhx*maxhy;
-	if(SceneriesToSend.size()) Crypt.Crc32((BYTE*)&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl),HashScen);
+	if(SceneriesToSend.size()) Crypt.Crc32((uchar*)&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl),HashScen);
 
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(SceneryCl));
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(SceneryCl));
@@ -1829,7 +1829,7 @@ bool ProtoMap::Refresh()
 
 #ifdef FONLINE_MAPPER
 	// Post process objects
-	for(size_t i=0,j=MObjects.size();i<j;i++)
+	for(uint i=0,j=MObjects.size();i<j;i++)
 	{
 		MapObject* mobj=MObjects[i];
 
@@ -1850,7 +1850,7 @@ bool ProtoMap::Refresh()
 	// Create cached fields
 	TilesField.resize(Header.MaxHexX*Header.MaxHexY);
 	RoofsField.resize(Header.MaxHexX*Header.MaxHexY);
-	for(size_t i=0,j=Tiles.size();i<j;i++)
+	for(uint i=0,j=Tiles.size();i<j;i++)
 	{
 		if(!Tiles[i].IsRoof)
 		{
@@ -1904,25 +1904,25 @@ bool ProtoMap::Save(const char* f_name, int path_type)
 	// Fill tiles from cached fields
 	TilesField.resize(Header.MaxHexX*Header.MaxHexY);
 	RoofsField.resize(Header.MaxHexX*Header.MaxHexY);
-	for(WORD hy=0;hy<Header.MaxHexY;hy++)
+	for(ushort hy=0;hy<Header.MaxHexY;hy++)
 	{
-		for(WORD hx=0;hx<Header.MaxHexX;hx++)
+		for(ushort hx=0;hx<Header.MaxHexX;hx++)
 		{
 			TileVec& tiles=TilesField[hy*Header.MaxHexX+hx];
-			for(size_t i=0,j=tiles.size();i<j;i++) Tiles.push_back(tiles[i]);
+			for(uint i=0,j=tiles.size();i<j;i++) Tiles.push_back(tiles[i]);
 			TileVec& roofs=RoofsField[hy*Header.MaxHexX+hx];
-			for(size_t i=0,j=roofs.size();i<j;i++) Tiles.push_back(roofs[i]);
+			for(uint i=0,j=roofs.size();i<j;i++) Tiles.push_back(roofs[i]);
 		}
 	}
 
 	// Delete non used UIDs
-	for(size_t i=0,j=MObjects.size();i<j;i++)
+	for(uint i=0,j=MObjects.size();i<j;i++)
 	{
 		MapObject* mobj=MObjects[i];
 		if(!mobj->UID) continue;
 
 		bool founded=false;
-		for(size_t k=0,l=MObjects.size();k<l;k++)
+		for(uint k=0,l=MObjects.size();k<l;k++)
 		{
 			MapObject* mobj_=MObjects[k];
 			if(mobj_->ContainerUID==mobj->UID || mobj_->ParentUID==mobj->UID)
@@ -1943,7 +1943,7 @@ bool ProtoMap::Save(const char* f_name, int path_type)
 	string fname=pmapName+MAP_PROTO_EXT;
 	if(!pmapFm->SaveOutBufToFile(fname.c_str(),pathType))
 	{
-		WriteLog(__FUNCTION__" - Unable write file.\n");
+		WriteLog(_FUNC_," - Unable write file.\n");
 		pmapFm->ClearOutBuf();
 		return false;
 	}
@@ -1970,22 +1970,22 @@ bool ProtoMap::IsMapFile(const char* fname)
 		// Check binary format
 		FileManager file;
 		if(!file.LoadFile(fname,PT_ROOT)) return false;
-		DWORD version=file.GetLEDWord();
+		uint version=file.GetLEUInt();
 		return version==FO_MAP_VERSION_V4 || version==FO_MAP_VERSION_V5 ||
 			version==FO_MAP_VERSION_V6 || version==FO_MAP_VERSION_V7 ||
 			version==FO_MAP_VERSION_V8 || version==FO_MAP_VERSION_V9;
 	}
-	
+
 	return false;
 }
 #endif // FONLINE_MAPPER
 
 #ifdef FONLINE_SERVER
-DWORD ProtoMap::CountEntire(DWORD num)
+uint ProtoMap::CountEntire(uint num)
 {
-	if(num==-1) return mapEntires.size();
+	if(num==uint(-1)) return mapEntires.size();
 
-	DWORD result=0;
+	uint result=0;
 	for(int i=0,j=mapEntires.size();i<j;i++)
 	{
 		if(mapEntires[i].Number==num) result++;
@@ -1993,11 +1993,11 @@ DWORD ProtoMap::CountEntire(DWORD num)
 	return result;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntire(DWORD num, DWORD skip)
+ProtoMap::MapEntire* ProtoMap::GetEntire(uint num, uint skip)
 {
-	for(int i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=mapEntires.size();i<j;i++)
 	{
-		if(num==-1 || mapEntires[i].Number==num)
+		if(num==uint(-1) || mapEntires[i].Number==num)
 		{
 			if(!skip) return &mapEntires[i];
 			else skip--;
@@ -2007,28 +2007,28 @@ ProtoMap::MapEntire* ProtoMap::GetEntire(DWORD num, DWORD skip)
 	return NULL;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireRandom(DWORD num)
+ProtoMap::MapEntire* ProtoMap::GetEntireRandom(uint num)
 {
 	vector<MapEntire*> entires;
-	for(int i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=mapEntires.size();i<j;i++)
 	{
-		if(num==-1 || mapEntires[i].Number==num) entires.push_back(&mapEntires[i]);
+		if(num==uint(-1) || mapEntires[i].Number==num) entires.push_back(&mapEntires[i]);
 	}
 
 	if(entires.empty()) return NULL;
 	return entires[Random(0,entires.size()-1)];
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, WORD hx, WORD hy)
+ProtoMap::MapEntire* ProtoMap::GetEntireNear(uint num, ushort hx, ushort hy)
 {
 	MapEntire* near_entire=NULL;
-	int last_dist;
-	for(int i=0,j=mapEntires.size();i<j;i++)
+	uint last_dist=0;
+	for(uint i=0,j=mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
-		if(num==-1 || entire.Number==num)
+		if(num==uint(-1) || entire.Number==num)
 		{
-			int dist=DistGame(hx,hy,entire.HexX,entire.HexY);
+			uint dist=DistGame(hx,hy,entire.HexX,entire.HexY);
 			if(!near_entire || dist<last_dist)
 			{
 				near_entire=&entire;
@@ -2039,16 +2039,16 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, WORD hx, WORD hy)
 	return near_entire;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, DWORD num_ext, WORD hx, WORD hy)
+ProtoMap::MapEntire* ProtoMap::GetEntireNear(uint num, uint num_ext, ushort hx, ushort hy)
 {
 	MapEntire* near_entire=NULL;
-	int last_dist;
-	for(int i=0,j=mapEntires.size();i<j;i++)
+	uint last_dist=0;
+	for(uint i=0,j=mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
-		if(num==-1 || num_ext==-1 || entire.Number==num || entire.Number==num_ext)
+		if(num==uint(-1) || num_ext==uint(-1) || entire.Number==num || entire.Number==num_ext)
 		{
-			int dist=DistGame(hx,hy,entire.HexX,entire.HexY);
+			uint dist=DistGame(hx,hy,entire.HexX,entire.HexY);
 			if(!near_entire || dist<last_dist)
 			{
 				near_entire=&entire;
@@ -2059,16 +2059,16 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear(DWORD num, DWORD num_ext, WORD hx, 
 	return near_entire;
 }
 
-void ProtoMap::GetEntires(DWORD num, EntiresVec& entires)
+void ProtoMap::GetEntires(uint num, EntiresVec& entires)
 {
-	for(int i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
-		if(num==-1 || entire.Number==num) entires.push_back(entire);
+		if(num==uint(-1) || entire.Number==num) entires.push_back(entire);
 	}
 }
 
-MapObject* ProtoMap::GetMapScenery(WORD hx, WORD hy, WORD pid)
+MapObject* ProtoMap::GetMapScenery(ushort hx, ushort hy, ushort pid)
 {
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
 	{
@@ -2078,7 +2078,7 @@ MapObject* ProtoMap::GetMapScenery(WORD hx, WORD hy, WORD pid)
 	return NULL;
 }
 
-void ProtoMap::GetMapSceneriesHex(WORD hx, WORD hy, MapObjectPtrVec& mobjs)
+void ProtoMap::GetMapSceneriesHex(ushort hx, ushort hy, MapObjectPtrVec& mobjs)
 {
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
 	{
@@ -2087,7 +2087,7 @@ void ProtoMap::GetMapSceneriesHex(WORD hx, WORD hy, MapObjectPtrVec& mobjs)
 	}
 }
 
-void ProtoMap::GetMapSceneriesHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, MapObjectPtrVec& mobjs)
+void ProtoMap::GetMapSceneriesHexEx(ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs)
 {
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
 	{
@@ -2096,7 +2096,7 @@ void ProtoMap::GetMapSceneriesHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, Ma
 	}
 }
 
-void ProtoMap::GetMapSceneriesByPid(WORD pid, MapObjectPtrVec& mobjs)
+void ProtoMap::GetMapSceneriesByPid(ushort pid, MapObjectPtrVec& mobjs)
 {
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
 	{
@@ -2105,7 +2105,7 @@ void ProtoMap::GetMapSceneriesByPid(WORD pid, MapObjectPtrVec& mobjs)
 	}
 }
 
-MapObject* ProtoMap::GetMapGrid(WORD hx, WORD hy)
+MapObject* ProtoMap::GetMapGrid(ushort hx, ushort hy)
 {
 	for(MapObjectPtrVecIt it=GridsVec.begin(),end=GridsVec.end();it!=end;++it)
 	{

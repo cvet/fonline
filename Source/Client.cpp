@@ -9,7 +9,7 @@
 #define CHECK_IN_BUFF_ERROR \
 	if(Bin.IsError())\
 	{\
-		WriteLog(__FUNCTION__" - Wrong MSG data.\n");\
+		WriteLog(_FUNC_," - Wrong MSG data.\n");\
 		return;\
 	}
 
@@ -18,7 +18,7 @@ void zlib_free_(void *opaque, void *address){free(address);}
 
 FOClient* FOClient::Self=NULL;
 bool FOClient::SpritesCanDraw=false;
-static DWORD* UID4=NULL;
+static uint* UID4=NULL;
 FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 {
 	Self=this;
@@ -87,19 +87,19 @@ void _PostRestore()
 	{
 		SAFEREL(FOClient::Self->SaveLoadDraft);
 		if(FAILED(SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
-			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&FOClient::Self->SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
+			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&FOClient::Self->SaveLoadDraft,NULL))) WriteLog(NULL,"Create save/load draft surface fail.\n");
 		FOClient::Self->SaveLoadDraftValid=false;
 	}
 }
 
-DWORD* UID1;
+uint* UID1;
 bool FOClient::Init(HWND hwnd)
 {
-	WriteLog("Engine initialization...\n");
+	WriteLog(NULL,"Engine initialization...\n");
 
-	STATIC_ASSERT(sizeof(DWORD)==4);
-	STATIC_ASSERT(sizeof(WORD)==2);
-	STATIC_ASSERT(sizeof(BYTE)==1);
+	STATIC_ASSERT(sizeof(uint)==4);
+	STATIC_ASSERT(sizeof(ushort)==2);
+	STATIC_ASSERT(sizeof(uchar)==1);
 	STATIC_ASSERT(sizeof(int)==4);
 	STATIC_ASSERT(sizeof(short)==2);
 	STATIC_ASSERT(sizeof(char)==1);
@@ -108,10 +108,10 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(GmapLocation)==16);
 	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==908);
-	STATIC_ASSERT(sizeof(Field)==92);
+	STATIC_ASSERT(sizeof(Field)==76);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
-	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4288);
-	STATIC_ASSERT(sizeof(GameOptions)==1200);
+	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4260);
+	STATIC_ASSERT(sizeof(GameOptions)==1152);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -120,14 +120,14 @@ bool FOClient::Init(HWND hwnd)
 	Wnd=hwnd;
 
 	// Register dll script data
-	struct CritterChangeParameter_{static void CritterChangeParameter(void*,DWORD){}}; // Dummy
+	struct CritterChangeParameter_{static void CritterChangeParameter(void*,uint){}}; // Dummy
 	GameOpt.CritterChangeParameter=&CritterChangeParameter_::CritterChangeParameter;
 
 	GameOpt.CritterTypes=&CritType::GetRealCritType(0);
 
 	struct GetDrawingSprites_
 	{
-		static void* GetDrawingSprites(DWORD& count)
+		static void* GetDrawingSprites(uint& count)
 		{
 			Sprites& tree=Self->HexMngr.GetDrawTree();
 			count=tree.Size();
@@ -139,7 +139,7 @@ bool FOClient::Init(HWND hwnd)
 
 	struct GetSpriteInfo_
 	{
-		static void* GetSpriteInfo(DWORD spr_id)
+		static void* GetSpriteInfo(uint spr_id)
 		{
 			return SprMngr.GetSpriteInfo(spr_id);
 		}
@@ -148,7 +148,7 @@ bool FOClient::Init(HWND hwnd)
 
 	struct GetSpriteColor_
 	{
-		static DWORD GetSpriteColor(DWORD spr_id, int x, int y, bool with_zoom)
+		static uint GetSpriteColor(uint spr_id, int x, int y, bool with_zoom)
 		{
 			return SprMngr.GetPixColor(spr_id,x,y,with_zoom);
 		}
@@ -173,9 +173,9 @@ bool FOClient::Init(HWND hwnd)
 	};
 	GameOpt.IsSpriteHit=&IsSpriteHit_::IsSpriteHit;
 
-	struct GetNameByHash_{static const char* GetNameByHash(DWORD hash){return Str::GetName(hash);}};
+	struct GetNameByHash_{static const char* GetNameByHash(uint hash){return Str::GetName(hash);}};
 	GameOpt.GetNameByHash=&GetNameByHash_::GetNameByHash;
-	struct GetHashByName_{static DWORD GetHashByName(const char* name){return Str::GetHash(name);}};
+	struct GetHashByName_{static uint GetHashByName(const char* name){return Str::GetHash(name);}};
 	GameOpt.GetHashByName=&GetHashByName_::GetHashByName;
 
 	// Input
@@ -196,17 +196,17 @@ bool FOClient::Init(HWND hwnd)
 
 	if(!Crypt.SetCacheTable(Str::Format("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
-		WriteLog(__FUNCTION__" - Can't set default cache.\n");
+		WriteLog(_FUNC_," - Can't set default cache.\n");
 		return false;
 	}
 	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)))
 	{
-		WriteLog(__FUNCTION__" - Can't set new cache.\n");
+		WriteLog(_FUNC_," - Can't set new cache.\n");
 		return false;
 	}
 	if(Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%ssingleplayer.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
-		WriteLog(__FUNCTION__" - Can't set single player cache.\n");
+		WriteLog(_FUNC_," - Can't set single player cache.\n");
 		return false;
 	}
 
@@ -215,7 +215,7 @@ bool FOClient::Init(HWND hwnd)
 	{
 		bool fail=false;
 
-		DWORD len;
+		uint len;
 		char* str=(char*)Crypt.GetCache("__name",len);
 		if(str && len<=MAX_NAME+1) GameOpt.Name=str;
 		else fail=true;
@@ -329,7 +329,7 @@ bool FOClient::Init(HWND hwnd)
 	int res=InitIface();
 	if(res!=0)
 	{
-		WriteLog("Init interface fail, error<%d>.\n",res);
+		WriteLog(NULL,"Init interface fail, error<%d>.\n",res);
 		return false;
 	}
 
@@ -341,19 +341,19 @@ bool FOClient::Init(HWND hwnd)
 
 	// Item prototypes
 	ItemMngr.ClearProtos();
-	DWORD protos_len;
-	BYTE* protos=Crypt.GetCache("item_protos",protos_len);
+	uint protos_len;
+	uchar* protos=Crypt.GetCache("item_protos",protos_len);
 	if(protos)
 	{
-		BYTE* protos_uc=Crypt.Uncompress(protos,protos_len,15);
+		uchar* protos_uc=Crypt.Uncompress(protos,protos_len,15);
 		delete[] protos;
 
-		DWORD protos_count_len;
-		BYTE* protos_count=Crypt.GetCache("item_protos_count",protos_count_len);
-		DWORD count=0;
+		uint protos_count_len;
+		uchar* protos_count=Crypt.GetCache("item_protos_count",protos_count_len);
+		uint count=0;
 		if(protos_count)
 		{
-			count=*(DWORD*)protos_count;
+			count=*(uint*)protos_count;
 			delete[] protos_count;
 			if(count!=protos_len/sizeof(ProtoItem)) count=0;
 		}
@@ -400,7 +400,7 @@ bool FOClient::Init(HWND hwnd)
 	LookBorders.clear();
 	ShootBorders.clear();
 
-	WriteLog("Engine initialization complete.\n");
+	WriteLog(NULL,"Engine initialization complete.\n");
 	Active=true;
 	GET_UID4(UID4);
 
@@ -420,7 +420,7 @@ bool FOClient::Init(HWND hwnd)
 	else if(!strstr(GetCommandLine(),"-SkipIntro"))
 	{
 		if(MsgGame->Count(STR_MUSIC_MAIN_THEME)) MusicAfterVideo=MsgGame->GetStr(STR_MUSIC_MAIN_THEME);
-		for(DWORD i=STR_VIDEO_INTRO_BEGIN;i<STR_VIDEO_INTRO_END;i++)
+		for(uint i=STR_VIDEO_INTRO_BEGIN;i<STR_VIDEO_INTRO_END;i++)
 		{
 			if(MsgGame->Count(i)==1) AddVideo(MsgGame->GetStr(i,0),NULL,true,false);
 			else if(MsgGame->Count(i)==2) AddVideo(MsgGame->GetStr(i,0),MsgGame->GetStr(i,1),true,false);
@@ -432,12 +432,12 @@ bool FOClient::Init(HWND hwnd)
 
 int FOClient::InitDInput()
 {
-	WriteLog("DirectInput initialization...\n");
+	WriteLog(NULL,"DirectInput initialization...\n");
 
     HRESULT hr=DirectInput8Create(GetModuleHandle(NULL),DIRECTINPUT_VERSION,IID_IDirectInput8,(void**)&DInput,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Can't create DirectInput.\n");
+		WriteLog(NULL,"Can't create DirectInput.\n");
 		return false;
 	}
 
@@ -445,14 +445,14 @@ int FOClient::InitDInput()
     hr=DInput->CreateDevice(GUID_SysKeyboard,&Keyboard,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Can't create GUID_SysKeyboard.\n");
+		WriteLog(NULL,"Can't create GUID_SysKeyboard.\n");
 		return false;
 	}
 
     hr=DInput->CreateDevice(GUID_SysMouse,&Mouse,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Can't create GUID_SysMouse.\n");
+		WriteLog(NULL,"Can't create GUID_SysMouse.\n");
 		return false;
 	}
 
@@ -462,28 +462,28 @@ int FOClient::InitDInput()
     hr=Keyboard->SetDataFormat(&c_dfDIKeyboard);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Unable to set data format for keyboard.\n");
+		WriteLog(NULL,"Unable to set data format for keyboard.\n");
 		return false;
 	}
 
     hr=Mouse->SetDataFormat(&c_dfDIMouse2);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Unable to set data format for mouse.\n");
+		WriteLog(NULL,"Unable to set data format for mouse.\n");
 		return false;
 	}
 
     hr=Keyboard->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|DISCL_NONEXCLUSIVE);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Unable to set cooperative level for keyboard.\n");
+		WriteLog(NULL,"Unable to set cooperative level for keyboard.\n");
 		return false;
 	}
 
 	hr=Mouse->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|(GameOpt.FullScreen?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
 	if(hr!=DI_OK)
 	{
-		WriteLog("Unable to set cooperative level for mouse.\n");
+		WriteLog(NULL,"Unable to set cooperative level for mouse.\n");
 		return false;
 	}
 
@@ -498,28 +498,28 @@ int FOClient::InitDInput()
     hr=Keyboard->SetProperty(DIPROP_BUFFERSIZE,&dipdw.diph);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Unable to set property for keyboard.\n");
+		WriteLog(NULL,"Unable to set property for keyboard.\n");
 		return false;
 	}
 
     hr=Mouse->SetProperty(DIPROP_BUFFERSIZE,&dipdw.diph);
 	if(hr!=DI_OK)
 	{
-		WriteLog("Unable to set property for mouse.\n");
+		WriteLog(NULL,"Unable to set property for mouse.\n");
 		return false;
 	}
 
     // Acquire the newly created device
-	if(Keyboard->Acquire()!=DI_OK) WriteLog("Can't acquire keyboard.\n");
-	if(Mouse->Acquire()!=DI_OK) WriteLog("Can't acquire mouse.\n");
+	if(Keyboard->Acquire()!=DI_OK) WriteLog(NULL,"Can't acquire keyboard.\n");
+	if(Mouse->Acquire()!=DI_OK) WriteLog(NULL,"Can't acquire mouse.\n");
 
-	WriteLog("DirectInput initialization complete.\n");
+	WriteLog(NULL,"DirectInput initialization complete.\n");
 	return true;
 }
 
 void FOClient::Finish()
 {
-	WriteLog("Engine finish...\n");
+	WriteLog(NULL,"Engine finish...\n");
 
 	SAFEREL(SaveLoadDraft);
 
@@ -555,7 +555,7 @@ void FOClient::Finish()
 	FileManager::EndOfWork();
 
 	Active=false;
-	WriteLog("Engine finish complete.\n");
+	WriteLog(NULL,"Engine finish complete.\n");
 }
 
 void FOClient::ClearCritters()
@@ -572,7 +572,7 @@ void FOClient::ClearCritters()
 
 void FOClient::AddCritter(CritterCl* cr)
 {
-	DWORD fading=0;
+	uint fading=0;
 	CritterCl* cr_=GetCritter(cr->GetId());
 	if(cr_) fading=cr_->FadingTick;
 	EraseCritter(cr->GetId());
@@ -586,7 +586,7 @@ void FOClient::AddCritter(CritterCl* cr)
 	cr->FadingTick=Timer::GameTick()+FADING_PERIOD-(fading>Timer::GameTick()?fading-Timer::GameTick():0);
 }
 
-void FOClient::EraseCritter(DWORD remid)
+void FOClient::EraseCritter(uint remid)
 {
 	if(Chosen && Chosen->GetId()==remid) Chosen=NULL;
 	HexMngr.EraseCrit(remid);
@@ -600,26 +600,26 @@ void FOClient::LookBordersPrepare()
 	ShootBorders.clear();
 	if(HexMngr.IsMapLoaded() && Chosen)
 	{
-		DWORD dist=Chosen->GetLook();
-		WORD base_hx=Chosen->GetHexX();
-		WORD base_hy=Chosen->GetHexY();
+		uint dist=Chosen->GetLook();
+		ushort base_hx=Chosen->GetHexX();
+		ushort base_hy=Chosen->GetHexY();
 		int hx=base_hx;
 		int hy=base_hy;
 		int dir=Chosen->GetDir();
-		DWORD dist_shoot=Chosen->GetAttackDist();
-		WORD maxhx=HexMngr.GetMaxHexX();
-		WORD maxhy=HexMngr.GetMaxHexY();
+		uint dist_shoot=Chosen->GetAttackDist();
+		ushort maxhx=HexMngr.GetMaxHexX();
+		ushort maxhy=HexMngr.GetMaxHexY();
 		bool seek_start=true;
 		for(int i=0;i<(GameOpt.MapHexagonal?6:4);i++)
 		{
 			int dir=(GameOpt.MapHexagonal?(i+2)%6:((i+1)*2)%8);
 
-			for(DWORD j=0,jj=(GameOpt.MapHexagonal?dist:dist*2);j<jj;j++)
+			for(uint j=0,jj=(GameOpt.MapHexagonal?dist:dist*2);j<jj;j++)
 			{
 				if(seek_start)
 				{
 					// Move to start position
-					for(DWORD l=0;l<dist;l++) MoveHexByDirUnsafe(hx,hy,GameOpt.MapHexagonal?0:7);
+					for(uint l=0;l<dist;l++) MoveHexByDirUnsafe(hx,hy,GameOpt.MapHexagonal?0:7);
 					seek_start=false;
 					j=-1;
 				}
@@ -629,15 +629,15 @@ void FOClient::LookBordersPrepare()
 					MoveHexByDirUnsafe(hx,hy,dir);
 				}
 
-				WORD hx_=CLAMP(hx,0,maxhx-1);
-				WORD hy_=CLAMP(hy,0,maxhy-1);
+				ushort hx_=CLAMP(hx,0,maxhx-1);
+				ushort hy_=CLAMP(hy,0,maxhy-1);
 				if(FLAG(GameOpt.LookChecks,LOOK_CHECK_DIR))
 				{
 					int dir_=GetFarDir(base_hx,base_hy,hx_,hy_);
 					int ii=(dir>dir_?dir-dir_:dir_-dir);
 					if(ii>DIRS_COUNT/2) ii=DIRS_COUNT-ii;
-					DWORD dist_=dist-dist*GameOpt.LookDir[ii]/100;
-					WordPair block;
+					uint dist_=dist-dist*GameOpt.LookDir[ii]/100;
+					UShortPair block;
 					HexMngr.TraceBullet(base_hx,base_hy,hx_,hy_,dist_,0.0f,NULL,false,NULL,0,NULL,&block,NULL,false);
 					hx_=block.first;
 					hy_=block.second;
@@ -645,16 +645,16 @@ void FOClient::LookBordersPrepare()
 
 				if(FLAG(GameOpt.LookChecks,LOOK_CHECK_TRACE))
 				{
-					WordPair block;
+					UShortPair block;
 					HexMngr.TraceBullet(base_hx,base_hy,hx_,hy_,0,0.0f,NULL,false,NULL,0,NULL,&block,NULL,true);
 					hx_=block.first;
 					hy_=block.second;
 				}
 
-				WORD hx__=hx_;
-				WORD hy__=hy_;
-				DWORD dist_look=DistGame(base_hx,base_hy,hx_,hy_);
-				WordPair block;
+				ushort hx__=hx_;
+				ushort hy__=hy_;
+				uint dist_look=DistGame(base_hx,base_hy,hx_,hy_);
+				UShortPair block;
 				HexMngr.TraceBullet(base_hx,base_hy,hx_,hy_,min(dist_look,dist_shoot),0.0f,NULL,false,NULL,0,NULL,&block,NULL,true);
 				hx__=block.first;
 				hy__=block.second;
@@ -688,8 +688,8 @@ void FOClient::LookBordersDraw()
 int FOClient::MainLoop()
 {
 	// Fps counter
-	static DWORD last_call=Timer::FastTick();
-	static WORD call_cnt=0;
+	static uint last_call=Timer::FastTick();
+	static ushort call_cnt=0;
     if((Timer::FastTick()-last_call)>=1000)
 	{
 		FPS=call_cnt;
@@ -758,7 +758,7 @@ int FOClient::MainLoop()
 	AnimProcess();
 
 	// Game time
-	WORD full_second=GameOpt.FullSecond;
+	ushort full_second=GameOpt.FullSecond;
 	ProcessGameTime();
 	if(full_second!=GameOpt.FullSecond) SetDayTime(false);
 
@@ -792,11 +792,11 @@ int FOClient::MainLoop()
 	if(IsScreenPresent(SCREEN__ELEVATOR)) ElevatorProcess();
 
 	// Script loop
-	static DWORD next_call=0;
+	static uint next_call=0;
 	if(Timer::FastTick()>=next_call)
 	{
-		DWORD wait_tick=1000;
-		if(Script::PrepareContext(ClientFunctions.Loop,CALL_FUNC_STR,"Game") && Script::RunPrepared()) wait_tick=Script::GetReturnedDword();
+		uint wait_tick=1000;
+		if(Script::PrepareContext(ClientFunctions.Loop,_FUNC_,"Game") && Script::RunPrepared()) wait_tick=Script::GetReturnedUInt();
 		next_call=Timer::FastTick()+wait_tick;
 	}
 	Script::CollectGarbage(false);
@@ -851,7 +851,7 @@ int FOClient::MainLoop()
 
 	/*if(!GameOpt.DisableDrawScreens)
 	{
-		for(size_t i=0,j=ScreenMode.size();i<j;i++)
+		for(uint i=0,j=ScreenMode.size();i<j;i++)
 		{
 			switch(ScreenMode[i])
 			{
@@ -892,7 +892,7 @@ int FOClient::MainLoop()
 	return 1;
 }
 
-void FOClient::ScreenFade(DWORD time, DWORD from_color, DWORD to_color, bool push_back)
+void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
 {
 	if(!push_back || ScreenEffects.empty())
 	{
@@ -900,7 +900,7 @@ void FOClient::ScreenFade(DWORD time, DWORD from_color, DWORD to_color, bool pus
 	}
 	else
 	{
-		DWORD last_tick=0;
+		uint last_tick=0;
 		for(ScreenEffectVecIt it=ScreenEffects.begin();it!=ScreenEffects.end();++it)
 		{
 			ScreenEffect& e=(*it);
@@ -910,14 +910,14 @@ void FOClient::ScreenFade(DWORD time, DWORD from_color, DWORD to_color, bool pus
 	}
 }
 
-void FOClient::ScreenQuake(int noise, DWORD time)
+void FOClient::ScreenQuake(int noise, uint time)
 {
 	GameOpt.ScrOx-=ScreenOffsX;
 	GameOpt.ScrOy-=ScreenOffsY;
 	ScreenOffsX=Random(0,1)?noise:-noise;
 	ScreenOffsY=Random(0,1)?noise:-noise;
-	ScreenOffsXf=ScreenOffsX;
-	ScreenOffsYf=ScreenOffsY;
+	ScreenOffsXf=(float)ScreenOffsX;
+	ScreenOffsYf=(float)ScreenOffsY;
 	ScreenOffsStep=fabs(ScreenOffsXf)/(time/30);
 	GameOpt.ScrOx+=ScreenOffsX;
 	GameOpt.ScrOy+=ScreenOffsY;
@@ -927,7 +927,7 @@ void FOClient::ScreenQuake(int noise, DWORD time)
 void FOClient::ProcessScreenEffectFading()
 {
 	static PointVec six_points;
-	if(six_points.empty()) SprMngr.PrepareSquare(six_points,FLTRECT(0,0,MODE_WIDTH,MODE_HEIGHT),0);
+	if(six_points.empty()) SprMngr.PrepareSquare(six_points,FLTRECT(0,0,(float)MODE_WIDTH,(float)MODE_HEIGHT),0);
 
 	for(ScreenEffectVecIt it=ScreenEffects.begin();it!=ScreenEffects.end();)
 	{
@@ -944,13 +944,13 @@ void FOClient::ProcessScreenEffectFading()
 
 			for(int i=0;i<4;i++)
 			{
-				int sc=((BYTE*)&e.StartColor)[i];
-				int ec=((BYTE*)&e.EndColor)[i];
+				int sc=((uchar*)&e.StartColor)[i];
+				int ec=((uchar*)&e.EndColor)[i];
 				int dc=ec-sc;
 				res[i]=sc+dc*proc/100;
 			}
 
-			DWORD color=D3DCOLOR_ARGB(res[3],res[2],res[1],res[0]);
+			uint color=D3DCOLOR_ARGB(res[3],res[2],res[1],res[0]);
 			for(int i=0;i<6;i++) six_points[i].PointColor=color;
 
 			SprMngr.DrawPoints(six_points,D3DPT_TRIANGLELIST);
@@ -971,8 +971,8 @@ void FOClient::ProcessScreenEffectQuake()
 		else if(ScreenOffsYf>0.0f) ScreenOffsYf-=ScreenOffsStep;
 		ScreenOffsXf=-ScreenOffsXf;
 		ScreenOffsYf=-ScreenOffsYf;
-		ScreenOffsX=ScreenOffsXf;
-		ScreenOffsY=ScreenOffsYf;
+		ScreenOffsX=(int)ScreenOffsXf;
+		ScreenOffsY=(int)ScreenOffsYf;
 		GameOpt.ScrOx+=ScreenOffsX;
 		GameOpt.ScrOy+=ScreenOffsY;
 		ScreenOffsNextTick=Timer::GameTick()+30;
@@ -1048,7 +1048,7 @@ void FOClient::ProcessScreenEffectMirror()
 			LPDIRECT3DVERTEXBUFFER vb;
 			SprMngr.GetDevice()->CreateVertexBuffer(6*sizeof(MYVERTEX),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&vb);
 			void* vertices;
-			vb->Lock(0,6*sizeof(MYVERTEX),(BYTE**)&vertices,D3DLOCK_DISCARD);
+			vb->Lock(0,6*sizeof(MYVERTEX),(uchar**)&vertices,D3DLOCK_DISCARD);
 			memcpy(vertices,vb_,6*sizeof(MYVERTEX));
 			vb->Unlock();
 			SprMngr.GetDevice()->SetStreamSource(0,vb,sizeof(MYVERTEX));
@@ -1072,7 +1072,7 @@ void FOClient::ParseKeyboard()
 		Keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); // Clear buffer
 		Keyb::Lost();
 		Timer::StartAccelerator(ACCELERATE_NONE);
-		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
+		if(Script::PrepareContext(ClientFunctions.InputLost,_FUNC_,"Game")) Script::RunPrepared();
 		return;
 	}
 
@@ -1082,10 +1082,10 @@ void FOClient::ParseKeyboard()
 		if(Timer::ProcessAccelerator(ACCELERATE_PAGE_DOWN)) ProcessMouseWheel(-1);
 	}
 
-	for(int i=0;i<elements;i++) 
+	for(uint i=0;i<elements;i++) 
 	{
-		BYTE dikdw=Keyb::KeysMap[(didod[i].dwData&0x80?didod[i].dwOfs:0)&0xFF];
-		BYTE dikup=Keyb::KeysMap[(!(didod[i].dwData&0x80)?didod[i].dwOfs:0)&0xFF];
+		uchar dikdw=Keyb::KeysMap[(didod[i].dwData&0x80?didod[i].dwOfs:0)&0xFF];
+		uchar dikup=Keyb::KeysMap[(!(didod[i].dwData&0x80)?didod[i].dwOfs:0)&0xFF];
 
 		if(IsVideoPlayed())
 		{
@@ -1098,14 +1098,14 @@ void FOClient::ParseKeyboard()
 		}
 
 		bool script_result=false;
-		if(dikdw && Script::PrepareContext(ClientFunctions.KeyDown,CALL_FUNC_STR,"Game"))
+		if(dikdw && Script::PrepareContext(ClientFunctions.KeyDown,_FUNC_,"Game"))
 		{
-			Script::SetArgByte(dikdw);
+			Script::SetArgUChar(dikdw);
 			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 		}
-		if(dikup && Script::PrepareContext(ClientFunctions.KeyUp,CALL_FUNC_STR,"Game"))
+		if(dikup && Script::PrepareContext(ClientFunctions.KeyUp,_FUNC_,"Game"))
 		{
-			Script::SetArgByte(dikup);
+			Script::SetArgUChar(dikup);
 			if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 		}
 
@@ -1335,7 +1335,7 @@ void FOClient::ParseMouse()
 		Mouse->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),didod,&elements,0); // Clear buffer
 		IfaceHold=IFACE_NONE;
 		Timer::StartAccelerator(ACCELERATE_NONE);
-		if(Script::PrepareContext(ClientFunctions.InputLost,CALL_FUNC_STR,"Game")) Script::RunPrepared();
+		if(Script::PrepareContext(ClientFunctions.InputLost,_FUNC_,"Game")) Script::RunPrepared();
 		return;
 	}
 
@@ -1428,10 +1428,10 @@ void FOClient::ParseMouse()
 			ProcessMouseScroll();
 			LMenuMouseMove();
 
-			if(Script::PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseMove,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(GameOpt.MouseX);
-				Script::SetArgDword(GameOpt.MouseY);
+				Script::SetArgUInt(GameOpt.MouseX);
+				Script::SetArgUInt(GameOpt.MouseY);
 				Script::RunPrepared();
 			}
 		}	
@@ -1439,7 +1439,7 @@ void FOClient::ParseMouse()
 
 	static float ox=0.0f,oy=0.0f;
 	float speed=(float)GameOpt.MouseSpeed/100.0f;
-	for(int i=0;i<elements;i++) 
+	for(uint i=0;i<elements;i++) 
 	{
 		// Mouse Move
 		// Direct input move cursor in full screen mode
@@ -1464,51 +1464,51 @@ void FOClient::ParseMouse()
 		// Scripts
 		bool script_result=false;
 		DI_ONMOUSE(DIMOFS_Z,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
+				Script::SetArgUInt(int(didod[i].dwData)>0?MOUSE_CLICK_WHEEL_UP:MOUSE_CLICK_WHEEL_DOWN);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON0,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_LEFT);
+				Script::SetArgUInt(MOUSE_CLICK_LEFT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON0,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_LEFT);
+				Script::SetArgUInt(MOUSE_CLICK_LEFT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON1,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_RIGHT);
+				Script::SetArgUInt(MOUSE_CLICK_RIGHT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON1,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_RIGHT);
+				Script::SetArgUInt(MOUSE_CLICK_RIGHT);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON2,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
+				Script::SetArgUInt(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON2,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_MIDDLE);
+				Script::SetArgUInt(MOUSE_CLICK_MIDDLE);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 				if(!script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && Keyb::KeyPressed[DIK_Z] && GameOpt.SpritesZoomMin!=GameOpt.SpritesZoomMax)
 				{
@@ -1522,72 +1522,72 @@ void FOClient::ParseMouse()
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON3,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT0);
+				Script::SetArgUInt(MOUSE_CLICK_EXT0);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON3,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT0);
+				Script::SetArgUInt(MOUSE_CLICK_EXT0);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON4,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT1);
+				Script::SetArgUInt(MOUSE_CLICK_EXT1);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON4,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT1);
+				Script::SetArgUInt(MOUSE_CLICK_EXT1);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON5,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT2);
+				Script::SetArgUInt(MOUSE_CLICK_EXT2);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON5,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT2);
+				Script::SetArgUInt(MOUSE_CLICK_EXT2);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON6,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT3);
+				Script::SetArgUInt(MOUSE_CLICK_EXT3);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON6,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT3);
+				Script::SetArgUInt(MOUSE_CLICK_EXT3);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONDOWN(DIMOFS_BUTTON7,
-			if(Script::PrepareContext(ClientFunctions.MouseDown,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseDown,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT4);
+				Script::SetArgUInt(MOUSE_CLICK_EXT4);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
 		DI_ONUP(DIMOFS_BUTTON7,
-			if(Script::PrepareContext(ClientFunctions.MouseUp,CALL_FUNC_STR,"Game"))
+			if(Script::PrepareContext(ClientFunctions.MouseUp,_FUNC_,"Game"))
 			{
-				Script::SetArgDword(MOUSE_CLICK_EXT4);
+				Script::SetArgUInt(MOUSE_CLICK_EXT4);
 				if(Script::RunPrepared()) script_result=Script::GetReturnedBool();
 			}
 		);
@@ -1798,10 +1798,10 @@ void FOClient::ParseMouse()
 		ProcessMouseScroll();
 		LMenuMouseMove();
 
-		if(Script::PrepareContext(ClientFunctions.MouseMove,CALL_FUNC_STR,"Game"))
+		if(Script::PrepareContext(ClientFunctions.MouseMove,_FUNC_,"Game"))
 		{
-			Script::SetArgDword(GameOpt.MouseX);
-			Script::SetArgDword(GameOpt.MouseY);
+			Script::SetArgUInt(GameOpt.MouseX);
+			Script::SetArgUInt(GameOpt.MouseY);
 			Script::RunPrepared();
 		}
 	}
@@ -1997,7 +1997,7 @@ void FOClient::ProcessMouseWheel(int data)
 				int max_lines=ChaTSwitch.H()/11;
 				SwitchElementVec& text=ChaSwitchText[ChaCurSwitch];
 				int& scroll=ChaSwitchScroll[ChaCurSwitch];
-				if(scroll+max_lines<text.size()) scroll++;
+				if(scroll+max_lines<(int)text.size()) scroll++;
 			}
 		}
 
@@ -2071,13 +2071,13 @@ void FOClient::ProcessMouseWheel(int data)
 
 bool FOClient::InitNet()
 {
-	WriteLog("Network init...\n");
+	WriteLog(NULL,"Network init...\n");
 	NetState=STATE_DISCONNECT;
 
 	WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2),&wsa))
 	{
-		WriteLog("WSAStartup error<%s>.\n",GetLastSocketError());
+		WriteLog(NULL,"WSAStartup error<%s>.\n",GetLastSocketError());
 		return false;
 	}
 
@@ -2102,11 +2102,11 @@ bool FOClient::InitNet()
 
 	if(!NetConnect()) return false;
 	NetState=STATE_CONN;
-	WriteLog("Network init successful.\n");
+	WriteLog(NULL,"Network init successful.\n");
 	return true;
 }
 
-bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port)
+bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, ushort port)
 {
 	saddr.sin_family=AF_INET;
 	saddr.sin_port=htons(port);
@@ -2115,7 +2115,7 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port)
 		hostent* h=gethostbyname(host);
 		if(!h)
 		{
-			WriteLog(__FUNCTION__" - Can't resolve remote host<%s>, error<%s>.",host,GetLastSocketError());
+			WriteLog(_FUNC_," - Can't resolve remote host<%s>, error<%s>.",host,GetLastSocketError());
 			return false;
 		}
 
@@ -2126,15 +2126,15 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port)
 
 bool FOClient::NetConnect()
 {
-	if(!Singleplayer) WriteLog("Connecting to server<%s:%d>.\n",GameOpt.Host.c_str(),GameOpt.Port);
-	else WriteLog("Connecting to server.\n");
+	if(!Singleplayer) WriteLog(NULL,"Connecting to server<%s:%d>.\n",GameOpt.Host.c_str(),GameOpt.Port);
+	else WriteLog(NULL,"Connecting to server.\n");
 
 	Bin.SetEncryptKey(0);
 	Bout.SetEncryptKey(0);
 
 	if((Sock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,0))==INVALID_SOCKET)
 	{
-		WriteLog("Create socket error<%s>.\n",GetLastSocketError());
+		WriteLog(NULL,"Create socket error<%s>.\n",GetLastSocketError());
 		return false;
 	}
 
@@ -2143,7 +2143,7 @@ bool FOClient::NetConnect()
 	{
 		int optval=1;
 		if(setsockopt(Sock,IPPROTO_TCP,TCP_NODELAY,(char*)&optval,sizeof(optval)))
-			WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",WSAGetLastError());
+			WriteLog(NULL,"Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",WSAGetLastError());
 	}
 
 	// Direct connect
@@ -2151,7 +2151,7 @@ bool FOClient::NetConnect()
 	{
 		if(connect(Sock,(sockaddr*)&SockAddr,sizeof(SOCKADDR_IN)))
 		{
-			WriteLog("Can't connect to game server, error<%s>.\n",GetLastSocketError());
+			WriteLog(NULL,"Can't connect to game server, error<%s>.\n",GetLastSocketError());
 			return false;
 		}
 	}
@@ -2160,7 +2160,7 @@ bool FOClient::NetConnect()
 	{
 		if(connect(Sock,(sockaddr*)&ProxyAddr,sizeof(SOCKADDR_IN)))
 		{
-			WriteLog("Can't connect to Proxy server, error<%s>.\n",GetLastSocketError());
+			WriteLog(NULL,"Can't connect to Proxy server, error<%s>.\n",GetLastSocketError());
 			return false;
 		}
 
@@ -2168,22 +2168,22 @@ bool FOClient::NetConnect()
 #define SEND_RECV do{\
 	if(!NetOutput())\
 	{\
-		WriteLog("Net output error.\n");\
+		WriteLog(NULL,"Net output error.\n");\
 		return false;\
 	}\
-	DWORD tick=Timer::FastTick();\
+	uint tick=Timer::FastTick();\
 	while(true)\
 	{\
 		int receive=NetInput(false);\
 		if(receive>0) break;\
 		if(receive<0)\
 		{\
-			WriteLog("Net input error.\n");\
+			WriteLog(NULL,"Net input error.\n");\
 			return false;\
 		}\
 		if(Timer::FastTick()-tick>10000)\
 		{\
-			WriteLog("Proxy answer timeout.\n");\
+			WriteLog(NULL,"Proxy answer timeout.\n");\
 			return false;\
 		}\
 		Sleep(1);\
@@ -2191,18 +2191,18 @@ bool FOClient::NetConnect()
 }while(0)
 //==========================================
 
-		BYTE b1,b2;
+		uchar b1,b2;
 		Bin.Reset();
 		Bout.Reset();
 		// Authentication
 		if(GameOpt.ProxyType==PROXY_SOCKS4)
 		{
 			// Connect
-			Bout << BYTE(4); // Socks version
-			Bout << BYTE(1); // Connect command
-			Bout << WORD(SockAddr.sin_port);
-			Bout << DWORD(SockAddr.sin_addr.s_addr);
-			Bout << BYTE(0);
+			Bout << uchar(4); // Socks version
+			Bout << uchar(1); // Connect command
+			Bout << ushort(SockAddr.sin_port);
+			Bout << uint(SockAddr.sin_addr.s_addr);
+			Bout << uchar(0);
 			SEND_RECV;
 			Bin >> b1; // Null byte
 			Bin >> b2; // Answer code
@@ -2210,50 +2210,50 @@ bool FOClient::NetConnect()
 			{
 				switch(b2)
 				{
-				case 0x5B: WriteLog("Proxy connection error, request rejected or failed.\n"); break;
-				case 0x5C: WriteLog("Proxy connection error, request failed because client is not running identd (or not reachable from the server).\n"); break;
-				case 0x5D: WriteLog("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n"); break;
-				default: WriteLog("Proxy connection error, Unknown error<%u>.\n",b2); break;
+				case 0x5B: WriteLog(NULL,"Proxy connection error, request rejected or failed.\n"); break;
+				case 0x5C: WriteLog(NULL,"Proxy connection error, request failed because client is not running identd (or not reachable from the server).\n"); break;
+				case 0x5D: WriteLog(NULL,"Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n"); break;
+				default: WriteLog(NULL,"Proxy connection error, Unknown error<%u>.\n",b2); break;
 				}
 				return false;
 			}
 		}
 		else if(GameOpt.ProxyType==PROXY_SOCKS5)
 		{
-			Bout << BYTE(5); // Socks version
-			Bout << BYTE(1); // Count methods
-			Bout << BYTE(2); // Method
+			Bout << uchar(5); // Socks version
+			Bout << uchar(1); // Count methods
+			Bout << uchar(2); // Method
 			SEND_RECV;
 			Bin >> b1; // Socks version
 			Bin >> b2; // Method
 			if(b2==2) // User/Password
 			{
-				Bout << BYTE(1); // Subnegotiation version
-				Bout << BYTE(GameOpt.ProxyUser.length()); // Name length
+				Bout << uchar(1); // Subnegotiation version
+				Bout << uchar(GameOpt.ProxyUser.length()); // Name length
 				Bout.Push(GameOpt.ProxyUser.c_str(),GameOpt.ProxyUser.length()); // Name
-				Bout << BYTE(GameOpt.ProxyPass.length()); // Pass length
+				Bout << uchar(GameOpt.ProxyPass.length()); // Pass length
 				Bout.Push(GameOpt.ProxyPass.c_str(),GameOpt.ProxyPass.length()); // Pass
 				SEND_RECV;
 				Bin >> b1; // Subnegotiation version
 				Bin >> b2; // Status
 				if(b2!=0)
 				{
-					WriteLog("Invalid proxy user or password.\n");
+					WriteLog(NULL,"Invalid proxy user or password.\n");
 					return false;
 				}
 			}
 			else if(b2!=0) // Other authorization
 			{
-				WriteLog("Socks server connect fail.\n");
+				WriteLog(NULL,"Socks server connect fail.\n");
 				return false;
 			}
 			// Connect
-			Bout << BYTE(5); // Socks version
-			Bout << BYTE(1); // Connect command
-			Bout << BYTE(0); // Reserved
-			Bout << BYTE(1); // IP v4 address
-			Bout << DWORD(SockAddr.sin_addr.s_addr);
-			Bout << WORD(SockAddr.sin_port);
+			Bout << uchar(5); // Socks version
+			Bout << uchar(1); // Connect command
+			Bout << uchar(0); // Reserved
+			Bout << uchar(1); // IP v4 address
+			Bout << uint(SockAddr.sin_addr.s_addr);
+			Bout << ushort(SockAddr.sin_port);
 			SEND_RECV;
 			Bin >> b1; // Socks version
 			Bin >> b2; // Answer code
@@ -2261,15 +2261,15 @@ bool FOClient::NetConnect()
 			{
 				switch(b2)
 				{
-				case 1: WriteLog("Proxy connection error, SOCKS-server error.\n"); break;
-				case 2: WriteLog("Proxy connection error, connections fail by proxy rules.\n"); break;
-				case 3: WriteLog("Proxy connection error, network is not aviable.\n"); break;
-				case 4: WriteLog("Proxy connection error, host is not aviable.\n"); break;
-				case 5: WriteLog("Proxy connection error, connection denied.\n"); break;
-				case 6: WriteLog("Proxy connection error, TTL expired.\n"); break;
-				case 7: WriteLog("Proxy connection error, command not supported.\n"); break;
-				case 8: WriteLog("Proxy connection error, address type not supported.\n"); break;
-				default: WriteLog("Proxy connection error, Unknown error<%u>.\n",b2); break;
+				case 1: WriteLog(NULL,"Proxy connection error, SOCKS-server error.\n"); break;
+				case 2: WriteLog(NULL,"Proxy connection error, connections fail by proxy rules.\n"); break;
+				case 3: WriteLog(NULL,"Proxy connection error, network is not aviable.\n"); break;
+				case 4: WriteLog(NULL,"Proxy connection error, host is not aviable.\n"); break;
+				case 5: WriteLog(NULL,"Proxy connection error, connection denied.\n"); break;
+				case 6: WriteLog(NULL,"Proxy connection error, TTL expired.\n"); break;
+				case 7: WriteLog(NULL,"Proxy connection error, command not supported.\n"); break;
+				case 8: WriteLog(NULL,"Proxy connection error, address type not supported.\n"); break;
+				default: WriteLog(NULL,"Proxy connection error, Unknown error<%u>.\n",b2); break;
 				}
 				return false;
 			}
@@ -2289,13 +2289,13 @@ bool FOClient::NetConnect()
 			}*/
 			if(!strstr(buf," 200 "))
 			{
-				WriteLog("Proxy connection error, receive message<%s>.\n",buf);
+				WriteLog(NULL,"Proxy connection error, receive message<%s>.\n",buf);
 				return false;
 			}
 		}
 		else
 		{
-			WriteLog("Unknown proxy type<%u>.\n",GameOpt.ProxyType);
+			WriteLog(NULL,"Unknown proxy type<%u>.\n",GameOpt.ProxyType);
 			return false;
 		}
 
@@ -2303,14 +2303,14 @@ bool FOClient::NetConnect()
 		Bout.Reset();
 	}
 
-	WriteLog("Connecting successful.\n");
+	WriteLog(NULL,"Connecting successful.\n");
 
 	ZStream.zalloc=zlib_alloc_;
 	ZStream.zfree=zlib_free_;
 	ZStream.opaque=NULL;
 	if(inflateInit(&ZStream)!=Z_OK)
 	{
-		WriteLog("ZStream InflateInit error.\n");
+		WriteLog(NULL,"ZStream InflateInit error.\n");
 		return false;
 	}
 	ZStreamOk=true;
@@ -2320,7 +2320,7 @@ bool FOClient::NetConnect()
 
 void FOClient::NetDisconnect()
 {
-	WriteLog("Disconnect.\n");
+	WriteLog(NULL,"Disconnect.\n");
 
 	if(ZStreamOk) inflateEnd(&ZStream);
 	ZStreamOk=false;
@@ -2328,7 +2328,7 @@ void FOClient::NetDisconnect()
 	Sock=INVALID_SOCKET;
 	NetState=STATE_DISCONNECT;
 
-	WriteLog("Traffic transfered statistics, in bytes:\n"
+	WriteLog(NULL,"Traffic transfered statistics, in bytes:\n"
 		"Send<%u> Receive<%u> Sum<%u>.\n"
 		"ReceiveReal<%u>.\n",
 		BytesSend,BytesReceive,BytesReceive+BytesSend,
@@ -2342,7 +2342,7 @@ void FOClient::NetDisconnect()
 	Bout.Reset();
 	Bin.SetEncryptKey(0);
 	Bout.SetEncryptKey(0);
-	WriteLog("Disconnect success.\n");
+	WriteLog(NULL,"Disconnect success.\n");
 }
 
 void FOClient::ParseSocket()
@@ -2380,8 +2380,8 @@ bool FOClient::NetOutput()
 	FD_ZERO(&SockSetErr);
 	FD_SET(Sock,&SockSet);
 	FD_SET(Sock,&SockSetErr);
-	if(select(0,NULL,&SockSet,&SockSetErr,&tv)==SOCKET_ERROR) WriteLog(__FUNCTION__" - Select error<%s>.\n",GetLastSocketError());
-	if(FD_ISSET(Sock,&SockSetErr)) WriteLog(__FUNCTION__" - Socket error.\n");
+	if(select(0,NULL,&SockSet,&SockSetErr,&tv)==SOCKET_ERROR) WriteLog(_FUNC_," - Select error<%s>.\n",GetLastSocketError());
+	if(FD_ISSET(Sock,&SockSetErr)) WriteLog(_FUNC_," - Socket error.\n");
 	if(!FD_ISSET(Sock,&SockSet)) return true;
 
 	int tosend=Bout.GetEndPos();
@@ -2394,7 +2394,7 @@ bool FOClient::NetOutput()
 		buf.len=tosend-sendpos;
 		if(WSASend(Sock,&buf,1,&len,0,NULL,NULL)==SOCKET_ERROR || len==0)
 		{
-			WriteLog(__FUNCTION__" - SOCKET_ERROR while send to server, error<%s>.\n",GetLastSocketError());
+			WriteLog(_FUNC_," - SOCKET_ERROR while send to server, error<%s>.\n",GetLastSocketError());
 			NetState=STATE_DISCONNECT;
 			return false;
 		}
@@ -2415,8 +2415,8 @@ int FOClient::NetInput(bool unpack)
 	FD_ZERO(&SockSetErr);
 	FD_SET(Sock,&SockSet);
 	FD_SET(Sock,&SockSetErr);
-	if(select(0,&SockSet,NULL,&SockSetErr,&tv)==SOCKET_ERROR) WriteLog(__FUNCTION__" - Select error<%s>.\n",GetLastSocketError());
-	if(FD_ISSET(Sock,&SockSetErr)) WriteLog(__FUNCTION__" - Socket error.\n");
+	if(select(0,&SockSet,NULL,&SockSetErr,&tv)==SOCKET_ERROR) WriteLog(_FUNC_," - Select error<%s>.\n",GetLastSocketError());
+	if(FD_ISSET(Sock,&SockSetErr)) WriteLog(_FUNC_," - Socket error.\n");
 	if(!FD_ISSET(Sock,&SockSet)) return 0;
 
 	DWORD len;
@@ -2426,19 +2426,19 @@ int FOClient::NetInput(bool unpack)
 	buf.len=ComLen;
 	if(WSARecv(Sock,&buf,1,&len,&flags,NULL,NULL)==SOCKET_ERROR) 
 	{
-		WriteLog(__FUNCTION__" - SOCKET_ERROR while receive from server, error<%s>.\n",GetLastSocketError());
+		WriteLog(_FUNC_," - SOCKET_ERROR while receive from server, error<%s>.\n",GetLastSocketError());
 		return -1;
 	}
 	if(len==0)
 	{
-		WriteLog(__FUNCTION__" - Socket is closed.\n");
+		WriteLog(_FUNC_," - Socket is closed.\n");
 		return -2;
 	}
 
-	DWORD pos=len;
+	uint pos=len;
 	while(pos==ComLen)
 	{
-		DWORD newcomlen=(ComLen<<1);
+		uint newcomlen=(ComLen<<1);
 		char* combuf=new char[newcomlen];
 		memcpy(combuf,ComBuf,ComLen);
 		SAFEDELA(ComBuf);
@@ -2450,12 +2450,12 @@ int FOClient::NetInput(bool unpack)
 		buf.len=ComLen-pos;
 		if(WSARecv(Sock,&buf,1,&len,&flags,NULL,NULL)==SOCKET_ERROR)
 		{
-			WriteLog(__FUNCTION__" - SOCKET_ERROR2 while receive from server, error<%s>.\n",GetLastSocketError());
+			WriteLog(_FUNC_," - SOCKET_ERROR2 while receive from server, error<%s>.\n",GetLastSocketError());
 			return -1;
 		}
 		if(len==0)
 		{
-			WriteLog(__FUNCTION__" - Socket is closed2.\n");
+			WriteLog(_FUNC_," - Socket is closed2.\n");
 			return -2;
 		}
 
@@ -2463,7 +2463,7 @@ int FOClient::NetInput(bool unpack)
 	}
 
 	Bin.Refresh();
-	DWORD old_pos=Bin.GetEndPos(); // Fix position
+	uint old_pos=Bin.GetEndPos(); // Fix position
 
  	if(unpack && !GameOpt.DisableZlibCompression)
 	{
@@ -2474,7 +2474,7 @@ int FOClient::NetInput(bool unpack)
 
 		if(inflate(&ZStream,Z_SYNC_FLUSH)!=Z_OK)
 		{
-			WriteLog(__FUNCTION__" - ZStream Inflate error.\n");
+			WriteLog(_FUNC_," - ZStream Inflate error.\n");
 			return -3;
 		}
 
@@ -2489,7 +2489,7 @@ int FOClient::NetInput(bool unpack)
 
 			if(inflate(&ZStream,Z_SYNC_FLUSH)!=Z_OK)
 			{
-				WriteLog(__FUNCTION__" - ZStream Inflate continue error.\n");
+				WriteLog(_FUNC_," - ZStream Inflate continue error.\n");
 				return -4;
 			}
 
@@ -2510,14 +2510,14 @@ void FOClient::NetProcess()
 {
 	while(Bin.NeedProcess())
 	{
-		MSGTYPE msg=0;
+		uint msg=0;
 		Bin >> msg;
 
 		if(GameOpt.DebugNet)
 		{
-			static DWORD count=0;
+			static uint count=0;
 			AddMess(FOMB_GAME,Str::Format("%04u) Input net message<%u>.",count,(msg>>8)&0xFF));
-			WriteLog("%04u) Input net message<%u>.\n",count,(msg>>8)&0xFF);
+			WriteLog(NULL,"%04u) Input net message<%u>.\n",count,(msg>>8)&0xFF);
 			count++;
 		}
 
@@ -2529,7 +2529,7 @@ void FOClient::NetProcess()
 		case NETMSG_REGISTER_SUCCESS:
 			if(!Singleplayer)
 			{
-				WriteLog("Registration success.\n");
+				WriteLog(NULL,"Registration success.\n");
 				if(RegNewCr)
 				{
 					GameOpt.Name=RegNewCr->Name;
@@ -2539,7 +2539,7 @@ void FOClient::NetProcess()
 			}
 			else
 			{
-				WriteLog("World loaded, enter to it.\n");
+				WriteLog(NULL,"World loaded, enter to it.\n");
 				LogTryConnect();
 			}
 			break;
@@ -2755,8 +2755,8 @@ void FOClient::NetProcess()
 
 		default:
 			if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::Format("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
-			WriteLog("Invalid msg<%u>. Seek valid.\n",msg);
-			Bin.MoveReadPos(sizeof(MSGTYPE));
+			WriteLog(NULL,"Invalid msg<%u>. Seek valid.\n",msg);
+			Bin.MoveReadPos(sizeof(uint));
 			Bin.SeekValidMsg();
 			return;
 		}
@@ -2772,10 +2772,10 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	if(name) StringCopy(name_,name);
 	if(pass) StringCopy(pass_,pass);
 
-	DWORD uid1=*UID1;
+	uint uid1=*UID1;
 	Bout << NETMSG_LOGIN;
-	Bout << (WORD)FO_PROTOCOL_VERSION;
-	DWORD uid4=*UID4;
+	Bout << (ushort)FO_PROTOCOL_VERSION;
+	uint uid4=*UID4;
 	Bout << uid4; uid4=uid1;																	// UID4
 
 	// Begin data encrypting
@@ -2785,18 +2785,18 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 	Bout.Push(name_,MAX_NAME);
 	Bout << uid1; uid4^=uid1*Random(0,432157)+*UID3;											// UID1
 	Bout.Push(pass_,MAX_NAME);
-	DWORD uid2=*UID2;
+	uint uid2=*UID2;
 	Bout << CurLang.Name;
 	for(int i=0;i<TEXTMSG_COUNT;i++) Bout << CurLang.Msg[i].GetHash();
 	Bout << UIDXOR;																				// UID xor
-	DWORD uid3=*UID3;
+	uint uid3=*UID3;
 	Bout << uid3; uid3^=uid1; uid1|=uid3/Random(2,53);											// UID3
 	Bout << uid2; uid3^=uid2; uid1|=uid4+222-*UID2;												// UID2
 	Bout << UIDOR;																				// UID or
 	for(int i=0;i<ITEM_MAX_TYPES;i++) Bout << ItemMngr.GetProtosHash(i);
 	Bout << UIDCALC;																			// UID uidcalc
 	Bout << GameOpt.DefaultCombatMode;
-	DWORD uid0=*UID0;
+	uint uid0=*UID0;
 	Bout << uid0; uid3^=uid1+Random(0,53245); uid1|=uid3+*UID0; uid3^=uid1+uid3; uid1|=uid3;	// UID0
 
 	if(!Singleplayer && name) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONN_SUCCESS));
@@ -2804,24 +2804,24 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 
 void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 {
-	WriteLog("Player registration...");
+	WriteLog(NULL,"Player registration...");
 
 	if(!newcr)
 	{
-		WriteLog("internal error.\n");
+		WriteLog(NULL,"internal error.\n");
 		return;
 	}
 
-	WORD count=0;
+	ushort count=0;
 	for(int i=0;i<MAX_PARAMS;i++)
 		if(newcr->ParamsReg[i] && CritterCl::ParamsRegEnabled[i]) count++;
 
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(WORD)+MAX_NAME*2+sizeof(count)+(sizeof(WORD)+sizeof(int))*count;
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(ushort)+MAX_NAME*2+sizeof(count)+(sizeof(ushort)+sizeof(int))*count;
 
 	Bout << NETMSG_CREATE_CLIENT;
 	Bout << msg_len;
 
-	Bout << (WORD)FO_PROTOCOL_VERSION;
+	Bout << (ushort)FO_PROTOCOL_VERSION;
 
 	// Begin data encrypting
 	Bout.SetEncryptKey(1234567890);
@@ -2831,7 +2831,7 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 	Bout.Push(newcr->GetPass(),MAX_NAME);
 
 	Bout << count;
-	for(WORD i=0;i<MAX_PARAMS;i++)
+	for(ushort i=0;i<MAX_PARAMS;i++)
 	{
 		int val=newcr->ParamsReg[i];
 		if(val && CritterCl::ParamsRegEnabled[i])
@@ -2841,18 +2841,18 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 		}
 	}
 
-	WriteLog("complete.\n");
+	WriteLog(NULL,"complete.\n");
 }
 
-void FOClient::Net_SendSaveLoad(bool save, const char* fname, ByteVec* pic_data)
+void FOClient::Net_SendSaveLoad(bool save, const char* fname, UCharVec* pic_data)
 {
-	if(save) WriteLog("Request save to file<%s>...",fname);
-	else WriteLog("Request load from file<%s>...",fname);
+	if(save) WriteLog(NULL,"Request save to file<%s>...",fname);
+	else WriteLog(NULL,"Request load from file<%s>...",fname);
 
-	MSGTYPE msg=NETMSG_SINGLEPLAYER_SAVE_LOAD;
-	WORD fname_len=strlen(fname);
-	DWORD msg_len=sizeof(msg)+sizeof(save)+sizeof(fname_len)+fname_len;
-	if(save) msg_len+=sizeof(DWORD)+pic_data->size();
+	uint msg=NETMSG_SINGLEPLAYER_SAVE_LOAD;
+	ushort fname_len=strlen(fname);
+	uint msg_len=sizeof(msg)+sizeof(save)+sizeof(fname_len)+fname_len;
+	if(save) msg_len+=sizeof(uint)+pic_data->size();
 
 	Bout << msg;
 	Bout << msg_len;
@@ -2861,14 +2861,14 @@ void FOClient::Net_SendSaveLoad(bool save, const char* fname, ByteVec* pic_data)
 	Bout.Push(fname,fname_len);
 	if(save)
 	{
-		Bout << (DWORD)pic_data->size();
+		Bout << (uint)pic_data->size();
 		if(pic_data->size()) Bout.Push((char*)&(*pic_data)[0],pic_data->size());
 	}
 
-	WriteLog("complete.\n");
+	WriteLog(NULL,"complete.\n");
 }
 
-void FOClient::Net_SendText(const char* send_str, BYTE how_say)
+void FOClient::Net_SendText(const char* send_str, uchar how_say)
 {
 	if(!send_str || !send_str[0]) return;
 
@@ -2877,7 +2877,7 @@ void FOClient::Net_SendText(const char* send_str, BYTE how_say)
 	StringCopy(str_buf,send_str);
 
 	bool result=false;
-	if(Script::PrepareContext(ClientFunctions.OutMessage,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.OutMessage,_FUNC_,"Game"))
 	{
 		int say_type=how_say;
 		CScriptString* sstr=new CScriptString(str);
@@ -2898,9 +2898,9 @@ void FOClient::Net_SendText(const char* send_str, BYTE how_say)
 		return;
 	}
 
-	WORD len=strlen(str);
+	ushort len=strlen(str);
 	if(len>=MAX_NET_TEXT) len=MAX_NET_TEXT;
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(how_say)+sizeof(len)+len;
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(how_say)+sizeof(len)+len;
 
 	Bout << NETMSG_SEND_TEXT;
 	Bout << msg_len;
@@ -2912,7 +2912,7 @@ void FOClient::Net_SendText(const char* send_str, BYTE how_say)
 struct CmdListDef
 {
 	char cmd[20];
-	BYTE id;
+	uchar id;
 };
 
 const CmdListDef cmdlist[]=
@@ -3006,16 +3006,16 @@ void FOClient::Net_SendCommand(char* str)
 {
 	AddMess(FOMB_GAME,Str::Format("Command: %s.",str));
 
-	BYTE cmd=GetCmdNum(str);
+	uchar cmd=GetCmdNum(str);
 	if(!cmd)
 	{
 		AddMess(FOMB_GAME,"Unknown command.");
-		WriteLog(__FUNCTION__" - Unknown command<%s>.\n",str);
+		WriteLog(_FUNC_," - Unknown command<%s>.\n",str);
 		return;
 	}
 
-	MSGTYPE msg=NETMSG_SEND_COMMAND;
-	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(cmd);
+	uint msg=NETMSG_SEND_COMMAND;
+	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(cmd);
 
 	switch(cmd)
 	{
@@ -3068,9 +3068,9 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_MOVECRIT:
 		{
-			DWORD crid;
-			WORD hex_x;
-			WORD hex_y;
+			uint crid;
+			ushort hex_x;
+			ushort hex_y;
 			if(sscanf(str,"%u%u%u",&crid,&hex_x,&hex_y)!=3)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~move crid hx hy>.");
@@ -3088,7 +3088,7 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_KILLCRIT:
 		{
-			DWORD crid;
+			uint crid;
 			if(sscanf(str,"%u",&crid)!=1)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~kill crid>.");
@@ -3104,7 +3104,7 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_DISCONCRIT:
 		{
-			DWORD crid;
+			uint crid;
 			if(sscanf(str,"%u",&crid)!=1)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~disconnect crid>.");
@@ -3128,7 +3128,7 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_RESPAWN:
 		{
-			DWORD crid;
+			uint crid;
 			if(sscanf(str,"%u",&crid)!=1)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~respawn crid>.");
@@ -3144,11 +3144,11 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_PARAM:
 		{
-			WORD param_type;
-			WORD param_num;
+			ushort param_type;
+			ushort param_num;
 			int param_val;
 			if(sscanf(str,"%d%d%d",&param_type,&param_num,&param_val)!=3) break;
-			msg_len+=sizeof(WORD)*2+sizeof(int);
+			msg_len+=sizeof(ushort)*2+sizeof(int);
 
 			Bout << msg;
 			Bout << msg_len;
@@ -3184,10 +3184,10 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_ADDITEM:
 		{
-			WORD hex_x;
-			WORD hex_y;
-			WORD pid;
-			DWORD count;
+			ushort hex_x;
+			ushort hex_y;
+			ushort pid;
+			uint count;
 			if(sscanf(str,"%u%u%u%u",&hex_x,&hex_y,&pid,&count)!=4)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~additem hx hy pid count>.");
@@ -3206,8 +3206,8 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_ADDITEM_SELF:
 		{
-			WORD pid;
-			DWORD count;
+			ushort pid;
+			uint count;
 			if(sscanf(str,"%u%u",&pid,&count)!=2)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~additemself pid count>.");
@@ -3224,10 +3224,10 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_ADDNPC:
 		{
-			WORD hex_x;
-			WORD hex_y;
-			BYTE dir;
-			WORD pid;
+			ushort hex_x;
+			ushort hex_y;
+			uchar dir;
+			ushort pid;
 			if(sscanf(str,"%d%d%d%d",&hex_x,&hex_y,&dir,&pid)!=4)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~addnpc hx hy dir pid>.");
@@ -3246,9 +3246,9 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_ADDLOCATION:
 		{
-			WORD wx;
-			WORD wy;
-			WORD pid;
+			ushort wx;
+			ushort wy;
+			ushort pid;
 			if(sscanf(str,"%d%d%d",&wx,&wy,&pid)!=3)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~addloc wx wy pid>.");
@@ -3299,7 +3299,7 @@ void FOClient::Net_SendCommand(char* str)
 		{
 			char script_name[MAX_SCRIPT_NAME+1];
 			char func_name[MAX_SCRIPT_NAME+1];
-			DWORD param0,param1,param2;
+			uint param0,param1,param2;
 			if(sscanf(str,"%s%s%d%d%d",script_name,func_name,&param0,&param1,&param2)!=5)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~runscript module func param0 param1 param2>.");
@@ -3307,7 +3307,7 @@ void FOClient::Net_SendCommand(char* str)
 			}
 			script_name[MAX_SCRIPT_NAME]=0;
 			func_name[MAX_SCRIPT_NAME]=0;
-			msg_len+=MAX_SCRIPT_NAME*2+sizeof(DWORD)*3;
+			msg_len+=MAX_SCRIPT_NAME*2+sizeof(uint)*3;
 
 			Bout << msg;
 			Bout << msg_len;
@@ -3328,7 +3328,7 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_LOADLOCATION:
 		{
-			WORD loc_pid;
+			ushort loc_pid;
 			if(sscanf(str,"%u",&loc_pid)!=1)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~loadlocation pid>.");
@@ -3351,7 +3351,7 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_LOADMAP:
 		{
-			WORD map_pid;
+			ushort map_pid;
 			if(sscanf(str,"%u",&map_pid)!=1)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~loadmap pid>.");
@@ -3382,7 +3382,7 @@ void FOClient::Net_SendCommand(char* str)
 	case CMD_LOADDIALOG:
 		{
 			char dlg_name[128];
-			DWORD dlg_id;
+			uint dlg_id;
 			if(sscanf(str,"%s%u",dlg_name,&dlg_id)!=2)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~loaddialog name id>.");
@@ -3414,11 +3414,11 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_CHECKVAR:
 		{
-			WORD tid_var;
-			BYTE master_is_npc;
-			DWORD master_id;
-			DWORD slave_id;
-			BYTE full_info;
+			ushort tid_var;
+			uchar master_is_npc;
+			uint master_id;
+			uint slave_id;
+			uchar full_info;
 			if(sscanf(str,"%u%u%u%u%u",&tid_var,&master_is_npc,&master_id,&slave_id,&full_info)!=5)
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~checkvar tid_var master_is_npc master_id slave_id full_info>.");
@@ -3438,10 +3438,10 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	case CMD_SETVAR:
 		{
-			WORD tid_var;
-			BYTE master_is_npc;
-			DWORD master_id;
-			DWORD slave_id;
+			ushort tid_var;
+			uchar master_is_npc;
+			uint master_id;
+			uint slave_id;
 			int value;
 			if(sscanf(str,"%u%u%u%u%d",&tid_var,&master_is_npc,&master_id,&slave_id,&value)!=5)
 			{
@@ -3493,7 +3493,7 @@ void FOClient::Net_SendCommand(char* str)
 			istrstream str_(str);
 			char params[128]={0};
 			char name[128]={0};
-			DWORD ban_hours=0;
+			uint ban_hours=0;
 			char info[128]={0};
 			str_ >> params;
 			if(!str_.fail()) str_ >> name;
@@ -3580,12 +3580,12 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	default:
 		AddMess(FOMB_GAME,"Command is not implemented.");
-		WriteLog(__FUNCTION__" - Command<%s> is not implemented.\n",str);
+		WriteLog(_FUNC_," - Command<%s> is not implemented.\n",str);
 		return;
 	}
 }
 
-BYTE FOClient::GetCmdNum(char*& str)
+uchar FOClient::GetCmdNum(char*& str)
 {
 	if(!str) return 0;
 
@@ -3614,15 +3614,15 @@ void FOClient::Net_SendDir()
 	if(!Chosen) return;
 
 	Bout << NETMSG_DIR;
-	Bout << (BYTE)Chosen->GetDir();
+	Bout << (uchar)Chosen->GetDir();
 }
 
-void FOClient::Net_SendMove(ByteVec steps)
+void FOClient::Net_SendMove(UCharVec steps)
 {
 	if(!Chosen) return;
 
-	DWORD move_params=0;
-	for(int i=0;i<MOVE_PARAM_STEP_COUNT;i++)
+	uint move_params=0;
+	for(uint i=0;i<MOVE_PARAM_STEP_COUNT;i++)
 	{
 		if(i>=steps.size()) break;
 
@@ -3638,46 +3638,46 @@ void FOClient::Net_SendMove(ByteVec steps)
 	Bout << Chosen->HexY;
 }
 
-void FOClient::Net_SendUseSkill(WORD skill, CritterCl* cr)
+void FOClient::Net_SendUseSkill(ushort skill, CritterCl* cr)
 {
 	Bout << NETMSG_SEND_USE_SKILL;
 	Bout << skill;
-	Bout << (BYTE)TARGET_CRITTER;
+	Bout << (uchar)TARGET_CRITTER;
 	Bout << cr->GetId();
-	Bout << (WORD)0;
+	Bout << (ushort)0;
 }
 
-void FOClient::Net_SendUseSkill(WORD skill, ItemHex* item)
+void FOClient::Net_SendUseSkill(ushort skill, ItemHex* item)
 {
 	Bout << NETMSG_SEND_USE_SKILL;
 	Bout << skill;
 
 	if(item->IsScenOrGrid())
 	{
-		DWORD hex=(item->GetHexX()<<16)|item->GetHexY();
+		uint hex=(item->GetHexX()<<16)|item->GetHexY();
 
-		Bout << (BYTE)TARGET_SCENERY;
+		Bout << (uchar)TARGET_SCENERY;
 		Bout << hex;
 		Bout << item->GetProtoId();
 	}
 	else
 	{
-		Bout << (BYTE)TARGET_ITEM;
+		Bout << (uchar)TARGET_ITEM;
 		Bout << item->GetId();
-		Bout << (WORD)0;
+		Bout << (ushort)0;
 	}
 }
 
-void FOClient::Net_SendUseSkill(WORD skill, Item* item)
+void FOClient::Net_SendUseSkill(ushort skill, Item* item)
 {
 	Bout << NETMSG_SEND_USE_SKILL;
 	Bout << skill;
-	Bout << (BYTE)TARGET_SELF_ITEM;
+	Bout << (uchar)TARGET_SELF_ITEM;
 	Bout << item->GetId();
-	Bout << (WORD)0;
+	Bout << (ushort)0;
 }
 
-void FOClient::Net_SendUseItem(BYTE ap, DWORD item_id, WORD item_pid, BYTE rate, BYTE target_type, DWORD target_id, WORD target_pid, DWORD param)
+void FOClient::Net_SendUseItem(uchar ap, uint item_id, ushort item_pid, uchar rate, uchar target_type, uint target_id, ushort target_pid, uint param)
 {
 	Bout << NETMSG_SEND_USE_ITEM;
 	Bout << ap;
@@ -3690,7 +3690,7 @@ void FOClient::Net_SendUseItem(BYTE ap, DWORD item_id, WORD item_pid, BYTE rate,
 	Bout << param;
 }
 
-void FOClient::Net_SendPickItem(WORD targ_x, WORD targ_y, WORD pid)
+void FOClient::Net_SendPickItem(ushort targ_x, ushort targ_y, ushort pid)
 {
 	Bout << NETMSG_SEND_PICK_ITEM;
 	Bout << targ_x;
@@ -3698,14 +3698,14 @@ void FOClient::Net_SendPickItem(WORD targ_x, WORD targ_y, WORD pid)
 	Bout << pid;
 }
 
-void FOClient::Net_SendPickCritter(DWORD crid, BYTE pick_type)
+void FOClient::Net_SendPickCritter(uint crid, uchar pick_type)
 {
 	Bout << NETMSG_SEND_PICK_CRITTER;
 	Bout << crid;
 	Bout << pick_type;
 }
 
-void FOClient::Net_SendChangeItem(BYTE ap, DWORD item_id, BYTE from_slot, BYTE to_slot, DWORD count)
+void FOClient::Net_SendChangeItem(uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count)
 {
 	Bout << NETMSG_SEND_CHANGE_ITEM;
 	Bout << ap;
@@ -3717,7 +3717,7 @@ void FOClient::Net_SendChangeItem(BYTE ap, DWORD item_id, BYTE from_slot, BYTE t
 	CollectContItems();
 }
 
-void FOClient::Net_SendItemCont(BYTE transfer_type, DWORD cont_id, DWORD item_id, DWORD count, BYTE take_flags)
+void FOClient::Net_SendItemCont(uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags)
 {
 	Bout << NETMSG_SEND_ITEM_CONT;
 	Bout << transfer_type;
@@ -3732,7 +3732,7 @@ void FOClient::Net_SendItemCont(BYTE transfer_type, DWORD cont_id, DWORD item_id
 void FOClient::Net_SendRateItem()
 {
 	if(!Chosen) return;
-	DWORD rate=Chosen->ItemSlotMain->Data.Mode;
+	uint rate=Chosen->ItemSlotMain->Data.Mode;
 	if(!Chosen->ItemSlotMain->GetId()) rate|=Chosen->ItemSlotMain->GetProtoId()<<16;
 
 	Bout << NETMSG_SEND_RATE_ITEM;
@@ -3748,7 +3748,7 @@ void FOClient::Net_SendSortValueItem(Item* item)
 	CollectContItems();
 }
 
-void FOClient::Net_SendTalk(BYTE is_npc, DWORD id_to_talk, BYTE answer)
+void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 {
 	Bout << NETMSG_SEND_TALK_NPC;
 	Bout << is_npc;
@@ -3756,7 +3756,7 @@ void FOClient::Net_SendTalk(BYTE is_npc, DWORD id_to_talk, BYTE answer)
 	Bout << answer;
 }
 
-void FOClient::Net_SendSayNpc(BYTE is_npc, DWORD id_to_talk, const char* str)
+void FOClient::Net_SendSayNpc(uchar is_npc, uint id_to_talk, const char* str)
 {
 	Bout << NETMSG_SEND_SAY_NPC;
 	Bout << is_npc;
@@ -3764,12 +3764,12 @@ void FOClient::Net_SendSayNpc(BYTE is_npc, DWORD id_to_talk, const char* str)
 	Bout.Push(str,MAX_SAY_NPC_TEXT);
 }
 
-void FOClient::Net_SendBarter(DWORD npc_id, ItemVec& cont_sale, ItemVec& cont_buy)
+void FOClient::Net_SendBarter(uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy)
 {
-	WORD sale_count=(WORD)cont_sale.size();
-	WORD buy_count=(WORD)cont_buy.size();
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(sale_count)+sizeof(buy_count)+
-		(sizeof(DWORD)+sizeof(DWORD))*sale_count+(sizeof(DWORD)+sizeof(DWORD))*buy_count;
+	ushort sale_count=(ushort)cont_sale.size();
+	ushort buy_count=(ushort)cont_buy.size();
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(sale_count)+sizeof(buy_count)+
+		(sizeof(uint)+sizeof(uint))*sale_count+(sizeof(uint)+sizeof(uint))*buy_count;
 
 	Bout << NETMSG_SEND_BARTER;
 	Bout << msg_len;
@@ -3795,7 +3795,7 @@ void FOClient::Net_SendGetGameInfo()
 	Bout << NETMSG_SEND_GET_INFO;
 }
 
-void FOClient::Net_SendGiveMap(bool automap, WORD map_pid, DWORD loc_id, DWORD tiles_hash, DWORD walls_hash, DWORD scen_hash)
+void FOClient::Net_SendGiveMap(bool automap, ushort map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash)
 {
 	Bout << NETMSG_SEND_GIVE_MAP;
 	Bout << automap;
@@ -3811,13 +3811,13 @@ void FOClient::Net_SendLoadMapOk()
 	Bout << NETMSG_SEND_LOAD_MAP_OK;
 }
 
-void FOClient::Net_SendGiveGlobalInfo(BYTE info_flags)
+void FOClient::Net_SendGiveGlobalInfo(uchar info_flags)
 {
 	Bout << NETMSG_SEND_GIVE_GLOBAL_INFO;
 	Bout << info_flags;
 }
 
-void FOClient::Net_SendRuleGlobal(BYTE command, DWORD param1, DWORD param2)
+void FOClient::Net_SendRuleGlobal(uchar command, uint param1, uint param2)
 {
 	Bout << NETMSG_SEND_RULE_GLOBAL;
 	Bout << command;
@@ -3827,27 +3827,27 @@ void FOClient::Net_SendRuleGlobal(BYTE command, DWORD param1, DWORD param2)
 	WaitPing();
 }
 
-void FOClient::Net_SendLevelUp(WORD perk_up)
+void FOClient::Net_SendLevelUp(ushort perk_up)
 {
 	if(!Chosen) return;
 
-	WORD count=0;
-	for(int i=0;i<SKILL_COUNT;i++) if(ChaSkillUp[i]) count++;
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(count)+sizeof(WORD)*2*count+sizeof(perk_up);
+	ushort count=0;
+	for(uint i=0;i<SKILL_COUNT;i++) if(ChaSkillUp[i]) count++;
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(count)+sizeof(ushort)*2*count+sizeof(perk_up);
 
 	Bout << NETMSG_SEND_LEVELUP;
 	Bout << msg_len;
 
 	// Skills
 	Bout << count;
-	for(int i=0;i<SKILL_COUNT;i++)
+	for(uint i=0;i<SKILL_COUNT;i++)
 	{
 		if(ChaSkillUp[i])
 		{
-			WORD skill_up=ChaSkillUp[i];
+			ushort skill_up=ChaSkillUp[i];
 			if(Chosen->IsTagSkill(i+SKILL_BEGIN)) skill_up/=2;
 
-			Bout << WORD(i+SKILL_BEGIN);
+			Bout << ushort(i+SKILL_BEGIN);
 			Bout << skill_up;
 		}
 	}
@@ -3856,10 +3856,10 @@ void FOClient::Net_SendLevelUp(WORD perk_up)
 	Bout << perk_up;
 }
 
-void FOClient::Net_SendCraftAsk(DwordVec numbers)
+void FOClient::Net_SendCraftAsk(UIntVec numbers)
 {
-	WORD count=numbers.size();
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(count)+sizeof(DWORD)*count;
+	ushort count=numbers.size();
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(count)+sizeof(uint)*count;
 	Bout << NETMSG_CRAFT_ASK;
 	Bout << msg_len;
 	Bout << count;
@@ -3867,19 +3867,19 @@ void FOClient::Net_SendCraftAsk(DwordVec numbers)
 	FixNextShowCraftTick=Timer::FastTick()+CRAFT_SEND_TIME;
 }
 
-void FOClient::Net_SendCraft(DWORD craft_num)
+void FOClient::Net_SendCraft(uint craft_num)
 {
 	Bout << NETMSG_SEND_CRAFT;
 	Bout << craft_num;
 }
 
-void FOClient::Net_SendPing(BYTE ping)
+void FOClient::Net_SendPing(uchar ping)
 {
 	Bout << NETMSG_PING;
 	Bout << ping;
 }
 
-void FOClient::Net_SendPlayersBarter(BYTE barter, DWORD param, DWORD param_ext)
+void FOClient::Net_SendPlayersBarter(uchar barter, uint param, uint param_ext)
 {
 	Bout << NETMSG_PLAYERS_BARTER;
 	Bout << barter;
@@ -3887,7 +3887,7 @@ void FOClient::Net_SendPlayersBarter(BYTE barter, DWORD param, DWORD param_ext)
 	Bout << param_ext;
 }
 
-void FOClient::Net_SendScreenAnswer(DWORD answer_i, const char* answer_s)
+void FOClient::Net_SendScreenAnswer(uint answer_i, const char* answer_s)
 {
 	char answer_s_buf[MAX_SAY_NPC_TEXT+1];
 	ZeroMemory(answer_s_buf,sizeof(answer_s_buf));
@@ -3907,19 +3907,19 @@ void FOClient::Net_SendSetUserHoloStr(Item* holodisk, const char* title, const c
 {
 	if(!holodisk || !title || !text)
 	{
-		WriteLog(__FUNCTION__" - Null pointers arguments.\n");
+		WriteLog(_FUNC_," - Null pointers arguments.\n");
 		return;
 	}
 
-	WORD title_len=strlen(title);
-	WORD text_len=strlen(text);
+	ushort title_len=strlen(title);
+	ushort text_len=strlen(text);
 	if(!title_len || !text_len || title_len>USER_HOLO_MAX_TITLE_LEN || text_len>USER_HOLO_MAX_LEN)
 	{
-		WriteLog(__FUNCTION__" - Length of texts is greather of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>.\n",title_len,USER_HOLO_MAX_TITLE_LEN,text_len,USER_HOLO_MAX_LEN);
+		WriteLog(_FUNC_," - Length of texts is greather of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>.\n",title_len,USER_HOLO_MAX_TITLE_LEN,text_len,USER_HOLO_MAX_LEN);
 		return;
 	}
 
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(title_len)+sizeof(text_len)+title_len+text_len;
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(title_len)+sizeof(text_len)+title_len+text_len;
 	Bout << NETMSG_SEND_SET_USER_HOLO_STR;
 	Bout << msg_len;
 	Bout << holodisk->GetId();
@@ -3929,9 +3929,9 @@ void FOClient::Net_SendSetUserHoloStr(Item* holodisk, const char* title, const c
 	Bout.Push(text,text_len);
 }
 
-void FOClient::Net_SendGetUserHoloStr(DWORD str_num)
+void FOClient::Net_SendGetUserHoloStr(uint str_num)
 {
-	static DwordSet already_send;
+	static UIntSet already_send;
 	if(already_send.count(str_num)) return;
 	already_send.insert(str_num);
 
@@ -3939,19 +3939,19 @@ void FOClient::Net_SendGetUserHoloStr(DWORD str_num)
 	Bout << str_num;
 }
 
-void FOClient::Net_SendCombat(BYTE type, int val)
+void FOClient::Net_SendCombat(uchar type, int val)
 {
 	Bout << NETMSG_SEND_COMBAT;
 	Bout << type;
 	Bout << val;
 }
 
-void FOClient::Net_SendRunScript(bool unsafe, const char* func_name, int p0, int p1, int p2, const char* p3, DwordVec& p4)
+void FOClient::Net_SendRunScript(bool unsafe, const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4)
 {
-	WORD func_name_len=strlen(func_name);
-	WORD p3len=(p3?strlen(p3):0);
-	WORD p4size=p4.size();
-	DWORD msg_len=sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(unsafe)+sizeof(func_name_len)+func_name_len+sizeof(p0)+sizeof(p1)+sizeof(p2)+sizeof(p3len)+p3len+sizeof(p4size)+p4size*sizeof(DWORD);
+	ushort func_name_len=strlen(func_name);
+	ushort p3len=(p3?strlen(p3):0);
+	ushort p4size=p4.size();
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(unsafe)+sizeof(func_name_len)+func_name_len+sizeof(p0)+sizeof(p1)+sizeof(p2)+sizeof(p3len)+p3len+sizeof(p4size)+p4size*sizeof(uint);
 
 	Bout << NETMSG_SEND_RUN_SERVER_SCRIPT;
 	Bout << msg_len;
@@ -3964,10 +3964,10 @@ void FOClient::Net_SendRunScript(bool unsafe, const char* func_name, int p0, int
 	Bout << p3len;
 	if(p3len) Bout.Push(p3,p3len);
 	Bout << p4size;
-	if(p4size) Bout.Push((char*)&p4[0],p4size*sizeof(DWORD));
+	if(p4size) Bout.Push((char*)&p4[0],p4size*sizeof(uint));
 }
 
-void FOClient::Net_SendKarmaVoting(DWORD crid, bool val_up)
+void FOClient::Net_SendKarmaVoting(uint crid, bool val_up)
 {
 	Bout << NETMSG_SEND_KARMA_VOTING;
 	Bout << crid;
@@ -3985,13 +3985,13 @@ void FOClient::Net_OnLoginSuccess()
 {
 	NetState=STATE_LOGINOK;
 	if(!Singleplayer) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_LOGINOK));
-	WriteLog("Auntification success.\n");
+	WriteLog(NULL,"Auntification success.\n");
 
 	GmapFreeResources();
 	ResMngr.FreeResources(RES_ITEMS);
 	ResMngr.FreeResources(RES_CRITTERS);
 
-	DWORD bin_seed,bout_seed; // Server bin/bout == client bout/bin
+	uint bin_seed,bout_seed; // Server bin/bout == client bout/bin
 	Bin >> bin_seed;
 	Bin >> bout_seed;
 	Bout.SetEncryptKey(bin_seed);
@@ -4000,24 +4000,24 @@ void FOClient::Net_OnLoginSuccess()
 
 void FOClient::Net_OnAddCritter(bool is_npc)
 {
-	DWORD msg_len;
+	uint msg_len;
 	Bin >> msg_len;
 
-	DWORD crid;
-	DWORD base_type;
+	uint crid;
+	uint base_type;
 	Bin >> crid;
 	Bin >> base_type;
 
-	WORD hx,hy;
-	BYTE dir;
+	ushort hx,hy;
+	uchar dir;
 	Bin >> hx;
 	Bin >> hy;
 	Bin >> dir;
 
-	BYTE cond;
-	DWORD anim1life,anim1ko,anim1dead;
-	DWORD anim2life,anim2ko,anim2dead;
-	DWORD flags;
+	uchar cond;
+	uint anim1life,anim1ko,anim1dead;
+	uint anim2life,anim2ko,anim2dead;
+	uint flags;
 	short multihex;
 	Bin >> cond;
 	Bin >> anim1life;
@@ -4030,8 +4030,8 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 	Bin >> multihex;
 
 	// Npc
-	WORD npc_pid;
-	DWORD npc_dialog_id;
+	ushort npc_pid;
+	uint npc_dialog_id;
 	if(is_npc)
 	{
 		Bin >> npc_pid;
@@ -4049,7 +4049,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 	// Parameters
 	int params[MAX_PARAMS];
 	ZeroMemory(params,sizeof(params));
-	WORD count,index;
+	ushort count,index;
 	Bin >> count;
 	for(int i=0,j=min(count,MAX_PARAMS);i<j;i++)
 	{
@@ -4061,8 +4061,8 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
 	if(!CritType::IsEnabled(base_type)) base_type=DEFAULT_CRTYPE;
 
-	if(!crid) WriteLog(__FUNCTION__" - CritterCl id is zero.\n");
-	else if(HexMngr.IsMapLoaded() && (hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)) WriteLog(__FUNCTION__" - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n",hx,hy,dir);
+	if(!crid) WriteLog(_FUNC_," - CritterCl id is zero.\n");
+	else if(HexMngr.IsMapLoaded() && (hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)) WriteLog(_FUNC_," - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n",hx,hy,dir);
 	else
 	{
 		CritterCl* cr=new CritterCl();
@@ -4117,7 +4117,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
 		const char* look=FmtCritLook(cr,CRITTER_ONLY_NAME);
 		if(look) cr->Name=look;
-		if(Script::PrepareContext(ClientFunctions.CritterIn,CALL_FUNC_STR,"Game"))
+		if(Script::PrepareContext(ClientFunctions.CritterIn,_FUNC_,"Game"))
 		{
 			Script::SetArgObject(cr);
 			Script::RunPrepared();
@@ -4130,12 +4130,12 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
 void FOClient::Net_OnRemoveCritter()
 {
-	DWORD remid;
+	uint remid;
 	Bin >> remid;
 	CritterCl* cr=GetCritter(remid);
 	if(cr) cr->Finish();
 
-	if(Script::PrepareContext(ClientFunctions.CritterOut,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.CritterOut,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(cr);
 		Script::RunPrepared();
@@ -4144,12 +4144,12 @@ void FOClient::Net_OnRemoveCritter()
 
 void FOClient::Net_OnText()
 {
-	DWORD msg_len;
-	DWORD crid;
-	BYTE how_say;
-	WORD intellect;
+	uint msg_len;
+	uint crid;
+	uchar how_say;
+	ushort intellect;
 	bool unsafe_text;
-	WORD len;
+	ushort len;
 	char str[MAX_FOTEXT+1];
 
 	Bin >> msg_len;
@@ -4178,11 +4178,11 @@ void FOClient::Net_OnText()
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
 {
-	DWORD msg_len;
-	DWORD crid;
-	BYTE how_say;
-	WORD msg_num;
-	DWORD num_str;
+	uint msg_len;
+	uint crid;
+	uchar how_say;
+	ushort msg_num;
+	uint num_str;
 
 	if(with_lexems) Bin >> msg_len;
 	Bin >> crid;
@@ -4193,7 +4193,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 	char lexems[MAX_DLG_LEXEMS_TEXT+1]={0};
 	if(with_lexems)
 	{
-		WORD lexems_len;
+		ushort lexems_len;
 		Bin >> lexems_len;
 		if(lexems_len && lexems_len<=MAX_DLG_LEXEMS_TEXT)
 		{
@@ -4212,7 +4212,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
 	if(msg_num>=TEXTMSG_COUNT)
 	{
-		WriteLog(__FUNCTION__" - Msg num invalid value<%u>.\n",msg_num);
+		WriteLog(_FUNC_," - Msg num invalid value<%u>.\n",msg_num);
 		return;
 	}
 
@@ -4232,15 +4232,15 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 	}
 }
 
-void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
+void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 {
 	char fstr[MAX_FOTEXT];
 	StringCopy(fstr,str);
-	DWORD len=strlen(str);
+	uint len=strlen(str);
 	if(!len) return;
 
-	DWORD text_delay=GameOpt.TextDelay+len*100;
-	if(Script::PrepareContext(ClientFunctions.InMessage,CALL_FUNC_STR,"Game"))
+	uint text_delay=GameOpt.TextDelay+len*100;
+	if(Script::PrepareContext(ClientFunctions.InMessage,_FUNC_,"Game"))
 	{
 		CScriptString* sstr=new CScriptString(fstr);
 		Script::SetArgObject(sstr);
@@ -4261,8 +4261,8 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	if(how_say>=SAY_NORM && how_say<=SAY_RADIO) FmtTextIntellect(fstr,intellect);
 
 	// Type stream
-	DWORD fstr_cr=0;
-	DWORD fstr_mb=0;
+	uint fstr_cr=0;
+	uint fstr_mb=0;
 	int mess_type=FOMB_TALK;
 
 	switch(how_say)
@@ -4321,7 +4321,7 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 		}
 		else if(how_say==SAY_RADIO)
 		{
-			WORD channel=0;
+			ushort channel=0;
 			if(Chosen)
 			{
 				Item* radio=Chosen->GetItem(crid);
@@ -4413,12 +4413,12 @@ void FOClient::OnText(const char* str, DWORD crid, int how_say, WORD intellect)
 	SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 }
 
-void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color, WORD intellect)
+void FOClient::OnMapText(const char* str, ushort hx, ushort hy, uint color, ushort intellect)
 {
-	DWORD len=strlen(str);
-	DWORD text_delay=GameOpt.TextDelay+len*100;
+	uint len=strlen(str);
+	uint text_delay=GameOpt.TextDelay+len*100;
 	CScriptString* sstr=new CScriptString(str);
-	if(Script::PrepareContext(ClientFunctions.MapMessage,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.MapMessage,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(sstr);
 		Script::SetArgAddress(&hx);
@@ -4458,12 +4458,12 @@ void FOClient::OnMapText(const char* str, WORD hx, WORD hy, DWORD color, WORD in
 
 void FOClient::Net_OnMapText()
 {
-	DWORD msg_len;
-	WORD hx,hy;
-	DWORD color;
-	WORD len;
+	uint msg_len;
+	ushort hx,hy;
+	uint color;
+	ushort len;
 	char str[MAX_FOTEXT+1];
-	WORD intellect;
+	ushort intellect;
 	bool unsafe_text;
 
 	Bin >> msg_len;
@@ -4483,7 +4483,7 @@ void FOClient::Net_OnMapText()
 
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY())
 	{
-		WriteLog(__FUNCTION__" - Invalid coords, hx<%u>, hy<%u>, text<%s>.\n",hx,hy,str);
+		WriteLog(_FUNC_," - Invalid coords, hx<%u>, hy<%u>, text<%s>.\n",hx,hy,str);
 		return;
 	}
 
@@ -4494,10 +4494,10 @@ void FOClient::Net_OnMapText()
 
 void FOClient::Net_OnMapTextMsg()
 {
-	WORD hx,hy;
-	DWORD color;
-	WORD msg_num;
-	DWORD num_str;
+	ushort hx,hy;
+	uint color;
+	ushort msg_num;
+	uint num_str;
 
 	Bin >> hx;
 	Bin >> hy;
@@ -4507,7 +4507,7 @@ void FOClient::Net_OnMapTextMsg()
 
 	if(msg_num>=TEXTMSG_COUNT)
 	{
-		WriteLog(__FUNCTION__" - Msg num invalid value, num<%u>.\n",msg_num);
+		WriteLog(_FUNC_," - Msg num invalid value, num<%u>.\n",msg_num);
 		return;
 	}
 
@@ -4520,12 +4520,12 @@ void FOClient::Net_OnMapTextMsg()
 
 void FOClient::Net_OnMapTextMsgLex()
 {
-	DWORD msg_len;
-	WORD hx,hy;
-	DWORD color;
-	WORD msg_num;
-	DWORD num_str;
-	WORD lexems_len;
+	uint msg_len;
+	ushort hx,hy;
+	uint color;
+	ushort msg_num;
+	uint num_str;
+	ushort lexems_len;
 
 	Bin >> msg_len;
 	Bin >> hx;
@@ -4546,7 +4546,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
 	if(msg_num>=TEXTMSG_COUNT)
 	{
-		WriteLog(__FUNCTION__" - Msg num invalid value, num<%u>.\n",msg_num);
+		WriteLog(_FUNC_," - Msg num invalid value, num<%u>.\n",msg_num);
 		return;
 	}
 
@@ -4559,14 +4559,14 @@ void FOClient::Net_OnMapTextMsgLex()
 
 void FOClient::Net_OnCritterDir()
 {
-	DWORD crid;
-	BYTE dir;
+	uint crid;
+	uchar dir;
 	Bin >> crid;
 	Bin >> dir;
 
 	if(dir>=DIRS_COUNT)
 	{
-		WriteLog(__FUNCTION__" - Invalid dir<%u>.\n",dir);
+		WriteLog(_FUNC_," - Invalid dir<%u>.\n",dir);
 		dir=0;
 	}
 
@@ -4577,10 +4577,10 @@ void FOClient::Net_OnCritterDir()
 
 void FOClient::Net_OnCritterMove()
 {
-	DWORD crid;
-	DWORD move_params;
-	WORD new_hx;
-	WORD new_hy;
+	uint crid;
+	uint move_params;
+	ushort new_hx;
+	ushort new_hy;
 	Bin >> crid;
 	Bin >> move_params;
 	Bin >> new_hx;
@@ -4591,14 +4591,14 @@ void FOClient::Net_OnCritterMove()
 	CritterCl* cr=GetCritter(crid);
 	if(!cr) return;
 
-	WORD last_hx=cr->GetHexX();
-	WORD last_hy=cr->GetHexY();
+	ushort last_hx=cr->GetHexX();
+	ushort last_hy=cr->GetHexY();
 	cr->IsRunning=FLAG(move_params,MOVE_PARAM_RUN);
 
 	if(cr!=Chosen)
 	{
 		cr->MoveSteps.resize(cr->CurMoveStep>0?cr->CurMoveStep:0);
-		if(cr->CurMoveStep>=0) cr->MoveSteps.push_back(WordPairVecVal(new_hx,new_hy));
+		if(cr->CurMoveStep>=0) cr->MoveSteps.push_back(UShortPairVecVal(new_hx,new_hy));
 		for(int i=0,j=cr->CurMoveStep+1;i<MOVE_PARAM_STEP_COUNT;i++,j++)
 		{
 			int step=(move_params>>(i*MOVE_PARAM_STEP_BITS))&(MOVE_PARAM_STEP_DIR|MOVE_PARAM_STEP_ALLOW|MOVE_PARAM_STEP_DISALLOW);
@@ -4615,7 +4615,7 @@ void FOClient::Net_OnCritterMove()
 			}
 			MoveHexByDir(new_hx,new_hy,dir,HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
 			if(j<0) continue;
-			cr->MoveSteps.push_back(WordPairVecVal(new_hx,new_hy));
+			cr->MoveSteps.push_back(UShortPairVecVal(new_hx,new_hy));
 		}
 		cr->CurMoveStep++;
 
@@ -4624,7 +4624,7 @@ void FOClient::Net_OnCritterMove()
 			HexMngr.ClearHexTrack();
 			for(int i=4;i<cr->MoveDirs.size();i++)
 			{
-				WordPair& step=cr->MoveDirs[i];
+				UShortPair& step=cr->MoveDirs[i];
 				HexMngr.HexTrack[step.second][step.first]=1;
 			}
 			HexMngr.HexTrack[last_hy][last_hx]=2;
@@ -4641,9 +4641,9 @@ void FOClient::Net_OnCritterMove()
 
 void FOClient::Net_OnSomeItem()
 {
-	DWORD item_id;
-	WORD item_pid;
-	BYTE slot;
+	uint item_id;
+	ushort item_pid;
+	uchar slot;
 	Item::ItemData data;
 	Bin >> item_id;
 	Bin >> item_pid;
@@ -4653,7 +4653,7 @@ void FOClient::Net_OnSomeItem()
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(item_pid);
 	if(!proto_item)
 	{
-		WriteLog(__FUNCTION__" - Proto item<%u> not found.\n",item_pid);
+		WriteLog(_FUNC_," - Proto item<%u> not found.\n",item_pid);
 		return;
 	}
 
@@ -4665,7 +4665,7 @@ void FOClient::Net_OnSomeItem()
 
 void FOClient::Net_OnCritterAction()
 {
-	DWORD crid;
+	uint crid;
 	int action;
 	int action_ext;
 	bool is_item;
@@ -4681,11 +4681,11 @@ void FOClient::Net_OnCritterAction()
 
 void FOClient::Net_OnCritterKnockout()
 {
-	DWORD crid;
-	DWORD anim2begin;
-	DWORD anim2idle;
-	WORD knock_hx;
-	WORD knock_hy;
+	uint crid;
+	uint anim2begin;
+	uint anim2idle;
+	ushort knock_hx;
+	ushort knock_hy;
 	Bin >> crid;
 	Bin >> anim2begin;
 	Bin >> anim2idle;
@@ -4707,10 +4707,10 @@ void FOClient::Net_OnCritterKnockout()
 
 void FOClient::Net_OnCritterMoveItem()
 {
-	DWORD msg_len;
-	DWORD crid;
-	BYTE action;
-	BYTE prev_slot;
+	uint msg_len;
+	uint crid;
+	uchar action;
+	uchar prev_slot;
 	bool is_item;
 	Bin >> msg_len;
 	Bin >> crid;
@@ -4719,17 +4719,17 @@ void FOClient::Net_OnCritterMoveItem()
 	Bin >> is_item;
 
 	// Slot items
-	ByteVec slots_data_slot;
-	DwordVec slots_data_id;
-	WordVec slots_data_pid;
+	UCharVec slots_data_slot;
+	UIntVec slots_data_id;
+	UShortVec slots_data_pid;
 	vector<Item::ItemData> slots_data_data;
-	BYTE slots_data_count;
+	uchar slots_data_count;
 	Bin >> slots_data_count;
-	for(BYTE i=0;i<slots_data_count;i++)
+	for(uchar i=0;i<slots_data_count;i++)
 	{
-		BYTE slot;
-		DWORD id;
-		WORD pid;
+		uchar slot;
+		uint id;
+		ushort pid;
 		Item::ItemData data;
 		Bin >> slot;
 		Bin >> id;
@@ -4750,7 +4750,7 @@ void FOClient::Net_OnCritterMoveItem()
 
 	if(cr!=Chosen)
 	{
-		__int64 prev_hash_sum=0;
+		int64 prev_hash_sum=0;
 		for(ItemPtrVecIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
 		{
 			Item* item=*it;
@@ -4761,7 +4761,7 @@ void FOClient::Net_OnCritterMoveItem()
 		cr->DefItemSlotHand->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
 		cr->DefItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 
-		for(BYTE i=0;i<slots_data_count;i++)
+		for(uchar i=0;i<slots_data_count;i++)
 		{
 			ProtoItem* proto_item=ItemMngr.GetProtoItem(slots_data_pid[i]);
 			if(proto_item)
@@ -4775,7 +4775,7 @@ void FOClient::Net_OnCritterMoveItem()
 			}
 		}
 
-		__int64 hash_sum=0;
+		int64 hash_sum=0;
 		for(ItemPtrVecIt it=cr->InvItems.begin(),end=cr->InvItems.end();it!=end;++it)
 		{
 			Item* item=*it;
@@ -4789,8 +4789,8 @@ void FOClient::Net_OnCritterMoveItem()
 
 void FOClient::Net_OnCritterItemData()
 {
-	DWORD crid;
-	BYTE slot;
+	uint crid;
+	uchar slot;
 	Item::ItemData data;
 	ZeroMemory(&data,sizeof(data));
 	Bin >> crid;
@@ -4803,7 +4803,7 @@ void FOClient::Net_OnCritterItemData()
 	Item* item=cr->GetItemSlot(slot);
 	if(item)
 	{
-		DWORD light_hash=item->LightGetHash();
+		uint light_hash=item->LightGetHash();
 		item->Data=data;
 		if(item->LightGetHash()!=light_hash) HexMngr.RebuildLight();
 	}
@@ -4811,9 +4811,9 @@ void FOClient::Net_OnCritterItemData()
 
 void FOClient::Net_OnCritterAnimate()
 {
-	DWORD crid;
-	DWORD anim1;
-	DWORD anim2;
+	uint crid;
+	uint anim1;
+	uint anim2;
 	bool is_item;
 	bool clear_sequence;
 	bool delay_play;
@@ -4833,10 +4833,10 @@ void FOClient::Net_OnCritterAnimate()
 
 void FOClient::Net_OnCritterSetAnims()
 {
-	DWORD crid;
+	uint crid;
 	int cond;
-	DWORD anim1;
-	DWORD anim2;
+	uint anim1;
+	uint anim2;
 	Bin >> crid;
 	Bin >> cond;
 	Bin >> anim1;
@@ -4867,11 +4867,11 @@ void FOClient::Net_OnCritterSetAnims()
 void FOClient::Net_OnCheckUID0()
 {
 #define CHECKUIDBIN \
-	DWORD uid[5];\
-	DWORD uidxor[5];\
-	BYTE rnd_count,rnd_count2;\
-	BYTE dummy;\
-	DWORD msg_len;\
+	uint uid[5];\
+	uint uidxor[5];\
+	uchar rnd_count,rnd_count2;\
+	uchar dummy;\
+	uint msg_len;\
 	Bin >> msg_len;\
 	Bin >> uid[3];\
 	Bin >> uidxor[0];\
@@ -4896,8 +4896,8 @@ void FOClient::Net_OnCheckUID0()
 
 void FOClient::Net_OnCritterParam()
 {
-	DWORD crid;
-	WORD index;
+	uint crid;
+	ushort index;
 	int value;
 	Bin >> crid;
 	Bin >> index;
@@ -4958,10 +4958,10 @@ void FOClient::Net_OnCheckUID1()
 
 void FOClient::Net_OnCritterXY()
 {
-	DWORD crid;
-	WORD hx;
-	WORD hy;
-	BYTE dir;
+	uint crid;
+	ushort hx;
+	ushort hy;
+	uchar dir;
 	Bin >> crid;
 	Bin >> hx;
 	Bin >> hy;
@@ -4975,7 +4975,7 @@ void FOClient::Net_OnCritterXY()
 
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)
 	{
-		WriteLog(__FUNCTION__" - Error data, hx<%d>, hy<%d>, dir<%d>.\n",hx,hy,dir);
+		WriteLog(_FUNC_," - Error data, hx<%d>, hy<%d>, dir<%d>.\n",hx,hy,dir);
 		return;
 	}
 
@@ -5004,13 +5004,13 @@ void FOClient::Net_OnCritterXY()
 
 void FOClient::Net_OnChosenParams()
 {
-	WriteLog("Chosen parameters...");
+	WriteLog(NULL,"Chosen parameters...");
 
 	if(!Chosen)
 	{
-		char buf[NETMSG_ALL_PARAMS_SIZE-sizeof(MSGTYPE)];
-		Bin.Pop(buf,NETMSG_ALL_PARAMS_SIZE-sizeof(MSGTYPE));
-		WriteLog("chosen not created, skip.\n");
+		char buf[NETMSG_ALL_PARAMS_SIZE-sizeof(uint)];
+		Bin.Pop(buf,NETMSG_ALL_PARAMS_SIZE-sizeof(uint));
+		WriteLog(NULL,"chosen not created, skip.\n");
 		return;
 	}
 
@@ -5032,12 +5032,12 @@ void FOClient::Net_OnChosenParams()
 	// Refresh borders
 	RebuildLookBorders=true;
 
-	WriteLog("complete.\n");
+	WriteLog(NULL,"complete.\n");
 }
 
 void FOClient::Net_OnChosenParam()
 {
-	WORD index;
+	ushort index;
 	int value;
 	Bin >> index;
 	Bin >> value;
@@ -5146,8 +5146,8 @@ void FOClient::Net_OnChosenParam()
 		break;
 	case OTHER_TELEPORT:
 		{
-			WORD hx=(value>>16)&0xFFFF;
-			WORD hy=value&0xFFFF;
+			ushort hx=(value>>16)&0xFFFF;
+			ushort hy=value&0xFFFF;
 			if(hx<HexMngr.GetMaxHexX() && hy<HexMngr.GetMaxHexY())
 			{
 				CritterCl* cr=HexMngr.GetField(hx,hy).Crit;
@@ -5181,16 +5181,16 @@ void FOClient::Net_OnChosenClearItems()
 
 void FOClient::Net_OnChosenAddItem()
 {
-	DWORD item_id;
-	WORD pid;
-	BYTE slot;
+	uint item_id;
+	ushort pid;
+	uchar slot;
 	Bin >> item_id;
 	Bin >> pid;
 	Bin >> slot;
 
 	Item* item=NULL;
-	BYTE prev_slot=SLOT_INV;
-	DWORD prev_light_hash=0;
+	uchar prev_slot=SLOT_INV;
+	uint prev_light_hash=0;
 	if(Chosen)
 	{
 		item=Chosen->GetItem(item_id);
@@ -5213,7 +5213,7 @@ void FOClient::Net_OnChosenAddItem()
 
 	if(!item) 
 	{
-		WriteLog(__FUNCTION__" - Can't create item, pid<%u>.\n",pid);
+		WriteLog(_FUNC_," - Can't create item, pid<%u>.\n",pid);
 		Item::ItemData dummy;
 		Bin.Pop((char*)&dummy,sizeof(dummy));
 		return;
@@ -5225,7 +5225,7 @@ void FOClient::Net_OnChosenAddItem()
 	if(item!=Chosen->ItemSlotMain || !item->IsWeapon()) item->SetMode(item->Data.Mode);
 	Chosen->AddItem(item);
 
-	if(Script::PrepareContext(ClientFunctions.ItemInvIn,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemInvIn,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(item);
 		Script::RunPrepared();
@@ -5239,23 +5239,23 @@ void FOClient::Net_OnChosenAddItem()
 
 void FOClient::Net_OnChosenEraseItem()
 {
-	DWORD item_id;
+	uint item_id;
 	Bin >> item_id;
 
 	if(!Chosen)
 	{
-		WriteLog(__FUNCTION__" - Chosen is not created.\n");
+		WriteLog(_FUNC_," - Chosen is not created.\n");
 		return;
 	}
 
 	Item* item=Chosen->GetItem(item_id);
 	if(!item)
 	{
-		WriteLog(__FUNCTION__" - Item not found, id<%u>.\n",item_id);
+		WriteLog(_FUNC_," - Item not found, id<%u>.\n",item_id);
 		return;
 	}
 
-	if(Script::PrepareContext(ClientFunctions.ItemInvOut,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemInvOut,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(item);
 		Script::RunPrepared();
@@ -5268,11 +5268,11 @@ void FOClient::Net_OnChosenEraseItem()
 
 void FOClient::Net_OnAddItemOnMap()
 {
-	DWORD item_id;
-	WORD item_pid;
-	WORD item_x;
-	WORD item_y;
-	BYTE is_added;
+	uint item_id;
+	ushort item_pid;
+	ushort item_x;
+	ushort item_y;
+	uchar is_added;
 	Item::ItemData data;
 	Bin >> item_id;
 	Bin >> item_pid;
@@ -5299,7 +5299,7 @@ void FOClient::Net_OnAddItemOnMap()
 	}
 
 	Item* item=HexMngr.GetItemById(item_id);
-	if(item && Script::PrepareContext(ClientFunctions.ItemMapIn,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapIn,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(item);
 		Script::RunPrepared();
@@ -5311,7 +5311,7 @@ void FOClient::Net_OnAddItemOnMap()
 
 void FOClient::Net_OnChangeItemOnMap()
 {
-	DWORD item_id;
+	uint item_id;
 	Item::ItemData data;
 	Bin >> item_id;
 	Bin.Pop((char*)&data,sizeof(data));
@@ -5321,7 +5321,7 @@ void FOClient::Net_OnChangeItemOnMap()
 
 	HexMngr.ChangeItem(item_id,data);
 
-	if(item && Script::PrepareContext(ClientFunctions.ItemMapChanged,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapChanged,_FUNC_,"Game"))
 	{
 		Item* prev_state=new Item(*item);
 		prev_state->RefCounter=1;
@@ -5338,7 +5338,7 @@ void FOClient::Net_OnChangeItemOnMap()
 
 void FOClient::Net_OnEraseItemFromMap()
 {
-	DWORD item_id;
+	uint item_id;
 	bool is_deleted;
 	Bin >> item_id;
 	Bin >> is_deleted;
@@ -5346,7 +5346,7 @@ void FOClient::Net_OnEraseItemFromMap()
 	HexMngr.FinishItem(item_id,is_deleted);
 
 	Item* item=HexMngr.GetItemById(item_id);
-	if(item && Script::PrepareContext(ClientFunctions.ItemMapOut,CALL_FUNC_STR,"Game"))
+	if(item && Script::PrepareContext(ClientFunctions.ItemMapOut,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(item);
 		Script::RunPrepared();
@@ -5358,9 +5358,9 @@ void FOClient::Net_OnEraseItemFromMap()
 
 void FOClient::Net_OnAnimateItem()
 {
-	DWORD item_id;
-	BYTE from_frm;
-	BYTE to_frm;
+	uint item_id;
+	uchar from_frm;
+	uchar to_frm;
 	Bin >> item_id;
 	Bin >> from_frm;
 	Bin >> to_frm;
@@ -5371,16 +5371,16 @@ void FOClient::Net_OnAnimateItem()
 
 void FOClient::Net_OnCombatResult()
 {
-	DWORD msg_len;
-	DWORD data_count;
-	DwordVec data_vec;
+	uint msg_len;
+	uint data_count;
+	UIntVec data_vec;
 	Bin >> msg_len;
 	Bin >> data_count;
-	if(data_count>GameOpt.FloodSize/sizeof(DWORD)) return; // Insurance
+	if(data_count>GameOpt.FloodSize/sizeof(uint)) return; // Insurance
 	if(data_count)
 	{
 		data_vec.resize(data_count);
-		Bin.Pop((char*)&data_vec[0],data_count*sizeof(DWORD));
+		Bin.Pop((char*)&data_vec[0],data_count*sizeof(uint));
 	}
 
 	CHECK_IN_BUFF_ERROR;
@@ -5388,9 +5388,9 @@ void FOClient::Net_OnCombatResult()
 	CScriptArray* arr=Script::CreateArray("uint[]");
 	if(!arr) return;
 	arr->Resize(data_count);
-	for(int i=0;i<data_count;i++) *((DWORD*)arr->At(i))=data_vec[i];
+	for(uint i=0;i<data_count;i++) *((uint*)arr->At(i))=data_vec[i];
 
-	if(Script::PrepareContext(ClientFunctions.CombatResult,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.CombatResult,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(arr);
 		Script::RunPrepared();
@@ -5401,10 +5401,10 @@ void FOClient::Net_OnCombatResult()
 
 void FOClient::Net_OnEffect()
 {
-	WORD eff_pid;
-	WORD hx;
-	WORD hy;
-	WORD radius;
+	ushort eff_pid;
+	ushort hx;
+	ushort hy;
+	ushort radius;
 	Bin >> eff_pid;
 	Bin >> hx;
 	Bin >> hy;
@@ -5432,13 +5432,13 @@ void FOClient::Net_OnEffect()
 #pragma MESSAGE("Synchronize effects showing.")
 void FOClient::Net_OnFlyEffect()
 {
-	WORD eff_pid;
-	DWORD eff_cr1_id;
-	DWORD eff_cr2_id;
-	WORD eff_cr1_hx;
-	WORD eff_cr1_hy;
-	WORD eff_cr2_hx;
-	WORD eff_cr2_hy;
+	ushort eff_pid;
+	uint eff_cr1_id;
+	uint eff_cr2_id;
+	ushort eff_cr1_hx;
+	ushort eff_cr1_hy;
+	ushort eff_cr2_hx;
+	ushort eff_cr2_hy;
 	Bin >> eff_pid;
 	Bin >> eff_cr1_id;
 	Bin >> eff_cr2_id;
@@ -5464,7 +5464,7 @@ void FOClient::Net_OnFlyEffect()
 
 	if(!HexMngr.RunEffect(eff_pid,eff_cr1_hx,eff_cr1_hy,eff_cr2_hx,eff_cr2_hy))
 	{
-		WriteLog(__FUNCTION__" - Run effect fail, pid<%u>.\n",eff_pid);
+		WriteLog(_FUNC_," - Run effect fail, pid<%u>.\n",eff_pid);
 		return;
 	}
 }
@@ -5473,7 +5473,7 @@ void FOClient::Net_OnPlaySound(bool by_type)
 {
 	if(!by_type)
 	{
-		DWORD synchronize_crid;
+		uint synchronize_crid;
 		char sound_name[17];
 		Bin >> synchronize_crid;
 		Bin.Pop(sound_name,16);
@@ -5483,11 +5483,11 @@ void FOClient::Net_OnPlaySound(bool by_type)
 	}
 	else
 	{
-		DWORD synchronize_crid;
-		BYTE sound_type;
-		BYTE sound_type_ext;
-		BYTE sound_id;
-		BYTE sound_id_ext;
+		uint synchronize_crid;
+		uchar sound_type;
+		uchar sound_type_ext;
+		uchar sound_id;
+		uchar sound_id_ext;
 		Bin >> synchronize_crid;
 		Bin >> sound_type;
 		Bin >> sound_type_ext;
@@ -5499,7 +5499,7 @@ void FOClient::Net_OnPlaySound(bool by_type)
 
 void FOClient::Net_OnPing()
 {
-	BYTE ping;
+	uchar ping;
 	Bin >> ping;
 
 	if(ping==PING_WAIT)
@@ -5512,7 +5512,7 @@ void FOClient::Net_OnPing()
 		if(UIDFail) return;
 
 		Bout << NETMSG_PING;
-		Bout << (BYTE)PING_CLIENT;
+		Bout << (uchar)PING_CLIENT;
 	}
 	else if(ping==PING_PING)
 	{
@@ -5524,12 +5524,12 @@ void FOClient::Net_OnPing()
 
 void FOClient::Net_OnChosenTalk()
 {
-	DWORD msg_len;
-	BYTE is_npc;
-	DWORD talk_id;
-	BYTE count_answ;
-	DWORD text_id;
-	DWORD talk_time;
+	uint msg_len;
+	uchar is_npc;
+	uint talk_id;
+	uchar count_answ;
+	uint text_id;
+	uint talk_time;
 
 	Bin >> msg_len;
 	Bin >> is_npc;
@@ -5550,7 +5550,7 @@ void FOClient::Net_OnChosenTalk()
 	}
 
 	// Text params
-	WORD lexems_len;
+	ushort lexems_len;
 	char lexems[MAX_DLG_LEXEMS_TEXT+1]={0};
 	Bin >> lexems_len;
 	if(lexems_len && lexems_len<=MAX_DLG_LEXEMS_TEXT)
@@ -5580,7 +5580,7 @@ void FOClient::Net_OnChosenTalk()
 	DlgMainTextLinesReal=SprMngr.GetLinesCount(DlgWText.W(),0,str);
 
 	// Answers
-	DwordVec answers_texts;
+	UIntVec answers_texts;
 	for(int i=0;i<count_answ;i++)
 	{
 		Bin >> text_id;
@@ -5673,11 +5673,11 @@ void FOClient::Net_OnCheckUID2()
 void FOClient::Net_OnGameInfo()
 {
 	int time;
-	BYTE rain;
+	uchar rain;
 	bool turn_based;
 	bool no_log_out;
 	int* day_time=HexMngr.GetMapDayTime();
-	BYTE* day_color=HexMngr.GetMapDayColor();
+	uchar* day_color=HexMngr.GetMapDayColor();
 	Bin >> GameOpt.YearStart;
 	Bin >> GameOpt.Year;
 	Bin >> GameOpt.Month;
@@ -5691,13 +5691,13 @@ void FOClient::Net_OnGameInfo()
 	Bin >> turn_based;
 	Bin >> no_log_out;
 	Bin.Pop((char*)day_time,sizeof(int)*4);
-	Bin.Pop((char*)day_color,sizeof(BYTE)*12);
+	Bin.Pop((char*)day_color,sizeof(uchar)*12);
 
 	CHECK_IN_BUFF_ERROR;
 
 	SYSTEMTIME st={GameOpt.YearStart,1,0,1,0,0,0,0};
-	FILETIMELI ft;
-	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(__FUNCTION__" - FileTimeToSystemTime error<%u>.\n",GetLastError());
+	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
+	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - FileTimeToSystemTime error<%u>.\n",GetLastError());
 	GameOpt.YearStartFT=ft.ul.QuadPart;
 	GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 	GameOpt.FullSecondStart=GameOpt.FullSecond;
@@ -5712,14 +5712,14 @@ void FOClient::Net_OnGameInfo()
 
 void FOClient::Net_OnLoadMap()
 {
-	WriteLog("Change map...\n");
+	WriteLog(NULL,"Change map...\n");
 
-	WORD map_pid;
+	ushort map_pid;
 	int map_time;
-	BYTE map_rain;
-	DWORD hash_tiles;
-	DWORD hash_walls;
-	DWORD hash_scen;
+	uchar map_rain;
+	uint hash_tiles;
+	uint hash_walls;
+	uint hash_scen;
 	Bin >> map_pid;
 	Bin >> map_time;
 	Bin >> map_rain;
@@ -5759,14 +5759,14 @@ void FOClient::Net_OnLoadMap()
 		Net_SendLoadMapOk();
 		if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(map_pid));
 		else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(map_pid)));
-		WriteLog("Global map loaded.\n");
+		WriteLog(NULL,"Global map loaded.\n");
 		return;
 	}
 
 	// Local
-	DWORD hash_tiles_cl=0;
-	DWORD hash_walls_cl=0;
-	DWORD hash_scen_cl=0;
+	uint hash_tiles_cl=0;
+	uint hash_walls_cl=0;
+	uint hash_scen_cl=0;
 	HexMngr.GetMapHash(map_pid,hash_tiles_cl,hash_walls_cl,hash_scen_cl);
 
 	if(hash_tiles!=hash_tiles_cl || hash_walls!=hash_walls_cl || hash_scen!=hash_scen_cl)
@@ -5777,7 +5777,7 @@ void FOClient::Net_OnLoadMap()
 
 	if(!HexMngr.LoadMap(map_pid))
 	{
-		WriteLog("Map not loaded. Disconnect.\n");
+		WriteLog(NULL,"Map not loaded. Disconnect.\n");
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -5789,43 +5789,43 @@ void FOClient::Net_OnLoadMap()
 	ShootBorders.clear();
 	if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(map_pid));
 	else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(map_pid)));
-	WriteLog("Local map loaded.\n");
+	WriteLog(NULL,"Local map loaded.\n");
 }
 
 void FOClient::Net_OnMap()
 {
-	WriteLog("Get map...");
+	WriteLog(NULL,"Get map...");
 
-	DWORD msg_len;
-	WORD map_pid;
-	WORD maxhx,maxhy;
-	BYTE send_info;
+	uint msg_len;
+	ushort map_pid;
+	ushort maxhx,maxhy;
+	uchar send_info;
 	Bin >> msg_len;
 	Bin >> map_pid;
 	Bin >> maxhx;
 	Bin >> maxhy;
 	Bin >> send_info;
 
-	WriteLog("%u...",map_pid);
+	WriteLog(NULL,"%u...",map_pid);
 
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);
 
 	bool tiles=false;
 	char* tiles_data=NULL;
-	DWORD tiles_len=0;
+	uint tiles_len=0;
 	bool walls=false;
 	char* walls_data=NULL;
-	DWORD walls_len=0;
+	uint walls_len=0;
 	bool scen=false;
 	char* scen_data=NULL;
-	DWORD scen_len=0;
+	uint scen_len=0;
 
-	WriteLog("New:");
+	WriteLog(NULL,"New:");
 	if(FLAG(send_info,SENDMAP_TILES))
 	{
-		WriteLog(" Tiles");
-		DWORD count_tiles;
+		WriteLog(NULL," Tiles");
+		uint count_tiles;
 		Bin >> count_tiles;
 		if(count_tiles)
 		{
@@ -5838,8 +5838,8 @@ void FOClient::Net_OnMap()
 
 	if(FLAG(send_info,SENDMAP_WALLS))
 	{
-		WriteLog(" Walls");
-		DWORD count_walls=0;
+		WriteLog(NULL," Walls");
+		uint count_walls=0;
 		Bin >> count_walls;
 		if(count_walls)
 		{
@@ -5852,8 +5852,8 @@ void FOClient::Net_OnMap()
 
 	if(FLAG(send_info,SENDMAP_SCENERY))
 	{
-		WriteLog(" Scenery");
-		DWORD count_scen=0;
+		WriteLog(NULL," Scenery");
+		uint count_scen=0;
 		Bin >> count_scen;
 		if(count_scen)
 		{
@@ -5866,36 +5866,36 @@ void FOClient::Net_OnMap()
 
 	CHECK_IN_BUFF_ERROR;
 
-	DWORD cache_len;
-	BYTE* cache=Crypt.GetCache(map_name,cache_len);
+	uint cache_len;
+	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	FileManager fm;
 
-	WriteLog(" Old:");
+	WriteLog(NULL," Old:");
 	if(cache && fm.LoadStream(cache,cache_len))
 	{
-		DWORD buf_len=fm.GetFsize();
-		BYTE* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
+		uint buf_len=fm.GetFsize();
+		uchar* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
 		if(buf)
 		{
 			fm.UnloadFile();
 			fm.LoadStream(buf,buf_len);
 			delete[] buf;
 
-			if(fm.GetBEDWord()==CLIENT_MAP_FORMAT_VER)
+			if(fm.GetBEUInt()==CLIENT_MAP_FORMAT_VER)
 			{
 				fm.SetCurPos(0x04); // Skip pid
-				fm.GetBEDWord(); // Skip max hx/hy
-				fm.GetBEDWord(); // Reserved
-				fm.GetBEDWord(); // Reserved
+				fm.GetBEUInt(); // Skip max hx/hy
+				fm.GetBEUInt(); // Reserved
+				fm.GetBEUInt(); // Reserved
 
 				fm.SetCurPos(0x20);
-				DWORD old_tiles_len=fm.GetBEDWord();
-				DWORD old_walls_len=fm.GetBEDWord();
-				DWORD old_scen_len=fm.GetBEDWord();
+				uint old_tiles_len=fm.GetBEUInt();
+				uint old_walls_len=fm.GetBEUInt();
+				uint old_scen_len=fm.GetBEUInt();
 
 				if(!tiles)
 				{
-					WriteLog(" Tiles");
+					WriteLog(NULL," Tiles");
 					tiles_len=old_tiles_len;
 					fm.SetCurPos(0x2C);
 					tiles_data=new char[tiles_len];
@@ -5905,7 +5905,7 @@ void FOClient::Net_OnMap()
 
 				if(!walls)
 				{
-					WriteLog(" Walls");
+					WriteLog(NULL," Walls");
 					walls_len=old_walls_len;
 					fm.SetCurPos(0x2C+old_tiles_len);
 					walls_data=new char[walls_len];
@@ -5915,7 +5915,7 @@ void FOClient::Net_OnMap()
 
 				if(!scen)
 				{
-					WriteLog(" Scenery");
+					WriteLog(NULL," Scenery");
 					scen_len=old_scen_len;
 					fm.SetCurPos(0x2C+old_tiles_len+old_walls_len);
 					scen_data=new char[scen_len];
@@ -5928,35 +5928,35 @@ void FOClient::Net_OnMap()
 		}
 	}
 	SAFEDELA(cache);
-	WriteLog(". ");
+	WriteLog(NULL,". ");
 
 	if(tiles && walls && scen)
 	{
 		fm.ClearOutBuf();
 
-		fm.SetBEDWord(CLIENT_MAP_FORMAT_VER);
-		fm.SetBEDWord(map_pid);
-		fm.SetBEWord(maxhx);
-		fm.SetBEWord(maxhy);
-		fm.SetBEDWord(0);
-		fm.SetBEDWord(0);
+		fm.SetBEUInt(CLIENT_MAP_FORMAT_VER);
+		fm.SetBEUInt(map_pid);
+		fm.SetBEUShort(maxhx);
+		fm.SetBEUShort(maxhy);
+		fm.SetBEUInt(0);
+		fm.SetBEUInt(0);
 
-		fm.SetBEDWord(tiles_len/sizeof(ProtoMap::Tile));
-		fm.SetBEDWord(walls_len/sizeof(SceneryCl));
-		fm.SetBEDWord(scen_len/sizeof(SceneryCl));
-		fm.SetBEDWord(tiles_len);
-		fm.SetBEDWord(walls_len);
-		fm.SetBEDWord(scen_len);
+		fm.SetBEUInt(tiles_len/sizeof(ProtoMap::Tile));
+		fm.SetBEUInt(walls_len/sizeof(SceneryCl));
+		fm.SetBEUInt(scen_len/sizeof(SceneryCl));
+		fm.SetBEUInt(tiles_len);
+		fm.SetBEUInt(walls_len);
+		fm.SetBEUInt(scen_len);
 
 		if(tiles_len) fm.SetData(tiles_data,tiles_len);
 		if(walls_len) fm.SetData(walls_data,walls_len);
 		if(scen_len) fm.SetData(scen_data,scen_len);
 
-		DWORD obuf_len=fm.GetOutBufLen();
-		BYTE* buf=Crypt.Compress(fm.GetOutBuf(),obuf_len);
+		uint obuf_len=fm.GetOutBufLen();
+		uchar* buf=Crypt.Compress(fm.GetOutBuf(),obuf_len);
 		if(!buf)
 		{
-			WriteLog("Failed to compress data<%s>, disconnect.\n",map_name);
+			WriteLog(NULL,"Failed to compress data<%s>, disconnect.\n",map_name);
 			NetState=STATE_DISCONNECT;
 			fm.ClearOutBuf();
 			return;
@@ -5971,7 +5971,7 @@ void FOClient::Net_OnMap()
 	}
 	else
 	{
-		WriteLog("Not for all data of map, disconnect.\n");
+		WriteLog(NULL,"Not for all data of map, disconnect.\n");
 		NetState=STATE_DISCONNECT;
 		SAFEDELA(tiles_data);
 		SAFEDELA(walls_data);
@@ -5986,20 +5986,20 @@ void FOClient::Net_OnMap()
 	AutomapWaitPids.erase(map_pid);
 	AutomapReceivedPids.insert(map_pid);
 
-	WriteLog("Map saved.\n");
+	WriteLog(NULL,"Map saved.\n");
 }
 
 void FOClient::Net_OnGlobalInfo()
 {
-	DWORD msg_len;
-	BYTE info_flags;
+	uint msg_len;
+	uchar info_flags;
 	Bin >> msg_len;
 	Bin >> info_flags;
 
 	if(FLAG(info_flags,GM_INFO_LOCATIONS))
 	{
 		GmapLoc.clear();
-		WORD count_loc;
+		ushort count_loc;
 		Bin >> count_loc;
 
 		for(int i=0;i<count_loc;i++)
@@ -6042,13 +6042,13 @@ void FOClient::Net_OnGlobalInfo()
 
 	if(FLAG(info_flags,GM_INFO_GROUP_PARAM))
 	{
-		WORD group_x;
-		WORD group_y;
-		WORD move_x;
-		WORD move_y;
+		ushort group_x;
+		ushort group_y;
+		ushort move_x;
+		ushort move_y;
 		int speed_x;
 		int speed_y;
-		BYTE wait;
+		uchar wait;
 		Bin >> group_x;
 		Bin >> group_y;
 		Bin >> move_x;
@@ -6102,8 +6102,8 @@ void FOClient::Net_OnGlobalInfo()
 
 	if(FLAG(info_flags,GM_INFO_FOG))
 	{
-		WORD zx,zy;
-		BYTE fog;
+		ushort zx,zy;
+		uchar fog;
 		Bin >> zx;
 		Bin >> zy;
 		Bin >> fog;
@@ -6121,9 +6121,9 @@ void FOClient::Net_OnGlobalInfo()
 
 void FOClient::Net_OnGlobalEntrances()
 {
-	DWORD msg_len;
-	DWORD loc_id;
-	BYTE count;
+	uint msg_len;
+	uint loc_id;
+	uchar count;
 	bool entrances[0x100];
 	ZeroMemory(entrances,sizeof(entrances));
 	Bin >> msg_len;
@@ -6132,7 +6132,7 @@ void FOClient::Net_OnGlobalEntrances()
 
 	for(int i=0;i<count;i++)
 	{
-		BYTE e;
+		uchar e;
 		Bin >> e;
 		entrances[e]=true;
 	}
@@ -6145,12 +6145,12 @@ void FOClient::Net_OnGlobalEntrances()
 
 void FOClient::Net_OnContainerInfo()
 {
-	DWORD msg_len;
-	BYTE transfer_type;
-	DWORD talk_time;
-	DWORD cont_id;
-	WORD cont_pid; // Or Barter K
-	DWORD items_count;
+	uint msg_len;
+	uchar transfer_type;
+	uint talk_time;
+	uint cont_id;
+	ushort cont_pid; // Or Barter K
+	uint items_count;
 	Bin >> msg_len;
 	Bin >> transfer_type;
 
@@ -6170,10 +6170,10 @@ void FOClient::Net_OnContainerInfo()
 	Bin >> items_count;
 
 	ItemVec item_container;
-	for(DWORD i=0;i<items_count;i++)
+	for(uint i=0;i<items_count;i++)
 	{
-		DWORD item_id;
-		WORD item_pid;
+		uint item_id;
+		ushort item_pid;
 		Item::ItemData data;
 		Bin >> item_id;
 		Bin >> item_pid;
@@ -6260,10 +6260,10 @@ void FOClient::Net_OnContainerInfo()
 
 void FOClient::Net_OnFollow()
 {
-	DWORD rule;
-	BYTE follow_type;
-	WORD map_pid;
-	DWORD wait_time;
+	uint rule;
+	uchar follow_type;
+	ushort map_pid;
+	uint wait_time;
 	Bin >> rule;
 	Bin >> follow_type;
 	Bin >> map_pid;
@@ -6293,7 +6293,7 @@ void FOClient::Net_OnFollow()
 		StringCopy(DlgboxText,FmtGameText(STR_FOLLOW_FORCE,cr_name,map_name));
 		break;
 	default:
-		WriteLog(__FUNCTION__" - Error FollowType\n");
+		WriteLog(_FUNC_," - Error FollowType\n");
 		StringCopy(DlgboxText,"ERROR!");
 		break;
 	}
@@ -6305,9 +6305,9 @@ void FOClient::Net_OnFollow()
 
 void FOClient::Net_OnPlayersBarter()
 {
-	BYTE barter;
-	DWORD param;
-	DWORD param_ext;
+	uchar barter;
+	uint param;
+	uint param_ext;
 	Bin >> barter;
 	Bin >> param;
 	Bin >> param_ext;
@@ -6404,7 +6404,7 @@ void FOClient::Net_OnPlayersBarter()
 			}
 			else // Hide
 			{
-				WriteLog(__FUNCTION__" - Invalid argument.\n");
+				WriteLog(_FUNC_," - Invalid argument.\n");
 				Net_SendPlayersBarter(BARTER_END,0,0);
 				// See void FOClient::Net_OnPlayersBarterSetHide()
 			}
@@ -6493,9 +6493,9 @@ void FOClient::Net_OnPlayersBarter()
 
 void FOClient::Net_OnPlayersBarterSetHide()
 {
-	DWORD id;
-	WORD pid;
-	DWORD count;
+	uint id;
+	ushort pid;
+	uint count;
 	Item::ItemData data;
 	Bin >> id;
 	Bin >> pid;
@@ -6511,7 +6511,7 @@ void FOClient::Net_OnPlayersBarterSetHide()
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item)
 	{
-		WriteLog(__FUNCTION__" - Proto target_item<%u> not found.\n",pid);
+		WriteLog(_FUNC_," - Proto target_item<%u> not found.\n",pid);
 		Net_SendPlayersBarter(BARTER_REFRESH,0,0);
 		return;
 	}
@@ -6537,7 +6537,7 @@ void FOClient::Net_OnPlayersBarterSetHide()
 void FOClient::Net_OnShowScreen()
 {
 	int screen_type;
-	DWORD param;
+	uint param;
 	bool need_answer;
 	Bin >> screen_type;
 	Bin >> param;
@@ -6571,7 +6571,7 @@ void FOClient::Net_OnShowScreen()
 		DlgboxType=DIALOGBOX_MANUAL;
 		if(param>=MAX_DLGBOX_BUTTONS) param=MAX_DLGBOX_BUTTONS-1;
 		DlgboxButtonsCount=param+1;
-		for(int i=0;i<DlgboxButtonsCount;i++) DlgboxButtonText[i]="";
+		for(uint i=0;i<DlgboxButtonsCount;i++) DlgboxButtonText[i]="";
 		DlgboxButtonText[param]=MsgGame->GetStr(STR_DIALOGBOX_CANCEL);
 		break;
 	case SHOW_SCREEN_SKILLBOX:
@@ -6609,13 +6609,13 @@ void FOClient::Net_OnShowScreen()
 void FOClient::Net_OnRunClientScript()
 {
 	char str[MAX_FOTEXT];
-	DWORD msg_len;
-	WORD func_name_len;
+	uint msg_len;
+	ushort func_name_len;
 	CScriptString* func_name=new CScriptString();
 	int p0,p1,p2;
-	WORD p3len;
+	ushort p3len;
 	CScriptString* p3=NULL;
-	WORD p4size;
+	ushort p4size;
 	CScriptArray* p4=NULL;
 	Bin >> msg_len;
 	Bin >> func_name_len;
@@ -6642,7 +6642,7 @@ void FOClient::Net_OnRunClientScript()
 		if(p4)
 		{
 			p4->Resize(p4size);
-			Bin.Pop((char*)p4->At(0),p4size*sizeof(DWORD));
+			Bin.Pop((char*)p4->At(0),p4size*sizeof(uint));
 		}
 	}
 
@@ -6655,11 +6655,11 @@ void FOClient::Net_OnRunClientScript()
 	else
 		bind_id=Script::Bind("client_main",func_name->c_str(),"void %s(int,int,int,string@,int[]@)",true);
 
-	if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
+	if(bind_id>0 && Script::PrepareContext(bind_id,_FUNC_,"Game"))
 	{
-		Script::SetArgDword(p0);
-		Script::SetArgDword(p1);
-		Script::SetArgDword(p2);
+		Script::SetArgUInt(p0);
+		Script::SetArgUInt(p1);
+		Script::SetArgUInt(p2);
 		Script::SetArgObject(p3);
 		Script::SetArgObject(p4);
 		Script::RunPrepared();
@@ -6680,9 +6680,9 @@ void FOClient::Net_OnDropTimers()
 
 void FOClient::Net_OnCritterLexems()
 {
-	DWORD msg_len;
-	DWORD critter_id;
-	WORD lexems_len;
+	uint msg_len;
+	uint critter_id;
+	ushort lexems_len;
 	char lexems[LEXEMS_SIZE];
 	Bin >> msg_len;
 	Bin >> critter_id;
@@ -6690,7 +6690,7 @@ void FOClient::Net_OnCritterLexems()
 
 	if(lexems_len+1>=LEXEMS_SIZE)
 	{
-		WriteLog(__FUNCTION__" - Invalid lexems length<%u>, disconnect.\n",lexems_len);
+		WriteLog(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -6711,9 +6711,9 @@ void FOClient::Net_OnCritterLexems()
 
 void FOClient::Net_OnItemLexems()
 {
-	DWORD msg_len;
-	DWORD item_id;
-	WORD lexems_len;
+	uint msg_len;
+	uint item_id;
+	ushort lexems_len;
 	char lexems[LEXEMS_SIZE];
 	Bin >> msg_len;
 	Bin >> item_id;
@@ -6721,7 +6721,7 @@ void FOClient::Net_OnItemLexems()
 
 	if(lexems_len+1>=LEXEMS_SIZE)
 	{
-		WriteLog(__FUNCTION__" - Invalid lexems length<%u>, disconnect.\n",lexems_len);
+		WriteLog(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -6764,42 +6764,42 @@ void FOClient::Net_OnCheckUID3()
 
 void FOClient::Net_OnMsgData()
 {
-	DWORD msg_len;
-	DWORD lang;
-	WORD num_msg;
-	DWORD data_hash;
+	uint msg_len;
+	uint lang;
+	ushort num_msg;
+	uint data_hash;
 	CharVec data;
 	Bin >> msg_len;
 	Bin >> lang;
 	Bin >> num_msg;
 	Bin >> data_hash;
-	data.resize(msg_len-(sizeof(MSGTYPE)+sizeof(msg_len)+sizeof(lang)+sizeof(num_msg)+sizeof(data_hash)));
+	data.resize(msg_len-(sizeof(uint)+sizeof(msg_len)+sizeof(lang)+sizeof(num_msg)+sizeof(data_hash)));
 	Bin.Pop((char*)&data[0],data.size());
 
 	CHECK_IN_BUFF_ERROR;
 
 	if(lang!=CurLang.Name)
 	{
-		WriteLog(__FUNCTION__" - Received text in another language, set as default.\n");
+		WriteLog(_FUNC_," - Received text in another language, set as default.\n");
 		CurLang.Name=lang;
 		WritePrivateProfileString(CLIENT_CONFIG_APP,"Language",CurLang.NameStr,".\\"CLIENT_CONFIG_FILE);
 	}
 
 	if(num_msg>=TEXTMSG_COUNT)
 	{
-		WriteLog(__FUNCTION__" - Incorrect value of msg num.\n");
+		WriteLog(_FUNC_," - Incorrect value of msg num.\n");
 		return;
 	}
 
-	if(data_hash!=Crypt.Crc32((BYTE*)&data[0],data.size()))
+	if(data_hash!=Crypt.Crc32((uchar*)&data[0],data.size()))
 	{
-		WriteLog(__FUNCTION__" - Invalid hash<%s>.\n",TextMsgFileName[num_msg]);
+		WriteLog(_FUNC_," - Invalid hash<%s>.\n",TextMsgFileName[num_msg]);
 		return;	
 	}
 
 	if(CurLang.Msg[num_msg].LoadMsgStream(data)<0)
 	{
-		WriteLog(__FUNCTION__" - Unable to load<%s> from stream.\n",TextMsgFileName[num_msg]);
+		WriteLog(_FUNC_," - Unable to load<%s> from stream.\n",TextMsgFileName[num_msg]);
 		return;
 	}
 
@@ -6831,7 +6831,7 @@ void FOClient::Net_OnMsgData()
 		// Reload interface
 		if(int res=InitIface())
 		{
-			WriteLog("Init interface fail, error<%d>.\n",res);
+			WriteLog(NULL,"Init interface fail, error<%d>.\n",res);
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_TO_LOAD_IFACE));
 			NetState=STATE_DISCONNECT;
 		}
@@ -6843,21 +6843,21 @@ void FOClient::Net_OnMsgData()
 
 void FOClient::Net_OnProtoItemData()
 {
-	DWORD msg_len;
-	BYTE type;
-	DWORD data_hash;
+	uint msg_len;
+	uchar type;
+	uint data_hash;
 	ProtoItemVec data;
 	Bin >> msg_len;
 	Bin >> type;
 	Bin >> data_hash;
-	data.resize((msg_len-sizeof(MSGTYPE)-sizeof(msg_len)-sizeof(type)-sizeof(data_hash))/sizeof(ProtoItem));
+	data.resize((msg_len-sizeof(uint)-sizeof(msg_len)-sizeof(type)-sizeof(data_hash))/sizeof(ProtoItem));
 	Bin.Pop((char*)&data[0],data.size()*sizeof(ProtoItem));
 
 	CHECK_IN_BUFF_ERROR;
 
-	if(data_hash!=Crypt.Crc32((BYTE*)&data[0],data.size()*sizeof(ProtoItem)))
+	if(data_hash!=Crypt.Crc32((uchar*)&data[0],data.size()*sizeof(ProtoItem)))
 	{
-		WriteLog(__FUNCTION__" - Hash error.\n");
+		WriteLog(_FUNC_," - Hash error.\n");
 		return;	
 	}
 
@@ -6866,18 +6866,18 @@ void FOClient::Net_OnProtoItemData()
 
 	ProtoItemVec proto_items;
 	ItemMngr.GetCopyAllProtos(proto_items);
-	DWORD len=proto_items.size()*sizeof(ProtoItem);
-	BYTE* proto_data=Crypt.Compress((BYTE*)&proto_items[0],len);
+	uint len=proto_items.size()*sizeof(ProtoItem);
+	uchar* proto_data=Crypt.Compress((uchar*)&proto_items[0],len);
 	if(!proto_data)
 	{
-		WriteLog(__FUNCTION__" - Compression fail.\n");
+		WriteLog(_FUNC_," - Compression fail.\n");
 		return;
 	}
 	Crypt.SetCache("item_protos",proto_data,len);
 	delete[] proto_data;
 
-	DWORD count=proto_items.size();
-	Crypt.SetCache("item_protos_count",(BYTE*)&count,sizeof(count));
+	uint count=proto_items.size();
+	Crypt.SetCache("item_protos_count",(uchar*)&count,sizeof(count));
 
 	// Refresh craft names
 	MrFixit.GenerateNames(*MsgGame,*MsgItem);
@@ -6886,28 +6886,28 @@ void FOClient::Net_OnProtoItemData()
 void FOClient::Net_OnQuest(bool many)
 {
 	many?\
-		WriteLog("Quests..."):
-		WriteLog("Quest...");
+		WriteLog(NULL,"Quests..."):
+		WriteLog(NULL,"Quest...");
 
 	if(many)
 	{
-		DWORD msg_len;
-		DWORD q_count;
+		uint msg_len;
+		uint q_count;
 		Bin >> msg_len;
 		Bin >> q_count;
 
 		QuestMngr.Clear();
 		if(q_count)
 		{
-			DwordVec quests;
+			UIntVec quests;
 			quests.resize(q_count);
-			Bin.Pop((char*)&quests[0],q_count*sizeof(DWORD));
-			for(int i=0;i<quests.size();++i) QuestMngr.OnQuest(quests[i]);
+			Bin.Pop((char*)&quests[0],q_count*sizeof(uint));
+			for(uint i=0;i<quests.size();++i) QuestMngr.OnQuest(quests[i]);
 		}
 	}
 	else
 	{
-		DWORD q_num;
+		uint q_num;
 		Bin >> q_num;
 		QuestMngr.OnQuest(q_num);
 
@@ -6916,22 +6916,22 @@ void FOClient::Net_OnQuest(bool many)
 		if(quest) AddMess(FOMB_GAME,quest->str.c_str());
 	}
 
-	WriteLog("Complete.\n");
+	WriteLog(NULL,"Complete.\n");
 }
 
 void FOClient::Net_OnHoloInfo()
 {
-	DWORD msg_len;
+	uint msg_len;
 	bool clear;
-	WORD offset;
-	WORD count;
+	ushort offset;
+	ushort count;
 	Bin >> msg_len;
 	Bin >> clear;
 	Bin >> offset;
 	Bin >> count;
 
 	if(clear) ZeroMemory(HoloInfo,sizeof(HoloInfo));
-	if(count) Bin.Pop((char*)&HoloInfo[offset],count*sizeof(DWORD));
+	if(count) Bin.Pop((char*)&HoloInfo[offset],count*sizeof(uint));
 }
 
 void FOClient::Net_OnScores()
@@ -6942,9 +6942,9 @@ void FOClient::Net_OnScores()
 
 void FOClient::Net_OnUserHoloStr()
 {
-	DWORD msg_len;
-	DWORD str_num;
-	WORD text_len;
+	uint msg_len;
+	uint str_num;
+	ushort text_len;
 	char text[USER_HOLO_MAX_LEN+1];
 	Bin >> msg_len;
 	Bin >> str_num;
@@ -6952,7 +6952,7 @@ void FOClient::Net_OnUserHoloStr()
 
 	if(text_len>USER_HOLO_MAX_LEN)
 	{
-		WriteLog(__FUNCTION__" - Text length greater than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
+		WriteLog(_FUNC_," - Text length greater than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -6969,9 +6969,9 @@ void FOClient::Net_OnUserHoloStr()
 
 void FOClient::Net_OnAutomapsInfo()
 {
-	DWORD msg_len;
+	uint msg_len;
 	bool clear;
-	WORD locs_count;
+	ushort locs_count;
 	Bin >> msg_len;
 	Bin >> clear;
 
@@ -6988,11 +6988,11 @@ void FOClient::Net_OnAutomapsInfo()
 	}
 
 	Bin >> locs_count;
-	for(WORD i=0;i<locs_count;i++)
+	for(ushort i=0;i<locs_count;i++)
 	{
-		DWORD loc_id;
-		WORD loc_pid;
-		WORD maps_count;
+		uint loc_id;
+		ushort loc_pid;
+		ushort maps_count;
 		Bin >> loc_id;
 		Bin >> loc_pid;
 		Bin >> maps_count;
@@ -7012,9 +7012,9 @@ void FOClient::Net_OnAutomapsInfo()
 			amap.LocPid=loc_pid;
 			amap.LocName=MsgGM->GetStr(STR_GM_NAME_(loc_pid));
 
-			for(WORD j=0;j<maps_count;j++)
+			for(ushort j=0;j<maps_count;j++)
 			{
-				WORD map_pid;
+				ushort map_pid;
 				Bin >> map_pid;
 
 				amap.MapPids.push_back(map_pid);
@@ -7037,8 +7037,8 @@ void FOClient::Net_OnCheckUID4()
 
 void FOClient::Net_OnViewMap()
 {
-	WORD hx,hy;
-	DWORD loc_id,loc_ent;
+	ushort hx,hy;
+	uint loc_id,loc_ent;
 	Bin >> hx;
 	Bin >> hy;
 	Bin >> loc_id;
@@ -7063,15 +7063,15 @@ void FOClient::Net_OnViewMap()
 
 void FOClient::Net_OnCraftAsk()
 {
-	DWORD msg_len;
-	WORD count;
+	uint msg_len;
+	ushort count;
 	Bin >> msg_len;
 	Bin >> count;
 
 	FixShowCraft.clear();
 	for(int i=0;i<count;i++)
 	{
-		DWORD craft_num;
+		uint craft_num;
 		Bin >> craft_num;
 		FixShowCraft.insert(craft_num);
 	}
@@ -7083,7 +7083,7 @@ void FOClient::Net_OnCraftAsk()
 
 void FOClient::Net_OnCraftResult()
 {
-	BYTE craft_result;
+	uchar craft_result;
 	Bin >> craft_result;
 
 	if(craft_result!=CRAFT_RESULT_NONE)
@@ -7093,7 +7093,7 @@ void FOClient::Net_OnCraftResult()
 	}
 }
 
-void FOClient::SetGameColor(DWORD color)
+void FOClient::SetGameColor(uint color)
 {
 	SprMngr.SetSpritesColor(color);
 	HexMngr.RefreshMap();
@@ -7183,7 +7183,7 @@ bool FOClient::RegCheckData(CritterCl* newcr)
 		}
 	}
 
-	if(Script::PrepareContext(ClientFunctions.PlayerGenerationCheck,CALL_FUNC_STR,"Registration"))
+	if(Script::PrepareContext(ClientFunctions.PlayerGenerationCheck,_FUNC_,"Registration"))
 	{
 		CScriptArray* arr=Script::CreateArray("int[]");
 		if(!arr) return false;
@@ -7212,8 +7212,8 @@ void FOClient::SetDayTime(bool refresh)
 {
 	if(!HexMngr.IsMapLoaded()) return;
 
-	static DWORD old_color=-1;
-	DWORD color=GetColorDay(HexMngr.GetMapDayTime(),HexMngr.GetMapDayColor(),HexMngr.GetMapTime(),NULL);
+	static uint old_color=-1;
+	uint color=GetColorDay(HexMngr.GetMapDayTime(),HexMngr.GetMapDayColor(),HexMngr.GetMapTime(),NULL);
 	color=COLOR_GAME_RGB((color>>16)&0xFF,(color>>8)&0xFF,color&0xFF);
 
 	if(refresh) old_color=-1;
@@ -7231,7 +7231,7 @@ Item* FOClient::GetTargetContItem()
 #define TRY_SEARCH_IN_SLOT(target_item) do{if(target_item->GetId()==item_id){inv_slot=*target_item;return &inv_slot;}}while(0)
 
 	if(!TargetSmth.IsContItem()) return NULL;
-	DWORD item_id=TargetSmth.GetId();
+	uint item_id=TargetSmth.GetId();
 
 	if(GetActiveScreen()!=SCREEN_NONE)
 	{
@@ -7279,7 +7279,7 @@ void FOClient::AddAction(bool to_front, ActionEvent& act)
 	else ChosenAction.push_back(act);
 }
 
-void FOClient::SetAction(DWORD type_action, DWORD param0, DWORD param1, DWORD param2, DWORD param3, DWORD param4, DWORD param5)
+void FOClient::SetAction(uint type_action, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5)
 {
 	SetAction(ActionEvent(type_action,param0,param1,param2,param3,param4,param5));
 }
@@ -7290,7 +7290,7 @@ void FOClient::SetAction(ActionEvent& act)
 	AddActionBack(act);
 }
 
-void FOClient::AddActionBack(DWORD type_action, DWORD param0, DWORD param1, DWORD param2, DWORD param3, DWORD param4, DWORD param5)
+void FOClient::AddActionBack(uint type_action, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5)
 {
 	AddActionBack(ActionEvent(type_action,param0,param1,param2,param3,param4,param5));
 }
@@ -7300,7 +7300,7 @@ void FOClient::AddActionBack(ActionEvent& act)
 	AddAction(false,act);
 }
 
-void FOClient::AddActionFront(DWORD type_action, DWORD param0, DWORD param1, DWORD param2, DWORD param3, DWORD param4, DWORD param5)
+void FOClient::AddActionFront(uint type_action, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5)
 {
 	AddAction(true,ActionEvent(type_action,param0,param1,param2,param3,param4,param5));
 }
@@ -7315,7 +7315,7 @@ void FOClient::EraseBackAction()
 	if(ChosenAction.size()) ChosenAction.pop_back();
 }
 
-bool FOClient::IsAction(DWORD type_action)
+bool FOClient::IsAction(uint type_action)
 {
 	return ChosenAction.size() && (*ChosenAction.begin()).Type==type_action;
 }
@@ -7330,7 +7330,7 @@ void FOClient::ChosenChangeSlot()
 		AddActionBack(CHOSEN_MOVE_ITEM,Chosen->ItemSlotExt->GetId(),Chosen->ItemSlotExt->GetCount(),SLOT_HAND1);
 	else
 	{
-		BYTE tree=Chosen->DefItemSlotHand->Proto->Weapon_UnarmedTree+1;
+		uchar tree=Chosen->DefItemSlotHand->Proto->Weapon_UnarmedTree+1;
 		ProtoItem* unarmed=Chosen->GetUnarmedItem(tree,0);
 		if(!unarmed) unarmed=Chosen->GetUnarmedItem(0,0);
 		Chosen->DefItemSlotHand->Init(unarmed);
@@ -7416,11 +7416,11 @@ void FOClient::CrittersProcess()
 	// Ap regeneration
 	if(Chosen->GetParam(ST_CURRENT_AP)<Chosen->GetParam(ST_ACTION_POINTS) && !IsTurnBased)
 	{
-		DWORD tick=Timer::GameTick();
+		uint tick=Timer::GameTick();
 		if(!Chosen->ApRegenerationTick) Chosen->ApRegenerationTick=tick;
 		else
 		{
-			DWORD delta=tick-Chosen->ApRegenerationTick;
+			uint delta=tick-Chosen->ApRegenerationTick;
 			if(delta>=500)
 			{
 				int max_ap=Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER;
@@ -7463,12 +7463,12 @@ void FOClient::CrittersProcess()
 	case CHOSEN_MOVE_TO_CRIT:
 	case CHOSEN_MOVE:
 		{
-			WORD hx=act.Param[0];
-			WORD hy=act.Param[1];
+			ushort hx=act.Param[0];
+			ushort hy=act.Param[1];
 			bool is_run=act.Param[2]!=0;
 			int cut=act.Param[3];
 			bool wait_click=act.Param[4]!=0;
-			DWORD start_tick=act.Param[5];
+			uint start_tick=act.Param[5];
 
 			if(!HexMngr.IsMapLoaded()) break;
 
@@ -7480,8 +7480,8 @@ void FOClient::CrittersProcess()
 				hy=cr->GetHexY();
 			}
 
-			WORD from_hx=Chosen->GetHexX();
-			WORD from_hy=Chosen->GetHexY();
+			ushort from_hx=Chosen->GetHexX();
+			ushort from_hy=Chosen->GetHexY();
 
 			if(Chosen->IsDoubleOverweight())
 			{
@@ -7516,8 +7516,8 @@ void FOClient::CrittersProcess()
 			bool skip_find=false;
 			if(hx==MoveLastHx && hy==MoveLastHy && MoveDirs.size())
 			{
-				WORD hx_=from_hx;
-				WORD hy_=from_hy;
+				ushort hx_=from_hx;
+				ushort hy_=from_hy;
 				MoveHexByDir(hx_,hy_,MoveDirs[0],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
 				if(!HexMngr.GetField(hx_,hy_).IsNotPassed) skip_find=true;
 			}
@@ -7529,12 +7529,12 @@ void FOClient::CrittersProcess()
 				MoveDirs.clear();
 				if(!IsTurnBased && MoveDirs.size())
 				{
-					WORD hx_=from_hx;
-					WORD hy_=from_hy;
+					ushort hx_=from_hx;
+					ushort hy_=from_hy;
 					MoveHexByDir(hx_,hy_,MoveDirs[0],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
 					if(!HexMngr.GetField(hx_,hy_).IsNotPassed)
 					{
-						for(int i=1;i<MoveDirs.size() && i<4;i++) MoveHexByDir(hx_,hy_,MoveDirs[i],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
+						for(uint i=1;i<MoveDirs.size() && i<4;i++) MoveHexByDir(hx_,hy_,MoveDirs[i],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
 						from_hx=hx_;
 						from_hy=hy_;
 					}
@@ -7542,18 +7542,18 @@ void FOClient::CrittersProcess()
 				}
 				else MoveDirs.clear();
 
-				WORD hx_=hx;
-				WORD hy_=hy;
+				ushort hx_=hx;
+				ushort hy_=hy;
 				bool result=HexMngr.CutPath(Chosen,from_hx,from_hy,hx_,hy_,cut);
 				if(!result)
 				{
-					DWORD max_cut=DistGame(from_hx,from_hy,hx_,hy_);
+					int max_cut=(int)DistGame(from_hx,from_hy,hx_,hy_);
 					if(max_cut>cut+1) result=HexMngr.CutPath(Chosen,from_hx,from_hy,hx_,hy_,++cut);
 					if(!result) goto label_EndMove;
 				}
 
 				ChosenAction[0].Param[3]=cut;
-				ByteVec steps;
+				UCharVec steps;
 				if(HexMngr.FindPath(Chosen,from_hx,from_hy,hx_,hy_,steps,-1))
 				{
 					for(int i=0,j=steps.size();i<j;i++) MoveDirs.push_back(steps[i]);
@@ -7561,15 +7561,15 @@ void FOClient::CrittersProcess()
 			}
 
 label_EndMove:
-			if(IsTurnBased && ap_cost_real>0 && MoveDirs.size()/(ap_cost_real/AP_DIVIDER)>Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP)) MoveDirs.resize(Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP));
-			if(!IsTurnBased && ap_cost_real>0 && MoveDirs.size()>Chosen->GetRealAp()/ap_cost_real) MoveDirs.resize(Chosen->GetRealAp()/ap_cost_real);
+			if(IsTurnBased && ap_cost_real>0 && (int)MoveDirs.size()/(ap_cost_real/AP_DIVIDER)>Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP)) MoveDirs.resize(Chosen->GetParam(ST_CURRENT_AP)+Chosen->GetParam(ST_MOVE_AP));
+			if(!IsTurnBased && ap_cost_real>0 && (int)MoveDirs.size()>Chosen->GetRealAp()/ap_cost_real) MoveDirs.resize(Chosen->GetRealAp()/ap_cost_real);
 			if(MoveDirs.size()>1 && Chosen->IsDmgTwoLeg()) MoveDirs.resize(1);
 
 			// Transit
 			if(MoveDirs.size())
 			{
-				WORD hx_=Chosen->GetHexX();
-				WORD hy_=Chosen->GetHexY();
+				ushort hx_=Chosen->GetHexX();
+				ushort hy_=Chosen->GetHexY();
 				MoveHexByDir(hx_,hy_,MoveDirs[0],HexMngr.GetMaxHexX(),HexMngr.GetMaxHexY());
 				HexMngr.TransitCritter(Chosen,hx_,hy_,true,false);
 				if(IsTurnBased)
@@ -7644,14 +7644,14 @@ label_EndMove:
 		break;
 	case CHOSEN_USE_ITEM:
 		{
-			DWORD item_id=act.Param[0];
-			WORD item_pid=act.Param[1];
-			BYTE target_type=act.Param[2];
-			DWORD target_id=act.Param[3];
-			BYTE rate=act.Param[4];
-			DWORD param=act.Param[5];
-			BYTE use=(rate&0xF);
-			BYTE aim=(rate>>4);
+			uint item_id=act.Param[0];
+			ushort item_pid=act.Param[1];
+			uchar target_type=act.Param[2];
+			uint target_id=act.Param[3];
+			uchar rate=act.Param[4];
+			uint param=act.Param[5];
+			uchar use=(rate&0xF);
+			uchar aim=(rate>>4);
 
 			// Find item
 			Item* item=(item_id?Chosen->GetItem(item_id):Chosen->DefItemSlotHand);
@@ -7699,9 +7699,9 @@ label_EndMove:
 			if(!is_attack && !is_reload && (IsCurMode(CUR_USE_ITEM) || IsCurMode(CUR_USE_WEAPON))) SetCurMode(CUR_DEFAULT);
 
 			// Aim overriding
-			if(is_attack && ClientFunctions.HitAim && Script::PrepareContext(ClientFunctions.HitAim,CALL_FUNC_STR,"Game"))
+			if(is_attack && ClientFunctions.HitAim && Script::PrepareContext(ClientFunctions.HitAim,_FUNC_,"Game"))
 			{
-				BYTE new_aim=aim;
+				uchar new_aim=aim;
 				Script::SetArgAddress(&new_aim);
 				if(Script::RunPrepared() && new_aim!=aim)
 				{
@@ -7785,7 +7785,7 @@ label_EndMove:
 			// Find Target
 			if(!is_self && HexMngr.IsMapLoaded())
 			{
-				WORD hx,hy;
+				ushort hx,hy;
 				if(target_cr)
 				{
 					hx=target_cr->GetHexX();
@@ -7797,7 +7797,7 @@ label_EndMove:
 					hy=target_item->GetHexY();
 				}
 
-				DWORD max_dist=(is_attack?Chosen->GetAttackDist():Chosen->GetUseDist())+(target_cr?target_cr->GetMultihex():0);
+				uint max_dist=(is_attack?Chosen->GetAttackDist():Chosen->GetUseDist())+(target_cr?target_cr->GetMultihex():0);
 
 				// Target find
 				bool need_move=false;
@@ -7806,7 +7806,7 @@ label_EndMove:
 				if(need_move) 
 				{
 					// If target too far, then move to it	
-					DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+					uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
 					if(dist>max_dist)
 					{
 						if(IsTurnBased) break;
@@ -7822,7 +7822,7 @@ label_EndMove:
 
 				// Refresh orientation
 				CHECK_NEED_AP(ap_cost);
-				BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+				uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
 				if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy)>=1 && Chosen->GetDir()!=dir)
 				{
 					Chosen->SetDir(dir);
@@ -7853,15 +7853,15 @@ label_EndMove:
 		break;
 	case CHOSEN_MOVE_ITEM:
 		{
-			DWORD item_id=act.Param[0];
-			DWORD item_count=act.Param[1];
+			uint item_id=act.Param[0];
+			uint item_count=act.Param[1];
 			int to_slot=act.Param[2];
 			bool is_barter_cont=(act.Param[3]!=0);
 
 			Item* item=Chosen->GetItem(item_id);
 			if(!item) break;
 
-			BYTE from_slot=item->ACC_CRITTER.Slot;
+			uchar from_slot=item->ACC_CRITTER.Slot;
 			if(from_slot==to_slot) break;
 			bool is_castling=(from_slot==SLOT_HAND1 && to_slot==SLOT_HAND2) || (from_slot==SLOT_HAND2 && to_slot==SLOT_HAND1);
 			bool is_light=item->IsLight();
@@ -7874,7 +7874,7 @@ label_EndMove:
 				if(to_slot==SLOT_ARMOR && (!item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor(Chosen->GetCrType()))) break;
 			}
 
-			DWORD ap_cost=(is_castling?0:Chosen->GetApCostMoveItemInventory());
+			uint ap_cost=(is_castling?0:Chosen->GetApCostMoveItemInventory());
 			if(to_slot==SLOT_GROUND) ap_cost=Chosen->GetApCostDropItem();
 			CHECK_NEED_AP(ap_cost);
 
@@ -7911,9 +7911,9 @@ label_EndMove:
 		break;
 	case CHOSEN_MOVE_ITEM_CONT:
 		{
-			DWORD item_id=act.Param[0];
-			DWORD cont=act.Param[1];
-			DWORD count=act.Param[2];
+			uint item_id=act.Param[0];
+			uint cont=act.Param[1];
+			uint count=act.Param[2];
 
 			CHECK_NEED_AP(Chosen->GetApCostMoveItemContainer());
 
@@ -7946,7 +7946,7 @@ label_EndMove:
 
 			if(PupCont2Init.empty()) break;
 
-			DWORD c,w,v;
+			uint c,w,v;
 			ContainerCalcInfo(PupCont2Init,c,w,v,MAX_INT,false);
 			if(Chosen->GetFreeWeight()<(int)w) AddMess(FOMB_GAME,MsgGame->GetStr(STR_BARTER_OVERWEIGHT));
 			else if(Chosen->GetFreeVolume()<(int)v) AddMess(FOMB_GAME,MsgGame->GetStr(STR_BARTER_OVERSIZE));
@@ -7963,8 +7963,8 @@ label_EndMove:
 		break;
 	case CHOSEN_USE_SKL_ON_CRITTER:
 		{
-			WORD skill=act.Param[0];
-			DWORD crid=act.Param[1];
+			ushort skill=act.Param[0];
+			uint crid=act.Param[1];
 
 			CritterCl* cr=(crid?GetCritter(crid):Chosen);
 			if(!cr) break;
@@ -7974,7 +7974,7 @@ label_EndMove:
 			if(cr!=Chosen && HexMngr.IsMapLoaded())
 			{
 				// Check distantance
-				DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+				uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
 				switch(skill)
 				{
 				case SK_LOCKPICK:
@@ -7988,9 +7988,9 @@ label_EndMove:
 					{
 						if(IsTurnBased) break;
 						bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
-						DWORD cut_dist=Chosen->GetUseDist()+cr->GetMultihex();
+						uint cut_dist=Chosen->GetUseDist()+cr->GetMultihex();
 						SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,is_run,cut_dist);
-						WORD hx=cr->GetHexX(),hy=cr->GetHexY();
+						ushort hx=cr->GetHexX(),hy=cr->GetHexY();
 						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,cut_dist)) AddActionBack(act);
 						return;
 					}
@@ -8003,7 +8003,7 @@ label_EndMove:
 				{
 					// Refresh orientation
 					CHECK_NEED_AP(Chosen->GetApCostUseSkill());
-					BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+					uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
 					if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY())>=1 && Chosen->GetDir()!=dir)
 					{
 						Chosen->SetDir(dir);
@@ -8022,8 +8022,8 @@ label_EndMove:
 	case CHOSEN_USE_SKL_ON_ITEM:
 		{
 			bool is_inv=act.Param[0]!=0;
-			WORD skill=act.Param[1];
-			DWORD item_id=act.Param[2];
+			ushort skill=act.Param[1];
+			uint item_id=act.Param[2];
 
 			Item* item_action;
 			if(is_inv)
@@ -8055,20 +8055,20 @@ label_EndMove:
 
 				if(HexMngr.IsMapLoaded())
 				{
-					DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
+					uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
 					if(dist>Chosen->GetUseDist())
 					{
 						if(IsTurnBased) break;
 						bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
 						SetAction(CHOSEN_MOVE,item->GetHexX(),item->GetHexY(),is_run,Chosen->GetUseDist(),0);
-						WORD hx=item->GetHexX(),hy=item->GetHexY();
+						ushort hx=item->GetHexX(),hy=item->GetHexY();
 						if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,Chosen->GetUseDist())) AddActionBack(act);
 						return;
 					}
 
 					// Refresh orientation
 					CHECK_NEED_AP(Chosen->GetApCostUseSkill());
-					BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
+					uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
 					if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY())>=1 && Chosen->GetDir()!=dir)
 					{
 						Chosen->SetDir(dir);
@@ -8087,17 +8087,17 @@ label_EndMove:
 		break;
 	case CHOSEN_USE_SKL_ON_SCEN:
 		{
-			WORD skill=act.Param[0];
-			WORD pid=act.Param[1];
-			WORD hx=act.Param[2];
-			WORD hy=act.Param[3];
+			ushort skill=act.Param[0];
+			ushort pid=act.Param[1];
+			ushort hx=act.Param[2];
+			ushort hy=act.Param[3];
 
 			if(!HexMngr.IsMapLoaded()) break;
 
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
 			if(!item) break;
 
-			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+			uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
 			if(dist>Chosen->GetUseDist())
 			{
 				if(IsTurnBased) break;
@@ -8110,7 +8110,7 @@ label_EndMove:
 			CHECK_NEED_AP(Chosen->GetApCostUseSkill());
 
 			// Refresh orientation
-			BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
+			uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY());
 			if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),item->GetHexX(),item->GetHexY())>=1 && Chosen->GetDir()!=dir)
 			{
 				Chosen->SetDir(dir);
@@ -8125,7 +8125,7 @@ label_EndMove:
 		break;
 	case CHOSEN_TALK_NPC:
 		{
-			DWORD crid=act.Param[0];
+			uint crid=act.Param[0];
 
 			if(!HexMngr.IsMapLoaded()) break;
 
@@ -8140,14 +8140,14 @@ label_EndMove:
 				break;
 			}
 
-			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
-			DWORD talk_distance=cr->GetTalkDistance()+Chosen->GetMultihex();
+			uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+			uint talk_distance=cr->GetTalkDistance()+Chosen->GetMultihex();
 			if(dist>talk_distance)
 			{
 				if(IsTurnBased) break;
 				bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
 				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,is_run,talk_distance);
-				WORD hx=cr->GetHexX(),hy=cr->GetHexY();
+				ushort hx=cr->GetHexX(),hy=cr->GetHexY();
 				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,talk_distance)) AddActionBack(act);
 				return;
 			}
@@ -8159,7 +8159,7 @@ label_EndMove:
 			}
 
 			// Refresh orientation
-			BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+			uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
 			if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY())>=1 && Chosen->GetDir()!=dir)
 			{
 				Chosen->SetDir(dir);
@@ -8172,16 +8172,16 @@ label_EndMove:
 		break;
 	case CHOSEN_PICK_ITEM:
 		{
-			WORD pid=act.Param[0];
-			WORD hx=act.Param[1];
-			WORD hy=act.Param[2];
+			ushort pid=act.Param[0];
+			ushort hx=act.Param[1];
+			ushort hy=act.Param[2];
 
 			if(!HexMngr.IsMapLoaded()) break;
 
 			ItemHex* item=HexMngr.GetItem(hx,hy,pid);
 			if(!item) break;
 
-			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+			uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
 			if(dist>Chosen->GetUseDist())
 			{
 				if(IsTurnBased) break;
@@ -8195,7 +8195,7 @@ label_EndMove:
 			CHECK_NEED_AP(Chosen->GetApCostPickItem());
 
 			// Refresh orientation
-			BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
+			uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy);
 			if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),hx,hy)>=1 && Chosen->GetDir()!=dir)
 			{
 				Chosen->SetDir(dir);
@@ -8210,7 +8210,7 @@ label_EndMove:
 		break;
 	case CHOSEN_PICK_CRIT:
 		{
-			DWORD crid=act.Param[0];
+			uint crid=act.Param[0];
 			bool is_loot=(act.Param[1]==0);
 
 			if(!HexMngr.IsMapLoaded()) break;
@@ -8221,14 +8221,14 @@ label_EndMove:
 			if(is_loot && (!cr->IsDead() || cr->IsRawParam(MODE_NO_LOOT))) break;
 			if(!is_loot && (!cr->IsLife() || cr->IsRawParam(MODE_NO_PUSH))) break;
 
-			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
-			DWORD pick_dist=Chosen->GetUseDist()+cr->GetMultihex();
+			uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+			uint pick_dist=Chosen->GetUseDist()+cr->GetMultihex();
 			if(dist>pick_dist)
 			{
 				if(IsTurnBased) break;
 				bool is_run=(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunUseDist);
 				SetAction(CHOSEN_MOVE_TO_CRIT,cr->GetId(),0,is_run,pick_dist);
-				WORD hx=cr->GetHexX(),hy=cr->GetHexY();
+				ushort hx=cr->GetHexX(),hy=cr->GetHexY();
 				if(HexMngr.CutPath(Chosen,Chosen->GetHexX(),Chosen->GetHexY(),hx,hy,pick_dist)) AddActionBack(act);
 				return;
 			}
@@ -8236,7 +8236,7 @@ label_EndMove:
 			CHECK_NEED_AP(Chosen->GetApCostPickCritter());
 
 			// Refresh orientation
-			BYTE dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
+			uchar dir=GetFarDir(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY());
 			if(DistGame(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY())>=1 && Chosen->GetDir()!=dir)
 			{
 				Chosen->SetDir(dir);
@@ -8259,7 +8259,7 @@ label_EndMove:
 		break;
 	case CHOSEN_WRITE_HOLO:
 		{
-			DWORD holodisk_id=act.Param[0];
+			uint holodisk_id=act.Param[0];
 			if(holodisk_id!=IboxHolodiskId) break;
 			Item* holo=Chosen->GetItem(IboxHolodiskId);
 			if(!holo->IsHolodisk()) break;
@@ -8377,7 +8377,7 @@ void FOClient::ProcessMouseScroll()
 		GameOpt.ScrollMouseUp=false;
 }
 
-void FOClient::ProcessKeybScroll(bool down, BYTE dik)
+void FOClient::ProcessKeybScroll(bool down, uchar dik)
 {
 	if(down && IsMainScreen(SCREEN_GAME) && ConsoleActive) return;
 
@@ -8409,7 +8409,7 @@ bool FOClient::IsCurInWindow()
 	return true;
 }
 
-const char* FOClient::GetHoloText(DWORD str_num)
+const char* FOClient::GetHoloText(uint str_num)
 {
 	if(str_num/10>=USER_HOLO_START_NUM)
 	{
@@ -8424,7 +8424,7 @@ const char* FOClient::GetHoloText(DWORD str_num)
 	return MsgHolo->GetStr(str_num);
 }
 
-const char* FOClient::FmtGameText(DWORD str_num, ...)
+const char* FOClient::FmtGameText(uint str_num, ...)
 {
 //	return Str::Format(MsgGame->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
 
@@ -8442,7 +8442,7 @@ const char* FOClient::FmtGameText(DWORD str_num, ...)
 	return res;
 }
 
-const char* FOClient::FmtCombatText(DWORD str_num, ...)
+const char* FOClient::FmtCombatText(uint str_num, ...)
 {
 //	return Str::Format(MsgCombat->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
 
@@ -8463,9 +8463,9 @@ const char* FOClient::FmtGenericDesc(int desc_type, int& ox, int& oy)
 {
 	ox=0;
 	oy=0;
-	if(Script::PrepareContext(ClientFunctions.GenericDesc,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.GenericDesc,_FUNC_,"Game"))
 	{
-		Script::SetArgDword(desc_type);
+		Script::SetArgUInt(desc_type);
 		Script::SetArgAddress(&ox);
 		Script::SetArgAddress(&oy);
 		if(Script::RunPrepared())
@@ -8485,10 +8485,10 @@ const char* FOClient::FmtGenericDesc(int desc_type, int& ox, int& oy)
 
 const char* FOClient::FmtCritLook(CritterCl* cr, int look_type)
 {
-	if(Script::PrepareContext(ClientFunctions.CritterLook,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.CritterLook,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(cr);
-		Script::SetArgDword(look_type);
+		Script::SetArgUInt(look_type);
 		if(Script::RunPrepared())
 		{
 			CScriptString* result=(CScriptString*)Script::GetReturnedObject();
@@ -8506,10 +8506,10 @@ const char* FOClient::FmtCritLook(CritterCl* cr, int look_type)
 
 const char* FOClient::FmtItemLook(Item* item, int look_type)
 {
-	if(Script::PrepareContext(ClientFunctions.ItemLook,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemLook,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(item);
-		Script::SetArgDword(look_type);
+		Script::SetArgUInt(look_type);
 		if(Script::RunPrepared())
 		{
 			CScriptString* result=(CScriptString*)Script::GetReturnedObject();
@@ -8602,7 +8602,7 @@ PCharPairVecIt FOClient::FindIntellectWord(const char* word, PCharPairVec& text,
 	return it;
 }
 
-void FOClient::FmtTextIntellect(char* str, WORD intellect)
+void FOClient::FmtTextIntellect(char* str, ushort intellect)
 {
 	static bool is_parsed=false;
 	if(!is_parsed)
@@ -8612,7 +8612,7 @@ void FOClient::FmtTextIntellect(char* str, WORD intellect)
 		is_parsed=true;
 	}
 
-	BYTE intellegence=intellect&0xF;
+	uchar intellegence=intellect&0xF;
 	if(!intellect || intellegence>=5) return;
 
 	int word_proc;
@@ -8697,7 +8697,7 @@ bool FOClient::SaveLogFile()
 
 	char cur_mess[MAX_FOTEXT];
 	string fmt_log;
-	for(int i=0;i<MessBox.size();++i)
+	for(uint i=0;i<MessBox.size();++i)
 	{
 		MessBoxMessage& m=MessBox[i];
 		// Skip
@@ -8708,8 +8708,8 @@ bool FOClient::SaveLogFile()
 		fmt_log+=MessBox[i].Time+string(cur_mess);
 	}
 
-	DWORD br;
-	WriteFile(save_file,fmt_log.c_str(),fmt_log.length(),&br,NULL);
+	DWORD bw;
+	WriteFile(save_file,fmt_log.c_str(),fmt_log.length(),&bw,NULL);
 	CloseHandle(save_file);
 	return true;
 }
@@ -8748,7 +8748,7 @@ bool FOClient::SaveScreenshot()
 	D3DLOCKED_RECT lr_dst;
 	if(FAILED(surf->LockRect(&lr_dst,NULL,D3DLOCK_READONLY))) return FALSE;
 
-	BYTE* p_dst=(BYTE*)lr_dst.pBits;
+	uchar* p_dst=(uchar*)lr_dst.pBits;
 
 	// Create file
 	SYSTEMTIME sys_time;
@@ -8793,7 +8793,7 @@ bool FOClient::SaveScreenshot()
 	bi.biSizeImage=s_width*s_height*4;
 
 	// Save
-	DWORD br;
+	uint br;
 	WriteFile(save_file,&bf,sizeof(bf),&br,NULL);
 	WriteFile(save_file,&bi,sizeof(bi),&br,NULL);
 	WriteFile(save_file,image,s_width*s_height*4,&br,NULL);
@@ -8813,7 +8813,7 @@ void FOClient::SoundProcess()
 	SndMngr.Process();
 
 	// Ambient
-	static DWORD next_ambient=0;
+	static uint next_ambient=0;
 	if(Timer::GameTick()>next_ambient)
 	{
 		if(IsMainScreen(SCREEN_GAME)) SndMngr.PlayAmbient(MsgGM->GetStr(STR_MAP_AMBIENT_(HexMngr.GetCurPidMap())));
@@ -8847,8 +8847,8 @@ void FOClient::AddVideo(const char* fname, const char* sound, bool can_stop, boo
 	}
 }
 
-#define CHECK_VIDEO_HR(expr) {HRESULT hr=expr; if(FAILED(hr)) {WriteLog(__FUNCTION__" - Error<%u>, line<%d>.\n",hr,__LINE__); ShowVideos.clear(); StopVideo(); return;}}
-#define CHECK_VIDEO_NULLPTR(contrl) {if(!(contrl)) {WriteLog(__FUNCTION__" - Control nullptr, line<%d>.\n",__LINE__); ShowVideos.clear(); StopVideo(); return;}}
+#define CHECK_VIDEO_HR(expr) {HRESULT hr=expr; if(FAILED(hr)) {WriteLog(_FUNC_," - Error<%u>, line<%d>.\n",hr,__LINE__); ShowVideos.clear(); StopVideo(); return;}}
+#define CHECK_VIDEO_NULLPTR(contrl) {if(!(contrl)) {WriteLog(_FUNC_," - Control nullptr, line<%d>.\n",__LINE__); ShowVideos.clear(); StopVideo(); return;}}
 void FOClient::PlayVideo(ShowVideo& video)
 {
 	// Check file exiting
@@ -8913,18 +8913,18 @@ void FOClient::PlayVideo(ShowVideo& video)
 			{
 				IPin* in,*out;
 				HRESULT hr=splitter->FindPin(L"Output", &out);
-				WriteLog("0hr<%u>\n",hr);
+				WriteLog(NULL,"0hr<%u>\n",hr);
 				hr=VMRFilter->FindPin(L"Input", &in);
-				WriteLog("1hr<%u>\n",hr);
+				WriteLog(NULL,"1hr<%u>\n",hr);
 				hr=GraphBuilder->Connect(out,in);
-				WriteLog("2hr<%u>\n",hr);
+				WriteLog(NULL,"2hr<%u>\n",hr);
 
 			//	strm->Enable(0,0);
 			//	strm->Enable(1,0);
-				DWORD count=9;
+				uint count=9;
 				hr=strm->Count(&count);
 			//	if(count>1) strm->Enable(1,0);
-				WriteLog("hr<%u> count<%u>\n",hr,count);
+				WriteLog(NULL,"hr<%u> count<%u>\n",hr,count);
 			//	SAFEREL(strm);
 			}
 		}
@@ -8983,7 +8983,7 @@ void FOClient::StopVideo()
 	//CoUninitialize(); // Crashed sometimes
 }
 
-DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
+uint FOClient::AnimLoad(uint name_hash, uchar dir, int res_type)
 {
 	AnyFrames* anim=ResMngr.GetAnim(name_hash,dir,res_type);
 	if(!anim) return 0;
@@ -8991,13 +8991,13 @@ DWORD FOClient::AnimLoad(DWORD name_hash, BYTE dir, int res_type)
 	if(!ianim) return 0;
 	size_t index=1;
 
-	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
+	for(uint j=Animations.size();index<j;index++) if(!Animations[index]) break;
 	if(index<Animations.size()) Animations[index]=ianim;
 	else Animations.push_back(ianim);
 	return index;
 }
 
-DWORD FOClient::AnimLoad(const char* fname, int path_type, int res_type)
+uint FOClient::AnimLoad(const char* fname, int path_type, int res_type)
 {
 	char full_name[MAX_FOPATH];
 	StringCopy(full_name,FileManager::GetPath(path_type));
@@ -9009,37 +9009,37 @@ DWORD FOClient::AnimLoad(const char* fname, int path_type, int res_type)
 	if(!ianim) return 0;
 
 	size_t index=1;
-	for(size_t j=Animations.size();index<j;index++) if(!Animations[index]) break;
+	for(uint j=Animations.size();index<j;index++) if(!Animations[index]) break;
 	if(index<Animations.size()) Animations[index]=ianim;
 	else Animations.push_back(ianim);
 	return index;
 }
 
-DWORD FOClient::AnimGetCurSpr(DWORD anim_id)
+uint FOClient::AnimGetCurSpr(uint anim_id)
 {
 	if(anim_id>=Animations.size() || !Animations[anim_id]) return 0;
 	return Animations[anim_id]->Frames->Ind[Animations[anim_id]->CurSpr];
 }
 
-DWORD FOClient::AnimGetCurSprCnt(DWORD anim_id)
+uint FOClient::AnimGetCurSprCnt(uint anim_id)
 {
 	if(anim_id>=Animations.size() || !Animations[anim_id]) return 0;
 	return Animations[anim_id]->CurSpr;
 }
 
-DWORD FOClient::AnimGetSprCount(DWORD anim_id)
+uint FOClient::AnimGetSprCount(uint anim_id)
 {
 	if(anim_id>=Animations.size() || !Animations[anim_id]) return 0;
 	return Animations[anim_id]->Frames->CntFrm;
 }
 
-AnyFrames* FOClient::AnimGetFrames(DWORD anim_id)
+AnyFrames* FOClient::AnimGetFrames(uint anim_id)
 {
 	if(anim_id>=Animations.size() || !Animations[anim_id]) return 0;
 	return Animations[anim_id]->Frames;
 }
 
-void FOClient::AnimRun(DWORD anim_id, DWORD flags)
+void FOClient::AnimRun(uint anim_id, uint flags)
 {
 	if(anim_id>=Animations.size() || !Animations[anim_id]) return;
 	IfaceAnim* anim=Animations[anim_id];
@@ -9049,7 +9049,7 @@ void FOClient::AnimRun(DWORD anim_id, DWORD flags)
 	flags>>=16;
 
 	// Set frm
-	BYTE cur_frm=flags&0xFF;
+	uchar cur_frm=flags&0xFF;
 	if(cur_frm>0)
 	{
 		cur_frm--;
@@ -9074,11 +9074,11 @@ void FOClient::AnimProcess()
 
 		if(FLAG(anim->Flags,ANIMRUN_TO_END) || FLAG(anim->Flags,ANIMRUN_FROM_END))
 		{
-			DWORD cur_tick=Timer::GameTick();
+			uint cur_tick=Timer::GameTick();
 			if(cur_tick-anim->LastTick<anim->Frames->Ticks/anim->Frames->CntFrm) continue;
 
 			anim->LastTick=cur_tick;
-			int end_spr=anim->Frames->CntFrm-1;
+			uint end_spr=anim->Frames->CntFrm-1;
 			if(FLAG(anim->Flags,ANIMRUN_FROM_END)) end_spr=0;
 
 			if(anim->CurSpr<end_spr) anim->CurSpr++;
@@ -9121,7 +9121,7 @@ void FOClient::AnimFree(int res_type)
 
 bool FOClient::ReloadScripts()
 {
-	WriteLog("Load scripts...\n");
+	WriteLog(NULL,"Load scripts...\n");
 
 	FOMsg& msg_script=CurLang.Msg[TEXTMSG_INTERNAL];
 	if(!msg_script.Count(STR_INTERNAL_SCRIPT_CONFIG) ||
@@ -9129,14 +9129,14 @@ bool FOClient::ReloadScripts()
 		!msg_script.Count(STR_INTERNAL_SCRIPT_MODULES) ||
 		!msg_script.Count(STR_INTERNAL_SCRIPT_MODULES+1))
 	{
-		WriteLog("Main script section not found in MSG.\n");
+		WriteLog(NULL,"Main script section not found in MSG.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
 
 	if(msg_script.GetInt(STR_INTERNAL_SCRIPT_VERSION)!=CLIENT_SCRIPT_BINARY_VERSION)
 	{
-		WriteLog("Old version of scripts.\n");
+		WriteLog(NULL,"Old version of scripts.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
@@ -9145,7 +9145,7 @@ bool FOClient::ReloadScripts()
 	Script::Finish();
 	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_CLIENT)))
 	{
-		WriteLog("Unable to start script engine.\n");
+		WriteLog(NULL,"Unable to start script engine.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
@@ -9153,7 +9153,7 @@ bool FOClient::ReloadScripts()
 	// Bind stuff
 #define BIND_CLIENT
 #define BIND_CLASS FOClient::SScriptFunc::
-#define BIND_ERROR do{WriteLog("Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
+#define BIND_ERROR do{WriteLog(NULL,"Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
 
 	asIScriptEngine* engine=Script::GetEngine();
 	int bind_errors=0;
@@ -9161,7 +9161,7 @@ bool FOClient::ReloadScripts()
 
 	if(bind_errors)
 	{
-		WriteLog("Bind fail, errors<%d>.\n",bind_errors);
+		WriteLog(NULL,"Bind fail, errors<%d>.\n",bind_errors);
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
@@ -9187,13 +9187,13 @@ bool FOClient::ReloadScripts()
 		if(!msg_script.Count(i) || !msg_script.Count(i+1)) break;
 
 		const char* module_name=msg_script.GetStr(i);
-		DWORD len;
-		const BYTE* bytecode=msg_script.GetBinary(i+1,len);
+		uint len;
+		const uchar* bytecode=msg_script.GetBinary(i+1,len);
 		if(!bytecode) break;
 
 		if(!Script::LoadScript(module_name,bytecode,len))
 		{
-			WriteLog("Load script<%s> fail.\n",module_name);
+			WriteLog(NULL,"Load script<%s> fail.\n",module_name);
 			errors++;
 		}
 	}
@@ -9256,14 +9256,14 @@ bool FOClient::ReloadScripts()
 
 	AnimFree(RES_SCRIPT);
 
-	if(!Script::PrepareContext(ClientFunctions.Start,CALL_FUNC_STR,"Game") || !Script::RunPrepared() || Script::GetReturnedBool()==false)
+	if(!Script::PrepareContext(ClientFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || Script::GetReturnedBool()==false)
 	{
-		WriteLog("Execute start script fail.\n");
+		WriteLog(NULL,"Execute start script fail.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
 
-	WriteLog("Load scripts complete.\n");
+	WriteLog(NULL,"Load scripts complete.\n");
 	return true;
 }
 
@@ -9274,23 +9274,23 @@ int FOClient::ScriptGetHitProc(CritterCl* cr, int hit_location)
 	ProtoItem* proto_item=Chosen->ItemSlotMain->Proto;
 	if(!proto_item->IsWeapon() || !Chosen->ItemSlotMain->WeapIsUseAviable(use)) return 0;
 
-	if(Script::PrepareContext(ClientFunctions.ToHit,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ToHit,_FUNC_,"Game"))
 	{
 		Script::SetArgObject(Chosen);
 		Script::SetArgObject(cr);
 		Script::SetArgObject(proto_item);
-		Script::SetArgByte(MAKE_ITEM_MODE(use,hit_location));
-		if(Script::RunPrepared()) return Script::GetReturnedDword();
+		Script::SetArgUChar(MAKE_ITEM_MODE(use,hit_location));
+		if(Script::RunPrepared()) return Script::GetReturnedUInt();
 	}
 	return 0;
 }
 
-void FOClient::DrawIfaceLayer(DWORD layer)
+void FOClient::DrawIfaceLayer(uint layer)
 {
-	if(Script::PrepareContext(ClientFunctions.RenderIface,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.RenderIface,_FUNC_,"Game"))
 	{
 		SpritesCanDraw=true;
-		Script::SetArgDword(layer);
+		Script::SetArgUInt(layer);
 		Script::RunPrepared();
 		SpritesCanDraw=false;
 	}
@@ -9354,29 +9354,29 @@ void SortCritterByDist(int hx, int hy, CritVec& critters)
 	std::sort(critters.begin(),critters.end(),SortCritterByDistPred);
 }
 
-#define SCRIPT_ERROR(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error);}while(0)
-#define SCRIPT_ERROR_RX(error,x) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return x;}while(0)
-#define SCRIPT_ERROR_R(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return;}while(0)
-#define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; Script::LogError(__FUNCTION__", "error); return 0;}while(0)
+#define SCRIPT_ERROR(error) do{ScriptLastError=error; Script::LogError(_FUNC_,error);}while(0)
+#define SCRIPT_ERROR_RX(error,x) do{ScriptLastError=error; Script::LogError(_FUNC_,error); return x;}while(0)
+#define SCRIPT_ERROR_R(error) do{ScriptLastError=error; Script::LogError(_FUNC_,error); return;}while(0)
+#define SCRIPT_ERROR_R0(error) do{ScriptLastError=error; Script::LogError(_FUNC_,error); return 0;}while(0)
 static string ScriptLastError;
 
-int* FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, DWORD index)
+int* FOClient::SScriptFunc::DataRef_Index(CritterClPtr& cr, uint index)
 {
 	static int dummy=0;
 	if(cr->IsNotValid) SCRIPT_ERROR_RX("This nulltptr.",&dummy);
 	if(index>=MAX_PARAMS) SCRIPT_ERROR_RX("Invalid index arg.",&dummy);
-	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
+	uint data_index=((uint)&cr-(uint)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
 	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_RX("Index is less than minimum.",&dummy);
 	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_RX("Index is greater than maximum.",&dummy);
 	return &cr->Params[index];
 }
 
-int FOClient::SScriptFunc::DataVal_Index(CritterClPtr& cr, DWORD index)
+int FOClient::SScriptFunc::DataVal_Index(CritterClPtr& cr, uint index)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nulltptr.");
 	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
-	DWORD data_index=((DWORD)&cr-(DWORD)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
+	uint data_index=((uint)&cr-(uint)&cr->ThisPtr[0])/sizeof(cr->ThisPtr[0]);
 	if(CritterCl::ParametersOffset[data_index]) index+=CritterCl::ParametersMin[data_index];
 	if(index<CritterCl::ParametersMin[data_index]) SCRIPT_ERROR_R0("Index is less than minimum.");
 	if(index>CritterCl::ParametersMax[data_index]) SCRIPT_ERROR_R0("Index is greater than maximum.");
@@ -9437,7 +9437,7 @@ bool FOClient::SScriptFunc::Crit_IsAnim3d(CritterCl* cr)
 	return cr->Anim3d!=NULL;
 }
 
-bool FOClient::SScriptFunc::Crit_IsAnimAviable(CritterCl* cr, DWORD anim1, DWORD anim2)
+bool FOClient::SScriptFunc::Crit_IsAnimAviable(CritterCl* cr, uint anim1, uint anim2)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->IsAnimAviable(anim1,anim2);
@@ -9449,19 +9449,19 @@ bool FOClient::SScriptFunc::Crit_IsAnimPlaying(CritterCl* cr)
 	return cr->IsAnim();
 }
 
-DWORD FOClient::SScriptFunc::Crit_GetAnim1(CritterCl* cr)
+uint FOClient::SScriptFunc::Crit_GetAnim1(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->GetAnim1();
 }
 
-void FOClient::SScriptFunc::Crit_Animate(CritterCl* cr, DWORD anim1, DWORD anim2)
+void FOClient::SScriptFunc::Crit_Animate(CritterCl* cr, uint anim1, uint anim2)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	cr->Animate(anim1,anim2,NULL);
 }
 
-void FOClient::SScriptFunc::Crit_AnimateEx(CritterCl* cr, DWORD anim1, DWORD anim2, Item* item)
+void FOClient::SScriptFunc::Crit_AnimateEx(CritterCl* cr, uint anim1, uint anim2, Item* item)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	cr->Animate(anim1,anim2,item);
@@ -9473,50 +9473,50 @@ void FOClient::SScriptFunc::Crit_ClearAnim(CritterCl* cr)
 	cr->ClearAnim();
 }
 
-void FOClient::SScriptFunc::Crit_Wait(CritterCl* cr, DWORD ms)
+void FOClient::SScriptFunc::Crit_Wait(CritterCl* cr, uint ms)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	cr->TickStart(ms);
 }
 
-DWORD FOClient::SScriptFunc::Crit_ItemsCount(CritterCl* cr)
+uint FOClient::SScriptFunc::Crit_ItemsCount(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->GetItemsCount();
 }
 
-DWORD FOClient::SScriptFunc::Crit_ItemsWeight(CritterCl* cr)
+uint FOClient::SScriptFunc::Crit_ItemsWeight(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->GetItemsWeight();
 }
 
-DWORD FOClient::SScriptFunc::Crit_ItemsVolume(CritterCl* cr)
+uint FOClient::SScriptFunc::Crit_ItemsVolume(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->GetItemsVolume();
 }
 
-DWORD FOClient::SScriptFunc::Crit_CountItem(CritterCl* cr, WORD proto_id)
+uint FOClient::SScriptFunc::Crit_CountItem(CritterCl* cr, ushort proto_id)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->CountItemPid(proto_id);
 }
 
-DWORD FOClient::SScriptFunc::Crit_CountItemByType(CritterCl* cr, BYTE type)
+uint FOClient::SScriptFunc::Crit_CountItemByType(CritterCl* cr, uchar type)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->CountItemType(type);
 }
 
-Item* FOClient::SScriptFunc::Crit_GetItem(CritterCl* cr, WORD proto_id, int slot)
+Item* FOClient::SScriptFunc::Crit_GetItem(CritterCl* cr, ushort proto_id, int slot)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(proto_id) return cr->GetItemByPid(proto_id);
 	return cr->GetItemSlot(slot);
 }
 
-DWORD FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, CScriptArray* items)
+uint FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, CScriptArray* items)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
@@ -9525,7 +9525,7 @@ DWORD FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, CScriptArray
 	return items_.size();
 }
 
-DWORD FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, CScriptArray* items)
+uint FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, CScriptArray* items)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
@@ -9534,7 +9534,7 @@ DWORD FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, CScrip
 	return items_.size();
 }
 
-ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto(CritterCl* cr, int slot, BYTE& mode)
+ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto(CritterCl* cr, int slot, uchar& mode)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 
@@ -9565,20 +9565,20 @@ bool FOClient::SScriptFunc::Crit_GetVisible(CritterCl* cr)
 	return cr->Visible;
 }
 
-void FOClient::SScriptFunc::Crit_set_ContourColor(CritterCl* cr, DWORD value)
+void FOClient::SScriptFunc::Crit_set_ContourColor(CritterCl* cr, uint value)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(cr->SprDrawValid) cr->SprDraw->SetContour(cr->SprDraw->ContourType,value);
 	cr->ContourColor=value;
 }
 
-DWORD FOClient::SScriptFunc::Crit_get_ContourColor(CritterCl* cr)
+uint FOClient::SScriptFunc::Crit_get_ContourColor(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->ContourColor;
 }
 
-DWORD FOClient::SScriptFunc::Crit_GetMultihex(CritterCl* cr)
+uint FOClient::SScriptFunc::Crit_GetMultihex(CritterCl* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->GetMultihex();
@@ -9602,31 +9602,31 @@ bool FOClient::SScriptFunc::Item_IsDeteriorable(Item* item)
 	return item->IsDeteriorable();
 }
 
-DWORD FOClient::SScriptFunc::Item_GetScriptId(Item* item)
+uint FOClient::SScriptFunc::Item_GetScriptId(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return item->Data.ScriptId;
 }
 
-BYTE FOClient::SScriptFunc::Item_GetType(Item* item)
+uchar FOClient::SScriptFunc::Item_GetType(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return item->GetType();
 }
 
-WORD FOClient::SScriptFunc::Item_GetProtoId(Item* item)
+ushort FOClient::SScriptFunc::Item_GetProtoId(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return item->GetProtoId();
 }
 
-DWORD FOClient::SScriptFunc::Item_GetCount(Item* item)
+uint FOClient::SScriptFunc::Item_GetCount(Item* item)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return item->GetCount();
 }
 
-bool FOClient::SScriptFunc::Item_GetMapPosition(Item* item, WORD& hx, WORD& hy)
+bool FOClient::SScriptFunc::Item_GetMapPosition(Item* item, ushort& hx, ushort& hy)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R0("Map is not loaded.");
@@ -9662,13 +9662,13 @@ bool FOClient::SScriptFunc::Item_GetMapPosition(Item* item, WORD& hx, WORD& hy)
 	return true;
 }
 
-void FOClient::SScriptFunc::Item_Animate(Item* item, BYTE from_frame, BYTE to_frame)
+void FOClient::SScriptFunc::Item_Animate(Item* item, uchar from_frame, uchar to_frame)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 #pragma MESSAGE("Implement Item_Animate.")
 }
 
-Item* FOClient::SScriptFunc::Item_GetChild(Item* item, DWORD childIndex)
+Item* FOClient::SScriptFunc::Item_GetChild(Item* item, uint childIndex)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	// Need implement
@@ -9682,23 +9682,23 @@ CritterCl* FOClient::SScriptFunc::Global_GetChosen()
 	return Self->Chosen;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetChosenActions(CScriptArray* actions)
+uint FOClient::SScriptFunc::Global_GetChosenActions(CScriptArray* actions)
 {
 	if(actions) actions->Resize(0);
 
 	if(Self->Chosen)
 	{
 		actions->Resize(Self->ChosenAction.size()*7);
-		for(size_t i=0,j=Self->ChosenAction.size();i<j;i++)
+		for(uint i=0,j=Self->ChosenAction.size();i<j;i++)
 		{
 			ActionEvent& act=Self->ChosenAction[i];
-			*(DWORD*)actions->At(i*7+0)=act.Type;
-			*(DWORD*)actions->At(i*7+1)=act.Param[0];
-			*(DWORD*)actions->At(i*7+2)=act.Param[1];
-			*(DWORD*)actions->At(i*7+3)=act.Param[2];
-			*(DWORD*)actions->At(i*7+4)=act.Param[3];
-			*(DWORD*)actions->At(i*7+5)=act.Param[4];
-			*(DWORD*)actions->At(i*7+6)=act.Param[5];
+			*(uint*)actions->At(i*7+0)=act.Type;
+			*(uint*)actions->At(i*7+1)=act.Param[0];
+			*(uint*)actions->At(i*7+2)=act.Param[1];
+			*(uint*)actions->At(i*7+3)=act.Param[2];
+			*(uint*)actions->At(i*7+4)=act.Param[3];
+			*(uint*)actions->At(i*7+5)=act.Param[4];
+			*(uint*)actions->At(i*7+6)=act.Param[5];
 		}
 		return Self->ChosenAction.size();
 	}
@@ -9713,21 +9713,21 @@ void FOClient::SScriptFunc::Global_SetChosenActions(CScriptArray* actions)
 	if(Self->Chosen && actions)
 	{
 		Self->ChosenAction.resize(actions->GetSize()/7);
-		for(size_t i=0,j=actions->GetSize()/7;i<j;i++)
+		for(uint i=0,j=actions->GetSize()/7;i<j;i++)
 		{
 			ActionEvent& act=Self->ChosenAction[i];
-			act.Type=*(DWORD*)actions->At(i*7+0);
-			act.Param[0]=*(DWORD*)actions->At(i*7+1);
-			act.Param[1]=*(DWORD*)actions->At(i*7+2);
-			act.Param[2]=*(DWORD*)actions->At(i*7+3);
-			act.Param[3]=*(DWORD*)actions->At(i*7+4);
-			act.Param[4]=*(DWORD*)actions->At(i*7+5);
-			act.Param[5]=*(DWORD*)actions->At(i*7+6);
+			act.Type=*(uint*)actions->At(i*7+0);
+			act.Param[0]=*(uint*)actions->At(i*7+1);
+			act.Param[1]=*(uint*)actions->At(i*7+2);
+			act.Param[2]=*(uint*)actions->At(i*7+3);
+			act.Param[3]=*(uint*)actions->At(i*7+4);
+			act.Param[4]=*(uint*)actions->At(i*7+5);
+			act.Param[5]=*(uint*)actions->At(i*7+6);
 		}
 	}
 }
 
-Item* FOClient::SScriptFunc::Global_GetItem(DWORD item_id)
+Item* FOClient::SScriptFunc::Global_GetItem(uint item_id)
 {
 	if(!item_id) SCRIPT_ERROR_R0("Item id arg is zero.");
 	Item* item=Self->GetItem(item_id);
@@ -9735,7 +9735,7 @@ Item* FOClient::SScriptFunc::Global_GetItem(DWORD item_id)
 	return item;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersDistantion(CritterCl* cr1, CritterCl* cr2)
+uint FOClient::SScriptFunc::Global_GetCrittersDistantion(CritterCl* cr1, CritterCl* cr2)
 {
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_RX("Map is not loaded.",-1);
 	if(cr1->IsNotValid) SCRIPT_ERROR_RX("Critter1 arg nullptr.",-1);
@@ -9743,7 +9743,7 @@ DWORD FOClient::SScriptFunc::Global_GetCrittersDistantion(CritterCl* cr1, Critte
 	return DistGame(cr1->GetHexX(),cr1->GetHexY(),cr2->GetHexX(),cr2->GetHexY());
 }
 
-CritterCl* FOClient::SScriptFunc::Global_GetCritter(DWORD critter_id)
+CritterCl* FOClient::SScriptFunc::Global_GetCritter(uint critter_id)
 {
 	if(!critter_id) return NULL;//SCRIPT_ERROR_R0("CritterCl id arg is zero.");
 	CritterCl* cr=Self->GetCritter(critter_id);
@@ -9751,7 +9751,7 @@ CritterCl* FOClient::SScriptFunc::Global_GetCritter(DWORD critter_id)
 	return cr;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCritters(WORD hx, WORD hy, DWORD radius, int find_type, CScriptArray* critters)
+uint FOClient::SScriptFunc::Global_GetCritters(ushort hx, ushort hy, uint radius, int find_type, CScriptArray* critters)
 {
 	if(hx>=Self->HexMngr.GetMaxHexX() || hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 
@@ -9771,7 +9771,7 @@ DWORD FOClient::SScriptFunc::Global_GetCritters(WORD hx, WORD hy, DWORD radius, 
 	return cr_vec.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersByPids(WORD pid, int find_type, CScriptArray* critters)
+uint FOClient::SScriptFunc::Global_GetCrittersByPids(ushort pid, int find_type, CScriptArray* critters)
 {
 	CritMap& crits=Self->HexMngr.GetCritters();
 	CritVec cr_vec;
@@ -9796,7 +9796,7 @@ DWORD FOClient::SScriptFunc::Global_GetCrittersByPids(WORD pid, int find_type, C
 	return cr_vec.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters)
+uint FOClient::SScriptFunc::Global_GetCrittersInPath(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters)
 {
 	CritVec cr_vec;
 	Self->HexMngr.TraceBullet(from_hx,from_hy,to_hx,to_hy,dist,angle,NULL,false,&cr_vec,FIND_LIFE|FIND_KO,NULL,NULL,NULL,true);
@@ -9804,10 +9804,10 @@ DWORD FOClient::SScriptFunc::Global_GetCrittersInPath(WORD from_hx, WORD from_hy
 	return cr_vec.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy)
+uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy)
 {
 	CritVec cr_vec;
-	WordPair block,pre_block;
+	UShortPair block,pre_block;
 	Self->HexMngr.TraceBullet(from_hx,from_hy,to_hx,to_hy,dist,angle,NULL,false,&cr_vec,FIND_LIFE|FIND_KO,&block,&pre_block,NULL,true);
 	if(critters) AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
 	pre_block_hx=pre_block.first;
@@ -9817,42 +9817,42 @@ DWORD FOClient::SScriptFunc::Global_GetCrittersInPathBlock(WORD from_hx, WORD fr
 	return cr_vec.size();
 }
 
-void FOClient::SScriptFunc::Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist)
+void FOClient::SScriptFunc::Global_GetHexInPath(ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist)
 {
-	WordPair pre_block,block;
+	UShortPair pre_block,block;
 	Self->HexMngr.TraceBullet(from_hx,from_hy,to_hx,to_hy,dist,angle,NULL,false,NULL,0,&block,&pre_block,NULL,true);
 	to_hx=pre_block.first;
 	to_hy=pre_block.second;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut)
+uint FOClient::SScriptFunc::Global_GetPathLengthHex(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut)
 {
 	if(from_hx>=Self->HexMngr.GetMaxHexX() || from_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid from hexes args.");
 	if(to_hx>=Self->HexMngr.GetMaxHexX() || to_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid to hexes args.");
 
 	if(cut>0 && !Self->HexMngr.CutPath(NULL,from_hx,from_hy,to_hx,to_hy,cut)) return 0;
-	ByteVec steps;
+	UCharVec steps;
 	if(!Self->HexMngr.FindPath(NULL,from_hx,from_hy,to_hx,to_hy,steps,-1)) steps.clear();
 	return steps.size();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetPathLengthCr(CritterCl* cr, WORD to_hx, WORD to_hy, DWORD cut)
+uint FOClient::SScriptFunc::Global_GetPathLengthCr(CritterCl* cr, ushort to_hx, ushort to_hy, uint cut)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("Critter arg nullptr.");
 	if(to_hx>=Self->HexMngr.GetMaxHexX() || to_hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R0("Invalid to hexes args.");
 
 	if(cut>0 && !Self->HexMngr.CutPath(cr,cr->GetHexX(),cr->GetHexY(),to_hx,to_hy,cut)) return 0;
-	ByteVec steps;
+	UCharVec steps;
 	if(!Self->HexMngr.FindPath(cr,cr->GetHexX(),cr->GetHexY(),to_hx,to_hy,steps,-1)) steps.clear();
 	return steps.size();
 }
 
-void FOClient::SScriptFunc::Global_FlushScreen(DWORD from_color, DWORD to_color, DWORD ms)
+void FOClient::SScriptFunc::Global_FlushScreen(uint from_color, uint to_color, uint ms)
 {
 	Self->ScreenFade(ms,from_color,to_color,true);
 }
 
-void FOClient::SScriptFunc::Global_QuakeScreen(DWORD noise, DWORD ms)
+void FOClient::SScriptFunc::Global_QuakeScreen(uint noise, uint ms)
 {
 	Self->ScreenQuake(noise,ms);
 }
@@ -9862,12 +9862,12 @@ bool FOClient::SScriptFunc::Global_PlaySound(CScriptString& sound_name)
 	return SndMngr.PlaySound(sound_name.c_str());
 }
 
-bool FOClient::SScriptFunc::Global_PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext)
+bool FOClient::SScriptFunc::Global_PlaySoundType(uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext)
 {
 	return SndMngr.PlaySoundType(sound_type,sound_type_ext,sound_id,sound_id_ext);
 }
 
-bool FOClient::SScriptFunc::Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat)
+bool FOClient::SScriptFunc::Global_PlayMusic(CScriptString& music_name, uint pos, uint repeat)
 {
 	return SndMngr.PlayMusic(music_name.c_str(),pos,repeat);
 }
@@ -9883,19 +9883,19 @@ bool FOClient::SScriptFunc::Global_IsTurnBased()
 	return Self->HexMngr.IsMapLoaded() && Self->IsTurnBased;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetTurnBasedTime()
+uint FOClient::SScriptFunc::Global_GetTurnBasedTime()
 {
 	if(Self->HexMngr.IsMapLoaded() && Self->IsTurnBased && Self->TurnBasedTime>Timer::GameTick()) return Self->TurnBasedTime-Timer::GameTick();
 	return 0;
 }
 
-WORD FOClient::SScriptFunc::Global_GetCurrentMapPid()
+ushort FOClient::SScriptFunc::Global_GetCurrentMapPid()
 {
 	if(!Self->HexMngr.IsMapLoaded()) return 0;
 	return Self->HexMngr.GetCurPidMap();
 }
 
-DWORD FOClient::SScriptFunc::Global_GetMessageFilters(CScriptArray* filters)
+uint FOClient::SScriptFunc::Global_GetMessageFilters(CScriptArray* filters)
 {
 	if(filters) Script::AppendVectorToArray(Self->MessBoxFilters,filters);
 	return Self->MessBoxFilters.size();
@@ -9918,20 +9918,20 @@ void FOClient::SScriptFunc::Global_MessageType(CScriptString& msg, int type)
 	Self->AddMess(type,msg.c_str());
 }
 
-void FOClient::SScriptFunc::Global_MessageMsg(int text_msg, DWORD str_num)
+void FOClient::SScriptFunc::Global_MessageMsg(int text_msg, uint str_num)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R("Invalid text msg arg.");
 	Self->AddMess(FOMB_GAME,Self->CurLang.Msg[text_msg].GetStr(str_num));
 }
 
-void FOClient::SScriptFunc::Global_MessageMsgType(int text_msg, DWORD str_num, int type)
+void FOClient::SScriptFunc::Global_MessageMsgType(int text_msg, uint str_num, int type)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R("Invalid text msg arg.");
 	if(type<FOMB_GAME || type>FOMB_VIEW) type=FOMB_GAME;
 	Self->AddMess(type,Self->CurLang.Msg[text_msg].GetStr(str_num));
 }
 
-void FOClient::SScriptFunc::Global_MapMessage(CScriptString& text, WORD hx, WORD hy, DWORD ms, DWORD color, bool fade, int ox, int oy)
+void FOClient::SScriptFunc::Global_MapMessage(CScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy)
 {
 	FOClient::MapText t;
 	t.HexX=hx;
@@ -9948,37 +9948,37 @@ void FOClient::SScriptFunc::Global_MapMessage(CScriptString& text, WORD hx, WORD
 	Self->GameMapTexts.push_back(t);
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetMsgStr(int text_msg, DWORD str_num)
+CScriptString* FOClient::SScriptFunc::Global_GetMsgStr(int text_msg, uint str_num)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_RX("Invalid text msg arg.",new CScriptString(""));
 	return new CScriptString(text_msg==TEXTMSG_HOLO?Self->GetHoloText(str_num):Self->CurLang.Msg[text_msg].GetStr(str_num));
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip(int text_msg, DWORD str_num, DWORD skip_count)
+CScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip(int text_msg, uint str_num, uint skip_count)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_RX("Invalid text msg arg.",new CScriptString(""));
 	return new CScriptString(text_msg==TEXTMSG_HOLO?Self->GetHoloText(str_num):Self->CurLang.Msg[text_msg].GetStr(str_num,skip_count));
 }
 
-DWORD FOClient::SScriptFunc::Global_GetMsgStrNumUpper(int text_msg, DWORD str_num)
+uint FOClient::SScriptFunc::Global_GetMsgStrNumUpper(int text_msg, uint str_num)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R0("Invalid text msg arg.");
 	return Self->CurLang.Msg[text_msg].GetStrNumUpper(str_num);
 }
 
-DWORD FOClient::SScriptFunc::Global_GetMsgStrNumLower(int text_msg, DWORD str_num)
+uint FOClient::SScriptFunc::Global_GetMsgStrNumLower(int text_msg, uint str_num)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R0("Invalid text msg arg.");
 	return Self->CurLang.Msg[text_msg].GetStrNumLower(str_num);
 }
 
-DWORD FOClient::SScriptFunc::Global_GetMsgStrCount(int text_msg, DWORD str_num)
+uint FOClient::SScriptFunc::Global_GetMsgStrCount(int text_msg, uint str_num)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R0("Invalid text msg arg.");
 	return Self->CurLang.Msg[text_msg].Count(str_num);
 }
 
-bool FOClient::SScriptFunc::Global_IsMsgStr(int text_msg, DWORD str_num)
+bool FOClient::SScriptFunc::Global_IsMsgStr(int text_msg, uint str_num)
 {
 	if(text_msg>=TEXTMSG_COUNT) SCRIPT_ERROR_R0("Invalid text msg arg.");
 	return Self->CurLang.Msg[text_msg].Count(str_num)>0;
@@ -10005,7 +10005,7 @@ CScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt(CScriptString& text,
 CScriptString* FOClient::SScriptFunc::Global_FormatTags(CScriptString& text, CScriptString* lexems)
 {
 	static char* buf=NULL;
-	static DWORD buf_len=0;
+	static uint buf_len=0;
 	if(!buf)
 	{
 		buf=new char[MAX_FOTEXT];
@@ -10037,7 +10037,7 @@ int FOClient::SScriptFunc::Global_GetSomeValue(int var)
 	return 0;
 }
 
-void FOClient::SScriptFunc::Global_MoveScreen(WORD hx, WORD hy, DWORD speed)
+void FOClient::SScriptFunc::Global_MoveScreen(ushort hx, ushort hy, uint speed)
 {
 	if(hx>=Self->HexMngr.GetMaxHexX() || hy>=Self->HexMngr.GetMaxHexY()) SCRIPT_ERROR_R("Invalid hex args.");
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R("Map is not loaded.");
@@ -10051,7 +10051,7 @@ void FOClient::SScriptFunc::Global_LockScreenScroll(CritterCl* cr)
 	Self->HexMngr.AutoScroll.LockedCritter=(cr?cr->GetId():0);
 }
 
-int FOClient::SScriptFunc::Global_GetFog(WORD zone_x, WORD zone_y)
+int FOClient::SScriptFunc::Global_GetFog(ushort zone_x, ushort zone_y)
 {
 	if(!Self->Chosen || Self->Chosen->IsNotValid) SCRIPT_ERROR_R0("Chosen data not valid.");
 	if(zone_x>=GameOpt.GlobalMapWidth || zone_y>=GameOpt.GlobalMapHeight) SCRIPT_ERROR_R0("Invalid world map pos arg.");
@@ -10181,20 +10181,20 @@ void FOClient::SScriptFunc::Global_SetScroll(int scroll_element, int value)
 	*scroll=CLAMP(value,min_value,max_value);
 }
 
-DWORD FOClient::SScriptFunc::Global_GetDayTime(DWORD day_part)
+uint FOClient::SScriptFunc::Global_GetDayTime(uint day_part)
 {
 	if(day_part>=4) SCRIPT_ERROR_R0("Invalid day part arg.");
 	if(Self->HexMngr.IsMapLoaded()) return Self->HexMngr.GetMapDayTime()[day_part];
 	return 0;
 }
 
-void FOClient::SScriptFunc::Global_GetDayColor(DWORD day_part, BYTE& r, BYTE& g, BYTE& b)
+void FOClient::SScriptFunc::Global_GetDayColor(uint day_part, uchar& r, uchar& g, uchar& b)
 {
 	r=g=b=0;
 	if(day_part>=4) SCRIPT_ERROR_R("Invalid day part arg.");
 	if(Self->HexMngr.IsMapLoaded())
 	{
-		BYTE* col=Self->HexMngr.GetMapDayColor();
+		uchar* col=Self->HexMngr.GetMapDayColor();
 		r=col[0+day_part];
 		g=col[4+day_part];
 		b=col[8+day_part];
@@ -10211,29 +10211,29 @@ void FOClient::SScriptFunc::Global_Log(CScriptString& text)
 	Script::Log(text.c_str());
 }
 
-ProtoItem* FOClient::SScriptFunc::Global_GetProtoItem(WORD proto_id)
+ProtoItem* FOClient::SScriptFunc::Global_GetProtoItem(ushort proto_id)
 {
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(proto_id);
 	//if(!proto_item) SCRIPT_ERROR_R0("Proto item not found.");
 	return proto_item;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetDistantion(WORD hex_x1, WORD hex_y1, WORD hex_x2, WORD hex_y2)
+uint FOClient::SScriptFunc::Global_GetDistantion(ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2)
 {
 	return DistGame(hex_x1,hex_y1,hex_x2,hex_y2);
 }
 
-BYTE FOClient::SScriptFunc::Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy)
+uchar FOClient::SScriptFunc::Global_GetDirection(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
 	return GetFarDir(from_hx,from_hy,to_hx,to_hy);
 }
 
-BYTE FOClient::SScriptFunc::Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset)
+uchar FOClient::SScriptFunc::Global_GetOffsetDir(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset)
 {
 	return GetFarDir(from_hx,from_hy,to_hx,to_hy,offset);
 }
 
-DWORD FOClient::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second)
+uint FOClient::SScriptFunc::Global_GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
 	if(!year) year=GameOpt.Year;
 	else year=CLAMP(year,GameOpt.YearStart,GameOpt.YearStart+130);
@@ -10242,7 +10242,7 @@ DWORD FOClient::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD da
 	if(!day) day=GameOpt.Day;
 	else
 	{
-		DWORD month_day=GameTimeMonthDay(year,month);
+		uint month_day=GameTimeMonthDay(year,month);
 		day=CLAMP(day,1,month_day);
 	}
 	hour=CLAMP(hour,0,23);
@@ -10251,7 +10251,7 @@ DWORD FOClient::SScriptFunc::Global_GetFullSecond(WORD year, WORD month, WORD da
 	return GetFullSecond(year,month,day,hour,minute,second);
 }
 
-void FOClient::SScriptFunc::Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second)
+void FOClient::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second)
 {
 	SYSTEMTIME st=GetGameTime(full_second);
 	year=st.wYear;
@@ -10269,14 +10269,14 @@ bool FOClient::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 	return Str::StrToInt(text.c_str(),result);
 }
 
-void FOClient::SScriptFunc::Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps)
+void FOClient::SScriptFunc::Global_MoveHexByDir(ushort& hx, ushort& hy, uchar dir, uint steps)
 {
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R("Map not loaded.");
 	if(dir>=DIRS_COUNT) SCRIPT_ERROR_R("Invalid dir arg.");
 	if(!steps) SCRIPT_ERROR_R("Steps arg is zero.");
 	if(steps>1)
 	{
-		for(int i=0;i<steps;i++) MoveHexByDir(hx,hy,dir,Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
+		for(uint i=0;i<steps;i++) MoveHexByDir(hx,hy,dir,Self->HexMngr.GetMaxHexX(),Self->HexMngr.GetMaxHexY());
 	}
 	else
 	{
@@ -10315,7 +10315,7 @@ bool FOClient::SScriptFunc::Global_LoadFont(int font_index, CScriptString& font_
 	return SprMngr.LoadFontBMF(font_index,font_fname.c_str());
 }
 
-void FOClient::SScriptFunc::Global_SetDefaultFont(int font, DWORD color)
+void FOClient::SScriptFunc::Global_SetDefaultFont(int font, uint color)
 {
 	SprMngr.SetDefaultFont(font,color);
 }
@@ -10375,7 +10375,7 @@ void FOClient::SScriptFunc::Global_RefreshMap(bool only_tiles, bool only_roof, b
 	}
 }
 
-void FOClient::SScriptFunc::Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds)
+void FOClient::SScriptFunc::Global_GetTime(ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds)
 {
 	SYSTEMTIME cur_time;
 	GetLocalTime(&cur_time);
@@ -10389,7 +10389,7 @@ void FOClient::SScriptFunc::Global_GetTime(WORD& year, WORD& month, WORD& day, W
 	milliseconds=cur_time.wMilliseconds;
 }
 
-bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour(DWORD index, CScriptString& func_name)
+bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour(uint index, CScriptString& func_name)
 {
 	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
 	CritterCl::ParamsGetScript[index]=0;
@@ -10402,7 +10402,7 @@ bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour(DWORD index, CScript
 	return true;
 }
 
-bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour(DWORD index, CScriptString& func_name)
+bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour(uint index, CScriptString& func_name)
 {
 	if(index>=MAX_PARAMS) SCRIPT_ERROR_R0("Invalid index arg.");
 	CritterCl::ParamsChangeScript[index]=0;
@@ -10415,7 +10415,7 @@ bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour(DWORD index, CScr
 	return true;
 }
 
-void FOClient::SScriptFunc::Global_AllowSlot(BYTE index, CScriptString& ini_option)
+void FOClient::SScriptFunc::Global_AllowSlot(uchar index, CScriptString& ini_option)
 {
 	if(index<=SLOT_ARMOR || index==SLOT_GROUND) SCRIPT_ERROR_R("Invalid index arg.");
 	if(!ini_option.length()) SCRIPT_ERROR_R("Ini string is empty.");
@@ -10427,20 +10427,20 @@ void FOClient::SScriptFunc::Global_AllowSlot(BYTE index, CScriptString& ini_opti
 	Self->SlotsExt.push_back(se);
 }
 
-void FOClient::SScriptFunc::Global_SetRegistrationParam(DWORD index, bool enabled)
+void FOClient::SScriptFunc::Global_SetRegistrationParam(uint index, bool enabled)
 {
 	if(index>=MAX_PARAMS) SCRIPT_ERROR_R("Invalid index arg.");
 	CritterCl::ParamsRegEnabled[index]=enabled;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetAngelScriptProperty(int property)
+uint FOClient::SScriptFunc::Global_GetAngelScriptProperty(int property)
 {
 	asIScriptEngine* engine=Script::GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
 	return engine->GetEngineProperty((asEEngineProp)property);
 }
 
-bool FOClient::SScriptFunc::Global_SetAngelScriptProperty(int property, DWORD value)
+bool FOClient::SScriptFunc::Global_SetAngelScriptProperty(int property, uint value)
 {
 	asIScriptEngine* engine=Script::GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
@@ -10449,7 +10449,7 @@ bool FOClient::SScriptFunc::Global_SetAngelScriptProperty(int property, DWORD va
 	return true;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetStrHash(CScriptString* str)
+uint FOClient::SScriptFunc::Global_GetStrHash(CScriptString* str)
 {
 	if(str) return Str::GetHash(str->c_str());
 	return 0;
@@ -10493,61 +10493,61 @@ bool FOClient::SScriptFunc::Global_LoadConstants(int const_collection, CScriptSt
 	return ConstantsManager::AddCollection(const_collection,file_name->c_str(),path_type);
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterCanWalk(DWORD cr_type)
+bool FOClient::SScriptFunc::Global_IsCritterCanWalk(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::IsCanWalk(cr_type);
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterCanRun(DWORD cr_type)
+bool FOClient::SScriptFunc::Global_IsCritterCanRun(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::IsCanRun(cr_type);
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterCanRotate(DWORD cr_type)
+bool FOClient::SScriptFunc::Global_IsCritterCanRotate(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::IsCanRotate(cr_type);
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterCanAim(DWORD cr_type)
+bool FOClient::SScriptFunc::Global_IsCritterCanAim(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::IsCanAim(cr_type);
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterAnim1(DWORD cr_type, DWORD index)
+bool FOClient::SScriptFunc::Global_IsCritterAnim1(uint cr_type, uint index)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::IsAnim1(cr_type,index);
 }
 
-int FOClient::SScriptFunc::Global_GetCritterAnimType(DWORD cr_type)
+int FOClient::SScriptFunc::Global_GetCritterAnimType(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::GetAnimType(cr_type);
 }
 
-DWORD FOClient::SScriptFunc::Global_GetCritterAlias(DWORD cr_type)
+uint FOClient::SScriptFunc::Global_GetCritterAlias(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_R0("Invalid critter type arg.");
 	return CritType::GetAlias(cr_type);
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName(DWORD cr_type)
+CScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
 	return new CScriptString(CritType::GetCritType(cr_type).Name);
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName(DWORD cr_type)
+CScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName(uint cr_type)
 {
 	if(!CritType::IsEnabled(cr_type)) SCRIPT_ERROR_RX("Invalid critter type arg.",new CScriptString(""));
 	return new CScriptString(CritType::GetSoundName(cr_type));
 }
 
-int FOClient::SScriptFunc::Global_GetGlobalMapRelief(DWORD x, DWORD y)
+int FOClient::SScriptFunc::Global_GetGlobalMapRelief(uint x, uint y)
 {
 	if(x>=GM_MAXX || y>=GM_MAXY) SCRIPT_ERROR_R0("Invalid coord args.");
 	return Self->GmapRelief->Get4Bit(x,y);
@@ -10555,30 +10555,30 @@ int FOClient::SScriptFunc::Global_GetGlobalMapRelief(DWORD x, DWORD y)
 
 void FOClient::SScriptFunc::Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
-	DwordVec dw;
-	if(p4) AssignScriptArrayInVector<DWORD>(dw,p4);
+	UIntVec dw;
+	if(p4) AssignScriptArrayInVector<uint>(dw,p4);
 	Self->Net_SendRunScript(false,func_name.c_str(),p0,p1,p2,p3?p3->c_str():NULL,dw);
 }
 
 void FOClient::SScriptFunc::Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
-	DwordVec dw;
-	if(p4) AssignScriptArrayInVector<DWORD>(dw,p4);
+	UIntVec dw;
+	if(p4) AssignScriptArrayInVector<uint>(dw,p4);
 	Self->Net_SendRunScript(true,func_name.c_str(),p0,p1,p2,p3?p3->c_str():NULL,dw);
 }
 
-DWORD FOClient::SScriptFunc::Global_LoadSprite(CScriptString& spr_name, int path_index)
+uint FOClient::SScriptFunc::Global_LoadSprite(CScriptString& spr_name, int path_index)
 {
 	if(path_index>=PATH_LIST_COUNT) SCRIPT_ERROR_R0("Invalid path index arg.");
 	return Self->AnimLoad(spr_name.c_str(),path_index,RES_SCRIPT);
 }
 
-DWORD FOClient::SScriptFunc::Global_LoadSpriteHash(DWORD name_hash, BYTE dir)
+uint FOClient::SScriptFunc::Global_LoadSpriteHash(uint name_hash, uchar dir)
 {
 	return Self->AnimLoad(name_hash,dir,RES_SCRIPT);
 }
 
-int FOClient::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
+int FOClient::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=(int)anim->GetCnt()) return 0;
@@ -10587,7 +10587,7 @@ int FOClient::SScriptFunc::Global_GetSpriteWidth(DWORD spr_id, int spr_index)
 	return si->Width;
 }
 
-int FOClient::SScriptFunc::Global_GetSpriteHeight(DWORD spr_id, int spr_index)
+int FOClient::SScriptFunc::Global_GetSpriteHeight(uint spr_id, int spr_index)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=(int)anim->GetCnt()) return 0;
@@ -10596,7 +10596,7 @@ int FOClient::SScriptFunc::Global_GetSpriteHeight(DWORD spr_id, int spr_index)
 	return si->Height;
 }
 
-DWORD FOClient::SScriptFunc::Global_GetSpriteCount(DWORD spr_id)
+uint FOClient::SScriptFunc::Global_GetSpriteCount(uint spr_id)
 {
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	return anim?anim->CntFrm:0;
@@ -10607,7 +10607,7 @@ void FOClient::SScriptFunc::Global_GetTextInfo(CScriptString& text, int w, int h
 	SprMngr.GetTextInfo(w,h,text.c_str(),font,flags,tw,th,lines);
 }
 
-void FOClient::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color)
+void FOClient::SScriptFunc::Global_DrawSprite(uint spr_id, int spr_index, int x, int y, uint color)
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
@@ -10615,12 +10615,12 @@ void FOClient::SScriptFunc::Global_DrawSprite(DWORD spr_id, int spr_index, int x
 	SprMngr.DrawSprite(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,color);
 }
 
-void FOClient::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, int x, int y, DWORD color, bool offs)
+void FOClient::SScriptFunc::Global_DrawSpriteOffs(uint spr_id, int spr_index, int x, int y, uint color, bool offs)
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=(int)anim->GetCnt()) return;
-	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	uint spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(offs)
 	{
 		SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id_);
@@ -10631,20 +10631,20 @@ void FOClient::SScriptFunc::Global_DrawSpriteOffs(DWORD spr_id, int spr_index, i
 	SprMngr.DrawSprite(spr_id_,x,y,color);
 }
 
-void FOClient::SScriptFunc::Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color)
+void FOClient::SScriptFunc::Global_DrawSpriteSize(uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color)
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=(int)anim->GetCnt()) return;
-	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,w,h,scratch,true,color);
+	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,(float)w,(float)h,scratch,true,color);
 }
 
-void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color, bool offs)
+void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs)
 {
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=(int)anim->GetCnt()) return;
-	DWORD spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
+	uint spr_id_=(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index));
 	if(offs)
 	{
 		SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id_);
@@ -10652,10 +10652,10 @@ void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_inde
 		x+=si->OffsX;
 		y+=si->OffsY;
 	}
-	SprMngr.DrawSpriteSize(spr_id_,x,y,w,h,scratch,true,color);
+	SprMngr.DrawSpriteSize(spr_id_,x,y,(float)w,(float)h,scratch,true,color);
 }
 
-void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags)
+void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, uint color, int font, int flags)
 {
 	if(!SpritesCanDraw) return;
 	if(!w && x<GameOpt.ScreenWidth) w=GameOpt.ScreenWidth-x;
@@ -10696,7 +10696,7 @@ void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArra
 	SprMngr.DrawPoints(points,prim);
 }
 
-void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy)
+void FOClient::SScriptFunc::Global_DrawMapSprite(ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy)
 {
 	if(!Self->HexMngr.SpritesCanDrawMap) return;
 	if(!Self->HexMngr.GetHexToDraw(hx,hy)) return;
@@ -10735,7 +10735,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 
 		if(FLAG(proto_item->Flags,ITEM_COLORIZE))
 		{
-			spr.SetAlpha(((BYTE*)&proto_item->LightColor)+3);
+			spr.SetAlpha(((uchar*)&proto_item->LightColor)+3);
 			spr.SetColor(proto_item->LightColor&0xFFFFFF);
 		}
 
@@ -10743,20 +10743,20 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id
 	}
 }
 
-void FOClient::SScriptFunc::Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir, int l, int t, int r, int b, bool scratch, bool center, DWORD color)
+void FOClient::SScriptFunc::Global_DrawCritter2d(uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
 	if(CritType::IsEnabled(crtype))
 	{
 		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
-		if(anim) SprMngr.DrawSpriteSize(anim->Ind[0],l,t,r-l,b-t,scratch,center,color?color:COLOR_IFACE);
+		if(anim) SprMngr.DrawSpriteSize(anim->Ind[0],l,t,(float)(r-l),(float)(b-t),scratch,center,color?color:COLOR_IFACE);
 	}
 }
 
 Animation3dVec DrawCritter3dAnim;
-DwordVec DrawCritter3dCrType;
-DwordVec DrawCritter3dFailToLoad;
+UIntVec DrawCritter3dCrType;
+UIntVec DrawCritter3dFailToLoad;
 int DrawCritter3dLayers[LAYERS3D_COUNT];
-void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, CScriptArray* layers, CScriptArray* position, DWORD color)
+void FOClient::SScriptFunc::Global_DrawCritter3d(uint instance, uint crtype, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color)
 {
 	// x y
 	// rx ry rz
@@ -10793,7 +10793,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 
 		if(anim)
 		{
-			DWORD count=(position?position->GetSize():0);
+			uint count=(position?position->GetSize():0);
 			float x=(count>0?*(float*)position->At(0):0.0f);
 			float y=(count>1?*(float*)position->At(1):0.0f);
 			float rx=(count>2?*(float*)position->At(2):0.0f);
@@ -10810,14 +10810,14 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(DWORD instance, DWORD crtype, D
 			float stb=(count>13?*(float*)position->At(13):0.0f);
 
 			ZeroMemory(DrawCritter3dLayers,sizeof(DrawCritter3dLayers));
-			for(DWORD i=0,j=(layers?layers->GetSize():0);i<j && i<LAYERS3D_COUNT;i++)
+			for(uint i=0,j=(layers?layers->GetSize():0);i<j && i<LAYERS3D_COUNT;i++)
 				DrawCritter3dLayers[i]=*(int*)layers->At(i);
 
 			anim->SetRotation(rx*D3DX_PI/180.0f,ry*D3DX_PI/180.0f,rz*D3DX_PI/180.0f);
 			anim->SetScale(sx,sy,sz);
 			anim->SetSpeed(speed);
 			anim->SetAnimation(anim1,anim2,DrawCritter3dLayers,0);
-			SprMngr.Draw3d(x,y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
+			SprMngr.Draw3d((int)x,(int)y,1.0f,anim,stl<str && stt<stb?&FLTRECT(stl,stt,str,stb):NULL,color?color:COLOR_IFACE);
 		}
 	}
 }
@@ -10903,7 +10903,7 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen(int screen)
 	}
 }
 
-bool FOClient::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
+bool FOClient::SScriptFunc::Global_GetHexPos(ushort hx, ushort hy, int& x, int& y)
 {
 	x=y=0;
 	if(Self->HexMngr.IsMapLoaded() && hx<Self->HexMngr.GetMaxHexX() && hy<Self->HexMngr.GetMaxHexY())
@@ -10911,14 +10911,14 @@ bool FOClient::SScriptFunc::Global_GetHexPos(WORD hx, WORD hy, int& x, int& y)
 		Self->HexMngr.GetHexCurrentPosition(hx,hy,x,y);
 		x+=GameOpt.ScrOx+HEX_OX;
 		y+=GameOpt.ScrOy+HEX_OY;
-		x/=GameOpt.SpritesZoom;
-		y/=GameOpt.SpritesZoom;
+		x=(int)(x/GameOpt.SpritesZoom);
+		y=(int)(y/GameOpt.SpritesZoom);
 		return true;
 	}
 	return false;
 }
 
-bool FOClient::SScriptFunc::Global_GetMonitorHex(int x, int y, WORD& hx, WORD& hy)
+bool FOClient::SScriptFunc::Global_GetMonitorHex(int x, int y, ushort& hx, ushort& hy)
 {
 	if(Self->GetMouseHex())
 	{
@@ -10953,13 +10953,13 @@ CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter(int x, int y)
 	return NULL;
 }
 
-WORD FOClient::SScriptFunc::Global_GetMapWidth()
+ushort FOClient::SScriptFunc::Global_GetMapWidth()
 {
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R0("Map is not loaded.");
 	return Self->HexMngr.GetMaxHexX();
 }
 
-WORD FOClient::SScriptFunc::Global_GetMapHeight()
+ushort FOClient::SScriptFunc::Global_GetMapHeight()
 {
 	if(!Self->HexMngr.IsMapLoaded()) SCRIPT_ERROR_R0("Map is not loaded.");
 	return Self->HexMngr.GetMaxHexY();

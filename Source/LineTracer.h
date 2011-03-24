@@ -6,20 +6,20 @@
 class LineTracer
 {
 public:
-	LineTracer(WORD hx, WORD hy, WORD tx, WORD ty, WORD maxhx, WORD maxhy, float angle, bool is_square);
-	BYTE GetNextHex(WORD& cx, WORD& cy);
-	void GetNextSquare(WORD& cx, WORD& cy);
+	LineTracer(ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle, bool is_square);
+	uchar GetNextHex(ushort& cx, ushort& cy);
+	void GetNextSquare(ushort& cx, ushort& cy);
 
 private:
-	WORD maxHx;
-	WORD maxHy;
+	ushort maxHx;
+	ushort maxHy;
 	float x1;
 	float y1;
 	float x2;
 	float y2;
 	float dir;
-	BYTE dir1;
-	BYTE dir2;
+	uchar dir1;
+	uchar dir2;
 	float dx;
 	float dy;
 
@@ -32,7 +32,7 @@ void LineTracer::NormalizeDir()
 	else if(dir>=0.0f) dir=fmod(dir,360.0f);
 }
 
-LineTracer::LineTracer(WORD hx, WORD hy, WORD tx, WORD ty, WORD maxhx, WORD maxhy, float angle, bool is_square)
+LineTracer::LineTracer(ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle, bool is_square)
 {
 	maxHx=maxhx;
 	maxHy=maxhy;
@@ -42,18 +42,18 @@ LineTracer::LineTracer(WORD hx, WORD hy, WORD tx, WORD ty, WORD maxhx, WORD maxh
 		dir=atan2((float)(ty-hy),(float)(tx-hx))+angle;
 		dx=cos(dir);
 		dy=sin(dir);
-		if(abs(dx)>abs(dy))
+		if(fabs(dx)>fabs(dy))
 		{
 			dy/=fabs(dx);
-			dx=(dx>0?1:-1);
+			dx=(dx>0?1.0f:-1.0f);
 		}
 		else
 		{
 			dx/=fabs(dy);
-			dy=(dy>0?1:-1);
+			dy=(dy>0?1.0f:-1.0f);
 		}
-		x1=(float)hx+0.5;
-		y1=(float)hy+0.5;
+		x1=(float)hx+0.5f;
+		y1=(float)hy+0.5f;
 	}
 	else
 	{
@@ -91,12 +91,12 @@ LineTracer::LineTracer(WORD hx, WORD hy, WORD tx, WORD ty, WORD maxhx, WORD maxh
 	}
 }
 
-BYTE LineTracer::GetNextHex(WORD& cx, WORD& cy)
+uchar LineTracer::GetNextHex(ushort& cx, ushort& cy)
 {
-	WORD t1x=cx;
-	WORD t2x=cx;
-	WORD t1y=cy;
-	WORD t2y=cy;
+	ushort t1x=cx;
+	ushort t2x=cx;
+	ushort t1y=cy;
+	ushort t2y=cy;
 	MoveHexByDir(t1x,t1y,dir1,maxHx,maxHy);
 	MoveHexByDir(t2x,t2y,dir2,maxHx,maxHy);
 	float dist1=dx*(y1-(SQRT3T2_FLOAT*float(t1y)-(float(t1x&1))*SQRT3_FLOAT))-dy*(x1-3*float(t1x));
@@ -117,14 +117,14 @@ BYTE LineTracer::GetNextHex(WORD& cx, WORD& cy)
 	}
 }
 
-void LineTracer::GetNextSquare(WORD& cx, WORD& cy)
+void LineTracer::GetNextSquare(ushort& cx, ushort& cy)
 {
 	x1+=dx;
 	y1+=dy;
-	cx=(WORD)floor(x1);
-	cy=(WORD)floor(y1);
-	cx=CLAMP(cx,0,maxHx);
-	cy=CLAMP(cy,0,maxHy);
+	cx=(ushort)floor(x1);
+	cy=(ushort)floor(y1);
+	if(cx>=maxHx) cx=maxHx-1;
+	if(cy>=maxHy) cy=maxHy-1;
 }
 
 #endif // __LINE_TRACER__

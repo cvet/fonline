@@ -27,12 +27,12 @@ class TemplateVar;
 class GameVar;
 typedef vector<TemplateVar*> TempVarVec;
 typedef vector<TemplateVar*>::iterator TempVarVecIt;
-typedef map<DWORD,GameVar*> VarsMap32;
-typedef map<DWORD,GameVar*>::iterator VarsMap32It;
-typedef map<DWORD,GameVar*>::value_type VarsMap32Val;
-typedef map<ULONGLONG,GameVar*> VarsMap64;
-typedef map<ULONGLONG,GameVar*>::iterator VarsMap64It;
-typedef map<ULONGLONG,GameVar*>::value_type VarsMap64Val;
+typedef map<uint,GameVar*> VarsMap32;
+typedef map<uint,GameVar*>::iterator VarsMap32It;
+typedef map<uint,GameVar*>::value_type VarsMap32Val;
+typedef map<uint64,GameVar*> VarsMap64;
+typedef map<uint64,GameVar*>::iterator VarsMap64It;
+typedef map<uint64,GameVar*>::value_type VarsMap64Val;
 typedef vector<GameVar*> VarsVec;
 typedef vector<GameVar*>::iterator VarsVecIt;
 
@@ -41,13 +41,13 @@ class TemplateVar
 {
 public:
 	int Type;
-	WORD TempId;
+	ushort TempId;
 	string Name;
 	string Desc;
 	int StartVal;
 	int MinVal;
 	int MaxVal;
-	DWORD Flags;
+	uint Flags;
 
 	VarsMap32 Vars;
 	VarsMap64 VarsUnicum;
@@ -66,12 +66,12 @@ class Critter;
 class GameVar
 {
 public:
-	DWORD MasterId;
-	DWORD SlaveId;
+	uint MasterId;
+	uint SlaveId;
 	int VarValue;
 	TemplateVar* VarTemplate;
-	DWORD QuestVarIndex;
-	WORD Type;
+	uint QuestVarIndex;
+	ushort Type;
 	short RefCount;
 	SyncObject Sync;
 
@@ -110,17 +110,17 @@ public:
 	int GetMin(){return VarTemplate->MinVal;}
 	int GetMax(){return VarTemplate->MaxVal;}
 	bool IsQuest(){return VarTemplate->IsQuest();}
-	DWORD GetQuestStr(){return VAR_CALC_QUEST(VarTemplate->TempId,VarValue);}
+	uint GetQuestStr(){return VAR_CALC_QUEST(VarTemplate->TempId,VarValue);}
 	bool IsRandom(){return VarTemplate->IsRandom();}
 	TemplateVar* GetTemplateVar(){return VarTemplate;}
-	ULONGLONG GetUid(){return (((ULONGLONG)SlaveId)<<32)|((ULONGLONG)MasterId);}
-	DWORD GetMasterId(){return MasterId;}
-	DWORD GetSlaveId(){return SlaveId;}
+	uint64 GetUid(){return (((uint64)SlaveId)<<32)|((uint64)MasterId);}
+	uint GetMasterId(){return MasterId;}
+	uint GetSlaveId(){return SlaveId;}
 
 	void AddRef(){RefCount++;}
 	void Release(){if(!--RefCount) delete this;}
 
-	GameVar(DWORD master_id, DWORD slave_id, TemplateVar* var_template, int val):
+	GameVar(uint master_id, uint slave_id, TemplateVar* var_template, int val):
 		MasterId(master_id),SlaveId(slave_id),VarTemplate(var_template),QuestVarIndex(0),
 		Type(var_template->Type),VarValue(val),RefCount(1){MEMORY_PROCESS(MEMORY_VAR,sizeof(GameVar));}
 	~GameVar(){MEMORY_PROCESS(MEMORY_VAR,-(int)sizeof(GameVar));}
@@ -148,7 +148,7 @@ private:
 	bool isInit;
 	string varsPath;
 	TempVarVec tempVars;
-	StrWordMap varsNames;
+	StrUShortMap varsNames;
 	Mutex varsLocker;
 
 	bool LoadTemplateVars(const char* str, TempVarVec& vars); // Return count error
@@ -161,9 +161,9 @@ public:
 
 	bool UpdateVarsTemplate();
 	bool AddTemplateVar(TemplateVar* var);
-	void EraseTemplateVar(WORD temp_id);
-	TemplateVar* GetTemplateVar(WORD temp_id);
-	WORD GetTemplateVarId(const char* var_name);
+	void EraseTemplateVar(ushort temp_id);
+	TemplateVar* GetTemplateVar(ushort temp_id);
+	ushort GetTemplateVarId(const char* var_name);
 	bool IsTemplateVarAviable(const char* var_name);
 	void SaveTemplateVars();
 	TempVarVec& GetTemplateVars(){return tempVars;}
@@ -172,26 +172,26 @@ public:
 public:
 	void SaveVarsDataFile(void(*save_func)(void*,size_t));
 	bool LoadVarsDataFile(FILE* f, int version);
-	bool CheckVar(const char* var_name, DWORD master_id, DWORD slave_id, char oper, int val);
-	bool CheckVar(WORD temp_id, DWORD master_id, DWORD slave_id, char oper, int val);
-	GameVar* ChangeVar(const char* var_name, DWORD master_id, DWORD slave_id, char oper, int val);
-	GameVar* ChangeVar(WORD temp_id, DWORD master_id, DWORD slave_id, char oper, int val);
-	GameVar* GetVar(const char* var_name, DWORD master_id, DWORD slave_id,  bool create);
-	GameVar* GetVar(WORD temp_id, DWORD master_id, DWORD slave_id,  bool create);
-	void SwapVars(DWORD id1, DWORD id2);
-	DWORD ClearUnusedVars(DwordSet& ids1, DwordSet& ids2, DwordSet& ids_locs, DwordSet& ids_maps, DwordSet& ids_items);
-	void GetQuestVars(DWORD master_id, DwordVec& vars);
+	bool CheckVar(const char* var_name, uint master_id, uint slave_id, char oper, int val);
+	bool CheckVar(ushort temp_id, uint master_id, uint slave_id, char oper, int val);
+	GameVar* ChangeVar(const char* var_name, uint master_id, uint slave_id, char oper, int val);
+	GameVar* ChangeVar(ushort temp_id, uint master_id, uint slave_id, char oper, int val);
+	GameVar* GetVar(const char* var_name, uint master_id, uint slave_id,  bool create);
+	GameVar* GetVar(ushort temp_id, uint master_id, uint slave_id,  bool create);
+	void SwapVars(uint id1, uint id2);
+	uint ClearUnusedVars(UIntSet& ids1, UIntSet& ids2, UIntSet& ids_locs, UIntSet& ids_maps, UIntSet& ids_items);
+	void GetQuestVars(uint master_id, UIntVec& vars);
 	VarsVec& GetQuestVars(){return allQuestVars;}
-	DWORD GetVarsCount(){return varsCount;}
+	uint GetVarsCount(){return varsCount;}
 
 private:
 	VarsVec allQuestVars;
-	DWORD varsCount;
+	uint varsCount;
 
 	bool CheckVar(GameVar* var, char oper, int val);
 	void ChangeVar(GameVar* var, char oper, int val);
-	GameVar* CreateVar(DWORD master_id, TemplateVar* tvar);
-	GameVar* CreateVarUnicum(ULONGLONG id, DWORD master_id, DWORD slave_id, TemplateVar* tvar);
+	GameVar* CreateVar(uint master_id, TemplateVar* tvar);
+	GameVar* CreateVarUnicum(uint64 id, uint master_id, uint slave_id, TemplateVar* tvar);
 #endif // FONLINE_SERVER
 };
 

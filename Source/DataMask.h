@@ -4,13 +4,13 @@
 /*class CBitMask
 {
 public:
-	void SetBit(DWORD x, DWORD y)
+	void SetBit(uint x, uint y)
 	{
 		if(x>=width || y>=height) return;
 		data[y*width_dw+x/32]|=1<<(x%32);
 	}
 
-	int GetBit(DWORD x, DWORD y)
+	int GetBit(uint x, uint y)
 	{
 		if(x>=width || y>=height) return 0;
 		return (data[y*width_dw+x/32]>>(x%32))&1;
@@ -18,10 +18,10 @@ public:
 
 	void Fill(int fill)
 	{
-		memset(data,fill,width_dw*height*sizeof(DWORD));
+		memset(data,fill,width_dw*height*sizeof(uint));
 	}
 
-	CBitMask(DWORD width_bit, DWORD height_bit, DWORD* ptr, int fill)
+	CBitMask(uint width_bit, uint height_bit, uint* ptr, int fill)
 	{
 		if(!width_bit) width_bit=1;
 		if(!height_bit) height_bit=1;
@@ -37,7 +37,7 @@ public:
 		else
 		{
 			isAlloc=true;
-			data=new DWORD[width_dw*height];
+			data=new uint[width_dw*height];
 		}
 		Fill(fill);
 	}
@@ -50,25 +50,25 @@ public:
 
 private:
 	bool isAlloc;
-	DWORD* data;
-	DWORD width;
-	DWORD height;
-	DWORD width_dw;
+	uint* data;
+	uint width;
+	uint height;
+	uint width_dw;
 };*/
 
 class C2BitMask
 {
 public:
-	void Set2Bit(DWORD x, DWORD y, int val)
+	void Set2Bit(uint x, uint y, int val)
 	{
 		if(x>=width || y>=height) return;
-		BYTE& b=data[y*width_b+x/4];
+		uchar& b=data[y*width_b+x/4];
 		int bit=(x%4*2);
 		UNSETFLAG(b,3<<bit);
 		SETFLAG(b,(val&3)<<bit);
 	}
 
-	int Get2Bit(DWORD x, DWORD y)
+	int Get2Bit(uint x, uint y)
 	{
 		if(x>=width || y>=height) return 0;
 		return (data[y*width_b+x/4]>>(x%4*2))&3;
@@ -79,7 +79,7 @@ public:
 		memset(data,fill,width_b*height);
 	}
 
-	void Create(DWORD width_2bit, DWORD height_2bit, BYTE* ptr)
+	void Create(uint width_2bit, uint height_2bit, uchar* ptr)
 	{
 		if(!width_2bit) width_2bit=1;
 		if(!height_2bit) height_2bit=1;
@@ -95,39 +95,39 @@ public:
 		else
 		{
 			isAlloc=true;
-			data=new BYTE[width_b*height];
+			data=new uchar[width_b*height];
 			Fill(0);
 		}
 	}
 
-	BYTE* GetData(){return data;}
+	uchar* GetData(){return data;}
 	C2BitMask(){memset(this,0,sizeof(C2BitMask));}
-	C2BitMask(DWORD width_2bit, DWORD height_2bit, BYTE* ptr){Create(width_2bit,height_2bit,ptr);}
+	C2BitMask(uint width_2bit, uint height_2bit, uchar* ptr){Create(width_2bit,height_2bit,ptr);}
 	~C2BitMask(){if(isAlloc) delete[] data;	data=NULL;}
 
 private:
 	bool isAlloc;
-	BYTE* data;
-	DWORD width;
-	DWORD height;
-	DWORD width_b;
+	uchar* data;
+	uint width;
+	uint height;
+	uint width_b;
 };
 
 class C4BitMask
 {
 public:
-	void Set4Bit(DWORD x, DWORD y, BYTE val)
+	void Set4Bit(uint x, uint y, uchar val)
 	{
 		if(x>=width || y>=height) return;
-		BYTE& b=data[y*width_b+x/2];
+		uchar& b=data[y*width_b+x/2];
 		if(x&1) b=(b&0xF0)|(val&0xF);
 		else b=(b&0xF)|(val<<4);
 	}
 
-	BYTE Get4Bit(DWORD x, DWORD y)
+	uchar Get4Bit(uint x, uint y)
 	{
 		if(x>=width || y>=height) return 0;
-		BYTE& b=data[y*width_b+x/2];
+		uchar& b=data[y*width_b+x/2];
 		if(x&1) return b&0xF;
 		else return b>>4;
 	}
@@ -137,7 +137,7 @@ public:
 		memset(data,fill,width_b*height);
 	}
 
-	C4BitMask(DWORD width_4bit, DWORD height_4bit, int fill)
+	C4BitMask(uint width_4bit, uint height_4bit, int fill)
 	{
 		if(!width_4bit) width_4bit=1;
 		if(!height_4bit) height_4bit=1;
@@ -145,7 +145,7 @@ public:
 		height=height_4bit;
 		width_b=width/2;
 		if(width&1) width_b++;
-		data=new BYTE[width_b*height];
+		data=new uchar[width_b*height];
 		Fill(fill);
 	}
 
@@ -155,22 +155,22 @@ public:
 	}
 
 private:
-	BYTE* data;
-	DWORD width;
-	DWORD height;
-	DWORD width_b;
+	uchar* data;
+	uint width;
+	uint height;
+	uint width_b;
 };
 
 class CByteMask
 {
 public:
-	void SetByte(DWORD x, DWORD y, BYTE val)
+	void SetByte(uint x, uint y, uchar val)
 	{
 		if(x>=width || y>=height) return;
 		data[y*width+x]=val;
 	}
 
-	BYTE GetByte(DWORD x, DWORD y)
+	uchar GetByte(uint x, uint y)
 	{
 		if(x>=width || y>=height) return 0;
 		return data[y*width+x];
@@ -181,13 +181,13 @@ public:
 		memset(data,fill,width*height);
 	}
 
-	CByteMask(DWORD _width, DWORD _height, int fill)
+	CByteMask(uint _width, uint _height, int fill)
 	{
 		if(!_width) _width=1;
 		if(!_height) _height=1;
 		width=_width;
 		height=_height;
-		data=new BYTE[width*height];
+		data=new uchar[width*height];
 		Fill(fill);
 	}
 
@@ -197,9 +197,9 @@ public:
 	}
 
 private:
-	BYTE* data;
-	DWORD width;
-	DWORD height;
+	uchar* data;
+	uint width;
+	uint height;
 };
 
 
@@ -207,13 +207,13 @@ private:
 class CBitMask_
 {
 public:
-	void SetBit(DWORD x, DWORD y, int val)
+	void SetBit(uint x, uint y, int val)
 	{
 		if(x>=width || y>=height) return;
 		data[y*width_dw+x/32]|=1<<(x%32);
 	}
 
-	int GetBit(DWORD x, DWORD y)
+	int GetBit(uint x, uint y)
 	{
 		if(x>=width || y>=height) return 0;
 		return (data[y*width_dw+x/32]>>(x%32))&1;
@@ -221,10 +221,10 @@ public:
 
 	void Fill(int fill)
 	{
-		memset(data,fill,width_dw*height*sizeof(DWORD));
+		memset(data,fill,width_dw*height*sizeof(uint));
 	}
 
-	CBitMask(DWORD width_bit, DWORD height_bit, int fill)
+	CBitMask(uint width_bit, uint height_bit, int fill)
 	{
 		width=width_bit*Size;
 		height=height_bit*Size;
@@ -232,7 +232,7 @@ public:
 		width_dw=width/32;
 		if(width%32) width_dw++;
 
-		data=new DWORD[width_dw*height];
+		data=new uint[width_dw*height];
 
 		Fill(fill);
 	}
@@ -243,10 +243,10 @@ public:
 	}
 
 private:
-	DWORD* data;
-	DWORD width;
-	DWORD height;
-	DWORD width_dw;
+	uint* data;
+	uint width;
+	uint height;
+	uint width_dw;
 };*/
 
 #endif // __DATA_MASK__

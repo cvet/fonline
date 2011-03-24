@@ -2,6 +2,7 @@
 #include "Mapper.h"
 #include "Exception.h"
 #include "Version.h"
+#include <locale.h>
 
 LRESULT APIENTRY WndProc(HWND wnd,UINT message,WPARAM wparam,LPARAM lparam);
 HINSTANCE Instance=NULL;
@@ -70,12 +71,12 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 	ShowWindow(Wnd,SW_SHOWNORMAL);
 	UpdateWindow(Wnd);
 
-	WriteLog("Starting Mapper...\n");
+	WriteLog(NULL,"Starting Mapper...\n");
 
 	Mapper=new FOMapper();
 	if(!Mapper->Init(Wnd))
 	{
-		WriteLog("Mapper initialization fail.\n");
+		WriteLog(NULL,"Mapper initialization fail.\n");
 		DestroyWindow(Wnd);
 		return 0;
 	}
@@ -99,12 +100,10 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 
 	Mapper->Finish();
 
-	WriteLog("Mapper closed.\n");
+	WriteLog(NULL,"Mapper closed.\n");
 	LogFinish(-1);
 
 	delete Mapper;
-
-	_CrtDumpMemoryLeaks();
 	return 0;
 }
 

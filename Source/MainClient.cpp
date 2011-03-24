@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Exception.h"
 #include "Version.h"
+#include <locale.h>
 
 //#define GAME_THREAD
 
@@ -10,7 +11,7 @@ HWND Wnd=NULL;
 FOClient* FOEngine=NULL;
 
 #ifdef GAME_THREAD
-DWORD WINAPI GameLoopThread(void*);
+uint WINAPI GameLoopThread(void*);
 HANDLE GameLoopThreadHandle=NULL;
 #endif
 
@@ -50,7 +51,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 	FileManager::ExtractFileName(full_path,name);
 	if(strstr(name,"Singleplayer") || strstr(cmd_line,"Singleplayer"))
 	{
-		WriteLog("Singleplayer mode.\n");
+		WriteLog(NULL,"Singleplayer mode.\n");
 		Singleplayer=true;
 		Timer::SetGamePause(true);
 
@@ -58,7 +59,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 		HANDLE map_file=SingleplayerData.Init();
 		if(!map_file)
 		{
-			WriteLog("Can't map shared data to memory.\n");
+			WriteLog(NULL,"Can't map shared data to memory.\n");
 			return 0;
 		}
 
@@ -73,7 +74,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 		}
 		else
 		{
-			WriteLog("Can't lock mapped file.\n");
+			WriteLog(NULL,"Can't lock mapped file.\n");
 			return 0;
 		}
 
@@ -100,7 +101,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 		sprintf(command_line,"\"%s%s\" -singleplayer %p %p %s -logpath %s",server_path,server_exe,map_file,client_process,server_cmdline,path);
 		if(!CreateProcess(NULL,command_line,NULL,NULL,TRUE,NORMAL_PRIORITY_CLASS,NULL,server_path,&sui,&server))
 		{
-			WriteLog("Can't start server process, error<%u>.\n",GetLastError());
+			WriteLog(NULL,"Can't start server process, error<%u>.\n",GetLastError());
 			return 0;
 		}
 		CloseHandle(server.hProcess);
@@ -137,12 +138,12 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 	UpdateWindow(Wnd);
 
 	// Start FOnline
-	WriteLog("Starting FOnline (version %04X-%02X)...\n\n",CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF);
+	WriteLog(NULL,"Starting FOnline (version %04X-%02X)...\n\n",CLIENT_VERSION,FO_PROTOCOL_VERSION&0xFF);
 
 	FOEngine=new FOClient();
 	if(!FOEngine || !FOEngine->Init(Wnd))
 	{
-		WriteLog("FOnline engine initialization fail.\n");
+		WriteLog(NULL,"FOnline engine initialization fail.\n");
 		return 0;
 	}
 
@@ -176,7 +177,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 	FOEngine->Finish();
 	delete FOEngine;
 	if(Singleplayer) SingleplayerData.Finish();
-	WriteLog("FOnline finished.\n");
+	WriteLog(NULL,"FOnline finished.\n");
 	LogFinish(-1);
 
 	//_CrtDumpMemoryLeaks();
@@ -184,7 +185,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 }
 
 #ifdef GAME_THREAD
-DWORD WINAPI GameLoopThread(void*)
+uint WINAPI GameLoopThread(void*)
 {
 	while(!GameOpt.Quit)
 	{

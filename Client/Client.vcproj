@@ -978,6 +978,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\PlatformSpecific.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\QuestManager.h"
 				>
 			</File>
@@ -2199,38 +2203,6 @@
 			</File>
 			<File
 				RelativePath="..\Source\3dStuff\MeshStructures.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\Terrain.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\Terrain.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\TerrainGrid.cpp"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\TerrainGrid.h"
 				>
 			</File>
 			<Filter

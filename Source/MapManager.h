@@ -9,26 +9,26 @@ class GlobalMapGroup
 public:
 	CrVec CritMove;
 	Critter* Rule;
-	DWORD CarId;
+	uint CarId;
 	int WXi,WYi;
 	float WXf,WYf;
 	int MoveX,MoveY;
 	float SpeedX,SpeedY;
 	bool IsSetMove;
-	DWORD TimeCanFollow;
-	DWORD NextEncaunter;
+	uint TimeCanFollow;
+	uint NextEncaunter;
 	bool IsMultiply;
-	DWORD MoveLastTick;
-	DWORD ProcessLastTick;
-	DWORD EncounterDescriptor;
-	DWORD EncounterTick;
+	uint MoveLastTick;
+	uint ProcessLastTick;
+	uint EncounterDescriptor;
+	uint EncounterTick;
 	bool EncounterForce;
 
 	bool IsValid();
 	bool IsMoving();
-	DWORD GetSize();
+	uint GetSize();
 	void SyncLockGroup();
-	Critter* GetCritter(DWORD crid);
+	Critter* GetCritter(uint crid);
 	Item* GetCar();
 	bool CheckForFollow(Critter* cr);
 	void AddCrit(Critter* cr);
@@ -45,21 +45,21 @@ struct TraceData
 {
 	// Input
 	Map* TraceMap;
-	WORD BeginHx,BeginHy;
-	WORD EndHx,EndHy;
-	DWORD Dist;
+	ushort BeginHx,BeginHy;
+	ushort EndHx,EndHy;
+	uint Dist;
 	float Angle;
 	Critter* FindCr;
 	int FindType;
 	bool IsCheckTeam;
-	DWORD BaseCrTeamId;
+	uint BaseCrTeamId;
 	bool LastPassedSkipCritters;
-	bool (*HexCallback)(Map*, Critter*, WORD, WORD, WORD, WORD, BYTE);
+	bool (*HexCallback)(Map*, Critter*, ushort, ushort, ushort, ushort, uchar);
 	// Output
 	CrVec* Critters;
-	WordPair* PreBlock;
-	WordPair* Block;
-	WordPair* LastPassed;
+	UShortPair* PreBlock;
+	UShortPair* Block;
+	UShortPair* LastPassed;
 	bool IsFullTrace;
 	bool IsCritterFounded;
 	bool IsHaveLastPassed;
@@ -86,16 +86,16 @@ struct TraceData
 
 struct PathFindData
 {
-	DWORD MapId;
-	WORD MoveParams;
+	uint MapId;
+	ushort MoveParams;
 	Critter* FromCritter;
-	WORD FromX,FromY;
-	WORD ToX,ToY;
-	WORD NewToX,NewToY;
-	DWORD Multihex;
-	DWORD Cut;
-	DWORD PathNum;
-	DWORD Trace;
+	ushort FromX,FromY;
+	ushort ToX,ToY;
+	ushort NewToX,NewToY;
+	uint Multihex;
+	uint Cut;
+	uint PathNum;
+	uint Trace;
 	bool IsRun;
 	bool CheckCrit;
 	bool CheckGagItems;
@@ -108,18 +108,18 @@ struct PathFindData
 
 struct PathStep
 {
-	WORD HexX;
-	WORD HexY;
-	DWORD MoveParams;
-	BYTE Dir;
+	ushort HexX;
+	ushort HexY;
+	uint MoveParams;
+	uchar Dir;
 };
 typedef vector<PathStep> PathStepVec;
 
 class MapManager
 {
 private:
-	DWORD lastMapId;
-	DWORD lastLocId;
+	uint lastMapId;
+	uint lastLocId;
 	Mutex mapLocker;
 
 public:
@@ -132,21 +132,21 @@ public:
 	void Clear();
 
 	bool LoadLocationsProtos();
-	bool LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, WORD pid);
+	bool LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ushort pid);
 	void SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t));
 	bool LoadAllLocationsAndMapsFile(FILE* f);
 	string GetLocationsMapsStatistics();
 	void RunInitScriptMaps();
 	bool GenerateWorld(const char* fname, int path_type);
-	void GetLocationAndMapIds(DwordSet& loc_ids, DwordSet& map_ids);
+	void GetLocationAndMapIds(UIntSet& loc_ids, UIntSet& map_ids);
 
 	// Maps stuff
 public:
-	bool AddCrToMap(Critter* cr, Map* map, WORD tx, WORD ty, DWORD radius);
-	void EraseCrFromMap(Critter* cr, Map* map, WORD hex_x, WORD hex_y);
-	bool TryTransitCrGrid(Critter* cr, Map* map, WORD hx, WORD hy, bool force);
-	bool TransitToGlobal(Critter* cr, DWORD rule, BYTE follow_type, bool force);
-	bool Transit(Critter* cr, Map* map, WORD hx, WORD hy, BYTE dir, DWORD radius, bool force);
+	bool AddCrToMap(Critter* cr, Map* map, ushort tx, ushort ty, uint radius);
+	void EraseCrFromMap(Critter* cr, Map* map, ushort hex_x, ushort hex_y);
+	bool TryTransitCrGrid(Critter* cr, Map* map, ushort hx, ushort hy, bool force);
+	bool TransitToGlobal(Critter* cr, uint rule, uchar follow_type, bool force);
+	bool Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, bool force);
 
 	// Global map
 private:
@@ -154,24 +154,24 @@ private:
 
 public:
 	bool IsIntersectZone(int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones);
-	void GetZoneLocations(int zx, int zy, int zone_radius, DwordVec& loc_ids);
+	void GetZoneLocations(int zx, int zy, int zone_radius, UIntVec& loc_ids);
 
 	bool RefreshGmMask(const char* mask_path);
-	int GetGmRelief(DWORD x, DWORD y){return gmMask->GetByte(x,y)&0xF;}
+	int GetGmRelief(uint x, uint y){return gmMask->GetByte(x,y)&0xF;}
 
 	void GM_GroupStartMove(Critter* cr, bool send);
-	void GM_AddCritToGroup(Critter* cr, DWORD rule_id);
+	void GM_AddCritToGroup(Critter* cr, uint rule_id);
 	void GM_LeaveGroup(Critter* cr);
 	void GM_GiveRule(Critter* cr, Critter* new_rule);
 	void GM_StopGroup(Critter* cr);
-	bool GM_GroupToMap(GlobalMapGroup* group, Map* map, DWORD entire, WORD mx, WORD my, BYTE mdir);
-	bool GM_GroupToLoc(Critter* rule, DWORD loc_id, BYTE entrance, bool force = false);
-	void GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, DWORD speed);
+	bool GM_GroupToMap(GlobalMapGroup* group, Map* map, uint entire, ushort mx, ushort my, uchar mdir);
+	bool GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool force = false);
+	void GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, uint speed);
 	void GM_GroupMove(GlobalMapGroup* group);
 	void GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type);
 	void GM_GlobalInvite(GlobalMapGroup* group, int combat_mode);
 	void GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy);
-	bool GM_CheckEntrance(Location* loc, CScriptArray* arr, BYTE entrance);
+	bool GM_CheckEntrance(Location* loc, CScriptArray* arr, uchar entrance);
 	CScriptArray* GM_CreateGroupArray(GlobalMapGroup* group);
 
 	// Locations
@@ -180,15 +180,15 @@ private:
 	volatile bool runGarbager;
 
 public:
-	bool IsInitProtoLocation(WORD pid_loc);
-	ProtoLocation* GetProtoLocation(WORD loc_pid);
-	Location* CreateLocation(WORD pid_loc, WORD wx, WORD wy, DWORD loc_id);
-	Location* GetLocationByMap(DWORD map_id);
-	Location* GetLocation(DWORD loc_id);
-	Location* GetLocationByPid(WORD loc_pid, DWORD skip_count);
+	bool IsInitProtoLocation(ushort pid_loc);
+	ProtoLocation* GetProtoLocation(ushort loc_pid);
+	Location* CreateLocation(ushort pid_loc, ushort wx, ushort wy, uint loc_id);
+	Location* GetLocationByMap(uint map_id);
+	Location* GetLocation(uint loc_id);
+	Location* GetLocationByPid(ushort loc_pid, uint skip_count);
 	bool IsLocationOnCoord(int wx, int wy);
 	void GetLocations(LocVec& locs, bool lock);
-	DWORD GetLocationsCount();
+	uint GetLocationsCount();
 	void LocationGarbager();
 	void RunGarbager(){runGarbager=true;}
 
@@ -196,21 +196,21 @@ public:
 private:
 	MapMap allMaps;
 	PathStepVec pathesPool[FPATH_DATA_SIZE];
-	DWORD pathNumCur;
+	uint pathNumCur;
 
 public:
-	bool IsInitProtoMap(WORD pid_map);
-	Map* CreateMap(WORD pid_map, Location* loc_map, DWORD map_id);
-	Map* GetMap(DWORD map_id, bool sync_lock = true);
-	Map* GetMapByPid(WORD map_pid, DWORD skip_count);
+	bool IsInitProtoMap(ushort pid_map);
+	Map* CreateMap(ushort pid_map, Location* loc_map, uint map_id);
+	Map* GetMap(uint map_id, bool sync_lock = true);
+	Map* GetMapByPid(ushort map_pid, uint skip_count);
 	void GetMaps(MapVec& maps, bool lock);
-	DWORD GetMapsCount();
-	ProtoMap* GetProtoMap(WORD pid_map);
-	bool IsProtoMapNoLogOut(WORD pid_map);
+	uint GetMapsCount();
+	ProtoMap* GetProtoMap(ushort pid_map);
+	bool IsProtoMapNoLogOut(ushort pid_map);
 	void TraceBullet(TraceData& trace);
 	int FindPath(PathFindData& pfd);
-	int FindPathGrid(WORD& hx, WORD& hy, int index, bool smooth_switcher);
-	PathStepVec& GetPath(DWORD num){return pathesPool[num];}
+	int FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher);
+	PathStepVec& GetPath(uint num){return pathesPool[num];}
 	void PathSetMoveParams(PathStepVec& path, bool is_run);
 };
 

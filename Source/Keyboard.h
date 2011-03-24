@@ -22,11 +22,11 @@ extern int KeysMap[0x100];
 void InitKeyb();
 void ClearKeyb();
 void Lost();
-void GetChar(BYTE dik, string& str, int* position, int max, int flags);
-void GetChar(BYTE dik, char* str, int* position, int max, int flags);
+void GetChar(uchar dik, string& str, int* position, int max, int flags);
+void GetChar(uchar dik, char* str, int* position, int max, int flags);
 void PuntoSwitch(char* str);
 void EraseInvalidChars(char* str, int flags);
-bool IsInvalidSymbol(char c, DWORD flags);
+bool IsInvalidSymbol(char c, uint flags);
 }
 
 #endif // __KEYBOARD__

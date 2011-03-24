@@ -10,14 +10,14 @@
 class FalloutDatFile : public DataFile
 {
 private:
-	typedef map<string,BYTE*> IndexMap;
-	typedef map<string,BYTE*>::iterator IndexMapIt;
-	typedef map<string,BYTE*>::value_type IndexMapVal;
+	typedef map<string,uchar*> IndexMap;
+	typedef map<string,uchar*>::iterator IndexMapIt;
+	typedef map<string,uchar*>::value_type IndexMapVal;
 
 	IndexMap filesTree;
 	string fileName;
-	BYTE* memTree;
-	HANDLE datHandle;
+	uchar* memTree;
+	void* datHandle;
 
 	FILETIME timeCreate,timeAccess,timeWrite;
 
@@ -28,7 +28,7 @@ public:
 	~FalloutDatFile();
 
 	const string& GetPackName(){return fileName;}
-	BYTE* OpenFile(const char* fname, DWORD& len);
+	uchar* OpenFile(const char* fname, uint& len);
 	void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
 	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 };
@@ -58,7 +58,7 @@ public:
 	~ZipFile();
 
 	const string& GetPackName(){return fileName;}
-	BYTE* OpenFile(const char* fname, DWORD& len);
+	uchar* OpenFile(const char* fname, uint& len);
 	void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
 	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
 };
@@ -71,14 +71,14 @@ DataFile* OpenDataFile(const char* fname)
 {
 	if(!fname || !fname[0])
 	{
-		WriteLog(__FUNCTION__" - Invalid file name, empty or nullptr.\n");
+		WriteLog(_FUNC_," - Invalid file name, empty or nullptr.\n");
 		return NULL;
 	}
 
 	const char* ext=strstr(fname,".");
 	if(!ext)
 	{
-		WriteLog(__FUNCTION__" - File<%s> extension not found.\n",fname);
+		WriteLog(_FUNC_," - File<%s> extension not found.\n",fname);
 		return false;
 	}
 
@@ -90,7 +90,7 @@ DataFile* OpenDataFile(const char* fname)
 		FalloutDatFile* dat=new(nothrow) FalloutDatFile();
 		if(!dat || !dat->Init(fname))
 		{
-			WriteLog(__FUNCTION__" - Unable to open DAT file<%s>.\n",fname);
+			WriteLog(_FUNC_," - Unable to open DAT file<%s>.\n",fname);
 			if(dat) delete dat;
 			return NULL;
 		}
@@ -101,7 +101,7 @@ DataFile* OpenDataFile(const char* fname)
 		ZipFile* zip=new(nothrow) ZipFile();
 		if(!zip || !zip->Init(fname))
 		{
-			WriteLog(__FUNCTION__" - Unable to open ZIP file<%s>.\n",fname);
+			WriteLog(_FUNC_," - Unable to open ZIP file<%s>.\n",fname);
 			if(zip) delete zip;
 			return NULL;
 		}
@@ -109,7 +109,7 @@ DataFile* OpenDataFile(const char* fname)
 	}
 	else // Bad file format
 	{
-		WriteLog(__FUNCTION__" - Invalid file format<%s>. Supported only DAT and ZIP.\n",fname);
+		WriteLog(_FUNC_," - Invalid file format<%s>. Supported only DAT and ZIP.\n",fname);
 	}
 
 	return NULL;
@@ -125,20 +125,18 @@ bool FalloutDatFile::Init(const char* fname)
 	memTree=NULL;
 	fileName=fname;
 
-	datHandle=CreateFile(fname,GENERIC_READ,FILE_SHARE_READ,
-		NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-
-	if(datHandle==INVALID_HANDLE_VALUE)
+	datHandle=FileOpen(fname,false);
+	if(!datHandle)
 	{
-		WriteLog(__FUNCTION__" - Cannot open file.\n");
+		WriteLog(_FUNC_," - Cannot open file.\n");
 		return false;
 	}
 
-	GetFileTime(datHandle,&timeCreate,&timeAccess,&timeWrite);
+	GetFileTime((HANDLE)datHandle,&timeCreate,&timeAccess,&timeWrite);
 
 	if(!ReadTree())
 	{
-		WriteLog(__FUNCTION__" - Read file tree fail.\n");
+		WriteLog(_FUNC_," - Read file tree fail.\n");
 		return false;
 	}
 
@@ -147,51 +145,51 @@ bool FalloutDatFile::Init(const char* fname)
 
 FalloutDatFile::~FalloutDatFile()
 {
-	if(datHandle!=INVALID_HANDLE_VALUE)
+	if(datHandle)
 	{
-		CloseHandle(datHandle);
-		datHandle=INVALID_HANDLE_VALUE;
+		FileClose(datHandle);
+		datHandle=NULL;
 	}
 	SAFEDELA(memTree);
 }
 
 bool FalloutDatFile::ReadTree()
 {
-	DWORD dw,version;
-	if(SetFilePointer(datHandle,-12,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
-	if(!ReadFile(datHandle,&version,4,&dw,NULL)) return false;
+	uint version;
+	if(!FileSetPointer(datHandle,-12,SEEK_END)) return false;
+	if(!FileRead(datHandle,&version,4)) return false;
 
 	// DAT 2.1 Arcanum
 	if(version==0x44415431) // 1TAD
 	{
 		// Readed data
-		DWORD files_total,tree_size;
+		uint files_total,tree_size;
 
 		// Read info
-		if(SetFilePointer(datHandle,-4,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
-		if(!ReadFile(datHandle,&tree_size,4,&dw,NULL)) return false;
+		if(!FileSetPointer(datHandle,-4,SEEK_END)) return false;
+		if(!FileRead(datHandle,&tree_size,4)) return false;
 
 		// Read tree
-		if(SetFilePointer(datHandle,-(LONG)tree_size,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
-		if(!ReadFile(datHandle,&files_total,4,&dw,NULL)) return false;
+		if(!FileSetPointer(datHandle,-(LONG)tree_size,SEEK_END)) return false;
+		if(!FileRead(datHandle,&files_total,4)) return false;
 		tree_size-=28+4; // Subtract information block and files total
-		if((memTree=new(nothrow) BYTE[tree_size])==NULL) return false;
+		if((memTree=new(nothrow) uchar[tree_size])==NULL) return false;
 		ZeroMemory(memTree,tree_size);
-		if(!ReadFile(datHandle,memTree,tree_size,&dw,NULL)) return false;
+		if(!FileRead(datHandle,memTree,tree_size)) return false;
 
 		// Indexing tree
 		char name[MAX_FOPATH];
-		BYTE* ptr=memTree;
-		BYTE* end_ptr=memTree+tree_size;
+		uchar* ptr=memTree;
+		uchar* end_ptr=memTree+tree_size;
 		while(true)
 		{
-			DWORD fnsz=*(DWORD*)ptr; // Include zero
-			DWORD type=*(DWORD*)(ptr+4+fnsz+4);
+			uint fnsz=*(uint*)ptr; // Include zero
+			uint type=*(uint*)(ptr+4+fnsz+4);
 
 			if(fnsz>1 && fnsz<MAX_FOPATH && type!=0x400) // Not folder
 			{
 				memcpy(name,ptr+4,fnsz);
-				_strlwr_s(name);
+				_strlwr(name);
 				if(type==2) *(ptr+4+fnsz+7)=1; // Compressed
 				filesTree.insert(IndexMapVal(name,ptr+4+fnsz+7));
 			}
@@ -205,16 +203,16 @@ bool FalloutDatFile::ReadTree()
 
 	// DAT 2.0 Fallout2
 	// Readed data
-	DWORD dir_count,dat_size,files_total,tree_size;
+	uint dir_count,dat_size,files_total,tree_size;
 
 	// Read info
-	if(SetFilePointer(datHandle,-8,NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
-	if(!ReadFile(datHandle,&tree_size,4,&dw,NULL)) return false;
-	if(!ReadFile(datHandle,&dat_size,4,&dw,NULL)) return false;
+	if(!FileSetPointer(datHandle,-8,SEEK_END)) return false;
+	if(!FileRead(datHandle,&tree_size,4)) return false;
+	if(!FileRead(datHandle,&dat_size,4)) return false;
 
 	// Check for DAT1.0 Fallout1 dat file
-	if(SetFilePointer(datHandle,0,NULL,FILE_BEGIN)==INVALID_SET_FILE_POINTER) return false;
-	if(!ReadFile(datHandle,&dir_count,4,&dw,NULL)) return false;
+	if(!FileSetPointer(datHandle,0,SEEK_SET)) return false;
+	if(!FileRead(datHandle,&dir_count,4)) return false;
 	dir_count>>=24;
 	if(dir_count==0x01 || dir_count==0x33) return false;
 
@@ -222,26 +220,26 @@ bool FalloutDatFile::ReadTree()
 	if(GetFileSize(datHandle,NULL)!=dat_size) return false;
 
 	// Read tree
-	if(SetFilePointer(datHandle,-((LONG)tree_size+8),NULL,FILE_END)==INVALID_SET_FILE_POINTER) return false;
-	if(!ReadFile(datHandle,&files_total,4,&dw,NULL)) return false;
+	if(!FileSetPointer(datHandle,-((LONG)tree_size+8),SEEK_END)) return false;
+	if(!FileRead(datHandle,&files_total,4)) return false;
 	tree_size-=4;
-	if((memTree=new(nothrow) BYTE[tree_size])==NULL) return false;
+	if((memTree=new(nothrow) uchar[tree_size])==NULL) return false;
 	ZeroMemory(memTree,tree_size);
-	if(!ReadFile(datHandle,memTree,tree_size,&dw,NULL)) return false;
+	if(!FileRead(datHandle,memTree,tree_size)) return false;
 
 	// Indexing tree
 	char name[MAX_FOPATH];
-	BYTE* ptr=memTree;
-	BYTE* end_ptr=memTree+tree_size;
+	uchar* ptr=memTree;
+	uchar* end_ptr=memTree+tree_size;
 	while(true)
 	{
-		DWORD fnsz=*(DWORD*)ptr;
+		uint fnsz=*(uint*)ptr;
 
 		if(fnsz && fnsz+1<MAX_FOPATH)
 		{
 			memcpy(name,ptr+4,fnsz);
 			name[fnsz]=0;
-			_strlwr_s(name);
+			_strlwr(name);
 			filesTree.insert(IndexMapVal(name,ptr+4+fnsz));
 		}
 
@@ -252,25 +250,25 @@ bool FalloutDatFile::ReadTree()
 	return true;
 }
 
-BYTE* FalloutDatFile::OpenFile(const char* fname, DWORD& len)
+uchar* FalloutDatFile::OpenFile(const char* fname, uint& len)
 {
-	if(datHandle==INVALID_HANDLE_VALUE) return NULL;
+	if(!datHandle) return NULL;
 
 	IndexMapIt it=filesTree.find(fname);
 	if(it==filesTree.end()) return NULL;
 
-	BYTE* ptr=(*it).second;
-	BYTE type=*ptr;
-	DWORD real_size=*(DWORD*)(ptr+1);
-	DWORD packed_size=*(DWORD*)(ptr+5);
-	DWORD offset=*(DWORD*)(ptr+9);
+	uchar* ptr=(*it).second;
+	uchar type=*ptr;
+	uint real_size=*(uint*)(ptr+1);
+	uint packed_size=*(uint*)(ptr+5);
+	uint offset=*(uint*)(ptr+9);
 
 	CFile* reader=NULL;
 	if(!type) reader=new(nothrow) CPlainFile(datHandle,offset,real_size);
 	else reader=new(nothrow) C_Z_PackedFile(datHandle,offset,real_size,packed_size);
 	if(!reader) return NULL;
 
-	BYTE* buf=new(nothrow) BYTE[real_size+1];
+	uchar* buf=new(nothrow) uchar[real_size+1];
 	if(!buf)
 	{
 		delete reader;
@@ -279,7 +277,7 @@ BYTE* FalloutDatFile::OpenFile(const char* fname, DWORD& len)
 
 	if(real_size)
 	{
-		DWORD br;
+		uint br;
 		reader->read(buf,real_size,(long*)&br);
 		delete reader;
 		if(real_size!=br)
@@ -334,30 +332,29 @@ bool ZipFile::Init(const char* fname)
 	char path[MAX_FOPATH];
 	if(GetFullPathName(fname,MAX_FOPATH,path,NULL)==0)
 	{
-		WriteLog(__FUNCTION__" - Can't retrieve file full path.\n");
+		WriteLog(_FUNC_," - Can't retrieve file full path.\n");
 		return false;
 	}
 
-	HANDLE fh=CreateFile(fname,GENERIC_READ,FILE_SHARE_READ,
-		NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-	if(fh==INVALID_HANDLE_VALUE)
+	void* file=FileOpen(fname,false);
+	if(!file)
 	{
-		WriteLog(__FUNCTION__" - Cannot open file.\n");
+		WriteLog(_FUNC_," - Cannot open file.\n");
 		return false;
 	}
-	GetFileTime(fh,&timeCreate,&timeAccess,&timeWrite);
-	CloseHandle(fh);
+	GetFileTime((HANDLE)file,&timeCreate,&timeAccess,&timeWrite);
+	FileClose(file);
 
 	zipHandle=unzOpen(path);
 	if(!zipHandle)
 	{
-		WriteLog(__FUNCTION__" - Cannot open file.\n");
+		WriteLog(_FUNC_," - Cannot open file.\n");
 		return false;
 	}
 
 	if(!ReadTree())
 	{
-		WriteLog(__FUNCTION__" - Read file tree fail.\n");
+		WriteLog(_FUNC_," - Read file tree fail.\n");
 		return false;
 	}
 
@@ -389,7 +386,7 @@ bool ZipFile::ReadTree()
 
 		if(!(info.external_fa&0x10)) // Not folder
 		{
-			_strlwr_s(name);
+			_strlwr(name);
 			for(char* str=name;*str;str++) if(*str=='/') *str='\\';
 			zip_info.Pos=pos;
 			zip_info.UncompressedSize=info.uncompressed_size;
@@ -402,7 +399,7 @@ bool ZipFile::ReadTree()
 	return true;
 }
 
-BYTE* ZipFile::OpenFile(const char* fname, DWORD& len)
+uchar* ZipFile::OpenFile(const char* fname, uint& len)
 {
 	if(!zipHandle) return NULL;
 
@@ -413,7 +410,7 @@ BYTE* ZipFile::OpenFile(const char* fname, DWORD& len)
 
 	if(unzGoToFilePos(zipHandle,&info.Pos)!=UNZ_OK) return NULL;
 
-	BYTE* buf=new(nothrow) BYTE[info.UncompressedSize+1];
+	uchar* buf=new(nothrow) uchar[info.UncompressedSize+1];
 	if(!buf) return NULL;
 
 	if(unzOpenCurrentFile(zipHandle)!=UNZ_OK)
@@ -423,7 +420,7 @@ BYTE* ZipFile::OpenFile(const char* fname, DWORD& len)
 	}
 
 	int read=unzReadCurrentFile(zipHandle,buf,info.UncompressedSize);
-	if(unzCloseCurrentFile(zipHandle)!=UNZ_OK || read!=info.UncompressedSize)
+	if(unzCloseCurrentFile(zipHandle)!=UNZ_OK || read!=(int)info.UncompressedSize)
 	{
 		delete[] buf;
 		return NULL;

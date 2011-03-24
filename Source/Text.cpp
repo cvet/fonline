@@ -195,7 +195,7 @@ const char* Str::ItoA(int i)
 	return str;
 }
 
-const char* Str::DWtoA(DWORD dw)
+const char* Str::DWtoA(uint dw)
 {
 	static THREAD char str[128];
 	sprintf(str,"%u",dw);
@@ -275,9 +275,9 @@ bool Str::IsNumber(const char* str)
 	bool is_number=true;
 	size_t pos=0;
 	size_t len=strlen(str);
-	for(size_t i=0,j=len;i<j;i++,pos++) if(str[i]!=' ' && str[i]!='\t') break;
+	for(uint i=0,j=len;i<j;i++,pos++) if(str[i]!=' ' && str[i]!='\t') break;
 	if(pos>=len) is_number=false; // Empty string
-	for(size_t i=pos,j=len;i<j;i++,pos++)
+	for(uint i=pos,j=len;i<j;i++,pos++)
 	{
 		if(!((str[i]>='0' && str[i]<='9') || (i==0 && str[i]=='-')))
 		{
@@ -300,39 +300,39 @@ bool Str::StrToInt(const char* str, int& i)
 	return false;
 }
 
-DwordStrMap NamesHash;
-DWORD Str::GetHash(const char* str)
+UIntStrMap NamesHash;
+uint Str::GetHash(const char* str)
 {
 	if(!str) return 0;
 
 	char str_[MAX_FOPATH];
 	StringCopy(str_,str);
 	Str::Lwr(str_);
-	DWORD len=0;
+	uint len=0;
 	for(char* s=str_;*s;s++,len++) if(*s=='/') *s='\\';
 
 	EraseFrontBackSpecificChars(str_);
 
-	return Crypt.Crc32((BYTE*)str_,len);
+	return Crypt.Crc32((uchar*)str_,len);
 }
 
-const char* Str::GetName(DWORD hash)
+const char* Str::GetName(uint hash)
 {
 	if(!hash) return NULL;
 
-	DwordStrMapIt it=NamesHash.find(hash);
+	UIntStrMapIt it=NamesHash.find(hash);
 	return it!=NamesHash.end()?(*it).second.c_str():NULL;
 }
 
 void Str::AddNameHash(const char* name)
 {
-	DWORD hash=GetHash(name);
+	uint hash=GetHash(name);
 
-	DwordStrMapIt it=NamesHash.find(hash);
+	UIntStrMapIt it=NamesHash.find(hash);
 	if(it==NamesHash.end())
-		NamesHash.insert(DwordStrMapVal(hash,name));
+		NamesHash.insert(UIntStrMapVal(hash,name));
 	else if(_stricmp(name,(*it).second.c_str()))
-		WriteLog(__FUNCTION__" - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",name,(*it).second.c_str(),hash);
+		WriteLog(_FUNC_," - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",name,(*it).second.c_str(),hash);
 }
 
 /************************************************************************/
@@ -372,7 +372,7 @@ bool IniParser::LoadFile(const char* fname, int path_type)
 	return true;
 }
 
-bool IniParser::LoadFilePtr(const char* buf, DWORD len)
+bool IniParser::LoadFilePtr(const char* buf, uint len)
 {
 	UnloadFile();
 
@@ -389,7 +389,7 @@ bool IniParser::AppendToBegin(const char* fname, int path_type)
 {
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return false;
-	DWORD len=fm.GetFsize();
+	uint len=fm.GetFsize();
 	char* buf=(char*)fm.ReleaseBuffer();
 
 	char* grow_buf=new char[bufLen+len+1];
@@ -409,7 +409,7 @@ bool IniParser::AppendToEnd(const char* fname, int path_type)
 {
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return false;
-	DWORD len=fm.GetFsize();
+	uint len=fm.GetFsize();
 	char* buf=(char*)fm.ReleaseBuffer();
 
 	char* grow_buf=new char[bufLen+len+1];
@@ -425,7 +425,7 @@ bool IniParser::AppendToEnd(const char* fname, int path_type)
 	return true;
 }
 
-bool IniParser::AppendPtrToBegin(const char* buf, DWORD len)
+bool IniParser::AppendPtrToBegin(const char* buf, uint len)
 {
 	char* grow_buf=new char[bufLen+len+1];
 	memcpy(grow_buf,buf,len);
@@ -453,15 +453,15 @@ char* IniParser::GetBuffer()
 	return bufPtr;
 }
 
-void IniParser::GotoEol(DWORD& iter)
+void IniParser::GotoEol(uint& iter)
 {
 	for(;iter<bufLen;++iter)
 		if(bufPtr[iter]=='\n') return;
 }
 
-bool IniParser::GotoApp(const char* app_name, DWORD& iter)
+bool IniParser::GotoApp(const char* app_name, uint& iter)
 {
-	DWORD j;
+	uint j;
 	for(;iter<bufLen;++iter)
 	{
 		// Skip white spaces and tabs
@@ -493,9 +493,9 @@ label_NextLine:
 	return false;
 }
 
-bool IniParser::GotoKey(const char* key_name, DWORD& iter)
+bool IniParser::GotoKey(const char* key_name, uint& iter)
 {
-	DWORD j;
+	uint j;
 	for(;iter<bufLen;++iter)
 	{
 		if(bufPtr[iter]==STR_PRIVATE_APP_BEGIN) return false;
@@ -533,7 +533,7 @@ label_NextLine:
 	return false;
 }
 
-bool IniParser::GetPos(const char* app_name, const char* key_name, DWORD& iter)
+bool IniParser::GetPos(const char* app_name, const char* key_name, uint& iter)
 {
 	// Check
 	if(!key_name || !key_name[0]) return false;
@@ -558,11 +558,11 @@ int IniParser::GetInt(const char* app_name, const char* key_name, int def_val)
 	if(!bufPtr) return def_val;
 
 	// Get pos
-	DWORD iter;
+	uint iter;
 	if(!GetPos(app_name,key_name,iter)) return def_val;
 
 	// Read number
-	DWORD j;
+	uint j;
 	char num[64];
 	for(j=0;iter<bufLen;++iter,++j)
 	{
@@ -585,12 +585,13 @@ int IniParser::GetInt(const char* key_name, int def_val)
 
 bool IniParser::GetStr(const char* app_name, const char* key_name, const char* def_val, char* ret_buf, char end /* = 0 */)
 {
+    uint iter=0,j=0;
+
 	// Check
-	if(!ret_buf) return false;
+	if(!ret_buf) goto label_DefVal;
 	if(!bufPtr) goto label_DefVal;
 
 	// Get pos
-	DWORD iter=0;
 	if(!GetPos(app_name,key_name,iter)) goto label_DefVal;
 
 	// Skip white spaces and tabs
@@ -598,7 +599,6 @@ bool IniParser::GetStr(const char* app_name, const char* key_name, const char* d
 	if(iter>=bufLen) goto label_DefVal;
 
 	// Read string
-	DWORD j=0;
 	for(;iter<bufLen && bufPtr[iter];++iter)
 	{
 		if(end)
@@ -646,14 +646,14 @@ bool IniParser::GetStr(const char* key_name, const char* def_val, char* ret_buf,
 bool IniParser::IsApp(const char* app_name)
 {
 	if(!bufPtr) return false;
-	DWORD iter=0;
+	uint iter=0;
 	return GotoApp(app_name,iter);
 }
 
 bool IniParser::IsKey(const char* app_name, const char* key_name)
 {
 	if(!bufPtr) return false;
-	DWORD iter=0;
+	uint iter=0;
 	return GetPos(app_name,key_name,iter);
 }
 
@@ -667,11 +667,11 @@ char* IniParser::GetApp(const char* app_name)
 	if(!bufPtr) return NULL;
 	if(!app_name) return NULL;
 
-	DWORD iter=0;
+	uint iter=0;
 	if(lastAppPos && !strcmp(app_name,lastApp)) iter=lastAppPos;
 	else if(!GotoApp(app_name,iter)) return NULL;
 
-	DWORD i=iter,len=0;
+	uint i=iter,len=0;
 	for(;i<bufLen;i++,len++) if(i>0 && bufPtr[i-1]=='\n' && bufPtr[i]==STR_PRIVATE_APP_BEGIN) break;
 	for(;len;i--,len--) if(i>0 && bufPtr[i-1]!='\n' && bufPtr[i-1]!='\r') break;
 
@@ -690,7 +690,7 @@ bool IniParser::GotoNextApp(const char* app_name)
 void IniParser::GetAppLines(StrVec& lines)
 {
 	if(!bufPtr) return;
-	int i=lastAppPos,len=0;
+	uint i=lastAppPos,len=0;
 	for(;i<bufLen;i++,len++) if(i>0 && bufPtr[i-1]=='\n' && bufPtr[i]==STR_PRIVATE_APP_BEGIN) break;
 	for(;len;i--,len--) if(i>0 && bufPtr[i-1]!='\n' && bufPtr[i-1]!='\r') break;
 
@@ -770,8 +770,8 @@ FOMsg::FOMsg()
 
 FOMsg& FOMsg::operator+=(const FOMsg& r)
 {
-	DwordStrMulMap::const_iterator it=r.strData.begin();
-	DwordStrMulMap::const_iterator end=r.strData.end();
+	UIntStrMulMap::const_iterator it=r.strData.begin();
+	UIntStrMulMap::const_iterator end=r.strData.end();
 	it++; // skip FOMSG_ERRNUM
 	for(;it!=end;++it)
 	{
@@ -782,25 +782,25 @@ FOMsg& FOMsg::operator+=(const FOMsg& r)
 	return *this;
 }
 
-void FOMsg::AddStr(DWORD num, const char* str)
+void FOMsg::AddStr(uint num, const char* str)
 {
 	if(num==FOMSG_ERRNUM) return;
-	if(!str || !strlen(str)) strData.insert(DwordStrMulMapVal(num," "));
-	else strData.insert(DwordStrMulMapVal(num,str));
+	if(!str || !strlen(str)) strData.insert(UIntStrMulMapVal(num," "));
+	else strData.insert(UIntStrMulMapVal(num,str));
 }
 
-void FOMsg::AddStr(DWORD num, const string& str)
+void FOMsg::AddStr(uint num, const string& str)
 {
 	if(num==FOMSG_ERRNUM) return;
-	if(!str.length()) strData.insert(DwordStrMulMapVal(num," "));
-	else strData.insert(DwordStrMulMapVal(num,str));
+	if(!str.length()) strData.insert(UIntStrMulMapVal(num," "));
+	else strData.insert(UIntStrMulMapVal(num,str));
 }
 
-void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
+void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
 {
 	CharVec str;
 	str.reserve(len*2+1);
-	for(int i=0;i<len;i++)
+	for(uint i=0;i<len;i++)
 	{
 		char c=(char)binary[i];
 		if(c==0 || c=='}')
@@ -819,18 +819,18 @@ void FOMsg::AddBinary(DWORD num, const BYTE* binary, DWORD len)
 	AddStr(num,(char*)&str[0]);
 }
 
-DWORD FOMsg::AddStr(const char* str)
+uint FOMsg::AddStr(const char* str)
 {
-	DWORD i=Random(100000000,999999999);
+	uint i=Random(100000000,999999999);
 	if(strData.count(i)) return AddStr(str);
 	AddStr(i,str);
 	return i;
 }
 
-const char* FOMsg::GetStr(DWORD num)
+const char* FOMsg::GetStr(uint num)
 {
-	DWORD str_count=strData.count(num);
-	DwordStrMulMapIt it=strData.find(num);
+	uint str_count=strData.count(num);
+	UIntStrMulMapIt it=strData.find(num);
 
 	switch(str_count)
 	{
@@ -842,35 +842,35 @@ const char* FOMsg::GetStr(DWORD num)
 	return (*it).second.c_str();
 }
 
-const char* FOMsg::GetStr(DWORD num, DWORD skip)
+const char* FOMsg::GetStr(uint num, uint skip)
 {
-	DWORD str_count=strData.count(num);
-	DwordStrMulMapIt it=strData.find(num);
+	uint str_count=strData.count(num);
+	UIntStrMulMapIt it=strData.find(num);
 
 	if(skip>=str_count) return (*strData.begin()).second.c_str(); // give FOMSG_ERRNUM
-	for(int i=0;i<skip;i++) ++it;
+	for(uint i=0;i<skip;i++) ++it;
 
 	return (*it).second.c_str();
 }
 
-DWORD FOMsg::GetStrNumUpper(DWORD num)
+uint FOMsg::GetStrNumUpper(uint num)
 {
-	DwordStrMulMapIt it=strData.upper_bound(num);
+	UIntStrMulMapIt it=strData.upper_bound(num);
 	if(it==strData.end()) return 0;
 	return (*it).first;
 }
 
-DWORD FOMsg::GetStrNumLower(DWORD num)
+uint FOMsg::GetStrNumLower(uint num)
 {
-	DwordStrMulMapIt it=strData.lower_bound(num);
+	UIntStrMulMapIt it=strData.lower_bound(num);
 	if(it==strData.end()) return 0;
 	return (*it).first;
 }
 
-int FOMsg::GetInt(DWORD num)
+int FOMsg::GetInt(uint num)
 {
-	DWORD str_count=strData.count(num);
-	DwordStrMulMapIt it=strData.find(num);
+	uint str_count=strData.count(num);
+	UIntStrMulMapIt it=strData.find(num);
 
 	switch(str_count)
 	{
@@ -882,12 +882,12 @@ int FOMsg::GetInt(DWORD num)
 	return atoi((*it).second.c_str());
 }
 
-const BYTE* FOMsg::GetBinary(DWORD num, DWORD& len)
+const uchar* FOMsg::GetBinary(uint num, uint& len)
 {
 	if(!Count(num)) return NULL;
 
-	static THREAD ByteVec* binary=NULL;
-	if(!binary) binary=new(nothrow) ByteVec();
+	static THREAD UCharVec* binary=NULL;
+	if(!binary) binary=new(nothrow) UCharVec();
 
 	const char* str=GetStr(num);
 	binary->clear();
@@ -902,24 +902,24 @@ const BYTE* FOMsg::GetBinary(DWORD num, DWORD& len)
 	return &(*binary)[0];
 }
 
-int FOMsg::Count(DWORD num)
+int FOMsg::Count(uint num)
 {
 	return !num?0:strData.count(num);
 }
 
-void FOMsg::EraseStr(DWORD num)
+void FOMsg::EraseStr(uint num)
 {
 	if(num==FOMSG_ERRNUM) return;
 
 	while(true)
 	{
-		DwordStrMulMapIt it=strData.find(num);
+		UIntStrMulMapIt it=strData.find(num);
 		if(it!=strData.end()) strData.erase(it);
 		else break;
 	}
 }
 
-DWORD FOMsg::GetSize()
+uint FOMsg::GetSize()
 {
 	return strData.size()-1;
 }
@@ -930,14 +930,14 @@ void FOMsg::CalculateHash()
 #ifdef FONLINE_SERVER
 	toSend.clear();
 #endif
-	DwordStrMulMapIt it=strData.begin();
-	DwordStrMulMapIt end=strData.end();
+	UIntStrMulMapIt it=strData.begin();
+	UIntStrMulMapIt end=strData.end();
 	it++; // skip FOMSG_ERRNUM
 	for(;it!=end;++it)
 	{
-		DWORD num=(*it).first;
+		uint num=(*it).first;
 		string& str=(*it).second;
-		DWORD str_len=(DWORD)str.size();
+		uint str_len=(uint)str.size();
 
 #ifdef FONLINE_SERVER
 		toSend.resize(toSend.size()+sizeof(num)+sizeof(str_len)+str_len);
@@ -946,18 +946,18 @@ void FOMsg::CalculateHash()
 		memcpy(&toSend[toSend.size()-str_len],(void*)str.c_str(),str_len);
 #endif
 
-		Crypt.Crc32((BYTE*)&num,sizeof(num),strDataHash);
-		Crypt.Crc32((BYTE*)&str_len,sizeof(str_len),strDataHash);
-		Crypt.Crc32((BYTE*)str.c_str(),str_len,strDataHash);
+		Crypt.Crc32((uchar*)&num,sizeof(num),strDataHash);
+		Crypt.Crc32((uchar*)&str_len,sizeof(str_len),strDataHash);
+		Crypt.Crc32((uchar*)str.c_str(),str_len,strDataHash);
 	}
 }
 
-DWORD FOMsg::GetHash()
+uint FOMsg::GetHash()
 {
 	return strDataHash;
 }
 
-DwordStrMulMap& FOMsg::GetData()
+UIntStrMulMap& FOMsg::GetData()
 {
 	return strData;
 }
@@ -968,9 +968,9 @@ const char* FOMsg::GetToSend()
 	return &toSend[0];
 }
 
-DWORD FOMsg::GetToSendLen()
+uint FOMsg::GetToSendLen()
 {
-	return (DWORD)toSend.size();
+	return (uint)toSend.size();
 }
 #endif
 
@@ -981,9 +981,9 @@ int FOMsg::LoadMsgStream(CharVec& stream)
 
 	if(!stream.size()) return 0;
 
-	DWORD pos=0;
-	DWORD num=0;
-	DWORD len=0;
+	uint pos=0;
+	uint num=0;
+	uint len=0;
 	string str;
 	while(true)
 	{
@@ -994,12 +994,12 @@ int FOMsg::LoadMsgStream(CharVec& stream)
 		if(pos+sizeof(len)>stream.size()) break;
 		memcpy(&len,&stream[pos],sizeof(len));
 		pos+=sizeof(len);
-	
+
 		if(pos+len>stream.size()) break;
 		str.resize(len);
 		memcpy(&str[0],&stream[pos],len); //!!!
 		pos+=len;
-		
+
 		AddStr(num,str);
 	}
 	return GetSize();
@@ -1011,13 +1011,13 @@ int FOMsg::LoadMsgFile(const char* fname, int path_type)
 	Clear();
 
 #ifdef FONLINE_CLIENT
-	DWORD buf_len;
+	uint buf_len;
 	char* buf=(char*)Crypt.GetCache(fname,buf_len);
 	if(!buf) return -1;
 #else
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return -2;
-	DWORD buf_len=fm.GetFsize();
+	uint buf_len=fm.GetFsize();
 	char* buf=(char*)fm.ReleaseBuffer();
 #endif
 
@@ -1063,20 +1063,20 @@ int FOMsg::LoadMsgFile(const char* fname, int path_type)
 //  	FOnline.exe!_WinMain@16()  + 0x205 bytes	C++
 // >	FOnline.exe!__tmainCRTStartup()  Line 263 + 0x1b bytes	C
 
-int FOMsg::LoadMsgFileBuf(char* data, DWORD data_len)
+int FOMsg::LoadMsgFileBuf(char* data, uint data_len)
 {
 	Clear();
 
 #ifdef FONLINE_CLIENT
-	char* buf=(char*)Crypt.Uncompress((BYTE*)data,data_len,10);
+	char* buf=(char*)Crypt.Uncompress((uchar*)data,data_len,10);
 	if(!buf) return -3;
 #else
 	char* buf=data;
-	DWORD last_num=0;
+	uint last_num=0;
 #endif
 
 	char* pbuf=buf;
-	for(DWORD i=0;*pbuf && i<data_len;i++)
+	for(uint i=0;*pbuf && i<data_len;i++)
 	{
 		// Find '{' in begin of line
 		if(*pbuf!='{')
@@ -1090,7 +1090,7 @@ int FOMsg::LoadMsgFileBuf(char* data, DWORD data_len)
 		if(!*pbuf) break;
 
 		// atoi
-		DWORD num_info=(DWORD)_atoi64(pbuf);
+		uint num_info=(uint)_atoi64(pbuf);
 		if(!num_info)
 		{
 			Str::SkipLine(pbuf);
@@ -1102,7 +1102,7 @@ int FOMsg::LoadMsgFileBuf(char* data, DWORD data_len)
 		Str::GoTo(pbuf,'{',true);
 		if(!*pbuf) break;
 
-		// Find '}'	
+		// Find '}'
 		char* _pbuf=pbuf;
 		Str::GoTo(pbuf,'}');
 		if(!*pbuf) break;
@@ -1111,7 +1111,7 @@ int FOMsg::LoadMsgFileBuf(char* data, DWORD data_len)
 #ifndef FONLINE_CLIENT
 		if(num_info<last_num)
 		{
-			WriteLog(__FUNCTION__" - Error string id, cur<%u>, last<%u>\n",num_info,last_num);
+			WriteLog(_FUNC_," - Error string id, cur<%u>, last<%u>\n",num_info,last_num);
 			return -4;
 		}
 		last_num=num_info;
@@ -1134,7 +1134,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 	FileManager fm;
 #endif
 
-	DwordStrMulMapIt it=strData.begin();
+	UIntStrMulMapIt it=strData.begin();
 	it++; //skip FOMSG_ERRNUM
 
 	string str;
@@ -1148,12 +1148,12 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 	}
 
 	char* buf=(char*)str.c_str();
-	DWORD buf_len=str.length();
+	uint buf_len=str.length();
 
 #ifdef FONLINE_CLIENT
-	buf=(char*)Crypt.Compress((BYTE*)buf,buf_len);
+	buf=(char*)Crypt.Compress((uchar*)buf,buf_len);
 	if(!buf) return -2;
-	Crypt.SetCache(fname,(BYTE*)buf,buf_len);
+	Crypt.SetCache(fname,(uchar*)buf,buf_len);
 	delete[] buf;
 #else
 	fm.SetData(buf,buf_len);
@@ -1166,7 +1166,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 void FOMsg::Clear()
 {
 	strData.clear();
-	strData.insert(DwordStrMapVal(FOMSG_ERRNUM,string("error")));
+	strData.insert(UIntStrMapVal(FOMSG_ERRNUM,string("error")));
 
 #ifdef FONLINE_SERVER
 	toSend.clear();
@@ -1188,7 +1188,7 @@ int LanguagePack::LoadAll()
 	// Loading All MSG files
 	if(!Name)
 	{
-		WriteLog(__FUNCTION__" - Lang Pack is not initialized.\n");
+		WriteLog(_FUNC_," - Lang Pack is not initialized.\n");
 		return -1;
 	}
 
@@ -1198,7 +1198,7 @@ int LanguagePack::LoadAll()
 		if(Msg[i].LoadMsgFile(Str::Format("%s\\%s",NameStr,TextMsgFileName[i]),PathType)<0)
 		{
 			count_fail++;
-			WriteLog(__FUNCTION__" - Unable to load MSG<%s>.\n",TextMsgFileName[i]);
+			WriteLog(_FUNC_," - Unable to load MSG<%s>.\n",TextMsgFileName[i]);
 		}
 	}
 

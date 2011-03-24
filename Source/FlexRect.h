@@ -69,7 +69,6 @@ struct FlexPoint
 typedef FlexPoint<int> INTPOINT;
 typedef FlexPoint<float> FLTPOINT;
 
-
 template<typename Ty>
 FlexRect<Ty> AverageFlexRect(const FlexRect<Ty>& r1, const FlexRect<Ty> r2, int procent)
 {

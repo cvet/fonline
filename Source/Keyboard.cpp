@@ -123,7 +123,7 @@ void Keyb::Lost()
 	ZeroMemory(KeyPressed,sizeof(KeyPressed));
 }
 
-void Keyb::GetChar(BYTE dik, string& str, int* position, int max, int flags)
+void Keyb::GetChar(uchar dik, string& str, int* position, int max, int flags)
 {
 	char str2[0x4000];
 	StringCopy(str2,str.c_str());
@@ -131,7 +131,7 @@ void Keyb::GetChar(BYTE dik, string& str, int* position, int max, int flags)
 	str=str2;
 }
 
-void Keyb::GetChar(BYTE dik, char* str, int* position, int max, int flags)
+void Keyb::GetChar(uchar dik, char* str, int* position, int max, int flags)
 {
 	if(AltDwn) return;
 	bool ctrl_shift=(CtrlDwn || ShiftDwn);
@@ -282,7 +282,7 @@ void Keyb::EraseInvalidChars(char* str, int flags)
 	}
 }
 
-bool Keyb::IsInvalidSymbol(char c, DWORD flags)
+bool Keyb::IsInvalidSymbol(char c, uint flags)
 {
 	if(flags&KIF_NO_SPEC_SYMBOLS && (c=='\n' || c=='\r' || c=='\t')) return true;
 	if(flags&KIF_ONLY_NUMBERS && !(c>='0' && c<='9')) return true;

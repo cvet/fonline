@@ -224,7 +224,7 @@ int CScriptFile::Open(const CScriptString &filename, const CScriptString &mode)
     if (!apppath[0])
     {
         GetModuleFileName(NULL, apppath, MAX_PATH);
-        
+
         int appLen = _tcslen(apppath);
         while (appLen > 1)
         {
@@ -287,7 +287,7 @@ int CScriptFile::GetPos() const
 
 	return ftell(file);
 }
- 
+
 int CScriptFile::SetPos(int pos)
 {
 	if( file == 0 )
@@ -317,7 +317,7 @@ int CScriptFile::ReadString(unsigned int length, CScriptString &str)
 
 	// Read the string
 	str.resize(length);
-	int size = (int)fread((void*)str.c_str(), 1, length, file); 
+	int size = (int)fread((void*)str.c_str(), 1, length, file);
 	str.resize(size);
 
 	return size;
@@ -330,7 +330,7 @@ CScriptString* CScriptFile::ReadWord()
 
 	// Read the string
 	char buf[1024];
-	fscanf_s(file,"%s",buf);
+	fscanf(file,"%s",buf);
 	return new CScriptString(buf);
 }
 
@@ -341,7 +341,7 @@ int CScriptFile::ReadNumber()
 
 	// Read the string
 	int result=0;
-	fscanf_s(file,"%d",&result);
+	fscanf(file,"%d",&result);
 	return result;
 }
 
@@ -364,7 +364,7 @@ int CScriptFile::ReadLine(CScriptString &str)
 
 		// Read the line (or first 255 characters, which ever comes first)
 		fgets(buf, 256, file);
-		
+
 		// Get the position after the read
 		int end = ftell(file);
 

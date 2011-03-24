@@ -11,7 +11,6 @@
 
 #define GLOBAL_CONTEXT_STACK_SIZE      (10)
 #define CONTEXT_BUFFER_SIZE            (512)
-#define CALL_FUNC_STR                  __FUNCTION__" : "
 
 typedef void(*EndExecutionCallback)();
 
@@ -36,7 +35,7 @@ namespace Script
 
 	void UnloadScripts();
 	bool ReloadScripts(const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL);
-	bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, DWORD bind_func_count);
+	bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, uint bind_func_count);
 
 	void AddRef(void*); // Dummy
 	void Release(void*); // Dummy
@@ -57,15 +56,15 @@ namespace Script
 	asIScriptModule* CreateModule(const char* module_name);
 
 #ifdef FONLINE_SERVER
-	DWORD GetGCStatistics();
+	uint GetGCStatistics();
 	void ScriptGarbager();
 	void CollectGarbage(asDWORD flags = asGC_FULL_CYCLE);
 #else
-	void SetGarbageCollectTime(DWORD ticks);
+	void SetGarbageCollectTime(uint ticks);
 	void CollectGarbage(bool force = true);
 #endif
 
-	void SetRunTimeout(DWORD suspend_timeout, DWORD message_timeout);
+	void SetRunTimeout(uint suspend_timeout, uint message_timeout);
 
 	void SetScriptsPath(int path_type);
 	void Define(const char* def);
@@ -73,7 +72,7 @@ namespace Script
 	char* Preprocess(const char* fname, bool process_pragmas);
 	void CallPragmas(const StrVec& pragmas);
 	bool LoadScript(const char* module_name, const char* source, bool skip_binary, const char* file_pefix = NULL);
-	bool LoadScript(const char* module_name, const BYTE* bytecode, DWORD len);
+	bool LoadScript(const char* module_name, const uchar* bytecode, uint len);
 
 	int BindImportedFunctions();
 	int Bind(const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false);
@@ -82,10 +81,10 @@ namespace Script
 	bool ReparseScriptName(const char* script_name, char* module_name, char* func_name, bool disable_log = false);
 
 	const StrVec& GetScriptFuncCache();
-	void ResizeCache(DWORD count);
-	DWORD GetScriptFuncNum(const char* script_name, const char* decl);
-	int GetScriptFuncBindId(DWORD func_num);
-	string GetScriptFuncName(DWORD func_num);
+	void ResizeCache(uint count);
+	uint GetScriptFuncNum(const char* script_name, const char* decl);
+	int GetScriptFuncBindId(uint func_num);
+	string GetScriptFuncName(uint func_num);
 
 	// Script execution
 	void BeginExecution();
@@ -93,14 +92,14 @@ namespace Script
 	void AddEndExecutionCallback(EndExecutionCallback func);
 
 	bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info);
-	void SetArgWord(WORD w);
-	void SetArgDword(DWORD dw);
-	void SetArgByte(BYTE b);
-	void SetArgBool(bool bl);
-	void SetArgObject(void* obj);
-	void SetArgAddress(void* addr);
+	void SetArgUShort(ushort value);
+	void SetArgUInt(uint value);
+	void SetArgUChar(uchar value);
+	void SetArgBool(bool value);
+	void SetArgObject(void* value);
+	void SetArgAddress(void* value);
 	bool RunPrepared();
-	DWORD GetReturnedDword();
+	uint GetReturnedUInt();
 	bool GetReturnedBool();
 	void* GetReturnedObject();
 
@@ -112,7 +111,7 @@ namespace Script
 	void EndLog();
 	void Log(const char* str);
 	void LogA(const char* str);
-	void LogError(const char* error);
+	void LogError(const char* call_func, const char* error);
 	void SetLogDebugInfo(bool enabled);
 
 	void CallbackMessage(const asSMessageInfo* msg, void* param);
@@ -128,7 +127,7 @@ namespace Script
 		{
 			asUINT i=arr->GetSize();
 			arr->Resize(arr->GetSize()+vec.size());
-			for(size_t k=0,l=vec.size();k<l;k++,i++)
+			for(uint k=0,l=vec.size();k<l;k++,i++)
 			{
 				Type* p=(Type*)arr->At(i);
 				*p=vec[k];
@@ -142,7 +141,7 @@ namespace Script
 		{
 			asUINT i=arr->GetSize();
 			arr->Resize(arr->GetSize()+vec.size());
-			for(size_t k=0,l=vec.size();k<l;k++,i++)
+			for(uint k=0,l=vec.size();k<l;k++,i++)
 			{
 				Type* p=(Type*)arr->At(i);
 				*p=vec[k];

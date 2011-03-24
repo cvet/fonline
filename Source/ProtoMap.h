@@ -18,36 +18,36 @@ class ProtoMap;
 class MapObject // Available in fonline.h
 {
 public:
-	BYTE MapObjType;
-	WORD ProtoId;
-	WORD MapX;
-	WORD MapY;
+	uchar MapObjType;
+	ushort ProtoId;
+	ushort MapX;
+	ushort MapY;
 	short Dir;
 
-	DWORD UID;
-	DWORD ContainerUID;
-	DWORD ParentUID;
-	DWORD ParentChildIndex;
+	uint UID;
+	uint ContainerUID;
+	uint ParentUID;
+	uint ParentChildIndex;
 
-	DWORD LightColor;
-	BYTE LightDay;
-	BYTE LightDirOff;
-	BYTE LightDistance;
+	uint LightColor;
+	uchar LightDay;
+	uchar LightDirOff;
+	uchar LightDistance;
 	char LightIntensity;
 
 	char ScriptName[MAPOBJ_SCRIPT_NAME+1];
 	char FuncName[MAPOBJ_SCRIPT_NAME+1];
 
-	DWORD Reserved[7];
+	uint Reserved[7];
 	int UserData[10];
 
 	union
 	{
 		struct
 		{
-			BYTE Cond;
-			DWORD Anim1;
-			DWORD Anim2;
+			uchar Cond;
+			uint Anim1;
+			uint Anim2;
 			short ParamIndex[MAPOBJ_CRITTER_PARAMS];
 			int ParamValue[MAPOBJ_CRITTER_PARAMS];
 		} MCritter;
@@ -56,26 +56,26 @@ public:
 		{
 			short OffsetX;
 			short OffsetY;
-			BYTE AnimStayBegin;
-			BYTE AnimStayEnd;
-			WORD AnimWait;
-			BYTE InfoOffset;
-			DWORD PicMapHash;
-			DWORD PicInvHash;
+			uchar AnimStayBegin;
+			uchar AnimStayEnd;
+			ushort AnimWait;
+			uchar InfoOffset;
+			uint PicMapHash;
+			uint PicInvHash;
 
-			DWORD Count;
-			BYTE ItemSlot;
+			uint Count;
+			uchar ItemSlot;
 
-			BYTE BrokenFlags;
-			BYTE BrokenCount;
-			WORD Deterioration;
+			uchar BrokenFlags;
+			uchar BrokenCount;
+			ushort Deterioration;
 
-			WORD AmmoPid;
-			DWORD AmmoCount;
+			ushort AmmoPid;
+			uint AmmoCount;
 
-			DWORD LockerDoorId;
-			WORD LockerCondition;
-			WORD LockerComplexity;
+			uint LockerDoorId;
+			ushort LockerCondition;
+			ushort LockerComplexity;
 
 			short TrapValue;
 
@@ -86,25 +86,25 @@ public:
 		{
 			short OffsetX;
 			short OffsetY;
-			BYTE AnimStayBegin;
-			BYTE AnimStayEnd;
-			WORD AnimWait;
-			BYTE InfoOffset;
-			DWORD PicMapHash;
-			DWORD PicInvHash;
+			uchar AnimStayBegin;
+			uchar AnimStayEnd;
+			ushort AnimWait;
+			uchar InfoOffset;
+			uint PicMapHash;
+			uint PicInvHash;
 
 			bool CanUse;
 			bool CanTalk;
-			DWORD TriggerNum;
+			uint TriggerNum;
 
-			BYTE ParamsCount;
+			uchar ParamsCount;
 			int Param[5];
 
-			WORD ToMapPid;
-			DWORD ToEntire;
-			BYTE ToDir;
+			ushort ToMapPid;
+			uint ToEntire;
+			uchar ToDir;
 
-			BYTE SpriteCut;
+			uchar SpriteCut;
 		} MScenery;
 	};
 
@@ -112,7 +112,7 @@ public:
 	{
 #ifdef FONLINE_MAPPER
 		ProtoMap* FromMap;
-		DWORD MapObjId;
+		uint MapObjId;
 		char PicMapName[64];
 		char PicInvName[64];
 #endif
@@ -125,7 +125,7 @@ public:
 	MapObject(){ZeroMemory(this,sizeof(MapObject)); RunTime.RefCounter=1;}
 	MapObject(const MapObject& r){memcpy(this,&r,sizeof(MapObject)); RunTime.RefCounter=1;}
 	MapObject& operator=(const MapObject& r){memcpy(this,&r,sizeof(MapObject)); RunTime.RefCounter=1; return *this;}
-	
+
 	void AddRef(){++RunTime.RefCounter;}
 	void Release(){if(!--RunTime.RefCounter) delete this;}
 };
@@ -136,24 +136,24 @@ typedef vector<MapObject>::iterator MapObjectVecIt;
 
 struct SceneryCl
 {
-	WORD ProtoId;
-	BYTE Flags;
-	BYTE SpriteCut;
-	WORD MapX;
-	WORD MapY;
+	ushort ProtoId;
+	uchar Flags;
+	uchar SpriteCut;
+	ushort MapX;
+	ushort MapY;
 	short OffsetX;
 	short OffsetY;
-	DWORD LightColor;
-	BYTE LightDistance;
-	BYTE LightFlags;
+	uint LightColor;
+	uchar LightDistance;
+	uchar LightFlags;
 	char LightIntensity;
-	BYTE InfoOffset;
-	BYTE AnimStayBegin;
-	BYTE AnimStayEnd;
-	WORD AnimWait;
-	DWORD PicMapHash;
+	uchar InfoOffset;
+	uchar AnimStayBegin;
+	uchar AnimStayEnd;
+	ushort AnimWait;
+	uint PicMapHash;
 	short Dir;
-	WORD Reserved1;
+	ushort Reserved1;
 };
 typedef vector<SceneryCl> SceneryClVec;
 
@@ -163,40 +163,40 @@ public:
 	// Header
 	struct
 	{
-		DWORD Version;
-		WORD MaxHexX,MaxHexY;
+		uint Version;
+		ushort MaxHexX,MaxHexY;
 		int WorkHexX,WorkHexY;
 		char ScriptModule[MAX_SCRIPT_NAME+1];
 		char ScriptFunc[MAX_SCRIPT_NAME+1];
 		int Time;
 		bool NoLogOut;
 		int DayTime[4];
-		BYTE DayColor[12];
+		uchar DayColor[12];
 
 		// Deprecated
-		WORD HeaderSize;
+		ushort HeaderSize;
 		bool Packed;
-		DWORD UnpackedDataLen;
+		uint UnpackedDataLen;
 	} Header;
 
 	// Objects
 	MapObjectPtrVec MObjects;
-	DWORD LastObjectUID;
+	uint LastObjectUID;
 
 	// Tiles
 	struct Tile // 12 bytes
 	{
-		DWORD NameHash;
-		WORD HexX,HexY;
+		uint NameHash;
+		ushort HexX,HexY;
 		char OffsX,OffsY;
-		BYTE Layer;
+		uchar Layer;
 		bool IsRoof;
 #ifdef FONLINE_MAPPER
 		bool IsSelected;
 #endif
 
-		Tile(){}
-		Tile(DWORD name, WORD hx, WORD hy, char ox, char oy, BYTE layer, bool is_roof):
+		Tile(){ZeroMemory(this,sizeof(Tile));}
+		Tile(uint name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof):
 			NameHash(name),HexX(hx),HexY(hy),OffsX(ox),OffsY(oy),Layer(layer),IsRoof(is_roof){}
 	};
 	typedef vector<Tile> TileVec;
@@ -206,7 +206,7 @@ public:
 	typedef vector<TileVec> TileVecVec;
 	TileVecVec TilesField;
 	TileVecVec RoofsField;
-	TileVec& GetTiles(WORD hx, WORD hy, bool is_roof){return is_roof?RoofsField[hy*Header.MaxHexX+hx]:TilesField[hy*Header.MaxHexX+hx];}
+	TileVec& GetTiles(ushort hx, ushort hy, bool is_roof){return is_roof?RoofsField[hy*Header.MaxHexX+hx]:TilesField[hy*Header.MaxHexX+hx];}
 #endif
 
 private:
@@ -223,15 +223,15 @@ public:
 	// To Client
 	SceneryClVec WallsToSend;
 	SceneryClVec SceneriesToSend;
-	DWORD HashTiles;
-	DWORD HashWalls;
-	DWORD HashScen;
+	uint HashTiles;
+	uint HashWalls;
+	uint HashScen;
 
 	MapObjectPtrVec CrittersVec;
 	MapObjectPtrVec ItemsVec;
 	MapObjectPtrVec SceneryVec;
 	MapObjectPtrVec GridsVec;
-	BYTE* HexFlags;
+	uchar* HexFlags;
 
 private:
 	bool LoadCache(FileManager* fm);
@@ -241,15 +241,15 @@ private:
 
 public:
 	// Entires
-	struct MapEntire 
+	struct MapEntire
 	{
-		DWORD Number;
-		WORD HexX;
-		WORD HexY;
-		BYTE Dir;
+		uint Number;
+		ushort HexX;
+		ushort HexY;
+		uchar Dir;
 
 		MapEntire(){ZeroMemory(this,sizeof(MapEntire));}
-		MapEntire(WORD hx, WORD hy, BYTE dir, DWORD type):HexX(hx),HexY(hy),Dir(dir),Number(type){}
+		MapEntire(ushort hx, ushort hy, uchar dir, uint type):HexX(hx),HexY(hy),Dir(dir),Number(type){}
 	};
 typedef vector<MapEntire> EntiresVec;
 
@@ -257,23 +257,23 @@ private:
 	EntiresVec mapEntires;
 
 public:
-	DWORD CountEntire(DWORD num);
-	MapEntire* GetEntire(DWORD num, DWORD skip);
-	MapEntire* GetEntireRandom(DWORD num);
-	MapEntire* GetEntireNear(DWORD num, WORD hx, WORD hy);
-	MapEntire* GetEntireNear(DWORD num, DWORD num_ext, WORD hx, WORD hy);
-	void GetEntires(DWORD num, EntiresVec& entires);
+	uint CountEntire(uint num);
+	MapEntire* GetEntire(uint num, uint skip);
+	MapEntire* GetEntireRandom(uint num);
+	MapEntire* GetEntireNear(uint num, ushort hx, ushort hy);
+	MapEntire* GetEntireNear(uint num, uint num_ext, ushort hx, ushort hy);
+	void GetEntires(uint num, EntiresVec& entires);
 
 private:
 	int pathType;
 	string pmapName;
-	WORD pmapPid;
+	ushort pmapPid;
 
 	bool isInit;
 	FileManager* pmapFm;
 
 public:
-	bool Init(WORD pid, const char* name, int path_type);
+	bool Init(ushort pid, const char* name, int path_type);
 	void Clear();
 	bool Refresh();
 
@@ -284,7 +284,7 @@ public:
 #endif
 
 	bool IsInit(){return isInit;}
-	WORD GetPid(){return isInit?pmapPid:0;}
+	ushort GetPid(){return isInit?pmapPid:0;}
 	const char* GetName(){return pmapName.c_str();}
 
 	long RefCounter;
@@ -292,11 +292,11 @@ public:
 	void Release(){if(!--RefCounter) delete this;}
 
 #ifdef FONLINE_SERVER
-	MapObject* GetMapScenery(WORD hx, WORD hy, WORD pid);
-	void GetMapSceneriesHex(WORD hx, WORD hy, MapObjectPtrVec& mobjs);
-	void GetMapSceneriesHexEx(WORD hx, WORD hy, DWORD radius, WORD pid, MapObjectPtrVec& mobjs);
-	void GetMapSceneriesByPid(WORD pid, MapObjectPtrVec& mobjs);
-	MapObject* GetMapGrid(WORD hx, WORD hy);
+	MapObject* GetMapScenery(ushort hx, ushort hy, ushort pid);
+	void GetMapSceneriesHex(ushort hx, ushort hy, MapObjectPtrVec& mobjs);
+	void GetMapSceneriesHexEx(ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs);
+	void GetMapSceneriesByPid(ushort pid, MapObjectPtrVec& mobjs);
+	MapObject* GetMapGrid(ushort hx, ushort hy);
 	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),HexFlags(NULL){MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
 	ProtoMap(const ProtoMap& r){*this=r;MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
 	~ProtoMap(){pmapFm=NULL;isInit=false;HexFlags=NULL;MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)sizeof(ProtoMap));}

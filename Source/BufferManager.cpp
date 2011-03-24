@@ -16,7 +16,7 @@ BufferManager::BufferManager()
 	isError=false;
 }
 
-BufferManager::BufferManager(DWORD alen)
+BufferManager::BufferManager(uint alen)
 {
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,alen+sizeof(BufferManager));
 	bufLen=alen;
@@ -50,7 +50,7 @@ BufferManager::~BufferManager()
 	SAFEDELA(bufData);
 }
 
-void BufferManager::SetEncryptKey(DWORD seed)
+void BufferManager::SetEncryptKey(uint seed)
 {
 	if(!seed)
 	{
@@ -77,10 +77,10 @@ void BufferManager::Unlock()
 void BufferManager::Refresh()
 {
 	if(isError) return;
-	if(bufReadPos>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return; }
+	if(bufReadPos>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return; }
 	if(bufReadPos)
 	{
-		for(DWORD i=bufReadPos;i<bufEndPos;i++) bufData[i-bufReadPos]=bufData[i];
+		for(uint i=bufReadPos;i<bufEndPos;i++) bufData[i-bufReadPos]=bufData[i];
 		bufEndPos-=bufReadPos;
 		bufReadPos=0;
 	}
@@ -107,7 +107,7 @@ void BufferManager::LockReset()
 	Unlock();
 }
 
-void BufferManager::GrowBuf(DWORD len)
+void BufferManager::GrowBuf(uint len)
 {
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,-(int)bufLen);
 	while(bufEndPos+len>=bufLen) bufLen<<=1;
@@ -118,7 +118,7 @@ void BufferManager::GrowBuf(DWORD len)
 	bufData=new_buf;
 }
 
-void BufferManager::Push(const char* buf, DWORD len, bool no_crypt /* = false */)
+void BufferManager::Push(const char* buf, uint len, bool no_crypt /* = false */)
 {
 	if(isError || !len) return;
 	if(bufEndPos+len>=bufLen) GrowBuf(len);
@@ -126,7 +126,7 @@ void BufferManager::Push(const char* buf, DWORD len, bool no_crypt /* = false */
 	bufEndPos+=len;
 }
 
-void BufferManager::Push(const char* buf, const char* mask, DWORD len)
+void BufferManager::Push(const char* buf, const char* mask, uint len)
 {
 	if(isError || !len || !mask) return;
 	if(bufEndPos+len>=bufLen) GrowBuf(len);
@@ -134,55 +134,55 @@ void BufferManager::Push(const char* buf, const char* mask, DWORD len)
 	bufEndPos+=len;
 }
 
-void BufferManager::Pop(char* buf, DWORD len)
+void BufferManager::Pop(char* buf, uint len)
 {
 	if(isError || !len) return;
-	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return; }
+	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return; }
 	CopyBuf(bufData+bufReadPos,buf,NULL,EncryptKey(len),len);
 	bufReadPos+=len;
 }
 
-void BufferManager::Cut(DWORD len)
+void BufferManager::Cut(uint len)
 {
 	if(isError || !len) return;
-	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return; }
+	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return; }
 	char* buf=bufData+bufReadPos;
-	for(DWORD i=0;i+bufReadPos+len<bufEndPos;i++) buf[i]=buf[i+len];
+	for(uint i=0;i+bufReadPos+len<bufEndPos;i++) buf[i]=buf[i+len];
 	bufEndPos-=len;
 }
 
-void BufferManager::CopyBuf(const char* from, char* to, const char* mask, DWORD crypt_key, DWORD len)
+void BufferManager::CopyBuf(const char* from, char* to, const char* mask, uint crypt_key, uint len)
 {
 	if(mask)
 	{
 		if(len%sizeof(size_t))
-			for(DWORD i=0;i<len;i++,to++,from++,mask++) *to=(*from&*mask)^crypt_key;
+			for(uint i=0;i<len;i++,to++,from++,mask++) *to=(*from&*mask)^crypt_key;
 		else
-			for(DWORD i=0,j=sizeof(size_t);i<len;i+=j,to+=j,from+=j,mask+=j) *(size_t*)to=(*(size_t*)from&*(size_t*)mask)^crypt_key;
+			for(uint i=0,j=sizeof(size_t);i<len;i+=j,to+=j,from+=j,mask+=j) *(size_t*)to=(*(size_t*)from&*(size_t*)mask)^crypt_key;
 	}
 	else
 	{
 		if(len%sizeof(size_t))
-			for(DWORD i=0;i<len;i++,to++,from++) *to=*from^crypt_key;
+			for(uint i=0;i<len;i++,to++,from++) *to=*from^crypt_key;
 		else
-			for(DWORD i=0,j=sizeof(size_t);i<len;i+=j,to+=j,from+=j) *(size_t*)to=*(size_t*)from^crypt_key;
+			for(uint i=0,j=sizeof(size_t);i<len;i+=j,to+=j,from+=j) *(size_t*)to=*(size_t*)from^crypt_key;
 	}
 }
 
-BufferManager& BufferManager::operator<<(DWORD i)
+BufferManager& BufferManager::operator<<(uint i)
 {
 	if(isError) return *this;
 	if(bufEndPos+4>=bufLen) GrowBuf(4);
-	*(DWORD*)(bufData+bufEndPos)=i^EncryptKey(4);
+	*(uint*)(bufData+bufEndPos)=i^EncryptKey(4);
 	bufEndPos+=4;
 	return *this;
 }
 
-BufferManager& BufferManager::operator>>(DWORD& i)
+BufferManager& BufferManager::operator>>(uint& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(DWORD*)(bufData+bufReadPos)^EncryptKey(4);
+	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	i=*(uint*)(bufData+bufReadPos)^EncryptKey(4);
 	bufReadPos+=4;
 	return *this;
 }
@@ -199,26 +199,26 @@ BufferManager& BufferManager::operator<<(int i)
 BufferManager& BufferManager::operator>>(int& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
+	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
 	i=*(int*)(bufData+bufReadPos)^EncryptKey(4);
 	bufReadPos+=4;
 	return *this;
 }
 
-BufferManager& BufferManager::operator<<(WORD i)
+BufferManager& BufferManager::operator<<(ushort i)
 {
 	if(isError) return *this;
 	if(bufEndPos+2>=bufLen) GrowBuf(2);
-	*(WORD*)(bufData+bufEndPos)=i^EncryptKey(2);
+	*(ushort*)(bufData+bufEndPos)=i^EncryptKey(2);
 	bufEndPos+=2;
 	return *this;
 }
 
-BufferManager& BufferManager::operator>>(WORD& i)
+BufferManager& BufferManager::operator>>(ushort& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(WORD*)(bufData+bufReadPos)^EncryptKey(2);
+	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	i=*(ushort*)(bufData+bufReadPos)^EncryptKey(2);
 	bufReadPos+=2;
 	return *this;
 }
@@ -235,26 +235,26 @@ BufferManager& BufferManager::operator<<(short i)
 BufferManager& BufferManager::operator>>(short& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
+	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
 	i=*(short*)(bufData+bufReadPos)^EncryptKey(2);
 	bufReadPos+=2;
 	return *this;
 }
 
-BufferManager& BufferManager::operator<<(BYTE i)
+BufferManager& BufferManager::operator<<(uchar i)
 {
 	if(isError) return *this;
 	if(bufEndPos+1>=bufLen) GrowBuf(1);
-	*(BYTE*)(bufData+bufEndPos)=i^EncryptKey(1);
+	*(uchar*)(bufData+bufEndPos)=i^EncryptKey(1);
 	bufEndPos+=1;
 	return *this;
 }
 
-BufferManager& BufferManager::operator>>(BYTE& i)
+BufferManager& BufferManager::operator>>(uchar& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=*(BYTE*)(bufData+bufReadPos)^EncryptKey(1);
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	i=*(uchar*)(bufData+bufReadPos)^EncryptKey(1);
 	bufReadPos+=1;
 	return *this;
 }
@@ -271,7 +271,7 @@ BufferManager& BufferManager::operator<<(char i)
 BufferManager& BufferManager::operator>>(char& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
 	i=*(char*)(bufData+bufReadPos)^EncryptKey(1);
 	bufReadPos+=1;
 	return *this;
@@ -281,7 +281,7 @@ BufferManager& BufferManager::operator<<(bool i)
 {
 	if(isError) return *this;
 	if(bufEndPos+1>=bufLen) GrowBuf(1);
-	*(BYTE*)(bufData+bufEndPos)=(i?1:0)^(EncryptKey(1)&0xFF);
+	*(uchar*)(bufData+bufEndPos)=(i?1:0)^(EncryptKey(1)&0xFF);
 	bufEndPos+=1;
 	return *this;
 }
@@ -289,8 +289,8 @@ BufferManager& BufferManager::operator<<(bool i)
 BufferManager& BufferManager::operator>>(bool& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(__FUNCTION__" - Error!\n"); return *this; }
-	i=((*(BYTE*)(bufData+bufReadPos)^(EncryptKey(1)&0xFF))?true:false);
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	i=((*(uchar*)(bufData+bufReadPos)^(EncryptKey(1)&0xFF))?true:false);
 	bufReadPos+=1;
 	return *this;
 }
@@ -298,8 +298,8 @@ BufferManager& BufferManager::operator>>(bool& i)
 #if (defined(FONLINE_SERVER)) || (defined(FONLINE_CLIENT))
 bool BufferManager::NeedProcess()
 {
-	if(bufReadPos+sizeof(MSGTYPE)>bufEndPos) return false;
-	MSGTYPE msg=*(MSGTYPE*)(bufData+bufReadPos)^EncryptKey(0);
+	if(bufReadPos+sizeof(uint)>bufEndPos) return false;
+	uint msg=*(uint*)(bufData+bufReadPos)^EncryptKey(0);
 
 	// Known size
 	switch(msg)
@@ -375,10 +375,10 @@ bool BufferManager::NeedProcess()
 	}
 
 	// Changeable size
-	if(bufReadPos+sizeof(MSGTYPE)+sizeof(DWORD)>bufEndPos) return false;
+	if(bufReadPos+sizeof(uint)+sizeof(uint)>bufEndPos) return false;
 
-	EncryptKey(sizeof(MSGTYPE));
-	DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(MSGTYPE))^EncryptKey(-(int)sizeof(MSGTYPE));
+	EncryptKey(sizeof(uint));
+	uint msg_len=*(uint*)(bufData+bufReadPos+sizeof(uint))^EncryptKey(-(int)sizeof(uint));
 
 	switch(msg)
 	{
@@ -422,11 +422,11 @@ bool BufferManager::NeedProcess()
 	default:
 		// Unknown message
 #ifdef FONLINE_CLIENT
-		WriteLog(__FUNCTION__" - Unknown message<%u> in buffer, try find valid.\n",(msg>>8)&0xFF);
+		WriteLog(_FUNC_," - Unknown message<%u> in buffer, try find valid.\n",(msg>>8)&0xFF);
 		SeekValidMsg();
 		return NeedProcess();
 #else
-		//WriteLog(__FUNCTION__" - Unknown message<%u> in buffer, reset.\n",msg);
+		//WriteLog(_FUNC_," - Unknown message<%u> in buffer, reset.\n",msg);
 		Reset();
 		return false;
 #endif
@@ -435,13 +435,13 @@ bool BufferManager::NeedProcess()
 	return false;
 }
 
-void BufferManager::SkipMsg(MSGTYPE msg)
+void BufferManager::SkipMsg(uint msg)
 {
 	bufReadPos-=sizeof(msg);
 	EncryptKey(-(int)sizeof(msg));
 
 	// Known size
-	DWORD size=0;
+	uint size=0;
 	switch(msg)
 	{
 	case 0xFFFFFFFF:						size=16; break;
@@ -551,7 +551,7 @@ void BufferManager::SkipMsg(MSGTYPE msg)
 		{
 			// Changeable size
 			EncryptKey(sizeof(msg));
-			DWORD msg_len=*(DWORD*)(bufData+bufReadPos+sizeof(msg))^EncryptKey(-(int)sizeof(msg));
+			uint msg_len=*(uint*)(bufData+bufReadPos+sizeof(msg))^EncryptKey(-(int)sizeof(msg));
 			size=msg_len;
 		}
 		break;
@@ -568,13 +568,13 @@ void BufferManager::SeekValidMsg()
 {
 	while(true)
 	{
-		if(bufReadPos+sizeof(MSGTYPE)>bufEndPos)
+		if(bufReadPos+sizeof(uint)>bufEndPos)
 		{
 			Reset();
 			return;
 		}
 
-		MSGTYPE msg=*(MSGTYPE*)(bufData+bufReadPos)^EncryptKey(0);
+		uint msg=*(uint*)(bufData+bufReadPos)^EncryptKey(0);
 		if(IsValidMsg(msg)) return;
 
 		bufReadPos++;
@@ -582,7 +582,7 @@ void BufferManager::SeekValidMsg()
 	}
 }
 
-bool BufferManager::IsValidMsg(DWORD msg)
+bool BufferManager::IsValidMsg(uint msg)
 {
 	switch(msg)
 	{

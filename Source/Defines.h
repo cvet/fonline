@@ -1,140 +1,104 @@
 #ifndef __DEFINES__
 #define __DEFINES__
 
-#pragma warning (disable : 4786)
+#include "PlatformSpecific.h"
 
-#include <Windows.h>
-#include "ItemPid.h"
-#include <map>
-#include <vector>
-#include <deque>
-#include <set>
-#include <string>
-using namespace std;
+typedef map<string,uchar> StrUCharMap;
+typedef map<string,uchar>::iterator StrUCharMapIt;
+typedef map<string,uchar>::value_type StrUCharMapVal;
+typedef map<uchar,string> UCharStrMap;
+typedef map<uchar,string>::iterator UCharStrMapIt;
+typedef map<uchar,string>::value_type UCharStrMapVal;
+typedef map<string,string> StrMap;
+typedef map<string,string>::iterator StrMapIt;
+typedef map<string,string>::value_type StrMapVal;
+typedef map<uint,string> UIntStrMap;
+typedef map<uint,string>::iterator UIntStrMapIt;
+typedef map<uint,string>::value_type UIntStrMapVal;
+typedef map<string,ushort> StrUShortMap;
+typedef map<string,ushort>::iterator StrUShortMapIt;
+typedef map<string,ushort>::value_type StrUShortMapVal;
+typedef map<string,uint> StrUIntMap;
+typedef map<string,uint>::iterator StrUIntMapIt;
+typedef map<string,uint>::value_type StrUIntMapVal;
+typedef map<ushort,string> UShortStrMap;
+typedef map<ushort,string>::iterator UShortStrMapIt;
+typedef map<ushort,string>::value_type UShortStrMapVal;
+typedef map<string,uint> StrUIntMap;
+typedef map<string,uint>::iterator StrUIntMapIt;
+typedef map<string,uint>::value_type StrUIntMapVal;
+typedef map<uint,uint> UIntMap;
+typedef map<uint,uint>::iterator UIntMapIt;
+typedef map<uint,uint>::value_type UIntMapVal;
+typedef map<int,int> IntMap;
+typedef map<int,int>::iterator IntMapIt;
+typedef map<int,int>::value_type IntMapVal;
+typedef map<int,float> IntFloatMap;
+typedef map<int,float>::iterator IntFloatMapIt;
+typedef map<int,float>::value_type IntFloatMapVal;
+typedef map<int,void*> IntPtrMap;
+typedef map<int,void*>::iterator IntPtrMapIt;
+typedef map<int,void*>::value_type IntPtrMapVal;
 
-// Typedefs
-/*
-typedef unsigned char    u08;
-typedef unsigned short   u16;
-typedef unsigned int     u32;
-typedef unsigned __int64 u64;
-typedef char             s08;
-typedef short            s16;
-typedef int              s32;
-typedef __int64          s64;
-*/
-
-#ifndef _FILETIME_
-struct FILETIME
-{
-	DWORD dwLowDateTime;
-	DWORD dwHighDateTime;
-};
-#endif
-
-typedef	DWORD MSGTYPE;
-union FILETIMELI
-{
-	FILETIME ft;
-	ULARGE_INTEGER ul;
-};
-
-typedef map<string,BYTE,less<string>> StrByteMap;
-typedef map<string,BYTE,less<string>>::iterator StrByteMapIt;
-typedef map<string,BYTE,less<string>>::value_type StrByteMapVal;
-typedef map<BYTE,string,less<BYTE>> ByteStrMap;
-typedef map<BYTE,string,less<BYTE>>::iterator ByteStrMapIt;
-typedef map<BYTE,string,less<BYTE>>::value_type ByteStrMapVal;
-typedef map<string,string,less<string>> StrMap;
-typedef map<string,string,less<string>>::iterator StrMapIt;
-typedef map<string,string,less<string>>::value_type StrMapVal;
-typedef map<DWORD,string,less<DWORD>> DwordStrMap;
-typedef map<DWORD,string,less<DWORD>>::iterator DwordStrMapIt;
-typedef map<DWORD,string,less<DWORD>>::value_type DwordStrMapVal;
-typedef map<string,WORD,less<string>> StrWordMap;
-typedef map<string,WORD,less<string>>::iterator StrWordMapIt;
-typedef map<string,WORD,less<string>>::value_type StrWordMapVal;
-typedef map<string,DWORD,less<string>> StrDwordMap;
-typedef map<string,DWORD,less<string>>::iterator StrDwordMapIt;
-typedef map<string,DWORD,less<string>>::value_type StrDwordMapVal;
-typedef map<WORD,string,less<WORD>> WordStrMap;
-typedef map<WORD,string,less<WORD>>::iterator WordStrMapIt;
-typedef map<WORD,string,less<WORD>>::value_type WordStrMapVal;
-typedef map<string,DWORD,less<string>> StrDwordMap;
-typedef map<string,DWORD,less<string>>::iterator StrDwordMapIt;
-typedef map<string,DWORD,less<string>>::value_type StrDwordMapVal;
-typedef map<DWORD,DWORD,less<DWORD>> DwordMap;
-typedef map<DWORD,DWORD,less<DWORD>>::iterator DwordMapIt;
-typedef map<DWORD,DWORD,less<DWORD>>::value_type DwordMapVal;
-typedef map<int,int,less<int>> IntMap;
-typedef map<int,int,less<int>>::iterator IntMapIt;
-typedef map<int,int,less<int>>::value_type IntMapVal;
-typedef map<int,float,less<int>> IntFloatMap;
-typedef map<int,float,less<int>>::iterator IntFloatMapIt;
-typedef map<int,float,less<int>>::value_type IntFloatMapVal;
-typedef map<int,void*,less<int>> IntPtrMap;
-typedef map<int,void*,less<int>>::iterator IntPtrMapIt;
-typedef map<int,void*,less<int>>::value_type IntPtrMapVal;
-
-typedef multimap<DWORD,string,less<DWORD>> DwordStrMulMap;
-typedef multimap<DWORD,string,less<DWORD>>::iterator DwordStrMulMapIt;
-typedef multimap<DWORD,string,less<DWORD>>::value_type DwordStrMulMapVal;
+typedef multimap<uint,string> UIntStrMulMap;
+typedef multimap<uint,string>::iterator UIntStrMulMapIt;
+typedef multimap<uint,string>::value_type UIntStrMulMapVal;
 
 typedef vector<void*> PtrVec;
 typedef vector<void*>::iterator PtrVecIt;
 typedef vector<int> IntVec;
 typedef vector<int>::iterator IntVecIt;
-typedef vector<BYTE> ByteVec;
-typedef vector<BYTE>::iterator ByteVecIt;
+typedef vector<uchar> UCharVec;
+typedef vector<uchar>::iterator UCharVecIt;
 typedef vector<short> ShortVec;
-typedef vector<WORD> WordVec;
-typedef vector<WORD>::iterator WordVecIt;
-typedef vector<DWORD> DwordVec;
-typedef vector<DWORD>::iterator DwordVecIt;
+typedef vector<ushort> UShortVec;
+typedef vector<ushort>::iterator UShortVecIt;
+typedef vector<uint> UIntVec;
+typedef vector<uint>::iterator UIntVecIt;
 typedef vector<char> CharVec;
 typedef vector<string> StrVec;
 typedef vector<string>::iterator StrVecIt;
 typedef vector<char*> PCharVec;
-typedef vector<BYTE*> PByteVec;
+typedef vector<uchar*> PUCharVec;
 typedef vector<float> FloatVec;
 typedef vector<float>::iterator FloatVecIt;
-typedef vector<ULONGLONG> UInt64Vec;
-typedef vector<ULONGLONG>::iterator UInt64VecIt;
+typedef vector<uint64> UInt64Vec;
+typedef vector<uint64>::iterator UInt64VecIt;
 typedef vector<bool>BoolVec;
 typedef vector<bool>::iterator BoolVecIt;
 
 typedef set<string> StrSet;
-typedef set<BYTE> ByteSet;
-typedef set<BYTE>::iterator ByteSetIt;
-typedef set<WORD> WordSet;
-typedef set<WORD>::iterator WordSetIt;
-typedef set<DWORD> DwordSet;
-typedef set<DWORD>::iterator DwordSetIt;
+typedef set<uchar> UCharSet;
+typedef set<uchar>::iterator UCharSetIt;
+typedef set<ushort> UShortSet;
+typedef set<ushort>::iterator UShortSetIt;
+typedef set<uint> UIntSet;
+typedef set<uint>::iterator UIntSetIt;
 typedef set<int> IntSet;
 typedef set<int>::iterator IntSetIt;
 
 typedef pair<int,int> IntPair;
-typedef pair<WORD,WORD> WordPair;
-typedef pair<DWORD,DWORD> DwordPair;
+typedef pair<ushort,ushort> UShortPair;
+typedef pair<uint,uint> UIntPair;
 typedef pair<char,char> CharPair;
 typedef pair<char*,char*> PCharPair;
-typedef pair<BYTE,BYTE> BytePair;
+typedef pair<uchar,uchar> UCharPair;
 
-typedef vector<WordPair> WordPairVec;
-typedef vector<WordPair>::iterator WordPairVecIt;
-typedef vector<WordPair>::value_type WordPairVecVal;
+typedef vector<UShortPair> UShortPairVec;
+typedef vector<UShortPair>::iterator UShortPairVecIt;
+typedef vector<UShortPair>::value_type UShortPairVecVal;
 typedef vector<IntPair> IntPairVec;
 typedef vector<IntPair>::iterator IntPairVecIt;
 typedef vector<IntPair>::value_type IntPairVecVal;
-typedef vector<DwordPair> DwordPairVec;
-typedef vector<DwordPair>::iterator DwordPairVecIt;
-typedef vector<DwordPair>::value_type DwordPairVecVal;
+typedef vector<UIntPair> UIntPairVec;
+typedef vector<UIntPair>::iterator UIntPairVecIt;
+typedef vector<UIntPair>::value_type UIntPairVecVal;
 typedef vector<PCharPair> PCharPairVec;
 typedef vector<PCharPair>::iterator PCharPairVecIt;
 typedef vector<PCharPair>::value_type PCharPairVecVal;
-typedef vector<BytePair> BytePairVec;
-typedef vector<BytePair>::iterator BytePairVecIt;
-typedef vector<BytePair>::value_type BytePairVecVal;
+typedef vector<UCharPair> UCharPairVec;
+typedef vector<UCharPair>::iterator UCharPairVecIt;
+typedef vector<UCharPair>::value_type UCharPairVecVal;
 
 // Bits
 #define BIN__N(x)                     (x) | x>>3 | x>>6 | x>>9
@@ -149,11 +113,11 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 #define UNSETFLAG(x,y)    ((x)=((x)|(y))^(y))
 
 // Limits
-#define MAX_BYTE          (0xFF)
-#define MAX_WORD          (0xFFFF)
-#define MAX_DWORD         (0xFFFFFFFF)
-#define MAX_INT           (0x7FFFFFFF)
-#define MIN_INT           (0x80000000)
+#define MAX_UCHAR        (0xFF)
+#define MAX_USHORT       (0xFFFF)
+#define MAX_UINT         (0xFFFFFFFF)
+#define MAX_INT          (0x7FFFFFFF)
+#define MIN_INT          (0x80000000)
 
 // Other stuff
 #define CLAMP(x,low,high) (((x)>(high))?(high):(((x)<(low))?(low):(x)))
@@ -507,7 +471,7 @@ typedef vector<BytePair>::value_type BytePairVecVal;
 
 struct ScoreType
 {
-	DWORD ClientId;
+	uint ClientId;
 	char ClientName[SCORE_NAME_LEN];
 	int Value;
 };

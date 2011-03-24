@@ -27,13 +27,13 @@ local gzFile gz_open OF((const char *, int, const char *));
    The gz_strwinerror function does not change the current setting of
    GetLastError. */
 char ZLIB_INTERNAL *gz_strwinerror (error)
-     DWORD error;
+     uint error;
 {
     static char buf[1024];
 
     wchar_t *msgbuf;
-    DWORD lasterr = GetLastError();
-    DWORD chars = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM
+    uint lasterr = GetLastError();
+    uint chars = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM
         | FORMAT_MESSAGE_ALLOCATE_BUFFER,
         NULL,
         error,

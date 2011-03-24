@@ -6,18 +6,18 @@
 
 const char* CollectionFiles[]=
 {
-	{"ParamNames.lst"},
-	{"ItemNames.lst"},
-	{"DefineNames.lst"},
-	{"PictureNames.lst"},
-	{"HashNames.lst"},
+	"ParamNames.lst",
+	"ItemNames.lst",
+	"DefineNames.lst",
+	"PictureNames.lst",
+	"HashNames.lst",
 };
 
 struct ConstCollection
 {
 	bool Init;
-	DwordStrMap ValueName;
-	StrDwordMap NameValue;
+	UIntStrMap ValueName;
+	StrUIntMap NameValue;
 	ConstCollection():Init(false){}
 };
 vector<ConstCollection> ConstCollections;
@@ -43,9 +43,9 @@ bool ConstantsManager::AddCollection(int collection, const char* fname, int path
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type)) return false;
 
-	if(collection>=ConstCollections.size()) ConstCollections.resize(collection+1);
-	DwordStrMap& value_name=ConstCollections[collection].ValueName;
-	StrDwordMap& name_value=ConstCollections[collection].NameValue;
+	if(collection>=(int)ConstCollections.size()) ConstCollections.resize(collection+1);
+	UIntStrMap& value_name=ConstCollections[collection].ValueName;
+	StrUIntMap& name_value=ConstCollections[collection].NameValue;
 
 	ConstCollections[collection].Init=true;
 	value_name.clear();
@@ -78,8 +78,8 @@ bool ConstantsManager::AddCollection(int collection, const char* fname, int path
 				if((str >> num).fail()) continue;
 			}
 
-			value_name.insert(DwordStrMapVal(num+offset,name));
-			name_value.insert(StrDwordMapVal(name,num+offset));
+			value_name.insert(UIntStrMapVal(num+offset,name));
+			name_value.insert(StrUIntMapVal(name,num+offset));
 			Str::AddNameHash(name.c_str());
 		}
 	}
@@ -89,16 +89,16 @@ bool ConstantsManager::AddCollection(int collection, const char* fname, int path
 
 void ConstantsManager::AddConstant(int collection, const char* str, int value)
 {
-	ConstCollections[collection].ValueName.insert(DwordStrMapVal(value,str));
-	ConstCollections[collection].NameValue.insert(StrDwordMapVal(str,value));
+	ConstCollections[collection].ValueName.insert(UIntStrMapVal(value,str));
+	ConstCollections[collection].NameValue.insert(StrUIntMapVal(str,value));
 	Str::AddNameHash(str);
 }
 
 StrVec ConstantsManager::GetCollection(int collection)
 {
-	DwordVec val_added;
+	UIntVec val_added;
 	StrVec result;
-	for(DwordStrMapIt it=ConstCollections[collection].ValueName.begin(),end=ConstCollections[collection].ValueName.end();it!=end;++it)
+	for(UIntStrMapIt it=ConstCollections[collection].ValueName.begin(),end=ConstCollections[collection].ValueName.end();it!=end;++it)
 	{
 		if(collection==CONSTANTS_DEFINE || std::find(val_added.begin(),val_added.end(),(*it).first)==val_added.end())
 		{
@@ -111,19 +111,19 @@ StrVec ConstantsManager::GetCollection(int collection)
 
 bool ConstantsManager::IsCollectionInit(int collection)
 {
-	return collection>=0 && collection<ConstCollections.size() && ConstCollections[collection].Init;
+	return collection>=0 && collection<(int)ConstCollections.size() && ConstCollections[collection].Init;
 }
 
 int ConstantsManager::GetValue(int collection, const char* str)
 {
-	StrDwordMapIt it=ConstCollections[collection].NameValue.find(str);
+	StrUIntMapIt it=ConstCollections[collection].NameValue.find(str);
 	if(it==ConstCollections[collection].NameValue.end()) return -1;
 	return (*it).second;
 }
 
 const char* ConstantsManager::GetName(int collection, int value)
 {
-	DwordStrMapIt it=ConstCollections[collection].ValueName.find(value);
+	UIntStrMapIt it=ConstCollections[collection].ValueName.find(value);
 	if(it==ConstCollections[collection].ValueName.end()) return NULL;
 	return (*it).second.c_str();
 }
@@ -133,7 +133,7 @@ int ConstantsManager::GetParamId(const char* str)
 	return GetValue(CONSTANTS_PARAM,str);
 }
 
-const char* ConstantsManager::GetParamName(DWORD index)
+const char* ConstantsManager::GetParamName(uint index)
 {
 	return GetName(CONSTANTS_PARAM,index);
 }
@@ -143,7 +143,7 @@ int ConstantsManager::GetItemPid(const char* str)
 	return GetValue(CONSTANTS_ITEM,str);
 }
 
-const char* ConstantsManager::GetItemName(WORD pid)
+const char* ConstantsManager::GetItemName(ushort pid)
 {
 	return GetName(CONSTANTS_ITEM,pid);
 }
@@ -155,16 +155,16 @@ int ConstantsManager::GetDefineValue(const char* str)
 	if(!_stricmp(str,"true")) return 1;
 	else if(!_stricmp(str,"false")) return 0;
 
-	StrDwordMapIt it=ConstCollections[CONSTANTS_DEFINE].NameValue.find(str);
+	StrUIntMapIt it=ConstCollections[CONSTANTS_DEFINE].NameValue.find(str);
 	if(it==ConstCollections[CONSTANTS_DEFINE].NameValue.end())
 	{
-		WriteLog(__FUNCTION__" - Define<%s> not found, taked zero by default.\n",str);
+		WriteLog(_FUNC_," - Define<%s> not found, taked zero by default.\n",str);
 		return 0;
 	}
 	return (*it).second;
 }
 
-const char* ConstantsManager::GetPictureName(DWORD index)
+const char* ConstantsManager::GetPictureName(uint index)
 {
 	return GetName(CONSTANTS_PICTURE,index);
 }

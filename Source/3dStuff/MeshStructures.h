@@ -13,7 +13,7 @@ struct EffectEx
 {
 	const char* Name;
 	ID3DXEffect* Effect;
-	DWORD EffectFlags;
+	uint EffectFlags;
 	LPD3DXEFFECTDEFAULT Defaults;
 	D3DXHANDLE EffectParams;
 	D3DXHANDLE TechniqueSkinned;

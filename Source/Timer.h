@@ -7,10 +7,10 @@ namespace Timer
 {
 	void Init();
 
-	DWORD FastTick();
+	uint FastTick();
 	double AccurateTick();
 
-	DWORD GameTick();
+	uint GameTick();
 	void SetGamePause(bool pause);
 	bool IsGamePaused();
 

@@ -11,14 +11,14 @@ bool FOClient::IfaceLoadRect(INTRECT& comp, const char* name)
 	char res[256];
 	if(!IfaceIni.GetStr(name,"",res))
 	{
-		WriteLog("Signature<%s> not found.\n",name);
+		WriteLog(NULL,"Signature<%s> not found.\n",name);
 		return false;
 	}
 
 	if(sscanf(res,"%d%d%d%d",&comp[0],&comp[1],&comp[2],&comp[3])!=4)
 	{
 		comp.Clear();
-		WriteLog("Unable to parse signature<%s>.\n",name);
+		WriteLog(NULL,"Unable to parse signature<%s>.\n",name);
 		return false;
 	}
 
@@ -33,18 +33,18 @@ void FOClient::IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy)
 void FOClient::IfaceLoadSpr(AnyFrames*& comp, const char* name)
 {
 	char res[256];
-	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
+	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog(NULL,"Signature<%s> not found.\n",name);
 	SprMngr.SurfType=RES_IFACE;
 	comp=SprMngr.LoadAnimation(res,PT_ART_INTRFACE,ANIM_USE_DUMMY);
-	if(comp==SpriteManager::DummyAnimation) WriteLog("File<%s> not found.\n",res);
+	if(comp==SpriteManager::DummyAnimation) WriteLog(NULL,"File<%s> not found.\n",res);
 	SprMngr.SurfType=RES_NONE;
 }
 
-void FOClient::IfaceLoadAnim(DWORD& comp, const char* name)
+void FOClient::IfaceLoadAnim(uint& comp, const char* name)
 {
 	char res[256];
-	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
-	if(!(comp=AnimLoad(res,PT_ART_INTRFACE,RES_IFACE))) WriteLog("Can't load animation<%s>.\n",res);
+	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog(NULL,"Signature<%s> not found.\n",name);
+	if(!(comp=AnimLoad(res,PT_ART_INTRFACE,RES_IFACE))) WriteLog(NULL,"Can't load animation<%s>.\n",res);
 }
 
 void FOClient::IfaceFreeResources()
@@ -60,7 +60,7 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 	if(!ini_name || !ini_name[0]) ini_name=default_name;
 
 	bool founded=false;
-	for(size_t i=0,j=IfaceIniNames.size();i<j;i++)
+	for(uint i=0,j=IfaceIniNames.size();i<j;i++)
 	{
 		if(!_stricmp(IfaceIniNames[i].c_str(),ini_name))
 		{
@@ -72,7 +72,7 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 
 	// Build ini file
 	IfaceIni.UnloadFile();
-	for(size_t i=0,j=IfaceIniNames.size();i<j;i++)
+	for(uint i=0,j=IfaceIniNames.size();i<j;i++)
 	{
 		// Create name
 		string file_name=IfaceIniNames[i];
@@ -84,8 +84,8 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 		for(int k=(int)pfiles.size()-1;k>=0;k--)
 		{
 			DataFile* pfile=pfiles[k];
-			DWORD len;
-			BYTE* data=pfile->OpenFile(file_name.c_str(),len);
+			uint len;
+			uchar* data=pfile->OpenFile(file_name.c_str(),len);
 			IniParser ini;
 
 			if(data)
@@ -105,9 +105,9 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 	return true;
 }
 
-void FOClient::AppendIfaceIni(BYTE* data, DWORD len)
+void FOClient::AppendIfaceIni(uchar* data, uint len)
 {
-	typedef multimap<int,pair<char*,DWORD>,less<int>> IniMMap;
+	typedef multimap<int,pair<char*,uint>,less<int>> IniMMap;
 	IniMMap sections;
 
 	int w=0,h=0;
@@ -117,8 +117,8 @@ void FOClient::AppendIfaceIni(BYTE* data, DWORD len)
 	{
 		if(w<=MODE_WIDTH && h<=MODE_HEIGHT)
 		{
-			DWORD l=end?(DWORD)end-(DWORD)begin:(DWORD)(data+len)-(DWORD)begin;
-			sections.insert(IniMMap::value_type(w,pair<char*,DWORD>(begin,l)));
+			uint l=end?(uint)end-(uint)begin:(uint)(data+len)-(uint)begin;
+			sections.insert(IniMMap::value_type(w,pair<char*,uint>(begin,l)));
 		}
 
 		if(!end) break;
@@ -137,14 +137,14 @@ void FOClient::AppendIfaceIni(BYTE* data, DWORD len)
 
 int FOClient::InitIface()
 {
-	WriteLog("Interface initialization.\n");
+	WriteLog(NULL,"Interface initialization.\n");
 
 /************************************************************************/
 /* Data                                                                 */
 /************************************************************************/
 	char res[512];
 
-	WriteLog("Load data.\n");
+	WriteLog(NULL,"Load data.\n");
 	// Other
 	IfaceHold=IFACE_NONE;
 	TargetSmth.Clear();
@@ -582,31 +582,31 @@ int FOClient::InitIface()
 	TViewGmapLocEntrance=0;
 
 	// Global map
-	if(!IfaceIni.GetStr("GmapTilesPic","",GmapTilesPic)) WriteLog(__FUNCTION__" - <GmapTilesPic> signature not found.\n");
+	if(!IfaceIni.GetStr("GmapTilesPic","",GmapTilesPic)) WriteLog(_FUNC_," - <GmapTilesPic> signature not found.\n");
 	GmapTilesX=IfaceIni.GetInt("GmapTilesX",0);
 	GmapTilesY=IfaceIni.GetInt("GmapTilesY",0);
 	GmapPic.resize(GmapTilesX*GmapTilesY);
 	GmapFog.Create(GM__MAXZONEX,GM__MAXZONEY,NULL);
 	// Relief
 	SAFEDEL(GmapRelief);
-	if(!IfaceIni.GetStr("GmapReliefMask","",res)) WriteLog(__FUNCTION__" - Global map mask signature<GmapReliefMask> not found.\n");
-	else if(!FileMngr.LoadFile(res,PT_MAPS)) WriteLog(__FUNCTION__" - Global map mask file<%s> not found.\n",res);
-	else if(FileMngr.GetLEWord()!=0x4D42) WriteLog(__FUNCTION__" - Invalid file format of global map mask<%s>.\n",res);
+	if(!IfaceIni.GetStr("GmapReliefMask","",res)) WriteLog(_FUNC_," - Global map mask signature<GmapReliefMask> not found.\n");
+	else if(!FileMngr.LoadFile(res,PT_MAPS)) WriteLog(_FUNC_," - Global map mask file<%s> not found.\n",res);
+	else if(FileMngr.GetLEUShort()!=0x4D42) WriteLog(_FUNC_," - Invalid file format of global map mask<%s>.\n",res);
 	else
 	{
 		FileMngr.SetCurPos(28);
-		if(FileMngr.GetLEWord()!=4) WriteLog(__FUNCTION__" - Invalid bit per pixel format of global map mask<%s>.\n",res);
+		if(FileMngr.GetLEUShort()!=4) WriteLog(_FUNC_," - Invalid bit per pixel format of global map mask<%s>.\n",res);
 		else
 		{
 			FileMngr.SetCurPos(18);
-			WORD mask_w=FileMngr.GetLEDWord();
-			WORD mask_h=FileMngr.GetLEDWord();
+			ushort mask_w=FileMngr.GetLEUInt();
+			ushort mask_h=FileMngr.GetLEUInt();
 			FileMngr.SetCurPos(118);
 			GmapRelief=new C4BitMask(mask_w,mask_h,0xF);
 			int padd_len=mask_w/2+(mask_w/2)%4;
 			for(int x,y=0,w=0;y<mask_h;)
 			{
-				BYTE b=FileMngr.GetByte();
+				uchar b=FileMngr.GetUChar();
 				x=w*2;
 				GmapRelief->Set4Bit(x,y,b>>4);
 				GmapRelief->Set4Bit(x+1,y,b&0xF);
@@ -656,10 +656,10 @@ int FOClient::InitIface()
 	GmapVectX=0;
 	GmapVectY=0;
 	GmapMapCutOff.clear();
-	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(0,0,MODE_WIDTH,GmapWMap.T),D3DCOLOR_XRGB(0,0,0));
-	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(0,GmapWMap.T,GmapWMap.L,GmapWMap.B),D3DCOLOR_XRGB(0,0,0));
-	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(GmapWMap.R,GmapWMap.T,MODE_WIDTH,GmapWMap.B),D3DCOLOR_XRGB(0,0,0));
-	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(0,GmapWMap.B,MODE_WIDTH,MODE_HEIGHT),D3DCOLOR_XRGB(0,0,0));
+	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(0,0,(float)MODE_WIDTH,(float)GmapWMap.T),D3DCOLOR_XRGB(0,0,0));
+	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(0,(float)GmapWMap.T,(float)GmapWMap.L,(float)GmapWMap.B),D3DCOLOR_XRGB(0,0,0));
+	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT((float)GmapWMap.R,(float)GmapWMap.T,(float)MODE_WIDTH,(float)GmapWMap.B),D3DCOLOR_XRGB(0,0,0));
+	SprMngr.PrepareSquare(GmapMapCutOff,FLTRECT(0,(float)GmapWMap.B,(float)MODE_WIDTH,(float)MODE_HEIGHT),D3DCOLOR_XRGB(0,0,0));
 	GmapNextShowEntrancesTick=0;
 	GmapShowEntrancesLocId=0;
 	ZeroMemory(GmapShowEntrances,sizeof(GmapShowEntrances));
@@ -925,7 +925,7 @@ int FOClient::InitIface()
 	if(!SaveLoadDraft && Singleplayer)
 	{
 		if(FAILED(SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
-			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
+			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&SaveLoadDraft,NULL))) WriteLog(NULL,"Create save/load draft surface fail.\n");
 	}
 	SaveLoadProcessDraft=false;
 	SaveLoadDraftValid=false;
@@ -933,7 +933,7 @@ int FOClient::InitIface()
 /************************************************************************/
 /* Sprites                                                              */
 /************************************************************************/
-	WriteLog("Load sprites.\n");
+	WriteLog(NULL,"Load sprites.\n");
 	IfaceFreeResources();
 
 	// Hex field sprites
@@ -1303,23 +1303,23 @@ int FOClient::InitIface()
 	IfaceLoadSpr(SaveLoadDonePicDown,"SaveLoadDonePicDn");
 	IfaceLoadSpr(SaveLoadBackPicDown,"SaveLoadBackPicDn");
 
-	WriteLog("Interface initialization complete.\n");
+	WriteLog(NULL,"Interface initialization complete.\n");
 	return 0;
 }
 
 #define INDICATOR_CHANGE_TICK        (35)
-void FOClient::DrawIndicator(INTRECT& rect, PointVec& points, DWORD color, int procent, DWORD& tick, bool is_vertical, bool from_top_or_left)
+void FOClient::DrawIndicator(INTRECT& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left)
 {
 	if(Timer::GameTick()>=tick)
 	{
-		int points_count=(is_vertical?rect.H():rect.W())/2*procent/100;
+		uint points_count=(is_vertical?rect.H():rect.W())/2*procent/100;
 		if(!points_count && procent) points_count=1;
 		if(points.size()!=points_count)
 		{
 			if(points_count>points.size()) points_count=points.size()+1;
 			else points_count=points.size()-1;
 			points.resize(points_count);
-			for(int i=0;i<points_count;i++)
+			for(uint i=0;i<points_count;i++)
 			{
 				if(is_vertical)
 				{
@@ -1338,7 +1338,7 @@ void FOClient::DrawIndicator(INTRECT& rect, PointVec& points, DWORD color, int p
 	if(points.size()>0) SprMngr.DrawPoints(points,D3DPT_POINTLIST);
 }
 
-DWORD FOClient::GetCurContainerItemId(INTRECT& pos, int height, int scroll, ItemVec& cont)
+uint FOClient::GetCurContainerItemId(INTRECT& pos, int height, int scroll, ItemVec& cont)
 {
 	if(!IsCurInRect(pos)) return 0;
 	ItemVecIt it=cont.begin();
@@ -1351,7 +1351,7 @@ DWORD FOClient::GetCurContainerItemId(INTRECT& pos, int height, int scroll, Item
 	return 0;
 }
 
-void FOClient::ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont, DWORD skip_id)
+void FOClient::ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont, uint skip_id)
 {
 	int i=0,i2=0;
 	for(ItemVecIt it=cont.begin(),end=cont.end();it!=end;++it)
@@ -1361,7 +1361,7 @@ void FOClient::ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont
 		if(i>=scroll && i<scroll+pos.H()/height)
 		{
 			AnyFrames* anim=ResMngr.GetInvAnim(item.GetPicInv());
-			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),pos.L,pos.T+(i2*height),pos.W(),height,false,true,item.GetInvColor());
+			if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),pos.L,pos.T+(i2*height),(float)pos.W(),(float)height,false,true,item.GetInvColor());
 			i2++;
 		}
 		i++;
@@ -1383,7 +1383,7 @@ void FOClient::ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont
 	}
 }
 
-Item* FOClient::GetContainerItem(ItemVec& cont, DWORD id)
+Item* FOClient::GetContainerItem(ItemVec& cont, uint id)
 {
 	ItemVecIt it=std::find(cont.begin(),cont.end(),id);
 	return it!=cont.end()?&(*it):NULL;
@@ -1412,7 +1412,7 @@ void FOClient::CollectContItems()
 			{
 				Item& item_=*it_;
 
-				DWORD count=item_.GetCount();
+				uint count=item_.GetCount();
 				item_.Data=item.Data;
 				item_.Count_Set(count);
 
@@ -1442,7 +1442,7 @@ void FOClient::ProcessItemsCollection(int collection, ItemVec& init_items, ItemV
 	result=init_items;
 	if(result.empty()) return;
 
-	if(Script::PrepareContext(ClientFunctions.ItemsCollection,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ItemsCollection,_FUNC_,"Game"))
 	{
 		CScriptArray* arr=Script::CreateArray("ItemCl@[]");
 		if(arr)
@@ -1452,7 +1452,7 @@ void FOClient::ProcessItemsCollection(int collection, ItemVec& init_items, ItemV
 			for(ItemVecIt it=init_items.begin(),end=init_items.end();it!=end;++it) items_ptr.push_back((*it).Clone());
 			Script::AppendVectorToArray(items_ptr,arr);
 
-			Script::SetArgDword(collection);
+			Script::SetArgUInt(collection);
 			Script::SetArgObject(arr);
 			if(Script::RunPrepared())
 			{
@@ -1471,7 +1471,7 @@ void FOClient::ProcessItemsCollection(int collection, ItemVec& init_items, ItemV
 	}
 }
 
-void FOClient::UpdateContLexems(ItemVec& cont, DWORD item_id, const char* lexems)
+void FOClient::UpdateContLexems(ItemVec& cont, uint item_id, const char* lexems)
 {
 	ItemVecIt it=std::find(cont.begin(),cont.end(),item_id);
 	if(it!=cont.end()) (*it).Lexems=lexems;
@@ -1524,21 +1524,21 @@ void FOClient::InvDraw()
 	if(Chosen->ItemSlotMain->GetId() && (IsCurMode(CUR_DEFAULT) || IfaceHold!=IFACE_INV_SLOT1))
 	{
 		AnyFrames* anim=ResMngr.GetInvAnim(Chosen->ItemSlotMain->GetPicInv());
-		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot1[0]+InvX,InvWSlot1[1]+InvY,InvWSlot1.W(),InvWSlot1.H(),false,true,Chosen->ItemSlotMain->GetInvColor());
+		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot1[0]+InvX,InvWSlot1[1]+InvY,(float)InvWSlot1.W(),(float)InvWSlot1.H(),false,true,Chosen->ItemSlotMain->GetInvColor());
 	}
 
 	// Slot Extra
 	if(Chosen->ItemSlotExt->GetId() && (IsCurMode(CUR_DEFAULT) || IfaceHold!=IFACE_INV_SLOT2))
 	{
 		AnyFrames* anim=ResMngr.GetInvAnim(Chosen->ItemSlotExt->GetPicInv());
-		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot2[0]+InvX,InvWSlot2[1]+InvY,InvWSlot2.W(),InvWSlot2.H(),false,true,Chosen->ItemSlotExt->GetInvColor());
+		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWSlot2[0]+InvX,InvWSlot2[1]+InvY,(float)InvWSlot2.W(),(float)InvWSlot2.H(),false,true,Chosen->ItemSlotExt->GetInvColor());
 	}
 
 	// Slot Armor
 	if(Chosen->ItemSlotArmor->GetId() && (IsCurMode(CUR_DEFAULT) || IfaceHold!=IFACE_INV_ARMOR))
 	{
 		AnyFrames* anim=ResMngr.GetInvAnim(Chosen->ItemSlotArmor->GetPicInv());
-		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWArmor[0]+InvX,InvWArmor[1]+InvY,InvWArmor.W(),InvWArmor.H(),false,true,Chosen->ItemSlotArmor->GetInvColor());
+		if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),InvWArmor[0]+InvX,InvWArmor[1]+InvY,(float)InvWArmor.W(),(float)InvWArmor.H(),false,true,Chosen->ItemSlotArmor->GetInvColor());
 	}
 
 	// Extended slots
@@ -1550,11 +1550,11 @@ void FOClient::InvDraw()
 		if(!item || (!IsCurMode(CUR_DEFAULT) && IfaceHold==IFACE_INV_SLOTS_EXT && item->GetId()==InvHoldId)) continue;
 		AnyFrames* anim=ResMngr.GetInvAnim(item->GetPicInv());
 		if(!anim) continue;
-		SprMngr.DrawSpriteSize(anim->GetCurSprId(),se.Rect[0]+InvX,se.Rect[1]+InvY,se.Rect.W(),se.Rect.H(),false,true,item->GetInvColor());
+		SprMngr.DrawSpriteSize(anim->GetCurSprId(),se.Rect[0]+InvX,se.Rect[1]+InvY,(float)se.Rect.W(),(float)se.Rect.H(),false,true,item->GetInvColor());
 	}
 
 	// Items in inventory
-	DWORD skip_id=0;
+	uint skip_id=0;
 	if(IsCurMode(CUR_HAND) && IfaceHold==IFACE_INV_INV && InvHoldId) skip_id=InvHoldId;
 	ContainerDraw(INTRECT(InvWInv,InvX,InvY),InvHeightItem,InvScroll,InvCont,skip_id);
 
@@ -2002,7 +2002,7 @@ void FOClient::ConsoleDraw()
 	}	
 }
 
-void FOClient::ConsoleKeyDown(BYTE dik)
+void FOClient::ConsoleKeyDown(uchar dik)
 {
 	if(!IsMainScreen(SCREEN_GAME) && !IsMainScreen(SCREEN_GLOBAL_MAP)) return;
 
@@ -2024,7 +2024,7 @@ void FOClient::ConsoleKeyDown(BYTE dik)
 		}
 
 		ConsoleHistory.push_back(string(ConsoleStr));
-		for(int i=0;i<ConsoleHistory.size()-1;i++)
+		for(uint i=0;i<ConsoleHistory.size()-1;i++)
 		{
 			if(ConsoleHistory[i]==ConsoleHistory[ConsoleHistory.size()-1])
 			{
@@ -2054,7 +2054,7 @@ void FOClient::ConsoleKeyDown(BYTE dik)
 		ConsoleCur=strlen(ConsoleStr);
 		return;
 	case DIK_DOWN:
-		if(ConsoleHistoryCur+1>=ConsoleHistory.size())
+		if(ConsoleHistoryCur+1>=(int)ConsoleHistory.size())
 		{
 			ConsoleHistoryCur=ConsoleHistory.size();
 			StringCopy(ConsoleStr,"");
@@ -2074,7 +2074,7 @@ void FOClient::ConsoleKeyDown(BYTE dik)
 	}
 }
 
-void FOClient::ConsoleKeyUp(BYTE key)
+void FOClient::ConsoleKeyUp(uchar key)
 {
 	ConsoleLastKey=0;
 }
@@ -2115,22 +2115,22 @@ void FOClient::GameDraw()
 		// Follow pic
 		if(GameOpt.ShowGroups && cr->SprDrawValid && Chosen)
 		{
-			if(cr->GetId()==(DWORD)Chosen->Params[ST_FOLLOW_CRIT])
+			if(cr->GetId()==(uint)Chosen->Params[ST_FOLLOW_CRIT])
 			{
 				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCrit->GetCurSprId());
 				INTRECT tr=cr->GetTextRect();
-				int x=(tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(si?si->Width/2:0);
-				int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(si?si->Height:0);
-				DWORD col=(CheckDist(cr->GetHexX(),cr->GetHexY(),Chosen->GetHexX(),Chosen->GetHexY(),FOLLOW_DIST)/* && Chosen->IsFree()*/)?COLOR_IFACE:COLOR_IFACE_RED;
+				int x=(int)((tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(float)(si?si->Width/2:0));
+				int y=(int)((tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(float)(si?si->Height:0));
+				uint col=(CheckDist(cr->GetHexX(),cr->GetHexY(),Chosen->GetHexX(),Chosen->GetHexY(),FOLLOW_DIST)/* && Chosen->IsFree()*/)?COLOR_IFACE:COLOR_IFACE_RED;
 				SprMngr.DrawSprite(GmapPFollowCrit,x,y,col);
 			}
-			if(Chosen->GetId()==(DWORD)cr->Params[ST_FOLLOW_CRIT])
+			if(Chosen->GetId()==(uint)cr->Params[ST_FOLLOW_CRIT])
 			{
 				SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPFollowCritSelf->GetCurSprId());
 				INTRECT tr=cr->GetTextRect();
-				int x=(tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(si?si->Width/2:0);
-				int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(si?si->Height:0);
-				DWORD col=(CheckDist(cr->GetHexX(),cr->GetHexY(),Chosen->GetHexX(),Chosen->GetHexY(),FOLLOW_DIST)/* && Chosen->IsFree()*/)?COLOR_IFACE:COLOR_IFACE_RED;
+				int x=(int)((tr.L+((tr.R-tr.L)/2)+GameOpt.ScrOx)/GameOpt.SpritesZoom-(float)(si?si->Width/2:0));
+				int y=(int)((tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-(float)(si?si->Height:0));
+				uint col=(CheckDist(cr->GetHexX(),cr->GetHexY(),Chosen->GetHexX(),Chosen->GetHexY(),FOLLOW_DIST)/* && Chosen->IsFree()*/)?COLOR_IFACE:COLOR_IFACE_RED;
 				SprMngr.DrawSprite(GmapPFollowCritSelf,x,y,col);
 			}
 		}
@@ -2140,28 +2140,28 @@ void FOClient::GameDraw()
 	}
 
 	// Texts on map
-	DWORD tick=Timer::GameTick();
+	uint tick=Timer::GameTick();
 	for(MapTextVecIt it=GameMapTexts.begin();it!=GameMapTexts.end();)
 	{
 		MapText& mt=(*it);
 		if(tick>=mt.StartTick+mt.Tick) it=GameMapTexts.erase(it);
 		else
 		{
-			DWORD dt=tick-mt.StartTick;
+			uint dt=tick-mt.StartTick;
 			int procent=Procent(mt.Tick,dt);
 			INTRECT r=AverageFlexRect(mt.Rect,mt.EndRect,procent);
 			Field& f=HexMngr.GetField(mt.HexX,mt.HexY);
-			int x=(f.ScrX+HEX_OX+GameOpt.ScrOx)/GameOpt.SpritesZoom-100-(mt.Rect.L-r.L);
-			int y=(f.ScrY+HEX_OY-mt.Rect.H()-(mt.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
+			int x=(int)((f.ScrX+HEX_OX+GameOpt.ScrOx)/GameOpt.SpritesZoom-100.0f-(float)(mt.Rect.L-r.L));
+			int y=(int)((f.ScrY+HEX_OY-mt.Rect.H()-(mt.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70.0f);
 
-			DWORD color=mt.Color;
+			uint color=mt.Color;
 			if(mt.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
 			else if(mt.Tick>500)
 			{
-				DWORD hide=mt.Tick-200;
+				uint hide=mt.Tick-200;
 				if(dt>=hide)
 				{
-					DWORD alpha=0xFF*(100-Procent(mt.Tick-hide,dt-hide))/100;
+					uint alpha=0xFF*(100-Procent(mt.Tick-hide,dt-hide))/100;
 					color=(alpha<<24)|(color&0xFFFFFF);
 				}
 			}
@@ -2172,7 +2172,7 @@ void FOClient::GameDraw()
 	}
 }
 
-void FOClient::GameKeyDown(BYTE dik)
+void FOClient::GameKeyDown(uchar dik)
 {
 	if(ConsoleActive) return;
 
@@ -2280,7 +2280,7 @@ void FOClient::GameLMouseDown()
 		}
 		else if(GetMouseHex() && Chosen)
 		{
-			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),TargetX,TargetY);
+			uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),TargetX,TargetY);
 			bool is_run=(Keyb::ShiftDwn?(!GameOpt.AlwaysRun):(GameOpt.AlwaysRun && dist>=GameOpt.AlwaysRunMoveDist));
 			SetAction(CHOSEN_MOVE,TargetX,TargetY,is_run,0,act?0:1,Timer::FastTick());
 		}
@@ -2444,7 +2444,7 @@ void FOClient::IntDraw()
 		SprMngr.DrawSpriteSize(
 			ResMngr.GetInvAnim(Chosen->ItemSlotMain->GetPicInv()),
 			IntBItem[0]+item_offsx,IntBItem[1]+item_offsy,
-			IntBItem[2]-IntBItem[0],IntBItem[3]-IntBItem[1],
+			(float)(IntBItem[2]-IntBItem[0]),(float)(IntBItem[3]-IntBItem[1]),
 			false,true,Chosen->ItemSlotMain->GetInvColor());
 	}
 
@@ -2460,7 +2460,7 @@ void FOClient::IntDraw()
 	if(Chosen->IsAim()) SprMngr.DrawSprite(IntAimPic,IntAimX+item_offsx,IntAimY+item_offsy);
 
 	// Ap cost
-	DWORD ap_cost=Chosen->GetUseApCost(Chosen->ItemSlotMain,Chosen->GetFullRate());
+	uint ap_cost=Chosen->GetUseApCost(Chosen->ItemSlotMain,Chosen->GetFullRate());
 	if(ap_cost)
 	{
 		SprMngr.DrawSprite(IntWApCostPicNone,IntWApCost[0]+item_offsx,IntWApCost[1]+item_offsy);
@@ -2699,7 +2699,7 @@ void FOClient::AddMess(int mess_type, const char* msg)
 	if(mess_type==FOMB_GAME && !strcmp(msg,"error")) return;
 
 	// Text
-	const DWORD str_color[]={COLOR_TEXT_DGREEN,COLOR_TEXT,COLOR_TEXT_DRED,COLOR_TEXT_DDGREEN};
+	const uint str_color[]={COLOR_TEXT_DGREEN,COLOR_TEXT,COLOR_TEXT_DRED,COLOR_TEXT_DDGREEN};
 	static char str[MAX_FOTEXT];
 	if(mess_type<0 || mess_type>FOMB_VIEW) sprintf_s(str,MAX_FOTEXT,"%s\n",msg);
 	else sprintf_s(str,MAX_FOTEXT,"|%u %c |%u %s\n",str_color[mess_type],TEXT_SYMBOL_DOT,COLOR_TEXT,msg);
@@ -2773,7 +2773,7 @@ void FOClient::MessBoxDraw()
 {
 	if(MessBoxCurText.empty()) return;
 
-	DWORD flags=FT_COLORIZE;
+	uint flags=FT_COLORIZE;
 	if(!GameOpt.MsgboxInvert) flags|=FT_UPPER|FT_BOTTOM;
 
 	INTRECT ir=MessBoxCurRectDraw();
@@ -2878,7 +2878,7 @@ void FOClient::LogDraw()
 	}
 }
 
-void FOClient::LogKeyDown(BYTE dik)
+void FOClient::LogKeyDown(uchar dik)
 {
 	if(Singleplayer) return;
 
@@ -2986,8 +2986,8 @@ void FOClient::LogTryConnect()
 		}
 
 		// Save login and password
-		Crypt.SetCache("__name",(BYTE*)GameOpt.Name.c_str(),GameOpt.Name.length()+1);
-		Crypt.SetCache("__pass",(BYTE*)GameOpt.Pass.c_str(),GameOpt.Pass.length()+1);
+		Crypt.SetCache("__name",(uchar*)GameOpt.Name.c_str(),GameOpt.Name.length()+1);
+		Crypt.SetCache("__pass",(uchar*)GameOpt.Pass.c_str(),GameOpt.Pass.length()+1);
 
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONNECTION));
 	}
@@ -3006,7 +3006,7 @@ void FOClient::LogTryConnect()
 void FOClient::DlgDraw(bool is_dialog)
 {
 	SprMngr.DrawSprite(DlgPMain,DlgX,DlgY);
-	if(!BarterIsPlayers && DlgAvatarPic) SprMngr.DrawSpriteSize(DlgAvatarPic,DlgWAvatar.L+DlgX,DlgWAvatar.T+DlgY,DlgWAvatar.W(),DlgWAvatar.H(),true,true);
+	if(!BarterIsPlayers && DlgAvatarPic) SprMngr.DrawSpriteSize(DlgAvatarPic,DlgWAvatar.L+DlgX,DlgWAvatar.T+DlgY,(float)DlgWAvatar.W(),(float)DlgWAvatar.H(),true,true);
 	if(!Chosen) return;
 
 	// Main pic
@@ -3037,7 +3037,7 @@ void FOClient::DlgDraw(bool is_dialog)
 		SprMngr.DrawStr(INTRECT(DlgWText,DlgX,DlgY),DlgMainText.c_str(),FT_SKIPLINES(DlgMainTextCur),COLOR_TEXT);
 
 		// Answers
-		for(int i=0;i<DlgAnswers.size();i++)
+		for(uint i=0;i<DlgAnswers.size();i++)
 		{
 			Answer& a=DlgAnswers[i];
 			if(i==DlgCurAnsw)
@@ -3095,7 +3095,7 @@ void FOClient::DlgDraw(bool is_dialog)
 		}
 
 		// Cost
-		DWORD c1,w1,v1,c2,w2,v2;
+		uint c1,w1,v1,c2,w2,v2;
 		ContainerCalcInfo(BarterCont1o,c1,w1,v1,-BarterK,true);
 		ContainerCalcInfo(BarterCont2o,c2,w2,v2,Chosen->IsRawParam(PE_MASTER_TRADER)?0:BarterK,false);
 		if(!BarterIsPlayers && BarterK)
@@ -3264,7 +3264,7 @@ void FOClient::DlgLMouseUp(bool is_dialog)
 	{
 		if(IfaceHold==IFACE_DLG_ANSWER && IsCurInRect(DlgAnswText,DlgX,DlgY))
 		{
-			if(DlgCurAnsw==DlgHoldAnsw && DlgCurAnsw>=0 && DlgCurAnsw<DlgAnswers.size() && IsCurInRect(DlgAnswers[DlgCurAnsw].Position,DlgX,DlgY))
+			if(DlgCurAnsw==DlgHoldAnsw && DlgCurAnsw>=0 && DlgCurAnsw<(int)DlgAnswers.size() && IsCurInRect(DlgAnswers[DlgCurAnsw].Position,DlgX,DlgY))
 			{
 				if(DlgAnswers[DlgCurAnsw].AnswerNum<0)
 				{
@@ -3441,7 +3441,7 @@ void FOClient::DlgMouseMove(bool is_dialog)
 	if(is_dialog)
 	{
 		DlgCurAnsw=-1;
-		for(size_t i=0;i<DlgAnswers.size();i++)
+		for(uint i=0;i<DlgAnswers.size();i++)
 		{
 			if(IsCurInRect(DlgAnswers[i].Position,DlgX,DlgY))
 			{
@@ -3469,7 +3469,7 @@ void FOClient::DlgRMouseDown(bool is_dialog)
 	if(!is_dialog) SetCurCastling(CUR_DEFAULT,CUR_HAND);
 }
 
-void FOClient::DlgKeyDown(bool is_dialog, BYTE dik)
+void FOClient::DlgKeyDown(bool is_dialog, uchar dik)
 {
 	int num;
 	switch(dik)
@@ -3515,7 +3515,7 @@ void FOClient::DlgKeyDown(bool is_dialog, BYTE dik)
 	default: return;
 	}
 
-	if(is_dialog && num<DlgAnswers.size())
+	if(is_dialog && num<(int)DlgAnswers.size())
 	{
 		if(DlgAnswers[num].AnswerNum<0)
 		{
@@ -3535,7 +3535,7 @@ void FOClient::DlgCollectAnswers(bool next)
 	if(!next && DlgCurAnswPage>0) DlgCurAnswPage--;
 
 	DlgAnswers.clear();
-	for(size_t i=0,j=DlgAllAnswers.size();i<j;i++)
+	for(uint i=0,j=DlgAllAnswers.size();i<j;i++)
 	{
 		Answer& a=DlgAllAnswers[i];
 		if(a.Page==DlgCurAnswPage) DlgAnswers.push_back(a);
@@ -3559,7 +3559,7 @@ void FOClient::BarterTryOffer()
 	}
 	else
 	{
-		DWORD c1,w1,v1,c2,w2,v2;
+		uint c1,w1,v1,c2,w2,v2;
 		ContainerCalcInfo(BarterCont1oInit,c1,w1,v1,-BarterK,true);
 		ContainerCalcInfo(BarterCont2oInit,c2,w2,v2,Chosen->IsRawParam(PE_MASTER_TRADER)?0:BarterK,false);
 		if(!c1 && !c2 && BarterK) return;
@@ -3577,7 +3577,7 @@ void FOClient::BarterTryOffer()
 	}
 }
 
-void FOClient::BarterTransfer(DWORD item_id, int item_cont, DWORD item_count)
+void FOClient::BarterTransfer(uint item_id, int item_cont, uint item_count)
 {
 	if(!item_count || !Chosen) return;
 
@@ -3654,7 +3654,7 @@ void FOClient::BarterTransfer(DWORD item_id, int item_cont, DWORD item_count)
 	}
 }
 
-void FOClient::ContainerCalcInfo(ItemVec& cont, DWORD& cost, DWORD& weigth, DWORD& volume, int barter_k, bool sell)
+void FOClient::ContainerCalcInfo(ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell)
 {
 	cost=0;
 	weigth=0;
@@ -3664,17 +3664,17 @@ void FOClient::ContainerCalcInfo(ItemVec& cont, DWORD& cost, DWORD& weigth, DWOR
 		Item& item=*it;
 		if(barter_k!=MAX_INT)
 		{
-			DWORD cost_=item.GetCost1st();
+			uint cost_=item.GetCost1st();
 			if(GameOpt.CustomItemCost)
 			{
 				CritterCl* npc=GetCritter(PupContId);
-				if(Chosen && npc && Script::PrepareContext(ClientFunctions.ItemCost,CALL_FUNC_STR,Chosen->GetInfo()))
+				if(Chosen && npc && Script::PrepareContext(ClientFunctions.ItemCost,_FUNC_,Chosen->GetInfo()))
 				{
 					Script::SetArgObject(&item);
 					Script::SetArgObject(Chosen);
 					Script::SetArgObject(npc);
 					Script::SetArgBool(sell);
-					if(Script::RunPrepared()) cost_=Script::GetReturnedDword();
+					if(Script::RunPrepared()) cost_=Script::GetReturnedUInt();
 				}
 			}
 			else
@@ -3788,7 +3788,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				else if(strlen(tag)>4 && tag[0]=='m' && tag[1]=='s' && tag[2]=='g' && tag[3]==' ')
 				{
 					char msg_type_name[64];
-					DWORD str_num;
+					uint str_num;
 					Str::EraseChars(&tag[4],'(');
 					Str::EraseChars(&tag[4],')');
 					if(sscanf(&tag[4],"%s %u",msg_type_name,&str_num)!=2) StringCopy(tag,"<msg tag parse fail>");
@@ -3807,7 +3807,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 					Str::CopyWord(func_name,&tag[7],'$',false);
 					int bind_id=Script::Bind("client_main",func_name,"string %s(string&)",true);
 					StringCopy(tag,"<script function not found>");
-					if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,"Game"))
+					if(bind_id>0 && Script::PrepareContext(bind_id,_FUNC_,"Game"))
 					{
 						CScriptString* script_lexems=new CScriptString(lexems);
 						Script::SetArgObject(script_lexems);
@@ -3989,7 +3989,7 @@ void FOClient::LMenuCollect()
 		{
 		case SCREEN__USE:
 			{
-				DWORD item_id=GetCurContainerItemId(INTRECT(UseWInv,UseX,UseY),UseHeightItem,UseScroll,UseCont);
+				uint item_id=GetCurContainerItemId(INTRECT(UseWInv,UseX,UseY),UseHeightItem,UseScroll,UseCont);
 				if(item_id)
 				{
 					TargetSmth.SetContItem(item_id,0);
@@ -4000,7 +4000,7 @@ void FOClient::LMenuCollect()
 		case SCREEN__INVENTORY:
 			{
 				if(!Chosen) break;
-				DWORD item_id=GetCurContainerItemId(INTRECT(InvWInv,InvX,InvY),InvHeightItem,InvScroll,InvCont);
+				uint item_id=GetCurContainerItemId(INTRECT(InvWInv,InvX,InvY),InvHeightItem,InvScroll,InvCont);
 				if(!item_id && IsCurInRect(InvWSlot1,InvX,InvY)) item_id=Chosen->ItemSlotMain->GetId();
 				if(!item_id && IsCurInRect(InvWSlot2,InvX,InvY)) item_id=Chosen->ItemSlotExt->GetId();
 				if(!item_id && IsCurInRect(InvWArmor,InvX,InvY)) item_id=Chosen->ItemSlotArmor->GetId();
@@ -4030,7 +4030,7 @@ void FOClient::LMenuCollect()
 		case SCREEN__BARTER:
 			{
 				int cont_type=0;
-				DWORD item_id=GetCurContainerItemId(INTRECT(BarterWCont1,DlgX,DlgY),BarterCont1HeightItem,BarterScroll1,BarterCont1);
+				uint item_id=GetCurContainerItemId(INTRECT(BarterWCont1,DlgX,DlgY),BarterCont1HeightItem,BarterScroll1,BarterCont1);
 				if(!item_id) item_id=GetCurContainerItemId(INTRECT(BarterWCont2,DlgX,DlgY),BarterCont2HeightItem,BarterScroll2,BarterCont2);
 				if(!item_id)
 				{
@@ -4046,7 +4046,7 @@ void FOClient::LMenuCollect()
 			break;
 		case SCREEN__PICKUP:
 			{
-				DWORD item_id=GetCurContainerItemId(INTRECT(PupWCont1,PupX,PupY),PupHeightItem1,PupScroll1,PupCont1);
+				uint item_id=GetCurContainerItemId(INTRECT(PupWCont1,PupX,PupY),PupHeightItem1,PupScroll1,PupCont1);
 				if(!item_id) item_id=GetCurContainerItemId(INTRECT(PupWCont2,PupX,PupY),PupHeightItem2,PupScroll2,PupCont2);
 				if(!item_id) break;
 
@@ -4106,7 +4106,7 @@ void FOClient::LMenuCollect()
 	if(!LMenuCurNodes) LMenuSet(LMENU_OFF);
 }
 
-void FOClient::LMenuSet(BYTE set_lmenu)
+void FOClient::LMenuSet(uchar set_lmenu)
 {
 	if(IsLMenu()) SetCurPos(LMenuRestoreCurX,LMenuRestoreCurY);
 	LMenuMode=set_lmenu;
@@ -4334,7 +4334,7 @@ void FOClient::LMenuDraw()
 		LMENU_DRAW_CASE(LMENU_NODE_VOTE_UP,LmenuPVoteUpOff,LmenuPVoteUpOn);
 		LMENU_DRAW_CASE(LMENU_NODE_VOTE_DOWN,LmenuPVoteDownOff,LmenuPVoteDownOn);
 		default:
-			WriteLog(__FUNCTION__" - Unknown node<%d>.\n",num_node);
+			WriteLog(_FUNC_," - Unknown node<%d>.\n",num_node);
 			break;
 		}
 		if(!IsLMenu()) break;
@@ -4347,7 +4347,7 @@ void FOClient::LMenuMouseMove()
 	{
 		LMenuCurNode=(GameOpt.MouseY-LMenuY)/LMenuNodeHeight;
 		if(LMenuCurNode<0) LMenuCurNode=0;
-		if(LMenuCurNode>LMenuCurNodes->size()-1) LMenuCurNode=LMenuCurNodes->size()-1;
+		if(LMenuCurNode>(int)LMenuCurNodes->size()-1) LMenuCurNode=LMenuCurNodes->size()-1;
 	}
 	else
 	{
@@ -4365,7 +4365,7 @@ void FOClient::LMenuMouseUp()
 	if(!Chosen || !LMenuCurNodes) return;
 	if(!IsLMenu()) LMenuCurNode=0;
 
-	ByteVec::iterator it_l=LMenuCurNodes->begin();
+	UCharVecIt it_l=LMenuCurNodes->begin();
 	it_l+=LMenuCurNode;
 
 	switch(LMenuMode)
@@ -4704,7 +4704,7 @@ int FOClient::GetActiveScreen(IntVec** screens /* = NULL */)
 	static IntVec active_screens;
 	active_screens.clear();
 
-	if(Script::PrepareContext(ClientFunctions.GetActiveScreens,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.GetActiveScreens,_FUNC_,"Game"))
 	{
 		CScriptArray* arr=Script::CreateArray("int[]");
 		if(arr)
@@ -4788,7 +4788,7 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 		ZeroMemory(ChaSkillUp,sizeof(ChaSkillUp));
 		if(Chosen) ChaUnspentSkillPoints=Chosen->Params[ST_UNSPENT_SKILL_POINTS];
 		ZeroMemory(ChaSwitchScroll,sizeof(ChaSwitchScroll));
-		if(!Chosen || (ChaSkilldexPic>=SKILLDEX_PARAM(PERK_BEGIN) && ChaSkilldexPic<=SKILLDEX_PARAM(PERK_END) && !Chosen->IsRawParam(ChaSkilldexPic)))
+		if(!Chosen || (ChaSkilldexPic>=(int)SKILLDEX_PARAM(PERK_BEGIN) && ChaSkilldexPic<=(int)SKILLDEX_PARAM(PERK_END) && !Chosen->IsRawParam(ChaSkilldexPic)))
 		{
 			ChaSkilldexPic=-1;
 			ChaName[0]=0;
@@ -4889,7 +4889,7 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 			GmapTownPicPos[3]=MODE_HEIGHT;
 			int pic_offsx=0;
 			int pic_offsy=0;
-			WORD loc_pid=GmapTownLoc.LocPid;
+			ushort loc_pid=GmapTownLoc.LocPid;
 
 			AnyFrames* anim=ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_PIC_(loc_pid))));
 			if(!anim)
@@ -4908,10 +4908,10 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 			GmapTownPicPos[2]=pic_offsx+si->Width;
 			GmapTownPicPos[3]=pic_offsy+si->Height;
 
-			DWORD entrance=MsgGM->GetInt(STR_GM_ENTRANCE_COUNT_(loc_pid));
+			uint entrance=MsgGM->GetInt(STR_GM_ENTRANCE_COUNT_(loc_pid));
 			if(!entrance) break;
 
-			for(int i=0;i<entrance;i++)
+			for(uint i=0;i<entrance;i++)
 			{
 				int x=MsgGM->GetInt(STR_GM_ENTRANCE_PICX_(loc_pid,i))+pic_offsx;
 				int y=MsgGM->GetInt(STR_GM_ENTRANCE_PICY_(loc_pid,i))+pic_offsy;
@@ -4976,13 +4976,13 @@ void FOClient::HideScreen(int screen, int p0, int p1, int p2)
 
 void FOClient::RunScreenScript(bool show, int screen, int p0, int p1, int p2)
 {
-	if(Script::PrepareContext(ClientFunctions.ScreenChange,CALL_FUNC_STR,"Game"))
+	if(Script::PrepareContext(ClientFunctions.ScreenChange,_FUNC_,"Game"))
 	{
 		Script::SetArgBool(show);
-		Script::SetArgDword(screen);
-		Script::SetArgDword(p0);
-		Script::SetArgDword(p1);
-		Script::SetArgDword(p2);
+		Script::SetArgUInt(screen);
+		Script::SetArgUInt(p0);
+		Script::SetArgUInt(p1);
+		Script::SetArgUInt(p2);
 		Script::RunPrepared();
 	}
 }
@@ -5033,7 +5033,7 @@ void FOClient::SetCurPos(int x, int y)
 
 		//POINT pp;
 		//GetCursorPos(&pp);
-		//WriteLog("%d + %d = %d, %d + %d = %d; real %d, %d\n",wi.rcClient.left,CurX,wi.rcClient.left+CurX,wi.rcClient.top,CurY,wi.rcClient.top+CurY,pp.x,pp.y);
+		//WriteLog(NULL,"%d + %d = %d, %d + %d = %d; real %d, %d\n",wi.rcClient.left,CurX,wi.rcClient.left+CurX,wi.rcClient.top,CurY,wi.rcClient.top+CurY,pp.x,pp.y);
 	}
 }
 
@@ -5054,8 +5054,8 @@ void FOClient::LmapPrepareMap()
 	int ex=Chosen->GetHexX()+maxpixx;
 	int ey=Chosen->GetHexY()+maxpixy;
 
-	DWORD vis=Chosen->GetLook();
-	DWORD cur_color=0;
+	uint vis=Chosen->GetLook();
+	uint cur_color=0;
 	int pix_x=LmapWMap[2]-LmapWMap[0], pix_y=0;
 
 	for(int i1=bx;i1<ex;i1++)
@@ -5066,7 +5066,7 @@ void FOClient::LmapPrepareMap()
 			if(i1<0 || i2<0 || i1>=HexMngr.GetMaxHexX() || i2>=HexMngr.GetMaxHexY()) continue;
 
 			bool is_far=false;
-			DWORD dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),i1,i2);
+			uint dist=DistGame(Chosen->GetHexX(),Chosen->GetHexY(),i1,i2);
 			if(dist>vis) is_far=true;
 
 			Field& f=HexMngr.GetField(i1,i2);
@@ -5149,7 +5149,7 @@ void FOClient::LmapLMouseUp()
 	}
 	if(IsCurInRect(LmapBScan,LmapX,LmapY) && IfaceHold==IFACE_LMAP_SCAN)
 	{
-		LmapZoom*=1.5f;
+		LmapZoom=LmapZoom*3/2;
 		if(LmapZoom>13) LmapZoom=2;
 		LmapPrepareMap();
 	}
@@ -5177,8 +5177,8 @@ bool FOClient::GmapWait;
 	do{\
 		if(GmapOffsetX>GmapWMap[0]) GmapOffsetX=GmapWMap[0];\
 		if(GmapOffsetY>GmapWMap[1]) GmapOffsetY=GmapWMap[1];\
-		if(GmapOffsetX<GmapWMap[2]-GM_MAXX/GmapZoom) GmapOffsetX=GmapWMap[2]-GM_MAXX/GmapZoom;\
-		if(GmapOffsetY<GmapWMap[3]-GM_MAXY/GmapZoom) GmapOffsetY=GmapWMap[3]-GM_MAXY/GmapZoom;\
+		if(GmapOffsetX<GmapWMap[2]-(int)(GM_MAXX/GmapZoom)) GmapOffsetX=GmapWMap[2]-(int)(GM_MAXX/GmapZoom);\
+		if(GmapOffsetY<GmapWMap[3]-(int)(GM_MAXY/GmapZoom)) GmapOffsetY=GmapWMap[3]-(int)(GM_MAXY/GmapZoom);\
 	}while(0)
 
 #define GMAP_LOC_ALPHA   (60)
@@ -5215,7 +5215,7 @@ void FOClient::GmapProcess()
 
 	if(!GmapWait)
 	{
-		DWORD dtime_move=Timer::GameTick()-GmapMoveLastTick;
+		uint dtime_move=Timer::GameTick()-GmapMoveLastTick;
 		if(dtime_move>=GM_MOVE_TIME)
 		{
 			int walk_type=GM_WALK_GROUND;
@@ -5226,11 +5226,11 @@ void FOClient::GmapProcess()
 			if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0];
 			if(car && kr!=1.0f)
 			{
-				float n=car->Proto->Car_Passability;
-				if(n>100 && kr<1.0f) kr+=(1.0f-kr)*(n-100.0f)/100.0f;
-				else if(n>100 && kr>1.0f) kr-=(kr-1.0f)*(n-100.0f)/100.0f;
-				else if(n<100 && kr<1.0f) kr-=(1.0f-kr)*(100.0f-n)/100.0f;
-				else if(n<100 && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
+				float n=(float)car->Proto->Car_Passability;
+				if(n>100.0f && kr<1.0f) kr+=(1.0f-kr)*(n-100.0f)/100.0f;
+				else if(n>100.0f && kr>1.0f) kr-=(kr-1.0f)*(n-100.0f)/100.0f;
+				else if(n<100.0f && kr<1.0f) kr-=(1.0f-kr)*(100.0f-n)/100.0f;
+				else if(n<100.0f && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
 			}
 
 			GmapGroupXf+=GmapSpeedX*kr*((float)(dtime_move)/GM_PROCESS_TIME);
@@ -5238,19 +5238,19 @@ void FOClient::GmapProcess()
 
 			int old_x=GmapGroupX;
 			int old_y=GmapGroupY;
-			DWORD last_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
+			uint last_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
 
 			GmapGroupX=(int)GmapGroupXf;
 			GmapGroupY=(int)GmapGroupYf;
 
 			if(GmapGroupX!=old_x || GmapGroupY!=old_y)
 			{
-				if(GmapGroupX<0 || GmapGroupY<0 || GmapGroupX>=GM_MAXX || GmapGroupY>=GM_MAXY)
+				if(GmapGroupX<0 || GmapGroupY<0 || GmapGroupX>=(int)GM_MAXX || GmapGroupY>=(int)GM_MAXY)
 				{
 					if(GmapGroupX<0) GmapGroupX=0;
-					if(GmapGroupX>=GM_MAXX) GmapGroupX=GM_MAXX-1;
+					if(GmapGroupX>=(int)GM_MAXX) GmapGroupX=(int)GM_MAXX-1;
 					if(GmapGroupY<0) GmapGroupY=0;
-					if(GmapGroupY>=GM_MAXY) GmapGroupY=GM_MAXY-1;
+					if(GmapGroupY>=(int)GM_MAXY) GmapGroupY=(int)GM_MAXY-1;
 
 					// Stop group
 					GmapSpeedX=0.0f;
@@ -5293,13 +5293,13 @@ void FOClient::GmapProcess()
 				}
 
 				// Process scroll
-				GmapOffsetX+=(old_x-GmapGroupX)/GmapZoom;
-				GmapOffsetY+=(old_y-GmapGroupY)/GmapZoom;
+				GmapOffsetX+=(int)((old_x-GmapGroupX)/GmapZoom);
+				GmapOffsetY+=(int)((old_y-GmapGroupY)/GmapZoom);
 
 				GMAP_CHECK_MAPSCR;
 
 				// Check dist
-				DWORD cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
+				uint cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
 				if(!cur_dist || cur_dist>last_dist)
 				{
 					GmapSpeedX=0.0f;
@@ -5311,7 +5311,7 @@ void FOClient::GmapProcess()
 
 			if(GmapSpeedX!=0.0f || GmapSpeedY!=0.0f)
 			{
-				static DWORD point_tick=0;
+				static uint point_tick=0;
 				if(Timer::GameTick()>=point_tick)
 				{
 					if(GmapTrace.empty() || GmapTrace[0].first!=old_x || GmapTrace[0].second!=old_y)
@@ -5321,13 +5321,13 @@ void FOClient::GmapProcess()
 			}
 			else
 			{
-				GmapGroupXf=GmapGroupX;
-				GmapGroupYf=GmapGroupY;
+				GmapGroupXf=(float)GmapGroupX;
+				GmapGroupYf=(float)GmapGroupY;
 				GmapTrace.clear();
 			}
 		}
 
-		DWORD dtime_proc=Timer::GameTick()-GmapProcLastTick;
+		uint dtime_proc=Timer::GameTick()-GmapProcLastTick;
 		if(dtime_proc>=GM_PROCESS_TIME)
 		{
 			Item* car=GmapGetCar();
@@ -5338,7 +5338,7 @@ void FOClient::GmapProcess()
 				fuel-=car->Proto->Car_FuelConsumption;
 				deterioration+=car->Proto->Car_DeteriorationRate;
 				if(fuel<0) fuel=0;
-				if(deterioration>car->Proto->Car_MaxDeterioration) deterioration=car->Proto->Car_MaxDeterioration;
+				if(deterioration>(int)car->Proto->Car_MaxDeterioration) deterioration=car->Proto->Car_MaxDeterioration;
 				car->Data.Car.Fuel=fuel;
 				car->Data.Car.Deterioration=deterioration;
 			}
@@ -5409,13 +5409,14 @@ void FOClient::GmapDraw()
 
 	// World map
 	int wmx=0,wmy=0;
-	for(int py=0;py<GmapTilesY;py++)
+	for(uint py=0;py<GmapTilesY;py++)
 	{
 		wmx=0;
-		for(int px=0;px<GmapTilesX;px++)
+		for(uint px=0;px<GmapTilesX;px++)
 		{
-			int index=py*GmapTilesX+px;
+			uint index=py*GmapTilesX+px;
 			if(index>=GmapPic.size()) continue;
+
 			if(!GmapPic[index])
 			{
 				SprMngr.SurfType=RES_GLOBAL_MAP;
@@ -5430,10 +5431,10 @@ void FOClient::GmapDraw()
 			int w=spr_inf->Width;
 			int h=spr_inf->Height;
 
-			int mx1=wmx/GmapZoom+GmapOffsetX;
-			int my1=wmy/GmapZoom+GmapOffsetY;
-			int mx2=mx1+w/GmapZoom;
-			int my2=my1+h/GmapZoom;
+			int mx1=(int)(wmx/GmapZoom)+GmapOffsetX;
+			int my1=(int)(wmy/GmapZoom)+GmapOffsetY;
+			int mx2=mx1+(int)(w/GmapZoom);
+			int my2=my1+(int)(h/GmapZoom);
 
 			int sx1=GmapWMap[0];
 			int sy1=GmapWMap[1];
@@ -5468,7 +5469,7 @@ void FOClient::GmapDraw()
 		{
 			int val=GmapFog.Get2Bit(zx,zy);
 			if(val==GM_FOG_NONE) continue;
-			DWORD color=D3DCOLOR_ARGB(0xFF,0,0,0); //GM_FOG_FULL
+			uint color=D3DCOLOR_ARGB(0xFF,0,0,0); //GM_FOG_FULL
 			if(val==GM_FOG_HALF) color=D3DCOLOR_ARGB(0x7F,0,0,0);
 			else if(val==GM_FOG_HALF_EX) color=D3DCOLOR_ARGB(0x3F,0,0,0);
 			float x=float(zx*GM_ZONE_LEN)/GmapZoom+GmapOffsetX;
@@ -5484,12 +5485,16 @@ void FOClient::GmapDraw()
 		GmapLocation& loc=(*it);
 		int radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
 		if(radius<=0) radius=6;
-		int loc_pic_x1=loc.LocWx/GmapZoom+GmapOffsetX-radius/GmapZoom;
-		int loc_pic_y1=loc.LocWy/GmapZoom+GmapOffsetY-radius/GmapZoom;
-		int loc_pic_x2=loc.LocWx/GmapZoom+GmapOffsetX+radius/GmapZoom;
-		int loc_pic_y2=loc.LocWy/GmapZoom+GmapOffsetY+radius/GmapZoom;
+		int loc_pic_x1=(int)((loc.LocWx-radius)/GmapZoom)+GmapOffsetX;
+		int loc_pic_y1=(int)((loc.LocWy-radius)/GmapZoom)+GmapOffsetY;
+		int loc_pic_x2=(int)((loc.LocWx+radius)/GmapZoom)+GmapOffsetX;
+		int loc_pic_y2=(int)((loc.LocWy+radius)/GmapZoom)+GmapOffsetY;
 		if(loc_pic_x1<=GmapWMap[2] && loc_pic_y1<=GmapWMap[3] && loc_pic_x2>=GmapWMap[0] && loc_pic_y2>=GmapWMap[1])
-			SprMngr.DrawSpriteSize(GmapLocPic,loc_pic_x1,loc_pic_y1,loc_pic_x2-loc_pic_x1,loc_pic_y2-loc_pic_y1,true,false,loc.Color?loc.Color:D3DCOLOR_ARGB(GMAP_LOC_ALPHA,0,255,0));
+		{
+			SprMngr.DrawSpriteSize(GmapLocPic,loc_pic_x1,loc_pic_y1,
+				(float)(loc_pic_x2-loc_pic_x1),(float)(loc_pic_y2-loc_pic_y1),
+				true,false,loc.Color?loc.Color:D3DCOLOR_ARGB(GMAP_LOC_ALPHA,0,255,0));
+		}
 	}
 
 	// On map
@@ -5497,7 +5502,7 @@ void FOClient::GmapDraw()
 	{
 		AnyFrames* pic=((Timer::GameTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
 		SpriteInfo* si=SprMngr.GetSpriteInfo(pic->GetCurSprId());
-		if(si) SprMngr.DrawSprite(pic,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
+		if(si) SprMngr.DrawSprite(pic,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
 	}
 	else
 	{
@@ -5505,9 +5510,9 @@ void FOClient::GmapDraw()
 		{
 			SpriteInfo* si;
 			if(si=SprMngr.GetSpriteInfo(GmapPGr->GetCurSprId()))
-				SprMngr.DrawSprite(GmapPGr,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
+				SprMngr.DrawSprite(GmapPGr,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
 			if(si=SprMngr.GetSpriteInfo(GmapPTarg->GetCurSprId()))
-				SprMngr.DrawSprite(GmapPTarg,GmapMoveX/GmapZoom+GmapOffsetX-si->Width/2,GmapMoveY/GmapZoom+GmapOffsetY-si->Height/2);
+				SprMngr.DrawSprite(GmapPTarg,(int)(GmapMoveX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapMoveY/GmapZoom)+GmapOffsetY-si->Height/2);
 		}
 		else
 		{
@@ -5515,12 +5520,12 @@ void FOClient::GmapDraw()
 			if(IfaceHold==IFACE_GMAP_TOLOC)
 			{
 				if(si=SprMngr.GetSpriteInfo(GmapPStayDn->GetCurSprId()))
-					SprMngr.DrawSprite(GmapPStayDn,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
+					SprMngr.DrawSprite(GmapPStayDn,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
 			}
 			else
 			{
 				if(si=SprMngr.GetSpriteInfo(GmapPStay->GetCurSprId()))
-					SprMngr.DrawSprite(GmapPStay,GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2,GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2);
+					SprMngr.DrawSprite(GmapPStay,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
 			}
 		}
 	}
@@ -5529,7 +5534,7 @@ void FOClient::GmapDraw()
 	static PointVec gt;
 	gt.clear();
 	for(IntPairVecIt it=GmapTrace.begin(),end=GmapTrace.end();it!=end;++it)
-		gt.push_back(PrepPoint((*it).first/GmapZoom+GmapOffsetX,(*it).second/GmapZoom+GmapOffsetY,0xFFFF0000));
+		gt.push_back(PrepPoint((int)((*it).first/GmapZoom)+GmapOffsetX,(int)((*it).second/GmapZoom)+GmapOffsetY,0xFFFF0000));
 	SprMngr.DrawPoints(gt,D3DPT_POINTLIST);
 
 	// Script draw
@@ -5591,7 +5596,7 @@ void FOClient::GmapDraw()
 	Item* car=GmapGetCar();
 	if(car)
 	{
-		SprMngr.DrawSpriteSize(car->GetCurSprId(),GmapWCar.L,GmapWCar.T,GmapWCar.W(),GmapWCar.H(),false,true);
+		SprMngr.DrawSpriteSize(car->GetCurSprId(),GmapWCar.L,GmapWCar.T,(float)GmapWCar.W(),(float)GmapWCar.H(),false,true);
 		SprMngr.DrawStr(GmapWCar,FmtItemLook(car,ITEM_LOOK_WM_CAR),FT_CENTERX|FT_BOTTOM,COLOR_TEXT,FONT_DEFAULT);
 	}
 
@@ -5616,15 +5621,15 @@ void FOClient::GmapDraw()
 	// Map coord
 	if(GetActiveScreen()==SCREEN_NONE && IsCurInRect(GmapWMap) && !IsLMenu())
 	{
-		int cx=(GameOpt.MouseX-GmapOffsetX)*GmapZoom;
-		int cy=(GameOpt.MouseY-GmapOffsetY)*GmapZoom;
+		int cx=(int)((GameOpt.MouseX-GmapOffsetX)*GmapZoom);
+		int cy=(int)((GameOpt.MouseY-GmapOffsetY)*GmapZoom);
 		if(GmapFog.Get2Bit(GM_ZONE(cx),GM_ZONE(cy))!=GM_FOG_FULL)
 		{
 			GmapLocation* cur_loc=NULL;
 			for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
 			{
 				GmapLocation& loc=(*it);
-				DWORD radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
+				uint radius=loc.Radius; //MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
 				if(!radius || !MsgGM->Count(STR_GM_NAME_(loc.LocPid)) || !MsgGM->Count(STR_GM_INFO_(loc.LocPid))) continue;
 				if(DistSqrt(loc.LocWx,loc.LocWy,cx,cy)<=radius)
 				{
@@ -5664,7 +5669,7 @@ void FOClient::GmapTownDraw()
 		return;
 	}
 
-	WORD loc_pid=GmapTownLoc.LocPid;
+	ushort loc_pid=GmapTownLoc.LocPid;
 
 	if(DistSqrt(GmapTownLoc.LocWx,GmapTownLoc.LocWy,GmapGroupX,GmapGroupY)>GmapTownLoc.Radius)
 	{
@@ -5677,7 +5682,7 @@ void FOClient::GmapTownDraw()
 
 	if(!Chosen || !Chosen->IsGmapRule()) return;
 
-	for(int i=0;i<GmapTownTextPos.size();i++)
+	for(uint i=0;i<GmapTownTextPos.size();i++)
 	{
 		if(GmapTownLoc.LocId!=GmapShowEntrancesLocId || !GmapShowEntrances[i]) continue;
 
@@ -5695,7 +5700,7 @@ void FOClient::GmapTownDraw()
 		SprMngr.DrawSprite(pic,GmapTownTextPos[i][0]+GmapPTownViewOffsX,GmapTownTextPos[i][1]+GmapPTownViewOffsY);
 	}
 
-	for(int i=0;i<GmapTownTextPos.size();i++)
+	for(uint i=0;i<GmapTownTextPos.size();i++)
 	{
 		if(GmapTownLoc.LocId!=GmapShowEntrancesLocId || !GmapShowEntrances[i]) continue;
 		SprMngr.DrawStr(GmapTownTextPos[i],GmapTownText[i].c_str(),FT_COLORIZE);
@@ -5709,7 +5714,7 @@ void FOClient::GmapLMouseDown()
 	// Town picture
 	if(GetActiveScreen()==SCREEN__GM_TOWN)
 	{
-		for(int i=0;i<GmapTownTextPos.size();i++)
+		for(uint i=0;i<GmapTownTextPos.size();i++)
 		{
 			if(GmapTownLoc.LocId!=GmapShowEntrancesLocId || !GmapShowEntrances[i]) continue;
 			INTRECT& r=GmapTownTextPos[i];
@@ -5809,8 +5814,8 @@ void FOClient::GmapLMouseDown()
 			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
 			if(si)
 			{
-				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
-				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
+				int x=(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2;
+				int y=(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2;
 
 				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
 					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
@@ -5833,13 +5838,13 @@ void FOClient::GmapLMouseUp()
 		{
 			ShowScreen(SCREEN_NONE);
 		}
-		else if(IfaceHold==IFACE_GMAP_TOWN_BUT && GmapTownCurButton>=0 && GmapTownCurButton<GmapTownTextPos.size() &&
+		else if(IfaceHold==IFACE_GMAP_TOWN_BUT && GmapTownCurButton>=0 && GmapTownCurButton<(int)GmapTownTextPos.size() &&
 			IsCurInRect(GmapTownTextPos[GmapTownCurButton],GmapPTownInOffsX,GmapPTownInOffsY) &&
 			SprMngr.IsPixNoTransp(GmapPTownInPicMask->GetCurSprId(),GameOpt.MouseX-GmapTownTextPos[GmapTownCurButton][0]-GmapPTownInOffsX,GameOpt.MouseY-GmapTownTextPos[GmapTownCurButton][1]-GmapPTownInOffsY,false))
 		{
 			Net_SendRuleGlobal(GM_CMD_TOLOCAL,GmapTownLoc.LocId,GmapTownCurButton);
 		}
-		else if(IfaceHold==IFACE_GMAP_VIEW_BUT && GmapTownCurButton>=0 && GmapTownCurButton<GmapTownTextPos.size() &&
+		else if(IfaceHold==IFACE_GMAP_VIEW_BUT && GmapTownCurButton>=0 && GmapTownCurButton<(int)GmapTownTextPos.size() &&
 			IsCurInRect(GmapTownTextPos[GmapTownCurButton],GmapPTownViewOffsX,GmapPTownViewOffsY) &&
 			SprMngr.IsPixNoTransp(GmapPTownViewPicMask->GetCurSprId(),GameOpt.MouseX-GmapTownTextPos[GmapTownCurButton][0]-GmapPTownViewOffsX,GameOpt.MouseY-GmapTownTextPos[GmapTownCurButton][1]-GmapPTownViewOffsY,false))
 		{
@@ -5857,17 +5862,17 @@ void FOClient::GmapLMouseUp()
 			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
 			if(si)
 			{
-				int x=GmapGroupX/GmapZoom+GmapOffsetX-si->Width/2;
-				int y=GmapGroupY/GmapZoom+GmapOffsetY-si->Height/2;
+				int x=(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2;
+				int y=(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2;
 
 				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
 					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
 				{
-					DWORD loc_id=0;
+					uint loc_id=0;
 					for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
 					{
 						GmapLocation& loc=(*it);
-						DWORD radius=loc.Radius;
+						uint radius=loc.Radius;
 						if(!radius) radius=6;
 
 						if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupX,GmapGroupY)<=radius)
@@ -5883,7 +5888,7 @@ void FOClient::GmapLMouseUp()
 		}
 		else if(IfaceHold==IFACE_GMAP_MAP)
 		{
-			Net_SendRuleGlobal(GM_CMD_SETMOVE,(GameOpt.MouseX-GmapOffsetX)*GmapZoom,(GameOpt.MouseY-GmapOffsetY)*GmapZoom);
+			Net_SendRuleGlobal(GM_CMD_SETMOVE,(int)((GameOpt.MouseX-GmapOffsetX)*GmapZoom),(int)((GameOpt.MouseY-GmapOffsetY)*GmapZoom));
 		}
 	}
 	else if(IfaceHold==IFACE_GMAP_TOWN && IsCurInRect(GmapBTown))
@@ -5891,7 +5896,7 @@ void FOClient::GmapLMouseUp()
 		for(GmapLocationVecIt it=GmapLoc.begin();it!=GmapLoc.end();++it)
 		{
 			GmapLocation& loc=(*it);
-			DWORD radius=loc.Radius;
+			uint radius=loc.Radius;
 			if(!radius) radius=6;
 
 			if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupX,GmapGroupY)<=radius)
@@ -5904,7 +5909,7 @@ void FOClient::GmapLMouseUp()
 	}
 	else if(IfaceHold==IFACE_GMAP_TABBTN && IsCurInRect(GmapWTabs))
 	{
-		if(GmapCurHoldBLoc<GmapLoc.size())
+		if(GmapCurHoldBLoc<(int)GmapLoc.size())
 		{
 			GmapLocation& loc=GmapLoc[GmapCurHoldBLoc];
 			Net_SendRuleGlobal(GM_CMD_SETMOVE,loc.LocWx,loc.LocWy);
@@ -5956,7 +5961,7 @@ void FOClient::GmapMouseMove()
 	}
 }
 
-void FOClient::GmapKeyDown(BYTE dik)
+void FOClient::GmapKeyDown(uchar dik)
 {
 	if(ConsoleActive) return;
 	if(Keyb::CtrlDwn || Keyb::ShiftDwn || Keyb::AltDwn) return;
@@ -5964,8 +5969,8 @@ void FOClient::GmapKeyDown(BYTE dik)
 	switch(dik)
 	{
 	case DIK_HOME:
-		GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX/GmapZoom;
-		GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY/GmapZoom;
+		GmapOffsetX=GmapWMap.W()/2+GmapWMap[0]-(int)(GmapGroupX/GmapZoom);
+		GmapOffsetY=GmapWMap.H()/2+GmapWMap[1]-(int)(GmapGroupY/GmapZoom);
 		GMAP_CHECK_MAPSCR;
 		break;
 	case DIK_C: ShowScreen(SCREEN__CHARACTER); if(Chosen && Chosen->Params[ST_UNSPENT_PERKS]) ShowScreen(SCREEN__PERK); break;
@@ -5994,8 +5999,8 @@ void FOClient::GmapChangeZoom(float offs)
 
 	GmapZoom+=offs;
 
-	GmapOffsetX=(float)GmapWMap.CX()-scr_x/GmapZoom;
-	GmapOffsetY=(float)GmapWMap.CY()-scr_y/GmapZoom;
+	GmapOffsetX=(int)((float)GmapWMap.CX()-scr_x/GmapZoom);
+	GmapOffsetY=(int)((float)GmapWMap.CY()-scr_y/GmapZoom);
 
 	GMAP_CHECK_MAPSCR;
 
@@ -6082,7 +6087,7 @@ void FOClient::SboxLMouseUp()
 	}
 	else
 	{
-		WORD cur_skill;
+		ushort cur_skill;
 		if(IfaceHold==IFACE_SBOX_SNEAK && IsCurInRect(SboxBSneak,SboxX,SboxY)) cur_skill=SK_SNEAK;
 		else if(IfaceHold==IFACE_SBOX_LOCKPICK && IsCurInRect(SboxBLockpick,SboxX,SboxY)) cur_skill=SK_LOCKPICK;
 		else if(IfaceHold==IFACE_SBOX_STEAL && IsCurInRect(SboxBSteal,SboxX,SboxY)) cur_skill=SK_STEAL;
@@ -6237,7 +6242,7 @@ void FOClient::CreditsDraw()
 	if(Timer::FastTick()>=CreditsNextTick)
 	{
 		CreditsYPos--;
-		DWORD wait=MsgGame->GetInt(STR_GAME_CREDITS_SPEED);
+		uint wait=MsgGame->GetInt(STR_GAME_CREDITS_SPEED);
 		wait=CLAMP(wait,10,1000);
 		CreditsNextTick=Timer::FastTick()+wait;
 	}
@@ -6264,7 +6269,7 @@ void FOClient::ChaPrepareSwitch()
 
 	// Perks
 	// Traits
-	for(int i=TRAIT_BEGIN;i<=TRAIT_END;i++)
+	for(uint i=TRAIT_BEGIN;i<=TRAIT_END;i++)
 	{
 		if(!Chosen->IsRawParam(i)) continue;
 		if(perks.empty()) perks.push_back(SwitchElement(STR_TRAITS_NAME,STR_TRAITS_DESC,SKILLDEX_TRAITS,FT_CENTERX));
@@ -6273,7 +6278,7 @@ void FOClient::ChaPrepareSwitch()
 
 	// Perks
 	bool is_add=false;
-	for(int i=PERK_BEGIN;i<=PERK_END;i++)
+	for(uint i=PERK_BEGIN;i<=PERK_END;i++)
 	{
 		if(!Chosen->IsRawParam(i)) continue;
 
@@ -6306,7 +6311,7 @@ void FOClient::ChaPrepareSwitch()
 	}
 
 	// Karma perks
-	for(int i=KARMA_BEGIN;i<=KARMA_END;i++)
+	for(uint i=KARMA_BEGIN;i<=KARMA_END;i++)
 	{
 		if(!Chosen->IsRawParam(i)) continue;
 
@@ -6316,7 +6321,7 @@ void FOClient::ChaPrepareSwitch()
 
 	// Town reputation
 	is_add=false;
-	for(int i=REPUTATION_BEGIN;i<=REPUTATION_END;i++)
+	for(uint i=REPUTATION_BEGIN;i<=REPUTATION_END;i++)
 	{
 		int val=Chosen->Params[i];
 		if(val==0x80000000) continue;
@@ -6337,7 +6342,7 @@ void FOClient::ChaPrepareSwitch()
 
 	// Addiction
 	is_add=false;
-	for(int i=ADDICTION_BEGIN;i<=ADDICTION_END;i++)
+	for(uint i=ADDICTION_BEGIN;i<=ADDICTION_END;i++)
 	{
 		if(!Chosen->IsRawParam(i)) continue;
 
@@ -6353,7 +6358,7 @@ void FOClient::ChaPrepareSwitch()
 	}
 
 	// Kills
-	for(int i=KILL_BEGIN;i<=KILL_END;i++)
+	for(uint i=KILL_BEGIN;i<=KILL_END;i++)
 	{
 		if(!Chosen->GetParam(i)) continue;
 
@@ -6439,7 +6444,7 @@ void FOClient::ChaDraw(bool is_reg)
 		// Perks, Karma
 		if(ChaCurSwitch==CHA_SWITCH_PERKS || ChaCurSwitch==CHA_SWITCH_KARMA)
 		{
-			for(int i=0;i<text.size();i++)
+			for(int i=0;i<(int)text.size();i++)
 			{
 				if(i>=end_line) break;
 				if(i<scroll) continue;
@@ -6450,7 +6455,7 @@ void FOClient::ChaDraw(bool is_reg)
 		// Kills
 		else if(ChaCurSwitch==CHA_SWITCH_KILLS)
 		{
-			for(int i=0;i<text.size();i++)
+			for(int i=0;i<(int)text.size();i++)
 			{
 				if(i>=end_line) break;
 				if(i<scroll) continue;
@@ -6495,7 +6500,7 @@ void FOClient::ChaDraw(bool is_reg)
 	// Skill
 	SprMngr.DrawStr(INTRECT(ChaWSkillText,ChaX,ChaY),MsgGame->GetStr(STR_CHA_SKILLS),FT_NOBREAK|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 
-	for(int i=SKILL_BEGIN;i<=SKILL_END;i++)
+	for(uint i=SKILL_BEGIN;i<=SKILL_END;i++)
 	{
 		int offs=i-SKILL_BEGIN;
 		// Name	
@@ -6547,10 +6552,10 @@ void FOClient::ChaDraw(bool is_reg)
 		SprMngr.DrawStr(INTRECT(ChaWDmgLife,ChaX,ChaY),FmtGameText(STR_DMG_LIFE,cr->GetParam(ST_CURRENT_HP),cr->GetParam(ST_MAX_LIFE)),FT_NOBREAK);
 
 	// Body damages
-	for(int i=DAMAGE_BEGIN;i<=DAMAGE_END;++i)
+	for(uint i=DAMAGE_BEGIN;i<=DAMAGE_END;++i)
 	{
 		int offs=i-DAMAGE_BEGIN;
-		DWORD color;
+		uint color;
 		if(i==DAMAGE_RADIATED) color=(CHA_PARAM(ST_RADIATION_LEVEL)?COLOR_TEXT:COLOR_TEXT_DARK);
 		else if(i==DAMAGE_POISONED) color=(CHA_PARAM(ST_POISONING_LEVEL)?COLOR_TEXT:COLOR_TEXT_DARK);
 		else color=(CHA_PARAM(i)?COLOR_TEXT:COLOR_TEXT_DARK);
@@ -6579,11 +6584,11 @@ void FOClient::ChaDraw(bool is_reg)
 	if(is_reg)
 	{
 		// Left
-		for(int i=TRAIT_BEGIN,k=0;i<TRAIT_BEGIN+TRAIT_COUNT/2;++i,++k)
+		for(uint i=TRAIT_BEGIN,k=0;i<TRAIT_BEGIN+TRAIT_COUNT/2;++i,++k)
 			SprMngr.DrawStr(INTRECT(RegWTraitL,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,CHA_PARAM(i)?0xFFAAAAAA:COLOR_TEXT);
 
 		// Right
-		for(int i=TRAIT_BEGIN+TRAIT_COUNT/2,k=0;i<=TRAIT_END;++i,++k)
+		for(uint i=TRAIT_BEGIN+TRAIT_COUNT/2,k=0;i<=TRAIT_END;++i,++k)
 			SprMngr.DrawStr(INTRECT(RegWTraitR,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,CHA_PARAM(i)?0xFFAAAAAA:COLOR_TEXT);
 	}
 
@@ -6646,7 +6651,7 @@ label_DrawSpecial:
 	}
 
 	// Skills
-	for(int i=SKILL_BEGIN;i<=SKILL_END;i++)
+	for(uint i=SKILL_BEGIN;i<=SKILL_END;i++)
 	{
 		int offs=i-SKILL_BEGIN;
 		if(is_reg && IsCurInRect(RegBTagSkill,offs*RegBTagSkillNextX+ChaX,offs*RegBTagSkillNextY+ChaY))
@@ -6678,7 +6683,7 @@ label_DrawSkill:
 	}
 
 	// Body damages
-	for(int i=DAMAGE_BEGIN;i<=DAMAGE_END;++i)
+	for(uint i=DAMAGE_BEGIN;i<=DAMAGE_END;++i)
 	{
 		int offs=i-DAMAGE_BEGIN;
 		if(IsCurInRect(ChaWDmg,ChaX+ChaWDmgNextX*offs,ChaY+ChaWDmgNextY*offs))
@@ -6706,7 +6711,7 @@ label_DrawSkill:
 	// Traits
 	if(is_reg)
 	{
-		int i,k;
+		uint i,k;
 		// Left button
 		for(i=TRAIT_BEGIN,k=0;i<TRAIT_BEGIN+TRAIT_COUNT/2;++i,++k)
 			if(IsCurInRect(RegBTraitL,RegTraitNextX*k+ChaX,RegTraitNextY*k+ChaY)) { IfaceHold=IFACE_REG_TRAIT_L; goto label_DrawTrait; }
@@ -6768,7 +6773,7 @@ label_DrawTrait:
 			SwitchElementVec& text=ChaSwitchText[ChaCurSwitch];
 			int scroll=ChaSwitchScroll[ChaCurSwitch];
 			int cur_line=scroll+(GameOpt.MouseY-ChaTSwitch[1]-ChaY)/11;
-			if(cur_line<text.size())
+			if(cur_line<(int)text.size())
 			{
 				SwitchElement& e=text[cur_line];
 				ChaSkilldexPic=e.PictureId;
@@ -6881,7 +6886,7 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			int max_lines=(ChaTSwitch[3]-ChaTSwitch[1])/11;
 			SwitchElementVec& text=ChaSwitchText[ChaCurSwitch];
 			int& scroll=ChaSwitchScroll[ChaCurSwitch];
-			if(scroll+max_lines<text.size()) scroll++;
+			if(scroll+max_lines<(int)text.size()) scroll++;
 		}
 		break;
 	case IFACE_CHA_PLUS:
@@ -6980,8 +6985,8 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			}
 			else
 			{
-				int j=0;
-				for(int i=TRAIT_BEGIN;i<=TRAIT_END;++i) if(cr->Params[i]) j++;
+				uint j=0;
+				for(uint i=TRAIT_BEGIN;i<=TRAIT_END;++i) if(cr->Params[i]) j++;
 				if(j<2) cr->ParamsReg[trait]=1;
 			}
 
@@ -7063,7 +7068,7 @@ void FOClient::ChaNameLMouseDown()
 	else if(!Singleplayer && IsCurInRect(ChaNameWPass,ChaNameX,ChaNameY)) IfaceHold=IFACE_CHA_NAME_PASS;
 }
 
-void FOClient::ChaNameKeyDown(BYTE dik)
+void FOClient::ChaNameKeyDown(uchar dik)
 {
 	if(!IsMainScreen(SCREEN_REGISTRATION) || !RegNewCr) return;
 
@@ -7220,12 +7225,12 @@ void FOClient::PerkPrepare()
 	PerkCollection.clear();
 	if(!Chosen) return;
 
-	for(int i=PERK_BEGIN;i<=PERK_END;i++)
+	for(uint i=PERK_BEGIN;i<=PERK_END;i++)
 	{
-		if(Script::PrepareContext(ClientFunctions.PerkCheck,CALL_FUNC_STR,"Perk"))
+		if(Script::PrepareContext(ClientFunctions.PerkCheck,_FUNC_,"Perk"))
 		{
 			Script::SetArgObject(Chosen);
-			Script::SetArgDword(i-(GameOpt.AbsoluteOffsets?0:PERK_BEGIN));
+			Script::SetArgUInt(i-(GameOpt.AbsoluteOffsets?0:PERK_BEGIN));
 			if(Script::RunPrepared() && Script::GetReturnedBool()) PerkCollection.push_back(i);
 		}
 	}
@@ -7262,7 +7267,7 @@ void FOClient::PerkDraw()
 		if(PerkNextX && PerkNextX*(k+1)>=PerkWPerks[2]-PerkWPerks[0]) break;
 		if(PerkNextY && PerkNextY*(k+1)>=PerkWPerks[3]-PerkWPerks[1]) break;
 
-		DWORD col=COLOR_TEXT;
+		uint col=COLOR_TEXT;
 		if(PerkCollection[i]==PerkCurPerk) col=COLOR_TEXT_DGREEN;
 		SprMngr.DrawStr(INTRECT(PerkWPerks,PerkX+PerkNextX*k,PerkY+PerkNextY*k),MsgGame->GetStr(STR_PARAM_NAME_(PerkCollection[i])),0,col);
 	}
@@ -7283,7 +7288,7 @@ void FOClient::PerkLMouseDown()
 		if(PerkNextX) cur_perk=PerkScroll+(GameOpt.MouseX-PerkWPerks[0]-PerkX)/PerkNextX;
 		if(PerkNextY) cur_perk=PerkScroll+(GameOpt.MouseY-PerkWPerks[1]-PerkY)/PerkNextY;
 
-		if(cur_perk>=0 && cur_perk<PerkCollection.size()) PerkCurPerk=PerkCollection[cur_perk];
+		if(cur_perk>=0 && cur_perk<(int)PerkCollection.size()) PerkCurPerk=PerkCollection[cur_perk];
 		else PerkCurPerk=-1;
 	}
 	else if(IsCurInRect(PerkBScrUp,PerkX,PerkY))
@@ -7472,14 +7477,14 @@ void FOClient::PipDraw()
 			// Timeouts
 			scr++;
 			PIP_DRAW_TEXT(FmtGameText(STR_PIP_TIMEOUTS),FT_CENTERX,COLOR_TEXT_DGREEN); scr++;
-			for(int j=TIMEOUT_END;j>=TIMEOUT_BEGIN;j--)
+			for(uint j=TIMEOUT_END;j>=TIMEOUT_BEGIN;j--)
 			{
 				if(!MsgGame->Count(STR_PARAM_NAME_(j))) continue;
-				DWORD val=Chosen->GetParam(j);
+				uint val=Chosen->GetParam(j);
 
 				if(j==TO_REMOVE_FROM_GAME)
 				{
-					DWORD to_battle=Chosen->GetParam(TO_BATTLE);
+					uint to_battle=Chosen->GetParam(TO_BATTLE);
 					if(val<to_battle) val=to_battle;
 				}
 
@@ -7487,7 +7492,7 @@ void FOClient::PipDraw()
 				if(j==TO_REMOVE_FROM_GAME && val<GameOpt.MinimumOfflineTime/1000) val=GameOpt.MinimumOfflineTime/1000;
 				if(j==TO_REMOVE_FROM_GAME && NoLogOut) val=1000000; // Infinity
 
-				DWORD str_num=STR_TIMEOUT_SECONDS;
+				uint str_num=STR_TIMEOUT_SECONDS;
 				if(val>300)
 				{
 					val/=60;
@@ -7548,12 +7553,12 @@ void FOClient::PipDraw()
 		{
 			PIP_DRAW_TEXT(FmtGameText(STR_PIP_MAPS),FT_CENTERX,COLOR_TEXT_DGREEN);
 			scr+=2;
-			for(size_t i=0,j=Automaps.size();i<j;i++)
+			for(uint i=0,j=Automaps.size();i<j;i++)
 			{
 				Automap& amap=Automaps[i];
 				PIP_DRAW_TEXT(amap.LocName.c_str(),FT_CENTERX,COLOR_TEXT); scr++;
 
-				for(size_t k=0,l=amap.MapNames.size();k<l;k++)
+				for(uint k=0,l=amap.MapNames.size();k<l;k++)
 				{
 					PIP_DRAW_TEXT(amap.MapNames[k].c_str(),FT_CENTERX,COLOR_TEXT_GREEN); scr++;
 				}
@@ -7568,7 +7573,7 @@ void FOClient::PipDraw()
 		break;
 	case PIP__AUTOMAPS_MAP:
 		{
-			WORD map_pid=AutomapSelected.MapPids[AutomapSelected.CurMap];
+			ushort map_pid=AutomapSelected.MapPids[AutomapSelected.CurMap];
 			const char* map_name=AutomapSelected.MapNames[AutomapSelected.CurMap].c_str();
 
 			scr=0;
@@ -7578,10 +7583,8 @@ void FOClient::PipDraw()
 			// Draw already builded minimap
 			if(map_pid==AutomapCurMapPid)
 			{
-				FLTRECT stencil;
-				stencil(PipWMonitor.L+PipX,PipWMonitor.T+PipY,PipWMonitor.R+PipX,PipWMonitor.B+PipY);
-				FLTPOINT offset;
-				offset(AutomapScrX,AutomapScrY);
+				FLTRECT stencil((float)(PipWMonitor.L+PipX),(float)(PipWMonitor.T+PipY),(float)(PipWMonitor.R+PipX),(float)(PipWMonitor.B+PipY));
+				FLTPOINT offset(AutomapScrX,AutomapScrY);
 				SprMngr.DrawPoints(AutomapPoints,D3DPT_LINELIST,&AutomapZoom,&stencil,&offset);
 				break;
 			}
@@ -7594,7 +7597,7 @@ void FOClient::PipDraw()
 			}
 
 			// Try load map
-			WORD maxhx,maxhy;
+			ushort maxhx,maxhy;
 			ItemVec items;
 			if(!HexMngr.GetMapData(map_pid,items,maxhx,maxhy))
 			{
@@ -7612,15 +7615,15 @@ void FOClient::PipDraw()
 
 			// Build minimap
 			AutomapPoints.clear();
-			AutomapScrX=PipX-maxhx*2/2+PipWMonitor.W()/2;
-			AutomapScrY=PipY-maxhy*2/2+PipWMonitor.H()/2;
+			AutomapScrX=(float)(PipX-maxhx*2/2+PipWMonitor.W()/2);
+			AutomapScrY=(float)(PipY-maxhy*2/2+PipWMonitor.H()/2);
 			for(ItemVecIt it=items.begin(),end=items.end();it!=end;++it)
 			{
 				Item& item=*it;
-				WORD pid=item.GetProtoId();
+				ushort pid=item.GetProtoId();
 				if(pid==SP_SCEN_IBLOCK || pid==SP_MISC_SCRBLOCK) continue;
 
-				DWORD color;
+				uint color;
 				if(pid==SP_GRID_EXITGRID) color=0x3FFF7F00;
 				else if(item.Proto->IsWall()) color=0xFF00FF00;
 				else if(item.Proto->IsScen()) color=0x7F00FF00;
@@ -7642,7 +7645,7 @@ void FOClient::PipDraw()
 			PIP_DRAW_TEXT(FmtGameText(STR_PIP_INFO),FT_CENTERX,COLOR_TEXT_DGREEN); scr++;
 			for(int i=0;i<MAX_HOLO_INFO;i++)
 			{
-				DWORD num=HoloInfo[i];
+				uint num=HoloInfo[i];
 				if(!num)
 				{
 					scr++;
@@ -7691,7 +7694,7 @@ void FOClient::PipLMouseDown()
 		case PIP__STATUS:
 			{
 				scr+=8;
-				for(int j=TIMEOUT_END;j>=TIMEOUT_BEGIN;j--) if(MsgGame->Count(STR_PARAM_NAME_(j))) scr++;
+				for(uint j=TIMEOUT_END;j>=TIMEOUT_BEGIN;j--) if(MsgGame->Count(STR_PARAM_NAME_(j))) scr++;
 				int scr_=scr;
 
 				QuestTabMap* tabs=QuestMngr.GetTabs();
@@ -7729,7 +7732,7 @@ void FOClient::PipLMouseDown()
 		case PIP__AUTOMAPS:
 			{
 				scr+=2;
-				for(size_t i=0,j=Automaps.size();i<j;i++)
+				for(uint i=0,j=Automaps.size();i<j;i++)
 				{
 					Automap& amap=Automaps[i];
 
@@ -7742,7 +7745,7 @@ void FOClient::PipLMouseDown()
 					}
 					scr++;
 
-					for(size_t k=0,l=amap.MapNames.size();k<l;k++)
+					for(uint k=0,l=amap.MapNames.size();k<l;k++)
 					{
 						if(scr>=0 && scr<ml && IsCurInRect(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h),PipX,PipY))
 						{
@@ -7762,8 +7765,8 @@ void FOClient::PipLMouseDown()
 			break;
 		case PIP__AUTOMAPS_MAP:
 			{
-				PipVectX=GameOpt.MouseX-AutomapScrX;
-				PipVectY=GameOpt.MouseY-AutomapScrY;
+				PipVectX=GameOpt.MouseX-(int)AutomapScrX;
+				PipVectY=GameOpt.MouseY-(int)AutomapScrY;
 				IfaceHold=IFACE_PIP_AUTOMAPS_SCR;
 			}
 			break;
@@ -7872,8 +7875,8 @@ void FOClient::PipMouseMove()
 	}
 	else if(IfaceHold==IFACE_PIP_AUTOMAPS_SCR)
 	{
-		AutomapScrX=GameOpt.MouseX-PipVectX;
-		AutomapScrY=GameOpt.MouseY-PipVectY;
+		AutomapScrX=(float)(GameOpt.MouseX-PipVectX);
+		AutomapScrY=(float)(GameOpt.MouseY-PipVectY);
 	}
 }
 
@@ -8062,7 +8065,7 @@ void FOClient::PupDraw()
 		if(proto_item)
 		{
 			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMap,proto_item->Dir);
-			if(anim) SprMngr.DrawSpriteSize(anim,PupWInfo[0]+PupX,PupWInfo[1]+PupY,PupWInfo.W(),PupWInfo.H(),false,true);
+			if(anim) SprMngr.DrawSpriteSize(anim,PupWInfo[0]+PupX,PupWInfo[1]+PupY,(float)PupWInfo.W(),(float)PupWInfo.H(),false,true);
 		}
 	}
 	else if(PupTransferType==TRANSFER_CRIT_STEAL || PupTransferType==TRANSFER_CRIT_LOOT || PupTransferType==TRANSFER_FAR_CRIT)
@@ -8309,7 +8312,7 @@ void FOClient::PupRMouseDown()
 	SetCurCastling(CUR_DEFAULT,CUR_HAND);
 }
 
-void FOClient::PupTransfer(DWORD item_id, DWORD cont, DWORD count)
+void FOClient::PupTransfer(uint item_id, uint cont, uint count)
 {
 	if(!count) return;
 
@@ -8589,8 +8592,8 @@ void FOClient::DlgboxDraw()
 
 	SprMngr.DrawSprite(DlgboxWTopPicNone,DlgboxWTop[0]+DlgboxX,DlgboxWTop[1]+DlgboxY);
 	SprMngr.DrawStr(INTRECT(DlgboxWText,DlgboxX,DlgboxY),DlgboxText,FT_COLORIZE);
-	DWORD y_offs=DlgboxWTop.H();
-	for(int i=0;i<DlgboxButtonsCount;i++)
+	uint y_offs=DlgboxWTop.H();
+	for(uint i=0;i<DlgboxButtonsCount;i++)
 	{
 		SprMngr.DrawSprite(DlgboxWMiddlePicNone,DlgboxWMiddle[0]+DlgboxX,DlgboxWMiddle[1]+DlgboxY+y_offs);
 		if(IfaceHold==IFACE_DIALOG_BTN && i==DlgboxSelectedButton) SprMngr.DrawSprite(DlgboxBButtonPicDown,DlgboxBButton[0]+DlgboxX,DlgboxBButton[1]+DlgboxY+y_offs);
@@ -8607,8 +8610,8 @@ void FOClient::DlgboxLMouseDown()
 {
 	IfaceHold=IFACE_NONE;
 
-	DWORD y_offs=DlgboxWTop.H();
-	for(int i=0;i<DlgboxButtonsCount;i++)
+	uint y_offs=DlgboxWTop.H();
+	for(uint i=0;i<DlgboxButtonsCount;i++)
 	{
 		if(IsCurInRect(DlgboxBButton,DlgboxX,DlgboxY+y_offs))
 		{
@@ -8693,7 +8696,7 @@ void FOClient::DlgboxMouseMove()
 		DlgboxX=GameOpt.MouseX-DlgboxVectX;
 		DlgboxY=GameOpt.MouseY-DlgboxVectY;
 
-		DWORD height=DlgboxWTop.H()+DlgboxButtonsCount*DlgboxWMiddle.H()+DlgboxWBottom.H();
+		int height=DlgboxWTop.H()+DlgboxButtonsCount*DlgboxWMiddle.H()+DlgboxWBottom.H();
 		if(DlgboxX<0) DlgboxX=0;
 		if(DlgboxX+DlgboxWTop[2]>MODE_WIDTH) DlgboxX=MODE_WIDTH-DlgboxWTop[2];
 		if(DlgboxY<0) DlgboxY=0;
@@ -8713,7 +8716,7 @@ void FOClient::ElevatorDraw()
 
 	if(IfaceHold==IFACE_ELEVATOR_BTN || ElevatorAnswerDone)
 	{
-		for(int i=0;i<ElevatorButtonsCount;i++)
+		for(uint i=0;i<ElevatorButtonsCount;i++)
 		{
 			INTRECT& r=ElevatorButtons[i];
 			if(i==ElevatorSelectedButton && ElevatorButtonPicDown) SprMngr.DrawSprite(ElevatorButtonPicDown,r[0]+ElevatorX,r[1]+ElevatorY);
@@ -8778,7 +8781,7 @@ void FOClient::ElevatorMouseMove()
 	}
 }
 
-void FOClient::ElevatorGenerate(DWORD param)
+void FOClient::ElevatorGenerate(uint param)
 {
 	ElevatorMainPic=NULL;
 	ElevatorExtPic=NULL;
@@ -8789,10 +8792,10 @@ void FOClient::ElevatorGenerate(DWORD param)
 	ElevatorStartLevel=0;
 	ElevatorCurrentLevel=0;
 
-	if(!Script::PrepareContext(ClientFunctions.GetElevator,CALL_FUNC_STR,"Game")) return;
+	if(!Script::PrepareContext(ClientFunctions.GetElevator,_FUNC_,"Game")) return;
 	CScriptArray* arr=Script::CreateArray("int[]");
 	if(!arr) return;
-	Script::SetArgDword(param);
+	Script::SetArgUInt(param);
 	Script::SetArgObject(arr);
 	if(!Script::RunPrepared() || !Script::GetReturnedBool())
 	{
@@ -8800,13 +8803,13 @@ void FOClient::ElevatorGenerate(DWORD param)
 		return;
 	}
 
-	DWORD added_buttons=0;
-	DWORD main_pic=0,ext_pic=0,button_pic=0;
+	uint added_buttons=0;
+	uint main_pic=0,ext_pic=0,button_pic=0;
 	for(int i=0,j=arr->GetSize();i<j;i++)
 	{
 		if(i>100) break;
 
-		DWORD val=*(DWORD*)arr->At(i);
+		uint val=*(uint*)arr->At(i);
 		switch(i)
 		{
 		case 0: ElevatorCurrentLevel=val; break;
@@ -8867,7 +8870,7 @@ int FOClient::ElevatorGetCurButton()
 {
 	if(ElevatorButtonPicDown)
 	{
-		for(int i=0;i<ElevatorButtonsCount;i++)
+		for(uint i=0;i<ElevatorButtonsCount;i++)
 			if(IsCurInRectNoTransp(ElevatorButtonPicDown->GetCurSprId(),ElevatorButtons[i],ElevatorX,ElevatorY)) return i;
 	}
 	return -1;
@@ -8951,7 +8954,7 @@ void FOClient::SayMouseMove()
 	}
 }
 
-void FOClient::SayKeyDown(BYTE dik)
+void FOClient::SayKeyDown(uchar dik)
 {
 	if(dik==DIK_RETURN || dik==DIK_NUMPADENTER)
 	{
@@ -8980,7 +8983,7 @@ void FOClient::SayKeyDown(BYTE dik)
 
 void FOClient::WaitDraw()
 {
-	SprMngr.DrawSpriteSize(WaitPic,0,0,MODE_WIDTH,MODE_HEIGHT,true,true);
+	SprMngr.DrawSpriteSize(WaitPic,0,0,(float)MODE_WIDTH,(float)MODE_HEIGHT,true,true);
 	SprMngr.Flush();
 }
 
@@ -9051,14 +9054,14 @@ void FOClient::SplitDraw()
 	default: break;
 	}
 
-	if(SplitItemPic) SprMngr.DrawSpriteSize(SplitItemPic,SplitWItem[0]+SplitX,SplitWItem[1]+SplitY,SplitWItem[2]-SplitWItem[0],SplitWItem[3]-SplitWItem[1],false,true,SplitItemColor);
+	if(SplitItemPic) SprMngr.DrawSpriteSize(SplitItemPic,SplitWItem[0]+SplitX,SplitWItem[1]+SplitY,(float)SplitWItem.W(),(float)SplitWItem.H(),false,true,SplitItemColor);
 
 	SprMngr.DrawStr(INTRECT(SplitWTitle,SplitX,SplitY),MsgGame->GetStr(STR_SPLIT_TITLE),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(INTRECT(SplitBAll,SplitX,SplitY-(IfaceHold==IFACE_SPLIT_ALL?1:0)),MsgGame->GetStr(STR_SPLIT_ALL),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(INTRECT(SplitWValue,SplitX,SplitY),Str::Format("%05d",SplitValue),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 }
 
-void FOClient::SplitKeyDown(BYTE dik)
+void FOClient::SplitKeyDown(uchar dik)
 {
 	int add=0;
 
@@ -9187,7 +9190,7 @@ void FOClient::SplitMouseMove()
 //******************************************************************************************************************************
 //==============================================================================================================================
 
-void FOClient::TimerStart(DWORD item_id, AnyFrames* pic, DWORD pic_color)
+void FOClient::TimerStart(uint item_id, AnyFrames* pic, uint pic_color)
 {
 	TimerItemId=item_id;
 	TimerValue=TIMER_MIN_VALUE;
@@ -9223,14 +9226,14 @@ void FOClient::TimerDraw()
 	default: break;
 	}
 
-	if(TimerItemPic) SprMngr.DrawSpriteSize(TimerItemPic,TimerWItem[0]+TimerX,TimerWItem[1]+TimerY,TimerWItem[2]-TimerWItem[0],TimerWItem[3]-TimerWItem[1],false,true,TimerItemColor);
+	if(TimerItemPic) SprMngr.DrawSpriteSize(TimerItemPic,TimerWItem[0]+TimerX,TimerWItem[1]+TimerY,(float)TimerWItem.W(),(float)TimerWItem.H(),false,true,TimerItemColor);
 	SprMngr.Flush();
 
 	SprMngr.DrawStr(INTRECT(TimerWTitle,TimerX,TimerY),MsgGame->GetStr(STR_TIMER_TITLE),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(INTRECT(TimerWValue,TimerX,TimerY),Str::Format("%d%c%02d",TimerValue/60,'9'+3,TimerValue%60),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 }
 
-void FOClient::TimerKeyDown(BYTE dik)
+void FOClient::TimerKeyDown(uchar dik)
 {
 	switch(dik)
 	{
@@ -9355,8 +9358,8 @@ void FOClient::FixGenerate(int fix_mode)
 		MrFixit.GetShowCrafts(Chosen,true_crafts);
 
 		SCraftVec scraft_vec;
-		DwordVec script_craft;
-		for(int i=0,cur_height=0;i<true_crafts.size();++i)
+		UIntVec script_craft;
+		for(uint i=0,cur_height=0;i<true_crafts.size();++i)
 		{
 			CraftItem* craft=true_crafts[i];
 
@@ -9372,7 +9375,7 @@ void FOClient::FixGenerate(int fix_mode)
 			cur_height+=line_height;
 			pos.B=FixWWin[1]+cur_height;
 
-			if(cur_height>FixWWin.H())
+			if((int)cur_height>FixWWin.H())
 			{	
 				FixCraftLst.push_back(scraft_vec);
 				scraft_vec.clear();
@@ -9395,7 +9398,7 @@ void FOClient::FixGenerate(int fix_mode)
 	else if(fix_mode==FIX_MODE_FIXIT)
 	{
 		SCraftVec* cur_vec=GetCurSCrafts();
-		if(!cur_vec || FixCurCraft>=cur_vec->size())
+		if(!cur_vec || FixCurCraft>=(int)cur_vec->size())
 		{
 			ShowScreen(SCREEN_NONE);
 			return;
@@ -9419,8 +9422,8 @@ void FOClient::FixGenerate(int fix_mode)
 		FixDrawComp.clear();
 
 		// Out items
-		ByteVec tmp_vec; // Temp vector
-		for(int i=0;i<craft->OutItems.size();i++) tmp_vec.push_back(0); // Push AND
+		UCharVec tmp_vec; // Temp vector
+		for(uint i=0;i<craft->OutItems.size();i++) tmp_vec.push_back(0); // Push AND
 		FixGenerateItems(craft->OutItems,craft->OutItemsVal,tmp_vec,str,r,x);
 
 		// About
@@ -9505,12 +9508,12 @@ void FOClient::FixGenerateStrLine(string& str, INTRECT& r)
 	r.T=r.B;
 }
 
-void FOClient::FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& or_vec, string& str, INTRECT& r, int& x)
+void FOClient::FixGenerateItems(UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, INTRECT& r, int& x)
 {
 	str="";
 	for(int i=0,j=items_vec.size();i<j;i++)
 	{
-		DWORD color=COLOR_TEXT;
+		uint color=COLOR_TEXT;
 		if(Chosen->CountItemPid(items_vec[i])<val_vec[i]) color=COLOR_TEXT_DGREEN;
 
 		str+="|";
@@ -9585,7 +9588,7 @@ int FOClient::GetMouseCraft()
 FOClient::SCraftVec* FOClient::GetCurSCrafts()
 {
 	if(FixCraftLst.empty()) return NULL;
-	if(FixScrollLst>=FixCraftLst.size()) FixScrollLst=FixCraftLst.size()-1;
+	if(FixScrollLst>=(int)FixCraftLst.size()) FixScrollLst=(int)FixCraftLst.size()-1;
 	return &FixCraftLst[FixScrollLst];
 }
 
@@ -9609,7 +9612,7 @@ void FOClient::FixDraw()
 		for(int i=0,j=FixDrawComp.size();i<j;i++)
 		{
 			FixDrawComponent* c=FixDrawComp[i];
-			if(!c->IsText) SprMngr.DrawSpriteSize(c->Anim,c->Rect.L+FixX,c->Rect.T+FixY,c->Rect.W(),c->Rect.H(),false,true);
+			if(!c->IsText) SprMngr.DrawSpriteSize(c->Anim,c->Rect.L+FixX,c->Rect.T+FixY,(float)c->Rect.W(),(float)c->Rect.H(),false,true);
 		}
 	}
 
@@ -9626,7 +9629,7 @@ void FOClient::FixDraw()
 			for(int i=0,j=cur_vec->size();i<j;i++)
 			{
 				SCraft* scraft=&(*cur_vec)[i];
-				DWORD col=COLOR_TEXT;
+				uint col=COLOR_TEXT;
 				if(!scraft->IsTrue) col=COLOR_TEXT_DRED;
 				if(i==FixCurCraft)
 				{
@@ -9731,10 +9734,10 @@ void FOClient::FixLMouseUp()
 
 			SCraftVec* cur_vec=GetCurSCrafts();
 			if(!cur_vec) break;
-			if(FixCurCraft>=cur_vec->size()) break;
+			if(FixCurCraft>=(int)cur_vec->size()) break;
 
 			SCraft& craft=(*cur_vec)[FixCurCraft];
-			DWORD num=craft.Num;
+			uint num=craft.Num;
 
 			FixResult=CRAFT_RESULT_NONE;
 			FixGenerate(FIX_MODE_RESULT);
@@ -9750,7 +9753,7 @@ void FOClient::FixLMouseUp()
 			if(FixCurCraft!=GetMouseCraft()) break;
 			SCraftVec* cur_vec=GetCurSCrafts();
 			if(!cur_vec) break;
-			if(FixCurCraft>=cur_vec->size()) break;
+			if(FixCurCraft>=(int)cur_vec->size()) break;
 
 			FixGenerate(FIX_MODE_FIXIT);
 		}
@@ -9849,7 +9852,7 @@ void FOClient::IboxLMouseUp()
 	IfaceHold=IFACE_NONE;
 }
 
-void FOClient::IboxKeyDown(BYTE dik)
+void FOClient::IboxKeyDown(uchar dik)
 {
 	if(IfaceHold==IFACE_IBOX_TITLE) Keyb::GetChar(dik,IboxTitle,&IboxTitleCur,USER_HOLO_MAX_TITLE_LEN,KIF_NO_SPEC_SYMBOLS);
 	else if(IfaceHold==IFACE_IBOX_TEXT) Keyb::GetChar(dik,IboxText,&IboxTextCur,USER_HOLO_MAX_LEN,0);
@@ -9859,7 +9862,7 @@ void FOClient::IboxKeyDown(BYTE dik)
 	Timer::StartAccelerator(ACCELERATE_IBOX);
 }
 
-void FOClient::IboxKeyUp(BYTE dik)
+void FOClient::IboxKeyUp(uchar dik)
 {
 	IboxLastKey=0;
 }
@@ -9901,7 +9904,7 @@ void FOClient::SaveLoadCollect()
 	StrVec fnames;
 	FileManager::GetFolderFileNames(FileManager::GetPath(PT_SAVE),true,"fo",fnames);
 	PtrVec open_handles;
-	for(size_t i=0;i<fnames.size();i++)
+	for(uint i=0;i<fnames.size();i++)
 	{
 		const string& fname=fnames[i];
 
@@ -9918,7 +9921,7 @@ void FOClient::SaveLoadCollect()
 		DWORD dw;
 
 		// Check singleplayer data
-		DWORD sp;
+		uint sp;
 		SetFilePointer(hf,4,NULL,FILE_BEGIN);
 		if(!ReadFile(hf,&sp,sizeof(sp),&dw,NULL)) continue;
 		if(sp!=1) continue; // Save not contain singleplayer data
@@ -9929,19 +9932,19 @@ void FOClient::SaveLoadCollect()
 		if(!ReadFile(hf,crname,sizeof(crname),&dw,NULL)) continue;
 
 		// Map pid
-		WORD map_pid;
+		ushort map_pid;
 		SetFilePointer(hf,8+31+68,NULL,FILE_BEGIN);
 		if(!ReadFile(hf,&map_pid,sizeof(map_pid),&dw,NULL)) continue;
 
 		// Calculate critter time events size
-		DWORD te_size;
+		uint te_size;
 		SetFilePointer(hf,8+31+7404+6944,NULL,FILE_BEGIN);
 		if(!ReadFile(hf,&te_size,sizeof(te_size),&dw,NULL)) continue;
 		te_size=te_size*16+4;
 
 		// Picture data
-		DWORD pic_data_len;
-		ByteVec pic_data;
+		uint pic_data_len;
+		UCharVec pic_data;
 		SetFilePointer(hf,8+31+7404+6944+te_size,NULL,FILE_BEGIN);
 		if(!ReadFile(hf,&pic_data_len,sizeof(pic_data_len),&dw,NULL)) continue;
 		if(pic_data_len)
@@ -9951,7 +9954,7 @@ void FOClient::SaveLoadCollect()
 		}
 
 		// Game time
-		WORD year,month,day,hour,minute;
+		ushort year,month,day,hour,minute;
 		SetFilePointer(hf,8+31+7404+6944+te_size+4+pic_data_len+2,NULL,FILE_BEGIN);
 		if(!ReadFile(hf,&year,sizeof(year),&dw,NULL)) continue;
 		if(!ReadFile(hf,&month,sizeof(month),&dw,NULL)) continue;
@@ -9973,7 +9976,7 @@ void FOClient::SaveLoadCollect()
 		if(!GetFullPathName(fpath_,MAX_FOPATH,fpath,NULL)) continue;
 
 		// Convert time
-		FILETIMELI writeft;
+		union {FILETIME ft; ULARGE_INTEGER ul;} writeft;
 		SYSTEMTIME write_utc,write;
 		writeft.ft=finfo.ftLastWriteTime;
 		if(!FileTimeToSystemTime(&writeft.ft,&write_utc)) continue;
@@ -9996,7 +9999,11 @@ void FOClient::SaveLoadCollect()
 	for(PtrVecIt it=open_handles.begin();it!=open_handles.end();++it) CloseHandle(*it);
 
 	// Sort by creation time
-	std::sort(SaveLoadDataSlots.begin(),SaveLoadDataSlots.end());
+	struct SortByTime
+	{
+		bool operator()(const SaveLoadDataSlot& l, const SaveLoadDataSlot& r){return l.RealTime>r.RealTime;}
+	};
+	std::sort(SaveLoadDataSlots.begin(),SaveLoadDataSlots.end(),SortByTime());
 
 	// Set scroll data
 	SaveLoadSlotScroll=0;
@@ -10022,7 +10029,7 @@ void FOClient::SaveLoadSaveGame(const char* name)
 	DeleteFile(fpath);
 
 	// Get image data from surface
-	ByteVec pic_data;
+	UCharVec pic_data;
 	if(SaveLoadDraftValid)
 	{
 		LPD3DXBUFFER img=NULL;

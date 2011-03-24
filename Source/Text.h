@@ -53,7 +53,7 @@ void Replacement(char* str, char from1, char from2, char to);
 void SkipLine(char*& str);
 void GoTo(char*& str, char ch, bool skip_char = false);
 const char* ItoA(int i);
-const char* DWtoA(DWORD dw);
+const char* DWtoA(uint dw);
 const char* Format(const char* fmt, ...);
 const char* SFormat(char* stream, const char* fmt, ...);
 char* EraseFrontBackSpecificChars(char* str);
@@ -69,8 +69,8 @@ bool IsNumber(const char* str);
 bool StrToInt(const char* str, int& i);
 
 // Name hash
-DWORD GetHash(const char* str);
-const char* GetName(DWORD hash);
+uint GetHash(const char* str);
+const char* GetName(uint hash);
 void AddNameHash(const char* name);
 
 // Parse str
@@ -79,15 +79,15 @@ template<typename Cont, class Func>
 void ParseLine(const char* str, char divider, Cont& result, Func f)
 {
 	result.clear();
-	char buf[512]={0};
-	for(int buf_pos=0;;str++)
+	char buf[MAX_FOTEXT]={0};
+	for(uint buf_pos=0;;str++)
 	{
 		if(*str==divider || *str=='\0' || buf_pos>=sizeof(buf)-1)
 		{
 			if(buf_pos)
 			{
 				buf[buf_pos]=0;
-				result.push_back(Cont::value_type(f(buf)));
+				result.push_back(typename Cont::value_type(f(buf)));
 				buf[0]=0;
 				buf_pos=0;
 			}
@@ -110,26 +110,26 @@ class IniParser
 {
 private:
 	char* bufPtr;
-	DWORD bufLen;
+	uint bufLen;
 	char lastApp[128];
-	DWORD lastAppPos;
+	uint lastAppPos;
 	StrSet cachedApps;
 	StrSet cachedKeys;
 
-	void GotoEol(DWORD& iter);
-	bool GotoApp(const char* app_name, DWORD& iter);
-	bool GotoKey(const char* key_name, DWORD& iter);
-	bool GetPos(const char* app_name, const char* key_name, DWORD& iter);
+	void GotoEol(uint& iter);
+	bool GotoApp(const char* app_name, uint& iter);
+	bool GotoKey(const char* key_name, uint& iter);
+	bool GetPos(const char* app_name, const char* key_name, uint& iter);
 
 public:
 	IniParser();
 	~IniParser();
 	bool IsLoaded();
 	bool LoadFile(const char* fname, int path_type);
-	bool LoadFilePtr(const char* buf, DWORD len);
+	bool LoadFilePtr(const char* buf, uint len);
 	bool AppendToBegin(const char* fname, int path_type);
 	bool AppendToEnd(const char* fname, int path_type);
-	bool AppendPtrToBegin(const char* buf, DWORD len);
+	bool AppendPtrToBegin(const char* buf, uint len);
 	void UnloadFile();
 	char* GetBuffer();
 	int GetInt(const char* app_name, const char* key_name, int def_val);
@@ -165,28 +165,28 @@ public:
 	FOMsg& operator+=(const FOMsg& r);
 
 	// Add String value in strData and Nums
-	void AddStr(DWORD num, const char* str);
-	void AddStr(DWORD num, const string& str);
-	void AddBinary(DWORD num, const BYTE* binary, DWORD len);
+	void AddStr(uint num, const char* str);
+	void AddStr(uint num, const string& str);
+	void AddBinary(uint num, const uchar* binary, uint len);
 
 	// Generate random number with interval from 10000000 to 99999999
-	DWORD AddStr(const char* str);
-	const char* GetStr(DWORD num); // Gets const pointer on String value by num in strData
-	const char* GetStr(DWORD num, DWORD skip); // Gets const pointer on String value by num with skip in strData
-	DWORD GetStrNumUpper(DWORD num); // Gets const pointer on String value by upper num in strData
-	DWORD GetStrNumLower(DWORD num); // Gets const pointer on String value by lower num in strData
-	int GetInt(DWORD num); // Gets integer value of string
-	const BYTE* GetBinary(DWORD num, DWORD& len);
-	int Count(DWORD num); // Return count of string exist
-	void EraseStr(DWORD num); // Delete string
-	DWORD GetSize(); // Gets Size of All Strings, without only FOMSG_ERRNUM
+	uint AddStr(const char* str);
+	const char* GetStr(uint num); // Gets const pointer on String value by num in strData
+	const char* GetStr(uint num, uint skip); // Gets const pointer on String value by num with skip in strData
+	uint GetStrNumUpper(uint num); // Gets const pointer on String value by upper num in strData
+	uint GetStrNumLower(uint num); // Gets const pointer on String value by lower num in strData
+	int GetInt(uint num); // Gets integer value of string
+	const uchar* GetBinary(uint num, uint& len);
+	int Count(uint num); // Return count of string exist
+	void EraseStr(uint num); // Delete string
+	uint GetSize(); // Gets Size of All Strings, without only FOMSG_ERRNUM
 	void CalculateHash(); // Calculate toSend data and hash
-	DWORD GetHash(); // Gets Hash code of MSG in toSend
-	DwordStrMulMap& GetData(); // Gets strData
+	uint GetHash(); // Gets Hash code of MSG in toSend
+	UIntStrMulMap& GetData(); // Gets strData
 
 #ifdef FONLINE_SERVER
 	const char* GetToSend(); // Gets toSend data
-	DWORD GetToSendLen(); // Gets toSend Lenght
+	uint GetToSendLen(); // Gets toSend Lenght
 #endif
 
 #ifdef FONLINE_CLIENT
@@ -196,7 +196,7 @@ public:
 
 	// Load MSG from file, old data is clear
 	int LoadMsgFile(const char* fname, int path_type);
-	int LoadMsgFileBuf(char* data, DWORD data_len);
+	int LoadMsgFileBuf(char* data, uint data_len);
 	// Save strData in file, if file is not empty his clear
 	int SaveMsgFile(const char* fname, int path_type);
 	// Clearing MSG
@@ -210,9 +210,9 @@ private:
 #endif
 
 	// Hash of toSend
-	DWORD strDataHash;
+	uint strDataHash;
 	// Numbers and String Values
-	DwordStrMulMap strData;
+	UIntStrMulMap strData;
 };
 typedef vector<FOMsg*> FOMsgVec;
 
@@ -221,7 +221,7 @@ class LanguagePack
 public:
 	union
 	{
-		DWORD Name;
+		uint Name;
 		char NameStr[5];
 	};
 
@@ -232,7 +232,7 @@ public:
 	int LoadAll();
 
 	LanguagePack(){ZeroMemory(NameStr,sizeof(NameStr));}
-	bool operator==(const DWORD& r){return Name==r;}
+	bool operator==(const uint& r){return Name==r;}
 };
 
 typedef vector<LanguagePack> LangPackVec;

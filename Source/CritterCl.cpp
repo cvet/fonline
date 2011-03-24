@@ -13,8 +13,8 @@ int CritterCl::ParamsChangeScript[MAX_PARAMS]={0};
 int CritterCl::ParamsGetScript[MAX_PARAMS]={0};
 bool CritterCl::ParamsRegEnabled[MAX_PARAMS]={0};
 int CritterCl::ParamsReg[MAX_PARAMS]={0};
-DWORD CritterCl::ParametersMin[MAX_PARAMETERS_ARRAYS]={0};
-DWORD CritterCl::ParametersMax[MAX_PARAMETERS_ARRAYS]={MAX_PARAMS-1};
+uint CritterCl::ParametersMin[MAX_PARAMETERS_ARRAYS]={0};
+uint CritterCl::ParametersMax[MAX_PARAMETERS_ARRAYS]={MAX_PARAMS-1};
 bool CritterCl::ParametersOffset[MAX_PARAMETERS_ARRAYS]={false};
 bool CritterCl::SlotEnabled[0x100]={true,true,true,true,false};
 
@@ -100,7 +100,7 @@ void CritterCl::Finish()
 void CritterCl::GenParams()
 {
 #ifdef FONLINE_CLIENT
-	if(Script::PrepareContext(ClientFunctions.PlayerGeneration,CALL_FUNC_STR,"Registration"))
+	if(Script::PrepareContext(ClientFunctions.PlayerGeneration,_FUNC_,"Registration"))
 	{
 		CScriptArray* arr=Script::CreateArray("int[]");
 		if(!arr) return;
@@ -116,15 +116,15 @@ void CritterCl::GenParams()
 
 void CritterCl::SetFade(bool fade_up)
 {
-	DWORD tick=Timer::GameTick();
+	uint tick=Timer::GameTick();
 	FadingTick=tick+FADING_PERIOD-(FadingTick>tick?FadingTick-tick:0);
 	fadeUp=fade_up;
 	fadingEnable=true;
 }
 
-BYTE CritterCl::GetFadeAlpha()
+uchar CritterCl::GetFadeAlpha()
 {
-	DWORD tick=Timer::GameTick();
+	uint tick=Timer::GameTick();
 	int fading_proc=100-Procent(FADING_PERIOD,FadingTick>tick?FadingTick-tick:0);
 	fading_proc=CLAMP(fading_proc,0,100);
 	if(fading_proc>=100)
@@ -189,7 +189,7 @@ void CritterCl::EraseAllItems()
 	InvItems.clear();
 }
 
-Item* CritterCl::GetItem(DWORD item_id)
+Item* CritterCl::GetItem(uint item_id)
 {
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
@@ -199,14 +199,14 @@ Item* CritterCl::GetItem(DWORD item_id)
 	return NULL;
 }
 
-Item* CritterCl::GetItemByPid(WORD item_pid)
+Item* CritterCl::GetItemByPid(ushort item_pid)
 {
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		if((*it)->GetProtoId()==item_pid) return *it;
 	return NULL;
 }
 
-Item* CritterCl::GetAmmo(DWORD caliber)
+Item* CritterCl::GetAmmo(uint caliber)
 {
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		if((*it)->GetType()==ITEM_TYPE_AMMO && (*it)->Proto->Ammo_Caliber==caliber) return *it;
@@ -238,28 +238,28 @@ void CritterCl::GetItemsType(int type, ItemPtrVec& items)
 	}
 }
 
-DWORD CritterCl::CountItemPid(WORD item_pid)
+uint CritterCl::CountItemPid(ushort item_pid)
 {
-	DWORD result=0;
+	uint result=0;
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		if((*it)->GetProtoId()==item_pid) result+=(*it)->GetCount();
 	return result;
 }
 
-DWORD CritterCl::CountItemType(BYTE type)
+uint CritterCl::CountItemType(uchar type)
 {
-	DWORD res=0;
+	uint res=0;
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		if((*it)->GetType()==type) res+=(*it)->GetCount();
 	return res;
 }
 
-bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
+bool CritterCl::MoveItem(uint item_id, uchar to_slot, uint count)
 {
 	Item* item=GetItem(item_id);
 	if(!item) return false;
 
-	BYTE from_slot=item->ACC_CRITTER.Slot;
+	uchar from_slot=item->ACC_CRITTER.Slot;
 	bool is_castling=((to_slot==SLOT_HAND1 && from_slot==SLOT_HAND2) || (to_slot==SLOT_HAND2 && from_slot==SLOT_HAND1));
 
 	if(item->ACC_CRITTER.Slot==to_slot) return false;
@@ -289,7 +289,7 @@ bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
 	}
 	else
 	{
-		BYTE act=ACTION_MOVE_ITEM;
+		uchar act=ACTION_MOVE_ITEM;
 		if(to_slot==SLOT_HAND1) act=ACTION_SHOW_ITEM;
 		else if(from_slot==SLOT_HAND1) act=ACTION_HIDE_ITEM;
 
@@ -311,7 +311,7 @@ bool CritterCl::MoveItem(DWORD item_id, BYTE to_slot, DWORD count)
 
 bool CritterCl::IsCanSortItems()
 {
-	DWORD inv_items=0;
+	uint inv_items=0;
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 	{
 		if((*it)->ACC_CRITTER.Slot!=SLOT_INV) continue;
@@ -357,38 +357,38 @@ void CritterCl::GetInvItems(ItemVec& items)
 	Item::SortItems(items);
 }
 
-DWORD CritterCl::GetItemsCount()
+uint CritterCl::GetItemsCount()
 {
-	DWORD count=0;
+	uint count=0;
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		count+=(*it)->GetCount();
 	return count;
 }
 
-DWORD CritterCl::GetItemsCountInv()
+uint CritterCl::GetItemsCountInv()
 {
-	DWORD res=0;
+	uint res=0;
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		if((*it)->ACC_CRITTER.Slot==SLOT_INV) res++;
 	return res;
 }
 
-DWORD CritterCl::GetItemsWeight()
+uint CritterCl::GetItemsWeight()
 {
-	DWORD res=0;
+	uint res=0;
 	for(ItemPtrVecIt it=InvItems.begin(),end=InvItems.end();it!=end;++it)
 		res+=(*it)->GetWeight();
 	return res;
 }
 
-DWORD CritterCl::GetItemsWeightKg()
+uint CritterCl::GetItemsWeightKg()
 {
 	return GetItemsWeight()/1000;
 }
 
-DWORD CritterCl::GetItemsVolume()
+uint CritterCl::GetItemsVolume()
 {
-	DWORD res=0;
+	uint res=0;
 	for(ItemPtrVecIt it=InvItems.begin();it!=InvItems.end();++it)
 		res+=(*it)->GetVolume();
 	return res;
@@ -408,7 +408,7 @@ int CritterCl::GetFreeVolume()
 	return max_volume-cur_volume;
 }
 
-Item* CritterCl::GetSlotUse(BYTE num_slot, BYTE& use)
+Item* CritterCl::GetSlotUse(uchar num_slot, uchar& use)
 {
 	Item* item=NULL;
 	switch(num_slot)
@@ -429,13 +429,13 @@ Item* CritterCl::GetSlotUse(BYTE num_slot, BYTE& use)
 	return item;
 }
 
-DWORD CritterCl::GetUsePicName(BYTE num_slot)
+uint CritterCl::GetUsePicName(uchar num_slot)
 {
-	static DWORD use_on_pic=Str::GetHash("art\\intrface\\useon.frm");
-	static DWORD use_pic=Str::GetHash("art\\intrface\\uset.frm");
-	static DWORD reload_pic=Str::GetHash("art\\intrface\\reload.frm");
+	static uint use_on_pic=Str::GetHash("art\\intrface\\useon.frm");
+	static uint use_pic=Str::GetHash("art\\intrface\\uset.frm");
+	static uint reload_pic=Str::GetHash("art\\intrface\\reload.frm");
 
-	BYTE use;
+	uchar use;
 	Item* item=GetSlotUse(num_slot,use);
 	if(!item) return 0;
 	if(item->IsWeapon())
@@ -450,9 +450,9 @@ DWORD CritterCl::GetUsePicName(BYTE num_slot)
 	return 0;
 }
 
-bool CritterCl::IsItemAim(BYTE num_slot)
+bool CritterCl::IsItemAim(uchar num_slot)
 {
-	BYTE use;
+	uchar use;
 	Item* item=GetSlotUse(num_slot,use);
 	if(!item) return false;
 	if(item->IsWeapon() && use<MAX_USES) return item->Proto->Weapon_Aim[use]!=0;
@@ -475,54 +475,54 @@ bool CritterCl::CheckFind(int find_type)
 		(IsDead() && FLAG(find_type,FIND_DEAD));
 }
 
-DWORD CritterCl::GetLook()
+uint CritterCl::GetLook()
 {
 	int look=GameOpt.LookNormal+GetParam(ST_PERCEPTION)*3+GetParam(ST_BONUS_LOOK)+GetMultihex();
-	if(look<GameOpt.LookMinimum) look=GameOpt.LookMinimum;
+	if(look<(int)GameOpt.LookMinimum) look=GameOpt.LookMinimum;
 	return look;
 }
 
-DWORD CritterCl::GetTalkDistance()
+uint CritterCl::GetTalkDistance()
 {
 	int dist=GetParam(ST_TALK_DISTANCE);
 	if(dist<=0) dist=GameOpt.TalkDistance;
 	return dist+GetMultihex();
 }
 
-DWORD CritterCl::GetAttackDist()
+uint CritterCl::GetAttackDist()
 {
-	BYTE use;
+	uchar use;
 	Item* weap=GetSlotUse(SLOT_HAND1,use);
 	if(!weap->IsWeapon()) return 0;
 	return GameOpt.GetAttackDistantion?GameOpt.GetAttackDistantion(this,weap,use):1;
 }
 
-DWORD CritterCl::GetUseDist()
+uint CritterCl::GetUseDist()
 {
 	return 1+GetMultihex();
 }
 
-DWORD CritterCl::GetMultihex()
+uint CritterCl::GetMultihex()
 {
 	int mh=Multihex;
 	if(mh<0) mh=CritType::GetMultihex(GetCrType());
 	return CLAMP(mh,0,MAX_HEX_OFFSET);
 }
 
-int CritterCl::GetParam(DWORD index)
+int CritterCl::GetParam(uint index)
 {
 #ifdef FONLINE_CLIENT
-	if(ParamsGetScript[index] && Script::PrepareContext(ParamsGetScript[index],CALL_FUNC_STR,GetInfo()))
+	if(ParamsGetScript[index] && Script::PrepareContext(ParamsGetScript[index],_FUNC_,GetInfo()))
 	{
 		Script::SetArgObject(this);
-		Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
-		if(Script::RunPrepared()) return Script::GetReturnedDword();
+		Script::SetArgUInt(index-(ParametersOffset[index]?ParametersMin[index]:0));
+		if(Script::RunPrepared()) return Script::GetReturnedUInt();
 	}
 #endif
 	return Params[index];
 }
 
-void CritterCl::ChangeParam(DWORD index)
+void CritterCl::ChangeParam(uint index)
 {
 	if(!ParamsIsChanged[index] && ParamLocked!=index)
 	{
@@ -538,7 +538,7 @@ void CritterCl::ProcessChangedParams()
 	if(ParamsChanged.size())
 	{
 		CallChange_.clear();
-		for(size_t i=0,j=ParamsChanged.size();i<j;i+=2)
+		for(uint i=0,j=ParamsChanged.size();i<j;i+=2)
 		{
 			int index=ParamsChanged[i];
 			int old_val=ParamsChanged[i+1];
@@ -574,16 +574,16 @@ void CritterCl::ProcessChangedParams()
 
 		if(CallChange_.size())
 		{
-			for(size_t i=0,j=CallChange_.size();i<j;i+=3)
+			for(uint i=0,j=CallChange_.size();i<j;i+=3)
 			{
-				DWORD index=CallChange_[i+1];
+				uint index=CallChange_[i+1];
 				ParamLocked=index;
 #ifdef FONLINE_CLIENT
-				if(Script::PrepareContext(CallChange_[i],CALL_FUNC_STR,GetInfo()))
+				if(Script::PrepareContext(CallChange_[i],_FUNC_,GetInfo()))
 				{
 					Script::SetArgObject(this);
-					Script::SetArgDword(index-(ParametersOffset[index]?ParametersMin[index]:0));
-					Script::SetArgDword(CallChange_[i+2]);
+					Script::SetArgUInt(index-(ParametersOffset[index]?ParametersMin[index]:0));
+					Script::SetArgUInt(CallChange_[i+2]);
 					Script::RunPrepared();
 				}
 #endif
@@ -603,31 +603,32 @@ void CritterCl::DrawStay(INTRECT r)
 	}
 
 	int dir=(!IsLife()?CrDir:staySprDir);
-	DWORD anim1=GetAnim1();
-	DWORD anim2=GetAnim2();
+	uint anim1=GetAnim1();
+	uint anim2=GetAnim2();
 
 	if(!Anim3d)
 	{
-		DWORD crtype=GetCrType();
+		uint crtype=GetCrType();
 		AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
 		if(anim)
 		{
-			DWORD spr_id=(IsLife()?anim->Ind[0]:anim->Ind[anim->CntFrm-1]);
-			SprMngr.DrawSpriteSize(spr_id,r.L,r.T,r.W(),r.H(),false,true);
+			uint spr_id=(IsLife()?anim->Ind[0]:anim->Ind[anim->CntFrm-1]);
+			SprMngr.DrawSpriteSize(spr_id,r.L,r.T,(float)r.W(),(float)r.H(),false,true);
 		}
 	}
 	else if(Anim3dStay)
 	{
 		Anim3dStay->SetDir(dir);
 		Anim3dStay->SetAnimation(anim1,anim2,GetLayers3dData(),IsLife()?0:ANIMATION_STAY|ANIMATION_PERIOD(100)|ANIMATION_NO_SMOOTH);
-		SprMngr.Draw3dSize(FLTRECT(r.L,r.T,r.R,r.B),false,true,Anim3dStay,&FLTRECT(r.L,r.T,r.R,r.B),COLOR_IFACE);
+		SprMngr.Draw3dSize(FLTRECT((float)r.L,(float)r.T,(float)r.R,(float)r.B),false,true,Anim3dStay,&FLTRECT((float)r.L,(float)r.T,(float)r.R,(float)r.B),COLOR_IFACE);
 	}
 }
 
+#pragma MESSAGE("Exclude PID_BOTTLE_CAPS.")
 const char* CritterCl::GetMoneyStr()
 {
 	static char money_str[64];
-	DWORD money_count=CountItemPid(PID_BOTTLE_CAPS);
+	uint money_count=CountItemPid(41/*PID_BOTTLE_CAPS*/);
 	sprintf(money_str,"%u$",money_count);
 	return money_str;
 }
@@ -635,7 +636,7 @@ const char* CritterCl::GetMoneyStr()
 bool CritterCl::NextRateItem(bool prev)
 {
 	bool result=false;
-	BYTE old_rate=ItemSlotMain->Data.Mode;
+	uchar old_rate=ItemSlotMain->Data.Mode;
 	if(!ItemSlotMain->IsWeapon())
 	{
 		if(ItemSlotMain->IsCanUse() || ItemSlotMain->IsCanUseOnSmth())
@@ -650,8 +651,8 @@ bool CritterCl::NextRateItem(bool prev)
 		{
 			ProtoItem* old_unarmed=ItemSlotMain->Proto;
 			ProtoItem* unarmed=ItemSlotMain->Proto;
-			BYTE tree=ItemSlotMain->Proto->Weapon_UnarmedTree;
-			BYTE priority=ItemSlotMain->Proto->Weapon_UnarmedPriority;
+			uchar tree=ItemSlotMain->Proto->Weapon_UnarmedTree;
+			uchar priority=ItemSlotMain->Proto->Weapon_UnarmedPriority;
 			while(true)
 			{
 				if(prev)
@@ -771,19 +772,19 @@ bool CritterCl::NextRateItem(bool prev)
 	return ItemSlotMain->Data.Mode!=old_rate || result;
 }
 
-void CritterCl::SetAim(BYTE hit_location)
+void CritterCl::SetAim(uchar hit_location)
 {
 	UNSETFLAG(ItemSlotMain->Data.Mode,0xF0);
 	if(!IsItemAim(SLOT_HAND1)) return;
 	SETFLAG(ItemSlotMain->Data.Mode,hit_location<<4);
 }
 
-DWORD CritterCl::GetUseApCost(Item* item, BYTE rate)
+uint CritterCl::GetUseApCost(Item* item, uchar rate)
 {
 	return GameOpt.GetUseApCost?GameOpt.GetUseApCost(this,item,rate):1;
 }
 
-ProtoItem* CritterCl::GetUnarmedItem(BYTE tree, BYTE priority)
+ProtoItem* CritterCl::GetUnarmedItem(uchar tree, uchar priority)
 {
 	ProtoItem* best_unarmed=NULL;
 	for(int i=ITEM_SLOT_BEGIN;i<=ITEM_SLOT_END;i++)
@@ -818,16 +819,16 @@ void CritterCl::FixLastHexes()
 	LastHexY.push_back(HexY);
 }
 
-WORD CritterCl::PopLastHexX()
+ushort CritterCl::PopLastHexX()
 {
-	WORD hx=LastHexX[LastHexX.size()-1];
+	ushort hx=LastHexX[LastHexX.size()-1];
 	LastHexX.pop_back();
 	return hx;
 }
 
-WORD CritterCl::PopLastHexY()
+ushort CritterCl::PopLastHexY()
 {
-	WORD hy=LastHexY[LastHexY.size()-1];
+	ushort hy=LastHexY[LastHexY.size()-1];
 	LastHexY.pop_back();
 	return hy;
 }
@@ -837,7 +838,7 @@ void CritterCl::Move(int dir)
 	if(dir<0 || dir>=DIRS_COUNT || !CritType::IsCanRotate(GetCrType())) dir=0;
 	CrDir=dir;
 
-	DWORD crtype=GetCrType();
+	uint crtype=GetCrType();
 	int time_move=0;
 
 	if(!IsRunning)
@@ -861,8 +862,8 @@ void CritterCl::Move(int dir)
 	{
 		if(CritType::GetAnimType(crtype)==ANIM_TYPE_FALLOUT)
 		{
-			DWORD anim1=(IsRunning?ANIM1_UNARMED:GetAnim1());
-			DWORD anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
+			uint anim1=(IsRunning?ANIM1_UNARMED:GetAnim1());
+			uint anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
 			AnyFrames* anim=ResMngr.GetCrit2dAnim(crtype,anim1,anim2,dir);
 			if(!anim) anim=DefaultAnim;
 
@@ -942,8 +943,8 @@ void CritterCl::Move(int dir)
 		}
 		else
 		{
-			DWORD anim1=GetAnim1();
-			DWORD anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
+			uint anim1=GetAnim1();
+			uint anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
 			if(IsHideMode()) anim2=(IsRunning?ANIM2_SNEAK_RUN:ANIM2_SNEAK_WALK);
 			if(IsDmgLeg()) anim2=ANIM2_LIMP;
 
@@ -969,8 +970,8 @@ void CritterCl::Move(int dir)
 	}
 	else
 	{
-		DWORD anim1=GetAnim1();
-		DWORD anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
+		uint anim1=GetAnim1();
+		uint anim2=(IsRunning?ANIM2_RUN:ANIM2_WALK);
 		if(IsHideMode()) anim2=(IsRunning?ANIM2_SNEAK_RUN:ANIM2_SNEAK_WALK);
 		if(IsDmgLeg()) anim2=ANIM2_LIMP;
 
@@ -990,14 +991,14 @@ void CritterCl::Move(int dir)
 void CritterCl::Action(int action, int action_ext, Item* item, bool local_call /* = true */)
 {
 #ifdef FONLINE_CLIENT
-	if(Script::PrepareContext(ClientFunctions.CritterAction,CALL_FUNC_STR,"CritterAction"))
+	if(Script::PrepareContext(ClientFunctions.CritterAction,_FUNC_,"CritterAction"))
 	{
 		if(item) item=item->Clone();
 
 		Script::SetArgBool(local_call);
 		Script::SetArgObject(this);
-		Script::SetArgDword(action);
-		Script::SetArgDword(action_ext);
+		Script::SetArgUInt(action);
+		Script::SetArgUInt(action_ext);
 		Script::SetArgObject(item);
 		Script::RunPrepared();
 
@@ -1083,10 +1084,10 @@ void CritterCl::NextAnim(bool erase_front)
 	}
 }
 
-void CritterCl::Animate(DWORD anim1, DWORD anim2, Item* item)
+void CritterCl::Animate(uint anim1, uint anim2, Item* item)
 {
-	DWORD crtype=GetCrType();
-	BYTE dir=GetDir();
+	uint crtype=GetCrType();
+	uchar dir=GetDir();
 	if(!anim1) anim1=GetAnim1();
 	if(item) item=item->Clone();
 
@@ -1124,9 +1125,9 @@ void CritterCl::Animate(DWORD anim1, DWORD anim2, Item* item)
 
 void CritterCl::AnimateStay()
 {
-	DWORD crtype=GetCrType();
-	DWORD anim1=GetAnim1();
-	DWORD anim2=GetAnim2();
+	uint crtype=GetCrType();
+	uint anim1=GetAnim1();
+	uint anim2=GetAnim2();
 
 	if(!Anim3d)
 	{
@@ -1149,7 +1150,7 @@ void CritterCl::AnimateStay()
 
 		SetOffs(0,0,true);
 		short ox=0,oy=0;
-		for(DWORD i=0,j=curSpr%anim->GetCnt();i<=j;i++)
+		for(uint i=0,j=curSpr%anim->GetCnt();i<=j;i++)
 		{
 			ox+=anim->NextX[i];
 			oy+=anim->NextY[i];
@@ -1182,7 +1183,7 @@ bool CritterCl::IsWalkAnim()
 
 void CritterCl::ClearAnim()
 {
-	for(size_t i=0,j=animSequence.size();i<j;i++) SAFEREL(animSequence[i].ActiveItem);
+	for(uint i=0,j=animSequence.size();i<j;i++) SAFEREL(animSequence[i].ActiveItem);
 	animSequence.clear();
 }
 
@@ -1196,17 +1197,17 @@ bool CritterCl::IsHaveLightSources()
 	return false;
 }
 
-DWORD CritterCl::GetCrType()
+uint CritterCl::GetCrType()
 {
 	return BaseType;
 }
 
-DWORD CritterCl::GetCrTypeAlias()
+uint CritterCl::GetCrTypeAlias()
 {
 	return CritType::GetAlias(GetCrType());
 }
 
-DWORD CritterCl::GetAnim1()
+uint CritterCl::GetAnim1()
 {
 	switch(Cond)
 	{
@@ -1218,7 +1219,7 @@ DWORD CritterCl::GetAnim1()
 	return ANIM1_UNARMED;
 }
 
-DWORD CritterCl::GetAnim2()
+uint CritterCl::GetAnim2()
 {
 	switch(Cond)
 	{
@@ -1230,15 +1231,15 @@ DWORD CritterCl::GetAnim2()
 	return ANIM2_IDLE;
 }
 
-void CritterCl::ProcessAnim(bool animate_stay, bool is2d, DWORD anim1, DWORD anim2, Item* item)
+void CritterCl::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item)
 {
 #ifdef FONLINE_CLIENT
-	if(Script::PrepareContext(is2d?ClientFunctions.Animation2dProcess:ClientFunctions.Animation3dProcess,CALL_FUNC_STR,"AnimationProcess"))
+	if(Script::PrepareContext(is2d?ClientFunctions.Animation2dProcess:ClientFunctions.Animation3dProcess,_FUNC_,"AnimationProcess"))
 	{
 		Script::SetArgBool(animate_stay);
 		Script::SetArgObject(this);
-		Script::SetArgDword(anim1);
-		Script::SetArgDword(anim2);
+		Script::SetArgUInt(anim1);
+		Script::SetArgUInt(anim2);
 		Script::SetArgObject(item);
 		Script::RunPrepared();
 	}
@@ -1257,7 +1258,7 @@ int* CritterCl::GetLayers3dData()
 	return (int*)Layers3d;
 }
 
-bool CritterCl::IsAnimAviable(DWORD anim1, DWORD anim2)
+bool CritterCl::IsAnimAviable(uint anim1, uint anim2)
 {
 	if(!anim1) anim1=GetAnim1();
 	// 3d
@@ -1266,7 +1267,7 @@ bool CritterCl::IsAnimAviable(DWORD anim1, DWORD anim2)
 	return ResMngr.GetCrit2dAnim(GetCrType(),anim1,anim2,GetDir())!=NULL;
 }
 
-void CritterCl::SetBaseType(DWORD type)
+void CritterCl::SetBaseType(uint type)
 {
 	BaseType=type;
 	BaseTypeAlias=CritType::GetAlias(type);
@@ -1304,7 +1305,7 @@ void CritterCl::SetBaseType(DWORD type)
 	ProcessChangedParams();
 }
 
-void CritterCl::SetDir(BYTE dir)
+void CritterCl::SetDir(uchar dir)
 {
 	if(dir>=DIRS_COUNT || !CritType::IsCanRotate(GetCrType())) dir=0;
 	if(CrDir==dir) return;
@@ -1325,10 +1326,10 @@ void CritterCl::Process()
 	if(OffsExtNextTick && Timer::GameTick()>=OffsExtNextTick)
 	{
 		OffsExtNextTick=Timer::GameTick()+30;
-		DWORD dist=DistSqrt(0,0,OxExtI,OyExtI);
+		uint dist=DistSqrt(0,0,OxExtI,OyExtI);
 		SprOx-=OxExtI;
 		SprOy-=OyExtI;
-		float mul=dist/10;
+		float mul=(float)(dist/10);
 		if(mul<1.0f) mul=1.0f;
 		OxExtF+=OxExtSpeed*mul;
 		OyExtF+=OyExtSpeed*mul;
@@ -1355,22 +1356,22 @@ void CritterCl::Process()
 	// Change frames
 	if(!Anim3d && anim_proc<100)
 	{
-		DWORD cur_spr=cr_anim.BeginFrm+((cr_anim.EndFrm-cr_anim.BeginFrm+1)*anim_proc)/100;
+		uint cur_spr=cr_anim.BeginFrm+((cr_anim.EndFrm-cr_anim.BeginFrm+1)*anim_proc)/100;
 		if(cur_spr!=curSpr)
 		{
 			// Change frame
-			DWORD old_spr=curSpr;
+			uint old_spr=curSpr;
 			curSpr=cur_spr;
 			SprId=cr_anim.Anim->GetSprId(curSpr);
 
 			// Change offsets
 			short ox=0,oy=0;
-			for(DWORD i=0,j=old_spr%cr_anim.Anim->GetCnt();i<=j;i++)
+			for(uint i=0,j=old_spr%cr_anim.Anim->GetCnt();i<=j;i++)
 			{
 				ox-=cr_anim.Anim->NextX[i];
 				oy-=cr_anim.Anim->NextY[i];
 			}
-			for(DWORD i=0,j=cur_spr%cr_anim.Anim->GetCnt();i<=j;i++)
+			for(uint i=0,j=cur_spr%cr_anim.Anim->GetCnt();i<=j;i++)
 			{
 				ox+=cr_anim.Anim->NextX[i];
 				oy+=cr_anim.Anim->NextY[i];
@@ -1539,7 +1540,7 @@ void CritterCl::GetWalkHexOffsets(int dir, int& ox, int& oy)
 	GetHexInterval(hx,hy,1,1,ox,oy);
 }
 
-void CritterCl::SetText(const char* str, DWORD color, DWORD text_delay)
+void CritterCl::SetText(const char* str, uint color, uint text_delay)
 {
 	tickStartText=Timer::GameTick();
 	strTextOnHead=str;
@@ -1558,12 +1559,12 @@ void CritterCl::DrawTextOnHead()
 	if(SprDrawValid)
 	{
 		INTRECT tr=GetTextRect();
-		int x=(tr.L+tr.W()/2+GameOpt.ScrOx)/GameOpt.SpritesZoom-100;
-		int y=(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-70;
+		int x=(int)((float)(tr.L+tr.W()/2+GameOpt.ScrOx)/GameOpt.SpritesZoom-100.0f);
+		int y=(int)((float)(tr.T+GameOpt.ScrOy)/GameOpt.SpritesZoom-70.0f);
 		INTRECT r(x,y,x+200,y+70);
 
 		char str[MAX_FOTEXT];
-		DWORD color;
+		uint color;
 		if(strTextOnHead.empty())
 		{
 			if(NameOnHead.length()) StringCopy(str,NameOnHead.c_str());
@@ -1579,11 +1580,11 @@ void CritterCl::DrawTextOnHead()
 
 			if(tickTextDelay>500)
 			{
-				DWORD dt=Timer::GameTick()-tickStartText;
-				DWORD hide=tickTextDelay-200;
+				uint dt=Timer::GameTick()-tickStartText;
+				uint hide=tickTextDelay-200;
 				if(dt>=hide)
 				{
-					DWORD alpha=0xFF*(100-Procent(tickTextDelay-hide,dt-hide))/100;
+					uint alpha=0xFF*(100-Procent(tickTextDelay-hide,dt-hide))/100;
 					color=(alpha<<24)|(color&0xFFFFFF);
 				}
 			}
@@ -1591,7 +1592,7 @@ void CritterCl::DrawTextOnHead()
 
 		if(fadingEnable)
 		{
-			DWORD alpha=GetFadeAlpha();
+			uint alpha=GetFadeAlpha();
 			SprMngr.DrawStr(r,str,FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,(alpha<<24)|(color&0xFFFFFF));
 		}
 		else if(!IsFinishing())

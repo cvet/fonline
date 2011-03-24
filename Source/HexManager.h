@@ -9,10 +9,6 @@
 #include "ItemHex.h"
 #include "ProtoMap.h"
 
-class Terrain;
-typedef vector<Terrain*> TerrainVec;
-typedef vector<Terrain*>::iterator TerrainVecIt;
-
 #define MAX_FIND_PATH   (600)
 #define TILE_ALPHA	    (0xFF)
 #define VIEW_WIDTH      ((int)((MODE_WIDTH/GameOpt.MapHexWidth+((MODE_WIDTH%GameOpt.MapHexWidth)?1:0))*GameOpt.SpritesZoom))
@@ -50,14 +46,14 @@ struct ViewField
 
 struct LightSource 
 {
-	WORD HexX;
-	WORD HexY;
-	DWORD ColorRGB;
-	BYTE Distance;
-	BYTE Flags;
+	ushort HexX;
+	ushort HexY;
+	uint ColorRGB;
+	uchar Distance;
+	uchar Flags;
 	int Intensity;
 
-	LightSource(WORD hx, WORD hy, DWORD color, BYTE distance, int inten, BYTE flags):HexX(hx),HexY(hy),ColorRGB(color),Intensity(inten),Distance(distance),Flags(flags){}
+	LightSource(ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags):HexX(hx),HexY(hy),ColorRGB(color),Intensity(inten),Distance(distance),Flags(flags){}
 };
 typedef vector<LightSource> LightSourceVec;
 typedef vector<LightSource>::iterator LightSourceVecIt;
@@ -73,7 +69,7 @@ struct Field
 		AnyFrames* Anim;
 		short OffsX;
 		short OffsY;
-		BYTE Layer;
+		uchar Layer;
 	};
 	typedef vector<Tile> TileVec;
 
@@ -93,16 +89,16 @@ struct Field
 	bool IsExitGrid;
 	bool IsNotPassed;
 	bool IsNotRaked;
-	BYTE Corner;
+	uchar Corner;
 	bool IsNoLight;
-	BYTE LightValues[3];
+	uchar LightValues[3];
 	bool IsMultihex;
 
 	void Clear();
 	void AddItem(ItemHex* item);
 	void EraseItem(ItemHex* item);
 	void ProcessCache();
-	void AddTile(AnyFrames* anim, short ox, short oy, BYTE layer, bool is_roof);
+	void AddTile(AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof);
 	Field(){Clear();}
 };
 
@@ -115,14 +111,14 @@ struct Field
 
 struct Drop
 {
-	DWORD CurSprId;
+	uint CurSprId;
 	short OffsX;
 	short OffsY;
 	short GroundOffsY;
 	short DropCnt;
 
 	Drop():CurSprId(0),OffsX(0),OffsY(0),DropCnt(0),GroundOffsY(0){};
-	Drop(WORD id, short x, short y, short ground_y):CurSprId(id),OffsX(x),OffsY(y),DropCnt(-1),GroundOffsY(ground_y){};
+	Drop(ushort id, short x, short y, short ground_y):CurSprId(id),OffsX(x),OffsY(y),DropCnt(-1),GroundOffsY(ground_y){};
 };
 
 typedef vector<Drop*> DropVec;
@@ -136,24 +132,24 @@ class HexManager
 {
 	// Hexes
 public:
-	bool ResizeField(WORD w, WORD h);
-	Field& GetField(WORD hx, WORD hy){return hexField[hy*maxHexX+hx];}
-	bool& GetHexToDraw(WORD hx, WORD hy){return hexToDraw[hy*maxHexX+hx];}
-	char& GetHexTrack(WORD hx, WORD hy){return hexTrack[hy*maxHexX+hx];}
-	WORD GetMaxHexX(){return maxHexX;}
-	WORD GetMaxHexY(){return maxHexY;}
+	bool ResizeField(ushort w, ushort h);
+	Field& GetField(ushort hx, ushort hy){return hexField[hy*maxHexX+hx];}
+	bool& GetHexToDraw(ushort hx, ushort hy){return hexToDraw[hy*maxHexX+hx];}
+	char& GetHexTrack(ushort hx, ushort hy){return hexTrack[hy*maxHexX+hx];}
+	ushort GetMaxHexX(){return maxHexX;}
+	ushort GetMaxHexY(){return maxHexY;}
 	void ClearHexToDraw(){ZeroMemory(hexToDraw,maxHexX*maxHexY*sizeof(bool));}
 	void ClearHexTrack(){ZeroMemory(hexTrack,maxHexX*maxHexY*sizeof(char));}
 	void SwitchShowTrack();
 	bool IsShowTrack(){return isShowTrack;};
 
-	bool FindPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, ByteVec& steps, int cut);
-	bool CutPath(CritterCl* cr, WORD start_x, WORD start_y, WORD& end_x, WORD& end_y, int cut);
-	bool TraceBullet(WORD hx, WORD hy, WORD tx, WORD ty, DWORD dist, float angle, CritterCl* find_cr, bool find_cr_safe,
-		CritVec* critters, int find_type, WordPair* pre_block, WordPair* block, WordPairVec* steps, bool check_passed);
+	bool FindPath(CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut);
+	bool CutPath(CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut);
+	bool TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe,
+		CritVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed);
 
 private:
-	WORD maxHexX,maxHexY;
+	ushort maxHexX,maxHexY;
 	Field* hexField;
 	bool* hexToDraw;
 	char* hexTrack;
@@ -169,30 +165,30 @@ public:
 	void FindSetCenter(int cx, int cy);
 
 private:
-	void FindSetCenterDir(WORD& hx, WORD& hy, int dirs[2], int steps);
+	void FindSetCenterDir(ushort& hx, ushort& hy, int dirs[2], int steps);
 
 	// Map load
 private:
-	WORD curPidMap;
+	ushort curPidMap;
 	int curMapTime;
 	int dayTime[4];
-	BYTE dayColor[12];
-	DWORD curHashTiles;
-	DWORD curHashWalls;
-	DWORD curHashScen;
+	uchar dayColor[12];
+	uint curHashTiles;
+	uint curHashWalls;
+	uint curHashScen;
 
 public:
 	bool IsMapLoaded(){return hexField!=NULL;}
-	WORD GetCurPidMap(){return curPidMap;}
-	bool LoadMap(WORD map_pid);
+	ushort GetCurPidMap(){return curPidMap;}
+	bool LoadMap(ushort map_pid);
 	void UnloadMap();
-	void GetMapHash(WORD map_pid, DWORD& hash_tiles, DWORD& hash_walls, DWORD& hash_scen);
-	bool GetMapData(WORD map_pid, ItemVec& items, WORD& maxhx, WORD& maxhy);
+	void GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen);
+	bool GetMapData(ushort map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy);
 	bool ParseScenery(SceneryCl& scen);
 	int GetDayTime();
 	int GetMapTime();
 	int* GetMapDayTime();
-	BYTE* GetMapDayColor();
+	uchar* GetMapDayColor();
 
 	// Init, finish, restore
 private:
@@ -204,13 +200,13 @@ private:
 	int wVisible,hVisible;
 
 	void InitView(int cx, int cy);
-	bool IsVisible(DWORD spr_id, int ox, int oy);
-	bool ProcessHexBorders(DWORD spr_id, int ox, int oy);
+	bool IsVisible(uint spr_id, int ox, int oy);
+	bool ProcessHexBorders(uint spr_id, int ox, int oy);
 
 public:
 	void ChangeZoom(int zoom); // <0 in, >0 out, 0 normalize
 	void GetScreenHexes(int& sx, int& sy){sx=screenHexX;sy=screenHexY;}
-	void GetHexCurrentPosition(WORD hx, WORD hy, int& x, int& y);
+	void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y);
 
 public:
 	bool SpritesCanDrawMap;
@@ -236,7 +232,7 @@ public:
 		double OffsX,OffsY;
 		double OffsXStep,OffsYStep;
 		double Speed;
-		DWORD LockedCritter;
+		uint LockedCritter;
 	} AutoScroll;
 
 	void ScrollToHex(int hx, int hy, double speed, bool can_stop);
@@ -248,7 +244,7 @@ private:
 public:
 	void SwitchShowHex();
 	void SwitchShowRain();
-	void SetWeather(int time, BYTE rain);
+	void SetWeather(int time, uchar rain);
 
 	void SetCrit(CritterCl* cr);
 	bool TransitCritter(CritterCl* cr, int hx, int hy, bool animate, bool force);
@@ -256,67 +252,67 @@ public:
 	// Critters
 public:
 	CritMap allCritters;
-	DWORD chosenId;
-	DWORD critterContourCrId;
+	uint chosenId;
+	uint critterContourCrId;
 	int critterContour,crittersContour;
 
 public:
-	CritterCl* GetCritter(DWORD crid){if(!crid) return NULL; CritMapIt it=allCritters.find(crid); return it!=allCritters.end()?(*it).second:NULL;}
+	CritterCl* GetCritter(uint crid){if(!crid) return NULL; CritMapIt it=allCritters.find(crid); return it!=allCritters.end()?(*it).second:NULL;}
 	CritterCl* GetChosen(){if(!chosenId) return NULL; CritMapIt it=allCritters.find(chosenId); return it!=allCritters.end()?(*it).second:NULL;}
 	void AddCrit(CritterCl* cr);
 	void RemoveCrit(CritterCl* cr);
-	void EraseCrit(DWORD crid);
+	void EraseCrit(uint crid);
 	void ClearCritters();
-	void GetCritters(WORD hx, WORD hy, CritVec& crits, int find_type);
+	void GetCritters(ushort hx, ushort hy, CritVec& crits, int find_type);
 	CritMap& GetCritters(){return allCritters;}
-	void SetCritterContour(DWORD crid, int contour);
+	void SetCritterContour(uint crid, int contour);
 	void SetCrittersContour(int contour);
-	void SetMultihex(WORD hx, WORD hy, DWORD multihex, bool set);
+	void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
 
 	// Items
 private:
 	ItemHexVec hexItems;
 
-	void PlaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
-	void ReplaceItemBlocks(WORD hx, WORD hy, ProtoItem* proto_item);
+	void PlaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item);
+	void ReplaceItemBlocks(ushort hx, ushort hy, ProtoItem* proto_item);
 
 public:
-	bool AddItem(DWORD id, WORD pid, WORD hx, WORD hy, bool is_added, Item::ItemData* data);
-	void ChangeItem(DWORD id, const Item::ItemData& data);
-	void FinishItem(DWORD id, bool is_deleted);
+	bool AddItem(uint id, ushort pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data);
+	void ChangeItem(uint id, const Item::ItemData& data);
+	void FinishItem(uint id, bool is_deleted);
 	ItemHexVecIt DeleteItem(ItemHex* item, bool with_delete = true);
 	void PushItem(ItemHex* item);
-	ItemHex* GetItem(WORD hx, WORD hy, WORD pid);
-	ItemHex* GetItemById(WORD hx, WORD hy, DWORD id);
-	ItemHex* GetItemById(DWORD id);
-	void GetItems(WORD hx, WORD hy, ItemHexVec& items);
+	ItemHex* GetItem(ushort hx, ushort hy, ushort pid);
+	ItemHex* GetItemById(ushort hx, ushort hy, uint id);
+	ItemHex* GetItemById(uint id);
+	void GetItems(ushort hx, ushort hy, ItemHexVec& items);
 	ItemHexVec& GetItems(){return hexItems;}
-	INTRECT GetRectForText(WORD hx, WORD hy);
+	INTRECT GetRectForText(ushort hx, ushort hy);
 	void ProcessItems();
 
 	// Light
 private:
 	bool requestRebuildLight;
-	BYTE* hexLight;
-	int lightPointsCount;
+	uchar* hexLight;
+	uint lightPointsCount;
 	PointVecVec lightPoints;
 	PointVec lightSoftPoints;
 	LightSourceVec lightSources;
 	LightSourceVec lightSourcesScen;
 
-	void MarkLight(WORD hx, WORD hy, DWORD inten);
-	void MarkLightEndNeighbor(WORD hx, WORD hy, bool north_south, DWORD inten);
-	void MarkLightEnd(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD inten);
-	void MarkLightStep(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD inten);
-	void TraceLight(WORD from_hx, WORD from_hy, WORD& hx, WORD& hy, int dist, DWORD inten);
+	void MarkLight(ushort hx, ushort hy, uint inten);
+	void MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, uint inten);
+	void MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten);
+	void MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten);
+	void TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten);
 	void ParseLightTriangleFan(LightSource& ls);
-	void ParseLight(WORD hx, WORD hy, int dist, DWORD inten, DWORD flags);
+	void ParseLight(ushort hx, ushort hy, int dist, uint inten, uint flags);
 	void RealRebuildLight();
 	void CollectLightSources();
 
 public:
-	void ClearHexLight(){ZeroMemory(hexLight,maxHexX*maxHexY*sizeof(BYTE)*3);}
-	BYTE* GetLightHex(WORD hx, WORD hy){return &hexLight[hy*maxHexX*3+hx*3];}
+	void ClearHexLight(){ZeroMemory(hexLight,maxHexX*maxHexY*sizeof(uchar)*3);}
+	uchar* GetLightHex(ushort hx, ushort hy){return &hexLight[hy*maxHexX*3+hx*3];}
 	void RebuildLight(){requestRebuildLight=true;}
 	LightSourceVec& GetLights(){return lightSources;}
 
@@ -328,10 +324,8 @@ private:
 	int tileSurfWidth,tileSurfHeight;
 	int roofSkip;
 	Sprites roofTree;
-	TerrainVec tilesTerrain;
 
 	bool CheckTilesBorder(Field::Tile& tile, bool is_roof);
-	bool AddTerrain(DWORD name_hash, int hx, int hy);
 
 public:
 	bool InitTilesSurf();
@@ -342,14 +336,14 @@ public:
 
 	// Pixel get
 public:
-	bool GetHexPixel(int x, int y, WORD& hx, WORD& hy);
+	bool GetHexPixel(int x, int y, ushort& hx, ushort& hy);
 	ItemHex* GetItemPixel(int x, int y, bool& item_egg); // With transparent egg
 	CritterCl* GetCritterPixel(int x, int y, bool ignore_dead_and_chosen);
 	void GetSmthPixel(int x, int y, ItemHex*& item, CritterCl*& cr);
 
 	// Effects
 public:
-	bool RunEffect(WORD eff_pid, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
+	bool RunEffect(ushort eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
 
 	// Rain
 private:
@@ -366,7 +360,7 @@ public:
 public:
 	void SetCursorPos(int x, int y, bool show_steps, bool refresh);
 	void SetCursorVisible(bool visible){isShowCursor=visible;}
-	void DrawCursor(DWORD spr_id);
+	void DrawCursor(uint spr_id);
 	void DrawCursor(const char* text);
 
 private:
@@ -389,25 +383,23 @@ public:
 public:
 	void ClearSelTiles();
 	void ParseSelTiles();
-	void SetTile(DWORD name_hash, WORD hx, WORD hy, short ox, short oy, BYTE layer, bool is_roof, bool select);
-	//void SetTerrain(WORD hx, WORD hy, DWORD name_hash);
-	//void RebuildTerrain();
+	void SetTile(uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);
 
 	// Ignore pids to draw
 private:
-	WordSet fastPids;
-	WordSet ignorePids;
+	UShortSet fastPids;
+	UShortSet ignorePids;
 
 public:
-	void AddFastPid(WORD pid);
-	bool IsFastPid(WORD pid);
+	void AddFastPid(ushort pid);
+	bool IsFastPid(ushort pid);
 	void ClearFastPids();
-	void AddIgnorePid(WORD pid);
-	void SwitchIgnorePid(WORD pid);
-	bool IsIgnorePid(WORD pid);
+	void AddIgnorePid(ushort pid);
+	void SwitchIgnorePid(ushort pid);
+	bool IsIgnorePid(ushort pid);
 	void ClearIgnorePids();
 
-	void GetHexesRect(INTRECT& rect, WordPairVec& hexes);
+	void GetHexesRect(INTRECT& rect, UShortPairVec& hexes);
 	void MarkPassedHexes();
 	void AffectItem(MapObject* mobj, ItemHex* item);
 	void AffectCritter(MapObject* mobj, CritterCl* cr);

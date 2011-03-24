@@ -1,5 +1,5 @@
-#ifndef __VERSION__
-#define __VERSION__
+#ifndef ___VERSION___
+#define ___VERSION___
 
 #define SERVER_VERSION               0x00000419 // server_0419
 #define CLIENT_VERSION               0x00000326 // client_0326
@@ -18,4 +18,4 @@
 #define BUILDSTR   "0"
 #define FULLVERSTR "0.0.0"
 
-#endif // __VERSION__
+#endif // ___VERSION___

@@ -6,12 +6,12 @@ void FOServer::ProcessCritter(Critter* cr)
 	if(cr->IsNotValid) return;
 	if(Timer::IsGamePaused()) return;
 
-	DWORD tick=Timer::GameTick();
+	uint tick=Timer::GameTick();
 
 	// Idle global function
 	if(tick>=cr->GlobalIdleNextTick)
 	{
-		if(Script::PrepareContext(ServerFunctions.CritterIdle,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterIdle,_FUNC_,cr->GetInfo()))
 		{
 			Script::SetArgObject(cr);
 			Script::RunPrepared();
@@ -26,13 +26,13 @@ void FOServer::ProcessCritter(Critter* cr)
 		if(!cr->ApRegenerationTick) cr->ApRegenerationTick=tick;
 		else
 		{
-			DWORD delta=tick-cr->ApRegenerationTick;
+			uint delta=tick-cr->ApRegenerationTick;
 			if(delta>=500)
 			{
 				cr->Data.Params[ST_CURRENT_AP]+=max_ap*delta/GameOpt.ApRegeneration;
 				if(cr->Data.Params[ST_CURRENT_AP]>max_ap) cr->Data.Params[ST_CURRENT_AP]=max_ap;
 				cr->ApRegenerationTick=tick;
-				//if(cr->IsPlayer()) WriteLog("ap<%u.%u>\n",cr->Data.St[ST_CURRENT_AP]/AP_DIVIDER,cr->Data.St[ST_CURRENT_AP]%AP_DIVIDER);
+				//if(cr->IsPlayer()) WriteLog(NULL,"ap<%u.%u>\n",cr->Data.St[ST_CURRENT_AP]/AP_DIVIDER,cr->Data.St[ST_CURRENT_AP]%AP_DIVIDER);
 			}
 		}
 	}
@@ -42,18 +42,18 @@ void FOServer::ProcessCritter(Critter* cr)
 	// One event per cycle
 	if(!cr->CrTimeEvents.empty())
 	{
-		DWORD next_time=cr->CrTimeEvents[0].NextTime;
+		uint next_time=cr->CrTimeEvents[0].NextTime;
 		if(!next_time || (!cr->IsTurnBased() && GameOpt.FullSecond>=next_time))
 		{
 			Critter::CrTimeEvent me=cr->CrTimeEvents[0];
 			cr->EraseCrTimeEvent(0);
-			DWORD time=GameOpt.TimeMultiplier*1800; // 30 minutes on error
-			if(Script::PrepareContext(Script::GetScriptFuncBindId(me.FuncNum),CALL_FUNC_STR,cr->GetInfo()))
+			uint time=GameOpt.TimeMultiplier*1800; // 30 minutes on error
+			if(Script::PrepareContext(Script::GetScriptFuncBindId(me.FuncNum),_FUNC_,cr->GetInfo()))
 			{
 				Script::SetArgObject(cr);
-				Script::SetArgDword(me.Identifier);
+				Script::SetArgUInt(me.Identifier);
 				Script::SetArgAddress(&me.Rate);
-				if(Script::RunPrepared()) time=Script::GetReturnedDword();
+				if(Script::RunPrepared()) time=Script::GetReturnedUInt();
 			}
 			if(time) cr->AddCrTimeEvent(me.FuncNum,me.Rate,time,me.Identifier);
 		}
@@ -127,18 +127,18 @@ void FOServer::ProcessCritter(Critter* cr)
 
 void FOServer::SaveHoloInfoFile()
 {
-	DWORD count=HolodiskInfo.size();
+	uint count=HolodiskInfo.size();
 	AddWorldSaveData(&count,sizeof(count));
 	for(HoloInfoMapIt it=HolodiskInfo.begin(),end=HolodiskInfo.end();it!=end;++it)
 	{
-		DWORD id=(*it).first;
+		uint id=(*it).first;
 		HoloInfo* hi=(*it).second;
 		AddWorldSaveData(&id,sizeof(id));
 		AddWorldSaveData(&hi->CanRewrite,sizeof(hi->CanRewrite));
-		WORD title_len=hi->Title.length();
+		ushort title_len=hi->Title.length();
 		AddWorldSaveData(&title_len,sizeof(title_len));
 		if(title_len) AddWorldSaveData((void*)hi->Title.c_str(),title_len);
-		WORD text_len=hi->Text.length();
+		ushort text_len=hi->Text.length();
 		AddWorldSaveData(&text_len,sizeof(text_len));
 		if(text_len) AddWorldSaveData((void*)hi->Text.c_str(),text_len);
 	}
@@ -148,23 +148,23 @@ bool FOServer::LoadHoloInfoFile(FILE* f)
 {
 	LastHoloId=USER_HOLO_START_NUM;
 
-	DWORD count=0;
+	uint count=0;
 	if(!fread(&count,sizeof(count),1,f)) return false;
-	for(DWORD i=0;i<count;i++)
+	for(uint i=0;i<count;i++)
 	{
-		DWORD id;
+		uint id;
 		if(!fread(&id,sizeof(id),1,f)) return false;
 		bool can_rw;
 		if(!fread(&can_rw,sizeof(can_rw),1,f)) return false;
 
-		WORD title_len;
+		ushort title_len;
 		char title[USER_HOLO_MAX_TITLE_LEN+1]={0};
 		if(!fread(&title_len,sizeof(title_len),1,f)) return false;
 		if(title_len>=USER_HOLO_MAX_TITLE_LEN) title_len=USER_HOLO_MAX_TITLE_LEN;
 		if(title_len) fread(title,title_len,1,f);
 		title[title_len]=0;
 
-		WORD text_len;
+		ushort text_len;
 		char text[USER_HOLO_MAX_LEN+1]={0};
 		if(!fread(&text_len,sizeof(text_len),1,f)) return false;
 		if(text_len>=USER_HOLO_MAX_LEN) text_len=USER_HOLO_MAX_LEN;
@@ -177,7 +177,7 @@ bool FOServer::LoadHoloInfoFile(FILE* f)
 	return true;
 }
 
-void FOServer::AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send)
+void FOServer::AddPlayerHoloInfo(Critter* cr, uint holo_num, bool send)
 {
 	if(!holo_num)
 	{
@@ -220,7 +220,7 @@ void FOServer::AddPlayerHoloInfo(Critter* cr, DWORD holo_num, bool send)
 	}
 }
 
-void FOServer::ErasePlayerHoloInfo(Critter* cr, DWORD index, bool send)
+void FOServer::ErasePlayerHoloInfo(Critter* cr, uint index, bool send)
 {
 	if(index>=MAX_HOLO_INFO || index>=cr->Data.HoloInfoCount)
 	{
@@ -239,7 +239,7 @@ void FOServer::ErasePlayerHoloInfo(Critter* cr, DWORD index, bool send)
 	}
 }
 
-void FOServer::Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text)
+void FOServer::Send_PlayerHoloInfo(Critter* cr, uint holo_num, bool send_text)
 {
 	if(!cr->IsPlayer()) return;
 
@@ -263,9 +263,9 @@ void FOServer::Send_PlayerHoloInfo(Critter* cr, DWORD holo_num, bool send_text)
 	}
 }
 
-bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, DWORD move_params)
+bool FOServer::Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params)
 {
-	DWORD map_id=cr->GetMap();
+	uint map_id=cr->GetMap();
 	if(!map_id) return false;
 
 	// Check run/walk
@@ -287,7 +287,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, DWORD move_params)
 	{
 		cr->Send_XY(cr);
 		cr->Send_ParamOther(OTHER_YOU_TURN,0);
-		WriteLog(__FUNCTION__" - Is not critter<%s> turn.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Is not critter<%s> turn.\n",cr->GetInfo());
 		return false;
 	}
 
@@ -338,10 +338,10 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, DWORD move_params)
 	}
 
 	// Check passed
-	WORD fx=cr->GetHexX();
-	WORD fy=cr->GetHexY();
-	BYTE dir=GetNearDir(fx,fy,hx,hy);
-	DWORD multihex=cr->GetMultihex();
+	ushort fx=cr->GetHexX();
+	ushort fy=cr->GetHexY();
+	uchar dir=GetNearDir(fx,fy,hx,hy);
+	uint multihex=cr->GetMultihex();
 
 	if(!map->IsMovePassed(hx,hy,dir,multihex))
 	{
@@ -418,7 +418,7 @@ bool FOServer::Act_Move(Critter* cr, WORD hx, WORD hy, DWORD move_params)
 	return true;
 }
 
-bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
+bool FOServer::Act_Attack(Critter* cr, uchar rate_weap, uint target_id)
 {
 /************************************************************************/
 /* Check & Prepare                                                      */
@@ -427,39 +427,39 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 
 	if(cr->GetId()==target_id)
 	{
-		WriteLog(__FUNCTION__" - Critter<%s> self attack.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Critter<%s> self attack.\n",cr->GetInfo());
 		return false;
 	}
 
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map)
 	{
-		WriteLog(__FUNCTION__" - Map not found, map id<%u>, critter<%s>.\n",cr->GetMap(),cr->GetInfo());
+		WriteLog(_FUNC_," - Map not found, map id<%u>, critter<%s>.\n",cr->GetMap(),cr->GetInfo());
 		return false;
 	}
 
 	if(!cr->CheckMyTurn(map))
 	{
-		WriteLog(__FUNCTION__" - Is not critter<%s> turn.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Is not critter<%s> turn.\n",cr->GetInfo());
 		return false;
 	}
 
 	Critter* t_cr=cr->GetCritSelf(target_id,true);
 	if(!t_cr)
 	{
-		WriteLog(__FUNCTION__" - Target critter not found, target id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+		WriteLog(_FUNC_," - Target critter not found, target id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 		return false;
 	}
 
 	if(cr->GetMap()!=t_cr->GetMap())
 	{
-		WriteLog(__FUNCTION__" - Other maps, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Other maps, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(t_cr->IsDead())
 	{
-		//if(cr->IsPlayer()) WriteLog(__FUNCTION__" - Target critter is dead, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		//if(cr->IsPlayer()) WriteLog(_FUNC_," - Target critter is dead, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		cr->Send_AddCritter(t_cr); //Refresh
 		return false;
 	}
@@ -473,74 +473,74 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	Item* weap=cr->ItemSlotMain;
 	if(!weap->IsWeapon())
 	{
-		WriteLog(__FUNCTION__" - Critter item is not weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Critter item is not weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(weap->IsBroken())
 	{
-		WriteLog(__FUNCTION__" - Critter weapon is broken, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Critter weapon is broken, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(weap->IsTwoHands() && cr->IsDmgArm())
 	{
-		WriteLog(__FUNCTION__" - Critter is damaged arm on two hands weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Critter is damaged arm on two hands weapon, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(cr->IsDmgTwoArm() && weap->GetId())
 	{
-		WriteLog(__FUNCTION__" - Critter is damaged two arms on armed attack, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Critter is damaged two arms on armed attack, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
-	BYTE aim=rate_weap>>4;
-	BYTE use=rate_weap&0xF;
+	uchar aim=rate_weap>>4;
+	uchar use=rate_weap&0xF;
 
 	if(use>=MAX_USES)
 	{
-		WriteLog(__FUNCTION__" - Use<%u> invalid value, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Use<%u> invalid value, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(!(weap->Proto->Weapon_ActiveUses&(1<<use)))
 	{
-		WriteLog(__FUNCTION__" - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n",use,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim>=MAX_HIT_LOCATION)
 	{
-		WriteLog(__FUNCTION__" - Aim<%u> invalid value, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Aim<%u> invalid value, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim && !CritType::IsCanAim(cr->GetCrType()))
 	{
-		WriteLog(__FUNCTION__" - Aim is not available for this critter type, crtype<%u>, aim<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),aim,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Aim is not available for this critter type, crtype<%u>, aim<%u>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),aim,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim && cr->IsRawParam(MODE_NO_AIM))
 	{
-		WriteLog(__FUNCTION__" - Aim is not available with critter no aim mode, aim<%u>, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Aim is not available with critter no aim mode, aim<%u>, critter<%s>, target critter<%s>.\n",aim,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(aim && !weap->WeapIsCanAim(use))
 	{
-		WriteLog(__FUNCTION__" - Aim is not available for this weapon, aim<%u>, weapon pid<%u>, critter<%s>, target critter<%s>.\n",aim,weap->GetProtoId(),cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Aim is not available for this weapon, aim<%u>, weapon pid<%u>, critter<%s>, target critter<%s>.\n",aim,weap->GetProtoId(),cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
 	if(!CritType::IsAnim1(cr->GetCrType(),weap->Proto->Weapon_Anim1))
 	{
-		WriteLog(__FUNCTION__" - Anim1 is not available for this critter type, crtype<%u>, anim1<%d>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),weap->Proto->Weapon_Anim1,cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Anim1 is not available for this critter type, crtype<%u>, anim1<%d>, critter<%s>, target critter<%s>.\n",cr->GetCrType(),weap->Proto->Weapon_Anim1,cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
-	DWORD max_dist=cr->GetAttackDist(weap,use)+t_cr->GetMultihex();
+	uint max_dist=cr->GetAttackDist(weap,use)+t_cr->GetMultihex();
 	if(!CheckDist(hx,hy,tx,ty,max_dist) && !(Timer::GameTick()<t_cr->PrevHexTick+500 && CheckDist(hx,hy,t_cr->PrevHexX,t_cr->PrevHexY,max_dist)))
 	{
 		cr->Send_XY(cr);
@@ -561,7 +561,7 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	{
 		cr->Send_XY(cr);
 		cr->Send_XY(t_cr);
-		// if(cr->IsPlayer()) WriteLog(__FUNCTION__" - Distance trace fail, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		// if(cr->IsPlayer()) WriteLog(_FUNC_," - Distance trace fail, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
 
@@ -569,10 +569,10 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(cr->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
 		cr->Send_Param(ST_CURRENT_AP);
-		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 		return false;
 	}
-	//WriteLog("Proto %u, ap %u.\n",weap->GetProtoId(),ap_cost);
+	//WriteLog(NULL,"Proto %u, ap %u.\n",weap->GetProtoId(),ap_cost);
 
 	// Ammo
 	ProtoItem* ammo=NULL;
@@ -587,13 +587,13 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 
 		if(!ammo)
 		{
-			WriteLog(__FUNCTION__" - Critter weapon ammo not found, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+			WriteLog(_FUNC_," - Critter weapon ammo not found, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 			return false;
 		}
 
 		if(!ammo->IsAmmo())
 		{
-			WriteLog(__FUNCTION__" - Critter weapon ammo is not ammo type, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+			WriteLog(_FUNC_," - Critter weapon ammo is not ammo type, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
 			return false;
 		}
 	}
@@ -603,12 +603,12 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	{
 		if(!weap->Data.TechInfo.AmmoCount)
 		{
-			WriteLog(__FUNCTION__" - Critter bullets count is zero, critter<%s>.\n",cr->GetInfo());
+			WriteLog(_FUNC_," - Critter bullets count is zero, critter<%s>.\n",cr->GetInfo());
 			return false;
 		}
 	}
 
-	WORD ammo_round=weap->Proto->Weapon_Round[use];
+	ushort ammo_round=weap->Proto->Weapon_Round[use];
 	if(!ammo_round) ammo_round=1;
 
 	// Script events
@@ -627,25 +627,25 @@ bool FOServer::Act_Attack(Critter* cr, BYTE rate_weap, DWORD target_id)
 	if(map->IsTurnBasedOn && !cr->GetAllAp()) map->EndCritterTurn();
 
 	// Run script
-	if(Script::PrepareContext(ServerFunctions.CritterAttack,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterAttack,_FUNC_,cr->GetInfo()))
 	{
 		Script::SetArgObject(cr);
 		Script::SetArgObject(t_cr);
 		Script::SetArgObject(weap->Proto);
-		Script::SetArgByte(MAKE_ITEM_MODE(use,aim));
+		Script::SetArgUChar(MAKE_ITEM_MODE(use,aim));
 		Script::SetArgObject(ammo);
 		Script::RunPrepared();
 	}
 	return true;
 }
 
-bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
+bool FOServer::Act_Reload(Critter* cr, uint weap_id, uint ammo_id)
 {
 	cr->SetBreakTime(GameOpt.Breaktime);
 
 	if(!cr->CheckMyTurn(NULL))
 	{
-		WriteLog(__FUNCTION__" - Is not critter<%s> turn.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Is not critter<%s> turn.\n",cr->GetInfo());
 		cr->Send_Param(ST_CURRENT_AP);
 		return false;
 	}
@@ -653,26 +653,26 @@ bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
 	Item* weap=cr->GetItem(weap_id,true);
 	if(!weap)
 	{
-		WriteLog(__FUNCTION__" - Unable to find weapon, id<%u>, critter<%s>.\n",weap_id,cr->GetInfo());
+		WriteLog(_FUNC_," - Unable to find weapon, id<%u>, critter<%s>.\n",weap_id,cr->GetInfo());
 		return false;
 	}
 
 	if(!weap->IsWeapon())
 	{
-		WriteLog(__FUNCTION__" - Invalid type of weapon<%u>, critter<%s>.\n",weap->GetType(),cr->GetInfo());
+		WriteLog(_FUNC_," - Invalid type of weapon<%u>, critter<%s>.\n",weap->GetType(),cr->GetInfo());
 		return false;
 	}
 
 	if(!weap->WeapGetMaxAmmoCount())
 	{
-		WriteLog(__FUNCTION__" - Weapon is not have holder, id<%u>, critter<%s>.\n",weap_id,cr->GetInfo());
+		WriteLog(_FUNC_," - Weapon is not have holder, id<%u>, critter<%s>.\n",weap_id,cr->GetInfo());
 		return false;
 	}
 
 	int ap_cost=(GameOpt.GetUseApCost?GameOpt.GetUseApCost(cr,weap,USE_RELOAD):1);
 	if(cr->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
-		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, critter<%s>.\n",cr->GetInfo());
 		cr->Send_Param(ST_CURRENT_AP);
 		return false;
 	}
@@ -681,23 +681,23 @@ bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
 	Item* ammo=(ammo_id?cr->GetItem(ammo_id,true):NULL);
 	if(ammo_id && !ammo)
 	{
-		WriteLog(__FUNCTION__" - Unable to find ammo, id<%u>, critter<%s>.\n",ammo_id,cr->GetInfo());
+		WriteLog(_FUNC_," - Unable to find ammo, id<%u>, critter<%s>.\n",ammo_id,cr->GetInfo());
 		return false;
 	}
 
 	if(ammo && weap->WeapGetAmmoCaliber()!=ammo->AmmoGetCaliber())
 	{
-		WriteLog(__FUNCTION__" - Different calibers, critter<%s>.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Different calibers, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 
 	if(ammo && weap->WeapGetAmmoPid()==ammo->GetProtoId() && weap->WeapIsFull())
 	{
-		WriteLog(__FUNCTION__" - Weapon is full, id<%u>, critter<%s>.\n",weap_id,cr->GetInfo());
+		WriteLog(_FUNC_," - Weapon is full, id<%u>, critter<%s>.\n",weap_id,cr->GetInfo());
 		return false;
 	}
 
-	if(!Script::PrepareContext(ServerFunctions.CritterReloadWeapon,CALL_FUNC_STR,cr->GetInfo())) return false;
+	if(!Script::PrepareContext(ServerFunctions.CritterReloadWeapon,_FUNC_,cr->GetInfo())) return false;
 	Script::SetArgObject(cr);
 	Script::SetArgObject(weap);
 	Script::SetArgObject(ammo);
@@ -710,7 +710,7 @@ bool FOServer::Act_Reload(Critter* cr, DWORD weap_id, DWORD ammo_id)
 }
 
 #pragma MESSAGE("Add using hands/legs.")
-bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, DWORD target_id, WORD target_pid, DWORD param)
+bool FOServer::Act_Use(Critter* cr, uint item_id, int skill, int target_type, uint target_id, ushort target_pid, uint param)
 {
 	cr->SetBreakTime(GameOpt.Breaktime);
 
@@ -718,7 +718,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	if(map && !cr->CheckMyTurn(map))
 	{
 		cr->Send_Param(ST_CURRENT_AP);
-		WriteLog(__FUNCTION__" - Is not critter<%s> turn.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Is not critter<%s> turn.\n",cr->GetInfo());
 		return false;
 	}
 
@@ -728,7 +728,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		item=cr->GetItem(item_id,cr->IsPlayer());
 		if(!item)
 		{
-			WriteLog(__FUNCTION__" - Item not found, id<%u>, critter<%s>.\n",item_id,cr->GetInfo());
+			WriteLog(_FUNC_," - Item not found, id<%u>, critter<%s>.\n",item_id,cr->GetInfo());
 			return false;
 		}
 	}
@@ -737,7 +737,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	if(cr->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
 		cr->Send_Param(ST_CURRENT_AP);
-		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 	cr->SubAp(ap_cost);
@@ -746,7 +746,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	{
 		if(!item->GetCount())
 		{
-			WriteLog(__FUNCTION__" - Error, count is zero, id<%u>, critter<%s>.\n",item->GetId(),cr->GetInfo());
+			WriteLog(_FUNC_," - Error, count is zero, id<%u>, critter<%s>.\n",item->GetId(),cr->GetInfo());
 			cr->EraseItem(item,true);
 			ItemMngr.ItemToGarbage(item);
 			return false;
@@ -766,7 +766,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 				target_cr=cr->GetCritSelf(target_id,true);
 				if(!target_cr)
 				{
-					WriteLog(__FUNCTION__" - Target critter not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+					WriteLog(_FUNC_," - Target critter not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 					return false;
 				}
 
@@ -774,7 +774,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 				{
 					cr->Send_XY(cr);
 					cr->Send_XY(target_cr);
-					WriteLog(__FUNCTION__" - Target critter too far, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+					WriteLog(_FUNC_," - Target critter too far, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 					return false;
 				}
 			}
@@ -782,14 +782,14 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 			{
 				if(!cr->GroupMove)
 				{
-					WriteLog(__FUNCTION__" - Group move null ptr, critter<%s>.\n",cr->GetInfo());
+					WriteLog(_FUNC_," - Group move null ptr, critter<%s>.\n",cr->GetInfo());
 					return false;
 				}
 
 				target_cr=cr->GroupMove->GetCritter(target_id);
 				if(!target_cr)
 				{
-					WriteLog(__FUNCTION__" - Target critter not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+					WriteLog(_FUNC_," - Target critter not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 					return false;
 				}
 			}
@@ -804,7 +804,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		target_item=cr->GetItem(target_id,cr->IsPlayer());
 		if(!target_item)
 		{
-			WriteLog(__FUNCTION__" - Item not found in critter inventory, critter<%s>.\n",cr->GetInfo());
+			WriteLog(_FUNC_," - Item not found in critter inventory, critter<%s>.\n",cr->GetInfo());
 			return false;
 		}
 	}
@@ -812,33 +812,33 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	{
 		if(!cr->GetMap())
 		{
-			WriteLog(__FUNCTION__" - Can't get item, critter<%s> on global map.\n",cr->GetInfo());
+			WriteLog(_FUNC_," - Can't get item, critter<%s> on global map.\n",cr->GetInfo());
 			return false;
 		}
 
 		if(!map)
 		{
-			WriteLog(__FUNCTION__" - Map not found, map id<%u>, critter<%s>.\n",cr->GetMap(),cr->GetInfo());
+			WriteLog(_FUNC_," - Map not found, map id<%u>, critter<%s>.\n",cr->GetMap(),cr->GetInfo());
 			return false;
 		}
 
 		target_item=map->GetItem(target_id);
 		if(!target_item)
 		{
-			WriteLog(__FUNCTION__" - Target item not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+			WriteLog(_FUNC_," - Target item not found, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 			return false;
 		}
 
 		if(target_item->IsHidden())
 		{
-			WriteLog(__FUNCTION__" - Target item is hidden, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+			WriteLog(_FUNC_," - Target item is hidden, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 			return false;
 		}
 
 		if(!CheckDist(cr->GetHexX(),cr->GetHexY(),target_item->ACC_HEX.HexX,target_item->ACC_HEX.HexY,cr->GetUseDist()))
 		{
 			cr->Send_XY(cr);
-			WriteLog(__FUNCTION__" - Target item too far, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
+			WriteLog(_FUNC_," - Target item too far, id<%u>, critter<%s>.\n",target_id,cr->GetInfo());
 			return false;
 		}
 	}
@@ -846,49 +846,49 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	{
 		if(!cr->GetMap())
 		{
-			WriteLog(__FUNCTION__" - Can't get scenery, critter<%s> on global map.\n",cr->GetInfo());
+			WriteLog(_FUNC_," - Can't get scenery, critter<%s> on global map.\n",cr->GetInfo());
 			return false;
 		}
 
 		if(!map)
 		{
-			WriteLog(__FUNCTION__" - Map not found_, map id<%u>, critter<%s>.\n",cr->GetMap(),cr->GetInfo());
+			WriteLog(_FUNC_," - Map not found_, map id<%u>, critter<%s>.\n",cr->GetMap(),cr->GetInfo());
 			return false;
 		}
 
-		WORD hx=target_id>>16;
-		WORD hy=target_id&0xFFFF;
+		ushort hx=target_id>>16;
+		ushort hy=target_id&0xFFFF;
 
 		if(!CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,cr->GetUseDist()))
 		{
 			cr->Send_XY(cr);
-			WriteLog(__FUNCTION__" - Target scenery too far, critter<%s>, hx<%u>, hy<%u>.\n",cr->GetInfo(),hx,hy);
+			WriteLog(_FUNC_," - Target scenery too far, critter<%s>, hx<%u>, hy<%u>.\n",cr->GetInfo(),hx,hy);
 			return false;
 		}
 
 		ProtoItem* proto_scenery=ItemMngr.GetProtoItem(target_pid);
 		if(!proto_scenery)
 		{
-			WriteLog(__FUNCTION__" - Proto of scenery not find. Critter<%s>, pid<%u>.\n",cr->GetInfo(),target_pid);
+			WriteLog(_FUNC_," - Proto of scenery not find. Critter<%s>, pid<%u>.\n",cr->GetInfo(),target_pid);
 			return false;
 		}
 
 		if(!proto_scenery->IsGeneric())
 		{
-			WriteLog(__FUNCTION__" - Target scenery is not generic. Critter<%s>.\n",cr->GetInfo());
+			WriteLog(_FUNC_," - Target scenery is not generic. Critter<%s>.\n",cr->GetInfo());
 			return false;
 		}
 
 		target_scen=map->Proto->GetMapScenery(hx,hy,target_pid);
 		if(!target_scen)
 		{
-			WriteLog(__FUNCTION__" - Scenery not find. Critter<%s>.\n",cr->GetInfo());
+			WriteLog(_FUNC_," - Scenery not find. Critter<%s>.\n",cr->GetInfo());
 			return false;
 		}
 	}
 	else
 	{
-		WriteLog(__FUNCTION__" - Unknown target type<%d>, critter<%s>.\n",target_type,cr->GetInfo());
+		WriteLog(_FUNC_," - Unknown target type<%d>, critter<%s>.\n",target_type,cr->GetInfo());
 		return false;
 	}
 
@@ -907,7 +907,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 			else if(target_scen)
 			{
 				Item item_scenery;
-				item_scenery.Id=DWORD(-1);
+				item_scenery.Id=uint(-1);
 				item_scenery.Init(ItemMngr.GetProtoItem(target_scen->ProtoId));
 				cr->SendAA_Action(ACTION_USE_SKILL,skill_index,&item_scenery);
 			}
@@ -920,12 +920,12 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	// Scenery
 	if(target_scen && target_scen->RunTime.BindScriptId>0)
 	{
-		if(!Script::PrepareContext(target_scen->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo())) return false;
+		if(!Script::PrepareContext(target_scen->RunTime.BindScriptId,_FUNC_,cr->GetInfo())) return false;
 		Script::SetArgObject(cr);
 		Script::SetArgObject(target_scen);
-		Script::SetArgDword(item?SKILL_PICK_ON_GROUND:SKILL_OFFSET(skill));
+		Script::SetArgUInt(item?SKILL_PICK_ON_GROUND:SKILL_OFFSET(skill));
 		Script::SetArgObject(item);
-		for(int i=0,j=min(target_scen->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(target_scen->MScenery.Param[i]);
+		for(int i=0,j=MIN(target_scen->MScenery.ParamsCount,5);i<j;i++) Script::SetArgUInt(target_scen->MScenery.Param[i]);
 		if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
 	}
 
@@ -936,14 +936,14 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		if(item->EventUse(cr,target_cr,target_item,target_scen)) return true;
 		if(cr->EventUseItem(item,target_cr,target_item,target_scen)) return true;
 		if(target_cr && target_cr->EventUseItemOnMe(cr,item)) return true;
-		if(Script::PrepareContext(ServerFunctions.CritterUseItem,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterUseItem,_FUNC_,cr->GetInfo()))
 		{
 			Script::SetArgObject(cr);
 			Script::SetArgObject(item);
 			Script::SetArgObject(target_cr);
 			Script::SetArgObject(target_item);
 			Script::SetArgObject(target_scen);
-			Script::SetArgDword(param);
+			Script::SetArgUInt(param);
 			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
 		}
 
@@ -964,9 +964,9 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 		if(target_item && target_item->EventSkill(cr,skill)) return true;
 		if(cr->EventUseSkill(skill,target_cr,target_item,target_scen)) return true;
 		if(target_cr && target_cr->EventUseSkillOnMe(cr,skill)) return true;
-		if(!Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo())) return false;
+		if(!Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cr->GetInfo())) return false;
 		Script::SetArgObject(cr);
-		Script::SetArgDword(SKILL_OFFSET(skill));
+		Script::SetArgUInt(SKILL_OFFSET(skill));
 		Script::SetArgObject(target_cr);
 		Script::SetArgObject(target_item);
 		Script::SetArgObject(target_scen);
@@ -979,7 +979,7 @@ bool FOServer::Act_Use(Critter* cr, DWORD item_id, int skill, int target_type, D
 	return true;
 }
 
-bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
+bool FOServer::Act_PickItem(Critter* cr, ushort hx, ushort hy, ushort pid)
 {
 	cr->SetBreakTime(GameOpt.Breaktime);
 
@@ -988,7 +988,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 	if(!cr->CheckMyTurn(map))
 	{
-		WriteLog(__FUNCTION__" - Is not critter<%s> turn.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Is not critter<%s> turn.\n",cr->GetInfo());
 		cr->Send_Param(ST_CURRENT_AP);
 		return false;
 	}
@@ -996,7 +996,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 	int ap_cost=cr->GetApCostPickItem();
 	if(cr->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
-		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, critter<%s>.\n",cr->GetInfo());
 		cr->Send_Param(ST_CURRENT_AP);
 		return false;
 	}
@@ -1006,7 +1006,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 	if(!CheckDist(cr->GetHexX(),cr->GetHexY(),hx,hy,cr->GetUseDist()))
 	{
-		WriteLog(__FUNCTION__" - Wrong distance, critter<%s>.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Wrong distance, critter<%s>.\n",cr->GetInfo());
 		cr->Send_XY(cr);
 		return false;
 	}
@@ -1014,7 +1014,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 	ProtoItem* proto=ItemMngr.GetProtoItem(pid);
 	if(!proto)
 	{
-		WriteLog(__FUNCTION__" - Proto not find, pid<%u>, critter<%s>.\n",pid,cr->GetInfo());
+		WriteLog(_FUNC_," - Proto not find, pid<%u>, critter<%s>.\n",pid,cr->GetInfo());
 		return false;
 	}
 
@@ -1029,10 +1029,10 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 
 		if(pick_item->EventSkill(cr,SKILL_PICK_ON_GROUND)) return true;
 		if(cr->EventUseSkill(SKILL_PICK_ON_GROUND,NULL,pick_item,NULL)) return true;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cr->GetInfo()))
 		{
 			Script::SetArgObject(cr);
-			Script::SetArgDword(SKILL_PICK_ON_GROUND);
+			Script::SetArgUInt(SKILL_PICK_ON_GROUND);
 			Script::SetArgObject(NULL);
 			Script::SetArgObject(pick_item);
 			Script::SetArgObject(NULL);
@@ -1051,26 +1051,26 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 		}
 
 		Item pick_item;
-		pick_item.Id=DWORD(-1);
+		pick_item.Id=uint(-1);
 		pick_item.Init(proto);
 		cr->SendAA_Action(ACTION_PICK_ITEM,0,&pick_item);
 
 		if(proto->IsGeneric() && pick_scenery->RunTime.BindScriptId>0)
 		{
-			if(!Script::PrepareContext(pick_scenery->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo())) return false;
+			if(!Script::PrepareContext(pick_scenery->RunTime.BindScriptId,_FUNC_,cr->GetInfo())) return false;
 			Script::SetArgObject(cr);
 			Script::SetArgObject(pick_scenery);
-			Script::SetArgDword(SKILL_PICK_ON_GROUND);
+			Script::SetArgUInt(SKILL_PICK_ON_GROUND);
 			Script::SetArgObject(NULL);
-			for(int i=0,j=min(pick_scenery->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(pick_scenery->MScenery.Param[i]);
+			for(int i=0,j=MIN(pick_scenery->MScenery.ParamsCount,5);i<j;i++) Script::SetArgUInt(pick_scenery->MScenery.Param[i]);
 			if(Script::RunPrepared() && Script::GetReturnedBool()) return true;
 		}
 
 		if(cr->EventUseSkill(SKILL_PICK_ON_GROUND,NULL,NULL,pick_scenery)) return true;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cr->GetInfo()))
 		{
 			Script::SetArgObject(cr);
-			Script::SetArgDword(SKILL_PICK_ON_GROUND);
+			Script::SetArgUInt(SKILL_PICK_ON_GROUND);
 			Script::SetArgObject(NULL);
 			Script::SetArgObject(NULL);
 			Script::SetArgObject(pick_scenery);
@@ -1089,7 +1089,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 		case GRID_ELEVATOR:
 			{
 				Item pick_item;
-				pick_item.Id=DWORD(-1);
+				pick_item.Id=uint(-1);
 				pick_item.Init(proto);
 				cr->SendAA_Action(ACTION_PICK_ITEM,0,&pick_item);
 
@@ -1114,7 +1114,7 @@ bool FOServer::Act_PickItem(Critter* cr, WORD hx, WORD hy, WORD pid)
 	return true;
 }
 
-void FOServer::KillCritter(Critter* cr, DWORD anim2, Critter* attacker)
+void FOServer::KillCritter(Critter* cr, uint anim2, Critter* attacker)
 {
 	if(cr->Data.Params[MODE_INVULNERABLE]) return;
 
@@ -1136,7 +1136,7 @@ void FOServer::KillCritter(Critter* cr, DWORD anim2, Critter* attacker)
 	cr->EventDead(attacker);
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(map) map->EventCritterDead(cr,attacker);
-	if(Script::PrepareContext(ServerFunctions.CritterDead,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterDead,_FUNC_,cr->GetInfo()))
 	{
 		Script::SetArgObject(cr);
 		Script::SetArgObject(attacker);
@@ -1149,16 +1149,16 @@ void FOServer::RespawnCritter(Critter* cr)
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map)
 	{
-		WriteLog(__FUNCTION__" - Current map not found, continue dead. Critter<%s>.\n",cr->GetInfo());
+		WriteLog(_FUNC_," - Current map not found, continue dead. Critter<%s>.\n",cr->GetInfo());
 		return;
 	}
 
-	WORD hx=cr->GetHexX();
-	WORD hy=cr->GetHexY();
-	DWORD multihex=cr->GetMultihex();
+	ushort hx=cr->GetHexX();
+	ushort hy=cr->GetHexY();
+	uint multihex=cr->GetMultihex();
 	if(!map->IsHexesPassed(hx,hy,multihex))
 	{
-		// WriteLog(__FUNCTION__" - Live critter on hex, continue dead.\n");
+		// WriteLog(_FUNC_," - Live critter on hex, continue dead.\n");
 		return;
 	}
 
@@ -1174,14 +1174,14 @@ void FOServer::RespawnCritter(Critter* cr)
 	cr->Send_Action(cr,ACTION_RESPAWN,0,NULL);
 	cr->SendAA_Action(ACTION_RESPAWN,0,NULL);
 	cr->EventRespawn();
-	if(Script::PrepareContext(ServerFunctions.CritterRespawn,CALL_FUNC_STR,cr->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterRespawn,_FUNC_,cr->GetInfo()))
 	{
 		Script::SetArgObject(cr);
 		Script::RunPrepared();
 	}
 }
 
-void FOServer::KnockoutCritter(Critter* cr, DWORD anim2begin, DWORD anim2idle, DWORD anim2end, DWORD lost_ap, WORD knock_hx, WORD knock_hy)
+void FOServer::KnockoutCritter(Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy)
 {
 	// Close talk
 	if(cr->IsPlayer())
@@ -1217,7 +1217,7 @@ void FOServer::KnockoutCritter(Critter* cr, DWORD anim2begin, DWORD anim2idle, D
 
 	if(x1!=x2 || y1!=y2)
 	{
-		DWORD multihex=cr->GetMultihex();
+		uint multihex=cr->GetMultihex();
 		bool is_dead=cr->IsDead();
 		map->UnsetFlagCritter(x1,y1,multihex,is_dead);
 		cr->Data.HexX=x2;
@@ -1231,22 +1231,22 @@ void FOServer::KnockoutCritter(Critter* cr, DWORD anim2begin, DWORD anim2idle, D
 
 bool FOServer::MoveRandom(Critter* cr)
 {
-	ByteVec dirs(6);
+	UCharVec dirs(6);
 	for(int i=0;i<6;i++) dirs[i]=i;
 	std::random_shuffle(dirs.begin(),dirs.end());
 
 	Map* map=MapMngr.GetMap(cr->GetMap());
 	if(!map) return false;
 
-	DWORD multihex=cr->GetMultihex();
-	WORD maxhx=map->GetMaxHexX();
-	WORD maxhy=map->GetMaxHexY();
+	uint multihex=cr->GetMultihex();
+	ushort maxhx=map->GetMaxHexX();
+	ushort maxhy=map->GetMaxHexY();
 
 	for(int i=0;i<6;i++)
 	{
-		BYTE dir=dirs[i];
-		WORD hx=cr->GetHexX();
-		WORD hy=cr->GetHexY();
+		uchar dir=dirs[i];
+		ushort hx=cr->GetHexX();
+		ushort hy=cr->GetHexY();
 		if(MoveHexByDir(hx,hy,dir,maxhx,maxhy) && map->IsMovePassed(hx,hy,dir,multihex))
 		{
 			if(Act_Move(cr,hx,hy,0))
@@ -1262,9 +1262,9 @@ bool FOServer::MoveRandom(Critter* cr)
 
 bool FOServer::RegenerateMap(Map* map)
 {
-	// Copy need params	
-	DWORD map_id=map->GetId();
-	WORD map_pid=map->GetPid();
+	// Copy need params
+	uint map_id=map->GetId();
+	ushort map_pid=map->GetPid();
 	ProtoMap* map_proto=map->Proto;
 	Location* map_loc=map->GetLocation(true);
 
@@ -1276,7 +1276,7 @@ bool FOServer::RegenerateMap(Map* map)
 		Client* cl=*it;
 		if(!MapMngr.TransitToGlobal(cl,0,FOLLOW_FORCE,true))
 		{
-			WriteLog(__FUNCTION__" - Can't kick client<%s> to global.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Can't kick client<%s> to global.\n",cl->GetInfo());
 			return false;
 		}
 	}
@@ -1288,7 +1288,7 @@ bool FOServer::RegenerateMap(Map* map)
 	return true;
 }
 
-bool FOServer::VerifyTrigger(Map* map, Critter* cr, WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, BYTE dir)
+bool FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
 {
 	// Triggers
 	bool result=false;
@@ -1298,22 +1298,22 @@ bool FOServer::VerifyTrigger(Map* map, Critter* cr, WORD from_hx, WORD from_hy, 
 		MapObject* in_trigger=map->Proto->GetMapScenery(to_hx,to_hy,SP_SCEN_TRIGGER);
 		if(!(out_trigger && in_trigger && out_trigger->MScenery.TriggerNum==in_trigger->MScenery.TriggerNum))
 		{
-			if(out_trigger && Script::PrepareContext(out_trigger->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo()))
+			if(out_trigger && Script::PrepareContext(out_trigger->RunTime.BindScriptId,_FUNC_,cr->GetInfo()))
 			{
 				Script::SetArgObject(cr);
 				Script::SetArgObject(out_trigger);
 				Script::SetArgBool(false);
-				Script::SetArgByte(dir);
-				for(int i=0,j=min(out_trigger->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(out_trigger->MScenery.Param[i]);
+				Script::SetArgUChar(dir);
+				for(int i=0,j=MIN(out_trigger->MScenery.ParamsCount,5);i<j;i++) Script::SetArgUInt(out_trigger->MScenery.Param[i]);
 				if(Script::RunPrepared()) result=true;
 			}
-			if(in_trigger && Script::PrepareContext(in_trigger->RunTime.BindScriptId,CALL_FUNC_STR,cr->GetInfo()))
+			if(in_trigger && Script::PrepareContext(in_trigger->RunTime.BindScriptId,_FUNC_,cr->GetInfo()))
 			{
 				Script::SetArgObject(cr);
 				Script::SetArgObject(in_trigger);
 				Script::SetArgBool(true);
-				Script::SetArgByte(dir);
-				for(int i=0,j=min(in_trigger->MScenery.ParamsCount,5);i<j;i++) Script::SetArgDword(in_trigger->MScenery.Param[i]);
+				Script::SetArgUChar(dir);
+				for(int i=0,j=MIN(in_trigger->MScenery.ParamsCount,5);i<j;i++) Script::SetArgUInt(in_trigger->MScenery.Param[i]);
 				if(Script::RunPrepared()) result=true;
 			}
 		}
@@ -1327,7 +1327,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	{
 		SCOPE_LOCK(BannedLocker);
 
-		DWORD ip=cl->GetIp();
+		uint ip=cl->GetIp();
 		ClientBanned* ban=GetBanByIp(ip);
 		if(ban && !Singleplayer)
 		{
@@ -1339,15 +1339,15 @@ void FOServer::Process_CreateClient(Client* cl)
 		}
 	}
 
-	DWORD msg_len;
+	uint msg_len;
 	cl->Bin >> msg_len;
 
 	// Protocol version
-	WORD proto_ver=0;
+	ushort proto_ver=0;
 	cl->Bin >> proto_ver;
 	if(proto_ver!=FO_PROTOCOL_VERSION)
 	{
-		// WriteLog(__FUNCTION__" - Wrong Protocol Version from SockId<%u>.\n",cl->Sock);
+		// WriteLog(_FUNC_," - Wrong Protocol Version from SockId<%u>.\n",cl->Sock);
 		cl->Send_TextMsg(cl,STR_NET_WRONG_NETPROTO,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1369,7 +1369,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	StringCopy(cl->Pass,name);
 
 	// Receive params
-	WORD params_count=0;
+	ushort params_count=0;
 	cl->Bin >> params_count;
 
 	if(params_count>MAX_PARAMS)
@@ -1380,9 +1380,9 @@ void FOServer::Process_CreateClient(Client* cl)
 	}
 
 	ZeroMemory(cl->Data.Params,sizeof(cl->Data.Params));
-	for(WORD i=0;i<params_count;i++)
+	for(ushort i=0;i<params_count;i++)
 	{
-		WORD index;
+		ushort index;
 		int val;
 		cl->Bin >> index;
 		cl->Bin >> val;
@@ -1403,27 +1403,27 @@ void FOServer::Process_CreateClient(Client* cl)
 	// Check data
 	if(!CheckUserName(cl->Name) || (!Singleplayer && !CheckUserPass(cl->Pass)))
 	{
-		// WriteLog(__FUNCTION__" - Error symbols in Name or Password.\n");
+		// WriteLog(_FUNC_," - Error symbols in Name or Password.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
 	}
 
-	int name_len=strlen(cl->Name);
+	uint name_len=strlen(cl->Name);
 	if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength ||
 		name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
 	{
-		// WriteLog(_"Name or Password length too small.\n");
+		// WriteLog(NULL,_"Name or Password length too small.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
 	}
 
-	int pass_len=strlen(cl->Pass);
+	uint pass_len=strlen(cl->Pass);
 	if(!Singleplayer && (pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength ||
 		pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength))
 	{
-		// WriteLog(_"Name or Password length too small.\n");
+		// WriteLog(NULL,_"Name or Password length too small.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1431,7 +1431,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	if(cl->Name[0]==' ' || cl->Name[name_len-1]==' ')
 	{
-		// WriteLog("Name begin or end space.\n");
+		// WriteLog(NULL,"Name begin or end space.\n");
 		cl->Send_TextMsg(cl,STR_NET_BEGIN_END_SPACES,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1441,7 +1441,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	{
 		if(cl->Name[i]==' ' && cl->Name[i+1]==' ')
 		{
-			// WriteLog("Name two space.\n");
+			// WriteLog(NULL,"Name two space.\n");
 			cl->Send_TextMsg(cl,STR_NET_TWO_SPACE,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
@@ -1458,7 +1458,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	if(letters_eng && letters_rus)
 	{
-		// WriteLog("Different language in Name.\n");
+		// WriteLog(NULL,"Different language in Name.\n");
 		cl->Send_TextMsg(cl,STR_NET_DIFFERENT_LANG,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1467,7 +1467,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	int letters_len=letters_eng+letters_rus;
 	if(Procent(name_len,letters_len)<70)
 	{
-		// WriteLog("Many special symbols in Name.\n");
+		// WriteLog(NULL,"Many special symbols in Name.\n");
 		cl->Send_TextMsg(cl,STR_NET_MANY_SYMBOLS,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1494,13 +1494,13 @@ void FOServer::Process_CreateClient(Client* cl)
 	{
 		SCOPE_LOCK(RegIpLocker);
 
-		DWORD ip=cl->GetIp();
-		DWORD reg_tick=GameOpt.RegistrationTimeout*1000;
-		DwordMapIt it=RegIp.find(ip);
+		uint ip=cl->GetIp();
+		uint reg_tick=GameOpt.RegistrationTimeout*1000;
+		UIntMapIt it=RegIp.find(ip);
 		if(it!=RegIp.end())
 		{
-			DWORD& last_reg=(*it).second;
-			DWORD tick=Timer::FastTick();
+			uint& last_reg=(*it).second;
+			uint tick=Timer::FastTick();
 			if(tick-last_reg<reg_tick)
 			{
 				cl->Send_TextMsg(cl,STR_NET_REGISTRATION_IP_WAIT,SAY_NETMSG,TEXTMSG_GAME);
@@ -1512,18 +1512,18 @@ void FOServer::Process_CreateClient(Client* cl)
 		}
 		else
 		{
-			RegIp.insert(DwordMapVal(ip,Timer::FastTick()));
+			RegIp.insert(UIntMapVal(ip,Timer::FastTick()));
 		}
 	}
 #endif
 
 	bool allow=false;
-	DWORD disallow_msg_num=0,disallow_str_num=0;
-	if(Script::PrepareContext(ServerFunctions.PlayerRegistration,CALL_FUNC_STR,cl->Name))
+	uint disallow_msg_num=0,disallow_str_num=0;
+	if(Script::PrepareContext(ServerFunctions.PlayerRegistration,_FUNC_,cl->Name))
 	{
 		CScriptString* name=new CScriptString(cl->Name);
 		CScriptString* pass=new CScriptString(cl->Pass);
-		Script::SetArgDword(cl->GetIp());
+		Script::SetArgUInt(cl->GetIp());
 		Script::SetArgObject(name);
 		Script::SetArgObject(pass);
 		Script::SetArgAddress(&disallow_msg_num);
@@ -1557,7 +1557,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	if(!cl->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 	{
-		WriteLog(__FUNCTION__" - Error set default items.\n");
+		WriteLog(_FUNC_," - Error set default items.\n");
 		cl->Send_TextMsg(cl,STR_NET_SETPROTO_ERR,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1569,7 +1569,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
 	if(!SaveClient(cl,false))
 	{
-		WriteLog(__FUNCTION__" - First save fail.\n");
+		WriteLog(_FUNC_," - First save fail.\n");
 		cl->Send_TextMsg(cl,STR_NET_BD_ERROR,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1582,7 +1582,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		SYNC_LOCK(cl);
 		if(!NewWorld())
 		{
-			WriteLog(__FUNCTION__" - Generate new world fail.\n");
+			WriteLog(_FUNC_," - Generate new world fail.\n");
 			cl->Send_TextMsg(cl,STR_SP_NEW_GAME_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			ResynchronizeLogicThreads();
@@ -1595,7 +1595,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	else cl->Send_TextMsg(cl,STR_SP_NEW_GAME_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
 
 	BOUT_BEGIN(cl);
-	cl->Bout << (MSGTYPE)NETMSG_REGISTER_SUCCESS;
+	cl->Bout << (uint)NETMSG_REGISTER_SUCCESS;
 	BOUT_END(cl);
 	cl->Disconnect();
 
@@ -1604,7 +1604,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	MapMngr.AddCrToMap(cl,NULL,0,0,0);
 	Job::PushBack(JOB_CRITTER,cl);
 
-	if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterInit,_FUNC_,cl->GetInfo()))
 	{
 		Script::SetArgObject(cl);
 		Script::SetArgBool(true);
@@ -1636,19 +1636,19 @@ void FOServer::Process_CreateClient(Client* cl)
 void FOServer::Process_LogIn(ClientPtr& cl)
 {
 	// Net protocol
-	WORD proto_ver=0;
+	ushort proto_ver=0;
 	cl->Bin >> proto_ver;
 	if(proto_ver!=FO_PROTOCOL_VERSION)
 	{
-		// WriteLog(__FUNCTION__" - Wrong Protocol Version from SockId<%u>.\n",cl->Sock);
+		// WriteLog(_FUNC_," - Wrong Protocol Version from SockId<%u>.\n",cl->Sock);
 		cl->Send_TextMsg(cl,STR_NET_WRONG_NETPROTO,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
 	}
 
 	// UIDs
-	DWORD uidxor,uidor,uidcalc;
-	DWORD uid[5];
+	uint uidxor,uidor,uidcalc;
+	uint uid[5];
 	cl->Bin >> uid[4];
 
 	// Begin data encrypting
@@ -1672,10 +1672,10 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Bin hashes
-	DWORD msg_language;
-	DWORD textmsg_hash[TEXTMSG_COUNT];
-	DWORD item_hash[ITEM_MAX_TYPES];
-	BYTE default_combat_mode;
+	uint msg_language;
+	uint textmsg_hash[TEXTMSG_COUNT];
+	uint item_hash[ITEM_MAX_TYPES];
+	uchar default_combat_mode;
 
 	cl->Bin >> msg_language;
 	for(int i=0;i<TEXTMSG_COUNT;i++) cl->Bin >> textmsg_hash[i];
@@ -1724,7 +1724,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	// Singleplayer
 	if(Singleplayer && !SingleplayerSave.Valid)
 	{
-		WriteLog(__FUNCTION__" - World not contain singleplayer data.\n");
+		WriteLog(_FUNC_," - World not contain singleplayer data.\n");
 		cl->Send_TextMsg(cl,STR_SP_SAVE_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 		cl->Disconnect();
 		return;
@@ -1734,7 +1734,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	{
 		SCOPE_LOCK(BannedLocker);
 
-		DWORD ip=cl->GetIp();
+		uint ip=cl->GetIp();
 		ClientBanned* ban=GetBanByIp(ip);
 		if(ban && !Singleplayer)
 		{
@@ -1749,7 +1749,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	// Check login/password
 	if(!Singleplayer)
 	{
-		DWORD name_len=strlen(cl->Name);
+		uint name_len=strlen(cl->Name);
 		if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength || name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
 		{
 			cl->Send_TextMsg(cl,STR_NET_WRONG_LOGIN,SAY_NETMSG,TEXTMSG_GAME);
@@ -1757,7 +1757,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
-		DWORD pass_len=strlen(cl->Pass);
+		uint pass_len=strlen(cl->Pass);
 		if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength)
 		{
 			cl->Send_TextMsg(cl,STR_NET_WRONG_PASS,SAY_NETMSG,TEXTMSG_GAME);
@@ -1767,7 +1767,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		if(!CheckUserName(cl->Name) || !CheckUserPass(cl->Pass))
 		{
-			// WriteLog(__FUNCTION__" - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
+			// WriteLog(_FUNC_," - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_WRONG_DATA,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
@@ -1783,7 +1783,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		ClientData* data_=GetClientData(cl->Name);
 		if(!data_ || strcmp(cl->Pass,data_->ClientPass))
 		{
-			// WriteLog(__FUNCTION__" - Wrong name<%s> or password.\n",cl->Name);
+			// WriteLog(_FUNC_," - Wrong name<%s> or password.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
@@ -1814,15 +1814,15 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	// Request script
 	bool allow=false;
-	DWORD disallow_msg_num=0,disallow_str_num=0;
-	if(Script::PrepareContext(ServerFunctions.PlayerLogin,CALL_FUNC_STR,data.ClientName))
+	uint disallow_msg_num=0,disallow_str_num=0;
+	if(Script::PrepareContext(ServerFunctions.PlayerLogin,_FUNC_,data.ClientName))
 	{
 		CScriptString* name=new CScriptString(data.ClientName);
 		CScriptString* pass=new CScriptString(data.ClientPass);
-		Script::SetArgDword(cl->GetIp());
+		Script::SetArgUInt(cl->GetIp());
 		Script::SetArgObject(name);
 		Script::SetArgObject(pass);
-		Script::SetArgDword(data.ClientId);
+		Script::SetArgUInt(data.ClientId);
 		Script::SetArgAddress(&disallow_msg_num);
 		Script::SetArgAddress(&disallow_str_num);
 		if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
@@ -1840,7 +1840,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Copy data
-	DWORD id=data.ClientId;
+	uint id=data.ClientId;
 	StringCopy(cl->Name,data.ClientName);
 	cl->NameStr=cl->Name;
 
@@ -1852,7 +1852,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		for(int i=0;i<5;i++) if(!uid[i]) uid_zero++;
 		if(uid_zero>1)
 		{
-			WriteLog(__FUNCTION__" - Received more than one zeros UIDs, client<%s>.\n",cl->Name);
+			WriteLog(_FUNC_," - Received more than one zeros UIDs, client<%s>.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
@@ -1864,13 +1864,13 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		|| (uid[3] && (!FLAG(uid[3],0x80000000) || FLAG(uid[3],0x40000000)))
 		|| (uid[4] && (!FLAG(uid[4],0x00000800) || FLAG(uid[4],0x00004000))))
 		{
-			WriteLog(__FUNCTION__" - Invalid UIDs, client<%s>.\n",cl->Name);
+			WriteLog(_FUNC_," - Invalid UIDs, client<%s>.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
 		}
 
-		DWORD uidxor_=0xF145668A,uidor_=0,uidcalc_=0x45012345;
+		uint uidxor_=0xF145668A,uidor_=0,uidcalc_=0x45012345;
 		for(int i=0;i<5;i++)
 		{
 			uidxor_^=uid[i];
@@ -1880,7 +1880,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		if(uidxor!=uidxor_ || uidor!=uidor_ || uidcalc!=uidcalc_)
 		{
-			WriteLog(__FUNCTION__" - Invalid UIDs hash, client<%s>.\n",cl->Name);
+			WriteLog(_FUNC_," - Invalid UIDs hash, client<%s>.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			return;
@@ -1888,7 +1888,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		SCOPE_LOCK(ClientsDataLocker);
 
-		DWORD tick=Timer::FastTick();
+		uint tick=Timer::FastTick();
 		for(ClientDataVecIt it=ClientsData.begin(),end=ClientsData.end();it!=end;++it)
 		{
 			ClientData& cd=*it;
@@ -1910,7 +1910,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 				}
 				else
 				{
-					WriteLog(__FUNCTION__" - UID already used by critter<%s>, client<%s>.\n",cd.ClientName,cl->Name);
+					WriteLog(_FUNC_," - UID already used by critter<%s>, client<%s>.\n",cd.ClientName,cl->Name);
 					cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 					cl->Disconnect();
 					return;
@@ -1931,7 +1931,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 				}
 				else
 				{
-					WriteLog(__FUNCTION__" - Different UID, client<%s>.\n",cl->Name);
+					WriteLog(_FUNC_," - Different UID, client<%s>.\n",cl->Name);
 					cl->Send_TextMsg(cl,STR_NET_UID_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 					cl->Disconnect();
 					return;
@@ -1946,7 +1946,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	Client* cl_old=CrMngr.GetPlayer(id,true);
 	if(cl==cl_old)
 	{
-		WriteLog(__FUNCTION__" - Find same ptr, client<%s>.\n",cl->Name);
+		WriteLog(_FUNC_," - Find same ptr, client<%s>.\n",cl->Name);
 		cl->Disconnect();
 		return;
 	}
@@ -2058,7 +2058,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		if(!cl_saved && !LoadClient(cl))
 		{
-			WriteLog(__FUNCTION__" - Error load from data base, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Error load from data base, client<%s>.\n",cl->GetInfo());
 			cl->Send_TextMsg(cl,STR_NET_BD_ERROR,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			cl->Data.Id=0;
@@ -2072,7 +2072,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			CritDataExt* data_ext=cl->GetDataExt();
 			if(!data_ext)
 			{
-				WriteLog(__FUNCTION__" - Can't allocate extended data, client<%s>.\n",cl->GetInfo());
+				WriteLog(_FUNC_," - Can't allocate extended data, client<%s>.\n",cl->GetInfo());
 				cl->Send_TextMsg(cl,STR_NET_SETPROTO_ERR,SAY_NETMSG,TEXTMSG_GAME);
 				cl->Disconnect();
 				cl->Data.Id=0;
@@ -2094,7 +2094,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		// Unarmed
 		if(!cl->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 		{
-			WriteLog(__FUNCTION__" - Error set default items, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Error set default items, client<%s>.\n",cl->GetInfo());
 			cl->Send_TextMsg(cl,STR_NET_SETPROTO_ERR,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			cl->Data.Id=0;
@@ -2111,8 +2111,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		{
 			if(!map || map->IsNoLogOut() || map->GetPid()!=cl->GetProtoMap())
 			{
-				WORD hx,hy;
-				BYTE dir;
+				ushort hx,hy;
+				uchar dir;
 				if(map && map->GetPid()==cl->GetProtoMap() && map->GetStartCoord(hx,hy,dir,ENTIRE_LOG_OUT))
 				{
 					cl->Data.HexX=hx;
@@ -2131,7 +2131,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		if(!cl->GetMap() && (cl->GetHexX() || cl->GetHexY()))
 		{
-			DWORD rule_id=(cl->GetHexX()<<16)|cl->GetHexY();
+			uint rule_id=(cl->GetHexX()<<16)|cl->GetHexY();
 			Critter* rule=CrMngr.GetCritter(rule_id,false);
 			if(!rule || rule->GetMap() || cl->Data.GlobalGroupUid!=rule->Data.GlobalGroupUid)
 			{
@@ -2142,7 +2142,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		if(!MapMngr.AddCrToMap(cl,map,cl->GetHexX(),cl->GetHexY(),1))
 		{
-			WriteLog(__FUNCTION__" - Error add critter to map, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Error add critter to map, client<%s>.\n",cl->GetInfo());
 			cl->Send_TextMsg(cl,STR_NET_HEXES_BUSY,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			cl->Data.Id=0;
@@ -2168,7 +2168,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			cl->ProcessVisibleCritters();
 			cl->ProcessVisibleItems();
 		}
-		if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cl->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterInit,_FUNC_,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
 			Script::SetArgBool(false);
@@ -2183,7 +2183,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	// Play ip
 	CritDataExt* data_ext=cl->GetDataExt();
-	DWORD ip=cl->GetIp();
+	uint ip=cl->GetIp();
 	bool ip_stored=false;
 	for(int i=0;i<MAX_STORED_IP;i++)
 	{
@@ -2215,8 +2215,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 
 	// Login ok
-	DWORD bin_seed=Random(100000,2000000000);
-	DWORD bout_seed=Random(100000,2000000000);
+	uint bin_seed=Random(100000,2000000000);
+	uint bout_seed=Random(100000,2000000000);
 	BOUT_BEGIN(cl);
 	cl->Bout << NETMSG_LOGIN_SUCCESS;
 	cl->Bout << bin_seed;
@@ -2237,11 +2237,11 @@ void FOServer::Process_SingleplayerSaveLoad(Client* cl)
 		return;
 	}
 
-	DWORD msg_len;
+	uint msg_len;
 	bool save;
-	WORD fname_len;
+	ushort fname_len;
 	char fname[MAX_FOTEXT];
-	ByteVec pic_data;
+	UCharVec pic_data;
 	cl->Bin >> msg_len;
 	cl->Bin >> save;
 	cl->Bin >> fname_len;
@@ -2249,7 +2249,7 @@ void FOServer::Process_SingleplayerSaveLoad(Client* cl)
 	fname[fname_len]=0;
 	if(save)
 	{
-		DWORD pic_data_len;
+		uint pic_data_len;
 		cl->Bin >> pic_data_len;
 		pic_data.resize(pic_data_len);
 		if(pic_data_len) cl->Bin.Pop((char*)&pic_data[0],pic_data_len);
@@ -2274,7 +2274,7 @@ void FOServer::Process_SingleplayerSaveLoad(Client* cl)
 		SYNC_LOCK(cl);
 		if(!LoadWorld(fname))
 		{
-			WriteLog(__FUNCTION__" - Unable load world from file<%s>.\n",fname);
+			WriteLog(_FUNC_," - Unable load world from file<%s>.\n",fname);
 			cl->Send_TextMsg(cl,STR_SP_LOAD_FAIL,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Disconnect();
 			ResynchronizeLogicThreads();
@@ -2285,7 +2285,7 @@ void FOServer::Process_SingleplayerSaveLoad(Client* cl)
 		cl->Send_TextMsg(cl,STR_SP_LOAD_SUCCESS,SAY_NETMSG,TEXTMSG_GAME);
 
 		BOUT_BEGIN(cl);
-		cl->Bout << (MSGTYPE)NETMSG_REGISTER_SUCCESS;
+		cl->Bout << (uint)NETMSG_REGISTER_SUCCESS;
 		BOUT_END(cl);
 		cl->Disconnect();
 	}
@@ -2325,7 +2325,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 	{
 		if(!cl->GroupMove)
 		{
-			WriteLog(__FUNCTION__" - Group nullptr, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Group nullptr, client<%s>.\n",cl->GetInfo());
 			cl->Disconnect();
 			return;
 		}
@@ -2349,7 +2349,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 
 	if(!map)
 	{
-		WriteLog(__FUNCTION__" - Map not found, client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Map not found, client<%s>.\n",cl->GetInfo());
 		cl->Disconnect();
 		return;
 	}
@@ -2378,9 +2378,9 @@ void FOServer::Process_ParseToGame(Client* cl)
 
 	// Send current items on map
 	cl->VisItemLocker.Lock();
-	DwordSet items=cl->VisItem;
+	UIntSet items=cl->VisItem;
 	cl->VisItemLocker.Unlock();
-	for(DwordSetIt it=items.begin(),end=items.end();it!=end;++it)
+	for(UIntSetIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=ItemMngr.GetItem(*it,false);
 		if(item) cl->Send_AddItemOnMap(item);
@@ -2409,11 +2409,11 @@ void FOServer::Process_ParseToGame(Client* cl)
 void FOServer::Process_GiveMap(Client* cl)
 {
 	bool automap;
-	WORD map_pid;
-	DWORD loc_id;
-	DWORD hash_tiles;
-	DWORD hash_walls;
-	DWORD hash_scen;
+	ushort map_pid;
+	uint loc_id;
+	uint hash_tiles;
+	uint hash_walls;
+	uint hash_scen;
 
 	cl->Bin >> automap;
 	cl->Bin >> map_pid;
@@ -2425,7 +2425,7 @@ void FOServer::Process_GiveMap(Client* cl)
 
 	if(!Singleplayer)
 	{
-		DWORD tick=Timer::FastTick();
+		uint tick=Timer::FastTick();
 		if(tick-cl->LastSendedMapTick<GameOpt.Breaktime*3) cl->SetBreakTime(GameOpt.Breaktime*3);
 		else cl->SetBreakTime(GameOpt.Breaktime);
 		cl->LastSendedMapTick=tick;
@@ -2434,14 +2434,14 @@ void FOServer::Process_GiveMap(Client* cl)
 	ProtoMap* pmap=MapMngr.GetProtoMap(map_pid);
 	if(!pmap)
 	{
-		WriteLog(__FUNCTION__" - Map prototype not found, client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Map prototype not found, client<%s>.\n",cl->GetInfo());
 		cl->Disconnect();
 		return;
 	}
 
 	if(!automap && map_pid!=cl->GetProtoMap() && cl->ViewMapPid!=map_pid)
 	{
-		WriteLog(__FUNCTION__" - Request for loading incorrect map, client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Request for loading incorrect map, client<%s>.\n",cl->GetInfo());
 		return;
 	}
 
@@ -2449,19 +2449,19 @@ void FOServer::Process_GiveMap(Client* cl)
 	{
 		if(!cl->CheckKnownLocById(loc_id))
 		{
-			WriteLog(__FUNCTION__" - Request for loading unknown automap, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Request for loading unknown automap, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 
 		Location* loc=MapMngr.GetLocation(loc_id);
 		if(!loc || !loc->IsAutomap(map_pid))
 		{
-			WriteLog(__FUNCTION__" - Request for loading incorrect automap, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Request for loading incorrect automap, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 	}
 
-	BYTE send_info=0;
+	uchar send_info=0;
 	if(pmap->HashTiles!=hash_tiles) SETFLAG(send_info,SENDMAP_TILES);
 	if(pmap->HashWalls!=hash_walls) SETFLAG(send_info,SENDMAP_WALLS);
 	if(pmap->HashScen!=hash_scen) SETFLAG(send_info,SENDMAP_SCENERY);
@@ -2476,20 +2476,20 @@ void FOServer::Process_GiveMap(Client* cl)
 	}
 }
 
-void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
+void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, uchar send_info)
 {
-	MSGTYPE msg=NETMSG_MAP;
-	WORD map_pid=pmap->GetPid();
-	WORD maxhx=pmap->Header.MaxHexX;
-	WORD maxhy=pmap->Header.MaxHexY;
-	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(map_pid)+sizeof(maxhx)+sizeof(maxhy)+sizeof(send_info);
+	uint msg=NETMSG_MAP;
+	ushort map_pid=pmap->GetPid();
+	ushort maxhx=pmap->Header.MaxHexX;
+	ushort maxhy=pmap->Header.MaxHexY;
+	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(map_pid)+sizeof(maxhx)+sizeof(maxhy)+sizeof(send_info);
 
 	if(FLAG(send_info,SENDMAP_TILES))
-		msg_len+=sizeof(DWORD)+pmap->Tiles.size()*sizeof(ProtoMap::Tile);
+		msg_len+=sizeof(uint)+pmap->Tiles.size()*sizeof(ProtoMap::Tile);
 	if(FLAG(send_info,SENDMAP_WALLS))
-		msg_len+=sizeof(DWORD)+pmap->WallsToSend.size()*sizeof(SceneryCl);
+		msg_len+=sizeof(uint)+pmap->WallsToSend.size()*sizeof(SceneryCl);
 	if(FLAG(send_info,SENDMAP_SCENERY))
-		msg_len+=sizeof(DWORD)+pmap->SceneriesToSend.size()*sizeof(SceneryCl);
+		msg_len+=sizeof(uint)+pmap->SceneriesToSend.size()*sizeof(SceneryCl);
 
 	// Header
 	BOUT_BEGIN(cl);
@@ -2503,7 +2503,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	// Tiles
 	if(FLAG(send_info,SENDMAP_TILES))
 	{
-		cl->Bout << (DWORD)pmap->Tiles.size();
+		cl->Bout << (uint)pmap->Tiles.size();
 		if(pmap->Tiles.size())
 			cl->Bout.Push((char*)&pmap->Tiles[0],pmap->Tiles.size()*sizeof(ProtoMap::Tile));
 	}
@@ -2511,7 +2511,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	// Walls
 	if(FLAG(send_info,SENDMAP_WALLS))
 	{
-		cl->Bout << (DWORD)pmap->WallsToSend.size();
+		cl->Bout << (uint)pmap->WallsToSend.size();
 		if(pmap->WallsToSend.size())
 			cl->Bout.Push((char*)&pmap->WallsToSend[0],pmap->WallsToSend.size()*sizeof(SceneryCl));
 	}
@@ -2519,7 +2519,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 	// Scenery
 	if(FLAG(send_info,SENDMAP_SCENERY))
 	{
-		cl->Bout << (DWORD)pmap->SceneriesToSend.size();
+		cl->Bout << (uint)pmap->SceneriesToSend.size();
 		if(pmap->SceneriesToSend.size())
 			cl->Bout.Push((char*)&pmap->SceneriesToSend[0],pmap->SceneriesToSend.size()*sizeof(SceneryCl));
 	}
@@ -2528,9 +2528,9 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, BYTE send_info)
 
 void FOServer::Process_Move(Client* cl)
 {
-	DWORD move_params;
-	WORD hx;
-	WORD hy;
+	uint move_params;
+	ushort hx;
+	ushort hy;
 
 	cl->Bin >> move_params;
 	cl->Bin >> hx;
@@ -2572,8 +2572,8 @@ void FOServer::Process_Move(Client* cl)
 	}
 
 	// Overweight
-	DWORD cur_weight=cl->GetItemsWeight();
-	DWORD max_weight=cl->GetParam(ST_CARRY_WEIGHT);
+	uint cur_weight=cl->GetItemsWeight();
+	uint max_weight=cl->GetParam(ST_CARRY_WEIGHT);
 	if(cur_weight>max_weight)
 	{
 		if(is_run || cur_weight>max_weight*2)
@@ -2603,11 +2603,11 @@ void FOServer::Process_Move(Client* cl)
 
 void FOServer::Process_ChangeItem(Client* cl)
 {
-	DWORD item_id;
-	BYTE from_slot;
-	BYTE to_slot;
-	DWORD count;
-	
+	uint item_id;
+	uchar from_slot;
+	uchar to_slot;
+	uint count;
+
 	cl->Bin >> item_id;
 	cl->Bin >> from_slot;
 	cl->Bin >> to_slot;
@@ -2618,7 +2618,7 @@ void FOServer::Process_ChangeItem(Client* cl)
 
 	if(!cl->CheckMyTurn(NULL))
 	{
-		WriteLog(__FUNCTION__" - Is not client<%s> turn.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Is not client<%s> turn.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
 		cl->Send_AddAllItems();
 		return;
@@ -2629,7 +2629,7 @@ void FOServer::Process_ChangeItem(Client* cl)
 	if(to_slot==0xFF) ap_cost=cl->GetApCostDropItem();
 	if(cl->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
-		WriteLog(__FUNCTION__" - Not enough AP, client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, client<%s>.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
 		cl->Send_AddAllItems();
 		return;
@@ -2643,7 +2643,7 @@ void FOServer::Process_ChangeItem(Client* cl)
 	// Move
 	if(!cl->MoveItem(from_slot,to_slot,item_id,count))
 	{
-		WriteLog(__FUNCTION__" - Move item fail, from<%u>, to<%u>, item_id<%u>, client<%s>.\n",from_slot,to_slot,item_id,cl->GetInfo());
+		WriteLog(_FUNC_," - Move item fail, from<%u>, to<%u>, item_id<%u>, client<%s>.\n",from_slot,to_slot,item_id,cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
 		cl->Send_AddAllItems();
 	}
@@ -2651,7 +2651,7 @@ void FOServer::Process_ChangeItem(Client* cl)
 
 void FOServer::Process_RateItem(Client* cl)
 {
-	DWORD rate;
+	uint rate;
 	cl->Bin >> rate;
 
 	cl->ItemSlotMain->SetMode(rate&0xFF);
@@ -2664,8 +2664,8 @@ void FOServer::Process_RateItem(Client* cl)
 
 void FOServer::Process_SortValueItem(Client* cl)
 {
-	DWORD item_id;
-	WORD sort_val;
+	uint item_id;
+	ushort sort_val;
 
 	cl->Bin >> item_id;
 	cl->Bin >> sort_val;
@@ -2674,7 +2674,7 @@ void FOServer::Process_SortValueItem(Client* cl)
 	Item* item=cl->GetItem(item_id,true);
 	if(!item)
 	{
-		WriteLog(__FUNCTION__" - Item not found, client<%s>, item id<%u>.\n",cl->GetInfo(),item_id);
+		WriteLog(_FUNC_," - Item not found, client<%s>, item id<%u>.\n",cl->GetInfo(),item_id);
 		return;
 	}
 
@@ -2683,13 +2683,13 @@ void FOServer::Process_SortValueItem(Client* cl)
 
 void FOServer::Process_UseItem(Client* cl)
 {
-	DWORD item_id;
-	WORD item_pid;
-	BYTE rate;
-	BYTE target_type;
-	DWORD target_id;
-	WORD target_pid;
-	DWORD param;
+	uint item_id;
+	ushort item_pid;
+	uchar rate;
+	uchar target_type;
+	uint target_id;
+	ushort target_pid;
+	uint param;
 
 	cl->Bin >> item_id;
 	cl->Bin >> item_pid;
@@ -2702,11 +2702,11 @@ void FOServer::Process_UseItem(Client* cl)
 
 	if(!cl->IsLife()) return;
 
-	BYTE use=rate&0xF;
+	uchar use=rate&0xF;
 	Item* item=(item_id?cl->GetItem(item_id,true):cl->ItemSlotMain);
 	if(!item)
 	{
-		WriteLog(__FUNCTION__" - Item not found, item id<%u>, client<%s>.\n",item_id,cl->GetInfo());
+		WriteLog(_FUNC_," - Item not found, item id<%u>, client<%s>.\n",item_id,cl->GetInfo());
 		return;
 	}
 
@@ -2757,9 +2757,9 @@ void FOServer::Process_UseItem(Client* cl)
 
 void FOServer::Process_PickItem(Client* cl)
 {
-	WORD targ_x;
-	WORD targ_y;
-	WORD pid;
+	ushort targ_x;
+	ushort targ_y;
+	ushort pid;
 
 	cl->Bin >> targ_x;
 	cl->Bin >> targ_y;
@@ -2771,8 +2771,8 @@ void FOServer::Process_PickItem(Client* cl)
 
 void FOServer::Process_PickCritter(Client* cl)
 {
-	DWORD crid;
-	BYTE pick_type;
+	uint crid;
+	uchar pick_type;
 
 	cl->Bin >> crid;
 	cl->Bin >> pick_type;
@@ -2782,7 +2782,7 @@ void FOServer::Process_PickCritter(Client* cl)
 
 	if(!cl->CheckMyTurn(NULL))
 	{
-		WriteLog(__FUNCTION__" - Is not critter<%s> turn.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Is not critter<%s> turn.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
 		return;
 	}
@@ -2790,7 +2790,7 @@ void FOServer::Process_PickCritter(Client* cl)
 	int ap_cost=cl->GetApCostPickCritter();
 	if(cl->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
-		WriteLog(__FUNCTION__" - Not enough AP, critter<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, critter<%s>.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
 		return;
 	}
@@ -2817,10 +2817,10 @@ void FOServer::Process_PickCritter(Client* cl)
 		// Script events
 		if(cl->EventUseSkill(SKILL_LOOT_CRITTER,cr,NULL,NULL)) return;
 		if(cr->EventUseSkillOnMe(cl,SKILL_LOOT_CRITTER)) return;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
-			Script::SetArgDword(SKILL_LOOT_CRITTER);
+			Script::SetArgUInt(SKILL_LOOT_CRITTER);
 			Script::SetArgObject(cr);
 			Script::SetArgObject(NULL);
 			Script::SetArgObject(NULL);
@@ -2843,10 +2843,10 @@ void FOServer::Process_PickCritter(Client* cl)
 		// Script events
 		if(cl->EventUseSkill(SKILL_PUSH_CRITTER,cr,NULL,NULL)) return;
 		if(cr->EventUseSkillOnMe(cl,SKILL_PUSH_CRITTER)) return;
-		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
-			Script::SetArgDword(SKILL_PUSH_CRITTER);
+			Script::SetArgUInt(SKILL_PUSH_CRITTER);
 			Script::SetArgObject(cr);
 			Script::SetArgObject(NULL);
 			Script::SetArgObject(NULL);
@@ -2860,11 +2860,11 @@ void FOServer::Process_PickCritter(Client* cl)
 
 void FOServer::Process_ContainerItem(Client* cl)
 {
-	BYTE transfer_type;
-	DWORD cont_id;
-	DWORD item_id;
-	DWORD item_count;
-	BYTE take_flags;
+	uchar transfer_type;
+	uint cont_id;
+	uint item_id;
+	uint item_count;
+	uchar take_flags;
 
 	cl->Bin >> transfer_type;
 	cl->Bin >> cont_id;
@@ -2877,14 +2877,14 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 	if(!cl->CheckMyTurn(NULL))
 	{
-		WriteLog(__FUNCTION__" - Is not client<%s> turn.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Is not client<%s> turn.\n",cl->GetInfo());
 		cl->Send_Param(ST_CURRENT_AP);
 		return;
 	}
 
 	if(cl->AccessContainerId!=cont_id)
 	{
-		WriteLog(__FUNCTION__" - Try work with not accessed container, client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Try work with not accessed container, client<%s>.\n",cl->GetInfo());
 		cl->Send_ContainerInfo();
 		cl->Send_Param(ST_CURRENT_AP);
 		return;
@@ -2894,7 +2894,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 	int ap_cost=cl->GetApCostMoveItemContainer();
 	if(cl->GetParam(ST_CURRENT_AP)<ap_cost && !Singleplayer)
 	{
-		WriteLog(__FUNCTION__" - Not enough AP, client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Not enough AP, client<%s>.\n",cl->GetInfo());
 		cl->Send_ContainerInfo();
 		cl->Send_Param(ST_CURRENT_AP);
 		return;
@@ -2922,7 +2922,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			if(!cont || cont->Accessory!=ITEM_ACCESSORY_HEX || !cont->IsContainer())
 			{
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - TRANSFER_HEX_CONT error.\n");
+				WriteLog(_FUNC_," - TRANSFER_HEX_CONT error.\n");
 				return;
 			}
 
@@ -2930,7 +2930,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			if(cont->ACC_HEX.MapId!=cl->GetMap())
 			{
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - Attempt to take a subject from the container on other map.\n");
+				WriteLog(_FUNC_," - Attempt to take a subject from the container on other map.\n");
 				return;
 			}
 
@@ -2939,7 +2939,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			{
 				cl->Send_XY(cl);
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - Transfer item container. Client<%s> distance more than allowed.\n",cl->GetInfo());
+				WriteLog(_FUNC_," - Transfer item container. Client<%s> distance more than allowed.\n",cl->GetInfo());
 				return;
 			}
 
@@ -2947,7 +2947,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			if(cont->Proto->Container_Changeble && !cont->LockerIsOpen())
 			{
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - Container is not open.\n");
+				WriteLog(_FUNC_," - Container is not open.\n");
 				return;
 			}
 		}
@@ -2958,7 +2958,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			if(!cont || !cont->IsContainer())
 			{
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - TRANSFER_FAR_CONT error.\n");
+				WriteLog(_FUNC_," - TRANSFER_FAR_CONT error.\n");
 				return;
 			}
 		}
@@ -2970,7 +2970,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			if(!cont || !cont->IsContainer())
 			{
 				cl->Send_ContainerInfo();
-				WriteLog(__FUNCTION__" - TRANSFER_SELF_CONT error2.\n");
+				WriteLog(_FUNC_," - TRANSFER_SELF_CONT error2.\n");
 				return;
 			}
 		}
@@ -3017,10 +3017,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_TAKE_CONT)) return;
 				if(cl->EventUseSkill(SKILL_TAKE_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_CONT);
+					Script::SetArgUInt(SKILL_TAKE_CONT);
 					Script::SetArgObject(NULL);
 					Script::SetArgObject(item);
 					Script::SetArgObject(NULL);
@@ -3029,7 +3029,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Transfer
 				if(!ItemMngr.MoveItemCritterFromCont(cont,cl,item->GetId(),item_count))
-					WriteLog(__FUNCTION__" - Transfer item, from container to player (get), fail.\n");
+					WriteLog(_FUNC_," - Transfer item, from container to player (get), fail.\n");
 			}
 			break;
 		case CONT_GETALL:
@@ -3047,7 +3047,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Check weight, volume
-				DWORD weight=0,volume=0;
+				uint weight=0,volume=0;
 				for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
 				{
 					Item* item=*it;
@@ -3070,10 +3070,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(cont->EventSkill(cl,SKILL_TAKE_ALL_CONT)) return;
 				if(cl->EventUseSkill(SKILL_TAKE_ALL_CONT,NULL,cont,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_ALL_CONT);
+					Script::SetArgUInt(SKILL_TAKE_ALL_CONT);
 					Script::SetArgObject(NULL);
 					Script::SetArgObject(cont);
 					Script::SetArgObject(NULL);
@@ -3119,7 +3119,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				{
 					cl->Send_ContainerInfo();
 					cl->Send_Text(cl,"Cheat detected.",SAY_NETMSG);
-					WriteLog(__FUNCTION__" - Attempting to put in a container not from the inventory, client<%s>.",cl->GetInfo());
+					WriteLog(_FUNC_," - Attempting to put in a container not from the inventory, client<%s>.",cl->GetInfo());
 					return;
 				}
 
@@ -3133,10 +3133,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_PUT_CONT)) return;
 				if(cl->EventUseSkill(SKILL_PUT_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_PUT_CONT);
+					Script::SetArgUInt(SKILL_PUT_CONT);
 					Script::SetArgObject(NULL);
 					Script::SetArgObject(item);
 					Script::SetArgObject(NULL);
@@ -3145,7 +3145,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Transfer
 				if(!ItemMngr.MoveItemCritterToCont(cl,cont,item->GetId(),item_count,0))
-					WriteLog(__FUNCTION__" - Transfer item, from player to container (put), fail.\n");
+					WriteLog(_FUNC_," - Transfer item, from player to container (put), fail.\n");
 			}
 			break;
 		case CONT_PUTALL:
@@ -3179,7 +3179,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		if(!cr)
 		{
 			cl->Send_ContainerInfo();
-			WriteLog(__FUNCTION__" - Critter not found.\n");
+			WriteLog(_FUNC_," - Critter not found.\n");
 			return;
 		}
 		SYNC_LOCK(cr);
@@ -3188,7 +3188,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		if(cl==cr)
 		{
 			cl->Send_ContainerInfo();
-			WriteLog(__FUNCTION__" - Critter<%s> self pick.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Critter<%s> self pick.\n",cl->GetInfo());
 			return;
 		}
 
@@ -3196,7 +3196,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		if(is_steal && cr->IsRawParam(MODE_NO_STEAL))
 		{
 			cl->Send_ContainerInfo();
-			WriteLog(__FUNCTION__" - Critter has NoSteal flag, critter<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Critter has NoSteal flag, critter<%s>.\n",cl->GetInfo());
 			return;
 		}
 
@@ -3206,7 +3206,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			cl->Send_XY(cl);
 			cl->Send_XY(cr);
 			cl->Send_ContainerInfo();
-			WriteLog(__FUNCTION__" - Transfer critter container. Client<%s> distance more than allowed.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Transfer critter container. Client<%s> distance more than allowed.\n",cl->GetInfo());
 			return;
 		}
 
@@ -3214,7 +3214,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		if(is_loot && !cr->IsDead())
 		{
 			cl->Send_ContainerInfo();
-			WriteLog(__FUNCTION__" - TRANSFER_CRIT_LOOT - Critter not dead.\n");
+			WriteLog(_FUNC_," - TRANSFER_CRIT_LOOT - Critter not dead.\n");
 			return;
 		}
 
@@ -3226,7 +3226,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 			{
 				cr->SendA_Text(&cr->VisCr,"Please, don't kill me",SAY_WHISP_ON_HEAD);
 				cl->Send_ContainerInfo();
-				WriteLog("Process_ContainerItem - TRANSFER_CRIT_STEAL - Critter not in game\n");
+				WriteLog(NULL,"Process_ContainerItem - TRANSFER_CRIT_STEAL - Critter not in game\n");
 				return;
 			}*/
 
@@ -3291,10 +3291,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_TAKE_CONT)) return;
 				if(cl->EventUseSkill(SKILL_TAKE_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_CONT);
+					Script::SetArgUInt(SKILL_TAKE_CONT);
 					Script::SetArgObject(NULL);
 					Script::SetArgObject(item);
 					Script::SetArgObject(NULL);
@@ -3303,7 +3303,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Transfer
 				if(!ItemMngr.MoveItemCritters(cr,cl,item->GetId(),item_count))
-					WriteLog(__FUNCTION__" - Transfer item, from player to player (get), fail.\n");
+					WriteLog(_FUNC_," - Transfer item, from player to player (get), fail.\n");
 			}
 			break;
 		case CONT_GETALL:
@@ -3324,7 +3324,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				if(items.empty()) return;
 
 				// Check weight, volume
-				DWORD weight=0,volume=0;
+				uint weight=0,volume=0;
 				for(int i=0,j=items.size();i<j;++i)
 				{
 					weight+=items[i]->GetWeight();
@@ -3346,10 +3346,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(cl->EventUseSkill(SKILL_TAKE_ALL_CONT,cr,NULL,NULL)) return;
 				if(cr->EventUseSkillOnMe(cl,SKILL_TAKE_ALL_CONT)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_TAKE_ALL_CONT);
+					Script::SetArgUInt(SKILL_TAKE_ALL_CONT);
 					Script::SetArgObject(cr);
 					Script::SetArgObject(NULL);
 					Script::SetArgObject(NULL);
@@ -3357,7 +3357,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Transfer
-				for(size_t i=0,j=items.size();i<j;++i)
+				for(uint i=0,j=items.size();i<j;++i)
 				{
 					if(!items[i]->EventSkill(cl,SKILL_TAKE_CONT))
 					{
@@ -3394,7 +3394,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				{
 					cl->Send_ContainerInfo();
 					cl->Send_Text(cl,"Cheat detected.",SAY_NETMSG);
-					WriteLog(__FUNCTION__" - Attempting to put in a container not from the inventory2, client<%s>.",cl->GetInfo());
+					WriteLog(_FUNC_," - Attempting to put in a container not from the inventory2, client<%s>.",cl->GetInfo());
 					return;
 				}
 
@@ -3424,10 +3424,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 				// Script events
 				if(item->EventSkill(cl,SKILL_PUT_CONT)) return;
 				if(cl->EventUseSkill(SKILL_PUT_CONT,NULL,item,NULL)) return;
-				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,CALL_FUNC_STR,cl->GetInfo()))
+				if(Script::PrepareContext(ServerFunctions.CritterUseSkill,_FUNC_,cl->GetInfo()))
 				{
 					Script::SetArgObject(cl);
-					Script::SetArgDword(SKILL_PUT_CONT);
+					Script::SetArgUInt(SKILL_PUT_CONT);
 					Script::SetArgObject(NULL);
 					Script::SetArgObject(item);
 					Script::SetArgObject(NULL);
@@ -3436,7 +3436,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Transfer
 				if(!ItemMngr.MoveItemCritters(cl,cr,item->GetId(),item_count))
-					WriteLog(__FUNCTION__" - transfer item, from player to player (put), fail.\n");
+					WriteLog(_FUNC_," - transfer item, from player to player (put), fail.\n");
 			}
 			break;
 		case CONT_PUTALL:
@@ -3454,10 +3454,10 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 void FOServer::Process_UseSkill(Client* cl)
 {
-	WORD skill;
-	BYTE targ_type;
-	DWORD target_id;
-	WORD target_pid;
+	ushort skill;
+	uchar targ_type;
+	uint target_id;
+	ushort target_pid;
 
 	cl->Bin >> skill;
 	cl->Bin >> targ_type;
@@ -3467,13 +3467,13 @@ void FOServer::Process_UseSkill(Client* cl)
 
 	if(skill<SKILL_BEGIN || skill>SKILL_END)
 	{
-		WriteLog(__FUNCTION__" - Invalid skill<%d>, client<%s>.\n",skill,cl->GetInfo());
+		WriteLog(_FUNC_," - Invalid skill<%d>, client<%s>.\n",skill,cl->GetInfo());
 		return;
 	}
 
-	if(targ_type<TARGET_SELF || targ_type>TARGET_SCENERY)
+	if(targ_type>TARGET_SCENERY)
 	{
-		WriteLog(__FUNCTION__" - Invalid target type<%u>, client<%s>.\n",targ_type,cl->GetInfo());
+		WriteLog(_FUNC_," - Invalid target type<%u>, client<%s>.\n",targ_type,cl->GetInfo());
 		return;
 	}
 
@@ -3482,7 +3482,7 @@ void FOServer::Process_UseSkill(Client* cl)
 
 void FOServer::Process_Dir(Client* cl)
 {
-	BYTE dir;
+	uchar dir;
 	cl->Bin >> dir;
 	CHECK_IN_BUFF_ERROR(cl);
 
@@ -3498,10 +3498,10 @@ void FOServer::Process_Dir(Client* cl)
 
 void FOServer::Process_SetUserHoloStr(Client* cl)
 {
-	DWORD msg_len;
-	DWORD holodisk_id;
-	WORD title_len;
-	WORD text_len;
+	uint msg_len;
+	uint holodisk_id;
+	ushort title_len;
+	ushort text_len;
 	char title[USER_HOLO_MAX_TITLE_LEN+1];
 	char text[USER_HOLO_MAX_LEN+1];
 	cl->Bin >> msg_len;
@@ -3510,7 +3510,7 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 	cl->Bin >> text_len;
 	if(!title_len || !text_len || title_len>USER_HOLO_MAX_TITLE_LEN || text_len>USER_HOLO_MAX_LEN)
 	{
-		WriteLog(__FUNCTION__" - Length of texts is greater of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>, client<%s>. Disconnect.\n",title_len,USER_HOLO_MAX_TITLE_LEN,text_len,USER_HOLO_MAX_LEN,cl->GetInfo());
+		WriteLog(_FUNC_," - Length of texts is greater of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>, client<%s>. Disconnect.\n",title_len,USER_HOLO_MAX_TITLE_LEN,text_len,USER_HOLO_MAX_LEN,cl->GetInfo());
 		cl->Disconnect();
 		return;
 	}
@@ -3525,7 +3525,7 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 	Item* holodisk=cl->GetItem(holodisk_id,true);
 	if(!holodisk)
 	{
-		WriteLog(__FUNCTION__" - Holodisk<%u> not found, client<%s>.\n",holodisk_id,cl->GetInfo());
+		WriteLog(_FUNC_," - Holodisk<%u> not found, client<%s>.\n",holodisk_id,cl->GetInfo());
 		cl->Send_TextMsg(cl,STR_HOLO_WRITE_FAIL,SAY_NETMSG,TEXTMSG_HOLO);
 		return;
 	}
@@ -3534,11 +3534,11 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 
 #pragma MESSAGE("Check valid of received text.")
 //	int invalid_chars=CheckStr(text);
-//	if(invalid_chars>0) WriteLog(__FUNCTION__" - Found invalid chars, count<%u>, client<%s>, changed on '_'.\n",invalid_chars,cl->GetInfo());
+//	if(invalid_chars>0) WriteLog(_FUNC_," - Found invalid chars, count<%u>, client<%s>, changed on '_'.\n",invalid_chars,cl->GetInfo());
 
 	HolodiskLocker.Lock();
 
-	DWORD holo_id=holodisk->HolodiskGetNum();
+	uint holo_id=holodisk->HolodiskGetNum();
 	HoloInfo* hi=GetHoloInfo(holo_id);
 	if(hi && hi->CanRewrite)
 	{
@@ -3563,12 +3563,12 @@ void FOServer::Process_SetUserHoloStr(Client* cl)
 #pragma MESSAGE("Check aviability of requested holodisk.")
 void FOServer::Process_GetUserHoloStr(Client* cl)
 {
-	DWORD str_num;
+	uint str_num;
 	cl->Bin >> str_num;
 
 	if(str_num/10<USER_HOLO_START_NUM)
 	{
-		WriteLog(__FUNCTION__" - String value is less than users holo numbers, str num<%u>, client<%s>.\n",str_num,cl->GetInfo());
+		WriteLog(_FUNC_," - String value is less than users holo numbers, str num<%u>, client<%s>.\n",str_num,cl->GetInfo());
 		return;
 	}
 
@@ -3577,10 +3577,10 @@ void FOServer::Process_GetUserHoloStr(Client* cl)
 
 void FOServer::Process_LevelUp(Client* cl)
 {
-	DWORD msg_len;
-	WORD count_skill_up;
-	DwordVec skills;
-	WORD perk_up;
+	uint msg_len;
+	ushort count_skill_up;
+	UIntVec skills;
+	ushort perk_up;
 
 	cl->Bin >> msg_len;
 
@@ -3589,7 +3589,7 @@ void FOServer::Process_LevelUp(Client* cl)
 	if(count_skill_up>SKILL_COUNT) count_skill_up=SKILL_COUNT;
 	for(int i=0;i<count_skill_up;i++)
 	{
-		WORD num,val;
+		ushort num,val;
 		cl->Bin >> num;
 		cl->Bin >> val;
 		skills.push_back(num);
@@ -3604,23 +3604,23 @@ void FOServer::Process_LevelUp(Client* cl)
 	for(int i=0;i<count_skill_up;i++)
 	{
 		if(skills[i*2]>=SKILL_BEGIN && skills[i*2]<=SKILL_END && skills[i*2+1] && cl->Data.Params[ST_UNSPENT_SKILL_POINTS]>0
-		&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
+		&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,_FUNC_,cl->GetInfo()))
 		{
 			Script::SetArgObject(cl);
-			Script::SetArgDword(SKILL_OFFSET(skills[i*2]));
-			Script::SetArgDword(skills[i*2+1]);
-			Script::SetArgDword(-1);
+			Script::SetArgUInt(SKILL_OFFSET(skills[i*2]));
+			Script::SetArgUInt(skills[i*2+1]);
+			Script::SetArgUInt(-1);
 			Script::RunPrepared();
 		}
 	}
 
 	if(perk_up>=PERK_BEGIN && perk_up<=PERK_END && cl->Data.Params[ST_UNSPENT_PERKS]>0
-	&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,CALL_FUNC_STR,cl->GetInfo()))
+	&& Script::PrepareContext(ServerFunctions.PlayerLevelUp,_FUNC_,cl->GetInfo()))
 	{
 		Script::SetArgObject(cl);
-		Script::SetArgDword(-1);
-		Script::SetArgDword(0);
-		Script::SetArgDword(PERK_OFFSET(perk_up));
+		Script::SetArgUInt(-1);
+		Script::SetArgUInt(0);
+		Script::SetArgUInt(PERK_OFFSET(perk_up));
 		Script::RunPrepared();
 	}
 
@@ -3630,32 +3630,32 @@ void FOServer::Process_LevelUp(Client* cl)
 
 void FOServer::Process_CraftAsk(Client* cl)
 {
-	DWORD tick=Timer::FastTick();
+	uint tick=Timer::FastTick();
 	if(tick<cl->LastSendCraftTick+CRAFT_SEND_TIME)
 	{
-		WriteLog(__FUNCTION__" - Client<%s> ignore send craft timeout.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Client<%s> ignore send craft timeout.\n",cl->GetInfo());
 		return;
 	}
 	cl->LastSendCraftTick=tick;
 
-	DWORD msg_len;
-	WORD count;
+	uint msg_len;
+	ushort count;
 	cl->Bin >> msg_len;
 	cl->Bin >> count;
 
-	DwordVec numbers;
+	UIntVec numbers;
 	numbers.reserve(count);
 	for(int i=0;i<count;i++)
 	{
-		DWORD craft_num;
+		uint craft_num;
 		cl->Bin >> craft_num;
 		if(MrFixit.IsShowCraft(cl,craft_num)) numbers.push_back(craft_num);
 	}
 	CHECK_IN_BUFF_ERROR(cl);
 
-	MSGTYPE msg=NETMSG_CRAFT_ASK;
+	uint msg=NETMSG_CRAFT_ASK;
 	count=numbers.size();
-	msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(count)+sizeof(DWORD)*count;
+	msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(count)+sizeof(uint)*count;
 
 	BOUT_BEGIN(cl);
 	cl->Bout << msg;
@@ -3667,12 +3667,12 @@ void FOServer::Process_CraftAsk(Client* cl)
 
 void FOServer::Process_Craft(Client* cl)
 {
-	DWORD craft_num;
+	uint craft_num;
 
 	cl->Bin >> craft_num;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	BYTE res=MrFixit.ProcessCraft(cl,craft_num);
+	uchar res=MrFixit.ProcessCraft(cl,craft_num);
 
 	BOUT_BEGIN(cl);
 	cl->Bout << NETMSG_CRAFT_RESULT;
@@ -3682,7 +3682,7 @@ void FOServer::Process_Craft(Client* cl)
 
 void FOServer::Process_Ping(Client* cl)
 {
-	BYTE ping;
+	uchar ping;
 
 	cl->Bin >> ping;
 	CHECK_IN_BUFF_ERROR(cl);
@@ -3700,7 +3700,7 @@ void FOServer::Process_Ping(Client* cl)
 		ClientData* data=GetClientData(cl->GetId());
 		if(data)
 		{
-			WriteLog(__FUNCTION__" - Wrong UID, client<%s>. Disconnect.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Wrong UID, client<%s>. Disconnect.\n",cl->GetInfo());
 			for(int i=0;i<5;i++) data->UID[i]=Random(0,10000);
 			data->UIDEndTick=Timer::FastTick()+GameOpt.AccountPlayTime*1000;
 		}
@@ -3714,7 +3714,7 @@ void FOServer::Process_Ping(Client* cl)
 	}
 	else
 	{
-		WriteLog("Unknown ping<%u>, client<%s>.\n",ping,cl->GetInfo());
+		WriteLog(NULL,"Unknown ping<%u>, client<%s>.\n",ping,cl->GetInfo());
 		return;
 	}
 
@@ -3726,16 +3726,16 @@ void FOServer::Process_Ping(Client* cl)
 
 void FOServer::Process_PlayersBarter(Client* cl)
 {
-	BYTE barter;
-	DWORD param;
-	DWORD param_ext;
+	uchar barter;
+	uint param;
+	uint param_ext;
 
 	cl->Bin >> barter;
 	cl->Bin >> param;
 	cl->Bin >> param_ext;
 	CHECK_IN_BUFF_ERROR(cl);
 
-//WriteLog("Barter<%s,%u,%u,%u>.\n",cl->GetName(),barter,param,param_ext);
+//WriteLog(NULL,"Barter<%s,%u,%u,%u>.\n",cl->GetName(),barter,param,param_ext);
 
 	if(barter==BARTER_TRY || barter==BARTER_ACCEPTED)
 	{
@@ -3797,30 +3797,30 @@ void FOServer::Process_PlayersBarter(Client* cl)
 
 			// Check for weight
 			// Player
-			DWORD weigth=0;
-			for(int i=0;i<cl->BarterItems.size();i++)
+			uint weigth=0;
+			for(uint i=0;i<cl->BarterItems.size();i++)
 			{
 				Client::BarterItem& barter_item=cl->BarterItems[i];
 				ProtoItem* proto_item=ItemMngr.GetProtoItem(barter_item.Pid);
-				if(!proto_item) WriteLog(__FUNCTION__" - proto item not found, pid<%u>.\n",barter_item.Pid);
+				if(!proto_item) WriteLog(_FUNC_," - proto item not found, pid<%u>.\n",barter_item.Pid);
 				weigth+=proto_item->Weight*barter_item.Count;
 			}
 			// Opponent
-			DWORD weigth_=0;
-			for(int i=0;i<opponent->BarterItems.size();i++)
+			uint weigth_=0;
+			for(uint i=0;i<opponent->BarterItems.size();i++)
 			{
 				Client::BarterItem& barter_item=opponent->BarterItems[i];
 				ProtoItem* proto_item=ItemMngr.GetProtoItem(barter_item.Pid);
-				if(!proto_item) WriteLog(__FUNCTION__" - proto item not found_, pid<%u>.\n",barter_item.Pid);
+				if(!proto_item) WriteLog(_FUNC_," - proto item not found_, pid<%u>.\n",barter_item.Pid);
 				weigth_+=proto_item->Weight*barter_item.Count;
 			}
 			// Check
-			if(cl->GetFreeWeight()+weigth<(int)weigth_)
+			if(cl->GetFreeWeight()+(int)weigth<(int)weigth_)
 			{
 				cl->Send_TextMsg(cl,STR_BARTER_OVERWEIGHT,SAY_NETMSG,TEXTMSG_GAME);
 				goto label_EndOffer;
 			}
-			if(opponent->GetFreeWeight()+weigth_<(int)weigth)
+			if(opponent->GetFreeWeight()+(int)weigth_<(int)weigth)
 			{
 				opponent->Send_TextMsg(opponent,STR_BARTER_OVERWEIGHT,SAY_NETMSG,TEXTMSG_GAME);
 				goto label_EndOffer;
@@ -3828,18 +3828,18 @@ void FOServer::Process_PlayersBarter(Client* cl)
 
 			// Transfer
 			// Player
-			for(int i=0;i<cl->BarterItems.size();i++)
+			for(uint i=0;i<cl->BarterItems.size();i++)
 			{
 				Client::BarterItem& bitem=cl->BarterItems[i];
 				if(!ItemMngr.MoveItemCritters(cl,opponent,bitem.Id,bitem.Count))
-					WriteLog(__FUNCTION__" - transfer item, from player to player_, fail.\n");
+					WriteLog(_FUNC_," - transfer item, from player to player_, fail.\n");
 			}
 			// Player_
-			for(int i=0;i<opponent->BarterItems.size();i++)
+			for(uint i=0;i<opponent->BarterItems.size();i++)
 			{
 				Client::BarterItem& bitem=opponent->BarterItems[i];
 				if(!ItemMngr.MoveItemCritters(opponent,cl,bitem.Id,bitem.Count))
-					WriteLog(__FUNCTION__" - transfer item, from player_ to player, fail.\n");
+					WriteLog(_FUNC_," - transfer item, from player_ to player, fail.\n");
 			}
 
 			is_succ=true;
@@ -3883,7 +3883,7 @@ label_EndOffer:
 		if(barter_cl==opponent && opponent->BarterHide)
 		{
 			cl->Send_Text(cl,"Cheat fail.",SAY_NETMSG);
-			WriteLog(__FUNCTION__" - Player try operate opponent inventory in hide mode, player<%s>, opponent<%s>.\n",cl->GetInfo(),opponent->GetInfo());
+			WriteLog(_FUNC_," - Player try operate opponent inventory in hide mode, player<%s>, opponent<%s>.\n",cl->GetInfo(),opponent->GetInfo());
 			return;
 		}
 
@@ -3937,7 +3937,7 @@ label_EndOffer:
 
 void FOServer::Process_ScreenAnswer(Client* cl)
 {
-	DWORD answer_i;
+	uint answer_i;
 	char answer_s[MAX_SAY_NPC_TEXT+1];
 	cl->Bin >> answer_i;
 	cl->Bin.Pop(answer_s,MAX_SAY_NPC_TEXT);
@@ -3945,16 +3945,16 @@ void FOServer::Process_ScreenAnswer(Client* cl)
 
 	if(cl->ScreenCallbackBindId<=0)
 	{
-		WriteLog(__FUNCTION__" - Client<%s> answered on not not specified screen.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Client<%s> answered on not not specified screen.\n",cl->GetInfo());
 		return;
 	}
 
 	int bind_id=cl->ScreenCallbackBindId;
 	cl->ScreenCallbackBindId=0;
 
-	if(!Script::PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo())) return;
+	if(!Script::PrepareContext(bind_id,_FUNC_,cl->GetInfo())) return;
 	Script::SetArgObject(cl);
-	Script::SetArgDword(answer_i);
+	Script::SetArgUInt(answer_i);
 	CScriptString* lexems=new CScriptString(answer_s);
 	Script::SetArgObject(lexems);
 	Script::RunPrepared();
@@ -3963,7 +3963,7 @@ void FOServer::Process_ScreenAnswer(Client* cl)
 
 void FOServer::Process_Combat(Client* cl)
 {
-	BYTE type;
+	uchar type;
 	int val;
 	cl->Bin >> type;
 	cl->Bin >> val;
@@ -3974,7 +3974,7 @@ void FOServer::Process_Combat(Client* cl)
 		Map* map=MapMngr.GetMap(cl->GetMap());
 		if(!map)
 		{
-			WriteLog(__FUNCTION__" - Map not found on end turn, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Map not found on end turn, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 		if(map->IsTurnBasedOn && map->IsCritterTurn(cl)) map->EndCritterTurn();
@@ -3984,35 +3984,35 @@ void FOServer::Process_Combat(Client* cl)
 		Map* map=MapMngr.GetMap(cl->GetMap());
 		if(!map)
 		{
-			WriteLog(__FUNCTION__" - Map not found on end combat, client<%s>.\n",cl->GetInfo());
+			WriteLog(_FUNC_," - Map not found on end combat, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 		if(map->IsTurnBasedOn) cl->Data.Params[MODE_END_COMBAT]=(val?1:0);
 	}
 	else
 	{
-		WriteLog(__FUNCTION__" - Unknown type<%u>, value<%d>, client<%s>.\n",type,val,cl->GetInfo());
+		WriteLog(_FUNC_," - Unknown type<%u>, value<%d>, client<%s>.\n",type,val,cl->GetInfo());
 	}
 }
 
 void FOServer::Process_RunServerScript(Client* cl)
 {
-	DWORD msg_len;
+	uint msg_len;
 	bool unsafe=false;
-	WORD script_name_len;
+	ushort script_name_len;
 	char script_name[MAX_SCRIPT_NAME*2+2]={0};
 	int p0,p1,p2;
-	WORD p3len;
+	ushort p3len;
 	char p3str[MAX_FOTEXT];
 	CScriptString* p3=NULL;
-	WORD p4size;
+	ushort p4size;
 	CScriptArray* p4=NULL;
 
 	cl->Bin >> msg_len;
 	cl->Bin >> unsafe;
 	if(!unsafe && !FLAG(cl->Access,ACCESS_MODER|ACCESS_ADMIN|ACCESS_IMPLEMENTOR))
 	{
-		WriteLog(__FUNCTION__" - Attempt to execute script without privilege. Client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Attempt to execute script without privilege. Client<%s>.\n",cl->GetInfo());
 		cl->Send_Text(cl,"Access denied. Disconnect.",SAY_NETMSG);
 		cl->Disconnect();
 		return;
@@ -4031,7 +4031,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 
 	if(unsafe && (strlen(func_name)<=7 || strncmp(func_name,"unsafe_",7))) // Check unsafe_ prefix
 	{
-		WriteLog(__FUNCTION__" - Attempt to execute script without \"unsafe_\" prefix. Client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Attempt to execute script without \"unsafe_\" prefix. Client<%s>.\n",cl->GetInfo());
 		cl->Send_Text(cl,"Access denied. Disconnect.",SAY_NETMSG);
 		cl->Disconnect();
 		return;
@@ -4054,19 +4054,19 @@ void FOServer::Process_RunServerScript(Client* cl)
 		if(p4)
 		{
 			p4->Resize(p4size);
-			cl->Bin.Pop((char*)p4->At(0),p4size*sizeof(DWORD));
+			cl->Bin.Pop((char*)p4->At(0),p4size*sizeof(uint));
 		}
 	}
 
 	CHECK_IN_BUFF_ERROR(cl);
 
 	int bind_id=Script::Bind(module_name,func_name,"void %s(Critter&,int,int,int,string@,int[]@)",true);
-	if(bind_id>0 && Script::PrepareContext(bind_id,CALL_FUNC_STR,cl->GetInfo()))
+	if(bind_id>0 && Script::PrepareContext(bind_id,_FUNC_,cl->GetInfo()))
 	{
 		Script::SetArgObject(cl);
-		Script::SetArgDword(p0);
-		Script::SetArgDword(p1);
-		Script::SetArgDword(p2);
+		Script::SetArgUInt(p0);
+		Script::SetArgUInt(p1);
+		Script::SetArgUInt(p2);
 		Script::SetArgObject(p3);
 		Script::SetArgObject(p4);
 		Script::RunPrepared();
@@ -4078,7 +4078,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 
 void FOServer::Process_KarmaVoting(Client* cl)
 {
-	DWORD crid;
+	uint crid;
 	bool is_up;
 	cl->Bin >> crid;
 	cl->Bin >> is_up;
@@ -4095,7 +4095,7 @@ void FOServer::Process_KarmaVoting(Client* cl)
 		return;
 	}
 
-	if(Script::PrepareContext(ServerFunctions.KarmaVoting,CALL_FUNC_STR,cl->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.KarmaVoting,_FUNC_,cl->GetInfo()))
 	{
 		Script::SetArgObject(cl);
 		Script::SetArgObject(cr);
@@ -4106,16 +4106,16 @@ void FOServer::Process_KarmaVoting(Client* cl)
 
 void FOServer::Process_GiveGlobalInfo(Client* cl)
 {
-	//	BYTE info_flags;
+	//	uchar info_flags;
 	//	cl->Bin >> info_flags;
 	//	cl->Send_GlobalInfo(info_flags);
 }
 
 void FOServer::Process_RuleGlobal(Client* cl)
 {
-	BYTE command;
-	DWORD param1;
-	DWORD param2;
+	uchar command;
+	uint param1;
+	uint param2;
 	cl->Bin >> command;
 	cl->Bin >> param1;
 	cl->Bin >> param2;
@@ -4192,7 +4192,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			// Transit
 			if(cl->LockMapTransfers)
 			{
-				WriteLog(__FUNCTION__" - Transfers locked, critter<%s>.\n",cl->GetInfo());
+				WriteLog(_FUNC_," - Transfers locked, critter<%s>.\n",cl->GetInfo());
 				return;
 			}
 			if(!MapMngr.TransitToGlobal(cl,param1,0,false)) break;
@@ -4235,14 +4235,14 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		{
 			if(cl->GetMap() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor) break;
 
-			DWORD loc_id=param1;
+			uint loc_id=param1;
 			Location* loc=MapMngr.GetLocation(loc_id);
 			if(!loc || DistSqrt(cl->GroupMove->WXi,cl->GroupMove->WYi,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
 
-			DWORD tick=Timer::FastTick();
+			uint tick=Timer::FastTick();
 			if(cl->LastSendEntrancesLocId==loc_id && tick<cl->LastSendEntrancesTick+GM_ENTRANCES_SEND_TIME)
 			{
-				WriteLog(__FUNCTION__" - Client<%s> ignore send entrances timeout.\n",cl->GetInfo());
+				WriteLog(_FUNC_," - Client<%s> ignore send entrances timeout.\n",cl->GetInfo());
 				break;
 			}
 			cl->LastSendEntrancesLocId=loc_id;
@@ -4250,11 +4250,11 @@ void FOServer::Process_RuleGlobal(Client* cl)
 
 			if(loc->Proto->ScriptBindId>0)
 			{
-				BYTE count=0;
-				BYTE show[0x100];
+				uchar count=0;
+				uchar show[0x100];
 				CScriptArray* arr=MapMngr.GM_CreateGroupArray(cl->GroupMove);
 				if(!arr) break;
-				for(BYTE i=0,j=(BYTE)loc->Proto->Entrance.size();i<j;i++)
+				for(uchar i=0,j=(uchar)loc->Proto->Entrance.size();i<j;i++)
 				{
 					if(MapMngr.GM_CheckEntrance(loc,arr,i))
 					{
@@ -4264,29 +4264,29 @@ void FOServer::Process_RuleGlobal(Client* cl)
 				}
 				arr->Release();
 
-				MSGTYPE msg=NETMSG_GLOBAL_ENTRANCES;
-				DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(loc_id)+sizeof(count)+sizeof(BYTE)*count;
+				uint msg=NETMSG_GLOBAL_ENTRANCES;
+				uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(loc_id)+sizeof(count)+sizeof(uchar)*count;
 
 				BOUT_BEGIN(cl);
 				cl->Bout << msg;
 				cl->Bout << msg_len;
 				cl->Bout << loc_id;
 				cl->Bout << count;
-				for(BYTE i=0;i<count;i++) cl->Bout << show[i];
+				for(uchar i=0;i<count;i++) cl->Bout << show[i];
 				BOUT_END(cl);
 			}
 			else
 			{
-				MSGTYPE msg=NETMSG_GLOBAL_ENTRANCES;
-				BYTE count=(BYTE)loc->Proto->Entrance.size();
-				DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(loc_id)+sizeof(count)+sizeof(BYTE)*count;
+				uint msg=NETMSG_GLOBAL_ENTRANCES;
+				uchar count=(uchar)loc->Proto->Entrance.size();
+				uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(loc_id)+sizeof(count)+sizeof(uchar)*count;
 
 				BOUT_BEGIN(cl);
 				cl->Bout << msg;
 				cl->Bout << msg_len;
 				cl->Bout << loc_id;
 				cl->Bout << count;
-				for(BYTE i=0;i<count;i++) cl->Bout << i;
+				for(uchar i=0;i<count;i++) cl->Bout << i;
 				BOUT_END(cl);
 			}
 		}
@@ -4295,11 +4295,11 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		{
 			if(cl->GetMap() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor) break;
 
-			DWORD loc_id=param1;
+			uint loc_id=param1;
 			Location* loc=MapMngr.GetLocation(loc_id);
 			if(!loc || DistSqrt(cl->GroupMove->WXi,cl->GroupMove->WYi,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
 
-			DWORD entrance=param2;
+			uint entrance=param2;
 			if(entrance>=loc->Proto->Entrance.size()) break;
 			if(loc->Proto->ScriptBindId>0)
 			{
@@ -4313,8 +4313,8 @@ void FOServer::Process_RuleGlobal(Client* cl)
 			Map* map=loc->GetMap(loc->Proto->Entrance[entrance].first);
 			if(!map) break;
 
-			BYTE dir;
-			WORD hx,hy;
+			uchar dir;
+			ushort hx,hy;
 			if(!map->GetStartCoord(hx,hy,dir,loc->Proto->Entrance[entrance].second)) break;
 
 			cl->Data.HexX=hx;
@@ -4332,7 +4332,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		}
 		break;
 	default:
-		WriteLog(__FUNCTION__" - Unknown command<%u>, from client<%s>.\n",cl->GetInfo());
+		WriteLog(_FUNC_," - Unknown command<%u>, from client<%s>.\n",cl->GetInfo());
 		break;
 	}
 
@@ -4340,12 +4340,12 @@ void FOServer::Process_RuleGlobal(Client* cl)
 }
 
 
-void FOServer::Send_MsgData(Client* cl, DWORD lang, WORD num_msg, FOMsg& data_msg)
+void FOServer::Send_MsgData(Client* cl, uint lang, ushort num_msg, FOMsg& data_msg)
 {
 	if(cl->IsSendDisabled() || cl->IsOffline()) return;
 
-	MSGTYPE msg=NETMSG_MSG_DATA;
-	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(lang)+sizeof(num_msg)+sizeof(DWORD)+data_msg.GetToSendLen();
+	uint msg=NETMSG_MSG_DATA;
+	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(lang)+sizeof(num_msg)+sizeof(uint)+data_msg.GetToSendLen();
 
 	BOUT_BEGIN(cl);
 	cl->Bout << msg;
@@ -4357,12 +4357,12 @@ void FOServer::Send_MsgData(Client* cl, DWORD lang, WORD num_msg, FOMsg& data_ms
 	BOUT_END(cl);
 }
 
-void FOServer::Send_ProtoItemData(Client* cl, BYTE type, ProtoItemVec& data, DWORD data_hash)
+void FOServer::Send_ProtoItemData(Client* cl, uchar type, ProtoItemVec& data, uint data_hash)
 {
 	if(cl->IsSendDisabled() || cl->IsOffline()) return;
 
-	MSGTYPE msg=NETMSG_ITEM_PROTOS;
-	DWORD msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(type)+sizeof(data_hash)+data.size()*sizeof(ProtoItem);
+	uint msg=NETMSG_ITEM_PROTOS;
+	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(type)+sizeof(data_hash)+data.size()*sizeof(ProtoItem);
 
 	BOUT_BEGIN(cl);
 	cl->Bout << msg;

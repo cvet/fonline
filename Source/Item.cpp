@@ -10,29 +10,29 @@
 
 const char* ItemEventFuncName[ITEM_EVENT_MAX]=
 {
-	{"void %s(Item&,bool)"}, // ITEM_EVENT_FINISH
-	{"bool %s(Item&,Critter&,Critter&)"}, // ITEM_EVENT_ATTACK
-	{"bool %s(Item&,Critter&,Critter@,Item@,Scenery@)"}, // ITEM_EVENT_USE
-	{"bool %s(Item&,Critter&,Item@)"}, // ITEM_EVENT_USE_ON_ME
-	{"bool %s(Item&,Critter&,int)"}, // ITEM_EVENT_SKILL
-	{"void %s(Item&,Critter&)"}, // ITEM_EVENT_DROP
-	{"void %s(Item&,Critter&,uint8)"}, // ITEM_EVENT_MOVE
-	{"void %s(Item&,Critter&,bool,uint8)"}, // ITEM_EVENT_WALK
+	"void %s(Item&,bool)", // ITEM_EVENT_FINISH
+	"bool %s(Item&,Critter&,Critter&)", // ITEM_EVENT_ATTACK
+	"bool %s(Item&,Critter&,Critter@,Item@,Scenery@)", // ITEM_EVENT_USE
+	"bool %s(Item&,Critter&,Item@)", // ITEM_EVENT_USE_ON_ME
+	"bool %s(Item&,Critter&,int)", // ITEM_EVENT_SKILL
+	"void %s(Item&,Critter&)", // ITEM_EVENT_DROP
+	"void %s(Item&,Critter&,uint8)", // ITEM_EVENT_MOVE
+	"void %s(Item&,Critter&,bool,uint8)", // ITEM_EVENT_WALK
 };
 
 // Item default send data mask
 char Item::ItemData::SendMask[ITEM_DATA_MASK_MAX][92]=
 {
 	// SortValue Info Reserved0 PicMapHash   PicInvHash   AnimWaitBase AnimStay[2] AnimShow[2] AnimHide[2] Flags        Rate LightIntensity LightDistance LightFlags LightColor   ScriptId TrapValue Count        Cost         ScriptValues[10]                                                                 Shared data 8 bytes
-	// ITEM_DATA_MASK_CHOSEN                                                                                           ITEM_DATA_MASK_CHOSEN                                                                                                ITEM_DATA_MASK_CHOSEN                                                                                              
+	// ITEM_DATA_MASK_CHOSEN                                                                                           ITEM_DATA_MASK_CHOSEN                                                                                                ITEM_DATA_MASK_CHOSEN
 	{  -1,-1,     -1,    0,     -1,-1,-1,-1, -1,-1,-1,-1,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,    -1,-1,-1,-1, -1,-1,-1,-1, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, -1,-1,-1,-1,-1,-1,-1,-1, },
-	// ITEM_DATA_MASK_CRITTER                                                                                          ITEM_DATA_MASK_CRITTER                                                                                               ITEM_DATA_MASK_CRITTER                                                                        
+	// ITEM_DATA_MASK_CRITTER                                                                                          ITEM_DATA_MASK_CRITTER                                                                                               ITEM_DATA_MASK_CRITTER
 	{    0,0,     -1,    0,         0,0,0,0,     0,0,0,0,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,        0,0,0,0,     0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,         0,0,0,0,0,0,0,0, },
-	// ITEM_DATA_MASK_CRITTER_EXT                                                                                      ITEM_DATA_MASK_CRITTER_EXT                                                                                           ITEM_DATA_MASK_CRITTER_EXT                                                                    
+	// ITEM_DATA_MASK_CRITTER_EXT                                                                                      ITEM_DATA_MASK_CRITTER_EXT                                                                                           ITEM_DATA_MASK_CRITTER_EXT
 	{    0,0,     -1,    0,         0,0,0,0,     0,0,0,0,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,    -1,-1,-1,-1,     0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, -1,-1,-1,-1,-1,-1,-1,-1, },
-	// ITEM_DATA_MASK_CONTAINER                                                                                        ITEM_DATA_MASK_CONTAINER                                                                                             ITEM_DATA_MASK_CONTAINER                                                                      
+	// ITEM_DATA_MASK_CONTAINER                                                                                        ITEM_DATA_MASK_CONTAINER                                                                                             ITEM_DATA_MASK_CONTAINER
 	{  -1,-1,     -1,    0,         0,0,0,0, -1,-1,-1,-1,      0,0,       0,0,        0,0,        0,0,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,    -1,-1,-1,-1, -1,-1,-1,-1, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, -1,-1,-1,-1,-1,-1,-1,-1, },
-	// ITEM_DATA_MASK_MAP                                                                                              ITEM_DATA_MASK_MAP                                                                                                   ITEM_DATA_MASK_MAP                                                                            
+	// ITEM_DATA_MASK_MAP                                                                                              ITEM_DATA_MASK_MAP                                                                                                   ITEM_DATA_MASK_MAP
 	{  -1,-1,     -1,    0,     -1,-1,-1,-1,     0,0,0,0,    -1,-1,     -1,-1,      -1,-1,      -1,-1,     -1,-1,-1,-1,  -1,       -1,            -1,        -1,     -1,-1,-1,-1,   0,0,     0,0,        0,0,0,0,     0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,         0,0,0,0,0,0,0,0, },
 };
 
@@ -40,7 +40,7 @@ void Item::Init(ProtoItem* proto)
 {
 	if(!proto)
 	{
-		WriteLog(__FUNCTION__" - Proto is null ptr.\n");
+		WriteLog(_FUNC_," - Proto is null ptr.\n");
 		return;
 	}
 
@@ -162,16 +162,16 @@ bool Item::ParseScript(const char* script, bool first_time)
 {
 	if(script && script[0])
 	{
-		DWORD func_num=Script::GetScriptFuncNum(script,"void %s(Item&,bool)");
+		uint func_num=Script::GetScriptFuncNum(script,"void %s(Item&,bool)");
 		if(!func_num)
 		{
-			WriteLog(__FUNCTION__" - Script<%s> bind fail, item pid<%u>.\n",script,GetProtoId());
+			WriteLog(_FUNC_," - Script<%s> bind fail, item pid<%u>.\n",script,GetProtoId());
 			return false;
 		}
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),CALL_FUNC_STR,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId())))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),_FUNC_,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId())))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgBool(first_time);
@@ -184,7 +184,7 @@ bool Item::PrepareScriptFunc(int num_scr_func)
 {
 	if(num_scr_func>=ITEM_EVENT_MAX) return false;
 	if(FuncId[num_scr_func]<=0) return false;
-	return Script::PrepareContext(FuncId[num_scr_func],CALL_FUNC_STR,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId()));
+	return Script::PrepareContext(FuncId[num_scr_func],_FUNC_,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId()));
 }
 
 void Item::EventFinish(bool deleted)
@@ -245,7 +245,7 @@ bool Item::EventSkill(Critter* cr, int skill)
 	{
 		Script::SetArgObject(this);
 		Script::SetArgObject(cr);
-		Script::SetArgDword(skill<0?skill:SKILL_OFFSET(skill));
+		Script::SetArgUInt(skill<0?skill:SKILL_OFFSET(skill));
 		if(Script::RunPrepared()) result=Script::GetReturnedBool();
 	}
 	return result;
@@ -259,29 +259,29 @@ void Item::EventDrop(Critter* cr)
 	Script::RunPrepared();
 }
 
-void Item::EventMove(Critter* cr, BYTE from_slot)
+void Item::EventMove(Critter* cr, uchar from_slot)
 {
 	if(!PrepareScriptFunc(ITEM_EVENT_MOVE)) return;
 	Script::SetArgObject(this);
 	Script::SetArgObject(cr);
-	Script::SetArgByte(from_slot);
+	Script::SetArgUChar(from_slot);
 	Script::RunPrepared();
 }
 
-void Item::EventWalk(Critter* cr, bool entered, BYTE dir)
+void Item::EventWalk(Critter* cr, bool entered, uchar dir)
 {
 	if(!PrepareScriptFunc(ITEM_EVENT_WALK)) return;
 	Script::SetArgObject(this);
 	Script::SetArgObject(cr); // Saved in Act_Move
 	Script::SetArgBool(entered);
-	Script::SetArgByte(dir);
+	Script::SetArgUChar(dir);
 	Script::RunPrepared();
 }
 #endif //FONLINE_SERVER
 
 void Item::SetSortValue(ItemPtrVec& items)
 {
-	WORD sort_value=0x7FFF;
+	ushort sort_value=0x7FFF;
 	for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it)
 	{
 		Item* item=*it;
@@ -294,12 +294,12 @@ void Item::SetSortValue(ItemPtrVec& items)
 bool SortItemsFunc(const Item& l, const Item& r){return l.Data.SortValue<r.Data.SortValue;}
 void Item::SortItems(ItemVec& items){std::sort(items.begin(),items.end(),SortItemsFunc);}
 
-DWORD Item::GetCount()
+uint Item::GetCount()
 {
 	return IsStackable()?Data.Count:1;
 }
 
-void Item::Count_Set(DWORD val)
+void Item::Count_Set(uint val)
 {
 	if(!IsStackable()) return;
 
@@ -308,7 +308,7 @@ void Item::Count_Set(DWORD val)
 	Data.Count=val;
 }
 
-void Item::Count_Add(DWORD val)
+void Item::Count_Add(uint val)
 {
 	if(!IsStackable()) return;
 
@@ -316,7 +316,7 @@ void Item::Count_Add(DWORD val)
 	ItemMngr.AddItemStatistics(GetProtoId(),val);
 }
 
-void Item::Count_Sub(DWORD val)
+void Item::Count_Sub(uint val)
 {
 	if(!IsStackable()) return;
 
@@ -328,21 +328,19 @@ void Item::Count_Sub(DWORD val)
 #ifdef FONLINE_SERVER
 void Item::Repair()
 {
-	BYTE& flags=Data.TechInfo.BrokenFlags;
-	BYTE& broken_count=Data.TechInfo.BrokenCount;
-	WORD& deterioration=Data.TechInfo.Deterioration;
+	uchar& flags=Data.TechInfo.BrokenFlags;
+	uchar& broken_count=Data.TechInfo.BrokenCount;
+	ushort& deterioration=Data.TechInfo.Deterioration;
 
 	if(FLAG(flags,BI_BROKEN))
 	{
 		UNSETFLAG(flags,BI_BROKEN);
 		deterioration=0;
 	}
-
-	STATIC_ASSERT(offsetof(ProtoItem,UserData)==228);
 }
 #endif
 
-void Item::SetMode(BYTE mode)
+void Item::SetMode(uchar mode)
 {
 	if(!IsWeapon())
 	{
@@ -353,8 +351,8 @@ void Item::SetMode(BYTE mode)
 	}
 	else
 	{
-		BYTE use=(mode&0xF);
-		BYTE aim=(mode>>4);
+		uchar use=(mode&0xF);
+		uchar aim=(mode>>4);
 
 		switch(use)
 		{
@@ -372,9 +370,9 @@ void Item::SetMode(BYTE mode)
 	Data.Mode=mode;
 }
 
-DWORD Item::GetCost1st()
+uint Item::GetCost1st()
 {
-	DWORD cost=(Data.Cost?Data.Cost:Proto->Cost);
+	uint cost=(Data.Cost?Data.Cost:Proto->Cost);
 	//if(IsDeteriorable()) cost-=cost*GetWearProc()/100;
 	if(IsWeapon() && Data.TechInfo.AmmoCount)
 	{
@@ -390,7 +388,7 @@ void Item::SetLexems(const char* lexems)
 {
 	if(lexems)
 	{
-		DWORD len=strlen(lexems);
+		uint len=strlen(lexems);
 		if(!len)
 		{
 			SAFEDELA(PLexems);
@@ -422,7 +420,7 @@ void Item::WeapLoadHolder()
 }
 
 #ifdef FONLINE_SERVER
-void Item::ContAddItem(Item*& item, DWORD special_id)
+void Item::ContAddItem(Item*& item, uint special_id)
 {
 	if(!IsContainer() || !item) return;
 
@@ -461,7 +459,7 @@ void Item::ContSetItem(Item* item)
 
 	if(std::find(ChildItems->begin(),ChildItems->end(),item)!=ChildItems->end())
 	{
-		WriteLog(__FUNCTION__" - Item already added!\n");
+		WriteLog(_FUNC_," - Item already added!\n");
 		return;
 	}
 
@@ -474,17 +472,17 @@ void Item::ContEraseItem(Item* item)
 {
 	if(!IsContainer())
 	{
-		WriteLog(__FUNCTION__" - Item is not container.\n");
+		WriteLog(_FUNC_," - Item is not container.\n");
 		return;
 	}
 	if(!ChildItems)
 	{
-		WriteLog(__FUNCTION__" - Container items null ptr.\n");
+		WriteLog(_FUNC_," - Container items null ptr.\n");
 		return;
 	}
 	if(!item)
 	{
-		WriteLog(__FUNCTION__" - Item null ptr.\n");
+		WriteLog(_FUNC_," - Item null ptr.\n");
 		return;
 	}
 
@@ -492,14 +490,14 @@ void Item::ContEraseItem(Item* item)
 	if(it!=ChildItems->end())
 		ChildItems->erase(it);
 	else
-		WriteLog(__FUNCTION__" - Item not found, id<%u>, pid<%u>, container<%u>.\n",item->GetId(),item->GetProtoId(),GetId());
+		WriteLog(_FUNC_," - Item not found, id<%u>, pid<%u>, container<%u>.\n",item->GetId(),item->GetProtoId(),GetId());
 
 	item->Accessory=0xd3;
 
 	if(ChildItems->empty()) SAFEDEL(ChildItems);
 }
 
-Item* Item::ContGetItem(DWORD item_id, bool skip_hide)
+Item* Item::ContGetItem(uint item_id, bool skip_hide)
 {
 	if(!IsContainer() || !ChildItems || !item_id) return NULL;
 
@@ -531,37 +529,37 @@ void Item::ContGetAllItems(ItemPtrVec& items, bool skip_hide, bool sync_lock)
 }
 
 #pragma MESSAGE("Add explicit sync lock.")
-Item* Item::ContGetItemByPid(WORD pid, DWORD special_id)
+Item* Item::ContGetItemByPid(ushort pid, uint special_id)
 {
 	if(!IsContainer() || !ChildItems) return NULL;
 
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(item->GetProtoId()==pid && (special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id))
+		if(item->GetProtoId()==pid && (special_id==uint(-1) || item->ACC_CONTAINER.SpecialId==special_id))
 		{
 			SYNC_LOCK(item);
 			return item;
 		}
 	}
-	return NULL;	
+	return NULL;
 }
 
-void Item::ContGetItems(ItemPtrVec& items, DWORD special_id, bool sync_lock)
+void Item::ContGetItems(ItemPtrVec& items, uint special_id, bool sync_lock)
 {
 	if(!IsContainer() || !ChildItems) return;
 
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id) items.push_back(item);
+		if(special_id==uint(-1) || item->ACC_CONTAINER.SpecialId==special_id) items.push_back(item);
 	}
 
 #pragma MESSAGE("Recheck after synchronization.")
 	if(sync_lock && LogicMT) for(ItemPtrVecIt it=items.begin(),end=items.end();it!=end;++it) SYNC_LOCK(*it);
 }
 
-int Item::ContGetFreeVolume(DWORD special_id)
+int Item::ContGetFreeVolume(uint special_id)
 {
 	if(!IsContainer()) return 0;
 
@@ -572,7 +570,7 @@ int Item::ContGetFreeVolume(DWORD special_id)
 	for(ItemPtrVecIt it=ChildItems->begin(),end=ChildItems->end();it!=end;++it)
 	{
 		Item* item=*it;
-		if(special_id==-1 || item->ACC_CONTAINER.SpecialId==special_id) cur_volume+=item->GetVolume();
+		if(special_id==uint(-1) || item->ACC_CONTAINER.SpecialId==special_id) cur_volume+=item->GetVolume();
 	}
 	return max_volume-cur_volume;
 }
@@ -582,7 +580,7 @@ bool Item::ContIsItems()
 	return ChildItems && ChildItems->size();
 }
 
-Item* Item::GetChild(DWORD child_index)
+Item* Item::GetChild(uint child_index)
 {
 	if(child_index>=ITEM_MAX_CHILDS || !Proto->ChildPid[child_index]) return NULL;
 
@@ -610,12 +608,12 @@ Item* Item::GetChild(DWORD child_index)
 #include "ResourceManager.h"
 #include "SpriteManager.h"
 
-DWORD ProtoItem::GetCurSprId()
+uint ProtoItem::GetCurSprId()
 {
 	AnyFrames* anim=ResMngr.GetItemAnim(PicMap,Dir);
 	if(!anim) return 0;
 
-	DWORD beg=0,end=0;
+	uint beg=0,end=0;
 	if(FLAG(Flags,ITEM_SHOW_ANIM)) end=anim->CntFrm-1;
 	if(FLAG(Flags,ITEM_SHOW_ANIM_EXT))
 	{
@@ -626,17 +624,17 @@ DWORD ProtoItem::GetCurSprId()
 	if(beg>=anim->CntFrm) beg=anim->CntFrm-1;
 	if(end>=anim->CntFrm) end=anim->CntFrm-1;
 	if(beg>end) std::swap(beg,end);
-	DWORD count=end-beg+1;
-	DWORD ticks=anim->Ticks/anim->CntFrm*count;
+	uint count=end-beg+1;
+	uint ticks=anim->Ticks/anim->CntFrm*count;
 	return anim->Ind[beg+((Timer::GameTick()%ticks)*100/ticks)*count/100];
 }
 
-DWORD Item::GetCurSprId()
+uint Item::GetCurSprId()
 {
 	AnyFrames* anim=ResMngr.GetItemAnim(GetPicMap(),Proto->Dir);
 	if(!anim) return 0;
 
-	DWORD beg=0,end=0;
+	uint beg=0,end=0;
 	if(IsShowAnim()) end=anim->CntFrm-1;
 	if(IsShowAnimExt())
 	{
@@ -647,8 +645,8 @@ DWORD Item::GetCurSprId()
 	if(beg>=anim->CntFrm) beg=anim->CntFrm-1;
 	if(end>=anim->CntFrm) end=anim->CntFrm-1;
 	if(beg>end) std::swap(beg,end);
-	DWORD count=end-beg+1;
-	DWORD ticks=anim->Ticks/anim->CntFrm*count;
+	uint count=end-beg+1;
+	uint ticks=anim->Ticks/anim->CntFrm*count;
 	return anim->Ind[beg+((Timer::GameTick()%ticks)*100/ticks)*count/100];
 }
 #endif

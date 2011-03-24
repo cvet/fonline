@@ -30,18 +30,18 @@ public:
 	void TryExit();
 	bool IsScroll(){return GameOpt.ScrollMouseUp || GameOpt.ScrollMouseRight || GameOpt.ScrollMouseDown || GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybUp || GameOpt.ScrollKeybRight || GameOpt.ScrollKeybDown || GameOpt.ScrollKeybLeft;}
 	void ProcessMouseScroll();
-	void ProcessKeybScroll(bool down, BYTE dik);
+	void ProcessKeybScroll(bool down, uchar dik);
 	void DropScroll(){GameOpt.ScrollMouseUp=false;GameOpt.ScrollMouseRight=false;GameOpt.ScrollMouseDown=false;GameOpt.ScrollMouseLeft=false;GameOpt.ScrollKeybUp=false;GameOpt.ScrollKeybRight=false;GameOpt.ScrollKeybDown=false;GameOpt.ScrollKeybLeft=false;}
 	bool IsCurInWindow();
 	int MainLoop();
 	void NetDisconnect();
-	WORD NetState;
+	ushort NetState;
 	FOClient();
 	bool Active;
-	DWORD* UID1;
+	uint* UID1;
 
 	int ShowScreenType;
-	DWORD ShowScreenParam;
+	uint ShowScreenParam;
 	bool ShowScreenNeedAnswer;
 
 	int ScreenModeMain;
@@ -75,22 +75,22 @@ public:
 	void ParseMouse();
 
 	char* ComBuf;
-	DWORD ComLen;
+	uint ComLen;
 	BufferManager Bin;
 	BufferManager Bout;
 	z_stream ZStream;
 	bool ZStreamOk;
-	DWORD BytesReceive,BytesRealReceive,BytesSend;
+	uint BytesReceive,BytesRealReceive,BytesSend;
 	SOCKADDR_IN SockAddr,ProxyAddr;
 	SOCKET Sock;
 	fd_set SockSet,SockSetErr;
-	DWORD* UID0;
+	uint* UID0;
 	bool UIDFail;
 	Item SomeItem;
 	int InitNetReason;
 
 	bool InitNet();
-	bool FillSockAddr(SOCKADDR_IN& saddr, const char* host, WORD port);
+	bool FillSockAddr(SOCKADDR_IN& saddr, const char* host, ushort port);
 	bool NetConnect();
 	void ParseSocket();
 	int NetInput(bool unpack);
@@ -99,41 +99,41 @@ public:
 
 	void Net_SendLogIn(const char* name, const char* pass);
 	void Net_SendCreatePlayer(CritterCl* newcr);
-	void Net_SendSaveLoad(bool save, const char* fname, ByteVec* pic_data);
-	void Net_SendUseSkill(WORD skill, CritterCl* cr);
-	void Net_SendUseSkill(WORD skill, ItemHex* item);
-	void Net_SendUseSkill(WORD skill, Item* item);
-	void Net_SendUseItem(BYTE ap, DWORD item_id, WORD item_pid, BYTE rate, BYTE target_type, DWORD target_id, WORD target_pid, DWORD param);
-	void Net_SendPickItem(WORD targ_x, WORD targ_y, WORD pid);
-	void Net_SendPickCritter(DWORD crid, BYTE pick_type);
-	void Net_SendChangeItem(BYTE ap, DWORD item_id, BYTE from_slot, BYTE to_slot, DWORD count);
-	void Net_SendItemCont(BYTE transfer_type, DWORD cont_id, DWORD item_id, DWORD count, BYTE take_flags);
+	void Net_SendSaveLoad(bool save, const char* fname, UCharVec* pic_data);
+	void Net_SendUseSkill(ushort skill, CritterCl* cr);
+	void Net_SendUseSkill(ushort skill, ItemHex* item);
+	void Net_SendUseSkill(ushort skill, Item* item);
+	void Net_SendUseItem(uchar ap, uint item_id, ushort item_pid, uchar rate, uchar target_type, uint target_id, ushort target_pid, uint param);
+	void Net_SendPickItem(ushort targ_x, ushort targ_y, ushort pid);
+	void Net_SendPickCritter(uint crid, uchar pick_type);
+	void Net_SendChangeItem(uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count);
+	void Net_SendItemCont(uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags);
 	void Net_SendRateItem();
 	void Net_SendSortValueItem(Item* item);
-	void Net_SendTalk(BYTE is_npc, DWORD id_to_talk, BYTE answer);
-	void Net_SendSayNpc(BYTE is_npc, DWORD id_to_talk, const char* str);
-	void Net_SendBarter(DWORD npc_id, ItemVec& cont_sale, ItemVec& cont_buy);
+	void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
+	void Net_SendSayNpc(uchar is_npc, uint id_to_talk, const char* str);
+	void Net_SendBarter(uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy);
 	void Net_SendGetGameInfo();
-	void Net_SendGiveGlobalInfo(BYTE info_flags);
-	void Net_SendRuleGlobal(BYTE command, DWORD param1=0, DWORD param2=0);
-	void Net_SendGiveMap(bool automap, WORD map_pid, DWORD loc_id, DWORD tiles_hash, DWORD walls_hash, DWORD scen_hash);
+	void Net_SendGiveGlobalInfo(uchar info_flags);
+	void Net_SendRuleGlobal(uchar command, uint param1=0, uint param2=0);
+	void Net_SendGiveMap(bool automap, ushort map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash);
 	void Net_SendLoadMapOk();
 	void Net_SendCommand(char* str);
-	void Net_SendText(const char* send_str, BYTE how_say);
+	void Net_SendText(const char* send_str, uchar how_say);
 	void Net_SendDir();
-    void Net_SendMove(ByteVec steps);
-	void Net_SendLevelUp(WORD perk_up);
-	void Net_SendCraftAsk(DwordVec numbers);
-	void Net_SendCraft(DWORD craft_num);
-	void Net_SendPing(BYTE ping);
-	void Net_SendPlayersBarter(BYTE barter, DWORD param, DWORD param_ext);
-	void Net_SendScreenAnswer(DWORD answer_i, const char* answer_s);
+    void Net_SendMove(UCharVec steps);
+	void Net_SendLevelUp(ushort perk_up);
+	void Net_SendCraftAsk(UIntVec numbers);
+	void Net_SendCraft(uint craft_num);
+	void Net_SendPing(uchar ping);
+	void Net_SendPlayersBarter(uchar barter, uint param, uint param_ext);
+	void Net_SendScreenAnswer(uint answer_i, const char* answer_s);
 	void Net_SendGetScores();
 	void Net_SendSetUserHoloStr(Item* holodisk, const char* title, const char* text);
-	void Net_SendGetUserHoloStr(DWORD str_num);
-	void Net_SendCombat(BYTE type, int val);
-	void Net_SendRunScript(bool unsafe, const char* func_name, int p0, int p1, int p2, const char* p3, DwordVec& p4);
-	void Net_SendKarmaVoting(DWORD crid, bool val_up);
+	void Net_SendGetUserHoloStr(uint str_num);
+	void Net_SendCombat(uchar type, int val);
+	void Net_SendRunScript(bool unsafe, const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4);
+	void Net_SendKarmaVoting(uint crid, bool val_up);
 	void Net_SendRefereshMe();
 
 	void Net_OnLoginSuccess();
@@ -205,21 +205,21 @@ public:
 	void Net_OnCheckUID4();
 	void Net_OnViewMap();
 
-	void OnText(const char* str, DWORD crid, int how_say, WORD intellect);
-	void OnMapText(const char* str, WORD hx, WORD hy, DWORD color, WORD intellect);
+	void OnText(const char* str, uint crid, int how_say, ushort intellect);
+	void OnMapText(const char* str, ushort hx, ushort hy, uint color, ushort intellect);
 
 	void WaitPing();
 
 	bool SaveLogFile();
 	bool SaveScreenshot();
 
-	ByteVec MoveDirs;
-	WORD MoveLastHx,MoveLastHy;
-	WORD TargetX,TargetY;
+	UCharVec MoveDirs;
+	ushort MoveLastHx,MoveLastHy;
+	ushort TargetX,TargetY;
 	bool GetMouseHex();
 
-	DWORD PingTime,PingTick,PingCallTick;
-	DWORD FPS;
+	uint PingTime,PingTick,PingCallTick;
+	uint FPS;
 
 	// Sound
 	void SoundProcess();
@@ -228,9 +228,9 @@ public:
 	LanguagePack CurLang;
 	FOMsg* MsgText,*MsgDlg,*MsgItem,*MsgGame,*MsgGM,*MsgCombat,*MsgQuest,*MsgHolo,*MsgUserHolo,*MsgCraft,*MsgInternal;
 
-	const char* GetHoloText(DWORD str_num);
-	const char* FmtGameText(DWORD str_num, ...);
-	const char* FmtCombatText(DWORD str_num, ...);
+	const char* GetHoloText(uint str_num);
+	const char* FmtGameText(uint str_num, ...);
+	const char* FmtCombatText(uint str_num, ...);
 
 #define DESC_INVENTORY_MAIN    (0)
 #define DESC_INVENTORY_SPECIAL (1)
@@ -257,7 +257,7 @@ public:
 
 	void ParseIntellectWords(char* words, PCharPairVec& text);
 	PCharPairVecIt FindIntellectWord(const char* word, PCharPairVec& text, Randomizer& rnd);
-	void FmtTextIntellect(char* str, WORD intellect);
+	void FmtTextIntellect(char* str, ushort intellect);
 
 #define SMTH_NONE         (0)
 #define SMTH_CRITTER      (1)
@@ -267,7 +267,7 @@ public:
 	{
 	private:
 		int smthType;
-		DWORD smthId;
+		uint smthId;
 		int smthParam;
 	public:
 		SmthSelected(){Clear();}
@@ -278,10 +278,10 @@ public:
 		bool IsCritter(){return smthType==SMTH_CRITTER;}
 		bool IsItem(){return smthType==SMTH_ITEM;}
 		bool IsContItem(){return smthType==SMTH_CONT_ITEM;}
-		void SetCritter(DWORD id){smthType=SMTH_CRITTER;smthId=id;smthParam=0;}
-		void SetItem(DWORD id){smthType=SMTH_ITEM;smthId=id;smthParam=0;}
-		void SetContItem(DWORD id, int cont_type){smthType=SMTH_CONT_ITEM;smthId=id;smthParam=cont_type;}
-		DWORD GetId(){return smthId;}
+		void SetCritter(uint id){smthType=SMTH_CRITTER;smthId=id;smthParam=0;}
+		void SetItem(uint id){smthType=SMTH_ITEM;smthId=id;smthParam=0;}
+		void SetContItem(uint id, int cont_type){smthType=SMTH_CONT_ITEM;smthId=id;smthParam=cont_type;}
+		uint GetId(){return smthId;}
 		int GetParam(){return smthParam;}
 	};
 	SmthSelected TargetSmth;
@@ -289,11 +289,11 @@ public:
 
 	struct ActionEvent
 	{
-		DWORD Type;
-		DWORD Param[6];
+		uint Type;
+		uint Param[6];
 		bool operator==(const ActionEvent& r){return Type==r.Type && Param[0]==r.Param[0] && Param[1]==r.Param[1] && Param[2]==r.Param[2] && Param[3]==r.Param[3] && Param[4]==r.Param[4] && Param[4]==r.Param[5];}
 		ActionEvent(){}
-		ActionEvent(DWORD type, DWORD param0, DWORD param1, DWORD param2, DWORD param3, DWORD param4, DWORD param5):
+		ActionEvent(uint type, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5):
 			Type(type){Param[0]=param0;Param[1]=param1;Param[2]=param2;Param[3]=param3;Param[4]=param4;Param[5]=param5;}
 		ActionEvent(const ActionEvent& r){memcpy(this,&r,sizeof(ActionEvent));}
 	};
@@ -302,14 +302,14 @@ public:
 
 	ActionEventVec ChosenAction;
 	void AddAction(bool to_front, ActionEvent& act);
-	void SetAction(DWORD type_action, DWORD param0 = 0, DWORD param1 = 0, DWORD param2 = 0, DWORD param3 = 0, DWORD param4 = 0, DWORD param5 = 0);
+	void SetAction(uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0);
 	void SetAction(ActionEvent& act);
-	void AddActionBack(DWORD type_action, DWORD param0 = 0, DWORD param1 = 0, DWORD param2 = 0, DWORD param3 = 0, DWORD param4 = 0, DWORD param5 = 0);
+	void AddActionBack(uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0);
 	void AddActionBack(ActionEvent& act);
-	void AddActionFront(DWORD type_action, DWORD param0 = 0, DWORD param1 = 0, DWORD param2 = 0, DWORD param3 = 0, DWORD param4 = 0, DWORD param5 = 0);
+	void AddActionFront(uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0);
 	void EraseFrontAction();
 	void EraseBackAction();
-	bool IsAction(DWORD type_action);
+	bool IsAction(uint type_action);
 	void ChosenChangeSlot();
 	void CrittersProcess();
 	void TryPickItemOnGround();
@@ -349,9 +349,9 @@ public:
 	struct IfaceAnim
 	{
 		AnyFrames* Frames;
-		WORD Flags;
-		DWORD CurSpr;
-		DWORD LastTick;
+		ushort Flags;
+		uint CurSpr;
+		uint LastTick;
 		int ResType;
 
 		IfaceAnim(AnyFrames* frm, int res_type):Frames(frm),Flags(0),CurSpr(0),LastTick(Timer::GameTick()),ResType(res_type){}
@@ -363,17 +363,17 @@ public:
 #define ANIMRUN_FROM_END       (0x0002)
 #define ANIMRUN_CYCLE          (0x0004)
 #define ANIMRUN_STOP           (0x0008)
-#define ANIMRUN_SET_FRM(frm)   ((DWORD(BYTE((frm)+1)))<<16)
+#define ANIMRUN_SET_FRM(frm)   ((uint(uchar((frm)+1)))<<16)
 
 	IfaceAnimVec Animations;
 
-	DWORD AnimLoad(DWORD name_hash, BYTE dir, int res_type);
-	DWORD AnimLoad(const char* fname, int path_type, int res_type);
-	DWORD AnimGetCurSpr(DWORD anim_id);
-	DWORD AnimGetCurSprCnt(DWORD anim_id);
-	DWORD AnimGetSprCount(DWORD anim_id);
-	AnyFrames* AnimGetFrames(DWORD anim_id);
-	void AnimRun(DWORD anim_id, DWORD flags);
+	uint AnimLoad(uint name_hash, uchar dir, int res_type);
+	uint AnimLoad(const char* fname, int path_type, int res_type);
+	uint AnimGetCurSpr(uint anim_id);
+	uint AnimGetCurSprCnt(uint anim_id);
+	uint AnimGetSprCount(uint anim_id);
+	AnyFrames* AnimGetFrames(uint anim_id);
+	void AnimRun(uint anim_id, uint flags);
 	void AnimProcess();
 	void AnimFree(int res_type);
 
@@ -382,11 +382,11 @@ public:
 /************************************************************************/
 	struct ScreenEffect
 	{
-		DWORD BeginTick;
-		DWORD Time;
-		DWORD StartColor;
-		DWORD EndColor;
-		ScreenEffect(DWORD begin_tick, DWORD time, DWORD col, DWORD end_col):BeginTick(begin_tick),Time(time),StartColor(col),EndColor(end_col){}
+		uint BeginTick;
+		uint Time;
+		uint StartColor;
+		uint EndColor;
+		ScreenEffect(uint begin_tick, uint time, uint col, uint end_col):BeginTick(begin_tick),Time(time),StartColor(col),EndColor(end_col){}
 	};
 	typedef vector<ScreenEffect> ScreenEffectVec;
 	typedef vector<ScreenEffect>::iterator ScreenEffectVecIt;
@@ -396,17 +396,17 @@ public:
 	// Quake
 	int ScreenOffsX,ScreenOffsY;
 	float ScreenOffsXf,ScreenOffsYf,ScreenOffsStep;
-	DWORD ScreenOffsNextTick;
+	uint ScreenOffsNextTick;
 	// Mirror
 	LPDIRECT3DTEXTURE ScreenMirrorTexture;
 	int ScreenMirrorX,ScreenMirrorY;
-	DWORD ScreenMirrorEndTick;
+	uint ScreenMirrorEndTick;
 	bool ScreenMirrorStart;
 
 	void ScreenFadeIn(){ScreenFade(1000,D3DCOLOR_ARGB(0,0,0,0),D3DCOLOR_ARGB(255,0,0,0),false);}
 	void ScreenFadeOut(){ScreenFade(1000,D3DCOLOR_ARGB(255,0,0,0),D3DCOLOR_ARGB(0,0,0,0),false);}
-	void ScreenFade(DWORD time, DWORD from_color, DWORD to_color, bool push_back);
-	void ScreenQuake(int noise, DWORD time);
+	void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
+	void ScreenQuake(int noise, uint time);
 	void ScreenMirror();
 	void ProcessScreenEffectFading();
 	void ProcessScreenEffectQuake();
@@ -417,13 +417,13 @@ public:
 /************************************************************************/
 	bool ReloadScripts();
 	int ScriptGetHitProc(CritterCl* cr, int hit_location);
-	void DrawIfaceLayer(DWORD layer);
+	void DrawIfaceLayer(uint layer);
 	static bool PragmaCallbackCrData(const char* text);
 
 	struct SScriptFunc
 	{
-		static int* DataRef_Index(CritterClPtr& cr, DWORD index);
-		static int DataVal_Index(CritterClPtr& cr, DWORD index);
+		static int* DataRef_Index(CritterClPtr& cr, uint index);
+		static int DataVal_Index(CritterClPtr& cr, uint index);
 
 		static bool Crit_IsChosen(CritterCl* cr);
 		static bool Crit_IsPlayer(CritterCl* cr);
@@ -435,160 +435,160 @@ public:
 		static bool Crit_IsBusy(CritterCl* cr);
 
 		static bool Crit_IsAnim3d(CritterCl* cr);
-		static bool Crit_IsAnimAviable(CritterCl* cr, DWORD anim1, DWORD anim2);
+		static bool Crit_IsAnimAviable(CritterCl* cr, uint anim1, uint anim2);
 		static bool Crit_IsAnimPlaying(CritterCl* cr);
-		static DWORD Crit_GetAnim1(CritterCl* cr);
-		static void Crit_Animate(CritterCl* cr, DWORD anim1, DWORD anim2);
-		static void Crit_AnimateEx(CritterCl* cr, DWORD anim1, DWORD anim2, Item* item);
+		static uint Crit_GetAnim1(CritterCl* cr);
+		static void Crit_Animate(CritterCl* cr, uint anim1, uint anim2);
+		static void Crit_AnimateEx(CritterCl* cr, uint anim1, uint anim2, Item* item);
 		static void Crit_ClearAnim(CritterCl* cr);
-		static void Crit_Wait(CritterCl* cr, DWORD ms);
-		static DWORD Crit_ItemsCount(CritterCl* cr);
-		static DWORD Crit_ItemsWeight(CritterCl* cr);
-		static DWORD Crit_ItemsVolume(CritterCl* cr);
-		static DWORD Crit_CountItem(CritterCl* cr, WORD proto_id);
-		static DWORD Crit_CountItemByType(CritterCl* cr, BYTE type);
-		static Item* Crit_GetItem(CritterCl* cr, WORD proto_id, int slot);
-		static DWORD Crit_GetItems(CritterCl* cr, int slot, CScriptArray* items);
-		static DWORD Crit_GetItemsByType(CritterCl* cr, int type, CScriptArray* items);
-		static ProtoItem* Crit_GetSlotProto(CritterCl* cr, int slot, BYTE& mode);
+		static void Crit_Wait(CritterCl* cr, uint ms);
+		static uint Crit_ItemsCount(CritterCl* cr);
+		static uint Crit_ItemsWeight(CritterCl* cr);
+		static uint Crit_ItemsVolume(CritterCl* cr);
+		static uint Crit_CountItem(CritterCl* cr, ushort proto_id);
+		static uint Crit_CountItemByType(CritterCl* cr, uchar type);
+		static Item* Crit_GetItem(CritterCl* cr, ushort proto_id, int slot);
+		static uint Crit_GetItems(CritterCl* cr, int slot, CScriptArray* items);
+		static uint Crit_GetItemsByType(CritterCl* cr, int type, CScriptArray* items);
+		static ProtoItem* Crit_GetSlotProto(CritterCl* cr, int slot, uchar& mode);
 		static void Crit_SetVisible(CritterCl* cr, bool visible);
 		static bool Crit_GetVisible(CritterCl* cr);
-		static void Crit_set_ContourColor(CritterCl* cr, DWORD value);
-		static DWORD Crit_get_ContourColor(CritterCl* cr);
-		static DWORD Crit_GetMultihex(CritterCl* cr);
+		static void Crit_set_ContourColor(CritterCl* cr, uint value);
+		static uint Crit_get_ContourColor(CritterCl* cr);
+		static uint Crit_GetMultihex(CritterCl* cr);
 		static bool Crit_IsTurnBasedTurn(CritterCl* cr);
 
 		static bool Item_IsStackable(Item* item);
 		static bool Item_IsDeteriorable(Item* item);
-		static DWORD Item_GetScriptId(Item* item);
-		static BYTE Item_GetType(Item* item);
-		static WORD Item_GetProtoId(Item* item);
-		static DWORD Item_GetCount(Item* item);
-		static bool Item_GetMapPosition(Item* item, WORD& hx, WORD& hy);
-		static void Item_Animate(Item* item, BYTE from_frame, BYTE to_frame);
-		static Item* Item_GetChild(Item* item, DWORD childIndex);
+		static uint Item_GetScriptId(Item* item);
+		static uchar Item_GetType(Item* item);
+		static ushort Item_GetProtoId(Item* item);
+		static uint Item_GetCount(Item* item);
+		static bool Item_GetMapPosition(Item* item, ushort& hx, ushort& hy);
+		static void Item_Animate(Item* item, uchar from_frame, uchar to_frame);
+		static Item* Item_GetChild(Item* item, uint childIndex);
 
 		static CritterCl* Global_GetChosen();
-		static DWORD Global_GetChosenActions(CScriptArray* actions);
+		static uint Global_GetChosenActions(CScriptArray* actions);
 		static void Global_SetChosenActions(CScriptArray* actions);
-		static Item* Global_GetItem(DWORD item_id);
-		static DWORD Global_GetCrittersDistantion(CritterCl* cr1, CritterCl* cr2);
-		static CritterCl* Global_GetCritter(DWORD critter_id);
-		static DWORD Global_GetCritters(WORD hx, WORD hy, DWORD radius, int find_type, CScriptArray* critters);
-		static DWORD Global_GetCrittersByPids(WORD pid, int find_type, CScriptArray* critters);
-		static DWORD Global_GetCrittersInPath(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters);
-		static DWORD Global_GetCrittersInPathBlock(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float angle, DWORD dist, int find_type, CScriptArray* critters, WORD& pre_block_hx, WORD& pre_block_hy, WORD& block_hx, WORD& block_hy);
-		static void Global_GetHexInPath(WORD from_hx, WORD from_hy, WORD& to_hx, WORD& to_hy, float angle, DWORD dist);
-		static DWORD Global_GetPathLengthHex(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, DWORD cut);
-		static DWORD Global_GetPathLengthCr(CritterCl* cr, WORD to_hx, WORD to_hy, DWORD cut);
-		static void Global_FlushScreen(DWORD from_color, DWORD to_color, DWORD ms);
-		static void Global_QuakeScreen(DWORD noise, DWORD ms);
+		static Item* Global_GetItem(uint item_id);
+		static uint Global_GetCrittersDistantion(CritterCl* cr1, CritterCl* cr2);
+		static CritterCl* Global_GetCritter(uint critter_id);
+		static uint Global_GetCritters(ushort hx, ushort hy, uint radius, int find_type, CScriptArray* critters);
+		static uint Global_GetCrittersByPids(ushort pid, int find_type, CScriptArray* critters);
+		static uint Global_GetCrittersInPath(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters);
+		static uint Global_GetCrittersInPathBlock(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy);
+		static void Global_GetHexInPath(ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist);
+		static uint Global_GetPathLengthHex(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut);
+		static uint Global_GetPathLengthCr(CritterCl* cr, ushort to_hx, ushort to_hy, uint cut);
+		static void Global_FlushScreen(uint from_color, uint to_color, uint ms);
+		static void Global_QuakeScreen(uint noise, uint ms);
 		static bool Global_PlaySound(CScriptString& sound_name);
-		static bool Global_PlaySoundType(BYTE sound_type, BYTE sound_type_ext, BYTE sound_id, BYTE sound_id_ext);
-		static bool Global_PlayMusic(CScriptString& music_name, DWORD pos, DWORD repeat);
+		static bool Global_PlaySoundType(uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext);
+		static bool Global_PlayMusic(CScriptString& music_name, uint pos, uint repeat);
 		static void Global_PlayVideo(CScriptString& video_name, bool can_stop);
 		static bool Global_IsTurnBased();
-		static DWORD Global_GetTurnBasedTime();
-		static WORD Global_GetCurrentMapPid();
-		static DWORD Global_GetMessageFilters(CScriptArray* filters);
+		static uint Global_GetTurnBasedTime();
+		static ushort Global_GetCurrentMapPid();
+		static uint Global_GetMessageFilters(CScriptArray* filters);
 		static void Global_SetMessageFilters(CScriptArray* filters);
 		static void Global_Message(CScriptString& msg);
 		static void Global_MessageType(CScriptString& msg, int type);
-		static void Global_MessageMsg(int text_msg, DWORD str_num);
-		static void Global_MessageMsgType(int text_msg, DWORD str_num, int type);
-		static void Global_MapMessage(CScriptString& text, WORD hx, WORD hy, DWORD ms, DWORD color, bool fade, int ox, int oy);
-		static CScriptString* Global_GetMsgStr(int text_msg, DWORD str_num);
-		static CScriptString* Global_GetMsgStrSkip(int text_msg, DWORD str_num, DWORD skip_count);
-		static DWORD Global_GetMsgStrNumUpper(int text_msg, DWORD str_num);
-		static DWORD Global_GetMsgStrNumLower(int text_msg, DWORD str_num);
-		static DWORD Global_GetMsgStrCount(int text_msg, DWORD str_num);
-		static bool Global_IsMsgStr(int text_msg, DWORD str_num);
+		static void Global_MessageMsg(int text_msg, uint str_num);
+		static void Global_MessageMsgType(int text_msg, uint str_num, int type);
+		static void Global_MapMessage(CScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy);
+		static CScriptString* Global_GetMsgStr(int text_msg, uint str_num);
+		static CScriptString* Global_GetMsgStrSkip(int text_msg, uint str_num, uint skip_count);
+		static uint Global_GetMsgStrNumUpper(int text_msg, uint str_num);
+		static uint Global_GetMsgStrNumLower(int text_msg, uint str_num);
+		static uint Global_GetMsgStrCount(int text_msg, uint str_num);
+		static bool Global_IsMsgStr(int text_msg, uint str_num);
 		static CScriptString* Global_ReplaceTextStr(CScriptString& text, CScriptString& replace, CScriptString& str);
 		static CScriptString* Global_ReplaceTextInt(CScriptString& text, CScriptString& replace, int i);
 		static CScriptString* Global_FormatTags(CScriptString& text, CScriptString* lexems);
 		static int Global_GetSomeValue(int var);
-		static void Global_MoveScreen(WORD hx, WORD hy, DWORD speed);
+		static void Global_MoveScreen(ushort hx, ushort hy, uint speed);
 		static void Global_LockScreenScroll(CritterCl* cr);
-		static int Global_GetFog(WORD zone_x, WORD zone_y);
+		static int Global_GetFog(ushort zone_x, ushort zone_y);
 		static void Global_RefreshItemsCollection(int collection);
 		static int Global_GetScroll(int scroll_element);
 		static void Global_SetScroll(int scroll_element, int value);
-		static DWORD Global_GetDayTime(DWORD day_part);
-		static void Global_GetDayColor(DWORD day_part, BYTE& r, BYTE& g, BYTE& b);
+		static uint Global_GetDayTime(uint day_part);
+		static void Global_GetDayColor(uint day_part, uchar& r, uchar& g, uchar& b);
 
 		static CScriptString* Global_GetLastError();
 		static void Global_Log(CScriptString& text);
-		static ProtoItem* Global_GetProtoItem(WORD proto_id);
-		static DWORD Global_GetDistantion(WORD hex_x1, WORD hex_y1, WORD hex_x2, WORD hex_y2);
-		static BYTE Global_GetDirection(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy);
-		static BYTE Global_GetOffsetDir(WORD from_hx, WORD from_hy, WORD to_hx, WORD to_hy, float offset);
-		static DWORD Global_GetFullSecond(WORD year, WORD month, WORD day, WORD hour, WORD minute, WORD second);
-		static void Global_GetGameTime(DWORD full_second, WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second);
+		static ProtoItem* Global_GetProtoItem(ushort proto_id);
+		static uint Global_GetDistantion(ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2);
+		static uchar Global_GetDirection(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+		static uchar Global_GetOffsetDir(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset);
+		static uint Global_GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
+		static void Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second);
 		static bool Global_StrToInt(CScriptString& text, int& result);
-		static DWORD Global_GetTick(){return Timer::FastTick();}
-		static void Global_GetTime(WORD& year, WORD& month, WORD& day, WORD& day_of_week, WORD& hour, WORD& minute, WORD& second, WORD& milliseconds);
-		static bool Global_SetParameterGetBehaviour(DWORD index, CScriptString& func_name);
-		static bool Global_SetParameterChangeBehaviour(DWORD index, CScriptString& func_name);
-		static void Global_AllowSlot(BYTE index, CScriptString& ini_option);
-		static void Global_SetRegistrationParam(DWORD index, bool enabled);
-		static DWORD Global_GetAngelScriptProperty(int property);
-		static bool Global_SetAngelScriptProperty(int property, DWORD value);
-		static DWORD Global_GetStrHash(CScriptString* str);
+		static uint Global_GetTick(){return Timer::FastTick();}
+		static void Global_GetTime(ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds);
+		static bool Global_SetParameterGetBehaviour(uint index, CScriptString& func_name);
+		static bool Global_SetParameterChangeBehaviour(uint index, CScriptString& func_name);
+		static void Global_AllowSlot(uchar index, CScriptString& ini_option);
+		static void Global_SetRegistrationParam(uint index, bool enabled);
+		static uint Global_GetAngelScriptProperty(int property);
+		static bool Global_SetAngelScriptProperty(int property, uint value);
+		static uint Global_GetStrHash(CScriptString* str);
 		static bool Global_LoadDataFile(CScriptString& dat_name);
 		static int Global_GetConstantValue(int const_collection, CScriptString* name);
 		static CScriptString* Global_GetConstantName(int const_collection, int value);
 		static void Global_AddConstant(int const_collection, CScriptString* name, int value);
 		static bool Global_LoadConstants(int const_collection, CScriptString* file_name, int path_type);
-		static bool Global_IsCritterCanWalk(DWORD cr_type);
-		static bool Global_IsCritterCanRun(DWORD cr_type);
-		static bool Global_IsCritterCanRotate(DWORD cr_type);
-		static bool Global_IsCritterCanAim(DWORD cr_type);
-		static bool Global_IsCritterAnim1(DWORD cr_type, DWORD index);
-		static int Global_GetCritterAnimType(DWORD cr_type);
-		static DWORD Global_GetCritterAlias(DWORD cr_type);
-		static CScriptString* Global_GetCritterTypeName(DWORD cr_type);
-		static CScriptString* Global_GetCritterSoundName(DWORD cr_type);
-		static int Global_GetGlobalMapRelief(DWORD x, DWORD y);
+		static bool Global_IsCritterCanWalk(uint cr_type);
+		static bool Global_IsCritterCanRun(uint cr_type);
+		static bool Global_IsCritterCanRotate(uint cr_type);
+		static bool Global_IsCritterCanAim(uint cr_type);
+		static bool Global_IsCritterAnim1(uint cr_type, uint index);
+		static int Global_GetCritterAnimType(uint cr_type);
+		static uint Global_GetCritterAlias(uint cr_type);
+		static CScriptString* Global_GetCritterTypeName(uint cr_type);
+		static CScriptString* Global_GetCritterSoundName(uint cr_type);
+		static int Global_GetGlobalMapRelief(uint x, uint y);
 		static void Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 		static void Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 
-		static DWORD Global_LoadSprite(CScriptString& spr_name, int path_index);
-		static DWORD Global_LoadSpriteHash(DWORD name_hash, BYTE dir);
-		static int Global_GetSpriteWidth(DWORD spr_id, int spr_index);
-		static int Global_GetSpriteHeight(DWORD spr_id, int spr_index);
-		static DWORD Global_GetSpriteCount(DWORD spr_id);
+		static uint Global_LoadSprite(CScriptString& spr_name, int path_index);
+		static uint Global_LoadSpriteHash(uint name_hash, uchar dir);
+		static int Global_GetSpriteWidth(uint spr_id, int spr_index);
+		static int Global_GetSpriteHeight(uint spr_id, int spr_index);
+		static uint Global_GetSpriteCount(uint spr_id);
 		static void Global_GetTextInfo(CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines);
-		static void Global_DrawSprite(DWORD spr_id, int spr_index, int x, int y, DWORD color);
-		static void Global_DrawSpriteOffs(DWORD spr_id, int spr_index, int x, int y, DWORD color, bool offs);
-		static void Global_DrawSpriteSize(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color);
-		static void Global_DrawSpriteSizeOffs(DWORD spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, DWORD color, bool offs);
-		static void Global_DrawText(CScriptString& text, int x, int y, int w, int h, DWORD color, int font, int flags);
+		static void Global_DrawSprite(uint spr_id, int spr_index, int x, int y, uint color);
+		static void Global_DrawSpriteOffs(uint spr_id, int spr_index, int x, int y, uint color, bool offs);
+		static void Global_DrawSpriteSize(uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color);
+		static void Global_DrawSpriteSizeOffs(uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs);
+		static void Global_DrawText(CScriptString& text, int x, int y, int w, int h, uint color, int font, int flags);
 		static void Global_DrawPrimitive(int primitive_type, CScriptArray& data);
-		static void Global_DrawMapSprite(WORD hx, WORD hy, WORD proto_id, DWORD spr_id, int spr_index, int ox, int oy);
-		static void Global_DrawCritter2d(DWORD crtype, DWORD anim1, DWORD anim2, BYTE dir, int l, int t, int r, int b, bool scratch, bool center, DWORD color);
-		static void Global_DrawCritter3d(DWORD instance, DWORD crtype, DWORD anim1, DWORD anim2, CScriptArray* layers, CScriptArray* position, DWORD color);
+		static void Global_DrawMapSprite(ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy);
+		static void Global_DrawCritter2d(uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color);
+		static void Global_DrawCritter3d(uint instance, uint crtype, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color);
 
 		static void Global_ShowScreen(int screen, int p0, int p1, int p2);
 		static void Global_HideScreen(int screen, int p0, int p1, int p2);
 		static void Global_GetHardcodedScreenPos(int screen, int& x, int& y);
 		static void Global_DrawHardcodedScreen(int screen);
 		static int Global_GetKeybLang(){return Keyb::Lang;}
-		static bool Global_GetHexPos(WORD hx, WORD hy, int& x, int& y);
-		static bool Global_GetMonitorHex(int x, int y, WORD& hx, WORD& hy);
+		static bool Global_GetHexPos(ushort hx, ushort hy, int& x, int& y);
+		static bool Global_GetMonitorHex(int x, int y, ushort& hx, ushort& hy);
 		static Item* Global_GetMonitorItem(int x, int y);
 		static CritterCl* Global_GetMonitorCritter(int x, int y);
-		static WORD Global_GetMapWidth();
-		static WORD Global_GetMapHeight();
+		static ushort Global_GetMapWidth();
+		static ushort Global_GetMapHeight();
 		static int Global_GetCurrentCursor();
 		static int Global_GetLastCursor();
 		static void Global_ChangeCursor(int cursor);
-		static void Global_MoveHexByDir(WORD& hx, WORD& hy, BYTE dir, DWORD steps);
+		static void Global_MoveHexByDir(ushort& hx, ushort& hy, uchar dir, uint steps);
 		static bool Global_AppendIfaceIni(string& ini_name);
 		static CScriptString* Global_GetIfaceIniStr(CScriptString& key);
 		static bool Global_Load3dFile(CScriptString& fname, int path_type);
 		static void Global_WaitPing();
 		static bool Global_LoadFont(int font, CScriptString& font_fname);
-		static void Global_SetDefaultFont(int font, DWORD color);
+		static void Global_SetDefaultFont(int font, uint color);
 		static void Global_SetEffect(int effect_type, int effect_subtype, CScriptString* effect_name);
 		static void Global_RefreshMap(bool only_tiles, bool only_roof, bool only_light);
 
@@ -610,21 +610,21 @@ public:
 	IniParser IfaceIni;
 
 	bool AppendIfaceIni(const char* ini_name);
-	void AppendIfaceIni(BYTE* data, DWORD len);
+	void AppendIfaceIni(uchar* data, uint len);
 	int InitIface();
 	bool IfaceLoadRect(INTRECT& comp, const char* name);
 	void IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy);
 	void IfaceLoadSpr(AnyFrames*& comp, const char* name);
-	void IfaceLoadAnim(DWORD& comp, const char* name);
+	void IfaceLoadAnim(uint& comp, const char* name);
 	void IfaceFreeResources();
 
 	bool IsCurInRect(INTRECT& rect, int ax, int ay){return !rect.IsZero() && (GameOpt.MouseX>=rect[0]+ax && GameOpt.MouseY>=rect[1]+ay && GameOpt.MouseX<=rect[2]+ax && GameOpt.MouseY<=rect[3]+ay);}
 	bool IsCurInRect(INTRECT& rect){return !rect.IsZero() && (GameOpt.MouseX>=rect[0] && GameOpt.MouseY>=rect[1] && GameOpt.MouseX<=rect[2] && GameOpt.MouseY<=rect[3]);}
-	bool IsCurInRectNoTransp(DWORD spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,GameOpt.MouseX-rect.L-ax,GameOpt.MouseY-rect.T-ay,false);}
-	int GetSprCX(DWORD spr_id){SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id); return si?(si->Width/2)+si->OffsX:0;};
-	int GetSprCY(DWORD spr_id){SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id); return si?(si->Height/2)+si->OffsY:0;};
+	bool IsCurInRectNoTransp(uint spr_id,INTRECT& rect, int ax, int ay){return IsCurInRect(rect,ax,ay) && SprMngr.IsPixNoTransp(spr_id,GameOpt.MouseX-rect.L-ax,GameOpt.MouseY-rect.T-ay,false);}
+	int GetSprCX(uint spr_id){SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id); return si?(si->Width/2)+si->OffsX:0;};
+	int GetSprCY(uint spr_id){SpriteInfo* si=SprMngr.GetSpriteInfo(spr_id); return si?(si->Height/2)+si->OffsY:0;};
 
-	void DrawIndicator(INTRECT& rect, PointVec& points, DWORD color, int procent, DWORD& tick, bool is_vertical, bool from_top_or_left);
+	void DrawIndicator(INTRECT& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left);
 
 	// Initial state
 	ItemVec InvContInit;
@@ -635,12 +635,12 @@ public:
 	ItemVec BarterCont1o,BarterCont2,BarterCont2o;
 	ItemVec PupCont2;
 
-	DWORD GetCurContainerItemId(INTRECT& pos, int height, int scroll, ItemVec& cont);
-	void ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont, DWORD skip_id);
-	Item* GetContainerItem(ItemVec& cont, DWORD id);
+	uint GetCurContainerItemId(INTRECT& pos, int height, int scroll, ItemVec& cont);
+	void ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont, uint skip_id);
+	Item* GetContainerItem(ItemVec& cont, uint id);
 	void CollectContItems();
 	void ProcessItemsCollection(int collection, ItemVec& init_items, ItemVec& result);
-	void UpdateContLexems(ItemVec& cont, DWORD item_id, const char* lexems);
+	void UpdateContLexems(ItemVec& cont, uint item_id, const char* lexems);
 
 /************************************************************************/
 /* Console                                                              */
@@ -655,8 +655,8 @@ public:
 	int ConsoleLastKey;
 
 	void ConsoleDraw();
-	void ConsoleKeyDown(BYTE dik);
-	void ConsoleKeyUp(BYTE dik);
+	void ConsoleKeyDown(uchar dik);
+	void ConsoleKeyUp(uchar dik);
 	void ConsoleProcess();
 
 /************************************************************************/
@@ -668,7 +668,7 @@ public:
 
 	AnyFrames* InvPWMain,*InvPBOkDw,*InvPBOkUp,*InvPBScrUpDw,*InvPBScrUpUp,
 		*InvPBScrUpOff,*InvPBScrDwDw,*InvPBScrDwUp,*InvPBScrDwOff;
-	DWORD InvHoldId;
+	uint InvHoldId;
 	string InvItemInfo;
 	int InvItemInfoScroll,InvItemInfoMaxScroll;
 	int InvScroll;
@@ -704,7 +704,7 @@ public:
 	int UseX,UseY,UseVectX,UseVectY;
 	int UseScroll,UseHeightItem;
 	INTRECT UseWMain,UseWChosen,UseWInv,UseBScrUp,UseBScrDown,UseBCancel;
-	DWORD UseHoldId;
+	uint UseHoldId;
 	SmthSelected UseSelect;
 
 	void UseDraw();
@@ -718,10 +718,10 @@ public:
 /************************************************************************/
 	struct MapText 
 	{
-		WORD HexX,HexY;
-		DWORD StartTick,Tick;
+		ushort HexX,HexY;
+		uint StartTick,Tick;
 		string Text;
-		DWORD Color;
+		uint Color;
 		bool Fade;
 		INTRECT Rect;
 		INTRECT EndRect;
@@ -731,10 +731,10 @@ public:
 	typedef vector<MapText>::iterator MapTextVecIt;
 
 	MapTextVec GameMapTexts;
-	DWORD GameMouseStay;
+	uint GameMouseStay;
 
 	void GameDraw();
-	void GameKeyDown(BYTE dik);
+	void GameKeyDown(uchar dik);
 	void GameLMouseDown();
 	void GameLMouseUp();
 	void GameRMouseDown();
@@ -762,12 +762,12 @@ public:
 	int IntAimX,IntAimY;
 	int IntUseX,IntUseY;
 	AnyFrames* IntBCombatTurnPicDown,*IntBCombatEndPicDown;
-	DWORD IntWCombatAnim;
+	uint IntWCombatAnim;
 	INTRECT IntWCombat,IntBCombatTurn,IntBCombatEnd;
 
 	INTRECT IntWAmmoCount,IntWWearProcent,IntWAmmoCountStr,IntWWearProcentStr;
 	PointVec IntAmmoPoints,IntWearPoints;
-	DWORD IntAmmoTick,IntWearTick;
+	uint IntAmmoTick,IntWearTick;
 
 	void IntDraw();
 	int IntLMouseDown();
@@ -790,20 +790,20 @@ public:
 
 	bool LMenuActive;
 	bool LMenuTryActivated;
-	DWORD LMenuStartTime;
+	uint LMenuStartTime;
 	int LMenuX,LMenuY,LMenuRestoreCurX,LMenuRestoreCurY;
 	int LMenuNodeHeight;
-	ByteVec* LMenuCurNodes;
+	UCharVec* LMenuCurNodes;
 	int LMenuCurNode;
-	ByteVec LMenuCritNodes,LMenuScenNodes,LMenuNodes;
-	BYTE LMenuMode;
+	UCharVec LMenuCritNodes,LMenuScenNodes,LMenuNodes;
+	int LMenuMode;
 
 	bool IsLMenu();
 	void LMenuTryActivate();
 	void LMenuStayOff();
 	void LMenuTryCreate();
 	void LMenuCollect();
-	void LMenuSet(BYTE set_lmenu);
+	void LMenuSet(uchar set_lmenu);
 	void LMenuDraw();
 	void LMenuMouseMove();
 	void LMenuMouseUp();
@@ -819,7 +819,7 @@ public:
 		LogBReg,LogBRegText,LogBExit,LogBExitText,LogWChat,LogWVersion;
 
 	void LogDraw();
-	void LogKeyDown(BYTE dik);
+	void LogKeyDown(uchar dik);
 	void LogLMouseDown();
 	void LogLMouseUp();
 	void LogTryConnect();
@@ -830,20 +830,20 @@ public:
 	AnyFrames* DlgPMain,*DlgPAnsw,*DlgPBBarter,*DlgPBSay,*DlgAvatarPic;
 	int DlgNextAnswX,DlgNextAnswY;
 	int DlgCurAnsw,DlgHoldAnsw;
-	DWORD DlgCurAnswPage,DlgMaxAnswPage;
+	uint DlgCurAnswPage,DlgMaxAnswPage;
 	int DlgVectX,DlgVectY;
-	BYTE DlgIsNpc;
-	DWORD DlgNpcId;
-	DWORD DlgEndTick;
+	uchar DlgIsNpc;
+	uint DlgNpcId;
+	uint DlgEndTick;
 
 	struct Answer
 	{
-		DWORD Page;
+		uint Page;
 		INTRECT Position;
 		string Text;
 		int AnswerNum; // -1 prev page, -2 next page
 
-		Answer(DWORD page, INTRECT pos, string text, DWORD answer_num):Page(page),Position(pos),Text(text),AnswerNum(answer_num){}
+		Answer(uint page, INTRECT pos, string text, uint answer_num):Page(page),Position(pos),Text(text),AnswerNum(answer_num){}
 	};
 	vector<Answer> DlgAllAnswers,DlgAnswers;
 
@@ -862,22 +862,22 @@ public:
 		BarterBCont1ScrUp,BarterBCont2ScrUp,BarterBCont1oScrUp,BarterBCont2oScrUp,
 		BarterBCont1ScrDn,BarterBCont2ScrDn,BarterBCont1oScrDn,BarterBCont2oScrDn,
 		BarterWCost1,BarterWCost2,BarterWChosen,BarterWCritter;
-	DWORD BarterPlayerId;
+	uint BarterPlayerId;
 	int BarterCont1HeightItem,BarterCont2HeightItem,
 		BarterCont1oHeightItem,BarterCont2oHeightItem;
 	int BarterScroll1,BarterScroll2,BarterScroll1o,BarterScroll2o;
-	DWORD BarterHoldId;
-	DWORD BarterCount;
-	WORD BarterK;
+	uint BarterHoldId;
+	uint BarterCount;
+	ushort BarterK;
 	string BarterText;
 	//Players barter extra
-	DWORD BarterOpponentId;
+	uint BarterOpponentId;
 	bool BarterIsPlayers,BarterHide,BarterOpponentHide,BarterOffer,BarterOpponentOffer;
 
 	bool IsScreenPlayersBarter();
 	void BarterTryOffer();
-	void BarterTransfer(DWORD item_id, int item_cont, DWORD item_count);
-	void ContainerCalcInfo(ItemVec& cont, DWORD& cost, DWORD& weigth, DWORD& volume, int barter_k, bool sell);
+	void BarterTransfer(uint item_id, int item_cont, uint item_count);
+	void ContainerCalcInfo(ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell);
 	void FormatTags(char* text, size_t text_len, CritterCl* player, CritterCl* npc, const char* lexems);
 
 	void DlgDraw(bool is_dialog);
@@ -885,7 +885,7 @@ public:
 	void DlgLMouseDown(bool is_dialog);
 	void DlgLMouseUp(bool is_dialog);
 	void DlgRMouseDown(bool is_dialog);
-	void DlgKeyDown(bool is_dialog, BYTE dik);
+	void DlgKeyDown(bool is_dialog, uchar dik);
 	void DlgCollectAnswers(bool next);
 
 /************************************************************************/
@@ -899,7 +899,7 @@ public:
 	int LmapVectX,LmapVectY;
 	int LmapZoom;
 	bool LmapSwitchHi;
-	DWORD LmapPrepareNextTick;
+	uint LmapPrepareNextTick;
 
 	void LmapPrepareMap();
 	void LmapDraw();
@@ -910,11 +910,11 @@ public:
 /************************************************************************/
 /* Global map                                                           */
 /************************************************************************/
-	DWORD GmapTilesX,GmapTilesY;
+	uint GmapTilesX,GmapTilesY;
 	AnimVec GmapPic;
 	char GmapTilesPic[MAX_FOPATH];
 
-	DWORD GmapWDayTimeAnim;
+	uint GmapWDayTimeAnim;
 	AnyFrames* GmapPBTownDw,*GmapWMainPic,*GmapPGr,*GmapPTarg,*GmapPStay,*GmapPStayDn,*GmapPStayMask,*GmapLocPic;
 	AnyFrames* GmapPTownInPic,*GmapPTownInPicDn,*GmapPTownInPicMask,*GmapPTownViewPic,*GmapPTownViewPicDn,*GmapPTownViewPicMask;
 	int GmapPTownInOffsX,GmapPTownInOffsY,GmapPTownViewOffsX,GmapPTownViewOffsY;
@@ -940,8 +940,8 @@ public:
 	IntRectVec GmapTownTextPos;
 	StrVec GmapTownText;
 	int GmapTownCurButton;
-	DWORD GmapNextShowEntrancesTick;
-	DWORD GmapShowEntrancesLocId;
+	uint GmapNextShowEntrancesTick;
+	uint GmapShowEntrancesLocId;
 	bool GmapShowEntrances[0x100];
 
 	// Relief
@@ -954,13 +954,13 @@ public:
 	// Locations
 	struct GmapLocation
 	{
-		DWORD LocId;
-		WORD LocPid;
-		WORD LocWx;
-		WORD LocWy;
-		WORD Radius;
-		DWORD Color;
-		bool operator==(const DWORD& _right){return (this->LocId==_right);}
+		uint LocId;
+		ushort LocPid;
+		ushort LocWx;
+		ushort LocWy;
+		ushort Radius;
+		uint Color;
+		bool operator==(const uint& _right){return (this->LocId==_right);}
 	};
 	typedef vector<GmapLocation> GmapLocationVec;
 	typedef vector<GmapLocation>::iterator GmapLocationVecIt;
@@ -972,7 +972,7 @@ public:
 
 	// Params
 	float GmapGroupXf,GmapGroupYf;
-	DWORD GmapProcLastTick,GmapMoveLastTick;
+	uint GmapProcLastTick,GmapMoveLastTick;
 	static int GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY;
 	static float GmapSpeedX,GmapSpeedY;
 	static bool GmapWait;
@@ -980,14 +980,14 @@ public:
 	// Cars
 	struct
 	{
-		DWORD MasterId;
+		uint MasterId;
 		Item* Car;
 	} GmapCar;
 
 	// Tabs
 	INTRECT GmapWTabs,GmapWTab,GmapWTabLoc,GmapBTabLoc,GmapBTabsScrUp,GmapBTabsScrDn;
 	int GmapTabNextX,GmapTabNextY,GmapCurHoldBLoc,GmapTabsScrX,GmapTabsScrY;
-	DWORD GmapTabsLastScr;
+	uint GmapTabsLastScr;
 
 	void GmapDraw();
 	void GmapTownDraw();
@@ -996,7 +996,7 @@ public:
 	void GmapRMouseDown();
 	void GmapRMouseUp();
 	void GmapMouseMove();
-	void GmapKeyDown(BYTE dik);
+	void GmapKeyDown(uchar dik);
 	void GmapChangeZoom(float offs);
 	Item* GmapGetCar();
 	void GmapFreeResources();
@@ -1013,7 +1013,7 @@ public:
 	int SboxX,SboxY;
 	int SboxVectX,SboxVectY;
 
-	WORD CurSkill;
+	ushort CurSkill;
 	SmthSelected SboxUseOn;
 
 	void SboxDraw();
@@ -1036,7 +1036,7 @@ public:
 /************************************************************************/
 /* Credits                                                              */
 /************************************************************************/
-	DWORD CreditsNextTick,CreditsMoveTick;
+	uint CreditsNextTick,CreditsMoveTick;
 	int CreditsYPos;
 	bool CreaditsExt;
 
@@ -1057,14 +1057,14 @@ public:
 
 	struct SwitchElement
 	{
-		DWORD NameStrNum;
-		DWORD DescStrNum;
-		WORD PictureId;
-		DWORD DrawFlags;
+		uint NameStrNum;
+		uint DescStrNum;
+		ushort PictureId;
+		uint DrawFlags;
 		char Addon[64];
 
-		SwitchElement(DWORD name, DWORD desc, WORD pic, DWORD flags):NameStrNum(name),DescStrNum(desc),DrawFlags(flags),PictureId(pic){ZeroMemory(Addon,sizeof(Addon));}
-		SwitchElement(const char* add, DWORD flags):NameStrNum(0),DescStrNum(0),PictureId(0),DrawFlags(flags){CopyMemory(Addon,add,sizeof(Addon));}
+		SwitchElement(uint name, uint desc, ushort pic, uint flags):NameStrNum(name),DescStrNum(desc),DrawFlags(flags),PictureId(pic){ZeroMemory(Addon,sizeof(Addon));}
+		SwitchElement(const char* add, uint flags):NameStrNum(0),DescStrNum(0),PictureId(0),DrawFlags(flags){CopyMemory(Addon,add,sizeof(Addon));}
 	};
 	typedef vector<SwitchElement> SwitchElementVec;
 
@@ -1085,7 +1085,7 @@ public:
 	// Skills
 	INTRECT ChaWSkillText,ChaWSkillName,ChaWSkillValue;
 	int ChaWSkillNextX,ChaWSkillNextY;
-	WORD ChaSkillUp[MAX_PARAMS];
+	ushort ChaSkillUp[MAX_PARAMS];
 	INTRECT ChaWUnspentSP,ChaWUnspentSPText;
 	int ChaUnspentSkillPoints;
 
@@ -1145,7 +1145,7 @@ public:
 
 	void ChaNameDraw();
 	void ChaNameLMouseDown();
-	void ChaNameKeyDown(BYTE dik);
+	void ChaNameKeyDown(uchar dik);
 
 /************************************************************************/
 /* Character age                                                        */
@@ -1179,7 +1179,7 @@ public:
 	int PerkNextX,PerkNextY;
 	int PerkScroll;
 	int PerkCurPerk;
-	WordVec PerkCollection;
+	UShortVec PerkCollection;
 
 	void PerkPrepare();
 	void PerkDraw();
@@ -1198,7 +1198,7 @@ public:
 #define TOWN_VIEW_FROM_NONE        (0)
 #define TOWN_VIEW_FROM_GLOBAL      (1)
 	int TViewType;
-	DWORD TViewGmapLocId,TViewGmapLocEntrance; // TOWN_VIEW_FROM_GLOBAL
+	uint TViewGmapLocId,TViewGmapLocEntrance; // TOWN_VIEW_FROM_GLOBAL
 
 	void TViewDraw();
 	void TViewLMouseDown();
@@ -1234,35 +1234,35 @@ public:
 
 	// Quests
 	QuestManager QuestMngr;
-	DWORD QuestNumTab;
-	WORD QuestNumQuest;
+	uint QuestNumTab;
+	ushort QuestNumQuest;
 	// HoloInfo
-	DWORD HoloInfo[MAX_HOLO_INFO];
-	DWORD PipInfoNum;
+	uint HoloInfo[MAX_HOLO_INFO];
+	uint PipInfoNum;
 	// Scores
-	DWORD ScoresNextUploadTick;
+	uint ScoresNextUploadTick;
 	char BestScores[SCORES_MAX][SCORE_NAME_LEN];
 	// Automaps
 	struct Automap
 	{
-		DWORD LocId;
-		WORD LocPid;
+		uint LocId;
+		ushort LocPid;
 		string LocName;
-		WordVec MapPids;
+		UShortVec MapPids;
 		StrVec MapNames;
 		size_t CurMap;
 
 		Automap():LocId(0),LocPid(0),CurMap(0){}
-		bool operator==(const DWORD id)const{return LocId==id;}
+		bool operator==(const uint id)const{return LocId==id;}
 	};
 	typedef vector<Automap> AutomapVec;
 	typedef vector<Automap>::iterator AutomapVecIt;
 	AutomapVec Automaps;
 	Automap AutomapSelected;
-	WordSet AutomapWaitPids;
-	WordSet AutomapReceivedPids;
+	UShortSet AutomapWaitPids;
+	UShortSet AutomapReceivedPids;
 	PointVec AutomapPoints;
-	WORD AutomapCurMapPid;
+	ushort AutomapCurMapPid;
 	float AutomapScrX,AutomapScrY;
 	float AutomapZoom;
 
@@ -1277,7 +1277,7 @@ public:
 		AimWHeadT,AimWLArmT,AimWRArmT,AimWTorsoT,AimWRLegT,AimWLLegT,AimWEyesT,AimWGroinT,
 		AimWHeadP,AimWLArmP,AimWRArmP,AimWTorsoP,AimWRLegP,AimWLLegP,AimWEyesP,AimWGroinP;
 	int AimHeadP,AimLArmP,AimRArmP,AimTorsoP,AimRLegP,AimLLegP,AimEyesP,AimGroinP;
-	DWORD AimTargetId;
+	uint AimTargetId;
 
 	void AimDraw();
 	void AimLMouseDown();
@@ -1293,26 +1293,26 @@ public:
 		*PupPBScrUpOn2,*PupPBScrUpOff2,*PupPBScrDwOn2,*PupPBScrDwOff2,
 		*PupBNextCritLeftPicUp,*PupBNextCritLeftPicDown,
 		*PupBNextCritRightPicUp,*PupBNextCritRightPicDown;
-	DWORD PupHoldId;
+	uint PupHoldId;
 	int PupScroll1,PupScroll2,PupScrollCrit;
 	int PupX,PupY;
 	int PupVectX,PupVectY;
 	INTRECT PupWMain,PupWInfo,PupWCont1,PupWCont2,PupBTakeAll,PupBOk,
 		PupBScrUp1,PupBScrDw1,PupBScrUp2,PupBScrDw2,PupBNextCritLeft,PupBNextCritRight;
 	int PupHeightItem1,PupHeightItem2;
-	BYTE PupTransferType;
-	DWORD PupContId,PupClosedContId,PupLastPutId;
-	WORD PupContPid;
-	DWORD PupCount;
-	WORD PupSize;
-	DWORD PupWeight;
+	uchar PupTransferType;
+	uint PupContId,PupClosedContId,PupLastPutId;
+	ushort PupContPid;
+	uint PupCount;
+	ushort PupSize;
+	uint PupWeight;
 
 	void PupDraw();
 	void PupMouseMove();
 	void PupLMouseDown();
 	void PupLMouseUp();
 	void PupRMouseDown();
-	void PupTransfer(DWORD item_id, DWORD cont, DWORD count);
+	void PupTransfer(uint item_id, uint cont, uint count);
 	CritVec& PupGetLootCrits();
 	CritterCl* PupGetLootCrit(int scroll);
 
@@ -1323,7 +1323,7 @@ public:
 	INTRECT DlgboxWTop,DlgboxWMiddle,DlgboxWBottom,DlgboxWText,DlgboxBButton,DlgboxBButtonText;
 	int DlgboxX,DlgboxY;
 	int DlgboxVectX,DlgboxVectY;
-	BYTE DlgboxType;
+	uchar DlgboxType;
 #define DIALOGBOX_NONE           (0)
 #define DIALOGBOX_FOLLOW         (1)
 #define DIALOGBOX_BARTER         (2)
@@ -1331,17 +1331,17 @@ public:
 #define DIALOGBOX_ENCOUNTER_RT   (4)
 #define DIALOGBOX_ENCOUNTER_TB   (5)
 #define DIALOGBOX_MANUAL         (6)
-	DWORD DlgboxWait;
+	uint DlgboxWait;
 	char DlgboxText[MAX_FOTEXT];
 	string DlgboxButtonText[MAX_DLGBOX_BUTTONS];
-	DWORD DlgboxButtonsCount;
-	DWORD DlgboxSelectedButton;
+	uint DlgboxButtonsCount;
+	uint DlgboxSelectedButton;
 	// For follow
-	BYTE FollowType;
-	DWORD FollowRuleId;
-	WORD FollowMap;
+	uchar FollowType;
+	uint FollowRuleId;
+	ushort FollowMap;
 	// For barter
-	DWORD PBarterPlayerId;
+	uint PBarterPlayerId;
 	bool PBarterHide;
 
 	void DlgboxDraw();
@@ -1353,21 +1353,21 @@ public:
 /* Elevator                                                             */
 /************************************************************************/
 	AnyFrames* ElevatorMainPic,*ElevatorExtPic,*ElevatorButtonPicDown;
-	DWORD ElevatorIndicatorAnim;
+	uint ElevatorIndicatorAnim;
 	INTRECT ElevatorMain,ElevatorExt,ElevatorIndicator;
-	DWORD ElevatorButtonsCount;
+	uint ElevatorButtonsCount;
 	INTRECT ElevatorButtons[MAX_DLGBOX_BUTTONS];
-	DWORD ElevatorType,ElevatorLevelsCount,ElevatorStartLevel,ElevatorCurrentLevel;
+	uint ElevatorType,ElevatorLevelsCount,ElevatorStartLevel,ElevatorCurrentLevel;
 	int ElevatorX,ElevatorY,ElevatorVectX,ElevatorVectY;
 	int ElevatorSelectedButton;
 	bool ElevatorAnswerDone;
-	DWORD ElevatorSendAnswerTick;
+	uint ElevatorSendAnswerTick;
 
 	void ElevatorDraw();
 	void ElevatorLMouseDown();
 	void ElevatorLMouseUp();
 	void ElevatorMouseMove();
-	void ElevatorGenerate(DWORD param);
+	void ElevatorGenerate(uint param);
 	void ElevatorProcess();
 	int ElevatorGetCurButton();
 
@@ -1378,7 +1378,7 @@ public:
 	int SayX,SayY;
 	int SayVectX,SayVectY;
 	INTRECT SayWMain,SayWMainText,SayWSay,SayBOk,SayBOkText,SayBCancel,SayBCancelText;
-	BYTE SayType;
+	uchar SayType;
 	bool SayOnlyNumbers;
 #define DIALOGSAY_NONE        (0)
 #define DIALOGSAY_TEXT        (1)
@@ -1390,7 +1390,7 @@ public:
 	void SayLMouseDown();
 	void SayLMouseUp();
 	void SayMouseMove();
-	void SayKeyDown(BYTE dik);
+	void SayKeyDown(uchar dik);
 
 /************************************************************************/
 /* Wait                                                                 */
@@ -1406,12 +1406,12 @@ public:
 
 	AnyFrames* SplitMainPic,*SplitPBUpDn,*SplitPBDnDn,*SplitPBAllDn,*SplitPBDoneDn,
 		*SplitPBCancelDn,*SplitItemPic;
-	DWORD SplitItemColor;
+	uint SplitItemColor;
 	int SplitX,SplitY;
 	int SplitVectX,SplitVectY;
 	INTRECT SplitWMain,SplitWTitle,SplitWItem,SplitBUp,SplitBDown,SplitBAll,
 		SplitWValue,SplitBDone,SplitBCancel;
-	DWORD SplitItemId,SplitCont;
+	uint SplitItemId,SplitCont;
 	int SplitValue,SplitMinValue,SplitMaxValue;
 	bool SplitValueKeyPressed;
 	int SplitParentScreen;
@@ -1419,7 +1419,7 @@ public:
 	void SplitStart(Item* item, int to_cont);
 	void SplitClose(bool change);
 	void SplitDraw();
-	void SplitKeyDown(BYTE dik);
+	void SplitKeyDown(uchar dik);
 	void SplitLMouseDown();
 	void SplitLMouseUp();
 	void SplitMouseMove();
@@ -1432,18 +1432,18 @@ public:
 
 	AnyFrames* TimerMainPic,*TimerBUpPicDown,*TimerBDownPicDown,*TimerBDonePicDown,
 		*TimerBCancelPicDown,*TimerItemPic;
-	DWORD TimerItemColor;
+	uint TimerItemColor;
 	int TimerX,TimerY;
 	int TimerVectX,TimerVectY;
 	INTRECT TimerWMain,TimerWTitle,TimerWItem,TimerBUp,TimerBDown,TimerWValue,
 		TimerBDone,TimerBCancel;
 	int TimerValue;
-	DWORD TimerItemId;
+	uint TimerItemId;
 
-	void TimerStart(DWORD item_id, AnyFrames* pic, DWORD pic_color);
+	void TimerStart(uint item_id, AnyFrames* pic, uint pic_color);
 	void TimerClose(bool done);
 	void TimerDraw();
-	void TimerKeyDown(BYTE dik);
+	void TimerKeyDown(uchar dik);
 	void TimerLMouseDown();
 	void TimerLMouseUp();
 	void TimerMouseMove();
@@ -1465,10 +1465,10 @@ public:
 	{
 		INTRECT Pos;
 		string Name;
-		DWORD Num;
+		uint Num;
 		bool IsTrue;
 
-		SCraft(INTRECT& pos, string& name, DWORD num, bool is_true){Pos=pos;Name=name;Num=num;IsTrue=is_true;}
+		SCraft(INTRECT& pos, string& name, uint num, bool is_true){Pos=pos;Name=name;Num=num;IsTrue=is_true;}
 		SCraft(const SCraft& _right){Pos=_right.Pos;Name=_right.Name;Num=_right.Num;IsTrue=_right.IsTrue;}
 		SCraft& operator=(const SCraft& _right){Pos=_right.Pos;Name=_right.Name;Num=_right.Num;IsTrue=_right.IsTrue;return *this;}
 	};
@@ -1479,7 +1479,7 @@ public:
 	int FixScrollLst;
 	SCraftVecVec FixCraftFix;
 	int FixScrollFix;
-	BYTE FixResult;
+	uchar FixResult;
 
 	struct FixDrawComponent 
 	{
@@ -1498,12 +1498,12 @@ public:
 
 	FixDrawComponentVec FixDrawComp;
 	string FixResultStr;
-	DwordSet FixShowCraft;
-	DWORD FixNextShowCraftTick;
+	UIntSet FixShowCraft;
+	uint FixNextShowCraftTick;
 
 	void FixGenerate(int fix_mode);
 	void FixGenerateStrLine(string& str, INTRECT& r);
-	void FixGenerateItems(WordVec& items_vec, DwordVec& val_vec, ByteVec& or_vec, string& str, INTRECT& r, int& x);
+	void FixGenerateItems(UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, INTRECT& r, int& x);
 	int GetMouseCraft();
 	SCraftVec* GetCurSCrafts();
 
@@ -1524,16 +1524,16 @@ public:
 	int IboxX,IboxY,IboxVectX,IboxVectY;
 	string IboxTitle,IboxText;
 	int IboxTitleCur,IboxTextCur;
-	DWORD IboxLastKey;
+	uint IboxLastKey;
 
 	// Holodisk
-	DWORD IboxHolodiskId;
+	uint IboxHolodiskId;
 
 	void IboxDraw();
 	void IboxLMouseDown();
 	void IboxLMouseUp();
-	void IboxKeyDown(BYTE dik);
-	void IboxKeyUp(BYTE dik);
+	void IboxKeyDown(uchar dik);
+	void IboxKeyUp(uchar dik);
 	void IboxProcess();
 	void IboxMouseMove();
 
@@ -1558,14 +1558,12 @@ public:
 		string Info;
 		string InfoExt;
 		string FileName;
-		__int64 RealTime;
-		ByteVec PicData;
-
-		bool operator<(const SaveLoadDataSlot& r){return RealTime>r.RealTime;}
+		int64 RealTime;
+		UCharVec PicData;
 	};
 	typedef vector<SaveLoadDataSlot> SaveLoadDataSlotVec;
 	SaveLoadDataSlotVec SaveLoadDataSlots;
-	DWORD SaveLoadClickSlotTick;
+	uint SaveLoadClickSlotTick;
 	int SaveLoadSlotIndex,SaveLoadClickSlotIndex;
 	int SaveLoadSlotScroll,SaveLoadSlotsMax;
 	string SaveLoadFileName;
@@ -1592,25 +1590,25 @@ public:
 /************************************************************************/
 /* Generic                                                              */
 /************************************************************************/
-	DWORD DaySumRGB;
+	uint DaySumRGB;
 
 	void SetDayTime(bool refresh);
 	void ProcessMouseWheel(int data);
-	void SetGameColor(DWORD color);
+	void SetGameColor(uint color);
 
 	CritterCl* Chosen;
 
 	void AddCritter(CritterCl* cr);
-	CritterCl* GetCritter(DWORD crid){return HexMngr.GetCritter(crid);}
-	ItemHex* GetItem(DWORD item_id){return HexMngr.GetItemById(item_id);}
+	CritterCl* GetCritter(uint crid){return HexMngr.GetCritter(crid);}
+	ItemHex* GetItem(uint item_id){return HexMngr.GetItemById(item_id);}
 	void ClearCritters();
-	void EraseCritter(DWORD remid);
+	void EraseCritter(uint remid);
 
 	bool IsTurnBased;
-	DWORD TurnBasedTime;
-	DWORD TurnBasedCurCritterId;
+	uint TurnBasedTime;
+	uint TurnBasedCurCritterId;
 	bool NoLogOut;
-	DWORD* UID3,*UID2;
+	uint* UID3,*UID2;
 
 	bool IsTurnBasedMyTurn(){return IsTurnBased && Timer::GameTick()<TurnBasedTime && Chosen && Chosen->GetId()==TurnBasedCurCritterId && Chosen->GetAllAp()>0;}
 
@@ -1652,7 +1650,7 @@ public:
 	INTRECT MessBoxCurRectScroll();
 	bool MessBoxLMouseDown();
 
-	BYTE GetCmdNum(char*& str);
+	uchar GetCmdNum(char*& str);
 
 /************************************************************************/
 /*                                                                      */

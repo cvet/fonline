@@ -15,7 +15,7 @@ typedef void(*LogFuncPtr)(char* str);
 #define LOG_DEBUG_OUTPUT    (0x10)
 
 // Write formatted text
-void WriteLog(const char* frmt, ...);
+void WriteLog(const char* func, const char* frmt, ...);
 
 // Append logging to
 void LogToFile(const char* fname);   // File

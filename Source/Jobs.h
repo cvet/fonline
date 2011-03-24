@@ -51,7 +51,7 @@ public:
 	static void DeferredRelease(Location* cr);
 	static void DeferredRelease(Item* cr);
 	static void DeferredRelease(GameVar* cr);
-	static void SetDeferredReleaseCycle(DWORD cycle);
+	static void SetDeferredReleaseCycle(uint cycle);
 	static void ProcessDeferredReleasing();
 };
 

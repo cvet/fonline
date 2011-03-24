@@ -7,36 +7,36 @@ class CryptManager
 {
 private:
 	// Crc32 table
-	DWORD crcTable[0x100];
+	uint crcTable[0x100];
 
 public:
 	// Init Crypt Manager
 	CryptManager();
 
 	// Returns Crc32 of data
-	DWORD Crc32(BYTE* data, DWORD len);
+	uint Crc32(uchar* data, uint len);
 
 	// Continue calculate of Crc32
-	void Crc32(BYTE* data, DWORD len, DWORD& crc);
+	void Crc32(uchar* data, uint len, uint& crc);
 
 	// Returns CheckSum of data
-	DWORD CheckSum(BYTE* data, DWORD len);
+	uint CheckSum(uchar* data, uint len);
 
 	// Xor the data
-	void XOR(char* data, DWORD len, char* xor, DWORD xor_len);
+	void XOR(char* data, uint len, char* xor_key, uint xor_len);
 
 	// Password encrypt
-	void EncryptPassword(char* data, DWORD len, DWORD key);
-	void DecryptPassword(char* data, DWORD len, DWORD key);
+	void EncryptPassword(char* data, uint len, uint key);
+	void DecryptPassword(char* data, uint len, uint key);
 
 	// Xor the text
-	void TextXOR(char* data, DWORD len, char* xor, DWORD xor_len);
+	void TextXOR(char* data, uint len, char* xor_key, uint xor_len);
 
 	// Compress zlib
-	BYTE* Compress(const BYTE* data, DWORD& data_len);
+	uchar* Compress(const uchar* data, uint& data_len);
 
 	// Uncompress zlib
-	BYTE* Uncompress(const BYTE* data, DWORD& data_len, DWORD mul_approx);
+	uchar* Uncompress(const uchar* data, uint& data_len, uint mul_approx);
 
 	// Crypt text
 //	void CryptText(char* text);
@@ -44,11 +44,11 @@ public:
 	// Uncrypt text
 //	void UncryptText(char* text);
 
-	bool IsCacheTable(const char* chache_fname);
-	bool CreateCacheTable(const char* chache_fname);
-	bool SetCacheTable(const char* chache_fname);
-	void SetCache(const char* data_name, const BYTE* data, DWORD data_len);
-	BYTE* GetCache(const char* data_name, DWORD& data_len);
+	bool IsCacheTable(const char* cache_fname);
+	bool CreateCacheTable(const char* cache_fname);
+	bool SetCacheTable(const char* cache_fname);
+	void SetCache(const char* data_name, const uchar* data, uint data_len);
+	uchar* GetCache(const char* data_name, uint& data_len);
 };
 
 extern CryptManager Crypt;

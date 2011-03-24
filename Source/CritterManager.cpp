@@ -14,17 +14,17 @@ CritterManager CrMngr;
 
 bool CritterManager::Init()
 {
-	WriteLog("Critter manager initialization...\n");
+	WriteLog(NULL,"Critter manager initialization...\n");
 
 	if(isActive)
 	{
-		WriteLog("already initialized.\n");
+		WriteLog(NULL,"already initialized.\n");
 		return true;
 	}
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog("Error, Items manager not init.\n");
+		WriteLog(NULL,"Error, Items manager not init.\n");
 		return false;
 	}
 
@@ -32,13 +32,13 @@ bool CritterManager::Init()
 	Clear();
 
 	isActive=true;
-	WriteLog("Critter manager initialization complete.\n");
+	WriteLog(NULL,"Critter manager initialization complete.\n");
 	return true;
 }
 
 void CritterManager::Finish()
 {
-	WriteLog("Critter manager finish...\n");
+	WriteLog(NULL,"Critter manager finish...\n");
 
 #ifdef FONLINE_SERVER
 	CritterGarbager();
@@ -48,7 +48,7 @@ void CritterManager::Finish()
 	Clear();
 
 	isActive=false;
-	WriteLog("Critter manager finish complete.\n");
+	WriteLog(NULL,"Critter manager finish complete.\n");
 }
 
 void CritterManager::Clear()
@@ -66,18 +66,18 @@ void CritterManager::Clear()
 
 bool CritterManager::LoadProtos()
 {
-	WriteLog("Loading critters prototypes...\n");
+	WriteLog(NULL,"Loading critters prototypes...\n");
 
 	if(!IsInit())
 	{
-		WriteLog("Critters manager is not init.\n");
+		WriteLog(NULL,"Critters manager is not init.\n");
 		return false;
 	}
 
 	// Get names of proto
 	if(!fileMngr.LoadFile("critters.lst",PT_SERVER_PRO_CRITTERS))
 	{
-		WriteLog("Cannot open \"critters.lst\".\n");
+		WriteLog(NULL,"Cannot open \"critters.lst\".\n");
 		return false;
 	}
 
@@ -120,7 +120,7 @@ bool CritterManager::LoadProtos()
 				StrVec lines;
 				protos_txt.GetAppLines(lines);
 
-				for(int j=0;j<lines.size();j++)
+				for(uint j=0;j<lines.size();j++)
 				{
 					char line[256];
 					char indent[256];
@@ -136,7 +136,7 @@ bool CritterManager::LoadProtos()
 							if(param_id>=0 && param_id<MAX_PARAMS) params[param_id]=value;
 							else
 							{
-								WriteLog("Unknown parameter<%s> in<%s>.\n",indent,fname);
+								WriteLog(NULL,"Unknown parameter<%s> in<%s>.\n",indent,fname);
 								errors++;
 							}
 						}
@@ -148,7 +148,7 @@ bool CritterManager::LoadProtos()
 					CritData& proto=allProtos[pid];
 
 					if(!proto.ProtoId) loaded_count++;
-					else WriteLog(__FUNCTION__" - Critter prototype is already parsed, pid<%u>. Rewrite.\n",pid);
+					else WriteLog(_FUNC_," - Critter prototype is already parsed, pid<%u>. Rewrite.\n",pid);
 
 					proto.ProtoId=pid;
 					memcpy(proto.Params,params,sizeof(params));
@@ -159,18 +159,18 @@ bool CritterManager::LoadProtos()
 				}
 				else
 				{
-					WriteLog(__FUNCTION__" - Invalid pid<%u> of critter prototype.\n",pid);
+					WriteLog(_FUNC_," - Invalid pid<%u> of critter prototype.\n",pid);
 					errors++;
 				}
 			}
 		}
 	}
 
-	WriteLog("Loaded<%d> critter protos, errors<%d>.\n",loaded_count,errors);
+	WriteLog(NULL,"Loaded<%d> critter protos, errors<%d>.\n",loaded_count,errors);
 	return errors==0;
 }
 
-CritData* CritterManager::GetProto(WORD proto_id)
+CritData* CritterManager::GetProto(ushort proto_id)
 {
 	if(!proto_id || proto_id>=MAX_CRIT_PROTOS || !allProtos[proto_id].ProtoId) return NULL;
 	return &allProtos[proto_id];
@@ -191,7 +191,7 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 		if(cr->IsNpc()) crits.push_back(cr);
 	}
 
-	DWORD count=crits.size(); // npcCount
+	uint count=crits.size(); // npcCount
 	save_func(&count,sizeof(count));
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
@@ -199,24 +199,24 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 		cr->Data.IsDataExt=(cr->DataExt?true:false);
 		save_func(&cr->Data,sizeof(cr->Data));
 		if(cr->Data.IsDataExt) save_func(cr->DataExt,sizeof(CritDataExt));
-		DWORD te_count=cr->CrTimeEvents.size();
+		uint te_count=cr->CrTimeEvents.size();
 		save_func(&te_count,sizeof(te_count));
 		if(te_count) save_func(&cr->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent));
 	}
 }
 
-bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
+bool CritterManager::LoadCrittersFile(FILE* f, uint version)
 {
-	WriteLog("Load npc...\n");
+	WriteLog(NULL,"Load npc...\n");
 
 	lastNpcId=0;
 
-	DWORD count;
+	uint count;
 	fread(&count,sizeof(count),1,f);
 	if(!count) return true;
 
-	DWORD errors=0;
-	for(DWORD i=0;i<count;i++)
+	uint errors=0;
+	for(uint i=0;i<count;i++)
 	{
 		CritData data;
 		fread(&data,sizeof(data),1,f);
@@ -225,7 +225,7 @@ bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 		if(data.IsDataExt) fread(&data_ext,sizeof(data_ext),1,f);
 
 		Critter::CrTimeEventVec tevents;
-		DWORD te_count;
+		uint te_count;
 		fread(&te_count,sizeof(te_count),1,f);
 		if(te_count)
 		{
@@ -238,7 +238,7 @@ bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 		Npc* npc=CreateNpc(data.ProtoId,false);
 		if(!npc)
 		{
-			WriteLog("Unable to create npc with id<%u>, pid<%u> on map with id<%u>, pid<%u>.\n",data.Id,data.ProtoId,data.MapId,data.MapPid);
+			WriteLog(NULL,"Unable to create npc with id<%u>, pid<%u> on map with id<%u>, pid<%u>.\n",data.Id,data.ProtoId,data.MapId,data.MapPid);
 			errors++;
 			continue;
 		}
@@ -264,9 +264,9 @@ bool CritterManager::LoadCrittersFile(FILE* f, DWORD version)
 		AddCritter(npc);
 	}
 
-	if(errors) WriteLog("Load npc complete, count<%u>, errors<%u>.\n",count-errors,errors);
-	else WriteLog("Load npc complete, count<%u>.\n",count);
-	return true;	
+	if(errors) WriteLog(NULL,"Load npc complete, count<%u>, errors<%u>.\n",count-errors,errors);
+	else WriteLog(NULL,"Load npc complete, count<%u>.\n",count);
+	return true;
 }
 
 void CritterManager::RunInitScriptCritters()
@@ -274,7 +274,7 @@ void CritterManager::RunInitScriptCritters()
 	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,cr->GetInfo()))
+		if(Script::PrepareContext(ServerFunctions.CritterInit,_FUNC_,cr->GetInfo()))
 		{
 			Script::SetArgObject(cr);
 			Script::SetArgBool(false);
@@ -295,11 +295,11 @@ void CritterManager::CritterGarbager()
 	if(!crToDelete.empty())
 	{
 		crLocker.Lock();
-		DwordVec to_del=crToDelete;
+		UIntVec to_del=crToDelete;
 		crToDelete.clear();
 		crLocker.Unlock();
 
-		for(DwordVecIt it=to_del.begin(),end=to_del.end();it!=end;++it)
+		for(UIntVecIt it=to_del.begin(),end=to_del.end();it!=end;++it)
 		{
 			// Find and erase
 			Critter* cr=NULL;
@@ -330,7 +330,7 @@ void CritterManager::CritterGarbager()
 			}
 
 			cr->EventFinish(true);
-			if(Script::PrepareContext(ServerFunctions.CritterFinish,CALL_FUNC_STR,cr->GetInfo()))
+			if(Script::PrepareContext(ServerFunctions.CritterFinish,_FUNC_,cr->GetInfo()))
 			{
 				Script::SetArgObject(cr);
 				Script::SetArgBool(true);
@@ -377,11 +377,11 @@ void CritterManager::CritterGarbager()
 	}
 }
 
-Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, DWORD items_count, int* items, const char* script, Map* map, WORD hx, WORD hy, BYTE dir, bool accuracy)
+Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy)
 {
 	if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY())
 	{
-		WriteLog(__FUNCTION__" - Wrong map values, hx<%u>, hy<%u>, map is nullptr<%s>.\n",hx,hy,!map?"true":"false");
+		WriteLog(_FUNC_," - Wrong map values, hx<%u>, hy<%u>, map is nullptr<%s>.\n",hx,hy,!map?"true":"false");
 		return NULL;
 	}
 
@@ -389,7 +389,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	{
 		if(accuracy)
 		{
-			WriteLog(__FUNCTION__" - Accuracy position busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
+			WriteLog(_FUNC_," - Accuracy position busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
 			return NULL;
 		}
 
@@ -404,7 +404,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		{
 			if(i>=18)
 			{
-				WriteLog(__FUNCTION__" - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
+				WriteLog(_FUNC_," - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
 				return NULL;
 			}
 			cur_step++;
@@ -424,7 +424,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	Npc* npc=CreateNpc(proto_id,true);
 	if(!npc)
 	{
-		WriteLog(__FUNCTION__" - Create npc with pid <%u> failture.\n",proto_id);
+		WriteLog(_FUNC_," - Create npc with pid <%u> failture.\n",proto_id);
 		return NULL;
 	}
 
@@ -447,9 +447,9 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	npc->NameStr="Npc_";
 	npc->NameStr+=Str::Format("%u",npc->GetId());
 
-	for(DWORD i=0;i<params_count;i++)
+	for(uint i=0;i<params_count;i++)
 	{
-		WORD index=params[i*2];
+		int index=params[i*2];
 		int value=params[i*2+1];
 		if(index>=0 && index<MAX_PARAMS) npc->Data.Params[index]=value;
 	}
@@ -457,7 +457,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	map->AddCritter(npc);
 	AddCritter(npc);
 
-	for(DWORD i=0;i<items_count;i++)
+	for(uint i=0;i<items_count;i++)
 	{
 		int pid=items[i*3];
 		int count=items[i*3+1];
@@ -469,7 +469,7 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 		}
 	}
 
-	if(Script::PrepareContext(ServerFunctions.CritterInit,CALL_FUNC_STR,npc->GetInfo()))
+	if(Script::PrepareContext(ServerFunctions.CritterInit,_FUNC_,npc->GetInfo()))
 	{
 		Script::SetArgObject(npc);
 		Script::SetArgBool(true);
@@ -484,32 +484,32 @@ Npc* CritterManager::CreateNpc(WORD proto_id, DWORD params_count, int* params, D
 	return npc;
 }
 
-Npc* CritterManager::CreateNpc(WORD proto_id, bool copy_data)
+Npc* CritterManager::CreateNpc(ushort proto_id, bool copy_data)
 {
 	if(!IsInit())
 	{
-		WriteLog(__FUNCTION__" - Critter manager is not initialized.\n");
+		WriteLog(_FUNC_," - Critter manager is not initialized.\n");
 		return false;
 	}
 
 	CritData* data=GetProto(proto_id);
 	if(!data)
 	{
-		WriteLog(__FUNCTION__" - Critter data not found, critter proto id<%u>.\n",proto_id);
+		WriteLog(_FUNC_," - Critter data not found, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
 	Npc* npc=new Npc();
 	if(!npc)
 	{
-		WriteLog(__FUNCTION__" - Allocation fail, critter proto id<%u>.\n",proto_id);
+		WriteLog(_FUNC_," - Allocation fail, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
 	if(!npc->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 	{
 		delete npc;
-		WriteLog(__FUNCTION__" - Can't set default items, critter proto id<%u>.\n",proto_id);
+		WriteLog(_FUNC_," - Can't set default items, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
@@ -656,7 +656,7 @@ void CritterManager::GetCopyPlayers(ClVec& players, bool sync_lock)
 	players=find_players;
 }
 
-void CritterManager::GetGlobalMapCritters(WORD wx, WORD wy, DWORD radius, int find_type, CrVec& critters, bool sync_lock)
+void CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int find_type, CrVec& critters, bool sync_lock)
 {
 	crLocker.Lock();
 	CrMap all_critters=allCritters;
@@ -701,7 +701,7 @@ void CritterManager::GetGlobalMapCritters(WORD wx, WORD wy, DWORD radius, int fi
 	critters=find_critters;
 }
 
-Critter* CritterManager::GetCritter(DWORD crid, bool sync_lock)
+Critter* CritterManager::GetCritter(uint crid, bool sync_lock)
 {
 	Critter* cr=NULL;
 
@@ -714,7 +714,7 @@ Critter* CritterManager::GetCritter(DWORD crid, bool sync_lock)
 	return cr;
 }
 
-Client* CritterManager::GetPlayer(DWORD crid, bool sync_lock)
+Client* CritterManager::GetPlayer(uint crid, bool sync_lock)
 {
 	if(!IS_USER_ID(crid)) return NULL;
 
@@ -750,7 +750,7 @@ Client* CritterManager::GetPlayer(const char* name, bool sync_lock)
 	return cl;
 }
 
-Npc* CritterManager::GetNpc(DWORD crid, bool sync_lock)
+Npc* CritterManager::GetNpc(uint crid, bool sync_lock)
 {
 	if(!IS_NPC_ID(crid)) return NULL;
 
@@ -779,7 +779,7 @@ void CritterManager::EraseCritter(Critter* cr)
 	}
 }
 
-void CritterManager::GetNpcIds(DwordSet& npc_ids)
+void CritterManager::GetNpcIds(UIntSet& npc_ids)
 {
 	SCOPE_LOCK(crLocker);
 
@@ -790,27 +790,27 @@ void CritterManager::GetNpcIds(DwordSet& npc_ids)
 	}
 }
 
-DWORD CritterManager::PlayersInGame()
+uint CritterManager::PlayersInGame()
 {
 	SCOPE_LOCK(crLocker);
 
-	DWORD count=playersCount;
+	uint count=playersCount;
 	return count;
 }
 
-DWORD CritterManager::NpcInGame()
+uint CritterManager::NpcInGame()
 {
 	SCOPE_LOCK(crLocker);
 
-	DWORD count=npcCount;
+	uint count=npcCount;
 	return count;
 }
 
-DWORD CritterManager::CrittersInGame()
+uint CritterManager::CrittersInGame()
 {
 	SCOPE_LOCK(crLocker);
 
-	DWORD count=allCritters.size();
+	uint count=allCritters.size();
 	return count;
 }
 

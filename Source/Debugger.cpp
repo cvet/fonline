@@ -7,7 +7,7 @@
 #define MAX_PROCESS       (20)
 static double Ticks[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
 static int Identifiers[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
-static DWORD CurTick[MAX_BLOCKS][MAX_ENTRY];
+static uint CurTick[MAX_BLOCKS][MAX_ENTRY];
 static int CurEntry[MAX_BLOCKS];
 
 void Debugger::BeginCycle()
@@ -46,13 +46,13 @@ void Debugger::EndCycle(double lag_to_show)
 				{
 					if(is_first)
 					{
-						WriteLog("Lag in block %d...",num_block);
+						WriteLog(NULL,"Lag in block %d...",num_block);
 						is_first=false;
 					}
-					WriteLog("<%d,%g>",Identifiers[num_block][entry][i],diff);
+					WriteLog(NULL,"<%d,%g>",Identifiers[num_block][entry][i],diff);
 				}
 			}
-			if(!is_first) WriteLog("\n");
+			if(!is_first) WriteLog(NULL,"\n");
 		}
 	}
 }
@@ -64,13 +64,13 @@ void Debugger::ShowLags(int num_block, double lag_to_show)
 		double diff=Ticks[num_block][entry][CurTick[num_block][entry]]-Ticks[num_block][entry][0];
 		if(diff>=lag_to_show)
 		{
-			WriteLog("Lag in block %d...",num_block);
+			WriteLog(NULL,"Lag in block %d...",num_block);
 			for(int i=1,j=CurTick[num_block][entry];i<=j;i++)
 			{
 				double diff_=Ticks[num_block][entry][i]-Ticks[num_block][entry][i-1];
-				WriteLog("<%d,%g>",Identifiers[num_block][entry][i],diff_);
+				WriteLog(NULL,"<%d,%g>",Identifiers[num_block][entry][i],diff_);
 			}
-			WriteLog("\n");
+			WriteLog(NULL,"\n");
 		}
 	}
 }
@@ -78,29 +78,29 @@ void Debugger::ShowLags(int num_block, double lag_to_show)
 #define MAX_MEM_NODES          (15)
 struct MemNode
 {
-	__int64 AllocMem;
-	__int64 DeallocMem;
-	__int64 MinAlloc;
-	__int64 MaxAlloc;
-} static MemNodes[MAX_MEM_NODES]={0};
+	int64 AllocMem;
+	int64 DeallocMem;
+	int64 MinAlloc;
+	int64 MaxAlloc;
+} static MemNodes[MAX_MEM_NODES]={0,0,0,0};
 
 const char* MemBlockNames[MAX_MEM_NODES]=
 {
-	{"Static       "},
-	{"Npc          "},
-	{"Clients      "},
-	{"Maps         "},
-	{"Map fields   "},
-	{"Proto maps   "},
-	{"Net buffers  "},
-	{"Vars         "},
-	{"Npc planes   "},
-	{"Items        "},
-	{"Dialogs      "},
-	{"Save data    "},
-	{"Any data     "},
-	{"Script string"},
-	{"Angel Script "},
+	"Static       ",
+	"Npc          ",
+	"Clients      ",
+	"Maps         ",
+	"Map fields   ",
+	"Proto maps   ",
+	"Net buffers  ",
+	"Vars         ",
+	"Npc planes   ",
+	"Items        ",
+	"Dialogs      ",
+	"Save data    ",
+	"Any data     ",
+	"Script string",
+	"Angel Script ",
 };
 
 static Mutex* MemLocker=NULL;
@@ -129,10 +129,10 @@ void Debugger::Memory(int block, int value)
 struct MemNodeStr
 {
 	char Name[256];
-	__int64 AllocMem;
-	__int64 DeallocMem;
-	__int64 MinAlloc;
-	__int64 MaxAlloc;
+	int64 AllocMem;
+	int64 DeallocMem;
+	int64 MinAlloc;
+	int64 MaxAlloc;
 	bool operator==(const char* str)const{return !strcmp(str,Name);}
 };
 typedef vector<MemNodeStr> MemNodeStrVec;
@@ -187,7 +187,7 @@ const char* Debugger::GetMemoryStatistics()
 
 #ifdef FONLINE_SERVER
 	char buf[512];
-	__int64 all_alloc=0,all_dealloc=0;
+	int64 all_alloc=0,all_dealloc=0;
 
 	if(MemoryDebugLevel>=1)
 	{
