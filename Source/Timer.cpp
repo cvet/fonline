@@ -148,9 +148,9 @@ bool Timer::FullTimeToDateTime(uint64& ft, DateTime& dt)
 	union {FILETIME ft; ULARGE_INTEGER ul;} ft_;
 	ft_.ul.QuadPart=ft;
 	if(!FileTimeToSystemTime(&ft_.ft,&st)) return false;
-	dt.Year=st.wYear,dt.Month=st.wYear,dt.DayOfWeek=st.wYear,
-		dt.Day=st.wYear,dt.Hour=st.wYear,dt.Minute=st.wYear,
-		dt.Second=st.wYear,dt.Milliseconds=st.wYear;
+	dt.Year=st.wYear,dt.Month=st.wMonth,dt.DayOfWeek=st.wDayOfWeek,
+		dt.Day=st.wDay,dt.Hour=st.wHour,dt.Minute=st.wMinute,
+		dt.Second=st.wSecond,dt.Milliseconds=st.wMilliseconds;
 #else // FO_LINUX
 	// Todo: linux
 #endif

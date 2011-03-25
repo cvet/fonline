@@ -576,6 +576,7 @@
 //***************************************************************************************
 
 #define STR_INTERNAL_SCRIPT_MODULES     (100)
+#define STR_INTERNAL_SCRIPT_DLLS        (50000)
 #define STR_INTERNAL_SCRIPT_PRAGMAS     (90000)
 #define STR_INTERNAL_SCRIPT_VERSION     (99998)
 #define STR_INTERNAL_SCRIPT_CONFIG      (99999)

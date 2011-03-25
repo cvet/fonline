@@ -13,6 +13,15 @@
 #define CONTEXT_BUFFER_SIZE            (512)
 
 typedef void(*EndExecutionCallback)();
+typedef std::vector<asIScriptModule*> ScriptModuleVec;
+typedef std::vector<asIScriptModule*>::iterator ScriptModuleVecIt;
+
+struct EngineData
+{
+	ScriptModuleVec Modules;
+	Preprocessor::PragmaCallback* PragmaCB;
+	StrPtrMap LoadedDlls;
+};
 
 struct ReservedScriptFunction
 {

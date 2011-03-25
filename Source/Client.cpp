@@ -9167,8 +9167,34 @@ bool FOClient::ReloadScripts()
 	}
 
 	// Options
-	Script::SetScriptsPath(PT_SCRIPTS);
+	Script::SetScriptsPath(PT_CACHE);
 	Script::Define("__CLIENT");
+
+	// Store dlls
+	for(int i=STR_INTERNAL_SCRIPT_DLLS;;i+=2)
+	{
+		if(!msg_script.Count(i) || !msg_script.Count(i+1)) break;
+
+		const char* dll_name=msg_script.GetStr(i);
+		uint len;
+		const uchar* dll_binary=msg_script.GetBinary(i+1,len);
+		if(!dll_binary) break;
+
+		// Fix slashes
+		char dll_name_[MAX_FOPATH];
+		Str::Copy(dll_name_,dll_name);
+		Str::Replacement(dll_name_,'\\','.');
+		Str::Replacement(dll_name_,'/','.');
+		dll_name=dll_name_;
+
+		// Save to cache
+		FileManager dll;
+		if(dll.LoadStream(dll_binary,len))
+		{
+			dll.SwitchToWrite();
+			dll.SaveOutBufToFile(dll_name,PT_CACHE);
+		}
+	}
 
 	// Pragmas
 	StrVec pragmas;

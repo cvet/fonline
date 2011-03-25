@@ -250,7 +250,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	return false;
 }
 
-bool FileManager::LoadStream(uchar* stream, uint length)
+bool FileManager::LoadStream(const uchar* stream, uint length)
 {
 	UnloadFile();
 	if(!length) return false;
@@ -531,7 +531,6 @@ bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 	if(!FileWrite(file,dataOutBuf,endOutBuf))
 	{
 		FileClose(file);
-		DeleteFile(fpath);
 		return false;
 	}
 

@@ -59,7 +59,7 @@ public:
 	static void EndOfWork();
 
 	bool LoadFile(const char* fname, int path_type);
-	bool LoadStream(uchar* stream, uint length);
+	bool LoadStream(const uchar* stream, uint length);
 	void UnloadFile();
 	uchar* ReleaseBuffer();
 

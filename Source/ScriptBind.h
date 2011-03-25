@@ -378,7 +378,9 @@
 	if(engine->RegisterObjectMethod("Critter","bool MoveToDir(uint8 dir)",asFUNCTION(BIND_CLASS Crit_MoveToDir),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)",asFUNCTION(BIND_CLASS Crit_TransitToHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir)",asFUNCTION(BIND_CLASS Crit_TransitToMapHex),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir, bool withGroup)",asFUNCTION(BIND_CLASS Crit_TransitToMapHexEx),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, int entireNum)",asFUNCTION(BIND_CLASS Crit_TransitToMapEntire),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool TransitToMap(uint mapId, int entireNum, bool withGroup)",asFUNCTION(BIND_CLASS Crit_TransitToMapEntireEx),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobal(bool requestGroup)",asFUNCTION(BIND_CLASS Crit_TransitToGlobal),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobal(Critter@[]& group)",asFUNCTION(BIND_CLASS Crit_TransitToGlobalWithGroup),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool TransitToGlobalGroup(uint critterId)",asFUNCTION(BIND_CLASS Crit_TransitToGlobalGroup),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;

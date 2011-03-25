@@ -574,7 +574,9 @@ struct BindClass
 	static void Crit_MoveToDir(){}
 	static void Crit_TransitToHex(){}
 	static void Crit_TransitToMapHex(){}
+	static void Crit_TransitToMapHexEx(){}
 	static void Crit_TransitToMapEntire(){}
+	static void Crit_TransitToMapEntireEx(){}
 	static void Crit_TransitToGlobal(){}
 	static void Crit_TransitToGlobalWithGroup(){}
 	static void Crit_TransitToGlobalGroup(){}

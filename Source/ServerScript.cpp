@@ -348,8 +348,40 @@ bool FOServer::ReloadClientScripts()
 		}
 	}
 
+	// Imported functions
 	Script::BindImportedFunctions();
 
+	// Add native dlls to MSG
+	int dll_num=STR_INTERNAL_SCRIPT_DLLS;
+	EngineData* ed=(EngineData*)engine->GetUserData();
+	for(StrPtrMapIt it=ed->LoadedDlls.begin(),end=ed->LoadedDlls.end();it!=end;++it)
+	{
+		const string& dll_name=(*it).first;
+		const void* dll_handle=(*it).second;
+
+		// Get full dll file name
+		char dll_name_[MAX_FOPATH];
+		FileManager dll;
+		if(GetModuleFileName((HMODULE)dll_handle,dll_name_,MAX_FOPATH)==0 || !dll.LoadFile(dll_name_,-1))
+		{
+			WriteLog(_FUNC_," - Can't load dll<%s>.\n",dll_name.c_str());
+			errors++;
+			continue;
+		}
+
+		// Add dll name and binary
+		for(LangPackVecIt it=LangPacks.begin(),end=LangPacks.end();it!=end;++it)
+		{
+			LanguagePack& lang=*it;
+			FOMsg& msg_script=lang.Msg[TEXTMSG_INTERNAL];
+
+			for(int i=0;i<10;i++) msg_script.EraseStr(dll_num+i);
+			msg_script.AddStr(dll_num,dll_name.c_str());
+			msg_script.AddBinary(dll_num+1,dll.GetBuf(),dll.GetFsize());
+		}
+	}
+
+	// Finish
 	Script::FinishEngine(engine);
 	Script::Undefine("__CLIENT");
 	Script::Define("__SERVER");
@@ -1226,6 +1258,11 @@ bool FOServer::SScriptFunc::Crit_TransitToHex(Critter* cr, ushort hx, ushort hy,
 
 bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir)
 {
+	return Crit_TransitToMapHexEx(cr,map_id,hx,hy,dir,false);
+}
+
+bool FOServer::SScriptFunc::Crit_TransitToMapHexEx(Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir, bool with_group)
+{
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(cr->LockMapTransfers) SCRIPT_ERROR_R0("Transfers locked.");
 	if(!map_id) SCRIPT_ERROR_R0("Map id arg is zero.");
@@ -1235,6 +1272,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, uint map_id, ushor
 
 	if(!cr->GetMap())
 	{
+		if(!with_group) MapMngr.GM_LeaveGroup(cr);
 		if(dir<DIRS_COUNT && cr->Data.Dir!=dir) cr->Data.Dir=dir;
 		if(!MapMngr.GM_GroupToMap(cr->GroupMove,map,0,hx,hy,cr->GetDir())) SCRIPT_ERROR_R0("Transit from global to map fail.");
 	}
@@ -1265,6 +1303,11 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex(Critter* cr, uint map_id, ushor
 
 bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, uint map_id, int entire)
 {
+	return Crit_TransitToMapEntireEx(cr,map_id,entire,false);
+}
+
+bool FOServer::SScriptFunc::Crit_TransitToMapEntireEx(Critter* cr, uint map_id, int entire, bool with_group)
+{
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	if(cr->LockMapTransfers) SCRIPT_ERROR_R0("Transfers locked.");
 	if(!map_id) SCRIPT_ERROR_R0("Map id arg is zero.");
@@ -1277,6 +1320,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire(Critter* cr, uint map_id, in
 	if(!map->GetStartCoord(hx,hy,dir,entire)) SCRIPT_ERROR_R0("Entire not found.");
 	if(!cr->GetMap())
 	{
+		if(!with_group) MapMngr.GM_LeaveGroup(cr);
 		if(!MapMngr.GM_GroupToMap(cr->GroupMove,map,0,hx,hy,dir)) SCRIPT_ERROR_R0("Transit from global to map fail.");
 	}
 	else
