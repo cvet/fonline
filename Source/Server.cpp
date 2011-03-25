@@ -171,7 +171,7 @@ void FOServer::Finish()
 		Statistics.BytesRecv);
 	WriteLog(NULL,"Cycles count:%u\n"
 		"Approx cycle period:%u\n"
-		"MIN cycle period:%u\n"
+		"Min cycle period:%u\n"
 		"Max cycle period:%u\n"
 		"Count of lags (>100ms):%u\n",
 		Statistics.LoopCycles,
