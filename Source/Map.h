@@ -104,6 +104,7 @@ public:
 	void AddCritter(Critter* cr);
 	void AddCritterEvents(Critter* cr);
 	void EraseCritter(Critter* cr);
+	void EraseCritterEvents(Critter* cr);
 	void KickPlayersToGlobalMap();
 
 	bool AddItem(Item* item, ushort hx, ushort hy);
@@ -294,7 +295,7 @@ public:
 	uint GetRadius(){return Data.Radius;}
 	MapVec& GetMapsNoLock(){return locMaps;};
 	void GetMaps(MapVec& maps, bool lock);
-	uint GetMapsCount(){return locMaps.size();}
+	uint GetMapsCount(){return (uint)locMaps.size();}
 	Map* GetMap(uint count);
 	bool GetTransit(Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir);
 	bool IsAutomaps(){return !Proto->AutomapsPids.empty();}

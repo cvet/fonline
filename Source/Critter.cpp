@@ -3507,8 +3507,8 @@ void Client::Send_GlobalInfo(uchar info_flags)
 
 	if(FLAG(info_flags,GM_INFO_GROUP_PARAM))
 	{
-		int speed_x=((int)GroupMove->SpeedX*1000000);
-		int speed_y=((int)GroupMove->SpeedY*1000000);
+		int speed_x=(int)(GroupMove->SpeedX*1000000.0f);
+		int speed_y=(int)(GroupMove->SpeedY*1000000.0f);
 		uchar wait=(GroupMove->EncounterDescriptor?1:0);
 
 		Bout << (ushort)(GroupMove->WXi);

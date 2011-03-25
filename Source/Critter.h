@@ -218,7 +218,7 @@ public:
 	uint CountItemPid(ushort item_pid);
 	void TakeDefaultItem(uchar slot);
 	bool MoveItem(uchar from_slot, uchar to_slot, uint item_id, uint count);
-	uint RealCountItems(){return invItems.size();}
+	uint RealCountItems(){return (uint)invItems.size();}
 	uint CountItems();
 	ItemPtrVec& GetInventory(){SyncLockItems(); return invItems;}
 	bool IsHaveGeckItem();

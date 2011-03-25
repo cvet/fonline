@@ -5698,7 +5698,7 @@ void FOClient::Net_OnGameInfo()
 	SYSTEMTIME st={GameOpt.YearStart,1,0,1,0,0,0,0};
 	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
 	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - FileTimeToSystemTime error<%u>.\n",GetLastError());
-	GameOpt.YearStartFT=ft.ul.QuadPart;
+	GameOpt.YearStartFT=PACKUINT64(ft.ul.HighPart,ft.ul.LowPart);
 	GameOpt.FullSecond=Timer::GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 	GameOpt.FullSecondStart=GameOpt.FullSecond;
 	GameOpt.GameTimeTick=Timer::GameTick();
@@ -6082,8 +6082,8 @@ void FOClient::Net_OnGlobalInfo()
 
 		GmapMoveX=move_x;
 		GmapMoveY=move_y;
-		GmapSpeedX=(float)(speed_x)/1000000;
-		GmapSpeedY=(float)(speed_y)/1000000;
+		GmapSpeedX=(float)speed_x/1000000.0f;
+		GmapSpeedY=(float)speed_y/1000000.0f;
 
 		int dist=DistSqrt(GmapMoveX,GmapMoveY,GmapGroupX,GmapGroupY);
 

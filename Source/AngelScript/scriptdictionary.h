@@ -5,7 +5,7 @@
 // string type must be registered with the engine before registering the
 // dictionary type
 
-#include <AngelScript/angelscript.h>
+#include "AngelScript/angelscript.h"
 #include <string>
 
 #ifdef _MSC_VER

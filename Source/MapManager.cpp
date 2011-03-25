@@ -24,7 +24,7 @@ bool GlobalMapGroup::IsMoving()
 
 uint GlobalMapGroup::GetSize()
 {
-	return CritMove.size();
+	return (uint)CritMove.size();
 }
 
 void GlobalMapGroup::SyncLockGroup()
@@ -298,7 +298,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 	if(res[0]=='$')
 	{
 		Str::ParseLine<UIntPairVec,UIntPair(*)(const char*)>(&res[1],',',ploc.Entrance,EntranceParser);
-		for(int k=0,l=ploc.Entrance.size();k<l;k++)
+		for(uint k=0,l=(uint)ploc.Entrance.size();k<l;k++)
 		{
 			uint map_num=ploc.Entrance[k].first;
 			if(map_num>cur_map)
@@ -319,7 +319,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		for(int k=0;k<val;k++) ploc.Entrance.push_back(UIntPairVecVal(k,0));
 	}
 
-	for(int k=0,l=ploc.Entrance.size();k<l;k++)
+	for(uint k=0,l=(uint)ploc.Entrance.size();k<l;k++)
 	{
 		uint map_num=ploc.Entrance[k].first;
 		uint entire=ploc.Entrance[k].second;
@@ -357,7 +357,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 
 void MapManager::SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t))
 {
-	uint count=allLocations.size();
+	uint count=(uint)allLocations.size();
 	save_func(&count,sizeof(count));
 
 	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
@@ -366,7 +366,7 @@ void MapManager::SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t))
 		save_func(&loc->Data,sizeof(loc->Data));
 
 		MapVec& maps=loc->GetMapsNoLock();
-		uint map_count=maps.size();
+		uint map_count=(uint)maps.size();
 		save_func(&map_count,sizeof(map_count));
 		for(MapVecIt it_=maps.begin(),end_=maps.end();it_!=end_;++it_)
 		{
@@ -759,7 +759,7 @@ void MapManager::GetMaps(MapVec& maps, bool lock)
 uint MapManager::GetMapsCount()
 {
 	SCOPE_LOCK(mapLocker);
-	uint count=allMaps.size();
+	uint count=(uint)allMaps.size();
 	return count;
 }
 
@@ -871,7 +871,7 @@ void MapManager::GetLocations(LocVec& locs, bool lock)
 uint MapManager::GetLocationsCount()
 {
 	SCOPE_LOCK(mapLocker);
-	uint count=allLocations.size();
+	uint count=(uint)allLocations.size();
 	return count;
 }
 
@@ -2523,6 +2523,11 @@ bool MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 		cr->SetBreakTime(0);
 		cr->Send_LoadMap(NULL);
 
+		// Map out / in events
+		if(old_map) old_map->EraseCritterEvents(cr);
+		if(map) map->AddCritterEvents(cr);
+
+		// Visible critters / items
 		cr->LockMapTransfers++; // Transfer begin critical section
 		cr->DisableSend++;
 		cr->ProcessVisibleCritters();
@@ -2575,7 +2580,6 @@ bool MapManager::AddCrToMap(Critter* cr, Map* map, ushort tx, ushort ty, uint ra
 		cr->Data.HexY=ty;
 		map->AddCritter(cr);
 		cr->LockMapTransfers--;
-		map->AddCritterEvents(cr);
 	}
 	return true;
 }

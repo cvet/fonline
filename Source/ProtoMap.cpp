@@ -1293,15 +1293,15 @@ bool ProtoMap::LoadCache(FileManager* fm)
 		if(!fm->CopyMem(&mapEntires[0],count*sizeof(MapEntire))) return false;
 	}
 
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(SceneryCl));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(SceneryCl));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,mapEntires.capacity()*sizeof(MapEntire));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,CrittersVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,ItemsVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneryVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,GridsVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,Header.MaxHexX*Header.MaxHexY);
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,Tiles.capacity()*sizeof(Tile));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)SceneriesToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)WallsToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)mapEntires.capacity()*sizeof(MapEntire));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)CrittersVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)ItemsVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)SceneryVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)GridsVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)Header.MaxHexX*Header.MaxHexY);
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)Tiles.capacity()*sizeof(Tile));
 	return true;
 }
 
@@ -1317,34 +1317,34 @@ void ProtoMap::SaveCache(FileManager* fm)
 	fm->SetData(&Header,sizeof(Header));
 
 	// Tiles
-	fm->SetBEUInt(Tiles.size());
-	if(Tiles.size()) fm->SetData(&Tiles[0],Tiles.size()*sizeof(Tile));
+	fm->SetBEUInt((uint)Tiles.size());
+	if(Tiles.size()) fm->SetData(&Tiles[0],(uint)Tiles.size()*sizeof(Tile));
 
 	// Critters
-	fm->SetBEUInt(CrittersVec.size());
+	fm->SetBEUInt((uint)CrittersVec.size());
 	for(MapObjectPtrVecIt it=CrittersVec.begin(),end=CrittersVec.end();it!=end;++it)
-		fm->SetData(*it,sizeof(MapObject)-sizeof(MapObject::_RunTime));
+		fm->SetData(*it,(uint)sizeof(MapObject)-sizeof(MapObject::_RunTime));
 
 	// Items
-	fm->SetBEUInt(ItemsVec.size());
+	fm->SetBEUInt((uint)ItemsVec.size());
 	for(MapObjectPtrVecIt it=ItemsVec.begin(),end=ItemsVec.end();it!=end;++it)
-		fm->SetData(*it,sizeof(MapObject)-sizeof(MapObject::_RunTime));
+		fm->SetData(*it,(uint)sizeof(MapObject)-sizeof(MapObject::_RunTime));
 
 	// Scenery
-	fm->SetBEUInt(SceneryVec.size());
+	fm->SetBEUInt((uint)SceneryVec.size());
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
-		fm->SetData(*it,sizeof(MapObject));
+		fm->SetData(*it,(uint)sizeof(MapObject));
 
 	// Grids
-	fm->SetBEUInt(GridsVec.size());
+	fm->SetBEUInt((uint)GridsVec.size());
 	for(MapObjectPtrVecIt it=GridsVec.begin(),end=GridsVec.end();it!=end;++it)
-		fm->SetData(*it,sizeof(MapObject));
+		fm->SetData(*it,(uint)sizeof(MapObject));
 
 	// To send
-	fm->SetBEUInt(WallsToSend.size());
-	fm->SetData(&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl));
-	fm->SetBEUInt(SceneriesToSend.size());
-	fm->SetData(&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl));
+	fm->SetBEUInt((uint)WallsToSend.size());
+	fm->SetData(&WallsToSend[0],(uint)WallsToSend.size()*sizeof(SceneryCl));
+	fm->SetBEUInt((uint)SceneriesToSend.size());
+	fm->SetData(&SceneriesToSend[0],(uint)SceneriesToSend.size()*sizeof(SceneryCl));
 
 	// Hashes
 	fm->SetBEUInt(HashTiles);
@@ -1355,8 +1355,8 @@ void ProtoMap::SaveCache(FileManager* fm)
 	fm->SetData(HexFlags,Header.MaxHexX*Header.MaxHexY);
 
 	// Entires
-	fm->SetBEUInt(mapEntires.size());
-	fm->SetData(&mapEntires[0],mapEntires.size()*sizeof(MapEntire));
+	fm->SetBEUInt((uint)mapEntires.size());
+	fm->SetData(&mapEntires[0],(uint)mapEntires.size()*sizeof(MapEntire));
 
 	// Save
 	char fname[MAX_PATH];
@@ -1557,7 +1557,7 @@ bool ProtoMap::Refresh()
 	if(Header.Version<FO_MAP_VERSION_TEXT4)
 	{
 		uint uid=0;
-		for(uint i=0,j=MObjects.size();i<j;i++)
+		for(uint i=0,j=(uint)MObjects.size();i<j;i++)
 		{
 			MapObject* mobj=MObjects[i];
 
@@ -1565,7 +1565,7 @@ bool ProtoMap::Refresh()
 			if(mobj->MapObjType!=MAP_OBJECT_ITEM || !mobj->ContainerUID) continue;
 
 			// Find container
-			for(uint k=0,l=MObjects.size();k<l;k++)
+			for(uint k=0,l=(uint)MObjects.size();k<l;k++)
 			{
 				MapObject* mobj_=MObjects[k];
 				if(mobj_->MapX!=mobj->MapX || mobj_->MapY!=mobj->MapY) continue;
@@ -1583,7 +1583,7 @@ bool ProtoMap::Refresh()
 	}
 
 	// Fix child objects positions
-	for(uint i=0,j=MObjects.size();i<j;)
+	for(uint i=0,j=(uint)MObjects.size();i<j;)
 	{
 		MapObject* mobj_child=MObjects[i];
 		if(!mobj_child->ParentUID)
@@ -1593,7 +1593,7 @@ bool ProtoMap::Refresh()
 		}
 
 		bool delete_child=true;
-		for(uint k=0,l=MObjects.size();k<l;k++)
+		for(uint k=0,l=(uint)MObjects.size();k<l;k++)
 		{
 			MapObject* mobj_parent=MObjects[k];
 			if(!mobj_parent->UID || mobj_parent->UID!=mobj_child->ParentUID || mobj_parent==mobj_child) continue;
@@ -1615,7 +1615,7 @@ bool ProtoMap::Refresh()
 		{
 			MObjects[i]->Release();
 			MObjects.erase(MObjects.begin()+i);
-			j=MObjects.size();
+			j=(uint)MObjects.size();
 		}
 		else
 		{
@@ -1809,21 +1809,21 @@ bool ProtoMap::Refresh()
 
 	// Generate hashes
 	HashTiles=maxhx*maxhy;
-	if(Tiles.size()) Crypt.Crc32((uchar*)&Tiles[0],Tiles.size()*sizeof(Tile),HashTiles);
+	if(Tiles.size()) Crypt.Crc32((uchar*)&Tiles[0],(uint)Tiles.size()*sizeof(Tile),HashTiles);
 	HashWalls=maxhx*maxhy;
-	if(WallsToSend.size()) Crypt.Crc32((uchar*)&WallsToSend[0],WallsToSend.size()*sizeof(SceneryCl),HashWalls);
+	if(WallsToSend.size()) Crypt.Crc32((uchar*)&WallsToSend[0],(uint)WallsToSend.size()*sizeof(SceneryCl),HashWalls);
 	HashScen=maxhx*maxhy;
-	if(SceneriesToSend.size()) Crypt.Crc32((uchar*)&SceneriesToSend[0],SceneriesToSend.size()*sizeof(SceneryCl),HashScen);
+	if(SceneriesToSend.size()) Crypt.Crc32((uchar*)&SceneriesToSend[0],(uint)SceneriesToSend.size()*sizeof(SceneryCl),HashScen);
 
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneriesToSend.capacity()*sizeof(SceneryCl));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,WallsToSend.capacity()*sizeof(SceneryCl));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,mapEntires.capacity()*sizeof(MapEntire));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,CrittersVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,ItemsVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,SceneryVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,GridsVec.size()*sizeof(MapObject));
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,Header.MaxHexX*Header.MaxHexY);
-	MEMORY_PROCESS(MEMORY_PROTO_MAP,Tiles.capacity()*sizeof(Tile));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)SceneriesToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)WallsToSend.capacity()*sizeof(SceneryCl));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)mapEntires.capacity()*sizeof(MapEntire));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)CrittersVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)ItemsVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)SceneryVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)GridsVec.size()*sizeof(MapObject));
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)Header.MaxHexX*Header.MaxHexY);
+	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)Tiles.capacity()*sizeof(Tile));
 
 	SaveCache(pmapFm);
 #endif
@@ -1984,10 +1984,10 @@ bool ProtoMap::IsMapFile(const char* fname)
 #ifdef FONLINE_SERVER
 uint ProtoMap::CountEntire(uint num)
 {
-	if(num==uint(-1)) return mapEntires.size();
+	if(num==uint(-1)) return (uint)mapEntires.size();
 
 	uint result=0;
-	for(int i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=(uint)mapEntires.size();i<j;i++)
 	{
 		if(mapEntires[i].Number==num) result++;
 	}
@@ -1996,7 +1996,7 @@ uint ProtoMap::CountEntire(uint num)
 
 ProtoMap::MapEntire* ProtoMap::GetEntire(uint num, uint skip)
 {
-	for(uint i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=(uint)mapEntires.size();i<j;i++)
 	{
 		if(num==uint(-1) || mapEntires[i].Number==num)
 		{
@@ -2011,20 +2011,20 @@ ProtoMap::MapEntire* ProtoMap::GetEntire(uint num, uint skip)
 ProtoMap::MapEntire* ProtoMap::GetEntireRandom(uint num)
 {
 	vector<MapEntire*> entires;
-	for(uint i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=(uint)mapEntires.size();i<j;i++)
 	{
 		if(num==uint(-1) || mapEntires[i].Number==num) entires.push_back(&mapEntires[i]);
 	}
 
 	if(entires.empty()) return NULL;
-	return entires[Random(0,entires.size()-1)];
+	return entires[Random(0,(uint)entires.size()-1)];
 }
 
 ProtoMap::MapEntire* ProtoMap::GetEntireNear(uint num, ushort hx, ushort hy)
 {
 	MapEntire* near_entire=NULL;
 	uint last_dist=0;
-	for(uint i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=(uint)mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
 		if(num==uint(-1) || entire.Number==num)
@@ -2044,7 +2044,7 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear(uint num, uint num_ext, ushort hx, 
 {
 	MapEntire* near_entire=NULL;
 	uint last_dist=0;
-	for(uint i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=(uint)mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
 		if(num==uint(-1) || num_ext==uint(-1) || entire.Number==num || entire.Number==num_ext)
@@ -2062,7 +2062,7 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear(uint num, uint num_ext, ushort hx, 
 
 void ProtoMap::GetEntires(uint num, EntiresVec& entires)
 {
-	for(uint i=0,j=mapEntires.size();i<j;i++)
+	for(uint i=0,j=(uint)mapEntires.size();i<j;i++)
 	{
 		MapEntire& entire=mapEntires[i];
 		if(num==uint(-1) || entire.Number==num) entires.push_back(entire);

@@ -842,6 +842,7 @@ bool FOServer::TransferAllNpc()
 			continue;
 		}
 		cr->Data.GlobalGroupUid--; // Restore group uid
+		if(map) map->AddCritterEvents(cr);
 	}
 
 	// Move critters to global groups

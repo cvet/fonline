@@ -73,7 +73,7 @@ public:
 
 #ifdef FO_X86
 		return minimum+(int)((double)num*(double)(1.0/4294967296.0)*(double)(maximum-minimum+1));
-#else
+#else // FO_X64
 		return minimum+(int)((int64)num*(int64)(maximum-minimum+1)/(int64)0x100000000);
 #endif
 	}

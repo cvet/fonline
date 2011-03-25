@@ -271,7 +271,11 @@ void FOServer::RemoveClient(Client* cl)
 		if(cl->GetMap())
 		{
 			Map* map=MapMngr.GetMap(cl->GetMap(),true);
-			if(map) MapMngr.EraseCrFromMap(cl,map,cl->GetHexX(),cl->GetHexY());
+			if(map)
+			{
+				MapMngr.EraseCrFromMap(cl,map,cl->GetHexX(),cl->GetHexY());
+				map->EraseCritterEvents(cl);
+			}
 		}
 		else if(cl->GroupMove)
 		{

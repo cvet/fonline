@@ -1691,6 +1691,8 @@ bool RunPrepared()
 		size_t ret_value=0;
 
 #if defined(FO_MSVC)
+
+	#if defined(FO_X86)
 		__asm
 		{
 			// We must save registers that are used
@@ -1718,7 +1720,13 @@ bool RunPrepared()
 			// return value in EAX or EAX:EDX
 			mov  ret_value, eax
 		}
-#elif defined(FO_GCC)
+	#else // FO_X64
+		// Todo: x64
+	#endif
+
+#else // FO_GCC
+
+	#if defined(FO_X86)
 		asm("pushl %ecx           \n"
 			"fninit               \n"
             // Copy arguments from script stack to application stack
@@ -1749,6 +1757,10 @@ bool RunPrepared()
 			"popl  %ecx           \n"
 			// return value in EAX or EAX:EDX
 			"movl  %eax, 20(%ebp) \n");
+	#else // FO_X64
+		// Todo: x64
+	#endif
+
 #endif
 
 		NativeRetValue=ret_value;

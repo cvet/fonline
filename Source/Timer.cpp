@@ -134,7 +134,7 @@ bool Timer::DateTimeToFullTime(DateTime& dt, uint64& ft)
 	union {FILETIME ft; ULARGE_INTEGER ul;} ft_;
 	SYSTEMTIME st={dt.Year,dt.Month,dt.DayOfWeek,dt.Day,dt.Hour,dt.Minute,dt.Second,dt.Milliseconds};
 	if(!SystemTimeToFileTime(&st,&ft_.ft)) return false;
-	ft=ft_.ul.QuadPart;
+	ft=PACKUINT64(ft_.ul.HighPart,ft_.ul.LowPart);
 #else // FO_LINUX
 	// Todo: linux
 #endif
@@ -146,7 +146,8 @@ bool Timer::FullTimeToDateTime(uint64& ft, DateTime& dt)
 #if defined(FO_WINDOWS)
 	SYSTEMTIME st;
 	union {FILETIME ft; ULARGE_INTEGER ul;} ft_;
-	ft_.ul.QuadPart=ft;
+	ft_.ul.HighPart=(ft>>32);
+	ft_.ul.LowPart=(ft&0xFFFFFFFF);
 	if(!FileTimeToSystemTime(&ft_.ft,&st)) return false;
 	dt.Year=st.wYear,dt.Month=st.wMonth,dt.DayOfWeek=st.wDayOfWeek,
 		dt.Day=st.wDay,dt.Hour=st.wHour,dt.Minute=st.wMinute,

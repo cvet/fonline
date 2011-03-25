@@ -2150,6 +2150,9 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
+		// Map event
+		if(map) map->AddCritterEvents(cl);
+
 		// Add car, if on global
 		if(!cl->GetMap() && !cl->GroupMove->CarId)
 		{

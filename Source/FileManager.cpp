@@ -213,9 +213,9 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	{
 		union {FILETIME ft; ULARGE_INTEGER ul;} tc,ta,tw;
 		GetFileTime((HANDLE)file,&tc.ft,&ta.ft,&tw.ft);
-		timeCreate=tc.ul.QuadPart;
-		timeAccess=ta.ul.QuadPart;
-		timeWrite=tw.ul.QuadPart;
+		timeCreate=PACKUINT64(tc.ul.HighPart,tc.ul.LowPart);
+		timeAccess=PACKUINT64(ta.ul.HighPart,ta.ul.LowPart);
+		timeWrite=PACKUINT64(tw.ul.HighPart,tw.ul.LowPart);
 
 		uint size=GetFileSize((HANDLE)file,NULL);
 		uchar* buf=new(nothrow) uchar[size+1];

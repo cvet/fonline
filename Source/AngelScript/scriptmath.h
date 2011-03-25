@@ -1,7 +1,7 @@
 #ifndef SCRIPTMATH_H
 #define SCRIPTMATH_H
 
-#include <AngelScript/angelscript.h>
+#include "AngelScript/angelscript.h"
 
 BEGIN_AS_NAMESPACE
 

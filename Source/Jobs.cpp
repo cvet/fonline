@@ -172,7 +172,7 @@ template<class T1, class T2>
 void ProcessDeferredReleasing_(T1& cont, T2& cont_cycle)
 {
 	uint del_count=0;
-	for(uint i=0,j=cont_cycle.size();i<j;i++)
+	for(uint i=0,j=(uint)cont_cycle.size();i<j;i++)
 	{
 		if(cont_cycle[i]>=DeferredReleaseCycle-2) break;
 		else del_count++;

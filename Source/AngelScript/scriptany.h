@@ -1,7 +1,7 @@
 #ifndef SCRIPTANY_H
 #define SCRIPTANY_H
 
-#include <AngelScript/angelscript.h>
+#include "AngelScript/angelscript.h"
 
 BEGIN_AS_NAMESPACE
 

@@ -326,6 +326,7 @@ void CritterManager::CritterGarbager()
 			{
 				cr->ClearVisible();
 				map->EraseCritter(cr);
+				map->EraseCritterEvents(cr);
 				map->UnsetFlagCritter(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex(),cr->IsDead());
 			}
 

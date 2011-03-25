@@ -135,9 +135,9 @@ namespace Script
 	{
 		if(!vec.empty() && arr)
 		{
-			asUINT i=arr->GetSize();
-			arr->Resize(arr->GetSize()+vec.size());
-			for(uint k=0,l=vec.size();k<l;k++,i++)
+			uint i=(uint)arr->GetSize();
+			arr->Resize((asUINT)(i+(uint)vec.size()));
+			for(uint k=0,l=(uint)vec.size();k<l;k++,i++)
 			{
 				Type* p=(Type*)arr->At(i);
 				*p=vec[k];
@@ -149,9 +149,9 @@ namespace Script
 	{
 		if(!vec.empty() && arr)
 		{
-			asUINT i=arr->GetSize();
-			arr->Resize(arr->GetSize()+vec.size());
-			for(uint k=0,l=vec.size();k<l;k++,i++)
+			uint i=(uint)arr->GetSize();
+			arr->Resize((asUINT)(i+(uint)vec.size()));
+			for(uint k=0,l=(uint)vec.size();k<l;k++,i++)
 			{
 				Type* p=(Type*)arr->At(i);
 				*p=vec[k];
@@ -164,11 +164,11 @@ namespace Script
 	{
 		if(arr)
 		{
-			asUINT count=arr->GetSize();
+			uint count=(uint)arr->GetSize();
 			if(count)
 			{
 				vec.resize(count);
-				for(asUINT i=0;i<count;i++)
+				for(uint i=0;i<count;i++)
 				{
 					Type* p=(Type*)arr->At(i);
 					vec[i]=*p;

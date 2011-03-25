@@ -312,8 +312,8 @@ bool Str::IsNumber(const char* str)
 {
 	// Check number it or not
 	bool is_number=true;
-	size_t pos=0;
-	size_t len=Str::Length(str);
+	uint pos=0;
+	uint len=Str::Length(str);
 	for(uint i=0,j=len;i<j;i++,pos++) if(str[i]!=' ' && str[i]!='\t') break;
 	if(pos>=len) is_number=false; // Empty string
 	for(uint i=pos,j=len;i<j;i++,pos++)

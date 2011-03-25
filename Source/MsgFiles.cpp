@@ -83,7 +83,7 @@ uint FOMsg::AddStr(const char* str)
 
 const char* FOMsg::GetStr(uint num)
 {
-	uint str_count=strData.count(num);
+	uint str_count=(uint)strData.count(num);
 	UIntStrMulMapIt it=strData.find(num);
 
 	switch(str_count)
@@ -98,7 +98,7 @@ const char* FOMsg::GetStr(uint num)
 
 const char* FOMsg::GetStr(uint num, uint skip)
 {
-	uint str_count=strData.count(num);
+	uint str_count=(uint)strData.count(num);
 	UIntStrMulMapIt it=strData.find(num);
 
 	if(skip>=str_count) return (*strData.begin()).second.c_str(); // give FOMSG_ERRNUM
@@ -123,7 +123,7 @@ uint FOMsg::GetStrNumLower(uint num)
 
 int FOMsg::GetInt(uint num)
 {
-	uint str_count=strData.count(num);
+	uint str_count=(uint)strData.count(num);
 	UIntStrMulMapIt it=strData.find(num);
 
 	switch(str_count)
@@ -152,13 +152,13 @@ const uchar* FOMsg::GetBinary(uint num, uint& len)
 		else return NULL;
 	}
 
-	len=binary->size();
+	len=(uint)binary->size();
 	return &(*binary)[0];
 }
 
 int FOMsg::Count(uint num)
 {
-	return !num?0:strData.count(num);
+	return !num?0:(uint)strData.count(num);
 }
 
 void FOMsg::EraseStr(uint num)
@@ -175,7 +175,7 @@ void FOMsg::EraseStr(uint num)
 
 uint FOMsg::GetSize()
 {
-	return strData.size()-1;
+	return (uint)strData.size()-1;
 }
 
 void FOMsg::CalculateHash()
@@ -365,7 +365,7 @@ int FOMsg::SaveMsgFile(const char* fname, int path_type)
 	}
 
 	char* buf=(char*)str.c_str();
-	uint buf_len=str.length();
+	uint buf_len=(uint)str.length();
 
 #ifdef FONLINE_CLIENT
 	buf=(char*)Crypt.Compress((uchar*)buf,buf_len);

@@ -29,7 +29,7 @@
 // Declaration
 //
 
-#include <AngelScript/angelscript.h>
+#include "AngelScript/angelscript.h"
 #include "scriptarray.h"
 #include "scriptstring.h"
 

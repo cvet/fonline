@@ -91,9 +91,9 @@ using namespace std;
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
-#define OFFSETOF(type,member) offsetof(type,member)
-
-#define memzero(ptr,size) memset(ptr,0,size)
+#define OFFSETOF(type,member)   ((int)offsetof(type,member))
+#define memzero(ptr,size)       memset(ptr,0,size)
+#define PACKUINT64(u32hi,u32lo) (((uint64)u32hi<<32)|((uint64)u32lo))
 
 typedef vector<INTRECT> IntRectVec;
 typedef vector<FLTRECT> FltRectVec;

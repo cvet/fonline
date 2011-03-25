@@ -333,7 +333,7 @@ void VarManager::SaveTemplateVars()
 		else if(var->Type==VAR_LOCAL_ITEM) fm.SetStr("LIVAR_");
 		else fm.SetStr("?VAR_");
 		fm.SetStr("%s",var->Name.c_str());
-		int spaces=var->Name.length()+(var->Type==VAR_LOCAL_LOCATION || var->Type==VAR_LOCAL_MAP || var->Type==VAR_LOCAL_ITEM?1:0);
+		int spaces=(uint)var->Name.length()+(var->Type==VAR_LOCAL_LOCATION || var->Type==VAR_LOCAL_MAP || var->Type==VAR_LOCAL_ITEM?1:0);
 		for(int i=0,j=MAX(1,40-spaces);i<j;i++) fm.SetStr(" ");
 		fm.SetStr("(%u)\n",var->TempId);
 	}
@@ -546,7 +546,7 @@ GameVar* VarManager::CreateVar(uint master_id, TemplateVar* tvar)
 	if(tvar->IsQuest())
 	{
 		bool founded=false;
-		for(uint i=0,j=allQuestVars.size();i<j;i++)
+		for(uint i=0,j=(uint)allQuestVars.size();i<j;i++)
 		{
 			if(!allQuestVars[i])
 			{
@@ -559,7 +559,7 @@ GameVar* VarManager::CreateVar(uint master_id, TemplateVar* tvar)
 
 		if(!founded)
 		{
-			var->QuestVarIndex=allQuestVars.size();
+			var->QuestVarIndex=(uint)allQuestVars.size();
 			allQuestVars.push_back(var);
 		}
 	}
@@ -743,7 +743,7 @@ uint VarManager::ClearUnusedVars(UIntSet& ids1, UIntSet& ids2, UIntSet& ids_locs
 	}
 
 	// Delete vars
-	size_t del_count=0;
+	uint del_count=0;
 	varsLocker.Lock();
 	for(VarsVecIt it=del_vars.begin();it!=del_vars.end();++it)
 	{

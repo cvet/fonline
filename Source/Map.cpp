@@ -458,7 +458,7 @@ bool Map::GetStartCoordCar(ushort& hx, ushort& hy, ProtoItem* proto_item)
 	Proto->GetEntires(proto_item->Car_Entrance,entires);
 	std::random_shuffle(entires.begin(),entires.end());
 
-	for(int i=0,j=entires.size();i<j;i++)
+	for(int i=0,j=(uint)entires.size();i<j;i++)
 	{
 		ProtoMap::MapEntire* ent=&entires[i];
 		if(ent->HexX<GetMaxHexX() && ent->HexY<GetMaxHexY() && IsPlaceForItem(ent->HexX,ent->HexY,proto_item))
@@ -531,6 +531,7 @@ void Map::AddCritter(Critter* cr)
 
 void Map::AddCritterEvents(Critter* cr)
 {
+	cr->LockMapTransfers++;
 	EventInCritter(cr);
 	if(Script::PrepareContext(ServerFunctions.MapCritterIn,_FUNC_,cr->GetInfo()))
 	{
@@ -538,6 +539,7 @@ void Map::AddCritterEvents(Critter* cr)
 		Script::SetArgObject(cr);
 		Script::RunPrepared();
 	}
+	cr->LockMapTransfers--;
 }
 
 void Map::EraseCritter(Critter* cr)
@@ -563,6 +565,12 @@ void Map::EraseCritter(Critter* cr)
 
 	cr->SetTimeout(TO_BATTLE,0);
 
+	MapMngr.RunGarbager();
+}
+
+void Map::EraseCritterEvents(Critter* cr)
+{
+	cr->LockMapTransfers++;
 	EventOutCritter(cr);
 	if(Script::PrepareContext(ServerFunctions.MapCritterOut,_FUNC_,cr->GetInfo()))
 	{
@@ -570,8 +578,7 @@ void Map::EraseCritter(Critter* cr)
 		Script::SetArgObject(cr);
 		Script::RunPrepared();
 	}
-
-	MapMngr.RunGarbager();
+	cr->LockMapTransfers--;
 }
 
 void Map::KickPlayersToGlobalMap()
@@ -1355,21 +1362,21 @@ void Map::GetNpcs(PcVec& npcs, bool sync_lock)
 uint Map::GetCrittersCount()
 {
 	SCOPE_LOCK(dataLocker);
-	uint count=mapCritters.size();
+	uint count=(uint)mapCritters.size();
 	return count;
 }
 
 uint Map::GetPlayersCount()
 {
 	SCOPE_LOCK(dataLocker);
-	uint count=mapPlayers.size();
+	uint count=(uint)mapPlayers.size();
 	return count;
 }
 
 uint Map::GetNpcsCount()
 {
 	SCOPE_LOCK(dataLocker);
-	uint count=mapNpcs.size();
+	uint count=(uint)mapNpcs.size();
 	return count;
 }
 

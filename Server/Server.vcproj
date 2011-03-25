@@ -11,6 +11,9 @@
 		<Platform
 			Name="Win32"
 		/>
+		<Platform
+			Name="x64"
+		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
@@ -122,9 +125,9 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release_MaxOptimize|Win32"
-			OutputDirectory=".\ReleaseO_MSVC"
-			IntermediateDirectory=".\ReleaseO_MSVC"
+			Name="Release|x64"
+			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -148,7 +151,7 @@
 				PreprocessorDefinitions="NDEBUG"
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
-				TargetEnvironment="1"
+				TargetEnvironment="3"
 				TypeLibraryName=".\Release_app/FOserver.tlb"
 				HeaderFileName=""
 			/>
@@ -158,24 +161,21 @@
 				InlineFunctionExpansion="1"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				OmitFramePointers="true"
-				EnableFiberSafeOptimizations="true"
-				WholeProgramOptimization="true"
-				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE"
+				WholeProgramOptimization="false"
+				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;WIN64;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				GeneratePreprocessedFile="0"
 				StringPooling="true"
 				ExceptionHandling="0"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				EnableEnhancedInstructionSet="0"
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\ReleaseO_MSVC/FOserver.pch"
+				PrecompiledHeaderFile=".\Release64_MSVC/FOserver.pch"
 				AssemblerOutput="2"
-				AssemblerListingLocation=".\ReleaseO_MSVC\"
-				ObjectFile=".\ReleaseO_MSVC\"
-				ProgramDataBaseFileName=".\ReleaseO_MSVC\"
+				AssemblerListingLocation=".\Release64_MSVC\"
+				ObjectFile=".\Release64_MSVC\"
+				ProgramDataBaseFileName=".\Release64_MSVC\"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -193,19 +193,18 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\server\FOnlineServerO.exe"
+				OutputFile="..\..\..\FOnline\server\FOnlineServer64.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
-				GenerateDebugInformation="false"
-				ProgramDatabaseFile=".\ReleaseO_MSVC\FOserv.pdb"
+				GenerateDebugInformation="true"
+				ProgramDatabaseFile=".\Release64_MSVC/FOserv.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\ReleaseO_MSVC\FOserv.map"
+				MapFileName=".\Release64_MSVC/FOserv.map"
 				SubSystem="2"
-				LinkTimeCodeGeneration="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				TargetMachine="1"
+				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -219,7 +218,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\ReleaseO_MSVC/FOserver.bsc"
+				OutputFile=".\Release64_MSVC/FOserver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -259,7 +258,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCResourceCompilerTool"
@@ -283,7 +282,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -303,7 +302,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -323,7 +322,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -347,7 +346,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -371,7 +370,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -395,7 +394,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -415,7 +414,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -435,7 +434,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -455,7 +454,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -475,7 +474,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -503,7 +502,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -527,7 +526,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -551,7 +550,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -575,7 +574,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -599,7 +598,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -619,7 +618,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -651,7 +650,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -795,7 +794,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -943,7 +942,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -991,7 +990,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1063,7 +1062,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1087,7 +1086,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1111,7 +1110,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1135,7 +1134,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1159,7 +1158,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1179,7 +1178,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1207,7 +1206,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1231,7 +1230,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1255,7 +1254,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1283,7 +1282,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1307,7 +1306,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1331,7 +1330,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1355,7 +1354,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1379,7 +1378,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1403,7 +1402,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1427,7 +1426,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1451,7 +1450,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1479,7 +1478,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1503,7 +1502,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1527,7 +1526,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1551,7 +1550,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1575,7 +1574,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1599,7 +1598,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1623,7 +1622,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1647,7 +1646,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1675,7 +1674,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1703,7 +1702,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1727,7 +1726,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1751,7 +1750,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1775,7 +1774,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1799,7 +1798,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1823,7 +1822,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1847,7 +1846,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1871,7 +1870,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1895,7 +1894,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1919,7 +1918,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1943,7 +1942,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1970,7 +1969,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="Release_MaxOptimize|Win32"
+						Name="Release|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -1994,7 +1993,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="Release_MaxOptimize|Win32"
+						Name="Release|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -2026,7 +2025,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="Release_MaxOptimize|Win32"
+						Name="Release|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -2059,7 +2058,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2083,7 +2082,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release_MaxOptimize|Win32"
+					Name="Release|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"

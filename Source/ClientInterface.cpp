@@ -9990,7 +9990,7 @@ void FOClient::SaveLoadCollect()
 		slot.InfoExt=Str::FormatBuf("%s\n%02d %3s %04d %02d%02d\n%s",crname,
 			day,MsgGame->GetStr(STR_MONTH(month)),year,hour,minute,MsgGM->GetStr(STR_MAP_NAME_(map_pid)));
 		slot.FileName=fpath;
-		slot.RealTime=writeft.ul.QuadPart;
+		slot.RealTime=PACKUINT64(writeft.ul.HighPart,writeft.ul.LowPart);
 		slot.PicData=pic_data;
 		SaveLoadDataSlots.push_back(slot);
 	}

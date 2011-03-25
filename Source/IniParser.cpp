@@ -382,7 +382,7 @@ void IniParser::CacheApps()
 			char* end=strstr(line+1,"]");
 			if(end)
 			{
-				int len=end-line-1;
+				int len=(int)(end-line-1);
 				if(len>0)
 				{
 					string app;
