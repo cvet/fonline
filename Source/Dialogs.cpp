@@ -2,7 +2,7 @@
 #include "Dialogs.h"
 #include "ConstantsManager.h"
 #include "FileManager.h"
-#include <strstream>
+#include "IniParser.h"
 
 DialogManager DlgMngr;
 
@@ -59,8 +59,8 @@ bool DialogManager::LoadDialogs(const char* list_name)
 		}
 
 		char name[256];
-		StringCopy(name,dlg_name);
-		StringAppend(name,DIALOG_FILE_EXT);
+		Str::Copy(name,dlg_name);
+		Str::Append(name,DIALOG_FILE_EXT);
 
 		FileManager fdlg;
 		if(!fdlg.LoadFile(name,PT_SERVER_DIALOGS))
@@ -93,8 +93,8 @@ void DialogManager::SaveList(const char* list_path, const char* list_name)
 {
 	if(!list_path || !list_name) return;
 	char full_path[1024];
-	StringCopy(full_path,list_path);
-	StringAppend(full_path,list_name);
+	Str::Copy(full_path,list_path);
+	Str::Append(full_path,list_name);
 
 	FileManager fm;
 
@@ -178,7 +178,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 	}
 
 	IniParser fodlg;
-	if(!fodlg.LoadFilePtr(data,strlen(data)))
+	if(!fodlg.LoadFilePtr(data,Str::Length(data)))
 	{
 		AddError("Internal error.");
 		return NULL;
@@ -187,7 +187,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 #define LOAD_FAIL(err) {AddError(err); goto load_false;}
 	DialogPack* pack=new DialogPack(id,string(name));
 	char* dlg_buf=fodlg.GetApp("dialog");
-	istrstream input(dlg_buf,strlen(dlg_buf));
+	istrstream input(dlg_buf,Str::Length(dlg_buf));
 	char* lang_buf=NULL;
 	pack->PackId=id;
 	pack->PackName=name;
@@ -211,7 +211,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 		lang_buf=fodlg.GetApp(l.c_str());
 		if(!lang_buf) LOAD_FAIL("One of the lang section not found.");
 		pack->Texts.push_back(new FOMsg);
-		pack->Texts[i]->LoadMsgFileBuf(lang_buf,strlen(lang_buf));
+		pack->Texts[i]->LoadMsgFileBuf(lang_buf,Str::Length(lang_buf));
 		SAFEDELA(lang_buf);
 	}
 
@@ -245,9 +245,9 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 		input >> read_str;
 		if(input.fail()) LOAD_FAIL("Bad not answer action.");
 #ifdef FONLINE_NPCEDITOR
-		StringCopy(script,read_str);
-		if(!_stricmp(script,"NOT_ANSWER_CLOSE_DIALOG")) StringCopy(script,"None");
-		else if(!_stricmp(script,"NOT_ANSWER_BEGIN_BATTLE")) StringCopy(script,"Attack");
+		Str::Copy(script,read_str);
+		if(Str::CompareCase(script,"NOT_ANSWER_CLOSE_DIALOG")) Str::Copy(script,"None");
+		else if(Str::CompareCase(script,"NOT_ANSWER_BEGIN_BATTLE")) Str::Copy(script,"Attack");
 		ret_val=false;
 #else
 		script=GetNotAnswerAction(read_str,ret_val);
@@ -327,7 +327,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 				{
 					input >> read_str;
 					if(input.fail()) LOAD_FAIL("Parse flags fail.");
-					if(!_stricmp(read_str,"no_recheck_demand") && current_dialog.Answers.size()) current_answer.NoRecheck=true;
+					if(Str::CompareCase(read_str,"no_recheck_demand") && current_dialog.Answers.size()) current_answer.NoRecheck=true;
 				}*/
 				else break;
 			}
@@ -407,7 +407,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 	case DR_PARAM:
 		{
 			// Who
-			if(_stricmp(type_str,"loy") && _stricmp(type_str,"kill")) // Deprecated
+			if(!Str::CompareCase(type_str,"loy") && !Str::CompareCase(type_str,"kill")) // Deprecated
 			{
 				input >> who;
 				if(!CheckWho(who))
@@ -489,7 +489,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 					AddError("Invalid DR item<%s>.",name);
 					errors++;
 				}
-				if(name_!=0) StringCopy(name,name_);
+				if(name_!=0) Str::Copy(name,name_);
 			}
 
 			// Operator
@@ -651,9 +651,9 @@ int DialogManager::GetNotAnswerAction(const char* str, bool& ret_val)
 {
 	ret_val=false;
 
-	if(!_stricmp(str,"NOT_ANSWER_CLOSE_DIALOG") || !_stricmp(str,"None"))
+	if(Str::CompareCase(str,"NOT_ANSWER_CLOSE_DIALOG") || Str::CompareCase(str,"None"))
 		return NOT_ANSWER_CLOSE_DIALOG;
-	else if(!_stricmp(str,"NOT_ANSWER_BEGIN_BATTLE") || !_stricmp(str,"Attack"))
+	else if(Str::CompareCase(str,"NOT_ANSWER_BEGIN_BATTLE") || Str::CompareCase(str,"Attack"))
 		return NOT_ANSWER_BEGIN_BATTLE;
 #ifdef FONLINE_SERVER
 	else
@@ -675,25 +675,25 @@ int DialogManager::GetDRType(const char* str, bool& deprecated)
 {
 	deprecated=false;
 	if(!str) return DR_NONE;
-	if(!_stricmp(str,"_param"))          return DR_PARAM;
-	else if(!_stricmp(str,"_item"))      return DR_ITEM;
-	else if(!_stricmp(str,"_lock"))      return DR_LOCK;
-	else if(!_stricmp(str,"_script"))    return DR_SCRIPT;
-	else if(!_stricmp(str,"_var"))       return DR_VAR;
-	else if(!_stricmp(str,"no_recheck")) return DR_NO_RECHECK;
-	else if(!_stricmp(str,"or"))         return DR_OR;
-	else if(!_stricmp(str,"stat"))  {deprecated=true; return DR_PARAM;}  // Deprecated
-	else if(!_stricmp(str,"skill")) {deprecated=true; return DR_PARAM;}  // Deprecated
-	else if(!_stricmp(str,"perk"))  {deprecated=true; return DR_PARAM;}  // Deprecated
-	else if(!_stricmp(str,"var"))   {deprecated=true; return DR_VAR;}    // Deprecated
-	else if(!_stricmp(str,"gvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
-	else if(!_stricmp(str,"lvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
-	else if(!_stricmp(str,"uvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
-	else if(!_stricmp(str,"item"))  {deprecated=true; return DR_ITEM;}   // Deprecated
-	else if(!_stricmp(str,"lock"))  {deprecated=true; return DR_LOCK;}   // Deprecated
-	else if(!_stricmp(str,"script")){deprecated=true; return DR_SCRIPT;} // Deprecated
-	else if(!_stricmp(str,"kill"))  {deprecated=true; return DR_PARAM;}  // Deprecated
-	else if(!_stricmp(str,"loy"))   {deprecated=true; return DR_PARAM;}  // Deprecated
+	if(Str::CompareCase(str,"_param"))          return DR_PARAM;
+	else if(Str::CompareCase(str,"_item"))      return DR_ITEM;
+	else if(Str::CompareCase(str,"_lock"))      return DR_LOCK;
+	else if(Str::CompareCase(str,"_script"))    return DR_SCRIPT;
+	else if(Str::CompareCase(str,"_var"))       return DR_VAR;
+	else if(Str::CompareCase(str,"no_recheck")) return DR_NO_RECHECK;
+	else if(Str::CompareCase(str,"or"))         return DR_OR;
+	else if(Str::CompareCase(str,"stat"))  {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(Str::CompareCase(str,"skill")) {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(Str::CompareCase(str,"perk"))  {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(Str::CompareCase(str,"var"))   {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(Str::CompareCase(str,"gvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(Str::CompareCase(str,"lvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(Str::CompareCase(str,"uvar"))  {deprecated=true; return DR_VAR;}    // Deprecated
+	else if(Str::CompareCase(str,"item"))  {deprecated=true; return DR_ITEM;}   // Deprecated
+	else if(Str::CompareCase(str,"lock"))  {deprecated=true; return DR_LOCK;}   // Deprecated
+	else if(Str::CompareCase(str,"script")){deprecated=true; return DR_SCRIPT;} // Deprecated
+	else if(Str::CompareCase(str,"kill"))  {deprecated=true; return DR_PARAM;}  // Deprecated
+	else if(Str::CompareCase(str,"loy"))   {deprecated=true; return DR_PARAM;}  // Deprecated
 	return DR_NONE;
 }
 

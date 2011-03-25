@@ -9,7 +9,7 @@
 	#define WINVER 0x0501 // Windows XP
 	#define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
-#elif defined(FO_LINUX)
+#else // FO_LINUX
 	//
 #endif
 
@@ -22,7 +22,8 @@
         #elif defined(FO_GCC)
             // Linker option: -lws2_32
         #endif
-	#elif defined(FO_LINUX)
+		const char* GetLastSocketError();
+	#else // FO_LINUX
 		// Todo: epoll/kqueue, libevent
 	#endif
 #endif
@@ -34,7 +35,7 @@
 	#else
 		#pragma comment(lib,"stlportd_static.lib")
 	#endif
-#elif defined(FO_GCC)
+#else FO_GCC
 	// Linker option: -lstlport
 	// Define: _STLP_USE_STATIC_LIB
 #endif
@@ -58,13 +59,6 @@ using namespace std;
 	#include <crtdbg.h>
 #endif
 
-// WinSock
-#if defined(FONLINE_CLIENT) || defined(FONLINE_SERVER)
-	#include <winsock2.h>
-	#pragma comment(lib,"Ws2_32.lib")
-	const char* GetLastSocketError();
-#endif
-
 // FOnline stuff
 #include "Defines.h"
 #include "Log.h"
@@ -74,6 +68,7 @@ using namespace std;
 #include "FlexRect.h"
 #include "Randomizer.h"
 #include "Mutex.h"
+#include "Text.h"
 
 #define ___MSG1(x) #x
 #define ___MSG0(x) ___MSG1(x)
@@ -97,6 +92,8 @@ using namespace std;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 #define OFFSETOF(type,member) offsetof(type,member)
+
+#define memzero(ptr,size) memset(ptr,0,size)
 
 typedef vector<INTRECT> IntRectVec;
 typedef vector<FLTRECT> FltRectVec;
@@ -153,7 +150,6 @@ bool CheckUserPass(const char* str);
 #define DI_ONDOWN(a,b)          if((didod[i].dwOfs==a) && (didod[i].dwData&0x80)) {b;}
 #define DI_ONUP(a,b)            if((didod[i].dwOfs==a) && !(didod[i].dwData&0x80)) {b;}
 #define DI_ONMOUSE(a,b)         if(didod[i].dwOfs==a) {b;}
-#define GAME_TIME
 
 #ifdef FONLINE_CLIENT
 	#include "ResourceClient.h"
@@ -161,7 +157,7 @@ bool CheckUserPass(const char* str);
 	#define WINDOW_NAME         "FOnline"
 	#define WINDOW_NAME_SP      "FOnline Singleplayer"
 	#define CFG_DEF_INT_FILE    "default800x600.ini"
-#else
+#else // FONLINE_MAPPER
 	#include "ResourceMapper.h"
 	#define WINDOW_CLASS_NAME   "FOnline Mapper"
 	#define WINDOW_NAME         "FOnline Mapper"
@@ -175,7 +171,7 @@ bool CheckUserPass(const char* str);
 #define PATH_SCREENS_FILE	".\\"
 
 #ifdef FONLINE_CLIENT
-	
+	// Sound, video
 	#include <audiodefs.h>
 	#include "Dx9/dsound.h"
 	#include "Dx8/DShow.h"
@@ -279,17 +275,14 @@ struct MapperScriptFunctions
 /************************************************************************/
 #ifdef FONLINE_SERVER
 
-#include <richedit.h>
 #include "Script.h"
 #include "ThreadSync.h"
 #include "Jobs.h"
 
-#define GAME_TIME
-
 extern volatile bool FOAppQuit;
 extern volatile bool FOQuit;
-extern HANDLE UpdateEvent;
-extern HANDLE LogEvent;
+extern MutexEvent UpdateEvent;
+extern MutexEvent LogEvent;
 extern int ServerGameSleep;
 extern int MemoryDebugLevel;
 extern uint VarsGarbageTime;
@@ -650,15 +643,6 @@ struct GameOptions
 #define MAX_ZOOM                (10.0f)
 
 /************************************************************************/
-/* Game time                                                            */
-/************************************************************************/
-
-uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
-SYSTEMTIME GetGameTime(uint full_second);
-uint GameTimeMonthDay(ushort year, ushort month);
-void ProcessGameTime();
-
-/************************************************************************/
 /* Auto pointers                                                        */
 /************************************************************************/
 
@@ -713,43 +697,43 @@ public:
 };
 
 /************************************************************************/
-/* Safe string functions                                                */
-/************************************************************************/
-
-void StringCopy(char* to, size_t size, const char* from);
-template<int Size> inline void StringCopy(char (&to)[Size], const char* from){return StringCopy(to,Size,from);}
-void StringAppend(char* to, size_t size, const char* from);
-template<int Size> inline void StringAppend(char (&to)[Size], const char* from){return StringAppend(to,Size,from);}
-char* StringDuplicate(const char* str);
-const char* StringFormat(char* output, const char* format, ...);
-
-/************************************************************************/
 /* Single player                                                        */
 /************************************************************************/
 
-class InterprocessData
-{
-public:
-	ushort NetPort;
-	bool Pause;
+#if defined(FO_WINDOWS)
+	class InterprocessData
+	{
+	public:
+		ushort NetPort;
+		bool Pause;
 
-private:
-	HANDLE mapFileMutex;
-	HANDLE mapFile;
-	void* mapFilePtr;
+	private:
+		HANDLE mapFileMutex;
+		HANDLE mapFile;
+		void* mapFilePtr;
 
-public:
-	HANDLE Init();
-	void Finish();
-	bool Attach(HANDLE map_file);
-	bool Lock();
-	void Unlock();
-	bool Refresh();
-};
+	public:
+		HANDLE Init();
+		void Finish();
+		bool Attach(HANDLE map_file);
+		bool Lock();
+		void Unlock();
+		bool Refresh();
+	};
+
+	extern HANDLE SingleplayerClientProcess;
+#else // FO_LINUX
+	// Todo: linux
+	class InterprocessData
+	{
+	public:
+		ushort NetPort;
+		bool Pause;
+	};
+#endif
 
 extern bool Singleplayer;
 extern InterprocessData SingleplayerData;
-extern HANDLE SingleplayerClientProcess;
 
 /************************************************************************/
 /* File system                                                          */

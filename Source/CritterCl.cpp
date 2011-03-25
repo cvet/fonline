@@ -32,7 +32,7 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 {
 	Name="";
 	NameOnHead="";
-	StringCopy(Pass,"");
+	Str::Copy(Pass,"");
 	ZeroMemory(Params,sizeof(Params));
 	ItemSlotMain=ItemSlotExt=DefItemSlotHand=new Item();
 	ItemSlotArmor=DefItemSlotArmor=new Item();
@@ -74,7 +74,7 @@ void CritterCl::Init()
 void CritterCl::InitForRegistration()
 {
 	Name="";
-	StringCopy(Pass,"");
+	Str::Copy(Pass,"");
 	BaseType=0;
 
 	ZeroMemory(Params,sizeof(Params));
@@ -1276,11 +1276,11 @@ void CritterCl::SetBaseType(uint type)
 	SprMngr.FreePure3dAnimation(Anim3d);
 	SprMngr.FreePure3dAnimation(Anim3dStay);
 	Anim3d=Anim3dStay=NULL;
-	Animation3d* anim3d=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+	Animation3d* anim3d=SprMngr.LoadPure3dAnimation(Str::FormatBuf("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 	if(anim3d)
 	{
 		Anim3d=anim3d;
-		Anim3dStay=SprMngr.LoadPure3dAnimation(Str::Format("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
+		Anim3dStay=SprMngr.LoadPure3dAnimation(Str::FormatBuf("%s.fo3d",CritType::GetName(BaseType)),PT_ART_CRITTERS);
 
 		Anim3d->SetDir(CrDir);
 		SprId=Anim3d->GetSprId();
@@ -1567,15 +1567,15 @@ void CritterCl::DrawTextOnHead()
 		uint color;
 		if(strTextOnHead.empty())
 		{
-			if(NameOnHead.length()) StringCopy(str,NameOnHead.c_str());
-			else StringCopy(str,Name.c_str());
-			if(GameOpt.ShowCritId) StringAppend(str,Str::Format(" <%u>",GetId()));
-			if(FLAG(Flags,FCRIT_DISCONNECT)) StringAppend(str,GameOpt.PlayerOffAppendix.c_str());
+			if(NameOnHead.length()) Str::Copy(str,NameOnHead.c_str());
+			else Str::Copy(str,Name.c_str());
+			if(GameOpt.ShowCritId) Str::Append(str,Str::FormatBuf(" <%u>",GetId()));
+			if(FLAG(Flags,FCRIT_DISCONNECT)) Str::Append(str,GameOpt.PlayerOffAppendix.c_str());
 			color=(NameColor?NameColor:COLOR_CRITTER_NAME);
 		}
 		else
 		{
-			StringCopy(str,strTextOnHead.c_str());
+			Str::Copy(str,strTextOnHead.c_str());
 			color=textOnHeadColor;
 
 			if(tickTextDelay>500)

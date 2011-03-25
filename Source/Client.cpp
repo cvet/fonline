@@ -192,19 +192,19 @@ bool FOClient::Init(HWND hwnd)
 	FileManager::InitDataFiles(".\\");
 
 	// Cache
-	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)));
+	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::FormatBuf("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)));
 
-	if(!Crypt.SetCacheTable(Str::Format("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
+	if(!Crypt.SetCacheTable(Str::FormatBuf("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
 		WriteLog(_FUNC_," - Can't set default cache.\n");
 		return false;
 	}
-	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)))
+	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::FormatBuf("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)))
 	{
 		WriteLog(_FUNC_," - Can't set new cache.\n");
 		return false;
 	}
-	if(Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::Format("%ssingleplayer.cache",FileMngr.GetDataPath(PT_DATA))))
+	if(Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::FormatBuf("%ssingleplayer.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
 		WriteLog(_FUNC_," - Can't set single player cache.\n");
 		return false;
@@ -277,8 +277,8 @@ bool FOClient::Init(HWND hwnd)
 	// Language Packs
 	char lang_name[MAX_FOTEXT];
 	cfg.GetStr(CLIENT_CONFIG_APP,"Language",DEFAULT_LANGUAGE,lang_name);
-	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
-	Str::Lwr(lang_name);
+	if(strlen(lang_name)!=4) Str::Copy(lang_name,DEFAULT_LANGUAGE);
+	Str::Lower(lang_name);
 
 	CurLang.Init(lang_name,PT_TEXTS);
 
@@ -759,7 +759,7 @@ int FOClient::MainLoop()
 
 	// Game time
 	ushort full_second=GameOpt.FullSecond;
-	ProcessGameTime();
+	Timer::ProcessGameTime();
 	if(full_second!=GameOpt.FullSecond) SetDayTime(false);
 
 	if(IsMainScreen(SCREEN_GLOBAL_MAP))
@@ -2276,13 +2276,13 @@ bool FOClient::NetConnect()
 		}
 		else if(GameOpt.ProxyType==PROXY_HTTP)
 		{
-			char* buf=(char*)Str::Format("CONNECT %s:%d HTTP/1.0\r\n\r\n",inet_ntoa(SockAddr.sin_addr),GameOpt.Port);
+			char* buf=(char*)Str::FormatBuf("CONNECT %s:%d HTTP/1.0\r\n\r\n",inet_ntoa(SockAddr.sin_addr),GameOpt.Port);
 			Bout.Push(buf,strlen(buf));
 			SEND_RECV;
 			buf=Bin.GetCurData();
 			/*if(strstr(buf," 407 "))
 			{
-				char* buf=(char*)Str::Format("CONNECT %s:%d HTTP/1.0\r\nProxy-authorization: basic \r\n\r\n",inet_ntoa(SockAddr.sin_addr),OptPort);
+				char* buf=(char*)Str::FormatBuf("CONNECT %s:%d HTTP/1.0\r\nProxy-authorization: basic \r\n\r\n",inet_ntoa(SockAddr.sin_addr),OptPort);
 				Bout.Push(buf,strlen(buf));
 				SEND_RECV;
 				buf=Bin.GetCurData();
@@ -2516,7 +2516,7 @@ void FOClient::NetProcess()
 		if(GameOpt.DebugNet)
 		{
 			static uint count=0;
-			AddMess(FOMB_GAME,Str::Format("%04u) Input net message<%u>.",count,(msg>>8)&0xFF));
+			AddMess(FOMB_GAME,Str::FormatBuf("%04u) Input net message<%u>.",count,(msg>>8)&0xFF));
 			WriteLog(NULL,"%04u) Input net message<%u>.\n",count,(msg>>8)&0xFF);
 			count++;
 		}
@@ -2754,7 +2754,7 @@ void FOClient::NetProcess()
 			break;
 
 		default:
-			if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::Format("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
+			if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::FormatBuf("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
 			WriteLog(NULL,"Invalid msg<%u>. Seek valid.\n",msg);
 			Bin.MoveReadPos(sizeof(uint));
 			Bin.SeekValidMsg();
@@ -2769,8 +2769,8 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 {
 	char name_[MAX_NAME+1]={0};
 	char pass_[MAX_NAME+1]={0};
-	if(name) StringCopy(name_,name);
-	if(pass) StringCopy(pass_,pass);
+	if(name) Str::Copy(name_,name);
+	if(pass) Str::Copy(pass_,pass);
 
 	uint uid1=*UID1;
 	Bout << NETMSG_LOGIN;
@@ -2874,7 +2874,7 @@ void FOClient::Net_SendText(const char* send_str, uchar how_say)
 
 	char str_buf[MAX_FOTEXT];
 	char* str=str_buf;
-	StringCopy(str_buf,send_str);
+	Str::Copy(str_buf,send_str);
 
 	bool result=false;
 	if(Script::PrepareContext(ClientFunctions.OutMessage,_FUNC_,"Game"))
@@ -2884,7 +2884,7 @@ void FOClient::Net_SendText(const char* send_str, uchar how_say)
 		Script::SetArgObject(sstr);
 		Script::SetArgAddress(&say_type);
 		if(Script::RunPrepared()) result=Script::GetReturnedBool();
-		StringCopy(str,MAX_FOTEXT,sstr->c_str());
+		Str::Copy(str,MAX_FOTEXT,sstr->c_str());
 		sstr->Release();
 		how_say=say_type;
 	}
@@ -3004,7 +3004,7 @@ const int CMN_LIST_COUNT=sizeof(cmdlist)/sizeof(CmdListDef);
 
 void FOClient::Net_SendCommand(char* str)
 {
-	AddMess(FOMB_GAME,Str::Format("Command: %s.",str));
+	AddMess(FOMB_GAME,Str::FormatBuf("Command: %s.",str));
 
 	uchar cmd=GetCmdNum(str);
 	if(!cmd)
@@ -3498,7 +3498,7 @@ void FOClient::Net_SendCommand(char* str)
 			str_ >> params;
 			if(!str_.fail()) str_ >> name;
 			if(!str_.fail()) str_ >> ban_hours;
-			if(!str_.fail()) StringCopy(info,str_.str());
+			if(!str_.fail()) Str::Copy(info,str_.str());
 			if(_stricmp(params,"add") && _stricmp(params,"add+") && _stricmp(params,"delete") && _stricmp(params,"list"))
 			{
 				AddMess(FOMB_GAME,"Invalid arguments. Example: <~ban [add,add+,delete,list] [user] [hours] [comment]>.");
@@ -3891,7 +3891,7 @@ void FOClient::Net_SendScreenAnswer(uint answer_i, const char* answer_s)
 {
 	char answer_s_buf[MAX_SAY_NPC_TEXT+1];
 	ZeroMemory(answer_s_buf,sizeof(answer_s_buf));
-	StringCopy(answer_s_buf,MAX_SAY_NPC_TEXT+1,answer_s);
+	Str::Copy(answer_s_buf,MAX_SAY_NPC_TEXT+1,answer_s);
 
 	Bout << NETMSG_SEND_SCREEN_ANSWER;
 	Bout << answer_i;
@@ -4220,13 +4220,13 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 	if(msg_num==TEXTMSG_HOLO)
 	{
 		char str[MAX_FOTEXT];
-		StringCopy(str,GetHoloText(num_str));
+		Str::Copy(str,GetHoloText(num_str));
 		OnText(str,crid,how_say,10);
 	}
 	else if(msg.Count(num_str))
 	{
 		char str[MAX_FOTEXT];
-		StringCopy(str,msg.GetStr(num_str));
+		Str::Copy(str,msg.GetStr(num_str));
 		FormatTags(str,MAX_FOTEXT,Chosen,GetCritter(crid),lexems);
 		OnText(str,crid,how_say,10);
 	}
@@ -4235,7 +4235,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 {
 	char fstr[MAX_FOTEXT];
-	StringCopy(fstr,str);
+	Str::Copy(fstr,str);
 	uint len=strlen(str);
 	if(!len) return;
 
@@ -4248,7 +4248,7 @@ void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 		Script::SetArgAddress(&crid);
 		Script::SetArgAddress(&text_delay);
 		Script::RunPrepared();
-		StringCopy(fstr,sstr->c_str());
+		Str::Copy(fstr,sstr->c_str());
 		sstr->Release();
 
 		if(!Script::GetReturnedBool()) return;
@@ -4276,7 +4276,7 @@ void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 		fstr_mb=STR_MBSHOUT;
 	case SAY_SHOUT_ON_HEAD:
 		fstr_cr=STR_CRSHOUT;
-		Str::Upr(fstr);
+		Str::Upper(fstr);
 		break;
 	case SAY_EMOTE:
 		fstr_mb=STR_MBEMOTE;
@@ -4287,7 +4287,7 @@ void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 		fstr_mb=STR_MBWHISP;
 	case SAY_WHISP_ON_HEAD:
 		fstr_cr=STR_CRWHISP;
-		Str::Lwr(fstr);
+		Str::Lower(fstr);
 		break;
 	case SAY_SOCIAL:
 		fstr_cr=STR_CRSOCIAL;
@@ -4341,7 +4341,7 @@ void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 			else
 				BarterText+=FmtGameText(fstr_mb,crit_name.c_str(),fstr);
 			BarterText+="\n";
-			BarterText+=Str::Format("|%u ",COLOR_TEXT);
+			BarterText+=Str::FormatBuf("|%u ",COLOR_TEXT);
 			DlgMainTextLinesReal=SprMngr.GetLinesCount(DlgWText.W(),0,BarterText.c_str());
 		}
 	}
@@ -4396,19 +4396,19 @@ void FOClient::OnText(const char* str, uint crid, int how_say, ushort intellect)
 			DlgboxButtonsCount=2;
 		}
 		DlgboxWait=Timer::GameTick()+GM_ANSWER_WAIT_TIME;
-		StringCopy(DlgboxText,fstr);
+		Str::Copy(DlgboxText,fstr);
 	}
 
 	// FixBoy result
 	if(how_say==SAY_FIX_RESULT) FixResultStr=fstr;
 
 	// Dialogbox
-	if(how_say==SAY_DIALOGBOX_TEXT) StringCopy(DlgboxText,fstr);
+	if(how_say==SAY_DIALOGBOX_TEXT) Str::Copy(DlgboxText,fstr);
 	else if(how_say>=SAY_DIALOGBOX_BUTTON(0) && how_say<SAY_DIALOGBOX_BUTTON(MAX_DLGBOX_BUTTONS)) DlgboxButtonText[how_say-SAY_DIALOGBOX_BUTTON(0)]=fstr;
 
 	// Say box
 	if(how_say==SAY_SAY_TITLE) SayTitle=fstr;
-	else if(how_say==SAY_SAY_TEXT) StringCopy(SayText,fstr);
+	else if(how_say==SAY_SAY_TEXT) Str::Copy(SayText,fstr);
 
 	SendMessage(Wnd,WM_FLASH_WINDOW,0,0);
 }
@@ -4434,7 +4434,7 @@ void FOClient::OnMapText(const char* str, ushort hx, ushort hy, uint color, usho
 	}
 
 	char fstr[MAX_FOTEXT];
-	StringCopy(fstr,sstr->c_str());
+	Str::Copy(fstr,sstr->c_str());
 	sstr->Release();
 
 	FmtTextIntellect(fstr,intellect);
@@ -4512,7 +4512,7 @@ void FOClient::Net_OnMapTextMsg()
 	}
 
 	static char str[MAX_FOTEXT];
-	StringCopy(str,CurLang.Msg[msg_num].GetStr(num_str));
+	Str::Copy(str,CurLang.Msg[msg_num].GetStr(num_str));
 	FormatTags(str,MAX_FOTEXT,Chosen,NULL,"");
 
 	OnMapText(str,hx,hy,color,0);
@@ -4551,7 +4551,7 @@ void FOClient::Net_OnMapTextMsgLex()
 	}
 
 	char str[MAX_FOTEXT];
-	StringCopy(str,CurLang.Msg[msg_num].GetStr(num_str));
+	Str::Copy(str,CurLang.Msg[msg_num].GetStr(num_str));
 	FormatTags(str,MAX_FOTEXT,Chosen,NULL,lexems);
 
 	OnMapText(str,hx,hy,color,0);
@@ -4966,7 +4966,7 @@ void FOClient::Net_OnCritterXY()
 	Bin >> hx;
 	Bin >> hy;
 	Bin >> dir;
-	if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::Format(" - crid<%u> hx<%u> hy<%u> dir<%u>.",crid,hx,hy,dir));
+	if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::FormatBuf(" - crid<%u> hx<%u> hy<%u> dir<%u>.",crid,hx,hy,dir));
 
 	if(!HexMngr.IsMapLoaded()) return;
 
@@ -5573,7 +5573,7 @@ void FOClient::Net_OnChosenTalk()
 	Bin >> text_id;
 
 	char str[MAX_FOTEXT];
-	StringCopy(str,MsgDlg->GetStr(text_id));
+	Str::Copy(str,MsgDlg->GetStr(text_id));
 	FormatTags(str,MAX_FOTEXT,Chosen,npc,lexems);
 	DlgMainText=str;
 	DlgMainTextCur=0;
@@ -5612,7 +5612,7 @@ void FOClient::Net_OnChosenTalk()
 			continue;
 		}
 
-		StringCopy(str,MsgDlg->GetStr(answers_texts[answ]));
+		Str::Copy(str,MsgDlg->GetStr(answers_texts[answ]));
 		FormatTags(str,MAX_FOTEXT,Chosen,npc,lexems);
 		Str::Insert(str,answ_beg); // TODO: GetStr
 
@@ -5699,7 +5699,7 @@ void FOClient::Net_OnGameInfo()
 	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
 	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - FileTimeToSystemTime error<%u>.\n",GetLastError());
 	GameOpt.YearStartFT=ft.ul.QuadPart;
-	GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
+	GameOpt.FullSecond=Timer::GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 	GameOpt.FullSecondStart=GameOpt.FullSecond;
 	GameOpt.GameTimeTick=Timer::GameTick();
 
@@ -6279,22 +6279,22 @@ void FOClient::Net_OnFollow()
 	// Find rule
 	char cr_name[64];
 	CritterCl* cr=GetCritter(rule);
-	StringCopy(cr_name,cr?cr->GetName():MsgGame->GetStr(STR_FOLLOW_UNKNOWN_CRNAME));
+	Str::Copy(cr_name,cr?cr->GetName():MsgGame->GetStr(STR_FOLLOW_UNKNOWN_CRNAME));
 	// Find map
 	char map_name[64];
-	StringCopy(map_name,map_pid?"локальную карту":MsgGame->GetStr(STR_FOLLOW_GMNAME));
+	Str::Copy(map_name,map_pid?"локальную карту":MsgGame->GetStr(STR_FOLLOW_GMNAME));
 
 	switch(FollowType)
 	{
 	case FOLLOW_PREP:
-		StringCopy(DlgboxText,FmtGameText(STR_FOLLOW_PREP,cr_name,map_name));
+		Str::Copy(DlgboxText,FmtGameText(STR_FOLLOW_PREP,cr_name,map_name));
 		break;
 	case FOLLOW_FORCE:
-		StringCopy(DlgboxText,FmtGameText(STR_FOLLOW_FORCE,cr_name,map_name));
+		Str::Copy(DlgboxText,FmtGameText(STR_FOLLOW_FORCE,cr_name,map_name));
 		break;
 	default:
 		WriteLog(_FUNC_," - Error FollowType\n");
-		StringCopy(DlgboxText,"ERROR!");
+		Str::Copy(DlgboxText,"ERROR!");
 		break;
 	}
 
@@ -6359,7 +6359,7 @@ void FOClient::Net_OnPlayersBarter()
 			PBarterPlayerId=param;
 			BarterOpponentHide=(param_ext!=0);
 			PBarterHide=BarterOpponentHide;
-			StringCopy(DlgboxText,FmtGameText(STR_BARTER_DIALOGBOX,cr->GetName(),!BarterOpponentHide?MsgGame->GetStr(STR_BARTER_OPEN_MODE):MsgGame->GetStr(STR_BARTER_HIDE_MODE)));
+			Str::Copy(DlgboxText,FmtGameText(STR_BARTER_DIALOGBOX,cr->GetName(),!BarterOpponentHide?MsgGame->GetStr(STR_BARTER_OPEN_MODE):MsgGame->GetStr(STR_BARTER_HIDE_MODE)));
 			DlgboxWait=Timer::GameTick()+20000;
 			DlgboxButtonText[0]=MsgGame->GetStr(STR_DIALOGBOX_BARTER_OPEN);
 			DlgboxButtonText[1]=MsgGame->GetStr(STR_DIALOGBOX_BARTER_HIDE);
@@ -6803,7 +6803,7 @@ void FOClient::Net_OnMsgData()
 		return;
 	}
 
-	CurLang.Msg[num_msg].SaveMsgFile(Str::Format("%s\\%s",CurLang.NameStr,TextMsgFileName[num_msg]),PT_TEXTS);
+	CurLang.Msg[num_msg].SaveMsgFile(Str::FormatBuf("%s\\%s",CurLang.NameStr,TextMsgFileName[num_msg]),PT_TEXTS);
 	CurLang.Msg[num_msg].CalculateHash();
 
 	switch(num_msg)
@@ -8426,12 +8426,12 @@ const char* FOClient::GetHoloText(uint str_num)
 
 const char* FOClient::FmtGameText(uint str_num, ...)
 {
-//	return Str::Format(MsgGame->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
+//	return Str::FormatBuf(MsgGame->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
 
 	static char res[MAX_FOTEXT];
 	static char str[MAX_FOTEXT];
 
-	StringCopy(str,MsgGame->GetStr(str_num));
+	Str::Copy(str,MsgGame->GetStr(str_num));
 	Str::Replacement(str,'\\','n','\n');
 
 	va_list list;
@@ -8444,12 +8444,12 @@ const char* FOClient::FmtGameText(uint str_num, ...)
 
 const char* FOClient::FmtCombatText(uint str_num, ...)
 {
-//	return Str::Format(MsgCombat->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
+//	return Str::FormatBuf(MsgCombat->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
 
 	static char res[MAX_FOTEXT];
 	static char str[MAX_FOTEXT];
 
-	StringCopy(str,MsgCombat->GetStr(str_num));
+	Str::Copy(str,MsgCombat->GetStr(str_num));
 
 	va_list list;
 	va_start(list,str_num);
@@ -8474,13 +8474,13 @@ const char* FOClient::FmtGenericDesc(int desc_type, int& ox, int& oy)
 			if(result)
 			{
 				static char str[MAX_FOTEXT];
-				StringCopy(str,result->c_str());
+				Str::Copy(str,result->c_str());
 				return str[0]?str:NULL;
 			}
 		}
 	}
 
-	return Str::Format("<error>");
+	return Str::FormatBuf("<error>");
 }
 
 const char* FOClient::FmtCritLook(CritterCl* cr, int look_type)
@@ -8495,7 +8495,7 @@ const char* FOClient::FmtCritLook(CritterCl* cr, int look_type)
 			if(result)
 			{
 				static char str[MAX_FOTEXT];
-				StringCopy(str,MAX_FOTEXT,result->c_str());
+				Str::Copy(str,MAX_FOTEXT,result->c_str());
 				return str[0]?str:NULL;
 			}
 		}
@@ -8516,7 +8516,7 @@ const char* FOClient::FmtItemLook(Item* item, int look_type)
 			if(result)
 			{
 				static char str[MAX_FOTEXT];
-				StringCopy(str,MAX_FOTEXT,result->c_str());
+				Str::Copy(str,MAX_FOTEXT,result->c_str());
 				return str[0]?str:NULL;
 			}
 		}
@@ -8548,8 +8548,8 @@ void FOClient::ParseIntellectWords(char* words, PCharPairVec& text)
 
 			char* in_=new char[in_len];
 			char* out_=new char[out_len];
-			StringCopy(in_,in_len,in);
-			StringCopy(out_,out_len,out);
+			Str::Copy(in_,in_len,in);
+			Str::Copy(out_,out_len,out);
 
 			text.push_back(PCharPairVecVal(in_,out_));
 			in[0]=0;
@@ -8703,7 +8703,7 @@ bool FOClient::SaveLogFile()
 		// Skip
 		if(IsMainScreen(SCREEN_GAME) && std::find(MessBoxFilters.begin(),MessBoxFilters.end(),m.Type)!=MessBoxFilters.end()) continue;
 		// Concat
-		StringCopy(cur_mess,m.Mess.c_str());
+		Str::Copy(cur_mess,m.Mess.c_str());
 		Str::EraseWords(cur_mess,'|',' ');
 		fmt_log+=MessBox[i].Time+string(cur_mess);
 	}
@@ -8728,7 +8728,7 @@ bool FOClient::SaveScreenshot()
 	sprintf(screen_path,"%sscreen_%02d-%02d-%d_%02d-%02d-%02d.",PATH_SCREENS_FILE,
 		sys_time.wDay,sys_time.wMonth,sys_time.wYear,
 		sys_time.wHour,sys_time.wMinute,sys_time.wSecond);
-	StringAppend(screen_path,"jpg");
+	Str::Append(screen_path,"jpg");
 
 	if(FAILED(D3DXSaveSurfaceToFile(screen_path,D3DXIFF_JPG,surf,NULL,NULL)))
 	{
@@ -9000,8 +9000,8 @@ uint FOClient::AnimLoad(uint name_hash, uchar dir, int res_type)
 uint FOClient::AnimLoad(const char* fname, int path_type, int res_type)
 {
 	char full_name[MAX_FOPATH];
-	StringCopy(full_name,FileManager::GetPath(path_type));
-	StringAppend(full_name,fname);
+	Str::Copy(full_name,FileManager::GetPath(path_type));
+	Str::Append(full_name,fname);
 
 	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(full_name),0,res_type);
 	if(!anim) return 0;
@@ -10021,7 +10021,7 @@ CScriptString* FOClient::SScriptFunc::Global_FormatTags(CScriptString& text, CSc
 		buf_len=text.length()*2;
 	}
 
-	StringCopy(buf,buf_len,text.c_str());
+	Str::Copy(buf,buf_len,text.c_str());
 	Self->FormatTags(buf,buf_len,Self->Chosen,NULL,lexems?lexems->c_str():NULL);
 	return new CScriptString(buf);
 }
@@ -10242,31 +10242,37 @@ uint FOClient::SScriptFunc::Global_GetFullSecond(ushort year, ushort month, usho
 	if(!day) day=GameOpt.Day;
 	else
 	{
-		uint month_day=GameTimeMonthDay(year,month);
+		uint month_day=Timer::GameTimeMonthDay(year,month);
 		day=CLAMP(day,1,month_day);
 	}
 	hour=CLAMP(hour,0,23);
 	minute=CLAMP(minute,0,59);
 	second=CLAMP(second,0,59);
-	return GetFullSecond(year,month,day,hour,minute,second);
+	return Timer::GetFullSecond(year,month,day,hour,minute,second);
 }
 
 void FOClient::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second)
 {
-	SYSTEMTIME st=GetGameTime(full_second);
-	year=st.wYear;
-	month=st.wMonth;
-	day_of_week=st.wDayOfWeek;
-	day=st.wDay;
-	hour=st.wHour;
-	minute=st.wMinute;
-	second=st.wSecond;
+	DateTime dt=Timer::GetGameTime(full_second);
+	year=dt.Year;
+	month=dt.Month;
+	day_of_week=dt.DayOfWeek;
+	day=dt.Day;
+	hour=dt.Hour;
+	minute=dt.Minute;
+	second=dt.Second;
 }
 
 bool FOClient::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 {
 	if(!text.length()) return false;
-	return Str::StrToInt(text.c_str(),result);
+	if(!Str::IsNumber(text.c_str()))
+	{
+		result=0;
+		return false;
+	}
+	result=Str::AtoI(text.c_str());
+	return true;
 }
 
 void FOClient::SScriptFunc::Global_MoveHexByDir(ushort& hx, ushort& hy, uchar dir, uint steps)
@@ -10299,8 +10305,8 @@ CScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr(CScriptString& key)
 bool FOClient::SScriptFunc::Global_Load3dFile(CScriptString& fname, int path_type)
 {
 	char fname_[MAX_FOPATH];
-	StringCopy(fname_,FileManager::GetPath(path_type));
-	StringAppend(fname_,fname.c_str());
+	Str::Copy(fname_,FileManager::GetPath(path_type));
+	Str::Append(fname_,fname.c_str());
 	Animation3dEntity* entity=Animation3dEntity::GetEntity(fname_);
 	return entity!=NULL;
 }
@@ -10422,7 +10428,7 @@ void FOClient::SScriptFunc::Global_AllowSlot(uchar index, CScriptString& ini_opt
 	CritterCl::SlotEnabled[index]=true;
 	SlotExt se;
 	se.Index=index;
-	se.IniName=StringDuplicate(ini_option.c_str());
+	se.IniName=Str::Duplicate(ini_option.c_str());
 	Self->IfaceLoadRect(se.Rect,se.IniName);
 	Self->SlotsExt.push_back(se);
 }
@@ -10778,7 +10784,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(uint instance, uint crtype, uin
 		if(!anim || DrawCritter3dCrType[instance]!=crtype)
 		{
 			SAFEDEL(anim);
-			anim=Animation3d::GetAnimation(Str::Format("%s.fo3d",CritType::GetName(crtype)),PT_ART_CRITTERS,false);
+			anim=Animation3d::GetAnimation(Str::FormatBuf("%s.fo3d",CritType::GetName(crtype)),PT_ART_CRITTERS,false);
 			DrawCritter3dCrType[instance]=crtype;
 			DrawCritter3dFailToLoad[instance]=0;
 

@@ -57,7 +57,7 @@ public:
 	{
 		rndNumbers[0]=seed;
 		for(int i=1;i<periodN;i++)
-			rndNumbers[i]=(1812433253*(rndNumbers[i-1]^(rndNumbers[i-1]>>30))+i); 
+			rndNumbers[i]=(1812433253*(rndNumbers[i-1]^(rndNumbers[i-1]>>30))+i);
 		GenerateState();
 	}
 
@@ -71,7 +71,7 @@ public:
 		num^=(num<<15)&0xEFC60000;
 		num^=(num>>18);
 
-#ifdef _M_IX86
+#ifdef FO_X86
 		return minimum+(int)((double)num*(double)(1.0/4294967296.0)*(double)(maximum-minimum+1));
 #else
 		return minimum+(int)((int64)num*(int64)(maximum-minimum+1)/(int64)0x100000000);

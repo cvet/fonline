@@ -207,7 +207,7 @@ void SoundManager::Play(Sound* sound, int vol_db, uint flags)
 Sound* SoundManager::Load(const char* fname, int path_type)
 {
 	char fname_[MAX_FOPATH];
-	StringCopy(fname_,fname);
+	Str::Copy(fname_,fname);
 
 	if(strstr(fname_,"\\") || strstr(fname_,"/")) path_type=PT_DATA;
 
@@ -216,7 +216,7 @@ Sound* SoundManager::Load(const char* fname, int path_type)
 	{
 		// Default ext
 		ext=fname_+strlen(fname_);
-		StringAppend(fname_,SOUND_DEFAULT_EXT);
+		Str::Append(fname_,SOUND_DEFAULT_EXT);
 	}
 	else
 	{
@@ -639,7 +639,7 @@ bool SoundManager::PlaySoundType(uchar sound_type, uchar sound_type_ext, uchar s
 		if(!Random(0,1))
 		{
 			name[7]='2';
-			Str::Upr(name);
+			Str::Upper(name);
 			if(!names.count(name)) name[7]='1';
 		}
 	}
@@ -667,7 +667,7 @@ bool SoundManager::PlaySoundType(uchar sound_type, uchar sound_type_ext, uchar s
 		name[7]='X';
 		name[8]='\0';
 	}
-	Str::Upr(name);
+	Str::Upper(name);
 
 	StrMapIt it=names.find(name);
 	if(it==names.end()) return false;

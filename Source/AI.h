@@ -114,7 +114,7 @@ struct AIDataPlane
 	int RefCounter;
 	void AddRef(){RefCounter++;}
 	void Release(){RefCounter--; if(!RefCounter) delete this;}
-	AIDataPlane(uint type, uint priority):Type(type),Priority(priority),Identifier(0),IdentifierExt(0),ChildPlane(NULL),IsMove(false),Assigned(false),RefCounter(1){ZeroMemory(&Buffer,sizeof(Buffer));ZeroMemory(&Move,sizeof(Move)); MEMORY_PROCESS(MEMORY_NPC_PLANE,sizeof(AIDataPlane));}
+	AIDataPlane(uint type, uint priority):Type(type),Priority(priority),Identifier(0),IdentifierExt(0),ChildPlane(NULL),IsMove(false),Assigned(false),RefCounter(1){memzero(&Buffer,sizeof(Buffer));memzero(&Move,sizeof(Move)); MEMORY_PROCESS(MEMORY_NPC_PLANE,sizeof(AIDataPlane));}
 	~AIDataPlane(){SAFEREL(ChildPlane); MEMORY_PROCESS(MEMORY_NPC_PLANE,-(int)sizeof(AIDataPlane));}
 	private: AIDataPlane(){} // Disable default constructor
 };

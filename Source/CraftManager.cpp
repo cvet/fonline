@@ -132,7 +132,7 @@ void CraftItem::SetName(FOMsg& msg_game, FOMsg& msg_item)
 		if(OutItemsVal[i]>1)
 		{
 			Name+=" ";
-			Name+=Str::DWtoA(OutItemsVal[i]);
+			Name+=Str::UItoA(OutItemsVal[i]);
 			Name+=" ";
 			Name+=msg_game.GetStr(STR_FIX_PIECES);
 		}
@@ -161,12 +161,12 @@ template<class T>
 void GetStrMetadata(T& v, char* str)
 {
 	char buf[32];
-	StringAppend(str,MAX_FOTEXT,_itoa(v.size(),buf,10));
-	StringAppend(str,MAX_FOTEXT," ");
+	Str::Append(str,MAX_FOTEXT,_itoa(v.size(),buf,10));
+	Str::Append(str,MAX_FOTEXT," ");
 	for(uint i=0;i<v.size();i++)
 	{
-		StringAppend(str,MAX_FOTEXT,_itoa(v[i],buf,10));
-		StringAppend(str,MAX_FOTEXT," ");
+		Str::Append(str,MAX_FOTEXT,_itoa(v[i],buf,10));
+		Str::Append(str,MAX_FOTEXT," ");
 	}
 }
 
@@ -264,11 +264,11 @@ int CraftItem::SetStr(uint num, const char* str_in)
 	if(res<0) return num-50;
 
 	// Parse script
-	if(strstr(pstr_in,"script ")) Script=strstr(pstr_in,"script ")+strlen("script ");
+	if(strstr(pstr_in,"script ")) Script=strstr(pstr_in,"script ")+Str::Length("script ");
 	else Script="";
 
 	// Experience
-	if(strstr(pstr_in,"exp ")) Experience=atoi(strstr(pstr_in,"exp ")+strlen("exp "));
+	if(strstr(pstr_in,"exp ")) Experience=atoi(strstr(pstr_in,"exp ")+Str::Length("exp "));
 	else Experience=0;
 #endif
 	return 0;
@@ -400,7 +400,7 @@ const char* CraftItem::GetStr(bool metadata)
 		GetStrMetadata(NeedToolsOr,str);
 		GetStrMetadata(OutItems,str);
 		GetStrMetadata(OutItemsVal,str);
-		if(Script.length()) StringAppend(str,"script");
+		if(Script.length()) Str::Append(str,"script");
 		return str;
 	}
 
@@ -429,16 +429,16 @@ const char* CraftItem::GetStr(bool metadata)
 	if(Experience)
 	{
 		char buf[32];
-		StringAppend(str,"exp ");
-		StringAppend(str,_itoa(Experience,buf,10));
-		StringAppend(str," ");
+		Str::Append(str,"exp ");
+		Str::Append(str,_itoa(Experience,buf,10));
+		Str::Append(str," ");
 	}
 
 	// Script
 	if(Script.length())
 	{
-		StringAppend(str,"script ");
-		StringAppend(str,Script.c_str());
+		Str::Append(str,"script ");
+		Str::Append(str,Script.c_str());
 	}
 #endif
 	return str;
@@ -457,14 +457,14 @@ void CraftItem::GetStrParam(char* pstr_out, UIntVec& num_vec, IntVec& val_vec, U
 
 		if(i!=j-1)
 		{
-			if(or_vec[i]) StringAppend(str,MAX_FOTEXT,MRFIXIT_OR_S);
-			else StringAppend(str,MAX_FOTEXT,MRFIXIT_AND_S);
+			if(or_vec[i]) Str::Append(str,MAX_FOTEXT,MRFIXIT_OR_S);
+			else Str::Append(str,MAX_FOTEXT,MRFIXIT_AND_S);
 		}
 
-		StringAppend(pstr_out,MAX_FOTEXT,str);
+		Str::Append(pstr_out,MAX_FOTEXT,str);
 	}
 
-	StringAppend(pstr_out,MAX_FOTEXT,MRFIXIT_NEXT_S);
+	Str::Append(pstr_out,MAX_FOTEXT,MRFIXIT_NEXT_S);
 }
 
 void CraftItem::GetStrItem(char* pstr_out, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
@@ -479,14 +479,14 @@ void CraftItem::GetStrItem(char* pstr_out, UShortVec& pid_vec, UIntVec& count_ve
 
 		if(i!=j-1)
 		{
-			if(or_vec[i]) StringAppend(str,MRFIXIT_OR_S);
-			else StringAppend(str,MRFIXIT_AND_S);
+			if(or_vec[i]) Str::Append(str,MRFIXIT_OR_S);
+			else Str::Append(str,MRFIXIT_AND_S);
 		}
 
-		StringAppend(pstr_out,MAX_FOTEXT,str);
+		Str::Append(pstr_out,MAX_FOTEXT,str);
 	}
 
-	StringAppend(pstr_out,MAX_FOTEXT,MRFIXIT_NEXT_S);
+	Str::Append(pstr_out,MAX_FOTEXT,MRFIXIT_NEXT_S);
 }
 #endif
 

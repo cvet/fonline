@@ -6,6 +6,8 @@
 #include "Text.h"
 #include <math.h>
 #include "FileManager.h"
+#include "IniParser.h"
+#include <stdarg.h>
 
 /************************************************************************/
 /*                                                                      */
@@ -288,6 +290,7 @@ bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int
 
 void RestoreMainDirectory()
 {
+#if defined(FO_WINDOWS)
 	// Get executable file path
 	char path[MAX_FOPATH]={0};
 	GetModuleFileName(GetModuleHandle(NULL),path,MAX_FOPATH);
@@ -300,6 +303,9 @@ void RestoreMainDirectory()
 
 	// Set executable directory
 	SetCurrentDirectory(path);
+#endif
+
+	// Todo: linux need it?
 }
 
 /************************************************************************/
@@ -366,7 +372,7 @@ void InitializeHexOffsets()
 
 			for(int j=0;j<5;j++)
 			{
-				int dir,steps;
+				int dir=0,steps=0;
 				switch(j)
 				{
 				case 0: dir=2; steps=i+1; break;
@@ -519,10 +525,10 @@ uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light)
 void GetClientOptions()
 {
 	// Defines
-#define GETOPTIONS_CMD_LINE_INT(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+strlen(str_id)+1);}while(0)
-#define GETOPTIONS_CMD_LINE_BOOL(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+strlen(str_id)+1)!=0;}while(0)
+#define GETOPTIONS_CMD_LINE_INT(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+Str::Length(str_id)+1);}while(0)
+#define GETOPTIONS_CMD_LINE_BOOL(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+Str::Length(str_id)+1)!=0;}while(0)
 #define GETOPTIONS_CMD_LINE_BOOL_ON(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=true;}while(0)
-#define GETOPTIONS_CMD_LINE_STR(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) sscanf_s(str+strlen(str_id)+1,"%s",opt);}while(0)
+#define GETOPTIONS_CMD_LINE_STR(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) sscanf_s(str+Str::Length(str_id)+1,"%s",opt);}while(0)
 #define GETOPTIONS_CHECK(val_,min_,max_,def_) do{if(val_<min_ || val_>max_) val_=def_;} while(0)
 
 	char buf[MAX_FOTEXT];
@@ -550,7 +556,7 @@ void GetClientOptions()
 	// Language
 	cfg.GetStr(CLIENT_CONFIG_APP,"Language","russ",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"Language");
-	if(!strcmp(buf,"russ")) SetExceptionsRussianText();
+	if(Str::Compare(buf,"russ")) SetExceptionsRussianText();
 
 	// Int
 	GameOpt.FullScreen=cfg.GetInt(CLIENT_CONFIG_APP,"FullScreen",false)!=0;
@@ -711,8 +717,8 @@ MapperScriptFunctions MapperFunctions;
 
 volatile bool FOAppQuit=false;
 volatile bool FOQuit=false;
-HANDLE UpdateEvent=NULL;
-HANDLE LogEvent=NULL;
+MutexEvent UpdateEvent;
+MutexEvent LogEvent;
 int ServerGameSleep=10;
 int MemoryDebugLevel=10;
 uint VarsGarbageTime=3600000;
@@ -734,7 +740,7 @@ ServerScriptFunctions ServerFunctions;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#if defined(FONLINE_CLIENT) || defined(FONLINE_SERVER)
+#if (defined(FONLINE_CLIENT) || defined(FONLINE_SERVER)) && defined(FO_WINDOWS)
 
 const char* GetLastSocketError()
 {
@@ -842,61 +848,6 @@ const char* GetLastSocketError()
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#ifdef GAME_TIME
-
-uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
-{
-	SYSTEMTIME st={year,month,0,day,hour,minute,second,0};
-	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
-	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - Error<%u>, args<%u,%u,%u,%u,%u,%u>.\n",GetLastError(),year,month,day,hour,minute,second);
-	ft.ul.QuadPart-=GameOpt.YearStartFT;
-	return uint(ft.ul.QuadPart/10000000);
-}
-
-SYSTEMTIME GetGameTime(uint full_second)
-{
-	SYSTEMTIME st;
-	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
-	ft.ul.QuadPart=GameOpt.YearStartFT+uint64(full_second)*10000000;
-	if(!FileTimeToSystemTime(&ft.ft,&st)) WriteLog(_FUNC_," - Error<%u>, full second<%u>.\n",GetLastError(),full_second);
-	return st;
-}
-
-uint GameTimeMonthDay(ushort year, ushort month)
-{
-	switch(month)
-	{
-	case 1:case 3:case 5:case 7:case 8:case 10:case 12: // 31
-		return 31;
-	case 2: // 28-29
-		if(year%4) return 28;
-		return 29;
-	default: // 30
-		return 30;
-	}
-	return 0;
-}
-
-void ProcessGameTime()
-{
-	uint tick=Timer::GameTick();
-	uint dt=tick-GameOpt.GameTimeTick;
-	uint delta_second=dt/1000*GameOpt.TimeMultiplier+dt%1000*GameOpt.TimeMultiplier/1000;
-	uint fs=GameOpt.FullSecondStart+delta_second;
-	if(GameOpt.FullSecond!=fs)
-	{
-		GameOpt.FullSecond=fs;
-		SYSTEMTIME st=GetGameTime(GameOpt.FullSecond);
-		GameOpt.Year=st.wYear;
-		GameOpt.Month=st.wMonth;
-		GameOpt.Day=st.wDay;
-		GameOpt.Hour=st.wHour;
-		GameOpt.Minute=st.wMinute;
-		GameOpt.Second=st.wSecond;
-	}
-}
-
-#endif
 
 GameOptions GameOpt;
 GameOptions::GameOptions()
@@ -1128,7 +1079,7 @@ GameOptions::GameOptions()
 	SpritesZoom=1.0f;
 	SpritesZoomMax=MAX_ZOOM;
 	SpritesZoomMin=MIN_ZOOM;
-	ZeroMemory(EffectValues,sizeof(EffectValues));
+	memzero(EffectValues,sizeof(EffectValues));
 	AlwaysRun=false;
 	AlwaysRunMoveDist=1;
 	AlwaysRunUseDist=5;
@@ -1202,92 +1153,10 @@ void FileLogger::Write(const char* fmt, ...)
 }
 
 /************************************************************************/
-/* Safe string functions                                                */
-/************************************************************************/
-
-void StringCopy(char* to, size_t size, const char* from)
-{
-	if(!to) return;
-
-	if(!from)
-	{
-		to[0]=0;
-		return;
-	}
-
-	size_t from_len=strlen(from);
-	if(!from_len)
-	{
-		to[0]=0;
-		return;
-	}
-
-	if(from_len>=size)
-	{
-		memcpy(to,from,size-1);
-		to[size-1]=0;
-	}
-	else
-	{
-		memcpy(to,from,from_len);
-		to[from_len]=0;
-	}
-}
-
-void StringAppend(char* to, size_t size, const char* from)
-{
-	if(!to || !from) return;
-
-	size_t from_len=strlen(from);
-	if(!from_len) return;
-
-	size_t to_len=strlen(to);
-	size_t to_free=size-to_len;
-	if((int)to_free<=1) return;
-
-	char* ptr=to+to_len;
-
-	if(from_len>=to_free)
-	{
-		memcpy(ptr,from,to_free-1);
-		to[size-1]=0;
-	}
-	else
-	{
-		memcpy(ptr,from,from_len);
-		ptr[from_len]=0;
-	}
-}
-
-char* StringDuplicate(const char* str)
-{
-	if(!str) return NULL;
-	size_t len=strlen(str);
-	char* dup=new(nothrow) char[len+1];
-	if(!dup) return NULL;
-	if(len) memcpy(dup,str,len);
-	dup[len]=0;
-	return dup;
-}
-
-const char* StringFormat(char* output, const char* format, ...)
-{
-	if(!output || !format) return NULL;
-
-	va_list list;
-	va_start(list,format);
-#ifdef FO_MSVC
-	vsprintf_s(output,MAX_FOTEXT,format,list);
-#else
-    vsprintf(output,format,list);
-#endif
-	va_end(list);
-	return output;
-}
-
-/************************************************************************/
 /* Single player                                                        */
 /************************************************************************/
+
+#if defined(FO_WINDOWS)
 
 #define INTERPROCESS_DATA_SIZE          (OFFSETOF(InterprocessData,mapFileMutex))
 
@@ -1302,7 +1171,7 @@ HANDLE InterprocessData::Init()
 	if(!mapFileMutex) return NULL;
 
 	if(!Lock()) return NULL;
-	ZeroMemory(this,INTERPROCESS_DATA_SIZE);
+	memzero(this,INTERPROCESS_DATA_SIZE);
 	((InterprocessData*)mapFilePtr)->mapFileMutex=mapFileMutex;
 	Unlock();
 	return mapFile;
@@ -1363,9 +1232,11 @@ bool InterprocessData::Refresh()
 	return true;
 }
 
+void* SingleplayerClientProcess=NULL;
+#endif
+
 bool Singleplayer=false;
 InterprocessData SingleplayerData;
-HANDLE SingleplayerClientProcess=NULL;
 
 /************************************************************************/
 /* File system                                                          */
@@ -1463,10 +1334,10 @@ void LoadList(const char* lst_name, int path_type)
 	while(fm.GetLine(str,1023))
 	{
 		// Lower text
-		_strlwr(str);
+		Str::Lower(str);
 
 		// Skip comments
-		if(!strlen(str) || str[0]=='#' || str[0]==';') continue;
+		if(!Str::Length(str) || str[0]=='#' || str[0]==';') continue;
 
 		// New value of line
 		if(str[0]=='*')
@@ -1490,10 +1361,10 @@ void LoadList(const char* lst_name, int path_type)
 		ext[j]='\0';
 
 		// Create name
-		uint len=strlen(path)+strlen(str)+1;
+		uint len=Str::Length(path)+Str::Length(str)+1;
 		char* rec=new char[len];
-		StringCopy(rec,len,path);
-		StringCopy(rec,len,str);
+		Str::Copy(rec,len,path);
+		Str::Copy(rec,len,str);
 
 		// Check for size
 		if(str_cnt>=lst.size()) lst.resize(str_cnt+1);

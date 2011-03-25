@@ -2,6 +2,7 @@
 #include "CritterType.h"
 #include "Text.h"
 #include "FileManager.h"
+#include "MsgFiles.h"
 
 CritTypeType CrTypes[MAX_CRIT_TYPES];
 int MoveWalk[MAX_CRIT_TYPES][6]={0};
@@ -122,8 +123,8 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 	AutoPtrArr<CritTypeType> CrTypesReserved(new CritTypeType[MAX_CRIT_TYPES]);
 	if(!CrTypesReserved.IsValid()) return false;
 	int MoveWalkReserved[MAX_CRIT_TYPES][6];
-	ZeroMemory(CrTypesReserved.Get(),sizeof(CritTypeType)*MAX_CRIT_TYPES);
-	ZeroMemory(MoveWalkReserved,sizeof(MoveWalkReserved));
+	memzero(CrTypesReserved.Get(),sizeof(CritTypeType)*MAX_CRIT_TYPES);
+	memzero(MoveWalkReserved,sizeof(MoveWalkReserved));
 
 	FileManager file;
 	if(!file.LoadFile(CRTYPE_FILE_NAME,PT_SERVER_DATA))
@@ -162,7 +163,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 		// Name
 		str >> svalue;
 		if(str.fail()) continue;
-		StringCopy(ct.Name,svalue.c_str());
+		Str::Copy(ct.Name,svalue.c_str());
 
 		// Alias, Multihex, 3d, Walk, Run, Aim, Armor, Rotate
 		str >> svalue;
@@ -224,7 +225,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 		str >> svalue;
 		if(str.fail()) continue;
 		if(svalue=="-") ct.SoundName[0]=0;
-		else StringCopy(ct.SoundName,svalue.c_str());
+		else Str::Copy(ct.SoundName,svalue.c_str());
 
 		// Register as valid
 		ct.Anim1[0]=true;
@@ -281,8 +282,8 @@ bool CritType::InitFromMsg(FOMsg* msg)
 	AutoPtrArr<CritTypeType> CrTypesReserved(new CritTypeType[MAX_CRIT_TYPES]);
 	if(!CrTypesReserved.IsValid()) return false;
 	int MoveWalkReserved[MAX_CRIT_TYPES][6];
-	ZeroMemory(CrTypesReserved.Get(),sizeof(CritTypeType)*MAX_CRIT_TYPES);
-	ZeroMemory(MoveWalkReserved,sizeof(MoveWalkReserved));
+	memzero(CrTypesReserved.Get(),sizeof(CritTypeType)*MAX_CRIT_TYPES);
+	memzero(MoveWalkReserved,sizeof(MoveWalkReserved));
 
 	int errors=0;
 	int success=0;
@@ -308,10 +309,10 @@ bool CritType::InitFromMsg(FOMsg* msg)
 			errors++;
 			continue;
 		}
-		sound_name[strlen(sound_name)-1]=0;
+		sound_name[Str::Length(sound_name)-1]=0;
 
-		StringCopy(ct.Name,name);
-		StringCopy(ct.SoundName,sound_name);
+		Str::Copy(ct.Name,name);
+		Str::Copy(ct.SoundName,sound_name);
 		ct.Anim1[0]=true;
 		ct.Enabled=true;
 		success++;

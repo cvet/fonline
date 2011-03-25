@@ -58,7 +58,7 @@ struct EngineData
 {
 	ScriptModuleVec Modules;
 	Preprocessor::PragmaCallback* PragmaCB;
-	map<string,HMODULE> LoadedDlls;
+	map<string,void*> LoadedDlls;
 };
 
 asIScriptEngine* Engine=NULL;
@@ -194,39 +194,48 @@ void FinisthThread()
 	asThreadCleanup();
 }
 
-HMODULE LoadDynamicLibrary(const char* dll_name)
+void* LoadDynamicLibrary(const char* dll_name)
 {
 	// Find in already loaded
 	EngineData* edata=(EngineData*)Engine->GetUserData();
-	map<string,HMODULE>::iterator it=edata->LoadedDlls.find(dll_name);
+	map<string,void*>::iterator it=edata->LoadedDlls.find(dll_name);
 	if(it!=edata->LoadedDlls.end()) return (*it).second;
 
 	// Load dynamic library
 	char dll_name_[256];
-	StringCopy(dll_name_,FileManager::GetFullPath("",ScriptsPath));
-	StringAppend(dll_name_,dll_name);
-	HMODULE dll=LoadLibrary(dll_name_);
+	Str::Copy(dll_name_,FileManager::GetFullPath("",ScriptsPath));
+	Str::Append(dll_name_,dll_name);
+	void* dll=LoadLibrary(dll_name_);
 	if(!dll) return NULL;
 
 	// Register variables
-	size_t* ptr=(size_t*)GetProcAddress(dll,"Game");
+	size_t* ptr=GetFunctionAddress(dll,"Game");
 	if(ptr) *ptr=(size_t)&GameOpt;
-	ptr=(size_t*)GetProcAddress(dll,"ASEngine");
+	ptr=GetFunctionAddress(dll,"ASEngine");
 	if(ptr) *ptr=(size_t)Engine;
 
 	// Register functions
-	ptr=(size_t*)GetProcAddress(dll,"Log");
+	ptr=GetFunctionAddress(dll,"Log");
 	if(ptr) *ptr=(size_t)&WriteLog;
 
 	// Call init function
 	typedef void(*DllMainEx)(bool);
-	DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
+	DllMainEx func=(DllMainEx)GetFunctionAddress(dll,"DllMainEx");
 	if(func) (*func)(LoadLibraryCompiler);
 
 	// Add to collection for current engine
-	edata->LoadedDlls.insert(map<string,HMODULE>::value_type(dll_name,dll));
+	edata->LoadedDlls.insert(map<string,void*>::value_type(dll_name,dll));
 
 	return dll;
+}
+
+size_t* GetFunctionAddress(void* dll, const char* func_name)
+{
+#if defined(FO_WINDOWS)
+	return (size_t*)GetProcAddress((HMODULE)dll,func_name);
+#else // FO_LINUX
+	// Todo: linux
+#endif
 }
 
 void SetWrongGlobalObjects(StrVec& names)
@@ -414,8 +423,8 @@ void FinishEngine(asIScriptEngine*& engine)
 	{
 		EngineData* edata=(EngineData*)engine->SetUserData(NULL);
 		delete edata->PragmaCB;
-		for(map<string,HMODULE>::iterator it=edata->LoadedDlls.begin(),end=edata->LoadedDlls.end();it!=end;++it)
-			FreeLibrary((*it).second);
+		for(map<string,void*>::iterator it=edata->LoadedDlls.begin(),end=edata->LoadedDlls.end();it!=end;++it)
+			FreeLibrary((HMODULE)(*it).second);
 		delete edata;
 		engine->Release();
 		engine=NULL;
@@ -446,7 +455,7 @@ asIScriptContext* CreateContext()
 		return NULL;
 	}
 
-	StringCopy(buf,CONTEXT_BUFFER_SIZE,"<error>");
+	Str::Copy(buf,CONTEXT_BUFFER_SIZE,"<error>");
 	ctx->SetUserData(buf);
 	return ctx;
 }
@@ -536,7 +545,7 @@ asIScriptModule* CreateModule(const char* module_name)
 	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 	{
 		asIScriptModule* module=*it;
-		if(!strcmp(module->GetName(),module_name))
+		if(Str::Compare(module->GetName(),module_name))
 		{
 			modules.erase(it);
 			break;
@@ -808,14 +817,14 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 
 	// Get script names
 	char fname_real[MAX_FOPATH]={0};
-	StringAppend(fname_real,module_name);
-	StringAppend(fname_real,".fos");
+	Str::Append(fname_real,module_name);
+	Str::Append(fname_real,".fos");
 
 	char fname_script[MAX_FOPATH]={0};
-	if(file_pefix) StringCopy(fname_script,file_pefix);
-	StringAppend(fname_script,module_name);
+	if(file_pefix) Str::Copy(fname_script,file_pefix);
+	Str::Append(fname_script,module_name);
 	Str::Replacement(fname_script,'.','\\');
-	StringAppend(fname_script,".fos");
+	Str::Append(fname_script,".fos");
 
 	// Set current pragmas
 	Preprocessor::SetPragmaCallback(edata->PragmaCB);
@@ -826,7 +835,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 	{
 		FileManager file;
 		file.LoadFile(fname_real,ScriptsPath);
-		file_bin.LoadFile(Str::Format("%sb",fname_script),ScriptsPath);
+		file_bin.LoadFile(Str::FormatBuf("%sb",fname_script),ScriptsPath);
 
 		if(file_bin.IsLoaded() && file_bin.GetFsize()>sizeof(uint))
 		{
@@ -849,12 +858,12 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			}
 
 			// Check for outdated
-			FILETIME last_write,last_write_bin;
+			uint64 last_write,last_write_bin;
 			file_bin.GetTime(NULL,NULL,&last_write_bin);
 			// Main file
 			file.GetTime(NULL,NULL,&last_write);
 			bool no_all_files=!file.IsLoaded();
-			bool outdated=(file.IsLoaded() && CompareFileTime(&last_write,&last_write_bin)>0);
+			bool outdated=(file.IsLoaded() && last_write>last_write_bin);
 			// Include files
 			for(uint i=0,j=dependencies.size();i<j;i++)
 			{
@@ -862,7 +871,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 				file_dep.LoadFile(dependencies[i].c_str(),ScriptsPath);
 				file_dep.GetTime(NULL,NULL,&last_write);
 				if(!no_all_files) no_all_files=!file_dep.IsLoaded();
-				if(!outdated) outdated=(file_dep.IsLoaded() && CompareFileTime(&last_write,&last_write_bin)>0);
+				if(!outdated) outdated=(file_dep.IsLoaded() && last_write>last_write_bin);
 			}
 
 			if(no_all_files || (!outdated && bin_version==version))
@@ -874,7 +883,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 				for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 				{
 					asIScriptModule* module=*it;
-					if(!strcmp(module->GetName(),module_name))
+					if(Str::Compare(module->GetName(),module_name))
 					{
 						WriteLog(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
 						Engine->DiscardModule(module_name);
@@ -940,7 +949,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 	{
 		asIScriptModule* module=*it;
-		if(!strcmp(module->GetName(),module_name))
+		if(Str::Compare(module->GetName(),module_name))
 		{
 			WriteLog(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
 			Engine->DiscardModule(module_name);
@@ -1061,7 +1070,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			for(uint i=0,j=pragmas.size();i<j;i++) file_bin.SetData((uchar*)pragmas[i].c_str(),pragmas[i].length()+1);
 			file_bin.SetData(&data[0],data.size());
 
-			if(!file_bin.SaveOutBufToFile(Str::Format("%sb",fname_script),ScriptsPath)) WriteLog(_FUNC_," - Can't save bytecode, script<%s>.\n",module_name);
+			if(!file_bin.SaveOutBufToFile(Str::FormatBuf("%sb",fname_script),ScriptsPath)) WriteLog(_FUNC_," - Can't save bytecode, script<%s>.\n",module_name);
 		}
 		else
 		{
@@ -1070,7 +1079,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 
 		FileManager file_prep;
 		file_prep.SetData((void*)vos.GetData(),vos.GetSize());
-		if(!file_prep.SaveOutBufToFile(Str::Format("%sp",fname_script),ScriptsPath))
+		if(!file_prep.SaveOutBufToFile(Str::FormatBuf("%sp",fname_script),ScriptsPath))
 			WriteLog(_FUNC_," - Can't write preprocessed file, script<%s>.\n",module_name);
 	}
 	return true;
@@ -1090,7 +1099,7 @@ bool LoadScript(const char* module_name, const uchar* bytecode, uint len)
 	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
 	{
 		asIScriptModule* module=*it;
-		if(!strcmp(module->GetName(),module_name))
+		if(Str::Compare(module->GetName(),module_name))
 		{
 			WriteLog(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
 			Engine->DiscardModule(module_name);
@@ -1191,7 +1200,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 	else
 	{
 		// Load dynamic library
-		HMODULE dll=LoadDynamicLibrary(module_name);
+		void* dll=LoadDynamicLibrary(module_name);
 		if(!dll)
 		{
 			if(!disable_log) WriteLog(_FUNC_," - Dll<%s> not found in scripts folder, error<%u>.\n",module_name,GetLastError());
@@ -1199,7 +1208,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		}
 
 		// Load function
-		size_t func=(size_t)GetProcAddress(dll,func_name);
+		size_t func=(size_t)GetFunctionAddress(dll,func_name);
 		if(!func)
 		{
 			if(!disable_log) WriteLog(_FUNC_," - Function<%s> in dll<%s> not found, error<%u>.\n",func_name,module_name,GetLastError());
@@ -1278,7 +1287,7 @@ bool ReparseScriptName(const char* script_name, char* module_name, char* func_na
 	}
 
 	char script[MAX_SCRIPT_NAME*2+2];
-	StringCopy(script,script_name);
+	Str::Copy(script,script_name);
 	Str::EraseChars(script,' ');
 
 	if(strstr(script,"@"))
@@ -1290,17 +1299,17 @@ bool ReparseScriptName(const char* script_name, char* module_name, char* func_na
 	}
 	else
 	{
-		StringCopy(module_name,MAX_SCRIPT_NAME,GetActiveModuleName());
-		StringCopy(func_name,MAX_SCRIPT_NAME,script);
+		Str::Copy(module_name,MAX_SCRIPT_NAME,GetActiveModuleName());
+		Str::Copy(func_name,MAX_SCRIPT_NAME,script);
 	}
 
-	if(!strlen(module_name) || !strcmp(module_name,"<error>"))
+	if(!Str::Length(module_name) || Str::Compare(module_name,"<error>"))
 	{
 		if(!disable_log) WriteLog(_FUNC_," - Script name parse error, string<%s>.\n",script_name);
 		module_name[0]=func_name[0]=0;
 		return false;
 	}
-	if(!strlen(func_name))
+	if(!Str::Length(func_name))
 	{
 		if(!disable_log) WriteLog(_FUNC_," - Function name parse error, string<%s>.\n",script_name);
 		module_name[0]=func_name[0]=0;
@@ -1334,7 +1343,7 @@ uint GetScriptFuncNum(const char* script_name, const char* decl)
 	char module_name[MAX_SCRIPT_NAME+1];
 	char func_name[MAX_SCRIPT_NAME+1];
 	if(!Script::ReparseScriptName(script_name,module_name,func_name)) return 0;
-	Str::SFormat(full_name,"%s@%s",module_name,func_name);
+	Str::Format(full_name,"%s@%s",module_name,func_name);
 
 	string str_cache=full_name;
 	str_cache+="|";
@@ -1554,9 +1563,9 @@ bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 
 		BeginExecution();
 
-		StringCopy((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE,call_func);
-		StringAppend((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE," : ");
-		StringAppend((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE,ctx_info);
+		Str::Copy((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE,call_func);
+		Str::Append((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE," : ");
+		Str::Append((char*)ctx->GetUserData(),CONTEXT_BUFFER_SIZE,ctx_info);
 
 		int result=ctx->Prepare(func_id);
 		if(result<0)
@@ -1874,16 +1883,16 @@ void Log(const char* str)
 	{
 		int line,column;
 		line=ctx->GetLineNumber(0,&column);
-		LogA(Str::Format("Script callback: %s : %s : %s : %d, %d : %s.\n",str,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
+		LogA(Str::FormatBuf("Script callback: %s : %s : %s : %d, %d : %s.\n",str,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
 	}
-	else LogA(Str::Format("%s : %s\n",func->GetModuleName(),str));
+	else LogA(Str::FormatBuf("%s : %s\n",func->GetModuleName(),str));
 }
 
 void LogA(const char* str)
 {
 	WriteLog(NULL,"%s",str);
 	if(!EngineLogFile) return;
-	FileWrite(EngineLogFile,str,strlen(str));
+	FileWrite(EngineLogFile,str,Str::Length(str));
 }
 
 void LogError(const char* call_func, const char* error)
@@ -1902,7 +1911,7 @@ void LogError(const char* call_func, const char* error)
 	}
 	int line,column;
 	line=ctx->GetLineNumber(0,&column);
-	LogA(Str::Format("%s : Script error: %s : %s : %s : %d, %d : %s.\n",call_func,error,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
+	LogA(Str::FormatBuf("%s : Script error: %s : %s : %s : %d, %d : %s.\n",call_func,error,func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
 }
 
 void SetLogDebugInfo(bool enabled)
@@ -1915,7 +1924,7 @@ void CallbackMessage(const asSMessageInfo* msg, void* param)
 	const char* type="Error";
 	if(msg->type==asMSGTYPE_WARNING) type="Warning";
 	else if(msg->type==asMSGTYPE_INFORMATION) type="Info";
-	LogA(Str::Format("Script message: %s : %s : %s : %d, %d.\n",msg->section,type,msg->message,msg->row,msg->col));
+	LogA(Str::FormatBuf("Script message: %s : %s : %s : %d, %d.\n",msg->section,type,msg->message,msg->row,msg->col));
 }
 
 void CallbackException(asIScriptContext* ctx, void* param)
@@ -1925,10 +1934,10 @@ void CallbackException(asIScriptContext* ctx, void* param)
 	asIScriptFunction* func=Engine->GetFunctionDescriptorById(ctx->GetExceptionFunction());
 	if(!func)
 	{
-		LogA(Str::Format("Script exception: %s : %s.\n",ctx->GetExceptionString(),ctx->GetUserData()));
+		LogA(Str::FormatBuf("Script exception: %s : %s.\n",ctx->GetExceptionString(),ctx->GetUserData()));
 		return;
 	}
-	LogA(Str::Format("Script exception: %s : %s : %s : %d, %d : %s.\n",ctx->GetExceptionString(),func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
+	LogA(Str::FormatBuf("Script exception: %s : %s : %s : %d, %d : %s.\n",ctx->GetExceptionString(),func->GetModuleName(),func->GetDeclaration(true),line,column,ctx->GetUserData()));
 }
 
 /************************************************************************/

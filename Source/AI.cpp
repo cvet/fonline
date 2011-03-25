@@ -4,6 +4,7 @@
 #include "ConstantsManager.h"
 #include "FileManager.h"
 #include "Item.h"
+#include "IniParser.h"
 
 NpcAIMngr AIMngr;
 
@@ -132,7 +133,7 @@ bool NpcAIMngr::LoadNpcBags()
 
 	for(int i=0;i<=end_bag;i++)
 	{
-		if(!bags_txt.GetStr(Str::Format("bag_%d",i),"",bag_str)) continue;
+		if(!bags_txt.GetStr(Str::FormatBuf("bag_%d",i),"",bag_str)) continue;
 		NpcBag& cur_bag=npcBags[i];
 
 		StrVec comb;

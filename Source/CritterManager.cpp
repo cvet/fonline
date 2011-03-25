@@ -1,8 +1,8 @@
 #include "StdAfx.h"
 #include "CritterManager.h"
-#include "Log.h"
 #include "ConstantsManager.h"
 #include "ItemManager.h"
+#include "IniParser.h"
 
 #ifdef FONLINE_SERVER
 #include "MapManager.h"
@@ -28,7 +28,7 @@ bool CritterManager::Init()
 		return false;
 	}
 
-	ZeroMemory(allProtos,sizeof(allProtos));
+	memzero(allProtos,sizeof(allProtos));
 	Clear();
 
 	isActive=true;
@@ -44,7 +44,7 @@ void CritterManager::Finish()
 	CritterGarbager();
 #endif
 
-	ZeroMemory(allProtos,sizeof(allProtos));
+	memzero(allProtos,sizeof(allProtos));
 	Clear();
 
 	isActive=false;
@@ -105,7 +105,7 @@ bool CritterManager::LoadProtos()
 
 #ifdef FONLINE_MAPPER
 		char collection_name[MAX_FOPATH];
-		StringFormat(collection_name,"%03d - %s",i+1,fname);
+		Str::Format(collection_name,"%03d - %s",i+1,fname);
 		FileManager::EraseExtension(collection_name);
 #endif
 
@@ -115,7 +115,7 @@ bool CritterManager::LoadProtos()
 			{
 				int pid=-1;
 				int params[MAX_PARAMS];
-				ZeroMemory(params,sizeof(params));
+				memzero(params,sizeof(params));
 
 				StrVec lines;
 				protos_txt.GetAppLines(lines);
@@ -125,11 +125,11 @@ bool CritterManager::LoadProtos()
 					char line[256];
 					char indent[256];
 					int value;
-					StringCopy(line,lines[j].c_str());
+					Str::Copy(line,lines[j].c_str());
 					Str::Replacement(line,'=',' ');
 					if(sscanf(line,"%s%d",indent,&value)==2)
 					{
-						if(!strcmp(indent,"Pid")) pid=value;
+						if(Str::Compare(indent,"Pid")) pid=value;
 						else
 						{
 							int param_id=ConstantsManager::GetParamId(indent);
@@ -253,7 +253,7 @@ bool CritterManager::LoadCrittersFile(FILE* f, uint version)
 
 		npc->NextRefreshBagTick=Timer::GameTick()+(npc->Data.BagRefreshTime?npc->Data.BagRefreshTime:GameOpt.BagRefreshTime)*60*1000;
 		npc->NameStr="Npc_";
-		npc->NameStr+=Str::Format("%u",npc->GetId());
+		npc->NameStr+=Str::FormatBuf("%u",npc->GetId());
 
 		if(version<WORLD_SAVE_V12)
 		{
@@ -445,7 +445,7 @@ Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, 
 	npc->Data.HexX=hx;
 	npc->Data.HexY=hy;
 	npc->NameStr="Npc_";
-	npc->NameStr+=Str::Format("%u",npc->GetId());
+	npc->NameStr+=Str::FormatBuf("%u",npc->GetId());
 
 	for(uint i=0;i<params_count;i++)
 	{
@@ -738,7 +738,7 @@ Client* CritterManager::GetPlayer(const char* name, bool sync_lock)
 	for(CrMapIt it=allCritters.begin(),end=allCritters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(cr->IsPlayer() && !_stricmp(name,cr->GetName()))
+		if(cr->IsPlayer() && Str::CompareCase(name,cr->GetName()))
 		{
 			cl=(Client*)cr;
 			break;

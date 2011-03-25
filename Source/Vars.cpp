@@ -188,7 +188,7 @@ bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 	int var_max;
 	uint var_flags;
 
-	char* buf_begin=StringDuplicate(str);
+	char* buf_begin=Str::Duplicate(str);
 	Str::Replacement(buf_begin,'\r','\n','\n');
 	char* buf=buf_begin;
 
@@ -204,7 +204,7 @@ bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 		}
 
 		// Description
-		StringCopy(var_desc,"error");
+		Str::Copy(var_desc,"error");
 
 		do
 		{
@@ -214,7 +214,7 @@ bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 			char* mark2=strstr(mark,VAR_DESC_MARK);
 			if(!mark2) break;
 			*(mark2-1)=0;
-			StringCopy(var_desc,mark);
+			Str::Copy(var_desc,mark);
 
 			buf=mark2+sizeof(VAR_DESC_MARK);
 		}
@@ -282,7 +282,7 @@ ushort VarManager::GetTemplateVarId(const char* var_name)
 	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
 	{
 		TemplateVar* tvar=*it;
-		if(tvar && !_stricmp(tvar->Name.c_str(),var_name)) return tvar->TempId;
+		if(tvar && Str::CompareCase(tvar->Name.c_str(),var_name)) return tvar->TempId;
 	}
 	return false;
 }
@@ -298,7 +298,7 @@ bool VarManager::IsTemplateVarAviable(const char* var_name)
 	for(TempVarVecIt it=tempVars.begin(),end=tempVars.end();it!=end;++it)
 	{
 		TemplateVar* tvar=*it;
-		if(tvar && !_stricmp(tvar->Name.c_str(),var_name)) return true;
+		if(tvar && Str::CompareCase(tvar->Name.c_str(),var_name)) return true;
 	}
 	return false;
 }

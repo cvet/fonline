@@ -122,7 +122,7 @@ public:
 		long RefCounter;
 	} RunTime;
 
-	MapObject(){ZeroMemory(this,sizeof(MapObject)); RunTime.RefCounter=1;}
+	MapObject(){memzero(this,sizeof(MapObject)); RunTime.RefCounter=1;}
 	MapObject(const MapObject& r){memcpy(this,&r,sizeof(MapObject)); RunTime.RefCounter=1;}
 	MapObject& operator=(const MapObject& r){memcpy(this,&r,sizeof(MapObject)); RunTime.RefCounter=1; return *this;}
 
@@ -195,7 +195,7 @@ public:
 		bool IsSelected;
 #endif
 
-		Tile(){ZeroMemory(this,sizeof(Tile));}
+		Tile(){memzero(this,sizeof(Tile));}
 		Tile(uint name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof):
 			NameHash(name),HexX(hx),HexY(hy),OffsX(ox),OffsY(oy),Layer(layer),IsRoof(is_roof){}
 	};
@@ -248,7 +248,7 @@ public:
 		ushort HexY;
 		uchar Dir;
 
-		MapEntire(){ZeroMemory(this,sizeof(MapEntire));}
+		MapEntire(){memzero(this,sizeof(MapEntire));}
 		MapEntire(ushort hx, ushort hy, uchar dir, uint type):HexX(hx),HexY(hy),Dir(dir),Number(type){}
 	};
 typedef vector<MapEntire> EntiresVec;

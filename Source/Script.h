@@ -28,7 +28,8 @@ namespace Script
 	bool InitThread();
 	void FinisthThread();
 
-	HMODULE LoadDynamicLibrary(const char* dll_name);
+	void* LoadDynamicLibrary(const char* dll_name);
+	size_t* GetFunctionAddress(void* dll, const char* func_name);
 	void SetWrongGlobalObjects(StrVec& names);
 	void SetConcurrentExecution(bool enabled);
 	void SetLoadLibraryCompiler(bool enabled);

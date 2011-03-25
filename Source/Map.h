@@ -311,7 +311,7 @@ public:
 	short RefCounter;
 	void AddRef(){RefCounter++;}
 	void Release(){RefCounter--; if(RefCounter<=0) delete this;}
-	Location():RefCounter(1),Proto(NULL),IsNotValid(false){ZeroMemory((void*)&Data,sizeof(Data));}
+	Location():RefCounter(1),Proto(NULL),IsNotValid(false){memzero((void*)&Data,sizeof(Data));}
 };
 typedef map<uint,Location*> LocMap;
 typedef map<uint,Location*>::iterator LocMapIt;

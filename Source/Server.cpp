@@ -76,8 +76,8 @@ MutexSynchronizer FOServer::LogicThreadSync;
 FOServer::FOServer()
 {
 	Active=false;
-	ZeroMemory(&Statistics,sizeof(Statistics));
-	ZeroMemory(&ServerFunctions,sizeof(ServerFunctions));
+	memzero(&Statistics,sizeof(Statistics));
+	memzero(&ServerFunctions,sizeof(ServerFunctions));
 	ServerWindow=NULL;
 	LastClientId=0;
 	SingleplayerSave.Valid=false;
@@ -441,7 +441,7 @@ void FOServer::MainLoop()
 
 		// Statistics
 		Statistics.Uptime=(Timer::FastTick()-Statistics.ServerStartTick)/1000;
-		SetEvent(UpdateEvent);
+		UpdateEvent.Allow();
 
 //		sync_mngr->UnlockAll();
 		Sleep(100);
@@ -477,7 +477,7 @@ void FOServer::MainLoop()
 
 	// Last process
 	ProcessBans();
-	ProcessGameTime();
+	Timer::ProcessGameTime();
 	ItemMngr.ItemGarbager();
 	CrMngr.CritterGarbager();
 	MapMngr.LocationGarbager();
@@ -511,7 +511,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 	if(LogicThreadCount>1)
 	{
 		static int thread_count=0;
-		LogSetThreadName(Str::Format("Logic%d",thread_count));
+		LogSetThreadName(Str::FormatBuf("Logic%d",thread_count));
 		thread_count++;
 	}
 	else
@@ -646,7 +646,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 		else if(job.Type==JOB_GAME_TIME)
 		{
 			// Game time
-			ProcessGameTime();
+			Timer::ProcessGameTime();
 		}
 		else if(job.Type==JOB_BANS)
 		{
@@ -690,7 +690,7 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			if(!stats)
 			{
 				stats=new StatisticsThread();
-				ZeroMemory(stats,sizeof(StatisticsThread));
+				memzero(stats,sizeof(StatisticsThread));
 				stats->LoopMin=MAX_UINT;
 				stats_ptrs.push_back(stats);
 			}
@@ -861,7 +861,7 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 unsigned int __stdcall FOServer::Net_Work(HANDLE iocp)
 {
 	static int thread_count=0;
-	LogSetThreadName(Str::Format("NetWork%d",thread_count));
+	LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
 	thread_count++;
 
 #ifdef FO_WINDOWS
@@ -1424,7 +1424,7 @@ void FOServer::Process_Text(Client* cl)
 
 	if(!cl->IsLife() && how_say>=SAY_NORM && how_say<=SAY_RADIO) how_say=SAY_WHISP;
 
-	if(!strcmp(str,cl->LastSay))
+	if(Str::Compare(str,cl->LastSay))
 	{
 		cl->LastSayEqualCount++;
 		if(cl->LastSayEqualCount>=10)
@@ -1437,7 +1437,7 @@ void FOServer::Process_Text(Client* cl)
 	}
 	else
 	{
-		StringCopy(cl->LastSay,str);
+		Str::Copy(cl->LastSay,str);
 		cl->LastSayEqualCount=0;
 	}
 
@@ -1527,7 +1527,7 @@ void FOServer::Process_Text(Client* cl)
 		{
 			TextListen& tl=TextListeners[i];
 			if(tl.SayType==SAY_RADIO && std::find(channels.begin(),channels.end(),tl.Parameter)!=channels.end() &&
-				!_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
+				Str::CompareCaseCount(str,tl.FirstStr,tl.FirstStrLen))
 			{
 				licten_func_id[listen_count]=tl.FuncId;
 				licten_str[listen_count]=new CScriptString(str);
@@ -1541,7 +1541,7 @@ void FOServer::Process_Text(Client* cl)
 		for(uint i=0;i<TextListeners.size();i++)
 		{
 			TextListen& tl=TextListeners[i];
-			if(tl.SayType==how_say && tl.Parameter==pid && !_strnicmp(str,tl.FirstStr,tl.FirstStrLen))
+			if(tl.SayType==how_say && tl.Parameter==pid && Str::CompareCaseCount(str,tl.FirstStr,tl.FirstStrLen))
 			{
 				licten_func_id[listen_count]=tl.FuncId;
 				licten_str[listen_count]=new CScriptString(str);
@@ -1685,7 +1685,7 @@ void FOServer::Process_Command(Client* cl)
 			SaveClientsLocker.Lock();
 
 			ClientData* cd=GetClientData(name);
-			if(cd) cl->Send_Text(cl,Str::Format("Client id is %u.",cd->ClientId),SAY_NETMSG);
+			if(cd) cl->Send_Text(cl,Str::FormatBuf("Client id is %u.",cd->ClientId),SAY_NETMSG);
 			else cl->Send_Text(cl,"Client not found.",SAY_NETMSG);
 
 			SaveClientsLocker.Unlock();
@@ -2006,10 +2006,10 @@ void FOServer::Process_Command(Client* cl)
 						len+=cl->Bin.GetLen();
 					}
 					LeaveCriticalSection(&CSConnectedClients);
-					cl->Send_Text(cl,Str::Format("bin/bout len %u (%u)",len,ConnectedClients.size()),SAY_NETMSG);
-					cl->Send_Text(cl,Str::Format("AI planes %d",DymmyVar),SAY_NETMSG);
-					cl->Send_Text(cl,Str::Format("Clients %d",DummyVar2),SAY_NETMSG);
-					cl->Send_Text(cl,Str::Format("Npc %d",DummyVar3),SAY_NETMSG);*/
+					cl->Send_Text(cl,Str::FormatBuf("bin/bout len %u (%u)",len,ConnectedClients.size()),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("AI planes %d",DymmyVar),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("Clients %d",DummyVar2),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("Npc %d",DummyVar3),SAY_NETMSG);*/
 				}
 				else if(param_type==99)
 				{
@@ -2025,7 +2025,7 @@ void FOServer::Process_Command(Client* cl)
 					for(PcVecIt it=npcs.begin(),end=npcs.end();it!=end;++it)
 					{
 						Npc* npc=*it;
-						ZeroMemory(&npc->Data.EnemyStack,sizeof(npc->Data.EnemyStack));
+						memzero(&npc->Data.EnemyStack,sizeof(npc->Data.EnemyStack));
 					}
 				}
 				else if(param_type==96)
@@ -2068,7 +2068,7 @@ void FOServer::Process_Command(Client* cl)
 					VarsGarbarger(true);
 					count-=VarMngr.GetVarsCount();
 					tick=Timer::AccurateTick()-tick;
-					cl->Send_Text(cl,Str::Format("Erased %u vars in %g ms.",count,tick),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("Erased %u vars in %g ms.",count,tick),SAY_NETMSG);
 				}
 				return;
 			}
@@ -2110,10 +2110,10 @@ void FOServer::Process_Command(Client* cl)
 			}
 
 			int wanted_access=-1;
-			if(!strcmp(name_access,"client") && std::find(AccessClient.begin(),AccessClient.end(),pasw_access)!=AccessClient.end()) wanted_access=ACCESS_CLIENT;
-			else if(!strcmp(name_access,"tester") && std::find(AccessTester.begin(),AccessTester.end(),pasw_access)!=AccessTester.end()) wanted_access=ACCESS_TESTER;
-			else if(!strcmp(name_access,"moder") && std::find(AccessModer.begin(),AccessModer.end(),pasw_access)!=AccessModer.end()) wanted_access=ACCESS_MODER;
-			else if(!strcmp(name_access,"admin") && std::find(AccessAdmin.begin(),AccessAdmin.end(),pasw_access)!=AccessAdmin.end()) wanted_access=ACCESS_ADMIN;
+			if(Str::Compare(name_access,"client") && std::find(AccessClient.begin(),AccessClient.end(),pasw_access)!=AccessClient.end()) wanted_access=ACCESS_CLIENT;
+			else if(Str::Compare(name_access,"tester") && std::find(AccessTester.begin(),AccessTester.end(),pasw_access)!=AccessTester.end()) wanted_access=ACCESS_TESTER;
+			else if(Str::Compare(name_access,"moder") && std::find(AccessModer.begin(),AccessModer.end(),pasw_access)!=AccessModer.end()) wanted_access=ACCESS_MODER;
+			else if(Str::Compare(name_access,"admin") && std::find(AccessAdmin.begin(),AccessAdmin.end(),pasw_access)!=AccessAdmin.end()) wanted_access=ACCESS_ADMIN;
 
 			bool allow=false;
 			if(wanted_access!=-1 && Script::PrepareContext(ServerFunctions.PlayerGetAccess,_FUNC_,cl->GetInfo()))
@@ -2347,7 +2347,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!strlen(module_name))
+			if(!Str::Length(module_name))
 			{
 				cl->Send_Text(cl,"Fail, name length is zero.",SAY_NETMSG);
 				break;
@@ -2359,7 +2359,7 @@ void FOServer::Process_Command(Client* cl)
 			{
 				int errors=Script::BindImportedFunctions();
 				if(!errors) cl->Send_Text(cl,"Complete.",SAY_NETMSG);
-				else cl->Send_Text(cl,Str::Format("Complete, bind errors<%d>.",errors),SAY_NETMSG);
+				else cl->Send_Text(cl,Str::FormatBuf("Complete, bind errors<%d>.",errors),SAY_NETMSG);
 			}
 			else
 			{
@@ -2410,7 +2410,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!strlen(module_name) || !strlen(func_name))
+			if(!Str::Length(module_name) || !Str::Length(func_name))
 			{
 				cl->Send_Text(cl,"Fail, length is zero.",SAY_NETMSG);
 				break;
@@ -2493,7 +2493,7 @@ void FOServer::Process_Command(Client* cl)
 			else
 			{
 				cl->Send_Text(cl,"Locations.cfg not found.",SAY_NETMSG);
-				WriteLog(NULL,"File<%s> not found.\n",Str::Format("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
+				WriteLog(NULL,"File<%s> not found.\n",Str::FormatBuf("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
 			}
 
 			ResynchronizeLogicThreads();
@@ -2637,7 +2637,7 @@ void FOServer::Process_Command(Client* cl)
 
 			InitLangPacks(LangPacks);
 			InitLangPacksDialogs(LangPacks);
-			cl->Send_Text(cl,Str::Format("Dialogs reload done, errors<%d>.",errors),SAY_NETMSG);
+			cl->Send_Text(cl,Str::FormatBuf("Dialogs reload done, errors<%d>.",errors),SAY_NETMSG);
 
 			ResynchronizeLogicThreads();
 		}
@@ -2661,7 +2661,7 @@ void FOServer::Process_Command(Client* cl)
 
 			SynchronizeLogicThreads();
 
-			if(FileMngr.LoadFile(Str::Format("%s%s",dlg_name,DIALOG_FILE_EXT),PT_SERVER_DIALOGS))
+			if(FileMngr.LoadFile(Str::FormatBuf("%s%s",dlg_name,DIALOG_FILE_EXT),PT_SERVER_DIALOGS))
 			{
 				DialogPack* pack=DlgMngr.ParseDialog(dlg_name,dlg_id,(char*)FileMngr.GetBuf());
 				if(pack)
@@ -2783,12 +2783,12 @@ void FOServer::Process_Command(Client* cl)
 
 			if(!full_info)
 			{
-				cl->Send_Text(cl,Str::Format("Value<%d>.",var->GetValue()),SAY_NETMSG);
+				cl->Send_Text(cl,Str::FormatBuf("Value<%d>.",var->GetValue()),SAY_NETMSG);
 			}
 			else
 			{
 				TemplateVar* tvar=var->GetTemplateVar();
-				cl->Send_Text(cl,Str::Format("Value<%d>, Name<%s>, Start<%d>, MIN<%d>, Max<%d>.",
+				cl->Send_Text(cl,Str::FormatBuf("Value<%d>, Name<%s>, Start<%d>, MIN<%d>, Max<%d>.",
 					var->GetValue(),tvar->Name.c_str(),tvar->StartVal,tvar->MinVal,tvar->MaxVal),SAY_NETMSG);
 			}
 		}
@@ -2868,7 +2868,7 @@ void FOServer::Process_Command(Client* cl)
 			if(hour>=0 && hour<=23) GameOpt.Hour=hour;
 			if(minute>=0 && minute<=59) GameOpt.Minute=minute;
 			if(second>=0 && second<=59) GameOpt.Second=second;
-			GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
+			GameOpt.FullSecond=Timer::GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 			GameOpt.FullSecondStart=GameOpt.FullSecond;
 			GameOpt.GameTimeTick=Timer::GameTick();
 
@@ -2910,7 +2910,7 @@ void FOServer::Process_Command(Client* cl)
 
 			SCOPE_LOCK(BannedLocker);
 
-			if(!_stricmp(params,"list"))
+			if(Str::CompareCase(params,"list"))
 			{
 				if(Banned.empty())
 				{
@@ -2922,19 +2922,19 @@ void FOServer::Process_Command(Client* cl)
 				for(ClientBannedVecIt it=Banned.begin(),end=Banned.end();it!=end;++it)
 				{
 					ClientBanned& ban=*it;
-					cl->Send_Text(cl,Str::Format("--- %3u ---",index),SAY_NETMSG);
-					if(ban.ClientName[0]) cl->Send_Text(cl,Str::Format("User: %s",ban.ClientName),SAY_NETMSG);
-					if(ban.ClientIp) cl->Send_Text(cl,Str::Format("UserIp: %u",ban.ClientIp),SAY_NETMSG);
-					cl->Send_Text(cl,Str::Format("BeginTime: %u %u %u %u %u",ban.BeginTime.wYear,ban.BeginTime.wMonth,ban.BeginTime.wDay,ban.BeginTime.wHour,ban.BeginTime.wMinute),SAY_NETMSG);
-					cl->Send_Text(cl,Str::Format("EndTime: %u %u %u %u %u",ban.EndTime.wYear,ban.EndTime.wMonth,ban.EndTime.wDay,ban.EndTime.wHour,ban.EndTime.wMinute),SAY_NETMSG);
-					if(ban.BannedBy[0]) cl->Send_Text(cl,Str::Format("BannedBy: %s",ban.BannedBy),SAY_NETMSG);
-					if(ban.BanInfo[0]) cl->Send_Text(cl,Str::Format("Comment: %s",ban.BanInfo),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("--- %3u ---",index),SAY_NETMSG);
+					if(ban.ClientName[0]) cl->Send_Text(cl,Str::FormatBuf("User: %s",ban.ClientName),SAY_NETMSG);
+					if(ban.ClientIp) cl->Send_Text(cl,Str::FormatBuf("UserIp: %u",ban.ClientIp),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("BeginTime: %u %u %u %u %u",ban.BeginTime.Year,ban.BeginTime.Month,ban.BeginTime.Day,ban.BeginTime.Hour,ban.BeginTime.Minute),SAY_NETMSG);
+					cl->Send_Text(cl,Str::FormatBuf("EndTime: %u %u %u %u %u",ban.EndTime.Year,ban.EndTime.Month,ban.EndTime.Day,ban.EndTime.Hour,ban.EndTime.Minute),SAY_NETMSG);
+					if(ban.BannedBy[0]) cl->Send_Text(cl,Str::FormatBuf("BannedBy: %s",ban.BannedBy),SAY_NETMSG);
+					if(ban.BanInfo[0]) cl->Send_Text(cl,Str::FormatBuf("Comment: %s",ban.BanInfo),SAY_NETMSG);
 					index++;
 				}
 			}
-			else if(!_stricmp(params,"add") || !_stricmp(params,"add+"))
+			else if(Str::CompareCase(params,"add") || Str::CompareCase(params,"add+"))
 			{
-				uint name_len=strlen(name);
+				uint name_len=Str::Length(name);
 				if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength || name_len>MAX_NAME || name_len>GameOpt.MaxNameLength || !ban_hours)
 				{
 					cl->Send_Text(cl,"Invalid arguments.",SAY_NETMSG);
@@ -2943,14 +2943,14 @@ void FOServer::Process_Command(Client* cl)
 
 				Client* cl_banned=CrMngr.GetPlayer(name,true);
 				ClientBanned ban;
-				ZeroMemory(&ban,sizeof(ban));
-				StringCopy(ban.ClientName,name);
+				memzero(&ban,sizeof(ban));
+				Str::Copy(ban.ClientName,name);
 				ban.ClientIp=(cl_banned && strstr(params,"+")?cl_banned->GetIp():0);
-				GetLocalTime(&ban.BeginTime);
+				Timer::GetCurrentDateTime(ban.BeginTime);
 				ban.EndTime=ban.BeginTime;
 				Timer::ContinueTime(ban.EndTime,ban_hours*60*60);
-				StringCopy(ban.BannedBy,cl->Name);
-				StringCopy(ban.BanInfo,info);
+				Str::Copy(ban.BannedBy,cl->Name);
+				Str::Copy(ban.BanInfo,info);
 
 				Banned.push_back(ban);
 				SaveBan(ban,false);
@@ -2963,16 +2963,16 @@ void FOServer::Process_Command(Client* cl)
 					cl_banned->Disconnect();
 				}
 			}
-			else if(!_stricmp(params,"delete"))
+			else if(Str::CompareCase(params,"delete"))
 			{
-				if(!strlen(name))
+				if(!Str::Length(name))
 				{
 					cl->Send_Text(cl,"Invalid arguments.",SAY_NETMSG);
 					return;
 				}
 
 				bool resave=false;
-				if(!_stricmp(name,"*"))
+				if(Str::CompareCase(name,"*"))
 				{
 					int index=(int)ban_hours-1;
 					if(index>=0 && index<(int)Banned.size())
@@ -2986,7 +2986,7 @@ void FOServer::Process_Command(Client* cl)
 					for(ClientBannedVecIt it=Banned.begin();it!=Banned.end();)
 					{
 						ClientBanned& ban=*it;
-						if(!_stricmp(ban.ClientName,name))
+						if(Str::CompareCase(ban.ClientName,name))
 						{
 							SaveBan(ban,true);
 							it=Banned.erase(it);
@@ -3027,7 +3027,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(strcmp(cl->Pass,pass)) cl->Send_Text(cl,"Invalid password.",SAY_NETMSG);
+			if(!Str::Compare(cl->Pass,pass)) cl->Send_Text(cl,"Invalid password.",SAY_NETMSG);
 			else
 			{
 				if(!cl->Data.ClientToDelete)
@@ -3061,8 +3061,8 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			uint pass_len=strlen(new_pass);
-			if(strcmp(cl->Pass,pass)) cl->Send_Text(cl,"Invalid current password.",SAY_NETMSG);
+			uint pass_len=Str::Length(new_pass);
+			if(!Str::Compare(cl->Pass,pass)) cl->Send_Text(cl,"Invalid current password.",SAY_NETMSG);
 			else if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(new_pass)) cl->Send_Text(cl,"Invalid new password.",SAY_NETMSG);
 			else
 			{
@@ -3071,8 +3071,8 @@ void FOServer::Process_Command(Client* cl)
 				ClientData* data=GetClientData(cl->GetId());
 				if(data)
 				{
-					StringCopy(data->ClientPass,new_pass);
-					StringCopy(cl->Pass,new_pass);
+					Str::Copy(data->ClientPass,new_pass);
+					Str::Copy(cl->Pass,new_pass);
 					cl->Send_Text(cl,"Password changed.",SAY_NETMSG);
 				}
 			}
@@ -3264,10 +3264,8 @@ void FOServer::InitGameTime()
 		GameOpt.Second=0;
 	}
 
-	SYSTEMTIME st={GameOpt.YearStart,1,0,1,0,0,0,0};
-	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
-	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - SystemTimeToFileTime error<%u>.\n",GetLastError());
-	GameOpt.YearStartFT=ft.ul.QuadPart;
+	DateTime dt={GameOpt.YearStart,1,0,1,0,0,0,0};
+	if(!Timer::DateTimeToFullTime(dt,GameOpt.YearStartFT)) WriteLog(_FUNC_," - DateTimeToFullTime fail.\n");
 
 	GameOpt.TimeMultiplier=CLAMP(GameOpt.TimeMultiplier,1,50000);
 	GameOpt.Year=CLAMP(GameOpt.Year,GameOpt.YearStart,GameOpt.YearStart+130);
@@ -3276,7 +3274,7 @@ void FOServer::InitGameTime()
 	GameOpt.Hour=CLAMP((short)GameOpt.Hour,0,23);
 	GameOpt.Minute=CLAMP((short)GameOpt.Minute,0,59);
 	GameOpt.Second=CLAMP((short)GameOpt.Second,0,59);
-	GameOpt.FullSecond=GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
+	GameOpt.FullSecond=Timer::GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 
 	GameOpt.FullSecondStart=GameOpt.FullSecond;
 	GameOpt.GameTimeTick=Timer::GameTick();
@@ -3322,6 +3320,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(uint)==4);
 	STATIC_ASSERT(sizeof(uint64)==8);
 	STATIC_ASSERT(sizeof(bool)==1);
+	STATIC_ASSERT(sizeof(size_t)==sizeof(void*));
 	STATIC_ASSERT(sizeof(string)==24);
 	STATIC_ASSERT(sizeof(IntVec)==12);
 	STATIC_ASSERT(sizeof(IntMap)==24);
@@ -3360,10 +3359,10 @@ bool FOServer::Init()
 	Critter::SendDataCallback=&Net_Output;
 	Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
 	Critter::ParamsSendCount=0;
-	ZeroMemory(Critter::ParamsSendEnabled,sizeof(Critter::ParamsSendEnabled));
-	ZeroMemory(Critter::ParamsChangeScript,sizeof(Critter::ParamsChangeScript));
-	ZeroMemory(Critter::ParamsGetScript,sizeof(Critter::ParamsGetScript));
-	ZeroMemory(Critter::SlotDataSendEnabled,sizeof(Critter::SlotDataSendEnabled));
+	memzero(Critter::ParamsSendEnabled,sizeof(Critter::ParamsSendEnabled));
+	memzero(Critter::ParamsChangeScript,sizeof(Critter::ParamsChangeScript));
+	memzero(Critter::ParamsGetScript,sizeof(Critter::ParamsGetScript));
+	memzero(Critter::SlotDataSendEnabled,sizeof(Critter::SlotDataSendEnabled));
 	for(int i=0;i<MAX_PARAMS;i++) Critter::ParamsChosenSendMask[i]=uint(-1);
 
 	// Register dll script data
@@ -3552,19 +3551,19 @@ bool FOServer::Init()
 			if(cmd_name)
 			{
 				const char* type_decl=engine->GetTypeDeclaration(type_id);
-				if(!strcmp(type_decl,"bool"))
+				if(Str::Compare(type_decl,"bool"))
 				{
-					*(bool*)pointer=atoi(cmd_name+strlen(name)+1)!=0;
+					*(bool*)pointer=atoi(cmd_name+Str::Length(name)+1)!=0;
 					WriteLog(NULL,"Global var<%s> changed to<%s>.\n",name,*(bool*)pointer?"true":"false");
 				}
-				else if(!strcmp(type_decl,"string"))
+				else if(Str::Compare(type_decl,"string"))
 				{
-					*(string*)pointer=cmd_name+strlen(name)+1;
+					*(string*)pointer=cmd_name+Str::Length(name)+1;
 					WriteLog(NULL,"Global var<%s> changed to<%s>.\n",name,(*(string*)pointer).c_str());
 				}
 				else
 				{
-					*(int*)pointer=atoi(cmd_name+strlen(name)+1);
+					*(int*)pointer=atoi(cmd_name+Str::Length(name)+1);
 					WriteLog(NULL,"Global var<%s> changed to<%d>.\n",name,*(int*)pointer);
 				}
 			}
@@ -3655,7 +3654,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 
 		if(!cfg.GetStr(cur_str_lang,"",lang_name)) break;
 
-		if(strlen(lang_name)!=4)
+		if(Str::Length(lang_name)!=4)
 		{
 			WriteLog(NULL,"Language name not equal to four letters.\n");
 			return false;
@@ -3738,7 +3737,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 	{
 		LanguagePack& lang=*it;
 		lang.Msg[TEXTMSG_DLG].CalculateHash();
-		//lang.Msg[TEXTMSG_DLG].SaveMsgFile(Str::Format("%s.txt",lang.NameStr),PT_SERVER_ROOT);
+		//lang.Msg[TEXTMSG_DLG].SaveMsgFile(Str::FormatBuf("%s.txt",lang.NameStr),PT_SERVER_ROOT);
 	}
 
 	// Restore default randomizer
@@ -3771,7 +3770,7 @@ bool FOServer::InitLangCrTypes(LangPackVec& lang_packs)
 #pragma MESSAGE("Clients logging may be not thread safe.")
 void FOServer::LogToClients(char* str)
 {
-	ushort str_len=strlen(str);
+	ushort str_len=Str::Length(str);
 	if(str_len && str[str_len-1]=='\n') str_len--;
 	if(str_len)
 	{
@@ -3795,8 +3794,8 @@ void FOServer::LogToClients(char* str)
 
 uint FOServer::GetBanTime(ClientBanned& ban)
 {
-	SYSTEMTIME time;
-	GetLocalTime(&time);
+	DateTime time;
+	Timer::GetCurrentDateTime(time);
 	int diff=Timer::GetTimeDifference(ban.EndTime,time)/60+1;
 	return diff>0?diff:1;
 }
@@ -3806,12 +3805,13 @@ void FOServer::ProcessBans()
 	SCOPE_LOCK(BannedLocker);
 
 	bool resave=false;
-	SYSTEMTIME time;
-	GetLocalTime(&time);
+	DateTime time;
+	Timer::GetCurrentDateTime(time);
 	for(ClientBannedVecIt it=Banned.begin();it!=Banned.end();)
 	{
-		SYSTEMTIME& ban_time=(*it).EndTime;
-		if(time.wYear>=ban_time.wYear && time.wMonth>=ban_time.wMonth && time.wDay>=ban_time.wDay && time.wHour>=ban_time.wHour && time.wMinute>=ban_time.wMinute)
+		DateTime& ban_time=(*it).EndTime;
+		if(time.Year>=ban_time.Year && time.Month>=ban_time.Month && time.Day>=ban_time.Day &&
+			time.Hour>=ban_time.Hour && time.Minute>=ban_time.Minute)
 		{
 			SaveBan(*it,true);
 			it=Banned.erase(it);
@@ -3838,8 +3838,8 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 	fm.SetStr("[Ban]\n");
 	if(ban.ClientName[0]) fm.SetStr("User=%s\n",ban.ClientName);
 	if(ban.ClientIp) fm.SetStr("UserIp=%u\n",ban.ClientIp);
-	fm.SetStr("BeginTime=%u %u %u %u %u\n",ban.BeginTime.wYear,ban.BeginTime.wMonth,ban.BeginTime.wDay,ban.BeginTime.wHour,ban.BeginTime.wMinute);
-	fm.SetStr("EndTime=%u %u %u %u %u\n",ban.EndTime.wYear,ban.EndTime.wMonth,ban.EndTime.wDay,ban.EndTime.wHour,ban.EndTime.wMinute);
+	fm.SetStr("BeginTime=%u %u %u %u %u\n",ban.BeginTime.Year,ban.BeginTime.Month,ban.BeginTime.Day,ban.BeginTime.Hour,ban.BeginTime.Minute);
+	fm.SetStr("EndTime=%u %u %u %u %u\n",ban.EndTime.Year,ban.EndTime.Month,ban.EndTime.Day,ban.EndTime.Hour,ban.EndTime.Minute);
 	if(ban.BannedBy[0]) fm.SetStr("BannedBy=%s\n",ban.BannedBy);
 	if(ban.BanInfo[0]) fm.SetStr("Comment=%s\n",ban.BanInfo);
 	fm.SetStr("\n");
@@ -3859,8 +3859,8 @@ void FOServer::SaveBans()
 		fm.SetStr("[Ban]\n");
 		if(ban.ClientName[0]) fm.SetStr("User=%s\n",ban.ClientName);
 		if(ban.ClientIp) fm.SetStr("UserIp=%u\n",ban.ClientIp);
-		fm.SetStr("BeginTime=%u %u %u %u %u\n",ban.BeginTime.wYear,ban.BeginTime.wMonth,ban.BeginTime.wDay,ban.BeginTime.wHour,ban.BeginTime.wMinute);
-		fm.SetStr("EndTime=%u %u %u %u %u\n",ban.EndTime.wYear,ban.EndTime.wMonth,ban.EndTime.wDay,ban.EndTime.wHour,ban.EndTime.wMinute);
+		fm.SetStr("BeginTime=%u %u %u %u %u\n",ban.BeginTime.Year,ban.BeginTime.Month,ban.BeginTime.Day,ban.BeginTime.Hour,ban.BeginTime.Minute);
+		fm.SetStr("EndTime=%u %u %u %u %u\n",ban.EndTime.Year,ban.EndTime.Month,ban.EndTime.Day,ban.EndTime.Hour,ban.EndTime.Minute);
 		if(ban.BannedBy[0]) fm.SetStr("BannedBy=%s\n",ban.BannedBy);
 		if(ban.BanInfo[0]) fm.SetStr("Comment=%s\n",ban.BanInfo);
 		fm.SetStr("\n");
@@ -3888,15 +3888,15 @@ void FOServer::LoadBans()
 	while(bans_txt.GotoNextApp("Ban"))
 	{
 		ClientBanned ban;
-		ZeroMemory(&ban,sizeof(ban));
-		SYSTEMTIME time;
-		ZeroMemory(&time,sizeof(time));
-		if(bans_txt.GetStr("Ban","User","",buf)) StringCopy(ban.ClientName,buf);
+		memzero(&ban,sizeof(ban));
+		DateTime time;
+		memzero(&time,sizeof(time));
+		if(bans_txt.GetStr("Ban","User","",buf)) Str::Copy(ban.ClientName,buf);
 		ban.ClientIp=bans_txt.GetInt("Ban","UserIp",0);
-		if(bans_txt.GetStr("Ban","BeginTime","",buf) && sscanf(buf,"%u%u%u%u%u",&time.wYear,&time.wMonth,&time.wDay,&time.wHour,&time.wMinute)) ban.BeginTime=time;
-		if(bans_txt.GetStr("Ban","EndTime","",buf) && sscanf(buf,"%u%u%u%u%u",&time.wYear,&time.wMonth,&time.wDay,&time.wHour,&time.wMinute)) ban.EndTime=time;
-		if(bans_txt.GetStr("Ban","BannedBy","",buf)) StringCopy(ban.BannedBy,buf);
-		if(bans_txt.GetStr("Ban","Comment","",buf)) StringCopy(ban.BanInfo,buf);
+		if(bans_txt.GetStr("Ban","BeginTime","",buf) && sscanf(buf,"%u%u%u%u%u",&time.Year,&time.Month,&time.Day,&time.Hour,&time.Minute)) ban.BeginTime=time;
+		if(bans_txt.GetStr("Ban","EndTime","",buf) && sscanf(buf,"%u%u%u%u%u",&time.Year,&time.Month,&time.Day,&time.Hour,&time.Minute)) ban.EndTime=time;
+		if(bans_txt.GetStr("Ban","BannedBy","",buf)) Str::Copy(ban.BannedBy,buf);
+		if(bans_txt.GetStr("Ban","Comment","",buf)) Str::Copy(ban.BanInfo,buf);
 		Banned.push_back(ban);
 	}
 	ProcessBans();
@@ -3921,7 +3921,7 @@ bool FOServer::LoadClientsData()
 	{
 		// Take name from file title
 		char name[MAX_FOPATH];
-		StringCopy(name,fdata.cFileName);
+		Str::Copy(name,fdata.cFileName);
 		*strstr(name,".client")=0;
 
 		// Take id and password from file
@@ -3945,7 +3945,7 @@ bool FOServer::LoadClientsData()
 		if(read_ok && key) Crypt.DecryptPassword(pass,sizeof(pass),key);
 
 		// Verify
-		uint pass_len=strlen(pass);
+		uint pass_len=Str::Length(pass);
 		if(!read_ok || !IS_USER_ID(id) || pass_len<MIN_NAME || pass_len>MAX_NAME || !CheckUserPass(pass))
 		{
 			WriteLog(NULL,"Wrong id<%u> or password<%s> of client<%s>. Skip.\n",id,pass,name);
@@ -3964,8 +3964,8 @@ bool FOServer::LoadClientsData()
 		// Add
 		ClientData data;
 		data.Clear();
-		StringCopy(data.ClientName,name);
-		StringCopy(data.ClientPass,pass);
+		Str::Copy(data.ClientName,name);
+		Str::Copy(data.ClientPass,pass);
 		data.ClientId=id;
 		ClientsData.push_back(data);
 		if(id>LastClientId) LastClientId=id;
@@ -3983,7 +3983,7 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 {
 	if(Singleplayer) return true;
 
-	if(!strcmp(cl->Name,"err") || !cl->GetId())
+	if(Str::Compare(cl->Name,"err") || !cl->GetId())
 	{
 		WriteLog(_FUNC_," - Trying save not valid client.\n");
 		return false;
@@ -4013,7 +4013,7 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 
 		// Encrypt password
 		char pass[sizeof(cl->Pass)]={0};
-		StringCopy(pass,cl->Pass);
+		Str::Copy(pass,cl->Pass);
 		cl->Data.Temp=Random(1000000000,2000000000);
 		Crypt.EncryptPassword(pass,sizeof(cl->Pass),cl->Data.Temp);
 
@@ -4389,7 +4389,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 		FileManager::GetFullPath(NULL,PT_SERVER_SAVE,save_path);
 
 		// Save world data
-		FILE* fworld=fopen(StringFormat(fname,"%sworld%04d.fo",save_path,SaveWorldIndex+1),"wb");
+		FILE* fworld=fopen(Str::Format(fname,"%sworld%04d.fo",save_path,SaveWorldIndex+1),"wb");
 		if(fworld)
 		{
 			for(uint i=0;i<WorldSaveDataBufCount;i++)
@@ -4414,7 +4414,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 		{
 			ClientSaveData& csd=ClientsSaveData[i];
 
-			FILE* fc=fopen(StringFormat(fname,"%sclients\\%s.client",save_path,csd.Name),"wb");
+			FILE* fc=fopen(Str::Format(fname,"%sclients\\%s.client",save_path,csd.Name),"wb");
 			if(!fc)
 			{
 				WriteLog(_FUNC_," - Unable to open client save file<%s>.\n",fname);
@@ -4438,7 +4438,7 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 		// Clear old dump files
 		for(UIntVecIt it=SaveWorldDeleteIndexes.begin(),end=SaveWorldDeleteIndexes.end();it!=end;++it)
 		{
-			FILE* fold=fopen(StringFormat(fname,"%sworld%04d.fo",save_path,*it),"rb");
+			FILE* fold=fopen(Str::Format(fname,"%sworld%04d.fo",save_path,*it),"rb");
 			if(fold)
 			{
 				fclose(fold);
@@ -4465,7 +4465,7 @@ void FOServer::SetScore(int score, Critter* cr, int val)
 	if(BestScores[score].Value>=cr->Data.Scores[score]) return; //TODO: less/greater
 	BestScores[score].Value=cr->Data.Scores[score];
 	BestScores[score].ClientId=cr->GetId();
-	StringCopy(BestScores[score].ClientName,cr->GetName());
+	Str::Copy(BestScores[score].ClientName,cr->GetName());
 }
 
 void FOServer::SetScore(int score, const char* name)
@@ -4474,7 +4474,7 @@ void FOServer::SetScore(int score, const char* name)
 
 	BestScores[score].ClientId=0;
 	BestScores[score].Value=0;
-	StringCopy(BestScores[score].ClientName,name);
+	Str::Copy(BestScores[score].ClientName,name);
 }
 
 const char* FOServer::GetScores()
@@ -4683,7 +4683,7 @@ uint FOServer::CreateTimeEvent(uint begin_second, const char* script_name, int v
 
 	te->FullSecond=begin_second;
 	te->Num=TimeEventsLastNum+1;
-	te->FuncName=Str::Format("%s@%s",module_name,func_name);
+	te->FuncName=Str::FormatBuf("%s@%s",module_name,func_name);
 	te->BindId=bind_id;
 	te->SignedValues=singed;
 	te->IsSaved=save;
@@ -4887,7 +4887,7 @@ void FOServer::ProcessTimeEvents()
 	if(!cur_event) return;
 
 	uint wait_time=0;
-	if(Script::PrepareContext(cur_event->BindId,_FUNC_,Str::Format("Time event<%u>",cur_event->Num)))
+	if(Script::PrepareContext(cur_event->BindId,_FUNC_,Str::FormatBuf("Time event<%u>",cur_event->Num)))
 	{
 		CScriptArray* values=NULL;
 		uint size=cur_event->Values.size();
@@ -4975,15 +4975,15 @@ string FOServer::GetTimeEventsStatistics()
 	char str[1024];
 	sprintf(str,"Time events: %u\n",TimeEvents.size());
 	result=str;
-	SYSTEMTIME st=GetGameTime(GameOpt.FullSecond);
-	sprintf(str,"Game time: %02u.%02u.%04u %02u:%02u:%02u\n",st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,st.wSecond);
+	DateTime st=Timer::GetGameTime(GameOpt.FullSecond);
+	sprintf(str,"Game time: %02u.%02u.%04u %02u:%02u:%02u\n",st.Day,st.Month,st.Year,st.Hour,st.Minute,st.Second);
 	result+=str;
 	result+="Number    Date       Time     Rate Saved Function                            Values\n";
 	for(uint i=0,j=TimeEvents.size();i<j;i++)
 	{
 		TimeEvent* te=TimeEvents[i];
-		st=GetGameTime(te->FullSecond);
-		sprintf(str,"%09u %02u.%02u.%04u %02u:%02u:%02u %04u %-5s %-35s",te->Num,st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,st.wSecond,te->Rate,te->IsSaved?"true":"false",te->FuncName.c_str());
+		st=Timer::GetGameTime(te->FullSecond);
+		sprintf(str,"%09u %02u.%02u.%04u %02u:%02u:%02u %04u %-5s %-35s",te->Num,st.Day,st.Month,st.Year,st.Hour,st.Minute,st.Second,te->Rate,te->IsSaved?"true":"false",te->FuncName.c_str());
 		result+=str;
 		for(uint k=0,l=te->Values.size();k<l;k++)
 		{

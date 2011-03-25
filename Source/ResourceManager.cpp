@@ -1,10 +1,10 @@
 #include "StdAfx.h"
 #include "ResourceManager.h"
-#include "Common.h"
 #include "FileManager.h"
 #include "DataFile.h"
 #include "CritterType.h"
 #include "Script.h"
+#include "Crypt.h"
 
 ResourceManager ResMngr;
 
@@ -38,8 +38,8 @@ void ResourceManager::Refresh()
 		for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)
 		{
 			FileManager::ExtractFileName((*it).c_str(),fname);
-			StringCopy(name,fname);
-			Str::Upr(name);
+			Str::Copy(name,fname);
+			Str::Upper(name);
 			char* ext=(char*)FileManager::GetExtension(name);
 			if(!ext) continue;
 			*(--ext)=0;
@@ -80,8 +80,8 @@ void ResourceManager::Refresh()
 			for(StrVecIt it=sounds.begin(),end=sounds.end();it!=end;++it)
 			{
 				FileManager::ExtractFileName((*it).c_str(),fname);
-				StringCopy(name,fname);
-				Str::Upr(name);
+				Str::Copy(name,fname);
+				Str::Upper(name);
 				char* ext=(char*)FileManager::GetExtension(name);
 				if(!ext) continue;
 				*(--ext)=0;

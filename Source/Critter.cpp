@@ -86,9 +86,9 @@ TryingGoHomeTick(0),ApRegenerationTick(0),GlobalIdleNextTick(0),LockMapTransfers
 ViewMapId(0),ViewMapPid(0),ViewMapLook(0),ViewMapHx(0),ViewMapHy(0),ViewMapDir(0),
 DisableSend(0),CanBeRemoved(false)
 {
-	ZeroMemory(&Data,sizeof(Data));
+	memzero(&Data,sizeof(Data));
 	DataExt=NULL;
-	ZeroMemory(FuncId,sizeof(FuncId));
+	memzero(FuncId,sizeof(FuncId));
 	GroupSelf=new GlobalMapGroup();
 	GroupSelf->WXf=Data.WorldX;
 	GroupSelf->WYf=Data.WorldY;
@@ -97,7 +97,7 @@ DisableSend(0),CanBeRemoved(false)
 	GroupSelf->MoveX=Data.WorldX;
 	GroupSelf->MoveY=Data.WorldY;
 	GroupSelf->Rule=this;
-	ZeroMemory(ParamsIsChanged,sizeof(ParamsIsChanged));
+	memzero(ParamsIsChanged,sizeof(ParamsIsChanged));
 	ParamsChanged.reserve(10);
 	ParamLocked=-1;
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
@@ -117,7 +117,7 @@ CritDataExt* Critter::GetDataExt()
 	if(!DataExt)
 	{
 		DataExt=new CritDataExt();
-		ZeroMemory(DataExt,sizeof(CritDataExt));
+		memzero(DataExt,sizeof(CritDataExt));
 		GMapFog.Create(GM__MAXZONEX,GM__MAXZONEY,DataExt->GlobalMapFog);
 
 #ifdef MEMORY_DEBUG
@@ -198,7 +198,7 @@ void Critter::SetLexems(const char* lexems)
 {
 	if(lexems)
 	{
-		uint len=strlen(lexems);
+		uint len=Str::Length(lexems);
 		if(!len)
 		{
 			Data.Lexems[0]=0;
@@ -2313,7 +2313,7 @@ void Critter::SendAA_Text(CrVec& to_cr, const char* str, uchar how_say, bool uns
 {
 	if(!str || !str[0]) return;
 
-	ushort str_len=strlen(str);
+	ushort str_len=Str::Length(str);
 	uint from_id=GetId();
 	ushort intellect=(how_say>=SAY_NORM && how_say<=SAY_RADIO?IntellectCacheValue:0);
 
@@ -2907,19 +2907,19 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
-	ZeroMemory(Name,sizeof(Name));
-	ZeroMemory(Pass,sizeof(Pass));
-	StringCopy(Name,"err");
+	memzero(Name,sizeof(Name));
+	memzero(Pass,sizeof(Pass));
+	Str::Copy(Name,"err");
 	pingNextTick=Timer::FastTick()+PING_CLIENT_LIFE_TIME;
 	Talk.Clear();
 	talkNextTick=Timer::GameTick()+PROCESS_TALK_TICK;
 	ConnectTime=Timer::FastTick();
 	LastSay[0]=0;
 	LastSayEqualCount=0;
-	ZeroMemory(UID,sizeof(UID));
+	memzero(UID,sizeof(UID));
 
 	WSAIn=new WSAOVERLAPPED_EX();
-	ZeroMemory(&WSAIn->OV,sizeof(WSAIn->OV));
+	memzero(&WSAIn->OV,sizeof(WSAIn->OV));
 	WSAIn->PClient=this;
 	WSAIn->Buffer.buf=new char[WSA_BUF_SIZE];
 	WSAIn->Buffer.len=WSA_BUF_SIZE;
@@ -2927,7 +2927,7 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 	WSAIn->Flags=0;
 	WSAIn->Bytes=0;
 	WSAOut=new WSAOVERLAPPED_EX();
-	ZeroMemory(&WSAOut->OV,sizeof(WSAOut->OV));
+	memzero(&WSAOut->OV,sizeof(WSAOut->OV));
 	WSAOut->PClient=this;
 	WSAOut->Buffer.buf=new char[WSA_BUF_SIZE];
 	WSAOut->Buffer.len=0;
@@ -3704,7 +3704,7 @@ void Client::Send_Text(Critter* from_cr, const char* s_str, uchar how_say)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 	if(!s_str || !s_str[0]) return;
-	ushort s_len=strlen(s_str);
+	ushort s_len=Str::Length(s_str);
 	uint from_id=(from_cr?from_cr->GetId():0);
 	ushort intellect=(from_cr && how_say>=SAY_NORM && how_say<=SAY_RADIO?from_cr->IntellectCacheValue:0);
 	Send_TextEx(from_id,s_str,s_len,how_say,intellect,false);
@@ -3763,7 +3763,7 @@ void Client::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
 	if(IsSendDisabled() || IsOffline()) return;
 	if(!num_str) return;
 
-	ushort lex_len=strlen(lexems);
+	ushort lex_len=Str::Length(lexems);
 	if(!lex_len || lex_len>MAX_DLG_LEXEMS_TEXT)
 	{
 		Send_TextMsg(from_cr,num_str,how_say,num_msg);
@@ -3790,7 +3790,7 @@ void Client::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
 	if(IsSendDisabled() || IsOffline()) return;
 	if(!num_str) return;
 
-	ushort lex_len=strlen(lexems);
+	ushort lex_len=Str::Length(lexems);
 	if(!lex_len || lex_len>MAX_DLG_LEXEMS_TEXT)
 	{
 		Send_TextMsg(from_id,num_str,how_say,num_msg);
@@ -4057,7 +4057,7 @@ void Client::Send_CritterLexems(Critter* cr)
 	if(IsSendDisabled() || IsOffline()) return;
 
 	uint critter_id=cr->GetId();
-	ushort lexems_len=strlen(cr->Data.Lexems);
+	ushort lexems_len=Str::Length(cr->Data.Lexems);
 	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(critter_id)+sizeof(lexems_len)+lexems_len;
 
 	BOUT_BEGIN(this);
@@ -4112,8 +4112,8 @@ void Client::Send_RunClientScript(const char* func_name, int p0, int p1, int p2,
 {
 	if(IsSendDisabled() || IsOffline()) return;
 
-	ushort func_name_len=strlen(func_name);
-	ushort p3len=(p3?strlen(p3):0);
+	ushort func_name_len=Str::Length(func_name);
+	ushort p3len=(p3?Str::Length(p3):0);
 	ushort p4size=p4.size();
 	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(func_name_len)+func_name_len+sizeof(p0)+sizeof(p1)+sizeof(p2)+sizeof(p3len)+p3len+sizeof(p4size)+p4size*sizeof(uint);
 
@@ -4159,7 +4159,7 @@ void Client::Send_ItemLexems(Item* item) // Already checks for client offline an
 	if(IsSendDisabled()) return;
 
 	uint item_id=item->GetId();
-	ushort lexems_len=strlen(item->PLexems);
+	ushort lexems_len=Str::Length(item->PLexems);
 	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(item_id)+sizeof(lexems_len)+lexems_len;
 
 	BOUT_BEGIN(this);
@@ -4538,7 +4538,7 @@ void Npc::RefreshBag()
 
 	// Collect pids and count
 	static THREAD uint pids[MAX_ITEM_PROTOTYPES];
-	ZeroMemory(&pids,sizeof(pids));
+	memzero(&pids,sizeof(pids));
 
 	for(ItemPtrVecIt it=invItems.begin(),end=invItems.end();it!=end;++it)
 	{

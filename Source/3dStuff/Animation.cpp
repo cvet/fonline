@@ -1227,8 +1227,8 @@ void Animation3d::PreRestore()
 Animation3d* Animation3d::GetAnimation(const char* name, int path_type, bool is_child)
 {
 	char fname[MAX_FOPATH];
-	StringCopy(fname,FileManager::GetPath(path_type));
-	StringAppend(fname,name);
+	Str::Copy(fname,FileManager::GetPath(path_type));
+	Str::Append(fname,name);
 	return GetAnimation(fname,is_child);
 }
 
@@ -1536,7 +1536,7 @@ bool Animation3dEntity::Load(const char* name)
 
 				char fname[MAX_FOPATH];
 				FileManager::MakeFilePath(buf,path,fname);
-				link->ChildFName=StringDuplicate(fname);
+				link->ChildFName=Str::Duplicate(fname);
 
 				mesh=0;
 				subset=-1;
@@ -1544,7 +1544,7 @@ bool Animation3dEntity::Load(const char* name)
 			else if(!_stricmp(token,"Link"))
 			{
 				(*istr) >> buf;
-				if(link->Id) link->LinkBone=StringDuplicate(buf);
+				if(link->Id) link->LinkBone=Str::Duplicate(buf);
 			}
 			else if(!_stricmp(token,"RotX")) (*istr) >> link->RotX;
 			else if(!_stricmp(token,"RotY")) (*istr) >> link->RotY;
@@ -1656,7 +1656,7 @@ bool Animation3dEntity::Load(const char* name)
 					if(tmp2) delete[] tmp2;
 					if(tmp3) delete[] tmp3;
 
-					link->TextureNames[link->TextureNamesCount]=StringDuplicate(buf);
+					link->TextureNames[link->TextureNamesCount]=Str::Duplicate(buf);
 					link->TextureSubsets[link->TextureNamesCount]=mesh*100+subset;
 					link->TextureNum[link->TextureNamesCount]=index;
 					link->TextureNamesCount++;
@@ -1667,7 +1667,7 @@ bool Animation3dEntity::Load(const char* name)
 				(*istr) >> buf;
 				D3DXEFFECTINSTANCE* effect_inst=new D3DXEFFECTINSTANCE;
 				ZeroMemory(effect_inst,sizeof(D3DXEFFECTINSTANCE));
-				effect_inst->pEffectFilename=StringDuplicate(buf);
+				effect_inst->pEffectFilename=Str::Duplicate(buf);
 
 				D3DXEFFECTINSTANCE* tmp1=link->EffectInst;
 				int* tmp2=link->EffectInstSubsets;
@@ -1703,7 +1703,7 @@ bool Animation3dEntity::Load(const char* name)
 				if(!_stricmp(buf,"String"))
 				{
 					type=D3DXEDT_STRING;
-					data=StringDuplicate(def_value);
+					data=Str::Duplicate(def_value);
 					data_len=strlen(data);
 				}
 				else if(!_stricmp(buf,"Floats"))
@@ -1730,7 +1730,7 @@ bool Animation3dEntity::Load(const char* name)
 				for(uint h=0;h<cur_effect->NumDefaults;h++) cur_effect->pDefaults[h]=tmp[h];
 				if(tmp) delete[] tmp;
 				cur_effect->pDefaults[cur_effect->NumDefaults].Type=type;
-				cur_effect->pDefaults[cur_effect->NumDefaults].pParamName=StringDuplicate(def_name);
+				cur_effect->pDefaults[cur_effect->NumDefaults].pParamName=Str::Duplicate(def_name);
 				cur_effect->pDefaults[cur_effect->NumDefaults].NumBytes=data_len;
 				cur_effect->pDefaults[cur_effect->NumDefaults].pValue=data;
 				cur_effect->NumDefaults++;
@@ -1751,9 +1751,9 @@ bool Animation3dEntity::Load(const char* name)
 
 					anim_indexes.push_back((ind1<<8)|ind2);
 					(*istr) >> buf;
-					anim_indexes.push_back((size_t)StringDuplicate(buf));
+					anim_indexes.push_back((size_t)Str::Duplicate(buf));
 					(*istr) >> buf;
-					anim_indexes.push_back((size_t)StringDuplicate(buf));
+					anim_indexes.push_back((size_t)Str::Duplicate(buf));
 				}
 				else
 				{
@@ -1778,11 +1778,11 @@ bool Animation3dEntity::Load(const char* name)
 			{
 				anim_indexes.push_back(0);
 				(*istr) >> buf;
-				StringCopy(render_fname,buf);
-				anim_indexes.push_back((size_t)StringDuplicate(buf));
+				Str::Copy(render_fname,buf);
+				anim_indexes.push_back((size_t)Str::Duplicate(buf));
 				(*istr) >> buf;
-				StringCopy(render_anim,buf);
-				anim_indexes.push_back((size_t)StringDuplicate(buf));
+				Str::Copy(render_anim,buf);
+				anim_indexes.push_back((size_t)Str::Duplicate(buf));
 
 				(*istr) >> renderAnimProcFrom;
 
@@ -1829,7 +1829,7 @@ bool Animation3dEntity::Load(const char* name)
 
 			char anim_path[MAX_FOPATH];
 			if(!_stricmp(anim_fname,"ModelFile"))
-				StringCopy(anim_path,model);
+				Str::Copy(anim_path,model);
 			else
 				FileManager::MakeFilePath(anim_fname,path,anim_path);
 

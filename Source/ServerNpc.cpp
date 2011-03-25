@@ -1351,7 +1351,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 	{
 		cl->Bin.Pop(str,MAX_SAY_NPC_TEXT);
 		str[MAX_SAY_NPC_TEXT]=0;
-		if(!strlen(str))
+		if(!Str::Length(str))
 		{
 			WriteLog(_FUNC_," - Say text length is zero, client<%s>.\n",cl->GetInfo());
 			return;

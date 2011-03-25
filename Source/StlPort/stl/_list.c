@@ -95,7 +95,7 @@ template <class _Tp, class _Alloc>
 void list<_Tp, _Alloc>::resize(size_type __new_size, const _Tp& __x) {
   iterator __i = begin();
   size_type __len = 0;
-  for ( ; __i != end() && __len < __new_size; ++__i, ++__len);
+  for ( ; __i != end() && __len < __new_size; ++__i, ++__len) ;
 
   if (__len == __new_size)
     erase(__i, end());

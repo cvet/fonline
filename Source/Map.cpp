@@ -31,11 +31,11 @@ IsTurnBasedTimeout(false),TurnBasedBeginSecond(0),NeedEndTurnBased(false),
 TurnBasedRound(0),TurnBasedTurn(0),TurnBasedWholeTurn(0)
 {
 	MEMORY_PROCESS(MEMORY_MAP,sizeof(Map));
-	ZeroMemory(&Data,sizeof(Data));
-	ZeroMemory(FuncId,sizeof(FuncId));
-	ZeroMemory(LoopEnabled,sizeof(LoopEnabled));
-	ZeroMemory(LoopLastTick,sizeof(LoopLastTick));
-	ZeroMemory(LoopWaitTick,sizeof(LoopWaitTick));
+	memzero(&Data,sizeof(Data));
+	memzero(FuncId,sizeof(FuncId));
+	memzero(LoopEnabled,sizeof(LoopEnabled));
+	memzero(LoopLastTick,sizeof(LoopLastTick));
+	memzero(LoopWaitTick,sizeof(LoopWaitTick));
 }
 
 Map::~Map()
@@ -52,8 +52,8 @@ bool Map::Init(ProtoMap* proto, Location* location)
 	MEMORY_PROCESS(MEMORY_MAP_FIELD,proto->Header.MaxHexX*proto->Header.MaxHexY);
 	hexFlags=new uchar[proto->Header.MaxHexX*proto->Header.MaxHexY];
 	if(!hexFlags) return false;
-	ZeroMemory(hexFlags,proto->Header.MaxHexX*proto->Header.MaxHexY);
-	ZeroMemory(&Data,sizeof(Data));
+	memzero(hexFlags,proto->Header.MaxHexX*proto->Header.MaxHexY);
+	memzero(&Data,sizeof(Data));
 	Proto=proto;
 	mapLocation=location;
 	Data.MapTime=Proto->Header.Time;
@@ -141,9 +141,9 @@ bool Map::Generate()
 		{
 			if(mobj.FuncName[0])
 			{
-				StringCopy(script,mobj.ScriptName);
-				StringAppend(script,"@");
-				StringAppend(script,mobj.FuncName);
+				Str::Copy(script,mobj.ScriptName);
+				Str::Append(script,"@");
+				Str::Append(script,mobj.FuncName);
 			}
 			else
 			{
@@ -320,9 +320,9 @@ bool Map::Generate()
 		{
 			if(mobj.FuncName[0])
 			{
-				StringCopy(script,mobj.ScriptName);
-				StringAppend(script,"@");
-				StringAppend(script,mobj.FuncName);
+				Str::Copy(script,mobj.ScriptName);
+				Str::Append(script,"@");
+				Str::Append(script,mobj.FuncName);
 			}
 			else
 			{
@@ -402,9 +402,9 @@ bool Map::Generate()
 	if(Proto->Header.ScriptModule[0] && Proto->Header.ScriptFunc[0])
 	{
 		char script[MAX_SCRIPT_NAME*2+2];
-		StringCopy(script,Proto->Header.ScriptModule);
-		StringAppend(script,"@");
-		StringAppend(script,Proto->Header.ScriptFunc);
+		Str::Copy(script,Proto->Header.ScriptModule);
+		Str::Append(script,"@");
+		Str::Append(script,Proto->Header.ScriptFunc);
 		ParseScript(script,true);
 	}
 	return true;
@@ -1509,7 +1509,7 @@ Item* Map::GetItemChild(ushort hx, ushort hy, ProtoItem* proto_item, uint child_
 bool Map::PrepareScriptFunc(int num_scr_func)
 {
 	if(FuncId[num_scr_func]<=0) return false;
-	return Script::PrepareContext(FuncId[num_scr_func],_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid()));
+	return Script::PrepareContext(FuncId[num_scr_func],_FUNC_,Str::FormatBuf("Map id<%u>, pid<%u>",GetId(),GetPid()));
 }
 
 bool Map::ParseScript(const char* script, bool first_time)
@@ -1525,7 +1525,7 @@ bool Map::ParseScript(const char* script, bool first_time)
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),_FUNC_,Str::FormatBuf("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgBool(first_time);
@@ -1813,7 +1813,7 @@ void Map::BeginTurnBased(Critter* first_cr)
 	IsTurnBasedTimeout=false;
 
 	EventTurnBasedBegin();
-	if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,_FUNC_,Str::FormatBuf("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
 		Script::SetArgObject(this);
 		Script::RunPrepared();
@@ -1829,7 +1829,7 @@ void Map::EndTurnBased()
 	GetCritters(critters,true);
 
 	EventTurnBasedEnd();
-	if(Script::PrepareContext(ServerFunctions.TurnBasedEnd,_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+	if(Script::PrepareContext(ServerFunctions.TurnBasedEnd,_FUNC_,Str::FormatBuf("Map id<%u>, pid<%u>",GetId(),GetPid())))
 	{
 		Script::SetArgObject(this);
 		Script::RunPrepared();
@@ -1939,7 +1939,7 @@ void Map::NextCritterTurn()
 		TurnBasedTurn=0;
 
 		EventTurnBasedBegin();
-		if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,_FUNC_,Str::Format("Map id<%u>, pid<%u>",GetId(),GetPid())))
+		if(Script::PrepareContext(ServerFunctions.TurnBasedBegin,_FUNC_,Str::FormatBuf("Map id<%u>, pid<%u>",GetId(),GetPid())))
 		{
 			Script::SetArgObject(this);
 			Script::RunPrepared();
@@ -2061,7 +2061,7 @@ bool Location::Init(ProtoLocation* proto, ushort wx, ushort wy)
 {
 	if(!proto) return false;
 	Proto=proto;
-	ZeroMemory(&Data,sizeof(Data));
+	memzero(&Data,sizeof(Data));
 	Data.LocPid=Proto->LocPid;
 	Data.WX=wx;
 	Data.WY=wy;

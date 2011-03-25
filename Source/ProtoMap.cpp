@@ -5,6 +5,7 @@
 #include "ConstantsManager.h"
 #include "Version.h"
 #include <strstream>
+#include "IniParser.h"
 
 #ifdef FONLINE_MAPPER
 #include "ResourceManager.h"
@@ -364,7 +365,7 @@ void ProtoMap::Clear()
 	TilesField.clear();
 	RoofsField.clear();
 #endif
-	ZeroMemory(&Header,sizeof(Header));
+	memzero(&Header,sizeof(Header));
 	pmapName="";
 	pathType=0;
 	isInit=false;
@@ -373,7 +374,7 @@ void ProtoMap::Clear()
 bool ProtoMap::ReadHeader(int version)
 {
 	HeaderV9 header9;
-	ZeroMemory(&header9,sizeof(header9));
+	memzero(&header9,sizeof(header9));
 	header9.DayTime[0]=300; header9.DayTime[1]=600;  header9.DayTime[2]=1140; header9.DayTime[3]=1380;
 	header9.DayColor[0]=18; header9.DayColor[1]=128; header9.DayColor[2]=103; header9.DayColor[3]=51;
 	header9.DayColor[4]=18; header9.DayColor[5]=128; header9.DayColor[6]=95;  header9.DayColor[7]=40;
@@ -399,7 +400,7 @@ bool ProtoMap::ReadHeader(int version)
 		if(!pmapFm->CopyMem(&header9,96)) return false;
 	}
 
-	ZeroMemory(&Header,sizeof(Header));
+	memzero(&Header,sizeof(Header));
 	Header.Version=header9.Version;
 	Header.NoLogOut=false;
 	Header.Time=-1;
@@ -425,7 +426,7 @@ bool ProtoMap::ReadTiles(int version)
 	if(version<8)
 	{
 		// Convert lst offsets to name hashes
-		ZeroMemory(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2);
+		memzero(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2);
 		uint size=(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint);
 		uint* ptr=new(nothrow) uint[size/sizeof(uint)];
 		if(!pmapFm->CopyMem(ptr,size)) return false;
@@ -477,7 +478,7 @@ bool ProtoMap::ReadObjects(int version)
 		{
 			MapObjectV5& obj_v5=objects_v5[k];
 			MapObject obj_v6;
-			ZeroMemory(&obj_v6,sizeof(obj_v6));
+			memzero(&obj_v6,sizeof(obj_v6));
 			ProtoItem* proto=ItemMngr.GetProtoItem(obj_v5.ProtoId);
 
 			if(version<5 && obj_v5.MapObjType==MAPOBJ_ITEM)
@@ -505,8 +506,8 @@ bool ProtoMap::ReadObjects(int version)
 			obj_v6.LightDirOff=obj_v5.LightDirOff;
 			obj_v6.LightDistance=obj_v5.LightDistance;
 			obj_v6.LightIntensity=(obj_v5.LightIntensity>100?50:(obj_v5.LightIntensity<-100?-50:obj_v5.LightIntensity));
-			StringCopy(obj_v6.ScriptName,obj_v5.ScriptName);
-			StringCopy(obj_v6.FuncName,obj_v5.FuncName);
+			Str::Copy(obj_v6.ScriptName,obj_v5.ScriptName);
+			Str::Copy(obj_v6.FuncName,obj_v5.FuncName);
 
 			if(obj_v6.MapObjType==MAP_OBJECT_CRITTER)
 			{
@@ -622,8 +623,8 @@ bool ProtoMap::ReadObjects(int version)
 			mobj->LightDirOff=mobj_v9.LightDirOff;
 			mobj->LightDistance=mobj_v9.LightDistance;
 			mobj->LightIntensity=mobj_v9.LightIntensity;
-			StringCopy(mobj->ScriptName,mobj_v9.ScriptName);
-			StringCopy(mobj->FuncName,mobj_v9.FuncName);
+			Str::Copy(mobj->ScriptName,mobj_v9.ScriptName);
+			Str::Copy(mobj->FuncName,mobj_v9.FuncName);
 			for(int i=0;i<10;i++) mobj->UserData[i]=mobj_v9.UserData[i];
 			mobj->MapObjType=mobj_v9.MapObjType;
 
@@ -689,10 +690,10 @@ bool ProtoMap::ReadObjects(int version)
 bool ProtoMap::LoadTextFormat(const char* buf)
 {
 	IniParser map_ini;
-	map_ini.LoadFilePtr(buf,strlen(buf));
+	map_ini.LoadFilePtr(buf,Str::Length(buf));
 
 	// Header
-	ZeroMemory(&Header,sizeof(Header));
+	memzero(&Header,sizeof(Header));
 	char* header_str=map_ini.GetApp(APP_HEADER);
 	if(header_str)
 	{
@@ -725,8 +726,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 				if(field=="WorkHexY" || field=="CenterY") Header.WorkHexY=ivalue;
 				if(field=="Time") Header.Time=ivalue;
 				if(field=="NoLogOut") Header.NoLogOut=(ivalue!=0);
-				if(field=="ScriptModule" && value!="-") StringCopy(Header.ScriptModule,value.c_str());
-				if(field=="ScriptFunc" && value!="-") StringCopy(Header.ScriptFunc,value.c_str());
+				if(field=="ScriptModule" && value!="-") Str::Copy(Header.ScriptModule,value.c_str());
+				if(field=="ScriptFunc" && value!="-") Str::Copy(Header.ScriptFunc,value.c_str());
 				if(field=="DayTime")
 				{
 					Header.DayTime[0]=ivalue;
@@ -893,8 +894,8 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 					else if(field=="LightDirOff") mobj.LightDirOff=ivalue;
 					else if(field=="LightDistance") mobj.LightDistance=ivalue;
 					else if(field=="LightIntensity") mobj.LightIntensity=ivalue;
-					else if(field=="ScriptName") StringCopy(mobj.ScriptName,Str::EraseFrontBackSpecificChars(svalue));
-					else if(field=="FuncName") StringCopy(mobj.FuncName,Str::EraseFrontBackSpecificChars(svalue));
+					else if(field=="ScriptName") Str::Copy(mobj.ScriptName,Str::EraseFrontBackSpecificChars(svalue));
+					else if(field=="FuncName") Str::Copy(mobj.FuncName,Str::EraseFrontBackSpecificChars(svalue));
 					else if(field=="UserData0") mobj.UserData[0]=ivalue;
 					else if(field=="UserData1") mobj.UserData[1]=ivalue;
 					else if(field=="UserData2") mobj.UserData[2]=ivalue;
@@ -956,14 +957,14 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						else if(field=="PicMapName")
 						{
 #ifdef FONLINE_MAPPER
-							StringCopy(mobj.RunTime.PicMapName,Str::EraseFrontBackSpecificChars(svalue));
+							Str::Copy(mobj.RunTime.PicMapName,Str::EraseFrontBackSpecificChars(svalue));
 #endif
 							mobj.MItem.PicMapHash=Str::GetHash(Str::EraseFrontBackSpecificChars(svalue));
 						}
 						else if(field=="PicInvName")
 						{
 #ifdef FONLINE_MAPPER
-							StringCopy(mobj.RunTime.PicInvName,Str::EraseFrontBackSpecificChars(svalue));
+							Str::Copy(mobj.RunTime.PicInvName,Str::EraseFrontBackSpecificChars(svalue));
 #endif
 							mobj.MItem.PicInvHash=Str::GetHash(Str::EraseFrontBackSpecificChars(svalue));
 						}
@@ -1059,10 +1060,10 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			bool has_offs=(tile.OffsX || tile.OffsY);
 			bool has_layer=(tile.Layer!=0);
 
-			StringCopy(tile_str,tile.IsRoof?"roof":"tile");
-			if(has_offs || has_layer) StringAppend(tile_str,"_");
-			if(has_offs)  StringAppend(tile_str,"o");
-			if(has_layer)  StringAppend(tile_str,"l");
+			Str::Copy(tile_str,tile.IsRoof?"roof":"tile");
+			if(has_offs || has_layer) Str::Append(tile_str,"_");
+			if(has_offs)  Str::Append(tile_str,"o");
+			if(has_layer)  Str::Append(tile_str,"l");
 
 			fm->SetStr("%-10s %-4d %-4d ",tile_str,tile.HexX,tile.HexY);
 
@@ -1429,10 +1430,10 @@ bool ProtoMap::Refresh()
 		bool load_cache=true;
 		if(pmapFm->IsLoaded())
 		{
-			FILETIME last_write,last_write_cache;
+			uint64 last_write,last_write_cache;
 			pmapFm->GetTime(NULL,NULL,&last_write);
 			cached.GetTime(NULL,NULL,&last_write_cache);
-			if(CompareFileTime(&last_write,&last_write_cache)>0) load_cache=false;
+			if(last_write>last_write_cache) load_cache=false;
 		}
 
 		if(load_cache)
@@ -1631,7 +1632,7 @@ bool ProtoMap::Refresh()
 
 	HexFlags=new uchar[Header.MaxHexX*Header.MaxHexY];
 	if(!HexFlags) return false;
-	ZeroMemory(HexFlags,Header.MaxHexX*Header.MaxHexY);
+	memzero(HexFlags,Header.MaxHexX*Header.MaxHexY);
 
 	for(MapObjectPtrVecIt it=MObjects.begin(),end=MObjects.end();it!=end;++it)
 	{
@@ -1683,7 +1684,7 @@ bool ProtoMap::Refresh()
 
 				// To client
 				SceneryCl cur_wall;
-				ZeroMemory(&cur_wall,sizeof(SceneryCl));
+				memzero(&cur_wall,sizeof(SceneryCl));
 
 				cur_wall.ProtoId=mobj.ProtoId;
 				cur_wall.MapX=mobj.MapX;
@@ -1749,8 +1750,8 @@ bool ProtoMap::Refresh()
 						char script_func[MAX_SCRIPT_NAME+1];
 						if(Script::ReparseScriptName(script,script_module,script_func))
 						{
-							StringCopy(mobj.ScriptName,script_module);
-							StringCopy(mobj.FuncName,script_func);
+							Str::Copy(mobj.ScriptName,script_module);
+							Str::Copy(mobj.FuncName,script_func);
 						}
 					}
 
@@ -1770,7 +1771,7 @@ bool ProtoMap::Refresh()
 
 				// To client
 				SceneryCl cur_scen;
-				ZeroMemory(&cur_scen,sizeof(SceneryCl));
+				memzero(&cur_scen,sizeof(SceneryCl));
 
 				// Flags
 				if(type==ITEM_TYPE_GENERIC && mobj.MScenery.CanUse) SETFLAG(cur_scen.Flags,SCEN_CAN_USE);
@@ -1839,8 +1840,8 @@ bool ProtoMap::Refresh()
 		// Convert hashes to names
 		if(mobj->MapObjType==MAP_OBJECT_ITEM || mobj->MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[0]) StringCopy(mobj->RunTime.PicMapName,Str::GetName(mobj->MItem.PicMapHash));
-			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) StringCopy(mobj->RunTime.PicInvName,Str::GetName(mobj->MItem.PicInvHash));
+			if(mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[0]) Str::Copy(mobj->RunTime.PicMapName,Str::GetName(mobj->MItem.PicMapHash));
+			if(mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[0]) Str::Copy(mobj->RunTime.PicInvName,Str::GetName(mobj->MItem.PicInvHash));
 		}
 
 		// Last UID
@@ -1958,14 +1959,14 @@ bool ProtoMap::IsMapFile(const char* fname)
 	if(!ext) return false;
 	ext--;
 
-	if(!_stricmp(ext,MAP_PROTO_EXT))
+	if(Str::CompareCase(ext,MAP_PROTO_EXT))
 	{
 		// Check text format
 		IniParser txt;
 		if(!txt.LoadFile(fname,PT_ROOT)) return false;
 		return txt.IsApp(APP_HEADER) && txt.IsApp(APP_TILES) && txt.IsApp(APP_OBJECTS);
 	}
-	else if(!_stricmp(ext,".map"))
+	else if(Str::CompareCase(ext,".map"))
 	{
 		// Check binary format
 		FileManager file;

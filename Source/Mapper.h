@@ -16,6 +16,8 @@
 #include "CritterType.h"
 #include "Script.h"
 #include "ScriptPragmas.h"
+#include "MsgFiles.h"
+#include "IniParser.h"
 
 // Fonts
 #define FONT_FO                 (0)

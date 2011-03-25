@@ -1,8 +1,9 @@
 #ifndef __MAP_MANAGER__
 #define __MAP_MANAGER__
 
-#include "Defines.h"
+#include "Common.h"
 #include "Map.h"
+#include "IniParser.h"
 
 class GlobalMapGroup
 {
@@ -65,7 +66,7 @@ struct TraceData
 	bool IsHaveLastPassed;
 	bool IsTeammateFounded;
 
-	TraceData(){ZeroMemory(this,sizeof(TraceData));}
+	TraceData(){memzero(this,sizeof(TraceData));}
 };
 
 // Path
@@ -103,7 +104,7 @@ struct PathFindData
 	Critter* GagCritter;
 	Item* GagItem;
 
-	void Clear(){ZeroMemory(this,sizeof(PathFindData));MoveParams=0xFFFF;}
+	void Clear(){memzero(this,sizeof(PathFindData));MoveParams=0xFFFF;}
 };
 
 struct PathStep

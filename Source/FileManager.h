@@ -115,7 +115,7 @@ public:
 	uint GetCurPos(){return curPos;}
 	uint GetFsize(){return fileSize;}
 	bool IsEOF(){return curPos>=fileSize;}
-	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
+	void GetTime(uint64* create, uint64* access, uint64* write);
 	int ParseLinesInt(const char* fname, int path_type, IntVec& lines);
 
 	static DataFileVec& GetDataFiles(){return dataFiles;}
@@ -138,7 +138,7 @@ private:
 	uint endOutBuf;
 	uint lenOutBuf;
 
-	FILETIME timeCreate,timeAccess,timeWrite;
+	uint64 timeCreate,timeAccess,timeWrite;
 
 	static void RecursiveDirLook(const char* init_dir, bool include_subdirs, const char* ext, StrVec& result);
 };

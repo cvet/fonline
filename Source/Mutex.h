@@ -8,7 +8,7 @@
 #define SCOPE_SPINLOCK(mutex) volatile MutexSpinlockLocker scope_lock__(mutex)
 
 
-#ifdef FO_WINDOWS
+#if defined(FO_WINDOWS)
 
 	#ifdef FO_MSVC
 		#include <intrin.h>
@@ -18,112 +18,128 @@
 		#define InterlockedDecrement       _InterlockedDecrement
 	#endif
 
-#elif FO_LINUX
+	class Mutex
+	{
+	private:
+		friend class MutexLocker;
+		CRITICAL_SECTION mutexCS;
+		Mutex(const Mutex&){}
+		void operator=(const Mutex&){}
+
+	public:
+		Mutex(){InitializeCriticalSectionAndSpinCount(&mutexCS,DEFAULT_SPIN_COUNT);}
+		~Mutex(){DeleteCriticalSection(&mutexCS);}
+		void SetSpinCount(int count){SetCriticalSectionSpinCount(&mutexCS,count);}
+		void Lock(){EnterCriticalSection(&mutexCS);}
+		bool TryLock(){return TryEnterCriticalSection(&mutexCS)!=FALSE;}
+		void Unlock(){LeaveCriticalSection(&mutexCS);}
+	};
+
+	class MutexEvent
+	{
+	private:
+		HANDLE mutexEvent;
+		MutexEvent(const MutexEvent&){}
+		MutexEvent& operator=(const MutexEvent&){return *this;}
+
+	public:
+		MutexEvent(){mutexEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
+		~MutexEvent(){CloseHandle(mutexEvent);}
+		void Allow(){SetEvent(mutexEvent);}
+		void Disallow(){ResetEvent(mutexEvent);}
+		void Wait(){WaitForSingleObject(mutexEvent,INFINITE);}
+		void* GetHandle(){return mutexEvent;}
+	};
+
+#else // FO_LINUX
 
 	#include <pthread.h>
-	#define CRITICAL_SECTION pthread_mutex_t
-	#define EnterCriticalSection pthread_mutex_lock(pthread_mutex_t *);
-	#define LeaveCriticalSection pthread_mutex_unlock(pthread_mutex_t *);
-	#define DeleteCriticalSection pthread_mutex_destroy(pthread_mutex_t *);
 
-pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *);
-InitializeCriticalSectionAndSpinCount
-SetCriticalSectionSpinCount
+	#define InterlockedCompareExchange(val,exch,comp) __sync_val_compare_and_swap(val,comp,exch)
+	#define InterlockedExchange(val,newval)           __sync_lock_test_and_set(val,newval)
+	#define InterlockedIncrement(val)                 __sync_add_and_fetch(val,1)
+	#define InterlockedDecrement(val)                 __sync_sub_and_fetch(val,1)
 
-InterlockedCompareExchange __sync_val_compare_and_swap
-InterlockedExchange __sync_lock_test_and_set
-InterlockedIncrement __sync_add_and_fetch(&value, 1);
-InterlockedDecrement __sync_sub_and_fetch(&value, 1);
+	class Mutex
+	{
+	private:
+		friend class MutexLocker;
+		pthread_mutex_t mutexCS;
+		Mutex(const Mutex&){}
+		void operator=(const Mutex&){}
 
-CreateEvent 
-CloseHandle 
-ResetEvent 
-SetEvent 
-WaitForSingleObject 
+	public:
+		Mutex(){pthread_mutex_init(&mutexCS,NULL);}
+		~Mutex(){pthread_mutex_destroy(&mutexCS);}
+		void SetSpinCount(int count){/*Todo: linux*/}
+		void Lock(){pthread_mutex_lock(&mutexCS);}
+		bool TryLock(){return pthread_mutex_trylock(&mutexCS)==0;}
+		void Unlock(){pthread_mutex_unlock(&mutexCS);}
+	};
 
-http://pubs.opengroup.org/onlinepubs/007908799/xsh/pthread.h.html
+	class MutexEvent
+	{
+	private:
+		pthread_mutex_t ptMutex;
+		pthread_cond_t ptCond;
+		bool flag;
+		MutexEvent(const MutexEvent&){}
+		MutexEvent& operator=(const MutexEvent&){return *this;}
+
+	public:
+		MutexEvent(){pthread_mutex_init(&ptMutex,NULL); pthread_cond_init(&ptCond,NULL); flag=true;}
+		~MutexEvent(){pthread_mutex_destroy(&ptMutex); pthread_cond_destroy(&ptCond);}
+		void Allow(){pthread_mutex_lock(&ptMutex); flag=true; pthread_cond_broadcast(&ptCond); pthread_mutex_unlock(&ptMutex);}
+		void Disallow(){pthread_mutex_lock(&ptMutex); flag=false; pthread_mutex_unlock(&ptMutex);}
+		void Wait(){pthread_mutex_lock(&ptMutex); if(!flag) pthread_cond_wait(&ptCond,&ptMutex); pthread_mutex_unlock(&ptMutex);}
+	};
 
 #endif
-
-
-class Mutex
-{
-private:
-	friend class MutexLocker;
-	CRITICAL_SECTION mutexCS;
-	Mutex(const Mutex&){}
-	void operator=(const Mutex&){}
-
-public:
-	Mutex(){InitializeCriticalSectionAndSpinCount(&mutexCS,DEFAULT_SPIN_COUNT);}
-	~Mutex(){DeleteCriticalSection(&mutexCS);}
-	void SetSpinCount(int count){SetCriticalSectionSpinCount(&mutexCS,count);}
-	void Lock(){EnterCriticalSection(&mutexCS);}
-	bool TryLock(){return TryEnterCriticalSection(&mutexCS)!=FALSE;}
-	void Unlock(){LeaveCriticalSection(&mutexCS);}
-};
 
 class MutexLocker
 {
 private:
-	CRITICAL_SECTION* pCS;
+	Mutex* pMutex;
 	MutexLocker(){}
 	MutexLocker(const MutexLocker&){}
 	MutexLocker& operator=(const MutexLocker&){return *this;}
 
 public:
-	MutexLocker(Mutex& mutex):pCS(&mutex.mutexCS){EnterCriticalSection(pCS);}
-	~MutexLocker(){LeaveCriticalSection(pCS);}
+	MutexLocker(Mutex& mutex):pMutex(&mutex){pMutex->Lock();}
+	~MutexLocker(){pMutex->Unlock();}
 };
 
 class MutexCode
 {
 private:
-	HANDLE mcEvent;
+	MutexEvent mcEvent;
 	Mutex mcLocker;
 	volatile long mcCounter;
 	MutexCode(const MutexCode&){}
 	MutexCode& operator=(const MutexCode&){return *this;}
 
 public:
-	MutexCode():mcCounter(0){mcEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
-	~MutexCode(){CloseHandle(mcEvent);}
-	void LockCode(){mcLocker.Lock(); ResetEvent(mcEvent); while(InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
-	void UnlockCode(){SetEvent(mcEvent);}
-	void EnterCode(){mcLocker.Lock(); WaitForSingleObject(mcEvent,INFINITE); InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
+	MutexCode():mcCounter(0){}
+	void LockCode(){mcLocker.Lock(); mcEvent.Disallow(); while(InterlockedCompareExchange(&mcCounter,0,0)) Sleep(0); mcLocker.Unlock();}
+	void UnlockCode(){mcEvent.Allow();}
+	void EnterCode(){mcLocker.Lock(); mcEvent.Wait(); InterlockedIncrement(&mcCounter); mcLocker.Unlock();}
 	void LeaveCode(){InterlockedDecrement(&mcCounter);}
 };
 
 class MutexSynchronizer
 {
 private:
-	HANDLE msEvent;
+	MutexEvent msEvent;
 	Mutex msLocker;
 	volatile long msCounter;
 	MutexSynchronizer(const MutexSynchronizer&){}
 	MutexSynchronizer& operator=(const MutexSynchronizer&){return *this;}
 
 public:
-	MutexSynchronizer():msCounter(0){msEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
-	~MutexSynchronizer(){CloseHandle(msEvent);}
-	void Synchronize(long count){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); ResetEvent(msEvent); while(InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
-	void Resynchronize(){SetEvent(msEvent);}
-	void SynchronizePoint(){InterlockedIncrement(&msCounter); msLocker.Lock(); WaitForSingleObject(msEvent,INFINITE); InterlockedDecrement(&msCounter); msLocker.Unlock();}
-};
-
-class MutexEvent
-{
-private:
-	HANDLE meEvent;
-	MutexEvent(const MutexEvent&){}
-	MutexEvent& operator=(const MutexEvent&){return *this;}
-
-public:
-	MutexEvent(){meEvent=CreateEvent(NULL,TRUE,TRUE,NULL);}
-	~MutexEvent(){CloseHandle(meEvent);}
-	void Allow(){SetEvent(meEvent);}
-	void Disallow(){ResetEvent(meEvent);}
-	void Wait(){WaitForSingleObject(meEvent,INFINITE);}
+	MutexSynchronizer():msCounter(0){}
+	void Synchronize(long count){InterlockedIncrement(&msCounter); msLocker.Lock(); msEvent.Wait(); InterlockedDecrement(&msCounter); msEvent.Disallow(); while(InterlockedCompareExchange(&msCounter,0,0)!=count) Sleep(0); msLocker.Unlock();}
+	void Resynchronize(){msEvent.Allow();}
+	void SynchronizePoint(){InterlockedIncrement(&msCounter); msLocker.Lock(); msEvent.Wait(); InterlockedDecrement(&msCounter); msLocker.Unlock();}
 };
 
 class MutexSpinlock

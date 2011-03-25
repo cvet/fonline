@@ -1,8 +1,7 @@
 #include "StdAfx.h"
 #include "ItemManager.h"
-#include "Log.h"
-#include "Text.h"
 #include "ConstantsManager.h"
+#include "IniParser.h"
 
 #ifdef FONLINE_SERVER
 #include "Critter.h"
@@ -118,10 +117,10 @@ bool ItemManager::LoadProtos()
 	for(int i=0;i<count;i++)
 	{
 		char fname[MAX_FOPATH];
-		StringCopy(fname,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS));
+		Str::Copy(fname,FileManager::GetFullPath(fnames[i].c_str(),PT_SERVER_PRO_ITEMS));
 
 		char collection_name[MAX_FOPATH];
-		StringFormat(collection_name,"%03d - %s",i+1,fnames[i].c_str());
+		Str::Format(collection_name,"%03d - %s",i+1,fnames[i].c_str());
 		FileManager::EraseExtension(collection_name);
 
 		if(LoadProtos(item_protos,fname))
@@ -170,7 +169,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 				if(deprecated)
 				{
 					// Convert '_' to '.' and try again
-					StringCopy(name_,name);
+					Str::Copy(name_,name);
 					bool swapped=false;
 					char* str=name_;
 					while(*str)
@@ -186,41 +185,41 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 
 					if(!swapped || !fopro.GetStr("Proto",name_,"",svalue))
 					{
-						if(!strcmp(name,"ProtoId")) StringCopy(name_,"Pid");
-						else if(!strcmp(name,"PicInv") || !strcmp(name_,"PicMap")) StringAppend(name_,"Name");
-						else if(!strcmp(name,"Armor_CrTypeMale")) StringCopy(name_,"Armor.Anim0Male");
-						else if(!strcmp(name,"Armor_CrTypeFemale")) StringCopy(name_,"Armor.Anim0Female");
-						else if(!strcmp(name,"Weapon_CriticalFailture")) StringCopy(name_,"Weapon.CrFailture");
-						else if(!strcmp(name,"Weapon_MinStrength")) StringCopy(name_,"Weapon.MinSt");
-						else if(!strcmp(name,"Stackable")) StringCopy(name_,"Weapon.NoWear");
-						else if(!strcmp(name,"Weapon_ActiveUses")) StringCopy(name_,"Weapon.CountAttack");
-						else if(!strcmp(name,"Weapon_PicUse_0")) StringCopy(name_,"Weapon.PicName_0");
-						else if(!strcmp(name,"Weapon_PicUse_1")) StringCopy(name_,"Weapon.PicName_1");
-						else if(!strcmp(name,"Weapon_PicUse_2")) StringCopy(name_,"Weapon.PicName_2");
-						else if(!strcmp(name,"Weapon_ApCost_0")) StringCopy(name_,"Weapon.Time_0");
-						else if(!strcmp(name,"Weapon_ApCost_1")) StringCopy(name_,"Weapon.Time_1");
-						else if(!strcmp(name,"Weapon_ApCost_2")) StringCopy(name_,"Weapon.Time_2");
-						else if(!strcmp(name,"Car_Speed")) StringCopy(name_,"MiscEx.Car.Speed");
-						else if(!strcmp(name,"Car_Passability")) StringCopy(name_,"MiscEx.Car.Negotiability");
-						else if(!strcmp(name,"Car_DeteriorationRate")) StringCopy(name_,"MiscEx.Car.WearConsumption");
-						else if(!strcmp(name,"Car_CrittersCapacity")) StringCopy(name_,"MiscEx.Car.CritCapacity");
-						else if(!strcmp(name,"Car_TankVolume")) StringCopy(name_,"MiscEx.Car.FuelTank");
-						else if(!strcmp(name,"Car_MaxDeterioration")) StringCopy(name_,"MiscEx.Car.RunToBreak");
-						else if(!strcmp(name,"Car_FuelConsumption")) StringCopy(name_,"MiscEx.Car.FuelConsumption");
-						else if(!strcmp(name,"Car_Entrance")) StringCopy(name_,"MiscEx.Car.Entire");
-						else if(!strcmp(name,"Car_MovementType")) StringCopy(name_,"MiscEx.Car.WalkType");
-						else if(!strcmp(name,"ChildLines_0")) StringCopy(name_,"MiscEx.Car.Bag_0");
-						else if(!strcmp(name,"ChildLines_1")) StringCopy(name_,"MiscEx.Car.Bag_1");
-						else if(!strcmp(name,"BlockLines")) StringCopy(name_,"MiscEx.Car.Blocks");
-						else if(!strcmp(name,"StartValue_1")) StringCopy(name_,"MiscEx.StartVal1");
-						else if(!strcmp(name,"StartValue_2")) StringCopy(name_,"MiscEx.StartVal2");
-						else if(!strcmp(name,"StartValue_3")) StringCopy(name_,"MiscEx.StartVal3");
-						else if(!strcmp(name,"StartCount")) StringCopy(name_,"Ammo.StartCount");
-						else if(!strcmp(name,"Weapon_MaxAmmoCount")) StringCopy(name_,"Weapon.VolHolder");
-						else if(!strcmp(name,"Weapon_DefaultAmmoPid")) StringCopy(name_,"Weapon.DefAmmo");
-						else if(!strcmp(name,"Container_Volume")) StringCopy(name_,"Container.ContVolume");
-						else if(!strcmp(name,"Ammo_AcMod")) StringCopy(name_,"Ammo.ACMod");
-						else if(!strcmp(name,"Ammo_DrMod")) StringCopy(name_,"Ammo.DRMod");
+						if(Str::Compare(name,"ProtoId")) Str::Copy(name_,"Pid");
+						else if(Str::Compare(name,"PicInv") || Str::Compare(name_,"PicMap")) Str::Append(name_,"Name");
+						else if(Str::Compare(name,"Armor_CrTypeMale")) Str::Copy(name_,"Armor.Anim0Male");
+						else if(Str::Compare(name,"Armor_CrTypeFemale")) Str::Copy(name_,"Armor.Anim0Female");
+						else if(Str::Compare(name,"Weapon_CriticalFailture")) Str::Copy(name_,"Weapon.CrFailture");
+						else if(Str::Compare(name,"Weapon_MinStrength")) Str::Copy(name_,"Weapon.MinSt");
+						else if(Str::Compare(name,"Stackable")) Str::Copy(name_,"Weapon.NoWear");
+						else if(Str::Compare(name,"Weapon_ActiveUses")) Str::Copy(name_,"Weapon.CountAttack");
+						else if(Str::Compare(name,"Weapon_PicUse_0")) Str::Copy(name_,"Weapon.PicName_0");
+						else if(Str::Compare(name,"Weapon_PicUse_1")) Str::Copy(name_,"Weapon.PicName_1");
+						else if(Str::Compare(name,"Weapon_PicUse_2")) Str::Copy(name_,"Weapon.PicName_2");
+						else if(Str::Compare(name,"Weapon_ApCost_0")) Str::Copy(name_,"Weapon.Time_0");
+						else if(Str::Compare(name,"Weapon_ApCost_1")) Str::Copy(name_,"Weapon.Time_1");
+						else if(Str::Compare(name,"Weapon_ApCost_2")) Str::Copy(name_,"Weapon.Time_2");
+						else if(Str::Compare(name,"Car_Speed")) Str::Copy(name_,"MiscEx.Car.Speed");
+						else if(Str::Compare(name,"Car_Passability")) Str::Copy(name_,"MiscEx.Car.Negotiability");
+						else if(Str::Compare(name,"Car_DeteriorationRate")) Str::Copy(name_,"MiscEx.Car.WearConsumption");
+						else if(Str::Compare(name,"Car_CrittersCapacity")) Str::Copy(name_,"MiscEx.Car.CritCapacity");
+						else if(Str::Compare(name,"Car_TankVolume")) Str::Copy(name_,"MiscEx.Car.FuelTank");
+						else if(Str::Compare(name,"Car_MaxDeterioration")) Str::Copy(name_,"MiscEx.Car.RunToBreak");
+						else if(Str::Compare(name,"Car_FuelConsumption")) Str::Copy(name_,"MiscEx.Car.FuelConsumption");
+						else if(Str::Compare(name,"Car_Entrance")) Str::Copy(name_,"MiscEx.Car.Entire");
+						else if(Str::Compare(name,"Car_MovementType")) Str::Copy(name_,"MiscEx.Car.WalkType");
+						else if(Str::Compare(name,"ChildLines_0")) Str::Copy(name_,"MiscEx.Car.Bag_0");
+						else if(Str::Compare(name,"ChildLines_1")) Str::Copy(name_,"MiscEx.Car.Bag_1");
+						else if(Str::Compare(name,"BlockLines")) Str::Copy(name_,"MiscEx.Car.Blocks");
+						else if(Str::Compare(name,"StartValue_1")) Str::Copy(name_,"MiscEx.StartVal1");
+						else if(Str::Compare(name,"StartValue_2")) Str::Copy(name_,"MiscEx.StartVal2");
+						else if(Str::Compare(name,"StartValue_3")) Str::Copy(name_,"MiscEx.StartVal3");
+						else if(Str::Compare(name,"StartCount")) Str::Copy(name_,"Ammo.StartCount");
+						else if(Str::Compare(name,"Weapon_MaxAmmoCount")) Str::Copy(name_,"Weapon.VolHolder");
+						else if(Str::Compare(name,"Weapon_DefaultAmmoPid")) Str::Copy(name_,"Weapon.DefAmmo");
+						else if(Str::Compare(name,"Container_Volume")) Str::Copy(name_,"Container.ContVolume");
+						else if(Str::Compare(name,"Ammo_AcMod")) Str::Copy(name_,"Ammo.ACMod");
+						else if(Str::Compare(name,"Ammo_DrMod")) Str::Copy(name_,"Ammo.DRMod");
 						else continue;
 
 						fopro.GetStr("Proto",name_,"",svalue);
@@ -235,12 +234,12 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 			}
 
 			// Blocks, childs
-			if(!strcmp(name,"BlockLines") || !strncmp(name,"ChildLines_",11))
+			if(Str::Compare(name,"BlockLines") || Str::CompareCount(name,"ChildLines_",11))
 			{
 				// Get lines destination
 				uchar* lines;
 				uint max_count;
-				if(!strcmp(name,"BlockLines"))
+				if(Str::Compare(name,"BlockLines"))
 				{
 					lines=proto_item.BlockLines;
 					max_count=sizeof(proto_item.BlockLines);
@@ -256,13 +255,13 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 					if(deprecated)
 					{
 						char step1[]="1";
-						for(int k=0,l=strlen(svalue);k<l;k++) Str::Insert(&svalue[k*2+1],step1);
+						for(int k=0,l=Str::Length(svalue);k<l;k++) Str::Insert(&svalue[k*2+1],step1);
 						for(char* s=svalue;s[0] && s[2];) if(s[0]==s[2]){s[1]++; Str::EraseInterval(s+2,2);}else{s+=2;}
 					}
 				}
 
 				// Parse lines
-				uint svalue_len=strlen(svalue);
+				uint svalue_len=Str::Length(svalue);
 				for(uint k=0;k/2<max_count && k+1<svalue_len;k+=2)
 				{
 					uchar dir=(svalue[k]-'0')&0xF;
@@ -339,7 +338,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 			char script_func[MAX_SCRIPT_NAME+1];
 			fopro.GetStr("Proto","ScriptModule","",script_module);
 			fopro.GetStr("Proto","ScriptFunc","",script_func);
-			if(script_module[0] && script_func[0]) protoScript[proto_item.ProtoId]=StringDuplicate(Str::Format("%s@%s",script_module,script_func));
+			if(script_module[0] && script_func[0]) protoScript[proto_item.ProtoId]=Str::Duplicate(Str::FormatBuf("%s@%s",script_module,script_func));
 
 			// Add to collection
 			protos.push_back(proto_item);
@@ -450,7 +449,7 @@ void ItemManager::ClearProtos(int type /* = 0xFF */)
 			protoHash[i]=0;
 			typeProto[i].clear();
 		}
-		ZeroMemory(allProto,sizeof(allProto));
+		memzero(allProto,sizeof(allProto));
 		for(int i=0;i<MAX_ITEM_PROTOTYPES;i++) SAFEDELA(protoScript[i]);
 	}
 	else if(type<ITEM_MAX_TYPES)
@@ -508,7 +507,7 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 		save_func(&item->Data,sizeof(item->Data));
 		if(item->PLexems)
 		{
-			uchar lex_len=strlen(item->PLexems);
+			uchar lex_len=Str::Length(item->PLexems);
 			save_func(&lex_len,sizeof(lex_len));
 			save_func(item->PLexems,lex_len);
 		}

@@ -78,7 +78,7 @@ void CryptManager::TextXOR(char* data, uint len, char* xor_key, uint xor_len)
 void CryptManager::EncryptPassword(char* data, uint len, uint key)
 {
 	static Randomizer rnd;
-	uint slen=strlen(data);
+	uint slen=Str::Length(data);
 	data[len-1]=slen;
 	for(uint i=slen;i<len-1;i++) data[i]=rnd.Random(1,255);
 	for(uint i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
@@ -173,7 +173,7 @@ uchar* CryptManager::Uncompress(const uchar* data, uint& data_len, uint mul_appr
 
 /*void CryptManager::CryptText(char* text)
 {
-	uint len=strlen(text);
+	uint len=Str::Length(text);
 	char* buf=(char*)Compress((uchar*)text,len);
 	if(!buf) len=0;
 	/ *for(int i=0;i<len;i++)
@@ -188,7 +188,7 @@ uchar* CryptManager::Uncompress(const uchar* data, uint& data_len, uint mul_appr
 
 void CryptManager::UncryptText(char* text)
 {
-	uint len=strlen(text);
+	uint len=Str::Length(text);
 	char* buf=(char*)Uncompress((uchar*)text,len,2);
 	if(buf) memcpy(text,buf,len);
 	else len=0;
@@ -323,7 +323,7 @@ void CryptManager::SetCache(const char* data_name, const uchar* data, uint data_
 	{
 		CacheDescriptor& desc=CacheTable[i];
 		if(!FLAG(desc.Flags,CACHE_DATA_VALID)) continue;
-		if(strcmp(data_name,desc.DataName)) continue;
+		if(!Str::Compare(data_name,desc.DataName)) continue;
 
 		if(data_len>desc.DataMaxLen)
 		{
@@ -351,7 +351,7 @@ void CryptManager::SetCache(const char* data_name, const uchar* data, uint data_
 
 		SETFLAG(desc.Flags,CACHE_DATA_VALID);
 		desc.DataCurLen=data_len;
-		StringCopy(desc.DataName,data_name);
+		Str::Copy(desc.DataName,data_name);
 		desc_=desc;
 		desc_place=i;
 		goto label_PlaceFound;
@@ -389,7 +389,7 @@ void CryptManager::SetCache(const char* data_name, const uchar* data, uint data_
 		desc.DataOffset=offset;
 		desc.DataCurLen=data_len;
 		desc.DataMaxLen=max_len;
-		StringCopy(desc.DataName,data_name);
+		Str::Copy(desc.DataName,data_name);
 		desc_=desc;
 		desc_place=i;
 		goto label_PlaceFound;
@@ -414,7 +414,7 @@ uchar* CryptManager::GetCache(const char* data_name, uint& data_len)
 	{
 		CacheDescriptor& desc=CacheTable[i];
 		if(!FLAG(desc.Flags,CACHE_DATA_VALID)) continue;
-		if(strcmp(data_name,desc.DataName)) continue;
+		if(!Str::Compare(data_name,desc.DataName)) continue;
 
 		FILE* f=fopen(CacheTableName.c_str(),"rb");
 		if(!f) return NULL;

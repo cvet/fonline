@@ -29,7 +29,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 
 	for(uint i=0,j=processedFiles.size();i<j;i++)
 		if(!_stricmp(processedFiles[i],fname)) return NULL;
-	processedFiles.push_back(StringDuplicate(fname));
+	processedFiles.push_back(Str::Duplicate(fname));
 
 	FileManager fm;
 	if(!fm.LoadFile(fname,PT_DATA))
@@ -45,7 +45,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		FrameEx* frame_root=LoadX(device,fm,fname);
 		if(frame_root)
 		{
-			frame_root->exFileName=StringDuplicate(fname);
+			frame_root->exFileName=Str::Duplicate(fname);
 			loadedModels.push_back(frame_root);
 		}
 		else
@@ -98,7 +98,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		importer->FreeScene();
 		return NULL;
 	}
-	frame_root->exFileName=StringDuplicate(fname);
+	frame_root->exFileName=Str::Duplicate(fname);
 	loadedModels.push_back(frame_root);
 
 	// Extract animations
@@ -158,7 +158,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		buf->Release();
 		set->Release();
 
-		loadedAnimationsFNames.push_back(StringDuplicate(fname));
+		loadedAnimationsFNames.push_back(Str::Duplicate(fname));
 		loadedAnimations.push_back(cset);
 	}
 
@@ -231,7 +231,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 			if(mtrl->GetTextureCount(aiTextureType_DIFFUSE))
 			{
 				mtrl->GetTexture(aiTextureType_DIFFUSE,0,&path);
-				material.pTextureFilename=StringDuplicate(path.data);
+				material.pTextureFilename=Str::Duplicate(path.data);
 			}
 
 			mtrl->Get(AI_MATKEY_COLOR_DIFFUSE,material.MatD3D.Diffuse);
@@ -478,7 +478,7 @@ FrameEx* Loader3d::LoadX(IDirect3DDevice9* device, FileManager& fm, const char* 
 		{
 			AnimSet* set;
 			anim->GetAnimationSet(i,&set); // AddRef
-			loadedAnimationsFNames.push_back(StringDuplicate(fname));
+			loadedAnimationsFNames.push_back(Str::Duplicate(fname));
 			loadedAnimations.push_back(set);
 		}
 		anim->Release();
@@ -524,7 +524,7 @@ TextureEx* Loader3d::LoadTexture(IDirect3DDevice9* device, const char* texture_n
 		// After try load from file folder
 		char path[MAX_FOPATH];
 		FileManager::ExtractPath(model_path,path);
-		StringAppend(path,texture_name);
+		Str::Append(path,texture_name);
 		fm.LoadFile(path,model_path_type);
 	}
 
@@ -533,7 +533,7 @@ TextureEx* Loader3d::LoadTexture(IDirect3DDevice9* device, const char* texture_n
 	if(!fm.IsLoaded() || FAILED(D3DXCreateTextureFromFileInMemory(device,fm.GetBuf(),fm.GetFsize(),&texture))) return NULL;
 
 	TextureEx* texture_ex=new TextureEx();
-	texture_ex->Name=StringDuplicate(texture_name);
+	texture_ex->Name=Str::Duplicate(texture_name);
 	texture_ex->Texture=texture;
 	loadedTextures.push_back(texture_ex);
 	return loadedTextures.back();
@@ -581,7 +581,7 @@ public:
 			if(!RootPath) return S_FALSE;
 			char path[MAX_FOPATH];
 			FileManager::ExtractPath(RootPath,path);
-			StringAppend(path,pFileName);
+			Str::Append(path,pFileName);
 			if(!fm.LoadFile(path,RootPathType)) return S_FALSE;
 		}
 		*pBytes=fm.GetFsize();
@@ -626,7 +626,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 		// After try load from file folder
 		char path[MAX_FOPATH];
 		FileManager::ExtractPath(model_path,path);
-		StringAppend(path,effect_name);
+		Str::Append(path,effect_name);
 		fm.LoadFile(path,model_path_type);
 	}
 	if(!fm.IsLoaded()) return NULL;
@@ -637,10 +637,10 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	FileManager fm_cache;
 	if(fm_cache.LoadFile(cache_name,PT_CACHE))
 	{
-		FILETIME last_write,last_write_cache;
+		uint64 last_write,last_write_cache;
 		fm.GetTime(NULL,NULL,&last_write);
 		fm_cache.GetTime(NULL,NULL,&last_write_cache);
-		if(CompareFileTime(&last_write,&last_write_cache)>0) fm_cache.UnloadFile();
+		if(last_write>last_write_cache) fm_cache.UnloadFile();
 	}
 
 	// Load and cache effect
@@ -701,7 +701,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	SAFEREL(errors);
 
 	EffectEx* effect_ex=new EffectEx();
-	effect_ex->Name=StringDuplicate(effect_name);
+	effect_ex->Name=Str::Duplicate(effect_name);
 	effect_ex->Effect=effect;
 	effect_ex->EffectFlags=D3DXFX_DONOTSAVESTATE;
 	effect_ex->Defaults=NULL;

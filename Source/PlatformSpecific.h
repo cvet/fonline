@@ -89,4 +89,10 @@
     #undef __DEPRECATED
 #endif
 
+// Linux sleeping
+#if defined(FO_LINUX)
+    #include <unistd.h>
+	#define Sleep(ms) usleep((ms)*1000)
+#endif
+
 #endif // __PLATFORM_SPECIFIC__

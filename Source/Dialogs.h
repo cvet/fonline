@@ -4,7 +4,7 @@
 #include "Common.h"
 #include "Vars.h"
 #include "Text.h"
-
+#include "MsgFiles.h"
 
 // Misc
 #define DIALOG_FILE_EXT			".fodlg"

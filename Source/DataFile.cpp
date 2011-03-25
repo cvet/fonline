@@ -19,7 +19,7 @@ private:
 	uchar* memTree;
 	void* datHandle;
 
-	FILETIME timeCreate,timeAccess,timeWrite;
+	uint64 timeCreate,timeAccess,timeWrite;
 
 	bool ReadTree();
 
@@ -30,7 +30,7 @@ public:
 	const string& GetPackName(){return fileName;}
 	uchar* OpenFile(const char* fname, uint& len);
 	void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
-	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
+	void GetTime(uint64* create, uint64* access, uint64* write);
 };
 
 class ZipFile : public DataFile
@@ -49,7 +49,7 @@ private:
 	string fileName;
 	unzFile zipHandle;
 
-	FILETIME timeCreate,timeAccess,timeWrite;
+	uint64 timeCreate,timeAccess,timeWrite;
 
 	bool ReadTree();
 
@@ -60,7 +60,7 @@ public:
 	const string& GetPackName(){return fileName;}
 	uchar* OpenFile(const char* fname, uint& len);
 	void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result);
-	void GetTime(FILETIME* create, FILETIME* access, FILETIME* write);
+	void GetTime(uint64* create, uint64* access, uint64* write);
 };
 
 /************************************************************************/
@@ -85,7 +85,7 @@ DataFile* OpenDataFile(const char* fname)
 	const char* ext_=ext;
 	while(ext_=strstr(ext_+1,".")) ext=ext_;
 
-	if(!_stricmp(ext,".dat")) // Try open DAT
+	if(Str::CompareCase(ext,".dat")) // Try open DAT
 	{
 		FalloutDatFile* dat=new(nothrow) FalloutDatFile();
 		if(!dat || !dat->Init(fname))
@@ -96,7 +96,7 @@ DataFile* OpenDataFile(const char* fname)
 		}
 		return dat;
 	}
-	else if(!_stricmp(ext,".zip") || !_stricmp(ext,".bos")) // Try open ZIP, BOS
+	else if(Str::CompareCase(ext,".zip") || Str::CompareCase(ext,".bos")) // Try open ZIP, BOS
 	{
 		ZipFile* zip=new(nothrow) ZipFile();
 		if(!zip || !zip->Init(fname))
@@ -132,7 +132,11 @@ bool FalloutDatFile::Init(const char* fname)
 		return false;
 	}
 
-	GetFileTime((HANDLE)datHandle,&timeCreate,&timeAccess,&timeWrite);
+	union {FILETIME ft; ULARGE_INTEGER ul;} tc,ta,tw;
+	GetFileTime((HANDLE)datHandle,&tc.ft,&ta.ft,&tw.ft);
+	timeCreate=tc.ul.QuadPart;
+	timeAccess=ta.ul.QuadPart;
+	timeWrite=tw.ul.QuadPart;
 
 	if(!ReadTree())
 	{
@@ -174,7 +178,7 @@ bool FalloutDatFile::ReadTree()
 		if(!FileRead(datHandle,&files_total,4)) return false;
 		tree_size-=28+4; // Subtract information block and files total
 		if((memTree=new(nothrow) uchar[tree_size])==NULL) return false;
-		ZeroMemory(memTree,tree_size);
+		memzero(memTree,tree_size);
 		if(!FileRead(datHandle,memTree,tree_size)) return false;
 
 		// Indexing tree
@@ -224,7 +228,7 @@ bool FalloutDatFile::ReadTree()
 	if(!FileRead(datHandle,&files_total,4)) return false;
 	tree_size-=4;
 	if((memTree=new(nothrow) uchar[tree_size])==NULL) return false;
-	ZeroMemory(memTree,tree_size);
+	memzero(memTree,tree_size);
 	if(!FileRead(datHandle,memTree,tree_size)) return false;
 
 	// Indexing tree
@@ -294,7 +298,7 @@ uchar* FalloutDatFile::OpenFile(const char* fname, uint& len)
 
 void FalloutDatFile::GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result)
 {
-	size_t path_len=strlen(path);
+	size_t path_len=Str::Length(path);
 	for(IndexMapIt it=filesTree.begin(),end=filesTree.end();it!=end;++it)
 	{
 		const string& fname=(*it).first;
@@ -303,7 +307,7 @@ void FalloutDatFile::GetFileNames(const char* path, bool include_subdirs, const 
 			if(ext && *ext)
 			{
 				size_t pos=fname.find_last_of('.');
-				if(pos!=string::npos && !_stricmp(&fname.c_str()[pos+1],ext)) result.push_back(fname);
+				if(pos!=string::npos && Str::CompareCase(&fname.c_str()[pos+1],ext)) result.push_back(fname);
 			}
 			else
 			{
@@ -313,7 +317,7 @@ void FalloutDatFile::GetFileNames(const char* path, bool include_subdirs, const 
 	}
 }
 
-void FalloutDatFile::GetTime(FILETIME* create, FILETIME* access, FILETIME* write)
+void FalloutDatFile::GetTime(uint64* create, uint64* access, uint64* write)
 {
 	if(create) *create=timeCreate;
 	if(access) *access=timeAccess;
@@ -342,7 +346,13 @@ bool ZipFile::Init(const char* fname)
 		WriteLog(_FUNC_," - Cannot open file.\n");
 		return false;
 	}
-	GetFileTime((HANDLE)file,&timeCreate,&timeAccess,&timeWrite);
+
+	union {FILETIME ft; ULARGE_INTEGER ul;} tc,ta,tw;
+	GetFileTime((HANDLE)file,&tc.ft,&ta.ft,&tw.ft);
+	timeCreate=tc.ul.QuadPart;
+	timeAccess=ta.ul.QuadPart;
+	timeWrite=tw.ul.QuadPart;
+
 	FileClose(file);
 
 	zipHandle=unzOpen(path);
@@ -433,7 +443,7 @@ uchar* ZipFile::OpenFile(const char* fname, uint& len)
 
 void ZipFile::GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result)
 {
-	size_t path_len=strlen(path);
+	size_t path_len=Str::Length(path);
 	for(IndexMapIt it=filesTree.begin(),end=filesTree.end();it!=end;++it)
 	{
 		const string& fname=(*it).first;
@@ -442,7 +452,7 @@ void ZipFile::GetFileNames(const char* path, bool include_subdirs, const char* e
 			if(ext && *ext)
 			{
 				size_t pos=fname.find_last_of('.');
-				if(pos!=string::npos && !_stricmp(&fname.c_str()[pos+1],ext)) result.push_back(fname);
+				if(pos!=string::npos && Str::CompareCase(&fname.c_str()[pos+1],ext)) result.push_back(fname);
 			}
 			else
 			{
@@ -452,7 +462,7 @@ void ZipFile::GetFileNames(const char* path, bool include_subdirs, const char* e
 	}
 }
 
-void ZipFile::GetTime(FILETIME* create, FILETIME* access, FILETIME* write)
+void ZipFile::GetTime(uint64* create, uint64* access, uint64* write)
 {
 	if(create) *create=timeCreate;
 	if(access) *access=timeAccess;

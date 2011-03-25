@@ -374,7 +374,7 @@ bool FOServer::ReloadClientScripts()
 		msg_script.EraseStr(STR_INTERNAL_SCRIPT_CONFIG);
 		msg_script.AddStr(STR_INTERNAL_SCRIPT_CONFIG,config.c_str());
 		msg_script.EraseStr(STR_INTERNAL_SCRIPT_VERSION);
-		msg_script.AddStr(STR_INTERNAL_SCRIPT_VERSION,Str::Format("%d",CLIENT_SCRIPT_BINARY_VERSION));
+		msg_script.AddStr(STR_INTERNAL_SCRIPT_VERSION,Str::FormatBuf("%d",CLIENT_SCRIPT_BINARY_VERSION));
 
 		for(uint i=0,j=pragmas.size();i<j;i++)
 		{
@@ -729,7 +729,7 @@ void FOServer::SScriptFunc::Item_SetLexems(Item* item, CScriptString* lexems)
 	else
 	{
 		const char* str=lexems->c_str();
-		uint len=strlen(str);
+		uint len=Str::Length(str);
 		if(!len) SCRIPT_ERROR_R("Lexems arg length is zero.");
 		if(len+1>=LEXEMS_SIZE) SCRIPT_ERROR_R("Lexems arg length is greater than maximum.");
 		item->SetLexems(str);
@@ -4003,25 +4003,25 @@ uint FOServer::SScriptFunc::Global_GetFullSecond(ushort year, ushort month, usho
 	if(!day) day=GameOpt.Day;
 	else
 	{
-		uint month_day=GameTimeMonthDay(year,month);
+		uint month_day=Timer::GameTimeMonthDay(year,month);
 		day=CLAMP(day,1,month_day);
 	}
 	if(hour>23) hour=23;
 	if(minute>59) minute=59;
 	if(second>59) second=59;
-	return GetFullSecond(year,month,day,hour,minute,second);
+	return Timer::GetFullSecond(year,month,day,hour,minute,second);
 }
 
 void FOServer::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second)
 {
-	SYSTEMTIME st=GetGameTime(full_second);
-	year=st.wYear;
-	month=st.wMonth;
-	day_of_week=st.wDayOfWeek;
-	day=st.wDay;
-	hour=st.wHour;
-	minute=st.wMinute;
-	second=st.wSecond;
+	DateTime dt=Timer::GetGameTime(full_second);
+	year=dt.Year;
+	month=dt.Month;
+	day_of_week=dt.DayOfWeek;
+	day=dt.Day;
+	hour=dt.Hour;
+	minute=dt.Minute;
+	second=dt.Second;
 }
 
 uint FOServer::SScriptFunc::Global_CreateLocation(ushort loc_pid, ushort wx, ushort wy, CScriptArray* critters)
@@ -4235,7 +4235,13 @@ uint FOServer::SScriptFunc::Global_GetLocations(ushort wx, ushort wy, uint radiu
 bool FOServer::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 {
 	if(!text.length()) return false;
-	return Str::StrToInt(text.c_str(),result);
+	if(!Str::IsNumber(text.c_str()))
+	{
+		result=0;
+		return false;
+	}
+	result=Str::AtoI(text.c_str());
+	return true;
 }
 
 bool FOServer::SScriptFunc::Global_RunDialogNpc(Critter* player, Critter* npc, bool ignore_distance)
@@ -4301,8 +4307,8 @@ bool FOServer::SScriptFunc::Global_AddTextListener(int say_type, CScriptString& 
 	TextListen tl;
 	tl.FuncId=func_id;
 	tl.SayType=say_type;
-	StringCopy(tl.FirstStr,first_str.c_str());
-	tl.FirstStrLen=strlen(tl.FirstStr);
+	Str::Copy(tl.FirstStr,first_str.c_str());
+	tl.FirstStrLen=Str::Length(tl.FirstStr);
 	tl.Parameter=parameter;
 
 	SCOPE_LOCK(TextListenersLocker);
@@ -4318,7 +4324,7 @@ void FOServer::SScriptFunc::Global_EraseTextListener(int say_type, CScriptString
 	for(TextListenVecIt it=TextListeners.begin(),end=TextListeners.end();it!=end;++it)
 	{
 		TextListen& tl=*it;
-		if(say_type==tl.SayType && !_stricmp(first_str.c_str(),tl.FirstStr) && tl.Parameter==parameter)
+		if(say_type==tl.SayType && Str::CompareCase(first_str.c_str(),tl.FirstStr) && tl.Parameter==parameter)
 		{
 			TextListeners.erase(it);
 			return;
@@ -4701,16 +4707,16 @@ bool FOServer::SScriptFunc::Global_SetItemDataMask(int mask_type, CScriptArray& 
 
 void FOServer::SScriptFunc::Global_GetTime(ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds)
 {
-	SYSTEMTIME cur_time;
-	GetLocalTime(&cur_time);
-	year=cur_time.wYear;
-	month=cur_time.wMonth;
-	day_of_week=cur_time.wDayOfWeek;
-	day=cur_time.wDay;
-	hour=cur_time.wHour;
-	minute=cur_time.wMinute;
-	second=cur_time.wSecond;
-	milliseconds=cur_time.wMilliseconds;
+	DateTime cur_time;
+	Timer::GetCurrentDateTime(cur_time);
+	year=cur_time.Year;
+	month=cur_time.Month;
+	day_of_week=cur_time.DayOfWeek;
+	day=cur_time.Day;
+	hour=cur_time.Hour;
+	minute=cur_time.Minute;
+	second=cur_time.Second;
+	milliseconds=cur_time.Milliseconds;
 }
 
 bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour(uint index, CScriptString& func_name)

@@ -7,6 +7,10 @@
 #include <process.h>
 #include <locale.h>
 
+#if defined(FO_WINDOWS)
+    #include <richedit.h>
+#endif
+
 unsigned int __stdcall GameLoopThread(void*);
 int CALLBACK DlgProc(HWND dlg, UINT msg,WPARAM wparam, LPARAM lparam);
 void UpdateInfo();
@@ -18,7 +22,7 @@ HWND Dlg=NULL;
 RECT MainInitRect,LogInitRect,InfoInitRect;
 int SplitProcent=50;
 HANDLE LoopThreadHandle=NULL;
-HANDLE GameInitEvent=NULL;
+MutexEvent GameInitEvent;
 FOServer Serv;
 
 int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show)
@@ -44,9 +48,9 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 	if(strstr(cmd_line,"-logdebugoutput") || cfg.GetInt("LoggingDebugOutput",0)!=0) LogToDebugOutput();
 
 	// Init events
-	GameInitEvent=CreateEvent(NULL,TRUE,FALSE,NULL);
-	UpdateEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
-	LogEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
+	GameInitEvent.Disallow();
+	UpdateEvent.Disallow();
+	LogEvent.Disallow();
 
 	// Service
 	if(strstr(cmd_line,"-service"))
@@ -65,16 +69,16 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 		char log_path[MAX_FOPATH]={0};
 		if(!strstr(cmd_line,"-nologpath") && strstr(cmd_line,"-logpath "))
 		{
-			const char* ptr=strstr(cmd_line,"-logpath ")+strlen("-logpath ");
-			StringCopy(log_path,ptr);
+			const char* ptr=strstr(cmd_line,"-logpath ")+Str::Length("-logpath ");
+			Str::Copy(log_path,ptr);
 		}
-		StringAppend(log_path,"FOnlineServer.log");
+		Str::Append(log_path,"FOnlineServer.log");
 		LogToFile(log_path);
 
 		WriteLog(NULL,"Singleplayer mode.\n");
 
 		// Shared data
-		const char* ptr=strstr(cmd_line,"-singleplayer ")+strlen("-singleplayer ");
+		const char* ptr=strstr(cmd_line,"-singleplayer ")+Str::Length("-singleplayer ");
 		HANDLE map_file=NULL;
 		if(sscanf(ptr,"%p%p",&map_file,&SingleplayerClientProcess)!=2 || !SingleplayerData.Attach(map_file))
 		{
@@ -112,7 +116,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 
 		// Set font
 		CHARFORMAT fmt;
-		ZeroMemory(&fmt,sizeof(fmt));
+		memzero(&fmt,sizeof(fmt));
 		fmt.cbSize=sizeof(fmt);
 		SendDlgItemMessage(Dlg,IDC_LOG,EM_GETCHARFORMAT,SCF_DEFAULT,(LPARAM)&fmt);
 		cfg.GetStr("TextFont","Courier New",fmt.szFaceName);
@@ -219,14 +223,22 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 
 	// Loop
 	MSG msg;
-	HANDLE events[2]={UpdateEvent,LogEvent};
+	HANDLE events[2]={UpdateEvent.GetHandle(),LogEvent.GetHandle()};
 	SyncManager* sync_mngr=SyncManager::GetForCurThread();
 	sync_mngr->UnlockAll();
 	while(!FOAppQuit)
 	{
 		uint result=MsgWaitForMultipleObjects(2,events,FALSE,10000,QS_ALLINPUT);
-		if(result==WAIT_OBJECT_0) UpdateInfo();
-		else if(result==WAIT_OBJECT_0+1) UpdateLog();
+		if(result==WAIT_OBJECT_0)
+		{
+			UpdateEvent.Disallow();
+			UpdateInfo();
+		}
+		else if(result==WAIT_OBJECT_0+1)
+		{
+			LogEvent.Disallow();
+			UpdateLog();
+		}
 		else if(result==WAIT_OBJECT_0+2)
 		{
 			while(PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE))
@@ -260,8 +272,8 @@ void UpdateInfo()
 
 	if(Serv.IsInit())
 	{
-		SYSTEMTIME st=GetGameTime(GameOpt.FullSecond);
-		sprintf(str,"Time: %02u.%02u.%04u %02u:%02u:%02u x%u",st.wDay,st.wMonth,st.wYear,st.wHour,st.wMinute,st.wSecond,GameOpt.TimeMultiplier);
+		DateTime st=Timer::GetGameTime(GameOpt.FullSecond);
+		sprintf(str,"Time: %02u.%02u.%04u %02u:%02u:%02u x%u",st.Day,st.Month,st.Year,st.Hour,st.Minute,st.Second,GameOpt.TimeMultiplier);
 		SetDlgItemText(Dlg,IDC_GAMETIME,str);
 		sprintf(str,"Connections: %u",Serv.Statistics.CurOnline);
 		SetDlgItemText(Dlg,IDC_COUNT,str);
@@ -428,10 +440,6 @@ int CALLBACK DlgProc(HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
 		case IDCANCEL:
 			//FOQuit=true;
 			FOAppQuit=true;
-			CloseHandle(UpdateEvent);
-			UpdateEvent=NULL;
-			CloseHandle(LogEvent);
-			LogEvent=NULL;
 			CloseWindow(Dlg);
 			break;
 		case IDC_STOP:
@@ -498,7 +506,7 @@ int CALLBACK DlgProc(HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
 					SendDlgItemMessage(Dlg,idc,EM_SETSEL,0,len);
 					SendDlgItemMessage(Dlg,idc,EM_GETSELTEXT,0,(LPARAM)str);
 					str[len]='\0';
-					FileWrite(f,str,strlen(str));
+					FileWrite(f,str,Str::Length(str));
 					FileClose(f);
 					delete[] str;
 				}
@@ -575,7 +583,7 @@ unsigned int __stdcall GameLoopThread(void*)
 			EnableWindow(GetDlgItem(Dlg,IDC_STOP),1);
 		}
 
-		SetEvent(GameInitEvent);
+		GameInitEvent.Allow();
 
 		Serv.MainLoop();
 		Serv.Finish();
@@ -584,7 +592,7 @@ unsigned int __stdcall GameLoopThread(void*)
 	else
 	{
 		WriteLog(NULL,"Initialization fail!\n");
-		SetEvent(GameInitEvent);
+		GameInitEvent.Allow();
 	}
 
 	if(Dlg)
@@ -618,7 +626,7 @@ void ServiceMain(bool as_service)
 	if(as_service)
 	{
 		// Start
-		SERVICE_TABLE_ENTRY dispatch_table[]={{StringDuplicate("FOnlineServer"),FOServiceStart},{NULL,NULL}};
+		SERVICE_TABLE_ENTRY dispatch_table[]={{Str::Duplicate("FOnlineServer"),FOServiceStart},{NULL,NULL}};
 		StartServiceCtrlDispatcher(dispatch_table);
 		return;
 	}
@@ -660,7 +668,7 @@ void ServiceMain(bool as_service)
 	{
 		LPQUERY_SERVICE_CONFIG service_cfg=(LPQUERY_SERVICE_CONFIG)calloc(8192,1);
 		DWORD dw;
-		if(QueryServiceConfig(service,service_cfg,8192,&dw) && _stricmp(service_cfg->lpBinaryPathName,path2))
+		if(QueryServiceConfig(service,service_cfg,8192,&dw) && !Str::CompareCase(service_cfg->lpBinaryPathName,path2))
 			ChangeServiceConfig(service,SERVICE_NO_CHANGE,SERVICE_NO_CHANGE,SERVICE_NO_CHANGE,path2,NULL,NULL,NULL,NULL,NULL,NULL);
 		free(service_cfg);
 	}
@@ -705,7 +713,7 @@ VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
 	FOQuit=false;
 	LoopThreadHandle=(HANDLE)_beginthreadex(NULL,0,GameLoopThread,NULL,0,NULL);
-	WaitForSingleObject(GameInitEvent,INFINITE);
+	GameInitEvent.Wait();
 
 	if(Serv.IsInit()) SetFOServiceStatus(SERVICE_RUNNING);
 	else SetFOServiceStatus(SERVICE_STOPPED);

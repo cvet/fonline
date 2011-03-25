@@ -29,7 +29,7 @@ void ConstantsManager::Initialize(int path_type, const char* path /* = NULL */)
 	{
 		if(path)
 		{
-			AddCollection(i,Str::Format("%s%s",path,CollectionFiles[i]),path_type);
+			AddCollection(i,Str::FormatBuf("%s%s",path,CollectionFiles[i]),path_type);
 		}
 		else
 		{
@@ -152,8 +152,8 @@ int ConstantsManager::GetDefineValue(const char* str)
 {
 	if(Str::IsNumber(str)) return atoi(str);
 
-	if(!_stricmp(str,"true")) return 1;
-	else if(!_stricmp(str,"false")) return 0;
+	if(Str::CompareCase(str,"true")) return 1;
+	else if(Str::CompareCase(str,"false")) return 0;
 
 	StrUIntMapIt it=ConstCollections[CONSTANTS_DEFINE].NameValue.find(str);
 	if(it==ConstCollections[CONSTANTS_DEFINE].NameValue.end())

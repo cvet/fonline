@@ -166,8 +166,8 @@ bool FOMapper::Init(HWND wnd)
 	cfg_server.LoadFile(SERVER_CONFIG_FILE,PT_ROOT);
 	char lang_name[MAX_FOTEXT];
 	cfg_server.GetStr("Language_0",DEFAULT_LANGUAGE,lang_name);
-	if(strlen(lang_name)!=4) StringCopy(lang_name,DEFAULT_LANGUAGE);
-	Str::Lwr(lang_name);
+	if(strlen(lang_name)!=4) Str::Copy(lang_name,DEFAULT_LANGUAGE);
+	Str::Lower(lang_name);
 
 	if(!CurLang.Init(lang_name,PT_SERVER_TEXTS)) return false;
 
@@ -630,8 +630,8 @@ uint FOMapper::AnimLoad(uint name_hash, uchar dir, int res_type)
 uint FOMapper::AnimLoad(const char* fname, int path_type, int res_type)
 {
 	char full_name[MAX_FOPATH];
-	StringCopy(full_name,FileManager::GetPath(path_type));
-	StringAppend(full_name,fname);
+	Str::Copy(full_name,FileManager::GetPath(path_type));
+	Str::Append(full_name,fname);
 
 	AnyFrames* anim=ResMngr.GetAnim(Str::GetHash(full_name),0,res_type);
 	if(!anim) return 0;
@@ -1476,14 +1476,14 @@ void FOMapper::RefreshTiles(int tab)
 				// Make primary collection name
 				char path_[MAX_FOPATH];
 				FileManager::ExtractPath(fname.c_str(),path_);
-				if(!path_[0]) StringCopy(path_,"root");
+				if(!path_[0]) Str::Copy(path_,"root");
 				uint path_index=PathIndex[path_];
 				if(!path_index)
 				{
 					path_index=PathIndex.size();
 					PathIndex[path_]=path_index;
 				}
-				string collection_name=Str::Format("%03d - %s",path_index,path_);
+				string collection_name=Str::FormatBuf("%03d - %s",path_index,path_);
 
 				// Make secondary collection name
 				string collection_name_ex;
@@ -1605,7 +1605,7 @@ void FOMapper::IntDraw()
 				if(anim) SprMngr.DrawSpriteSize(anim->GetCurSprId(),x,y+h/2,(float)w,(float)(h/2),false,true,col);
 			}
 
-			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",proto_item->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::FormatBuf("%u",proto_item->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 
 		if(GetTabIndex()<(int)(*CurItemProtos).size())
@@ -1659,7 +1659,7 @@ void FOMapper::IntDraw()
 			if(i==GetTabIndex()) col=COLOR_IFACE_RED;
 
 			SprMngr.DrawSpriteSize(spr_id,x,y,(float)w,(float)(h/2),false,true,col);
-			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("%u",pnpc->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::FormatBuf("%u",pnpc->ProtoId),FT_NOBREAK,COLOR_TEXT_WHITE);
 		}
 
 		if(GetTabIndex()<CurNpcProtos->size())
@@ -1693,7 +1693,7 @@ void FOMapper::IntDraw()
 			uint cnt=(proto_item->Stackable?mobj->MItem.Count:1);
 			if(proto_item->Stackable && !cnt) cnt=proto_item->StartCount;
 			if(!cnt) cnt=1;
-			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::Format("x%u",cnt),FT_NOBREAK,COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(x,y+h-15,x+w,y+h),Str::FormatBuf("x%u",cnt),FT_NOBREAK,COLOR_TEXT_WHITE);
 			if(mobj->MItem.ItemSlot!=SLOT_INV)
 			{
 				if(mobj->MItem.ItemSlot==SLOT_HAND1) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Main",FT_NOBREAK,COLOR_TEXT_WHITE);
@@ -1711,7 +1711,7 @@ void FOMapper::IntDraw()
 		for(;i<j;i++,x+=w)
 		{
 			ProtoMap* pm=LoadedProtoMaps[i];
-			SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),Str::Format("<%s>",pm->GetName()),0,pm==CurProtoMap?COLOR_IFACE_RED:COLOR_TEXT);
+			SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),Str::FormatBuf("<%s>",pm->GetName()),0,pm==CurProtoMap?COLOR_IFACE_RED:COLOR_TEXT);
 		}
 	}
 
@@ -1743,7 +1743,7 @@ void FOMapper::IntDraw()
 			uint count=stab.TileNames.size();
 			if(!count) count=stab.NpcProtos.size();
 			if(!count) count=stab.ItemProtos.size();
-			name+=Str::Format(" (%u)",count);
+			name+=Str::FormatBuf(" (%u)",count);
 			SprMngr.DrawStr(r,name.c_str(),0,color);
 
 			posy-=line_height;
@@ -1758,7 +1758,7 @@ void FOMapper::IntDraw()
 		ushort hx,hy;
 		if(HexMngr.GetHexPixel(GameOpt.MouseX,GameOpt.MouseY,hx,hy)) hex_thru=true;
 		SprMngr.DrawStr(INTRECT(MODE_WIDTH-100,0,MODE_WIDTH,MODE_HEIGHT),
-			Str::Format(
+			Str::FormatBuf(
 			"Map '%s'\n"
 			"Hex %d %d\n"
 			"Time %u : %u\n"
@@ -1819,8 +1819,8 @@ void FOMapper::ObjDraw()
 		col=COLOR_TEXT;\
 		if(ObjCurLine==(y-ObjWWork[1]-ObjY)/DRAW_NEXT_HEIGHT) col=COLOR_TEXT_RED;\
 		if((cnst)==true) col=COLOR_TEXT_WHITE;\
-		StringCopy(str_,name);\
-		StringAppend(str_,"....................................................");\
+		Str::Copy(str_,name);\
+		Str::Append(str_,"....................................................");\
 		SprMngr.DrawStr(INTRECT(INTRECT(x,y,x+w/3,y+h),0,0),str_,FT_NOBREAK,col);\
 		(unsign==true)?sprintf(str_,"%u (0x%0X)",val,val):sprintf(str_,"%d (0x%0X)",val,val);\
 		SprMngr.DrawStr(INTRECT(INTRECT(x+w/3,y,x+w,y+h),0,0),str_,FT_NOBREAK,col);\
@@ -1832,10 +1832,10 @@ void FOMapper::ObjDraw()
 		col=COLOR_TEXT;\
 		if(ObjCurLine==(y-ObjWWork[1]-ObjY)/DRAW_NEXT_HEIGHT) col=COLOR_TEXT_RED;\
 		if((cnst)==true) col=COLOR_TEXT_WHITE;\
-		StringCopy(str_,name);\
-		StringAppend(str_,"....................................................");\
+		Str::Copy(str_,name);\
+		Str::Append(str_,"....................................................");\
 		SprMngr.DrawStr(INTRECT(INTRECT(x,y,x+w/3,y+h),0,0),str_,FT_NOBREAK,col);\
-		StringCopy(str_,text?text:"");\
+		Str::Copy(str_,text?text:"");\
 		SprMngr.DrawStr(INTRECT(INTRECT(x+w/3,y,x+w,y+h),0,0),str_,FT_NOBREAK,col);\
 		y+=step;\
 	}while(0)
@@ -1844,7 +1844,7 @@ void FOMapper::ObjDraw()
 	if(so.MapNpc)
 	{
 		DRAW_COMPONENT_TEXT("Name",CritType::GetName(so.MapNpc->GetCrType()),true);     // 0
-		DRAW_COMPONENT_TEXT("Type",Str::Format("Type %u",so.MapNpc->GetCrType()),true); // 1
+		DRAW_COMPONENT_TEXT("Type",Str::FormatBuf("Type %u",so.MapNpc->GetCrType()),true); // 1
 	}
 	else if(so.MapItem && proto)
 	{
@@ -4034,14 +4034,14 @@ void FOMapper::ConsoleDraw()
 		}
 
 		str_to_edit[0]=0;
-		StringCopy(str_to_edit,ConsoleStr);
+		Str::Copy(str_to_edit,ConsoleStr);
 		if(show_cur)
 			str_to_edit[ConsoleCur]='!';
 		else
 			str_to_edit[ConsoleCur]='.';
 
 		str_to_edit[ConsoleCur+1]=0;
-		StringAppend(str_to_edit,&ConsoleStr[ConsoleCur]);
+		Str::Append(str_to_edit,&ConsoleStr[ConsoleCur]);
 		SprMngr.DrawStr(INTRECT(IntX+ConsoleTextX,(IntVisible?IntY:MODE_HEIGHT)+ConsoleTextY,MODE_WIDTH,MODE_HEIGHT),str_to_edit,FT_NOBREAK);
 	}
 }
@@ -4075,7 +4075,7 @@ void FOMapper::ConsoleKeyDown(uchar dik)
 					CScriptString* sstr=new CScriptString(ConsoleStr);
 					Script::SetArgObject(sstr);
 					if(Script::RunPrepared() && Script::GetReturnedBool()) process_command=false;
-					StringCopy(ConsoleStr,sstr->c_str());
+					Str::Copy(ConsoleStr,sstr->c_str());
 					sstr->Release();
 				}
 
@@ -4101,19 +4101,19 @@ void FOMapper::ConsoleKeyDown(uchar dik)
 	case DIK_UP:
 		if(ConsoleHistoryCur-1<0) return;
 		ConsoleHistoryCur--;	
-		StringCopy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
+		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
 		ConsoleCur=strlen(ConsoleStr);
 		return;
 	case DIK_DOWN:
 		if(ConsoleHistoryCur+1>=(int)ConsoleHistory.size())
 		{
 			ConsoleHistoryCur=ConsoleHistory.size();
-			StringCopy(ConsoleStr,"");
+			Str::Copy(ConsoleStr,"");
 			ConsoleCur=0;
 			return;
 		}
 		ConsoleHistoryCur++;
-		StringCopy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
+		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
 		ConsoleCur=strlen(ConsoleStr);
 		return;
 	default:
@@ -4222,7 +4222,7 @@ void FOMapper::ParseCommand(const char* cmd)
 			AddMess("Function name not typed.");
 			return;
 		}
-		StringCopy(str,cmd+strlen(func_name));
+		Str::Copy(str,cmd+strlen(func_name));
 		while(str[0]==' ') Str::CopyBack(str);
 
 		// Reparse module
@@ -4239,7 +4239,7 @@ void FOMapper::ParseCommand(const char* cmd)
 			if(Script::RunPrepared())
 			{
 				CScriptString* sstr_=(CScriptString*)Script::GetReturnedObject();
-				AddMessFormat(Str::Format("Result: %s",sstr_->c_str()));
+				AddMessFormat(Str::FormatBuf("Result: %s",sstr_->c_str()));
 				sstr_->Release();
 			}
 			else
@@ -4267,8 +4267,8 @@ void FOMapper::ParseCommand(const char* cmd)
 
 		cmd++;
 		char anim[512];
-		StringCopy(anim,cmd);
-		Str::Lwr(anim);
+		Str::Copy(anim,cmd);
+		Str::Lower(anim);
 		Str::EraseChars(anim,' ');
 		if(!strlen(anim) || strlen(anim)&1) return;
 
@@ -4591,7 +4591,7 @@ bool FOMapper::SaveLogFile()
 	string fmt_log;
 	for(uint i=0;i<MessBox.size();++i)
 	{
-		StringCopy(cur_mess,MessBox[i].Mess.c_str());
+		Str::Copy(cur_mess,MessBox[i].Mess.c_str());
 		Str::EraseWords(cur_mess,'|',' ');
 		fmt_log+=MessBox[i].Time+string(cur_mess);
 	}
@@ -4697,7 +4697,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName(MapObject& mob
 
 void FOMapper::SScriptFunc::MapperObject_set_ScriptName(MapObject& mobj, CScriptString* str)
 {
-	StringCopy(mobj.ScriptName,str?str->c_str():NULL);
+	Str::Copy(mobj.ScriptName,str?str->c_str():NULL);
 }
 
 CScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName(MapObject& mobj)
@@ -4707,7 +4707,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName(MapObject& mobj)
 
 void FOMapper::SScriptFunc::MapperObject_set_FuncName(MapObject& mobj, CScriptString* str)
 {
-	StringCopy(mobj.FuncName,str?str->c_str():NULL);
+	Str::Copy(mobj.FuncName,str?str->c_str():NULL);
 }
 
 uchar FOMapper::SScriptFunc::MapperObject_get_Critter_Cond(MapObject& mobj)
@@ -4746,7 +4746,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap(MapObject& mobj)
 void FOMapper::SScriptFunc::MapperObject_set_PicMap(MapObject& mobj, CScriptString* str)
 {
 	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_R("Map object is not item or scenery.");
-	StringCopy(mobj.RunTime.PicMapName,str->c_str());
+	Str::Copy(mobj.RunTime.PicMapName,str->c_str());
 	mobj.MItem.PicMapHash=Str::GetHash(mobj.RunTime.PicMapName);
 }
 
@@ -4765,7 +4765,7 @@ CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv(MapObject& mobj)
 void FOMapper::SScriptFunc::MapperObject_set_PicInv(MapObject& mobj, CScriptString* str)
 {
 	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_SCENERY) SCRIPT_ERROR_R("Map object is not item or scenery.");
-	StringCopy(mobj.RunTime.PicInvName,str->c_str());
+	Str::Copy(mobj.RunTime.PicInvName,str->c_str());
 	mobj.MItem.PicInvHash=Str::GetHash(mobj.RunTime.PicInvName);
 }
 
@@ -5133,7 +5133,7 @@ CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptModule(ProtoMap& pmap)
 
 void FOMapper::SScriptFunc::MapperMap_set_ScriptModule(ProtoMap& pmap, CScriptString* str)
 {
-	StringCopy(pmap.Header.ScriptModule,str?str->c_str():"");
+	Str::Copy(pmap.Header.ScriptModule,str?str->c_str():"");
 }
 
 CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptFunc(ProtoMap& pmap)
@@ -5143,7 +5143,7 @@ CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptFunc(ProtoMap& pmap)
 
 void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc(ProtoMap& pmap, CScriptString* str)
 {
-	StringCopy(pmap.Header.ScriptFunc,str?str->c_str():"");
+	Str::Copy(pmap.Header.ScriptFunc,str?str->c_str():"");
 }
 
 void FOMapper::SScriptFunc::Global_SetDefaultCritterParam(uint index, int param)
@@ -5230,12 +5230,12 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames(CScriptString* dir, CScriptAr
 
 	while(true)
 	{
-		if(ProtoMap::IsMapFile(Str::Format("%s%s",dir_.c_str(),fdata.cFileName)))
+		if(ProtoMap::IsMapFile(Str::FormatBuf("%s%s",dir_.c_str(),fdata.cFileName)))
 		{
 			if(names)
 			{
 				char fname[MAX_FOPATH];
-				StringCopy(fname,fdata.cFileName);
+				Str::Copy(fname,fdata.cFileName);
 				char* ext=(char*)FileManager::GetExtension(fname);
 				if(ext) *(ext-1)=0;
 
@@ -5544,7 +5544,13 @@ void FOMapper::SScriptFunc::Global_Log(CScriptString& text)
 bool FOMapper::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 {
 	if(!text.length()) return false;
-	return Str::StrToInt(text.c_str(),result);
+	if(!Str::IsNumber(text.c_str()))
+	{
+		result=0;
+		return false;
+	}
+	result=Str::AtoI(text.c_str());
+	return true;
 }
 
 void FOMapper::SScriptFunc::Global_Message(CScriptString& msg)
@@ -5967,7 +5973,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d(uint instance, uint crtype, uin
 		if(!anim || DrawCritter3dCrType[instance]!=crtype)
 		{
 			SAFEDEL(anim);
-			anim=Animation3d::GetAnimation(Str::Format("%s.fo3d",CritType::GetName(crtype)),PT_ART_CRITTERS,false);
+			anim=Animation3d::GetAnimation(Str::FormatBuf("%s.fo3d",CritType::GetName(crtype)),PT_ART_CRITTERS,false);
 			DrawCritter3dCrType[instance]=crtype;
 			DrawCritter3dFailToLoad[instance]=0;
 

@@ -1376,7 +1376,7 @@ void FOClient::ContainerDraw(INTRECT& pos, int height, int scroll, ItemVec& cont
 		if(item.GetId()==skip_id) continue;
 		if(i>=scroll && i<scroll+pos.H()/height)
 		{
-			if(item.GetCount()>1) SprMngr.DrawStr(INTRECT(pos.L,pos.T+(i2*height),pos.R,pos.T+(i2*height)+height),Str::Format("x%u",item.GetCount()),0,COLOR_TEXT_WHITE);
+			if(item.GetCount()>1) SprMngr.DrawStr(INTRECT(pos.L,pos.T+(i2*height),pos.R,pos.T+(i2*height)+height),Str::FormatBuf("x%u",item.GetCount()),0,COLOR_TEXT_WHITE);
 			i2++;
 		}
 		i++;
@@ -1940,7 +1940,7 @@ void FOClient::ConsoleDraw()
 		INTRECT rect(IntX+ConsoleTextX,(IntVisible?(IntAddMess?IntWAddMess[1]:IntY):MODE_HEIGHT)+ConsoleTextY,MODE_WIDTH,MODE_HEIGHT);
 		if(IsMainScreen(SCREEN_GLOBAL_MAP)) rect=GmapWPanel;
 
-		char* buf=(char*)Str::Format("%s",ConsoleStr);
+		char* buf=(char*)Str::FormatBuf("%s",ConsoleStr);
 		Str::Insert(&buf[ConsoleCur],Timer::FastTick()%800<400?"!":".");
 		SprMngr.DrawStr(rect,buf,FT_NOBREAK);
 	}
@@ -1956,25 +1956,25 @@ void FOClient::ConsoleDraw()
 		{
 			GetMouseHex();
 			FLTPOINT p=Animation3d::Convert2dTo3d(GameOpt.MouseX,GameOpt.MouseY);
-			SprMngr.DrawStr(INTRECT(250,5,450,300),Str::Format(
+			SprMngr.DrawStr(INTRECT(250,5,450,300),Str::FormatBuf(
 				"cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
 				Chosen->HexX,Chosen->HexY,TargetX,TargetY,GameOpt.MouseX,GameOpt.MouseY,Chosen->Cond,GameOpt.ScrOx,GameOpt.ScrOy,
 				GetFarDir(Chosen->HexX,Chosen->HexY,TargetX,TargetY),p.X,p.Y
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
-			SprMngr.DrawStr(INTRECT(450,5,650,300),Str::Format(
+			SprMngr.DrawStr(INTRECT(450,5,650,300),Str::FormatBuf(
 				"Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
 				Chosen->SprId,Chosen->SprOx,Chosen->SprOy,HexMngr.GetField(TargetX,TargetY).ScrX,HexMngr.GetField(TargetX,TargetY).ScrY
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 
-			SprMngr.DrawStr(INTRECT(650,5,800,300),Str::Format(
+			SprMngr.DrawStr(INTRECT(650,5,800,300),Str::FormatBuf(
 				"Time:%02d:%02d %02d:%02d:%04d x%02d\nSleep:%d\nSound:%d\nMusic:%d",
 				GameOpt.Hour,GameOpt.Minute,GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.TimeMultiplier,
 				GameOpt.Sleep,SndMngr.GetSoundVolume(),SndMngr.GetMusicVolume()
 				),FT_CENTERX,D3DCOLOR_XRGB(255,240,0));
 		}
 
-		SprMngr.DrawStr(INTRECT(10,10,MODE_WIDTH,MODE_HEIGHT),Str::Format(
+		SprMngr.DrawStr(INTRECT(10,10,MODE_WIDTH,MODE_HEIGHT),Str::FormatBuf(
 			"|0xFFBBBBBB FOnline %s\n"
 			"by Gamers for Gamers\n"
 			"version %04X-%02X beta\n\n"
@@ -2050,19 +2050,19 @@ void FOClient::ConsoleKeyDown(uchar dik)
 	case DIK_UP:
 		if(ConsoleHistoryCur-1<0) return;
 		ConsoleHistoryCur--;	
-		StringCopy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
+		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
 		ConsoleCur=strlen(ConsoleStr);
 		return;
 	case DIK_DOWN:
 		if(ConsoleHistoryCur+1>=(int)ConsoleHistory.size())
 		{
 			ConsoleHistoryCur=ConsoleHistory.size();
-			StringCopy(ConsoleStr,"");
+			Str::Copy(ConsoleStr,"");
 			ConsoleCur=0;
 			return;
 		}
 		ConsoleHistoryCur++;
-		StringCopy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
+		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
 		ConsoleCur=strlen(ConsoleStr);
 		return;
 	default:
@@ -2241,7 +2241,7 @@ void FOClient::GameKeyDown(uchar dik)
 		case DIK_M: IfaceHold=IFACE_GAME_MNEXT; GameRMouseUp(); break;
 		case DIK_N: if(Chosen->NextRateItem(false)) Net_SendRateItem(); break;
 		case DIK_S: SboxUseOn.Clear(); ShowScreen(SCREEN__SKILLBOX); break;
-		case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.Second,GameOpt.TimeMultiplier)); break;
+		case DIK_SLASH: AddMess(FOMB_GAME,Str::FormatBuf("Time: %02d.%02d.%d %02d:%02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.Second,GameOpt.TimeMultiplier)); break;
 		case DIK_COMMA: SetAction(CHOSEN_DIR,1/*CW*/); break;
 		case DIK_PERIOD: SetAction(CHOSEN_DIR,0/*CCW*/); break;
 		case DIK_TAB: ShowScreen(SCREEN__MINI_MAP); break;
@@ -2464,7 +2464,7 @@ void FOClient::IntDraw()
 	if(ap_cost)
 	{
 		SprMngr.DrawSprite(IntWApCostPicNone,IntWApCost[0]+item_offsx,IntWApCost[1]+item_offsy);
-		SprMngr.DrawStr(INTRECT(IntWApCost,item_offsx+20,item_offsy),Str::Format("%u",ap_cost),0,COLOR_IFACE_FIX,FONT_SAND_NUM);
+		SprMngr.DrawStr(INTRECT(IntWApCost,item_offsx+20,item_offsy),Str::FormatBuf("%u",ap_cost),0,COLOR_IFACE_FIX,FONT_SAND_NUM);
 	}
 
 	// Ap
@@ -2502,7 +2502,7 @@ void FOClient::IntDraw()
 	SprMngr.DrawStr(IntHP,bin_str,0,COLOR_IFACE,FONT_NUM);
 
 	// Ac
-	SprMngr.DrawStr(IntAC,Str::Format("%c%03d",'9'+4,Chosen->GetParam(ST_ARMOR_CLASS)),0,COLOR_IFACE,FONT_NUM);
+	SprMngr.DrawStr(IntAC,Str::FormatBuf("%c%03d",'9'+4,Chosen->GetParam(ST_ARMOR_CLASS)),0,COLOR_IFACE,FONT_NUM);
 
 	// Indicator
 	Item* item=Chosen->ItemSlotMain;
@@ -2520,7 +2520,7 @@ void FOClient::IntDraw()
 		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
 			DrawIndicator(IntWAmmoCount,IntAmmoPoints,COLOR_TEXT_GREEN,Procent(indicator_max,indicator_cur),IntAmmoTick,true,false);
 		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH)
-			SprMngr.DrawStr(INTRECT(IntWAmmoCountStr,item_offsx,item_offsy),Str::Format("%03d",indicator_cur),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DGREEN:COLOR_TEXT,FONT_SPECIAL);
+			SprMngr.DrawStr(INTRECT(IntWAmmoCountStr,item_offsx,item_offsy),Str::FormatBuf("%03d",indicator_cur),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DGREEN:COLOR_TEXT,FONT_SPECIAL);
 	}
 	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
 	{
@@ -2533,7 +2533,7 @@ void FOClient::IntDraw()
 		if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
 			DrawIndicator(IntWWearProcent,IntWearPoints,COLOR_TEXT_RED,item->GetDeteriorationProc(),IntWearTick,true,false);
 		if(GameOpt.IndicatorType==INDICATOR_NUMBERS || GameOpt.IndicatorType==INDICATOR_BOTH)
-			SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::Format("%d%%",item->GetDeteriorationProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
+			SprMngr.DrawStr(INTRECT(IntWWearProcentStr,item_offsx,item_offsy),Str::FormatBuf("%d%%",item->GetDeteriorationProc()),0,IfaceHold==IFACE_INT_ITEM?COLOR_TEXT_DRED:COLOR_TEXT_RED,FONT_SPECIAL);
 	}
 	else if(GameOpt.IndicatorType==INDICATOR_LINES || GameOpt.IndicatorType==INDICATOR_BOTH)
 	{
@@ -3100,13 +3100,13 @@ void FOClient::DlgDraw(bool is_dialog)
 		ContainerCalcInfo(BarterCont2o,c2,w2,v2,Chosen->IsRawParam(PE_MASTER_TRADER)?0:BarterK,false);
 		if(!BarterIsPlayers && BarterK)
 		{
-			SprMngr.DrawStr(INTRECT(BarterWCost1,DlgX,DlgY),Str::Format("$%u",c1),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-			SprMngr.DrawStr(INTRECT(BarterWCost2,DlgX,DlgY),Str::Format("$%u",c2),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(BarterWCost1,DlgX,DlgY),Str::FormatBuf("$%u",c1),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(BarterWCost2,DlgX,DlgY),Str::FormatBuf("$%u",c2),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
 		}
 		else
 		{
-			SprMngr.DrawStr(INTRECT(BarterWCost1,DlgX,DlgY),Str::Format("%u",w1/1000),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-			SprMngr.DrawStr(INTRECT(BarterWCost2,DlgX,DlgY),Str::Format("%u",w2/1000),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(BarterWCost1,DlgX,DlgY),Str::FormatBuf("%u",w1/1000),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+			SprMngr.DrawStr(INTRECT(BarterWCost2,DlgX,DlgY),Str::FormatBuf("%u",w2/1000),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_WHITE);//BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
 		}
 		// Overweight, oversize indicate
 		if(Chosen->GetFreeWeight()+w1<(int)w2) SprMngr.DrawStr(INTRECT(DlgWText.L,DlgWText.B-5,DlgWText.R,DlgWText.B+10,DlgX,DlgY),MsgGame->GetStr(STR_OVERWEIGHT_TITLE),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_DDGREEN);
@@ -3115,7 +3115,7 @@ void FOClient::DlgDraw(bool is_dialog)
 
 	// Timer
 	if(!BarterIsPlayers && DlgEndTick && DlgEndTick>Timer::GameTick())
-		SprMngr.DrawStr(INTRECT(DlgWTimer,DlgX,DlgY),Str::Format("%u",(DlgEndTick-Timer::GameTick())/1000),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_DGREEN);
+		SprMngr.DrawStr(INTRECT(DlgWTimer,DlgX,DlgY),Str::FormatBuf("%u",(DlgEndTick-Timer::GameTick())/1000),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_DGREEN);
 }
 
 void FOClient::DlgLMouseDown(bool is_dialog)
@@ -3697,7 +3697,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 {
 	if(!_stricmp(text,"error"))
 	{
-		StringCopy(text,text_len,"Text not found!");
+		Str::Copy(text,text_len,"Text not found!");
 		return;
 	}
 
@@ -3758,12 +3758,12 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				// Player name
 				if(!_stricmp(tag,"pname"))
 				{
-					StringCopy(tag,player?player->GetName():"");
+					Str::Copy(tag,player?player->GetName():"");
 				}
 				// Npc name
 				else if(!_stricmp(tag,"nname"))
 				{
-					StringCopy(tag,npc?npc->GetName():"");
+					Str::Copy(tag,npc?npc->GetName():"");
 				}
 				// Sex
 				else if(!_stricmp(tag,"sex"))
@@ -3775,14 +3775,14 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				// Lexems
 				else if(strlen(tag)>4 && tag[0]=='l' && tag[1]=='e' && tag[2]=='x' && tag[3]==' ')
 				{
-					char* s=strstr((char*)lexems,Str::Format("$%s",&tag[4]));
+					char* s=strstr((char*)lexems,Str::FormatBuf("$%s",&tag[4]));
 					if(s)
 					{
 						s+=strlen(&tag[4])+1;
 						if(*s==' ') s++;
 						Str::CopyWord(tag,s,'$',false);
 					}
-					else StringCopy(tag,"<lexem not found>");
+					else Str::Copy(tag,"<lexem not found>");
 				}
 				// Msg text
 				else if(strlen(tag)>4 && tag[0]=='m' && tag[1]=='s' && tag[2]=='g' && tag[3]==' ')
@@ -3791,13 +3791,13 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 					uint str_num;
 					Str::EraseChars(&tag[4],'(');
 					Str::EraseChars(&tag[4],')');
-					if(sscanf(&tag[4],"%s %u",msg_type_name,&str_num)!=2) StringCopy(tag,"<msg tag parse fail>");
+					if(sscanf(&tag[4],"%s %u",msg_type_name,&str_num)!=2) Str::Copy(tag,"<msg tag parse fail>");
 					else
 					{
-						int msg_type=Str::GetMsgType(msg_type_name);
-						if(msg_type<0 || msg_type>=TEXTMSG_COUNT) StringCopy(tag,"<msg tag, unknown type>");
-						else if(!CurLang.Msg[msg_type].Count(str_num)) StringCopy(tag,Str::Format("<msg tag, string %u not found>",str_num));
-						else StringCopy(tag,CurLang.Msg[msg_type].GetStr(str_num));
+						int msg_type=FOMsg::GetMsgType(msg_type_name);
+						if(msg_type<0 || msg_type>=TEXTMSG_COUNT) Str::Copy(tag,"<msg tag, unknown type>");
+						else if(!CurLang.Msg[msg_type].Count(str_num)) Str::Copy(tag,Str::FormatBuf("<msg tag, string %u not found>",str_num));
+						else Str::Copy(tag,CurLang.Msg[msg_type].GetStr(str_num));
 					}
 				}
 				// Script
@@ -3806,7 +3806,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 					char func_name[256];
 					Str::CopyWord(func_name,&tag[7],'$',false);
 					int bind_id=Script::Bind("client_main",func_name,"string %s(string&)",true);
-					StringCopy(tag,"<script function not found>");
+					Str::Copy(tag,"<script function not found>");
 					if(bind_id>0 && Script::PrepareContext(bind_id,_FUNC_,"Game"))
 					{
 						CScriptString* script_lexems=new CScriptString(lexems);
@@ -3816,18 +3816,18 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 							CScriptString* result=(CScriptString*)Script::GetReturnedObject();
 							if(result)
 							{
-								StringCopy(tag,result->c_str());
+								Str::Copy(tag,result->c_str());
 								result->Release();
 							}
 						}
-						//StringCopy(lexems,script_lexems->c_str());
+						//Str::Copy(lexems,script_lexems->c_str());
 						//script_lexems->Release();
 					}
 				}
 				// Error
 				else
 				{
-					StringCopy(tag,"<error>");
+					Str::Copy(tag,"<error>");
 				}
 
 				if(strlen(str)+strlen(tag)<text_len) Str::Insert(str+i,tag);
@@ -3842,7 +3842,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 	}
 
 	dialogs.push_back(str);
-	StringCopy(text,text_len,dialogs[Random(0,dialogs.size()-1)]);
+	Str::Copy(text,text_len,dialogs[Random(0,dialogs.size()-1)]);
 }
 
 //==============================================================================================================================
@@ -4851,7 +4851,7 @@ void FOClient::ShowScreen(int screen, int p0, int p1, int p2)
 		SetCurMode(CUR_DEFAULT);
 		DlgboxType=DIALOGBOX_NONE;
 		DlgboxWait=0;
-		StringCopy(DlgboxText,"");
+		Str::Copy(DlgboxText,"");
 		DlgboxButtonsCount=0;
 		DlgboxSelectedButton=0;
 		break;
@@ -4989,8 +4989,8 @@ void FOClient::RunScreenScript(bool show, int screen, int p0, int p1, int p2)
 
 void FOClient::SetCurMode(int new_cur)
 {
-//	AddMess(0,Str::Format("SetCurMode Cur %u",CurMode));
-//	AddMess(0,Str::Format("SetCurMode New %u",new_cur));
+//	AddMess(0,Str::FormatBuf("SetCurMode Cur %u",CurMode));
+//	AddMess(0,Str::FormatBuf("SetCurMode New %u",new_cur));
 	if(CurModeLast!=CurMode) CurModeLast=CurMode;
 	CurMode=new_cur;
 
@@ -5108,7 +5108,7 @@ void FOClient::LmapDraw()
 
 	SprMngr.DrawSprite(LmapPMain,LmapMain[0]+LmapX,LmapMain[1]+LmapY);
 	SprMngr.DrawPoints(LmapPrepPix,D3DPT_LINELIST);
-	SprMngr.DrawStr(INTRECT(LmapWMap[0]+LmapX,LmapWMap[1]+LmapY,LmapWMap[0]+LmapX+100,LmapWMap[1]+LmapY+15),Str::Format("Zoom: %d",LmapZoom-1),0);
+	SprMngr.DrawStr(INTRECT(LmapWMap[0]+LmapX,LmapWMap[1]+LmapY,LmapWMap[0]+LmapX+100,LmapWMap[1]+LmapY+15),Str::FormatBuf("Zoom: %d",LmapZoom-1),0);
 	if(IfaceHold==IFACE_LMAP_OK) SprMngr.DrawSprite(LmapPBOkDw,LmapBOk[0]+LmapX,LmapBOk[1]+LmapY);
 	if(IfaceHold==IFACE_LMAP_SCAN) SprMngr.DrawSprite(LmapPBScanDw,LmapBScan[0]+LmapX,LmapBScan[1]+LmapY);
 	if(LmapSwitchHi) SprMngr.DrawSprite(LmapPBLoHiDw,LmapBLoHi[0]+LmapX,LmapBLoHi[1]+LmapY);
@@ -5420,7 +5420,7 @@ void FOClient::GmapDraw()
 			if(!GmapPic[index])
 			{
 				SprMngr.SurfType=RES_GLOBAL_MAP;
-				GmapPic[index]=SprMngr.LoadAnimation(Str::Format(GmapTilesPic,index),PT_ART_INTRFACE,ANIM_USE_DUMMY);
+				GmapPic[index]=SprMngr.LoadAnimation(Str::FormatBuf(GmapTilesPic,index),PT_ART_INTRFACE,ANIM_USE_DUMMY);
 				SprMngr.SurfType=RES_NONE;
 			}
 			if(!GmapPic[index]) continue;
@@ -5654,11 +5654,11 @@ void FOClient::GmapDraw()
 	}
 
 	// Time
-	SprMngr.DrawStr(INTRECT(GmapWTime),Str::Format("%02d",GameOpt.Day),0,COLOR_IFACE,FONT_NUM); // Day
+	SprMngr.DrawStr(INTRECT(GmapWTime),Str::FormatBuf("%02d",GameOpt.Day),0,COLOR_IFACE,FONT_NUM); // Day
 	char mval='0'+GameOpt.Month-1+0x30; // Month
-	SprMngr.DrawStr(INTRECT(GmapWTime,26,1),Str::Format("%c",mval),0,COLOR_IFACE,FONT_NUM); // Month
-	SprMngr.DrawStr(INTRECT(GmapWTime,62,0),Str::Format("%04d",GameOpt.Year),0,COLOR_IFACE,FONT_NUM); // Year
-	SprMngr.DrawStr(INTRECT(GmapWTime,107,0),Str::Format("%02d%02d",GameOpt.Hour,GameOpt.Minute),0,COLOR_IFACE,FONT_NUM); // Hour,Minute
+	SprMngr.DrawStr(INTRECT(GmapWTime,26,1),Str::FormatBuf("%c",mval),0,COLOR_IFACE,FONT_NUM); // Month
+	SprMngr.DrawStr(INTRECT(GmapWTime,62,0),Str::FormatBuf("%04d",GameOpt.Year),0,COLOR_IFACE,FONT_NUM); // Year
+	SprMngr.DrawStr(INTRECT(GmapWTime,107,0),Str::FormatBuf("%02d%02d",GameOpt.Hour,GameOpt.Minute),0,COLOR_IFACE,FONT_NUM); // Hour,Minute
 }
 
 void FOClient::GmapTownDraw()
@@ -5978,7 +5978,7 @@ void FOClient::GmapKeyDown(uchar dik)
 	case DIK_P: ShowScreen(SCREEN__PIP_BOY); break;
 	case DIK_F: ShowScreen(SCREEN__FIX_BOY); break;
 	case DIK_O: ShowScreen(SCREEN__MENU_OPTION); break;
-	case DIK_SLASH: AddMess(FOMB_GAME,Str::Format("Time: %02d.%02d.%d %02d:%02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.Second,GameOpt.TimeMultiplier)); break;
+	case DIK_SLASH: AddMess(FOMB_GAME,Str::FormatBuf("Time: %02d.%02d.%d %02d:%02d:%02d x%u",GameOpt.Day,GameOpt.Month,GameOpt.Year,GameOpt.Hour,GameOpt.Minute,GameOpt.Second,GameOpt.TimeMultiplier)); break;
 	case DIK_EQUALS:
 	case DIK_ADD: GameOpt.Light+=5; if(GameOpt.Light>50) GameOpt.Light=50; SetDayTime(true); break;
 	case DIK_MINUS:
@@ -6293,7 +6293,7 @@ void FOClient::ChaPrepareSwitch()
 		perks.push_back(SwitchElement(STR_PARAM_NAME_(i),STR_PARAM_DESC_(i),SKILLDEX_PARAM(i),0));
 
 		// Perk count
-		if(Chosen->GetParam(i)>1) StringCopy(perks[perks.size()-1].Addon,Str::Format(" (%u)",Chosen->GetParam(i)));
+		if(Chosen->GetParam(i)>1) Str::Copy(perks[perks.size()-1].Addon,Str::FormatBuf(" (%u)",Chosen->GetParam(i)));
 	}
 
 	// Karma
@@ -6305,7 +6305,7 @@ void FOClient::ChaPrepareSwitch()
 		int val=MsgGame->GetInt(STR_KARMA_GEN_VAL_(i));
 		if(Chosen->GetParam(ST_KARMA)<val) continue;
 		string karma_info=MsgGame->GetStr(STR_KARMA_GEN_NAME_(i));
-		StringCopy(karma[karma.size()-1].Addon,FmtGameText(STR_KARMA_GEN_GEN_NAME2,Chosen->GetParam(ST_KARMA),karma_info.c_str()));
+		Str::Copy(karma[karma.size()-1].Addon,FmtGameText(STR_KARMA_GEN_GEN_NAME2,Chosen->GetParam(ST_KARMA),karma_info.c_str()));
 		karma[karma.size()-1].PictureId=MsgGame->GetInt(STR_KARMA_GEN_SKILLDEX_(i));
 		break;
 	}
@@ -6337,7 +6337,7 @@ void FOClient::ChaPrepareSwitch()
 		karma.push_back(SwitchElement(STR_PARAM_NAME_(i),STR_TOWNREP_RATIO_DESC_(val),SKILLDEX_REPUTATION_RATIO(val),0));
 
 		// Perk count
-		StringCopy(karma[karma.size()-1].Addon,Str::Format(": %s %d",MsgGame->GetStr(STR_TOWNREP_RATIO_NAME_(val)),val));
+		Str::Copy(karma[karma.size()-1].Addon,Str::FormatBuf(": %s %d",MsgGame->GetStr(STR_TOWNREP_RATIO_NAME_(val)),val));
 	}
 
 	// Addiction
@@ -6363,7 +6363,7 @@ void FOClient::ChaPrepareSwitch()
 		if(!Chosen->GetParam(i)) continue;
 
 		kills.push_back(SwitchElement(STR_PARAM_NAME_(i),STR_PARAM_DESC_(i),SKILLDEX_PARAM(i),0));
-		StringCopy(kills[kills.size()-1].Addon,Str::DWtoA(Chosen->GetParam(i)));
+		Str::Copy(kills[kills.size()-1].Addon,Str::UItoA(Chosen->GetParam(i)));
 	}
 }
 
@@ -6449,7 +6449,7 @@ void FOClient::ChaDraw(bool is_reg)
 				if(i>=end_line) break;
 				if(i<scroll) continue;
 				SwitchElement& e=text[i];
-				SprMngr.DrawStr(INTRECT(ChaTSwitch,ChaX,ChaY+(i-scroll)*11),Str::Format("%s%s",MsgGame->GetStr(e.NameStrNum),e.Addon),e.DrawFlags);
+				SprMngr.DrawStr(INTRECT(ChaTSwitch,ChaX,ChaY+(i-scroll)*11),Str::FormatBuf("%s%s",MsgGame->GetStr(e.NameStrNum),e.Addon),e.DrawFlags);
 			}
 		}
 		// Kills
@@ -6493,7 +6493,7 @@ void FOClient::ChaDraw(bool is_reg)
 	{
 		int unspent=40;
 		for(int i=ST_STRENGTH;i<=ST_LUCK;i++) unspent-=cr->ParamsReg[i];
-		SprMngr.DrawStr(INTRECT(RegWUnspentSpecial,ChaX,ChaY),Str::Format("%02d",unspent),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
+		SprMngr.DrawStr(INTRECT(RegWUnspentSpecial,ChaX,ChaY),Str::FormatBuf("%02d",unspent),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 		SprMngr.DrawStr(INTRECT(RegWUnspentSpecialText,ChaX,ChaY),MsgGame->GetStr(STR_REG_SPECIAL_SUM),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	}
 
@@ -6506,18 +6506,18 @@ void FOClient::ChaDraw(bool is_reg)
 		// Name	
 		SprMngr.DrawStr(INTRECT(ChaWSkillName,ChaX+ChaWSkillNextX*offs,ChaY+ChaWSkillNextY*offs),MsgGame->GetStr(STR_PARAM_NAME_(i)),FT_NOBREAK,cr->IsTagSkill(i)?0xFFAAAAAA:COLOR_TEXT);
 		// Value
-		SprMngr.DrawStr(INTRECT(ChaWSkillValue,ChaX+ChaWSkillNextX*offs,ChaY+ChaWSkillNextY*offs),Str::Format("%d%%",CLAMP(CHA_PARAM(i)+(is_reg?0:ChaSkillUp[offs]),-MAX_SKILL_VAL,MAX_SKILL_VAL)),FT_NOBREAK,cr->IsTagSkill(i)?0xFFAAAAAA:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(ChaWSkillValue,ChaX+ChaWSkillNextX*offs,ChaY+ChaWSkillNextY*offs),Str::FormatBuf("%d%%",CLAMP(CHA_PARAM(i)+(is_reg?0:ChaSkillUp[offs]),-MAX_SKILL_VAL,MAX_SKILL_VAL)),FT_NOBREAK,cr->IsTagSkill(i)?0xFFAAAAAA:COLOR_TEXT);
 	}
 
 	if(is_reg)
 	{
 		SprMngr.DrawStr(INTRECT(ChaWUnspentSPText,ChaX,ChaY),MsgGame->GetStr(STR_REG_UNSPENT_TAGS),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::Format("%02d",(cr->Params[TAG_SKILL1]==0?1:0)+(cr->Params[TAG_SKILL2]==0?1:0)+(cr->Params[TAG_SKILL3]==0?1:0)),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
+		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::FormatBuf("%02d",(cr->Params[TAG_SKILL1]==0?1:0)+(cr->Params[TAG_SKILL2]==0?1:0)+(cr->Params[TAG_SKILL3]==0?1:0)),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 	}
 	else
 	{
 		SprMngr.DrawStr(INTRECT(ChaWUnspentSPText,ChaX,ChaY),MsgGame->GetStr(STR_CHA_UNSPENT_SP),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::Format("%02d",ChaUnspentSkillPoints),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
+		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::FormatBuf("%02d",ChaUnspentSkillPoints),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 	}
 
 	// Tips
@@ -6536,7 +6536,7 @@ void FOClient::ChaDraw(bool is_reg)
 	SprMngr.DrawStr(INTRECT(ChaBName,ChaX,ChaY-(IfaceHold==IFACE_CHA_NAME?1:0)),cr->GetName(),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 
 	// Age
-	SprMngr.DrawStr(INTRECT(ChaBAge,ChaX,ChaY-(IfaceHold==IFACE_CHA_AGE?1:0)),Str::Format("%02d",(is_reg?cr->ParamsReg[ST_AGE]:cr->GetParam(ST_AGE))),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+	SprMngr.DrawStr(INTRECT(ChaBAge,ChaX,ChaY-(IfaceHold==IFACE_CHA_AGE?1:0)),Str::FormatBuf("%02d",(is_reg?cr->ParamsReg[ST_AGE]:cr->GetParam(ST_AGE))),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 
 	// Sex
 	if((is_reg?cr->ParamsReg[ST_GENDER]:cr->GetParam(ST_GENDER))==GENDER_MALE)
@@ -6572,10 +6572,10 @@ void FOClient::ChaDraw(bool is_reg)
 		const char* str;
 		switch(ShowStats[i])
 		{
-		case ST_CARRY_WEIGHT: str=Str::Format("%d",val/1000); break;
+		case ST_CARRY_WEIGHT: str=Str::FormatBuf("%d",val/1000); break;
 		case ST_NORMAL_RESIST:
-		case ST_CRITICAL_CHANCE: str=Str::Format("%d%%",val); break;
-		default: str=Str::Format("%d",val); break;
+		case ST_CRITICAL_CHANCE: str=Str::FormatBuf("%d%%",val); break;
+		default: str=Str::FormatBuf("%d",val); break;
 		}
 		SprMngr.DrawStr(INTRECT(ChaWStatsValue,ChaX+ChaWStatsNextX*i,ChaY+ChaWStatsNextY*i),str,FT_NOBREAK,COLOR_TEXT);
 	}
@@ -6644,8 +6644,8 @@ void FOClient::ChaLMouseDown(bool is_reg)
 		{
 label_DrawSpecial:
 			ChaSkilldexPic=SKILLDEX_PARAM(i);
-			StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
-			StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
+			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
+			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
 			return;
 		}
 	}
@@ -6665,8 +6665,8 @@ label_DrawSpecial:
 		{
 label_DrawSkill:
 			ChaSkilldexPic=SKILLDEX_PARAM(i);
-			StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
-			StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
+			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
+			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
 			ChaCurSkill=offs;
 			return;
 		}
@@ -6677,8 +6677,8 @@ label_DrawSkill:
 	if(IsCurInRect(ChaWDmgLife,ChaX,ChaY))
 	{
 		ChaSkilldexPic=SKILLDEX_PARAM(ST_MAX_LIFE);
-		StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ST_MAX_LIFE)));
-		StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ST_MAX_LIFE)));
+		Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ST_MAX_LIFE)));
+		Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ST_MAX_LIFE)));
 		return;
 	}
 
@@ -6689,8 +6689,8 @@ label_DrawSkill:
 		if(IsCurInRect(ChaWDmg,ChaX+ChaWDmgNextX*offs,ChaY+ChaWDmgNextY*offs))
 		{
 			ChaSkilldexPic=SKILLDEX_PARAM(i);
-			StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
-			StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
+			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
+			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
 			return;
 		}
 	}
@@ -6702,8 +6702,8 @@ label_DrawSkill:
 			IsCurInRect(ChaWStatsValue,ChaX+ChaWStatsNextX*i,ChaY+ChaWStatsNextY*i))
 		{
 			ChaSkilldexPic=SKILLDEX_PARAM(ShowStats[i]);
-			StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ShowStats[i])));
-			StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ShowStats[i])));
+			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ShowStats[i])));
+			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ShowStats[i])));
 			return;
 		}
 	}
@@ -6730,8 +6730,8 @@ label_DrawSkill:
 label_DrawTrait:
 			RegTraitNum=k;
 			ChaSkilldexPic=SKILLDEX_PARAM(i);
-			StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
-			StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
+			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
+			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
 			return;
 		}
 	}
@@ -6747,20 +6747,20 @@ label_DrawTrait:
 			{
 			case 0:
 				ChaCurSwitch=CHA_SWITCH_PERKS;
-				StringCopy(ChaName,MsgGame->GetStr(STR_SWITCH_PERKS_NAME));
-				StringCopy(ChaDesc,MsgGame->GetStr(STR_PERKS_DESC));
+				Str::Copy(ChaName,MsgGame->GetStr(STR_SWITCH_PERKS_NAME));
+				Str::Copy(ChaDesc,MsgGame->GetStr(STR_PERKS_DESC));
 				ChaSkilldexPic=SKILLDEX_PERKS;
 				break;
 			case 1:
 				ChaCurSwitch=CHA_SWITCH_KARMA;
-				StringCopy(ChaName,MsgGame->GetStr(STR_SWITCH_KARMA_NAME));
-				StringCopy(ChaDesc,MsgGame->GetStr(STR_KARMA_DESC));
+				Str::Copy(ChaName,MsgGame->GetStr(STR_SWITCH_KARMA_NAME));
+				Str::Copy(ChaDesc,MsgGame->GetStr(STR_KARMA_DESC));
 				ChaSkilldexPic=SKILLDEX_KARMA;
 				break;
 			case 2:
 				ChaCurSwitch=CHA_SWITCH_KILLS;
-				StringCopy(ChaName,MsgGame->GetStr(STR_SWITCH_KILLS_NAME));
-				StringCopy(ChaDesc,MsgGame->GetStr(STR_KILLS_DESC));
+				Str::Copy(ChaName,MsgGame->GetStr(STR_SWITCH_KILLS_NAME));
+				Str::Copy(ChaDesc,MsgGame->GetStr(STR_KILLS_DESC));
 				ChaSkilldexPic=SKILLDEX_KILLS;
 				break;
 			default: break;
@@ -6777,9 +6777,9 @@ label_DrawTrait:
 			{
 				SwitchElement& e=text[cur_line];
 				ChaSkilldexPic=e.PictureId;
-				StringCopy(ChaName,MsgGame->GetStr(e.NameStrNum));
-				if(ChaCurSwitch==CHA_SWITCH_PERKS) StringAppend(ChaName,e.Addon);
-				StringCopy(ChaDesc,MsgGame->GetStr(e.DescStrNum));
+				Str::Copy(ChaName,MsgGame->GetStr(e.NameStrNum));
+				if(ChaCurSwitch==CHA_SWITCH_PERKS) Str::Append(ChaName,e.Addon);
+				Str::Copy(ChaDesc,MsgGame->GetStr(e.DescStrNum));
 				return;
 			}
 		}
@@ -6789,20 +6789,20 @@ label_DrawTrait:
 	if(!is_reg && IsCurInRect(ChaWLevel,ChaX,ChaY))
 	{
 		ChaSkilldexPic=SKILLDEX_PARAM(ST_LEVEL);
-		StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ST_LEVEL)));
-		StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ST_LEVEL)));
+		Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ST_LEVEL)));
+		Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ST_LEVEL)));
 	}
 	else if(!is_reg && IsCurInRect(ChaWExp,ChaX,ChaY))
 	{
 		ChaSkilldexPic=SKILLDEX_PARAM(ST_EXPERIENCE);
-		StringCopy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ST_EXPERIENCE)));
-		StringCopy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ST_EXPERIENCE)));
+		Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(ST_EXPERIENCE)));
+		Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(ST_EXPERIENCE)));
 	}
 	else if(!is_reg && IsCurInRect(ChaWNextLevel,ChaX,ChaY))
 	{
 		ChaSkilldexPic=SKILLDEX_NEXT_LEVEL;
-		StringCopy(ChaName,MsgGame->GetStr(STR_NEXT_LEVEL_NAME));
-		StringCopy(ChaDesc,MsgGame->GetStr(STR_NEXT_LEVEL_DESC));
+		Str::Copy(ChaName,MsgGame->GetStr(STR_NEXT_LEVEL_NAME));
+		Str::Copy(ChaDesc,MsgGame->GetStr(STR_NEXT_LEVEL_DESC));
 	}
 	else if(IsCurInRect(ChaBPrint,ChaX,ChaY)) IfaceHold=IFACE_CHA_PRINT;
 	else if(IsCurInRect(ChaBOk,ChaX,ChaY)) IfaceHold=IFACE_CHA_OK;
@@ -7500,7 +7500,7 @@ void FOClient::PipDraw()
 				}
 				PIP_DRAW_TEXT(FmtGameText(STR_PARAM_NAME_(j)),0,COLOR_TEXT);
 				if(val>1440) PIP_DRAW_TEXTR(FmtGameText(str_num,"?"),0,COLOR_TEXT);
-				else PIP_DRAW_TEXTR(FmtGameText(str_num,Str::Format("%u",val)),0,COLOR_TEXT);
+				else PIP_DRAW_TEXTR(FmtGameText(str_num,Str::FormatBuf("%u",val)),0,COLOR_TEXT);
 				scr++;
 			}
 
@@ -7532,7 +7532,7 @@ void FOClient::PipDraw()
 			char last_title[256];
 			for(int i=0;i<SCORES_MAX;i++)
 			{				
-				if(MsgGame->Count(STR_SCORES_TITLE_(i))) StringCopy(last_title,MsgGame->GetStr(STR_SCORES_TITLE_(i)));
+				if(MsgGame->Count(STR_SCORES_TITLE_(i))) Str::Copy(last_title,MsgGame->GetStr(STR_SCORES_TITLE_(i)));
 				char* name=&BestScores[i][0];
 				if(!name[0]) continue;
 				if(last_title[0])
@@ -7665,11 +7665,11 @@ void FOClient::PipDraw()
 	}
 
 	// Time
-	SprMngr.DrawStr(INTRECT(PipWTime,PipX,PipY),Str::Format("%02d",GameOpt.Day),0,COLOR_IFACE,FONT_NUM); //Day
+	SprMngr.DrawStr(INTRECT(PipWTime,PipX,PipY),Str::FormatBuf("%02d",GameOpt.Day),0,COLOR_IFACE,FONT_NUM); //Day
 	char mval='0'+GameOpt.Month-1+0x30; //Month
-	SprMngr.DrawStr(INTRECT(PipWTime,PipX+26,PipY+1),Str::Format("%c",mval),0,COLOR_IFACE,FONT_NUM); //Month
-	SprMngr.DrawStr(INTRECT(PipWTime,PipX+63,PipY),Str::Format("%04d",GameOpt.Year),0,COLOR_IFACE,FONT_NUM); //Year
-	SprMngr.DrawStr(INTRECT(PipWTime,PipX+135,PipY),Str::Format("%02d%02d",GameOpt.Hour,GameOpt.Minute),0,COLOR_IFACE,FONT_NUM); //Hour,Minute
+	SprMngr.DrawStr(INTRECT(PipWTime,PipX+26,PipY+1),Str::FormatBuf("%c",mval),0,COLOR_IFACE,FONT_NUM); //Month
+	SprMngr.DrawStr(INTRECT(PipWTime,PipX+63,PipY),Str::FormatBuf("%04d",GameOpt.Year),0,COLOR_IFACE,FONT_NUM); //Year
+	SprMngr.DrawStr(INTRECT(PipWTime,PipX+135,PipY),Str::FormatBuf("%02d%02d",GameOpt.Hour,GameOpt.Minute),0,COLOR_IFACE,FONT_NUM); //Hour,Minute
 }
 
 void FOClient::PipLMouseDown()
@@ -7898,25 +7898,25 @@ void FOClient::AimDraw()
 
 	if(GameOpt.ApCostAimArms==GameOpt.ApCostAimTorso && GameOpt.ApCostAimTorso==GameOpt.ApCostAimLegs && GameOpt.ApCostAimLegs==GameOpt.ApCostAimGroin && GameOpt.ApCostAimGroin==GameOpt.ApCostAimEyes && GameOpt.ApCostAimEyes==GameOpt.ApCostAimHead)
 	{
-		SprMngr.DrawStr(INTRECT(AimWHeadT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_HEAD-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_HEAD?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWLArmT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_ARM-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LARM?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWRArmT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_ARM-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RARM?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWTorsoT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_TORSO-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_TORSO?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWRLegT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_LEG-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RLEG?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWLLegT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_LEG-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LLEG?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWEyesT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_EYES-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_EYES?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWGroinT,AimX,AimY),Str::Format("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_GROIN-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_GROIN?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWHeadT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_HEAD-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_HEAD?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWLArmT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_ARM-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LARM?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWRArmT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_ARM-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RARM?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWTorsoT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_TORSO-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_TORSO?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWRLegT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_LEG-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RLEG?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWLLegT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_LEG-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LLEG?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWEyesT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_EYES-1)),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_EYES?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWGroinT,AimX,AimY),Str::FormatBuf("%s",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_GROIN-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_GROIN?COLOR_TEXT_RED:COLOR_TEXT);
 	}
 	else
 	{
-		SprMngr.DrawStr(INTRECT(AimWHeadT,AimX,AimY),Str::Format("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_HEAD-1),GameOpt.ApCostAimHead),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_HEAD?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWLArmT,AimX,AimY),Str::Format("(%u) %s",GameOpt.ApCostAimArms,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_ARM-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LARM?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWRArmT,AimX,AimY),Str::Format("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_ARM-1),GameOpt.ApCostAimArms),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RARM?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWTorsoT,AimX,AimY),Str::Format("(%u) %s",GameOpt.ApCostAimTorso,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_TORSO-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_TORSO?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWRLegT,AimX,AimY),Str::Format("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_LEG-1),GameOpt.ApCostAimLegs),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RLEG?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWLLegT,AimX,AimY),Str::Format("(%u) %s",GameOpt.ApCostAimLegs,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_LEG-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LLEG?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWEyesT,AimX,AimY),Str::Format("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_EYES-1),GameOpt.ApCostAimEyes),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_EYES?COLOR_TEXT_RED:COLOR_TEXT);
-		SprMngr.DrawStr(INTRECT(AimWGroinT,AimX,AimY),Str::Format("(%u) %s",GameOpt.ApCostAimGroin,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_GROIN-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_GROIN?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWHeadT,AimX,AimY),Str::FormatBuf("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_HEAD-1),GameOpt.ApCostAimHead),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_HEAD?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWLArmT,AimX,AimY),Str::FormatBuf("(%u) %s",GameOpt.ApCostAimArms,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_ARM-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LARM?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWRArmT,AimX,AimY),Str::FormatBuf("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_ARM-1),GameOpt.ApCostAimArms),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RARM?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWTorsoT,AimX,AimY),Str::FormatBuf("(%u) %s",GameOpt.ApCostAimTorso,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_TORSO-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_TORSO?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWRLegT,AimX,AimY),Str::FormatBuf("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_RIGHT_LEG-1),GameOpt.ApCostAimLegs),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_RLEG?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWLLegT,AimX,AimY),Str::FormatBuf("(%u) %s",GameOpt.ApCostAimLegs,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_LEFT_LEG-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_LLEG?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWEyesT,AimX,AimY),Str::FormatBuf("%s (%u)",MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_EYES-1),GameOpt.ApCostAimEyes),FT_COLORIZE|FT_NOBREAK,IfaceHold==IFACE_AIM_EYES?COLOR_TEXT_RED:COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(AimWGroinT,AimX,AimY),Str::FormatBuf("(%u) %s",GameOpt.ApCostAimGroin,MsgCombat->GetStr(1000+cr->GetCrTypeAlias()*10+HIT_LOCATION_GROIN-1)),FT_COLORIZE|FT_NOBREAK|FT_CENTERR,IfaceHold==IFACE_AIM_GROIN?COLOR_TEXT_RED:COLOR_TEXT);
 	}
 
 	bool zero=!HexMngr.TraceBullet(Chosen->GetHexX(),Chosen->GetHexY(),cr->GetHexX(),cr->GetHexY(),Chosen->GetAttackDist(),0.0f,cr,false,NULL,0,NULL,NULL,NULL,true);
@@ -9058,7 +9058,7 @@ void FOClient::SplitDraw()
 
 	SprMngr.DrawStr(INTRECT(SplitWTitle,SplitX,SplitY),MsgGame->GetStr(STR_SPLIT_TITLE),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	SprMngr.DrawStr(INTRECT(SplitBAll,SplitX,SplitY-(IfaceHold==IFACE_SPLIT_ALL?1:0)),MsgGame->GetStr(STR_SPLIT_ALL),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(INTRECT(SplitWValue,SplitX,SplitY),Str::Format("%05d",SplitValue),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
+	SprMngr.DrawStr(INTRECT(SplitWValue,SplitX,SplitY),Str::FormatBuf("%05d",SplitValue),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 }
 
 void FOClient::SplitKeyDown(uchar dik)
@@ -9230,7 +9230,7 @@ void FOClient::TimerDraw()
 	SprMngr.Flush();
 
 	SprMngr.DrawStr(INTRECT(TimerWTitle,TimerX,TimerY),MsgGame->GetStr(STR_TIMER_TITLE),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-	SprMngr.DrawStr(INTRECT(TimerWValue,TimerX,TimerY),Str::Format("%d%c%02d",TimerValue/60,'9'+3,TimerValue%60),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
+	SprMngr.DrawStr(INTRECT(TimerWValue,TimerX,TimerY),Str::FormatBuf("%d%c%02d",TimerValue/60,'9'+3,TimerValue%60),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 }
 
 void FOClient::TimerKeyDown(uchar dik)
@@ -9517,7 +9517,7 @@ void FOClient::FixGenerateItems(UShortVec& items_vec, UIntVec& val_vec, UCharVec
 		if(Chosen->CountItemPid(items_vec[i])<val_vec[i]) color=COLOR_TEXT_DGREEN;
 
 		str+="|";
-		str+=Str::Format("%u",color);
+		str+=Str::FormatBuf("%u",color);
 		str+=" ";
 
 		if(i>0)
@@ -9537,7 +9537,7 @@ void FOClient::FixGenerateItems(UShortVec& items_vec, UIntVec& val_vec, UCharVec
 		if(val_vec[i]>1)
 		{
 			str+=" ";
-			str+=Str::DWtoA(val_vec[i]);
+			str+=Str::UItoA(val_vec[i]);
 			str+=" ";
 			str+=MsgGame->GetStr(STR_FIX_PIECES);
 		}
@@ -9796,10 +9796,10 @@ void FOClient::IboxDraw()
 	default: break;
 	}
 
-	char* buf=(char*)Str::Format("%s",IboxTitle.c_str());
+	char* buf=(char*)Str::FormatBuf("%s",IboxTitle.c_str());
 	if(IfaceHold==IFACE_IBOX_TITLE) Str::Insert(&buf[IboxTitleCur],Timer::FastTick()%798<399?"!":".");
 	SprMngr.DrawStr(INTRECT(IboxWTitle,IboxX,IboxY),buf,FT_NOBREAK|FT_CENTERY);
-	buf=(char*)Str::Format("%s",IboxText.c_str());
+	buf=(char*)Str::FormatBuf("%s",IboxText.c_str());
 	if(IfaceHold==IFACE_IBOX_TEXT) Str::Insert(&buf[IboxTextCur],Timer::FastTick()%798<399?".":"!");
 	SprMngr.DrawStr(INTRECT(IboxWText,IboxX,IboxY),buf,0);
 
@@ -9971,8 +9971,8 @@ void FOClient::SaveLoadCollect()
 		// Extract full path
 		char fpath_[MAX_FOPATH];
 		char fpath[MAX_FOPATH];
-		StringCopy(fpath_,FileManager::GetDataPath(PT_DATA));
-		StringAppend(fpath_,fname.c_str());
+		Str::Copy(fpath_,FileManager::GetDataPath(PT_DATA));
+		Str::Append(fpath_,fname.c_str());
 		if(!GetFullPathName(fpath_,MAX_FOPATH,fpath,NULL)) continue;
 
 		// Convert time
@@ -9985,9 +9985,9 @@ void FOClient::SaveLoadCollect()
 		// Fill slot data
 		SaveLoadDataSlot slot;
 		slot.Name=name;
-		slot.Info=Str::Format("%s\n%02d.%02d.%04d %02d:%02d:%02d\n",name,
+		slot.Info=Str::FormatBuf("%s\n%02d.%02d.%04d %02d:%02d:%02d\n",name,
 			write.wDay,write.wMonth,write.wYear,write.wHour,write.wMinute,write.wSecond);
-		slot.InfoExt=Str::Format("%s\n%02d %3s %04d %02d%02d\n%s",crname,
+		slot.InfoExt=Str::FormatBuf("%s\n%02d %3s %04d %02d%02d\n%s",crname,
 			day,MsgGame->GetStr(STR_MONTH(month)),year,hour,minute,MsgGM->GetStr(STR_MAP_NAME_(map_pid)));
 		slot.FileName=fpath;
 		slot.RealTime=writeft.ul.QuadPart;
@@ -10018,10 +10018,10 @@ void FOClient::SaveLoadSaveGame(const char* name)
 	// Get name of new save
 	char fpath_[MAX_FOPATH];
 	char fpath[MAX_FOPATH];
-	StringCopy(fpath_,FileManager::GetDataPath(PT_SAVE));
-	StringAppend(fpath_,FileManager::GetPath(PT_SAVE));
-	StringAppend(fpath_,name);
-	StringAppend(fpath_,".fo");
+	Str::Copy(fpath_,FileManager::GetDataPath(PT_SAVE));
+	Str::Append(fpath_,FileManager::GetPath(PT_SAVE));
+	Str::Append(fpath_,name);
+	Str::Append(fpath_,".fo");
 	if(!GetFullPathName(fpath_,MAX_FOPATH,fpath,NULL)) return;
 
 	// Delete old files
@@ -10091,7 +10091,7 @@ void FOClient::SaveLoadProcessDone()
 		SaveLoadFileName="";
 		if(SaveLoadSlotIndex>=0 && SaveLoadSlotIndex<(int)SaveLoadDataSlots.size())
 		{
-			StringCopy(SayText,SaveLoadDataSlots[SaveLoadSlotIndex].Name.c_str());
+			Str::Copy(SayText,SaveLoadDataSlots[SaveLoadSlotIndex].Name.c_str());
 			SaveLoadFileName=SaveLoadDataSlots[SaveLoadSlotIndex].FileName;
 		}
 	}

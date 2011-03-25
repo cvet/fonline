@@ -1,8 +1,8 @@
 #ifndef __CRAFT_MANAGER__
 #define __CRAFT_MANAGER__
 
-#include "Defines.h"
-#include "Text.h"
+#include "Common.h"
+#include "MsgFiles.h"
 
 #define MRFIXIT_METADATA	'!'
 #define MRFIXIT_NEXT		'@'

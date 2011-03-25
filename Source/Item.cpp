@@ -51,7 +51,7 @@ void Item::Init(ProtoItem* proto)
 	From=0;
 #endif
 
-	ZeroMemory(&Data,sizeof(Data));
+	memzero(&Data,sizeof(Data));
 	Proto=proto;
 	Accessory=ITEM_ACCESSORY_NONE;
 	Data.SortValue=0x7FFF;
@@ -171,7 +171,7 @@ bool Item::ParseScript(const char* script, bool first_time)
 		Data.ScriptId=func_num;
 	}
 
-	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),_FUNC_,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId())))
+	if(Data.ScriptId && Script::PrepareContext(Script::GetScriptFuncBindId(Data.ScriptId),_FUNC_,Str::FormatBuf("Item id<%u>, pid<%u>",GetId(),GetProtoId())))
 	{
 		Script::SetArgObject(this);
 		Script::SetArgBool(first_time);
@@ -184,7 +184,7 @@ bool Item::PrepareScriptFunc(int num_scr_func)
 {
 	if(num_scr_func>=ITEM_EVENT_MAX) return false;
 	if(FuncId[num_scr_func]<=0) return false;
-	return Script::PrepareContext(FuncId[num_scr_func],_FUNC_,Str::Format("Item id<%u>, pid<%u>",GetId(),GetProtoId()));
+	return Script::PrepareContext(FuncId[num_scr_func],_FUNC_,Str::FormatBuf("Item id<%u>, pid<%u>",GetId(),GetProtoId()));
 }
 
 void Item::EventFinish(bool deleted)
@@ -388,7 +388,7 @@ void Item::SetLexems(const char* lexems)
 {
 	if(lexems)
 	{
-		uint len=strlen(lexems);
+		uint len=Str::Length(lexems);
 		if(!len)
 		{
 			SAFEDELA(PLexems);

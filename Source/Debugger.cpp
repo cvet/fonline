@@ -12,7 +12,7 @@ static int CurEntry[MAX_BLOCKS];
 
 void Debugger::BeginCycle()
 {
-	ZeroMemory(Identifiers,sizeof(Identifiers));
+	memzero(Identifiers,sizeof(Identifiers));
 	for(int i=0;i<MAX_BLOCKS;i++) CurEntry[i]=-1;
 }
 
@@ -133,7 +133,7 @@ struct MemNodeStr
 	int64 DeallocMem;
 	int64 MinAlloc;
 	int64 MaxAlloc;
-	bool operator==(const char* str)const{return !strcmp(str,Name);}
+	bool operator==(const char* str)const{return Str::Compare(str,Name);}
 };
 typedef vector<MemNodeStr> MemNodeStrVec;
 typedef vector<MemNodeStr>::iterator MemNodeStrVecIt;
@@ -151,7 +151,7 @@ void Debugger::MemoryStr(const char* block, int value)
 		if(it==MemNodesStr.end())
 		{
 			MemNodeStr node_;
-			StringCopy(node_.Name,block);
+			Str::Copy(node_.Name,block);
 			node_.AllocMem=0;
 			node_.DeallocMem=0;
 			node_.MinAlloc=0;

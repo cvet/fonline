@@ -742,4 +742,10 @@ struct ScoreType
 #define MOVE_PARAM_STEP_DISALLOW     (0x10)
 #define MOVE_PARAM_RUN               (0x80000000)
 
+// Holodisks
+#define USER_HOLO_TEXTMSG_FILE       "FOHOLOEXT.MSG"
+#define USER_HOLO_START_NUM          (100000)
+#define USER_HOLO_MAX_TITLE_LEN      (40)
+#define USER_HOLO_MAX_LEN            (2000)
+
 #endif // __DEFINES__

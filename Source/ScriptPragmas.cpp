@@ -25,17 +25,26 @@
 			if(!alreadyLoadedDll.count(dll_name))
 			{
 				// Register AS engine
-				size_t* ptr=(size_t*)GetProcAddress(dll,"ASEngine");
+				size_t* ptr=(size_t*)GetFunctionAddress(dll,"ASEngine");
 				if(ptr) *ptr=(size_t)GetEngine();
 
 				// Call init function
 				typedef void(*DllMainEx)(bool);
-				DllMainEx func=(DllMainEx)GetProcAddress(dll,"DllMainEx");
+				DllMainEx func=(DllMainEx)GetFunctionAddress(dll,"DllMainEx");
 				if(func) (*func)(true);
 
 				alreadyLoadedDll.insert(dll_name);
 			}
 			return dll;
+		}
+
+		size_t* GetFunctionAddress(void* dll, const char* func_name)
+		{
+#if defined(FO_WINDOWS)
+			return (size_t*)GetProcAddress((HMODULE)dll,func_name);
+#else // FO_LINUX
+			// Todo: linux
+#endif
 		}
 	}
 
@@ -253,7 +262,7 @@ public:
 			return;
 		}
 
-		HMODULE dll=Script::LoadDynamicLibrary(dll_name.c_str());
+		void* dll=Script::LoadDynamicLibrary(dll_name.c_str());
 		if(!dll)
 		{
 			WriteLog(NULL,"Error in 'bindfunc' pragma<%s>, dll not found, error<%u>.\n",text.c_str(),GetLastError());
@@ -261,7 +270,7 @@ public:
 		}
 
 		// Find function
-		FARPROC func=GetProcAddress(dll,func_dll_name.c_str());
+		size_t* func=Script::GetFunctionAddress(dll,func_dll_name.c_str());
 		if(!func)
 		{
 			WriteLog(NULL,"Error in 'bindfunc' pragma<%s>, function not found, error<%u>.\n",text.c_str(),GetLastError());
@@ -383,13 +392,13 @@ public:
 		for(int i=0,ii=engine->GetObjectTypeCount();i<ii;i++)
 		{
 			asIObjectType* ot=engine->GetObjectTypeByIndex(i);
-			if(!strcmp(ot->GetName(),className.c_str()))
+			if(Str::Compare(ot->GetName(),className.c_str()))
 			{
 				for(int j=0,jj=ot->GetPropertyCount();j<jj;j++)
 				{
 					const char* name;
 					ot->GetProperty(j,&name);
-					if(!strcmp(name,field_name.c_str()))
+					if(Str::Compare(name,field_name.c_str()))
 					{
 						WriteLog(NULL,"Error in 'bindfield' pragma<%s>, property<%s> already available.\n",text.c_str(),name);
 						return;

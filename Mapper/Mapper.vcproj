@@ -367,6 +367,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Source\IniParser.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\IniParser.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Source\Item.cpp"
 				>
 			</File>
@@ -424,6 +432,14 @@
 			</File>
 			<File
 				RelativePath="..\Source\Mapper.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\MsgFiles.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\MsgFiles.h"
 				>
 			</File>
 			<File

@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "SpriteManager.h"
-#include "Common.h"
+#include "IniParser.h"
+#include "Crypt.h"
 #include "F2Palette.h"
 
 SpriteManager SprMngr;
@@ -850,7 +851,7 @@ void SpriteManager::SaveSufaces()
 		LPDIRECT3DSURFACE s;
 		surf->Texture->GetSurfaceLevel(0,&s);
 		sprintf(name,"%s%d_%d_%ux%u.",path,surf->Type,cnt,surf->Width,surf->Height);
-		StringAppend(name,"png");
+		Str::Append(name,"png");
 		D3DXSaveSurfaceToFile(name,D3DXIFF_PNG,s,NULL,NULL);
 		s->Release();
 		cnt++;
@@ -1310,11 +1311,11 @@ AnyFrames* SpriteManager::LoadAnimationFofrm(const char* fname, int path_type, i
 	uint frames=0;
 	for(int frm=0;frm<frm_num;frm++)
 	{
-		anims_offs.push_back(fofrm.GetInt(no_app?NULL:dir_str,Str::Format("next_x_%d",frm),0));
-		anims_offs.push_back(fofrm.GetInt(no_app?NULL:dir_str,Str::Format("next_y_%d",frm),0));
+		anims_offs.push_back(fofrm.GetInt(no_app?NULL:dir_str,Str::FormatBuf("next_x_%d",frm),0));
+		anims_offs.push_back(fofrm.GetInt(no_app?NULL:dir_str,Str::FormatBuf("next_y_%d",frm),0));
 
-		if(!fofrm.GetStr(no_app?NULL:dir_str,Str::Format("frm_%d",frm),"",frm_name) &&
-			(frm!=0 || !fofrm.GetStr(no_app?NULL:dir_str,Str::Format("frm",frm),"",frm_name))) goto label_Fail;
+		if(!fofrm.GetStr(no_app?NULL:dir_str,Str::FormatBuf("frm_%d",frm),"",frm_name) &&
+			(frm!=0 || !fofrm.GetStr(no_app?NULL:dir_str,Str::FormatBuf("frm",frm),"",frm_name))) goto label_Fail;
 
 		AnyFrames* anim=LoadAnimation(frm_fname,path_type,ANIM_DIR(dir));
 		if(!anim) goto label_Fail;
@@ -1454,7 +1455,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 	bool transparent=false;
 	bool mirror_hor=false;
 	bool mirror_ver=false;
-	StringCopy(file_name,fname);
+	Str::Copy(file_name,fname);
 
 	char* delim=strstr(file_name,"$");
 	if(delim)
@@ -1692,7 +1693,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 
 	// Parameters
 	char file_name[MAX_FOPATH];
-	StringCopy(file_name,fname);
+	Str::Copy(file_name,fname);
 
 	// Animation
 	char seq_name[MAX_FOPATH]={0};
@@ -1707,7 +1708,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	char* delim=strstr(file_name,"$");
 	if(delim)
 	{
-		// Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
+		// FormatBuf: fileName$[1,100,0,0][2,0,0,100]animName.spr
 		const char* ext=FileManager::GetExtension(file_name)-1;
 		size_t len=(size_t)ext-(size_t)delim;
 		if(len>1)
@@ -1802,7 +1803,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 
 			cached[index]=new(nothrow) SprCache();
 			if(!cached[index]) return NULL;
-			StringCopy(cached[index]->fileName,file_name);
+			Str::Copy(cached[index]->fileName,file_name);
 			cached[index]->pathType=path_type;
 			cached[index]->fm=fm;
 			fm.ReleaseBuffer();
@@ -1812,7 +1813,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 			index=SPR_CACHED_COUNT;
 			if(!cached[index]) cached[index]=new(nothrow) SprCache();
 			else cached[index]->fm.UnloadFile();
-			StringCopy(cached[index]->fileName,file_name);
+			Str::Copy(cached[index]->fileName,file_name);
 			cached[index]->pathType=path_type;
 			cached[index]->fm=fm;
 			fm.ReleaseBuffer();
@@ -3988,7 +3989,7 @@ struct FontFormatInfo
 		ZeroMemory(LineWidth,sizeof(LineWidth));
 		ZeroMemory(LineSpaceWidth,sizeof(LineSpaceWidth));
 		OffsColDots=0;
-		StringCopy(Str,str_in);
+		Str::Copy(Str,str_in);
 		PStr=Str;
 		DefColor=COLOR_TEXT;
 		StrLines=NULL;
@@ -4050,9 +4051,9 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	ZeroMemory(data,tex_w*tex_h*4);
 
 	FileManager fm;
-	if(!fm.LoadFile(Str::Format("%s.bmp",font_name),PT_FONTS))
+	if(!fm.LoadFile(Str::FormatBuf("%s.bmp",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",Str::Format("%s.bmp",font_name));
+		WriteLog(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.bmp",font_name));
 		delete[] data;
 		return false;
 	}
@@ -4064,9 +4065,9 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	D3DLOCKED_RECT lr;
 	D3D_HR(image->LockRect(0,&lr,NULL,D3DLOCK_READONLY));
 
-	if(!fm.LoadFile(Str::Format("%s.fnt0",font_name),PT_FONTS))
+	if(!fm.LoadFile(Str::FormatBuf("%s.fnt0",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",Str::Format("%s.fnt0",font_name));
+		WriteLog(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
@@ -4088,7 +4089,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 
 	if(!fm.CopyMem(letters,sizeof(LetterOldFont)*256))
 	{
-		WriteLog(_FUNC_," - Incorrect size in file<%s>.\n",Str::Format("%s.fnt0",font_name));
+		WriteLog(_FUNC_," - Incorrect size in file<%s>.\n",Str::FormatBuf("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
@@ -4175,9 +4176,9 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	Font font;
 	FileManager fm;
 
-	if(!fm.LoadFile(Str::Format("%s.aaf",font_name),PT_FONTS))
+	if(!fm.LoadFile(Str::FormatBuf("%s.aaf",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",Str::Format("%s.aaf",font_name));
+		WriteLog(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.aaf",font_name));
 		return false;
 	}
 
@@ -4294,9 +4295,9 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 	FileManager fm;
 	FileManager fm_tex;
 
-	if(!fm.LoadFile(Str::Format("%s.fnt",font_name),PT_FONTS))
+	if(!fm.LoadFile(Str::FormatBuf("%s.fnt",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - Font file<%s> not found.\n",Str::Format("%s.fnt",font_name));
+		WriteLog(_FUNC_," - Font file<%s> not found.\n",Str::FormatBuf("%s.fnt",font_name));
 		return false;
 	}
 
@@ -4476,18 +4477,18 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		}
 
 		*s1=0;
-		StringAppend(big_buf,0x10000,s0);
+		Str::Append(big_buf,0x10000,s0);
 
 		if(!*str_) break;
 		str_++;
 	}
 
-	StringCopy(str,FONT_BUF_LEN,big_buf);
+	Str::Copy(str,FONT_BUF_LEN,big_buf);
 
 	// Skip lines
 	uint skip_line=(FLAG(flags,FT_SKIPLINES(0))?flags>>16:0);
 
-	// Format
+	// FormatBuf
 	curx=r.L;
 	cury=r.T;
 
@@ -4746,7 +4747,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, uint flags, uint col /*
 	Font* font=GetFont(num_font);
 	if(!font) return false;
 
-	// Format
+	// FormatBuf
 	if(!col && DefFontColor) col=DefFontColor;
 
 	static FontFormatInfo fi;

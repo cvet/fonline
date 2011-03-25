@@ -24,7 +24,7 @@ HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
     *retNewFrame=newFrame;
 
 	// The frame name (note: may be 0 or zero length)
-	if(Name && strlen(Name)) newFrame->Name=StringDuplicate(Name);	
+	if(Name && strlen(Name)) newFrame->Name=Str::Duplicate(Name);	
 
     return S_OK;
 }
@@ -48,7 +48,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	*retNewMeshContainer=0;
 
 	// The mesh name (may be 0) needs copying over
-	if(Name && strlen(Name)) newMeshContainer->Name=StringDuplicate(Name);
+	if(Name && strlen(Name)) newMeshContainer->Name=Str::Duplicate(Name);
 
 	// The mesh type (D3DXMESHTYPE_MESH, D3DXMESHTYPE_PMESH or D3DXMESHTYPE_PATCHMESH)
 	if(meshData->Type!=D3DXMESHTYPE_MESH)
@@ -86,14 +86,14 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 		// Load all the textures and copy the materials over		
 		for(uint i=0;i<numMaterials;i++)
 		{
-			newMeshContainer->exTexturesNames[i]=StringDuplicate(materials[i].pTextureFilename);
+			newMeshContainer->exTexturesNames[i]=Str::Duplicate(materials[i].pTextureFilename);
 			newMeshContainer->exMaterials[i]=materials[i].MatD3D;
 
 			// The mesh may contain a reference to an effect file
 			ZeroMemory(&newMeshContainer->exEffects[i],sizeof(D3DXEFFECTINSTANCE));
 			if(effectInstances && effectInstances[i].pEffectFilename && effectInstances[i].pEffectFilename[0])
 			{
-				newMeshContainer->exEffects[i].pEffectFilename=StringDuplicate(effectInstances[i].pEffectFilename);
+				newMeshContainer->exEffects[i].pEffectFilename=Str::Duplicate(effectInstances[i].pEffectFilename);
 				newMeshContainer->exEffects[i].NumDefaults=effectInstances[i].NumDefaults;
 				newMeshContainer->exEffects[i].pDefaults=NULL;
 
@@ -103,7 +103,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 					newMeshContainer->exEffects[i].pDefaults=new D3DXEFFECTDEFAULT[defaults];
 					for(uint j=0;j<defaults;j++)
 					{
-						newMeshContainer->exEffects[i].pDefaults[j].pParamName=StringDuplicate(effectInstances[i].pDefaults[j].pParamName);
+						newMeshContainer->exEffects[i].pDefaults[j].pParamName=Str::Duplicate(effectInstances[i].pDefaults[j].pParamName);
 						newMeshContainer->exEffects[i].pDefaults[j].Type=effectInstances[i].pDefaults[j].Type;
 						newMeshContainer->exEffects[i].pDefaults[j].NumBytes=effectInstances[i].pDefaults[j].NumBytes;
 						newMeshContainer->exEffects[i].pDefaults[j].pValue=new char[newMeshContainer->exEffects[i].pDefaults[j].NumBytes];

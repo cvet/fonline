@@ -259,7 +259,7 @@ void FOServer::Send_PlayerHoloInfo(Critter* cr, uint holo_num, bool send_text)
 	{
 		HolodiskLocker.Unlock();
 
-		cl->Send_UserHoloStr(send_text?STR_HOLO_INFO_DESC_(holo_num):STR_HOLO_INFO_NAME_(holo_num),"Truncated",strlen("Truncated"));
+		cl->Send_UserHoloStr(send_text?STR_HOLO_INFO_DESC_(holo_num):STR_HOLO_INFO_NAME_(holo_num),"Truncated",Str::Length("Truncated"));
 	}
 }
 
@@ -1333,7 +1333,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		{
 			cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
 			//cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
+			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::FormatBuf("$time%u",GetBanTime(*ban)));
 			cl->Disconnect();
 			return;
 		}
@@ -1361,12 +1361,12 @@ void FOServer::Process_CreateClient(Client* cl)
 	char name[MAX_NAME+1];
 	cl->Bin.Pop(name,MAX_NAME);
 	name[MAX_NAME]=0;
-	StringCopy(cl->Name,name);
+	Str::Copy(cl->Name,name);
 
 	// Password
 	cl->Bin.Pop(name,MAX_NAME);
 	name[MAX_NAME]=0;
-	StringCopy(cl->Pass,name);
+	Str::Copy(cl->Pass,name);
 
 	// Receive params
 	ushort params_count=0;
@@ -1379,7 +1379,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
-	ZeroMemory(cl->Data.Params,sizeof(cl->Data.Params));
+	memzero(cl->Data.Params,sizeof(cl->Data.Params));
 	for(ushort i=0;i<params_count;i++)
 	{
 		ushort index;
@@ -1409,7 +1409,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
-	uint name_len=strlen(cl->Name);
+	uint name_len=Str::Length(cl->Name);
 	if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength ||
 		name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
 	{
@@ -1419,7 +1419,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		return;
 	}
 
-	uint pass_len=strlen(cl->Pass);
+	uint pass_len=Str::Length(cl->Pass);
 	if(!Singleplayer && (pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength ||
 		pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength))
 	{
@@ -1504,7 +1504,7 @@ void FOServer::Process_CreateClient(Client* cl)
 			if(tick-last_reg<reg_tick)
 			{
 				cl->Send_TextMsg(cl,STR_NET_REGISTRATION_IP_WAIT,SAY_NETMSG,TEXTMSG_GAME);
-				cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",(reg_tick-(tick-last_reg))/60000+1));
+				cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::FormatBuf("$time%u",(reg_tick-(tick-last_reg))/60000+1));
 				cl->Disconnect();
 				return;
 			}
@@ -1616,8 +1616,8 @@ void FOServer::Process_CreateClient(Client* cl)
 	{
 		ClientData data;
 		data.Clear();
-		StringCopy(data.ClientName,cl->Name);
-		StringCopy(data.ClientPass,cl->Pass);
+		Str::Copy(data.ClientName,cl->Name);
+		Str::Copy(data.ClientPass,cl->Pass);
 		data.ClientId=cl->GetId();
 
 		SCOPE_LOCK(ClientsDataLocker);
@@ -1659,16 +1659,16 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	char name[MAX_NAME+1];
 	cl->Bin.Pop(name,MAX_NAME);
 	name[MAX_NAME]=0;
-	StringCopy(cl->Name,name);
+	Str::Copy(cl->Name,name);
 	cl->Bin >> uid[1];
 	cl->Bin.Pop(name,MAX_NAME);
 	name[MAX_NAME]=0;
-	StringCopy(cl->Pass,name);
+	Str::Copy(cl->Pass,name);
 
 	if(Singleplayer)
 	{
-		ZeroMemory(cl->Name,sizeof(cl->Name));
-		ZeroMemory(cl->Pass,sizeof(cl->Pass));
+		memzero(cl->Name,sizeof(cl->Name));
+		memzero(cl->Pass,sizeof(cl->Pass));
 	}
 
 	// Bin hashes
@@ -1739,8 +1739,8 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		if(ban && !Singleplayer)
 		{
 			cl->Send_TextMsg(cl,STR_NET_BANNED_IP,SAY_NETMSG,TEXTMSG_GAME);
-			if(!_stricmp(ban->ClientName,cl->Name)) cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
+			if(Str::CompareCase(ban->ClientName,cl->Name)) cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
+			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::FormatBuf("$time%u",GetBanTime(*ban)));
 			cl->Disconnect();
 			return;
 		}
@@ -1749,7 +1749,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	// Check login/password
 	if(!Singleplayer)
 	{
-		uint name_len=strlen(cl->Name);
+		uint name_len=Str::Length(cl->Name);
 		if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength || name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
 		{
 			cl->Send_TextMsg(cl,STR_NET_WRONG_LOGIN,SAY_NETMSG,TEXTMSG_GAME);
@@ -1757,7 +1757,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
-		uint pass_len=strlen(cl->Pass);
+		uint pass_len=Str::Length(cl->Pass);
 		if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength)
 		{
 			cl->Send_TextMsg(cl,STR_NET_WRONG_PASS,SAY_NETMSG,TEXTMSG_GAME);
@@ -1781,7 +1781,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		SCOPE_LOCK(ClientsDataLocker);
 
 		ClientData* data_=GetClientData(cl->Name);
-		if(!data_ || strcmp(cl->Pass,data_->ClientPass))
+		if(!data_ || !Str::Compare(cl->Pass,data_->ClientPass))
 		{
 			// WriteLog(_FUNC_," - Wrong name<%s> or password.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1793,7 +1793,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	}
 	else
 	{
-		StringCopy(data.ClientName,SingleplayerSave.CrData.Name);
+		Str::Copy(data.ClientName,SingleplayerSave.CrData.Name);
 		data.ClientId=SingleplayerSave.CrData.Data.Id;
 	}
 
@@ -1806,7 +1806,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		{
 			cl->Send_TextMsg(cl,STR_NET_BANNED,SAY_NETMSG,TEXTMSG_GAME);
 			cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::Format("$time%u",GetBanTime(*ban)));
+			cl->Send_TextMsgLex(cl,STR_NET_TIME_LEFT,SAY_NETMSG,TEXTMSG_GAME,Str::FormatBuf("$time%u",GetBanTime(*ban)));
 			cl->Disconnect();
 			return;
 		}
@@ -1841,7 +1841,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 	// Copy data
 	uint id=data.ClientId;
-	StringCopy(cl->Name,data.ClientName);
+	Str::Copy(cl->Name,data.ClientName);
 	cl->NameStr=cl->Name;
 
 	// Check UIDS
@@ -2035,7 +2035,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		// Singleplayer data
 		if(Singleplayer)
 		{
-			StringCopy(cl->Name,SingleplayerSave.CrData.Name);
+			Str::Copy(cl->Name,SingleplayerSave.CrData.Name);
 			cl->Data=SingleplayerSave.CrData.Data;
 			*cl->GetDataExt()=SingleplayerSave.CrData.DataExt;
 			cl->CrTimeEvents=SingleplayerSave.CrData.TimeEvents;
@@ -4029,7 +4029,7 @@ void FOServer::Process_RunServerScript(Client* cl)
 	char func_name[MAX_SCRIPT_NAME+1]={0};
 	Script::ReparseScriptName(script_name,module_name,func_name);
 
-	if(unsafe && (strlen(func_name)<=7 || strncmp(func_name,"unsafe_",7))) // Check unsafe_ prefix
+	if(unsafe && (Str::Length(func_name)<=7 || !Str::CompareCount(func_name,"unsafe_",7))) // Check unsafe_ prefix
 	{
 		WriteLog(_FUNC_," - Attempt to execute script without \"unsafe_\" prefix. Client<%s>.\n",cl->GetInfo());
 		cl->Send_Text(cl,"Access denied. Disconnect.",SAY_NETMSG);

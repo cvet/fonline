@@ -199,7 +199,7 @@ bool MapManager::LoadLocationsProtos()
 	for(int i=1;i<MAX_PROTO_LOCATIONS;i++)
 	{
 		ProtoLoc[i].IsInit=false;
-		const char* app=Str::Format("Area %u",i);
+		const char* app=Str::FormatBuf("Area %u",i);
 		if(!city_txt.IsCachedApp(app) || !city_txt.GetStr(app,"map_0","error",res)) continue;
 
 		ProtoLocation& ploc=ProtoLoc[i];
@@ -233,7 +233,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 	ploc.IsInit=false;
 	city_txt.GetStr(key1,"name","",res);
 	ploc.Name=res;
-	if(!ploc.Name.length()) ploc.Name=Str::Format("Location %u",pid);
+	if(!ploc.Name.length()) ploc.Name=Str::FormatBuf("Location %u",pid);
 	ploc.MaxPlayers=city_txt.GetInt(key1,"max_players",0);
 	ploc.Radius=city_txt.GetInt(key1,"size",24);
 
@@ -259,7 +259,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 			return false;
 		}
 
-		size_t len=strlen(map_name);
+		size_t len=Str::Length(map_name);
 		bool is_automap=false;
 		if(map_name[len-1]=='*')
 		{
@@ -269,7 +269,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		}
 
 		ProtoMap& pmap=ProtoMaps[map_pid];
-		if(pmap.IsInit() && _stricmp(pmap.GetName(),map_name))
+		if(pmap.IsInit() && !Str::CompareCase(pmap.GetName(),map_name))
 		{
 			WriteLog(_FUNC_," - Pid<%u> for map<%s> in location<%s>, already in use.\n",map_pid,map_name,ploc.Name.c_str());
 			return false;
@@ -1973,7 +1973,7 @@ int MapManager::FindPath(PathFindData& pfd)
 
 	// Prepare
 	int numindex=1;
-	ZeroMemory(Grid,(FPATH_MAX_PATH*2+2)*(FPATH_MAX_PATH*2+2)*sizeof(short));
+	memzero(Grid,(FPATH_MAX_PATH*2+2)*(FPATH_MAX_PATH*2+2)*sizeof(short));
 	MapGridOffsX=from_hx;
 	MapGridOffsY=from_hy;
 	GRID(from_hx,from_hy)=numindex;

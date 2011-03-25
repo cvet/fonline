@@ -20,6 +20,8 @@
 #include "DataMask.h"
 #include "Script.h"
 #include "Zlib/zlib.h"
+#include "IniParser.h"
+#include "MsgFiles.h"
 
 class FOClient
 {

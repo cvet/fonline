@@ -315,7 +315,7 @@ public:
 	void AddRef(){}
 	void Release(){}
 
-	void Clear(){ZeroMemory(this,sizeof(ProtoItem));}
+	void Clear(){memzero(this,sizeof(ProtoItem));}
 	uint GetHash(){return Crypt.Crc32((uchar*)this,sizeof(ProtoItem));}
 
 	bool IsItem(){return !IsScen() && !IsWall() && !IsGrid();}
@@ -676,10 +676,10 @@ public:
 	bool operator==(const uint& _id){return (Id==_id);}
 
 #ifdef FONLINE_SERVER
-	Item(){ZeroMemory(this,sizeof(Item)); RefCounter=1; IsNotValid=false; MEMORY_PROCESS(MEMORY_ITEM,sizeof(Item));}
+	Item(){memzero(this,sizeof(Item)); RefCounter=1; IsNotValid=false; MEMORY_PROCESS(MEMORY_ITEM,sizeof(Item));}
 	~Item(){Proto=NULL; if(PLexems) MEMORY_PROCESS(MEMORY_ITEM,-LEXEMS_SIZE); SAFEDELA(PLexems); MEMORY_PROCESS(MEMORY_ITEM,-(int)sizeof(Item));}
 #elif FONLINE_CLIENT
-	Item(){ZeroMemory(this,OFFSETOF(Item,IsNotValid)); RefCounter=1; IsNotValid=false;}
+	Item(){memzero(this,OFFSETOF(Item,IsNotValid)); RefCounter=1; IsNotValid=false;}
 	~Item(){Proto=NULL;}
 #endif
 };

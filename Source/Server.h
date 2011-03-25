@@ -312,10 +312,10 @@ public:
 
 		void Clear()
 		{
-			ZeroMemory(Name,sizeof(Name));
-			ZeroMemory(Password,sizeof(Password));
-			ZeroMemory(&Data,sizeof(Data));
-			ZeroMemory(&DataExt,sizeof(DataExt));
+			memzero(Name,sizeof(Name));
+			memzero(Password,sizeof(Password));
+			memzero(&Data,sizeof(Data));
+			memzero(&DataExt,sizeof(DataExt));
 			TimeEvents.clear();
 		}
 	};
@@ -352,16 +352,16 @@ public:
 #define BANS_FNAME_EXPIRED        "expired.txt"
 	struct ClientBanned
 	{
-		SYSTEMTIME BeginTime;
-		SYSTEMTIME EndTime;
+		DateTime BeginTime;
+		DateTime EndTime;
 		uint ClientIp;
 		char ClientName[MAX_NAME+1];
 		char BannedBy[MAX_NAME+1];
 		char BanInfo[128];
-		bool operator==(const char* name){return !_stricmp(name,ClientName);}
+		bool operator==(const char* name){return Str::CompareCase(name,ClientName);}
 		bool operator==(const uint ip){return ClientIp==ip;}
 
-		const char* GetBanLexems(){return Str::Format("$banby%s$time%d$reason%s",BannedBy[0]?BannedBy:"?",Timer::GetTimeDifference(EndTime,BeginTime)/60/60,BanInfo[0]?BanInfo:"just for fun");}
+		const char* GetBanLexems(){return Str::FormatBuf("$banby%s$time%d$reason%s",BannedBy[0]?BannedBy:"?",Timer::GetTimeDifference(EndTime,BeginTime)/60/60,BanInfo[0]?BanInfo:"just for fun");}
 	};
 	typedef vector<ClientBanned> ClientBannedVec;
 	typedef vector<ClientBanned>::iterator ClientBannedVecIt;
@@ -385,8 +385,8 @@ public:
 		uint SaveIndex;
 		uint UID[5];
 		uint UIDEndTick;
-		void Clear(){ZeroMemory(this,sizeof(ClientData));}
-		bool operator==(const char* name){return !_stricmp(name,ClientName);}
+		void Clear(){memzero(this,sizeof(ClientData));}
+		bool operator==(const char* name){return Str::CompareCase(name,ClientName);}
 		bool operator==(const uint id){return ClientId==id;}
 		ClientData(){Clear();}
 	};

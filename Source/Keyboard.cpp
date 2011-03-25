@@ -126,7 +126,7 @@ void Keyb::Lost()
 void Keyb::GetChar(uchar dik, string& str, int* position, int max, int flags)
 {
 	char str2[0x4000];
-	StringCopy(str2,str.c_str());
+	Str::Copy(str2,str.c_str());
 	Keyb::GetChar(dik,str2,position,max,flags);
 	str=str2;
 }
@@ -204,7 +204,7 @@ void Keyb::GetChar(uchar dik, char* str, int* position, int max, int flags)
 		HANDLE h=GetClipboardData(CF_OEMTEXT);
 		if(h)
 		{
-			char* cb=StringDuplicate((char*)h);
+			char* cb=Str::Duplicate((char*)h);
 			if(!cb) return;
 			OemToChar(cb,cb);
 			EraseInvalidChars(cb,flags);
@@ -217,7 +217,7 @@ void Keyb::GetChar(uchar dik, char* str, int* position, int max, int flags)
 			if(cb_len) memcpy(buf+posit,cb,cb_len);
 			if(len-posit) memcpy(buf+posit+cb_len,&str[posit],len-posit);
 			buf[posit+cb_len+(len-posit)]=0;
-			StringCopy(str,max+1,buf);
+			Str::Copy(str,max+1,buf);
 			delete[] buf;
 			delete[] cb;
 

@@ -39,7 +39,7 @@ LONG WINAPI TopLevelFilterSimple(struct _EXCEPTION_POINTERS* except);
 
 void CatchExceptions(const char* app_name, unsigned int app_ver)
 {
-	if(app_name) StringCopy(AppName,app_name);
+	if(app_name) Str::Copy(AppName,app_name);
 	sprintf(AppVer,"%04X",app_ver);
 
 	SetUnhandledExceptionFilter(TopLevelFilterDump);
@@ -135,15 +135,15 @@ LONG WINAPI TopLevelFilterSimple(struct _EXCEPTION_POINTERS* except)
 		char dump_str[512];
 
 		sprintf(str,"Name <%s>, Version <%s>\n",AppName,AppVer);
-		StringCopy(dump_str,str);
+		Str::Copy(dump_str,str);
 		sprintf(str,"ExceptionAddress <%p>\n",except->ExceptionRecord->ExceptionAddress);
-		StringAppend(dump_str,str);
+		Str::Append(dump_str,str);
 		sprintf(str,"ExceptionCode <0x%0x>\n",except->ExceptionRecord->ExceptionCode);
-		StringAppend(dump_str,str);
+		Str::Append(dump_str,str);
 		sprintf(str,"ExceptionFlags <0x%0x>\n",except->ExceptionRecord->ExceptionFlags);
-		StringAppend(dump_str,str);
+		Str::Append(dump_str,str);
 
-		if(FileWrite(file,dump_str,strlen(dump_str)))
+		if(FileWrite(file,dump_str,Str::Length(dump_str)))
 		{
 			sprintf(mess,DumpMess,&dump_path[2]);
 			retval=EXCEPTION_EXECUTE_HANDLER;

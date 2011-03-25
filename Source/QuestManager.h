@@ -2,7 +2,7 @@
 #define __QUEST_MANAGER__
 
 #include "Common.h"
-#include "Text.h"
+#include "MsgFiles.h"
 
 #define QUEST_MUL	1000
 

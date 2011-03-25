@@ -1787,7 +1787,7 @@ void HexManager::DrawMap()
 	// Cursor
 	DrawCursor(cursorPostPic->GetCurSprId());
 	if(drawCursorX<0) DrawCursor(cursorXPic->GetCurSprId());
-	else if(drawCursorX>0) DrawCursor(Str::Format("%u",drawCursorX));
+	else if(drawCursorX>0) DrawCursor(Str::FormatBuf("%u",drawCursorX));
 
 	SprMngr.Flush();
 }
@@ -2882,7 +2882,7 @@ bool HexManager::LoadMap(ushort map_pid)
 
 	if(fm.GetBEUInt()!=CLIENT_MAP_FORMAT_VER)
 	{
-		WriteLog(NULL,"Map Format is not supported.\n");
+		WriteLog(NULL,"Map FormatBuf is not supported.\n");
 		return false;
 	}
 
