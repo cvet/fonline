@@ -763,7 +763,7 @@ ServerScriptFunctions ServerFunctions;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#if (defined(FONLINE_CLIENT) || defined(FONLINE_SERVER)) && defined(FO_WINDOWS)
+#if defined(FO_WINDOWS)
 
 const char* GetLastSocketError()
 {

@@ -2,7 +2,6 @@
 #define __PROTO_MAP__
 
 #include "Common.h"
-#include "NetProtocol.h"
 #include "FileManager.h"
 
 // Generic
@@ -210,12 +209,12 @@ public:
 #endif
 
 private:
-	bool ReadHeader(int version);
-	bool ReadTiles(int version);
-	bool ReadObjects(int version);
+	bool ReadHeader(FileManager& fm, int version);
+	bool ReadTiles(FileManager& fm, int version);
+	bool ReadObjects(FileManager& fm, int version);
 	bool LoadTextFormat(const char* buf);
 #ifdef FONLINE_MAPPER
-	void SaveTextFormat(FileManager* fm);
+	void SaveTextFormat(FileManager& fm);
 #endif
 
 #ifdef FONLINE_SERVER
@@ -234,8 +233,8 @@ public:
 	uchar* HexFlags;
 
 private:
-	bool LoadCache(FileManager* fm);
-	void SaveCache(FileManager* fm);
+	bool LoadCache(FileManager& fm);
+	void SaveCache(FileManager& fm);
 	void BindSceneryScript(MapObject* mobj);
 #endif
 
@@ -268,9 +267,7 @@ private:
 	int pathType;
 	string pmapName;
 	ushort pmapPid;
-
 	bool isInit;
-	FileManager* pmapFm;
 
 public:
 	bool Init(ushort pid, const char* name, int path_type);
@@ -278,8 +275,8 @@ public:
 	bool Refresh();
 
 #ifdef FONLINE_MAPPER
-	void GenNew(FileManager* fm);
-	bool Save(const char* f_name, int path_type);
+	void GenNew();
+	bool Save(const char* fname, int path_type);
 	static bool IsMapFile(const char* fname);
 #endif
 
@@ -297,12 +294,12 @@ public:
 	void GetMapSceneriesHexEx(ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs);
 	void GetMapSceneriesByPid(ushort pid, MapObjectPtrVec& mobjs);
 	MapObject* GetMapGrid(ushort hx, ushort hy);
-	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),HexFlags(NULL){MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
+	ProtoMap():isInit(false),pathType(0),HexFlags(NULL){MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
 	ProtoMap(const ProtoMap& r){*this=r;MEMORY_PROCESS(MEMORY_PROTO_MAP,sizeof(ProtoMap));}
-	~ProtoMap(){pmapFm=NULL;isInit=false;HexFlags=NULL;MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)sizeof(ProtoMap));}
+	~ProtoMap(){isInit=false;HexFlags=NULL;MEMORY_PROCESS(MEMORY_PROTO_MAP,-(int)sizeof(ProtoMap));}
 #else
-	ProtoMap():pmapFm(NULL),isInit(false),pathType(0),RefCounter(1){}
-	~ProtoMap(){pmapFm=NULL;isInit=false;}
+	ProtoMap():isInit(false),pathType(0),RefCounter(1){}
+	~ProtoMap(){isInit=false;}
 #endif
 };
 typedef vector<ProtoMap> ProtoMapVec;

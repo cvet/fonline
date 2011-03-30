@@ -4301,7 +4301,7 @@ void FOMapper::ParseCommand(const char* cmd)
 		if(strstr(cmd,"new"))
 		{
 			ProtoMap* pmap=new ProtoMap();
-			pmap->GenNew(&FileMngr);
+			pmap->GenNew();
 
 			if(!HexMngr.SetProtoMap(*pmap))
 			{

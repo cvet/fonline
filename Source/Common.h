@@ -4,7 +4,7 @@
 // Some platform specific definitions
 #include "PlatformSpecific.h"
 
-// API
+// System API
 #if defined(FO_WINDOWS)
 	#define WINVER 0x0501 // Windows XP
 	#define WIN32_LEAN_AND_MEAN
@@ -29,14 +29,7 @@
     #include <arpa/inet.h>
 	#define SOCKET int
 	#define INVALID_SOCKET (-1)
-#endif
-
-// STL Port
-#if defined(FO_MSVC)
-	// stlport-.lib attached automatically
-#else // FO_GCC
-	// Linker option: -lstlport
-	// Define: _STLP_USE_STATIC_LIB
+	#define closesocket close
 #endif
 
 // Standart stuff

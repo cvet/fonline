@@ -310,7 +310,6 @@ bool ProtoMap::Init(ushort pid, const char* name, int path_type)
 	if(!name || !name[0]) return false;
 
 	pmapPid=pid;
-	pmapFm=new FileManager();
 	pathType=path_type;
 	pmapName=name;
 	LastObjectUID=0;
@@ -359,7 +358,6 @@ void ProtoMap::Clear()
 		SAFEREL(mobj);
 	}
 	MObjects.clear();
-	SAFEDEL(pmapFm);
 	Tiles.clear();
 #ifdef FONLINE_MAPPER
 	TilesField.clear();
@@ -371,7 +369,7 @@ void ProtoMap::Clear()
 	isInit=false;
 }
 
-bool ProtoMap::ReadHeader(int version)
+bool ProtoMap::ReadHeader(FileManager& fm, int version)
 {
 	HeaderV9 header9;
 	memzero(&header9,sizeof(header9));
@@ -382,22 +380,22 @@ bool ProtoMap::ReadHeader(int version)
 
 	if(version>=9)
 	{
-		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&header9,8)) return false;
-		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&header9,header9.HeaderSize)) return false;
+		fm.SetCurPos(0);
+		if(!fm.CopyMem(&header9,8)) return false;
+		fm.SetCurPos(0);
+		if(!fm.CopyMem(&header9,header9.HeaderSize)) return false;
 	}
 	else if(version>=7)
 	{
-		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&header9,8)) return false;
-		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&header9,header9.HeaderSize)) return false;
+		fm.SetCurPos(0);
+		if(!fm.CopyMem(&header9,8)) return false;
+		fm.SetCurPos(0);
+		if(!fm.CopyMem(&header9,header9.HeaderSize)) return false;
 	}
 	else // Version < 7
 	{
-		pmapFm->SetCurPos(0);
-		if(!pmapFm->CopyMem(&header9,96)) return false;
+		fm.SetCurPos(0);
+		if(!fm.CopyMem(&header9,96)) return false;
 	}
 
 	memzero(&Header,sizeof(Header));
@@ -417,11 +415,11 @@ bool ProtoMap::ReadHeader(int version)
 	return true;
 }
 
-bool ProtoMap::ReadTiles(int version)
+bool ProtoMap::ReadTiles(FileManager& fm, int version)
 {
 	uint* tiles=new(nothrow) uint[((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2)/sizeof(uint)];
 	if(!tiles) return false;
-	pmapFm->SetCurPos(Header.Packed?0:Header.HeaderSize);
+	fm.SetCurPos(Header.Packed?0:Header.HeaderSize);
 
 	if(version<8)
 	{
@@ -429,7 +427,7 @@ bool ProtoMap::ReadTiles(int version)
 		memzero(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2);
 		uint size=(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint);
 		uint* ptr=new(nothrow) uint[size/sizeof(uint)];
-		if(!pmapFm->CopyMem(ptr,size)) return false;
+		if(!fm.CopyMem(ptr,size)) return false;
 		for(int x=0;x<Header.MaxHexX/2;x++)
 		{
 			for(int y=0;y<Header.MaxHexY/2;y++)
@@ -446,7 +444,7 @@ bool ProtoMap::ReadTiles(int version)
 	}
 
 	// Version 8, 9
-	if(!pmapFm->CopyMem(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2)) return false;
+	if(!fm.CopyMem(tiles,(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*2)) return false;
 
 	for(int tx=0;tx<Header.MaxHexX/2;tx++)
 	{
@@ -462,17 +460,17 @@ bool ProtoMap::ReadTiles(int version)
 	return true;
 }
 
-bool ProtoMap::ReadObjects(int version)
+bool ProtoMap::ReadObjects(FileManager& fm, int version)
 {
 	if(version<6)
 	{
-		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint));
-		uint count=pmapFm->GetLEUInt();
+		fm.SetCurPos((Header.Packed?0:Header.HeaderSize)+(Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint));
+		uint count=fm.GetLEUInt();
 		if(!count) return true;
 
 		vector<MapObjectV5> objects_v5;
 		objects_v5.resize(count);
-		if(!pmapFm->CopyMem(&objects_v5[0],count*sizeof(MapObjectV5))) return false;
+		if(!fm.CopyMem(&objects_v5[0],count*sizeof(MapObjectV5))) return false;
 
 		for(uint k=0;k<count;k++)
 		{
@@ -602,15 +600,15 @@ bool ProtoMap::ReadObjects(int version)
 	}
 	else // Version 6, 7, 8, 9
 	{
-		pmapFm->SetCurPos((Header.Packed?0:Header.HeaderSize)+
+		fm.SetCurPos((Header.Packed?0:Header.HeaderSize)+
 			((Header.MaxHexX/2)*(Header.MaxHexY/2)*sizeof(uint)*(version<8?1:2)));
-		uint count=pmapFm->GetLEUInt();
+		uint count=fm.GetLEUInt();
 		if(!count) return true;
 
 		for(uint i=0;i<count;i++)
 		{
 			MapObjectV9 mobj_v9;
-			if(!pmapFm->CopyMem(&mobj_v9,240)) return false;
+			if(!fm.CopyMem(&mobj_v9,240)) return false;
 
 			MapObject* mobj=new MapObject();
 			mobj->MapObjType=mobj_v9.MapObjType;
@@ -1028,28 +1026,28 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 }
 
 #ifdef FONLINE_MAPPER
-void ProtoMap::SaveTextFormat(FileManager* fm)
+void ProtoMap::SaveTextFormat(FileManager& fm)
 {
 	// Header
-	fm->SetStr("[%s]\n",APP_HEADER);
-	fm->SetStr("%-20s %d\n","Version",Header.Version);
-	fm->SetStr("%-20s %d\n","MaxHexX",Header.MaxHexX);
-	fm->SetStr("%-20s %d\n","MaxHexY",Header.MaxHexY);
-	fm->SetStr("%-20s %d\n","WorkHexX",Header.WorkHexX);
-	fm->SetStr("%-20s %d\n","WorkHexY",Header.WorkHexY);
-	fm->SetStr("%-20s %s\n","ScriptModule",Header.ScriptModule[0]?Header.ScriptModule:"-");
-	fm->SetStr("%-20s %s\n","ScriptFunc",Header.ScriptFunc[0]?Header.ScriptFunc:"-");
-	fm->SetStr("%-20s %d\n","NoLogOut",Header.NoLogOut);
-	fm->SetStr("%-20s %d\n","Time",Header.Time);
-	fm->SetStr("%-20s %-4d %-4d %-4d %-4d\n","DayTime",Header.DayTime[0],Header.DayTime[1],Header.DayTime[2],Header.DayTime[3]);
-	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor0",Header.DayColor[0],Header.DayColor[4],Header.DayColor[8]);
-	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor1",Header.DayColor[1],Header.DayColor[5],Header.DayColor[9]);
-	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor2",Header.DayColor[2],Header.DayColor[6],Header.DayColor[10]);
-	fm->SetStr("%-20s %-3d %-3d %-3d\n","DayColor3",Header.DayColor[3],Header.DayColor[7],Header.DayColor[11]);
-	fm->SetStr("\n");
+	fm.SetStr("[%s]\n",APP_HEADER);
+	fm.SetStr("%-20s %d\n","Version",Header.Version);
+	fm.SetStr("%-20s %d\n","MaxHexX",Header.MaxHexX);
+	fm.SetStr("%-20s %d\n","MaxHexY",Header.MaxHexY);
+	fm.SetStr("%-20s %d\n","WorkHexX",Header.WorkHexX);
+	fm.SetStr("%-20s %d\n","WorkHexY",Header.WorkHexY);
+	fm.SetStr("%-20s %s\n","ScriptModule",Header.ScriptModule[0]?Header.ScriptModule:"-");
+	fm.SetStr("%-20s %s\n","ScriptFunc",Header.ScriptFunc[0]?Header.ScriptFunc:"-");
+	fm.SetStr("%-20s %d\n","NoLogOut",Header.NoLogOut);
+	fm.SetStr("%-20s %d\n","Time",Header.Time);
+	fm.SetStr("%-20s %-4d %-4d %-4d %-4d\n","DayTime",Header.DayTime[0],Header.DayTime[1],Header.DayTime[2],Header.DayTime[3]);
+	fm.SetStr("%-20s %-3d %-3d %-3d\n","DayColor0",Header.DayColor[0],Header.DayColor[4],Header.DayColor[8]);
+	fm.SetStr("%-20s %-3d %-3d %-3d\n","DayColor1",Header.DayColor[1],Header.DayColor[5],Header.DayColor[9]);
+	fm.SetStr("%-20s %-3d %-3d %-3d\n","DayColor2",Header.DayColor[2],Header.DayColor[6],Header.DayColor[10]);
+	fm.SetStr("%-20s %-3d %-3d %-3d\n","DayColor3",Header.DayColor[3],Header.DayColor[7],Header.DayColor[11]);
+	fm.SetStr("\n");
 
 	// Tiles
-	fm->SetStr("[%s]\n",APP_TILES);
+	fm.SetStr("[%s]\n",APP_TILES);
 	char tile_str[256];
 	for(uint i=0,j=Tiles.size();i<j;i++)
 	{
@@ -1065,61 +1063,61 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 			if(has_offs)  Str::Append(tile_str,"o");
 			if(has_layer)  Str::Append(tile_str,"l");
 
-			fm->SetStr("%-10s %-4d %-4d ",tile_str,tile.HexX,tile.HexY);
+			fm.SetStr("%-10s %-4d %-4d ",tile_str,tile.HexX,tile.HexY);
 
 			if(has_offs)
-				fm->SetStr("%-3d %-3d ",tile.OffsX,tile.OffsY);
+				fm.SetStr("%-3d %-3d ",tile.OffsX,tile.OffsY);
 			else
-				fm->SetStr("        ");
+				fm.SetStr("        ");
 
 			if(has_layer)
-				fm->SetStr("%d ",tile.Layer);
+				fm.SetStr("%d ",tile.Layer);
 			else
-				fm->SetStr("  ");
+				fm.SetStr("  ");
 
-			fm->SetStr("%s\n",name);
+			fm.SetStr("%s\n",name);
 		}
 	}
-	fm->SetStr("\n");
+	fm.SetStr("\n");
 
 	// Objects
-	fm->SetStr("[%s]\n",APP_OBJECTS);
+	fm.SetStr("[%s]\n",APP_OBJECTS);
 	for(uint k=0;k<MObjects.size();k++)
 	{
 		MapObject& mobj=*MObjects[k];
 		// Shared
-		fm->SetStr("%-20s %d\n","MapObjType",mobj.MapObjType);
-		fm->SetStr("%-20s %d\n","ProtoId",mobj.ProtoId);
-		if(mobj.MapX) fm->SetStr("%-20s %d\n","MapX",mobj.MapX);
-		if(mobj.MapY) fm->SetStr("%-20s %d\n","MapY",mobj.MapY);
-		if(mobj.Dir) fm->SetStr("%-20s %d\n","Dir",mobj.Dir);
-		if(mobj.UID) fm->SetStr("%-20s %d\n","UID",mobj.UID);
-		if(mobj.ContainerUID) fm->SetStr("%-20s %d\n","ContainerUID",mobj.ContainerUID);
-		if(mobj.ParentUID) fm->SetStr("%-20s %d\n","ParentUID",mobj.ParentUID);
-		if(mobj.ParentChildIndex) fm->SetStr("%-20s %d\n","ParentChildIndex",mobj.ParentChildIndex);
-		if(mobj.LightColor) fm->SetStr("%-20s %d\n","LightColor",mobj.LightColor);
-		if(mobj.LightDay) fm->SetStr("%-20s %d\n","LightDay",mobj.LightDay);
-		if(mobj.LightDirOff) fm->SetStr("%-20s %d\n","LightDirOff",mobj.LightDirOff);
-		if(mobj.LightDistance) fm->SetStr("%-20s %d\n","LightDistance",mobj.LightDistance);
-		if(mobj.LightIntensity) fm->SetStr("%-20s %d\n","LightIntensity",mobj.LightIntensity);
-		if(mobj.ScriptName[0]) fm->SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
-		if(mobj.FuncName[0]) fm->SetStr("%-20s %s\n","FuncName",mobj.FuncName);
-		if(mobj.UserData[0]) fm->SetStr("%-20s %d\n","UserData0",mobj.UserData[0]);
-		if(mobj.UserData[1]) fm->SetStr("%-20s %d\n","UserData1",mobj.UserData[1]);
-		if(mobj.UserData[2]) fm->SetStr("%-20s %d\n","UserData2",mobj.UserData[2]);
-		if(mobj.UserData[3]) fm->SetStr("%-20s %d\n","UserData3",mobj.UserData[3]);
-		if(mobj.UserData[4]) fm->SetStr("%-20s %d\n","UserData4",mobj.UserData[4]);
-		if(mobj.UserData[5]) fm->SetStr("%-20s %d\n","UserData5",mobj.UserData[5]);
-		if(mobj.UserData[6]) fm->SetStr("%-20s %d\n","UserData6",mobj.UserData[6]);
-		if(mobj.UserData[7]) fm->SetStr("%-20s %d\n","UserData7",mobj.UserData[7]);
-		if(mobj.UserData[8]) fm->SetStr("%-20s %d\n","UserData8",mobj.UserData[8]);
-		if(mobj.UserData[9]) fm->SetStr("%-20s %d\n","UserData9",mobj.UserData[9]);
+		fm.SetStr("%-20s %d\n","MapObjType",mobj.MapObjType);
+		fm.SetStr("%-20s %d\n","ProtoId",mobj.ProtoId);
+		if(mobj.MapX) fm.SetStr("%-20s %d\n","MapX",mobj.MapX);
+		if(mobj.MapY) fm.SetStr("%-20s %d\n","MapY",mobj.MapY);
+		if(mobj.Dir) fm.SetStr("%-20s %d\n","Dir",mobj.Dir);
+		if(mobj.UID) fm.SetStr("%-20s %d\n","UID",mobj.UID);
+		if(mobj.ContainerUID) fm.SetStr("%-20s %d\n","ContainerUID",mobj.ContainerUID);
+		if(mobj.ParentUID) fm.SetStr("%-20s %d\n","ParentUID",mobj.ParentUID);
+		if(mobj.ParentChildIndex) fm.SetStr("%-20s %d\n","ParentChildIndex",mobj.ParentChildIndex);
+		if(mobj.LightColor) fm.SetStr("%-20s %d\n","LightColor",mobj.LightColor);
+		if(mobj.LightDay) fm.SetStr("%-20s %d\n","LightDay",mobj.LightDay);
+		if(mobj.LightDirOff) fm.SetStr("%-20s %d\n","LightDirOff",mobj.LightDirOff);
+		if(mobj.LightDistance) fm.SetStr("%-20s %d\n","LightDistance",mobj.LightDistance);
+		if(mobj.LightIntensity) fm.SetStr("%-20s %d\n","LightIntensity",mobj.LightIntensity);
+		if(mobj.ScriptName[0]) fm.SetStr("%-20s %s\n","ScriptName",mobj.ScriptName);
+		if(mobj.FuncName[0]) fm.SetStr("%-20s %s\n","FuncName",mobj.FuncName);
+		if(mobj.UserData[0]) fm.SetStr("%-20s %d\n","UserData0",mobj.UserData[0]);
+		if(mobj.UserData[1]) fm.SetStr("%-20s %d\n","UserData1",mobj.UserData[1]);
+		if(mobj.UserData[2]) fm.SetStr("%-20s %d\n","UserData2",mobj.UserData[2]);
+		if(mobj.UserData[3]) fm.SetStr("%-20s %d\n","UserData3",mobj.UserData[3]);
+		if(mobj.UserData[4]) fm.SetStr("%-20s %d\n","UserData4",mobj.UserData[4]);
+		if(mobj.UserData[5]) fm.SetStr("%-20s %d\n","UserData5",mobj.UserData[5]);
+		if(mobj.UserData[6]) fm.SetStr("%-20s %d\n","UserData6",mobj.UserData[6]);
+		if(mobj.UserData[7]) fm.SetStr("%-20s %d\n","UserData7",mobj.UserData[7]);
+		if(mobj.UserData[8]) fm.SetStr("%-20s %d\n","UserData8",mobj.UserData[8]);
+		if(mobj.UserData[9]) fm.SetStr("%-20s %d\n","UserData9",mobj.UserData[9]);
 		// Critter
 		if(mobj.MapObjType==MAP_OBJECT_CRITTER)
 		{
-			fm->SetStr("%-20s %d\n","Critter_Cond",mobj.MCritter.Cond);
-			fm->SetStr("%-20s %d\n","Critter_Anim1",mobj.MCritter.Anim1);
-			fm->SetStr("%-20s %d\n","Critter_Anim2",mobj.MCritter.Anim2);
+			fm.SetStr("%-20s %d\n","Critter_Cond",mobj.MCritter.Cond);
+			fm.SetStr("%-20s %d\n","Critter_Anim1",mobj.MCritter.Anim1);
+			fm.SetStr("%-20s %d\n","Critter_Anim2",mobj.MCritter.Anim2);
 			for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
 			{
 				if(mobj.MCritter.ParamIndex[i]>=0 && mobj.MCritter.ParamIndex[i]<MAX_PARAMS)
@@ -1129,9 +1127,9 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 					{
 						char str[128];
 						sprintf(str,"Critter_ParamIndex%d",i);
-						fm->SetStr("%-20s %s\n",str,param_name);
+						fm.SetStr("%-20s %s\n",str,param_name);
 						sprintf(str,"Critter_ParamValue%d",i);
-						fm->SetStr("%-20s %d\n",str,mobj.MCritter.ParamValue[i]);
+						fm.SetStr("%-20s %d\n",str,mobj.MCritter.ParamValue[i]);
 					}
 				}
 			}
@@ -1139,110 +1137,110 @@ void ProtoMap::SaveTextFormat(FileManager* fm)
 		// Item
 		else if(mobj.MapObjType==MAP_OBJECT_ITEM || mobj.MapObjType==MAP_OBJECT_SCENERY)
 		{
-			if(mobj.MItem.OffsetX) fm->SetStr("%-20s %d\n","OffsetX",mobj.MItem.OffsetX);
-			if(mobj.MItem.OffsetY) fm->SetStr("%-20s %d\n","OffsetY",mobj.MItem.OffsetY);
-			if(mobj.MItem.AnimStayBegin) fm->SetStr("%-20s %d\n","AnimStayBegin",mobj.MItem.AnimStayBegin);
-			if(mobj.MItem.AnimStayEnd) fm->SetStr("%-20s %d\n","AnimStayEnd",mobj.MItem.AnimStayEnd);
-			if(mobj.MItem.AnimWait) fm->SetStr("%-20s %d\n","AnimWait",mobj.MItem.AnimWait);
-			if(mobj.RunTime.PicMapName[0]) fm->SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
-			if(mobj.RunTime.PicInvName[0]) fm->SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
-			if(mobj.MItem.InfoOffset) fm->SetStr("%-20s %d\n","InfoOffset",mobj.MItem.InfoOffset);
+			if(mobj.MItem.OffsetX) fm.SetStr("%-20s %d\n","OffsetX",mobj.MItem.OffsetX);
+			if(mobj.MItem.OffsetY) fm.SetStr("%-20s %d\n","OffsetY",mobj.MItem.OffsetY);
+			if(mobj.MItem.AnimStayBegin) fm.SetStr("%-20s %d\n","AnimStayBegin",mobj.MItem.AnimStayBegin);
+			if(mobj.MItem.AnimStayEnd) fm.SetStr("%-20s %d\n","AnimStayEnd",mobj.MItem.AnimStayEnd);
+			if(mobj.MItem.AnimWait) fm.SetStr("%-20s %d\n","AnimWait",mobj.MItem.AnimWait);
+			if(mobj.RunTime.PicMapName[0]) fm.SetStr("%-20s %s\n","PicMapName",mobj.RunTime.PicMapName);
+			if(mobj.RunTime.PicInvName[0]) fm.SetStr("%-20s %s\n","PicInvName",mobj.RunTime.PicInvName);
+			if(mobj.MItem.InfoOffset) fm.SetStr("%-20s %d\n","InfoOffset",mobj.MItem.InfoOffset);
 			if(mobj.MapObjType==MAP_OBJECT_ITEM)
 			{
-				if(mobj.MItem.Count) fm->SetStr("%-20s %d\n","Item_Count",mobj.MItem.Count);
-				if(mobj.MItem.BrokenFlags) fm->SetStr("%-20s %d\n","Item_BrokenFlags",mobj.MItem.BrokenFlags);
-				if(mobj.MItem.BrokenCount) fm->SetStr("%-20s %d\n","Item_BrokenCount",mobj.MItem.BrokenCount);
-				if(mobj.MItem.Deterioration) fm->SetStr("%-20s %d\n","Item_Deterioration",mobj.MItem.Deterioration);
-				if(mobj.MItem.ItemSlot) fm->SetStr("%-20s %d\n","Item_ItemSlot",mobj.MItem.ItemSlot);
-				if(mobj.MItem.AmmoPid) fm->SetStr("%-20s %d\n","Item_AmmoPid",mobj.MItem.AmmoPid);
-				if(mobj.MItem.AmmoCount) fm->SetStr("%-20s %d\n","Item_AmmoCount",mobj.MItem.AmmoCount);
-				if(mobj.MItem.LockerDoorId) fm->SetStr("%-20s %d\n","Item_LockerDoorId",mobj.MItem.LockerDoorId);
-				if(mobj.MItem.LockerCondition) fm->SetStr("%-20s %d\n","Item_LockerCondition",mobj.MItem.LockerCondition);
-				if(mobj.MItem.LockerComplexity) fm->SetStr("%-20s %d\n","Item_LockerComplexity",mobj.MItem.LockerComplexity);
-				if(mobj.MItem.TrapValue) fm->SetStr("%-20s %d\n","Item_TrapValue",mobj.MItem.TrapValue);
-				if(mobj.MItem.Val[0]) fm->SetStr("%-20s %d\n","Item_Val0",mobj.MItem.Val[0]);
-				if(mobj.MItem.Val[1]) fm->SetStr("%-20s %d\n","Item_Val1",mobj.MItem.Val[1]);
-				if(mobj.MItem.Val[2]) fm->SetStr("%-20s %d\n","Item_Val2",mobj.MItem.Val[2]);
-				if(mobj.MItem.Val[3]) fm->SetStr("%-20s %d\n","Item_Val3",mobj.MItem.Val[3]);
-				if(mobj.MItem.Val[4]) fm->SetStr("%-20s %d\n","Item_Val4",mobj.MItem.Val[4]);
-				if(mobj.MItem.Val[5]) fm->SetStr("%-20s %d\n","Item_Val5",mobj.MItem.Val[5]);
-				if(mobj.MItem.Val[6]) fm->SetStr("%-20s %d\n","Item_Val6",mobj.MItem.Val[6]);
-				if(mobj.MItem.Val[7]) fm->SetStr("%-20s %d\n","Item_Val7",mobj.MItem.Val[7]);
-				if(mobj.MItem.Val[8]) fm->SetStr("%-20s %d\n","Item_Val8",mobj.MItem.Val[8]);
-				if(mobj.MItem.Val[9]) fm->SetStr("%-20s %d\n","Item_Val9",mobj.MItem.Val[9]);
+				if(mobj.MItem.Count) fm.SetStr("%-20s %d\n","Item_Count",mobj.MItem.Count);
+				if(mobj.MItem.BrokenFlags) fm.SetStr("%-20s %d\n","Item_BrokenFlags",mobj.MItem.BrokenFlags);
+				if(mobj.MItem.BrokenCount) fm.SetStr("%-20s %d\n","Item_BrokenCount",mobj.MItem.BrokenCount);
+				if(mobj.MItem.Deterioration) fm.SetStr("%-20s %d\n","Item_Deterioration",mobj.MItem.Deterioration);
+				if(mobj.MItem.ItemSlot) fm.SetStr("%-20s %d\n","Item_ItemSlot",mobj.MItem.ItemSlot);
+				if(mobj.MItem.AmmoPid) fm.SetStr("%-20s %d\n","Item_AmmoPid",mobj.MItem.AmmoPid);
+				if(mobj.MItem.AmmoCount) fm.SetStr("%-20s %d\n","Item_AmmoCount",mobj.MItem.AmmoCount);
+				if(mobj.MItem.LockerDoorId) fm.SetStr("%-20s %d\n","Item_LockerDoorId",mobj.MItem.LockerDoorId);
+				if(mobj.MItem.LockerCondition) fm.SetStr("%-20s %d\n","Item_LockerCondition",mobj.MItem.LockerCondition);
+				if(mobj.MItem.LockerComplexity) fm.SetStr("%-20s %d\n","Item_LockerComplexity",mobj.MItem.LockerComplexity);
+				if(mobj.MItem.TrapValue) fm.SetStr("%-20s %d\n","Item_TrapValue",mobj.MItem.TrapValue);
+				if(mobj.MItem.Val[0]) fm.SetStr("%-20s %d\n","Item_Val0",mobj.MItem.Val[0]);
+				if(mobj.MItem.Val[1]) fm.SetStr("%-20s %d\n","Item_Val1",mobj.MItem.Val[1]);
+				if(mobj.MItem.Val[2]) fm.SetStr("%-20s %d\n","Item_Val2",mobj.MItem.Val[2]);
+				if(mobj.MItem.Val[3]) fm.SetStr("%-20s %d\n","Item_Val3",mobj.MItem.Val[3]);
+				if(mobj.MItem.Val[4]) fm.SetStr("%-20s %d\n","Item_Val4",mobj.MItem.Val[4]);
+				if(mobj.MItem.Val[5]) fm.SetStr("%-20s %d\n","Item_Val5",mobj.MItem.Val[5]);
+				if(mobj.MItem.Val[6]) fm.SetStr("%-20s %d\n","Item_Val6",mobj.MItem.Val[6]);
+				if(mobj.MItem.Val[7]) fm.SetStr("%-20s %d\n","Item_Val7",mobj.MItem.Val[7]);
+				if(mobj.MItem.Val[8]) fm.SetStr("%-20s %d\n","Item_Val8",mobj.MItem.Val[8]);
+				if(mobj.MItem.Val[9]) fm.SetStr("%-20s %d\n","Item_Val9",mobj.MItem.Val[9]);
 			}
 			// Scenery
 			else if(mobj.MapObjType==MAP_OBJECT_SCENERY)
 			{
-				if(mobj.MScenery.CanUse) fm->SetStr("%-20s %d\n","Scenery_CanUse",mobj.MScenery.CanUse);
-				if(mobj.MScenery.CanTalk) fm->SetStr("%-20s %d\n","Scenery_CanTalk",mobj.MScenery.CanTalk);
-				if(mobj.MScenery.TriggerNum) fm->SetStr("%-20s %d\n","Scenery_TriggerNum",mobj.MScenery.TriggerNum);
-				if(mobj.MScenery.ParamsCount) fm->SetStr("%-20s %d\n","Scenery_ParamsCount",mobj.MScenery.ParamsCount);
-				if(mobj.MScenery.Param[0]) fm->SetStr("%-20s %d\n","Scenery_Param0",mobj.MScenery.Param[0]);
-				if(mobj.MScenery.Param[1]) fm->SetStr("%-20s %d\n","Scenery_Param1",mobj.MScenery.Param[1]);
-				if(mobj.MScenery.Param[2]) fm->SetStr("%-20s %d\n","Scenery_Param2",mobj.MScenery.Param[2]);
-				if(mobj.MScenery.Param[3]) fm->SetStr("%-20s %d\n","Scenery_Param3",mobj.MScenery.Param[3]);
-				if(mobj.MScenery.Param[4]) fm->SetStr("%-20s %d\n","Scenery_Param4",mobj.MScenery.Param[4]);
-				if(mobj.MScenery.ToMapPid) fm->SetStr("%-20s %d\n","Scenery_ToMapPid",mobj.MScenery.ToMapPid);
-				if(mobj.MScenery.ToEntire) fm->SetStr("%-20s %d\n","Scenery_ToEntire",mobj.MScenery.ToEntire);
-				if(mobj.MScenery.ToDir) fm->SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
-				if(mobj.MScenery.SpriteCut) fm->SetStr("%-20s %d\n","SpriteCut",mobj.MScenery.SpriteCut);
+				if(mobj.MScenery.CanUse) fm.SetStr("%-20s %d\n","Scenery_CanUse",mobj.MScenery.CanUse);
+				if(mobj.MScenery.CanTalk) fm.SetStr("%-20s %d\n","Scenery_CanTalk",mobj.MScenery.CanTalk);
+				if(mobj.MScenery.TriggerNum) fm.SetStr("%-20s %d\n","Scenery_TriggerNum",mobj.MScenery.TriggerNum);
+				if(mobj.MScenery.ParamsCount) fm.SetStr("%-20s %d\n","Scenery_ParamsCount",mobj.MScenery.ParamsCount);
+				if(mobj.MScenery.Param[0]) fm.SetStr("%-20s %d\n","Scenery_Param0",mobj.MScenery.Param[0]);
+				if(mobj.MScenery.Param[1]) fm.SetStr("%-20s %d\n","Scenery_Param1",mobj.MScenery.Param[1]);
+				if(mobj.MScenery.Param[2]) fm.SetStr("%-20s %d\n","Scenery_Param2",mobj.MScenery.Param[2]);
+				if(mobj.MScenery.Param[3]) fm.SetStr("%-20s %d\n","Scenery_Param3",mobj.MScenery.Param[3]);
+				if(mobj.MScenery.Param[4]) fm.SetStr("%-20s %d\n","Scenery_Param4",mobj.MScenery.Param[4]);
+				if(mobj.MScenery.ToMapPid) fm.SetStr("%-20s %d\n","Scenery_ToMapPid",mobj.MScenery.ToMapPid);
+				if(mobj.MScenery.ToEntire) fm.SetStr("%-20s %d\n","Scenery_ToEntire",mobj.MScenery.ToEntire);
+				if(mobj.MScenery.ToDir) fm.SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
+				if(mobj.MScenery.SpriteCut) fm.SetStr("%-20s %d\n","SpriteCut",mobj.MScenery.SpriteCut);
 			}
 		}
-		fm->SetStr("\n");
+		fm.SetStr("\n");
 	}
-	fm->SetStr("\n");
+	fm.SetStr("\n");
 }
 #endif
 
 #ifdef FONLINE_SERVER
-bool ProtoMap::LoadCache(FileManager* fm)
+bool ProtoMap::LoadCache(FileManager& fm)
 {
 	// Server version
-	uint version=fm->GetBEUInt();
+	uint version=fm.GetBEUInt();
 	if(version!=SERVER_VERSION) return false;
-	fm->GetBEUInt();
-	fm->GetBEUInt();
-	fm->GetBEUInt();
+	fm.GetBEUInt();
+	fm.GetBEUInt();
+	fm.GetBEUInt();
 
 	// Header
-	if(!fm->CopyMem(&Header,sizeof(Header))) return false;
+	if(!fm.CopyMem(&Header,sizeof(Header))) return false;
 
 	// Tiles
-	uint tiles_count=fm->GetBEUInt();
+	uint tiles_count=fm.GetBEUInt();
 	if(tiles_count)
 	{
 		Tiles.resize(tiles_count);
-		fm->CopyMem(&Tiles[0],tiles_count*sizeof(Tile));
+		fm.CopyMem(&Tiles[0],tiles_count*sizeof(Tile));
 	}
 
 	// Critters
-	uint count=fm->GetBEUInt();
+	uint count=fm.GetBEUInt();
 	CrittersVec.reserve(count);
 	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
-		fm->CopyMem(mobj,sizeof(MapObject)-sizeof(MapObject::_RunTime));
+		fm.CopyMem(mobj,sizeof(MapObject)-sizeof(MapObject::_RunTime));
 		CrittersVec.push_back(mobj);
 	}
 
 	// Items
-	count=fm->GetBEUInt();
+	count=fm.GetBEUInt();
 	ItemsVec.reserve(count);
 	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
-		fm->CopyMem(mobj,sizeof(MapObject)-sizeof(MapObject::_RunTime));
+		fm.CopyMem(mobj,sizeof(MapObject)-sizeof(MapObject::_RunTime));
 		ItemsVec.push_back(mobj);
 	}
 
 	// Scenery
-	count=fm->GetBEUInt();
+	count=fm.GetBEUInt();
 	SceneryVec.reserve(count);
 	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
-		fm->CopyMem(mobj,sizeof(MapObject));
+		fm.CopyMem(mobj,sizeof(MapObject));
 		SceneryVec.push_back(mobj);
 		mobj->RunTime.RefCounter=1;
 		mobj->RunTime.BindScriptId=0;
@@ -1250,47 +1248,47 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	}
 
 	// Grids
-	count=fm->GetBEUInt();
+	count=fm.GetBEUInt();
 	GridsVec.reserve(count);
 	for(uint i=0;i<count;i++)
 	{
 		MapObject* mobj=new MapObject();
-		fm->CopyMem(mobj,sizeof(MapObject));
+		fm.CopyMem(mobj,sizeof(MapObject));
 		GridsVec.push_back(mobj);
 		mobj->RunTime.RefCounter=1;
 		mobj->RunTime.BindScriptId=0;
 	}
 
 	// To send
-	count=fm->GetBEUInt();
+	count=fm.GetBEUInt();
 	if(count)
 	{
 		WallsToSend.resize(count);
-		if(!fm->CopyMem(&WallsToSend[0],count*sizeof(SceneryCl))) return false;
+		if(!fm.CopyMem(&WallsToSend[0],count*sizeof(SceneryCl))) return false;
 	}
-	count=fm->GetBEUInt();
+	count=fm.GetBEUInt();
 	if(count)
 	{
 		SceneriesToSend.resize(count);
-		if(!fm->CopyMem(&SceneriesToSend[0],count*sizeof(SceneryCl))) return false;
+		if(!fm.CopyMem(&SceneriesToSend[0],count*sizeof(SceneryCl))) return false;
 	}
 
 	// Hashes
-	HashTiles=fm->GetBEUInt();
-	HashWalls=fm->GetBEUInt();
-	HashScen=fm->GetBEUInt();
+	HashTiles=fm.GetBEUInt();
+	HashWalls=fm.GetBEUInt();
+	HashScen=fm.GetBEUInt();
 
 	// Hex flags
 	HexFlags=new uchar[Header.MaxHexX*Header.MaxHexY];
 	if(!HexFlags) return false;
-	if(!fm->CopyMem(HexFlags,Header.MaxHexX*Header.MaxHexY)) return false;
+	if(!fm.CopyMem(HexFlags,Header.MaxHexX*Header.MaxHexY)) return false;
 
 	// Entires
-	count=fm->GetBEUInt();
+	count=fm.GetBEUInt();
 	if(count)
 	{
 		mapEntires.resize(count);
-		if(!fm->CopyMem(&mapEntires[0],count*sizeof(MapEntire))) return false;
+		if(!fm.CopyMem(&mapEntires[0],count*sizeof(MapEntire))) return false;
 	}
 
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)SceneriesToSend.capacity()*sizeof(SceneryCl));
@@ -1305,63 +1303,63 @@ bool ProtoMap::LoadCache(FileManager* fm)
 	return true;
 }
 
-void ProtoMap::SaveCache(FileManager* fm)
+void ProtoMap::SaveCache(FileManager& fm)
 {
 	// Server version
-	fm->SetBEUInt(SERVER_VERSION);
-	fm->SetBEUInt(0);
-	fm->SetBEUInt(0);
-	fm->SetBEUInt(0);
+	fm.SetBEUInt(SERVER_VERSION);
+	fm.SetBEUInt(0);
+	fm.SetBEUInt(0);
+	fm.SetBEUInt(0);
 
 	// Header
-	fm->SetData(&Header,sizeof(Header));
+	fm.SetData(&Header,sizeof(Header));
 
 	// Tiles
-	fm->SetBEUInt((uint)Tiles.size());
-	if(Tiles.size()) fm->SetData(&Tiles[0],(uint)Tiles.size()*sizeof(Tile));
+	fm.SetBEUInt((uint)Tiles.size());
+	if(Tiles.size()) fm.SetData(&Tiles[0],(uint)Tiles.size()*sizeof(Tile));
 
 	// Critters
-	fm->SetBEUInt((uint)CrittersVec.size());
+	fm.SetBEUInt((uint)CrittersVec.size());
 	for(MapObjectPtrVecIt it=CrittersVec.begin(),end=CrittersVec.end();it!=end;++it)
-		fm->SetData(*it,(uint)sizeof(MapObject)-sizeof(MapObject::_RunTime));
+		fm.SetData(*it,(uint)sizeof(MapObject)-sizeof(MapObject::_RunTime));
 
 	// Items
-	fm->SetBEUInt((uint)ItemsVec.size());
+	fm.SetBEUInt((uint)ItemsVec.size());
 	for(MapObjectPtrVecIt it=ItemsVec.begin(),end=ItemsVec.end();it!=end;++it)
-		fm->SetData(*it,(uint)sizeof(MapObject)-sizeof(MapObject::_RunTime));
+		fm.SetData(*it,(uint)sizeof(MapObject)-sizeof(MapObject::_RunTime));
 
 	// Scenery
-	fm->SetBEUInt((uint)SceneryVec.size());
+	fm.SetBEUInt((uint)SceneryVec.size());
 	for(MapObjectPtrVecIt it=SceneryVec.begin(),end=SceneryVec.end();it!=end;++it)
-		fm->SetData(*it,(uint)sizeof(MapObject));
+		fm.SetData(*it,(uint)sizeof(MapObject));
 
 	// Grids
-	fm->SetBEUInt((uint)GridsVec.size());
+	fm.SetBEUInt((uint)GridsVec.size());
 	for(MapObjectPtrVecIt it=GridsVec.begin(),end=GridsVec.end();it!=end;++it)
-		fm->SetData(*it,(uint)sizeof(MapObject));
+		fm.SetData(*it,(uint)sizeof(MapObject));
 
 	// To send
-	fm->SetBEUInt((uint)WallsToSend.size());
-	fm->SetData(&WallsToSend[0],(uint)WallsToSend.size()*sizeof(SceneryCl));
-	fm->SetBEUInt((uint)SceneriesToSend.size());
-	fm->SetData(&SceneriesToSend[0],(uint)SceneriesToSend.size()*sizeof(SceneryCl));
+	fm.SetBEUInt((uint)WallsToSend.size());
+	fm.SetData(&WallsToSend[0],(uint)WallsToSend.size()*sizeof(SceneryCl));
+	fm.SetBEUInt((uint)SceneriesToSend.size());
+	fm.SetData(&SceneriesToSend[0],(uint)SceneriesToSend.size()*sizeof(SceneryCl));
 
 	// Hashes
-	fm->SetBEUInt(HashTiles);
-	fm->SetBEUInt(HashWalls);
-	fm->SetBEUInt(HashScen);
+	fm.SetBEUInt(HashTiles);
+	fm.SetBEUInt(HashWalls);
+	fm.SetBEUInt(HashScen);
 
 	// Hex flags
-	fm->SetData(HexFlags,Header.MaxHexX*Header.MaxHexY);
+	fm.SetData(HexFlags,Header.MaxHexX*Header.MaxHexY);
 
 	// Entires
-	fm->SetBEUInt((uint)mapEntires.size());
-	fm->SetData(&mapEntires[0],(uint)mapEntires.size()*sizeof(MapEntire));
+	fm.SetBEUInt((uint)mapEntires.size());
+	fm.SetData(&mapEntires[0],(uint)mapEntires.size()*sizeof(MapEntire));
 
 	// Save
 	char fname[MAX_PATH];
 	sprintf(fname,"%s%sb",pmapName.c_str(),MAP_PROTO_EXT);
-	fm->SaveOutBufToFile(fname,pathType);
+	fm.SaveOutBufToFile(fname,pathType);
 }
 
 void ProtoMap::BindSceneryScript(MapObject* mobj)
@@ -1413,13 +1411,14 @@ bool ProtoMap::Refresh()
 	cached.LoadFile(fname_bin.c_str(),pathType);
 
 	// Load text or binary
+	FileManager fm;
 	bool text=true;
-	if(!pmapFm->LoadFile(fname_txt.c_str(),pathType))
+	if(!fm.LoadFile(fname_txt.c_str(),pathType))
 	{
 		text=false;
-		if(!pmapFm->LoadFile(fname_map.c_str(),pathType) && !cached.IsLoaded())
+		if(!fm.LoadFile(fname_map.c_str(),pathType) && !cached.IsLoaded())
 		{
-			WriteLogF(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
+			WriteLogF(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),fm.GetPath(pathType));
 			return false;
 		}
 	}
@@ -1428,19 +1427,19 @@ bool ProtoMap::Refresh()
 	if(cached.IsLoaded())
 	{
 		bool load_cache=true;
-		if(pmapFm->IsLoaded())
+		if(fm.IsLoaded())
 		{
 			uint64 last_write,last_write_cache;
-			pmapFm->GetTime(NULL,NULL,&last_write);
+			fm.GetTime(NULL,NULL,&last_write);
 			cached.GetTime(NULL,NULL,&last_write_cache);
 			if(last_write>last_write_cache) load_cache=false;
 		}
 
 		if(load_cache)
 		{
-			if(LoadCache(&cached)) return true;
+			if(LoadCache(cached)) return true;
 
-			if(!pmapFm->IsLoaded())
+			if(!fm.IsLoaded())
 			{
 				WriteLogF(_FUNC_," - Map<%s>. Can't read cached map file.\n",map_info);
 				return false;
@@ -1450,13 +1449,14 @@ bool ProtoMap::Refresh()
 #endif // FONLINE_SERVER
 #ifdef FONLINE_MAPPER
 	// Load binary or text
+	FileManager fm;
 	bool text=true;
-	if(!pmapFm->LoadFile(fname_txt.c_str(),pathType))
+	if(!fm.LoadFile(fname_txt.c_str(),pathType))
 	{
 		text=false;
-		if(!pmapFm->LoadFile(fname_map.c_str(),pathType))
+		if(!fm.LoadFile(fname_map.c_str(),pathType))
 		{
-			WriteLogF(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
+			WriteLogF(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),fm.GetPath(pathType));
 			return false;
 		}
 	}
@@ -1465,7 +1465,7 @@ bool ProtoMap::Refresh()
 	// Load
 	if(text)
 	{
-		if(!LoadTextFormat((const char*)pmapFm->GetBuf()))
+		if(!LoadTextFormat((const char*)fm.GetBuf()))
 		{
 			WriteLogF(_FUNC_," - Map<%s>. Can't read text map format.\n",map_info);
 			return false;
@@ -1476,7 +1476,7 @@ bool ProtoMap::Refresh()
 		// Deprecated
 		// Check map format version
 		// Read version
-		uint version_full=pmapFm->GetLEUInt();
+		uint version_full=fm.GetLEUInt();
 
 		// Check version
 		if(version_full==F1_MAP_VERSION)
@@ -1513,7 +1513,7 @@ bool ProtoMap::Refresh()
 		}
 
 		// Read Header
-		if(!ReadHeader(version))
+		if(!ReadHeader(fm,version))
 		{
 			WriteLogF(_FUNC_," - Map<%s>. Can't read Header.\n",map_info);
 			return false;
@@ -1522,28 +1522,28 @@ bool ProtoMap::Refresh()
 		// Unpack
 		if(Header.Packed)
 		{
-			pmapFm->SetCurPos(Header.HeaderSize);
-			uint pack_len=pmapFm->GetFsize()-Header.HeaderSize;
+			fm.SetCurPos(Header.HeaderSize);
+			uint pack_len=fm.GetFsize()-Header.HeaderSize;
 			uint unpack_len=Header.UnpackedDataLen;
-			uchar* data=Crypt.Uncompress(pmapFm->GetCurBuf(),pack_len,unpack_len/pack_len+1);
+			uchar* data=Crypt.Uncompress(fm.GetCurBuf(),pack_len,unpack_len/pack_len+1);
 			if(!data)
 			{
 				WriteLogF(_FUNC_," - Map<%s>. Unable unpack data.\n",map_info);
 				return false;
 			}
-			pmapFm->LoadStream(data,pack_len);
+			fm.LoadStream(data,pack_len);
 			delete[] data;
 		}
 
 		// Read Tiles
-		if(!ReadTiles(version))
+		if(!ReadTiles(fm,version))
 		{
 			WriteLogF(_FUNC_," - Map<%s>. Can't read Tiles.\n",map_info);
 			return false;
 		}
 
 		// Read Objects
-		if(!ReadObjects(version))
+		if(!ReadObjects(fm,version))
 		{
 			WriteLogF(_FUNC_," - Map<%s>. Can't read Objects.\n",map_info);
 			return false;
@@ -1551,7 +1551,7 @@ bool ProtoMap::Refresh()
 
 		Header.Version=FO_MAP_VERSION_TEXT1;
 	}
-	pmapFm->UnloadFile();
+	fm.UnloadFile();
 
 	// Deprecated, add UIDs
 	if(Header.Version<FO_MAP_VERSION_TEXT4)
@@ -1825,7 +1825,7 @@ bool ProtoMap::Refresh()
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)Header.MaxHexX*Header.MaxHexY);
 	MEMORY_PROCESS(MEMORY_PROTO_MAP,(int)Tiles.capacity()*sizeof(Tile));
 
-	SaveCache(pmapFm);
+	SaveCache(fm);
 #endif
 
 #ifdef FONLINE_MAPPER
@@ -1870,14 +1870,13 @@ bool ProtoMap::Refresh()
 }
 
 #ifdef FONLINE_MAPPER
-void ProtoMap::GenNew(FileManager* fm)
+void ProtoMap::GenNew()
 {
 	Clear();
 	Header.Version=FO_MAP_VERSION_V5;
 	Header.MaxHexX=MAXHEX_DEF;
 	Header.MaxHexY=MAXHEX_DEF;
 	pmapPid=0xFFFF;
-	pmapFm=fm;
 	pathType=PT_MAPS;
 
 	// Morning	 5.00 -  9.59	 300 - 599
@@ -1897,9 +1896,9 @@ void ProtoMap::GenNew(FileManager* fm)
 	isInit=true;
 }
 
-bool ProtoMap::Save(const char* f_name, int path_type)
+bool ProtoMap::Save(const char* fname, int path_type)
 {
-	if(f_name && *f_name) pmapName=f_name;
+	if(fname && *fname) pmapName=fname;
 	if(path_type>=0) pathType=path_type;
 
 	// Fill tiles from cached fields
@@ -1936,20 +1935,20 @@ bool ProtoMap::Save(const char* f_name, int path_type)
 	}
 
 	// Save
-	pmapFm->ClearOutBuf();
+	FileManager fm;
 	Header.Version=FO_MAP_VERSION_TEXT4;
-	SaveTextFormat(pmapFm);
+	SaveTextFormat(fm);
 	Tiles.clear();
 
 	string fname=pmapName+MAP_PROTO_EXT;
-	if(!pmapFm->SaveOutBufToFile(fname.c_str(),pathType))
+	if(!fm.SaveOutBufToFile(fname.c_str(),pathType))
 	{
 		WriteLogF(_FUNC_," - Unable write file.\n");
-		pmapFm->ClearOutBuf();
+		fm.ClearOutBuf();
 		return false;
 	}
 
-	pmapFm->ClearOutBuf();
+	fm.ClearOutBuf();
 	return true;
 }
 

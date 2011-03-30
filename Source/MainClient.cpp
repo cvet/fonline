@@ -17,8 +17,13 @@ HANDLE GameLoopThreadHandle=NULL;
 
 int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show)
 {
-	RestoreMainDirectory();
 	setlocale(LC_ALL,"Russian");
+	RestoreMainDirectory();
+
+	// Pthreads
+#if defined(FO_WINDOWS)
+	pthread_win32_process_attach_np();
+#endif
 
 	// Exception
 	CatchExceptions("FOnline",CLIENT_VERSION);

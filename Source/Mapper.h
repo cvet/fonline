@@ -41,7 +41,6 @@ public:
 	LPDIRECTINPUT8 DInput;
 	LPDIRECTINPUTDEVICE8 Keyboard;
 	LPDIRECTINPUTDEVICE8 Mouse;
-	FileManager FileMngr;
 	HexManager HexMngr;
 	IniParser IfaceIni;
 	bool IsMapperStarted;

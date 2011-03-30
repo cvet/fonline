@@ -890,6 +890,11 @@ void* FOServer::NetIO_Loop(void*)
 	return NULL;
 }
 
+#pragma MESSAGE("Set names to libevent threads (NetIO_).")
+// static int thread_count=0;
+// LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
+// thread_count++;
+
 void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 {
 	Client* cl=(Client*)client;
@@ -899,10 +904,6 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 		cl->Disconnect();
 		cl->Shutdown();
 	}
-
-//	static int thread_count=0;
-//	LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
-//	thread_count++;
 }
 
 void FOServer::NetIO_Input(bufferevent* bev, void* client)
@@ -3533,7 +3534,6 @@ bool FOServer::Init()
 		closesocket(ListenSock);
 		return false;
 	}
-
 	NetIOThread.Start(NetIO_Loop);
 	WriteLog("Net work threads is started, count<%u>.\n",NetIOThreadsCount);
 

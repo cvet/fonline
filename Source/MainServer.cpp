@@ -50,8 +50,13 @@ int GUISizeMod=0;
 // Main
 int main(int argc, char** argv)
 {
-	RestoreMainDirectory();
 	setlocale(LC_ALL,"Russian");
+	RestoreMainDirectory();
+
+	// Pthreads
+#if defined(FO_WINDOWS)
+	pthread_win32_process_attach_np();
+#endif
 
 	// Exceptions catcher
 	CatchExceptions("FOnlineServer",SERVER_VERSION);
