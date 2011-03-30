@@ -10,6 +10,7 @@
 	#define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
 #else // FO_LINUX
+	#define ExitProcess(code) exit(code)
 	//
 #endif
 

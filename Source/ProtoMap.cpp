@@ -1571,7 +1571,7 @@ bool ProtoMap::Refresh()
 				if(mobj_->MapX!=mobj->MapX || mobj_->MapY!=mobj->MapY) continue;
 				if(mobj_->MapObjType!=MAP_OBJECT_ITEM && mobj_->MapObjType!=MAP_OBJECT_CRITTER) continue;
 				if(mobj_==mobj) continue;
-				if(mobj_->MapObjType!=MAP_OBJECT_ITEM)
+				if(mobj_->MapObjType==MAP_OBJECT_ITEM)
 				{
 					ProtoItem* proto_item=ItemMngr.GetProtoItem(mobj_->ProtoId);
 					if(!proto_item || proto_item->Type!=ITEM_TYPE_CONTAINER) continue;

@@ -452,7 +452,7 @@ Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, 
 	{
 		int index=params[i*2];
 		int value=params[i*2+1];
-		if(index>=0 && index<MAX_PARAMS) npc->Data.Params[index]=value;
+		if(index>=0 && index<MAX_PARAMS && value) npc->Data.Params[index]=value;
 	}
 
 	map->AddCritter(npc);

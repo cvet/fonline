@@ -324,7 +324,7 @@ void GUICallback(Fl_Widget* widget, void* data)
 {
 	if(widget==GuiWindow)
 	{
-		exit(0);
+		ExitProcess(0);
 	}
 	else if(widget==GuiBtnRlClScript)
 	{
@@ -636,7 +636,7 @@ void* GameLoopThread(void*)
 	}
 
 	LogFinish(-1);
-	if(Singleplayer) exit(0);
+	if(Singleplayer) ExitProcess(0);
 	return NULL;
 }
 
