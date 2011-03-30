@@ -8065,7 +8065,7 @@ void FOClient::PupDraw()
 		if(proto_item)
 		{
 			AnyFrames* anim=ResMngr.GetItemAnim(proto_item->PicMap,proto_item->Dir);
-			if(anim) SprMngr.DrawSpriteSize(anim,PupWInfo[0]+PupX,PupWInfo[1]+PupY,(float)PupWInfo.W(),(float)PupWInfo.H(),false,true);
+			if(anim) SprMngr.DrawSpriteSize(anim->GetSprId(anim->GetCnt()-1),PupWInfo[0]+PupX,PupWInfo[1]+PupY,(float)PupWInfo.W(),(float)PupWInfo.H(),false,true);
 		}
 	}
 	else if(PupTransferType==TRANSFER_CRIT_STEAL || PupTransferType==TRANSFER_CRIT_LOOT || PupTransferType==TRANSFER_FAR_CRIT)

@@ -3535,11 +3535,11 @@ bool FOServer::Init()
 		return false;
 	}
 	NetIOThread.Start(NetIO_Loop);
-	WriteLog("Net work threads is started, count<%u>.\n",NetIOThreadsCount);
+	WriteLog("Network IO threads started, count<%u>.\n",NetIOThreadsCount);
 
 	// Listen
 	ListenThread.Start(Net_Listen);
-	WriteLog("Net listen thread is started.\n");
+	WriteLog("Net listen thread started.\n");
 
 	// Start script
 	if(!Script::PrepareContext(ServerFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || !Script::GetReturnedBool())

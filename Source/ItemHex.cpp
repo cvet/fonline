@@ -67,7 +67,7 @@ void ItemHex::Process()
 		}
 		else
 		{
-			short cur_spr=begSpr+((endSpr-begSpr+(begSpr<endSpr?1:-1))*anim_proc)/100;
+			int cur_spr=begSpr+((endSpr-begSpr+(begSpr<endSpr?1:-1))*anim_proc)/100;
 			if(curSpr!=cur_spr) SetSpr(cur_spr);
 		}
 	}

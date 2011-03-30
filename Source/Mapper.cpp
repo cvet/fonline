@@ -1665,7 +1665,7 @@ void FOMapper::IntDraw()
 		if(GetTabIndex()<CurNpcProtos->size())
 		{
 			CritData* pnpc=(*CurNpcProtos)[GetTabIndex()];
-			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),MsgDlg->GetStr(STR_NPC_NAME_(pnpc->Params[ST_DIALOG_ID],pnpc->ProtoId)),FT_COLORIZE);
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),MsgDlg->GetStr(STR_NPC_PROTO_NAME_(pnpc->ProtoId)),FT_COLORIZE);
 		}
 	}
 	else if(IntMode==INT_MODE_INCONT && !SelectedObj.empty())

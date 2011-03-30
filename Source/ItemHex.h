@@ -32,7 +32,7 @@ public:
 	Sprite* SprDraw,*SprTemp;
 
 private:
-	uint curSpr,begSpr,endSpr;
+	int curSpr,begSpr,endSpr;
 	uint animBegSpr,animEndSpr;
 	uint animTick;
 	uchar maxAlpha;
