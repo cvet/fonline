@@ -95,9 +95,9 @@ void ResourceManager::Refresh()
 
 void ResourceManager::Finish()
 {
-	WriteLog(NULL,"Resource manager finish...\n");
+	WriteLog("Resource manager finish...\n");
 	loadedAnims.clear();
-	WriteLog(NULL,"Resource manager finish complete.\n");
+	WriteLog("Resource manager finish complete.\n");
 }
 
 void ResourceManager::FreeResources(int type)

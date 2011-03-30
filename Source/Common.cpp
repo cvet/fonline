@@ -708,7 +708,7 @@ void GetClientOptions()
 	GETOPTIONS_CMD_LINE_BOOL(logging,"-Logging");
 	if(!logging)
 	{
-		WriteLog(NULL,"File logging off.\n");
+		WriteLog("File logging off.\n");
 		LogFinish(-1);
 	}
 
@@ -1374,7 +1374,7 @@ void LoadList(const char* lst_name, int path_type)
 		if(!ext)
 		{
 			str_cnt++;
-			WriteLog(_FUNC_," - Extension not found in line<%s>, skip.\n",str);
+			WriteLogF(_FUNC_," - Extension not found in line<%s>, skip.\n",str);
 			continue;
 		}
 

@@ -114,7 +114,7 @@ uint UIDDUMMY10=-1;
 	{\
 		*result=*(uint*)&d_hwpi.szHwProfileGuid[0];\
 		for(int d_i=1;d_i<HW_PROFILE_GUIDLEN/4;d_i++) *result^=*(uint*)&d_hwpi.szHwProfileGuid[d_i*4];\
-		/*WriteLog(NULL,"GetCurrentHwProfile <%s><%X>.\n",d_hwpi.szHwProfileGuid,*result);*/\
+		/*WriteLog("GetCurrentHwProfile <%s><%X>.\n",d_hwpi.szHwProfileGuid,*result);*/\
 	}\
 	else *result=0;\
 	UID_FLAGS(*result,0x00000020,0x00000800);\

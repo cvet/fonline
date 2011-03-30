@@ -328,7 +328,7 @@ int FOMsg::LoadMsgFileBuf(char* data, uint data_len)
 #ifndef FONLINE_CLIENT
 		if(num_info<last_num)
 		{
-			WriteLog(_FUNC_," - Error string id, cur<%u>, last<%u>\n",num_info,last_num);
+			WriteLogF(_FUNC_," - Error string id, cur<%u>, last<%u>\n",num_info,last_num);
 			return -4;
 		}
 		last_num=num_info;
@@ -422,7 +422,7 @@ int LanguagePack::LoadAll()
 	// Loading All MSG files
 	if(!Name)
 	{
-		WriteLog(_FUNC_," - Lang Pack is not initialized.\n");
+		WriteLogF(_FUNC_," - Lang Pack is not initialized.\n");
 		return -1;
 	}
 
@@ -432,7 +432,7 @@ int LanguagePack::LoadAll()
 		if(Msg[i].LoadMsgFile(Str::FormatBuf("%s\\%s",NameStr,TextMsgFileName[i]),PathType)<0)
 		{
 			count_fail++;
-			WriteLog(_FUNC_," - Unable to load MSG<%s>.\n",TextMsgFileName[i]);
+			WriteLogF(_FUNC_," - Unable to load MSG<%s>.\n",TextMsgFileName[i]);
 		}
 	}
 

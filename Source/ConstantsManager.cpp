@@ -158,7 +158,7 @@ int ConstantsManager::GetDefineValue(const char* str)
 	StrUIntMapIt it=ConstCollections[CONSTANTS_DEFINE].NameValue.find(str);
 	if(it==ConstCollections[CONSTANTS_DEFINE].NameValue.end())
 	{
-		WriteLog(_FUNC_," - Define<%s> not found, taked zero by default.\n",str);
+		WriteLogF(_FUNC_," - Define<%s> not found, taked zero by default.\n",str);
 		return 0;
 	}
 	return (*it).second;

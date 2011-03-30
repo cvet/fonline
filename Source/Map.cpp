@@ -119,7 +119,7 @@ bool Map::Generate()
 {
 	char map_info[512];
 	sprintf(map_info,"Map id<%u>, pid<%u>",GetId(),GetPid());
-	//WriteLog(NULL,"Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
+	//WriteLog("Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
 
 	// Map data
 	dataLocker.Lock();
@@ -147,7 +147,7 @@ bool Map::Generate()
 			}
 			else
 			{
-				WriteLog(NULL,"Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
+				WriteLog("Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
 			}
 		}
 
@@ -169,7 +169,7 @@ bool Map::Generate()
 		Npc* npc=CrMngr.CreateNpc(mobj.ProtoId,params_count,params,0,NULL,script[0]?script:NULL,this,mobj.MapX,mobj.MapY,(uchar)mobj.Dir,true);
 		if(!npc)
 		{
-			WriteLog(_FUNC_," - Create npc on map<%s> with pid<%u> failture - continue generate.\n",map_info,mobj.ProtoId);
+			WriteLogF(_FUNC_," - Create npc on map<%s> with pid<%u> failture - continue generate.\n",map_info,mobj.ProtoId);
 			continue;
 		}
 
@@ -220,7 +220,7 @@ bool Map::Generate()
 		ProtoItem* proto=ItemMngr.GetProtoItem(pid);
 		if(!proto)
 		{
-			WriteLog(_FUNC_," - Proto object on map<%s> with pid<%u> not found, continue generate.\n",map_info,pid);
+			WriteLogF(_FUNC_," - Proto object on map<%s> with pid<%u> not found, continue generate.\n",map_info,pid);
 			continue;
 		}
 
@@ -242,7 +242,7 @@ bool Map::Generate()
 		Item* item=ItemMngr.CreateItem(pid,1);
 		if(!item)
 		{
-			WriteLog(_FUNC_," - Create item on map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
+			WriteLogF(_FUNC_," - Create item on map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
 			continue;
 		}
 
@@ -326,7 +326,7 @@ bool Map::Generate()
 			}
 			else
 			{
-				WriteLog(NULL,"Map<%s> empty item function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
+				WriteLog("Map<%s> empty item function, pos<%u><%u>, module<%s>.\n",map_info,mobj.MapX,mobj.MapY,mobj.ScriptName);
 			}
 		}
 
@@ -353,7 +353,7 @@ bool Map::Generate()
 		// Transfer to hex
 		if(!AddItem(item,mobj.MapX,mobj.MapY))
 		{
-			WriteLog(_FUNC_," - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
+			WriteLogF(_FUNC_," - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
 			ItemMngr.ItemToGarbage(item);
 			continue;
 		}
@@ -514,7 +514,7 @@ void Map::AddCritter(Critter* cr)
 
 		if(std::find(mapCritters.begin(),mapCritters.end(),cr)!=mapCritters.end())
 		{
-			WriteLog(_FUNC_," - Critter already added!\n");
+			WriteLogF(_FUNC_," - Critter already added!\n");
 			return;
 		}
 
@@ -633,7 +633,7 @@ void Map::SetItem(Item* item, ushort hx, ushort hy)
 {
 	if(GetItem(item->GetId()))
 	{
-		WriteLog(_FUNC_," - Item already added!\n");
+		WriteLogF(_FUNC_," - Item already added!\n");
 		return;
 	}
 
@@ -658,7 +658,7 @@ void Map::EraseItem(uint item_id)
 {
 	if(!item_id)
 	{
-		WriteLog(_FUNC_," - Item id is zero, id<%u>.\n",item_id);
+		WriteLogF(_FUNC_," - Item id is zero, id<%u>.\n",item_id);
 		return;
 	}
 
@@ -667,7 +667,7 @@ void Map::EraseItem(uint item_id)
 	for(;it!=end;++it) if((*it)->GetId()==item_id) break;
 	if(it==hexItems.end())
 	{
-		WriteLog(_FUNC_," - Item not found, id<%u>.\n",item_id);
+		WriteLogF(_FUNC_," - Item not found, id<%u>.\n",item_id);
 		return;
 	}
 
@@ -1433,7 +1433,7 @@ void Map::SetCritterCar(ushort hx, ushort hy, Critter* cr, Item* car)
 	// Check
 	if(hx>=GetMaxHexX() || hy>=GetMaxHexY() || !cr || !car || !car->IsCar())
 	{
-		WriteLog(_FUNC_," - Generic error, hx<%u>, hy<%u>, critter pointer<%p>, car pointer<%p>, is car<%d>.\n",hx,hy,cr,car,car && car->IsCar()?1:0);
+		WriteLogF(_FUNC_," - Generic error, hx<%u>, hy<%u>, critter pointer<%p>, car pointer<%p>, is car<%d>.\n",hx,hy,cr,car,car && car->IsCar()?1:0);
 		return;
 	}
 
@@ -1526,7 +1526,7 @@ bool Map::ParseScript(const char* script, bool first_time)
 		uint func_num=Script::GetScriptFuncNum(script,"void %s(Map&,bool)");
 		if(!func_num)
 		{
-			WriteLog(_FUNC_," - Script<%s> bind fail, map pid<%u>.\n",script,GetPid());
+			WriteLogF(_FUNC_," - Script<%s> bind fail, map pid<%u>.\n",script,GetPid());
 			return false;
 		}
 		Data.ScriptId=func_num;

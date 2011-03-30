@@ -12,7 +12,7 @@ FileLogger* DbgLog=NULL;
 
 bool VarManager::Init(const char* fpath)
 {
-	WriteLog(NULL,"Var manager initialization.\n");
+	WriteLog("Var manager initialization.\n");
 
 	if(!fpath) varsPath=".\\";
 	else varsPath=string(fpath);
@@ -24,7 +24,7 @@ bool VarManager::Init(const char* fpath)
 	if(GameOpt.LoggingVars) DbgLog=new FileLogger("vars.log");
 
 	isInit=true;
-	WriteLog(NULL,"Var manager initialization complete.\n");
+	WriteLog("Var manager initialization complete.\n");
 	return true;
 }
 
@@ -59,7 +59,7 @@ void VarManager::SaveVarsDataFile(void(*save_func)(void*,size_t))
 
 bool VarManager::LoadVarsDataFile(FILE* f, int version)
 {
-	WriteLog(NULL,"Load vars...");
+	WriteLog("Load vars...");
 	allQuestVars.reserve(10000); // 40kb
 
 	uint count=0;
@@ -89,13 +89,13 @@ bool VarManager::LoadVarsDataFile(FILE* f, int version)
 		TemplateVar* tvar=GetTemplateVar(temp_id);
 		if(!tvar)
 		{
-			WriteLog(NULL,"Template var not found, tid<%u>.\n",temp_id);
+			WriteLog("Template var not found, tid<%u>.\n",temp_id);
 			continue;
 		}
 
 		if(tvar->IsError())
 		{
-			WriteLog(NULL,"Template var have invalid data, tid<%u>.\n",temp_id);
+			WriteLog("Template var have invalid data, tid<%u>.\n",temp_id);
 			continue;
 		}
 
@@ -105,21 +105,21 @@ bool VarManager::LoadVarsDataFile(FILE* f, int version)
 
 		if(!var)
 		{
-			WriteLog(NULL,"Can't create var, tid<%u>.\n",temp_id);
+			WriteLog("Can't create var, tid<%u>.\n",temp_id);
 			continue;
 		}
 
 		var->VarValue=val;
 	}
 
-	WriteLog(NULL,"complete, count<%u>.\n",count);
+	WriteLog("complete, count<%u>.\n",count);
 	return true;
 }
 #endif // FONLINE_SERVER
 
 void VarManager::Finish()
 {
-	WriteLog(NULL,"Var manager finish...\n");
+	WriteLog("Var manager finish...\n");
 
 	Clear();
 
@@ -129,7 +129,7 @@ void VarManager::Finish()
 	varsPath="";
 	SAFEDEL(DbgLog);
 	isInit=false;
-	WriteLog(NULL,"Var manager finish complete.\n");
+	WriteLog("Var manager finish complete.\n");
 }
 
 void VarManager::Clear()
@@ -154,7 +154,7 @@ void VarManager::Clear()
 
 bool VarManager::UpdateVarsTemplate()
 {
-	WriteLog(NULL,"Update template vars...\n");
+	WriteLog("Update template vars...\n");
 
 	FileManager fm;
 #ifdef FONLINE_SERVER
@@ -163,7 +163,7 @@ bool VarManager::UpdateVarsTemplate()
 	if(!fm.LoadFile(varsPath.c_str(),-1))
 #endif
 	{
-		WriteLog(NULL,"Template vars file<%s> not found.\n",varsPath.c_str());
+		WriteLog("Template vars file<%s> not found.\n",varsPath.c_str());
 		return false;
 	}
 
@@ -173,7 +173,7 @@ bool VarManager::UpdateVarsTemplate()
 	for(TempVarVecIt it=load_vars.begin(),it_end=load_vars.end();it!=it_end;++it)
 		if(!AddTemplateVar(*it)) return false;
 
-	WriteLog(NULL,"Update template vars complete.\n");
+	WriteLog("Update template vars complete.\n");
 	return true;
 }
 
@@ -199,7 +199,7 @@ bool VarManager::LoadTemplateVars(const char* str, TempVarVec& vars)
 
 		if(sscanf(buf,"%u%d%s%d%d%d%u",&var_id,&var_type,var_name,&var_start,&var_min,&var_max,&var_flags)!=7)
 		{
-			WriteLog(NULL,"Fail to scan var.\n");
+			WriteLog("Fail to scan var.\n");
 			return false;
 		}
 
@@ -241,25 +241,25 @@ bool VarManager::AddTemplateVar(TemplateVar* var)
 {
 	if(!var)
 	{
-		WriteLog(_FUNC_," - Template var nullptr.\n");
+		WriteLogF(_FUNC_," - Template var nullptr.\n");
 		return false;
 	}
 
 	if(var->IsError())
 	{
-		WriteLog(_FUNC_," - IsError, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
+		WriteLogF(_FUNC_," - IsError, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
 	if(IsTemplateVarAviable(var->Name.c_str()))
 	{
-		WriteLog(_FUNC_," - Name already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
+		WriteLogF(_FUNC_," - Name already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
 	if(var->TempId<tempVars.size() && tempVars[var->TempId])
 	{
-		WriteLog(_FUNC_," - Id already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
+		WriteLogF(_FUNC_," - Id already used, name<%s>, id<%u>.\n",var->Name.c_str(),var->TempId);
 		return false;
 	}
 
@@ -305,7 +305,7 @@ bool VarManager::IsTemplateVarAviable(const char* var_name)
 
 void VarManager::SaveTemplateVars()
 {
-	WriteLog(NULL,"Save vars...");
+	WriteLog("Save vars...");
 
 	FileManager fm;
 
@@ -368,7 +368,7 @@ void VarManager::SaveTemplateVars()
 	fm.LoadFile(varsPath.c_str(),-1);
 #endif
 
-	WriteLog(NULL,"complete.\n");
+	WriteLog("complete.\n");
 }
 
 /**************************************************************************************************

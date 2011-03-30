@@ -70,7 +70,7 @@ void dbg_free2(void* ptr)
 
 bool FOServer::InitScriptSystem()
 {
-	WriteLog(NULL,"Script system initialization...\n");
+	WriteLog("Script system initialization...\n");
 
 	// Memory debugging
 #ifdef MEMORY_DEBUG
@@ -82,7 +82,7 @@ bool FOServer::InitScriptSystem()
 	// Init
 	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_SERVER)))
 	{
-		WriteLog(NULL,"Script System initialization failed.\n");
+		WriteLog("Script System initialization failed.\n");
 		return false;
 	}
 	Script::SetScriptsPath(PT_SERVER_SCRIPTS);
@@ -104,7 +104,7 @@ bool FOServer::InitScriptSystem()
 	asIScriptEngine* engine=Script::GetEngine();
 #define BIND_SERVER
 #define BIND_CLASS FOServer::SScriptFunc::
-#define BIND_ERROR do{WriteLog(_FUNC_," - Bind error, line<%d>.\n",__LINE__); return false;}while(0)
+#define BIND_ERROR do{WriteLogF(_FUNC_," - Bind error, line<%d>.\n",__LINE__); return false;}while(0)
 #include "ScriptBind.h"
 
 	// Get config file
@@ -112,7 +112,7 @@ bool FOServer::InitScriptSystem()
 	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS);
 	if(!scripts_cfg.IsLoaded())
 	{
-		WriteLog(NULL,"Config file<%s> not found.\n",SCRIPTS_LST);
+		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);
 		return false;
 	}
 
@@ -122,7 +122,7 @@ bool FOServer::InitScriptSystem()
 	if(!Script::ReloadScripts((char*)scripts_cfg.GetBuf(),"server",false))
 	{
 		Script::Finish();
-		WriteLog(NULL,"Reload scripts fail.\n");
+		WriteLog("Reload scripts fail.\n");
 		return false;
 	}
 
@@ -168,20 +168,20 @@ bool FOServer::InitScriptSystem()
 	if(!Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"server",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0])))
 	{
 		Script::Finish();
-		WriteLog(NULL,"Bind game functions fail.\n");
+		WriteLog("Bind game functions fail.\n");
 		return false;
 	}
 
 	ASDbgMemoryCanWork=true;
-	WriteLog(NULL,"Script system initialization complete.\n");
+	WriteLog("Script system initialization complete.\n");
 	return true;
 }
 
 void FOServer::FinishScriptSystem()
 {
-	WriteLog(NULL,"Script system finish...\n");
+	WriteLog("Script system finish...\n");
 	Script::Finish();
-	WriteLog(NULL,"Script system finish complete.\n");
+	WriteLog("Script system finish complete.\n");
 }
 
 void FOServer::ScriptSystemUpdate()
@@ -218,7 +218,7 @@ uint FOServer::DialogScriptResult(DemandResult& result, Critter* master, Critter
 #undef BIND_ERROR
 #define BIND_CLIENT
 #define BIND_CLASS BindClass::
-#define BIND_ERROR do{WriteLog(_FUNC_," - Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
+#define BIND_ERROR do{WriteLogF(_FUNC_," - Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
 
 namespace ClientBind
 {
@@ -234,14 +234,14 @@ namespace ClientBind
 
 bool FOServer::ReloadClientScripts()
 {
-	WriteLog(NULL,"Reload client scripts...\n");
+	WriteLog("Reload client scripts...\n");
 
 	// Get config file
 	FileManager scripts_cfg;
 	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS);
 	if(!scripts_cfg.IsLoaded())
 	{
-		WriteLog(NULL,"Config file<%s> not found.\n",SCRIPTS_LST);
+		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);
 		return false;
 	}
 
@@ -261,8 +261,8 @@ bool FOServer::ReloadClientScripts()
 	// Check errors
 	if(!engine || bind_errors)
 	{
-		if(!engine) WriteLog(_FUNC_," - asCreateScriptEngine fail.\n");
-		else WriteLog(NULL,"Bind fail, errors<%d>.\n",bind_errors);
+		if(!engine) WriteLogF(_FUNC_," - asCreateScriptEngine fail.\n");
+		else WriteLog("Bind fail, errors<%d>.\n",bind_errors);
 		Script::FinishEngine(engine);
 
 #ifdef MEMORY_DEBUG
@@ -303,7 +303,7 @@ bool FOServer::ReloadClientScripts()
 
 			if(!Script::LoadScript(value.c_str(),NULL,false,"CLIENT_"))
 			{
-				WriteLog(_FUNC_," - Unable to load client script<%s>.\n",value.c_str());
+				WriteLogF(_FUNC_," - Unable to load client script<%s>.\n",value.c_str());
 				errors++;
 				continue;
 			}
@@ -312,7 +312,7 @@ bool FOServer::ReloadClientScripts()
 			CBytecodeStream binary;
 			if(!module || module->SaveByteCode(&binary)<0)
 			{
-				WriteLog(_FUNC_," - Unable to save bytecode of client script<%s>.\n",value.c_str());
+				WriteLogF(_FUNC_," - Unable to save bytecode of client script<%s>.\n",value.c_str());
 				errors++;
 				continue;
 			}
@@ -363,7 +363,7 @@ bool FOServer::ReloadClientScripts()
 		FileManager dll;
 		if(GetModuleFileName((HMODULE)dll_handle,dll_name_,MAX_FOPATH)==0 || !dll.LoadFile(dll_name_,-1))
 		{
-			WriteLog(_FUNC_," - Can't load dll<%s>.\n",dll_name.c_str());
+			WriteLogF(_FUNC_," - Can't load dll<%s>.\n",dll_name.c_str());
 			errors++;
 			continue;
 		}
@@ -428,7 +428,7 @@ bool FOServer::ReloadClientScripts()
 	}
 	ConnectedClientsLocker.Unlock();
 
-	WriteLog(NULL,"Reload client scripts complete.\n");
+	WriteLog("Reload client scripts complete.\n");
 	return true;
 }
 
@@ -747,7 +747,7 @@ void FOServer::SScriptFunc::Item_Animate(Item* item, uchar from_frm, uchar to_fr
 	case ITEM_ACCESSORY_CONTAINER:
 		break;
 	default:
-		WriteLog(_FUNC_," - Unknown accessory<%u>!",item->Accessory);
+		WriteLogF(_FUNC_," - Unknown accessory<%u>!",item->Accessory);
 		SCRIPT_ERROR("Unknown accessory.");
 		return;
 	}
@@ -804,7 +804,7 @@ void FOServer::SScriptFunc::Item_SetLexems(Item* item, CScriptString* lexems)
 	case ITEM_ACCESSORY_CONTAINER:
 		break;
 	default:
-		WriteLog(_FUNC_," - Unknown accessory<%u>!",item->Accessory);
+		WriteLogF(_FUNC_," - Unknown accessory<%u>!",item->Accessory);
 		SCRIPT_ERROR("Unknown accessory.");
 		return;
 	}
@@ -4075,7 +4075,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation(ushort loc_pid, ushort wx, ush
 	Location* loc=MapMngr.CreateLocation(loc_pid,wx,wy,0);
 	if(!loc)
 	{
-		WriteLog(_FUNC_," - Unable to create location, pid<%u>.\n",loc_pid);
+		WriteLogF(_FUNC_," - Unable to create location, pid<%u>.\n",loc_pid);
 		SCRIPT_ERROR_R0("Unable to create location.");
 	}
 

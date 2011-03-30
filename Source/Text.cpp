@@ -390,7 +390,7 @@ void Str::AddNameHash(const char* name)
 	if(it==NamesHash.end())
 		NamesHash.insert(UIntStrMapVal(hash,name));
 	else if(!Str::CompareCase(name,(*it).second.c_str()))
-		WriteLog(_FUNC_," - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",name,(*it).second.c_str(),hash);
+		WriteLogF(_FUNC_," - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n",name,(*it).second.c_str(),hash);
 }
 
 const char* Str::ParseLineDummy(const char* str)

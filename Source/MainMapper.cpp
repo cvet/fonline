@@ -71,12 +71,12 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 	ShowWindow(Wnd,SW_SHOWNORMAL);
 	UpdateWindow(Wnd);
 
-	WriteLog(NULL,"Starting Mapper...\n");
+	WriteLog("Starting Mapper...\n");
 
 	Mapper=new FOMapper();
 	if(!Mapper->Init(Wnd))
 	{
-		WriteLog(NULL,"Mapper initialization fail.\n");
+		WriteLog("Mapper initialization fail.\n");
 		DestroyWindow(Wnd);
 		return 0;
 	}
@@ -100,7 +100,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 
 	Mapper->Finish();
 
-	WriteLog(NULL,"Mapper closed.\n");
+	WriteLog("Mapper closed.\n");
 	LogFinish(-1);
 
 	delete Mapper;

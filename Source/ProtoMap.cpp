@@ -1388,7 +1388,7 @@ void ProtoMap::BindSceneryScript(MapObject* mobj)
 	{
 		char map_info[128];
 		sprintf(map_info,"pid<%u>, name<%s>",GetPid(),pmapName.c_str());
-		WriteLog(_FUNC_," - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",map_info,
+		WriteLogF(_FUNC_," - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",map_info,
 			mobj->FuncName,mobj->ScriptName,mobj->MapX,mobj->MapY);
 		mobj->RunTime.BindScriptId=0;
 	}
@@ -1419,7 +1419,7 @@ bool ProtoMap::Refresh()
 		text=false;
 		if(!pmapFm->LoadFile(fname_map.c_str(),pathType) && !cached.IsLoaded())
 		{
-			WriteLog(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
+			WriteLogF(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
 			return false;
 		}
 	}
@@ -1442,7 +1442,7 @@ bool ProtoMap::Refresh()
 
 			if(!pmapFm->IsLoaded())
 			{
-				WriteLog(_FUNC_," - Map<%s>. Can't read cached map file.\n",map_info);
+				WriteLogF(_FUNC_," - Map<%s>. Can't read cached map file.\n",map_info);
 				return false;
 			}
 		}
@@ -1456,7 +1456,7 @@ bool ProtoMap::Refresh()
 		text=false;
 		if(!pmapFm->LoadFile(fname_map.c_str(),pathType))
 		{
-			WriteLog(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
+			WriteLogF(_FUNC_," - Load file fail, file name<%s>, folder<%s>.\n",pmapName.c_str(),pmapFm->GetPath(pathType));
 			return false;
 		}
 	}
@@ -1467,7 +1467,7 @@ bool ProtoMap::Refresh()
 	{
 		if(!LoadTextFormat((const char*)pmapFm->GetBuf()))
 		{
-			WriteLog(_FUNC_," - Map<%s>. Can't read text map format.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. Can't read text map format.\n",map_info);
 			return false;
 		}
 	}
@@ -1481,13 +1481,13 @@ bool ProtoMap::Refresh()
 		// Check version
 		if(version_full==F1_MAP_VERSION)
 		{
-			WriteLog(_FUNC_," - Map<%s>. FOnline not support F1 map format.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. FOnline not support F1 map format.\n",map_info);
 			return false;
 		}
 
 		if(version_full==F2_MAP_VERSION)
 		{
-			WriteLog(_FUNC_," - Map<%s>. FOnline not support F2 map format.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. FOnline not support F2 map format.\n",map_info);
 			return false;
 		}
 
@@ -1502,20 +1502,20 @@ bool ProtoMap::Refresh()
 		else if(version_full==FO_MAP_VERSION_V8) version=8;
 		else if(version_full!=FO_MAP_VERSION_V9)
 		{
-			WriteLog(_FUNC_," - Map<%s>. Unknown map format<%u>.\n",map_info,version_full);
+			WriteLogF(_FUNC_," - Map<%s>. Unknown map format<%u>.\n",map_info,version_full);
 			return false;
 		}
 
 		if(version<0)
 		{
-			WriteLog(_FUNC_," - Map<%s>. Map format not supproted, resave in Mapper v.1.17.2, than open again.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. Map format not supproted, resave in Mapper v.1.17.2, than open again.\n",map_info);
 			return false;
 		}
 
 		// Read Header
 		if(!ReadHeader(version))
 		{
-			WriteLog(_FUNC_," - Map<%s>. Can't read Header.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. Can't read Header.\n",map_info);
 			return false;
 		}
 
@@ -1528,7 +1528,7 @@ bool ProtoMap::Refresh()
 			uchar* data=Crypt.Uncompress(pmapFm->GetCurBuf(),pack_len,unpack_len/pack_len+1);
 			if(!data)
 			{
-				WriteLog(_FUNC_," - Map<%s>. Unable unpack data.\n",map_info);
+				WriteLogF(_FUNC_," - Map<%s>. Unable unpack data.\n",map_info);
 				return false;
 			}
 			pmapFm->LoadStream(data,pack_len);
@@ -1538,14 +1538,14 @@ bool ProtoMap::Refresh()
 		// Read Tiles
 		if(!ReadTiles(version))
 		{
-			WriteLog(_FUNC_," - Map<%s>. Can't read Tiles.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. Can't read Tiles.\n",map_info);
 			return false;
 		}
 
 		// Read Objects
 		if(!ReadObjects(version))
 		{
-			WriteLog(_FUNC_," - Map<%s>. Can't read Objects.\n",map_info);
+			WriteLogF(_FUNC_," - Map<%s>. Can't read Objects.\n",map_info);
 			return false;
 		}
 
@@ -1658,13 +1658,13 @@ bool ProtoMap::Refresh()
 		ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 		if(!proto_item)
 		{
-			WriteLog(_FUNC_," - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
+			WriteLogF(_FUNC_," - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
 			continue;
 		}
 
 		if(hx>=maxhx || hy>=maxhy)
 		{
-			WriteLog(_FUNC_," - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
+			WriteLogF(_FUNC_," - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n",map_info,pid,hx,hy);
 			continue;
 		}
 
@@ -1944,7 +1944,7 @@ bool ProtoMap::Save(const char* f_name, int path_type)
 	string fname=pmapName+MAP_PROTO_EXT;
 	if(!pmapFm->SaveOutBufToFile(fname.c_str(),pathType))
 	{
-		WriteLog(_FUNC_," - Unable write file.\n");
+		WriteLogF(_FUNC_," - Unable write file.\n");
 		pmapFm->ClearOutBuf();
 		return false;
 	}

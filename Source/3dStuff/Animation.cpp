@@ -1152,7 +1152,7 @@ bool Animation3d::StartUp(LPDIRECT3DDEVICE9 device, bool software_skinning)
 		if(!EffectMain)
 		{
 			SkinningMethod=SKINNING_SOFTWARE;
-			WriteLog(_FUNC_," - Fail to create effect, skinning switched to software.\n");
+			WriteLogF(_FUNC_," - Fail to create effect, skinning switched to software.\n");
 		}
 	}
 
@@ -1443,7 +1443,7 @@ bool Animation3dEntity::Load(const char* name)
 				FileManager fo3d_ex;
 				if(!fo3d_ex.LoadFile(fname,PT_DATA))
 				{
-					WriteLog(_FUNC_," - Include file<%s> not found.\n",fname);
+					WriteLogF(_FUNC_," - Include file<%s> not found.\n",fname);
 					continue;
 				}
 
@@ -1800,14 +1800,14 @@ bool Animation3dEntity::Load(const char* name)
 			else if(!_stricmp(token,"CalculateTangentSpace")) calcualteTangetSpace=true;
 			else
 			{
-				WriteLog(_FUNC_," - Unknown token<%s> in file<%s>.\n",token,name);
+				WriteLogF(_FUNC_," - Unknown token<%s> in file<%s>.\n",token,name);
 			}
 		}
 
 		// Process pathes
 		if(!model[0])
 		{
-			WriteLog(_FUNC_," - 'Model' section not found in file<%s>.\n",name);
+			WriteLogF(_FUNC_," - 'Model' section not found in file<%s>.\n",name);
 			return false;
 		}
 
@@ -1851,7 +1851,7 @@ bool Animation3dEntity::Load(const char* name)
 			}
 			else
 			{
-				WriteLog(_FUNC_," - Unable to create animation controller, file<%s>.\n",name);
+				WriteLogF(_FUNC_," - Unable to create animation controller, file<%s>.\n",name);
 			}
 		}
 
@@ -2095,14 +2095,14 @@ Animation3dXFile* Animation3dXFile::GetXFile(const char* xname, bool calc_tangen
 		D3DXFRAME* frame_root=Loader3d::LoadModel(D3DDevice,xname,calc_tangent);
 		if(!frame_root)
 		{
-			WriteLog(_FUNC_," - Unable to load 3d file<%s>.\n",xname);
+			WriteLogF(_FUNC_," - Unable to load 3d file<%s>.\n",xname);
 			return NULL;
 		}
 
 		xfile=new(nothrow) Animation3dXFile();
 		if(!xfile)
 		{
-			WriteLog(_FUNC_," - Allocation fail, x file<%s>.\n",xname);
+			WriteLogF(_FUNC_," - Allocation fail, x file<%s>.\n",xname);
 			return NULL;
 		}
 
@@ -2314,14 +2314,14 @@ void Animation3dXFile::SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationCont
 TextureEx* Animation3dXFile::GetTexture(const char* tex_name)
 {
 	TextureEx* texture=Loader3d::LoadTexture(D3DDevice,tex_name,fileName.c_str(),pathType);
-	if(!texture) WriteLog(_FUNC_," - Can't load texture<%s>.\n",tex_name?tex_name:"nullptr");
+	if(!texture) WriteLogF(_FUNC_," - Can't load texture<%s>.\n",tex_name?tex_name:"nullptr");
 	return texture;
 }
 
 EffectEx* Animation3dXFile::GetEffect(D3DXEFFECTINSTANCE* effect_inst)
 {
 	EffectEx* effect=Loader3d::LoadEffect(D3DDevice,effect_inst,fileName.c_str(),pathType);
-	if(!effect) WriteLog(_FUNC_," - Can't load effect<%s>.\n",effect_inst && effect_inst->pEffectFilename?effect_inst->pEffectFilename:"nullptr");
+	if(!effect) WriteLogF(_FUNC_," - Can't load effect<%s>.\n",effect_inst && effect_inst->pEffectFilename?effect_inst->pEffectFilename:"nullptr");
 	return effect;
 }
 

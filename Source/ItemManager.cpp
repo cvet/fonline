@@ -19,11 +19,11 @@ ItemManager ItemMngr;
 
 bool ItemManager::Init()
 {
-	WriteLog(NULL,"Item manager initialization...\n");
+	WriteLog("Item manager initialization...\n");
 
 	if(IsInit())
 	{
-		WriteLog(NULL,"already init.\n");
+		WriteLog("already init.\n");
 		return true;
 	}
 
@@ -31,17 +31,17 @@ bool ItemManager::Init()
 	ClearProtos();
 
 	isActive=true;
-	WriteLog(NULL,"Item manager initialization complete.\n");
+	WriteLog("Item manager initialization complete.\n");
 	return true;
 }
 
 void ItemManager::Finish()
 {
-	WriteLog(NULL,"Item manager finish...\n");
+	WriteLog("Item manager finish...\n");
 
 	if(!isActive)
 	{
-		WriteLog(NULL,"already finish or not init.\n");
+		WriteLog("already finish or not init.\n");
 		return;
 	}
 
@@ -62,7 +62,7 @@ void ItemManager::Finish()
 	ClearProtos();
 
 	isActive=false;
-	WriteLog(NULL,"Item manager finish complete.\n");
+	WriteLog("Item manager finish complete.\n");
 }
 
 void ItemManager::Clear()
@@ -92,12 +92,12 @@ T ResolveProtoValue(const char* str)
 
 bool ItemManager::LoadProtos()
 {
-	WriteLog(NULL,"Loading items prototypes...\n");
+	WriteLog("Loading items prototypes...\n");
 
 	FileManager fm;
 	if(!fm.LoadFile("items.lst",PT_SERVER_PRO_ITEMS))
 	{
-		WriteLog(NULL,"Can't open \"items.lst\".\n");
+		WriteLog("Can't open \"items.lst\".\n");
 		return false;
 	}
 
@@ -130,7 +130,7 @@ bool ItemManager::LoadProtos()
 		}
 	}
 
-	WriteLog(NULL,"Items prototypes successfully loaded, count<%u>.\n",loaded);
+	WriteLog("Items prototypes successfully loaded, count<%u>.\n",loaded);
 	return true;
 }
 
@@ -141,7 +141,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 	IniParser fopro;
 	if(!fopro.LoadFile(fname,-1))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",fname);
+		WriteLogF(_FUNC_," - File<%s> not found.\n",fname);
 		return false;
 	}
 
@@ -343,15 +343,15 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 			// Add to collection
 			protos.push_back(proto_item);
 
-		//	if(FLAG(proto_item.Flags,ITEM_MULTI_HEX)) WriteLog(NULL,"pid<%u> ITEM_MULTI_HEX\n",proto_item.ProtoId);
-		//	if(FLAG(proto_item.Flags,ITEM_WALL_TRANS_END)) WriteLog(NULL,"pid<%u> ITEM_WALL_TRANS_END\n",proto_item.ProtoId);
-		//	if(FLAG(proto_item.Flags,ITEM_CACHED)) WriteLog(NULL,"pid<%u> ITEM_CACHED\n",proto_item.ProtoId);
+		//	if(FLAG(proto_item.Flags,ITEM_MULTI_HEX)) WriteLog("pid<%u> ITEM_MULTI_HEX\n",proto_item.ProtoId);
+		//	if(FLAG(proto_item.Flags,ITEM_WALL_TRANS_END)) WriteLog("pid<%u> ITEM_WALL_TRANS_END\n",proto_item.ProtoId);
+		//	if(FLAG(proto_item.Flags,ITEM_CACHED)) WriteLog("pid<%u> ITEM_CACHED\n",proto_item.ProtoId);
 		}
 	}
 
 	if(protos.empty())
 	{
-		WriteLog(_FUNC_," - Proto items not found<%s>.\n",fname);
+		WriteLogF(_FUNC_," - Proto items not found<%s>.\n",fname);
 		return false;
 	}
 	return true;
@@ -363,7 +363,7 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 {
 	if(protos.empty())
 	{
-		WriteLog(_FUNC_," - List is empty, parsing ended.\n");
+		WriteLogF(_FUNC_," - List is empty, parsing ended.\n");
 		return;
 	}
 
@@ -374,14 +374,14 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 
 		if(!pid || pid>=MAX_ITEM_PROTOTYPES)
 		{
-			WriteLog(_FUNC_," - Invalid pid<%u> of item prototype.\n",pid);
+			WriteLogF(_FUNC_," - Invalid pid<%u> of item prototype.\n",pid);
 			continue;
 		}
 
 		if(IsInitProto(pid))
 		{
 			ClearProto(pid);
-			WriteLog(_FUNC_," - Item prototype is already parsed, pid<%u>. Rewrite.\n",pid);
+			WriteLogF(_FUNC_," - Item prototype is already parsed, pid<%u>. Rewrite.\n",pid);
 		}
 
 		int type=protos[i].Type;
@@ -468,7 +468,7 @@ void ItemManager::ClearProtos(int type /* = 0xFF */)
 	}
 	else
 	{
-		WriteLog(_FUNC_," - Wrong proto type<%u>.\n",type);
+		WriteLogF(_FUNC_," - Wrong proto type<%u>.\n",type);
 	}
 }
 
@@ -521,7 +521,7 @@ void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 
 bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 {
-	WriteLog(NULL,"Load items...");
+	WriteLog("Load items...");
 
 	lastItemId=0;
 
@@ -529,7 +529,7 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 	fread(&count,sizeof(count),1,f);
 	if(!count)
 	{
-		WriteLog(NULL,"items not found.\n");
+		WriteLog("items not found.\n");
 		return true;
 	}
 
@@ -560,7 +560,7 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 		Item* item=CreateItem(pid,0,id);
 		if(!item)
 		{
-			WriteLog(NULL,"Create item error id<%u>, pid<%u>.\n",id,pid);
+			WriteLog("Create item error id<%u>, pid<%u>.\n",id,pid);
 			errors++;
 			continue;
 		}
@@ -586,7 +586,7 @@ bool ItemManager::LoadAllItemsFile(FILE* f, int version)
 	}
 	if(errors) return false;
 
-	WriteLog(NULL,"complete, count<%u>.\n",count);
+	WriteLog("complete, count<%u>.\n",count);
 	return true;
 }
 
@@ -672,7 +672,7 @@ Item* ItemManager::CreateItem(ushort pid, uint count, uint item_id /* = 0 */)
 	Item* item=new Item();
 	if(!item)
 	{
-		WriteLog(_FUNC_," - Allocation fail.\n");
+		WriteLogF(_FUNC_," - Allocation fail.\n");
 		return NULL;
 	}
 
@@ -683,7 +683,7 @@ Item* ItemManager::CreateItem(ushort pid, uint count, uint item_id /* = 0 */)
 
 		if(gameItems.count(item_id))
 		{
-			WriteLog(_FUNC_," - Item already created, id<%u>.\n",item_id);
+			WriteLogF(_FUNC_," - Item already created, id<%u>.\n",item_id);
 			delete item;
 			return NULL;
 		}
@@ -724,21 +724,21 @@ Item* ItemManager::SplitItem(Item* item, uint count)
 {
 	if(!item->IsStackable())
 	{
-		WriteLog(_FUNC_," - Splitted item is not stackable, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
+		WriteLogF(_FUNC_," - Splitted item is not stackable, id<%u>, pid<%u>.\n",item->GetId(),item->GetProtoId());
 		return NULL;
 	}
 
 	uint item_count=item->GetCount();
 	if(!count || count>=item_count)
 	{
-		WriteLog(_FUNC_," - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n",item->GetId(),item->GetProtoId(),item_count,count);
+		WriteLogF(_FUNC_," - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n",item->GetId(),item->GetProtoId(),item_count,count);
 		return NULL;
 	}
 
 	Item* new_item=CreateItem(item->GetProtoId(),0); // Ignore init script
 	if(!new_item)
 	{
-		WriteLog(_FUNC_," - Create item fail, pid<%u>, count<%u>.\n",item->GetProtoId(),count);
+		WriteLogF(_FUNC_," - Create item fail, pid<%u>, count<%u>.\n",item->GetProtoId(),count);
 		return NULL;
 	}
 
@@ -1124,7 +1124,7 @@ bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, uint item_i
 			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
-				WriteLog(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
+				WriteLogF(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
@@ -1165,7 +1165,7 @@ bool ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, uint it
 			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
-				WriteLog(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
+				WriteLogF(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 
@@ -1206,7 +1206,7 @@ bool ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, uint 
 			item_=ItemMngr.CreateItem(item->GetProtoId(),count);
 			if(!item_)
 			{
-				WriteLog(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
+				WriteLogF(_FUNC_," - Create item fail, pid<%u>.\n",item->GetProtoId());
 				return false;
 			}
 

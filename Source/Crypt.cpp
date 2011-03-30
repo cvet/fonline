@@ -68,7 +68,7 @@ void CryptManager::TextXOR(char* data, uint len, char* xor_key, uint xor_len)
 	(((a)>=32 && (a)<=126) ||\
 	((a)>=-64 && (a)<=-1))
 
-	//	WriteLog(NULL,"%c",cur_char);
+	//	WriteLog("%c",cur_char);
 
 		if(TRUECHAR(cur_char)) data[i]=cur_char;
 	//	if(cur_char) data[i]=cur_char;
@@ -115,21 +115,21 @@ uchar* CryptManager::Uncompress(const uchar* data, uint& data_len, uint mul_appr
 	uLongf buf_len=data_len*mul_approx;
 	if(buf_len>100000000) // 100mb
 	{
-		WriteLog(_FUNC_,"Unpack - Buffer length is too large, data length<%u>, multiplier<%u>.\n",data_len,mul_approx);
+		WriteLogF(_FUNC_,"Unpack - Buffer length is too large, data length<%u>, multiplier<%u>.\n",data_len,mul_approx);
 		return NULL;
 	}
 
 	AutoPtrArr<uchar> buf(new(nothrow) uchar[buf_len]);
 	if(!buf.IsValid())
 	{
-		WriteLog(NULL,"Unpack - Bad alloc, size<%u>.\n",buf_len);
+		WriteLog("Unpack - Bad alloc, size<%u>.\n",buf_len);
 		return NULL;
 	}
 
 	AutoPtrArr<uchar> data_(new(nothrow) uchar[data_len]);
 	if(!data_.IsValid())
 	{
-		WriteLog(NULL,"Unpack - Bad alloc, size<%u>.\n",data_len);
+		WriteLog("Unpack - Bad alloc, size<%u>.\n",data_len);
 		return NULL;
 	}
 
@@ -142,7 +142,7 @@ uchar* CryptManager::Uncompress(const uchar* data, uint& data_len, uint mul_appr
 
 	if(*(ushort*)data_.Get()!=0x9C78)
 	{
-		WriteLog(NULL,"Unpack - Signature not found.\n");
+		WriteLog("Unpack - Signature not found.\n");
 		return NULL;
 	}
 
@@ -155,13 +155,13 @@ uchar* CryptManager::Uncompress(const uchar* data, uint& data_len, uint mul_appr
 			buf.Reset(new(nothrow) uchar[buf_len]);
 			if(!buf.IsValid())
 			{
-				WriteLog(NULL,"Unpack - Bad alloc, size<%u>.\n",buf_len);
+				WriteLog("Unpack - Bad alloc, size<%u>.\n",buf_len);
 				return NULL;
 			}
 		}
 		else if(result!=Z_OK)
 		{
-			WriteLog(NULL,"Unpack error<%d>.\n",result);
+			WriteLog("Unpack error<%d>.\n",result);
 			return NULL;
 		}
 		else break;

@@ -118,30 +118,30 @@ void GlobalMapGroup::Clear()
 
 bool MapManager::Init()
 {
-	WriteLog(NULL,"Map manager initialization...\n");
+	WriteLog("Map manager initialization...\n");
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog(NULL,"Error, Item manager not initialized.\n");
+		WriteLog("Error, Item manager not initialized.\n");
 		return false;
 	}
 
 	if(!CrMngr.IsInit())
 	{
-		WriteLog(NULL,"Error, Critter manager not initialized.\n");
+		WriteLog("Error, Critter manager not initialized.\n");
 		return false;
 	}
 
 	pathNumCur=0;
 	for(int i=1;i<FPATH_DATA_SIZE;i++) pathesPool[i].reserve(100);
 
-	WriteLog(NULL,"Map manager initialization complete.\n");
+	WriteLog("Map manager initialization complete.\n");
 	return true;
 }
 
 void MapManager::Finish()
 {
-	WriteLog(NULL,"Map manager finish...\n");
+	WriteLog("Map manager finish...\n");
 
 	for(LocMapIt it=allLocations.begin();it!=allLocations.end();++it)
 	{
@@ -155,7 +155,7 @@ void MapManager::Finish()
 	for(int i=0;i<MAX_PROTO_MAPS;i++) ProtoMaps[i].Clear();
 	SAFEDEL(gmMask);
 
-	WriteLog(NULL,"Map manager finish complete.\n");
+	WriteLog("Map manager finish complete.\n");
 }
 
 void MapManager::Clear()
@@ -181,13 +181,13 @@ UIntPair EntranceParser(const char* str)
 
 bool MapManager::LoadLocationsProtos()
 {
-	WriteLog(NULL,"Load location and map prototypes...\n");
+	WriteLog("Load location and map prototypes...\n");
 
 	// Load location prototypes
 	IniParser city_txt;
 	if(!city_txt.LoadFile("Locations.cfg",PT_SERVER_MAPS))
 	{
-		WriteLog(NULL,"File<%s> not found.\n",FileManager::GetFullPath("Locations.cfg",PT_SERVER_MAPS));
+		WriteLog("File<%s> not found.\n",FileManager::GetFullPath("Locations.cfg",PT_SERVER_MAPS));
 		return false;
 	}
 
@@ -206,7 +206,7 @@ bool MapManager::LoadLocationsProtos()
 		if(!LoadLocationProto(city_txt,ploc,i))
 		{
 			errors++;
-			WriteLog(NULL,"Load location<%u> fail.\n",i);
+			WriteLog("Load location<%u> fail.\n",i);
 			continue;
 		}
 		loaded++;
@@ -215,11 +215,11 @@ bool MapManager::LoadLocationsProtos()
 	// Check for errors
 	if(errors)
 	{
-		WriteLog(NULL,"Load location and map prototypes fail, errors<%d>.\n",errors);
+		WriteLog("Load location and map prototypes fail, errors<%d>.\n",errors);
 		return false;
 	}
 
-	WriteLog(NULL,"Load location and map prototypes complete, loaded<%u> location protos.\n",loaded);
+	WriteLog("Load location and map prototypes complete, loaded<%u> location protos.\n",loaded);
 	return true;
 }
 
@@ -249,13 +249,13 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		ushort map_pid=0;
 		if(sscanf(res,"%s%u",map_name,&map_pid)!=2)
 		{
-			WriteLog(_FUNC_," - Can't parse data in location<%s>, map index<%u>.\n",ploc.Name.c_str(),cur_map);
+			WriteLogF(_FUNC_," - Can't parse data in location<%s>, map index<%u>.\n",ploc.Name.c_str(),cur_map);
 			return false;
 		}
 
 		if(!map_name[0] || !map_pid || map_pid>=MAX_PROTO_MAPS)
 		{
-			WriteLog(_FUNC_," - Invalid data in location<%s>, map index<%u>.\n",ploc.Name.c_str(),cur_map);
+			WriteLogF(_FUNC_," - Invalid data in location<%s>, map index<%u>.\n",ploc.Name.c_str(),cur_map);
 			return false;
 		}
 
@@ -271,13 +271,13 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		ProtoMap& pmap=ProtoMaps[map_pid];
 		if(pmap.IsInit() && !Str::CompareCase(pmap.GetName(),map_name))
 		{
-			WriteLog(_FUNC_," - Pid<%u> for map<%s> in location<%s>, already in use.\n",map_pid,map_name,ploc.Name.c_str());
+			WriteLogF(_FUNC_," - Pid<%u> for map<%s> in location<%s>, already in use.\n",map_pid,map_name,ploc.Name.c_str());
 			return false;
 		}
 
 		if(!pmap.IsInit() && !pmap.Init(map_pid,map_name,PT_SERVER_MAPS))
 		{
-			WriteLog(_FUNC_," - Init proto map<%s> for location<%s> fail.\n",map_name,ploc.Name.c_str());
+			WriteLogF(_FUNC_," - Init proto map<%s> for location<%s> fail.\n",map_name,ploc.Name.c_str());
 			return false;
 		}
 
@@ -288,7 +288,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 
 	if(!cur_map)
 	{
-		WriteLog(_FUNC_," - Not found no one map, location<%s>.\n",ploc.Name.c_str());
+		WriteLogF(_FUNC_," - Not found no one map, location<%s>.\n",ploc.Name.c_str());
 		return false;
 	}
 
@@ -303,7 +303,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 			uint map_num=ploc.Entrance[k].first;
 			if(map_num>cur_map)
 			{
-				WriteLog(_FUNC_," - Invalid map number<%u>, entrance<%s>, location<%s>.\n",map_num,res,ploc.Name.c_str());
+				WriteLogF(_FUNC_," - Invalid map number<%u>, entrance<%s>, location<%s>.\n",map_num,res,ploc.Name.c_str());
 				return false;
 			}
 		}
@@ -313,7 +313,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		int val=atoi(res);
 		if(val<=0 || val>(int)cur_map)
 		{
-			WriteLog(_FUNC_," - Invalid entrance value<%d>, location<%s>.\n",val,ploc.Name.c_str());
+			WriteLogF(_FUNC_," - Invalid entrance value<%d>, location<%s>.\n",val,ploc.Name.c_str());
 			return false;
 		}
 		for(int k=0;k<val;k++) ploc.Entrance.push_back(UIntPairVecVal(k,0));
@@ -325,7 +325,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		uint entire=ploc.Entrance[k].second;
 		if(!GetProtoMap(ploc.ProtoMapPids[map_num])->CountEntire(entire))
 		{
-			WriteLog(_FUNC_," - Entire<%u> not found on map<%u>, location<%s>.\n",entire,map_num,ploc.Name.c_str());
+			WriteLogF(_FUNC_," - Entire<%u> not found on map<%u>, location<%s>.\n",entire,map_num,ploc.Name.c_str());
 			return false;
 		}
 	}
@@ -338,7 +338,7 @@ bool MapManager::LoadLocationProto(IniParser& city_txt, ProtoLocation& ploc, ush
 		int bind_id=Script::Bind(res,"bool %s(Location&,Critter@[]&,uint8)",false);
 		if(bind_id<=0)
 		{
-			WriteLog(_FUNC_," - Function<%s> not found, location<%s>.\n",res,ploc.Name.c_str());
+			WriteLogF(_FUNC_," - Function<%s> not found, location<%s>.\n",res,ploc.Name.c_str());
 			return false;
 		}
 		ploc.ScriptBindId=bind_id;
@@ -378,7 +378,7 @@ void MapManager::SaveAllLocationsAndMapsFile(void(*save_func)(void*,size_t))
 
 bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 {
-	WriteLog(NULL,"Load locations...\n");
+	WriteLog("Load locations...\n");
 
 	lastLocId=0;
 	lastMapId=0;
@@ -387,7 +387,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 	fread(&count,sizeof(count),1,f);
 	if(!count)
 	{
-		WriteLog(NULL,"Locations not found.\n");
+		WriteLog("Locations not found.\n");
 		return true;
 	}
 
@@ -411,7 +411,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 		// Check pids
 		if(!IsInitProtoLocation(data.LocPid))
 		{
-			WriteLog(NULL,"Proto location<%u> is not init. Skip location.\n",data.LocPid);
+			WriteLog("Proto location<%u> is not init. Skip location.\n",data.LocPid);
 			continue;
 		}
 		bool map_fail=false;
@@ -419,7 +419,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 		{
 			if(!IsInitProtoMap(map_data[j].MapPid))
 			{
-				WriteLog(NULL,"Proto map<%u> of proto location<%u> is not init. Skip location.\n",map_data[j].MapPid,data.LocPid);
+				WriteLog("Proto map<%u> of proto location<%u> is not init. Skip location.\n",map_data[j].MapPid,data.LocPid);
 				map_fail=true;
 			}
 		}
@@ -429,7 +429,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 		Location* loc=CreateLocation(data.LocPid,data.WX,data.WY,data.LocId);
 		if(!loc)
 		{
-			WriteLog(NULL,"Can't create location, pid<%u>.\n",data.LocPid);
+			WriteLog("Can't create location, pid<%u>.\n",data.LocPid);
 			return false;
 		}
 		loc->Data=data;
@@ -439,7 +439,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 			Map* map=CreateMap(map_data[j].MapPid,loc,map_data[j].MapId);
 			if(!map)
 			{
-				WriteLog(NULL,"Can't create map, map pid<%u>, location pid<%u>.\n",map_data[j].MapPid,data.LocPid);
+				WriteLog("Can't create map, map pid<%u>, location pid<%u>.\n",map_data[j].MapPid,data.LocPid);
 				return false;
 			}
 			map->Data=map_data[j];
@@ -448,7 +448,7 @@ bool MapManager::LoadAllLocationsAndMapsFile(FILE* f)
 		locaded++;
 	}
 
-	WriteLog(NULL,"Load locations complete, count<%u>.\n",locaded);
+	WriteLog("Load locations complete, count<%u>.\n",locaded);
 	return true;
 }
 
@@ -500,12 +500,12 @@ void MapManager::RunInitScriptMaps()
 
 bool MapManager::GenerateWorld(const char* fname, int path_type)
 {
-	WriteLog(NULL,"Generate world...\n");
+	WriteLog("Generate world...\n");
 
 	FileManager fm;
 	if(!fm.LoadFile(fname,path_type))
 	{
-		WriteLog(NULL,"Load file<%s%s> fail.\n",fm.GetFullPath(fname,path_type));
+		WriteLog("Load file<%s%s> fail.\n",fm.GetFullPath(fname,path_type));
 		return false;
 	}
 
@@ -523,16 +523,16 @@ bool MapManager::GenerateWorld(const char* fname, int path_type)
 		str >> loc_pid >> loc_wx >> loc_wy;
 		if(str.fail())
 		{
-			WriteLog(NULL,"Error, invalid data.\n");
+			WriteLog("Error, invalid data.\n");
 			return false;
 		}
 
-		WriteLog(NULL,"Location: pid<%u>, worldX<%u>, worldY<%u>.\n",loc_pid,loc_wx,loc_wy);
+		WriteLog("Location: pid<%u>, worldX<%u>, worldY<%u>.\n",loc_pid,loc_wx,loc_wy);
 
 		Location* nloc=CreateLocation(loc_pid,loc_wx,loc_wy,0);
 		if(!nloc)
 		{
-			WriteLog(NULL,"Error, it was not possible to create a location.\n");
+			WriteLog("Error, it was not possible to create a location.\n");
 			return false;
 		}
 
@@ -541,11 +541,11 @@ bool MapManager::GenerateWorld(const char* fname, int path_type)
 
 	if(!count_gen)
 	{
-		WriteLog(NULL,"Error, end of a file, but any locations is not created.\n");
+		WriteLog("Error, end of a file, but any locations is not created.\n");
 		return false;
 	}
 
-	WriteLog(NULL,"Generate world complete, created/generated <%u> locations.\n",count_gen);
+	WriteLog("Generate world complete, created/generated <%u> locations.\n",count_gen);
 	return true;
 }
 
@@ -575,20 +575,20 @@ Location* MapManager::CreateLocation(ushort pid_loc, ushort wx, ushort wy, uint 
 {
 	if(!IsInitProtoLocation(pid_loc))
 	{
-		WriteLog(_FUNC_," - Location proto is not init, pid<%u>.\n",pid_loc);
+		WriteLogF(_FUNC_," - Location proto is not init, pid<%u>.\n",pid_loc);
 		return NULL;
 	}
 
 	if(!wx || !wy || wx>=GM__MAXZONEX*GameOpt.GlobalMapZoneLength || wy>=GM__MAXZONEY*GameOpt.GlobalMapZoneLength)
 	{
-		WriteLog(_FUNC_," - Invalid location coordinates, pid<%u>.\n",pid_loc);
+		WriteLogF(_FUNC_," - Invalid location coordinates, pid<%u>.\n",pid_loc);
 		return NULL;
 	}
 
 	Location* loc=new Location();
 	if(!loc || !loc->Init(&ProtoLoc[pid_loc],wx,wy))
 	{
-		WriteLog(_FUNC_," - Location init fail, pid<%u>.\n",pid_loc);
+		WriteLogF(_FUNC_," - Location init fail, pid<%u>.\n",pid_loc);
 		loc->Release();
 		return NULL;
 	}
@@ -607,7 +607,7 @@ Location* MapManager::CreateLocation(ushort pid_loc, ushort wx, ushort wy, uint 
 			Map* map=CreateMap(map_pid,loc,0);
 			if(!map)
 			{
-				WriteLog(_FUNC_," - Create map fail, pid<%u>.\n",map_pid);
+				WriteLogF(_FUNC_," - Create map fail, pid<%u>.\n",map_pid);
 				loc->Clear(true);
 				loc->Release();
 				return NULL;
@@ -620,7 +620,7 @@ Location* MapManager::CreateLocation(ushort pid_loc, ushort wx, ushort wy, uint 
 
 		if(allLocations.count(loc_id))
 		{
-			WriteLog(_FUNC_," - Location id<%u> is busy.\n",loc_id);
+			WriteLogF(_FUNC_," - Location id<%u> is busy.\n",loc_id);
 			loc->Release();
 			return NULL;
 		}
@@ -640,7 +640,7 @@ Location* MapManager::CreateLocation(ushort pid_loc, ushort wx, ushort wy, uint 
 		Map* map=*it;
 		if(!map->Generate())
 		{
-			WriteLog(_FUNC_," - Generate map fail.\n");
+			WriteLogF(_FUNC_," - Generate map fail.\n");
 			loc->Data.ToGarbage=true;
 			MapMngr.RunGarbager();
 			return NULL;
@@ -662,14 +662,14 @@ Map* MapManager::CreateMap(ushort pid_map, Location* loc_map, uint map_id)
 
 	if(!IsInitProtoMap(pid_map))
 	{
-		WriteLog(_FUNC_," - Proto map<%u> is not init.\n",pid_map);
+		WriteLogF(_FUNC_," - Proto map<%u> is not init.\n",pid_map);
 		return NULL;
 	}
 
 	Map* map=new Map();
 	if(!map || !map->Init(&ProtoMaps[pid_map],loc_map))
 	{
-		WriteLog(_FUNC_," - Map init fail, pid<%u>.\n",pid_map);
+		WriteLogF(_FUNC_," - Map init fail, pid<%u>.\n",pid_map);
 		delete map;
 		return NULL;
 	}
@@ -688,7 +688,7 @@ Map* MapManager::CreateMap(ushort pid_map, Location* loc_map, uint map_id)
 
 		if(allMaps.count(map_id))
 		{
-			WriteLog(_FUNC_," - Map already created, id<%u>.\n",map_id);
+			WriteLogF(_FUNC_," - Map already created, id<%u>.\n",map_id);
 			delete map;
 			return NULL;
 		}
@@ -933,15 +933,15 @@ void MapManager::LocationGarbager()
 
 bool MapManager::RefreshGmMask(const char* mask_path)
 {
-	WriteLog(NULL,"Refresh GM Mask<%s>...",mask_path);
+	WriteLog("Refresh GM Mask<%s>...",mask_path);
 
 	FileManager fm;
-	if(!fm.LoadFile(mask_path,PT_SERVER_MAPS)) WriteLog(NULL,"Global map mask file not found.\n");
-	else if(fm.GetLEUShort()!=0x4D42) WriteLog(NULL,"Invalid file format of global map mask.\n");
+	if(!fm.LoadFile(mask_path,PT_SERVER_MAPS)) WriteLog("Global map mask file not found.\n");
+	else if(fm.GetLEUShort()!=0x4D42) WriteLog("Invalid file format of global map mask.\n");
 	else
 	{
 		fm.SetCurPos(28);
-		if(fm.GetLEUShort()!=4) WriteLog(NULL,"Invalid bit per pixel format of global map mask.\n");
+		if(fm.GetLEUShort()!=4) WriteLog("Invalid bit per pixel format of global map mask.\n");
 		else
 		{
 			fm.SetCurPos(18);
@@ -964,7 +964,7 @@ bool MapManager::RefreshGmMask(const char* mask_path)
 					fm.SetCurPos(118+y*padd_len);
 				}
 			}
-			WriteLog(NULL,"size<%u><%u>. complete.\n",mask_w,mask_h);
+			WriteLog("size<%u><%u>. complete.\n",mask_w,mask_h);
 			return true;
 		}
 	}
@@ -1413,7 +1413,7 @@ CScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 	CScriptArray* arr=Script::CreateArray("Critter@[]");
 	if(!arr)
 	{
-		WriteLog(_FUNC_," - Create script array fail.\n");
+		WriteLogF(_FUNC_," - Create script array fail.\n");
 		return NULL;
 	}
 
@@ -1431,7 +1431,7 @@ CScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 		Critter** p=(Critter**)arr->At(ind);
 		if(!p)
 		{
-			WriteLog(_FUNC_," - Critical bug, rule critter<%s>, not valid<%d>.\n",group->Rule->GetInfo(),group->Rule->IsNotValid);
+			WriteLogF(_FUNC_," - Critical bug, rule critter<%s>, not valid<%d>.\n",group->Rule->GetInfo(),group->Rule->IsNotValid);
 			return NULL;
 		}
 		*p=cr;
@@ -1445,7 +1445,7 @@ void MapManager::GM_GroupStartMove(Critter* cr, bool send)
 {
 	if(cr->GetMap())
 	{
-		WriteLog(_FUNC_," - Critter<%s> is on map.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Critter<%s> is on map.\n",cr->GetInfo());
 		TransitToGlobal(cr,0,0,false);
 		return;
 	}
@@ -1483,7 +1483,7 @@ void MapManager::GM_AddCritToGroup(Critter* cr, uint rule_id)
 {
 	if(!cr)
 	{
-		WriteLog(_FUNC_," - Critter null ptr.");
+		WriteLogF(_FUNC_," - Critter null ptr.");
 		return;
 	}
 
@@ -1496,7 +1496,7 @@ void MapManager::GM_AddCritToGroup(Critter* cr, uint rule_id)
 	Critter* rule=CrMngr.GetCritter(rule_id,true);
 	if(!rule || rule->GetMap() || !rule->GroupMove || rule!=rule->GroupMove->Rule)
 	{
-		if(cr->IsNpc()) WriteLog(_FUNC_," - Invalid rule on global map. Start move alone.\n");
+		if(cr->IsNpc()) WriteLogF(_FUNC_," - Invalid rule on global map. Start move alone.\n");
 		GM_GroupStartMove(cr,false);
 		return;
 	}
@@ -1601,7 +1601,7 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, uint entire, ush
 {
 	if(!map || !map->GetId())
 	{
-		WriteLog(_FUNC_," - Map null ptr or zero id, pointer<%p>.\n",map);
+		WriteLogF(_FUNC_," - Map null ptr or zero id, pointer<%p>.\n",map);
 		return false;
 	}
 
@@ -1617,7 +1617,7 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, uint entire, ush
 		car_owner=group->GetCritter(car->ACC_CRITTER.Id);
 		if(!car_owner)
 		{
-			WriteLog(_FUNC_," - Car owner not found, rule<%s>.\n",rule->GetInfo());
+			WriteLogF(_FUNC_," - Car owner not found, rule<%s>.\n",rule->GetInfo());
 			car=NULL;
 		}
 	}
@@ -1695,13 +1695,13 @@ bool MapManager::GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool 
 
 	if(rule!=rule->GroupMove->Rule)
 	{
-		WriteLog(_FUNC_," - Critter<%s> is not rule.\n",rule->GetInfo());
+		WriteLogF(_FUNC_," - Critter<%s> is not rule.\n",rule->GetInfo());
 		return false;
 	}
 
 	if(!force && rule->IsPlayer() && !((Client*)rule)->CheckKnownLocById(loc_id))
 	{
-		WriteLog(_FUNC_," - Critter<%s> is not known location.\n",rule->GetInfo());
+		WriteLogF(_FUNC_," - Critter<%s> is not known location.\n",rule->GetInfo());
 		return false;
 	}
 
@@ -1730,13 +1730,13 @@ bool MapManager::GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool 
 	if(!loc->GetMapsCount())
 	{
 		if(rule->IsPlayer()) ((Client*)rule)->EraseKnownLoc(loc_id);
-		WriteLog(_FUNC_," - Location is empty, critter<%s>.\n",rule->GetInfo());
+		WriteLogF(_FUNC_," - Location is empty, critter<%s>.\n",rule->GetInfo());
 		return false;
 	}
 
 	if(entrance>=loc->Proto->Entrance.size())
 	{
-		WriteLog(_FUNC_," - Invalid entrance, critter<%s>.\n",rule->GetInfo());
+		WriteLogF(_FUNC_," - Invalid entrance, critter<%s>.\n",rule->GetInfo());
 		return false;
 	}
 
@@ -1748,7 +1748,7 @@ bool MapManager::GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool 
 		arr->Release();
 		if(!result)
 		{
-			WriteLog(_FUNC_," - Can't enter in entrance, critter<%s>.\n",rule->GetInfo());
+			WriteLogF(_FUNC_," - Can't enter in entrance, critter<%s>.\n",rule->GetInfo());
 			return false;
 		}
 	}
@@ -1760,7 +1760,7 @@ bool MapManager::GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool 
 	if(!map)
 	{
 		if(rule->IsPlayer()) ((Client*)rule)->EraseKnownLoc(loc_id);
-		WriteLog(_FUNC_," - Map not found in location, critter<%s>.\n",rule->GetInfo());
+		WriteLogF(_FUNC_," - Map not found in location, critter<%s>.\n",rule->GetInfo());
 		return false;
 	}
 
@@ -2391,7 +2391,7 @@ bool MapManager::TryTransitCrGrid(Critter* cr, Map* map, ushort hx, ushort hy, b
 {
 	if(cr->LockMapTransfers)
 	{
-		WriteLog(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 
@@ -2431,7 +2431,7 @@ bool MapManager::TransitToGlobal(Critter* cr, uint rule, uchar follow_type, bool
 {
 	if(cr->LockMapTransfers)
 	{
-		WriteLog(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 
@@ -2444,14 +2444,14 @@ bool MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 	Location* loc=(map?map->GetLocation(true):NULL);
 	if(loc && loc->Data.ToGarbage)
 	{
-		WriteLog(_FUNC_," - Transfer to deleted location, critter<%s>.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Transfer to deleted location, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 
 	// Maybe critter already in transfer
 	if(cr->LockMapTransfers)
 	{
-		WriteLog(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 
@@ -2542,7 +2542,7 @@ bool MapManager::AddCrToMap(Critter* cr, Map* map, ushort tx, ushort ty, uint ra
 {
 	if(cr->LockMapTransfers)
 	{
-		WriteLog(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
 		return false;
 	}
 
@@ -2588,7 +2588,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map, ushort hex_x, ushort hex_
 {
 	if(cr->LockMapTransfers)
 	{
-		WriteLog(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
+		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
 		return;
 	}
 

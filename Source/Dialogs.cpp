@@ -8,20 +8,20 @@ DialogManager DlgMngr;
 
 bool DialogManager::LoadDialogs(const char* list_name)
 {
-	WriteLog(NULL,"Load Dialogs...");
+	WriteLog("Load Dialogs...");
 
 	if(!list_name)
 	{
-		WriteLog(NULL,"List name nullptr.\n");
+		WriteLog("List name nullptr.\n");
 		return false;
 	}
 
-	WriteLog(NULL,"from list<%s>.\n",list_name);
+	WriteLog("from list<%s>.\n",list_name);
 
 	FileManager lst;
 	if(!lst.LoadFile(list_name,PT_SERVER_DIALOGS))
 	{
-		WriteLog(NULL,"File not found.\n");
+		WriteLog("File not found.\n");
 		return false;
 	}
 
@@ -40,7 +40,7 @@ bool DialogManager::LoadDialogs(const char* list_name)
 		str >> dlg_id;
 		if(str.fail())
 		{
-			WriteLog(NULL,"Unable to read id of dialog.\n");
+			WriteLog("Unable to read id of dialog.\n");
 			continue;
 		}
 
@@ -48,13 +48,13 @@ bool DialogManager::LoadDialogs(const char* list_name)
 		str >> dlg_name;
 		if(str.fail())
 		{
-			WriteLog(NULL,"Unable to read name of dialog.\n");
+			WriteLog("Unable to read name of dialog.\n");
 			continue;
 		}
 
 		if(DialogsPacks.count(dlg_id))
 		{
-			WriteLog(NULL,"Dialog id<%u> is already parsed.\n",dlg_id);
+			WriteLog("Dialog id<%u> is already parsed.\n",dlg_id);
 			continue;
 		}
 
@@ -65,27 +65,27 @@ bool DialogManager::LoadDialogs(const char* list_name)
 		FileManager fdlg;
 		if(!fdlg.LoadFile(name,PT_SERVER_DIALOGS))
 		{
-			WriteLog(NULL,"Unable to open dialog file, id<%u>, name<%s>.\n",dlg_id,name);
+			WriteLog("Unable to open dialog file, id<%u>, name<%s>.\n",dlg_id,name);
 			continue;
 		}
 
 		DialogPack* pack=ParseDialog(dlg_name,dlg_id,(char*)fdlg.GetBuf());
 		if(!pack)
 		{
-			WriteLog(NULL,"Unable to parse dialog, id<%u>, path<%s>.\n",dlg_id,dlg_name);
+			WriteLog("Unable to parse dialog, id<%u>, path<%s>.\n",dlg_id,dlg_name);
 			continue;
 		}
 
 		if(!AddDialogs(pack))
 		{
-			WriteLog(NULL,"Unable to add dialogs pack, id<%u>, path<%s>.\n",dlg_id,dlg_name);
+			WriteLog("Unable to add dialogs pack, id<%u>, path<%s>.\n",dlg_id,dlg_name);
 			continue;
 		}
 
 		dlg_loaded++;
 	}
 
-	WriteLog(NULL,"Loading dialogs finish, loaded<%u/%u>.\n",dlg_loaded,dlg_count);
+	WriteLog("Loading dialogs finish, loaded<%u/%u>.\n",dlg_loaded,dlg_count);
 	return dlg_count==dlg_loaded;
 }
 
@@ -155,10 +155,10 @@ void DialogManager::EraseDialogs(string name_pack)
 
 void DialogManager::Finish()
 {
-	WriteLog(NULL,"Dialog manager finish...\n");
+	WriteLog("Dialog manager finish...\n");
 	DialogsPacks.clear();
 	DlgPacksNames.clear();
-	WriteLog(NULL,"Dialog manager finish complete.\n");
+	WriteLog("Dialog manager finish complete.\n");
 }
 
 string ParseLangKey(const char* str)
@@ -253,7 +253,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 		script=GetNotAnswerAction(read_str,ret_val);
 		if(script<0)
 		{
-			WriteLog(NULL,"Unable to parse<%s>.\n",read_str);
+			WriteLog("Unable to parse<%s>.\n",read_str);
 			LOAD_FAIL("Invalid not answer action.");
 		}
 #endif
@@ -351,7 +351,7 @@ load_done:
 
 load_false:
 	AddError("Bad node<%d>.",dlg_id);
-	WriteLog(_FUNC_," - Errors:\n%s",LastErrors.c_str());
+	WriteLogF(_FUNC_," - Errors:\n%s",LastErrors.c_str());
 	delete pack;
 	SAFEDELA(dlg_buf);
 	SAFEDELA(lang_buf);
@@ -586,10 +586,10 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 			}
 			if(id<=0)
 			{
-				WriteLog(_FUNC_," - Script<%s> bind error.\n",name);
+				WriteLogF(_FUNC_," - Script<%s> bind error.\n",name);
 				return NULL;
 			}
-			if(id>0xFFFF) WriteLog(_FUNC_," - Id greater than 0xFFFF.\n");
+			if(id>0xFFFF) WriteLogF(_FUNC_," - Id greater than 0xFFFF.\n");
 #endif
 		}
 		break;
@@ -643,7 +643,7 @@ DemandResult* DialogManager::LoadDemandResult(istrstream& input, bool is_demand)
 ushort DialogManager::GetTempVarId(const char* str)
 {
 	ushort tid=VarMngr.GetTemplateVarId(str);
-	if(!tid) WriteLog(_FUNC_," - Template var not found, name<%s>.\n",str);
+	if(!tid) WriteLogF(_FUNC_," - Template var not found, name<%s>.\n",str);
 	return tid;
 }
 

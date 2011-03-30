@@ -178,7 +178,7 @@ uint Timer::GetFullSecond(ushort year, ushort month, ushort day, ushort hour, us
 {
 	DateTime dt={year,month,0,day,hour,minute,second,0};
 	uint64 ft;
-	if(!Timer::DateTimeToFullTime(dt,ft)) WriteLog(_FUNC_," - Args<%u,%u,%u,%u,%u,%u>.\n",year,month,day,hour,minute,second);
+	if(!Timer::DateTimeToFullTime(dt,ft)) WriteLogF(_FUNC_," - Args<%u,%u,%u,%u,%u,%u>.\n",year,month,day,hour,minute,second);
 	ft-=GameOpt.YearStartFT;
 	return (uint)(ft/10000000);
 }
@@ -187,7 +187,7 @@ DateTime Timer::GetGameTime(uint full_second)
 {
 	uint64 ft=GameOpt.YearStartFT+uint64(full_second)*10000000;
 	DateTime dt;
-	if(!Timer::FullTimeToDateTime(ft,dt)) WriteLog(_FUNC_," - Full second<%u>.\n",full_second);
+	if(!Timer::FullTimeToDateTime(ft,dt)) WriteLogF(_FUNC_," - Full second<%u>.\n",full_second);
 	return dt;
 }
 

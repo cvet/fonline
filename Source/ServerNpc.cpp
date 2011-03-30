@@ -379,7 +379,7 @@ void FOServer::ProcessAI(Npc* npc)
 				int sss=0;
 				if(!npc->RunPlane(REASON_ATTACK_WEAPON,r0,r1,r2))
 				{
-					WriteLog(NULL,"REASON_ATTACK_WEAPON fail. Skip attack.\n");
+					WriteLog("REASON_ATTACK_WEAPON fail. Skip attack.\n");
 					break;
 				}
 				if(plane!=npc->GetCurPlane()) break; // Validate plane
@@ -411,7 +411,7 @@ void FOServer::ProcessAI(Npc* npc)
 
 				if(!weap || !weap->IsWeapon() || !weap->WeapIsUseAviable(use))
 				{
-					WriteLog(NULL,"REASON_ATTACK_WEAPON fail, debug values<%u><%p><%d><%d>.\n",sss,weap,weap?weap->IsWeapon():-1,weap?weap->WeapIsUseAviable(use):-1);
+					WriteLog("REASON_ATTACK_WEAPON fail, debug values<%u><%p><%d><%d>.\n",sss,weap,weap?weap->IsWeapon():-1,weap?weap->WeapIsUseAviable(use):-1);
 					break;
 				}
 
@@ -441,7 +441,7 @@ void FOServer::ProcessAI(Npc* npc)
 					Item* ammo=npc->GetAmmoForWeapon(weap);
 					if(!ammo)
 					{
-						WriteLog(_FUNC_," - Ammo for weapon not found, full load, npc<%s>.\n",npc->GetInfo());
+						WriteLogF(_FUNC_," - Ammo for weapon not found, full load, npc<%s>.\n",npc->GetInfo());
 						weap->WeapLoadHolder();
 					}
 					else
@@ -460,7 +460,7 @@ void FOServer::ProcessAI(Npc* npc)
 				r0=targ->GetId(),r1=0,r2=0;
 				if(!npc->RunPlane(REASON_ATTACK_DISTANTION,r0,r1,r2))
 				{
-					WriteLog(NULL,"REASON_ATTACK_DISTANTION fail. Skip attack.\n");
+					WriteLog("REASON_ATTACK_DISTANTION fail. Skip attack.\n");
 					break;
 				}
 				if(plane!=npc->GetCurPlane()) break; // Validate plane
@@ -598,7 +598,7 @@ void FOServer::ProcessAI(Npc* npc)
 				r2=0;
 				if(!npc->RunPlane(REASON_ATTACK_USE_AIM,r0,r1,r2))
 				{
-					WriteLog(NULL,"REASON_ATTACK_USE_AIM fail. Skip attack.\n");
+					WriteLog("REASON_ATTACK_USE_AIM fail. Skip attack.\n");
 					break;
 				}
 
@@ -807,7 +807,7 @@ bool FOServer::AI_ReloadWeapon(Npc* npc, Map* map, Item* weap, uint ammo_id)
 
 bool FOServer::TransferAllNpc()
 {
-	WriteLog(NULL,"Transfer all npc to game...\n");
+	WriteLog("Transfer all npc to game...\n");
 
 	int errors=0;
 	CrMap critters=CrMngr.GetCrittersNoLock();
@@ -828,7 +828,7 @@ bool FOServer::TransferAllNpc()
 
 		if(cr->GetMap() && !map)
 		{
-			WriteLog(NULL,"Map not found, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>. Transfered to global map.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
+			WriteLog("Map not found, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>. Transfered to global map.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
 			errors++;
 			cr->SetMaps(0,0);
 			cr->Data.HexX=0;
@@ -837,7 +837,7 @@ bool FOServer::TransferAllNpc()
 
 		if(!MapMngr.AddCrToMap(cr,map,cr->GetHexX(),cr->GetHexY(),2))
 		{
-			WriteLog(NULL,"Error parsing npc to map, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
+			WriteLog("Error parsing npc to map, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
 			errors++;
 			continue;
 		}
@@ -851,7 +851,7 @@ bool FOServer::TransferAllNpc()
 		Critter* cr=*it;
 		if(!MapMngr.AddCrToMap(cr,NULL,cr->GetHexX(),cr->GetHexY(),2))
 		{
-			WriteLog(NULL,"Error parsing npc to global group, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
+			WriteLog("Error parsing npc to global group, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",cr->GetInfo(),cr->GetMap(),cr->Data.MapPid,cr->GetHexX(),cr->GetHexY());
 			errors++;
 			continue;
 		}
@@ -864,7 +864,7 @@ bool FOServer::TransferAllNpc()
 		cr->ProcessVisibleItems();
 	}
 
-	WriteLog(NULL,"Transfer npc complete. Errors<%d>.\n",errors);
+	WriteLog("Transfer npc complete. Errors<%d>.\n",errors);
 	return true;
 }
 
@@ -872,7 +872,7 @@ bool FOServer::Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dial
 {
 	if(base_dlg.Id<2)
 	{
-		WriteLog(_FUNC_," - Wrong dialog id<%u>.\n",base_dlg.Id);
+		WriteLogF(_FUNC_," - Wrong dialog id<%u>.\n",base_dlg.Id);
 		return false;
 	}
 	compiled_dlg=base_dlg;
@@ -1094,7 +1094,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 {
 	if(cl->Talk.Locked)
 	{
-		WriteLog(_FUNC_," - Dialog locked, client<%s>.\n",cl->GetInfo());
+		WriteLogF(_FUNC_," - Dialog locked, client<%s>.\n",cl->GetInfo());
 		return;
 	}
 	if(cl->Talk.TalkType!=TALK_NONE) cl->CloseTalk();
@@ -1119,7 +1119,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 			if(cl->GetMap()!=npc->GetMap())
 			{
 				//	cl->Send_Text(cl,"Differense maps, you are hack the game?.",SAY_NETMSG);
-				WriteLog(_FUNC_," - Difference maps, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
+				WriteLogF(_FUNC_," - Difference maps, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
 				return;
 			}
 
@@ -1129,7 +1129,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 				cl->Send_XY(cl);
 				cl->Send_XY(npc);
 				cl->Send_TextMsg(cl,STR_DIALOG_DIST_TOO_LONG,SAY_NETMSG,TEXTMSG_GAME);
-				WriteLog(_FUNC_," - Wrong distance to npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
+				WriteLogF(_FUNC_," - Wrong distance to npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
 				return;
 			}
 
@@ -1143,7 +1143,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 			if(map->IsTurnBasedOn)
 			{
 				cl->Send_TextMsg(cl,STR_DIALOG_NPC_BUSY,SAY_NETMSG,TEXTMSG_GAME);
-				WriteLog(_FUNC_," - Map is in turn based state, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
+				WriteLogF(_FUNC_," - Map is in turn based state, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
 				return;
 			}
 
@@ -1166,7 +1166,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 		if(!npc->IsLife())
 		{
 			cl->Send_TextMsg(cl,STR_DIALOG_NPC_NOT_LIFE,SAY_NETMSG,TEXTMSG_GAME);
-			WriteLog(_FUNC_," - Npc<%s> bad condition, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
+			WriteLogF(_FUNC_," - Npc<%s> bad condition, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
 			return;
 		}
 
@@ -1192,7 +1192,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 		dialogs=(dialog_pack?&dialog_pack->Dialogs:NULL);
 		if(!dialogs || !dialogs->size()) return;
 // 		{
-// 			WriteLog(_FUNC_," - No dialogs, client<%s>.\n",cl->GetInfo());
+// 			WriteLogF(_FUNC_," - No dialogs, client<%s>.\n",cl->GetInfo());
 // 			return;
 // 		}
 
@@ -1212,7 +1212,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 //		Map* map=MapMngr.GetMap(cl->GetMap());
 //		if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY())
 //		{
-//			WriteLog(_FUNC_," - Invalid hexes value, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
+//			WriteLogF(_FUNC_," - Invalid hexes value, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
 //			return;
 //		}
 
@@ -1220,7 +1220,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 		{
 			cl->Send_XY(cl);
 			cl->Send_TextMsg(cl,STR_DIALOG_DIST_TOO_LONG,SAY_NETMSG,TEXTMSG_GAME);
-			WriteLog(_FUNC_," - Wrong distance to hexes, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
+			WriteLogF(_FUNC_," - Wrong distance to hexes, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
 			return;
 		}
 
@@ -1230,7 +1230,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 		{
 			//	Map* map=MapMngr.GetMap(cl->GetMap());
 			//	if(map) map->SetTextMsg(hx,hy,0,TEXTMSG_GAME,STR_DIALOG_NO_DIALOGS);
-			WriteLog(_FUNC_," - No dialogs, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
+			WriteLogF(_FUNC_," - No dialogs, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
 			return;
 		}
 	}
@@ -1248,7 +1248,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 	if(go_dialog==uint(-1))
 	{
 		// cl->Send_Str(cl,STR_DIALOG_PRE_INST_FAIL,SAY_NETMSG,TEXTMSG_GAME);
-		// WriteLog(_FUNC_," - Invalid predialogue installations, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
+		// WriteLogF(_FUNC_," - Invalid predialogue installations, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
 		return;
 	}
 
@@ -1265,7 +1265,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 	if(it_d==dialogs->end())
 	{
 		cl->Send_TextMsg(cl,STR_DIALOG_FROM_LINK_NOT_FOUND,SAY_NETMSG,TEXTMSG_GAME);
-		WriteLog(_FUNC_," - Dialog from link<%u> not found, client<%s>, dialog pack<%u>.\n",go_dialog,cl->GetInfo(),dialog_pack->PackId);
+		WriteLogF(_FUNC_," - Dialog from link<%u> not found, client<%s>, dialog pack<%u>.\n",go_dialog,cl->GetInfo(),dialog_pack->PackId);
 		return;
 	}
 
@@ -1273,7 +1273,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, u
 	if(!Dialog_Compile(npc,cl,*it_d,cl->Talk.CurDialog))
 	{
 		cl->Send_TextMsg(cl,STR_DIALOG_COMPILE_FAIL,SAY_NETMSG,TEXTMSG_GAME);
-		WriteLog(_FUNC_," - Dialog compile fail, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
+		WriteLogF(_FUNC_," - Dialog compile fail, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
 		return;
 	}
 
@@ -1354,7 +1354,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		str[MAX_SAY_NPC_TEXT]=0;
 		if(!Str::Length(str))
 		{
-			WriteLog(_FUNC_," - Say text length is zero, client<%s>.\n",cl->GetInfo());
+			WriteLogF(_FUNC_," - Say text length is zero, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 	}
@@ -1378,7 +1378,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		{
 			cl->Send_TextMsg(cl,STR_DIALOG_NPC_NOT_FOUND,SAY_NETMSG,TEXTMSG_GAME);
 			cl->CloseTalk();
-			WriteLog(_FUNC_," - Npc not found, client<%s>.\n",cl->GetInfo());
+			WriteLogF(_FUNC_," - Npc not found, client<%s>.\n",cl->GetInfo());
 			return;
 		}
 
@@ -1399,7 +1399,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		{
 			cl->CloseTalk();
 			npc->SendAA_Msg(npc->VisCr,STR_DIALOG_NO_DIALOGS,SAY_NORM,TEXTMSG_GAME);
-			WriteLog(_FUNC_," - No dialogs, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
+			WriteLogF(_FUNC_," - No dialogs, npc<%s>, client<%s>.\n",npc->GetInfo(),cl->GetInfo());
 			return;
 		}
 	}
@@ -1412,7 +1412,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		{
 			Map* map=MapMngr.GetMap(cl->GetMap());
 			if(map) map->SetTextMsg(cl->Talk.TalkHexX,cl->Talk.TalkHexY,0,TEXTMSG_GAME,STR_DIALOG_NO_DIALOGS);
-			WriteLog(_FUNC_," - No dialogs, hx<%u>, hy<%u>, client<%s>.\n",cl->Talk.TalkHexX,cl->Talk.TalkHexY,cl->GetInfo());
+			WriteLogF(_FUNC_," - No dialogs, hx<%u>, hy<%u>, client<%s>.\n",cl->Talk.TalkHexX,cl->Talk.TalkHexY,cl->GetInfo());
 			return;
 		}
 	}
@@ -1471,7 +1471,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		// Invalid answer
 		if(num_answer>=cur_dialog->Answers.size())
 		{
-			WriteLog(_FUNC_," - Wrong number of answer<%u>, client<%s>.\n",num_answer,cl->GetInfo());
+			WriteLogF(_FUNC_," - Wrong number of answer<%u>, client<%s>.\n",num_answer,cl->GetInfo());
 			cl->Send_Talk(); // Refresh
 			return;
 		}
@@ -1482,7 +1482,7 @@ void FOServer::Process_Dialog(Client* cl, bool is_say)
 		// Check demand again
 		if(!Dialog_CheckDemand(npc,cl,*answer,true))
 		{
-			WriteLog(_FUNC_," - Secondary check of dialog demands fail, client<%s>.\n",cl->GetInfo());
+			WriteLogF(_FUNC_," - Secondary check of dialog demands fail, client<%s>.\n",cl->GetInfo());
 			cl->CloseTalk(); // End
 			return;
 		}
@@ -1560,7 +1560,7 @@ label_Barter:
 	{
 		cl->CloseTalk();
 		cl->Send_TextMsg(cl,STR_DIALOG_FROM_LINK_NOT_FOUND,SAY_NETMSG,TEXTMSG_GAME);
-		WriteLog(_FUNC_," - Dialog from link<%u> not found, client<%s>, dialog pack<%u>.\n",dlg_id,cl->GetInfo(),dialog_pack->PackId);
+		WriteLogF(_FUNC_," - Dialog from link<%u> not found, client<%s>, dialog pack<%u>.\n",dlg_id,cl->GetInfo(),dialog_pack->PackId);
 		return;
 	}
 
@@ -1569,7 +1569,7 @@ label_Barter:
 	{
 		cl->CloseTalk();
 		cl->Send_TextMsg(cl,STR_DIALOG_COMPILE_FAIL,SAY_NETMSG,TEXTMSG_GAME);
-		WriteLog(_FUNC_," - Dialog compile fail, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
+		WriteLogF(_FUNC_," - Dialog compile fail, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
 		return;
 	}
 
@@ -1655,7 +1655,7 @@ void FOServer::Process_Barter(Client* cl)
 	// Check
 	if(!cl->GetMap())
 	{
-		WriteLog(_FUNC_," - Player try to barter from global map, client<%s>.\n",cl->GetInfo());
+		WriteLogF(_FUNC_," - Player try to barter from global map, client<%s>.\n",cl->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
@@ -1663,7 +1663,7 @@ void FOServer::Process_Barter(Client* cl)
 	Npc* npc=CrMngr.GetNpc(id_npc_talk,true);
 	if(!npc)
 	{
-		WriteLog(_FUNC_," - Npc not found, client<%s>.\n",cl->GetInfo());
+		WriteLogF(_FUNC_," - Npc not found, client<%s>.\n",cl->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
@@ -1671,14 +1671,14 @@ void FOServer::Process_Barter(Client* cl)
 	bool is_free=(npc->Data.Params[ST_FREE_BARTER_PLAYER]==(int)cl->GetId());
 	if(!sale_count && !is_free)
 	{
-		WriteLog(_FUNC_," - Player nothing for sale, client<%s>.\n",cl->GetInfo());
+		WriteLogF(_FUNC_," - Player nothing for sale, client<%s>.\n",cl->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
 
 	if(same_id)
 	{
-		WriteLog(_FUNC_," - Same item id found, client<%s>, npc<%s>, same count<%u>.\n",cl->GetInfo(),npc->GetInfo(),same_id);
+		WriteLogF(_FUNC_," - Same item id found, client<%s>, npc<%s>, same count<%u>.\n",cl->GetInfo(),npc->GetInfo(),same_id);
 		cl->Send_TextMsg(cl,STR_BARTER_BAD_OFFER,SAY_DIALOG,TEXTMSG_GAME);
 		cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 		return;
@@ -1686,28 +1686,28 @@ void FOServer::Process_Barter(Client* cl)
 
 	if(!npc->IsLife())
 	{
-		WriteLog(_FUNC_," - Npc busy or dead, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Npc busy or dead, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
 
 	if(npc->IsRawParam(MODE_NO_BARTER))
 	{
-		WriteLog(_FUNC_," - Npc has NoBarterMode, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Npc has NoBarterMode, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
 
 	if(cl->GetMap()!=npc->GetMap())
 	{
-		WriteLog(_FUNC_," - Difference maps, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Difference maps, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
 
 	if(!CheckDist(cl->GetHexX(),cl->GetHexY(),npc->GetHexX(),npc->GetHexY(),npc->GetTalkDistance(cl)))
 	{
-		WriteLog(_FUNC_," - Wrong distance, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Wrong distance, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_XY(cl);
 		cl->Send_XY(npc);
 		cl->Send_ContainerInfo();
@@ -1716,7 +1716,7 @@ void FOServer::Process_Barter(Client* cl)
 
 	if(cl->Talk.TalkType!=TALK_WITH_NPC || cl->Talk.TalkNpc!=npc->GetId() || !cl->Talk.Barter)
 	{
-		WriteLog(_FUNC_," - Dialog is closed or not beginning, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Dialog is closed or not beginning, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_ContainerInfo();
 		return;
 	}
@@ -1738,7 +1738,7 @@ void FOServer::Process_Barter(Client* cl)
 		Item* item=cl->GetItem(sale_item_id[i],true);
 		if(!item)
 		{
-			WriteLog(_FUNC_," - Sale item not found, id<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Sale item not found, id<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],cl->GetInfo(),npc->GetInfo());
 			cl->Send_TextMsg(cl,STR_BARTER_SALE_ITEM_NOT_FOUND,SAY_DIALOG,TEXTMSG_GAME);
 			cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 			return;
@@ -1753,14 +1753,14 @@ void FOServer::Process_Barter(Client* cl)
 
 		if(!sale_item_count[i] || sale_item_count[i]>item->GetCount())
 		{
-			WriteLog(_FUNC_," - Sale item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],sale_item_count[i],item->GetCount(),cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Sale item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],sale_item_count[i],item->GetCount(),cl->GetInfo(),npc->GetInfo());
 			cl->Send_ContainerInfo();
 			return;
 		}
 
 		if(sale_item_count[i]>1 && !item->IsStackable())
 		{
-			WriteLog(_FUNC_," - Sale item is not stackable, id<%u>, count<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],sale_item_count[i],cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Sale item is not stackable, id<%u>, count<%u>, client<%s>, npc<%s>.\n",sale_item_id[i],sale_item_count[i],cl->GetInfo(),npc->GetInfo());
 			cl->Send_ContainerInfo();
 			return;
 		}
@@ -1793,7 +1793,7 @@ void FOServer::Process_Barter(Client* cl)
 		Item* item=npc->GetItem(buy_item_id[i],true);
 		if(!item)
 		{
-			WriteLog(_FUNC_," - Buy item not found, id<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Buy item not found, id<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],cl->GetInfo(),npc->GetInfo());
 			cl->Send_TextMsg(cl,STR_BARTER_BUY_ITEM_NOT_FOUND,SAY_DIALOG,TEXTMSG_GAME);
 			cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 			return;
@@ -1801,14 +1801,14 @@ void FOServer::Process_Barter(Client* cl)
 
 		if(!buy_item_count[i] || buy_item_count[i]>item->GetCount())
 		{
-			WriteLog(_FUNC_," - Buy item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],buy_item_count[i],item->GetCount(),cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Buy item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],buy_item_count[i],item->GetCount(),cl->GetInfo(),npc->GetInfo());
 			cl->Send_ContainerInfo();
 			return;
 		}
 
 		if(buy_item_count[i]>1 && !item->IsStackable())
 		{
-			WriteLog(_FUNC_," - Buy item is not stackable, id<%u>, count<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],buy_item_count[i],cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Buy item is not stackable, id<%u>, count<%u>, client<%s>, npc<%s>.\n",buy_item_id[i],buy_item_count[i],cl->GetInfo(),npc->GetInfo());
 			cl->Send_ContainerInfo();
 			return;
 		}
@@ -1837,7 +1837,7 @@ void FOServer::Process_Barter(Client* cl)
 
 		if(buy_cost>sale_cost && !is_free)
 		{
-			WriteLog(_FUNC_," - Buy is > sale - ignore barter, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Buy is > sale - ignore barter, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 			cl->Send_TextMsg(cl,STR_BARTER_BAD_OFFER,SAY_DIALOG,TEXTMSG_GAME);
 			cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 			return;
@@ -1847,7 +1847,7 @@ void FOServer::Process_Barter(Client* cl)
 	// Check weight
 	if(cl->GetFreeWeight()+(int)sale_weight<(int)buy_weight)
 	{
-		WriteLog(_FUNC_," - Overweight - ignore barter, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Overweight - ignore barter, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_TextMsg(cl,STR_BARTER_OVERWEIGHT,SAY_DIALOG,TEXTMSG_GAME);
 		cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 		return;
@@ -1856,7 +1856,7 @@ void FOServer::Process_Barter(Client* cl)
 	// Check volume
 	if(cl->GetFreeVolume()+(int)sale_volume<(int)buy_volume)
 	{
-		WriteLog(_FUNC_," - Oversize - ignore barter, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+		WriteLogF(_FUNC_," - Oversize - ignore barter, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 		cl->Send_TextMsg(cl,STR_BARTER_OVERSIZE,SAY_DIALOG,TEXTMSG_GAME);
 		cl->Send_ContainerInfo(npc,TRANSFER_CRIT_BARTER,false);
 		return;
@@ -1900,14 +1900,14 @@ void FOServer::Process_Barter(Client* cl)
 	for(int i=0;i<sale_count;++i)
 	{
 		if(!ItemMngr.MoveItemCritters(cl,npc,sale_item_id[i],sale_item_count[i]))
-			WriteLog(_FUNC_," - Transfer item, from player to npc, fail, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Transfer item, from player to npc, fail, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 	}
 
 	// From Npc to Player
 	for(int i=0;i<buy_count;++i)
 	{
 		if(!ItemMngr.MoveItemCritters(npc,cl,buy_item_id[i],buy_item_count[i]))
-			WriteLog(_FUNC_," - Transfer item, from player to npc, fail, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
+			WriteLogF(_FUNC_," - Transfer item, from player to npc, fail, client<%s>, npc<%s>.\n",cl->GetInfo(),npc->GetInfo());
 	}
 
 	cl->Talk.StartTick=Timer::GameTick();

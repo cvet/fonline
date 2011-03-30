@@ -354,7 +354,7 @@ modeWidth(0),modeHeight(0)
 bool SpriteManager::Init(SpriteMngrParams& params)
 {
 	if(isInit) return false;
-	WriteLog(NULL,"Sprite manager initialization...\n");
+	WriteLog("Sprite manager initialization...\n");
 
 	mngrParams=params;
 	PreRestore=params.PreRestoreFunc;
@@ -368,7 +368,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	direct3D=Direct3DCreate(D3D_SDK_VERSION);
 	if(!direct3D)
 	{
-		WriteLog(NULL,"Create Direct3D fail.\n");
+		WriteLog("Create Direct3D fail.\n");
 		return false;
 	}
 
@@ -409,7 +409,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 			presentParams.MultiSampleType,&presentParams.MultiSampleQuality);
 		if(FAILED(hr))
 		{
-			WriteLog(NULL,"Multisampling %dx not supported. Disabled.\n",(int)presentParams.MultiSampleType);
+			WriteLog("Multisampling %dx not supported. Disabled.\n",(int)presentParams.MultiSampleType);
 			presentParams.MultiSampleType=D3DMULTISAMPLE_NONE;
 			presentParams.MultiSampleQuality=0;
 		}
@@ -437,13 +437,13 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 			shader->Release();
 			if(FAILED(hr))
 			{
-				WriteLog(_FUNC_," - Can't create contours pixel shader, error<%s>. Used old style contours.\n",DXGetErrorString(hr));
+				WriteLogF(_FUNC_," - Can't create contours pixel shader, error<%s>. Used old style contours.\n",DXGetErrorString(hr));
 				contoursPS=NULL;
 			}
 		}
 		else
 		{
-			WriteLog(_FUNC_," - Shader 2d contours compilation fail, errors<%s\n%s>, legacy compiler errors<%s\n%s>. Used old style contours.\n",
+			WriteLogF(_FUNC_," - Shader 2d contours compilation fail, errors<%s\n%s>, legacy compiler errors<%s\n%s>. Used old style contours.\n",
 				DXGetErrorString(hr),errors?errors->GetBufferPointer():"",DXGetErrorString(hr31),errors31?errors31->GetBufferPointer():"");
 		}
 		SAFEREL(errors);
@@ -486,7 +486,7 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 	}
 	else
 	{
-		WriteLog(NULL,"Load sprite 'egg.png' fail. Egg disabled.\n");
+		WriteLog("Load sprite 'egg.png' fail. Egg disabled.\n");
 	}
 
 	// Default effects
@@ -506,12 +506,12 @@ bool SpriteManager::Init(SpriteMngrParams& params)
 		DummyAnimation=CreateAnimation(1,100);
 		if(!DummyAnimation)
 		{
-			WriteLog(NULL,"Can't create dummy animation.\n");
+			WriteLog("Can't create dummy animation.\n");
 			return false;
 		}
 	}
 
-	WriteLog(NULL,"Sprite manager initialization complete.\n");
+	WriteLog("Sprite manager initialization complete.\n");
 	return true;
 }
 
@@ -626,7 +626,7 @@ bool SpriteManager::InitRenderStates()
 
 void SpriteManager::Clear()
 {
-	WriteLog(NULL,"Sprite manager finish...\n");
+	WriteLog("Sprite manager finish...\n");
 
 	for(SurfVecIt it=surfList.begin(),end=surfList.end();it!=end;++it) SAFEDEL(*it);
 	surfList.clear();
@@ -654,7 +654,7 @@ void SpriteManager::Clear()
 	SAFEREL(direct3D);
 
 	isInit=false;
-	WriteLog(NULL,"Sprite manager finish complete.\n");
+	WriteLog("Sprite manager finish complete.\n");
 }
 
 bool SpriteManager::BeginScene(uint clear_color)
@@ -974,7 +974,7 @@ AnyFrames* SpriteManager::LoadAnimation(const char* fname, int path_type, int fl
 	const char* ext=FileManager::GetExtension(fname);
 	if(!ext)
 	{
-		WriteLog(_FUNC_," - Extension not found, file<%s>.\n",fname);
+		WriteLogF(_FUNC_," - Extension not found, file<%s>.\n",fname);
 		return dummy;
 	}
 
@@ -3281,7 +3281,7 @@ uint SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_z
 		int pitch=desc.Pitch;
 
 		int stencil_offset=offs_y*pitch+offs_x*4+3;
-		WriteLog(NULL,"===========%d %d====%u\n",offs_x,offs_y,ptr[stencil_offset]);
+		WriteLog("===========%d %d====%u\n",offs_x,offs_y,ptr[stencil_offset]);
 		if(stencil_offset<pitch*height && ptr[stencil_offset]==si->Anim3d->GetDrawIndex())
 		{
 			D3D_HR(zstencil->UnlockRect());
@@ -4034,7 +4034,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 {
 	if(index<0)
 	{
-		WriteLog(_FUNC_," - Invalid index.\n");
+		WriteLogF(_FUNC_," - Invalid index.\n");
 		return false;
 	}
 
@@ -4045,7 +4045,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	uchar* data=new uchar[tex_w*tex_h*4]; // TODO: Leak
 	if(!data)
 	{
-		WriteLog(_FUNC_," - Data allocation fail.\n");
+		WriteLogF(_FUNC_," - Data allocation fail.\n");
 		return false;
 	}
 	ZeroMemory(data,tex_w*tex_h*4);
@@ -4053,7 +4053,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 	FileManager fm;
 	if(!fm.LoadFile(Str::FormatBuf("%s.bmp",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.bmp",font_name));
+		WriteLogF(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.bmp",font_name));
 		delete[] data;
 		return false;
 	}
@@ -4067,7 +4067,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 
 	if(!fm.LoadFile(Str::FormatBuf("%s.fnt0",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.fnt0",font_name));
+		WriteLogF(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
@@ -4089,7 +4089,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 
 	if(!fm.CopyMem(letters,sizeof(LetterOldFont)*256))
 	{
-		WriteLog(_FUNC_," - Incorrect size in file<%s>.\n",Str::FormatBuf("%s.fnt0",font_name));
+		WriteLogF(_FUNC_," - Incorrect size in file<%s>.\n",Str::FormatBuf("%s.fnt0",font_name));
 		delete[] data;
 		SAFEREL(image);
 		return false;
@@ -4123,7 +4123,7 @@ bool SpriteManager::LoadFontOld(int index, const char* font_name, int size_mod)
 			{
 				delete[] data;
 				SAFEREL(image);
-				//WriteLog(NULL,"<%s> growed to %d\n",font_name,size_mod*2);
+				//WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
 				return LoadFontOld(index,font_name,size_mod*2);
 			}
 		}
@@ -4169,7 +4169,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	// Read file in buffer
 	if(index<0)
 	{
-		WriteLog(_FUNC_," - Invalid index.\n");
+		WriteLogF(_FUNC_," - Invalid index.\n");
 		return false;
 	}
 
@@ -4178,7 +4178,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 
 	if(!fm.LoadFile(Str::FormatBuf("%s.aaf",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.aaf",font_name));
+		WriteLogF(_FUNC_," - File<%s> not found.\n",Str::FormatBuf("%s.aaf",font_name));
 		return false;
 	}
 
@@ -4186,7 +4186,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	uint sign=fm.GetBEUInt();
 	if(sign!=MAKEFOURCC('F','F','A','A'))
 	{
-		WriteLog(_FUNC_," - Signature AAFF not found.\n");
+		WriteLogF(_FUNC_," - Signature AAFF not found.\n");
 		return false;
 	}
 
@@ -4208,7 +4208,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 	uchar* data=new uchar[tex_w*tex_h*4];
 	if(!data)
 	{
-		WriteLog(_FUNC_," - Data allocation fail.\n");
+		WriteLogF(_FUNC_," - Data allocation fail.\n");
 		return false;
 	}
 	ZeroMemory(data,tex_w*tex_h*4);
@@ -4232,7 +4232,7 @@ bool SpriteManager::LoadFontAAF(int index, const char* font_name, int size_mod)
 			if(cur_y+font.MaxLettHeight+2>=tex_h)
 			{
 				delete[] data;
-				//WriteLog(NULL,"<%s> growed to %d\n",font_name,size_mod*2);
+				//WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
 				return LoadFontAAF(index,font_name,size_mod*2);
 			}
 		}
@@ -4287,7 +4287,7 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 {
 	if(index<0)
 	{
-		WriteLog(_FUNC_," - Invalid index.\n");
+		WriteLogF(_FUNC_," - Invalid index.\n");
 		return false;
 	}
 
@@ -4297,14 +4297,14 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 
 	if(!fm.LoadFile(Str::FormatBuf("%s.fnt",font_name),PT_FONTS))
 	{
-		WriteLog(_FUNC_," - Font file<%s> not found.\n",Str::FormatBuf("%s.fnt",font_name));
+		WriteLogF(_FUNC_," - Font file<%s> not found.\n",Str::FormatBuf("%s.fnt",font_name));
 		return false;
 	}
 
 	uint signature=fm.GetLEUInt();
 	if(signature!=MAKEFOURCC('B','M','F',3))
 	{
-		WriteLog(_FUNC_," - Invalid signature of font<%s>.\n",font_name);
+		WriteLogF(_FUNC_," - Invalid signature of font<%s>.\n",font_name);
 		return false;
 	}
 
@@ -4316,7 +4316,7 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 	fm.GoForward(7);
 	if(fm.GetUChar()!=1 || fm.GetUChar()!=1 || fm.GetUChar()!=1 || fm.GetUChar()!=1)
 	{
-		WriteLog(_FUNC_," - Wrong padding in font<%s>.\n",font_name);
+		WriteLogF(_FUNC_," - Wrong padding in font<%s>.\n",font_name);
 		return false;
 	}
 
@@ -4334,7 +4334,7 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 
 	if(fm.GetLEUShort()!=1)
 	{
-		WriteLog(_FUNC_," - Texture for font<%s> must be single.\n",font_name);
+		WriteLogF(_FUNC_," - Texture for font<%s> must be single.\n",font_name);
 		return false;
 	}
 
@@ -4348,7 +4348,7 @@ bool SpriteManager::LoadFontBMF(int index, const char* font_name)
 
 	if(!fm_tex.LoadFile(texture_name,PT_FONTS))
 	{
-		WriteLog(_FUNC_," - Texture file<%s> not found.\n",texture_name);
+		WriteLogF(_FUNC_," - Texture file<%s> not found.\n",texture_name);
 		return false;
 	}
 
@@ -4707,7 +4707,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 			if(fi.LineSpaceWidth[curstr]==1 && spaces>0)
 			{
 				fi.LineSpaceWidth[curstr]=font->SpaceWidth+(r.R-fi.LineWidth[curstr])/spaces;
-				//WriteLog(NULL,"%d) %d + ( %d - %d ) / %d = %u\n",curstr,font->SpaceWidth,r.R,fi.LineWidth[curstr],spaces,fi.LineSpaceWidth[curstr]);
+				//WriteLog("%d) %d + ( %d - %d ) / %d = %u\n",curstr,font->SpaceWidth,r.R,fi.LineWidth[curstr],spaces,fi.LineSpaceWidth[curstr]);
 			}
 			else fi.LineSpaceWidth[curstr]=font->SpaceWidth;
 

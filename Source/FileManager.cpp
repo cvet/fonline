@@ -104,7 +104,7 @@ void FileManager::InitDataFiles(const char* path)
 				sprintf(errmsg,"Data file '%s' not found. Run Updater.exe.",str);
 				HWND wnd=GetActiveWindow();
 				if(wnd) MessageBox(wnd,errmsg,"FOnline",MB_OK);
-				WriteLog(_FUNC_," - %s\n",errmsg);
+				WriteLogF(_FUNC_," - %s\n",errmsg);
 			}
 		}
 	}
@@ -114,7 +114,7 @@ bool FileManager::LoadDataFile(const char* path)
 {
 	if(!path)
 	{
-		WriteLog(_FUNC_," - Path empty or nullptr.\n");
+		WriteLogF(_FUNC_," - Path empty or nullptr.\n");
 		return false;
 	}
 
@@ -123,7 +123,7 @@ bool FileManager::LoadDataFile(const char* path)
 	Str::Copy(path_,path);
 	if(!GetFullPathName(path,MAX_FOPATH,path_,NULL))
 	{
-		WriteLog(_FUNC_," - Extract full path file<%s> fail.\n",path);
+		WriteLogF(_FUNC_," - Extract full path file<%s> fail.\n",path);
 		return false;
 	}
 
@@ -138,7 +138,7 @@ bool FileManager::LoadDataFile(const char* path)
 	DataFile* pfile=OpenDataFile(path_);
 	if(!pfile)
 	{
-		WriteLog(_FUNC_," - Load packed file<%s> fail.\n",path_);
+		WriteLogF(_FUNC_," - Load packed file<%s> fail.\n",path_);
 		return false;
 	}
 
@@ -204,7 +204,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 	}
 	else
 	{
-		WriteLog(_FUNC_," - Invalid path<%d>.\n",path_type);
+		WriteLogF(_FUNC_," - Invalid path<%d>.\n",path_type);
 		return false;
 	}
 
@@ -521,7 +521,7 @@ bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 	}
 	else
 	{
-		WriteLog(_FUNC_," - Invalid path<%d>.\n",path_type);
+		WriteLogF(_FUNC_," - Invalid path<%d>.\n",path_type);
 		return false;
 	}
 

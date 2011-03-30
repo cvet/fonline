@@ -11,14 +11,14 @@ bool FOClient::IfaceLoadRect(INTRECT& comp, const char* name)
 	char res[256];
 	if(!IfaceIni.GetStr(name,"",res))
 	{
-		WriteLog(NULL,"Signature<%s> not found.\n",name);
+		WriteLog("Signature<%s> not found.\n",name);
 		return false;
 	}
 
 	if(sscanf(res,"%d%d%d%d",&comp[0],&comp[1],&comp[2],&comp[3])!=4)
 	{
 		comp.Clear();
-		WriteLog(NULL,"Unable to parse signature<%s>.\n",name);
+		WriteLog("Unable to parse signature<%s>.\n",name);
 		return false;
 	}
 
@@ -33,18 +33,18 @@ void FOClient::IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy)
 void FOClient::IfaceLoadSpr(AnyFrames*& comp, const char* name)
 {
 	char res[256];
-	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog(NULL,"Signature<%s> not found.\n",name);
+	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
 	SprMngr.SurfType=RES_IFACE;
 	comp=SprMngr.LoadAnimation(res,PT_ART_INTRFACE,ANIM_USE_DUMMY);
-	if(comp==SpriteManager::DummyAnimation) WriteLog(NULL,"File<%s> not found.\n",res);
+	if(comp==SpriteManager::DummyAnimation) WriteLog("File<%s> not found.\n",res);
 	SprMngr.SurfType=RES_NONE;
 }
 
 void FOClient::IfaceLoadAnim(uint& comp, const char* name)
 {
 	char res[256];
-	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog(NULL,"Signature<%s> not found.\n",name);
-	if(!(comp=AnimLoad(res,PT_ART_INTRFACE,RES_IFACE))) WriteLog(NULL,"Can't load animation<%s>.\n",res);
+	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
+	if(!(comp=AnimLoad(res,PT_ART_INTRFACE,RES_IFACE))) WriteLog("Can't load animation<%s>.\n",res);
 }
 
 void FOClient::IfaceFreeResources()
@@ -137,14 +137,14 @@ void FOClient::AppendIfaceIni(uchar* data, uint len)
 
 int FOClient::InitIface()
 {
-	WriteLog(NULL,"Interface initialization.\n");
+	WriteLog("Interface initialization.\n");
 
 /************************************************************************/
 /* Data                                                                 */
 /************************************************************************/
 	char res[512];
 
-	WriteLog(NULL,"Load data.\n");
+	WriteLog("Load data.\n");
 	// Other
 	IfaceHold=IFACE_NONE;
 	TargetSmth.Clear();
@@ -582,20 +582,20 @@ int FOClient::InitIface()
 	TViewGmapLocEntrance=0;
 
 	// Global map
-	if(!IfaceIni.GetStr("GmapTilesPic","",GmapTilesPic)) WriteLog(_FUNC_," - <GmapTilesPic> signature not found.\n");
+	if(!IfaceIni.GetStr("GmapTilesPic","",GmapTilesPic)) WriteLogF(_FUNC_," - <GmapTilesPic> signature not found.\n");
 	GmapTilesX=IfaceIni.GetInt("GmapTilesX",0);
 	GmapTilesY=IfaceIni.GetInt("GmapTilesY",0);
 	GmapPic.resize(GmapTilesX*GmapTilesY);
 	GmapFog.Create(GM__MAXZONEX,GM__MAXZONEY,NULL);
 	// Relief
 	SAFEDEL(GmapRelief);
-	if(!IfaceIni.GetStr("GmapReliefMask","",res)) WriteLog(_FUNC_," - Global map mask signature<GmapReliefMask> not found.\n");
-	else if(!FileMngr.LoadFile(res,PT_MAPS)) WriteLog(_FUNC_," - Global map mask file<%s> not found.\n",res);
-	else if(FileMngr.GetLEUShort()!=0x4D42) WriteLog(_FUNC_," - Invalid file format of global map mask<%s>.\n",res);
+	if(!IfaceIni.GetStr("GmapReliefMask","",res)) WriteLogF(_FUNC_," - Global map mask signature<GmapReliefMask> not found.\n");
+	else if(!FileMngr.LoadFile(res,PT_MAPS)) WriteLogF(_FUNC_," - Global map mask file<%s> not found.\n",res);
+	else if(FileMngr.GetLEUShort()!=0x4D42) WriteLogF(_FUNC_," - Invalid file format of global map mask<%s>.\n",res);
 	else
 	{
 		FileMngr.SetCurPos(28);
-		if(FileMngr.GetLEUShort()!=4) WriteLog(_FUNC_," - Invalid bit per pixel format of global map mask<%s>.\n",res);
+		if(FileMngr.GetLEUShort()!=4) WriteLogF(_FUNC_," - Invalid bit per pixel format of global map mask<%s>.\n",res);
 		else
 		{
 			FileMngr.SetCurPos(18);
@@ -925,7 +925,7 @@ int FOClient::InitIface()
 	if(!SaveLoadDraft && Singleplayer)
 	{
 		if(FAILED(SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
-			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&SaveLoadDraft,NULL))) WriteLog(NULL,"Create save/load draft surface fail.\n");
+			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
 	}
 	SaveLoadProcessDraft=false;
 	SaveLoadDraftValid=false;
@@ -933,7 +933,7 @@ int FOClient::InitIface()
 /************************************************************************/
 /* Sprites                                                              */
 /************************************************************************/
-	WriteLog(NULL,"Load sprites.\n");
+	WriteLog("Load sprites.\n");
 	IfaceFreeResources();
 
 	// Hex field sprites
@@ -1303,7 +1303,7 @@ int FOClient::InitIface()
 	IfaceLoadSpr(SaveLoadDonePicDown,"SaveLoadDonePicDn");
 	IfaceLoadSpr(SaveLoadBackPicDown,"SaveLoadBackPicDn");
 
-	WriteLog(NULL,"Interface initialization complete.\n");
+	WriteLog("Interface initialization complete.\n");
 	return 0;
 }
 
@@ -4334,7 +4334,7 @@ void FOClient::LMenuDraw()
 		LMENU_DRAW_CASE(LMENU_NODE_VOTE_UP,LmenuPVoteUpOff,LmenuPVoteUpOn);
 		LMENU_DRAW_CASE(LMENU_NODE_VOTE_DOWN,LmenuPVoteDownOff,LmenuPVoteDownOn);
 		default:
-			WriteLog(_FUNC_," - Unknown node<%d>.\n",num_node);
+			WriteLogF(_FUNC_," - Unknown node<%d>.\n",num_node);
 			break;
 		}
 		if(!IsLMenu()) break;
@@ -5033,7 +5033,7 @@ void FOClient::SetCurPos(int x, int y)
 
 		//POINT pp;
 		//GetCursorPos(&pp);
-		//WriteLog(NULL,"%d + %d = %d, %d + %d = %d; real %d, %d\n",wi.rcClient.left,CurX,wi.rcClient.left+CurX,wi.rcClient.top,CurY,wi.rcClient.top+CurY,pp.x,pp.y);
+		//WriteLog("%d + %d = %d, %d + %d = %d; real %d, %d\n",wi.rcClient.left,CurX,wi.rcClient.left+CurX,wi.rcClient.top,CurY,wi.rcClient.top+CurY,pp.x,pp.y);
 	}
 }
 

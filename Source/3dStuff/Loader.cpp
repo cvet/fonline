@@ -34,7 +34,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 	FileManager fm;
 	if(!fm.LoadFile(fname,PT_DATA))
 	{
-		WriteLog(_FUNC_," - 3d file not found, name<%s>.\n",fname);
+		WriteLogF(_FUNC_," - 3d file not found, name<%s>.\n",fname);
 		return NULL;
 	}
 
@@ -50,7 +50,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		}
 		else
 		{
-			WriteLog(_FUNC_," - Can't load 3d X file, name<%s>.\n",fname);
+			WriteLogF(_FUNC_," - Can't load 3d X file, name<%s>.\n",fname);
 		}
 		return frame_root;
 	}
@@ -67,7 +67,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 
 			if(!dll)
 			{
-				WriteLog(_FUNC_," - Assimp32.dll not found.\n");
+				WriteLogF(_FUNC_," - Assimp32.dll not found.\n");
 				return NULL;
 			}
 		}
@@ -86,7 +86,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 
 	if(!scene)
 	{
-		WriteLog(_FUNC_," - Can't load 3d file, name<%s>, error<%s>.\n",fname,importer->GetErrorString());
+		WriteLogF(_FUNC_," - Can't load 3d file, name<%s>, error<%s>.\n",fname,importer->GetErrorString());
 		return NULL;
 	}
 
@@ -94,7 +94,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 	FrameEx* frame_root=FillNode(device,scene->mRootNode,scene,calc_tangent);
 	if(!frame_root)
 	{
-		WriteLog(_FUNC_," - Conversion fail, name<%s>.\n",fname);
+		WriteLogF(_FUNC_," - Conversion fail, name<%s>.\n",fname);
 		importer->FreeScene();
 		return NULL;
 	}
@@ -112,7 +112,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		ID3DXKeyframedAnimationSet* set;
 		if(FAILED(D3DXCreateKeyframedAnimationSet(anim->mName.data,anim->mTicksPerSecond,D3DXPLAY_LOOP,anim->mNumChannels,0,NULL,&set)))
 		{
-			WriteLog(_FUNC_," - Can't extract animation<%s> from file<%s>.\n",anim->mName.data,fname);
+			WriteLogF(_FUNC_," - Can't extract animation<%s> from file<%s>.\n",anim->mName.data,fname);
 			continue;
 		}
 
@@ -467,7 +467,7 @@ FrameEx* Loader3d::LoadX(IDirect3DDevice9* device, FileManager& fm, const char* 
 		(D3DXFRAME**)&frame_root,&anim);
 	if(hr!=D3D_OK)
 	{
-		WriteLog(_FUNC_," - Can't load X file hierarchy, error<%s>.\n",DXGetErrorString(hr));
+		WriteLogF(_FUNC_," - Can't load X file hierarchy, error<%s>.\n",DXGetErrorString(hr));
 		return NULL;
 	}
 
@@ -671,12 +671,12 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 			}
 			else
 			{
-				WriteLog(_FUNC_," - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr\n");
+				WriteLogF(_FUNC_," - Unable to compile effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr\n");
 			}
 		}
 		else
 		{
-			WriteLog(_FUNC_," - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n",effect_name,
+			WriteLogF(_FUNC_," - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n",effect_name,
 				DXGetErrorString(hr),errors?errors->GetBufferPointer():"",DXGetErrorString(hr31),errors31?errors31->GetBufferPointer():"");
 		}
 
@@ -693,7 +693,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 	LPD3DXBUFFER errors=NULL;
 	if(FAILED(D3DXCreateEffect(device,fm_cache.GetBuf(),fm_cache.GetFsize(),NULL,NULL,/*D3DXSHADER_SKIPVALIDATION|*/D3DXFX_NOT_CLONEABLE,NULL,&effect,&errors)))
 	{
-		WriteLog(_FUNC_," - Unable to create effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
+		WriteLogF(_FUNC_," - Unable to create effect, effect<%s>, errors<\n%s>.\n",effect_name,errors?errors->GetBufferPointer():"nullptr");
 		SAFEREL(effect);
 		SAFEREL(errors);
 		return NULL;
@@ -722,7 +722,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 
 	if(!effect_ex->TechniqueSimple)
 	{
-		WriteLog(_FUNC_," - Technique 'Simple' not founded, effect<%s>.\n",effect_name);
+		WriteLogF(_FUNC_," - Technique 'Simple' not founded, effect<%s>.\n",effect_name);
 		delete effect_ex;
 		SAFEREL(effect);
 		return NULL;

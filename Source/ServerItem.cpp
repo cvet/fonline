@@ -45,11 +45,11 @@ Item* FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, ushort pid, uint
 
 bool FOServer::TransferAllItems()
 {
-	WriteLog(NULL,"Transfer all items to npc, maps and containers...\n");
+	WriteLog("Transfer all items to npc, maps and containers...\n");
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog(NULL,"Item manager is not init.\n");
+		WriteLog("Item manager is not init.\n");
 		return false;
 	}
 
@@ -61,7 +61,7 @@ bool FOServer::TransferAllItems()
 
 		if(!cr->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 		{
-			WriteLog(NULL,"Unable to set default game_items to critter<%s>.\n",cr->GetInfo());
+			WriteLog("Unable to set default game_items to critter<%s>.\n",cr->GetInfo());
 			return false;
 		}
 	}
@@ -83,7 +83,7 @@ bool FOServer::TransferAllItems()
 				Critter* npc=CrMngr.GetNpc(item->ACC_CRITTER.Id,false);
 				if(!npc)
 				{
-					WriteLog(NULL,"Item<%u> npc not found, id<%u>.\n",item->GetId(),item->ACC_CRITTER.Id);
+					WriteLog("Item<%u> npc not found, id<%u>.\n",item->GetId(),item->ACC_CRITTER.Id);
 					bad_items.push_back(item);
 					continue;
 				}
@@ -96,21 +96,21 @@ bool FOServer::TransferAllItems()
 				Map* map=MapMngr.GetMap(item->ACC_HEX.MapId,false);
 				if(!map)
 				{
-					WriteLog(NULL,"Item<%u> map not found, map id<%u>, hx<%u>, hy<%u>.\n",item->GetId(),item->ACC_HEX.MapId,item->ACC_HEX.HexX,item->ACC_HEX.HexY);
+					WriteLog("Item<%u> map not found, map id<%u>, hx<%u>, hy<%u>.\n",item->GetId(),item->ACC_HEX.MapId,item->ACC_HEX.HexX,item->ACC_HEX.HexY);
 					bad_items.push_back(item);
 					continue;
 				}
 
 				if(item->ACC_HEX.HexX>=map->GetMaxHexX() || item->ACC_HEX.HexY>=map->GetMaxHexY())
 				{
-					WriteLog(NULL,"Item<%u> invalid hex position, hx<%u>, hy<%u>.\n",item->GetId(),item->ACC_HEX.HexX,item->ACC_HEX.HexY);
+					WriteLog("Item<%u> invalid hex position, hx<%u>, hy<%u>.\n",item->GetId(),item->ACC_HEX.HexX,item->ACC_HEX.HexY);
 					bad_items.push_back(item);
 					continue;
 				}
 
 				if(!item->Proto->IsItem())
 				{
-					WriteLog(NULL,"Item<%u> is not item type<%u>.\n",item->GetId(),item->GetType());
+					WriteLog("Item<%u> is not item type<%u>.\n",item->GetId(),item->GetType());
 					bad_items.push_back(item);
 					continue;
 				}
@@ -123,14 +123,14 @@ bool FOServer::TransferAllItems()
 				Item* cont=ItemMngr.GetItem(item->ACC_CONTAINER.ContainerId,false);
 				if(!cont)
 				{
-					WriteLog(NULL,"Item<%u> container not found, container id<%u>.\n",item->GetId(),item->ACC_CONTAINER.ContainerId);
+					WriteLog("Item<%u> container not found, container id<%u>.\n",item->GetId(),item->ACC_CONTAINER.ContainerId);
 					bad_items.push_back(item);
 					continue;
 				}
 
 				if(!cont->IsContainer())
 				{
-					WriteLog(NULL,"Find item is not container, id<%u>, type<%u>, id_cont<%u>, type_cont<%u>.\n",item->GetId(),item->GetType(),cont->GetId(),cont->GetType());
+					WriteLog("Find item is not container, id<%u>, type<%u>, id_cont<%u>, type_cont<%u>.\n",item->GetId(),item->GetType(),cont->GetId(),cont->GetType());
 					bad_items.push_back(item);
 					continue;
 				}
@@ -139,7 +139,7 @@ bool FOServer::TransferAllItems()
 			}
 			break;
 		default:
-			WriteLog(NULL,"Unknown accessory id<%u>, acc<%u>.\n",item->Id,item->Accessory);
+			WriteLog("Unknown accessory id<%u>, acc<%u>.\n",item->Id,item->Accessory);
 			bad_items.push_back(item);
 			continue;
 		}
@@ -159,6 +159,6 @@ bool FOServer::TransferAllItems()
 		cr->ProcessVisibleItems();
 	}
 
-	WriteLog(NULL,"Transfer game items complete.\n");
+	WriteLog("Transfer game items complete.\n");
 	return true;
 }

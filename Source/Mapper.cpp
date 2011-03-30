@@ -24,7 +24,7 @@ FOMapper::FOMapper():Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 
 bool FOMapper::Init(HWND wnd)
 {
-	WriteLog(NULL,"Mapper initialization...\n");
+	WriteLog("Mapper initialization...\n");
 
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
@@ -151,7 +151,7 @@ bool FOMapper::Init(HWND wnd)
 	int res=InitIface();
 	if(res!=0)
 	{
-		WriteLog(NULL,"Error<%d>.\n",res);
+		WriteLog("Error<%d>.\n",res);
 		return false;
 	}
 
@@ -288,7 +288,7 @@ bool FOMapper::Init(HWND wnd)
 	RefreshCurProtos();
 
 	IsMapperStarted=true;
-	WriteLog(NULL,"Mapper initialization complete.\n");
+	WriteLog("Mapper initialization complete.\n");
 	return true;
 }
 
@@ -297,14 +297,14 @@ bool FOMapper::IfaceLoadRect(INTRECT& comp, const char* name)
 	char res[256];
 	if(!IfaceIni.GetStr(name,"",res))
 	{
-		WriteLog(NULL,"Signature<%s> not found.\n",name);
+		WriteLog("Signature<%s> not found.\n",name);
 		return false;
 	}
 
 	if(sscanf(res,"%d%d%d%d",&comp[0],&comp[1],&comp[2],&comp[3])!=4)
 	{
 		comp.Clear();
-		WriteLog(NULL,"Unable to parse signature<%s>.\n",name);
+		WriteLog("Unable to parse signature<%s>.\n",name);
 		return false;
 	}
 
@@ -313,7 +313,7 @@ bool FOMapper::IfaceLoadRect(INTRECT& comp, const char* name)
 
 int FOMapper::InitIface()
 {
-	WriteLog(NULL,"Init interface.\n");
+	WriteLog("Init interface.\n");
 	
 	IniParser& ini=IfaceIni;
 	char int_file[256];
@@ -324,7 +324,7 @@ int FOMapper::InitIface()
 
 	if(!ini.LoadFile(int_file,PT_MAPPER_DATA))
 	{
-		WriteLog(NULL,"File<%s> not found.\n",FileManager::GetFullPath(int_file,PT_MAPPER_DATA));
+		WriteLog("File<%s> not found.\n",FileManager::GetFullPath(int_file,PT_MAPPER_DATA));
 		return __LINE__;
 	}
 
@@ -493,13 +493,13 @@ int FOMapper::InitIface()
 	ini.GetStr("ConsolePic","error",f_name);
 	ConsolePic=SprMngr.LoadAnimation(f_name,PT_MAPPER_DATA,ANIM_USE_DUMMY);
 
-	WriteLog(NULL,"Init interface complete.\n");
+	WriteLog("Init interface complete.\n");
 	return 0;
 }
 
 void FOMapper::Finish()
 {
-	WriteLog(NULL,"Mapper finish...\n");
+	WriteLog("Mapper finish...\n");
 	Keyb::ClearKeyb();
 	ResMngr.Finish();
 	HexMngr.Clear();
@@ -513,17 +513,17 @@ void FOMapper::Finish()
 	if(Mouse) Mouse->Unacquire();
 	SAFEREL(Mouse);
 	SAFEREL(DInput);
-	WriteLog(NULL,"Mapper finish complete.\n");
+	WriteLog("Mapper finish complete.\n");
 }
 
 bool FOMapper::InitDI()
 {
-	WriteLog(NULL,"DirectInput initialization...\n");
+	WriteLog("DirectInput initialization...\n");
 
 	HRESULT hr=DirectInput8Create(GetModuleHandle(NULL),DIRECTINPUT_VERSION,IID_IDirectInput8,(void**)&DInput,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Can't create DirectInput.\n");
+		WriteLog("Can't create DirectInput.\n");
 		return false;
 	}
 
@@ -531,14 +531,14 @@ bool FOMapper::InitDI()
 	hr=DInput->CreateDevice(GUID_SysKeyboard,&Keyboard,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Can't create GUID_SysKeyboard.\n");
+		WriteLog("Can't create GUID_SysKeyboard.\n");
 		return false;
 	}
 
 	hr=DInput->CreateDevice(GUID_SysMouse,&Mouse,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Can't create GUID_SysMouse.\n");
+		WriteLog("Can't create GUID_SysMouse.\n");
 		return false;
 	}
 	// Set the data format to "keyboard format" - a predefined data format 
@@ -547,14 +547,14 @@ bool FOMapper::InitDI()
 	hr=Keyboard->SetDataFormat(&c_dfDIKeyboard);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set data format for keyboard.\n");
+		WriteLog("Unable to set data format for keyboard.\n");
 		return false;
 	}
 
 	hr=Mouse->SetDataFormat(&c_dfDIMouse2);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set data format for mouse.\n");
+		WriteLog("Unable to set data format for mouse.\n");
 		return false;
 	}
 
@@ -562,7 +562,7 @@ bool FOMapper::InitDI()
 	hr=Keyboard->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set cooperative level for keyboard.\n");
+		WriteLog("Unable to set cooperative level for keyboard.\n");
 		return false;
 	}
 
@@ -570,7 +570,7 @@ bool FOMapper::InitDI()
 	//	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_EXCLUSIVE);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set cooperative level for mouse.\n");
+		WriteLog("Unable to set cooperative level for mouse.\n");
 		return false;
 	}
 
@@ -585,22 +585,22 @@ bool FOMapper::InitDI()
 	hr=Keyboard->SetProperty(DIPROP_BUFFERSIZE,&dipdw.diph);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set property for keyboard.\n");
+		WriteLog("Unable to set property for keyboard.\n");
 		return false;
 	}
 
 	hr=Mouse->SetProperty(DIPROP_BUFFERSIZE,&dipdw.diph);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set property for mouse.\n");
+		WriteLog("Unable to set property for mouse.\n");
 		return false;
 	}
 
 	// Acquire the newly created device
-	if(Keyboard->Acquire()!=DI_OK) WriteLog(NULL,"Can't acquire keyboard.\n");
-	if(Mouse->Acquire()!=DI_OK) WriteLog(NULL,"Can't acquire mouse.\n");
+	if(Keyboard->Acquire()!=DI_OK) WriteLog("Can't acquire keyboard.\n");
+	if(Mouse->Acquire()!=DI_OK) WriteLog("Can't acquire mouse.\n");
 
-	WriteLog(NULL,"DirectInput initialization complete.\n");
+	WriteLog("DirectInput initialization complete.\n");
 	return true;
 }
 
@@ -4604,12 +4604,12 @@ bool FOMapper::SaveLogFile()
 
 void FOMapper::InitScriptSystem()
 {
-	WriteLog(NULL,"Script system initialization...\n");
+	WriteLog("Script system initialization...\n");
 
 	// Init
 	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_MAPPER)))
 	{
-		WriteLog(NULL,"Script system initialization fail.\n");
+		WriteLog("Script system initialization fail.\n");
 		return;
 	}
 
@@ -4617,7 +4617,7 @@ void FOMapper::InitScriptSystem()
 	asIScriptEngine* engine=Script::GetEngine();
 #define BIND_MAPPER
 #define BIND_CLASS FOMapper::SScriptFunc::
-#define BIND_ERROR do{WriteLog(_FUNC_," - Bind error, line<%d>.\n",__LINE__);}while(0)
+#define BIND_ERROR do{WriteLogF(_FUNC_," - Bind error, line<%d>.\n",__LINE__);}while(0)
 #include <ScriptBind.h>
 
 	// Load scripts
@@ -4629,7 +4629,7 @@ void FOMapper::InitScriptSystem()
 	scripts_cfg.LoadFile(SCRIPTS_LST,PT_SERVER_SCRIPTS);
 	if(!scripts_cfg.IsLoaded())
 	{
-		WriteLog(NULL,"Config file<%s> not found.\n",SCRIPTS_LST);
+		WriteLog("Config file<%s> not found.\n",SCRIPTS_LST);
 		FileManager::SetDataPath((GameOpt.ClientPath+GameOpt.FoDataPath).c_str());
 		return;
 	}
@@ -4659,7 +4659,7 @@ void FOMapper::InitScriptSystem()
 	};
 	Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"mapper",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0]));
 
-	WriteLog(NULL,"Script system initialization complete.\n");
+	WriteLog("Script system initialization complete.\n");
 }
 
 void FOMapper::FinishScriptSystem()

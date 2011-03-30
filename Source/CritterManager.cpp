@@ -14,17 +14,17 @@ CritterManager CrMngr;
 
 bool CritterManager::Init()
 {
-	WriteLog(NULL,"Critter manager initialization...\n");
+	WriteLog("Critter manager initialization...\n");
 
 	if(isActive)
 	{
-		WriteLog(NULL,"already initialized.\n");
+		WriteLog("already initialized.\n");
 		return true;
 	}
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog(NULL,"Error, Items manager not init.\n");
+		WriteLog("Error, Items manager not init.\n");
 		return false;
 	}
 
@@ -32,13 +32,13 @@ bool CritterManager::Init()
 	Clear();
 
 	isActive=true;
-	WriteLog(NULL,"Critter manager initialization complete.\n");
+	WriteLog("Critter manager initialization complete.\n");
 	return true;
 }
 
 void CritterManager::Finish()
 {
-	WriteLog(NULL,"Critter manager finish...\n");
+	WriteLog("Critter manager finish...\n");
 
 #ifdef FONLINE_SERVER
 	CritterGarbager();
@@ -48,7 +48,7 @@ void CritterManager::Finish()
 	Clear();
 
 	isActive=false;
-	WriteLog(NULL,"Critter manager finish complete.\n");
+	WriteLog("Critter manager finish complete.\n");
 }
 
 void CritterManager::Clear()
@@ -66,18 +66,18 @@ void CritterManager::Clear()
 
 bool CritterManager::LoadProtos()
 {
-	WriteLog(NULL,"Loading critters prototypes...\n");
+	WriteLog("Loading critters prototypes...\n");
 
 	if(!IsInit())
 	{
-		WriteLog(NULL,"Critters manager is not init.\n");
+		WriteLog("Critters manager is not init.\n");
 		return false;
 	}
 
 	// Get names of proto
 	if(!fileMngr.LoadFile("critters.lst",PT_SERVER_PRO_CRITTERS))
 	{
-		WriteLog(NULL,"Cannot open \"critters.lst\".\n");
+		WriteLog("Cannot open \"critters.lst\".\n");
 		return false;
 	}
 
@@ -136,7 +136,7 @@ bool CritterManager::LoadProtos()
 							if(param_id>=0 && param_id<MAX_PARAMS) params[param_id]=value;
 							else
 							{
-								WriteLog(NULL,"Unknown parameter<%s> in<%s>.\n",indent,fname);
+								WriteLog("Unknown parameter<%s> in<%s>.\n",indent,fname);
 								errors++;
 							}
 						}
@@ -148,7 +148,7 @@ bool CritterManager::LoadProtos()
 					CritData& proto=allProtos[pid];
 
 					if(!proto.ProtoId) loaded_count++;
-					else WriteLog(_FUNC_," - Critter prototype is already parsed, pid<%u>. Rewrite.\n",pid);
+					else WriteLogF(_FUNC_," - Critter prototype is already parsed, pid<%u>. Rewrite.\n",pid);
 
 					proto.ProtoId=pid;
 					memcpy(proto.Params,params,sizeof(params));
@@ -159,14 +159,14 @@ bool CritterManager::LoadProtos()
 				}
 				else
 				{
-					WriteLog(_FUNC_," - Invalid pid<%u> of critter prototype.\n",pid);
+					WriteLogF(_FUNC_," - Invalid pid<%u> of critter prototype.\n",pid);
 					errors++;
 				}
 			}
 		}
 	}
 
-	WriteLog(NULL,"Loaded<%d> critter protos, errors<%d>.\n",loaded_count,errors);
+	WriteLog("Loaded<%d> critter protos, errors<%d>.\n",loaded_count,errors);
 	return errors==0;
 }
 
@@ -207,7 +207,7 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 
 bool CritterManager::LoadCrittersFile(FILE* f, uint version)
 {
-	WriteLog(NULL,"Load npc...\n");
+	WriteLog("Load npc...\n");
 
 	lastNpcId=0;
 
@@ -238,7 +238,7 @@ bool CritterManager::LoadCrittersFile(FILE* f, uint version)
 		Npc* npc=CreateNpc(data.ProtoId,false);
 		if(!npc)
 		{
-			WriteLog(NULL,"Unable to create npc with id<%u>, pid<%u> on map with id<%u>, pid<%u>.\n",data.Id,data.ProtoId,data.MapId,data.MapPid);
+			WriteLog("Unable to create npc with id<%u>, pid<%u> on map with id<%u>, pid<%u>.\n",data.Id,data.ProtoId,data.MapId,data.MapPid);
 			errors++;
 			continue;
 		}
@@ -264,8 +264,8 @@ bool CritterManager::LoadCrittersFile(FILE* f, uint version)
 		AddCritter(npc);
 	}
 
-	if(errors) WriteLog(NULL,"Load npc complete, count<%u>, errors<%u>.\n",count-errors,errors);
-	else WriteLog(NULL,"Load npc complete, count<%u>.\n",count);
+	if(errors) WriteLog("Load npc complete, count<%u>, errors<%u>.\n",count-errors,errors);
+	else WriteLog("Load npc complete, count<%u>.\n",count);
 	return true;
 }
 
@@ -382,7 +382,7 @@ Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, 
 {
 	if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY())
 	{
-		WriteLog(_FUNC_," - Wrong map values, hx<%u>, hy<%u>, map is nullptr<%s>.\n",hx,hy,!map?"true":"false");
+		WriteLogF(_FUNC_," - Wrong map values, hx<%u>, hy<%u>, map is nullptr<%s>.\n",hx,hy,!map?"true":"false");
 		return NULL;
 	}
 
@@ -390,7 +390,7 @@ Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, 
 	{
 		if(accuracy)
 		{
-			WriteLog(_FUNC_," - Accuracy position busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
+			WriteLogF(_FUNC_," - Accuracy position busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
 			return NULL;
 		}
 
@@ -405,7 +405,7 @@ Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, 
 		{
 			if(i>=18)
 			{
-				WriteLog(_FUNC_," - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
+				WriteLogF(_FUNC_," - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n",map->GetPid(),hx,hy);
 				return NULL;
 			}
 			cur_step++;
@@ -425,7 +425,7 @@ Npc* CritterManager::CreateNpc(ushort proto_id, uint params_count, int* params, 
 	Npc* npc=CreateNpc(proto_id,true);
 	if(!npc)
 	{
-		WriteLog(_FUNC_," - Create npc with pid <%u> failture.\n",proto_id);
+		WriteLogF(_FUNC_," - Create npc with pid <%u> failture.\n",proto_id);
 		return NULL;
 	}
 
@@ -489,28 +489,28 @@ Npc* CritterManager::CreateNpc(ushort proto_id, bool copy_data)
 {
 	if(!IsInit())
 	{
-		WriteLog(_FUNC_," - Critter manager is not initialized.\n");
+		WriteLogF(_FUNC_," - Critter manager is not initialized.\n");
 		return false;
 	}
 
 	CritData* data=GetProto(proto_id);
 	if(!data)
 	{
-		WriteLog(_FUNC_," - Critter data not found, critter proto id<%u>.\n",proto_id);
+		WriteLogF(_FUNC_," - Critter data not found, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
 	Npc* npc=new Npc();
 	if(!npc)
 	{
-		WriteLog(_FUNC_," - Allocation fail, critter proto id<%u>.\n",proto_id);
+		WriteLogF(_FUNC_," - Allocation fail, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 
 	if(!npc->SetDefaultItems(ItemMngr.GetProtoItem(ITEM_DEF_SLOT),ItemMngr.GetProtoItem(ITEM_DEF_ARMOR)))
 	{
 		delete npc;
-		WriteLog(_FUNC_," - Can't set default items, critter proto id<%u>.\n",proto_id);
+		WriteLogF(_FUNC_," - Can't set default items, critter proto id<%u>.\n",proto_id);
 		return NULL;
 	}
 

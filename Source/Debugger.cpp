@@ -46,13 +46,13 @@ void Debugger::EndCycle(double lag_to_show)
 				{
 					if(is_first)
 					{
-						WriteLog(NULL,"Lag in block %d...",num_block);
+						WriteLog("Lag in block %d...",num_block);
 						is_first=false;
 					}
-					WriteLog(NULL,"<%d,%g>",Identifiers[num_block][entry][i],diff);
+					WriteLog("<%d,%g>",Identifiers[num_block][entry][i],diff);
 				}
 			}
-			if(!is_first) WriteLog(NULL,"\n");
+			if(!is_first) WriteLog("\n");
 		}
 	}
 }
@@ -64,13 +64,13 @@ void Debugger::ShowLags(int num_block, double lag_to_show)
 		double diff=Ticks[num_block][entry][CurTick[num_block][entry]]-Ticks[num_block][entry][0];
 		if(diff>=lag_to_show)
 		{
-			WriteLog(NULL,"Lag in block %d...",num_block);
+			WriteLog("Lag in block %d...",num_block);
 			for(int i=1,j=CurTick[num_block][entry];i<=j;i++)
 			{
 				double diff_=Ticks[num_block][entry][i]-Ticks[num_block][entry][i-1];
-				WriteLog(NULL,"<%d,%g>",Identifiers[num_block][entry][i],diff_);
+				WriteLog("<%d,%g>",Identifiers[num_block][entry][i],diff_);
 			}
-			WriteLog(NULL,"\n");
+			WriteLog("\n");
 		}
 	}
 }

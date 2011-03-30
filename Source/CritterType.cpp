@@ -129,7 +129,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 	FileManager file;
 	if(!file.LoadFile(CRTYPE_FILE_NAME,PT_SERVER_DATA))
 	{
-		WriteLog(_FUNC_," - File<%s> not found.\n",FileManager::GetFullPath(CRTYPE_FILE_NAME,PT_SERVER_DATA));
+		WriteLogF(_FUNC_," - File<%s> not found.\n",FileManager::GetFullPath(CRTYPE_FILE_NAME,PT_SERVER_DATA));
 		return false;
 	}
 
@@ -143,7 +143,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 	{
 		if(prev_fail)
 		{
-			WriteLog(_FUNC_," - Bad data for critter type information, number<%d>.\n",number);
+			WriteLogF(_FUNC_," - Bad data for critter type information, number<%d>.\n",number);
 			prev_fail=false;
 			errors++;
 		}
@@ -238,7 +238,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 
 	if(!CrTypesReserved.Get()[0].Enabled)
 	{
-		WriteLog(_FUNC_," - Default zero type not loaded.\n");
+		WriteLogF(_FUNC_," - Default zero type not loaded.\n");
 		return false;
 	}
 
@@ -267,7 +267,7 @@ bool CritType::InitFromFile(FOMsg* fill_msg)
 		}
 	}
 
-	WriteLog(NULL,"Loaded<%d> critter types.\n",success);
+	WriteLog("Loaded<%d> critter types.\n",success);
 	return true;
 }
 
@@ -275,7 +275,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 {
 	if(!msg)
 	{
-		WriteLog(_FUNC_," - Msg nullptr.\n");
+		WriteLogF(_FUNC_," - Msg nullptr.\n");
 		return false;
 	}
 
@@ -305,7 +305,7 @@ bool CritType::InitFromMsg(FOMsg* msg)
 			&MoveWalkReserved[i][0],&MoveWalkReserved[i][1],&MoveWalkReserved[i][2],&MoveWalkReserved[i][3],
 			sound_name)!=41)
 		{
-			WriteLog(_FUNC_," - Bad data for critter type information, number<%d>, line<%s>.\n",i,str);
+			WriteLogF(_FUNC_," - Bad data for critter type information, number<%d>, line<%s>.\n",i,str);
 			errors++;
 			continue;
 		}
@@ -322,12 +322,12 @@ bool CritType::InitFromMsg(FOMsg* msg)
 
 	if(!CrTypesReserved.Get()[0].Enabled)
 	{
-		WriteLog(_FUNC_," - Default zero type not loaded.\n");
+		WriteLogF(_FUNC_," - Default zero type not loaded.\n");
 		return false;
 	}
 
 	memcpy(CrTypes,CrTypesReserved.Get(),sizeof(CrTypes));
 	memcpy(MoveWalk,MoveWalkReserved,sizeof(MoveWalk));
-	WriteLog(NULL,"Loaded<%d> critter types.\n",success);
+	WriteLog("Loaded<%d> critter types.\n",success);
 	return true;
 }

@@ -162,14 +162,14 @@ void FOServer::Finish()
 	Active=false;
 
 	// Statistics
-	WriteLog(NULL,"Server stopped.\n");
-	WriteLog(NULL,"Statistics:\n");
-	WriteLog(NULL,"Traffic:\n"
+	WriteLog("Server stopped.\n");
+	WriteLog("Statistics:\n");
+	WriteLog("Traffic:\n"
 		"Bytes Send:%u\n"
 		"Bytes Recv:%u\n",
 		Statistics.BytesSend,
 		Statistics.BytesRecv);
-	WriteLog(NULL,"Cycles count:%u\n"
+	WriteLog("Cycles count:%u\n"
 		"Approx cycle period:%u\n"
 		"Min cycle period:%u\n"
 		"Max cycle period:%u\n"
@@ -396,8 +396,8 @@ void FOServer::MainLoop()
 	Job::PushBack(JOB_LOOP_SCRIPT);
 
 	// Start logic threads
-	WriteLog(NULL,"Starting logic threads, count<%u>.\n",LogicThreadCount);
-	WriteLog(NULL,"***   Starting game loop   ***\n");
+	WriteLog("Starting logic threads, count<%u>.\n",LogicThreadCount);
+	WriteLog("***   Starting game loop   ***\n");
 
 	LogicThreads=new Thread[LogicThreadCount];
 	for(uint i=0;i<LogicThreadCount;i++)
@@ -466,7 +466,7 @@ void FOServer::MainLoop()
 		Sleep(100);
 	}
 
-	WriteLog(NULL,"***   Finishing game loop  ***\n");
+	WriteLog("***   Finishing game loop  ***\n");
 
 	// Stop logic threads
 	for(uint i=0;i<LogicThreadCount;i++) Job::PushBack(JOB_THREAD_FINISH);
@@ -805,7 +805,7 @@ void* FOServer::Net_Listen(void* hiocp)
 			int error=WSAGetLastError();
 			if(error==WSAEINTR || error==WSAENOTSOCK) break; // End of work
 
-			WriteLog(_FUNC_," - Listen error<%s>. Continue listening.\n",GetLastSocketError());
+			WriteLogF(_FUNC_," - Listen error<%s>. Continue listening.\n",GetLastSocketError());
 			continue;
 		}
 
@@ -822,7 +822,7 @@ void* FOServer::Net_Listen(void* hiocp)
 		{
 			int optval=1;
 			if(setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,(char*)&optval,sizeof(optval)))
-				WriteLog(_FUNC_," - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",GetLastSocketError());
+				WriteLogF(_FUNC_," - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",GetLastSocketError());
 		}
 
 		Client* cl=new Client();
@@ -834,7 +834,7 @@ void* FOServer::Net_Listen(void* hiocp)
 		int result=deflateInit(&cl->Zstrm,Z_DEFAULT_COMPRESSION);
 		if(result!=Z_OK)
 		{
-			WriteLog(_FUNC_," - Client Zlib deflateInit fail, error<%d, %s>.\n",result,zError(result));
+			WriteLogF(_FUNC_," - Client Zlib deflateInit fail, error<%d, %s>.\n",result,zError(result));
 			closesocket(sock);
 			delete cl;
 			continue;
@@ -845,7 +845,7 @@ void* FOServer::Net_Listen(void* hiocp)
 		bufferevent* buf_event=bufferevent_socket_new(NetIOEventHandler,sock,BEV_OPT_THREADSAFE);
 		if(!buf_event)
 		{
-			WriteLog(_FUNC_," - Create new buffer event fail.\n");
+			WriteLogF(_FUNC_," - Create new buffer event fail.\n");
 			closesocket(sock);
 			delete cl;
 			continue;
@@ -916,7 +916,7 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 		cl->Bin.Lock();
 		if(cl->Bin.GetCurPos()+read_len>=GameOpt.FloodSize && !Singleplayer)
 		{
-			WriteLog(_FUNC_," - Flood.\n");
+			WriteLogF(_FUNC_," - Flood.\n");
 			cl->Disconnect();
 			cl->Bin.Reset();
 			cl->Bin.Unlock();
@@ -931,7 +931,7 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 
 		if(evbuffer_remove(input,data+pos,read_len)!=read_len)
 		{
-			WriteLog(_FUNC_," - Receive fail.\n");
+			WriteLogF(_FUNC_," - Receive fail.\n");
 			cl->Disconnect();
 			cl->Shutdown();
 		}
@@ -970,7 +970,7 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 
  		if(deflate(&cl->Zstrm,Z_SYNC_FLUSH)!=Z_OK)
  		{
-			WriteLog(_FUNC_," - Deflate fail.\n");
+			WriteLogF(_FUNC_," - Deflate fail.\n");
 			cl->Disconnect();
 			cl->Bout.Reset();
 			cl->Bout.Unlock();
@@ -1002,7 +1002,7 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 	// Append to buffer
 	if(bufferevent_write(bev,&cl->NetIOBuffer[0],write_len))
 	{
-		WriteLog(_FUNC_," - Send fail.\n");
+		WriteLogF(_FUNC_," - Send fail.\n");
 		cl->Disconnect();
 		cl->Shutdown();
 	}
@@ -1061,7 +1061,7 @@ void FOServer::Process(ClientPtr& cl)
 				BIN_END(cl);
 				break;
 			default:
-				//WriteLog(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_CONN. Skip.\n",msg,cl->GetInfo());
+				//WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_CONN. Skip.\n",msg,cl->GetInfo());
 				cl->Bin.SkipMsg(msg);
 				BIN_END(cl);
 				break;
@@ -1074,7 +1074,7 @@ void FOServer::Process(ClientPtr& cl)
 
 		if(cl->NetState==STATE_CONN && cl->ConnectTime && Timer::FastTick()-cl->ConnectTime>PING_CLIENT_LIFE_TIME) // Kick bot
 		{
-			WriteLog(_FUNC_," - Connection timeout, client kicked, maybe bot. Ip<%s>, name<%s>.\n",cl->GetIpStr(),cl->GetName());
+			WriteLogF(_FUNC_," - Connection timeout, client kicked, maybe bot. Ip<%s>, name<%s>.\n",cl->GetIpStr(),cl->GetName());
 			cl->Disconnect();
 		}
 	}
@@ -1107,7 +1107,7 @@ void FOServer::Process(ClientPtr& cl)
 				BIN_END(cl);
 				break;
 			default:
-				//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLog(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_LOGINOK. Skip.\n",msg,cl->GetInfo());
+				//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_LOGINOK. Skip.\n",msg,cl->GetInfo());
 				cl->Bin.SkipMsg(msg);
 				BIN_END(cl);
 				break;
@@ -1392,14 +1392,14 @@ void FOServer::Process(ClientPtr& cl)
 				}
 			default:
 				{
-					//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLog(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_GAME. Skip.\n",msg,cl->GetInfo());
+					//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_GAME. Skip.\n",msg,cl->GetInfo());
 					cl->Bin.SkipMsg(msg);
 					BIN_END(cl);
 					continue;
 				}
 			}
 
-			//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLog(_FUNC_," - Access denied. on msg<%u> for client<%s>. Skip.\n",msg,cl->GetInfo());
+			//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Access denied. on msg<%u> for client<%s>. Skip.\n",msg,cl->GetInfo());
 			cl->Bin.SkipMsg(msg);
 			BIN_END(cl);
 		}
@@ -1420,7 +1420,7 @@ void FOServer::Process_Text(Client* cl)
 
 	if(!len || len>MAX_NET_TEXT)
 	{
-		WriteLog(_FUNC_," - Buffer zero sized or too large, length<%u>. Disconnect.\n",len);
+		WriteLogF(_FUNC_," - Buffer zero sized or too large, length<%u>. Disconnect.\n",len);
 		cl->Disconnect();
 		return;
 	}
@@ -1436,7 +1436,7 @@ void FOServer::Process_Text(Client* cl)
 		cl->LastSayEqualCount++;
 		if(cl->LastSayEqualCount>=10)
 		{
-			WriteLog(_FUNC_," - Flood detected, client<%s>. Disconnect.\n",cl->GetInfo());
+			WriteLogF(_FUNC_," - Flood detected, client<%s>. Disconnect.\n",cl->GetInfo());
 			cl->Disconnect();
 			return;
 		}
@@ -2064,8 +2064,8 @@ void FOServer::Process_Command(Client* cl)
 					Critter* cr=CrMngr.GetCritter(param_val,true);
 					if(cr)
 					{
-						WriteLog(NULL,"Cond %u\n",cr->Data.Cond);
-						for(int i=0;i<MAX_PARAMS;i++) WriteLog(NULL,"%s %u\n",ConstantsManager::GetParamName(i),cr->Data.Params[i]);
+						WriteLog("Cond %u\n",cr->Data.Cond);
+						for(int i=0;i<MAX_PARAMS;i++) WriteLog("%s %u\n",ConstantsManager::GetParamName(i),cr->Data.Params[i]);
 					}
 				}
 				else if(param_type==90)
@@ -2500,7 +2500,7 @@ void FOServer::Process_Command(Client* cl)
 			else
 			{
 				cl->Send_Text(cl,"Locations.cfg not found.",SAY_NETMSG);
-				WriteLog(NULL,"File<%s> not found.\n",Str::FormatBuf("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
+				WriteLog("File<%s> not found.\n",Str::FormatBuf("%sLocations.cfg",FileMngr.GetPath(PT_SERVER_MAPS)));
 			}
 
 			ResynchronizeLogicThreads();
@@ -2685,19 +2685,19 @@ void FOServer::Process_Command(Client* cl)
 					else
 					{
 						cl->Send_Text(cl,"Unable to add dialog.",SAY_NETMSG);
-						WriteLog(NULL,"Dialog<%s> add fail.\n",dlg_name);
+						WriteLog("Dialog<%s> add fail.\n",dlg_name);
 					}
 				}
 				else
 				{
 					cl->Send_Text(cl,"Unable to parse dialog.",SAY_NETMSG);
-					WriteLog(NULL,"Dialog<%s> parse fail.\n",dlg_name);
+					WriteLog("Dialog<%s> parse fail.\n",dlg_name);
 				}
 			}
 			else
 			{
 				cl->Send_Text(cl,"File not found.",SAY_NETMSG);
-				WriteLog(NULL,"File<%s> not found.\n",dlg_name);
+				WriteLog("File<%s> not found.\n",dlg_name);
 			}
 
 			ResynchronizeLogicThreads();
@@ -3200,14 +3200,14 @@ void FOServer::SaveGameInfoFile()
 
 bool FOServer::LoadGameInfoFile(FILE* f)
 {
-	WriteLog(NULL,"Load game info...");
+	WriteLog("Load game info...");
 
 	// Singleplayer info
 	uint sp=0;
 	if(!fread(&sp,sizeof(sp),1,f)) return false;
 	if(sp==1)
 	{
-		WriteLog(NULL,"singleplayer...");
+		WriteLog("singleplayer...");
 
 		// Critter data
 		ClientSaveData& csd=SingleplayerSave.CrData;
@@ -3247,7 +3247,7 @@ bool FOServer::LoadGameInfoFile(FILE* f)
 	// Scores
 	if(!fread(&BestScores[0],sizeof(BestScores),1,f)) return false;
 
-	WriteLog(NULL,"complete.\n");
+	WriteLog("complete.\n");
 	return true;
 }
 
@@ -3272,7 +3272,7 @@ void FOServer::InitGameTime()
 	}
 
 	DateTime dt={GameOpt.YearStart,1,0,1,0,0,0,0};
-	if(!Timer::DateTimeToFullTime(dt,GameOpt.YearStartFT)) WriteLog(_FUNC_," - DateTimeToFullTime fail.\n");
+	if(!Timer::DateTimeToFullTime(dt,GameOpt.YearStartFT)) WriteLogF(_FUNC_," - DateTimeToFullTime fail.\n");
 
 	GameOpt.TimeMultiplier=CLAMP(GameOpt.TimeMultiplier,1,50000);
 	GameOpt.Year=CLAMP(GameOpt.Year,GameOpt.YearStart,GameOpt.YearStart+130);
@@ -3297,20 +3297,20 @@ bool FOServer::Init()
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
 
-	WriteLog(NULL,"***   Starting initialization   ****\n");
-	/*WriteLog(NULL,"FOServer<%u>.\n",sizeof(FOServer));
-	WriteLog(NULL,"MapMngr<%u>.\n",sizeof(CMapMngr));
-	WriteLog(NULL,"ItemMngr<%u>.\n",sizeof(ItemManager));
-	WriteLog(NULL,"VarMngr<%u>.\n",sizeof(CVarMngr));
-	WriteLog(NULL,"MrFixit<%u>.\n",sizeof(CraftManager));
-	WriteLog(NULL,"Client<%u>.\n",sizeof(Client));
-	WriteLog(NULL,"Npc<%u>.\n",sizeof(Npc));
-	WriteLog(NULL,"Location<%u>.\n",sizeof(Location));
-	WriteLog(NULL,"Map<%u>.\n",sizeof(Map));
-	WriteLog(NULL,"Item<%u>.\n",sizeof(Item));
-	WriteLog(NULL,"Item::ItemData<%u>.\n",sizeof(Item::ItemData));
-	WriteLog(NULL,"CScriptString<%u>.\n",sizeof(CScriptString));
-	WriteLog(NULL,"string<%u>.\n",sizeof(string));*/
+	WriteLog("***   Starting initialization   ****\n");
+	/*WriteLog("FOServer<%u>.\n",sizeof(FOServer));
+	WriteLog("MapMngr<%u>.\n",sizeof(CMapMngr));
+	WriteLog("ItemMngr<%u>.\n",sizeof(ItemManager));
+	WriteLog("VarMngr<%u>.\n",sizeof(CVarMngr));
+	WriteLog("MrFixit<%u>.\n",sizeof(CraftManager));
+	WriteLog("Client<%u>.\n",sizeof(Client));
+	WriteLog("Npc<%u>.\n",sizeof(Npc));
+	WriteLog("Location<%u>.\n",sizeof(Location));
+	WriteLog("Map<%u>.\n",sizeof(Map));
+	WriteLog("Item<%u>.\n",sizeof(Item));
+	WriteLog("Item::ItemData<%u>.\n",sizeof(Item::ItemData));
+	WriteLog("CScriptString<%u>.\n",sizeof(CScriptString));
+	WriteLog("string<%u>.\n",sizeof(string));*/
 
 	// Dump
 #ifdef FOSERVER_DUMP
@@ -3469,7 +3469,7 @@ bool FOServer::Init()
 	WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2),&wsa))
 	{
-		WriteLog(NULL,"WSAStartup error.");
+		WriteLog("WSAStartup error.");
 		return false;
 	}
 
@@ -3479,12 +3479,12 @@ bool FOServer::Init()
 	if(!Singleplayer)
 	{
 		port=cfg.GetInt("Port",4000);
-		WriteLog(NULL,"Starting server on port<%u>.\n",port);
+		WriteLog("Starting server on port<%u>.\n",port);
 	}
 	else
 	{
 		port=0;
-		WriteLog(NULL,"Starting server on free port.\n",port);
+		WriteLog("Starting server on free port.\n",port);
 	}
 
 	sockaddr_in sin;
@@ -3494,7 +3494,7 @@ bool FOServer::Init()
 
 	if(bind(ListenSock,(sockaddr*)&sin,sizeof(sin))==SOCKET_ERROR)
 	{
-		WriteLog(NULL,"Bind error.\n");
+		WriteLog("Bind error.\n");
 		return false;
 	}
 
@@ -3503,16 +3503,16 @@ bool FOServer::Init()
 		int namelen=sizeof(sin);
 		if(getsockname(ListenSock,(sockaddr*)&sin,&namelen))
 		{
-			WriteLog(NULL,"Getsockname error.\n");
+			WriteLog("Getsockname error.\n");
 			closesocket(ListenSock);
 			return false;
 		}
-		WriteLog(NULL,"Taked port<%u>.\n",sin.sin_port);
+		WriteLog("Taked port<%u>.\n",sin.sin_port);
 	}
 
 	if(listen(ListenSock,SOMAXCONN)==SOCKET_ERROR)
 	{
-		WriteLog(NULL,"Listen error!");
+		WriteLog("Listen error!");
 		closesocket(ListenSock);
 		return false;
 	}
@@ -3529,22 +3529,22 @@ bool FOServer::Init()
 	event_config_free(event_cfg);
 	if(!NetIOEventHandler)
 	{
-		WriteLog(NULL,"Can't create Net IO events handler.\n");
+		WriteLog("Can't create Net IO events handler.\n");
 		closesocket(ListenSock);
 		return false;
 	}
 
 	NetIOThread.Start(NetIO_Loop);
-	WriteLog(NULL,"Net work threads is started, count<%u>.\n",NetIOThreadsCount);
+	WriteLog("Net work threads is started, count<%u>.\n",NetIOThreadsCount);
 
 	// Listen
 	ListenThread.Start(Net_Listen);
-	WriteLog(NULL,"Net listen thread is started.\n");
+	WriteLog("Net listen thread is started.\n");
 
 	// Start script
 	if(!Script::PrepareContext(ServerFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || !Script::GetReturnedBool())
 	{
-		WriteLog(_FUNC_," - Start script fail.\n");
+		WriteLogF(_FUNC_," - Start script fail.\n");
 		closesocket(ListenSock);
 		return false;
 	}
@@ -3568,17 +3568,17 @@ bool FOServer::Init()
 				if(Str::Compare(type_decl,"bool"))
 				{
 					*(bool*)pointer=atoi(cmd_name+Str::Length(name)+1)!=0;
-					WriteLog(NULL,"Global var<%s> changed to<%s>.\n",name,*(bool*)pointer?"true":"false");
+					WriteLog("Global var<%s> changed to<%s>.\n",name,*(bool*)pointer?"true":"false");
 				}
 				else if(Str::Compare(type_decl,"string"))
 				{
 					*(string*)pointer=cmd_name+Str::Length(name)+1;
-					WriteLog(NULL,"Global var<%s> changed to<%s>.\n",name,(*(string*)pointer).c_str());
+					WriteLog("Global var<%s> changed to<%s>.\n",name,(*(string*)pointer).c_str());
 				}
 				else
 				{
 					*(int*)pointer=atoi(cmd_name+Str::Length(name)+1);
-					WriteLog(NULL,"Global var<%s> changed to<%d>.\n",name,*(int*)pointer);
+					WriteLog("Global var<%s> changed to<%d>.\n",name,*(int*)pointer);
 				}
 			}
 		}
@@ -3616,7 +3616,7 @@ bool FOServer::Init()
 
 bool FOServer::InitCrafts(LangPackVec& lang_packs)
 {
-	WriteLog(NULL,"FixBoy load crafts...\n");
+	WriteLog("FixBoy load crafts...\n");
 	MrFixit.Finish();
 
 	LanguagePack* main_lang=NULL;
@@ -3628,7 +3628,7 @@ bool FOServer::InitCrafts(LangPackVec& lang_packs)
 		{
 			if(!MrFixit.LoadCrafts(lang.Msg[TEXTMSG_CRAFT]))
 			{
-				WriteLog(_FUNC_," - Unable to load crafts from<%s>.\n",lang.NameStr);
+				WriteLogF(_FUNC_," - Unable to load crafts from<%s>.\n",lang.NameStr);
 				return false;
 			}
 			main_lang=&lang;
@@ -3638,23 +3638,23 @@ bool FOServer::InitCrafts(LangPackVec& lang_packs)
 		CraftManager mr_fixit;
 		if(!mr_fixit.LoadCrafts(lang.Msg[TEXTMSG_CRAFT]))
 		{
-			WriteLog(_FUNC_," - Unable to load crafts from<%s>.\n",lang.NameStr);
+			WriteLogF(_FUNC_," - Unable to load crafts from<%s>.\n",lang.NameStr);
 			return false;
 		}
 
 		if(!(MrFixit==mr_fixit))
 		{
-			WriteLog(_FUNC_," - Compare crafts fail. <%s>with<%s>.\n",main_lang->NameStr,lang.NameStr);
+			WriteLogF(_FUNC_," - Compare crafts fail. <%s>with<%s>.\n",main_lang->NameStr,lang.NameStr);
 			return false;
 		}
 	}
-	WriteLog(NULL,"FixBoy load crafts complete.\n");
+	WriteLog("FixBoy load crafts complete.\n");
 	return true;
 }
 
 bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 {
-	WriteLog(NULL,"Loading language packs...\n");
+	WriteLog("Loading language packs...\n");
 
 	IniParser cfg;
 	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
@@ -3670,21 +3670,21 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 
 		if(Str::Length(lang_name)!=4)
 		{
-			WriteLog(NULL,"Language name not equal to four letters.\n");
+			WriteLog("Language name not equal to four letters.\n");
 			return false;
 		}
 
 		uint pack_id=*(uint*)&lang_name;
 		if(std::find(lang_packs.begin(),lang_packs.end(),pack_id)!=lang_packs.end())
 		{
-			WriteLog(NULL,"Language pack<%u> is already initialized.\n",cur_lang);
+			WriteLog("Language pack<%u> is already initialized.\n",cur_lang);
 			return false;
 		}
 
 		LanguagePack lang;
 		if(!lang.Init(lang_name,PT_SERVER_TEXTS))
 		{
-			WriteLog(NULL,"Unable to init Language pack<%u>.\n",cur_lang);
+			WriteLog("Unable to init Language pack<%u>.\n",cur_lang);
 			return false;
 		}
 
@@ -3692,7 +3692,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 		cur_lang++;
 	}
 
-	WriteLog(NULL,"Loading language packs complete, loaded<%u> packs.\n",cur_lang);
+	WriteLog("Loading language packs complete, loaded<%u> packs.\n",cur_lang);
 	return true;
 }
 
@@ -3761,9 +3761,9 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 
 void FOServer::FinishLangPacks()
 {
-	WriteLog(NULL,"Finish lang packs...\n");
+	WriteLog("Finish lang packs...\n");
 	LangPacks.clear();
-	WriteLog(NULL,"Finish lang packs complete.\n");
+	WriteLog("Finish lang packs complete.\n");
 }
 
 bool FOServer::InitLangCrTypes(LangPackVec& lang_packs)
@@ -3844,7 +3844,7 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 	const char* fname=(expired?BANS_FNAME_EXPIRED:BANS_FNAME_ACTIVE);
 	if(!fm.LoadFile(fname,PT_SERVER_BANS))
 	{
-		WriteLog(_FUNC_," - Can't open file<%s>.\n",FileManager::GetFullPath(fname,PT_SERVER_BANS));
+		WriteLogF(_FUNC_," - Can't open file<%s>.\n",FileManager::GetFullPath(fname,PT_SERVER_BANS));
 		return;
 	}
 	fm.SwitchToWrite();
@@ -3859,7 +3859,7 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 	fm.SetStr("\n");
 
 	if(!fm.SaveOutBufToFile(fname,PT_SERVER_BANS))
-		WriteLog(_FUNC_," - Unable to save file<%s>.\n",FileManager::GetFullPath(fname,PT_SERVER_BANS));
+		WriteLogF(_FUNC_," - Unable to save file<%s>.\n",FileManager::GetFullPath(fname,PT_SERVER_BANS));
 }
 
 void FOServer::SaveBans()
@@ -3881,7 +3881,7 @@ void FOServer::SaveBans()
 	}
 
 	if(!fm.SaveOutBufToFile(BANS_FNAME_ACTIVE,PT_SERVER_BANS))
-		WriteLog(_FUNC_," - Unable to save file<%s>.\n",FileManager::GetFullPath(BANS_FNAME_ACTIVE,PT_SERVER_BANS));
+		WriteLogF(_FUNC_," - Unable to save file<%s>.\n",FileManager::GetFullPath(BANS_FNAME_ACTIVE,PT_SERVER_BANS));
 }
 
 void FOServer::LoadBans()
@@ -3918,7 +3918,7 @@ void FOServer::LoadBans()
 
 bool FOServer::LoadClientsData()
 {
-	WriteLog(NULL,"Indexing client data.\n");
+	WriteLog("Indexing client data.\n");
 
 	LastClientId=0;
 	ClientsData.reserve(10000);
@@ -3926,7 +3926,7 @@ bool FOServer::LoadClientsData()
 	HANDLE h=FindFirstFile(".\\save\\clients\\*.client",&fdata);
 	if(h==INVALID_HANDLE_VALUE)
 	{
-		WriteLog(NULL,"Clients data not found.\n");
+		WriteLog("Clients data not found.\n");
 		return true;
 	}
 
@@ -3944,7 +3944,7 @@ bool FOServer::LoadClientsData()
 		FILE* f=fopen(fname_,"rb");
 		if(!f)
 		{
-			WriteLog(NULL,"Unable to open client save file<%s>.\n",fname_);
+			WriteLog("Unable to open client save file<%s>.\n",fname_);
 			return false;
 		}
 
@@ -3962,7 +3962,7 @@ bool FOServer::LoadClientsData()
 		uint pass_len=Str::Length(pass);
 		if(!read_ok || !IS_USER_ID(id) || pass_len<MIN_NAME || pass_len>MAX_NAME || !CheckUserPass(pass))
 		{
-			WriteLog(NULL,"Wrong id<%u> or password<%s> of client<%s>. Skip.\n",id,pass,name);
+			WriteLog("Wrong id<%u> or password<%s> of client<%s>. Skip.\n",id,pass,name);
 			if(!FindNextFile(h,&fdata)) break;
 			continue;
 		}
@@ -3970,7 +3970,7 @@ bool FOServer::LoadClientsData()
 		// Check uniqueness of id
 		if(id_already.count(id))
 		{
-			WriteLog(NULL,"Id<%u> of user<%s> already used by another client.\n",id,name);
+			WriteLog("Id<%u> of user<%s> already used by another client.\n",id,name);
 			return false;
 		}
 		id_already.insert(id);
@@ -3989,7 +3989,7 @@ bool FOServer::LoadClientsData()
 
 	FindClose(h);
 	if(ClientsData.size()>10000) ClientsData.reserve(ClientsData.size()*2);
-	WriteLog(NULL,"Indexing complete, clients found<%u>.\n",ClientsData.size());
+	WriteLog("Indexing complete, clients found<%u>.\n",ClientsData.size());
 	return true;
 }
 
@@ -3999,14 +3999,14 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 
 	if(Str::Compare(cl->Name,"err") || !cl->GetId())
 	{
-		WriteLog(_FUNC_," - Trying save not valid client.\n");
+		WriteLogF(_FUNC_," - Trying save not valid client.\n");
 		return false;
 	}
 
 	CritDataExt* data_ext=cl->GetDataExt();
 	if(!data_ext)
 	{
-		WriteLog(_FUNC_," - Can't get extended critter data.\n");
+		WriteLogF(_FUNC_," - Can't get extended critter data.\n");
 		return false;
 	}
 
@@ -4021,7 +4021,7 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 		FILE* f=fopen(fname,"wb");
 		if(!f)
 		{
-			WriteLog(_FUNC_," - Unable to open client save file<%s>.\n",fname);
+			WriteLogF(_FUNC_," - Unable to open client save file<%s>.\n",fname);
 			return false;
 		}
 
@@ -4051,7 +4051,7 @@ bool FOServer::LoadClient(Client* cl)
 	CritDataExt* data_ext=cl->GetDataExt();
 	if(!data_ext)
 	{
-		WriteLog(_FUNC_," - Can't get extended critter data.\n");
+		WriteLogF(_FUNC_," - Can't get extended critter data.\n");
 		return false;
 	}
 
@@ -4060,7 +4060,7 @@ bool FOServer::LoadClient(Client* cl)
 	FILE* f=fopen(fname,"rb");
 	if(!f)
 	{
-		WriteLog(_FUNC_," - Unable to open client save file<%s>.\n",fname);
+		WriteLogF(_FUNC_," - Unable to open client save file<%s>.\n",fname);
 		return false;
 	}
 
@@ -4094,7 +4094,7 @@ bool FOServer::LoadClient(Client* cl)
 	return true;
 
 label_FileTruncated:
-	WriteLog(_FUNC_," - Client save file<%s> truncated.\n",fname);
+	WriteLogF(_FUNC_," - Client save file<%s> truncated.\n",fname);
 	fclose(f);
 	return false;
 }
@@ -4131,7 +4131,7 @@ void FOServer::SaveWorld(const char* name)
 		DumpFile=fopen(name?name:fname,"wb");
 		if(!DumpFile)
 		{
-			WriteLog(NULL,"Can't create dump file<%s>.\n",name?name:fname);
+			WriteLog("Can't create dump file<%s>.\n",name?name:fname);
 			return;
 		}
 	}
@@ -4214,7 +4214,7 @@ void FOServer::SaveWorld(const char* name)
 		if(SaveWorldIndex>=WORLD_SAVE_MAX_INDEX) SaveWorldIndex=0;
 	}
 
-	WriteLog(NULL,"World saved in %g ms.\n",Timer::AccurateTick()-tick);
+	WriteLog("World saved in %g ms.\n",Timer::AccurateTick()-tick);
 }
 
 bool FOServer::LoadWorld(const char* name)
@@ -4232,7 +4232,7 @@ bool FOServer::LoadWorld(const char* name)
 			f=fopen(fname,"rb");
 			if(f)
 			{
-				WriteLog(NULL,"Begin load world from dump file<%s>.\n",fname);
+				WriteLog("Begin load world from dump file<%s>.\n",fname);
 				SaveWorldIndex=i;
 				break;
 			}
@@ -4241,7 +4241,7 @@ bool FOServer::LoadWorld(const char* name)
 
 		if(!f)
 		{
-			WriteLog(NULL,"World dump file not found.\n");
+			WriteLog("World dump file not found.\n");
 			SaveWorldIndex=0;
 			return true;
 		}
@@ -4251,11 +4251,11 @@ bool FOServer::LoadWorld(const char* name)
 		f=fopen(name,"rb");
 		if(!f)
 		{
-			WriteLog(NULL,"World dump file<%s> not found.\n",name);
+			WriteLog("World dump file<%s> not found.\n",name);
 			return false;
 		}
 
-		WriteLog(NULL,"Begin load world from dump file<%s>.\n",name);
+		WriteLog("Begin load world from dump file<%s>.\n",name);
 	}
 
 	// File begin
@@ -4265,13 +4265,13 @@ bool FOServer::LoadWorld(const char* name)
 		version!=WORLD_SAVE_V5 && version!=WORLD_SAVE_V6 && version!=WORLD_SAVE_V7 && version!=WORLD_SAVE_V8 &&
 		version!=WORLD_SAVE_V9 && version!=WORLD_SAVE_V10 && version!=WORLD_SAVE_V11 && version!=WORLD_SAVE_V12)
 	{
-		WriteLog(NULL,"Unknown version<%u> of world dump file.\n",version);
+		WriteLog("Unknown version<%u> of world dump file.\n",version);
 		fclose(f);
 		return false;
 	}
 	if(version<WORLD_SAVE_V9)
 	{
-		WriteLog(NULL,"Version of save file is not supported.\n");
+		WriteLog("Version of save file is not supported.\n");
 		fclose(f);
 		return false;
 	}
@@ -4291,7 +4291,7 @@ bool FOServer::LoadWorld(const char* name)
 	uint version_=0;
 	if(!fread(&version_,sizeof(version_),1,f) || version!=version_)
 	{
-		WriteLog(NULL,"World dump file truncated.\n");
+		WriteLog("World dump file truncated.\n");
 		fclose(f);
 		return false;
 	}
@@ -4422,7 +4422,7 @@ void* FOServer::Dump_Work(void* data)
 		}
 		else
 		{
-			WriteLog(_FUNC_," - Can't create world dump file<%s>.\n",fname);
+			WriteLogF(_FUNC_," - Can't create world dump file<%s>.\n",fname);
 		}
 
 		// Save clients data
@@ -4433,7 +4433,7 @@ void* FOServer::Dump_Work(void* data)
 			FILE* fc=fopen(Str::Format(fname,"%sclients\\%s.client",save_path,csd.Name),"wb");
 			if(!fc)
 			{
-				WriteLog(_FUNC_," - Unable to open client save file<%s>.\n",fname);
+				WriteLogF(_FUNC_," - Unable to open client save file<%s>.\n",fname);
 				continue;
 			}
 
@@ -4521,7 +4521,7 @@ void FOServer::Process_GetScores(Client* cl)
 	uint tick=Timer::FastTick();
 	if(tick<cl->LastSendScoresTick+SCORES_SEND_TIME)
 	{
-		WriteLog(_FUNC_," - Client<%s> ignore send scores timeout.\n",cl->GetInfo());
+		WriteLogF(_FUNC_," - Client<%s> ignore send scores timeout.\n",cl->GetInfo());
 		return;
 	}
 	cl->LastSendScoresTick=tick;
@@ -4602,7 +4602,7 @@ void FOServer::SaveTimeEventsFile()
 
 bool FOServer::LoadTimeEventsFile(FILE* f)
 {
-	WriteLog(NULL,"Load time events...");
+	WriteLog("Load time events...");
 
 	TimeEventsLastNum=0;
 
@@ -4639,7 +4639,7 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 		else singed=true;
 		if(bind_id<=0)
 		{
-			WriteLog(NULL,"Unable to bind script function, event num<%u>, name<%s>.\n",num,script_name);
+			WriteLog("Unable to bind script function, event num<%u>, name<%s>.\n",num,script_name);
 			continue;
 		}
 
@@ -4660,7 +4660,7 @@ bool FOServer::LoadTimeEventsFile(FILE* f)
 		if(num>TimeEventsLastNum) TimeEventsLastNum=num;
 	}
 
-	WriteLog(NULL,"complete, count<%u>.\n",count);
+	WriteLog("complete, count<%u>.\n",count);
 	return true;
 }
 
@@ -4917,7 +4917,7 @@ void FOServer::ProcessTimeEvents()
 
 			if(!values)
 			{
-				WriteLog(_FUNC_," - Create values array fail. Wait 10 real minutes.\n");
+				WriteLogF(_FUNC_," - Create values array fail. Wait 10 real minutes.\n");
 				wait_time=GameOpt.TimeMultiplier*600;
 			}
 			else
@@ -4932,7 +4932,7 @@ void FOServer::ProcessTimeEvents()
 			Script::SetArgObject(values);
 			if(!Script::RunPrepared())
 			{
-				WriteLog(_FUNC_," - RunPrepared fail. Wait 10 real minutes.\n");
+				WriteLogF(_FUNC_," - RunPrepared fail. Wait 10 real minutes.\n");
 				wait_time=GameOpt.TimeMultiplier*600;
 			}
 			else
@@ -4951,7 +4951,7 @@ void FOServer::ProcessTimeEvents()
 	}
 	else
 	{
-		WriteLog(_FUNC_," - Game contexts prepare fail. Wait 10 real minutes.\n");
+		WriteLogF(_FUNC_," - Game contexts prepare fail. Wait 10 real minutes.\n");
 		wait_time=GameOpt.TimeMultiplier*600;
 	}
 
@@ -5043,7 +5043,7 @@ bool FOServer::LoadScriptFunctionsFile(FILE* f)
 		char* decl=strstr(script,"|");
 		if(!decl)
 		{
-			WriteLog(_FUNC_," - Function declaration not found, script<%s>.\n",script);
+			WriteLogF(_FUNC_," - Function declaration not found, script<%s>.\n",script);
 			continue;
 		}
 		*decl=0;
@@ -5052,7 +5052,7 @@ bool FOServer::LoadScriptFunctionsFile(FILE* f)
 		// Parse
 		if(!Script::GetScriptFuncNum(script,decl))
 		{
-			WriteLog(_FUNC_," - Function<%s,%s> not found.\n",script,decl);
+			WriteLogF(_FUNC_," - Function<%s,%s> not found.\n",script,decl);
 			continue;
 		}
 	}

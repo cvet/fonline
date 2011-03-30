@@ -3,12 +3,12 @@
 #include "Timer.h"
 #include <stdarg.h>
 
-#if defined(FO_WINDOWS)
-	#define DLG_HANDLE HWND
-    #include <Richedit.h>
-    #pragma comment(lib,"User32.lib")
-#else // FO_LINUX
-	#define DLG_HANDLE void*
+#if defined(FONLINE_SERVER)
+	#include "FL/Fl.H"
+	#include "FL/Fl_Text_Display.H"
+#endif
+
+#if defined(FO_LINUX)
 	//#include <syslog.h>
 #endif
 
@@ -16,13 +16,14 @@ Mutex LogLocker;
 int LoggingType=0;
 void* LogFileHandle=NULL;
 LogFuncPtr LogFunction=NULL;
-DLG_HANDLE LogDlgItem=NULL;
+void* LogTextBox=NULL;
 std::string LogBufferStr;
-MutexEvent* LogBufferEvent;
+void* LogBufferMsg=NULL;
 bool LoggingWithTime=false;
 bool LoggingWithThread=false;
 THREAD char LogThreadName[64]={0};
 uint StartLogTime=Timer::FastTick();
+void WriteLogInternal(const char* func, const char* frmt, va_list& list);
 
 void LogToFile(const char* fname)
 {
@@ -45,20 +46,25 @@ void LogToFunc(LogFuncPtr func_ptr)
 	LoggingType|=LOG_FUNC;
 }
 
-void LogToDlg(void* dlg_item)
+void LogToTextBox(void* text_box)
 {
-	LogFinish(LOG_DLG);
-	if(!dlg_item) return;
-	LogDlgItem=*(DLG_HANDLE*)dlg_item;
-	if(!LogDlgItem) return;
-	LoggingType|=LOG_DLG;
+#if !defined(FONLINE_SERVER)
+	return;
+#endif
+	LogFinish(LOG_TEXT_BOX);
+	if(!text_box) return;
+	LogTextBox=text_box;
+	LoggingType|=LOG_TEXT_BOX;
 }
 
-void LogToBuffer(void* event)
+void LogToBuffer(void* msg)
 {
+#if !defined(FONLINE_SERVER)
+	return;
+#endif
 	LogFinish(LOG_BUFFER);
 	LogBufferStr.reserve(MAX_LOGTEXT*2);
-	LogBufferEvent=(MutexEvent*)event;
+	LogBufferMsg=msg;
 	LoggingType|=LOG_BUFFER;
 }
 
@@ -87,30 +93,44 @@ void LogFinish(int log_type)
 		LogFileHandle=NULL;
 	}
 	if(log_type&LOG_FUNC) LogFunction=NULL;
-	if(log_type&LOG_DLG) LogDlgItem=NULL;
+	if(log_type&LOG_TEXT_BOX) LogTextBox=NULL;
 	if(log_type&LOG_BUFFER)
 	{
 		LogBufferStr.clear();
-		LogBufferEvent=NULL;
+		LogBufferMsg=NULL;
 	}
 	LoggingType^=log_type;
 }
 
-void WriteLog(const char* func, const char* frmt, ...)
+void WriteLog(const char* frmt, ...)
 {
 	if(!LoggingType) return;
 
+	va_list list;
+	va_start(list,frmt);
+	WriteLogInternal(NULL,frmt,list);
+	va_end(list);
+}
+
+void WriteLogF(const char* func, const char* frmt, ...)
+{
+	if(!LoggingType) return;
+
+	va_list list;
+	va_start(list,frmt);
+	WriteLogInternal(func,frmt,list);
+	va_end(list);
+}
+
+void WriteLogInternal(const char* func, const char* frmt, va_list& list)
+{
 	LogLocker.Lock();
 
 	char str_tid[64]={0};
 	if(LoggingWithThread)
 	{
 		if(LogThreadName[0]) Str::Format(str_tid,"[%s]",LogThreadName);
-#if defined(FO_WINDOWS)
-		else Str::Format(str_tid,"[%04u]",GetCurrentThreadId());
-#else // FO_LINUX
-		else Str::Format(str_tid,"[%04u]",(uint)pthread_self()); // gettid?
-#endif
+		else Str::Format(str_tid,"[%04u]",GetCurThreadId());
 	}
 
 	char str_time[64]={0};
@@ -129,17 +149,13 @@ void WriteLog(const char* func, const char* frmt, ...)
 	if(str_tid[0]) Str::Append(str,str_tid);
 	if(str_time[0]) Str::Append(str,str_time);
 	if(str_tid[0] || str_time[0]) Str::Append(str," ");
-	if(func) Str::Append(str,func);
 
 	size_t len=Str::Length(str);
-	va_list list;
-	va_start(list,frmt);
 #ifdef FO_MSVC
 	vsprintf_s(&str[len],MAX_LOGTEXT-len,frmt,list);
 #else
-    vsprintf(&str[len],frmt,list);
+	vsprintf(&str[len],frmt,list);
 #endif
-	va_end(list);
 
 	if(LoggingType&LOG_FILE)
 	{
@@ -149,26 +165,25 @@ void WriteLog(const char* func, const char* frmt, ...)
 	{
 		(*LogFunction)(str);
 	}
-	if(LoggingType&LOG_DLG)
+	if(LoggingType&LOG_TEXT_BOX)
 	{
-#if defined(FO_WINDOWS)
-		SendMessage(LogDlgItem,EM_SETSEL,-1,-1);
-		SendMessage(LogDlgItem,EM_REPLACESEL,0,(LPARAM)str);
-#else
-        // Todo: linux
+#if defined(FONLINE_SERVER)
+		((Fl_Text_Display*)LogTextBox)->buffer()->append(str);
 #endif
 	}
 	if(LoggingType&LOG_BUFFER)
 	{
+#if defined(FONLINE_SERVER)
 		LogBufferStr+=str;
-		LogBufferEvent->Allow();
+		Fl::awake(LogBufferMsg);
+#endif
 	}
 	if(LoggingType&LOG_DEBUG_OUTPUT)
 	{
 #if defined(FO_WINDOWS)
 		OutputDebugString(str);
 #else
-        // Todo: linux, syslog ?
+		// Todo: linux, syslog ?
 #endif
 	}
 

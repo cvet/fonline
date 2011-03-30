@@ -30,7 +30,7 @@
 #define CHECK_IN_BUFF_ERROR_EX(client,ext) \
 	if(client->Bin.IsError())\
 	{\
-		WriteLog(_FUNC_," - Wrong MSG data from client<%s>.\n",client->GetInfo());\
+		WriteLogF(_FUNC_," - Wrong MSG data from client<%s>.\n",client->GetInfo());\
 		ext;\
 		client->Disconnect();\
 		client->Bin.LockReset();\

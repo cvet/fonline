@@ -151,11 +151,11 @@ HexManager::HexManager()
 
 bool HexManager::Init()
 {
-	WriteLog(NULL,"Hex field initialization...\n");
+	WriteLog("Hex field initialization...\n");
 
 	if(!ItemMngr.IsInit())
 	{
-		WriteLog(NULL,"Item manager is not init.\n");
+		WriteLog("Item manager is not init.\n");
 		return false;
 	}
 
@@ -178,13 +178,13 @@ bool HexManager::Init()
 	CurProtoMap=NULL;
 #endif
 
-	WriteLog(NULL,"Hex field initialization complete.\n");
+	WriteLog("Hex field initialization complete.\n");
 	return true;
 }
 
 void HexManager::Clear()
 {
-	WriteLog(NULL,"Hex field finish...\n");
+	WriteLog("Hex field finish...\n");
 
 	mainTree.Clear();
 	roofRainTree.Clear();
@@ -207,7 +207,7 @@ void HexManager::Clear()
 	ResizeField(0,0);
 
 	chosenId=0;
-	WriteLog(NULL,"Hex field finish complete.\n");
+	WriteLog("Hex field finish complete.\n");
 }
 
 void HexManager::ReloadSprites()
@@ -262,26 +262,26 @@ bool HexManager::AddItem(uint id, ushort pid, ushort hx, ushort hy, bool is_adde
 {
 	if(!id)
 	{
-		WriteLog(_FUNC_," - Item id is zero.\n");
+		WriteLogF(_FUNC_," - Item id is zero.\n");
 		return false;
 	}
 
 	if(!IsMapLoaded())
 	{
-		WriteLog(_FUNC_," - Map is not loaded.");
+		WriteLogF(_FUNC_," - Map is not loaded.");
 		return false;
 	}
 
 	if(hx>=maxHexX || hy>=maxHexY)
 	{
-		WriteLog(_FUNC_," - Position hx<%u> or hy<%u> error value.\n",hx,hy);
+		WriteLogF(_FUNC_," - Position hx<%u> or hy<%u> error value.\n",hx,hy);
 		return false;
 	}
 
 	ProtoItem* proto=ItemMngr.GetProtoItem(pid);
 	if(!proto)
 	{
-		WriteLog(_FUNC_," - Proto not found<%u>.\n",pid);
+		WriteLogF(_FUNC_," - Proto not found<%u>.\n",pid);
 		return false;
 	}
 
@@ -360,14 +360,14 @@ void HexManager::FinishItem(uint id, bool is_deleted)
 {
 	if(!id)
 	{
-		WriteLog(_FUNC_," - Item zero id.\n");
+		WriteLogF(_FUNC_," - Item zero id.\n");
 		return;
 	}
 
 	ItemHex* item=GetItemById(id);
 	if(!item)
 	{
-		WriteLog(_FUNC_," - Item<%d> not found.\n",id);
+		WriteLogF(_FUNC_," - Item<%d> not found.\n",id);
 		return;
 	}
 
@@ -535,14 +535,14 @@ bool HexManager::RunEffect(ushort eff_pid, ushort from_hx, ushort from_hy, ushor
 	if(!IsMapLoaded()) return false;
 	if(from_hx>=maxHexX || from_hy>=maxHexY || to_hx>=maxHexX || to_hy>=maxHexY)
 	{
-		WriteLog(_FUNC_," - Incorrect value of from_x<%d> or from_y<%d> or to_x<%d> or to_y<%d>.\n",from_hx,from_hy,to_hx,to_hy);
+		WriteLogF(_FUNC_," - Incorrect value of from_x<%d> or from_y<%d> or to_x<%d> or to_y<%d>.\n",from_hx,from_hy,to_hx,to_hy);
 		return false;
 	}
 
 	ProtoItem* proto=ItemMngr.GetProtoItem(eff_pid);
 	if(!proto)
 	{
-		WriteLog(_FUNC_," - Proto not found, pid<%d>.\n",eff_pid);
+		WriteLogF(_FUNC_," - Proto not found, pid<%d>.\n",eff_pid);
 		return false;
 	}
 
@@ -1330,7 +1330,7 @@ bool HexManager::InitTilesSurf()
 
 	if(!SprMngr.CreateRenderTarget(tileSurf,w,h))
 	{
-		WriteLog(NULL,"Can't create tiles surface, width<%d>, height<%d>.\n",w,h);
+		WriteLog("Can't create tiles surface, width<%d>, height<%d>.\n",w,h);
 		return false;
 	}
 
@@ -2069,7 +2069,7 @@ void HexManager::SetCrit(CritterCl* cr)
 	{
 		if(f.Crit && f.Crit!=cr)
 		{
-			WriteLog(_FUNC_," - Hex<%u><%u> busy, critter old<%u>, new<%u>.\n",hx,hy,f.Crit->GetId(),cr->GetId());
+			WriteLogF(_FUNC_," - Hex<%u><%u> busy, critter old<%u>, new<%u>.\n",hx,hy,f.Crit->GetId(),cr->GetId());
 			return;
 		}
 
@@ -2834,7 +2834,7 @@ void HexManager::FindSetCenterDir(ushort& hx, ushort& hy, int dirs[2], int steps
 
 bool HexManager::LoadMap(ushort map_pid)
 {
-	WriteLog(NULL,"Load map...");
+	WriteLog("Load map...");
 
 	// Unload previous
 	UnloadMap();
@@ -2854,14 +2854,14 @@ bool HexManager::LoadMap(ushort map_pid)
 	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	if(!cache)
 	{
-		WriteLog(NULL,"Load map<%s> from cache fail.\n",map_name);
+		WriteLog("Load map<%s> from cache fail.\n",map_name);
 		return false;
 	}
 
 	FileManager fm;
 	if(!fm.LoadStream(cache,cache_len))
 	{
-		WriteLog(NULL,"Load map<%s> from stream fail.\n",map_name);
+		WriteLog("Load map<%s> from stream fail.\n",map_name);
 		delete[] cache;
 		return false;
 	}
@@ -2872,7 +2872,7 @@ bool HexManager::LoadMap(ushort map_pid)
 	uchar* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
 	if(!buf)
 	{
-		WriteLog(NULL,"Uncompress map fail.\n");
+		WriteLog("Uncompress map fail.\n");
 		return false;
 	}
 
@@ -2882,13 +2882,13 @@ bool HexManager::LoadMap(ushort map_pid)
 
 	if(fm.GetBEUInt()!=CLIENT_MAP_FORMAT_VER)
 	{
-		WriteLog(NULL,"Map FormatBuf is not supported.\n");
+		WriteLog("Map FormatBuf is not supported.\n");
 		return false;
 	}
 
 	if(fm.GetBEUInt()!=map_pid)
 	{
-		WriteLog(NULL,"Data truncated.\n");
+		WriteLog("Data truncated.\n");
 		return false;
 	}
 
@@ -2909,26 +2909,26 @@ bool HexManager::LoadMap(ushort map_pid)
 
 	if(tiles_count*sizeof(ProtoMap::Tile)!=tiles_len)
 	{
-		WriteLog(NULL,"Tiles data truncated.\n");
+		WriteLog("Tiles data truncated.\n");
 		return false;
 	}
 
 	if(walls_count*sizeof(SceneryCl)!=walls_len)
 	{
-		WriteLog(NULL,"Walls data truncated.\n");
+		WriteLog("Walls data truncated.\n");
 		return false;
 	}
 
 	if(scen_count*sizeof(SceneryCl)!=scen_len)
 	{
-		WriteLog(NULL,"Scenery data truncated.\n");
+		WriteLog("Scenery data truncated.\n");
 		return false;
 	}
 
 	// Create field
 	if(!ResizeField(maxhx,maxhy))
 	{
-		WriteLog(NULL,"Buffer allocation fail.\n");
+		WriteLog("Buffer allocation fail.\n");
 		return false;
 	}
 
@@ -2942,7 +2942,7 @@ bool HexManager::LoadMap(ushort map_pid)
 		ProtoMap::Tile tile;
 		if(!fm.CopyMem(&tile,sizeof(tile)))
 		{
-			WriteLog(NULL,"Unable to read tile.\n");
+			WriteLog("Unable to read tile.\n");
 			continue;
 		}
 		if(tile.HexX>=maxHexX || tile.HexY>=maxHexY) continue;
@@ -2986,13 +2986,13 @@ bool HexManager::LoadMap(ushort map_pid)
 
 		if(!fm.CopyMem(&cur_wall,sizeof(cur_wall)))
 		{
-			WriteLog(NULL,"Unable to read wall item.\n");
+			WriteLog("Unable to read wall item.\n");
 			continue;
 		}
 
 		if(!ParseScenery(cur_wall))
 		{
-			WriteLog(NULL,"Unable to parse wall item.\n");
+			WriteLog("Unable to parse wall item.\n");
 			continue;
 		}
 	}
@@ -3009,13 +3009,13 @@ bool HexManager::LoadMap(ushort map_pid)
 
 		if(!fm.CopyMem(&cur_scen,sizeof(cur_scen)))
 		{
-			WriteLog(NULL,"Unable to read scenery item.\n");
+			WriteLog("Unable to read scenery item.\n");
 			continue;
 		}
 
 		if(!ParseScenery(cur_scen))
 		{
-			WriteLog(NULL,"Unable to parse scenery item<%d>.\n",cur_scen.ProtoId);
+			WriteLog("Unable to parse scenery item<%d>.\n",cur_scen.ProtoId);
 			continue;
 		}
 	}
@@ -3053,7 +3053,7 @@ bool HexManager::LoadMap(ushort map_pid)
 	curPidMap=map_pid;
 	curMapTime=-1;
 	AutoScroll.Active=false;
-	WriteLog(NULL,"Load map success.\n");
+	WriteLog("Load map success.\n");
 	return true;
 }
 
@@ -3102,7 +3102,7 @@ void HexManager::UnloadMap()
 
 void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen)
 {
-	WriteLog(NULL,"Get hash of map, pid<%u>...",map_pid);
+	WriteLog("Get hash of map, pid<%u>...",map_pid);
 
 	hash_tiles=0;
 	hash_walls=0;
@@ -3114,7 +3114,7 @@ void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, 
 		hash_walls=curHashWalls;
 		hash_scen=curHashScen;
 
-		WriteLog(NULL,"Hashes of loaded map: tiles<%u>, walls<%u>, scenery<%u>.\n",hash_tiles,hash_walls,hash_scen);
+		WriteLog("Hashes of loaded map: tiles<%u>, walls<%u>, scenery<%u>.\n",hash_tiles,hash_walls,hash_scen);
 		return;
 	}
 
@@ -3125,14 +3125,14 @@ void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, 
 	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	if(!cache)
 	{
-		WriteLog(NULL,"Load map<%s> from cache fail.\n",map_name);
+		WriteLog("Load map<%s> from cache fail.\n",map_name);
 		return;
 	}
 
 	FileManager fm;
 	if(!fm.LoadStream(cache,cache_len))
 	{
-		WriteLog(NULL,"Load map<%s> from stream fail.\n",map_name);
+		WriteLog("Load map<%s> from stream fail.\n",map_name);
 		delete[] cache;
 		return;
 	}
@@ -3142,7 +3142,7 @@ void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, 
 	uchar* buf=Crypt.Uncompress(fm.GetBuf(),buf_len,50);
 	if(!buf)
 	{
-		WriteLog(NULL,"Uncompress map fail.\n");
+		WriteLog("Uncompress map fail.\n");
 		return;
 	}
 
@@ -3151,13 +3151,13 @@ void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, 
 
 	if(fm.GetBEUInt()!=CLIENT_MAP_FORMAT_VER)
 	{
-		WriteLog(NULL,"Map format is not supported.\n");
+		WriteLog("Map format is not supported.\n");
 		return;
 	}
 
 	if(fm.GetBEUInt()!=map_pid)
 	{
-		WriteLog(NULL,"Invalid proto number.\n");
+		WriteLog("Invalid proto number.\n");
 		return;
 	}
 
@@ -3178,19 +3178,19 @@ void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, 
 	// Data Check Sum
 	if(tiles_count*sizeof(ProtoMap::Tile)!=tiles_len)
 	{
-		WriteLog(NULL,"Invalid check sum tiles.\n");
+		WriteLog("Invalid check sum tiles.\n");
 		return;
 	}
 	
 	if(walls_count*sizeof(SceneryCl)!=walls_len)
 	{
-		WriteLog(NULL,"Invalid check sum walls.\n");
+		WriteLog("Invalid check sum walls.\n");
 		return;
 	}
 	
 	if(scen_count*sizeof(SceneryCl)!=scen_len)
 	{
-		WriteLog(NULL,"Invalid check sum scenery.\n");
+		WriteLog("Invalid check sum scenery.\n");
 		return;
 	}
 
@@ -3204,7 +3204,7 @@ void HexManager::GetMapHash(ushort map_pid, uint& hash_tiles, uint& hash_walls, 
 	hash_scen=maxhx*maxhy;
 	Crypt.Crc32(fm.GetCurBuf(),scen_len,hash_scen);
 
-	WriteLog(NULL,"complete.\n");
+	WriteLog("complete.\n");
 }
 
 bool HexManager::GetMapData(ushort map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy)
@@ -3281,14 +3281,14 @@ bool HexManager::ParseScenery(SceneryCl& scen)
 
 	if(hx>=maxHexX || hy>=maxHexY)
 	{
-		WriteLog(_FUNC_," - Invalid coord<%d,%d>.\n",hx,hy);
+		WriteLogF(_FUNC_," - Invalid coord<%d,%d>.\n",hx,hy);
 		return false;
 	}
 
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item)
 	{
-		WriteLog(_FUNC_," - Proto item not found<%d>.\n",pid);
+		WriteLogF(_FUNC_," - Proto item not found<%d>.\n",pid);
 		return false;
 	}
 
@@ -3360,7 +3360,7 @@ uchar* HexManager::GetMapDayColor()
 #ifdef FONLINE_MAPPER
 bool HexManager::SetProtoMap(ProtoMap& pmap)
 {
-	WriteLog(NULL,"Create map from prototype.\n");
+	WriteLog("Create map from prototype.\n");
 
 	UnloadMap();
 	CurProtoMap=NULL;
@@ -3371,7 +3371,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 	if(!ResizeField(pmap.Header.MaxHexX,pmap.Header.MaxHexY))
 	{
-		WriteLog(NULL,"Buffer allocation fail.\n");
+		WriteLog("Buffer allocation fail.\n");
 		return false;
 	}
 
@@ -3420,7 +3420,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 		MapObject* o=pmap.MObjects[i];
 		if(o->MapX>=maxHexX || o->MapY>=maxHexY)
 		{
-			WriteLog(NULL,"Invalid position of map object. Skip.\n");
+			WriteLog("Invalid position of map object. Skip.\n");
 			continue;
 		}
 
@@ -3445,7 +3445,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 			if(!ParseScenery(s))
 			{
-				WriteLog(NULL,"Unable to parse scen or wall object.\n");
+				WriteLog("Unable to parse scen or wall object.\n");
 				continue;
 			}
 			ItemHex* item=hexItems.back();
@@ -3470,7 +3470,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			CritData* pnpc=CrMngr.GetProto(o->ProtoId);
 			if(!pnpc)
 			{
-				WriteLog(NULL,"Proto<%u> npc not found.\n",o->ProtoId);
+				WriteLog("Proto<%u> npc not found.\n",o->ProtoId);
 				continue;
 			}
 
@@ -3516,7 +3516,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 	curHashWalls=0xFFFF;
 	curHashScen=0xFFFF;
 	CurProtoMap=&pmap;
-	WriteLog(NULL,"Create map from prototype complete.\n");
+	WriteLog("Create map from prototype complete.\n");
 	return true;
 }
 

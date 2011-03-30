@@ -86,17 +86,17 @@ label_ParseNext:
 
 bool NpcAIMngr::Init()
 {
-	WriteLog(NULL,"AI manager initialization...\n");
+	WriteLog("AI manager initialization...\n");
 	if(!LoadNpcBags()) return false;
-	WriteLog(NULL,"AI manager initialization complete.\n");
+	WriteLog("AI manager initialization complete.\n");
 	return true;
 }
 
 void NpcAIMngr::Finish()
 {
-	WriteLog(NULL,"AI manager finish.\n");
+	WriteLog("AI manager finish.\n");
 	npcBags.clear();
-	WriteLog(NULL,"AI manager finish success.\n");
+	WriteLog("AI manager finish success.\n");
 }
 
 /************************************************************************/
@@ -114,12 +114,12 @@ NpcBag& NpcAIMngr::GetBag(uint num)
 
 bool NpcAIMngr::LoadNpcBags()
 {
-	WriteLog(NULL,"Find bags...\n");
+	WriteLog("Find bags...\n");
 
 	IniParser bags_txt;
 	if(!bags_txt.LoadFile(BAGS_FILE_NAME,PT_SERVER_DATA))
 	{
-		WriteLog(NULL,"<%s> not found.\n",FileManager::GetFullPath(BAGS_FILE_NAME,PT_SERVER_DATA));
+		WriteLog("<%s> not found.\n",FileManager::GetFullPath(BAGS_FILE_NAME,PT_SERVER_DATA));
 		return false;
 	}
 
@@ -148,7 +148,7 @@ bool NpcAIMngr::LoadNpcBags()
 				// Get combination line
 				if(!bags_txt.GetStr(c.c_str(),"",bag_str))
 				{
-					WriteLog(NULL,"Items combination<%s> not found.\n",c.c_str());
+					WriteLog("Items combination<%s> not found.\n",c.c_str());
 					delete[] bag_str;
 					return false;
 				}
@@ -165,7 +165,7 @@ bool NpcAIMngr::LoadNpcBags()
 						NpcBagItem& b=items[k];
 						if(b.ItemPid>=MAX_ITEM_PROTOTYPES || b.MinCnt>b.MaxCnt)
 						{
-							WriteLog(NULL,"Invalid items combination<%s>, Item combination<%d>, number<%d>.\n",c.c_str(),l,k);
+							WriteLog("Invalid items combination<%s>, Item combination<%d>, number<%d>.\n",c.c_str(),l,k);
 							delete[] bag_str;
 							return false;
 						}
@@ -184,7 +184,7 @@ bool NpcAIMngr::LoadNpcBags()
 	// LogSetProperty(LogProp_WithTime,1);
 
 	delete[] bag_str;
-	WriteLog(NULL,"Loaded<%d> bags.\n",bag_count);
+	WriteLog("Loaded<%d> bags.\n",bag_count);
 	return true;
 }
 

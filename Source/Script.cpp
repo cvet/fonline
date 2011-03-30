@@ -109,7 +109,7 @@ bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback)
 {
 	if(with_log && !StartLog())
 	{
-		WriteLog(_FUNC_," - Log creation error.\n");
+		WriteLogF(_FUNC_," - Log creation error.\n");
 		return false;
 	}
 
@@ -117,7 +117,7 @@ bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback)
 	Engine=CreateEngine(pragma_callback);
 	if(!Engine)
 	{
-		WriteLog(_FUNC_," - Can't create AS engine.\n");
+		WriteLogF(_FUNC_," - Can't create AS engine.\n");
 		return false;
 	}
 
@@ -158,7 +158,7 @@ bool InitThread()
 		GlobalCtx[i]=CreateContext();
 		if(!GlobalCtx[i])
 		{
-			WriteLog(_FUNC_," - Create global contexts fail.\n");
+			WriteLogF(_FUNC_," - Create global contexts fail.\n");
 			Engine->Release();
 			Engine=NULL;
 			return false;
@@ -258,9 +258,9 @@ void UnloadScripts()
 	{
 		asIScriptModule* module=*it;
 		int result=module->ResetGlobalVars();
-		if(result<0) WriteLog(_FUNC_," - Reset global vars fail, module<%s>, error<%d>.\n",module->GetName(),result);
+		if(result<0) WriteLogF(_FUNC_," - Reset global vars fail, module<%s>, error<%d>.\n",module->GetName(),result);
 		result=module->UnbindAllImportedFunctions();
-		if(result<0) WriteLog(_FUNC_," - Unbind fail, module<%s>, error<%d>.\n",module->GetName(),result);
+		if(result<0) WriteLogF(_FUNC_," - Unbind fail, module<%s>, error<%d>.\n",module->GetName(),result);
 	}
 
 	for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
@@ -275,7 +275,7 @@ void UnloadScripts()
 
 bool ReloadScripts(const char* config, const char* key, bool skip_binaries, const char* file_pefix /* = NULL */)
 {
-	WriteLog(NULL,"Reload scripts...\n");
+	WriteLog("Reload scripts...\n");
 
 	Script::UnloadScripts();
 
@@ -298,7 +298,7 @@ bool ReloadScripts(const char* config, const char* key, bool skip_binaries, cons
 		str >> value;
 		if(str.fail() || !LoadScript(value.c_str(),NULL,skip_binaries,file_pefix))
 		{
-			WriteLog(NULL,"Load module fail, name<%s>.\n",value.c_str());
+			WriteLog("Load module fail, name<%s>.\n",value.c_str());
 			errors++;
 		}
 	}
@@ -308,17 +308,17 @@ bool ReloadScripts(const char* config, const char* key, bool skip_binaries, cons
 
 	if(errors)
 	{
-		WriteLog(NULL,"Reload scripts fail.\n");
+		WriteLog("Reload scripts fail.\n");
 		return false;
 	}
 
-	WriteLog(NULL,"Reload scripts complete.\n");
+	WriteLog("Reload scripts complete.\n");
 	return true;
 }
 
 bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFunction* bind_func, uint bind_func_count)
 {
-	WriteLog(NULL,"Bind reserved functions...\n");
+	WriteLog("Bind reserved functions...\n");
 
 	int errors=0;
 	char buf[1024];
@@ -353,18 +353,18 @@ bool BindReservedFunctions(const char* config, const char* key, ReservedScriptFu
 		}
 		else
 		{
-			WriteLog(NULL,"Bind reserved function fail, name<%s>.\n",bf->FuncName);
+			WriteLog("Bind reserved function fail, name<%s>.\n",bf->FuncName);
 			errors++;
 		}
 	}
 
 	if(errors)
 	{
-		WriteLog(NULL,"Bind reserved functions fail.\n");
+		WriteLog("Bind reserved functions fail.\n");
 		return false;
 	}
 
-	WriteLog(NULL,"Bind reserved functions complete.\n");
+	WriteLog("Bind reserved functions complete.\n");
 	return true;
 }
 
@@ -393,7 +393,7 @@ asIScriptEngine* CreateEngine(Preprocessor::PragmaCallback* pragma_callback)
 	asIScriptEngine* engine=asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	if(!engine)
 	{
-		WriteLog(_FUNC_," - asCreateScriptEngine fail.\n");
+		WriteLogF(_FUNC_," - asCreateScriptEngine fail.\n");
 		return false;
 	}
 
@@ -432,13 +432,13 @@ asIScriptContext* CreateContext()
 	asIScriptContext* ctx=Engine->CreateContext();
 	if(!ctx)
 	{
-		WriteLog(_FUNC_," - CreateContext fail.\n");
+		WriteLogF(_FUNC_," - CreateContext fail.\n");
 		return NULL;
 	}
 
 	if(ctx->SetExceptionCallback(asFUNCTION(CallbackException),NULL,asCALL_CDECL)<0)
 	{
-		WriteLog(_FUNC_," - SetExceptionCallback to fail.\n");
+		WriteLogF(_FUNC_," - SetExceptionCallback to fail.\n");
 		ctx->Release();
 		return NULL;
 	}
@@ -446,7 +446,7 @@ asIScriptContext* CreateContext()
 	char* buf=new char[CONTEXT_BUFFER_SIZE];
 	if(!buf)
 	{
-		WriteLog(_FUNC_," - Allocate memory for buffer fail.\n");
+		WriteLogF(_FUNC_," - Allocate memory for buffer fail.\n");
 		ctx->Release();
 		return NULL;
 	}
@@ -471,8 +471,8 @@ asIScriptContext* GetGlobalContext()
 {
 	if(GlobalCtxIndex>=GLOBAL_CONTEXT_STACK_SIZE)
 	{
-		WriteLog(_FUNC_," - Script context stack overflow! Context call stack:\n");
-		for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--) WriteLog(NULL,"  %d) %s.\n",i,GlobalCtx[i]->GetUserData());
+		WriteLogF(_FUNC_," - Script context stack overflow! Context call stack:\n");
+		for(int i=GLOBAL_CONTEXT_STACK_SIZE-1;i>=0;i--) WriteLog("  %d) %s.\n",i,GlobalCtx[i]->GetUserData());
 		return NULL;
 	}
 	GlobalCtxIndex++;
@@ -484,7 +484,7 @@ void PrintContextCallstack(asIScriptContext* ctx)
 	int line,column;
 	const asIScriptFunction* func;
 	int stack_size=ctx->GetCallstackSize();
-	WriteLog(NULL,"Context<%s>, state<%s>, call stack<%d>:\n",ctx->GetUserData(),ContextStatesStr[(int)ctx->GetState()],stack_size);
+	WriteLog("Context<%s>, state<%s>, call stack<%d>:\n",ctx->GetUserData(),ContextStatesStr[(int)ctx->GetState()],stack_size);
 
 	// Print current function
 	if(ctx->GetState()==asEXECUTION_EXCEPTION)
@@ -497,14 +497,14 @@ void PrintContextCallstack(asIScriptContext* ctx)
 		line=ctx->GetLineNumber(0,&column);
 		func=ctx->GetFunction(0);
 	}
-	if(func) WriteLog(NULL,"  %d) %s : %s : %d, %d.\n",stack_size-1,func->GetModuleName(),func->GetDeclaration(),line,column);
+	if(func) WriteLog("  %d) %s : %s : %d, %d.\n",stack_size-1,func->GetModuleName(),func->GetDeclaration(),line,column);
 
 	// Print call stack
 	for(int i=1;i<stack_size;i++)
 	{
 		func=ctx->GetFunction(i);
 		line=ctx->GetLineNumber(i,&column);
-		if(func) WriteLog(NULL,"  %d) %s : %s : %d, %d.\n",stack_size-i-1,func->GetModuleName(),func->GetDeclaration(),line,column);
+		if(func) WriteLog("  %d) %s : %s : %d, %d.\n",stack_size-i-1,func->GetModuleName(),func->GetDeclaration(),line,column);
 	}
 }
 
@@ -772,7 +772,7 @@ char* Preprocess(const char* fname, bool process_pragmas)
 	// Preprocess
 	if(Preprocessor::Preprocess(fname,fsrc,vos,process_pragmas))
 	{
-		WriteLog(_FUNC_," - Unable to preprocess<%s> script.\n",fname);
+		WriteLogF(_FUNC_," - Unable to preprocess<%s> script.\n",fname);
 		return NULL;
 	}
 
@@ -872,8 +872,8 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 
 			if(no_all_files || (!outdated && bin_version==version))
 			{
-				if(bin_version!=version) WriteLog(_FUNC_," - Script<%s> compiled in older server version.\n",module_name);
-				if(outdated) WriteLog(_FUNC_," - Script<%s> outdated.\n",module_name);
+				if(bin_version!=version) WriteLogF(_FUNC_," - Script<%s> compiled in older server version.\n",module_name);
+				if(outdated) WriteLogF(_FUNC_," - Script<%s> outdated.\n",module_name);
 
 				// Delete old
 				for(ScriptModuleVecIt it=modules.begin(),end=modules.end();it!=end;++it)
@@ -881,7 +881,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 					asIScriptModule* module=*it;
 					if(Str::Compare(module->GetName(),module_name))
 					{
-						WriteLog(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
+						WriteLogF(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
 						Engine->DiscardModule(module_name);
 						modules.erase(it);
 						break;
@@ -912,15 +912,15 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 						modules.push_back(module);
 						return true;
 					}
-					else WriteLog(_FUNC_," - Can't load binary, script<%s>.\n",module_name);
+					else WriteLogF(_FUNC_," - Can't load binary, script<%s>.\n",module_name);
 				}
-				else WriteLog(_FUNC_," - Create module fail, script<%s>.\n",module_name);
+				else WriteLogF(_FUNC_," - Create module fail, script<%s>.\n",module_name);
 			}
 		}
 
 		if(!file.IsLoaded())
 		{
-			WriteLog(_FUNC_," - Script<%s> not found.\n",fname_real);
+			WriteLogF(_FUNC_," - Script<%s> not found.\n",fname_real);
 			return false;
 		}
 
@@ -936,7 +936,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 	if(Preprocessor::Preprocess(fname_real,fsrc,vos,true,&vos_err))
 	{
 		vos_err.PushNull();
-		WriteLog(_FUNC_," - Unable to preprocess file<%s>, error<%s>.\n",fname_real,vos_err.GetData());
+		WriteLogF(_FUNC_," - Unable to preprocess file<%s>, error<%s>.\n",fname_real,vos_err.GetData());
 		return false;
 	}
 	vos.Format();
@@ -947,7 +947,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 		asIScriptModule* module=*it;
 		if(Str::Compare(module->GetName(),module_name))
 		{
-			WriteLog(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
+			WriteLogF(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
 			Engine->DiscardModule(module_name);
 			modules.erase(it);
 			break;
@@ -957,19 +957,19 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 	asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
 	if(!module)
 	{
-		WriteLog(_FUNC_," - Create module fail, script<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Create module fail, script<%s>.\n",module_name);
 		return false;
 	}
 
 	if(module->AddScriptSection(module_name,vos.GetData(),vos.GetSize(),0)<0)
 	{
-		WriteLog(_FUNC_," - Unable to AddScriptSection module<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Unable to AddScriptSection module<%s>.\n",module_name);
 		return false;
 	}
 
 	if(module->Build()<0)
 	{
-		WriteLog(_FUNC_," - Unable to Build module<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Unable to Build module<%s>.\n",module_name);
 		return false;
 	}
 
@@ -1041,7 +1041,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 
 		if(global_fail)
 		{
-			WriteLog(_FUNC_," - Wrong global variables in module<%s>.\n",module_name);
+			WriteLogF(_FUNC_," - Wrong global variables in module<%s>.\n",module_name);
 			return false;
 		}
 	}
@@ -1066,17 +1066,17 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			for(uint i=0,j=pragmas.size();i<j;i++) file_bin.SetData((uchar*)pragmas[i].c_str(),pragmas[i].length()+1);
 			file_bin.SetData(&data[0],data.size());
 
-			if(!file_bin.SaveOutBufToFile(Str::FormatBuf("%sb",fname_script),ScriptsPath)) WriteLog(_FUNC_," - Can't save bytecode, script<%s>.\n",module_name);
+			if(!file_bin.SaveOutBufToFile(Str::FormatBuf("%sb",fname_script),ScriptsPath)) WriteLogF(_FUNC_," - Can't save bytecode, script<%s>.\n",module_name);
 		}
 		else
 		{
-			WriteLog(_FUNC_," - Can't write bytecode, script<%s>.\n",module_name);
+			WriteLogF(_FUNC_," - Can't write bytecode, script<%s>.\n",module_name);
 		}
 
 		FileManager file_prep;
 		file_prep.SetData((void*)vos.GetData(),vos.GetSize());
 		if(!file_prep.SaveOutBufToFile(Str::FormatBuf("%sp",fname_script),ScriptsPath))
-			WriteLog(_FUNC_," - Can't write preprocessed file, script<%s>.\n",module_name);
+			WriteLogF(_FUNC_," - Can't write preprocessed file, script<%s>.\n",module_name);
 	}
 	return true;
 }
@@ -1085,7 +1085,7 @@ bool LoadScript(const char* module_name, const uchar* bytecode, uint len)
 {
 	if(!bytecode || !len)
 	{
-		WriteLog(_FUNC_," - Bytecode empty, module name<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Bytecode empty, module name<%s>.\n",module_name);
 		return false;
 	}
 
@@ -1097,7 +1097,7 @@ bool LoadScript(const char* module_name, const uchar* bytecode, uint len)
 		asIScriptModule* module=*it;
 		if(Str::Compare(module->GetName(),module_name))
 		{
-			WriteLog(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
+			WriteLogF(_FUNC_," - Warning, script for this name<%s> already exist. Discard it.\n",module_name);
 			Engine->DiscardModule(module_name);
 			modules.erase(it);
 			break;
@@ -1107,7 +1107,7 @@ bool LoadScript(const char* module_name, const uchar* bytecode, uint len)
 	asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
 	if(!module)
 	{
-		WriteLog(_FUNC_," - Create module fail, script<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Create module fail, script<%s>.\n",module_name);
 		return false;
 	}
 
@@ -1116,7 +1116,7 @@ bool LoadScript(const char* module_name, const uchar* bytecode, uint len)
 	int result=module->LoadByteCode(&binary);
 	if(result<0)
 	{
-		WriteLog(_FUNC_," - Can't load binary, module<%s>, result<%d>.\n",module_name,result);
+		WriteLogF(_FUNC_," - Can't load binary, module<%s>, result<%d>.\n",module_name,result);
 		return false;
 	}
 
@@ -1126,7 +1126,7 @@ bool LoadScript(const char* module_name, const uchar* bytecode, uint len)
 
 int BindImportedFunctions()
 {
-	//WriteLog(NULL,"Bind all imported functions...\n");
+	//WriteLog("Bind all imported functions...\n");
 
 	EngineData* edata=(EngineData*)Engine->GetUserData();
 	ScriptModuleVec& modules=edata->Modules;
@@ -1137,13 +1137,13 @@ int BindImportedFunctions()
 		int result=module->BindAllImportedFunctions();
 		if(result<0)
 		{
-			WriteLog(_FUNC_," - Fail to bind imported functions, module<%s>, error<%d>.\n",module->GetName(),result);
+			WriteLogF(_FUNC_," - Fail to bind imported functions, module<%s>, error<%d>.\n",module->GetName(),result);
 			errors++;
 			continue;
 		}
 	}
 
-	//WriteLog(NULL,"Bind all imported functions complete.\n");
+	//WriteLog("Bind all imported functions complete.\n");
 	return errors;
 }
 
@@ -1160,7 +1160,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		asIScriptModule* module=Engine->GetModule(module_name,asGM_ONLY_IF_EXISTS);
 		if(!module)
 		{
-			if(!disable_log) WriteLog(_FUNC_," - Module<%s> not found.\n",module_name);
+			if(!disable_log) WriteLogF(_FUNC_," - Module<%s> not found.\n",module_name);
 			return 0;
 		}
 
@@ -1170,7 +1170,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		int result=module->GetFunctionIdByDecl(decl_);
 		if(result<=0)
 		{
-			if(!disable_log) WriteLog(_FUNC_," - Function<%s> in module<%s> not found, result<%d>.\n",decl_,module_name,result);
+			if(!disable_log) WriteLogF(_FUNC_," - Function<%s> in module<%s> not found, result<%d>.\n",decl_,module_name,result);
 			return 0;
 		}
 
@@ -1199,7 +1199,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		void* dll=LoadDynamicLibrary(module_name);
 		if(!dll)
 		{
-			if(!disable_log) WriteLog(_FUNC_," - Dll<%s> not found in scripts folder, error<%u>.\n",module_name,GetLastError());
+			if(!disable_log) WriteLogF(_FUNC_," - Dll<%s> not found in scripts folder, error<%u>.\n",module_name,GetLastError());
 			return 0;
 		}
 
@@ -1207,7 +1207,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		size_t func=(size_t)GetFunctionAddress(dll,func_name);
 		if(!func)
 		{
-			if(!disable_log) WriteLog(_FUNC_," - Function<%s> in dll<%s> not found, error<%u>.\n",func_name,module_name,GetLastError());
+			if(!disable_log) WriteLogF(_FUNC_," - Function<%s> in dll<%s> not found, error<%u>.\n",func_name,module_name,GetLastError());
 			return 0;
 		}
 
@@ -1239,7 +1239,7 @@ int Bind(const char* script_name, const char* decl, bool is_temp, bool disable_l
 	char func_name[256];
 	if(!ReparseScriptName(script_name,module_name,func_name,disable_log))
 	{
-		WriteLog(_FUNC_," - Parse script name<%s> fail.\n",script_name);
+		WriteLogF(_FUNC_," - Parse script name<%s> fail.\n",script_name);
 		return 0;
 	}
 	return Bind(module_name,func_name,decl,is_temp,disable_log);
@@ -1260,7 +1260,7 @@ int RebindFunctions()
 			int bind_id=Bind(bf.ModuleName.c_str(),bf.FuncName.c_str(),bf.FuncDecl.c_str(),true);
 			if(bind_id<=0)
 			{
-				WriteLog(_FUNC_," - Unable to bind function, module<%s>, function<%s>, declaration<%s>.\n",bf.ModuleName.c_str(),bf.FuncName.c_str(),bf.FuncDecl.c_str());
+				WriteLogF(_FUNC_," - Unable to bind function, module<%s>, function<%s>, declaration<%s>.\n",bf.ModuleName.c_str(),bf.FuncName.c_str(),bf.FuncDecl.c_str());
 				bf.ScriptFuncId=0;
 				errors++;
 			}
@@ -1277,7 +1277,7 @@ bool ReparseScriptName(const char* script_name, char* module_name, char* func_na
 {
 	if(!script_name || !module_name || !func_name)
 	{
-		WriteLog(_FUNC_," - Some name null ptr.\n");
+		WriteLogF(_FUNC_," - Some name null ptr.\n");
 		CreateDump("ReparseScriptName");
 		return false;
 	}
@@ -1301,13 +1301,13 @@ bool ReparseScriptName(const char* script_name, char* module_name, char* func_na
 
 	if(!Str::Length(module_name) || Str::Compare(module_name,"<error>"))
 	{
-		if(!disable_log) WriteLog(_FUNC_," - Script name parse error, string<%s>.\n",script_name);
+		if(!disable_log) WriteLogF(_FUNC_," - Script name parse error, string<%s>.\n",script_name);
 		module_name[0]=func_name[0]=0;
 		return false;
 	}
 	if(!Str::Length(func_name))
 	{
-		if(!disable_log) WriteLog(_FUNC_," - Function name parse error, string<%s>.\n",script_name);
+		if(!disable_log) WriteLogF(_FUNC_," - Function name parse error, string<%s>.\n",script_name);
 		module_name[0]=func_name[0]=0;
 		return false;
 	}
@@ -1367,7 +1367,7 @@ int GetScriptFuncBindId(uint func_num)
 	func_num--;
 	if(func_num>=ScriptFuncBindId.size())
 	{
-		WriteLog(_FUNC_," - Function index<%u> is greater than bind buffer size<%u>.\n",func_num,ScriptFuncBindId.size());
+		WriteLogF(_FUNC_," - Function index<%u> is greater than bind buffer size<%u>.\n",func_num,ScriptFuncBindId.size());
 		return 0;
 	}
 	return ScriptFuncBindId[func_num];
@@ -1382,13 +1382,13 @@ string GetScriptFuncName(uint func_num)
 	func_num--;
 	if(func_num>=ScriptFuncBindId.size())
 	{
-		WriteLog(_FUNC_," - Function index<%u> is greater than bind buffer size<%u>.\n",func_num,ScriptFuncBindId.size());
+		WriteLogF(_FUNC_," - Function index<%u> is greater than bind buffer size<%u>.\n",func_num,ScriptFuncBindId.size());
 		return "error func index";
 	}
 
 	if(ScriptFuncBindId[func_num]>=(int)BindedFunctions.size())
 	{
-		WriteLog(_FUNC_," - Bind index<%u> is greater than bind buffer size<%u>.\n",ScriptFuncBindId[func_num],BindedFunctions.size());
+		WriteLogF(_FUNC_," - Bind index<%u> is greater than bind buffer size<%u>.\n",ScriptFuncBindId[func_num],BindedFunctions.size());
 		return "error bind index";
 	}
 
@@ -1497,7 +1497,7 @@ void EndExecution()
 
 			if(sync_not_closed)
 			{
-				WriteLog(_FUNC_," - Synchronization section is not closed in script!\n");
+				WriteLogF(_FUNC_," - Synchronization section is not closed in script!\n");
 				sync_mngr->PopPriority();
 			}
 		}
@@ -1534,7 +1534,7 @@ bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 
 	if(bind_id<=0 || bind_id>=(int)BindedFunctions.size())
 	{
-		WriteLog(_FUNC_," - Invalid bind id<%d>.\n",bind_id);
+		WriteLogF(_FUNC_," - Invalid bind id<%d>.\n",bind_id);
 #ifdef SCRIPT_MULTITHREADING
 		if(LogicMT) BindedFunctionsLocker.Unlock();
 #endif
@@ -1566,7 +1566,7 @@ bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 		int result=ctx->Prepare(func_id);
 		if(result<0)
 		{
-			WriteLog(_FUNC_," - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n",ctx->GetUserData(),bind_id,func_id,result);
+			WriteLogF(_FUNC_," - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n",ctx->GetUserData(),bind_id,func_id,result);
 			GlobalCtxIndex--;
 			EndExecution();
 			return false;
@@ -1657,9 +1657,9 @@ bool RunPrepared()
 		asEContextState state=ctx->GetState();
 		if(state!=asEXECUTION_FINISHED)
 		{
-			if(state==asEXECUTION_EXCEPTION) WriteLog(NULL,"Execution of script stopped due to exception.\n");
-			else if(state==asEXECUTION_SUSPENDED) WriteLog(NULL,"Execution of script stopped due to timeout<%u>.\n",RunTimeoutSuspend);
-			else WriteLog(NULL,"Execution of script stopped due to %s.\n",ContextStatesStr[(int)state]);
+			if(state==asEXECUTION_EXCEPTION) WriteLog("Execution of script stopped due to exception.\n");
+			else if(state==asEXECUTION_SUSPENDED) WriteLog("Execution of script stopped due to timeout<%u>.\n",RunTimeoutSuspend);
+			else WriteLog("Execution of script stopped due to %s.\n",ContextStatesStr[(int)state]);
 			PrintContextCallstack(ctx); // Name and state of context will be printed in this function
 			ctx->Abort();
 			EndExecution();
@@ -1667,12 +1667,12 @@ bool RunPrepared()
 		}
 		else if(RunTimeoutMessage && delta>=RunTimeoutMessage)
 		{
-			WriteLog(NULL,"Script work time<%u> in context<%s>.\n",delta,ctx->GetUserData());
+			WriteLog("Script work time<%u> in context<%s>.\n",delta,ctx->GetUserData());
 		}
 
 		if(result<0)
 		{
-			WriteLog(_FUNC_," - Context<%s> execute error<%d>, state<%s>.\n",ctx->GetUserData(),result,ContextStatesStr[(int)state]);
+			WriteLogF(_FUNC_," - Context<%s> execute error<%d>, state<%s>.\n",ctx->GetUserData(),result,ContextStatesStr[(int)state]);
 			EndExecution();
 			return false;
 		}
@@ -1898,7 +1898,7 @@ void Log(const char* str)
 
 void LogA(const char* str)
 {
-	WriteLog(NULL,"%s",str);
+	WriteLog("%s",str);
 	if(!EngineLogFile) return;
 	FileWrite(EngineLogFile,str,Str::Length(str));
 }

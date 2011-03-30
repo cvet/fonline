@@ -101,14 +101,14 @@ int main(int argc, char** argv)
 		Str::Append(log_path,"FOnlineServer.log");
 		LogToFile(log_path);
 
-		WriteLog(NULL,"Singleplayer mode.\n");
+		WriteLog("Singleplayer mode.\n");
 
 		// Shared data
 		const char* ptr=strstr(CommandLine,"-singleplayer ")+Str::Length("-singleplayer ");
 		HANDLE map_file=NULL;
 		if(sscanf(ptr,"%p%p",&map_file,&SingleplayerClientProcess)!=2 || !SingleplayerData.Attach(map_file))
 		{
-			WriteLog(NULL,"Can't attach to mapped file<%p>.\n",map_file);
+			WriteLog("Can't attach to mapped file<%p>.\n",map_file);
 			return 0;
 		}
 #else
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 		LogToBuffer(&GuiMsg_UpdateLog);
 	}
 
-	WriteLog(NULL,"FOnline server, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
+	WriteLog("FOnline server, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
 
 	FOQuit=true;
 
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
 	}
 
 	// Command line
-	if(CommandLineArgCount>1) WriteLog(NULL,"Command line<%s>.\n",CommandLine);
+	if(CommandLineArgCount>1) WriteLog("Command line<%s>.\n",CommandLine);
 
 	// Autostart
 	if(strstr(CommandLine,"-start") || Singleplayer)
@@ -617,7 +617,7 @@ void* GameLoopThread(void*)
 	}
 	else
 	{
-		WriteLog(NULL,"Initialization fail!\n");
+		WriteLog("Initialization fail!\n");
 		GameInitEvent.Allow();
 	}
 
@@ -627,7 +627,7 @@ void* GameLoopThread(void*)
 		LogFinish(LOG_BUFFER);
 		LogGetBuffer(str);
 		LogToTextBox(GuiLog);
-		if(str.length()) WriteLog(NULL,"%s",str.c_str());
+		if(str.length()) WriteLog("%s",str.c_str());
 	}
 
 	LogFinish(-1);
@@ -728,7 +728,7 @@ VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
 	LogToFile("FOnlineServer.log");
 	LogSetThreadName("Service");
-	WriteLog(NULL,"FOnline server service, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
+	WriteLog("FOnline server service, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
 
 	FOServiceStatusHandle=RegisterServiceCtrlHandler("FOnlineServer",FOServiceCtrlHandler);
 	if(!FOServiceStatusHandle) return;

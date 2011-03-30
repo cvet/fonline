@@ -494,7 +494,7 @@ bool CraftManager::operator==(const CraftManager& r)
 {
 	if(itemCraft.size()!=r.itemCraft.size())
 	{
-		WriteLog(_FUNC_," - Different sizes.\n");
+		WriteLogF(_FUNC_," - Different sizes.\n");
 		return false;
 	}
 
@@ -505,7 +505,7 @@ bool CraftManager::operator==(const CraftManager& r)
 		CraftItem* craft=(*it).second;
 		CraftItem* rcraft=(*it_).second;
 
-#define COMPARE_CRAFT(p) if(craft->p!=rcraft->p){WriteLog(_FUNC_," - Different<"#p">, craft<%u>.\n",craft->Num); return false;}
+#define COMPARE_CRAFT(p) if(craft->p!=rcraft->p){WriteLogF(_FUNC_," - Different<"#p">, craft<%u>.\n",craft->Num); return false;}
 		COMPARE_CRAFT(Num);
 		COMPARE_CRAFT(ShowPNum);
 		COMPARE_CRAFT(ShowPVal);
@@ -577,7 +577,7 @@ bool CraftManager::LoadCrafts(FOMsg& msg)
 
 		if(!AddCraft(num,str.c_str()))
 		{
-			WriteLog(_FUNC_," - Craft<%d> string<%s> load fail.\n",num,str.c_str());
+			WriteLogF(_FUNC_," - Craft<%d> string<%s> load fail.\n",num,str.c_str());
 			load_fail++;
 			continue;
 		}
@@ -624,7 +624,7 @@ bool CraftManager::AddCraft(uint num, const char* str)
 	if(!craft)
 	{
 		delete craft;
-		WriteLog(_FUNC_," - Allocation fail.\n");
+		WriteLogF(_FUNC_," - Allocation fail.\n");
 		return false;
 	}
 
@@ -632,7 +632,7 @@ bool CraftManager::AddCraft(uint num, const char* str)
 	if(craft->SetStr(num,str)<0)
 	{
 		delete craft;
-		WriteLog(_FUNC_," - Parse fail.\n");
+		WriteLogF(_FUNC_," - Parse fail.\n");
 		return false;
 	}
 
@@ -643,7 +643,7 @@ bool CraftManager::AddCraft(uint num, const char* str)
 		if(!craft->ScriptBindId)
 		{
 			delete craft;
-			WriteLog(_FUNC_," - Bind function fail.\n");
+			WriteLogF(_FUNC_," - Bind function fail.\n");
 			return false;
 		}
 	}

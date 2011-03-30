@@ -40,7 +40,7 @@ void Item::Init(ProtoItem* proto)
 {
 	if(!proto)
 	{
-		WriteLog(_FUNC_," - Proto is null ptr.\n");
+		WriteLogF(_FUNC_," - Proto is null ptr.\n");
 		return;
 	}
 
@@ -165,7 +165,7 @@ bool Item::ParseScript(const char* script, bool first_time)
 		uint func_num=Script::GetScriptFuncNum(script,"void %s(Item&,bool)");
 		if(!func_num)
 		{
-			WriteLog(_FUNC_," - Script<%s> bind fail, item pid<%u>.\n",script,GetProtoId());
+			WriteLogF(_FUNC_," - Script<%s> bind fail, item pid<%u>.\n",script,GetProtoId());
 			return false;
 		}
 		Data.ScriptId=func_num;
@@ -459,7 +459,7 @@ void Item::ContSetItem(Item* item)
 
 	if(std::find(ChildItems->begin(),ChildItems->end(),item)!=ChildItems->end())
 	{
-		WriteLog(_FUNC_," - Item already added!\n");
+		WriteLogF(_FUNC_," - Item already added!\n");
 		return;
 	}
 
@@ -472,17 +472,17 @@ void Item::ContEraseItem(Item* item)
 {
 	if(!IsContainer())
 	{
-		WriteLog(_FUNC_," - Item is not container.\n");
+		WriteLogF(_FUNC_," - Item is not container.\n");
 		return;
 	}
 	if(!ChildItems)
 	{
-		WriteLog(_FUNC_," - Container items null ptr.\n");
+		WriteLogF(_FUNC_," - Container items null ptr.\n");
 		return;
 	}
 	if(!item)
 	{
-		WriteLog(_FUNC_," - Item null ptr.\n");
+		WriteLogF(_FUNC_," - Item null ptr.\n");
 		return;
 	}
 
@@ -490,7 +490,7 @@ void Item::ContEraseItem(Item* item)
 	if(it!=ChildItems->end())
 		ChildItems->erase(it);
 	else
-		WriteLog(_FUNC_," - Item not found, id<%u>, pid<%u>, container<%u>.\n",item->GetId(),item->GetProtoId(),GetId());
+		WriteLogF(_FUNC_," - Item not found, id<%u>, pid<%u>, container<%u>.\n",item->GetId(),item->GetProtoId(),GetId());
 
 	item->Accessory=0xd3;
 

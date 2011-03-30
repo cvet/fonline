@@ -285,7 +285,7 @@ void Critter::ProcessVisibleCritters()
 	{
 		if(!GroupMove)
 		{
-			WriteLog(_FUNC_," - GroupMove nullptr, critter<%s>. Creating dump file.\n",GetInfo());
+			WriteLogF(_FUNC_," - GroupMove nullptr, critter<%s>. Creating dump file.\n",GetInfo());
 			CreateDump("ProcessVisibleCritters");
 			return;
 		}
@@ -911,7 +911,7 @@ void Critter::AddItem(Item*& item, bool send)
 	// Check
 	if(!item || !item->Proto)
 	{
-		WriteLog(_FUNC_," - Item null ptr, critter<%s>.\n",GetInfo());
+		WriteLogF(_FUNC_," - Item null ptr, critter<%s>.\n",GetInfo());
 		return;
 	}
 
@@ -953,7 +953,7 @@ void Critter::SetItem(Item* item)
 {
 	if(!item || !item->Proto)
 	{
-		WriteLog(_FUNC_," - Item null ptr, critter<%s>.\n",GetInfo());
+		WriteLogF(_FUNC_," - Item null ptr, critter<%s>.\n",GetInfo());
 		return;
 	}
 
@@ -997,13 +997,13 @@ void Critter::EraseItem(Item* item, bool send)
 {
 	if(!item)
 	{
-		WriteLog(_FUNC_," - Item null ptr, critter<%s>.\n",GetInfo());
+		WriteLogF(_FUNC_," - Item null ptr, critter<%s>.\n",GetInfo());
 		return;
 	}
 
 	ItemPtrVecIt it=std::find(invItems.begin(),invItems.end(),item);
 	if(it!=invItems.end()) invItems.erase(it);
-	else WriteLog(_FUNC_," - Item not found, id<%u>, pid<%u>, critter<%s>.\n",item->GetId(),item->GetProtoId(),GetInfo());
+	else WriteLogF(_FUNC_," - Item not found, id<%u>, pid<%u>, critter<%s>.\n",item->GetId(),item->GetProtoId(),GetInfo());
 
 	if(!GetMap() && GroupMove && GroupMove->CarId==item->GetId())
 	{
@@ -1230,20 +1230,20 @@ bool Critter::MoveItem(uchar from_slot, uchar to_slot, uint item_id, uint count)
 
 	if(!item_id)
 	{
-		WriteLog(_FUNC_," - Item id is zero, from slot<%u>, to slot<%u>, critter<%s>.\n",from_slot,to_slot,GetInfo());
+		WriteLogF(_FUNC_," - Item id is zero, from slot<%u>, to slot<%u>, critter<%s>.\n",from_slot,to_slot,GetInfo());
 		return false;
 	}
 
 	Item* item=GetItem(item_id,IsPlayer());
 	if(!item)
 	{
-		WriteLog(_FUNC_," - Item not found, item id<%u>, critter<%s>.\n",item_id,GetInfo());
+		WriteLogF(_FUNC_," - Item not found, item id<%u>, critter<%s>.\n",item_id,GetInfo());
 		return false;
 	}
 
 	if(item->ACC_CRITTER.Slot!=from_slot || from_slot==to_slot)
 	{
-		WriteLog(_FUNC_," - Wrong slots, from slot<%u>, from slot real<%u>, to slot<%u>, item id<%u>, critter<%s>.\n",from_slot,item->ACC_CRITTER.Slot,to_slot,item_id,GetInfo());
+		WriteLogF(_FUNC_," - Wrong slots, from slot<%u>, from slot real<%u>, to slot<%u>, item id<%u>, critter<%s>.\n",from_slot,item->ACC_CRITTER.Slot,to_slot,item_id,GetInfo());
 		return false;
 	}
 
@@ -1292,7 +1292,7 @@ bool Critter::MoveItem(uchar from_slot, uchar to_slot, uint item_id, uint count)
 		Map* map=MapMngr.GetMap(GetMap());
 		if(!map)
 		{
-			WriteLog(_FUNC_," - Map not found, map id<%u>, critter<%s>.\n",GetMap(),GetInfo());
+			WriteLogF(_FUNC_," - Map not found, map id<%u>, critter<%s>.\n",GetMap(),GetInfo());
 			ItemMngr.ItemToGarbage(item);
 			return true;
 		}
@@ -1310,31 +1310,31 @@ bool Critter::MoveItem(uchar from_slot, uchar to_slot, uint item_id, uint count)
 
 	if(!SlotEnabled[to_slot])
 	{
-		WriteLog(_FUNC_," - Slot<%u> is not allowed, critter<%s>.\n",to_slot,GetInfo());
+		WriteLogF(_FUNC_," - Slot<%u> is not allowed, critter<%s>.\n",to_slot,GetInfo());
 		return false;
 	}
 
 	if(to_slot!=SLOT_INV && !is_castling && GetItemSlot(to_slot))
 	{
-		WriteLog(_FUNC_," - To slot is busy, critter<%s>.\n",GetInfo());
+		WriteLogF(_FUNC_," - To slot is busy, critter<%s>.\n",GetInfo());
 		return false;
 	}
 
 	if(to_slot>SLOT_ARMOR && to_slot!=item->Proto->Slot)
 	{
-		WriteLog(_FUNC_," - Wrong slot<%u> for item pid<%u>, critter<%s>.\n",to_slot,item->GetProtoId(),GetInfo());
+		WriteLogF(_FUNC_," - Wrong slot<%u> for item pid<%u>, critter<%s>.\n",to_slot,item->GetProtoId(),GetInfo());
 		return false;
 	}
 
 	if(to_slot==SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1(GetCrType(),item->Proto->Weapon_Anim1))
 	{
-		WriteLog(_FUNC_," - Critter<%s> not have animations for anim1 index<%u>.\n",GetInfo(),item->Proto->Weapon_Anim1);
+		WriteLogF(_FUNC_," - Critter<%s> not have animations for anim1 index<%u>.\n",GetInfo(),item->Proto->Weapon_Anim1);
 		return false;
 	}
 
 	if(to_slot==SLOT_ARMOR && (!item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor(GetCrType())))
 	{
-		WriteLog(_FUNC_," - Critter<%s> can't change armor.\n",GetInfo());
+		WriteLogF(_FUNC_," - Critter<%s> can't change armor.\n",GetInfo());
 		return false;
 	}
 
@@ -1474,7 +1474,7 @@ bool Critter::ParseScript(const char* script, bool first_time)
 		uint func_num=Script::GetScriptFuncNum(script,"void %s(Critter&,bool)");
 		if(!func_num)
 		{
-			WriteLog(_FUNC_," - Script<%s> bind fail, critter<%s>.\n",script,GetInfo());
+			WriteLogF(_FUNC_," - Script<%s> bind fail, critter<%s>.\n",script,GetInfo());
 			return false;
 		}
 		Data.ScriptId=func_num;
@@ -2957,7 +2957,7 @@ void Client::PingClient()
 {
 	if(!pingOk)
 	{
-		// WriteLog(_FUNC_," - Client is drop, disconnect, info<%s>.\n",GetInfo());
+		// WriteLogF(_FUNC_," - Client is drop, disconnect, info<%s>.\n",GetInfo());
 		Disconnect();
 		Bout.LockReset();
 		return;
@@ -3350,7 +3350,7 @@ void Client::Send_ContainerInfo(Item* item_cont, uchar transfer_type, bool open_
 	if(items.size()>=100)
 	{
 		Map* map=MapMngr.GetMap(item_cont->ACC_HEX.MapId);
-		WriteLog(_FUNC_," - Sending too much items<%u>, container pid<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",items.size(),item_cont->GetProtoId(),map?map->GetPid():0,item_cont->ACC_HEX.HexX,item_cont->ACC_HEX.HexY);
+		WriteLogF(_FUNC_," - Sending too much items<%u>, container pid<%u>, map pid<%u>, hx<%u>, hy<%u>.\n",items.size(),item_cont->GetProtoId(),map?map->GetPid():0,item_cont->ACC_HEX.HexX,item_cont->ACC_HEX.HexY);
 	}
 
 	BOUT_BEGIN(this);
@@ -3398,7 +3398,7 @@ void Client::Send_ContainerInfo(Critter* cr_cont, uchar transfer_type, bool open
 	if(open_screen) SETFLAG(transfer_type,0x80);
 	msg_len+=items.size()*(sizeof(uint)+sizeof(ushort)+sizeof(Item::ItemData));
 
-	if(items.size()>=1000) WriteLog(_FUNC_," - Sending too much items<%u>, from critter<%s>, to critter<%s>.\n",items.size(),cr_cont->GetInfo(),GetInfo());
+	if(items.size()>=1000) WriteLogF(_FUNC_," - Sending too much items<%u>, from critter<%s>, to critter<%s>.\n",items.size(),cr_cont->GetInfo(),GetInfo());
 
 	BOUT_BEGIN(this);
 	Bout << NETMSG_CONTAINER_INFO;

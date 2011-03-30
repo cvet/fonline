@@ -77,7 +77,7 @@ void BufferManager::Unlock()
 void BufferManager::Refresh()
 {
 	if(isError) return;
-	if(bufReadPos>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return; }
+	if(bufReadPos>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return; }
 	if(bufReadPos)
 	{
 		for(uint i=bufReadPos;i<bufEndPos;i++) bufData[i-bufReadPos]=bufData[i];
@@ -138,7 +138,7 @@ void BufferManager::Push(const char* buf, const char* mask, uint len)
 void BufferManager::Pop(char* buf, uint len)
 {
 	if(isError || !len) return;
-	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return; }
+	if(bufReadPos+len>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return; }
 	CopyBuf(bufData+bufReadPos,buf,NULL,EncryptKey(len),len);
 	bufReadPos+=len;
 }
@@ -146,7 +146,7 @@ void BufferManager::Pop(char* buf, uint len)
 void BufferManager::Cut(uint len)
 {
 	if(isError || !len) return;
-	if(bufReadPos+len>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return; }
+	if(bufReadPos+len>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return; }
 	char* buf=bufData+bufReadPos;
 	for(uint i=0;i+bufReadPos+len<bufEndPos;i++) buf[i]=buf[i+len];
 	bufEndPos-=len;
@@ -182,7 +182,7 @@ BufferManager& BufferManager::operator<<(uint i)
 BufferManager& BufferManager::operator>>(uint& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+4>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=*(uint*)(bufData+bufReadPos)^EncryptKey(4);
 	bufReadPos+=4;
 	return *this;
@@ -200,7 +200,7 @@ BufferManager& BufferManager::operator<<(int i)
 BufferManager& BufferManager::operator>>(int& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+4>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+4>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=*(int*)(bufData+bufReadPos)^EncryptKey(4);
 	bufReadPos+=4;
 	return *this;
@@ -218,7 +218,7 @@ BufferManager& BufferManager::operator<<(ushort i)
 BufferManager& BufferManager::operator>>(ushort& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+2>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=*(ushort*)(bufData+bufReadPos)^EncryptKey(2);
 	bufReadPos+=2;
 	return *this;
@@ -236,7 +236,7 @@ BufferManager& BufferManager::operator<<(short i)
 BufferManager& BufferManager::operator>>(short& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+2>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+2>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=*(short*)(bufData+bufReadPos)^EncryptKey(2);
 	bufReadPos+=2;
 	return *this;
@@ -254,7 +254,7 @@ BufferManager& BufferManager::operator<<(uchar i)
 BufferManager& BufferManager::operator>>(uchar& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=*(uchar*)(bufData+bufReadPos)^EncryptKey(1);
 	bufReadPos+=1;
 	return *this;
@@ -272,7 +272,7 @@ BufferManager& BufferManager::operator<<(char i)
 BufferManager& BufferManager::operator>>(char& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=*(char*)(bufData+bufReadPos)^EncryptKey(1);
 	bufReadPos+=1;
 	return *this;
@@ -290,7 +290,7 @@ BufferManager& BufferManager::operator<<(bool i)
 BufferManager& BufferManager::operator>>(bool& i)
 {
 	if(isError) return *this;
-	if(bufReadPos+1>bufEndPos) { isError=true; WriteLog(_FUNC_," - Error!\n"); return *this; }
+	if(bufReadPos+1>bufEndPos) { isError=true; WriteLogF(_FUNC_," - Error!\n"); return *this; }
 	i=((*(uchar*)(bufData+bufReadPos)^(EncryptKey(1)&0xFF))?true:false);
 	bufReadPos+=1;
 	return *this;
@@ -423,11 +423,11 @@ bool BufferManager::NeedProcess()
 	default:
 		// Unknown message
 #ifdef FONLINE_CLIENT
-		WriteLog(_FUNC_," - Unknown message<%u> in buffer, try find valid.\n",(msg>>8)&0xFF);
+		WriteLogF(_FUNC_," - Unknown message<%u> in buffer, try find valid.\n",(msg>>8)&0xFF);
 		SeekValidMsg();
 		return NeedProcess();
 #else
-		//WriteLog(_FUNC_," - Unknown message<%u> in buffer, reset.\n",msg);
+		//WriteLogF(_FUNC_," - Unknown message<%u> in buffer, reset.\n",msg);
 		Reset();
 		return false;
 #endif

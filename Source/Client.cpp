@@ -9,7 +9,7 @@
 #define CHECK_IN_BUFF_ERROR \
 	if(Bin.IsError())\
 	{\
-		WriteLog(_FUNC_," - Wrong MSG data.\n");\
+		WriteLogF(_FUNC_," - Wrong MSG data.\n");\
 		return;\
 	}
 
@@ -87,7 +87,7 @@ void _PostRestore()
 	{
 		SAFEREL(FOClient::Self->SaveLoadDraft);
 		if(FAILED(SprMngr.GetDevice()->CreateRenderTarget(SAVE_LOAD_IMAGE_WIDTH,SAVE_LOAD_IMAGE_HEIGHT,
-			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&FOClient::Self->SaveLoadDraft,NULL))) WriteLog(NULL,"Create save/load draft surface fail.\n");
+			D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&FOClient::Self->SaveLoadDraft,NULL))) WriteLog("Create save/load draft surface fail.\n");
 		FOClient::Self->SaveLoadDraftValid=false;
 	}
 }
@@ -95,7 +95,7 @@ void _PostRestore()
 uint* UID1;
 bool FOClient::Init(HWND hwnd)
 {
-	WriteLog(NULL,"Engine initialization...\n");
+	WriteLog("Engine initialization...\n");
 
 	STATIC_ASSERT(sizeof(uint)==4);
 	STATIC_ASSERT(sizeof(ushort)==2);
@@ -196,17 +196,17 @@ bool FOClient::Init(HWND hwnd)
 
 	if(!Crypt.SetCacheTable(Str::FormatBuf("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
-		WriteLog(_FUNC_," - Can't set default cache.\n");
+		WriteLogF(_FUNC_," - Can't set default cache.\n");
 		return false;
 	}
 	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::FormatBuf("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)))
 	{
-		WriteLog(_FUNC_," - Can't set new cache.\n");
+		WriteLogF(_FUNC_," - Can't set new cache.\n");
 		return false;
 	}
 	if(Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::FormatBuf("%ssingleplayer.cache",FileMngr.GetDataPath(PT_DATA))))
 	{
-		WriteLog(_FUNC_," - Can't set single player cache.\n");
+		WriteLogF(_FUNC_," - Can't set single player cache.\n");
 		return false;
 	}
 
@@ -329,7 +329,7 @@ bool FOClient::Init(HWND hwnd)
 	int res=InitIface();
 	if(res!=0)
 	{
-		WriteLog(NULL,"Init interface fail, error<%d>.\n",res);
+		WriteLog("Init interface fail, error<%d>.\n",res);
 		return false;
 	}
 
@@ -400,7 +400,7 @@ bool FOClient::Init(HWND hwnd)
 	LookBorders.clear();
 	ShootBorders.clear();
 
-	WriteLog(NULL,"Engine initialization complete.\n");
+	WriteLog("Engine initialization complete.\n");
 	Active=true;
 	GET_UID4(UID4);
 
@@ -432,12 +432,12 @@ bool FOClient::Init(HWND hwnd)
 
 int FOClient::InitDInput()
 {
-	WriteLog(NULL,"DirectInput initialization...\n");
+	WriteLog("DirectInput initialization...\n");
 
     HRESULT hr=DirectInput8Create(GetModuleHandle(NULL),DIRECTINPUT_VERSION,IID_IDirectInput8,(void**)&DInput,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Can't create DirectInput.\n");
+		WriteLog("Can't create DirectInput.\n");
 		return false;
 	}
 
@@ -445,14 +445,14 @@ int FOClient::InitDInput()
     hr=DInput->CreateDevice(GUID_SysKeyboard,&Keyboard,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Can't create GUID_SysKeyboard.\n");
+		WriteLog("Can't create GUID_SysKeyboard.\n");
 		return false;
 	}
 
     hr=DInput->CreateDevice(GUID_SysMouse,&Mouse,NULL);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Can't create GUID_SysMouse.\n");
+		WriteLog("Can't create GUID_SysMouse.\n");
 		return false;
 	}
 
@@ -462,28 +462,28 @@ int FOClient::InitDInput()
     hr=Keyboard->SetDataFormat(&c_dfDIKeyboard);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set data format for keyboard.\n");
+		WriteLog("Unable to set data format for keyboard.\n");
 		return false;
 	}
 
     hr=Mouse->SetDataFormat(&c_dfDIMouse2);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set data format for mouse.\n");
+		WriteLog("Unable to set data format for mouse.\n");
 		return false;
 	}
 
     hr=Keyboard->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|DISCL_NONEXCLUSIVE);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set cooperative level for keyboard.\n");
+		WriteLog("Unable to set cooperative level for keyboard.\n");
 		return false;
 	}
 
 	hr=Mouse->SetCooperativeLevel(Wnd,DISCL_FOREGROUND|(GameOpt.FullScreen?DISCL_EXCLUSIVE:DISCL_NONEXCLUSIVE));
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set cooperative level for mouse.\n");
+		WriteLog("Unable to set cooperative level for mouse.\n");
 		return false;
 	}
 
@@ -498,28 +498,28 @@ int FOClient::InitDInput()
     hr=Keyboard->SetProperty(DIPROP_BUFFERSIZE,&dipdw.diph);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set property for keyboard.\n");
+		WriteLog("Unable to set property for keyboard.\n");
 		return false;
 	}
 
     hr=Mouse->SetProperty(DIPROP_BUFFERSIZE,&dipdw.diph);
 	if(hr!=DI_OK)
 	{
-		WriteLog(NULL,"Unable to set property for mouse.\n");
+		WriteLog("Unable to set property for mouse.\n");
 		return false;
 	}
 
     // Acquire the newly created device
-	if(Keyboard->Acquire()!=DI_OK) WriteLog(NULL,"Can't acquire keyboard.\n");
-	if(Mouse->Acquire()!=DI_OK) WriteLog(NULL,"Can't acquire mouse.\n");
+	if(Keyboard->Acquire()!=DI_OK) WriteLog("Can't acquire keyboard.\n");
+	if(Mouse->Acquire()!=DI_OK) WriteLog("Can't acquire mouse.\n");
 
-	WriteLog(NULL,"DirectInput initialization complete.\n");
+	WriteLog("DirectInput initialization complete.\n");
 	return true;
 }
 
 void FOClient::Finish()
 {
-	WriteLog(NULL,"Engine finish...\n");
+	WriteLog("Engine finish...\n");
 
 	SAFEREL(SaveLoadDraft);
 
@@ -555,7 +555,7 @@ void FOClient::Finish()
 	FileManager::EndOfWork();
 
 	Active=false;
-	WriteLog(NULL,"Engine finish complete.\n");
+	WriteLog("Engine finish complete.\n");
 }
 
 void FOClient::ClearCritters()
@@ -2071,13 +2071,13 @@ void FOClient::ProcessMouseWheel(int data)
 
 bool FOClient::InitNet()
 {
-	WriteLog(NULL,"Network init...\n");
+	WriteLog("Network init...\n");
 	NetState=STATE_DISCONNECT;
 
 	WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2),&wsa))
 	{
-		WriteLog(NULL,"WSAStartup error<%s>.\n",GetLastSocketError());
+		WriteLog("WSAStartup error<%s>.\n",GetLastSocketError());
 		return false;
 	}
 
@@ -2102,7 +2102,7 @@ bool FOClient::InitNet()
 
 	if(!NetConnect()) return false;
 	NetState=STATE_CONN;
-	WriteLog(NULL,"Network init successful.\n");
+	WriteLog("Network init successful.\n");
 	return true;
 }
 
@@ -2115,7 +2115,7 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, ushort port)
 		hostent* h=gethostbyname(host);
 		if(!h)
 		{
-			WriteLog(_FUNC_," - Can't resolve remote host<%s>, error<%s>.",host,GetLastSocketError());
+			WriteLogF(_FUNC_," - Can't resolve remote host<%s>, error<%s>.",host,GetLastSocketError());
 			return false;
 		}
 
@@ -2126,15 +2126,15 @@ bool FOClient::FillSockAddr(SOCKADDR_IN& saddr, const char* host, ushort port)
 
 bool FOClient::NetConnect()
 {
-	if(!Singleplayer) WriteLog(NULL,"Connecting to server<%s:%d>.\n",GameOpt.Host.c_str(),GameOpt.Port);
-	else WriteLog(NULL,"Connecting to server.\n");
+	if(!Singleplayer) WriteLog("Connecting to server<%s:%d>.\n",GameOpt.Host.c_str(),GameOpt.Port);
+	else WriteLog("Connecting to server.\n");
 
 	Bin.SetEncryptKey(0);
 	Bout.SetEncryptKey(0);
 
 	if((Sock=WSASocket(AF_INET,SOCK_STREAM,IPPROTO_TCP,NULL,0,0))==INVALID_SOCKET)
 	{
-		WriteLog(NULL,"Create socket error<%s>.\n",GetLastSocketError());
+		WriteLog("Create socket error<%s>.\n",GetLastSocketError());
 		return false;
 	}
 
@@ -2143,7 +2143,7 @@ bool FOClient::NetConnect()
 	{
 		int optval=1;
 		if(setsockopt(Sock,IPPROTO_TCP,TCP_NODELAY,(char*)&optval,sizeof(optval)))
-			WriteLog(NULL,"Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",WSAGetLastError());
+			WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n",WSAGetLastError());
 	}
 
 	// Direct connect
@@ -2151,7 +2151,7 @@ bool FOClient::NetConnect()
 	{
 		if(connect(Sock,(sockaddr*)&SockAddr,sizeof(SOCKADDR_IN)))
 		{
-			WriteLog(NULL,"Can't connect to game server, error<%s>.\n",GetLastSocketError());
+			WriteLog("Can't connect to game server, error<%s>.\n",GetLastSocketError());
 			return false;
 		}
 	}
@@ -2160,7 +2160,7 @@ bool FOClient::NetConnect()
 	{
 		if(connect(Sock,(sockaddr*)&ProxyAddr,sizeof(SOCKADDR_IN)))
 		{
-			WriteLog(NULL,"Can't connect to Proxy server, error<%s>.\n",GetLastSocketError());
+			WriteLog("Can't connect to Proxy server, error<%s>.\n",GetLastSocketError());
 			return false;
 		}
 
@@ -2168,7 +2168,7 @@ bool FOClient::NetConnect()
 #define SEND_RECV do{\
 	if(!NetOutput())\
 	{\
-		WriteLog(NULL,"Net output error.\n");\
+		WriteLog("Net output error.\n");\
 		return false;\
 	}\
 	uint tick=Timer::FastTick();\
@@ -2178,12 +2178,12 @@ bool FOClient::NetConnect()
 		if(receive>0) break;\
 		if(receive<0)\
 		{\
-			WriteLog(NULL,"Net input error.\n");\
+			WriteLog("Net input error.\n");\
 			return false;\
 		}\
 		if(Timer::FastTick()-tick>10000)\
 		{\
-			WriteLog(NULL,"Proxy answer timeout.\n");\
+			WriteLog("Proxy answer timeout.\n");\
 			return false;\
 		}\
 		Sleep(1);\
@@ -2210,10 +2210,10 @@ bool FOClient::NetConnect()
 			{
 				switch(b2)
 				{
-				case 0x5B: WriteLog(NULL,"Proxy connection error, request rejected or failed.\n"); break;
-				case 0x5C: WriteLog(NULL,"Proxy connection error, request failed because client is not running identd (or not reachable from the server).\n"); break;
-				case 0x5D: WriteLog(NULL,"Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n"); break;
-				default: WriteLog(NULL,"Proxy connection error, Unknown error<%u>.\n",b2); break;
+				case 0x5B: WriteLog("Proxy connection error, request rejected or failed.\n"); break;
+				case 0x5C: WriteLog("Proxy connection error, request failed because client is not running identd (or not reachable from the server).\n"); break;
+				case 0x5D: WriteLog("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n"); break;
+				default: WriteLog("Proxy connection error, Unknown error<%u>.\n",b2); break;
 				}
 				return false;
 			}
@@ -2238,13 +2238,13 @@ bool FOClient::NetConnect()
 				Bin >> b2; // Status
 				if(b2!=0)
 				{
-					WriteLog(NULL,"Invalid proxy user or password.\n");
+					WriteLog("Invalid proxy user or password.\n");
 					return false;
 				}
 			}
 			else if(b2!=0) // Other authorization
 			{
-				WriteLog(NULL,"Socks server connect fail.\n");
+				WriteLog("Socks server connect fail.\n");
 				return false;
 			}
 			// Connect
@@ -2261,15 +2261,15 @@ bool FOClient::NetConnect()
 			{
 				switch(b2)
 				{
-				case 1: WriteLog(NULL,"Proxy connection error, SOCKS-server error.\n"); break;
-				case 2: WriteLog(NULL,"Proxy connection error, connections fail by proxy rules.\n"); break;
-				case 3: WriteLog(NULL,"Proxy connection error, network is not aviable.\n"); break;
-				case 4: WriteLog(NULL,"Proxy connection error, host is not aviable.\n"); break;
-				case 5: WriteLog(NULL,"Proxy connection error, connection denied.\n"); break;
-				case 6: WriteLog(NULL,"Proxy connection error, TTL expired.\n"); break;
-				case 7: WriteLog(NULL,"Proxy connection error, command not supported.\n"); break;
-				case 8: WriteLog(NULL,"Proxy connection error, address type not supported.\n"); break;
-				default: WriteLog(NULL,"Proxy connection error, Unknown error<%u>.\n",b2); break;
+				case 1: WriteLog("Proxy connection error, SOCKS-server error.\n"); break;
+				case 2: WriteLog("Proxy connection error, connections fail by proxy rules.\n"); break;
+				case 3: WriteLog("Proxy connection error, network is not aviable.\n"); break;
+				case 4: WriteLog("Proxy connection error, host is not aviable.\n"); break;
+				case 5: WriteLog("Proxy connection error, connection denied.\n"); break;
+				case 6: WriteLog("Proxy connection error, TTL expired.\n"); break;
+				case 7: WriteLog("Proxy connection error, command not supported.\n"); break;
+				case 8: WriteLog("Proxy connection error, address type not supported.\n"); break;
+				default: WriteLog("Proxy connection error, Unknown error<%u>.\n",b2); break;
 				}
 				return false;
 			}
@@ -2289,13 +2289,13 @@ bool FOClient::NetConnect()
 			}*/
 			if(!strstr(buf," 200 "))
 			{
-				WriteLog(NULL,"Proxy connection error, receive message<%s>.\n",buf);
+				WriteLog("Proxy connection error, receive message<%s>.\n",buf);
 				return false;
 			}
 		}
 		else
 		{
-			WriteLog(NULL,"Unknown proxy type<%u>.\n",GameOpt.ProxyType);
+			WriteLog("Unknown proxy type<%u>.\n",GameOpt.ProxyType);
 			return false;
 		}
 
@@ -2303,14 +2303,14 @@ bool FOClient::NetConnect()
 		Bout.Reset();
 	}
 
-	WriteLog(NULL,"Connecting successful.\n");
+	WriteLog("Connecting successful.\n");
 
 	ZStream.zalloc=zlib_alloc_;
 	ZStream.zfree=zlib_free_;
 	ZStream.opaque=NULL;
 	if(inflateInit(&ZStream)!=Z_OK)
 	{
-		WriteLog(NULL,"ZStream InflateInit error.\n");
+		WriteLog("ZStream InflateInit error.\n");
 		return false;
 	}
 	ZStreamOk=true;
@@ -2320,7 +2320,7 @@ bool FOClient::NetConnect()
 
 void FOClient::NetDisconnect()
 {
-	WriteLog(NULL,"Disconnect.\n");
+	WriteLog("Disconnect.\n");
 
 	if(ZStreamOk) inflateEnd(&ZStream);
 	ZStreamOk=false;
@@ -2328,7 +2328,7 @@ void FOClient::NetDisconnect()
 	Sock=INVALID_SOCKET;
 	NetState=STATE_DISCONNECT;
 
-	WriteLog(NULL,"Traffic transfered statistics, in bytes:\n"
+	WriteLog("Traffic transfered statistics, in bytes:\n"
 		"Send<%u> Receive<%u> Sum<%u>.\n"
 		"ReceiveReal<%u>.\n",
 		BytesSend,BytesReceive,BytesReceive+BytesSend,
@@ -2342,7 +2342,7 @@ void FOClient::NetDisconnect()
 	Bout.Reset();
 	Bin.SetEncryptKey(0);
 	Bout.SetEncryptKey(0);
-	WriteLog(NULL,"Disconnect success.\n");
+	WriteLog("Disconnect success.\n");
 }
 
 void FOClient::ParseSocket()
@@ -2380,8 +2380,8 @@ bool FOClient::NetOutput()
 	FD_ZERO(&SockSetErr);
 	FD_SET(Sock,&SockSet);
 	FD_SET(Sock,&SockSetErr);
-	if(select(0,NULL,&SockSet,&SockSetErr,&tv)==SOCKET_ERROR) WriteLog(_FUNC_," - Select error<%s>.\n",GetLastSocketError());
-	if(FD_ISSET(Sock,&SockSetErr)) WriteLog(_FUNC_," - Socket error.\n");
+	if(select(0,NULL,&SockSet,&SockSetErr,&tv)==SOCKET_ERROR) WriteLogF(_FUNC_," - Select error<%s>.\n",GetLastSocketError());
+	if(FD_ISSET(Sock,&SockSetErr)) WriteLogF(_FUNC_," - Socket error.\n");
 	if(!FD_ISSET(Sock,&SockSet)) return true;
 
 	int tosend=Bout.GetEndPos();
@@ -2394,7 +2394,7 @@ bool FOClient::NetOutput()
 		buf.len=tosend-sendpos;
 		if(WSASend(Sock,&buf,1,&len,0,NULL,NULL)==SOCKET_ERROR || len==0)
 		{
-			WriteLog(_FUNC_," - SOCKET_ERROR while send to server, error<%s>.\n",GetLastSocketError());
+			WriteLogF(_FUNC_," - SOCKET_ERROR while send to server, error<%s>.\n",GetLastSocketError());
 			NetState=STATE_DISCONNECT;
 			return false;
 		}
@@ -2415,8 +2415,8 @@ int FOClient::NetInput(bool unpack)
 	FD_ZERO(&SockSetErr);
 	FD_SET(Sock,&SockSet);
 	FD_SET(Sock,&SockSetErr);
-	if(select(0,&SockSet,NULL,&SockSetErr,&tv)==SOCKET_ERROR) WriteLog(_FUNC_," - Select error<%s>.\n",GetLastSocketError());
-	if(FD_ISSET(Sock,&SockSetErr)) WriteLog(_FUNC_," - Socket error.\n");
+	if(select(0,&SockSet,NULL,&SockSetErr,&tv)==SOCKET_ERROR) WriteLogF(_FUNC_," - Select error<%s>.\n",GetLastSocketError());
+	if(FD_ISSET(Sock,&SockSetErr)) WriteLogF(_FUNC_," - Socket error.\n");
 	if(!FD_ISSET(Sock,&SockSet)) return 0;
 
 	DWORD len;
@@ -2426,12 +2426,12 @@ int FOClient::NetInput(bool unpack)
 	buf.len=ComLen;
 	if(WSARecv(Sock,&buf,1,&len,&flags,NULL,NULL)==SOCKET_ERROR) 
 	{
-		WriteLog(_FUNC_," - SOCKET_ERROR while receive from server, error<%s>.\n",GetLastSocketError());
+		WriteLogF(_FUNC_," - SOCKET_ERROR while receive from server, error<%s>.\n",GetLastSocketError());
 		return -1;
 	}
 	if(len==0)
 	{
-		WriteLog(_FUNC_," - Socket is closed.\n");
+		WriteLogF(_FUNC_," - Socket is closed.\n");
 		return -2;
 	}
 
@@ -2450,12 +2450,12 @@ int FOClient::NetInput(bool unpack)
 		buf.len=ComLen-pos;
 		if(WSARecv(Sock,&buf,1,&len,&flags,NULL,NULL)==SOCKET_ERROR)
 		{
-			WriteLog(_FUNC_," - SOCKET_ERROR2 while receive from server, error<%s>.\n",GetLastSocketError());
+			WriteLogF(_FUNC_," - SOCKET_ERROR2 while receive from server, error<%s>.\n",GetLastSocketError());
 			return -1;
 		}
 		if(len==0)
 		{
-			WriteLog(_FUNC_," - Socket is closed2.\n");
+			WriteLogF(_FUNC_," - Socket is closed2.\n");
 			return -2;
 		}
 
@@ -2474,7 +2474,7 @@ int FOClient::NetInput(bool unpack)
 
 		if(inflate(&ZStream,Z_SYNC_FLUSH)!=Z_OK)
 		{
-			WriteLog(_FUNC_," - ZStream Inflate error.\n");
+			WriteLogF(_FUNC_," - ZStream Inflate error.\n");
 			return -3;
 		}
 
@@ -2489,7 +2489,7 @@ int FOClient::NetInput(bool unpack)
 
 			if(inflate(&ZStream,Z_SYNC_FLUSH)!=Z_OK)
 			{
-				WriteLog(_FUNC_," - ZStream Inflate continue error.\n");
+				WriteLogF(_FUNC_," - ZStream Inflate continue error.\n");
 				return -4;
 			}
 
@@ -2517,7 +2517,7 @@ void FOClient::NetProcess()
 		{
 			static uint count=0;
 			AddMess(FOMB_GAME,Str::FormatBuf("%04u) Input net message<%u>.",count,(msg>>8)&0xFF));
-			WriteLog(NULL,"%04u) Input net message<%u>.\n",count,(msg>>8)&0xFF);
+			WriteLog("%04u) Input net message<%u>.\n",count,(msg>>8)&0xFF);
 			count++;
 		}
 
@@ -2529,7 +2529,7 @@ void FOClient::NetProcess()
 		case NETMSG_REGISTER_SUCCESS:
 			if(!Singleplayer)
 			{
-				WriteLog(NULL,"Registration success.\n");
+				WriteLog("Registration success.\n");
 				if(RegNewCr)
 				{
 					GameOpt.Name=RegNewCr->Name;
@@ -2539,7 +2539,7 @@ void FOClient::NetProcess()
 			}
 			else
 			{
-				WriteLog(NULL,"World loaded, enter to it.\n");
+				WriteLog("World loaded, enter to it.\n");
 				LogTryConnect();
 			}
 			break;
@@ -2755,7 +2755,7 @@ void FOClient::NetProcess()
 
 		default:
 			if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::FormatBuf("Invalid msg<%u>. Seek valid.",(msg>>8)&0xFF));
-			WriteLog(NULL,"Invalid msg<%u>. Seek valid.\n",msg);
+			WriteLog("Invalid msg<%u>. Seek valid.\n",msg);
 			Bin.MoveReadPos(sizeof(uint));
 			Bin.SeekValidMsg();
 			return;
@@ -2804,11 +2804,11 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 
 void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 {
-	WriteLog(NULL,"Player registration...");
+	WriteLog("Player registration...");
 
 	if(!newcr)
 	{
-		WriteLog(NULL,"internal error.\n");
+		WriteLog("internal error.\n");
 		return;
 	}
 
@@ -2841,13 +2841,13 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 		}
 	}
 
-	WriteLog(NULL,"complete.\n");
+	WriteLog("complete.\n");
 }
 
 void FOClient::Net_SendSaveLoad(bool save, const char* fname, UCharVec* pic_data)
 {
-	if(save) WriteLog(NULL,"Request save to file<%s>...",fname);
-	else WriteLog(NULL,"Request load from file<%s>...",fname);
+	if(save) WriteLog("Request save to file<%s>...",fname);
+	else WriteLog("Request load from file<%s>...",fname);
 
 	uint msg=NETMSG_SINGLEPLAYER_SAVE_LOAD;
 	ushort fname_len=strlen(fname);
@@ -2865,7 +2865,7 @@ void FOClient::Net_SendSaveLoad(bool save, const char* fname, UCharVec* pic_data
 		if(pic_data->size()) Bout.Push((char*)&(*pic_data)[0],pic_data->size());
 	}
 
-	WriteLog(NULL,"complete.\n");
+	WriteLog("complete.\n");
 }
 
 void FOClient::Net_SendText(const char* send_str, uchar how_say)
@@ -3010,7 +3010,7 @@ void FOClient::Net_SendCommand(char* str)
 	if(!cmd)
 	{
 		AddMess(FOMB_GAME,"Unknown command.");
-		WriteLog(_FUNC_," - Unknown command<%s>.\n",str);
+		WriteLogF(_FUNC_," - Unknown command<%s>.\n",str);
 		return;
 	}
 
@@ -3580,7 +3580,7 @@ void FOClient::Net_SendCommand(char* str)
 		break;
 	default:
 		AddMess(FOMB_GAME,"Command is not implemented.");
-		WriteLog(_FUNC_," - Command<%s> is not implemented.\n",str);
+		WriteLogF(_FUNC_," - Command<%s> is not implemented.\n",str);
 		return;
 	}
 }
@@ -3907,7 +3907,7 @@ void FOClient::Net_SendSetUserHoloStr(Item* holodisk, const char* title, const c
 {
 	if(!holodisk || !title || !text)
 	{
-		WriteLog(_FUNC_," - Null pointers arguments.\n");
+		WriteLogF(_FUNC_," - Null pointers arguments.\n");
 		return;
 	}
 
@@ -3915,7 +3915,7 @@ void FOClient::Net_SendSetUserHoloStr(Item* holodisk, const char* title, const c
 	ushort text_len=strlen(text);
 	if(!title_len || !text_len || title_len>USER_HOLO_MAX_TITLE_LEN || text_len>USER_HOLO_MAX_LEN)
 	{
-		WriteLog(_FUNC_," - Length of texts is greather of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>.\n",title_len,USER_HOLO_MAX_TITLE_LEN,text_len,USER_HOLO_MAX_LEN);
+		WriteLogF(_FUNC_," - Length of texts is greather of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>.\n",title_len,USER_HOLO_MAX_TITLE_LEN,text_len,USER_HOLO_MAX_LEN);
 		return;
 	}
 
@@ -3985,7 +3985,7 @@ void FOClient::Net_OnLoginSuccess()
 {
 	NetState=STATE_LOGINOK;
 	if(!Singleplayer) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_LOGINOK));
-	WriteLog(NULL,"Auntification success.\n");
+	WriteLog("Auntification success.\n");
 
 	GmapFreeResources();
 	ResMngr.FreeResources(RES_ITEMS);
@@ -4061,8 +4061,8 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
 	if(!CritType::IsEnabled(base_type)) base_type=DEFAULT_CRTYPE;
 
-	if(!crid) WriteLog(_FUNC_," - CritterCl id is zero.\n");
-	else if(HexMngr.IsMapLoaded() && (hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)) WriteLog(_FUNC_," - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n",hx,hy,dir);
+	if(!crid) WriteLogF(_FUNC_," - CritterCl id is zero.\n");
+	else if(HexMngr.IsMapLoaded() && (hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)) WriteLogF(_FUNC_," - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n",hx,hy,dir);
 	else
 	{
 		CritterCl* cr=new CritterCl();
@@ -4212,7 +4212,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
 	if(msg_num>=TEXTMSG_COUNT)
 	{
-		WriteLog(_FUNC_," - Msg num invalid value<%u>.\n",msg_num);
+		WriteLogF(_FUNC_," - Msg num invalid value<%u>.\n",msg_num);
 		return;
 	}
 
@@ -4483,7 +4483,7 @@ void FOClient::Net_OnMapText()
 
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY())
 	{
-		WriteLog(_FUNC_," - Invalid coords, hx<%u>, hy<%u>, text<%s>.\n",hx,hy,str);
+		WriteLogF(_FUNC_," - Invalid coords, hx<%u>, hy<%u>, text<%s>.\n",hx,hy,str);
 		return;
 	}
 
@@ -4507,7 +4507,7 @@ void FOClient::Net_OnMapTextMsg()
 
 	if(msg_num>=TEXTMSG_COUNT)
 	{
-		WriteLog(_FUNC_," - Msg num invalid value, num<%u>.\n",msg_num);
+		WriteLogF(_FUNC_," - Msg num invalid value, num<%u>.\n",msg_num);
 		return;
 	}
 
@@ -4546,7 +4546,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
 	if(msg_num>=TEXTMSG_COUNT)
 	{
-		WriteLog(_FUNC_," - Msg num invalid value, num<%u>.\n",msg_num);
+		WriteLogF(_FUNC_," - Msg num invalid value, num<%u>.\n",msg_num);
 		return;
 	}
 
@@ -4566,7 +4566,7 @@ void FOClient::Net_OnCritterDir()
 
 	if(dir>=DIRS_COUNT)
 	{
-		WriteLog(_FUNC_," - Invalid dir<%u>.\n",dir);
+		WriteLogF(_FUNC_," - Invalid dir<%u>.\n",dir);
 		dir=0;
 	}
 
@@ -4653,7 +4653,7 @@ void FOClient::Net_OnSomeItem()
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(item_pid);
 	if(!proto_item)
 	{
-		WriteLog(_FUNC_," - Proto item<%u> not found.\n",item_pid);
+		WriteLogF(_FUNC_," - Proto item<%u> not found.\n",item_pid);
 		return;
 	}
 
@@ -4975,7 +4975,7 @@ void FOClient::Net_OnCritterXY()
 
 	if(hx>=HexMngr.GetMaxHexX() || hy>=HexMngr.GetMaxHexY() || dir>=DIRS_COUNT)
 	{
-		WriteLog(_FUNC_," - Error data, hx<%d>, hy<%d>, dir<%d>.\n",hx,hy,dir);
+		WriteLogF(_FUNC_," - Error data, hx<%d>, hy<%d>, dir<%d>.\n",hx,hy,dir);
 		return;
 	}
 
@@ -5004,13 +5004,13 @@ void FOClient::Net_OnCritterXY()
 
 void FOClient::Net_OnChosenParams()
 {
-	WriteLog(NULL,"Chosen parameters...");
+	WriteLog("Chosen parameters...");
 
 	if(!Chosen)
 	{
 		char buf[NETMSG_ALL_PARAMS_SIZE-sizeof(uint)];
 		Bin.Pop(buf,NETMSG_ALL_PARAMS_SIZE-sizeof(uint));
-		WriteLog(NULL,"chosen not created, skip.\n");
+		WriteLog("chosen not created, skip.\n");
 		return;
 	}
 
@@ -5032,7 +5032,7 @@ void FOClient::Net_OnChosenParams()
 	// Refresh borders
 	RebuildLookBorders=true;
 
-	WriteLog(NULL,"complete.\n");
+	WriteLog("complete.\n");
 }
 
 void FOClient::Net_OnChosenParam()
@@ -5213,7 +5213,7 @@ void FOClient::Net_OnChosenAddItem()
 
 	if(!item) 
 	{
-		WriteLog(_FUNC_," - Can't create item, pid<%u>.\n",pid);
+		WriteLogF(_FUNC_," - Can't create item, pid<%u>.\n",pid);
 		Item::ItemData dummy;
 		Bin.Pop((char*)&dummy,sizeof(dummy));
 		return;
@@ -5244,14 +5244,14 @@ void FOClient::Net_OnChosenEraseItem()
 
 	if(!Chosen)
 	{
-		WriteLog(_FUNC_," - Chosen is not created.\n");
+		WriteLogF(_FUNC_," - Chosen is not created.\n");
 		return;
 	}
 
 	Item* item=Chosen->GetItem(item_id);
 	if(!item)
 	{
-		WriteLog(_FUNC_," - Item not found, id<%u>.\n",item_id);
+		WriteLogF(_FUNC_," - Item not found, id<%u>.\n",item_id);
 		return;
 	}
 
@@ -5464,7 +5464,7 @@ void FOClient::Net_OnFlyEffect()
 
 	if(!HexMngr.RunEffect(eff_pid,eff_cr1_hx,eff_cr1_hy,eff_cr2_hx,eff_cr2_hy))
 	{
-		WriteLog(_FUNC_," - Run effect fail, pid<%u>.\n",eff_pid);
+		WriteLogF(_FUNC_," - Run effect fail, pid<%u>.\n",eff_pid);
 		return;
 	}
 }
@@ -5697,7 +5697,7 @@ void FOClient::Net_OnGameInfo()
 
 	SYSTEMTIME st={GameOpt.YearStart,1,0,1,0,0,0,0};
 	union {FILETIME ft; ULARGE_INTEGER ul;} ft;
-	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLog(_FUNC_," - FileTimeToSystemTime error<%u>.\n",GetLastError());
+	if(!SystemTimeToFileTime(&st,&ft.ft)) WriteLogF(_FUNC_," - FileTimeToSystemTime error<%u>.\n",GetLastError());
 	GameOpt.YearStartFT=PACKUINT64(ft.ul.HighPart,ft.ul.LowPart);
 	GameOpt.FullSecond=Timer::GetFullSecond(GameOpt.Year,GameOpt.Month,GameOpt.Day,GameOpt.Hour,GameOpt.Minute,GameOpt.Second);
 	GameOpt.FullSecondStart=GameOpt.FullSecond;
@@ -5712,7 +5712,7 @@ void FOClient::Net_OnGameInfo()
 
 void FOClient::Net_OnLoadMap()
 {
-	WriteLog(NULL,"Change map...\n");
+	WriteLog("Change map...\n");
 
 	ushort map_pid;
 	int map_time;
@@ -5759,7 +5759,7 @@ void FOClient::Net_OnLoadMap()
 		Net_SendLoadMapOk();
 		if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(map_pid));
 		else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(map_pid)));
-		WriteLog(NULL,"Global map loaded.\n");
+		WriteLog("Global map loaded.\n");
 		return;
 	}
 
@@ -5777,7 +5777,7 @@ void FOClient::Net_OnLoadMap()
 
 	if(!HexMngr.LoadMap(map_pid))
 	{
-		WriteLog(NULL,"Map not loaded. Disconnect.\n");
+		WriteLog("Map not loaded. Disconnect.\n");
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -5789,12 +5789,12 @@ void FOClient::Net_OnLoadMap()
 	ShootBorders.clear();
 	if(IsVideoPlayed()) MusicAfterVideo=MsgGM->GetStr(STR_MAP_MUSIC_(map_pid));
 	else SndMngr.PlayMusic(MsgGM->GetStr(STR_MAP_MUSIC_(map_pid)));
-	WriteLog(NULL,"Local map loaded.\n");
+	WriteLog("Local map loaded.\n");
 }
 
 void FOClient::Net_OnMap()
 {
-	WriteLog(NULL,"Get map...");
+	WriteLog("Get map...");
 
 	uint msg_len;
 	ushort map_pid;
@@ -5806,7 +5806,7 @@ void FOClient::Net_OnMap()
 	Bin >> maxhy;
 	Bin >> send_info;
 
-	WriteLog(NULL,"%u...",map_pid);
+	WriteLog("%u...",map_pid);
 
 	char map_name[256];
 	sprintf(map_name,"map%u",map_pid);
@@ -5821,10 +5821,10 @@ void FOClient::Net_OnMap()
 	char* scen_data=NULL;
 	uint scen_len=0;
 
-	WriteLog(NULL,"New:");
+	WriteLog("New:");
 	if(FLAG(send_info,SENDMAP_TILES))
 	{
-		WriteLog(NULL," Tiles");
+		WriteLog(" Tiles");
 		uint count_tiles;
 		Bin >> count_tiles;
 		if(count_tiles)
@@ -5838,7 +5838,7 @@ void FOClient::Net_OnMap()
 
 	if(FLAG(send_info,SENDMAP_WALLS))
 	{
-		WriteLog(NULL," Walls");
+		WriteLog(" Walls");
 		uint count_walls=0;
 		Bin >> count_walls;
 		if(count_walls)
@@ -5852,7 +5852,7 @@ void FOClient::Net_OnMap()
 
 	if(FLAG(send_info,SENDMAP_SCENERY))
 	{
-		WriteLog(NULL," Scenery");
+		WriteLog(" Scenery");
 		uint count_scen=0;
 		Bin >> count_scen;
 		if(count_scen)
@@ -5870,7 +5870,7 @@ void FOClient::Net_OnMap()
 	uchar* cache=Crypt.GetCache(map_name,cache_len);
 	FileManager fm;
 
-	WriteLog(NULL," Old:");
+	WriteLog(" Old:");
 	if(cache && fm.LoadStream(cache,cache_len))
 	{
 		uint buf_len=fm.GetFsize();
@@ -5895,7 +5895,7 @@ void FOClient::Net_OnMap()
 
 				if(!tiles)
 				{
-					WriteLog(NULL," Tiles");
+					WriteLog(" Tiles");
 					tiles_len=old_tiles_len;
 					fm.SetCurPos(0x2C);
 					tiles_data=new char[tiles_len];
@@ -5905,7 +5905,7 @@ void FOClient::Net_OnMap()
 
 				if(!walls)
 				{
-					WriteLog(NULL," Walls");
+					WriteLog(" Walls");
 					walls_len=old_walls_len;
 					fm.SetCurPos(0x2C+old_tiles_len);
 					walls_data=new char[walls_len];
@@ -5915,7 +5915,7 @@ void FOClient::Net_OnMap()
 
 				if(!scen)
 				{
-					WriteLog(NULL," Scenery");
+					WriteLog(" Scenery");
 					scen_len=old_scen_len;
 					fm.SetCurPos(0x2C+old_tiles_len+old_walls_len);
 					scen_data=new char[scen_len];
@@ -5928,7 +5928,7 @@ void FOClient::Net_OnMap()
 		}
 	}
 	SAFEDELA(cache);
-	WriteLog(NULL,". ");
+	WriteLog(". ");
 
 	if(tiles && walls && scen)
 	{
@@ -5956,7 +5956,7 @@ void FOClient::Net_OnMap()
 		uchar* buf=Crypt.Compress(fm.GetOutBuf(),obuf_len);
 		if(!buf)
 		{
-			WriteLog(NULL,"Failed to compress data<%s>, disconnect.\n",map_name);
+			WriteLog("Failed to compress data<%s>, disconnect.\n",map_name);
 			NetState=STATE_DISCONNECT;
 			fm.ClearOutBuf();
 			return;
@@ -5971,7 +5971,7 @@ void FOClient::Net_OnMap()
 	}
 	else
 	{
-		WriteLog(NULL,"Not for all data of map, disconnect.\n");
+		WriteLog("Not for all data of map, disconnect.\n");
 		NetState=STATE_DISCONNECT;
 		SAFEDELA(tiles_data);
 		SAFEDELA(walls_data);
@@ -5986,7 +5986,7 @@ void FOClient::Net_OnMap()
 	AutomapWaitPids.erase(map_pid);
 	AutomapReceivedPids.insert(map_pid);
 
-	WriteLog(NULL,"Map saved.\n");
+	WriteLog("Map saved.\n");
 }
 
 void FOClient::Net_OnGlobalInfo()
@@ -6293,7 +6293,7 @@ void FOClient::Net_OnFollow()
 		Str::Copy(DlgboxText,FmtGameText(STR_FOLLOW_FORCE,cr_name,map_name));
 		break;
 	default:
-		WriteLog(_FUNC_," - Error FollowType\n");
+		WriteLogF(_FUNC_," - Error FollowType\n");
 		Str::Copy(DlgboxText,"ERROR!");
 		break;
 	}
@@ -6404,7 +6404,7 @@ void FOClient::Net_OnPlayersBarter()
 			}
 			else // Hide
 			{
-				WriteLog(_FUNC_," - Invalid argument.\n");
+				WriteLogF(_FUNC_," - Invalid argument.\n");
 				Net_SendPlayersBarter(BARTER_END,0,0);
 				// See void FOClient::Net_OnPlayersBarterSetHide()
 			}
@@ -6511,7 +6511,7 @@ void FOClient::Net_OnPlayersBarterSetHide()
 	ProtoItem* proto_item=ItemMngr.GetProtoItem(pid);
 	if(!proto_item)
 	{
-		WriteLog(_FUNC_," - Proto target_item<%u> not found.\n",pid);
+		WriteLogF(_FUNC_," - Proto target_item<%u> not found.\n",pid);
 		Net_SendPlayersBarter(BARTER_REFRESH,0,0);
 		return;
 	}
@@ -6690,7 +6690,7 @@ void FOClient::Net_OnCritterLexems()
 
 	if(lexems_len+1>=LEXEMS_SIZE)
 	{
-		WriteLog(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
+		WriteLogF(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -6721,7 +6721,7 @@ void FOClient::Net_OnItemLexems()
 
 	if(lexems_len+1>=LEXEMS_SIZE)
 	{
-		WriteLog(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
+		WriteLogF(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -6780,26 +6780,26 @@ void FOClient::Net_OnMsgData()
 
 	if(lang!=CurLang.Name)
 	{
-		WriteLog(_FUNC_," - Received text in another language, set as default.\n");
+		WriteLogF(_FUNC_," - Received text in another language, set as default.\n");
 		CurLang.Name=lang;
 		WritePrivateProfileString(CLIENT_CONFIG_APP,"Language",CurLang.NameStr,".\\"CLIENT_CONFIG_FILE);
 	}
 
 	if(num_msg>=TEXTMSG_COUNT)
 	{
-		WriteLog(_FUNC_," - Incorrect value of msg num.\n");
+		WriteLogF(_FUNC_," - Incorrect value of msg num.\n");
 		return;
 	}
 
 	if(data_hash!=Crypt.Crc32((uchar*)&data[0],data.size()))
 	{
-		WriteLog(_FUNC_," - Invalid hash<%s>.\n",TextMsgFileName[num_msg]);
+		WriteLogF(_FUNC_," - Invalid hash<%s>.\n",TextMsgFileName[num_msg]);
 		return;	
 	}
 
 	if(CurLang.Msg[num_msg].LoadMsgStream(data)<0)
 	{
-		WriteLog(_FUNC_," - Unable to load<%s> from stream.\n",TextMsgFileName[num_msg]);
+		WriteLogF(_FUNC_," - Unable to load<%s> from stream.\n",TextMsgFileName[num_msg]);
 		return;
 	}
 
@@ -6831,7 +6831,7 @@ void FOClient::Net_OnMsgData()
 		// Reload interface
 		if(int res=InitIface())
 		{
-			WriteLog(NULL,"Init interface fail, error<%d>.\n",res);
+			WriteLog("Init interface fail, error<%d>.\n",res);
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_TO_LOAD_IFACE));
 			NetState=STATE_DISCONNECT;
 		}
@@ -6857,7 +6857,7 @@ void FOClient::Net_OnProtoItemData()
 
 	if(data_hash!=Crypt.Crc32((uchar*)&data[0],data.size()*sizeof(ProtoItem)))
 	{
-		WriteLog(_FUNC_," - Hash error.\n");
+		WriteLogF(_FUNC_," - Hash error.\n");
 		return;	
 	}
 
@@ -6870,7 +6870,7 @@ void FOClient::Net_OnProtoItemData()
 	uchar* proto_data=Crypt.Compress((uchar*)&proto_items[0],len);
 	if(!proto_data)
 	{
-		WriteLog(_FUNC_," - Compression fail.\n");
+		WriteLogF(_FUNC_," - Compression fail.\n");
 		return;
 	}
 	Crypt.SetCache("item_protos",proto_data,len);
@@ -6886,8 +6886,8 @@ void FOClient::Net_OnProtoItemData()
 void FOClient::Net_OnQuest(bool many)
 {
 	many?\
-		WriteLog(NULL,"Quests..."):
-		WriteLog(NULL,"Quest...");
+		WriteLog("Quests..."):
+		WriteLog("Quest...");
 
 	if(many)
 	{
@@ -6916,7 +6916,7 @@ void FOClient::Net_OnQuest(bool many)
 		if(quest) AddMess(FOMB_GAME,quest->str.c_str());
 	}
 
-	WriteLog(NULL,"Complete.\n");
+	WriteLog("Complete.\n");
 }
 
 void FOClient::Net_OnHoloInfo()
@@ -6952,7 +6952,7 @@ void FOClient::Net_OnUserHoloStr()
 
 	if(text_len>USER_HOLO_MAX_LEN)
 	{
-		WriteLog(_FUNC_," - Text length greater than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
+		WriteLogF(_FUNC_," - Text length greater than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
 		NetState=STATE_DISCONNECT;
 		return;
 	}
@@ -8847,8 +8847,8 @@ void FOClient::AddVideo(const char* fname, const char* sound, bool can_stop, boo
 	}
 }
 
-#define CHECK_VIDEO_HR(expr) {HRESULT hr=expr; if(FAILED(hr)) {WriteLog(_FUNC_," - Error<%u>, line<%d>.\n",hr,__LINE__); ShowVideos.clear(); StopVideo(); return;}}
-#define CHECK_VIDEO_NULLPTR(contrl) {if(!(contrl)) {WriteLog(_FUNC_," - Control nullptr, line<%d>.\n",__LINE__); ShowVideos.clear(); StopVideo(); return;}}
+#define CHECK_VIDEO_HR(expr) {HRESULT hr=expr; if(FAILED(hr)) {WriteLogF(_FUNC_," - Error<%u>, line<%d>.\n",hr,__LINE__); ShowVideos.clear(); StopVideo(); return;}}
+#define CHECK_VIDEO_NULLPTR(contrl) {if(!(contrl)) {WriteLogF(_FUNC_," - Control nullptr, line<%d>.\n",__LINE__); ShowVideos.clear(); StopVideo(); return;}}
 void FOClient::PlayVideo(ShowVideo& video)
 {
 	// Check file exiting
@@ -8913,18 +8913,18 @@ void FOClient::PlayVideo(ShowVideo& video)
 			{
 				IPin* in,*out;
 				HRESULT hr=splitter->FindPin(L"Output", &out);
-				WriteLog(NULL,"0hr<%u>\n",hr);
+				WriteLog("0hr<%u>\n",hr);
 				hr=VMRFilter->FindPin(L"Input", &in);
-				WriteLog(NULL,"1hr<%u>\n",hr);
+				WriteLog("1hr<%u>\n",hr);
 				hr=GraphBuilder->Connect(out,in);
-				WriteLog(NULL,"2hr<%u>\n",hr);
+				WriteLog("2hr<%u>\n",hr);
 
 			//	strm->Enable(0,0);
 			//	strm->Enable(1,0);
 				uint count=9;
 				hr=strm->Count(&count);
 			//	if(count>1) strm->Enable(1,0);
-				WriteLog(NULL,"hr<%u> count<%u>\n",hr,count);
+				WriteLog("hr<%u> count<%u>\n",hr,count);
 			//	SAFEREL(strm);
 			}
 		}
@@ -9121,7 +9121,7 @@ void FOClient::AnimFree(int res_type)
 
 bool FOClient::ReloadScripts()
 {
-	WriteLog(NULL,"Load scripts...\n");
+	WriteLog("Load scripts...\n");
 
 	FOMsg& msg_script=CurLang.Msg[TEXTMSG_INTERNAL];
 	if(!msg_script.Count(STR_INTERNAL_SCRIPT_CONFIG) ||
@@ -9129,14 +9129,14 @@ bool FOClient::ReloadScripts()
 		!msg_script.Count(STR_INTERNAL_SCRIPT_MODULES) ||
 		!msg_script.Count(STR_INTERNAL_SCRIPT_MODULES+1))
 	{
-		WriteLog(NULL,"Main script section not found in MSG.\n");
+		WriteLog("Main script section not found in MSG.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
 
 	if(msg_script.GetInt(STR_INTERNAL_SCRIPT_VERSION)!=CLIENT_SCRIPT_BINARY_VERSION)
 	{
-		WriteLog(NULL,"Old version of scripts.\n");
+		WriteLog("Old version of scripts.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
@@ -9145,7 +9145,7 @@ bool FOClient::ReloadScripts()
 	Script::Finish();
 	if(!Script::Init(false,new ScriptPragmaCallback(PRAGMA_CLIENT)))
 	{
-		WriteLog(NULL,"Unable to start script engine.\n");
+		WriteLog("Unable to start script engine.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
@@ -9153,7 +9153,7 @@ bool FOClient::ReloadScripts()
 	// Bind stuff
 #define BIND_CLIENT
 #define BIND_CLASS FOClient::SScriptFunc::
-#define BIND_ERROR do{WriteLog(NULL,"Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
+#define BIND_ERROR do{WriteLog("Bind error, line<%d>.\n",__LINE__); bind_errors++;}while(0)
 
 	asIScriptEngine* engine=Script::GetEngine();
 	int bind_errors=0;
@@ -9161,7 +9161,7 @@ bool FOClient::ReloadScripts()
 
 	if(bind_errors)
 	{
-		WriteLog(NULL,"Bind fail, errors<%d>.\n",bind_errors);
+		WriteLog("Bind fail, errors<%d>.\n",bind_errors);
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
@@ -9219,7 +9219,7 @@ bool FOClient::ReloadScripts()
 
 		if(!Script::LoadScript(module_name,bytecode,len))
 		{
-			WriteLog(NULL,"Load script<%s> fail.\n",module_name);
+			WriteLog("Load script<%s> fail.\n",module_name);
 			errors++;
 		}
 	}
@@ -9284,12 +9284,12 @@ bool FOClient::ReloadScripts()
 
 	if(!Script::PrepareContext(ClientFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || Script::GetReturnedBool()==false)
 	{
-		WriteLog(NULL,"Execute start script fail.\n");
+		WriteLog("Execute start script fail.\n");
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
 		return false;
 	}
 
-	WriteLog(NULL,"Load scripts complete.\n");
+	WriteLog("Load scripts complete.\n");
 	return true;
 }
 
