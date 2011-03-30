@@ -13,6 +13,21 @@
 /*                                                                      */
 /************************************************************************/
 
+char CommandLine[MAX_FOTEXT]={0};
+char** CommandLineArgValues=NULL;
+uint CommandLineArgCount=0;
+void SetCommandLine(uint argc, char** argv)
+{
+	CommandLineArgCount=argc;
+	CommandLineArgValues=new char*[CommandLineArgCount];
+	for(uint i=0;i<argc;i++)
+	{
+		Str::Append(CommandLine,argv[i]);
+		Str::Append(CommandLine," ");
+		CommandLineArgValues[i]=Str::Duplicate(argv[i]);
+	}
+}
+
 Randomizer DefaultRandomizer;
 int Random(int minimum, int maximum)
 {
@@ -306,6 +321,15 @@ void RestoreMainDirectory()
 #endif
 
 	// Todo: linux need it?
+}
+
+uint GetCurThreadId()
+{
+#if defined(FO_WINDOWS)
+	return (uint)GetCurrentThreadId();
+#else // FO_LINUX
+	return (uint)pthread_self();
+#endif
 }
 
 /************************************************************************/
@@ -715,15 +739,14 @@ MapperScriptFunctions MapperFunctions;
 /************************************************************************/
 #ifdef FONLINE_SERVER
 
-volatile bool FOAppQuit=false;
-volatile bool FOQuit=false;
-MutexEvent UpdateEvent;
-MutexEvent LogEvent;
+bool FOQuit=false;
 int ServerGameSleep=10;
 int MemoryDebugLevel=10;
 uint VarsGarbageTime=3600000;
 bool WorldSaveManager=true;
 bool LogicMT=false;
+int GuiMsg_UpdateInfo=0;
+int GuiMsg_UpdateLog=1;
 
 void GetServerOptions()
 {

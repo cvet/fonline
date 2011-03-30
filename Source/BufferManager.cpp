@@ -109,6 +109,7 @@ void BufferManager::LockReset()
 
 void BufferManager::GrowBuf(uint len)
 {
+	if(bufEndPos+len<bufLen) return;
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,-(int)bufLen);
 	while(bufEndPos+len>=bufLen) bufLen<<=1;
 	MEMORY_PROCESS(MEMORY_NET_BUFFER,bufLen);

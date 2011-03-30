@@ -12,7 +12,6 @@
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/Preprocessor/preprocess.h"
 #include <strstream>
-#include <process.h>
 
 namespace Script
 {
@@ -102,8 +101,8 @@ Mutex ActiveGlobalCtxLocker;
 // Timeouts
 uint RunTimeoutSuspend=600000; // 10 minutes
 uint RunTimeoutMessage=300000; // 5 minutes
-HANDLE RunTimeoutThreadHandle=NULL;
-unsigned int __stdcall RunTimeoutThread(void*);
+Thread RunTimeoutThread;
+void* RunTimeout(void*);
 
 
 bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback)
@@ -129,7 +128,7 @@ bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback)
 
 	if(!InitThread()) return false;
 
-	RunTimeoutThreadHandle=(HANDLE)_beginthreadex(NULL,0,RunTimeoutThread,NULL,0,NULL);
+	RunTimeoutThread.Start(RunTimeout);
 	return true;
 }
 
@@ -140,9 +139,7 @@ void Finish()
 	EndLog();
 	RunTimeoutSuspend=0;
 	RunTimeoutMessage=0;
-	WaitForSingleObject(RunTimeoutThreadHandle,INFINITE);
-	CloseHandle(RunTimeoutThreadHandle);
-	RunTimeoutThreadHandle=NULL;
+	RunTimeoutThread.Wait();
 
 	BindedFunctions.clear();
 	Preprocessor::SetPragmaCallback(NULL);
@@ -151,7 +148,7 @@ void Finish()
 
 	FinishEngine(Engine); // Finish default engine
 
-	FinisthThread();
+	FinishThread();
 }
 
 bool InitThread()
@@ -171,7 +168,7 @@ bool InitThread()
 	return true;
 }
 
-void FinisthThread()
+void FinishThread()
 {
 	ActiveGlobalCtxLocker.Lock();
 	ActiveContextVecIt it=std::find(ActiveContexts.begin(),ActiveContexts.end(),(asIScriptContext**)GlobalCtx);
@@ -705,7 +702,7 @@ void CollectGarbage(bool force)
 }
 #endif
 
-unsigned int __stdcall RunTimeoutThread(void* data)
+void* RunTimeout(void* data)
 {
 	LogSetThreadName("ScriptTimeout");
 
@@ -732,7 +729,7 @@ unsigned int __stdcall RunTimeoutThread(void* data)
 			}
 		}
 	}
-	return 0;
+	return NULL;
 }
 
 void SetRunTimeout(uint suspend_timeout, uint message_timeout)

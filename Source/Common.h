@@ -24,18 +24,19 @@
         #endif
 		const char* GetLastSocketError();
 	#else // FO_LINUX
-		// Todo: epoll/kqueue, libevent
+        #include <sys/types.h>
+        #include <sys/socket.h>
+        #include <netinet/in.h>
+        #include <arpa/inet.h>
+		#define SOCKET int
+		#define INVALID_SOCKET (-1)
 	#endif
 #endif
 
 // STL Port
 #if defined(FO_MSVC)
-	#ifndef _DEBUG
-		#pragma comment(lib,"stlport_static.lib")
-	#else
-		#pragma comment(lib,"stlportd_static.lib")
-	#endif
-#else FO_GCC
+	// stlport-.lib attached automatically
+#else // FO_GCC
 	// Linker option: -lstlport
 	// Define: _STLP_USE_STATIC_LIB
 #endif
@@ -98,6 +99,11 @@ using namespace std;
 typedef vector<INTRECT> IntRectVec;
 typedef vector<FLTRECT> FltRectVec;
 
+extern char CommandLine[MAX_FOTEXT];
+extern char** CommandLineArgValues;
+extern uint CommandLineArgCount;
+void SetCommandLine(uint argc, char** argv);
+
 extern Randomizer DefaultRandomizer;
 int Random(int minimum, int maximum);
 
@@ -116,6 +122,7 @@ bool MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy)
 void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir);
 bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
 void RestoreMainDirectory();
+uint GetCurThreadId();
 
 // Containers comparator template
 template<class T> inline bool CompareContainers(const T& a, const T& b){return a.size()==b.size() && (a.empty() || !memcmp(&a[0],&b[0],a.size()*sizeof(a[0])));}
@@ -279,15 +286,15 @@ struct MapperScriptFunctions
 #include "ThreadSync.h"
 #include "Jobs.h"
 
-extern volatile bool FOAppQuit;
-extern volatile bool FOQuit;
-extern MutexEvent UpdateEvent;
-extern MutexEvent LogEvent;
+extern bool FOQuit;
 extern int ServerGameSleep;
 extern int MemoryDebugLevel;
 extern uint VarsGarbageTime;
 extern bool WorldSaveManager;
 extern bool LogicMT;
+
+extern int GuiMsg_UpdateInfo;
+extern int GuiMsg_UpdateLog;
 
 void GetServerOptions();
 
@@ -331,23 +338,36 @@ struct ServerScriptFunctions
 	int PlayerGetAccess;
 } extern ServerFunctions;
 
-#ifdef FO_WINDOWS
-struct WSAOVERLAPPED_EX
-{
-	WSAOVERLAPPED OV;
-	Mutex Locker;
-	void* PClient;
-	WSABUF Buffer;
-	long Operation;
-	DWORD Flags;
-	DWORD Bytes;
-};
-#define WSA_BUF_SIZE       (4096)
-#define WSAOP_END          (0)
-#define WSAOP_FREE         (1)
-#define WSAOP_SEND         (2)
-#define WSAOP_RECV         (3)
-typedef void(*WSASendCallback)(WSAOVERLAPPED_EX*);
+// Net events
+#if defined(FO_MSVC)
+	#pragma comment(lib,"libevent.lib")
+	#pragma comment(lib,"libevent_core.lib")
+	#pragma comment(lib,"libevent_extras.lib")
+#else // FO_GCC
+	// Linker options:
+	// Todo:
+#endif
+
+#define NET_OUTPUT_BUF_SIZE     (4096) // Todo: exclude additional buffer
+
+// FLTK libs
+#if defined(FO_MSVC)
+	#pragma comment(lib,"fltk.lib")
+	#pragma comment(lib,"fltkforms.lib")
+	#pragma comment(lib,"fltkgl.lib")
+	#pragma comment(lib,"fltkimages.lib")
+	#pragma comment(lib,"fltkjpeg.lib")
+	#pragma comment(lib,"fltkpng.lib")
+	#pragma comment(lib,"fltkz.lib")
+#else // FO_GCC
+	// Linker options:
+	// -lfltk
+	// -lfltk_forms
+	// -lfltk_gl
+	// -lfltk_images
+	// -lfltk_jpeg
+	// -lfltk_png
+	// -lfltk_z
 #endif
 
 #endif
@@ -746,6 +766,43 @@ bool FileWrite(void* file, const void* buf, uint len);
 bool FileSetPointer(void* file, int offset, int origin);
 // Todo: FileFindFirst, FileFindNext, FileGetTime, FileGetSize, FileDelete
 // Todo: replace all fopen/fclose/etc on this functions
+
+/************************************************************************/
+/* Threads                                                              */
+/************************************************************************/
+
+#if defined(FO_WINDOWS)
+    #define PTW32_STATIC_LIB
+    #include "PthreadWnd/pthread.h"
+#else // FO_LINUX
+    #include <pthread.h>
+#endif
+
+#if defined(FO_MSVC)
+	#pragma comment(lib,"pthreadVC2.lib")
+#elif defined(FO_GCC)
+	// Linker option: -lpthreadGC2
+#endif
+
+class Thread
+{
+private:
+	bool isStarted;
+	pthread_t threadId;
+	pthread_attr_t threadAttr;
+
+public:
+	Thread():isStarted(false){pthread_attr_init(&threadAttr);}
+	~Thread(){pthread_attr_destroy(&threadAttr);}
+	bool Start(void*(*func)(void*)){isStarted=(pthread_create(&threadId,&threadAttr,func,NULL)==0); return isStarted;}
+	bool Start(void*(*func)(void*), void* arg){isStarted=(pthread_create(&threadId,&threadAttr,func,arg)==0); return isStarted;}
+	void Wait(){if(isStarted) pthread_join(threadId,NULL); isStarted=false;}
+	void Finish(){if(isStarted) pthread_cancel(threadId); isStarted=false;}
+
+#if defined(FO_WINDOWS)
+	HANDLE GetWindowsHandle(){return pthread_getw32threadhandle_np(threadId);}
+#endif
+};
 
 /************************************************************************/
 /*                                                                      */

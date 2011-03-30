@@ -37,6 +37,14 @@
 					<Add option="-lws2_32" />
 					<Add option="-lwinmm" />
 					<Add option="-lstlport" />
+					<Add option="-lpthreadGC2" />
+					<Add option="-lfltk" />
+					<Add option="-lfltk_forms" />
+					<Add option="-lfltk_gl" />
+					<Add option="-lfltk_images" />
+					<Add option="-lfltk_jpeg" />
+					<Add option="-lfltk_png" />
+					<Add option="-lfltk_z" />
 					<Add directory="..\Lib" />
 				</Linker>
 			</Target>
@@ -44,22 +52,14 @@
 				<Option output="..\..\..\FOnline\server\FOnlineServer_Linux" prefix_auto="1" extension_auto="1" />
 				<Option object_output="Release_Linux" />
 				<Option type="0" />
-				<Option compiler="cygwin" />
+				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-W" />
-					<Add option="-mthreads" />
 					<Add option="-Wno-invalid-offsetof" />
 					<Add option="-DFONLINE_SERVER" />
 					<Add option="-DSCRIPT_MULTITHREADING" />
-					<Add option="-DWIN32" />
 					<Add option="-DNDEBUG" />
-					<Add option="-D_WINDOWS" />
-					<Add option="-D_CRT_SECURE_NO_WARNINGS" />
-					<Add option="-D_CRT_SECURE_NO_DEPRECATE" />
-					<Add option="-D_HAS_ITERATOR_DEBUGGING=0" />
-					<Add option="-D_SECURE_SCL=0" />
-					<Add option="-D_HAS_EXCEPTIONS=0" />
 					<Add option="-D_STLP_USE_STATIC_LIB" />
 					<Add directory="..\Source\StlPort" />
 					<Add directory="..\Source" />
@@ -202,6 +202,8 @@
 		<Unit filename="..\Source\FileManager.cpp" />
 		<Unit filename="..\Source\FileManager.h" />
 		<Unit filename="..\Source\FlexRect.h" />
+		<Unit filename="..\Source\IniParser.cpp" />
+		<Unit filename="..\Source\IniParser.h" />
 		<Unit filename="..\Source\Item.cpp" />
 		<Unit filename="..\Source\Item.h" />
 		<Unit filename="..\Source\ItemManager.cpp" />
@@ -216,6 +218,8 @@
 		<Unit filename="..\Source\Map.h" />
 		<Unit filename="..\Source\MapManager.cpp" />
 		<Unit filename="..\Source\MapManager.h" />
+		<Unit filename="..\Source\MsgFiles.cpp" />
+		<Unit filename="..\Source\MsgFiles.h" />
 		<Unit filename="..\Source\MsgStr.h" />
 		<Unit filename="..\Source\Mutex.h" />
 		<Unit filename="..\Source\NetProtocol.h" />
@@ -223,7 +227,6 @@
 		<Unit filename="..\Source\ProtoMap.cpp" />
 		<Unit filename="..\Source\ProtoMap.h" />
 		<Unit filename="..\Source\Randomizer.h" />
-		<Unit filename="..\Source\ResourceServer.h" />
 		<Unit filename="..\Source\Script.cpp" />
 		<Unit filename="..\Source\Script.h" />
 		<Unit filename="..\Source\ScriptBind.h" />

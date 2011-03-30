@@ -16,7 +16,10 @@
 #include "CritterType.h"
 #include "NetProtocol.h"
 #include "Access.h"
-#include <process.h>
+#include "Event2/event.h"
+#include "Event2/bufferevent.h"
+#include "Event2/buffer.h"
+#include "Event2/thread.h"
 
 // #ifdef _DEBUG
 // #define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
@@ -237,7 +240,6 @@ public:
 	// Main
 	static int UpdateIndex,UpdateLastIndex;
 	static uint UpdateLastTick;
-	static HWND ServerWindow;
 	static bool Active;
 	static FileManager FileMngr;
 	static ClVec SaveClients;
@@ -269,33 +271,37 @@ public:
 	static bool InitLangCrTypes(LangPackVec& lang_packs);
 
 	// Init/Finish
+#if defined(FO_WINDOWS)
 	static SYSTEM_INFO SystemInfo;
+#endif
 
 	static bool Init();
 	static void Finish();
 	static bool IsInit(){return Active;}
 	static void MainLoop();
 
-	static HANDLE* LogicThreadHandles;
+	static Thread* LogicThreads;
 	static uint LogicThreadCount;
 	static bool LogicThreadSetAffinity;
 	static MutexSynchronizer LogicThreadSync;
 	static void SynchronizeLogicThreads();
 	static void ResynchronizeLogicThreads();
-	static unsigned int __stdcall Logic_Work(void* data); // Thread
+	static void* Logic_Work(void* data);
 
 	// Net
-	static HANDLE IOCompletionPort;
-	static HANDLE* IOThreadHandles;
-	static uint WorkThreadCount;
-	static SOCKET ListenSock;
 	static ClVec ConnectedClients;
 	static Mutex ConnectedClientsLocker;
+	static SOCKET ListenSock;
+	static Thread ListenThread;
+	static event_base* NetIOEventHandler;
+	static Thread NetIOThread;
+	static uint NetIOThreadsCount;
 
-	static unsigned int __stdcall Net_Listen(HANDLE iocp); // Thread
-	static unsigned int __stdcall Net_Work(HANDLE iocp); // Thread
-	static void Net_Input(WSAOVERLAPPED_EX* io);
-	static void Net_Output(WSAOVERLAPPED_EX* io);
+	static void* Net_Listen(void* hiocp);
+	static void* NetIO_Loop(void*);
+	static void NetIO_Event(bufferevent* bev, short what, void* client);
+	static void NetIO_Input(bufferevent* bev, void* client);
+	static void NetIO_Output(bufferevent* bev, void* client);
 
 	// Service
 	static uint VarsGarbageLastTick;
@@ -331,8 +337,8 @@ public:
 	static uint SaveWorldIndex,SaveWorldTime,SaveWorldNextTick;
 	static UIntVec SaveWorldDeleteIndexes;
 	static FILE* DumpFile;
-	static HANDLE DumpBeginEvent,DumpEndEvent;
-	static HANDLE DumpThreadHandle;
+	static MutexEvent DumpBeginEvent,DumpEndEvent;
+	static Thread DumpThread;
 
 	static bool SaveClient(Client* cl, bool deferred);
 	static bool LoadClient(Client* cl);
@@ -342,7 +348,7 @@ public:
 	static void UnloadWorld();
 	static void AddWorldSaveData(void* data, size_t size);
 	static void AddClientSaveData(Client* cl);
-	static unsigned int __stdcall Dump_Work(void* data); // Thread
+	static void* Dump_Work(void* data);
 
 	// Access
 	static StrVec AccessClient,AccessTester,AccessModer,AccessAdmin;

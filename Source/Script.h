@@ -35,7 +35,7 @@ namespace Script
 	bool Init(bool with_log, Preprocessor::PragmaCallback* pragma_callback);
 	void Finish();
 	bool InitThread();
-	void FinisthThread();
+	void FinishThread();
 
 	void* LoadDynamicLibrary(const char* dll_name);
 	size_t* GetFunctionAddress(void* dll, const char* func_name);

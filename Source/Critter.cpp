@@ -58,7 +58,7 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 /*                                                                      */
 /************************************************************************/
 
-WSASendCallback Critter::SendDataCallback=NULL;
+bufferevent_data_cb Critter::SendDataCallback=NULL;
 bool Critter::ParamsRegEnabled[MAX_PARAMS]={0};
 uint Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
 ushort Critter::ParamsSendCount=0;
@@ -2903,10 +2903,11 @@ LastSendScoresTick(0),LastSendCraftTick(0),LastSendEntrancesTick(0),LastSendEntr
 ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0)
 {
 	CritterIsNpc=false;
-	MEMORY_PROCESS(MEMORY_CLIENT,sizeof(Client)+sizeof(GlobalMapGroup)+40+WSA_BUF_SIZE*2+sizeof(Item)*2);
+	MEMORY_PROCESS(MEMORY_CLIENT,sizeof(Client)+sizeof(GlobalMapGroup)+40+NET_OUTPUT_BUF_SIZE*2+sizeof(Item)*2);
 
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
+	NetIOBuffer.resize(NET_OUTPUT_BUF_SIZE);
 	memzero(Name,sizeof(Name));
 	memzero(Pass,sizeof(Pass));
 	Str::Copy(Name,"err");
@@ -2917,42 +2918,15 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 	LastSay[0]=0;
 	LastSayEqualCount=0;
 	memzero(UID,sizeof(UID));
-
-	WSAIn=new WSAOVERLAPPED_EX();
-	memzero(&WSAIn->OV,sizeof(WSAIn->OV));
-	WSAIn->PClient=this;
-	WSAIn->Buffer.buf=new char[WSA_BUF_SIZE];
-	WSAIn->Buffer.len=WSA_BUF_SIZE;
-	WSAIn->Operation=WSAOP_RECV;
-	WSAIn->Flags=0;
-	WSAIn->Bytes=0;
-	WSAOut=new WSAOVERLAPPED_EX();
-	memzero(&WSAOut->OV,sizeof(WSAOut->OV));
-	WSAOut->PClient=this;
-	WSAOut->Buffer.buf=new char[WSA_BUF_SIZE];
-	WSAOut->Buffer.len=0;
-	WSAOut->Operation=WSAOP_FREE;
-	WSAOut->Flags=0;
-	WSAOut->Bytes=0;
 }
 
 Client::~Client()
 {
-	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(sizeof(Client)+sizeof(GlobalMapGroup)+40+WSA_BUF_SIZE*2+sizeof(Item)*2));
+	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(sizeof(Client)+sizeof(GlobalMapGroup)+40+NET_OUTPUT_BUF_SIZE*2+sizeof(Item)*2));
 	if(DataExt)
 	{
 		MEMORY_PROCESS(MEMORY_CLIENT,-(int)sizeof(CritDataExt));
 		SAFEDEL(DataExt);
-	}
-	if(WSAIn)
-	{
-		delete[] WSAIn->Buffer.buf;
-		SAFEDEL(WSAIn);
-	}
-	if(WSAOut)
-	{
-		delete[] WSAOut->Buffer.buf;
-		SAFEDEL(WSAOut);
 	}
 	if(ZstrmInit)
 	{
@@ -2963,17 +2937,20 @@ Client::~Client()
 
 void Client::Shutdown()
 {
-	SCOPE_LOCK(ShutdownLocker);
-
+	LockNetIO();
+	if(NetIO)
+	{
+		bufferevent* bev=NetIO;
+		NetIO=NULL;
+		bufferevent_unlock(bev); // UnlockNetIO();
+		bufferevent_free(bev);
+	}
 	if(Sock!=INVALID_SOCKET)
 	{
 		shutdown(Sock,SD_BOTH);
 		closesocket(Sock);
 		Sock=INVALID_SOCKET;
 	}
-	Bin.LockReset();
-	Bout.LockReset();
-	if(!IsOffline()) Disconnect();
 }
 
 void Client::PingClient()

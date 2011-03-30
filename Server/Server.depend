@@ -2,21 +2,26 @@
 1300748189 source:e:\repozes\code\source\platformspecific.cpp
 	"PlatformSpecific.h"
 
-1300854494 e:\repozes\code\source\platformspecific.h
+1301267671 e:\repozes\code\source\platformspecific.h
 	<inttypes.h>
+	<unistd.h>
 
-1300769809 source:e:\repozes\code\source\crypt.cpp
+1301022815 source:e:\repozes\code\source\crypt.cpp
 	"StdAfx.h"
 	"Crypt.h"
 	"Zlib/zlib.h"
 
-1300133683 e:\repozes\code\source\stdafx.h
+1301096323 e:\repozes\code\source\stdafx.h
 	"Common.h"
 
-1300858133 e:\repozes\code\source\common.h
+1301273012 e:\repozes\code\source\common.h
 	"PlatformSpecific.h"
 	<Windows.h>
 	<winsock2.h>
+	<sys/types.h>
+	<sys/socket.h>
+	<netinet/in.h>
+	<arpa/inet.h>
 	<stdio.h>
 	<map>
 	<string>
@@ -28,7 +33,6 @@
 	<math.h>
 	<stdlib.h>
 	<crtdbg.h>
-	<winsock2.h>
 	"Defines.h"
 	"Log.h"
 	"Timer.h"
@@ -37,6 +41,7 @@
 	"FlexRect.h"
 	"Randomizer.h"
 	"Mutex.h"
+	"Text.h"
 	"ResourceClient.h"
 	"ResourceMapper.h"
 	<audiodefs.h>
@@ -45,41 +50,42 @@
 	"Dx9/dinput.h"
 	"Dx9/dxerr.h"
 	"Dx9/d3dx9.h"
-	<richedit.h>
 	"Script.h"
 	"ThreadSync.h"
 	"Jobs.h"
+	"Event2/event.h"
 	<strstream>
 	<fstream>
+	"PthreadWnd/pthread.h"
+	<pthread.h>
 
-1300764356 e:\repozes\code\source\defines.h
+1301042404 e:\repozes\code\source\defines.h
 	"PlatformSpecific.h"
 
-1300769774 e:\repozes\code\source\log.h
+1301232388 e:\repozes\code\source\log.h
 	<string>
 
-1300741259 e:\repozes\code\source\timer.h
-	<windows.h>
+1301025806 e:\repozes\code\source\timer.h
 
-1277161796 e:\repozes\code\source\debugger.h
+1277165396 e:\repozes\code\source\debugger.h
 
-1300789618 e:\repozes\code\source\exception.h
+1300793218 e:\repozes\code\source\exception.h
 
-1300846115 e:\repozes\code\source\flexrect.h
+1300849715 e:\repozes\code\source\flexrect.h
 
-1300741786 e:\repozes\code\source\randomizer.h
+1301079513 e:\repozes\code\source\randomizer.h
 	<time.h>
 
-1300764173 e:\repozes\code\source\mutex.h
+1301032740 e:\repozes\code\source\mutex.h
 	"Common.h"
 	<intrin.h>
 	<pthread.h>
 
-1288735261 e:\repozes\code\source\resourceclient.h
+1288738861 e:\repozes\code\source\resourceclient.h
 
-1288982378 e:\repozes\code\source\resourcemapper.h
+1288985978 e:\repozes\code\source\resourcemapper.h
 
-1252106920 e:\repozes\code\source\dx9\d3dx9.h
+1252110520 e:\repozes\code\source\dx9\d3dx9.h
 	<limits.h>
 	"d3d9.h"
 	"d3dx9math.h"
@@ -92,59 +98,59 @@
 	"d3dx9shape.h"
 	"d3dx9anim.h"
 
-1252106920 e:\repozes\code\source\dx9\d3d9.h
+1252110520 e:\repozes\code\source\dx9\d3d9.h
 	<stdlib.h>
 	<objbase.h>
 	<windows.h>
 	"d3d9types.h"
 	"d3d9caps.h"
 
-1252106920 e:\repozes\code\source\dx9\d3d9types.h
+1252110520 e:\repozes\code\source\dx9\d3d9types.h
 	<float.h>
 
-1252106920 e:\repozes\code\source\dx9\d3d9caps.h
+1252110520 e:\repozes\code\source\dx9\d3d9caps.h
 
-1252106920 e:\repozes\code\source\dx9\d3dx9math.h
+1252110520 e:\repozes\code\source\dx9\d3dx9math.h
 	"d3dx9.h"
 	<math.h>
 	"d3dx9math.inl"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9math.inl
+1252110520 e:\repozes\code\source\dx9\d3dx9math.inl
 
-1252106920 e:\repozes\code\source\dx9\d3dx9core.h
+1252110520 e:\repozes\code\source\dx9\d3dx9core.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9xof.h
+1252110520 e:\repozes\code\source\dx9\d3dx9xof.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9mesh.h
+1252110520 e:\repozes\code\source\dx9\d3dx9mesh.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9shader.h
+1252110520 e:\repozes\code\source\dx9\d3dx9shader.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9effect.h
+1252110520 e:\repozes\code\source\dx9\d3dx9effect.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9tex.h
+1252110520 e:\repozes\code\source\dx9\d3dx9tex.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9shape.h
+1252110520 e:\repozes\code\source\dx9\d3dx9shape.h
 	"d3dx9.h"
 
-1252106920 e:\repozes\code\source\dx9\d3dx9anim.h
+1252110520 e:\repozes\code\source\dx9\d3dx9anim.h
 
-1252106921 e:\repozes\code\source\dx9\dinput.h
+1252110521 e:\repozes\code\source\dx9\dinput.h
 	<objbase.h>
 
-1251931250 e:\repozes\code\source\dx9\dxerr.h
+1251934850 e:\repozes\code\source\dx9\dxerr.h
 
-1252106921 e:\repozes\code\source\dx9\dsound.h
+1252110521 e:\repozes\code\source\dx9\dsound.h
 	<objbase.h>
 	<float.h>
 	<sal.h>
 
-1248733333 e:\repozes\code\source\dx8\dshow.h
+1248736933 e:\repozes\code\source\dx8\dshow.h
 	<windows.h>
 	<windowsx.h>
 	<olectl.h>
@@ -161,7 +167,7 @@
 	"audevcod.h"
 	"dvdevcod.h"
 
-1002534954 e:\repozes\code\source\dx8\strmif.h
+1002538554 e:\repozes\code\source\dx8\strmif.h
 	"rpc.h"
 	"rpcndr.h"
 	"windows.h"
@@ -173,36 +179,36 @@
 	<ddraw.h>
 	<ddraw.h>
 
-1002534946 e:\repozes\code\source\dx8\amvideo.h
+1002538546 e:\repozes\code\source\dx8\amvideo.h
 	<ddraw.h>
 
-1002535122 e:\repozes\code\source\dx8\amaudio.h
+1002538722 e:\repozes\code\source\dx8\amaudio.h
 	<mmsystem.h>
 	<dsound.h>
 
-1002536968 e:\repozes\code\source\dx8\control.h
+1002540568 e:\repozes\code\source\dx8\control.h
 	"rpc.h"
 	"rpcndr.h"
 
-1002534946 e:\repozes\code\source\dx8\evcode.h
+1002538546 e:\repozes\code\source\dx8\evcode.h
 
-1002534954 e:\repozes\code\source\dx8\uuids.h
+1002538554 e:\repozes\code\source\dx8\uuids.h
 	"ksuuids.h"
 
-1002534950 e:\repozes\code\source\dx8\ksuuids.h
+1002538550 e:\repozes\code\source\dx8\ksuuids.h
 
-1248733354 e:\repozes\code\source\dx8\errors.h
+1248736954 e:\repozes\code\source\dx8\errors.h
 	"VFWMSGS.H"
 
-1002537222 e:\repozes\code\source\dx8\vfwmsgs.h
+1002540822 e:\repozes\code\source\dx8\vfwmsgs.h
 
-1002535122 e:\repozes\code\source\dx8\edevdefs.h
+1002538722 e:\repozes\code\source\dx8\edevdefs.h
 
-1002535122 e:\repozes\code\source\dx8\audevcod.h
+1002538722 e:\repozes\code\source\dx8\audevcod.h
 
-1002534946 e:\repozes\code\source\dx8\dvdevcod.h
+1002538546 e:\repozes\code\source\dx8\dvdevcod.h
 
-1300812650 e:\repozes\code\source\script.h
+1301264781 e:\repozes\code\source\script.h
 	"Common.h"
 	"AngelScript/angelscript.h"
 	"AngelScript/scriptarray.h"
@@ -211,134 +217,130 @@
 	<vector>
 	<string>
 
-1299008793 e:\repozes\code\source\angelscript\angelscript.h
+1299012393 e:\repozes\code\source\angelscript\angelscript.h
 	<stddef.h>
 
-1299009208 e:\repozes\code\source\angelscript\scriptarray.h
+1299012808 e:\repozes\code\source\angelscript\scriptarray.h
 	"angelscript.h"
 
-1282136437 e:\repozes\code\source\angelscript\scriptstring.h
+1282140037 e:\repozes\code\source\angelscript\scriptstring.h
 	"angelscript.h"
 	<string>
 
-1300126925 e:\repozes\code\source\angelscript\preprocessor\pragma.h
+1300130525 e:\repozes\code\source\angelscript\preprocessor\pragma.h
 	<string>
 
-1300764723 e:\repozes\code\source\threadsync.h
+1300768323 e:\repozes\code\source\threadsync.h
 	"Common.h"
 
-1300741259 e:\repozes\code\source\jobs.h
+1300744859 e:\repozes\code\source\jobs.h
 
-1300765190 e:\repozes\code\source\crypt.h
+1300768790 e:\repozes\code\source\crypt.h
 	"Log.h"
 
-1271697168 e:\repozes\code\source\zlib\zlib.h
+1271700768 e:\repozes\code\source\zlib\zlib.h
 	"zconf.h"
 
-1271573886 e:\repozes\code\source\zlib\zconf.h
+1271577486 e:\repozes\code\source\zlib\zconf.h
 	<windows.h>
 	<sys/types.h>
 	<unistd.h>
 	<unixio.h>
 
-1300770853 source:e:\repozes\code\source\text.cpp
+1301080726 source:e:\repozes\code\source\text.cpp
 	"StdAfx.h"
 	"Text.h"
-	"FileManager.h"
-
-1300770818 e:\repozes\code\source\text.h
-	"Defines.h"
-	"Log.h"
 	"Crypt.h"
-	"MsgStr.h"
+
+1301024355 e:\repozes\code\source\text.h
+	"Common.h"
 	<strstream>
 
-1300764673 e:\repozes\code\source\msgstr.h
+1301042979 e:\repozes\code\source\msgstr.h
 
-1300744163 e:\repozes\code\source\filemanager.h
+1301045712 e:\repozes\code\source\filemanager.h
 	"Defines.h"
 	"Log.h"
 	"DataFile.h"
 
-1300743101 e:\repozes\code\source\datafile.h
+1301013175 e:\repozes\code\source\datafile.h
 	"Defines.h"
 
-1300813404 source:e:\repozes\code\server\server.rc
-	"ResourceServer.h"
-	"afxres.h"
+1301245574 source:e:\repozes\code\server\server.rc
 
-1300769779 source:e:\repozes\code\source\ai.cpp
+1301025439 source:e:\repozes\code\source\ai.cpp
 	"StdAfx.h"
 	"AI.h"
 	"Text.h"
 	"ConstantsManager.h"
 	"FileManager.h"
 	"Item.h"
+	"IniParser.h"
 
-1300743525 e:\repozes\code\source\ai.h
+1301013049 e:\repozes\code\source\ai.h
 	"Common.h"
 
-1300743528 e:\repozes\code\source\constantsmanager.h
+1300747128 e:\repozes\code\source\constantsmanager.h
 
-1300775637 e:\repozes\code\source\item.h
+1301013050 e:\repozes\code\source\item.h
 	"Common.h"
 	"FileManager.h"
 	"Text.h"
 	"Crypt.h"
 
-1276598123 source:e:\repozes\code\source\angelscript\as_atomic.cpp
+1276601723 source:e:\repozes\code\source\angelscript\as_atomic.cpp
 	"as_atomic.h"
 	<xtl.h>
 	<windows.h>
 	<libkern/OSAtomic.h>
 
-1248961388 e:\repozes\code\source\angelscript\as_atomic.h
+1248964988 e:\repozes\code\source\angelscript\as_atomic.h
 	"as_config.h"
 	"as_criticalsection.h"
 
-1300811860 e:\repozes\code\source\angelscript\as_config.h
+1300815460 e:\repozes\code\source\angelscript\as_config.h
 	<android/log.h>
 	<stdlib.h>
 	<assert.h>
 	"angelscript.h"
 	"as_memory.h"
 
-1251980135 e:\repozes\code\source\angelscript\as_memory.h
+1251983735 e:\repozes\code\source\angelscript\as_memory.h
 	"as_config.h"
 	<new>
 	"as_criticalsection.h"
 	"as_array.h"
 
-1276598123 e:\repozes\code\source\angelscript\as_criticalsection.h
+1276601723 e:\repozes\code\source\angelscript\as_criticalsection.h
 	"as_config.h"
 	<pthread.h>
 	<xtl.h>
 	<windows.h>
 
-1243899920 e:\repozes\code\source\angelscript\as_array.h
+1243903520 e:\repozes\code\source\angelscript\as_array.h
 	<memory.h>
 	<string.h>
 
-1300769777 source:e:\repozes\code\source\buffermanager.cpp
+1300773377 source:e:\repozes\code\source\buffermanager.cpp
 	"StdAfx.h"
 	"BufferManager.h"
 	"NetProtocol.h"
 	"Randomizer.h"
 
-1300743525 e:\repozes\code\source\buffermanager.h
+1300747125 e:\repozes\code\source\buffermanager.h
 	"Common.h"
 
-1300743522 e:\repozes\code\source\netprotocol.h
-	<Defines.h>
+1301094888 e:\repozes\code\source\netprotocol.h
+	"Defines.h"
 
-1300771904 source:e:\repozes\code\source\constantsmanager.cpp
+1301022427 source:e:\repozes\code\source\constantsmanager.cpp
 	"StdAfx.h"
 	"ConstantsManager.h"
 	"Log.h"
 	"Text.h"
 	"FileManager.h"
 
-1300772305 source:e:\repozes\code\source\craftmanager.cpp
+1301026490 source:e:\repozes\code\source\craftmanager.cpp
 	"StdAfx.h"
 	"CraftManager.h"
 	"ConstantsManager.h"
@@ -348,11 +350,11 @@
 	"ItemManager.h"
 	"CritterCl.h"
 
-1300768175 e:\repozes\code\source\craftmanager.h
-	"Defines.h"
-	"Text.h"
+1301025244 e:\repozes\code\source\craftmanager.h
+	"Common.h"
+	"MsgFiles.h"
 
-1300772908 e:\repozes\code\source\critter.h
+1301266790 e:\repozes\code\source\critter.h
 	"Common.h"
 	"zlib/zlib.h"
 	"BufferManager.h"
@@ -364,32 +366,33 @@
 	"DataMask.h"
 	"NetProtocol.h"
 
-1300776200 e:\repozes\code\source\dialogs.h
+1301024330 e:\repozes\code\source\dialogs.h
 	"Common.h"
 	"Vars.h"
 	"Text.h"
+	"MsgFiles.h"
 
-1300761324 e:\repozes\code\source\vars.h
+1300764924 e:\repozes\code\source\vars.h
 	"Common.h"
 
-1300743524 e:\repozes\code\source\critterdata.h
+1300747124 e:\repozes\code\source\critterdata.h
 	"Item.h"
 	"FileManager.h"
 	"AI.h"
 	"Defines.h"
 
-1300743101 e:\repozes\code\source\datamask.h
+1300746701 e:\repozes\code\source\datamask.h
 
-1300761326 e:\repozes\code\source\crittermanager.h
+1300764926 e:\repozes\code\source\crittermanager.h
 	"Common.h"
 	"CritterData.h"
 	"Critter.h"
 
-1300759116 e:\repozes\code\source\itemmanager.h
+1300762716 e:\repozes\code\source\itemmanager.h
 	"Defines.h"
 	"Item.h"
 
-1300846053 e:\repozes\code\source\crittercl.h
+1300849653 e:\repozes\code\source\crittercl.h
 	"NetProtocol.h"
 	"Common.h"
 	"SpriteManager.h"
@@ -398,44 +401,45 @@
 	"ItemManager.h"
 	"3dStuff\Animation.h"
 
-1300850574 e:\repozes\code\source\spritemanager.h
+1300854174 e:\repozes\code\source\spritemanager.h
 
-1300818660 e:\repozes\code\source\3dstuff\animation.h
+1300822260 e:\repozes\code\source\3dstuff\animation.h
 	<Timer.h>
 	<Defines.h>
 	<3dStuff\MeshStructures.h>
 	<FlexRect.h>
 	<common.h>
 
-1287238868 source:e:\repozes\code\source\threadsync.cpp
+1287242468 source:e:\repozes\code\source\threadsync.cpp
 	"StdAfx.h"
 	"ThreadSync.h"
 	<Windows.h>
 	"Mutex.h"
 
-1300775749 source:e:\repozes\code\source\map.cpp
+1301086991 source:e:\repozes\code\source\map.cpp
 	"StdAfx.h"
 	"Map.h"
 	"CritterManager.h"
 	"ItemManager.h"
 	"MapManager.h"
 
-1300772507 e:\repozes\code\source\map.h
+1301086994 e:\repozes\code\source\map.h
 	"Common.h"
 	"ProtoMap.h"
 	"Item.h"
 	"Critter.h"
 
-1300790671 e:\repozes\code\source\protomap.h
+1301013053 e:\repozes\code\source\protomap.h
 	"Common.h"
 	"NetProtocol.h"
 	"FileManager.h"
 
-1300761325 e:\repozes\code\source\mapmanager.h
-	"Defines.h"
+1301024474 e:\repozes\code\source\mapmanager.h
+	"Common.h"
 	"Map.h"
+	"IniParser.h"
 
-1300820954 source:e:\repozes\code\source\critter.cpp
+1301265052 source:e:\repozes\code\source\critter.cpp
 	"StdAfx.h"
 	"Critter.h"
 	"MapManager.h"
@@ -444,12 +448,12 @@
 	"Access.h"
 	"CritterManager.h"
 
-1300741260 e:\repozes\code\source\crittertype.h
+1300744860 e:\repozes\code\source\crittertype.h
 	"Defines.h"
 
-1295993475 e:\repozes\code\source\access.h
+1295997075 e:\repozes\code\source\access.h
 
-1300820597 source:e:\repozes\code\source\serverscript.cpp
+1301082177 source:e:\repozes\code\source\serverscript.cpp
 	"StdAfx.h"
 	"Server.h"
 	"AngelScript/Preprocessor/preprocess.h"
@@ -458,9 +462,8 @@
 	"ScriptBind.h"
 	"DummyData.h"
 	"ScriptBind.h"
-	"AngelScript/as_config.h"
 
-1300811384 e:\repozes\code\source\server.h
+1301273011 e:\repozes\code\source\server.h
 	"StdAfx.h"
 	"Common.h"
 	"Item.h"
@@ -476,9 +479,8 @@
 	"CritterType.h"
 	"NetProtocol.h"
 	"Access.h"
-	<process.h>
 
-1300807069 e:\repozes\code\source\angelscript\preprocessor\preprocess.h
+1300810669 e:\repozes\code\source\angelscript\preprocessor\preprocess.h
 	<stdio.h>
 	<string>
 	<string.h>
@@ -486,48 +488,48 @@
 	"line_number_translator.h"
 	"pragma.h"
 
-1266239835 e:\repozes\code\source\angelscript\preprocessor\stream.h
+1301084544 e:\repozes\code\source\angelscript\preprocessor\stream.h
 	<vector>
 	<string>
 	<sstream>
 
-1124890176 e:\repozes\code\source\angelscript\preprocessor\line_number_translator.h
+1124893776 e:\repozes\code\source\angelscript\preprocessor\line_number_translator.h
 	<string>
 	<sstream>
 	<vector>
 
-1300789669 e:\repozes\code\source\version.h
+1301094888 e:\repozes\code\source\version.h
 
-1300133617 e:\repozes\code\source\scriptpragmas.h
+1300137217 e:\repozes\code\source\scriptpragmas.h
 	"AngelScript/angelscript.h"
 	"AngelScript/Preprocessor/pragma.h"
 	<set>
 	<string>
 
-1300774592 e:\repozes\code\source\scriptbind.h
+1301036391 e:\repozes\code\source\scriptbind.h
 
-1300720408 e:\repozes\code\source\dummydata.h
+1301049847 e:\repozes\code\source\dummydata.h
 
-1274207927 source:e:\repozes\code\source\angelscript\preprocessor\lex.cpp
+1274211527 source:e:\repozes\code\source\angelscript\preprocessor\lex.cpp
 	<string>
 	"lex.h"
 	<cassert>
 	<sstream>
 
-1274207436 e:\repozes\code\source\angelscript\preprocessor\lex.h
+1274211036 e:\repozes\code\source\angelscript\preprocessor\lex.h
 	<string>
 	<list>
 
-1124890178 source:e:\repozes\code\source\angelscript\preprocessor\lexem_list.cpp
+1124893778 source:e:\repozes\code\source\angelscript\preprocessor\lexem_list.cpp
 	"lexem_list.h"
 	"lex.h"
 
-1266241657 e:\repozes\code\source\angelscript\preprocessor\lexem_list.h
+1266245257 e:\repozes\code\source\angelscript\preprocessor\lexem_list.h
 	<list>
 	"lex.h"
 	"stream.h"
 
-1300807102 source:e:\repozes\code\source\angelscript\preprocessor\preprocess.cpp
+1300810702 source:e:\repozes\code\source\angelscript\preprocessor\preprocess.cpp
 	"lex.h"
 	"preprocess.h"
 	"lexem_list.h"
@@ -541,13 +543,13 @@
 	<sstream>
 	<algorithm>
 
-1124890178 e:\repozes\code\source\angelscript\preprocessor\define_table.h
+1124893778 e:\repozes\code\source\angelscript\preprocessor\define_table.h
 	<string>
 	<map>
 	"lexem_list.h"
 	"stream.h"
 
-1300843335 source:e:\repozes\code\source\common.cpp
+1301256662 source:e:\repozes\code\source\common.cpp
 	"StdAfx.h"
 	"Common.h"
 	"Exception.h"
@@ -556,35 +558,38 @@
 	"Text.h"
 	<math.h>
 	"FileManager.h"
+	"IniParser.h"
+	<stdarg.h>
 	<FileManager.h>
 	<Text.h>
 	<Item.h>
 
-1300775946 source:e:\repozes\code\source\crittertype.cpp
+1301025215 source:e:\repozes\code\source\crittertype.cpp
 	"StdAfx.h"
 	"CritterType.h"
 	"Text.h"
 	"FileManager.h"
+	"MsgFiles.h"
 
-1300776040 source:e:\repozes\code\source\datafile.cpp
+1301078526 source:e:\repozes\code\source\datafile.cpp
 	"StdAfx.h"
 	"DataFile.h"
 	"DatFile/cfile.h"
 	"Zlib/unzip.h"
 
-1300768386 e:\repozes\code\source\datfile\cfile.h
+1300771986 e:\repozes\code\source\datfile\cfile.h
 	<Common.h>
 	<zlib/zlib.h>
 	"unlzss.h"
 
-1183989590 e:\repozes\code\source\datfile\unlzss.h
+1183993190 e:\repozes\code\source\datfile\unlzss.h
 
-1266199102 e:\repozes\code\source\zlib\unzip.h
+1266202702 e:\repozes\code\source\zlib\unzip.h
 	"zlib.h"
 	"ioapi.h"
 	"bzlib.h"
 
-1266199180 e:\repozes\code\source\zlib\ioapi.h
+1266202780 e:\repozes\code\source\zlib\ioapi.h
 	<stdio.h>
 	<stdlib.h>
 	"zlib.h"
@@ -592,29 +597,29 @@
 	"mz64conf.h"
 	"stdint.h"
 
-1300776080 source:e:\repozes\code\source\debugger.cpp
+1301022815 source:e:\repozes\code\source\debugger.cpp
 	"StdAfx.h"
 	"Debugger.h"
 	"Mutex.h"
 
-1300862849 source:e:\repozes\code\source\dialogs.cpp
+1301025216 source:e:\repozes\code\source\dialogs.cpp
 	"StdAfx.h"
 	"Dialogs.h"
 	"ConstantsManager.h"
 	"FileManager.h"
-	<strstream>
+	"IniParser.h"
 
-1300788007 source:e:\repozes\code\source\exception.cpp
+1301022014 source:e:\repozes\code\source\exception.cpp
 	"StdAfx.h"
 	"Exception.h"
 	<windows.h>
 	<stdio.h>
 
-1300817972 source:e:\repozes\code\source\filemanager.cpp
+1301079490 source:e:\repozes\code\source\filemanager.cpp
 	"StdAfx.h"
 	"FileManager.h"
 
-1300820597 source:e:\repozes\code\source\item.cpp
+1301022015 source:e:\repozes\code\source\item.cpp
 	"StdAfx.h"
 	"Item.h"
 	"ItemManager.h"
@@ -624,17 +629,16 @@
 	"ResourceManager.h"
 	"SpriteManager.h"
 
-1300759639 e:\repozes\code\source\resourcemanager.h
+1300763239 e:\repozes\code\source\resourcemanager.h
 	"Defines.h"
 	"SpriteManager.h"
 	"FileManager.h"
 
-1300820978 source:e:\repozes\code\source\itemmanager.cpp
+1301027154 source:e:\repozes\code\source\itemmanager.cpp
 	"StdAfx.h"
 	"ItemManager.h"
-	"Log.h"
-	"Text.h"
 	"ConstantsManager.h"
+	"IniParser.h"
 	"Critter.h"
 	"Map.h"
 	"CritterManager.h"
@@ -642,7 +646,7 @@
 	"Script.h"
 	"Script.h"
 
-1300788869 source:e:\repozes\code\source\jobs.cpp
+1301082356 source:e:\repozes\code\source\jobs.cpp
 	"StdAfx.h"
 	"Jobs.h"
 	"Mutex.h"
@@ -651,14 +655,15 @@
 	"Item.h"
 	"Vars.h"
 
-1300860234 source:e:\repozes\code\source\log.cpp
+1301256682 source:e:\repozes\code\source\log.cpp
 	"StdAfx.h"
 	"Log.h"
-	"Common.h"
 	"Timer.h"
-	<Richedit.h>
+	<stdarg.h>
+	"FL/Fl.H"
+	"FL/Fl_Text_Display.H"
 
-1300820678 source:e:\repozes\code\source\mapmanager.cpp
+1301087089 source:e:\repozes\code\source\mapmanager.cpp
 	"StdAfx.h"
 	"MapManager.h"
 	"Log.h"
@@ -667,10 +672,10 @@
 	"Script.h"
 	"LineTracer.h"
 
-1300790064 e:\repozes\code\source\linetracer.h
+1300793664 e:\repozes\code\source\linetracer.h
 	"Common.h"
 
-1300820678 source:e:\repozes\code\source\protomap.cpp
+1301082522 source:e:\repozes\code\source\protomap.cpp
 	"StdAfx.h"
 	"ProtoMap.h"
 	"ItemManager.h"
@@ -678,9 +683,10 @@
 	"ConstantsManager.h"
 	"Version.h"
 	<strstream>
+	"IniParser.h"
 	"ResourceManager.h"
 
-1300864875 source:e:\repozes\code\source\scriptpragmas.cpp
+1301052062 source:e:\repozes\code\source\scriptpragmas.cpp
 	"ScriptPragmas.h"
 	"AngelScript/angelscript.h"
 	<strstream>
@@ -691,36 +697,37 @@
 	"CritterCl.h"
 	"Item.h"
 
-1300134061 e:\repozes\code\ascompiler\ascompiler\scriptengine.h
+1300137661 e:\repozes\code\ascompiler\ascompiler\scriptengine.h
 
-1300852066 source:e:\repozes\code\source\server.cpp
+1301266893 source:e:\repozes\code\source\server.cpp
+	"StdAfx.h"
+	"Server.h"
+	"FL/Fl.H"
+
+1301257635 source:e:\repozes\code\source\serverclient.cpp
 	"StdAfx.h"
 	"Server.h"
 
-1300809191 source:e:\repozes\code\source\serverclient.cpp
+1301087237 source:e:\repozes\code\source\servernpc.cpp
 	"StdAfx.h"
 	"Server.h"
 
-1300811197 source:e:\repozes\code\source\servernpc.cpp
-	"StdAfx.h"
-	"Server.h"
-
-1271521487 source:e:\repozes\code\source\stdafx.cpp
+1271525087 source:e:\repozes\code\source\stdafx.cpp
 	"StdAfx.h"
 
-1300855767 source:e:\repozes\code\source\timer.cpp
+1301078469 source:e:\repozes\code\source\timer.cpp
 	"StdAfx.h"
 	"Timer.h"
 	<Mmsystem.h>
 
-1300812395 source:e:\repozes\code\source\vars.cpp
+1301080259 source:e:\repozes\code\source\vars.cpp
 	"StdAfx.h"
 	"Vars.h"
 	"Text.h"
 	"Critter.h"
 	"CritterManager.h"
 
-1299008791 source:e:\repozes\code\source\angelscript\as_builder.cpp
+1299012391 source:e:\repozes\code\source\angelscript\as_builder.cpp
 	"as_config.h"
 	"as_builder.h"
 	"as_parser.h"
@@ -731,7 +738,7 @@
 	"as_texts.h"
 	"as_scriptobject.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_builder.h
+1299012392 e:\repozes\code\source\angelscript\as_builder.h
 	"as_config.h"
 	"as_scriptengine.h"
 	"as_module.h"
@@ -741,7 +748,7 @@
 	"as_datatype.h"
 	"as_property.h"
 
-1288075287 e:\repozes\code\source\angelscript\as_scriptengine.h
+1288078887 e:\repozes\code\source\angelscript\as_scriptengine.h
 	"as_config.h"
 	"as_atomic.h"
 	"as_scriptfunction.h"
@@ -755,38 +762,38 @@
 	"as_memory.h"
 	"as_gc.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_scriptfunction.h
+1299012392 e:\repozes\code\source\angelscript\as_scriptfunction.h
 	"as_config.h"
 	"as_string.h"
 	"as_array.h"
 	"as_datatype.h"
 	"as_atomic.h"
 
-1256311435 e:\repozes\code\source\angelscript\as_string.h
+1256315035 e:\repozes\code\source\angelscript\as_string.h
 	<stdio.h>
 	<string.h>
 
-1284993331 e:\repozes\code\source\angelscript\as_datatype.h
+1284996931 e:\repozes\code\source\angelscript\as_datatype.h
 	"as_tokendef.h"
 	"as_string.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_tokendef.h
+1299012392 e:\repozes\code\source\angelscript\as_tokendef.h
 	"as_config.h"
 
-1288075289 e:\repozes\code\source\angelscript\as_objecttype.h
+1288078889 e:\repozes\code\source\angelscript\as_objecttype.h
 	"as_atomic.h"
 	"as_string.h"
 	"as_property.h"
 	"as_array.h"
 	"as_scriptfunction.h"
 
-1282135491 e:\repozes\code\source\angelscript\as_property.h
+1282139091 e:\repozes\code\source\angelscript\as_property.h
 	"as_string.h"
 	"as_datatype.h"
 	"as_atomic.h"
 	"as_scriptfunction.h"
 
-1288075287 e:\repozes\code\source\angelscript\as_module.h
+1288078887 e:\repozes\code\source\angelscript\as_module.h
 	"as_config.h"
 	"as_atomic.h"
 	"as_string.h"
@@ -795,12 +802,12 @@
 	"as_scriptfunction.h"
 	"as_property.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_restore.h
+1299012392 e:\repozes\code\source\angelscript\as_restore.h
 	"as_scriptengine.h"
 	"as_context.h"
 	"as_map.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_context.h
+1299012392 e:\repozes\code\source\angelscript\as_context.h
 	"as_config.h"
 	"as_atomic.h"
 	"as_array.h"
@@ -808,25 +815,25 @@
 	"as_objecttype.h"
 	"as_callfunc.h"
 
-1235686792 e:\repozes\code\source\angelscript\as_callfunc.h
+1235690392 e:\repozes\code\source\angelscript\as_callfunc.h
 	"as_array.h"
 
-1227383640 e:\repozes\code\source\angelscript\as_map.h
+1227387240 e:\repozes\code\source\angelscript\as_map.h
 
-1299008792 e:\repozes\code\source\angelscript\as_configgroup.h
+1299012392 e:\repozes\code\source\angelscript\as_configgroup.h
 	"as_config.h"
 	"as_string.h"
 	"as_array.h"
 	"as_objecttype.h"
 	"as_map.h"
 
-1284993331 e:\repozes\code\source\angelscript\as_gc.h
+1284996931 e:\repozes\code\source\angelscript\as_gc.h
 	"as_config.h"
 	"as_array.h"
 	"as_map.h"
 	"as_thread.h"
 
-1269468100 e:\repozes\code\source\angelscript\as_thread.h
+1269471700 e:\repozes\code\source\angelscript\as_thread.h
 	"as_config.h"
 	"as_string.h"
 	"as_array.h"
@@ -834,25 +841,25 @@
 	"as_atomic.h"
 	"as_criticalsection.h"
 
-1199252562 e:\repozes\code\source\angelscript\as_scriptcode.h
+1199256162 e:\repozes\code\source\angelscript\as_scriptcode.h
 	"as_array.h"
 	"as_string.h"
 
-1266238299 e:\repozes\code\source\angelscript\as_scriptnode.h
+1266241899 e:\repozes\code\source\angelscript\as_scriptnode.h
 	"as_config.h"
 	"as_tokendef.h"
 
-1266238299 e:\repozes\code\source\angelscript\as_parser.h
+1266241899 e:\repozes\code\source\angelscript\as_parser.h
 	"as_scriptnode.h"
 	"as_scriptcode.h"
 	"as_builder.h"
 	"as_tokenizer.h"
 
-1284993331 e:\repozes\code\source\angelscript\as_tokenizer.h
+1284996931 e:\repozes\code\source\angelscript\as_tokenizer.h
 	"as_config.h"
 	"as_tokendef.h"
 
-1299008791 e:\repozes\code\source\angelscript\as_compiler.h
+1299012391 e:\repozes\code\source\angelscript\as_compiler.h
 	"as_config.h"
 	"as_builder.h"
 	"as_scriptfunction.h"
@@ -862,34 +869,34 @@
 	"as_datatype.h"
 	"as_typeinfo.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_variablescope.h
+1299012392 e:\repozes\code\source\angelscript\as_variablescope.h
 	"as_array.h"
 	"as_string.h"
 	"as_datatype.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_bytecode.h
+1299012392 e:\repozes\code\source\angelscript\as_bytecode.h
 	"as_config.h"
 	"as_array.h"
 
-1199252566 e:\repozes\code\source\angelscript\as_typeinfo.h
+1199256166 e:\repozes\code\source\angelscript\as_typeinfo.h
 	"as_config.h"
 	"as_datatype.h"
 
-1258306447 e:\repozes\code\source\angelscript\as_string_util.h
+1258310047 e:\repozes\code\source\angelscript\as_string_util.h
 	"as_config.h"
 
-1205819532 e:\repozes\code\source\angelscript\as_outputbuffer.h
+1205823132 e:\repozes\code\source\angelscript\as_outputbuffer.h
 	"as_config.h"
 	"as_string.h"
 	"as_array.h"
 
-1299008792 e:\repozes\code\source\angelscript\as_texts.h
+1299012392 e:\repozes\code\source\angelscript\as_texts.h
 
-1284993331 e:\repozes\code\source\angelscript\as_scriptobject.h
+1284996931 e:\repozes\code\source\angelscript\as_scriptobject.h
 	"as_config.h"
 	"as_atomic.h"
 
-1299008793 source:e:\repozes\code\source\angelscript\as_bytecode.cpp
+1299012393 source:e:\repozes\code\source\angelscript\as_bytecode.cpp
 	<stdio.h>
 	"as_config.h"
 	"as_bytecode.h"
@@ -898,25 +905,25 @@
 	"as_string.h"
 	"as_scriptengine.h"
 
-1244407680 e:\repozes\code\source\angelscript\as_debug.h
+1244411280 e:\repozes\code\source\angelscript\as_debug.h
 	<sys/stat.h>
 	<sys/types.h>
 	<direct.h>
 
-1299008792 source:e:\repozes\code\source\angelscript\as_callfunc.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_callfunc.cpp
 	"as_config.h"
 	"as_callfunc.h"
 	"as_scriptengine.h"
 	"as_texts.h"
 
-1299834103 source:e:\repozes\code\source\angelscript\as_callfunc_x86.cpp
+1299837703 source:e:\repozes\code\source\angelscript\as_callfunc_x86.cpp
 	"as_config.h"
 	"as_callfunc.h"
 	"as_scriptengine.h"
 	"as_texts.h"
 	"as_tokendef.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_compiler.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_compiler.cpp
 	<math.h>
 	"as_config.h"
 	"as_compiler.h"
@@ -926,12 +933,12 @@
 	"as_texts.h"
 	"as_parser.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_configgroup.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_configgroup.cpp
 	"as_config.h"
 	"as_configgroup.h"
 	"as_scriptengine.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_context.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_context.cpp
 	<math.h>
 	"as_config.h"
 	"as_context.h"
@@ -944,10 +951,10 @@
 	"as_bytecode.h"
 	"as_scriptobject.h"
 
-1284993327 e:\repozes\code\source\angelscript\as_generic.h
+1284996927 e:\repozes\code\source\angelscript\as_generic.h
 	"as_config.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_datatype.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_datatype.cpp
 	"as_config.h"
 	"as_datatype.h"
 	"as_tokendef.h"
@@ -955,66 +962,66 @@
 	"as_scriptengine.h"
 	"as_tokenizer.h"
 
-1284993329 source:e:\repozes\code\source\angelscript\as_gc.cpp
+1284996929 source:e:\repozes\code\source\angelscript\as_gc.cpp
 	<stdlib.h>
 	"as_gc.h"
 	"as_scriptengine.h"
 	"as_scriptobject.h"
 
-1284993329 source:e:\repozes\code\source\angelscript\as_generic.cpp
+1284996929 source:e:\repozes\code\source\angelscript\as_generic.cpp
 	"as_generic.h"
 	"as_scriptfunction.h"
 	"as_objecttype.h"
 	"as_scriptengine.h"
 
-1264455295 source:e:\repozes\code\source\angelscript\as_globalproperty.cpp
+1264458895 source:e:\repozes\code\source\angelscript\as_globalproperty.cpp
 	"as_config.h"
 	"as_property.h"
 	"as_scriptengine.h"
 
-1288075287 source:e:\repozes\code\source\angelscript\as_memory.cpp
+1288078887 source:e:\repozes\code\source\angelscript\as_memory.cpp
 	<stdlib.h>
 	"as_config.h"
 	"as_memory.h"
 	"as_scriptnode.h"
 	"as_bytecode.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_module.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_module.cpp
 	"as_config.h"
 	"as_module.h"
 	"as_builder.h"
 	"as_context.h"
 	"as_texts.h"
 
-1288075290 source:e:\repozes\code\source\angelscript\as_objecttype.cpp
+1288078890 source:e:\repozes\code\source\angelscript\as_objecttype.cpp
 	<stdio.h>
 	"as_config.h"
 	"as_objecttype.h"
 	"as_configgroup.h"
 	"as_scriptengine.h"
 
-1227383642 source:e:\repozes\code\source\angelscript\as_outputbuffer.cpp
+1227387242 source:e:\repozes\code\source\angelscript\as_outputbuffer.cpp
 	"as_config.h"
 	"as_outputbuffer.h"
 	"as_scriptengine.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_parser.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_parser.cpp
 	"as_config.h"
 	"as_parser.h"
 	"as_tokendef.h"
 	"as_texts.h"
 
-1299008791 source:e:\repozes\code\source\angelscript\as_restore.cpp
+1299012391 source:e:\repozes\code\source\angelscript\as_restore.cpp
 	"as_config.h"
 	"as_restore.h"
 	"as_bytecode.h"
 	"as_scriptobject.h"
 
-1299008793 source:e:\repozes\code\source\angelscript\as_scriptcode.cpp
+1299012393 source:e:\repozes\code\source\angelscript\as_scriptcode.cpp
 	"as_config.h"
 	"as_scriptcode.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_scriptengine.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_scriptengine.cpp
 	<stdlib.h>
 	"as_config.h"
 	"as_scriptengine.h"
@@ -1029,7 +1036,7 @@
 	"as_scriptobject.h"
 	"as_compiler.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_scriptfunction.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_scriptfunction.cpp
 	"as_config.h"
 	"as_scriptfunction.h"
 	"as_tokendef.h"
@@ -1038,17 +1045,17 @@
 	"as_bytecode.h"
 	"as_texts.h"
 
-1227383640 source:e:\repozes\code\source\angelscript\as_scriptnode.cpp
+1227387240 source:e:\repozes\code\source\angelscript\as_scriptnode.cpp
 	"as_scriptnode.h"
 	"as_scriptengine.h"
 
-1288075289 source:e:\repozes\code\source\angelscript\as_scriptobject.cpp
+1288078889 source:e:\repozes\code\source\angelscript\as_scriptobject.cpp
 	<new>
 	"as_config.h"
 	"as_scriptengine.h"
 	"as_scriptobject.h"
 
-1264455295 source:e:\repozes\code\source\angelscript\as_string.cpp
+1264458895 source:e:\repozes\code\source\angelscript\as_string.cpp
 	"as_config.h"
 	<stdarg.h>
 	<stdlib.h>
@@ -1056,7 +1063,7 @@
 	<memory.h>
 	"as_string.h"
 
-1259106221 source:e:\repozes\code\source\angelscript\as_string_util.cpp
+1259109821 source:e:\repozes\code\source\angelscript\as_string_util.cpp
 	"as_config.h"
 	<stdarg.h>
 	<stdlib.h>
@@ -1067,12 +1074,12 @@
 	"as_string.h"
 	"as_string_util.h"
 
-1269468099 source:e:\repozes\code\source\angelscript\as_thread.cpp
+1269471699 source:e:\repozes\code\source\angelscript\as_thread.cpp
 	"as_config.h"
 	"as_thread.h"
 	"as_atomic.h"
 
-1284993332 source:e:\repozes\code\source\angelscript\as_tokenizer.cpp
+1284996932 source:e:\repozes\code\source\angelscript\as_tokenizer.cpp
 	"as_config.h"
 	"as_scriptengine.h"
 	"as_tokenizer.h"
@@ -1080,41 +1087,41 @@
 	<memory.h>
 	<string.h>
 
-1199252560 source:e:\repozes\code\source\angelscript\as_typeinfo.cpp
+1199256160 source:e:\repozes\code\source\angelscript\as_typeinfo.cpp
 	"as_config.h"
 	"as_typeinfo.h"
 
-1299008792 source:e:\repozes\code\source\angelscript\as_variablescope.cpp
+1299012392 source:e:\repozes\code\source\angelscript\as_variablescope.cpp
 	"as_config.h"
 	"as_variablescope.h"
 
-1282135501 source:e:\repozes\code\source\angelscript\scriptany.cpp
+1282139101 source:e:\repozes\code\source\angelscript\scriptany.cpp
 	"scriptany.h"
 	<new>
 	<assert.h>
 	<string.h>
 
-1282136144 e:\repozes\code\source\angelscript\scriptany.h
-	<AngelScript/angelscript.h>
+1301084336 e:\repozes\code\source\angelscript\scriptany.h
+	"AngelScript/angelscript.h"
 
-1299009455 source:e:\repozes\code\source\angelscript\scriptarray.cpp
+1301015638 source:e:\repozes\code\source\angelscript\scriptarray.cpp
 	<new>
 	<stdlib.h>
 	<string.h>
 	<assert.h>
 	"scriptarray.h"
 
-1282135500 source:e:\repozes\code\source\angelscript\scriptdictionary.cpp
+1282139100 source:e:\repozes\code\source\angelscript\scriptdictionary.cpp
 	<assert.h>
 	<string.h>
 	"scriptdictionary.h"
 
-1282136001 e:\repozes\code\source\angelscript\scriptdictionary.h
-	<AngelScript/angelscript.h>
+1301084355 e:\repozes\code\source\angelscript\scriptdictionary.h
+	"AngelScript/angelscript.h"
 	<string>
 	<map>
 
-1300812393 source:e:\repozes\code\source\angelscript\scriptfile.cpp
+1300815993 source:e:\repozes\code\source\angelscript\scriptfile.cpp
 	"scriptfile.h"
 	<new>
 	<assert.h>
@@ -1123,31 +1130,31 @@
 	<string.h>
 	<windows.h>
 
-1299009590 e:\repozes\code\source\angelscript\scriptfile.h
-	<AngelScript/angelscript.h>
+1301084366 e:\repozes\code\source\angelscript\scriptfile.h
+	"AngelScript/angelscript.h"
 	"scriptarray.h"
 	"scriptstring.h"
 
-1248961384 source:e:\repozes\code\source\angelscript\scriptmath.cpp
+1248964984 source:e:\repozes\code\source\angelscript\scriptmath.cpp
 	<assert.h>
 	<math.h>
 	<string.h>
 	"scriptmath.h"
 
-1269469025 e:\repozes\code\source\angelscript\scriptmath.h
-	<AngelScript/angelscript.h>
+1301084378 e:\repozes\code\source\angelscript\scriptmath.h
+	"AngelScript/angelscript.h"
 
-1247442832 source:e:\repozes\code\source\angelscript\scriptmath3d.cpp
+1247446432 source:e:\repozes\code\source\angelscript\scriptmath3d.cpp
 	<assert.h>
 	<string.h>
 	<new>
 	<math.h>
 	"scriptmath3d.h"
 
-1269469025 e:\repozes\code\source\angelscript\scriptmath3d.h
+1269472625 e:\repozes\code\source\angelscript\scriptmath3d.h
 	"AngelScript/angelscript.h"
 
-1299009498 source:e:\repozes\code\source\angelscript\scriptstring.cpp
+1301031514 source:e:\repozes\code\source\angelscript\scriptstring.cpp
 	<Common.h>
 	<Debugger.h>
 	<assert.h>
@@ -1155,33 +1162,37 @@
 	<stdio.h>
 	"scriptstring.h"
 
-1298233842 source:e:\repozes\code\source\angelscript\scriptstring_utils.cpp
+1298237442 source:e:\repozes\code\source\angelscript\scriptstring_utils.cpp
 	<assert.h>
 	"scriptstring.h"
 	"scriptarray.h"
 	<string.h>
 
-1300823827 source:e:\repozes\code\source\mainserver.cpp
+1301268403 source:e:\repozes\code\source\mainserver.cpp
 	"StdAfx.h"
-	"ResourceServer.h"
 	"Server.h"
 	"Exception.h"
 	"Version.h"
-	<iostream>
-	<process.h>
 	<locale.h>
+	"FL/Fl.H"
+	"FL/Fl_Window.H"
+	"FL/Fl_Box.H"
+	"FL/Fl_Text_Display.H"
+	"FL/Fl_Button.H"
+	"FL/Fl_Check_Button.H"
+	"FL/Fl_File_Icon.H"
 
 1284069375 e:\repozes\code\source\resourceserver.h
 
-1300812644 source:e:\repozes\code\source\crittermanager.cpp
+1301086994 source:e:\repozes\code\source\crittermanager.cpp
 	"StdAfx.h"
 	"CritterManager.h"
-	"Log.h"
 	"ConstantsManager.h"
 	"ItemManager.h"
+	"IniParser.h"
 	"MapManager.h"
 
-1300866608 source:e:\repozes\code\source\script.cpp
+1301264781 source:e:\repozes\code\source\script.cpp
 	"StdAfx.h"
 	"Script.h"
 	"Text.h"
@@ -1196,16 +1207,15 @@
 	"AngelScript/scriptarray.h"
 	"AngelScript/Preprocessor/preprocess.h"
 	<strstream>
-	<process.h>
 
-1300810741 source:e:\repozes\code\source\serveritem.cpp
+1300814341 source:e:\repozes\code\source\serveritem.cpp
 	"StdAfx.h"
 	"Server.h"
 
-1186341414 source:e:\repozes\code\source\zlib\adler32.c
+1186345014 source:e:\repozes\code\source\zlib\adler32.c
 	"zutil.h"
 
-1271579364 e:\repozes\code\source\zlib\zutil.h
+1271582964 e:\repozes\code\source\zlib\zutil.h
 	"zlib.h"
 	<stddef.h>
 	<string.h>
@@ -1216,27 +1226,27 @@
 	<unix.h>
 	<stdio.h>
 
-1134289650 source:e:\repozes\code\source\zlib\compress.c
+1134293250 source:e:\repozes\code\source\zlib\compress.c
 	"zlib.h"
 
-1271610606 source:e:\repozes\code\source\zlib\crc32.c
+1271614206 source:e:\repozes\code\source\zlib\crc32.c
 	<stdio.h>
 	"zutil.h"
 	<limits.h>
 	"crc32.h"
 
-1041749614 e:\repozes\code\source\zlib\crc32.h
+1041753214 e:\repozes\code\source\zlib\crc32.h
 
-1271697140 source:e:\repozes\code\source\zlib\deflate.c
+1271700740 source:e:\repozes\code\source\zlib\deflate.c
 	"deflate.h"
 
-1271610046 e:\repozes\code\source\zlib\deflate.h
+1271613646 e:\repozes\code\source\zlib\deflate.h
 	"zutil.h"
 
-1266070368 source:e:\repozes\code\source\zlib\gzclose.c
+1266073968 source:e:\repozes\code\source\zlib\gzclose.c
 	"gzguts.h"
 
-1300758536 e:\repozes\code\source\zlib\gzguts.h
+1300762136 e:\repozes\code\source\zlib\gzguts.h
 	<stdio.h>
 	"zlib.h"
 	<string.h>
@@ -1247,38 +1257,38 @@
 	<windows.h>
 	<errno.h>
 
-1300758536 source:e:\repozes\code\source\zlib\gzlib.c
+1300762136 source:e:\repozes\code\source\zlib\gzlib.c
 	"gzguts.h"
 
-1282904133 source:e:\repozes\code\source\zlib\gzread.c
+1282907733 source:e:\repozes\code\source\zlib\gzread.c
 	"gzguts.h"
 
-1282904133 source:e:\repozes\code\source\zlib\gzwrite.c
+1282907733 source:e:\repozes\code\source\zlib\gzwrite.c
 	"gzguts.h"
 	<stdarg.h>
 
-1261751680 source:e:\repozes\code\source\zlib\infback.c
+1261755280 source:e:\repozes\code\source\zlib\infback.c
 	"zutil.h"
 	"inftrees.h"
 	"inflate.h"
 	"inffast.h"
 	"inffixed.h"
 
-1271610926 e:\repozes\code\source\zlib\inftrees.h
+1271614526 e:\repozes\code\source\zlib\inftrees.h
 
-1261751528 e:\repozes\code\source\zlib\inflate.h
+1261755128 e:\repozes\code\source\zlib\inflate.h
 
-1271610960 e:\repozes\code\source\zlib\inffast.h
+1271614560 e:\repozes\code\source\zlib\inffast.h
 
-1038145498 e:\repozes\code\source\zlib\inffixed.h
+1038149098 e:\repozes\code\source\zlib\inffixed.h
 
-1271610982 source:e:\repozes\code\source\zlib\inffast.c
+1271614582 source:e:\repozes\code\source\zlib\inffast.c
 	"zutil.h"
 	"inftrees.h"
 	"inflate.h"
 	"inffast.h"
 
-1264285634 source:e:\repozes\code\source\zlib\inflate.c
+1264289234 source:e:\repozes\code\source\zlib\inflate.c
 	"zutil.h"
 	"inftrees.h"
 	"inflate.h"
@@ -1286,25 +1296,25 @@
 	"inffixed.h"
 	<stdio.h>
 
-1271697140 source:e:\repozes\code\source\zlib\inftrees.c
+1271700740 source:e:\repozes\code\source\zlib\inftrees.c
 	"zutil.h"
 	"inftrees.h"
 
-1282908873 source:e:\repozes\code\source\zlib\ioapi.c
+1282912473 source:e:\repozes\code\source\zlib\ioapi.c
 	"ioapi.h"
 
-1271610224 source:e:\repozes\code\source\zlib\trees.c
+1271613824 source:e:\repozes\code\source\zlib\trees.c
 	"deflate.h"
 	<ctype.h>
 	"trees.h"
 	<stdio.h>
 
-1271572358 e:\repozes\code\source\zlib\trees.h
+1271575958 e:\repozes\code\source\zlib\trees.h
 
-1263713660 source:e:\repozes\code\source\zlib\uncompr.c
+1263717260 source:e:\repozes\code\source\zlib\uncompr.c
 	"zlib.h"
 
-1266199180 source:e:\repozes\code\source\zlib\unzip.c
+1266202780 source:e:\repozes\code\source\zlib\unzip.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -1316,28 +1326,28 @@
 	<errno.h>
 	"crypt.h"
 
-1271610852 source:e:\repozes\code\source\zlib\zutil.c
+1271614452 source:e:\repozes\code\source\zlib\zutil.c
 	"zutil.h"
 
-1167759484 source:e:\repozes\code\source\datfile\unlzss.cpp
+1167763084 source:e:\repozes\code\source\datfile\unlzss.cpp
 	<string.h>
 	"unlzss.h"
 
-1300812964 source:e:\repozes\code\source\datfile\cfile.cpp
+1300816564 source:e:\repozes\code\source\datfile\cfile.cpp
 	"cfile.h"
 	"unlzss.h"
 
 1284069375 e:\repozes\code\server\resourceserver.h
 
-1228903011 e:\repozes\code\source\stlport\stdio.h
+1228906611 e:\repozes\code\source\stlport\stdio.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cprolog.h
+1228906611 e:\repozes\code\source\stlport\stl\_cprolog.h
 	<stl/config/features.h>
 	<stl/config/_prolog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\features.h
+1228906611 e:\repozes\code\source\stlport\stl\config\features.h
 	<stl/_stlport_version.h>
 	<stl/config/user_config.h>
 	<stl/config/compat.h>
@@ -1349,15 +1359,15 @@
 	<yvals.h>
 	<stl/_abbrevs.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_stlport_version.h
+1228906611 e:\repozes\code\source\stlport\stl\_stlport_version.h
 
-1300832975 e:\repozes\code\source\stlport\stl\config\user_config.h
+1300836575 e:\repozes\code\source\stlport\stl\config\user_config.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\compat.h
+1228906611 e:\repozes\code\source\stlport\stl\config\compat.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\host.h
+1301109323 e:\repozes\code\source\stlport\stl\config\host.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_system.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_system.h
 	<stl/config/_solaris.h>
 	<stl/config/_gcc.h>
 	<stl/config/_sunprocc.h>
@@ -1404,71 +1414,71 @@
 	<stl/config/_windows.h>
 	<stl/config/stl_mycomp.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_solaris.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_solaris.h
 	<sys/feature_tests.h>
 
-1300824689 e:\repozes\code\source\stlport\stl\config\_gcc.h
+1300828289 e:\repozes\code\source\stlport\stl\config\_gcc.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_sunprocc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_sunprocc.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_kai.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_kai.h
 	<standards.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_apcc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_apcc.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_fujitsu.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_fujitsu.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_hpux.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_hpux.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_hpacc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_hpacc.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_linux.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_linux.h
 	<features.h>
 	<endian.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_bc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_bc.h
 	</usr/include/sys/cdefs.h>
 	<stl/config/_detect_dll_or_lib.h>
 	<stl/config/_auto_link.h>
 	<stl/config/_feedback.h>
 
-1300847648 e:\repozes\code\source\stlport\stl\config\_detect_dll_or_lib.h
+1300851248 e:\repozes\code\source\stlport\stl\config\_detect_dll_or_lib.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_auto_link.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_auto_link.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_feedback.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_feedback.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_icc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_icc.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_freebsd.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_freebsd.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_openbsd.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_openbsd.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_sgi.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_sgi.h
 	<standards.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_as400.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_as400.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_aix.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_aix.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_ibm.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_ibm.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_dec_vms.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_dec_vms.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_dec.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_dec.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_mac.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_mac.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_mwerks.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_mwerks.h
 	<mslGlobals.h>
 	<ansi_parms.h>
 	<msl_utility>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_macosx.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_macosx.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_cygwin.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_cygwin.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_windows.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_windows.h
 	<stl/config/_native_headers.h>
 	<afx.h>
 	<windows.h>
@@ -1476,11 +1486,11 @@
 	<windef.h>
 	<winbase.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_native_headers.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_native_headers.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_watcom.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_watcom.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_como.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_como.h
 	<stl/config/_native_headers.h>
 	<math.h>
 	<math.h>
@@ -1490,73 +1500,73 @@
 	<math.h>
 	<stdexcept.stdh>
 
-1228903011 e:\repozes\code\source\stlport\math.h
+1228906611 e:\repozes\code\source\stlport\math.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_epilog.h
+1228906611 e:\repozes\code\source\stlport\stl\_epilog.h
 	<stl/config/_epilog.h>
 	<stl/_config_compat_post.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_epilog.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_epilog.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_config_compat_post.h
+1228906611 e:\repozes\code\source\stlport\stl\_config_compat_post.h
 
-1228903011 e:\repozes\code\source\stlport\stddef.h
+1228906611 e:\repozes\code\source\stlport\stddef.h
 	<stl/_cprolog.h>
 	"errno.h"
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\errno.h
+1228906611 e:\repozes\code\source\stlport\errno.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_dm.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_dm.h
 	<stl/config/_detect_dll_or_lib.h>
 	<stl/config/_auto_link.h>
 	<stl/config/_feedback.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_intel.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_intel.h
 	<stl/config/_msvc.h>
 	<stl/config/_feedback.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_msvc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_msvc.h
 	<stl/config/_detect_dll_or_lib.h>
 	<stl/config/_auto_link.h>
 	<stl/config/_feedback.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_evc.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_evc.h
 	<stl/config/_msvc.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\stl_mycomp.h
+1228906611 e:\repozes\code\source\stlport\stl\config\stl_mycomp.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\stl_confix.h
+1228906611 e:\repozes\code\source\stlport\stl\config\stl_confix.h
 	<mcompile.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_abbrevs.h
+1228906611 e:\repozes\code\source\stlport\stl\_abbrevs.h
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_prolog.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_prolog.h
 	<stl/config/_warnings_off.h>
 	<stl/config/_warnings_off.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\config\_warnings_off.h
+1228906611 e:\repozes\code\source\stlport\stl\config\_warnings_off.h
 
-1228903011 e:\repozes\code\source\stlport\map
+1228906611 e:\repozes\code\source\stlport\map
 	<stl/_prolog.h>
 	<stl/_map.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_prolog.h
+1228906611 e:\repozes\code\source\stlport\stl\_prolog.h
 	<stl/_cprolog.h>
 	<stl/debug/_debug.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_debug.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_debug.h
 	<stl/_threads.h>
 	<stl/_iterator_base.h>
 	<stl/type_traits.h>
 	<stl/debug/_debug.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_threads.h
+1228906611 e:\repozes\code\source\stlport\stl\_threads.h
 	<stl/_cstddef.h>
 	<stl/_cstdlib.h>
 	<mutex.h>
@@ -1576,77 +1586,77 @@
 	<os2.h>
 	<stl/_threads.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cstddef.h
+1228906611 e:\repozes\code\source\stlport\stl\_cstddef.h
 	<stddef.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cstdlib.h
+1228906611 e:\repozes\code\source\stlport\stl\_cstdlib.h
 	<stdlib.h>
 	<process.h>
 	<stl/_cmath.h>
 
-1228903011 e:\repozes\code\source\stlport\stdlib.h
+1228906611 e:\repozes\code\source\stlport\stdlib.h
 	<stl/_cprolog.h>
 	"errno.h"
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cmath.h
+1228906611 e:\repozes\code\source\stlport\stl\_cmath.h
 	<math.h>
 	<stl/_cstdlib.h>
 
-1228903011 e:\repozes\code\source\stlport\pthread.h
+1228906611 e:\repozes\code\source\stlport\pthread.h
 	<stl/_prolog.h>
 	"/usr/include/pthread.h"
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_sparc_atomic.h
+1228906611 e:\repozes\code\source\stlport\stl\_sparc_atomic.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_ctime.h
+1228906611 e:\repozes\code\source\stlport\stl\_ctime.h
 	<time.h>
 
-1228903011 e:\repozes\code\source\stlport\time.h
+1228906611 e:\repozes\code\source\stlport\time.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cstdio.h
+1228906611 e:\repozes\code\source\stlport\stl\_cstdio.h
 	<stdio.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cwchar.h
+1228906611 e:\repozes\code\source\stlport\stl\_cwchar.h
 	<stl/_mbstate_t.h>
 	<stdint.h>
 	<stl/_mbstate_t.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_mbstate_t.h
+1228906611 e:\repozes\code\source\stlport\stl\_mbstate_t.h
 
-1228903011 e:\repozes\code\source\stlport\cassert
+1228906611 e:\repozes\code\source\stlport\cassert
 	<stl/_prolog.h>
 	<assert.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\assert.h
+1228906611 e:\repozes\code\source\stlport\assert.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_threads.c
+1228906611 e:\repozes\code\source\stlport\stl\_threads.c
 	<stl/_threads.h>
 	<time.h>
 	<stl/_ctime.h>
 	<sys/time.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_iterator_base.h
+1228906611 e:\repozes\code\source\stlport\stl\_iterator_base.h
 	<stl/_cstddef.h>
 	<stl/type_traits.h>
 	<stl/_ptrs_specialize.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\type_traits.h
+1228906611 e:\repozes\code\source\stlport\stl\type_traits.h
 	<stl/_cwchar.h>
 	<stl/type_manips.h>
 	<stl/boost_type_traits.h>
 	<boost/type_traits/add_reference.hpp>
 	<boost/type_traits/add_const.hpp>
 
-1228903011 e:\repozes\code\source\stlport\stl\type_manips.h
+1228906611 e:\repozes\code\source\stlport\stl\type_manips.h
 
-1228903011 e:\repozes\code\source\stlport\stl\boost_type_traits.h
+1228906611 e:\repozes\code\source\stlport\stl\boost_type_traits.h
 	<boost/config.hpp>
 	<boost/type_traits/is_integral.hpp>
 	<boost/type_traits/is_float.hpp>
@@ -1660,26 +1670,26 @@
 	<boost/type_traits/remove_cv.hpp>
 	<boost/type_traits/is_same.hpp>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ptrs_specialize.h
+1228906611 e:\repozes\code\source\stlport\stl\_ptrs_specialize.h
 	<stl/type_traits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_debug.c
+1228906611 e:\repozes\code\source\stlport\stl\debug\_debug.c
 	<stl/_cstdlib.h>
 	<stl/_cstdarg.h>
 	<stl/_cstdio.h>
 	<stl/_range_errors.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cstdarg.h
+1228906611 e:\repozes\code\source\stlport\stl\_cstdarg.h
 	<stdarg.h>
 
-1228903011 e:\repozes\code\source\stlport\stdarg.h
+1228906611 e:\repozes\code\source\stlport\stdarg.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_range_errors.h
+1228906611 e:\repozes\code\source\stlport\stl\_range_errors.h
 	<stl/_range_errors.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_range_errors.c
+1228906611 e:\repozes\code\source\stlport\stl\_range_errors.c
 	<stdexcept>
 	<string>
 	<stdexcept>
@@ -1691,40 +1701,40 @@
 	<stl/_cstdlib.h>
 	<stl/_cstdio.h>
 
-1228903011 e:\repozes\code\source\stlport\stdexcept
+1228906611 e:\repozes\code\source\stlport\stdexcept
 	<stl/_prolog.h>
 	<stl/_stdexcept.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_stdexcept.h
+1228906611 e:\repozes\code\source\stlport\stl\_stdexcept.h
 	<stl/_stdexcept_base.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_stdexcept_base.h
+1228906611 e:\repozes\code\source\stlport\stl\_stdexcept_base.h
 	<stl/_exception.h>
 	<stl/_cstring.h>
 	<stl/_string_fwd.h>
 	<stl/_stdexcept_base.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_exception.h
+1228906611 e:\repozes\code\source\stlport\stl\_exception.h
 	<stl/config/_warnings_off.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_cstring.h
+1228906611 e:\repozes\code\source\stlport\stl\_cstring.h
 	<string.h>
 	<using/cstring>
 
-1228903011 e:\repozes\code\source\stlport\string.h
+1228906611 e:\repozes\code\source\stlport\string.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\using\cstring
+1228906611 e:\repozes\code\source\stlport\using\cstring
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_fwd.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_fwd.h
 	<stl/_iosfwd.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_iosfwd.h
+1228906611 e:\repozes\code\source\stlport\stl\_iosfwd.h
 	<stl/char_traits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\char_traits.h
+1228906611 e:\repozes\code\source\stlport\stl\char_traits.h
 	<stl/_cstddef.h>
 	<stl/_cstring.h>
 	<sys/types.h>
@@ -1735,46 +1745,46 @@
 	<stl/_construct.h>
 	<stl/_cwchar.h>
 
-1228903011 e:\repozes\code\source\stlport\mem.h
+1228906611 e:\repozes\code\source\stlport\mem.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_construct.h
+1228906611 e:\repozes\code\source\stlport\stl\_construct.h
 	<stl/_cstring.h>
 	<stl/_new.h>
 	<stl/_iterator_base.h>
 	<stl/type_traits.h>
 	<stl/_move_construct_fwk.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_new.h
+1228906611 e:\repozes\code\source\stlport\stl\_new.h
 	<stl/_cstddef.h>
 	<new.h>
 	<stl/_exception.h>
 	<stl/_cstdio.h>
 
-1228903011 e:\repozes\code\source\stlport\new.h
+1228906611 e:\repozes\code\source\stlport\new.h
 	<stl/_prolog.h>
 	<new>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\new
+1228906611 e:\repozes\code\source\stlport\new
 	<stl/_prolog.h>
 	<stl/_new.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_move_construct_fwk.h
+1228906611 e:\repozes\code\source\stlport\stl\_move_construct_fwk.h
 	<stl/type_traits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_stdexcept_base.c
+1228906611 e:\repozes\code\source\stlport\stl\_stdexcept_base.c
 
-1228903011 e:\repozes\code\source\stlport\string
+1228906611 e:\repozes\code\source\stlport\string
 	<stl/_prolog.h>
 	<stl/_string.h>
 	<stl/_string_hash.h>
 	<stl/_string_io.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_string.h
+1228906611 e:\repozes\code\source\stlport\stl\_string.h
 	<stl/_alloc.h>
 	<stl/_string_fwd.h>
 	<stl/_function_base.h>
@@ -1791,7 +1801,7 @@
 	<stl/_string_operators.h>
 	<stl/_string.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_alloc.h
+1228906611 e:\repozes\code\source\stlport\stl\_alloc.h
 	<stl/_cstddef.h>
 	<stl/_cstdlib.h>
 	<stl/_cstring.h>
@@ -1801,7 +1811,7 @@
 	<stl/_pthread_alloc.h>
 	<stl/_alloc.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_algobase.h
+1228906611 e:\repozes\code\source\stlport\stl\_algobase.h
 	<stl/_cstddef.h>
 	<stl/_cstring.h>
 	<climits>
@@ -1811,135 +1821,135 @@
 	<stl/type_traits.h>
 	<stl/_algobase.c>
 
-1228903011 e:\repozes\code\source\stlport\climits
+1228906611 e:\repozes\code\source\stlport\climits
 	<stl/_prolog.h>
 	</usr/include/limits.h>
 	<limits.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\limits.h
+1228906611 e:\repozes\code\source\stlport\limits.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_pair.h
+1228906611 e:\repozes\code\source\stlport\stl\_pair.h
 	<stl/type_traits.h>
 	<stl/_move_construct_fwk.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_algobase.c
+1228906611 e:\repozes\code\source\stlport\stl\_algobase.c
 	<stl/_algobase.h>
 	<stl/_function_base.h>
 	<stl/_iterator.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_function_base.h
+1228906611 e:\repozes\code\source\stlport\stl\_function_base.h
 	<stl/type_traits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_iterator.h
+1228906611 e:\repozes\code\source\stlport\stl\_iterator.h
 	<stl/_iterator_base.h>
 	<stl/_iterator_old.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_iterator_old.h
+1228906611 e:\repozes\code\source\stlport\stl\_iterator_old.h
 	<stl/_iterator_base.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_pthread_alloc.h
+1228906611 e:\repozes\code\source\stlport\stl\_pthread_alloc.h
 	<stl/_alloc.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_alloc.c
+1228906611 e:\repozes\code\source\stlport\stl\_alloc.c
 	<stl/_alloc.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_uninitialized.h
+1228906611 e:\repozes\code\source\stlport\stl\_uninitialized.h
 	<stl/_cstring.h>
 	<stl/_algobase.h>
 	<stl/_construct.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_sum.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_sum.h
 
-1228903011 e:\repozes\code\source\stlport\stl\msl_string.h
+1228906611 e:\repozes\code\source\stlport\stl\msl_string.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_base.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_base.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_npos.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_npos.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_sum_methods.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_sum_methods.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_workaround.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_workaround.h
 	<stl/_string_npos.h>
 	<stl/_string_sum_methods.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_string.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_string.h
 	<stl/debug/_iterator.h>
 	<stl/_string_npos.h>
 	<stl/debug/_string_sum_methods.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_iterator.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_iterator.h
 	<stl/_pair.h>
 	<stl/_alloc.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_string_sum_methods.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_string_sum_methods.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_operators.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_operators.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string.c
+1228906611 e:\repozes\code\source\stlport\stl\_string.c
 	<stl/_string.h>
 	<stl/_ctraits_fns.h>
 	<stl/_function.h>
 	<stl/_range_errors.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ctraits_fns.h
+1228906611 e:\repozes\code\source\stlport\stl\_ctraits_fns.h
 	<stl/_function_base.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_function.h
+1228906611 e:\repozes\code\source\stlport\stl\_function.h
 	<stl/type_traits.h>
 	<stl/_function_base.h>
 	<stl/_function_adaptors.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_function_adaptors.h
+1228906611 e:\repozes\code\source\stlport\stl\_function_adaptors.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_hash.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_hash.h
 	<stl/_hash_fun.h>
 	<stl/_string.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_hash_fun.h
+1228906611 e:\repozes\code\source\stlport\stl\_hash_fun.h
 	<stl/_cstddef.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_io.h
+1228906611 e:\repozes\code\source\stlport\stl\_string_io.h
 	<stl/_ostream.h>
 	<stl/_istream.h>
 	<stl/_string_io.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ostream.h
+1228906611 e:\repozes\code\source\stlport\stl\_ostream.h
 	<stl/_ios.h>
 	<stl/_ostreambuf_iterator.h>
 	<stl/_exception.h>
 	<stl/_ostream.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ios.h
+1228906611 e:\repozes\code\source\stlport\stl\_ios.h
 	<stl/_ios_base.h>
 	<stl/_ctype.h>
 	<stl/_numpunct.h>
 	<stl/_ios.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ios_base.h
+1228906611 e:\repozes\code\source\stlport\stl\_ios_base.h
 	<stl/_stdexcept_base.h>
 	<stl/_pair.h>
 	<stl/_locale.h>
 	<stl/_string.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_locale.h
+1228906611 e:\repozes\code\source\stlport\stl\_locale.h
 	<stl/_cstdlib.h>
 	<stl/_cwchar.h>
 	<stl/_threads.h>
 	<stl/_string_fwd.h>
 	<stl/_facets_fwd.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_facets_fwd.h
+1228906611 e:\repozes\code\source\stlport\stl\_facets_fwd.h
 	<stl/_iosfwd.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ctype.h
+1228906611 e:\repozes\code\source\stlport\stl\_ctype.h
 	<stl/c_locale.h>
 	<stl/_locale.h>
 	<stl/_algobase.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\c_locale.h
+1228906611 e:\repozes\code\source\stlport\stl\c_locale.h
 	<sgidefs.h>
 	<standards.h>
 	<wchar.h>
@@ -1948,40 +1958,40 @@
 	<standards.h>
 	<ctype.h>
 
-1228903011 e:\repozes\code\source\stlport\wchar.h
+1228906611 e:\repozes\code\source\stlport\wchar.h
 	<stl/_cprolog.h>
 	<stl/_mbstate_t.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\ctype.h
+1228906611 e:\repozes\code\source\stlport\ctype.h
 	<stl/_prolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_numpunct.h
+1228906611 e:\repozes\code\source\stlport\stl\_numpunct.h
 	<stl/_ios_base.h>
 	<stl/c_locale.h>
 	<stl/_string.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ios.c
+1228906611 e:\repozes\code\source\stlport\stl\_ios.c
 	<stl/_ios.h>
 	<stl/_streambuf.h>
 	<stl/_numpunct.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_streambuf.h
+1228906611 e:\repozes\code\source\stlport\stl\_streambuf.h
 	<stl/_ios_base.h>
 	<stl/_streambuf.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_streambuf.c
+1228906611 e:\repozes\code\source\stlport\stl\_streambuf.c
 	<stl/_streambuf.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ostreambuf_iterator.h
+1228906611 e:\repozes\code\source\stlport\stl\_ostreambuf_iterator.h
 	<stl/_streambuf.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ostream.c
+1228906611 e:\repozes\code\source\stlport\stl\_ostream.c
 	<stl/_ostream.h>
 	<stl/_num_put.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_num_put.h
+1228906611 e:\repozes\code\source\stlport\stl\_num_put.h
 	<stl/_numpunct.h>
 	<stl/_ctype.h>
 	<stl/_ostreambuf_iterator.h>
@@ -1989,33 +1999,33 @@
 	<stl/_facets_fwd.h>
 	<stl/_num_put.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_iostream_string.h
+1228906611 e:\repozes\code\source\stlport\stl\_iostream_string.h
 	<stl/_alloc.h>
 	<stl/_string.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_num_put.c
+1228906611 e:\repozes\code\source\stlport\stl\_num_put.c
 	<stl/_num_put.h>
 	<stl/_limits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_limits.h
+1228906611 e:\repozes\code\source\stlport\stl\_limits.h
 	<climits>
 	<cfloat>
 	<stl/_cwchar.h>
 	<stl/_limits.c>
 
-1228903011 e:\repozes\code\source\stlport\cfloat
+1228906611 e:\repozes\code\source\stlport\cfloat
 	<stl/_prolog.h>
 	<float.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\float.h
+1228906611 e:\repozes\code\source\stlport\float.h
 	<stl/_cprolog.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_limits.c
+1228906611 e:\repozes\code\source\stlport\stl\_limits.c
 	<stl/_limits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_istream.h
+1228906611 e:\repozes\code\source\stlport\stl\_istream.h
 	<stl/_cwchar.h>
 	<stl/_ios.h>
 	<stl/_ostream.h>
@@ -2023,16 +2033,16 @@
 	<stl/_ctraits_fns.h>
 	<stl/_istream.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_istreambuf_iterator.h
+1228906611 e:\repozes\code\source\stlport\stl\_istreambuf_iterator.h
 	<stl/_iterator_base.h>
 	<stl/_streambuf.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_istream.c
+1228906611 e:\repozes\code\source\stlport\stl\_istream.c
 	<stl/_istream.h>
 	<stl/_limits.h>
 	<stl/_num_get.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_num_get.h
+1228906611 e:\repozes\code\source\stlport\stl\_num_get.h
 	<stl/_istreambuf_iterator.h>
 	<stl/c_locale.h>
 	<stl/_numpunct.h>
@@ -2041,31 +2051,31 @@
 	<stl/_facets_fwd.h>
 	<stl/_num_get.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_num_get.c
+1228906611 e:\repozes\code\source\stlport\stl\_num_get.c
 	<stl/_num_get.h>
 	<stl/_limits.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_string_io.c
+1228906611 e:\repozes\code\source\stlport\stl\_string_io.c
 	<stl/_string_io.h>
 	<stl/_ctype.h>
 
-1228903011 e:\repozes\code\source\stlport\cstdlib
+1228906611 e:\repozes\code\source\stlport\cstdlib
 	<stl/_prolog.h>
 	"errno.h"
 	<stl/_cstdlib.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\cstdio
+1228906611 e:\repozes\code\source\stlport\cstdio
 	<stl/_prolog.h>
 	<stl/_cstdio.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_map.h
+1228906611 e:\repozes\code\source\stlport\stl\_map.h
 	<stl/_tree.h>
 	<stl/_relops_cont.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_tree.h
+1228906611 e:\repozes\code\source\stlport\stl\_tree.h
 	<stl/_algobase.h>
 	<stl/_alloc.h>
 	<stl/_iterator.h>
@@ -2075,39 +2085,39 @@
 	<stl/debug/_tree.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_tree.c
+1228906611 e:\repozes\code\source\stlport\stl\_tree.c
 	<stl/_tree.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_tree.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_tree.h
 	<stl/debug/_iterator.h>
 	<stl/_function_base.h>
 	<stl/_alloc.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_relops_cont.h
+1228906611 e:\repozes\code\source\stlport\stl\_relops_cont.h
 
-1228903011 e:\repozes\code\source\stlport\set
+1228906611 e:\repozes\code\source\stlport\set
 	<stl/_prolog.h>
 	<stl/_set.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_set.h
+1228906611 e:\repozes\code\source\stlport\stl\_set.h
 	<stl/_tree.h>
 	<stl/pointers/_set.h>
 	<stl/_relops_cont.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\pointers\_set.h
+1228906611 e:\repozes\code\source\stlport\stl\pointers\_set.h
 	<stl/pointers/_tools.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\pointers\_tools.h
+1228906611 e:\repozes\code\source\stlport\stl\pointers\_tools.h
 	<stl/type_traits.h>
 
-1228903011 e:\repozes\code\source\stlport\list
+1228906611 e:\repozes\code\source\stlport\list
 	<stl/_prolog.h>
 	<stl/_list.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_list.h
+1228906611 e:\repozes\code\source\stlport\stl\_list.h
 	<stl/_algobase.h>
 	<stl/_alloc.h>
 	<stl/_iterator.h>
@@ -2118,22 +2128,22 @@
 	<stl/debug/_list.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_list.c
+1301013990 e:\repozes\code\source\stlport\stl\_list.c
 	<stl/_list.h>
 	<stl/_carray.h>
 	<stl/_range_errors.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_carray.h
+1228906611 e:\repozes\code\source\stlport\stl\_carray.h
 	<stl/_construct.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\pointers\_list.h
+1228906611 e:\repozes\code\source\stlport\stl\pointers\_list.h
 	<stl/pointers/_tools.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_list.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_list.h
 	<stl/_algo.h>
 	<stl/debug/_iterator.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_algo.h
+1228906611 e:\repozes\code\source\stlport\stl\_algo.h
 	<stl/_algobase.h>
 	<stl/_heap.h>
 	<stl/_iterator.h>
@@ -2141,33 +2151,33 @@
 	<stl/_cstdio.h>
 	<stl/_algo.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_heap.h
+1228906611 e:\repozes\code\source\stlport\stl\_heap.h
 	<stl/_heap.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_heap.c
+1228906611 e:\repozes\code\source\stlport\stl\_heap.c
 	<stl/_heap.h>
 	<stl/_iterator_base.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_algo.c
+1228906611 e:\repozes\code\source\stlport\stl\_algo.c
 	<stl/_algo.h>
 	<stl/_tempbuf.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_tempbuf.h
+1228906611 e:\repozes\code\source\stlport\stl\_tempbuf.h
 	<climits>
 	<stl/_cstdlib.h>
 	<stl/_uninitialized.h>
 	<stl/_tempbuf.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_tempbuf.c
+1228906611 e:\repozes\code\source\stlport\stl\_tempbuf.c
 	<stl/_tempbuf.h>
 
-1228903011 e:\repozes\code\source\stlport\vector
+1228906611 e:\repozes\code\source\stlport\vector
 	<stl/_prolog.h>
 	<stl/_algobase.h>
 	<stl/_vector.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_vector.h
+1228906611 e:\repozes\code\source\stlport\stl\_vector.h
 	<stl/_algobase.h>
 	<stl/_alloc.h>
 	<stl/_iterator.h>
@@ -2178,26 +2188,26 @@
 	<stl/debug/_vector.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_vector.c
+1228906611 e:\repozes\code\source\stlport\stl\_vector.c
 	<stl/_vector.h>
 	<stl/_range_errors.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\pointers\_vector.h
+1228906611 e:\repozes\code\source\stlport\stl\pointers\_vector.h
 	<stl/pointers/_tools.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_bvector.h
+1228906611 e:\repozes\code\source\stlport\stl\_bvector.h
 	<stl/_vector.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_vector.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_vector.h
 	<stl/debug/_iterator.h>
 
-1228903011 e:\repozes\code\source\stlport\deque
+1228906611 e:\repozes\code\source\stlport\deque
 	<stl/_prolog.h>
 	<stl/_deque.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_deque.h
+1228906611 e:\repozes\code\source\stlport\stl\_deque.h
 	<stl/_algobase.h>
 	<stl/_alloc.h>
 	<stl/_iterator.h>
@@ -2208,52 +2218,292 @@
 	<stl/debug/_deque.h>
 	<stl/_relops_cont.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_deque.c
+1228906611 e:\repozes\code\source\stlport\stl\_deque.c
 	<stl/_deque.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\pointers\_deque.h
+1228906611 e:\repozes\code\source\stlport\stl\pointers\_deque.h
 	<stl/pointers/_tools.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\debug\_deque.h
+1228906611 e:\repozes\code\source\stlport\stl\debug\_deque.h
 	<stl/debug/_iterator.h>
 
-1228903011 e:\repozes\code\source\stlport\algorithm
+1228906611 e:\repozes\code\source\stlport\algorithm
 	<stl/_prolog.h>
 	<stl/_cstdio.h>
 	<stl/_algo.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\strstream
+1228906611 e:\repozes\code\source\stlport\strstream
 	<stl/_prolog.h>
 	<stl/_ioserr.h>
 	<stl/_strstream.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_ioserr.h
+1228906611 e:\repozes\code\source\stlport\stl\_ioserr.h
 
-1228903011 e:\repozes\code\source\stlport\stl\_strstream.h
+1228906611 e:\repozes\code\source\stlport\stl\_strstream.h
 	<stl/_streambuf.h>
 	<stl/_istream.h>
 	<stl/_string.h>
 
-1228903011 e:\repozes\code\source\stlport\fstream
+1228906611 e:\repozes\code\source\stlport\fstream
 	<stl/_prolog.h>
 	<stl/_ioserr.h>
 	<stl/_fstream.h>
 	<stl/_epilog.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_fstream.h
+1228906611 e:\repozes\code\source\stlport\stl\_fstream.h
 	<stl/_streambuf.h>
 	<stl/_istream.h>
 	<stl/_codecvt.h>
 	<stl/_fstream.c>
 
-1228903011 e:\repozes\code\source\stlport\stl\_codecvt.h
+1228906611 e:\repozes\code\source\stlport\stl\_codecvt.h
 	<stl/c_locale.h>
 	<stl/_locale.h>
 	<stl/_algobase.h>
 
-1228903011 e:\repozes\code\source\stlport\stl\_fstream.c
+1228906611 e:\repozes\code\source\stlport\stl\_fstream.c
 	<stl/_fstream.h>
 	<stl/_limits.h>
+
+1301258579 e:\repozes\code\source\pthreadwnd\pthread.h
+	<windows.h>
+	"config.h"
+	<time.h>
+	<signal.h>
+	<setjmp.h>
+	<limits.h>
+	"need_errno.h"
+	<errno.h>
+	"sched.h"
+	<sys/types.h>
+
+1228906611 e:\repozes\code\source\stlport\signal.h
+	<stl/_cprolog.h>
+	<stl/_epilog.h>
+
+1228906611 e:\repozes\code\source\stlport\setjmp.h
+	<stl/_cprolog.h>
+	<stl/_epilog.h>
+
+1112316921 e:\repozes\code\source\pthreadwnd\sched.h
+	"need_errno.h"
+	<errno.h>
+	<sys/types.h>
+	<time.h>
+
+1301024354 e:\repozes\code\source\iniparser.h
+	"Common.h"
+
+1228906611 e:\repozes\code\source\stlport\sstream
+	<stl/_prolog.h>
+	<stl/_ioserr.h>
+	<stl/_sstream.h>
+	<stl/_epilog.h>
+
+1228906611 e:\repozes\code\source\stlport\stl\_sstream.h
+	<stl/_streambuf.h>
+	<stl/_istream.h>
+	<stl/_string.h>
+	<stl/_sstream.c>
+
+1228906611 e:\repozes\code\source\stlport\stl\_sstream.c
+	<stl/_sstream.h>
+
+1228906611 e:\repozes\code\source\stlport\iostream
+	<stl/_prolog.h>
+	<stl/_ioserr.h>
+	<stl/_fstream.h>
+	<stl/_iosfwd.h>
+	<stl/_istream.h>
+	<stl/_epilog.h>
+
+1228906611 e:\repozes\code\source\stlport\locale.h
+	<stl/_cprolog.h>
+	<stl/_epilog.h>
+
+1301024355 e:\repozes\code\source\msgfiles.h
+	"Common.h"
+	"MsgStr.h"
+
+1300764730 e:\repozes\code\source\3dstuff\meshstructures.h
+	"Defines.h"
+
+1300728757 e:\repozes\code\source\fl\fl.h
+	<FL/Fl_Cairo.H>
+	"fl_utf8.h"
+	"Enumerations.H"
+
+1294313098 e:\repozes\code\source\fl\fl_cairo.h
+	<FL/Fl_Export.H>
+	<cairo-xlib.h>
+	<cairo-win32.h>
+	<cairo-quartz.h>
+
+1290981999 e:\repozes\code\source\fl\fl_export.h
+
+1291663342 e:\repozes\code\source\fl\fl_utf8.h
+	"Fl_Export.H"
+	"fl_types.h"
+	<stdio.h>
+	<string.h>
+	<stdlib.h>
+	<sys/types.h>
+	<sys/stat.h>
+	<locale.h>
+	<ctype.h>
+	<wchar.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<sys/stat.h>
+	"Xutf8.h"
+	<X11/Xlocale.h>
+	<X11/Xlib.h>
+	<locale.h>
+
+1290981999 e:\repozes\code\source\fl\fl_types.h
+
+1297120936 e:\repozes\code\source\fl\xutf8.h
+	<X11/X.h>
+	<X11/Xlib.h>
+	<X11/Xlocale.h>
+	<X11/Xutil.h>
+
+1299454826 e:\repozes\code\source\fl\enumerations.h
+	"Fl_Export.H"
+	"fl_types.h"
+
+1295892262 e:\repozes\code\source\fl\fl_text_display.h
+	"fl_draw.H"
+	"Fl_Group.H"
+	"Fl_Widget.H"
+	"Fl_Scrollbar.H"
+	"Fl_Text_Buffer.H"
+
+1298053363 e:\repozes\code\source\fl\fl_draw.h
+	<FL/x.H>
+	<FL/Enumerations.H>
+	<FL/Fl_Window.H>
+	<FL/Fl_Device.H>
+
+1296991463 e:\repozes\code\source\fl\x.h
+	"Enumerations.H"
+	"win32.H"
+	"mac.H"
+	<X11/Xlib.h>
+	<X11/Xutil.h>
+	<X11/Xatom.h>
+	"Fl_Window.H"
+	"Xutf8.h"
+
+1296928504 e:\repozes\code\source\fl\win32.h
+	<windows.h>
+	<FL/Fl_Window.H>
+
+1298627087 e:\repozes\code\source\fl\fl_window.h
+	"Fl_Group.H"
+
+1293894113 e:\repozes\code\source\fl\fl_group.h
+	"Fl_Widget.H"
+
+1298712210 e:\repozes\code\source\fl\fl_widget.h
+	"Enumerations.H"
+	<stdint.h>
+	<stddef.h>
+
+1299261883 e:\repozes\code\source\fl\mac.h
+	<FL/Fl_Widget.H>
+	<AvailabilityMacros.h>
+	<ApplicationServices/ApplicationServices.h>
+	"Fl_Window.H"
+
+1300888170 e:\repozes\code\source\fl\fl_device.h
+	<FL/x.H>
+	<FL/Fl_Plugin.H>
+	<FL/Fl_Image.H>
+	<FL/Fl_Bitmap.H>
+	<FL/Fl_Pixmap.H>
+	<FL/Fl_RGB_Image.H>
+
+1295892262 e:\repozes\code\source\fl\fl_plugin.h
+	"Fl_Preferences.H"
+
+1291513096 e:\repozes\code\source\fl\fl_preferences.h
+	<stdio.h>
+	"Fl_Export.H"
+
+1296383080 e:\repozes\code\source\fl\fl_image.h
+	"Enumerations.H"
+
+1290981999 e:\repozes\code\source\fl\fl_bitmap.h
+	"Fl_Image.H"
+
+1290981999 e:\repozes\code\source\fl\fl_pixmap.h
+	"Fl_Image.H"
+
+1290981999 e:\repozes\code\source\fl\fl_rgb_image.h
+	"Fl_Image.H"
+
+1291855984 e:\repozes\code\source\fl\fl_scrollbar.h
+	"Fl_Slider.H"
+
+1291855984 e:\repozes\code\source\fl\fl_slider.h
+	"Fl_Valuator.H"
+
+1291855984 e:\repozes\code\source\fl\fl_valuator.h
+	"Fl_Widget.H"
+
+1293838683 e:\repozes\code\source\fl\fl_text_buffer.h
+	<assert.h>
+	"Fl_Export.H"
+
+1290981999 e:\repozes\code\source\fl\fl_box.h
+	"Fl_Widget.H"
+
+1290981999 e:\repozes\code\source\fl\fl_button.h
+	"Fl_Widget.H"
+
+1291855984 e:\repozes\code\source\fl\fl_check_button.h
+	"Fl_Light_Button.H"
+
+1294153777 e:\repozes\code\source\fl\fl_light_button.h
+	"Fl_Button.H"
+
+1295892262 e:\repozes\code\source\fl\fl_file_icon.h
+	"Fl.H"
+
+1292006598 e:\repozes\code\source\event2\event.h
+	<event2/event-config.h>
+	<sys/types.h>
+	<sys/time.h>
+	<stdio.h>
+	<event2/util.h>
+
+1292524714 e:\repozes\code\source\event2\event-config.h
+
+1290575998 e:\repozes\code\source\event2\util.h
+	<event2/event-config.h>
+	<sys/time.h>
+	<stdint.h>
+	<inttypes.h>
+	<sys/types.h>
+	<stddef.h>
+	<BaseTsd.h>
+	<stdarg.h>
+	<netdb.h>
+	<winsock2.h>
+	<sys/socket.h>
+
+1301085074 source:e:\repozes\code\source\iniparser.cpp
+	"StdAfx.h"
+	"IniParser.h"
+	"Crypt.h"
+	"FileManager.h"
+
+1301082357 source:e:\repozes\code\source\msgfiles.cpp
+	"StdAfx.h"
+	"MsgFiles.h"
+	"Crypt.h"
+	"FileManager.h"
 

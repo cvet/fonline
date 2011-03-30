@@ -51,9 +51,9 @@
  * See STLport configuration file (build/lib/configure.bat) for help in building
  * the require library versions.
  */
-/*
+
 #define _STLP_USE_STATIC_LIB
-*/
+
 #endif
 
 /*

@@ -11,6 +11,9 @@
 #include "CritterData.h"
 #include "DataMask.h"
 #include "NetProtocol.h"
+#include "Event2/event.h"
+#include "Event2/bufferevent.h"
+#include "Event2/buffer.h"
 
 #define CRITTER_EVENT_IDLE                    (0)
 #define CRITTER_EVENT_FINISH                  (1)
@@ -117,7 +120,7 @@ public:
 	Critter* ThisPtr[MAX_PARAMETERS_ARRAYS];
 	uint AllowedToDownloadMap;
 
-	static WSASendCallback SendDataCallback;
+	static bufferevent_data_cb SendDataCallback;
 	static bool ParamsRegEnabled[MAX_PARAMS];
 	static uint ParamsSendMsgLen;
 	static ushort ParamsSendCount;
@@ -502,13 +505,13 @@ public:
 	uchar Access;
 	uint LanguageMsg;
 	uint UID[5];
-	volatile SOCKET Sock;
-	SOCKADDR_IN From;
+	SOCKET Sock;
+	sockaddr_in From;
 	BufferManager Bin,Bout;
-	WSAOVERLAPPED_EX* WSAIn;
-	WSAOVERLAPPED_EX* WSAOut;
+	bufferevent* NetIO;
+	MutexSpinlock NetIOLocker;
+	UCharVec NetIOBuffer;
 	volatile long NetState;
-	Mutex ShutdownLocker;
 	bool IsDisconnected;
 	bool DisableZlib;
 	z_stream Zstrm;
@@ -522,12 +525,15 @@ public:
 public:
 	uint GetIp(){return From.sin_addr.s_addr;}
 	const char* GetIpStr(){return inet_ntoa(From.sin_addr);}
+	void LockNetIO(){SCOPE_SPINLOCK(NetIOLocker); if(NetIO) bufferevent_lock(NetIO);}
+	void UnlockNetIO(){if(NetIO) bufferevent_unlock(NetIO);}
 
 	// Net
 #define BIN_BEGIN(cl_) cl_->Bin.Lock()
 #define BIN_END(cl_) cl_->Bin.Unlock()
 #define BOUT_BEGIN(cl_) cl_->Bout.Lock()
-#define BOUT_END(cl_) cl_->Bout.Unlock(); if(InterlockedCompareExchange(&cl_->WSAOut->Operation,0,0)==WSAOP_FREE) (*Critter::SendDataCallback)(cl_->WSAOut);
+#define BOUT_END(cl_) cl_->Bout.Unlock(); cl_->LockNetIO(); if(cl_->NetIO) (*Critter::SendDataCallback)(cl_->NetIO,cl_); cl_->UnlockNetIO()
+
 private:
 	uint disconnectTick;
 

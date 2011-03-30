@@ -1977,20 +1977,14 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		// Swap
 		BIN_END(cl);
-		cl->WSAIn->Locker.Lock();
-		cl->WSAOut->Locker.Lock();
-		cl_old->WSAIn->Locker.Lock();
-		cl_old->WSAOut->Locker.Lock();
+		cl->LockNetIO();
+		cl_old->LockNetIO();
 
 		cl_old->AddRef();
 		(*it)=cl_old;
 
-		std::swap(cl_old->WSAIn,cl->WSAIn);
-		std::swap(cl_old->WSAOut,cl->WSAOut);
-		cl_old->WSAIn->PClient=cl_old;
-		cl_old->WSAOut->PClient=cl_old;
-		cl->WSAIn->PClient=cl;
-		cl->WSAOut->PClient=cl;
+		std::swap(cl_old->NetIO,cl->NetIO);
+		bufferevent_setcb(cl_old->NetIO,NetIO_Input,NetIO_Output,NetIO_Event,cl_old);
 
 		std::swap(cl_old->NetState,cl->NetState);
 		cl_old->Sock=cl->Sock;
@@ -2011,14 +2005,12 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		cl_old->IsNotValid=false;
 		cl_old->IsDisconnected=false;
 
-		cl->WSAOut->Locker.Unlock();
-		cl->WSAIn->Locker.Unlock();
+		cl->UnlockNetIO();
 
 		Job::DeferredRelease(cl);
 		cl=cl_old;
 
-		cl->WSAOut->Locker.Unlock();
-		cl->WSAIn->Locker.Unlock();
+		cl->UnlockNetIO();
 		ConnectedClientsLocker.Unlock();
 		BIN_BEGIN(cl);
 

@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Server.h"
+#include "FL/Fl.H"
 
 void* zlib_alloc(void *opaque, unsigned int items, unsigned int size){return calloc(items, size);}
 void zlib_free(void *opaque, void *address){free(address);}
@@ -14,9 +15,10 @@ int FOServer::UpdateIndex=-1;
 int FOServer::UpdateLastIndex=-1;
 uint  FOServer::UpdateLastTick=0;
 ClVec FOServer::LogClients;
-HANDLE FOServer::IOCompletionPort=NULL;
-HANDLE* FOServer::IOThreadHandles=NULL;
-uint FOServer::WorkThreadCount=0;
+event_base* FOServer::NetIOEventHandler=NULL;
+Thread FOServer::ListenThread;
+Thread FOServer::NetIOThread;
+uint FOServer::NetIOThreadsCount=0;
 SOCKET FOServer::ListenSock=INVALID_SOCKET;
 ClVec FOServer::ConnectedClients;
 Mutex FOServer::ConnectedClientsLocker;
@@ -27,15 +29,17 @@ PUCharVec FOServer::WorldSaveData;
 size_t FOServer::WorldSaveDataBufCount=0;
 size_t FOServer::WorldSaveDataBufFreeSize=0;
 FILE* FOServer::DumpFile=NULL;
-HANDLE FOServer::DumpBeginEvent=NULL;
-HANDLE FOServer::DumpEndEvent=NULL;
+MutexEvent FOServer::DumpBeginEvent;
+MutexEvent FOServer::DumpEndEvent;
 uint FOServer::SaveWorldIndex=0;
 uint FOServer::SaveWorldTime=0;
 uint FOServer::SaveWorldNextTick=0;
 UIntVec FOServer::SaveWorldDeleteIndexes;
-HANDLE FOServer::DumpThreadHandle=NULL;
+Thread FOServer::DumpThread;
+#if defined(FO_WINDOWS)
 SYSTEM_INFO FOServer::SystemInfo;
-HANDLE* FOServer::LogicThreadHandles=NULL;
+#endif
+Thread* FOServer::LogicThreads;
 uint FOServer::LogicThreadCount=0;
 bool FOServer::LogicThreadSetAffinity=false;
 bool FOServer::RequestReloadClientScripts=false;
@@ -51,7 +55,6 @@ Mutex FOServer::AnyDataLocker;
 StrVec FOServer::ServerWrongGlobalObjects;
 FOServer::TextListenVec FOServer::TextListeners;
 Mutex FOServer::TextListenersLocker;
-HWND FOServer::ServerWindow=NULL;
 bool FOServer::Active=false;
 FileManager FOServer::FileMngr;
 ClVec FOServer::SaveClients;
@@ -78,7 +81,6 @@ FOServer::FOServer()
 	Active=false;
 	memzero(&Statistics,sizeof(Statistics));
 	memzero(&ServerFunctions,sizeof(ServerFunctions));
-	ServerWindow=NULL;
 	LastClientId=0;
 	SingleplayerSave.Valid=false;
 	VarsGarbageLastTick=0;
@@ -100,7 +102,7 @@ void FOServer::Finish()
 	// World dumper
 	if(WorldSaveManager)
 	{
-		WaitForSingleObject(DumpEndEvent,INFINITE);
+		DumpEndEvent.Wait();
 		MEMORY_PROCESS(MEMORY_SAVE_DATA,-(int)ClientsSaveData.size()*sizeof(ClientSaveData));
 		ClientsSaveData.clear();
 		ClientsSaveDataCount=0;
@@ -109,13 +111,7 @@ void FOServer::Finish()
 		WorldSaveData.clear();
 		WorldSaveDataBufCount=0;
 		WorldSaveDataBufFreeSize=0;
-		CloseHandle(DumpBeginEvent);
-		DumpBeginEvent=NULL;
-		CloseHandle(DumpEndEvent);
-		DumpEndEvent=NULL;
-		//WaitForSingleObject(DumpThreadHandle,INFINITE);
-		CloseHandle(DumpThreadHandle);
-		DumpThreadHandle=NULL;
+		DumpThread.Finish();
 	}
 	if(DumpFile) fclose(DumpFile);
 	DumpFile=NULL;
@@ -131,7 +127,7 @@ void FOServer::Finish()
 	for(ClVecIt it=LogClients.begin(),end=LogClients.end();it!=end;++it) (*it)->Release();
 	LogClients.clear();
 
-	// Net
+	// Clients
 	ConnectedClientsLocker.Lock();
 	for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 	{
@@ -139,15 +135,19 @@ void FOServer::Finish()
 		cl->Shutdown();
 	}
 	ConnectedClientsLocker.Unlock();
+
+	// Listen
 	closesocket(ListenSock);
 	ListenSock=INVALID_SOCKET;
-	for(uint i=0;i<WorkThreadCount;i++) PostQueuedCompletionStatus(IOCompletionPort,0,1,NULL);
-	WaitForMultipleObjects(WorkThreadCount+1,IOThreadHandles,TRUE,INFINITE);
-	for(uint i=0;i<WorkThreadCount;i++) CloseHandle(IOThreadHandles[i]);
-	SAFEDELA(IOThreadHandles);
-	WorkThreadCount=0;
-	CloseHandle(IOCompletionPort);
-	IOCompletionPort=NULL;
+	ListenThread.Wait();
+
+	// Net IO events
+	event_base* eb=NetIOEventHandler;
+	NetIOEventHandler=NULL;
+	if(eb) event_base_loopbreak(eb);
+	NetIOThread.Wait();
+	if(eb) event_base_free(eb);
+	NetIOThreadsCount=0;
 
 	// Managers
 	AIMngr.Finish();
@@ -222,14 +222,24 @@ void FOServer::DisconnectClient(Client* cl)
 	if(cl->IsDisconnected) return;
 	cl->IsDisconnected=true;
 
-	if(InterlockedCompareExchange(&cl->WSAOut->Operation,0,0)==WSAOP_FREE)
+	// Shutdown if all data sended
+	bool shutdown=false;
+	cl->LockNetIO();
+	if(cl->NetIO)
 	{
-		cl->Bout.Lock();
-		bool is_empty=cl->Bout.IsEmpty();
-		cl->Bout.Unlock();
-		if(is_empty) cl->Shutdown();
+		evbuffer* output=bufferevent_get_output(cl->NetIO);
+		if(evbuffer_get_length(output)==0)
+		{
+			cl->Bout.Lock();
+			bool is_empty=cl->Bout.IsEmpty();
+			cl->Bout.Unlock();
+			if(is_empty) shutdown=true;
+		}
 	}
+	cl->UnlockNetIO();
+	if(shutdown) cl->Shutdown();
 
+	// Manage saves, exit from game
 	uint id=cl->GetId();
 	Client* cl_=(id?CrMngr.GetPlayer(id,false):NULL);
 	if(cl_ && cl_==cl)
@@ -389,14 +399,19 @@ void FOServer::MainLoop()
 	WriteLog(NULL,"Starting logic threads, count<%u>.\n",LogicThreadCount);
 	WriteLog(NULL,"***   Starting game loop   ***\n");
 
-	LogicThreadHandles=new HANDLE[LogicThreadCount];
+	LogicThreads=new Thread[LogicThreadCount];
 	for(uint i=0;i<LogicThreadCount;i++)
 	{
 		Job::PushBack(JOB_THREAD_SYNCHRONIZE);
-		LogicThreadHandles[i]=(HANDLE)_beginthreadex(NULL,0,Logic_Work,NULL,CREATE_SUSPENDED,NULL);
-		if(LogicThreadSetAffinity) SetThreadAffinityMask(LogicThreadHandles[i],1<<(i%SystemInfo.dwNumberOfProcessors));
+		LogicThreads[i].Start(Logic_Work);
+
+#if defined(FO_WINDOWS)
+		if(LogicThreadSetAffinity) SetThreadAffinityMask(LogicThreads[i].GetWindowsHandle(),1<<(i%SystemInfo.dwNumberOfProcessors));
+#else // FO_LINUX
+		// int sched_setaffinity(pid_t pid,size_t cpusetsize,cpu_set_t *mask);
+		if(LogicThreadSetAffinity) sched_setaffinity(LogicThreadHandles[i],1<<(i%SystemInfo.dwNumberOfProcessors));
+#endif
 	}
-	for(uint i=0;i<LogicThreadCount;i++) ResumeThread(LogicThreadHandles[i]);
 
 	SyncManager* sync_mngr=SyncManager::GetForCurThread();
 	sync_mngr->UnlockAll();
@@ -445,7 +460,7 @@ void FOServer::MainLoop()
 
 		// Statistics
 		Statistics.Uptime=(Timer::FastTick()-Statistics.ServerStartTick)/1000;
-		UpdateEvent.Allow();
+		Fl::awake(&GuiMsg_UpdateInfo);
 
 //		sync_mngr->UnlockAll();
 		Sleep(100);
@@ -455,9 +470,8 @@ void FOServer::MainLoop()
 
 	// Stop logic threads
 	for(uint i=0;i<LogicThreadCount;i++) Job::PushBack(JOB_THREAD_FINISH);
-	WaitForMultipleObjects(LogicThreadCount,LogicThreadHandles,TRUE,INFINITE);
-	for(uint i=0;i<LogicThreadCount;i++) CloseHandle(LogicThreadHandles[i]);
-	SAFEDELA(LogicThreadHandles);
+	for(uint i=0;i<LogicThreadCount;i++) LogicThreads[i].Wait();
+	SAFEDELA(LogicThreads);
 
 	// Erase all jobs
 	for(int i=0;i<JOB_COUNT;i++) Job::Erase(i);
@@ -509,8 +523,10 @@ void FOServer::ResynchronizeLogicThreads()
 	LogicThreadSync.Resynchronize();
 }
 
-unsigned int __stdcall FOServer::Logic_Work(void* data)
+void* FOServer::Logic_Work(void* data)
 {
+	Sleep(10);
+
 	// Set thread name
 	if(LogicThreadCount>1)
 	{
@@ -553,13 +569,9 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 			if(cl->IsNotValid) continue;
 
 			// Check for removing
-			if(InterlockedCompareExchange(&cl->WSAIn->Operation,0,0)==WSAOP_FREE &&
-				InterlockedCompareExchange(&cl->WSAOut->Operation,0,0)==WSAOP_FREE)
+			if(!cl->NetIO)
 			{
 				DisconnectClient(cl);
-
-				InterlockedExchange(&cl->WSAIn->Operation,WSAOP_END);
-				InterlockedExchange(&cl->WSAOut->Operation,WSAOP_END);
 
 				ConnectedClientsLocker.Lock();
 				ClVecIt it=std::find(ConnectedClients.begin(),ConnectedClients.end(),cl);
@@ -773,18 +785,19 @@ unsigned int __stdcall FOServer::Logic_Work(void* data)
 	}
 
 	sync_mngr->UnlockAll();
-	Script::FinisthThread();
+	Script::FinishThread();
 	return 0;
 }
 
-unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
+void* FOServer::Net_Listen(void* hiocp)
 {
 	LogSetThreadName("NetListen");
 
+	HANDLE iocp=(HANDLE)hiocp;
 	while(true)
 	{
 		// Blocked
-		SOCKADDR_IN from;
+		sockaddr_in from;
 		int addrsize=sizeof(from);
 		SOCKET sock=WSAAccept(ListenSock,(sockaddr*)&from,&addrsize,NULL,NULL);
 		if(sock==INVALID_SOCKET)
@@ -828,26 +841,20 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 		}
 		cl->ZstrmInit=true;
 
-		// CompletionPort
-		if(!CreateIoCompletionPort((HANDLE)sock,IOCompletionPort,0,0))
+		// Net IO events handling
+		bufferevent* buf_event=bufferevent_socket_new(NetIOEventHandler,sock,BEV_OPT_THREADSAFE);
+		if(!buf_event)
 		{
-			WriteLog(_FUNC_," - CreateIoCompletionPort fail, error<%u>.\n",GetLastError());
-			delete cl;
-			continue;
-		}
-
-		// Socket
-		cl->Sock=sock;
-		cl->From=from;
-
-		// First receive queue
-		if(WSARecv(cl->Sock,&cl->WSAIn->Buffer,1,NULL,&cl->WSAIn->Flags,&cl->WSAIn->OV,NULL)==SOCKET_ERROR && WSAGetLastError()!=WSA_IO_PENDING)
-		{
-			WriteLog(_FUNC_," - First recv fail, error<%s>.\n",GetLastSocketError());
+			WriteLog(_FUNC_," - Create new buffer event fail.\n");
 			closesocket(sock);
 			delete cl;
 			continue;
 		}
+		cl->NetIO=buf_event;
+
+		// Socket
+		cl->Sock=sock;
+		cl->From=from;
 
 		// Add to connected collection
 		ConnectedClientsLocker.Lock();
@@ -856,117 +863,110 @@ unsigned int __stdcall FOServer::Net_Listen(HANDLE iocp)
 		Statistics.CurOnline++;
 		ConnectedClientsLocker.Unlock();
 
+		// Begin handle net events
+		bufferevent_setcb(buf_event,NetIO_Input,NetIO_Output,NetIO_Event,cl);
+		bufferevent_enable(buf_event,EV_WRITE|EV_READ);
+
 		// Add job
 		Job::PushBack(JOB_CLIENT,cl);
 	}
-	return 0;
+	return NULL;
 }
 
-unsigned int __stdcall FOServer::Net_Work(HANDLE iocp)
+void* FOServer::NetIO_Loop(void*)
 {
-	static int thread_count=0;
-	LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
-	thread_count++;
+	LogSetThreadName("NetLoop");
 
-#ifdef FO_WINDOWS
 	while(true)
 	{
-		DWORD bytes;
-		uint key;
-		WSAOVERLAPPED_EX* io;
-		uint error=ERROR_SUCCESS;
-		if(!GetQueuedCompletionStatus(iocp,&bytes,(PULONG_PTR)&key,(LPOVERLAPPED*)&io,INFINITE)) error=GetLastError();
-		if(key==1) break; // End of work
+		event_base* eb=NetIOEventHandler;
+		if(!eb) break;
 
-		if(error!=ERROR_SUCCESS && error!=ERROR_NETNAME_DELETED && error!=ERROR_CONNECTION_ABORTED && error!=ERROR_OPERATION_ABORTED && error!=ERROR_SEM_TIMEOUT)
+		// Return 1 if no events, wait some time and run loop again
+		if(event_base_loop(eb,0)!=1) break;
+		Sleep(10);
+	}
+
+	return NULL;
+}
+
+void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
+{
+	Client* cl=(Client*)client;
+
+	if(what&(BEV_EVENT_ERROR|BEV_EVENT_EOF))
+	{
+		cl->Disconnect();
+		cl->Shutdown();
+	}
+
+//	static int thread_count=0;
+//	LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
+//	thread_count++;
+}
+
+void FOServer::NetIO_Input(bufferevent* bev, void* client)
+{
+	Client* cl=(Client*)client;
+
+	evbuffer* input=bufferevent_get_input(bev);
+	uint read_len=(uint)evbuffer_get_length(input);
+	if(read_len)
+	{
+		cl->Bin.Lock();
+		if(cl->Bin.GetCurPos()+read_len>=GameOpt.FloodSize && !Singleplayer)
 		{
-			WriteLog(_FUNC_," - GetQueuedCompletionStatus fail, error<%u>. Work thread closed!\n",error);
-			break;
+			WriteLog(_FUNC_," - Flood.\n");
+			cl->Disconnect();
+			cl->Bin.Reset();
+			cl->Bin.Unlock();
+			cl->Shutdown();
+			return;
 		}
 
-		io->Locker.Lock();
-		Client* cl=(Client*)io->PClient;
-		cl->AddRef();
+		cl->Bin.GrowBuf(read_len);
+		char* data=cl->Bin.GetData();
+		uint pos=cl->Bin.GetEndPos();
+		cl->Bin.SetEndPos(pos+read_len);
 
-		if(error==ERROR_SUCCESS && bytes)
+		if(evbuffer_remove(input,data+pos,read_len)!=read_len)
 		{
-			switch(InterlockedCompareExchange(&io->Operation,0,0))
-			{
-			case WSAOP_SEND:
-				Statistics.BytesSend+=bytes;
-				Net_Output(io);
-				break;
-			case WSAOP_RECV:
-				Statistics.BytesRecv+=bytes;
-				io->Bytes=bytes;
-				Net_Input(io);
-				break;
-			default:
-				WriteLog(_FUNC_," - Unknown operation<%d>.\n",io->Operation);
-				break;
-			}
+			WriteLog(_FUNC_," - Receive fail.\n");
+			cl->Disconnect();
+			cl->Shutdown();
 		}
 		else
 		{
-			InterlockedExchange(&io->Operation,WSAOP_FREE);
+			Statistics.BytesRecv+=read_len;
 		}
 
-		io->Locker.Unlock();
-		cl->Release();
-	}
-#endif
-	return 0;
-}
-
-void FOServer::Net_Input(WSAOVERLAPPED_EX* io)
-{
-	Client* cl=(Client*)io->PClient;
-
-	cl->Bin.Lock();
-	if(cl->Bin.GetCurPos()+io->Bytes>=GameOpt.FloodSize && !Singleplayer)
-	{
-		WriteLog(_FUNC_," - Flood.\n");
-		cl->Disconnect();
-		cl->Bin.Reset();
 		cl->Bin.Unlock();
-		InterlockedExchange(&io->Operation,WSAOP_FREE);
-		return;
-	}
-	cl->Bin.Push(io->Buffer.buf,io->Bytes,true);
-	cl->Bin.Unlock();
-
-	io->Flags=0;
-	if(WSARecv(cl->Sock,&io->Buffer,1,NULL,&io->Flags,&io->OV,NULL)==SOCKET_ERROR && WSAGetLastError()!=WSA_IO_PENDING)
-	{
-		WriteLog(_FUNC_," - Recv fail, error<%s>.\n",GetLastSocketError());
-		cl->Disconnect();
-		InterlockedExchange(&io->Operation,WSAOP_FREE);
 	}
 }
 
-void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
+void FOServer::NetIO_Output(bufferevent* bev, void* client)
 {
-	Client* cl=(Client*)io->PClient;
+	Client* cl=(Client*)client;
 
 	cl->Bout.Lock();
 	if(cl->Bout.IsEmpty()) // Nothing to send
 	{
 		cl->Bout.Unlock();
-		InterlockedExchange(&io->Operation,WSAOP_FREE);
 		if(cl->IsDisconnected) cl->Shutdown();
 		return;
 	}
 
 	// Compress
+	uint write_len=0;
 	if(!GameOpt.DisableZlibCompression && !cl->DisableZlib)
 	{
 		uint to_compr=cl->Bout.GetEndPos();
-		if(to_compr>WSA_BUF_SIZE) to_compr=WSA_BUF_SIZE;
+		if(to_compr>NET_OUTPUT_BUF_SIZE) to_compr=NET_OUTPUT_BUF_SIZE;
 
 		cl->Zstrm.next_in=(UCHAR*)cl->Bout.GetCurData();
 		cl->Zstrm.avail_in=to_compr;
-		cl->Zstrm.next_out=(UCHAR*)io->Buffer.buf;
-		cl->Zstrm.avail_out=WSA_BUF_SIZE;
+		cl->Zstrm.next_out=(UCHAR*)&cl->NetIOBuffer[0];
+		cl->Zstrm.avail_out=NET_OUTPUT_BUF_SIZE;
 
  		if(deflate(&cl->Zstrm,Z_SYNC_FLUSH)!=Z_OK)
  		{
@@ -974,13 +974,13 @@ void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 			cl->Disconnect();
 			cl->Bout.Reset();
 			cl->Bout.Unlock();
-			InterlockedExchange(&io->Operation,WSAOP_FREE);
+			cl->Shutdown();
 			return;
 		}
 
-		uint compr=cl->Zstrm.next_out-(UCHAR*)io->Buffer.buf;
+		uint compr=cl->Zstrm.next_out-(UCHAR*)&cl->NetIOBuffer[0];
 		uint real=cl->Zstrm.next_in-(UCHAR*)cl->Bout.GetCurData();
-		io->Buffer.len=compr;
+		write_len=compr;
 		cl->Bout.Cut(real);
 		Statistics.DataReal+=real;
 		Statistics.DataCompressed+=compr;
@@ -989,9 +989,9 @@ void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 	else
 	{
 		uint len=cl->Bout.GetEndPos();
-		if(len>WSA_BUF_SIZE) len=WSA_BUF_SIZE;
-		memcpy(io->Buffer.buf,cl->Bout.GetCurData(),len);
-		io->Buffer.len=len;
+		if(len>NET_OUTPUT_BUF_SIZE) len=NET_OUTPUT_BUF_SIZE;
+		memcpy(&cl->NetIOBuffer[0],cl->Bout.GetCurData(),len);
+		write_len=len;
 		cl->Bout.Cut(len);
 		Statistics.DataReal+=len;
 		Statistics.DataCompressed+=len;
@@ -999,13 +999,16 @@ void FOServer::Net_Output(WSAOVERLAPPED_EX* io)
 	if(cl->Bout.IsEmpty()) cl->Bout.Reset();
 	cl->Bout.Unlock();
 
-	// Send
-	InterlockedExchange(&io->Operation,WSAOP_SEND);
-	if(WSASend(cl->Sock,&io->Buffer,1,NULL,0,(LPOVERLAPPED)io,NULL)==SOCKET_ERROR && WSAGetLastError()!=WSA_IO_PENDING)
+	// Append to buffer
+	if(bufferevent_write(bev,&cl->NetIOBuffer[0],write_len))
 	{
-		WriteLog(_FUNC_," - Send fail, error<%s>.\n",GetLastSocketError());
+		WriteLog(_FUNC_," - Send fail.\n");
 		cl->Disconnect();
-		InterlockedExchange(&io->Operation,WSAOP_FREE);
+		cl->Shutdown();
+	}
+	else
+	{
+		Statistics.BytesSend+=write_len;
 	}
 }
 
@@ -3360,7 +3363,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(OFFSETOF(Location,RefCounter)==282);
 
 	// Critters parameters
-	Critter::SendDataCallback=&Net_Output;
+	Critter::SendDataCallback=&NetIO_Output;
 	Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
 	Critter::ParamsSendCount=0;
 	memzero(Critter::ParamsSendEnabled,sizeof(Critter::ParamsSendEnabled));
@@ -3484,7 +3487,7 @@ bool FOServer::Init()
 		WriteLog(NULL,"Starting server on free port.\n",port);
 	}
 
-	SOCKADDR_IN sin;
+	sockaddr_in sin;
 	sin.sin_family=AF_INET;
 	sin.sin_port=htons(port);
 	sin.sin_addr.s_addr=INADDR_ANY;
@@ -3514,22 +3517,29 @@ bool FOServer::Init()
 		return false;
 	}
 
-	WorkThreadCount=cfg.GetInt("NetWorkThread",0);
-	if(!WorkThreadCount) WorkThreadCount=SystemInfo.dwNumberOfProcessors;
+	NetIOThreadsCount=cfg.GetInt("NetWorkThread",0);
+	if(!NetIOThreadsCount) NetIOThreadsCount=SystemInfo.dwNumberOfProcessors;
 
-	IOCompletionPort=CreateIoCompletionPort(INVALID_HANDLE_VALUE,NULL,NULL,WorkThreadCount);
-	if(!IOCompletionPort)
+	// Net IO events initialization
+	evthread_use_windows_threads();
+	event_config* event_cfg=event_config_new();
+	event_config_set_flag(event_cfg,EVENT_BASE_FLAG_STARTUP_IOCP);
+	event_config_set_num_cpus_hint(event_cfg,NetIOThreadsCount);
+	NetIOEventHandler=event_base_new_with_config(event_cfg);
+	event_config_free(event_cfg);
+	if(!NetIOEventHandler)
 	{
-		WriteLog(NULL,"Can't create IO Completion Port, error<%u>.\n",GetLastError());
+		WriteLog(NULL,"Can't create Net IO events handler.\n");
 		closesocket(ListenSock);
 		return false;
 	}
 
-	IOThreadHandles=new HANDLE[WorkThreadCount+1];
-	WriteLog(NULL,"Starting net listen thread.\n");
-	IOThreadHandles[0]=(HANDLE)_beginthreadex(NULL,0,Net_Listen,(void*)IOCompletionPort,0,NULL);
-	WriteLog(NULL,"Starting net work threads, count<%u>.\n",WorkThreadCount);
-	for(uint i=0;i<WorkThreadCount;i++) IOThreadHandles[i+1]=(HANDLE)_beginthreadex(NULL,0,Net_Work,(void*)IOCompletionPort,0,NULL);
+	NetIOThread.Start(NetIO_Loop);
+	WriteLog(NULL,"Net work threads is started, count<%u>.\n",NetIOThreadsCount);
+
+	// Listen
+	ListenThread.Start(Net_Listen);
+	WriteLog(NULL,"Net listen thread is started.\n");
 
 	// Start script
 	if(!Script::PrepareContext(ServerFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || !Script::GetReturnedBool())
@@ -3580,9 +3590,9 @@ bool FOServer::Init()
 	if(Singleplayer) WorldSaveManager=0; // Disable deferred saving
 	if(WorldSaveManager)
 	{
-		DumpBeginEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
-		DumpEndEvent=CreateEvent(NULL,FALSE,TRUE,NULL);
-		DumpThreadHandle=(HANDLE)_beginthreadex(NULL,0,Dump_Work,NULL,0,NULL);
+		DumpBeginEvent.Disallow();
+		DumpEndEvent.Allow();
+		DumpThread.Start(Dump_Work);
 	}
 	SaveWorldTime=cfg.GetInt("WorldSaveTime",60)*60*1000;
 	SaveWorldNextTick=Timer::FastTick()+SaveWorldTime;
@@ -4105,7 +4115,8 @@ void FOServer::SaveWorld(const char* name)
 	if(WorldSaveManager)
 	{
 		// Be sure what Dump_Work thread in wait state
-		WaitForSingleObject(DumpEndEvent,INFINITE);
+		DumpEndEvent.Wait();
+		DumpEndEvent.Disallow();
 		tick=Timer::AccurateTick();
 		WorldSaveDataBufCount=0;
 		WorldSaveDataBufFreeSize=0;
@@ -4193,7 +4204,7 @@ void FOServer::SaveWorld(const char* name)
 	if(WorldSaveManager)
 	{
 		// Awake Dump_Work
-		SetEvent(DumpBeginEvent);
+		DumpBeginEvent.Allow();
 	}
 	else
 	{
@@ -4381,13 +4392,14 @@ void FOServer::AddClientSaveData(Client* cl)
 	ClientsSaveDataCount++;
 }
 
-unsigned int __stdcall FOServer::Dump_Work(void* data)
+void* FOServer::Dump_Work(void* data)
 {
 	char fname[MAX_FOPATH];
 
 	while(true)
 	{
-		if(WaitForSingleObject(DumpBeginEvent,INFINITE)!=WAIT_OBJECT_0) break;
+		DumpBeginEvent.Wait();
+		DumpBeginEvent.Disallow();
 
 		char save_path[MAX_FOPATH];
 		FileManager::GetFullPath(NULL,PT_SERVER_SAVE,save_path);
@@ -4451,9 +4463,9 @@ unsigned int __stdcall FOServer::Dump_Work(void* data)
 		}
 
 		// Notify about end of processing
-		SetEvent(DumpEndEvent);
+		DumpEndEvent.Allow();
 	}
-	return 0;
+	return NULL;
 }
 
 /************************************************************************/
