@@ -149,6 +149,7 @@ void WriteLogInternal(const char* func, const char* frmt, va_list& list)
 	if(str_tid[0]) Str::Append(str,str_tid);
 	if(str_time[0]) Str::Append(str,str_time);
 	if(str_tid[0] || str_time[0]) Str::Append(str," ");
+	if(func) Str::Append(str,func);
 
 	size_t len=Str::Length(str);
 #ifdef FO_MSVC

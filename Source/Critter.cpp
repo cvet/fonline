@@ -2940,11 +2940,11 @@ void Client::Shutdown()
 	LockNetIO();
 	if(NetIO)
 	{
-		bufferevent* bev=NetIO;
+		bufferevent_free(NetIO);
 		NetIO=NULL;
-		bufferevent_unlock(bev); // UnlockNetIO();
-		bufferevent_free(bev);
 	}
+	UnlockNetIO();
+
 	if(Sock!=INVALID_SOCKET)
 	{
 		shutdown(Sock,SD_BOTH);

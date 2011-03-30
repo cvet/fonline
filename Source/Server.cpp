@@ -3539,7 +3539,7 @@ bool FOServer::Init()
 
 	// Listen
 	ListenThread.Start(Net_Listen);
-	WriteLog("Net listen thread started.\n");
+	WriteLog("Network listen thread started.\n");
 
 	// Start script
 	if(!Script::PrepareContext(ServerFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || !Script::GetReturnedBool())

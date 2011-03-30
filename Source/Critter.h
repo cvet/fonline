@@ -525,8 +525,8 @@ public:
 public:
 	uint GetIp(){return From.sin_addr.s_addr;}
 	const char* GetIpStr(){return inet_ntoa(From.sin_addr);}
-	void LockNetIO(){SCOPE_SPINLOCK(NetIOLocker); if(NetIO) bufferevent_lock(NetIO);}
-	void UnlockNetIO(){if(NetIO) bufferevent_unlock(NetIO);}
+	void LockNetIO(){NetIOLocker.Lock();}
+	void UnlockNetIO(){NetIOLocker.Unlock();}
 
 	// Net
 #define BIN_BEGIN(cl_) cl_->Bin.Lock()
