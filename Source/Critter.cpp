@@ -2898,7 +2898,7 @@ void Critter::Delete()
 
 Client::Client():
 ZstrmInit(false),Access(ACCESS_DEFAULT),pingOk(true),LanguageMsg(0),
-NetState(STATE_DISCONNECT),IsDisconnected(false),DisableZlib(false),
+NetState(STATE_DISCONNECT),DisableZlib(false),
 LastSendScoresTick(0),LastSendCraftTick(0),LastSendEntrancesTick(0),LastSendEntrancesLocId(0),
 ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0)
 {
@@ -2908,6 +2908,7 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
 	NetIOBuffer.resize(NET_OUTPUT_BUF_SIZE);
+	NetIOArgPtr=NULL;
 	memzero(Name,sizeof(Name));
 	memzero(Pass,sizeof(Pass));
 	Str::Copy(Name,"err");
@@ -2933,17 +2934,12 @@ Client::~Client()
 		deflateEnd(&Zstrm);
 		ZstrmInit=false;
 	}
+	SAFEDEL(NetIOArgPtr);
 }
 
-void Client::Shutdown()
+void Client::Shutdown(bufferevent* bev)
 {
-	LockNetIO();
-	if(NetIO)
-	{
-		bufferevent_free(NetIO);
-		NetIO=NULL;
-	}
-	UnlockNetIO();
+	bufferevent_free(bev);
 
 	if(Sock!=INVALID_SOCKET)
 	{
@@ -2951,6 +2947,8 @@ void Client::Shutdown()
 		closesocket(Sock);
 		Sock=INVALID_SOCKET;
 	}
+
+	Disconnect();
 }
 
 void Client::PingClient()

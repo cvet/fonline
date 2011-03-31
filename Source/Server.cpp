@@ -132,7 +132,7 @@ void FOServer::Finish()
 	for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
 	{
 		Client* cl=*it;
-		cl->Shutdown();
+		cl->Disconnect();
 	}
 	ConnectedClientsLocker.Unlock();
 
@@ -219,26 +219,6 @@ string FOServer::GetIngamePlayersStatistics()
 
 void FOServer::DisconnectClient(Client* cl)
 {
-	if(cl->IsDisconnected) return;
-	cl->IsDisconnected=true;
-
-	// Shutdown if all data sended
-	bool shutdown=false;
-	cl->LockNetIO();
-	if(cl->NetIO)
-	{
-		evbuffer* output=bufferevent_get_output(cl->NetIO);
-		if(evbuffer_get_length(output)==0)
-		{
-			cl->Bout.Lock();
-			bool is_empty=cl->Bout.IsEmpty();
-			cl->Bout.Unlock();
-			if(is_empty) shutdown=true;
-		}
-	}
-	cl->UnlockNetIO();
-	if(shutdown) cl->Shutdown();
-
 	// Manage saves, exit from game
 	uint id=cl->GetId();
 	Client* cl_=(id?CrMngr.GetPlayer(id,false):NULL);
@@ -569,7 +549,7 @@ void* FOServer::Logic_Work(void* data)
 			if(cl->IsNotValid) continue;
 
 			// Check for removing
-			if(!cl->NetIO)
+			if(cl->Sock==INVALID_SOCKET)
 			{
 				DisconnectClient(cl);
 
@@ -589,9 +569,6 @@ void* FOServer::Logic_Work(void* data)
 			// Process net
 			Process(cl);
 			if((Client*)job.Data!=cl) job.Data=cl;
-
-			// Disconnect
-			if(cl->IsOffline()) DisconnectClient(cl);
 		}
 		else if(job.Type==JOB_CRITTER)
 		{
@@ -842,15 +819,15 @@ void* FOServer::Net_Listen(void* hiocp)
 		cl->ZstrmInit=true;
 
 		// Net IO events handling
-		bufferevent* buf_event=bufferevent_socket_new(NetIOEventHandler,sock,BEV_OPT_THREADSAFE);
-		if(!buf_event)
+		bufferevent* bev=bufferevent_socket_new(NetIOEventHandler,sock,BEV_OPT_THREADSAFE);
+		if(!bev)
 		{
 			WriteLogF(_FUNC_," - Create new buffer event fail.\n");
 			closesocket(sock);
 			delete cl;
 			continue;
 		}
-		cl->NetIO=buf_event;
+		bufferevent_lock(bev);
 
 		// Socket
 		cl->Sock=sock;
@@ -864,8 +841,13 @@ void* FOServer::Net_Listen(void* hiocp)
 		ConnectedClientsLocker.Unlock();
 
 		// Begin handle net events
-		bufferevent_setcb(buf_event,NetIO_Input,NetIO_Output,NetIO_Event,cl);
-		bufferevent_enable(buf_event,EV_WRITE|EV_READ);
+		cl->NetIOArgPtr=new Client*;
+		*cl->NetIOArgPtr=cl;
+		bufferevent_setcb(bev,NetIO_Input,NetIO_Output,NetIO_Event,cl->NetIOArgPtr);
+		timeval tv={0,5*1000}; // Check Output data every 5ms
+		bufferevent_set_timeouts(bev,NULL,&tv);
+		bufferevent_enable(bev,EV_WRITE|EV_READ);
+		bufferevent_unlock(bev);
 
 		// Add job
 		Job::PushBack(JOB_CLIENT,cl);
@@ -897,18 +879,59 @@ void* FOServer::NetIO_Loop(void*)
 
 void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 {
-	Client* cl=(Client*)client;
+	Client* cl=*(Client**)client;
+	SCOPE_LOCK(cl->NetIOArgPtrLocker);
 
-	if(what&(BEV_EVENT_ERROR|BEV_EVENT_EOF))
+	if((what&(BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING))==(BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING))
 	{
-		cl->Disconnect();
-		cl->Shutdown();
+		// Process offline
+		if(cl->IsOffline())
+		{
+			// If reading already disabled than shutdown
+			if(!(bufferevent_get_enabled(bev)&EV_READ))
+			{
+				cl->Shutdown(bev);
+				return;
+			}
+
+			// If no data to send than shutdown
+			bool is_empty=false;
+			cl->Bout.Lock();
+			if(cl->Bout.IsEmpty()) is_empty=true;
+			cl->Bout.Unlock();
+			if(is_empty)
+			{
+				cl->Shutdown(bev);
+				return;
+			}
+
+			// Disable reading and send other data
+			bufferevent_disable(bev,EV_READ);
+		}
+
+		// Try send again
+		bufferevent_enable(bev,EV_WRITE);
+		NetIO_Output(bev,client);
+	}
+	else if(what&(BEV_EVENT_ERROR|BEV_EVENT_EOF))
+	{
+		// Shutdown on errors
+		cl->Shutdown(bev);
 	}
 }
 
 void FOServer::NetIO_Input(bufferevent* bev, void* client)
 {
-	Client* cl=(Client*)client;
+	Client* cl=*(Client**)client;
+	SCOPE_LOCK(cl->NetIOArgPtrLocker);
+
+	if(cl->IsOffline())
+	{
+		evbuffer* input=bufferevent_get_input(bev);
+		uint read_len=(uint)evbuffer_get_length(input);
+		if(read_len) evbuffer_drain(input,read_len);
+		return;
+	}
 
 	evbuffer* input=bufferevent_get_input(bev);
 	uint read_len=(uint)evbuffer_get_length(input);
@@ -921,7 +944,7 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 			cl->Disconnect();
 			cl->Bin.Reset();
 			cl->Bin.Unlock();
-			cl->Shutdown();
+			cl->Shutdown(bev);
 			return;
 		}
 
@@ -933,8 +956,7 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 		if(evbuffer_remove(input,data+pos,read_len)!=read_len)
 		{
 			WriteLogF(_FUNC_," - Receive fail.\n");
-			cl->Disconnect();
-			cl->Shutdown();
+			cl->Shutdown(bev);
 		}
 		else
 		{
@@ -947,13 +969,14 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 
 void FOServer::NetIO_Output(bufferevent* bev, void* client)
 {
-	Client* cl=(Client*)client;
+	Client* cl=*(Client**)client;
+	SCOPE_LOCK(cl->NetIOArgPtrLocker);
 
 	cl->Bout.Lock();
 	if(cl->Bout.IsEmpty()) // Nothing to send
 	{
 		cl->Bout.Unlock();
-		if(cl->IsDisconnected) cl->Shutdown();
+		if(cl->IsOffline()) cl->Shutdown(bev);
 		return;
 	}
 
@@ -975,7 +998,7 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 			cl->Disconnect();
 			cl->Bout.Reset();
 			cl->Bout.Unlock();
-			cl->Shutdown();
+			cl->Shutdown(bev);
 			return;
 		}
 
@@ -1004,8 +1027,7 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 	if(bufferevent_write(bev,&cl->NetIOBuffer[0],write_len))
 	{
 		WriteLogF(_FUNC_," - Send fail.\n");
-		cl->Disconnect();
-		cl->Shutdown();
+		cl->Shutdown(bev);
 	}
 	else
 	{

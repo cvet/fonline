@@ -1977,40 +1977,37 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 		// Swap
 		BIN_END(cl);
-		cl->LockNetIO();
-		cl_old->LockNetIO();
 
 		cl_old->AddRef();
 		(*it)=cl_old;
 
-		std::swap(cl_old->NetIO,cl->NetIO);
-		bufferevent_setcb(cl_old->NetIO,NetIO_Input,NetIO_Output,NetIO_Event,cl_old);
+		// Swap data that used in NetIO_* functions
+		{
+			SCOPE_LOCK(cl->NetIOArgPtrLocker);
 
-		std::swap(cl_old->NetState,cl->NetState);
-		cl_old->Sock=cl->Sock;
-		cl->Sock=INVALID_SOCKET;
+			cl_old->Bin=cl->Bin;
+			cl_old->Bout=cl->Bout;
+			std::swap(cl_old->NetState,cl->NetState);
+			cl_old->Sock=cl->Sock;
+			cl->Sock=INVALID_SOCKET;
+			memcpy(&cl_old->From,&cl->From,sizeof(cl_old->From));
+			cl_old->ConnectTime=0;
+			UNSETFLAG(cl_old->Flags,FCRIT_DISCONNECT);
+			SETFLAG(cl->Flags,FCRIT_DISCONNECT);
+			std::swap(cl_old->Zstrm,cl->Zstrm);
 
-		cl_old->Bin=cl->Bin;
-		cl_old->Bout=cl->Bout;
+			std::swap(cl_old->NetIOArgPtr,cl->NetIOArgPtr);
+			std::swap(*cl_old->NetIOArgPtr,*cl->NetIOArgPtr);
+		}
 
-		memcpy(&cl_old->From,&cl->From,sizeof(cl_old->From));
 		cl_old->Data.Params[MODE_DEFAULT_COMBAT]=cl->Data.Params[MODE_DEFAULT_COMBAT];
-		cl_old->ConnectTime=0;
-		UNSETFLAG(cl_old->Flags,FCRIT_DISCONNECT);
-		SETFLAG(cl->Flags,FCRIT_DISCONNECT);
-		std::swap(cl_old->Zstrm,cl->Zstrm);
 
 		cl->IsNotValid=true;
-		cl->IsDisconnected=true;
 		cl_old->IsNotValid=false;
-		cl_old->IsDisconnected=false;
-
-		cl->UnlockNetIO();
 
 		Job::DeferredRelease(cl);
 		cl=cl_old;
 
-		cl->UnlockNetIO();
 		ConnectedClientsLocker.Unlock();
 		BIN_BEGIN(cl);
 

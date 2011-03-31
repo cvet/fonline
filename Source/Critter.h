@@ -508,11 +508,10 @@ public:
 	SOCKET Sock;
 	sockaddr_in From;
 	BufferManager Bin,Bout;
-	bufferevent* NetIO;
-	MutexSpinlock NetIOLocker;
+	Client** NetIOArgPtr;
+	Mutex NetIOArgPtrLocker;
 	UCharVec NetIOBuffer;
 	volatile long NetState;
-	bool IsDisconnected;
 	bool DisableZlib;
 	z_stream Zstrm;
 	bool ZstrmInit;
@@ -525,20 +524,18 @@ public:
 public:
 	uint GetIp(){return From.sin_addr.s_addr;}
 	const char* GetIpStr(){return inet_ntoa(From.sin_addr);}
-	void LockNetIO(){NetIOLocker.Lock();}
-	void UnlockNetIO(){NetIOLocker.Unlock();}
 
 	// Net
 #define BIN_BEGIN(cl_) cl_->Bin.Lock()
 #define BIN_END(cl_) cl_->Bin.Unlock()
 #define BOUT_BEGIN(cl_) cl_->Bout.Lock()
-#define BOUT_END(cl_) cl_->Bout.Unlock(); cl_->LockNetIO(); if(cl_->NetIO) (*Critter::SendDataCallback)(cl_->NetIO,cl_); cl_->UnlockNetIO()
+#define BOUT_END(cl_) cl_->Bout.Unlock()
 
 private:
 	uint disconnectTick;
 
 public:
-	void Shutdown();
+	void Shutdown(bufferevent* bev);
 	bool IsOnline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME || InterlockedCompareExchange(&NetState,0,0)==STATE_LOGINOK || InterlockedCompareExchange(&NetState,0,0)==STATE_CONN;}
 	bool IsOffline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_DISCONNECT;}
 	void Disconnect(){InterlockedExchange(&NetState,STATE_DISCONNECT); disconnectTick=Timer::FastTick();}
