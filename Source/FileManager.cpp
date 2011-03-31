@@ -328,7 +328,7 @@ bool FileManager::GetLine(char* str, uint len)
 	return true;
 }
 
-bool FileManager::CopyMem(void* ptr, size_t size)
+bool FileManager::CopyMem(void* ptr, uint size)
 {
 	if(!size) return false;
 	if(curPos+size>fileSize) return false;

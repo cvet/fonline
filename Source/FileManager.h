@@ -69,7 +69,7 @@ public:
 	bool FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs);
 
 	bool GetLine(char* str, uint len);
-	bool CopyMem(void* ptr, size_t size);
+	bool CopyMem(void* ptr, uint size);
 	void GetStr(char* str);
 	uchar GetUChar();
 	ushort GetBEUShort();

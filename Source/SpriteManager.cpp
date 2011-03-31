@@ -981,13 +981,15 @@ AnyFrames* SpriteManager::LoadAnimation(const char* fname, int path_type, int fl
 	int dir=(flags&0xFF);
 
 	AnyFrames* result=NULL;
-	if(!_strnicmp(ext,"fr",2)) result=LoadAnimationFrm(fname,path_type,dir,FLAG(flags,ANIM_FRM_ANIM_PIX));
-	else if(!_stricmp(ext,"rix")) result=LoadAnimationRix(fname,path_type);
-	else if(!_stricmp(ext,"fofrm")) result=LoadAnimationFofrm(fname,path_type,dir);
-	else if(!_stricmp(ext,"art")) result=LoadAnimationArt(fname,path_type,dir);
-	else if(!_stricmp(ext,"spr")) result=LoadAnimationSpr(fname,path_type,dir);
-	else if(!_stricmp(ext,"zar")) result=LoadAnimationZar(fname,path_type);
-	else if(!_stricmp(ext,"til")) result=LoadAnimationTil(fname,path_type);
+	if(Str::CompareCaseCount(ext,"fr",2)) result=LoadAnimationFrm(fname,path_type,dir,FLAG(flags,ANIM_FRM_ANIM_PIX));
+	else if(Str::CompareCase(ext,"rix")) result=LoadAnimationRix(fname,path_type);
+	else if(Str::CompareCase(ext,"fofrm")) result=LoadAnimationFofrm(fname,path_type,dir);
+	else if(Str::CompareCase(ext,"art")) result=LoadAnimationArt(fname,path_type,dir);
+	else if(Str::CompareCase(ext,"spr")) result=LoadAnimationSpr(fname,path_type,dir);
+	else if(Str::CompareCase(ext,"zar")) result=LoadAnimationZar(fname,path_type);
+	else if(Str::CompareCase(ext,"til")) result=LoadAnimationTil(fname,path_type);
+	else if(Str::CompareCase(ext,"mos")) result=LoadAnimationMos(fname,path_type);
+	else if(Str::CompareCase(ext,"bam")) result=LoadAnimationBam(fname,path_type);
 	else if(Loader3d::IsExtensionSupported(ext)) result=LoadAnimation3d(fname,path_type,dir);
 	else result=LoadAnimationOther(fname,path_type);
 
@@ -1045,7 +1047,7 @@ AnyFrames* SpriteManager::CreateAnimation(uint frames, uint ticks)
 	ZeroMemory(anim->NextY,sizeof(short)*frames);
 
 	anim->CntFrm=frames;
-	anim->Ticks=ticks;
+	anim->Ticks=(ticks?ticks:frames*100);
 	return anim;
 }
 
@@ -1708,7 +1710,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	char* delim=strstr(file_name,"$");
 	if(delim)
 	{
-		// FormatBuf: fileName$[1,100,0,0][2,0,0,100]animName.spr
+		// Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
 		const char* ext=FileManager::GetExtension(file_name)-1;
 		size_t len=(size_t)ext-(size_t)delim;
 		if(len>1)
@@ -2351,6 +2353,256 @@ AnyFrames* SpriteManager::LoadAnimationTil(const char* fname, int path_type)
 	return anim;
 }
 
+AnyFrames* SpriteManager::LoadAnimationMos(const char* fname, int path_type)
+{
+	FileManager fm;
+	if(!fm.LoadFile(fname,path_type)) return NULL;
+
+	// Read signature
+	char head[8];
+	if(!fm.CopyMem(head,8) || !Str::CompareCount(head,"MOS",3)) return NULL;
+
+	// Packed
+	if(head[3]=='C')
+	{
+		uint unpacked_len=fm.GetLEUInt();
+		uint data_len=fm.GetFsize()-12;
+		uchar* buf=fm.GetCurBuf();
+		*(ushort*)buf=0x9C78;
+		uchar* data=Crypt.Uncompress(buf,data_len,unpacked_len/fm.GetFsize()+1);
+		if(!data) return NULL;
+
+		fm.UnloadFile();
+		fm.LoadStream(data,data_len);
+		delete[] data;
+
+		if(!fm.CopyMem(head,8) || !Str::CompareCount(head,"MOS",3)) return NULL;
+	}
+
+	// Read header
+	uint w=fm.GetLEUShort(); // Width (pixels)
+	uint h=fm.GetLEUShort(); // Height (pixels)
+	uint col=fm.GetLEUShort(); // Columns (blocks)
+	uint row=fm.GetLEUShort(); // Rows (blocks)
+	uint block_size=fm.GetLEUInt(); // Block size (pixels)
+	uint palette_offset=fm.GetLEUInt(); // Offset (from start of file) to palettes
+	uint tiles_offset=palette_offset+col*row*256*4;
+	uint data_offset=tiles_offset+col*row*4;
+
+	// Create FOnline fast format
+	uint img_size=12+h*w*4;
+	uchar* img_data=new(nothrow) uchar[img_size];
+	if(!img_data) return NULL;
+	ZeroMemory(img_data,img_size);
+	*((uint*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+	*((uint*)img_data+1)=w;
+	*((uint*)img_data+2)=h;
+	uint* ptr=(uint*)img_data+3;
+
+	// Read image data
+	uint palette[256]={0};
+	uint block=0;
+	for(uint y=0;y<row;y++)
+	{
+		for(uint x=0;x<col;x++)
+		{
+			// Get palette for current block
+			fm.SetCurPos(palette_offset+block*256*4);
+			fm.CopyMem(palette,256*4);
+
+			// Set initial position
+			fm.SetCurPos(tiles_offset+block*4);
+			fm.SetCurPos(data_offset+fm.GetLEUInt());
+
+			// Calculate current block size
+			uint block_w=((x==col-1)?w%64:64);
+			uint block_h=((y==row-1)?h%64:64);
+			if(!block_w) block_w=64;
+			if(!block_h) block_h=64;
+
+			// Read data
+			uint pos=y*64*w+x*64;
+			for(uint yy=0;yy<block_h;yy++)
+			{
+				for(uint xx=0;xx<block_w;xx++)
+				{
+					uint color=palette[fm.GetUChar()];
+					if(color==0xFF00) color=0; // Green is transparent
+					else color|=0xFF000000;
+					*(ptr+pos)=color;
+					pos++;
+				}
+				pos+=w-block_w;
+			}
+
+			// Go to next block
+			block++;
+		}
+	}
+
+	// Fill animation
+	SpriteInfo* si=new(nothrow) SpriteInfo();
+	uint result=FillSurfaceFromMemory(si,img_data,img_size);
+	delete[] img_data;
+	if(!result) return NULL;
+
+	AnyFrames* anim=CreateAnimation(1,100);
+	if(!anim) return NULL;
+	anim->Ind[0]=result;
+	return anim;
+}
+
+AnyFrames* SpriteManager::LoadAnimationBam(const char* fname, int path_type)
+{
+	// Parameters
+	char file_name[MAX_FOPATH];
+	Str::Copy(file_name,fname);
+
+	uint need_cycle=0;
+	int specific_frame=-1;
+
+	char* delim=strstr(file_name,"$");
+	if(delim)
+	{
+		// Format: fileName$5-6.spr
+		const char* ext=FileManager::GetExtension(file_name)-1;
+		size_t len=(size_t)ext-(size_t)delim;
+		if(len>1)
+		{
+			char params[MAX_FOPATH];
+			memcpy(params,delim+1,len-1);
+			params[len-1]=0;
+
+			need_cycle=Str::AtoI(params);
+			const char* next_param=strstr(params,"-");
+			if(next_param)
+			{
+				specific_frame=Str::AtoI(next_param+1);
+				if(specific_frame<0) specific_frame=-1;
+			}
+		}
+		Str::EraseInterval(delim,len);
+	}
+	if(!file_name[0]) return NULL;
+
+	// Load file
+	FileManager fm;
+	if(!fm.LoadFile(file_name,path_type)) return NULL;
+
+	// Read signature
+	char head[8];
+	if(!fm.CopyMem(head,8) || !Str::CompareCount(head,"BAM",3)) return NULL;
+
+	// Packed
+	if(head[3]=='C')
+	{
+		uint unpacked_len=fm.GetLEUInt();
+		uint data_len=fm.GetFsize()-12;
+		uchar* buf=fm.GetCurBuf();
+		*(ushort*)buf=0x9C78;
+		uchar* data=Crypt.Uncompress(buf,data_len,unpacked_len/fm.GetFsize()+1);
+		if(!data) return NULL;
+
+		fm.UnloadFile();
+		fm.LoadStream(data,data_len);
+		delete[] data;
+
+		if(!fm.CopyMem(head,8) || !Str::CompareCount(head,"BAM",3)) return NULL;
+	}
+
+	// Read header
+	uint frames_count=fm.GetLEUShort();
+	uint cycles_count=fm.GetUChar();
+	uchar compr_color=fm.GetUChar();
+	uint frames_offset=fm.GetLEUInt();
+	uint palette_offset=fm.GetLEUInt();
+	uint lookup_table_offset=fm.GetLEUInt();
+
+	// Count whole frames
+	if(need_cycle>=cycles_count) need_cycle=0;
+	fm.SetCurPos(frames_offset+frames_count*12+need_cycle*4);
+	uint cycle_frames=fm.GetLEUShort();
+	uint table_index=fm.GetLEUShort();
+	if(specific_frame!=-1 && specific_frame>=(int)cycle_frames) specific_frame=0;
+
+	// Create animation
+	AnyFrames* anim=CreateAnimation(specific_frame==-1?cycle_frames:1,0);
+	if(!anim) return NULL;
+
+	// Palette
+	uint palette[256]={0};
+	fm.SetCurPos(palette_offset);
+	fm.CopyMem(palette,256*4);
+
+	// Find in lookup table
+	for(uint i=0;i<cycle_frames;i++)
+	{
+		if(specific_frame!=-1 && specific_frame!=(int)i) continue;
+
+		// Get need index
+		fm.SetCurPos(lookup_table_offset+table_index*2);
+		table_index++;
+		uint frame_index=fm.GetLEUShort();
+
+		// Get frame data
+		fm.SetCurPos(frames_offset+frame_index*12);
+		uint w=fm.GetLEUShort();
+		uint h=fm.GetLEUShort();
+		int ox=(ushort)fm.GetLEUShort();
+		int oy=(ushort)fm.GetLEUShort();
+		uint data_offset=fm.GetLEUInt();
+		bool rle=(data_offset&0x80000000?false:true);
+		data_offset&=0x7FFFFFFF;
+
+		// Create FOnline fast format
+		uint img_size=12+h*w*4;
+		uchar* img_data=new(nothrow) uchar[img_size];
+		if(!img_data) return NULL;
+		ZeroMemory(img_data,img_size);
+		*((uint*)img_data)=MAKEFOURCC('F','0','F','A'); // FOnline FAst
+		*((uint*)img_data+1)=w;
+		*((uint*)img_data+2)=h;
+		uint* ptr=(uint*)img_data+3;
+
+		// Fill it
+		fm.SetCurPos(data_offset);
+		for(uint k=0,l=w*h;k<l;k++)
+		{
+			uchar index=fm.GetUChar();
+			uint color=palette[index];
+			if(color==0xFF00) color=0;
+			else color|=0xFF000000;
+
+			if(rle && index==compr_color)
+			{
+				uint copies=fm.GetUChar();
+				for(uint m=0;m<=copies;m++,k++) *ptr++=color;
+			}
+			else
+			{
+				*ptr++=color;
+			}
+		}
+
+		// Set in animation sequence
+		SpriteInfo* si=new(nothrow) SpriteInfo();
+		uint result=FillSurfaceFromMemory(si,img_data,img_size);
+		delete[] img_data;
+		if(!result) return NULL;
+		si->OffsX=-ox+w/2;
+		si->OffsY=-oy+h;
+
+		if(specific_frame!=-1)
+		{
+			anim->Ind[0]=result;
+			break;
+		}
+		anim->Ind[i]=result;
+	}
+
+	return anim;
+}
+
 AnyFrames* SpriteManager::LoadAnimationOther(const char* fname, int path_type)
 {
 	FileManager fm;
@@ -2461,7 +2713,7 @@ Animation3d* SpriteManager::LoadPure3dAnimation(const char* fname, int path_type
 	if(!anim3d) return NULL;
 
 	SpriteInfo* si=new(nothrow) SpriteInfo();
-	size_t index=1;
+	uint index=1;
 	for(uint j=sprData.size();index<j;index++) if(!sprData[index]) break;
 	if(index<sprData.size()) sprData[index]=si;
 	else sprData.push_back(si);
