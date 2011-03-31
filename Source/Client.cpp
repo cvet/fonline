@@ -119,6 +119,15 @@ bool FOClient::Init(HWND hwnd)
 	GET_UID0(UID0);
 	Wnd=hwnd;
 
+	// Another check for already runned window
+#ifndef DEV_VESRION
+	if(!Singleplayer)
+	{
+		HANDLE h=CreateEvent(NULL,FALSE,FALSE,"_fosync_");
+		if(!h || h==INVALID_HANDLE_VALUE || GetLastError()==ERROR_ALREADY_EXISTS) memset(MulWndArray,1,sizeof(MulWndArray));
+	}
+#endif
+
 	// Register dll script data
 	struct CritterChangeParameter_{static void CritterChangeParameter(void*,uint){}}; // Dummy
 	GameOpt.CritterChangeParameter=&CritterChangeParameter_::CritterChangeParameter;
@@ -427,6 +436,9 @@ bool FOClient::Init(HWND hwnd)
 		}
 	}
 
+	// Disable dumps if multiple window detected
+	if(MulWndArray[11]) CatchExceptions(NULL,0);
+
 	return true;
 }
 
@@ -721,6 +733,8 @@ int FOClient::MainLoop()
 		SingleplayerData.Unlock(); // Write data
 	}
 
+	CHECK_MULTIPLY_WINDOWS0;
+
 	// Network
 	// Init Net
 	if(NetState==STATE_INIT_NET)
@@ -752,6 +766,8 @@ int FOClient::MainLoop()
 	IboxProcess();
 	ParseKeyboard();
 	ParseMouse();
+
+	CHECK_MULTIPLY_WINDOWS1;
 
 	// Process
 	SoundProcess();
@@ -791,6 +807,8 @@ int FOClient::MainLoop()
 
 	if(IsScreenPresent(SCREEN__ELEVATOR)) ElevatorProcess();
 
+	CHECK_MULTIPLY_WINDOWS2;
+
 	// Script loop
 	static uint next_call=0;
 	if(Timer::FastTick()>=next_call)
@@ -808,6 +826,8 @@ int FOClient::MainLoop()
 		if(!MediaSeeking || FAILED(MediaSeeking->GetPositions(&cur,&stop)) || cur>=stop) NextVideo();
 		return 0;
 	}
+
+	CHECK_MULTIPLY_WINDOWS3;
 
 	// Render
 	if(!SprMngr.BeginScene(IsMainScreen(SCREEN_GAME)?(GameOpt.ScreenClear?D3DCOLOR_XRGB(100,100,100):0):D3DCOLOR_XRGB(0,0,0))) return 0;
@@ -849,6 +869,8 @@ int FOClient::MainLoop()
 	MessBoxDraw();
 	DrawIfaceLayer(3);
 
+	CHECK_MULTIPLY_WINDOWS4;
+
 	/*if(!GameOpt.DisableDrawScreens)
 	{
 		for(uint i=0,j=ScreenMode.size();i<j;i++)
@@ -887,6 +909,8 @@ int FOClient::MainLoop()
 	DrawIfaceLayer(5);
 	SprMngr.Flush();
 	ProcessScreenEffectFading();
+
+	CHECK_MULTIPLY_WINDOWS5;
 
 	SprMngr.EndScene();
 	return 1;
@@ -5520,6 +5544,9 @@ void FOClient::Net_OnPing()
 		PingTick=0;
 		PingCallTick=Timer::FastTick()+PING_CLIENT_INFO_TIME;
 	}
+
+	CHECK_MULTIPLY_WINDOWS8;
+	CHECK_MULTIPLY_WINDOWS9;
 }
 
 void FOClient::Net_OnChosenTalk()
@@ -5668,6 +5695,7 @@ void FOClient::Net_OnCheckUID2()
 {
 	CHECKUIDBIN;
 	if(CHECK_UID2(uid)) UIDFail=true;
+	CHECK_MULTIPLY_WINDOWS6;
 }
 
 void FOClient::Net_OnGameInfo()
@@ -6760,6 +6788,7 @@ void FOClient::Net_OnCheckUID3()
 {
 	CHECKUIDBIN;
 	if(CHECK_UID1(uid)) Net_SendPing(PING_UID_FAIL);
+	CHECK_MULTIPLY_WINDOWS7;
 }
 
 void FOClient::Net_OnMsgData()

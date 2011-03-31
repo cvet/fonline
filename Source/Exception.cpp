@@ -42,7 +42,10 @@ void CatchExceptions(const char* app_name, unsigned int app_ver)
 	if(app_name) Str::Copy(AppName,app_name);
 	sprintf(AppVer,"%04X",app_ver);
 
-	SetUnhandledExceptionFilter(TopLevelFilterDump);
+	if(app_name)
+		SetUnhandledExceptionFilter(TopLevelFilterDump);
+	else
+		SetUnhandledExceptionFilter(NULL);
 }
 
 typedef bool (WINAPI *MINIDUMPWRITEDUMP)(HANDLE, DWORD, HANDLE, int/*MINIDUMP_TYPE*/,

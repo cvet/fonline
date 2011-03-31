@@ -1948,7 +1948,12 @@ int MapManager::FindPath(PathFindData& pfd)
 		{
 			short xx=to_hx+*rsx;
 			short yy=to_hy+*rsy;
-			if(xx>=0 && xx<maxhx && yy>=0 && yy<maxhy && !FLAG(map->GetHexFlags(xx,yy),FH_NOWAY)) break;
+			if(xx>=0 && xx<maxhx && yy>=0 && yy<maxhy)
+			{
+				uchar flags=map->GetHexFlags(xx,yy);
+				if(FLAG(flags,FH_GAG_ITEM<<8)) break;
+				if(!FLAG(flags,FH_NOWAY)) break;
+			}
 		}
 		if(i==dirs_count) return FPATH_HEX_BUSY_RING;
 	}

@@ -260,7 +260,7 @@ void ItemHex::SetAnimOffs()
 {
 	ScrX=StartScrX;
 	ScrY=StartScrY;
-	for(uint i=1;i<=curSpr;i++)
+	for(int i=1;i<=curSpr;i++)
 	{
 		ScrX+=Anim->NextX[i];
 		ScrY+=Anim->NextY[i];
