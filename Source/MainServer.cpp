@@ -548,7 +548,7 @@ void UpdateInfo()
 
 void UpdateLog()
 {
-	static string str;
+	string str;
 	LogGetBuffer(str);
 	if(str.length())
 	{
@@ -626,15 +626,7 @@ void* GameLoopThread(void*)
 		GameInitEvent.Allow();
 	}
 
-	if(GuiWindow)
-	{
-		string str;
-		LogFinish(LOG_BUFFER);
-		LogGetBuffer(str);
-		LogToTextBox(GuiLog);
-		if(str.length()) WriteLog("%s",str.c_str());
-	}
-
+	if(GuiWindow) UpdateLog();
 	LogFinish(-1);
 	if(Singleplayer) ExitProcess(0);
 	return NULL;

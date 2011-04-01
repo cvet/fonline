@@ -193,31 +193,35 @@ bool FOClient::Init(HWND hwnd)
 
 	// Paths
 	FileManager::SetDataPath(GameOpt.FoDataPath.c_str());
-	CreateDirectory(FileManager::GetFullPath("",PT_DATA),NULL);
-	CreateDirectory(FileManager::GetFullPath("",PT_CACHE),NULL);
 	if(Singleplayer) CreateDirectory(FileManager::GetFullPath("",PT_SAVE),NULL);
 
 	// Data files
 	FileManager::InitDataFiles(".\\");
 
 	// Cache
-	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(Str::FormatBuf("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)));
-
-	if(!Crypt.SetCacheTable(Str::FormatBuf("%sdefault.cache",FileMngr.GetDataPath(PT_DATA))))
+	CreateDirectory(FileManager::GetFullPath("",PT_CACHE),NULL);
+	if(!Crypt.SetCacheTable(FileManager::GetFullPath("default.cache",PT_CACHE)))
 	{
 		WriteLogF(_FUNC_," - Can't set default cache.\n");
 		return false;
 	}
-	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::FormatBuf("%s%s.%u.cache",FileMngr.GetDataPath(PT_DATA),GameOpt.Host.c_str(),GameOpt.Port)))
+
+	char cache_name[MAX_FOPATH]={"singleplayer"};
+	if(!Singleplayer) Str::Format(cache_name,"%s.%u",GameOpt.Host.c_str(),GameOpt.Port);
+
+	char cache_fname[MAX_FOPATH];
+	FileManager::GetFullPath(cache_name,PT_CACHE,cache_fname);
+	Str::Append(cache_fname,".cache");
+
+	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(cache_fname));
+
+	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(cache_fname))
 	{
-		WriteLogF(_FUNC_," - Can't set new cache.\n");
+		WriteLogF(_FUNC_," - Can't set cache<%s>.\n",cache_fname);
 		return false;
 	}
-	if(Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(Str::FormatBuf("%ssingleplayer.cache",FileMngr.GetDataPath(PT_DATA))))
-	{
-		WriteLogF(_FUNC_," - Can't set single player cache.\n");
-		return false;
-	}
+
+	FileManager::SetCacheName(cache_name);
 
 	// User and password
 	if(GameOpt.Name.empty() && GameOpt.Pass.empty() && !Singleplayer)
@@ -8856,7 +8860,7 @@ void FOClient::AddVideo(const char* fname, const char* sound, bool can_stop, boo
 
 	// Concat full path
 	char full_path[MAX_FOPATH];
-	FileMngr.GetFullPath(fname,PT_VIDEO,full_path);
+	FileManager::GetFullPath(fname,PT_VIDEO,full_path);
 
 	// Add video in sequence
 	ShowVideo sw;

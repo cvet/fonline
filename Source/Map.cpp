@@ -181,10 +181,15 @@ bool Map::Generate()
 			if(npc->Data.Cond==COND_DEAD)
 			{
 				npc->Data.Params[ST_CURRENT_HP]=GameOpt.DeadHitPoints-1;
+				if(!npc->Data.Params[ST_REPLICATION_TIME]) npc->Data.Params[ST_REPLICATION_TIME]=-1;
 
 				uint multihex=npc->GetMultihex();
 				UnsetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,false);
 				SetFlagCritter(npc->GetHexX(),npc->GetHexY(),multihex,true);
+			}
+			else if(npc->Data.Cond==COND_KNOCKOUT)
+			{
+				npc->KnockoutAp=10000;
 			}
 		}
 
@@ -665,11 +670,7 @@ void Map::EraseItem(uint item_id)
 	ItemPtrVecIt it=hexItems.begin();
 	ItemPtrVecIt end=hexItems.end();
 	for(;it!=end;++it) if((*it)->GetId()==item_id) break;
-	if(it==hexItems.end())
-	{
-		WriteLogF(_FUNC_," - Item not found, id<%u>.\n",item_id);
-		return;
-	}
+	if(it==hexItems.end()) return;
 
 	Item* item=*it;
 	hexItems.erase(it);

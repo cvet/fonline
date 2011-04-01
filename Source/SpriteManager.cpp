@@ -1091,6 +1091,26 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 	AnyFrames* anim=CreateAnimation(frm_num,1000/frm_fps*frm_num);
 	if(!anim) return NULL;
 
+	// Make palette
+	uint* palette=(uint*)FoPalette;
+	uint palette_entry[256];
+	char palette_name[MAX_FOPATH];
+	Str::Copy(palette_name,fname);
+	Str::Copy((char*)FileManager::GetExtension(palette_name),4,"pal");
+ 	FileManager fm_palette;
+ 	if(fm_palette.LoadFile(palette_name,path_type))
+ 	{
+		for(uint i=0;i<256;i++)
+		{
+			uchar r=fm_palette.GetUChar()*4;
+			uchar g=fm_palette.GetUChar()*4;
+			uchar b=fm_palette.GetUChar()*4;
+			palette_entry[i]=D3DCOLOR_XRGB(r,g,b);
+		}
+		palette=palette_entry;
+ 	}
+
+	// Animate pixels
 	int anim_pix_type=0;
 	// 0x00 - None
 	// 0x01 - Slime, 229 - 232, 4
@@ -1129,7 +1149,6 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 		*((uint*)data+1)=w;
 		*((uint*)data+2)=h;
 		uint* ptr=(uint*)data+3;
-		uint* palette=(uint*)FoPalette;
 		fm.SetCurPos(offset+12);
 
 		if(!anim_pix_type)
@@ -1159,7 +1178,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm(const char* fname, int path_type, int
 		}
 
 		// Check for animate pixels
-		if(!frm && anim_pix)
+		if(!frm && anim_pix && palette==(uint*)FoPalette)
 		{
 			fm.SetCurPos(offset+12);
 			for(int i=0,j=w*h;i<j;i++)

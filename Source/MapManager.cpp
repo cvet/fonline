@@ -933,7 +933,7 @@ void MapManager::LocationGarbager()
 
 bool MapManager::RefreshGmMask(const char* mask_path)
 {
-	WriteLog("Refresh GM Mask<%s>...",mask_path);
+	WriteLog("Refresh global map mask<%s>...\n",mask_path);
 
 	FileManager fm;
 	if(!fm.LoadFile(mask_path,PT_SERVER_MAPS)) WriteLog("Global map mask file not found.\n");
@@ -964,7 +964,7 @@ bool MapManager::RefreshGmMask(const char* mask_path)
 					fm.SetCurPos(118+y*padd_len);
 				}
 			}
-			WriteLog("size<%u><%u>. complete.\n",mask_w,mask_h);
+			WriteLog("Refresh global map mask complete. Size<%u><%u>.\n",mask_w,mask_h);
 			return true;
 		}
 	}
@@ -1950,7 +1950,7 @@ int MapManager::FindPath(PathFindData& pfd)
 			short yy=to_hy+*rsy;
 			if(xx>=0 && xx<maxhx && yy>=0 && yy<maxhy)
 			{
-				uchar flags=map->GetHexFlags(xx,yy);
+				ushort flags=map->GetHexFlags(xx,yy);
 				if(FLAG(flags,FH_GAG_ITEM<<8)) break;
 				if(!FLAG(flags,FH_NOWAY)) break;
 			}

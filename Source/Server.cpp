@@ -887,13 +887,6 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 		// Process offline
 		if(cl->IsOffline())
 		{
-			// If reading already disabled than shutdown
-			if(!(bufferevent_get_enabled(bev)&EV_READ))
-			{
-				cl->Shutdown(bev);
-				return;
-			}
-
 			// If no data to send than shutdown
 			bool is_empty=false;
 			cl->Bout.Lock();
@@ -905,8 +898,8 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 				return;
 			}
 
-			// Disable reading and send other data
-			bufferevent_disable(bev,EV_READ);
+			// Disable reading
+			if(bufferevent_get_enabled(bev)&EV_READ) bufferevent_disable(bev,EV_READ);
 		}
 
 		// Try send again
@@ -930,6 +923,7 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 		evbuffer* input=bufferevent_get_input(bev);
 		uint read_len=(uint)evbuffer_get_length(input);
 		if(read_len) evbuffer_drain(input,read_len);
+		bufferevent_disable(bev,EV_READ);
 		return;
 	}
 

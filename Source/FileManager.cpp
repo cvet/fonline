@@ -3,7 +3,7 @@
 
 #define OUT_BUF_START_SIZE	 (0x100)
 
-char PathLst[][50]=
+const char* PathLst[PATH_LIST_COUNT]=
 {
 	// Client and mapper paths
 	"",
@@ -56,6 +56,10 @@ char PathLst[][50]=
 
 	// Other
 	"data\\", // Mapper data
+	"",
+	"",
+	"",
+	"",
 };
 
 DataFileVec FileManager::dataFiles;
@@ -65,17 +69,26 @@ void FileManager::SetDataPath(const char* path)
 {
 	Str::Copy(dataPath,path);
 	if(dataPath[Str::Length(path)-1]!='\\') Str::Append(dataPath,"\\");
+	CreateDirectory(GetFullPath("",PT_DATA),NULL);
+}
+
+void FileManager::SetCacheName(const char* name)
+{
+	char cache_path[MAX_FOPATH];
+	Str::Format(cache_path,"cache\\%s\\",name && name[0]?name:"dummy");
+	PathLst[PT_CACHE]=Str::Duplicate(cache_path);
+	CreateDirectory(GetFullPath("",PT_CACHE),NULL);
 }
 
 void FileManager::InitDataFiles(const char* path)
 {
 	char list_path[MAX_FOPATH];
-	sprintf(list_path,"%sDataFiles.cfg",path);
+	Str::Format(list_path,"%sDataFiles.cfg",path);
 
 	FileManager list;
 	if(list.LoadFile(list_path,-1))
 	{
-		char line[1024];
+		char line[MAX_FOTEXT];
 		while(list.GetLine(line,1024))
 		{
 			// Cut off comments
@@ -84,24 +97,20 @@ void FileManager::InitDataFiles(const char* path)
 			if(comment1) *comment1=0;
 			if(comment2) *comment2=0;
 
-			// Skip white spaces and tabs
-			char* str=line;
-			while(*str && (*str==' ' || *str=='\t')) str++;
-			if(!*str) continue;
+			// Cut off specific characters
+			Str::EraseFrontBackSpecificChars(line);
 
-			// Cut off white spaces and tabs in end of line
-			char* str_=&str[Str::Length(str)-1];
-			while(*str_==' ' || *str_=='\t') str_--;
-			*(str_+1)=0;
-			if(!*str) continue;
+			// Make file path
+			char fpath[MAX_FOPATH]={0};
+			if(line[1]!=':') Str::Copy(fpath,path); // Relative path
+			Str::Append(fpath,line);
+			FormatPath(fpath);
 
 			// Try load
-			char fpath[MAX_FOPATH];
-			sprintf(fpath,"%s%s",path,str);
 			if(!LoadDataFile(fpath))
 			{
-				char errmsg[1024];
-				sprintf(errmsg,"Data file '%s' not found. Run Updater.exe.",str);
+				char errmsg[MAX_FOTEXT];
+				Str::Format(errmsg,"Data file '%s' not found. Run Updater.exe.",fpath);
 				HWND wnd=GetActiveWindow();
 				if(wnd) MessageBox(wnd,errmsg,"FOnline",MB_OK);
 				WriteLogF(_FUNC_," - %s\n",errmsg);
@@ -816,7 +825,7 @@ void FileManager::RecursiveDirLook(const char* init_dir, bool include_subdirs, c
 {
 	WIN32_FIND_DATA fd;
 	char buf[MAX_FOPATH];
-	sprintf(buf,"%s%s*",dataPath,init_dir);
+	Str::Format(buf,"%s%s*",dataPath,init_dir);
 	HANDLE h=FindFirstFile(buf,&fd);
 	while(h!=INVALID_HANDLE_VALUE)
 	{
@@ -826,7 +835,7 @@ void FileManager::RecursiveDirLook(const char* init_dir, bool include_subdirs, c
 			{
 				if(include_subdirs)
 				{
-					sprintf(buf,"%s%s\\",init_dir,fd.cFileName);
+					Str::Format(buf,"%s%s\\",init_dir,fd.cFileName);
 					RecursiveDirLook(buf,include_subdirs,ext,result);
 				}
 			}

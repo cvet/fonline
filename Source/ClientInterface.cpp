@@ -589,24 +589,25 @@ int FOClient::InitIface()
 	GmapFog.Create(GM__MAXZONEX,GM__MAXZONEY,NULL);
 	// Relief
 	SAFEDEL(GmapRelief);
+	FileManager mask;
 	if(!IfaceIni.GetStr("GmapReliefMask","",res)) WriteLogF(_FUNC_," - Global map mask signature<GmapReliefMask> not found.\n");
-	else if(!FileMngr.LoadFile(res,PT_MAPS)) WriteLogF(_FUNC_," - Global map mask file<%s> not found.\n",res);
-	else if(FileMngr.GetLEUShort()!=0x4D42) WriteLogF(_FUNC_," - Invalid file format of global map mask<%s>.\n",res);
+	else if(!mask.LoadFile(res,PT_MAPS)) WriteLogF(_FUNC_," - Global map mask file<%s> not found.\n",res);
+	else if(mask.GetLEUShort()!=0x4D42) WriteLogF(_FUNC_," - Invalid file format of global map mask<%s>.\n",res);
 	else
 	{
-		FileMngr.SetCurPos(28);
-		if(FileMngr.GetLEUShort()!=4) WriteLogF(_FUNC_," - Invalid bit per pixel format of global map mask<%s>.\n",res);
+		mask.SetCurPos(28);
+		if(mask.GetLEUShort()!=4) WriteLogF(_FUNC_," - Invalid bit per pixel format of global map mask<%s>.\n",res);
 		else
 		{
-			FileMngr.SetCurPos(18);
-			ushort mask_w=FileMngr.GetLEUInt();
-			ushort mask_h=FileMngr.GetLEUInt();
-			FileMngr.SetCurPos(118);
+			mask.SetCurPos(18);
+			ushort mask_w=mask.GetLEUInt();
+			ushort mask_h=mask.GetLEUInt();
+			mask.SetCurPos(118);
 			GmapRelief=new C4BitMask(mask_w,mask_h,0xF);
 			int padd_len=mask_w/2+(mask_w/2)%4;
 			for(int x,y=0,w=0;y<mask_h;)
 			{
-				uchar b=FileMngr.GetUChar();
+				uchar b=mask.GetUChar();
 				x=w*2;
 				GmapRelief->Set4Bit(x,y,b>>4);
 				GmapRelief->Set4Bit(x+1,y,b&0xF);
@@ -615,7 +616,7 @@ int FOClient::InitIface()
 				{
 					w=0;
 					y++;
-					FileMngr.SetCurPos(118+y*padd_len);
+					mask.SetCurPos(118+y*padd_len);
 				}
 			}
 		}

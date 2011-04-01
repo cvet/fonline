@@ -6,6 +6,7 @@
 // dictionary type
 
 #include "AngelScript/angelscript.h"
+#include "AngelScript/scriptarray.h"
 #include <string>
 
 #ifdef _MSC_VER
@@ -47,6 +48,9 @@ public:
 
     // Deletes all keys
     void DeleteAll();
+
+	// Get all keys
+	unsigned int Keys(CScriptArray* keys);
 
 	// Garbage collections behaviours
 	int GetRefCount();

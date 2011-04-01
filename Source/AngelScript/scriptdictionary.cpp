@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
 #include "scriptdictionary.h"
+#include "AngelScript/scriptstring.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -265,6 +266,24 @@ void CScriptDictionary::DeleteAll()
     dict.clear();
 }
 
+unsigned int CScriptDictionary::Keys(CScriptArray* keys)
+{
+	if(keys && !dict.empty())
+	{
+		asUINT i=keys->GetSize();
+		keys->Resize(i+(asUINT)dict.size());
+
+		map<string,valueStruct>::iterator it,end;
+		for(it=dict.begin(),end=dict.end();it!=end;++it)
+		{
+			CScriptString** p=(CScriptString**)keys->At(i);
+			*p=new CScriptString((*it).first);
+			i++;
+		}
+	}
+	return (unsigned int)dict.size();
+}
+
 void CScriptDictionary::FreeValue(valueStruct &value)
 {
     // If it is a handle or a ref counted object, call release
@@ -445,6 +464,8 @@ void RegisterScriptDictionary_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("dictionary", "bool exists(const string &in) const", asMETHOD(CScriptDictionary,Exists), asCALL_THISCALL); assert( r >= 0 );
     r = engine->RegisterObjectMethod("dictionary", "void delete(const string &in)", asMETHOD(CScriptDictionary,Delete), asCALL_THISCALL); assert( r >= 0 );
     r = engine->RegisterObjectMethod("dictionary", "void deleteAll()", asMETHOD(CScriptDictionary,DeleteAll), asCALL_THISCALL); assert( r >= 0 );
+
+	r = engine->RegisterObjectMethod("dictionary", "uint keys(string@[]@+) const", asMETHOD(CScriptDictionary,Keys), asCALL_THISCALL); assert( r >= 0 );
 
 	// Register GC behaviours
 	r = engine->RegisterObjectBehaviour("dictionary", asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(CScriptDictionary,GetRefCount), asCALL_THISCALL); assert( r >= 0 );

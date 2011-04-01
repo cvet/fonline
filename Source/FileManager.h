@@ -47,13 +47,14 @@
 // Other
 #define PT_MAPPER_DATA         (45)
 
-extern char PathLst[][50];
-#define PATH_LIST_COUNT     (50)
+#define PATH_LIST_COUNT        (50)
+extern const char* PathLst[PATH_LIST_COUNT];
 
 class FileManager
 {
 public:
 	static void SetDataPath(const char* path);
+	static void SetCacheName(const char* name);
 	static void InitDataFiles(const char* path);
 	static bool LoadDataFile(const char* path);
 	static void EndOfWork();

@@ -102,6 +102,12 @@ bool FOMapper::Init(HWND wnd)
 	FileManager::InitDataFiles(GameOpt.ClientPath.c_str());
 	FileManager::InitDataFiles(".\\");
 
+	// Cache
+	CreateDirectory(FileManager::GetFullPath("",PT_CACHE),NULL);
+	char cache_name[MAX_FOPATH]={"singleplayer"};
+	if(!Singleplayer) Str::Format(cache_name,"%s.%u",GameOpt.Host.c_str(),GameOpt.Port);
+	FileManager::SetCacheName(cache_name);
+
 	// Sprite manager
 	SpriteMngrParams params;
 	params.WndHeader=wnd;
