@@ -519,7 +519,7 @@ void UpdateInfo()
 		case 2: // Locations and maps
 			if(!Serv.IsInit()) break;
 			std_str=MapMngr.GetLocationsMapsStatistics();
-			UpdateLogName="LocationAndMaps";
+			UpdateLogName="LocationsAndMaps";
 			break;
 		case 3: // Time events
 			if(!Serv.IsInit()) break;

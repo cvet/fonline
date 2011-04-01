@@ -120,7 +120,6 @@ public:
 	Critter* ThisPtr[MAX_PARAMETERS_ARRAYS];
 	uint AllowedToDownloadMap;
 
-	static bufferevent_data_cb SendDataCallback;
 	static bool ParamsRegEnabled[MAX_PARAMS];
 	static uint ParamsSendMsgLen;
 	static ushort ParamsSendCount;

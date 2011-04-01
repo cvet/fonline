@@ -840,12 +840,22 @@ void* FOServer::Net_Listen(void* hiocp)
 		Statistics.CurOnline++;
 		ConnectedClientsLocker.Unlock();
 
-		// Begin handle net events
+		// Setup timeouts
+		timeval tv={0,5*1000}; // Check Output data every 5ms
+		bufferevent_set_timeouts(bev,NULL,&tv);
+
+		// Setup bandwidth
+		const uint rate=50000; // 50kb per second
+		static ev_token_bucket_cfg* rate_cfg=NULL;
+		if(!rate_cfg) rate_cfg=ev_token_bucket_cfg_new(rate,rate,rate,rate,NULL);
+		if(!Singleplayer) bufferevent_set_rate_limit(bev,rate_cfg);
+
+		// Setup callbacks
 		cl->NetIOArgPtr=new Client*;
 		*cl->NetIOArgPtr=cl;
 		bufferevent_setcb(bev,NetIO_Input,NetIO_Output,NetIO_Event,cl->NetIOArgPtr);
-		timeval tv={0,5*1000}; // Check Output data every 5ms
-		bufferevent_set_timeouts(bev,NULL,&tv);
+
+		// Begin handle net events
 		bufferevent_enable(bev,EV_WRITE|EV_READ);
 		bufferevent_unlock(bev);
 
@@ -900,6 +910,10 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 
 			// Disable reading
 			if(bufferevent_get_enabled(bev)&EV_READ) bufferevent_disable(bev,EV_READ);
+
+			// Increase timeout
+			timeval tv={0,1000*1000}; // 1sec
+			bufferevent_set_timeouts(bev,NULL,&tv);
 		}
 
 		// Try send again
@@ -975,16 +989,18 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 	}
 
 	// Compress
+	const uint output_buffer_len=100000; // 100kb
+	static THREAD char output_buffer[output_buffer_len];
 	uint write_len=0;
 	if(!GameOpt.DisableZlibCompression && !cl->DisableZlib)
 	{
 		uint to_compr=cl->Bout.GetEndPos();
-		if(to_compr>NET_OUTPUT_BUF_SIZE) to_compr=NET_OUTPUT_BUF_SIZE;
+		if(to_compr>output_buffer_len) to_compr=output_buffer_len;
 
 		cl->Zstrm.next_in=(UCHAR*)cl->Bout.GetCurData();
 		cl->Zstrm.avail_in=to_compr;
-		cl->Zstrm.next_out=(UCHAR*)&cl->NetIOBuffer[0];
-		cl->Zstrm.avail_out=NET_OUTPUT_BUF_SIZE;
+		cl->Zstrm.next_out=(UCHAR*)output_buffer;
+		cl->Zstrm.avail_out=output_buffer_len;
 
  		if(deflate(&cl->Zstrm,Z_SYNC_FLUSH)!=Z_OK)
  		{
@@ -996,7 +1012,7 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 			return;
 		}
 
-		uint compr=cl->Zstrm.next_out-(UCHAR*)&cl->NetIOBuffer[0];
+		uint compr=cl->Zstrm.next_out-(UCHAR*)output_buffer;
 		uint real=cl->Zstrm.next_in-(UCHAR*)cl->Bout.GetCurData();
 		write_len=compr;
 		cl->Bout.Cut(real);
@@ -1007,8 +1023,8 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 	else
 	{
 		uint len=cl->Bout.GetEndPos();
-		if(len>NET_OUTPUT_BUF_SIZE) len=NET_OUTPUT_BUF_SIZE;
-		memcpy(&cl->NetIOBuffer[0],cl->Bout.GetCurData(),len);
+		if(len>output_buffer_len) len=output_buffer_len;
+		memcpy(output_buffer,cl->Bout.GetCurData(),len);
 		write_len=len;
 		cl->Bout.Cut(len);
 		Statistics.DataReal+=len;
@@ -1018,7 +1034,7 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 	cl->Bout.Unlock();
 
 	// Append to buffer
-	if(bufferevent_write(bev,&cl->NetIOBuffer[0],write_len))
+	if(bufferevent_write(bev,output_buffer,write_len))
 	{
 		WriteLogF(_FUNC_," - Send fail.\n");
 		cl->Shutdown(bev);
@@ -3380,7 +3396,6 @@ bool FOServer::Init()
 	STATIC_ASSERT(OFFSETOF(Location,RefCounter)==282);
 
 	// Critters parameters
-	Critter::SendDataCallback=&NetIO_Output;
 	Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
 	Critter::ParamsSendCount=0;
 	memzero(Critter::ParamsSendEnabled,sizeof(Critter::ParamsSendEnabled));

@@ -814,6 +814,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 	// Get script names
 	char fname_real[MAX_FOPATH]={0};
 	Str::Append(fname_real,module_name);
+	Str::Replacement(fname_real,'.','\\');
 	Str::Append(fname_real,".fos");
 
 	char fname_script[MAX_FOPATH]={0};

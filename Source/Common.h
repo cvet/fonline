@@ -340,8 +340,6 @@ struct ServerScriptFunctions
 	// Todo:
 #endif
 
-#define NET_OUTPUT_BUF_SIZE     (4096) // Todo: exclude additional buffer
-
 // FLTK libs
 #if defined(FO_MSVC)
 	#pragma comment(lib,"fltk.lib")

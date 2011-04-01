@@ -58,7 +58,6 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 /*                                                                      */
 /************************************************************************/
 
-bufferevent_data_cb Critter::SendDataCallback=NULL;
 bool Critter::ParamsRegEnabled[MAX_PARAMS]={0};
 uint Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
 ushort Critter::ParamsSendCount=0;
@@ -2903,11 +2902,10 @@ LastSendScoresTick(0),LastSendCraftTick(0),LastSendEntrancesTick(0),LastSendEntr
 ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0)
 {
 	CritterIsNpc=false;
-	MEMORY_PROCESS(MEMORY_CLIENT,sizeof(Client)+sizeof(GlobalMapGroup)+40+NET_OUTPUT_BUF_SIZE*2+sizeof(Item)*2);
+	MEMORY_PROCESS(MEMORY_CLIENT,sizeof(Client)+sizeof(GlobalMapGroup)+40+sizeof(Item)*2);
 
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
-	NetIOBuffer.resize(NET_OUTPUT_BUF_SIZE);
 	NetIOArgPtr=NULL;
 	memzero(Name,sizeof(Name));
 	memzero(Pass,sizeof(Pass));
@@ -2923,7 +2921,7 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 
 Client::~Client()
 {
-	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(sizeof(Client)+sizeof(GlobalMapGroup)+40+NET_OUTPUT_BUF_SIZE*2+sizeof(Item)*2));
+	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(sizeof(Client)+sizeof(GlobalMapGroup)+40+sizeof(Item)*2));
 	if(DataExt)
 	{
 		MEMORY_PROCESS(MEMORY_CLIENT,-(int)sizeof(CritDataExt));

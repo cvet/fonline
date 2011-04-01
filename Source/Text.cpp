@@ -344,12 +344,12 @@ const char* Str::UItoA(uint dw)
 
 int Str::AtoI(const char* str)
 {
-	return atoi(str);
+	return strtol(str,NULL,0);
 }
 
 uint Str::AtoUI(const char* str)
 {
-	return (uint)atoi(str);
+	return strtoul(str,NULL,0);
 }
 
 static char BigBuf[0x100000]={0}; // 1mb
