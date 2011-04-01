@@ -3652,13 +3652,14 @@ void FOClient::Net_SendMove(UCharVec steps)
 	uint move_params=0;
 	for(uint i=0;i<MOVE_PARAM_STEP_COUNT;i++)
 	{
-		if(i>=steps.size()) break;
+		if(i+1>=steps.size()) break; // Send next steps
 
-		SETFLAG(move_params,steps[i]<<(i*MOVE_PARAM_STEP_BITS));
+		SETFLAG(move_params,steps[i+1]<<(i*MOVE_PARAM_STEP_BITS));
 		SETFLAG(move_params,MOVE_PARAM_STEP_ALLOW<<(i*MOVE_PARAM_STEP_BITS));
 	}
 
 	if(Chosen->IsRunning) SETFLAG(move_params,MOVE_PARAM_RUN);
+	if(steps.empty()) SETFLAG(move_params,MOVE_PARAM_STEP_DISALLOW); // Inform about stopping
 
 	Bout << (Chosen->IsRunning?NETMSG_SEND_MOVE_RUN:NETMSG_SEND_MOVE_WALK);
 	Bout << move_params;

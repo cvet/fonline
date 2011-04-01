@@ -2532,7 +2532,7 @@ void FOServer::Process_Move(Client* cl)
 	if(!cl->GetMap()) return;
 
 	// The player informs that has stopped
-	if(!FLAG(move_params,MOVE_PARAM_STEP_ALLOW))
+	if(FLAG(move_params,MOVE_PARAM_STEP_DISALLOW))
 	{
 		//cl->Send_XY(cl);
 		cl->SendA_XY();
