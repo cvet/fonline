@@ -911,9 +911,8 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 			// Disable reading
 			if(bufferevent_get_enabled(bev)&EV_READ) bufferevent_disable(bev,EV_READ);
 
-			// Increase timeout
-			timeval tv={0,1000*1000}; // 1sec
-			bufferevent_set_timeouts(bev,NULL,&tv);
+			// Disable timeout
+			bufferevent_set_timeouts(bev,NULL,NULL);
 		}
 
 		// Try send again
