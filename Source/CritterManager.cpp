@@ -350,7 +350,7 @@ void CritterManager::CritterGarbager()
 					for(CrVecIt it_=group->CritMove.begin(),end_=group->CritMove.end();it_!=end_;++it_)
 					{
 						Critter* cr_=*it_;
-						MapMngr.GM_GroupStartMove(cr_,true);
+						MapMngr.GM_GroupStartMove(cr_);
 					}
 				}
 				else
@@ -365,7 +365,7 @@ void CritterManager::CritterGarbager()
 					if(car && car->GetId()==group->CarId)
 					{
 						group->CarId=0;
-						MapMngr.GM_GroupSetMove(group,group->MoveX,group->MoveY,0); // Stop others
+						MapMngr.GM_GroupSetMove(group,group->ToX,group->ToY,0.0f); // Stop others
 					}
 				}
 				cr->GroupMove=NULL;
@@ -668,7 +668,7 @@ void CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int
 	for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
 	{
 		Critter* cr=(*it).second;
-		if(!cr->GetMap() && cr->GroupMove && DistSqrt(cr->GroupMove->WXi,cr->GroupMove->WYi,wx,wy)<=radius &&
+		if(!cr->GetMap() && cr->GroupMove && DistSqrt((int)cr->GroupMove->CurX,(int)cr->GroupMove->CurY,wx,wy)<=radius &&
 			cr->CheckFind(find_type)) find_critters.push_back(cr);
 	}
 
@@ -687,7 +687,7 @@ void CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int
 		for(CrMapIt it=all_critters.begin(),end=all_critters.end();it!=end;++it)
 		{
 			Critter* cr=(*it).second;
-			if(!cr->GetMap() && cr->GroupMove && DistSqrt(cr->GroupMove->WXi,cr->GroupMove->WYi,wx,wy)<=radius &&
+			if(!cr->GetMap() && cr->GroupMove && DistSqrt((int)cr->GroupMove->CurX,(int)cr->GroupMove->CurY,wx,wy)<=radius &&
 				cr->CheckFind(find_type)) find_critters2.push_back(cr);
 		}
 

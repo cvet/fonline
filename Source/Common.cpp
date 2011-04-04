@@ -941,6 +941,7 @@ GameOptions::GameOptions()
 	GlobalMapWidth=28;
 	GlobalMapHeight=30;
 	GlobalMapZoneLength=50;
+	GlobalMapMoveTime=500;
 	BagRefreshTime=60;
 	AttackAnimationsMinDist=0;
 	WhisperDist=2;

@@ -26,12 +26,12 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 	ComLen=4096;
 	ComBuf=new char[ComLen];
 	ZStreamOk=false;
-	NetState=STATE_DISCONNECT;
 	Sock=INVALID_SOCKET;
 	BytesReceive=0;
 	BytesRealReceive=0;
 	BytesSend=0;
-	InitNetReason=0;
+	IsConnected=false;
+	InitNetReason=INIT_NET_REASON_NONE;
 
 	Chosen=NULL;
 	FPS=0;
@@ -45,7 +45,6 @@ FOClient::FOClient():Active(0),Wnd(NULL),DInput(NULL),Keyboard(NULL),Mouse(NULL)
 	CurMode=0;
 	CurModeLast=0;
 
-	GmapRelief=NULL;
 	GmapCar.Car=NULL;
 	Animations.resize(10000);
 
@@ -394,7 +393,6 @@ bool FOClient::Init(HWND hwnd)
 	GET_UID3(UID3);
 
 	// Other
-	NetState=STATE_DISCONNECT;
 	SetGameColor(COLOR_IFACE);
 	if(GameOpt.FullScreen) SetCurPos(MODE_WIDTH/2,MODE_HEIGHT/2);
 	ShowCursor(FALSE);
@@ -421,7 +419,6 @@ bool FOClient::Init(HWND hwnd)
 	// Check cache
 	if(refresh_cache)
 	{
-		NetState=STATE_INIT_NET;
 		InitNetReason=INIT_NET_REASON_CACHE;
 	}
 	// Begin game
@@ -741,10 +738,15 @@ int FOClient::MainLoop()
 
 	// Network
 	// Init Net
-	if(NetState==STATE_INIT_NET)
+	if(InitNetReason!=INIT_NET_REASON_NONE)
 	{
+		int reason=InitNetReason;
+		InitNetReason=INIT_NET_REASON_NONE;
+
+		// Wait screen
 		ShowMainScreen(SCREEN_WAIT);
 
+		// Connect to server
 		if(!InitNet())
 		{
 			ShowMainScreen(SCREEN_LOGIN);
@@ -752,18 +754,19 @@ int FOClient::MainLoop()
 			return 1;
 		}
 
-		if(InitNetReason==INIT_NET_REASON_CACHE) Net_SendLogIn(NULL,NULL);
-		else if(InitNetReason==INIT_NET_REASON_LOGIN) Net_SendLogIn(GameOpt.Name.c_str(),GameOpt.Pass.c_str());
-		else if(InitNetReason==INIT_NET_REASON_REG) Net_SendCreatePlayer(RegNewCr);
-		else if(InitNetReason==INIT_NET_REASON_LOAD) Net_SendSaveLoad(false,SaveLoadFileName.c_str(),NULL);
+		// After connect things
+		if(reason==INIT_NET_REASON_CACHE) Net_SendLogIn(NULL,NULL);
+		else if(reason==INIT_NET_REASON_LOGIN) Net_SendLogIn(GameOpt.Name.c_str(),GameOpt.Pass.c_str());
+		else if(reason==INIT_NET_REASON_REG) Net_SendCreatePlayer(RegNewCr);
+		else if(reason==INIT_NET_REASON_LOAD) Net_SendSaveLoad(false,SaveLoadFileName.c_str(),NULL);
 		else NetDisconnect();
 	}
 
 	// Parse Net
-	if(NetState!=STATE_DISCONNECT) ParseSocket();
+	if(IsConnected) ParseSocket();
 
 	// Exit in Login screen if net disconnect
-	if(NetState==STATE_DISCONNECT && !IsMainScreen(SCREEN_LOGIN) && !IsMainScreen(SCREEN_REGISTRATION) && !IsMainScreen(SCREEN_CREDITS)) ShowMainScreen(SCREEN_LOGIN);
+	if(!IsConnected && !IsMainScreen(SCREEN_LOGIN) && !IsMainScreen(SCREEN_REGISTRATION) && !IsMainScreen(SCREEN_CREDITS)) ShowMainScreen(SCREEN_LOGIN);
 
 	// Input
 	ConsoleProcess();
@@ -2100,7 +2103,7 @@ void FOClient::ProcessMouseWheel(int data)
 bool FOClient::InitNet()
 {
 	WriteLog("Network init...\n");
-	NetState=STATE_DISCONNECT;
+	IsConnected=false;
 
 	WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2),&wsa))
@@ -2129,7 +2132,7 @@ bool FOClient::InitNet()
 	}
 
 	if(!NetConnect()) return false;
-	NetState=STATE_CONN;
+	IsConnected=true;
 	WriteLog("Network init successful.\n");
 	return true;
 }
@@ -2354,7 +2357,7 @@ void FOClient::NetDisconnect()
 	ZStreamOk=false;
 	if(Sock!=INVALID_SOCKET) closesocket(Sock);
 	Sock=INVALID_SOCKET;
-	NetState=STATE_DISCONNECT;
+	IsConnected=false;
 
 	WriteLog("Traffic transfered statistics, in bytes:\n"
 		"Send<%u> Receive<%u> Sum<%u>.\n"
@@ -2379,7 +2382,7 @@ void FOClient::ParseSocket()
 
 	if(NetInput(true)<0)
 	{
-		NetState=STATE_DISCONNECT;
+		IsConnected=false;
 	}
 	else
 	{
@@ -2394,7 +2397,7 @@ void FOClient::ParseSocket()
 		NetOutput();
 	}
 
-	if(NetState==STATE_DISCONNECT) NetDisconnect();
+	if(!IsConnected) NetDisconnect();
 }
 
 bool FOClient::NetOutput()
@@ -2423,7 +2426,7 @@ bool FOClient::NetOutput()
 		if(WSASend(Sock,&buf,1,&len,0,NULL,NULL)==SOCKET_ERROR || len==0)
 		{
 			WriteLogF(_FUNC_," - SOCKET_ERROR while send to server, error<%s>.\n",GetLastSocketError());
-			NetState=STATE_DISCONNECT;
+			IsConnected=false;
 			return false;
 		}
 		sendpos+=len;
@@ -2789,7 +2792,7 @@ void FOClient::NetProcess()
 			return;
 		}
 
-		if(NetState==STATE_DISCONNECT) return;
+		if(!IsConnected) return;
 	}
 }
 
@@ -4012,7 +4015,6 @@ void FOClient::Net_SendRefereshMe()
 
 void FOClient::Net_OnLoginSuccess()
 {
-	NetState=STATE_LOGINOK;
 	if(!Singleplayer) AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_LOGINOK));
 	WriteLog("Auntification success.\n");
 
@@ -5811,7 +5813,7 @@ void FOClient::Net_OnLoadMap()
 	if(!HexMngr.LoadMap(map_pid))
 	{
 		WriteLog("Map not loaded. Disconnect.\n");
-		NetState=STATE_DISCONNECT;
+		IsConnected=false;
 		return;
 	}
 
@@ -5990,7 +5992,7 @@ void FOClient::Net_OnMap()
 		if(!buf)
 		{
 			WriteLog("Failed to compress data<%s>, disconnect.\n",map_name);
-			NetState=STATE_DISCONNECT;
+			IsConnected=false;
 			fm.ClearOutBuf();
 			return;
 		}
@@ -6005,7 +6007,7 @@ void FOClient::Net_OnMap()
 	else
 	{
 		WriteLog("Not for all data of map, disconnect.\n");
-		NetState=STATE_DISCONNECT;
+		IsConnected=false;
 		SAFEDELA(tiles_data);
 		SAFEDELA(walls_data);
 		SAFEDELA(scen_data);
@@ -6075,33 +6077,30 @@ void FOClient::Net_OnGlobalInfo()
 
 	if(FLAG(info_flags,GM_INFO_GROUP_PARAM))
 	{
-		ushort group_x;
-		ushort group_y;
-		ushort move_x;
-		ushort move_y;
-		int speed_x;
-		int speed_y;
-		uchar wait;
-		Bin >> group_x;
-		Bin >> group_y;
-		Bin >> move_x;
-		Bin >> move_y;
-		Bin >> speed_x;
-		Bin >> speed_y;
-		Bin >> wait;
+		ushort cur_x,cur_y,to_x,to_y;
+		uint speed;
+		Bin >> cur_x;
+		Bin >> cur_y;
+		Bin >> to_x;
+		Bin >> to_y;
+		Bin >> speed;
+		Bin >> GmapWait;
 
-		GmapGroupXf=group_x;
-		GmapGroupYf=group_y;
+		int old_x=GmapGroupCurX;
+		int old_y=GmapGroupCurY;
+		GmapGroupCurX=cur_x;
+		GmapGroupCurY=cur_y;
+		GmapGroupToX=to_x;
+		GmapGroupToY=to_y;
+		GmapGroupSpeed=(float)speed/1000000.0f;
+
 		GmapMoveLastTick=Timer::GameTick();
 		GmapProcLastTick=Timer::GameTick();
-		GmapGroupX=group_x;
-		GmapGroupY=group_y;
-		GmapWait=(wait!=0);
 
 		if(!GmapActive)
 		{
-			GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupX;
-			GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupY;
+			GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupCurX;
+			GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupCurY;
 
 			int w=GM_MAXX;
 			int h=GM_MAXY;
@@ -6113,12 +6112,30 @@ void FOClient::Net_OnGlobalInfo()
 			SetCurMode(CUR_DEFAULT);
 		}
 
-		GmapMoveX=move_x;
-		GmapMoveY=move_y;
-		GmapSpeedX=(float)speed_x/1000000.0f;
-		GmapSpeedY=(float)speed_y/1000000.0f;
+		if(GmapActive && !GmapWait)
+		{
+			// Process scroll
+			GmapOffsetX+=(int)((old_x-GmapGroupCurX)/GmapZoom);
+			GmapOffsetY+=(int)((old_y-GmapGroupCurY)/GmapZoom);
 
-		int dist=DistSqrt(GmapMoveX,GmapMoveY,GmapGroupX,GmapGroupY);
+			GMAP_CHECK_MAPSCR;
+
+			// Process path tracing
+			if(GmapGroupSpeed!=0.0f)
+			{
+				static uint point_tick=0;
+				if(Timer::GameTick()>=point_tick)
+				{
+					if(GmapTrace.empty() || GmapTrace[0].first!=old_x || GmapTrace[0].second!=old_y)
+						GmapTrace.push_back(IntPairVecVal(old_x,old_y));
+					point_tick=Timer::GameTick()+GM_TRACE_TIME;
+				}
+			}
+			else
+			{
+				GmapTrace.clear();
+			}
+		}
 
 		// Car master id
 		Bin >> GmapCar.MasterId;
@@ -6724,7 +6741,7 @@ void FOClient::Net_OnCritterLexems()
 	if(lexems_len+1>=LEXEMS_SIZE)
 	{
 		WriteLogF(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
-		NetState=STATE_DISCONNECT;
+		IsConnected=false;
 		return;
 	}
 
@@ -6755,7 +6772,7 @@ void FOClient::Net_OnItemLexems()
 	if(lexems_len+1>=LEXEMS_SIZE)
 	{
 		WriteLogF(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
-		NetState=STATE_DISCONNECT;
+		IsConnected=false;
 		return;
 	}
 
@@ -6857,7 +6874,7 @@ void FOClient::Net_OnMsgData()
 		ResMngr.FreeResources(RES_CRITTERS); // Free animations, maybe critters table is changed
 
 		// Reload scripts
-		if(!ReloadScripts()) NetState=STATE_DISCONNECT;
+		if(!ReloadScripts()) IsConnected=false;
 
 		// Names
 		ConstantsManager::Initialize(PT_DATA);
@@ -6867,7 +6884,7 @@ void FOClient::Net_OnMsgData()
 		{
 			WriteLog("Init interface fail, error<%d>.\n",res);
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_FAIL_TO_LOAD_IFACE));
-			NetState=STATE_DISCONNECT;
+			IsConnected=false;
 		}
 		break;
 	default:
@@ -6987,7 +7004,7 @@ void FOClient::Net_OnUserHoloStr()
 	if(text_len>USER_HOLO_MAX_LEN)
 	{
 		WriteLogF(_FUNC_," - Text length greater than maximum, cur<%u>, max<%u>. Disconnect.\n",text_len,USER_HOLO_MAX_LEN);
-		NetState=STATE_DISCONNECT;
+		IsConnected=false;
 		return;
 	}
 
@@ -10613,12 +10630,6 @@ CScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName(uint cr_type)
 	return new CScriptString(CritType::GetSoundName(cr_type));
 }
 
-int FOClient::SScriptFunc::Global_GetGlobalMapRelief(uint x, uint y)
-{
-	if(x>=GM_MAXX || y>=GM_MAXY) SCRIPT_ERROR_R0("Invalid coord args.");
-	return Self->GmapRelief->Get4Bit(x,y);
-}
-
 void FOClient::SScriptFunc::Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
 	UIntVec dw;
@@ -11052,9 +11063,11 @@ bool& FOClient::SScriptFunc::GmapWait=FOClient::GmapWait;
 float& FOClient::SScriptFunc::GmapZoom=FOClient::GmapZoom;
 int& FOClient::SScriptFunc::GmapOffsetX=FOClient::GmapOffsetX;
 int& FOClient::SScriptFunc::GmapOffsetY=FOClient::GmapOffsetY;
-int& FOClient::SScriptFunc::GmapGroupX=FOClient::GmapGroupX;
-int& FOClient::SScriptFunc::GmapGroupY=FOClient::GmapGroupY;
-int& FOClient::SScriptFunc::GmapMoveX=FOClient::GmapMoveX;
-int& FOClient::SScriptFunc::GmapMoveY=FOClient::GmapMoveY;
-float& FOClient::SScriptFunc::GmapSpeedX=FOClient::GmapSpeedX;
-float& FOClient::SScriptFunc::GmapSpeedY=FOClient::GmapSpeedY;
+int& FOClient::SScriptFunc::GmapGroupCurX=FOClient::GmapGroupCurX;
+int& FOClient::SScriptFunc::GmapGroupCurY=FOClient::GmapGroupCurY;
+int& FOClient::SScriptFunc::GmapGroupToX=FOClient::GmapGroupToX;
+int& FOClient::SScriptFunc::GmapGroupToY=FOClient::GmapGroupToY;
+float& FOClient::SScriptFunc::GmapGroupSpeed=FOClient::GmapGroupSpeed;
+
+
+

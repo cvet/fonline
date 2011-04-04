@@ -15,6 +15,7 @@
 #include "Event2/bufferevent.h"
 #include "Event2/buffer.h"
 
+// Events
 #define CRITTER_EVENT_IDLE                    (0)
 #define CRITTER_EVENT_FINISH                  (1)
 #define CRITTER_EVENT_DEAD                    (2)
@@ -62,9 +63,16 @@
 #define CRITTER_EVENT_MAX                     (44)
 extern const char* CritterEventFuncName[CRITTER_EVENT_MAX];
 
+// Plane results
 #define PLANE_RUN_GLOBAL                      (0)
 #define PLANE_KEEP                            (1)
 #define PLANE_DISCARD                         (2)
+
+// Client game states
+#define STATE_NONE                            (0)
+#define STATE_CONNECTED                       (1)
+#define STATE_PLAYING                         (2)
+#define STATE_TRANSFERRING                    (3)
 
 class Critter;
 class Client;
@@ -274,7 +282,7 @@ public:
 	int EventPlaneRun(AIDataPlane* plane, int reason, uint& p0, uint& p1, uint& p2);
 	bool EventBarter(Critter* cr_barter, bool attach, uint barter_count);
 	bool EventTalk(Critter* cr_talk, bool attach, uint talk_count);
-	bool EventGlobalProcess(int type, Item* car, uint& x, uint& y, uint& to_x, uint& to_y, uint& speed, uint& encounter_descriptor, bool& wait_for_answer);
+	bool EventGlobalProcess(int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer);
 	bool EventGlobalInvite(Item* car, uint encounter_descriptor, int combat_mode, uint& map_id, ushort& hx, ushort& hy, uchar& dir);
 	void EventTurnBasedProcess(Map* map, bool begin_turn);
 	void EventSmthTurnBasedProcess(Critter* from_cr, Map* map, bool begin_turn);
@@ -510,7 +518,9 @@ public:
 	Client** NetIOArgPtr;
 	Mutex NetIOArgPtrLocker;
 	UCharVec NetIOBuffer;
-	volatile long NetState;
+	int GameState;
+	bool IsDisconnected;
+	uint DisconnectTick;
 	bool DisableZlib;
 	z_stream Zstrm;
 	bool ZstrmInit;
@@ -530,16 +540,13 @@ public:
 #define BOUT_BEGIN(cl_) cl_->Bout.Lock()
 #define BOUT_END(cl_) cl_->Bout.Unlock()
 
-private:
-	uint disconnectTick;
-
 public:
 	void Shutdown(bufferevent* bev);
-	bool IsOnline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME || InterlockedCompareExchange(&NetState,0,0)==STATE_LOGINOK || InterlockedCompareExchange(&NetState,0,0)==STATE_CONN;}
-	bool IsOffline(){return InterlockedCompareExchange(&NetState,0,0)==STATE_DISCONNECT;}
-	void Disconnect(){InterlockedExchange(&NetState,STATE_DISCONNECT); disconnectTick=Timer::FastTick();}
+	bool IsOnline(){return !IsDisconnected;}
+	bool IsOffline(){return IsDisconnected;}
+	void Disconnect(){IsDisconnected=true; if(!DisconnectTick) DisconnectTick=Timer::FastTick();}
 	void RemoveFromGame(){CanBeRemoved=true;}
-	uint GetOfflineTime(){return Timer::FastTick()-disconnectTick;}
+	uint GetOfflineTime(){return Timer::FastTick()-DisconnectTick;}
 
 	// Ping
 private:
@@ -547,7 +554,7 @@ private:
 	bool pingOk;
 
 public:
-	bool IsToPing(){return InterlockedCompareExchange(&NetState,0,0)==STATE_GAME && Timer::FastTick()>=pingNextTick && !GetParam(TO_TRANSFER) && !Singleplayer;}
+	bool IsToPing(){return GameState==STATE_PLAYING && Timer::FastTick()>=pingNextTick && !GetParam(TO_TRANSFER) && !Singleplayer;}
 	void PingClient();
 	void PingOk(uint next_ping){pingOk=true; pingNextTick=Timer::FastTick()+next_ping;}
 

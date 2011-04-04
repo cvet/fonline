@@ -3,6 +3,7 @@
 #include "AngelScript/Preprocessor/preprocess.h"
 #include "Version.h"
 #include "ScriptPragmas.h"
+#include "FL/Fl_PNG_Image.H" // Global_LoadImage
 
 void* dbg_malloc(size_t size)
 {
@@ -132,7 +133,7 @@ bool FOServer::InitScriptSystem()
 		{&ServerFunctions.GetStartTime,"get_start_time","void %s(uint16&,uint16&,uint16&,uint16&,uint16&,uint16&)"},
 		{&ServerFunctions.Finish,"finish","void %s()"},
 		{&ServerFunctions.Loop,"loop","uint %s()"},
-		{&ServerFunctions.GlobalProcess,"global_process","void %s(int,Critter&,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)"},
+		{&ServerFunctions.GlobalProcess,"global_process","void %s(int,Critter&,Item@,float&,float&,float&,float&,float&,uint&,bool&)"},
 		{&ServerFunctions.GlobalInvite,"global_invite","void %s(Critter&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)"},
 		{&ServerFunctions.CritterAttack,"critter_attack","void %s(Critter&,Critter&,ProtoItem&,uint8,ProtoItem@)"},
 		{&ServerFunctions.CritterAttacked,"critter_attacked","void %s(Critter&,Critter&)"},
@@ -2846,7 +2847,7 @@ bool FOServer::SScriptFunc::Crit_EventTalk(Critter* cr, Critter* cr_talk, bool a
 	return cr->EventTalk(cr_talk,attach,talk_count);
 }
 
-bool FOServer::SScriptFunc::Crit_EventGlobalProcess(Critter* cr, int type, Item* car, uint& x, uint& y, uint& to_x, uint& to_y, uint& speed, uint& encounter_descriptor, bool& wait_for_answer)
+bool FOServer::SScriptFunc::Crit_EventGlobalProcess(Critter* cr, int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	return cr->EventGlobalProcess(type,car,x,y,to_x,to_y,speed,encounter_descriptor,wait_for_answer);
@@ -4275,6 +4276,36 @@ uint FOServer::SScriptFunc::Global_GetLocations(ushort wx, ushort wy, uint radiu
 	return (uint)locs_.size();
 }
 
+uint FOServer::SScriptFunc::Global_GetVisibleLocations(ushort wx, ushort wy, uint radius, Critter* cr, CScriptArray* locations)
+{
+	LocVec locs;
+	MapMngr.GetLocations(locs,false);
+	LocVec locs_;
+	locs_.reserve(locs.size());
+	for(LocVecIt it=locs.begin(),end=locs.end();it!=end;++it)
+	{
+		Location* loc=*it;
+		if(DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=radius+loc->GetRadius() &&
+			(loc->IsVisible() || (cr && cr->IsPlayer() && ((Client*)cr)->CheckKnownLocById(loc->GetId())))) locs_.push_back(loc);
+	}
+
+	if(locations)
+	{
+		for(LocVecIt it=locs_.begin(),end=locs_.end();it!=end;++it) SYNC_LOCK(*it);
+		Script::AppendVectorToArrayRef<Location*>(locs_,locations);
+	}
+	return (uint)locs_.size();
+}
+
+uint FOServer::SScriptFunc::Global_GetZoneLocationIds(ushort zx, ushort zy, uint zone_radius, CScriptArray* locations)
+{
+	UIntVec loc_ids;
+	MapMngr.GetZoneLocations(zx,zy,zone_radius,loc_ids);
+
+	if(locations) Script::AppendVectorToArray<uint>(loc_ids,locations);
+	return (uint)loc_ids.size();
+}
+
 bool FOServer::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 {
 	if(!text.length()) return false;
@@ -4914,10 +4945,91 @@ CScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName(uint cr_type)
 	return new CScriptString(CritType::GetSoundName(cr_type));
 }
 
-int FOServer::SScriptFunc::Global_GetGlobalMapRelief(uint x, uint y)
+struct ServerImage
 {
-	if(x>=GM_MAXX || y>=GM_MAXY) SCRIPT_ERROR_R0("Invalid coord args.");
-	return MapMngr.GetGmRelief(x,y);
+	UCharVec Data;
+	uint Width;
+	uint Height;
+	uint Depth;
+};
+vector<ServerImage*> ServerImages;
+bool FOServer::SScriptFunc::Global_LoadImage(uint index, CScriptString* image_name, uint image_depth, int path_type)
+{
+	// Delete old
+	if(index>=ServerImages.size()) ServerImages.resize(index+1);
+	if(ServerImages[index])
+	{
+		MEMORY_PROCESS(MEMORY_IMAGE,-(int)ServerImages[index]->Data.capacity());
+		delete ServerImages[index];
+		ServerImages[index]=NULL;
+	}
+	if(!image_name || !image_name->length()) return true;
+
+	// Check depth
+	if(image_depth<1 || image_depth>4) SCRIPT_ERROR_R0("Wrong image depth arg.");
+
+	// Check extension
+	const char* ext=FileManager::GetExtension(image_name->c_str());
+	if(!ext || !Str::CompareCase(ext,"png")) SCRIPT_ERROR_R0("Wrong extension. Allowed only PNG.");
+
+	// Load file to memory
+	FileManager fm;
+	if(!fm.LoadFile(image_name->c_str(),PT_SERVER_MAPS)) SCRIPT_ERROR_R0("File not found.");
+
+	// Load PNG from memory
+	// Use FLTK component for this
+	Fl_PNG_Image* png=new Fl_PNG_Image(NULL,fm.GetBuf(),fm.GetFsize());
+	if(!png->w() || !png->h()) SCRIPT_ERROR_R0("Unable to load PNG file.");
+	if(png->d()<1 || png->d()>4) SCRIPT_ERROR_R0("Invalid depth of PNG file.");
+	if(png->count()!=1) SCRIPT_ERROR_R0("Invalid format of PNG file.");
+
+	// Copy data
+	ServerImage* simg=new ServerImage();
+	simg->Width=png->w();
+	simg->Height=png->h();
+	simg->Depth=image_depth;
+	simg->Data.resize(simg->Width*simg->Height*simg->Depth+3); // +3 padding
+
+	const uint argb_offs[4]={2,1,0,3};
+	uint png_depth=png->d();
+	uint min_depth=MIN(png_depth,simg->Depth);
+	uint data_index=0;
+	uint png_data_index=0;
+	for(uint y=0;y<simg->Height;y++)
+	{
+		for(uint x=0;x<simg->Width;x++)
+		{
+			memzero(&simg->Data[data_index],simg->Depth);
+			for(uint d=0;d<min_depth;d++)
+				simg->Data[data_index+d]=*(uchar*)(png->data()[0]+png_data_index+argb_offs[d]);
+			png_data_index+=png_depth;
+			data_index+=simg->Depth;
+		}
+		png_data_index+=png->ld();
+	}
+	delete png;
+
+	ServerImages[index]=simg;
+	MEMORY_PROCESS(MEMORY_IMAGE,ServerImages[index]->Data.capacity());
+	return true;
+}
+
+uint FOServer::SScriptFunc::Global_GetImageColor(uint index, uint x, uint y)
+{
+	if(index>=ServerImages.size() || !ServerImages[index]) SCRIPT_ERROR_R0("Image not loaded.");
+	ServerImage* simg=ServerImages[index];
+	if(x>=simg->Width || y>=simg->Height) SCRIPT_ERROR_R0("Invalid coords arg.");
+
+	uint* data=(uint*)(&simg->Data[0]+y*simg->Width*simg->Depth+x*simg->Depth);
+	uint result=*data;
+	switch(simg->Depth)
+	{
+	case 1: result&=0xFF; break;
+	case 2: result&=0xFFFF; break;
+	case 3: result&=0xFFFFFF; break;
+	default: break;
+	}
+	return result;
 }
 
 uint FOServer::SScriptFunc::Global_GetScriptId(CScriptString& script_name, CScriptString& func_decl)

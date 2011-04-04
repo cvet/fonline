@@ -88,6 +88,8 @@ public:
 	uint* UID0;
 	bool UIDFail;
 	Item SomeItem;
+	bool IsConnected;
+	bool InitNetBegin;
 	int InitNetReason;
 
 	bool InitNet();
@@ -549,7 +551,6 @@ public:
 		static uint Global_GetCritterAlias(uint cr_type);
 		static CScriptString* Global_GetCritterTypeName(uint cr_type);
 		static CScriptString* Global_GetCritterSoundName(uint cr_type);
-		static int Global_GetGlobalMapRelief(uint x, uint y);
 		static void Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 		static void Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4);
 
@@ -597,8 +598,8 @@ public:
 		static bool& GmapActive,&GmapWait;
 		static float& GmapZoom;
 		static int& GmapOffsetX,&GmapOffsetY;
-		static int& GmapGroupX,&GmapGroupY,&GmapMoveX,&GmapMoveY;
-		static float& GmapSpeedX,&GmapSpeedY;
+		static int& GmapGroupCurX,&GmapGroupCurY,&GmapGroupToX,&GmapGroupToY;
+		static float& GmapGroupSpeed;
 	} ScriptFunc;
 
 	static bool SpritesCanDraw;
@@ -945,9 +946,6 @@ public:
 	uint GmapShowEntrancesLocId;
 	bool GmapShowEntrances[0x100];
 
-	// Relief
-	C4BitMask* GmapRelief;
-
 	// Mask
 	C2BitMask GmapFog;
 	PointVec GmapFogPix;
@@ -972,11 +970,10 @@ public:
 	IntPairVec GmapTrace;
 
 	// Params
-	float GmapGroupXf,GmapGroupYf;
 	uint GmapProcLastTick,GmapMoveLastTick;
-	static int GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY;
-	static float GmapSpeedX,GmapSpeedY;
+	static int GmapGroupCurX,GmapGroupCurY,GmapGroupToX,GmapGroupToY;
 	static bool GmapWait;
+	static float GmapGroupSpeed;
 
 	// Cars
 	struct
@@ -1001,6 +998,14 @@ public:
 	void GmapChangeZoom(float offs);
 	Item* GmapGetCar();
 	void GmapFreeResources();
+
+#define GMAP_CHECK_MAPSCR \
+	do{\
+		if(GmapOffsetX>GmapWMap[0]) GmapOffsetX=GmapWMap[0];\
+		if(GmapOffsetY>GmapWMap[1]) GmapOffsetY=GmapWMap[1];\
+		if(GmapOffsetX<GmapWMap[2]-(int)(GM_MAXX/GmapZoom)) GmapOffsetX=GmapWMap[2]-(int)(GM_MAXX/GmapZoom);\
+		if(GmapOffsetY<GmapWMap[3]-(int)(GM_MAXY/GmapZoom)) GmapOffsetY=GmapWMap[3]-(int)(GM_MAXY/GmapZoom);\
+	}while(0)
 
 /************************************************************************/
 /* Skillbox                                                             */
@@ -1771,10 +1776,11 @@ public:
 #define PROXY_HTTP              (3)
 
 // InitNetReason
-#define INIT_NET_REASON_CACHE   (0)
-#define INIT_NET_REASON_LOGIN   (1)
-#define INIT_NET_REASON_REG     (2)
-#define INIT_NET_REASON_LOAD    (3)
+#define INIT_NET_REASON_NONE    (0)
+#define INIT_NET_REASON_CACHE   (1)
+#define INIT_NET_REASON_LOGIN   (2)
+#define INIT_NET_REASON_REG     (3)
+#define INIT_NET_REASON_LOAD    (4)
 
 // Items collections
 #define ITEMS_INVENTORY               (0)

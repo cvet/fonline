@@ -148,7 +148,10 @@ void Finish()
 
 	FinishEngine(Engine); // Finish default engine
 
+#pragma MESSAGE("Client crashed here, disable finishing until fix angelscript.")
+#ifndef FONLINE_CLIENT
 	FinishThread();
+#endif
 }
 
 bool InitThread()

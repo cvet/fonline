@@ -19,12 +19,19 @@ bool GlobalMapGroup::IsValid()
 
 bool GlobalMapGroup::IsMoving()
 {
-	return SpeedX || SpeedY;
+	return Speed>0.0f && (CurX!=ToX || CurY!=ToY);
 }
 
 uint GlobalMapGroup::GetSize()
 {
 	return (uint)CritMove.size();
+}
+
+void GlobalMapGroup::Stop()
+{
+	Speed=0.0f;
+	ToX=CurX;
+	ToY=CurY;
 }
 
 void GlobalMapGroup::SyncLockGroup()
@@ -76,37 +83,15 @@ void GlobalMapGroup::EraseCrit(Critter* cr)
 	if(it!=CritMove.end()) CritMove.erase(it);
 }
 
-void GlobalMapGroup::StartEncaunterTime(int time)
-{
-	NextEncaunter=Timer::GameTick()+time;
-}
-
-bool GlobalMapGroup::IsEncaunterTime()
-{
-	return Timer::GameTick()>=NextEncaunter;
-}
-
 void GlobalMapGroup::Clear()
 {
 	CritMove.clear();
+	CurX=CurY=ToX=ToY=0.0f;
 	CarId=0;
-	MoveX=0;
-	MoveY=0;
-	SpeedX=0;
-	SpeedY=0;
-	WXf=0;
-	WYf=0;
-	WXi=0;
-	WYi=0;
-
 	IsSetMove=false;
 	TimeCanFollow=0;
-	NextEncaunter=0;
 	IsMultiply=true;
-
-	MoveLastTick=Timer::GameTick();
-	ProcessLastTick=MoveLastTick;
-
+	ProcessLastTick=Timer::GameTick();
 	EncounterDescriptor=0;
 	EncounterTick=0;
 	EncounterForce=false;
@@ -115,6 +100,12 @@ void GlobalMapGroup::Clear()
 /************************************************************************/
 /* MapMngr                                                              */
 /************************************************************************/
+
+MapManager::MapManager():lastMapId(0),lastLocId(0),runGarbager(true)
+{
+	MEMORY_PROCESS(MEMORY_STATIC,sizeof(MapManager));
+	MEMORY_PROCESS(MEMORY_STATIC,(FPATH_MAX_PATH*2+2)*(FPATH_MAX_PATH*2+2)); // Grid, see below
+}
 
 bool MapManager::Init()
 {
@@ -153,7 +144,6 @@ void MapManager::Finish()
 	allMaps.clear();
 
 	for(int i=0;i<MAX_PROTO_MAPS;i++) ProtoMaps[i].Clear();
-	SAFEDEL(gmMask);
 
 	WriteLog("Map manager finish complete.\n");
 }
@@ -825,18 +815,6 @@ Location* MapManager::GetLocationByPid(ushort loc_pid, uint skip_count)
 	return NULL;
 }
 
-bool MapManager::IsLocationOnCoord(int wx, int wy)
-{
-	SCOPE_LOCK(mapLocker);
-
-	for(LocMapIt it=allLocations.begin(),end=allLocations.end();it!=end;++it)
-	{
-		Location* loc=(*it).second;
-		if(loc->IsVisible() && DistSqrt(wx,wy,loc->Data.WX,loc->Data.WY)<=loc->GetRadius()) return true;
-	}
-	return false;
-}
-
 bool MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones)
 {
 	int zl=GM_ZONE_LEN;
@@ -931,51 +909,12 @@ void MapManager::LocationGarbager()
 	}
 }
 
-bool MapManager::RefreshGmMask(const char* mask_path)
-{
-	WriteLog("Refresh global map mask<%s>...\n",mask_path);
-
-	FileManager fm;
-	if(!fm.LoadFile(mask_path,PT_SERVER_MAPS)) WriteLog("Global map mask file not found.\n");
-	else if(fm.GetLEUShort()!=0x4D42) WriteLog("Invalid file format of global map mask.\n");
-	else
-	{
-		fm.SetCurPos(28);
-		if(fm.GetLEUShort()!=4) WriteLog("Invalid bit per pixel format of global map mask.\n");
-		else
-		{
-			fm.SetCurPos(18);
-			ushort mask_w=fm.GetLEUInt();
-			ushort mask_h=fm.GetLEUInt();
-			fm.SetCurPos(118);
-			gmMask=new CByteMask(mask_w,mask_h,0xFF);
-			int padd_len=mask_w/2+(mask_w/2)%4;
-			for(int x,y=0,w=0;y<mask_h;)
-			{
-				uchar b=fm.GetUChar();
-				x=w*2;
-				gmMask->SetByte(x,y,b>>4);
-				gmMask->SetByte(x+1,y,b&0xF);
-				w++;
-				if(w>=mask_w/2)
-				{
-					w=0;
-					y++;
-					fm.SetCurPos(118+y*padd_len);
-				}
-			}
-			WriteLog("Refresh global map mask complete. Size<%u><%u>.\n",mask_w,mask_h);
-			return true;
-		}
-	}
-	return false;
-}
-
 void MapManager::GM_GroupMove(GlobalMapGroup* group)
 {
 	uint tick=Timer::GameTick();
 	Critter* rule=group->Rule;
 
+	// Encounter
 	if(group->EncounterDescriptor)
 	{
 		if(tick<group->EncounterTick) return;
@@ -988,12 +927,12 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		}
 
 		// Continue walk
-		group->StartEncaunterTime(GameOpt.EncounterTime);
 		group->EncounterDescriptor=0;
 		rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
-		group->MoveLastTick=tick;
+		group->ProcessLastTick=tick;
 	}
 
+	// Start callback
 	if(!group->IsSetMove && tick>=group->TimeCanFollow)
 	{
 		group->IsSetMove=true;
@@ -1001,198 +940,52 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		return;
 	}
 
-	if(!group->IsMoving()) return;
-
-	group->SyncLockGroup();
-
-	int& xi=group->WXi;
-	int& yi=group->WYi;
-	float& xf=group->WXf;
-	float& yf=group->WYf;
-	int& mxi=group->MoveX;
-	int& myi=group->MoveY;
-	float& sxf=group->SpeedX;
-	float& syf=group->SpeedY;
-	Item* car=group->GetCar();
-	int walk_type=(car?car->Proto->Car_MovementType:GM_WALK_GROUND);
-
 	// Move
-	uint dtime=tick-group->MoveLastTick;
-	if(dtime>=GM_MOVE_TIME)
+	if(group->IsMoving())
 	{
-		group->MoveLastTick=tick;
-		if(dtime>GM_PROCESS_TIME) dtime=GM_PROCESS_TIME;
-
-		int cur_dist;
-		int last_dist=DistSqrt(xi,yi,mxi,myi);
-
-		float kr=1.0f;
-		if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GetGmRelief(xi,yi)];
-		if(car && kr!=1.0f)
+		uint dtime=tick-group->ProcessLastTick;
+		if(dtime>=GameOpt.GlobalMapMoveTime)
 		{
-			float n=(float)car->Proto->Car_Passability;
-			if(n>100.0f && kr<1.0f) kr+=(1.0f-kr)*(n-100.0f)/100.0f;
-			else if(n>100.0f && kr>1.0f) kr-=(kr-1.0f)*(n-100.0f)/100.0f;
-			else if(n<100.0f && kr<1.0f) kr-=(1.0f-kr)*(100.0f-n)/100.0f;
-			else if(n<100.0f && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
-		}
+			if(dtime>GameOpt.GlobalMapMoveTime*10) dtime=GameOpt.GlobalMapMoveTime*10;
+			group->ProcessLastTick=tick-dtime%GameOpt.GlobalMapMoveTime;
 
-		xf+=sxf*kr*((float)dtime/GM_PROCESS_TIME);
-		yf+=syf*kr*((float)dtime/GM_PROCESS_TIME);
+			group->SyncLockGroup();
 
-		int old_x=xi;
-		int old_y=yi;
-		xi=(int)xf; // Cast
-		yi=(int)yf; // Cast
-
-		// New position
-		if(old_x!=xi || old_y!=yi)
-		{
-			// Check borders
-			if(xi<0 || yi<0 || xi>=(int)GM_MAXX || yi>=(int)GM_MAXY)
+			while(dtime>=GameOpt.GlobalMapMoveTime)
 			{
-				if(xi<0) xi=0;
-				if(xi>=(int)GM_MAXX) xi=(int)GM_MAXX-1;
-				if(yi<0) yi=0;
-				if(yi>=(int)GM_MAXY) yi=(int)GM_MAXY-1;
-
-				// Stop group
-				xf=(float)xi;
-				yf=(float)yi;
-				sxf=0.0f;
-				syf=0.0f;
-			}
-
-			// Move from old to new and find last correct position
-			int relief=GetGmRelief(old_x,old_y);
-			int steps=MAX(abs(xi-old_x),abs(yi-old_y));
-			int new_x_=old_x;
-			int new_y_=old_y;
-			if(steps)
-			{
-				float xx=(float)old_x;
-				float yy=(float)old_y;
-				float oxx=(float)(xi-old_x)/steps;
-				float oyy=(float)(yi-old_y)/steps;
-
-				for(int i=0;i<steps;i++)
+				if(rule->IsPlayer() && ((Client*)rule)->IsOffline())
 				{
-					xx+=oxx;
-					yy+=oyy;
-					int xxi=(int)(xx>=0.0f?xx+0.5f:xx-0.5f);
-					int yyi=(int)(yy>=0.0f?yy+0.5f:yy-0.5f);
-
-					if((walk_type==GM_WALK_GROUND && relief!=0xF && GetGmRelief(xxi,yyi)==0xF) ||
-						(walk_type==GM_WALK_WATER && GetGmRelief(xxi,yyi)!=0xF)) break;
-
-					new_x_=xxi;
-					new_y_=yyi;
+					group->Stop();
+					GM_GlobalProcess(rule,group,GLOBAL_PROCESS_STOPPED);
+					return;
 				}
-			}
 
-			if((xi!=new_x_ || yi!=new_y_) || (sxf==0.0f && syf==0.0f))
-			{
-				xi=new_x_;
-				yi=new_y_;
-				goto label_GMStopMove;
-			}
-
-			// Set new position	to all group
-			for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
-			{
-				Critter* cr=*it;
-				cr->Data.WorldX=xi;
-				cr->Data.WorldY=yi;
-			}
-
-			// Zone
-			int old_zone_x=GM_ZONE(old_x);
-			int old_zone_y=GM_ZONE(old_y);
-			int cur_zone_x=GM_ZONE(xi);
-			int cur_zone_y=GM_ZONE(yi);
-
-			// Change zone
-			if(old_zone_x!=cur_zone_x || old_zone_y!=cur_zone_y) GM_GroupScanZone(group,cur_zone_x,cur_zone_y);
-			//GM_GlobalProcess(group,GLOBAL_PROCESS_NEW_ZONE);
-
-			// Dist
-			cur_dist=DistSqrt(xi,yi,mxi,myi);
-			if(!cur_dist || cur_dist>last_dist)
-			{
-				xi=mxi;
-				yi=myi;
-				goto label_GMStopMove;
+				GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
+				dtime-=GameOpt.GlobalMapMoveTime;
 			}
 		}
 	}
-
-	// Process
-	if(tick-group->ProcessLastTick>=GM_PROCESS_TIME)
-	{
-		group->ProcessLastTick=tick;
-
-		if(car)
-		{
-			int fuel=car->Data.Car.Fuel;
-			int deterioration=car->Data.Car.Deterioration;
-			if(!fuel || deterioration>=(int)car->Proto->Car_MaxDeterioration)
-			{
-				uint str=(!fuel?STR_CAR_FUEL_EMPTY:STR_CAR_BROKEN);
-				for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it) (*it)->Send_TextMsg(*it,str,SAY_NETMSG,TEXTMSG_GAME);
-				goto label_GMStopMove;
-			}
-			fuel-=car->Proto->Car_FuelConsumption;
-			deterioration+=car->Proto->Car_DeteriorationRate;
-			if(fuel<0) fuel=0;
-			if(deterioration>(int)car->Proto->Car_MaxDeterioration) deterioration=(int)car->Proto->Car_MaxDeterioration;
-			car->Data.Car.Fuel=fuel;
-			car->Data.Car.Deterioration=deterioration;
-		}
-
-		if(group->IsEncaunterTime())
-		{
-			group->EncounterDescriptor=0;
-			group->StartEncaunterTime(GameOpt.EncounterTime);
-			if(rule->IsPlayer() && ((Client*)rule)->IsOffline()) goto label_GMStopMove;
-			if(!IsLocationOnCoord(xi,yi)) GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
-		}
-	}
-
-	return;
-
-label_GMStopMove:
-
-	// Set new position	to all group
-	for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
-	{
-		Critter* cr=*it;
-		cr->Data.WorldX=xi;
-		cr->Data.WorldY=yi;
-	}
-
-	// Drop move parameters
-	sxf=0.0f;
-	syf=0.0f;
-	mxi=xi;
-	myi=yi;
-	xf=(float)xi;
-	yf=(float)yi;
-
-	// Notify
-	rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
-	GM_GlobalProcess(rule,group,GLOBAL_PROCESS_STOPPED);
 }
 
 void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 {
+	static THREAD int recursion_depth=0;
+	if(++recursion_depth>100)
+	{
+		WriteLogF(_FUNC_," - Recursion depth is greater than 100, abort. Critter<%s>.\n",cr->GetInfo());
+		recursion_depth--;
+		return;
+	}
+
+	// Catchers
 	uint encounter_descriptor=0;
 	bool wait_for_answer=false;
 	Critter* rule=group->Rule;
-	uint cur_wx=group->WXi;
-	uint cur_wy=group->WYi;
-	uint to_wx=group->MoveX;
-	uint to_wy=group->MoveY;
-	uint speed=0;
+	float cur_wx=group->CurX;
+	float cur_wy=group->CurY;
+	float to_wx=group->ToX;
+	float to_wy=group->ToY;
+	float speed=group->Speed;
 	bool global_process=true;
 
 	if(cr->FuncId[CRITTER_EVENT_GLOBAL_PROCESS]>0)
@@ -1205,11 +998,11 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 		{
 			encounter_descriptor=0;
 			wait_for_answer=false;
-			cur_wx=group->WXi;
-			cur_wy=group->WYi;
-			to_wx=group->MoveX;
-			to_wy=group->MoveY;
-			speed=0;
+			cur_wx=group->CurX;
+			cur_wy=group->CurY;
+			to_wx=group->ToX;
+			to_wy=group->ToY;
+			speed=group->Speed;
 		}
 	}
 
@@ -1228,35 +1021,69 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 		Script::RunPrepared();
 	}
 
-	if(!group->IsValid()) return;
-
-	if(type==GLOBAL_PROCESS_SET_MOVE ||
-		cur_wx!=(uint)group->WXi || cur_wy!=(uint)group->WYi ||
-		to_wx!=(uint)group->MoveX || to_wy!=(uint)group->MoveY)
+	if(!group->IsValid())
 	{
-		if(cur_wx>=GM_MAXX) cur_wx=GM_MAXX-1;
-		if(cur_wy>=GM_MAXY) cur_wy=GM_MAXY-1;
-		if(to_wx>=GM_MAXX) to_wx=GM_MAXX-1;
-		if(to_wy>=GM_MAXY) to_wy=GM_MAXY-1;
-		group->WXi=cur_wx;
-		group->WYi=cur_wy;
-		group->MoveX=to_wx;
-		group->MoveY=to_wy;
+		recursion_depth--;
+		return;
+	}
+
+	// Check ranges
+	float max_wx=(float)GM_MAXX;
+	float max_wy=(float)GM_MAXY;
+	if(cur_wx<0.0f) cur_wx=0.0f;
+	if(cur_wy<0.0f) cur_wy=0.0f;
+	if(cur_wx>=max_wx) cur_wx=max_wx-1;
+	if(cur_wy>=max_wy) cur_wy=max_wy-1;
+	if(to_wx<0.0f) to_wx=0.0f;
+	if(to_wy<0.0f) to_wy=0.0f;
+	if(to_wx>=max_wx) to_wx=max_wx-1;
+	if(to_wy>=max_wy) to_wy=max_wy-1;
+	if(speed<0.0f) speed=0.0f;
+	if(cur_wx==to_wx && cur_wy==to_wy) speed=0.0f;
+	if(speed==0.0f) to_wx=cur_wx,to_wy=cur_wy;
+	float base_speed=group->Speed;
+
+	// Current position
+	if(cur_wx!=group->CurX || cur_wy!=group->CurY || speed!=group->Speed)
+	{
+		group->CurX=cur_wx;
+		group->CurY=cur_wy;
+		group->Speed=speed;
+
+		int cur_wxi=(int)cur_wx;
+		int cur_wyi=(int)cur_wy;
+		for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
+		{
+			Critter* cr=*it;
+			if(cur_wxi!=cr->Data.WorldX || cur_wyi!=cr->Data.WorldY)
+			{
+				cr->Data.WorldX=cur_wxi;
+				cr->Data.WorldY=cur_wyi;
+				cr->Send_GlobalInfo(GM_INFO_GROUP_PARAM);
+			}
+		}
+	}
+
+	// New target
+	if(type==GLOBAL_PROCESS_SET_MOVE || to_wx!=group->ToX || to_wy!=group->ToY)
+	{
 		GM_GroupSetMove(group,to_wx,to_wy,speed);
+		recursion_depth--;
+		return;
 	}
 
-	if(speed==uint(-1) && group->IsValid())
+	// Stop
+	if(base_speed>0.0f && speed<=0.0f)
 	{
-		group->MoveX=group->WXi;
-		group->MoveY=group->WYi;
-		group->WXf=(float)group->WXi;
-		group->WYf=(float)group->WYi;
-		group->SpeedX=0.0f;
-		group->SpeedY=0.0f;
+		group->Stop();
 		GM_GlobalProcess(rule,group,GLOBAL_PROCESS_STOPPED);
+		recursion_depth--;
+		return;
 	}
+	if(type==GLOBAL_PROCESS_STOPPED) cr->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
 
-	if(encounter_descriptor && group->IsValid())
+	// Encounter
+	if(encounter_descriptor)
 	{
 		group->EncounterDescriptor=encounter_descriptor;
 		if(type==GLOBAL_PROCESS_ENTER)
@@ -1279,6 +1106,8 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 			rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
 		}
 	}
+
+	recursion_depth--;
 }
 
 void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
@@ -1328,69 +1157,7 @@ void MapManager::GM_GlobalInvite(GlobalMapGroup* group, int combat_mode)
 	}
 	else
 	{
-		group->StartEncaunterTime(GameOpt.EncounterTime);
 		rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
-	}
-}
-
-void MapManager::GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy)
-{
-	group->SyncLockGroup();
-
-	UIntVec loc_ids1,loc_ids2;
-	bool loc_ids2_founded=false;
-	MapMngr.GetZoneLocations(zx,zy,1,loc_ids1);
-
-	for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
-	{
-		Critter* cr=*it;
-		if(!cr->IsPlayer()) continue;
-		Client* cl=(Client*)cr;
-
-		int look_len=(cr->IsRawParam(PE_SCOUT)?2:1);
-
-		if(look_len==2 && !loc_ids2_founded)
-		{
-			MapMngr.GetZoneLocations(zx,zy,2,loc_ids2);
-			loc_ids2_founded=true;
-		}
-
-		for(int x=-look_len;x<=look_len;x++)
-		{
-			for(int y=-look_len;y<=look_len;y++)
-			{
-				int zx_=zx+x;
-				int zy_=zy+y;
-				if(zx_>=0 && zx_<(int)GameOpt.GlobalMapWidth && zy_>=0 && zy_<(int)GameOpt.GlobalMapHeight)
-				{
-					// Open fog
-					int fog=(zx==zx_ && zy==zy_?GM_FOG_NONE:GM_FOG_HALF);
-					cl->GetDataExt(); // Generate ext data
-					if(cl->GMapFog.Get2Bit(zx_,zy_)<fog)
-					{
-						cl->GMapFog.Set2Bit(zx_,zy_,fog);
-						cl->Send_GlobalMapFog(zx_,zy_,fog);
-					}
-				}
-			}
-		}
-
-		// Find new locations
-		UIntVec& loc_ids=(look_len==1?loc_ids1:loc_ids2);
-		for(UIntVecIt it_=loc_ids.begin(),end_=loc_ids.end();it_!=end_;++it_)
-		{
-			uint loc_id=*it_;
-			if(!cl->CheckKnownLocById(loc_id))
-			{
-				Location* loc=GetLocation(loc_id);
-				if(loc)
-				{
-					cl->AddKnownLoc(loc_id);
-					if(loc->IsAutomaps()) cl->Send_AutomapsInfo(NULL,loc);
-					cl->Send_GlobalLocation(loc,true);
-				}
-			}
-		}
 	}
 }
 
@@ -1441,7 +1208,7 @@ CScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 	return arr;
 }
 
-void MapManager::GM_GroupStartMove(Critter* cr, bool send)
+void MapManager::GM_GroupStartMove(Critter* cr)
 {
 	if(cr->GetMap())
 	{
@@ -1455,27 +1222,21 @@ void MapManager::GM_GroupStartMove(Critter* cr, bool send)
 	cr->GroupMove=cr->GroupSelf;
 	GlobalMapGroup* group=cr->GroupMove;
 	group->Clear();
-	group->WXi=cr->Data.WorldX;
-	group->WYi=cr->Data.WorldY;
-	group->WXf=cr->Data.WorldX;
-	group->WYf=cr->Data.WorldY;
-	group->MoveX=cr->Data.WorldX;
-	group->MoveY=cr->Data.WorldY;
-	group->SpeedX=0;
-	group->SpeedY=0;
+	group->CurX=(float)cr->Data.WorldX;
+	group->CurY=(float)cr->Data.WorldY;
+	group->ToX=group->CurX;
+	group->ToY=group->CurY;
+	group->Speed=0.0f;
 	cr->Data.GlobalGroupUid++;
 
 	Item* car=cr->GetItemCar();
 	if(car) group->CarId=car->GetId();
 
-	group->StartEncaunterTime(GameOpt.EncounterTime);
 	group->TimeCanFollow=Timer::GameTick()+TIME_CAN_FOLLOW_GM;
 	SETFLAG(cr->Flags,FCRIT_RULEGROUP);
 
 	group->AddCrit(cr);
-	GM_GroupScanZone(cr->GroupMove,GM_ZONE(group->WXi),GM_ZONE(group->WYi));
-
-	if(send) cr->Send_GlobalInfo(GM_INFO_ALL);
+	cr->Send_GlobalInfo(GM_INFO_ALL);
 	GM_GlobalProcess(cr,group,GLOBAL_PROCESS_START_FAST);
 }
 
@@ -1489,7 +1250,7 @@ void MapManager::GM_AddCritToGroup(Critter* cr, uint rule_id)
 
 	if(!rule_id)
 	{
-		GM_GroupStartMove(cr,false);
+		GM_GroupStartMove(cr);
 		return;
 	}
 
@@ -1497,7 +1258,7 @@ void MapManager::GM_AddCritToGroup(Critter* cr, uint rule_id)
 	if(!rule || rule->GetMap() || !rule->GroupMove || rule!=rule->GroupMove->Rule)
 	{
 		if(cr->IsNpc()) WriteLogF(_FUNC_," - Invalid rule on global map. Start move alone.\n");
-		GM_GroupStartMove(cr,false);
+		GM_GroupStartMove(cr);
 		return;
 	}
 
@@ -1505,8 +1266,8 @@ void MapManager::GM_AddCritToGroup(Critter* cr, uint rule_id)
 	group->SyncLockGroup();
 
 	UNSETFLAG(cr->Flags,FCRIT_RULEGROUP);
-	cr->Data.WorldX=group->WXi;
-	cr->Data.WorldY=group->WYi;
+	cr->Data.WorldX=(uint)group->CurX;
+	cr->Data.WorldY=(uint)group->CurY;
 	cr->Data.HexX=(rule_id>>16)&0xFFFF;
 	cr->Data.HexY=rule_id&0xFFFF;
 
@@ -1532,10 +1293,10 @@ void MapManager::GM_LeaveGroup(Critter* cr)
 		if(car && car->GetId()==group->CarId)
 		{
 			group->CarId=0;
-			MapMngr.GM_GroupSetMove(group,group->MoveX,group->MoveY,0);
+			MapMngr.GM_GroupSetMove(group,group->ToX,group->ToY,0.0f);
 		}
 
-		GM_GroupStartMove(cr,true);
+		GM_GroupStartMove(cr);
 	}
 	else
 	{
@@ -1586,14 +1347,10 @@ void MapManager::GM_StopGroup(Critter* cr)
 {
 	if(cr->GetMap() || !cr->GroupMove) return;
 
-	cr->GroupMove->MoveX=cr->GroupMove->WXi;
-	cr->GroupMove->MoveY=cr->GroupMove->WYi;
-	cr->GroupMove->WXf=(float)cr->GroupMove->WXi;
-	cr->GroupMove->WYf=(float)cr->GroupMove->WYi;
-	cr->GroupMove->SpeedX=0.0f;
-	cr->GroupMove->SpeedY=0.0f;
+	cr->GroupMove->ToX=cr->GroupMove->CurX;
+	cr->GroupMove->ToY=cr->GroupMove->CurY;
+	cr->GroupMove->Speed=0.0f;
 
-	cr->SendA_GlobalInfo(cr->GroupMove,GM_INFO_GROUP_PARAM);
 	GM_GlobalProcess(cr,cr->GroupMove,GLOBAL_PROCESS_STOPPED);
 }
 
@@ -1661,8 +1418,8 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, uint entire, ush
 	CrVec transit_cr=group->CritMove;
 
 	// Transit rule
-	rule->Data.WorldX=rule->GroupSelf->WXi;
-	rule->Data.WorldY=rule->GroupSelf->WYi;
+	rule->Data.WorldX=(uint)rule->GroupSelf->CurX;
+	rule->Data.WorldY=(uint)rule->GroupSelf->CurY;
 	if(car) map->SetCritterCar(car_hx,car_hy,car_owner,car);
 	if(!Transit(rule,map,hx,hy,dir,car?3:2,true)) return false;
 
@@ -1672,12 +1429,12 @@ bool MapManager::GM_GroupToMap(GlobalMapGroup* group, Map* map, uint entire, ush
 		Critter* cr=*it;
 		if(cr==rule) continue;
 
-		cr->Data.WorldX=group->WXi;
-		cr->Data.WorldY=group->WYi;
+		cr->Data.WorldX=(uint)group->CurX;
+		cr->Data.WorldY=(uint)group->CurY;
 
 		if(!Transit(cr,map,hx,hy,dir,car?3:2,true))
 		{
-			GM_GroupStartMove(cr,true);
+			GM_GroupStartMove(cr);
 			continue;
 		}
 	}
@@ -1714,7 +1471,7 @@ bool MapManager::GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool 
 		return false;
 	}
 
-	if(!force && DistSqrt(rule->GroupSelf->WXi,rule->GroupSelf->WYi,loc->Data.WX,loc->Data.WY)>loc->GetRadius())
+	if(!force && DistSqrt((uint)rule->GroupSelf->CurX,(uint)rule->GroupSelf->CurY,loc->Data.WX,loc->Data.WY)>loc->GetRadius())
 	{
 		if(rule->IsPlayer()) rule->Send_GlobalLocation(loc,true);
 		rule->Send_TextMsg(rule,STR_GLOBAL_LOCATION_REMOVED,SAY_NETMSG,TEXTMSG_GAME);
@@ -1767,30 +1524,25 @@ bool MapManager::GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool 
 	return GM_GroupToMap(rule->GroupMove,map,entire,-1,-1,-1);
 }
 
-void MapManager::GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, uint speed)
+void MapManager::GM_GroupSetMove(GlobalMapGroup* group, float to_x, float to_y, float speed)
 {
-	group->MoveX=gx;
-	group->MoveY=gy;
-	int dist=DistSqrt(group->MoveX,group->MoveY,group->WXi,group->WYi);
+	int dist=DistSqrt((int)to_x,(int)to_y,(int)group->CurX,(int)group->CurY);
 
-	if(!speed || !dist) // Stop
+	if(speed<=0.0f || !dist)
 	{
-		group->MoveX=group->WXi;
-		group->MoveY=group->WYi;
-		group->SpeedX=0.0f;
-		group->SpeedY=0.0f;
+		group->Speed=0.0f;
+		group->ToX=group->CurX;
+		group->ToY=group->CurY;
 	}
 	else
 	{
-		float k_speed=1000.0f/float(speed);
-		float time=(k_speed*1000.0f*float(dist))/float(GM_PROCESS_TIME);
-		group->SpeedX=float(group->MoveX-group->WXi)/time;
-		group->SpeedY=float(group->MoveY-group->WYi)/time;
+		group->Speed=speed;
+		group->ToX=to_x;
+		group->ToY=to_y;
 	}
 
 	group->Rule->SendA_GlobalInfo(group,GM_INFO_GROUP_PARAM);
-	if(Timer::GameTick()-group->MoveLastTick>GM_MOVE_TIME) group->MoveLastTick=Timer::GameTick();
-	if(group->IsEncaunterTime()) group->StartEncaunterTime(Random(GameOpt.EncounterTime/10,GameOpt.EncounterTime));
+	if(Timer::GameTick()-group->ProcessLastTick>GameOpt.GlobalMapMoveTime) group->ProcessLastTick=Timer::GameTick();
 	if(!group->IsSetMove)
 	{
 		group->IsSetMove=true;
@@ -2563,7 +2315,7 @@ bool MapManager::AddCrToMap(Critter* cr, Map* map, ushort tx, ushort ty, uint ra
 		cr->Data.LastHexY=cr->Data.HexY;
 		// tx,ty == rule_id
 		uint to_group=(tx<<16)|ty;
-		if(!to_group) GM_GroupStartMove(cr,false);
+		if(!to_group) GM_GroupStartMove(cr);
 		else GM_AddCritToGroup(cr,to_group);
 		cr->LockMapTransfers--;
 	}
@@ -2634,11 +2386,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map, ushort hex_x, ushort hex_
 	}
 }
 
-MapManager::MapManager():lastMapId(0),lastLocId(0),gmMask(NULL),runGarbager(true)
-{
-	MEMORY_PROCESS(MEMORY_STATIC,sizeof(MapManager));
-	MEMORY_PROCESS(MEMORY_STATIC,sizeof(Grid));
-}
+
 
 
 

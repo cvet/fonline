@@ -184,7 +184,6 @@ void FOServer::Finish()
 string FOServer::GetIngamePlayersStatistics()
 {
 	static string result;
-	const char* net_states_str[]={"None","Disconnect","Connect","Game","LoginOk","InitNet","Remove"};
 	const char* cond_states_str[]={"None","Life","Knockout","Dead"};
 	char str[512];
 	char str_loc[256];
@@ -199,7 +198,7 @@ string FOServer::GetIngamePlayersStatistics()
 
 	sprintf(str,"Players in game: %u\nConnections: %u\n",players.size(),conn_count);
 	result=str;
-	result+="Name                 Id        Ip              NetState   Cond     X     Y     Location (Id, Pid)             Map (Id, Pid)                  Level\n";
+	result+="Name                 Id        Ip              Online  Cond     X     Y     Location (Id, Pid)             Map (Id, Pid)                  Level\n";
 	for(uint i=0,j=players.size();i<j;i++)
 	{
 		Client* cl=players[i];
@@ -209,8 +208,8 @@ string FOServer::GetIngamePlayersStatistics()
 
 		sprintf(str_loc,"%s (%u, %u)",map?loc->Proto->Name.c_str():"",map?loc->GetId():0,map?loc->GetPid():0);
 		sprintf(str_map,"%s (%u, %u)",map?map->Proto->GetName():"",map?map->GetId():0,map?map->GetPid():0);
-		sprintf(str,"%-20s %-9u %-15s %-10s %-8s %-5u %-5u %-30s %-30s %-4d\n",
-			cl->GetName(),cl->GetId(),cl->GetIpStr(),net_states_str[InterlockedCompareExchange(&cl->NetState,0,0)],cond_states_str[cl->Data.Cond],
+		sprintf(str,"%-20s %-9u %-15s %-7s %-8s %-5u %-5u %-30s %-30s %-4d\n",
+			cl->GetName(),cl->GetId(),cl->GetIpStr(),cl->IsDisconnected?"No":"Yes",cond_states_str[cl->Data.Cond],
 			map?cl->GetHexX():cl->Data.WorldX,map?cl->GetHexY():cl->Data.WorldY,map?str_loc:"Global map",map?str_map:"",cl->Data.Params[ST_LEVEL]);
 		result+=str;
 	}
@@ -224,7 +223,7 @@ void FOServer::DisconnectClient(Client* cl)
 	Client* cl_=(id?CrMngr.GetPlayer(id,false):NULL);
 	if(cl_ && cl_==cl)
 	{
-		cl->Disconnect(); // Refresh disconnectTick
+		cl->Disconnect();
 		EraseSaveClient(cl->GetId());
 		AddSaveClient(cl);
 
@@ -276,7 +275,7 @@ void FOServer::RemoveClient(Client* cl)
 				for(CrVecIt it=group->CritMove.begin(),end=group->CritMove.end();it!=end;++it)
 				{
 					Critter* cr=*it;
-					MapMngr.GM_GroupStartMove(cr,true);
+					MapMngr.GM_GroupStartMove(cr);
 				}
 			}
 			else
@@ -291,7 +290,7 @@ void FOServer::RemoveClient(Client* cl)
 				if(car && car->GetId()==group->CarId)
 				{
 					group->CarId=0;
-					MapMngr.GM_GroupSetMove(group,group->MoveX,group->MoveY,0); // Stop others
+					MapMngr.GM_GroupSetMove(group,group->ToX,group->ToY,0.0f); // Stop others
 				}
 			}
 			cl->GroupMove=NULL;
@@ -835,7 +834,7 @@ void* FOServer::Net_Listen(void* hiocp)
 
 		// Add to connected collection
 		ConnectedClientsLocker.Lock();
-		InterlockedExchange(&cl->NetState,STATE_CONN);
+		cl->GameState=STATE_CONNECTED;
 		ConnectedClients.push_back(cl);
 		Statistics.CurOnline++;
 		ConnectedClientsLocker.Unlock();
@@ -1053,7 +1052,7 @@ void FOServer::Process(ClientPtr& cl)
 	}
 
 	uint msg=0;
-	if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_CONN)
+	if(cl->GameState==STATE_CONNECTED)
 	{
 		BIN_BEGIN(cl);
 		if(cl->Bin.IsEmpty()) cl->Bin.Reset();
@@ -1093,7 +1092,7 @@ void FOServer::Process(ClientPtr& cl)
 				BIN_END(cl);
 				break;
 			default:
-				//WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_CONN. Skip.\n",msg,cl->GetInfo());
+				//WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_CONNECTED. Skip.\n",msg,cl->GetInfo());
 				cl->Bin.SkipMsg(msg);
 				BIN_END(cl);
 				break;
@@ -1104,13 +1103,13 @@ void FOServer::Process(ClientPtr& cl)
 			BIN_END(cl);
 		}
 
-		if(cl->NetState==STATE_CONN && cl->ConnectTime && Timer::FastTick()-cl->ConnectTime>PING_CLIENT_LIFE_TIME) // Kick bot
+		if(cl->GameState==STATE_CONNECTED && cl->ConnectTime && Timer::FastTick()-cl->ConnectTime>PING_CLIENT_LIFE_TIME) // Kick bot
 		{
 			WriteLogF(_FUNC_," - Connection timeout, client kicked, maybe bot. Ip<%s>, name<%s>.\n",cl->GetIpStr(),cl->GetName());
 			cl->Disconnect();
 		}
 	}
-	else if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_LOGINOK)
+	else if(cl->GameState==STATE_TRANSFERRING)
 	{
 #define CHECK_BUSY if(cl->IsBusy() && !Singleplayer) {cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
 
@@ -1139,7 +1138,7 @@ void FOServer::Process(ClientPtr& cl)
 				BIN_END(cl);
 				break;
 			default:
-				//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_LOGINOK. Skip.\n",msg,cl->GetInfo());
+				//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_TRANSFERRING. Skip.\n",msg,cl->GetInfo());
 				cl->Bin.SkipMsg(msg);
 				BIN_END(cl);
 				break;
@@ -1150,7 +1149,7 @@ void FOServer::Process(ClientPtr& cl)
 			BIN_END(cl);
 		}
 	}
-	else if(InterlockedCompareExchange(&cl->NetState,0,0)==STATE_GAME)
+	else if(cl->GameState==STATE_PLAYING)
 	{
 #define MESSAGES_PER_CYCLE         (5)
 #define CHECK_BUSY_AND_LIFE if(!cl->IsLife()) break; if(cl->IsBusy() && !Singleplayer){cl->Bin.MoveReadPos(-int(sizeof(msg))); BIN_END(cl); return;}
@@ -1424,7 +1423,7 @@ void FOServer::Process(ClientPtr& cl)
 				}
 			default:
 				{
-					//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_GAME. Skip.\n",msg,cl->GetInfo());
+					//if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_PLAYING. Skip.\n",msg,cl->GetInfo());
 					cl->Bin.SkipMsg(msg);
 					BIN_END(cl);
 					continue;
@@ -1832,7 +1831,7 @@ void FOServer::Process_Command(Client* cl)
 
 			Client* cl2=(Client*)cr;
 
-			if(InterlockedCompareExchange(&cl2->NetState,0,0)!=STATE_GAME)
+			if(cl->GameState!=STATE_PLAYING)
 			{
 				cl->Send_Text(cl,"Player is not in a game.",SAY_NETMSG);
 				return;
@@ -3386,7 +3385,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(OFFSETOF(GameVar,RefCount)==22);
 	STATIC_ASSERT(OFFSETOF(TemplateVar,Flags)==68);
 	STATIC_ASSERT(OFFSETOF(AIDataPlane,RefCounter)==88);
-	STATIC_ASSERT(OFFSETOF(GlobalMapGroup,EncounterForce)==84);
+	STATIC_ASSERT(OFFSETOF(GlobalMapGroup,EncounterForce)==64);
 	STATIC_ASSERT(OFFSETOF(ProtoMap::MapEntire,Dir)==8);
 	STATIC_ASSERT(OFFSETOF(SceneryCl,PicMapHash)==24);
 	STATIC_ASSERT(OFFSETOF(ProtoMap,HexFlags)==304);
@@ -3468,7 +3467,7 @@ bool FOServer::Init()
 	if(!InitLangPacksDialogs(LangPacks)) return false; // Create FONPC.MSG, FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
 	if(!InitCrafts(LangPacks)) return false; // MrFixit
 	if(!InitLangCrTypes(LangPacks)) return false; // Critter types
-	if(!MapMngr.RefreshGmMask("wm.msk")) return false; // Load gm mask
+	//if(!MapMngr.LoadRelief()) return false; // Global map relief
 
 	// Prototypes
 	if(!ItemMngr.LoadProtos()) return false; // Proto items

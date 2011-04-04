@@ -142,8 +142,6 @@ int FOClient::InitIface()
 /************************************************************************/
 /* Data                                                                 */
 /************************************************************************/
-	char res[512];
-
 	WriteLog("Load data.\n");
 	// Other
 	IfaceHold=IFACE_NONE;
@@ -587,40 +585,7 @@ int FOClient::InitIface()
 	GmapTilesY=IfaceIni.GetInt("GmapTilesY",0);
 	GmapPic.resize(GmapTilesX*GmapTilesY);
 	GmapFog.Create(GM__MAXZONEX,GM__MAXZONEY,NULL);
-	// Relief
-	SAFEDEL(GmapRelief);
-	FileManager mask;
-	if(!IfaceIni.GetStr("GmapReliefMask","",res)) WriteLogF(_FUNC_," - Global map mask signature<GmapReliefMask> not found.\n");
-	else if(!mask.LoadFile(res,PT_MAPS)) WriteLogF(_FUNC_," - Global map mask file<%s> not found.\n",res);
-	else if(mask.GetLEUShort()!=0x4D42) WriteLogF(_FUNC_," - Invalid file format of global map mask<%s>.\n",res);
-	else
-	{
-		mask.SetCurPos(28);
-		if(mask.GetLEUShort()!=4) WriteLogF(_FUNC_," - Invalid bit per pixel format of global map mask<%s>.\n",res);
-		else
-		{
-			mask.SetCurPos(18);
-			ushort mask_w=mask.GetLEUInt();
-			ushort mask_h=mask.GetLEUInt();
-			mask.SetCurPos(118);
-			GmapRelief=new C4BitMask(mask_w,mask_h,0xF);
-			int padd_len=mask_w/2+(mask_w/2)%4;
-			for(int x,y=0,w=0;y<mask_h;)
-			{
-				uchar b=mask.GetUChar();
-				x=w*2;
-				GmapRelief->Set4Bit(x,y,b>>4);
-				GmapRelief->Set4Bit(x+1,y,b&0xF);
-				w++;
-				if(w>=mask_w/2)
-				{
-					w=0;
-					y++;
-					mask.SetCurPos(118+y*padd_len);
-				}
-			}
-		}
-	}
+
 	// Other
 	IfaceLoadRect(GmapWMain,"GmapMain");
 	GmapX=GmapWMain.L;
@@ -2994,7 +2959,6 @@ void FOClient::LogTryConnect()
 	}
 
 	// Connect to server
-	NetState=STATE_INIT_NET;
 	InitNetReason=INIT_NET_REASON_LOGIN;
 	SAFEDEL(RegNewCr);
 	ScreenEffects.clear();
@@ -4245,7 +4209,6 @@ void FOClient::LMenuSet(uchar set_lmenu)
 			if(!TargetSmth.IsCritter()) break;
 			CritterCl* cr=GetCritter(TargetSmth.GetId());
 			if(!cr || !Chosen) break;
-			bool is_water=(GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY)==0xF:false);
 
 			LMenuNodes.clear();
 			LMenuNodes.push_back(LMENU_NODE_LOOK);
@@ -4259,7 +4222,7 @@ void FOClient::LMenuSet(uchar set_lmenu)
 					// Kick and give rule
 					if(Chosen->IsGmapRule())
 					{
-						if(!is_water) LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
+						LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
 						if(!cr->IsOffline()) LMenuNodes.push_back(LMENU_NODE_GMAP_RULE);
 					}
 
@@ -4274,8 +4237,7 @@ void FOClient::LMenuSet(uchar set_lmenu)
 			else // Self
 			{
 				// Kick self
-				
-				if(!Chosen->IsGmapRule() && HexMngr.allCritters.size()>1 && !is_water) LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
+				if(!Chosen->IsGmapRule() && HexMngr.allCritters.size()>1) LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
 			}
 
 			if(cr->IsPlayer() && cr->GetId()!=Chosen->GetId() && !Chosen->GetParam(TO_KARMA_VOTING))
@@ -5170,30 +5132,19 @@ void FOClient::LmapLMouseUp()
 bool FOClient::GmapActive;
 float FOClient::GmapZoom;
 int FOClient::GmapOffsetX,FOClient::GmapOffsetY;
-int FOClient::GmapGroupX,FOClient::GmapGroupY,FOClient::GmapMoveX,FOClient::GmapMoveY;
-float FOClient::GmapSpeedX,FOClient::GmapSpeedY;
+int FOClient::GmapGroupCurX,FOClient::GmapGroupCurY,FOClient::GmapGroupToX,FOClient::GmapGroupToY;
 bool FOClient::GmapWait;
-
-#define GMAP_CHECK_MAPSCR \
-	do{\
-		if(GmapOffsetX>GmapWMap[0]) GmapOffsetX=GmapWMap[0];\
-		if(GmapOffsetY>GmapWMap[1]) GmapOffsetY=GmapWMap[1];\
-		if(GmapOffsetX<GmapWMap[2]-(int)(GM_MAXX/GmapZoom)) GmapOffsetX=GmapWMap[2]-(int)(GM_MAXX/GmapZoom);\
-		if(GmapOffsetY<GmapWMap[3]-(int)(GM_MAXY/GmapZoom)) GmapOffsetY=GmapWMap[3]-(int)(GM_MAXY/GmapZoom);\
-	}while(0)
+float FOClient::GmapGroupSpeed;
 
 #define GMAP_LOC_ALPHA   (60)
 
 void FOClient::GmapNullParams()
 {
-	GmapGroupXf=0;
-	GmapGroupYf=0;
-	GmapGroupX=0;
-	GmapGroupY=0;
-	GmapMoveX=0;
-	GmapMoveY=0;
-	GmapSpeedX=0;
-	GmapSpeedY=0;
+	GmapGroupCurX=0;
+	GmapGroupCurY=0;
+	GmapGroupToX=0;
+	GmapGroupToY=0;
+	GmapGroupSpeed=0.0f;
 	GmapWait=false;
 	GmapTabsLastScr=0;
 	GmapCurHoldBLoc=0;
@@ -5212,140 +5163,6 @@ void FOClient::GmapProcess()
 	{
 		SetCurMode(CUR_WAIT);
 		return;
-	}
-
-	if(!GmapWait)
-	{
-		uint dtime_move=Timer::GameTick()-GmapMoveLastTick;
-		if(dtime_move>=GM_MOVE_TIME)
-		{
-			int walk_type=GM_WALK_GROUND;
-			Item* car=GmapGetCar();
-			if(car) walk_type=car->Proto->Car_MovementType;
-
-			float kr=(walk_type==GM_WALK_GROUND?GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0]:1.0f);
-			if(walk_type==GM_WALK_GROUND) kr=GlobalMapKRelief[GmapRelief?GmapRelief->Get4Bit(GmapGroupX,GmapGroupY):0];
-			if(car && kr!=1.0f)
-			{
-				float n=(float)car->Proto->Car_Passability;
-				if(n>100.0f && kr<1.0f) kr+=(1.0f-kr)*(n-100.0f)/100.0f;
-				else if(n>100.0f && kr>1.0f) kr-=(kr-1.0f)*(n-100.0f)/100.0f;
-				else if(n<100.0f && kr<1.0f) kr-=(1.0f-kr)*(100.0f-n)/100.0f;
-				else if(n<100.0f && kr>1.0f) kr+=(kr-1.0f)*(100.0f-n)/100.0f;
-			}
-
-			GmapGroupXf+=GmapSpeedX*kr*((float)(dtime_move)/GM_PROCESS_TIME);
-			GmapGroupYf+=GmapSpeedY*kr*((float)(dtime_move)/GM_PROCESS_TIME);
-
-			int old_x=GmapGroupX;
-			int old_y=GmapGroupY;
-			uint last_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
-
-			GmapGroupX=(int)GmapGroupXf;
-			GmapGroupY=(int)GmapGroupYf;
-
-			if(GmapGroupX!=old_x || GmapGroupY!=old_y)
-			{
-				if(GmapGroupX<0 || GmapGroupY<0 || GmapGroupX>=(int)GM_MAXX || GmapGroupY>=(int)GM_MAXY)
-				{
-					if(GmapGroupX<0) GmapGroupX=0;
-					if(GmapGroupX>=(int)GM_MAXX) GmapGroupX=(int)GM_MAXX-1;
-					if(GmapGroupY<0) GmapGroupY=0;
-					if(GmapGroupY>=(int)GM_MAXY) GmapGroupY=(int)GM_MAXY-1;
-
-					// Stop group
-					GmapSpeedX=0.0f;
-					GmapSpeedY=0.0f;
-				}
-
-				// Move from old to new and find last correct position
-				int relief=(GmapRelief?GmapRelief->Get4Bit(old_x,old_y):0);
-				int steps=max(abs(GmapGroupX-old_x),abs(GmapGroupY-old_y));
-				int new_x_=old_x;
-				int new_y_=old_y;
-				if(steps)
-				{
-					float xx=(float)old_x;
-					float yy=(float)old_y;
-					float oxx=(float)(GmapGroupX-old_x)/steps;
-					float oyy=(float)(GmapGroupY-old_y)/steps;
-
-					for(int i=0;i<steps;i++)
-					{
-						xx+=oxx;
-						yy+=oyy;
-						int xxi=(int)(xx>=0.0f?xx+0.5f:xx-0.5f);
-						int yyi=(int)(yy>=0.0f?yy+0.5f:yy-0.5f);
-
-						if((walk_type==GM_WALK_GROUND && relief!=0xF && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0)==0xF) ||
-							(walk_type==GM_WALK_WATER && (GmapRelief?GmapRelief->Get4Bit(xxi,yyi):0xF)!=0xF)) break;
-
-						new_x_=xxi;
-						new_y_=yyi;
-					}
-				}
-
-				if(GmapGroupX!=new_x_ || GmapGroupY!=new_y_)
-				{
-					GmapGroupX=new_x_;
-					GmapGroupY=new_y_;
-					GmapSpeedX=0.0f;
-					GmapSpeedY=0.0f;
-				}
-
-				// Process scroll
-				GmapOffsetX+=(int)((old_x-GmapGroupX)/GmapZoom);
-				GmapOffsetY+=(int)((old_y-GmapGroupY)/GmapZoom);
-
-				GMAP_CHECK_MAPSCR;
-
-				// Check dist
-				uint cur_dist=DistSqrt(GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY);
-				if(!cur_dist || cur_dist>last_dist)
-				{
-					GmapSpeedX=0.0f;
-					GmapSpeedY=0.0f;
-				}
-			}
-
-			GmapMoveLastTick=Timer::GameTick();
-
-			if(GmapSpeedX!=0.0f || GmapSpeedY!=0.0f)
-			{
-				static uint point_tick=0;
-				if(Timer::GameTick()>=point_tick)
-				{
-					if(GmapTrace.empty() || GmapTrace[0].first!=old_x || GmapTrace[0].second!=old_y)
-						GmapTrace.push_back(IntPairVecVal(old_x,old_y));
-					point_tick=Timer::GameTick()+GM_TRACE_TIME;
-				}
-			}
-			else
-			{
-				GmapGroupXf=(float)GmapGroupX;
-				GmapGroupYf=(float)GmapGroupY;
-				GmapTrace.clear();
-			}
-		}
-
-		uint dtime_proc=Timer::GameTick()-GmapProcLastTick;
-		if(dtime_proc>=GM_PROCESS_TIME)
-		{
-			Item* car=GmapGetCar();
-			if(car && (GmapSpeedX || GmapSpeedY))
-			{
-				int fuel=car->Data.Car.Fuel;
-				int deterioration=car->Data.Car.Deterioration;
-				fuel-=car->Proto->Car_FuelConsumption;
-				deterioration+=car->Proto->Car_DeteriorationRate;
-				if(fuel<0) fuel=0;
-				if(deterioration>(int)car->Proto->Car_MaxDeterioration) deterioration=car->Proto->Car_MaxDeterioration;
-				car->Data.Car.Fuel=fuel;
-				car->Data.Car.Deterioration=deterioration;
-			}
-
-			GmapProcLastTick=Timer::GameTick();
-		}
 	}
 
 	if(IfaceHold==IFACE_GMAP_TABSCRUP) // Scroll Up
@@ -5503,17 +5320,17 @@ void FOClient::GmapDraw()
 	{
 		AnyFrames* pic=((Timer::GameTick()%1000)<500?GmapPLightPic0:GmapPLightPic1);
 		SpriteInfo* si=SprMngr.GetSpriteInfo(pic->GetCurSprId());
-		if(si) SprMngr.DrawSprite(pic,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
+		if(si) SprMngr.DrawSprite(pic,(int)(GmapGroupCurX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupCurY/GmapZoom)+GmapOffsetY-si->Height/2);
 	}
 	else
 	{
-		if(GmapSpeedX || GmapSpeedY)
+		if(GmapGroupSpeed!=0.0f)
 		{
 			SpriteInfo* si;
 			if(si=SprMngr.GetSpriteInfo(GmapPGr->GetCurSprId()))
-				SprMngr.DrawSprite(GmapPGr,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
+				SprMngr.DrawSprite(GmapPGr,(int)(GmapGroupCurX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupCurY/GmapZoom)+GmapOffsetY-si->Height/2);
 			if(si=SprMngr.GetSpriteInfo(GmapPTarg->GetCurSprId()))
-				SprMngr.DrawSprite(GmapPTarg,(int)(GmapMoveX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapMoveY/GmapZoom)+GmapOffsetY-si->Height/2);
+				SprMngr.DrawSprite(GmapPTarg,(int)(GmapGroupToX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupToY/GmapZoom)+GmapOffsetY-si->Height/2);
 		}
 		else
 		{
@@ -5521,12 +5338,12 @@ void FOClient::GmapDraw()
 			if(IfaceHold==IFACE_GMAP_TOLOC)
 			{
 				if(si=SprMngr.GetSpriteInfo(GmapPStayDn->GetCurSprId()))
-					SprMngr.DrawSprite(GmapPStayDn,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
+					SprMngr.DrawSprite(GmapPStayDn,(int)(GmapGroupCurX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupCurY/GmapZoom)+GmapOffsetY-si->Height/2);
 			}
 			else
 			{
 				if(si=SprMngr.GetSpriteInfo(GmapPStay->GetCurSprId()))
-					SprMngr.DrawSprite(GmapPStay,(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2);
+					SprMngr.DrawSprite(GmapPStay,(int)(GmapGroupCurX/GmapZoom)+GmapOffsetX-si->Width/2,(int)(GmapGroupCurY/GmapZoom)+GmapOffsetY-si->Height/2);
 			}
 		}
 	}
@@ -5672,7 +5489,7 @@ void FOClient::GmapTownDraw()
 
 	ushort loc_pid=GmapTownLoc.LocPid;
 
-	if(DistSqrt(GmapTownLoc.LocWx,GmapTownLoc.LocWy,GmapGroupX,GmapGroupY)>GmapTownLoc.Radius)
+	if(DistSqrt(GmapTownLoc.LocWx,GmapTownLoc.LocWy,GmapGroupCurX,GmapGroupCurY)>GmapTownLoc.Radius)
 	{
 		ShowScreen(SCREEN_NONE);
 		return;
@@ -5810,13 +5627,13 @@ void FOClient::GmapLMouseDown()
 
 	if(IfaceHold==IFACE_NONE && IsCurInRect(GmapWMap))
 	{
-		if(!GmapSpeedX && !GmapSpeedY)
+		if(GmapGroupSpeed==0.0f)
 		{
 			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
 			if(si)
 			{
-				int x=(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2;
-				int y=(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2;
+				int x=(int)(GmapGroupCurX/GmapZoom)+GmapOffsetX-si->Width/2;
+				int y=(int)(GmapGroupCurY/GmapZoom)+GmapOffsetY-si->Height/2;
 
 				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
 					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
@@ -5863,8 +5680,8 @@ void FOClient::GmapLMouseUp()
 			SpriteInfo* si=SprMngr.GetSpriteInfo(GmapPStayMask->GetCurSprId());
 			if(si)
 			{
-				int x=(int)(GmapGroupX/GmapZoom)+GmapOffsetX-si->Width/2;
-				int y=(int)(GmapGroupY/GmapZoom)+GmapOffsetY-si->Height/2;
+				int x=(int)(GmapGroupCurX/GmapZoom)+GmapOffsetX-si->Width/2;
+				int y=(int)(GmapGroupCurY/GmapZoom)+GmapOffsetY-si->Height/2;
 
 				if(GameOpt.MouseX>=x && GameOpt.MouseX<=x+si->Width && GameOpt.MouseY>=y && GameOpt.MouseY<=y+si->Height &&
 					SprMngr.IsPixNoTransp(GmapPStayMask->GetCurSprId(),GameOpt.MouseX-x,GameOpt.MouseY-y,false))
@@ -5876,7 +5693,7 @@ void FOClient::GmapLMouseUp()
 						uint radius=loc.Radius;
 						if(!radius) radius=6;
 
-						if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupX,GmapGroupY)<=radius)
+						if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupCurX,GmapGroupCurY)<=radius)
 						{
 							loc_id=loc.LocId;
 							break;
@@ -5900,7 +5717,7 @@ void FOClient::GmapLMouseUp()
 			uint radius=loc.Radius;
 			if(!radius) radius=6;
 
-			if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupX,GmapGroupY)<=radius)
+			if(DistSqrt(loc.LocWx,loc.LocWy,GmapGroupCurX,GmapGroupCurY)<=radius)
 			{
 				GmapTownLoc=loc;
 				ShowScreen(SCREEN__GM_TOWN);
@@ -5970,8 +5787,8 @@ void FOClient::GmapKeyDown(uchar dik)
 	switch(dik)
 	{
 	case DIK_HOME:
-		GmapOffsetX=GmapWMap.W()/2+GmapWMap[0]-(int)(GmapGroupX/GmapZoom);
-		GmapOffsetY=GmapWMap.H()/2+GmapWMap[1]-(int)(GmapGroupY/GmapZoom);
+		GmapOffsetX=GmapWMap.W()/2+GmapWMap[0]-(int)(GmapGroupCurX/GmapZoom);
+		GmapOffsetY=GmapWMap.H()/2+GmapWMap[1]-(int)(GmapGroupCurY/GmapZoom);
 		GMAP_CHECK_MAPSCR;
 		break;
 	case DIK_C: ShowScreen(SCREEN__CHARACTER); if(Chosen && Chosen->Params[ST_UNSPENT_PERKS]) ShowScreen(SCREEN__PERK); break;
@@ -6855,7 +6672,6 @@ void FOClient::ChaLMouseUp(bool is_reg)
 		{
 			if(RegCheckData(RegNewCr))
 			{
-				NetState=STATE_INIT_NET;
 				InitNetReason=INIT_NET_REASON_REG;
 				SetCurMode(CUR_WAIT);
 			}
@@ -10098,10 +9914,9 @@ void FOClient::SaveLoadProcessDone()
 	}
 	else if(SaveLoadSlotIndex>=0 && SaveLoadSlotIndex<(int)SaveLoadDataSlots.size())
 	{
-		if(NetState==STATE_DISCONNECT)
+		if(!IsConnected)
 		{
 			SaveLoadFileName=SaveLoadDataSlots[SaveLoadSlotIndex].FileName;
-			NetState=STATE_INIT_NET;
 			InitNetReason=INIT_NET_REASON_LOAD;
 		}
 		else

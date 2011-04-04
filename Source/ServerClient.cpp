@@ -1987,7 +1987,9 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 
 			cl_old->Bin=cl->Bin;
 			cl_old->Bout=cl->Bout;
-			std::swap(cl_old->NetState,cl->NetState);
+			std::swap(cl_old->IsDisconnected,cl->IsDisconnected);
+			cl_old->GameState=STATE_CONNECTED;
+			cl->GameState=STATE_NONE;
 			cl_old->Sock=cl->Sock;
 			cl->Sock=INVALID_SOCKET;
 			memcpy(&cl_old->From,&cl->From,sizeof(cl_old->From));
@@ -2216,8 +2218,6 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	BOUT_END(cl);
 	cl->Bin.SetEncryptKey(bin_seed);
 	cl->Bout.SetEncryptKey(bout_seed);
-
-	InterlockedExchange(&cl->NetState,STATE_LOGINOK);
 	cl->Send_LoadMap(NULL);
 }
 
@@ -2292,7 +2292,7 @@ void FOServer::Process_ParseToGame(Client* cl)
 	cl->Access=ACCESS_IMPLEMENTOR;
 #endif
 
-	InterlockedExchange(&cl->NetState,STATE_GAME);
+	cl->GameState=STATE_PLAYING;
 	cl->PingOk(PING_CLIENT_LIFE_TIME*5);
 
 	if(cl->ViewMapId)
@@ -3214,7 +3214,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 		if(is_steal)
 		{
 			// Player is offline
-			/*if(cr->IsPlayer() && cr->State!=STATE_GAME)
+			/*if(cr->IsPlayer() && cr->State!=STATE_PLAYING)
 			{
 				cr->SendA_Text(&cr->VisCr,"Please, don't kill me",SAY_WHISP_ON_HEAD);
 				cl->Send_ContainerInfo();
@@ -4129,8 +4129,8 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		if(cl->GetMap() || !cl->GroupMove || cl!=cl->GroupMove->Rule) break;
 		if(param1>=GM_MAXX || param2>=GM_MAXY) break;
 		if(cl->GroupMove->EncounterDescriptor) break;
-		cl->GroupMove->MoveX=param1;
-		cl->GroupMove->MoveY=param2;
+		cl->GroupMove->ToX=(float)param1;
+		cl->GroupMove->ToY=(float)param2;
 		MapMngr.GM_GlobalProcess(cl,cl->GroupMove,GLOBAL_PROCESS_SET_MOVE);
 		break;
 	case GM_CMD_STOP:
@@ -4166,7 +4166,6 @@ void FOServer::Process_RuleGlobal(Client* cl)
 		}
 		else if(cl->GroupMove->EncounterDescriptor) // No
 		{
-			cl->GroupMove->StartEncaunterTime(GameOpt.EncounterTime);
 			cl->GroupMove->EncounterDescriptor=0;
 			cl->SendA_GlobalInfo(cl->GroupMove,GM_INFO_GROUP_PARAM);
 		}
@@ -4193,23 +4192,23 @@ void FOServer::Process_RuleGlobal(Client* cl)
 	case GM_CMD_KICKCRIT:
 		{
 			if(cl->GetMap() || !cl->GroupMove || cl->GroupMove->GetSize()<2 || cl->GroupMove->EncounterDescriptor) break;
-			if(MapMngr.GetGmRelief(cl->GroupMove->WXi,cl->GroupMove->WYi)==0xF) break;
-			GlobalMapGroup* gr=cl->GroupMove;
+
+			GlobalMapGroup* group=cl->GroupMove;
 			Critter* kick_cr;
 
 			if(cl->GetId()==param1) // Kick self
 			{
-				if(cl==gr->Rule) break;
+				if(cl==group->Rule) break;
 				kick_cr=cl;
 			}
 			else // Kick other
 			{
-				if(cl!=gr->Rule) break;
-				kick_cr=gr->GetCritter(param1);
+				if(cl!=group->Rule) break;
+				kick_cr=group->GetCritter(param1);
 				if(!kick_cr) break;
 			}
 
-			MapMngr.GM_LeaveGroup(kick_cr);
+			MapMngr.GM_GlobalProcess(kick_cr,cl->GroupMove,GLOBAL_PROCESS_KICK);
 		}
 		break;
 	case GM_CMD_GIVE_RULE:
@@ -4229,7 +4228,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 
 			uint loc_id=param1;
 			Location* loc=MapMngr.GetLocation(loc_id);
-			if(!loc || DistSqrt(cl->GroupMove->WXi,cl->GroupMove->WYi,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
+			if(!loc || DistSqrt((int)cl->GroupMove->CurX,(int)cl->GroupMove->CurY,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
 
 			uint tick=Timer::FastTick();
 			if(cl->LastSendEntrancesLocId==loc_id && tick<cl->LastSendEntrancesTick+GM_ENTRANCES_SEND_TIME)
@@ -4289,7 +4288,7 @@ void FOServer::Process_RuleGlobal(Client* cl)
 
 			uint loc_id=param1;
 			Location* loc=MapMngr.GetLocation(loc_id);
-			if(!loc || DistSqrt(cl->GroupMove->WXi,cl->GroupMove->WYi,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
+			if(!loc || DistSqrt((int)cl->GroupMove->CurX,(int)cl->GroupMove->CurY,loc->Data.WX,loc->Data.WY)>loc->GetRadius()) break;
 
 			uint entrance=param2;
 			if(entrance>=loc->Proto->Entrance.size()) break;

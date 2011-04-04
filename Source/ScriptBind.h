@@ -537,7 +537,7 @@
 	if(engine->RegisterObjectMethod("Critter","int EventPlaneRun(NpcPlane& plane, int reason, uint& p0, uint& p1, uint& p2)",asFUNCTION(BIND_CLASS Crit_EventPlaneRun),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventBarter(Critter& barterCr, bool attach, uint barterCount)",asFUNCTION(BIND_CLASS Crit_EventBarter),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventTalk(Critter& talkCr, bool attach, uint talkCount)",asFUNCTION(BIND_CLASS Crit_EventTalk),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("Critter","bool EventGlobalProcess(int type, Item@ car, uint& x, uint& y, uint& toX, uint& toY, uint& speed, uint& encounterDescriptor, bool& waitForAnswer)",asFUNCTION(BIND_CLASS Crit_EventGlobalProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("Critter","bool EventGlobalProcess(int type, Item@ car, float& x, float& y, float& toX, float& toY, float& speed, uint& encounterDescriptor, bool& waitForAnswer)",asFUNCTION(BIND_CLASS Crit_EventGlobalProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","bool EventGlobalInvite(Item@ car, uint encounterDescriptor, int combatMode, uint& mapId, uint16& hexX, uint16& hexY, uint8& dir)",asFUNCTION(BIND_CLASS Crit_EventGlobalInvite),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventTurnBasedProcess(Map& map, bool beginTurn)",asFUNCTION(BIND_CLASS Crit_EventTurnBasedProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("Critter","void EventSmthTurnBasedProcess(Critter& fromCr, Map& map, bool beginTurn)",asFUNCTION(BIND_CLASS Crit_EventSmthTurnBasedProcess),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
@@ -758,6 +758,8 @@
 	if(engine->RegisterGlobalFunction("Location@+ GetLocation(uint locId)",asFUNCTION(BIND_CLASS Global_GetLocation),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("Location@+ GetLocationByPid(uint16 locPid, uint skipCount)",asFUNCTION(BIND_CLASS Global_GetLocationByPid),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetLocations(uint16 worldX, uint16 worldY, uint radius, Location@[]@+ locations)",asFUNCTION(BIND_CLASS Global_GetLocations),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetVisibleLocations(uint16 worldX, uint16 worldY, uint radius, Critter@+ visibleBy, Location@[]@+ locations)",asFUNCTION(BIND_CLASS Global_GetVisibleLocations),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetZoneLocationIds(uint16 zoneX, uint16 zoneY, uint zoneRadius, uint[]@+ locationIds)",asFUNCTION(BIND_CLASS Global_GetZoneLocationIds),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool RunDialog(Critter& player, Critter& npc, bool ignoreDistance)",asFUNCTION(BIND_CLASS Global_RunDialogNpc),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool RunDialog(Critter& player, Critter& npc, uint dialogPack, bool ignoreDistance)",asFUNCTION(BIND_CLASS Global_RunDialogNpcDlgPack),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool RunDialog(Critter& player, uint dialogPack, uint16 hexX, uint16 hexY, bool ignoreDistance)",asFUNCTION(BIND_CLASS Global_RunDialogHex),asCALL_CDECL)<0) BIND_ERROR;
@@ -780,6 +782,8 @@
 	if(engine->RegisterGlobalFunction("string@ GetScriptName(uint scriptId)",asFUNCTION(BIND_CLASS Global_GetScriptName),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int8[]@ GetItemDataMask(int maskType)",asFUNCTION(BIND_CLASS Global_GetItemDataMask),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SetItemDataMask(int maskType, int8[]& mask)",asFUNCTION(BIND_CLASS Global_SetItemDataMask),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool LoadImage(uint index, string@+ imageName, uint imageDepth, int pathType)",asFUNCTION(BIND_CLASS Global_LoadImage),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("uint GetImageColor(uint index, uint x, uint y)",asFUNCTION(BIND_CLASS Global_GetImageColor),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void Synchronize()",asFUNCTION(BIND_CLASS Global_Synchronize),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void Resynchronize()",asFUNCTION(BIND_CLASS Global_Resynchronize),asCALL_CDECL)<0) BIND_ERROR;
 #endif
@@ -1012,12 +1016,11 @@
 	if(engine->RegisterGlobalProperty("float __GmapZoom",&BIND_CLASS GmapZoom)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __GmapOffsetX",&BIND_CLASS GmapOffsetX)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __GmapOffsetY",&BIND_CLASS GmapOffsetY)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("int __GmapGroupX",&BIND_CLASS GmapGroupX)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("int __GmapGroupY",&BIND_CLASS GmapGroupY)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("int __GmapMoveX",&BIND_CLASS GmapMoveX)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("int __GmapMoveY",&BIND_CLASS GmapMoveY)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("float __GmapSpeedX",&BIND_CLASS GmapSpeedX)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("float __GmapSpeedY",&BIND_CLASS GmapSpeedY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapGroupCurX",&BIND_CLASS GmapGroupCurX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapGroupCurY",&BIND_CLASS GmapGroupCurY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapGroupToX",&BIND_CLASS GmapGroupToX)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __GmapGroupToY",&BIND_CLASS GmapGroupToY)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("float __GmapGroupSpeed",&BIND_CLASS GmapGroupSpeed)) BIND_ERROR;
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)
@@ -1040,7 +1043,6 @@
 	if(engine->RegisterGlobalFunction("uint GetCritterAlias(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterAlias),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetCritterTypeName(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterTypeName),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("string@ GetCritterSoundName(uint crType)",asFUNCTION(BIND_CLASS Global_GetCritterSoundName),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("int GetGlobalMapRelief(uint x, uint y)",asFUNCTION(BIND_CLASS Global_GetGlobalMapRelief),asCALL_CDECL)<0) BIND_ERROR;
 
 	if(engine->RegisterGlobalProperty("const uint16 __Year",&GameOpt.Year)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("const uint16 __Month",&GameOpt.Month)) BIND_ERROR;
@@ -1104,7 +1106,7 @@
 	if(engine->RegisterGlobalProperty("uint __GlobalMapWidth",&GameOpt.GlobalMapWidth)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __GlobalMapHeight",&GameOpt.GlobalMapHeight)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __GlobalMapZoneLength",&GameOpt.GlobalMapZoneLength)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("uint __EncounterTime",&GameOpt.EncounterTime)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("uint __GlobalMapMoveTime",&GameOpt.GlobalMapMoveTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __BagRefreshTime",&GameOpt.BagRefreshTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __AttackAnimationsMinDist",&GameOpt.AttackAnimationsMinDist)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __WisperDist",&GameOpt.WhisperDist)) BIND_ERROR;

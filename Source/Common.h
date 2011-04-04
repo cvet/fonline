@@ -124,10 +124,7 @@ template<class T> inline bool CompareContainers(const T& a, const T& b){return a
 void GetHexOffsets(bool odd, short*& sx, short*& sy);
 void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
 
-// Relief
-const float GlobalMapKRelief[16]={1.5f,1.4f,1.3f,1.2f,1.1f,1.0f,0.95f,0.9f,0.85f,0.8f,0.75f,0.7f,0.65f,0.6f,0.55f,1.0f};
-//const float GlobalMapKRelief[16]={1.0f,0.1f,0.2f,0.3f,0.4f,0.5f,0.6f,0.7f,0.8f,0.9f,1.0f,1.1f,1.2f,1.3f,1.4f,1.5f};
-
+// Name / Password
 bool CheckUserName(const char* str);
 bool CheckUserPass(const char* str);
 
@@ -443,7 +440,7 @@ struct GameOptions
 	uint GlobalMapWidth;
 	uint GlobalMapHeight;
 	uint GlobalMapZoneLength;
-	uint EncounterTime;
+	uint GlobalMapMoveTime;
 	uint BagRefreshTime;
 	uint AttackAnimationsMinDist;
 	uint WhisperDist;

@@ -869,6 +869,8 @@ struct BindClass
 	static void Global_GetLocation(){}
 	static void Global_GetLocationByPid(){}
 	static void Global_GetLocations(){}
+	static void Global_GetVisibleLocations(){}
+	static void Global_GetZoneLocationIds(){}
 	static void Global_RunDialogNpc(){}
 	static void Global_RunDialogNpcDlgPack(){}
 	static void Global_RunDialogHex(){}
@@ -890,6 +892,8 @@ struct BindClass
 	static void Global_GetScriptName(){}
 	static void Global_GetItemDataMask(){}
 	static void Global_SetItemDataMask(){}
+	static void Global_LoadImage(){}
+	static void Global_GetImageColor(){}
 	static void Global_Synchronize(){}
 	static void Global_Resynchronize(){}
 #endif
@@ -994,8 +998,8 @@ struct BindClass
 	static int GmapActive,GmapWait;
 	static int GmapZoom;
 	static int GmapOffsetX,GmapOffsetY;
-	static int GmapGroupX,GmapGroupY,GmapMoveX,GmapMoveY;
-	static int GmapSpeedX,GmapSpeedY;
+	static int GmapGroupCurX,GmapGroupCurY,GmapGroupToX,GmapGroupToY;
+	static int GmapGroupSpeed;
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_SERVER)
@@ -1160,12 +1164,11 @@ int BindClass::GmapWait;
 int BindClass::GmapZoom;
 int BindClass::GmapOffsetX;
 int BindClass::GmapOffsetY;
-int BindClass::GmapGroupX;
-int BindClass::GmapGroupY;
-int BindClass::GmapMoveX;
-int BindClass::GmapMoveY;
-int BindClass::GmapSpeedX;
-int BindClass::GmapSpeedY;
+int BindClass::GmapGroupCurX;
+int BindClass::GmapGroupCurY;
+int BindClass::GmapGroupToX;
+int BindClass::GmapGroupToY;
+int BindClass::GmapGroupSpeed;
 #endif
 
 void Random(){}
@@ -1238,6 +1241,7 @@ struct GameOptions
 	int GlobalMapWidth;
 	int GlobalMapHeight;
 	int GlobalMapZoneLength;
+	int GlobalMapMoveTime;
 	int EncounterTime;
 	int BagRefreshTime;
 	int AttackAnimationsMinDist;

@@ -11,31 +11,28 @@ public:
 	CrVec CritMove;
 	Critter* Rule;
 	uint CarId;
-	int WXi,WYi;
-	float WXf,WYf;
-	int MoveX,MoveY;
-	float SpeedX,SpeedY;
+	float CurX,CurY;
+	float ToX,ToY;
+	float Speed;
 	bool IsSetMove;
 	uint TimeCanFollow;
-	uint NextEncaunter;
 	bool IsMultiply;
-	uint MoveLastTick;
 	uint ProcessLastTick;
 	uint EncounterDescriptor;
 	uint EncounterTick;
 	bool EncounterForce;
+	uint UserData[10];
 
 	bool IsValid();
 	bool IsMoving();
 	uint GetSize();
+	void Stop();
 	void SyncLockGroup();
 	Critter* GetCritter(uint crid);
 	Item* GetCar();
 	bool CheckForFollow(Critter* cr);
 	void AddCrit(Critter* cr);
 	void EraseCrit(Critter* cr);
-	void StartEncaunterTime(int time);
-	bool IsEncaunterTime();
 	void Clear();
 	GlobalMapGroup(){Clear();}
 };
@@ -150,28 +147,21 @@ public:
 	bool Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, bool force);
 
 	// Global map
-private:
-	CByteMask* gmMask;
-
 public:
 	bool IsIntersectZone(int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones);
 	void GetZoneLocations(int zx, int zy, int zone_radius, UIntVec& loc_ids);
 
-	bool RefreshGmMask(const char* mask_path);
-	int GetGmRelief(uint x, uint y){return gmMask->GetByte(x,y)&0xF;}
-
-	void GM_GroupStartMove(Critter* cr, bool send);
+	void GM_GroupStartMove(Critter* cr);
 	void GM_AddCritToGroup(Critter* cr, uint rule_id);
 	void GM_LeaveGroup(Critter* cr);
 	void GM_GiveRule(Critter* cr, Critter* new_rule);
 	void GM_StopGroup(Critter* cr);
 	bool GM_GroupToMap(GlobalMapGroup* group, Map* map, uint entire, ushort mx, ushort my, uchar mdir);
 	bool GM_GroupToLoc(Critter* rule, uint loc_id, uchar entrance, bool force = false);
-	void GM_GroupSetMove(GlobalMapGroup* group, int gx, int gy, uint speed);
+	void GM_GroupSetMove(GlobalMapGroup* group, float to_x, float to_y, float speed);
 	void GM_GroupMove(GlobalMapGroup* group);
 	void GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type);
 	void GM_GlobalInvite(GlobalMapGroup* group, int combat_mode);
-	void GM_GroupScanZone(GlobalMapGroup* group, int zx, int zy);
 	bool GM_CheckEntrance(Location* loc, CScriptArray* arr, uchar entrance);
 	CScriptArray* GM_CreateGroupArray(GlobalMapGroup* group);
 
@@ -187,7 +177,6 @@ public:
 	Location* GetLocationByMap(uint map_id);
 	Location* GetLocation(uint loc_id);
 	Location* GetLocationByPid(ushort loc_pid, uint skip_count);
-	bool IsLocationOnCoord(int wx, int wy);
 	void GetLocations(LocVec& locs, bool lock);
 	uint GetLocationsCount();
 	void LocationGarbager();

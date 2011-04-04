@@ -48,7 +48,7 @@ const char* CritterEventFuncName[CRITTER_EVENT_MAX]=
 	"int %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)", // CRITTER_EVENT_PLANE_RUN
 	"bool %s(Critter&,Critter&,bool,uint)", // CRITTER_EVENT_BARTER
 	"bool %s(Critter&,Critter&,bool,uint)", // CRITTER_EVENT_TALK
-	"bool %s(Critter&,int,Item@,uint&,uint&,uint&,uint&,uint&,uint&,bool&)", // CRITTER_EVENT_GLOBAL_PROCESS
+	"bool %s(Critter&,int,Item@,float&,float&,float&,float&,float&,uint&,bool&)", // CRITTER_EVENT_GLOBAL_PROCESS
 	"bool %s(Critter&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)", // CRITTER_EVENT_GLOBAL_INVITE
 	"void %s(Critter&,Map&,bool)", // CRITTER_EVENT_TURN_BASED_PROCESS
 	"void %s(Critter&,Critter&,Map&,bool)", // CRITTER_EVENT_SMTH_TURN_BASED_PROCESS
@@ -89,12 +89,11 @@ DisableSend(0),CanBeRemoved(false)
 	DataExt=NULL;
 	memzero(FuncId,sizeof(FuncId));
 	GroupSelf=new GlobalMapGroup();
-	GroupSelf->WXf=Data.WorldX;
-	GroupSelf->WYf=Data.WorldY;
-	GroupSelf->WXi=Data.WorldX;
-	GroupSelf->WYi=Data.WorldY;
-	GroupSelf->MoveX=Data.WorldX;
-	GroupSelf->MoveY=Data.WorldY;
+	GroupSelf->CurX=(float)Data.WorldX;
+	GroupSelf->CurY=(float)Data.WorldY;
+	GroupSelf->ToX=GroupSelf->CurX;
+	GroupSelf->ToY=GroupSelf->CurY;
+	GroupSelf->Speed=0.0f;
 	GroupSelf->Rule=this;
 	memzero(ParamsIsChanged,sizeof(ParamsIsChanged));
 	ParamsChanged.reserve(10);
@@ -2023,7 +2022,7 @@ bool Critter::EventTalk(Critter* cr_talk, bool attach, uint talk_count)
 	return false;
 }
 
-bool Critter::EventGlobalProcess(int type, Item* car, uint& x, uint& y, uint& to_x, uint& to_y, uint& speed, uint& encounter_descriptor, bool& wait_for_answer)
+bool Critter::EventGlobalProcess(int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer)
 {
 	bool result=false;
 	if(PrepareScriptFunc(CRITTER_EVENT_GLOBAL_PROCESS))
@@ -2897,7 +2896,7 @@ void Critter::Delete()
 
 Client::Client():
 ZstrmInit(false),Access(ACCESS_DEFAULT),pingOk(true),LanguageMsg(0),
-NetState(STATE_DISCONNECT),DisableZlib(false),
+GameState(STATE_NONE),IsDisconnected(false),DisconnectTick(0),DisableZlib(false),
 LastSendScoresTick(0),LastSendCraftTick(0),LastSendEntrancesTick(0),LastSendEntrancesLocId(0),
 ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0)
 {
@@ -3070,7 +3069,7 @@ void Client::Send_LoadMap(Map* map)
 	Bout << hash_scen;
 	BOUT_END(this);
 
-	InterlockedExchange(&NetState,STATE_LOGINOK); // TODO:
+	GameState=STATE_TRANSFERRING;
 }
 
 void Client::Send_Move(Critter* from_cr, uint move_params)
@@ -3441,7 +3440,7 @@ void Client::Send_GlobalInfo(uchar info_flags)
 		msg_len+=sizeof(loc_count)+SEND_LOCATION_SIZE*loc_count;
 
 	if(FLAG(info_flags,GM_INFO_GROUP_PARAM))
-		msg_len+=sizeof(ushort)*4+sizeof(int)*2+sizeof(uchar)+sizeof(uint);
+		msg_len+=sizeof(ushort)*4+sizeof(uint)+sizeof(bool)+sizeof(uint);
 
 	if(FLAG(info_flags,GM_INFO_ZONES_FOG)) msg_len+=GM_ZONES_FOG_SIZE;
 
@@ -3480,20 +3479,24 @@ void Client::Send_GlobalInfo(uchar info_flags)
 
 	if(FLAG(info_flags,GM_INFO_GROUP_PARAM))
 	{
-		int speed_x=(int)(GroupMove->SpeedX*1000000.0f);
-		int speed_y=(int)(GroupMove->SpeedY*1000000.0f);
-		uchar wait=(GroupMove->EncounterDescriptor?1:0);
+		ushort cur_x=(ushort)GroupMove->CurX;
+		ushort cur_y=(ushort)GroupMove->CurY;
+		ushort to_x=(ushort)GroupMove->ToX;
+		ushort to_y=(ushort)GroupMove->ToY;
+		uint speed=(uint)(GroupMove->Speed*1000000.0f);
+		bool wait=(GroupMove->EncounterDescriptor?true:false);
 
-		Bout << (ushort)(GroupMove->WXi);
-		Bout << (ushort)(GroupMove->WYi);
-		Bout << (ushort)(GroupMove->MoveX);
-		Bout << (ushort)(GroupMove->MoveY);
-		Bout << speed_x;
-		Bout << speed_y;
+		Bout << cur_x;
+		Bout << cur_y;
+		Bout << to_x;
+		Bout << to_y;
+		Bout << speed;
 		Bout << wait;
 
-		if(car) Bout << car->ACC_CRITTER.Id;
-		else Bout << (uint)0;
+		if(car)
+			Bout << car->ACC_CRITTER.Id;
+		else
+			Bout << (uint)0;
 	}
 
 	if(FLAG(info_flags,GM_INFO_ZONES_FOG))

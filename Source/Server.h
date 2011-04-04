@@ -680,7 +680,7 @@ public:
 		static int Crit_EventPlaneRun(Critter* cr, AIDataPlane* plane, int reason, uint& p0, uint& p1, uint& p2);
 		static bool Crit_EventBarter(Critter* cr, Critter* cr_barter, bool attach, uint barter_count);
 		static bool Crit_EventTalk(Critter* cr, Critter* cr_talk, bool attach, uint talk_count);
-		static bool Crit_EventGlobalProcess(Critter* cr, int type, Item* car, uint& x, uint& y, uint& to_x, uint& to_y, uint& speed, uint& encounter_descriptor, bool& wait_for_answer);
+		static bool Crit_EventGlobalProcess(Critter* cr, int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer);
 		static bool Crit_EventGlobalInvite(Critter* cr, Item* car, uint encounter_descriptor, int combat_mode, uint& map_id, ushort& hx, ushort& hy, uchar& dir);
 		static void Crit_EventTurnBasedProcess(Critter* cr, Map* map, bool begin_turn);
 		static void Crit_EventSmthTurnBasedProcess(Critter* cr, Critter* from_cr, Map* map, bool begin_turn);
@@ -831,6 +831,8 @@ public:
 		static Location* Global_GetLocation(uint loc_id);
 		static Location* Global_GetLocationByPid(ushort loc_pid, uint skip_count);
 		static uint Global_GetLocations(ushort wx, ushort wy, uint radius, CScriptArray* locations);
+		static uint Global_GetVisibleLocations(ushort wx, ushort wy, uint radius, Critter* cr, CScriptArray* locations);
+		static uint Global_GetZoneLocationIds(ushort zx, ushort zy, uint zone_radius, CScriptArray* locations);
 		static bool Global_StrToInt(CScriptString& text, int& result);
 		static bool Global_RunDialogNpc(Critter* player, Critter* npc, bool ignore_distance);
 		static bool Global_RunDialogNpcDlgPack(Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance);
@@ -877,7 +879,8 @@ public:
 		static uint Global_GetCritterAlias(uint cr_type);
 		static CScriptString* Global_GetCritterTypeName(uint cr_type);
 		static CScriptString* Global_GetCritterSoundName(uint cr_type);
-		static int Global_GetGlobalMapRelief(uint x, uint y);
+		static bool Global_LoadImage(uint index, CScriptString* image_name, uint image_depth, int path_type);
+		static uint Global_GetImageColor(uint index, uint x, uint y);
 		static void Global_Synchronize();
 		static void Global_Resynchronize();
 	} ScriptFunc;

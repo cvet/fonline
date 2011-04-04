@@ -42,6 +42,9 @@ typedef map<int,float>::value_type IntFloatMapVal;
 typedef map<int,void*> IntPtrMap;
 typedef map<int,void*>::iterator IntPtrMapIt;
 typedef map<int,void*>::value_type IntPtrMapVal;
+typedef map<uint,float> UIntFloatMap;
+typedef map<uint,float>::iterator UIntFloatMapIt;
+typedef map<uint,float>::value_type UIntFloatMapVal;
 
 typedef multimap<uint,string> UIntStrMulMap;
 typedef multimap<uint,string>::iterator UIntStrMulMapIt;
@@ -305,8 +308,6 @@ typedef vector<UCharPair>::value_type UCharPairVecVal;
 #define GM_FOG_HALF_EX          (2)
 #define GM_FOG_NONE             (3)
 #define GM_MAX_GROUP_COUNT      (GameOpt.GlobalMapMaxGroupCount)
-#define GM_PROCESS_TIME         (500)
-#define GM_MOVE_TIME            (50)
 #define GM_ANSWER_WAIT_TIME     (20000)
 #define GM_LIGHT_TIME           (5000)
 #define GM_ZONE(x)              ((x)/GM_ZONE_LEN)
@@ -335,7 +336,7 @@ typedef vector<UCharPair>::value_type UCharPairVecVal;
 #define GLOBAL_PROCESS_SET_MOVE     (4)
 #define GLOBAL_PROCESS_STOPPED      (5)
 #define GLOBAL_PROCESS_NPC_IDLE     (6)
-#define GLOBAL_PROCESS_NEW_ZONE     (7)
+#define GLOBAL_PROCESS_KICK         (7)
 
 // GM Rule command
 #define GM_CMD_SETMOVE     (1) // +r-a*x,y
@@ -600,7 +601,6 @@ struct ScoreType
 #define PERK_COUNT                  (PERK_END-PERK_BEGIN+1)
 #define PE_SILENT_RUNNING           (316)
 #define PE_MASTER_TRADER            (318)
-#define PE_SCOUT                    (346)
 #define PE_QUICK_POCKETS            (349)
 #define PE_SMOOTH_TALKER            (350)
 
