@@ -922,6 +922,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		// Force invite
 		if(group->EncounterForce)
 		{
+			group->SyncLockGroup();
 			GM_GlobalInvite(group,rule->Data.Params[MODE_DEFAULT_COMBAT]);
 			return;
 		}
@@ -935,6 +936,7 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 	// Start callback
 	if(!group->IsSetMove && tick>=group->TimeCanFollow)
 	{
+		group->SyncLockGroup();
 		group->IsSetMove=true;
 		GM_GlobalProcess(rule,group,GLOBAL_PROCESS_START);
 		return;
@@ -946,23 +948,19 @@ void MapManager::GM_GroupMove(GlobalMapGroup* group)
 		uint dtime=tick-group->ProcessLastTick;
 		if(dtime>=GameOpt.GlobalMapMoveTime)
 		{
-			if(dtime>GameOpt.GlobalMapMoveTime*10) dtime=GameOpt.GlobalMapMoveTime*10;
+			if(dtime>=GameOpt.GlobalMapMoveTime*2) dtime=0;
 			group->ProcessLastTick=tick-dtime%GameOpt.GlobalMapMoveTime;
 
 			group->SyncLockGroup();
 
-			while(dtime>=GameOpt.GlobalMapMoveTime)
+			if(rule->IsPlayer() && ((Client*)rule)->IsOffline())
 			{
-				if(rule->IsPlayer() && ((Client*)rule)->IsOffline())
-				{
-					group->Stop();
-					GM_GlobalProcess(rule,group,GLOBAL_PROCESS_STOPPED);
-					return;
-				}
-
-				GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
-				dtime-=GameOpt.GlobalMapMoveTime;
+				group->Stop();
+				GM_GlobalProcess(rule,group,GLOBAL_PROCESS_STOPPED);
+				return;
 			}
+
+			GM_GlobalProcess(rule,group,GLOBAL_PROCESS_MOVE);
 		}
 	}
 }
@@ -986,6 +984,7 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 	float to_wx=group->ToX;
 	float to_wy=group->ToY;
 	float speed=group->Speed;
+	float base_speed=group->Speed;
 	bool global_process=true;
 
 	if(cr->FuncId[CRITTER_EVENT_GLOBAL_PROCESS]>0)
@@ -1004,6 +1003,12 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 			to_wy=group->ToY;
 			speed=group->Speed;
 		}
+	}
+
+	if(!group->IsValid())
+	{
+		recursion_depth--;
+		return;
 	}
 
 	if(global_process && Script::PrepareContext(ServerFunctions.GlobalProcess,_FUNC_,rule->GetInfo()))
@@ -1041,7 +1046,6 @@ void MapManager::GM_GlobalProcess(Critter* cr, GlobalMapGroup* group, int type)
 	if(speed<0.0f) speed=0.0f;
 	if(cur_wx==to_wx && cur_wy==to_wy) speed=0.0f;
 	if(speed==0.0f) to_wx=cur_wx,to_wy=cur_wy;
-	float base_speed=group->Speed;
 
 	// Current position
 	if(cur_wx!=group->CurX || cur_wy!=group->CurY || speed!=group->Speed)

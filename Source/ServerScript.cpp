@@ -1272,8 +1272,13 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHexEx(Critter* cr, uint map_id, ush
 
 	if(!cr->GetMap())
 	{
-		if(!with_group) MapMngr.GM_LeaveGroup(cr);
+		if(!with_group)
+		{
+			MapMngr.GM_LeaveGroup(cr);
+			return Crit_TransitToMapHexEx(cr,map_id,hx,hy,dir,true);
+		}
 		if(dir<DIRS_COUNT && cr->Data.Dir!=dir) cr->Data.Dir=dir;
+		if(!cr->GroupMove) SCRIPT_ERROR_R0("Group nullptr.");
 		if(!MapMngr.GM_GroupToMap(cr->GroupMove,map,0,hx,hy,cr->GetDir())) SCRIPT_ERROR_R0("Transit from global to map fail.");
 	}
 	else
@@ -1320,7 +1325,12 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntireEx(Critter* cr, uint map_id, 
 	if(!map->GetStartCoord(hx,hy,dir,entire)) SCRIPT_ERROR_R0("Entire not found.");
 	if(!cr->GetMap())
 	{
-		if(!with_group) MapMngr.GM_LeaveGroup(cr);
+		if(!with_group)
+		{
+			MapMngr.GM_LeaveGroup(cr);
+			return Crit_TransitToMapEntireEx(cr,map_id,entire,true);
+		}
+		if(!cr->GroupMove) SCRIPT_ERROR_R0("Group nullptr.");
 		if(!MapMngr.GM_GroupToMap(cr->GroupMove,map,0,hx,hy,dir)) SCRIPT_ERROR_R0("Transit from global to map fail.");
 	}
 	else

@@ -2938,14 +2938,12 @@ void Client::Shutdown(bufferevent* bev)
 {
 	bufferevent_free(bev);
 
-	if(Sock!=INVALID_SOCKET)
-	{
-		shutdown(Sock,SD_BOTH);
-		closesocket(Sock);
-		Sock=INVALID_SOCKET;
-	}
+	shutdown(Sock,SD_BOTH);
+	closesocket(Sock);
+	Sock=INVALID_SOCKET;
 
 	Disconnect();
+	Release();
 }
 
 void Client::PingClient()

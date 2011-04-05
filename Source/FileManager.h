@@ -21,7 +21,6 @@
 #define PT_ART_WALLS           (12)
 #define PT_TEXTURES            (13)
 #define PT_EFFECTS             (14)
-#define PT_MAPS                (15)
 #define PT_SND_MUSIC           (16)
 #define PT_SND_SFX             (17)
 #define PT_SCRIPTS             (18)

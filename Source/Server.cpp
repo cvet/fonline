@@ -852,6 +852,7 @@ void* FOServer::Net_Listen(void* hiocp)
 		// Setup callbacks
 		cl->NetIOArgPtr=new Client*;
 		*cl->NetIOArgPtr=cl;
+		cl->AddRef();
 		bufferevent_setcb(bev,NetIO_Input,NetIO_Output,NetIO_Event,cl->NetIOArgPtr);
 
 		// Begin handle net events

@@ -21,7 +21,7 @@ const char* PathLst[PATH_LIST_COUNT]=
 	"art\\walls\\",
 	"textures\\",
 	"effects\\",
-	"maps\\",
+	"",
 	"sound\\music\\",
 	"sound\\sfx\\",
 	"scripts\\",
