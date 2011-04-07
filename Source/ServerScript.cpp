@@ -4318,8 +4318,7 @@ uint FOServer::SScriptFunc::Global_GetZoneLocationIds(ushort zx, ushort zy, uint
 
 bool FOServer::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 {
-	if(!text.length()) return false;
-	if(!Str::IsNumber(text.c_str()))
+	if(!text.length() || !Str::IsNumber(text.c_str()))
 	{
 		result=0;
 		return false;

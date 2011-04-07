@@ -15,11 +15,17 @@ int FOServer::UpdateIndex=-1;
 int FOServer::UpdateLastIndex=-1;
 uint  FOServer::UpdateLastTick=0;
 ClVec FOServer::LogClients;
-event_base* FOServer::NetIOEventHandler=NULL;
 Thread FOServer::ListenThread;
+SOCKET FOServer::ListenSock=INVALID_SOCKET;
+#if defined(USE_LIBEVENT)
+event_base* FOServer::NetIOEventHandler=NULL;
 Thread FOServer::NetIOThread;
 uint FOServer::NetIOThreadsCount=0;
-SOCKET FOServer::ListenSock=INVALID_SOCKET;
+#else // IOCP
+HANDLE FOServer::NetIOCompletionPort=NULL;
+Thread* FOServer::NetIOThreads=NULL;
+uint FOServer::NetIOThreadsCount=0;
+#endif
 ClVec FOServer::ConnectedClients;
 Mutex FOServer::ConnectedClientsLocker;
 FOServer::Statistics_ FOServer::Statistics;
@@ -141,6 +147,7 @@ void FOServer::Finish()
 	ListenSock=INVALID_SOCKET;
 	ListenThread.Wait();
 
+#if defined(USE_LIBEVENT)
 	// Net IO events
 	event_base* eb=NetIOEventHandler;
 	NetIOEventHandler=NULL;
@@ -148,6 +155,14 @@ void FOServer::Finish()
 	NetIOThread.Wait();
 	if(eb) event_base_free(eb);
 	NetIOThreadsCount=0;
+#else // IOCP
+	for(uint i=0;i<NetIOThreadsCount;i++) PostQueuedCompletionStatus(NetIOCompletionPort,0,1,NULL);
+	for(uint i=0;i<NetIOThreadsCount;i++) NetIOThreads[i].Wait();
+	SAFEDELA(NetIOThreads);
+	NetIOThreadsCount=0;
+	CloseHandle(NetIOCompletionPort);
+	NetIOCompletionPort=NULL;
+#endif
 
 	// Managers
 	AIMngr.Finish();
@@ -209,7 +224,7 @@ string FOServer::GetIngamePlayersStatistics()
 		sprintf(str_loc,"%s (%u, %u)",map?loc->Proto->Name.c_str():"",map?loc->GetId():0,map?loc->GetPid():0);
 		sprintf(str_map,"%s (%u, %u)",map?map->Proto->GetName():"",map?map->GetId():0,map?map->GetPid():0);
 		sprintf(str,"%-20s %-9u %-15s %-7s %-8s %-5u %-5u %-30s %-30s %-4d\n",
-			cl->GetName(),cl->GetId(),cl->GetIpStr(),cl->IsDisconnected?"No":"Yes",cond_states_str[cl->Data.Cond],
+			cl->GetName(),cl->GetId(),cl->GetIpStr(),cl->IsOffline()?"No":"Yes",cond_states_str[cl->Data.Cond],
 			map?cl->GetHexX():cl->Data.WorldX,map?cl->GetHexY():cl->Data.WorldY,map?str_loc:"Global map",map?str_map:"",cl->Data.Params[ST_LEVEL]);
 		result+=str;
 	}
@@ -439,7 +454,6 @@ void FOServer::MainLoop()
 
 		// Statistics
 		Statistics.Uptime=(Timer::FastTick()-Statistics.ServerStartTick)/1000;
-		Fl::awake(&GuiMsg_UpdateInfo);
 
 //		sync_mngr->UnlockAll();
 		Sleep(100);
@@ -546,6 +560,13 @@ void* FOServer::Logic_Work(void* data)
 
 			// Check for removing
 			if(cl->IsNotValid) continue;
+
+			// Disconnect
+			if(cl->IsOffline() && InterlockedCompareExchange(&cl->NetIOOut->Operation,WSAOP_END,WSAOP_FREE)==WSAOP_FREE)
+			{
+				InterlockedExchange(&cl->NetIOIn->Operation,WSAOP_END);
+				cl->Shutdown();
+			}
 
 			// Check for removing
 			if(cl->Sock==INVALID_SOCKET)
@@ -765,11 +786,10 @@ void* FOServer::Logic_Work(void* data)
 	return 0;
 }
 
-void* FOServer::Net_Listen(void* hiocp)
+void* FOServer::Net_Listen(void*)
 {
 	LogSetThreadName("NetListen");
 
-	HANDLE iocp=(HANDLE)hiocp;
 	while(true)
 	{
 		// Blocked
@@ -803,6 +823,10 @@ void* FOServer::Net_Listen(void* hiocp)
 
 		Client* cl=new Client();
 
+		// Socket
+		cl->Sock=sock;
+		cl->From=from;
+
 		// ZLib
 		cl->Zstrm.zalloc=zlib_alloc;
 		cl->Zstrm.zfree=zlib_free;
@@ -817,8 +841,9 @@ void* FOServer::Net_Listen(void* hiocp)
 		}
 		cl->ZstrmInit=true;
 
+#if defined(USE_LIBEVENT)
 		// Net IO events handling
-		bufferevent* bev=bufferevent_socket_new(NetIOEventHandler,sock,BEV_OPT_THREADSAFE);
+		bufferevent* bev=bufferevent_socket_new(NetIOEventHandler,sock,BEV_OPT_THREADSAFE); // BEV_OPT_DEFER_CALLBACKS
 		if(!bev)
 		{
 			WriteLogF(_FUNC_," - Create new buffer event fail.\n");
@@ -827,10 +852,25 @@ void* FOServer::Net_Listen(void* hiocp)
 			continue;
 		}
 		bufferevent_lock(bev);
+#else // IOCP
+		// CompletionPort
+		if(!CreateIoCompletionPort((HANDLE)sock,NetIOCompletionPort,0,0))
+		{
+			WriteLogF(_FUNC_," - CreateIoCompletionPort fail, error<%u>.\n",GetLastError());
+			closesocket(sock);
+			delete cl;
+			continue;
+		}
 
-		// Socket
-		cl->Sock=sock;
-		cl->From=from;
+		// First receive queue
+		if(WSARecv(cl->Sock,&cl->NetIOIn->Buffer,1,NULL,&cl->NetIOIn->Flags,&cl->NetIOIn->OV,NULL)==SOCKET_ERROR && WSAGetLastError()!=WSA_IO_PENDING)
+		{
+			WriteLogF(_FUNC_," - First recv fail, error<%s>.\n",GetLastSocketError());
+			closesocket(sock);
+			delete cl;
+			continue;
+		}
+#endif
 
 		// Add to connected collection
 		ConnectedClientsLocker.Lock();
@@ -839,6 +879,7 @@ void* FOServer::Net_Listen(void* hiocp)
 		Statistics.CurOnline++;
 		ConnectedClientsLocker.Unlock();
 
+#if defined(USE_LIBEVENT)
 		// Setup timeouts
 		timeval tv={0,5*1000}; // Check Output data every 5ms
 		bufferevent_set_timeouts(bev,NULL,&tv);
@@ -850,20 +891,24 @@ void* FOServer::Net_Listen(void* hiocp)
 		if(!Singleplayer) bufferevent_set_rate_limit(bev,rate_cfg);
 
 		// Setup callbacks
-		cl->NetIOArgPtr=new Client*;
-		*cl->NetIOArgPtr=cl;
-		cl->AddRef();
+		Client::NetIOArg* arg=new Client::NetIOArg();
+		arg->PClient=cl;
+		cl->NetIOArgPtr=arg;
+		cl->AddRef(); // Released in Shutdown
 		bufferevent_setcb(bev,NetIO_Input,NetIO_Output,NetIO_Event,cl->NetIOArgPtr);
 
 		// Begin handle net events
 		bufferevent_enable(bev,EV_WRITE|EV_READ);
 		bufferevent_unlock(bev);
+#endif
 
 		// Add job
 		Job::PushBack(JOB_CLIENT,cl);
 	}
 	return NULL;
 }
+
+#if defined(USE_LIBEVENT)
 
 void* FOServer::NetIO_Loop(void*)
 {
@@ -874,11 +919,22 @@ void* FOServer::NetIO_Loop(void*)
 		event_base* eb=NetIOEventHandler;
 		if(!eb) break;
 
-		// Return 1 if no events, wait some time and run loop again
-		if(event_base_loop(eb,0)!=1) break;
-		Sleep(10);
-	}
+		int result=event_base_loop(eb,0);
 
+		// Return 1 if no events, wait some time and run loop again
+		if(result==1)
+		{
+			Sleep(10);
+			continue;
+		}
+
+		// Error
+		if(result==-1) WriteLogF(_FUNC_," - Error.\n");
+
+		// End of work
+		// event_base_loopbreak called
+		break;
+	}
 	return NULL;
 }
 
@@ -887,10 +943,11 @@ void* FOServer::NetIO_Loop(void*)
 // LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
 // thread_count++;
 
-void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
+void FOServer::NetIO_Event(bufferevent* bev, short what, void* arg)
 {
-	Client* cl=*(Client**)client;
-	SCOPE_LOCK(cl->NetIOArgPtrLocker);
+	Client::NetIOArg* arg_=(Client::NetIOArg*)arg;
+	SCOPE_LOCK(arg_->Locker);
+	Client* cl=arg_->PClient;
 
 	if((what&(BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING))==(BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING))
 	{
@@ -917,7 +974,7 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 
 		// Try send again
 		bufferevent_enable(bev,EV_WRITE);
-		NetIO_Output(bev,client);
+		NetIO_Output(bev,arg);
 	}
 	else if(what&(BEV_EVENT_ERROR|BEV_EVENT_EOF))
 	{
@@ -926,10 +983,11 @@ void FOServer::NetIO_Event(bufferevent* bev, short what, void* client)
 	}
 }
 
-void FOServer::NetIO_Input(bufferevent* bev, void* client)
+void FOServer::NetIO_Input(bufferevent* bev, void* arg)
 {
-	Client* cl=*(Client**)client;
-	SCOPE_LOCK(cl->NetIOArgPtrLocker);
+	Client::NetIOArg* arg_=(Client::NetIOArg*)arg;
+	SCOPE_LOCK(arg_->Locker);
+	Client* cl=arg_->PClient;
 
 	if(cl->IsOffline())
 	{
@@ -963,21 +1021,22 @@ void FOServer::NetIO_Input(bufferevent* bev, void* client)
 		if(evbuffer_remove(input,data+pos,read_len)!=read_len)
 		{
 			WriteLogF(_FUNC_," - Receive fail.\n");
+			cl->Bin.Unlock();
 			cl->Shutdown(bev);
 		}
 		else
 		{
+			cl->Bin.Unlock();
 			Statistics.BytesRecv+=read_len;
 		}
-
-		cl->Bin.Unlock();
 	}
 }
 
-void FOServer::NetIO_Output(bufferevent* bev, void* client)
+void FOServer::NetIO_Output(bufferevent* bev, void* arg)
 {
-	Client* cl=*(Client**)client;
-	SCOPE_LOCK(cl->NetIOArgPtrLocker);
+	Client::NetIOArg* arg_=(Client::NetIOArg*)arg;
+	SCOPE_LOCK(arg_->Locker);
+	Client* cl=arg_->PClient;
 
 	cl->Bout.Lock();
 	if(cl->Bout.IsEmpty()) // Nothing to send
@@ -1043,6 +1102,162 @@ void FOServer::NetIO_Output(bufferevent* bev, void* client)
 		Statistics.BytesSend+=write_len;
 	}
 }
+
+#else // IOCP
+
+void* FOServer::NetIO_Work(void*)
+{
+	static int thread_count=0;
+	LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
+	thread_count++;
+
+	while(true)
+	{
+		DWORD bytes;
+		uint key;
+		Client::NetIOArg* io;
+		uint error=ERROR_SUCCESS;
+		if(!GetQueuedCompletionStatus(NetIOCompletionPort,&bytes,(PULONG_PTR)&key,(LPOVERLAPPED*)&io,INFINITE)) error=GetLastError();
+		if(key==1) break; // End of work
+
+		if(error!=ERROR_SUCCESS && error!=ERROR_NETNAME_DELETED && error!=ERROR_CONNECTION_ABORTED && error!=ERROR_OPERATION_ABORTED && error!=ERROR_SEM_TIMEOUT)
+		{
+			WriteLogF(_FUNC_," - GetQueuedCompletionStatus fail, error<%u>. Work thread closed!\n",error);
+			break;
+		}
+
+		SCOPE_LOCK(io->Locker);
+		Client* cl=(Client*)io->PClient;
+		cl->AddRef();
+
+		if(error==ERROR_SUCCESS && bytes)
+		{
+			switch(InterlockedCompareExchange(&io->Operation,0,0))
+			{
+			case WSAOP_SEND:
+				Statistics.BytesSend+=bytes;
+				NetIO_Output(io);
+				break;
+			case WSAOP_RECV:
+				Statistics.BytesRecv+=bytes;
+				io->Bytes=bytes;
+				NetIO_Input(io);
+				break;
+			default:
+				WriteLogF(_FUNC_," - Unknown operation<%d>.\n",io->Operation);
+				break;
+			}
+		}
+		else
+		{
+			InterlockedExchange(&io->Operation,WSAOP_FREE);
+			cl->Disconnect();
+		}
+
+		cl->Release();
+	}
+	return NULL;
+}
+
+void FOServer::NetIO_Input(Client::NetIOArg* io)
+{
+	Client* cl=(Client*)io->PClient;
+
+	if(cl->IsOffline())
+	{
+		InterlockedExchange(&io->Operation,WSAOP_FREE);
+		return;
+	}
+
+	cl->Bin.Lock();
+	if(cl->Bin.GetCurPos()+io->Bytes>=GameOpt.FloodSize && !Singleplayer)
+	{
+		WriteLogF(_FUNC_," - Flood.\n");
+		cl->Bin.Reset();
+		cl->Bin.Unlock();
+		InterlockedExchange(&io->Operation,WSAOP_FREE);
+		cl->Disconnect();
+		return;
+	}
+	cl->Bin.Push(io->Buffer.buf,io->Bytes,true);
+	cl->Bin.Unlock();
+
+	io->Flags=0;
+	DWORD bytes;
+	if(WSARecv(cl->Sock,&io->Buffer,1,&bytes,&io->Flags,&io->OV,NULL)==SOCKET_ERROR && WSAGetLastError()!=WSA_IO_PENDING)
+	{
+		WriteLogF(_FUNC_," - Recv fail, error<%s>.\n",GetLastSocketError());
+		InterlockedExchange(&io->Operation,WSAOP_FREE);
+		cl->Disconnect();
+	}
+}
+
+void FOServer::NetIO_Output(Client::NetIOArg* io)
+{
+	Client* cl=(Client*)io->PClient;
+
+	cl->Bout.Lock();
+	if(cl->Bout.IsEmpty()) // Nothing to send
+	{
+		cl->Bout.Unlock();
+		InterlockedExchange(&io->Operation,WSAOP_FREE);
+		return;
+	}
+
+	// Compress
+	if(!GameOpt.DisableZlibCompression && !cl->DisableZlib)
+	{
+		uint to_compr=cl->Bout.GetEndPos();
+		if(to_compr>WSA_BUF_SIZE) to_compr=WSA_BUF_SIZE;
+
+		cl->Zstrm.next_in=(UCHAR*)cl->Bout.GetCurData();
+		cl->Zstrm.avail_in=to_compr;
+		cl->Zstrm.next_out=(UCHAR*)io->Buffer.buf;
+		cl->Zstrm.avail_out=WSA_BUF_SIZE;
+
+		if(deflate(&cl->Zstrm,Z_SYNC_FLUSH)!=Z_OK)
+		{
+			WriteLogF(_FUNC_," - Deflate fail.\n");
+			cl->Bout.Reset();
+			cl->Bout.Unlock();
+			InterlockedExchange(&io->Operation,WSAOP_FREE);
+			cl->Disconnect();
+			return;
+		}
+
+		uint compr=cl->Zstrm.next_out-(UCHAR*)io->Buffer.buf;
+		uint real=cl->Zstrm.next_in-(UCHAR*)cl->Bout.GetCurData();
+		io->Buffer.len=compr;
+		cl->Bout.Cut(real);
+		Statistics.DataReal+=real;
+		Statistics.DataCompressed+=compr;
+	}
+	// Without compressing
+	else
+	{
+		uint len=cl->Bout.GetEndPos();
+		if(len>WSA_BUF_SIZE) len=WSA_BUF_SIZE;
+		memcpy(io->Buffer.buf,cl->Bout.GetCurData(),len);
+		io->Buffer.len=len;
+		cl->Bout.Cut(len);
+		Statistics.DataReal+=len;
+		Statistics.DataCompressed+=len;
+	}
+	if(cl->Bout.IsEmpty()) cl->Bout.Reset();
+	cl->Bout.Unlock();
+
+	// Send
+	InterlockedExchange(&io->Operation,WSAOP_SEND);
+	DWORD bytes;
+	if(WSASend(cl->Sock,&io->Buffer,1,&bytes,0,(LPOVERLAPPED)io,NULL)==SOCKET_ERROR && WSAGetLastError()!=WSA_IO_PENDING)
+	{
+		WriteLogF(_FUNC_," - Send fail, error<%s>.\n",GetLastSocketError());
+		InterlockedExchange(&io->Operation,WSAOP_FREE);
+		cl->Disconnect();
+	}
+}
+
+#endif
 
 void FOServer::Process(ClientPtr& cl)
 {
@@ -3551,8 +3766,15 @@ bool FOServer::Init()
 	NetIOThreadsCount=cfg.GetInt("NetWorkThread",0);
 	if(!NetIOThreadsCount) NetIOThreadsCount=SystemInfo.dwNumberOfProcessors;
 
+#if defined(USE_LIBEVENT)
 	// Net IO events initialization
+	struct ELCB{static void Callback(int severity, const char *msg){WriteLog("_event_log_cb - severity<%d>, msg<%s>.\n",severity,msg);}};
+	struct EFCB{static void Callback(int err){WriteLog("_event_log_cb - error<%d>.\n",err);}};
+	event_set_log_callback(ELCB::Callback);
+	event_set_fatal_callback(EFCB::Callback);
+
 	evthread_use_windows_threads();
+
 	event_config* event_cfg=event_config_new();
 	event_config_set_flag(event_cfg,EVENT_BASE_FLAG_STARTUP_IOCP);
 	event_config_set_num_cpus_hint(event_cfg,NetIOThreadsCount);
@@ -3570,6 +3792,24 @@ bool FOServer::Init()
 	// Listen
 	ListenThread.Start(Net_Listen);
 	WriteLog("Network listen thread started.\n");
+#else // IOCP
+	NetIOCompletionPort=CreateIoCompletionPort(INVALID_HANDLE_VALUE,NULL,NULL,NetIOThreadsCount);
+	if(!NetIOCompletionPort)
+	{
+		WriteLogF(NULL,"Can't create IO Completion Port, error<%u>.\n",GetLastError());
+		closesocket(ListenSock);
+		return false;
+	}
+
+	WriteLogF(NULL,"Starting net listen thread.\n");
+	ListenThread.Start(Net_Listen);
+
+	WriteLogF(NULL,"Starting net work threads, count<%u>.\n",NetIOThreadsCount);
+	NetIOThreads=new Thread[NetIOThreadsCount];
+	for(uint i=0;i<NetIOThreadsCount;i++) NetIOThreads[i].Start(NetIO_Work);
+
+	Client::SendData=&NetIO_Output;
+#endif
 
 	// Start script
 	if(!Script::PrepareContext(ServerFunctions.Start,_FUNC_,"Game") || !Script::RunPrepared() || !Script::GetReturnedBool())

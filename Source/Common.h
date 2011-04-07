@@ -282,9 +282,6 @@ extern uint VarsGarbageTime;
 extern bool WorldSaveManager;
 extern bool LogicMT;
 
-extern int GuiMsg_UpdateInfo;
-extern int GuiMsg_UpdateLog;
-
 void GetServerOptions();
 
 struct ServerScriptFunctions
@@ -328,13 +325,15 @@ struct ServerScriptFunctions
 } extern ServerFunctions;
 
 // Net events
-#if defined(FO_MSVC)
-	#pragma comment(lib,"libevent.lib")
-	#pragma comment(lib,"libevent_core.lib")
-	#pragma comment(lib,"libevent_extras.lib")
-#else // FO_GCC
-	// Linker options:
-	// Todo:
+#if defined(USE_LIBEVENT)
+	#if defined(FO_MSVC)
+		#pragma comment(lib,"libevent.lib")
+		#pragma comment(lib,"libevent_core.lib")
+		#pragma comment(lib,"libevent_extras.lib")
+	#else // FO_GCC
+		// Linker options:
+		// Todo:
+	#endif
 #endif
 
 // FLTK libs

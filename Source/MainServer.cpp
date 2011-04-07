@@ -17,12 +17,14 @@ void UpdateInfo();
 void UpdateLog();
 void CheckTextBoxSize(bool force);
 void* GameLoopThread(void*);
+void* GUIUpdate(void*);
 INTRECT MainInitRect,LogInitRect,InfoInitRect;
 int SplitProcent=90;
 Thread LoopThread;
 MutexEvent GameInitEvent;
-FOServer Serv;
+FOServer Server;
 string UpdateLogName;
+Thread GUIUpdateThread;
 
 // GUI
 Fl_Window* GuiWindow;
@@ -127,7 +129,7 @@ int main(int argc, char** argv)
 		Fl::lock(); // Begin GUI multi threading
 		GUIInit(cfg);
 		LogFinish(LOG_FILE);
-		LogToBuffer(&GuiMsg_UpdateLog);
+		LogToBuffer();
 	}
 
 	WriteLog("FOnline server, version %04X-%02X.\n",SERVER_VERSION,FO_PROTOCOL_VERSION&0xFF);
@@ -168,17 +170,18 @@ int main(int argc, char** argv)
 	sync_mngr->UnlockAll();
 	if(GuiWindow)
 	{
+		GUIUpdateThread.Start(GUIUpdate);
  		while(Fl::wait())
- 		{
+		{
 			void* pmsg=Fl::thread_message();
 			if(pmsg)
 			{
-				int msg=*(int*)pmsg;
-				if(msg==GuiMsg_UpdateInfo) UpdateInfo();
-				else if(msg==GuiMsg_UpdateLog) UpdateLog();
+				UpdateLog();
+				UpdateInfo();
+				CheckTextBoxSize(false);
 			}
-			CheckTextBoxSize(false);
- 		}
+		}
+		GUIUpdateThread.Finish();
 	}
 	else
 	{
@@ -330,11 +333,11 @@ void GUICallback(Fl_Widget* widget, void* data)
 	}
 	else if(widget==GuiBtnRlClScript)
 	{
-		if(Serv.IsInit()) Serv.RequestReloadClientScripts=true;
+		if(Server.IsInit()) Server.RequestReloadClientScripts=true;
 	}
 	else if(widget==GuiBtnSaveWorld)
 	{
-		if(Serv.IsInit()) Serv.SaveWorldNextTick=Timer::FastTick(); // Force saving time
+		if(Server.IsInit()) Server.SaveWorldNextTick=Timer::FastTick(); // Force saving time
 	}
 	else if(widget==GuiBtnSaveLog || widget==GuiBtnSaveInfo)
 	{
@@ -353,7 +356,7 @@ void GUICallback(Fl_Widget* widget, void* data)
 	{
 		FOServer::UpdateIndex=0;
 		FOServer::UpdateLastIndex=0;
-		if(!Serv.IsInit()) UpdateInfo();
+		if(!Server.IsInit()) UpdateInfo();
 	}
 	else if(widget==GuiBtnPlayers)
 	{
@@ -425,7 +428,7 @@ void GUICallback(Fl_Widget* widget, void* data)
 	else if(widget==GuiCBtnLogging)
 	{
 		if(GuiCBtnLogging->value())
-			LogToBuffer(&GuiMsg_UpdateLog);
+			LogToBuffer();
 		else
 			LogFinish(LOG_BUFFER);
 	}
@@ -446,6 +449,17 @@ void GUICallback(Fl_Widget* widget, void* data)
 	}
 }
 
+void* GUIUpdate(void*)
+{
+	while(true)
+	{
+		static int dummy=0;
+		Fl::awake(&dummy);
+		Sleep(50);
+	}
+	return NULL;
+}
+
 void UpdateInfo()
 {
 	static char str[MAX_FOTEXT];
@@ -463,20 +477,20 @@ void UpdateInfo()
 		}
 	};
 
-	if(Serv.IsInit())
+	if(Server.IsInit())
 	{
 		DateTime st=Timer::GetGameTime(GameOpt.FullSecond);
 		Label::Update(GuiLabelGameTime,Str::Format(str,"Time: %02u.%02u.%04u %02u:%02u:%02u x%u",st.Day,st.Month,st.Year,st.Hour,st.Minute,st.Second,GameOpt.TimeMultiplier));
-		Label::Update(GuiLabelClients,Str::Format(str,"Connections: %u",Serv.Statistics.CurOnline));
-		Label::Update(GuiLabelIngame,Str::Format(str,"Players in game: %u",Serv.PlayersInGame()));
-		Label::Update(GuiLabelNPC,Str::Format(str,"NPC in game: %u",Serv.NpcInGame()));
+		Label::Update(GuiLabelClients,Str::Format(str,"Connections: %u",Server.Statistics.CurOnline));
+		Label::Update(GuiLabelIngame,Str::Format(str,"Players in game: %u",Server.PlayersInGame()));
+		Label::Update(GuiLabelNPC,Str::Format(str,"NPC in game: %u",Server.NpcInGame()));
 		Label::Update(GuiLabelLocCount,Str::Format(str,"Locations: %u (%u)",MapMngr.GetLocationsCount(),MapMngr.GetMapsCount()));
 		Label::Update(GuiLabelItemsCount,Str::Format(str,"Items: %u",ItemMngr.GetItemsCount()));
 		Label::Update(GuiLabelVarsCount,Str::Format(str,"Vars: %u",VarMngr.GetVarsCount()));
-		Label::Update(GuiLabelAnyDataCount,Str::Format(str,"Any data: %u",Serv.AnyData.size()));
-		Label::Update(GuiLabelTECount,Str::Format(str,"Time events: %u",Serv.GetTimeEventsCount()));
-		Label::Update(GuiLabelFPS,Str::Format(str,"Cycles per second: %u",Serv.Statistics.FPS));
-		Label::Update(GuiLabelDelta,Str::Format(str,"Cycle time: %d",Serv.Statistics.CycleTime));
+		Label::Update(GuiLabelAnyDataCount,Str::Format(str,"Any data: %u",Server.AnyData.size()));
+		Label::Update(GuiLabelTECount,Str::Format(str,"Time events: %u",Server.GetTimeEventsCount()));
+		Label::Update(GuiLabelFPS,Str::Format(str,"Cycles per second: %u",Server.Statistics.FPS));
+		Label::Update(GuiLabelDelta,Str::Format(str,"Cycle time: %d",Server.Statistics.CycleTime));
 	}
 	else
 	{
@@ -493,11 +507,11 @@ void UpdateInfo()
 		Label::Update(GuiLabelDelta,Str::Format(str,"Cycle time: n/a"));
 	}
 
-	uint seconds=Serv.Statistics.Uptime;
+	uint seconds=Server.Statistics.Uptime;
 	Label::Update(GuiLabelUptime,Str::Format(str,"Uptime: %2u:%2u:%2u",seconds/60/60,seconds/60%60,seconds%60));
-	Label::Update(GuiLabelSend,Str::Format(str,"KBytes Send: %u",Serv.Statistics.BytesSend/1024));
-	Label::Update(GuiLabelRecv,Str::Format(str,"KBytes Recv: %u",Serv.Statistics.BytesRecv/1024));
-	Label::Update(GuiLabelCompress,Str::Format(str,"Compress ratio: %g",(double)Serv.Statistics.DataReal/(Serv.Statistics.DataCompressed?Serv.Statistics.DataCompressed:1)));
+	Label::Update(GuiLabelSend,Str::Format(str,"KBytes Send: %u",Server.Statistics.BytesSend/1024));
+	Label::Update(GuiLabelRecv,Str::Format(str,"KBytes Recv: %u",Server.Statistics.BytesRecv/1024));
+	Label::Update(GuiLabelCompress,Str::Format(str,"Compress ratio: %g",(double)Server.Statistics.DataReal/(Server.Statistics.DataCompressed?Server.Statistics.DataCompressed:1)));
 
 	if(FOServer::UpdateIndex==-1 && FOServer::UpdateLastTick && FOServer::UpdateLastTick+1000<Timer::FastTick())
 	{
@@ -514,27 +528,27 @@ void UpdateInfo()
 			UpdateLogName="Memory";
 			break;
 		case 1: // Players
-			if(!Serv.IsInit()) break;
-			std_str=Serv.GetIngamePlayersStatistics();
+			if(!Server.IsInit()) break;
+			std_str=Server.GetIngamePlayersStatistics();
 			UpdateLogName="Players";
 			break;
 		case 2: // Locations and maps
-			if(!Serv.IsInit()) break;
+			if(!Server.IsInit()) break;
 			std_str=MapMngr.GetLocationsMapsStatistics();
 			UpdateLogName="LocationsAndMaps";
 			break;
 		case 3: // Time events
-			if(!Serv.IsInit()) break;
-			std_str=Serv.GetTimeEventsStatistics();
+			if(!Server.IsInit()) break;
+			std_str=Server.GetTimeEventsStatistics();
 			UpdateLogName="TimeEvents";
 			break;
 		case 4: // Any data
-			if(!Serv.IsInit()) break;
-			std_str=Serv.GetAnyDataStatistics();
+			if(!Server.IsInit()) break;
+			std_str=Server.GetAnyDataStatistics();
 			UpdateLogName="AnyData";
 			break;
 		case 5: // Items count
-			if(!Serv.IsInit()) break;
+			if(!Server.IsInit()) break;
 			std_str=ItemMngr.GetItemsStatistics();
 			UpdateLogName="ItemsCount";
 			break;
@@ -599,7 +613,7 @@ void* GameLoopThread(void*)
 
 	GetServerOptions();
 
-	if(Serv.Init())
+	if(Server.Init())
 	{
 		if(GuiWindow)
 		{
@@ -618,8 +632,8 @@ void* GameLoopThread(void*)
 
 		GameInitEvent.Allow();
 
-		Serv.MainLoop();
-		Serv.Finish();
+		Server.MainLoop();
+		Server.Finish();
 		UpdateInfo();
 	}
 	else
@@ -739,7 +753,7 @@ VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 	LoopThread.Start(GameLoopThread);
 	GameInitEvent.Wait();
 
-	if(Serv.IsInit()) SetFOServiceStatus(SERVICE_RUNNING);
+	if(Server.IsInit()) SetFOServiceStatus(SERVICE_RUNNING);
 	else SetFOServiceStatus(SERVICE_STOPPED);
 }
 

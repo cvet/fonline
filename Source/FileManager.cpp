@@ -515,7 +515,7 @@ void FileManager::SetPosOutBuf(uint pos)
 
 bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 {
-	if(!dataOutBuf || !fname) return false;
+	if(!fname) return false;
 
 	char fpath[MAX_FOPATH];
 	if(path_type>=0 && path_type<PATH_LIST_COUNT)
@@ -537,7 +537,7 @@ bool FileManager::SaveOutBufToFile(const char* fname, int path_type)
 	void* file=FileOpen(fpath,true);
 	if(!file) return false;
 
-	if(!FileWrite(file,dataOutBuf,endOutBuf))
+	if(dataOutBuf && !FileWrite(file,dataOutBuf,endOutBuf))
 	{
 		FileClose(file);
 		return false;

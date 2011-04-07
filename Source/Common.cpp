@@ -745,8 +745,6 @@ int MemoryDebugLevel=10;
 uint VarsGarbageTime=3600000;
 bool WorldSaveManager=true;
 bool LogicMT=false;
-int GuiMsg_UpdateInfo=0;
-int GuiMsg_UpdateLog=1;
 
 void GetServerOptions()
 {

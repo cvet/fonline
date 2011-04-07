@@ -10342,8 +10342,7 @@ void FOClient::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, u
 
 bool FOClient::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
 {
-	if(!text.length()) return false;
-	if(!Str::IsNumber(text.c_str()))
+	if(!text.length() || !Str::IsNumber(text.c_str()))
 	{
 		result=0;
 		return false;

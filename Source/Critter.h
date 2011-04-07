@@ -11,9 +11,12 @@
 #include "CritterData.h"
 #include "DataMask.h"
 #include "NetProtocol.h"
-#include "Event2/event.h"
-#include "Event2/bufferevent.h"
-#include "Event2/buffer.h"
+
+#if defined(USE_LIBEVENT)
+	#include "Event2/event.h"
+	#include "Event2/bufferevent.h"
+	#include "Event2/buffer.h"
+#endif
 
 // Events
 #define CRITTER_EVENT_IDLE                    (0)
@@ -515,8 +518,6 @@ public:
 	SOCKET Sock;
 	sockaddr_in From;
 	BufferManager Bin,Bout;
-	Client** NetIOArgPtr;
-	Mutex NetIOArgPtrLocker;
 	UCharVec NetIOBuffer;
 	int GameState;
 	bool IsDisconnected;
@@ -530,18 +531,47 @@ public:
 	uint LastSayEqualCount;
 	uint RadioMessageSended;
 
+#if defined(USE_LIBEVENT)
+	struct NetIOArg
+	{
+		Mutex Locker;
+		Client* PClient;
+	} *NetIOArgPtr;
+	#define BIN_BEGIN(cl_) cl_->Bin.Lock()
+	#define BIN_END(cl_) cl_->Bin.Unlock()
+	#define BOUT_BEGIN(cl_) cl_->Bout.Lock()
+	#define BOUT_END(cl_) cl_->Bout.Unlock()
+	void Shutdown(bufferevent* bev);
+#else // IOCP
+	struct NetIOArg
+	{
+		WSAOVERLAPPED OV;
+		Mutex Locker;
+		void* PClient;
+		WSABUF Buffer;
+		long Operation;
+		DWORD Flags;
+		DWORD Bytes;
+	} *NetIOIn,*NetIOOut;
+	#define WSA_BUF_SIZE       (4096)
+	#define WSAOP_END          (0)
+	#define WSAOP_FREE         (1)
+	#define WSAOP_SEND         (2)
+	#define WSAOP_RECV         (3)
+	typedef void(*SendCallback)(NetIOArg*);
+	static SendCallback SendData;
+	#define BIN_BEGIN(cl_) cl_->Bin.Lock()
+	#define BIN_END(cl_) cl_->Bin.Unlock()
+	#define BOUT_BEGIN(cl_) cl_->Bout.Lock()
+	#define BOUT_END(cl_) cl_->Bout.Unlock(); if(InterlockedCompareExchange(&cl_->NetIOOut->Operation,0,0)==WSAOP_FREE) (*Client::SendData)(cl_->NetIOOut)
+	void Shutdown();
+#endif
+
 public:
 	uint GetIp(){return From.sin_addr.s_addr;}
 	const char* GetIpStr(){return inet_ntoa(From.sin_addr);}
 
-	// Net
-#define BIN_BEGIN(cl_) cl_->Bin.Lock()
-#define BIN_END(cl_) cl_->Bin.Unlock()
-#define BOUT_BEGIN(cl_) cl_->Bout.Lock()
-#define BOUT_END(cl_) cl_->Bout.Unlock()
-
 public:
-	void Shutdown(bufferevent* bev);
 	bool IsOnline(){return !IsDisconnected;}
 	bool IsOffline(){return IsDisconnected;}
 	void Disconnect(){IsDisconnected=true; if(!DisconnectTick) DisconnectTick=Timer::FastTick();}

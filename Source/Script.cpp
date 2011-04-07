@@ -694,10 +694,10 @@ void CollectGarbage(bool force)
 	{
 #ifdef SCRIPT_MULTITHREADING
 		if(LogicMT) GarbageLocker.LockCode();
-		Engine->GarbageCollect(asGC_FULL_CYCLE);
+		if(Engine) Engine->GarbageCollect(asGC_FULL_CYCLE);
 		if(LogicMT) GarbageLocker.UnlockCode();
 #else
-		Engine->GarbageCollect(asGC_FULL_CYCLE);
+		if(Engine) Engine->GarbageCollect(asGC_FULL_CYCLE);
 #endif
 
 		last_tick=Timer::FastTick();

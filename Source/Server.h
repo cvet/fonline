@@ -16,10 +16,13 @@
 #include "CritterType.h"
 #include "NetProtocol.h"
 #include "Access.h"
-#include "Event2/event.h"
-#include "Event2/bufferevent.h"
-#include "Event2/buffer.h"
-#include "Event2/thread.h"
+
+#if defined(USE_LIBEVENT)
+	#include "Event2/event.h"
+	#include "Event2/bufferevent.h"
+	#include "Event2/buffer.h"
+	#include "Event2/thread.h"
+#endif
 
 // #ifdef _DEBUG
 // #define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
@@ -288,20 +291,32 @@ public:
 	static void ResynchronizeLogicThreads();
 	static void* Logic_Work(void* data);
 
-	// Net
+	// Net IO
 	static ClVec ConnectedClients;
 	static Mutex ConnectedClientsLocker;
 	static SOCKET ListenSock;
 	static Thread ListenThread;
+
+	static void* Net_Listen(void*);
+
+#if defined(USE_LIBEVENT)
 	static event_base* NetIOEventHandler;
 	static Thread NetIOThread;
 	static uint NetIOThreadsCount;
 
-	static void* Net_Listen(void* hiocp);
 	static void* NetIO_Loop(void*);
-	static void NetIO_Event(bufferevent* bev, short what, void* client);
-	static void NetIO_Input(bufferevent* bev, void* client);
-	static void NetIO_Output(bufferevent* bev, void* client);
+	static void NetIO_Event(bufferevent* bev, short what, void* arg);
+	static void NetIO_Input(bufferevent* bev, void* arg);
+	static void NetIO_Output(bufferevent* bev, void* arg);
+#else // IOCP
+	static HANDLE NetIOCompletionPort;
+	static Thread* NetIOThreads;
+	static uint NetIOThreadsCount;
+
+	static void* NetIO_Work(void*);
+	static void NetIO_Input(Client::NetIOArg* io);
+	static void NetIO_Output(Client::NetIOArg* io);
+#endif
 
 	// Service
 	static uint VarsGarbageLastTick;

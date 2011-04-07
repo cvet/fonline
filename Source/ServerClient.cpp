@@ -1978,34 +1978,84 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		// Swap
 		BIN_END(cl);
 
+		// Swap data that used in NetIO_* functions
+#if defined(USE_LIBEVENT)
+		Client::NetIOArg* io_arg=cl->NetIOArgPtr;
+		io_arg->Locker.Lock();
+#else // IOCP
+		cl->NetIOIn->Locker.Lock();
+		cl->NetIOOut->Locker.Lock();
+		cl_old->NetIOIn->Locker.Lock();
+		cl_old->NetIOOut->Locker.Lock();
+#endif
+
+		// Current critter dropped or previous still online
+		// Cancel swapping
+		if(cl->Sock==INVALID_SOCKET || cl_old->Sock!=INVALID_SOCKET)
+		{
+#if defined(USE_LIBEVENT)
+			io_arg->Locker.Unlock();
+#else // IOCP
+			cl_old->NetIOOut->Locker.Unlock();
+			cl_old->NetIOIn->Locker.Unlock();
+			cl->NetIOOut->Locker.Unlock();
+			cl->NetIOIn->Locker.Unlock();
+#endif
+			WriteLog("Hello?\n");
+			ConnectedClientsLocker.Unlock();
+			cl->Disconnect();
+			BIN_BEGIN(cl);
+			return;
+		}
+
+		// Assign to ConnectedClients
 		cl_old->AddRef();
 		(*it)=cl_old;
 
-		// Swap data that used in NetIO_* functions
-		{
-			SCOPE_LOCK(cl->NetIOArgPtrLocker);
+		// Swap net data
+		cl_old->Bin=cl->Bin;
+		cl_old->Bout=cl->Bout;
+		std::swap(cl_old->IsDisconnected,cl->IsDisconnected);
+		cl_old->GameState=STATE_CONNECTED;
+		cl->GameState=STATE_NONE;
+		cl_old->Sock=cl->Sock;
+		cl->Sock=INVALID_SOCKET;
+		memcpy(&cl_old->From,&cl->From,sizeof(cl_old->From));
+		cl_old->ConnectTime=0;
+		UNSETFLAG(cl_old->Flags,FCRIT_DISCONNECT);
+		SETFLAG(cl->Flags,FCRIT_DISCONNECT);
+		std::swap(cl_old->Zstrm,cl->Zstrm);
 
-			cl_old->Bin=cl->Bin;
-			cl_old->Bout=cl->Bout;
-			std::swap(cl_old->IsDisconnected,cl->IsDisconnected);
-			cl_old->GameState=STATE_CONNECTED;
-			cl->GameState=STATE_NONE;
-			cl_old->Sock=cl->Sock;
-			cl->Sock=INVALID_SOCKET;
-			memcpy(&cl_old->From,&cl->From,sizeof(cl_old->From));
-			cl_old->ConnectTime=0;
-			UNSETFLAG(cl_old->Flags,FCRIT_DISCONNECT);
-			SETFLAG(cl->Flags,FCRIT_DISCONNECT);
-			std::swap(cl_old->Zstrm,cl->Zstrm);
-
-			std::swap(cl_old->NetIOArgPtr,cl->NetIOArgPtr);
-			std::swap(*cl_old->NetIOArgPtr,*cl->NetIOArgPtr);
-		}
-
-		cl_old->Data.Params[MODE_DEFAULT_COMBAT]=cl->Data.Params[MODE_DEFAULT_COMBAT];
+#if defined(USE_LIBEVENT)
+		// Assign for net arg old pointer
+		// Current client delete NetIOArgPtr in destructor
+		cl->Release();
+		cl_old->AddRef();
+		io_arg->PClient=cl_old;
+		std::swap(cl_old->NetIOArgPtr,cl->NetIOArgPtr);
+#else // IOCP
+		std::swap(cl_old->NetIOIn,cl->NetIOIn);
+		std::swap(cl_old->NetIOOut,cl->NetIOOut);
+		cl_old->NetIOIn->PClient=cl_old;
+		cl_old->NetIOOut->PClient=cl_old;
+		cl->NetIOIn->PClient=cl;
+		cl->NetIOOut->PClient=cl;
+#endif
 
 		cl->IsNotValid=true;
 		cl_old->IsNotValid=false;
+
+#if defined(USE_LIBEVENT)
+		io_arg->Locker.Unlock();
+#else // IOCP
+		cl->NetIOOut->Locker.Unlock();
+		cl->NetIOIn->Locker.Unlock();
+		cl_old->NetIOOut->Locker.Unlock();
+		cl_old->NetIOIn->Locker.Unlock();
+#endif
+
+		// Other data
+		cl_old->Data.Params[MODE_DEFAULT_COMBAT]=cl->Data.Params[MODE_DEFAULT_COMBAT];
 
 		Job::DeferredRelease(cl);
 		cl=cl_old;

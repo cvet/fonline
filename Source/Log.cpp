@@ -4,7 +4,6 @@
 #include <stdarg.h>
 
 #if defined(FONLINE_SERVER)
-	#include "FL/Fl.H"
 	#include "FL/Fl_Text_Display.H"
 #endif
 
@@ -18,7 +17,6 @@ void* LogFileHandle=NULL;
 LogFuncPtr LogFunction=NULL;
 void* LogTextBox=NULL;
 std::string LogBufferStr;
-void* LogBufferMsg=NULL;
 bool LoggingWithTime=false;
 bool LoggingWithThread=false;
 THREAD char LogThreadName[64]={0};
@@ -57,14 +55,13 @@ void LogToTextBox(void* text_box)
 	LoggingType|=LOG_TEXT_BOX;
 }
 
-void LogToBuffer(void* msg)
+void LogToBuffer()
 {
 #if !defined(FONLINE_SERVER)
 	return;
 #endif
 	LogFinish(LOG_BUFFER);
 	LogBufferStr.reserve(MAX_LOGTEXT*2);
-	LogBufferMsg=msg;
 	LoggingType|=LOG_BUFFER;
 }
 
@@ -94,11 +91,7 @@ void LogFinish(int log_type)
 	}
 	if(log_type&LOG_FUNC) LogFunction=NULL;
 	if(log_type&LOG_TEXT_BOX) LogTextBox=NULL;
-	if(log_type&LOG_BUFFER)
-	{
-		LogBufferStr.clear();
-		LogBufferMsg=NULL;
-	}
+	if(log_type&LOG_BUFFER) LogBufferStr.clear();
 	LoggingType^=log_type;
 }
 
@@ -174,10 +167,7 @@ void WriteLogInternal(const char* func, const char* frmt, va_list& list)
 	}
 	if(LoggingType&LOG_BUFFER)
 	{
-#if defined(FONLINE_SERVER)
 		LogBufferStr+=str;
-		Fl::awake(LogBufferMsg);
-#endif
 	}
 	if(LoggingType&LOG_DEBUG_OUTPUT)
 	{

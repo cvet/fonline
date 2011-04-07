@@ -22,7 +22,7 @@ void WriteLogF(const char* func, const char* frmt, ...);
 void LogToFile(const char* fname);   // File
 void LogToFunc(LogFuncPtr func_ptr); // Extern function
 void LogToTextBox(void* text_box);   // Text box (Fl_Text_Display)
-void LogToBuffer(void* msg);         // Buffer, to get value use LogGetBuffer
+void LogToBuffer();                  // Buffer, to get value use LogGetBuffer
 void LogToDebugOutput();             // OutputDebugString
 
 // Other stuff

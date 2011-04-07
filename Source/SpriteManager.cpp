@@ -4758,11 +4758,11 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 
 	// Skip lines
 	uint skip_line=(FLAG(flags,FT_SKIPLINES(0))?flags>>16:0);
+	uint skip_line_end=(FLAG(flags,FT_SKIPLINES_END(0))?flags>>16:0);
 
-	// FormatBuf
+	// Format
 	curx=r.L;
 	cury=r.T;
-
 	for(int i=0;str[i];i++)
 	{
 		int lett_len;
@@ -4883,6 +4883,26 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 		if(!str[i]) break;
 	}
 	if(curx-r.L>fi.MaxCurX) fi.MaxCurX=curx-r.L;
+
+	if(skip_line_end)
+	{
+		int len=(int)Str::Length(str);
+		for(int i=len-2;i>=0;i--)
+		{
+			if(str[i]=='\n')
+			{
+				str[i]=0;
+				fi.LinesAll--;
+				if(!--skip_line_end) break;
+			}
+		}
+
+		if(skip_line_end)
+		{
+			fi.IsError=true;
+			return;
+		}
+	}
 
 	if(skip_line)
 	{
@@ -5041,7 +5061,8 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, uint flags, uint col /*
 		{
 			if(fi.ColorDots[i])
 			{
-				col=(col&0xFF000000)|(fi.ColorDots[i]&0xFFFFFF);
+				if(fi.ColorDots[i]&0xFF000000) col=fi.ColorDots[i]; // With alpha
+				else col=(col&0xFF000000)|(fi.ColorDots[i]&0x00FFFFFF); // Still old alpha
 				break;
 			}
 		}
@@ -5050,7 +5071,15 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, uint flags, uint col /*
 	bool variable_space=false;
 	for(int i=0;str_[i];i++)
 	{
-		if(FLAG(flags,FT_COLORIZE) && fi.ColorDots[i+offs_col]) col=(col&0xFF000000)|(fi.ColorDots[i+offs_col]&0xFFFFFF);
+		if(FLAG(flags,FT_COLORIZE))
+		{
+			uint new_color=fi.ColorDots[i+offs_col];
+			if(new_color)
+			{
+				if(new_color&0xFF000000) col=new_color; // With alpha
+				else col=(col&0xFF000000)|(new_color&0x00FFFFFF); // Still old alpha
+			}
+		}
 
 		switch(str_[i]) 
 		{

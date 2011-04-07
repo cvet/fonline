@@ -95,4 +95,10 @@
 	#define Sleep(ms) usleep((ms)*1000)
 #endif
 
+// Libevent
+// For now bugged for Windows IOCP, use own variant
+#if !defined(FO_WINDOWS)
+	#define USE_LIBEVENT
+#endif
+
 #endif // __PLATFORM_SPECIFIC__

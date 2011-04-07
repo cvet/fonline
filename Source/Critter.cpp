@@ -2894,6 +2894,10 @@ void Critter::Delete()
 /* Client                                                               */
 /************************************************************************/
 
+#if !defined(USE_LIBEVENT)
+Client::SendCallback Client::SendData=NULL;
+#endif
+
 Client::Client():
 ZstrmInit(false),Access(ACCESS_DEFAULT),pingOk(true),LanguageMsg(0),
 GameState(STATE_NONE),IsDisconnected(false),DisconnectTick(0),DisableZlib(false),
@@ -2905,7 +2909,6 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
-	NetIOArgPtr=NULL;
 	memzero(Name,sizeof(Name));
 	memzero(Pass,sizeof(Pass));
 	Str::Copy(Name,"err");
@@ -2916,6 +2919,28 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 	LastSay[0]=0;
 	LastSayEqualCount=0;
 	memzero(UID,sizeof(UID));
+
+#if defined(USE_LIBEVENT)
+	NetIOArgPtr=NULL;
+#else // IOCP
+	MEMORY_PROCESS(MEMORY_CLIENT,WSA_BUF_SIZE*2);
+	NetIOIn=new NetIOArg();
+	memzero(&NetIOIn->OV,sizeof(NetIOIn->OV));
+	NetIOIn->PClient=this;
+	NetIOIn->Buffer.buf=new char[WSA_BUF_SIZE];
+	NetIOIn->Buffer.len=WSA_BUF_SIZE;
+	NetIOIn->Operation=WSAOP_RECV;
+	NetIOIn->Flags=0;
+	NetIOIn->Bytes=0;
+	NetIOOut=new NetIOArg();
+	memzero(&NetIOOut->OV,sizeof(NetIOOut->OV));
+	NetIOOut->PClient=this;
+	NetIOOut->Buffer.buf=new char[WSA_BUF_SIZE];
+	NetIOOut->Buffer.len=WSA_BUF_SIZE;
+	NetIOOut->Operation=WSAOP_FREE;
+	NetIOOut->Flags=0;
+	NetIOOut->Bytes=0;
+#endif
 }
 
 Client::~Client()
@@ -2931,19 +2956,45 @@ Client::~Client()
 		deflateEnd(&Zstrm);
 		ZstrmInit=false;
 	}
+
+#if defined(USE_LIBEVENT)
 	SAFEDEL(NetIOArgPtr);
+#else // IOCP
+	MEMORY_PROCESS(MEMORY_CLIENT,-(int)(WSA_BUF_SIZE*2));
+	if(NetIOIn)
+	{
+		SAFEDELA(NetIOIn->Buffer.buf);
+		SAFEDEL(NetIOIn);
+	}
+	if(NetIOOut)
+	{
+		SAFEDELA(NetIOOut->Buffer.buf);
+		SAFEDEL(NetIOOut);
+	}
+#endif
 }
 
+#if defined(USE_LIBEVENT)
 void Client::Shutdown(bufferevent* bev)
+#else // IOCP
+void Client::Shutdown()
+#endif
 {
-	bufferevent_free(bev);
+	if(Sock==INVALID_SOCKET) return;
 
 	shutdown(Sock,SD_BOTH);
 	closesocket(Sock);
 	Sock=INVALID_SOCKET;
 
+#if defined(USE_LIBEVENT)
+	bufferevent_free(bev);
+#endif
+
 	Disconnect();
+
+#if defined(USE_LIBEVENT)
 	Release();
+#endif
 }
 
 void Client::PingClient()
