@@ -1116,21 +1116,14 @@ void* FOServer::NetIO_Work(void*)
 		DWORD bytes;
 		uint key;
 		Client::NetIOArg* io;
-		uint error=ERROR_SUCCESS;
-		if(!GetQueuedCompletionStatus(NetIOCompletionPort,&bytes,(PULONG_PTR)&key,(LPOVERLAPPED*)&io,INFINITE)) error=GetLastError();
+		BOOL ok=GetQueuedCompletionStatus(NetIOCompletionPort,&bytes,(PULONG_PTR)&key,(LPOVERLAPPED*)&io,INFINITE);
 		if(key==1) break; // End of work
-
-		if(error!=ERROR_SUCCESS && error!=ERROR_NETNAME_DELETED && error!=ERROR_CONNECTION_ABORTED && error!=ERROR_OPERATION_ABORTED && error!=ERROR_SEM_TIMEOUT)
-		{
-			WriteLogF(_FUNC_," - GetQueuedCompletionStatus fail, error<%u>. Work thread closed!\n",error);
-			break;
-		}
 
 		SCOPE_LOCK(io->Locker);
 		Client* cl=(Client*)io->PClient;
 		cl->AddRef();
 
-		if(error==ERROR_SUCCESS && bytes)
+		if(ok && bytes)
 		{
 			switch(InterlockedCompareExchange(&io->Operation,0,0))
 			{

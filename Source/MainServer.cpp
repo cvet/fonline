@@ -290,11 +290,11 @@ void GUIInit(IniParser& cfg)
 	GUISetup.Setup(GuiBtnSplitDown =new Fl_Button(GUI_SIZE4(117,352,12,9),""));
 
 	// Check buttons
-	GUISetup.Setup(GuiCBtnScriptDebug  =new Fl_Check_Button(GUI_SIZE4(5,361,110,10),"Update info every second"));
+	GUISetup.Setup(GuiCBtnAutoUpdate   =new Fl_Check_Button(GUI_SIZE4(5,323,110,10),"Update info every second"));
 	GUISetup.Setup(GuiCBtnLogging      =new Fl_Check_Button(GUI_SIZE4(5,333,110,10),"Logging"));
-	GUISetup.Setup(GuiCBtnLoggingTime  =new Fl_Check_Button(GUI_SIZE4(5,342,110,10),"Logging with time"));
-	GUISetup.Setup(GuiCBtnLoggingThread=new Fl_Check_Button(GUI_SIZE4(5,352,110,10),"Logging with thread"));
-	GUISetup.Setup(GuiCBtnAutoUpdate   =new Fl_Check_Button(GUI_SIZE4(5,323,110,10),"Script debug info"));
+	GUISetup.Setup(GuiCBtnLoggingTime  =new Fl_Check_Button(GUI_SIZE4(5,343,110,10),"Logging with time"));
+	GUISetup.Setup(GuiCBtnLoggingThread=new Fl_Check_Button(GUI_SIZE4(5,353,110,10),"Logging with thread"));
+	GUISetup.Setup(GuiCBtnScriptDebug  =new Fl_Check_Button(GUI_SIZE4(5,363,110,10),"Script debug info"));
 
 	// Text boxes
 	GUISetup.Setup(GuiLog =new Fl_Text_Display(GUI_SIZE4(133,7,358,191)));

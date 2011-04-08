@@ -1443,19 +1443,31 @@ void FOServer::SScriptFunc::Crit_Wait(Critter* cr, uint ms)
 void FOServer::SScriptFunc::Crit_ToDead(Critter* cr, uint anim2, Critter* killer)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(cr->IsDead()) SCRIPT_ERROR_R("Critter already dead.");
+	if(cr->IsDead()) return; //SCRIPT_ERROR_R("Critter already dead.");
+
 	KillCritter(cr,anim2,killer);
 }
 
 bool FOServer::SScriptFunc::Crit_ToLife(Critter* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	if(!cr->IsDead()) SCRIPT_ERROR_R0("Critter not dead.");
-	if(!cr->GetMap()) SCRIPT_ERROR_R0("Critter on global map.");
-	Map* map=MapMngr.GetMap(cr->GetMap());
-	if(!map) SCRIPT_ERROR_R0("Map not found.");
-	if(!map->IsHexesPassed(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex())) SCRIPT_ERROR_R0("Position busy.");
-	RespawnCritter(cr);
+	if(cr->IsLife()) return true; //SCRIPT_ERROR_R("Critter already life.");
+
+	if(cr->IsDead())
+	{
+		if(!cr->GetMap()) SCRIPT_ERROR_R0("Critter on global map.");
+		Map* map=MapMngr.GetMap(cr->GetMap());
+		if(!map) SCRIPT_ERROR_R0("Map not found.");
+		if(!map->IsHexesPassed(cr->GetHexX(),cr->GetHexY(),cr->GetMultihex())) SCRIPT_ERROR_R0("Position busy.");
+		RespawnCritter(cr);
+	}
+	else
+	{
+		if(cr->Data.Params[ST_CURRENT_HP]<=0) cr->Data.Params[ST_CURRENT_HP]=1;
+		if(cr->Data.Params[ST_CURRENT_AP]<=0) cr->Data.Params[ST_CURRENT_AP]=AP_DIVIDER;
+		cr->TryUpOnKnockout();
+	}
+
 	if(!cr->IsLife()) SCRIPT_ERROR_R0("Respawn critter fail.");
 	return true;
 }
