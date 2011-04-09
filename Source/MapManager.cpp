@@ -2246,7 +2246,8 @@ bool MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 		uint multihex=cr->GetMultihex();
 		if(!map->FindStartHex(hx,hy,multihex,radius,true) && !map->FindStartHex(hx,hy,multihex,radius,false)) return false;
 
-		cr->LockMapTransfers++; // Transfer begin critical section
+		cr->LockMapTransfers++;
+
 		cr->Data.Dir=(dir>=DIRS_COUNT?0:dir);
 		bool is_dead=cr->IsDead();
 		map->UnsetFlagCritter(old_hx,old_hy,multihex,is_dead);
@@ -2259,13 +2260,20 @@ bool MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 		cr->ProcessVisibleCritters();
 		cr->ProcessVisibleItems();
 		cr->Send_XY(cr);
-		cr->LockMapTransfers--; // Transfer end critical section
+
+		cr->LockMapTransfers--;
 		return true;
 	}
 	// Different maps
 	else
 	{
-		if(!AddCrToMap(cr,map,hx,hy,radius)) return false;
+		cr->LockMapTransfers++;
+
+		if(!AddCrToMap(cr,map,hx,hy,radius))
+		{
+			cr->LockMapTransfers--;
+			return false;
+		}
 
 		// Global
 		if(!map)
@@ -2289,24 +2297,18 @@ bool MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 		if(map) map->AddCritterEvents(cr);
 
 		// Visible critters / items
-		cr->LockMapTransfers++; // Transfer begin critical section
 		cr->DisableSend++;
 		cr->ProcessVisibleCritters();
 		cr->ProcessVisibleItems();
 		cr->DisableSend--;
-		cr->LockMapTransfers--; // Transfer end critical section
+
+		cr->LockMapTransfers--;
 	}
 	return true;
 }
 
 bool MapManager::AddCrToMap(Critter* cr, Map* map, ushort tx, ushort ty, uint radius)
 {
-	if(cr->LockMapTransfers)
-	{
-		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
-		return false;
-	}
-
 	// Global map
 	if(!map)
 	{
@@ -2347,12 +2349,6 @@ bool MapManager::AddCrToMap(Critter* cr, Map* map, ushort tx, ushort ty, uint ra
 
 void MapManager::EraseCrFromMap(Critter* cr, Map* map, ushort hex_x, ushort hex_y)
 {
-	if(cr->LockMapTransfers)
-	{
-		WriteLogF(_FUNC_," - Transfers locked, critter<%s>.\n",cr->GetInfo());
-		return;
-	}
-
 	// Global map
 	if(!map)
 	{

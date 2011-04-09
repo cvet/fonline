@@ -735,6 +735,7 @@ int asCModule::GetNextImportedFunctionId()
 }
 
 // internal
+// TODO: default arg: Add list of default args
 int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, int paramCount, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate)
 {
 	asASSERT(id >= 0);

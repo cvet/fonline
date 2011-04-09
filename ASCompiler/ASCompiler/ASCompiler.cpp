@@ -9,6 +9,7 @@
 #include <set>
 #include <strstream>
 #include <algorithm>
+#include <locale.h>
 using namespace std;
 
 typedef int (__cdecl *BindFunc)(asIScriptEngine*);
@@ -148,7 +149,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	for(size_t i=0;i<defines.size();i++) Preprocessor::Define(string(defines[i]));
 	LNT = new Preprocessor::LineNumberTranslator();
-	int res=Preprocessor::Preprocess(str_fname,fsrc,vos,true,vos_err,LNT);
+	int res=Preprocessor::Preprocess(str_fname,fsrc,vos,true,&vos_err,LNT);
 	if(res)
 	{
 		vos_err.PushNull();

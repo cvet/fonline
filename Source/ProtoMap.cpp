@@ -1877,7 +1877,7 @@ void ProtoMap::GenNew()
 	Header.MaxHexX=MAXHEX_DEF;
 	Header.MaxHexY=MAXHEX_DEF;
 	pmapPid=0xFFFF;
-	pathType=PT_MAPS;
+	pathType=PT_SERVER_MAPS;
 
 	// Morning	 5.00 -  9.59	 300 - 599
 	// Day		10.00 - 18.59	 600 - 1139

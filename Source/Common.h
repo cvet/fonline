@@ -4,7 +4,10 @@
 // Some platform specific definitions
 #include "PlatformSpecific.h"
 
-// System API
+// Standart API
+#include <stdio.h>
+#include <algorithm>
+#include <math.h>
 #if defined(FO_WINDOWS)
 	#define WINVER 0x0501 // Windows XP
 	#define WIN32_LEAN_AND_MEAN
@@ -33,18 +36,6 @@
 	#define closesocket close
 #endif
 
-// Standart stuff
-#include <stdio.h>
-#include <map>
-#include <string>
-#include <set>
-#include <list>
-#include <vector>
-#include <deque>
-#include <algorithm>
-#include <math.h>
-using namespace std;
-
 // Memory debug
 #ifdef _DEBUG
 	#define _CRTDBG_MAP_ALLOC
@@ -53,6 +44,7 @@ using namespace std;
 #endif
 
 // FOnline stuff
+#include "Types.h"
 #include "Defines.h"
 #include "Log.h"
 #include "Timer.h"
@@ -133,6 +125,14 @@ bool CheckUserPass(const char* str);
 #define CLIENT_CONFIG_FILE      "FOnline.cfg"
 #define CLIENT_CONFIG_APP       "Game Options"
 #define MAPPER_CONFIG_FILE      "Mapper.cfg"
+
+// Shared structure
+struct ScoreType
+{
+	uint ClientId;
+	char ClientName[SCORE_NAME_LEN];
+	int Value;
+};
 
 /************************************************************************/
 /* Client & Mapper                                                      */

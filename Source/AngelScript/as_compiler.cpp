@@ -784,6 +784,8 @@ int asCCompiler::CompileGlobalVariable(asCBuilder *builder, asCScriptCode *scrip
 
 				if( funcs.GetLength() == 1 )
 				{
+					// TODO: default arg: Add the default values for arguments not explicitly supplied
+
 					if( gvar->datatype.GetObjectType()->flags & asOBJ_REF )
 					{
 						MakeFunctionCall(&ctx, funcs[0], 0, args, node);
@@ -1461,6 +1463,8 @@ void asCCompiler::MatchFunctions(asCArray<int> &funcs, asCArray<asSExprContext*>
 		{
 			asCScriptFunction *desc = builder->GetFunctionDescription(funcs[n]);
 
+			// TODO: default arg: If the function has more arguments than given, need to check if there are default values for the args
+
 			if( desc->parameterTypes.GetLength() != args.GetLength() )
 			{
 				// remove it from the list
@@ -1639,6 +1643,8 @@ void asCCompiler::CompileDeclaration(asCScriptNode *decl, asCByteCode *bc)
 
 					if( funcs.GetLength() == 1 )
 					{
+						// TODO: default arg: Add the default values for arguments not explicitly supplied
+
 						sVariable *v = variables->GetVariable(name.AddressOf());
 						asSExprContext ctx(engine);
 						if( v->type.GetObjectType() && (v->type.GetObjectType()->flags & asOBJ_REF) )
@@ -5279,28 +5285,50 @@ int asCCompiler::DoAssignment(asSExprContext *ctx, asSExprContext *lctx, asSExpr
 			return -1;
 		}
 
+		// If the left hand expression is simple, i.e. without any 
+		// function calls or allocations of memory, then we can avoid
+		// doing a copy of the right hand expression (done by PrepareArgument).
+		// Instead the reference to the value can be placed directly on the
+		// stack. 
+		// 
+		// This optimization should only be done for value types, where
+		// the application developer is responsible for making the 
+		// implementation safe against unwanted destruction of the input 
+		// reference before the time.
+		bool simpleExpr = (lctx->type.dataType.GetObjectType()->GetFlags() & asOBJ_VALUE) && lctx->bc.IsSimpleExpression();
+
 		// Implicitly convert the rvalue to the type of the lvalue
-		asCDataType dt = lctx->type.dataType;
-		dt.MakeReference(true);
-		dt.MakeReadOnly(true);
-		PrepareArgument(&dt, rctx, rexpr, true, 1);
-		if( !dt.IsEqualExceptRefAndConst(rctx->type.dataType) )
+		if( !lctx->type.dataType.IsEqualExceptRefAndConst(rctx->type.dataType) )
+			simpleExpr = false;
+		if( !simpleExpr )
 		{
-			asCString str;
-			str.Format(TXT_CANT_IMPLICITLY_CONVERT_s_TO_s, rctx->type.dataType.Format().AddressOf(), lctx->type.dataType.Format().AddressOf());
-			Error(str.AddressOf(), rexpr);
-			return -1;
+			asCDataType dt = lctx->type.dataType;
+			dt.MakeReference(true);
+			dt.MakeReadOnly(true);
+			PrepareArgument(&dt, rctx, rexpr, true, 1);
+			if( !dt.IsEqualExceptRefAndConst(rctx->type.dataType) )
+			{
+				asCString str;
+				str.Format(TXT_CANT_IMPLICITLY_CONVERT_s_TO_s, rctx->type.dataType.Format().AddressOf(), lctx->type.dataType.Format().AddressOf());
+				Error(str.AddressOf(), rexpr);
+				return -1;
+			}
 		}
+		else if( rctx->type.dataType.IsReference() && (!(rctx->type.isVariable || rctx->type.isTemporary) || IsVariableOnHeap(rctx->type.stackOffset)) )
+			rctx->bc.Instr(asBC_RDSPTR);
 
 		MergeExprBytecode(ctx, rctx);
 		MergeExprBytecode(ctx, lctx);
 
-		if( (rctx->type.isVariable || rctx->type.isTemporary) && !IsVariableOnHeap(rctx->type.stackOffset) )
-			// TODO: optimize: Actually the reference can be pushed on the stack directly
-			//                 as the value allocated on the stack is guaranteed to be safe
-			ctx->bc.InstrWORD(asBC_GETREF, AS_PTR_SIZE);
-		else
-			ctx->bc.InstrWORD(asBC_GETOBJREF, AS_PTR_SIZE);
+		if( !simpleExpr )
+		{
+			if( (rctx->type.isVariable || rctx->type.isTemporary) && !IsVariableOnHeap(rctx->type.stackOffset) )
+				// TODO: optimize: Actually the reference can be pushed on the stack directly
+				//                 as the value allocated on the stack is guaranteed to be safe
+				ctx->bc.InstrWORD(asBC_GETREF, AS_PTR_SIZE);
+			else
+				ctx->bc.InstrWORD(asBC_GETOBJREF, AS_PTR_SIZE);
+		}
 
 		PerformAssignment(&lctx->type, &rctx->type, &ctx->bc, opNode);
 
@@ -6923,6 +6951,8 @@ void asCCompiler::CompileConstructCall(asCScriptNode *node, asSExprContext *ctx)
 		}
 		else
 		{
+			// TODO: default arg: Add the default values for arguments not explicitly supplied
+
 			asCByteCode objBC(engine);
 
 			PrepareFunctionCall(funcs[0], &ctx->bc, args);
@@ -7061,6 +7091,8 @@ void asCCompiler::CompileFunctionCall(asCScriptNode *node, asSExprContext *ctx, 
 		}
 		else
 		{
+			// TODO: default arg: Add the default values for arguments not explicitly supplied
+
 			// TODO: funcdef: Do we have to make sure the handle is stored in a temporary variable, or
 			//                is it enough to make sure it is in a local variable? 
 
@@ -8458,6 +8490,23 @@ int asCCompiler::MatchArgument(asCArray<int> &funcs, asCArray<int> &matches, con
 		ti.type = *argType;
 		if( argType->dataType.IsPrimitive() ) ti.type.dataType.MakeReference(false);
 		ImplicitConversion(&ti, desc->parameterTypes[paramNum], 0, asIC_IMPLICIT_CONV, false, 0, allowObjectConstruct);
+
+		// If the function parameter is an inout-reference then it must not be possible to call the 
+		// function with an incorrect argument type, even though the type can normally be converted.
+		if( desc->parameterTypes[paramNum].IsReference() && 
+			desc->inOutFlags[paramNum] == asTM_INOUTREF &&
+			desc->parameterTypes[paramNum].GetTokenType() != ttQuestion )
+		{
+			if( desc->parameterTypes[paramNum].IsPrimitive() &&
+				desc->parameterTypes[paramNum].GetTokenType() != argType->dataType.GetTokenType() )
+				continue;
+
+			if( desc->parameterTypes[paramNum].IsEnumType() &&
+				desc->parameterTypes[paramNum].GetObjectType() != argType->dataType.GetObjectType() )
+				continue;
+		}
+
+		// How well does the argument match the function parameter?
 		if( desc->parameterTypes[paramNum].IsEqualExceptRef(ti.type.dataType) )
 		{
 			// Is it an exact match?
@@ -8925,13 +8974,13 @@ int asCCompiler::CompileOperator(asCScriptNode *node, asSExprContext *lctx, asSE
 			return -1;
 		}
 
-		// Make sure we have two variables or constants
-		if( lctx->type.dataType.IsReference() ) ConvertToVariableNotIn(lctx, rctx);
-		if( rctx->type.dataType.IsReference() ) ConvertToVariableNotIn(rctx, lctx);
-
 		// Process the property get accessors (if any)
 		ProcessPropertyGetAccessor(lctx, node);
 		ProcessPropertyGetAccessor(rctx, node);
+
+		// Make sure we have two variables or constants
+		if( lctx->type.dataType.IsReference() ) ConvertToVariableNotIn(lctx, rctx);
+		if( rctx->type.dataType.IsReference() ) ConvertToVariableNotIn(rctx, lctx);
 
 		// Make sure lctx doesn't end up with a variable used in rctx
 		if( lctx->type.isTemporary && rctx->bc.IsVarUsed(lctx->type.stackOffset) )
@@ -9037,6 +9086,9 @@ void asCCompiler::ConvertToVariable(asSExprContext *ctx)
 
 void asCCompiler::ConvertToVariableNotIn(asSExprContext *ctx, asCArray<int> *reservedVars)
 {
+	// We should never get here while the context is still an unprocessed property accessor
+	asASSERT(ctx->property_get == 0 && ctx->property_set == 0);
+
 	asCArray<int> excludeVars;
 	if( reservedVars ) excludeVars.Concatenate(*reservedVars);
 	int offset;

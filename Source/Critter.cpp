@@ -2997,6 +2997,16 @@ void Client::Shutdown()
 #endif
 }
 
+uint Client::GetIp()
+{
+	return From.sin_addr.s_addr;
+}
+
+const char* Client::GetIpStr()
+{
+	return inet_ntoa(From.sin_addr);
+}
+
 void Client::PingClient()
 {
 	if(!pingOk)
@@ -3475,6 +3485,7 @@ void Client::Send_ContainerInfo(Critter* cr_cont, uchar transfer_type, bool open
 void Client::Send_GlobalInfo(uchar info_flags)
 {
 	if(IsSendDisabled() || IsOffline()) return;
+	if(LockMapTransfers) return;
 
 	CritDataExt* data_ext=GetDataExt();
 	if(!data_ext) return;

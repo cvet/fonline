@@ -22,7 +22,6 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 
 // Prototypes
 #define MAX_ITEM_PROTOTYPES         (30000)
-#define PROTO_ITEM_USER_DATA_SIZE   (500)
 #define PROTO_ITEM_DEFAULT_EXT      ".pro"
 #define PROTO_ITEM_FILENAME         "proto.fopro_"
 #define ITEM_MAX_SCRIPT_VALUES      (10)

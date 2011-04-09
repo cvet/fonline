@@ -5,12 +5,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ASCompiler", "ASCompiler\AS
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Win32 = Debug|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9FA6BB1D-4365-4C77-B99D-ADEE6007539A}.Debug|Win32.ActiveCfg = Debug|Win32
-		{9FA6BB1D-4365-4C77-B99D-ADEE6007539A}.Debug|Win32.Build.0 = Debug|Win32
 		{9FA6BB1D-4365-4C77-B99D-ADEE6007539A}.Release|Win32.ActiveCfg = Release|Win32
 		{9FA6BB1D-4365-4C77-B99D-ADEE6007539A}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection

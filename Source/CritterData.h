@@ -54,7 +54,7 @@ struct CritData
 	uint HoloInfo[MAX_HOLO_INFO];
 	uint Reserved9[10];
 	int Scores[SCORES_MAX];
-	uint Reserved10[100];
+	uchar UserData[CRITTER_USER_DATA_SIZE];
 	// Npc data
 	uint HomeMap;
 	ushort HomeX;

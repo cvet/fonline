@@ -568,8 +568,8 @@ public:
 #endif
 
 public:
-	uint GetIp(){return From.sin_addr.s_addr;}
-	const char* GetIpStr(){return inet_ntoa(From.sin_addr);}
+	uint GetIp();
+	const char* GetIpStr();
 
 public:
 	bool IsOnline(){return !IsDisconnected;}

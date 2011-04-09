@@ -1,5 +1,5 @@
-#ifndef __PLATFORM_SPECIFIC__
-#define __PLATFORM_SPECIFIC__
+#ifndef ___PLATFORM_SPECIFIC___
+#define ___PLATFORM_SPECIFIC___
 
 //
 // Operating system
@@ -61,22 +61,6 @@
 	#define THREAD __thread
 #endif
 
-// Types
-#if defined(FO_MSVC)
-	typedef unsigned char    uchar;
-	typedef unsigned short   ushort;
-	typedef unsigned int     uint;
-	typedef unsigned __int64 uint64;
-	typedef __int64          int64;
-#elif defined(FO_GCC)
-	#include <inttypes.h>
-	typedef unsigned char    uchar;
-	typedef unsigned short   ushort;
-	typedef unsigned int     uint;
-	typedef uint64_t         uint64;
-	typedef int64_t          int64;
-#endif
-
 // Function name
 #if defined(FO_MSVC)
 	#define _FUNC_ __FUNCTION__
@@ -101,4 +85,4 @@
 	#define USE_LIBEVENT
 #endif
 
-#endif // __PLATFORM_SPECIFIC__
+#endif // ___PLATFORM_SPECIFIC___

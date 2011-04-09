@@ -2543,6 +2543,10 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 
 	// No previous template instance exists
 
+	// Make sure the template has factories as it doesn't have a default factory
+	if( templateType->beh.factories.GetLength() == 0 )
+		return 0;
+
 	// Make sure this template supports the subtype
 	if( !templateType->acceptValueSubType && (subType.IsPrimitive() || (subType.GetObjectType()->flags & asOBJ_VALUE)) )
 		return 0;

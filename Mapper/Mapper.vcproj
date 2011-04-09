@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="Mapper"
 	ProjectGUID="{C1DF7D8F-3A12-497A-83B4-8E4A7FDD7691}"
 	RootNamespace="Mapper"
@@ -552,6 +552,10 @@
 			</File>
 			<File
 				RelativePath="..\Source\Timer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Types.h"
 				>
 			</File>
 			<File

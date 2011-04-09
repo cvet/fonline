@@ -1465,6 +1465,7 @@ bool FOServer::SScriptFunc::Crit_ToLife(Critter* cr)
 	{
 		if(cr->Data.Params[ST_CURRENT_HP]<=0) cr->Data.Params[ST_CURRENT_HP]=1;
 		if(cr->Data.Params[ST_CURRENT_AP]<=0) cr->Data.Params[ST_CURRENT_AP]=AP_DIVIDER;
+		cr->KnockoutAp=0;
 		cr->TryUpOnKnockout();
 	}
 
@@ -1475,14 +1476,12 @@ bool FOServer::SScriptFunc::Crit_ToLife(Critter* cr)
 bool FOServer::SScriptFunc::Crit_ToKnockout(Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
-	if(!cr->IsLife())
+	if(cr->IsDead()) SCRIPT_ERROR_R0("Critter is dead.");
+
+	if(cr->IsKnockout())
 	{
-		if(cr->IsKnockout())
-		{
-			cr->KnockoutAp+=lost_ap;
-			return true;
-		}
-		SCRIPT_ERROR_R0("Critter is dead.");
+		cr->KnockoutAp+=lost_ap;
+		return true;
 	}
 
 	Map* map=MapMngr.GetMap(cr->GetMap());

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2010 Andreas Jonsson
+   Copyright (c) 2003-2011 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -182,6 +182,8 @@ public:
 	bool                         isPrivate;
 	asCObjectType               *objectType;
 	int                          signatureId;
+
+	// TODO: default arg: Add an array for keeping default args. This should be an array of strings
 
 	int                          id;
 

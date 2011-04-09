@@ -703,6 +703,7 @@ asCGlobalProperty *asCBuilder::GetGlobalProperty(const char *prop, bool *isCompi
 	return 0;
 }
 
+// TODO: default arg: need an array to store the default argument expressions
 int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *decl, asCScriptFunction *func, bool isSystemFunction, asCArray<bool> *paramAutoHandles, bool *returnAutoHandle)
 {
 	numErrors = 0;
@@ -750,6 +751,8 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 		n = n->next->next;
 		if( n && n->nodeType == snIdentifier )
 			n = n->next;
+
+		// TODO: default arg: skip the default arg expression if it is there
 	}
 
 	// Preallocate memory
@@ -789,6 +792,8 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 		if( type.GetTokenType() == ttQuestion &&
 			!type.IsReference() )
 			return asINVALID_DECLARATION;
+
+		// TODO: default arg: Store the default argument
 
 		// Move to next parameter
 		n = n->next->next;
@@ -2094,6 +2099,7 @@ int asCBuilder::RegisterTypedef(asCScriptNode *node, asCScriptCode *file)
 	return 0;
 }
 
+// TODO: default arg: Need array to store default arg expressions
 void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, bool &isConstMethod, bool &isConstructor, bool &isDestructor, bool &isPrivate)
 {
 	node = node->firstChild;
@@ -2187,6 +2193,7 @@ int asCBuilder::RegisterScriptFunction(int funcID, asCScriptNode *node, asCScrip
 	bool                       isDestructor;
 	bool                       isPrivate;
 
+	// TODO: default arg: Need to get the default arg expressions
 	GetParsedFunctionDetails(node, file, objType, name, returnType, parameterTypes, inOutFlags, isConstMethod, isConstructor, isDestructor, isPrivate);
 
 	// Check for name conflicts
@@ -2282,6 +2289,7 @@ int asCBuilder::RegisterScriptFunction(int funcID, asCScriptNode *node, asCScrip
 	}
 
 	// Register the function
+	// TODO: default arg: Pass the default argument expressions
 	module->AddScriptFunction(file->idx, funcID, name.AddressOf(), returnType, parameterTypes.AddressOf(), inOutFlags.AddressOf(), (asUINT)parameterTypes.GetLength(), isInterface, objType, isConstMethod, isGlobalFunction, isPrivate);
 
 	if( objType )

@@ -108,7 +108,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==908);
 	STATIC_ASSERT(sizeof(Field)==76);
-	STATIC_ASSERT(sizeof(CScriptArray)==36);
+	STATIC_ASSERT(sizeof(CScriptArray)==40);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4260);
 	STATIC_ASSERT(sizeof(GameOptions)==1152);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
@@ -4933,6 +4933,7 @@ void FOClient::Net_OnCritterParam()
 	Bin >> crid;
 	Bin >> index;
 	Bin >> value;
+	if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::FormatBuf(" - crid<%u> index<%u> value<%d>.",crid,index,value));
 
 	CritterCl* cr=GetCritter(crid);
 	if(!cr) return;
@@ -5072,6 +5073,7 @@ void FOClient::Net_OnChosenParam()
 	int value;
 	Bin >> index;
 	Bin >> value;
+	if(GameOpt.DebugNet) AddMess(FOMB_GAME,Str::FormatBuf(" - index<%u> value<%d>.",index,value));
 
 	// Chosen specified parameters
 	if(!Chosen) return;
@@ -10712,7 +10714,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize(uint spr_id, int spr_index, in
 	if(!SpritesCanDraw || !spr_id) return;
 	AnyFrames* anim=Self->AnimGetFrames(spr_id);
 	if(!anim || spr_index>=(int)anim->GetCnt()) return;
-	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,(float)w,(float)h,scratch,true,color);
+	SprMngr.DrawSpriteSize(spr_index<0?anim->GetCurSprId():anim->GetSprId(spr_index),x,y,(float)w,(float)h,scratch,center,color);
 }
 
 void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs)
@@ -10728,7 +10730,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs(uint spr_id, int spr_index
 		x+=si->OffsX;
 		y+=si->OffsY;
 	}
-	SprMngr.DrawSpriteSize(spr_id_,x,y,(float)w,(float)h,scratch,true,color);
+	SprMngr.DrawSpriteSize(spr_id_,x,y,(float)w,(float)h,scratch,center,color);
 }
 
 void FOClient::SScriptFunc::Global_DrawText(CScriptString& text, int x, int y, int w, int h, uint color, int font, int flags)

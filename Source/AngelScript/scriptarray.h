@@ -35,7 +35,6 @@ public:
 
 	CScriptArray &operator=(const CScriptArray&);
 
-	// TODO: Add methods Reverse, Find, etc
 	void InsertAt(asUINT index, void *value);
 	void RemoveAt(asUINT index);
 	void InsertFirst(void *value);
@@ -47,6 +46,9 @@ public:
 	void SortAsc(asUINT index, asUINT count);
 	void SortDesc(asUINT index, asUINT count);
 	void Sort(asUINT index, asUINT count, bool asc);
+	void Reverse();
+	int  Find(void *value);
+	int  Find(asUINT index, void *value);
 
 	// GC methods
 	int  GetRefCount();
@@ -63,13 +65,14 @@ protected:
 	bool              isArrayOfHandles; // TODO: Since we store subTypeId, it's not really necessary to store this
 	int               elementSize;
 	int               cmpFuncId;
+	int               eqFuncId;
 	int               subTypeId;
 
 	bool  Less(const void *a, const void *b, bool asc, asIScriptContext *ctx);
 	void *GetArrayItemPointer(int index);
 	void *GetDataPointer(void *buffer);
 	void  Copy(void *dst, void *src);
-	void  PrepareForSorting();
+	void  Precache();
 	bool  CheckMaxSize(asUINT numElements);
 	void  Resize(int delta, asUINT at);
 	void  SetValue(asUINT index, void *value);
@@ -78,6 +81,7 @@ protected:
 	void  CopyBuffer(SArrayBuffer *dst, SArrayBuffer *src);
 	void  Construct(SArrayBuffer *buf, asUINT start, asUINT end);
 	void  Destruct(SArrayBuffer *buf, asUINT start, asUINT end);
+	bool  Equals(const void *a, const void *b, asIScriptContext *ctx);
 };
 
 void RegisterScriptArray(asIScriptEngine *engine, bool defaultArray);

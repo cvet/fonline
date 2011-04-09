@@ -1,10 +1,12 @@
 #include "ScriptPragmas.h"
 #include "AngelScript/angelscript.h"
-#include <strstream>
-
 
 #ifdef FONLINE_SCRIPT_COMPILER
-	#include <Item.h>
+	#include <Windows.h>
+	#include <stdio.h>
+	#include <strstream>
+	#include <Defines.h>
+	#include <Types.h>
 	#include "..\ASCompiler\ASCompiler\ScriptEngine.h"
 
 	namespace Script
@@ -12,6 +14,15 @@
 		asIScriptEngine* GetEngine()
 		{
 			return (asIScriptEngine*)GetScriptEngine();
+		}
+
+		size_t* GetFunctionAddress(void* dll, const char* func_name)
+		{
+#if defined(FO_WINDOWS)
+			return (size_t*)GetProcAddress((HMODULE)dll,func_name);
+#else // FO_LINUX
+			// Todo: linux
+#endif
 		}
 
 		HMODULE LoadDynamicLibrary(const char* dll_name)
@@ -37,15 +48,6 @@
 			}
 			return dll;
 		}
-
-		size_t* GetFunctionAddress(void* dll, const char* func_name)
-		{
-#if defined(FO_WINDOWS)
-			return (size_t*)GetProcAddress((HMODULE)dll,func_name);
-#else // FO_LINUX
-			// Todo: linux
-#endif
-		}
 	}
 
 	struct CScriptString
@@ -56,6 +58,7 @@
 	};
 
 	#define WriteLog printf
+	#define int64 __int64
 
 #else
 
@@ -307,14 +310,19 @@ public:
 class BindFieldPragma
 {
 private:
-	string className;
-	BoolVec busyBytes;
-	int baseOffset;
-	int dataSize;
+	vector<string> className;
+	vector<vector<bool>> busyBytes;
+	vector<int> baseOffset;
+	vector<int> dataSize;
 
 public:
-	BindFieldPragma(const string& class_name, int base_offset, int data_size):
-		className(class_name),baseOffset(base_offset),dataSize(data_size){}
+	void Add(const string& class_name, int base_offset, int data_size)
+	{
+		className.push_back(class_name);
+		busyBytes.push_back(vector<bool>());
+		baseOffset.push_back(base_offset);
+		dataSize.push_back(data_size);
+	}
 
 	void Call(const string& text)
 	{
@@ -348,12 +356,29 @@ public:
 			return;
 		}
 
-		if(class_name!=className.c_str())
+		// Get class data
+		bool founded=false;
+		vector<bool>* busy_bytes;
+		int base_offset;
+		int data_size;
+		for(int i=0;i<(int)className.size();i++)
+		{
+			if(class_name==className[i])
+			{
+				busy_bytes=&busyBytes[i];
+				base_offset=baseOffset[i];
+				data_size=dataSize[i];
+				founded=true;
+				break;
+			}
+		}
+		if(!founded)
 		{
 			WriteLog("Error in 'bindfield' pragma<%s>, unknown class name<%s>.\n",text.c_str(),class_name.c_str());
 			return;
 		}
 
+		// Check primitive
 		int size=engine->GetSizeOfPrimitiveType(engine->GetTypeIdByDecl(type_name.c_str()));
 		if(size<=0)
 		{
@@ -362,8 +387,6 @@ public:
 		}
 
 		// Check offset
-		int base_offset=baseOffset;
-		int data_size=dataSize;
 		if(offset<0 || offset+size>=data_size)
 		{
 			WriteLog("Error in 'bindfield' pragma<%s>, wrong offset<%d> data.\n",text.c_str(),offset);
@@ -371,12 +394,11 @@ public:
 		}
 
 		// Check for already binded on this position
-		vector<bool>& busy_bytes=busyBytes;
-		if((int)busy_bytes.size()<offset+size) busy_bytes.resize(offset+size);
+		if((int)busy_bytes->size()<offset+size) busy_bytes->resize(offset+size);
 		bool busy=false;
 		for(int i=offset;i<offset+size;i++)
 		{
-			if(busy_bytes[i])
+			if((*busy_bytes)[i])
 			{
 				busy=true;
 				break;
@@ -392,13 +414,13 @@ public:
 		for(int i=0,ii=engine->GetObjectTypeCount();i<ii;i++)
 		{
 			asIObjectType* ot=engine->GetObjectTypeByIndex(i);
-			if(Str::Compare(ot->GetName(),className.c_str()))
+			if(!strcmp(ot->GetName(),class_name.c_str()))
 			{
 				for(int j=0,jj=ot->GetPropertyCount();j<jj;j++)
 				{
 					const char* name;
 					ot->GetProperty(j,&name);
-					if(Str::Compare(name,field_name.c_str()))
+					if(!strcmp(name,field_name.c_str()))
 					{
 						WriteLog("Error in 'bindfield' pragma<%s>, property<%s> already available.\n",text.c_str(),name);
 						return;
@@ -414,7 +436,7 @@ public:
 			WriteLog("Error in 'bindfield' pragma<%s>, register object property fail, error<%d>.\n",text.c_str(),result);
 			return;
 		}
-		for(int i=offset;i<offset+size;i++) busy_bytes[i]=true;
+		for(int i=offset;i<offset+size;i++) (*busy_bytes)[i]=true;
 	}
 };
 
@@ -428,7 +450,17 @@ ScriptPragmaCallback::ScriptPragmaCallback(int pragma_type)
 		globalVarPragma=new GlobalVarPragma();
 		crDataPragma=new CrDataPragma(pragmaType);
 		bindFuncPragma=new BindFuncPragma();
-		bindFieldPragma=new BindFieldPragma("ProtoItem",OFFSETOF(ProtoItem,UserData),PROTO_ITEM_USER_DATA_SIZE);
+		bindFieldPragma=new BindFieldPragma();
+
+#ifdef FONLINE_SCRIPT_COMPILER
+		bindFieldPragma->Add("ProtoItem",0,PROTO_ITEM_USER_DATA_SIZE);
+		bindFieldPragma->Add("Critter",0,CRITTER_USER_DATA_SIZE);
+#else
+		bindFieldPragma->Add("ProtoItem",OFFSETOF(ProtoItem,UserData),PROTO_ITEM_USER_DATA_SIZE);
+#ifdef FONLINE_SERVER
+		bindFieldPragma->Add("Critter",OFFSETOF(Critter,Data)+OFFSETOF(CritData,UserData),CRITTER_USER_DATA_SIZE);
+#endif
+#endif
 	}
 }
 

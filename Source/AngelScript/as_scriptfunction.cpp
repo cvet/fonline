@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2010 Andreas Jonsson
+   Copyright (c) 2003-2011 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -304,6 +304,8 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName) const
 {
 	asCString str;
 
+	// TODO: default arg: Add option to get the declaration with the default args
+
 	// Don't add the return type for constructors and destructors
 	if( !(returnType.GetTokenType() == ttVoid && 
 		  objectType && 
@@ -549,7 +551,9 @@ void asCScriptFunction::AddReferences()
 			// Need to increase the reference for each global variable
 			{
 				void *gvarPtr = (void*)(size_t)asBC_PTRARG(&byteCode[n]);
+				if( !gvarPtr ) break;
 				asCGlobalProperty *prop = GetPropertyByGlobalVarPtr(gvarPtr);
+				if( !prop ) break;
 
 				// Only addref the properties once
 				if( !ptrs.Exists(gvarPtr) )
@@ -612,7 +616,8 @@ void asCScriptFunction::ReleaseReferences()
 				parameterTypes[p].GetObjectType()->Release();
 
 		for( asUINT n = 0; n < objVariableTypes.GetLength(); n++ )
-			objVariableTypes[n]->Release();
+			if( objVariableTypes[n] )
+				objVariableTypes[n]->Release();
 	}
 
 	// Go through the byte code and release references to all resources used by the function
@@ -655,7 +660,9 @@ void asCScriptFunction::ReleaseReferences()
 			// Need to increase the reference for each global variable
 			{
 				void *gvarPtr = (void*)(size_t)asBC_PTRARG(&byteCode[n]);
+				if( !gvarPtr ) break;
 				asCGlobalProperty *prop = GetPropertyByGlobalVarPtr(gvarPtr);
+				if( !prop ) break;
 				
 				// Only release the properties once
 				if( !ptrs.Exists(gvarPtr) )

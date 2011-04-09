@@ -1544,6 +1544,8 @@ asCScriptNode *asCParser::ParseParameterList()
 				if( isSyntaxError ) return node;
 
 				GetToken(&t1);
+
+				// TODO: default arg: parse the expression for the default arg
 			}
 
 			// Check if list continues

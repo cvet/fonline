@@ -639,6 +639,8 @@ void asCRestore::WriteFunction(asCScriptFunction* func)
 
 	WriteFunctionSignature(func);
 
+	// TODO: default arg: Store the default arg strings
+
 	if( func->funcType == asFUNC_SCRIPT )
 	{
 		count = (asUINT)func->byteCode.GetLength();
@@ -722,6 +724,8 @@ asCScriptFunction *asCRestore::ReadFunction(bool addToModule, bool addToEngine)
 	ReadFunctionSignature(func);
 
 	func->id = engine->GetNextScriptFunctionId();
+
+	// TODO: default arg: Read the default arg strings
 
 	if( func->funcType == asFUNC_SCRIPT )
 	{
@@ -1420,7 +1424,10 @@ asCObjectType* asCRestore::ReadObjectType()
 		asCObjectType *tmpl = engine->GetObjectType(typeName.AddressOf());
 		if( tmpl == 0 )
 		{
-			// TODO: Write message to callback
+			// TODO: Move text to as_texts.h
+			asCString str;
+			str.Format("Template type '%s' doesn't exist", typeName.AddressOf());
+			engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 			error = true;
 			return 0;
 		}
@@ -1431,7 +1438,10 @@ asCObjectType* asCRestore::ReadObjectType()
 			ot = ReadObjectType();
 			if( ot == 0 )
 			{
-				// TODO: Write message to callback
+				// TODO: Move text to as_texts.h
+				asCString str;
+				str.Format("Failed to read subtype of template type '%s'", typeName.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 				error = true;
 				return 0;
 			}
@@ -1449,7 +1459,10 @@ asCObjectType* asCRestore::ReadObjectType()
 			
 			if( ot == 0 )
 			{
-				// TODO: Write message to callback
+				// TODO: Move text to as_texts.h
+				asCString str;
+				str.Format("Attempting to instanciate invalid template type '%s<%s>'", typeName.AddressOf(), dt.Format().AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 				error = true;
 				return 0;
 			}
@@ -1464,7 +1477,10 @@ asCObjectType* asCRestore::ReadObjectType()
 			
 			if( ot == 0 )
 			{
-				// TODO: Write message to callback
+				// TODO: Move text to as_texts.h
+				asCString str;
+				str.Format("Attempting to instanciate invalid template type '%s<%s>'", typeName.AddressOf(), dt.Format().AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 				error = true;
 				return 0;
 			}
@@ -1488,7 +1504,10 @@ asCObjectType* asCRestore::ReadObjectType()
 
 		if( ot == 0 )
 		{
-			// TODO: Write message to callback
+			// TODO: Move text to as_texts.h
+			asCString str;
+			str.Format("Template subtype type '%s' doesn't exist", typeName.AddressOf());
+			engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 			error = true;
 			return 0;
 		}
@@ -1508,7 +1527,10 @@ asCObjectType* asCRestore::ReadObjectType()
 			
 			if( ot == 0 )
 			{
-				// TODO: Write message to callback
+				// TODO: Move text to as_texts.h
+				asCString str;
+				str.Format("Object type '%s' doesn't exist", typeName.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 				error = true;
 				return 0;
 			}
@@ -1575,6 +1597,15 @@ void asCRestore::WriteByteCode(asDWORD *bc, int length)
 
 			// Translate type ids into indices
 			*(int*)(tmp+1) = FindTypeIdIdx(*(int*)(tmp+1));
+		}
+		else if( c == asBC_LoadRObjR ||    // rW_W_DW_ARG
+			     c == asBC_LoadVObjR )     // rW_W_DW_ARG
+		{
+			// Translate property offsets into indices
+			*(((short*)tmp)+2) = FindObjectPropIndex(*(((short*)tmp)+2), *(int*)(tmp+2));
+
+			// Translate type ids into indices
+			*(int*)(tmp+2) = FindTypeIdIdx(*(int*)(tmp+2));
 		}
 		else if( c == asBC_COPY )        // W_DW_ARG
 		{
@@ -1727,6 +1758,7 @@ void asCRestore::WriteByteCode(asDWORD *bc, int length)
 			}
 			break;
 		case asBCTYPE_wW_rW_DW_ARG:
+		case asBCTYPE_rW_W_DW_ARG:
 			{
 				// Write the instruction code
 				asBYTE b = (asBYTE)c;
@@ -1920,6 +1952,7 @@ void asCRestore::ReadByteCode(asDWORD *bc, int length)
 			}
 			break;
 		case asBCTYPE_wW_rW_DW_ARG:
+		case asBCTYPE_rW_W_DW_ARG:
 			{
 				*(asBYTE*)(bc) = b;
 
@@ -2297,6 +2330,16 @@ void asCRestore::TranslateFunction(asCScriptFunction *func)
 			// Translate the prop index into the property offset
 			*(((short*)&bc[n])+1) = FindObjectPropOffset(*(((short*)&bc[n])+1));
 		}
+		else if( c == asBC_LoadRObjR ||
+			     c == asBC_LoadVObjR )
+		{
+			// Translate the index to the type id
+			int *tid = (int*)&bc[n+2];
+			*tid = FindTypeId(*tid);
+
+			// Translate the prop index into the property offset
+			*(((short*)&bc[n])+2) = FindObjectPropOffset(*(((short*)&bc[n])+2));
+		}
 		else if( c == asBC_COPY )
 		{
 			// Translate the index to the type id
@@ -2481,6 +2524,7 @@ void asCRestore::TranslateFunction(asCScriptFunction *func)
 			case asBCTYPE_wW_DW_ARG:
 			case asBCTYPE_wW_W_ARG:
 			case asBCTYPE_rW_QW_ARG:
+			case asBCTYPE_rW_W_DW_ARG:
 				{
 					short var = asBC_SWORDARG0(&bc[n]);
 					if( var >= (int)adjustByPos.GetLength() ) 

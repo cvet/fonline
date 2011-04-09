@@ -562,10 +562,18 @@ void* FOServer::Logic_Work(void* data)
 			if(cl->IsNotValid) continue;
 
 			// Disconnect
-			if(cl->IsOffline() && InterlockedCompareExchange(&cl->NetIOOut->Operation,WSAOP_END,WSAOP_FREE)==WSAOP_FREE)
+			if(cl->IsOffline())
 			{
-				InterlockedExchange(&cl->NetIOIn->Operation,WSAOP_END);
-				cl->Shutdown();
+				if(InterlockedCompareExchange(&cl->NetIOOut->Operation,WSAOP_END,WSAOP_FREE)==WSAOP_FREE)
+				{
+					InterlockedExchange(&cl->NetIOIn->Operation,WSAOP_END);
+					cl->Shutdown();
+				}
+				else if(cl->GetOfflineTime()>60*60*1000) // 1 hour
+				{
+					WriteLogF(_FUNC_," - Offline connection timeout, force shutdown. Ip<%s>, name<%s>.\n",cl->GetIpStr(),cl->GetName());
+					cl->Shutdown();
+				}
 			}
 
 			// Check for removing
@@ -3583,7 +3591,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
 	STATIC_ASSERT(sizeof(GameOptions)==1152);
-	STATIC_ASSERT(sizeof(CScriptArray)==36);
+	STATIC_ASSERT(sizeof(CScriptArray)==40);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 	STATIC_ASSERT(PROTO_ITEM_USER_DATA_SIZE==500);
 	STATIC_ASSERT(OFFSETOF(Item,IsNotValid)==118);

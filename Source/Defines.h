@@ -1,110 +1,5 @@
-#ifndef __DEFINES__
-#define __DEFINES__
-
-#include "PlatformSpecific.h"
-
-typedef map<string,uchar> StrUCharMap;
-typedef map<string,uchar>::iterator StrUCharMapIt;
-typedef map<string,uchar>::value_type StrUCharMapVal;
-typedef map<uchar,string> UCharStrMap;
-typedef map<uchar,string>::iterator UCharStrMapIt;
-typedef map<uchar,string>::value_type UCharStrMapVal;
-typedef map<string,string> StrMap;
-typedef map<string,string>::iterator StrMapIt;
-typedef map<string,string>::value_type StrMapVal;
-typedef map<uint,string> UIntStrMap;
-typedef map<uint,string>::iterator UIntStrMapIt;
-typedef map<uint,string>::value_type UIntStrMapVal;
-typedef map<string,ushort> StrUShortMap;
-typedef map<string,ushort>::iterator StrUShortMapIt;
-typedef map<string,ushort>::value_type StrUShortMapVal;
-typedef map<string,uint> StrUIntMap;
-typedef map<string,uint>::iterator StrUIntMapIt;
-typedef map<string,uint>::value_type StrUIntMapVal;
-typedef map<string,void*> StrPtrMap;
-typedef map<string,void*>::iterator StrPtrMapIt;
-typedef map<string,void*>::value_type StrPtrMapVal;
-typedef map<ushort,string> UShortStrMap;
-typedef map<ushort,string>::iterator UShortStrMapIt;
-typedef map<ushort,string>::value_type UShortStrMapVal;
-typedef map<string,uint> StrUIntMap;
-typedef map<string,uint>::iterator StrUIntMapIt;
-typedef map<string,uint>::value_type StrUIntMapVal;
-typedef map<uint,uint> UIntMap;
-typedef map<uint,uint>::iterator UIntMapIt;
-typedef map<uint,uint>::value_type UIntMapVal;
-typedef map<int,int> IntMap;
-typedef map<int,int>::iterator IntMapIt;
-typedef map<int,int>::value_type IntMapVal;
-typedef map<int,float> IntFloatMap;
-typedef map<int,float>::iterator IntFloatMapIt;
-typedef map<int,float>::value_type IntFloatMapVal;
-typedef map<int,void*> IntPtrMap;
-typedef map<int,void*>::iterator IntPtrMapIt;
-typedef map<int,void*>::value_type IntPtrMapVal;
-typedef map<uint,float> UIntFloatMap;
-typedef map<uint,float>::iterator UIntFloatMapIt;
-typedef map<uint,float>::value_type UIntFloatMapVal;
-
-typedef multimap<uint,string> UIntStrMulMap;
-typedef multimap<uint,string>::iterator UIntStrMulMapIt;
-typedef multimap<uint,string>::value_type UIntStrMulMapVal;
-
-typedef vector<void*> PtrVec;
-typedef vector<void*>::iterator PtrVecIt;
-typedef vector<int> IntVec;
-typedef vector<int>::iterator IntVecIt;
-typedef vector<uchar> UCharVec;
-typedef vector<uchar>::iterator UCharVecIt;
-typedef vector<short> ShortVec;
-typedef vector<ushort> UShortVec;
-typedef vector<ushort>::iterator UShortVecIt;
-typedef vector<uint> UIntVec;
-typedef vector<uint>::iterator UIntVecIt;
-typedef vector<char> CharVec;
-typedef vector<string> StrVec;
-typedef vector<string>::iterator StrVecIt;
-typedef vector<char*> PCharVec;
-typedef vector<uchar*> PUCharVec;
-typedef vector<float> FloatVec;
-typedef vector<float>::iterator FloatVecIt;
-typedef vector<uint64> UInt64Vec;
-typedef vector<uint64>::iterator UInt64VecIt;
-typedef vector<bool>BoolVec;
-typedef vector<bool>::iterator BoolVecIt;
-
-typedef set<string> StrSet;
-typedef set<uchar> UCharSet;
-typedef set<uchar>::iterator UCharSetIt;
-typedef set<ushort> UShortSet;
-typedef set<ushort>::iterator UShortSetIt;
-typedef set<uint> UIntSet;
-typedef set<uint>::iterator UIntSetIt;
-typedef set<int> IntSet;
-typedef set<int>::iterator IntSetIt;
-
-typedef pair<int,int> IntPair;
-typedef pair<ushort,ushort> UShortPair;
-typedef pair<uint,uint> UIntPair;
-typedef pair<char,char> CharPair;
-typedef pair<char*,char*> PCharPair;
-typedef pair<uchar,uchar> UCharPair;
-
-typedef vector<UShortPair> UShortPairVec;
-typedef vector<UShortPair>::iterator UShortPairVecIt;
-typedef vector<UShortPair>::value_type UShortPairVecVal;
-typedef vector<IntPair> IntPairVec;
-typedef vector<IntPair>::iterator IntPairVecIt;
-typedef vector<IntPair>::value_type IntPairVecVal;
-typedef vector<UIntPair> UIntPairVec;
-typedef vector<UIntPair>::iterator UIntPairVecIt;
-typedef vector<UIntPair>::value_type UIntPairVecVal;
-typedef vector<PCharPair> PCharPairVec;
-typedef vector<PCharPair>::iterator PCharPairVecIt;
-typedef vector<PCharPair>::value_type PCharPairVecVal;
-typedef vector<UCharPair> UCharPairVec;
-typedef vector<UCharPair>::iterator UCharPairVecIt;
-typedef vector<UCharPair>::value_type UCharPairVecVal;
+#ifndef ___DEFINES___
+#define ___DEFINES___
 
 // Bits
 #define BIN__N(x)                     (x) | x>>3 | x>>6 | x>>9
@@ -158,6 +53,10 @@ typedef vector<UCharPair>::value_type UCharPairVecVal;
 #define ABC_SIZE                (26)
 #define DIRS_COUNT              (GameOpt.MapHexagonal?6:8)
 #define IS_DIR_CORNER(dir)      (((dir)&1)!=0) // 1, 3, 5, 7
+
+// Script pragma bindfield sizes
+#define PROTO_ITEM_USER_DATA_SIZE (500)
+#define CRITTER_USER_DATA_SIZE    (400)
 
 // Critters
 #define GENDER_MALE             (0)
@@ -473,13 +372,6 @@ typedef vector<UCharPair>::value_type UCharPairVecVal;
 #define SCORES_SEND_TIME        (60000)
 #define SCORE_NAME_LEN          (64)
 
-struct ScoreType
-{
-	uint ClientId;
-	char ClientName[SCORE_NAME_LEN];
-	int Value;
-};
-
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.
 // Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.
@@ -751,4 +643,4 @@ struct ScoreType
 #define USER_HOLO_MAX_TITLE_LEN      (40)
 #define USER_HOLO_MAX_LEN            (2000)
 
-#endif // __DEFINES__
+#endif // ___DEFINES___

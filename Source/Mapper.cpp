@@ -277,7 +277,7 @@ bool FOMapper::Init(HWND wnd)
 		sscanf(strstr(GetCommandLine(),"-Map")+strlen("-Map")+1,"%s",map_name);
 
 		ProtoMap* pmap=new ProtoMap();
-		if(pmap->Init(0xFFFF,map_name,PT_MAPS) && HexMngr.SetProtoMap(*pmap))
+		if(pmap->Init(0xFFFF,map_name,PT_SERVER_MAPS) && HexMngr.SetProtoMap(*pmap))
 		{
 			HexMngr.FindSetCenter(pmap->Header.WorkHexX,pmap->Header.WorkHexY);
 			CurProtoMap=pmap;

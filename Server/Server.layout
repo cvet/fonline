@@ -1,67 +1,67 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
-	<ActiveTarget name="Release_Windows" />
-	<File name="..\Source\AI.cpp" open="0" top="0" tabpos="0">
+	<ActiveTarget name="Release_Linux" />
+	<File name="../Source/AI.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="548" topLine="3" />
 	</File>
-	<File name="..\Source\AngelScript\as_compiler.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/AngelScript/as_compiler.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="202935" topLine="6413" />
 	</File>
-	<File name="..\Source\AngelScript\as_restore.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/AngelScript/as_restore.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="34607" topLine="1394" />
 	</File>
-	<File name="..\Source\Common.cpp" open="0" top="0" tabpos="2">
+	<File name="../Source/Common.cpp" open="0" top="0" tabpos="2">
 		<Cursor position="46369" topLine="1397" />
 	</File>
-	<File name="..\Source\Common.h" open="1" top="1" tabpos="4">
+	<File name="../Source/Common.h" open="1" top="0" tabpos="4">
 		<Cursor position="20621" topLine="766" />
 	</File>
-	<File name="..\Source\Critter.h" open="0" top="0" tabpos="3">
+	<File name="../Source/Critter.h" open="0" top="0" tabpos="3">
 		<Cursor position="21366" topLine="502" />
 	</File>
-	<File name="..\Source\Dialogs.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/Dialogs.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="266" topLine="0" />
 	</File>
-	<File name="..\Source\Item.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/Item.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="66" topLine="0" />
 	</File>
-	<File name="..\Source\Log.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/Log.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="336" topLine="0" />
 	</File>
-	<File name="..\Source\MainServer.cpp" open="1" top="0" tabpos="1">
+	<File name="../Source/MainServer.cpp" open="1" top="0" tabpos="1">
 		<Cursor position="592" topLine="0" />
 	</File>
-	<File name="..\Source\PlatformSpecific.h" open="0" top="0" tabpos="5">
+	<File name="../Source/PlatformSpecific.h" open="0" top="0" tabpos="5">
 		<Cursor position="1898" topLine="58" />
 	</File>
-	<File name="..\Source\Script.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/Script.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="5027" topLine="195" />
 	</File>
-	<File name="..\Source\Script.h" open="0" top="0" tabpos="0">
+	<File name="../Source/Script.h" open="0" top="0" tabpos="0">
 		<Cursor position="2241" topLine="56" />
 	</File>
-	<File name="..\Source\ScriptBind.h" open="0" top="0" tabpos="0">
+	<File name="../Source/ScriptBind.h" open="0" top="0" tabpos="0">
 		<Cursor position="71923" topLine="554" />
 	</File>
-	<File name="..\Source\ScriptPragmas.cpp" open="0" top="0" tabpos="0">
+	<File name="../Source/ScriptPragmas.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="12032" topLine="389" />
 	</File>
-	<File name="..\Source\Server.cpp" open="1" top="0" tabpos="2">
+	<File name="../Source/Server.cpp" open="1" top="0" tabpos="2">
 		<Cursor position="4234" topLine="92" />
 	</File>
-	<File name="..\Source\Server.h" open="0" top="0" tabpos="0">
+	<File name="../Source/Server.h" open="0" top="0" tabpos="0">
 		<Cursor position="9646" topLine="249" />
 	</File>
-	<File name="..\Source\Zlib\zconf.h" open="0" top="0" tabpos="0">
+	<File name="../Source/Zlib/zconf.h" open="0" top="0" tabpos="0">
 		<Cursor position="0" topLine="48" />
 	</File>
-	<File name="..\Source\Zlib\zlib.h" open="0" top="0" tabpos="0">
+	<File name="../Source/Zlib/zlib.h" open="0" top="0" tabpos="0">
 		<Cursor position="1381" topLine="15" />
 	</File>
-	<File name="..\Source\Zlib\zutil.c" open="1" top="0" tabpos="3">
+	<File name="../Source/Zlib/zutil.c" open="1" top="0" tabpos="3">
 		<Cursor position="6844" topLine="248" />
 	</File>
-	<File name="..\Source\Zlib\zutil.h" open="0" top="0" tabpos="0">
+	<File name="../Source/Zlib/zutil.h" open="0" top="0" tabpos="0">
 		<Cursor position="629" topLine="0" />
 	</File>
 </CodeBlocks_layout_file>
