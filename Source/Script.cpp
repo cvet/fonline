@@ -794,7 +794,7 @@ void CallPragmas(const StrVec& pragmas)
 	Preprocessor::SetPragmaCallback(edata->PragmaCB);
 
 	// Call pragmas
-	for(uint i=0,j=pragmas.size()/2;i<j;i++)
+	for(uint i=0,j=(uint)pragmas.size()/2;i<j;i++)
 	{
 		Preprocessor::PragmaInstance pi;
 		pi.text=pragmas[i*2+1];
@@ -865,7 +865,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			bool no_all_files=!file.IsLoaded();
 			bool outdated=(file.IsLoaded() && last_write>last_write_bin);
 			// Include files
-			for(uint i=0,j=dependencies.size();i<j;i++)
+			for(uint i=0,j=(uint)dependencies.size();i<j;i++)
 			{
 				FileManager file_dep;
 				file_dep.LoadFile(dependencies[i].c_str(),ScriptsPath);
@@ -895,7 +895,7 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 				asIScriptModule* module=Engine->GetModule(module_name,asGM_ALWAYS_CREATE);
 				if(module)
 				{
-					for(uint i=0,j=pragmas.size()/2;i<j;i++)
+					for(uint i=0,j=(uint)pragmas.size()/2;i<j;i++)
 					{
 						Preprocessor::PragmaInstance pi;
 						pi.text=pragmas[i*2+1];
@@ -1064,11 +1064,11 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 			StrVec& pragmas=Preprocessor::GetParsedPragmas();
 
 			file_bin.SetBEUInt(version);
-			file_bin.SetBEUInt(dependencies.size());
-			for(uint i=0,j=dependencies.size();i<j;i++) file_bin.SetData((uchar*)dependencies[i].c_str(),dependencies[i].length()+1);
-			file_bin.SetBEUInt(pragmas.size());
-			for(uint i=0,j=pragmas.size();i<j;i++) file_bin.SetData((uchar*)pragmas[i].c_str(),pragmas[i].length()+1);
-			file_bin.SetData(&data[0],data.size());
+			file_bin.SetBEUInt((uint)dependencies.size());
+			for(uint i=0,j=(uint)dependencies.size();i<j;i++) file_bin.SetData((uchar*)dependencies[i].c_str(),(uint)dependencies[i].length()+1);
+			file_bin.SetBEUInt((uint)pragmas.size());
+			for(uint i=0,j=(uint)pragmas.size();i<j;i++) file_bin.SetData((uchar*)pragmas[i].c_str(),(uint)pragmas[i].length()+1);
+			file_bin.SetData(&data[0],(uint)data.size());
 
 			if(!file_bin.SaveOutBufToFile(Str::FormatBuf("%sb",fname_script),ScriptsPath)) WriteLogF(_FUNC_," - Can't save bytecode, script<%s>.\n",module_name);
 		}
@@ -1234,7 +1234,7 @@ int Bind(const char* module_name, const char* func_name, const char* decl, bool 
 		// Create new bind
 		BindedFunctions.push_back(BindFunction(0,func,module_name,func_name,decl));
 	}
-	return BindedFunctions.size()-1;
+	return (int)BindedFunctions.size()-1;
 }
 
 int Bind(const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */)
@@ -1256,7 +1256,7 @@ int RebindFunctions()
 #endif
 
 	int errors=0;
-	for(int i=2,j=BindedFunctions.size();i<j;i++)
+	for(int i=2,j=(int)BindedFunctions.size();i<j;i++)
 	{
 		BindFunction& bf=BindedFunctions[i];
 		if(bf.IsScriptCall)
@@ -1350,7 +1350,7 @@ uint GetScriptFuncNum(const char* script_name, const char* decl)
 	str_cache+=decl;
 
 	// Find already cached
-	for(uint i=0,j=ScriptFuncCache.size();i<j;i++)
+	for(uint i=0,j=(uint)ScriptFuncCache.size();i<j;i++)
 		if(ScriptFuncCache[i]==str_cache) return i+1;
 
 	// Create new
@@ -1359,7 +1359,7 @@ uint GetScriptFuncNum(const char* script_name, const char* decl)
 
 	ScriptFuncCache.push_back(str_cache);
 	ScriptFuncBindId.push_back(bind_id);
-	return ScriptFuncCache.size();
+	return (uint)ScriptFuncCache.size();
 }
 
 int GetScriptFuncBindId(uint func_num)
@@ -1593,42 +1593,42 @@ bool PrepareContext(int bind_id, const char* call_func, const char* ctx_info)
 
 void SetArgUShort(ushort value)
 {
-	if(ScriptCall) CurrentCtx->SetArgWord(CurrentArg,value);
+	if(ScriptCall) CurrentCtx->SetArgWord((asUINT)CurrentArg,value);
 	else NativeArgs[CurrentArg]=value;
 	CurrentArg++;
 }
 
 void SetArgUInt(uint value)
 {
-	if(ScriptCall) CurrentCtx->SetArgDWord(CurrentArg,value);
+	if(ScriptCall) CurrentCtx->SetArgDWord((asUINT)CurrentArg,value);
 	else NativeArgs[CurrentArg]=value;
 	CurrentArg++;
 }
 
 void SetArgUChar(uchar value)
 {
-	if(ScriptCall) CurrentCtx->SetArgByte(CurrentArg,value);
+	if(ScriptCall) CurrentCtx->SetArgByte((asUINT)CurrentArg,value);
 	else NativeArgs[CurrentArg]=value;
 	CurrentArg++;
 }
 
 void SetArgBool(bool value)
 {
-	if(ScriptCall) CurrentCtx->SetArgByte(CurrentArg,value);
+	if(ScriptCall) CurrentCtx->SetArgByte((asUINT)CurrentArg,value);
 	else NativeArgs[CurrentArg]=value;
 	CurrentArg++;
 }
 
 void SetArgObject(void* value)
 {
-	if(ScriptCall) CurrentCtx->SetArgObject(CurrentArg,value);
+	if(ScriptCall) CurrentCtx->SetArgObject((asUINT)CurrentArg,value);
 	else NativeArgs[CurrentArg]=(size_t)value;
 	CurrentArg++;
 }
 
 void SetArgAddress(void* value)
 {
-	if(ScriptCall) CurrentCtx->SetArgAddress(CurrentArg,value);
+	if(ScriptCall) CurrentCtx->SetArgAddress((asUINT)CurrentArg,value);
 	else NativeArgs[CurrentArg]=(size_t)value;
 	CurrentArg++;
 }
@@ -1774,7 +1774,7 @@ bool RunPrepared()
 
 uint GetReturnedUInt()
 {
-	return ScriptCall?CurrentCtx->GetReturnDWord():NativeRetValue;
+	return ScriptCall?CurrentCtx->GetReturnDWord():(uint)NativeRetValue;
 }
 
 bool GetReturnedBool()

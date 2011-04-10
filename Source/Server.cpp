@@ -180,15 +180,15 @@ void FOServer::Finish()
 	WriteLog("Server stopped.\n");
 	WriteLog("Statistics:\n");
 	WriteLog("Traffic:\n"
-		"Bytes Send:%u\n"
-		"Bytes Recv:%u\n",
+		"Bytes Send: %u\n"
+		"Bytes Recv: %u\n",
 		Statistics.BytesSend,
 		Statistics.BytesRecv);
-	WriteLog("Cycles count:%u\n"
-		"Approx cycle period:%u\n"
-		"Min cycle period:%u\n"
-		"Max cycle period:%u\n"
-		"Count of lags (>100ms):%u\n",
+	WriteLog("Cycles count: %u\n"
+		"Approx cycle period: %u\n"
+		"Min cycle period: %u\n"
+		"Max cycle period: %u\n"
+		"Count of lags (>100ms): %u\n",
 		Statistics.LoopCycles,
 		Statistics.LoopTime/(Statistics.LoopCycles?Statistics.LoopCycles:1),
 		Statistics.LoopMin,
@@ -205,7 +205,7 @@ string FOServer::GetIngamePlayersStatistics()
 	char str_map[256];
 
 	ConnectedClientsLocker.Lock();
-	uint conn_count=ConnectedClients.size();
+	uint conn_count=(uint)ConnectedClients.size();
 	ConnectedClientsLocker.Unlock();
 
 	ClVec players;
@@ -214,7 +214,7 @@ string FOServer::GetIngamePlayersStatistics()
 	sprintf(str,"Players in game: %u\nConnections: %u\n",players.size(),conn_count);
 	result=str;
 	result+="Name                 Id        Ip              Online  Cond     X     Y     Location (Id, Pid)             Map (Id, Pid)                  Level\n";
-	for(uint i=0,j=players.size();i<j;i++)
+	for(uint i=0,j=(uint)players.size();i<j;i++)
 	{
 		Client* cl=players[i];
 		const char* name=cl->GetName();
@@ -738,7 +738,7 @@ void* FOServer::Logic_Work(void* data)
 				lags+=stats_thread->LagsCount;
 				real_min_cycle=MIN(real_min_cycle,stats->LoopCycles);
 			}
-			uint count=stats_ptrs.size();
+			uint count=(uint)stats_ptrs.size();
 			Statistics.CycleTime=cycle_time/count;
 			Statistics.LoopTime=loop_time/count;
 			Statistics.LoopCycles=loop_cycles/count;
@@ -770,11 +770,11 @@ void* FOServer::Logic_Work(void* data)
 		}
 
 		// Add job to back
-		size_t job_count=Job::PushBack(job);
+		uint job_count=Job::PushBack(job);
 
 		// Calculate fps
-		static volatile size_t job_cur=0;
-		static volatile size_t fps=0;
+		static volatile uint job_cur=0;
+		static volatile uint fps=0;
 		static volatile uint job_tick=0;
 		if(++job_cur>=job_count)
 		{
@@ -814,7 +814,7 @@ void* FOServer::Net_Listen(void*)
 		}
 
 		ConnectedClientsLocker.Lock();
-		uint count=ConnectedClients.size();
+		uint count=(uint)ConnectedClients.size();
 		ConnectedClientsLocker.Unlock();
 		if(count>=MAX_CLIENTS_IN_GAME)
 		{
@@ -1226,8 +1226,8 @@ void FOServer::NetIO_Output(Client::NetIOArg* io)
 			return;
 		}
 
-		uint compr=cl->Zstrm.next_out-(UCHAR*)io->Buffer.buf;
-		uint real=cl->Zstrm.next_in-(UCHAR*)cl->Bout.GetCurData();
+		uint compr=(uint)((size_t)cl->Zstrm.next_out-(size_t)io->Buffer.buf);
+		uint real=(uint)((size_t)cl->Zstrm.next_in-(size_t)cl->Bout.GetCurData());
 		io->Buffer.len=compr;
 		cl->Bout.Cut(real);
 		Statistics.DataReal+=real;
@@ -1910,12 +1910,12 @@ void FOServer::Process_Command(Client* cl)
 			result+=str;
 
 			const char* ptext=result.c_str();
-			size_t text_begin=0;
-			for(uint i=0,j=result.length();i<j;i++)
+			uint text_begin=0;
+			for(uint i=0,j=(uint)result.length();i<j;i++)
 			{
 				if(result[i]=='\n')
 				{
-					size_t len=i-text_begin;
+					uint len=i-text_begin;
 					if(len) cl->Send_TextEx(cl->GetId(),&ptext[text_begin],len,SAY_NETMSG,0,false);
 					text_begin=i+1;
 				}
@@ -2247,7 +2247,7 @@ void FOServer::Process_Command(Client* cl)
 						Npc* npc=*it;
 						if(!npc->VisCr.size()) continue;
 						CrVecIt it_=npc->VisCr.begin();
-						for(int i=0,j=Random(0,npc->VisCr.size()-1);i<j;i++) ++it_;
+						for(int i=0,j=Random(0,(int)npc->VisCr.size()-1);i<j;i++) ++it_;
 						npc->SetTarget(-1,*it_,GameOpt.DeadHitPoints,false);
 					}
 				}
@@ -3422,12 +3422,12 @@ void FOServer::SaveGameInfoFile()
 		AddWorldSaveData(csd.Name,sizeof(csd.Name));
 		AddWorldSaveData(&csd.Data,sizeof(csd.Data));
 		AddWorldSaveData(&csd.DataExt,sizeof(csd.DataExt));
-		uint te_count=csd.TimeEvents.size();
+		uint te_count=(uint)csd.TimeEvents.size();
 		AddWorldSaveData(&te_count,sizeof(te_count));
 		if(te_count) AddWorldSaveData(&csd.TimeEvents[0],te_count*sizeof(Critter::CrTimeEvent));
 
 		// Picture data
-		uint pic_size=SingleplayerSave.PicData.size();
+		uint pic_size=(uint)SingleplayerSave.PicData.size();
 		AddWorldSaveData(&pic_size,sizeof(pic_size));
 		if(pic_size) AddWorldSaveData(&SingleplayerSave.PicData[0],pic_size);
 	}
@@ -3463,7 +3463,7 @@ bool FOServer::LoadGameInfoFile(FILE* f)
 		if(!fread(csd.Name,sizeof(csd.Name),1,f)) return false;
 		if(!fread(&csd.Data,sizeof(csd.Data),1,f)) return false;
 		if(!fread(&csd.DataExt,sizeof(csd.DataExt),1,f)) return false;
-		uint te_count=csd.TimeEvents.size();
+		uint te_count=(uint)csd.TimeEvents.size();
 		if(!fread(&te_count,sizeof(te_count),1,f)) return false;
 		if(te_count)
 		{
@@ -3576,6 +3576,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(uint64)==8);
 	STATIC_ASSERT(sizeof(bool)==1);
 	STATIC_ASSERT(sizeof(size_t)==sizeof(void*));
+#if defined(FO_X86)
 	STATIC_ASSERT(sizeof(string)==24);
 	STATIC_ASSERT(sizeof(IntVec)==12);
 	STATIC_ASSERT(sizeof(IntMap)==24);
@@ -3609,6 +3610,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(OFFSETOF(Map,RefCounter)==774);
 	STATIC_ASSERT(OFFSETOF(ProtoLocation,GeckVisible)==76);
 	STATIC_ASSERT(OFFSETOF(Location,RefCounter)==282);
+#endif
 
 	// Critters parameters
 	Critter::ParamsSendMsgLen=sizeof(Critter::ParamsSendCount);
@@ -3976,7 +3978,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
 	for(DialogPackMapIt it=DlgMngr.DialogsPacks.begin(),end=DlgMngr.DialogsPacks.end();it!=end;++it)
 	{
 		DialogPack* pack=(*it).second;
-		for(uint i=0,j=pack->TextsLang.size();i<j;i++)
+		for(uint i=0,j=(uint)pack->TextsLang.size();i<j;i++)
 		{
 			for(LangPackVecIt it_=lang_packs.begin(),end_=lang_packs.end();it_!=end_;++it_)
 			{
@@ -4305,7 +4307,7 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 		fwrite(pass,sizeof(pass),1,f);
 		fwrite(&cl->Data,sizeof(cl->Data),1,f);
 		fwrite(data_ext,sizeof(CritDataExt),1,f);
-		uint te_count=cl->CrTimeEvents.size();
+		uint te_count=(uint)cl->CrTimeEvents.size();
 		fwrite(&te_count,sizeof(te_count),1,f);
 		if(te_count) fwrite(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f);
 		fclose(f);
@@ -4715,7 +4717,7 @@ void* FOServer::Dump_Work(void* data)
 			fwrite(csd.Password,sizeof(csd.Password),1,fc);
 			fwrite(&csd.Data,sizeof(csd.Data),1,fc);
 			fwrite(&csd.DataExt,sizeof(csd.DataExt),1,fc);
-			uint te_count=csd.TimeEvents.size();
+			uint te_count=(uint)csd.TimeEvents.size();
 			fwrite(&te_count,sizeof(te_count),1,fc);
 			if(te_count) fwrite(&csd.TimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,fc);
 			fclose(fc);
@@ -4860,12 +4862,12 @@ void FOServer::SaveTimeEventsFile()
 		TimeEvent* te=*it;
 		if(!te->IsSaved) continue;
 		AddWorldSaveData(&te->Num,sizeof(te->Num));
-		ushort script_name_len=te->FuncName.length();
+		ushort script_name_len=(ushort)te->FuncName.length();
 		AddWorldSaveData(&script_name_len,sizeof(script_name_len));
 		AddWorldSaveData((void*)te->FuncName.c_str(),script_name_len);
 		AddWorldSaveData(&te->FullSecond,sizeof(te->FullSecond));
 		AddWorldSaveData(&te->Rate,sizeof(te->Rate));
-		uint values_size=te->Values.size();
+		uint values_size=(uint)te->Values.size();
 		AddWorldSaveData(&values_size,sizeof(values_size));
 		if(values_size) AddWorldSaveData(&te->Values[0],values_size*sizeof(uint));
 	}
@@ -5177,7 +5179,7 @@ void FOServer::ProcessTimeEvents()
 	if(Script::PrepareContext(cur_event->BindId,_FUNC_,Str::FormatBuf("Time event<%u>",cur_event->Num)))
 	{
 		CScriptArray* values=NULL;
-		uint size=cur_event->Values.size();
+		uint size=(uint)cur_event->Values.size();
 
 		if(size>0)
 		{
@@ -5250,7 +5252,7 @@ uint FOServer::GetTimeEventsCount()
 {
 	SCOPE_LOCK(TimeEventsLocker);
 
-	uint count=TimeEvents.size();
+	uint count=(uint)TimeEvents.size();
 	return count;
 }
 
@@ -5266,13 +5268,13 @@ string FOServer::GetTimeEventsStatistics()
 	sprintf(str,"Game time: %02u.%02u.%04u %02u:%02u:%02u\n",st.Day,st.Month,st.Year,st.Hour,st.Minute,st.Second);
 	result+=str;
 	result+="Number    Date       Time     Rate Saved Function                            Values\n";
-	for(uint i=0,j=TimeEvents.size();i<j;i++)
+	for(uint i=0,j=(uint)TimeEvents.size();i<j;i++)
 	{
 		TimeEvent* te=TimeEvents[i];
 		st=Timer::GetGameTime(te->FullSecond);
 		sprintf(str,"%09u %02u.%02u.%04u %02u:%02u:%02u %04u %-5s %-35s",te->Num,st.Day,st.Month,st.Year,st.Hour,st.Minute,st.Second,te->Rate,te->IsSaved?"true":"false",te->FuncName.c_str());
 		result+=str;
-		for(uint k=0,l=te->Values.size();k<l;k++)
+		for(uint k=0,l=(uint)te->Values.size();k<l;k++)
 		{
 			sprintf(str," %-10u",te->Values[k]);
 			result+=str;
@@ -5285,12 +5287,12 @@ string FOServer::GetTimeEventsStatistics()
 void FOServer::SaveScriptFunctionsFile()
 {
 	const StrVec& cache=Script::GetScriptFuncCache();
-	uint count=cache.size();
+	uint count=(uint)cache.size();
 	AddWorldSaveData(&count,sizeof(count));
-	for(uint i=0,j=cache.size();i<j;i++)
+	for(uint i=0,j=(uint)cache.size();i<j;i++)
 	{
 		const string& func_name=cache[i];
-		uint len=func_name.length();
+		uint len=(uint)func_name.length();
 		AddWorldSaveData(&len,sizeof(len));
 		AddWorldSaveData((void*)func_name.c_str(),len);
 	}
@@ -5335,16 +5337,16 @@ bool FOServer::LoadScriptFunctionsFile(FILE* f)
 /************************************************************************/
 void FOServer::SaveAnyDataFile()
 {
-	uint count=AnyData.size();
+	uint count=(uint)AnyData.size();
 	AddWorldSaveData(&count,sizeof(count));
 	for(AnyDataMapIt it=AnyData.begin(),end=AnyData.end();it!=end;++it)
 	{
 		const string& name=(*it).first;
 		UCharVec& data=(*it).second;
-		uint name_len=name.length();
+		uint name_len=(uint)name.length();
 		AddWorldSaveData(&name_len,sizeof(name_len));
 		AddWorldSaveData((void*)name.c_str(),name_len);
-		uint data_len=data.size();
+		uint data_len=(uint)data.size();
 		AddWorldSaveData(&data_len,sizeof(data_len));
 		if(data_len) AddWorldSaveData(&data[0],data_len);
 	}
@@ -5369,7 +5371,7 @@ bool FOServer::LoadAnyDataFile(FILE* f)
 		if(data_len && !fread(&data[0],data_len,1,f)) return false;
 
 		AnyDataMapInsert result=AnyData.insert(AnyDataMapVal(name,data));
-		MEMORY_PROCESS(MEMORY_ANY_DATA,(*result.first).second.capacity());
+		MEMORY_PROCESS(MEMORY_ANY_DATA,(int)(*result.first).second.capacity());
 	}
 	return true;
 }
@@ -5384,7 +5386,7 @@ bool FOServer::SetAnyData(const string& name, const uchar* data, uint data_size)
 	MEMORY_PROCESS(MEMORY_ANY_DATA,-(int)data_.capacity());
 	data_.resize(data_size);
 	if(data_size) memcpy(&data_[0],data,data_size);
-	MEMORY_PROCESS(MEMORY_ANY_DATA,data_.capacity());
+	MEMORY_PROCESS(MEMORY_ANY_DATA,(int)data_.capacity());
 	return true;
 }
 
@@ -5396,7 +5398,7 @@ bool FOServer::GetAnyData(const string& name, CScriptArray& script_array)
 	if(it==AnyData.end()) return false;
 
 	UCharVec& data=(*it).second;
-	size_t length=data.size();
+	uint length=(uint)data.size();
 
 	if(!length)
 	{
@@ -5433,7 +5435,7 @@ string FOServer::GetAnyDataStatistics()
 	static string result;
 	char str[256];
 	result="Any data count: ";
-	result+=_itoa(AnyData.size(),str,10);
+	result+=_itoa((int)AnyData.size(),str,10);
 	result+="\nName                          Length    Data\n";
 	for(AnyDataMapIt it=AnyData.begin(),end=AnyData.end();it!=end;++it)
 	{
@@ -5443,7 +5445,7 @@ string FOServer::GetAnyDataStatistics()
 		result+=str;
 		sprintf(str,"%-10u",data.size());
 		result+=str;
-		for(uint i=0,j=data.size();i<j;i++)
+		for(uint i=0,j=(uint)data.size();i<j;i++)
 		{
 			sprintf(str,"%02X",data[i]);
 			result+=str;

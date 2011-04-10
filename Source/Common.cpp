@@ -1350,7 +1350,7 @@ void LoadList(const char* lst_name, int path_type)
 	const char* path=FileManager::GetPath(path_type);
 
 	PCharVec& lst=LstNames[path_type];
-	for(uint i=0,j=lst.size();i<j;i++) SAFEDELA(lst[i]);
+	for(uint i=0,j=(uint)lst.size();i<j;i++) SAFEDELA(lst[i]);
 	lst.clear();
 
 	while(fm.GetLine(str,1023))

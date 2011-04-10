@@ -538,7 +538,7 @@ void CritterCl::ProcessChangedParams()
 	if(ParamsChanged.size())
 	{
 		CallChange_.clear();
-		for(uint i=0,j=ParamsChanged.size();i<j;i+=2)
+		for(uint i=0,j=(uint)ParamsChanged.size();i<j;i+=2)
 		{
 			int index=ParamsChanged[i];
 			int old_val=ParamsChanged[i+1];
@@ -574,7 +574,7 @@ void CritterCl::ProcessChangedParams()
 
 		if(CallChange_.size())
 		{
-			for(uint i=0,j=CallChange_.size();i<j;i+=3)
+			for(uint i=0,j=(uint)CallChange_.size();i<j;i+=3)
 			{
 				uint index=CallChange_[i+1];
 				ParamLocked=index;
@@ -1183,7 +1183,7 @@ bool CritterCl::IsWalkAnim()
 
 void CritterCl::ClearAnim()
 {
-	for(uint i=0,j=animSequence.size();i<j;i++) SAFEREL(animSequence[i].ActiveItem);
+	for(uint i=0,j=(uint)animSequence.size();i<j;i++) SAFEREL(animSequence[i].ActiveItem);
 	animSequence.clear();
 }
 

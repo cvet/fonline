@@ -116,13 +116,10 @@ void CraftItem::SetName(FOMsg& msg_game, FOMsg& msg_item)
 {
 	Name="";
 
-	int i,j;
-	ProtoItem* proto;
-
 	// Out items
-	for(i=0,j=OutItems.size();i<j;i++)
+	for(uint i=0,j=(uint)OutItems.size();i<j;i++)
 	{
-		proto=ItemMngr.GetProtoItem(OutItems[i]);
+		ProtoItem* proto=ItemMngr.GetProtoItem(OutItems[i]);
 
 		if(!proto)
 			Name+="???";
@@ -161,9 +158,9 @@ template<class T>
 void GetStrMetadata(T& v, char* str)
 {
 	char buf[32];
-	Str::Append(str,MAX_FOTEXT,_itoa(v.size(),buf,10));
+	Str::Append(str,MAX_FOTEXT,_itoa((int)v.size(),buf,10));
 	Str::Append(str,MAX_FOTEXT," ");
-	for(uint i=0;i<v.size();i++)
+	for(uint i=0;i<(uint)v.size();i++)
 	{
 		Str::Append(str,MAX_FOTEXT,_itoa(v[i],buf,10));
 		Str::Append(str,MAX_FOTEXT," ");
@@ -447,7 +444,7 @@ const char* CraftItem::GetStr(bool metadata)
 #if defined(FONLINE_SERVER) || defined(FONLINE_MRFIXIT)
 void CraftItem::GetStrParam(char* pstr_out, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
-	for(uint i=0,j=num_vec.size();i<j;i++)
+	for(uint i=0,j=(uint)num_vec.size();i<j;i++)
 	{
 		const char* s=ConstantsManager::GetParamName(num_vec[i]);
 		if(!s) continue;
@@ -469,7 +466,7 @@ void CraftItem::GetStrParam(char* pstr_out, UIntVec& num_vec, IntVec& val_vec, U
 
 void CraftItem::GetStrItem(char* pstr_out, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
-	for(uint i=0,j=pid_vec.size();i<j;i++)
+	for(uint i=0,j=(uint)pid_vec.size();i<j;i++)
 	{
 		const char* s=ConstantsManager::GetItemName(pid_vec[i]);
 		if(!s) continue;
@@ -787,7 +784,7 @@ void CraftManager::GetTrueCrafts(CritterCl* cr, CraftItemVec& craft_vec)
 #ifdef FONLINE_SERVER
 bool CraftManager::IsTrueParams(Critter* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
-	for(int i=0,j=num_vec.size();i<j;i++)
+	for(int i=0,j=(uint)num_vec.size();i<j;i++)
 	{
 		uint param_num=num_vec[i];
 		int param_val=val_vec[i];
@@ -812,7 +809,7 @@ bool CraftManager::IsTrueParams(Critter* cr, UIntVec& num_vec, IntVec& val_vec, 
 #ifdef FONLINE_CLIENT
 bool CraftManager::IsTrueParams(CritterCl* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec)
 {
-	for(int i=0,j=num_vec.size();i<j;i++)
+	for(uint i=0,j=(uint)num_vec.size();i<j;i++)
 	{
 		uint param_num=num_vec[i];
 		int param_val=val_vec[i];
@@ -837,7 +834,7 @@ bool CraftManager::IsTrueParams(CritterCl* cr, UIntVec& num_vec, IntVec& val_vec
 #ifdef FONLINE_SERVER
 bool CraftManager::IsTrueItems(Critter* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
-	for(int i=0,j=pid_vec.size();i<j;i++)
+	for(uint i=0,j=(uint)pid_vec.size();i<j;i++)
 	{
 		bool next=true;
 
@@ -867,7 +864,7 @@ bool CraftManager::IsTrueItems(Critter* cr, UShortVec& pid_vec, UIntVec& count_v
 #ifdef FONLINE_CLIENT
 bool CraftManager::IsTrueItems(CritterCl* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec)
 {
-	for(int i=0,j=pid_vec.size();i<j;i++)
+	for(uint i=0,j=(uint)pid_vec.size();i<j;i++)
 	{
 		bool next=true;
 
@@ -932,7 +929,7 @@ int CraftManager::ProcessCraft(Critter* cr, uint num)
 	ItemPtrVec sub_items;
 	if(FLAG(flags,FIXBOY_SUB_MATERIALS)) // Sub items
 	{
-		for(int i=0,j=craft->NeedItems.size();i<j;i++)
+		for(uint i=0,j=(uint)craft->NeedItems.size();i<j;i++)
 		{
 			ushort pid=craft->NeedItems[i];
 			uint count=craft->NeedItemsVal[i];
@@ -950,7 +947,7 @@ int CraftManager::ProcessCraft(Critter* cr, uint num)
 	{
 		ItemPtrVec crafted;
 		UIntVec crafted_count;
-		for(int i=0,j=craft->OutItems.size();i<j;i++)
+		for(uint i=0,j=(uint)craft->OutItems.size();i<j;i++)
 		{
 			ushort pid=craft->OutItems[i];
 			uint count=craft->OutItemsVal[i];

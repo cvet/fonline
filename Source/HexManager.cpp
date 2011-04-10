@@ -194,7 +194,7 @@ void HexManager::Clear()
 		SAFEDEL(*it);
 	rainData.clear();
 
-	for(int i=0,j=hexItems.size();i<j;i++)
+	for(uint i=0,j=(uint)hexItems.size();i<j;i++)
 		hexItems[i]->Release();
 	hexItems.clear();
 
@@ -499,7 +499,7 @@ void HexManager::GetItems(ushort hx, ushort hy, ItemHexVec& items)
 	if(!IsMapLoaded()) return;
 
 	Field& f=GetField(hx,hy);
-	for(int i=0,j=f.Items.size();i<j;i++)
+	for(uint i=0,j=(uint)f.Items.size();i<j;i++)
 	{
 		if(std::find(items.begin(),items.end(),f.Items[i])==items.end()) items.push_back(f.Items[i]);
 	}
@@ -516,7 +516,7 @@ INTRECT HexManager::GetRectForText(ushort hx, ushort hy)
 
 	// Items
 	INTRECT r(0,0,0,0);
-	for(int i=0,j=f.Items.size();i<j;i++)
+	for(uint i=0,j=(uint)f.Items.size();i<j;i++)
 	{
 		SpriteInfo* si=SprMngr.GetSpriteInfo(f.Items[i]->SprId);
 		if(si)
@@ -652,10 +652,10 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 				{
 					UCharVec steps;
 					if(!FindPath(chosen,cx,cy,hx,hy,steps,-1)) drawCursorX=-1;
-					else if(!is_tb) drawCursorX=(show_steps?steps.size():0);
+					else if(!is_tb) drawCursorX=(int)(show_steps?steps.size():0);
 					else
 					{
-						drawCursorX=steps.size();
+						drawCursorX=(int)steps.size();
 						if(!show_steps && drawCursorX>chosen->GetAllAp()) drawCursorX=-1;
 					} 
 				}
@@ -1205,7 +1205,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 		}
 	}
 
-	for(uint i=1,j=points.size();i<j;i++)
+	for(uint i=1,j=(uint)points.size();i<j;i++)
 	{
 		PrepPoint& cur=points[i];
 		PrepPoint& next=points[i>=points.size()-1?1:i+1];
@@ -1361,7 +1361,7 @@ void HexManager::RebuildTiles()
 			Field& f=GetField(hx,hy);
 			if(f.Tiles.empty()) continue;
 
-			for(uint i=0,j=f.Tiles.size();i<j;i++)
+			for(uint i=0,j=(uint)f.Tiles.size();i<j;i++)
 			{
 				Field::Tile& tile=f.Tiles[i];
 				uint spr_id=tile.Anim->GetSprId(0);
@@ -1411,7 +1411,7 @@ void HexManager::RebuildRoof()
 
 			if(!roofSkip || roofSkip!=f.RoofNum)
 			{
-				for(uint i=0,j=f.Roofs.size();i<j;i++)
+				for(uint i=0,j=(uint)f.Roofs.size();i<j;i++)
 				{
 					Field::Tile& roof=f.Roofs[i];
 					uint spr_id=roof.Anim->GetSprId(0);
@@ -2497,7 +2497,7 @@ bool HexManager::FindPath(CritterCl* cr, ushort start_x, ushort start_y, ushort&
 	{
 		if(++numindex>MAX_FIND_PATH) return false;
 
-		int p_togo=coords.size()-p;
+		int p_togo=(int)coords.size()-p;
 		if(!p_togo) return false;
 
 		for(int i=0;i<p_togo;++i,++p)
@@ -3083,7 +3083,7 @@ void HexManager::UnloadMap()
 		delete *it;
 	rainData.clear();
 
-	for(int i=0,j=hexItems.size();i<j;i++)
+	for(uint i=0,j=(uint)hexItems.size();i<j;i++)
 		hexItems[i]->Release();
 	hexItems.clear();
 
@@ -3389,7 +3389,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			{
 				ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,r!=0);
 
-				for(uint i=0,j=tiles.size();i<j;i++)
+				for(uint i=0,j=(uint)tiles.size();i<j;i++)
 				{
 					ProtoMap::Tile& tile=tiles[i];
 					AnyFrames* anim=ResMngr.GetItemAnim(tile.NameHash);
@@ -3415,7 +3415,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 	// Objects
 	uint cur_id=0;
-	for(int i=0,j=pmap.MObjects.size();i<j;i++)
+	for(uint i=0,j=(uint)pmap.MObjects.size();i<j;i++)
 	{
 		MapObject* o=pmap.MObjects[i];
 		if(o->MapX>=maxHexX || o->MapY>=maxHexY)
@@ -3477,7 +3477,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 			ProtoItem* pitem_main=NULL;
 			ProtoItem* pitem_ext=NULL;
 			ProtoItem* pitem_armor=NULL;
-			for(int k=0,l=pmap.MObjects.size();k<l;k++)
+			for(uint k=0,l=(uint)pmap.MObjects.size();k<l;k++)
 			{
 				MapObject* child=pmap.MObjects[k];
 				if(child->MapObjType==MAP_OBJECT_ITEM && child->ContainerUID && child->ContainerUID==o->UID)
@@ -3572,13 +3572,13 @@ void HexManager::ParseSelTiles()
 			if(f.Tiles.size())
 			{
 				ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,false);
-				for(uint i=0,j=tiles.size();i<j;i++)
+				for(uint i=0,j=(uint)tiles.size();i<j;i++)
 					if(tiles[i].IsSelected) tiles[i].IsSelected=false;
 			}
 			if(f.Roofs.size())
 			{
 				ProtoMap::TileVec& roofs=CurProtoMap->GetTiles(hx,hy,true);
-				for(uint i=0,j=roofs.size();i<j;i++)
+				for(uint i=0,j=(uint)roofs.size();i<j;i++)
 					if(roofs[i].IsSelected) roofs[i].IsSelected=false;
 			}
 		}

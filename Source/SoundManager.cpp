@@ -410,7 +410,7 @@ bool SoundManager::LoadACM(Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_d
 size_t Ogg_read_func(void* ptr, size_t size, size_t nmemb, void* datasource)
 {
 	FileManager* fm=(FileManager*)datasource;
-	return fm->CopyMem(ptr,size)?size:0;
+	return fm->CopyMem(ptr,(uint)size)?size:0;
 }
 
 int Ogg_seek_func(void* datasource, ogg_int64_t offset, int whence)

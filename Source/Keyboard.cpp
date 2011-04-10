@@ -136,7 +136,7 @@ void Keyb::GetChar(uchar dik, char* str, int* position, int max, int flags)
 	if(AltDwn) return;
 	bool ctrl_shift=(CtrlDwn || ShiftDwn);
 
-	int len=strlen(str);
+	int len=(int)strlen(str);
 	int posit_=len;
 	int& posit=(position?*position:posit_);
 	if(posit>len) posit=len;

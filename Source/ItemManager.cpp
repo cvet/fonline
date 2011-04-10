@@ -126,7 +126,7 @@ bool ItemManager::LoadProtos()
 		if(LoadProtos(item_protos,fname))
 		{
 			ParseProtos(item_protos,collection_name);
-			loaded+=item_protos.size();
+			loaded+=(uint)item_protos.size();
 		}
 	}
 
@@ -367,7 +367,7 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 		return;
 	}
 
-	for(uint i=0,j=protos.size();i<j;i++)
+	for(uint i=0,j=(uint)protos.size();i<j;i++)
 	{
 		ProtoItem& proto_item=protos[i];
 		ushort pid=proto_item.ProtoId;
@@ -401,7 +401,7 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 		if(typeProto[i].size())
 		{
 			std::sort(typeProto[i].begin(),typeProto[i].end(),CompProtoByPid);
-			protoHash[i]=Crypt.Crc32((uchar*)&typeProto[i][0],sizeof(ProtoItem)*typeProto[i].size());
+			protoHash[i]=Crypt.Crc32((uchar*)&typeProto[i][0],sizeof(ProtoItem)*(uint)typeProto[i].size());
 		}
 	}
 }
@@ -488,13 +488,13 @@ void ItemManager::ClearProto(ushort pid)
 	ProtoItemVecIt it=std::find(protos.begin(),protos.end(),pid);
 	if(it!=protos.end()) protos.erase(it);
 
-	hash=Crypt.Crc32((uchar*)&protos[0],sizeof(ProtoItem)*protos.size());
+	hash=Crypt.Crc32((uchar*)&protos[0],sizeof(ProtoItem)*(uint)protos.size());
 }
 
 #ifdef FONLINE_SERVER
 void ItemManager::SaveAllItemsFile(void(*save_func)(void*,size_t))
 {
-	uint count=gameItems.size();
+	uint count=(uint)gameItems.size();
 	save_func(&count,sizeof(count));
 	for(ItemPtrMapIt it=gameItems.begin(),end=gameItems.end();it!=end;++it)
 	{
@@ -626,7 +626,7 @@ void ItemManager::GetGameItems(ItemPtrVec& items)
 uint ItemManager::GetItemsCount()
 {
 	SCOPE_LOCK(itemLocker);
-	uint count=gameItems.size();
+	uint count=(uint)gameItems.size();
 	return count;
 }
 
@@ -785,7 +785,7 @@ void ItemManager::ItemGarbager()
 		itemToDeleteCount.clear();
 		itemLocker.Unlock();
 
-		for(uint i=0,j=to_del.size();i<j;i++)
+		for(uint i=0,j=(uint)to_del.size();i<j;i++)
 		{
 			uint id=to_del[i];
 			uint count=to_del_count[i];
@@ -1296,7 +1296,7 @@ void ItemManager::RadioSendText(Critter* cr, const char* text, ushort text_len, 
 		}
 	}
 
-	for(uint i=0,j=radios.size();i<j;i++)
+	for(uint i=0,j=(uint)radios.size();i<j;i++)
 	{
 		RadioSendTextEx(channels[i],
 			radios[i]->Data.Radio.BroadcastSend,cr->GetMap(),cr->Data.WorldX,cr->Data.WorldY,

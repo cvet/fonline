@@ -556,7 +556,7 @@ void UpdateInfo()
 			UpdateLogName="";
 			break;
 		}
-		GuiInfo->buffer()->text(fl_locale_to_utf8(std_str.c_str(),std_str.length(),GetACP()));
+		GuiInfo->buffer()->text(fl_locale_to_utf8(std_str.c_str(),(int)std_str.length(),GetACP()));
 		if(!GuiBtnSaveInfo->active()) GuiBtnSaveInfo->activate();
 		FOServer::UpdateIndex=-1;
 	}
@@ -568,7 +568,7 @@ void UpdateLog()
 	LogGetBuffer(str);
 	if(str.length())
 	{
-		GuiLog->buffer()->append(fl_locale_to_utf8(str.c_str(),str.length(),GetACP()));
+		GuiLog->buffer()->append(fl_locale_to_utf8(str.c_str(),(int)str.length(),GetACP()));
 		if(Fl::focus()!=GuiLog) GuiLog->scroll(MAX_INT,0);
 	}
 }

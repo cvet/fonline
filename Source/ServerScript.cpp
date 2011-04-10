@@ -5030,7 +5030,7 @@ bool FOServer::SScriptFunc::Global_LoadImage(uint index, CScriptString* image_na
 	delete png;
 
 	ServerImages[index]=simg;
-	MEMORY_PROCESS(MEMORY_IMAGE,ServerImages[index]->Data.capacity());
+	MEMORY_PROCESS(MEMORY_IMAGE,(int)ServerImages[index]->Data.capacity());
 	return true;
 }
 

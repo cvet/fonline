@@ -683,7 +683,7 @@ uint ResourceManager::GetCritSprId(uint crtype, uint anim1, uint anim2, int dir)
 AnyFrames* ResourceManager::GetRandomSplash()
 {
 	if(splashNames.empty()) return 0;
-	int rnd=Random(0,splashNames.size()-1);
+	int rnd=Random(0,(int)splashNames.size()-1);
 	static AnyFrames* splash=NULL;
 	SprMngr.SurfType=RES_SPLASH;
 	splash=SprMngr.ReloadAnimation(splash,splashNames[rnd].c_str(),PT_DATA);

@@ -205,7 +205,7 @@ DialogPack* DialogManager::ParseDialog(const char* name, uint id, const char* da
 	Str::ParseLine<StrVec,string(*)(const char*)>(lang_key,' ',lang,ParseLangKey);
 	if(!lang.size()) LOAD_FAIL("Lang app is empty.");
 
-	for(int i=0,j=lang.size();i<j;i++)
+	for(uint i=0,j=(uint)lang.size();i<j;i++)
 	{
 		string& l=lang[i];
 		lang_buf=fodlg.GetApp(l.c_str());

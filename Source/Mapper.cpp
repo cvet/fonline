@@ -26,10 +26,13 @@ bool FOMapper::Init(HWND wnd)
 {
 	WriteLog("Mapper initialization...\n");
 
+	Wnd=wnd;
+
+#if defined(FO_X86)
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
 	STATIC_ASSERT(sizeof(GameOptions)==1152);
-	Wnd=wnd;
+#endif
 
 	// Register dll script data
 	struct CritterChangeParameter_{static void CritterChangeParameter(void*,uint){}}; // Dummy
@@ -626,9 +629,9 @@ uint FOMapper::AnimLoad(uint name_hash, uchar dir, int res_type)
 	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
 
-	size_t index=1;
-	for(uint j=Animations.size();index<j;index++) if(!Animations[index]) break;
-	if(index<Animations.size()) Animations[index]=ianim;
+	uint index=1;
+	for(uint j=(uint)Animations.size();index<j;index++) if(!Animations[index]) break;
+	if(index<(uint)Animations.size()) Animations[index]=ianim;
 	else Animations.push_back(ianim);
 	return index;
 }
@@ -644,9 +647,9 @@ uint FOMapper::AnimLoad(const char* fname, int path_type, int res_type)
 	IfaceAnim* ianim=new(nothrow) IfaceAnim(anim,res_type);
 	if(!ianim) return 0;
 
-	size_t index=1;
-	for(uint j=Animations.size();index<j;index++) if(!Animations[index]) break;
-	if(index<Animations.size()) Animations[index]=ianim;
+	uint index=1;
+	for(uint j=(uint)Animations.size();index<j;index++) if(!Animations[index]) break;
+	if(index<(uint)Animations.size()) Animations[index]=ianim;
 	else Animations.push_back(ianim);
 	return index;
 }
@@ -1312,7 +1315,7 @@ void FOMapper::MainLoop()
 					mobj->Dir=cr->GetDir();
 
 					// Move inventory items
-					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					for(uint i=0,j=(uint)CurProtoMap->MObjects.size();i<j;i++)
 					{
 						MapObject* mo=CurProtoMap->MObjects[i];
 						if(mo->ContainerUID && mo->ContainerUID==mobj->UID)
@@ -1434,7 +1437,7 @@ void FOMapper::RefreshTiles(int tab)
 
 	StrUIntMap PathIndex;
 
-	for(uint t=0,tt=ttab.TileDirs.size();t<tt;t++)
+	for(uint t=0,tt=(uint)ttab.TileDirs.size();t<tt;t++)
 	{
 		string& path=ttab.TileDirs[t];
 		bool include_subdirs=ttab.TileSubDirs[t];
@@ -1486,7 +1489,7 @@ void FOMapper::RefreshTiles(int tab)
 				uint path_index=PathIndex[path_];
 				if(!path_index)
 				{
-					path_index=PathIndex.size();
+					path_index=(uint)PathIndex.size();
 					PathIndex[path_]=path_index;
 				}
 				string collection_name=Str::FormatBuf("%03d - %s",path_index,path_);
@@ -1498,7 +1501,7 @@ void FOMapper::RefreshTiles(int tab)
 					size_t pos=fname.find_last_of('\\');
 					if(pos==string::npos) pos=0;
 					else pos++;
-					for(uint i=pos,j=fname.size();i<j;i++)
+					for(uint i=(uint)pos,j=(uint)fname.size();i<j;i++)
 					{
 						if(fname[i]>='0' && fname[i]<='9')
 						{
@@ -1652,7 +1655,7 @@ void FOMapper::IntDraw()
 	{
 		uint i=*CurProtoScroll;
 		uint j=i+ProtosOnScreen;
-		if(j>CurNpcProtos->size()) j=CurNpcProtos->size();
+		if(j>CurNpcProtos->size()) j=(uint)CurNpcProtos->size();
 
 		for(;i<j;i++,x+=w)
 		{
@@ -1680,7 +1683,7 @@ void FOMapper::IntDraw()
 
 		uint i=InContScroll;
 		uint j=i+ProtosOnScreen;
-		if(j>o->Childs.size()) j=o->Childs.size();
+		if(j>o->Childs.size()) j=(uint)o->Childs.size();
 
 		for(;i<j;i++,x+=w)
 		{
@@ -1712,7 +1715,7 @@ void FOMapper::IntDraw()
 	else if(IntMode==INT_MODE_LIST)
 	{
 		int i=ListScroll;
-		int j=LoadedProtoMaps.size();
+		int j=(int)LoadedProtoMaps.size();
 
 		for(;i<j;i++,x+=w)
 		{
@@ -1746,9 +1749,9 @@ void FOMapper::IntDraw()
 				SubTabsRect.L+SubTabsX+5+MODE_WIDTH,SubTabsRect.T+SubTabsY+posy+line_height-1);
 			if(IsCurInRect(r)) color=COLOR_TEXT_DWHITE;
 
-			uint count=stab.TileNames.size();
-			if(!count) count=stab.NpcProtos.size();
-			if(!count) count=stab.ItemProtos.size();
+			uint count=(uint)stab.TileNames.size();
+			if(!count) count=(uint)stab.NpcProtos.size();
+			if(!count) count=(uint)stab.ItemProtos.size();
 			name+=Str::FormatBuf(" (%u)",count);
 			SprMngr.DrawStr(r,name.c_str(),0,color);
 
@@ -2002,7 +2005,7 @@ void FOMapper::ObjKeyDown(uchar dik)
 
 	MapObject* o=SelectedObj[0].MapObj;
 	ProtoItem* proto=ItemMngr.GetProtoItem(o->ProtoId);
-	for(int i=0,j=ObjToAll?SelectedObj.size():1;i<j;i++) // At least one time
+	for(uint i=0,j=ObjToAll?(uint)SelectedObj.size():1;i<j;i++) // At least one time
 	{
 		MapObject* o2=SelectedObj[i].MapObj;
 		ProtoItem* proto2=ItemMngr.GetProtoItem(o2->ProtoId);
@@ -2296,7 +2299,7 @@ void FOMapper::IntLMouseDown()
 		{
 			if(Keyb::ShiftDwn)
 			{
-				for(int i=0,j=SelectedObj.size();i<j;i++)
+				for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 				{
 					SelMapObj& so=SelectedObj[i];
 					if(so.MapNpc)
@@ -2404,7 +2407,7 @@ void FOMapper::IntLMouseDown()
 
 				if(proto_item->Stackable)
 				{
-					for(int i=0,j=SelectedObj[0].Childs.size();i<j;i++)
+					for(uint i=0,j=(uint)SelectedObj[0].Childs.size();i<j;i++)
 					{
 						if(proto_item->ProtoId==SelectedObj[0].Childs[i]->ProtoId)
 						{
@@ -2711,7 +2714,7 @@ void FOMapper::IntLMouseUp()
 
 				ItemHexVec items;
 				CritVec critters;
-				for(int i=0,j=h.size();i<j;i++)
+				for(uint i=0,j=(uint)h.size();i<j;i++)
 				{
 					ushort hx=h[i].first;
 					ushort hy=h[i].second;
@@ -2805,7 +2808,7 @@ void FOMapper::IntMouseMove()
 					UShortPairVec h;
 					HexMngr.GetHexesRect(INTRECT(SelectHX1,SelectHY1,SelectHX2,SelectHY2),h);
 
-					for(int i=0,j=h.size();i<j;i++)
+					for(uint i=0,j=(uint)h.size();i<j;i++)
 						HexMngr.GetHexTrack(h[i].first,h[i].second)=1;
 				}
 
@@ -2885,12 +2888,12 @@ void FOMapper::RefreshCurProtos()
 	// Update fast pids
 	HexMngr.ClearFastPids();
 	ProtoItemVec& fast_pids=TabsActive[INT_MODE_FAST]->ItemProtos;
-	for(uint i=0,j=fast_pids.size();i<j;i++) HexMngr.AddFastPid(fast_pids[i].ProtoId);
+	for(uint i=0,j=(uint)fast_pids.size();i<j;i++) HexMngr.AddFastPid(fast_pids[i].ProtoId);
 
 	// Update ignore pids
 	HexMngr.ClearIgnorePids();
 	ProtoItemVec& ignore_pids=TabsActive[INT_MODE_IGNORE]->ItemProtos;
-	for(uint i=0,j=ignore_pids.size();i<j;i++) HexMngr.AddIgnorePid(ignore_pids[i].ProtoId);
+	for(uint i=0,j=(uint)ignore_pids.size();i<j;i++) HexMngr.AddIgnorePid(ignore_pids[i].ProtoId);
 
 	// Refresh map
 	if(HexMngr.IsMapLoaded()) HexMngr.RefreshMap();
@@ -2943,7 +2946,7 @@ void FOMapper::IntSetMode(int mode)
 
 MapObject* FOMapper::FindMapObject(ProtoMap& pmap, ushort hx, ushort hy, uchar mobj_type, ushort pid, uint skip)
 {
-	for(int i=0,j=pmap.MObjects.size();i<j;i++)
+	for(uint i=0,j=(uint)pmap.MObjects.size();i<j;i++)
 	{
 		MapObject* mo=pmap.MObjects[i];
 
@@ -2958,7 +2961,7 @@ MapObject* FOMapper::FindMapObject(ProtoMap& pmap, ushort hx, ushort hy, uchar m
 
 void FOMapper::FindMapObjects(ProtoMap& pmap, ushort hx, ushort hy, uint radius, uchar mobj_type, ushort pid, MapObjectPtrVec& objects)
 {
-	for(int i=0,j=pmap.MObjects.size();i<j;i++)
+	for(uint i=0,j=(uint)pmap.MObjects.size();i<j;i++)
 	{
 		MapObject* mo=pmap.MObjects[i];
 
@@ -2971,7 +2974,7 @@ void FOMapper::FindMapObjects(ProtoMap& pmap, ushort hx, ushort hy, uint radius,
 
 MapObject* FOMapper::FindMapObject(ushort hx, ushort hy, uchar mobj_type, ushort pid, bool skip_selected)
 {
-	for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+	for(uint i=0,j=(uint)CurProtoMap->MObjects.size();i<j;i++)
 	{
 		MapObject* mo=CurProtoMap->MObjects[i];
 
@@ -3095,7 +3098,7 @@ void FOMapper::DeleteMapObject(MapObject* mobj)
 	// Delete childs
 	if(mobj->ParentUID || mobj->UID)
 	{
-		for(uint i=0,j=pmap->MObjects.size();i<j;i++)
+		for(uint i=0,j=(uint)pmap->MObjects.size();i<j;i++)
 		{
 			MapObject* mobj_=*it;
 			if((mobj->ParentUID && mobj_->UID==mobj->ParentUID) || (mobj->UID && mobj_->ParentUID==mobj->UID))
@@ -3115,7 +3118,7 @@ void FOMapper::SelectClear()
 	if(!CurProtoMap) return;
 
 	// Clear map objects
-	for(uint i=0,j=SelectedObj.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 	{
 		SelMapObj& sobj=SelectedObj[i];
 		if(sobj.IsItem()) sobj.MapItem->RestoreAlpha();
@@ -3152,7 +3155,7 @@ void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
 	if(is_roof && f.Roofs.empty()) return;
 
 	// Helper
-	for(uint i=0,j=SelectedTile.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedTile.size();i<j;i++)
 	{
 		SelMapTile& stile=SelectedTile[i];
 		if(stile.HexX==hx && stile.HexY==hy && stile.IsRoof==is_roof) return;
@@ -3161,7 +3164,7 @@ void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
 
 	// Select
 	ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,is_roof);
-	for(uint i=0,j=tiles.size();i<j;i++) tiles[i].IsSelected=true;
+	for(uint i=0,j=(uint)tiles.size();i<j;i++) tiles[i].IsSelected=true;
 }
 
 void FOMapper::SelectAdd(MapObject* mobj, bool select_childs /* = true */)
@@ -3180,7 +3183,7 @@ void FOMapper::SelectAdd(MapObject* mobj, bool select_childs /* = true */)
 				if(mobj->UID)
 				{
 					SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
-					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					for(uint i=0,j=(uint)CurProtoMap->MObjects.size();i<j;i++)
 					{
 						MapObject* mobj_=CurProtoMap->MObjects[i];
 						if(mobj_->ContainerUID==mobj->UID && mobj_!=mobj) sobj->Childs.push_back(mobj_);
@@ -3202,7 +3205,7 @@ void FOMapper::SelectAdd(MapObject* mobj, bool select_childs /* = true */)
 				if(mobj->UID)
 				{
 					SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
-					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					for(uint i=0,j=(uint)CurProtoMap->MObjects.size();i<j;i++)
 					{
 						MapObject* mobj_=CurProtoMap->MObjects[i];
 						if(mobj_->ContainerUID==mobj->UID && mobj_!=mobj) sobj->Childs.push_back(mobj_);
@@ -3213,7 +3216,7 @@ void FOMapper::SelectAdd(MapObject* mobj, bool select_childs /* = true */)
 				if(select_childs && (mobj->UID || mobj->ParentUID))
 				{
 					SelMapObj* sobj=&SelectedObj[SelectedObj.size()-1];
-					for(int i=0,j=CurProtoMap->MObjects.size();i<j;i++)
+					for(uint i=0,j=(uint)CurProtoMap->MObjects.size();i<j;i++)
 					{
 						MapObject* mobj_=CurProtoMap->MObjects[i];
 						if(((mobj->UID && mobj_->ParentUID==mobj->UID) || (mobj->ParentUID && mobj_->UID==mobj->ParentUID)) && mobj_!=mobj)
@@ -3233,7 +3236,7 @@ void FOMapper::SelectErase(MapObject* mobj)
 	{
 		if(mobj->MapObjType==MAP_OBJECT_ITEM && mobj->ContainerUID) return;
 
-		for(uint i=0,j=SelectedObj.size();i<j;i++)
+		for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 		{
 			SelMapObj& sobj=SelectedObj[i];
 			if(sobj.MapObj==mobj)
@@ -3314,7 +3317,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 	{
 		// Objects
 		int switcher=(SelectedObj.size()?SelectedObj[0].MapObj->MapX%2:0);
-		for(uint i=0,j=SelectedObj.size();i<j;i++)
+		for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 		{
 			SelMapObj* obj=&SelectedObj[i];
 			int hx=obj->MapObj->MapX;
@@ -3334,7 +3337,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 		}
 
 		// Tiles
-		for(uint i=0,j=SelectedTile.size();i<j;i++)
+		for(uint i=0,j=(uint)SelectedTile.size();i<j;i++)
 		{
 			SelMapTile& stile=SelectedTile[i];
 			int hx=stile.HexX;
@@ -3356,7 +3359,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 
 	// Move map objects
 	int switcher=(SelectedObj.size()?SelectedObj[0].MapObj->MapX%2:0);
-	for(uint i=0,j=SelectedObj.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 	{
 		SelMapObj* obj=&SelectedObj[i];
 
@@ -3415,7 +3418,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 				continue;
 			}
 
-			for(int k=0,m=obj->Childs.size();k<m;k++)
+			for(uint k=0,m=(uint)obj->Childs.size();k<m;k++)
 			{
 				MapObject* mobj=obj->Childs[k];
 				mobj->MapX=hx;
@@ -3437,7 +3440,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 	};
 	vector<TileToMove> tiles_to_move;
 
-	for(uint i=0,j=SelectedTile.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedTile.size();i<j;i++)
 	{
 		SelMapTile& stile=SelectedTile[i];
 
@@ -3447,7 +3450,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 			Field::TileVec& ftiles=(stile.IsRoof?f.Roofs:f.Tiles);
 			ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(stile.HexX,stile.HexY,stile.IsRoof);
 
-			for(uint k=0,l=tiles.size();k<l;k++)
+			for(uint k=0,l=(uint)tiles.size();k<l;k++)
 			{
 				if(tiles[k].IsSelected)
 				{
@@ -3505,7 +3508,7 @@ void FOMapper::SelectMove(int offs_hx, int offs_hy, int offs_x, int offs_y)
 		}
 	}
 
-	for(uint i=0,j=tiles_to_move.size();i<j;i++)
+	for(uint i=0,j=(uint)tiles_to_move.size();i<j;i++)
 	{
 		TileToMove& ttm=tiles_to_move[i];
 		if(!ttm.roof)
@@ -3520,7 +3523,7 @@ void FOMapper::SelectDelete()
 {
 	if(!CurProtoMap) return;
 
-	for(uint i=0,j=SelectedObj.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 	{
 		SelMapObj* o=&SelectedObj[i];
 
@@ -3534,7 +3537,7 @@ void FOMapper::SelectDelete()
 		if(o->IsItem()) HexMngr.FinishItem(o->MapItem->GetId(),0);
 		else if(o->IsNpc()) HexMngr.EraseCrit(o->MapNpc->GetId());
 
-		for(int k=0,l=o->Childs.size();k<l;k++)
+		for(uint k=0,l=(uint)o->Childs.size();k<l;k++)
 		{
 			it=std::find(CurProtoMap->MObjects.begin(),CurProtoMap->MObjects.end(),o->Childs[k]);
 			if(it!=CurProtoMap->MObjects.end())
@@ -3545,7 +3548,7 @@ void FOMapper::SelectDelete()
 		}
 	}
 
-	for(uint i=0,j=SelectedTile.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedTile.size();i<j;i++)
 	{
 		SelMapTile& stile=SelectedTile[i];
 		Field& f=HexMngr.GetField(stile.HexX,stile.HexY);
@@ -3756,18 +3759,18 @@ void FOMapper::BufferCopy()
 {
 	if(!CurProtoMap) return;
 
-	for(int i=0,j=MapObjBuffer.size();i<j;i++) MapObjBuffer[i]->Release();
+	for(uint i=0,j=(uint)MapObjBuffer.size();i<j;i++) MapObjBuffer[i]->Release();
 	MapObjBuffer.clear();
 	TilesBuffer.clear();
 
-	for(int i=0,j=SelectedObj.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 	{
 		MapObjBuffer.push_back(new MapObject(*SelectedObj[i].MapObj));
-		for(int k=0,l=SelectedObj[i].Childs.size();k<l;k++)
+		for(uint k=0,l=(uint)SelectedObj[i].Childs.size();k<l;k++)
 			MapObjBuffer.push_back(new MapObject(*SelectedObj[i].Childs[k]));
 	}
 
-	for(int i=0,j=SelectedTile.size();i<j;i++)
+	for(uint i=0,j=(uint)SelectedTile.size();i<j;i++)
 	{
 		ushort hx=SelectedTile[i].HexX;
 		ushort hy=SelectedTile[i].HexY;
@@ -3775,7 +3778,7 @@ void FOMapper::BufferCopy()
 		Field::TileVec& ftiles=(SelectedTile[i].IsRoof?f.Roofs:f.Tiles);
 		ProtoMap::TileVec& tiles=CurProtoMap->GetTiles(hx,hy,SelectedTile[i].IsRoof);
 
-		for(uint k=0,l=tiles.size();k<l;k++)
+		for(uint k=0,l=(uint)tiles.size();k<l;k++)
 		{
 			if(tiles[k].IsSelected)
 			{
@@ -3808,14 +3811,14 @@ void FOMapper::BufferPaste(int hx, int hy)
 	SelectClear();
 
 	// Fix UIDs
-	for(int i=0,j=MapObjBuffer.size();i<j;i++)
+	for(uint i=0,j=(uint)MapObjBuffer.size();i<j;i++)
 	{
 		MapObject* mobj=MapObjBuffer[i];
 		if(mobj->UID)
 		{
 			uint old_uid=mobj->UID;
 			mobj->UID=++CurProtoMap->LastObjectUID;
-			for(int k=0,l=MapObjBuffer.size();k<l;k++)
+			for(uint k=0,l=(uint)MapObjBuffer.size();k<l;k++)
 			{
 				MapObject* mobj_=MapObjBuffer[k];
 				if(mobj_->ContainerUID==old_uid) mobj_->ContainerUID=mobj->UID;
@@ -3825,13 +3828,13 @@ void FOMapper::BufferPaste(int hx, int hy)
 
 	// Paste map objects
 	CurProtoMap->MObjects.reserve(CurProtoMap->MObjects.size()+MapObjBuffer.size()*2);
-	for(int i=0,j=MapObjBuffer.size();i<j;i++)
+	for(uint i=0,j=(uint)MapObjBuffer.size();i<j;i++)
 	{
 		ParseMapObj(MapObjBuffer[i]);
 	}
 
 	// Paste tiles
-	for(int i=0,j=TilesBuffer.size();i<j;i++)
+	for(uint i=0,j=(uint)TilesBuffer.size();i<j;i++)
 	{
 		TileBuf& tb=TilesBuffer[i];
 
@@ -3842,7 +3845,7 @@ void FOMapper::BufferPaste(int hx, int hy)
 
 			// Select helper
 			bool sel_added=false;
-			for(uint i=0,j=SelectedTile.size();i<j;i++)
+			for(uint i=0,j=(uint)SelectedTile.size();i<j;i++)
 			{
 				SelMapTile& stile=SelectedTile[i];
 				if(stile.HexX==tb.HexX && stile.HexY==tb.HexY && stile.IsRoof==tb.IsRoof)
@@ -3998,7 +4001,7 @@ void FOMapper::CurMMouseDown()
 	}
 	else
 	{
-		for(int i=0,j=SelectedObj.size();i<j;i++)
+		for(uint i=0,j=(uint)SelectedObj.size();i<j;i++)
 		{
 			SelMapObj* o=&SelectedObj[i];
 
@@ -4073,7 +4076,7 @@ void FOMapper::ConsoleKeyDown(uchar dik)
 						i=-1;
 					}
 				}
-				ConsoleHistoryCur=ConsoleHistory.size();
+				ConsoleHistoryCur=(int)ConsoleHistory.size();
 
 				bool process_command=true;
 				if(MapperFunctions.ConsoleMessage && Script::PrepareContext(MapperFunctions.ConsoleMessage,_FUNC_,"Mapper"))
@@ -4096,7 +4099,7 @@ void FOMapper::ConsoleKeyDown(uchar dik)
 			ConsoleEdit=true;
 			ConsoleStr[0]=0;
 			ConsoleCur=0;
-			ConsoleHistoryCur=ConsoleHistory.size();
+			ConsoleHistoryCur=(int)ConsoleHistory.size();
 		}
 
 		return;
@@ -4108,19 +4111,19 @@ void FOMapper::ConsoleKeyDown(uchar dik)
 		if(ConsoleHistoryCur-1<0) return;
 		ConsoleHistoryCur--;	
 		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
-		ConsoleCur=strlen(ConsoleStr);
+		ConsoleCur=(int)Str::Length(ConsoleStr);
 		return;
 	case DIK_DOWN:
 		if(ConsoleHistoryCur+1>=(int)ConsoleHistory.size())
 		{
-			ConsoleHistoryCur=ConsoleHistory.size();
+			ConsoleHistoryCur=(int)ConsoleHistory.size();
 			Str::Copy(ConsoleStr,"");
 			ConsoleCur=0;
 			return;
 		}
 		ConsoleHistoryCur++;
 		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
-		ConsoleCur=strlen(ConsoleStr);
+		ConsoleCur=(int)Str::Length(ConsoleStr);
 		return;
 	default:
 		Keyb::GetChar(dik,ConsoleStr,&ConsoleCur,MAX_NET_TEXT,KIF_NO_SPEC_SYMBOLS);
@@ -4367,7 +4370,7 @@ void FOMapper::ParseCommand(const char* cmd)
 					UShortVec pids;
 					for(ItemHexVecIt it=f.Items.begin(),end=f.Items.end();it!=end;++it) pids.push_back((*it)->GetProtoId());
 					std::sort(pids.begin(),pids.end());
-					for(int i=0,j=pids.size(),same=0;i<j;i++)
+					for(uint i=0,j=(uint)pids.size(),same=0;i<j;i++)
 					{
 						if(i<j-1 && pids[i]==pids[i+1]) same++;
 						else
@@ -4552,7 +4555,7 @@ void FOMapper::MessBoxGenerate()
 	int max_lines=ir.H()/10;
 	if(ir.IsZero()) max_lines=20;
 
-	int cur_mess=MessBox.size()-1;
+	int cur_mess=(int)MessBox.size()-1;
 	for(int i=0,j=0;cur_mess>=0;cur_mess--)
 	{
 		MessBoxMessage& m=MessBox[cur_mess];
@@ -4603,7 +4606,7 @@ bool FOMapper::SaveLogFile()
 	}
 
 	DWORD br;
-	WriteFile(save_file,fmt_log.c_str(),fmt_log.length(),&br,NULL);
+	WriteFile(save_file,fmt_log.c_str(),(uint)fmt_log.length(),&br,NULL);
 	CloseHandle(save_file);
 	return true;
 }
@@ -4813,7 +4816,7 @@ uint FOMapper::SScriptFunc::MapperObject_GetChilds(MapObject& mobj, CScriptArray
 		}
 	}
 	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
-	return objects_.size();
+	return (uint)objects_.size();
 }
 
 void FOMapper::SScriptFunc::MapperObject_MoveToHex(MapObject& mobj, ushort hx, ushort hy)
@@ -4911,7 +4914,7 @@ uint FOMapper::SScriptFunc::MapperMap_GetObjects(ProtoMap& pmap, ushort hx, usho
 	MapObjectPtrVec objects_;
 	Self->FindMapObjects(pmap,hx,hy,radius,mobj_type,pid,objects_);
 	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
-	return objects_.size();
+	return (uint)objects_.size();
 }
 
 void FOMapper::SScriptFunc::MapperMap_UpdateObjects(ProtoMap& pmap)
@@ -4992,7 +4995,7 @@ uint FOMapper::SScriptFunc::MapperMap_GetTilesCount(ProtoMap& pmap, ushort hx, u
 	if(hy>=pmap.Header.MaxHexY) SCRIPT_ERROR_R0("Invalid hex y arg.");
 
 	ProtoMap::TileVec& tiles=pmap.GetTiles(hx,hy,roof);
-	return tiles.size();
+	return (uint)tiles.size();
 }
 
 void FOMapper::SScriptFunc::MapperMap_DeleteTile(ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index)
@@ -5305,9 +5308,9 @@ uint FOMapper::SScriptFunc::Global_GetSelectedObjects(CScriptArray* objects)
 {
 	MapObjectPtrVec objects_;
 	objects_.reserve(Self->SelectedObj.size());
-	for(uint i=0,j=Self->SelectedObj.size();i<j;i++) objects_.push_back(Self->SelectedObj[i].MapObj);
+	for(uint i=0,j=(uint)Self->SelectedObj.size();i<j;i++) objects_.push_back(Self->SelectedObj[i].MapObj);
 	if(objects) Script::AppendVectorToArrayRef(objects_,objects);
-	return objects_.size();
+	return (uint)objects_.size();
 }
 
 uint FOMapper::SScriptFunc::Global_TabGetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs)
@@ -5318,15 +5321,15 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs(int tab, CScriptArray* dir_nam
 	if(dir_names)
 	{
 		asUINT i=dir_names->GetSize();
-		dir_names->Resize(dir_names->GetSize()+ttab.TileDirs.size());
-		for(uint k=0,l=ttab.TileDirs.size();k<l;k++,i++)
+		dir_names->Resize(dir_names->GetSize()+(uint)ttab.TileDirs.size());
+		for(uint k=0,l=(uint)ttab.TileDirs.size();k<l;k++,i++)
 		{
 			CScriptString** p=(CScriptString**)dir_names->At(i);
 			*p=new CScriptString(ttab.TileDirs[k]);
 		}
 	}
 	if(include_subdirs) Script::AppendVectorToArray(ttab.TileSubDirs,include_subdirs);
-	return ttab.TileDirs.size();
+	return (uint)ttab.TileDirs.size();
 }
 
 uint FOMapper::SScriptFunc::Global_TabGetItemPids(int tab, CScriptString* sub_tab, CScriptArray* item_pids)
@@ -5336,7 +5339,7 @@ uint FOMapper::SScriptFunc::Global_TabGetItemPids(int tab, CScriptString* sub_ta
 
 	SubTab& stab=Self->Tabs[tab][sub_tab && sub_tab->length()?sub_tab->c_std_str():DEFAULT_SUB_TAB];
 	if(item_pids) Script::AppendVectorToArray(stab.ItemProtos,item_pids);
-	return stab.ItemProtos.size();
+	return (uint)stab.ItemProtos.size();
 }
 
 uint FOMapper::SScriptFunc::Global_TabGetCritterPids(int tab, CScriptString* sub_tab, CScriptArray* critter_pids)
@@ -5346,7 +5349,7 @@ uint FOMapper::SScriptFunc::Global_TabGetCritterPids(int tab, CScriptString* sub
 
 	SubTab& stab=Self->Tabs[tab][sub_tab && sub_tab->length()?sub_tab->c_std_str():DEFAULT_SUB_TAB];
 	if(critter_pids) Script::AppendVectorToArray(stab.NpcProtos,critter_pids);
-	return stab.NpcProtos.size();
+	return (uint)stab.NpcProtos.size();
 }
 
 void FOMapper::SScriptFunc::Global_TabSetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs)
@@ -5414,7 +5417,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids(int tab, CScriptString* sub_ta
 	{
 		SubTab& stab=(*it).second;
 		if(&stab==&stab_default) continue;
-		for(uint i=0,j=stab.ItemProtos.size();i<j;i++)
+		for(uint i=0,j=(uint)stab.ItemProtos.size();i<j;i++)
 			stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
 	}
 	if(!Self->TabsActive[tab]) Self->TabsActive[tab]=&stab_default;
@@ -5463,7 +5466,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids(int tab, CScriptString* sub
 	{
 		SubTab& stab=(*it).second;
 		if(&stab==&stab_default) continue;
-		for(uint i=0,j=stab.NpcProtos.size();i<j;i++)
+		for(uint i=0,j=(uint)stab.NpcProtos.size();i<j;i++)
 			stab_default.NpcProtos.push_back(stab.NpcProtos[i]);
 	}
 	if(!Self->TabsActive[tab]) Self->TabsActive[tab]=&stab_default;
@@ -5674,7 +5677,7 @@ uint FOMapper::SScriptFunc::Global_GetPathLengthHex(ushort from_hx, ushort from_
 	if(cut>0 && !Self->HexMngr.CutPath(NULL,from_hx,from_hy,to_hx,to_hy,cut)) return 0;
 	UCharVec steps;
 	if(!Self->HexMngr.FindPath(NULL,from_hx,from_hy,to_hx,to_hy,steps,-1)) return 0;
-	return steps.size();
+	return (uint)steps.size();
 }
 
 bool FOMapper::SScriptFunc::Global_GetHexPos(ushort hx, ushort hy, int& x, int& y)
@@ -5708,7 +5711,7 @@ uint FOMapper::SScriptFunc::Global_GetAngelScriptProperty(int property)
 {
 	asIScriptEngine* engine=Script::GetEngine();
 	if(!engine) SCRIPT_ERROR_R0("Can't get engine.");
-	return engine->GetEngineProperty((asEEngineProp)property);
+	return (uint)engine->GetEngineProperty((asEEngineProp)property);
 }
 
 bool FOMapper::SScriptFunc::Global_SetAngelScriptProperty(int property, uint value)

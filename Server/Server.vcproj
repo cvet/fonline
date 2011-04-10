@@ -20,8 +20,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\Release_MSVC"
-			IntermediateDirectory=".\Release_MSVC"
+			OutputDirectory="..\..\..\FOnline\server\"
+			IntermediateDirectory=".\Release_MSVC\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -56,7 +56,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
+				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				GeneratePreprocessedFile="0"
 				StringPooling="true"
 				ExceptionHandling="0"
@@ -65,11 +65,11 @@
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Release_MSVC/FOserver.pch"
+				PrecompiledHeaderFile="$(IntDir)\FOserver.pch"
 				AssemblerOutput="2"
-				AssemblerListingLocation=".\Release_MSVC\"
-				ObjectFile=".\Release_MSVC\"
-				ProgramDataBaseFileName=".\Release_MSVC\"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -88,15 +88,15 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\server\FOnlineServer.exe"
+				OutputFile="$(OutDir)\FOnlineServer.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Release_MSVC/FOserv.pdb"
+				ProgramDatabaseFile="$(IntDir)\FOserv.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Release_MSVC/FOserv.map"
+				MapFileName="$(IntDir)\FOserv.map"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -114,7 +114,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release_MSVC/FOserver.bsc"
+				OutputFile="$(IntDir)\FOserver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -128,8 +128,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="..\..\..\FOnline\server\"
+			IntermediateDirectory=".\Release64_MSVC\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -164,7 +164,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
-				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;WIN64;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
+				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				GeneratePreprocessedFile="0"
 				StringPooling="true"
 				ExceptionHandling="0"
@@ -173,14 +173,15 @@
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Release64_MSVC/FOserver.pch"
+				PrecompiledHeaderFile="$(IntDir)\FOserver.pch"
 				AssemblerOutput="2"
-				AssemblerListingLocation=".\Release64_MSVC\"
-				ObjectFile=".\Release64_MSVC\"
-				ProgramDataBaseFileName=".\Release64_MSVC\"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
+				OmitDefaultLibName="false"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -195,14 +196,15 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="..\..\..\FOnline\server\FOnlineServer64.exe"
+				OutputFile="$(OutDir)\FOnlineServer64.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateManifest="false"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Release64_MSVC/FOserv.pdb"
+				ProgramDatabaseFile="$(IntDir)\FOserv.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Release64_MSVC/FOserv.map"
+				MapFileName="$(IntDir)\FOserv.map"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -220,7 +222,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release64_MSVC/FOserver.bsc"
+				OutputFile="$(IntDir)\FOserver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"

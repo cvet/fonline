@@ -60,7 +60,7 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 	if(!ini_name || !ini_name[0]) ini_name=default_name;
 
 	bool founded=false;
-	for(uint i=0,j=IfaceIniNames.size();i<j;i++)
+	for(uint i=0,j=(uint)IfaceIniNames.size();i<j;i++)
 	{
 		if(!_stricmp(IfaceIniNames[i].c_str(),ini_name))
 		{
@@ -72,7 +72,7 @@ bool FOClient::AppendIfaceIni(const char* ini_name)
 
 	// Build ini file
 	IfaceIni.UnloadFile();
-	for(uint i=0,j=IfaceIniNames.size();i<j;i++)
+	for(uint i=0,j=(uint)IfaceIniNames.size();i<j;i++)
 	{
 		// Create name
 		string file_name=IfaceIniNames[i];
@@ -164,7 +164,7 @@ int FOClient::InitIface()
 	if(InvY==-1) InvY=(MODE_HEIGHT-InvWMain[3])/2;
 	InvScroll=0;
 	InvHeightItem=IfaceIni.GetInt("InvHeightItem",30);
-	for(int i=0,j=SlotsExt.size();i<j;i++) IfaceLoadRect(SlotsExt[i].Rect,SlotsExt[i].IniName);
+	for(int i=0,j=(uint)SlotsExt.size();i<j;i++) IfaceLoadRect(SlotsExt[i].Rect,SlotsExt[i].IniName);
 	InvItemInfo="";
 	InvItemInfoScroll=0;
 	InvItemInfoMaxScroll=0;
@@ -1282,8 +1282,8 @@ void FOClient::DrawIndicator(INTRECT& rect, PointVec& points, uint color, int pr
 		if(!points_count && procent) points_count=1;
 		if(points.size()!=points_count)
 		{
-			if(points_count>points.size()) points_count=points.size()+1;
-			else points_count=points.size()-1;
+			if(points_count>(uint)points.size()) points_count=(uint)points.size()+1;
+			else points_count=(uint)points.size()-1;
 			points.resize(points_count);
 			for(uint i=0;i<points_count;i++)
 			{
@@ -1979,7 +1979,7 @@ void FOClient::ConsoleKeyDown(uchar dik)
 			ConsoleActive=true;
 			ConsoleStr[0]=0;
 			ConsoleCur=0;
-			ConsoleHistoryCur=ConsoleHistory.size();
+			ConsoleHistoryCur=(int)ConsoleHistory.size();
 			return;
 		}
 		
@@ -1998,7 +1998,7 @@ void FOClient::ConsoleKeyDown(uchar dik)
 				i=-1;
 			}
 		}
-		ConsoleHistoryCur=ConsoleHistory.size();
+		ConsoleHistoryCur=(int)ConsoleHistory.size();
 
 		if(Keyb::CtrlDwn) Net_SendText(ConsoleStr,SAY_SHOUT);
 		else if(Keyb::AltDwn) Net_SendText(ConsoleStr,SAY_WHISP);
@@ -2017,19 +2017,19 @@ void FOClient::ConsoleKeyDown(uchar dik)
 		if(ConsoleHistoryCur-1<0) return;
 		ConsoleHistoryCur--;	
 		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
-		ConsoleCur=strlen(ConsoleStr);
+		ConsoleCur=(int)Str::Length(ConsoleStr);
 		return;
 	case DIK_DOWN:
 		if(ConsoleHistoryCur+1>=(int)ConsoleHistory.size())
 		{
-			ConsoleHistoryCur=ConsoleHistory.size();
+			ConsoleHistoryCur=(int)ConsoleHistory.size();
 			Str::Copy(ConsoleStr,"");
 			ConsoleCur=0;
 			return;
 		}
 		ConsoleHistoryCur++;
 		Str::Copy(ConsoleStr,ConsoleHistory[ConsoleHistoryCur].c_str());
-		ConsoleCur=strlen(ConsoleStr);
+		ConsoleCur=(int)Str::Length(ConsoleStr);
 		return;
 	default:
 		Keyb::GetChar(dik,ConsoleStr,&ConsoleCur,MAX_NET_TEXT,KIF_NO_SPEC_SYMBOLS);
@@ -2837,7 +2837,7 @@ void FOClient::LogDraw()
 		else
 		{
 			char mask[MAX_NAME+1];
-			for(int i=0,j=min(MAX_NAME,GameOpt.Pass.length());i<j;i++) mask[i]='#';
+			for(uint i=0,j=min(MAX_NAME,(uint)GameOpt.Pass.length());i<j;i++) mask[i]='#';
 			mask[min(MAX_NAME,GameOpt.Pass.length())]='\0';
 			SprMngr.DrawStr(LogWPass,mask,FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 		}
@@ -2952,8 +2952,8 @@ void FOClient::LogTryConnect()
 		}
 
 		// Save login and password
-		Crypt.SetCache("__name",(uchar*)GameOpt.Name.c_str(),GameOpt.Name.length()+1);
-		Crypt.SetCache("__pass",(uchar*)GameOpt.Pass.c_str(),GameOpt.Pass.length()+1);
+		Crypt.SetCache("__name",(uchar*)GameOpt.Name.c_str(),(uint)GameOpt.Name.length()+1);
+		Crypt.SetCache("__pass",(uchar*)GameOpt.Pass.c_str(),(uint)GameOpt.Pass.length()+1);
 
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONNECTION));
 	}
@@ -3500,7 +3500,7 @@ void FOClient::DlgCollectAnswers(bool next)
 	if(!next && DlgCurAnswPage>0) DlgCurAnswPage--;
 
 	DlgAnswers.clear();
-	for(uint i=0,j=DlgAllAnswers.size();i<j;i++)
+	for(uint i=0,j=(uint)DlgAllAnswers.size();i<j;i++)
 	{
 		Answer& a=DlgAllAnswers[i];
 		if(a.Page==DlgCurAnswPage) DlgAnswers.push_back(a);
@@ -3687,7 +3687,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				if(sex_tags)
 				{
 					Str::CopyWord(tag,&str[i+1],'|',false);
-					Str::EraseInterval(&str[i],strlen(tag)+2);
+					Str::EraseInterval(&str[i],Str::Length(tag)+2);
 
 					if(sex)
 					{
@@ -3716,7 +3716,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 
 				tag[0]=0;
 				Str::CopyWord(tag,&str[i+1],'@',false);
-				Str::EraseInterval(&str[i],strlen(tag)+2);
+				Str::EraseInterval(&str[i],Str::Length(tag)+2);
 
 				if(!strlen(tag)) break;
 
@@ -3807,7 +3807,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 	}
 
 	dialogs.push_back(str);
-	Str::Copy(text,text_len,dialogs[Random(0,dialogs.size()-1)]);
+	Str::Copy(text,text_len,dialogs[Random(0,(uint)dialogs.size()-1)]);
 }
 
 //==============================================================================================================================
@@ -3926,7 +3926,7 @@ void FOClient::LMenuTryCreate()
 		if(!LMenuCurNodes) return;
 
 		SndMngr.PlaySound(SND_LMENU);
-		int height=LMenuCurNodes->size()*LMenuNodeHeight;
+		int height=(int)LMenuCurNodes->size()*LMenuNodeHeight;
 		if(LMenuY+height>MODE_HEIGHT) LMenuY-=LMenuY+height-MODE_HEIGHT;
 		if(LMenuX+LMenuNodeHeight>MODE_WIDTH) LMenuX-=LMenuX+LMenuNodeHeight-MODE_WIDTH;
 		SetCurPos(LMenuX,LMenuY);
@@ -4259,7 +4259,7 @@ void FOClient::LMenuDraw()
 {
 	if(!LMenuCurNodes) return;
 
-	for(int i=0,j=LMenuCurNodes->size();i<j;i++)
+	for(uint i=0,j=(uint)LMenuCurNodes->size();i<j;i++)
 	{
 		int num_node=(*LMenuCurNodes)[i];
 
@@ -4310,7 +4310,7 @@ void FOClient::LMenuMouseMove()
 	{
 		LMenuCurNode=(GameOpt.MouseY-LMenuY)/LMenuNodeHeight;
 		if(LMenuCurNode<0) LMenuCurNode=0;
-		if(LMenuCurNode>(int)LMenuCurNodes->size()-1) LMenuCurNode=LMenuCurNodes->size()-1;
+		if(LMenuCurNode>(int)LMenuCurNodes->size()-1) LMenuCurNode=(int)LMenuCurNodes->size()-1;
 	}
 	else
 	{
@@ -5189,7 +5189,7 @@ void FOClient::GmapProcess()
 		if(IsCurInRect(GmapBTabsScrDn))
 		{
 			int tabs_count=0;
-			for(int i=0,j=GmapLoc.size();i<j;i++)
+			for(uint i=0,j=(uint)GmapLoc.size();i<j;i++)
 			{
 				GmapLocation& loc=GmapLoc[i];
 				if(MsgGM->Count(STR_GM_LABELPIC_(loc.LocPid)) && ResMngr.GetIfaceAnim(Str::GetHash(MsgGM->GetStr(STR_GM_LABELPIC_(loc.LocPid))))) tabs_count++;
@@ -5365,7 +5365,7 @@ void FOClient::GmapDraw()
 	int cur_tabx=GmapWTabs[0]-GmapTabsScrX;
 	int cur_taby=GmapWTabs[1]-GmapTabsScrY;
 
-	for(int i=0,j=GmapLoc.size();i<j;i++)
+	for(uint i=0,j=(uint)GmapLoc.size();i<j;i++)
 	{
 		GmapLocation& loc=GmapLoc[i];
 
@@ -5602,7 +5602,7 @@ void FOClient::GmapLMouseDown()
 				else GmapCurHoldBLoc=-1;
 
 				int cur_city=0;
-				for(int i=0,j=GmapLoc.size();i<j;i++)
+				for(uint i=0,j=(uint)GmapLoc.size();i<j;i++)
 				{
 					GmapLocation& loc=GmapLoc[i];
 
@@ -5833,7 +5833,7 @@ Item* FOClient::GmapGetCar()
 
 void FOClient::GmapFreeResources()
 {
-	for(int i=0,j=GmapPic.size();i<j;i++) GmapPic[i]=0;
+	for(uint i=0,j=(uint)GmapPic.size();i<j;i++) GmapPic[i]=0;
 	SprMngr.FreeSurfaces(RES_GLOBAL_MAP);
 }
 
@@ -7370,12 +7370,12 @@ void FOClient::PipDraw()
 		{
 			PIP_DRAW_TEXT(FmtGameText(STR_PIP_MAPS),FT_CENTERX,COLOR_TEXT_DGREEN);
 			scr+=2;
-			for(uint i=0,j=Automaps.size();i<j;i++)
+			for(uint i=0,j=(uint)Automaps.size();i<j;i++)
 			{
 				Automap& amap=Automaps[i];
 				PIP_DRAW_TEXT(amap.LocName.c_str(),FT_CENTERX,COLOR_TEXT); scr++;
 
-				for(uint k=0,l=amap.MapNames.size();k<l;k++)
+				for(uint k=0,l=(uint)amap.MapNames.size();k<l;k++)
 				{
 					PIP_DRAW_TEXT(amap.MapNames[k].c_str(),FT_CENTERX,COLOR_TEXT_GREEN); scr++;
 				}
@@ -7549,7 +7549,7 @@ void FOClient::PipLMouseDown()
 		case PIP__AUTOMAPS:
 			{
 				scr+=2;
-				for(uint i=0,j=Automaps.size();i<j;i++)
+				for(uint i=0,j=(uint)Automaps.size();i<j;i++)
 				{
 					Automap& amap=Automaps[i];
 
@@ -7562,7 +7562,7 @@ void FOClient::PipLMouseDown()
 					}
 					scr++;
 
-					for(uint k=0,l=amap.MapNames.size();k<l;k++)
+					for(uint k=0,l=(uint)amap.MapNames.size();k<l;k++)
 					{
 						if(scr>=0 && scr<ml && IsCurInRect(INTRECT(r[0],r[1]+scr*h,r[2],r[1]+scr*h+h),PipX,PipY))
 						{
@@ -7903,7 +7903,7 @@ void FOClient::PupDraw()
 	else if(IfaceHold==IFACE_PUP_SCRUP1)
 		SprMngr.DrawSprite(PupPBScrUpOn1,PupBScrUp1[0]+PupX,PupBScrUp1[1]+PupY);
 
-	int count_items=Chosen->GetItemsCountInv();
+	int count_items=(int)Chosen->GetItemsCountInv();
 	if(PupScroll1>=count_items-(PupWCont1[3]-PupWCont1[1])/PupHeightItem1)
 		SprMngr.DrawSprite(PupPBScrDwOff1,PupBScrDw1[0]+PupX,PupBScrDw1[1]+PupY);
 	else if(IfaceHold==IFACE_PUP_SCRDOWN1)
@@ -7915,7 +7915,7 @@ void FOClient::PupDraw()
 	else if(IfaceHold==IFACE_PUP_SCRUP2)
 		SprMngr.DrawSprite(PupPBScrUpOn2,PupBScrUp2[0]+PupX,PupBScrUp2[1]+PupY);
 
-	count_items=PupCont2.size();
+	count_items=(int)PupCont2.size();
 	if(PupScroll2>=count_items-(PupWCont2[3]-PupWCont2[1])/PupHeightItem2)
 		SprMngr.DrawSprite(PupPBScrDwOff2,PupBScrDw2[0]+PupX,PupBScrDw2[1]+PupY);
 	else if(IfaceHold==IFACE_PUP_SCRDOWN2)
@@ -8079,7 +8079,7 @@ void FOClient::PupLMouseUp()
 		{
 			if(!IsCurInRect(PupBNextCritLeft,PupX,PupY)) break;
 			if(!Chosen->IsFree() || !ChosenAction.empty()) break;
-			int cnt=PupGetLootCrits().size();
+			uint cnt=(uint)PupGetLootCrits().size();
 			if(cnt<2) break;
 			if(!PupScrollCrit) PupScrollCrit=cnt-1;
 			else PupScrollCrit--;
@@ -8092,9 +8092,9 @@ void FOClient::PupLMouseUp()
 		{
 			if(!IsCurInRect(PupBNextCritRight,PupX,PupY)) break;
 			if(!Chosen->IsFree() || !ChosenAction.empty()) break;
-			int cnt=PupGetLootCrits().size();
+			uint cnt=(uint)PupGetLootCrits().size();
 			if(cnt<2) break;
-			if(PupScrollCrit+1>=cnt) PupScrollCrit=0;
+			if(PupScrollCrit+1>=(int)cnt) PupScrollCrit=0;
 			else PupScrollCrit++;
 			CritterCl* cr=PupGetLootCrit(PupScrollCrit);
 			if(!cr) break;
@@ -8169,7 +8169,7 @@ CritVec& FOClient::PupGetLootCrits()
 	CritterCl* loot_cr=HexMngr.GetCritter(PupContId);
 	if(!loot_cr || !loot_cr->IsDead()) return loot;
 	Field& f=HexMngr.GetField(loot_cr->GetHexX(),loot_cr->GetHexY());
-	for(int i=0,j=f.DeadCrits.size();i<j;i++)
+	for(uint i=0,j=(uint)f.DeadCrits.size();i<j;i++)
 		if(!f.DeadCrits[i]->IsRawParam(MODE_NO_LOOT)) loot.push_back(f.DeadCrits[i]);
 	return loot;
 }
@@ -8177,10 +8177,8 @@ CritVec& FOClient::PupGetLootCrits()
 CritterCl* FOClient::PupGetLootCrit(int scroll)
 {
 	CritVec& loot=PupGetLootCrits();
-	for(int i=0,j=loot.size();i<j;i++)
-	{
+	for(uint i=0,j=(uint)loot.size();i<j;i++)
 		if(i==scroll) return loot[i];
-	}
 	return NULL;
 }
 
@@ -9234,7 +9232,7 @@ void FOClient::FixGenerate(int fix_mode)
 		string str;
 		int x;
 
-		for(int i=0,j=FixDrawComp.size();i<j;i++)
+		for(uint i=0,j=(uint)FixDrawComp.size();i<j;i++)
 			delete FixDrawComp[i];
 		FixDrawComp.clear();
 
@@ -9258,7 +9256,7 @@ void FOClient::FixGenerate(int fix_mode)
 			str="\n";
 			str+=MsgGame->GetStr(STR_FIX_PARAMS);
 			str+="\n";
-			for(int i=0,j=craft->NeedPNum.size();i<j;i++)
+			for(uint i=0,j=(uint)craft->NeedPNum.size();i<j;i++)
 			{
 				// Need
 				str+=MsgGame->GetStr(STR_PARAM_NAME_(craft->NeedPNum[i]));
@@ -9328,7 +9326,7 @@ void FOClient::FixGenerateStrLine(string& str, INTRECT& r)
 void FOClient::FixGenerateItems(UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, INTRECT& r, int& x)
 {
 	str="";
-	for(int i=0,j=items_vec.size();i<j;i++)
+	for(uint i=0,j=(uint)items_vec.size();i<j;i++)
 	{
 		uint color=COLOR_TEXT;
 		if(Chosen->CountItemPid(items_vec[i])<val_vec[i]) color=COLOR_TEXT_DGREEN;
@@ -9364,8 +9362,8 @@ void FOClient::FixGenerateItems(UShortVec& items_vec, UIntVec& val_vec, UCharVec
 
 	FixGenerateStrLine(str,r);
 
-	x=FixWWin[0]+FixWWin.W()/2-FIX_DRAW_PIC_WIDTH/2*items_vec.size();
-	for(int i=0,j=items_vec.size();i<j;i++,x+=FIX_DRAW_PIC_WIDTH)
+	x=FixWWin[0]+FixWWin.W()/2-FIX_DRAW_PIC_WIDTH/2*(uint)items_vec.size();
+	for(uint i=0,j=(uint)items_vec.size();i<j;i++,x+=FIX_DRAW_PIC_WIDTH)
 	{
 		ProtoItem* proto=ItemMngr.GetProtoItem(items_vec[i]);
 		if(!proto) continue;
@@ -9393,7 +9391,7 @@ int FOClient::GetMouseCraft()
 	SCraftVec* cur_vec=GetCurSCrafts();
 	if(!cur_vec) return -1;
 
-	for(int i=0,j=cur_vec->size();i<j;i++)
+	for(uint i=0,j=(uint)cur_vec->size();i<j;i++)
 	{
 		SCraft* scraft=&(*cur_vec)[i];
 		if(IsCurInRect(scraft->Pos,FixX,FixY)) return i;
@@ -9426,7 +9424,7 @@ void FOClient::FixDraw()
 
 	if(FixMode==FIX_MODE_FIXIT)
 	{
-		for(int i=0,j=FixDrawComp.size();i<j;i++)
+		for(uint i=0,j=(uint)FixDrawComp.size();i<j;i++)
 		{
 			FixDrawComponent* c=FixDrawComp[i];
 			if(!c->IsText) SprMngr.DrawSpriteSize(c->Anim,c->Rect.L+FixX,c->Rect.T+FixY,(float)c->Rect.W(),(float)c->Rect.H(),false,true);
@@ -9443,7 +9441,7 @@ void FOClient::FixDraw()
 			SCraftVec* cur_vec=GetCurSCrafts();
 			if(!cur_vec) break;
 
-			for(int i=0,j=cur_vec->size();i<j;i++)
+			for(uint i=0,j=(uint)cur_vec->size();i<j;i++)
 			{
 				SCraft* scraft=&(*cur_vec)[i];
 				uint col=COLOR_TEXT;
@@ -9465,7 +9463,7 @@ void FOClient::FixDraw()
 		break;
 	case FIX_MODE_FIXIT:
 		{
-			for(int i=0,j=FixDrawComp.size();i<j;i++)
+			for(uint i=0,j=(uint)FixDrawComp.size();i<j;i++)
 			{
 				FixDrawComponent* c=FixDrawComp[i];
 				if(c->IsText) SprMngr.DrawStr(INTRECT(c->Rect,FixX,FixY),c->Text.c_str(),FT_CENTERX|FT_COLORIZE);
@@ -9884,7 +9882,7 @@ void FOClient::SaveLoadShowDraft()
 		// Get surface from image data
 		SaveLoadDataSlot& slot=SaveLoadDataSlots[SaveLoadSlotIndex];
 		SaveLoadDraftValid=(slot.PicData.size() && SUCCEEDED(D3DXLoadSurfaceFromFileInMemory(SaveLoadDraft,NULL,NULL,
-			&slot.PicData[0],slot.PicData.size(),NULL,D3DX_FILTER_LINEAR,0,NULL)));
+			&slot.PicData[0],(uint)slot.PicData.size(),NULL,D3DX_FILTER_LINEAR,0,NULL)));
 	}
 	else if(SaveLoadSave && SaveLoadSlotIndex==(int)SaveLoadDataSlots.size())
 	{

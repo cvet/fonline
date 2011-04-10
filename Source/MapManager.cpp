@@ -1190,7 +1190,7 @@ CScriptArray* MapManager::GM_CreateGroupArray(GlobalMapGroup* group)
 
 	group->SyncLockGroup();
 
-	arr->Resize(group->CritMove.size());
+	arr->Resize((asUINT)group->CritMove.size());
 	Critter** p_=(Critter**)arr->At(0);
 	*p_=group->Rule;
 	group->Rule->AddRef();
@@ -1857,7 +1857,7 @@ int MapManager::FindPath(PathFindData& pfd)
 		}
 
 		// Add gag and critters hexes
-		p_togo=coords.size()-p;
+		p_togo=(int)coords.size()-p;
 		if(!p_togo)
 		{
 			if(gag_coords.size())
@@ -1937,7 +1937,7 @@ label_FindOk:
 	// Check for closed door and critter
 	if(check_cr || check_gag_items)
 	{
-		for(int i=0,j=path.size();i<j;i++)
+		for(int i=0,j=(int)path.size();i<j;i++)
 		{
 			PathStep& ps=path[i];
 			if(map->IsHexPassed(ps.HexX,ps.HexY)) continue;
@@ -1971,7 +1971,7 @@ label_FindOk:
 		bool trace_ok=false;
 
 		trace_seq.resize(path.size()+4);
-		for(int i=0,j=path.size();i<j;i++)
+		for(int i=0,j=(int)path.size();i<j;i++)
 		{
 			PathStep& ps=path[i];
 			if(map->IsHexGag(ps.HexX,ps.HexY))
@@ -1991,7 +1991,7 @@ label_FindOk:
 		trace_.FindCr=pfd.TraceCr;
 		for(int k=0;k<5;k++)
 		{
-			for(int i=0,j=path.size();i<j;i++)
+			for(int i=0,j=(int)path.size();i<j;i++)
 			{
 				if(k<4 && trace_seq[i+2]!=k) continue;
 				if(k==4 && trace_seq[i+2]<4) continue;

@@ -17,48 +17,48 @@ CScriptString::CScriptString()
 {
 	// Count the first reference
 	refCount = 1;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
 }
 
 CScriptString::CScriptString(const char *s, unsigned int len)
 {
 	refCount = 1;
 	buffer.assign(s, len);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
 }
 
 CScriptString::CScriptString(const char *s)
 {
 	refCount = 1;
 	buffer.assign(s, strlen(s));
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
 }
 
 CScriptString::CScriptString(const string &s)
 {
 	refCount = 1;
 	buffer = s;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
 }
 
 CScriptString::CScriptString(const CScriptString &s)
 {
 	refCount = 1;
 	buffer = s.buffer;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
 }
 
 CScriptString::~CScriptString()
 {
 	assert( refCount == 0 );
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)(sizeof(CScriptString)+buffer.capacity()));
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)(sizeof(CScriptString)+(uint)buffer.capacity()));
 }
 
 CScriptString& CScriptString::operator=(const std::string& other)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer = other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 	return *this;
 }
 
@@ -66,7 +66,7 @@ CScriptString& CScriptString::operator+=(const std::string& other)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer += other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 	return *this;
 }
 
@@ -74,7 +74,7 @@ CScriptString& CScriptString::operator=(const char* other)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer = other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 	return *this;
 }
 
@@ -82,7 +82,7 @@ CScriptString& CScriptString::operator+=(const char* other)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer += other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 	return *this;
 }
 
@@ -90,35 +90,35 @@ void CScriptString::assign(const char* buf, size_t count)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer.assign(buf,count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 }
 
 void CScriptString::assign(const char* buf)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer.assign(buf);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 }
 
 void CScriptString::append(const char* buf, size_t count)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer.append(buf,count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 }
 
 void CScriptString::reserve(size_t count)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer.reserve(count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 }
 
 void CScriptString::resize(size_t count)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer.resize(count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 }
 
 //--------------------
@@ -157,7 +157,7 @@ CScriptString &CScriptString::operator=(const CScriptString &other)
 	// Copy only the buffer, not the reference counter
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer = other.buffer;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 
 	// Return a reference to this object
 	return *this;
@@ -179,7 +179,7 @@ CScriptString &CScriptString::operator+=(const CScriptString &other)
 {
 	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
 	buffer += other.buffer;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,buffer.capacity());
+	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
 	return *this;
 }
 

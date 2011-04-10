@@ -1049,7 +1049,7 @@ void ProtoMap::SaveTextFormat(FileManager& fm)
 	// Tiles
 	fm.SetStr("[%s]\n",APP_TILES);
 	char tile_str[256];
-	for(uint i=0,j=Tiles.size();i<j;i++)
+	for(uint i=0,j=(uint)Tiles.size();i<j;i++)
 	{
 		Tile& tile=Tiles[i];
 		const char* name=Str::GetName(tile.NameHash);
@@ -1830,7 +1830,7 @@ bool ProtoMap::Refresh()
 
 #ifdef FONLINE_MAPPER
 	// Post process objects
-	for(uint i=0,j=MObjects.size();i<j;i++)
+	for(uint i=0,j=(uint)MObjects.size();i<j;i++)
 	{
 		MapObject* mobj=MObjects[i];
 
@@ -1851,7 +1851,7 @@ bool ProtoMap::Refresh()
 	// Create cached fields
 	TilesField.resize(Header.MaxHexX*Header.MaxHexY);
 	RoofsField.resize(Header.MaxHexX*Header.MaxHexY);
-	for(uint i=0,j=Tiles.size();i<j;i++)
+	for(uint i=0,j=(uint)Tiles.size();i<j;i++)
 	{
 		if(!Tiles[i].IsRoof)
 		{
@@ -1909,20 +1909,20 @@ bool ProtoMap::Save(const char* fname, int path_type)
 		for(ushort hx=0;hx<Header.MaxHexX;hx++)
 		{
 			TileVec& tiles=TilesField[hy*Header.MaxHexX+hx];
-			for(uint i=0,j=tiles.size();i<j;i++) Tiles.push_back(tiles[i]);
+			for(uint i=0,j=(uint)tiles.size();i<j;i++) Tiles.push_back(tiles[i]);
 			TileVec& roofs=RoofsField[hy*Header.MaxHexX+hx];
-			for(uint i=0,j=roofs.size();i<j;i++) Tiles.push_back(roofs[i]);
+			for(uint i=0,j=(uint)roofs.size();i<j;i++) Tiles.push_back(roofs[i]);
 		}
 	}
 
 	// Delete non used UIDs
-	for(uint i=0,j=MObjects.size();i<j;i++)
+	for(uint i=0,j=(uint)MObjects.size();i<j;i++)
 	{
 		MapObject* mobj=MObjects[i];
 		if(!mobj->UID) continue;
 
 		bool founded=false;
-		for(uint k=0,l=MObjects.size();k<l;k++)
+		for(uint k=0,l=(uint)MObjects.size();k<l;k++)
 		{
 			MapObject* mobj_=MObjects[k];
 			if(mobj_->ContainerUID==mobj->UID || mobj_->ParentUID==mobj->UID)

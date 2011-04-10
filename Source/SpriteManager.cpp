@@ -87,7 +87,7 @@ void Sprite::SetLight(uchar* light, int maxhx, int maxhy)
 }
 
 SpriteVec Sprites::spritesPool;
-void Sprites::GrowPool(size_t size)
+void Sprites::GrowPool(uint size)
 {
 	spritesPool.reserve(spritesPool.size()+size);
 	for(uint i=0;i<size;i++) spritesPool.push_back(new Sprite());
@@ -104,7 +104,7 @@ void Sprites::ClearPool()
 	spritesPool.clear();
 }
 
-Sprite& Sprites::PutSprite(size_t index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback)
+Sprite& Sprites::PutSprite(uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback)
 {
 	if(index>=spritesTreeSize)
 	{
@@ -220,7 +220,7 @@ Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, in
 	}
 
 	// Find place
-	size_t index=0;
+	uint index=0;
 	uint pos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
 		hy*MAXHEX_MAX+hx+MAXHEX_MAX*MAXHEX_MAX*(draw_order-DRAW_ORDER_FLAT):
 		MAXHEX_MAX*MAXHEX_MAX*DRAW_ORDER+hy*DRAW_ORDER*MAXHEX_MAX+hx*DRAW_ORDER+(draw_order-DRAW_ORDER));
@@ -246,13 +246,13 @@ Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, in
 	return PutSprite(index,draw_order,hx,hy,cut,x,y,id,id_ptr,ox,oy,alpha,callback);
 }
 
-void Sprites::Resize(size_t size)
+void Sprites::Resize(uint size)
 {
-	size_t tree_size=spritesTree.size();
-	size_t pool_size=spritesPool.size();
+	uint tree_size=(uint)spritesTree.size();
+	uint pool_size=(uint)spritesPool.size();
 	if(size>tree_size) // Get from pool
 	{
-		size_t diff=size-tree_size;
+		uint diff=size-tree_size;
 		if(diff>pool_size) GrowPool(diff>SPRITES_POOL_GROW_SIZE?diff:SPRITES_POOL_GROW_SIZE);
 		spritesTree.reserve(tree_size+diff);
 		//spritesTree.insert(spritesTree.end(),spritesPool.rbegin(),spritesPool.rbegin()+diff);
@@ -265,7 +265,7 @@ void Sprites::Resize(size_t size)
 	}
 	else if(size<tree_size) // Put in pool
 	{
-		size_t diff=tree_size-size;
+		uint diff=tree_size-size;
 		if(diff>tree_size-spritesTreeSize) spritesTreeSize-=diff-(tree_size-spritesTreeSize);
 
 		// Unvalidate putted sprites
@@ -958,9 +958,9 @@ uint SpriteManager::FillSurfaceFromMemory(SpriteInfo* si, void* data, uint size)
 	si->SprRect.B=float(y+h)/float(surf->Height);
 
 	// Store sprite
-	size_t index=1;
-	for(uint j=sprData.size();index<j;index++) if(!sprData[index]) break;
-	if(index<sprData.size()) sprData[index]=si;
+	uint index=1;
+	for(uint j=(uint)sprData.size();index<j;index++) if(!sprData[index]) break;
+	if(index<(uint)sprData.size()) sprData[index]=si;
 	else sprData.push_back(si);
 	return index;
 }
@@ -1349,7 +1349,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm(const char* fname, int path_type, i
 	if(anims.empty())
 	{
 label_Fail:
-		for(uint i=0,j=anims.size();i<j;i++) delete anims[i];
+		for(uint i=0,j=(uint)anims.size();i<j;i++) delete anims[i];
 		return NULL;
 	}
 
@@ -1372,7 +1372,7 @@ label_Fail:
 	if(!anim) goto label_Fail;
 
 	uint frm=0;
-	for(uint i=0,j=anims.size();i<j;i++)
+	for(uint i=0,j=(uint)anims.size();i<j;i++)
 	{
 		AnyFrames* part=anims[i];
 
@@ -1482,7 +1482,7 @@ AnyFrames* SpriteManager::LoadAnimationArt(const char* fname, int path_type, int
 	if(delim)
 	{
 		const char* ext=FileManager::GetExtension(file_name)-1;
-		size_t len=(size_t)ext-(size_t)delim;
+		uint len=(uint)((size_t)ext-(size_t)delim);
 
 		for(uint i=1;i<len;i++)
 		{
@@ -1731,7 +1731,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	{
 		// Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
 		const char* ext=FileManager::GetExtension(file_name)-1;
-		size_t len=(size_t)ext-(size_t)delim;
+		uint len=(uint)((size_t)ext-(size_t)delim);
 		if(len>1)
 		{
 			memcpy(seq_name,delim+1,len-1);
@@ -1768,7 +1768,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 				}
 
 				// Erase from name and find again
-				Str::EraseInterval(rgb_beg,rgb_end-rgb_beg+1);
+				Str::EraseInterval(rgb_beg,(uint)(rgb_end-rgb_beg+1));
 				rgb_beg=strstr(seq_name,"[");
 			}
 		}
@@ -1789,7 +1789,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	for(int i=0;i<=SPR_CACHED_COUNT;i++)
 	{
 		if(!cached[i]) break;
-		if(!_stricmp(file_name,cached[i]->fileName) && path_type==cached[i]->pathType)
+		if(Str::CompareCase(file_name,cached[i]->fileName) && path_type==cached[i]->pathType)
 		{
 			index=i;
 			break;
@@ -1865,50 +1865,47 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	frames.reserve(1000);
 
 	// Find sequence
-	if(seq_name[0])
+	bool seq_founded=false;
+	char name[MAX_FOTEXT];
+	uint seq_cnt=fm.GetLEUInt();
+	for(uint seq=0;seq<seq_cnt;seq++)
 	{
-		bool seq_founded=false;
-		char name[MAX_FOTEXT];
-		uint seq_cnt=fm.GetLEUInt();
-		for(uint seq=0;seq<seq_cnt;seq++)
+		// Find by name
+		uint item_cnt=fm.GetLEUInt();
+		fm.GoForward(sizeof(short)*item_cnt);
+		fm.GoForward(sizeof(uint)*item_cnt); // uint  unknown3[item_cnt]
+
+		uint len=fm.GetLEUInt();
+		fm.CopyMem(name,len);
+		name[len]=0;
+
+		ushort index=fm.GetLEUShort();
+
+		if(!seq_name[0] || Str::CompareCase(name,seq_name))
 		{
-			// Find by name
-			uint item_cnt=fm.GetLEUInt();
-			fm.GoForward(sizeof(short)*item_cnt);
-			fm.GoForward(sizeof(uint)*item_cnt); // uint  unknown3[item_cnt]
+			anim_index=index;
 
-			uint len=fm.GetLEUInt();
-			fm.CopyMem(name,len);
-			name[len]=0;
+			// Read frame numbers
+			fm.GoBack(sizeof(ushort)+len+sizeof(uint)+
+				sizeof(uint)*item_cnt+sizeof(short)*item_cnt);
 
-			ushort index=fm.GetLEUShort();
-
-			if(!_stricmp(name,seq_name))
+			for(uint i=0;i<item_cnt;i++)
 			{
-				anim_index=index;
-
-				// Read frame numbers
-				fm.GoBack(sizeof(ushort)+len+sizeof(uint)+
-					sizeof(uint)*item_cnt+sizeof(short)*item_cnt);
-
-				for(uint i=0;i<item_cnt;i++)
+				short val=fm.GetLEUShort();
+				if(val>=0) frames.push_back(val);
+				else if(val==-43)
 				{
-					short val=fm.GetLEUShort();
-					if(val>=0) frames.push_back(val);
-					else if(val==-43)
-					{
-						fm.GoForward(sizeof(short)*3);
-						i+=3;
-					}
+					fm.GoForward(sizeof(short)*3);
+					i+=3;
 				}
-
-				// Animation founded, go forward
-				seq_founded=true;
-				break;
 			}
+
+			// Animation founded, go forward
+			seq_founded=true;
+			break;
 		}
-		if(!seq_founded) return false;
 	}
+	if(!seq_founded) return false;
 
 	// Find animation
 	fm.SetCurPos(0);
@@ -1997,10 +1994,10 @@ AnyFrames* SpriteManager::LoadAnimationSpr(const char* fname, int path_type, int
 	// Create animation
 	if(frames.empty()) frames.push_back(0);
 
-	AnyFrames* anim=CreateAnimation(frames.size(),1000/10*frames.size());
+	AnyFrames* anim=CreateAnimation((uint)frames.size(),1000/10*(uint)frames.size());
 	if(!anim) return NULL;
 
-	for(uint f=0,ff=frames.size();f<ff;f++)
+	for(uint f=0,ff=(uint)frames.size();f<ff;f++)
 	{
 		uint frm=frames[f];
 		anim->NextX[f]=0;
@@ -2485,7 +2482,7 @@ AnyFrames* SpriteManager::LoadAnimationBam(const char* fname, int path_type)
 	{
 		// Format: fileName$5-6.spr
 		const char* ext=FileManager::GetExtension(file_name)-1;
-		size_t len=(size_t)ext-(size_t)delim;
+		uint len=(uint)((size_t)ext-(size_t)delim);
 		if(len>1)
 		{
 			char params[MAX_FOPATH];
@@ -2733,8 +2730,8 @@ Animation3d* SpriteManager::LoadPure3dAnimation(const char* fname, int path_type
 
 	SpriteInfo* si=new(nothrow) SpriteInfo();
 	uint index=1;
-	for(uint j=sprData.size();index<j;index++) if(!sprData[index]) break;
-	if(index<sprData.size()) sprData[index]=si;
+	for(uint j=(uint)sprData.size();index<j;index++) if(!sprData[index]) break;
+	if(index<(uint)sprData.size()) sprData[index]=si;
 	else sprData.push_back(si);
 
 	// Cross links
@@ -3688,7 +3685,7 @@ bool SpriteManager::DrawPoints(PointVec& points, D3DPRIMITIVETYPE prim, float* z
 	// Copy data
 	void* vertices;
 	D3D_HR(vbPoints->Lock(0,count*sizeof(MYVERTEX_PRIMITIVE),(void**)&vertices,D3DLOCK_DISCARD));
-	for(uint i=0,j=points.size();i<j;i++)
+	for(uint i=0,j=(uint)points.size();i<j;i++)
 	{
 		PrepPoint& point=points[i];
 		MYVERTEX_PRIMITIVE* vertex=(MYVERTEX_PRIMITIVE*)vertices+i;
@@ -5221,7 +5218,7 @@ int SpriteManager::SplitLines(INTRECT& r, const char* cstr, int num_font, StrVec
 	fi.StrLines=&str_vec;
 	FormatText(fi,FORMAT_TYPE_SPLIT);
 	if(fi.IsError) return 0;
-	return str_vec.size();
+	return (int)str_vec.size();
 }
 
 /************************************************************************/

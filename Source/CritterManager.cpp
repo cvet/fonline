@@ -99,7 +99,7 @@ bool CritterManager::LoadProtos()
 	IniParser protos_txt;
 	int loaded_count=0;
 	int errors=0;
-	for(int i=0,k=fnames.size();i<k;i++)
+	for(uint i=0,k=(uint)fnames.size();i<k;i++)
 	{
 		const char* fname=fnames[i].c_str();
 
@@ -191,7 +191,7 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 		if(cr->IsNpc()) crits.push_back(cr);
 	}
 
-	uint count=crits.size(); // npcCount
+	uint count=(uint)crits.size(); // npcCount
 	save_func(&count,sizeof(count));
 	for(CrVecIt it=crits.begin(),end=crits.end();it!=end;++it)
 	{
@@ -199,7 +199,7 @@ void CritterManager::SaveCrittersFile(void(*save_func)(void*,size_t))
 		cr->Data.IsDataExt=(cr->DataExt?true:false);
 		save_func(&cr->Data,sizeof(cr->Data));
 		if(cr->Data.IsDataExt) save_func(cr->DataExt,sizeof(CritDataExt));
-		uint te_count=cr->CrTimeEvents.size();
+		uint te_count=(uint)cr->CrTimeEvents.size();
 		save_func(&te_count,sizeof(te_count));
 		if(te_count) save_func(&cr->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent));
 	}
@@ -811,7 +811,7 @@ uint CritterManager::CrittersInGame()
 {
 	SCOPE_LOCK(crLocker);
 
-	uint count=allCritters.size();
+	uint count=(uint)allCritters.size();
 	return count;
 }
 

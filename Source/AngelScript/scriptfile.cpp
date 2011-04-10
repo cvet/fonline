@@ -423,7 +423,7 @@ unsigned int CScriptFile::ReadData(unsigned int count, CScriptArray& data)
 
 	unsigned int size=data.GetSize();
 	data.Resize(size+count);
-	unsigned int r=fread(data.At(size),1,count,file);
+	unsigned int r=(unsigned int)fread(data.At(size),1,count,file);
 	if(r<count) data.Resize(size+r);
 	return r;
 }

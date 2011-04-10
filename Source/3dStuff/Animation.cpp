@@ -909,7 +909,7 @@ bool Animation3d::FrameMove(double elapsed, int x, int y, float scale, bool soft
 	// Update linked matrices
 	if(parentFrame && linkFrames.size())
 	{
-		for(uint i=0,j=linkFrames.size()/2;i<j;i++)
+		for(uint i=0,j=(uint)linkFrames.size()/2;i<j;i++)
 			//UpdateFrameMatrices(linkFrames[i*2+1],&linkMatricles[i]);
 			//linkFrames[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
 			linkFrames[i*2+1]->exCombinedTransformationMatrix=linkFrames[i*2]->exCombinedTransformationMatrix;
@@ -1241,7 +1241,7 @@ Animation3d* Animation3d::GetAnimation(const char* name, bool is_child)
 
 	// Set mesh options
 	anim3d->meshOpt.resize(entity->xFile->allMeshes.size());
-	for(uint i=0,j=entity->xFile->allMeshes.size();i<j;i++)
+	for(uint i=0,j=(uint)entity->xFile->allMeshes.size();i<j;i++)
 	{
 		D3DXMESHCONTAINER_EXTENDED* mesh=entity->xFile->allMeshes[i];
 		MeshOptions& mopt=anim3d->meshOpt[i];
@@ -1433,7 +1433,7 @@ bool Animation3dEntity::Load(const char* name)
 				Str::EraseChars(line,'\n');
 				Str::ParseLine(line,' ',templates,Str::ParseLineDummy);
 				if(templates.empty()) continue;
-				for(uint i=1,j=templates.size();i<j-1;i+=2) templates[i]=string("%").append(templates[i]).append("%");
+				for(uint i=1,j=(uint)templates.size();i<j-1;i+=2) templates[i]=string("%").append(templates[i]).append("%");
 
 				// Include file path
 				char fname[MAX_FOPATH];
@@ -1467,7 +1467,7 @@ bool Animation3dEntity::Load(const char* name)
 						char* replace=strstr(pbuf,from);
 						while(replace)
 						{
-							Str::EraseInterval(replace,strlen(from));
+							Str::EraseInterval(replace,Str::Length(from));
 							Str::Insert(replace,to);
 							replace=strstr(pbuf,from);
 						}
@@ -1600,7 +1600,7 @@ bool Animation3dEntity::Load(const char* name)
 				(*istr) >> buf;
 				StrVec layers;
 				Str::ParseLine(buf,'-',layers,Str::ParseLineDummy);
-				for(uint m=0,n=layers.size();m<n;m++)
+				for(uint m=0,n=(uint)layers.size();m<n;m++)
 				{
 					int layer=ConstantsManager::GetDefineValue(layers[m].c_str());
 					if(layer>=0 && layer<LAYERS3D_COUNT)
@@ -1619,7 +1619,7 @@ bool Animation3dEntity::Load(const char* name)
 				(*istr) >> buf;
 				StrVec subsets;
 				Str::ParseLine(buf,'-',subsets,Str::ParseLineDummy);
-				for(uint m=0,n=subsets.size();m<n;m++)
+				for(uint m=0,n=(uint)subsets.size();m<n;m++)
 				{
 					int ss=ConstantsManager::GetDefineValue(subsets[m].c_str());
 					if(ss>=0)
@@ -1704,7 +1704,7 @@ bool Animation3dEntity::Load(const char* name)
 				{
 					type=D3DXEDT_STRING;
 					data=Str::Duplicate(def_value);
-					data_len=strlen(data);
+					data_len=Str::Length(data);
 				}
 				else if(!_stricmp(buf,"Floats"))
 				{
@@ -1712,9 +1712,9 @@ bool Animation3dEntity::Load(const char* name)
 					StrVec floats;
 					Str::ParseLine(def_value,'-',floats,Str::ParseLineDummy);
 					if(floats.empty()) continue;
-					data_len=floats.size()*sizeof(float);
+					data_len=(uint)floats.size()*sizeof(float);
 					data=new(nothrow) char[data_len];
-					for(uint i=0,j=floats.size();i<j;i++) ((float*)data)[i]=(float)atof(floats[i].c_str());
+					for(uint i=0,j=(uint)floats.size();i<j;i++) ((float*)data)[i]=(float)atof(floats[i].c_str());
 				}
 				else if(!_stricmp(buf,"Dword"))
 				{
@@ -1822,7 +1822,7 @@ bool Animation3dEntity::Load(const char* name)
 		// Parse animations
 		AnimSetVec animations;
 		uint max_matrices=0;
-		for(uint i=0,j=anim_indexes.size();i<j;i+=3)
+		for(uint i=0,j=(uint)anim_indexes.size();i<j;i+=3)
 		{
 			char* anim_fname=(char*)anim_indexes[i+1];
 			char* anim_name=(char*)anim_indexes[i+2];
@@ -1843,10 +1843,10 @@ bool Animation3dEntity::Load(const char* name)
 
 		if(animations.size())
 		{
-			if(SUCCEEDED(D3DXCreateAnimationController(max_matrices,animations.size(),2,10,&animController)))
+			if(SUCCEEDED(D3DXCreateAnimationController(max_matrices,(uint)animations.size(),2,10,&animController)))
 			{
-				numAnimationSets=animations.size();
-				for(uint i=0,j=animations.size();i<j;i++)
+				numAnimationSets=(uint)animations.size();
+				for(uint i=0,j=(uint)animations.size();i<j;i++)
 					animController->RegisterAnimationSet(animations[i]);
 			}
 			else
@@ -1855,9 +1855,9 @@ bool Animation3dEntity::Load(const char* name)
 			}
 		}
 
-		for(uint i=0,j=anim_indexes.size();i<j;i+=3)
+		for(uint i=0,j=(uint)anim_indexes.size();i<j;i+=3)
 		{
-			int anim_index=anim_indexes[i+0];
+			int anim_index=(int)anim_indexes[i+0];
 			char* anim_fname=(char*)anim_indexes[i+1];
 			char* anim_name=(char*)anim_indexes[i+2];
 
@@ -1907,7 +1907,7 @@ void Animation3dEntity::ProcessTemplateDefines(char* str, StrVec& def)
 		char* token=strstr(str,from);
 		while(token)
 		{
-			Str::EraseInterval(token,strlen(from));
+			Str::EraseInterval(token,Str::Length(from));
 			Str::Insert(token,to);
 			token=strstr(str,from);
 		}

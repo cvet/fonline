@@ -171,9 +171,9 @@ struct ScoreType
 	#include <audiodefs.h>
 	#include "Dx9/dsound.h"
 	#include "Dx8/DShow.h"
-	#pragma comment(lib,"9_dsound.lib")
-	#pragma comment(lib,"8_strmiids.lib")
-	#pragma comment(lib,"8_quartz.lib")
+	#pragma comment(lib,"dsound.lib")
+	#pragma comment(lib,"strmiids.lib")
+	#pragma comment(lib,"quartz.lib")
 #endif
 
 #define DIRECTINPUT_VERSION 0x0800
@@ -182,15 +182,15 @@ struct ScoreType
 #include "Dx9/d3dx9.h"
 
 #ifndef D3D_DEBUG_INFO
-	#pragma comment(lib,"9_d3dx9.lib")
+	#pragma comment(lib,"d3dx9.lib")
 #else
-	#pragma comment(lib,"9_d3dx9d.lib")
+	#pragma comment(lib,"d3dx9d.lib")
 #endif
-#pragma comment(lib,"9_d3d9.lib")
-#pragma comment(lib,"9_dinput8.lib")
-#pragma comment(lib,"9_dxguid.lib")
-#pragma comment(lib,"9_dxerr.lib")
-#pragma comment(lib,"9_d3dxof.lib")
+#pragma comment(lib,"d3d9.lib")
+#pragma comment(lib,"dinput8.lib")
+#pragma comment(lib,"dxguid.lib")
+#pragma comment(lib,"dxerr.lib")
+#pragma comment(lib,"d3dxof.lib")
 typedef LPDIRECT3D9 LPDIRECT3D;
 typedef LPDIRECT3DDEVICE9 LPDIRECT3DDEVICE;
 typedef LPDIRECT3DTEXTURE9 LPDIRECT3DTEXTURE;

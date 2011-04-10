@@ -42,10 +42,10 @@ namespace Preprocessor
 	class OutStream
 	{
 	protected:
-		virtual void Write(const char*,size_t size) = 0;
+		virtual void Write(const char*,size_t size){}
 
 	public:
-		virtual ~OutStream() {}
+		virtual ~OutStream(){}
 
 		template<typename T>
 		OutStream& operator<<(const T& in)
@@ -70,20 +70,20 @@ namespace Preprocessor
 		}
 	};
 
-	class VectorOutStream: public OutStream
+	class VectorOutStream : public OutStream
 	{
-	private:
+	protected:
 		std::vector<char> streamData;
 
-	protected:
-		void Write(const char* d,unsigned int size)
+		virtual void Write(const char* d,unsigned int size)
 		{
 			streamData.insert(streamData.end(),d,d+size);
 		}
 
 	public:
+		virtual ~VectorOutStream(){}
 		const char* GetData() { return &streamData[0]; }
-		size_t GetSize() { return streamData.size(); }
+		unsigned int GetSize() { return (unsigned int)streamData.size(); }
 
 		void Format()
 		{
@@ -124,10 +124,13 @@ namespace Preprocessor
 		void PushNull(){streamData.push_back('\0');}
 	};
 
-	class NullOutStream: public OutStream
+	class NullOutStream : public OutStream
 	{
 	protected:
-		void Write(const char*,unsigned int) {}
+		virtual void Write(const char*,unsigned int) {}
+
+	public:
+		virtual ~NullOutStream(){}
 	};
 };
 

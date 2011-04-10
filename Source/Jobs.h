@@ -39,11 +39,11 @@ public:
 
 	static void PushBack(int type);
 	static void PushBack(int type, void* data);
-	static size_t PushBack(const Job& job);
+	static uint PushBack(const Job& job);
 	static void PushFront(const Job& job);
 	static Job PopFront();
 	static void Erase(int type);
-	static size_t Count();
+	static uint Count();
 
 	// Deferred releasing
 	static void DeferredRelease(Critter* cr);

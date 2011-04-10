@@ -127,7 +127,7 @@ void FOServer::ProcessCritter(Critter* cr)
 
 void FOServer::SaveHoloInfoFile()
 {
-	uint count=HolodiskInfo.size();
+	uint count=(uint)HolodiskInfo.size();
 	AddWorldSaveData(&count,sizeof(count));
 	for(HoloInfoMapIt it=HolodiskInfo.begin(),end=HolodiskInfo.end();it!=end;++it)
 	{
@@ -135,10 +135,10 @@ void FOServer::SaveHoloInfoFile()
 		HoloInfo* hi=(*it).second;
 		AddWorldSaveData(&id,sizeof(id));
 		AddWorldSaveData(&hi->CanRewrite,sizeof(hi->CanRewrite));
-		ushort title_len=hi->Title.length();
+		ushort title_len=(ushort)hi->Title.length();
 		AddWorldSaveData(&title_len,sizeof(title_len));
 		if(title_len) AddWorldSaveData((void*)hi->Title.c_str(),title_len);
-		ushort text_len=hi->Text.length();
+		ushort text_len=(ushort)hi->Text.length();
 		AddWorldSaveData(&text_len,sizeof(text_len));
 		if(text_len) AddWorldSaveData((void*)hi->Text.c_str(),text_len);
 	}
@@ -253,7 +253,7 @@ void FOServer::Send_PlayerHoloInfo(Critter* cr, uint holo_num, bool send_text)
 
 		HolodiskLocker.Unlock();
 
-		cl->Send_UserHoloStr(send_text?STR_HOLO_INFO_DESC_(holo_num):STR_HOLO_INFO_NAME_(holo_num),str.c_str(),str.length());
+		cl->Send_UserHoloStr(send_text?STR_HOLO_INFO_DESC_(holo_num):STR_HOLO_INFO_NAME_(holo_num),str.c_str(),(ushort)str.length());
 	}
 	else
 	{
@@ -2527,11 +2527,11 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, uchar send_info)
 	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(map_pid)+sizeof(maxhx)+sizeof(maxhy)+sizeof(send_info);
 
 	if(FLAG(send_info,SENDMAP_TILES))
-		msg_len+=sizeof(uint)+pmap->Tiles.size()*sizeof(ProtoMap::Tile);
+		msg_len+=sizeof(uint)+(uint)pmap->Tiles.size()*sizeof(ProtoMap::Tile);
 	if(FLAG(send_info,SENDMAP_WALLS))
-		msg_len+=sizeof(uint)+pmap->WallsToSend.size()*sizeof(SceneryCl);
+		msg_len+=sizeof(uint)+(uint)pmap->WallsToSend.size()*sizeof(SceneryCl);
 	if(FLAG(send_info,SENDMAP_SCENERY))
-		msg_len+=sizeof(uint)+pmap->SceneriesToSend.size()*sizeof(SceneryCl);
+		msg_len+=sizeof(uint)+(uint)pmap->SceneriesToSend.size()*sizeof(SceneryCl);
 
 	// Header
 	BOUT_BEGIN(cl);
@@ -2547,7 +2547,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, uchar send_info)
 	{
 		cl->Bout << (uint)pmap->Tiles.size();
 		if(pmap->Tiles.size())
-			cl->Bout.Push((char*)&pmap->Tiles[0],pmap->Tiles.size()*sizeof(ProtoMap::Tile));
+			cl->Bout.Push((char*)&pmap->Tiles[0],(uint)pmap->Tiles.size()*sizeof(ProtoMap::Tile));
 	}
 
 	// Walls
@@ -2555,7 +2555,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, uchar send_info)
 	{
 		cl->Bout << (uint)pmap->WallsToSend.size();
 		if(pmap->WallsToSend.size())
-			cl->Bout.Push((char*)&pmap->WallsToSend[0],pmap->WallsToSend.size()*sizeof(SceneryCl));
+			cl->Bout.Push((char*)&pmap->WallsToSend[0],(uint)pmap->WallsToSend.size()*sizeof(SceneryCl));
 	}
 
 	// Scenery
@@ -2563,7 +2563,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, uchar send_info)
 	{
 		cl->Bout << (uint)pmap->SceneriesToSend.size();
 		if(pmap->SceneriesToSend.size())
-			cl->Bout.Push((char*)&pmap->SceneriesToSend[0],pmap->SceneriesToSend.size()*sizeof(SceneryCl));
+			cl->Bout.Push((char*)&pmap->SceneriesToSend[0],(uint)pmap->SceneriesToSend.size()*sizeof(SceneryCl));
 	}
 	BOUT_END(cl);
 }
@@ -3367,7 +3367,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 
 				// Check weight, volume
 				uint weight=0,volume=0;
-				for(int i=0,j=items.size();i<j;++i)
+				for(uint i=0,j=(uint)items.size();i<j;++i)
 				{
 					weight+=items[i]->GetWeight();
 					volume+=items[i]->GetVolume();
@@ -3399,7 +3399,7 @@ void FOServer::Process_ContainerItem(Client* cl)
 				}
 
 				// Transfer
-				for(uint i=0,j=items.size();i<j;++i)
+				for(uint i=0,j=(uint)items.size();i<j;++i)
 				{
 					if(!items[i]->EventSkill(cl,SKILL_TAKE_CONT))
 					{
@@ -3696,14 +3696,14 @@ void FOServer::Process_CraftAsk(Client* cl)
 	CHECK_IN_BUFF_ERROR(cl);
 
 	uint msg=NETMSG_CRAFT_ASK;
-	count=numbers.size();
+	count=(ushort)numbers.size();
 	msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(count)+sizeof(uint)*count;
 
 	BOUT_BEGIN(cl);
 	cl->Bout << msg;
 	cl->Bout << msg_len;
 	cl->Bout << count;
-	for(int i=0,j=numbers.size();i<j;i++) cl->Bout << numbers[i];
+	for(uint i=0,j=(uint)numbers.size();i<j;i++) cl->Bout << numbers[i];
 	BOUT_END(cl);
 }
 
@@ -4403,14 +4403,14 @@ void FOServer::Send_ProtoItemData(Client* cl, uchar type, ProtoItemVec& data, ui
 	if(cl->IsSendDisabled() || cl->IsOffline()) return;
 
 	uint msg=NETMSG_ITEM_PROTOS;
-	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(type)+sizeof(data_hash)+data.size()*sizeof(ProtoItem);
+	uint msg_len=sizeof(msg)+sizeof(msg_len)+sizeof(type)+sizeof(data_hash)+(uint)data.size()*sizeof(ProtoItem);
 
 	BOUT_BEGIN(cl);
 	cl->Bout << msg;
 	cl->Bout << msg_len;
 	cl->Bout << type;
 	cl->Bout << data_hash;
-	cl->Bout.Push((char*)&data[0],data.size()*sizeof(ProtoItem));
+	cl->Bout.Push((char*)&data[0],(uint)data.size()*sizeof(ProtoItem));
 	BOUT_END(cl);
 }
 

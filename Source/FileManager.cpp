@@ -811,7 +811,7 @@ int FileManager::ParseLinesInt(const char* fname, int path_type, IntVec& lines)
 	char cur_line[129];
 	while(GetLine(cur_line,128)) lines.push_back(atoi(cur_line));
 	UnloadFile();
-	return lines.size();
+	return (int)lines.size();
 }
 
 void FileManager::GetTime(uint64* create, uint64* access, uint64* write)

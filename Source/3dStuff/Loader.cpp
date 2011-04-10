@@ -27,7 +27,7 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 		if(!_stricmp(frame->exFileName,fname)) return frame;
 	}
 
-	for(uint i=0,j=processedFiles.size();i<j;i++)
+	for(uint i=0,j=(uint)processedFiles.size();i<j;i++)
 		if(!_stricmp(processedFiles[i],fname)) return NULL;
 	processedFiles.push_back(Str::Duplicate(fname));
 
@@ -211,7 +211,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 			{
 				aiBone* bone=mesh->mBones[i];
 				bool bone_aviable=false;
-				for(uint b=0,bb=all_bones.size();b<bb;b++)
+				for(uint b=0,bb=(uint)all_bones.size();b<bb;b++)
 				{
 					if(!strcmp(all_bones[b]->mName.data,bone->mName.data))
 					{
@@ -345,12 +345,12 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 		// Skin info
 		if(all_bones.size())
 		{
-			D3D_HR(D3DXCreateSkinInfo(vertices_count,declaration,all_bones.size(),&skin_info));
+			D3D_HR(D3DXCreateSkinInfo(vertices_count,declaration,(uint)all_bones.size(),&skin_info));
 
 			vector<vector<DWORD>> vertices(all_bones.size());
 			vector<FloatVec> weights(all_bones.size());
 
-			for(uint b=0,bb=all_bones.size();b<bb;b++)
+			for(uint b=0,bb=(uint)all_bones.size();b<bb;b++)
 			{
 				aiBone* bone=all_bones[b];
 
@@ -374,7 +374,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 
 					// Get bone id
 					uint bone_id=0;
-					for(uint b=0,bb=all_bones.size();b<bb;b++)
+					for(uint b=0,bb=(uint)all_bones.size();b<bb;b++)
 					{
 						if(!strcmp(all_bones[b]->mName.data,bone->mName.data))
 						{
@@ -399,10 +399,10 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 			}
 
 			// Set influences
-			for(uint b=0,bb=all_bones.size();b<bb;b++)
+			for(uint b=0,bb=(uint)all_bones.size();b<bb;b++)
 			{
 				if(vertices[b].size())
-					skin_info->SetBoneInfluence(b,vertices[b].size(),&vertices[b][0],&weights[b][0]);
+					skin_info->SetBoneInfluence(b,(uint)vertices[b].size(),&vertices[b][0],&weights[b][0]);
 			}
 		}
 
@@ -412,7 +412,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 		
 		// Create container
 		D3DXMESHCONTAINER* mesh_container;
-		D3D_HR(memAllocator.CreateMeshContainer(node->mName.data,&dxmesh,&materials[0],NULL,materials.size(),NULL,skin_info,&mesh_container));
+		D3D_HR(memAllocator.CreateMeshContainer(node->mName.data,&dxmesh,&materials[0],NULL,(uint)materials.size(),NULL,skin_info,&mesh_container));
 		dxmesh.pMesh->Release();
 		if(skin_info) skin_info->Release();
 
@@ -436,14 +436,14 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 AnimSet* Loader3d::LoadAnimation(IDirect3DDevice9* device, const char* anim_fname, const char* anim_name)
 {
 	// Find in already loaded
-	for(uint i=0,j=loadedAnimations.size();i<j;i++)
+	for(uint i=0,j=(uint)loadedAnimations.size();i<j;i++)
 	{
 		if(!_stricmp(loadedAnimationsFNames[i],anim_fname) &&
 			!_stricmp(loadedAnimations[i]->GetName(),anim_name)) return loadedAnimations[i];
 	}
 
 	// Check maybe file already processed and nothing founded
-	for(uint i=0,j=processedFiles.size();i<j;i++)
+	for(uint i=0,j=(uint)processedFiles.size();i<j;i++)
 		if(!_stricmp(processedFiles[i],anim_fname)) return NULL;
 
 	// File not processed, load and recheck animations

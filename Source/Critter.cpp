@@ -2581,7 +2581,7 @@ void Critter::ProcessChangedParams()
 		}
 
 		CallChange.clear();
-		for(uint i=0,j=ParamsChanged.size();i<j;i+=2)
+		for(uint i=0,j=(uint)ParamsChanged.size();i<j;i+=2)
 		{
 			int index=ParamsChanged[i];
 			int old_val=ParamsChanged[i+1];
@@ -2605,7 +2605,7 @@ void Critter::ProcessChangedParams()
 
 		if(CallChange.size())
 		{
-			for(uint i=0,j=CallChange.size();i<j;i+=3)
+			for(uint i=0,j=(uint)CallChange.size();i<j;i+=3)
 			{
 				uint index=CallChange[i+1];
 				ParamLocked=index;
@@ -3398,7 +3398,7 @@ void Client::Send_ContainerInfo(Item* item_cont, uchar transfer_type, bool open_
 	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(uchar)+sizeof(uint)+sizeof(uint)+sizeof(ushort)+sizeof(uint);
 	ItemPtrVec items;
 	item_cont->ContGetAllItems(items,true,true);
-	if(items.size()) msg_len+=items.size()*(sizeof(uint)+sizeof(ushort)+sizeof(Item::ItemData));
+	if(items.size()) msg_len+=(uint)items.size()*(sizeof(uint)+sizeof(ushort)+sizeof(Item::ItemData));
 	if(open_screen) SETFLAG(transfer_type,0x80);
 
 	if(items.size()>=100)
@@ -3450,7 +3450,7 @@ void Client::Send_ContainerInfo(Critter* cr_cont, uchar transfer_type, bool open
 	}
 
 	if(open_screen) SETFLAG(transfer_type,0x80);
-	msg_len+=items.size()*(sizeof(uint)+sizeof(ushort)+sizeof(Item::ItemData));
+	msg_len+=(uint)items.size()*(sizeof(uint)+sizeof(ushort)+sizeof(Item::ItemData));
 
 	if(items.size()>=1000) WriteLogF(_FUNC_," - Sending too much items<%u>, from critter<%s>, to critter<%s>.\n",items.size(),cr_cont->GetInfo(),GetInfo());
 
@@ -3687,14 +3687,14 @@ void Client::Send_Talk()
 	else
 	{
 		uchar all_answers=(uchar)Talk.CurDialog.Answers.size();
-		msg_len+=sizeof(uint)+sizeof(uint)*all_answers+sizeof(uint)+sizeof(ushort)+Talk.Lexems.length();
+		msg_len+=sizeof(uint)+sizeof(uint)*all_answers+sizeof(uint)+sizeof(ushort)+(uint)Talk.Lexems.length();
 
 		Bout << msg_len;
 		Bout << is_npc;
 		Bout << talk_id;
 		Bout << all_answers;
 		Bout << (ushort)Talk.Lexems.length(); //Lexems length
-		if(Talk.Lexems.length()) Bout.Push(Talk.Lexems.c_str(),Talk.Lexems.length()); //Lexems string
+		if(Talk.Lexems.length()) Bout.Push(Talk.Lexems.c_str(),(uint)Talk.Lexems.length()); //Lexems string
 		Bout << Talk.CurDialog.TextId; //Main text_id
 		for(AnswersVecIt it=Talk.CurDialog.Answers.begin(),end=Talk.CurDialog.Answers.end();it!=end;++it) Bout << (*it).TextId; //Answers text_id
 		Bout << uint(Talk.TalkTime-(Timer::GameTick()-Talk.StartTick)); //Talk time
@@ -3929,13 +3929,13 @@ void Client::Send_Quests(UIntVec& nums)
 {
 	if(IsSendDisabled() || IsOffline()) return;
 
-	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(uint)+sizeof(uint)*nums.size();
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(uint)+sizeof(uint)*(uint)nums.size();
 
 	BOUT_BEGIN(this);
 	Bout << NETMSG_QUESTS;
 	Bout << msg_len;
 	Bout << (uint)nums.size();
-	if(nums.size()) Bout.Push((char*)&nums[0],nums.size()*sizeof(uint));
+	if(nums.size()) Bout.Push((char*)&nums[0],(uint)nums.size()*sizeof(uint));
 	BOUT_END(this);
 }
 
@@ -3979,10 +3979,10 @@ void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
 	{
 		LocVec* locs=(LocVec*)locs_vec;
 		uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(bool)+sizeof(ushort);
-		for(uint i=0,j=locs->size();i<j;i++)
+		for(uint i=0,j=(uint)locs->size();i<j;i++)
 		{
 			Location* loc_=(*locs)[i];
-			msg_len+=sizeof(uint)+sizeof(ushort)+sizeof(ushort)+sizeof(ushort)*loc_->GetAutomaps().size();
+			msg_len+=sizeof(uint)+sizeof(ushort)+sizeof(ushort)+sizeof(ushort)*(uint)loc_->GetAutomaps().size();
 		}
 
 		BOUT_BEGIN(this);
@@ -3990,14 +3990,14 @@ void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
 		Bout << msg_len;
 		Bout << (bool)true; // Clear list
 		Bout << (ushort)locs->size();
-		for(uint i=0,j=locs->size();i<j;i++)
+		for(uint i=0,j=(uint)locs->size();i<j;i++)
 		{
 			Location* loc_=(*locs)[i];
 			UShortVec& automaps=loc_->GetAutomaps();
 			Bout << loc_->GetId();
 			Bout << loc_->GetPid();
 			Bout << (ushort)automaps.size();
-			for(uint k=0,l=automaps.size();k<l;k++) Bout << automaps[k];
+			for(uint k=0,l=(uint)automaps.size();k<l;k++) Bout << automaps[k];
 		}
 		BOUT_END(this);
 	}
@@ -4006,7 +4006,7 @@ void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
 	{
 		UShortVec& automaps=loc->GetAutomaps();
 		uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(bool)+sizeof(ushort)+
-			sizeof(uint)+sizeof(ushort)+sizeof(ushort)+sizeof(ushort)*automaps.size();
+			sizeof(uint)+sizeof(ushort)+sizeof(ushort)+sizeof(ushort)*(uint)automaps.size();
 
 		BOUT_BEGIN(this);
 		Bout << NETMSG_AUTOMAPS_INFO;
@@ -4016,7 +4016,7 @@ void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
 		Bout << loc->GetId();
 		Bout << loc->GetPid();
 		Bout << (ushort)automaps.size();
-		for(uint i=0,j=automaps.size();i<j;i++) Bout << automaps[i];
+		for(uint i=0,j=(uint)automaps.size();i<j;i++) Bout << automaps[i];
 		BOUT_END(this);
 	}
 }
@@ -4150,7 +4150,7 @@ void Client::Send_RunClientScript(const char* func_name, int p0, int p1, int p2,
 
 	ushort func_name_len=Str::Length(func_name);
 	ushort p3len=(p3?Str::Length(p3):0);
-	ushort p4size=p4.size();
+	ushort p4size=(uint)p4.size();
 	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(func_name_len)+func_name_len+sizeof(p0)+sizeof(p1)+sizeof(p2)+sizeof(p3len)+p3len+sizeof(p4size)+p4size*sizeof(uint);
 
 	BOUT_BEGIN(this);
@@ -4664,7 +4664,7 @@ label_EndCycles:
 			// Create new combination
 			if(create && comb.size())
 			{
-				int rnd=Random(0,comb.size()-1);
+				int rnd=Random(0,(int)comb.size()-1);
 				Data.BagCurrentSet[i]=rnd;
 				NpcBagItems& items=comb[rnd];
 				for(uint k=0;k<items.size();k++)
@@ -4790,11 +4790,11 @@ void Npc::NextPlane(int reason, Critter* some_cr, Item* some_item)
 
 	if(result==PLANE_KEEP)
 	{
-		int place=0;
+		uint place=0;
 		if(aiPlanes.size())
 		{
 			place=1;
-			for(int i=aiPlanes.size();place<i;place++) if(cur->Priority>aiPlanes[place]->Priority) break;
+			for(uint i=(uint)aiPlanes.size();place<i;place++) if(cur->Priority>aiPlanes[place]->Priority) break;
 		}
 		aiPlanes.insert(aiPlanes.begin()+place,cur);
 	}
@@ -4854,14 +4854,14 @@ bool Npc::RunPlane(int reason, uint& r0, uint& r1, uint& r2)
 
 bool Npc::IsPlaneAviable(int plane_type)
 {
-	for(int i=0,j=aiPlanes.size();i<j;i++)
+	for(uint i=0,j=(uint)aiPlanes.size();i<j;i++)
 		if(aiPlanes[i]->IsSelfOrHas(plane_type)) return true;
 	return false;
 }
 
 void Npc::DropPlanes()
 {
-	for(int i=0,j=aiPlanes.size();i<j;i++)
+	for(uint i=0,j=(uint)aiPlanes.size();i<j;i++)
 	{
 		aiPlanes[i]->Assigned=false;
 		aiPlanes[i]->Release();
@@ -4879,7 +4879,7 @@ void Npc::SetBestCurPlane()
 	if(type!=AI_PLANE_ATTACK) return;
 
 	int sort_cnt=1;
-	for(int i=1,j=aiPlanes.size();i<j;i++)
+	for(uint i=1,j=(uint)aiPlanes.size();i<j;i++)
 	{
 		if(aiPlanes[i]->Priority==priority) sort_cnt++;
 		else break;
@@ -4990,7 +4990,7 @@ void Npc::MoveToHex(int reason, ushort hx, ushort hy, uchar ori, bool is_run, uc
 
 void Npc::SetTarget(int reason, Critter* target, int min_hp, bool is_gag)
 {
-	for(int i=0,j=aiPlanes.size();i<j;i++)
+	for(uint i=0,j=(uint)aiPlanes.size();i<j;i++)
 	{
 		AIDataPlane* pp=aiPlanes[i];
 		if(pp->Type==AI_PLANE_ATTACK && pp->Attack.TargId==target->GetId())

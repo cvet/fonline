@@ -41,12 +41,12 @@ void Job::PushBack(int type, void* data)
 	Jobs.push_back(Job(type,data,0));
 }
 
-size_t Job::PushBack(const Job& job)
+uint Job::PushBack(const Job& job)
 {
 	SCOPE_LOCK(JobLocker);
 
 	Jobs.push_back(job);
-	size_t size=Jobs.size();
+	uint size=(uint)Jobs.size();
 	return size;
 }
 
@@ -100,10 +100,10 @@ void Job::Erase(int type)
 	}
 }
 
-size_t Job::Count()
+uint Job::Count()
 {
 	SCOPE_LOCK(JobLocker);
-	size_t count=Jobs.size();
+	uint count=(uint)Jobs.size();
 	return count;
 }
 
