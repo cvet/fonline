@@ -1,4 +1,5 @@
 #include "ScriptEngine.h"
+#include <PlatformSpecific.h>
 #include <Windows.h>
 #include <stdio.h>
 #include <tchar.h>
@@ -65,16 +66,24 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	char* str_fname=argv[1];
-	char* str_comp_dll=argv[2];
-	char* str_script_dll=argv[3];
+	char str_comp_dll[1024];
+	strcpy_s(str_comp_dll,argv[2]);
+	char str_script_dll[1024];
+	strcpy_s(str_comp_dll,argv[3]);
+
 	char* str_prep=NULL;
 	vector<char*> defines;
-
 	for(int i=4;i<argc;i++)
 	{
 		if(strstr(argv[i],"-p") && i+1<argc) str_prep=argv[i+1];
 		else if(strstr(argv[i],"-d") && i+1<argc) defines.push_back(argv[i+1]);
 	}
+
+#if defined(FO_X64)
+	strcat_s(str_comp_dll,"64");
+	strcat_s(str_script_dll,"64");
+#endif
+
 	/************************************************************************/
 	/* Dll                                                                  */
 	/************************************************************************/

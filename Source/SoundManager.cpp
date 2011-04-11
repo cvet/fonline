@@ -16,10 +16,9 @@ SoundManager SndMngr;
 // For OGG
 #include "Ogg/codec.h"
 #include "Ogg/vorbisfile.h"
-#pragma comment (lib, "ogg_static.lib")
-#pragma comment (lib, "vorbisfile_static.lib")
-#pragma comment (lib, "vorbisenc_static.lib")
-#pragma comment (lib, "vorbis_static.lib")
+#pragma comment (lib, "libogg_static.lib")
+#pragma comment (lib, "libvorbis_static.lib")
+#pragma comment (lib, "libvorbisfile_static.lib")
 
 /************************************************************************/
 /* Volume correction                                                    */

@@ -27,13 +27,35 @@
 
 		HMODULE LoadDynamicLibrary(const char* dll_name)
 		{
+			char dll_name_[MAX_FOPATH];
+			strcpy(dll_name_,dll_name);
+
+			// Erase extension
+			char* str=dll_name_;
+			char* last_dot=NULL;
+			for(;*str;str++) if(*str=='.') last_dot=str;
+			if(!last_dot || !last_dot[1]) return NULL;
+			*last_dot=0;
+
+#if defined(FO_X64)
+			// Add '64' appendix
+			strcat(dll_name_,"64");
+#endif
+
+			// DLL extension
+#if defined(FO_WINDOWS)
+			strcat(dll_name_,".dll");
+#else // FO_LINUX
+			strcat(dll_name_,".so");
+#endif
+
 			// Load dynamic library
-			HMODULE dll=LoadLibrary(dll_name);
+			HMODULE dll=LoadLibrary(dll_name_);
 			if(!dll) return NULL;
 
 			// Register global function and vars
 			static set<string> alreadyLoadedDll;
-			if(!alreadyLoadedDll.count(dll_name))
+			if(!alreadyLoadedDll.count(dll_name_))
 			{
 				// Register AS engine
 				size_t* ptr=(size_t*)GetFunctionAddress(dll,"ASEngine");
@@ -44,7 +66,7 @@
 				DllMainEx func=(DllMainEx)GetFunctionAddress(dll,"DllMainEx");
 				if(func) (*func)(true);
 
-				alreadyLoadedDll.insert(dll_name);
+				alreadyLoadedDll.insert(dll_name_);
 			}
 			return dll;
 		}

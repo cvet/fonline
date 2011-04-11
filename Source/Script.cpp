@@ -186,24 +186,35 @@ void FinishThread()
 
 void* LoadDynamicLibrary(const char* dll_name)
 {
-#ifdef FONLINE_CLIENT
+	char dll_name_[MAX_FOPATH];
+	Str::Copy(dll_name_,dll_name);
+	FileManager::EraseExtension(dll_name_);
+
+#if defined(FO_X64)
+	// Add '64' appendix
+	Str::Append(dll_name_,"64");
+#endif
+
+	// DLL extension
+#if defined(FO_WINDOWS)
+	Str::Append(dll_name_,".dll");
+#else // FO_LINUX
+	Str::Append(dll_name_,".so");
+#endif
+
+#if defined(FONLINE_CLIENT)
 	// Fix slashes for client
-	char dll_name__[MAX_FOPATH];
-	Str::Copy(dll_name__,dll_name);
-	Str::Replacement(dll_name__,'\\','.');
-	Str::Replacement(dll_name__,'/','.');
-	dll_name=dll_name__;
+	Str::Replacement(dll_name_,'\\','.');
+	Str::Replacement(dll_name_,'/','.');
 #endif
 
 	// Find in already loaded
 	EngineData* edata=(EngineData*)Engine->GetUserData();
-	StrPtrMapIt it=edata->LoadedDlls.find(dll_name);
+	StrPtrMapIt it=edata->LoadedDlls.find(dll_name_);
 	if(it!=edata->LoadedDlls.end()) return (*it).second;
 
 	// Load dynamic library
-	char dll_name_[MAX_FOPATH];
-	Str::Copy(dll_name_,FileManager::GetFullPath("",ScriptsPath));
-	Str::Append(dll_name_,dll_name);
+	Str::Insert(dll_name_,FileManager::GetFullPath("",ScriptsPath));
 	void* dll=LoadLibrary(dll_name_);
 	if(!dll) return NULL;
 
@@ -223,7 +234,7 @@ void* LoadDynamicLibrary(const char* dll_name)
 	if(func) (*func)(LoadLibraryCompiler);
 
 	// Add to collection for current engine
-	edata->LoadedDlls.insert(StrPtrMapVal(dll_name,dll));
+	edata->LoadedDlls.insert(StrPtrMapVal(dll_name_,dll));
 
 	return dll;
 }
