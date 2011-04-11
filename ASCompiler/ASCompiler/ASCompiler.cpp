@@ -69,7 +69,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	char str_comp_dll[1024];
 	strcpy_s(str_comp_dll,argv[2]);
 	char str_script_dll[1024];
-	strcpy_s(str_comp_dll,argv[3]);
+	strcpy_s(str_script_dll,argv[3]);
 
 	char* str_prep=NULL;
 	vector<char*> defines;
