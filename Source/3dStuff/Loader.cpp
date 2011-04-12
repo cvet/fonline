@@ -303,7 +303,7 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 				v.y=mesh->mVertices[i].y;
 				v.z=mesh->mVertices[i].z;
 
-				if(mesh->mTextureCoords)
+				if(mesh->mTextureCoords && mesh->mTextureCoords[0])
 				{
 					v.u=mesh->mTextureCoords[0][i].x;
 					v.v=mesh->mTextureCoords[0][i].y;

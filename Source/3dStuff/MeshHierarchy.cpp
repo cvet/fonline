@@ -24,7 +24,7 @@ HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
     *retNewFrame=newFrame;
 
 	// The frame name (note: may be 0 or zero length)
-	if(Name && strlen(Name)) newFrame->Name=Str::Duplicate(Name);	
+	if(Name && Str::Length(Name)) newFrame->Name=Str::Duplicate(Name);	
 
     return S_OK;
 }
@@ -48,7 +48,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 	*retNewMeshContainer=0;
 
 	// The mesh name (may be 0) needs copying over
-	if(Name && strlen(Name)) newMeshContainer->Name=Str::Duplicate(Name);
+	if(Name && Str::Length(Name)) newMeshContainer->Name=Str::Duplicate(Name);
 
 	// The mesh type (D3DXMESHTYPE_MESH, D3DXMESHTYPE_PMESH or D3DXMESHTYPE_PATCHMESH)
 	if(meshData->Type!=D3DXMESHTYPE_MESH)
@@ -86,7 +86,10 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 		// Load all the textures and copy the materials over		
 		for(uint i=0;i<numMaterials;i++)
 		{
-			newMeshContainer->exTexturesNames[i]=Str::Duplicate(materials[i].pTextureFilename);
+			if(materials[i].pTextureFilename)
+				newMeshContainer->exTexturesNames[i]=Str::Duplicate(materials[i].pTextureFilename);
+			else
+				newMeshContainer->exTexturesNames[i]=NULL;
 			newMeshContainer->exMaterials[i]=materials[i].MatD3D;
 
 			// The mesh may contain a reference to an effect file

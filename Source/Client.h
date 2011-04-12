@@ -970,7 +970,8 @@ public:
 	IntPairVec GmapTrace;
 
 	// Params
-	uint GmapProcLastTick,GmapMoveLastTick;
+	uint GmapMoveTick;
+	int GmapGroupRealOldX,GmapGroupRealOldY,GmapGroupRealCurX,GmapGroupRealCurY;
 	static int GmapGroupCurX,GmapGroupCurY,GmapGroupToX,GmapGroupToY;
 	static bool GmapWait;
 	static float GmapGroupSpeed;

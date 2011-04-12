@@ -17,6 +17,9 @@ namespace Str
 	char* Lower(char* str);
 	char* Upper(char* str);
 
+	char* Substring(char* str, const char* sub_str);
+	const char* Substring(const char* str, const char* sub_str);
+
 	uint Length(const char* str);
 	bool Compare(const char* str1, const char* str2);
 	bool CompareCase(const char* str1, const char* str2);

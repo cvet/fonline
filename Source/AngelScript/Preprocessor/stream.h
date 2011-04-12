@@ -42,7 +42,7 @@ namespace Preprocessor
 	class OutStream
 	{
 	protected:
-		virtual void Write(const char*,size_t size){}
+		virtual void Write(const char*, size_t){}
 
 	public:
 		virtual ~OutStream(){}
@@ -75,7 +75,7 @@ namespace Preprocessor
 	protected:
 		std::vector<char> streamData;
 
-		virtual void Write(const char* d,unsigned int size)
+		virtual void Write(const char* d, size_t size)
 		{
 			streamData.insert(streamData.end(),d,d+size);
 		}
@@ -127,7 +127,7 @@ namespace Preprocessor
 	class NullOutStream : public OutStream
 	{
 	protected:
-		virtual void Write(const char*,unsigned int) {}
+		virtual void Write(const char*, size_t) {}
 
 	public:
 		virtual ~NullOutStream(){}

@@ -428,7 +428,7 @@ bool FOClient::Init(HWND hwnd)
 	{
 		LogTryConnect();
 	}
-	// Skip intro
+	// Intro
 	else if(!strstr(GetCommandLine(),"-SkipIntro"))
 	{
 		if(MsgGame->Count(STR_MUSIC_MAIN_THEME)) MusicAfterVideo=MsgGame->GetStr(STR_MUSIC_MAIN_THEME);
@@ -436,6 +436,16 @@ bool FOClient::Init(HWND hwnd)
 		{
 			if(MsgGame->Count(i)==1) AddVideo(MsgGame->GetStr(i,0),NULL,true,false);
 			else if(MsgGame->Count(i)==2) AddVideo(MsgGame->GetStr(i,0),MsgGame->GetStr(i,1),true,false);
+		}
+
+		if(!IsVideoPlayed())
+		{
+			ScreenFadeOut();
+			if(MusicAfterVideo!="")
+			{
+				SndMngr.PlayMusic(MusicAfterVideo.c_str());
+				MusicAfterVideo="";
+			}
 		}
 	}
 
@@ -6091,21 +6101,24 @@ void FOClient::Net_OnGlobalInfo()
 		Bin >> speed;
 		Bin >> GmapWait;
 
-		int old_x=GmapGroupCurX;
-		int old_y=GmapGroupCurY;
-		GmapGroupCurX=cur_x;
-		GmapGroupCurY=cur_y;
+		GmapGroupRealOldX=GmapGroupCurX;
+		GmapGroupRealOldY=GmapGroupCurY;
+		GmapGroupRealCurX=cur_x;
+		GmapGroupRealCurY=cur_y;
 		GmapGroupToX=to_x;
 		GmapGroupToY=to_y;
 		GmapGroupSpeed=(float)speed/1000000.0f;
-
-		GmapMoveLastTick=Timer::GameTick();
-		GmapProcLastTick=Timer::GameTick();
+		GmapMoveTick=Timer::GameTick();
 
 		if(!GmapActive)
 		{
+			GmapGroupRealOldX=GmapGroupRealCurX;
+			GmapGroupRealOldY=GmapGroupRealCurY;
+			GmapGroupCurX=GmapGroupRealCurX;
+			GmapGroupCurY=GmapGroupRealCurY;
 			GmapOffsetX=(GmapWMap[2]-GmapWMap[0])/2+GmapWMap[0]-GmapGroupCurX;
 			GmapOffsetY=(GmapWMap[3]-GmapWMap[1])/2+GmapWMap[1]-GmapGroupCurY;
+			GmapTrace.clear();
 
 			int w=GM_MAXX;
 			int h=GM_MAXY;
@@ -6115,31 +6128,6 @@ void FOClient::Net_OnGlobalInfo()
 			if(GmapOffsetY<GmapWMap[3]-h) GmapOffsetY=GmapWMap[3]-h;
 
 			SetCurMode(CUR_DEFAULT);
-		}
-
-		if(GmapActive && !GmapWait)
-		{
-			// Process scroll
-			GmapOffsetX+=(int)((old_x-GmapGroupCurX)/GmapZoom);
-			GmapOffsetY+=(int)((old_y-GmapGroupCurY)/GmapZoom);
-
-			GMAP_CHECK_MAPSCR;
-
-			// Process path tracing
-			if(GmapGroupSpeed!=0.0f)
-			{
-				static uint point_tick=0;
-				if(Timer::GameTick()>=point_tick)
-				{
-					if(GmapTrace.empty() || GmapTrace[0].first!=old_x || GmapTrace[0].second!=old_y)
-						GmapTrace.push_back(IntPairVecVal(old_x,old_y));
-					point_tick=Timer::GameTick()+GM_TRACE_TIME;
-				}
-			}
-			else
-			{
-				GmapTrace.clear();
-			}
 		}
 
 		// Car master id

@@ -30,8 +30,6 @@
    jm@omnisu.com
 */
 
-#pragma warning(disable:4786)
-
 #include <string>
 #include "lex.h"
 #include <cassert>

@@ -30,8 +30,6 @@
    jm@omnisu.com
 */
 
-#pragma warning(disable:4786)
-
 #include "lex.h"
 #include "preprocess.h"
 #include "lexem_list.h"

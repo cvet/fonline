@@ -558,9 +558,6 @@ void* FOServer::Logic_Work(void* data)
 			Client* cl=(Client*)job.Data;
 			SYNC_LOCK(cl);
 
-			// Check for removing
-			if(cl->IsNotValid) continue;
-
 			// Disconnect
 			if(cl->IsOffline())
 			{
@@ -1262,7 +1259,7 @@ void FOServer::NetIO_Output(Client::NetIOArg* io)
 
 void FOServer::Process(ClientPtr& cl)
 {
-	if(cl->IsOffline())
+	if(cl->IsOffline() || cl->IsNotValid)
 	{
 		cl->Bin.LockReset();
 		return;

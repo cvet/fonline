@@ -105,6 +105,7 @@ int main(int argc, char** argv)
 			const char* ptr=strstr(CommandLine,"-logpath ")+Str::Length("-logpath ");
 			Str::Copy(log_path,ptr);
 		}
+		Str::EraseFrontBackSpecificChars(log_path);
 		Str::Append(log_path,"FOnlineServer.log");
 		LogToFile(log_path);
 
@@ -188,6 +189,7 @@ int main(int argc, char** argv)
 		while(!FOQuit) Sleep(100);
 	}
 
+	ExitProcess(0);
 	return 0;
 }
 

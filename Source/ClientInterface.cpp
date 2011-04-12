@@ -5137,9 +5137,14 @@ bool FOClient::GmapWait;
 float FOClient::GmapGroupSpeed;
 
 #define GMAP_LOC_ALPHA   (60)
+#define GMAP_MOVE_TICK   (50)
 
 void FOClient::GmapNullParams()
 {
+	GmapGroupRealOldX=0;
+	GmapGroupRealOldY=0;
+	GmapGroupRealCurX=0;
+	GmapGroupRealCurY=0;
 	GmapGroupCurX=0;
 	GmapGroupCurY=0;
 	GmapGroupToX=0;
@@ -5163,6 +5168,40 @@ void FOClient::GmapProcess()
 	{
 		SetCurMode(CUR_WAIT);
 		return;
+	}
+
+	if(GmapActive && !GmapWait)
+	{
+		// Process moving, scroll, path tracing
+		if(GmapGroupSpeed!=0.0f)
+		{
+			int proc=(int)((float)(Timer::GameTick()-GmapMoveTick)/(float)GameOpt.GlobalMapMoveTime*100.0f);
+			if(proc>100) proc=100;
+			int old_x=GmapGroupCurX;
+			int old_y=GmapGroupCurY;
+			GmapGroupCurX=GmapGroupRealOldX+(GmapGroupRealCurX-GmapGroupRealOldX)*proc/100;
+			GmapGroupCurY=GmapGroupRealOldY+(GmapGroupRealCurY-GmapGroupRealOldY)*proc/100;
+
+			if(GmapGroupCurX!=old_x || GmapGroupCurY!=old_y)
+			{
+				GmapOffsetX+=(int)((old_x-GmapGroupCurX)/GmapZoom);
+				GmapOffsetY+=(int)((old_y-GmapGroupCurY)/GmapZoom);
+
+				GMAP_CHECK_MAPSCR;
+
+				static uint point_tick=0;
+				if(Timer::GameTick()>=point_tick)
+				{
+					if(GmapTrace.empty() || GmapTrace[0].first!=old_x || GmapTrace[0].second!=old_y)
+						GmapTrace.push_back(IntPairVecVal(old_x,old_y));
+					point_tick=Timer::GameTick()+GM_TRACE_TIME;
+				}
+			}
+		}
+		else
+		{
+			GmapTrace.clear();
+		}
 	}
 
 	if(IfaceHold==IFACE_GMAP_TABSCRUP) // Scroll Up

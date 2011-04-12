@@ -976,15 +976,17 @@ bool LoadScript(const char* module_name, const char* source, bool skip_binary, c
 		return false;
 	}
 
-	if(module->AddScriptSection(module_name,vos.GetData(),vos.GetSize(),0)<0)
+	int result=module->AddScriptSection(module_name,vos.GetData(),vos.GetSize(),0);
+	if(result<0)
 	{
-		WriteLogF(_FUNC_," - Unable to AddScriptSection module<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Unable to AddScriptSection module<%s>, result<%d>.\n",module_name,result);
 		return false;
 	}
 
-	if(module->Build()<0)
+	result=module->Build();
+	if(result<0)
 	{
-		WriteLogF(_FUNC_," - Unable to Build module<%s>.\n",module_name);
+		WriteLogF(_FUNC_," - Unable to Build module<%s>, result<%d>.\n",module_name,result);
 		return false;
 	}
 

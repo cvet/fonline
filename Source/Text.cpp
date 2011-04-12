@@ -82,6 +82,16 @@ char* Str::Upper(char* str)
 	return str;
 }
 
+char* Str::Substring(char* str, const char* sub_str)
+{
+	return strstr(str,sub_str);
+}
+
+const char* Str::Substring(const char* str, const char* sub_str)
+{
+	return strstr(str,sub_str);
+}
+
 uint Str::Length(const char* str)
 {
 	return (uint)strlen(str);
