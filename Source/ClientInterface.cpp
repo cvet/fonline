@@ -2239,7 +2239,7 @@ void FOClient::GameLMouseDown()
 	else if(IsCurMode(CUR_MOVE))
 	{
 		ActionEvent* act=(IsAction(CHOSEN_MOVE)?&ChosenAction[0]:NULL);
-		if(act && Timer::FastTick()-act->Param[5]<GetDoubleClickTime())
+		if(act && Timer::FastTick()-act->Param[5]<(GameOpt.DoubleClickTime?GameOpt.DoubleClickTime:GetDoubleClickTime()))
 		{
 			act->Param[2]=(GameOpt.AlwaysRun?0:1);
 			act->Param[4]=0;

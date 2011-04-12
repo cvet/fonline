@@ -7540,7 +7540,7 @@ void FOClient::CrittersProcess()
 			else if(!GameOpt.RunOnTransfer && Chosen->GetParam(TO_TRANSFER)) is_run=false;
 			else if(IsTurnBased) is_run=false;
 			else if(Chosen->IsDmgLeg() || Chosen->IsOverweight()) is_run=false;
-			else if(wait_click && Timer::GameTick()-start_tick<GameOpt.DoubleClickTime) return;
+			else if(wait_click && Timer::GameTick()-start_tick<(GameOpt.DoubleClickTime?GameOpt.DoubleClickTime:GetDoubleClickTime())) return;
 			else if(is_run && !IsTurnBased && Chosen->GetApCostCritterMove(is_run)>0 && Chosen->GetRealAp()<(GameOpt.RunModMul*Chosen->GetParam(ST_ACTION_POINTS)*AP_DIVIDER)/GameOpt.RunModDiv+GameOpt.RunModAdd) is_run=false;
 
 			if(is_run && !CritType::IsCanRun(Chosen->GetCrType())) is_run=false;

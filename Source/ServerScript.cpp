@@ -2055,12 +2055,12 @@ void FOServer::SScriptFunc::Crit_SetAnims(Critter* cr, int cond, uint anim1, uin
 		cr->Data.Anim1Life=anim1;
 		cr->Data.Anim2Life=anim2;
 	}
-	else if(cond==0 || cond==COND_KNOCKOUT)
+	if(cond==0 || cond==COND_KNOCKOUT)
 	{
 		cr->Data.Anim1Knockout=anim1;
 		cr->Data.Anim2Knockout=anim2;
 	}
-	else if(cond==0 || cond==COND_DEAD)
+	if(cond==0 || cond==COND_DEAD)
 	{
 		cr->Data.Anim1Dead=anim1;
 		cr->Data.Anim2Dead=anim2;
@@ -4164,6 +4164,12 @@ uint FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 	if(len<MIN_NAME || len<GameOpt.MinNameLength) return 0; //SCRIPT_ERROR_R0("Name length is less than minimum.");
 	if(len>MAX_NAME || len>GameOpt.MaxNameLength) return 0; //SCRIPT_ERROR_R0("Name length is greater than maximum.");
 
+	if(Singleplayer)
+	{
+		if(Str::CompareCase(name.c_str(),SingleplayerSave.CrData.Name)) return 1;
+		return 0;
+	}
+
 	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(name.c_str());
 	if(!data) return 0; //SCRIPT_ERROR_R0("Player not found.");
@@ -4172,7 +4178,13 @@ uint FOServer::SScriptFunc::Global_GetPlayerId(CScriptString& name)
 
 CScriptString* FOServer::SScriptFunc::Global_GetPlayerName(uint id)
 {
-	if(!id) return 0; //SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
+	if(!id) return NULL; //SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
+
+	if(Singleplayer)
+	{
+		if(id==1) return new CScriptString(SingleplayerSave.CrData.Name);
+		return NULL;
+	}
 
 	SCOPE_LOCK(ClientsDataLocker);
 	ClientData* data=GetClientData(id);

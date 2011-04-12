@@ -210,7 +210,7 @@ void* LoadDynamicLibrary(const char* dll_name)
 
 	// Find in already loaded
 	EngineData* edata=(EngineData*)Engine->GetUserData();
-	StrPtrMapIt it=edata->LoadedDlls.find(dll_name_);
+	StrPtrMapIt it=edata->LoadedDlls.find(dll_name);
 	if(it!=edata->LoadedDlls.end()) return (*it).second;
 
 	// Load dynamic library
@@ -234,7 +234,7 @@ void* LoadDynamicLibrary(const char* dll_name)
 	if(func) (*func)(LoadLibraryCompiler);
 
 	// Add to collection for current engine
-	edata->LoadedDlls.insert(StrPtrMapVal(dll_name_,dll));
+	edata->LoadedDlls.insert(StrPtrMapVal(dll_name,dll));
 
 	return dll;
 }

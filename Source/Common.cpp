@@ -661,7 +661,6 @@ void GetClientOptions()
 	GameOpt.DoubleClickTime=cfg.GetInt(CLIENT_CONFIG_APP,"DoubleClickTime",COMBAT_MODE_ANY);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.DoubleClickTime,"-DoubleClickTime");
 	GETOPTIONS_CHECK(GameOpt.DoubleClickTime,0,1000,0);
-	if(!GameOpt.DoubleClickTime) GameOpt.DoubleClickTime=GetDoubleClickTime();
 	GameOpt.CombatMessagesType=cfg.GetInt(CLIENT_CONFIG_APP,"CombatMessagesType",0);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.CombatMessagesType,"-CombatMessagesType");
 	GETOPTIONS_CHECK(GameOpt.CombatMessagesType,0,1,0);

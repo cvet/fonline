@@ -1,8 +1,8 @@
 #ifndef ___VERSION___
 #define ___VERSION___
 
-#define SERVER_VERSION               0x00000439 // server_0439
-#define CLIENT_VERSION               0x00000340 // client_0340
+#define SERVER_VERSION               0x00000440 // server_0440
+#define CLIENT_VERSION               0x00000341 // client_0341
 #define MAPPER_VERSION               0x00000185 // mapper_0185
 
 #define MAPPER_VERSION_STR           "v.1.25.13"
