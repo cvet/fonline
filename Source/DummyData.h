@@ -1144,6 +1144,7 @@ struct BindClass
 	static void Global_GetTick(){}
 	static void Global_GetProtoItem(){}
 	static void Global_StrToInt(){}
+	static void Global_StrToFloat(){}
 	static void Global_GetDistantion(){}
 	static void Global_GetDirection(){}
 	static void Global_GetOffsetDir(){}

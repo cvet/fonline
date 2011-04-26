@@ -476,7 +476,8 @@ typedef vector<SelMapTile> SelMapTileVec;
 
 		static CScriptString* Global_GetLastError();
 		static void Global_Log(CScriptString& text);
-		static bool Global_StrToInt(CScriptString& text, int& result);
+		static bool Global_StrToInt(CScriptString* text, int& result);
+		static bool Global_StrToFloat(CScriptString* text, float& result);
 		static void Global_Message(CScriptString& msg);
 		static void Global_MessageMsg(int text_msg, uint str_num);
 		static void Global_MapMessage(CScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy);

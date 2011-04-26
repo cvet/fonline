@@ -210,7 +210,6 @@ private:
 	static Animation3dXFileVec xFiles;
 
 	string fileName;
-	int pathType;
 	D3DXFRAME* frameRoot;
 	FrameVec framesSkinned;
 	MeshContainerVec allMeshes;

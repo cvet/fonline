@@ -4339,14 +4339,25 @@ uint FOServer::SScriptFunc::Global_GetZoneLocationIds(ushort zx, ushort zy, uint
 	return (uint)loc_ids.size();
 }
 
-bool FOServer::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
+bool FOServer::SScriptFunc::Global_StrToInt(CScriptString* text, int& result)
 {
-	if(!text.length() || !Str::IsNumber(text.c_str()))
+	if(!text || !text->length() || !Str::IsNumber(text->c_str()))
 	{
 		result=0;
 		return false;
 	}
-	result=Str::AtoI(text.c_str());
+	result=Str::AtoI(text->c_str());
+	return true;
+}
+
+bool FOServer::SScriptFunc::Global_StrToFloat(CScriptString* text, float& result)
+{
+	if(!text || !text->length())
+	{
+		result=0;
+		return false;
+	}
+	result=(float)strtod(text->c_str(),NULL);
 	return true;
 }
 

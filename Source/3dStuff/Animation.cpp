@@ -1323,7 +1323,6 @@ renderAnim(0),renderAnimProcFrom(0),renderAnimProcTo(100),
 shadowDisabled(false),calcualteTangetSpace(false)
 {
 	ZeroMemory(&animDataDefault,sizeof(animDataDefault));
-	SAFEREL(animController);
 }
 
 Animation3dEntity::~Animation3dEntity()
@@ -1354,6 +1353,7 @@ Animation3dEntity::~Animation3dEntity()
 		SAFEDELA(link.EffectInst);
 	}
 	animData.clear();
+	SAFEREL(animController);
 }
 
 bool Animation3dEntity::Load(const char* name)
@@ -1388,6 +1388,7 @@ bool Animation3dEntity::Load(const char* name)
 		D3DXEFFECTINSTANCE* cur_effect=NULL;
 
 		AnimParams dummy_link;
+		memzero(&dummy_link,sizeof(dummy_link));
 		AnimParams* link=&animDataDefault;
 		static uint link_id=0;
 
@@ -1488,7 +1489,11 @@ bool Animation3dEntity::Load(const char* name)
 			else if(!_stricmp(token,"Root"))
 			{
 				if(layer<0) link=&animDataDefault;
-				else if(layer_val<=0) link=&dummy_link;
+				else if(layer_val<=0)
+				{
+					WriteLogF(_FUNC_,"Wrong layer<%d> value<%d>.\n",layer,layer_val);
+					link=&dummy_link;
+				}
 				else
 				{
 					animData.push_back(AnimParams());
@@ -2058,7 +2063,7 @@ Animation3dEntity* Animation3dEntity::GetEntity(const char* name)
 
 Animation3dXFileVec Animation3dXFile::xFiles;
 
-Animation3dXFile::Animation3dXFile():pathType(0),frameRoot(NULL),
+Animation3dXFile::Animation3dXFile():frameRoot(NULL),
 facesCount(0),tangentsCalculated(false)
 {
 }
@@ -2313,14 +2318,14 @@ void Animation3dXFile::SetupAnimationOutput(D3DXFRAME* frame, ID3DXAnimationCont
 
 TextureEx* Animation3dXFile::GetTexture(const char* tex_name)
 {
-	TextureEx* texture=Loader3d::LoadTexture(D3DDevice,tex_name,fileName.c_str(),pathType);
+	TextureEx* texture=Loader3d::LoadTexture(D3DDevice,tex_name,fileName.c_str());
 	if(!texture) WriteLogF(_FUNC_," - Can't load texture<%s>.\n",tex_name?tex_name:"nullptr");
 	return texture;
 }
 
 EffectEx* Animation3dXFile::GetEffect(D3DXEFFECTINSTANCE* effect_inst)
 {
-	EffectEx* effect=Loader3d::LoadEffect(D3DDevice,effect_inst,fileName.c_str(),pathType);
+	EffectEx* effect=Loader3d::LoadEffect(D3DDevice,effect_inst,fileName.c_str());
 	if(!effect) WriteLogF(_FUNC_," - Can't load effect<%s>.\n",effect_inst && effect_inst->pEffectFilename?effect_inst->pEffectFilename:"nullptr");
 	return effect;
 }

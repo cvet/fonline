@@ -1519,7 +1519,8 @@
 	if(engine->RegisterGlobalFunction("string@ GetLastError()",asFUNCTION(BIND_CLASS Global_GetLastError),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("int Random(int minimum, int maximum)",asFUNCTION(Random),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("ProtoItem@+ GetProtoItem(uint16 protoId)",asFUNCTION(BIND_CLASS Global_GetProtoItem),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("bool StrToInt(string& text, int& result)",asFUNCTION(BIND_CLASS Global_StrToInt),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool StrToInt(string@+ text, int& result)",asFUNCTION(BIND_CLASS Global_StrToInt),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("bool StrToFloat(string@+ text, float& result)",asFUNCTION(BIND_CLASS Global_StrToFloat),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2)",asFUNCTION(BIND_CLASS Global_GetDistantion),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint8 GetDirection(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY)",asFUNCTION(BIND_CLASS Global_GetDirection),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint8 GetOffsetDir(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY, float offset)",asFUNCTION(BIND_CLASS Global_GetOffsetDir),asCALL_CDECL)<0) BIND_ERROR;

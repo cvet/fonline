@@ -3507,11 +3507,11 @@ void FOServer::Process_UseSkill(Client* cl)
 	cl->Bin >> target_pid;
 	CHECK_IN_BUFF_ERROR(cl);
 
-	if(skill<SKILL_BEGIN || skill>SKILL_END)
-	{
-		WriteLogF(_FUNC_," - Invalid skill<%d>, client<%s>.\n",skill,cl->GetInfo());
-		return;
-	}
+// 	if(skill<SKILL_BEGIN || skill>SKILL_END)
+// 	{
+// 		WriteLogF(_FUNC_," - Invalid skill<%d>, client<%s>.\n",skill,cl->GetInfo());
+// 		return;
+// 	}
 
 	if(targ_type>TARGET_SCENERY)
 	{

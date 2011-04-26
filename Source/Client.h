@@ -527,7 +527,8 @@ public:
 		static uchar Global_GetOffsetDir(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset);
 		static uint Global_GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
 		static void Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second);
-		static bool Global_StrToInt(CScriptString& text, int& result);
+		static bool Global_StrToInt(CScriptString* text, int& result);
+		static bool Global_StrToFloat(CScriptString* text, float& result);
 		static uint Global_GetTick(){return Timer::FastTick();}
 		static void Global_GetTime(ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds);
 		static bool Global_SetParameterGetBehaviour(uint index, CScriptString& func_name);

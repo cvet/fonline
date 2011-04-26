@@ -3715,7 +3715,7 @@ bool FOServer::Init()
 	WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2),&wsa))
 	{
-		WriteLog("WSAStartup error.");
+		WriteLog("WSAStartup error.\n");
 		return false;
 	}
 

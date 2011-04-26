@@ -10333,14 +10333,25 @@ void FOClient::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, u
 	second=dt.Second;
 }
 
-bool FOClient::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
+bool FOClient::SScriptFunc::Global_StrToInt(CScriptString* text, int& result)
 {
-	if(!text.length() || !Str::IsNumber(text.c_str()))
+	if(!text || !text->length() || !Str::IsNumber(text->c_str()))
 	{
 		result=0;
 		return false;
 	}
-	result=Str::AtoI(text.c_str());
+	result=Str::AtoI(text->c_str());
+	return true;
+}
+
+bool FOClient::SScriptFunc::Global_StrToFloat(CScriptString* text, float& result)
+{
+	if(!text || !text->length())
+	{
+		result=0;
+		return false;
+	}
+	result=(float)strtod(text->c_str(),NULL);
 	return true;
 }
 

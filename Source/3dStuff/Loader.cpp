@@ -506,7 +506,7 @@ bool Loader3d::IsExtensionSupported(const char* ext)
 /************************************************************************/
 TextureExVec Loader3d::loadedTextures;
 
-TextureEx* Loader3d::LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path, int model_path_type)
+TextureEx* Loader3d::LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path)
 {
 	if(!texture_name || !texture_name[0]) return NULL;
 
@@ -525,7 +525,7 @@ TextureEx* Loader3d::LoadTexture(IDirect3DDevice9* device, const char* texture_n
 		char path[MAX_FOPATH];
 		FileManager::ExtractPath(model_path,path);
 		Str::Append(path,texture_name);
-		fm.LoadFile(path,model_path_type);
+		fm.LoadFile(path,PT_DATA);
 	}
 
 	// Create texture
@@ -571,7 +571,6 @@ class IncludeParser : public ID3DXInclude
 {
 public:
 	char* RootPath;
-	int RootPathType;
 
 	STDMETHOD(Open)(THIS_ D3DXINCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
 	{
@@ -582,7 +581,7 @@ public:
 			char path[MAX_FOPATH];
 			FileManager::ExtractPath(RootPath,path);
 			Str::Append(path,pFileName);
-			if(!fm.LoadFile(path,RootPathType)) return S_FALSE;
+			if(!fm.LoadFile(path,PT_DATA)) return S_FALSE;
 		}
 		*pBytes=fm.GetFsize();
 		*ppData=fm.ReleaseBuffer();
@@ -604,10 +603,10 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, const char* effect_name
 	D3DXEFFECTINSTANCE effect_inst;
 	ZeroMemory(&effect_inst,sizeof(effect_inst));
 	effect_inst.pEffectFilename=(char*)effect_name;
-	return LoadEffect(device,&effect_inst,NULL,0);
+	return LoadEffect(device,&effect_inst,NULL);
 }
 
-EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path, int model_path_type)
+EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path)
 {
 	if(!effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[0]) return NULL;
 	const char* effect_name=effect_inst->pEffectFilename;
@@ -627,7 +626,7 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 		char path[MAX_FOPATH];
 		FileManager::ExtractPath(model_path,path);
 		Str::Append(path,effect_name);
-		fm.LoadFile(path,model_path_type);
+		fm.LoadFile(path,PT_DATA);
 	}
 	if(!fm.IsLoaded()) return NULL;
 
@@ -656,7 +655,6 @@ EffectEx* Loader3d::LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* eff
 		HRESULT hr=0,hr31=0;
 
 		includeParser.RootPath=(char*)model_path;
-		includeParser.RootPathType=model_path_type;
 		hr=D3DXCreateEffectCompiler(buf,size,NULL,&includeParser,0,&ef_comp,&errors);
 		if(FAILED(hr)) hr31=D3DXCreateEffectCompiler(buf,size,NULL,&includeParser,D3DXSHADER_USE_LEGACY_D3DX9_31_DLL,&ef_comp,&errors31);
 

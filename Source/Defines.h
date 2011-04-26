@@ -153,7 +153,6 @@
 #define CONT_PUT                (2)
 #define CONT_GETALL             (3)
 #define CONT_PUTALL             (4)
-//#define CONT_UNLOAD             (5) // TODO:
 
 // Target types
 #define TARGET_SELF             (0)
@@ -161,6 +160,7 @@
 #define TARGET_CRITTER          (2)
 #define TARGET_ITEM             (3)
 #define TARGET_SCENERY          (4)
+#define TARGET_HEX              (5) // Todo:
 
 // Pick types
 #define PICK_CRIT_LOOT          (0)

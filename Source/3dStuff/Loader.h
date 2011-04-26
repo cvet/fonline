@@ -31,7 +31,7 @@ private:
 
 	// Textures
 public:
-	static TextureEx* LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path, int model_path_type);
+	static TextureEx* LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path);
 	static void FreeTexture(TextureEx* texture); // If texture is NULL than free all textures
 
 private:
@@ -40,7 +40,7 @@ private:
 	// Effects
 public:
 	static EffectEx* LoadEffect(IDirect3DDevice9* device, const char* effect_name);
-	static EffectEx* LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path, int model_path_type);
+	static EffectEx* LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path);
 	static void EffectProcessVariables(EffectEx* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, TextureEx** textures = NULL);
 	static bool EffectsPreRestore();
 	static bool EffectsPostRestore();

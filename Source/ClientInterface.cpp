@@ -2995,20 +2995,20 @@ void FOClient::DlgDraw(bool is_dialog)
 		}
 
 		// Texts
-		SprMngr.DrawStr(INTRECT(DlgBBarterText,DlgX,DlgY),MsgGame->GetStr(STR_DIALOG_BARTER),FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-		SprMngr.DrawStr(INTRECT(DlgBSayText,DlgX,DlgY),MsgGame->GetStr(STR_DIALOG_SAY),FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+		SprMngr.DrawStr(INTRECT(DlgBBarterText,DlgX,DlgY),MsgGame->GetStr(STR_DIALOG_BARTER),FT_COLORIZE|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
+		SprMngr.DrawStr(INTRECT(DlgBSayText,DlgX,DlgY),MsgGame->GetStr(STR_DIALOG_SAY),FT_COLORIZE|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 
 		// Npc text
-		SprMngr.DrawStr(INTRECT(DlgWText,DlgX,DlgY),DlgMainText.c_str(),FT_SKIPLINES(DlgMainTextCur),COLOR_TEXT);
+		SprMngr.DrawStr(INTRECT(DlgWText,DlgX,DlgY),DlgMainText.c_str(),FT_COLORIZE|FT_SKIPLINES(DlgMainTextCur),COLOR_TEXT);
 
 		// Answers
 		for(uint i=0;i<DlgAnswers.size();i++)
 		{
 			Answer& a=DlgAnswers[i];
 			if(i==DlgCurAnsw)
-				SprMngr.DrawStr(INTRECT(a.Position,DlgX,DlgY),DlgAnswers[i].Text.c_str(),a.AnswerNum<0?FT_CENTERX:0,IfaceHold==IFACE_DLG_ANSWER && DlgCurAnsw==DlgHoldAnsw?COLOR_TEXT_DDGREEN:(IfaceHold!=IFACE_DLG_ANSWER?COLOR_TEXT_DGREEN:COLOR_TEXT));
+				SprMngr.DrawStr(INTRECT(a.Position,DlgX,DlgY),DlgAnswers[i].Text.c_str(),FT_COLORIZE|(a.AnswerNum<0?FT_CENTERX:0),IfaceHold==IFACE_DLG_ANSWER && DlgCurAnsw==DlgHoldAnsw?COLOR_TEXT_DDGREEN:(IfaceHold!=IFACE_DLG_ANSWER?COLOR_TEXT_DGREEN:COLOR_TEXT));
 			else
-				SprMngr.DrawStr(INTRECT(a.Position,DlgX,DlgY),DlgAnswers[i].Text.c_str(),a.AnswerNum<0?FT_CENTERX:0,COLOR_TEXT);
+				SprMngr.DrawStr(INTRECT(a.Position,DlgX,DlgY),DlgAnswers[i].Text.c_str(),FT_COLORIZE|(a.AnswerNum<0?FT_CENTERX:0),COLOR_TEXT);
 		}
 
 		// Chosen money

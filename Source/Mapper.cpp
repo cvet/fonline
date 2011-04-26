@@ -5550,15 +5550,25 @@ void FOMapper::SScriptFunc::Global_Log(CScriptString& text)
 	Script::Log(text.c_str());
 }
 
-bool FOMapper::SScriptFunc::Global_StrToInt(CScriptString& text, int& result)
+bool FOMapper::SScriptFunc::Global_StrToInt(CScriptString* text, int& result)
 {
-	if(!text.length()) return false;
-	if(!Str::IsNumber(text.c_str()))
+	if(!text || !text->length() || !Str::IsNumber(text->c_str()))
 	{
 		result=0;
 		return false;
 	}
-	result=Str::AtoI(text.c_str());
+	result=Str::AtoI(text->c_str());
+	return true;
+}
+
+bool FOMapper::SScriptFunc::Global_StrToFloat(CScriptString* text, float& result)
+{
+	if(!text || !text->length())
+	{
+		result=0;
+		return false;
+	}
+	result=(float)strtod(text->c_str(),NULL);
 	return true;
 }
 

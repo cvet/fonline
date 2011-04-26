@@ -848,7 +848,8 @@ public:
 		static uint Global_GetLocations(ushort wx, ushort wy, uint radius, CScriptArray* locations);
 		static uint Global_GetVisibleLocations(ushort wx, ushort wy, uint radius, Critter* cr, CScriptArray* locations);
 		static uint Global_GetZoneLocationIds(ushort zx, ushort zy, uint zone_radius, CScriptArray* locations);
-		static bool Global_StrToInt(CScriptString& text, int& result);
+		static bool Global_StrToInt(CScriptString* text, int& result);
+		static bool Global_StrToFloat(CScriptString* text, float& result);
 		static bool Global_RunDialogNpc(Critter* player, Critter* npc, bool ignore_distance);
 		static bool Global_RunDialogNpcDlgPack(Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance);
 		static bool Global_RunDialogHex(Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance);
