@@ -461,6 +461,15 @@ struct GameOptions
 	uint DlgBarterMinTime;
 	uint MinimumOfflineTime;
 
+	int StartSpecialPoints;
+	int StartTagSkillPoints;
+	int SkillMaxValue;
+	int SkillModAdd2;
+	int SkillModAdd3;
+	int SkillModAdd4;
+	int SkillModAdd5;
+	int SkillModAdd6;
+
 	bool AbsoluteOffsets;
 	uint SkillBegin;
 	uint SkillEnd;

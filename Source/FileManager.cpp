@@ -241,7 +241,7 @@ bool FileManager::LoadFile(const char* fname, int path_type)
 		return true;
 	}
 
-	if(only_folder) return true;
+	if(only_folder) return false;
 
 	_strlwr(dat_path);
 	for(DataFileVecIt it=dataFiles.begin(),end=dataFiles.end();it!=end;++it)

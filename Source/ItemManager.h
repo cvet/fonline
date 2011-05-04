@@ -102,10 +102,6 @@ public:
 		ushort text_msg, uint num_str);
 #endif // FONLINE_SERVER
 
-#ifdef FONLINE_MAPPER
-	string ProtosCollectionName[MAX_ITEM_PROTOTYPES];
-#endif
-
 	// Items statistics
 private:
 	int64 itemCount[MAX_ITEM_PROTOTYPES];

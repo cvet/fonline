@@ -396,7 +396,7 @@
 // Stats
 #define ST_STRENGTH                 (0)
 #define ST_PERCEPTION               (1)
-#define ST_ENDURANCE                (2)
+//#define ST_ENDURANCE                (2)
 #define ST_CHARISMA                 (3)
 #define ST_INTELLECT                (4)
 #define ST_AGILITY                  (5)
@@ -452,7 +452,7 @@
 #define SKILL_BEGIN                 (GameOpt.SkillBegin)
 #define SKILL_END                   (GameOpt.SkillEnd)
 #define SKILL_COUNT                 (SKILL_END-SKILL_BEGIN+1)
-#define MAX_SKILL_VAL               (300)
+#define MAX_SKILL_VAL               (GameOpt.SkillMaxValue)
 #define SK_UNARMED                  (203)
 #define SK_FIRST_AID                (206)
 #define SK_DOCTOR                   (207)

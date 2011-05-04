@@ -3880,8 +3880,12 @@ void HexManager::AffectCritter(MapObject* mobj, CritterCl* cr)
 
 	for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
 	{
-		if(mobj->MCritter.ParamIndex[i]>=0 && mobj->MCritter.ParamIndex[i]<MAX_PARAMS)
-			cr->Params[mobj->MCritter.ParamIndex[i]]=mobj->MCritter.ParamValue[i];
+		int param=mobj->MCritter.ParamIndex[i];
+		if(param>=0 && param<MAX_PARAMS)
+		{
+			cr->Params[param]=mobj->MCritter.ParamValue[i];
+			if(param>=ST_ANIM3D_LAYER_BEGIN && param<=ST_ANIM3D_LAYER_END) refresh=true;
+		}
 	}
 
 	if(refresh) cr->AnimateStay();

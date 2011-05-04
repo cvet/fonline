@@ -79,13 +79,8 @@ void CritterCl::InitForRegistration()
 
 	ZeroMemory(Params,sizeof(Params));
 	ZeroMemory(ParamsReg,sizeof(ParamsReg));
-	ParamsReg[ST_STRENGTH]=5;
-	ParamsReg[ST_PERCEPTION]=5;
-	ParamsReg[ST_ENDURANCE]=5;
-	ParamsReg[ST_CHARISMA]=5;
-	ParamsReg[ST_INTELLECT]=5;
-	ParamsReg[ST_AGILITY]=5;
-	ParamsReg[ST_LUCK]=5;
+	ParamsReg[0]=ParamsReg[1]=ParamsReg[2]=ParamsReg[3]=
+		ParamsReg[4]=ParamsReg[5]=ParamsReg[6]=5;
 	ParamsReg[ST_AGE]=Random(AGE_MIN,AGE_MAX);
 	ParamsReg[ST_GENDER]=GENDER_MALE;
 	GenParams();
@@ -1255,6 +1250,7 @@ int* CritterCl::GetLayers3dData()
 	return layers;
 #endif
 
+	memcpy(Layers3d,&Params[ST_ANIM3D_LAYER_BEGIN],LAYERS3D_COUNT*sizeof(int));
 	return (int*)Layers3d;
 }
 

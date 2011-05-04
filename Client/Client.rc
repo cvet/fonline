@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "ResourceClient.h"
+#include "../Source/ResourceClient.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -100,8 +100,8 @@ END
 // Shader
 //
 
-IDR_EFFECT_SKINNING    RCDATA                  "3dStuff\\Skinning.fx"
-IDR_PS_CONTOUR         RCDATA                  "3dStuff\\ContourPS.txt"
+IDR_EFFECT_SKINNING    RCDATA                  "../Source/3dStuff/Skinning.fx"
+IDR_PS_CONTOUR         RCDATA                  "../Source/3dStuff/ContourPS.txt"
 #endif    // Russian resources
 /////////////////////////////////////////////////////////////////////////////
 

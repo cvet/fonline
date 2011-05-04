@@ -26,29 +26,6 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define PROTO_ITEM_FILENAME         "proto.fopro_"
 #define ITEM_MAX_SCRIPT_VALUES      (10)
 
-// F2 types
-#define F2_TYPE_ITEMS               (0)
-#define F2_TYPE_CRITTERS            (1)
-#define F2_TYPE_SCENERY             (2)
-#define F2_TYPE_WALLS               (3)
-#define F2_TYPE_TILES               (4)
-#define F2_TYPE_MISC                (5)
-#define F2_ARMOR					(0)
-#define F2_CONTAINER				(1)
-#define F2_DRUG						(2)
-#define F2_WEAPON					(3)
-#define F2_AMMO						(4)
-#define F2_MISCITEM					(5)
-#define F2_KEY						(6)
-#define F2_PORTAL					(0)
-#define F2_STAIRS					(1)
-#define F2_ELEVATOR					(2)
-#define F2_LADDERBOTTOM				(3)
-#define F2_LADDERTOP				(4)
-#define F2_GENERICSCENERY			(5)
-#define F2_EXITGRID					(0)
-#define F2_GENERICMISC				(1)
-
 // Types
 #define ITEM_TYPE_OTHER             (0)
 #define ITEM_TYPE_ARMOR             (1)
@@ -165,14 +142,6 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define RADIO_BROADCAST_ZONE(x)     (100+CLAMP(x,1,100)) // 1..100
 #define RADIO_BROADCAST_FORCE_ALL   (250)
 
-// Offsets by original pids
-#define F2PROTO_OFFSET_ITEM			(0)
-#define F2PROTO_OFFSET_SCENERY		(2000)
-#define F2PROTO_OFFSET_MISC			(4000)
-#define F2PROTO_OFFSET_WALL			(5000)
-#define F2PROTO_OFFSET_TILE			(8000)
-#define MISC_MAX					(200)
-
 // Blocks, childs
 #define ITEM_MAX_BLOCK_LINES        (50)
 #define ITEM_MAX_CHILDS             (5)
@@ -192,22 +161,18 @@ extern const char* ItemEventFuncName[ITEM_EVENT_MAX];
 #define ITEM_DATA_MASK_MAX          (5)
 
 // Special item pids
-#define SP_SCEN_LIGHT				(F2PROTO_OFFSET_SCENERY+141) // Light Source
+#define SP_SCEN_LIGHT				(2141) // Light Source
 #define SP_SCEN_LIGHT_STOP          (4592)
-#define SP_SCEN_BLOCK				(F2PROTO_OFFSET_SCENERY+67) // Secret Blocking Hex
-#define SP_SCEN_IBLOCK				(F2PROTO_OFFSET_SCENERY+344) // Block Hex Auto Inviso
+#define SP_SCEN_BLOCK				(2067) // Secret Blocking Hex
+#define SP_SCEN_IBLOCK				(2344) // Block Hex Auto Inviso
 #define SP_SCEN_TRIGGER				(3852)
-#define SP_WALL_BLOCK_LIGHT			(F2PROTO_OFFSET_WALL+621) // Wall s.t. with light
-#define SP_WALL_BLOCK				(F2PROTO_OFFSET_WALL+622) // Wall s.t.
-#define SP_GRID_EXITGRID			(F2PROTO_OFFSET_SCENERY+49) // Exit Grid Map Marker
+#define SP_WALL_BLOCK_LIGHT			(5621) // Wall s.t. with light
+#define SP_WALL_BLOCK				(5622) // Wall s.t.
+#define SP_GRID_EXITGRID			(2049) // Exit Grid Map Marker
 #define SP_GRID_ENTIRE				(3853)
-#define SP_MISC_SCRBLOCK			(F2PROTO_OFFSET_MISC+12) // Scroll block
-#define SP_MISC_GRID_MAP_BEG		(F2PROTO_OFFSET_MISC+16) // Grid to LocalMap begin
-#define SP_MISC_GRID_MAP_END		(F2PROTO_OFFSET_MISC+23) // Grid to LocalMap end
-#define SP_MISC_GRID_MAP(pid)		((pid)>=SP_MISC_GRID_MAP_BEG && (pid)<=SP_MISC_GRID_MAP_END)
-#define SP_MISC_GRID_GM_BEG			(F2PROTO_OFFSET_MISC+31) // Grid to GlobalMap begin
-#define SP_MISC_GRID_GM_END			(F2PROTO_OFFSET_MISC+46) // Grid to GlobalMap end
-#define SP_MISC_GRID_GM(pid)		((pid)>=SP_MISC_GRID_GM_BEG && (pid)<=SP_MISC_GRID_GM_END)
+#define SP_MISC_SCRBLOCK			(4012) // Scroll block
+#define SP_MISC_GRID_MAP(pid)		((pid)>=4016 && (pid)<=4023)
+#define SP_MISC_GRID_GM(pid)		((pid)>=4031 && (pid)<=4046)
 
 // Slot protos offsets
 // 1000 - 1100 protos reserved
@@ -351,6 +316,10 @@ public:
 	string PicInvStr;
 	string WeaponPicStr[MAX_USES];
 	string Weapon_Anim2[MAX_USES];
+#endif
+
+#ifdef FONLINE_MAPPER
+	char* CollectionName;
 #endif
 };
 

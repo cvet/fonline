@@ -619,6 +619,7 @@ public:
 	void IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy);
 	void IfaceLoadSpr(AnyFrames*& comp, const char* name);
 	void IfaceLoadAnim(uint& comp, const char* name);
+	void IfaceLoadArray(IntVec& arr, const char* name);
 	void IfaceFreeResources();
 
 	bool IsCurInRect(INTRECT& rect, int ax, int ay){return !rect.IsZero() && (GameOpt.MouseX>=rect[0]+ax && GameOpt.MouseY>=rect[1]+ay && GameOpt.MouseX<=rect[2]+ax && GameOpt.MouseY<=rect[3]+ay);}
@@ -1089,6 +1090,7 @@ public:
 	// Special
 	INTRECT ChaWSpecialText,ChaWSpecialValue,ChaWSpecialLevel;
 	int ChaWSpecialNextX,ChaWSpecialNextY;
+	IntVec ChaSpecialParams;
 
 	// Skills
 	INTRECT ChaWSkillText,ChaWSkillName,ChaWSkillValue;

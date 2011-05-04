@@ -2160,7 +2160,7 @@ void FOServer::Process_Command(Client* cl)
 				if(param_type==255)
 				{
 					// Generate params
-					for(uint i=ST_STRENGTH;i<=ST_LUCK;i++)
+					for(uint i=0;i<=6;i++)
 					{
 						cl->ChangeParam(i);
 						cl->Data.Params[i]=param_num;
@@ -3588,7 +3588,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(GameVar)==28);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(sizeof(GameOptions)==1184);
 	STATIC_ASSERT(sizeof(CScriptArray)==40);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 	STATIC_ASSERT(PROTO_ITEM_USER_DATA_SIZE==500);

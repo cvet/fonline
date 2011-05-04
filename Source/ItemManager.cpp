@@ -359,7 +359,7 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 #endif
 
 bool CompProtoByPid(ProtoItem o1, ProtoItem o2){return o1.ProtoId<o2.ProtoId;}
-void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name /* = NULL*/)
+void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name /* = NULL */)
 {
 	if(protos.empty())
 	{
@@ -387,12 +387,15 @@ void ItemManager::ParseProtos(ProtoItemVec& protos, const char* collection_name 
 		int type=protos[i].Type;
 		if(type<0 || type>=ITEM_MAX_TYPES) type=ITEM_TYPE_OTHER;
 
+#ifdef FONLINE_MAPPER
+		if(collection_name)
+			proto_item.CollectionName=Str::Duplicate(collection_name);
+		else
+			proto_item.CollectionName=Str::Duplicate("");
+#endif
+
 		typeProto[type].push_back(proto_item);
 		allProto[pid]=proto_item;
-
-#ifdef FONLINE_MAPPER
-		ProtosCollectionName[pid]=collection_name;
-#endif
 	}
 
 	for(int i=0;i<ITEM_MAX_TYPES;i++)

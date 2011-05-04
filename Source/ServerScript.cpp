@@ -4348,11 +4348,7 @@ bool FOServer::SScriptFunc::Global_StrToInt(CScriptString* text, int& result)
 
 bool FOServer::SScriptFunc::Global_StrToFloat(CScriptString* text, float& result)
 {
-	if(!text || !text->length())
-	{
-		result=0;
-		return false;
-	}
+	if(!text || !text->length()) return false;
 	result=(float)strtod(text->c_str(),NULL);
 	return true;
 }

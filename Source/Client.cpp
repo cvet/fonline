@@ -111,7 +111,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==76);
 	STATIC_ASSERT(sizeof(CScriptArray)==40);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4260);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(sizeof(GameOptions)==1184);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -10335,22 +10335,14 @@ void FOClient::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, u
 
 bool FOClient::SScriptFunc::Global_StrToInt(CScriptString* text, int& result)
 {
-	if(!text || !text->length() || !Str::IsNumber(text->c_str()))
-	{
-		result=0;
-		return false;
-	}
+	if(!text || !text->length() || !Str::IsNumber(text->c_str())) return false;
 	result=Str::AtoI(text->c_str());
 	return true;
 }
 
 bool FOClient::SScriptFunc::Global_StrToFloat(CScriptString* text, float& result)
 {
-	if(!text || !text->length())
-	{
-		result=0;
-		return false;
-	}
+	if(!text || !text->length()) return false;
 	result=(float)strtod(text->c_str(),NULL);
 	return true;
 }

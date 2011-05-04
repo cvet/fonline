@@ -970,6 +970,16 @@ GameOptions::GameOptions()
 	DlgBarterMinTime=0;
 	MinimumOfflineTime=180000;
 
+	StartSpecialPoints=40;
+	StartTagSkillPoints=3;
+
+	SkillMaxValue=300;
+	SkillModAdd2=100;
+	SkillModAdd3=125;
+	SkillModAdd4=150;
+	SkillModAdd5=175;
+	SkillModAdd6=200;
+
 	AbsoluteOffsets=true;
 	SkillBegin=200;
 	SkillEnd=217;
@@ -1424,7 +1434,7 @@ string Deprecated_GetPicName(int pid, int type, ushort pic_num)
 
 	if(type==ITEM_TYPE_DOOR) return GetPicName(PT_ART_SCENERY,pic_num); // For doors from Scenery
 	else if(pid==SP_MISC_SCRBLOCK || SP_MISC_GRID_MAP(pid) || SP_MISC_GRID_GM(pid)) return GetPicName(PT_ART_MISC,pic_num); // For exit grids from Misc
-	else if(pid>=F2PROTO_OFFSET_MISC && pid<=F2PROTO_OFFSET_MISC+MISC_MAX) return GetPicName(PT_ART_MISC,pic_num); // From Misc
+	else if(pid>=4000 && pid<=4200) return GetPicName(PT_ART_MISC,pic_num); // From Misc
 	else if(type>=ITEM_TYPE_ARMOR && type<=ITEM_TYPE_DOOR) return GetPicName(PT_ART_ITEMS,pic_num); // From Items
 	else if(type==ITEM_TYPE_GENERIC || type==ITEM_TYPE_GRID) return GetPicName(PT_ART_SCENERY,pic_num); // From Scenery
 	else if(type==ITEM_TYPE_WALL) return GetPicName(PT_ART_WALLS,pic_num); // From Walls

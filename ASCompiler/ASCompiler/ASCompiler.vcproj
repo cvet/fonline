@@ -21,7 +21,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\..\..\FOnline\server\data\"
+			OutputDirectory="..\..\LFO\Tools\ASCompiler\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="2"

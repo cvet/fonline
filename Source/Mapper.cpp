@@ -31,7 +31,7 @@ bool FOMapper::Init(HWND wnd)
 #if defined(FO_X86)
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
-	STATIC_ASSERT(sizeof(GameOptions)==1152);
+	STATIC_ASSERT(sizeof(GameOptions)==1184);
 #endif
 
 	// Register dll script data
@@ -223,15 +223,13 @@ bool FOMapper::Init(HWND wnd)
 		}
 	}
 
-	ProtoItem* item_protos=ItemMngr.GetAllProtos();
-	for(int i=1;i<MAX_ITEM_PROTOTYPES;i++)
+	ProtoItemVec item_protos;
+	ItemMngr.GetCopyAllProtos(item_protos);
+	for(int i=0,j=item_protos.size();i<j;i++)
 	{
-		ProtoItem* proto=&item_protos[i];
-		if(proto->ProtoId!=0)
-		{
-			Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(*proto);
-			Tabs[INT_MODE_ITEM][ItemMngr.ProtosCollectionName[i]].ItemProtos.push_back(*proto);
-		}
+		ProtoItem& proto=item_protos[i];
+		Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(proto);
+		Tabs[INT_MODE_ITEM][proto.CollectionName].ItemProtos.push_back(proto);
 	}
 
 	for(int i=0;i<TAB_COUNT;i++)
@@ -1661,7 +1659,7 @@ void FOMapper::IntDraw()
 		{
 			CritData* pnpc=(*CurNpcProtos)[i];
 
-			uint spr_id=ResMngr.GetCritSprId(pnpc->BaseType,1,1,NpcDir);
+			uint spr_id=ResMngr.GetCritSprId(pnpc->BaseType,1,1,NpcDir,&pnpc->Params[ST_ANIM3D_LAYER_BEGIN]);
 			if(!spr_id) continue;
 
 			uint col=COLOR_IFACE;
@@ -1882,7 +1880,7 @@ void FOMapper::ObjDraw()
 		DRAW_COMPONENT("Cond",o->MCritter.Cond,true,false);                             // 15
 		DRAW_COMPONENT("Anim1",o->MCritter.Anim1,true,false);                           // 16
 		DRAW_COMPONENT("Anim2",o->MCritter.Anim2,true,false);                           // 17
-		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)                                        // 18..32
+		for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)                                        // 18..57
 		{
 			if(o->MCritter.ParamIndex[i]>=0 && o->MCritter.ParamIndex[i]<MAX_PARAMS)
 			{
@@ -5552,22 +5550,14 @@ void FOMapper::SScriptFunc::Global_Log(CScriptString& text)
 
 bool FOMapper::SScriptFunc::Global_StrToInt(CScriptString* text, int& result)
 {
-	if(!text || !text->length() || !Str::IsNumber(text->c_str()))
-	{
-		result=0;
-		return false;
-	}
+	if(!text || !text->length() || !Str::IsNumber(text->c_str())) return false;
 	result=Str::AtoI(text->c_str());
 	return true;
 }
 
 bool FOMapper::SScriptFunc::Global_StrToFloat(CScriptString* text, float& result)
 {
-	if(!text || !text->length())
-	{
-		result=0;
-		return false;
-	}
+	if(!text || !text->length()) return false;
 	result=(float)strtod(text->c_str(),NULL);
 	return true;
 }

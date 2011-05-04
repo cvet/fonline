@@ -57,8 +57,8 @@ public:
 	AnyFrames* GetItemAnim(uint name_hash, int dir){return GetAnim(name_hash,dir,RES_ITEMS);}
 
 	AnyFrames* GetCrit2dAnim(uint crtype, uint anim1, uint anim2, int dir);
-	Animation3d* GetCrit3dAnim(uint crtype, uint anim1, uint anim2, int dir);
-	uint GetCritSprId(uint crtype, uint anim1, uint anim2, int dir);
+	Animation3d* GetCrit3dAnim(uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL);
+	uint GetCritSprId(uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL);
 
 	AnyFrames* GetRandomSplash();
 

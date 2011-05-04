@@ -638,7 +638,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(uint crtype, uint anim1, uint ani
 	return frames;
 }
 
-Animation3d* ResourceManager::GetCrit3dAnim(uint crtype, uint anim1, uint anim2, int dir)
+Animation3d* ResourceManager::GetCrit3dAnim(uint crtype, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */)
 {
 	if(CritType::GetAnimType(crtype)!=ANIM_TYPE_3D) return NULL;
 
@@ -646,7 +646,7 @@ Animation3d* ResourceManager::GetCrit3dAnim(uint crtype, uint anim1, uint anim2,
 
 	if(crtype<critter3d.size() && critter3d[crtype])
 	{
-		critter3d[crtype]->SetAnimation(anim1,anim2,NULL,ANIMATION_STAY|ANIMATION_NO_SMOOTH);
+		critter3d[crtype]->SetAnimation(anim1,anim2,layers3d,ANIMATION_STAY|ANIMATION_NO_SMOOTH);
 		critter3d[crtype]->SetDir(dir);
 		return critter3d[crtype];
 	}
@@ -659,12 +659,12 @@ Animation3d* ResourceManager::GetCrit3dAnim(uint crtype, uint anim1, uint anim2,
 	if(crtype>=critter3d.size()) critter3d.resize(crtype+1);
 	critter3d[crtype]=anim3d;
 
-	anim3d->SetAnimation(anim1,anim2,NULL,ANIMATION_STAY|ANIMATION_NO_SMOOTH);
+	anim3d->SetAnimation(anim1,anim2,layers3d,ANIMATION_STAY|ANIMATION_NO_SMOOTH);
 	anim3d->SetDir(dir);
 	return anim3d;
 }
 
-uint ResourceManager::GetCritSprId(uint crtype, uint anim1, uint anim2, int dir)
+uint ResourceManager::GetCritSprId(uint crtype, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */)
 {
 	uint spr_id=0;
 	if(CritType::GetAnimType(crtype)!=ANIM_TYPE_3D)
@@ -674,7 +674,7 @@ uint ResourceManager::GetCritSprId(uint crtype, uint anim1, uint anim2, int dir)
 	}
 	else
 	{
-		Animation3d* anim=GetCrit3dAnim(crtype,anim1,anim2,dir);
+		Animation3d* anim=GetCrit3dAnim(crtype,anim1,anim2,dir,layers3d);
 		spr_id=(anim?anim->GetSprId():0);
 	}
 	return spr_id;

@@ -23,7 +23,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\..\FOnline\server\"
+			OutputDirectory="..\..\LFO\Server\"
 			IntermediateDirectory=".\Release_MSVC\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -62,6 +62,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
+				AdditionalIncludeDirectories="..\Source\StlPort;..\Source"
 				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				GeneratePreprocessedFile="0"
 				StringPooling="true"
@@ -97,6 +98,7 @@
 				OutputFile="$(OutDir)\FOnlineServer.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="..\Lib"
 				GenerateManifest="false"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
@@ -173,6 +175,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
+				AdditionalIncludeDirectories="..\Source\StlPort;..\Source"
 				PreprocessorDefinitions="FONLINE_SERVER;SCRIPT_MULTITHREADING;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0"
 				GeneratePreprocessedFile="0"
 				StringPooling="true"
@@ -208,6 +211,7 @@
 				OutputFile="$(OutDir)\FOnlineServer64.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="..\Lib\x64"
 				GenerateManifest="false"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
@@ -1179,7 +1183,7 @@
 					>
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="ml64.exe /c  /nologo /Fo$(IntDir)\as_callfunc_x64_msvc_asm.obj /W3 /Zi /Ta $(InputDir)\$(InputFileName)"
+						CommandLine="ml64.exe /c  /nologo /Fo$(IntDir)\as_callfunc_x64_msvc_asm.obj /W3 /Zi /Ta $(InputDir)\$(InputFileName)&#x0D;&#x0A;"
 						Outputs="$(IntDir)\as_callfunc_x64_msvc_asm.obj"
 					/>
 				</FileConfiguration>

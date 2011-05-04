@@ -511,7 +511,7 @@ bool ProtoMap::ReadObjects(FileManager& fm, int version)
 			{
 				obj_v6.MCritter.Cond=obj_v5.CRITTER.Cond;
 				Deprecated_CondExtToAnim2(obj_v5.CRITTER.Cond,obj_v5.CRITTER.CondExt,obj_v6.MCritter.Anim2,obj_v6.MCritter.Anim2);
-				for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++) obj_v6.MCritter.ParamIndex[i]=-1;
+				for(int i=0;i<15;i++) obj_v6.MCritter.ParamIndex[i]=-1;
 				obj_v6.MCritter.ParamIndex[0]=ST_DIALOG_ID;
 				obj_v6.MCritter.ParamIndex[1]=ST_AI_ID;
 				obj_v6.MCritter.ParamIndex[2]=ST_BAG_ID;
@@ -910,38 +910,18 @@ bool ProtoMap::LoadTextFormat(const char* buf)
 						if(field=="Critter_Cond") mobj.MCritter.Cond=ivalue;
 						else if(field=="Critter_Anim1") mobj.MCritter.Anim1=ivalue;
 						else if(field=="Critter_Anim2") mobj.MCritter.Anim2=ivalue;
-						else if(field=="Critter_ParamIndex0") mobj.MCritter.ParamIndex[0]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex1") mobj.MCritter.ParamIndex[1]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex2") mobj.MCritter.ParamIndex[2]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex3") mobj.MCritter.ParamIndex[3]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex4") mobj.MCritter.ParamIndex[4]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex5") mobj.MCritter.ParamIndex[5]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex6") mobj.MCritter.ParamIndex[6]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex7") mobj.MCritter.ParamIndex[7]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex8") mobj.MCritter.ParamIndex[8]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex9") mobj.MCritter.ParamIndex[9]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex10") mobj.MCritter.ParamIndex[10]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex11") mobj.MCritter.ParamIndex[11]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex12") mobj.MCritter.ParamIndex[12]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex13") mobj.MCritter.ParamIndex[13]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamIndex14") mobj.MCritter.ParamIndex[14]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
-						else if(field=="Critter_ParamValue0") mobj.MCritter.ParamValue[0]=ivalue;
-						else if(field=="Critter_ParamValue1") mobj.MCritter.ParamValue[1]=ivalue;
-						else if(field=="Critter_ParamValue2") mobj.MCritter.ParamValue[2]=ivalue;
-						else if(field=="Critter_ParamValue3") mobj.MCritter.ParamValue[3]=ivalue;
-						else if(field=="Critter_ParamValue4") mobj.MCritter.ParamValue[4]=ivalue;
-						else if(field=="Critter_ParamValue5") mobj.MCritter.ParamValue[5]=ivalue;
-						else if(field=="Critter_ParamValue6") mobj.MCritter.ParamValue[6]=ivalue;
-						else if(field=="Critter_ParamValue7") mobj.MCritter.ParamValue[7]=ivalue;
-						else if(field=="Critter_ParamValue8") mobj.MCritter.ParamValue[8]=ivalue;
-						else if(field=="Critter_ParamValue9") mobj.MCritter.ParamValue[9]=ivalue;
-						else if(field=="Critter_ParamValue10") mobj.MCritter.ParamValue[10]=ivalue;
-						else if(field=="Critter_ParamValue11") mobj.MCritter.ParamValue[11]=ivalue;
-						else if(field=="Critter_ParamValue12") mobj.MCritter.ParamValue[12]=ivalue;
-						else if(field=="Critter_ParamValue13") mobj.MCritter.ParamValue[13]=ivalue;
-						else if(field=="Critter_ParamValue14") mobj.MCritter.ParamValue[14]=ivalue;
-						// Deprecated
-						else if(field=="Critter_CondExt") Deprecated_CondExtToAnim2(mobj.MCritter.Cond,ivalue,mobj.MCritter.Anim2,mobj.MCritter.Anim2);
+						else if(field=="Critter_CondExt") Deprecated_CondExtToAnim2(mobj.MCritter.Cond,ivalue,mobj.MCritter.Anim2,mobj.MCritter.Anim2); // Deprecated
+						else
+						{
+							for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
+							{
+								char str[128];
+								if(field==Str::Format(str,"Critter_ParamIndex%d",i)) mobj.MCritter.ParamIndex[i]=ConstantsManager::GetParamId(Str::EraseFrontBackSpecificChars(svalue));
+								else if(field==Str::Format(str,"Critter_ParamValue%d",i)) mobj.MCritter.ParamValue[i]=ivalue;
+								else continue;
+								break;
+							}
+						}
 					}
 					// Item/Scenery
 					else if(mobj.MapObjType==MAP_OBJECT_ITEM || mobj.MapObjType==MAP_OBJECT_SCENERY)
@@ -1962,14 +1942,14 @@ bool ProtoMap::IsMapFile(const char* fname)
 	{
 		// Check text format
 		IniParser txt;
-		if(!txt.LoadFile(fname,PT_ROOT)) return false;
+		if(!txt.LoadFile(fname,-1)) return false;
 		return txt.IsApp(APP_HEADER) && txt.IsApp(APP_TILES) && txt.IsApp(APP_OBJECTS);
 	}
 	else if(Str::CompareCase(ext,".map"))
 	{
 		// Check binary format
 		FileManager file;
-		if(!file.LoadFile(fname,PT_ROOT)) return false;
+		if(!file.LoadFile(fname,-1)) return false;
 		uint version=file.GetLEUInt();
 		return version==FO_MAP_VERSION_V4 || version==FO_MAP_VERSION_V5 ||
 			version==FO_MAP_VERSION_V6 || version==FO_MAP_VERSION_V7 ||

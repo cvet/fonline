@@ -1136,6 +1136,15 @@
 	if(engine->RegisterGlobalProperty("uint __DlgBarterMinTime",&GameOpt.DlgBarterMinTime)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __MinimumOfflineTime",&GameOpt.MinimumOfflineTime)) BIND_ERROR;
 
+	if(engine->RegisterGlobalProperty("int __StartSpecialPoints",&GameOpt.StartSpecialPoints)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __StartTagSkillPoints",&GameOpt.StartTagSkillPoints)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __SkillMaxValue",&GameOpt.SkillMaxValue)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __SkillModAdd2",&GameOpt.SkillModAdd2)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __SkillModAdd3",&GameOpt.SkillModAdd3)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __SkillModAdd4",&GameOpt.SkillModAdd4)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __SkillModAdd5",&GameOpt.SkillModAdd5)) BIND_ERROR;
+	if(engine->RegisterGlobalProperty("int __SkillModAdd6",&GameOpt.SkillModAdd6)) BIND_ERROR;
+
 	if(engine->RegisterGlobalProperty("bool __AbsoluteOffsets",&GameOpt.AbsoluteOffsets)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __SkillBegin",&GameOpt.SkillBegin)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __SkillEnd",&GameOpt.SkillEnd)) BIND_ERROR;
@@ -1212,39 +1221,19 @@
 	if(engine->RegisterObjectProperty("MapperObject","int UserData7",OFFSETOF(MapObject,UserData[7]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int UserData8",OFFSETOF(MapObject,UserData[8]))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int UserData9",OFFSETOF(MapObject,UserData[9]))<0) BIND_ERROR;
+
 	// Critter
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Critter_Anim1",OFFSETOF(MapObject,MCritter.Anim1))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","uint8 Critter_Anim2",OFFSETOF(MapObject,MCritter.Anim2))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex0",OFFSETOF(MapObject,MCritter.ParamIndex[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex1",OFFSETOF(MapObject,MCritter.ParamIndex[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex2",OFFSETOF(MapObject,MCritter.ParamIndex[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex3",OFFSETOF(MapObject,MCritter.ParamIndex[3]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex4",OFFSETOF(MapObject,MCritter.ParamIndex[4]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex5",OFFSETOF(MapObject,MCritter.ParamIndex[5]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex6",OFFSETOF(MapObject,MCritter.ParamIndex[6]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex7",OFFSETOF(MapObject,MCritter.ParamIndex[7]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex8",OFFSETOF(MapObject,MCritter.ParamIndex[8]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex9",OFFSETOF(MapObject,MCritter.ParamIndex[9]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex10",OFFSETOF(MapObject,MCritter.ParamIndex[10]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex11",OFFSETOF(MapObject,MCritter.ParamIndex[11]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex12",OFFSETOF(MapObject,MCritter.ParamIndex[12]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex13",OFFSETOF(MapObject,MCritter.ParamIndex[13]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int16 Critter_ParamIndex14",OFFSETOF(MapObject,MCritter.ParamIndex[14]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue0",OFFSETOF(MapObject,MCritter.ParamValue[0]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue1",OFFSETOF(MapObject,MCritter.ParamValue[1]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue2",OFFSETOF(MapObject,MCritter.ParamValue[2]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue3",OFFSETOF(MapObject,MCritter.ParamValue[3]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue4",OFFSETOF(MapObject,MCritter.ParamValue[4]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue5",OFFSETOF(MapObject,MCritter.ParamValue[5]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue6",OFFSETOF(MapObject,MCritter.ParamValue[6]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue7",OFFSETOF(MapObject,MCritter.ParamValue[7]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue8",OFFSETOF(MapObject,MCritter.ParamValue[8]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue9",OFFSETOF(MapObject,MCritter.ParamValue[9]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue10",OFFSETOF(MapObject,MCritter.ParamValue[10]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue11",OFFSETOF(MapObject,MCritter.ParamValue[11]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue12",OFFSETOF(MapObject,MCritter.ParamValue[12]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue13",OFFSETOF(MapObject,MCritter.ParamValue[13]))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("MapperObject","int Critter_ParamValue14",OFFSETOF(MapObject,MCritter.ParamValue[14]))<0) BIND_ERROR;
+	for(int i=0;i<40/*MAPOBJ_CRITTER_PARAMS*/;i++)
+	{
+		char str[256];
+		sprintf_s(str,"int16 Critter_ParamIndex%d",i);
+		if(engine->RegisterObjectProperty("MapperObject",str,OFFSETOF(MapObject,MCritter.ParamIndex[i]))<0) BIND_ERROR;
+		sprintf_s(str,"int Critter_ParamValue%d",i);
+		if(engine->RegisterObjectProperty("MapperObject",str,OFFSETOF(MapObject,MCritter.ParamValue[i]))<0) BIND_ERROR;
+	}
+
 	// Item/critter shared parameters
 	if(engine->RegisterObjectProperty("MapperObject","int16 OffsetX",OFFSETOF(MapObject,MItem.OffsetX))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("MapperObject","int16 OffsetY",OFFSETOF(MapObject,MItem.OffsetY))<0) BIND_ERROR;

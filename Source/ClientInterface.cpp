@@ -8,7 +8,7 @@
 
 bool FOClient::IfaceLoadRect(INTRECT& comp, const char* name)
 {
-	char res[256];
+	char res[MAX_FOTEXT];
 	if(!IfaceIni.GetStr(name,"",res))
 	{
 		WriteLog("Signature<%s> not found.\n",name);
@@ -32,7 +32,7 @@ void FOClient::IfaceLoadRect2(INTRECT& comp, const char* name, int ox, int oy)
 
 void FOClient::IfaceLoadSpr(AnyFrames*& comp, const char* name)
 {
-	char res[256];
+	char res[MAX_FOTEXT];
 	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
 	SprMngr.SurfType=RES_IFACE;
 	comp=SprMngr.LoadAnimation(res,PT_ART_INTRFACE,ANIM_USE_DUMMY);
@@ -42,9 +42,18 @@ void FOClient::IfaceLoadSpr(AnyFrames*& comp, const char* name)
 
 void FOClient::IfaceLoadAnim(uint& comp, const char* name)
 {
-	char res[256];
+	char res[MAX_FOTEXT];
 	if(!IfaceIni.GetStr(name,"none.png",res)) WriteLog("Signature<%s> not found.\n",name);
 	if(!(comp=AnimLoad(res,PT_ART_INTRFACE,RES_IFACE))) WriteLog("Can't load animation<%s>.\n",res);
+}
+
+void FOClient::IfaceLoadArray(IntVec& arr, const char* name)
+{
+	char res[MAX_FOTEXT];
+	if(IfaceIni.GetStr(name,"",res))
+		Str::ParseLine(res,' ',arr,Str::AtoI);
+	else
+		WriteLog("Signature<%s> not found.\n",name);
 }
 
 void FOClient::IfaceFreeResources()
@@ -456,6 +465,7 @@ int FOClient::InitIface()
 	IfaceLoadRect(ChaWSpecialLevel,"ChaSpecialLevel");
 	ChaWSpecialNextX=IfaceIni.GetInt("ChaSpecialNextX",1);
 	ChaWSpecialNextY=IfaceIni.GetInt("ChaSpecialNextY",1);
+	IfaceLoadArray(ChaSpecialParams,"ChaSpecialParams");
 	// Skills
 	IfaceLoadRect(ChaWSkillText,"ChaSkillText");
 	IfaceLoadRect(ChaWSkillName,"ChaSkillName");
@@ -6325,16 +6335,18 @@ void FOClient::ChaDraw(bool is_reg)
 	}
 
 	// Special
-	for(int i=ST_STRENGTH;i<=ST_LUCK;++i)
+	for(uint i=0,j=(uint)ChaSpecialParams.size();i<j;i++)
 	{
+		int param=ChaSpecialParams[i];
+
 		// Text
-		SprMngr.DrawStr(INTRECT(ChaWSpecialText,ChaX+ChaWSpecialNextX*i,ChaY+ChaWSpecialNextY*i),MsgGame->GetStr(STR_INV_SHORT_SPECIAL_(i)),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_SAND,FONT_BIG);
+		SprMngr.DrawStr(INTRECT(ChaWSpecialText,ChaX+ChaWSpecialNextX*i,ChaY+ChaWSpecialNextY*i),MsgGame->GetStr(STR_INV_SHORT_SPECIAL_(param)),FT_NOBREAK|FT_CENTERX,COLOR_TEXT_SAND,FONT_BIG);
 
 		// Value
-		int val=CHA_PARAM(i);
+		int val=CHA_PARAM(param);
 		val=CLAMP(val,0,99);
 		char str[32];
-		sprintf_s(str,"%02d",val);
+		Str::Format(str,"%02d",val);
 		if(val<1 || val>10) Str::ChangeValue(str,0x10);
 		SprMngr.DrawStr(INTRECT(ChaWSpecialValue,ChaX+ChaWSpecialNextX*i,ChaY+ChaWSpecialNextY*i),str,FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 
@@ -6348,8 +6360,8 @@ void FOClient::ChaDraw(bool is_reg)
 	// Unspent
 	if(is_reg)
 	{
-		int unspent=40;
-		for(int i=ST_STRENGTH;i<=ST_LUCK;i++) unspent-=cr->ParamsReg[i];
+		int unspent=GameOpt.StartSpecialPoints;
+		for(uint i=0,j=(uint)ChaSpecialParams.size();i<j;i++) unspent-=cr->ParamsReg[ChaSpecialParams[i]];
 		SprMngr.DrawStr(INTRECT(RegWUnspentSpecial,ChaX,ChaY),Str::FormatBuf("%02d",unspent),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 		SprMngr.DrawStr(INTRECT(RegWUnspentSpecialText,ChaX,ChaY),MsgGame->GetStr(STR_REG_SPECIAL_SUM),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
 	}
@@ -6369,7 +6381,8 @@ void FOClient::ChaDraw(bool is_reg)
 	if(is_reg)
 	{
 		SprMngr.DrawStr(INTRECT(ChaWUnspentSPText,ChaX,ChaY),MsgGame->GetStr(STR_REG_UNSPENT_TAGS),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::FormatBuf("%02d",(cr->Params[TAG_SKILL1]==0?1:0)+(cr->Params[TAG_SKILL2]==0?1:0)+(cr->Params[TAG_SKILL3]==0?1:0)),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
+		int free_tag_skill=(cr->Params[TAG_SKILL1]==0?1:0)+(cr->Params[TAG_SKILL2]==0?1:0)+(cr->Params[TAG_SKILL3]==0?1:0)+(cr->Params[TAG_SKILL4]==0?1:0)-GameOpt.StartTagSkillPoints;
+		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::FormatBuf("%02d",free_tag_skill),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 	}
 	else
 	{
@@ -6481,13 +6494,13 @@ void FOClient::ChaLMouseDown(bool is_reg)
 	if(!cr) return;
 
 	// Special
-	for(int i=ST_STRENGTH;i<=ST_LUCK;++i)
+	for(uint i=0,j=(uint)ChaSpecialParams.size();i<j;i++)
 	{
-		int offs=i-ST_STRENGTH;
+		int param=ChaSpecialParams[i];
 		if(is_reg)
 		{
-			if(IsCurInRect(RegBSpecialPlus,RegBSpecialNextX*offs+ChaX,RegBSpecialNextY*offs+ChaY)) IfaceHold=IFACE_REG_SPEC_PL;
-			if(IsCurInRect(RegBSpecialMinus,RegBSpecialNextX*offs+ChaX,RegBSpecialNextY*offs+ChaY)) IfaceHold=IFACE_REG_SPEC_MN;
+			if(IsCurInRect(RegBSpecialPlus,RegBSpecialNextX*i+ChaX,RegBSpecialNextY*i+ChaY)) IfaceHold=IFACE_REG_SPEC_PL;
+			if(IsCurInRect(RegBSpecialMinus,RegBSpecialNextX*i+ChaX,RegBSpecialNextY*i+ChaY)) IfaceHold=IFACE_REG_SPEC_MN;
 			if(IfaceHold)
 			{
 				RegCurSpecial=i;
@@ -6495,14 +6508,14 @@ void FOClient::ChaLMouseDown(bool is_reg)
 			}
 		}
 
-		if(IsCurInRect(ChaWSpecialValue,ChaX+ChaWSpecialNextX*offs,ChaY+ChaWSpecialNextY*offs) ||
-			IsCurInRect(ChaWSpecialLevel,ChaX+ChaWSpecialNextX*offs,ChaY+ChaWSpecialNextY*offs) ||
-			IsCurInRect(ChaWSpecialText,ChaX+ChaWSpecialNextX*offs,ChaY+ChaWSpecialNextY*offs))
+		if(IsCurInRect(ChaWSpecialValue,ChaX+ChaWSpecialNextX*i,ChaY+ChaWSpecialNextY*i) ||
+			IsCurInRect(ChaWSpecialLevel,ChaX+ChaWSpecialNextX*i,ChaY+ChaWSpecialNextY*i) ||
+			IsCurInRect(ChaWSpecialText,ChaX+ChaWSpecialNextX*i,ChaY+ChaWSpecialNextY*i))
 		{
 label_DrawSpecial:
-			ChaSkilldexPic=SKILLDEX_PARAM(i);
-			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(i)));
-			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(i)));
+			ChaSkilldexPic=SKILLDEX_PARAM(param);
+			Str::Copy(ChaName,MsgGame->GetStr(STR_PARAM_NAME_(param)));
+			Str::Copy(ChaDesc,MsgGame->GetStr(STR_PARAM_DESC_(param)));
 			return;
 		}
 	}
@@ -6753,14 +6766,13 @@ void FOClient::ChaLMouseUp(bool is_reg)
 
 			int skill_val=cr->GetRawParam(ChaCurSkill+SKILL_BEGIN)+ChaSkillUp[ChaCurSkill];
 			if(skill_val>=MAX_SKILL_VAL) break;
-			int need_sp;
 
-			if(skill_val<=100) need_sp=1;
-			else if(skill_val>100 && skill_val<=125) need_sp=2;
-			else if(skill_val>125 && skill_val<=150) need_sp=3;
-			else if(skill_val>150 && skill_val<=175) need_sp=4;
-			else if(skill_val>175 && skill_val<=200) need_sp=5;
-			else need_sp=6;
+			int need_sp=1;
+			if(skill_val>GameOpt.SkillModAdd6) need_sp=6;
+			else if(skill_val>GameOpt.SkillModAdd5) need_sp=5;
+			else if(skill_val>GameOpt.SkillModAdd4) need_sp=4;
+			else if(skill_val>GameOpt.SkillModAdd3) need_sp=3;
+			else if(skill_val>GameOpt.SkillModAdd2) need_sp=2;
 
 			if(ChaUnspentSkillPoints<need_sp) break;
 
@@ -6779,23 +6791,23 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			if(cr->IsTagSkill(ChaCurSkill+SKILL_BEGIN)) ChaSkillUp[ChaCurSkill]--;
 			int skill_val=cr->GetRawParam(ChaCurSkill+SKILL_BEGIN)+ChaSkillUp[ChaCurSkill];
 
-			if(skill_val<=100) ChaUnspentSkillPoints+=1;
-			else if(skill_val>100 && skill_val<=125) ChaUnspentSkillPoints+=2;
-			else if(skill_val>125 && skill_val<=150) ChaUnspentSkillPoints+=3;
-			else if(skill_val>150 && skill_val<=175) ChaUnspentSkillPoints+=4;
-			else if(skill_val>175 && skill_val<=200) ChaUnspentSkillPoints+=5;
-			else ChaUnspentSkillPoints+=6;
+			if(skill_val>GameOpt.SkillModAdd6) ChaUnspentSkillPoints+=6;
+			else if(skill_val>GameOpt.SkillModAdd5) ChaUnspentSkillPoints+=5;
+			else if(skill_val>GameOpt.SkillModAdd4) ChaUnspentSkillPoints+=4;
+			else if(skill_val>GameOpt.SkillModAdd3) ChaUnspentSkillPoints+=3;
+			else if(skill_val>GameOpt.SkillModAdd2) ChaUnspentSkillPoints+=2;
+			else ChaUnspentSkillPoints+=1;
 		}
 		break;
 	case IFACE_REG_SPEC_PL:
 		{
 			if(!is_reg) break;
 			if(!IsCurInRect(RegBSpecialPlus,RegCurSpecial*RegBSpecialNextX+ChaX,RegCurSpecial*RegBSpecialNextY+ChaY)) break;
-			int cur_count=cr->Params[RegCurSpecial];
-			int unspent=40;
-			for(int i=ST_STRENGTH;i<=ST_LUCK;i++) unspent-=cr->ParamsReg[i];
+			int cur_count=cr->Params[ChaSpecialParams[RegCurSpecial]];
+			int unspent=GameOpt.StartSpecialPoints;
+			for(uint i=0,j=(uint)ChaSpecialParams.size();i<j;i++) unspent-=cr->ParamsReg[ChaSpecialParams[i]];
 			if(unspent<=0 || cur_count>=10) break;
-			cr->ParamsReg[RegCurSpecial]++;
+			cr->ParamsReg[ChaSpecialParams[RegCurSpecial]]++;
 			cr->GenParams();
 		}
 		break;
@@ -6803,9 +6815,9 @@ void FOClient::ChaLMouseUp(bool is_reg)
 		{
 			if(!is_reg) break;
 			if(!IsCurInRect(RegBSpecialMinus,RegCurSpecial*RegBSpecialNextX+ChaX,RegCurSpecial*RegBSpecialNextY+ChaY)) break;
-			int cur_count=cr->Params[RegCurSpecial];
+			int cur_count=cr->Params[ChaSpecialParams[RegCurSpecial]];
 			if(cur_count<=1) break;
-			cr->ParamsReg[RegCurSpecial]--;
+			cr->ParamsReg[ChaSpecialParams[RegCurSpecial]]--;
 			cr->GenParams();
 		}
 		break;
@@ -6815,12 +6827,16 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			int offs=RegCurTagSkill-SKILL_BEGIN;
 			if(!IsCurInRect(RegBTagSkill,offs*RegBTagSkillNextX+ChaX,offs*RegBTagSkillNextY+ChaY)) break;
 
+			int free_tag_skill=(cr->ParamsReg[TAG_SKILL1]==0?1:0)+(cr->ParamsReg[TAG_SKILL2]==0?1:0)+(cr->ParamsReg[TAG_SKILL3]==0?1:0)+(cr->ParamsReg[TAG_SKILL4]==0?1:0)-GameOpt.StartTagSkillPoints;
+
 			if(cr->ParamsReg[TAG_SKILL1]==RegCurTagSkill) cr->ParamsReg[TAG_SKILL1]=0;
 			else if(cr->ParamsReg[TAG_SKILL2]==RegCurTagSkill) cr->ParamsReg[TAG_SKILL2]=0;
 			else if(cr->ParamsReg[TAG_SKILL3]==RegCurTagSkill) cr->ParamsReg[TAG_SKILL3]=0;
-			else if(!cr->ParamsReg[TAG_SKILL1]) cr->ParamsReg[TAG_SKILL1]=RegCurTagSkill;
-			else if(!cr->ParamsReg[TAG_SKILL2]) cr->ParamsReg[TAG_SKILL2]=RegCurTagSkill;
-			else if(!cr->ParamsReg[TAG_SKILL3]) cr->ParamsReg[TAG_SKILL3]=RegCurTagSkill;
+			else if(cr->ParamsReg[TAG_SKILL4]==RegCurTagSkill) cr->ParamsReg[TAG_SKILL4]=0;
+			else if(!cr->ParamsReg[TAG_SKILL1] && free_tag_skill>0) cr->ParamsReg[TAG_SKILL1]=RegCurTagSkill;
+			else if(!cr->ParamsReg[TAG_SKILL2] && free_tag_skill>0) cr->ParamsReg[TAG_SKILL2]=RegCurTagSkill;
+			else if(!cr->ParamsReg[TAG_SKILL3] && free_tag_skill>0) cr->ParamsReg[TAG_SKILL3]=RegCurTagSkill;
+			else if(!cr->ParamsReg[TAG_SKILL4] && free_tag_skill>0) cr->ParamsReg[TAG_SKILL4]=RegCurTagSkill;
 
 			cr->GenParams();
 		}

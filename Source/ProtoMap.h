@@ -6,7 +6,7 @@
 
 // Generic
 #define MAPOBJ_SCRIPT_NAME      (25)
-#define MAPOBJ_CRITTER_PARAMS   (15)
+#define MAPOBJ_CRITTER_PARAMS   (40)
 
 // Map object types
 #define MAP_OBJECT_CRITTER      (0)

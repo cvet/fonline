@@ -63,25 +63,26 @@ namespace Str
 	void ParseLine(const char* str, char divider, Cont& result, Func f)
 	{
 		result.clear();
-		char buf[MAX_FOTEXT]={0};
+		char buf[MAX_FOTEXT];
 		for(uint buf_pos=0;;str++)
 		{
-			if(*str==divider || *str=='\0' || buf_pos>=sizeof(buf)-1)
+			if(*str==divider || *str==0 || buf_pos>=sizeof(buf)-1)
 			{
 				if(buf_pos)
 				{
 					buf[buf_pos]=0;
-					result.push_back(typename Cont::value_type(f(buf)));
-					buf[0]=0;
+					EraseFrontBackSpecificChars(buf);
+					if(buf[0]) result.push_back(typename Cont::value_type(f(buf)));
 					buf_pos=0;
 				}
 
-				if(!*str) break;
-				else continue;
+				if(*str==0) break;
 			}
-
-			buf[buf_pos]=*str;
-			buf_pos++;
+			else
+			{
+				buf[buf_pos]=*str;
+				buf_pos++;
+			}
 		}
 	}
 }
