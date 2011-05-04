@@ -3685,7 +3685,6 @@ void FOMapper::ParseNpc(ushort pid, ushort hx, ushort hy)
 	mobj->MapY=hy;
 	mobj->Dir=NpcDir;
 	mobj->MCritter.Cond=COND_LIFE;
-	for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++) mobj->MCritter.ParamIndex[i]=DefaultCritterParam[i];
 	CurProtoMap->MObjects.push_back(mobj);
 
 	CritterCl* cr=new CritterCl();
@@ -3700,6 +3699,14 @@ void FOMapper::ParseNpc(ushort pid, ushort hx, ushort hy)
 	memcpy(cr->Params,pnpc->Params,sizeof(pnpc->Params));
 	cr->Id=AnyId;
 	cr->Init();
+
+	// Default parameters
+	for(int i=0;i<MAPOBJ_CRITTER_PARAMS;i++)
+	{
+		int param=DefaultCritterParam[i];
+		mobj->MCritter.ParamIndex[i]=param;
+		if(param>=0 && param<MAX_PARAMS) mobj->MCritter.ParamValue[i]=cr->Params[param];
+	}
 
 	HexMngr.AddCrit(cr);
 	SelectAdd(mobj);
