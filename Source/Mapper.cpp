@@ -4805,7 +4805,7 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild(MapObject& mobj, ushort 
 uint FOMapper::SScriptFunc::MapperObject_GetChilds(MapObject& mobj, CScriptArray* objects)
 {
 	if(!mobj.RunTime.FromMap) return 0;
-	if(mobj.MapObjType!=MAP_OBJECT_ITEM) return 0;
+	if(mobj.MapObjType!=MAP_OBJECT_ITEM && mobj.MapObjType!=MAP_OBJECT_CRITTER) return 0;
 	MapObjectPtrVec objects_;
 	if(mobj.UID)
 	{

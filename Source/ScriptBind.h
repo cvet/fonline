@@ -1176,7 +1176,7 @@
 	// MapperObject
 	if(engine->RegisterObjectMethod("MapperObject","void Update() const",asFUNCTION(BIND_CLASS MapperObject_Update),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","MapperObject@+ AddChild(uint16 pid)",asFUNCTION(BIND_CLASS MapperObject_AddChild),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
-	if(engine->RegisterObjectMethod("MapperObject","uint GetChilds(MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS MapperObject_Update),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("MapperObject","uint GetChilds(MapperObject@[]@+ objects) const",asFUNCTION(BIND_CLASS MapperObject_GetChilds),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","string@ get_ScriptName() const",asFUNCTION(BIND_CLASS MapperObject_get_ScriptName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","void set_ScriptName(const string& name)",asFUNCTION(BIND_CLASS MapperObject_set_ScriptName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("MapperObject","string@ get_FuncName() const",asFUNCTION(BIND_CLASS MapperObject_get_FuncName),asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
