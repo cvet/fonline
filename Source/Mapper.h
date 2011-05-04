@@ -389,6 +389,17 @@ typedef vector<SelMapTile> SelMapTileVec;
 	void MessBoxDraw();
 	bool SaveLogFile();
 
+	// Extended slots
+	struct SlotExt
+	{
+		uchar Index;
+		char* SlotName;
+	};
+	typedef map<int,SlotExt> SlotExtMap;
+	typedef SlotExtMap::value_type SlotExtMapValType;
+	typedef SlotExtMap::iterator SlotExtMapIt;
+	SlotExtMap SlotsExt;
+
 	// Scripts
 	static bool SpritesCanDraw;
 	void InitScriptSystem();
@@ -436,6 +447,7 @@ typedef vector<SelMapTile> SelMapTileVec;
 		static void MapperMap_set_ScriptFunc(ProtoMap& pmap, CScriptString* str);
 
 		static void Global_SetDefaultCritterParam(uint index, int param);
+		static void Global_AllowSlot(uchar index, CScriptString& slot_name);
 		static ProtoMap* Global_LoadMap(CScriptString& file_name, int path_type);
 		static void Global_UnloadMap(ProtoMap* pmap);
 		static bool Global_SaveMap(ProtoMap* pmap, CScriptString& file_name, int path_type);

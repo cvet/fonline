@@ -1706,7 +1706,12 @@ void FOMapper::IntDraw()
 				if(mobj->MItem.ItemSlot==SLOT_HAND1) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Main",FT_NOBREAK,COLOR_TEXT_WHITE);
 				else if(mobj->MItem.ItemSlot==SLOT_HAND2) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Ext",FT_NOBREAK,COLOR_TEXT_WHITE);
 				else if(mobj->MItem.ItemSlot==SLOT_ARMOR) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Armor",FT_NOBREAK,COLOR_TEXT_WHITE);
-				else SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Error",FT_NOBREAK,COLOR_TEXT_WHITE);
+				else
+				{
+					SlotExtMapIt it=Self->SlotsExt.find(mobj->MItem.ItemSlot);
+					if(it!=Self->SlotsExt.end()) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),it->second.SlotName,FT_NOBREAK,COLOR_TEXT_WHITE);
+					else SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Error",FT_NOBREAK,COLOR_TEXT_WHITE);
+				}
 			}
 		}
 	}
@@ -2469,18 +2474,20 @@ void FOMapper::IntLMouseDown()
 
 					if(proto_item->IsArmor() && CritType::IsCanArmor(crtype))
 					{
-						if(InContObject->MItem.ItemSlot==SLOT_ARMOR)
+						if(InContObject->MItem.ItemSlot!=SLOT_INV)
 						{
 							InContObject->MItem.ItemSlot=SLOT_INV;
 						}
 						else
 						{
+							uchar to_slot=proto_item->Slot;
+							to_slot=to_slot?to_slot:SLOT_ARMOR;
 							for(uint i=0;i<SelectedObj[0].Childs.size();i++)
 							{
 								MapObject* child=SelectedObj[0].Childs[i];
-								if(child->MItem.ItemSlot==SLOT_ARMOR) child->MItem.ItemSlot=SLOT_INV;
+								if(child->MItem.ItemSlot==to_slot) child->MItem.ItemSlot=SLOT_INV;
 							}
-							InContObject->MItem.ItemSlot=SLOT_ARMOR;
+							InContObject->MItem.ItemSlot=to_slot;
 						}
 					}
 					else if(!proto_item->IsArmor() && (!anim1 || CritType::IsAnim1(crtype,anim1)))
@@ -5157,6 +5164,16 @@ void FOMapper::SScriptFunc::Global_SetDefaultCritterParam(uint index, int param)
 {
 	if(index>=MAPOBJ_CRITTER_PARAMS) SCRIPT_ERROR_R("Invalid index arg.");
 	Self->DefaultCritterParam[index]=param;
+}
+
+void FOMapper::SScriptFunc::Global_AllowSlot(uchar index, CScriptString& slot_name)
+{
+	if(index<=SLOT_ARMOR || index==SLOT_GROUND) SCRIPT_ERROR_R("Invalid index arg.");
+	if(!slot_name.length()) SCRIPT_ERROR_R("Slot name string is empty.");
+	SlotExt se;
+	se.Index=index;
+	se.SlotName=Str::Duplicate(slot_name.c_str());
+	Self->SlotsExt.insert(SlotExtMapValType(index,se));
 }
 
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap(CScriptString& file_name, int path_type)

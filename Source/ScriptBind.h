@@ -1311,6 +1311,7 @@
 
 	// Global
 	if(engine->RegisterGlobalFunction("void SetDefaultCritterParam(uint index, int param)",asFUNCTION(BIND_CLASS Global_SetDefaultCritterParam),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void AllowSlot(uint8 index, string& slotName)",asFUNCTION(BIND_CLASS Global_AllowSlot),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("MapperMap@+ LoadMap(string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_LoadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void UnloadMap(MapperMap@+ map)",asFUNCTION(BIND_CLASS Global_UnloadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SaveMap(MapperMap@+ map, string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_SaveMap),asCALL_CDECL)<0) BIND_ERROR;
