@@ -4733,13 +4733,13 @@ void FOMapper::SScriptFunc::MapperObject_set_FuncName(MapObject& mobj, CScriptSt
 
 uchar FOMapper::SScriptFunc::MapperObject_get_Critter_Cond(MapObject& mobj)
 {
-	if(!mobj.MapObjType!=MAP_OBJECT_CRITTER) SCRIPT_ERROR_R0("Map object is not critter.");
+	if(mobj.MapObjType!=MAP_OBJECT_CRITTER) SCRIPT_ERROR_R0("Map object is not critter.");
 	return mobj.MCritter.Cond;
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond(MapObject& mobj, uchar value)
 {
-	if(!mobj.MapObjType!=MAP_OBJECT_CRITTER) SCRIPT_ERROR_R("Map object is not critter.");
+	if(mobj.MapObjType!=MAP_OBJECT_CRITTER) SCRIPT_ERROR_R("Map object is not critter.");
 	if(!mobj.RunTime.FromMap) return;
 	if(value<COND_LIFE || value>COND_DEAD) return;
 	if(mobj.MCritter.Cond==COND_DEAD && value!=COND_LIFE)
