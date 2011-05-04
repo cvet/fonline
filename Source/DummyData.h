@@ -1009,7 +1009,6 @@ struct BindClass
 	static void Global_GetTime(){}
 	static void Global_SetParameterGetBehaviour(){}
 	static void Global_SetParameterChangeBehaviour(){}
-	static void Global_AllowSlot(){}
 	static void Global_SetRegistrationParam(){}
 	static void Global_IsCritterCanWalk(){}
 	static void Global_IsCritterCanRun(){}
@@ -1156,6 +1155,7 @@ struct BindClass
 	static void Global_GetConstantName(){}
 	static void Global_AddConstant(){}
 	static void Global_LoadConstants(){}
+	static void Global_AllowSlot(){}
 };
 
 #ifdef BIND_CLIENT

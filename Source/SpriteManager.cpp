@@ -2651,7 +2651,7 @@ uint SpriteManager::Render3dSprite(Animation3d* anim3d, int dir, int time_proc)
 	if(dir<0 || dir>=DIRS_COUNT) anim3d->SetDirAngle(dir);
 	else anim3d->SetDir(dir);
 	anim3d->SetAnimation(0,time_proc,NULL,ANIMATION_ONE_TIME|ANIMATION_STAY);
-	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,baseColor);
+	Draw3d(spr3dSurfWidth/2,spr3dSurfHeight-spr3dSurfHeight/4,1.0f,anim3d,NULL,0xFFFFFFFF);
 	anim3d->EnableSetupBorders(true);
 	anim3d->SetupBorders();
 	Animation3d::SetScreenSize(modeWidth,modeHeight);

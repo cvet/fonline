@@ -1032,7 +1032,6 @@
 //	if(engine->RegisterGlobalFunction("void Sort(uint[]& array, string& func)",asFUNCTION(BIND_CLASS Global_Sort),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SetParameterGetBehaviour(uint index, string& funcName)",asFUNCTION(BIND_CLASS Global_SetParameterGetBehaviour),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SetParameterChangeBehaviour(uint index, string& funcName)",asFUNCTION(BIND_CLASS Global_SetParameterChangeBehaviour),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void AllowSlot(uint8 index, string& iniOption)",asFUNCTION(BIND_CLASS Global_AllowSlot),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void SetRegistrationParameter(uint index, bool enabled)",asFUNCTION(BIND_CLASS Global_SetRegistrationParam),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsCritterCanWalk(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanWalk),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool IsCritterCanRun(uint crType)",asFUNCTION(BIND_CLASS Global_IsCritterCanRun),asCALL_CDECL)<0) BIND_ERROR;
@@ -1311,7 +1310,6 @@
 
 	// Global
 	if(engine->RegisterGlobalFunction("void SetDefaultCritterParam(uint index, int param)",asFUNCTION(BIND_CLASS Global_SetDefaultCritterParam),asCALL_CDECL)<0) BIND_ERROR;
-	if(engine->RegisterGlobalFunction("void AllowSlot(uint8 index, string& slotName)",asFUNCTION(BIND_CLASS Global_AllowSlot),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("MapperMap@+ LoadMap(string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_LoadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void UnloadMap(MapperMap@+ map)",asFUNCTION(BIND_CLASS Global_UnloadMap),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool SaveMap(MapperMap@+ map, string& fileName, int pathType)",asFUNCTION(BIND_CLASS Global_SaveMap),asCALL_CDECL)<0) BIND_ERROR;
@@ -1523,6 +1521,7 @@
 	if(engine->RegisterGlobalFunction("string@ GetConstantName(int constCollection, int value)",asFUNCTION(BIND_CLASS Global_GetConstantName),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void AddConstant(int constCollection, string@+ name, int value)",asFUNCTION(BIND_CLASS Global_AddConstant),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("bool LoadConstants(int constCollection, string@+ fileName, int pathType)",asFUNCTION(BIND_CLASS Global_LoadConstants),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void AllowSlot(uint8 index, string& slotName)",asFUNCTION(BIND_CLASS Global_AllowSlot),asCALL_CDECL)<0) BIND_ERROR;
 
 /************************************************************************/
 /*                                                                      */

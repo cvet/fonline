@@ -1709,7 +1709,7 @@ void FOMapper::IntDraw()
 				else
 				{
 					SlotExtMapIt it=Self->SlotsExt.find(mobj->MItem.ItemSlot);
-					if(it!=Self->SlotsExt.end()) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),it->second.SlotName,FT_NOBREAK,COLOR_TEXT_WHITE);
+					if(it!=Self->SlotsExt.end()) SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),(*it).second.SlotName,FT_NOBREAK,COLOR_TEXT_WHITE);
 					else SprMngr.DrawStr(INTRECT(x,y,x+w,y+h),"Error",FT_NOBREAK,COLOR_TEXT_WHITE);
 				}
 			}
