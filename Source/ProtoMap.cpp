@@ -1164,7 +1164,7 @@ void ProtoMap::SaveTextFormat(FileManager& fm)
 				if(mobj.MScenery.ToMapPid) fm.SetStr("%-20s %d\n","Scenery_ToMapPid",mobj.MScenery.ToMapPid);
 				if(mobj.MScenery.ToEntire) fm.SetStr("%-20s %d\n","Scenery_ToEntire",mobj.MScenery.ToEntire);
 				if(mobj.MScenery.ToDir) fm.SetStr("%-20s %d\n","Scenery_ToDir",mobj.MScenery.ToDir);
-				if(mobj.MScenery.SpriteCut) fm.SetStr("%-20s %d\n","SpriteCut",mobj.MScenery.SpriteCut);
+				if(mobj.MScenery.SpriteCut) fm.SetStr("%-20s %d\n","Scenery_SpriteCut",mobj.MScenery.SpriteCut);
 			}
 		}
 		fm.SetStr("\n");

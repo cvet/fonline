@@ -169,17 +169,11 @@ FrameEx* Loader3d::LoadModel(IDirect3DDevice9* device, const char* fname, bool c
 D3DXMATRIX ConvertMatrix(const aiMatrix4x4& mat)
 {
 	D3DXMATRIX m;
-	aiVector3D scale;
-	aiQuaternion rot;
-	aiVector3D pos;
-	mat.Decompose(scale,rot,pos);
-
-	D3DXMATRIX ms,mr,mp;
-	D3DXMatrixIdentity(&m);
-	D3DXMatrixScaling(&ms,scale.x,scale.y,scale.z);
-	D3DXMatrixRotationQuaternion(&mr,&D3DXQUATERNION(rot.x,rot.y,rot.z,rot.w));
-	D3DXMatrixTranslation(&mp,pos.x,pos.y,pos.z);
-	return ms*mr*mp;
+	m._11=mat.a1; m._21=mat.a2; m._31=mat.a3; m._41=mat.a4;
+	m._12=mat.b1; m._22=mat.b2; m._32=mat.b3; m._42=mat.b4;
+	m._13=mat.c1; m._23=mat.c2; m._33=mat.c3; m._43=mat.c4;
+	m._14=mat.d1; m._24=mat.d2; m._34=mat.d3; m._44=mat.d4;
+	return m;
 }
 
 FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const aiScene* scene, bool with_tangent)

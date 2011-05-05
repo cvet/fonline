@@ -103,6 +103,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // ###########################################################################
 
 // ---------------------------------------------------------------------------
+/** @brief Maximum bone count per mesh for the SplitbyBoneCount step.
+ *
+ * Meshes are split until the maximum number of bones is reached. The default
+ * value is AI_SBBC_DEFAULT_MAX_BONES, which may be altered at
+ * compile-time.
+ * Property data type: integer.
+ */
+// ---------------------------------------------------------------------------
+#define AI_CONFIG_PP_SBBC_MAX_BONES \
+	"PP_SBBC_MAX_BONES"
+
+
+// default limit for bone count 
+#if (!defined AI_SBBC_DEFAULT_MAX_BONES)
+#	define AI_SBBC_DEFAULT_MAX_BONES		60
+#endif
+
+
+// ---------------------------------------------------------------------------
 /** @brief  Specifies the maximum angle that may be between two vertex tangents
  *         that their tangents and bitangents are smoothed.
  *
@@ -181,7 +200,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---------------------------------------------------------------------------
 /** @brief Configures the #aiProcess_PretransformVertices step to normalize
- *  all vertex components into the -1...1 range. That is, a bounding box
+ *  all vertex components into the [-1,1] range. That is, a bounding box
  *  for the whole scene is computed, the maximum component is taken and all
  *  meshes are scaled appropriately (uniformly of course!).
  *  This might be useful if you don't know the spatial dimension of the input 
@@ -268,6 +287,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if (!defined AI_LMW_MAX_WEIGHTS)
 #	define AI_LMW_MAX_WEIGHTS	0x4
 #endif // !! AI_LMW_MAX_WEIGHTS
+
+// ---------------------------------------------------------------------------
+/** @brief Set the deboning threshold higher to remove more bones
+ *
+ * This is used by the #aiProcess_Debone PostProcess-Step.
+ * @note The default value is AI_DEBONE_THRESHOLD
+ * Property type: float.*/
+#define AI_CONFIG_PP_DB_THRESHOLD \
+	"PP_DB_THRESHOLD"
+
+// default value for AI_CONFIG_PP_LBW_MAX_WEIGHTS
+#if (!defined AI_DEBONE_THRESHOLD)
+#	define AI_DEBONE_THRESHOLD	1.0f
+#endif // !! AI_DEBONE_THRESHOLD
+
+// ---------------------------------------------------------------------------
+/** @brief Require all bones qualify for deboning before removing any
+ *
+ * This is used by the #aiProcess_Debone PostProcess-Step.
+ * @note The default value is 0
+ * Property type: bool.*/
+#define AI_CONFIG_PP_DB_ALL_OR_NONE \
+	"PP_DB_ALL_OR_NONE"
 
 /** @brief Default value for the #AI_CONFIG_PP_ICL_PTCACHE_SIZE property
  */
