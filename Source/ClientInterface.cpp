@@ -6381,7 +6381,7 @@ void FOClient::ChaDraw(bool is_reg)
 	if(is_reg)
 	{
 		SprMngr.DrawStr(INTRECT(ChaWUnspentSPText,ChaX,ChaY),MsgGame->GetStr(STR_REG_UNSPENT_TAGS),FT_NOBREAK|FT_CENTERX|FT_CENTERY,COLOR_TEXT_SAND,FONT_FAT);
-		int free_tag_skill=(cr->Params[TAG_SKILL1]==0?1:0)+(cr->Params[TAG_SKILL2]==0?1:0)+(cr->Params[TAG_SKILL3]==0?1:0)+(cr->Params[TAG_SKILL4]==0?1:0)-GameOpt.StartTagSkillPoints;
+		int free_tag_skill=GameOpt.StartTagSkillPoints-(cr->Params[TAG_SKILL1]?1:0)-(cr->Params[TAG_SKILL2]?1:0)-(cr->Params[TAG_SKILL3]?1:0)-(cr->Params[TAG_SKILL4]?1:0);
 		SprMngr.DrawStr(INTRECT(ChaWUnspentSP,ChaX,ChaY),Str::FormatBuf("%02d",free_tag_skill),FT_NOBREAK,COLOR_IFACE,FONT_BIG_NUM);
 	}
 	else
@@ -6827,7 +6827,7 @@ void FOClient::ChaLMouseUp(bool is_reg)
 			int offs=RegCurTagSkill-SKILL_BEGIN;
 			if(!IsCurInRect(RegBTagSkill,offs*RegBTagSkillNextX+ChaX,offs*RegBTagSkillNextY+ChaY)) break;
 
-			int free_tag_skill=(cr->ParamsReg[TAG_SKILL1]==0?1:0)+(cr->ParamsReg[TAG_SKILL2]==0?1:0)+(cr->ParamsReg[TAG_SKILL3]==0?1:0)+(cr->ParamsReg[TAG_SKILL4]==0?1:0)-GameOpt.StartTagSkillPoints;
+			int free_tag_skill=GameOpt.StartTagSkillPoints-(cr->ParamsReg[TAG_SKILL1]?1:0)-(cr->ParamsReg[TAG_SKILL2]?1:0)-(cr->ParamsReg[TAG_SKILL3]?1:0)-(cr->ParamsReg[TAG_SKILL4]?1:0);
 
 			if(cr->ParamsReg[TAG_SKILL1]==RegCurTagSkill) cr->ParamsReg[TAG_SKILL1]=0;
 			else if(cr->ParamsReg[TAG_SKILL2]==RegCurTagSkill) cr->ParamsReg[TAG_SKILL2]=0;
