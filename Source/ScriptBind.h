@@ -557,7 +557,7 @@
 	if(engine->RegisterObjectProperty("Critter","const uint Anim2Life",OFFSETOF(Critter,Data)+OFFSETOF(CritData,Anim2Life))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const uint Anim2Knockout",OFFSETOF(Critter,Data)+OFFSETOF(CritData,Anim2Knockout))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const uint Anim2Dead",OFFSETOF(Critter,Data)+OFFSETOF(CritData,Anim2Dead))<0) BIND_ERROR;
-	if(engine->RegisterObjectProperty("Critter","const uint16 FlagsExt",OFFSETOF(Critter,Flags)+2)<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("Critter","const uint Flags",OFFSETOF(Critter,Flags))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","const string Name",OFFSETOF(Critter,NameStr))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","uint ShowCritterDist1",OFFSETOF(Critter,Data)+OFFSETOF(CritData,ShowCritterDist1))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("Critter","uint ShowCritterDist2",OFFSETOF(Critter,Data)+OFFSETOF(CritData,ShowCritterDist2))<0) BIND_ERROR;

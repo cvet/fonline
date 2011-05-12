@@ -228,11 +228,14 @@ FrameEx* Loader3d::FillNode(IDirect3DDevice9* device, const aiNode* node, const 
 				material.pTextureFilename=Str::Duplicate(path.data);
 			}
 
-			mtrl->Get(AI_MATKEY_COLOR_DIFFUSE,material.MatD3D.Diffuse);
-			mtrl->Get(AI_MATKEY_COLOR_AMBIENT,material.MatD3D.Ambient);
-			mtrl->Get(AI_MATKEY_COLOR_SPECULAR,material.MatD3D.Specular);
-			mtrl->Get(AI_MATKEY_COLOR_EMISSIVE,material.MatD3D.Emissive);
-			mtrl->Get(AI_MATKEY_SHININESS,material.MatD3D.Power);
+			mtrl->Get<float>(AI_MATKEY_COLOR_DIFFUSE,(float*)&material.MatD3D.Diffuse,NULL);
+			mtrl->Get<float>(AI_MATKEY_COLOR_AMBIENT,(float*)&material.MatD3D.Ambient,NULL);
+			mtrl->Get<float>(AI_MATKEY_COLOR_SPECULAR,(float*)&material.MatD3D.Specular,NULL);
+			mtrl->Get<float>(AI_MATKEY_COLOR_EMISSIVE,(float*)&material.MatD3D.Emissive,NULL);
+			material.MatD3D.Diffuse.a=1.0f;
+			material.MatD3D.Ambient.a=1.0f;
+			material.MatD3D.Specular.a=1.0f;
+			material.MatD3D.Emissive.a=1.0f;
 
 			materials.push_back(material);
 		}
