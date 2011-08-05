@@ -13,6 +13,8 @@
 #include <locale.h>
 using namespace std;
 
+//#define AS_INTERPRETER
+
 typedef int (__cdecl *BindFunc)(asIScriptEngine*);
 typedef asIScriptEngine* (__cdecl *ASCreate)();
 typedef bool(*PragmaCallbackFunc)(const char*);
@@ -23,6 +25,93 @@ bool IsClient=false;
 bool IsMapper=false;
 char* Buf=NULL;
 Preprocessor::LineNumberTranslator* LNT=NULL;
+
+#ifdef AS_INTERPRETER
+
+const char* ContextStatesStr[]=
+{
+	"Finished",
+	"Suspended",
+	"Aborted",
+	"Exception",
+	"Prepared",
+	"Uninitialized",
+	"Active",
+	"Error",
+};
+
+void Global_Log(string& str)
+{
+	printf("%s\n",str.c_str());
+}
+
+void PrintContextCallstack(asIScriptContext* ctx)
+{
+	int line,column;
+	const asIScriptFunction* func;
+	int stack_size=ctx->GetCallstackSize();
+	printf("State<%s>, call stack<%d>:\n",ContextStatesStr[(int)ctx->GetState()],stack_size);
+
+	// Print current function
+	if(ctx->GetState()==asEXECUTION_EXCEPTION)
+	{
+		line=ctx->GetExceptionLineNumber(&column);
+		func=Engine->GetFunctionDescriptorById(ctx->GetExceptionFunction());
+	}
+	else
+	{
+		line=ctx->GetLineNumber(0,&column);
+		func=ctx->GetFunction(0);
+	}
+	if(func) printf("  %d) %s : %s : %d, %d.\n",stack_size-1,func->GetModuleName(),func->GetDeclaration(),line,column);
+
+	// Print call stack
+	for(int i=1;i<stack_size;i++)
+	{
+		func=ctx->GetFunction(i);
+		line=ctx->GetLineNumber(i,&column);
+		if(func) printf("  %d) %s : %s : %d, %d.\n",stack_size-i-1,func->GetModuleName(),func->GetDeclaration(),line,column);
+	}
+}
+
+
+void RunMain(asIScriptModule* module)
+{
+	// Run void main()
+	asIScriptContext* ctx=Engine->CreateContext();
+	int func=module->GetFunctionIdByDecl("void main()");
+	if(func<0)
+	{
+		printf("No void main() found.\n");
+		return;
+	}
+	int result=ctx->Prepare(func);
+	if(result<0)
+	{
+		printf("Context preparation failure, error code <%d>.\n",result);
+		return;
+	}
+
+	result=ctx->Execute();
+	asEContextState state=ctx->GetState();
+	if(state!=asEXECUTION_FINISHED)
+	{
+		if(state==asEXECUTION_EXCEPTION) printf("Execution of script stopped due to exception.\n");
+		else if(state==asEXECUTION_SUSPENDED) printf("Execution of script stopped due to timeout.\n");
+		else printf("Execution of script stopped due to %s.\n",ContextStatesStr[(int)state]);
+		PrintContextCallstack(ctx);
+		ctx->Abort();
+		return;
+	}
+
+	if(result<0)
+	{
+		printf("Execution error<%d>, state<%s>.\n",result,ContextStatesStr[(int)state]);
+	}
+	printf("Execution finished.\n");
+}
+
+#endif
 
 void* GetScriptEngine()
 {
@@ -118,6 +207,11 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 0;
 	}
 
+#ifdef AS_INTERPRETER
+	if(Engine->RegisterGlobalFunction("void asInterpreterLog(string& text)",asFUNCTION(Global_Log),asCALL_CDECL)<0)
+		printf("Warning: cannot bind masking Log().");
+#endif AS_INTERPRETER
+
 	BindFunc bind_func;
 	if(!(bind_func=(BindFunc)GetProcAddress(script_dll,"Bind")))
 	{
@@ -157,6 +251,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	Preprocessor::SetPragmaCallback(new ScriptPragmaCallback(pragma_type));
 
 	for(size_t i=0;i<defines.size();i++) Preprocessor::Define(string(defines[i]));
+#ifdef AS_INTERPRETER
+	Preprocessor::Define(string("Log asInterpreterLog"));
+#endif
 	LNT = new Preprocessor::LineNumberTranslator();
 	int res=Preprocessor::Preprocess(str_fname,fsrc,vos,true,&vos_err,LNT);
 	if(res)
@@ -303,6 +400,11 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	QueryPerformanceCounter((PLARGE_INTEGER)&fp2);
 	printf("Success.\nTime: %.02f ms.\n",double(((double)fp2-(double)fp)/(double)freq*1000)/*,t2-t1*/);
+
+#ifdef AS_INTERPRETER
+	RunMain(module);
+#endif
+
 	Engine->Release();
 	FreeLibrary(comp_dll);
 	if(Buf) delete Buf;
