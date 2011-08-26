@@ -13,10 +13,13 @@
 #include <IdBaseComponent.hpp>
 #include <IdComponent.hpp>
 #include <IdTCPServer.hpp>
+#include <Sockets.hpp>
+#include <IdContext.hpp>
 #include <vector>
-#include "Common.h"
+#include "../Common.h"
 //---------------------------------------------------------------------------
 #define LOG(mess) do{MLog->Lines->Add(mess); MLog->Refresh();}while(0)
+#define SEND_PORTION       (100000)
 
 class ContextInfo : public TObject
 {
@@ -44,39 +47,61 @@ __published:	// IDE-managed Components
 	TLabel *Label3;
 	TLabel *Label4;
 	TLabel *Label5;
-	TLabel *LBytesSend;
+	TLabel *LBytesSent;
 	TLabel *Label7;
-	TLabel *LFilesSend;
+	TLabel *LFilesSent;
 	TShape *ShapeIndicator;
 	TIdTCPServer *IdTCPServer;
-	TButton *Button1;
-	TButton *Button2;
+	TSplitter *Splitter;
+	TLabel *Label6;
+	TLabel *LPings;
 	void __fastcall BProcessClick(TObject *Sender);
 	void __fastcall BRecalcFilesClick(TObject *Sender);
 	void __fastcall IdTCPServerExecute(TIdContext *AContext);
 	void __fastcall IdTCPServerConnect(TIdContext *AContext);
 	void __fastcall IdTCPServerDisconnect(TIdContext *AContext);
 	void __fastcall IdTCPServerException(TIdContext *AContext,
-          Exception *AException);
+		  Exception *AException);
+	void __fastcall FormShow(TObject *Sender);
 private:	// User declarations
 public:		// User declarations
 	__fastcall TServerForm(TComponent* Owner);
 	void SwitchListen();
+	void LoadConfigArray(AnsiStringVec& cfg, AnsiString keyName);
+	bool CheckName(const char* name, AnsiStringVec& where);
+	void RecursiveDirLook(const char* initDir, const char* curDir, const char* query);
 	void RecalcFiles();
-	unsigned int BufferSize;
 
 	struct PrepFile
 	{
 		AnsiString FName;
 		AnsiString FHash;
-		TMemoryStream* Stream;
-		TMemoryStream* StreamPack;
+		AnsiString FSize;
+		AnsiString FOptions;
+		TStream* Stream;
+		TCriticalSection* StreamLocker;
+		DynamicArray<System::Byte> StreamBuffer;
+		bool Packed;
 	};
 typedef std::vector<PrepFile> PrepFileVec;
+typedef std::vector<PrepFile>::iterator PrepFileVecIt;
 	PrepFileVec PrepFiles;
 
-	__int64 ConnAll,ConnCur,ConnSucc,ConnFail;
-	__int64 BytesSend,FilesSend;
+	AnsiString GameFileName;
+	AnsiString UpdaterURL;
+	AnsiString GameServer;
+	AnsiString GameServerPort;
+	AnsiStringVec CfgContent;
+	AnsiStringVec CfgQuery;
+	AnsiStringVec CfgIgnore;
+	AnsiStringVec CfgPack;
+	AnsiStringVec CfgNoRewrite;
+	AnsiStringVec CfgDelete;
+	AnsiStringVec CfgHddInsteadRam;
+
+	__int64 ConnAll, ConnCur, ConnSucc, ConnFail;
+	__int64 BytesSent, FilesSent;
+	__int64 Pings;
 	void UpdateInfo();
 	void ConnStart(TIdContext* context, const AnsiString& infoMessage);
 	void ConnError(TIdContext* context, const AnsiString& errorMessage);

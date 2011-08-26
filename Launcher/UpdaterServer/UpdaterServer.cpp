@@ -7,6 +7,8 @@ USEFORM("UpdaterServerForm.cpp", ServerForm);
 //---------------------------------------------------------------------------
 WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
+	setlocale(LC_ALL, "Russian");
+    
 	try
 	{
 		Application->Initialize();

@@ -1,11 +1,11 @@
-object MainForm: TMainForm
+object TypeProxyForm: TTypeProxyForm
   Left = 0
   Top = 0
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  Caption = 'MainForm'
-  ClientHeight = 196
-  ClientWidth = 225
+  Caption = 'TypeProxyForm'
+  ClientHeight = 245
+  ClientWidth = 273
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -50,67 +50,133 @@ object MainForm: TMainForm
     0000FFBF0000FF1F0000FE0F0000FC070000F8030000F0010000FE0F0000FE0F
     0000FE0F0000FE1F0000FC1F0000F03F0000007F000081FF0000FFFF0000}
   OldCreateOrder = False
+  Position = poOwnerFormCenter
   PixelsPerInch = 96
   TextHeight = 13
-  object LHost: TLabel
-    Left = 16
-    Top = 5
-    Width = 27
-    Height = 13
-    Caption = 'LHost'
-  end
-  object LPort: TLabel
-    Left = 167
-    Top = 5
-    Width = 25
-    Height = 13
-    Caption = 'LPort'
-  end
-  object CbHost: TComboBox
-    Left = 8
-    Top = 24
-    Width = 145
-    Height = 21
-    ItemHeight = 0
+  object GbProxy: TGroupBox
+    Left = 9
+    Top = 8
+    Width = 256
+    Height = 185
+    Caption = 'GbProxy'
     TabOrder = 0
-    Text = '127.0.0.1'
+    object LabelProxyType: TLabel
+      Left = 107
+      Top = 10
+      Width = 77
+      Height = 13
+      Caption = 'LabelProxyType'
+    end
+    object LabelProxyHost: TLabel
+      Left = 16
+      Top = 55
+      Width = 75
+      Height = 13
+      Caption = 'LabelProxyHost'
+    end
+    object LabelProxyPort: TLabel
+      Left = 194
+      Top = 55
+      Width = 73
+      Height = 13
+      Caption = 'LabelProxyPort'
+    end
+    object LabelProxyName: TLabel
+      Left = 16
+      Top = 97
+      Width = 80
+      Height = 13
+      Caption = 'LabelProxyName'
+    end
+    object LabelProxyPass: TLabel
+      Left = 16
+      Top = 139
+      Width = 75
+      Height = 13
+      Caption = 'LabelProxyPass'
+    end
+    object RbProxyNone: TRadioButton
+      Left = 13
+      Top = 29
+      Width = 113
+      Height = 17
+      Caption = 'RbProxyNone'
+      Checked = True
+      TabOrder = 0
+      TabStop = True
+    end
+    object RbProxySocks4: TRadioButton
+      Left = 63
+      Top = 29
+      Width = 113
+      Height = 17
+      Caption = 'RbProxySocks4'
+      TabOrder = 1
+    end
+    object RbProxySocks5: TRadioButton
+      Left = 126
+      Top = 29
+      Width = 113
+      Height = 17
+      Caption = 'RbProxySocks5'
+      TabOrder = 2
+    end
+    object RbProxyHttp: TRadioButton
+      Left = 192
+      Top = 29
+      Width = 64
+      Height = 17
+      Caption = 'RbProxyHttp'
+      TabOrder = 3
+    end
+    object SeProxyPort: TCSpinEdit
+      Left = 190
+      Top = 70
+      Width = 63
+      Height = 22
+      MaxValue = 65535
+      TabOrder = 4
+      Value = 8080
+    end
+    object EditProxyUser: TEdit
+      Left = 3
+      Top = 112
+      Width = 250
+      Height = 21
+      TabOrder = 5
+    end
+    object EditProxyPass: TEdit
+      Left = 3
+      Top = 154
+      Width = 250
+      Height = 21
+      TabOrder = 6
+    end
+    object EditProxyHost: TEdit
+      Left = 3
+      Top = 70
+      Width = 181
+      Height = 21
+      TabOrder = 7
+      Text = 'localhost'
+    end
   end
-  object CsePort: TCSpinEdit
-    Left = 159
-    Top = 24
-    Width = 58
-    Height = 22
-    MaxValue = 65535
+  object BtnDone: TButton
+    Left = 8
+    Top = 211
+    Width = 116
+    Height = 26
+    Caption = 'BtnDone'
     TabOrder = 1
-    Value = 4040
+    OnClick = BtnDoneClick
   end
-  object BCheck: TButton
-    Left = 8
-    Top = 51
-    Width = 209
+  object BtnCancel: TButton
+    Left = 149
+    Top = 212
+    Width = 116
     Height = 25
-    Caption = 'BCheck'
+    Caption = 'BtnCancel'
     TabOrder = 2
-    OnClick = BCheckClick
-  end
-  object MLog: TMemo
-    Left = 8
-    Top = 82
-    Width = 209
-    Height = 106
-    ReadOnly = True
-    ScrollBars = ssBoth
-    TabOrder = 3
-    WordWrap = False
-  end
-  object TcpClient: TTcpClient
-    Left = 184
-    Top = 48
-  end
-  object WaitTimer: TTimer
-    Interval = 500
-    OnTimer = WaitTimerTimer
-    Left = 152
-    Top = 48
+    OnClick = BtnCancelClick
   end
 end

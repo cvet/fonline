@@ -1,0 +1,44 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{25a6e932-8b6a-469c-b220-ba8d3bc09206}</ProjectGuid>
+  </PropertyGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Projects Include="Launcher.cbproj" />
+    <Projects Include="UpdaterServer\UpdaterServer.cbproj" />
+  </ItemGroup>
+  <ProjectExtensions>
+    <Borland.Personality>Default.Personality</Borland.Personality>
+    <Borland.ProjectType />
+    <BorlandProject>
+  <BorlandProject xmlns=""> <Default.Personality> </Default.Personality> </BorlandProject></BorlandProject>
+  </ProjectExtensions>
+  <Target Name="Launcher">
+    <MSBuild Projects="Launcher.cbproj" Targets="" />
+  </Target>
+  <Target Name="Launcher:Clean">
+    <MSBuild Projects="Launcher.cbproj" Targets="Clean" />
+  </Target>
+  <Target Name="Launcher:Make">
+    <MSBuild Projects="Launcher.cbproj" Targets="Make" />
+  </Target>
+  <Target Name="UpdaterServer">
+    <MSBuild Projects="UpdaterServer\UpdaterServer.cbproj" Targets="" />
+  </Target>
+  <Target Name="UpdaterServer:Clean">
+    <MSBuild Projects="UpdaterServer\UpdaterServer.cbproj" Targets="Clean" />
+  </Target>
+  <Target Name="UpdaterServer:Make">
+    <MSBuild Projects="UpdaterServer\UpdaterServer.cbproj" Targets="Make" />
+  </Target>
+  <Target Name="Build">
+    <CallTarget Targets="Launcher;UpdaterServer" />
+  </Target>
+  <Target Name="Clean">
+    <CallTarget Targets="Launcher:Clean;UpdaterServer:Clean" />
+  </Target>
+  <Target Name="Make">
+    <CallTarget Targets="Launcher:Make;UpdaterServer:Make" />
+  </Target>
+  <Import Condition="Exists('$(MSBuildBinPath)\Borland.Group.Targets')" Project="$(MSBuildBinPath)\Borland.Group.Targets" />
+</Project>

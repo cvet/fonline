@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<BorlandProject>
-	<Transactions>
-    <Transaction>2009.09.06 03:47:29.109.groupproj,C:\Documents and Settings\Admin\Мои документы\RAD Studio\Projects\ProjectGroup1.groupproj=E:\Repozes\code\UpdaterClient\Updater.groupproj</Transaction>
-  </Transactions>
-	<Default.Personality>
-		<Projects ActiveProject="Updater.exe"/>
-	</Default.Personality>
-</BorlandProject>
