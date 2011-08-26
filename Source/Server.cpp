@@ -3540,7 +3540,7 @@ bool FOServer::Init()
 	FileManager::InitDataFiles(".\\");
 
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
+	cfg.LoadFile(GetConfigFileName(),PT_SERVER_ROOT);
 
 	WriteLog("***   Starting initialization   ****\n");
 	/*WriteLog("FOServer<%u>.\n",sizeof(FOServer));
@@ -3927,7 +3927,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
 	WriteLog("Loading language packs...\n");
 
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
+	cfg.LoadFile(GetConfigFileName(),PT_SERVER_ROOT);
 	uint cur_lang=0;
 
 	while(true)

@@ -203,8 +203,9 @@ void Critter::SetLexems(const char* lexems)
 			return;
 		}
 
-		if(len+1>=LEXEMS_SIZE) return;
-		memcpy(Data.Lexems,lexems,len+1);
+		if(len>=LEXEMS_SIZE) len=LEXEMS_SIZE-1;
+		memcpy(Data.Lexems,lexems,len);
+		Data.Lexems[len]=0;
 	}
 	else
 	{

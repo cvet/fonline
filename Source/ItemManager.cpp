@@ -306,7 +306,6 @@ bool ItemManager::LoadProtos(ProtoItemVec& protos, const char* fname)
 					proto_item.Stackable=true;
 				else
 					proto_item.Deteriorable=true;
-
 			}
 			if(proto_item.Type==ITEM_TYPE_ARMOR) proto_item.Deteriorable=true;
 

@@ -1415,33 +1415,43 @@ void FOClient::CollectContItems()
 
 void FOClient::ProcessItemsCollection(int collection, ItemVec& init_items, ItemVec& result)
 {
+	// Default result
 	result=init_items;
 	if(result.empty()) return;
 
+	// Prepare to call
 	if(Script::PrepareContext(ClientFunctions.ItemsCollection,_FUNC_,"Game"))
 	{
+		// Create script array
 		CScriptArray* arr=Script::CreateArray("ItemCl@[]");
 		if(arr)
 		{
+			// Clone to script array
 			ItemPtrVec items_ptr;
 			items_ptr.reserve(init_items.size());
 			for(ItemVecIt it=init_items.begin(),end=init_items.end();it!=end;++it) items_ptr.push_back((*it).Clone());
-			Script::AppendVectorToArray(items_ptr,arr);
+			Script::AppendVectorToArrayRef(items_ptr,arr);
 
+			// Call
 			Script::SetArgUInt(collection);
 			Script::SetArgObject(arr);
 			if(Script::RunPrepared())
 			{
-				items_ptr.clear();
+				// Copy from script to std array
+				ItemPtrVec result_items_ptr;
+				Script::AssignScriptArrayInVector(result_items_ptr,arr);
+
+				// Copy to result array
 				result.clear();
-				Script::AssignScriptArrayInVector(items_ptr,arr);
-				for(ItemPtrVecIt it=items_ptr.begin(),end=items_ptr.end();it!=end;++it)
+				for(ItemPtrVecIt it=result_items_ptr.begin(),end=result_items_ptr.end();it!=end;++it)
 				{
 					Item* item=*it;
 					if(item) result.push_back(*item);
 				}
 			}
 
+			// Release items
+			for(ItemPtrVecIt it=items_ptr.begin(),end=items_ptr.end();it!=end;++it) (*it)->Release();
 			arr->Release();
 		}
 	}
@@ -2084,7 +2094,7 @@ void FOClient::GameDraw()
 	LookBordersDraw();
 
 	// Critters
-	for(CritMapIt it=HexMngr.allCritters.begin();it!=HexMngr.allCritters.end();it++)
+	for(CritMapIt it=HexMngr.GetCritters().begin();it!=HexMngr.GetCritters().end();it++)
 	{
 		CritterCl* cr=(*it).second;
 
@@ -2419,8 +2429,8 @@ void FOClient::IntDraw()
 	{
 		SprMngr.DrawSpriteSize(
 			ResMngr.GetInvAnim(Chosen->ItemSlotMain->GetPicInv()),
-			IntBItem[0]+item_offsx,IntBItem[1]+item_offsy,
-			(float)(IntBItem[2]-IntBItem[0]),(float)(IntBItem[3]-IntBItem[1]),
+			IntBItem.L+item_offsx,IntBItem.T+item_offsy,
+			(float)IntBItem.W(),(float)IntBItem.H(),
 			false,true,Chosen->ItemSlotMain->GetInvColor());
 	}
 
@@ -4065,7 +4075,7 @@ void FOClient::LMenuCollect()
 		case SCREEN_GLOBAL_MAP:
 			{
 				int pos=0;
-				for(CritMapIt it=HexMngr.allCritters.begin();it!=HexMngr.allCritters.end();it++,pos++)
+				for(CritMapIt it=HexMngr.GetCritters().begin();it!=HexMngr.GetCritters().end();it++,pos++)
 				{
 					CritterCl* cr=(*it).second;
 					if(!IsCurInRect(INTRECT(GmapWName,GmapWNameStepX*pos,GmapWNameStepY*pos))) continue;
@@ -4247,7 +4257,7 @@ void FOClient::LMenuSet(uchar set_lmenu)
 			else // Self
 			{
 				// Kick self
-				if(!Chosen->IsGmapRule() && HexMngr.allCritters.size()>1) LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
+				if(!Chosen->IsGmapRule() && HexMngr.GetCritters().size()>1) LMenuNodes.push_back(LMENU_NODE_GMAP_KICK);
 			}
 
 			if(cr->IsPlayer() && cr->GetId()!=Chosen->GetId() && !Chosen->GetParam(TO_KARMA_VOTING))
@@ -5478,7 +5488,7 @@ void FOClient::GmapDraw()
 
 	// Critters
 	int pos=0;
-	for(CritMapIt it=HexMngr.allCritters.begin();it!=HexMngr.allCritters.end();it++,pos++)
+	for(CritMapIt it=HexMngr.GetCritters().begin();it!=HexMngr.GetCritters().end();it++,pos++)
 	{
 		CritterCl* cr=(*it).second;
 		SprMngr.DrawStr(INTRECT(GmapWName,GmapWNameStepX*pos,GmapWNameStepY*pos),cr->GetName(),FT_NOBREAK|FT_CENTERY,cr->IsGmapRule()?COLOR_TEXT_DGREEN:COLOR_TEXT);
@@ -5627,7 +5637,7 @@ void FOClient::GmapLMouseDown()
 	else
 	{
 		int pos=0;
-		for(CritMapIt it=HexMngr.allCritters.begin();it!=HexMngr.allCritters.end();it++,pos++)
+		for(CritMapIt it=HexMngr.GetCritters().begin();it!=HexMngr.GetCritters().end();it++,pos++)
 		{
 			CritterCl* cr=(*it).second;
 			if(!IsCurInRect(INTRECT(GmapWName,GmapWNameStepX*pos,GmapWNameStepY*pos))) continue;

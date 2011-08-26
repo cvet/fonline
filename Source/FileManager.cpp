@@ -796,11 +796,12 @@ const char* FileManager::GetExtension(const char* fname)
 	return last_dot;
 }
 
-void FileManager::EraseExtension(char* fname)
+char* FileManager::EraseExtension(char* fname)
 {
-	if(!fname) return;
+	if(!fname) return NULL;
 	char* ext=(char*)GetExtension(fname);
 	if(ext) *(ext-1)=0;
+	return fname;
 }
 
 int FileManager::ParseLinesInt(const char* fname, int path_type, IntVec& lines)

@@ -7,7 +7,9 @@
 #include <math.h>
 #include "FileManager.h"
 #include "IniParser.h"
+#include "Version.h"
 #include <stdarg.h>
+#include <io.h>
 
 #pragma MESSAGE("Add TARGET_HEX.")
 
@@ -488,6 +490,103 @@ bool CheckUserPass(const char* str)
 }
 
 /************************************************************************/
+/* Config file                                                          */
+/************************************************************************/
+
+const char* GetConfigFileName()
+{
+	// Default config names
+#if defined(FONLINE_SERVER)
+	static char config_name[MAX_FOPATH]={"FOnlineServer.cfg\0--default-server-config--"};
+#elif defined(FONLINE_MAPPER)
+	static char config_name[MAX_FOPATH]={"Mapper.cfg\0--default-mapper-config--"};
+#else // FONLINE_CLIENT and others
+	static char config_name[MAX_FOPATH]={"FOnline.cfg\0--default-client-config--"};
+#endif
+
+	// Extract config name from current exe
+	static bool processed=false;
+	if(!processed)
+	{
+		// Call once
+		processed=true;
+
+		// Get full path
+		char module_name[MAX_FOPATH];
+		if(!GetModuleFileName(NULL,module_name,sizeof(module_name))) return config_name;
+		// Todo: Linux CommandLineArgValues[0] ?
+
+		// Change extension
+		char* ext=(char*)FileManager::GetExtension(module_name);
+		if(!ext) return config_name;
+		Str::Copy(ext,4,"cfg");
+
+		// Check availability
+		if(_access(module_name,0)) return config_name;
+
+		// Get file name
+		const char* name=NULL;
+		for(size_t i=0,j=strlen(module_name);i<j;i++)
+			if(module_name[i]=='\\' || module_name[i]=='/') name=&module_name[i+1];
+		if(!name) return config_name;
+
+		// Set as main
+		Str::Copy(config_name, name);
+	}
+
+	return config_name;
+}
+
+/************************************************************************/
+/* Window name                                                          */
+/************************************************************************/
+
+const char* GetWindowName()
+{
+	// Default config names
+#if defined(FONLINE_SERVER)
+	static char window_name[MAX_FOPATH]={"FOnline Server\0--default-server-name--"};
+#elif defined(FONLINE_MAPPER)
+	static char window_name[MAX_FOPATH]={"FOnline Mapper\0--default-mapper-name--"};
+#else // FONLINE_CLIENT and others
+	static char window_name[MAX_FOPATH]={"FOnline\0--default-client-name--"};
+#endif
+
+	// Extract config name from current exe
+	static bool processed=false;
+	if(!processed)
+	{
+		// Call once
+		processed=true;
+
+		// Take name from config file
+		IniParser cfg;
+		cfg.LoadFile(GetConfigFileName(),PT_ROOT);
+		if(!cfg.IsLoaded()) return window_name;
+
+		// 'WindowName' section
+		char str[MAX_FOPATH];
+#if defined(FONLINE_SERVER)
+		if(!cfg.GetStr("WindowName","",str) || !str[0]) return window_name;
+#else
+		if(!cfg.GetStr(CLIENT_CONFIG_APP,"WindowName","",str) || !str[0]) return window_name;
+#endif
+		Str::Copy(window_name,str);
+
+		// Singleplayer appendix
+		if(Singleplayer) Str::Append(window_name," Singleplayer");
+
+		// Mapper appendix
+#if defined(FONLINE_MAPPER)
+		Str::Append(window_name," ");
+		Str::Append(window_name,MAPPER_VERSION_STR);
+#endif
+	}
+
+	return window_name;
+}
+
+/************************************************************************/
 /*                                                                      */
 /************************************************************************/
 #if defined(FONLINE_CLIENT) || defined(FONLINE_MAPPER)
@@ -562,7 +661,7 @@ void GetClientOptions()
 	// Load config file
 #ifdef FONLINE_MAPPER
 	IniParser cfg_mapper;
-	cfg_mapper.LoadFile(MAPPER_CONFIG_FILE,PT_ROOT);
+	cfg_mapper.LoadFile(GetConfigFileName(),PT_ROOT);
 
 	cfg_mapper.GetStr("ClientPath","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-ClientPath");
@@ -574,10 +673,16 @@ void GetClientOptions()
 	if(GameOpt.ServerPath.length() && GameOpt.ServerPath[GameOpt.ServerPath.length()-1]!='\\') GameOpt.ServerPath+="\\";
 
 	FileManager::SetDataPath(GameOpt.ClientPath.c_str());
-#endif
 
+	// Client config
 	IniParser cfg;
-	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	cfg_mapper.GetStr("ClientName","FOnline",buf);
+	Str::Append(buf,".cfg");
+	cfg.LoadFile(buf,PT_ROOT);
+#else
+	IniParser cfg;
+	cfg.LoadFile(GetConfigFileName(),PT_ROOT);
+#endif
 
 	// Language
 	cfg.GetStr(CLIENT_CONFIG_APP,"Language","russ",buf);
@@ -647,7 +752,7 @@ void GetClientOptions()
 	GameOpt.ProxyType=cfg.GetInt(CLIENT_CONFIG_APP,"ProxyType",0);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.ProxyType,"-ProxyType");
 	GETOPTIONS_CHECK(GameOpt.ProxyType,0,3,0);
-	GameOpt.ProxyPort=cfg.GetInt(CLIENT_CONFIG_APP,"ProxyPort",1080);
+	GameOpt.ProxyPort=cfg.GetInt(CLIENT_CONFIG_APP,"ProxyPort",8080);
 	GETOPTIONS_CMD_LINE_INT(GameOpt.ProxyPort,"-ProxyPort");
 	GETOPTIONS_CHECK(GameOpt.ProxyPort,0,0xFFFF,1080);
 	GameOpt.GlobalSound=cfg.GetInt(CLIENT_CONFIG_APP,"GlobalSound",true)!=0;
@@ -750,7 +855,7 @@ bool LogicMT=false;
 void GetServerOptions()
 {
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
+	cfg.LoadFile(GetConfigFileName(),PT_SERVER_ROOT);
 	ServerGameSleep=cfg.GetInt("GameSleep",10);
 	Script::SetConcurrentExecution(cfg.GetInt("ScriptConcurrentExecution",0)!=0);
 	WorldSaveManager=(cfg.GetInt("WorldSaveManager",1)==1);

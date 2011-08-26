@@ -250,7 +250,7 @@ public:
 	bool TransitCritter(CritterCl* cr, int hx, int hy, bool animate, bool force);
 
 	// Critters
-public:
+private:
 	CritMap allCritters;
 	uint chosenId;
 	uint critterContourCrId;

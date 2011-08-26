@@ -283,7 +283,7 @@ bool FOClient::Init(HWND hwnd)
 
 	// Sound manager
 	IniParser cfg;
-	cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+	cfg.LoadFile(GetConfigFileName(),PT_ROOT);
 	SndMngr.Init(Wnd);
 	SndMngr.SetSoundVolume(cfg.GetInt(CLIENT_CONFIG_APP,"SoundVolume",100));
 	SndMngr.SetMusicVolume(cfg.GetInt(CLIENT_CONFIG_APP,"MusicVolume",100));
@@ -4137,9 +4137,6 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 			cr->Name=cl_name;
 		}
 
-		cr->DefItemSlotHand->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
-		cr->DefItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
-
 		cr->SetBaseType(base_type);
 		cr->Init();
 
@@ -6762,7 +6759,7 @@ void FOClient::Net_OnItemLexems()
 	Bin >> item_id;
 	Bin >> lexems_len;
 
-	if(lexems_len+1>=LEXEMS_SIZE)
+	if(lexems_len>=LEXEMS_SIZE)
 	{
 		WriteLogF(_FUNC_," - Invalid lexems length<%u>, disconnect.\n",lexems_len);
 		IsConnected=false;
@@ -6826,7 +6823,7 @@ void FOClient::Net_OnMsgData()
 	{
 		WriteLogF(_FUNC_," - Received text in another language, set as default.\n");
 		CurLang.Name=lang;
-		WritePrivateProfileString(CLIENT_CONFIG_APP,"Language",CurLang.NameStr,".\\"CLIENT_CONFIG_FILE);
+		WritePrivateProfileString(CLIENT_CONFIG_APP,"Language",CurLang.NameStr,Str::FormatBuf(".\\%s",GetConfigFileName()));
 	}
 
 	if(num_msg>=TEXTMSG_COUNT)
@@ -7392,7 +7389,7 @@ void FOClient::CrittersProcess()
 /************************************************************************/
 /* All critters                                                         */
 /************************************************************************/
-	for(CritMapIt it=HexMngr.allCritters.begin(),end=HexMngr.allCritters.end();it!=end;)
+	for(CritMapIt it=HexMngr.GetCritters().begin();it!=HexMngr.GetCritters().end();)
 	{
 		CritterCl* crit=(*it).second;
 		++it;
@@ -7415,7 +7412,6 @@ void FOClient::CrittersProcess()
 		if(crit->IsFinish())
 		{
 			EraseCritter(crit->GetId());
-			end=HexMngr.allCritters.end();
 		}
 	}
 
@@ -9366,46 +9362,6 @@ void FOClient::DrawIfaceLayer(uint layer)
 	}
 }
 
-template<typename Type>
-void AppendVectorToArray(vector<Type>& vec, CScriptArray* arr)
-{
-	if(vec.empty()) return;
-	int i=arr->GetSize();
-	arr->Resize(arr->GetSize()+vec.size());
-	for(int k=0,l=vec.size();k<l;k++,i++)
-	{
-		Type* p=(Type*)arr->At(i);
-		*p=vec[k];
-	}
-}
-
-template<typename Type>
-void AppendVectorToArrayRef(vector<Type>& vec, CScriptArray* arr)
-{
-	if(vec.empty()) return;
-	int i=arr->GetSize();
-	arr->Resize((asUINT)arr->GetSize()+(asUINT)vec.size());
-	for(uint k=0,l=(uint)vec.size();k<l;k++,i++)
-	{
-		Type* p=(Type*)arr->At(i);
-		*p=vec[k];
-		(*p)->AddRef();
-	}
-}
-
-template<typename Type>
-void AssignScriptArrayInVector(vector<Type>& vec, CScriptArray* arr)
-{
-	int cnt=arr->GetSize();
-	if(!cnt) return;
-	vec.resize(cnt);
-	for(int i=0;i<cnt;i++)
-	{
-		Type* p=(Type*)arr->At(i);
-		vec[i]=*p;
-	}
-}
-
 int SortCritterHx_=0,SortCritterHy_=0;
 bool SortCritterByDistPred(CritterCl* cr1, CritterCl* cr2)
 {
@@ -9591,7 +9547,7 @@ uint FOClient::SScriptFunc::Crit_GetItems(CritterCl* cr, int slot, CScriptArray*
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
 	cr->GetItemsSlot(slot,items_);
-	if(items) AppendVectorToArrayRef<Item*>(items_,items);
+	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return (uint)items_.size();
 }
 
@@ -9600,7 +9556,7 @@ uint FOClient::SScriptFunc::Crit_GetItemsByType(CritterCl* cr, int type, CScript
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	ItemPtrVec items_;
 	cr->GetItemsType(type,items_);
-	if(items) AppendVectorToArrayRef<Item*>(items_,items);
+	if(items) Script::AppendVectorToArrayRef<Item*>(items_,items);
 	return (uint)items_.size();
 }
 
@@ -9836,7 +9792,7 @@ uint FOClient::SScriptFunc::Global_GetCritters(ushort hx, ushort hy, uint radius
 	if(critters)
 	{
 		SortCritterByDist(hx,hy,cr_vec);
-		AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
+		Script::AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
 	}
 	return (uint)cr_vec.size();
 }
@@ -9862,7 +9818,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids(ushort pid, int find_type, 
 		}
 	}
 	if(cr_vec.empty()) return 0;
-	if(critters) AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
+	if(critters) Script::AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
 	return (uint)cr_vec.size();
 }
 
@@ -9870,7 +9826,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersInPath(ushort from_hx, ushort from
 {
 	CritVec cr_vec;
 	Self->HexMngr.TraceBullet(from_hx,from_hy,to_hx,to_hy,dist,angle,NULL,false,&cr_vec,FIND_LIFE|FIND_KO,NULL,NULL,NULL,true);
-	if(critters) AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
+	if(critters) Script::AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
 	return (uint)cr_vec.size();
 }
 
@@ -9879,7 +9835,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock(ushort from_hx, ushort
 	CritVec cr_vec;
 	UShortPair block,pre_block;
 	Self->HexMngr.TraceBullet(from_hx,from_hy,to_hx,to_hy,dist,angle,NULL,false,&cr_vec,FIND_LIFE|FIND_KO,&block,&pre_block,NULL,true);
-	if(critters) AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
+	if(critters) Script::AppendVectorToArrayRef<CritterCl*>(cr_vec,critters);
 	pre_block_hx=pre_block.first;
 	pre_block_hy=pre_block.second;
 	block_hx=block.first;
@@ -10628,14 +10584,14 @@ CScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName(uint cr_type)
 void FOClient::SScriptFunc::Global_RunServerScript(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
 	UIntVec dw;
-	if(p4) AssignScriptArrayInVector<uint>(dw,p4);
+	if(p4) Script::AssignScriptArrayInVector<uint>(dw,p4);
 	Self->Net_SendRunScript(false,func_name.c_str(),p0,p1,p2,p3?p3->c_str():NULL,dw);
 }
 
 void FOClient::SScriptFunc::Global_RunServerScriptUnsafe(CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4)
 {
 	UIntVec dw;
-	if(p4) AssignScriptArrayInVector<uint>(dw,p4);
+	if(p4) Script::AssignScriptArrayInVector<uint>(dw,p4);
 	Self->Net_SendRunScript(true,func_name.c_str(),p0,p1,p2,p3?p3->c_str():NULL,dw);
 }
 

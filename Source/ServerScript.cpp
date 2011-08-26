@@ -757,15 +757,10 @@ void FOServer::SScriptFunc::Item_Animate(Item* item, uchar from_frm, uchar to_fr
 void FOServer::SScriptFunc::Item_SetLexems(Item* item, CScriptString* lexems)
 {
 	if(item->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	if(!lexems) item->SetLexems(NULL);
-	else
-	{
-		const char* str=lexems->c_str();
-		uint len=Str::Length(str);
-		if(!len) SCRIPT_ERROR_R("Lexems arg length is zero.");
-		if(len+1>=LEXEMS_SIZE) SCRIPT_ERROR_R("Lexems arg length is greater than maximum.");
-		item->SetLexems(str);
-	}
+	if(lexems && lexems->length()>=LEXEMS_SIZE) SCRIPT_ERROR_R("Lexems arg length is greater than maximum (127 digits).");
+
+	// Change data
+	item->SetLexems(lexems && lexems->length()?lexems->c_str():NULL);
 
 	// Update
 	switch(item->Accessory)
@@ -1116,8 +1111,12 @@ bool FOServer::SScriptFunc::Crit_SetEvent(Critter* cr, int event_type, CScriptSt
 void FOServer::SScriptFunc::Crit_SetLexems(Critter* cr, CScriptString* lexems)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
-	cr->SetLexems(lexems?lexems->c_str():NULL);
+	if(lexems && lexems->length()>=LEXEMS_SIZE) SCRIPT_ERROR_R("Lexems arg length is greater than maximum (127 digits).");
 
+	// Change data
+	cr->SetLexems(lexems && lexems->length()?lexems->c_str():NULL);
+
+	// Update
 	if(cr->GetMap())
 	{
 		cr->Send_CritterLexems(cr);
@@ -3229,7 +3228,7 @@ Critter* FOServer::SScriptFunc::Map_GetCritterById(Map* map, uint crid)
 {
 	if(map->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");
 	Critter* cr=map->GetCritter(crid,true);
-	if(!cr) SCRIPT_ERROR_R0("Critter not found.");
+	//if(!cr) SCRIPT_ERROR_R0("Critter not found.");
 	return cr;
 }
 

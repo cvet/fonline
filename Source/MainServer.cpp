@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 
 	// Config
 	IniParser cfg;
-	cfg.LoadFile(SERVER_CONFIG_FILE,PT_SERVER_ROOT);
+	cfg.LoadFile(GetConfigFileName(),PT_SERVER_ROOT);
 
 	// Make command line
 	SetCommandLine(argc,argv);
@@ -249,6 +249,9 @@ void GUIInit(IniParser& cfg)
 	GuiWindow->labelsize(GUISetup.FontSize);
 	GuiWindow->callback(GUICallback);
 	GuiWindow->size_range(GUI_SIZE2(129,129));
+
+	// Name
+	GuiWindow->label(GetWindowName());
 
 	// Icon
 #if defined(FO_WINDOWS)

@@ -120,11 +120,12 @@ void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int&
 bool CheckUserName(const char* str);
 bool CheckUserPass(const char* str);
 
-// Config files
-#define SERVER_CONFIG_FILE      "FOnlineServer.cfg"
-#define CLIENT_CONFIG_FILE      "FOnline.cfg"
+// Config file
 #define CLIENT_CONFIG_APP       "Game Options"
-#define MAPPER_CONFIG_FILE      "Mapper.cfg"
+const char* GetConfigFileName();
+
+// Window name
+const char* GetWindowName();
 
 // Shared structure
 struct ScoreType
@@ -149,15 +150,10 @@ struct ScoreType
 
 #ifdef FONLINE_CLIENT
 	#include "ResourceClient.h"
-	#define WINDOW_CLASS_NAME   "FOnline"
-	#define WINDOW_NAME         "FOnline"
-	#define WINDOW_NAME_SP      "FOnline Singleplayer"
 	#define CFG_DEF_INT_FILE    "default800x600.ini"
 #else // FONLINE_MAPPER
 	#include "ResourceMapper.h"
-	#define WINDOW_CLASS_NAME   "FOnline Mapper"
-	#define WINDOW_NAME         "FOnline Mapper"
-	const uchar SELECT_ALPHA		=100;
+	const uchar SELECT_ALPHA    =100;
 	#define CFG_DEF_INT_FILE    "mapper_default.ini"
 #endif
 

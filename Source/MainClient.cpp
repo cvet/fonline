@@ -40,7 +40,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 	wnd_class.hCursor=LoadCursor(NULL,IDC_ARROW);
 	wnd_class.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);
 	wnd_class.lpszMenuName=NULL;
-	wnd_class.lpszClassName=WINDOW_CLASS_NAME;
+	wnd_class.lpszClassName=GetWindowName();
 	RegisterClass(&wnd_class);
 
 	// Stuff
@@ -88,7 +88,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 		char server_exe[MAX_FOPATH]={0};
 		char server_path[MAX_FOPATH]={0};
 		char server_cmdline[MAX_FOPATH]={0};
-		cfg.LoadFile(CLIENT_CONFIG_FILE,PT_ROOT);
+		cfg.LoadFile(GetConfigFileName(),PT_ROOT);
 		cfg.GetStr(CLIENT_CONFIG_APP,"ServerAppName","FOserv.exe",server_exe);
 		cfg.GetStr(CLIENT_CONFIG_APP,"ServerPath","..\\server\\",server_path);
 		cfg.GetStr(CLIENT_CONFIG_APP,"ServerCommandLine","",server_cmdline);
@@ -115,7 +115,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 
 	// Check for already runned window
 #ifndef DEV_VESRION
-	if(!Singleplayer && FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
+	if(!Singleplayer && FindWindow(GetWindowName(),GetWindowName())!=NULL)
 	{
 		MessageBox(NULL,"FOnline is running already.","FOnline",MB_OK);
 		return 0;
@@ -125,7 +125,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_
 	// Options
 	GetClientOptions();
 
-	Wnd=CreateWindow(WINDOW_CLASS_NAME,Singleplayer?WINDOW_NAME_SP:WINDOW_NAME,WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,cur_instance,NULL);
+	Wnd=CreateWindow(GetWindowName(),GetWindowName(),WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU),-101,-101,100,100,NULL,NULL,cur_instance,NULL);
 
 	HDC dcscreen=GetDC(NULL);
 	int sw=GetDeviceCaps(dcscreen,HORZRES);

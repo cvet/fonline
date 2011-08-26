@@ -8,6 +8,7 @@
 #define BIN16(bin16,bin8)             ((BIN8(bin16)<<8)|(BIN8(bin8)))
 #define BIN32(bin32,bin24,bin16,bin8) ((BIN8(bin32)<<24)|(BIN8(bin24)<<16)|(BIN8(bin16)<<8)|(BIN8(bin8)))
 
+// Flags
 #define FLAG(x,y)         (((x)&(y))!=0)
 #define FLAGS(x,y)        (((x)&(y))==y)
 #define SETFLAG(x,y)      ((x)=(x)|(y))

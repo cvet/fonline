@@ -171,8 +171,14 @@ bool FOMapper::Init(HWND wnd)
 	FileManager::SetDataPath(GameOpt.ServerPath.c_str());
 
 	// Language Packs
+	IniParser cfg_mapper;
+	cfg_mapper.LoadFile(GetConfigFileName(),PT_ROOT);
+	char server_cfg_name[MAX_FOPATH];
+	cfg_mapper.GetStr("ServerName","FOnlineServer",server_cfg_name);
+	Str::Append(server_cfg_name,".cfg");
+
 	IniParser cfg_server;
-	cfg_server.LoadFile(SERVER_CONFIG_FILE,PT_ROOT);
+	cfg_server.LoadFile(server_cfg_name,PT_ROOT);
 	char lang_name[MAX_FOTEXT];
 	cfg_server.GetStr("Language_0",DEFAULT_LANGUAGE,lang_name);
 	if(strlen(lang_name)!=4) Str::Copy(lang_name,DEFAULT_LANGUAGE);
@@ -326,7 +332,7 @@ int FOMapper::InitIface()
 	char int_file[256];
 
 	IniParser cfg;
-	cfg.LoadFile(MAPPER_CONFIG_FILE,PT_ROOT);
+	cfg.LoadFile(GetConfigFileName(),PT_ROOT);
 	cfg.GetStr("MapperInterface",CFG_DEF_INT_FILE,int_file);
 
 	if(!ini.LoadFile(int_file,PT_MAPPER_DATA))
@@ -1287,7 +1293,7 @@ void FOMapper::MainLoop()
 
 	if(HexMngr.IsMapLoaded())
 	{
-		for(CritMapIt it=HexMngr.allCritters.begin(),end=HexMngr.allCritters.end();it!=end;++it)
+		for(CritMapIt it=HexMngr.GetCritters().begin(),end=HexMngr.GetCritters().end();it!=end;++it)
 		{
 			CritterCl* cr=(*it).second;
 			cr->Process();
@@ -1352,7 +1358,7 @@ void FOMapper::MainLoop()
 		// Texts on heads
 		if(DrawCrExtInfo)
 		{
-			for(CritMapIt it=HexMngr.allCritters.begin(),end=HexMngr.allCritters.end();it!=end;++it)
+			for(CritMapIt it=HexMngr.GetCritters().begin(),end=HexMngr.GetCritters().end();it!=end;++it)
 			{
 				CritterCl* cr=(*it).second;
 				if(cr->SprDrawValid)

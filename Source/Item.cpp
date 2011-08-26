@@ -395,15 +395,16 @@ void Item::SetLexems(const char* lexems)
 			return;
 		}
 
-		if(len+1>=LEXEMS_SIZE) return;
+		if(len>=LEXEMS_SIZE) len=LEXEMS_SIZE-1;
 
 		if(!PLexems)
 		{
 			MEMORY_PROCESS(MEMORY_ITEM,LEXEMS_SIZE);
-			PLexems=new char[LEXEMS_SIZE];
+			PLexems=new(nothrow) char[LEXEMS_SIZE];
 			if(!PLexems) return;
 		}
-		memcpy(PLexems,lexems,len+1);
+		memcpy(PLexems,lexems,len);
+		PLexems[len]=0;
 	}
 	else
 	{

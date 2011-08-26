@@ -641,7 +641,7 @@ public:
 	void TrapSetValue(int val){Data.TrapValue=val;}
 	int TrapGetValue(){return Data.TrapValue;}
 
-	bool operator==(const uint& _id){return (Id==_id);}
+	bool operator==(const uint& id){return (Id==id);}
 
 #ifdef FONLINE_SERVER
 	Item(){memzero(this,sizeof(Item)); RefCounter=1; IsNotValid=false; MEMORY_PROCESS(MEMORY_ITEM,sizeof(Item));}

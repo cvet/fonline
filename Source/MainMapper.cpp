@@ -20,10 +20,10 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 #endif
 
 	// Exceptions
-	CatchExceptions(WINDOW_CLASS_NAME,MAPPER_VERSION);
+	CatchExceptions("FOnlineMapper",MAPPER_VERSION);
 
 	// Send about new instance to already runned mapper
-	if(FindWindow(WINDOW_CLASS_NAME,WINDOW_NAME)!=NULL)
+	if(FindWindow(GetWindowName(),GetWindowName())!=NULL)
 	{
 		MessageBox(NULL,"FOnline already run.","FOnline",MB_OK);
 		return 0;
@@ -44,7 +44,7 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 	wndClass.hCursor=LoadCursor(NULL,IDC_ARROW);
 	wndClass.hbrBackground=(HBRUSH)GetStockObject(LTGRAY_BRUSH);
 	wndClass.lpszMenuName=NULL;
-	wndClass.lpszClassName=WINDOW_CLASS_NAME;
+	wndClass.lpszClassName=GetWindowName();
 	RegisterClass(&wndClass);
 	Instance=cur_instance;
 
@@ -53,8 +53,8 @@ int APIENTRY WinMain(HINSTANCE cur_instance, HINSTANCE prev_instance,LPSTR cmd_l
 	GetClientOptions();
 
 	Wnd=CreateWindow(
-		WINDOW_CLASS_NAME,
-		WINDOW_NAME " " MAPPER_VERSION_STR,
+		GetWindowName(),
+		GetWindowName(),
 		WS_OVERLAPPEDWINDOW&(~WS_MAXIMIZEBOX)&(~WS_SIZEBOX)&(~WS_SYSMENU), //(~WS_SYSMENU)
 		CW_USEDEFAULT,CW_USEDEFAULT,100,100,
 		NULL,

@@ -2,6 +2,7 @@
 #include "CritterCl.h"
 #include "CritterType.h"
 #include "ResourceManager.h"
+#include "ItemManager.h"
 
 #ifdef FONLINE_CLIENT
 #include "SoundManager.h"
@@ -36,6 +37,8 @@ Anim3d(NULL),Anim3dStay(NULL),Layers3d(NULL),Multihex(0)
 	ZeroMemory(Params,sizeof(Params));
 	ItemSlotMain=ItemSlotExt=DefItemSlotHand=new Item();
 	ItemSlotArmor=DefItemSlotArmor=new Item();
+	ItemSlotMain->Init(ItemMngr.GetProtoItem(ITEM_DEF_SLOT));
+	ItemSlotArmor->Init(ItemMngr.GetProtoItem(ITEM_DEF_ARMOR));
 	tickFidget=Timer::GameTick()+Random(GameOpt.CritterFidgetTime,GameOpt.CritterFidgetTime*2);
 	for(int i=0;i<MAX_PARAMETERS_ARRAYS;i++) ThisPtr[i]=this;
 	ZeroMemory(ParamsIsChanged,sizeof(ParamsIsChanged));
@@ -60,6 +63,7 @@ CritterCl::~CritterCl()
 
 	SAFEREL(DefItemSlotHand);
 	SAFEREL(DefItemSlotArmor);
+	ItemSlotMain=ItemSlotExt=DefItemSlotHand=ItemSlotArmor=DefItemSlotArmor=NULL;
 }
 
 void CritterCl::Init()
