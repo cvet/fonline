@@ -62,7 +62,6 @@ protected:
 	mutable bool      gcFlag;
 	asIObjectType    *objType;
 	SArrayBuffer     *buffer;
-	bool              isArrayOfHandles; // TODO: Since we store subTypeId, it's not really necessary to store this
 	int               elementSize;
 	int               cmpFuncId;
 	int               eqFuncId;

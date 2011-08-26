@@ -131,6 +131,19 @@ int asCParser::ParseFunctionDefinition(asCScriptCode *script)
 	return 0;
 }
 
+int asCParser::ParseExpression(asCScriptCode *script)
+{
+	Reset();
+
+	this->script = script;
+
+	scriptNode = ParseExpression();
+	if( errorWhileParsing )
+		return -1;
+
+	return 0;
+}
+
 int asCParser::ParseDataType(asCScriptCode *script)
 {
 	Reset();
@@ -585,7 +598,11 @@ bool asCParser::IsVarDecl()
 	if( t1.type == ttConst )
 		GetToken(&t1);
 
-	if( !IsDataType(t1) )
+	// We don't validate if the identifier is an actual declared type at this moment
+	// as it may wrongly identify the statement as a non-declaration if the user typed
+	// the name incorrectly. The real type is validated in ParseDeclaration where a
+	// proper error message can be given.
+	if( !IsRealType(t1.type) && t1.type != ttIdentifier )
 	{
 		RewindTo(&t);
 		return false;
@@ -1382,7 +1399,15 @@ asCScriptNode *asCParser::ParseDataType(bool allowVariableType)
 	GetToken(&t1);
 	if( !IsDataType(t1) && !(allowVariableType && t1.type == ttQuestion) )
 	{
-		Error(TXT_EXPECTED_DATA_TYPE, &t1);
+		if( t1.type == ttIdentifier )
+		{
+			asCString errMsg, Identifier;
+			Identifier.Assign(&script->code[t1.pos], t1.length);
+			errMsg.Format(TXT_IDENTIFIER_s_NOT_DATA_TYPE, Identifier.AddressOf());
+			Error(errMsg.AddressOf(), &t1);
+		}
+		else
+			Error(TXT_EXPECTED_DATA_TYPE, &t1);
 		return node;
 	}
 
@@ -1545,7 +1570,14 @@ asCScriptNode *asCParser::ParseParameterList()
 
 				GetToken(&t1);
 
-				// TODO: default arg: parse the expression for the default arg
+				// Parse the expression for the default arg
+				if( t1.type == ttAssignment )
+				{
+					node->AddChildLast(ParseExpression());
+					if( isSyntaxError ) return node;
+
+					GetToken(&t1);
+				}
 			}
 
 			// Check if list continues
@@ -1577,7 +1609,9 @@ asCScriptNode *asCParser::ParseExprValue()
 	RewindTo(&t1);
 
 	// TODO: namespace: Datatypes can be defined in namespaces, thus types too must allow scope prefix
-	if( IsDataType(t1) && t2.type != ttScope )
+	if( IsDataType(t1) && (t2.type == ttOpenParanthesis || 
+		                   t2.type == ttLessThan || 
+						   t2.type == ttOpenBracket) )
 		node->AddChildLast(ParseConstructCall());
 	else if( t1.type == ttIdentifier || t1.type == ttScope )
 	{

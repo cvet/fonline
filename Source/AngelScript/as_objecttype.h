@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2010 Andreas Jonsson
+   Copyright (c) 2003-2011 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -74,6 +74,9 @@ const asDWORD asOBJ_TEMPLATE_SUBTYPE = 0x20000000;
 // automatically make garbage collected as well, because we cannot know what type
 // of references that object can contain, and must assume the worst.
 
+// TODO: interface: asIObjectType should have methods for setting/getting user data
+//                  this can for example be used to store cached function ids for quicker
+//                  executions of class methods
 
 struct asSTypeBehaviour
 {
@@ -151,37 +154,29 @@ public:
 	int              GetSubTypeId() const;
 
 	// Interfaces
-	int              GetInterfaceCount() const;
+	asUINT           GetInterfaceCount() const;
 	asIObjectType   *GetInterface(asUINT index) const;
 
 	// Factories
-	int                GetFactoryCount() const;
-	int                GetFactoryIdByIndex(int index) const;
+	asUINT             GetFactoryCount() const;
+	int                GetFactoryIdByIndex(asUINT index) const;
 	int                GetFactoryIdByDecl(const char *decl) const;
 
 	// Methods
-	int                GetMethodCount() const;
-	int                GetMethodIdByIndex(int index, bool getVirtual) const;
+	asUINT             GetMethodCount() const;
+	int                GetMethodIdByIndex(asUINT index, bool getVirtual) const;
 	int                GetMethodIdByName(const char *name, bool getVirtual) const;
 	int                GetMethodIdByDecl(const char *decl, bool getVirtual) const;
-	asIScriptFunction *GetMethodDescriptorByIndex(int index, bool getVirtual) const;
+	asIScriptFunction *GetMethodDescriptorByIndex(asUINT index, bool getVirtual) const;
 
 	// Properties
-	int         GetPropertyCount() const;
-	int         GetProperty(asUINT index, const char **name, int *typeId, bool *isPrivate, int *offset) const;
+	asUINT      GetPropertyCount() const;
+	int         GetProperty(asUINT index, const char **name, int *typeId, bool *isPrivate, int *offset, bool *isReference) const;
 	const char *GetPropertyDeclaration(asUINT index) const;
 
 	// Behaviours
-	int GetBehaviourCount() const;
-	int GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const;
-
-#ifdef AS_DEPRECATED
-	// Since 2.20.0
-	int         GetPropertyTypeId(asUINT prop) const;
-	const char *GetPropertyName(asUINT prop) const;
-	bool        IsPropertyPrivate(asUINT prop) const;
-	int         GetPropertyOffset(asUINT prop) const;
-#endif
+	asUINT GetBehaviourCount() const;
+	int    GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const;
 
 //===========================================
 // Internal

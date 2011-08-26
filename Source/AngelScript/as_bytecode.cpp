@@ -1261,6 +1261,10 @@ void asCByteCode::ExtractObjectVariableInfo(asCScriptFunction *outFunc)
 			info.option         = *(int*)ARG_DW(instr->arg);
 			outFunc->objVariableInfo.PushLast(info);
 		}
+		else if( instr->op == asBC_VarDecl )
+		{
+			outFunc->variables[instr->wArg[0]]->declaredAtProgramPos = pos;
+		}
 		else
 			pos += instr->size;
 
@@ -1363,7 +1367,7 @@ void asCByteCode::CallPtr(asEBCInstr instr, int funcPtrVar, int pop)
 	last->op = instr;
 	last->size = asBCTypeSize[asBCInfo[instr].type];
 	last->stackInc = -pop;
-	last->wArg[0] = funcPtrVar;
+	last->wArg[0] = (short)funcPtrVar;
 
     // Add a JitEntry instruction after function calls so that JIT's can resume execution
     // TODO: Should this be done by the compiler?
@@ -1458,7 +1462,7 @@ void asCByteCode::ObjInfo(int offset, int info)
 	last->op                   = asBC_ObjInfo;
 	last->size                 = 0;
 	last->stackInc             = 0;
-	last->wArg[0]              = offset;
+	last->wArg[0]              = (short)offset;
 	*((int*)ARG_DW(last->arg)) = info;
 }
 
@@ -1472,6 +1476,18 @@ void asCByteCode::Block(bool start)
 	last->stackInc = 0;
 	last->wArg[0]  = start ? 1 : 0;
 }
+
+void asCByteCode::VarDecl(int varDeclIdx)
+{
+	if( AddInstruction() < 0 )
+		return;
+
+	last->op       = asBC_VarDecl;
+	last->size     = 0;
+	last->stackInc = 0;
+	last->wArg[0]  = (asWORD)varDeclIdx;
+}
+
 
 int asCByteCode::FindLabel(int label, cByteInstruction *from, cByteInstruction **dest, int *positionDelta)
 {
@@ -1784,14 +1800,14 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 	if( func->objectType )
 	{
 		fprintf(file, " %.3d: %s this\n", 0, func->objectType->name.AddressOf());
-		offset += AS_PTR_SIZE;
+		offset -= AS_PTR_SIZE;
 	}
 	for( n = 0; n < func->parameterTypes.GetLength(); n++ )
 	{
 		bool found = false;
 		for( asUINT v = 0; v < func->variables.GetLength(); v++ )
 		{
-			if( func->variables[v]->stackOffset == offset )
+			if( func->variables[v]->stackOffset == (int)offset )
 			{
 				found = true;
 				break;
@@ -1800,7 +1816,7 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 		if( !found )
 			fprintf(file, " %.3d: %s {noname param}\n", offset, func->parameterTypes[n].Format().AddressOf());
 
-		offset += func->parameterTypes[n].GetSizeOnStackDWords();
+		offset -= func->parameterTypes[n].GetSizeOnStackDWords();
 	}
 	for( n = 0; n < func->objVariablePos.GetLength(); n++ )
 	{

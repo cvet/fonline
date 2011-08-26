@@ -109,7 +109,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(SceneryCl)==32);
 	STATIC_ASSERT(sizeof(ProtoItem)==908);
 	STATIC_ASSERT(sizeof(Field)==76);
-	STATIC_ASSERT(sizeof(CScriptArray)==40);
+	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4260);
 	STATIC_ASSERT(sizeof(GameOptions)==1184);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);

@@ -55,8 +55,8 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-#define ANGELSCRIPT_VERSION        22003
-#define ANGELSCRIPT_VERSION_STRING "2.20.3"
+#define ANGELSCRIPT_VERSION        22101
+#define ANGELSCRIPT_VERSION_STRING "2.21.1"
 
 // Data types
 
@@ -89,7 +89,8 @@ enum asEEngineProp
 	asEP_INCLUDE_JIT_INSTRUCTIONS     = 12,
 	asEP_STRING_ENCODING              = 13,
 	asEP_PROPERTY_ACCESSOR_MODE       = 14,
-	asEP_EXPAND_DEF_ARRAY_TO_TMPL     = 15
+	asEP_EXPAND_DEF_ARRAY_TO_TMPL     = 15,
+	asEP_AUTO_GARBAGE_COLLECT         = 16
 };
 
 // Calling conventions
@@ -113,6 +114,7 @@ enum asEObjTypeFlags
 	asOBJ_NOHANDLE                   = 0x10,
 	asOBJ_SCOPED                     = 0x20,
 	asOBJ_TEMPLATE                   = 0x40,
+	asOBJ_ASHANDLE                   = 0x80,
 	asOBJ_APP_CLASS                  = 0x100,
 	asOBJ_APP_CLASS_CONSTRUCTOR      = 0x200,
 	asOBJ_APP_CLASS_DESTRUCTOR       = 0x400,
@@ -135,7 +137,7 @@ enum asEObjTypeFlags
 	asOBJ_APP_CLASS_K                = (asOBJ_APP_CLASS + asOBJ_APP_CLASS_COPY_CONSTRUCTOR),
 	asOBJ_APP_PRIMITIVE              = 0x2000,
 	asOBJ_APP_FLOAT                  = 0x4000,
-	asOBJ_MASK_VALID_FLAGS           = 0x7F7F,
+	asOBJ_MASK_VALID_FLAGS           = 0x7FFF,
 	asOBJ_SCRIPT_OBJECT              = 0x10000
 };
 
@@ -157,9 +159,6 @@ enum asEBehaviours
 	asBEHAVE_IMPLICIT_VALUE_CAST,
 	asBEHAVE_REF_CAST,
 	asBEHAVE_IMPLICIT_REF_CAST,
-#ifdef AS_DEPRECATED
-	asBEHAVE_INDEX,
-#endif
 	asBEHAVE_TEMPLATE_CALLBACK,
 
 	// Garbage collection behaviours
@@ -209,22 +208,22 @@ enum asERetCodes
 // Context states
 enum asEContextState
 {
-    asEXECUTION_FINISHED      = 0,
-    asEXECUTION_SUSPENDED     = 1,
-    asEXECUTION_ABORTED       = 2,
-    asEXECUTION_EXCEPTION     = 3,
-    asEXECUTION_PREPARED      = 4,
-    asEXECUTION_UNINITIALIZED = 5,
-    asEXECUTION_ACTIVE        = 6,
-    asEXECUTION_ERROR         = 7
+	asEXECUTION_FINISHED      = 0,
+	asEXECUTION_SUSPENDED     = 1,
+	asEXECUTION_ABORTED       = 2,
+	asEXECUTION_EXCEPTION     = 3,
+	asEXECUTION_PREPARED      = 4,
+	asEXECUTION_UNINITIALIZED = 5,
+	asEXECUTION_ACTIVE        = 6,
+	asEXECUTION_ERROR         = 7
 };
 
 // Message types
 enum asEMsgType
 {
-    asMSGTYPE_ERROR       = 0,
-    asMSGTYPE_WARNING     = 1,
-    asMSGTYPE_INFORMATION = 2
+	asMSGTYPE_ERROR       = 0,
+	asMSGTYPE_WARNING     = 1,
+	asMSGTYPE_INFORMATION = 2
 };
 
 // Garbage collector flags
@@ -430,7 +429,7 @@ struct asSMessageInfo
 // ANGELSCRIPT_DLL_MANUAL_IMPORT is defined when manually loading the dll
 // Don't define anything when linking statically to the lib
 
-#if defined(WIN32) || defined(__CYGWIN__)
+#if defined(WIN32) || defined(_WIN32) || defined(__CYGWIN__)
   #if defined(ANGELSCRIPT_EXPORT)
     #define AS_API __declspec(dllexport)
   #elif defined(ANGELSCRIPT_DLL_LIBRARY_IMPORT)
@@ -569,7 +568,7 @@ public:
 
 	// Garbage collection
 	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE) = 0;
-	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed = 0, asUINT *totalDetected = 0) const = 0;
+	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed = 0, asUINT *totalDetected = 0, asUINT *newObjects = 0, asUINT *totalNewDestroyed = 0) const = 0;
 	virtual void NotifyGarbageCollectorOfNewObject(void *obj, int typeId) = 0;
 	virtual void GCEnumCallback(void *reference) = 0;
 
@@ -592,23 +591,23 @@ public:
 	virtual const char      *GetName() const = 0;
 
 	// Compilation
-    virtual int  AddScriptSection(const char *name, const char *code, size_t codeLength = 0, int lineOffset = 0) = 0;
+	virtual int  AddScriptSection(const char *name, const char *code, size_t codeLength = 0, int lineOffset = 0) = 0;
 	virtual int  Build() = 0;
 	virtual int  CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD compileFlags, asIScriptFunction **outFunc) = 0;
 	virtual int  CompileGlobalVar(const char *sectionName, const char *code, int lineOffset) = 0;
 
 	// Functions
-	virtual int                GetFunctionCount() const = 0;
-	virtual int                GetFunctionIdByIndex(int index) const = 0;
+	virtual asUINT             GetFunctionCount() const = 0;
+	virtual int                GetFunctionIdByIndex(asUINT index) const = 0;
 	virtual int                GetFunctionIdByName(const char *name) const = 0;
 	virtual int                GetFunctionIdByDecl(const char *decl) const = 0;
-	virtual asIScriptFunction *GetFunctionDescriptorByIndex(int index) const = 0;
+	virtual asIScriptFunction *GetFunctionDescriptorByIndex(asUINT index) const = 0;
 	virtual asIScriptFunction *GetFunctionDescriptorById(int funcId) const = 0;
 	virtual int                RemoveFunction(int funcId) = 0;
 
 	// Global variables
-	virtual int         ResetGlobalVars() = 0;
-	virtual int         GetGlobalVarCount() const = 0;
+	virtual int         ResetGlobalVars(asIScriptContext *ctx = 0) = 0;
+	virtual asUINT      GetGlobalVarCount() const = 0;
 	virtual int         GetGlobalVarIndexByName(const char *name) const = 0;
 	virtual int         GetGlobalVarIndexByDecl(const char *decl) const = 0;
 	virtual const char *GetGlobalVarDeclaration(asUINT index) const = 0;
@@ -617,38 +616,33 @@ public:
 	virtual int         RemoveGlobalVar(asUINT index) = 0;
 
 	// Type identification
-	virtual int            GetObjectTypeCount() const = 0;
+	virtual asUINT         GetObjectTypeCount() const = 0;
 	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const = 0;
 	virtual int            GetTypeIdByDecl(const char *decl) const = 0;
 
 	// Enums
-	virtual int         GetEnumCount() const = 0;
+	virtual asUINT      GetEnumCount() const = 0;
 	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId) const = 0;
 	virtual int         GetEnumValueCount(int enumTypeId) const = 0;
 	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const = 0;
 
 	// Typedefs
-	virtual int         GetTypedefCount() const = 0;
+	virtual asUINT      GetTypedefCount() const = 0;
 	virtual const char *GetTypedefByIndex(asUINT index, int *typeId) const = 0;
 
 	// Dynamic binding between modules
-	virtual int         GetImportedFunctionCount() const = 0;
+	virtual asUINT      GetImportedFunctionCount() const = 0;
 	virtual int         GetImportedFunctionIndexByDecl(const char *decl) const = 0;
-	virtual const char *GetImportedFunctionDeclaration(int importIndex) const = 0;
-	virtual const char *GetImportedFunctionSourceModule(int importIndex) const = 0;
-	virtual int         BindImportedFunction(int importIndex, int funcId) = 0;
-	virtual int         UnbindImportedFunction(int importIndex) = 0;
+	virtual const char *GetImportedFunctionDeclaration(asUINT importIndex) const = 0;
+	virtual const char *GetImportedFunctionSourceModule(asUINT importIndex) const = 0;
+	virtual int         BindImportedFunction(asUINT importIndex, int funcId) = 0;
+	virtual int         UnbindImportedFunction(asUINT importIndex) = 0;
 	virtual int         BindAllImportedFunctions() = 0;
 	virtual int         UnbindAllImportedFunctions() = 0;
 
 	// Bytecode saving and loading
 	virtual int SaveByteCode(asIBinaryStream *out) const = 0;
 	virtual int LoadByteCode(asIBinaryStream *in) = 0;
-
-#ifdef AS_DEPRECATED
-	virtual const char *GetGlobalVarName(int index) const = 0;
-	virtual int         GetGlobalVarTypeId(int index, bool *isConst = 0) const = 0;
-#endif
 
 protected:
 	virtual ~asIScriptModule() {}
@@ -710,22 +704,17 @@ public:
 	virtual asIScriptFunction *GetFunction(asUINT stackLevel = 0) = 0;
 	virtual int                GetLineNumber(asUINT stackLevel = 0, int *column = 0, const char **sectionName = 0) = 0;
 	virtual int                GetVarCount(asUINT stackLevel = 0) = 0;
-	virtual const char        *GetVarName(int varIndex, asUINT stackLevel = 0) = 0;
-	virtual const char        *GetVarDeclaration(int varIndex, asUINT stackLevel = 0) = 0;
-	virtual int                GetVarTypeId(int varIndex, asUINT stackLevel = 0) = 0;
-	virtual void              *GetAddressOfVar(int varIndex, asUINT stackLevel = 0) = 0;
+	virtual const char        *GetVarName(asUINT varIndex, asUINT stackLevel = 0) = 0;
+	virtual const char        *GetVarDeclaration(asUINT varIndex, asUINT stackLevel = 0) = 0;
+	virtual int                GetVarTypeId(asUINT varIndex, asUINT stackLevel = 0) = 0;
+	virtual void              *GetAddressOfVar(asUINT varIndex, asUINT stackLevel = 0) = 0;
+	virtual bool               IsVarInScope(asUINT varIndex, asUINT stackLevel = 0) = 0;
 	virtual int                GetThisTypeId(asUINT stackLevel = 0) = 0;
 	virtual void              *GetThisPointer(asUINT stackLevel = 0) = 0;
 
 	// User data
 	virtual void *SetUserData(void *data) = 0;
 	virtual void *GetUserData() const = 0;
-
-#ifdef AS_DEPRECATED
-	// Deprecated since 2.20.0
-	virtual int         GetCurrentLineNumber(int *column = 0, const char **sectionName = 0) = 0;
-	virtual int         GetCurrentFunction() = 0;
-#endif
 
 protected:
 	virtual ~asIScriptContext() {}
@@ -816,36 +805,29 @@ public:
 	virtual int              GetSubTypeId() const = 0;
 
 	// Interfaces
-	virtual int              GetInterfaceCount() const = 0;
+	virtual asUINT           GetInterfaceCount() const = 0;
 	virtual asIObjectType   *GetInterface(asUINT index) const = 0;
 
 	// Factories
-	virtual int                GetFactoryCount() const = 0;
-	virtual int                GetFactoryIdByIndex(int index) const = 0;
+	virtual asUINT             GetFactoryCount() const = 0;
+	virtual int                GetFactoryIdByIndex(asUINT index) const = 0;
 	virtual int                GetFactoryIdByDecl(const char *decl) const = 0;
 
 	// Methods
-	virtual int                GetMethodCount() const = 0;
-	virtual int                GetMethodIdByIndex(int index, bool getVirtual = true) const = 0;
+	virtual asUINT             GetMethodCount() const = 0;
+	virtual int                GetMethodIdByIndex(asUINT index, bool getVirtual = true) const = 0;
 	virtual int                GetMethodIdByName(const char *name, bool getVirtual = true) const = 0;
 	virtual int                GetMethodIdByDecl(const char *decl, bool getVirtual = true) const = 0;
-	virtual asIScriptFunction *GetMethodDescriptorByIndex(int index, bool getVirtual = true) const = 0;
+	virtual asIScriptFunction *GetMethodDescriptorByIndex(asUINT index, bool getVirtual = true) const = 0;
 
 	// Properties
-	virtual int         GetPropertyCount() const = 0;
-	virtual int         GetProperty(asUINT index, const char **name, int *typeId = 0, bool *isPrivate = 0, int *offset = 0) const = 0;
+	virtual asUINT      GetPropertyCount() const = 0;
+	virtual int         GetProperty(asUINT index, const char **name, int *typeId = 0, bool *isPrivate = 0, int *offset = 0, bool *isReference = 0) const = 0;
 	virtual const char *GetPropertyDeclaration(asUINT index) const = 0;
 
 	// Behaviours
-	virtual int GetBehaviourCount() const = 0;
-	virtual int GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const = 0;
-
-#ifdef AS_DEPRECATED
-	virtual int         GetPropertyTypeId(asUINT prop) const = 0;
-	virtual const char *GetPropertyName(asUINT prop) const = 0;
-	virtual bool        IsPropertyPrivate(asUINT prop) const = 0;
-	virtual int         GetPropertyOffset(asUINT prop) const = 0;
-#endif
+	virtual asUINT GetBehaviourCount() const = 0;
+	virtual int    GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const = 0;
 
 protected:
 	virtual ~asIObjectType() {}
@@ -857,8 +839,8 @@ public:
 	virtual asIScriptEngine *GetEngine() const = 0;
 
 	// Memory management
-	virtual int AddRef() const = 0;
-	virtual int Release() const = 0;
+	virtual int              AddRef() const = 0;
+	virtual int              Release() const = 0;
 
 	virtual int              GetId() const = 0;
 	virtual asEFuncType      GetFuncType() const = 0;
@@ -872,26 +854,22 @@ public:
 	virtual bool             IsReadOnly() const = 0;
 	virtual bool             IsPrivate() const = 0;
 
-	virtual int              GetParamCount() const = 0;
-	virtual int              GetParamTypeId(int index, asDWORD *flags = 0) const = 0;
+	virtual asUINT           GetParamCount() const = 0;
+	virtual int              GetParamTypeId(asUINT index, asDWORD *flags = 0) const = 0;
 	virtual int              GetReturnTypeId() const = 0;
 
 	// Debug information
-	virtual int              GetVarCount() const = 0;
+	virtual asUINT           GetVarCount() const = 0;
 	virtual int              GetVar(asUINT index, const char **name, int *typeId = 0) const = 0;
 	virtual const char *     GetVarDecl(asUINT index) const = 0;
+	virtual int              FindNextLineWithCode(int line) const = 0;
 
 	// For JIT compilation
 	virtual asDWORD         *GetByteCode(asUINT *length = 0) = 0;
 
 	// User data
-	virtual void *SetUserData(void *userData) = 0;
-	virtual void *GetUserData() const = 0;
-
-#ifdef AS_DEPRECATED
-	virtual bool             IsClassMethod() const = 0;
-	virtual bool             IsInterfaceMethod() const = 0;
-#endif
+	virtual void            *SetUserData(void *userData) = 0;
+	virtual void            *GetUserData() const = 0;
 
 protected:
 	virtual ~asIScriptFunction() {};
@@ -1329,6 +1307,7 @@ enum asEBCInstr
 	asBC_MAXBYTECODE	= 186,
 
 	// Temporary tokens. Can't be output to the final program
+	asBC_VarDecl        = 251,
 	asBC_Block          = 252,
 	asBC_ObjInfo		= 253,
 	asBC_LINE			= 254,
@@ -1669,8 +1648,8 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO_DUMMY(248),
 	asBCINFO_DUMMY(249),
 	asBCINFO_DUMMY(250),
-	asBCINFO_DUMMY(251),
 
+	asBCINFO(VarDecl,   W_ARG,          0),
 	asBCINFO(Block,     INFO,           0),
 	asBCINFO(ObjInfo,	rW_DW_ARG,		0),
 	asBCINFO(LINE,		INFO,			0),

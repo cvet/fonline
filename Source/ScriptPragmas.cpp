@@ -5,8 +5,8 @@
 	#include <Windows.h>
 	#include <stdio.h>
 	#include <strstream>
-	#include <Defines.h>
-	#include <Types.h>
+	#include "Defines.h"
+	#include "Types.h"
 	#include "..\ASCompiler\ASCompiler\ScriptEngine.h"
 
 	namespace Script

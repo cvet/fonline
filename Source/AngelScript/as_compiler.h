@@ -160,14 +160,15 @@ protected:
 	int  CallCopyConstructor(asCDataType &type, int offset, bool isObjectOnHeap, asCByteCode *bc, asSExprContext *arg, asCScriptNode *node, bool isGlobalVar = false);
 	void CallDestructor(asCDataType &type, int offset, bool isObjectOnHeap, asCByteCode *bc);
 	int  CompileArgumentList(asCScriptNode *node, asCArray<asSExprContext *> &args);
+	int  CompileDefaultArgs(asCScriptNode *node, asCArray<asSExprContext*> &args, asCScriptFunction *func);
 	void MatchFunctions(asCArray<int> &funcs, asCArray<asSExprContext*> &args, asCScriptNode *node, const char *name, asCObjectType *objectType = NULL, bool isConstMethod = false, bool silent = false, bool allowObjectConstruct = true, const asCString &scope = "");
 	int  CompileVariableAccess(const asCString &name, const asCString &scope, asSExprContext *ctx, asCScriptNode *errNode, bool isOptional = false, bool noFunction = false, asCObjectType *objType = 0);
 
 	// Helper functions
 	void ProcessPropertyGetAccessor(asSExprContext *ctx, asCScriptNode *node);
 	int  ProcessPropertySetAccessor(asSExprContext *ctx, asSExprContext *arg, asCScriptNode *node);
-	int  FindPropertyAccessor(const asCString &name, asSExprContext *ctx, asCScriptNode *node);
-	int  FindPropertyAccessor(const asCString &name, asSExprContext *ctx, asSExprContext *arg, asCScriptNode *node);
+	int  FindPropertyAccessor(const asCString &name, asSExprContext *ctx, asCScriptNode *node, bool isThisAccess = false);
+	int  FindPropertyAccessor(const asCString &name, asSExprContext *ctx, asSExprContext *arg, asCScriptNode *node, bool isThisAccess = false);
 	void SwapPostFixOperands(asCArray<asCScriptNode *> &postfix, asCArray<asCScriptNode *> &target);
 	void PrepareTemporaryObject(asCScriptNode *node, asSExprContext *ctx, asCArray<int> *reservedVars, bool forceOnHeap = false);
 	void PrepareOperand(asSExprContext *ctx, asCScriptNode *node);
@@ -258,7 +259,7 @@ protected:
 	asCArray<int>         freeVariables;
 	asCArray<int>         tempVariables;
 
-	bool globalExpression;
+	bool isCompilingDefaultArg;
 	bool isProcessingDeferredParams;
 	int noCodeOutput;
 };

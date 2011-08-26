@@ -24,7 +24,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\LFO\Tools\ASCompiler\"
+			OutputDirectory="..\..\OutputRelease"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
@@ -52,6 +52,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="..\..\Source\StlPort;..\..\Source"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;ASLIBRARY_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -72,6 +73,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)\as.dll"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="..\..\Lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
 				SubSystem="2"
@@ -103,7 +105,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="..\..\..\..\FOnline\server\data\"
+			OutputDirectory="..\..\OutputRelease64"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
@@ -132,6 +134,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="..\..\Source\StlPort;..\..\Source"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;ASLIBRARY_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -152,6 +155,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)\as64.dll"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="..\..\Lib\x64"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
 				SubSystem="2"

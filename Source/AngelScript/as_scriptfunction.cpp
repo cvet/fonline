@@ -144,6 +144,10 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, as
 	userData               = 0;
 	id                     = 0;
 
+	// TODO: optimize: The engine could notify the GC just before it wants to
+	//                 discard the function. That way the GC won't waste time
+	//                 trying to determine if the functions are garbage before
+	//                 they can actually be considered garbage.
 	// Notify the GC of script functions
 	if( funcType == asFUNC_SCRIPT )
 		engine->gc.AddScriptObjectToGC(this, &engine->functionBehaviours);
@@ -176,6 +180,12 @@ asCScriptFunction::~asCScriptFunction()
 	if( sysFuncIntf )
 	{
 		asDELETE(sysFuncIntf,asSSystemFunctionInterface);
+	}
+
+	for( asUINT p = 0; p < defaultArgs.GetLength(); p++ )
+	{
+		if( defaultArgs[p] )
+			asDELETE(defaultArgs[p], asCString);
 	}
 }
 
@@ -255,21 +265,6 @@ const char *asCScriptFunction::GetName() const
 	return name.AddressOf();
 }
 
-#ifdef AS_DEPRECATED
-// Since 2.20.0
-// interface
-bool asCScriptFunction::IsClassMethod() const
-{
-	return objectType && objectType->IsInterface() == false;
-}
-
-// interface
-bool asCScriptFunction::IsInterfaceMethod() const
-{
-	return objectType && objectType->IsInterface();
-}
-#endif
-
 // interface
 bool asCScriptFunction::IsReadOnly() const
 {
@@ -304,7 +299,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName) const
 {
 	asCString str;
 
-	// TODO: default arg: Add option to get the declaration with the default args
+	// TODO: default arg: Make the declaration with the default args an option
 
 	// Don't add the return type for constructors and destructors
 	if( !(returnType.GetTokenType() == ttVoid && 
@@ -338,15 +333,31 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName) const
 				else if( inOutFlags[n] == asTM_OUTREF ) str += "out";
 				else if( inOutFlags[n] == asTM_INOUTREF ) str += "inout";
 			}
+
+			if( defaultArgs.GetLength() > n && defaultArgs[n] )
+			{
+				asCString tmp;
+				tmp.Format(" arg%d = %s", n, defaultArgs[n]->AddressOf());
+				str += tmp;
+			}
+
 			str += ", ";
 		}
 
+		// Add the last parameter
 		str += parameterTypes[n].Format();
 		if( parameterTypes[n].IsReference() && inOutFlags.GetLength() > n )
 		{
 			if( inOutFlags[n] == asTM_INREF ) str += "in";
 			else if( inOutFlags[n] == asTM_OUTREF ) str += "out";
 			else if( inOutFlags[n] == asTM_INOUTREF ) str += "inout";
+		}
+
+		if( defaultArgs.GetLength() > n && defaultArgs[n] )
+		{
+			asCString tmp;
+			tmp.Format(" arg%d = %s", n, defaultArgs[n]->AddressOf());
+			str += tmp;
 		}
 	}
 
@@ -356,6 +367,28 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName) const
 		str += " const";
 
 	return str;
+}
+
+// interface
+int asCScriptFunction::FindNextLineWithCode(int line) const
+{
+	if( lineNumbers.GetLength() == 0 ) return -1;
+
+	// Check if given line is outside function
+	// TODO: should start at declaration instead of first line of code
+	if( line < (lineNumbers[1]&0xFFFFF) ) return -1;
+	if( line > (lineNumbers[lineNumbers.GetLength()-1]&0xFFFFF) ) return -1;
+
+	// Find the line with code on or right after the input line
+	// TODO: optimize: Do binary search instead
+	if( line == (lineNumbers[1]&0xFFFFF) ) return line;
+	for( asUINT n = 3; n < lineNumbers.GetLength(); n += 2 )
+	{
+		if( line <= (lineNumbers[n]&0xFFFFF) )
+			return (lineNumbers[n]&0xFFFFF);
+	}
+
+	return -1;
 }
 
 // internal
@@ -402,7 +435,7 @@ asEFuncType asCScriptFunction::GetFuncType() const
 }
 
 // interface
-int asCScriptFunction::GetVarCount() const
+asUINT asCScriptFunction::GetVarCount() const
 {
 	return int(variables.GetLength());
 }
@@ -439,9 +472,10 @@ const char *asCScriptFunction::GetVarDecl(asUINT index) const
 void asCScriptFunction::AddVariable(asCString &name, asCDataType &type, int stackOffset)
 {
 	asSScriptVariable *var = asNEW(asSScriptVariable);
-	var->name        = name;
-	var->type        = type;
-	var->stackOffset = stackOffset;
+	var->name                 = name;
+	var->type                 = type;
+	var->stackOffset          = stackOffset;
+	var->declaredAtProgramPos = 0;
 	variables.PushLast(var);
 }
 
@@ -722,15 +756,15 @@ int asCScriptFunction::GetReturnTypeId() const
 }
 
 // interface
-int asCScriptFunction::GetParamCount() const
+asUINT asCScriptFunction::GetParamCount() const
 {
-	return (int)parameterTypes.GetLength();
+	return (asUINT)parameterTypes.GetLength();
 }
 
 // interface
-int asCScriptFunction::GetParamTypeId(int index, asDWORD *flags) const
+int asCScriptFunction::GetParamTypeId(asUINT index, asDWORD *flags) const
 {
-	if( index < 0 || (unsigned)index >= parameterTypes.GetLength() )
+	if( index >= parameterTypes.GetLength() )
 		return asINVALID_ARG;
 
 	if( flags )
@@ -963,17 +997,23 @@ void asCScriptFunction::ReleaseAllHandles(asIScriptEngine *)
 		case asBC_FREE:
 		case asBC_REFCPY:
 			{
-                asCObjectType *objType = (asCObjectType*)(size_t)asBC_PTRARG(&byteCode[n]);
-				objType->Release();
-				*(void**)&byteCode[n+1] = 0;
+				asCObjectType *objType = (asCObjectType*)(size_t)asBC_PTRARG(&byteCode[n]);
+				if( objType )
+				{
+					objType->Release();
+					*(void**)&byteCode[n+1] = 0;
+				}
 			}
 			break;
 
 		case asBC_ALLOC:
 			{
 				asCObjectType *objType = (asCObjectType*)(size_t)asBC_PTRARG(&byteCode[n]);
-				objType->Release();
-				*(void**)&byteCode[n+1] = 0;
+				if( objType )
+				{
+					objType->Release();
+				*	(void**)&byteCode[n+1] = 0;
+				}
 
 				int func = asBC_INTARG(&byteCode[n]+AS_PTR_SIZE);
 				if( func )

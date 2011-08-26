@@ -230,6 +230,7 @@
 // AS_IPHONE  - Apple IPhone
 // AS_ANDROID - Android
 // AS_HAIKU   - Haiku
+// AS_ILLUMOS - Illumos like (OpenSolaris, OpenIndiana, NCP, etc)
 
 
 
@@ -258,9 +259,13 @@
 // find the virtual base object. x is the method pointer received by the register
 // function;
 
-// COMPLEX_MASK
-// This constant shows what attributes determines if an object is returned in memory
+// COMPLEX_RETURN_MASK
+// This constant shows what attributes determine if an object is returned in memory
 // or in the registers as normal structures
+
+// COMPLEX_MASK
+// This constant shows what attributes determine if an object is implicitly passed 
+// by reference or not, even if the argument is declared by value
 
 // THISCALL_RETURN_SIMPLE_IN_MEMORY
 // CDECL_RETURN_SIMPLE_IN_MEMORY
@@ -350,6 +355,7 @@
 
 	#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 	#define COMPLEX_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR)
+	#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR)
 	#define STDCALL __stdcall
 	#define AS_SIZEOF_BOOL 1
 	#define AS_WINDOWS_THREADS
@@ -402,7 +408,6 @@
 		#define AS_XENON
 		#define AS_BIG_ENDIAN
 	#else
-		// Support native calling conventions on x86, but not 64bit yet
 		#if defined(_XBOX) || (defined(_M_IX86) && !defined(__LP64__))
 			#define AS_X86
 		#elif defined(_M_X64)
@@ -410,6 +415,9 @@
 			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 			#define AS_LARGE_OBJS_PASSED_BY_REF
 			#define AS_LARGE_OBJ_MIN_SIZE 3
+			#define COMPLEX_OBJS_PASSED_BY_REF
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 		#endif
 	#endif
 
@@ -427,10 +435,15 @@
 		#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 		#define COMPLEX_OBJS_PASSED_BY_REF
 		#define COMPLEX_MASK asOBJ_APP_CLASS_ASSIGNMENT
+		#define COMPLEX_RETURN_MASK asOBJ_APP_CLASS_ASSIGNMENT
 	#endif
 
 	#ifndef COMPLEX_MASK
 		#define COMPLEX_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
+	#endif
+
+	#ifndef COMPLEX_RETURN_MASK
+		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
 	#endif
 
 	#define UNREACHABLE_RETURN
@@ -446,6 +459,7 @@
 	#define asVSNPRINTF(a, b, c, d) _vsnprintf(a, b, c, d)
 	#define THISCALL_CALLEE_POPS_ARGUMENTS
 	#define COMPLEX_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
+	#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
 	#define AS_SIZEOF_BOOL 1
 	#define AS_WINDOWS_THREADS
 	#define STDCALL __stdcall
@@ -473,6 +487,7 @@
 	#define COMPLEX_OBJS_PASSED_BY_REF
 	#define ASM_AT_N_T  // AT&T style inline assembly
 	#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR)
+	#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR)
 	#define AS_SIZEOF_BOOL 1
 	#define asVSNPRINTF(a, b, c, d) vsnprintf(a, b, c, d)
 
@@ -516,6 +531,7 @@
 	#define CALLEE_POPS_HIDDEN_RETURN_POINTER
 	#define COMPLEX_OBJS_PASSED_BY_REF
 	#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR)
+	#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR)
 	#define AS_NO_MEMORY_H
 	#define AS_SIZEOF_BOOL 1
 	#define STDCALL __attribute__((stdcall))
@@ -547,6 +563,8 @@
 			#define AS_X86
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 		#elif defined(__LP64__) && !defined(__ppc__) && !defined(__PPC__)
 			// http://developer.apple.com/library/mac/#documentation/DeveloperTools/Conceptual/LowLevelABI/140-x86-64_Function_Calling_Conventions/x86_64.html#//apple_ref/doc/uid/TP40005035-SW1
 			#define AS_NO_THREADS
@@ -555,6 +573,8 @@
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			// STDCALL is not available on 64bit Mac
 			#undef STDCALL
 			#define STDCALL
@@ -566,6 +586,8 @@
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 		#elif (defined(__ppc__) || defined(__PPC__)) && defined(__LP64__)
 			#define AS_PPC_64
 		#elif (defined(_ARM_) || defined(__arm__))
@@ -590,6 +612,8 @@
 			#define COMPLEX_OBJS_PASSED_BY_REF
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK asOBJ_APP_CLASS_DESTRUCTOR
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK asOBJ_APP_CLASS_DESTRUCTOR
 		#else
 			// Unknown CPU type
 			#define AS_MAX_PORTABILITY
@@ -603,15 +627,20 @@
 		//#define CDECL_RETURN_SIMPLE_IN_MEMORY
 		//#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 
+		#undef COMPLEX_MASK
+		#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+		#undef COMPLEX_RETURN_MASK
+		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+
 		#if defined(i386) && !defined(__LP64__)
 			// Support native calling conventions on Intel 32bit CPU
 			#define AS_X86
-		#elif defined(__LP64__)
-			// No support for native calling conventions yet
-			#define AS_MAX_PORTABILITY
-			// STDCALL is not available on 64bit Linux
-			#undef STDCALL
-			#define STDCALL
+		#elif defined(__x86_64__)
+			#define AS_X64_MINGW
+			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
+			#define AS_LARGE_OBJS_PASSED_BY_REF
+			#define AS_LARGE_OBJ_MIN_SIZE 3
+			#define COMPLEX_OBJS_PASSED_BY_REF
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
@@ -627,6 +656,8 @@
 
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 
 			// Support native calling conventions on Intel 32bit CPU
 			#define AS_X86
@@ -636,6 +667,8 @@
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			// STDCALL is not available on 64bit Linux
 			#undef STDCALL
 			#define STDCALL
@@ -673,6 +706,8 @@
 		#if defined(i386) && !defined(__LP64__)
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			#define AS_X86
 		#elif defined(__LP64__)
 			#define AS_X64_GCC
@@ -680,6 +715,8 @@
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
 			#undef COMPLEX_MASK
 			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			#undef STDCALL
 			#define STDCALL
 		#else
@@ -772,6 +809,32 @@
 			#define AS_NO_ATOMIC
 		#endif
 
+	// Illumos
+	#elif defined(__sun)
+		#if defined(__i386__) && !defined(__LP64__)
+			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+			#define CDECL_RETURN_SIMPLE_IN_MEMORY
+			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+
+			// Support native calling conventions on Intel 32bit CPU
+			#define AS_X86
+		#elif defined(__LP64__)
+			#define AS_X64_GCC
+			#define HAS_128_BIT_PRIMITIVES
+			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			// STDCALL is not available on 64bit Linux
+			#undef STDCALL
+			#define STDCALL
+		#else
+			#define AS_MAX_PORTABILITY
+		#endif
+		#define AS_ILLUMOS
+		#define AS_POSIX_THREADS
+
+		#if !( ( (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) || __GNUC__ > 4) )
+			// Only with GCC 4.1 was the atomic instructions available
+			#define AS_NO_ATOMIC
+		#endif
 	#endif
 
 	#define I64(x) x##ll
@@ -825,7 +888,7 @@
 #endif
 
 // Is the target a 64bit system?
-#if defined(__LP64__) || defined(__amd64__) || defined(_M_X64)
+#if defined(__LP64__) || defined(__amd64__) || defined(__x86_64__) || defined(_M_X64)
 	#ifndef AS_64BIT_PTR
 		#define AS_64BIT_PTR
 	#endif
@@ -833,7 +896,7 @@
 
 // If there are no current support for native calling
 // conventions, then compile with AS_MAX_PORTABILITY
-#if (!defined(AS_X86) && !defined(AS_SH4) && !defined(AS_MIPS) && !defined(AS_PPC) && !defined(AS_PPC_64) && !defined(AS_XENON) && !defined(AS_X64_GCC) && !defined(AS_X64_MSVC) && !defined(AS_ARM))
+#if (!defined(AS_X86) && !defined(AS_SH4) && !defined(AS_MIPS) && !defined(AS_PPC) && !defined(AS_PPC_64) && !defined(AS_XENON) && !defined(AS_X64_GCC) && !defined(AS_X64_MSVC) && !defined(AS_ARM) && !defined(AS_X64_MINGW))
 	#ifndef AS_MAX_PORTABILITY
 		#define AS_MAX_PORTABILITY
 	#endif
