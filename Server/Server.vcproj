@@ -23,7 +23,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\LFO\Server\"
+			OutputDirectory="..\..\sdk\Server\"
 			IntermediateDirectory=".\Release_MSVC\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -136,7 +136,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="..\..\..\FOnline\server\"
+			OutputDirectory="..\..\sdk\Server\"
 			IntermediateDirectory=".\Release64_MSVC\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"

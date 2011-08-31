@@ -23,7 +23,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\LFO\Client\"
+			OutputDirectory="..\..\sdk\Client\"
 			IntermediateDirectory=".\Release\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -134,7 +134,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="..\..\..\FOnline\client\"
+			OutputDirectory="..\..\sdk\Client\"
 			IntermediateDirectory=".\Release64\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -245,7 +245,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="..\..\LFO\Client\"
+			OutputDirectory="..\..\sdk\Client\"
 			IntermediateDirectory=".\Debug\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -360,7 +360,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="..\..\..\FOnline\client\"
+			OutputDirectory="..\..\sdk\Client\"
 			IntermediateDirectory=".\Debug64\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"

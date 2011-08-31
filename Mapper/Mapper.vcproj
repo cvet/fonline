@@ -23,7 +23,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\LFO\Tools\Mapper\"
+			OutputDirectory="..\..\sdk\Tools\Mapper\"
 			IntermediateDirectory=".\Release\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -137,7 +137,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="..\..\..\FOnline\client\"
+			OutputDirectory="..\..\sdk\Tools\Mapper\"
 			IntermediateDirectory=".\Release64\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -251,7 +251,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="..\..\LFO\Tools\Mapper\"
+			OutputDirectory="..\..\sdk\Tools\Mapper\"
 			IntermediateDirectory=".\Debug\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -364,7 +364,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="..\..\..\FOnline\client\"
+			OutputDirectory="..\..\sdk\Tools\Mapper\"
 			IntermediateDirectory=".\Debug64\"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
