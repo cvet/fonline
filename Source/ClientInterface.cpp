@@ -3716,7 +3716,6 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 							if(strlen(str)+strlen(tag)<text_len) Str::Insert(&str[i],tag);
 							//i+=strlen(tag);
 						}
-
 						sex--;
 					}
 					continue;
@@ -3760,14 +3759,17 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				// Lexems
 				else if(strlen(tag)>4 && tag[0]=='l' && tag[1]=='e' && tag[2]=='x' && tag[3]==' ')
 				{
-					char* s=strstr((char*)lexems,Str::FormatBuf("$%s",&tag[4]));
+					const char* s=strstr(lexems?lexems:"",Str::FormatBuf("$%s",&tag[4]));
 					if(s)
 					{
 						s+=strlen(&tag[4])+1;
 						if(*s==' ') s++;
 						Str::CopyWord(tag,s,'$',false);
 					}
-					else Str::Copy(tag,"<lexem not found>");
+					else
+					{
+						Str::Copy(tag,"<lexem not found>");
+					}
 				}
 				// Msg text
 				else if(strlen(tag)>4 && tag[0]=='m' && tag[1]=='s' && tag[2]=='g' && tag[3]==' ')
@@ -3776,7 +3778,10 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 					uint str_num;
 					Str::EraseChars(&tag[4],'(');
 					Str::EraseChars(&tag[4],')');
-					if(sscanf(&tag[4],"%s %u",msg_type_name,&str_num)!=2) Str::Copy(tag,"<msg tag parse fail>");
+					if(sscanf(&tag[4],"%s %u",msg_type_name,&str_num)!=2)
+					{
+						Str::Copy(tag,"<msg tag parse fail>");
+					}
 					else
 					{
 						int msg_type=FOMsg::GetMsgType(msg_type_name);
@@ -3788,13 +3793,13 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				// Script
 				else if(strlen(tag)>7 && tag[0]=='s' && tag[1]=='c' && tag[2]=='r' && tag[3]=='i' && tag[4]=='p' && tag[5]=='t' && tag[6]==' ')
 				{
-					char func_name[256];
+					char func_name[MAX_FOTEXT];
 					Str::CopyWord(func_name,&tag[7],'$',false);
 					int bind_id=Script::Bind("client_main",func_name,"string %s(string&)",true);
 					Str::Copy(tag,"<script function not found>");
 					if(bind_id>0 && Script::PrepareContext(bind_id,_FUNC_,"Game"))
 					{
-						CScriptString* script_lexems=new CScriptString(lexems);
+						CScriptString* script_lexems=new CScriptString(lexems?lexems:"");
 						Script::SetArgObject(script_lexems);
 						if(Script::RunPrepared())
 						{
@@ -3805,8 +3810,7 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 								result->Release();
 							}
 						}
-						//Str::Copy(lexems,script_lexems->c_str());
-						//script_lexems->Release();
+						script_lexems->Release();
 					}
 				}
 				// Error
@@ -3816,7 +3820,6 @@ void FOClient::FormatTags(char* text, size_t text_len, CritterCl* player, Critte
 				}
 
 				if(strlen(str)+strlen(tag)<text_len) Str::Insert(str+i,tag);
-				//i+=strlen(tag);
 			}
 			continue;
 		default:

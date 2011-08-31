@@ -364,7 +364,7 @@ uint Str::AtoUI(const char* str)
 	return strtoul(str,NULL,10);
 }
 
-static char BigBuf[0x100000]={0}; // 1mb
+static char BigBuf[BIG_BUF_SIZE]={0};
 char* Str::GetBigBuf()
 {
 	return BigBuf;

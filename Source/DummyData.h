@@ -842,6 +842,7 @@ struct BindClass
 	static void Global_DeleteNpc(){}
 	static void Global_RadioMessage(){}
 	static void Global_RadioMessageMsg(){}
+	static void Global_RadioMessageMsgLex(){}
 	static void Global_GetFullSecond(){}
 	static void Global_GetGameTime(){}
 	static void Global_CreateLocation(){}

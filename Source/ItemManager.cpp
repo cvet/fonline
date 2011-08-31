@@ -1302,13 +1302,13 @@ void ItemManager::RadioSendText(Critter* cr, const char* text, ushort text_len, 
 	{
 		RadioSendTextEx(channels[i],
 			radios[i]->Data.Radio.BroadcastSend,cr->GetMap(),cr->Data.WorldX,cr->Data.WorldY,
-			text,text_len,cr->IntellectCacheValue,unsafe_text,text_msg,num_str);
+			text,text_len,cr->IntellectCacheValue,unsafe_text,text_msg,num_str,NULL);
 	}
 }
 
 void ItemManager::RadioSendTextEx(ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy,
 								  const char* text, ushort text_len, ushort intellect, bool unsafe_text,
-								  ushort text_msg, uint num_str)
+								  ushort text_msg, uint num_str, const char* lexems)
 {
 	// Broadcast
 	if(broadcast_type!=RADIO_BROADCAST_FORCE_ALL && broadcast_type!=RADIO_BROADCAST_WORLD &&
@@ -1384,8 +1384,12 @@ void ItemManager::RadioSendTextEx(ushort channel, int broadcast_type, uint from_
 						else continue;
 					}
 
-					if(text) cl->Send_TextEx(radio->GetId(),text,text_len,SAY_RADIO,intellect,unsafe_text);
-					else cl->Send_TextMsg(radio->GetId(),num_str,SAY_RADIO,text_msg);
+					if(text)
+						cl->Send_TextEx(radio->GetId(),text,text_len,SAY_RADIO,intellect,unsafe_text);
+					else if(lexems)
+						cl->Send_TextMsgLex(radio->GetId(),num_str,SAY_RADIO,text_msg,lexems);
+					else
+						cl->Send_TextMsg(radio->GetId(),num_str,SAY_RADIO,text_msg);
 
 					cl->RadioMessageSended=msg_count;
 				}
@@ -1412,8 +1416,12 @@ void ItemManager::RadioSendTextEx(ushort channel, int broadcast_type, uint from_
 						else continue;
 					}
 
-					if(text) map->SetText(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text,text_len,intellect,unsafe_text);
-					else map->SetTextMsg(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text_msg,num_str);
+					if(text)
+						map->SetText(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text,text_len,intellect,unsafe_text);
+					else if(lexems)
+						map->SetTextMsgLex(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text_msg,num_str,lexems,strlen(lexems));
+					else
+						map->SetTextMsg(radio->ACC_HEX.HexX,radio->ACC_HEX.HexY,0xFFFFFFFE,text_msg,num_str);
 				}
 			}
 		}

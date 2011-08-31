@@ -820,6 +820,7 @@ public:
 		static void Global_DeleteNpcForce(Critter* npc);
 		static void Global_RadioMessage(ushort channel, CScriptString& text);
 		static void Global_RadioMessageMsg(ushort channel, ushort text_msg, uint num_str);
+		static void Global_RadioMessageMsgLex(ushort channel, ushort text_msg, uint num_str, CScriptString* lexems);
 		static uint Global_GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
 		static void Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second);
 		static uint Global_CreateLocation(ushort loc_pid, ushort wx, ushort wy, CScriptArray* critters);

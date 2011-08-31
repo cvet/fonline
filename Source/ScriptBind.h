@@ -708,6 +708,7 @@
 	if(engine->RegisterGlobalFunction("uint GetCrittersDistantion(Critter& cr1, Critter& cr2)",asFUNCTION(BIND_CLASS Global_GetCrittersDistantion),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void RadioMessage(uint16 channel, string& text)",asFUNCTION(BIND_CLASS Global_RadioMessage),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum)",asFUNCTION(BIND_CLASS Global_RadioMessageMsg),asCALL_CDECL)<0) BIND_ERROR;
+	if(engine->RegisterGlobalFunction("void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum, string@+ lexems)",asFUNCTION(BIND_CLASS Global_RadioMessageMsgLex),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("uint CreateLocation(uint16 locPid, uint16 worldX, uint16 worldY, Critter@[]@+ critters)",asFUNCTION(BIND_CLASS Global_CreateLocation),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void DeleteLocation(uint locId)",asFUNCTION(BIND_CLASS Global_DeleteLocation),asCALL_CDECL)<0) BIND_ERROR;
 	if(engine->RegisterGlobalFunction("void GetProtoCritter(uint16 protoId, int[]& data)",asFUNCTION(BIND_CLASS Global_GetProtoCritter),asCALL_CDECL)<0) BIND_ERROR;

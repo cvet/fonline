@@ -1593,7 +1593,7 @@ void FOServer::SScriptFunc::Crit_SayMsgLex(Critter* cr, uchar how_say, ushort te
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R("This nullptr.");
 	if(cr->IsNpc() && !cr->IsLife()) return; //SCRIPT_ERROR_R("Npc is not life.");
-	if(!lexems.length()) SCRIPT_ERROR_R("Lexems arg is empty.");
+	//if(!lexems.length()) SCRIPT_ERROR_R("Lexems arg is empty.");
 
 	if(how_say>=SAY_NETMSG) cr->Send_TextMsgLex(cr,num_str,how_say,text_msg,lexems.c_str());
 	else if(cr->GetMap()) cr->SendAA_MsgLex(cr->VisCr,num_str,how_say,text_msg,lexems.c_str());
@@ -4050,12 +4050,17 @@ void FOServer::SScriptFunc::Global_DeleteNpc(Critter* npc)
 
 void FOServer::SScriptFunc::Global_RadioMessage(ushort channel, CScriptString& text)
 {
-	ItemMngr.RadioSendTextEx(channel,RADIO_BROADCAST_FORCE_ALL,0,0,0,text.c_str(),(uint)text.length(),0,false,0,0);
+	ItemMngr.RadioSendTextEx(channel,RADIO_BROADCAST_FORCE_ALL,0,0,0,text.c_str(),(uint)text.length(),0,false,0,0,NULL);
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsg(ushort channel, ushort text_msg, uint num_str)
 {
-	ItemMngr.RadioSendTextEx(channel,RADIO_BROADCAST_FORCE_ALL,0,0,0,NULL,0,0,false,text_msg,num_str);
+	ItemMngr.RadioSendTextEx(channel,RADIO_BROADCAST_FORCE_ALL,0,0,0,NULL,0,0,false,text_msg,num_str,NULL);
+}
+
+void FOServer::SScriptFunc::Global_RadioMessageMsgLex(ushort channel, ushort text_msg, uint num_str, CScriptString* lexems)
+{
+	ItemMngr.RadioSendTextEx(channel,RADIO_BROADCAST_FORCE_ALL,0,0,0,NULL,0,0,false,text_msg,num_str,lexems && lexems->length()?lexems->c_str():NULL);
 }
 
 uint FOServer::SScriptFunc::Global_GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)

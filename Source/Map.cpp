@@ -352,15 +352,16 @@ bool Map::Generate()
 			{
 				item_cont->ContAddItem(item,0);
 			}
-			continue;
 		}
-
 		// Transfer to hex
-		if(!AddItem(item,mobj.MapX,mobj.MapY))
+		else
 		{
-			WriteLogF(_FUNC_," - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
-			ItemMngr.ItemToGarbage(item);
-			continue;
+			if(!AddItem(item,mobj.MapX,mobj.MapY))
+			{
+				WriteLogF(_FUNC_," - Add item to Map<%s> with pid<%u> failture, continue generate.\n",map_info,pid);
+				ItemMngr.ItemToGarbage(item);
+				continue;
+			}
 		}
 
 		// Script

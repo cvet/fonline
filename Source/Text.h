@@ -5,6 +5,7 @@
 #include <strstream>
 
 #define MAX_FOTEXT              (2048)
+#define BIG_BUF_SIZE            (0x100000) // 1mb
 
 namespace Str
 {

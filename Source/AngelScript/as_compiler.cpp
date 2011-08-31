@@ -1579,13 +1579,21 @@ void asCCompiler::MatchFunctions(asCArray<int> &funcs, asCArray<asSExprContext*>
 
 			if( desc->parameterTypes.GetLength() != args.GetLength() )
 			{
-				// Count the number of default args
-				asUINT defaultArgs = 0;
-				for( asUINT d = 0; d < desc->defaultArgs.GetLength(); d++ )
-					if( desc->defaultArgs[d] )
-						defaultArgs++;
+				bool deleteFunc = true;
 
-				if( args.GetLength() != desc->parameterTypes.GetLength() - defaultArgs )
+				if( args.GetLength() < desc->parameterTypes.GetLength() )
+				{
+					// Count the number of default args
+					asUINT defaultArgs = 0;
+					for( asUINT d = 0; d < desc->defaultArgs.GetLength(); d++ )
+						if( desc->defaultArgs[d] )
+							defaultArgs++;
+
+					if( args.GetLength() >= desc->parameterTypes.GetLength() - defaultArgs )
+						deleteFunc = false;
+				}
+
+				if( deleteFunc )
 				{
 					// remove it from the list
 					if( n == funcs.GetLength()-1 )
