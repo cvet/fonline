@@ -135,12 +135,6 @@ Sprite& Sprites::PutSprite(uint index, int draw_order, int hx, int hy, int cut, 
 	spr->Parent=NULL;
 	spr->Child=NULL;
 
-	// Draw order
-	spr->DrawOrderType=draw_order;
-	spr->DrawOrderPos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
-		hy*MAXHEX_MAX+hx+MAXHEX_MAX*MAXHEX_MAX*(draw_order-DRAW_ORDER_FLAT):
-		MAXHEX_MAX*MAXHEX_MAX*DRAW_ORDER+hy*DRAW_ORDER*MAXHEX_MAX+hx*DRAW_ORDER+(draw_order-DRAW_ORDER));
-
 	// Cutting
 	if(cut==SPRITE_CUT_HORIZONTAL || cut==SPRITE_CUT_VERTICAL)
 	{
@@ -200,6 +194,12 @@ Sprite& Sprites::PutSprite(uint index, int draw_order, int hx, int hy, int cut, 
 			if((hor && --i<h2) || (!hor && ++i>h2)) break;
 		}
 	}
+
+	// Draw order
+	spr->DrawOrderType=draw_order;
+	spr->DrawOrderPos=(draw_order>=DRAW_ORDER_FLAT && draw_order<DRAW_ORDER?
+		spr->HexY*MAXHEX_MAX+spr->HexX+MAXHEX_MAX*MAXHEX_MAX*(draw_order-DRAW_ORDER_FLAT):
+		MAXHEX_MAX*MAXHEX_MAX*DRAW_ORDER+spr->HexY*DRAW_ORDER*MAXHEX_MAX+spr->HexX*DRAW_ORDER+(draw_order-DRAW_ORDER));
 
 	return *spr;
 }
