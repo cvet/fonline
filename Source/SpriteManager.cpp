@@ -4723,7 +4723,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 	char* str_=str;
 	char* big_buf=Str::GetBigBuf();
 	big_buf[0]=0;
-	if(fmt_type==FORMAT_TYPE_DRAW && FLAG(flags,FT_COLORIZE)) dots=fi.ColorDots;
+	if(fmt_type==FORMAT_TYPE_DRAW && !FLAG(flags,FT_NO_COLORIZE)) dots=fi.ColorDots;
 
 	while(*str_)
 	{
@@ -4942,7 +4942,7 @@ void FormatText(FontFormatInfo& fi, int fmt_type)
 			if(fi.ColorDots[j]) last_col=fi.ColorDots[j];
 		}
 
-		if(FLAG(flags,FT_COLORIZE))
+		if(!FLAG(flags,FT_NO_COLORIZE))
 		{
 			offs_col+=j+1;
 			if(last_col && !fi.ColorDots[j+1]) fi.ColorDots[j+1]=last_col;
@@ -5052,7 +5052,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, uint flags, uint col /*
 
 	if(curSprCnt) Flush();
 
-	if(FLAG(flags,FT_COLORIZE))
+	if(!FLAG(flags,FT_NO_COLORIZE))
 	{
 		for(int i=offs_col;i>=0;i--)
 		{
@@ -5068,7 +5068,7 @@ bool SpriteManager::DrawStr(INTRECT& r, const char* str, uint flags, uint col /*
 	bool variable_space=false;
 	for(int i=0;str_[i];i++)
 	{
-		if(FLAG(flags,FT_COLORIZE))
+		if(!FLAG(flags,FT_NO_COLORIZE))
 		{
 			uint new_color=fi.ColorDots[i+offs_col];
 			if(new_color)

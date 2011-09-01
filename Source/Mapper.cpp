@@ -1393,7 +1393,7 @@ void FOMapper::MainLoop()
 				int y=(int)((f.ScrY+HEX_LINE_H/2-t.Rect.H()-(t.Rect.T-r.T)+GameOpt.ScrOy)/GameOpt.SpritesZoom-70.0f);
 				uint color=t.Color;
 				if(t.Fade) color=(color^0xFF000000)|((0xFF*(100-procent)/100)<<24);
-				SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),t.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_COLORIZE|FT_BORDERED,color);
+				SprMngr.DrawStr(INTRECT(x,y,x+200,y+70),t.Text.c_str(),FT_CENTERX|FT_BOTTOM|FT_BORDERED,color);
 				it++;
 			}
 		}
@@ -1627,7 +1627,7 @@ void FOMapper::IntDraw()
 			string info=MsgItem->GetStr(proto_item->ProtoId*100);
 			info+=" - ";
 			info+=MsgItem->GetStr(proto_item->ProtoId*100+1);
-			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),info.c_str(),FT_COLORIZE);
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),info.c_str(),0);
 		}
 	}
 	else if(IsTileMode())
@@ -1653,7 +1653,7 @@ void FOMapper::IntDraw()
 		}
 
 		if(GetTabIndex()<CurTileNames->size())
-			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),(*CurTileNames)[GetTabIndex()].c_str(),FT_COLORIZE);
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),(*CurTileNames)[GetTabIndex()].c_str(),0);
 	}
 	else if(IsCritMode())
 	{
@@ -1678,7 +1678,7 @@ void FOMapper::IntDraw()
 		if(GetTabIndex()<CurNpcProtos->size())
 		{
 			CritData* pnpc=(*CurNpcProtos)[GetTabIndex()];
-			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),MsgDlg->GetStr(STR_NPC_PROTO_NAME_(pnpc->ProtoId)),FT_COLORIZE);
+			SprMngr.DrawStr(INTRECT(IntWHint,IntX,IntY),MsgDlg->GetStr(STR_NPC_PROTO_NAME_(pnpc->ProtoId)),0);
 		}
 	}
 	else if(IntMode==INT_MODE_INCONT && !SelectedObj.empty())
@@ -4593,7 +4593,7 @@ void FOMapper::MessBoxDraw()
 	if(!IntVisible) return;
 	if(MessBoxCurText.empty()) return;
 
-	uint flags=FT_COLORIZE;
+	uint flags=0;
 	if(!GameOpt.MsgboxInvert) flags|=FT_UPPER|FT_BOTTOM;
 
 	SprMngr.DrawStr(INTRECT(IntWWork[0]+IntX,IntWWork[1]+IntY,IntWWork[2]+IntX,IntWWork[3]+IntY),MessBoxCurText.c_str(),flags);
