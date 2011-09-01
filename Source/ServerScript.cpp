@@ -1267,7 +1267,6 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHexEx(Critter* cr, uint map_id, ush
 	if(!map_id) SCRIPT_ERROR_R0("Map id arg is zero.");
 	Map* map=MapMngr.GetMap(map_id);
 	if(!map) SCRIPT_ERROR_R0("Map not found.");
-	if(hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY()) SCRIPT_ERROR_R0("Invalid hexes args.");
 
 	if(!cr->GetMap())
 	{
