@@ -379,6 +379,7 @@ bool FOServer::ReloadClientScripts()
 			msg_script.AddStr(dll_num,dll_name.c_str());
 			msg_script.AddBinary(dll_num+1,dll.GetBuf(),dll.GetFsize());
 		}
+		dll_num+=2;
 	}
 
 	// Finish
