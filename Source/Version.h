@@ -2,7 +2,7 @@
 #define ___VERSION___
 
 #define SERVER_VERSION               0x00000447 // server_0447
-#define CLIENT_VERSION               0x00000351 // client_0351
+#define CLIENT_VERSION               0x00000352 // client_0352
 #define MAPPER_VERSION               0x00000201 // mapper_0201
 
 #define MAPPER_VERSION_STR           "v.1.25.28"

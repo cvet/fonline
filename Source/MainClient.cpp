@@ -287,6 +287,10 @@ LRESULT APIENTRY WndProc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 			EndPaint(wnd, &ps);
 		}*/
 		break;
+	case WM_WINDOWPOSCHANGING:
+		// Allow size greather than monitor resolution
+		// Used in video playing workaround
+		return 0;
 #endif
 /*	case WM_SETCURSOR:
 		// Turn off window cursor 

@@ -163,19 +163,16 @@ struct ScoreType
 #define PATH_SCREENS_FILE	".\\"
 
 #ifdef FONLINE_CLIENT
-	// Sound, video
+	// Sound
 	#include <audiodefs.h>
-	#include "Dx9/dsound.h"
-	#include "Dx8/DShow.h"
+	#include <dsound.h>
 	#pragma comment(lib,"dsound.lib")
-	#pragma comment(lib,"strmiids.lib")
-	#pragma comment(lib,"quartz.lib")
 #endif
 
 #define DIRECTINPUT_VERSION 0x0800
-#include "Dx9/dinput.h"
-#include "Dx9/dxerr.h"
-#include "Dx9/d3dx9.h"
+#include <dinput.h>
+#include <dxerr.h>
+#include <d3dx9.h>
 
 #ifndef D3D_DEBUG_INFO
 	#pragma comment(lib,"d3dx9.lib")

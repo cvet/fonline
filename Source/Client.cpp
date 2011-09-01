@@ -118,7 +118,23 @@ bool FOClient::Init(HWND hwnd)
 #endif
 
 	GET_UID0(UID0);
+
+	// Window
 	Wnd=hwnd;
+	HDC dcscreen=GetDC(NULL);
+	int sw=GetDeviceCaps(dcscreen,HORZRES);
+	int sh=GetDeviceCaps(dcscreen,VERTRES);
+	ReleaseDC(NULL,dcscreen);
+	WINDOWINFO wi;
+	wi.cbSize=sizeof(wi);
+	if(GetWindowInfo(Wnd,&wi))
+	{
+		WndBorders(
+			wi.rcClient.left-wi.rcWindow.left,
+			wi.rcClient.top-wi.rcWindow.top,
+			wi.rcWindow.right-wi.rcClient.right,
+			wi.rcWindow.bottom-wi.rcClient.bottom);
+	}
 
 	// Another check for already runned window
 #ifndef DEV_VESRION
@@ -8777,74 +8793,7 @@ bool FOClient::SaveScreenshot()
 	}
 
 	surf->Release();
-	return true;	
-/*
-	D3DSURFACE_DESC sDesc;
-	if(FAILED(surf->GetDesc(&sDesc))) return FALSE;
-
-	int s_width=sDesc.Width;
-	int s_height=sDesc.Height;
-
-	D3DLOCKED_RECT lr_dst;
-	if(FAILED(surf->LockRect(&lr_dst,NULL,D3DLOCK_READONLY))) return FALSE;
-
-	uchar* p_dst=(uchar*)lr_dst.pBits;
-
-	// Create file
-	SYSTEMTIME sys_time;
-	GetSystemTime(&sys_time);
-	
-	char screen_path[512];
-	sprintf(screen_path,"%sscreen_%02d-%02d-%d_%02d-%02d-%02d.bmp",PATH_SCREENS_FILE,
-		sys_time.wDay,sys_time.wMonth,sys_time.wYear,
-		sys_time.wHour,sys_time.wMinute,sys_time.wSecond);
-
-	HANDLE save_file=CreateFile(screen_path,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_NEW,FILE_FLAG_WRITE_THROUGH,NULL);
-	if(save_file==INVALID_HANDLE_VALUE)
-	{
-		surf->UnlockRect();
-		return FALSE;
-	}
-
-	// Write Bmp
-	BITMAPFILEHEADER bf;
-	BITMAPINFOHEADER bi;
-	memset(&bf,0,sizeof(bf));
-	memset(&bi,0,sizeof(bi));
-
-	char* image=new char[s_width*s_height*4];
-	if(!image)
-	{
-		surf->UnlockRect();
-		CloseHandle(save_file);
-		return FALSE;
-	}
-
-	memcpy(image,p_dst,s_width*s_height*4);
-
-	bf.bfType='BM';
-	bf.bfSize=sizeof(bf)+sizeof(bi)+s_width*s_height*4;
-	bf.bfOffBits=sizeof(bf)+sizeof(bi);
-	bi.biSize=sizeof(bi);
-	bi.biWidth=s_width;
-	bi.biHeight=s_height;
-	bi.biPlanes=1;
-	bi.biBitCount=32;
-	bi.biSizeImage=s_width*s_height*4;
-
-	// Save
-	uint br;
-	WriteFile(save_file,&bf,sizeof(bf),&br,NULL);
-	WriteFile(save_file,&bi,sizeof(bi),&br,NULL);
-	WriteFile(save_file,image,s_width*s_height*4,&br,NULL);
-
-	// Finish
-	CloseHandle(save_file);
-	surf->UnlockRect();
-	delete[] image;
-
-	return TRUE;
-*/
+	return true;
 }
 
 void FOClient::SoundProcess()
@@ -8902,6 +8851,21 @@ void FOClient::PlayVideo(ShowVideo& video)
 	}
 	FindClose(f);
 
+	// Workaround, video not showed in fullscreen with direct3d multisampling, on Vista/7
+	if(GameOpt.FullScreen && SprMngr.IsMultiSamplingUsed() && (GetVersion()&0xFF)>=6)
+	{
+		D3DPRESENT_PARAMETERS pp;
+		memzero(&pp, sizeof(pp));
+		SprMngr.GetDevice()->Reset(&pp);
+
+		HDC dcscreen=GetDC(NULL);
+		int sw=GetDeviceCaps(dcscreen,HORZRES);
+		int sh=GetDeviceCaps(dcscreen,VERTRES);
+		ReleaseDC(NULL,dcscreen);
+
+		SetWindowPos(Wnd,NULL,-WndBorders.L,-WndBorders.T,sw+WndBorders.L+WndBorders.R,sh+WndBorders.T+WndBorders.B,0);
+	}
+
 	// Create direct show
 	CHECK_VIDEO_HR(CoInitialize(NULL));
 
@@ -8916,15 +8880,15 @@ void FOClient::PlayVideo(ShowVideo& video)
 
 	// VMR Initialization
 	// Create the VMR.
-	CHECK_VIDEO_HR(CoCreateInstance(CLSID_VideoMixingRenderer,NULL,CLSCTX_INPROC,IID_IBaseFilter,(void**)&VMRFilter));
+	CHECK_VIDEO_HR(CoCreateInstance(CLSID_VideoMixingRenderer9,NULL,CLSCTX_INPROC,IID_IBaseFilter,(void**)&VMRFilter));
 	CHECK_VIDEO_NULLPTR(VMRFilter);
 	// Add the VMR to the filter graph.
-	CHECK_VIDEO_HR(GraphBuilder->AddFilter(VMRFilter,L"Video Mixing Renderer"));
+	CHECK_VIDEO_HR(GraphBuilder->AddFilter(VMRFilter,L"VMR9"));
 	// Set the rendering mode.
-	CHECK_VIDEO_HR(VMRFilter->QueryInterface(IID_IVMRFilterConfig,(void**)&FilterConfig));
+	CHECK_VIDEO_HR(VMRFilter->QueryInterface(IID_IVMRFilterConfig9,(void**)&FilterConfig));
 	CHECK_VIDEO_NULLPTR(FilterConfig);
 	CHECK_VIDEO_HR(FilterConfig->SetRenderingMode(VMRMode_Windowless));
-	CHECK_VIDEO_HR(VMRFilter->QueryInterface(IID_IVMRWindowlessControl,(void**)&WindowLess));
+	CHECK_VIDEO_HR(VMRFilter->QueryInterface(IID_IVMRWindowlessControl9,(void**)&WindowLess));
 	CHECK_VIDEO_NULLPTR(WindowLess);
 	CHECK_VIDEO_HR(WindowLess->SetVideoClippingWindow(Wnd));
 

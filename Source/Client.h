@@ -23,6 +23,13 @@
 #include "IniParser.h"
 #include "MsgFiles.h"
 
+// Video
+#include <DShow.h>
+#include <vmr9.h>
+#pragma warning(disable : 4995) // sprintf in DShow.h
+#undef PlaySound // PlaySoundA in DShow.h
+#pragma comment(lib,"amstrmid.lib")
+
 class FOClient
 {
 public:
@@ -66,6 +73,7 @@ public:
 	void SetCurPos(int x, int y);
 
 	HWND Wnd;
+	INTRECT WndBorders;
 	LPDIRECTINPUT8 DInput;
 	LPDIRECTINPUTDEVICE8 Keyboard;
 	LPDIRECTINPUTDEVICE8 Mouse;
@@ -331,10 +339,10 @@ public:
 	ShowVideoVec ShowVideos;
 	IGraphBuilder* GraphBuilder;
 	IMediaControl* MediaControl;
-	IVMRWindowlessControl* WindowLess;
+	IVMRWindowlessControl9* WindowLess;
 	IMediaSeeking* MediaSeeking;
 	IBaseFilter* VMRFilter;
-	IVMRFilterConfig* FilterConfig;
+	IVMRFilterConfig9* FilterConfig;
 	IBasicAudio* BasicAudio;
 	string MusicAfterVideo;
 	int MusicVolumeRestore;
