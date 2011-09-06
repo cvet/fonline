@@ -1853,10 +1853,9 @@ void FOServer::Process_Command(Client* cl)
 
 			char istr[1024];
 			sprintf(istr,"|0xFF00FF00 Name: |0xFFFF0000 %s"
-				"|0xFF00FF00 , Password: |0xFFFF0000 %s"
 				"|0xFF00FF00 , Id: |0xFFFF0000 %u"
 				"|0xFF00FF00 , Access: ",
-				cl->GetName(),cl->Pass,cl->GetId());
+				cl->GetName(),cl->GetId());
 
 			switch(cl->Access)
 			{
@@ -3269,9 +3268,8 @@ void FOServer::Process_Command(Client* cl)
 /************************************************************************/
 	case CMD_DELETE_ACCOUNT:
 		{
-			char pass[MAX_NAME+1];
-			cl->Bin.Pop(pass,MAX_NAME);
-			pass[MAX_NAME]=0;
+			char pass_hash[PASS_HASH_SIZE];
+			cl->Bin.Pop(pass_hash,PASS_HASH_SIZE);
 
 			if(!FLAG(cl->Access,CMD_DELETE_ACCOUNT_ACCESS))
 			{
@@ -3279,7 +3277,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			if(!Str::Compare(cl->Pass,pass)) cl->Send_Text(cl,"Invalid password.",SAY_NETMSG);
+			if(memcmp(cl->PassHash,pass_hash,PASS_HASH_SIZE)) cl->Send_Text(cl,"Invalid password.",SAY_NETMSG);
 			else
 			{
 				if(!cl->Data.ClientToDelete)
@@ -3300,12 +3298,10 @@ void FOServer::Process_Command(Client* cl)
 /************************************************************************/
 	case CMD_CHANGE_PASSWORD:
 		{
-			char pass[MAX_NAME+1];
-			char new_pass[MAX_NAME+1];
-			cl->Bin.Pop(pass,MAX_NAME);
-			pass[MAX_NAME]=0;
-			cl->Bin.Pop(new_pass,MAX_NAME);
-			new_pass[MAX_NAME]=0;
+			char pass_hash[PASS_HASH_SIZE];
+			char new_pass_hash[PASS_HASH_SIZE];
+			cl->Bin.Pop(pass_hash,PASS_HASH_SIZE);
+			cl->Bin.Pop(new_pass_hash,PASS_HASH_SIZE);
 
 			if(!FLAG(cl->Access,CMD_CHANGE_PASSWORD_ACCESS))
 			{
@@ -3313,9 +3309,7 @@ void FOServer::Process_Command(Client* cl)
 				return;
 			}
 
-			uint pass_len=Str::Length(new_pass);
-			if(!Str::Compare(cl->Pass,pass)) cl->Send_Text(cl,"Invalid current password.",SAY_NETMSG);
-			else if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(new_pass)) cl->Send_Text(cl,"Invalid new password.",SAY_NETMSG);
+			if(memcmp(cl->PassHash,pass_hash,PASS_HASH_SIZE)) cl->Send_Text(cl,"Invalid current password.",SAY_NETMSG);
 			else
 			{
 				SCOPE_LOCK(SaveClientsLocker);
@@ -3323,8 +3317,8 @@ void FOServer::Process_Command(Client* cl)
 				ClientData* data=GetClientData(cl->GetId());
 				if(data)
 				{
-					Str::Copy(data->ClientPass,new_pass);
-					Str::Copy(cl->Pass,new_pass);
+					memcpy(data->ClientPassHash,new_pass_hash,PASS_HASH_SIZE);
+					memcpy(cl->PassHash,new_pass_hash,PASS_HASH_SIZE);
 					cl->Send_Text(cl,"Password changed.",SAY_NETMSG);
 				}
 			}
@@ -3690,6 +3684,9 @@ bool FOServer::Init()
 	if(!CrMngr.LoadProtos()) return false; // Proto critters
 	if(!MapMngr.LoadLocationsProtos()) return false; // Proto locations and maps
 	if(!ItemMngr.CheckProtoFunctions()) return false; // Check valid of proto functions
+
+	Script::PrepareContext(ServerFunctions.Init,_FUNC_,"Game");
+	Script::RunPrepared();
 
 	// World loading
 	if(!Singleplayer)
@@ -4218,23 +4215,48 @@ bool FOServer::LoadClientsData()
 			return false;
 		}
 
-		char pass[MAX_NAME+1]={0};
-		uint key=0;
+		// Check for old save file format
+		fseek(f,0,SEEK_END);
+		bool is_old=ftell(f)==14399;
+		fseek(f,0,SEEK_SET);
+
 		uint id=-1;
-		bool read_ok=(fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f) &&
-			fseek(f,OFFSETOF(CritData,Temp)-sizeof(id),SEEK_CUR)==0 && fread(&key,sizeof(key),1,f));
-		fclose(f);
+		char pass_hash[PASS_HASH_SIZE];
 
-		// Decrypt password
-		if(read_ok && key) Crypt.DecryptPassword(pass,sizeof(pass),key);
-
-		// Verify
-		uint pass_len=Str::Length(pass);
-		if(!read_ok || !IS_USER_ID(id) || pass_len<MIN_NAME || pass_len>MAX_NAME || !CheckUserPass(pass))
+		if(is_old)
 		{
-			WriteLog("Wrong id<%u> or password<%s> of client<%s>. Skip.\n",id,pass,name);
-			if(!FindNextFile(h,&fdata)) break;
-			continue;
+			uint key=0;
+			char pass[MAX_NAME+1]={0};
+
+			bool read_ok=(fread(pass,sizeof(pass),1,f) && fread(&id,sizeof(id),1,f) &&
+				fseek(f,OFFSETOF(CritData,Temp)-sizeof(id),SEEK_CUR)==0 && fread(&key,sizeof(key),1,f));
+			fclose(f);
+
+			// Decrypt password
+			if(read_ok && key) Crypt.DecryptPassword(pass,sizeof(pass),key);
+
+			// Verify
+			uint pass_len=Str::Length(pass);
+			if(!read_ok || !IS_USER_ID(id) || pass_len<MIN_NAME || pass_len>MAX_NAME || !CheckUserPass(pass))
+			{
+				WriteLog("Wrong id<%u> or password<%s> of client<%s>. Skipped.\n",id,pass,name);
+				if(!FindNextFile(h,&fdata)) break;
+				continue;
+			}
+
+			Crypt.ClientPassHash(name,pass,pass_hash);
+		}
+		else
+		{
+			bool read_ok=(fread(pass_hash,sizeof(pass_hash),1,f) && fread(&id,sizeof(id),1,f) && fseek(f,OFFSETOF(CritData,Temp)-sizeof(id),SEEK_CUR)==0);
+			fclose(f);
+
+			if(!read_ok || !IS_USER_ID(id))
+			{
+				WriteLog("Wrong id<%u> of client<%s>. Skipped.\n",id,name);
+				if(!FindNextFile(h,&fdata)) break;
+				continue;
+			}
 		}
 
 		// Check uniqueness of id
@@ -4249,7 +4271,7 @@ bool FOServer::LoadClientsData()
 		ClientData data;
 		data.Clear();
 		Str::Copy(data.ClientName,name);
-		Str::Copy(data.ClientPass,pass);
+		memcpy(data.ClientPassHash,pass_hash,PASS_HASH_SIZE);
 		data.ClientId=id;
 		ClientsData.push_back(data);
 		if(id>LastClientId) LastClientId=id;
@@ -4295,13 +4317,7 @@ bool FOServer::SaveClient(Client* cl, bool deferred)
 			return false;
 		}
 
-		// Encrypt password
-		char pass[sizeof(cl->Pass)]={0};
-		Str::Copy(pass,cl->Pass);
-		cl->Data.Temp=Random(1000000000,2000000000);
-		Crypt.EncryptPassword(pass,sizeof(cl->Pass),cl->Data.Temp);
-
-		fwrite(pass,sizeof(pass),1,f);
+		fwrite(cl->PassHash,sizeof(cl->PassHash),1,f);
 		fwrite(&cl->Data,sizeof(cl->Data),1,f);
 		fwrite(data_ext,sizeof(CritDataExt),1,f);
 		uint te_count=(uint)cl->CrTimeEvents.size();
@@ -4334,31 +4350,57 @@ bool FOServer::LoadClient(Client* cl)
 		return false;
 	}
 
-	if(!fread(cl->Pass,sizeof(cl->Pass),1,f)) goto label_FileTruncated;
-	if(!fread(&cl->Data,sizeof(cl->Data),1,f)) goto label_FileTruncated;
-	if(!fread(data_ext,sizeof(CritDataExt),1,f)) goto label_FileTruncated;
-	uint te_count;
-	if(!fread(&te_count,sizeof(te_count),1,f)) goto label_FileTruncated;
-	if(te_count)
+	// Check for old save file format
+	fseek(f,0,SEEK_END);
+	bool is_old=ftell(f)==14399;
+	fseek(f,0,SEEK_SET);
+
+	if(is_old)
 	{
-		cl->CrTimeEvents.resize(te_count);
-		if(!fread(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f)) goto label_FileTruncated;
+		char pass[MAX_NAME+1];
+		if(!fread(pass,sizeof(pass),1,f)) goto label_FileTruncated;
+		if(!fread(&cl->Data,sizeof(cl->Data),1,f)) goto label_FileTruncated;
+		if(!fread(data_ext,sizeof(CritDataExt),1,f)) goto label_FileTruncated;
+		uint te_count;
+		if(!fread(&te_count,sizeof(te_count),1,f)) goto label_FileTruncated;
+		if(te_count)
+		{
+			cl->CrTimeEvents.resize(te_count);
+			if(!fread(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f)) goto label_FileTruncated;
+		}
+
+		fclose(f);
+
+		// Decrypt the password
+		if(cl->Data.Temp) // Last char not zero
+		{
+			Crypt.DecryptPassword(pass,sizeof(pass),cl->Data.Temp);
+			cl->Data.Temp=0;
+		}
+
+		Crypt.ClientPassHash(cl->Name,pass,cl->PassHash);
+
+		// Deprecated, CondExt to Anim2
+		if(cl->Data.ReservedCE)
+		{
+			Deprecated_CondExtToAnim2(cl->Data.Cond,cl->Data.ReservedCE,cl->Data.Anim2Knockout,cl->Data.Anim2Dead);
+			cl->Data.ReservedCE=0;
+		}
 	}
-
-	fclose(f);
-
-	// Decrypt password
-	if(cl->Data.Temp) // Last char not zero
+	else
 	{
-		Crypt.DecryptPassword(cl->Pass,sizeof(cl->Pass),cl->Data.Temp);
-		cl->Data.Temp=0;
-	}
+		if(!fread(cl->PassHash,sizeof(cl->PassHash),1,f)) goto label_FileTruncated;
+		if(!fread(&cl->Data,sizeof(cl->Data),1,f)) goto label_FileTruncated;
+		if(!fread(data_ext,sizeof(CritDataExt),1,f)) goto label_FileTruncated;
+		uint te_count;
+		if(!fread(&te_count,sizeof(te_count),1,f)) goto label_FileTruncated;
+		if(te_count)
+		{
+			cl->CrTimeEvents.resize(te_count);
+			if(!fread(&cl->CrTimeEvents[0],te_count*sizeof(Critter::CrTimeEvent),1,f)) goto label_FileTruncated;
+		}
 
-	// Deprecated, CondExt to Anim2
-	if(cl->Data.ReservedCE)
-	{
-		Deprecated_CondExtToAnim2(cl->Data.Cond,cl->Data.ReservedCE,cl->Data.Anim2Knockout,cl->Data.Anim2Dead);
-		cl->Data.ReservedCE=0;
+		fclose(f);
 	}
 
 	return true;
@@ -4654,7 +4696,7 @@ void FOServer::AddClientSaveData(Client* cl)
 
 	ClientSaveData& csd=ClientsSaveData[ClientsSaveDataCount];
 	memcpy(csd.Name,cl->Name,sizeof(csd.Name));
-	memcpy(csd.Password,cl->Pass,sizeof(csd.Password));
+	memcpy(csd.PasswordHash,cl->PassHash,sizeof(csd.PasswordHash));
 	memcpy(&csd.Data,&cl->Data,sizeof(cl->Data));
 	memcpy(&csd.DataExt,cl->GetDataExt(),sizeof(CritDataExt));
 	csd.TimeEvents=cl->CrTimeEvents;
@@ -4707,11 +4749,7 @@ void* FOServer::Dump_Work(void* data)
 				continue;
 			}
 
-			// Encrypt password
-			csd.Data.Temp=Random(1000000000,2000000000);
-			Crypt.EncryptPassword(csd.Password,sizeof(csd.Password),csd.Data.Temp);
-
-			fwrite(csd.Password,sizeof(csd.Password),1,fc);
+			fwrite(csd.PasswordHash,sizeof(csd.PasswordHash),1,fc);
 			fwrite(&csd.Data,sizeof(csd.Data),1,fc);
 			fwrite(&csd.DataExt,sizeof(csd.DataExt),1,fc);
 			uint te_count=(uint)csd.TimeEvents.size();

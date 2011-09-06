@@ -26,8 +26,10 @@ public:
 	void XOR(char* data, uint len, char* xor_key, uint xor_len);
 
 	// Password encrypt
-	void EncryptPassword(char* data, uint len, uint key);
 	void DecryptPassword(char* data, uint len, uint key);
+
+	// Client credentials SHA-2 hash
+	void ClientPassHash(const char* name, const char* pass, char* pass_hash);
 
 	// Xor the text
 	void TextXOR(char* data, uint len, char* xor_key, uint xor_len);

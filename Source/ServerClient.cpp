@@ -1363,10 +1363,8 @@ void FOServer::Process_CreateClient(Client* cl)
 	name[MAX_NAME]=0;
 	Str::Copy(cl->Name,name);
 
-	// Password
-	cl->Bin.Pop(name,MAX_NAME);
-	name[MAX_NAME]=0;
-	Str::Copy(cl->Pass,name);
+	// Password hash
+	cl->Bin.Pop(cl->PassHash,PASS_HASH_SIZE);
 
 	// Receive params
 	ushort params_count=0;
@@ -1401,7 +1399,7 @@ void FOServer::Process_CreateClient(Client* cl)
 	CHECK_IN_BUFF_ERROR_EX(cl,cl->Send_TextMsg(cl,STR_NET_DATATRANS_ERR,SAY_NETMSG,TEXTMSG_GAME));
 
 	// Check data
-	if(!CheckUserName(cl->Name) || (!Singleplayer && !CheckUserPass(cl->Pass)))
+	if(!CheckUserName(cl->Name))
 	{
 		// WriteLogF(_FUNC_," - Error symbols in Name or Password.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1412,16 +1410,6 @@ void FOServer::Process_CreateClient(Client* cl)
 	uint name_len=Str::Length(cl->Name);
 	if(name_len<MIN_NAME || name_len<GameOpt.MinNameLength ||
 		name_len>MAX_NAME || name_len>GameOpt.MaxNameLength)
-	{
-		// WriteLog(_"Name or Password length too small.\n");
-		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
-		cl->Disconnect();
-		return;
-	}
-
-	uint pass_len=Str::Length(cl->Pass);
-	if(!Singleplayer && (pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength ||
-		pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength))
 	{
 		// WriteLog(_"Name or Password length too small.\n");
 		cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1522,15 +1510,12 @@ void FOServer::Process_CreateClient(Client* cl)
 	if(Script::PrepareContext(ServerFunctions.PlayerRegistration,_FUNC_,cl->Name))
 	{
 		CScriptString* name=new CScriptString(cl->Name);
-		CScriptString* pass=new CScriptString(cl->Pass);
 		Script::SetArgUInt(cl->GetIp());
 		Script::SetArgObject(name);
-		Script::SetArgObject(pass);
 		Script::SetArgAddress(&disallow_msg_num);
 		Script::SetArgAddress(&disallow_str_num);
 		if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
 		name->Release();
-		pass->Release();
 	}
 	if(!allow)
 	{
@@ -1617,7 +1602,7 @@ void FOServer::Process_CreateClient(Client* cl)
 		ClientData data;
 		data.Clear();
 		Str::Copy(data.ClientName,cl->Name);
-		Str::Copy(data.ClientPass,cl->Pass);
+		memcpy(data.ClientPassHash,cl->PassHash,PASS_HASH_SIZE);
 		data.ClientId=cl->GetId();
 
 		SCOPE_LOCK(ClientsDataLocker);
@@ -1655,20 +1640,18 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	cl->Bin.SetEncryptKey(uid[4]+12345);
 	cl->Bout.SetEncryptKey(uid[4]+12345);
 
-	// Login, password
+	// Login, password hash
 	char name[MAX_NAME+1];
 	cl->Bin.Pop(name,MAX_NAME);
 	name[MAX_NAME]=0;
 	Str::Copy(cl->Name,name);
 	cl->Bin >> uid[1];
-	cl->Bin.Pop(name,MAX_NAME);
-	name[MAX_NAME]=0;
-	Str::Copy(cl->Pass,name);
+	cl->Bin.Pop(cl->PassHash,PASS_HASH_SIZE);
 
 	if(Singleplayer)
 	{
 		memzero(cl->Name,sizeof(cl->Name));
-		memzero(cl->Pass,sizeof(cl->Pass));
+		memzero(cl->PassHash,sizeof(cl->PassHash));
 	}
 
 	// Bin hashes
@@ -1757,15 +1740,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 			return;
 		}
 
-		uint pass_len=Str::Length(cl->Pass);
-		if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength)
-		{
-			cl->Send_TextMsg(cl,STR_NET_WRONG_PASS,SAY_NETMSG,TEXTMSG_GAME);
-			cl->Disconnect();
-			return;
-		}
-
-		if(!CheckUserName(cl->Name) || !CheckUserPass(cl->Pass))
+		if(!CheckUserName(cl->Name))
 		{
 			// WriteLogF(_FUNC_," - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_WRONG_DATA,SAY_NETMSG,TEXTMSG_GAME);
@@ -1781,7 +1756,7 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 		SCOPE_LOCK(ClientsDataLocker);
 
 		ClientData* data_=GetClientData(cl->Name);
-		if(!data_ || !Str::Compare(cl->Pass,data_->ClientPass))
+		if(!data_ || memcmp(cl->PassHash,data_->ClientPassHash,PASS_HASH_SIZE))
 		{
 			// WriteLogF(_FUNC_," - Wrong name<%s> or password.\n",cl->Name);
 			cl->Send_TextMsg(cl,STR_NET_LOGINPASS_WRONG,SAY_NETMSG,TEXTMSG_GAME);
@@ -1818,16 +1793,13 @@ void FOServer::Process_LogIn(ClientPtr& cl)
 	if(Script::PrepareContext(ServerFunctions.PlayerLogin,_FUNC_,data.ClientName))
 	{
 		CScriptString* name=new CScriptString(data.ClientName);
-		CScriptString* pass=new CScriptString(data.ClientPass);
 		Script::SetArgUInt(cl->GetIp());
 		Script::SetArgObject(name);
-		Script::SetArgObject(pass);
 		Script::SetArgUInt(data.ClientId);
 		Script::SetArgAddress(&disallow_msg_num);
 		Script::SetArgAddress(&disallow_str_num);
 		if(Script::RunPrepared() && Script::GetReturnedBool()) allow=true;
 		name->Release();
-		pass->Release();
 	}
 	if(!allow)
 	{

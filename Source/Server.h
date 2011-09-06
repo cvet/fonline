@@ -326,7 +326,7 @@ public:
 	struct ClientSaveData
 	{
 		char Name[MAX_NAME+1];
-		char Password[MAX_NAME+1];
+		char PasswordHash[PASS_HASH_SIZE];
 		CritData Data;
 		CritDataExt DataExt;
 		Critter::CrTimeEventVec TimeEvents;
@@ -334,7 +334,7 @@ public:
 		void Clear()
 		{
 			memzero(Name,sizeof(Name));
-			memzero(Password,sizeof(Password));
+			memzero(PasswordHash,sizeof(PasswordHash));
 			memzero(&Data,sizeof(Data));
 			memzero(&DataExt,sizeof(DataExt));
 			TimeEvents.clear();
@@ -401,7 +401,7 @@ public:
 	struct ClientData
 	{
 		char ClientName[MAX_NAME+1];
-		char ClientPass[MAX_NAME+1];
+		char ClientPassHash[PASS_HASH_SIZE];
 		uint ClientId;
 		uint SaveIndex;
 		uint UID[5];

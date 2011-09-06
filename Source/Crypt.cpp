@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "Crypt.h"
 #include "Zlib/zlib.h"
+#include "SHA2/sha2.h"
 
 CryptManager Crypt;
 
@@ -75,17 +76,6 @@ void CryptManager::TextXOR(char* data, uint len, char* xor_key, uint xor_len)
 	}
 }
 
-void CryptManager::EncryptPassword(char* data, uint len, uint key)
-{
-	static Randomizer rnd;
-	uint slen=Str::Length(data);
-	data[len-1]=slen;
-	for(uint i=slen;i<len-1;i++) data[i]=rnd.Random(1,255);
-	for(uint i=0;i<(len-1)/2;i++) std::swap(data[i],data[len-1-i]);
-	XOR(data,len,(char*)&key,sizeof(key));
-	for(uint i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
-}
-
 void CryptManager::DecryptPassword(char* data, uint len, uint key)
 {
 	for(uint i=10;i<len+10;i++) Crypt.XOR(&data[i-10],1,(char*)&i,1);
@@ -94,6 +84,20 @@ void CryptManager::DecryptPassword(char* data, uint len, uint key)
 	uint slen=data[len-1];
 	for(uint i=slen;i<len;i++) data[i]=0;
 	data[len-1]=0;
+}
+
+void CryptManager::ClientPassHash(const char* name, const char* pass, char* pass_hash)
+{
+	char* bld=new char[MAX_NAME+1];
+	uint pass_len=Str::Length(pass);
+	uint name_len=Str::Length(name);
+	if(pass_len>MAX_NAME) pass_len=MAX_NAME;
+	Str::Copy(bld,pass_len+1,pass);
+	if(pass_len<MAX_NAME) bld[pass_len++]='*';	
+	for(;pass_len<MAX_NAME;pass_len++) bld[pass_len]=tolower(name[pass_len%name_len]);
+	bld[MAX_NAME]=0;
+	sha256((const uchar*)bld,MAX_NAME,(uchar*)pass_hash);
+	delete bld;
 }
 
 uchar* CryptManager::Compress(const uchar* data, uint& data_len)

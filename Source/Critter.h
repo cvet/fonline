@@ -511,7 +511,7 @@ class Client : public Critter
 {
 public:
 	char Name[MAX_NAME+1]; // Saved
-	char Pass[MAX_NAME+1]; // Saved
+	char PassHash[PASS_HASH_SIZE]; // Saved
 	uchar Access;
 	uint LanguageMsg;
 	uint UID[5];

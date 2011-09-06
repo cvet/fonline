@@ -2843,7 +2843,9 @@ void FOClient::Net_SendLogIn(const char* name, const char* pass)
 
 	Bout.Push(name_,MAX_NAME);
 	Bout << uid1; uid4^=uid1*Random(0,432157)+*UID3;											// UID1
-	Bout.Push(pass_,MAX_NAME);
+	char pass_hash[PASS_HASH_SIZE];
+	Crypt.ClientPassHash(name_,pass_,pass_hash);
+	Bout.Push(pass_hash,PASS_HASH_SIZE);
 	uint uid2=*UID2;
 	Bout << CurLang.Name;
 	for(int i=0;i<TEXTMSG_COUNT;i++) Bout << CurLang.Msg[i].GetHash();
@@ -2875,7 +2877,7 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 	for(int i=0;i<MAX_PARAMS;i++)
 		if(newcr->ParamsReg[i] && CritterCl::ParamsRegEnabled[i]) count++;
 
-	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(ushort)+MAX_NAME*2+sizeof(count)+(sizeof(ushort)+sizeof(int))*count;
+	uint msg_len=sizeof(uint)+sizeof(msg_len)+sizeof(ushort)+MAX_NAME+PASS_HASH_SIZE+sizeof(count)+(sizeof(ushort)+sizeof(int))*count;
 
 	Bout << NETMSG_CREATE_CLIENT;
 	Bout << msg_len;
@@ -2887,7 +2889,9 @@ void FOClient::Net_SendCreatePlayer(CritterCl* newcr)
 	Bin.SetEncryptKey(1234567890);
 
 	Bout.Push(newcr->GetName(),MAX_NAME);
-	Bout.Push(newcr->GetPass(),MAX_NAME);
+	char pass_hash[PASS_HASH_SIZE];
+	Crypt.ClientPassHash(newcr->GetName(),newcr->GetPass(),pass_hash);
+	Bout.Push(pass_hash,PASS_HASH_SIZE);
 
 	Bout << count;
 	for(ushort i=0;i<MAX_PARAMS;i++)
@@ -3586,12 +3590,14 @@ void FOClient::Net_SendCommand(char* str)
 				break;
 			}
 			Str::Replacement(pass,'*',' ');
-			msg_len+=MAX_NAME;
+			char pass_hash[PASS_HASH_SIZE];
+			Crypt.ClientPassHash(Chosen->Name.c_str(),pass,pass_hash);
+			msg_len+=PASS_HASH_SIZE;
 
 			Bout << msg;
 			Bout << msg_len;
 			Bout << cmd;
-			Bout.Push(pass,MAX_NAME);
+			Bout.Push(pass_hash,PASS_HASH_SIZE);
 		}
 		break;
 	case CMD_CHANGE_PASSWORD:
@@ -3604,14 +3610,27 @@ void FOClient::Net_SendCommand(char* str)
 				break;
 			}
 			Str::Replacement(pass,'*',' ');
+
+			// Check the new password's validity
+			uint pass_len=Str::Length(new_pass);
+			if(pass_len<MIN_NAME || pass_len<GameOpt.MinNameLength || pass_len>MAX_NAME || pass_len>GameOpt.MaxNameLength || !CheckUserPass(new_pass))
+			{
+				AddMess(FOMB_GAME,"Invalid new password.");
+				break;
+			}
+
+			char pass_hash[PASS_HASH_SIZE];
+			Crypt.ClientPassHash(Chosen->Name.c_str(),pass,pass_hash);
 			Str::Replacement(new_pass,'*',' ');
-			msg_len+=MAX_NAME*2;
+			char new_pass_hash[PASS_HASH_SIZE];
+			Crypt.ClientPassHash(Chosen->Name.c_str(),new_pass,new_pass_hash);
+			msg_len+=PASS_HASH_SIZE*2;
 
 			Bout << msg;
 			Bout << msg_len;
 			Bout << cmd;
-			Bout.Push(pass,MAX_NAME);
-			Bout.Push(new_pass,MAX_NAME);
+			Bout.Push(pass_hash,PASS_HASH_SIZE);
+			Bout.Push(new_pass_hash,PASS_HASH_SIZE);
 		}
 		break;
 	case CMD_DROP_UID:

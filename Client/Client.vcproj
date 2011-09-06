@@ -3809,6 +3809,18 @@
 				</File>
 			</Filter>
 		</Filter>
+		<Filter
+			Name="SHA2"
+			>
+			<File
+				RelativePath="..\Source\SHA2\sha2.c"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\SHA2\sha2.h"
+				>
+			</File>
+		</Filter>
 	</Files>
 	<Globals>
 	</Globals>

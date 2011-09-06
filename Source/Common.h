@@ -315,6 +315,7 @@ struct ServerScriptFunctions
 	int PlayerRegistration;
 	int PlayerLogin;
 	int PlayerGetAccess;
+	int Init;
 } extern ServerFunctions;
 
 // Net events

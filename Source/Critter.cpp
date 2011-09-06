@@ -2911,7 +2911,7 @@ ScreenCallbackBindId(0),ConnectTime(0),LastSendedMapTick(0),RadioMessageSended(0
 	SETFLAG(Flags,FCRIT_PLAYER);
 	Sock=INVALID_SOCKET;
 	memzero(Name,sizeof(Name));
-	memzero(Pass,sizeof(Pass));
+	memzero(PassHash,sizeof(PassHash));
 	Str::Copy(Name,"err");
 	pingNextTick=Timer::FastTick()+PING_CLIENT_LIFE_TIME;
 	Talk.Clear();

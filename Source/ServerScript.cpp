@@ -162,9 +162,10 @@ bool FOServer::InitScriptSystem()
 		{&ServerFunctions.TurnBasedEnd,"turn_based_end","void %s(Map&)"},
 		{&ServerFunctions.TurnBasedProcess,"turn_based_process","void %s(Map&,Critter&,bool)"},
 		{&ServerFunctions.WorldSave,"world_save","void %s(uint,uint[]&)"},
-		{&ServerFunctions.PlayerRegistration,"player_registration","bool %s(uint,string&,string&,uint&,uint&)"},
-		{&ServerFunctions.PlayerLogin,"player_login","bool %s(uint,string&,string&,uint,uint&,uint&)"},
+		{&ServerFunctions.PlayerRegistration,"player_registration","bool %s(uint,string&,uint&,uint&)"},
+		{&ServerFunctions.PlayerLogin,"player_login","bool %s(uint,string&,uint,uint&,uint&)"},
 		{&ServerFunctions.PlayerGetAccess,"player_getaccess","bool %s(Critter&,int,string&)"},
+		{&ServerFunctions.Init,"init","void %s()"},
 	};
 	if(!Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"server",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0])))
 	{

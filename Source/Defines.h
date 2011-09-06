@@ -295,6 +295,7 @@
 #define MAX_DLG_LEN_IN_BYTES	(64*1024)
 #define MAX_DLG_LEXEMS_TEXT     (1000)
 #define MAX_BUF_LEN				(4096)
+#define PASS_HASH_SIZE			(32)
 
 // Critters
 #define MAX_CRIT_TYPES          (1000)

@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION		    (0xF0BE) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION		    (0xF0BF) // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER(number)  ((uint)((0xDEAD<<17)|(number<<8)|(0xAA)))
 #define PING_CLIENT_LIFE_TIME       (15000) // Time to ping client life
 #define PING_CLIENT_INFO_TIME       (2000) // Time to ping client for information
@@ -28,7 +28,7 @@
 
 #define NETMSG_LOGIN                MAKE_NETMSG_HEADER(1)
 #define NETMSG_LOGIN_SIZE           (sizeof(uint)+sizeof(ushort)+sizeof(uint)*8/*UIDs*/+\
-MAX_NAME*2+sizeof(uint)+sizeof(uint)*10/*MSG*/+sizeof(uint)*14/*Proto*/+sizeof(uchar))
+MAX_NAME+PASS_HASH_SIZE+sizeof(uint)+sizeof(uint)*10/*MSG*/+sizeof(uint)*14/*Proto*/+sizeof(uchar))
 //////////////////////////////////////////////////////////////////////////
 // Enter to game
 // Params:
@@ -36,7 +36,7 @@ MAX_NAME*2+sizeof(uint)+sizeof(uint)*10/*MSG*/+sizeof(uint)*14/*Proto*/+sizeof(u
 // !uint uid4
 // char name[MAX_NAME]
 // !uint uid1
-// char pass[MAX_NAME]
+// char pass_hash[PASS_HASH_SIZE]
 // uint msg_language
 // uint hash_msg_game[TEXTMSG_COUNT]
 // !uint uidxor
@@ -64,7 +64,7 @@ MAX_NAME*2+sizeof(uint)+sizeof(uint)*10/*MSG*/+sizeof(uint)*14/*Proto*/+sizeof(u
 // uint mag_len
 // ushort proto_ver
 // MAX_NAME name
-// MAX_NAME pass
+// char pass_hash[PASS_HASH_SIZE]
 // ushort params_count
 //  ushort param_index
 //  int param_val
