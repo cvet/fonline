@@ -650,10 +650,10 @@ uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light)
 void GetClientOptions()
 {
 	// Defines
-#define GETOPTIONS_CMD_LINE_INT(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+Str::Length(str_id)+1);}while(0)
-#define GETOPTIONS_CMD_LINE_BOOL(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=atoi(str+Str::Length(str_id)+1)!=0;}while(0)
-#define GETOPTIONS_CMD_LINE_BOOL_ON(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) opt=true;}while(0)
-#define GETOPTIONS_CMD_LINE_STR(opt,str_id) do{char* str=strstr(GetCommandLine(),str_id); if(str) sscanf_s(str+Str::Length(str_id)+1,"%s",opt);}while(0)
+#define GETOPTIONS_CMD_LINE_INT(opt,str_id) do{char* str=strstr(CommandLine,str_id); if(str) opt=atoi(str+Str::Length(str_id)+1);}while(0)
+#define GETOPTIONS_CMD_LINE_BOOL(opt,str_id) do{char* str=strstr(CommandLine,str_id); if(str) opt=atoi(str+Str::Length(str_id)+1)!=0;}while(0)
+#define GETOPTIONS_CMD_LINE_BOOL_ON(opt,str_id) do{char* str=strstr(CommandLine,str_id); if(str) opt=true;}while(0)
+#define GETOPTIONS_CMD_LINE_STR(opt,str_id) do{char* str=strstr(CommandLine,str_id); if(str) sscanf_s(str+Str::Length(str_id)+1,"%s",opt);}while(0)
 #define GETOPTIONS_CHECK(val_,min_,max_,def_) do{if(val_<min_ || val_>max_) val_=def_;} while(0)
 
 	char buf[MAX_FOTEXT];
@@ -802,9 +802,6 @@ void GetClientOptions()
 	cfg.GetStr(CLIENT_CONFIG_APP,"UserName","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-UserName");
 	GameOpt.Name=buf;
-	cfg.GetStr(CLIENT_CONFIG_APP,"UserPass","",buf);
-	GETOPTIONS_CMD_LINE_STR(buf,"-UserPass");
-	GameOpt.Pass=buf;
 	cfg.GetStr(CLIENT_CONFIG_APP,"KeyboardRemap","",buf);
 	GETOPTIONS_CMD_LINE_STR(buf,"-KeyboardRemap");
 	GameOpt.KeyboardRemap=buf;
@@ -1174,8 +1171,6 @@ GameOptions::GameOptions()
 	ProxyPassRefCounter=1;
 	Name="";
 	NameRefCounter=1;
-	Pass;
-	PassRefCounter=1;
 	ScrollDelay=0;
 	ScrollStep=1;
 	ScrollCheck=true;

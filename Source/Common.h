@@ -279,6 +279,7 @@ void GetServerOptions();
 
 struct ServerScriptFunctions
 {
+	int Init;
 	int Start;
 	int GetStartTime;
 	int Finish;
@@ -315,7 +316,6 @@ struct ServerScriptFunctions
 	int PlayerRegistration;
 	int PlayerLogin;
 	int PlayerGetAccess;
-	int Init;
 } extern ServerFunctions;
 
 // Net events
@@ -553,8 +553,6 @@ struct GameOptions
 	int ProxyPassRefCounter;
 	string Name;
 	int NameRefCounter;
-	string Pass;
-	int PassRefCounter;
 	int ScrollDelay;
 	int ScrollStep;
 	bool ScrollCheck;

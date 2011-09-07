@@ -111,7 +111,7 @@ bool FOClient::Init(HWND hwnd)
 	STATIC_ASSERT(sizeof(Field)==76);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(offsetof(CritterCl,ItemSlotArmor)==4260);
-	STATIC_ASSERT(sizeof(GameOptions)==1184);
+	STATIC_ASSERT(sizeof(GameOptions)==1152);
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==108);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
@@ -230,9 +230,9 @@ bool FOClient::Init(HWND hwnd)
 	FileManager::GetFullPath(cache_name,PT_CACHE,cache_fname);
 	Str::Append(cache_fname,".cache");
 
-	bool refresh_cache=(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.IsCacheTable(cache_fname));
+	bool refresh_cache=(!Singleplayer && !strstr(CommandLine,"-DefCache") && !Crypt.IsCacheTable(cache_fname));
 
-	if(!Singleplayer && !strstr(GetCommandLine(),"-DefCache") && !Crypt.SetCacheTable(cache_fname))
+	if(!Singleplayer && !strstr(CommandLine,"-DefCache") && !Crypt.SetCacheTable(cache_fname))
 	{
 		WriteLogF(_FUNC_," - Can't set cache<%s>.\n",cache_fname);
 		return false;
@@ -240,8 +240,17 @@ bool FOClient::Init(HWND hwnd)
 
 	FileManager::SetCacheName(cache_name);
 
+	// Check password in config and command line
+	char pass[MAX_FOTEXT];
+	IniParser cfg; // Also used below
+	cfg.LoadFile(GetConfigFileName(),PT_ROOT);
+	cfg.GetStr(CLIENT_CONFIG_APP,"UserPass","",pass);
+	char* cmd_line_pass=strstr(CommandLine,"-UserPass");
+	if(cmd_line_pass) sscanf_s(cmd_line_pass+Str::Length("-UserPass")+1,"%s",pass);
+	Password=pass;
+
 	// User and password
-	if(GameOpt.Name.empty() && GameOpt.Pass.empty() && !Singleplayer)
+	if(GameOpt.Name.empty() && Password.empty() && !Singleplayer)
 	{
 		bool fail=false;
 
@@ -252,14 +261,14 @@ bool FOClient::Init(HWND hwnd)
 		delete[] str;
 
 		str=(char*)Crypt.GetCache("__pass",len);
-		if(str && len<=MAX_NAME+1) GameOpt.Pass=str;
+		if(str && len<=MAX_NAME+1) Password=str;
 		else fail=true;
 		delete[] str;
 
 		if(fail)
 		{
 			GameOpt.Name="login";
-			GameOpt.Pass="password";
+			Password="password";
 			refresh_cache=true;
 		}
 	}
@@ -298,8 +307,6 @@ bool FOClient::Init(HWND hwnd)
 	}
 
 	// Sound manager
-	IniParser cfg;
-	cfg.LoadFile(GetConfigFileName(),PT_ROOT);
 	SndMngr.Init(Wnd);
 	SndMngr.SetSoundVolume(cfg.GetInt(CLIENT_CONFIG_APP,"SoundVolume",100));
 	SndMngr.SetMusicVolume(cfg.GetInt(CLIENT_CONFIG_APP,"MusicVolume",100));
@@ -440,12 +447,12 @@ bool FOClient::Init(HWND hwnd)
 		InitNetReason=INIT_NET_REASON_CACHE;
 	}
 	// Begin game
-	else if(strstr(GetCommandLine(),"-Start") && !Singleplayer)
+	else if(strstr(CommandLine,"-Start") && !Singleplayer)
 	{
 		LogTryConnect();
 	}
 	// Intro
-	else if(!strstr(GetCommandLine(),"-SkipIntro"))
+	else if(!strstr(CommandLine,"-SkipIntro"))
 	{
 		if(MsgGame->Count(STR_MUSIC_MAIN_THEME)) MusicAfterVideo=MsgGame->GetStr(STR_MUSIC_MAIN_THEME);
 		for(uint i=STR_VIDEO_INTRO_BEGIN;i<STR_VIDEO_INTRO_END;i++)
@@ -784,7 +791,7 @@ int FOClient::MainLoop()
 
 		// After connect things
 		if(reason==INIT_NET_REASON_CACHE) Net_SendLogIn(NULL,NULL);
-		else if(reason==INIT_NET_REASON_LOGIN) Net_SendLogIn(GameOpt.Name.c_str(),GameOpt.Pass.c_str());
+		else if(reason==INIT_NET_REASON_LOGIN) Net_SendLogIn(GameOpt.Name.c_str(),Password.c_str());
 		else if(reason==INIT_NET_REASON_REG) Net_SendCreatePlayer(RegNewCr);
 		else if(reason==INIT_NET_REASON_LOAD) Net_SendSaveLoad(false,SaveLoadFileName.c_str(),NULL);
 		else NetDisconnect();
@@ -2592,7 +2599,7 @@ void FOClient::NetProcess()
 				if(RegNewCr)
 				{
 					GameOpt.Name=RegNewCr->Name;
-					GameOpt.Pass=RegNewCr->Pass;
+					Password=RegNewCr->Pass;
 					SAFEDEL(RegNewCr);
 				}
 			}

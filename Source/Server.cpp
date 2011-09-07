@@ -3582,7 +3582,7 @@ bool FOServer::Init()
 	STATIC_ASSERT(sizeof(GameVar)==28);
 	STATIC_ASSERT(sizeof(Mutex)==24);
 	STATIC_ASSERT(sizeof(MutexSpinlock)==4);
-	STATIC_ASSERT(sizeof(GameOptions)==1184);
+	STATIC_ASSERT(sizeof(GameOptions)==1152);
 	STATIC_ASSERT(sizeof(CScriptArray)==36);
 	STATIC_ASSERT(sizeof(ProtoMap::Tile)==12);
 	STATIC_ASSERT(PROTO_ITEM_USER_DATA_SIZE==500);
@@ -3685,6 +3685,7 @@ bool FOServer::Init()
 	if(!MapMngr.LoadLocationsProtos()) return false; // Proto locations and maps
 	if(!ItemMngr.CheckProtoFunctions()) return false; // Check valid of proto functions
 
+	// Initialization script
 	Script::PrepareContext(ServerFunctions.Init,_FUNC_,"Game");
 	Script::RunPrepared();
 
@@ -3817,7 +3818,7 @@ bool FOServer::Init()
 	}
 
 	// Process command line definitions
-	const char* cmd_line=GetCommandLine();
+	const char* cmd_line=CommandLine;
 	asIScriptEngine* engine=Script::GetEngine();
 	for(int i=0,j=engine->GetGlobalPropertyCount();i<j;i++)
 	{

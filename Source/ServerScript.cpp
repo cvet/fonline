@@ -128,7 +128,9 @@ bool FOServer::InitScriptSystem()
 	}
 
 	// Bind game functions
-	ReservedScriptFunction BindGameFunc[]={
+	ReservedScriptFunction BindGameFunc[]=
+	{
+		{&ServerFunctions.Init,"init","void %s()"},
 		{&ServerFunctions.Start,"start","bool %s()"},
 		{&ServerFunctions.GetStartTime,"get_start_time","void %s(uint16&,uint16&,uint16&,uint16&,uint16&,uint16&)"},
 		{&ServerFunctions.Finish,"finish","void %s()"},
@@ -165,7 +167,6 @@ bool FOServer::InitScriptSystem()
 		{&ServerFunctions.PlayerRegistration,"player_registration","bool %s(uint,string&,uint&,uint&)"},
 		{&ServerFunctions.PlayerLogin,"player_login","bool %s(uint,string&,uint,uint&,uint&)"},
 		{&ServerFunctions.PlayerGetAccess,"player_getaccess","bool %s(Critter&,int,string&)"},
-		{&ServerFunctions.Init,"init","void %s()"},
 	};
 	if(!Script::BindReservedFunctions((char*)scripts_cfg.GetBuf(),"server",BindGameFunc,sizeof(BindGameFunc)/sizeof(BindGameFunc[0])))
 	{

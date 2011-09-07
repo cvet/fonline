@@ -34,6 +34,7 @@ class FOClient
 {
 public:
 	static FOClient* Self;
+	FOClient();
 	bool Init(HWND hwnd);
 	void Finish();
 	void TryExit();
@@ -44,10 +45,11 @@ public:
 	bool IsCurInWindow();
 	int MainLoop();
 	void NetDisconnect();
+
 	ushort NetState;
-	FOClient();
 	bool Active;
 	uint* UID1;
+	string Password;
 
 	int ShowScreenType;
 	uint ShowScreenParam;

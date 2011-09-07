@@ -2852,13 +2852,13 @@ void FOClient::LogDraw()
 
 		if(Keyb::CtrlDwn || !GameOpt.HidePassword)
 		{
-			SprMngr.DrawStr(LogWPass,GameOpt.Pass.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
+			SprMngr.DrawStr(LogWPass,Password.c_str(),FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 		}
 		else
 		{
 			char mask[MAX_NAME+1];
-			for(uint i=0,j=min(MAX_NAME,(uint)GameOpt.Pass.length());i<j;i++) mask[i]='#';
-			mask[min(MAX_NAME,GameOpt.Pass.length())]='\0';
+			for(uint i=0,j=min(MAX_NAME,(uint)Password.length());i<j;i++) mask[i]='#';
+			mask[min(MAX_NAME,Password.length())]='\0';
 			SprMngr.DrawStr(LogWPass,mask,FT_CENTERX|FT_CENTERY|FT_NOBREAK,LogFocus==IFACE_LOG_PASS?COLOR_TEXT_LGREEN:COLOR_TEXT_DGREEN);
 		}
 	}
@@ -2887,7 +2887,7 @@ void FOClient::LogKeyDown(uchar dik)
 	}
 	else if(LogFocus==IFACE_LOG_PASS)
 	{
-		Keyb::GetChar(dik,GameOpt.Pass,NULL,min(GameOpt.MaxNameLength,MAX_NAME),KIF_NO_SPEC_SYMBOLS);
+		Keyb::GetChar(dik,Password,NULL,min(GameOpt.MaxNameLength,MAX_NAME),KIF_NO_SPEC_SYMBOLS);
 	}
 }
 
@@ -2958,14 +2958,14 @@ void FOClient::LogTryConnect()
 			return;
 		}
 
-		if(GameOpt.Pass.length()<MIN_NAME || GameOpt.Pass.length()<GameOpt.MinNameLength ||
-			GameOpt.Pass.length()>MAX_NAME || GameOpt.Pass.length()>GameOpt.MaxNameLength)
+		if(Password.length()<MIN_NAME || Password.length()<GameOpt.MinNameLength ||
+			Password.length()>MAX_NAME || Password.length()>GameOpt.MaxNameLength)
 		{
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_WRONG_PASS));
 			return;
 		}
 
-		if(!CheckUserPass(GameOpt.Pass.c_str()))
+		if(!CheckUserPass(Password.c_str()))
 		{
 			AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_PASS_WRONG_CHARS));
 			return;
@@ -2973,7 +2973,7 @@ void FOClient::LogTryConnect()
 
 		// Save login and password
 		Crypt.SetCache("__name",(uchar*)GameOpt.Name.c_str(),(uint)GameOpt.Name.length()+1);
-		Crypt.SetCache("__pass",(uchar*)GameOpt.Pass.c_str(),(uint)GameOpt.Pass.length()+1);
+		Crypt.SetCache("__pass",(uchar*)Password.c_str(),(uint)Password.length()+1);
 
 		AddMess(FOMB_GAME,MsgGame->GetStr(STR_NET_CONNECTION));
 	}

@@ -1409,7 +1409,6 @@
 	if(engine->RegisterGlobalProperty("string __ProxyUser",&GameOpt.ProxyUser)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __ProxyPass",&GameOpt.ProxyPass)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("string __Name",&GameOpt.Name)) BIND_ERROR;
-	if(engine->RegisterGlobalProperty("string __Pass",&GameOpt.Pass)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("uint __TextDelay",&GameOpt.TextDelay)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("bool __AlwaysOnTop",&GameOpt.AlwaysOnTop)) BIND_ERROR;
 	if(engine->RegisterGlobalProperty("int __Sleep",&GameOpt.Sleep)) BIND_ERROR;

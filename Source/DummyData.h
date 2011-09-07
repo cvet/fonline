@@ -1365,8 +1365,6 @@ struct GameOptions
 	int ProxyPassRefCount;
 	int Name;
 	int NameRefCount;
-	int Pass;
-	int PassRefCount;
 	int ScrollDelay;
 	int ScrollStep;
 	int ScrollCheck;
