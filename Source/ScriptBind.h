@@ -346,6 +346,28 @@
 	if(engine->RegisterObjectProperty("Item","uint HolodiskNumber",OFFSETOF(Item,Data.Holodisk.Number))<0) BIND_ERROR;
 
 /************************************************************************/
+/* CraftItem
+/************************************************************************/
+
+	if(engine->RegisterObjectType("CraftItem",0,asOBJ_REF)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("CraftItem",asBEHAVE_ADDREF,"void f()",asMETHOD(CraftItem,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
+	if(engine->RegisterObjectBehaviour("CraftItem",asBEHAVE_RELEASE,"void f()",asMETHOD(CraftItem,Release),asCALL_THISCALL)<0) BIND_ERROR;
+
+	// properties
+	if(engine->RegisterObjectProperty("CraftItem","const uint Num",OFFSETOF(CraftItem,Num))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CraftItem","const string Name",OFFSETOF(CraftItem,Name))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CraftItem","const string Info",OFFSETOF(CraftItem,Info))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CraftItem","const uint Experience",OFFSETOF(CraftItem,Experience))<0) BIND_ERROR;
+	if(engine->RegisterObjectProperty("CraftItem","const string Script",OFFSETOF(CraftItem,Script))<0) BIND_ERROR;
+
+	// methods
+	if(engine->RegisterObjectMethod("CraftItem","uint GetShowParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetShowParams), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("CraftItem","uint GetNeedParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetNeedParams), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("CraftItem","uint GetNeedTools(array<uint16>@+ pids, array<uint>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetNeedTools), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("CraftItem","uint GetNeedItems(array<uint16>@+ pids, array<uint>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetNeedItems), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+	if(engine->RegisterObjectMethod("CraftItem","uint GetOutItems(array<uint16>@+ pids, array<uint>@+ values)",asFUNCTION(BIND_CLASS CraftItem_GetOutItems), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
+
+/************************************************************************/
 /* Scenery                                                              */
 /************************************************************************/
 	if(engine->RegisterObjectProperty("Scenery","const uint16 ProtoId",OFFSETOF(MapObject,ProtoId))<0) BIND_ERROR;

@@ -1044,6 +1044,41 @@ short FOServer::SScriptFunc::Item_get_TrapValue(Item* item)
 	return item->Data.TrapValue;
 }
 
+uint FOServer::SScriptFunc::CraftItem_GetShowParams(CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* or)
+{
+	if(nums) Script::AppendVectorToArray(craft->ShowPNum, nums);
+	if(vals) Script::AppendVectorToArray(craft->ShowPVal, vals);
+	if(or) Script::AppendVectorToArray(craft->ShowPOr, or);
+	return (uint)craft->ShowPNum.size();
+}
+uint FOServer::SScriptFunc::CraftItem_GetNeedParams(CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* or)
+{
+	if(nums) Script::AppendVectorToArray(craft->NeedPNum, nums);
+	if(vals) Script::AppendVectorToArray(craft->NeedPVal, vals);
+	if(or) Script::AppendVectorToArray(craft->NeedPOr, or);
+	return (uint)craft->NeedPNum.size();
+}
+uint FOServer::SScriptFunc::CraftItem_GetNeedTools(CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* or)
+{
+	if(pids) Script::AppendVectorToArray(craft->NeedTools, pids);
+	if(vals) Script::AppendVectorToArray(craft->NeedToolsVal, vals);
+	if(or) Script::AppendVectorToArray(craft->NeedToolsOr, or);
+	return (uint)craft->NeedTools.size();
+}
+uint FOServer::SScriptFunc::CraftItem_GetNeedItems(CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* or)
+{
+	if(pids) Script::AppendVectorToArray(craft->NeedItems, pids);
+	if(vals) Script::AppendVectorToArray(craft->NeedItemsVal, vals);
+	if(or) Script::AppendVectorToArray(craft->NeedItemsOr, or);
+	return (uint)craft->NeedItems.size();
+}
+uint FOServer::SScriptFunc::CraftItem_GetOutItems(CraftItem* craft, CScriptArray* pids, CScriptArray* vals)
+{
+	if(pids) Script::AppendVectorToArray(craft->OutItems, pids);
+	if(vals) Script::AppendVectorToArray(craft->OutItemsVal, vals);
+	return (uint)craft->OutItems.size();
+}
+
 bool FOServer::SScriptFunc::Crit_IsPlayer(Critter* cr)
 {
 	if(cr->IsNotValid) SCRIPT_ERROR_R0("This nullptr.");

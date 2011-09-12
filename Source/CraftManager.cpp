@@ -636,7 +636,7 @@ bool CraftManager::AddCraft(uint num, const char* str)
 #ifdef FONLINE_SERVER
 	if(craft->Script.length())
 	{
-		craft->ScriptBindId=Script::Bind(craft->Script.c_str(),"int %s(Critter&, int)",false);
+		craft->ScriptBindId=Script::Bind(craft->Script.c_str(),"int %s(Critter&, int, CraftItem&)",false);
 		if(!craft->ScriptBindId)
 		{
 			delete craft;
@@ -680,6 +680,19 @@ bool CraftManager::IsCraftExist(uint num)
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_CLIENT)
 
+bool CallFixBoyScript(CraftItem* craft, Critter* cr, uint stage, uint& flags)
+{
+	if(!Script::PrepareContext(craft->ScriptBindId, _FUNC_, cr->GetInfo())) return false;
+	Script::SetArgObject(cr);
+	Script::SetArgUInt(stage);
+	Script::SetArgObject(craft);
+
+	if(!Script::RunPrepared()) return false;
+
+	flags=Script::GetReturnedUInt();
+	return true;
+}
+
 #ifdef FONLINE_SERVER
 bool CraftManager::IsShowCraft(Critter* cr, uint num)
 {
@@ -689,11 +702,7 @@ bool CraftManager::IsShowCraft(Critter* cr, uint num)
 	uint flags=0xFFFFFFFF;
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,_FUNC_,cr->GetInfo())) return false;
-		Script::SetArgObject(cr);
-		Script::SetArgUInt(FIXBOY_LIST);
-		if(!Script::RunPrepared()) return false;
-		flags=Script::GetReturnedUInt();
+		if(!CallFixBoyScript(craft, cr, FIXBOY_LIST, flags)) return false;
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) return false;
@@ -901,11 +910,7 @@ int CraftManager::ProcessCraft(Critter* cr, uint num)
 	uint flags=0xFFFFFFFF;
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,_FUNC_,cr->GetInfo())) return CRAFT_RESULT_FAIL;
-		Script::SetArgObject(cr);
-		Script::SetArgUInt(FIXBOY_BUTTON);
-		if(!Script::RunPrepared()) return CRAFT_RESULT_FAIL;
-		flags=Script::GetReturnedUInt();
+		if(!CallFixBoyScript(craft, cr, FIXBOY_BUTTON, flags)) return false;
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;
@@ -917,11 +922,7 @@ int CraftManager::ProcessCraft(Critter* cr, uint num)
 
 	if(craft->ScriptBindId)
 	{
-		if(!Script::PrepareContext(craft->ScriptBindId,_FUNC_,cr->GetInfo())) return CRAFT_RESULT_FAIL;
-		Script::SetArgObject(cr);
-		Script::SetArgUInt(FIXBOY_CRAFT);
-		if(!Script::RunPrepared()) return CRAFT_RESULT_FAIL;
-		flags=Script::GetReturnedUInt();
+		if(!CallFixBoyScript(craft, cr, FIXBOY_CRAFT, flags)) return false;
 	}
 
 	if(!FLAG(flags,FIXBOY_ALLOW_CRAFT)) CRAFT_RETURN_FAIL;

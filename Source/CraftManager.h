@@ -61,6 +61,8 @@ public:
 	bool IsValid();
 	void Clear();
 
+	void AddRef() {}
+	void Release() {}
 // Set, get parse
 #ifdef FONLINE_CLIENT
 	void SetName(FOMsg& msg_game, FOMsg& msg_item);
