@@ -679,7 +679,7 @@ bool CraftManager::IsCraftExist(uint num)
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_CLIENT)
-
+#ifdef FONLINE_SERVER
 bool CallFixBoyScript(CraftItem* craft, Critter* cr, uint stage, uint& flags)
 {
 	if(!Script::PrepareContext(craft->ScriptBindId, _FUNC_, cr->GetInfo())) return false;
@@ -693,7 +693,6 @@ bool CallFixBoyScript(CraftItem* craft, Critter* cr, uint stage, uint& flags)
 	return true;
 }
 
-#ifdef FONLINE_SERVER
 bool CraftManager::IsShowCraft(Critter* cr, uint num)
 {
 	CraftItem* craft=GetCraft(num);

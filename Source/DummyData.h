@@ -504,6 +504,18 @@ struct ProtoMap
 	void Release(){}
 };
 
+struct CraftItem
+{
+	int Num;
+	int Name;
+	int Info;
+	int Experience;
+	int Script;
+
+	void AddRef(){}
+	void Release(){}
+};
+
 struct BindClass
 {
 #ifdef BIND_SERVER
@@ -551,6 +563,12 @@ struct BindClass
 	static void Item_get_Flags(){}
 	static void Item_set_TrapValue(){}
 	static void Item_get_TrapValue(){}
+
+	static void CraftItem_GetShowParams(){}
+	static void CraftItem_GetNeedParams(){}
+	static void CraftItem_GetNeedTools(){}
+	static void CraftItem_GetNeedItems(){}
+	static void CraftItem_GetOutItems(){}
 
 	static void Crit_IsPlayer(){}
 	static void Crit_IsNpc(){}

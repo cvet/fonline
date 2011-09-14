@@ -320,11 +320,18 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		int bad_typeids[]=
 		{
-			Engine->GetTypeIdByDecl("Critter@")  ,Engine->GetTypeIdByDecl("Critter@[]") ,
-			Engine->GetTypeIdByDecl("Item@")     ,Engine->GetTypeIdByDecl("Item@[]")    ,
-			Engine->GetTypeIdByDecl("Map@")      ,Engine->GetTypeIdByDecl("Map@[]")     ,
-			Engine->GetTypeIdByDecl("Location@") ,Engine->GetTypeIdByDecl("Location@[]"),
-			Engine->GetTypeIdByDecl("GameVar@")  ,Engine->GetTypeIdByDecl("GameVar@[]") ,
+			Engine->GetTypeIdByDecl("Critter@"),
+			Engine->GetTypeIdByDecl("Critter@[]"),
+			Engine->GetTypeIdByDecl("Item@"),
+			Engine->GetTypeIdByDecl("Item@[]"),
+			Engine->GetTypeIdByDecl("Map@"),
+			Engine->GetTypeIdByDecl("Map@[]"),
+			Engine->GetTypeIdByDecl("Location@"),
+			Engine->GetTypeIdByDecl("Location@[]"),
+			Engine->GetTypeIdByDecl("GameVar@"),
+			Engine->GetTypeIdByDecl("GameVar@[]"),
+			Engine->GetTypeIdByDecl("CraftItem@"),
+			Engine->GetTypeIdByDecl("CraftItem@[]"),
 		};
 		int bad_typeids_count=sizeof(bad_typeids)/sizeof(int);
 		for(int k=0;k<bad_typeids_count;k++) bad_typeids[k]&=asTYPEID_MASK_SEQNBR;

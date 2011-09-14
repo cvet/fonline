@@ -99,6 +99,8 @@ bool FOServer::InitScriptSystem()
 	ServerWrongGlobalObjects.push_back("Location@[]");
 	ServerWrongGlobalObjects.push_back("GameVar@");
 	ServerWrongGlobalObjects.push_back("GameVar@[]");
+	ServerWrongGlobalObjects.push_back("CraftItem@");
+	ServerWrongGlobalObjects.push_back("CraftItem@[]");
 	Script::SetWrongGlobalObjects(ServerWrongGlobalObjects);
 
 	// Bind vars and functions, look bind.h
@@ -1051,6 +1053,7 @@ uint FOServer::SScriptFunc::CraftItem_GetShowParams(CraftItem* craft, CScriptArr
 	if(or) Script::AppendVectorToArray(craft->ShowPOr, or);
 	return (uint)craft->ShowPNum.size();
 }
+
 uint FOServer::SScriptFunc::CraftItem_GetNeedParams(CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* or)
 {
 	if(nums) Script::AppendVectorToArray(craft->NeedPNum, nums);
@@ -1058,6 +1061,7 @@ uint FOServer::SScriptFunc::CraftItem_GetNeedParams(CraftItem* craft, CScriptArr
 	if(or) Script::AppendVectorToArray(craft->NeedPOr, or);
 	return (uint)craft->NeedPNum.size();
 }
+
 uint FOServer::SScriptFunc::CraftItem_GetNeedTools(CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* or)
 {
 	if(pids) Script::AppendVectorToArray(craft->NeedTools, pids);
@@ -1065,6 +1069,7 @@ uint FOServer::SScriptFunc::CraftItem_GetNeedTools(CraftItem* craft, CScriptArra
 	if(or) Script::AppendVectorToArray(craft->NeedToolsOr, or);
 	return (uint)craft->NeedTools.size();
 }
+
 uint FOServer::SScriptFunc::CraftItem_GetNeedItems(CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* or)
 {
 	if(pids) Script::AppendVectorToArray(craft->NeedItems, pids);
@@ -1072,6 +1077,7 @@ uint FOServer::SScriptFunc::CraftItem_GetNeedItems(CraftItem* craft, CScriptArra
 	if(or) Script::AppendVectorToArray(craft->NeedItemsOr, or);
 	return (uint)craft->NeedItems.size();
 }
+
 uint FOServer::SScriptFunc::CraftItem_GetOutItems(CraftItem* craft, CScriptArray* pids, CScriptArray* vals)
 {
 	if(pids) Script::AppendVectorToArray(craft->OutItems, pids);

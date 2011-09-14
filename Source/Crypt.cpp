@@ -89,13 +89,17 @@ void CryptManager::DecryptPassword(char* data, uint len, uint key)
 void CryptManager::ClientPassHash(const char* name, const char* pass, char* pass_hash)
 {
 	char* bld=new char[MAX_NAME+1];
+	memzero(bld,MAX_NAME+1);
 	uint pass_len=Str::Length(pass);
 	uint name_len=Str::Length(name);
 	if(pass_len>MAX_NAME) pass_len=MAX_NAME;
-	Str::Copy(bld,pass_len+1,pass);
+	Str::Copy(bld,MAX_NAME+1,pass);
 	if(pass_len<MAX_NAME) bld[pass_len++]='*';	
-	for(;pass_len<MAX_NAME;pass_len++) bld[pass_len]=tolower(name[pass_len%name_len]);
-	bld[MAX_NAME]=0;
+	if(name_len)
+	{
+		for(;pass_len<MAX_NAME;pass_len++)
+			bld[pass_len]=tolower(name[pass_len%name_len]);
+	}
 	sha256((const uchar*)bld,MAX_NAME,(uchar*)pass_hash);
 	delete bld;
 }

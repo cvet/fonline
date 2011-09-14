@@ -8878,7 +8878,7 @@ void FOClient::PlayVideo(ShowVideo& video)
 	FindClose(f);
 
 	// Workaround, video not showed in fullscreen with direct3d multisampling, on Vista/7
-	if(GameOpt.FullScreen && SprMngr.IsMultiSamplingUsed() && (GetVersion()&0xFF)>=6)
+	/*if(GameOpt.FullScreen && SprMngr.IsMultiSamplingUsed() && (GetVersion()&0xFF)>=6)
 	{
 		D3DPRESENT_PARAMETERS pp;
 		memzero(&pp, sizeof(pp));
@@ -8890,7 +8890,7 @@ void FOClient::PlayVideo(ShowVideo& video)
 		ReleaseDC(NULL,dcscreen);
 
 		SetWindowPos(Wnd,NULL,-WndBorders.L,-WndBorders.T,sw+WndBorders.L+WndBorders.R,sh+WndBorders.T+WndBorders.B,0);
-	}
+	}*/
 
 	// Create direct show
 	CHECK_VIDEO_HR(CoInitialize(NULL));

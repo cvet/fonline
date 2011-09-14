@@ -353,14 +353,14 @@
 	if(engine->RegisterObjectBehaviour("CraftItem",asBEHAVE_ADDREF,"void f()",asMETHOD(CraftItem,AddRef),asCALL_THISCALL)<0) BIND_ERROR;
 	if(engine->RegisterObjectBehaviour("CraftItem",asBEHAVE_RELEASE,"void f()",asMETHOD(CraftItem,Release),asCALL_THISCALL)<0) BIND_ERROR;
 
-	// properties
+	// Properties
 	if(engine->RegisterObjectProperty("CraftItem","const uint Num",OFFSETOF(CraftItem,Num))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CraftItem","const string Name",OFFSETOF(CraftItem,Name))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CraftItem","const string Info",OFFSETOF(CraftItem,Info))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CraftItem","const uint Experience",OFFSETOF(CraftItem,Experience))<0) BIND_ERROR;
 	if(engine->RegisterObjectProperty("CraftItem","const string Script",OFFSETOF(CraftItem,Script))<0) BIND_ERROR;
 
-	// methods
+	// Methods
 	if(engine->RegisterObjectMethod("CraftItem","uint GetShowParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetShowParams), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CraftItem","uint GetNeedParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetNeedParams), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
 	if(engine->RegisterObjectMethod("CraftItem","uint GetNeedTools(array<uint16>@+ pids, array<uint>@+ values, array<bool>@+ ors)",asFUNCTION(BIND_CLASS CraftItem_GetNeedTools), asCALL_CDECL_OBJFIRST)<0) BIND_ERROR;
