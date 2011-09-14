@@ -4263,8 +4263,9 @@ bool FOServer::LoadClientsData()
 		// Check uniqueness of id
 		if(id_already.count(id))
 		{
-			WriteLog("Id<%u> of user<%s> already used by another client.\n",id,name);
-			return false;
+			WriteLog("Id<%u> of user<%s> already used by another client. Skipped.\n",id,name);
+			if(!FindNextFile(h,&fdata)) break;
+			continue;
 		}
 		id_already.insert(id);
 
