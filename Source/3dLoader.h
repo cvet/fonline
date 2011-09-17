@@ -12,42 +12,41 @@ struct aiScene;
 
 class Loader3d
 {
-	// Models
+    // Models
 public:
-	static FrameEx* LoadModel(IDirect3DDevice9* device, const char* fname, bool calc_tangent);
-	static AnimSet* LoadAnimation(IDirect3DDevice9* device, const char* anim_fname, const char* anim_name);
-	static void Free(D3DXFRAME* frame);
-	static bool IsExtensionSupported(const char* ext);
+    static FrameEx* LoadModel( IDirect3DDevice9* device, const char* fname, bool calc_tangent );
+    static AnimSet* LoadAnimation( IDirect3DDevice9* device, const char* anim_fname, const char* anim_name );
+    static void     Free( D3DXFRAME* frame );
+    static bool     IsExtensionSupported( const char* ext );
 
 private:
-	static MeshHierarchy memAllocator;
-	static PCharVec processedFiles;
-	static FrameVec loadedModels;
-	static PCharVec loadedAnimationsFNames;
-	static AnimSetVec loadedAnimations;
+    static MeshHierarchy memAllocator;
+    static PCharVec      processedFiles;
+    static FrameVec      loadedModels;
+    static PCharVec      loadedAnimationsFNames;
+    static AnimSetVec    loadedAnimations;
 
-	static FrameEx* FillNode(IDirect3DDevice9* device, const aiNode* node, const aiScene* scene, bool with_tangent);
-	static FrameEx* LoadX(IDirect3DDevice9* device, FileManager& fm, const char* fname);
+    static FrameEx* FillNode( IDirect3DDevice9* device, const aiNode* node, const aiScene* scene, bool with_tangent );
+    static FrameEx* LoadX( IDirect3DDevice9* device, FileManager& fm, const char* fname );
 
-	// Textures
+    // Textures
 public:
-	static TextureEx* LoadTexture(IDirect3DDevice9* device, const char* texture_name, const char* model_path);
-	static void FreeTexture(TextureEx* texture); // If texture is NULL than free all textures
+    static TextureEx* LoadTexture( IDirect3DDevice9* device, const char* texture_name, const char* model_path );
+    static void       FreeTexture( TextureEx* texture ); // If texture is NULL than free all textures
 
 private:
-	static TextureExVec loadedTextures;
+    static TextureExVec loadedTextures;
 
-	// Effects
+    // Effects
 public:
-	static EffectEx* LoadEffect(IDirect3DDevice9* device, const char* effect_name);
-	static EffectEx* LoadEffect(IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path);
-	static void EffectProcessVariables(EffectEx* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, TextureEx** textures = NULL);
-	static bool EffectsPreRestore();
-	static bool EffectsPostRestore();
+    static EffectEx* LoadEffect( IDirect3DDevice9* device, const char* effect_name );
+    static EffectEx* LoadEffect( IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path );
+    static void      EffectProcessVariables( EffectEx* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, TextureEx** textures = NULL );
+    static bool      EffectsPreRestore();
+    static bool      EffectsPostRestore();
 
 private:
-	static EffectExVec loadedEffects;
+    static EffectExVec loadedEffects;
 };
 
 #endif // __3D_LOADER__
-

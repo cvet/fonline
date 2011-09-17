@@ -5,121 +5,121 @@
 #include "Item.h"
 #include "SpriteManager.h"
 
-#define EFFECT_0_TIME_PROC      (10)
-#define EFFECT_0_SPEED_MUL      (10.0f)
+#define EFFECT_0_TIME_PROC    ( 10 )
+#define EFFECT_0_SPEED_MUL    ( 10.0f )
 
 struct AnyFrames;
 
-class ItemHex : public Item
+class ItemHex: public Item
 {
 public:
-	ItemHex(uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut);
-	// ~ItemHex() Destructor not been called because Item not have virtual destructor
-	bool operator==(const ushort& _right){return (GetProtoId()==_right);}
+    ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
+    // ~ItemHex() Destructor not been called because Item not have virtual destructor
+    bool operator==( const ushort& _right ) { return ( GetProtoId() == _right ); }
 
 public:
-	uint SprId;
-	int HexX,HexY,Dir;
-	short StartScrX,StartScrY;
-	short ScrX,ScrY;
-	int* HexScrX,*HexScrY;
-	int SpriteCut;
-	uchar Alpha;
-	AnyFrames* Anim;
-	static AnyFrames* DefaultAnim;
-	uchar ScenFlags;
-	bool SprDrawValid;
-	Sprite* SprDraw,*SprTemp;
+    uint              SprId;
+    int               HexX, HexY, Dir;
+    short             StartScrX, StartScrY;
+    short             ScrX, ScrY;
+    int*              HexScrX, * HexScrY;
+    int               SpriteCut;
+    uchar             Alpha;
+    AnyFrames*        Anim;
+    static AnyFrames* DefaultAnim;
+    uchar             ScenFlags;
+    bool              SprDrawValid;
+    Sprite*           SprDraw, * SprTemp;
 
 private:
-	int curSpr,begSpr,endSpr;
-	uint animBegSpr,animEndSpr;
-	uint animTick;
-	uchar maxAlpha;
-	bool isAnimated;
-	uint animNextTick;
+    int   curSpr, begSpr, endSpr;
+    uint  animBegSpr, animEndSpr;
+    uint  animTick;
+    uchar maxAlpha;
+    bool  isAnimated;
+    uint  animNextTick;
 
 public:
-	bool IsScenOrGrid(){return Proto->IsScen() || Proto->IsGrid();}
-	bool IsItem(){return Proto->IsItem();}
-	bool IsWall(){return Proto->IsWall();}
-	ushort GetHexX(){return HexX;}
-	ushort GetHexY(){return HexY;}
-	int GetDir(){return Dir;}
-	bool IsAnimated(){return isAnimated;}
-	bool IsCanLook(){return !(Proto->IsGrid() && Proto->Grid_Type==GRID_EXITGRID);}
-	bool IsUsable(){return !IsWall() && (IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_USE)));}
-	bool IsTalkable(){return !IsWall() && (IsCanTalk() || (IsScenOrGrid() && FLAG(ScenFlags,SCEN_CAN_TALK)));}
-	bool IsDrawContour(){return /*IsFocused && */IsItem() && !IsNoHighlight() && !IsBadItem();}
-	bool IsTransparent(){return maxAlpha<0xFF;}
-	bool IsFullyTransparent(){return maxAlpha==0;}
-	void RefreshAnim();
-	void RestoreAlpha(){Alpha=maxAlpha;}
-	void RefreshAlpha(){maxAlpha=(IsColorize()?GetAlpha():0xFF);}
-	void SetSprite(Sprite* spr);
-	int GetEggType();
+    bool   IsScenOrGrid()       { return Proto->IsScen() || Proto->IsGrid(); }
+    bool   IsItem()             { return Proto->IsItem(); }
+    bool   IsWall()             { return Proto->IsWall(); }
+    ushort GetHexX()            { return HexX; }
+    ushort GetHexY()            { return HexY; }
+    int    GetDir()             { return Dir; }
+    bool   IsAnimated()         { return isAnimated; }
+    bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->Grid_Type == GRID_EXITGRID ); }
+    bool   IsUsable()           { return !IsWall() && ( IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }
+    bool   IsTalkable()         { return !IsWall() && ( IsCanTalk() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_TALK ) ) ); }
+    bool   IsDrawContour()      { return /*IsFocused && */ IsItem() && !IsNoHighlight() && !IsBadItem(); }
+    bool   IsTransparent()      { return maxAlpha < 0xFF; }
+    bool   IsFullyTransparent() { return maxAlpha == 0; }
+    void   RefreshAnim();
+    void   RestoreAlpha() { Alpha = maxAlpha; }
+    void   RefreshAlpha() { maxAlpha = ( IsColorize() ? GetAlpha() : 0xFF ); }
+    void   SetSprite( Sprite* spr );
+    int    GetEggType();
 
-	// Finish
+    // Finish
 private:
-	bool finishing;
-	uint finishingTime;
+    bool finishing;
+    uint finishingTime;
 
 public:
-	void Finish();
-	bool IsFinishing(){return finishing;}
-	bool IsFinish(){return (finishing && Timer::GameTick()>finishingTime);}
-	void StopFinishing();
+    void Finish();
+    bool IsFinishing() { return finishing; }
+    bool IsFinish()    { return ( finishing && Timer::GameTick() > finishingTime ); }
+    void StopFinishing();
 
-	// Process
+    // Process
 public:
-	void Process();
+    void Process();
 
-	// Effect
+    // Effect
 private:
-	bool isEffect;
-	float effSx,effSy;
-	int effStartX,effStartY;
-	float effCurX,effCurY;
-	uint effDist;
-	uint effLastTick;
+    bool  isEffect;
+    float effSx, effSy;
+    int   effStartX, effStartY;
+    float effCurX, effCurY;
+    uint  effDist;
+    uint  effLastTick;
 
 public:
-	float EffOffsX,EffOffsY;
+    float EffOffsX, EffOffsY;
 
-	bool IsEffect(){return isEffect;}
-	bool IsDynamicEffect(){return IsEffect() && (effSx || effSy);}
-	void SetEffect(float sx, float sy, uint dist);
-	UShortPair GetEffectStep();
+    bool       IsEffect()        { return isEffect; }
+    bool       IsDynamicEffect() { return IsEffect() && ( effSx || effSy ); }
+    void       SetEffect( float sx, float sy, uint dist );
+    UShortPair GetEffectStep();
 
-	// Fade
+    // Fade
 private:
-	bool fading;
-	uint fadingTick;
-	bool fadeUp;
+    bool fading;
+    uint fadingTick;
+    bool fadeUp;
 
-	void SetFade(bool fade_up);
+    void SetFade( bool fade_up );
 
-	// Animation
+    // Animation
 public:
-	void StartAnimate();
-	void StopAnimate();
-	void SetAnimFromEnd();
-	void SetAnimFromStart();
-	void SetAnim(uint beg, uint end);
-	void SetSprStart();
-	void SetSprEnd();
-	void SetSpr(uint num_spr);
-	void SetAnimOffs();
-	void SetStayAnim();
-	void SetShowAnim();
-	void SetHideAnim();
+    void StartAnimate();
+    void StopAnimate();
+    void SetAnimFromEnd();
+    void SetAnimFromStart();
+    void SetAnim( uint beg, uint end );
+    void SetSprStart();
+    void SetSprEnd();
+    void SetSpr( uint num_spr );
+    void SetAnimOffs();
+    void SetStayAnim();
+    void SetShowAnim();
+    void SetHideAnim();
 
 public: // Move some specific types to end
-	UShortPairVec EffSteps;
+    UShortPairVec EffSteps;
 };
 
-typedef vector<ItemHex*> ItemHexVec;
-typedef vector<ItemHex*>::iterator ItemHexVecIt;
-typedef vector<ItemHex*>::value_type ItemHexVecVal;
+typedef vector< ItemHex* >             ItemHexVec;
+typedef vector< ItemHex* >::iterator   ItemHexVecIt;
+typedef vector< ItemHex* >::value_type ItemHexVecVal;
 
 #endif // __ITEM_HEX__

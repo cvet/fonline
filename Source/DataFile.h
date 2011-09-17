@@ -10,15 +10,15 @@
 class DataFile
 {
 public:
-	virtual const string& GetPackName() = 0;
-	virtual uchar* OpenFile(const char* fname, uint& len) = 0;
-	virtual void GetFileNames(const char* path, bool include_subdirs, const char* ext, StrVec& result) = 0;
-	virtual void GetTime(uint64* create, uint64* access, uint64* write) = 0;
-	virtual ~DataFile(){}
+    virtual const string& GetPackName() = 0;
+    virtual uchar*        OpenFile( const char* fname, uint& len ) = 0;
+    virtual void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) = 0;
+    virtual void          GetTime( uint64* create, uint64* access, uint64* write ) = 0;
+    virtual ~DataFile() {}
 };
-typedef vector<DataFile*> DataFileVec;
-typedef vector<DataFile*>::iterator DataFileVecIt;
+typedef vector< DataFile* >           DataFileVec;
+typedef vector< DataFile* >::iterator DataFileVecIt;
 
-DataFile* OpenDataFile(const char* fname);
+DataFile* OpenDataFile( const char* fname );
 
 #endif // _DATA_FILE_
