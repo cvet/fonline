@@ -1,7 +1,7 @@
 #include "StdAfx.h"
-#include "MeshHierarchy.h"
-#include <FileManager.h>
-#include "Loader.h"
+#include "3dMeshHierarchy.h"
+#include "3dLoader.h"
+#include "FileManager.h"
 
 HRESULT MeshHierarchy::CreateFrame(LPCSTR Name, LPD3DXFRAME *retNewFrame)
 {

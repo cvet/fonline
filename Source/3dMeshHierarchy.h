@@ -1,7 +1,7 @@
 #ifndef __MESH_HIERARHY__
 #define __MESH_HIERARHY__
 
-#include "MeshStructures.h"
+#include "3dMeshStructures.h"
 
 class MeshHierarchy : public ID3DXAllocateHierarchy
 {

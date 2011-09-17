@@ -1,5 +1,5 @@
 #include "StdAfx.h"
-#include "Loader.h"
+#include "3dLoader.h"
 #include "Text.h"
 #include "Timer.h"
 

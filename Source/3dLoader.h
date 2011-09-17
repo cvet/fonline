@@ -4,8 +4,8 @@
 #include "Common.h"
 #include "Defines.h"
 #include "FileManager.h"
-#include "MeshHierarchy.h"
-#include "MeshStructures.h"
+#include "3dMeshHierarchy.h"
+#include "3dMeshStructures.h"
 
 struct aiNode;
 struct aiScene;

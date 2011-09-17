@@ -4,7 +4,7 @@
 
 #include <Timer.h>
 #include <Defines.h>
-#include <3dStuff\MeshStructures.h>
+#include <3dMeshStructures.h>
 #include <FlexRect.h>
 #include <common.h>
 

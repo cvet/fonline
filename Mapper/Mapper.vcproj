@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="Mapper"
 	ProjectGUID="{C1DF7D8F-3A12-497A-83B4-8E4A7FDD7691}"
 	RootNamespace="Mapper"
@@ -484,10 +484,6 @@
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 			>
 			<File
-				RelativePath="..\Source\3dStuff\ContourPS.txt"
-				>
-			</File>
-			<File
 				RelativePath=".\Mapper.ico"
 				>
 			</File>
@@ -535,6 +531,34 @@
 		<Filter
 			Name="Mapper"
 			>
+			<File
+				RelativePath="..\Source\3dAnimation.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dAnimation.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dLoader.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dLoader.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dMeshHierarchy.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dMeshHierarchy.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dMeshStructures.h"
+				>
+			</File>
 			<File
 				RelativePath="..\Source\Common.cpp"
 				>
@@ -1637,34 +1661,30 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="3dStuff"
+			Name="SHA2"
 			>
 			<File
-				RelativePath="..\Source\3dStuff\Animation.cpp"
+				RelativePath="..\Source\SHA2\sha2.c"
 				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Animation.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\Loader.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\Loader.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\MeshHierarchy.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\MeshHierarchy.h"
-				>
-			</File>
-			<File
-				RelativePath="..\Source\3dStuff\MeshStructures.h"
+				RelativePath="..\Source\SHA2\sha2.h"
 				>
 			</File>
 		</Filter>

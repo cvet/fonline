@@ -7,7 +7,7 @@
 #include "BufferManager.h"
 #include "Item.h"
 #include "ItemManager.h"
-#include "3dStuff\Animation.h"
+#include "3dAnimation.h"
 
 
 class CritterCl

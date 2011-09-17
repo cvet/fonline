@@ -31,7 +31,7 @@ bool FOMapper::Init(HWND wnd)
 #if defined(FO_X86)
 	STATIC_ASSERT(sizeof(SpriteInfo)==36);
 	STATIC_ASSERT(sizeof(Sprite)==116);
-	STATIC_ASSERT(sizeof(GameOptions)==1184);
+	STATIC_ASSERT(sizeof(GameOptions)==1152);
 #endif
 
 	// Register dll script data

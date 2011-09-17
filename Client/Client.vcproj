@@ -490,10 +490,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\ContourPS.txt"
-				>
-			</File>
-			<File
 				RelativePath="..\Source\ResourceClient.h"
 				>
 			</File>
@@ -1239,6 +1235,34 @@
 		<Filter
 			Name="Client"
 			>
+			<File
+				RelativePath="..\Source\3dAnimation.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dAnimation.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dLoader.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dLoader.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dMeshHierarchy.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dMeshHierarchy.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\3dMeshStructures.h"
+				>
+			</File>
 			<File
 				RelativePath="..\Source\Access.h"
 				>
@@ -3638,176 +3662,132 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="3dStuff"
+			Name="Assimp"
 			>
 			<File
-				RelativePath="..\Source\3dStuff\Animation.cpp"
+				RelativePath="..\Source\Assimp\aiAnim.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Animation.h"
+				RelativePath="..\Source\Assimp\aiAssert.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Loader.cpp"
+				RelativePath="..\Source\Assimp\aiCamera.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\Loader.h"
+				RelativePath="..\Source\Assimp\aiColor4D.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\MeshHierarchy.cpp"
+				RelativePath="..\Source\Assimp\aiConfig.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\MeshHierarchy.h"
+				RelativePath="..\Source\Assimp\aiDefines.h"
 				>
 			</File>
 			<File
-				RelativePath="..\Source\3dStuff\MeshStructures.h"
+				RelativePath="..\Source\Assimp\aiFileIO.h"
 				>
 			</File>
-			<Filter
-				Name="Assimp"
+			<File
+				RelativePath="..\Source\Assimp\aiLight.h"
 				>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiAnim.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiAssert.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiCamera.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiColor4D.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiColor4D.inl"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiConfig.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiDefines.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiFileIO.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiLight.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMaterial.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMaterial.inl"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMatrix3x3.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMatrix3x3.inl"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMatrix4x4.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMatrix4x4.inl"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiMesh.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiPostProcess.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiQuaternion.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiScene.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiTexture.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiTypes.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiVector2D.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiVector3D.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiVector3D.inl"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\aiVersion.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\assimp.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\assimp.hpp"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\DefaultLogger.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\IOStream.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\IOSystem.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\Logger.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\LogStream.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\NullLogger.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Source\3dStuff\Assimp\ProgressHandler.h"
-					>
-				</File>
-			</Filter>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiMaterial.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiMatrix3x3.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiMatrix4x4.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiMesh.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiPostProcess.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiQuaternion.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiScene.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiTexture.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiTypes.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiVector2D.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiVector3D.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\aiVersion.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\assimp.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\assimp.hpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\DefaultLogger.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\export.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\export.hpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\IOStream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\IOSystem.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\Logger.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\LogStream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\NullLogger.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Source\Assimp\ProgressHandler.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="SHA2"

@@ -1,6 +1,6 @@
 #include "StdAfx.h"
-#include "Animation.h"
-#include "Loader.h"
+#include "3dAnimation.h"
+#include "3dLoader.h"
 #include "Common.h"
 #include "Text.h"
 #include "ConstantsManager.h"
