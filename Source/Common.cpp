@@ -781,16 +781,21 @@ uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light )
 void GetClientOptions()
 {
     // Defines
-    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )        do { char* str = strstr( CommandLine, str_id ); if( str ) \
-                                                                    opt = atoi( str + Str::Length( str_id ) + 1 ); } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )       do { char* str = strstr( CommandLine, str_id ); if( str ) \
-                                                                    opt = atoi( str + Str::Length( str_id ) + 1 ) != 0; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )    do { char* str = strstr( CommandLine, str_id ); if( str ) \
-                                                                    opt = true; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )        do { char* str = strstr( CommandLine, str_id ); if( str ) \
-                                                                    sscanf_s( str + Str::Length( str_id ) + 1, "%s", opt ); } while( 0 )
-    # define GETOPTIONS_CHECK( val_, min_, max_, def_ )    do { if( val_ < min_ || val_ > max_ ) \
-                                                                    val_ = def_; } while( 0 )
+    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )               \
+        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+                 opt = atoi( str + Str::Length( str_id ) + 1 ); } while( 0 )
+    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )              \
+        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+                 opt = atoi( str + Str::Length( str_id ) + 1 ) != 0; } while( 0 )
+    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )           \
+        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+                 opt = true; } while( 0 )
+    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )               \
+        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+                 sscanf_s( str + Str::Length( str_id ) + 1, "%s", opt ); } while( 0 )
+    # define GETOPTIONS_CHECK( val_, min_, max_, def_ ) \
+        do { if( val_ < min_ || val_ > max_ )           \
+                 val_ = def_; } while( 0 )
 
     char buf[ MAX_FOTEXT ];
 
@@ -1010,7 +1015,8 @@ const char* GetLastSocketError()
 {
     static THREAD char str[ 256 ];
     int                error = WSAGetLastError();
-    # define CASE_SOCK_ERROR( code, message )    case code: \
+    # define CASE_SOCK_ERROR( code, message ) \
+    case code:                                \
         sprintf( str, # code ", %d, "message, code ); break
 
     switch( error )

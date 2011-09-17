@@ -6,9 +6,11 @@
 #endif
 
 #ifdef MEMORY_DEBUG
-# define MEMORY_PROCESS( block, memory )        if( MemoryDebugLevel >= 1 ) \
+# define MEMORY_PROCESS( block, memory ) \
+    if( MemoryDebugLevel >= 1 )          \
         Debugger::Memory( block, memory )
-# define MEMORY_PROCESS_STR( block, memory )    if( MemoryDebugLevel >= 2 ) \
+# define MEMORY_PROCESS_STR( block, memory ) \
+    if( MemoryDebugLevel >= 2 )              \
         Debugger::MemoryStr( block, memory )
 #else
 # define MEMORY_PROCESS( block, memory )

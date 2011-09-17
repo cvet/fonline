@@ -255,9 +255,12 @@ struct AnyFrames
     uint  GetCurSprIndex()         { return CntFrm > 1 ? ( ( Timer::GameTick() % Ticks ) * 100 / Ticks ) * CntFrm / 100 : 0; }
 
     AnyFrames(): Ind( NULL ), NextX( NULL ), NextY( NULL ), CntFrm( 0 ), Ticks( 0 ), Anim1( 0 ), Anim2( 0 ) {};
-    ~AnyFrames() { SAFEDELA( Ind );
-                   SAFEDELA( NextX );
-                   SAFEDELA( NextY ); }
+    ~AnyFrames()
+    {
+        SAFEDELA( Ind );
+        SAFEDELA( NextX );
+        SAFEDELA( NextY );
+    }
 };
 typedef map< uint, AnyFrames*, less< uint > >             AnimMap;
 typedef map< uint, AnyFrames*, less< uint > >::iterator   AnimMapIt;
@@ -390,11 +393,15 @@ public:
     bool Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )
-    { if( frames && frames != DummyAnimation ) return DrawSprite( frames->GetCurSprId(), x, y, color );
-      return false; }
+    {
+        if( frames && frames != DummyAnimation ) return DrawSprite( frames->GetCurSprId(), x, y, color );
+        return false;
+    }
     inline bool DrawSpriteSize( AnyFrames* frames, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 )
-    { if( frames && frames != DummyAnimation ) return DrawSpriteSize( frames->GetCurSprId(), x, y, w, h, stretch_up, center, color );
-      return false; }
+    {
+        if( frames && frames != DummyAnimation ) return DrawSpriteSize( frames->GetCurSprId(), x, y, w, h, stretch_up, center, color );
+        return false;
+    }
 
     void SetDefaultEffect2D( uint index, EffectEx* effect ) { sprDefaultEffect[ index ] = effect; }
     void SetCurEffect2D( uint index )                       { curDefaultEffect = sprDefaultEffect[ index ]; }

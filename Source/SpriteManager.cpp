@@ -12,7 +12,7 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 #define SPRITES_POOL_GROW_SIZE    ( 10000 )
 #define SPRITES_RESIZE_COUNT      ( 100 )
 #define SURF_SPRITES_OFFS         ( 2 )
-#define SURF_POINT( lr, x, y )                            ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
+#define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
 
 /************************************************************************/
 /* Sprites                                                              */
@@ -66,14 +66,16 @@ Sprite* Sprite::GetIntersected( int ox, int oy )
     return NULL;
 }
 
-#define SPRITE_SETTER( func, type, val )                  void Sprite::func( type val ## __ ) { if( !Valid )                                             \
-                                                                                                    return; Valid = false; val = val ## __; if( Parent ) \
-                                                                                                    Parent->func( val ## __ ); if( Child )               \
-                                                                                                    Child->func( val ## __ ); Valid = true; }
-#define SPRITE_SETTER2( func, type, val, type2, val2 )    void Sprite::func( type val ## __, type2 val2 ## __ ) { if( !Valid )                                                                \
-                                                                                                                      return; Valid = false; val = val ## __; val2 = val2 ## __; if( Parent ) \
-                                                                                                                      Parent->func( val ## __, val2 ## __ ); if( Child )                      \
-                                                                                                                      Child->func( val ## __, val2 ## __ ); Valid = true; }
+#define SPRITE_SETTER( func, type, val )                                                           \
+    void Sprite::func( type val ## __ ) { if( !Valid )                                             \
+                                              return; Valid = false; val = val ## __; if( Parent ) \
+                                              Parent->func( val ## __ ); if( Child )               \
+                                              Child->func( val ## __ ); Valid = true; }
+#define SPRITE_SETTER2( func, type, val, type2, val2 )                                                                                  \
+    void Sprite::func( type val ## __, type2 val2 ## __ ) { if( !Valid )                                                                \
+                                                                return; Valid = false; val = val ## __; val2 = val2 ## __; if( Parent ) \
+                                                                Parent->func( val ## __, val2 ## __ ); if( Child )                      \
+                                                                Child->func( val ## __, val2 ## __ ); Valid = true; }
 SPRITE_SETTER( SetEgg, int, EggType );
 SPRITE_SETTER( SetContour, int, ContourType );
 SPRITE_SETTER2( SetContour, int, ContourType, uint, ContourColor );

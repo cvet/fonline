@@ -35,7 +35,8 @@ bool FOMapper::Init( HWND wnd )
     #endif
 
     // Register dll script data
-    struct CritterChangeParameter_ {
+    struct CritterChangeParameter_
+    {
         static void CritterChangeParameter( void*, uint ) {} };                           // Dummy
     GameOpt.CritterChangeParameter = &CritterChangeParameter_::CritterChangeParameter;
 
@@ -89,10 +90,12 @@ bool FOMapper::Init( HWND wnd )
     };
     GameOpt.IsSpriteHit = &IsSpriteHit_::IsSpriteHit;
 
-    struct GetNameByHash_ {
+    struct GetNameByHash_
+    {
         static const char* GetNameByHash( uint hash ) { return Str::GetName( hash ); } };
     GameOpt.GetNameByHash = &GetNameByHash_::GetNameByHash;
-    struct GetHashByName_ {
+    struct GetHashByName_
+    {
         static uint GetHashByName( const char* name ) { return Str::GetHash( name ); } };
     GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
 

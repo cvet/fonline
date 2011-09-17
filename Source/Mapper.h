@@ -262,15 +262,21 @@ public:
 
         SelMapObj( MapObject* mobj, ItemHex* itm ): MapObj( mobj ), MapItem( itm ), MapNpc( NULL ) {}
         SelMapObj( MapObject* mobj, CritterCl* npc ): MapObj( mobj ), MapItem( NULL ), MapNpc( npc ) {}
-        SelMapObj( const SelMapObj& r ) { MapObj = r.MapObj;
-                                          MapItem = r.MapItem;
-                                          MapNpc = r.MapNpc;
-                                          Childs = r.Childs; }
-        SelMapObj& operator=( const SelMapObj& r ) { MapObj = r.MapObj;
-                                                     MapItem = r.MapItem;
-                                                     MapNpc = r.MapNpc;
-                                                     Childs = r.Childs;
-                                                     return *this; }
+        SelMapObj( const SelMapObj& r )
+        {
+            MapObj = r.MapObj;
+            MapItem = r.MapItem;
+            MapNpc = r.MapNpc;
+            Childs = r.Childs;
+        }
+        SelMapObj& operator=( const SelMapObj& r )
+        {
+            MapObj = r.MapObj;
+            MapItem = r.MapItem;
+            MapNpc = r.MapNpc;
+            Childs = r.Childs;
+            return *this;
+        }
         bool operator==( const MapObject* r ) { return MapObj == r; }
         bool IsItem()                         { return MapItem != NULL; }
         bool IsNpc()                          { return MapNpc != NULL; }
@@ -287,8 +293,11 @@ public:
 
         SelMapTile( ushort hx, ushort hy, bool is_roof ): HexX( hx ), HexY( hy ), IsRoof( is_roof ) {}
         SelMapTile( const SelMapTile& r ) { memcpy( this, &r, sizeof( SelMapTile ) ); }
-        SelMapTile& operator=( const SelMapTile& r ) { memcpy( this, &r, sizeof( SelMapTile ) );
-                                                       return *this; }
+        SelMapTile& operator=( const SelMapTile& r )
+        {
+            memcpy( this, &r, sizeof( SelMapTile ) );
+            return *this;
+        }
     };
     typedef vector< SelMapTile > SelMapTileVec;
     SelMapTileVec SelectedTile;
@@ -382,13 +391,19 @@ public:
         string Time;
 
         MessBoxMessage( int type, const char* mess, const char* time ): Type( type ), Mess( mess ), Time( time ) {}
-        MessBoxMessage( const MessBoxMessage& r ) { Type = r.Type;
-                                                    Mess = r.Mess;
-                                                    Time = r.Time; }
-        MessBoxMessage& operator=( const MessBoxMessage& r ) { Type = r.Type;
-                                                               Mess = r.Mess;
-                                                               Time = r.Time;
-                                                               return *this; }
+        MessBoxMessage( const MessBoxMessage& r )
+        {
+            Type = r.Type;
+            Mess = r.Mess;
+            Time = r.Time;
+        }
+        MessBoxMessage& operator=( const MessBoxMessage& r )
+        {
+            Type = r.Type;
+            Mess = r.Mess;
+            Time = r.Time;
+            return *this;
+        }
     };
     typedef vector< MessBoxMessage > MessBoxMessageVec;
 

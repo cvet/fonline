@@ -298,10 +298,13 @@ public:
     bool IsGeneric()   { return Type == ITEM_TYPE_GENERIC; }
     bool IsCar()       { return Type == ITEM_TYPE_CAR; }
 
-    bool IsBlocks()          { return BlockLines[ 0 ] != 0; }
-    bool LockerIsChangeble() { if( IsDoor() ) return true;
-                               if( IsContainer() ) return Container_Changeble;
-                               return false; }
+    bool IsBlocks() { return BlockLines[ 0 ] != 0; }
+    bool LockerIsChangeble()
+    {
+        if( IsDoor() ) return true;
+        if( IsContainer() ) return Container_Changeble;
+        return false;
+    }
     bool IsCanPickUp() { return FLAG( Flags, ITEM_CAN_PICKUP ); }
 
     bool operator==( const ushort& _r ) { return ( ProtoId == _r ); }
@@ -546,10 +549,13 @@ public:
     void Repair();
     #endif
 
-    bool IsDeteriorable()       { return Proto->Deteriorable; }
-    bool IsBroken()             { return FLAG( Data.TechInfo.BrokenFlags, BI_BROKEN ); }
-    int  GetDeteriorationProc() { int val = Data.TechInfo.Deterioration * 100 / MAX_DETERIORATION;
-                                  return CLAMP( val, 0, 100 ); }
+    bool IsDeteriorable() { return Proto->Deteriorable; }
+    bool IsBroken()       { return FLAG( Data.TechInfo.BrokenFlags, BI_BROKEN ); }
+    int  GetDeteriorationProc()
+    {
+        int val = Data.TechInfo.Deterioration * 100 / MAX_DETERIORATION;
+        return CLAMP( val, 0, 100 );
+    }
 
     // Armor
     bool IsArmor() { return GetType() == ITEM_TYPE_ARMOR; }
@@ -615,10 +621,13 @@ public:
     uint  GetInvColor() { return FLAG( Data.Flags, ITEM_COLORIZE_INV ) ? ( Data.LightColor ? Data.LightColor : Proto->LightColor ) : 0; }
 
     // Light
-    bool IsLight()      { return FLAG( Data.Flags, ITEM_LIGHT ); }
-    uint LightGetHash() { if( !IsLight() ) return 0;
-                          if( Data.LightIntensity ) return Crypt.Crc32( (uchar*) &Data.LightIntensity, 7 ) + FLAG( Data.Flags, ITEM_LIGHT );
-                          return (uint) Proto; }
+    bool IsLight() { return FLAG( Data.Flags, ITEM_LIGHT ); }
+    uint LightGetHash()
+    {
+        if( !IsLight() ) return 0;
+        if( Data.LightIntensity ) return Crypt.Crc32( (uchar*) &Data.LightIntensity, 7 ) + FLAG( Data.Flags, ITEM_LIGHT );
+        return (uint) Proto;
+    }
     int  LightGetIntensity() { return Data.LightIntensity ? Data.LightIntensity : Proto->LightIntensity; }
     int  LightGetDistance()  { return Data.LightDistance ? Data.LightDistance : Proto->LightDistance; }
     int  LightGetFlags()     { return Data.LightFlags ? Data.LightFlags : Proto->LightFlags; }
@@ -649,18 +658,27 @@ public:
     bool operator==( const uint& id ) { return ( Id == id ); }
 
     #ifdef FONLINE_SERVER
-    Item() { memzero( this, sizeof( Item ) );
-             RefCounter = 1;
-             IsNotValid = false;
-             MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) ); }
-    ~Item() { Proto = NULL;
-              if( PLexems ) MEMORY_PROCESS( MEMORY_ITEM, -LEXEMS_SIZE );
-              SAFEDELA( PLexems );
-              MEMORY_PROCESS( MEMORY_ITEM, -(int) sizeof( Item ) ); }
+    Item()
+    {
+        memzero( this, sizeof( Item ) );
+        RefCounter = 1;
+        IsNotValid = false;
+        MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) );
+    }
+    ~Item()
+    {
+        Proto = NULL;
+        if( PLexems ) MEMORY_PROCESS( MEMORY_ITEM, -LEXEMS_SIZE );
+        SAFEDELA( PLexems );
+        MEMORY_PROCESS( MEMORY_ITEM, -(int) sizeof( Item ) );
+    }
     #elif FONLINE_CLIENT
-    Item() { memzero( this, OFFSETOF( Item, IsNotValid ) );
-             RefCounter = 1;
-             IsNotValid = false; }
+    Item()
+    {
+        memzero( this, OFFSETOF( Item, IsNotValid ) );
+        RefCounter = 1;
+        IsNotValid = false;
+    }
     ~Item() { Proto = NULL; }
     #endif
 };

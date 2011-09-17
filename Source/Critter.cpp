@@ -2367,146 +2367,240 @@ void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_
     }
 }
 
-void Critter::Send_Move( Critter* from_cr, uint move_params ) { if( IsPlayer() )
-                                                                    ( (Client*) this )->Send_Move( from_cr, move_params );
+void Critter::Send_Move( Critter* from_cr, uint move_params )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Move( from_cr, move_params );
 }
-void Critter::Send_Dir( Critter* from_cr ) { if( IsPlayer() )
-                                                 ( (Client*) this )->Send_Dir( from_cr );
+void Critter::Send_Dir( Critter* from_cr )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Dir( from_cr );
 }
-void Critter::Send_AddCritter( Critter* cr ) { if( IsPlayer() )
-                                                   ( (Client*) this )->Send_AddCritter( cr );
+void Critter::Send_AddCritter( Critter* cr )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_AddCritter( cr );
 }
-void Critter::Send_RemoveCritter( Critter* cr ) { if( IsPlayer() )
-                                                      ( (Client*) this )->Send_RemoveCritter( cr );
+void Critter::Send_RemoveCritter( Critter* cr )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_RemoveCritter( cr );
 }
-void Critter::Send_LoadMap( Map* map ) { if( IsPlayer() )
-                                             ( (Client*) this )->Send_LoadMap( map );
+void Critter::Send_LoadMap( Map* map )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_LoadMap( map );
 }
-void Critter::Send_XY( Critter* cr ) { if( IsPlayer() )
-                                           ( (Client*) this )->Send_XY( cr );
+void Critter::Send_XY( Critter* cr )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_XY( cr );
 }
-void Critter::Send_AddItemOnMap( Item* item ) { if( IsPlayer() )
-                                                    ( (Client*) this )->Send_AddItemOnMap( item );
+void Critter::Send_AddItemOnMap( Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_AddItemOnMap( item );
 }
-void Critter::Send_ChangeItemOnMap( Item* item ) { if( IsPlayer() )
-                                                       ( (Client*) this )->Send_ChangeItemOnMap( item );
+void Critter::Send_ChangeItemOnMap( Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_ChangeItemOnMap( item );
 }
-void Critter::Send_EraseItemFromMap( Item* item ) { if( IsPlayer() )
-                                                        ( (Client*) this )->Send_EraseItemFromMap( item );
+void Critter::Send_EraseItemFromMap( Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_EraseItemFromMap( item );
 }
-void Critter::Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm ) { if( IsPlayer() )
-                                                                                 ( (Client*) this )->Send_AnimateItem( item, from_frm, to_frm );
+void Critter::Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_AnimateItem( item, from_frm, to_frm );
 }
-void Critter::Send_AddItem( Item* item ) { if( IsPlayer() )
-                                               ( (Client*) this )->Send_AddItem( item );
+void Critter::Send_AddItem( Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_AddItem( item );
 }
-void Critter::Send_EraseItem( Item* item ) { if( IsPlayer() )
-                                                 ( (Client*) this )->Send_EraseItem( item );
+void Critter::Send_EraseItem( Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_EraseItem( item );
 }
-void Critter::Send_ContainerInfo() { if( IsPlayer() )
-                                         ( (Client*) this )->Send_ContainerInfo();
+void Critter::Send_ContainerInfo()
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_ContainerInfo();
 }
-void Critter::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen ) { if( IsPlayer() )
-                                                                                                 ( (Client*) this )->Send_ContainerInfo( item_cont, transfer_type, open_screen );
+void Critter::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_ContainerInfo( item_cont, transfer_type, open_screen );
 }
-void Critter::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool open_screen ) { if( IsPlayer() )
-                                                                                                  ( (Client*) this )->Send_ContainerInfo( cr_cont, transfer_type, open_screen );
+void Critter::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool open_screen )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_ContainerInfo( cr_cont, transfer_type, open_screen );
 }
-void Critter::Send_GlobalInfo( uchar flags ) { if( IsPlayer() )
-                                                   ( (Client*) this )->Send_GlobalInfo( flags );
+void Critter::Send_GlobalInfo( uchar flags )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_GlobalInfo( flags );
 }
-void Critter::Send_GlobalLocation( Location* loc, bool add ) { if( IsPlayer() )
-                                                                   ( (Client*) this )->Send_GlobalLocation( loc, add );
+void Critter::Send_GlobalLocation( Location* loc, bool add )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_GlobalLocation( loc, add );
 }
-void Critter::Send_GlobalMapFog( ushort zx, ushort zy, uchar fog ) { if( IsPlayer() )
-                                                                         ( (Client*) this )->Send_GlobalMapFog( zx, zy, fog );
+void Critter::Send_GlobalMapFog( ushort zx, ushort zy, uchar fog )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_GlobalMapFog( zx, zy, fog );
 }
-void Critter::Send_AllParams() { if( IsPlayer() )
-                                     ( (Client*) this )->Send_AllParams();
+void Critter::Send_AllParams()
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_AllParams();
 }
-void Critter::Send_Param( ushort num_param ) { if( IsPlayer() )
-                                                   ( (Client*) this )->Send_Param( num_param );
+void Critter::Send_Param( ushort num_param )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Param( num_param );
 }
-void Critter::Send_ParamOther( ushort num_param, int val ) { if( IsPlayer() )
-                                                                 ( (Client*) this )->Send_ParamOther( num_param, val );
+void Critter::Send_ParamOther( ushort num_param, int val )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_ParamOther( num_param, val );
 }
-void Critter::Send_CritterParam( Critter* cr, ushort num_param, int val ) { if( IsPlayer() )
-                                                                                ( (Client*) this )->Send_CritterParam( cr, num_param, val );
+void Critter::Send_CritterParam( Critter* cr, ushort num_param, int val )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_CritterParam( cr, num_param, val );
 }
-void Critter::Send_Talk() { if( IsPlayer() )
-                                ( (Client*) this )->Send_Talk();
+void Critter::Send_Talk()
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Talk();
 }
-void Critter::Send_GameInfo( Map* map ) { if( IsPlayer() )
-                                              ( (Client*) this )->Send_GameInfo( map );
+void Critter::Send_GameInfo( Map* map )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_GameInfo( map );
 }
-void Critter::Send_Text( Critter* from_cr, const char* s_str, uchar how_say ) { if( IsPlayer() )
-                                                                                    ( (Client*) this )->Send_Text( from_cr, s_str, how_say );
+void Critter::Send_Text( Critter* from_cr, const char* s_str, uchar how_say )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Text( from_cr, s_str, how_say );
 }
-void Critter::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, ushort intellect, bool unsafe_text ) { if( IsPlayer() )
-                                                                                                                                      ( (Client*) this )->Send_TextEx( from_id, s_str, str_len, how_say, intellect, unsafe_text );
+void Critter::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, ushort intellect, bool unsafe_text )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_TextEx( from_id, s_str, str_len, how_say, intellect, unsafe_text );
 }
-void Critter::Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg ) { if( IsPlayer() )
-                                                                                                  ( (Client*) this )->Send_TextMsg( from_cr, str_num, how_say, num_msg );
+void Critter::Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_TextMsg( from_cr, str_num, how_say, num_msg );
 }
-void Critter::Send_TextMsg( uint from_id, uint str_num, uchar how_say, ushort num_msg ) { if( IsPlayer() )
-                                                                                              ( (Client*) this )->Send_TextMsg( from_id, str_num, how_say, num_msg );
+void Critter::Send_TextMsg( uint from_id, uint str_num, uchar how_say, ushort num_msg )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_TextMsg( from_id, str_num, how_say, num_msg );
 }
-void Critter::Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems ) { if( IsPlayer() )
-                                                                                                                         ( (Client*) this )->Send_TextMsgLex( from_cr, num_str, how_say, num_msg, lexems );
+void Critter::Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_TextMsgLex( from_cr, num_str, how_say, num_msg, lexems );
 }
-void Critter::Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems ) { if( IsPlayer() )
-                                                                                                                     ( (Client*) this )->Send_TextMsgLex( from_id, num_str, how_say, num_msg, lexems );
+void Critter::Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_TextMsgLex( from_id, num_str, how_say, num_msg, lexems );
 }
-void Critter::Send_Action( Critter* from_cr, int action, int action_ext, Item* item ) { if( IsPlayer() )
-                                                                                            ( (Client*) this )->Send_Action( from_cr, action, action_ext, item );
+void Critter::Send_Action( Critter* from_cr, int action, int action_ext, Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Action( from_cr, action, action_ext, item );
 }
-void Critter::Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy ) { if( IsPlayer() )
-                                                                                                                         ( (Client*) this )->Send_Knockout( from_cr, anim2begin, anim2idle, knock_hx, knock_hy );
+void Critter::Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Knockout( from_cr, anim2begin, anim2idle, knock_hx, knock_hy );
 }
-void Critter::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot ) { if( IsPlayer() )
-                                                                                                 ( (Client*) this )->Send_MoveItem( from_cr, item, action, prev_slot );
+void Critter::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_MoveItem( from_cr, item, action, prev_slot );
 }
-void Critter::Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data ) { if( IsPlayer() )
-                                                                                             ( (Client*) this )->Send_ItemData( from_cr, slot, item, ext_data );
+void Critter::Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_ItemData( from_cr, slot, item, ext_data );
 }
-void Critter::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play ) { if( IsPlayer() )
-                                                                                                                               ( (Client*) this )->Send_Animate( from_cr, anim1, anim2, item, clear_sequence, delay_play );
+void Critter::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Animate( from_cr, anim1, anim2, item, clear_sequence, delay_play );
 }
-void Critter::Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 ) { if( IsPlayer() )
-                                                                                        ( (Client*) this )->Send_SetAnims( from_cr, cond, anim1, anim2 );
+void Critter::Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_SetAnims( from_cr, cond, anim1, anim2 );
 }
-void Critter::Send_CombatResult( uint* combat_res, uint len ) { if( IsPlayer() )
-                                                                    ( (Client*) this )->Send_CombatResult( combat_res, len );
+void Critter::Send_CombatResult( uint* combat_res, uint len )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_CombatResult( combat_res, len );
 }
-void Critter::Send_Quest( uint num ) { if( IsPlayer() )
-                                           ( (Client*) this )->Send_Quest( num );
+void Critter::Send_Quest( uint num )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Quest( num );
 }
-void Critter::Send_Quests( UIntVec& nums ) { if( IsPlayer() )
-                                                 ( (Client*) this )->Send_Quests( nums );
+void Critter::Send_Quests( UIntVec& nums )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Quests( nums );
 }
-void Critter::Send_HoloInfo( bool clear, ushort offset, ushort count ) { if( IsPlayer() )
-                                                                             ( (Client*) this )->Send_HoloInfo( clear, offset, count );
+void Critter::Send_HoloInfo( bool clear, ushort offset, ushort count )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_HoloInfo( clear, offset, count );
 }
-void Critter::Send_AutomapsInfo( void* locs_vec, Location* loc ) { if( IsPlayer() )
-                                                                       ( (Client*) this )->Send_AutomapsInfo( locs_vec, loc );
+void Critter::Send_AutomapsInfo( void* locs_vec, Location* loc )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_AutomapsInfo( locs_vec, loc );
 }
-void Critter::Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint follow_wait ) { if( IsPlayer() )
-                                                                                                  ( (Client*) this )->Send_Follow( rule, follow_type, map_pid, follow_wait );
+void Critter::Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint follow_wait )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Follow( rule, follow_type, map_pid, follow_wait );
 }
-void Critter::Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius ) { if( IsPlayer() )
-                                                                                       ( (Client*) this )->Send_Effect( eff_pid, hx, hy, radius );
+void Critter::Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Effect( eff_pid, hx, hy, radius );
 }
-void Critter::Send_FlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy ) { if( IsPlayer() )
-                                                                                                                                               ( (Client*) this )->Send_FlyEffect( eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy );
+void Critter::Send_FlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_FlyEffect( eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy );
 }
-void Critter::Send_PlaySound( uint crid_synchronize, const char* sound_name ) { if( IsPlayer() )
-                                                                                    ( (Client*) this )->Send_PlaySound( crid_synchronize, sound_name );
+void Critter::Send_PlaySound( uint crid_synchronize, const char* sound_name )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_PlaySound( crid_synchronize, sound_name );
 }
-void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext ) { if( IsPlayer() )
-                                                                                                                                            ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
+void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
 }
-void Critter::Send_CritterLexems( Critter* cr ) { if( IsPlayer() )
-                                                      ( (Client*) this )->Send_CritterLexems( cr );
+void Critter::Send_CritterLexems( Critter* cr )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_CritterLexems( cr );
 }
 
 void Critter::SendA_Move( uint move_params )

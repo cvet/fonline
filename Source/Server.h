@@ -105,8 +105,11 @@ public:
 
     static void      SaveHoloInfoFile();
     static bool      LoadHoloInfoFile( FILE* f );
-    static HoloInfo* GetHoloInfo( uint id ) { HoloInfoMapIt it = HolodiskInfo.find( id );
-                                              return it != HolodiskInfo.end() ? ( *it ).second : NULL; }
+    static HoloInfo* GetHoloInfo( uint id )
+    {
+        HoloInfoMapIt it = HolodiskInfo.find( id );
+        return it != HolodiskInfo.end() ? ( *it ).second : NULL;
+    }
     static void AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send );
     static void ErasePlayerHoloInfo( Critter* cr, uint index, bool send );
     static void Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text );
@@ -390,10 +393,16 @@ public:
     static ClientBannedVec Banned;
     static Mutex           BannedLocker;
 
-    static ClientBanned* GetBanByName( const char* name ) { ClientBannedVecIt it = std::find( Banned.begin(), Banned.end(), name );
-                                                            return it != Banned.end() ? &( *it ) : NULL; }
-    static ClientBanned* GetBanByIp( uint ip ) { ClientBannedVecIt it = std::find( Banned.begin(), Banned.end(), ip );
-                                                 return it != Banned.end() ? &( *it ) : NULL; }
+    static ClientBanned* GetBanByName( const char* name )
+    {
+        ClientBannedVecIt it = std::find( Banned.begin(), Banned.end(), name );
+        return it != Banned.end() ? &( *it ) : NULL;
+    }
+    static ClientBanned* GetBanByIp( uint ip )
+    {
+        ClientBannedVecIt it = std::find( Banned.begin(), Banned.end(), ip );
+        return it != Banned.end() ? &( *it ) : NULL;
+    }
     static uint GetBanTime( ClientBanned& ban );
     static void ProcessBans();
     static void SaveBan( ClientBanned& ban, bool expired );
@@ -421,10 +430,16 @@ public:
     static volatile uint LastClientId;
 
     static bool        LoadClientsData();
-    static ClientData* GetClientData( const char* name ) { ClientDataVecIt it = std::find( ClientsData.begin(), ClientsData.end(), name );
-                                                           return it != ClientsData.end() ? &( *it ) : NULL; }
-    static ClientData* GetClientData( uint id ) { ClientDataVecIt it = std::find( ClientsData.begin(), ClientsData.end(), id );
-                                                  return it != ClientsData.end() ? &( *it ) : NULL; }
+    static ClientData* GetClientData( const char* name )
+    {
+        ClientDataVecIt it = std::find( ClientsData.begin(), ClientsData.end(), name );
+        return it != ClientsData.end() ? &( *it ) : NULL;
+    }
+    static ClientData* GetClientData( uint id )
+    {
+        ClientDataVecIt it = std::find( ClientsData.begin(), ClientsData.end(), id );
+        return it != ClientsData.end() ? &( *it ) : NULL;
+    }
 
     // Statistics
     struct Statistics_

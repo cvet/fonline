@@ -101,8 +101,11 @@ struct PathFindData
     Critter* GagCritter;
     Item*    GagItem;
 
-    void     Clear() { memzero( this, sizeof( PathFindData ) );
-                       MoveParams = 0xFFFF; }
+    void     Clear()
+    {
+        memzero( this, sizeof( PathFindData ) );
+        MoveParams = 0xFFFF;
+    }
 };
 
 struct PathStep

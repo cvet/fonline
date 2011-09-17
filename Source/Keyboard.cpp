@@ -9,16 +9,22 @@ namespace Keyb
         bool IsAviable;
         char Rus, RusShift, Eng, EngShift;
         bool operator==( const char& ch ) { return IsAviable && ( Rus == ch || RusShift == ch || Eng == ch || EngShift == ch ); }
-        KeybData( char rus, char rus_shift, char eng, char eng_shift ) { IsAviable = true;
-                                                                         Rus = rus;
-                                                                         RusShift = rus_shift;
-                                                                         Eng = eng;
-                                                                         EngShift = eng_shift; }
-        KeybData() { IsAviable = false;
-                     Rus = 0;
-                     RusShift = 0;
-                     Eng = 0;
-                     EngShift = 0; }
+        KeybData( char rus, char rus_shift, char eng, char eng_shift )
+        {
+            IsAviable = true;
+            Rus = rus;
+            RusShift = rus_shift;
+            Eng = eng;
+            EngShift = eng_shift;
+        }
+        KeybData()
+        {
+            IsAviable = false;
+            Rus = 0;
+            RusShift = 0;
+            Eng = 0;
+            EngShift = 0;
+        }
     };
     typedef vector< KeybData >           KeybDataVec;
     typedef vector< KeybData >::iterator KeybDataVecIt;

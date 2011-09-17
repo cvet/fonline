@@ -1,15 +1,18 @@
 #include "StdAfx.h"
 #include "Server.h"
 
-#define CHECK_NPC_AP( npc, map, need_ap )         do { if( npc->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
-                                                                                                                                                 map->EndCritterTurn(); } else \
-                                                                                                                      npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetParam( ST_CURRENT_AP ) ) ); return; } } while( 0 )
-#define CHECK_NPC_REAL_AP( npc, map, need_ap )    do { if( npc->GetRealAp() < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
-                                                                                                                                   map->EndCritterTurn(); } else \
-                                                                                                        npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); return; } } while( 0 )
-#define CHECK_NPC_AP_R0( npc, map, need_ap )      do { if( npc->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
-                                                                                                                                                 map->EndCritterTurn(); } else \
-                                                                                                                      npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetParam( ST_CURRENT_AP ) ) ); return false; } } while( 0 )
+#define CHECK_NPC_AP( npc, map, need_ap )                                                                                        \
+    do { if( npc->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
+                                                                                                   map->EndCritterTurn(); } else \
+                                                                        npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetParam( ST_CURRENT_AP ) ) ); return; } } while( 0 )
+#define CHECK_NPC_REAL_AP( npc, map, need_ap )                                                                     \
+    do { if( npc->GetRealAp() < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
+                                                                                     map->EndCritterTurn(); } else \
+                                                          npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); return; } } while( 0 )
+#define CHECK_NPC_AP_R0( npc, map, need_ap )                                                                                     \
+    do { if( npc->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
+                                                                                                   map->EndCritterTurn(); } else \
+                                                                        npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetParam( ST_CURRENT_AP ) ) ); return false; } } while( 0 )
 void FOServer::ProcessAI( Npc* npc )
 {
     // Check busy

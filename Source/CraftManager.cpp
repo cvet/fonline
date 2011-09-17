@@ -30,12 +30,15 @@
 #define FIXBOY_SEND_SUCC_MESSAGE    ( 0x0200 )
 #define FIXBOY_SEND_FAIL_MESSAGE    ( 0x0400 )
 #define FIXBOY_DEFAULT              ( 0xFFFF )
-#define CRAFT_RETURN_FAIL           { if( FLAG( flags, FIXBOY_SEND_FAIL_MESSAGE ) ) \
-                                          return CRAFT_RESULT_FAIL; return CRAFT_RESULT_NONE; }
-#define CRAFT_RETURN_SUCC           { if( FLAG( flags, FIXBOY_SEND_SUCC_MESSAGE ) ) \
-                                          return CRAFT_RESULT_SUCC; return CRAFT_RESULT_NONE; }
-#define CRAFT_RETURN_TIMEOUT        { if( FLAG( flags, FIXBOY_SEND_FAIL_MESSAGE ) ) \
-                                          return CRAFT_RESULT_TIMEOUT; return CRAFT_RESULT_NONE; }
+#define CRAFT_RETURN_FAIL                           \
+    { if( FLAG( flags, FIXBOY_SEND_FAIL_MESSAGE ) ) \
+          return CRAFT_RESULT_FAIL; return CRAFT_RESULT_NONE; }
+#define CRAFT_RETURN_SUCC                           \
+    { if( FLAG( flags, FIXBOY_SEND_SUCC_MESSAGE ) ) \
+          return CRAFT_RESULT_SUCC; return CRAFT_RESULT_NONE; }
+#define CRAFT_RETURN_TIMEOUT                        \
+    { if( FLAG( flags, FIXBOY_SEND_FAIL_MESSAGE ) ) \
+          return CRAFT_RESULT_TIMEOUT; return CRAFT_RESULT_NONE; }
 
 CraftManager MrFixit;
 

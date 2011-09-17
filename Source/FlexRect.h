@@ -11,15 +11,21 @@ struct FlexRect
     FlexRect( Ty l, Ty t, Ty r, Ty b ): L( l ), T( t ), R( r ), B( b ) {}
     FlexRect( Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy ): L( l + ox ), T( t + oy ), R( r + ox ), B( b + oy ) {}
     FlexRect( const FlexRect& fr, Ty ox, Ty oy ): L( fr.L + ox ), T( fr.T + oy ), R( fr.R + ox ), B( fr.B + oy ) {}
-    FlexRect& operator=( const FlexRect& fr ) { L = fr.L;
-                                                T = fr.T;
-                                                R = fr.R;
-                                                B = fr.B;
-                                                return *this; }
-    void Clear() { L = 0;
-                   T = 0;
-                   R = 0;
-                   B = 0; }
+    FlexRect& operator=( const FlexRect& fr )
+    {
+        L = fr.L;
+        T = fr.T;
+        R = fr.R;
+        B = fr.B;
+        return *this;
+    }
+    void Clear()
+    {
+        L = 0;
+        T = 0;
+        R = 0;
+        B = 0;
+    }
     bool IsZero() { return !L && !T && !R && !B; }
     Ty   W()      { return R - L + 1; }
     Ty   H()      { return B - T + 1; }
@@ -44,16 +50,22 @@ struct FlexRect
         return L;
     }
 
-    FlexRect& operator()( Ty l, Ty t, Ty r, Ty b ) { L = l;
-                                                     T = t;
-                                                     R = r;
-                                                     B = b;
-                                                     return *this; }
-    FlexRect& operator()( Ty ox, Ty oy ) { L += ox;
-                                           T += oy;
-                                           R += ox;
-                                           B += oy;
-                                           return *this; }
+    FlexRect& operator()( Ty l, Ty t, Ty r, Ty b )
+    {
+        L = l;
+        T = t;
+        R = r;
+        B = b;
+        return *this;
+    }
+    FlexRect& operator()( Ty ox, Ty oy )
+    {
+        L += ox;
+        T += oy;
+        R += ox;
+        B += oy;
+        return *this;
+    }
 };
 
 typedef FlexRect< int >   INTRECT;
@@ -68,11 +80,17 @@ struct FlexPoint
     FlexPoint( const FlexPoint& r ): X( r.X ), Y( r.Y ) {}
     FlexPoint( Ty x, Ty y ): X( x ), Y( y ) {}
     FlexPoint( const FlexPoint& fp, Ty ox, Ty oy ): X( fp.X + ox ), Y( fp.Y + oy ) {}
-    FlexPoint& operator=( const FlexPoint& fp ) { X = fp.X;
-                                                  Y = fp.Y;
-                                                  return *this; }
-    void Clear() { X = 0;
-                   Y = 0; }
+    FlexPoint& operator=( const FlexPoint& fp )
+    {
+        X = fp.X;
+        Y = fp.Y;
+        return *this;
+    }
+    void Clear()
+    {
+        X = 0;
+        Y = 0;
+    }
     bool IsZero() { return !X && !Y; }
 
     Ty& operator[]( int index )
@@ -89,9 +107,12 @@ struct FlexPoint
         return X;
     }
 
-    FlexPoint& operator()( Ty x, Ty y ) { X = x;
-                                          Y = y;
-                                          return *this; }
+    FlexPoint& operator()( Ty x, Ty y )
+    {
+        X = x;
+        Y = y;
+        return *this;
+    }
 };
 
 typedef FlexPoint< int >   INTPOINT;

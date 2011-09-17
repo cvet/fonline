@@ -148,7 +148,8 @@ bool FOClient::Init( HWND hwnd )
     #endif
 
     // Register dll script data
-    struct CritterChangeParameter_ {
+    struct CritterChangeParameter_
+    {
         static void CritterChangeParameter( void*, uint ) {} };                           // Dummy
     GameOpt.CritterChangeParameter = &CritterChangeParameter_::CritterChangeParameter;
 
@@ -202,10 +203,12 @@ bool FOClient::Init( HWND hwnd )
     };
     GameOpt.IsSpriteHit = &IsSpriteHit_::IsSpriteHit;
 
-    struct GetNameByHash_ {
+    struct GetNameByHash_
+    {
         static const char* GetNameByHash( uint hash ) { return Str::GetName( hash ); } };
     GameOpt.GetNameByHash = &GetNameByHash_::GetNameByHash;
-    struct GetHashByName_ {
+    struct GetHashByName_
+    {
         static uint GetHashByName( const char* name ) { return Str::GetHash( name ); } };
     GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
 
@@ -6564,7 +6567,8 @@ void FOClient::Net_OnGameInfo()
     CHECK_IN_BUFF_ERROR;
 
     SYSTEMTIME st = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    union {
+    union
+    {
         FILETIME       ft;
         ULARGE_INTEGER ul;
     } ft;
@@ -8175,8 +8179,9 @@ void FOClient::SetDayTime( bool refresh )
 Item* FOClient::GetTargetContItem()
 {
     static Item inv_slot;
-    #define TRY_SEARCH_IN_CONT( cont )           do { ItemVecIt it = std::find( cont.begin(), cont.end(), item_id ); if( it != cont.end() ) \
-                                                          return &( *it ); } while( 0 )
+    #define TRY_SEARCH_IN_CONT( cont )                                                             \
+        do { ItemVecIt it = std::find( cont.begin(), cont.end(), item_id ); if( it != cont.end() ) \
+                 return &( *it ); } while( 0 )
     #define TRY_SEARCH_IN_SLOT( target_item )    do { if( target_item->GetId() == item_id ) { inv_slot = *target_item; return &inv_slot; } } while( 0 )
 
     if( !TargetSmth.IsContItem() )
@@ -8412,14 +8417,16 @@ void FOClient::CrittersProcess()
     }
 
     ActionEvent act = ChosenAction[ 0 ];
-    #define CHECK_NEED_AP( need_ap )         { if( IsTurnBased && !IsTurnBasedMyTurn() )                                                                                                                                                                                                                                                                                        \
-                                                   break; if( Chosen->GetParam( ST_ACTION_POINTS ) < (int) ( need_ap ) ) { AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, need_ap ) ); break; } if( Chosen->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( IsTurnBased ) { if( Chosen->GetParam( ST_CURRENT_AP ) )                                               \
-                                                                                                                                                                                                                                                                                              AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, need_ap ) ); break; } else \
-                                                                                                                                                                                                                                                                          return; } }
-    #define CHECK_NEED_REAL_AP( need_ap )    { if( IsTurnBased && !IsTurnBasedMyTurn() )                                                                                                                                                                                                                                                                                                                         \
-                                                   break; if( Chosen->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER < (int) ( need_ap ) ) { AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, ( need_ap ) / AP_DIVIDER ) ); break; } if( Chosen->GetRealAp() < (int) ( need_ap ) ) { if( IsTurnBased ) { if( Chosen->GetRealAp() )                                                                              \
-                                                                                                                                                                                                                                                                                                              AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, ( need_ap ) / AP_DIVIDER ) ); break; } else \
-                                                                                                                                                                                                                                                                                          return; } }
+    #define CHECK_NEED_AP( need_ap )                                                                                                                                                                                                                                                                                                       \
+        { if( IsTurnBased && !IsTurnBasedMyTurn() )                                                                                                                                                                                                                                                                                        \
+              break; if( Chosen->GetParam( ST_ACTION_POINTS ) < (int) ( need_ap ) ) { AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, need_ap ) ); break; } if( Chosen->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( IsTurnBased ) { if( Chosen->GetParam( ST_CURRENT_AP ) )                                               \
+                                                                                                                                                                                                                                                         AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, need_ap ) ); break; } else \
+                                                                                                                                                                                                                                     return; } }
+    #define CHECK_NEED_REAL_AP( need_ap )                                                                                                                                                                                                                                                                                                                                   \
+        { if( IsTurnBased && !IsTurnBasedMyTurn() )                                                                                                                                                                                                                                                                                                                         \
+              break; if( Chosen->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER < (int) ( need_ap ) ) { AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, ( need_ap ) / AP_DIVIDER ) ); break; } if( Chosen->GetRealAp() < (int) ( need_ap ) ) { if( IsTurnBased ) { if( Chosen->GetRealAp() )                                                                              \
+                                                                                                                                                                                                                                                                         AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_AP, ( need_ap ) / AP_DIVIDER ) ); break; } else \
+                                                                                                                                                                                                                                                     return; } }
 
     // Force end move
     if( act.Type != CHOSEN_MOVE && act.Type != CHOSEN_MOVE_TO_CRIT && MoveDirs.size() )

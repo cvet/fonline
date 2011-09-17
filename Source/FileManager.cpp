@@ -231,7 +231,8 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     void* file = FileOpen( folder_path, false );
     if( file )
     {
-        union {
+        union
+        {
             FILETIME       ft;
             ULARGE_INTEGER ul;
         } tc, ta, tw;

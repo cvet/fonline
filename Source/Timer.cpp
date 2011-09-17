@@ -138,7 +138,8 @@ void Timer::GetCurrentDateTime( DateTime& dt )
 bool Timer::DateTimeToFullTime( DateTime& dt, uint64& ft )
 {
     #if defined ( FO_WINDOWS )
-    union {
+    union
+    {
         FILETIME       ft;
         ULARGE_INTEGER ul;
     } ft_;
@@ -156,7 +157,8 @@ bool Timer::FullTimeToDateTime( uint64& ft, DateTime& dt )
 {
     #if defined ( FO_WINDOWS )
     SYSTEMTIME st;
-    union {
+    union
+    {
         FILETIME       ft;
         ULARGE_INTEGER ul;
     } ft_;

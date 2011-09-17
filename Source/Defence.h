@@ -22,13 +22,14 @@ uint UIDDUMMY8 = 23423111;
 uint UIDDUMMY9[ 55 ];
 uint UIDDUMMY10 = -1;
 
-#define CHECK_UID0( uid )                  ( uid[ 0 ] != *UID0 || uid[ 1 ] != *UID1 || uid[ 2 ] != *UID2 || uid[ 3 ] != *UID3 || uid[ 4 ] != *UID4 )
-#define CHECK_UID1( uid )                  ( uid[ 0 ] != UIDCACHE[ 0 ] || uid[ 1 ] != UIDCACHE[ 1 ] || uid[ 2 ] != UIDCACHE[ 2 ] || uid[ 3 ] != UIDCACHE[ 3 ] || uid[ 4 ] != UIDCACHE[ 4 ] )
-#define CHECK_UID2( uid )                  ( uid[ 0 ] != UIDCACHE2[ 0 ] || uid[ 1 ] != UIDCACHE2[ 1 ] || uid[ 2 ] != UIDCACHE2[ 2 ] || uid[ 3 ] != UIDCACHE2[ 3 ] || uid[ 4 ] != UIDCACHE2[ 4 ] )
+#define CHECK_UID0( uid )     ( uid[ 0 ] != *UID0 || uid[ 1 ] != *UID1 || uid[ 2 ] != *UID2 || uid[ 3 ] != *UID3 || uid[ 4 ] != *UID4 )
+#define CHECK_UID1( uid )     ( uid[ 0 ] != UIDCACHE[ 0 ] || uid[ 1 ] != UIDCACHE[ 1 ] || uid[ 2 ] != UIDCACHE[ 2 ] || uid[ 3 ] != UIDCACHE[ 3 ] || uid[ 4 ] != UIDCACHE[ 4 ] )
+#define CHECK_UID2( uid )     ( uid[ 0 ] != UIDCACHE2[ 0 ] || uid[ 1 ] != UIDCACHE2[ 1 ] || uid[ 2 ] != UIDCACHE2[ 2 ] || uid[ 3 ] != UIDCACHE2[ 3 ] || uid[ 4 ] != UIDCACHE2[ 4 ] )
 
-#define UID_FLAGS( result, set, unset )    if( result ) \
+#define UID_FLAGS( result, set, unset ) \
+    if( result )                        \
         SETFLAG( result, set ); UNSETFLAG( result, unset )
-#define UID_CALC( result )                 UIDXOR ^= result; UIDOR |= result; UIDCALC += result
+#define UID_CALC( result )    UIDXOR ^= result; UIDOR |= result; UIDCALC += result
 
 #define UID_DUMMY_CALCS0           for( int i = 0; i < Random( 50, 100 ); i++ ) { UIDDUMMY3[ Random( 5, 25 ) ] ^= UIDDUMMY5; }
 #define UID_DUMMY_CALCS1           UIDDUMMY3[ 16 ] &= UIDDUMMY9[ 44 ]; UID_DUMMY_CALCS3

@@ -1072,19 +1072,25 @@ int  GameVarSubGameVar( GameVar& var, GameVar& _right )      { return var - _rig
 int  GameVarMulGameVar( GameVar& var, GameVar& _right )      { return var * _right; }
 int  GameVarDivGameVar( GameVar& var, GameVar& _right )      { return var / _right; }
 bool GameVarEqualInt( const GameVar& var, const int _right ) { return var == _right; }
-int  GameVarCmpInt( const GameVar& var, const int _right )   { int cmp = 0;
-                                                               if( var < _right )
-                                                                   cmp = -1;
-                                                               else if( var > _right )
-                                                                   cmp = 1;
-                                                               return cmp; }
+int  GameVarCmpInt( const GameVar& var, const int _right )
+{
+    int cmp = 0;
+    if( var < _right )
+        cmp = -1;
+    else if( var > _right )
+        cmp = 1;
+    return cmp;
+}
 bool GameVarEqualGameVar( const GameVar& var, const GameVar& _right ) { return var == _right; }
-int  GameVarCmpGameVar( const GameVar& var, const GameVar& _right )   { int cmp = 0;
-                                                                        if( var < _right )
-                                                                            cmp = -1;
-                                                                        else if( var > _right )
-                                                                            cmp = 1;
-                                                                        return cmp; }
+int  GameVarCmpGameVar( const GameVar& var, const GameVar& _right )
+{
+    int cmp = 0;
+    if( var < _right )
+        cmp = -1;
+    else if( var > _right )
+        cmp = 1;
+    return cmp;
+}
 #endif // FONLINE_SERVER
 
 /**************************************************************************************************

@@ -153,8 +153,11 @@ public:
     static Item*     SlotEnabledCacheDataExt[ 0x100 ];
 
     CritDataExt* GetDataExt();
-    void         SetMaps( uint map_id, ushort map_pid ) { Data.MapId = map_id;
-                                                          Data.MapPid = map_pid; }
+    void         SetMaps( uint map_id, ushort map_pid )
+    {
+        Data.MapId = map_id;
+        Data.MapPid = map_pid;
+    }
     void SetLexems( const char* lexems );
     bool IsLexems() { return Data.Lexems[ 0 ] != 0; }
 
@@ -234,8 +237,11 @@ public:
     bool        MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count );
     uint        RealCountItems() { return (uint) invItems.size(); }
     uint        CountItems();
-    ItemPtrVec& GetInventory() { SyncLockItems();
-                                 return invItems; }
+    ItemPtrVec& GetInventory()
+    {
+        SyncLockItems();
+        return invItems;
+    }
     bool IsHaveGeckItem();
 
     // Scripts
@@ -313,16 +319,22 @@ private:
     uint waitEndTick;
 
 public:
-    bool IsFree()                { return ( Timer::GameTick() - startBreakTime >= breakTime ); }
-    bool IsBusy()                { return !IsFree(); }
-    void SetBreakTime( uint ms ) { breakTime = ms;
-                                   startBreakTime = Timer::GameTick();
-                                   ApRegenerationTick = 0; }
-    void SetBreakTimeDelta( uint ms ) { uint dt = ( Timer::GameTick() - startBreakTime );
-                                        if( dt > breakTime ) dt -= breakTime;
-                                        else dt = 0;
-                                        if( dt > ms ) dt = 0;
-                                        SetBreakTime( ms - dt ); }
+    bool IsFree() { return ( Timer::GameTick() - startBreakTime >= breakTime ); }
+    bool IsBusy() { return !IsFree(); }
+    void SetBreakTime( uint ms )
+    {
+        breakTime = ms;
+        startBreakTime = Timer::GameTick();
+        ApRegenerationTick = 0;
+    }
+    void SetBreakTimeDelta( uint ms )
+    {
+        uint dt = ( Timer::GameTick() - startBreakTime );
+        if( dt > breakTime ) dt -= breakTime;
+        else dt = 0;
+        if( dt > ms ) dt = 0;
+        SetBreakTime( ms - dt );
+    }
 
     void SetWait( uint ms ) { waitEndTick = Timer::GameTick() + ms; }
     bool IsWait()           { return Timer::GameTick() < waitEndTick; }
@@ -427,9 +439,12 @@ public:
     int         GetParam( uint index );
     void        ChangeParam( uint index );
     void        ProcessChangedParams();
-    uint        GetFollowCrId()            { return Data.Params[ ST_FOLLOW_CRIT ]; }
-    void        SetFollowCrId( uint crid ) { ChangeParam( ST_FOLLOW_CRIT );
-                                             Data.Params[ ST_FOLLOW_CRIT ] = crid; }
+    uint        GetFollowCrId() { return Data.Params[ ST_FOLLOW_CRIT ]; }
+    void        SetFollowCrId( uint crid )
+    {
+        ChangeParam( ST_FOLLOW_CRIT );
+        Data.Params[ ST_FOLLOW_CRIT ] = crid;
+    }
     bool IsRawParam( uint index )  { return Data.Params[ index ] != 0; }
     int  GetRawParam( uint index ) { return Data.Params[ index ]; }
     bool IsDmgLeg()                { return Data.Params[ DAMAGE_RIGHT_LEG ] != 0 || Data.Params[ DAMAGE_LEFT_LEG ] != 0; }
@@ -446,22 +461,31 @@ public:
     bool IsDead()     { return Data.Cond == COND_DEAD; }
     bool IsKnockout() { return Data.Cond == COND_KNOCKOUT; }
     bool CheckFind( int find_type );
-    int  GetRealAp()      { return Data.Params[ ST_CURRENT_AP ]; }
-    int  GetAllAp()       { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
-    void SubAp( int val ) { ChangeParam( ST_CURRENT_AP );
-                            Data.Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
-                            ApRegenerationTick = 0; }
-    void SubMoveAp( int val ) { ChangeParam( ST_CURRENT_AP );
-                                Data.Params[ ST_MOVE_AP ] -= val; }
+    int  GetRealAp() { return Data.Params[ ST_CURRENT_AP ]; }
+    int  GetAllAp()  { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
+    void SubAp( int val )
+    {
+        ChangeParam( ST_CURRENT_AP );
+        Data.Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
+        ApRegenerationTick = 0;
+    }
+    void SubMoveAp( int val )
+    {
+        ChangeParam( ST_CURRENT_AP );
+        Data.Params[ ST_MOVE_AP ] -= val;
+    }
 
     // Turn based
     bool IsTurnBased() { return TB_BATTLE_TIMEOUT_CHECK( GetParam( TO_BATTLE ) ); }
     bool CheckMyTurn( Map* map );
     int  GetApCostCritterMove( bool is_run ) { return IsTurnBased() ? GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) ) : ( GetParam( TO_BATTLE ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0 ); }
     int  GetApCostMoveItemContainer()        { return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer; }
-    int  GetApCostMoveItemInventory()        { int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
-                                               if( IsRawParam( PE_QUICK_POCKETS ) ) val /= 2;
-                                               return val; }
+    int  GetApCostMoveItemInventory()
+    {
+        int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
+        if( IsRawParam( PE_QUICK_POCKETS ) ) val /= 2;
+        return val;
+    }
     int GetApCostPickItem()    { return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem; }
     int GetApCostDropItem()    { return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem; }
     int GetApCostPickCritter() { return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter; }
@@ -478,10 +502,13 @@ public:
     // Home
     uint TryingGoHomeTick;
 
-    void SetHome( uint map_id, ushort hx, ushort hy, uchar dir ) { Data.HomeMap = map_id;
-                                                                   Data.HomeX = hx;
-                                                                   Data.HomeY = hy;
-                                                                   Data.HomeOri = dir; }
+    void SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
+    {
+        Data.HomeMap = map_id;
+        Data.HomeX = hx;
+        Data.HomeY = hy;
+        Data.HomeOri = dir;
+    }
     uint   GetHomeMap() { return Data.HomeMap; }
     ushort GetHomeX()   { return Data.HomeX; }
     ushort GetHomeY()   { return Data.HomeY; }
@@ -501,10 +528,13 @@ public:
         uint Rate;
         uint NextTime;
         int  Identifier;
-        void operator=( const CrTimeEvent& r ) { FuncNum = r.FuncNum;
-                                                 Rate = r.Rate;
-                                                 NextTime = r.NextTime;
-                                                 Identifier = r.Identifier; }
+        void operator=( const CrTimeEvent& r )
+        {
+            FuncNum = r.FuncNum;
+            Rate = r.Rate;
+            NextTime = r.NextTime;
+            Identifier = r.Identifier;
+        }
     };
     typedef vector< CrTimeEvent >           CrTimeEventVec;
     typedef vector< CrTimeEvent >::iterator CrTimeEventVecIt;
@@ -583,7 +613,8 @@ public:
     # define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
     # define BIN_END( cl_ )       cl_->Bin.Unlock()
     # define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
-    # define BOUT_END( cl_ )      cl_->Bout.Unlock(); if( InterlockedCompareExchange( &cl_->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE ) \
+    # define BOUT_END( cl_ )                                                                                  \
+        cl_->Bout.Unlock(); if( InterlockedCompareExchange( &cl_->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE ) \
             ( *Client::SendData )( cl_->NetIOOut )
     void Shutdown();
     #endif
@@ -593,10 +624,13 @@ public:
     const char* GetIpStr();
 
 public:
-    bool IsOnline()   { return !IsDisconnected; }
-    bool IsOffline()  { return IsDisconnected; }
-    void Disconnect() { IsDisconnected = true;
-                        if( !DisconnectTick ) DisconnectTick = Timer::FastTick(); }
+    bool IsOnline()  { return !IsDisconnected; }
+    bool IsOffline() { return IsDisconnected; }
+    void Disconnect()
+    {
+        IsDisconnected = true;
+        if( !DisconnectTick ) DisconnectTick = Timer::FastTick();
+    }
     void RemoveFromGame() { CanBeRemoved = true; }
     uint GetOfflineTime() { return Timer::FastTick() - DisconnectTick; }
 
@@ -608,8 +642,11 @@ private:
 public:
     bool IsToPing() { return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !GetParam( TO_TRANSFER ) && !Singleplayer; }
     void PingClient();
-    void PingOk( uint next_ping ) { pingOk = true;
-                                    pingNextTick = Timer::FastTick() + next_ping; }
+    void PingOk( uint next_ping )
+    {
+        pingOk = true;
+        pingNextTick = Timer::FastTick() + next_ping;
+    }
 
     // Sends
     void Send_Move( Critter* from_cr, uint move_params );
@@ -740,8 +777,11 @@ public:
     void NextPlane( int reason, Critter* some_cr = NULL, Item* some_item = NULL );
     bool RunPlane( int reason, uint& r0, uint& r1, uint& r2 );
     bool IsPlaneAviable( int plane_type );
-    bool IsCurPlane( int plane_type ) { AIDataPlane* p = GetCurPlane();
-                                        return p ? p->Type == plane_type : false; }
+    bool IsCurPlane( int plane_type )
+    {
+        AIDataPlane* p = GetCurPlane();
+        return p ? p->Type == plane_type : false;
+    }
     AIDataPlane*    GetCurPlane() { return aiPlanes.size() ? aiPlanes[ 0 ]->GetCurPlane() : NULL; }
     AIDataPlaneVec& GetPlanes()   { return aiPlanes; }
     void            DropPlanes();

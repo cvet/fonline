@@ -41,14 +41,17 @@ public:
     bool IsScroll() { return GameOpt.ScrollMouseUp || GameOpt.ScrollMouseRight || GameOpt.ScrollMouseDown || GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybUp || GameOpt.ScrollKeybRight || GameOpt.ScrollKeybDown || GameOpt.ScrollKeybLeft; }
     void ProcessMouseScroll();
     void ProcessKeybScroll( bool down, uchar dik );
-    void DropScroll() { GameOpt.ScrollMouseUp = false;
-                        GameOpt.ScrollMouseRight = false;
-                        GameOpt.ScrollMouseDown = false;
-                        GameOpt.ScrollMouseLeft = false;
-                        GameOpt.ScrollKeybUp = false;
-                        GameOpt.ScrollKeybRight = false;
-                        GameOpt.ScrollKeybDown = false;
-                        GameOpt.ScrollKeybLeft = false; }
+    void DropScroll()
+    {
+        GameOpt.ScrollMouseUp = false;
+        GameOpt.ScrollMouseRight = false;
+        GameOpt.ScrollMouseDown = false;
+        GameOpt.ScrollMouseLeft = false;
+        GameOpt.ScrollKeybUp = false;
+        GameOpt.ScrollKeybRight = false;
+        GameOpt.ScrollKeybDown = false;
+        GameOpt.ScrollKeybLeft = false;
+    }
     bool IsCurInWindow();
     int  MainLoop();
     void NetDisconnect();
@@ -293,21 +296,33 @@ public:
         SmthSelected() { Clear(); }
         bool operator!=( const SmthSelected& r ) { return smthType != r.smthType || smthId != r.smthId || smthParam != r.smthParam; }
         bool operator==( const SmthSelected& r ) { return smthType == r.smthType && smthId == r.smthId && smthParam == r.smthParam; }
-        void Clear()                             { smthType = SMTH_NONE;
-                                                   smthId = 0; }
-        bool IsSmth()              { return smthType != SMTH_NONE; }
-        bool IsCritter()           { return smthType == SMTH_CRITTER; }
-        bool IsItem()              { return smthType == SMTH_ITEM; }
-        bool IsContItem()          { return smthType == SMTH_CONT_ITEM; }
-        void SetCritter( uint id ) { smthType = SMTH_CRITTER;
-                                     smthId = id;
-                                     smthParam = 0; }
-        void SetItem( uint id ) { smthType = SMTH_ITEM;
-                                  smthId = id;
-                                  smthParam = 0; }
-        void SetContItem( uint id, int cont_type ) { smthType = SMTH_CONT_ITEM;
-                                                     smthId = id;
-                                                     smthParam = cont_type; }
+        void Clear()
+        {
+            smthType = SMTH_NONE;
+            smthId = 0;
+        }
+        bool IsSmth()     { return smthType != SMTH_NONE; }
+        bool IsCritter()  { return smthType == SMTH_CRITTER; }
+        bool IsItem()     { return smthType == SMTH_ITEM; }
+        bool IsContItem() { return smthType == SMTH_CONT_ITEM; }
+        void SetCritter( uint id )
+        {
+            smthType = SMTH_CRITTER;
+            smthId = id;
+            smthParam = 0;
+        }
+        void SetItem( uint id )
+        {
+            smthType = SMTH_ITEM;
+            smthId = id;
+            smthParam = 0;
+        }
+        void SetContItem( uint id, int cont_type )
+        {
+            smthType = SMTH_CONT_ITEM;
+            smthId = id;
+            smthParam = cont_type;
+        }
         uint GetId()    { return smthId; }
         int  GetParam() { return smthParam; }
     };
@@ -320,12 +335,15 @@ public:
         uint Param[ 6 ];
         bool operator==( const ActionEvent& r ) { return Type == r.Type && Param[ 0 ] == r.Param[ 0 ] && Param[ 1 ] == r.Param[ 1 ] && Param[ 2 ] == r.Param[ 2 ] && Param[ 3 ] == r.Param[ 3 ] && Param[ 4 ] == r.Param[ 4 ] && Param[ 4 ] == r.Param[ 5 ]; }
         ActionEvent() {}
-        ActionEvent( uint type, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5 ): Type( type ) { Param[ 0 ] = param0;
-                                                                                                                               Param[ 1 ] = param1;
-                                                                                                                               Param[ 2 ] = param2;
-                                                                                                                               Param[ 3 ] = param3;
-                                                                                                                               Param[ 4 ] = param4;
-                                                                                                                               Param[ 5 ] = param5; }
+        ActionEvent( uint type, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5 ): Type( type )
+        {
+            Param[ 0 ] = param0;
+            Param[ 1 ] = param1;
+            Param[ 2 ] = param2;
+            Param[ 3 ] = param3;
+            Param[ 4 ] = param4;
+            Param[ 5 ] = param5;
+        }
         ActionEvent( const ActionEvent& r ) { memcpy( this, &r, sizeof( ActionEvent ) ); }
     };
     typedef vector< ActionEvent >           ActionEventVec;
@@ -653,10 +671,16 @@ public:
     bool IsCurInRect( INTRECT& rect, int ax, int ay )                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
     bool IsCurInRect( INTRECT& rect )                                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
     bool IsCurInRectNoTransp( uint spr_id, INTRECT& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
-    int  GetSprCX( uint spr_id )                                           { SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-                                                                             return si ? ( si->Width / 2 ) + si->OffsX : 0; };
-    int GetSprCY( uint spr_id ) { SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-                                  return si ? ( si->Height / 2 ) + si->OffsY : 0; };
+    int  GetSprCX( uint spr_id )
+    {
+        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+        return si ? ( si->Width / 2 ) + si->OffsX : 0;
+    };
+    int GetSprCY( uint spr_id )
+    {
+        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+        return si ? ( si->Height / 2 ) + si->OffsY : 0;
+    };
 
     void DrawIndicator( INTRECT& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left );
 
@@ -1512,19 +1536,28 @@ public:
         uint    Num;
         bool    IsTrue;
 
-        SCraft( INTRECT& pos, string& name, uint num, bool is_true ) { Pos = pos;
-                                                                       Name = name;
-                                                                       Num = num;
-                                                                       IsTrue = is_true; }
-        SCraft( const SCraft& _right ) { Pos = _right.Pos;
-                                         Name = _right.Name;
-                                         Num = _right.Num;
-                                         IsTrue = _right.IsTrue; }
-        SCraft& operator=( const SCraft& _right ) { Pos = _right.Pos;
-                                                    Name = _right.Name;
-                                                    Num = _right.Num;
-                                                    IsTrue = _right.IsTrue;
-                                                    return *this; }
+        SCraft( INTRECT& pos, string& name, uint num, bool is_true )
+        {
+            Pos = pos;
+            Name = name;
+            Num = num;
+            IsTrue = is_true;
+        }
+        SCraft( const SCraft& _right )
+        {
+            Pos = _right.Pos;
+            Name = _right.Name;
+            Num = _right.Num;
+            IsTrue = _right.IsTrue;
+        }
+        SCraft& operator=( const SCraft& _right )
+        {
+            Pos = _right.Pos;
+            Name = _right.Name;
+            Num = _right.Num;
+            IsTrue = _right.IsTrue;
+            return *this;
+        }
     };
     typedef vector< SCraft >    SCraftVec;
     typedef vector< SCraftVec > SCraftVecVec;
@@ -1543,8 +1576,11 @@ public:
         string     Text;
         AnyFrames* Anim;
 
-        FixDrawComponent( INTRECT& r, string& text ): IsText( true ), Anim( NULL ) { Rect = r;
-                                                                                     Text = text; }
+        FixDrawComponent( INTRECT& r, string& text ): IsText( true ), Anim( NULL )
+        {
+            Rect = r;
+            Text = text;
+        }
         FixDrawComponent( INTRECT& r, AnyFrames* anim ): IsText( false ), Anim( anim ) { Rect = r; }
     };
     typedef vector< FixDrawComponent* > FixDrawComponentVec;
@@ -1688,13 +1724,19 @@ public:
         string Time;
 
         MessBoxMessage( int type, const char* mess, const char* time ): Type( type ), Mess( mess ), Time( time ) {}
-        MessBoxMessage( const MessBoxMessage& r ) { Type = r.Type;
-                                                    Mess = r.Mess;
-                                                    Time = r.Time; }
-        MessBoxMessage& operator=( const MessBoxMessage& r ) { Type = r.Type;
-                                                               Mess = r.Mess;
-                                                               Time = r.Time;
-                                                               return *this; }
+        MessBoxMessage( const MessBoxMessage& r )
+        {
+            Type = r.Type;
+            Mess = r.Mess;
+            Time = r.Time;
+        }
+        MessBoxMessage& operator=( const MessBoxMessage& r )
+        {
+            Type = r.Type;
+            Mess = r.Mess;
+            Time = r.Time;
+            return *this;
+        }
     };
     typedef vector< MessBoxMessage > MessBoxMessageVec;
 

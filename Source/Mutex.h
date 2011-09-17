@@ -87,21 +87,36 @@ private:
     MutexEvent& operator=( const MutexEvent& ) { return *this; }
 
 public:
-    MutexEvent() { pthread_mutex_init( &ptMutex, NULL );
-                   pthread_cond_init( &ptCond, NULL );
-                   flag = true; }
-    ~MutexEvent() { pthread_mutex_destroy( &ptMutex );
-                    pthread_cond_destroy( &ptCond ); }
-    void Allow() { pthread_mutex_lock( &ptMutex );
-                   flag = true;
-                   pthread_cond_broadcast( &ptCond );
-                   pthread_mutex_unlock( &ptMutex ); }
-    void Disallow() { pthread_mutex_lock( &ptMutex );
-                      flag = false;
-                      pthread_mutex_unlock( &ptMutex ); }
-    void Wait() { pthread_mutex_lock( &ptMutex );
-                  if( !flag ) pthread_cond_wait( &ptCond, &ptMutex );
-                  pthread_mutex_unlock( &ptMutex ); }
+    MutexEvent()
+    {
+        pthread_mutex_init( &ptMutex, NULL );
+        pthread_cond_init( &ptCond, NULL );
+        flag = true;
+    }
+    ~MutexEvent()
+    {
+        pthread_mutex_destroy( &ptMutex );
+        pthread_cond_destroy( &ptCond );
+    }
+    void Allow()
+    {
+        pthread_mutex_lock( &ptMutex );
+        flag = true;
+        pthread_cond_broadcast( &ptCond );
+        pthread_mutex_unlock( &ptMutex );
+    }
+    void Disallow()
+    {
+        pthread_mutex_lock( &ptMutex );
+        flag = false;
+        pthread_mutex_unlock( &ptMutex );
+    }
+    void Wait()
+    {
+        pthread_mutex_lock( &ptMutex );
+        if( !flag ) pthread_cond_wait( &ptCond, &ptMutex );
+        pthread_mutex_unlock( &ptMutex );
+    }
 };
 
 #endif
@@ -130,15 +145,21 @@ private:
 
 public:
     MutexCode(): mcCounter( 0 ) {}
-    void LockCode() { mcLocker.Lock();
-                      mcEvent.Disallow();
-                      while( InterlockedCompareExchange( &mcCounter, 0, 0 ) ) Sleep( 0 );
-                      mcLocker.Unlock(); }
+    void LockCode()
+    {
+        mcLocker.Lock();
+        mcEvent.Disallow();
+        while( InterlockedCompareExchange( &mcCounter, 0, 0 ) ) Sleep( 0 );
+        mcLocker.Unlock();
+    }
     void UnlockCode() { mcEvent.Allow(); }
-    void EnterCode()  { mcLocker.Lock();
-                        mcEvent.Wait();
-                        InterlockedIncrement( &mcCounter );
-                        mcLocker.Unlock(); }
+    void EnterCode()
+    {
+        mcLocker.Lock();
+        mcEvent.Wait();
+        InterlockedIncrement( &mcCounter );
+        mcLocker.Unlock();
+    }
     void LeaveCode() { InterlockedDecrement( &mcCounter ); }
 };
 
@@ -153,19 +174,25 @@ private:
 
 public:
     MutexSynchronizer(): msCounter( 0 ) {}
-    void Synchronize( long count ) { InterlockedIncrement( &msCounter );
-                                     msLocker.Lock();
-                                     msEvent.Wait();
-                                     InterlockedDecrement( &msCounter );
-                                     msEvent.Disallow();
-                                     while( InterlockedCompareExchange( &msCounter, 0, 0 ) != count ) Sleep( 0 );
-                                     msLocker.Unlock(); }
-    void Resynchronize()    { msEvent.Allow(); }
-    void SynchronizePoint() { InterlockedIncrement( &msCounter );
-                              msLocker.Lock();
-                              msEvent.Wait();
-                              InterlockedDecrement( &msCounter );
-                              msLocker.Unlock(); }
+    void Synchronize( long count )
+    {
+        InterlockedIncrement( &msCounter );
+        msLocker.Lock();
+        msEvent.Wait();
+        InterlockedDecrement( &msCounter );
+        msEvent.Disallow();
+        while( InterlockedCompareExchange( &msCounter, 0, 0 ) != count ) Sleep( 0 );
+        msLocker.Unlock();
+    }
+    void Resynchronize() { msEvent.Allow(); }
+    void SynchronizePoint()
+    {
+        InterlockedIncrement( &msCounter );
+        msLocker.Lock();
+        msEvent.Wait();
+        InterlockedDecrement( &msCounter );
+        msLocker.Unlock();
+    }
 };
 
 class MutexSpinlock

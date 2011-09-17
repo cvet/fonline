@@ -56,8 +56,11 @@ public:
     DemandResult(): Type( DR_NONE ), Who( 'p' ), ParamId( 0 ), NoRecheck( false ), RetValue( false ), Op( 0 ), ValuesCount( 0 ) {}
     #else
     DemandResult(): Type( DR_NONE ), Who( 'p' ), ParamId( 0 ), NoRecheck( false ), RetValue( false ), Op( 0 ), Value( 0 ), ValuesCount( 0 ) { MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DemandResult ) ); }
-    DemandResult( const DemandResult& r ) { *this = r;
-                                            MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DemandResult ) ); }
+    DemandResult( const DemandResult& r )
+    {
+        *this = r;
+        MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DemandResult ) );
+    }
     ~DemandResult() { MEMORY_PROCESS( MEMORY_DIALOG, -(int) sizeof( DemandResult ) ); }
     #endif
 };
@@ -76,8 +79,11 @@ public:
     DialogAnswer(): Link( 0 ), TextId( 0 ) {}
     #else
     DialogAnswer(): Link( 0 ), TextId( 0 ) { MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DialogAnswer ) ); }
-    DialogAnswer( const DialogAnswer& r ) { *this = r;
-                                            MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DialogAnswer ) ); }
+    DialogAnswer( const DialogAnswer& r )
+    {
+        *this = r;
+        MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DialogAnswer ) );
+    }
     ~DialogAnswer() { MEMORY_PROCESS( MEMORY_DIALOG, -(int) sizeof( DialogAnswer ) ); }
     #endif
 };
@@ -105,10 +111,15 @@ public:
               #ifdef FONLINE_NPCEDITOR
     { DlgScript = "None"; }
               #else
-    { DlgScript = NOT_ANSWER_CLOSE_DIALOG;
-      MEMORY_PROCESS( MEMORY_DIALOG, sizeof( Dialog ) ); }
-    Dialog( const Dialog& r ) { *this = r;
-                                MEMORY_PROCESS( MEMORY_DIALOG, sizeof( Dialog ) ); }
+    {
+        DlgScript = NOT_ANSWER_CLOSE_DIALOG;
+        MEMORY_PROCESS( MEMORY_DIALOG, sizeof( Dialog ) );
+    }
+    Dialog( const Dialog& r )
+    {
+        *this = r;
+        MEMORY_PROCESS( MEMORY_DIALOG, sizeof( Dialog ) );
+    }
     ~Dialog() { MEMORY_PROCESS( MEMORY_DIALOG, -(int) sizeof( Dialog ) ); }
     #endif
     bool operator==( const uint& r ) { return Id == r; }

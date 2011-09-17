@@ -46,19 +46,31 @@ private:
     }
 
 public:
-    bool   IsEmpty()                            { return quests.empty(); }
-    Quest* AddQuest( ushort num, string& info ) { quests.push_back( Quest( num, info ) );
-                                                  return &quests[ quests.size() - 1 ];
-                                                  ReparseText(); }
-    void RefreshQuest( ushort num, string& str ) { Quest* quest = GetQuest( num );
-                                                   if( !quest ) return;
-                                                   quest->str = str;
-                                                   ReparseText(); }
-    Quest* GetQuest( ushort num ) { QuestVecIt it = std::find( quests.begin(), quests.end(), num );
-                                    return it != quests.end() ? &( *it ) : NULL; }
-    void EraseQuest( ushort num ) { QuestVecIt it = std::find( quests.begin(), quests.end(), num );
-                                    if( it != quests.end() ) quests.erase( it );
-                                    ReparseText(); }
+    bool   IsEmpty() { return quests.empty(); }
+    Quest* AddQuest( ushort num, string& info )
+    {
+        quests.push_back( Quest( num, info ) );
+        return &quests[ quests.size() - 1 ];
+        ReparseText();
+    }
+    void RefreshQuest( ushort num, string& str )
+    {
+        Quest* quest = GetQuest( num );
+        if( !quest ) return;
+        quest->str = str;
+        ReparseText();
+    }
+    Quest* GetQuest( ushort num )
+    {
+        QuestVecIt it = std::find( quests.begin(), quests.end(), num );
+        return it != quests.end() ? &( *it ) : NULL;
+    }
+    void EraseQuest( ushort num )
+    {
+        QuestVecIt it = std::find( quests.begin(), quests.end(), num );
+        if( it != quests.end() ) quests.erase( it );
+        ReparseText();
+    }
     QuestVec*   GetQuests() { return &quests; }
     const char* GetText()   { return text.c_str(); }
     QuestTab( FOMsg* _msg ): msg( _msg ) {}

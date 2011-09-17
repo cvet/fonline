@@ -103,8 +103,11 @@ public:
     uchar* GetData() { return data; }
     C2BitMask() { memset( this, 0, sizeof( C2BitMask ) ); }
     C2BitMask( uint width_2bit, uint height_2bit, uchar* ptr ) { Create( width_2bit, height_2bit, ptr ); }
-    ~C2BitMask() { if( isAlloc ) delete[] data;
-                   data = NULL; }
+    ~C2BitMask()
+    {
+        if( isAlloc ) delete[] data;
+        data = NULL;
+    }
 
 private:
     bool   isAlloc;

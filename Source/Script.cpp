@@ -1825,7 +1825,7 @@ endcopy:
                 mov  ret_value, eax
             }
             # else // FO_X64
-                  // Todo: x64
+                   // Todo: x64
             # endif
 
             #else // FO_GCC
@@ -1861,7 +1861,7 @@ endcopy:
                   // return value in EAX or EAX:EDX
                   "movl  %eax, 20(%ebp) \n" );
             # else // FO_X64
-                  // Todo: x64
+                   // Todo: x64
             # endif
             #endif
 

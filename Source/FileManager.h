@@ -123,8 +123,11 @@ public:
     static void         GetDatsFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 
     FileManager(): dataOutBuf( NULL ), posOutBuf( 0 ), endOutBuf( 0 ), lenOutBuf( 0 ), fileSize( 0 ), curPos( 0 ), fileBuf( NULL ) {};
-    ~FileManager() { UnloadFile();
-                     ClearOutBuf(); }
+    ~FileManager()
+    {
+        UnloadFile();
+        ClearOutBuf();
+    }
 
 private:
     static char        dataPath[ MAX_FOPATH ];

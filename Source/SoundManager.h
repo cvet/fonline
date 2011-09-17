@@ -71,8 +71,11 @@ struct Sound
 
     Sound(): SndBuf( NULL ), BufSize( 0 ), IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ), IsNeedStreaming( false ), BufOffs( 0 ), Decoded( 0 ),
              MediaType( SOUND_FILE_NONE ), PathType( 0 ) {}
-    ~Sound() { SAFEREL( SndBuf );
-               if( MediaType == SOUND_FILE_OGG ) ov_clear( &OggDescriptor ); }
+    ~Sound()
+    {
+        SAFEREL( SndBuf );
+        if( MediaType == SOUND_FILE_OGG ) ov_clear( &OggDescriptor );
+    }
 };
 typedef vector< Sound* >           SoundVec;
 typedef vector< Sound* >::iterator SoundVecIt;

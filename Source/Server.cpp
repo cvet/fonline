@@ -1419,21 +1419,26 @@ void FOServer::Process( ClientPtr& cl )
     }
     else if( cl->GameState == STATE_PLAYING )
     {
-        #define MESSAGES_PER_CYCLE      ( 5 )
+        #define MESSAGES_PER_CYCLE    ( 5 )
         #define CHECK_BUSY_AND_LIFE                                                                                               \
             if( !cl->IsLife() )                                                                                                   \
                 break; if( cl->IsBusy() && !Singleplayer ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; \
             }
-        #define CHECK_NO_GLOBAL         if( !cl->GetMap() ) \
+        #define CHECK_NO_GLOBAL \
+            if( !cl->GetMap() ) \
                 break;
-            #define CHECK_IS_GLOBAL     if( cl->GetMap() || !cl->GroupMove ) \
+            #define CHECK_IS_GLOBAL                  \
+                if( cl->GetMap() || !cl->GroupMove ) \
                     break;
-                #define CHECK_AP_MSG    uchar ap; cl->Bin >> ap; if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( ap > cl->GetParam( ST_ACTION_POINTS ) ) \
-                                                                                                                      break; if( (int) ap > cl->GetParam( ST_CURRENT_AP ) ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); BIN_END( cl ); return; } } }
-        #define CHECK_AP( ap )         if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( (int) ( ap ) > cl->GetParam( ST_ACTION_POINTS ) ) \
-                                                                                            break; if( (int) ( ap ) > cl->GetParam( ST_CURRENT_AP ) ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; } } }
-        #define CHECK_REAL_AP( ap )    if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( (int) ( ap ) > cl->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER ) \
-                                                                                            break; if( (int) ( ap ) > cl->GetRealAp() ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; } } }
+                #define CHECK_AP_MSG                                                                                                      \
+                    uchar ap; cl->Bin >> ap; if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( ap > cl->GetParam( ST_ACTION_POINTS ) ) \
+                                                                                                  break; if( (int) ap > cl->GetParam( ST_CURRENT_AP ) ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); BIN_END( cl ); return; } } }
+        #define CHECK_AP( ap )                                                                                     \
+            if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( (int) ( ap ) > cl->GetParam( ST_ACTION_POINTS ) ) \
+                                                                 break; if( (int) ( ap ) > cl->GetParam( ST_CURRENT_AP ) ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; } } }
+        #define CHECK_REAL_AP( ap )                                                                                             \
+            if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( (int) ( ap ) > cl->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER ) \
+                                                                 break; if( (int) ( ap ) > cl->GetRealAp() ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; } } }
 
         for( int i = 0; i < MESSAGES_PER_CYCLE; i++ )
         {
@@ -3781,7 +3786,8 @@ bool FOServer::Init()
         Critter::ParamsChosenSendMask[ i ] = uint( -1 );
 
     // Register dll script data
-    struct CritterChangeParameter_ {
+    struct CritterChangeParameter_
+    {
         static void CritterChangeParameter( void* cr, uint index ) { ( (Critter*) cr )->ChangeParam( index ); } };
     GameOpt.CritterChangeParameter = &CritterChangeParameter_::CritterChangeParameter;
     GameOpt.CritterTypes = &CritType::GetRealCritType( 0 );
@@ -3962,9 +3968,11 @@ bool FOServer::Init()
 
     #if defined ( USE_LIBEVENT )
     // Net IO events initialization
-    struct ELCB {
+    struct ELCB
+    {
         static void Callback( int severity, const char* msg ) { WriteLog( "_event_log_cb - severity<%d>, msg<%s>.\n", severity, msg ); } };
-    struct EFCB {
+    struct EFCB
+    {
         static void Callback( int err ) { WriteLog( "_event_log_cb - error<%d>.\n", err ); } };
     event_set_log_callback( ELCB::Callback );
     event_set_fatal_callback( EFCB::Callback );

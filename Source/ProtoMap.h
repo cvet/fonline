@@ -121,13 +121,22 @@ public:
         long      RefCounter;
     } RunTime;
 
-    MapObject() { memzero( this, sizeof( MapObject ) );
-                  RunTime.RefCounter = 1; }
-    MapObject( const MapObject& r ) { memcpy( this, &r, sizeof( MapObject ) );
-                                      RunTime.RefCounter = 1; }
-    MapObject& operator=( const MapObject& r ) { memcpy( this, &r, sizeof( MapObject ) );
-                                                 RunTime.RefCounter = 1;
-                                                 return *this; }
+    MapObject()
+    {
+        memzero( this, sizeof( MapObject ) );
+        RunTime.RefCounter = 1;
+    }
+    MapObject( const MapObject& r )
+    {
+        memcpy( this, &r, sizeof( MapObject ) );
+        RunTime.RefCounter = 1;
+    }
+    MapObject& operator=( const MapObject& r )
+    {
+        memcpy( this, &r, sizeof( MapObject ) );
+        RunTime.RefCounter = 1;
+        return *this;
+    }
 
     void AddRef()  { ++RunTime.RefCounter; }
     void Release() { if( !--RunTime.RefCounter ) delete this; }
@@ -298,11 +307,17 @@ public:
     void       GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs );
     MapObject* GetMapGrid( ushort hx, ushort hy );
     ProtoMap(): isInit( false ), pathType( 0 ), HexFlags( NULL ) { MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
-    ProtoMap( const ProtoMap& r ) { *this = r;
-                                    MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
-    ~ProtoMap() { isInit = false;
-                  HexFlags = NULL;
-                  MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) ); }
+    ProtoMap( const ProtoMap& r )
+    {
+        *this = r;
+        MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) );
+    }
+    ~ProtoMap()
+    {
+        isInit = false;
+        HexFlags = NULL;
+        MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
+    }
     #else
     ProtoMap(): isInit( false ), pathType( 0 ), RefCounter( 1 ) {}
     ~ProtoMap() { isInit = false; }

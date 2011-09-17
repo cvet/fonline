@@ -59,12 +59,15 @@ const char* GetLastSocketError();
 #define ___MSG0( x )                  ___MSG1( x )
 #define MESSAGE( desc )               message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
 
-#define SAFEREL( x )                  { if( x ) \
-                                            ( x )->Release(); ( x ) = NULL; }
-#define SAFEDEL( x )                  { if( x ) \
-                                            delete ( x ); ( x ) = NULL; }
-#define SAFEDELA( x )                 { if( x ) \
-                                            delete[] ( x ); ( x ) = NULL; }
+#define SAFEREL( x ) \
+    { if( x )        \
+          ( x )->Release(); ( x ) = NULL; }
+#define SAFEDEL( x ) \
+    { if( x )        \
+          delete ( x ); ( x ) = NULL; }
+#define SAFEDELA( x ) \
+    { if( x )         \
+          delete[] ( x ); ( x ) = NULL; }
 
 #define STATIC_ASSERT( a )            { static int static_assert_array__[ ( a ) ? 1 : -1 ]; }
 #define D3D_HR( expr )                { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
@@ -666,11 +669,17 @@ public:
     T& operator*() const  { return *Get(); }
     T* operator->() const { return Get(); }
     T* Get() const        { return Ptr; }
-    T* Release()          { T* tmp = Ptr;
-                            Ptr = NULL;
-                            return tmp; }
-    void Reset( T* ptr ) { if( ptr != Ptr && Ptr != 0 ) delete Ptr;
-                           Ptr = ptr; }
+    T* Release()
+    {
+        T* tmp = Ptr;
+        Ptr = NULL;
+        return tmp;
+    }
+    void Reset( T* ptr )
+    {
+        if( ptr != Ptr && Ptr != 0 ) delete Ptr;
+        Ptr = ptr;
+    }
     bool IsValid() const { return Ptr != NULL; }
 
 private:
@@ -686,11 +695,17 @@ public:
     T& operator*() const  { return *Get(); }
     T* operator->() const { return Get(); }
     T* Get() const        { return Ptr; }
-    T* Release()          { T* tmp = Ptr;
-                            Ptr = NULL;
-                            return tmp; }
-    void Reset( T* ptr ) { if( ptr != Ptr && Ptr != 0 ) delete[] Ptr;
-                           Ptr = ptr; }
+    T* Release()
+    {
+        T* tmp = Ptr;
+        Ptr = NULL;
+        return tmp;
+    }
+    void Reset( T* ptr )
+    {
+        if( ptr != Ptr && Ptr != 0 ) delete[] Ptr;
+        Ptr = ptr;
+    }
     bool IsValid() const { return Ptr != NULL; }
 
 private:
@@ -791,14 +806,26 @@ private:
 public:
     Thread(): isStarted( false ) { pthread_attr_init( &threadAttr ); }
     ~Thread() { pthread_attr_destroy( &threadAttr ); }
-    bool Start( void*( *func )(void*) ) { isStarted = ( pthread_create( &threadId, &threadAttr, func, NULL ) == 0 );
-                                          return isStarted; }
-    bool Start( void*( *func )(void*), void* arg ) { isStarted = ( pthread_create( &threadId, &threadAttr, func, arg ) == 0 );
-                                                     return isStarted; }
-    void Wait() { if( isStarted ) pthread_join( threadId, NULL );
-                  isStarted = false; }
-    void Finish() { if( isStarted ) pthread_cancel( threadId );
-                    isStarted = false; }
+    bool Start( void*( *func )(void*) )
+    {
+        isStarted = ( pthread_create( &threadId, &threadAttr, func, NULL ) == 0 );
+        return isStarted;
+    }
+    bool Start( void*( *func )(void*), void* arg )
+    {
+        isStarted = ( pthread_create( &threadId, &threadAttr, func, arg ) == 0 );
+        return isStarted;
+    }
+    void Wait()
+    {
+        if( isStarted ) pthread_join( threadId, NULL );
+        isStarted = false;
+    }
+    void Finish()
+    {
+        if( isStarted ) pthread_cancel( threadId );
+        isStarted = false;
+    }
 
     #if defined ( FO_WINDOWS )
     HANDLE GetWindowsHandle() { return pthread_getw32threadhandle_np( threadId ); }

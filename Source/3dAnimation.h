@@ -137,8 +137,11 @@ public:
     void SetTimer( bool use_game_timer );
     void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
     bool Draw( int x, int y, float scale, FLTRECT* stencil, uint color );
-    void SetDrawPos( int x, int y ) { drawXY.X = x;
-                                      drawXY.Y = y; }
+    void SetDrawPos( int x, int y )
+    {
+        drawXY.X = x;
+        drawXY.Y = y;
+    }
     bool     IsAnimationPlaying();
     bool     IsIntersect( int x, int y );
     void     SetSprId( uint value )             { sprId = value; }

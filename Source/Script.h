@@ -186,15 +186,24 @@ private:
     std::vector< asBYTE > binBuf;
 
 public:
-    CBytecodeStream() { writePos = 0;
-                        readPos = 0; }
-    void Write( const void* ptr, asUINT size ) { if( !ptr || !size ) return;
-                                                 binBuf.resize( binBuf.size() + size );
-                                                 memcpy( &binBuf[ writePos ], ptr, size );
-                                                 writePos += size; }
-    void Read( void* ptr, asUINT size ) { if( !ptr || !size ) return;
-                                          memcpy( ptr, &binBuf[ readPos ], size );
-                                          readPos += size; }
+    CBytecodeStream()
+    {
+        writePos = 0;
+        readPos = 0;
+    }
+    void Write( const void* ptr, asUINT size )
+    {
+        if( !ptr || !size ) return;
+        binBuf.resize( binBuf.size() + size );
+        memcpy( &binBuf[ writePos ], ptr, size );
+        writePos += size;
+    }
+    void Read( void* ptr, asUINT size )
+    {
+        if( !ptr || !size ) return;
+        memcpy( ptr, &binBuf[ readPos ], size );
+        readPos += size;
+    }
     std::vector< asBYTE >& GetBuf() { return binBuf; }
 };
 

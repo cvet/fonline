@@ -135,7 +135,8 @@ bool FalloutDatFile::Init( const char* fname )
         return false;
     }
 
-    union {
+    union
+    {
         FILETIME       ft;
         ULARGE_INTEGER ul;
     } tc, ta, tw;
@@ -384,7 +385,8 @@ bool ZipFile::Init( const char* fname )
         return false;
     }
 
-    union {
+    union
+    {
         FILETIME       ft;
         ULARGE_INTEGER ul;
     } tc, ta, tw;

@@ -2316,7 +2316,8 @@ void FOClient::GameKeyDown( uchar dik )
 //              case DIK_5: GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); break;
 //              case DIK_6: GameOpt.ShowRoof=!GameOpt.ShowRoof; HexMngr.RefreshMap(); break;
 
-            #define CHOSEN_ANIMATE( anim2 )    if( Chosen ) \
+            #define CHOSEN_ANIMATE( anim2 ) \
+                if( Chosen )                \
                     Chosen->Animate( 0, anim_offs + ( anim2 ), NULL )
         case DIK_0:
             if( Keyb::CtrlDwn )
@@ -8400,10 +8401,12 @@ void FOClient::PipDraw()
     INTRECT& r = PipWMonitor;
     int ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
     int h = r.H() / ml;
-    #define PIP_DRAW_TEXT( text, flags, color )     do { if( scr >= 0 && scr < ml ) \
-                                                             SprMngr.DrawStr( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
-    #define PIP_DRAW_TEXTR( text, flags, color )    do { if( scr >= 0 && scr < ml ) \
-                                                             SprMngr.DrawStr( INTRECT( r[ 2 ] - r.W() / 3, r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
+    #define PIP_DRAW_TEXT( text, flags, color ) \
+        do { if( scr >= 0 && scr < ml )         \
+                 SprMngr.DrawStr( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
+    #define PIP_DRAW_TEXTR( text, flags, color ) \
+        do { if( scr >= 0 && scr < ml )          \
+                 SprMngr.DrawStr( INTRECT( r[ 2 ] - r.W() / 3, r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
 
     switch( PipMode )
     {
@@ -11410,7 +11413,8 @@ void FOClient::SaveLoadCollect()
             continue;
 
         // Convert time
-        union {
+        union
+        {
             FILETIME ft;
             ULARGE_INTEGER ul;
         } writeft;

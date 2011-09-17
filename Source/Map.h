@@ -97,8 +97,11 @@ public:
     bool GetStartCoordCar( ushort& hx, ushort& hy, ProtoItem* proto_item );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
-    void SetId( uint id, ushort pid ) { Data.MapId = id;
-                                        Data.MapPid = pid; }
+    void SetId( uint id, ushort pid )
+    {
+        Data.MapId = id;
+        Data.MapPid = pid;
+    }
     uint   GetId()  { return Data.MapId; }
     ushort GetPid() { return Data.MapPid; }
 
@@ -228,9 +231,12 @@ public:
 
     bool  IsNotValid;
     short RefCounter;
-    void AddRef()  { RefCounter++; }
-    void Release() { RefCounter--;
-                     if( RefCounter <= 0 ) delete this; }
+    void AddRef() { RefCounter++; }
+    void Release()
+    {
+        RefCounter--;
+        if( RefCounter <= 0 ) delete this;
+    }
 };
 typedef map< uint, Map* >             MapMap;
 typedef map< uint, Map* >::iterator   MapMapIt;
@@ -312,9 +318,12 @@ public:
 
     bool  IsNotValid;
     short RefCounter;
-    void AddRef()  { RefCounter++; }
-    void Release() { RefCounter--;
-                     if( RefCounter <= 0 ) delete this; }
+    void AddRef() { RefCounter++; }
+    void Release()
+    {
+        RefCounter--;
+        if( RefCounter <= 0 ) delete this;
+    }
     Location(): RefCounter( 1 ), Proto( NULL ), IsNotValid( false ) { memzero( (void*) &Data, sizeof( Data ) ); }
 };
 typedef map< uint, Location* >             LocMap;

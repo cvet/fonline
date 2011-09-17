@@ -122,17 +122,23 @@ public:
     uint GetMaxWeightKg()         { return GetParam( ST_CARRY_WEIGHT ) / 1000; }
     uint GetMaxVolume()           { return CRITTER_INV_VOLUME; }
     uint GetCrType();
-    bool IsDmgLeg()           { return IsRawParam( DAMAGE_RIGHT_LEG ) || IsRawParam( DAMAGE_LEFT_LEG ); }
-    bool IsDmgTwoLeg()        { return IsRawParam( DAMAGE_RIGHT_LEG ) && IsRawParam( DAMAGE_LEFT_LEG ); }
-    bool IsDmgArm()           { return IsRawParam( DAMAGE_RIGHT_ARM ) || IsRawParam( DAMAGE_LEFT_ARM ); }
-    bool IsDmgTwoArm()        { return IsRawParam( DAMAGE_RIGHT_ARM ) && IsRawParam( DAMAGE_LEFT_ARM ); }
-    int  GetRealAp()          { return Params[ ST_CURRENT_AP ]; }
-    int  GetAllAp()           { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
-    void SubMoveAp( int val ) { ChangeParam( ST_CURRENT_AP );
-                                Params[ ST_MOVE_AP ] -= val; }
-    void SubAp( int val ) { ChangeParam( ST_CURRENT_AP );
-                            Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
-                            ApRegenerationTick = 0; }
+    bool IsDmgLeg()    { return IsRawParam( DAMAGE_RIGHT_LEG ) || IsRawParam( DAMAGE_LEFT_LEG ); }
+    bool IsDmgTwoLeg() { return IsRawParam( DAMAGE_RIGHT_LEG ) && IsRawParam( DAMAGE_LEFT_LEG ); }
+    bool IsDmgArm()    { return IsRawParam( DAMAGE_RIGHT_ARM ) || IsRawParam( DAMAGE_LEFT_ARM ); }
+    bool IsDmgTwoArm() { return IsRawParam( DAMAGE_RIGHT_ARM ) && IsRawParam( DAMAGE_LEFT_ARM ); }
+    int  GetRealAp()   { return Params[ ST_CURRENT_AP ]; }
+    int  GetAllAp()    { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
+    void SubMoveAp( int val )
+    {
+        ChangeParam( ST_CURRENT_AP );
+        Params[ ST_MOVE_AP ] -= val;
+    }
+    void SubAp( int val )
+    {
+        ChangeParam( ST_CURRENT_AP );
+        Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
+        ApRegenerationTick = 0;
+    }
     bool IsHideMode() { return GetRawParam( MODE_HIDE ) != 0; }
 
     // Items
@@ -186,8 +192,11 @@ public:
     UShortPairVec MoveSteps;
     int           CurMoveStep;
     bool IsNeedMove() { return MoveSteps.size() && !IsWalkAnim(); }
-    void ZeroSteps()  { MoveSteps.clear();
-                        CurMoveStep = 0; }
+    void ZeroSteps()
+    {
+        MoveSteps.clear();
+        CurMoveStep = 0;
+    }
     void Move( int dir );
 
     // ReSet
@@ -204,8 +213,11 @@ public:
     uint TickCount;
     uint StartTick;
 
-    void TickStart( uint ms ) { TickCount = ms;
-                                StartTick = Timer::GameTick(); }
+    void TickStart( uint ms )
+    {
+        TickCount = ms;
+        StartTick = Timer::GameTick();
+    }
     void TickNull() { TickCount = 0; }
     bool IsFree()   { return ( Timer::GameTick() - StartTick >= TickCount ); }
 
@@ -316,9 +328,12 @@ private:
 public:
     int GetApCostCritterMove( bool is_run ) { return IsTurnBased() ? GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) ) : ( GetParam( TO_BATTLE ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0 ); }
     int GetApCostMoveItemContainer()        { return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer; }
-    int GetApCostMoveItemInventory()        { int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
-                                              if( IsRawParam( PE_QUICK_POCKETS ) ) val /= 2;
-                                              return val; }
+    int GetApCostMoveItemInventory()
+    {
+        int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
+        if( IsRawParam( PE_QUICK_POCKETS ) ) val /= 2;
+        return val;
+    }
     int GetApCostPickItem()    { return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem; }
     int GetApCostDropItem()    { return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem; }
     int GetApCostPickCritter() { return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter; }
@@ -328,9 +343,12 @@ public:
 public:
     short RefCounter;
     bool  IsNotValid;
-    void AddRef()  { RefCounter++; }
-    void Release() { RefCounter--;
-                     if( RefCounter <= 0 ) delete this; }
+    void AddRef() { RefCounter++; }
+    void Release()
+    {
+        RefCounter--;
+        if( RefCounter <= 0 ) delete this;
+    }
 };
 
 typedef map< uint, CritterCl*, less< uint > >             CritMap;

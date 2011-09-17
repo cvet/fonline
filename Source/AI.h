@@ -89,8 +89,14 @@ struct AIDataPlane
 
     AIDataPlane* GetCurPlane()           { return ChildPlane ? ChildPlane->GetCurPlane() : this; }
     bool         IsSelfOrHas( int type ) { return Type == type || ( ChildPlane ? ChildPlane->IsSelfOrHas( type ) : false ); }
-    void         DeleteLast()            { if( ChildPlane ) { if( ChildPlane->ChildPlane ) ChildPlane->DeleteLast();
-                                                              else SAFEREL( ChildPlane ); } }
+    void         DeleteLast()
+    {
+        if( ChildPlane )
+        {
+            if( ChildPlane->ChildPlane ) ChildPlane->DeleteLast();
+            else SAFEREL( ChildPlane );
+        }
+    }
 
     AIDataPlane* GetCopy()
     {
@@ -113,14 +119,23 @@ struct AIDataPlane
 
     bool Assigned;
     int  RefCounter;
-    void AddRef()  { RefCounter++; }
-    void Release() { RefCounter--;
-                     if( !RefCounter ) delete this; }
-    AIDataPlane( uint type, uint priority ): Type( type ), Priority( priority ), Identifier( 0 ), IdentifierExt( 0 ), ChildPlane( NULL ), IsMove( false ), Assigned( false ), RefCounter( 1 ) { memzero( &Buffer, sizeof( Buffer ) );
-                                                                                                                                                                                                memzero( &Move, sizeof( Move ) );
-                                                                                                                                                                                                MEMORY_PROCESS( MEMORY_NPC_PLANE, sizeof( AIDataPlane ) ); }
-    ~AIDataPlane() { SAFEREL( ChildPlane );
-                     MEMORY_PROCESS( MEMORY_NPC_PLANE, -(int) sizeof( AIDataPlane ) ); }
+    void AddRef() { RefCounter++; }
+    void Release()
+    {
+        RefCounter--;
+        if( !RefCounter ) delete this;
+    }
+    AIDataPlane( uint type, uint priority ): Type( type ), Priority( priority ), Identifier( 0 ), IdentifierExt( 0 ), ChildPlane( NULL ), IsMove( false ), Assigned( false ), RefCounter( 1 )
+    {
+        memzero( &Buffer, sizeof( Buffer ) );
+        memzero( &Move, sizeof( Move ) );
+        MEMORY_PROCESS( MEMORY_NPC_PLANE, sizeof( AIDataPlane ) );
+    }
+    ~AIDataPlane()
+    {
+        SAFEREL( ChildPlane );
+        MEMORY_PROCESS( MEMORY_NPC_PLANE, -(int) sizeof( AIDataPlane ) );
+    }
 private: AIDataPlane() {}        // Disable default constructor
 };
 typedef vector< AIDataPlane* >           AIDataPlaneVec;

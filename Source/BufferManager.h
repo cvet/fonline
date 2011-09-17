@@ -39,14 +39,17 @@ public:
     void Cut( uint len );
     void GrowBuf( uint len );
 
-    char* GetData()              { return bufData; }
-    char* GetCurData()           { return bufData + bufReadPos; }
-    uint  GetLen()               { return bufLen; }
-    uint  GetCurPos()            { return bufReadPos; }
-    void  SetEndPos( uint pos )  { bufEndPos = pos; }
-    uint  GetEndPos() const      { return bufEndPos; }
-    void  MoveReadPos( int val ) { bufReadPos += val;
-                                   EncryptKey( val ); }
+    char* GetData()             { return bufData; }
+    char* GetCurData()          { return bufData + bufReadPos; }
+    uint  GetLen()              { return bufLen; }
+    uint  GetCurPos()           { return bufReadPos; }
+    void  SetEndPos( uint pos ) { bufEndPos = pos; }
+    uint  GetEndPos() const     { return bufEndPos; }
+    void  MoveReadPos( int val )
+    {
+        bufReadPos += val;
+        EncryptKey( val );
+    }
     bool IsError() const               { return isError; }
     bool IsEmpty() const               { return bufReadPos >= bufEndPos; }
     bool IsHaveSize( uint size ) const { return bufReadPos + size <= bufEndPos; }

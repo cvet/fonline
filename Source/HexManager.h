@@ -204,8 +204,11 @@ private:
 
 public:
     void ChangeZoom( int zoom );   // <0 in, >0 out, 0 normalize
-    void GetScreenHexes( int& sx, int& sy ) { sx = screenHexX;
-                                              sy = screenHexY; }
+    void GetScreenHexes( int& sx, int& sy )
+    {
+        sx = screenHexX;
+        sy = screenHexY;
+    }
     void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
 
 public:
@@ -257,12 +260,18 @@ private:
     int     critterContour, crittersContour;
 
 public:
-    CritterCl* GetCritter( uint crid ) { if( !crid ) return NULL;
-                                         CritMapIt it = allCritters.find( crid );
-                                         return it != allCritters.end() ? ( *it ).second : NULL; }
-    CritterCl* GetChosen() { if( !chosenId ) return NULL;
-                             CritMapIt it = allCritters.find( chosenId );
-                             return it != allCritters.end() ? ( *it ).second : NULL; }
+    CritterCl* GetCritter( uint crid )
+    {
+        if( !crid ) return NULL;
+        CritMapIt it = allCritters.find( crid );
+        return it != allCritters.end() ? ( *it ).second : NULL;
+    }
+    CritterCl* GetChosen()
+    {
+        if( !chosenId ) return NULL;
+        CritMapIt it = allCritters.find( chosenId );
+        return it != allCritters.end() ? ( *it ).second : NULL;
+    }
     void     AddCrit( CritterCl* cr );
     void     RemoveCrit( CritterCl* cr );
     void     EraseCrit( uint crid );

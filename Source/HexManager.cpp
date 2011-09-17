@@ -2733,7 +2733,8 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
 
     if( crits.empty() )
         return NULL;
-    struct Sorter {
+    struct Sorter
+    {
         static bool ByTreeIndex( CritterCl* cr1, CritterCl* cr2 ) { return cr1->SprDraw->TreeIndex > cr2->SprDraw->TreeIndex; } };
     if( crits.size() > 1 )
         std::sort( crits.begin(), crits.end(), Sorter::ByTreeIndex );
