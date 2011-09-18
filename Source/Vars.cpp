@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "Vars.h"
 #include "Text.h"
+#include "FileManager.h"
 
 #ifdef FONLINE_SERVER
 # include "Critter.h"

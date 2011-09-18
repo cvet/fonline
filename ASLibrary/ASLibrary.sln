@@ -1,7 +1,7 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ASLibrary", "ASLibrary\ASLibrary.vcproj", "{7CDABAB9-CE73-48BE-861D-90C4E30B879D}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ASLibrary", "ASLibrary\ASLibrary.vcxproj", "{7CDABAB9-CE73-48BE-861D-90C4E30B879D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

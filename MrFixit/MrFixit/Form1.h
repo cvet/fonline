@@ -1,9 +1,11 @@
 #pragma once
 
 #include <vcclr.h>
+#include <locale.h>
 #include <FileManager.h>
 #include <CraftManager.h>
-#include <Names.h>
+#include <ConstantsManager.h>
+#include <IniParser.h>
 
 namespace MrFixitEditor {
 
@@ -69,7 +71,7 @@ namespace MrFixitEditor {
 		void UpdateParamsLists()
 		{
 			cbParamNum->Items->Clear();
-			StrVec param_names=FONames::GetNames(FONAME_PARAM);
+			StrVec param_names=ConstantsManager::GetCollection(CONSTANTS_PARAM);
 			for(StrVecIt it=param_names.begin(),end=param_names.end();it!=end;++it)
 			{
 				String^ str=String((*it).c_str()).ToString();
@@ -77,7 +79,7 @@ namespace MrFixitEditor {
 			}
 
 			cbItemPid->Items->Clear();
-			StrVec item_names=FONames::GetNames(FONAME_ITEM);
+			StrVec item_names=ConstantsManager::GetCollection(CONSTANTS_ITEM);
 			for(StrVecIt it=item_names.begin(),end=item_names.end();it!=end;++it)
 			{
 				String^ str=String((*it).c_str()).ToString();
@@ -733,7 +735,7 @@ private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e)
 	cfg.GetStr("ServerPath",".\\",path);
 	FileManager::SetDataPath(path);
 
-	FONames::GenerateFoNames(PT_SERVER_DATA);
+	ConstantsManager::Initialize(PT_SERVER_DATA);
 	UpdateParamsLists();
 	WriteLog("MrFixit initialization complete.\n");
 }
@@ -810,7 +812,7 @@ void ParseCraft(CraftItem* craft)
 	{
 		DWORD param_num=craft->ShowPNum[i];
 		int param_val=craft->ShowPVal[i];
-		char* s=(char*)FONames::GetParamName(param_num);
+		char* s=(char*)ConstantsManager::GetParamName(param_num);
 		if(!s)
 		{
 			errors++;
@@ -831,7 +833,7 @@ void ParseCraft(CraftItem* craft)
 		DWORD param_num=craft->NeedPNum[i];
 		int param_val=craft->NeedPVal[i];
 
-		const char* s=FONames::GetParamName(param_num);
+		const char* s=ConstantsManager::GetParamName(param_num);
 		if(!s)
 		{
 			errors++;
@@ -849,7 +851,7 @@ void ParseCraft(CraftItem* craft)
 	lbNeedItems->Items->Clear();
 	for(size_t i=0,j=craft->NeedItems.size();i<j;i++)
 	{
-		const char* s=FONames::GetItemName(craft->NeedItems[i]);
+		const char* s=ConstantsManager::GetItemName(craft->NeedItems[i]);
 		if(!s)
 		{
 			errors++;
@@ -867,7 +869,7 @@ void ParseCraft(CraftItem* craft)
 	lbNeedTools->Items->Clear();
 	for(size_t i=0,j=craft->NeedTools.size();i<j;i++)
 	{
-		const char* s=FONames::GetItemName(craft->NeedTools[i]);
+		const char* s=ConstantsManager::GetItemName(craft->NeedTools[i]);
 		if(!s)
 		{
 			errors++;
@@ -885,7 +887,7 @@ void ParseCraft(CraftItem* craft)
 	lbOutItems->Items->Clear();
 	for(size_t i=0,j=craft->OutItems.size();i<j;i++)
 	{
-		const char* s=FONames::GetItemName(craft->OutItems[i]);
+		const char* s=ConstantsManager::GetItemName(craft->OutItems[i]);
 		if(!s)
 		{
 			errors++;
@@ -916,35 +918,35 @@ private: System::Void lbParamShow_MouseDoubleClick(System::Object^  sender, Syst
 
 	if(sender==lbParamShow)
 	{
-		if(i>=CurCraft->ShowPNum.size()) return;
+		if(i>=(int)CurCraft->ShowPNum.size()) return;
 		CurCraft->ShowPNum.erase(CurCraft->ShowPNum.begin()+i);
 		CurCraft->ShowPVal.erase(CurCraft->ShowPVal.begin()+i);
 		CurCraft->ShowPOr.erase(CurCraft->ShowPOr.begin()+i);
 	}
 	else if(sender==lbParamCraft)
 	{
-		if(i>=CurCraft->ShowPNum.size()) return;
+		if(i>=(int)CurCraft->ShowPNum.size()) return;
 		CurCraft->NeedPNum.erase(CurCraft->NeedPNum.begin()+i);
 		CurCraft->NeedPVal.erase(CurCraft->NeedPVal.begin()+i);
 		CurCraft->NeedPOr.erase(CurCraft->NeedPOr.begin()+i);
 	}
 	else if(sender==lbNeedItems)
 	{
-		if(i>=CurCraft->NeedItems.size()) return;
+		if(i>=(int)CurCraft->NeedItems.size()) return;
 		CurCraft->NeedItems.erase(CurCraft->NeedItems.begin()+i);
 		CurCraft->NeedItemsVal.erase(CurCraft->NeedItemsVal.begin()+i);
 		CurCraft->NeedItemsOr.erase(CurCraft->NeedItemsOr.begin()+i);
 	}
 	else if(sender==lbNeedTools)
 	{
-		if(i>=CurCraft->NeedTools.size()) return;
+		if(i>=(int)CurCraft->NeedTools.size()) return;
 		CurCraft->NeedTools.erase(CurCraft->NeedTools.begin()+i);
 		CurCraft->NeedToolsVal.erase(CurCraft->NeedToolsVal.begin()+i);
 		CurCraft->NeedToolsOr.erase(CurCraft->NeedToolsOr.begin()+i);	
 	}
 	else if(sender==lbOutItems)
 	{
-		if(i>=CurCraft->OutItems.size()) return;
+		if(i>=(int)CurCraft->OutItems.size()) return;
 		CurCraft->OutItems.erase(CurCraft->OutItems.begin()+i);
 		CurCraft->OutItemsVal.erase(CurCraft->OutItemsVal.begin()+i);
 	}
@@ -963,7 +965,7 @@ private: System::Void btnAddParamShow_Click(System::Object^  sender, System::Eve
 	}
 
 	String^ name=cbParamNum->Text;
-	int p_num=FONames::GetParamId(ToAnsi(name));
+	int p_num=ConstantsManager::GetParamId(ToAnsi(name));
 	int p_val=(int)numParamCount->Value;
 	BYTE p_or=cbOr->Checked==true?1:0;
 
@@ -1002,7 +1004,7 @@ private: System::Void btnAddNeedItem_Click(System::Object^  sender, System::Even
 		return;
 	}
 
-	int i_pid=FONames::GetItemPid(ToAnsi(cbItemPid->Text));
+	int i_pid=ConstantsManager::GetItemPid(ToAnsi(cbItemPid->Text));
 	if(i_pid<0)
 	{
 		Log("Item not find.");
@@ -1087,22 +1089,22 @@ private: System::Void lbParamShow_MouseDown(System::Object^  sender, System::Win
 
 	if(sender==lbParamShow)
 	{
-		if(pos>=CurCraft->ShowPNum.size()) return;
+		if(pos>=(int)CurCraft->ShowPNum.size()) return;
 		CurCraft->ShowPOr[pos]=!CurCraft->ShowPOr[pos];
 	}
 	else if(sender==lbParamCraft)
 	{
-		if(pos>=CurCraft->ShowPNum.size()) return;
+		if(pos>=(int)CurCraft->ShowPNum.size()) return;
 		CurCraft->NeedPOr[pos]=!CurCraft->NeedPOr[pos];
 	}
 	else if(sender==lbNeedItems)
 	{
-		if(pos>=CurCraft->NeedItems.size()) return;
+		if(pos>=(int)CurCraft->NeedItems.size()) return;
 		CurCraft->NeedItemsOr[pos]=!CurCraft->NeedItemsOr[pos];
 	}
 	else if(sender==lbNeedTools)
 	{
-		if(pos>=CurCraft->NeedTools.size()) return;
+		if(pos>=(int)CurCraft->NeedTools.size()) return;
 		CurCraft->NeedToolsOr[pos]=!CurCraft->NeedToolsOr[pos];
 	}
 

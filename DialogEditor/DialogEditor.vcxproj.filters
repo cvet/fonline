@@ -1,0 +1,284 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="DialogEditor">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Zlib">
+      <UniqueIdentifier>{dc38aacd-49af-483e-b10e-23ed43184a63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DatFile">
+      <UniqueIdentifier>{170b0833-4e21-42d6-b8cd-4d4e7e034717}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SHA2">
+      <UniqueIdentifier>{78e0ebbd-47b4-4f86-b841-bca4e4ed6529}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AssemblyInfo.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Common.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Crypt.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\DataFile.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="DialogEditor.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Dialogs.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="EditAnswerNode.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="EditDialogNode.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="EnterBox.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FileManager.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Log.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="MessBox.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\StdAfx.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Text.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Timer.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Vars.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\adler32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\compress.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\crc32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\deflate.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzclose.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzlib.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzread.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzwrite.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\infback.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\inffast.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\inflate.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\inftrees.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\ioapi.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\trees.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\uncompr.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\unzip.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\zutil.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\DatFile\cfile.cpp">
+      <Filter>DatFile</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\DatFile\unlzss.cpp">
+      <Filter>DatFile</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ConstantsManager.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\IniParser.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\SHA2\sha2.c">
+      <Filter>SHA2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\MsgFiles.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\Common.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Crypt.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\DataFile.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Defines.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="DialogEditor.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Dialogs.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="EditAnswerNode.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="EditDialogNode.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="EnterBox.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FileManager.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ItemPid.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Log.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="MessBox.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\StdAfx.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Text.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Timer.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Vars.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Version.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\crc32.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\deflate.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\gzguts.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inffast.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inffixed.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inflate.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inftrees.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\ioapi.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\trees.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\unzip.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\zconf.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\zlib.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\zutil.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\DatFile\cfile.h">
+      <Filter>DatFile</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\DatFile\unlzss.h">
+      <Filter>DatFile</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ConstantsManager.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\IniParser.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\SHA2\sha2.h">
+      <Filter>SHA2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\MsgFiles.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DialogEditor.ico">
+      <Filter>Resource</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DialogEditor.rc">
+      <Filter>Resource</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="DialogEditor.resx">
+      <Filter>Resource</Filter>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EditAnswerNode.resx">
+      <Filter>Resource</Filter>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EditDialogNode.resx">
+      <Filter>Resource</Filter>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EnterBox.resx">
+      <Filter>Resource</Filter>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MessBox.resx">
+      <Filter>Resource</Filter>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

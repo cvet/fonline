@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ASCompiler">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Preprocessor">
+      <UniqueIdentifier>{6ebbe82f-3723-490d-b2a7-0dda460b38ed}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Source\AngelScript\angelscript.h">
+      <Filter>ASCompiler</Filter>
+    </ClInclude>
+    <ClInclude Include="ScriptEngine.h">
+      <Filter>ASCompiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\ScriptPragmas.h">
+      <Filter>ASCompiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\define_table.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\lex.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\lexem_list.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\line_number_translator.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\pragma.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\preprocess.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AngelScript\Preprocessor\stream.h">
+      <Filter>Preprocessor</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ASCompiler.cpp">
+      <Filter>ASCompiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\ScriptPragmas.cpp">
+      <Filter>ASCompiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\AngelScript\Preprocessor\lex.cpp">
+      <Filter>Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\AngelScript\Preprocessor\lexem_list.cpp">
+      <Filter>Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\AngelScript\Preprocessor\preprocess.cpp">
+      <Filter>Preprocessor</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,673 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{3f7150a9-c816-4fc4-975d-95df18aa7a51}</UniqueIdentifier>
+      <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
+    </Filter>
+    <Filter Include="Zlib">
+      <UniqueIdentifier>{d1e8f5cb-ef00-45fd-a4db-b4d24333cba4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Server">
+      <UniqueIdentifier>{a2249873-e9d5-40b0-9d28-539139e7d5b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AngelScript">
+      <UniqueIdentifier>{cd23e8be-7814-40bb-abfc-1c9435799d92}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AngelScript\Preprocessor">
+      <UniqueIdentifier>{25d7d06c-26ba-4dc8-ab1f-66a866cd108c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DatFile">
+      <UniqueIdentifier>{960c475d-d612-4611-9555-338a8865b1de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SHA2">
+      <UniqueIdentifier>{d7d82959-84ad-4bf1-bb52-634f2505a610}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Server.ico">
+      <Filter>Resource</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Server.rc">
+      <Filter>Resource</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Source\Zlib\adler32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\compress.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\crc32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\deflate.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzclose.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzlib.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzread.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\gzwrite.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\infback.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\inffast.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\inflate.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\inftrees.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\ioapi.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\trees.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\uncompr.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\unzip.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Zlib\zutil.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AI.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\BufferManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Common.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ConstantsManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CraftManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Critter.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CritterManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CritterType.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Crypt.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\DataFile.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Debugger.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Dialogs.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Exception.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FileManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\IniParser.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Item.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ItemManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Jobs.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Log.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\MainServer.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Map.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\MapManager.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\MsgFiles.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ProtoMap.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Script.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ScriptPragmas.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Server.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ServerClient.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ServerItem.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ServerNpc.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ServerScript.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\StdAfx.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Text.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ThreadSync.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Timer.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Vars.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_atomic.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_builder.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_bytecode.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_callfunc.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_gcc.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_msvc.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_callfunc_x86.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_compiler.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_configgroup.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_context.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_datatype.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_gc.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_generic.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_globalproperty.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_memory.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_module.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_objecttype.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_outputbuffer.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_parser.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_restore.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_scriptcode.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_scriptengine.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_scriptfunction.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_scriptnode.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_scriptobject.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_string.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_string_util.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_thread.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_tokenizer.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_typeinfo.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_variablescope.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptany.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptarray.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptdictionary.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptfile.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptmath3d.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptstring_utils.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\lexem_list.cpp">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\preprocess.cpp">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\datfile\cfile.cpp">
+      <Filter>DatFile</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\datfile\unlzss.cpp">
+      <Filter>DatFile</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\SHA2\sha2.c">
+      <Filter>SHA2</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\Zlib\crc32.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\deflate.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\gzguts.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inffast.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inffixed.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inflate.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\inftrees.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\ioapi.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\trees.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\unzip.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\zconf.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\zlib.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Zlib\zutil.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Access.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AI.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\BufferManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Common.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ConstantsManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CraftManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Critter.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CritterData.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CritterManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CritterType.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Crypt.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\DataFile.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\DataMask.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Debugger.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Defines.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Dialogs.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\DummyData.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Exception.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FileManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FlexRect.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\IniParser.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Item.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ItemManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Jobs.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\LineTracer.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Log.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Map.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\MapManager.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\MsgFiles.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\MsgStr.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Mutex.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\NetProtocol.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\PlatformSpecific.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ProtoMap.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Randomizer.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Script.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ScriptBind.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ScriptPragmas.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Server.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\StdAfx.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Text.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\ThreadSync.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Timer.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Types.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Vars.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Version.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\angelscript.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_array.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_atomic.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_builder.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_bytecode.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_callfunc.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_compiler.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_config.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_configgroup.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_context.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_datatype.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_debug.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_gc.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_generic.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_map.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_memory.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_module.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_objecttype.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_outputbuffer.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_parser.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_property.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_restore.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_scriptcode.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_scriptengine.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_scriptfunction.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_scriptnode.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_scriptobject.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_string.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_string_util.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_texts.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_thread.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_tokendef.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_tokenizer.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_typeinfo.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_variablescope.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptany.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptarray.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptdictionary.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptfile.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptmath.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptmath3d.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptstring.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\lex.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\lexem_list.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\line_number_translator.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\pragma.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\preprocess.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\datfile\cfile.h">
+      <Filter>DatFile</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\datfile\unlzss.h">
+      <Filter>DatFile</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\SHA2\sha2.h">
+      <Filter>SHA2</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Source\AngelScript\as_callfunc_x64_msvc.asm">
+      <Filter>AngelScript</Filter>
+    </CustomBuild>
+  </ItemGroup>
+</Project>
