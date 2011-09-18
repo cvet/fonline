@@ -62,7 +62,7 @@ bool FOServer::TransferAllItems()
 
     // Set default items
     CrMap critters = CrMngr.GetCrittersNoLock();
-    for( CrMapIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
 
@@ -77,7 +77,7 @@ bool FOServer::TransferAllItems()
     ItemPtrVec bad_items;
     ItemPtrVec game_items;
     ItemMngr.GetGameItems( game_items );
-    for( ItemPtrVecIt it = game_items.begin(), end = game_items.end(); it != end; ++it )
+    for( auto it = game_items.begin(), end = game_items.end(); it != end; ++it )
     {
         Item* item = *it;
 
@@ -154,14 +154,14 @@ bool FOServer::TransferAllItems()
     }
 
     // Garbage bad items
-    for( ItemPtrVecIt it = bad_items.begin(), end = bad_items.end(); it != end; ++it )
+    for( auto it = bad_items.begin(), end = bad_items.end(); it != end; ++it )
     {
         Item* item = *it;
         ItemMngr.ItemToGarbage( item );
     }
 
     // Process visible for all npc
-    for( CrMapIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         cr->ProcessVisibleItems();

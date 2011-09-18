@@ -630,13 +630,13 @@ void FOClient::Finish()
     SAFEREL( DInput );
     SAFEDELA( ComBuf );
 
-    for( PCharPairVecIt it = IntellectWords.begin(), end = IntellectWords.end(); it != end; ++it )
+    for( auto it = IntellectWords.begin(), end = IntellectWords.end(); it != end; ++it )
     {
         delete[] ( *it ).first;
         delete[] ( *it ).second;
     }
     IntellectWords.clear();
-    for( PCharPairVecIt it = IntellectSymbols.begin(), end = IntellectSymbols.end(); it != end; ++it )
+    for( auto it = IntellectSymbols.begin(), end = IntellectSymbols.end(); it != end; ++it )
     {
         delete[] ( *it ).first;
         delete[] ( *it ).second;
@@ -1047,7 +1047,7 @@ void FOClient::ScreenFade( uint time, uint from_color, uint to_color, bool push_
     else
     {
         uint last_tick = 0;
-        for( ScreenEffectVecIt it = ScreenEffects.begin(); it != ScreenEffects.end(); ++it )
+        for( auto it = ScreenEffects.begin(); it != ScreenEffects.end(); ++it )
         {
             ScreenEffect& e = ( *it );
             if( e.BeginTick + e.Time > last_tick )
@@ -1077,7 +1077,7 @@ void FOClient::ProcessScreenEffectFading()
     if( six_points.empty() )
         SprMngr.PrepareSquare( six_points, FLTRECT( 0, 0, (float) MODE_WIDTH, (float) MODE_HEIGHT ), 0 );
 
-    for( ScreenEffectVecIt it = ScreenEffects.begin(); it != ScreenEffects.end();)
+    for( auto it = ScreenEffects.begin(); it != ScreenEffects.end();)
     {
         ScreenEffect& e = ( *it );
         if( Timer::FastTick() >= e.BeginTick + e.Time )
@@ -5236,7 +5236,7 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ush
     t.Text = fstr;
     t.Rect = HexMngr.GetRectForText( hx, hy );
     t.EndRect = t.Rect;
-    MapTextVecIt it = std::find( GameMapTexts.begin(), GameMapTexts.end(), t );
+    auto it = std::find( GameMapTexts.begin(), GameMapTexts.end(), t );
     if( it != GameMapTexts.end() )
         GameMapTexts.erase( it );
     GameMapTexts.push_back( t );
@@ -5551,7 +5551,7 @@ void FOClient::Net_OnCritterMoveItem()
     if( cr != Chosen )
     {
         int64 prev_hash_sum = 0;
-        for( ItemPtrVecIt it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
+        for( auto it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
         {
             Item* item = *it;
             prev_hash_sum += item->LightGetHash();
@@ -5576,7 +5576,7 @@ void FOClient::Net_OnCritterMoveItem()
         }
 
         int64 hash_sum = 0;
-        for( ItemPtrVecIt it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
+        for( auto it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
         {
             Item* item = *it;
             hash_sum += item->LightGetHash();
@@ -5968,14 +5968,14 @@ void FOClient::Net_OnChosenParam()
     case OTHER_CLEAR_MAP:
     {
         CritMap crits = HexMngr.GetCritters();
-        for( CritMapIt it = crits.begin(), end = crits.end(); it != end; ++it )
+        for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
             CritterCl* cr = ( *it ).second;
             if( cr != Chosen )
                 EraseCritter( cr->GetId() );
         }
         ItemHexVec items = HexMngr.GetItems();
-        for( ItemHexVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
             ItemHex* item = *it;
             if( item->IsItem() )
@@ -6913,7 +6913,7 @@ void FOClient::Net_OnGlobalInfo()
         Bin >> loc.Radius;
         Bin >> loc.Color;
 
-        GmapLocationVecIt it = std::find( GmapLoc.begin(), GmapLoc.end(), loc.LocId );
+        auto it = std::find( GmapLoc.begin(), GmapLoc.end(), loc.LocId );
         if( add )
         {
             if( it != GmapLoc.end() )
@@ -7283,14 +7283,14 @@ void FOClient::Net_OnPlayersBarter()
 
         if( !is_hide )
         {
-            ItemVecIt it = std::find( cont.begin(), cont.end(), param );
+            auto it = std::find( cont.begin(), cont.end(), param );
             if( it == cont.end() || param_ext > ( *it ).GetCount() )
             {
                 Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
                 break;
             }
-            Item&     citem = *it;
-            ItemVecIt it_ = std::find( cont_o.begin(), cont_o.end(), param );
+            Item& citem = *it;
+            auto  it_ = std::find( cont_o.begin(), cont_o.end(), param );
             if( it_ == cont_o.end() )
             {
                 cont_o.push_back( citem );
@@ -7328,14 +7328,14 @@ void FOClient::Net_OnPlayersBarter()
 
         if( !is_hide )
         {
-            ItemVecIt it = std::find( cont_o.begin(), cont_o.end(), param );
+            auto it = std::find( cont_o.begin(), cont_o.end(), param );
             if( it == cont_o.end() || param_ext > ( *it ).GetCount() )
             {
                 Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
                 break;
             }
-            Item&     citem = *it;
-            ItemVecIt it_ = std::find( cont.begin(), cont.end(), param );
+            Item& citem = *it;
+            auto  it_ = std::find( cont.begin(), cont.end(), param );
             if( it_ == cont.end() )
             {
                 cont.push_back( citem );
@@ -7358,7 +7358,7 @@ void FOClient::Net_OnPlayersBarter()
             citem->Count_Sub( param_ext );
             if( !citem->GetCount() || !citem->IsStackable() )
             {
-                ItemVecIt it = std::find( cont_o.begin(), cont_o.end(), param );
+                auto it = std::find( cont_o.begin(), cont_o.end(), param );
                 cont_o.erase( it );
             }
         }
@@ -7933,7 +7933,7 @@ void FOClient::Net_OnAutomapsInfo()
         Bin >> loc_pid;
         Bin >> maps_count;
 
-        AutomapVecIt it = std::find( Automaps.begin(), Automaps.end(), loc_id );
+        auto it = std::find( Automaps.begin(), Automaps.end(), loc_id );
 
         // Delete from collection
         if( !maps_count )
@@ -8179,8 +8179,8 @@ void FOClient::SetDayTime( bool refresh )
 Item* FOClient::GetTargetContItem()
 {
     static Item inv_slot;
-    #define TRY_SEARCH_IN_CONT( cont )                                                             \
-        do { ItemVecIt it = std::find( cont.begin(), cont.end(), item_id ); if( it != cont.end() ) \
+    #define TRY_SEARCH_IN_CONT( cont )                                                        \
+        do { auto it = std::find( cont.begin(), cont.end(), item_id ); if( it != cont.end() ) \
                  return &( *it ); } while( 0 )
     #define TRY_SEARCH_IN_SLOT( target_item )    do { if( target_item->GetId() == item_id ) { inv_slot = *target_item; return &inv_slot; } } while( 0 )
 
@@ -8228,7 +8228,7 @@ Item* FOClient::GetTargetContItem()
 
 void FOClient::AddAction( bool to_front, ActionEvent& act )
 {
-    for( ActionEventVecIt it = ChosenAction.begin(); it != ChosenAction.end();)
+    for( auto it = ChosenAction.begin(); it != ChosenAction.end();)
     {
         ActionEvent& a = *it;
         if( a == act )
@@ -8316,7 +8316,7 @@ void FOClient::CrittersProcess()
 /************************************************************************/
 /* All critters                                                         */
 /************************************************************************/
-    for( CritMapIt it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end();)
+    for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end();)
     {
         CritterCl* crit = ( *it ).second;
         ++it;
@@ -8947,7 +8947,7 @@ label_EndMove:
 
             if( to_slot == SLOT_GROUND && is_barter_cont && IsScreenPresent( SCREEN__BARTER ) )
             {
-                ItemVecIt it = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item_id );
+                auto it = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item_id );
                 if( it != BarterCont1oInit.end() )
                 {
                     Item& item_ = *it;
@@ -9381,7 +9381,7 @@ void FOClient::TryPickItemOnGround()
         return;
     ItemHexVec items;
     HexMngr.GetItems( Chosen->GetHexX(), Chosen->GetHexY(), items );
-    for( ItemHexVecIt it = items.begin(); it != items.end();)
+    for( auto it = items.begin(); it != items.end();)
     {
         ItemHex* item = *it;
         if( item->IsFinishing() || item->Proto->IsDoor() || !item->IsUsable() )
@@ -9704,10 +9704,10 @@ void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
     }
 }
 
-PCharPairVecIt FOClient::FindIntellectWord( const char* word, PCharPairVec& text, Randomizer& rnd )
+auto FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd )->PCharPairVec::iterator
 {
-    PCharPairVecIt it = text.begin();
-    PCharPairVecIt end = text.end();
+    auto it = text.begin();
+    auto end = text.end();
     for( ; it != end; ++it )
     {
         if( !_stricmp( word, ( *it ).first ) )
@@ -9716,9 +9716,9 @@ PCharPairVecIt FOClient::FindIntellectWord( const char* word, PCharPairVec& text
 
     if( it != end )
     {
-        PCharPairVecIt it_ = it;
+        auto it_ = it;
         it++;
-        int            cnt = 0;
+        int  cnt = 0;
         for( ; it != end; ++it )
         {
             if( !_stricmp( ( *it_ ).first, ( *it ).first ) )
@@ -9787,7 +9787,7 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
         uint len = Str::Length( word );
         if( len )
         {
-            PCharPairVecIt it = FindIntellectWord( word, IntellectWords, rnd );
+            auto it = FindIntellectWord( word, IntellectWords, rnd );
             if( it != IntellectWords.end() && rnd.Random( 1, 100 ) <= word_proc )
             {
                 Str::EraseInterval( str - len, len );
@@ -10183,7 +10183,7 @@ void FOClient::AnimRun( uint anim_id, uint flags )
 
 void FOClient::AnimProcess()
 {
-    for( IfaceAnimVecIt it = Animations.begin(), end = Animations.end(); it != end; ++it )
+    for( auto it = Animations.begin(), end = Animations.end(); it != end; ++it )
     {
         IfaceAnim* anim = *it;
         if( !anim || !anim->Flags )
@@ -10231,7 +10231,7 @@ void FOClient::AnimProcess()
 void FOClient::AnimFree( int res_type )
 {
     ResMngr.FreeResources( res_type );
-    for( IfaceAnimVecIt it = Animations.begin(), end = Animations.end(); it != end; ++it )
+    for( auto it = Animations.begin(), end = Animations.end(); it != end; ++it )
     {
         IfaceAnim* anim = *it;
         if( anim && anim->ResType == res_type )
@@ -10960,7 +10960,7 @@ uint FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radiu
 
     CritMap& crits = Self->HexMngr.GetCritters();
     CritVec  cr_vec;
-    for( CritMapIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         CritterCl* cr = ( *it ).second;
         if( cr->CheckFind( find_type ) && CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius ) )
@@ -10981,7 +10981,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( ushort pid, int find_type,
     CritVec  cr_vec;
     if( !pid )
     {
-        for( CritMapIt it = crits.begin(), end = crits.end(); it != end; ++it )
+        for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
             CritterCl* cr = ( *it ).second;
             if( cr->CheckFind( find_type ) )
@@ -10990,7 +10990,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( ushort pid, int find_type,
     }
     else
     {
-        for( CritMapIt it = crits.begin(), end = crits.end(); it != end; ++it )
+        for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
             CritterCl* cr = ( *it ).second;
             if( cr->IsNpc() && cr->Pid == pid && cr->CheckFind( find_type ) )
@@ -11169,7 +11169,7 @@ void FOClient::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, u
     t.Text = text.c_std_str();
     t.Rect = Self->HexMngr.GetRectForText( hx, hy );
     t.EndRect = INTRECT( t.Rect, ox, oy );
-    MapTextVecIt it = std::find( Self->GameMapTexts.begin(), Self->GameMapTexts.end(), t );
+    auto it = std::find( Self->GameMapTexts.begin(), Self->GameMapTexts.end(), t );
     if( it != Self->GameMapTexts.end() )
         Self->GameMapTexts.erase( it );
     Self->GameMapTexts.push_back( t );

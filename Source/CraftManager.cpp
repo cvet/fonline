@@ -543,8 +543,8 @@ bool CraftManager::operator==( const CraftManager& r )
         return false;
     }
 
-    CraftItemMapIt it = itemCraft.begin(), end = itemCraft.end();
-    CraftItemMapIt it_ = const_cast< CraftManager& >( r ).itemCraft.begin(), end_ = const_cast< CraftManager& >( r ).itemCraft.end();
+    auto it = itemCraft.begin(), end = itemCraft.end();
+    auto it_ = const_cast< CraftManager& >( r ).itemCraft.begin(), end_ = const_cast< CraftManager& >( r ).itemCraft.end();
     for( ; it != end; ++it, ++it_ )
     {
         CraftItem* craft = ( *it ).second;
@@ -585,12 +585,12 @@ bool CraftManager::LoadCrafts( const char* path )
 
 bool CraftManager::SaveCrafts( const char* path )
 {
-    FOMsg          msg;
-    CraftItemMapIt it = itemCraft.begin();
-    CraftItemMapIt it_end = itemCraft.end();
+    FOMsg      msg;
+    auto       it = itemCraft.begin();
+    auto       it_end = itemCraft.end();
 
-    CraftItem*     craft;
-    string         str;
+    CraftItem* craft;
+    string     str;
     for( ; it != it_end; ++it )
     {
         craft = ( *it ).second;
@@ -613,10 +613,10 @@ void CraftManager::EraseCraft( uint num )
 
 bool CraftManager::LoadCrafts( FOMsg& msg )
 {
-    int             load_fail = 0;
-    UIntStrMulMap&  msg_str = msg.GetData();
-    UIntStrMulMapIt it = msg_str.begin();
-    UIntStrMulMapIt it_end = msg_str.end();
+    int            load_fail = 0;
+    UIntStrMulMap& msg_str = msg.GetData();
+    auto           it = msg_str.begin();
+    auto           it_end = msg_str.end();
 
     it++;     // Skip ERROR
 
@@ -647,8 +647,8 @@ bool CraftManager::LoadCrafts( FOMsg& msg )
 #ifdef FONLINE_CLIENT
 void CraftManager::GenerateNames( FOMsg& msg_game, FOMsg& msg_item )
 {
-    CraftItemMapIt it = itemCraft.begin();
-    CraftItemMapIt it_end = itemCraft.end();
+    auto it = itemCraft.begin();
+    auto it_end = itemCraft.end();
 
     for( ; it != it_end; ++it )
     {
@@ -659,8 +659,8 @@ void CraftManager::GenerateNames( FOMsg& msg_game, FOMsg& msg_item )
 
 void CraftManager::Finish()
 {
-    CraftItemMapIt it = itemCraft.begin();
-    CraftItemMapIt it_end = itemCraft.end();
+    auto it = itemCraft.begin();
+    auto it_end = itemCraft.end();
 
     for( ; it != it_end; ++it )
         delete ( *it ).second;
@@ -725,7 +725,7 @@ bool CraftManager::AddCraft( CraftItem* craft, bool make_copy )
 
 CraftItem* CraftManager::GetCraft( uint num )
 {
-    CraftItemMapIt it = itemCraft.find( num );
+    auto it = itemCraft.find( num );
     return it != itemCraft.end() ? ( *it ).second : NULL;
 }
 
@@ -790,7 +790,7 @@ bool CraftManager::IsShowCraft( CritterCl* cr, uint num )
 void CraftManager::GetShowCrafts( Critter* cr, CraftItemVec& craft_vec )
 {
     craft_vec.clear();
-    for( CraftItemMapIt it = itemCraft.begin(), end = itemCraft.end(); it != end; ++it )
+    for( auto it = itemCraft.begin(), end = itemCraft.end(); it != end; ++it )
     {
         if( IsShowCraft( cr, ( *it ).first ) )
             craft_vec.push_back( ( *it ).second );
@@ -801,7 +801,7 @@ void CraftManager::GetShowCrafts( Critter* cr, CraftItemVec& craft_vec )
 void CraftManager::GetShowCrafts( CritterCl* cr, CraftItemVec& craft_vec )
 {
     craft_vec.clear();
-    for( CraftItemMapIt it = itemCraft.begin(), end = itemCraft.end(); it != end; ++it )
+    for( auto it = itemCraft.begin(), end = itemCraft.end(); it != end; ++it )
     {
         if( IsShowCraft( cr, ( *it ).first ) )
             craft_vec.push_back( ( *it ).second );
@@ -836,8 +836,8 @@ bool CraftManager::IsTrueCraft( CritterCl* cr, uint num )
 void CraftManager::GetTrueCrafts( Critter* cr, CraftItemVec& craft_vec )
 {
     craft_vec.clear();
-    CraftItemMapIt it = itemCraft.begin();
-    CraftItemMapIt it_end = itemCraft.end();
+    auto it = itemCraft.begin();
+    auto it_end = itemCraft.end();
     for( ; it != it_end; ++it )
     {
         if( IsTrueCraft( cr, ( *it ).first ) )
@@ -849,8 +849,8 @@ void CraftManager::GetTrueCrafts( Critter* cr, CraftItemVec& craft_vec )
 void CraftManager::GetTrueCrafts( CritterCl* cr, CraftItemVec& craft_vec )
 {
     craft_vec.clear();
-    CraftItemMapIt it = itemCraft.begin();
-    CraftItemMapIt it_end = itemCraft.end();
+    auto it = itemCraft.begin();
+    auto it_end = itemCraft.end();
     for( ; it != it_end; ++it )
     {
         if( IsTrueCraft( cr, ( *it ).first ) )
@@ -1097,7 +1097,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
             crafted_->Release();
             crafted_count_->Release();
             sub_items_->Release();
-            for( ItemPtrVecIt it = sub_items.begin(), end = sub_items.end(); it != end; ++it )
+            for( auto it = sub_items.begin(), end = sub_items.end(); it != end; ++it )
             {
                 Item* sub_item = *it;
                 if( !sub_item->IsNotValid && !sub_item->IsValidAccessory() )

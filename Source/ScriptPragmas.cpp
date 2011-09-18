@@ -135,28 +135,28 @@ public:
         // Register
         if( type == "int8" || type == "int16" || type == "int32" || type == "int" || type == "uint8" || type == "uint16" || type == "uint32" || type == "uint" )
         {
-            list< int >::iterator it = intArray.insert( intArray.begin(), int_value );
+            auto it = intArray.insert( intArray.begin(), int_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "int64" || type == "uint64" )
         {
-            list< int64 >::iterator it = int64Array.insert( int64Array.begin(), int_value );
+            auto it = int64Array.insert( int64Array.begin(), int_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer64 global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "string" )
         {
             if( value != "" ) value = text.substr( text.find( value ), string::npos );
-            list< CScriptString* >::iterator it = stringArray.insert( stringArray.begin(), new CScriptString( value ) );
+            auto it = stringArray.insert( stringArray.begin(), new CScriptString( value ) );
             if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 ) WriteLog( "Unable to register string global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "float" )
         {
-            list< float >::iterator it = floatArray.insert( floatArray.begin(), (float) float_value );
+            auto it = floatArray.insert( floatArray.begin(), (float) float_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register float global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "double" )
         {
-            list< double >::iterator it = doubleArray.insert( doubleArray.begin(), float_value );
+            auto it = doubleArray.insert( doubleArray.begin(), float_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register double global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "bool" )
@@ -167,7 +167,7 @@ public:
                 WriteLog( "Invalid start value of boolean type, pragma<%s>.\n", text.c_str() );
                 return;
             }
-            list< char >::iterator it = boolArray.insert( boolArray.begin(), value == "true" ? true : false );
+            auto it = boolArray.insert( boolArray.begin(), value == "true" ? true : false );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register boolean global var, pragma<%s>.\n", text.c_str() );
         }
         else

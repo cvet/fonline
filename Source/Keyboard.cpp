@@ -26,8 +26,7 @@ namespace Keyb
             EngShift = 0;
         }
     };
-    typedef vector< KeybData >           KeybDataVec;
-    typedef vector< KeybData >::iterator KeybDataVecIt;
+    typedef vector< KeybData > KeybDataVec;
 
     KeybDataVec Data;
     int         Lang = LANG_ENG;
@@ -291,7 +290,7 @@ void Keyb::PuntoSwitch( char* str )
         return;
     for( ; *str; str++ )
     {
-        KeybDataVecIt it = std::find( Data.begin() + DIK_0 + 1, Data.end(), *str );
+        auto it = std::find( Data.begin() + DIK_0 + 1, Data.end(), *str );
         if( it != Data.end() )
         {
             KeybData& k = *it;

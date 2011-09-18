@@ -21,7 +21,7 @@ AnimSetVec    Loader3d::loadedAnimations;
 
 FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool calc_tangent )
 {
-    for( FrameVecIt it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
+    for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
         FrameEx* frame = *it;
         if( !_stricmp( frame->exFileName, fname ) )
@@ -539,7 +539,7 @@ TextureEx* Loader3d::LoadTexture( IDirect3DDevice9* device, const char* texture_
         return NULL;
 
     // Try find already loaded texture
-    for( TextureExVecIt it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
+    for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
     {
         TextureEx* texture = *it;
         if( !_stricmp( texture->Name, texture_name ) )
@@ -573,7 +573,7 @@ void Loader3d::FreeTexture( TextureEx* texture )
 {
     if( texture )
     {
-        for( TextureExVecIt it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
+        for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
         {
             TextureEx* texture_ = *it;
             if( texture_ == texture )
@@ -590,7 +590,7 @@ void Loader3d::FreeTexture( TextureEx* texture )
     else
     {
         TextureExVec textures = loadedTextures;
-        for( TextureExVecIt it = textures.begin(), end = textures.end(); it != end; ++it )
+        for( auto it = textures.begin(), end = textures.end(); it != end; ++it )
             FreeTexture( *it );
     }
 }
@@ -644,7 +644,7 @@ EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, D3DXEFFECTINSTANCE* ef
     const char* effect_name = effect_inst->pEffectFilename;
 
     // Try find already loaded texture
-    for( EffectExVecIt it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
+    for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         EffectEx* effect_ex = *it;
         if( !_stricmp( effect_ex->Name, effect_name ) && effect_ex->Defaults == effect_inst->pDefaults )
@@ -935,7 +935,7 @@ void Loader3d::EffectProcessVariables( EffectEx* effect_ex, int pass,  float ani
 
 bool Loader3d::EffectsPreRestore()
 {
-    for( EffectExVecIt it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
+    for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         EffectEx* effect_ex = *it;
         D3D_HR( effect_ex->Effect->OnLostDevice() );
@@ -945,7 +945,7 @@ bool Loader3d::EffectsPreRestore()
 
 bool Loader3d::EffectsPostRestore()
 {
-    for( EffectExVecIt it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
+    for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         EffectEx* effect_ex = *it;
         D3D_HR( effect_ex->Effect->OnResetDevice() );

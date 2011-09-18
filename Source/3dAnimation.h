@@ -16,16 +16,12 @@
 #define ANIMATION_NO_SMOOTH    ( 0x08 )
 #define ANIMATION_INIT         ( 0x10 )
 
-
 class Animation3d;
-typedef vector< Animation3d* >                 Animation3dVec;
-typedef vector< Animation3d* >::iterator       Animation3dVecIt;
+typedef vector< Animation3d* >       Animation3dVec;
 class Animation3dEntity;
-typedef vector< Animation3dEntity* >           Animation3dEntityVec;
-typedef vector< Animation3dEntity* >::iterator Animation3dEntityVecIt;
+typedef vector< Animation3dEntity* > Animation3dEntityVec;
 class Animation3dXFile;
-typedef vector< Animation3dXFile* >            Animation3dXFileVec;
-typedef vector< Animation3dXFile* >::iterator  Animation3dXFileVecIt;
+typedef vector< Animation3dXFile* >  Animation3dXFileVec;
 
 struct AnimParams
 {
@@ -50,8 +46,7 @@ struct AnimParams
     int*                EffectInstSubsets;
     uint                EffectInstSubsetsCount;
 };
-typedef vector< AnimParams >           AnimParamsVec;
-typedef vector< AnimParams >::iterator AnimParamsVecIt;
+typedef vector< AnimParams > AnimParamsVec;
 
 struct MeshOptions
 {
@@ -63,8 +58,7 @@ struct MeshOptions
     EffectEx**                  EffectSubsets;
     EffectEx**                  DefaultEffectSubsets;
 };
-typedef vector< MeshOptions >           MeshOptionsVec;
-typedef vector< MeshOptions >::iterator MeshOptionsVecIt;
+typedef vector< MeshOptions > MeshOptionsVec;
 
 class Animation3d
 {

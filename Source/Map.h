@@ -239,10 +239,8 @@ public:
     }
 };
 typedef map< uint, Map* >             MapMap;
-typedef map< uint, Map* >::iterator   MapMapIt;
 typedef map< uint, Map* >::value_type MapMapVal;
 typedef vector< Map* >                MapVec;
-typedef vector< Map* >::iterator      MapVecIt;
 
 class ProtoLocation
 {
@@ -327,9 +325,7 @@ public:
     Location(): RefCounter( 1 ), Proto( NULL ), IsNotValid( false ) { memzero( (void*) &Data, sizeof( Data ) ); }
 };
 typedef map< uint, Location* >             LocMap;
-typedef map< uint, Location* >::iterator   LocMapIt;
 typedef map< uint, Location* >::value_type LocMapVal;
 typedef vector< Location* >                LocVec;
-typedef vector< Location* >::iterator      LocVecIt;
 
 #endif // __MAP__

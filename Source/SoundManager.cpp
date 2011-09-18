@@ -85,7 +85,7 @@ void SoundManager::Clear()
 
 void SoundManager::ClearSounds()
 {
-    for( SoundVecIt it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
+    for( auto it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
         delete *it;
     soundsActive.clear();
 }
@@ -101,7 +101,7 @@ void SoundManager::Process()
         return;
     call_tick = tick + MUSIC_PROCESS_TIME;
 
-    for( SoundVecIt it = soundsActive.begin(); it != soundsActive.end();)
+    for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
         bool   erase = false;
@@ -188,7 +188,7 @@ void SoundManager::SetSoundVolume( int vol_proc )
 {
     soundVolDb = VolumeToDb( vol_proc );
 
-    for( SoundVecIt it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
+    for( auto it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
     {
         Sound* sound = *it;
         if( !sound->IsMusic )
@@ -200,7 +200,7 @@ void SoundManager::SetMusicVolume( int vol_proc )
 {
     musicVolDb = VolumeToDb( vol_proc );
 
-    for( SoundVecIt it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
+    for( auto it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
     {
         Sound* sound = *it;
         if( sound->IsMusic )
@@ -723,7 +723,7 @@ bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar 
     }
     Str::Upper( name );
 
-    StrMapIt it = names.find( name );
+    auto it = names.find( name );
     if( it == names.end() )
         return false;
 
@@ -752,7 +752,7 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 void SoundManager::StopMusic()
 {
     // Find and erase old music
-    for( SoundVecIt it = soundsActive.begin(); it != soundsActive.end();)
+    for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
         if( sound->IsMusic )

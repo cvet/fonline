@@ -51,15 +51,15 @@ Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), numAnima
 Animation3d::~Animation3d()
 {
     SAFEREL( animController );
-    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
         delete *it;
     childAnimations.clear();
 
-    Animation3dVecIt it = std::find( generalAnimations.begin(), generalAnimations.end(), this );
+    auto it = std::find( generalAnimations.begin(), generalAnimations.end(), this );
     if( it != generalAnimations.end() )
         generalAnimations.erase( it );
 
-    for( MeshOptionsVecIt it = meshOpt.begin(), end = meshOpt.end(); it != end; ++it )
+    for( auto it = meshOpt.begin(), end = meshOpt.end(); it != end; ++it )
     {
         MeshOptions& mopt = *it;
         SAFEDELA( mopt.DisabledSubsets );
@@ -131,7 +131,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             SetAnimData( this, animLink, false );
 
         // Mark animations as unused
-        for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
             ( *it )->childChecker = false;
 
         // Get unused layers and subsets
@@ -141,7 +141,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             if( layers[ i ] == 0 )
                 continue;
 
-            for( AnimParamsVecIt it = animEntity->animData.begin(), end = animEntity->animData.end(); it != end; ++it )
+            for( auto it = animEntity->animData.begin(), end = animEntity->animData.end(); it != end; ++it )
             {
                 AnimParams& link = *it;
                 if( link.Layer == i && link.LayerValue == layers[ i ] && !link.ChildFName )
@@ -182,7 +182,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             if( unused_layers[ i ] || layers[ i ] == 0 )
                 continue;
 
-            for( AnimParamsVecIt it = animEntity->animData.begin(), end = animEntity->animData.end(); it != end; ++it )
+            for( auto it = animEntity->animData.begin(), end = animEntity->animData.end(); it != end; ++it )
             {
                 AnimParams& link = *it;
                 if( link.Layer == i && link.LayerValue == layers[ i ] )
@@ -194,7 +194,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                     }
 
                     bool aviable = false;
-                    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+                    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
                     {
                         Animation3d* anim3d = *it;
                         if( anim3d->animLink.Id == link.Id )
@@ -232,7 +232,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                             anim3d = Animation3d::GetAnimation( link.ChildFName, true );
                             if( anim3d )
                             {
-                                for( FrameVecIt it = anim3d->animEntity->xFile->framesSkinned.begin(), end = anim3d->animEntity->xFile->framesSkinned.end(); it != end; ++it )
+                                for( auto it = anim3d->animEntity->xFile->framesSkinned.begin(), end = anim3d->animEntity->xFile->framesSkinned.end(); it != end; ++it )
                                 {
                                     FrameEx* child_frame = *it;
                                     FrameEx* root_frame = (FrameEx*) D3DXFrameFind( animEntity->xFile->frameRoot, child_frame->Name );
@@ -256,7 +256,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         }
 
         // Erase unused animations
-        for( Animation3dVecIt it = childAnimations.begin(); it != childAnimations.end();)
+        for( auto it = childAnimations.begin(); it != childAnimations.end();)
         {
             Animation3d* anim3d = *it;
             if( !anim3d->childChecker )
@@ -350,7 +350,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
     }
 
     // Set animation for childs
-    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
         child->SetAnimation( anim1, anim2, layers, flags );
@@ -362,8 +362,8 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
 
 bool Animation3d::IsAnimation( uint anim1, uint anim2 )
 {
-    int      ii = ( anim1 << 8 ) | anim2;
-    IntMapIt it = animEntity->animIndexes.find( ii );
+    int  ii = ( anim1 << 8 ) | anim2;
+    auto it = animEntity->animIndexes.find( ii );
     return it != animEntity->animIndexes.end();
 }
 
@@ -410,7 +410,7 @@ bool Animation3d::IsIntersect( int x, int y )
     if( IsIntersectFrame( animEntity->xFile->frameRoot, ray_origin, ray_dir ) )
         return true;
     // Childs
-    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
         child->FrameMove( 0.0, drawXY.X, drawXY.Y, 1.0f, true );
@@ -471,7 +471,7 @@ void Animation3d::SetupBorders()
     baseBorders.B = (int) borders.B;
 
     // Childs
-    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
         child->FrameMove( 0.0, drawXY.X, drawXY.Y, 1.0f, true );
@@ -619,7 +619,7 @@ uint Animation3d::GetTick()
 
 MeshOptions* Animation3d::GetMeshOptions( D3DXMESHCONTAINER_EXTENDED* mesh )
 {
-    for( MeshOptionsVecIt it = meshOpt.begin(), end = meshOpt.end(); it != end; ++it )
+    for( auto it = meshOpt.begin(), end = meshOpt.end(); it != end; ++it )
     {
         MeshOptions& mopt = *it;
         if( mopt.MeshPtr == mesh )
@@ -667,7 +667,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
     if( clear )
     {
         // Enable all subsets, set default texture
-        for( MeshOptionsVecIt it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
+        for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
         {
             MeshOptions& mopt = *it;
             if( mopt.SubsetsCount )
@@ -713,7 +713,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
 
             if( data.TextureSubsets[ i ] < 0 )
             {
-                for( MeshOptionsVecIt it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
+                for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
                 {
                     MeshOptions& mopt = *it;
                     for( uint j = 0; j < mopt.SubsetsCount; j++ )
@@ -732,7 +732,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
     // Effects
     if( clear )
     {
-        for( MeshOptionsVecIt it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
+        for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
         {
             MeshOptions& mopt = *it;
             memcpy( mopt.EffectSubsets, mopt.DefaultEffectSubsets, mopt.SubsetsCount * sizeof( EffectEx* ) );
@@ -774,7 +774,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
 
             if( data.EffectInstSubsets[ i ] < 0 )
             {
-                for( MeshOptionsVecIt it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
+                for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
                 {
                     MeshOptions& mopt = *it;
                     for( uint i = 0; i < mopt.SubsetsCount; i++ )
@@ -904,7 +904,7 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
 
     FrameMove( elapsed, x, y, scale, false );
     DrawFrame( animEntity->xFile->frameRoot, !shadow_disabled );
-    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
         child->FrameMove( elapsed, x, y, 1.0f, false );
@@ -978,7 +978,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
     }
 
     // If the model contains a skinned mesh update the vertices
-    for( MeshContainerVecIt it = animEntity->xFile->allMeshes.begin(), end = animEntity->xFile->allMeshes.end(); it != end; ++it )
+    for( auto it = animEntity->xFile->allMeshes.begin(), end = animEntity->xFile->allMeshes.end(); it != end; ++it )
     {
         D3DXMESHCONTAINER_EXTENDED* mesh_container = *it;
         if( !mesh_container->pSkinInfo )
@@ -1019,7 +1019,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
     }
 
     // Update world matricles for childs
-    for( Animation3dVecIt it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
         child->groundPos = groundPos;
@@ -1289,10 +1289,10 @@ bool Animation3d::SetScreenSize( int width, int height )
 
 void Animation3d::Finish()
 {
-    for( Animation3dEntityVecIt it = Animation3dEntity::allEntities.begin(), end = Animation3dEntity::allEntities.end(); it != end; ++it )
+    for( auto it = Animation3dEntity::allEntities.begin(), end = Animation3dEntity::allEntities.end(); it != end; ++it )
         delete *it;
     Animation3dEntity::allEntities.clear();
-    for( Animation3dXFileVecIt it = Animation3dXFile::xFiles.begin(), end = Animation3dXFile::xFiles.end(); it != end; ++it )
+    for( auto it = Animation3dXFile::xFiles.begin(), end = Animation3dXFile::xFiles.end(); it != end; ++it )
         delete *it;
     Animation3dXFile::xFiles.clear();
 
@@ -1305,7 +1305,7 @@ void Animation3d::Finish()
 
 void Animation3d::BeginScene()
 {
-    for( Animation3dVecIt it = generalAnimations.begin(), end = generalAnimations.end(); it != end; ++it )
+    for( auto it = generalAnimations.begin(), end = generalAnimations.end(); it != end; ++it )
         ( *it )->noDraw = true;
 }
 
@@ -1422,7 +1422,7 @@ Animation3dEntity::~Animation3dEntity()
 {
     animData.push_back( animDataDefault );
     ZeroMemory( &animDataDefault, sizeof( animDataDefault ) );
-    for( AnimParamsVecIt it = animData.begin(), end = animData.end(); it != end; ++it )
+    for( auto it = animData.begin(), end = animData.end(); it != end; ++it )
     {
         AnimParams& link = *it;
         SAFEDELA( link.LinkBone );
@@ -2206,10 +2206,10 @@ int Animation3dEntity::GetAnimationIndex( uint& anim1, uint& anim2, float* speed
 int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed )
 {
     // Check equals
-    IntMapIt it1 = anim1Equals.find( anim1 );
+    auto it1 = anim1Equals.find( anim1 );
     if( it1 != anim1Equals.end() )
         anim1 = ( *it1 ).second;
-    IntMapIt it2 = anim2Equals.find( anim2 );
+    auto it2 = anim2Equals.find( anim2 );
     if( it2 != anim2Equals.end() )
         anim2 = ( *it2 ).second;
 
@@ -2219,7 +2219,7 @@ int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed
     // Speed
     if( speed )
     {
-        IntFloatMapIt it = animSpeed.find( ii );
+        auto it = animSpeed.find( ii );
         if( it != animSpeed.end() )
             *speed = ( *it ).second;
         else
@@ -2227,7 +2227,7 @@ int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed
     }
 
     // Find number of animation
-    IntMapIt it = animIndexes.find( ii );
+    auto it = animIndexes.find( ii );
     if( it != animIndexes.end() )
         return ( *it ).second;
 
@@ -2266,7 +2266,7 @@ Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
 {
     // Try find instance
     Animation3dEntity* entity = NULL;
-    for( Animation3dEntityVecIt it = allEntities.begin(), end = allEntities.end(); it != end; ++it )
+    for( auto it = allEntities.begin(), end = allEntities.end(); it != end; ++it )
     {
         Animation3dEntity* e = *it;
         if( e->fileName == name )
@@ -2312,7 +2312,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname, bool calc_tange
 {
     Animation3dXFile* xfile = NULL;
 
-    for( Animation3dXFileVecIt it = xFiles.begin(), end = xFiles.end(); it != end; ++it )
+    for( auto it = xFiles.begin(), end = xFiles.end(); it != end; ++it )
     {
         Animation3dXFile* x = *it;
         if( x->fileName == xname )

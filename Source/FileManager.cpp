@@ -142,7 +142,7 @@ bool FileManager::LoadDataFile( const char* path )
     }
 
     // Find already loaded
-    for( DataFileVecIt it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* pfile = *it;
         if( pfile->GetPackName() == path_ )
@@ -163,7 +163,7 @@ bool FileManager::LoadDataFile( const char* path )
 
 void FileManager::EndOfWork()
 {
-    for( DataFileVecIt it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
         delete *it;
     dataFiles.clear();
 }
@@ -262,7 +262,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
         return false;
 
     _strlwr( dat_path );
-    for( DataFileVecIt it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* dat = *it;
         fileBuf = dat->OpenFile( dat_path, fileSize );
@@ -1000,7 +1000,7 @@ void FileManager::GetDatsFileNames( const char* path, bool include_subdirs, cons
     FormatPath( path_ );
 
     // Find in dat files
-    for( DataFileVecIt it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* dat = *it;
         dat->GetFileNames( path_, include_subdirs, ext, result );

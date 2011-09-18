@@ -26,15 +26,11 @@
 class TemplateVar;
 class GameVar;
 typedef vector< TemplateVar* >              TempVarVec;
-typedef vector< TemplateVar* >::iterator    TempVarVecIt;
 typedef map< uint, GameVar* >               VarsMap32;
-typedef map< uint, GameVar* >::iterator     VarsMap32It;
 typedef map< uint, GameVar* >::value_type   VarsMap32Val;
 typedef map< uint64, GameVar* >             VarsMap64;
-typedef map< uint64, GameVar* >::iterator   VarsMap64It;
 typedef map< uint64, GameVar* >::value_type VarsMap64Val;
 typedef vector< GameVar* >                  VarsVec;
-typedef vector< GameVar* >::iterator        VarsVecIt;
 
 
 class TemplateVar

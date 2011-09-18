@@ -17,7 +17,7 @@ void ResourceManager::Refresh()
         // All names
         StrVec file_names;
         FileManager::GetFolderFileNames( FileManager::GetPath( PT_DATA ), true, NULL, file_names );
-        for( StrVecIt it = file_names.begin(), end = file_names.end(); it != end; ++it )
+        for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             Str::AddNameHash( ( *it ).c_str() );
 
         // Splashes
@@ -25,7 +25,7 @@ void ResourceManager::Refresh()
         FileManager::GetFolderFileNames( FileManager::GetPath( PT_ART_SPLASH ), true, "rix", splashes );
         FileManager::GetFolderFileNames( FileManager::GetPath( PT_ART_SPLASH ), true, "png", splashes );
         FileManager::GetFolderFileNames( FileManager::GetPath( PT_ART_SPLASH ), true, "jpg", splashes );
-        for( StrVecIt it = splashes.begin(), end = splashes.end(); it != end; ++it )
+        for( auto it = splashes.begin(), end = splashes.end(); it != end; ++it )
             if( std::find( splashNames.begin(), splashNames.end(), *it ) == splashNames.end() )
                 splashNames.push_back( *it );
 
@@ -36,7 +36,7 @@ void ResourceManager::Refresh()
         FileManager::GetFolderFileNames( FileManager::GetPath( PT_SND_SFX ), true, "ogg", sounds );
         char fname[ MAX_FOPATH ];
         char name[ MAX_FOPATH ];
-        for( StrVecIt it = sounds.begin(), end = sounds.end(); it != end; ++it )
+        for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
         {
             FileManager::ExtractFileName( ( *it ).c_str(), fname );
             Str::Copy( name, fname );
@@ -54,7 +54,7 @@ void ResourceManager::Refresh()
 
     // Dat files, packed data
     DataFileVec& pfiles = FileManager::GetDataFiles();
-    for( DataFileVecIt it = pfiles.begin(), end = pfiles.end(); it != end; ++it )
+    for( auto it = pfiles.begin(), end = pfiles.end(); it != end; ++it )
     {
         DataFile* pfile = *it;
         if( std::find( processedDats.begin(), processedDats.end(), pfile ) == processedDats.end() )
@@ -62,7 +62,7 @@ void ResourceManager::Refresh()
             // All names
             StrVec file_names;
             pfile->GetFileNames( FileManager::GetPath( PT_DATA ), true, NULL, file_names );
-            for( StrVecIt it = file_names.begin(), end = file_names.end(); it != end; ++it )
+            for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
                 Str::AddNameHash( ( *it ).c_str() );
 
             // Splashes
@@ -70,7 +70,7 @@ void ResourceManager::Refresh()
             pfile->GetFileNames( FileManager::GetPath( PT_ART_SPLASH ), true, "rix", splashes );
             pfile->GetFileNames( FileManager::GetPath( PT_ART_SPLASH ), true, "png", splashes );
             pfile->GetFileNames( FileManager::GetPath( PT_ART_SPLASH ), true, "jpg", splashes );
-            for( StrVecIt it = splashes.begin(), end = splashes.end(); it != end; ++it )
+            for( auto it = splashes.begin(), end = splashes.end(); it != end; ++it )
                 if( std::find( splashNames.begin(), splashNames.end(), *it ) == splashNames.end() )
                     splashNames.push_back( *it );
 
@@ -81,7 +81,7 @@ void ResourceManager::Refresh()
             pfile->GetFileNames( FileManager::GetPath( PT_SND_SFX ), true, "ogg", sounds );
             char fname[ MAX_FOPATH ];
             char name[ MAX_FOPATH ];
-            for( StrVecIt it = sounds.begin(), end = sounds.end(); it != end; ++it )
+            for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
                 FileManager::ExtractFileName( ( *it ).c_str(), fname );
                 Str::Copy( name, fname );
@@ -111,7 +111,7 @@ void ResourceManager::FreeResources( int type )
     if( type == RES_IFACE )
     {
         SprMngr.FreeSurfaces( RES_IFACE );
-        for( LoadedAnimMapIt it = loadedAnims.begin(); it != loadedAnims.end();)
+        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
         {
             int res_type = ( *it ).second.ResType;
             if( res_type == RES_IFACE )
@@ -123,7 +123,7 @@ void ResourceManager::FreeResources( int type )
     else if( type == RES_IFACE_EXT )
     {
         SprMngr.FreeSurfaces( RES_IFACE_EXT );
-        for( LoadedAnimMapIt it = loadedAnims.begin(); it != loadedAnims.end();)
+        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
         {
             int res_type = ( *it ).second.ResType;
             if( res_type == RES_IFACE_EXT )
@@ -134,7 +134,7 @@ void ResourceManager::FreeResources( int type )
     }
     else if( type == RES_CRITTERS )
     {
-        for( AnimMapIt it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it )
+        for( auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it )
             SAFEDEL( ( *it ).second );
         critterFrames.clear();
         SprMngr.FreeSurfaces( RES_CRITTERS );
@@ -143,7 +143,7 @@ void ResourceManager::FreeResources( int type )
     else if( type == RES_ITEMS )
     {
         SprMngr.FreeSurfaces( RES_ITEMS );
-        for( LoadedAnimMapIt it = loadedAnims.begin(); it != loadedAnims.end();)
+        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
         {
             int res_type = ( *it ).second.ResType;
             if( res_type == RES_ITEMS )
@@ -155,7 +155,7 @@ void ResourceManager::FreeResources( int type )
     else if( type == RES_SCRIPT )
     {
         SprMngr.FreeSurfaces( RES_SCRIPT );
-        for( LoadedAnimMapIt it = loadedAnims.begin(); it != loadedAnims.end();)
+        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
         {
             int res_type = ( *it ).second.ResType;
             if( res_type == RES_SCRIPT )
@@ -169,8 +169,8 @@ void ResourceManager::FreeResources( int type )
 AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
 {
     // Find already loaded
-    uint            id = name_hash + dir;
-    LoadedAnimMapIt it = loadedAnims.find( id );
+    uint id = name_hash + dir;
+    auto it = loadedAnims.find( id );
     if( it != loadedAnims.end() )
         return ( *it ).second.Anim;
 
@@ -209,7 +209,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     uint id = AnimMapId( crtype, anim1, anim2, dir, false );
 
     // Check already loaded
-    AnimMapIt it = critterFrames.find( id );
+    auto it = critterFrames.find( id );
     if( it != critterFrames.end() )
         return ( *it ).second;
 
@@ -465,7 +465,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
 
 AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2, int dir )
 {
-    AnimMapIt it = critterFrames.find( AnimMapId( crtype, anim1, anim2, dir, true ) );
+    auto it = critterFrames.find( AnimMapId( crtype, anim1, anim2, dir, true ) );
     if( it != critterFrames.end() )
         return ( *it ).second;
 

@@ -329,17 +329,13 @@ public:
 };
 
 typedef vector< ProtoItem >            ProtoItemVec;
-typedef vector< ProtoItem >::iterator  ProtoItemVecIt;
 
 class Item;
 typedef map< uint, Item* >             ItemPtrMap;
-typedef map< uint, Item* >::iterator   ItemPtrMapIt;
 typedef map< uint, Item* >::value_type ItemPtrMapVal;
 typedef vector< Item* >                ItemPtrVec;
-typedef vector< Item* >::iterator      ItemPtrVecIt;
 typedef vector< Item* >::value_type    ItemPtrVecVal;
 typedef vector< Item >                 ItemVec;
-typedef vector< Item >::iterator       ItemVecIt;
 
 /************************************************************************/
 /* Item                                                                 */

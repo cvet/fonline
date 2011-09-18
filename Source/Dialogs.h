@@ -64,8 +64,7 @@ public:
     ~DemandResult() { MEMORY_PROCESS( MEMORY_DIALOG, -(int) sizeof( DemandResult ) ); }
     #endif
 };
-typedef vector< DemandResult >           DemandResultVec;
-typedef vector< DemandResult >::iterator DemandResultVecIt;
+typedef vector< DemandResult > DemandResultVec;
 
 class DialogAnswer
 {
@@ -87,8 +86,7 @@ public:
     ~DialogAnswer() { MEMORY_PROCESS( MEMORY_DIALOG, -(int) sizeof( DialogAnswer ) ); }
     #endif
 };
-typedef vector< DialogAnswer >           AnswersVec;
-typedef vector< DialogAnswer >::iterator AnswersVecIt;
+typedef vector< DialogAnswer > AnswersVec;
 
 class Dialog
 {
@@ -124,8 +122,7 @@ public:
     #endif
     bool operator==( const uint& r ) { return Id == r; }
 };
-typedef vector< Dialog >           DialogsVec;
-typedef vector< Dialog >::iterator DialogsVecIt;
+typedef vector< Dialog > DialogsVec;
 
 class DialogPack
 {
@@ -141,7 +138,6 @@ public:
     DialogPack( uint id, string name ): PackId( id ), MaxTalk( 1 ), PackName( name ) {}
 };
 typedef map< uint, DialogPack* >             DialogPackMap;
-typedef map< uint, DialogPack* >::iterator   DialogPackMapIt;
 typedef map< uint, DialogPack* >::value_type DialogPackMapVal;
 
 struct Talking

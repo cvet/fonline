@@ -138,8 +138,7 @@ struct AIDataPlane
     }
 private: AIDataPlane() {}        // Disable default constructor
 };
-typedef vector< AIDataPlane* >           AIDataPlaneVec;
-typedef vector< AIDataPlane* >::iterator AIDataPlaneVecIt;
+typedef vector< AIDataPlane* > AIDataPlaneVec;
 
 class NpcBagItem
 {

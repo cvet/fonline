@@ -149,7 +149,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
         end = strstr( begin, "\nresolution " );
     }
 
-    for( IniMMap::iterator it = sections.begin(), end = sections.end(); it != end; ++it )
+    for( auto it = sections.begin(), end = sections.end(); it != end; ++it )
         IfaceIni.AppendPtrToBegin( ( *it ).second.first, ( *it ).second.second );
 }
 
@@ -1370,8 +1370,8 @@ uint FOClient::GetCurContainerItemId( INTRECT& pos, int height, int scroll, Item
 {
     if( !IsCurInRect( pos ) )
         return 0;
-    ItemVecIt it = cont.begin();
-    int       pos_cur = ( GameOpt.MouseY - pos.T ) / height;
+    auto it = cont.begin();
+    int  pos_cur = ( GameOpt.MouseY - pos.T ) / height;
     for( int i = 0; it != cont.end(); ++it, ++i )
     {
         if( i - scroll != pos_cur )
@@ -1384,7 +1384,7 @@ uint FOClient::GetCurContainerItemId( INTRECT& pos, int height, int scroll, Item
 void FOClient::ContainerDraw( INTRECT& pos, int height, int scroll, ItemVec& cont, uint skip_id )
 {
     int i = 0, i2 = 0;
-    for( ItemVecIt it = cont.begin(), end = cont.end(); it != end; ++it )
+    for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
     {
         Item& item = *it;
         if( item.GetId() == skip_id )
@@ -1402,7 +1402,7 @@ void FOClient::ContainerDraw( INTRECT& pos, int height, int scroll, ItemVec& con
     SprMngr.Flush();
 
     i = 0, i2 = 0;
-    for( ItemVecIt it = cont.begin(), end = cont.end(); it != end; ++it )
+    for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
     {
         Item& item = *it;
         if( item.GetId() == skip_id )
@@ -1419,7 +1419,7 @@ void FOClient::ContainerDraw( INTRECT& pos, int height, int scroll, ItemVec& con
 
 Item* FOClient::GetContainerItem( ItemVec& cont, uint id )
 {
-    ItemVecIt it = std::find( cont.begin(), cont.end(), id );
+    auto it = std::find( cont.begin(), cont.end(), id );
     return it != cont.end() ? &( *it ) : NULL;
 }
 
@@ -1432,19 +1432,19 @@ void FOClient::CollectContItems()
     if( IsScreenPresent( SCREEN__BARTER ) )
     {
         // Manage offered items
-        for( ItemVecIt it = BarterCont1oInit.begin(); it != BarterCont1oInit.end();)
+        for( auto it = BarterCont1oInit.begin(); it != BarterCont1oInit.end();)
         {
-            Item&     item = *it;
-            ItemVecIt it_ = std::find( InvContInit.begin(), InvContInit.end(), item.GetId() );
+            Item& item = *it;
+            auto  it_ = std::find( InvContInit.begin(), InvContInit.end(), item.GetId() );
             if( it_ == InvContInit.end() || ( *it_ ).GetCount() < item.GetCount() )
                 it = BarterCont1oInit.erase( it );
             else
                 ++it;
         }
-        for( ItemVecIt it = InvContInit.begin(); it != InvContInit.end();)
+        for( auto it = InvContInit.begin(); it != InvContInit.end();)
         {
-            Item&     item = *it;
-            ItemVecIt it_ = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item.GetId() );
+            Item& item = *it;
+            auto  it_ = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item.GetId() );
             if( it_ != BarterCont1oInit.end() )
             {
                 Item& item_ = *it_;
@@ -1492,7 +1492,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
             // Clone to script array
             ItemPtrVec items_ptr;
             items_ptr.reserve( init_items.size() );
-            for( ItemVecIt it = init_items.begin(), end = init_items.end(); it != end; ++it )
+            for( auto it = init_items.begin(), end = init_items.end(); it != end; ++it )
                 items_ptr.push_back( ( *it ).Clone() );
             Script::AppendVectorToArrayRef( items_ptr, arr );
 
@@ -1507,7 +1507,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
 
                 // Copy to result array
                 result.clear();
-                for( ItemPtrVecIt it = result_items_ptr.begin(), end = result_items_ptr.end(); it != end; ++it )
+                for( auto it = result_items_ptr.begin(), end = result_items_ptr.end(); it != end; ++it )
                 {
                     Item* item = *it;
                     if( item )
@@ -1516,7 +1516,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
             }
 
             // Release items
-            for( ItemPtrVecIt it = items_ptr.begin(), end = items_ptr.end(); it != end; ++it )
+            for( auto it = items_ptr.begin(), end = items_ptr.end(); it != end; ++it )
                 ( *it )->Release();
             arr->Release();
         }
@@ -1525,7 +1525,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
 
 void FOClient::UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems )
 {
-    ItemVecIt it = std::find( cont.begin(), cont.end(), item_id );
+    auto it = std::find( cont.begin(), cont.end(), item_id );
     if( it != cont.end() )
         ( *it ).Lexems = lexems;
 }
@@ -1599,7 +1599,7 @@ void FOClient::InvDraw()
     }
 
     // Extended slots
-    for( SlotExtVecIt it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
+    for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
     {
         SlotExt& se = *it;
         if( se.Rect.IsZero() )
@@ -1689,7 +1689,7 @@ void FOClient::InvLMouseDown()
         else
         {
             // Try find extended slot
-            for( SlotExtVecIt it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
+            for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
             {
                 SlotExt& se = *it;
                 if( !se.Rect.IsZero() && IsCurInRect( se.Rect, InvX, InvY ) )
@@ -1748,7 +1748,7 @@ void FOClient::InvLMouseUp()
         else
         {
             // Find extended slot
-            for( SlotExtVecIt it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
+            for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
             {
                 SlotExt& se = *it;
                 if( !se.Rect.IsZero() && IsCurInRect( se.Rect, InvX, InvY ) )
@@ -2232,7 +2232,7 @@ void FOClient::GameDraw()
     LookBordersDraw();
 
     // Critters
-    for( CritMapIt it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++ )
+    for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++ )
     {
         CritterCl* cr = ( *it ).second;
 
@@ -2265,7 +2265,7 @@ void FOClient::GameDraw()
 
     // Texts on map
     uint tick = Timer::GameTick();
-    for( MapTextVecIt it = GameMapTexts.begin(); it != GameMapTexts.end();)
+    for( auto it = GameMapTexts.begin(); it != GameMapTexts.end();)
     {
         MapText& mt = ( *it );
         if( tick >= mt.StartTick + mt.Tick )
@@ -3016,7 +3016,7 @@ void FOClient::IntLMouseUp()
     else if( IfaceHold == IFACE_INT_FILTER1 && IsCurInRect( IntBMessFilter1 ) )
     {
         MessBoxScroll = 0;
-        IntVecIt it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_COMBAT_RESULT );
+        auto it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_COMBAT_RESULT );
         if( it != MessBoxFilters.end() )
             MessBoxFilters.erase( it );
         else
@@ -3026,7 +3026,7 @@ void FOClient::IntLMouseUp()
     else if( IfaceHold == IFACE_INT_FILTER2 && IsCurInRect( IntBMessFilter2 ) )
     {
         MessBoxScroll = 0;
-        IntVecIt it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_TALK );
+        auto it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_TALK );
         if( it != MessBoxFilters.end() )
             MessBoxFilters.erase( it );
         else
@@ -3036,7 +3036,7 @@ void FOClient::IntLMouseUp()
     else if( IfaceHold == IFACE_INT_FILTER3 && IsCurInRect( IntBMessFilter3 ) )
     {
         MessBoxScroll = 0;
-        IntVecIt it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_VIEW );
+        auto it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_VIEW );
         if( it != MessBoxFilters.end() )
             MessBoxFilters.erase( it );
         else
@@ -3791,7 +3791,7 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont1o, DlgX, DlgY ) )
             {
-                ItemVecIt it = std::find( BarterCont1.begin(), BarterCont1.end(), BarterHoldId );
+                auto it = std::find( BarterCont1.begin(), BarterCont1.end(), BarterHoldId );
                 if( it != BarterCont1.end() )
                 {
                     Item& item = *it;
@@ -3806,7 +3806,7 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont2o, DlgX, DlgY ) && !( BarterIsPlayers && BarterOpponentHide ) )
             {
-                ItemVecIt it = std::find( BarterCont2.begin(), BarterCont2.end(), BarterHoldId );
+                auto it = std::find( BarterCont2.begin(), BarterCont2.end(), BarterHoldId );
                 if( it != BarterCont2.end() )
                 {
                     Item& item = *it;
@@ -3821,7 +3821,7 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont1, DlgX, DlgY ) )
             {
-                ItemVecIt it = std::find( BarterCont1o.begin(), BarterCont1o.end(), BarterHoldId );
+                auto it = std::find( BarterCont1o.begin(), BarterCont1o.end(), BarterHoldId );
                 if( it != BarterCont1o.end() )
                 {
                     Item& item = *it;
@@ -3836,7 +3836,7 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont2, DlgX, DlgY ) && !( BarterIsPlayers && BarterOpponentHide ) )
             {
-                ItemVecIt it = std::find( BarterCont2o.begin(), BarterCont2o.end(), BarterHoldId );
+                auto it = std::find( BarterCont2o.begin(), BarterCont2o.end(), BarterHoldId );
                 if( it != BarterCont2o.end() )
                 {
                     Item& item = *it;
@@ -4122,7 +4122,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
         return;
     }
 
-    ItemVecIt it = std::find( from_cont->begin(), from_cont->end(), item_id );
+    auto it = std::find( from_cont->begin(), from_cont->end(), item_id );
     if( it == from_cont->end() )
         return;
 
@@ -4134,7 +4134,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
 
     if( item->IsStackable() )
     {
-        ItemVecIt it_to = std::find( to_cont->begin(), to_cont->end(), item->GetId() );
+        auto it_to = std::find( to_cont->begin(), to_cont->end(), item->GetId() );
         if( it_to != to_cont->end() )
             to_item = &( *it_to );
     }
@@ -4183,7 +4183,7 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
     cost = 0;
     weigth = 0;
     volume = 0;
-    for( ItemVecIt it = cont.begin(); it != cont.end(); it++ )
+    for( auto it = cont.begin(); it != cont.end(); it++ )
     {
         Item& item = *it;
         if( barter_k != MAX_INT )
@@ -4558,7 +4558,7 @@ void FOClient::LMenuCollect()
             if( !item_id )
             {
                 // Find in extended slots
-                for( SlotExtVecIt it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
+                for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
                 {
                     SlotExt& se = *it;
                     if( !se.Rect.IsZero() && IsCurInRect( se.Rect, InvX, InvY ) )
@@ -4651,7 +4651,7 @@ void FOClient::LMenuCollect()
         case SCREEN_GLOBAL_MAP:
         {
             int pos = 0;
-            for( CritMapIt it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
+            for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
             {
                 CritterCl* cr = ( *it ).second;
                 if( !IsCurInRect( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
@@ -4950,7 +4950,7 @@ void FOClient::LMenuMouseUp()
     if( !IsLMenu() )
         LMenuCurNode = 0;
 
-    UCharVecIt it_l = LMenuCurNodes->begin();
+    auto it_l = LMenuCurNodes->begin();
     it_l += LMenuCurNode;
 
     switch( LMenuMode )
@@ -6043,7 +6043,7 @@ void FOClient::GmapDraw()
     SprMngr.DrawPoints( GmapFogPix, D3DPT_TRIANGLELIST );
 
     // Locations on map
-    for( GmapLocationVecIt it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
+    for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
     {
         GmapLocation& loc = ( *it );
         int radius = loc.Radius;       // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
@@ -6098,7 +6098,7 @@ void FOClient::GmapDraw()
     // Trace
     static PointVec gt;
     gt.clear();
-    for( IntPairVecIt it = GmapTrace.begin(), end = GmapTrace.end(); it != end; ++it )
+    for( auto it = GmapTrace.begin(), end = GmapTrace.end(); it != end; ++it )
         gt.push_back( PrepPoint( (int) ( ( *it ).first / GmapZoom ) + GmapOffsetX, (int) ( ( *it ).second / GmapZoom ) + GmapOffsetY, 0xFFFF0000 ) );
     SprMngr.DrawPoints( gt, D3DPT_POINTLIST );
 
@@ -6199,7 +6199,7 @@ void FOClient::GmapDraw()
 
     // Critters
     int pos = 0;
-    for( CritMapIt it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
+    for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
     {
         CritterCl* cr = ( *it ).second;
         SprMngr.DrawStr( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->GetName(), FT_NOBREAK | FT_CENTERY, cr->IsGmapRule() ? COLOR_TEXT_DGREEN : COLOR_TEXT );
@@ -6214,7 +6214,7 @@ void FOClient::GmapDraw()
         if( GmapFog.Get2Bit( GM_ZONE( cx ), GM_ZONE( cy ) ) != GM_FOG_FULL )
         {
             GmapLocation* cur_loc = NULL;
-            for( GmapLocationVecIt it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
+            for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
             {
                 GmapLocation& loc = ( *it );
                 uint radius = loc.Radius;               // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
@@ -6361,7 +6361,7 @@ void FOClient::GmapLMouseDown()
     else
     {
         int pos = 0;
-        for( CritMapIt it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
+        for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
         {
             CritterCl* cr = ( *it ).second;
             if( !IsCurInRect( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
@@ -6477,7 +6477,7 @@ void FOClient::GmapLMouseUp()
                     SprMngr.IsPixNoTransp( GmapPStayMask->GetCurSprId(), GameOpt.MouseX - x, GameOpt.MouseY - y, false ) )
                 {
                     uint loc_id = 0;
-                    for( GmapLocationVecIt it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
+                    for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
                     {
                         GmapLocation& loc = ( *it );
                         uint radius = loc.Radius;
@@ -6502,7 +6502,7 @@ void FOClient::GmapLMouseUp()
     }
     else if( IfaceHold == IFACE_GMAP_TOWN && IsCurInRect( GmapBTown ) )
     {
-        for( GmapLocationVecIt it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
+        for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
         {
             GmapLocation& loc = ( *it );
             uint radius = loc.Radius;
@@ -8474,7 +8474,7 @@ void FOClient::PipDraw()
             SprMngr.DrawStr( INTRECT( PipWMonitor[ 0 ], PipWMonitor[ 1 ] + scr * h, PipWMonitor[ 2 ], PipWMonitor[ 1 ] + scr * h + h, PipX, PipY ), FmtGameText( STR_PIP_QUESTS ), FT_CENTERX, COLOR_TEXT_DGREEN );
         scr++;
         QuestTabMap* tabs = QuestMngr.GetTabs();
-        for( QuestTabMapIt it = tabs->begin(), end = tabs->end(); it != end; ++it )
+        for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
         {
             PIP_DRAW_TEXT( ( *it ).first.c_str(), FT_NOBREAK, COLOR_TEXT );
             scr++;
@@ -8592,7 +8592,7 @@ void FOClient::PipDraw()
         AutomapPoints.clear();
         AutomapScrX = (float) ( PipX - maxhx * 2 / 2 + PipWMonitor.W() / 2 );
         AutomapScrY = (float) ( PipY - maxhy * 2 / 2 + PipWMonitor.H() / 2 );
-        for( ItemVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
             Item& item = *it;
             ushort pid = item.GetProtoId();
@@ -8688,7 +8688,7 @@ void FOClient::PipLMouseDown()
             int scr_ = scr;
 
             QuestTabMap* tabs = QuestMngr.GetTabs();
-            for( QuestTabMapIt it = tabs->begin(), end = tabs->end(); it != end; ++it )
+            for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
             {
                 if( scr >= 0 && scr < ml && IsCurInRect( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
                 {
@@ -9234,7 +9234,7 @@ void FOClient::PupLMouseUp()
         if( !IsCurInRect( PupWCont1, PupX, PupY ) )
             break;
 
-        ItemVecIt it = std::find( PupCont2.begin(), PupCont2.end(), PupHoldId );
+        auto it = std::find( PupCont2.begin(), PupCont2.end(), PupHoldId );
         if( it != PupCont2.end() )
         {
             Item& item = *it;
@@ -9250,7 +9250,7 @@ void FOClient::PupLMouseUp()
         if( !IsCurInRect( PupWCont2, PupX, PupY ) )
             break;
 
-        ItemVecIt it = std::find( PupCont1.begin(), PupCont1.end(), PupHoldId );
+        auto it = std::find( PupCont1.begin(), PupCont1.end(), PupHoldId );
         if( it != PupCont1.end() )
         {
             Item& item = *it;
@@ -9398,7 +9398,7 @@ void FOClient::PupTransfer( uint item_id, uint cont, uint count )
     // From container to Chosen
     else if( cont == IFACE_PUP_CONT2 )
     {
-        ItemVecIt it = std::find( PupCont2Init.begin(), PupCont2Init.end(), item_id );
+        auto it = std::find( PupCont2Init.begin(), PupCont2Init.end(), item_id );
         if( it == PupCont2Init.end() )
             return;
         Item& item = *it;
@@ -9668,7 +9668,7 @@ DrawCurHand:
                     goto DrawCurHand;
                 }
 
-                ItemVecIt it = std::find( cont->begin(), cont->end(), BarterHoldId );
+                auto it = std::find( cont->begin(), cont->end(), BarterHoldId );
                 if( it == cont->end() )
                     goto DrawCurHand;
                 Item* item = &( *it );
@@ -11439,7 +11439,7 @@ void FOClient::SaveLoadCollect()
     }
 
     // Close opened file handles
-    for( PtrVecIt it = open_handles.begin(); it != open_handles.end(); ++it )
+    for( auto it = open_handles.begin(); it != open_handles.end(); ++it )
         CloseHandle( *it );
 
     // Sort by creation time

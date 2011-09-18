@@ -85,26 +85,20 @@ class Location;
 class MapObject;
 class GlobalMapGroup;
 
-typedef Critter*                     CritterPtr;
-typedef Client*                      ClientPtr;
-typedef Npc*                         NpcPtr;
+typedef Critter*              CritterPtr;
+typedef Client*               ClientPtr;
+typedef Npc*                  NpcPtr;
 
-typedef map< uint, Critter* >        CrMap;
-typedef CrMap::iterator              CrMapIt;
-typedef CrMap::value_type            CrMapVal;
-typedef map< uint, Client* >         ClMap;
-typedef ClMap::iterator              ClMapIt;
-typedef ClMap::value_type            ClMapVal;
-typedef map< uint, Npc* >            PcMap;
-typedef PcMap::iterator              PcMapIt;
-typedef PcMap::value_type            PcMapVal;
+typedef map< uint, Critter* > CrMap;
+typedef CrMap::value_type     CrMapVal;
+typedef map< uint, Client* >  ClMap;
+typedef ClMap::value_type     ClMapVal;
+typedef map< uint, Npc* >     PcMap;
+typedef PcMap::value_type     PcMapVal;
 
-typedef vector< Critter* >           CrVec;
-typedef vector< Critter* >::iterator CrVecIt;
-typedef vector< Client* >            ClVec;
-typedef vector< Client* >::iterator  ClVecIt;
-typedef vector< Npc* >               PcVec;
-typedef vector< Npc* >::iterator     PcVecIt;
+typedef vector< Critter* >    CrVec;
+typedef vector< Client* >     ClVec;
+typedef vector< Npc* >        PcVec;
 
 class Critter
 {
@@ -536,8 +530,7 @@ public:
             Identifier = r.Identifier;
         }
     };
-    typedef vector< CrTimeEvent >           CrTimeEventVec;
-    typedef vector< CrTimeEvent >::iterator CrTimeEventVecIt;
+    typedef vector< CrTimeEvent > CrTimeEventVec;
     CrTimeEventVec CrTimeEvents;
 
     void AddCrTimeEvent( uint func_num, uint rate, uint duration, int identifier );
@@ -729,8 +722,7 @@ public:
         bool operator==( uint id ) { return Id == id; }
         BarterItem( uint id, uint pid, uint count ): Id( id ), Pid( pid ), Count( count ) {}
     };
-    typedef vector< BarterItem >           BarterItemVec;
-    typedef vector< BarterItem >::iterator BarterItemVecIt;
+    typedef vector< BarterItem > BarterItemVec;
     BarterItemVec BarterItems;
 
     Client*     BarterGetOpponent( uint opponent_id );

@@ -101,8 +101,6 @@ public:
     LanguagePack() { memset( NameStr, 0, sizeof( NameStr ) ); }
     bool operator==( const uint& r ) { return Name == r; }
 };
-
-typedef vector< LanguagePack >           LangPackVec;
-typedef vector< LanguagePack >::iterator LangPackVecIt;
+typedef vector< LanguagePack > LangPackVec;
 
 #endif // ___MSG_FILES___

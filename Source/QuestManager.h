@@ -17,7 +17,6 @@ struct Quest
     Quest( uint _num, string _info ): num( _num ), info( _info ), isInfo( false ) {}
 };
 typedef vector< Quest >             QuestVec;
-typedef vector< Quest >::iterator   QuestVecIt;
 typedef vector< Quest >::value_type QuestVecVal;
 
 class QuestTab
@@ -62,12 +61,12 @@ public:
     }
     Quest* GetQuest( ushort num )
     {
-        QuestVecIt it = std::find( quests.begin(), quests.end(), num );
+        auto it = std::find( quests.begin(), quests.end(), num );
         return it != quests.end() ? &( *it ) : NULL;
     }
     void EraseQuest( ushort num )
     {
-        QuestVecIt it = std::find( quests.begin(), quests.end(), num );
+        auto it = std::find( quests.begin(), quests.end(), num );
         if( it != quests.end() ) quests.erase( it );
         ReparseText();
     }
@@ -76,7 +75,6 @@ public:
     QuestTab( FOMsg* _msg ): msg( _msg ) {}
 };
 typedef map< string, QuestTab, less< string > >             QuestTabMap;
-typedef map< string, QuestTab, less< string > >::iterator   QuestTabMapIt;
 typedef map< string, QuestTab, less< string > >::value_type QuestTabMapVal;
 
 class QuestManager
@@ -109,8 +107,8 @@ public:
         string tab_name = string( msg->GetStr( STR_QUEST_MAP_( q_num ) ) );
 
         // Try get Tab
-        QuestTab*     tab = NULL;
-        QuestTabMapIt it_tab = tabs.find( tab_name );
+        QuestTab* tab = NULL;
+        auto      it_tab = tabs.find( tab_name );
         if( it_tab != tabs.end() ) tab = &( *it_tab ).second;
 
         // Try get Quest
@@ -147,7 +145,7 @@ public:
     {
         if( tabs.empty() ) return NULL;
 
-        QuestTabMapIt it = tabs.begin();
+        auto it = tabs.begin();
         while( tab_num )
         {
             ++it;
@@ -167,8 +165,8 @@ public:
     Quest* GetQuest( uint num )
     {
         if( !msg->Count( STR_QUEST_MAP_( num / QUEST_MUL ) ) ) return NULL;
-        string        tab_name = string( msg->GetStr( STR_QUEST_MAP_( num / QUEST_MUL ) ) );
-        QuestTabMapIt it_tab = tabs.find( tab_name );
+        string tab_name = string( msg->GetStr( STR_QUEST_MAP_( num / QUEST_MUL ) ) );
+        auto   it_tab = tabs.find( tab_name );
         return it_tab != tabs.end() ? ( *it_tab ).second.GetQuest( num / QUEST_MUL ) : NULL;
     }
 };

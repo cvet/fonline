@@ -57,7 +57,7 @@ void dbg_free2( void* ptr )
     if( ASDbgMemoryCanWork )
     {
         SCOPE_LOCK( ASDbgMemoryLocker );
-        map< void*, string >::iterator it = ASDbgMemoryPtr.find( ptr_ );
+        auto it = ASDbgMemoryPtr.find( ptr_ );
         if( it != ASDbgMemoryPtr.end() )
         {
             MEMORY_PROCESS_STR( ( *it ).second.c_str(), -(int) size );
@@ -347,7 +347,7 @@ bool FOServer::ReloadClientScripts()
             pragmas.insert( pragmas.end(), pr.begin(), pr.end() );
 
             // Add module name and bytecode
-            for( LangPackVecIt it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
+            for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
             {
                 LanguagePack& lang = *it;
                 FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
@@ -381,7 +381,7 @@ bool FOServer::ReloadClientScripts()
     // Add native dlls to MSG
     int         dll_num = STR_INTERNAL_SCRIPT_DLLS;
     EngineData* ed = (EngineData*) engine->GetUserData();
-    for( StrPtrMapIt it = ed->LoadedDlls.begin(), end = ed->LoadedDlls.end(); it != end; ++it )
+    for( auto it = ed->LoadedDlls.begin(), end = ed->LoadedDlls.end(); it != end; ++it )
     {
         const string& dll_name = ( *it ).first;
         const void*   dll_handle = ( *it ).second;
@@ -397,7 +397,7 @@ bool FOServer::ReloadClientScripts()
         }
 
         // Add dll name and binary
-        for( LangPackVecIt it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
+        for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
         {
             LanguagePack& lang = *it;
             FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
@@ -430,7 +430,7 @@ bool FOServer::ReloadClientScripts()
     Script::SetEngine( old_engine );
 
     // Add config text and pragmas, calculate hash
-    for( LangPackVecIt it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
+    for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
         FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
@@ -453,10 +453,10 @@ bool FOServer::ReloadClientScripts()
 
     // Send to all connected clients
     ConnectedClientsLocker.Lock();
-    for( ClVecIt it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+    for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
     {
-        Client*       cl = *it;
-        LangPackVecIt it_l = std::find( LangPacks.begin(), LangPacks.end(), cl->LanguageMsg );
+        Client* cl = *it;
+        auto    it_l = std::find( LangPacks.begin(), LangPacks.end(), cl->LanguageMsg );
         if( it_l != LangPacks.end() )
             Send_MsgData( cl, cl->LanguageMsg, TEXTMSG_INTERNAL, ( *it_l ).Msg[ TEXTMSG_INTERNAL ] );
         cl->Send_LoadMap( NULL );
@@ -878,7 +878,7 @@ void FOServer::SScriptFunc::Item_SetLexems( Item* item, CScriptString* lexems )
 
         ClVec players;
         map->GetPlayers( players, false );
-        for( ClVecIt it = players.begin(), end = players.end(); it != end; ++it )
+        for( auto it = players.begin(), end = players.end(); it != end; ++it )
         {
             Client* cl = *it;
             if( cl->IsOnline() && cl->CountIdVisItem( item->GetId() ) )
@@ -1336,7 +1336,7 @@ void FOServer::SScriptFunc::Crit_SetLexems( Critter* cr, CScriptString* lexems )
     if( cr->GetMap() )
     {
         cr->Send_CritterLexems( cr );
-        for( CrVecIt it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
+        for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
         {
             Critter* cr_ = *it;
             cr_->Send_CritterLexems( cr );
@@ -1344,7 +1344,7 @@ void FOServer::SScriptFunc::Crit_SetLexems( Critter* cr, CScriptString* lexems )
     }
     else if( cr->GroupMove )
     {
-        for( CrVecIt it = cr->GroupMove->CritMove.begin(), end = cr->GroupMove->CritMove.end(); it != end; ++it )
+        for( auto it = cr->GroupMove->CritMove.begin(), end = cr->GroupMove->CritMove.end(); it != end; ++it )
         {
             Critter* cr_ = *it;
             cr_->Send_CritterLexems( cr );
@@ -1999,7 +1999,7 @@ uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int 
         SCRIPT_ERROR_R0( "This nullptr." );
 
     CrVec cr_vec;
-    for( CrVecIt it = ( look_on_me ? cr->VisCr.begin() : cr->VisCrSelf.begin() ), end = ( look_on_me ? cr->VisCr.end() : cr->VisCrSelf.end() ); it != end; ++it )
+    for( auto it = ( look_on_me ? cr->VisCr.begin() : cr->VisCrSelf.begin() ), end = ( look_on_me ? cr->VisCr.end() : cr->VisCrSelf.end() ); it != end; ++it )
     {
         Critter* cr_ = *it;
         if( cr_->CheckFind( find_type ) )
@@ -2009,7 +2009,7 @@ uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int 
     if( critters )
     {
         SortCritterByDist( cr, cr_vec );
-        for( CrVecIt it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
+        for( auto it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
     }
@@ -2022,7 +2022,7 @@ uint FOServer::SScriptFunc::Crit_GetFollowGroup( Critter* cr, int find_type, CSc
         SCRIPT_ERROR_R0( "This nullptr." );
 
     CrVec cr_vec;
-    for( CrVecIt it = cr->VisCrSelf.begin(), end = cr->VisCrSelf.end(); it != end; ++it )
+    for( auto it = cr->VisCrSelf.begin(), end = cr->VisCrSelf.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
         if( cr_->GetFollowCrId() == cr->GetId() && cr_->CheckFind( find_type ) )
@@ -2032,7 +2032,7 @@ uint FOServer::SScriptFunc::Crit_GetFollowGroup( Critter* cr, int find_type, CSc
     if( critters )
     {
         SortCritterByDist( cr, cr_vec );
-        for( CrVecIt it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
+        for( auto it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
     }
@@ -2095,7 +2095,7 @@ uint FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr, CScriptArray* pla
 
     uint  talk = 0;
     CrVec players_;
-    for( CrVecIt it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
+    for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( !cr->IsPlayer() )
@@ -2113,7 +2113,7 @@ uint FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr, CScriptArray* pla
     if( players )
     {
         SortCritterByDist( cr, players_ );
-        for( CrVecIt it = players_.begin(), end = players_.end(); it != end; ++it )
+        for( auto it = players_.begin(), end = players_.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Critter* >( players_, players );
     }
@@ -2305,7 +2305,7 @@ uint FOServer::SScriptFunc::Npc_ErasePlane( Critter* npc, int plane_type, bool a
     Npc*            npc_ = (Npc*) npc;
     AIDataPlaneVec& planes = npc_->GetPlanes();
     uint            result = 0;
-    for( AIDataPlaneVecIt it = planes.begin(); it != planes.end();)
+    for( auto it = planes.begin(); it != planes.end();)
     {
         AIDataPlane* p = *it;
         if( p->Type == plane_type || plane_type == -1 )
@@ -2416,7 +2416,7 @@ uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier( Critter* npc, int identifie
     if( npc_->IsNoPlanes() )
         return 0;
     AIDataPlaneVec planes = npc_->GetPlanes();   // Copy
-    for( AIDataPlaneVecIt it = planes.begin(); it != planes.end();)
+    for( auto it = planes.begin(); it != planes.end();)
         if( ( *it )->Identifier != identifier )
             it = planes.erase( it );
         else
@@ -2437,7 +2437,7 @@ uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier2( Critter* npc, int identifi
     if( npc_->IsNoPlanes() )
         return 0;
     AIDataPlaneVec planes = npc_->GetPlanes();   // Copy
-    for( AIDataPlaneVecIt it = planes.begin(); it != planes.end();)
+    for( auto it = planes.begin(); it != planes.end();)
         if( ( *it )->Identifier != identifier || ( *it )->IdentifierExt != identifier_ext )
             it = planes.erase( it );
         else
@@ -2534,7 +2534,7 @@ void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, CScriptString& sound_na
 
     if( send_self )
         cr->Send_PlaySound( crid, sound_name_ );
-    for( CrVecIt it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
+    for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
         cr_->Send_PlaySound( crid, sound_name_ );
@@ -2549,7 +2549,7 @@ void FOServer::SScriptFunc::Crit_PlaySoundType( Critter* cr, uchar sound_type, u
     uint crid = cr->GetId();
     if( send_self )
         cr->Send_PlaySoundType( crid, sound_type, sound_type_ext, sound_id, sound_id_ext );
-    for( CrVecIt it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
+    for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
         cr_->Send_PlaySoundType( crid, sound_type, sound_type_ext, sound_id, sound_id_ext );
@@ -2881,7 +2881,7 @@ uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, CSc
         SCRIPT_ERROR_R0( "This nullptr." );
     uint    index = 0;
     UIntVec te_vec;
-    for( Critter::CrTimeEventVecIt it = cr->CrTimeEvents.begin(), end = cr->CrTimeEvents.end(); it != end; ++it )
+    for( auto it = cr->CrTimeEvents.begin(), end = cr->CrTimeEvents.end(); it != end; ++it )
     {
         Critter::CrTimeEvent& cte = *it;
         if( cte.Identifier == identifier )
@@ -2933,7 +2933,7 @@ uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, CScriptArray& fi
 
     uint    index = 0;
     UIntVec te_vec;
-    for( Critter::CrTimeEventVecIt it = cr->CrTimeEvents.begin(), end = cr->CrTimeEvents.end(); it != end; ++it )
+    for( auto it = cr->CrTimeEvents.begin(), end = cr->CrTimeEvents.end(); it != end; ++it )
     {
         Critter::CrTimeEvent& cte = *it;
         if( std::find( find_vec.begin(), find_vec.end(), cte.Identifier ) != find_vec.end() )
@@ -3007,7 +3007,7 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEvents( Critter* cr, int identifier )
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     uint result = 0;
-    for( Critter::CrTimeEventVecIt it = cr->CrTimeEvents.begin(); it != cr->CrTimeEvents.end();)
+    for( auto it = cr->CrTimeEvents.begin(); it != cr->CrTimeEvents.end();)
     {
         Critter::CrTimeEvent& cte = *it;
         if( cte.Identifier == identifier )
@@ -3029,7 +3029,7 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, CScriptArray& 
     for( int i = 0, j = identifiers.GetSize(); i < j; i++ )
     {
         int identifier = *(int*) identifiers.At( i );
-        for( Critter::CrTimeEventVecIt it = cr->CrTimeEvents.begin(); it != cr->CrTimeEvents.end();)
+        for( auto it = cr->CrTimeEvents.begin(); it != cr->CrTimeEvents.end();)
         {
             Critter::CrTimeEvent& cte = *it;
             if( cte.Identifier == identifier )
@@ -4001,7 +4001,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, ushort pid, int fin
         CrVec map_critters;
         map->GetCritters( map_critters, true );
         cr_vec.reserve( map_critters.size() );
-        for( CrVecIt it = map_critters.begin(), end = map_critters.end(); it != end; ++it )
+        for( auto it = map_critters.begin(), end = map_critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr->CheckFind( find_type ) )
@@ -4013,7 +4013,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, ushort pid, int fin
         PcVec map_npcs;
         map->GetNpcs( map_npcs, true );
         cr_vec.reserve( map_npcs.size() );
-        for( PcVecIt it = map_npcs.begin(), end = map_npcs.end(); it != end; ++it )
+        for( auto it = map_npcs.begin(), end = map_npcs.end(); it != end; ++it )
         {
             Npc* npc = *it;
             if( npc->GetProtoId() == pid && npc->CheckFind( find_type ) )
@@ -4023,7 +4023,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, ushort pid, int fin
 
     if( critters )
     {
-        // for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
+        // for(auto it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
         Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
     }
     return (uint) cr_vec.size();
@@ -4047,7 +4047,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ush
     MapMngr.TraceBullet( trace );
     if( critters )
     {
-        for( CrVecIt it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
+        for( auto it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
     }
@@ -4075,7 +4075,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx
     MapMngr.TraceBullet( trace );
     if( critters )
     {
-        for( CrVecIt it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
+        for( auto it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
     }
@@ -4097,7 +4097,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx
 
     CrVec map_critters;
     map->GetCritters( map_critters, true );
-    for( CrVecIt it = map_critters.begin(), end = map_critters.end(); it != end; ++it )
+    for( auto it = map_critters.begin(), end = map_critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->CheckFind( find_type ) &&
@@ -4108,7 +4108,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx
 
     if( critters )
     {
-        // for(CrVecIt it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
+        // for(auto it=cr_vec.begin(),end=cr_vec.end();it!=end;++it) SYNC_LOCK(*it);
         Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
     }
     return (uint) cr_vec.size();
@@ -4506,7 +4506,7 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, CScriptString& sound_name )
 
     ClVec players;
     map->GetPlayers( players, false );
-    for( ClVecIt it = players.begin(), end = players.end(); it != end; ++it )
+    for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Critter* cr = *it;
         cr->Send_PlaySound( 0, sound_name_ );
@@ -4525,7 +4525,7 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, CScriptString& sound_
 
     ClVec players;
     map->GetPlayers( players, false );
-    for( ClVecIt it = players.begin(), end = players.end(); it != end; ++it )
+    for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius ) )
@@ -4712,7 +4712,7 @@ Map* FOServer::SScriptFunc::Location_GetMap( Location* loc, ushort map_pid )
     if( loc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     MapVec& maps = loc->GetMapsNoLock();
-    for( MapVecIt it = maps.begin(), end = maps.end(); it != end; ++it )
+    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
     {
         Map* map = *it;
         if( map->GetPid() == map_pid )
@@ -4753,7 +4753,7 @@ bool FOServer::SScriptFunc::Location_Reload( Location* loc )
         SCRIPT_ERROR_R0( "This nullptr." );
     MapVec maps;
     loc->GetMaps( maps, true );
-    for( MapVecIt it = maps.begin(), end = maps.end(); it != end; ++it )
+    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
     {
         Map* map = *it;
         if( !RegenerateMap( map ) )
@@ -5226,7 +5226,7 @@ uint FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radi
     MapMngr.GetLocations( locs, false );
     LocVec locs_;
     locs_.reserve( locs.size() );
-    for( LocVecIt it = locs.begin(), end = locs.end(); it != end; ++it )
+    for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
         if( DistSqrt( wx, wy, loc->Data.WX, loc->Data.WY ) <= radius + loc->GetRadius() )
@@ -5235,7 +5235,7 @@ uint FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radi
 
     if( locations )
     {
-        for( LocVecIt it = locs_.begin(), end = locs_.end(); it != end; ++it )
+        for( auto it = locs_.begin(), end = locs_.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Location* >( locs_, locations );
     }
@@ -5248,7 +5248,7 @@ uint FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, ui
     MapMngr.GetLocations( locs, false );
     LocVec locs_;
     locs_.reserve( locs.size() );
-    for( LocVecIt it = locs.begin(), end = locs.end(); it != end; ++it )
+    for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
         if( DistSqrt( wx, wy, loc->Data.WX, loc->Data.WY ) <= radius + loc->GetRadius() &&
@@ -5258,7 +5258,7 @@ uint FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, ui
 
     if( locations )
     {
-        for( LocVecIt it = locs_.begin(), end = locs_.end(); it != end; ++it )
+        for( auto it = locs_.begin(), end = locs_.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Location* >( locs_, locations );
     }
@@ -5392,7 +5392,7 @@ void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, CScriptStrin
 {
     SCOPE_LOCK( TextListenersLocker );
 
-    for( TextListenVecIt it = TextListeners.begin(), end = TextListeners.end(); it != end; ++it )
+    for( auto it = TextListeners.begin(), end = TextListeners.end(); it != end; ++it )
     {
         TextListen& tl = *it;
         if( say_type == tl.SayType && Str::CompareCase( first_str.c_str(), tl.FirstStr ) && tl.Parameter == parameter )
@@ -5511,9 +5511,9 @@ void FOServer::SScriptFunc::Global_SetSendParameterFunc( int index, bool enabled
         Critter::ParamsSendScript[ index ] = 0;
     }
 
-    UShortVec&  vec = Critter::ParamsSend;
-    ushort&     count = Critter::ParamsSendCount;
-    UShortVecIt it = std::find( vec.begin(), vec.end(), index );
+    UShortVec& vec = Critter::ParamsSend;
+    ushort&    count = Critter::ParamsSendCount;
+    auto       it = std::find( vec.begin(), vec.end(), index );
 
     if( enabled )
     {
@@ -5549,7 +5549,7 @@ void SwapCrittersRefreshNpc( Npc* npc )
     UNSETFLAG( npc->Flags, FCRIT_PLAYER );
     SETFLAG( npc->Flags, FCRIT_NPC );
     AIDataPlaneVec& planes = npc->GetPlanes();
-    for( AIDataPlaneVecIt it = planes.begin(), end = planes.end(); it != end; ++it )
+    for( auto it = planes.begin(), end = planes.end(); it != end; ++it )
         delete *it;
     planes.clear();
     npc->NextRefreshBagTick = Timer::GameTick() + ( npc->Data.BagRefreshTime ? npc->Data.BagRefreshTime : GameOpt.BagRefreshTime ) * 60 * 1000;
@@ -5616,16 +5616,16 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     map1->Lock();
     map2->Lock();
 
-    CrVec&  cr_map1 = map1->GetCrittersNoLock();
-    ClVec&  cl_map1 = map1->GetPlayersNoLock();
-    PcVec&  npc_map1 = map1->GetNpcsNoLock();
-    CrVecIt it_cr = std::find( cr_map1.begin(), cr_map1.end(), cr1 );
+    CrVec& cr_map1 = map1->GetCrittersNoLock();
+    ClVec& cl_map1 = map1->GetPlayersNoLock();
+    PcVec& npc_map1 = map1->GetNpcsNoLock();
+    auto   it_cr = std::find( cr_map1.begin(), cr_map1.end(), cr1 );
     if( it_cr != cr_map1.end() )
         cr_map1.erase( it_cr );
-    ClVecIt it_cl = std::find( cl_map1.begin(), cl_map1.end(), (Client*) cr1 );
+    auto it_cl = std::find( cl_map1.begin(), cl_map1.end(), (Client*) cr1 );
     if( it_cl != cl_map1.end() )
         cl_map1.erase( it_cl );
-    PcVecIt it_pc = std::find( npc_map1.begin(), npc_map1.end(), (Npc*) cr1 );
+    auto it_pc = std::find( npc_map1.begin(), npc_map1.end(), (Npc*) cr1 );
     if( it_pc != npc_map1.end() )
         npc_map1.erase( it_pc );
 
@@ -5683,13 +5683,13 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     {
         ItemPtrVec items1 = cr1->GetInventory();
         ItemPtrVec items2 = cr2->GetInventory();
-        for( ItemPtrVecIt it = items1.begin(), end = items1.end(); it != end; ++it )
+        for( auto it = items1.begin(), end = items1.end(); it != end; ++it )
             cr1->EraseItem( *it, false );
-        for( ItemPtrVecIt it = items2.begin(), end = items2.end(); it != end; ++it )
+        for( auto it = items2.begin(), end = items2.end(); it != end; ++it )
             cr2->EraseItem( *it, false );
-        for( ItemPtrVecIt it = items1.begin(), end = items1.end(); it != end; ++it )
+        for( auto it = items1.begin(), end = items1.end(); it != end; ++it )
             cr2->AddItem( *it, false );
-        for( ItemPtrVecIt it = items2.begin(), end = items2.end(); it != end; ++it )
+        for( auto it = items2.begin(), end = items2.end(); it != end; ++it )
             cr1->AddItem( *it, false );
     }
 
@@ -5733,7 +5733,7 @@ uint FOServer::SScriptFunc::Global_GetAllItems( ushort pid, CScriptArray* items 
     ItemMngr.GetGameItems( game_items );
     ItemPtrVec game_items_;
     game_items_.reserve( game_items.size() );
-    for( ItemPtrVecIt it = game_items.begin(), end = game_items.end(); it != end; ++it )
+    for( auto it = game_items.begin(), end = game_items.end(); it != end; ++it )
     {
         Item* item = *it;
         SYNC_LOCK( item );
@@ -5753,7 +5753,7 @@ uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, CScriptArray* npc )
     CrVec npcs_;
     CrMngr.GetCopyNpcs( npcs, true );
     npcs_.reserve( npcs.size() );
-    for( PcVecIt it = npcs.begin(), end = npcs.end(); it != end; ++it )
+    for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
     {
         Npc* npc_ = *it;
         if( !npc_->IsNotValid && ( !pid || pid == npc_->GetProtoId() ) )
@@ -5772,7 +5772,7 @@ uint FOServer::SScriptFunc::Global_GetAllMaps( ushort pid, CScriptArray* maps )
     MapMngr.GetMaps( maps_, false );
     MapVec maps__;
     maps__.reserve( maps_.size() );
-    for( MapVecIt it = maps_.begin(), end = maps_.end(); it != end; ++it )
+    for( auto it = maps_.begin(), end = maps_.end(); it != end; ++it )
     {
         Map* map = *it;
         if( !pid || pid == map->GetPid() )
@@ -5781,7 +5781,7 @@ uint FOServer::SScriptFunc::Global_GetAllMaps( ushort pid, CScriptArray* maps )
 
     if( maps )
     {
-        for( MapVecIt it = maps__.begin(), end = maps__.end(); it != end; ++it )
+        for( auto it = maps__.begin(), end = maps__.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Map* >( maps__, maps );
     }
@@ -5794,7 +5794,7 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( ushort pid, CScriptArray* lo
     MapMngr.GetLocations( locs, false );
     LocVec locs_;
     locs_.reserve( locs.size() );
-    for( LocVecIt it = locs.begin(), end = locs.end(); it != end; ++it )
+    for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
         if( !pid || pid == loc->GetPid() )
@@ -5803,7 +5803,7 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( ushort pid, CScriptArray* lo
 
     if( locations )
     {
-        for( LocVecIt it = locs_.begin(), end = locs_.end(); it != end; ++it )
+        for( auto it = locs_.begin(), end = locs_.end(); it != end; ++it )
             SYNC_LOCK( *it );
         Script::AppendVectorToArrayRef< Location* >( locs_, locations );
     }

@@ -135,7 +135,7 @@ CritDataExt* Critter::GetDataExt()
 void Critter::FullClear()
 {
     IsNotValid = true;
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         item->Accessory = 0xB0;
@@ -257,7 +257,7 @@ void Critter::SyncLockCritters( bool self_critters, bool only_players )
         find_critters.reserve( critters.size() );
         if( only_players )
         {
-            for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+            for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
                 if( ( *it )->IsPlayer() )
                     find_critters.push_back( *it );
         }
@@ -267,7 +267,7 @@ void Critter::SyncLockCritters( bool self_critters, bool only_players )
         }
 
         // Synchronize
-        for( CrVecIt it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
+        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
             SYNC_LOCK( *it );
 
         // Recheck after synchronization
@@ -275,7 +275,7 @@ void Critter::SyncLockCritters( bool self_critters, bool only_players )
         find_critters2.reserve( find_critters.size() );
         if( only_players )
         {
-            for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+            for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
                 if( ( *it )->IsPlayer() )
                     find_critters2.push_back( *it );
         }
@@ -307,7 +307,7 @@ void Critter::ProcessVisibleCritters()
         if( IsPlayer() )
         {
             Client* cl = (Client*) this;
-            for( CrVecIt it = GroupMove->CritMove.begin(), end = GroupMove->CritMove.end(); it != end; ++it )
+            for( auto it = GroupMove->CritMove.begin(), end = GroupMove->CritMove.end(); it != end; ++it )
             {
                 Critter* cr = *it;
                 if( this == cr )
@@ -348,7 +348,7 @@ void Critter::ProcessVisibleCritters()
     CrVec critters;
     map->GetCritters( critters, true );
 
-    for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == this || cr->IsNotValid )
@@ -712,7 +712,7 @@ void Critter::ProcessVisibleItems()
 
     int        look = GetLook();
     ItemPtrVec items = map->GetItemsNoLock();
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
 
@@ -765,7 +765,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
     CrVec critters;
     map->GetCritters( critters, true );
 
-    for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == this || cr->IsNotValid )
@@ -845,7 +845,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
 
     // Items
     ItemPtrVec& items = map->GetItemsNoLock();
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
 
@@ -870,20 +870,20 @@ void Critter::ClearVisible()
     SyncLockCritters( false, false );
     SyncLockCritters( true, false );
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        CrVecIt  it_ = std::find( cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this );
+        auto     it_ = std::find( cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this );
         if( it_ != cr->VisCrSelf.end() )
             cr->VisCrSelf.erase( it_ );
         cr->Send_RemoveCritter( this );
     }
     VisCr.clear();
 
-    for( CrVecIt it = VisCrSelf.begin(), end = VisCrSelf.end(); it != end; ++it )
+    for( auto it = VisCrSelf.begin(), end = VisCrSelf.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        CrVecIt  it_ = std::find( cr->VisCr.begin(), cr->VisCr.end(), this );
+        auto     it_ = std::find( cr->VisCr.begin(), cr->VisCr.end(), this );
         if( it_ != cr->VisCr.end() )
             cr->VisCr.erase( it_ );
     }
@@ -902,7 +902,7 @@ Critter* Critter::GetCritSelf( uint crid, bool sync_lock )
 {
     Critter* cr = NULL;
 
-    for( CrVecIt it = VisCrSelf.begin(), end = VisCrSelf.end(); it != end; ++it )
+    for( auto it = VisCrSelf.begin(), end = VisCrSelf.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
         if( cr_->GetId() == crid )
@@ -930,7 +930,7 @@ void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, 
     CrVec& vis_cr = ( vis_cr_self ? VisCrSelf : VisCr );
 
     CrVec  find_critters;
-    for( CrVecIt it = vis_cr.begin(), end = vis_cr.end(); it != end; ++it )
+    for( auto it = vis_cr.begin(), end = vis_cr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->CheckFind( find_type ) && std::find( critters.begin(), critters.end(), cr ) == critters.end() )
@@ -940,12 +940,12 @@ void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, 
     if( sync_lock && LogicMT )
     {
         // Synchronize
-        for( CrVecIt it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
+        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
             SYNC_LOCK( *it );
 
         // Recheck after synchronization
         CrVec find_critters2;
-        for( CrVecIt it = vis_cr.begin(), end = vis_cr.end(); it != end; ++it )
+        for( auto it = vis_cr.begin(), end = vis_cr.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr->CheckFind( find_type ) && std::find( critters.begin(), critters.end(), cr ) == critters.end() )
@@ -961,7 +961,7 @@ void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, 
     }
 
     critters.reserve( critters.size() + find_critters.size() );
-    for( CrVecIt it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
+    for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
         critters.push_back( *it );
 }
 
@@ -976,7 +976,7 @@ bool Critter::AddCrIntoVisVec( Critter* add_cr )
 
 bool Critter::DelCrFromVisVec( Critter* del_cr )
 {
-    CrVecIt it = std::find( VisCr.begin(), VisCr.end(), del_cr );
+    auto it = std::find( VisCr.begin(), VisCr.end(), del_cr );
     if( it == VisCr.end() )
         return false;
     VisCr.erase( it );
@@ -1043,7 +1043,7 @@ bool Critter::CountIdVisItem( uint item_id )
 void Critter::SyncLockItems()
 {
     ItemPtrVec inv_items = invItems;
-    for( ItemPtrVecIt it = inv_items.begin(), end = inv_items.end(); it != end; ++it )
+    for( auto it = inv_items.begin(), end = inv_items.end(); it != end; ++it )
         SYNC_LOCK( *it );
 }
 
@@ -1167,7 +1167,7 @@ void Critter::EraseItem( Item* item, bool send )
         return;
     }
 
-    ItemPtrVecIt it = std::find( invItems.begin(), invItems.end(), item );
+    auto it = std::find( invItems.begin(), invItems.end(), item );
     if( it != invItems.end() )
         invItems.erase( it );
     else
@@ -1201,7 +1201,7 @@ Item* Critter::GetItem( uint item_id, bool skip_hide )
 {
     if( !item_id )
         return NULL;
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetId() == item_id )
@@ -1238,7 +1238,7 @@ void Critter::GetInvItems( ItemPtrVec& items, int transfer_type, bool lock )
     if( transfer_type == TRANSFER_CRIT_STEAL && IsRawParam( MODE_NO_STEAL ) )
         return;
 
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->ACC_CRITTER.Slot == SLOT_INV && !item->IsHidden() &&
@@ -1248,14 +1248,14 @@ void Critter::GetInvItems( ItemPtrVec& items, int transfer_type, bool lock )
     }
 
     if( lock )
-        for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
 #pragma MESSAGE("Add explicit sync lock.")
 Item* Critter::GetItemByPid( ushort item_pid )
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetProtoId() == item_pid )
@@ -1275,7 +1275,7 @@ Item* Critter::GetItemByPidInvPriority( ushort item_pid )
 
     if( proto_item->Stackable )
     {
-        for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+        for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         {
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
@@ -1288,7 +1288,7 @@ Item* Critter::GetItemByPidInvPriority( ushort item_pid )
     else
     {
         Item* another_slot = NULL;
-        for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+        for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         {
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
@@ -1327,7 +1327,7 @@ Item* Critter::GetAmmoForWeapon( Item* weap )
 
 Item* Critter::GetAmmo( int caliber )
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetType() == ITEM_TYPE_AMMO && item->Proto->Ammo_Caliber == caliber )
@@ -1341,7 +1341,7 @@ Item* Critter::GetAmmo( int caliber )
 
 Item* Critter::GetItemCar()
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->IsCar() )
@@ -1355,7 +1355,7 @@ Item* Critter::GetItemCar()
 
 Item* Critter::GetItemSlot( int slot )
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->ACC_CRITTER.Slot == slot )
@@ -1369,7 +1369,7 @@ Item* Critter::GetItemSlot( int slot )
 
 void Critter::GetItemsSlot( int slot, ItemPtrVec& items, bool lock )
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( slot < 0 || item->ACC_CRITTER.Slot == slot )
@@ -1377,13 +1377,13 @@ void Critter::GetItemsSlot( int slot, ItemPtrVec& items, bool lock )
     }
 
     if( lock )
-        for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
 void Critter::GetItemsType( int type, ItemPtrVec& items, bool lock )
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetType() == type )
@@ -1391,14 +1391,14 @@ void Critter::GetItemsType( int type, ItemPtrVec& items, bool lock )
     }
 
     if( lock )
-        for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
 uint Critter::CountItemPid( ushort pid )
 {
     uint res = 0;
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetProtoId() == pid )
@@ -1597,14 +1597,14 @@ void Critter::TakeDefaultItem( uchar slot )
 uint Critter::CountItems()
 {
     uint count = 0;
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         count += ( *it )->GetCount();
     return count;
 }
 
 bool Critter::IsHaveGeckItem()
 {
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->IsGeck() )
@@ -1746,7 +1746,7 @@ void Critter::EventDead( Critter* killer )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -1878,7 +1878,7 @@ bool Critter::EventAttack( Critter* target )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -1900,7 +1900,7 @@ bool Critter::EventAttacked( Critter* attacker )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -1944,7 +1944,7 @@ bool Critter::EventStealing( Critter* thief, Item* item, uint count )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -1981,7 +1981,7 @@ bool Critter::EventUseItem( Item* item, Critter* on_critter, Item* on_item, MapO
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2021,7 +2021,7 @@ bool Critter::EventUseSkill( int skill, Critter* on_critter, Item* on_item, MapO
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2056,7 +2056,7 @@ void Critter::EventDropItem( Item* item )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2084,7 +2084,7 @@ void Critter::EventMoveItem( Item* item, uchar from_slot )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2107,7 +2107,7 @@ void Critter::EventKnockout( uint anim2begin, uint anim2idle, uint anim2end, uin
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2347,7 +2347,7 @@ void Critter::EventTurnBasedProcess( Map* map, bool begin_turn )
     }
 
     CrVec crits = VisCr;
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2609,7 +2609,7 @@ void Critter::SendA_Move( uint move_params )
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2623,7 +2623,7 @@ void Critter::SendA_XY()
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2637,7 +2637,7 @@ void Critter::SendA_Action( int action, int action_ext, Item* item )
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2654,7 +2654,7 @@ void Critter::SendAA_Action( int action, int action_ext, Item* item )
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2668,7 +2668,7 @@ void Critter::SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, 
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2685,7 +2685,7 @@ void Critter::SendAA_MoveItem( Item* item, uchar action, uchar prev_slot )
         return;
     SyncLockCritters( false, true );
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2707,7 +2707,7 @@ void Critter::SendAA_ItemData( Item* item )
             if( !script )
             {
                 // Send all data
-                for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+                for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
                 {
                     Critter* cr = *it;
                     if( cr->IsPlayer() )
@@ -2719,7 +2719,7 @@ void Critter::SendAA_ItemData( Item* item )
                 SyncLockCritters( false, true );
 
                 // Send all data if condition passably, else send half
-                for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+                for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
                 {
                     Critter* cr = *it;
                     if( cr->IsPlayer() )
@@ -2735,7 +2735,7 @@ void Critter::SendAA_ItemData( Item* item )
         else
         {
             // Send half data
-            for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+            for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
             {
                 Critter* cr = *it;
                 if( cr->IsPlayer() )
@@ -2754,7 +2754,7 @@ void Critter::SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_seq
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2771,7 +2771,7 @@ void Critter::SendAA_SetAnims( int cond, uint anim1, uint anim2 )
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2785,7 +2785,7 @@ void Critter::SendA_GlobalInfo( GlobalMapGroup* group, uchar info_flags )
         return;
 
     CrVec cr_group = group->CritMove;
-    for( CrVecIt it = cr_group.begin(), end = cr_group.end(); it != end; ++it )
+    for( auto it = cr_group.begin(), end = cr_group.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2817,7 +2817,7 @@ void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool un
     else if( how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD )
         dist = GameOpt.WhisperDist + GetMultihex();
 
-    for( CrVecIt it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
+    for( auto it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == this || !cr->IsPlayer() )
@@ -2846,7 +2846,7 @@ void Critter::SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_
     else if( how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD )
         dist = GameOpt.WhisperDist + GetMultihex();
 
-    for( CrVecIt it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
+    for( auto it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == this )
@@ -2877,7 +2877,7 @@ void Critter::SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort n
     else if( how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD )
         dist = GameOpt.WhisperDist + GetMultihex();
 
-    for( CrVecIt it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
+    for( auto it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == this )
@@ -2900,7 +2900,7 @@ void Critter::SendA_Dir()
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2915,7 +2915,7 @@ void Critter::SendA_Follow( uchar follow_type, ushort map_pid, uint follow_wait 
     SyncLockCritters( false, true );
 
     int dist = FOLLOW_DIST + GetMultihex();
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( !cr->IsPlayer() )
@@ -2936,7 +2936,7 @@ void Critter::SendA_ParamOther( ushort num_param, int val )
         return;
     // SyncLockCritters(true);
 
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
@@ -2953,7 +2953,7 @@ void Critter::SendA_ParamCheck( ushort num_param )
     if( !script )
     {
         int val = Data.Params[ num_param ];
-        for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+        for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr->IsPlayer() )
@@ -2964,7 +2964,7 @@ void Critter::SendA_ParamCheck( ushort num_param )
     {
         SyncLockCritters( false, true );
 
-        for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+        for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr->IsPlayer() )
@@ -2985,7 +2985,7 @@ void Critter::Send_AddAllItems()
     cl->Bout << NETMSG_CLEAR_ITEMS;
     BOUT_END( cl );
 
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         Send_AddItem( *it );
 }
 
@@ -3027,7 +3027,7 @@ void Critter::SendMessage( int num, int val, int to )
     case MESSAGE_TO_VISIBLE_ME:
     {
         CrVec critters = VisCr;
-        for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
             SYNC_LOCK( cr );
@@ -3038,7 +3038,7 @@ void Critter::SendMessage( int num, int val, int to )
     case MESSAGE_TO_IAM_VISIBLE:
     {
         CrVec critters = VisCrSelf;
-        for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
             SYNC_LOCK( cr );
@@ -3054,7 +3054,7 @@ void Critter::SendMessage( int num, int val, int to )
 
         CrVec critters;
         map->GetCritters( critters, true );
-        for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
             cr->EventMessage( this, num, val );
@@ -3182,7 +3182,7 @@ uint Critter::GetTimeRun()
 uint Critter::GetItemsWeight()
 {
     uint res = 0;
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( !item->IsHidden() )
@@ -3194,7 +3194,7 @@ uint Critter::GetItemsWeight()
 uint Critter::GetItemsVolume()
 {
     uint res = 0;
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( !item->IsHidden() )
@@ -3397,7 +3397,7 @@ void Critter::AddCrTimeEvent( uint func_num, uint rate, uint duration, int ident
 {
     if( duration )
         duration += GameOpt.FullSecond;
-    CrTimeEventVecIt it = CrTimeEvents.begin(), end = CrTimeEvents.end();
+    auto it = CrTimeEvents.begin(), end = CrTimeEvents.end();
     for( ; it != end; ++it )
     {
         CrTimeEvent& cte = *it;
@@ -3422,7 +3422,7 @@ void Critter::EraseCrTimeEvent( int index )
 
 void Critter::ContinueTimeEvents( int offs_time )
 {
-    for( CrTimeEventVecIt it = CrTimeEvents.begin(), end = CrTimeEvents.end(); it != end; ++it )
+    for( auto it = CrTimeEvents.begin(), end = CrTimeEvents.end(); it != end; ++it )
     {
         CrTimeEvent& cte = *it;
         if( cte.NextTime )
@@ -3617,7 +3617,7 @@ void Client::Send_AddCritter( Critter* cr )
     }
 
     Bout << ParamsSendCount;
-    for( UShortVecIt it = ParamsSend.begin(), end = ParamsSend.end(); it != end; ++it )
+    for( auto it = ParamsSend.begin(), end = ParamsSend.end(); it != end; ++it )
     {
         ushort index = *it;
         Bout << index;
@@ -3758,7 +3758,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     uchar       slots_data_count = 0;
     uchar       slots_data_ext_count = 0;
     ItemPtrVec& inv = from_cr->GetInventory();
-    for( ItemPtrVecIt it = inv.begin(), end = inv.end(); it != end; ++it )
+    for( auto it = inv.begin(), end = inv.end(); it != end; ++it )
     {
         Item* item_ = *it;
         uchar slot = item_->ACC_CRITTER.Slot;
@@ -4001,7 +4001,7 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     Bout << item_cont->GetProtoId();
     Bout << uint( items.size() );
 
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         Bout << item->GetId();
@@ -4010,7 +4010,7 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     }
     BOUT_END( this );
 
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->PLexems )
@@ -4054,7 +4054,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     Bout << barter_k;
     Bout << (uint) items.size();
 
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         Bout << item->GetId();
@@ -4063,7 +4063,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     }
     BOUT_END( this );
 
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->PLexems )
@@ -4304,7 +4304,7 @@ void Client::Send_Talk()
         if( Talk.Lexems.length() )
             Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );      // Lexems string
         Bout << Talk.CurDialog.TextId;                                          // Main text_id
-        for( AnswersVecIt it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
+        for( auto it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
             Bout << ( *it ).TextId;                                             // Answers text_id
         Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) ); // Talk time
     }
@@ -5052,7 +5052,7 @@ void Client::BarterRefresh( Client* opponent )
     Send_PlayersBarter( BARTER_OFFER, opponent->BarterOffer, true );
     if( !opponent->BarterHide )
         Send_ContainerInfo( opponent, TRANSFER_CRIT_BARTER, false );
-    for( BarterItemVecIt it = BarterItems.begin(); it != BarterItems.end();)
+    for( auto it = BarterItems.begin(); it != BarterItems.end();)
     {
         BarterItem& barter_item = *it;
         if( !GetItem( barter_item.Id, true ) )
@@ -5063,7 +5063,7 @@ void Client::BarterRefresh( Client* opponent )
             ++it;
         }
     }
-    for( BarterItemVecIt it = opponent->BarterItems.begin(); it != opponent->BarterItems.end();)
+    for( auto it = opponent->BarterItems.begin(); it != opponent->BarterItems.end();)
     {
         BarterItem& barter_item = *it;
         if( !opponent->GetItem( barter_item.Id, true ) )
@@ -5081,13 +5081,13 @@ void Client::BarterRefresh( Client* opponent )
 
 Client::BarterItem* Client::BarterGetItem( uint item_id )
 {
-    BarterItemVecIt it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
+    auto it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
     return it != BarterItems.end() ? &( *it ) : NULL;
 }
 
 void Client::BarterEraseItem( uint item_id )
 {
-    BarterItemVecIt it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
+    auto it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
     if( it != BarterItems.end() )
         BarterItems.erase( it );
 }
@@ -5262,7 +5262,7 @@ void Npc::RefreshBag()
     static THREAD uint pids[ MAX_ITEM_PROTOTYPES ];
     memzero( &pids, sizeof( pids ) );
 
-    for( ItemPtrVecIt it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         pids[ item->GetProtoId() ] += item->GetCount();
@@ -5407,7 +5407,7 @@ bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some
 
     if( plane->Type == AI_PLANE_ATTACK )
     {
-        for( AIDataPlaneVecIt it = aiPlanes.begin(), end = aiPlanes.end(); it != end; ++it )
+        for( auto it = aiPlanes.begin(), end = aiPlanes.end(); it != end; ++it )
         {
             AIDataPlane* p = *it;
             if( p->Type == AI_PLANE_ATTACK && p->Attack.TargId == plane->Attack.TargId )
@@ -5631,7 +5631,7 @@ void Npc::SetBestCurPlane()
 uint Npc::GetTalkedPlayers()
 {
     uint talk = 0;
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( !cr->IsPlayer() )
@@ -5645,7 +5645,7 @@ uint Npc::GetTalkedPlayers()
 
 bool Npc::IsTalkedPlayers()
 {
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( !cr->IsPlayer() )
@@ -5660,7 +5660,7 @@ bool Npc::IsTalkedPlayers()
 uint Npc::GetBarterPlayers()
 {
     uint barter = 0;
-    for( CrVecIt it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( !cr->IsPlayer() )

@@ -24,8 +24,8 @@ FOMsg::FOMsg()
 
 FOMsg& FOMsg::operator+=( const FOMsg& r )
 {
-    UIntStrMulMap::const_iterator it = r.strData.begin();
-    UIntStrMulMap::const_iterator end = r.strData.end();
+    auto it = r.strData.begin();
+    auto end = r.strData.end();
     it++;     // skip FOMSG_ERRNUM
     for( ; it != end; ++it )
     {
@@ -90,8 +90,8 @@ uint FOMsg::AddStr( const char* str )
 
 const char* FOMsg::GetStr( uint num )
 {
-    uint            str_count = (uint) strData.count( num );
-    UIntStrMulMapIt it = strData.find( num );
+    uint str_count = (uint) strData.count( num );
+    auto it = strData.find( num );
 
     switch( str_count )
     {
@@ -110,8 +110,8 @@ const char* FOMsg::GetStr( uint num )
 
 const char* FOMsg::GetStr( uint num, uint skip )
 {
-    uint            str_count = (uint) strData.count( num );
-    UIntStrMulMapIt it = strData.find( num );
+    uint str_count = (uint) strData.count( num );
+    auto it = strData.find( num );
 
     if( skip >= str_count )
         return ( *strData.begin() ).second.c_str();                   // give FOMSG_ERRNUM
@@ -123,7 +123,7 @@ const char* FOMsg::GetStr( uint num, uint skip )
 
 uint FOMsg::GetStrNumUpper( uint num )
 {
-    UIntStrMulMapIt it = strData.upper_bound( num );
+    auto it = strData.upper_bound( num );
     if( it == strData.end() )
         return 0;
     return ( *it ).first;
@@ -131,7 +131,7 @@ uint FOMsg::GetStrNumUpper( uint num )
 
 uint FOMsg::GetStrNumLower( uint num )
 {
-    UIntStrMulMapIt it = strData.lower_bound( num );
+    auto it = strData.lower_bound( num );
     if( it == strData.end() )
         return 0;
     return ( *it ).first;
@@ -139,8 +139,8 @@ uint FOMsg::GetStrNumLower( uint num )
 
 int FOMsg::GetInt( uint num )
 {
-    uint            str_count = (uint) strData.count( num );
-    UIntStrMulMapIt it = strData.find( num );
+    uint str_count = (uint) strData.count( num );
+    auto it = strData.find( num );
 
     switch( str_count )
     {
@@ -194,7 +194,7 @@ void FOMsg::EraseStr( uint num )
 
     while( true )
     {
-        UIntStrMulMapIt it = strData.find( num );
+        auto it = strData.find( num );
         if( it != strData.end() )
             strData.erase( it );
         else
@@ -213,8 +213,8 @@ void FOMsg::CalculateHash()
     #ifdef FONLINE_SERVER
     toSend.clear();
     #endif
-    UIntStrMulMapIt it = strData.begin();
-    UIntStrMulMapIt end = strData.end();
+    auto it = strData.begin();
+    auto end = strData.end();
     it++;     // skip FOMSG_ERRNUM
     for( ; it != end; ++it )
     {
@@ -390,7 +390,7 @@ int FOMsg::SaveMsgFile( const char* fname, int path_type )
     FileManager fm;
     #endif
 
-    UIntStrMulMapIt it = strData.begin();
+    auto it = strData.begin();
     it++;     // skip FOMSG_ERRNUM
 
     string str;

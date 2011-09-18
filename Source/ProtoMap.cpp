@@ -339,21 +339,21 @@ void ProtoMap::Clear()
 
     SAFEDELA( HexFlags );
 
-    for( MapObjectPtrVecIt it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
+    for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
         SAFEREL( *it );
     CrittersVec.clear();
-    for( MapObjectPtrVecIt it = ItemsVec.begin(), end = ItemsVec.end(); it != end; ++it )
+    for( auto it = ItemsVec.begin(), end = ItemsVec.end(); it != end; ++it )
         SAFEREL( *it );
     ItemsVec.clear();
-    for( MapObjectPtrVecIt it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
         SAFEREL( *it );
     SceneryVec.clear();
-    for( MapObjectPtrVecIt it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
+    for( auto it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
         SAFEREL( *it );
     GridsVec.clear();
     #endif
 
-    for( MapObjectPtrVecIt it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
+    for( auto it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
     {
         MapObject* mobj = *it;
         #ifdef FONLINE_MAPPER
@@ -1554,22 +1554,22 @@ void ProtoMap::SaveCache( FileManager& fm )
 
     // Critters
     fm.SetBEUInt( (uint) CrittersVec.size() );
-    for( MapObjectPtrVecIt it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
+    for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
         fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
 
     // Items
     fm.SetBEUInt( (uint) ItemsVec.size() );
-    for( MapObjectPtrVecIt it = ItemsVec.begin(), end = ItemsVec.end(); it != end; ++it )
+    for( auto it = ItemsVec.begin(), end = ItemsVec.end(); it != end; ++it )
         fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
 
     // Scenery
     fm.SetBEUInt( (uint) SceneryVec.size() );
-    for( MapObjectPtrVecIt it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
         fm.SetData( *it, (uint) sizeof( MapObject ) );
 
     // Grids
     fm.SetBEUInt( (uint) GridsVec.size() );
-    for( MapObjectPtrVecIt it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
+    for( auto it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
         fm.SetData( *it, (uint) sizeof( MapObject ) );
 
     // To send
@@ -1901,7 +1901,7 @@ bool ProtoMap::Refresh()
         return false;
     memzero( HexFlags, Header.MaxHexX * Header.MaxHexY );
 
-    for( MapObjectPtrVecIt it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
+    for( auto it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
     {
         MapObject& mobj = *( *it );
 
@@ -2079,7 +2079,7 @@ bool ProtoMap::Refresh()
         }
     }
 
-    for( MapObjectPtrVecIt it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
+    for( auto it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
         SAFEREL( *it );
     MObjects.clear();
 
@@ -2380,7 +2380,7 @@ void ProtoMap::GetEntires( uint num, EntiresVec& entires )
 
 MapObject* ProtoMap::GetMapScenery( ushort hx, ushort hy, ushort pid )
 {
-    for( MapObjectPtrVecIt it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {
         MapObject* mobj = *it;
         if( ( !pid || mobj->ProtoId == pid ) && mobj->MapX == hx && mobj->MapY == hy )
@@ -2391,7 +2391,7 @@ MapObject* ProtoMap::GetMapScenery( ushort hx, ushort hy, ushort pid )
 
 void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs )
 {
-    for( MapObjectPtrVecIt it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {
         MapObject* mobj = *it;
         if( mobj->MapX == hx && mobj->MapY == hy )
@@ -2401,7 +2401,7 @@ void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs 
 
 void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs )
 {
-    for( MapObjectPtrVecIt it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {
         MapObject* mobj = *it;
         if( ( !pid || mobj->ProtoId == pid ) && DistGame( mobj->MapX, mobj->MapY, hx, hy ) <= radius )
@@ -2411,7 +2411,7 @@ void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort p
 
 void ProtoMap::GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs )
 {
-    for( MapObjectPtrVecIt it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {
         MapObject* mobj = *it;
         if( !pid || mobj->ProtoId == pid )
@@ -2421,7 +2421,7 @@ void ProtoMap::GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs )
 
 MapObject* ProtoMap::GetMapGrid( ushort hx, ushort hy )
 {
-    for( MapObjectPtrVecIt it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
+    for( auto it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
     {
         MapObject* mobj = *it;
         if( mobj->MapX == hx && mobj->MapY == hy )

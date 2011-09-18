@@ -119,7 +119,6 @@ public: // Move some specific types to end
 };
 
 typedef vector< ItemHex* >             ItemHexVec;
-typedef vector< ItemHex* >::iterator   ItemHexVecIt;
 typedef vector< ItemHex* >::value_type ItemHexVecVal;
 
 #endif // __ITEM_HEX__

@@ -37,12 +37,12 @@ bool VarManager::Init( const char* fpath )
 void VarManager::SaveVarsDataFile( void ( * save_func )( void*, size_t ) )
 {
     save_func( &varsCount, sizeof( varsCount ) );
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
     {
         TemplateVar* tvar = *it;
         if( tvar )
         {
-            for( VarsMap32It it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
+            for( auto it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
             {
                 GameVar* var = ( *it_ ).second;
                 save_func( &var->VarTemplate->TempId, sizeof( var->VarTemplate->TempId ) );
@@ -50,7 +50,7 @@ void VarManager::SaveVarsDataFile( void ( * save_func )( void*, size_t ) )
                 save_func( &var->SlaveId, sizeof( var->SlaveId ) );
                 save_func( &var->VarValue, sizeof( var->VarValue ) );
             }
-            for( VarsMap64It it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
+            for( auto it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
             {
                 GameVar* var = ( *it_ ).second;
                 save_func( &var->VarTemplate->TempId, sizeof( var->VarTemplate->TempId ) );
@@ -130,7 +130,7 @@ void VarManager::Finish()
 
     Clear();
 
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
         SAFEDEL( *it );
     tempVars.clear();
 
@@ -143,15 +143,15 @@ void VarManager::Finish()
 void VarManager::Clear()
 {
     #ifdef FONLINE_SERVER
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
     {
         TemplateVar* tvar = *it;
         if( tvar )
         {
-            for( VarsMap32It it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
+            for( auto it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
                 ( *it_ ).second->Release();
             tvar->Vars.clear();
-            for( VarsMap64It it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
+            for( auto it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
                 ( *it_ ).second->Release();
             tvar->VarsUnicum.clear();
         }
@@ -179,7 +179,7 @@ bool VarManager::UpdateVarsTemplate()
     if( !LoadTemplateVars( (char*) fm.GetBuf(), load_vars ) )
         return false;
 
-    for( TempVarVecIt it = load_vars.begin(), it_end = load_vars.end(); it != it_end; ++it )
+    for( auto it = load_vars.begin(), it_end = load_vars.end(); it != it_end; ++it )
         if( !AddTemplateVar( *it ) )
             return false;
 
@@ -294,7 +294,7 @@ void VarManager::EraseTemplateVar( ushort temp_id )
 
 ushort VarManager::GetTemplateVarId( const char* var_name )
 {
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
     {
         TemplateVar* tvar = *it;
         if( tvar && Str::CompareCase( tvar->Name.c_str(), var_name ) )
@@ -312,7 +312,7 @@ TemplateVar* VarManager::GetTemplateVar( ushort temp_id )
 
 bool VarManager::IsTemplateVarAviable( const char* var_name )
 {
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
     {
         TemplateVar* tvar = *it;
         if( tvar && Str::CompareCase( tvar->Name.c_str(), var_name ) )
@@ -328,7 +328,7 @@ void VarManager::SaveTemplateVars()
     FileManager fm;
 
     uint        count = 0;
-    for( TempVarVecIt it = tempVars.begin(); it != tempVars.end(); ++it )
+    for( auto it = tempVars.begin(); it != tempVars.end(); ++it )
         if( *it )
             count++;
 
@@ -339,7 +339,7 @@ void VarManager::SaveTemplateVars()
     fm.SetStr( "*************************************************************************************/\n" );
     fm.SetStr( "\n\n" );
 
-    for( TempVarVecIt it = tempVars.begin(); it != tempVars.end(); ++it )
+    for( auto it = tempVars.begin(); it != tempVars.end(); ++it )
     {
         TemplateVar* var = *it;
         if( !var )
@@ -372,7 +372,7 @@ void VarManager::SaveTemplateVars()
     fm.SetStr( "\tId\tType\tName\t\tStart\tMin\tMax\tFlags\n" );
     fm.SetStr( "**************************************************************************************\n" );
 
-    for( TempVarVecIt it = tempVars.begin(); it != tempVars.end(); ++it )
+    for( auto it = tempVars.begin(); it != tempVars.end(); ++it )
     {
         TemplateVar* var = *it;
         if( !var )
@@ -551,7 +551,7 @@ GameVar* VarManager::GetVar( ushort temp_id, uint master_id, uint slave_id,  boo
     {
         SCOPE_LOCK( varsLocker );
 
-        VarsMap32It it = tvar->Vars.find( master_id );
+        auto it = tvar->Vars.find( master_id );
         if( it == tvar->Vars.end() )
         {
             if( !create )
@@ -570,8 +570,8 @@ GameVar* VarManager::GetVar( ushort temp_id, uint master_id, uint slave_id,  boo
     {
         SCOPE_LOCK( varsLocker );
 
-        uint64      id = ( ( (uint64) slave_id ) << 32 ) | ( (uint64) master_id );
-        VarsMap64It it = tvar->VarsUnicum.find( id );
+        uint64 id = ( ( (uint64) slave_id ) << 32 ) | ( (uint64) master_id );
+        auto   it = tvar->VarsUnicum.find( id );
         if( it == tvar->VarsUnicum.end() )
         {
             if( !create )
@@ -663,14 +663,14 @@ void VarManager::SwapVars( uint id1, uint id2 )
     VarsVec swap_vars2;
     VarsVec swap_vars_share;
     varsLocker.Lock();
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
     {
         TemplateVar* tvar = *it;
         if( tvar && ( tvar->Type == VAR_LOCAL || tvar->Type == VAR_UNICUM ) )
         {
             if( tvar->IsNotUnicum() )
             {
-                for( VarsMap32It it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
+                for( auto it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
                 {
                     GameVar* var = ( *it_ ).second;
                     if( var->MasterId == id1 )
@@ -681,7 +681,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
             }
             else
             {
-                for( VarsMap64It it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
+                for( auto it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
                 {
                     GameVar* var = ( *it_ ).second;
                     if( ( var->MasterId == id1 && var->SlaveId == id2 ) ||
@@ -698,16 +698,16 @@ void VarManager::SwapVars( uint id1, uint id2 )
     varsLocker.Unlock();
 
     // Synchronize
-    for( VarsVecIt it = swap_vars1.begin(), end = swap_vars1.end(); it != end; ++it )
+    for( auto it = swap_vars1.begin(), end = swap_vars1.end(); it != end; ++it )
         SYNC_LOCK( *it );
-    for( VarsVecIt it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
+    for( auto it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
         SYNC_LOCK( *it );
-    for( VarsVecIt it = swap_vars_share.begin(), end = swap_vars_share.end(); it != end; ++it )
+    for( auto it = swap_vars_share.begin(), end = swap_vars_share.end(); it != end; ++it )
         SYNC_LOCK( *it );
 
     // Swap shared
     varsLocker.Lock();
-    for( VarsVecIt it = swap_vars_share.begin(), end = swap_vars_share.end(); it != end;)
+    for( auto it = swap_vars_share.begin(), end = swap_vars_share.end(); it != end;)
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -718,7 +718,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
     }
 
     // Erase vars
-    for( VarsVecIt it = swap_vars1.begin(), end = swap_vars1.end(); it != end; ++it )
+    for( auto it = swap_vars1.begin(), end = swap_vars1.end(); it != end; ++it )
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -727,7 +727,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
         else
             tvar->VarsUnicum.erase( var->GetUid() );
     }
-    for( VarsVecIt it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
+    for( auto it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -738,7 +738,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
     }
 
     // Change owner, place
-    for( VarsVecIt it = swap_vars1.begin(), end = swap_vars1.end(); it != end; ++it )
+    for( auto it = swap_vars1.begin(), end = swap_vars1.end(); it != end; ++it )
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -757,7 +757,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
             tvar->VarsUnicum.insert( VarsMap64Val( var->GetUid(), var ) );
         }
     }
-    for( VarsVecIt it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
+    for( auto it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -784,14 +784,14 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
     // Collect all vars
     varsLocker.Lock();
     VarsVec all_vars;
-    for( TempVarVecIt it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
+    for( auto it = tempVars.begin(), end = tempVars.end(); it != end; ++it )
     {
         TemplateVar* tvar = *it;
         if( tvar && tvar->Type != VAR_GLOBAL )
         {
-            for( VarsMap32It it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
+            for( auto it_ = tvar->Vars.begin(), end_ = tvar->Vars.end(); it_ != end_; ++it_ )
                 all_vars.push_back( ( *it_ ).second );
-            for( VarsMap64It it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
+            for( auto it_ = tvar->VarsUnicum.begin(), end_ = tvar->VarsUnicum.end(); it_ != end_; ++it_ )
                 all_vars.push_back( ( *it_ ).second );
         }
     }
@@ -799,7 +799,7 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
 
     // Collect non used vars, synchronize it
     VarsVec del_vars;
-    for( VarsVecIt it = all_vars.begin(); it != all_vars.end(); ++it )
+    for( auto it = all_vars.begin(); it != all_vars.end(); ++it )
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -842,7 +842,7 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
     // Delete vars
     uint del_count = 0;
     varsLocker.Lock();
-    for( VarsVecIt it = del_vars.begin(); it != del_vars.end(); ++it )
+    for( auto it = del_vars.begin(); it != del_vars.end(); ++it )
     {
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
@@ -902,7 +902,7 @@ void VarManager::GetQuestVars( uint master_id, UIntVec& vars )
 {
     SCOPE_LOCK( varsLocker );
 
-    for( VarsVecIt it = allQuestVars.begin(), end = allQuestVars.end(); it != end; ++it )
+    for( auto it = allQuestVars.begin(), end = allQuestVars.end(); it != end; ++it )
     {
         GameVar* var = *it;
         if( var && var->MasterId == master_id )

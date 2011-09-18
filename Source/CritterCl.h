@@ -352,10 +352,8 @@ public:
 };
 
 typedef map< uint, CritterCl*, less< uint > >             CritMap;
-typedef map< uint, CritterCl*, less< uint > >::iterator   CritMapIt;
 typedef map< uint, CritterCl*, less< uint > >::value_type CritMapVal;
 typedef vector< CritterCl* >                              CritVec;
-typedef vector< CritterCl* >::iterator                    CritVecIt;
 typedef CritterCl*                                        CritterClPtr;
 
 #endif // __CRITTER_CL__

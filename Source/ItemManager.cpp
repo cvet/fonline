@@ -49,7 +49,7 @@ void ItemManager::Finish()
     ItemGarbager();
 
     ItemPtrMap items = gameItems;
-    for( ItemPtrMapIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
         item->EventFinish( false );
@@ -68,7 +68,7 @@ void ItemManager::Finish()
 void ItemManager::Clear()
 {
     #ifdef FONLINE_SERVER
-    for( ItemPtrMapIt it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
+    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
         SAFEREL( ( *it ).second );
     gameItems.clear();
     radioItems.clear();
@@ -563,7 +563,7 @@ void ItemManager::ClearProto( ushort pid )
 
     allProto[ pid ].Clear();
 
-    ProtoItemVecIt it = std::find( protos.begin(), protos.end(), pid );
+    auto it = std::find( protos.begin(), protos.end(), pid );
     if( it != protos.end() )
         protos.erase( it );
 
@@ -575,7 +575,7 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
 {
     uint count = (uint) gameItems.size();
     save_func( &count, sizeof( count ) );
-    for( ItemPtrMapIt it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
+    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
         save_func( &item->Id, sizeof( item->Id ) );
@@ -690,7 +690,7 @@ bool ItemManager::CheckProtoFunctions()
 void ItemManager::RunInitScriptItems()
 {
     ItemPtrMap items = gameItems;
-    for( ItemPtrMapIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
         if( item->Data.ScriptId )
@@ -702,7 +702,7 @@ void ItemManager::GetGameItems( ItemPtrVec& items )
 {
     SCOPE_LOCK( itemLocker );
     items.reserve( gameItems.size() );
-    for( ItemPtrMapIt it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
+    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
         items.push_back( item );
@@ -722,7 +722,7 @@ void ItemManager::SetCritterItems( Critter* cr )
     uint       crid = cr->GetId();
 
     itemLocker.Lock();
-    for( ItemPtrMapIt it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
+    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
         if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id == crid )
@@ -730,7 +730,7 @@ void ItemManager::SetCritterItems( Critter* cr )
     }
     itemLocker.Unlock();
 
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         SYNC_LOCK( item );
@@ -748,7 +748,7 @@ void ItemManager::GetItemIds( UIntSet& item_ids )
 {
     SCOPE_LOCK( itemLocker );
 
-    for( ItemPtrMapIt it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
+    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
         item_ids.insert( ( *it ).second->GetId() );
 }
 
@@ -853,7 +853,7 @@ Item* ItemManager::GetItem( uint item_id, bool sync_lock )
     Item* item = NULL;
 
     itemLocker.Lock();
-    ItemPtrMapIt it = gameItems.find( item_id );
+    auto it = gameItems.find( item_id );
     if( it != gameItems.end() )
         item = ( *it ).second;
     itemLocker.Unlock();
@@ -888,7 +888,7 @@ void ItemManager::ItemGarbager()
 
             // Erase from main collection
             itemLocker.Lock();
-            ItemPtrMapIt it = gameItems.find( id );
+            auto it = gameItems.find( id );
             if( it == gameItems.end() )
             {
                 itemLocker.Unlock();
@@ -1381,7 +1381,7 @@ bool ItemManager::MoveItemsContainers( Item* from_cont, Item* to_cont, uint from
 
     ItemPtrVec items;
     from_cont->ContGetItems( items, from_stack_id, true );
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         from_cont->ContEraseItem( item );
@@ -1400,7 +1400,7 @@ bool ItemManager::MoveItemsContToCritter( Item* from_cont, Critter* to_cr, uint 
 
     ItemPtrVec items;
     from_cont->ContGetItems( items, stack_id, true );
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         from_cont->ContEraseItem( item );
@@ -1414,7 +1414,7 @@ void ItemManager::RadioRegister( Item* radio, bool add )
 {
     SCOPE_LOCK( radioItemsLocker );
 
-    ItemPtrVecIt it = std::find( radioItems.begin(), radioItems.end(), radio );
+    auto it = std::find( radioItems.begin(), radioItems.end(), radio );
 
     if( add )
     {
@@ -1432,7 +1432,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
 {
     ItemPtrVec radios;
     ItemPtrVec items = cr->GetItemsNoLock();
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->IsRadio() && item->RadioIsSendActive() &&
@@ -1481,7 +1481,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
     msg_count++;
 
     // Send
-    for( ItemPtrVecIt it = radio_items.begin(), end = radio_items.end(); it != end; ++it )
+    for( auto it = radio_items.begin(), end = radio_items.end(); it != end; ++it )
     {
         Item* radio = *it;
 

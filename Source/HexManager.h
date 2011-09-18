@@ -55,8 +55,7 @@ struct LightSource
 
     LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags ): HexX( hx ), HexY( hy ), ColorRGB( color ), Intensity( inten ), Distance( distance ), Flags( flags ) {}
 };
-typedef vector< LightSource >           LightSourceVec;
-typedef vector< LightSource >::iterator LightSourceVecIt;
+typedef vector< LightSource > LightSourceVec;
 
 /************************************************************************/
 /* Field                                                                */
@@ -120,9 +119,7 @@ struct Drop
     Drop(): CurSprId( 0 ), OffsX( 0 ), OffsY( 0 ), DropCnt( 0 ), GroundOffsY( 0 ) {};
     Drop( ushort id, short x, short y, short ground_y ): CurSprId( id ), OffsX( x ), OffsY( y ), DropCnt( -1 ), GroundOffsY( ground_y ) {};
 };
-
-typedef vector< Drop* >           DropVec;
-typedef vector< Drop* >::iterator DropVecIt;
+typedef vector< Drop* > DropVec;
 
 /************************************************************************/
 /* HexField                                                             */
@@ -263,13 +260,13 @@ public:
     CritterCl* GetCritter( uint crid )
     {
         if( !crid ) return NULL;
-        CritMapIt it = allCritters.find( crid );
+        auto it = allCritters.find( crid );
         return it != allCritters.end() ? ( *it ).second : NULL;
     }
     CritterCl* GetChosen()
     {
         if( !chosenId ) return NULL;
-        CritMapIt it = allCritters.find( chosenId );
+        auto it = allCritters.find( chosenId );
         return it != allCritters.end() ? ( *it ).second : NULL;
     }
     void     AddCrit( CritterCl* cr );
@@ -290,15 +287,15 @@ private:
     void ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item );
 
 public:
-    bool         AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data );
-    void         ChangeItem( uint id, const Item::ItemData& data );
-    void         FinishItem( uint id, bool is_deleted );
-    ItemHexVecIt DeleteItem( ItemHex* item, bool with_delete = true );
-    void         PushItem( ItemHex* item );
-    ItemHex*     GetItem( ushort hx, ushort hy, ushort pid );
-    ItemHex*     GetItemById( ushort hx, ushort hy, uint id );
-    ItemHex*     GetItemById( uint id );
-    void         GetItems( ushort hx, ushort hy, ItemHexVec& items );
+    bool AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data );
+    void ChangeItem( uint id, const Item::ItemData& data );
+    void FinishItem( uint id, bool is_deleted );
+    auto DeleteItem( ItemHex * item, bool with_delete = true )->ItemHexVec::iterator;
+    void        PushItem( ItemHex* item );
+    ItemHex*    GetItem( ushort hx, ushort hy, ushort pid );
+    ItemHex*    GetItemById( ushort hx, ushort hy, uint id );
+    ItemHex*    GetItemById( uint id );
+    void        GetItems( ushort hx, ushort hy, ItemHexVec& items );
     ItemHexVec& GetItems() { return hexItems; }
     INTRECT     GetRectForText( ushort hx, ushort hy );
     void        ProcessItems();

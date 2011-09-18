@@ -54,7 +54,7 @@ void CritterManager::Finish()
 void CritterManager::Clear()
 {
     #ifdef FONLINE_SERVER
-    for( CrMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
         SAFEREL( ( *it ).second );
     allCritters.clear();
     crToDelete.clear();
@@ -191,7 +191,7 @@ CritData* CritterManager::GetAllProtos()
 void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
 {
     CrVec crits;
-    for( CrMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsNpc() )
@@ -200,7 +200,7 @@ void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
 
     uint count = (uint) crits.size();  // npcCount
     save_func( &count, sizeof( count ) );
-    for( CrVecIt it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         Critter* cr = *it;
         cr->Data.IsDataExt = ( cr->DataExt ? true : false );
@@ -287,7 +287,7 @@ bool CritterManager::LoadCrittersFile( FILE* f, uint version )
 
 void CritterManager::RunInitScriptCritters()
 {
-    for( CrMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cr->GetInfo() ) )
@@ -316,13 +316,13 @@ void CritterManager::CritterGarbager()
         crToDelete.clear();
         crLocker.Unlock();
 
-        for( UIntVecIt it = to_del.begin(), end = to_del.end(); it != end; ++it )
+        for( auto it = to_del.begin(), end = to_del.end(); it != end; ++it )
         {
             // Find and erase
             Critter* cr = NULL;
 
             crLocker.Lock();
-            CrMapIt it_cr = allCritters.find( *it );
+            auto it_cr = allCritters.find( *it );
             if( it_cr != allCritters.end() )
                 cr = ( *it_cr ).second;
             if( !cr || !cr->IsNpc() )
@@ -365,7 +365,7 @@ void CritterManager::CritterGarbager()
                 group->EraseCrit( cr );
                 if( cr == group->Rule )
                 {
-                    for( CrVecIt it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
+                    for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
                     {
                         Critter* cr_ = *it_;
                         MapMngr.GM_GroupStartMove( cr_ );
@@ -373,7 +373,7 @@ void CritterManager::CritterGarbager()
                 }
                 else
                 {
-                    for( CrVecIt it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
+                    for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
                     {
                         Critter* cr_ = *it_;
                         cr_->Send_RemoveCritter( cr );
@@ -571,13 +571,13 @@ void CritterManager::GetCopyCritters( CrVec& critters, bool sync_lock )
 
     CrVec find_critters;
     find_critters.reserve( all_critters.size() );
-    for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+    for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         find_critters.push_back( ( *it ).second );
 
     if( sync_lock && LogicMT )
     {
         // Synchronize
-        for( CrVecIt it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
+        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
             SYNC_LOCK( *it );
 
         // Recheck
@@ -587,7 +587,7 @@ void CritterManager::GetCopyCritters( CrVec& critters, bool sync_lock )
 
         CrVec find_critters2;
         find_critters2.reserve( find_critters.size() );
-        for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+        for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
             find_critters2.push_back( ( *it ).second );
 
         // Search again, if different
@@ -609,7 +609,7 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
 
     PcVec find_npcs;
     find_npcs.reserve( all_critters.size() );
-    for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+    for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsNpc() )
@@ -619,7 +619,7 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
     if( sync_lock && LogicMT )
     {
         // Synchronize
-        for( PcVecIt it = find_npcs.begin(), end = find_npcs.end(); it != end; ++it )
+        for( auto it = find_npcs.begin(), end = find_npcs.end(); it != end; ++it )
             SYNC_LOCK( *it );
 
         // Recheck
@@ -629,7 +629,7 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
 
         PcVec find_npcs2;
         find_npcs2.reserve( find_npcs.size() );
-        for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+        for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
             Critter* cr = ( *it ).second;
             if( cr->IsNpc() )
@@ -655,7 +655,7 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock )
 
     ClVec find_players;
     find_players.reserve( all_critters.size() );
-    for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+    for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsPlayer() )
@@ -665,7 +665,7 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock )
     if( sync_lock && LogicMT )
     {
         // Synchronize
-        for( ClVecIt it = find_players.begin(), end = find_players.end(); it != end; ++it )
+        for( auto it = find_players.begin(), end = find_players.end(); it != end; ++it )
             SYNC_LOCK( *it );
 
         // Recheck
@@ -675,7 +675,7 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock )
 
         ClVec find_players2;
         find_players2.reserve( find_players.size() );
-        for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+        for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
             Critter* cr = ( *it ).second;
             if( cr->IsPlayer() )
@@ -701,7 +701,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
 
     CrVec find_critters;
     find_critters.reserve( all_critters.size() );
-    for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+    for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( !cr->GetMap() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
@@ -712,7 +712,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
     if( sync_lock && LogicMT )
     {
         // Synchronize
-        for( CrVecIt it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
+        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
             SYNC_LOCK( *it );
 
         // Recheck
@@ -722,7 +722,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
 
         CrVec find_critters2;
         find_critters2.reserve( find_critters.size() );
-        for( CrMapIt it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
+        for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
             Critter* cr = ( *it ).second;
             if( !cr->GetMap() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
@@ -746,7 +746,7 @@ Critter* CritterManager::GetCritter( uint crid, bool sync_lock )
     Critter* cr = NULL;
 
     crLocker.Lock();
-    CrMapIt it = allCritters.find( crid );
+    auto it = allCritters.find( crid );
     if( it != allCritters.end() )
         cr = ( *it ).second;
     crLocker.Unlock();
@@ -764,7 +764,7 @@ Client* CritterManager::GetPlayer( uint crid, bool sync_lock )
     Critter* cr = NULL;
 
     crLocker.Lock();
-    CrMapIt it = allCritters.find( crid );
+    auto it = allCritters.find( crid );
     if( it != allCritters.end() )
         cr = ( *it ).second;
     crLocker.Unlock();
@@ -781,7 +781,7 @@ Client* CritterManager::GetPlayer( const char* name, bool sync_lock )
     Client* cl = NULL;
 
     crLocker.Lock();
-    for( CrMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsPlayer() && Str::CompareCase( name, cr->GetName() ) )
@@ -805,7 +805,7 @@ Npc* CritterManager::GetNpc( uint crid, bool sync_lock )
     Critter* cr = NULL;
 
     crLocker.Lock();
-    CrMapIt it = allCritters.find( crid );
+    auto it = allCritters.find( crid );
     if( it != allCritters.end() )
         cr = ( *it ).second;
     crLocker.Unlock();
@@ -821,7 +821,7 @@ void CritterManager::EraseCritter( Critter* cr )
 {
     SCOPE_LOCK( crLocker );
 
-    CrMapIt it = allCritters.find( cr->GetId() );
+    auto it = allCritters.find( cr->GetId() );
     if( it != allCritters.end() )
     {
         if( cr->IsPlayer() )
@@ -836,7 +836,7 @@ void CritterManager::GetNpcIds( UIntSet& npc_ids )
 {
     SCOPE_LOCK( crLocker );
 
-    for( CrMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsNpc() )

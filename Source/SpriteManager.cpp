@@ -111,7 +111,7 @@ void Sprites::GrowPool( uint size )
 
 void Sprites::ClearPool()
 {
-    for( SpriteVecIt it = spritesPool.begin(), end = spritesPool.end(); it != end; ++it )
+    for( auto it = spritesPool.begin(), end = spritesPool.end(); it != end; ++it )
     {
         Sprite* spr = *it;
         spr->Unvalidate();
@@ -317,7 +317,7 @@ void Sprites::Resize( uint size )
 
 void Sprites::Unvalidate()
 {
-    for( SpriteVecIt it = spritesTree.begin(), end = spritesTree.begin() + spritesTreeSize; it != end; ++it )
+    for( auto it = spritesTree.begin(), end = spritesTree.begin() + spritesTreeSize; it != end; ++it )
         ( *it )->Unvalidate();
     spritesTreeSize = 0;
 }
@@ -504,7 +504,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
     // Sprites buffer
     sprData.resize( SPR_BUFFER_COUNT );
-    for( SprInfoVecIt it = sprData.begin(), end = sprData.end(); it != end; ++it )
+    for( auto it = sprData.begin(), end = sprData.end(); it != end; ++it )
         ( *it ) = NULL;
 
     // Transparent egg
@@ -669,10 +669,10 @@ void SpriteManager::Clear()
 {
     WriteLog( "Sprite manager finish...\n" );
 
-    for( SurfVecIt it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
         SAFEDEL( *it );
     surfList.clear();
-    for( SprInfoVecIt it = sprData.begin(), end = sprData.end(); it != end; ++it )
+    for( auto it = sprData.begin(), end = sprData.end(); it != end; ++it )
         SAFEDEL( *it );
     sprData.clear();
     dipQueue.clear();
@@ -829,7 +829,7 @@ Surface* SpriteManager::FindSurfacePlace( SpriteInfo* si, int& x, int& y )
     // Find place in already created surface
     uint w = si->Width + SURF_SPRITES_OFFS * 2;
     uint h = si->Height + SURF_SPRITES_OFFS * 2;
-    for( SurfVecIt it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
     {
         Surface* surf = *it;
         if( surf->Type == SurfType )
@@ -860,12 +860,12 @@ Surface* SpriteManager::FindSurfacePlace( SpriteInfo* si, int& x, int& y )
 
 void SpriteManager::FreeSurfaces( int surf_type )
 {
-    for( SurfVecIt it = surfList.begin(); it != surfList.end();)
+    for( auto it = surfList.begin(); it != surfList.end();)
     {
         Surface* surf = *it;
         if( surf->Type == surf_type )
         {
-            for( SprInfoVecIt it_ = sprData.begin(), end_ = sprData.end(); it_ != end_; ++it_ )
+            for( auto it_ = sprData.begin(), end_ = sprData.end(); it_ != end_; ++it_ )
             {
                 SpriteInfo* si = *it_;
                 if( si && si->Surf == surf )
@@ -891,7 +891,7 @@ void SpriteManager::SaveSufaces()
         rnd_num = Random( 1000, 9999 );
 
     int surf_size = 0;
-    for( SurfVecIt it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
     {
         Surface* surf = *it;
         surf_size += surf->Width * surf->Height * 4;
@@ -903,7 +903,7 @@ void SpriteManager::SaveSufaces()
 
     int  cnt = 0;
     char name[ 256 ];
-    for( SurfVecIt it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
     {
         Surface*          surf = *it;
         LPDIRECT3DSURFACE s;
@@ -1096,7 +1096,7 @@ AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname, i
             if( !si )
                 continue;
 
-            for( SurfVecIt it = surfList.begin(), end = surfList.end(); it != end; ++it )
+            for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
             {
                 Surface* surf = *it;
                 if( si->Surf == surf )
@@ -3115,7 +3115,7 @@ bool SpriteManager::Flush()
         D3D_HR( d3dDevice->SetFVF( D3DFVF_MYVERTEX ) );
 
         uint rpos = 0;
-        for( DipDataVecIt it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it )
+        for( auto it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it )
         {
             DipData&  dip = *it;
             EffectEx* effect_ex = ( dip.Effect ? dip.Effect : curDefaultEffect );
@@ -3339,7 +3339,7 @@ bool SpriteManager::PrepareBuffer( Sprites& dtree, LPDIRECT3DSURFACE surf, int o
     D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT ) );
 
     // Draw
-    for( SpriteVecIt it = dtree.Begin(), end = dtree.End(); it != end; ++it )
+    for( auto it = dtree.Begin(), end = dtree.End(); it != end; ++it )
     {
         Sprite* spr = *it;
         if( !spr->Valid )
@@ -3564,7 +3564,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
     int  ey = eggY + GameOpt.ScrOy;
     uint cur_tick = Timer::FastTick();
 
-    for( SpriteVecIt it = dtree.Begin(), end = dtree.End(); it != end; ++it )
+    for( auto it = dtree.Begin(), end = dtree.End(); it != end; ++it )
     {
         // Data
         Sprite* spr = *it;
@@ -4529,8 +4529,8 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
 {
     // Find created
-    uint      spr_id = ( spr->PSprId ? *spr->PSprId : spr->SprId );
-    UIntMapIt it = createdSpriteContours.find( spr_id );
+    uint spr_id = ( spr->PSprId ? *spr->PSprId : spr->SprId );
+    auto it = createdSpriteContours.find( spr_id );
     if( it != createdSpriteContours.end() )
         return ( *it ).second;
 
@@ -4679,8 +4679,7 @@ struct Font
         Effect = NULL;
     }
 };
-typedef vector< Font* >           FontVec;
-typedef vector< Font* >::iterator FontVecIt;
+typedef vector< Font* > FontVec;
 
 FontVec Fonts;
 

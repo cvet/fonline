@@ -134,13 +134,13 @@ void FOServer::Finish()
 
     // Logging clients
     LogFinish( LOG_FUNC );
-    for( ClVecIt it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
+    for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
         ( *it )->Release();
     LogClients.clear();
 
     // Clients
     ConnectedClientsLocker.Lock();
-    for( ClVecIt it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+    for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
     {
         Client* cl = *it;
         cl->Disconnect();
@@ -258,7 +258,7 @@ void FOServer::DisconnectClient( Client* cl )
         }
         else if( cl->GroupMove )
         {
-            for( CrVecIt it = cl->GroupMove->CritMove.begin(), end = cl->GroupMove->CritMove.end(); it != end; ++it )
+            for( auto it = cl->GroupMove->CritMove.begin(), end = cl->GroupMove->CritMove.end(); it != end; ++it )
             {
                 Critter* cr = *it;
                 if( cr != cl )
@@ -297,7 +297,7 @@ void FOServer::RemoveClient( Client* cl )
             group->EraseCrit( cl );
             if( cl == group->Rule )
             {
-                for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+                for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
                 {
                     Critter* cr = *it;
                     MapMngr.GM_GroupStartMove( cr );
@@ -305,7 +305,7 @@ void FOServer::RemoveClient( Client* cl )
             }
             else
             {
-                for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+                for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
                 {
                     Critter* cr = *it;
                     cr->Send_RemoveCritter( cl );
@@ -332,7 +332,7 @@ void FOServer::RemoveClient( Client* cl )
 
         // Erase radios from collection
         ItemPtrVec items = cl->GetItemsNoLock();
-        for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
             Item* item = *it;
             if( item->IsRadio() )
@@ -375,7 +375,7 @@ void FOServer::EraseSaveClient( uint crid )
 {
     SCOPE_LOCK( SaveClientsLocker );
 
-    for( ClVecIt it = SaveClients.begin(); it != SaveClients.end();)
+    for( auto it = SaveClients.begin(); it != SaveClients.end();)
     {
         Client* cl = *it;
         if( cl->GetId() == crid )
@@ -493,7 +493,7 @@ void FOServer::MainLoop()
 
     // Finish all critters
     CrMap& critters = CrMngr.GetCrittersNoLock();
-    for( CrMapIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         bool     to_delete = ( cr->IsPlayer() && ( (Client*) cr )->Data.ClientToDelete );
@@ -603,7 +603,7 @@ void* FOServer::Logic_Work( void* data )
                 DisconnectClient( cl );
 
                 ConnectedClientsLocker.Lock();
-                ClVecIt it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
+                auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
                 if( it != ConnectedClients.end() )
                 {
                     ConnectedClients.erase( it );
@@ -758,7 +758,7 @@ void* FOServer::Logic_Work( void* data )
             // Calculate whole threads statistics
             uint real_min_cycle = MAX_UINT;           // Calculate real cycle count for deferred releasing
             uint cycle_time = 0, loop_time = 0, loop_cycles = 0, loop_min = 0, loop_max = 0, lags = 0;
-            for( PtrVecIt it = stats_ptrs.begin(), end = stats_ptrs.end(); it != end; ++it )
+            for( auto it = stats_ptrs.begin(), end = stats_ptrs.end(); it != end; ++it )
             {
                 StatisticsThread* stats_thread = (StatisticsThread*) *it;
                 cycle_time += stats_thread->CycleTime;
@@ -2295,7 +2295,7 @@ void FOServer::Process_Command( Client* cl )
                 // Get locations on global
                 LocVec locs;
                 MapMngr.GetLocations( locs, false );
-                for( LocVecIt it = locs.begin(), end = locs.end(); it != end; ++it )
+                for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
                 {
                     Location* loc = *it;
                     cl->AddKnownLoc( loc->GetId() );
@@ -2345,12 +2345,12 @@ void FOServer::Process_Command( Client* cl )
             {
                 PcVec npcs;
                 CrMngr.GetCopyNpcs( npcs, true );
-                for( PcVecIt it = npcs.begin(), end = npcs.end(); it != end; ++it )
+                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
                 {
                     Npc* npc = *it;
                     if( !npc->VisCr.size() )
                         continue;
-                    CrVecIt it_ = npc->VisCr.begin();
+                    auto it_ = npc->VisCr.begin();
                     for( int i = 0, j = Random( 0, (int) npc->VisCr.size() - 1 ); i < j; i++ )
                         ++it_;
                     npc->SetTarget( -1, *it_, GameOpt.DeadHitPoints, false );
@@ -2360,7 +2360,7 @@ void FOServer::Process_Command( Client* cl )
             {
                 /*uint len=0;
                    EnterCriticalSection(&CSConnectedClients);
-                   for(ClVecIt it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
+                   for(auto it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
                    {
                         Client* cl_=*it;
                         len+=cl->Bin.GetLen();
@@ -2381,7 +2381,7 @@ void FOServer::Process_Command( Client* cl )
             {
                 PcVec npcs;
                 CrMngr.GetCopyNpcs( npcs, true );
-                for( PcVecIt it = npcs.begin(), end = npcs.end(); it != end; ++it )
+                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
                 {
                     Npc* npc = *it;
                     memzero( &npc->Data.EnemyStack, sizeof( npc->Data.EnemyStack ) );
@@ -2391,7 +2391,7 @@ void FOServer::Process_Command( Client* cl )
             {
                 PcVec npcs;
                 CrMngr.GetCopyNpcs( npcs, true );
-                for( PcVecIt it = npcs.begin(), end = npcs.end(); it != end; ++it )
+                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
                 {
                     Npc* npc = *it;
                     npc->DropPlanes();
@@ -2401,7 +2401,7 @@ void FOServer::Process_Command( Client* cl )
             {
                 PcVec npcs;
                 CrMngr.GetCopyNpcs( npcs, true );
-                for( PcVecIt it = npcs.begin(), end = npcs.end(); it != end; ++it )
+                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
                 {
                     Npc* npc = *it;
                     if( npc->IsDead() && npc->GetParam( ST_REPLICATION_TIME ) )
@@ -3261,7 +3261,7 @@ void FOServer::Process_Command( Client* cl )
         GameOpt.GameTimeTick = Timer::GameTick();
 
         ConnectedClientsLocker.Lock();
-        for( ClVecIt it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+        for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
         {
             Client* cl_ = *it;
             if( cl_->IsOnline() )
@@ -3308,7 +3308,7 @@ void FOServer::Process_Command( Client* cl )
             }
 
             uint index = 1;
-            for( ClientBannedVecIt it = Banned.begin(), end = Banned.end(); it != end; ++it )
+            for( auto it = Banned.begin(), end = Banned.end(); it != end; ++it )
             {
                 ClientBanned& ban = *it;
                 cl->Send_Text( cl, Str::FormatBuf( "--- %3u ---", index ), SAY_NETMSG );
@@ -3376,7 +3376,7 @@ void FOServer::Process_Command( Client* cl )
             }
             else
             {
-                for( ClientBannedVecIt it = Banned.begin(); it != Banned.end();)
+                for( auto it = Banned.begin(); it != Banned.end();)
                 {
                     ClientBanned& ban = *it;
                     if( Str::CompareCase( ban.ClientName, name ) )
@@ -3520,7 +3520,7 @@ void FOServer::Process_Command( Client* cl )
         SynchronizeLogicThreads();
 
         LogFinish( LOG_FUNC );
-        ClVecIt it = std::find( LogClients.begin(), LogClients.end(), cl );
+        auto it = std::find( LogClients.begin(), LogClients.end(), cl );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
             cl->Release();
@@ -3533,7 +3533,7 @@ void FOServer::Process_Command( Client* cl )
         }
         else if( action == 2 )             // Detach all
         {
-            for( ClVecIt it_ = LogClients.begin(); it_ < LogClients.end(); ++it_ )
+            for( auto it_ = LogClients.begin(); it_ < LogClients.end(); ++it_ )
                 ( *it_ )->Release();
             LogClients.clear();
         }
@@ -4096,7 +4096,7 @@ bool FOServer::InitCrafts( LangPackVec& lang_packs )
     MrFixit.Finish();
 
     LanguagePack* main_lang = NULL;
-    for( LangPackVecIt it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
 
@@ -4179,12 +4179,12 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
     Randomizer def_rnd = DefaultRandomizer;
     DefaultRandomizer.Generate( 666666 );
 
-    for( DialogPackMapIt it = DlgMngr.DialogsPacks.begin(), end = DlgMngr.DialogsPacks.end(); it != end; ++it )
+    for( auto it = DlgMngr.DialogsPacks.begin(), end = DlgMngr.DialogsPacks.end(); it != end; ++it )
     {
         DialogPack* pack = ( *it ).second;
         for( uint i = 0, j = (uint) pack->TextsLang.size(); i < j; i++ )
         {
-            for( LangPackVecIt it_ = lang_packs.begin(), end_ = lang_packs.end(); it_ != end_; ++it_ )
+            for( auto it_ = lang_packs.begin(), end_ = lang_packs.end(); it_ != end_; ++it_ )
             {
                 LanguagePack& lang = *it_;
                 if( pack->TextsLang[ i ] != lang.NameStr )
@@ -4222,15 +4222,15 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
 
                 // Any texts
                 // 1000000000..
-                UIntStrMulMap&  data = msg->GetData();
-                UIntStrMulMapIt it__ = data.upper_bound( 99999999 );
+                UIntStrMulMap& data = msg->GetData();
+                auto           it__ = data.upper_bound( 99999999 );
                 for( ; it__ != data.end(); ++it__ )
                     msg_dlg->AddStr( 1000000000 + pack->PackId * 100000 + ( ( *it__ ).first - 100000000 ), ( *it__ ).second );
             }
         }
     }
 
-    for( LangPackVecIt it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
         lang.Msg[ TEXTMSG_DLG ].CalculateHash();
@@ -4255,7 +4255,7 @@ bool FOServer::InitLangCrTypes( LangPackVec& lang_packs )
     if( !CritType::InitFromFile( &msg_crtypes ) )
         return false;
 
-    for( LangPackVecIt it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
         for( int i = 0; i < MAX_CRIT_TYPES; i++ )
@@ -4274,7 +4274,7 @@ void FOServer::LogToClients( char* str )
         str_len--;
     if( str_len )
     {
-        for( ClVecIt it = LogClients.begin(); it < LogClients.end();)
+        for( auto it = LogClients.begin(); it < LogClients.end();)
         {
             Client* cl = *it;
             if( cl->IsOnline() )
@@ -4308,7 +4308,7 @@ void FOServer::ProcessBans()
     bool     resave = false;
     DateTime time;
     Timer::GetCurrentDateTime( time );
-    for( ClientBannedVecIt it = Banned.begin(); it != Banned.end();)
+    for( auto it = Banned.begin(); it != Banned.end();)
     {
         DateTime& ban_time = ( *it ).EndTime;
         if( time.Year >= ban_time.Year && time.Month >= ban_time.Month && time.Day >= ban_time.Day &&
@@ -4360,7 +4360,7 @@ void FOServer::SaveBans()
     SCOPE_LOCK( BannedLocker );
 
     FileManager fm;
-    for( ClientBannedVecIt it = Banned.begin(), end = Banned.end(); it != end; ++it )
+    for( auto it = Banned.begin(), end = Banned.end(); it != end; ++it )
     {
         ClientBanned& ban = *it;
         fm.SetStr( "[Ban]\n" );
@@ -4755,7 +4755,7 @@ void FOServer::SaveWorld( const char* name )
 
     // SaveClient
     ConnectedClientsLocker.Lock();
-    for( ClVecIt it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+    for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
     {
         Client* cl = *it;
         if( cl->GetId() )
@@ -4764,7 +4764,7 @@ void FOServer::SaveWorld( const char* name )
     ConnectedClientsLocker.Unlock();
 
     SaveClientsLocker.Lock();
-    for( ClVecIt it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
+    for( auto it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
     {
         Client* cl = *it;
         SaveClient( cl, true );
@@ -4918,7 +4918,7 @@ void FOServer::UnloadWorld()
     AnyData.clear();
 
     // Time events
-    for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
         delete *it;
     TimeEvents.clear();
     TimeEventsLastNum = 0;
@@ -5038,7 +5038,7 @@ void* FOServer::Dump_Work( void* data )
         }
 
         // Clear old dump files
-        for( UIntVecIt it = SaveWorldDeleteIndexes.begin(), end = SaveWorldDeleteIndexes.end(); it != end; ++it )
+        for( auto it = SaveWorldDeleteIndexes.begin(), end = SaveWorldDeleteIndexes.end(); it != end; ++it )
         {
             FILE* fold = fopen( Str::Format( fname, "%sworld%04d.fo", save_path, *it ), "rb" );
             if( fold )
@@ -5140,7 +5140,7 @@ void FOServer::VarsGarbarger( bool force )
     UIntSet ids_clients;
     if( !Singleplayer )
     {
-        for( ClientDataVecIt it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
+        for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
             ids_clients.insert( ( *it ).ClientId );
     }
     else
@@ -5171,11 +5171,11 @@ void FOServer::VarsGarbarger( bool force )
 void FOServer::SaveTimeEventsFile()
 {
     uint count = 0;
-    for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
         if( ( *it )->IsSaved )
             count++;
     AddWorldSaveData( &count, sizeof( count ) );
-    for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
     {
         TimeEvent* te = *it;
         if( !te->IsSaved )
@@ -5274,7 +5274,7 @@ void FOServer::AddTimeEvent( TimeEvent* te )
 {
     // Invoked in locked scope
 
-    for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
     {
         TimeEvent* te_ = *it;
         if( te->FullSecond < te_->FullSecond )
@@ -5344,7 +5344,7 @@ void FOServer::TimeEventEndScriptCallback()
     SCOPE_LOCK( TimeEventsLocker );
 
     uint tid = GetCurrentThreadId();
-    for( TimeEventVecIt it = TimeEvents.begin(); it != TimeEvents.end();)
+    for( auto it = TimeEvents.begin(); it != TimeEvents.end();)
     {
         TimeEvent* te = *it;
         if( te->InProcess == tid )
@@ -5372,7 +5372,7 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, CScriptArray* values )
     // Find event
     while( true )
     {
-        for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+        for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
         {
             TimeEvent* te_ = *it;
             if( te_->Num == num )
@@ -5429,7 +5429,7 @@ bool FOServer::SetTimeEvent( uint num, uint duration, CScriptArray* values )
     // Find event
     while( true )
     {
-        for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+        for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
         {
             TimeEvent* te_ = *it;
             if( te_->Num == num )
@@ -5476,7 +5476,7 @@ bool FOServer::EraseTimeEvent( uint num )
 {
     SCOPE_LOCK( TimeEventsLocker );
 
-    for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
     {
         TimeEvent* te = *it;
         if( te->Num == num )
@@ -5502,7 +5502,7 @@ void FOServer::ProcessTimeEvents()
     TimeEventsLocker.Lock();
 
     TimeEvent* cur_event = NULL;
-    for( TimeEventVecIt it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
+    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
     {
         TimeEvent* te = *it;
         if( !te->InProcess && te->FullSecond <= GameOpt.FullSecond )
@@ -5575,7 +5575,7 @@ void FOServer::ProcessTimeEvents()
 
     TimeEventsLocker.Lock();
 
-    TimeEventVecIt it = std::find( TimeEvents.begin(), TimeEvents.end(), cur_event );
+    auto it = std::find( TimeEvents.begin(), TimeEvents.end(), cur_event );
     TimeEvents.erase( it );
 
     if( wait_time && !cur_event->EraseMe )
@@ -5687,7 +5687,7 @@ void FOServer::SaveAnyDataFile()
 {
     uint count = (uint) AnyData.size();
     AddWorldSaveData( &count, sizeof( count ) );
-    for( AnyDataMapIt it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
+    for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
     {
         const string& name = ( *it ).first;
         UCharVec&     data = ( *it ).second;
@@ -5724,7 +5724,7 @@ bool FOServer::LoadAnyDataFile( FILE* f )
         if( data_len && !fread( &data[ 0 ], data_len, 1, f ) )
             return false;
 
-        AnyDataMapInsert result = AnyData.insert( AnyDataMapVal( name, data ) );
+        auto result = AnyData.insert( AnyDataMapVal( name, data ) );
         MEMORY_PROCESS( MEMORY_ANY_DATA, (int) ( *result.first ).second.capacity() );
     }
     return true;
@@ -5734,8 +5734,8 @@ bool FOServer::SetAnyData( const string& name, const uchar* data, uint data_size
 {
     SCOPE_LOCK( AnyDataLocker );
 
-    AnyDataMapInsert result = AnyData.insert( AnyDataMapVal( name, UCharVec() ) );
-    UCharVec&        data_ = ( *result.first ).second;
+    auto      result = AnyData.insert( AnyDataMapVal( name, UCharVec() ) );
+    UCharVec& data_ = ( *result.first ).second;
 
     MEMORY_PROCESS( MEMORY_ANY_DATA, -(int) data_.capacity() );
     data_.resize( data_size );
@@ -5749,7 +5749,7 @@ bool FOServer::GetAnyData( const string& name, CScriptArray& script_array )
 {
     SCOPE_LOCK( AnyDataLocker );
 
-    AnyDataMapIt it = AnyData.find( name );
+    auto it = AnyData.find( name );
     if( it == AnyData.end() )
         return false;
 
@@ -5772,8 +5772,8 @@ bool FOServer::IsAnyData( const string& name )
 {
     SCOPE_LOCK( AnyDataLocker );
 
-    AnyDataMapIt it = AnyData.find( name );
-    bool         present = ( it != AnyData.end() );
+    auto it = AnyData.find( name );
+    bool present = ( it != AnyData.end() );
     return present;
 }
 
@@ -5793,7 +5793,7 @@ string FOServer::GetAnyDataStatistics()
     result = "Any data count: ";
     result += _itoa( (int) AnyData.size(), str, 10 );
     result += "\nName                          Length    Data\n";
-    for( AnyDataMapIt it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
+    for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
     {
         const string& name = ( *it ).first;
         UCharVec&     data = ( *it ).second;

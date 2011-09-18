@@ -142,7 +142,7 @@ void FOServer::SaveHoloInfoFile()
 {
     uint count = (uint) HolodiskInfo.size();
     AddWorldSaveData( &count, sizeof( count ) );
-    for( HoloInfoMapIt it = HolodiskInfo.begin(), end = HolodiskInfo.end(); it != end; ++it )
+    for( auto it = HolodiskInfo.begin(), end = HolodiskInfo.end(); it != end; ++it )
     {
         uint      id = ( *it ).first;
         HoloInfo* hi = ( *it ).second;
@@ -440,7 +440,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         {
             ItemPtrVec traps;
             map->GetItemsTrap( fx, fy, traps, true );
-            for( ItemPtrVecIt it = traps.begin(), end = traps.end(); it != end; ++it )
+            for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
                 ( *it )->EventWalk( cr, false, dir );
         }
 
@@ -449,7 +449,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         {
             ItemPtrVec traps;
             map->GetItemsTrap( hx, hy, traps, true );
-            for( ItemPtrVecIt it = traps.begin(), end = traps.end(); it != end; ++it )
+            for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
                 ( *it )->EventWalk( cr, true, dir );
         }
 
@@ -1355,7 +1355,7 @@ bool FOServer::RegenerateMap( Map* map )
     // Kick clients to global
     ClVec players;
     map->GetPlayers( players, true );
-    for( ClVecIt it = players.begin(), end = players.end(); it != end; ++it )
+    for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Client* cl = *it;
         if( !MapMngr.TransitToGlobal( cl, 0, FOLLOW_FORCE, true ) )
@@ -1572,9 +1572,9 @@ void FOServer::Process_CreateClient( Client* cl )
     {
         SCOPE_LOCK( RegIpLocker );
 
-        uint      ip = cl->GetIp();
-        uint      reg_tick = GameOpt.RegistrationTimeout * 1000;
-        UIntMapIt it = RegIp.find( ip );
+        uint ip = cl->GetIp();
+        uint reg_tick = GameOpt.RegistrationTimeout * 1000;
+        auto it = RegIp.find( ip );
         if( it != RegIp.end() )
         {
             uint& last_reg = ( *it ).second;
@@ -1770,8 +1770,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
 
     // Lang packs
-    bool          default_lang = false;
-    LangPackVecIt it_l = std::find( LangPacks.begin(), LangPacks.end(), msg_language );
+    bool default_lang = false;
+    auto it_l = std::find( LangPacks.begin(), LangPacks.end(), msg_language );
     if( it_l == LangPacks.end() )
     {
         default_lang = true;
@@ -1965,7 +1965,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         SCOPE_LOCK( ClientsDataLocker );
 
         uint tick = Timer::FastTick();
-        for( ClientDataVecIt it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
+        for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
         {
             ClientData& cd = *it;
             if( cd.ClientId == data.ClientId )
@@ -2050,7 +2050,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         }
 
         // Find current client in online collection
-        ClVecIt it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
+        auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
         if( it == ConnectedClients.end() )
         {
             ConnectedClientsLocker.Unlock();
@@ -2168,7 +2168,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         // Find in saved array
         SaveClientsLocker.Lock();
         Client* cl_saved = NULL;
-        for( ClVecIt it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
+        for( auto it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
         {
             Client* cl_ = *it;
             if( cl_->GetId() == id )
@@ -2462,7 +2462,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         }
 
         cl->Send_GlobalInfo( GM_INFO_ALL );
-        for( CrVecIt it = cl->GroupMove->CritMove.begin(), end = cl->GroupMove->CritMove.end(); it != end; ++it )
+        for( auto it = cl->GroupMove->CritMove.begin(), end = cl->GroupMove->CritMove.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr != cl )
@@ -2501,7 +2501,7 @@ void FOServer::Process_ParseToGame( Client* cl )
 
     // Send current critters
     CrVec critters = cl->VisCrSelf;
-    for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
@@ -2512,7 +2512,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     cl->VisItemLocker.Lock();
     UIntSet items = cl->VisItem;
     cl->VisItemLocker.Unlock();
-    for( UIntSetIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ItemMngr.GetItem( *it, false );
         if( item )
@@ -3221,7 +3221,7 @@ void FOServer::Process_ContainerItem( Client* cl )
 
             // Check weight, volume
             uint weight = 0, volume = 0;
-            for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+            for( auto it = items.begin(), end = items.end(); it != end; ++it )
             {
                 Item* item = *it;
                 weight += item->GetWeight();
@@ -3257,7 +3257,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Transfer
-            for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+            for( auto it = items.begin(), end = items.end(); it != end; ++it )
             {
                 Item* item = *it;
                 if( !item->EventSkill( cl, SKILL_TAKE_CONT ) )

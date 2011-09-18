@@ -141,10 +141,8 @@ public:
     void AddRef()  { ++RunTime.RefCounter; }
     void Release() { if( !--RunTime.RefCounter ) delete this; }
 };
-typedef vector< MapObject* >           MapObjectPtrVec;
-typedef vector< MapObject* >::iterator MapObjectPtrVecIt;
-typedef vector< MapObject >            MapObjectVec;
-typedef vector< MapObject >::iterator  MapObjectVecIt;
+typedef vector< MapObject* > MapObjectPtrVec;
+typedef vector< MapObject >  MapObjectVec;
 
 struct SceneryCl
 {
@@ -324,10 +322,8 @@ public:
     #endif
 };
 typedef vector< ProtoMap >              ProtoMapVec;
-typedef vector< ProtoMap >::iterator    ProtoMapVecIt;
 typedef vector< ProtoMap >::value_type  ProtoMapVecVal;
 typedef vector< ProtoMap* >             ProtoMapPtrVec;
-typedef vector< ProtoMap* >::iterator   ProtoMapPtrVecIt;
 typedef vector< ProtoMap* >::value_type ProtoMapPtrVecVal;
 
 #endif // __PROTO_MAP__

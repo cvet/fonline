@@ -47,7 +47,7 @@ void Field::AddItem( ItemHex* item )
 
 void Field::EraseItem( ItemHex* item )
 {
-    ItemHexVecIt it = std::find( Items.begin(), Items.end(), item );
+    auto it = std::find( Items.begin(), Items.end(), item );
     if( it != Items.end() )
     {
         Items.erase( it );
@@ -67,7 +67,7 @@ void Field::ProcessCache()
     IsNotRaked = false;
     IsNoLight = false;
     ScrollBlock = false;
-    for( ItemHexVecIt it = Items.begin(), end = Items.end(); it != end; ++it )
+    for( auto it = Items.begin(), end = Items.end(); it != end; ++it )
     {
         ItemHex* item = *it;
         ushort   pid = item->GetProtoId();
@@ -211,7 +211,7 @@ void HexManager::Clear()
     roofRainTree.Clear();
     roofTree.Clear();
 
-    for( DropVecIt it = rainData.begin(), end = rainData.end(); it != end; ++it )
+    for( auto it = rainData.begin(), end = rainData.end(); it != end; ++it )
         SAFEDEL( *it );
     rainData.clear();
 
@@ -410,7 +410,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
         item->SetHideAnim();
 }
 
-ItemHexVecIt HexManager::DeleteItem( ItemHex* item, bool with_delete /* = true */ )
+auto HexManager::DeleteItem( ItemHex * item, bool with_delete /* = true */ )->ItemHexVec::iterator
 {
     ushort pid = item->GetProtoId();
     ushort hx = item->GetHexX();
@@ -421,7 +421,7 @@ ItemHexVecIt HexManager::DeleteItem( ItemHex* item, bool with_delete /* = true *
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
 
-    ItemHexVecIt it = std::find( hexItems.begin(), hexItems.end(), item );
+    auto it = std::find( hexItems.begin(), hexItems.end(), item );
     if( it != hexItems.end() )
         it = hexItems.erase( it );
     GetField( hx, hy ).EraseItem( item );
@@ -436,7 +436,7 @@ ItemHexVecIt HexManager::DeleteItem( ItemHex* item, bool with_delete /* = true *
 
 void HexManager::ProcessItems()
 {
-    for( ItemHexVecIt it = hexItems.begin(); it != hexItems.end();)
+    for( auto it = hexItems.begin(); it != hexItems.end();)
     {
         ItemHex* item = *it;
         item->Process();
@@ -510,7 +510,7 @@ ItemHex* HexManager::GetItem( ushort hx, ushort hy, ushort pid )
     if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY )
         return NULL;
 
-    for( ItemHexVecIt it = GetField( hx, hy ).Items.begin(), end = GetField( hx, hy ).Items.end(); it != end; ++it )
+    for( auto it = GetField( hx, hy ).Items.begin(), end = GetField( hx, hy ).Items.end(); it != end; ++it )
     {
         ItemHex* item = *it;
         if( item->GetProtoId() == pid )
@@ -524,7 +524,7 @@ ItemHex* HexManager::GetItemById( ushort hx, ushort hy, uint id )
     if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY )
         return NULL;
 
-    for( ItemHexVecIt it = GetField( hx, hy ).Items.begin(), end = GetField( hx, hy ).Items.end(); it != end; ++it )
+    for( auto it = GetField( hx, hy ).Items.begin(), end = GetField( hx, hy ).Items.end(); it != end; ++it )
     {
         ItemHex* item = *it;
         if( item->GetId() == id )
@@ -535,7 +535,7 @@ ItemHex* HexManager::GetItemById( ushort hx, ushort hy, uint id )
 
 ItemHex* HexManager::GetItemById( uint id )
 {
-    for( ItemHexVecIt it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         ItemHex* item = *it;
         if( item->GetId() == id )
@@ -649,7 +649,7 @@ void HexManager::ProcessRain()
     if( delta <= RAIN_TICK )
         return;
 
-    for( DropVecIt it = rainData.begin(), end = rainData.end(); it != end; ++it )
+    for( auto it = rainData.begin(), end = rainData.end(); it != end; ++it )
     {
         Drop* cur_drop = *it;
 
@@ -811,7 +811,7 @@ void HexManager::RebuildMap( int rx, int ry )
     mainTree.Unvalidate();
     roofRainTree.Unvalidate();
 
-    for( DropVecIt it = rainData.begin(), end = rainData.end(); it != end; ++it )
+    for( auto it = rainData.begin(), end = rainData.end(); it != end; ++it )
         delete ( *it );
     rainData.clear();
 
@@ -894,7 +894,7 @@ void HexManager::RebuildMap( int rx, int ry )
             // Items on hex
             if( !f.Items.empty() )
             {
-                for( ItemHexVecIt it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
+                for( auto it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
                 {
                     ItemHex* item = *it;
 
@@ -952,7 +952,7 @@ void HexManager::RebuildMap( int rx, int ry )
             // Dead critters
             if( !f.DeadCrits.empty() && GameOpt.ShowCrit )
             {
-                for( CritVecIt it = f.DeadCrits.begin(), end = f.DeadCrits.end(); it != end; ++it )
+                for( auto it = f.DeadCrits.begin(), end = f.DeadCrits.end(); it != end; ++it )
                 {
                     CritterCl* cr = *it;
                     if( !cr->Visible )
@@ -1379,7 +1379,7 @@ void HexManager::RealRebuildLight()
     LightMinHy = viewField[ wVisible - 1 ].HexY;
     LightMaxHy = viewField[ hVisible * wVisible - wVisible ].HexY;
 
-    for( LightSourceVecIt it = lightSources.begin(), end = lightSources.end(); it != end; ++it )
+    for( auto it = lightSources.begin(), end = lightSources.end(); it != end; ++it )
     {
         LightSource& ls = ( *it );
         //	if( (int)ls.HexX<LightMinHx-(int)ls.Distance || (int)ls.HexX>LightMaxHx+(int)ls.Distance ||
@@ -1396,7 +1396,7 @@ void HexManager::CollectLightSources()
     if( !CurProtoMap )
         return;
 
-    for( MapObjectPtrVecIt it = CurProtoMap->MObjects.begin(), end = CurProtoMap->MObjects.end(); it != end; ++it )
+    for( auto it = CurProtoMap->MObjects.begin(), end = CurProtoMap->MObjects.end(); it != end; ++it )
     {
         MapObject* o = *it;
         if( o->MapObjType == MAP_OBJECT_CRITTER || !o->LightIntensity )
@@ -1423,7 +1423,7 @@ void HexManager::CollectLightSources()
     lightSources = lightSourcesScen;
 
     // Items on ground
-    for( ItemHexVecIt it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         ItemHex* item = ( *it );
         if( item->IsItem() && item->IsLight() )
@@ -1431,11 +1431,11 @@ void HexManager::CollectLightSources()
     }
 
     // Items in critters slots
-    for( CritMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         CritterCl* cr = ( *it ).second;
         bool       added = false;
-        for( ItemPtrVecIt it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
+        for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
             Item* item = *it_;
             if( item->IsLight() && item->ACC_CRITTER.Slot != SLOT_INV )
@@ -2360,7 +2360,7 @@ void HexManager::RemoveCrit( CritterCl* cr )
     }
     else
     {
-        CritVecIt it = std::find( f.DeadCrits.begin(), f.DeadCrits.end(), cr );
+        auto it = std::find( f.DeadCrits.begin(), f.DeadCrits.end(), cr );
         if( it != f.DeadCrits.end() )
             f.DeadCrits.erase( it );
     }
@@ -2384,7 +2384,7 @@ void HexManager::AddCrit( CritterCl* cr )
 
 void HexManager::EraseCrit( uint crid )
 {
-    CritMapIt it = allCritters.find( crid );
+    auto it = allCritters.find( crid );
     if( it == allCritters.end() )
         return;
     CritterCl* cr = ( *it ).second;
@@ -2399,7 +2399,7 @@ void HexManager::EraseCrit( uint crid )
 
 void HexManager::ClearCritters()
 {
-    for( CritMapIt it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         CritterCl* cr = ( *it ).second;
         RemoveCrit( cr );
@@ -2416,7 +2416,7 @@ void HexManager::GetCritters( ushort hx, ushort hy, CritVec& crits, int find_typ
     Field* f = &GetField( hx, hy );
     if( f->Crit && f->Crit->CheckFind( find_type ) )
         crits.push_back( f->Crit );
-    for( CritVecIt it = f->DeadCrits.begin(), end = f->DeadCrits.end(); it != end; ++it )
+    for( auto it = f->DeadCrits.begin(), end = f->DeadCrits.end(); it != end; ++it )
         if( ( *it )->CheckFind( find_type ) )
             crits.push_back( *it );
 }
@@ -2449,7 +2449,7 @@ void HexManager::SetCrittersContour( int contour )
     if( crittersContour == contour )
         return;
     crittersContour = contour;
-    for( CritMapIt it = allCritters.begin(), end = allCritters.end(); it != end; it++ )
+    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; it++ )
     {
         CritterCl* cr = ( *it ).second;
         if( !cr->IsChosen() && cr->SprDrawValid && !cr->IsDead() && cr->GetId() != critterContourCrId )
@@ -2607,7 +2607,7 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
     ItemHexVec pix_item_egg;
     bool       is_egg = SprMngr.IsEggTransp( x, y );
 
-    for( ItemHexVecIt it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         ItemHex* item = ( *it );
         ushort   hx = item->GetHexX();
@@ -2706,7 +2706,7 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
         return NULL;
 
     CritVec crits;
-    for( CritMapIt it = allCritters.begin(); it != allCritters.end(); it++ )
+    for( auto it = allCritters.begin(); it != allCritters.end(); it++ )
     {
         CritterCl* cr = ( *it ).second;
         if( !cr->Visible || cr->IsFinishing() || !cr->SprDrawValid )
@@ -3686,7 +3686,7 @@ void HexManager::UnloadMap()
     roofTree.Unvalidate();
     roofRainTree.Unvalidate();
 
-    for( DropVecIt it = rainData.begin(), end = rainData.end(); it != end; ++it )
+    for( auto it = rainData.begin(), end = rainData.end(); it != end; ++it )
         delete *it;
     rainData.clear();
 

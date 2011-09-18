@@ -186,7 +186,7 @@ void CritterCl::EraseItem( Item* item, bool animate )
         ItemSlotArmor = DefItemSlotArmor;
     item->Accessory = 0;
 
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item_ = *it;
         if( item_ == item )
@@ -204,14 +204,14 @@ void CritterCl::EraseItem( Item* item, bool animate )
 void CritterCl::EraseAllItems()
 {
     ItemPtrVec items = InvItems;
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
         EraseItem( *it, false );
     InvItems.clear();
 }
 
 Item* CritterCl::GetItem( uint item_id )
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetId() == item_id )
@@ -222,7 +222,7 @@ Item* CritterCl::GetItem( uint item_id )
 
 Item* CritterCl::GetItemByPid( ushort item_pid )
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
             return *it;
     return NULL;
@@ -230,7 +230,7 @@ Item* CritterCl::GetItemByPid( ushort item_pid )
 
 Item* CritterCl::GetAmmo( uint caliber )
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetType() == ITEM_TYPE_AMMO && ( *it )->Proto->Ammo_Caliber == caliber )
             return *it;
     return NULL;
@@ -238,7 +238,7 @@ Item* CritterCl::GetAmmo( uint caliber )
 
 Item* CritterCl::GetItemSlot( int slot )
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->ACC_CRITTER.Slot == slot )
             return *it;
     return NULL;
@@ -246,7 +246,7 @@ Item* CritterCl::GetItemSlot( int slot )
 
 void CritterCl::GetItemsSlot( int slot, ItemPtrVec& items )
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( slot == -1 || item->ACC_CRITTER.Slot == slot )
@@ -256,7 +256,7 @@ void CritterCl::GetItemsSlot( int slot, ItemPtrVec& items )
 
 void CritterCl::GetItemsType( int type, ItemPtrVec& items )
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetType() == type )
@@ -267,7 +267,7 @@ void CritterCl::GetItemsType( int type, ItemPtrVec& items )
 uint CritterCl::CountItemPid( ushort item_pid )
 {
     uint result = 0;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
             result += ( *it )->GetCount();
     return result;
@@ -276,7 +276,7 @@ uint CritterCl::CountItemPid( ushort item_pid )
 uint CritterCl::CountItemType( uchar type )
 {
     uint res = 0;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetType() == type )
             res += ( *it )->GetCount();
     return res;
@@ -359,7 +359,7 @@ bool CritterCl::MoveItem( uint item_id, uchar to_slot, uint count )
 bool CritterCl::IsCanSortItems()
 {
     uint inv_items = 0;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         if( ( *it )->ACC_CRITTER.Slot != SLOT_INV )
             continue;
@@ -373,7 +373,7 @@ bool CritterCl::IsCanSortItems()
 Item* CritterCl::GetItemHighSortValue()
 {
     Item* result = NULL;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( !result )
@@ -387,7 +387,7 @@ Item* CritterCl::GetItemHighSortValue()
 Item* CritterCl::GetItemLowSortValue()
 {
     Item* result = NULL;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( !result )
@@ -401,7 +401,7 @@ Item* CritterCl::GetItemLowSortValue()
 void CritterCl::GetInvItems( ItemVec& items )
 {
     items.clear();
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->ACC_CRITTER.Slot == SLOT_INV )
@@ -414,7 +414,7 @@ void CritterCl::GetInvItems( ItemVec& items )
 uint CritterCl::GetItemsCount()
 {
     uint count = 0;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         count += ( *it )->GetCount();
     return count;
 }
@@ -422,7 +422,7 @@ uint CritterCl::GetItemsCount()
 uint CritterCl::GetItemsCountInv()
 {
     uint res = 0;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->ACC_CRITTER.Slot == SLOT_INV )
             res++;
     return res;
@@ -431,7 +431,7 @@ uint CritterCl::GetItemsCountInv()
 uint CritterCl::GetItemsWeight()
 {
     uint res = 0;
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         res += ( *it )->GetWeight();
     return res;
 }
@@ -444,7 +444,7 @@ uint CritterCl::GetItemsWeightKg()
 uint CritterCl::GetItemsVolume()
 {
     uint res = 0;
-    for( ItemPtrVecIt it = InvItems.begin(); it != InvItems.end(); ++it )
+    for( auto it = InvItems.begin(); it != InvItems.end(); ++it )
         res += ( *it )->GetVolume();
     return res;
 }
@@ -1323,7 +1323,7 @@ void CritterCl::ClearAnim()
 
 bool CritterCl::IsHaveLightSources()
 {
-    for( ItemPtrVecIt it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->IsLight() )

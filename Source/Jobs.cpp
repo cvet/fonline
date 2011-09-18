@@ -8,8 +8,7 @@
 
 static Mutex JobLocker; // Defense code from simultaneously execution
 
-typedef deque< Job >           JobDeque;
-typedef deque< Job >::iterator JobDequeIt;
+typedef deque< Job > JobDeque;
 static JobDeque Jobs;
 
 Job::Job(): Type( JOB_NOP ),
@@ -68,7 +67,7 @@ Job Job::PopFront()
     int tid = (int) GetCurrentThreadId();
     if( job.ThreadId && job.ThreadId != tid )
     {
-        for( JobDequeIt it = Jobs.begin() + 1; it != Jobs.end(); ++it )
+        for( auto it = Jobs.begin() + 1; it != Jobs.end(); ++it )
         {
             Job& job_ = *it;
             if( !job_.ThreadId || job_.ThreadId == tid )
@@ -89,7 +88,7 @@ void Job::Erase( int type )
 {
     SCOPE_LOCK( JobLocker );
 
-    for( JobDequeIt it = Jobs.begin(); it != Jobs.end();)
+    for( auto it = Jobs.begin(); it != Jobs.end();)
     {
         Job& job = *it;
         if( job.Type == type )

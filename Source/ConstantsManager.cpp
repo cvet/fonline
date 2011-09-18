@@ -106,7 +106,7 @@ StrVec ConstantsManager::GetCollection( int collection )
 {
     UIntVec val_added;
     StrVec  result;
-    for( UIntStrMapIt it = ConstCollections[ collection ].ValueName.begin(), end = ConstCollections[ collection ].ValueName.end(); it != end; ++it )
+    for( auto it = ConstCollections[ collection ].ValueName.begin(), end = ConstCollections[ collection ].ValueName.end(); it != end; ++it )
     {
         if( collection == CONSTANTS_DEFINE || std::find( val_added.begin(), val_added.end(), ( *it ).first ) == val_added.end() )
         {
@@ -124,7 +124,7 @@ bool ConstantsManager::IsCollectionInit( int collection )
 
 int ConstantsManager::GetValue( int collection, const char* str )
 {
-    StrUIntMapIt it = ConstCollections[ collection ].NameValue.find( str );
+    auto it = ConstCollections[ collection ].NameValue.find( str );
     if( it == ConstCollections[ collection ].NameValue.end() )
         return -1;
     return ( *it ).second;
@@ -132,7 +132,7 @@ int ConstantsManager::GetValue( int collection, const char* str )
 
 const char* ConstantsManager::GetName( int collection, int value )
 {
-    UIntStrMapIt it = ConstCollections[ collection ].ValueName.find( value );
+    auto it = ConstCollections[ collection ].ValueName.find( value );
     if( it == ConstCollections[ collection ].ValueName.end() )
         return NULL;
     return ( *it ).second.c_str();
@@ -168,7 +168,7 @@ int ConstantsManager::GetDefineValue( const char* str )
     else if( Str::CompareCase( str, "false" ) )
         return 0;
 
-    StrUIntMapIt it = ConstCollections[ CONSTANTS_DEFINE ].NameValue.find( str );
+    auto it = ConstCollections[ CONSTANTS_DEFINE ].NameValue.find( str );
     if( it == ConstCollections[ CONSTANTS_DEFINE ].NameValue.end() )
     {
         WriteLogF( _FUNC_, " - Define<%s> not found, taked zero by default.\n", str );

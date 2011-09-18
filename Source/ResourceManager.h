@@ -25,9 +25,7 @@ struct LoadedAnim
     LoadedAnim( int res_type, AnyFrames* anim ): ResType( res_type ), Anim( anim ) {}
 };
 typedef map< uint, LoadedAnim, less< uint > >             LoadedAnimMap;
-typedef map< uint, LoadedAnim, less< uint > >::iterator   LoadedAnimMapIt;
 typedef map< uint, LoadedAnim, less< uint > >::value_type LoadedAnimMapVal;
-
 
 class ResourceManager
 {

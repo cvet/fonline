@@ -912,7 +912,7 @@ bool FOServer::TransferAllNpc()
     critters_groups.reserve( critters.size() );
 
     // Move all critters to local maps and global map rules
-    for( CrMapIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( !cr->GetMap() && ( cr->GetHexX() || cr->GetHexY() ) )
@@ -944,7 +944,7 @@ bool FOServer::TransferAllNpc()
     }
 
     // Move critters to global groups
-    for( CrVecIt it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it )
+    for( auto it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( !MapMngr.AddCrToMap( cr, NULL, cr->GetHexX(), cr->GetHexY(), 2 ) )
@@ -956,7 +956,7 @@ bool FOServer::TransferAllNpc()
     }
 
     // Process critters visible
-    for( CrMapIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         cr->ProcessVisibleItems();
@@ -975,7 +975,7 @@ bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dia
     }
     compiled_dlg = base_dlg;
 
-    for( AnswersVecIt it_a = compiled_dlg.Answers.begin(); it_a != compiled_dlg.Answers.end();)
+    for( auto it_a = compiled_dlg.Answers.begin(); it_a != compiled_dlg.Answers.end();)
     {
         if( !Dialog_CheckDemand( npc, cl, *it_a, false ) )
             it_a = compiled_dlg.Answers.erase( it_a );
@@ -997,7 +997,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
     Critter* master;
     Critter* slave;
 
-    for( DemandResultVecIt it = answer.Demands.begin(), end = answer.Demands.end(); it != end; ++it )
+    for( auto it = answer.Demands.begin(), end = answer.Demands.end(); it != end; ++it )
     {
         DemandResult& demand = *it;
         if( recheck && demand.NoRecheck )
@@ -1162,7 +1162,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
     Critter* master;
     Critter* slave;
 
-    for( DemandResultVecIt it = answer.Results.begin(), end = answer.Results.end(); it != end; ++it )
+    for( auto it = answer.Results.begin(), end = answer.Results.end(); it != end; ++it )
     {
         DemandResult& result = *it;
 
@@ -1435,9 +1435,9 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     }
 
     // Predialogue installations
-    DialogsVecIt it_d = dialogs->begin();
-    uint         go_dialog = uint( -1 );
-    AnswersVecIt it_a = ( *it_d ).Answers.begin();
+    auto it_d = dialogs->begin();
+    uint go_dialog = uint( -1 );
+    auto it_a = ( *it_d ).Answers.begin();
     for( ; it_a != ( *it_d ).Answers.end(); ++it_a )
     {
         if( Dialog_CheckDemand( npc, cl, *it_a, false ) )
@@ -1768,7 +1768,7 @@ label_Barter:
     }
 
     // Find dialog
-    DialogsVecIt it_d = std::find( dialogs->begin(), dialogs->end(), dlg_id );
+    auto it_d = std::find( dialogs->begin(), dialogs->end(), dlg_id );
     if( it_d == dialogs->end() )
     {
         cl->CloseTalk();

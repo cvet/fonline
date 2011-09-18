@@ -153,8 +153,8 @@ bool NpcAIMngr::LoadNpcBags()
 
         for( uint j = 0; j < comb.size(); j++ )
         {
-            string&                       c = comb[ j ];
-            StringNpcBagCombMap::iterator it = loaded_comb.find( c );
+            string& c = comb[ j ];
+            auto    it = loaded_comb.find( c );
             if( it == loaded_comb.end() )
             {
                 // Get combination line

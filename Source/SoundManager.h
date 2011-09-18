@@ -77,8 +77,7 @@ struct Sound
         if( MediaType == SOUND_FILE_OGG ) ov_clear( &OggDescriptor );
     }
 };
-typedef vector< Sound* >           SoundVec;
-typedef vector< Sound* >::iterator SoundVecIt;
+typedef vector< Sound* > SoundVec;
 
 class SoundManager
 {

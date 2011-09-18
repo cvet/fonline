@@ -758,7 +758,7 @@ void FOMapper::AnimRun( uint anim_id, uint flags )
 
 void FOMapper::AnimProcess()
 {
-    for( IfaceAnimVecIt it = Animations.begin(), end = Animations.end(); it != end; ++it )
+    for( auto it = Animations.begin(), end = Animations.end(); it != end; ++it )
     {
         IfaceAnim* anim = *it;
         if( !anim || !anim->Flags )
@@ -806,7 +806,7 @@ void FOMapper::AnimProcess()
 void FOMapper::AnimFree( int res_type )
 {
     ResMngr.FreeResources( res_type );
-    for( IfaceAnimVecIt it = Animations.begin(), end = Animations.end(); it != end; ++it )
+    for( auto it = Animations.begin(), end = Animations.end(); it != end; ++it )
     {
         IfaceAnim* anim = *it;
         if( anim && anim->ResType == res_type )
@@ -1537,7 +1537,7 @@ void FOMapper::MainLoop()
 
     if( HexMngr.IsMapLoaded() )
     {
-        for( CritMapIt it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
+        for( auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
         {
             CritterCl* cr = ( *it ).second;
             cr->Process();
@@ -1602,7 +1602,7 @@ void FOMapper::MainLoop()
         // Texts on heads
         if( DrawCrExtInfo )
         {
-            for( CritMapIt it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
+            for( auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
             {
                 CritterCl* cr = ( *it ).second;
                 if( cr->SprDrawValid )
@@ -1628,7 +1628,7 @@ void FOMapper::MainLoop()
 
         // Texts on map
         uint tick = Timer::FastTick();
-        for( MapTextVecIt it = GameMapTexts.begin(); it != GameMapTexts.end();)
+        for( auto it = GameMapTexts.begin(); it != GameMapTexts.end();)
         {
             MapText& t = ( *it );
             if( tick >= t.StartTick + t.Tick )
@@ -1674,7 +1674,7 @@ void FOMapper::RefreshTiles( int tab )
     size_t formats_count = sizeof( formats ) / sizeof( formats[ 0 ] );
 
     // Clear old tile names
-    for( SubTabMapIt it = Tabs[ tab ].begin(); it != Tabs[ tab ].end();)
+    for( auto it = Tabs[ tab ].begin(); it != Tabs[ tab ].end();)
     {
         SubTab& stab = ( *it ).second;
         if( stab.TileNames.size() )
@@ -1710,7 +1710,7 @@ void FOMapper::RefreshTiles( int tab )
         {
             static bool StrComparator( const string& left, const string& right )
             {
-                for( string::const_iterator lit = left.begin(), rit = right.begin(); lit != left.end() && rit != right.end(); ++lit, ++rit )
+                for( auto lit = left.begin(), rit = right.begin(); lit != left.end() && rit != right.end(); ++lit, ++rit )
                 {
                     int lc = tolower( *lit );
                     int rc = tolower( *rit );
@@ -1722,7 +1722,7 @@ void FOMapper::RefreshTiles( int tab )
         };
         std::sort( tiles.begin(), tiles.end(), StrComparator_::StrComparator );
 
-        for( StrVecIt it = tiles.begin(), end = tiles.end(); it != end; ++it )
+        for( auto it = tiles.begin(), end = tiles.end(); it != end; ++it )
         {
             const string& fname = *it;
             const char*   ext = FileManager::GetExtension( fname.c_str() );
@@ -2042,7 +2042,7 @@ void FOMapper::IntDraw()
                     SprMngr.DrawStr( INTRECT( x, y, x + w, y + h ), "Armor", FT_NOBREAK, COLOR_TEXT_WHITE );
                 else
                 {
-                    SlotExtMapIt it = Self->SlotsExt.find( mobj->MItem.ItemSlot );
+                    auto it = Self->SlotsExt.find( mobj->MItem.ItemSlot );
                     if( it != Self->SlotsExt.end() )
                         SprMngr.DrawStr( INTRECT( x, y, x + w, y + h ), ( *it ).second.SlotName, FT_NOBREAK, COLOR_TEXT_WHITE );
                     else
@@ -2076,7 +2076,7 @@ void FOMapper::IntDraw()
         int        posy = SubTabsRect.H() - line_height - 2;
         int        i = 0;
         SubTabMap& stabs = Tabs[ SubTabsActiveTab ];
-        for( SubTabMapIt it = stabs.begin(), end = stabs.end(); it != end; ++it )
+        for( auto it = stabs.begin(), end = stabs.end(); it != end; ++it )
         {
             i++;
             if( i - 1 < TabsScroll[ SubTabsActiveTab ] )
@@ -2719,7 +2719,7 @@ void FOMapper::IntLMouseDown()
             int        posy = SubTabsRect.H() - line_height - 2;
             int        i = 0;
             SubTabMap& stabs = Tabs[ SubTabsActiveTab ];
-            for( SubTabMapIt it = stabs.begin(), end = stabs.end(); it != end; ++it )
+            for( auto it = stabs.begin(), end = stabs.end(); it != end; ++it )
             {
                 i++;
                 if( i - 1 < TabsScroll[ SubTabsActiveTab ] )
@@ -2864,10 +2864,10 @@ void FOMapper::IntLMouseDown()
             // Switch ignore pid to draw
             if( Keyb::CtrlDwn )
             {
-                ushort         pid = ( *CurItemProtos )[ ind ].ProtoId;
+                ushort  pid = ( *CurItemProtos )[ ind ].ProtoId;
 
-                SubTab&        stab = Tabs[ INT_MODE_IGNORE ][ DEFAULT_SUB_TAB ];
-                ProtoItemVecIt it = std::find( stab.ItemProtos.begin(), stab.ItemProtos.end(), pid );
+                SubTab& stab = Tabs[ INT_MODE_IGNORE ][ DEFAULT_SUB_TAB ];
+                auto    it = std::find( stab.ItemProtos.begin(), stab.ItemProtos.end(), pid );
                 if( it != stab.ItemProtos.end() )
                     stab.ItemProtos.erase( it );
                 else
@@ -2929,7 +2929,7 @@ void FOMapper::IntLMouseDown()
                 // Delete child
                 if( Keyb::AltDwn && InContObject )
                 {
-                    MapObjectPtrVecIt it = std::find( CurProtoMap->MObjects.begin(), CurProtoMap->MObjects.end(), InContObject );
+                    auto it = std::find( CurProtoMap->MObjects.begin(), CurProtoMap->MObjects.end(), InContObject );
                     if( it != CurProtoMap->MObjects.end() )
                     {
                         SAFEREL( InContObject );
@@ -3632,7 +3632,7 @@ void FOMapper::MoveMapObject( MapObject* mobj, ushort hx, ushort hy )
     {
         if( mobj->MapObjType == MAP_OBJECT_CRITTER && mobj->MCritter.Cond != COND_DEAD )
         {
-            for( MapObjectPtrVecIt it = mobj->RunTime.FromMap->MObjects.begin(); it != mobj->RunTime.FromMap->MObjects.end(); ++it )
+            for( auto it = mobj->RunTime.FromMap->MObjects.begin(); it != mobj->RunTime.FromMap->MObjects.end(); ++it )
             {
                 MapObject* mobj_ = *it;
                 if( mobj_->MapObjType == MAP_OBJECT_CRITTER && mobj_->MCritter.Cond != COND_DEAD &&
@@ -3657,7 +3657,7 @@ void FOMapper::DeleteMapObject( MapObject* mobj )
     // Delete container items
     if( mobj->UID )
     {
-        for( MapObjectPtrVecIt it = pmap->MObjects.begin(); it != pmap->MObjects.end();)
+        for( auto it = pmap->MObjects.begin(); it != pmap->MObjects.end();)
         {
             MapObject* mobj_ = *it;
             if( mobj_->ContainerUID && mobj_->ContainerUID == mobj->UID )
@@ -3688,7 +3688,7 @@ void FOMapper::DeleteMapObject( MapObject* mobj )
     }
 
     // Delete
-    MapObjectPtrVecIt it = std::find( pmap->MObjects.begin(), pmap->MObjects.end(), mobj );
+    auto it = std::find( pmap->MObjects.begin(), pmap->MObjects.end(), mobj );
     if( it != pmap->MObjects.end() )
         pmap->MObjects.erase( it );
 
@@ -3910,7 +3910,7 @@ void FOMapper::SelectAll()
     if( IsSelectCrit && GameOpt.ShowCrit )
     {
         CritMap& crits = HexMngr.GetCritters();
-        for( CritMapIt it = crits.begin(), end = crits.end(); it != end; ++it )
+        for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
             SelectAddCrit( ( *it ).second );
     }
 
@@ -4169,9 +4169,9 @@ void FOMapper::SelectDelete()
 
     for( uint i = 0, j = (uint) SelectedObj.size(); i < j; i++ )
     {
-        SelMapObj*        o = &SelectedObj[ i ];
+        SelMapObj* o = &SelectedObj[ i ];
 
-        MapObjectPtrVecIt it = std::find( CurProtoMap->MObjects.begin(), CurProtoMap->MObjects.end(), o->MapObj );
+        auto       it = std::find( CurProtoMap->MObjects.begin(), CurProtoMap->MObjects.end(), o->MapObj );
         if( it != CurProtoMap->MObjects.end() )
         {
             SAFEREL( o->MapObj );
@@ -5000,7 +5000,7 @@ void FOMapper::ParseCommand( const char* cmd )
         else
         {
             CritMap& crits = HexMngr.GetCritters();
-            for( CritMapIt it = crits.begin(); it != crits.end(); ++it )
+            for( auto it = crits.begin(); it != crits.end(); ++it )
             {
                 CritterCl* cr = ( *it ).second;
                 cr->ClearAnim();
@@ -5033,7 +5033,7 @@ void FOMapper::ParseCommand( const char* cmd )
         {
             AddMess( "Unload map." );
 
-            ProtoMapPtrVec::iterator it = std::find( LoadedProtoMaps.begin(), LoadedProtoMaps.end(), CurProtoMap );
+            auto it = std::find( LoadedProtoMaps.begin(), LoadedProtoMaps.end(), CurProtoMap );
             if( it == LoadedProtoMaps.end() )
                 return;
 
@@ -5075,7 +5075,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 {
                     Field&    f = HexMngr.GetField( hx, hy );
                     UShortVec pids;
-                    for( ItemHexVecIt it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
+                    for( auto it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
                         pids.push_back( ( *it )->GetProtoId() );
                     std::sort( pids.begin(), pids.end() );
                     for( uint i = 0, j = (uint) pids.size(), same = 0; i < j; i++ )
@@ -5127,7 +5127,7 @@ void FOMapper::ParseCommand( const char* cmd )
 
 
             uint count = 1;
-            for( MapObjectPtrVecIt it = CurProtoMap->MObjects.begin(), end = CurProtoMap->MObjects.end(); it != end; ++it )
+            for( auto it = CurProtoMap->MObjects.begin(), end = CurProtoMap->MObjects.end(); it != end; ++it )
             {
                 MapObject* mobj = *it;
                 if( mobj->ProtoId == pid )
@@ -5164,7 +5164,7 @@ void FOMapper::ParseCommand( const char* cmd )
             // Delete truncated map objects
             if( maxhx < old_maxhx || maxhy < old_maxhy )
             {
-                for( MapObjectPtrVecIt it = CurProtoMap->MObjects.begin(); it != CurProtoMap->MObjects.end();)
+                for( auto it = CurProtoMap->MObjects.begin(); it != CurProtoMap->MObjects.end();)
                 {
                     MapObject* mobj = *it;
                     if( mobj->MapX >= maxhx || mobj->MapY >= maxhy )
@@ -5216,7 +5216,7 @@ void FOMapper::ParseCommand( const char* cmd )
 
             // Show all objects in this hex
             uint count = 1;
-            for( MapObjectPtrVecIt it = CurProtoMap->MObjects.begin(); it != CurProtoMap->MObjects.end(); ++it )
+            for( auto it = CurProtoMap->MObjects.begin(); it != CurProtoMap->MObjects.end(); ++it )
             {
                 MapObject* mobj = *it;
                 if( mobj->MapX == hx && mobj->MapY == hy )
@@ -5466,7 +5466,7 @@ void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond( MapObject& mobj, ucha
         return;
     if( mobj.MCritter.Cond == COND_DEAD && value != COND_LIFE )
     {
-        for( MapObjectPtrVecIt it = mobj.RunTime.FromMap->MObjects.begin(); it != mobj.RunTime.FromMap->MObjects.end(); ++it )
+        for( auto it = mobj.RunTime.FromMap->MObjects.begin(); it != mobj.RunTime.FromMap->MObjects.end(); ++it )
         {
             MapObject* mobj_ = *it;
             if( mobj_->MapObjType == MAP_OBJECT_CRITTER && mobj_->MCritter.Cond != COND_DEAD && mobj_->MapX == mobj.MapX && mobj_->MapY == mobj.MapY )
@@ -5561,7 +5561,7 @@ uint FOMapper::SScriptFunc::MapperObject_GetChilds( MapObject& mobj, CScriptArra
     MapObjectPtrVec objects_;
     if( mobj.UID )
     {
-        for( MapObjectPtrVecIt it = mobj.RunTime.FromMap->MObjects.begin(); it != mobj.RunTime.FromMap->MObjects.end(); ++it )
+        for( auto it = mobj.RunTime.FromMap->MObjects.begin(); it != mobj.RunTime.FromMap->MObjects.end(); ++it )
         {
             MapObject* mobj_ = *it;
             if( mobj_->ContainerUID == mobj.UID )
@@ -5621,7 +5621,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx
 {
     if( mobj_type == MAP_OBJECT_CRITTER )
     {
-        for( MapObjectPtrVecIt it = pmap.MObjects.begin(); it != pmap.MObjects.end(); ++it )
+        for( auto it = pmap.MObjects.begin(); it != pmap.MObjects.end(); ++it )
         {
             MapObject* mobj = *it;
             if( mobj->MapObjType == MAP_OBJECT_CRITTER && mobj->MCritter.Cond != COND_DEAD &&
@@ -5686,7 +5686,7 @@ void FOMapper::SScriptFunc::MapperMap_UpdateObjects( ProtoMap& pmap )
 {
     if( Self->CurProtoMap == &pmap )
     {
-        for( MapObjectPtrVecIt it = pmap.MObjects.begin(), end = pmap.MObjects.end(); it != end; ++it )
+        for( auto it = pmap.MObjects.begin(), end = pmap.MObjects.end(); it != end; ++it )
             Self->UpdateMapObject( *it );
     }
 }
@@ -5715,7 +5715,7 @@ void FOMapper::SScriptFunc::MapperMap_Resize( ProtoMap& pmap, ushort width, usho
         // Delete truncated map objects
         if( maxhx < old_maxhx || maxhy < old_maxhy )
         {
-            for( MapObjectPtrVecIt it = pmap.MObjects.begin(); it != pmap.MObjects.end();)
+            for( auto it = pmap.MObjects.begin(); it != pmap.MObjects.end();)
             {
                 MapObject* mobj = *it;
                 if( mobj->MapX >= maxhx || mobj->MapY >= maxhy )
@@ -5966,7 +5966,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& slot_n
     SlotExt se;
     se.Index = index;
     se.SlotName = Str::Duplicate( slot_name.c_str() );
-    Self->SlotsExt.insert( SlotExtMapValType( index, se ) );
+    Self->SlotsExt.insert( SlotExtMapVal( index, se ) );
 }
 
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( CScriptString& file_name, int path_type )
@@ -5987,7 +5987,7 @@ void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
 {
     if( !pmap )
         SCRIPT_ERROR_R( "Proto map arg nullptr." );
-    ProtoMapPtrVec::iterator it = std::find( Self->LoadedProtoMaps.begin(), Self->LoadedProtoMaps.end(), pmap );
+    auto it = std::find( Self->LoadedProtoMaps.begin(), Self->LoadedProtoMaps.end(), pmap );
     if( it != Self->LoadedProtoMaps.end() )
         Self->LoadedProtoMaps.erase( it );
     if( pmap == Self->CurProtoMap )
@@ -6243,7 +6243,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, CScriptString* sub_t
     // Delete sub tab
     else
     {
-        SubTabMapIt it = Self->Tabs[ tab ].find( sub_tab->c_std_str() );
+        auto it = Self->Tabs[ tab ].find( sub_tab->c_std_str() );
         if( it != Self->Tabs[ tab ].end() )
         {
             if( Self->TabsActive[ tab ] == &( *it ).second )
@@ -6255,7 +6255,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, CScriptString* sub_t
     // Recalculate whole pids
     SubTab& stab_default = Self->Tabs[ tab ][ DEFAULT_SUB_TAB ];
     stab_default.ItemProtos.clear();
-    for( SubTabMapIt it = Self->Tabs[ tab ].begin(), end = Self->Tabs[ tab ].end(); it != end; ++it )
+    for( auto it = Self->Tabs[ tab ].begin(), end = Self->Tabs[ tab ].end(); it != end; ++it )
     {
         SubTab& stab = ( *it ).second;
         if( &stab == &stab_default )
@@ -6299,7 +6299,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, CScriptString* su
     // Delete sub tab
     else
     {
-        SubTabMapIt it = Self->Tabs[ tab ].find( sub_tab->c_std_str() );
+        auto it = Self->Tabs[ tab ].find( sub_tab->c_std_str() );
         if( it != Self->Tabs[ tab ].end() )
         {
             if( Self->TabsActive[ tab ] == &( *it ).second )
@@ -6311,7 +6311,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, CScriptString* su
     // Recalculate whole pids
     SubTab& stab_default = Self->Tabs[ tab ][ DEFAULT_SUB_TAB ];
     stab_default.NpcProtos.clear();
-    for( SubTabMapIt it = Self->Tabs[ tab ].begin(), end = Self->Tabs[ tab ].end(); it != end; ++it )
+    for( auto it = Self->Tabs[ tab ].begin(), end = Self->Tabs[ tab ].end(); it != end; ++it )
     {
         SubTab& stab = ( *it ).second;
         if( &stab == &stab_default )
@@ -6341,7 +6341,7 @@ void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         return;
-    SubTabMapIt it = Self->Tabs[ tab ].find( sub_tab && sub_tab->length() ? sub_tab->c_std_str() : DEFAULT_SUB_TAB );
+    auto it = Self->Tabs[ tab ].find( sub_tab && sub_tab->length() ? sub_tab->c_std_str() : DEFAULT_SUB_TAB );
     if( it != Self->Tabs[ tab ].end() )
         Self->TabsActive[ tab ] = &( *it ).second;
 }
@@ -6457,7 +6457,7 @@ void FOMapper::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, u
     t.Text = text.c_std_str();
     t.Rect = Self->HexMngr.GetRectForText( hx, hy );
     t.EndRect = INTRECT( t.Rect, ox, oy );
-    MapTextVecIt it = std::find( Self->GameMapTexts.begin(), Self->GameMapTexts.end(), t );
+    auto it = std::find( Self->GameMapTexts.begin(), Self->GameMapTexts.end(), t );
     if( it != Self->GameMapTexts.end() )
         Self->GameMapTexts.erase( it );
     Self->GameMapTexts.push_back( t );

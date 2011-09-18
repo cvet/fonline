@@ -30,7 +30,7 @@ void SyncObject::Lock()
         if( curMngr->isWaiting && curm->threadPriority >= curMngr->threadPriority )
         {
             // Pick from waiting thread
-            SyncObjectVecIt it = std::find( curMngr->lockedObjects.begin(), curMngr->lockedObjects.end(), this );
+            auto it = std::find( curMngr->lockedObjects.begin(), curMngr->lockedObjects.end(), this );
             curMngr->lockedObjects.erase( it );
             curMngr->busyObjects.push_back( this );
 
@@ -53,7 +53,7 @@ void SyncObject::Lock()
 
                 SyncLocker.Lock();
 
-                for( SyncObjectVecIt it = curm->busyObjects.begin(); it != curm->busyObjects.end();)
+                for( auto it = curm->busyObjects.begin(); it != curm->busyObjects.end();)
                 {
                     SyncObject* obj = *it;
                     if( !obj->curMngr )
@@ -66,7 +66,7 @@ void SyncObject::Lock()
                     else if( obj->curMngr->isWaiting && curm->threadPriority >= obj->curMngr->threadPriority )
                     {
                         // Pick from waiting thread
-                        SyncObjectVecIt it_ = std::find( obj->curMngr->lockedObjects.begin(), obj->curMngr->lockedObjects.end(), obj );
+                        auto it_ = std::find( obj->curMngr->lockedObjects.begin(), obj->curMngr->lockedObjects.end(), obj );
                         obj->curMngr->lockedObjects.erase( it_ );
                         obj->curMngr->busyObjects.push_back( obj );
 
@@ -107,15 +107,15 @@ void SyncObject::Unlock()
 
     if( curMngr )
     {
-        SyncObjectVecIt it = std::find( curMngr->lockedObjects.begin(), curMngr->lockedObjects.end(), this );
+        auto it = std::find( curMngr->lockedObjects.begin(), curMngr->lockedObjects.end(), this );
         curMngr->lockedObjects.erase( it );
         curMngr = NULL;
     }
 
-    for( SyncManagerVecIt it = SyncManager::Managers.begin(), end = SyncManager::Managers.end(); it != end; ++it )
+    for( auto it = SyncManager::Managers.begin(), end = SyncManager::Managers.end(); it != end; ++it )
     {
-        SyncManager*    sync_mngr = *it;
-        SyncObjectVecIt it_ = std::find( sync_mngr->busyObjects.begin(), sync_mngr->busyObjects.end(), this );
+        SyncManager* sync_mngr = *it;
+        auto         it_ = std::find( sync_mngr->busyObjects.begin(), sync_mngr->busyObjects.end(), this );
         if( it_ != sync_mngr->busyObjects.end() )
             sync_mngr->busyObjects.erase( it_ );
     }
@@ -166,7 +166,7 @@ void SyncManager::UnlockAll()
 
     SCOPE_LOCK( SyncLocker );
 
-    for( SyncObjectVecIt it = lockedObjects.begin(), end = lockedObjects.end(); it != end; ++it )
+    for( auto it = lockedObjects.begin(), end = lockedObjects.end(); it != end; ++it )
     {
         SyncObject* obj = *it;
         obj->curMngr = NULL;
@@ -200,7 +200,7 @@ void SyncManager::Resume()
 
         SyncLocker.Unlock();
 
-        for( SyncObjectVecIt it = busy_objs.begin(), end = busy_objs.end(); it != end; ++it )
+        for( auto it = busy_objs.begin(), end = busy_objs.end(); it != end; ++it )
         {
             SyncObject* obj = *it;
             obj->Lock();

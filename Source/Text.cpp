@@ -428,15 +428,15 @@ const char* Str::GetName( uint hash )
     if( !hash )
         return NULL;
 
-    UIntStrMapIt it = NamesHash.find( hash );
+    auto it = NamesHash.find( hash );
     return it != NamesHash.end() ? ( *it ).second.c_str() : NULL;
 }
 
 void Str::AddNameHash( const char* name )
 {
-    uint         hash = GetHash( name );
+    uint hash = GetHash( name );
 
-    UIntStrMapIt it = NamesHash.find( hash );
+    auto it = NamesHash.find( hash );
     if( it == NamesHash.end() )
         NamesHash.insert( UIntStrMapVal( hash, name ) );
     else if( !Str::CompareCase( name, ( *it ).second.c_str() ) )

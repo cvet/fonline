@@ -16,8 +16,7 @@ public:
     virtual void          GetTime( uint64* create, uint64* access, uint64* write ) = 0;
     virtual ~DataFile() {}
 };
-typedef vector< DataFile* >           DataFileVec;
-typedef vector< DataFile* >::iterator DataFileVecIt;
+typedef vector< DataFile* > DataFileVec;
 
 DataFile* OpenDataFile( const char* fname );
 

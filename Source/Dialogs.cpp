@@ -104,7 +104,7 @@ void DialogManager::SaveList( const char* list_path, const char* list_name )
     fm.SetStr( "***  DIALOGS  *********  COUNT: %08d  ********************************************\n", DlgPacksNames.size() );
     fm.SetStr( "**************************************************************************************\n" );
 
-    for( StrUIntMapIt it = DlgPacksNames.begin(); it != DlgPacksNames.end(); ++it )
+    for( auto it = DlgPacksNames.begin(); it != DlgPacksNames.end(); ++it )
         fm.SetStr( "$\t%u\t%s\n", ( *it ).second, ( *it ).first.c_str() );
 
     fm.SetStr( "**************************************************************************************\n" );
@@ -128,21 +128,21 @@ bool DialogManager::AddDialogs( DialogPack* pack )
 
 DialogPack* DialogManager::GetDialogPack( uint num_pack )
 {
-    DialogPackMapIt it = DialogsPacks.find( num_pack );
+    auto it = DialogsPacks.find( num_pack );
     return it == DialogsPacks.end() ? NULL : ( *it ).second;
 }
 
 DialogsVec* DialogManager::GetDialogs( uint num_pack )
 {
-    //	DialogsVecIt it=std::find(DialogsPacks.begin(),DialogsPacks.end(),num_pack);
+    //	auto it=std::find(DialogsPacks.begin(),DialogsPacks.end(),num_pack);
     //	return it!=DialogsPacks.end()?&(*it):NULL;
-    DialogPackMapIt it = DialogsPacks.find( num_pack );
+    auto it = DialogsPacks.find( num_pack );
     return it == DialogsPacks.end() ? NULL : &( *it ).second->Dialogs;
 }
 
 void DialogManager::EraseDialogs( uint num_pack )
 {
-    DialogPackMapIt it = DialogsPacks.find( num_pack );
+    auto it = DialogsPacks.find( num_pack );
     if( it == DialogsPacks.end() )
         return;
 
@@ -153,7 +153,7 @@ void DialogManager::EraseDialogs( uint num_pack )
 
 void DialogManager::EraseDialogs( string name_pack )
 {
-    StrUIntMapIt it = DlgPacksNames.find( name_pack );
+    auto it = DlgPacksNames.find( name_pack );
     if( it == DlgPacksNames.end() )
         return;
     EraseDialogs( ( *it ).second );

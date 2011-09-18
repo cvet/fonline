@@ -36,8 +36,7 @@ public:
     void     Clear();
     GlobalMapGroup() { Clear(); }
 };
-typedef vector< GlobalMapGroup* >           GMapGroupVec;
-typedef vector< GlobalMapGroup* >::iterator GMapGroupVecIt;
+typedef vector< GlobalMapGroup* > GMapGroupVec;
 
 struct TraceData
 {

@@ -143,8 +143,7 @@ struct MemNodeStr
     int64 MaxAlloc;
     bool operator==( const char* str ) const { return Str::Compare( str, Name ); }
 };
-typedef vector< MemNodeStr >           MemNodeStrVec;
-typedef vector< MemNodeStr >::iterator MemNodeStrVecIt;
+typedef vector< MemNodeStr > MemNodeStrVec;
 static MemNodeStrVec MemNodesStr;
 
 void Debugger::MemoryStr( const char* block, int value )
@@ -155,8 +154,8 @@ void Debugger::MemoryStr( const char* block, int value )
 
     if( block && value )
     {
-        MemNodeStr*     node;
-        MemNodeStrVecIt it = std::find( MemNodesStr.begin(), MemNodesStr.end(), block );
+        MemNodeStr* node;
+        auto        it = std::find( MemNodesStr.begin(), MemNodesStr.end(), block );
         if( it == MemNodesStr.end() )
         {
             MemNodeStr node_;
@@ -220,7 +219,7 @@ const char* Debugger::GetMemoryStatistics()
     {
         all_alloc = all_dealloc = 0;
         result += "\n  Level 2                                                  Memory        Alloc         Free    Min block    Max block\n";
-        for( MemNodeStrVecIt it = MemNodesStr.begin(), end = MemNodesStr.end(); it != end; ++it )
+        for( auto it = MemNodesStr.begin(), end = MemNodesStr.end(); it != end; ++it )
         {
             MemNodeStr& node = *it;
             sprintf( buf, "%-50s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );

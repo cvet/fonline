@@ -79,8 +79,7 @@ public:
         INTRECT EndRect;
         bool operator==( const MapText& r ) { return HexX == r.HexX && HexY == r.HexY; }
     };
-    typedef vector< MapText >           MapTextVec;
-    typedef vector< MapText >::iterator MapTextVecIt;
+    typedef vector< MapText > MapTextVec;
     MapTextVec GameMapTexts;
 
     // Animations
@@ -94,8 +93,7 @@ public:
 
         IfaceAnim( AnyFrames* frm, int res_type ): Frames( frm ), Flags( 0 ), CurSpr( 0 ), LastTick( Timer::FastTick() ), ResType( res_type ) {}
     };
-    typedef vector< IfaceAnim* >           IfaceAnimVec;
-    typedef vector< IfaceAnim* >::iterator IfaceAnimVecIt;
+    typedef vector< IfaceAnim* > IfaceAnimVec;
 
     #define ANIMRUN_TO_END      ( 0x0001 )
     #define ANIMRUN_FROM_END    ( 0x0002 )
@@ -204,8 +202,7 @@ public:
         int          Index, Scroll;
         SubTab(): Index( 0 ), Scroll( 0 ) {}
     };
-    typedef map< string, SubTab >           SubTabMap;
-    typedef map< string, SubTab >::iterator SubTabMapIt;
+    typedef map< string, SubTab > SubTabMap;
 
     struct TileTab
     {
@@ -424,8 +421,7 @@ public:
         char* SlotName;
     };
     typedef map< int, SlotExt >    SlotExtMap;
-    typedef SlotExtMap::value_type SlotExtMapValType;
-    typedef SlotExtMap::iterator   SlotExtMapIt;
+    typedef SlotExtMap::value_type SlotExtMapVal;
     SlotExtMap SlotsExt;
 
     // Scripts

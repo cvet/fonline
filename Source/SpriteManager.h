@@ -118,8 +118,7 @@ struct Surface
     Surface(): Type( 0 ), Texture( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
     ~Surface() { SAFEREL( Texture ); }
 };
-typedef vector< Surface* >           SurfVec;
-typedef vector< Surface* >::iterator SurfVecIt;
+typedef vector< Surface* > SurfVec;
 
 struct MYVERTEX
 {
@@ -153,8 +152,7 @@ struct SpriteInfo
     Animation3d* Anim3d;
     SpriteInfo(): Surf( NULL ), Width( 0 ), Height( 0 ), OffsX( 0 ), OffsY( 0 ), Effect( NULL ), Anim3d( NULL ) {};
 };
-typedef vector< SpriteInfo* >           SprInfoVec;
-typedef vector< SpriteInfo* >::iterator SprInfoVecIt;
+typedef vector< SpriteInfo* > SprInfoVec;
 
 struct DipData
 {
@@ -163,8 +161,7 @@ struct DipData
     uint              SprCount;
     DipData( LPDIRECT3DTEXTURE tex, EffectEx* effect ): Texture( tex ), Effect( effect ), SprCount( 1 ) {};
 };
-typedef vector< DipData >           DipDataVec;
-typedef vector< DipData >::iterator DipDataVecIt;
+typedef vector< DipData > DipDataVec;
 
 class Sprite
 {
@@ -206,8 +203,7 @@ public:
     void SetFlash( uint mask );
     void SetLight( uchar* light, int maxhx, int maxhy );
 };
-typedef vector< Sprite* >           SpriteVec;
-typedef vector< Sprite* >::iterator SpriteVecIt;
+typedef vector< Sprite* > SpriteVec;
 
 class Sprites
 {
@@ -225,10 +221,10 @@ private:
 public:
     Sprites(): spritesTreeSize( 0 ) {}
     ~Sprites() { Resize( 0 ); }
-    SpriteVecIt Begin() { return spritesTree.begin(); }
-    SpriteVecIt End()   { return spritesTree.begin() + spritesTreeSize; }
-    uint        Size()  { return spritesTreeSize; }
-    Sprite&     AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
+    auto Begin()->SpriteVec::iterator { return spritesTree.begin(); }
+    auto End()->SpriteVec::iterator { return spritesTree.begin() + spritesTreeSize; }
+    uint    Size() { return spritesTreeSize; }
+    Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
     Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
     void    Resize( uint size );
     void    Clear() { Resize( 0 ); }
@@ -263,7 +259,6 @@ struct AnyFrames
     }
 };
 typedef map< uint, AnyFrames*, less< uint > >             AnimMap;
-typedef map< uint, AnyFrames*, less< uint > >::iterator   AnimMapIt;
 typedef map< uint, AnyFrames*, less< uint > >::value_type AnimMapVal;
 typedef vector< AnyFrames* >                              AnimVec;
 
@@ -278,10 +273,8 @@ struct PrepPoint
     PrepPoint(): PointX( 0 ), PointY( 0 ), PointColor( 0 ), PointOffsX( NULL ), PointOffsY( NULL ) {}
     PrepPoint( short x, short y, uint color, short* ox = NULL, short* oy = NULL ): PointX( x ), PointY( y ), PointColor( color ), PointOffsX( ox ), PointOffsY( oy ) {}
 };
-typedef vector< PrepPoint >           PointVec;
-typedef vector< PrepPoint >::iterator PointVecIt;
-typedef vector< PointVec >            PointVecVec;
-typedef vector< PointVec >::iterator  PointVecVecIt;
+typedef vector< PrepPoint > PointVec;
+typedef vector< PointVec >  PointVecVec;
 
 struct SpriteMngrParams
 {

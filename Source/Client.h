@@ -278,9 +278,9 @@ public:
     PCharPairVec IntellectWords;
     PCharPairVec IntellectSymbols;
 
-    void           ParseIntellectWords( char* words, PCharPairVec& text );
-    PCharPairVecIt FindIntellectWord( const char* word, PCharPairVec& text, Randomizer& rnd );
-    void           FmtTextIntellect( char* str, ushort intellect );
+    void ParseIntellectWords( char* words, PCharPairVec& text );
+    auto FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd )->PCharPairVec::iterator;
+    void FmtTextIntellect( char* str, ushort intellect );
 
     #define SMTH_NONE                 ( 0 )
     #define SMTH_CRITTER              ( 1 )
@@ -346,8 +346,7 @@ public:
         }
         ActionEvent( const ActionEvent& r ) { memcpy( this, &r, sizeof( ActionEvent ) ); }
     };
-    typedef vector< ActionEvent >           ActionEventVec;
-    typedef vector< ActionEvent >::iterator ActionEventVecIt;
+    typedef vector< ActionEvent > ActionEventVec;
 
     ActionEventVec ChosenAction;
     void AddAction( bool to_front, ActionEvent& act );
@@ -405,8 +404,7 @@ public:
 
         IfaceAnim( AnyFrames* frm, int res_type ): Frames( frm ), Flags( 0 ), CurSpr( 0 ), LastTick( Timer::GameTick() ), ResType( res_type ) {}
     };
-    typedef vector< IfaceAnim* >           IfaceAnimVec;
-    typedef vector< IfaceAnim* >::iterator IfaceAnimVecIt;
+    typedef vector< IfaceAnim* > IfaceAnimVec;
 
     #define ANIMRUN_TO_END      ( 0x0001 )
     #define ANIMRUN_FROM_END    ( 0x0002 )
@@ -437,8 +435,7 @@ public:
         uint EndColor;
         ScreenEffect( uint begin_tick, uint time, uint col, uint end_col ): BeginTick( begin_tick ), Time( time ), StartColor( col ), EndColor( end_col ) {}
     };
-    typedef vector< ScreenEffect >           ScreenEffectVec;
-    typedef vector< ScreenEffect >::iterator ScreenEffectVecIt;
+    typedef vector< ScreenEffect > ScreenEffectVec;
 
     // Fading
     ScreenEffectVec   ScreenEffects;
@@ -744,8 +741,7 @@ public:
         char*   IniName;
         INTRECT Rect;
     };
-    typedef vector< SlotExt >           SlotExtVec;
-    typedef vector< SlotExt >::iterator SlotExtVecIt;
+    typedef vector< SlotExt > SlotExtVec;
     SlotExtVec SlotsExt;
 
     void InvDraw();
@@ -785,8 +781,7 @@ public:
         INTRECT EndRect;
         bool operator==( const MapText& r ) { return HexX == r.HexX && HexY == r.HexY; }
     };
-    typedef vector< MapText >           MapTextVec;
-    typedef vector< MapText >::iterator MapTextVecIt;
+    typedef vector< MapText > MapTextVec;
 
     MapTextVec GameMapTexts;
     uint       GameMouseStay;
@@ -1017,8 +1012,7 @@ public:
         uint   Color;
         bool operator==( const uint& _right ) { return ( this->LocId == _right ); }
     };
-    typedef vector< GmapLocation >           GmapLocationVec;
-    typedef vector< GmapLocation >::iterator GmapLocationVecIt;
+    typedef vector< GmapLocation > GmapLocationVec;
     GmapLocationVec GmapLoc;
     GmapLocation    GmapTownLoc;
 
@@ -1323,8 +1317,7 @@ public:
         Automap(): LocId( 0 ), LocPid( 0 ), CurMap( 0 ) {}
         bool operator==( const uint id ) const { return LocId == id; }
     };
-    typedef vector< Automap >           AutomapVec;
-    typedef vector< Automap >::iterator AutomapVecIt;
+    typedef vector< Automap > AutomapVec;
     AutomapVec Automaps;
     Automap    AutomapSelected;
     UShortSet  AutomapWaitPids;

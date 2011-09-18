@@ -97,7 +97,6 @@ public:
         HoloInfo( bool can_rw, const char* title, const char* text ): CanRewrite( can_rw ), Title( title ), Text( text ) {}
     };
     typedef map< uint, HoloInfo* >             HoloInfoMap;
-    typedef map< uint, HoloInfo* >::iterator   HoloInfoMapIt;
     typedef map< uint, HoloInfo* >::value_type HoloInfoMapVal;
     static HoloInfoMap HolodiskInfo;
     static Mutex       HolodiskLocker;
@@ -107,7 +106,7 @@ public:
     static bool      LoadHoloInfoFile( FILE* f );
     static HoloInfo* GetHoloInfo( uint id )
     {
-        HoloInfoMapIt it = HolodiskInfo.find( id );
+        auto it = HolodiskInfo.find( id );
         return it != HolodiskInfo.end() ? ( *it ).second : NULL;
     }
     static void AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send );
@@ -143,8 +142,7 @@ public:
         uint    InProcess;
         bool    EraseMe;
     };
-    typedef vector< TimeEvent* >           TimeEventVec;
-    typedef vector< TimeEvent* >::iterator TimeEventVecIt;
+    typedef vector< TimeEvent* > TimeEventVec;
     static TimeEventVec TimeEvents;
     static TimeEventVec TimeEventsInProcess;
     static uint         TimeEventsLastNum;
@@ -167,9 +165,7 @@ public:
 
     // Any data
     typedef map< string, UCharVec >             AnyDataMap;
-    typedef map< string, UCharVec >::iterator   AnyDataMapIt;
     typedef map< string, UCharVec >::value_type AnyDataMapVal;
-    typedef pair< AnyDataMapIt, bool >          AnyDataMapInsert;
     static AnyDataMap AnyData;
     static Mutex      AnyDataLocker;
 
@@ -212,8 +208,7 @@ public:
         uint   FirstStrLen;
         ushort Parameter;
     };
-    typedef vector< TextListen >           TextListenVec;
-    typedef vector< TextListen >::iterator TextListenVecIt;
+    typedef vector< TextListen > TextListenVec;
     static TextListenVec TextListeners;
     static Mutex         TextListenersLocker;
 
@@ -388,19 +383,18 @@ public:
 
         const char* GetBanLexems() { return Str::FormatBuf( "$banby%s$time%d$reason%s", BannedBy[ 0 ] ? BannedBy : "?", Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" ); }
     };
-    typedef vector< ClientBanned >           ClientBannedVec;
-    typedef vector< ClientBanned >::iterator ClientBannedVecIt;
+    typedef vector< ClientBanned > ClientBannedVec;
     static ClientBannedVec Banned;
     static Mutex           BannedLocker;
 
     static ClientBanned* GetBanByName( const char* name )
     {
-        ClientBannedVecIt it = std::find( Banned.begin(), Banned.end(), name );
+        auto it = std::find( Banned.begin(), Banned.end(), name );
         return it != Banned.end() ? &( *it ) : NULL;
     }
     static ClientBanned* GetBanByIp( uint ip )
     {
-        ClientBannedVecIt it = std::find( Banned.begin(), Banned.end(), ip );
+        auto it = std::find( Banned.begin(), Banned.end(), ip );
         return it != Banned.end() ? &( *it ) : NULL;
     }
     static uint GetBanTime( ClientBanned& ban );
@@ -423,8 +417,7 @@ public:
         bool operator==( const uint id )    { return ClientId == id; }
         ClientData() { Clear(); }
     };
-    typedef vector< ClientData >           ClientDataVec;
-    typedef vector< ClientData >::iterator ClientDataVecIt;
+    typedef vector< ClientData > ClientDataVec;
     static ClientDataVec ClientsData;
     static Mutex         ClientsDataLocker;
     static volatile uint LastClientId;
@@ -432,12 +425,12 @@ public:
     static bool        LoadClientsData();
     static ClientData* GetClientData( const char* name )
     {
-        ClientDataVecIt it = std::find( ClientsData.begin(), ClientsData.end(), name );
+        auto it = std::find( ClientsData.begin(), ClientsData.end(), name );
         return it != ClientsData.end() ? &( *it ) : NULL;
     }
     static ClientData* GetClientData( uint id )
     {
-        ClientDataVecIt it = std::find( ClientsData.begin(), ClientsData.end(), id );
+        auto it = std::find( ClientsData.begin(), ClientsData.end(), id );
         return it != ClientsData.end() ? &( *it ) : NULL;
     }
 

@@ -81,7 +81,6 @@ private:
 };
 
 typedef map< uint, CraftItem*, less< uint > >             CraftItemMap;
-typedef map< uint, CraftItem*, less< uint > >::iterator   CraftItemMapIt;
 typedef map< uint, CraftItem*, less< uint > >::value_type CraftItemMapVal;
 typedef vector< CraftItem* >                              CraftItemVec;
 

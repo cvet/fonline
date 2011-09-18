@@ -7,10 +7,8 @@
 
 class SyncObject;
 class SyncManager;
-typedef vector< SyncObject* >            SyncObjectVec;
-typedef vector< SyncObject* >::iterator  SyncObjectVecIt;
-typedef vector< SyncManager* >           SyncManagerVec;
-typedef vector< SyncManager* >::iterator SyncManagerVecIt;
+typedef vector< SyncObject* >  SyncObjectVec;
+typedef vector< SyncManager* > SyncManagerVec;
 
 class SyncObject
 {

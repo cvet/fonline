@@ -11,7 +11,6 @@ class FalloutDatFile: public DataFile
 {
 private:
     typedef map< string, uchar* >             IndexMap;
-    typedef map< string, uchar* >::iterator   IndexMapIt;
     typedef map< string, uchar* >::value_type IndexMapVal;
 
     IndexMap filesTree;
@@ -42,7 +41,6 @@ private:
         uLong        UncompressedSize;
     };
     typedef map< string, ZipFileInfo >             IndexMap;
-    typedef map< string, ZipFileInfo >::iterator   IndexMapIt;
     typedef map< string, ZipFileInfo >::value_type IndexMapVal;
 
     IndexMap filesTree;
@@ -288,7 +286,7 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
     if( !datHandle )
         return NULL;
 
-    IndexMapIt it = filesTree.find( fname );
+    auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
 
@@ -333,7 +331,7 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
 void FalloutDatFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
     size_t path_len = Str::Length( path );
-    for( IndexMapIt it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
+    for( auto it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
     {
         const string& fname = ( *it ).first;
         if( !fname.compare( 0, path_len, path ) && ( include_subdirs || (int) fname.find_last_of( '\\' ) < (int) path_len ) )
@@ -462,7 +460,7 @@ uchar* ZipFile::OpenFile( const char* fname, uint& len )
     if( !zipHandle )
         return NULL;
 
-    IndexMapIt it = filesTree.find( fname );
+    auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
 
@@ -496,7 +494,7 @@ uchar* ZipFile::OpenFile( const char* fname, uint& len )
 void ZipFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
     size_t path_len = Str::Length( path );
-    for( IndexMapIt it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
+    for( auto it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
     {
         const string& fname = ( *it ).first;
         if( !fname.compare( 0, path_len, path ) && ( include_subdirs || (int) fname.find_last_of( '\\' ) < (int) path_len ) )

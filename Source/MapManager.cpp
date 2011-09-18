@@ -37,13 +37,13 @@ void GlobalMapGroup::Stop()
 void GlobalMapGroup::SyncLockGroup()
 {
     CrVec critters = CritMove;
-    for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         SYNC_LOCK( *it );
 }
 
 Critter* GlobalMapGroup::GetCritter( uint crid )
 {
-    for( CrVecIt it = CritMove.begin(), end = CritMove.end(); it != end; ++it )
+    for( auto it = CritMove.begin(), end = CritMove.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr->GetId() == crid )
@@ -87,7 +87,7 @@ void GlobalMapGroup::AddCrit( Critter* cr )
 
 void GlobalMapGroup::EraseCrit( Critter* cr )
 {
-    CrVecIt it = std::find( CritMove.begin(), CritMove.end(), cr );
+    auto it = std::find( CritMove.begin(), CritMove.end(), cr );
     if( it != CritMove.end() )
         CritMove.erase( it );
 }
@@ -144,7 +144,7 @@ void MapManager::Finish()
 {
     WriteLog( "Map manager finish...\n" );
 
-    for( LocMapIt it = allLocations.begin(); it != allLocations.end(); ++it )
+    for( auto it = allLocations.begin(); it != allLocations.end(); ++it )
     {
         Location* loc = ( *it ).second;
         loc->Clear( false );
@@ -165,10 +165,10 @@ void MapManager::Clear()
     lastLocId = 0;
     runGarbager = false;
 
-    for( LocMapIt it = allLocations.begin(); it != allLocations.end(); ++it )
+    for( auto it = allLocations.begin(); it != allLocations.end(); ++it )
         SAFEREL( ( *it ).second );
     allLocations.clear();
-    for( MapMapIt it = allMaps.begin(); it != allMaps.end(); ++it )
+    for( auto it = allMaps.begin(); it != allMaps.end(); ++it )
         SAFEREL( ( *it ).second );
     allMaps.clear();
 }
@@ -368,7 +368,7 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
     uint count = (uint) allLocations.size();
     save_func( &count, sizeof( count ) );
 
-    for( LocMapIt it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
         save_func( &loc->Data, sizeof( loc->Data ) );
@@ -376,7 +376,7 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
         MapVec& maps = loc->GetMapsNoLock();
         uint    map_count = (uint) maps.size();
         save_func( &map_count, sizeof( map_count ) );
-        for( MapVecIt it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
+        for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
             save_func( &map->Data, sizeof( map->Data ) );
@@ -475,7 +475,7 @@ string MapManager::GetLocationsMapsStatistics()
     result += str;
     result += "Location Name        Id          Pid  X     Y     Radius Color    Visible GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map Name            Id          Pid  Time Rain TbAviable TbOn   Script\n";
-    for( LocMapIt it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
         sprintf( str, "%-20s %-09u   %-4u %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
@@ -485,7 +485,7 @@ string MapManager::GetLocationsMapsStatistics()
 
         MapVec& maps = loc->GetMapsNoLock();
         uint    map_index = 0;
-        for( MapVecIt it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
+        for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
             sprintf( str, "     %2u) %-20s %-09u   %-4u %-4d %-4u %-9s %-6s %-50s\n",
@@ -502,7 +502,7 @@ string MapManager::GetLocationsMapsStatistics()
 void MapManager::RunInitScriptMaps()
 {
     MapMap maps = allMaps;
-    for( MapMapIt it = maps.begin(), end = maps.end(); it != end; ++it )
+    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
     {
         Map* map = ( *it ).second;
         if( map->Data.ScriptId )
@@ -566,9 +566,9 @@ void MapManager::GetLocationAndMapIds( UIntSet& loc_ids, UIntSet& map_ids )
 {
     SCOPE_LOCK( mapLocker );
 
-    for( LocMapIt it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
         loc_ids.insert( ( *it ).second->GetId() );
-    for( MapMapIt it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
+    for( auto it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
         map_ids.insert( ( *it ).second->GetId() );
 }
 
@@ -650,7 +650,7 @@ Location* MapManager::CreateLocation( ushort pid_loc, ushort wx, ushort wy, uint
 
     // Generate location maps
     MapVec maps = loc->GetMapsNoLock();   // Already locked
-    for( MapVecIt it = maps.begin(), end = maps.end(); it != end; ++it )
+    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
     {
         Map* map = *it;
         if( !map->Generate() )
@@ -732,7 +732,7 @@ Map* MapManager::GetMap( uint map_id, bool sync_lock )
     Map* map = NULL;
 
     mapLocker.Lock();
-    MapMapIt it = allMaps.find( map_id );
+    auto it = allMaps.find( map_id );
     if( it != allMaps.end() )
         map = ( *it ).second;
     mapLocker.Unlock();
@@ -748,7 +748,7 @@ Map* MapManager::GetMapByPid( ushort map_pid, uint skip_count )
         return NULL;
 
     mapLocker.Lock();
-    for( MapMapIt it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
+    for( auto it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
     {
         Map* map = ( *it ).second;
         if( map->GetPid() == map_pid )
@@ -773,11 +773,11 @@ void MapManager::GetMaps( MapVec& maps, bool lock )
     SCOPE_LOCK( mapLocker );
 
     maps.reserve( allMaps.size() );
-    for( MapMapIt it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
+    for( auto it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
         maps.push_back( ( *it ).second );
 
     if( lock )
-        for( MapVecIt it = maps.begin(), end = maps.end(); it != end; ++it )
+        for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
@@ -815,7 +815,7 @@ Location* MapManager::GetLocation( uint loc_id )
         return NULL;
 
     mapLocker.Lock();
-    LocMapIt it = allLocations.find( loc_id );
+    auto it = allLocations.find( loc_id );
     if( it == allLocations.end() )
     {
         mapLocker.Unlock();
@@ -835,7 +835,7 @@ Location* MapManager::GetLocationByPid( ushort loc_pid, uint skip_count )
         return NULL;
 
     mapLocker.Lock();
-    for( LocMapIt it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
         if( loc->GetPid() == loc_pid )
@@ -869,7 +869,7 @@ void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc
 
     int wx = zx * GM_ZONE_LEN;
     int wy = zy * GM_ZONE_LEN;
-    for( LocMapIt it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
         if( loc->IsVisible() && IsIntersectZone( wx, wy, 0, loc->Data.WX, loc->Data.WY, loc->GetRadius(), zone_radius ) )
@@ -882,11 +882,11 @@ void MapManager::GetLocations( LocVec& locs, bool lock )
     SCOPE_LOCK( mapLocker );
 
     locs.reserve( allLocations.size() );
-    for( LocMapIt it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
         locs.push_back( ( *it ).second );
 
     if( lock )
-        for( LocVecIt it = locs.begin(), end = locs.end(); it != end; ++it )
+        for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
@@ -908,7 +908,7 @@ void MapManager::LocationGarbager()
         LocMap locs = allLocations;
         mapLocker.Unlock();
 
-        for( LocMapIt it = locs.begin(), end = locs.end(); it != end; ++it )
+        for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
         {
             Location* loc = ( *it ).second;
             if( loc->Data.ToGarbage || ( loc->Data.AutoGarbage && loc->IsCanDelete() ) )
@@ -917,7 +917,7 @@ void MapManager::LocationGarbager()
                 loc->IsNotValid = true;
 
                 // Send all active clients about this
-                for( ClVecIt it_ = players.begin(), end_ = players.end(); it_ != end_; ++it_ )
+                for( auto it_ = players.begin(), end_ = players.end(); it_ != end_; ++it_ )
                 {
                     Client* cl = *it_;
                     if( !cl->GetMap() && cl->CheckKnownLocById( loc->GetId() ) )
@@ -926,7 +926,7 @@ void MapManager::LocationGarbager()
 
                 // Delete
                 mapLocker.Lock();
-                LocMapIt it = allLocations.find( loc->GetId() );
+                auto it = allLocations.find( loc->GetId() );
                 if( it != allLocations.end() )
                     allLocations.erase( it );
                 mapLocker.Unlock();
@@ -934,7 +934,7 @@ void MapManager::LocationGarbager()
                 // Delete maps
                 MapVec maps;
                 loc->GetMaps( maps, true );
-                for( MapVecIt it = maps.begin(), end = maps.end(); it != end; ++it )
+                for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
                 {
                     Map* map = *it;
 
@@ -1115,7 +1115,7 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
 
         int cur_wxi = (int) cur_wx;
         int cur_wyi = (int) cur_wy;
-        for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+        for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cur_wxi != cr->Data.WorldX || cur_wyi != cr->Data.WorldY )
@@ -1259,7 +1259,7 @@ CScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
     *p_ = group->Rule;
     group->Rule->AddRef();
     int ind = 1;
-    for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+    for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == group->Rule )
@@ -1342,7 +1342,7 @@ void MapManager::GM_AddCritToGroup( Critter* cr, uint rule_id )
     cr->Data.HexX = ( rule_id >> 16 ) & 0xFFFF;
     cr->Data.HexY = rule_id & 0xFFFF;
 
-    for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+    for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
         ( *it )->Send_AddCritter( cr );
     group->AddCrit( cr );
     cr->GroupMove = group;
@@ -1360,7 +1360,7 @@ void MapManager::GM_LeaveGroup( Critter* cr )
     if( cr != cr->GroupMove->Rule )
     {
         group->EraseCrit( cr );
-        for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+        for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
             ( *it )->Send_RemoveCritter( cr );
 
         Item* car = cr->GetItemCar();
@@ -1377,7 +1377,7 @@ void MapManager::GM_LeaveGroup( Critter* cr )
         // Give rule to critter with highest charisma
         Critter* new_rule = NULL;
         int      max_charisma = 0;
-        for( CrVecIt it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
+        for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr == group->Rule )
@@ -1411,7 +1411,7 @@ void MapManager::GM_GiveRule( Critter* cr, Critter* new_rule )
     UNSETFLAG( cr->Flags, FCRIT_RULEGROUP );
     SETFLAG( new_rule->Flags, FCRIT_RULEGROUP );
 
-    for( CrVecIt it = new_rule->GroupSelf->CritMove.begin(), end = new_rule->GroupSelf->CritMove.end(); it != end; ++it )
+    for( auto it = new_rule->GroupSelf->CritMove.begin(), end = new_rule->GroupSelf->CritMove.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
         cr_->GroupMove = new_rule->GroupSelf;
@@ -1505,7 +1505,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
         return false;
 
     // Transit other
-    for( CrVecIt it = transit_cr.begin(), end = transit_cr.end(); it != end; ++it )
+    for( auto it = transit_cr.begin(), end = transit_cr.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( cr == rule )
@@ -2713,7 +2713,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex
         if( cr->GroupMove )
         {
             cr->GroupMove->EraseCrit( cr );
-            for( CrVecIt it = cr->GroupMove->CritMove.begin(), end = cr->GroupMove->CritMove.end(); it != end; ++it )
+            for( auto it = cr->GroupMove->CritMove.begin(), end = cr->GroupMove->CritMove.end(); it != end; ++it )
             {
                 Critter* cr_ = *it;
                 cr_->Send_RemoveCritter( cr );
@@ -2730,7 +2730,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex
         cr->SyncLockCritters( false, false );
         CrVec critters = cr->VisCr;
 
-        for( CrVecIt it = critters.begin(), end = critters.end(); it != end; ++it )
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr_ = *it;
             cr_->EventHideCritter( cr );

@@ -93,8 +93,7 @@ public:
         ActiveContext( asIScriptContext** ctx, uint tick ): Contexts( ctx ), StartTick( tick ) {}
         bool operator==( asIScriptContext** ctx ) { return ctx == Contexts; }
     };
-    typedef vector< ActiveContext >           ActiveContextVec;
-    typedef vector< ActiveContext >::iterator ActiveContextVecIt;
+    typedef vector< ActiveContext > ActiveContextVec;
     ActiveContextVec ActiveContexts;
     Mutex            ActiveGlobalCtxLocker;
 
@@ -176,7 +175,7 @@ public:
     void FinishThread()
     {
         ActiveGlobalCtxLocker.Lock();
-        ActiveContextVecIt it = std::find( ActiveContexts.begin(), ActiveContexts.end(), (asIScriptContext**) GlobalCtx );
+        auto it = std::find( ActiveContexts.begin(), ActiveContexts.end(), (asIScriptContext**) GlobalCtx );
         if( it != ActiveContexts.end() )
             ActiveContexts.erase( it );
         ActiveGlobalCtxLocker.Unlock();
@@ -213,7 +212,7 @@ public:
 
         // Find in already loaded
         EngineData* edata = (EngineData*) Engine->GetUserData();
-        StrPtrMapIt it = edata->LoadedDlls.find( dll_name );
+        auto        it = edata->LoadedDlls.find( dll_name );
         if( it != edata->LoadedDlls.end() )
             return ( *it ).second;
 
@@ -277,7 +276,7 @@ public:
         EngineData*      edata = (EngineData*) Engine->GetUserData();
         ScriptModuleVec& modules = edata->Modules;
 
-        for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+        for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
         {
             asIScriptModule* module = *it;
             int              result = module->ResetGlobalVars();
@@ -288,7 +287,7 @@ public:
                 WriteLogF( _FUNC_, " - Unbind fail, module<%s>, error<%d>.\n", module->GetName(), result );
         }
 
-        for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+        for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
         {
             asIScriptModule* module = *it;
             Engine->DiscardModule( module->GetName() );
@@ -452,7 +451,7 @@ public:
         {
             EngineData* edata = (EngineData*) engine->SetUserData( NULL );
             delete edata->PragmaCB;
-            for( StrPtrMapIt it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
+            for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
                 FreeLibrary( (HMODULE) ( *it ).second );
             delete edata;
             engine->Release();
@@ -579,7 +578,7 @@ public:
         // Delete old
         EngineData*      edata = (EngineData*) Engine->GetUserData();
         ScriptModuleVec& modules = edata->Modules;
-        for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+        for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
         {
             asIScriptModule* module = *it;
             if( Str::Compare( module->GetName(), module_name ) )
@@ -767,7 +766,7 @@ public:
             SCOPE_LOCK( ActiveGlobalCtxLocker );
 
             uint cur_tick = Timer::FastTick();
-            for( ActiveContextVecIt it = ActiveContexts.begin(), end = ActiveContexts.end(); it != end; ++it )
+            for( auto it = ActiveContexts.begin(), end = ActiveContexts.end(); it != end; ++it )
             {
                 ActiveContext& actx = *it;
                 if( cur_tick >= actx.StartTick + RunTimeoutSuspend )
@@ -938,7 +937,7 @@ public:
                         WriteLogF( _FUNC_, " - Script<%s> outdated.\n", module_name );
 
                     // Delete old
-                    for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+                    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
                     {
                         asIScriptModule* module = *it;
                         if( Str::Compare( module->GetName(), module_name ) )
@@ -1007,7 +1006,7 @@ public:
         vos.Format();
 
         // Delete old
-        for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+        for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
         {
             asIScriptModule* module = *it;
             if( Str::Compare( module->GetName(), module_name ) )
@@ -1045,7 +1044,7 @@ public:
         {
             IntVec bad_typeids;
             bad_typeids.reserve( WrongGlobalObjects.size() );
-            for( StrVecIt it = WrongGlobalObjects.begin(), end = WrongGlobalObjects.end(); it != end; ++it )
+            for( auto it = WrongGlobalObjects.begin(), end = WrongGlobalObjects.end(); it != end; ++it )
                 bad_typeids.push_back( Engine->GetTypeIdByDecl( ( *it ).c_str() ) & asTYPEID_MASK_SEQNBR );
 
             IntVec bad_typeids_class;
@@ -1163,7 +1162,7 @@ public:
         EngineData*      edata = (EngineData*) Engine->GetUserData();
         ScriptModuleVec& modules = edata->Modules;
 
-        for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+        for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
         {
             asIScriptModule* module = *it;
             if( Str::Compare( module->GetName(), module_name ) )
@@ -1202,7 +1201,7 @@ public:
         EngineData*      edata = (EngineData*) Engine->GetUserData();
         ScriptModuleVec& modules = edata->Modules;
         int              errors = 0;
-        for( ScriptModuleVecIt it = modules.begin(), end = modules.end(); it != end; ++it )
+        for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
         {
             asIScriptModule* module = *it;
             int              result = module->BindAllImportedFunctions();
@@ -1514,8 +1513,7 @@ public:
     MutexEvent SynchronizeThreadLocker;
     Mutex      SynchronizeThreadLocalLocker;
 
-    typedef vector< EndExecutionCallback >           EndExecutionCallbackVec;
-    typedef vector< EndExecutionCallback >::iterator EndExecutionCallbackVecIt;
+    typedef vector< EndExecutionCallback > EndExecutionCallbackVec;
     THREAD EndExecutionCallbackVec* EndExecutionCallbacks;
     #endif
 
@@ -1588,7 +1586,7 @@ public:
 
             if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
             {
-                for( EndExecutionCallbackVecIt it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
+                for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
                 {
                     EndExecutionCallback func = *it;
                                          ( *func )( );
@@ -1607,7 +1605,7 @@ public:
 
         if( !EndExecutionCallbacks )
             EndExecutionCallbacks = new (nothrow) EndExecutionCallbackVec();
-        EndExecutionCallbackVecIt it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );
+        auto it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );
         if( it == EndExecutionCallbacks->end() )
             EndExecutionCallbacks->push_back( func );
         #endif
@@ -1752,7 +1750,7 @@ public:
             if( GlobalCtxIndex == 0 ) // All scripts execution complete, erase timing
             {
                 SCOPE_LOCK( ActiveGlobalCtxLocker );
-                ActiveContextVecIt it = std::find( ActiveContexts.begin(), ActiveContexts.end(), (asIScriptContext**) GlobalCtx );
+                auto it = std::find( ActiveContexts.begin(), ActiveContexts.end(), (asIScriptContext**) GlobalCtx );
                 if( it != ActiveContexts.end() )
                     ActiveContexts.erase( it );
             }

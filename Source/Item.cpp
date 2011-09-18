@@ -152,7 +152,7 @@ void Item::FullClear()
         ChildItems->clear();
         SAFEDEL( ChildItems );
 
-        for( ItemPtrVecIt it = del_items.begin(), end = del_items.end(); it != end; ++it )
+        for( auto it = del_items.begin(), end = del_items.end(); it != end; ++it )
         {
             Item* item = *it;
             SYNC_LOCK( item );
@@ -295,7 +295,7 @@ void Item::EventWalk( Critter* cr, bool entered, uchar dir )
 void Item::SetSortValue( ItemPtrVec& items )
 {
     ushort sort_value = 0x7FFF;
-    for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item == this )
@@ -549,7 +549,7 @@ void Item::ContEraseItem( Item* item )
         return;
     }
 
-    ItemPtrVecIt it = std::find( ChildItems->begin(), ChildItems->end(), item );
+    auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
     if( it != ChildItems->end() )
         ChildItems->erase( it );
     else
@@ -566,7 +566,7 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
     if( !IsContainer() || !ChildItems || !item_id )
         return NULL;
 
-    for( ItemPtrVecIt it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetId() == item_id )
@@ -585,7 +585,7 @@ void Item::ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock )
     if( !IsContainer() || !ChildItems )
         return;
 
-    for( ItemPtrVecIt it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( !skip_hide || !item->IsHidden() )
@@ -594,7 +594,7 @@ void Item::ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock )
 
     # pragma MESSAGE("Recheck after synchronization.")
     if( sync_lock && LogicMT )
-        for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
@@ -604,7 +604,7 @@ Item* Item::ContGetItemByPid( ushort pid, uint special_id )
     if( !IsContainer() || !ChildItems )
         return NULL;
 
-    for( ItemPtrVecIt it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetProtoId() == pid && ( special_id == uint( -1 ) || item->ACC_CONTAINER.SpecialId == special_id ) )
@@ -621,7 +621,7 @@ void Item::ContGetItems( ItemPtrVec& items, uint special_id, bool sync_lock )
     if( !IsContainer() || !ChildItems )
         return;
 
-    for( ItemPtrVecIt it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( special_id == uint( -1 ) || item->ACC_CONTAINER.SpecialId == special_id )
@@ -630,7 +630,7 @@ void Item::ContGetItems( ItemPtrVec& items, uint special_id, bool sync_lock )
 
     # pragma MESSAGE("Recheck after synchronization.")
     if( sync_lock && LogicMT )
-        for( ItemPtrVecIt it = items.begin(), end = items.end(); it != end; ++it )
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
             SYNC_LOCK( *it );
 }
 
@@ -644,7 +644,7 @@ int Item::ContGetFreeVolume( uint special_id )
     if( !ChildItems )
         return max_volume;
 
-    for( ItemPtrVecIt it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( special_id == uint( -1 ) || item->ACC_CONTAINER.SpecialId == special_id )
