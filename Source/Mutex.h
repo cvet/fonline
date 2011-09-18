@@ -4,7 +4,7 @@
 #include "Common.h"
 
 #define DEFAULT_SPIN_COUNT              ( 4000 )
-#define SCOPE_LOCK( mutex )                               volatile MutexLocker scope_lock__( mutex )
+#define SCOPE_LOCK( mutex )                               volatile MutexLocker< decltype( mutex ) > scope_lock__( mutex )
 
 #if defined ( FO_WINDOWS )
 
@@ -19,7 +19,6 @@
 class Mutex
 {
 private:
-    friend class MutexLocker;
     CRITICAL_SECTION mutexCS;
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
@@ -61,7 +60,6 @@ public:
 class Mutex
 {
 private:
-    friend class MutexLocker;
     pthread_mutex_t mutexCS;
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
@@ -183,7 +181,6 @@ public:
 class MutexSpinlock
 {
 private:
-    friend class MutexSpinlockLocker;
     volatile long spinCounter;
     MutexSpinlock( const MutexSpinlock& ) {}
     MutexSpinlock& operator=( const MutexSpinlock& ) { return *this; }
@@ -195,25 +192,18 @@ public:
     void Unlock()  { InterlockedExchange( &spinCounter, 0 ); }
 };
 
+template< class T >
 class MutexLocker
 {
 private:
-    Mutex*         pMutex;
-    MutexSpinlock* spinLock;
+    T& pMutex;
     MutexLocker() {}
     MutexLocker( const MutexLocker& ) {}
     MutexLocker& operator=( const MutexLocker& ) { return *this; }
 
 public:
-    MutexLocker( Mutex& mutex ): pMutex( &mutex ), spinLock( NULL ) { pMutex->Lock(); }
-    MutexLocker( MutexSpinlock& mutex ): spinLock( &mutex ), pMutex( NULL ) { spinLock->Lock(); }
-    ~MutexLocker()
-    {
-        if( pMutex )
-            pMutex->Unlock();
-        if( spinLock )
-            spinLock->Unlock();
-    }
+    MutexLocker( T& mutex ): pMutex( mutex ) { pMutex.Lock(); }
+    ~MutexLocker() { pMutex.Unlock(); }
 };
 
 #endif // __MUTEX__
