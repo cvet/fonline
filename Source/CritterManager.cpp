@@ -556,7 +556,7 @@ void CritterManager::AddCritter( Critter* cr )
 {
     SCOPE_LOCK( crLocker );
 
-    allCritters.insert( CrMapVal( cr->GetId(), cr ) );
+    allCritters.insert( PAIR( cr->GetId(), cr ) );
     if( cr->IsPlayer() )
         playersCount++;
     else

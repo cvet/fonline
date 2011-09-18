@@ -86,8 +86,8 @@ bool ConstantsManager::AddCollection( int collection, const char* fname, int pat
                     continue;
             }
 
-            value_name.insert( UIntStrMapVal( num + offset, name ) );
-            name_value.insert( StrUIntMapVal( name, num + offset ) );
+            value_name.insert( PAIR( num + offset, name ) );
+            name_value.insert( PAIR( name, num + offset ) );
             Str::AddNameHash( name.c_str() );
         }
     }
@@ -97,8 +97,8 @@ bool ConstantsManager::AddCollection( int collection, const char* fname, int pat
 
 void ConstantsManager::AddConstant( int collection, const char* str, int value )
 {
-    ConstCollections[ collection ].ValueName.insert( UIntStrMapVal( value, str ) );
-    ConstCollections[ collection ].NameValue.insert( StrUIntMapVal( str, value ) );
+    ConstCollections[ collection ].ValueName.insert( PAIR( value, str ) );
+    ConstCollections[ collection ].NameValue.insert( PAIR( str, value ) );
     Str::AddNameHash( str );
 }
 

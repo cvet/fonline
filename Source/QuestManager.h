@@ -16,8 +16,7 @@ struct Quest
     bool operator==( const ushort& _num ) { return _num == num; }
     Quest( uint _num, string _info ): num( _num ), info( _info ), isInfo( false ) {}
 };
-typedef vector< Quest >             QuestVec;
-typedef vector< Quest >::value_type QuestVecVal;
+typedef vector< Quest > QuestVec;
 
 class QuestTab
 {
@@ -74,8 +73,7 @@ public:
     const char* GetText()   { return text.c_str(); }
     QuestTab( FOMsg* _msg ): msg( _msg ) {}
 };
-typedef map< string, QuestTab, less< string > >             QuestTabMap;
-typedef map< string, QuestTab, less< string > >::value_type QuestTabMapVal;
+typedef map< string, QuestTab, less< string > > QuestTabMap;
 
 class QuestManager
 {
@@ -127,7 +125,7 @@ public:
         }
 
         // Add Tab if not exists
-        if( !tab ) tab = &( *( tabs.insert( QuestTabMapVal( tab_name, QuestTab( msg ) ) ) ).first ).second;
+        if( !tab ) tab = &( *( tabs.insert( PAIR( tab_name, QuestTab( msg ) ) ) ).first ).second;
 
         // Add Quest if not exists
         if( !quest ) quest = tab->AddQuest( q_num, string( msg->GetStr( STR_QUEST_INFO_( q_num ) ) ) );

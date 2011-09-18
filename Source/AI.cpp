@@ -184,7 +184,7 @@ bool NpcAIMngr::LoadNpcBags()
                     }
                 }
 
-                loaded_comb.insert( StringNpcBagCombMap::value_type( c, items_comb ) );
+                loaded_comb.insert( PAIR( c, items_comb ) );
                 it = loaded_comb.find( c );
             }
 

@@ -5724,7 +5724,7 @@ bool FOServer::LoadAnyDataFile( FILE* f )
         if( data_len && !fread( &data[ 0 ], data_len, 1, f ) )
             return false;
 
-        auto result = AnyData.insert( AnyDataMapVal( name, data ) );
+        auto result = AnyData.insert( PAIR( string( name ), data ) );
         MEMORY_PROCESS( MEMORY_ANY_DATA, (int) ( *result.first ).second.capacity() );
     }
     return true;
@@ -5734,7 +5734,7 @@ bool FOServer::SetAnyData( const string& name, const uchar* data, uint data_size
 {
     SCOPE_LOCK( AnyDataLocker );
 
-    auto      result = AnyData.insert( AnyDataMapVal( name, UCharVec() ) );
+    auto      result = AnyData.insert( PAIR( name, UCharVec() ) );
     UCharVec& data_ = ( *result.first ).second;
 
     MEMORY_PROCESS( MEMORY_ANY_DATA, -(int) data_.capacity() );

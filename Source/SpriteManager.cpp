@@ -4575,7 +4575,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     uint result = FillSurfaceFromMemory( contour_si, data, size );
     SurfType = st;
     delete[] data;
-    createdSpriteContours.insert( UIntMapVal( spr_id, result ) );
+    createdSpriteContours.insert( PAIR( spr_id, result ) );
     return result;
 }
 

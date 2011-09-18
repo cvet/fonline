@@ -80,9 +80,8 @@ private:
     #endif
 };
 
-typedef map< uint, CraftItem*, less< uint > >             CraftItemMap;
-typedef map< uint, CraftItem*, less< uint > >::value_type CraftItemMapVal;
-typedef vector< CraftItem* >                              CraftItemVec;
+typedef map< uint, CraftItem*, less< uint > > CraftItemMap;
+typedef vector< CraftItem* >                  CraftItemVec;
 
 #ifdef FONLINE_SERVER
 class Critter;

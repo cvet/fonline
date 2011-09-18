@@ -719,7 +719,7 @@ bool CraftManager::AddCraft( CraftItem* craft, bool make_copy )
         craft = craft2;
     }
 
-    itemCraft.insert( CraftItemMapVal( craft->Num, craft ) );
+    itemCraft.insert( PAIR( craft->Num, craft ) );
     return true;
 }
 

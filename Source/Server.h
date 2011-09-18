@@ -96,8 +96,7 @@ public:
         string Text;
         HoloInfo( bool can_rw, const char* title, const char* text ): CanRewrite( can_rw ), Title( title ), Text( text ) {}
     };
-    typedef map< uint, HoloInfo* >             HoloInfoMap;
-    typedef map< uint, HoloInfo* >::value_type HoloInfoMapVal;
+    typedef map< uint, HoloInfo* > HoloInfoMap;
     static HoloInfoMap HolodiskInfo;
     static Mutex       HolodiskLocker;
     static uint        LastHoloId;
@@ -164,8 +163,7 @@ public:
     static bool LoadScriptFunctionsFile( FILE* f );
 
     // Any data
-    typedef map< string, UCharVec >             AnyDataMap;
-    typedef map< string, UCharVec >::value_type AnyDataMapVal;
+    typedef map< string, UCharVec > AnyDataMap;
     static AnyDataMap AnyData;
     static Mutex      AnyDataLocker;
 

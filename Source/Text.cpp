@@ -438,7 +438,7 @@ void Str::AddNameHash( const char* name )
 
     auto it = NamesHash.find( hash );
     if( it == NamesHash.end() )
-        NamesHash.insert( UIntStrMapVal( hash, name ) );
+        NamesHash.insert( PAIR( hash, name ) );
     else if( !Str::CompareCase( name, ( *it ).second.c_str() ) )
         WriteLogF( _FUNC_, " - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n", name, ( *it ).second.c_str(), hash );
 }

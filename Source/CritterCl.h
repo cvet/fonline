@@ -351,9 +351,8 @@ public:
     }
 };
 
-typedef map< uint, CritterCl*, less< uint > >             CritMap;
-typedef map< uint, CritterCl*, less< uint > >::value_type CritMapVal;
-typedef vector< CritterCl* >                              CritVec;
-typedef CritterCl*                                        CritterClPtr;
+typedef map< uint, CritterCl*, less< uint > > CritMap;
+typedef vector< CritterCl* >                  CritVec;
+typedef CritterCl*                            CritterClPtr;
 
 #endif // __CRITTER_CL__

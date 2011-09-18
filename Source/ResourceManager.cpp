@@ -46,7 +46,7 @@ void ResourceManager::Refresh()
                 continue;
             *( --ext ) = 0;
             if( name[ 0 ] )
-                soundNames.insert( StrMapVal( name, fname ) );
+                soundNames.insert( PAIR( string( name ), string( fname ) ) );
         }
 
         folders_done = true;
@@ -91,7 +91,7 @@ void ResourceManager::Refresh()
                     continue;
                 *( --ext ) = 0;
                 if( name[ 0 ] )
-                    soundNames.insert( StrMapVal( name, fname ) );
+                    soundNames.insert( PAIR( string( name ), string( fname ) ) );
             }
 
             processedDats.push_back( pfile );
@@ -183,7 +183,7 @@ AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
     AnyFrames* anim = SprMngr.LoadAnimation( fname, PT_DATA, ANIM_DIR( dir ) | ANIM_FRM_ANIM_PIX );
     SprMngr.SurfType = RES_NONE;
 
-    loadedAnims.insert( LoadedAnimMapVal( id, LoadedAnim( res_type, anim ) ) );
+    loadedAnims.insert( PAIR( id, LoadedAnim( res_type, anim ) ) );
     return anim;
 }
 
@@ -367,7 +367,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     }
 
     // Store
-    critterFrames.insert( AnimMapVal( id, anim ) );
+    critterFrames.insert( PAIR( id, anim ) );
     return anim;
 }
 
@@ -492,7 +492,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
     }
     SprMngr.SurfType = RES_NONE;
 
-    critterFrames.insert( AnimMapVal( AnimMapId( crtype, anim1, anim2, dir, true ), frames ) );
+    critterFrames.insert( PAIR( AnimMapId( crtype, anim1, anim2, dir, true ), frames ) );
     if( !frames )
         return NULL;
 

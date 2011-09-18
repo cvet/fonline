@@ -795,7 +795,7 @@ Item* ItemManager::CreateItem( ushort pid, uint count, uint item_id /* = 0 */ )
 
     // Main collection
     itemLocker.Lock();
-    gameItems.insert( ItemPtrMapVal( item->Id, item ) );
+    gameItems.insert( PAIR( item->Id, item ) );
     itemLocker.Unlock();
 
     // Radio collection
@@ -905,7 +905,7 @@ void ItemManager::ItemGarbager()
             if( item->IsStackable() && item->GetCount() > count )
             {
                 itemLocker.Lock();
-                gameItems.insert( ItemPtrMapVal( item->Id, item ) );
+                gameItems.insert( PAIR( item->Id, item ) );
                 itemLocker.Unlock();
 
                 item->Count_Sub( count );

@@ -121,8 +121,8 @@ bool DialogManager::AddDialogs( DialogPack* pack )
     if( DlgPacksNames.find( pack->PackName ) != DlgPacksNames.end() )
         return false;
 
-    DialogsPacks.insert( DialogPackMapVal( pack->PackId, pack ) );
-    DlgPacksNames.insert( StrUIntMapVal( string( pack->PackName ), pack->PackId ) );
+    DialogsPacks.insert( PAIR( pack->PackId, pack ) );
+    DlgPacksNames.insert( PAIR( string( pack->PackName ), pack->PackId ) );
     return true;
 }
 

@@ -324,7 +324,7 @@ bool MapManager::LoadLocationProto( IniParser& city_txt, ProtoLocation& ploc, us
             return false;
         }
         for( int k = 0; k < val; k++ )
-            ploc.Entrance.push_back( UIntPairVecVal( k, 0 ) );
+            ploc.Entrance.push_back( PAIR( k, 0 ) );
     }
 
     for( uint k = 0, l = (uint) ploc.Entrance.size(); k < l; k++ )
@@ -645,7 +645,7 @@ Location* MapManager::CreateLocation( ushort pid_loc, ushort wx, ushort wy, uint
     SYNC_LOCK( loc );
 
     mapLocker.Lock();
-    allLocations.insert( LocMapVal( loc->GetId(), loc ) );
+    allLocations.insert( PAIR( loc->GetId(), loc ) );
     mapLocker.Unlock();
 
     // Generate location maps
@@ -718,7 +718,7 @@ Map* MapManager::CreateMap( ushort pid_map, Location* loc_map, uint map_id )
     Job::PushBack( JOB_MAP, map );
 
     mapLocker.Lock();
-    allMaps.insert( MapMapVal( map->GetId(), map ) );
+    allMaps.insert( PAIR( map->GetId(), map ) );
     mapLocker.Unlock();
 
     return map;
@@ -1825,7 +1825,7 @@ int MapManager::FindPath( PathFindData& pfd )
             MoveHexByDir(hx_,hy_,first_dir);
             if(map->IsHexPassed(hx_,hy_))
             {
-                    first_steps.push_back(UShortPairVecVal(hx_,hy_));
+                    first_steps.push_back(PAIR(hx_,hy_));
             }
        }
        for(int i=0;i<4;i++)
@@ -1846,7 +1846,7 @@ int MapManager::FindPath( PathFindData& pfd )
     gag_coords.reserve( 100 );
 
     // First point
-    coords.push_back( UShortPairVecVal( from_hx, from_hy ) );
+    coords.push_back( PAIR( from_hx, from_hy ) );
 
     // Begin search
     int    p = 0, p_togo = 1;
@@ -1883,17 +1883,17 @@ int MapManager::FindPath( PathFindData& pfd )
                     ushort flags = map->GetHexFlags( nx, ny );
                     if( !FLAG( flags, FH_NOWAY ) )
                     {
-                        coords.push_back( UShortPairVecVal( nx, ny ) );
+                        coords.push_back( PAIR( nx, ny ) );
                         g = numindex;
                     }
                     else if( check_gag_items && FLAG( flags, FH_GAG_ITEM << 8 ) )
                     {
-                        gag_coords.push_back( UShortPairVecVal( nx, ny ) );
+                        gag_coords.push_back( PAIR( nx, ny ) );
                         g = numindex | 0x4000;
                     }
                     else if( check_cr && FLAG( flags, FH_CRITTER << 8 ) )
                     {
-                        cr_coords.push_back( UShortPairVecVal( nx, ny ) );
+                        cr_coords.push_back( PAIR( nx, ny ) );
                         g = numindex | 0x8000;
                     }
                     else
@@ -1936,7 +1936,7 @@ int MapManager::FindPath( PathFindData& pfd )
 
                     if( map->IsMovePassed( nx, ny, j, multihex ) )
                     {
-                        coords.push_back( UShortPairVecVal( nx, ny ) );
+                        coords.push_back( PAIR( nx, ny ) );
                         g = numindex;
                     }
                     else

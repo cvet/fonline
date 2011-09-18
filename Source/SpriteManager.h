@@ -258,9 +258,8 @@ struct AnyFrames
         SAFEDELA( NextY );
     }
 };
-typedef map< uint, AnyFrames*, less< uint > >             AnimMap;
-typedef map< uint, AnyFrames*, less< uint > >::value_type AnimMapVal;
-typedef vector< AnyFrames* >                              AnimVec;
+typedef map< uint, AnyFrames*, less< uint > > AnimMap;
+typedef vector< AnyFrames* >                  AnimVec;
 
 struct PrepPoint
 {

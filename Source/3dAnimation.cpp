@@ -1975,7 +1975,7 @@ bool Animation3dEntity::Load( const char* name )
                 else
                 {
                     ( *istr ) >> valuef;
-                    animSpeed.insert( IntFloatMapVal( ( ind1 << 8 ) | ind2, valuef ) );
+                    animSpeed.insert( PAIR( ( ind1 << 8 ) | ind2, valuef ) );
                 }
             }
             else if( !_stricmp( token, "AnimEqual" ) )
@@ -1989,9 +1989,9 @@ bool Animation3dEntity::Load( const char* name )
                 ind2 = ConstantsManager::GetDefineValue( buf );
 
                 if( valuei == 1 )
-                    anim1Equals.insert( IntMapVal( ind1, ind2 ) );
+                    anim1Equals.insert( PAIR( ind1, ind2 ) );
                 else if( valuei == 2 )
-                    anim2Equals.insert( IntMapVal( ind1, ind2 ) );
+                    anim2Equals.insert( PAIR( ind1, ind2 ) );
             }
             else if( !_stricmp( token, "RenderFrame" ) || !_stricmp( token, "RenderFrames" ) )
             {
@@ -2090,7 +2090,7 @@ bool Animation3dEntity::Load( const char* name )
                 if( !Str::IsNumber( anim_name ) )
                     anim_set = GetAnimationIndex( anim_name[ 0 ] != '-' ? anim_name : &anim_name[ 1 ] );
                 if( anim_set >= 0 && anim_set < (int) numAnimationSets )
-                    animIndexes.insert( IntMapVal( anim_index, anim_set ) );
+                    animIndexes.insert( PAIR( anim_index, anim_set ) );
             }
 
             delete[] anim_fname;

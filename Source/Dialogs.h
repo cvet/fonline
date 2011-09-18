@@ -137,8 +137,7 @@ public:
 
     DialogPack( uint id, string name ): PackId( id ), MaxTalk( 1 ), PackName( name ) {}
 };
-typedef map< uint, DialogPack* >             DialogPackMap;
-typedef map< uint, DialogPack* >::value_type DialogPackMapVal;
+typedef map< uint, DialogPack* > DialogPackMap;
 
 struct Talking
 {

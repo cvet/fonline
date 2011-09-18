@@ -238,9 +238,8 @@ public:
         if( RefCounter <= 0 ) delete this;
     }
 };
-typedef map< uint, Map* >             MapMap;
-typedef map< uint, Map* >::value_type MapMapVal;
-typedef vector< Map* >                MapVec;
+typedef map< uint, Map* > MapMap;
+typedef vector< Map* >    MapVec;
 
 class ProtoLocation
 {
@@ -324,8 +323,7 @@ public:
     }
     Location(): RefCounter( 1 ), Proto( NULL ), IsNotValid( false ) { memzero( (void*) &Data, sizeof( Data ) ); }
 };
-typedef map< uint, Location* >             LocMap;
-typedef map< uint, Location* >::value_type LocMapVal;
-typedef vector< Location* >                LocVec;
+typedef map< uint, Location* > LocMap;
+typedef vector< Location* >    LocVec;
 
 #endif // __MAP__

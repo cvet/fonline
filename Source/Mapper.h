@@ -420,8 +420,7 @@ public:
         uchar Index;
         char* SlotName;
     };
-    typedef map< int, SlotExt >    SlotExtMap;
-    typedef SlotExtMap::value_type SlotExtMapVal;
+    typedef map< int, SlotExt > SlotExtMap;
     SlotExtMap SlotsExt;
 
     // Scripts

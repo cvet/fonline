@@ -134,7 +134,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
         if( w <= MODE_WIDTH && h <= MODE_HEIGHT )
         {
             uint l = end ? (uint) end - (uint) begin : (uint) ( data + len ) - (uint) begin;
-            sections.insert( IniMMap::value_type( w, pair< char*, uint >( begin, l ) ) );
+            sections.insert( PAIR( w, PAIR( begin, l ) ) );
         }
 
         if( !end )
@@ -5885,7 +5885,7 @@ void FOClient::GmapProcess()
                 if( Timer::GameTick() >= point_tick )
                 {
                     if( GmapTrace.empty() || GmapTrace[ 0 ].first != old_x || GmapTrace[ 0 ].second != old_y )
-                        GmapTrace.push_back( IntPairVecVal( old_x, old_y ) );
+                        GmapTrace.push_back( PAIR( old_x, old_y ) );
                     point_tick = Timer::GameTick() + GM_TRACE_TIME;
                 }
             }

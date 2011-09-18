@@ -41,7 +41,7 @@ void* dbg_malloc2( size_t size )
         const char* func = Script::GetActiveFuncName();
         sprintf( ASDbgMemoryBuf, "AS : %s : %s", module ? module : "<nullptr>", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( ASDbgMemoryBuf, (int) size );
-        ASDbgMemoryPtr.insert( map< void*, string >::value_type( ptr, string( ASDbgMemoryBuf ) ) );
+        ASDbgMemoryPtr.insert( PAIR( ptr, string( ASDbgMemoryBuf ) ) );
         ASDbgMemoryInUse = false;
     }
     MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );

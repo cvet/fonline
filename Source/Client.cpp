@@ -5392,7 +5392,7 @@ void FOClient::Net_OnCritterMove()
     {
         cr->MoveSteps.resize( cr->CurMoveStep > 0 ? cr->CurMoveStep : 0 );
         if( cr->CurMoveStep >= 0 )
-            cr->MoveSteps.push_back( UShortPairVecVal( new_hx, new_hy ) );
+            cr->MoveSteps.push_back( PAIR( new_hx, new_hy ) );
         for( int i = 0, j = cr->CurMoveStep + 1; i < MOVE_PARAM_STEP_COUNT; i++, j++ )
         {
             int  step = ( move_params >> ( i * MOVE_PARAM_STEP_BITS ) ) & ( MOVE_PARAM_STEP_DIR | MOVE_PARAM_STEP_ALLOW | MOVE_PARAM_STEP_DISALLOW );
@@ -5410,7 +5410,7 @@ void FOClient::Net_OnCritterMove()
             MoveHexByDir( new_hx, new_hy, dir, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
             if( j < 0 )
                 continue;
-            cr->MoveSteps.push_back( UShortPairVecVal( new_hx, new_hy ) );
+            cr->MoveSteps.push_back( PAIR( new_hx, new_hy ) );
         }
         cr->CurMoveStep++;
 
@@ -9679,7 +9679,7 @@ void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
             Str::Copy( in_, in_len, in );
             Str::Copy( out_, out_len, out );
 
-            text.push_back( PCharPairVecVal( in_, out_ ) );
+            text.push_back( PAIR( in_, out_ ) );
             in[ 0 ] = 0;
             out[ 0 ] = 0;
             continue;

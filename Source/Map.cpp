@@ -114,8 +114,7 @@ struct ItemNpcPtr
     Npc*  npc;
     ItemNpcPtr( Item* i, Npc* n ): item( i ), npc( n ) {}
 };
-typedef map< uint, ItemNpcPtr >             UIDtoPtrMap;
-typedef map< uint, ItemNpcPtr >::value_type UIDtoPtrMapVal;
+typedef map< uint, ItemNpcPtr > UIDtoPtrMap;
 
 bool Map::Generate()
 {
@@ -220,7 +219,7 @@ bool Map::Generate()
 
         // Store UID association
         if( mobj.UID )
-            UIDtoPtr.insert( UIDtoPtrMapVal( mobj.UID, ItemNpcPtr( NULL, npc ) ) );
+            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( NULL, npc ) ) );
     }
 
     // Generate items
@@ -357,7 +356,7 @@ bool Map::Generate()
 
         // Store UID association
         if( mobj.UID )
-            UIDtoPtr.insert( UIDtoPtrMapVal( mobj.UID, ItemNpcPtr( item, NULL ) ) );
+            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( item, NULL ) ) );
 
         // Transfer to container
         if( mobj.ContainerUID )

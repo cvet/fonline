@@ -321,9 +321,7 @@ public:
     ~ProtoMap() { isInit = false; }
     #endif
 };
-typedef vector< ProtoMap >              ProtoMapVec;
-typedef vector< ProtoMap >::value_type  ProtoMapVecVal;
-typedef vector< ProtoMap* >             ProtoMapPtrVec;
-typedef vector< ProtoMap* >::value_type ProtoMapPtrVecVal;
+typedef vector< ProtoMap >  ProtoMapVec;
+typedef vector< ProtoMap* > ProtoMapPtrVec;
 
 #endif // __PROTO_MAP__

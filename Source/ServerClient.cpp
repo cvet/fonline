@@ -195,7 +195,7 @@ bool FOServer::LoadHoloInfoFile( FILE* f )
             fread( text, text_len, 1, f );
         text[ text_len ] = 0;
 
-        HolodiskInfo.insert( HoloInfoMapVal( id, new HoloInfo( can_rw, title, text ) ) );
+        HolodiskInfo.insert( PAIR( id, new HoloInfo( can_rw, title, text ) ) );
         if( id > LastHoloId )
             LastHoloId = id;
     }
@@ -1590,7 +1590,7 @@ void FOServer::Process_CreateClient( Client* cl )
         }
         else
         {
-            RegIp.insert( UIntMapVal( ip, Timer::FastTick() ) );
+            RegIp.insert( PAIR( ip, Timer::FastTick() ) );
         }
     }
     #endif
@@ -3738,7 +3738,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
     else
     {
         holo_id = ++LastHoloId;
-        HolodiskInfo.insert( HoloInfoMapVal( holo_id, new HoloInfo( true, title, text ) ) );
+        HolodiskInfo.insert( PAIR( holo_id, new HoloInfo( true, title, text ) ) );
     }
 
     HolodiskLocker.Unlock();

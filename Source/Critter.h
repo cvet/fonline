@@ -90,11 +90,8 @@ typedef Client*               ClientPtr;
 typedef Npc*                  NpcPtr;
 
 typedef map< uint, Critter* > CrMap;
-typedef CrMap::value_type     CrMapVal;
 typedef map< uint, Client* >  ClMap;
-typedef ClMap::value_type     ClMapVal;
 typedef map< uint, Npc* >     PcMap;
-typedef PcMap::value_type     PcMapVal;
 
 typedef vector< Critter* >    CrVec;
 typedef vector< Client* >     ClVec;

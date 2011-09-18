@@ -3259,7 +3259,7 @@ void FOMapper::IntLMouseUp()
                     {
                         for( int j = fy; j <= ty; j++ )
                         {
-                            h.push_back( UShortPairVecVal( i, j ) );
+                            h.push_back( PAIR( i, j ) );
                         }
                     }
                 }
@@ -5966,7 +5966,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& slot_n
     SlotExt se;
     se.Index = index;
     se.SlotName = Str::Duplicate( slot_name.c_str() );
-    Self->SlotsExt.insert( SlotExtMapVal( index, se ) );
+    Self->SlotsExt.insert( PAIR( index, se ) );
 }
 
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( CScriptString& file_name, int path_type )

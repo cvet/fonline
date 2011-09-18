@@ -242,7 +242,7 @@ public:
             ( *func )( LoadLibraryCompiler );
 
         // Add to collection for current engine
-        edata->LoadedDlls.insert( StrPtrMapVal( dll_name, dll ) );
+        edata->LoadedDlls.insert( PAIR( dll_name, dll ) );
 
         return dll;
     }

@@ -41,9 +41,9 @@ void FOMsg::AddStr( uint num, const char* str )
     if( num == FOMSG_ERRNUM )
         return;
     if( !str || !Str::Length( str ) )
-        strData.insert( UIntStrMulMapVal( num, " " ) );
+        strData.insert( PAIR( num, " " ) );
     else
-        strData.insert( UIntStrMulMapVal( num, str ) );
+        strData.insert( PAIR( num, str ) );
 }
 
 void FOMsg::AddStr( uint num, const string& str )
@@ -51,9 +51,9 @@ void FOMsg::AddStr( uint num, const string& str )
     if( num == FOMSG_ERRNUM )
         return;
     if( !str.length() )
-        strData.insert( UIntStrMulMapVal( num, " " ) );
+        strData.insert( PAIR( num, " " ) );
     else
-        strData.insert( UIntStrMulMapVal( num, str ) );
+        strData.insert( PAIR( num, str ) );
 }
 
 void FOMsg::AddBinary( uint num, const uchar* binary, uint len )
@@ -424,7 +424,7 @@ int FOMsg::SaveMsgFile( const char* fname, int path_type )
 void FOMsg::Clear()
 {
     strData.clear();
-    strData.insert( UIntStrMapVal( FOMSG_ERRNUM, string( "error" ) ) );
+    strData.insert( PAIR( FOMSG_ERRNUM, string( "error" ) ) );
 
     #ifdef FONLINE_SERVER
     toSend.clear();

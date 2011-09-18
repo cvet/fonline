@@ -10,8 +10,7 @@
 class FalloutDatFile: public DataFile
 {
 private:
-    typedef map< string, uchar* >             IndexMap;
-    typedef map< string, uchar* >::value_type IndexMapVal;
+    typedef map< string, uchar* > IndexMap;
 
     IndexMap filesTree;
     string   fileName;
@@ -40,8 +39,7 @@ private:
         unz_file_pos Pos;
         uLong        UncompressedSize;
     };
-    typedef map< string, ZipFileInfo >             IndexMap;
-    typedef map< string, ZipFileInfo >::value_type IndexMapVal;
+    typedef map< string, ZipFileInfo > IndexMap;
 
     IndexMap filesTree;
     string   fileName;
@@ -206,10 +204,10 @@ bool FalloutDatFile::ReadTree()
             if( fnsz > 1 && fnsz < MAX_FOPATH && type != 0x400 ) // Not folder
             {
                 memcpy( name, ptr + 4, fnsz );
-                _strlwr( name );
+                Str::Lower( name );
                 if( type == 2 )
                     *( ptr + 4 + fnsz + 7 ) = 1;               // Compressed
-                filesTree.insert( IndexMapVal( name, ptr + 4 + fnsz + 7 ) );
+                filesTree.insert( PAIR( string( name ), ptr + 4 + fnsz + 7 ) );
             }
 
             if( ptr + fnsz + 24 >= end_ptr )
@@ -269,8 +267,8 @@ bool FalloutDatFile::ReadTree()
         {
             memcpy( name, ptr + 4, fnsz );
             name[ fnsz ] = 0;
-            _strlwr( name );
-            filesTree.insert( IndexMapVal( name, ptr + 4 + fnsz ) );
+            Str::Lower( name );
+            filesTree.insert( PAIR( string( name ), ptr + 4 + fnsz ) );
         }
 
         if( ptr + fnsz + 17 >= end_ptr )
@@ -439,13 +437,13 @@ bool ZipFile::ReadTree()
 
         if( !( info.external_fa & 0x10 ) )   // Not folder
         {
-            _strlwr( name );
+            Str::Lower( name );
             for( char* str = name; *str; str++ )
                 if( *str == '/' )
                     *str = '\\';
             zip_info.Pos = pos;
             zip_info.UncompressedSize = info.uncompressed_size;
-            filesTree.insert( IndexMapVal( name, zip_info ) );
+            filesTree.insert( PAIR( string( name ), zip_info ) );
         }
 
         if( i + 1 < gi.number_entry && unzGoToNextFile( zipHandle ) != UNZ_OK )

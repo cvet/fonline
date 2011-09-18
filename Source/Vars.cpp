@@ -614,7 +614,7 @@ GameVar* VarManager::CreateVar( uint master_id, TemplateVar* tvar )
     if( !var )
         return NULL;
 
-    tvar->Vars.insert( VarsMap32Val( master_id, var ) );
+    tvar->Vars.insert( PAIR( master_id, var ) );
 
     if( tvar->IsQuest() )
     {
@@ -647,7 +647,7 @@ GameVar* VarManager::CreateVarUnicum( uint64 id, uint master_id, uint slave_id, 
     if( !var )
         return NULL;
 
-    tvar->VarsUnicum.insert( VarsMap64Val( id, var ) );
+    tvar->VarsUnicum.insert( PAIR( id, var ) );
 
     varsCount++;
     return var;
@@ -714,7 +714,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
 
         tvar->VarsUnicum.erase( var->GetUid() );
         std::swap( var->MasterId, var->SlaveId );
-        tvar->VarsUnicum.insert( VarsMap64Val( var->GetUid(), var ) );
+        tvar->VarsUnicum.insert( PAIR( var->GetUid(), var ) );
     }
 
     // Erase vars
@@ -746,7 +746,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
         if( tvar->IsNotUnicum() )
         {
             var->MasterId = id2;
-            tvar->Vars.insert( VarsMap32Val( id2, var ) );
+            tvar->Vars.insert( PAIR( id2, var ) );
         }
         else
         {
@@ -754,7 +754,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
                 var->MasterId = id2;
             else
                 var->SlaveId = id2;
-            tvar->VarsUnicum.insert( VarsMap64Val( var->GetUid(), var ) );
+            tvar->VarsUnicum.insert( PAIR( var->GetUid(), var ) );
         }
     }
     for( auto it = swap_vars2.begin(), end = swap_vars2.end(); it != end; ++it )
@@ -765,7 +765,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
         if( tvar->IsNotUnicum() )
         {
             var->MasterId = id1;
-            tvar->Vars.insert( VarsMap32Val( id1, var ) );
+            tvar->Vars.insert( PAIR( id1, var ) );
         }
         else
         {
@@ -773,7 +773,7 @@ void VarManager::SwapVars( uint id1, uint id2 )
                 var->MasterId = id1;
             else
                 var->SlaveId = id1;
-            tvar->VarsUnicum.insert( VarsMap64Val( var->GetUid(), var ) );
+            tvar->VarsUnicum.insert( PAIR( var->GetUid(), var ) );
         }
     }
     varsLocker.Unlock();
