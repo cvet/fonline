@@ -5,8 +5,6 @@
 
 #define DEFAULT_SPIN_COUNT              ( 4000 )
 #define SCOPE_LOCK( mutex )                               volatile MutexLocker scope_lock__( mutex )
-#define SCOPE_SPINLOCK( mutex )                           volatile MutexSpinlockLocker scope_lock__( mutex )
-
 
 #if defined ( FO_WINDOWS )
 
@@ -121,19 +119,6 @@ public:
 
 #endif
 
-class MutexLocker
-{
-private:
-    Mutex* pMutex;
-    MutexLocker() {}
-    MutexLocker( const MutexLocker& ) {}
-    MutexLocker& operator=( const MutexLocker& ) { return *this; }
-
-public:
-    MutexLocker( Mutex& mutex ): pMutex( &mutex ) { pMutex->Lock(); }
-    ~MutexLocker() { pMutex->Unlock(); }
-};
-
 class MutexCode
 {
 private:
@@ -210,17 +195,25 @@ public:
     void Unlock()  { InterlockedExchange( &spinCounter, 0 ); }
 };
 
-class MutexSpinlockLocker
+class MutexLocker
 {
 private:
+    Mutex*         pMutex;
     MutexSpinlock* spinLock;
-    MutexSpinlockLocker() {}
-    MutexSpinlockLocker( const MutexSpinlockLocker& ) {}
-    MutexSpinlockLocker& operator=( const MutexSpinlockLocker& ) { return *this; }
+    MutexLocker() {}
+    MutexLocker( const MutexLocker& ) {}
+    MutexLocker& operator=( const MutexLocker& ) { return *this; }
 
 public:
-    MutexSpinlockLocker( MutexSpinlock& mutexSpinlock ): spinLock( &mutexSpinlock ) { spinLock->Lock(); }
-    ~MutexSpinlockLocker() { spinLock->Unlock(); }
+    MutexLocker( Mutex& mutex ): pMutex( &mutex ), spinLock( NULL ) { pMutex->Lock(); }
+    MutexLocker( MutexSpinlock& mutex ): spinLock( &mutex ), pMutex( NULL ) { spinLock->Lock(); }
+    ~MutexLocker()
+    {
+        if( pMutex )
+            pMutex->Unlock();
+        if( spinLock )
+            spinLock->Unlock();
+    }
 };
 
 #endif // __MUTEX__

@@ -1598,7 +1598,7 @@ void ItemManager::AddItemStatistics( ushort pid, uint val )
     if( !IsInitProto( pid ) )
         return;
 
-    SCOPE_SPINLOCK( itemCountLocker );
+    SCOPE_LOCK( itemCountLocker );
 
     itemCount[ pid ] += (int64) val;
 }
@@ -1608,14 +1608,14 @@ void ItemManager::SubItemStatistics( ushort pid, uint val )
     if( !IsInitProto( pid ) )
         return;
 
-    SCOPE_SPINLOCK( itemCountLocker );
+    SCOPE_LOCK( itemCountLocker );
 
     itemCount[ pid ] -= (int64) val;
 }
 
 int64 ItemManager::GetItemStatistics( ushort pid )
 {
-    SCOPE_SPINLOCK( itemCountLocker );
+    SCOPE_LOCK( itemCountLocker );
 
     int64 count = itemCount[ pid ];
     return count;
@@ -1623,7 +1623,7 @@ int64 ItemManager::GetItemStatistics( ushort pid )
 
 string ItemManager::GetItemsStatistics()
 {
-    SCOPE_SPINLOCK( itemCountLocker );
+    SCOPE_LOCK( itemCountLocker );
 
     string result = "Pid    Name                                     Count\n";
     if( IsInit() )
