@@ -533,10 +533,10 @@ public:
         static void  Item_set_TrapValue( Item* item, short value );
         static short Item_get_TrapValue( Item* item );
 
-        static uint           CraftItem_GetShowParams( CraftItem * craft, CScriptArray * nums, CScriptArray * vals, CScriptArray * or );
-        static uint           CraftItem_GetNeedParams( CraftItem * craft, CScriptArray * nums, CScriptArray * vals, CScriptArray * or );
-        static uint           CraftItem_GetNeedTools( CraftItem * craft, CScriptArray * pids, CScriptArray * vals, CScriptArray * or );
-        static uint           CraftItem_GetNeedItems( CraftItem * craft, CScriptArray * pids, CScriptArray * vals, CScriptArray * or );
+        static uint CraftItem_GetShowParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* ors );
+        static uint CraftItem_GetNeedParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* ors );
+        static uint CraftItem_GetNeedTools( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* ors );
+        static uint CraftItem_GetNeedItems( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* ors );
         static uint CraftItem_GetOutItems( CraftItem* craft, CScriptArray* pids, CScriptArray* vals );
 
         static bool          Crit_IsPlayer( Critter* cr );

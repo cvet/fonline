@@ -1185,47 +1185,47 @@ short FOServer::SScriptFunc::Item_get_TrapValue( Item* item )
     return item->Data.TrapValue;
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetShowParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* or )
+uint FOServer::SScriptFunc::CraftItem_GetShowParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* ors )
 {
     if( nums )
         Script::AppendVectorToArray( craft->ShowPNum, nums );
     if( vals )
         Script::AppendVectorToArray( craft->ShowPVal, vals );
-    if( or )
-        Script::AppendVectorToArray( craft->ShowPOr, or );
+    if( ors )
+        Script::AppendVectorToArray( craft->ShowPOr, ors );
     return (uint) craft->ShowPNum.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetNeedParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* or )
+uint FOServer::SScriptFunc::CraftItem_GetNeedParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* ors )
 {
     if( nums )
         Script::AppendVectorToArray( craft->NeedPNum, nums );
     if( vals )
         Script::AppendVectorToArray( craft->NeedPVal, vals );
-    if( or )
-        Script::AppendVectorToArray( craft->NeedPOr, or );
+    if( ors )
+        Script::AppendVectorToArray( craft->NeedPOr, ors );
     return (uint) craft->NeedPNum.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetNeedTools( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* or )
+uint FOServer::SScriptFunc::CraftItem_GetNeedTools( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* ors )
 {
     if( pids )
         Script::AppendVectorToArray( craft->NeedTools, pids );
     if( vals )
         Script::AppendVectorToArray( craft->NeedToolsVal, vals );
-    if( or )
-        Script::AppendVectorToArray( craft->NeedToolsOr, or );
+    if( ors )
+        Script::AppendVectorToArray( craft->NeedToolsOr, ors );
     return (uint) craft->NeedTools.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetNeedItems( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* or )
+uint FOServer::SScriptFunc::CraftItem_GetNeedItems( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* ors )
 {
     if( pids )
         Script::AppendVectorToArray( craft->NeedItems, pids );
     if( vals )
         Script::AppendVectorToArray( craft->NeedItemsVal, vals );
-    if( or )
-        Script::AppendVectorToArray( craft->NeedItemsOr, or );
+    if( ors )
+        Script::AppendVectorToArray( craft->NeedItemsOr, ors );
     return (uint) craft->NeedItems.size();
 }
 
