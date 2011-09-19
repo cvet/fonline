@@ -599,6 +599,7 @@
 #define LOOK_CHECK_SNEAK_WEIGHT      ( 0x04 )
 #define LOOK_CHECK_TRACE             ( 0x08 )
 #define LOOK_CHECK_SCRIPT            ( 0x10 )
+#define LOOK_CHECK_ITEM_SCRIPT       ( 0x20 )
 
 // In SendMessage
 #define MESSAGE_TO_VISIBLE_ME        ( 0 )

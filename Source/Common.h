@@ -323,6 +323,7 @@ struct ServerScriptFunctions
     int PlayerRegistration;
     int PlayerLogin;
     int PlayerGetAccess;
+	int CheckTrapLook;
 } extern ServerFunctions;
 
 // Net events

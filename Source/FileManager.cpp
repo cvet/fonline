@@ -86,12 +86,21 @@ void FileManager::InitDataFiles( const char* path )
     char list_path[ MAX_FOPATH ];
     Str::Format( list_path, "%sDataFiles.cfg", path );
 
-    FileManager list;
-    if( list.LoadFile( list_path, -1 ) )
+	FileManager* list = new FileManager;
+	vector<FileManager*> vec;
+	vec.push_back( list );
+    if( list->LoadFile( list_path, -1 ) )
     {
         char line[ MAX_FOTEXT ];
-        while( list.GetLine( line, 1024 ) )
+		while( !vec.empty() )
         {
+			if( !vec.back()->GetLine( line, 1024 ) )
+			{
+				delete vec.back();
+				vec.pop_back();
+				continue;
+			}
+
             // Cut off comments
             char* comment1 = strstr( line, "#" );
             char* comment2 = strstr( line, ";" );
@@ -102,6 +111,35 @@ void FileManager::InitDataFiles( const char* path )
 
             // Cut off specific characters
             Str::EraseFrontBackSpecificChars( line );
+
+			// Test for "include"
+			if( Str::CompareCount( line, "include ", 8 ) )
+			{
+				Str::EraseInterval( line, 8 );
+				Str::EraseFrontBackSpecificChars( line );
+
+				// Make file path
+				char fpath[ MAX_FOPATH ] = { 0 };
+				if( line[ 1 ] != ':' )
+					Str::Copy( fpath, path );                       // Relative path
+				Str::Append( fpath, line );
+				FormatPath( fpath );
+
+				FileManager* mgr = new FileManager;
+				if( !mgr->LoadFile( fpath, -1 ) )
+				{
+					char errmsg[ MAX_FOTEXT ];
+					Str::Format( errmsg, "Data file '%s' not found. Run Updater.exe.", fpath );
+					HWND wnd = GetActiveWindow();
+					if( wnd )
+						MessageBox( wnd, errmsg, "FOnline", MB_OK );
+					WriteLogF( _FUNC_, " - %s\n", errmsg );
+					delete mgr;
+					continue;
+				}
+				vec.push_back( mgr );
+				continue;
+			}
 
             // Make file path
             char fpath[ MAX_FOPATH ] = { 0 };
@@ -122,6 +160,10 @@ void FileManager::InitDataFiles( const char* path )
             }
         }
     }
+	else
+	{
+		delete list;
+	}
 }
 
 bool FileManager::LoadDataFile( const char* path )

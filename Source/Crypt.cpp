@@ -110,7 +110,7 @@ void CryptManager::ClientPassHash( const char* name, const char* pass, char* pas
             bld[ pass_len ] = tolower( name[ pass_len % name_len ] );
     }
     sha256( (const uchar*) bld, MAX_NAME, (uchar*) pass_hash );
-    delete bld;
+    delete[] bld;
 }
 
 uchar* CryptManager::Compress( const uchar* data, uint& data_len )
