@@ -728,25 +728,25 @@ void Critter::ProcessVisibleItems()
         }
         else
         {
-			bool allowed=false;
-			if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
-			{
-				if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
-				{
-					Script::SetArgObject( map );
-					Script::SetArgObject( this );
-					Script::SetArgObject( item );
-					if( Script::RunPrepared() )
-						allowed = Script::GetReturnedBool();
-				}
-			}
-			else
-			{
-				int dist = DistGame( Data.HexX, Data.HexY, item->ACC_HEX.HexX, item->ACC_HEX.HexY );
-				if( item->IsTrap() )
-					dist += item->TrapGetValue();
-				allowed = look >= dist;
-			}
+            bool allowed = false;
+            if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+            {
+                if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
+                {
+                    Script::SetArgObject( map );
+                    Script::SetArgObject( this );
+                    Script::SetArgObject( item );
+                    if( Script::RunPrepared() )
+                        allowed = Script::GetReturnedBool();
+                }
+            }
+            else
+            {
+                int dist = DistGame( Data.HexX, Data.HexY, item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                if( item->IsTrap() )
+                    dist += item->TrapGetValue();
+                allowed = look >= dist;
+            }
 
             if( allowed )
             {
@@ -871,25 +871,25 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             Send_AddItemOnMap( item );
         else
         {
-			bool allowed=false;
-			if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
-			{
-				if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
-				{
-					Script::SetArgObject( map );
-					Script::SetArgObject( this );
-					Script::SetArgObject( item );
-					if( Script::RunPrepared() )
-						allowed = Script::GetReturnedBool();
-				}
-			}
-			else
-			{
-				int dist = DistGame( hx, hy, item->ACC_HEX.HexX, item->ACC_HEX.HexY );
-				if( item->IsTrap() )
-					dist += item->TrapGetValue();
-				allowed=look >= dist;
-			}
+            bool allowed = false;
+            if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+            {
+                if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
+                {
+                    Script::SetArgObject( map );
+                    Script::SetArgObject( this );
+                    Script::SetArgObject( item );
+                    if( Script::RunPrepared() )
+                        allowed = Script::GetReturnedBool();
+                }
+            }
+            else
+            {
+                int dist = DistGame( hx, hy, item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                if( item->IsTrap() )
+                    dist += item->TrapGetValue();
+                allowed = look >= dist;
+            }
 
 
             if( allowed )
