@@ -76,7 +76,7 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     ShowWindow( Wnd, SW_SHOWNORMAL );
     UpdateWindow( Wnd );
 
-    WriteLog( "Starting Mapper...\n" );
+    WriteLog( "Starting Mapper %s...\n", MAPPER_VERSION_STR );
 
     Mapper = new FOMapper();
     if( !Mapper->Init( Wnd ) )

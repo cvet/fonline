@@ -691,7 +691,7 @@ const char* GetWindowName()
 
         // 'WindowName' section
         char str[ MAX_FOPATH ];
-        #if defined ( FONLINE_SERVER )
+        #if !defined ( FONLINE_CLIENT )
         if( !cfg.GetStr( "WindowName", "", str ) || !str[ 0 ] )
             return window_name;
         #else
