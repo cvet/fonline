@@ -674,7 +674,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                 bool allowed = false;
                 if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, cr->GetInfo() ) )
+                    if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
                         Script::SetArgObject( this );
                         Script::SetArgObject( cr );
@@ -827,7 +827,7 @@ void Map::ChangeViewItem( Item* item )
                 bool allowed = false;
                 if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, cr->GetInfo() ) )
+                    if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
                         Script::SetArgObject( this );
                         Script::SetArgObject( cr );
@@ -858,7 +858,7 @@ void Map::ChangeViewItem( Item* item )
                 bool allowed = false;
                 if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, cr->GetInfo() ) )
+                    if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
                         Script::SetArgObject( this );
                         Script::SetArgObject( cr );

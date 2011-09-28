@@ -130,6 +130,7 @@ public:
     static int       ParamsSendScript[ MAX_PARAMS ];
     static int       ParamsChangeScript[ MAX_PARAMS ];
     static int       ParamsGetScript[ MAX_PARAMS ];
+    static int       ParamsDialogGetScript[ MAX_PARAMS ];
     static bool      SlotDataSendEnabled[ 0x100 ];
     static int       SlotDataSendScript[ 0x100 ];
     static uint      ParamsChosenSendMask[ MAX_PARAMS ];

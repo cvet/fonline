@@ -224,6 +224,19 @@ uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critte
     return 0;
 }
 
+int FOServer::DialogGetParam( Critter* master, Critter* slave, uint index )
+{
+    if( Critter::ParamsDialogGetScript[ index ] && Script::PrepareContext( Critter::ParamsDialogGetScript[ index ], _FUNC_, "" ) )
+    {
+        Script::SetArgObject( master );
+        Script::SetArgObject( slave );
+        Script::SetArgUInt( index - ( Critter::ParametersOffset[ index ] ? Critter::ParametersMin[ index ] : 0 ) );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedUInt();
+    }
+    return master->GetParam( index );
+}
+
 /************************************************************************/
 /* Client script processing                                             */
 /************************************************************************/
@@ -5881,6 +5894,21 @@ bool FOServer::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, CScr
         if( bind_id <= 0 )
             SCRIPT_ERROR_R0( "Function not found." );
         Critter::ParamsChangeScript[ index ] = bind_id;
+    }
+    return true;
+}
+
+bool FOServer::SScriptFunc::Global_SetParameterDialogGetBehaviour( uint index, CScriptString& func_name )
+{
+    if( index >= MAX_PARAMS )
+        SCRIPT_ERROR_R0( "Invalid index arg." );
+    Critter::ParamsDialogGetScript[ index ] = 0;
+    if( func_name.length() > 0 )
+    {
+        int bind_id = Script::Bind( func_name.c_str(), "int %s(Critter&,Critter@,uint)", false );
+        if( bind_id <= 0 )
+            SCRIPT_ERROR_R0( "Function not found." );
+        Critter::ParamsDialogGetScript[ index ] = bind_id;
     }
     return true;
 }

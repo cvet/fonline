@@ -186,6 +186,7 @@ public:
     // Dialogs demand and result
     static bool DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave );
     static uint DialogScriptResult( DemandResult& result, Critter* master, Critter* slave );
+    static int  DialogGetParam( Critter* master, Critter* slave, uint index );
 
     // Client script
     static bool RequestReloadClientScripts;
@@ -893,6 +894,7 @@ public:
         static void           Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
         static bool           Global_SetParameterGetBehaviour( uint index, CScriptString& func_name );
         static bool           Global_SetParameterChangeBehaviour( uint index, CScriptString& func_name );
+        static bool           Global_SetParameterDialogGetBehaviour( uint index, CScriptString& func_name );
         static void           Global_AllowSlot( uchar index, CScriptString& ini_option );
         static void           Global_SetRegistrationParam( uint index, bool enabled );
         static uint           Global_GetAngelScriptProperty( int property );

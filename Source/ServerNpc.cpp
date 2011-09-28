@@ -1025,11 +1025,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         {
         case DR_PARAM:
         {
-            int val = master->GetParam( index );
-            if( index == ST_INTELLECT )
-                val += master->GetRawParam( PE_SMOOTH_TALKER ) * 2;
-            if( index >= REPUTATION_BEGIN && index <= REPUTATION_END && master->Data.Params[ index ] == (int) 0x80000000 )
-                master->Data.Params[ index ] = 0;
+            int val = DialogGetParam( master, slave, index );
             switch( demand.Op )
             {
             case '>':

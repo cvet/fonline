@@ -66,6 +66,7 @@ bool      Critter::ParamsSendEnabled[ MAX_PARAMS ] = { 0 };
 int       Critter::ParamsSendScript[ MAX_PARAMS ] = { 0 };
 int       Critter::ParamsChangeScript[ MAX_PARAMS ] = { 0 };
 int       Critter::ParamsGetScript[ MAX_PARAMS ] = { 0 };
+int       Critter::ParamsDialogGetScript[ MAX_PARAMS ] = { 0 };
 bool      Critter::SlotDataSendEnabled[ 0x100 ] = { 0 };
 int       Critter::SlotDataSendScript[ 0x100 ] = { 0 };
 uint      Critter::ParamsChosenSendMask[ MAX_PARAMS ] = { 0 };
@@ -731,7 +732,7 @@ void Critter::ProcessVisibleItems()
             bool allowed = false;
             if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
-                if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
+                if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
                 {
                     Script::SetArgObject( map );
                     Script::SetArgObject( this );
@@ -874,7 +875,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             bool allowed = false;
             if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
-                if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
+                if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
                 {
                     Script::SetArgObject( map );
                     Script::SetArgObject( this );

@@ -1509,6 +1509,8 @@ if( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( BIND_CLASS
     BIND_ERROR;
 if( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLASS Global_Resynchronize ), asCALL_CDECL ) < 0 )
     BIND_ERROR;
+if( engine->RegisterGlobalFunction( "bool SetParameterDialogGetBehaviour(uint index, string& funcName)", asFUNCTION( BIND_CLASS Global_SetParameterDialogGetBehaviour ), asCALL_CDECL ) < 0 )
+    BIND_ERROR;
 #endif
 
 #ifdef BIND_CLIENT

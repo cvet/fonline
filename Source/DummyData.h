@@ -1025,20 +1025,21 @@ struct BindClass
     static void DataRef_Index() {}
     static void DataVal_Index() {}
 
-    static void Global_GetTime()                     {}
-    static void Global_SetParameterGetBehaviour()    {}
-    static void Global_SetParameterChangeBehaviour() {}
-    static void Global_SetRegistrationParam()        {}
-    static void Global_IsCritterCanWalk()            {}
-    static void Global_IsCritterCanRun()             {}
-    static void Global_IsCritterCanRotate()          {}
-    static void Global_IsCritterCanAim()             {}
-    static void Global_IsCritterAnim1()              {}
-    static void Global_GetCritterAnimType()          {}
-    static void Global_GetCritterAlias()             {}
-    static void Global_GetCritterTypeName()          {}
-    static void Global_GetCritterSoundName()         {}
-    static void Global_GetGlobalMapRelief()          {}
+    static void Global_GetTime()                        {}
+    static void Global_SetParameterGetBehaviour()       {}
+    static void Global_SetParameterChangeBehaviour()    {}
+    static void Global_SetParameterDialogGetBehaviour() {}
+    static void Global_SetRegistrationParam()           {}
+    static void Global_IsCritterCanWalk()               {}
+    static void Global_IsCritterCanRun()                {}
+    static void Global_IsCritterCanRotate()             {}
+    static void Global_IsCritterCanAim()                {}
+    static void Global_IsCritterAnim1()                 {}
+    static void Global_GetCritterAnimType()             {}
+    static void Global_GetCritterAlias()                {}
+    static void Global_GetCritterTypeName()             {}
+    static void Global_GetCritterSoundName()            {}
+    static void Global_GetGlobalMapRelief()             {}
     #endif
 
     #ifdef BIND_MAPPER
