@@ -1974,7 +1974,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             int matches = 0;
             if( !uid[ 0 ] || uid[ 0 ] == cd.UID[ 0 ] )
                 matches++;
-            // if(!uid[1] || uid[1]==cd.UID[1]) matches++; // Todo: Disabled, because it's very weak point, but not deleted
+            if( !uid[ 1 ] || uid[ 1 ] == cd.UID[ 1 ] )
+                matches++;
             if( !uid[ 2 ] || uid[ 2 ] == cd.UID[ 2 ] )
                 matches++;
             if( !uid[ 3 ] || uid[ 3 ] == cd.UID[ 3 ] )
@@ -1982,7 +1983,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             if( !uid[ 4 ] || uid[ 4 ] == cd.UID[ 4 ] )
                 matches++;
 
-            if( matches >= 4 )
+            if( matches >= 5 )
             {
                 if( ( !cd.UIDEndTick || tick >= cd.UIDEndTick ) && !CrMngr.GetCritter( cd.ClientId, false ) )
                 {

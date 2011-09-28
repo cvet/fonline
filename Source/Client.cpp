@@ -119,6 +119,7 @@ bool FOClient::Init( HWND hwnd )
     #endif
 
     GET_UID0( UID0 );
+    UID_PREPARE_UID4_0;
 
     // Window
     Wnd = hwnd;
@@ -251,6 +252,8 @@ bool FOClient::Init( HWND hwnd )
 
     FileManager::SetCacheName( cache_name );
 
+    UID_PREPARE_UID4_1;
+
     // Check password in config and command line
     char      pass[ MAX_FOTEXT ];
     IniParser cfg;     // Also used below
@@ -288,6 +291,8 @@ bool FOClient::Init( HWND hwnd )
             refresh_cache = true;
         }
     }
+
+    UID_PREPARE_UID4_2;
 
     // Sprite manager
     SpriteMngrParams params;
@@ -337,6 +342,8 @@ bool FOClient::Init( HWND hwnd )
     SndMngr.SetSoundVolume( cfg.GetInt( CLIENT_CONFIG_APP, "SoundVolume", 100 ) );
     SndMngr.SetMusicVolume( cfg.GetInt( CLIENT_CONFIG_APP, "MusicVolume", 100 ) );
 
+    UID_PREPARE_UID4_3;
+
     // Language Packs
     char lang_name[ MAX_FOTEXT ];
     cfg.GetStr( CLIENT_CONFIG_APP, "Language", DEFAULT_LANGUAGE, lang_name );
@@ -370,6 +377,8 @@ bool FOClient::Init( HWND hwnd )
 
     // Resource manager
     ResMngr.Refresh();
+
+    UID_PREPARE_UID4_4;
 
     // Wait screen
     ScreenModeMain = SCREEN_WAIT;
@@ -467,8 +476,13 @@ bool FOClient::Init( HWND hwnd )
     RebuildLookBorders = false;
     DrawLookBorders = false;
     DrawShootBorders = false;
+
+    UID_PREPARE_UID4_5;
+
     LookBorders.clear();
     ShootBorders.clear();
+
+    UID_PREPARE_UID4_6;
 
     WriteLog( "Engine initialization complete.\n" );
     Active = true;
