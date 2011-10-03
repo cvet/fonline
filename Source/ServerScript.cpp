@@ -5905,7 +5905,7 @@ bool FOServer::SScriptFunc::Global_SetParameterDialogGetBehaviour( uint index, C
     Critter::ParamsDialogGetScript[ index ] = 0;
     if( func_name.length() > 0 )
     {
-        int bind_id = Script::Bind( func_name.c_str(), "int %s(Critter&,Critter@,uint)", false );
+        int bind_id = Script::Bind( func_name.c_str(), "int %s(Critter@,Critter@,uint)", false );
         if( bind_id <= 0 )
             SCRIPT_ERROR_R0( "Function not found." );
         Critter::ParamsDialogGetScript[ index ] = bind_id;
