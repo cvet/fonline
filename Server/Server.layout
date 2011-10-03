@@ -10,11 +10,11 @@
 	<File name="../Source/AngelScript/as_restore.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="34607" topLine="1394" />
 	</File>
-	<File name="../Source/Common.cpp" open="0" top="0" tabpos="2">
-		<Cursor position="46369" topLine="1397" />
+	<File name="../Source/Common.cpp" open="1" top="0" tabpos="4">
+		<Cursor position="253" topLine="0" />
 	</File>
-	<File name="../Source/Common.h" open="1" top="0" tabpos="4">
-		<Cursor position="20621" topLine="766" />
+	<File name="../Source/Common.h" open="1" top="0" tabpos="3">
+		<Cursor position="23614" topLine="766" />
 	</File>
 	<File name="../Source/Critter.h" open="0" top="0" tabpos="3">
 		<Cursor position="21366" topLine="502" />
@@ -47,10 +47,10 @@
 		<Cursor position="12032" topLine="389" />
 	</File>
 	<File name="../Source/Server.cpp" open="1" top="0" tabpos="2">
-		<Cursor position="4234" topLine="92" />
+		<Cursor position="14958" topLine="409" />
 	</File>
-	<File name="../Source/Server.h" open="0" top="0" tabpos="0">
-		<Cursor position="9646" topLine="249" />
+	<File name="../Source/Server.h" open="1" top="1" tabpos="6">
+		<Cursor position="23261" topLine="522" />
 	</File>
 	<File name="../Source/Zlib/zconf.h" open="0" top="0" tabpos="0">
 		<Cursor position="0" topLine="48" />
@@ -58,7 +58,7 @@
 	<File name="../Source/Zlib/zlib.h" open="0" top="0" tabpos="0">
 		<Cursor position="1381" topLine="15" />
 	</File>
-	<File name="../Source/Zlib/zutil.c" open="1" top="0" tabpos="3">
+	<File name="../Source/Zlib/zutil.c" open="0" top="0" tabpos="3">
 		<Cursor position="6844" topLine="248" />
 	</File>
 	<File name="../Source/Zlib/zutil.h" open="0" top="0" tabpos="0">

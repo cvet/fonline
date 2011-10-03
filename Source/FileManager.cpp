@@ -86,7 +86,7 @@ void FileManager::InitDataFiles( const char* path )
     char list_path[ MAX_FOPATH ];
     Str::Format( list_path, "%sDataFiles.cfg", path );
 
-    FileManager*           list = new FileManager;
+    FileManager*           list = new FileManager();
     vector< FileManager* > vec;
     vec.push_back( list );
     if( list->LoadFile( list_path, -1 ) )
@@ -125,7 +125,7 @@ void FileManager::InitDataFiles( const char* path )
                 Str::Append( fpath, line );
                 FormatPath( fpath );
 
-                FileManager* mgr = new FileManager;
+                FileManager* mgr = new FileManager();
                 if( !mgr->LoadFile( fpath, -1 ) )
                 {
                     char errmsg[ MAX_FOTEXT ];

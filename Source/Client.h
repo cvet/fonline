@@ -24,8 +24,11 @@
 #include "MsgFiles.h"
 
 // Video
+// #define VIDEO_VMR9 // If comment than used VMR7
 #include <DShow.h>
-#include <vmr9.h>
+#ifdef VIDEO_VMR9
+# include <vmr9.h>
+#endif
 #pragma warning(disable : 4995) // sprintf in DShow.h
 #undef PlaySound                // PlaySoundA in DShow.h
 #pragma comment(lib,"amstrmid.lib")
@@ -376,10 +379,15 @@ public:
     ShowVideoVec            ShowVideos;
     IGraphBuilder*          GraphBuilder;
     IMediaControl*          MediaControl;
+    #ifdef VIDEO_VMR9
     IVMRWindowlessControl9* WindowLess;
+    IVMRFilterConfig9*      FilterConfig;
+    #else
+    IVMRWindowlessControl*  WindowLess;
+    IVMRFilterConfig*       FilterConfig;
+    #endif
     IMediaSeeking*          MediaSeeking;
     IBaseFilter*            VMRFilter;
-    IVMRFilterConfig9*      FilterConfig;
     IBasicAudio*            BasicAudio;
     string                  MusicAfterVideo;
     int                     MusicVolumeRestore;

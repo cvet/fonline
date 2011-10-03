@@ -9964,19 +9964,19 @@ void FOClient::PlayVideo( ShowVideo& video )
     FindClose( f );
 
     // Workaround, video not showed in fullscreen with direct3d multisampling, on Vista/7
-    /*if(GameOpt.FullScreen && SprMngr.IsMultiSamplingUsed() && (GetVersion()&0xFF)>=6)
-       {
-            D3DPRESENT_PARAMETERS pp;
-            memzero(&pp, sizeof(pp));
-            SprMngr.GetDevice()->Reset(&pp);
+    /*if( GameOpt.FullScreen && SprMngr.IsMultiSamplingUsed() && ( GetVersion() & 0xFF ) >= 6 )
+    {
+        D3DPRESENT_PARAMETERS pp;
+        memzero( &pp, sizeof( pp ) );
+        SprMngr.GetDevice()->Reset( &pp );
 
-            HDC dcscreen=GetDC(NULL);
-            int sw=GetDeviceCaps(dcscreen,HORZRES);
-            int sh=GetDeviceCaps(dcscreen,VERTRES);
-            ReleaseDC(NULL,dcscreen);
+        HDC dcscreen = GetDC( NULL );
+        int sw = GetDeviceCaps( dcscreen, HORZRES );
+        int sh = GetDeviceCaps( dcscreen, VERTRES );
+        ReleaseDC( NULL, dcscreen );
 
-            SetWindowPos(Wnd,NULL,-WndBorders.L,-WndBorders.T,sw+WndBorders.L+WndBorders.R,sh+WndBorders.T+WndBorders.B,0);
-       }*/
+        SetWindowPos( Wnd, NULL, -WndBorders.L, -WndBorders.T, sw + WndBorders.L + WndBorders.R, sh + WndBorders.T + WndBorders.B, 0 );
+    }*/
 
     // Create direct show
     CHECK_VIDEO_HR( CoInitialize( NULL ) );
@@ -9990,6 +9990,7 @@ void FOClient::PlayVideo( ShowVideo& video )
     CHECK_VIDEO_NULLPTR( MediaSeeking );
     GraphBuilder->QueryInterface( IID_IBasicAudio, (void**) &BasicAudio );
 
+    #ifdef VIDEO_VMR9
     // VMR Initialization
     // Create the VMR.
     CHECK_VIDEO_HR( CoCreateInstance( CLSID_VideoMixingRenderer9, NULL, CLSCTX_INPROC, IID_IBaseFilter, (void**) &VMRFilter ) );
@@ -10003,6 +10004,21 @@ void FOClient::PlayVideo( ShowVideo& video )
     CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRWindowlessControl9, (void**) &WindowLess ) );
     CHECK_VIDEO_NULLPTR( WindowLess );
     CHECK_VIDEO_HR( WindowLess->SetVideoClippingWindow( Wnd ) );
+    #else
+    // VMR Initialization
+    // Create the VMR.
+    CHECK_VIDEO_HR( CoCreateInstance( CLSID_VideoMixingRenderer, NULL, CLSCTX_INPROC, IID_IBaseFilter, (void**) &VMRFilter ) );
+    CHECK_VIDEO_NULLPTR( VMRFilter );
+    // Add the VMR to the filter graph.
+    CHECK_VIDEO_HR( GraphBuilder->AddFilter( VMRFilter, L"VMR7" ) );
+    // Set the rendering mode.
+    CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRFilterConfig, (void**) &FilterConfig ) );
+    CHECK_VIDEO_NULLPTR( FilterConfig );
+    CHECK_VIDEO_HR( FilterConfig->SetRenderingMode( VMRMode_Windowless ) );
+    CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRWindowlessControl, (void**) &WindowLess ) );
+    CHECK_VIDEO_NULLPTR( WindowLess );
+    CHECK_VIDEO_HR( WindowLess->SetVideoClippingWindow( Wnd ) );
+    #endif
 
     // Set the video window.
     RECT rsrc, rdest;    // Source and destination rectangles.
