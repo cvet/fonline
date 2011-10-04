@@ -147,6 +147,7 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
+      <StripPrivateSymbols>$(OutDir)Mapper.pdb</StripPrivateSymbols>
     </Link>
     <Manifest>
       <OutputManifestFile>$(IntDir)Mapper.embed.manifest</OutputManifestFile>
@@ -260,6 +261,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <AssemblerOutput>All</AssemblerOutput>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -274,9 +276,9 @@
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <DelayLoadDLLs>Assimp32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>$(IntDir)Mapper.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(IntDir)MapperDbg.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(IntDir)Mapper.map</MapFileName>
+      <MapFileName>$(IntDir)MapperDbg.map</MapFileName>
       <SubSystem>Windows</SubSystem>
       <ProfileGuidedDatabase>
       </ProfileGuidedDatabase>
@@ -284,6 +286,7 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
+      <StripPrivateSymbols>$(OutDir)MapperDbg.pdb</StripPrivateSymbols>
     </Link>
     <Manifest>
       <OutputManifestFile>$(IntDir)Mapper.embed.manifest</OutputManifestFile>

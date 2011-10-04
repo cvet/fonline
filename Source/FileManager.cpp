@@ -851,12 +851,16 @@ void FileManager::ExtractPath( const char* fname, char* path )
     }
 
     const char* str = strstr( fname, "\\" );
+    if( !str )
+        str = strstr( fname, "/" );
     if( str )
     {
         str++;
         while( true )
         {
             const char* str_ = strstr( str, "\\" );
+            if( !str_ )
+                str_ = strstr( fname, "/" );
             if( str_ )
                 str = str_ + 1;
             else
@@ -886,12 +890,16 @@ void FileManager::ExtractFileName( const char* fname, char* name )
     }
 
     const char* str = strstr( fname, "\\" );
+    if( !str )
+        str = strstr( fname, "/" );
     if( str )
     {
         str++;
         while( true )
         {
             const char* str_ = strstr( str, "\\" );
+            if( !str_ )
+                str_ = strstr( fname, "/" );
             if( str_ )
                 str = str_ + 1;
             else
