@@ -41,6 +41,10 @@
 #define WORLD_SAVE_V12               ( 0x01AB0F12 )
 #define WORLD_SAVE_LAST              WORLD_SAVE_V12
 
+// Client save
+#define CLIENT_SAVE_V1               ( 1 )
+const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_V1 };
+
 // Generic
 #define WORLD_START_TIME             "07:00 30:10:2246 x00"
 #define MAX_FOPATH                   ( 1024 )

@@ -4242,16 +4242,38 @@ bool FOServer::LoadClientsData()
             return false;
         }
 
-        // Check for old save file format
-        fseek( f, 0, SEEK_END );
-        bool is_old = ftell( f ) == 14399;
-        fseek( f, 0, SEEK_SET );
+        // Signature
+        char signature[ 4 ];
+        if( !fread( signature, sizeof( signature ), 1, f ) )
+        {
+            WriteLog( "Unable to read signature of client save file<%s>.\n", fname_ );
+            return false;
+        }
 
         uint id = -1;
         char pass_hash[ PASS_HASH_SIZE ];
 
-        if( is_old )
+        if( signature[ 0 ] == 'F' && signature[ 1 ] == 'O' && signature[ 2 ] == 0 )
         {
+            // New format
+            int  version = signature[ 3 ];
+
+            bool read_ok = ( fread( pass_hash, sizeof( pass_hash ), 1, f ) && fread( &id, sizeof( id ), 1, f ) && fseek( f, OFFSETOF( CritData, Temp ) - sizeof( id ), SEEK_CUR ) == 0 );
+            fclose( f );
+
+            if( !read_ok || !IS_USER_ID( id ) )
+            {
+                WriteLog( "Wrong id<%u> of client<%s>. Skipped.\n", id, name );
+                if( !FindNextFile( h, &fdata ) )
+                    break;
+                continue;
+            }
+        }
+        else
+        {
+            // Old format
+            fseek( f, 0, SEEK_SET );
+
             uint key = 0;
             char pass[ MAX_NAME + 1 ] = { 0 };
 
@@ -4274,19 +4296,6 @@ bool FOServer::LoadClientsData()
             }
 
             Crypt.ClientPassHash( name, pass, pass_hash );
-        }
-        else
-        {
-            bool read_ok = ( fread( pass_hash, sizeof( pass_hash ), 1, f ) && fread( &id, sizeof( id ), 1, f ) && fseek( f, OFFSETOF( CritData, Temp ) - sizeof( id ), SEEK_CUR ) == 0 );
-            fclose( f );
-
-            if( !read_ok || !IS_USER_ID( id ) )
-            {
-                WriteLog( "Wrong id<%u> of client<%s>. Skipped.\n", id, name );
-                if( !FindNextFile( h, &fdata ) )
-                    break;
-                continue;
-            }
         }
 
         // Check uniqueness of id
@@ -4353,6 +4362,7 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
             return false;
         }
 
+        fwrite( ClientSaveSignature, sizeof( ClientSaveSignature ), 1, f );
         fwrite( cl->PassHash, sizeof( cl->PassHash ), 1, f );
         fwrite( &cl->Data, sizeof( cl->Data ), 1, f );
         fwrite( data_ext, sizeof( CritDataExt ), 1, f );
@@ -4388,13 +4398,40 @@ bool FOServer::LoadClient( Client* cl )
         return false;
     }
 
-    // Check for old save file format
-    fseek( f, 0, SEEK_END );
-    bool is_old = ftell( f ) == 14399;
-    fseek( f, 0, SEEK_SET );
+    // Signature
+    char signature[ 4 ];
+    if( !fread( signature, sizeof( signature ), 1, f ) )
+        goto label_FileTruncated;
 
-    if( is_old )
+    // Read data
+    if( signature[ 0 ] == 'F' && signature[ 1 ] == 'O' && signature[ 2 ] == 0 )
     {
+        // New format
+        int version = signature[ 3 ];
+
+        if( !fread( cl->PassHash, sizeof( cl->PassHash ), 1, f ) )
+            goto label_FileTruncated;
+        if( !fread( &cl->Data, sizeof( cl->Data ), 1, f ) )
+            goto label_FileTruncated;
+        if( !fread( data_ext, sizeof( CritDataExt ), 1, f ) )
+            goto label_FileTruncated;
+        uint te_count;
+        if( !fread( &te_count, sizeof( te_count ), 1, f ) )
+            goto label_FileTruncated;
+        if( te_count )
+        {
+            cl->CrTimeEvents.resize( te_count );
+            if( !fread( &cl->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ), 1, f ) )
+                goto label_FileTruncated;
+        }
+
+        fclose( f );
+    }
+    else
+    {
+        // Old format
+        fseek( f, 0, SEEK_SET );
+
         char pass[ MAX_NAME + 1 ];
         if( !fread( pass, sizeof( pass ), 1, f ) )
             goto label_FileTruncated;
@@ -4415,7 +4452,7 @@ bool FOServer::LoadClient( Client* cl )
         fclose( f );
 
         // Decrypt the password
-        if( cl->Data.Temp )       // Last char not zero
+        if( cl->Data.Temp )
         {
             Crypt.DecryptPassword( pass, sizeof( pass ), cl->Data.Temp );
             cl->Data.Temp = 0;
@@ -4429,26 +4466,6 @@ bool FOServer::LoadClient( Client* cl )
             Deprecated_CondExtToAnim2( cl->Data.Cond, cl->Data.ReservedCE, cl->Data.Anim2Knockout, cl->Data.Anim2Dead );
             cl->Data.ReservedCE = 0;
         }
-    }
-    else
-    {
-        if( !fread( cl->PassHash, sizeof( cl->PassHash ), 1, f ) )
-            goto label_FileTruncated;
-        if( !fread( &cl->Data, sizeof( cl->Data ), 1, f ) )
-            goto label_FileTruncated;
-        if( !fread( data_ext, sizeof( CritDataExt ), 1, f ) )
-            goto label_FileTruncated;
-        uint te_count;
-        if( !fread( &te_count, sizeof( te_count ), 1, f ) )
-            goto label_FileTruncated;
-        if( te_count )
-        {
-            cl->CrTimeEvents.resize( te_count );
-            if( !fread( &cl->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ), 1, f ) )
-                goto label_FileTruncated;
-        }
-
-        fclose( f );
     }
 
     return true;
@@ -4817,6 +4834,7 @@ void* FOServer::Dump_Work( void* data )
                 continue;
             }
 
+            fwrite( ClientSaveSignature, sizeof( ClientSaveSignature ), 1, fc );
             fwrite( csd.PasswordHash, sizeof( csd.PasswordHash ), 1, fc );
             fwrite( &csd.Data, sizeof( csd.Data ), 1, fc );
             fwrite( &csd.DataExt, sizeof( csd.DataExt ), 1, fc );
