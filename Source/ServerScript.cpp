@@ -172,6 +172,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.PlayerRegistration, "player_registration", "bool %s(uint,string&,uint&,uint&)" },
         { &ServerFunctions.PlayerLogin, "player_login", "bool %s(uint,string&,uint,uint&,uint&)" },
         { &ServerFunctions.PlayerGetAccess, "player_getaccess", "bool %s(Critter&,int,string&)" },
+        { &ServerFunctions.PlayerAllowCommand, "player_allowcommand", "bool %s(Critter&,uint8)" },
         { &ServerFunctions.CheckTrapLook, "check_trap_look", "bool %s(Map&,Critter&,Item&)" },
     };
     if( !Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "server", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )

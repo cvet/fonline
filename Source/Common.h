@@ -245,6 +245,8 @@ struct ClientScriptFunctions
     int CritterAnimation;
     int CritterAnimationSubstitute;
     int CritterAnimationFallout;
+    int FilenameLogfile;
+    int FilenameScreenshot;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -323,6 +325,7 @@ struct ServerScriptFunctions
     int PlayerRegistration;
     int PlayerLogin;
     int PlayerGetAccess;
+    int PlayerAllowCommand;
     int CheckTrapLook;
 } extern ServerFunctions;
 

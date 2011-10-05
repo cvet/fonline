@@ -106,6 +106,7 @@ public:
     static void        ExtractPath( const char* fname, char* path );
     static void        ExtractFileName( const char* fname, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );
+    static void        FileManager::CreateDirectoryTree( const char* path );
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
 

@@ -3673,66 +3673,66 @@ const CmdListDef cmdlist[] =
     { "param", CMD_PARAM },
     { "~11", CMD_GETACCESS },
     { "getaccess", CMD_GETACCESS },
-    { "~12", CMD_CRASH },
-    { "crash", CMD_CRASH },
-    { "~13", CMD_ADDITEM },
+    { "~12", CMD_ADDITEM },
     { "additem", CMD_ADDITEM },
-    { "~14", CMD_ADDITEM_SELF },
+    { "~13", CMD_ADDITEM_SELF },
     { "additemself", CMD_ADDITEM_SELF },
     { "ais", CMD_ADDITEM_SELF },
-    { "~15", CMD_ADDNPC },
+    { "~14", CMD_ADDNPC },
     { "addnpc", CMD_ADDNPC },
-    { "~16", CMD_ADDLOCATION },
+    { "~15", CMD_ADDLOCATION },
     { "addloc", CMD_ADDLOCATION },
-    { "~17", CMD_RELOADSCRIPTS },
+    { "~16", CMD_RELOADSCRIPTS },
     { "reloadscripts", CMD_RELOADSCRIPTS },
-    { "~18", CMD_LOADSCRIPT },
+    { "~17", CMD_LOADSCRIPT },
     { "loadscript", CMD_LOADSCRIPT },
     { "load", CMD_LOADSCRIPT },
-    { "~19", CMD_RELOAD_CLIENT_SCRIPTS },
+    { "~18", CMD_RELOAD_CLIENT_SCRIPTS },
     { "reloadclientscripts", CMD_RELOAD_CLIENT_SCRIPTS },
     { "rcs", CMD_RELOAD_CLIENT_SCRIPTS },
-    { "~20", CMD_RUNSCRIPT },
+    { "~19", CMD_RUNSCRIPT },
     { "runscript", CMD_RUNSCRIPT },
     { "run", CMD_RUNSCRIPT },
-    { "~21", CMD_RELOADLOCATIONS },
+    { "~20", CMD_RELOADLOCATIONS },
     { "reloadlocations", CMD_RELOADLOCATIONS },
-    { "~22", CMD_LOADLOCATION },
+    { "~21", CMD_LOADLOCATION },
     { "loadlocation", CMD_LOADLOCATION },
-    { "~23", CMD_RELOADMAPS },
+    { "~22", CMD_RELOADMAPS },
     { "reloadmaps", CMD_RELOADMAPS },
-    { "~24", CMD_LOADMAP },
+    { "~23", CMD_LOADMAP },
     { "loadmap", CMD_LOADMAP },
-    { "~25", CMD_REGENMAP },
+    { "~24", CMD_REGENMAP },
     { "regenmap", CMD_REGENMAP },
-    { "~26", CMD_RELOADDIALOGS },
+    { "~25", CMD_RELOADDIALOGS },
     { "reloaddialogs", CMD_RELOADDIALOGS },
-    { "~27", CMD_LOADDIALOG },
+    { "~26", CMD_LOADDIALOG },
     { "loaddialog", CMD_LOADDIALOG },
-    { "~28", CMD_RELOADTEXTS },
+    { "~27", CMD_RELOADTEXTS },
     { "reloadtexts", CMD_RELOADTEXTS },
-    { "~29", CMD_RELOADAI },
+    { "~28", CMD_RELOADAI },
     { "reloadai", CMD_RELOADAI },
-    { "~30", CMD_CHECKVAR },
+    { "~29", CMD_CHECKVAR },
     { "checkvar", CMD_CHECKVAR },
     { "cvar", CMD_CHECKVAR },
-    { "~31", CMD_SETVAR },
+    { "~30", CMD_SETVAR },
     { "setvar", CMD_SETVAR },
     { "svar", CMD_SETVAR },
-    { "~32", CMD_SETTIME },
+    { "~31", CMD_SETTIME },
     { "settime", CMD_SETTIME },
-    { "~33", CMD_BAN },
+    { "~32", CMD_BAN },
     { "ban", CMD_BAN },
-    { "~34", CMD_DELETE_ACCOUNT },
+    { "~33", CMD_DELETE_ACCOUNT },
     { "deleteself", CMD_DELETE_ACCOUNT },
-    { "~35", CMD_CHANGE_PASSWORD },
+    { "~34", CMD_CHANGE_PASSWORD },
     { "changepassword", CMD_CHANGE_PASSWORD },
     { "changepass", CMD_CHANGE_PASSWORD },
-    { "~36", CMD_DROP_UID },
+    { "~35", CMD_DROP_UID },
     { "dropuid", CMD_DROP_UID },
     { "drop", CMD_DROP_UID },
-    { "~37", CMD_LOG },
+    { "~36", CMD_LOG },
     { "log", CMD_LOG },
+    { "~142", CMD_CRASH },
+    { "crash", CMD_CRASH },
 };
 const int        CMN_LIST_COUNT = sizeof( cmdlist ) / sizeof( CmdListDef );
 
@@ -3909,13 +3909,6 @@ void FOClient::Net_SendCommand( char* str )
 
         Bout.Push( name_access, MAX_NAME );
         Bout.Push( pasw_access, 128 );
-    }
-    break;
-    case CMD_CRASH:
-    {
-        Bout << msg;
-        Bout << msg_len;
-        Bout << cmd;
     }
     break;
     case CMD_ADDITEM:
@@ -4331,6 +4324,14 @@ void FOClient::Net_SendCommand( char* str )
         Bout << msg_len;
         Bout << cmd;
         Bout.Push( flags, 16 );
+    }
+    break;
+    // non-public
+    case CMD_CRASH:
+    {
+        Bout << msg;
+        Bout << msg_len;
+        Bout << cmd;
     }
     break;
     default:
@@ -9854,6 +9855,21 @@ bool FOClient::SaveLogFile()
              sys_time.wDay, sys_time.wMonth, sys_time.wYear,
              sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
 
+    if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
+    {
+        char*          str = log_path;
+        CScriptString* sstr = new CScriptString( str );
+        Script::SetArgObject( sstr );
+        if( Script::RunPrepared() )
+            Str::Copy( log_path, sstr->c_str() );
+        sstr->Release();
+    }
+
+    if( Str::Compare( log_path, "" ) )
+        return ( false );
+
+    FileManager::CreateDirectoryTree( FileManager::GetFullPath( log_path, PT_ROOT ) );
+
     HANDLE save_file = CreateFile( log_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_FLAG_WRITE_THROUGH, NULL );
     if( save_file == INVALID_HANDLE_VALUE )
         return false;
@@ -9896,7 +9912,32 @@ bool FOClient::SaveScreenshot()
              sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
     Str::Append( screen_path, "jpg" );
 
-    if( FAILED( D3DXSaveSurfaceToFile( screen_path, D3DXIFF_JPG, surf, NULL, NULL ) ) )
+    if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
+    {
+        char*          str = screen_path;
+        CScriptString* sstr = new CScriptString( str );
+        Script::SetArgObject( sstr );
+        if( Script::RunPrepared() )
+            Str::Copy( screen_path, sstr->c_str() );
+        sstr->Release();
+    }
+
+    if( Str::Compare( screen_path, "" ) )
+        return ( false );
+
+    FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
+
+    char*                extension = Str::Lower( (char*) FileManager::GetExtension( screen_path ) );
+    D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
+
+    if( Str::Compare( extension, "jpg" ) )
+        format = D3DXIFF_JPG;
+    else if( Str::Compare( extension, "tga" ) )
+        format = D3DXIFF_TGA;
+    else if( Str::Compare( extension, "png" ) )
+        format = D3DXIFF_PNG;
+
+    if( FAILED( D3DXSaveSurfaceToFile( screen_path, format, surf, NULL, NULL ) ) )
     {
         surf->Release();
         return false;
@@ -10435,6 +10476,8 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
         { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
         { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
+        { &ClientFunctions.FilenameLogfile, "filename_logfile", "void %s( string& )" },
+        { &ClientFunctions.FilenameScreenshot, "filename_screenshot", "void %s( string& )" },
     };
     const char*            config = msg_script.GetStr( STR_INTERNAL_SCRIPT_CONFIG );
     if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )

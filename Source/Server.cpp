@@ -1897,6 +1897,19 @@ void FOServer::Process_Command( Client* cl )
     cl->Bin >> msg_len;
     cl->Bin >> cmd;
 
+    bool allow_command = false;
+
+    if( Script::PrepareContext( ServerFunctions.PlayerAllowCommand, _FUNC_, cl->GetInfo() ) )
+    {
+        Script::SetArgObject( cl );
+        Script::SetArgUChar( cmd );
+        if( Script::RunPrepared() && Script::GetReturnedBool() )
+            allow_command = true;
+    }
+
+    if( !allow_command )
+        return;
+
     switch( cmd )
     {
 /************************************************************************/
@@ -1904,12 +1917,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_EXIT:
     {
-        if( !FLAG( cl->Access, CMD_EXIT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         cl->Disconnect();
     }
     break;
@@ -1918,12 +1925,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_MYINFO:
     {
-        if( !FLAG( cl->Access, CMD_MYINFO_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         char istr[ 1024 ];
         sprintf( istr, "|0xFF00FF00 Name: |0xFFFF0000 %s"
                        "|0xFF00FF00 , Id: |0xFFFF0000 %u"
@@ -1961,12 +1962,6 @@ void FOServer::Process_Command( Client* cl )
     {
         int info;
         cl->Bin >> info;
-
-        if( !FLAG( cl->Access, CMD_GAMEINFO_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         string result;
         switch( info )
@@ -2025,12 +2020,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( name, MAX_NAME );
         name[ MAX_NAME ] = 0;
 
-        if( !FLAG( cl->Access, CMD_CRITID_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SaveClientsLocker.Lock();
 
         ClientData* cd = GetClientData( name );
@@ -2053,12 +2042,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> crid;
         cl->Bin >> hex_x;
         cl->Bin >> hex_y;
-
-        if( !FLAG( cl->Access, CMD_MOVECRIT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         Critter* cr = CrMngr.GetCritter( crid, true );
         if( !cr )
@@ -2094,12 +2077,6 @@ void FOServer::Process_Command( Client* cl )
         uint crid;
         cl->Bin >> crid;
 
-        if( !FLAG( cl->Access, CMD_KILLCRIT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         Critter* cr = CrMngr.GetCritter( crid, true );
         if( !cr )
         {
@@ -2118,12 +2095,6 @@ void FOServer::Process_Command( Client* cl )
     {
         uint crid;
         cl->Bin >> crid;
-
-        if( !FLAG( cl->Access, CMD_DISCONCRIT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         if( cl->GetId() == crid )
         {
@@ -2163,12 +2134,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_TOGLOBAL:
     {
-        if( !FLAG( cl->Access, CMD_TOGLOBAL_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         if( !cl->IsLife() )
         {
             cl->Send_Text( cl, "To global fail, only life none.", SAY_NETMSG );
@@ -2188,12 +2153,6 @@ void FOServer::Process_Command( Client* cl )
     {
         uint crid;
         cl->Bin >> crid;
-
-        if( !FLAG( cl->Access, CMD_RESPAWN_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         Critter* cr = ( !crid ? cl : CrMngr.GetCritter( crid, true ) );
         if( !cr )
@@ -2218,12 +2177,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> param_type;
         cl->Bin >> param_num;
         cl->Bin >> param_val;
-
-        if( !FLAG( cl->Access, CMD_PARAM_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         if( FLAG( cl->Access, ACCESS_TESTER ) )            // Free XP
         {
@@ -2464,12 +2417,6 @@ void FOServer::Process_Command( Client* cl )
         name_access[ MAX_NAME ] = 0;
         pasw_access[ 127 ] = 0;
 
-        if( !FLAG( cl->Access, CMD_GETACCESS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         int wanted_access = -1;
         if( Str::Compare( name_access, "client" ) && std::find( AccessClient.begin(), AccessClient.end(), pasw_access ) != AccessClient.end() )
             wanted_access = ACCESS_CLIENT;
@@ -2531,12 +2478,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_CRASH:
     {
-        if( !FLAG( cl->Access, CMD_CRASH_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         static int count_crash = 0;
         if( count_crash < 22 )
         {
@@ -2569,12 +2510,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> pid;
         cl->Bin >> count;
 
-        if( !FLAG( cl->Access, CMD_ADDITEM_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         Map* map = MapMngr.GetMap( cl->GetMap() );
         if( !map || hex_x >= map->GetMaxHexX() || hex_y >= map->GetMaxHexY() )
         {
@@ -2602,12 +2537,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> pid;
         cl->Bin >> count;
 
-        if( !FLAG( cl->Access, CMD_ADDITEM_SELF_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         if( ItemMngr.AddItemCritter( cl, pid, count ) != NULL )
             cl->Send_Text( cl, "Item(s) added.", SAY_NETMSG );
         else
@@ -2628,12 +2557,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> dir;
         cl->Bin >> pid;
 
-        if( !FLAG( cl->Access, CMD_ADDNPC_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         Npc* npc = CrMngr.CreateNpc( pid, 0, NULL, 0, NULL, NULL, MapMngr.GetMap( cl->GetMap() ), hex_x, hex_y, dir, true );
         if( !npc )
             cl->Send_Text( cl, "Npc not created.", SAY_NETMSG );
@@ -2653,12 +2576,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> wy;
         cl->Bin >> pid;
 
-        if( !FLAG( cl->Access, CMD_ADDLOCATION_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         Location* loc = MapMngr.CreateLocation( pid, wx, wy, 0 );
         if( !loc )
             cl->Send_Text( cl, "Location not created.", SAY_NETMSG );
@@ -2671,12 +2588,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOADSCRIPTS:
     {
-        if( !FLAG( cl->Access, CMD_RELOADSCRIPTS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         // Get config file
@@ -2708,12 +2619,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( module_name, MAX_SCRIPT_NAME );
         module_name[ MAX_SCRIPT_NAME ] = 0;
 
-        if( !FLAG( cl->Access, CMD_LOADSCRIPT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         if( !Str::Length( module_name ) )
         {
             cl->Send_Text( cl, "Fail, name length is zero.", SAY_NETMSG );
@@ -2743,12 +2648,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOAD_CLIENT_SCRIPTS:
     {
-        if( !FLAG( cl->Access, CMD_RELOAD_CLIENT_SCRIPTS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         if( ReloadClientScripts() )
@@ -2774,12 +2673,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> param0;
         cl->Bin >> param1;
         cl->Bin >> param2;
-
-        if( !FLAG( cl->Access, CMD_RUNSCRIPT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         if( !Str::Length( module_name ) || !Str::Length( func_name ) )
         {
@@ -2816,12 +2709,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOADLOCATIONS:
     {
-        if( !FLAG( cl->Access, CMD_RELOADLOCATIONS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         if( MapMngr.LoadLocationsProtos() )
@@ -2839,12 +2726,6 @@ void FOServer::Process_Command( Client* cl )
     {
         ushort loc_pid;
         cl->Bin >> loc_pid;
-
-        if( !FLAG( cl->Access, CMD_LOADLOCATION_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         if( !loc_pid || loc_pid >= MAX_PROTO_LOCATIONS )
         {
@@ -2880,12 +2761,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOADMAPS:
     {
-        if( !FLAG( cl->Access, CMD_RELOADMAPS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         int fails = 0;
@@ -2923,12 +2798,6 @@ void FOServer::Process_Command( Client* cl )
         ushort map_pid;
         cl->Bin >> map_pid;
 
-        if( !FLAG( cl->Access, CMD_LOADMAP_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         if( map_pid > 0 && map_pid < MAX_PROTO_MAPS && MapMngr.ProtoMaps[ map_pid ].IsInit() )
@@ -2960,12 +2829,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_REGENMAP:
     {
-        if( !FLAG( cl->Access, CMD_REGENMAP_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         // Check global
         if( !cl->GetMap() )
         {
@@ -3000,12 +2863,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOADDIALOGS:
     {
-        if( !FLAG( cl->Access, CMD_RELOADDIALOGS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         DlgMngr.DialogsPacks.clear();
@@ -3029,12 +2886,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( dlg_name, 128 );
         cl->Bin >> dlg_id;
         dlg_name[ 127 ] = 0;
-
-        if( !FLAG( cl->Access, CMD_LOADDIALOG_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         SynchronizeLogicThreads();
 
@@ -3078,12 +2929,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOADTEXTS:
     {
-        if( !FLAG( cl->Access, CMD_RELOADTEXTS_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         LangPackVec lang_packs;
@@ -3106,12 +2951,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_RELOADAI:
     {
-        if( !FLAG( cl->Access, CMD_RELOADAI_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         SynchronizeLogicThreads();
 
         NpcAIMngr ai_mngr;
@@ -3143,12 +2982,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> master_id;
         cl->Bin >> slave_id;
         cl->Bin >> full_info;
-
-        if( !FLAG( cl->Access, CMD_CHECKVAR_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         if( master_is_npc )
             master_id += NPC_START_ID - 1;
@@ -3186,12 +3019,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> master_id;
         cl->Bin >> slave_id;
         cl->Bin >> value;
-
-        if( !FLAG( cl->Access, CMD_SETVAR_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         if( master_is_npc )
             master_id += NPC_START_ID - 1;
@@ -3233,12 +3060,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> hour;
         cl->Bin >> minute;
         cl->Bin >> second;
-
-        if( !FLAG( cl->Access, CMD_SETTIME_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         SynchronizeLogicThreads();
 
@@ -3290,12 +3111,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> ban_hours;
         cl->Bin.Pop( info, 128 );
         info[ MAX_NAME ] = 0;
-
-        if( !FLAG( cl->Access, CMD_BAN_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         SCOPE_LOCK( BannedLocker );
 
@@ -3414,12 +3229,6 @@ void FOServer::Process_Command( Client* cl )
         char pass_hash[ PASS_HASH_SIZE ];
         cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
 
-        if( !FLAG( cl->Access, CMD_DELETE_ACCOUNT_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         if( memcmp( cl->PassHash, pass_hash, PASS_HASH_SIZE ) )
             cl->Send_Text( cl, "Invalid password.", SAY_NETMSG );
         else
@@ -3447,12 +3256,6 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
         cl->Bin.Pop( new_pass_hash, PASS_HASH_SIZE );
 
-        if( !FLAG( cl->Access, CMD_CHANGE_PASSWORD_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         if( memcmp( cl->PassHash, pass_hash, PASS_HASH_SIZE ) )
             cl->Send_Text( cl, "Invalid current password.", SAY_NETMSG );
         else
@@ -3474,12 +3277,6 @@ void FOServer::Process_Command( Client* cl )
 /************************************************************************/
     case CMD_DROP_UID:
     {
-        if( !FLAG( cl->Access, CMD_DROP_UID_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
-
         ClientData* data = GetClientData( cl->GetId() );
         if( data )
         {
@@ -3497,12 +3294,6 @@ void FOServer::Process_Command( Client* cl )
     {
         char flags[ 16 ];
         cl->Bin.Pop( flags, 16 );
-
-        if( !FLAG( cl->Access, CMD_LOG_ACCESS ) )
-        {
-            cl->Send_Text( cl, "Access denied.", SAY_NETMSG );
-            return;
-        }
 
         int action = -1;
         if( flags[ 0 ] == '-' && flags[ 1 ] == '-' )

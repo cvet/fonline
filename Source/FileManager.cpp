@@ -936,6 +936,23 @@ void FileManager::MakeFilePath( const char* name, const char* path, char* result
     }
 }
 
+void FileManager::CreateDirectoryTree( const char* path )
+{
+    char* work = Str::Duplicate( path );
+
+    for( char* ptr = work; *ptr; ++ptr )
+    {
+        if( *ptr == '\\' )
+        {
+            *ptr = 0;
+            CreateDirectory( work, NULL );
+            *ptr = '\\';
+        }
+    }
+
+    delete[] work;
+}
+
 const char* FileManager::GetExtension( const char* fname )
 {
     if( !fname )

@@ -191,7 +191,7 @@ bool FOMapper::Init( HWND wnd )
 
     // Language Packs
     IniParser cfg_mapper;
-    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
+    cfg_mapper.LoadFile( GetConfigFileName(), -1 ); // probably should use PT_MAPPER_ROOT here
     char      server_cfg_name[ MAX_FOPATH ];
     cfg_mapper.GetStr( "ServerName", "FOnlineServer", server_cfg_name );
     Str::Append( server_cfg_name, ".cfg" );
