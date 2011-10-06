@@ -4226,7 +4226,7 @@ void FOServer::Process_RunServerScript( Client* cl )
 
     cl->Bin >> msg_len;
     cl->Bin >> unsafe;
-    if( !unsafe && !FLAG( cl->Access, ACCESS_MODER | ACCESS_ADMIN | ACCESS_IMPLEMENTOR ) )
+    if( !unsafe && !( cl->Access == ACCESS_MODER || cl->Access == ACCESS_ADMIN ) )
     {
         WriteLogF( _FUNC_, " - Attempt to execute script without privilege. Client<%s>.\n", cl->GetInfo() );
         cl->Send_Text( cl, "Access denied. Disconnect.", SAY_NETMSG );

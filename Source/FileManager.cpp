@@ -55,8 +55,8 @@ const char* PathLst[ PATH_LIST_COUNT ] =
     "",
 
     // Other
-    "data\\",     // Mapper data
     "",
+    "data\\",
     "",
     "",
     "",
@@ -784,7 +784,7 @@ const char* FileManager::GetDataPath( int path_type )
     if( path_type == PT_ROOT )
         return root_path;
     #elif defined ( FONLINE_MAPPER )
-    if( path_type == PT_MAPPER_DATA )
+    if( path_type == PT_MAPPER_ROOT || path_type == PT_MAPPER_DATA )
         return root_path;
     #endif
 
@@ -939,6 +939,8 @@ void FileManager::MakeFilePath( const char* name, const char* path, char* result
 void FileManager::CreateDirectoryTree( const char* path )
 {
     char* work = Str::Duplicate( path );
+
+    FormatPath( work );
 
     for( char* ptr = work; *ptr; ++ptr )
     {

@@ -670,10 +670,13 @@ const char* GetWindowName()
     // Default config names
     #if defined ( FONLINE_SERVER )
     static char window_name[ MAX_FOPATH ] = { "FOnline Server\0--default-server-name--" };
+    int         path_type = PT_SERVER_ROOT;
     #elif defined ( FONLINE_MAPPER )
     static char window_name[ MAX_FOPATH ] = { "FOnline Mapper\0--default-mapper-name--" };
+    int         path_type = PT_MAPPER_ROOT;
     #else // FONLINE_CLIENT and others
     static char window_name[ MAX_FOPATH ] = { "FOnline\0--default-client-name--" };
+    int         path_type = PT_ROOT;
     #endif
 
     // Extract config name from current exe
@@ -685,7 +688,7 @@ const char* GetWindowName()
 
         // Take name from config file
         IniParser cfg;
-        cfg.LoadFile( GetConfigFileName(), PT_ROOT );
+        cfg.LoadFile( GetConfigFileName(), path_type );
         if( !cfg.IsLoaded() )
             return window_name;
 
@@ -802,7 +805,7 @@ void GetClientOptions()
     // Load config file
     # ifdef FONLINE_MAPPER
     IniParser cfg_mapper;
-    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
+    cfg_mapper.LoadFile( GetConfigFileName(), PT_MAPPER_ROOT );
 
     cfg_mapper.GetStr( "ClientPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );

@@ -44,7 +44,8 @@
 #define PT_SERVER_BANS            ( 40 )
 
 // Other
-#define PT_MAPPER_DATA            ( 45 )
+#define PT_MAPPER_ROOT            ( 45 )
+#define PT_MAPPER_DATA            ( 46 )
 
 #define PATH_LIST_COUNT           ( 50 )
 extern const char* PathLst[ PATH_LIST_COUNT ];

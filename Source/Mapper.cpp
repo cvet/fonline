@@ -191,13 +191,13 @@ bool FOMapper::Init( HWND wnd )
 
     // Language Packs
     IniParser cfg_mapper;
-    cfg_mapper.LoadFile( GetConfigFileName(), -1 ); // probably should use PT_MAPPER_ROOT here
+    cfg_mapper.LoadFile( GetConfigFileName(), PT_MAPPER_ROOT );
     char      server_cfg_name[ MAX_FOPATH ];
     cfg_mapper.GetStr( "ServerName", "FOnlineServer", server_cfg_name );
     Str::Append( server_cfg_name, ".cfg" );
 
     IniParser cfg_server;
-    cfg_server.LoadFile( server_cfg_name, PT_ROOT );
+    cfg_server.LoadFile( server_cfg_name, PT_SERVER_ROOT );
     char      lang_name[ MAX_FOTEXT ];
     cfg_server.GetStr( "Language_0", DEFAULT_LANGUAGE, lang_name );
     if( strlen( lang_name ) != 4 )
@@ -362,7 +362,7 @@ int FOMapper::InitIface()
     char       int_file[ 256 ];
 
     IniParser  cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_MAPPER_ROOT );
     cfg.GetStr( "MapperInterface", CFG_DEF_INT_FILE, int_file );
 
     if( !ini.LoadFile( int_file, PT_MAPPER_DATA ) )

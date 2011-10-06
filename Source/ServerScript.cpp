@@ -1308,16 +1308,7 @@ int FOServer::SScriptFunc::Cl_GetAccess( Critter* cl )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !cl->IsPlayer() )
         SCRIPT_ERROR_R0( "Critter is not player." );
-    Client* cl_ = (Client*) cl;
-    if( FLAG( cl_->Access, ACCESS_IMPLEMENTOR ) )
-        return 3;
-    if( FLAG( cl_->Access, ACCESS_ADMIN ) )
-        return 3;
-    if( FLAG( cl_->Access, ACCESS_MODER ) )
-        return 2;
-    if( FLAG( cl_->Access, ACCESS_TESTER ) )
-        return 1;
-    return 0;
+    return ( (Client*) cl )->Access;
 }
 
 bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, CScriptString* func_name )

@@ -1945,9 +1945,6 @@ void FOServer::Process_Command( Client* cl )
         case ACCESS_ADMIN:
             strcat( istr, "|0xFFFF0000 Administrator|0xFF00FF00 ." );
             break;
-        case ACCESS_IMPLEMENTOR:
-            strcat( istr, "|0xFFFFFFFF Implementor|0xFF00FF00 ." );
-            break;
         default:
             break;
         }
@@ -2430,30 +2427,9 @@ void FOServer::Process_Command( Client* cl )
         bool allow = false;
         if( wanted_access != -1 && Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl->GetInfo() ) )
         {
-            int script_wanted_access = -1;
-            switch( wanted_access )
-            {
-            case ACCESS_IMPLEMENTOR:
-                script_wanted_access = 4;
-                break;
-            case ACCESS_ADMIN:
-                script_wanted_access = 3;
-                break;
-            case ACCESS_MODER:
-                script_wanted_access = 2;
-                break;
-            case ACCESS_TESTER:
-                script_wanted_access = 1;
-                break;
-            case ACCESS_CLIENT:
-            default:
-                script_wanted_access = 0;
-                break;
-            }
-
             CScriptString* pass = new CScriptString( pasw_access );
             Script::SetArgObject( cl );
-            Script::SetArgUInt( script_wanted_access );
+            Script::SetArgUInt( wanted_access );
             Script::SetArgObject( pass );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 allow = true;
@@ -2469,31 +2445,8 @@ void FOServer::Process_Command( Client* cl )
         cl->Access = wanted_access;
         cl->Send_Text( cl, "Access changed.", SAY_NETMSG );
 
-        if( cl->Access == ACCESS_IMPLEMENTOR )
+        if( cl->Access == ACCESS_MODER )
             cl->Send_Text( cl, "Welcome Master.", SAY_NETMSG );
-    }
-    break;
-/************************************************************************/
-/* CRASH                                                                */
-/************************************************************************/
-    case CMD_CRASH:
-    {
-        static int count_crash = 0;
-        if( count_crash < 22 )
-        {
-            count_crash++;
-            cl->Send_Text( cl, "Not implemented.", SAY_NETMSG );
-            return;
-        }
-
-        Critter* crash = NULL;
-        crash->ItemSlotMain->Accessory = 10;
-        crash -= 10;
-        delete crash;
-        Item* crash2 = (Item*) 0x1234;
-        crash2->Count_Set( 1111 );
-
-        cl->Send_Text( cl, "Crash complete.", SAY_NETMSG );
     }
     break;
 /************************************************************************/
