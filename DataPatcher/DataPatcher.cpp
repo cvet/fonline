@@ -16,7 +16,7 @@ int main( int argc, char* argv[] )
     setlocale( LC_ALL, "Russian" );
 
     // Help
-    printf( "FOnline save patcher v.1.1\n" );
+    printf( "FOnline save patcher v.1.2\n" );
     printf( "Commands:\n" );
     printf( " setPassword <clientName> <newPassword>\n  - change password for client (use '*' instead spaces)\n" );
     printf( " patchSaves\n  - patch all client files to actual state\n" );
@@ -204,7 +204,7 @@ vector< string > getFiles( const char* query )
     auto h = FindFirstFile( query, &fd );
     while( h != INVALID_HANDLE_VALUE )
     {
-        if( fd.cFileName[0] != '.' && !( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
+        if( !( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
             files.push_back( fd.cFileName );
 
         if( !FindNextFile( h, &fd ) )
