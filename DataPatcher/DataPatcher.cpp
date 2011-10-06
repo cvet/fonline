@@ -16,7 +16,7 @@ int main( int argc, char* argv[] )
     setlocale( LC_ALL, "Russian" );
 
     // Help
-    printf( "FOnline save patcher v.1.0\n" );
+    printf( "FOnline save patcher v.1.1\n" );
     printf( "Commands:\n" );
     printf( " setPassword <clientName> <newPassword>\n  - change password for client (use '*' instead spaces)\n" );
     printf( " patchSaves\n  - patch all client files to actual state\n" );
@@ -33,6 +33,8 @@ int main( int argc, char* argv[] )
             char clientName[ 1024 ];
             char newPassword[ 1024 ];
             scanf( "%s%s", clientName, newPassword );
+            OemToAnsi(clientName, clientName);
+            OemToAnsi(newPassword, newPassword);
             swapChar( clientName, '*', ' ' );
             swapChar( newPassword, '*', ' ' );
             setCurrentPath( 0, "save\\clients\\" );
@@ -109,6 +111,9 @@ void patchSaves()
             char signature[ 4 ];
             if( fread( signature, sizeof( signature ), 1, f ) )
             {
+                const int actualVersion = 2;
+
+                // Old format
                 if( !( signature[ 0 ] == 'F' && signature[ 1 ] == 'O' && signature[ 2 ] == 0 ) )
                 {
                     // Get data
@@ -132,6 +137,7 @@ void patchSaves()
                     {
                         char oldPassword[ 31 ];
                         strcpy( oldPassword, fileData );
+                        fileSize++;
                         for( int i = fileSize; i > 0; i-- )
                             fileData[ i ] = fileData[ i - 1 ];
                         memset( fileData, 0, 32 );
@@ -144,13 +150,31 @@ void patchSaves()
 
                     // Write new format
                     f = fopen( fileName, "wb" );
-                    char signature[ 4 ] = { 'F', 'O', 0, 1 };
+                    char signature[ 4 ] = { 'F', 'O', 0, actualVersion };
                     fwrite( signature, sizeof( signature ), 1, f );
                     fwrite( fileData, 1, fileSize, f );
                     delete[] fileData;
 
                     printf( "done\n" );
                 }
+                // Version 1
+                else if( signature[ 3 ] == 1 )
+                {
+                    // Add extra zero byte
+                    char* fileData = new char[ fileSize + 1 ];
+                    fseek( f, 0, SEEK_SET );
+                    fread( fileData, 1, fileSize, f );
+                    fclose( f );
+                    fileData[ fileSize ] = 0;
+                    fileSize++;
+                    f = fopen( fileName, "wb" );
+                    fileData[ 3 ] = actualVersion;
+                    fwrite( fileData, 1, fileSize, f );
+                    delete[] fileData;
+
+                    printf( "done\n" );
+                }
+                // Actual state
                 else
                 {
                     printf( "already patched\n" );

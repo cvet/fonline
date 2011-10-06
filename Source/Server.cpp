@@ -4209,7 +4209,13 @@ bool FOServer::LoadClientsData()
         if( signature[ 0 ] == 'F' && signature[ 1 ] == 'O' && signature[ 2 ] == 0 )
         {
             // New format
-            int  version = signature[ 3 ];
+            int version = signature[ 3 ];
+
+            if( version == CLIENT_SAVE_V1 )
+            {
+                WriteLog( "Save file<%s> corrupted, please run DataPatcher and type 'patchSaves'.\n", fname_ );
+                return false;
+            }
 
             bool read_ok = ( fread( pass_hash, sizeof( pass_hash ), 1, f ) && fread( &id, sizeof( id ), 1, f ) && fseek( f, OFFSETOF( CritData, Temp ) - sizeof( id ), SEEK_CUR ) == 0 );
             fclose( f );
@@ -4361,6 +4367,9 @@ bool FOServer::LoadClient( Client* cl )
     {
         // New format
         int version = signature[ 3 ];
+
+        if( version == CLIENT_SAVE_V1 )
+            return false;
 
         if( !fread( cl->PassHash, sizeof( cl->PassHash ), 1, f ) )
             goto label_FileTruncated;
