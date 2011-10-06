@@ -3589,6 +3589,11 @@ const char* Client::GetIpStr()
     return inet_ntoa( From.sin_addr );
 }
 
+ushort Client::GetPort()
+{
+    return From.sin_port;
+}
+
 void Client::PingClient()
 {
     if( !pingOk )

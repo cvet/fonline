@@ -92,7 +92,9 @@ struct CritDataExt
     uint   LocationsId[ MAX_STORED_LOCATIONS ];
     uint   Reserved25[ 40 ];
     uint   PlayIp[ MAX_STORED_IP ];
-    uint   Reserved26[ 40 ];
+    ushort PlayPort[ MAX_STORED_IP ];
+    uint   CurrentIp;
+    uint   Reserved26[ 29 ];
 };
 
 #endif // __CRITTER_DATA__

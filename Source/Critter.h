@@ -613,6 +613,7 @@ public:
 public:
     uint        GetIp();
     const char* GetIpStr();
+    ushort      GetPort();
 
 public:
     bool IsOnline()  { return !IsDisconnected; }

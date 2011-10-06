@@ -1630,6 +1630,8 @@ void FOServer::Process_CreateClient( Client* cl )
 
     CritDataExt* data_ext = cl->GetDataExt();
     data_ext->PlayIp[ 0 ] = cl->GetIp();
+    data_ext->PlayPort[ 0 ] = cl->GetPort();
+    data_ext->CurrentIp = 0;
 
     if( !cl->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
     {
@@ -2316,12 +2318,15 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Play ip
     CritDataExt* data_ext = cl->GetDataExt();
     uint         ip = cl->GetIp();
+    ushort       port = cl->GetPort();
     bool         ip_stored = false;
     for( int i = 0; i < MAX_STORED_IP; i++ )
     {
         if( data_ext->PlayIp[ i ] == ip )
         {
             ip_stored = true;
+            data_ext->PlayPort[ i ] = port;
+            data_ext->CurrentIp = i;
             break;
         }
     }
@@ -2332,7 +2337,10 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         {
             // Free 1/2 slots
             for( int i = MAX_STORED_IP / 2; i < MAX_STORED_IP; i++ )
+            {
                 data_ext->PlayIp[ i ] = 0;
+                data_ext->PlayPort[ i ] = 0;
+            }
         }
 
         // Store ip
@@ -2341,6 +2349,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             if( !data_ext->PlayIp[ i ] )
             {
                 data_ext->PlayIp[ i ] = ip;
+                data_ext->PlayPort[ i ] = port;
+                data_ext->CurrentIp = i;
                 break;
             }
         }
