@@ -16,7 +16,7 @@ int main( int argc, char* argv[] )
     setlocale( LC_ALL, "Russian" );
 
     // Help
-    printf( "FOnline save patcher v.1.2\n" );
+    printf( "FOnline save patcher v.1.3\n" );
     printf( "Commands:\n" );
     printf( " setPassword <clientName> <newPassword>\n  - change password for client (use '*' instead spaces)\n" );
     printf( " patchSaves\n  - patch all client files to actual state\n" );
