@@ -1583,7 +1583,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     if( text )
                         map->SetText( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text, text_len, intellect, unsafe_text );
                     else if( lexems )
-                        map->SetTextMsgLex( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text_msg, num_str, lexems, strlen( lexems ) );
+                        map->SetTextMsgLex( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
                     else
                         map->SetTextMsg( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text_msg, num_str );
                 }

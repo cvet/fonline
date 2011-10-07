@@ -54,6 +54,9 @@ void CatchExceptions( const char* app_name, unsigned int app_ver )
         SetUnhandledExceptionFilter( NULL );
 }
 
+#ifdef FO_X86
+# pragma warning( disable : 4748 )
+#endif
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
     LONG        retval = EXCEPTION_CONTINUE_SEARCH;
@@ -75,7 +78,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         OSVERSIONINFOA ver;
         memset( &ver, 0, sizeof( OSVERSIONINFOA ) );
         ver.dwOSVersionInfoSize = sizeof( ver );
-        if( GetVersionExA( (OSVERSIONINFOA*) &ver ) != FALSE )
+        if( GetVersionEx( (OSVERSIONINFOA*) &ver ) )
         {
             fprintf( f, "\tOS          %d.%d.%d (%s)\n",
                      ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion );
@@ -178,14 +181,15 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 }
                 else
                 {
-                    __asm
-                    {
-label:
-                        mov[ context.Ebp ], ebp;
-                        mov[ context.Esp ], esp;
-                        mov eax, [ label ];
-                        mov[ context.Eip ], eax;
-                    }
+                    #ifdef FO_X86
+                    __asm     label :
+                    __asm mov[ context.Ebp ], ebp;
+                    __asm     mov[ context.Esp ], esp;
+                    __asm mov eax, [ label ];
+                    __asm     mov[ context.Eip ], eax;
+                    #else // FO_X64
+                    RtlCaptureContext( &context );
+                    #endif
                 }
             }
             else
@@ -208,12 +212,12 @@ label:
             stack.AddrStack.Offset = context.Esp;
             #else // FO_X64
             DWORD machine_type = IMAGE_FILE_MACHINE_AMD64;
-            s.AddrPC.Offset = c.Rip;
-            s.AddrPC.Mode = AddrModeFlat;
-            s.AddrFrame.Offset = c.Rsp;
-            s.AddrFrame.Mode = AddrModeFlat;
-            s.AddrStack.Offset = c.Rsp;
-            s.AddrStack.Mode = AddrModeFlat;
+            stack.AddrPC.Offset = context.Rip;
+            stack.AddrPC.Mode = AddrModeFlat;
+            stack.AddrFrame.Offset = context.Rsp;
+            stack.AddrFrame.Mode = AddrModeFlat;
+            stack.AddrStack.Offset = context.Rsp;
+            stack.AddrStack.Mode = AddrModeFlat;
             #endif
 
             #define STACKWALK_MAX_NAMELEN    ( 1024 )
