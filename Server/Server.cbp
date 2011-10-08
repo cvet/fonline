@@ -13,8 +13,8 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
-					<Add option="-W" />
 					<Add option="-mthreads" />
+					<Add option="-W" />
 					<Add option="-Wno-invalid-offsetof" />
 					<Add option="-DFONLINE_SERVER" />
 					<Add option="-DSCRIPT_MULTITHREADING" />
@@ -55,10 +55,10 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add option="-std=gnu++0x" />
 					<Add option="-W" />
 					<Add option="-Wno-invalid-offsetof" />
 					<Add option="-Wno-unused-result" />
-					<Add option="-std=gnu++0x" />
 					<Add option="-DFONLINE_SERVER" />
 					<Add option="-DSCRIPT_MULTITHREADING" />
 					<Add option="-DNDEBUG" />
@@ -70,7 +70,24 @@
 					<Add directory="../Source" />
 				</ResourceCompiler>
 				<Linker>
+					<Add option="-lpthread" />
+					<Add option="-ldl" />
+					<Add option="-lrt" />
+					<Add option="-lstlport" />
 					<Add option="-lstlportg" />
+					<Add option="-lfltk" />
+					<Add option="-lfltk_forms" />
+					<Add option="-lfltk_gl" />
+					<Add option="-lfltk_images" />
+					<Add option="-lfltk_jpeg" />
+					<Add option="-lfltk_png" />
+					<Add option="-lfltk_z" />
+					<Add option="-lX11" />
+					<Add option="-lXft" />
+					<Add option="-levent" />
+					<Add option="-levent_core" />
+					<Add option="-levent_extra" />
+					<Add option="-event_pthreads" />
 					<Add directory="../Lib/Linux" />
 				</Linker>
 			</Target>
@@ -269,19 +286,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/Zlib/deflate.h" />
-		<Unit filename="../Source/Zlib/gzclose.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/Zlib/gzguts.h" />
-		<Unit filename="../Source/Zlib/gzlib.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/Zlib/gzread.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/Zlib/gzwrite.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../Source/Zlib/infback.c">
 			<Option compilerVar="CC" />
 		</Unit>

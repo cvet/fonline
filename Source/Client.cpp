@@ -112,7 +112,7 @@ bool FOClient::Init( HWND hwnd )
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( CScriptArray ) == 36 );
     STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4260 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1152 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1148 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -6579,7 +6579,8 @@ void FOClient::Net_OnGameInfo()
     } ft;
     if( !SystemTimeToFileTime( &st, &ft.ft ) )
         WriteLogF( _FUNC_, " - FileTimeToSystemTime error<%u>.\n", GetLastError() );
-    GameOpt.YearStartFT = PACKUINT64( ft.ul.HighPart, ft.ul.LowPart );
+    GameOpt.YearStartFTLo = ft.ul.LowPart;
+    GameOpt.YearStartFTHi = ft.ul.HighPart;
     GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
     GameOpt.FullSecondStart = GameOpt.FullSecond;
     GameOpt.GameTimeTick = Timer::GameTick();

@@ -1,24 +1,15 @@
 //
-// "$Id: Fl_Paged_Device.H 8467 2011-02-23 14:36:18Z manolo $"
+// "$Id: Fl_Paged_Device.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // Printing support for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 2010 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -44,7 +35,7 @@
  This class has no public constructor: don't instantiate it; use Fl_Printer 
  or Fl_PostScript_File_Device instead.
  */
-class Fl_Paged_Device : public Fl_Surface_Device {
+class FL_EXPORT Fl_Paged_Device : public Fl_Surface_Device {
 public:
   /**
    \brief Possible page formats.
@@ -132,6 +123,14 @@ public:
   virtual void translate(int x, int y);
   virtual void untranslate(void);
   virtual void print_widget(Fl_Widget* widget, int delta_x = 0, int delta_y = 0);
+  /** Prints a window with its title bar and frame if any.
+   
+   \p x_offset and \p y_offset are optional coordinates of where to position the window top left.
+   Equivalent to print_widget() if \p win is a subwindow or has no border.
+   Use Fl_Window::decorated_w() and Fl_Window::decorated_h() to get the size of the
+   printed window.
+   */
+  void print_window(Fl_Window *win, int x_offset = 0, int y_offset = 0);
   virtual void print_window_part(Fl_Window *win, int x, int y, int w, int h, int delta_x = 0, int delta_y = 0);
   virtual int end_page (void);
   virtual void end_job (void);
@@ -140,6 +139,6 @@ public:
 #endif // Fl_Paged_Device_H
 
 //
-// End of "$Id: Fl_Paged_Device.H 8467 2011-02-23 14:36:18Z manolo $"
+// End of "$Id: Fl_Paged_Device.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 

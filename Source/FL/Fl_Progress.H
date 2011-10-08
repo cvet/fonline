@@ -1,24 +1,15 @@
 //
-// "$Id: Fl_Progress.H 8306 2011-01-24 17:04:22Z matt $"
+// "$Id: Fl_Progress.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // Progress bar widget definitions.
 //
 // Copyright 2000-2010 by Michael Sweet.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -77,5 +68,5 @@ class FL_EXPORT Fl_Progress : public Fl_Widget {
 #endif // !_Fl_Progress_H_
 
 //
-// End of "$Id: Fl_Progress.H 8306 2011-01-24 17:04:22Z matt $".
+// End of "$Id: Fl_Progress.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

@@ -1,22 +1,13 @@
-/* "$Id: fl_utf8.h 7965 2010-12-06 18:22:22Z matt $"
+/* "$Id: fl_utf8.h 8864 2011-07-19 04:49:30Z greg.ercolano $"
  *
  * Author: Jean-Marc Lienher ( http://oksid.ch )
  * Copyright 2000-2010 by O'ksi'D.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * This library is free software. Distribution and use rights are outlined in
+ * the file "COPYING" which should have been included with this file.  If this
+ * file is missing or damaged, see the license at:
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
- *
- * You should have received a copy of the GNU Library General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
- * USA.
+ *     http://www.fltk.org/COPYING.php
  *
  * Please report all bugs and problems on the following page:
  *
@@ -27,8 +18,6 @@
  * The following code is an attempt to merge the functions incorporated in FLTK2
  * with the functions provided in OksiD's fltk-1.1.6-utf8 port
  */
-
-/*** NOTE : all functions are LIMITED to 24 bits Unicode values !!! ***/
 
 /**
   \file fl_utf8.h
@@ -99,16 +88,16 @@ FL_EXPORT int fl_utf8bytes(unsigned ucs);
 
 /* OD: returns the byte length of the first UTF-8 char sequence (returns -1 if not valid) */
 FL_EXPORT int fl_utf8len(char c);
-  
+
 /* OD: returns the byte length of the first UTF-8 char sequence (returns +1 if not valid) */
 FL_EXPORT int fl_utf8len1(char c);
-  
+
 /* OD: returns the number of Unicode chars in the UTF-8 string */
 FL_EXPORT int fl_utf_nb_char(const unsigned char *buf, int len);
 
 /* F2: Convert the next UTF8 char-sequence into a Unicode value (and say how many bytes were used) */
 FL_EXPORT unsigned fl_utf8decode(const char* p, const char* end, int* len);
-  
+
 /* F2: Encode a Unicode value into a UTF8 sequence, return the number of bytes used */
 FL_EXPORT int fl_utf8encode(unsigned ucs, char* buf);
 
@@ -117,6 +106,9 @@ FL_EXPORT const char* fl_utf8fwd(const char* p, const char* start, const char* e
 
 /* F2: Move backward to the previous valid UTF8 sequence start */
 FL_EXPORT const char* fl_utf8back(const char* p, const char* start, const char* end);
+
+/* XX: Convert a single 32-bit Unicode value into UTF16 */
+FL_EXPORT unsigned fl_ucs_to_Utf16(const unsigned ucs, unsigned short *dst, const unsigned dstlen);
 
 /* F2: Convert a UTF8 string into UTF16 */
 FL_EXPORT unsigned fl_utf8toUtf16(const char* src, unsigned srclen, unsigned short* dst, unsigned dstlen);
@@ -258,5 +250,5 @@ FL_EXPORT char fl_make_path( const char *path );
 #endif /* _HAVE_FL_UTF8_HDR_ */
 
 /*
- * End of "$Id: fl_utf8.h 7965 2010-12-06 18:22:22Z matt $".
+ * End of "$Id: fl_utf8.h 8864 2011-07-19 04:49:30Z greg.ercolano $".
  */

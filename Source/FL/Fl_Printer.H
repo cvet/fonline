@@ -1,29 +1,21 @@
 //
-// "$Id: Fl_Printer.H 8467 2011-02-23 14:36:18Z manolo $"
+// "$Id: Fl_Printer.H 9035 2011-09-14 15:17:32Z manolo $"
 //
 // Printing support for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 2010 by Bill Spitzak and others.
+// Copyright 2010-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
 //     http://www.fltk.org/str.php
 //
+
 /** \file Fl_Printer.H 
  \brief declaration of classes Fl_Printer, Fl_System_Printer and Fl_PostScript_Printer.
  */
@@ -62,9 +54,9 @@ private:
   float scale_x;
   float scale_y;
   float angle; // rotation angle in radians
-  Fl_PMPrintSession  printSession;
-  Fl_PMPageFormat    pageFormat;
-  Fl_PMPrintSettings printSettings;
+  PMPrintSession  printSession;
+  PMPageFormat    pageFormat;
+  PMPrintSettings printSettings;
 #elif defined(WIN32)
   int   abortPrint;
   PRINTDLG      pd;
@@ -125,8 +117,8 @@ public:
  Fl_Printer allows to use all FLTK drawing, color, text, and clip functions, and to have them operate
  on printed page(s). There are two main, non exclusive, ways to use it.
  <ul><li>Print any widget (standard, custom, Fl_Window, Fl_Gl_Window) as it appears 
- on screen, with optional translation, scaling and rotation. This is done by calling print_widget() 
- or print_window_part().
+ on screen, with optional translation, scaling and rotation. This is done by calling print_widget(), 
+ print_window() or print_window_part().
  <li>Use a series of FLTK graphics commands (e.g., font, text, lines, colors, clip, image) to
  compose a page appropriately shaped for printing. 
  </ul>
@@ -151,7 +143,7 @@ public:
  <li>Mac OS X platform: all graphics requests print as on display.
  </ul>
  */
-class Fl_Printer : public Fl_Paged_Device {
+class FL_EXPORT Fl_Printer : public Fl_Paged_Device {
 public:
   static const char *class_id;
   const char *class_name() {return class_id;};
@@ -171,6 +163,8 @@ public:
   void end_job (void);
   void print_widget(Fl_Widget* widget, int delta_x=0, int delta_y=0);
   void print_window_part(Fl_Window *win, int x, int y, int w, int h, int delta_x=0, int delta_y=0);
+  void set_current(void);
+  Fl_Graphics_Driver* driver(void);
   /** \brief The destructor */
   ~Fl_Printer(void);
  
@@ -208,5 +202,5 @@ private:
 #endif // Fl_Printer_H
 
 //
-// End of "$Id: Fl_Printer.H 8467 2011-02-23 14:36:18Z manolo $"
+// End of "$Id: Fl_Printer.H 9035 2011-09-14 15:17:32Z manolo $"
 //

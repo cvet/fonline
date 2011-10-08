@@ -173,9 +173,6 @@
     <ClInclude Include="..\Source\Zlib\deflate.h">
       <Filter>Zlib</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Zlib\gzguts.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Zlib\inffast.h">
       <Filter>Zlib</Filter>
     </ClInclude>
@@ -473,18 +470,6 @@
       <Filter>Zlib</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Zlib\deflate.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzclose.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzlib.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzread.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzwrite.c">
       <Filter>Zlib</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Zlib\infback.c">

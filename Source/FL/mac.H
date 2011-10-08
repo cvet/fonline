@@ -1,24 +1,15 @@
 //
-// "$Id: mac.H 8505 2011-03-04 17:04:43Z manolo $"
+// "$Id: mac.H 9101 2011-09-30 13:09:06Z manolo $"
 //
 // Mac header file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 1998-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -33,33 +24,19 @@
 #if !defined(Fl_X_H)
 #  error "Never use <FL/mac.H> directly; include <FL/x.H> instead."
 #endif // !Fl_X_H
-#include <FL/Fl_Widget.H>
 
 typedef void* Window;	    // this is really a pointer to the subclass FLWindow of NSWindow
-typedef void* Fl_Offscreen; // this is really a CGContextRef
-typedef void* Fl_Bitmask;   // this is really a CGImageRef
-
-#include <AvailabilityMacros.h>
-#ifndef MAC_OS_X_VERSION_10_3
-#define MAC_OS_X_VERSION_10_3 1030
-#endif
-#ifndef MAC_OS_X_VERSION_10_4
-#define MAC_OS_X_VERSION_10_4 1040
-#endif
-#ifndef MAC_OS_X_VERSION_10_5
-#define MAC_OS_X_VERSION_10_5 1050
-#endif
-#ifndef MAC_OS_X_VERSION_10_6
-#define MAC_OS_X_VERSION_10_6 1060
-#endif
 
 #if !(defined(FL_LIBRARY) || defined(FL_INTERNALS)) // this part is used when compiling an application program
+#  include <FL/Fl_Widget.H>
 
-typedef void* Fl_Region;
-typedef void* Fl_CGContextRef;
-typedef void* Fl_PMPrintSettings;
-typedef void* Fl_PMPageFormat;
-typedef void* Fl_PMPrintSession;
+typedef struct flCocoaRegion* Fl_Region;
+typedef struct CGContext* CGContextRef;
+typedef struct OpaquePMPrintSettings*   PMPrintSettings;
+typedef struct OpaquePMPageFormat*      PMPageFormat;
+typedef struct OpaquePMPrintSession*    PMPrintSession;
+typedef struct CGImage* CGImageRef;
+typedef CGContextRef Fl_Offscreen;
 
 #else // this part must be compiled when building the FLTK libraries
 
@@ -67,10 +44,7 @@ typedef void* Fl_PMPrintSession;
 #include <ApplicationServices/ApplicationServices.h>
 #undef check // because of Fl::check()
 
-typedef CGContextRef	Fl_CGContextRef;
-typedef PMPrintSettings Fl_PMPrintSettings;
-typedef PMPageFormat	Fl_PMPageFormat;
-typedef PMPrintSession	Fl_PMPrintSession;
+typedef CGContextRef Fl_Offscreen;
 
 typedef struct flCocoaRegion {
   int count;
@@ -140,10 +114,8 @@ public:
   int unlink(Fl_X* start = NULL);
   void collapse(void);
   WindowRef window_ref(void);
-  void contains_GL_subwindow(void);
   void set_key_window(void);
   void set_cursor(Fl_Cursor);
-  static int screen_init(XRectangle screens[], float dpi[]);
   static CGImageRef CGImage_from_window_rect(Fl_Window *win, int x, int y, int w, int h);
   static unsigned char *bitmap_from_window_rect(Fl_Window *win, int x, int y, int w, int h, int *bytesPerPixel);
   static Fl_Region intersect_region_and_rect(Fl_Region current, int x,int y,int w, int h);
@@ -153,34 +125,49 @@ public:
   static CGContextRef nwse_cursor_image(void);
   static CGContextRef none_cursor_image(void);
   static void *get_carbon_function(const char *name);
+  static void screen_work_area(int &X, int &Y, int &W, int &H, int n); // compute work area of a given screen
 private:
   static void relink(Fl_Window*, Fl_Window*);
+  bool subwindow;
 };
 
 extern struct Fl_XMap {
   RGBColor rgb;
   ulong pen;
 } *fl_current_xmap;
-extern FL_EXPORT Window fl_window;
+extern Window fl_window;
 
 #endif // FL_LIBRARY || FL_INTERNALS
 
-extern FL_EXPORT Fl_CGContextRef fl_gc;
-extern FL_EXPORT class Fl_Sys_Menu_Bar *fl_sys_menu_bar;
+#ifndef MAC_OS_X_VERSION_10_4
+#define MAC_OS_X_VERSION_10_4 1040
+#endif
+#ifndef MAC_OS_X_VERSION_10_5
+#define MAC_OS_X_VERSION_10_5 1050
+#endif
+#ifndef MAC_OS_X_VERSION_10_6
+#define MAC_OS_X_VERSION_10_6 1060
+#endif
+
+typedef CGImageRef Fl_Bitmask;
+
+extern CGContextRef fl_gc;
+extern class Fl_Sys_Menu_Bar *fl_sys_menu_bar;
 
 extern Window fl_xid(const Fl_Window*);
+extern Fl_Window* fl_find(Window xid);
 void fl_clip_region(Fl_Region);
 
-extern FL_EXPORT Fl_Bitmask fl_create_bitmask(int w, int h, const uchar *data);
-extern FL_EXPORT Fl_Bitmask fl_create_alphamask(int w, int h, int d, int ld, const uchar *data);
-extern FL_EXPORT void fl_delete_bitmask(Fl_Bitmask bm);
+extern Fl_Bitmask fl_create_bitmask(int w, int h, const uchar *data);
+extern Fl_Bitmask fl_create_alphamask(int w, int h, int d, int ld, const uchar *data);
+extern void fl_delete_bitmask(Fl_Bitmask bm);
 extern Fl_Offscreen fl_create_offscreen(int w, int h);
 extern void fl_copy_offscreen(int x,int y,int w,int h, Fl_Offscreen gWorld, int srcx,int srcy);
 extern void fl_delete_offscreen(Fl_Offscreen gWorld);
 extern void fl_begin_offscreen(Fl_Offscreen gWorld);
 extern void fl_end_offscreen();
 
-extern FL_EXPORT int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b);
+extern int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b);
 extern void fl_open_display();
 
 #endif // FL_DOXYGEN
@@ -233,6 +220,6 @@ public:
 /** @} */
 
 //
-// End of "$Id: mac.H 8505 2011-03-04 17:04:43Z manolo $".
+// End of "$Id: mac.H 9101 2011-09-30 13:09:06Z manolo $".
 //
 

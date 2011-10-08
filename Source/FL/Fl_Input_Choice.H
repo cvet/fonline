@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Input_Choice.H 8022 2010-12-12 23:21:03Z AlbrechtS $"
+// "$Id: Fl_Input_Choice.H 9116 2011-10-02 06:25:13Z matt $"
 //
 // An input/chooser widget.
 //            ______________  ____
@@ -10,20 +10,11 @@
 // Copyright 1998-2010 by Bill Spitzak and others.
 // Copyright 2004 by Greg Ercolano.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -32,8 +23,6 @@
 
 /* \file
    Fl_Input_Choice widget . */
-
-
 
 #ifndef Fl_Input_Choice_H
 #define Fl_Input_Choice_H
@@ -67,8 +56,8 @@ class FL_EXPORT Fl_Input_Choice : public Fl_Group {
       if (Fl::focus() == this) draw_focus();
     }
   public:
-    InputMenuButton(int x,int y,int w,int h,const char*l=0) : 
-	Fl_Menu_Button(x,y,w,h,l) { box(FL_UP_BOX); }
+    InputMenuButton(int X,int Y,int W,int H,const char*L=0) : 
+	Fl_Menu_Button(X, Y, W, H, L) { box(FL_UP_BOX); }
   };
 
   Fl_Input *inp_;
@@ -139,7 +128,7 @@ public:
     and label string.
   <P> Inherited destructor Destroys the widget and any value associated with it.
   */
-  Fl_Input_Choice (int x,int y,int w,int h,const char*l=0) : Fl_Group(x,y,w,h,l) {
+  Fl_Input_Choice (int X,int Y,int W,int H,const char*L=0) : Fl_Group(X,Y,W,H,L) {
     Fl_Group::box(FL_DOWN_BOX);
     align(FL_ALIGN_LEFT);				// default like Fl_Input
     inp_ = new Fl_Input(inp_x(), inp_y(),
@@ -218,5 +207,5 @@ public:
 #endif // !Fl_Input_Choice_H
 
 //
-// End of "$Id: Fl_Input_Choice.H 8022 2010-12-12 23:21:03Z AlbrechtS $".
+// End of "$Id: Fl_Input_Choice.H 9116 2011-10-02 06:25:13Z matt $".
 //

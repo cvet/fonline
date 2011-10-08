@@ -1,24 +1,15 @@
 //
-// "$Id: Fl.H 8522 2011-03-21 16:32:37Z manolo $"
+// "$Id: Fl.H 9101 2011-09-30 13:09:06Z manolo $"
 //
 // Main header file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 1998-2010 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -68,50 +59,51 @@ struct Fl_Label;
 	 Fl::remove_timeout() and others
   @{ */
 
-/** signature of some label drawing functions passed as parameters */
+/** Signature of some label drawing functions passed as parameters */
 typedef void (Fl_Label_Draw_F)(const Fl_Label *label, int x, int y, int w, int h, Fl_Align align);
 
-/** signature of some label measurement functions passed as parameters */
+/** Signature of some label measurement functions passed as parameters */
 typedef void (Fl_Label_Measure_F)(const Fl_Label *label, int &width, int &height);
 
-/** signature of some box drawing functions passed as parameters */
+/** Signature of some box drawing functions passed as parameters */
 typedef void (Fl_Box_Draw_F)(int x, int y, int w, int h, Fl_Color color);
 
-/** signature of some timeout callback functions passed as parameters */
+/** Signature of some timeout callback functions passed as parameters */
 typedef void (*Fl_Timeout_Handler)(void *data);
 
-/** signature of some wakeup callback functions passed as parameters */
+/** Signature of some wakeup callback functions passed as parameters */
 typedef void (*Fl_Awake_Handler)(void *data);
 
-/** signature of add_idle callback functions passed as parameters */
+/** Signature of add_idle callback functions passed as parameters */
 typedef void (*Fl_Idle_Handler)(void *data);
 
-/** signature of set_idle callback functions passed as parameters */
+/** Signature of set_idle callback functions passed as parameters */
 typedef void (*Fl_Old_Idle_Handler)();
 
-/** signature of add_fd functions passed as parameters */
+/** Signature of add_fd functions passed as parameters */
 typedef void (*Fl_FD_Handler)(int fd, void *data);
 
-/** signature of add_handler functions passed as parameters */
+/** Signature of add_handler functions passed as parameters */
 typedef int (*Fl_Event_Handler)(int event);
 
-/** signature of set_abort functions passed as parameters */
+/** Signature of set_abort functions passed as parameters */
 typedef void (*Fl_Abort_Handler)(const char *format,...);
 
-/** signature of set_atclose functions passed as parameters */
+/** Signature of set_atclose functions passed as parameters */
 typedef void (*Fl_Atclose_Handler)(Fl_Window *window, void *data);
 
-/** signature of args functions passed as parameters */
+/** Signature of args functions passed as parameters */
 typedef int (*Fl_Args_Handler)(int argc, char **argv, int &i);
 
-/** signature of event_dispatch functions passed as parameters */
+/** Signature of event_dispatch functions passed as parameters.
+    \see Fl::event_dispatch(Fl_Event_Dispatch) */
 typedef int (*Fl_Event_Dispatch)(int event, Fl_Window *w);
 
 /** @} */ /* group callback_functions */
 
 
 /**
-  The Fl is the FLTK global (static) containing
+  The Fl is the FLTK global (static) class containing
   state information and global methods for the current application.
 */
 class FL_EXPORT Fl {
@@ -141,6 +133,7 @@ public: // should be private!
   static Fl_Window* modal_;
   static Fl_Window* grab_;
   static int compose_state;
+  static void call_screen_init(); // recompute screen number and dimensions
 #endif
   /**
     If true then flush() will do something.
@@ -148,10 +141,16 @@ public: // should be private!
   static void damage(int d) {damage_ = d;}
   
 public:
+  /** Enumerator for global FLTK options.
+      These options can be set system wide, per user, or for the running
+      application only.
+      \see Fl::option(Fl_Option, bool)
+      \see Fl::option(Fl_Option)
+  */
   typedef enum {
-      /// When switched on, moving the text cursor beyond the start or end of 
-      /// a text in a text widget will change focus to the next text widgt. 
-      /// When switched off, the cursor will stop at the end of the text. 
+      /// When switched on, moving the text cursor beyond the start or end of
+      /// a text in a text widget will change focus to the next text widget.
+      /// When switched off, the cursor will stop at the end of the text.
       /// Pressing Tab or Ctrl-Tab will advance the keyboard focus.
     OPTION_ARROW_FOCUS = 0,
       // When switched on, FLTK will use the file chooser dialog that comes 
@@ -174,13 +173,14 @@ public:
       /// dropping text from other applications still works.
     OPTION_DND_TEXT,
       /// If tooltips are enabled, hovering the mouse over a widget with a 
-      /// tooltip text will open a little tootip window until the mouse leaves
+      /// tooltip text will open a little tooltip window until the mouse leaves
       /// the widget. If disabled, no tooltip is shown.
     OPTION_SHOW_TOOLTIPS,
       // don't change this, leave it always as the last element
+      /// For internal use only.
     OPTION_LAST
   } Fl_Option;
-  
+
 private:  
   static unsigned char options_[OPTION_LAST];
   static unsigned char options_read_;
@@ -758,13 +758,13 @@ public:
 	fl global screen functions declared in <FL/Fl.H>
      @{ */
   // screen size:
-  /** Returns the origin of the current screen, where 0 indicates the left side of the screen. */
+  /** Returns the leftmost x coordinate of the main screen work area. */
   static int x(); // platform dependent
-  /** Returns the origin of the current screen, where 0 indicates the top edge of the screen. */
+  /** Returns the topmost y coordinate of the main screen work area. */
   static int y(); // platform dependent
-  /** Returns the width of the screen in pixels. */
+  /** Returns the width in pixels of the main screen work area. */
   static int w(); // platform dependent
-  /** Returns the height of the screen in pixels. */
+  /** Returns the height in pixels of the main screen work area. */
   static int h(); // platform dependent
 
   // multi-head support:
@@ -781,6 +781,16 @@ public:
   static void screen_xywh(int &X, int &Y, int &W, int &H, int n); 
   static void screen_xywh(int &X, int &Y, int &W, int &H, int mx, int my, int mw, int mh);
   static void screen_dpi(float &h, float &v, int n=0);
+  static void screen_work_area(int &X, int &Y, int &W, int &H, int mx, int my);
+  static void screen_work_area(int &X, int &Y, int &W, int &H, int n);
+  /** 
+   Gets the bounding box of the work area of the screen that contains the mouse pointer.
+   \param[out]  X,Y,W,H the work area bounding box
+   \see void screen_work_area(int &x, int &y, int &w, int &h, int mx, int my) 
+   */
+  static void screen_work_area(int &X, int &Y, int &W, int &H) {
+    screen_work_area(X, Y, W, H, e_x_root, e_y_root);
+  }
 
   /**   @} */
 
@@ -1162,5 +1172,5 @@ public:
 #endif // !Fl_H
 
 //
-// End of "$Id: Fl.H 8522 2011-03-21 16:32:37Z manolo $".
+// End of "$Id: Fl.H 9101 2011-09-30 13:09:06Z manolo $".
 //

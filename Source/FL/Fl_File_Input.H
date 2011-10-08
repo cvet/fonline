@@ -1,25 +1,16 @@
 //
-// "$Id: Fl_File_Input.H 8306 2011-01-24 17:04:22Z matt $"
+// "$Id: Fl_File_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // File_Input header file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 1998-2010 by Bill Spitzak and others.
 // Original version Copyright 1998 by Curtis Edwards.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -42,12 +33,14 @@
   navigate upward in the directory tree.
   You may want to handle FL_WHEN_CHANGED events for tracking text changes
   and also FL_WHEN_RELEASE for button release when changing to parent dir.
-  FL_WHEN_RELEASE callback won't be called if the directory clicked 
-  is the same that the current one.
+  FL_WHEN_RELEASE callback won't be called if the directory clicked
+  is the same as the current one.
+
   <P align=CENTER> \image html Fl_File_Input.png </P> 
   \image latex Fl_File_Input.png "Fl_File_Input"  width=6cm
+
   \note As all Fl_Input derived objects, Fl_File_Input may call its callback
-  when loosing focus (see FL_UNFOCUS) to update its state like its cursor shape.
+  when losing focus (see FL_UNFOCUS) to update its state like its cursor shape.
   One resulting side effect is that you should call clear_changed() early in your callback
   to avoid reentrant calls if you plan to show another window or dialog box in the callback.
 */
@@ -100,5 +93,5 @@ public:
 
 
 //
-// End of "$Id: Fl_File_Input.H 8306 2011-01-24 17:04:22Z matt $".
+// End of "$Id: Fl_File_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

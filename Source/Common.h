@@ -360,7 +360,11 @@ struct ServerScriptFunctions
 #   pragma comment(lib,"libevent_extras.lib")
 #  else       // FO_GCC
               // Linker options:
-              // Todo:
+              //  Windows / Linux
+              //  -levent
+              //  -levent_core
+              //  -levent_extras
+              //  -levent_pthreads
 #  endif
 # endif
 
@@ -372,7 +376,7 @@ struct ServerScriptFunctions
 #  pragma comment(lib,"fltkimages.lib")
 #  pragma comment(lib,"fltkjpeg.lib")
 #  pragma comment(lib,"fltkpng.lib")
-#  pragma comment(lib,"fltkz.lib")
+#  pragma comment(lib,"fltkzlib.lib")
 # else // FO_GCC
        // Linker options:.
        //  Windows / Linux

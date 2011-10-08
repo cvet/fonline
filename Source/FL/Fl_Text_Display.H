@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Text_Display.H 8306 2011-01-24 17:04:22Z matt $"
+// "$Id: Fl_Text_Display.H 9078 2011-09-28 20:08:48Z matt $"
 //
 // Header file for Fl_Text_Display class.
 //
@@ -7,20 +7,11 @@
 // Original code Copyright Mark Edel.  Permission to distribute under
 // the LGPL for the FLTK library granted by Mark Edel.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -59,7 +50,8 @@ public:
     CARET_CURSOR,     /**< caret under the text */
     DIM_CURSOR,       /**< dim I-beam */
     BLOCK_CURSOR,     /**< unfille box under the current character */
-    HEAVY_CURSOR      /**< thick I-beam */
+    HEAVY_CURSOR,     /**< thick I-beam */
+    SIMPLE_CURSOR    /**< as cursor as Fl_Input cursor */
   };
   
   /**
@@ -476,5 +468,5 @@ protected:
 #endif
 
 //
-// End of "$Id: Fl_Text_Display.H 8306 2011-01-24 17:04:22Z matt $".
+// End of "$Id: Fl_Text_Display.H 9078 2011-09-28 20:08:48Z matt $".
 //

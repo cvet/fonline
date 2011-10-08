@@ -1,5 +1,5 @@
 //
-// "$Id: glu.h 7903 2010-11-28 21:06:39Z matt $"
+// "$Id: glu.h 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // GLu header file for the Fast Light Tool Kit (FLTK).
 //
@@ -12,20 +12,11 @@
 // This file also provides "missing" OpenGL functions, and
 // gl_start() and gl_finish() to allow OpenGL to be used in any window
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -56,5 +47,5 @@
 #endif // !FL_glu_H
 
 //
-// End of "$Id: glu.h 7903 2010-11-28 21:06:39Z matt $".
+// End of "$Id: glu.h 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

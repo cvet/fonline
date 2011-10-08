@@ -1,24 +1,15 @@
 //
-// "$Id: win32.H 8375 2011-02-05 16:55:04Z AlbrechtS $"
+// "$Id: win32.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // WIN32 header file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 1998-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -110,7 +101,7 @@ FL_EXPORT Window fl_xid_(const Fl_Window* w);
 #endif // FL_LIBRARY || FL_INTERNALS
 
 FL_EXPORT Fl_Window* fl_find(Window xid);
-FL_EXPORT void fl_clip_region(Fl_Region);
+void fl_clip_region(Fl_Region);
 
 // most recent fl_color() or fl_rgbcolor() points at one of these:
 extern FL_EXPORT struct Fl_XMap {
@@ -161,5 +152,5 @@ inline void fl_open_callback(void (*)(const char *)) {}
 extern FL_EXPORT int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b);
 #endif // FL_DOXYGEN
 //
-// End of "$Id: win32.H 8375 2011-02-05 16:55:04Z AlbrechtS $".
+// End of "$Id: win32.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

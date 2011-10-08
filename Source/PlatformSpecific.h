@@ -18,7 +18,8 @@
 //
 // GCC options
 // Compiler
-// -mthreads
+//  -std=gnu++0x
+//  -mthreads (Windows)
 // Linker
 //  Windows
 //  ../Lib
@@ -33,8 +34,15 @@
 //  -lfltk_jpeg
 //  -lfltk_png
 //  -lfltk_z
+//  -levent
+//  -levent_core
+//  -levent_extra
 //  Linux
 //  ../LibLinux
+//  -lpthread
+//  -ldl
+//  -lrt
+//  -lstlport
 //  -lstlportg
 //  -lfltk
 //  -lfltk_forms
@@ -43,11 +51,18 @@
 //  -lfltk_jpeg
 //  -lfltk_png
 //  -lfltk_z
+//  -lX11
+//  -lXft
+//  -levent
+//  -levent_core
+//  -levent_extra
+//  -event_pthreadsz
 // Warnings
-// -Wno-invalid-offsetof
-// -Wno-unused-result
+//  -W
+//  -Wno-invalid-offsetof
+//  -Wno-unused-result
 // Defines
-// _STLP_USE_STATIC_LIB
+//  _STLP_USE_STATIC_LIB
 //
 
 // Detect operating system

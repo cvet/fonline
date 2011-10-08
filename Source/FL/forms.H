@@ -1,24 +1,15 @@
 //
-// "$Id: forms.H 7903 2010-11-28 21:06:39Z matt $"
+// "$Id: forms.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // Forms emulation header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -674,7 +665,7 @@ inline int fl_show_choices(const char* c,int n,const char* b1,const char* b2,
 #include "Fl_File_Chooser.H"
 inline int do_matching(char* a, const char* b) {return fl_filename_match(a,b);}
 
-// Forms-compatable file chooser (implementation in fselect.C):
+// Forms-compatible file chooser (implementation in fselect.C):
 FL_EXPORT char* fl_show_file_selector(const char* message,const char* dir,
 			    const char* pat,const char* fname);
 FL_EXPORT char*	fl_get_directory();
@@ -841,5 +832,5 @@ inline void fl_draw() {Fl::flush();}
 #endif	/* define __FORMS_H__ */
 
 //
-// End of "$Id: forms.H 7903 2010-11-28 21:06:39Z matt $".
+// End of "$Id: forms.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

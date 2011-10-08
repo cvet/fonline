@@ -3755,7 +3755,7 @@ bool FOServer::Init()
     # ifdef FO_WINDOWS
     evthread_use_windows_threads();
     # else // FO_LINUX
-    evthread_use_pthreads();
+    // evthread_use_pthreads();
     # endif
 
     event_config* event_cfg = event_config_new();

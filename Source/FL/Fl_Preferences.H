@@ -1,24 +1,15 @@
 //
-// "$Id: Fl_Preferences.H 7949 2010-12-05 00:38:16Z greg.ercolano $"
+// "$Id: Fl_Preferences.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // Preferences .
 //
 // Copyright 2002-2010 by Matthias Melcher.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -272,5 +263,5 @@ protected:
 #endif // !Fl_Preferences_H
 
 //
-// End of "$Id: Fl_Preferences.H 7949 2010-12-05 00:38:16Z greg.ercolano $".
+// End of "$Id: Fl_Preferences.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

@@ -1,24 +1,15 @@
 //
-// "$Id: Fl_Scroll.H 7981 2010-12-08 23:53:04Z greg.ercolano $"
+// "$Id: Fl_Scroll.H 9126 2011-10-04 13:10:55Z manolo $"
 //
 // Scroll header file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 1998-2010 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -168,7 +159,7 @@ public:
       return(scrollbar_size_);
   }
   /**
-    Sets the pixel size of the scrollbars' troughs to the \p size, in pixels.
+    Sets the pixel size of the scrollbars' troughs to \p newSize, in pixels.
 
     Normally you should not need this method, and should use
     Fl::scrollbar_size(int) instead to manage the size of ALL 
@@ -179,21 +170,21 @@ public:
     Only use THIS method if you really need to override the global
     scrollbar size. The need for this should be rare.
     
-    Setting \p size to the special value of 0 causes the widget to
+    Setting \p newSize to the special value of 0 causes the widget to
     track the global Fl::scrollbar_size(), which is the default.
     
-    \param[in] size Sets the scrollbar size in pixels.\n
+    \param[in] newSize Sets the scrollbar size in pixels.\n
                     If 0 (default), scrollbar size tracks the global Fl::scrollbar_size()
     \see Fl::scrollbar_size()
   */
-  void scrollbar_size(int size) {
-      if ( size != scrollbar_size_ ) redraw();
-      scrollbar_size_ = size;
+  void scrollbar_size(int newSize) {
+      if ( newSize != scrollbar_size_ ) redraw();
+      scrollbar_size_ = newSize;
   }   
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Scroll.H 7981 2010-12-08 23:53:04Z greg.ercolano $".
+// End of "$Id: Fl_Scroll.H 9126 2011-10-04 13:10:55Z manolo $".
 //

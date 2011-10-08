@@ -1,33 +1,24 @@
 //
-// "$Id: Fl_PostScript.H 8528 2011-03-22 17:41:23Z manolo $"
+// "$Id: Fl_PostScript.H 9116 2011-10-02 06:25:13Z matt $"
 //
 // Support for graphics output to PostScript file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 2010-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
 //     http://www.fltk.org/str.php
 //
+
 /** \file Fl_PostScript.H 
  \brief declaration of classes Fl_PostScript_Graphics_Driver, Fl_PostScript_File_Device.
  */
-
 
 #ifndef Fl_PostScript_H
 #define Fl_PostScript_H
@@ -61,7 +52,7 @@
  <br> FLTK standard fonts are output using PostScript standard fonts: Helvetica, Courier, 
  Times (and their bold, oblique, italic variants).
  */
-class Fl_PostScript_Graphics_Driver : public Fl_Graphics_Driver {
+class FL_EXPORT Fl_PostScript_Graphics_Driver : public Fl_Graphics_Driver {
 public: 
   static const char *class_id;
   const char *class_name() {return class_id;};
@@ -193,9 +184,9 @@ class Clip {
   void draw_image(Fl_Draw_Image_Cb call, void* data, int x,int y, int w, int h, int delta=3);
   void draw_image_mono(Fl_Draw_Image_Cb call, void* data, int x,int y, int w, int h, int delta=1);
       
-  void draw(const char* s, int n, int x, int y) {transformed_draw(s,n,x,y); };
+  void draw(const char* s, int nBytes, int x, int y) {transformed_draw(s,nBytes,x,y); };
 #ifdef __APPLE__
-  void draw(const char* s, int n, float x, float y) {transformed_draw(s,n,x,y); };
+  void draw(const char* s, int nBytes, float x, float y) {transformed_draw(s,nBytes,x,y); };
 #endif
   void draw(int angle, const char *str, int n, int x, int y);
   void rtl_draw(const char* s, int n, int x, int y);
@@ -213,9 +204,9 @@ class Clip {
 /**
  \brief To send graphical output to a PostScript file.
  */
-class Fl_PostScript_File_Device : public Fl_Paged_Device {
+class FL_EXPORT Fl_PostScript_File_Device : public Fl_Paged_Device {
 #ifdef __APPLE__
-  Fl_CGContextRef gc;
+  CGContextRef gc;
 #endif
 protected:
   Fl_PostScript_Graphics_Driver *driver();
@@ -249,5 +240,5 @@ public:
 #endif // Fl_PostScript_H
 
 //
-// End of "$Id: Fl_PostScript.H 8528 2011-03-22 17:41:23Z manolo $"
+// End of "$Id: Fl_PostScript.H 9116 2011-10-02 06:25:13Z matt $"
 //

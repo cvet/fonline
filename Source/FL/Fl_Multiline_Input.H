@@ -1,24 +1,15 @@
 //
-// "$Id: Fl_Multiline_Input.H 8068 2010-12-20 07:48:59Z greg.ercolano $"
+// "$Id: Fl_Multiline_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
 //
 // Multiline input header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -26,8 +17,7 @@
 //
 
 /* \file
-   Fl_Multiline_Input widget . */
-
+   Fl_Multiline_Input widget . */ 
 
 #ifndef Fl_Multiline_Input_H
 #define Fl_Multiline_Input_H
@@ -57,14 +47,19 @@ public:
   /**
     Creates a new Fl_Multiline_Input widget using the given
     position, size, and label string. The default boxtype is FL_DOWN_BOX.
-    <P>Inherited destructor destroys the widget and any value associated with it.
+
+    Inherited destructor destroys the widget and any value associated with it.
   */
+#if defined(FL_DLL)	// implementation in src/Fl_Input.cxx
+  Fl_Multiline_Input(int X,int Y,int W,int H,const char *l = 0);
+#else
   Fl_Multiline_Input(int X,int Y,int W,int H,const char *l = 0)
     : Fl_Input(X,Y,W,H,l) {type(FL_MULTILINE_INPUT);}
+#endif
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Multiline_Input.H 8068 2010-12-20 07:48:59Z greg.ercolano $".
+// End of "$Id: Fl_Multiline_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
 //

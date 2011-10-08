@@ -1,24 +1,15 @@
 //
-// "$Id: Fl_Widget.H 8476 2011-02-26 08:23:30Z manolo $"
+// "$Id: Fl_Widget.H 9126 2011-10-04 13:10:55Z manolo $"
 //
 // Widget header file for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 1998-2010 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
@@ -162,7 +153,7 @@ protected:
   */
   enum {
         INACTIVE        = 1<<0,   ///< the widget can't receive focus, and is disabled but potentially visible
-        INVISIBLE       = 1<<1,   ///< the widget is not drawn but can receive events
+        INVISIBLE       = 1<<1,   ///< the widget is not drawn, but can receive a few special events
         OUTPUT          = 1<<2,   ///< for output only
         NOBORDER        = 1<<3,   ///< don't draw a decoration (Fl_Window)
         FORCE_POSITION  = 1<<4,   ///< don't let the window manager position the window (Fl_Window)
@@ -660,14 +651,17 @@ public:
   int visible_r() const;
 
   /** Makes a widget visible.
-      An invisible widget never gets redrawn and does not get events.  
-      The visible() method returns true if the widget is set to be  
-      visible. The visible_r() method returns true if the widget and 
-      all of its parents are visible. A widget is only visible if 
-      visible() is true on it <I>and all of its parents</I>. 
 
-      Changing it will send FL_SHOW or FL_HIDE events to 
-      the widget. <I>Do not change it if the parent is not visible, as this 
+      An invisible widget never gets redrawn and does not get keyboard
+      or mouse events, but can receive a few other events like FL_SHOW.
+
+      The visible() method returns true if the widget is set to be
+      visible. The visible_r() method returns true if the widget and
+      all of its parents are visible. A widget is only visible if
+      visible() is true on it <I>and all of its parents</I>.
+
+      Changing it will send FL_SHOW or FL_HIDE events to the widget.
+      <I>Do not change it if the parent is not visible, as this
       will send false FL_SHOW or FL_HIDE events to the widget</I>.
       redraw() is called if necessary on this or the parent.
 
@@ -720,7 +714,7 @@ public:
 
       Changing this value will send FL_DEACTIVATE to the widget if 
       active_r() is true.
-    
+
       Currently you cannot deactivate Fl_Window widgets.
 
       \see activate(), active(), active_r()
@@ -748,13 +742,11 @@ public:
   void clear_output() {flags_ &= ~OUTPUT;}
 
   /** Returns if the widget is able to take events.
-      This is the same as (active() && !output()
-      && visible()) but is faster.
+      This is the same as (active() && !output() && visible())
+      but is faster.
       \retval 0 if the widget takes no events
-   */ 
-  unsigned int takesevents() const {
-    return !output() && active_r() && visible_r();
-  }
+   */
+  unsigned int takesevents() const {return !(flags_&(INACTIVE|INVISIBLE|OUTPUT));}
 
   /** 
       Checks if the widget value changed since the last callback.
@@ -859,13 +851,13 @@ public:
    */
   int contains(const Fl_Widget *w) const ;
 
-  /** Checks if this widget is a child of w.
-      Returns 1 if this widget is a child of \p w, or is
-      equal to \p w. Returns 0 if \p w is NULL.
-      \param[in] w the possible parent widget.
+  /** Checks if this widget is a child of \p wgt.
+      Returns 1 if this widget is a child of \p wgt, or is
+      equal to \p wgt. Returns 0 if \p wgt is NULL.
+      \param[in] wgt the possible parent widget.
       \see contains()
    */
-  int inside(const Fl_Widget* w) const {return w ? w->contains(this) : 0;}
+  int inside(const Fl_Widget* wgt) const {return wgt ? wgt->contains(this) : 0;}
 
   /** Schedules the drawing of the widget.
       Marks the widget as needing its draw() routine called.
@@ -1001,5 +993,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Widget.H 8476 2011-02-26 08:23:30Z manolo $".
+// End of "$Id: Fl_Widget.H 9126 2011-10-04 13:10:55Z manolo $".
 //

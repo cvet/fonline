@@ -1,30 +1,22 @@
 //
-// "$Id: Fl_Device.H 8529 2011-03-23 12:49:30Z AlbrechtS $"
+// "$Id: Fl_Device.H 9116 2011-10-02 06:25:13Z matt $"
 //
 // Definition of classes Fl_Device, Fl_Graphics_Driver, Fl_Surface_Device, Fl_Display_Device
 // for the Fast Light Tool Kit (FLTK).
 //
 // Copyright 2010-2011 by Bill Spitzak and others.
 //
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Library General Public
-// License as published by the Free Software Foundation; either
-// version 2 of the License, or (at your option) any later version.
+// This library is free software. Distribution and use rights are outlined in
+// the file "COPYING" which should have been included with this file.  If this
+// file is missing or damaged, see the license at:
 //
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA.
+//     http://www.fltk.org/COPYING.php
 //
 // Please report all bugs and problems on the following page:
 //
 //     http://www.fltk.org/str.php
 //
+
 /** \file Fl_Device.H 
  \brief declaration of classes Fl_Device, Fl_Graphics_Driver, Fl_Surface_Device, 
  Fl_Display_Device, Fl_Device_Plugin.
@@ -372,7 +364,7 @@ public:
   static const char *class_id;
   virtual const char *class_name() {return class_id;};
   /** \brief see fl_font(Fl_Font face, Fl_Fontsize size). */
-  virtual void font(Fl_Font face, Fl_Fontsize size) {font_ = face; size_ = size;}
+  virtual void font(Fl_Font face, Fl_Fontsize fsize) {font_ = face; size_ = fsize;}
   /** \brief see fl_font(void). */
   Fl_Font font() {return font_; }
   /** \brief see fl_size(). */
@@ -537,8 +529,8 @@ public:
 class FL_EXPORT Fl_Device_Plugin : public Fl_Plugin {
 public:
   /** \brief The constructor */
-  Fl_Device_Plugin(const char *name)
-  : Fl_Plugin(klass(), name) { }
+  Fl_Device_Plugin(const char *pluginName)
+  : Fl_Plugin(klass(), pluginName) { }
   /** \brief Returns the class name */
   virtual const char *klass() { return "fltk:device"; }
   /** \brief Returns the plugin name */
@@ -554,5 +546,5 @@ public:
 #endif // Fl_Device_H
 
 //
-// End of "$Id: Fl_Device.H 8529 2011-03-23 12:49:30Z AlbrechtS $".
+// End of "$Id: Fl_Device.H 9116 2011-10-02 06:25:13Z matt $".
 //
