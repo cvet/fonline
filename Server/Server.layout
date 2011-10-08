@@ -2,7 +2,7 @@
 <CodeBlocks_layout_file>
 	<ActiveTarget name="Release_Linux" />
 	<File name="../Source/AI.cpp" open="0" top="0" tabpos="0">
-		<Cursor position="4219" topLine="121" />
+		<Cursor position="3519" topLine="109" />
 	</File>
 	<File name="../Source/AngelScript/Preprocessor/preprocess.h" open="0" top="0" tabpos="0">
 		<Cursor position="1831" topLine="46" />
@@ -26,10 +26,10 @@
 		<Cursor position="13561" topLine="363" />
 	</File>
 	<File name="../Source/Common.cpp" open="0" top="0" tabpos="4">
-		<Cursor position="46272" topLine="1113" />
+		<Cursor position="46217" topLine="1104" />
 	</File>
 	<File name="../Source/Common.h" open="0" top="0" tabpos="3">
-		<Cursor position="151" topLine="0" />
+		<Cursor position="24051" topLine="786" />
 	</File>
 	<File name="../Source/ConstantsManager.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="319" topLine="0" />
@@ -55,8 +55,8 @@
 	<File name="../Source/DataFile.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="10370" topLine="344" />
 	</File>
-	<File name="../Source/Debugger.cpp" open="1" top="0" tabpos="1">
-		<Cursor position="7594" topLine="216" />
+	<File name="../Source/Debugger.cpp" open="0" top="0" tabpos="1">
+		<Cursor position="511" topLine="0" />
 	</File>
 	<File name="../Source/Dialogs.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="266" topLine="0" />
@@ -73,11 +73,11 @@
 	<File name="../Source/FileManager.h" open="0" top="0" tabpos="0">
 		<Cursor position="3909" topLine="84" />
 	</File>
-	<File name="../Source/FileSystem.cpp" open="1" top="0" tabpos="3">
-		<Cursor position="5619" topLine="202" />
+	<File name="../Source/FileSystem.cpp" open="0" top="0" tabpos="3">
+		<Cursor position="5580" topLine="199" />
 	</File>
 	<File name="../Source/FileSystem.h" open="0" top="0" tabpos="0">
-		<Cursor position="772" topLine="0" />
+		<Cursor position="440" topLine="0" />
 	</File>
 	<File name="../Source/Item.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="66" topLine="0" />
@@ -100,8 +100,11 @@
 	<File name="../Source/MsgFiles.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="7768" topLine="327" />
 	</File>
+	<File name="../Source/Mutex.h" open="0" top="0" tabpos="0">
+		<Cursor position="574" topLine="0" />
+	</File>
 	<File name="../Source/PlatformSpecific.h" open="0" top="0" tabpos="5">
-		<Cursor position="358" topLine="0" />
+		<Cursor position="368" topLine="0" />
 	</File>
 	<File name="../Source/ProtoMap.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="65203" topLine="1574" />
@@ -127,7 +130,7 @@
 	<File name="../Source/ServerScript.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="15814" topLine="384" />
 	</File>
-	<File name="../Source/Text.cpp" open="1" top="0" tabpos="2">
+	<File name="../Source/Text.cpp" open="0" top="0" tabpos="2">
 		<Cursor position="7782" topLine="367" />
 	</File>
 	<File name="../Source/Text.h" open="0" top="0" tabpos="0">
@@ -139,7 +142,7 @@
 	<File name="../Source/Timer.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="3955" topLine="116" />
 	</File>
-	<File name="../Source/Vars.cpp" open="1" top="1" tabpos="5">
+	<File name="../Source/Vars.cpp" open="0" top="0" tabpos="5">
 		<Cursor position="6055" topLine="186" />
 	</File>
 	<File name="../Source/Zlib/zconf.h" open="0" top="0" tabpos="0">

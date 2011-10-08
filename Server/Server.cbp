@@ -70,10 +70,8 @@
 					<Add directory="../Source" />
 				</ResourceCompiler>
 				<Linker>
-					<Add option="-lws2_32" />
-					<Add option="-lwinmm" />
-					<Add option="-lstlport" />
-					<Add directory="../Lib" />
+					<Add option="-lstlportg" />
+					<Add directory="../Lib/Linux" />
 				</Linker>
 			</Target>
 		</Build>
@@ -231,6 +229,10 @@
 		<Unit filename="../Source/ProtoMap.cpp" />
 		<Unit filename="../Source/ProtoMap.h" />
 		<Unit filename="../Source/Randomizer.h" />
+		<Unit filename="../Source/SHA2/sha2.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../Source/SHA2/sha2.h" />
 		<Unit filename="../Source/Script.cpp" />
 		<Unit filename="../Source/Script.h" />
 		<Unit filename="../Source/ScriptBind.h" />
