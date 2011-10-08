@@ -365,6 +365,9 @@
     <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h">
       <Filter>AngelScript\Preprocessor</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\FileSystem.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\3dAnimation.cpp">
@@ -645,6 +648,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\Preprocessor\preprocess.cpp">
       <Filter>AngelScript\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FileSystem.cpp">
+      <Filter>Mapper</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -2,6 +2,7 @@
 #define __FILE_MANAGER__
 
 #include "Defines.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "DataFile.h"
 
@@ -48,7 +49,7 @@
 #define PT_MAPPER_DATA            ( 46 )
 
 #define PATH_LIST_COUNT           ( 50 )
-extern const char* PathLst[ PATH_LIST_COUNT ];
+extern const char* PathList[ PATH_LIST_COUNT ];
 
 class FileManager
 {
@@ -107,7 +108,7 @@ public:
     static void        ExtractPath( const char* fname, char* path );
     static void        ExtractFileName( const char* fname, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );
-    static void        FileManager::CreateDirectoryTree( const char* path );
+    static void        CreateDirectoryTree( const char* path );
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
 

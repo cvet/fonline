@@ -62,13 +62,13 @@ void VarManager::SaveVarsDataFile( void ( * save_func )( void*, size_t ) )
     }
 }
 
-bool VarManager::LoadVarsDataFile( FILE* f, int version )
+bool VarManager::LoadVarsDataFile( void* f, int version )
 {
     WriteLog( "Load vars..." );
     allQuestVars.reserve( 10000 );   // 40kb
 
     uint count = 0;
-    fread( &count, sizeof( count ), 1, f );
+    FileRead( f, &count, sizeof( count ) );
     for( uint i = 0; i < count; i++ )
     {
         ushort temp_id;
@@ -77,18 +77,18 @@ bool VarManager::LoadVarsDataFile( FILE* f, int version )
         if( version < WORLD_SAVE_V10 )
         {
             uint64 id;
-            fread( &id, sizeof( id ), 1, f );
-            fread( &temp_id, sizeof( temp_id ), 1, f );
-            fread( &val, sizeof( val ), 1, f );
+            FileRead( f, &id, sizeof( id ) );
+            FileRead( f, &temp_id, sizeof( temp_id ) );
+            FileRead( f, &val, sizeof( val ) );
             master_id = ( id >> 24 ) & 0xFFFFFF;
             slave_id = id & 0xFFFFFF;
         }
         else
         {
-            fread( &temp_id, sizeof( temp_id ), 1, f );
-            fread( &master_id, sizeof( master_id ), 1, f );
-            fread( &slave_id, sizeof( slave_id ), 1, f );
-            fread( &val, sizeof( val ), 1, f );
+            FileRead( f, &temp_id, sizeof( temp_id ) );
+            FileRead( f, &master_id, sizeof( master_id ) );
+            FileRead( f, &slave_id, sizeof( slave_id ) );
+            FileRead( f, &val, sizeof( val ) );
         }
 
         TemplateVar* tvar = GetTemplateVar( temp_id );
@@ -208,7 +208,7 @@ bool VarManager::LoadTemplateVars( const char* str, TempVarVec& vars )
             continue;
         buf++;
 
-        if( sscanf( buf, "%u%d%s%d%d%d%u", &var_id, &var_type, var_name, &var_start, &var_min, &var_max, &var_flags ) != 7 )
+        if( sscanf( buf, "%hu%d%s%d%d%d%u", &var_id, &var_type, var_name, &var_start, &var_min, &var_max, &var_flags ) != 7 )
         {
             WriteLog( "Fail to scan var.\n" );
             return false;

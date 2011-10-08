@@ -1,14 +1,5 @@
 #include "StdAfx.h"
 #include "Exception.h"
-#include <windows.h>
-#include <stdio.h>
-#include <DbgHelp.h>
-#pragma comment(lib, "Dbghelp.lib")
-#include <Psapi.h>
-#pragma comment(lib, "Psapi.lib")
-#include <tlhelp32.h>
-#include "Timer.h"
-#include "FileManager.h"
 
 char DumpMessRus[] =
 {
@@ -31,6 +22,18 @@ void SetExceptionsRussianText()
     DumpMess = DumpMessRus;
 }
 
+#ifdef FO_WINDOWS
+
+# include <windows.h>
+# include <stdio.h>
+# include <DbgHelp.h>
+# pragma comment(lib, "Dbghelp.lib")
+# include <Psapi.h>
+# pragma comment(lib, "Psapi.lib")
+# include <tlhelp32.h>
+# include "Timer.h"
+# include "FileManager.h"
+
 char AppName[ 128 ] = { 0 };
 char AppVer[ 128 ] = { 0 };
 char ManualDumpAppendix[ 128 ] = { 0 };
@@ -45,18 +48,18 @@ void CatchExceptions( const char* app_name, unsigned int app_ver )
     sprintf( AppVer, "%04X", app_ver );
 
     if( app_name )
-    #ifndef EXCEPTION_MINIDUMP
+    # ifndef EXCEPTION_MINIDUMP
         SetUnhandledExceptionFilter( TopLevelFilterReadableDump );
-    #else
+    # else
         SetUnhandledExceptionFilter( TopLevelFilterMiniDump );
-    #endif
+    # endif
     else
         SetUnhandledExceptionFilter( NULL );
 }
 
-#ifdef FO_X86
-# pragma warning( disable : 4748 )
-#endif
+# ifdef FO_X86
+#  pragma warning( disable : 4748 )
+# endif
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
     LONG        retval = EXCEPTION_CONTINUE_SEARCH;
@@ -93,8 +96,8 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             fprintf( f, "\tCode      " );
             switch( except->ExceptionRecord->ExceptionCode )
             {
-                #define CASE_EXCEPTION( e ) \
-                case e:                     \
+                # define CASE_EXCEPTION( e ) \
+                case e:                      \
                     fprintf( f, # e ); break
                 CASE_EXCEPTION( EXCEPTION_ACCESS_VIOLATION );
                 CASE_EXCEPTION( EXCEPTION_DATATYPE_MISALIGNMENT );
@@ -181,15 +184,15 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 }
                 else
                 {
-                    #ifdef FO_X86
+                    # ifdef FO_X86
                     __asm     label :
                     __asm mov[ context.Ebp ], ebp;
                     __asm     mov[ context.Esp ], esp;
                     __asm mov eax, [ label ];
                     __asm     mov[ context.Eip ], eax;
-                    #else // FO_X64
+                    # else // FO_X64
                     RtlCaptureContext( &context );
-                    #endif
+                    # endif
                 }
             }
             else
@@ -202,7 +205,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             STACKFRAME64 stack;
             memset( &stack, 0, sizeof( stack ) );
 
-            #ifdef FO_X86
+            # ifdef FO_X86
             DWORD machine_type = IMAGE_FILE_MACHINE_I386;
             stack.AddrFrame.Mode   = AddrModeFlat;
             stack.AddrFrame.Offset = context.Ebp;
@@ -210,7 +213,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             stack.AddrPC.Offset    = context.Eip;
             stack.AddrStack.Mode   = AddrModeFlat;
             stack.AddrStack.Offset = context.Esp;
-            #else // FO_X64
+            # else // FO_X64
             DWORD machine_type = IMAGE_FILE_MACHINE_AMD64;
             stack.AddrPC.Offset = context.Rip;
             stack.AddrPC.Mode = AddrModeFlat;
@@ -218,9 +221,9 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             stack.AddrFrame.Mode = AddrModeFlat;
             stack.AddrStack.Offset = context.Rsp;
             stack.AddrStack.Mode = AddrModeFlat;
-            #endif
+            # endif
 
-            #define STACKWALK_MAX_NAMELEN    ( 1024 )
+            # define STACKWALK_MAX_NAMELEN    ( 1024 )
             char symbol_buffer[ sizeof( SYMBOL_INFO ) + STACKWALK_MAX_NAMELEN ];
             SYMBOL_INFO* symbol = (SYMBOL_INFO*) symbol_buffer;
             memset( symbol, 0, sizeof( SYMBOL_INFO ) + STACKWALK_MAX_NAMELEN );
@@ -355,11 +358,11 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                         case SymSym:
                             callstack.symTypeString = "SYM";
                             break;
-                            #if API_VERSION_NUMBER >= 9
+                            # if API_VERSION_NUMBER >= 9
                         case SymDia:
                             callstack.symTypeString = "DIA";
                             break;
-                            #endif
+                            # endif
                         case SymVirtual:
                             callstack.symTypeString = "Virtual";
                             break;
@@ -472,9 +475,21 @@ void CreateDump( const char* appendix )
 {
     Str::Copy( ManualDumpAppendix, appendix );
 
-    #ifndef EXCEPTION_MINIDUMP
+    # ifndef EXCEPTION_MINIDUMP
     TopLevelFilterReadableDump( NULL );
-    #else
+    # else
     TopLevelFilterMiniDump( NULL );
-    #endif
+    # endif
 }
+
+#else // FO_LINUX
+
+// Todo:
+
+void CatchExceptions( const char* app_name, unsigned int app_ver )
+{}
+
+void CreateDump( const char* appendix )
+{}
+
+#endif

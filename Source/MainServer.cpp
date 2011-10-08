@@ -329,7 +329,8 @@ void GUIInit( IniParser& cfg )
     UpdateInfo();
 
     // Show window
-    char* dummy_argv[] = { "" };
+    char  dummy_argv0[ 2 ] = "";
+    char* dummy_argv[] = { dummy_argv0 };
     int   dummy_argc = 1;
     GuiWindow->show( dummy_argc, dummy_argv );
 }
@@ -575,7 +576,11 @@ void UpdateInfo()
             UpdateLogName = "";
             break;
         }
+        #ifdef FO_WINDOWS
         GuiInfo->buffer()->text( fl_locale_to_utf8( std_str.c_str(), (int) std_str.length(), GetACP() ) );
+        #else
+        GuiInfo->buffer()->text( std_str.c_str() );
+        #endif
         if( !GuiBtnSaveInfo->active() )
             GuiBtnSaveInfo->activate();
         FOServer::UpdateIndex = -1;
@@ -588,7 +593,11 @@ void UpdateLog()
     LogGetBuffer( str );
     if( str.length() )
     {
+        #ifdef FO_WINDOWS
         GuiLog->buffer()->append( fl_locale_to_utf8( str.c_str(), (int) str.length(), GetACP() ) );
+        #else // FO_LINUX
+        GuiLog->buffer()->append( str.c_str() );
+        #endif
         if( Fl::focus() != GuiLog )
             GuiLog->scroll( MAX_INT, 0 );
     }

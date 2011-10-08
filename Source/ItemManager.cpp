@@ -87,7 +87,7 @@ template< class T >
 T ResolveProtoValue( const char* str )
 {
     if( Str::IsNumber( str ) )
-        return (T) _atoi64( str );
+        return ( T ) Str::AtoI64( str );
     else if( strstr( str, "\\" ) || strstr( str, "/" ) )
         return ( T ) Str::GetHash( str );
     return ( T ) ConstantsManager::GetDefineValue( str );
@@ -598,14 +598,14 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
     }
 }
 
-bool ItemManager::LoadAllItemsFile( FILE* f, int version )
+bool ItemManager::LoadAllItemsFile( void* f, int version )
 {
     WriteLog( "Load items..." );
 
     lastItemId = 0;
 
     uint count;
-    fread( &count, sizeof( count ), 1, f );
+    FileRead( f, &count, sizeof( count ) );
     if( !count )
     {
         WriteLog( "items not found.\n" );
@@ -616,23 +616,23 @@ bool ItemManager::LoadAllItemsFile( FILE* f, int version )
     for( uint i = 0; i < count; ++i )
     {
         uint           id;
-        fread( &id, sizeof( id ), 1, f );
+        FileRead( f, &id, sizeof( id ) );
         ushort         pid;
-        fread( &pid, sizeof( pid ), 1, f );
+        FileRead( f, &pid, sizeof( pid ) );
         uchar          acc;
-        fread( &acc, sizeof( acc ), 1, f );
+        FileRead( f, &acc, sizeof( acc ) );
         uint           acc0;
-        fread( &acc0, sizeof( acc0 ), 1, f );
+        FileRead( f, &acc0, sizeof( acc0 ) );
         uint           acc1;
-        fread( &acc1, sizeof( acc1 ), 1, f );
+        FileRead( f, &acc1, sizeof( acc1 ) );
         Item::ItemData data;
-        fread( &data, sizeof( data ), 1, f );
+        FileRead( f, &data, sizeof( data ) );
         uchar          lex_len;
         char           lexems[ 1024 ] = { 0 };
-        fread( &lex_len, sizeof( lex_len ), 1, f );
+        FileRead( f, &lex_len, sizeof( lex_len ) );
         if( lex_len )
         {
-            fread( lexems, lex_len, 1, f );
+            FileRead( f, lexems, lex_len );
             lexems[ lex_len ] = 0;
         }
 
@@ -1629,15 +1629,13 @@ string ItemManager::GetItemsStatistics()
     if( IsInit() )
     {
         char str[ 512 ];
-        char str_[ 128 ];
-        char str__[ 128 ];
         for( int i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
         {
             ProtoItem* proto_item = GetProtoItem( i );
             if( proto_item && proto_item->IsItem() )
             {
                 char* s = (char*) ConstantsManager::GetItemName( i );
-                sprintf( str, "%-6u %-40s %-20s\n", i, s ? s : _itoa( i, str_, 10 ), _i64toa( itemCount[ i ], str__, 10 ) );
+                Str::Format( str, "%-6u %-40s %-20s\n", i, s ? s : Str::ItoA( i ), Str::I64toA( itemCount[ i ] ) );
                 result += str;
             }
         }

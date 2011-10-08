@@ -172,12 +172,11 @@ void SetStrMetadata( T& v, const char*& str )
 template< class T >
 void GetStrMetadata( T& v, char* str )
 {
-    char buf[ 32 ];
-    Str::Append( str, MAX_FOTEXT, _itoa( (int) v.size(), buf, 10 ) );
+    Str::Append( str, MAX_FOTEXT, Str::ItoA( (int) v.size() ) );
     Str::Append( str, MAX_FOTEXT, " " );
     for( uint i = 0; i < (uint) v.size(); i++ )
     {
-        Str::Append( str, MAX_FOTEXT, _itoa( v[ i ], buf, 10 ) );
+        Str::Append( str, MAX_FOTEXT, Str::ItoA( v[ i ] ) );
         Str::Append( str, MAX_FOTEXT, " " );
     }
 }
@@ -467,9 +466,8 @@ const char* CraftItem::GetStr( bool metadata )
     // Experience
     if( Experience )
     {
-        char buf[ 32 ];
         Str::Append( str, "exp " );
-        Str::Append( str, _itoa( Experience, buf, 10 ) );
+        Str::Append( str, Str::ItoA( Experience ) );
         Str::Append( str, " " );
     }
 

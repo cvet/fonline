@@ -49,8 +49,10 @@ namespace Str
 
     bool        IsNumber( const char* str );
     const char* ItoA( int i );
+    const char* I64toA( int64 i );
     const char* UItoA( uint dw );
     int         AtoI( const char* str );
+    int64       AtoI64( const char* str );
     uint        AtoUI( const char* str );
 
     char* GetBigBuf();     // Just big buffer, 1mb

@@ -400,10 +400,10 @@ unsigned int CScriptFile::ReadUint32()
 	return data;
 }
 
-unsigned __int64 CScriptFile::ReadUint64()
+asQWORD CScriptFile::ReadUint64()
 {
 	if(!file) return 0;
-	unsigned __int64 data;
+	asQWORD data;
 	if(!fread(&data,sizeof(data),1,file)) return 0;
 	return data;
 }
@@ -458,7 +458,7 @@ bool CScriptFile::WriteUint32(unsigned int data)
 	return fwrite(&data,sizeof(data),1,file)!=0;
 }
 
-bool CScriptFile::WriteUint64(unsigned __int64 data)
+bool CScriptFile::WriteUint64(asQWORD data)
 {
 	if(!file) return false;
 	return fwrite(&data,sizeof(data),1,file)!=0;

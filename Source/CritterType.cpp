@@ -329,12 +329,15 @@ bool CritType::InitFromMsg( FOMsg* msg )
         const char*   str = msg->GetStr( STR_INTERNAL_CRTYPE( i ) );
         CritTypeType& ct = CrTypesReserved.Get()[ i ];
 
+        // Read as int to avoid gcc warning 'format ‘%d’ expects type ‘int*’, but argument has type ‘bool*’'
+        int canDo[ 4 ];
+        int anims[ 37 ];
         if( sscanf( str, "%s%u%u%u%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%s", name,
-                    &ct.Alias, &ct.Multihex, &ct.AnimType, &ct.CanWalk, &ct.CanRun, &ct.CanAim, &ct.CanArmor, &ct.CanRotate,
-                    &ct.Anim1[ 1 ], &ct.Anim1[ 2 ], &ct.Anim1[ 3 ], &ct.Anim1[ 4 ], &ct.Anim1[ 5 ], &ct.Anim1[ 6 ], &ct.Anim1[ 7 ],
-                    &ct.Anim1[ 8 ], &ct.Anim1[ 9 ], &ct.Anim1[ 10 ], &ct.Anim1[ 11 ], &ct.Anim1[ 12 ], &ct.Anim1[ 13 ], &ct.Anim1[ 14 ],
-                    &ct.Anim1[ 15 ], &ct.Anim1[ 16 ], &ct.Anim1[ 17 ], &ct.Anim1[ 18 ], &ct.Anim1[ 19 ], &ct.Anim1[ 20 ],
-                    &ct.Anim1[ 21 ], &ct.Anim1[ 22 ], &ct.Anim1[ 23 ], &ct.Anim1[ 24 ], &ct.Anim1[ 25 ],
+                    &ct.Alias, &ct.Multihex, &ct.AnimType, &canDo[ 0 ], &canDo[ 1 ], &canDo[ 2 ], &canDo[ 3 ], &canDo[ 4 ],
+                    &anims[ 1 ], &anims[ 2 ], &anims[ 3 ], &anims[ 4 ], &anims[ 5 ], &anims[ 6 ], &anims[ 7 ],
+                    &anims[ 8 ], &anims[ 9 ], &anims[ 10 ], &anims[ 11 ], &anims[ 12 ], &anims[ 13 ], &anims[ 14 ],
+                    &anims[ 15 ], &anims[ 16 ], &anims[ 17 ], &anims[ 18 ], &anims[ 19 ], &anims[ 20 ],
+                    &anims[ 21 ], &anims[ 22 ], &anims[ 23 ], &anims[ 24 ], &anims[ 25 ],
                     &MoveWalkReserved[ i ][ 4 ], &MoveWalkReserved[ i ][ 5 ],
                     &MoveWalkReserved[ i ][ 0 ], &MoveWalkReserved[ i ][ 1 ], &MoveWalkReserved[ i ][ 2 ], &MoveWalkReserved[ i ][ 3 ],
                     sound_name ) != 41 )
@@ -344,6 +347,14 @@ bool CritType::InitFromMsg( FOMsg* msg )
             continue;
         }
         sound_name[ Str::Length( sound_name ) - 1 ] = 0;
+
+        for( int i = 1; i <= 25; i++ )
+            ct.Anim1[ i ] = anims[ i ] != 0;
+        ct.CanWalk = canDo[ 0 ] != 0;
+        ct.CanRun = canDo[ 1 ] != 0;
+        ct.CanAim = canDo[ 2 ] != 0;
+        ct.CanArmor = canDo[ 3 ] != 0;
+        ct.CanRotate = canDo[ 4 ] != 0;
 
         Str::Copy( ct.Name, name );
         Str::Copy( ct.SoundName, sound_name );

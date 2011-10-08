@@ -252,7 +252,7 @@ bool MapManager::LoadLocationProto( IniParser& city_txt, ProtoLocation& ploc, us
 
         char   map_name[ MAX_FOPATH ];
         ushort map_pid = 0;
-        if( sscanf( res, "%s%u", map_name, &map_pid ) != 2 )
+        if( sscanf( res, "%s%hu", map_name, &map_pid ) != 2 )
         {
             WriteLogF( _FUNC_, " - Can't parse data in location<%s>, map index<%u>.\n", ploc.Name.c_str(), cur_map );
             return false;
@@ -384,7 +384,7 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
     }
 }
 
-bool MapManager::LoadAllLocationsAndMapsFile( FILE* f )
+bool MapManager::LoadAllLocationsAndMapsFile( void* f )
 {
     WriteLog( "Load locations...\n" );
 
@@ -392,7 +392,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( FILE* f )
     lastMapId = 0;
 
     uint count;
-    fread( &count, sizeof( count ), 1, f );
+    FileRead( f, &count, sizeof( count ) );
     if( !count )
     {
         WriteLog( "Locations not found.\n" );
@@ -404,16 +404,16 @@ bool MapManager::LoadAllLocationsAndMapsFile( FILE* f )
     {
         // Read data
         Location::LocData data;
-        fread( &data, sizeof( data ), 1, f );
+        FileRead( f, &data, sizeof( data ) );
         if( data.LocId > lastLocId )
             lastLocId = data.LocId;
 
         uint                   map_count;
-        fread( &map_count, sizeof( map_count ), 1, f );
+        FileRead( f, &map_count, sizeof( map_count ) );
         vector< Map::MapData > map_data( map_count );
         for( uint j = 0; j < map_count; j++ )
         {
-            fread( &map_data[ j ], sizeof( map_data[ j ] ), 1, f );
+            FileRead( f, &map_data[ j ], sizeof( map_data[ j ] ) );
             if( map_data[ j ].MapId > lastMapId )
                 lastMapId = map_data[ j ].MapId;
         }
@@ -478,7 +478,7 @@ string MapManager::GetLocationsMapsStatistics()
     for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
-        sprintf( str, "%-20s %-09u   %-4u %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
+        sprintf( str, "%-20s %09u   %-4u %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
                  loc->Proto->Name.c_str(), loc->Data.LocId, loc->Data.LocPid, loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
                  loc->Data.GeckVisible ? "true" : "false", loc->GeckCount, loc->Data.AutoGarbage ? "true" : "false", loc->Data.ToGarbage ? "true" : "false" );
         result += str;
@@ -488,7 +488,7 @@ string MapManager::GetLocationsMapsStatistics()
         for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
-            sprintf( str, "     %2u) %-20s %-09u   %-4u %-4d %-4u %-9s %-6s %-50s\n",
+            sprintf( str, "     %2u) %-20s %09u   %-4u %-4d %-4u %-9s %-6s %-50s\n",
                      map_index, map->Proto->GetName(), map->GetId(), map->GetPid(), map->GetTime(), map->GetRain(),
                      map->Data.IsTurnBasedAviable ? "true" : "false", map->IsTurnBasedOn ? "true" : "false",
                      map->Data.ScriptId ? Script::GetScriptFuncName( map->Data.ScriptId ).c_str() : "" );

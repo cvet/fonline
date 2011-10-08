@@ -190,6 +190,7 @@
     <ResourceCompile Include="Server.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\Zlib\adler32.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
@@ -611,6 +612,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
     <ClInclude Include="..\Source\Zlib\gzguts.h" />

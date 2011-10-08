@@ -53,7 +53,7 @@ namespace Script
         # endif
 
         // Load dynamic library
-        HMODULE dll = LoadLibrary( dll_name_ );
+        HMODULE dll = DLL_Load( dll_name_ );
         if( !dll )
             return NULL;
 
@@ -296,15 +296,15 @@ public:
         void* dll = Script::LoadDynamicLibrary( dll_name.c_str() );
         if( !dll )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, dll not found, error<%u>.\n", text.c_str(), GetLastError() );
+            WriteLog( "Error in 'bindfunc' pragma<%s>, dll not found, error<%u>.\n", text.c_str(), DLL_Error() );
             return;
         }
 
         // Find function
-        size_t* func = Script::GetFunctionAddress( dll, func_dll_name.c_str() );
+        size_t* func = DLL_GetAddress( dll, func_dll_name.c_str() );
         if( !func )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, function not found, error<%u>.\n", text.c_str(), GetLastError() );
+            WriteLog( "Error in 'bindfunc' pragma<%s>, function not found, error<%u>.\n", text.c_str(), DLL_Error() );
             return;
         }
 

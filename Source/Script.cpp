@@ -188,72 +188,66 @@ public:
 
     void* LoadDynamicLibrary( const char* dll_name )
     {
-        char dll_name_[ MAX_FOPATH ];
-        Str::Copy( dll_name_, dll_name );
-        FileManager::EraseExtension( dll_name_ );
+        // Find in already loaded
+        char        dll_name_lower[ MAX_FOPATH ];
+        Str::Copy( dll_name_lower, dll_name );
+        EngineData* edata = (EngineData*) Engine->GetUserData();
+        auto        it = edata->LoadedDlls.find( dll_name_lower );
+        if( it != edata->LoadedDlls.end() )
+            return ( *it ).second.second;
+
+        // Make path
+        char dll_path[ MAX_FOPATH ];
+        Str::Copy( dll_path, dll_name_lower );
+        FileManager::EraseExtension( dll_path );
 
         #if defined ( FO_X64 )
         // Add '64' appendix
-        Str::Append( dll_name_, "64" );
+        Str::Append( dll_path, "64" );
         #endif
 
         // DLL extension
         #if defined ( FO_WINDOWS )
-        Str::Append( dll_name_, ".dll" );
+        Str::Append( dll_path, ".dll" );
         #else // FO_LINUX
-        Str::Append( dll_name_, ".so" );
+        Str::Append( dll_path, ".so" );
         #endif
 
         #if defined ( FONLINE_CLIENT )
         // Fix slashes for client
-        Str::Replacement( dll_name_, '\\', '.' );
-        Str::Replacement( dll_name_, '/', '.' );
+        Str::Replacement( dll_path, '\\', '.' );
+        Str::Replacement( dll_path, '/', '.' );
         #endif
 
-        // Find in already loaded
-        EngineData* edata = (EngineData*) Engine->GetUserData();
-        auto        it = edata->LoadedDlls.find( dll_name );
-        if( it != edata->LoadedDlls.end() )
-            return ( *it ).second;
-
         // Load dynamic library
-        Str::Insert( dll_name_, FileManager::GetFullPath( "", ScriptsPath ) );
-        void* dll = LoadLibrary( dll_name_ );
+        Str::Insert( dll_path, FileManager::GetFullPath( "", ScriptsPath ) );
+        void* dll = DLL_Load( dll_path );
         if( !dll )
             return NULL;
 
         // Register variables
-        size_t* ptr = GetFunctionAddress( dll, "Game" );
+        size_t* ptr = DLL_GetAddress( dll, "Game" );
         if( ptr )
             *ptr = (size_t) &GameOpt;
-        ptr = GetFunctionAddress( dll, "ASEngine" );
+        ptr = DLL_GetAddress( dll, "ASEngine" );
         if( ptr )
             *ptr = (size_t) Engine;
 
         // Register functions
-        ptr = GetFunctionAddress( dll, "Log" );
+        ptr = DLL_GetAddress( dll, "Log" );
         if( ptr )
             *ptr = (size_t) &WriteLog;
 
         // Call init function
         typedef void ( *DllMainEx )( bool );
-        DllMainEx func = (DllMainEx) GetFunctionAddress( dll, "DllMainEx" );
+        DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
         if( func )
             ( *func )( LoadLibraryCompiler );
 
         // Add to collection for current engine
-        edata->LoadedDlls.insert( PAIR( dll_name, dll ) );
+        edata->LoadedDlls.insert( PAIR( string( dll_name_lower ), PAIR( string( dll_path ), dll ) ) );
 
         return dll;
-    }
-
-    size_t* GetFunctionAddress( void* dll, const char* func_name )
-    {
-        #if defined ( FO_WINDOWS )
-        return (size_t*) GetProcAddress( (HMODULE) dll, func_name );
-        #else // FO_LINUX
-              // Todo: linux
-        #endif
     }
 
     void SetWrongGlobalObjects( StrVec& names )
@@ -452,7 +446,7 @@ public:
             EngineData* edata = (EngineData*) engine->SetUserData( NULL );
             delete edata->PragmaCB;
             for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
-                FreeLibrary( (HMODULE) ( *it ).second );
+                DLL_Free( ( *it ).second.second );
             delete edata;
             engine->Release();
             engine = NULL;
@@ -1273,16 +1267,16 @@ public:
             if( !dll )
             {
                 if( !disable_log )
-                    WriteLogF( _FUNC_, " - Dll<%s> not found in scripts folder, error<%u>.\n", module_name, GetLastError() );
+                    WriteLogF( _FUNC_, " - Dll<%s> not found in scripts folder, error<%u>.\n", module_name, DLL_Error() );
                 return 0;
             }
 
             // Load function
-            size_t func = (size_t) GetFunctionAddress( dll, func_name );
+            size_t func = (size_t) DLL_GetAddress( dll, func_name );
             if( !func )
             {
                 if( !disable_log )
-                    WriteLogF( _FUNC_, " - Function<%s> in dll<%s> not found, error<%u>.\n", func_name, module_name, GetLastError() );
+                    WriteLogF( _FUNC_, " - Function<%s> in dll<%s> not found, error<%u>.\n", func_name, module_name, DLL_Error() );
                 return 0;
             }
 
@@ -1568,7 +1562,7 @@ public:
                 sync_mngr->PopPriority();
 
                 SynchronizeThreadLocalLocker.Lock();
-                bool sync_not_closed = ( SynchronizeThreadId == GetCurrentThreadId() );
+                bool sync_not_closed = ( SynchronizeThreadId == GetCurThreadId() );
                 if( sync_not_closed )
                 {
                     SynchronizeThreadId = 0;
@@ -1897,7 +1891,7 @@ endcopy:
 
         if( !SynchronizeThreadId )           // Section is free
         {
-            SynchronizeThreadId = GetCurrentThreadId();
+            SynchronizeThreadId = GetCurThreadId();
             SynchronizeThreadCounter = 1;
             SynchronizeThreadLocker.Disallow();     // Lock synchronization section
             SynchronizeThreadLocalLocker.Unlock();  // Local unlock
@@ -1905,10 +1899,10 @@ endcopy:
             SyncManager* sync_mngr = SyncManager::GetForCurThread();
             sync_mngr->PushPriority( 10 );
         }
-        else if( SynchronizeThreadId == GetCurrentThreadId() ) // Section busy by current thread
+        else if( SynchronizeThreadId == GetCurThreadId() ) // Section busy by current thread
         {
             SynchronizeThreadCounter++;
-            SynchronizeThreadLocalLocker.Unlock();             // Local unlock
+            SynchronizeThreadLocalLocker.Unlock();         // Local unlock
         }
         else // Section busy by another thread
         {
@@ -1932,7 +1926,7 @@ endcopy:
 
         SynchronizeThreadLocalLocker.Lock(); // Local lock
 
-        if( SynchronizeThreadId == GetCurrentThreadId() )
+        if( SynchronizeThreadId == GetCurThreadId() )
         {
             if( --SynchronizeThreadCounter == 0 )
             {

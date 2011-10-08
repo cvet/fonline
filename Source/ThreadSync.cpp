@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "ThreadSync.h"
-#include <Windows.h>
 #include "Mutex.h"
 
 static Mutex SyncLocker; // Defense code from simultaneously execution

@@ -377,6 +377,17 @@ const char* Str::ItoA( int i )
     return str;
 }
 
+const char* Str::I64toA( int64 i )
+{
+    static THREAD char str[ 128 ];
+    #ifdef FO_WINDOWS
+    sprintf( str, "%I64d", i );
+    #else // FO_LINUX
+    sprintf( str, "%lld", i );
+    #endif
+    return str;
+}
+
 const char* Str::UItoA( uint dw )
 {
     static THREAD char str[ 128 ];
@@ -389,6 +400,17 @@ int Str::AtoI( const char* str )
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
         return strtol( str + 2, NULL, 16 );
     return atoi( str );
+}
+
+int64 Str::AtoI64( const char* str )
+{
+    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
+        return strtol( str + 2, NULL, 16 );
+    #ifdef FO_WINDOWS
+    return _atoi64( str );
+    #else // FO_LINUX
+    return strtoll( str, NULL, 10 );
+    #endif
 }
 
 uint Str::AtoUI( const char* str )

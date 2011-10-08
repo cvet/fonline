@@ -376,7 +376,12 @@ void StringStrLwr_Generic(asIScriptGeneric *gen)
 {
 	CScriptString* str=*(CScriptString**)gen->GetAddressOfArg(0);
 	std::string str_=str->c_std_str();
+	#ifdef _WIN32
 	_strlwr((char*)str_.c_str());
+	#else
+    for(char* str__=(char*)str_.c_str();*str__;++str__)
+        *str__=tolower(*str__);
+	#endif
 	*(CScriptString**)gen->GetAddressOfReturnLocation()=new CScriptString(str_);
 }
 
@@ -384,7 +389,12 @@ void StringStrUpr_Generic(asIScriptGeneric *gen)
 {
 	CScriptString* str=*(CScriptString**)gen->GetAddressOfArg(0);
 	std::string str_=str->c_std_str();
+    #ifdef _WIN32
 	_strupr((char*)str_.c_str());
+	#else
+    for(char* str__=(char*)str_.c_str();*str__;++str__)
+        *str__=toupper(*str__);
+	#endif
 	*(CScriptString**)gen->GetAddressOfReturnLocation()=new CScriptString(str_);
 }
 
@@ -393,7 +403,7 @@ void StringStrUpr_Generic(asIScriptGeneric *gen)
 //       int64    parseInt(const string &in str, int &out bytesParsed);
 //       double   parseDouble(const string &in str, int &out bytesParsed);
 //       string @ formatString(int64, const string &in format);  // should use sprintf to format the string
-//       string @ formatDouble(double, const string &in format); 
+//       string @ formatDouble(double, const string &in format);
 //
 //       int16    byteStringToInt16(const string &in str, int start);
 //       int32    byteStringToInt32(const string &in str, int start);

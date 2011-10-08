@@ -349,6 +349,7 @@
     <ResourceCompile Include="Client.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\ResourceClient.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
@@ -503,6 +504,7 @@
     <ClInclude Include="..\Source\SHA2\sha2.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\Zlib\adler32.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>

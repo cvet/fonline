@@ -135,7 +135,7 @@ public:
     bool   LoadLocationsProtos();
     bool   LoadLocationProto( IniParser& city_txt, ProtoLocation& ploc, ushort pid );
     void   SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_t ) );
-    bool   LoadAllLocationsAndMapsFile( FILE* f );
+    bool   LoadAllLocationsAndMapsFile( void* f );
     string GetLocationsMapsStatistics();
     void   RunInitScriptMaps();
     bool   GenerateWorld( const char* fname, int path_type );

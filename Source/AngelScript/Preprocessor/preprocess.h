@@ -62,8 +62,8 @@ namespace Preprocessor
 			{
 				std::string path=CurrentDir+filename;
 
-				FILE* fs=NULL;
-				if(fopen_s(&fs,path.c_str(),"rb")) return false;
+				FILE* fs=fopen(path.c_str(),"rb");
+				if(!fs) return false;
 
 				fseek(fs,0,SEEK_END);
 				int len=ftell(fs);

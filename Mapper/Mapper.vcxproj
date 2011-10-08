@@ -382,6 +382,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\ResourceMapper.h" />
     <ClInclude Include="..\Source\3dAnimation.h" />
     <ClInclude Include="..\Source\3dLoader.h" />
@@ -507,6 +508,7 @@
     <ClCompile Include="..\Source\Debugger.cpp" />
     <ClCompile Include="..\Source\Exception.cpp" />
     <ClCompile Include="..\Source\FileManager.cpp" />
+    <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\HexManager.cpp" />
     <ClCompile Include="..\Source\IniParser.cpp" />
     <ClCompile Include="..\Source\Item.cpp" />

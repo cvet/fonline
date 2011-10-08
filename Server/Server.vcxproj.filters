@@ -329,6 +329,9 @@
     <ClCompile Include="..\Source\SHA2\sha2.c">
       <Filter>SHA2</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\FileSystem.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\Zlib\crc32.h">
@@ -663,6 +666,9 @@
     </ClInclude>
     <ClInclude Include="..\Source\SHA2\sha2.h">
       <Filter>SHA2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FileSystem.h">
+      <Filter>Server</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

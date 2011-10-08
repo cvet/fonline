@@ -9,7 +9,11 @@
 #include "IniParser.h"
 #include "Version.h"
 #include <stdarg.h>
-#include <io.h>
+
+#if defined ( FO_WINDOWS )
+# include <io.h>
+# define access    _access
+#endif
 
 #pragma MESSAGE("Add TARGET_HEX.")
 
@@ -632,9 +636,12 @@ const char* GetConfigFileName()
 
         // Get full path
         char module_name[ MAX_FOPATH ];
+        #if defined ( FO_WINDOWS )
         if( !GetModuleFileName( NULL, module_name, sizeof( module_name ) ) )
             return config_name;
-        // Todo: Linux CommandLineArgValues[0] ?
+        #else // FO_LINUX
+              // Todo: Linux CommandLineArgValues[0] ?
+        #endif
 
         // Change extension
         char* ext = (char*) FileManager::GetExtension( module_name );
@@ -643,7 +650,7 @@ const char* GetConfigFileName()
         Str::Copy( ext, 4, "cfg" );
 
         // Check availability
-        if( _access( module_name, 0 ) )
+        if( access( module_name, 0 ) )
             return config_name;
 
         // Get file name
@@ -1016,7 +1023,7 @@ ServerScriptFunctions ServerFunctions;
 
 const char* GetLastSocketError()
 {
-    static THREAD char str[ 256 ];
+    static THREAD char str[ MAX_FOTEXT ];
     int                error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
@@ -1117,6 +1124,15 @@ const char* GetLastSocketError()
         CASE_SOCK_ERROR( WSA_QOS_ESHAPERATEOBJ, "An invalid shaping rate object was found in the QOS provider-specific buffer." );
         CASE_SOCK_ERROR( WSA_QOS_RESERVED_PETYPE, "A reserved policy element was found in the QOS provider-specific buffer." );
     }
+    return str;
+}
+
+#else // FO_LINUX
+
+const char* GetLastSocketError()
+{
+    static THREAD char str[ MAX_FOTEXT ];
+    sprintf( str, "%d", errno );
     return str;
 }
 
@@ -1535,77 +1551,6 @@ void* SingleplayerClientProcess = NULL;
 
 bool             Singleplayer = false;
 InterprocessData SingleplayerData;
-
-/************************************************************************/
-/* File system                                                          */
-/************************************************************************/
-
-#ifdef FO_WINDOWS
-void* FileOpen( const char* fname, bool write )
-{
-    HANDLE file;
-    if( write )
-        file = CreateFile( fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_WRITE_THROUGH, NULL );
-    else
-        file = CreateFile( fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
-    if( file == INVALID_HANDLE_VALUE )
-        return NULL;
-    return file;
-}
-
-void FileClose( void* file )
-{
-    CloseHandle( (HANDLE) file );
-}
-
-bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
-{
-    DWORD dw = 0;
-    BOOL  result = ReadFile( (HANDLE) file, buf, len, &dw, NULL );
-    if( rb )
-        *rb = dw;
-    return result && dw == len;
-}
-
-bool FileWrite( void* file, const void* buf, uint len )
-{
-    DWORD dw = 0;
-    return WriteFile( (HANDLE) file, buf, len, &dw, NULL ) && dw == len;
-}
-
-bool FileSetPointer( void* file, int offset, int origin )
-{
-    return SetFilePointer( (HANDLE) file, offset, NULL, origin ) != INVALID_SET_FILE_POINTER;
-}
-#else
-void* FileOpen( const char* fname, bool write )
-{
-    return (void*) fopen( fname, write ? "wb" : "rb" );
-}
-
-void FileClose( void* file )
-{
-    fclose( (FILE*) file );
-}
-
-bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
-{
-    uint rb_ = fread( buf, sizeof( char ), len, (FILE*) file );
-    if( rb )
-        *rb = rb_;
-    return rb_ == len;
-}
-
-bool FileWrite( void* file, void* buf, uint len )
-{
-    return fwrite( buf, sizeof( char ), len, (FILE*) file ) == len;
-}
-
-bool FileSetPointer( void* file, int offset, int origin )
-{
-    return fseek( (FILE*) file, offset, origin ) == 0;
-}
-#endif
 
 /************************************************************************/
 /*                                                                      */

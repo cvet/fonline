@@ -3,14 +3,14 @@
 
 struct DateTime
 {
-    ushort Year;
-    ushort Month;
-    ushort DayOfWeek;
-    ushort Day;
-    ushort Hour;
-    ushort Minute;
-    ushort Second;
-    ushort Milliseconds;
+    ushort Year;         // 1601 .. 30827
+    ushort Month;        // 1 .. 12
+    ushort DayOfWeek;    // 0 .. 6
+    ushort Day;          // 1 .. 31
+    ushort Hour;         // 0 .. 23
+    ushort Minute;       // 0 .. 59
+    ushort Second;       // 0 .. 59
+    ushort Milliseconds; // 0 .. 999
 };
 
 namespace Timer

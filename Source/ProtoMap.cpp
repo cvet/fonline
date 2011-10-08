@@ -872,9 +872,9 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         Tiles.push_back( Tile( Str::GetHash( name.c_str() ), hx, hy, 0, 0, 0, true ) );
                     // else if(type=="terr" || type=="terrain") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,));
                     else if( type == "0" )
-                        Tiles.push_back( Tile( (uint) _atoi64( name.c_str() ), hx, hy, 0, 0, 0, false ) );
+                        Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, false ) );
                     else if( type == "1" )
-                        Tiles.push_back( Tile( (uint) _atoi64( name.c_str() ), hx, hy, 0, 0, 0, true ) );
+                        Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, true ) );
                 }
             }
         }
@@ -954,7 +954,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
 
             if( !istr.fail() )
             {
-                ivalue = (int) _atoi64( svalue );
+                ivalue = Str::AtoI( svalue );
 
                 if( field == "MapObjType" )
                 {
@@ -1591,7 +1591,7 @@ void ProtoMap::SaveCache( FileManager& fm )
     fm.SetData( &mapEntires[ 0 ], (uint) mapEntires.size() * sizeof( MapEntire ) );
 
     // Save
-    char fname[ MAX_PATH ];
+    char fname[ MAX_FOPATH ];
     sprintf( fname, "%s%sb", pmapName.c_str(), MAP_PROTO_EXT );
     fm.SaveOutBufToFile( fname, pathType );
 }

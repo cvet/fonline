@@ -6,6 +6,7 @@
 
 // Standart API
 #include <stdio.h>
+#include <stdarg.h>
 #include <algorithm>
 #include <math.h>
 #if defined ( FO_WINDOWS )
@@ -13,19 +14,22 @@
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 #else // FO_LINUX
-# define ExitProcess( code )          exit( code )
-//
+# include <errno.h>
+# define ExitProcess( code )           exit( code )
 #endif
 
 // Network
+const char* GetLastSocketError();
 #if defined ( FO_WINDOWS )
 # include <winsock2.h>
+# define socklen_t              int
 # if defined ( FO_MSVC )
 #  pragma comment(lib,"Ws2_32.lib")
 # elif defined ( FO_GCC )
-// Linker option: -lws2_32
+// Linker option:
+//  Windows
+//  -lws2_32
 # endif
-const char* GetLastSocketError();
 #else // FO_LINUX
 # include <sys/types.h>
 # include <sys/socket.h>
@@ -33,7 +37,25 @@ const char* GetLastSocketError();
 # include <arpa/inet.h>
 # define SOCKET                 int
 # define INVALID_SOCKET         ( -1 )
+# define SOCKET_ERROR           ( -1 )
 # define closesocket            close
+# define SD_RECEIVE             SHUT_RD
+# define SD_SEND                SHUT_WR
+# define SD_BOTH                SHUT_RDWR
+#endif
+
+// DLL
+#if defined ( FO_WINDOWS )
+# define DLL_Load( name )              (void*) LoadLibrary( name )
+# define DLL_Free( h )                 FreeLibrary( (HMODULE) h )
+# define DLL_GetAddress( h, pname )    (size_t*) GetProcAddress( (HMODULE) h, pname )
+# define DLL_Error()                   Str::ItoA( GetLastError() )
+#else // FO_LINUX
+# include <dlfcn.h>
+# define DLL_Load( name )              (void*) dlopen( name, RTLD_LAZY )
+# define DLL_Free( h )                 dlclose( h )
+# define DLL_GetAddress( h, pname )    (size_t*) dlsym( h, pname )
+# define DLL_Error()                   dlerror()
 #endif
 
 // Memory debug
@@ -54,10 +76,11 @@ const char* GetLastSocketError();
 #include "Randomizer.h"
 #include "Mutex.h"
 #include "Text.h"
+#include "FileSystem.h"
 
-#define ___MSG1( x )                  # x
-#define ___MSG0( x )                  ___MSG1( x )
-#define MESSAGE( desc )               message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
+#define ___MSG1( x )                   # x
+#define ___MSG0( x )                   ___MSG1( x )
+#define MESSAGE( desc )                message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
 
 #define SAFEREL( x ) \
     { if( x )        \
@@ -69,8 +92,8 @@ const char* GetLastSocketError();
     { if( x )         \
           delete[] ( x ); ( x ) = NULL; }
 
-#define STATIC_ASSERT( a )            { static int static_assert_array__[ ( a ) ? 1 : -1 ]; }
-#define D3D_HR( expr )                { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
+#define STATIC_ASSERT( a )             { static int static_assert_array__[ ( a ) ? 1 : -1 ]; }
+#define D3D_HR( expr )                 { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
 
 #define PI_FLOAT                ( 3.14159265f )
 #define PIBY2_FLOAT             ( 1.5707963f )
@@ -79,12 +102,12 @@ const char* GetLastSocketError();
 #define BIAS_FLOAT              ( 0.02f )
 #define RAD2DEG                 ( 57.29577951f )
 
-#define MAX( a, b )                   ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
-#define MIN( a, b )                   ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#define MAX( a, b )                    ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+#define MIN( a, b )                    ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 
-#define OFFSETOF( type, member )      ( (int) offsetof( type, member ) )
-#define memzero( ptr, size )          memset( ptr, 0, size )
-#define PACKUINT64( u32hi, u32lo )    ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
+#define OFFSETOF( type, member )       ( (int) offsetof( type, member ) )
+#define memzero( ptr, size )           memset( ptr, 0, size )
+#define PACKUINT64( u32hi, u32lo )     ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
 
 typedef vector< INTRECT > IntRectVec;
 typedef vector< FLTRECT > FltRectVec;
@@ -151,9 +174,9 @@ struct ScoreType
 # define MODE_HEIGHT            ( GameOpt.ScreenHeight )
 # define WM_FLASH_WINDOW        ( WM_USER + 1 )     // Chat notification
 # define DI_BUF_SIZE            ( 64 )
-# define DI_ONDOWN( a, b )            if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONUP( a, b )              if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONMOUSE( a, b )           if( didod[ i ].dwOfs == a ) { b; }
+# define DI_ONDOWN( a, b )             if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
+# define DI_ONUP( a, b )               if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
+# define DI_ONMOUSE( a, b )            if( didod[ i ].dwOfs == a ) { b; }
 
 # ifdef FONLINE_CLIENT
 #  include "ResourceClient.h"
@@ -351,14 +374,15 @@ struct ServerScriptFunctions
 #  pragma comment(lib,"fltkpng.lib")
 #  pragma comment(lib,"fltkz.lib")
 # else // FO_GCC
-       // Linker options:
-       // -lfltk
-       // -lfltk_forms
-       // -lfltk_gl
-       // -lfltk_images
-       // -lfltk_jpeg
-       // -lfltk_png
-       // -lfltk_z
+       // Linker options:.
+       //  Windows / Linux
+       //  -lfltk
+       //  -lfltk_forms
+       //  -lfltk_gl
+       //  -lfltk_images
+       //  -lfltk_jpeg
+       //  -lfltk_png
+       //  -lfltk_z
 # endif
 
 #endif
@@ -379,7 +403,8 @@ struct ServerScriptFunctions
 struct GameOptions
 {
     ushort      YearStart;
-    uint64      YearStartFT;
+    uint        YearStartFTLo;
+    uint        YearStartFTHi;
     ushort      Year;
     ushort      Month;
     ushort      Day;
@@ -772,18 +797,6 @@ extern bool             Singleplayer;
 extern InterprocessData SingleplayerData;
 
 /************************************************************************/
-/* File system                                                          */
-/************************************************************************/
-
-void* FileOpen( const char* fname, bool write );
-void  FileClose( void* file );
-bool  FileRead( void* file, void* buf, uint len, uint* rb = NULL );
-bool  FileWrite( void* file, const void* buf, uint len );
-bool  FileSetPointer( void* file, int offset, int origin );
-// Todo: FileFindFirst, FileFindNext, FileGetTime, FileGetSize, FileDelete
-// Todo: replace all fopen/fclose/etc on this functions
-
-/************************************************************************/
 /* Threads                                                              */
 /************************************************************************/
 
@@ -795,9 +808,11 @@ bool  FileSetPointer( void* file, int offset, int origin );
 #endif
 
 #if defined ( FO_MSVC )
-# pragma comment(lib,"pthreadVC2.lib")
+# pragma comment( lib,"pthreadVC2.lib" )
 #elif defined ( FO_GCC )
-// Linker option: -lpthreadGC2
+// Linker option:
+//  Windows
+//  -lpthreadGC2
 #endif
 
 class Thread
@@ -832,7 +847,10 @@ public:
     }
 
     #if defined ( FO_WINDOWS )
-    HANDLE GetWindowsHandle() { return pthread_getw32threadhandle_np( threadId ); }
+    uint   GetId()     { GetThreadId( pthread_getw32threadhandle_np( threadId ) ); }
+    HANDLE GetHandle() { return pthread_getw32threadhandle_np( threadId ); }
+    #else // FO_LINUX
+    uint GetId() { return (uint) threadId; }
     #endif
 };
 

@@ -3,7 +3,7 @@
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 
-const char* PathLst[ PATH_LIST_COUNT ] =
+const char* PathList[ PATH_LIST_COUNT ] =
 {
     // Client and mapper paths
     "",
@@ -70,15 +70,15 @@ void FileManager::SetDataPath( const char* path )
     Str::Copy( dataPath, path );
     if( dataPath[ Str::Length( path ) - 1 ] != '\\' )
         Str::Append( dataPath, "\\" );
-    CreateDirectory( GetFullPath( "", PT_DATA ), NULL );
+    MakeDirectory( GetFullPath( "", PT_DATA ) );
 }
 
 void FileManager::SetCacheName( const char* name )
 {
     char cache_path[ MAX_FOPATH ];
     Str::Format( cache_path, "cache\\%s\\", name && name[ 0 ] ? name : "dummy" );
-    PathLst[ PT_CACHE ] = Str::Duplicate( cache_path );
-    CreateDirectory( GetFullPath( "", PT_CACHE ), NULL );
+    PathList[ PT_CACHE ] = Str::Duplicate( cache_path );
+    MakeDirectory( GetFullPath( "", PT_CACHE ) );
 }
 
 void FileManager::InitDataFiles( const char* path )
@@ -130,9 +130,11 @@ void FileManager::InitDataFiles( const char* path )
                 {
                     char errmsg[ MAX_FOTEXT ];
                     Str::Format( errmsg, "Data file '%s' not found. Run Updater.exe.", fpath );
+                    #ifdef FO_WINDOWS
                     HWND wnd = GetActiveWindow();
                     if( wnd )
                         MessageBox( wnd, errmsg, "FOnline", MB_OK );
+                    #endif
                     WriteLogF( _FUNC_, " - %s\n", errmsg );
                     delete mgr;
                     continue;
@@ -153,9 +155,11 @@ void FileManager::InitDataFiles( const char* path )
             {
                 char errmsg[ MAX_FOTEXT ];
                 Str::Format( errmsg, "Data file '%s' not found. Run Updater.exe.", fpath );
+                #ifdef FO_WINDOWS
                 HWND wnd = GetActiveWindow();
                 if( wnd )
                     MessageBox( wnd, errmsg, "FOnline", MB_OK );
+                #endif
                 WriteLogF( _FUNC_, " - %s\n", errmsg );
             }
         }
@@ -177,7 +181,7 @@ bool FileManager::LoadDataFile( const char* path )
     // Extract full path
     char path_[ MAX_FOPATH ];
     Str::Copy( path_, path );
-    if( !GetFullPathName( path, MAX_FOPATH, path_, NULL ) )
+    if( !ResolvePath( path_ ) )
     {
         WriteLogF( _FUNC_, " - Extract full path file<%s> fail.\n", path );
         return false;
@@ -240,7 +244,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     if( path_type >= 0 && path_type < PATH_LIST_COUNT )
     {
         // Make data path
-        Str::Copy( dat_path, PathLst[ path_type ] );
+        Str::Copy( dat_path, PathList[ path_type ] );
         Str::Append( dat_path, fname );
         FormatPath( dat_path );
 
@@ -273,17 +277,9 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     void* file = FileOpen( folder_path, false );
     if( file )
     {
-        union
-        {
-            FILETIME       ft;
-            ULARGE_INTEGER ul;
-        } tc, ta, tw;
-        GetFileTime( (HANDLE) file, &tc.ft, &ta.ft, &tw.ft );
-        timeCreate = PACKUINT64( tc.ul.HighPart, tc.ul.LowPart );
-        timeAccess = PACKUINT64( ta.ul.HighPart, ta.ul.LowPart );
-        timeWrite = PACKUINT64( tw.ul.HighPart, tw.ul.LowPart );
+        FileGetTime( file, timeCreate, timeAccess, timeWrite );
 
-        uint   size = GetFileSize( (HANDLE) file, NULL );
+        uint   size = FileGetSize( file );
         uchar* buf = new (nothrow) uchar[ size + 1 ];
         if( !buf )
             return false;
@@ -303,7 +299,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     if( only_folder )
         return false;
 
-    _strlwr( dat_path );
+    Str::Lower( dat_path );
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* dat = *it;
@@ -622,7 +618,7 @@ bool FileManager::SaveOutBufToFile( const char* fname, int path_type )
     if( path_type >= 0 && path_type < PATH_LIST_COUNT )
     {
         Str::Copy( fpath, GetDataPath( path_type ) );
-        Str::Append( fpath, PathLst[ path_type ] );
+        Str::Append( fpath, PathList[ path_type ] );
         Str::Append( fpath, fname );
     }
     else if( path_type == -1 )
@@ -746,7 +742,7 @@ const char* FileManager::GetFullPath( const char* fname, int path_type )
     if( path_type >= 0 )
         Str::Append( buf, GetDataPath( path_type ) );
     if( path_type >= 0 )
-        Str::Append( buf, PathLst[ path_type ] );
+        Str::Append( buf, PathList[ path_type ] );
     if( fname )
         Str::Append( buf, fname );
     FormatPath( buf );
@@ -761,7 +757,7 @@ void FileManager::GetFullPath( const char* fname, int path_type, char* get_path 
     if( path_type >= 0 )
         Str::Append( get_path, MAX_FOPATH, GetDataPath( path_type ) );
     if( path_type >= 0 )
-        Str::Append( get_path, MAX_FOPATH, PathLst[ path_type ] );
+        Str::Append( get_path, MAX_FOPATH, PathList[ path_type ] );
     if( fname )
         Str::Append( get_path, MAX_FOPATH, fname );
     FormatPath( get_path );
@@ -770,7 +766,7 @@ void FileManager::GetFullPath( const char* fname, int path_type, char* get_path 
 const char* FileManager::GetPath( int path_type )
 {
     static const char any[] = "error";
-    return (uint) path_type >= PATH_LIST_COUNT ? any : PathLst[ path_type ];
+    return (uint) path_type >= PATH_LIST_COUNT ? any : PathList[ path_type ];
 }
 
 const char* FileManager::GetDataPath( int path_type )
@@ -947,7 +943,7 @@ void FileManager::CreateDirectoryTree( const char* path )
         if( *ptr == '\\' )
         {
             *ptr = 0;
-            CreateDirectory( work, NULL );
+            MakeDirectory( work );
             *ptr = '\\';
         }
     }
@@ -1006,48 +1002,45 @@ void FileManager::GetTime( uint64* create, uint64* access, uint64* write )
 
 void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, const char* ext, StrVec& result )
 {
-    WIN32_FIND_DATA fd;
-    char            buf[ MAX_FOPATH ];
-    Str::Format( buf, "%s%s*", dataPath, init_dir );
-    HANDLE          h = FindFirstFile( buf, &fd );
-    while( h != INVALID_HANDLE_VALUE )
+    char      query[ MAX_FOPATH ];
+    Str::Format( query, "%s%s*", dataPath, init_dir );
+    FIND_DATA fd;
+    void*     h = FileFindFirst( query, fd );
+    while( h )
     {
-        if( fd.cFileName[ 0 ] != '.' )
+        if( fd.IsDirectory )
         {
-            if( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+            if( include_subdirs )
             {
-                if( include_subdirs )
+                Str::Format( query, "%s%s\\", init_dir, fd.FileName );
+                RecursiveDirLook( query, include_subdirs, ext, result );
+            }
+        }
+        else
+        {
+            if( ext )
+            {
+                const char* ext_ = GetExtension( fd.FileName );
+                if( ext_ && Str::CompareCase( ext, ext_ ) )
                 {
-                    Str::Format( buf, "%s%s\\", init_dir, fd.cFileName );
-                    RecursiveDirLook( buf, include_subdirs, ext, result );
+                    Str::Copy( query, init_dir );
+                    Str::Append( query, fd.FileName );
+                    result.push_back( query );
                 }
             }
             else
             {
-                if( ext )
-                {
-                    const char* ext_ = GetExtension( fd.cFileName );
-                    if( ext_ && Str::CompareCase( ext, ext_ ) )
-                    {
-                        Str::Copy( buf, init_dir );
-                        Str::Append( buf, fd.cFileName );
-                        result.push_back( buf );
-                    }
-                }
-                else
-                {
-                    Str::Copy( buf, init_dir );
-                    Str::Append( buf, fd.cFileName );
-                    result.push_back( buf );
-                }
+                Str::Copy( query, init_dir );
+                Str::Append( query, fd.FileName );
+                result.push_back( query );
             }
         }
 
-        if( !FindNextFile( h, &fd ) )
+        if( !FileFindNext( h, fd ) )
             break;
     }
-    if( h != INVALID_HANDLE_VALUE )
-        FindClose( h );
+    if( h )
+        FileFindClose( h );
 }
 
 void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )

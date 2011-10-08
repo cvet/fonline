@@ -87,15 +87,6 @@ bool CritterManager::LoadProtos()
         fnames.push_back( string( buf ) );
     fileMngr.UnloadFile();
 
-    /*FILE* f=fopen("crproto.txt","wb");
-       for(int i=0,k=fnames.size();i<k;i++)
-       {
-            if(!fileMngr.LoadFile(fnames[i].c_str(),PT_PRO_CRIT)) continue;
-            LoadFromFileF2(&fileMngr,f);
-       }
-       fclose(f);
-       return false;*/
-
     // Load protos
     IniParser protos_txt;
     int       loaded_count = 0;
@@ -214,14 +205,14 @@ void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
     }
 }
 
-bool CritterManager::LoadCrittersFile( FILE* f, uint version )
+bool CritterManager::LoadCrittersFile( void* f, uint version )
 {
     WriteLog( "Load npc...\n" );
 
     lastNpcId = 0;
 
     uint count;
-    fread( &count, sizeof( count ), 1, f );
+    FileRead( f, &count, sizeof( count ) );
     if( !count )
         return true;
 
@@ -229,19 +220,19 @@ bool CritterManager::LoadCrittersFile( FILE* f, uint version )
     for( uint i = 0; i < count; i++ )
     {
         CritData data;
-        fread( &data, sizeof( data ), 1, f );
+        FileRead( f, &data, sizeof( data ) );
 
         CritDataExt data_ext;
         if( data.IsDataExt )
-            fread( &data_ext, sizeof( data_ext ), 1, f );
+            FileRead( f, &data_ext, sizeof( data_ext ) );
 
         Critter::CrTimeEventVec tevents;
         uint                    te_count;
-        fread( &te_count, sizeof( te_count ), 1, f );
+        FileRead( f, &te_count, sizeof( te_count ) );
         if( te_count )
         {
             tevents.resize( te_count );
-            fread( &tevents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ), 1, f );
+            FileRead( f, &tevents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
         }
 
         if( data.Id > lastNpcId )

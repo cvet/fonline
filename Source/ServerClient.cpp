@@ -159,40 +159,40 @@ void FOServer::SaveHoloInfoFile()
     }
 }
 
-bool FOServer::LoadHoloInfoFile( FILE* f )
+bool FOServer::LoadHoloInfoFile( void* f )
 {
     LastHoloId = USER_HOLO_START_NUM;
 
     uint count = 0;
-    if( !fread( &count, sizeof( count ), 1, f ) )
+    if( !FileRead( f, &count, sizeof( count ) ) )
         return false;
     for( uint i = 0; i < count; i++ )
     {
         uint id;
-        if( !fread( &id, sizeof( id ), 1, f ) )
+        if( !FileRead( f, &id, sizeof( id ) ) )
             return false;
         bool can_rw;
-        if( !fread( &can_rw, sizeof( can_rw ), 1, f ) )
+        if( !FileRead( f, &can_rw, sizeof( can_rw ) ) )
             return false;
 
         ushort title_len;
         char   title[ USER_HOLO_MAX_TITLE_LEN + 1 ] = { 0 };
-        if( !fread( &title_len, sizeof( title_len ), 1, f ) )
+        if( !FileRead( f, &title_len, sizeof( title_len ) ) )
             return false;
         if( title_len >= USER_HOLO_MAX_TITLE_LEN )
             title_len = USER_HOLO_MAX_TITLE_LEN;
         if( title_len )
-            fread( title, title_len, 1, f );
+            FileRead( f, title, title_len );
         title[ title_len ] = 0;
 
         ushort text_len;
         char   text[ USER_HOLO_MAX_LEN + 1 ] = { 0 };
-        if( !fread( &text_len, sizeof( text_len ), 1, f ) )
+        if( !FileRead( f, &text_len, sizeof( text_len ) ) )
             return false;
         if( text_len >= USER_HOLO_MAX_LEN )
             text_len = USER_HOLO_MAX_LEN;
         if( text_len )
-            fread( text, text_len, 1, f );
+            FileRead( f, text, text_len );
         text[ text_len ] = 0;
 
         HolodiskInfo.insert( PAIR( id, new HoloInfo( can_rw, title, text ) ) );

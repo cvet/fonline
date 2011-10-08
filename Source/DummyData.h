@@ -1197,7 +1197,8 @@ void Random() {}
 struct GameOptions
 {
     int YearStart;
-    int YearStartFT;
+    int YearStartFTLo;
+    int YearStartFTHi;
     int Year;
     int Month;
     int Day;

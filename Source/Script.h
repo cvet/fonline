@@ -17,9 +17,9 @@ typedef std::vector< asIScriptModule* > ScriptModuleVec;
 
 struct EngineData
 {
-    ScriptModuleVec               Modules;
-    Preprocessor::PragmaCallback* PragmaCB;
-    StrPtrMap                     LoadedDlls;
+    ScriptModuleVec                      Modules;
+    Preprocessor::PragmaCallback*        PragmaCB;
+    map< string, pair< string, void* > > LoadedDlls;
 };
 
 struct ReservedScriptFunction
@@ -36,11 +36,10 @@ namespace Script
     bool InitThread();
     void FinishThread();
 
-    void*   LoadDynamicLibrary( const char* dll_name );
-    size_t* GetFunctionAddress( void* dll, const char* func_name );
-    void    SetWrongGlobalObjects( StrVec& names );
-    void    SetConcurrentExecution( bool enabled );
-    void    SetLoadLibraryCompiler( bool enabled );
+    void* LoadDynamicLibrary( const char* dll_name );
+    void  SetWrongGlobalObjects( StrVec& names );
+    void  SetConcurrentExecution( bool enabled );
+    void  SetLoadLibraryCompiler( bool enabled );
 
     void UnloadScripts();
     bool ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL );

@@ -50,8 +50,6 @@ public:
 
 #else // FO_LINUX
 
-# include <pthread.h>
-
 # define InterlockedCompareExchange( val, exch, comp )    __sync_val_compare_and_swap( val, comp, exch )
 # define InterlockedExchange( val, newval )               __sync_lock_test_and_set( val, newval )
 # define InterlockedIncrement( val )                      __sync_add_and_fetch( val, 1 )

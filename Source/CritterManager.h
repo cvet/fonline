@@ -38,7 +38,7 @@ private:
 
 public:
     void SaveCrittersFile( void ( * save_func )( void*, size_t ) );
-    bool LoadCrittersFile( FILE* f, uint version );
+    bool LoadCrittersFile( void* f, uint version );
 
     void RunInitScriptCritters();
 

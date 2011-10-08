@@ -344,7 +344,7 @@ int FOMsg::LoadMsgFileBuf( char* data, uint data_len )
             break;
 
         // atoi
-        uint num_info = (uint) _atoi64( pbuf );
+        uint num_info = Str::AtoUI( pbuf );
         if( !num_info )
         {
             Str::SkipLine( pbuf );

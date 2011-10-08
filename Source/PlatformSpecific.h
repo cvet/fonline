@@ -15,17 +15,40 @@
 // FO_MSVC
 //
 
+//
 // GCC options
 // Compiler
 // -mthreads
 // Linker
-// -lws2_32
-// -lwinmm
-// -lstlport
+//  Windows
+//  ../Lib
+//  -lws2_32
+//  -lwinmm
+//  -lstlport
+//  -lpthreadGC2
+//  -lfltk
+//  -lfltk_forms
+//  -lfltk_gl
+//  -lfltk_images
+//  -lfltk_jpeg
+//  -lfltk_png
+//  -lfltk_z
+//  Linux
+//  ../LibLinux
+//  -lstlportg
+//  -lfltk
+//  -lfltk_forms
+//  -lfltk_gl
+//  -lfltk_images
+//  -lfltk_jpeg
+//  -lfltk_png
+//  -lfltk_z
 // Warnings
 // -Wno-invalid-offsetof
+// -Wno-unused-result
 // Defines
 // _STLP_USE_STATIC_LIB
+//
 
 // Detect operating system
 #if defined ( _WIN32 ) || defined ( _WIN64 )
@@ -81,8 +104,8 @@
 
 // Libevent
 // For now bugged for Windows IOCP, use own variant
-#if !defined ( FO_WINDOWS )
-# define USE_LIBEVENT
-#endif
+// #if !defined ( FO_WINDOWS )
+#define USE_LIBEVENT
+// #endif
 
 #endif // ___PLATFORM_SPECIFIC___

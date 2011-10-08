@@ -164,7 +164,7 @@ public:
     #ifdef FONLINE_SERVER
 public:
     void     SaveVarsDataFile( void ( * save_func )( void*, size_t ) );
-    bool     LoadVarsDataFile( FILE* f, int version );
+    bool     LoadVarsDataFile( void* f, int version );
     bool     CheckVar( const char* var_name, uint master_id, uint slave_id, char oper, int val );
     bool     CheckVar( ushort temp_id, uint master_id, uint slave_id, char oper, int val );
     GameVar* ChangeVar( const char* var_name, uint master_id, uint slave_id, char oper, int val );

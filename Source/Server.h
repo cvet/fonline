@@ -102,7 +102,7 @@ public:
     static uint        LastHoloId;
 
     static void      SaveHoloInfoFile();
-    static bool      LoadHoloInfoFile( FILE* f );
+    static bool      LoadHoloInfoFile( void* f );
     static HoloInfo* GetHoloInfo( uint id )
     {
         auto it = HolodiskInfo.find( id );
@@ -148,7 +148,7 @@ public:
     static Mutex        TimeEventsLocker;
 
     static void   SaveTimeEventsFile();
-    static bool   LoadTimeEventsFile( FILE* f );
+    static bool   LoadTimeEventsFile( void* f );
     static void   AddTimeEvent( TimeEvent* te );
     static uint   CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, CScriptArray* val2, bool save );
     static void   TimeEventEndScriptCallback();
@@ -160,7 +160,7 @@ public:
     static string GetTimeEventsStatistics();
 
     static void SaveScriptFunctionsFile();
-    static bool LoadScriptFunctionsFile( FILE* f );
+    static bool LoadScriptFunctionsFile( void* f );
 
     // Any data
     typedef map< string, UCharVec > AnyDataMap;
@@ -168,7 +168,7 @@ public:
     static Mutex      AnyDataLocker;
 
     static void   SaveAnyDataFile();
-    static bool   LoadAnyDataFile( FILE* f );
+    static bool   LoadAnyDataFile( void* f );
     static bool   SetAnyData( const string& name, const uchar* data, uint data_size );
     static bool   GetAnyData( const string& name, CScriptArray& script_array );
     static bool   IsAnyData( const string& name );
@@ -239,14 +239,14 @@ public:
     static void Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, ushort hy, bool ignore_distance );
 
     // Main
-    static int         UpdateIndex, UpdateLastIndex;
-    static uint        UpdateLastTick;
-    static bool        Active;
-    static FileManager FileMngr;
-    static ClVec       SaveClients;
-    static Mutex       SaveClientsLocker;
-    static UIntMap     RegIp;
-    static Mutex       RegIpLocker;
+    static uint    CpuCount;
+    static int     UpdateIndex, UpdateLastIndex;
+    static uint    UpdateLastTick;
+    static bool    Active;
+    static ClVec   SaveClients;
+    static Mutex   SaveClientsLocker;
+    static UIntMap RegIp;
+    static Mutex   RegIpLocker;
 
     static void DisconnectClient( Client* cl );
     static void RemoveClient( Client* cl );
@@ -260,7 +260,7 @@ public:
 
     // Game time
     static void SaveGameInfoFile();
-    static bool LoadGameInfoFile( FILE* f );
+    static bool LoadGameInfoFile( void* f );
     static void InitGameTime();
 
     // Lang packs
@@ -272,10 +272,6 @@ public:
     static bool InitLangCrTypes( LangPackVec& lang_packs );
 
     // Init/Finish
-    #if defined ( FO_WINDOWS )
-    static SYSTEM_INFO SystemInfo;
-    #endif
-
     static bool Init();
     static void Finish();
     static bool IsInit() { return Active; }
@@ -349,7 +345,7 @@ public:
 
     static uint       SaveWorldIndex, SaveWorldTime, SaveWorldNextTick;
     static UIntVec    SaveWorldDeleteIndexes;
-    static FILE*      DumpFile;
+    static void*      DumpFile;
     static MutexEvent DumpBeginEvent, DumpEndEvent;
     static Thread     DumpThread;
 

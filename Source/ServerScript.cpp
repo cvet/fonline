@@ -399,12 +399,12 @@ bool FOServer::ReloadClientScripts()
     for( auto it = ed->LoadedDlls.begin(), end = ed->LoadedDlls.end(); it != end; ++it )
     {
         const string& dll_name = ( *it ).first;
-        const void*   dll_handle = ( *it ).second;
+        const string& dll_path = ( *it ).second.first;
+        const void*   dll_handle = ( *it ).second.second;
 
-        // Get full dll file name
-        char        dll_name_[ MAX_FOPATH ];
+        // Load dll
         FileManager dll;
-        if( GetModuleFileName( (HMODULE) dll_handle, dll_name_, MAX_FOPATH ) == 0 || !dll.LoadFile( dll_name_, -1 ) )
+        if( !dll.LoadFile( dll_path.c_str(), -1 ) )
         {
             WriteLogF( _FUNC_, " - Can't load dll<%s>.\n", dll_name.c_str() );
             errors++;

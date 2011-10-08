@@ -131,15 +131,7 @@ bool FalloutDatFile::Init( const char* fname )
         return false;
     }
 
-    union
-    {
-        FILETIME       ft;
-        ULARGE_INTEGER ul;
-    } tc, ta, tw;
-    GetFileTime( (HANDLE) datHandle, &tc.ft, &ta.ft, &tw.ft );
-    timeCreate = PACKUINT64( tc.ul.HighPart, tc.ul.LowPart );
-    timeAccess = PACKUINT64( ta.ul.HighPart, ta.ul.LowPart );
-    timeWrite = PACKUINT64( tw.ul.HighPart, tw.ul.LowPart );
+    FileGetTime( datHandle, timeCreate, timeAccess, timeWrite );
 
     if( !ReadTree() )
     {
@@ -181,7 +173,7 @@ bool FalloutDatFile::ReadTree()
             return false;
 
         // Read tree
-        if( !FileSetPointer( datHandle, -(LONG) tree_size, SEEK_END ) )
+        if( !FileSetPointer( datHandle, -(int) tree_size, SEEK_END ) )
             return false;
         if( !FileRead( datHandle, &files_total, 4 ) )
             return false;
@@ -240,11 +232,11 @@ bool FalloutDatFile::ReadTree()
         return false;
 
     // Check for truncated
-    if( GetFileSize( datHandle, NULL ) != dat_size )
+    if( FileGetSize( datHandle ) != dat_size )
         return false;
 
     // Read tree
-    if( !FileSetPointer( datHandle, -( (LONG) tree_size + 8 ), SEEK_END ) )
+    if( !FileSetPointer( datHandle, -( (int) tree_size + 8 ), SEEK_END ) )
         return false;
     if( !FileRead( datHandle, &files_total, 4 ) )
         return false;
@@ -368,7 +360,8 @@ bool ZipFile::Init( const char* fname )
     zipHandle = NULL;
 
     char path[ MAX_FOPATH ];
-    if( GetFullPathName( fname, MAX_FOPATH, path, NULL ) == 0 )
+    Str::Copy( path, fname );
+    if( !ResolvePath( path ) )
     {
         WriteLogF( _FUNC_, " - Can't retrieve file full path.\n" );
         return false;
@@ -381,15 +374,7 @@ bool ZipFile::Init( const char* fname )
         return false;
     }
 
-    union
-    {
-        FILETIME       ft;
-        ULARGE_INTEGER ul;
-    } tc, ta, tw;
-    GetFileTime( (HANDLE) file, &tc.ft, &ta.ft, &tw.ft );
-    timeCreate = PACKUINT64( tc.ul.HighPart, tc.ul.LowPart );
-    timeAccess = PACKUINT64( ta.ul.HighPart, ta.ul.LowPart );
-    timeWrite = PACKUINT64( tw.ul.HighPart, tw.ul.LowPart );
+    FileGetTime( file, timeCreate, timeAccess, timeWrite );
 
     FileClose( file );
 

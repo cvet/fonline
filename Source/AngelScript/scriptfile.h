@@ -62,7 +62,7 @@ public:
 	unsigned char ReadUint8();
 	unsigned short ReadUint16();
 	unsigned int ReadUint32();
-	unsigned __int64 ReadUint64();
+	asQWORD ReadUint64();
 	unsigned int ReadData(unsigned int count, CScriptArray& data);
 
     // Writing
@@ -71,7 +71,7 @@ public:
 	bool WriteUint8(unsigned char data);
 	bool WriteUint16(unsigned short data);
 	bool WriteUint32(unsigned int data);
-	bool WriteUint64(unsigned __int64 data);
+	bool WriteUint64(asQWORD data);
 	bool WriteData(CScriptArray& data, unsigned int count);
 
     // Cursor
