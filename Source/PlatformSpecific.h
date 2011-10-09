@@ -119,8 +119,8 @@
 
 // Libevent
 // For now bugged for Windows IOCP, use own variant
-// #if !defined ( FO_WINDOWS )
-#define USE_LIBEVENT
-// #endif
+#if !defined ( FO_WINDOWS )
+# define USE_LIBEVENT
+#endif
 
 #endif // ___PLATFORM_SPECIFIC___

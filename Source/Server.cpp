@@ -3575,7 +3575,7 @@ bool FOServer::Init()
     #ifdef FO_WINDOWS
     SYSTEM_INFO si;
     GetSystemInfo( &si );
-    CpuCount = si.dwProcessorType;
+    CpuCount = si.dwNumberOfProcessors;
     #else // FO_LINUX
     CpuCount = sysconf( _SC_NPROCESSORS_ONLN );
     #endif
@@ -3743,11 +3743,11 @@ bool FOServer::Init()
     // Net IO events initialization
     struct ELCB
     {
-        static void Callback( int severity, const char* msg ) { WriteLog( "_event_log_cb - severity<%d>, msg<%s>.\n", severity, msg ); }
+        static void Callback( int severity, const char* msg ) { WriteLog( "Libevent - severity<%d>, msg<%s>.\n", severity, msg ); }
     };
     struct EFCB
     {
-        static void Callback( int err ) { WriteLog( "_event_log_cb - error<%d>.\n", err ); }
+        static void Callback( int err ) { WriteLog( "Libevent - error<%d>.\n", err ); }
     };
     event_set_log_callback( ELCB::Callback );
     event_set_fatal_callback( EFCB::Callback );
@@ -3755,6 +3755,7 @@ bool FOServer::Init()
     # ifdef FO_WINDOWS
     evthread_use_windows_threads();
     # else // FO_LINUX
+    #  pragma MESSAGE( "Linux link evthread_use_pthreads" )
     // evthread_use_pthreads();
     # endif
 
