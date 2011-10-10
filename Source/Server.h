@@ -841,6 +841,7 @@ public:
         static void           Global_DeleteLocation( uint loc_id );
         static void           Global_GetProtoCritter( ushort proto_id, CScriptArray& data );
         static Critter*       Global_GetCritter( uint crid );
+        static CraftItem*     Global_GetCraftItem( uint num );
         static Critter*       Global_GetPlayer( CScriptString& name );
         static uint           Global_GetPlayerId( CScriptString& name );
         static CScriptString* Global_GetPlayerName( uint id );

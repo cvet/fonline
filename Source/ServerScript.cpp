@@ -5059,6 +5059,11 @@ void FOServer::SScriptFunc::Global_GetProtoCritter( ushort proto_id, CScriptArra
     Script::AppendVectorToArray( data__, &data );
 }
 
+CraftItem* FOServer::SScriptFunc::Global_GetCraftItem( uint num )
+{
+    return MrFixit.GetCraft( num );
+}
+
 Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 {
     if( !crid )

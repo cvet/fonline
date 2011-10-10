@@ -1511,6 +1511,8 @@ if( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLA
     BIND_ERROR;
 if( engine->RegisterGlobalFunction( "bool SetParameterDialogGetBehaviour(uint index, string& funcName)", asFUNCTION( BIND_CLASS Global_SetParameterDialogGetBehaviour ), asCALL_CDECL ) < 0 )
     BIND_ERROR;
+if( engine->RegisterGlobalFunction( "CraftItem@ GetCraftItem(uint num)", asFUNCTION( BIND_CLASS Global_GetCraftItem ), asCALL_CDECL ) < 0 )
+    BIND_ERROR;
 #endif
 
 #ifdef BIND_CLIENT
