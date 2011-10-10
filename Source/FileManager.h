@@ -103,7 +103,7 @@ public:
     static void        GetFullPath( const char* fname, int path_type, char* get_path );
     static const char* GetPath( int path_type );
     static const char* GetDataPath( int path_type );
-    static void        FormatPath( char* path, bool first_skipped );
+    static void        FormatPath( char* path, bool first_skipped = false );
     static void        ExtractPath( const char* fname, char* path );
     static void        ExtractFileName( const char* fname, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );
