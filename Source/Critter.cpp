@@ -3410,7 +3410,7 @@ Critter* Critter::ScanEnemyStack()
         return NULL;
 
     int stack_count = MIN( Data.EnemyStackCount, MAX_ENEMY_STACK );
-    for( int i = 0; i < stack_count; i++ )
+    for( int i = stack_count - 1; i >= 0; i-- )
     {
         uint crid = Data.EnemyStack[ i ];
         if( crid )

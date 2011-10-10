@@ -2850,7 +2850,8 @@ void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc( Critter* cr )
         {
             cr->Data.EnemyStack[ i ] = 0;
             for( int j = i; j < MAX_ENEMY_STACK - 1; j++ )
-                cr->Data.EnemyStack[ i ] = cr->Data.EnemyStack[ i + 1 ];
+                cr->Data.EnemyStack[ j ] = cr->Data.EnemyStack[ j + 1 ];
+            cr->Data.EnemyStack[ MAX_ENEMY_STACK - 1 ] = 0;
         }
     }
 }
