@@ -2,12 +2,12 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="Server" />
+		<Option title="Mapper" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Release Linux">
-				<Option output="../../sf_sdk/Server/FOnlineServer" prefix_auto="1" extension_auto="1" />
+				<Option output="../../sf_sdk/Tools/Mapper/Mapper" prefix_auto="1" extension_auto="1" />
 				<Option object_output="Release_Linux" />
 				<Option type="0" />
 				<Option compiler="gcc" />
@@ -17,9 +17,9 @@
 					<Add option="-W" />
 					<Add option="-Wno-invalid-offsetof" />
 					<Add option="-Wno-unused-result" />
-					<Add option="-DFONLINE_SERVER" />
-					<Add option="-DSCRIPT_MULTITHREADING" />
+					<Add option="-DFONLINE_MAPPER" />
 					<Add option="-DNDEBUG" />
+					<Add option="-DAS_NO_THREADS" />
 					<Add option="-D_STLP_USE_STATIC_LIB" />
 					<Add directory="../Source/StlPort" />
 					<Add directory="../Source" />
@@ -27,77 +27,48 @@
 				<ResourceCompiler>
 				</ResourceCompiler>
 				<Linker>
-					<Add option="-rdynamic" />
-					<Add option="-lpthread" />
-					<Add option="-ldl" />
-					<Add option="-lrt" />
-					<Add option="-lstlport" />
-					<Add option="-lstlportg" />
-					<Add option="-lfltk" />
-					<Add option="-lfltk_forms" />
-					<Add option="-lfltk_gl" />
-					<Add option="-lfltk_images" />
-					<Add option="-lfltk_jpeg" />
-					<Add option="-lfltk_png" />
-					<Add option="-lfltk_z" />
-					<Add option="-lX11" />
-					<Add option="-lXft" />
-					<Add option="-levent" />
-					<Add option="-levent_core" />
-					<Add option="-levent_extra" />
-					<Add option="-event_pthreads" />
-					<Add directory="../Lib/Linux" />
+					<Add directory="../Lib" />
 				</Linker>
 			</Target>
 			<Target title="Release Windows">
-				<Option output="../../sf_sdk/Server/FOnlineServerGCC" prefix_auto="1" extension_auto="1" />
+				<Option output="../../sf_sdk/Tools/Mapper/MapperGCC" prefix_auto="1" extension_auto="1" />
 				<Option object_output="Release_Windows_GCC" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-O2" />
-					<Add option="-mthreads" />
-					<Add option="-W" />
-					<Add option="-Wno-invalid-offsetof" />
-					<Add option="-DFONLINE_SERVER" />
-					<Add option="-DSCRIPT_MULTITHREADING" />
-					<Add option="-DWIN32" />
 					<Add option="-DNDEBUG" />
 					<Add option="-D_WINDOWS" />
+					<Add option="-DWIN32" />
+					<Add option="-DFONLINE_MAPPER" />
 					<Add option="-D_CRT_SECURE_NO_WARNINGS" />
 					<Add option="-D_CRT_SECURE_NO_DEPRECATE" />
 					<Add option="-D_HAS_ITERATOR_DEBUGGING=0" />
 					<Add option="-D_SECURE_SCL=0" />
 					<Add option="-D_HAS_EXCEPTIONS=0" />
-					<Add option="-D_STLP_USE_STATIC_LIB" />
+					<Add option="-DAS_NO_THREADS" />
+					<Add option="-W" />
+					<Add option="-O2" />
 					<Add directory="../Source/StlPort" />
 					<Add directory="../Source" />
+					<Add directory="../Source/Dx9" />
 				</Compiler>
 				<ResourceCompiler>
 				</ResourceCompiler>
 				<Linker>
-					<Add option="-lws2_32" />
-					<Add option="-lwinmm" />
-					<Add option="-lstlport" />
-					<Add option="-lpthreadGC2" />
-					<Add option="-lfltk" />
-					<Add option="-lfltk_forms" />
-					<Add option="-lfltk_gl" />
-					<Add option="-lfltk_images" />
-					<Add option="-lfltk_jpeg" />
-					<Add option="-lfltk_png" />
-					<Add option="-lfltk_z" />
 					<Add directory="../Lib" />
+					<Add directory="../Lib/Dx9/x86" />
 				</Linker>
 			</Target>
 		</Build>
-		<Unit filename="Server.ico" />
-		<Unit filename="Server.rc">
-			<Option compilerVar="WINDRES" />
-		</Unit>
-		<Unit filename="../Source/AI.cpp" />
-		<Unit filename="../Source/AI.h" />
-		<Unit filename="../Source/Access.h" />
+		<Unit filename="Mapper.ico" />
+		<Unit filename="Mapper.rc" />
+		<Unit filename="../Source/3dAnimation.cpp" />
+		<Unit filename="../Source/3dAnimation.h" />
+		<Unit filename="../Source/3dLoader.cpp" />
+		<Unit filename="../Source/3dLoader.h" />
+		<Unit filename="../Source/3dMeshHierarchy.cpp" />
+		<Unit filename="../Source/3dMeshHierarchy.h" />
+		<Unit filename="../Source/3dMeshStructures.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
@@ -118,6 +89,11 @@
 		<Unit filename="../Source/AngelScript/as_bytecode.h" />
 		<Unit filename="../Source/AngelScript/as_callfunc.cpp" />
 		<Unit filename="../Source/AngelScript/as_callfunc.h" />
+		<Unit filename="../Source/AngelScript/as_callfunc_x64_gcc.cpp" />
+		<Unit filename="../Source/AngelScript/as_callfunc_x64_msvc.asm">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="../Source/AngelScript/as_callfunc_x64_msvc.cpp" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x86.cpp" />
 		<Unit filename="../Source/AngelScript/as_compiler.cpp" />
 		<Unit filename="../Source/AngelScript/as_compiler.h" />
@@ -126,6 +102,7 @@
 		<Unit filename="../Source/AngelScript/as_configgroup.h" />
 		<Unit filename="../Source/AngelScript/as_context.cpp" />
 		<Unit filename="../Source/AngelScript/as_context.h" />
+		<Unit filename="../Source/AngelScript/as_criticalsection.h" />
 		<Unit filename="../Source/AngelScript/as_datatype.cpp" />
 		<Unit filename="../Source/AngelScript/as_datatype.h" />
 		<Unit filename="../Source/AngelScript/as_debug.h" />
@@ -187,16 +164,12 @@
 		<Unit filename="../Source/AngelScript/scriptstring.cpp" />
 		<Unit filename="../Source/AngelScript/scriptstring.h" />
 		<Unit filename="../Source/AngelScript/scriptstring_utils.cpp" />
-		<Unit filename="../Source/BufferManager.cpp" />
-		<Unit filename="../Source/BufferManager.h" />
 		<Unit filename="../Source/Common.cpp" />
 		<Unit filename="../Source/Common.h" />
 		<Unit filename="../Source/ConstantsManager.cpp" />
 		<Unit filename="../Source/ConstantsManager.h" />
-		<Unit filename="../Source/CraftManager.cpp" />
-		<Unit filename="../Source/CraftManager.h" />
-		<Unit filename="../Source/Critter.cpp" />
-		<Unit filename="../Source/Critter.h" />
+		<Unit filename="../Source/CritterCl.cpp" />
+		<Unit filename="../Source/CritterCl.h" />
 		<Unit filename="../Source/CritterData.h" />
 		<Unit filename="../Source/CritterManager.cpp" />
 		<Unit filename="../Source/CritterManager.h" />
@@ -206,45 +179,46 @@
 		<Unit filename="../Source/Crypt.h" />
 		<Unit filename="../Source/DataFile.cpp" />
 		<Unit filename="../Source/DataFile.h" />
-		<Unit filename="../Source/DataMask.h" />
 		<Unit filename="../Source/Debugger.cpp" />
 		<Unit filename="../Source/Debugger.h" />
 		<Unit filename="../Source/Defines.h" />
-		<Unit filename="../Source/Dialogs.cpp" />
-		<Unit filename="../Source/Dialogs.h" />
-		<Unit filename="../Source/DummyData.h" />
 		<Unit filename="../Source/Exception.cpp" />
 		<Unit filename="../Source/Exception.h" />
+		<Unit filename="../Source/F2Palette.h" />
 		<Unit filename="../Source/FileManager.cpp" />
 		<Unit filename="../Source/FileManager.h" />
 		<Unit filename="../Source/FileSystem.cpp" />
 		<Unit filename="../Source/FileSystem.h" />
 		<Unit filename="../Source/FlexRect.h" />
+		<Unit filename="../Source/HexManager.cpp" />
+		<Unit filename="../Source/HexManager.h" />
 		<Unit filename="../Source/IniParser.cpp" />
 		<Unit filename="../Source/IniParser.h" />
 		<Unit filename="../Source/Item.cpp" />
 		<Unit filename="../Source/Item.h" />
+		<Unit filename="../Source/ItemHex.cpp" />
+		<Unit filename="../Source/ItemHex.h" />
 		<Unit filename="../Source/ItemManager.cpp" />
 		<Unit filename="../Source/ItemManager.h" />
-		<Unit filename="../Source/Jobs.cpp" />
-		<Unit filename="../Source/Jobs.h" />
+		<Unit filename="../Source/ItemPid.h" />
+		<Unit filename="../Source/Keyboard.cpp" />
+		<Unit filename="../Source/Keyboard.h" />
 		<Unit filename="../Source/LineTracer.h" />
 		<Unit filename="../Source/Log.cpp" />
 		<Unit filename="../Source/Log.h" />
-		<Unit filename="../Source/MainServer.cpp" />
-		<Unit filename="../Source/Map.cpp" />
-		<Unit filename="../Source/Map.h" />
-		<Unit filename="../Source/MapManager.cpp" />
-		<Unit filename="../Source/MapManager.h" />
+		<Unit filename="../Source/MainMapper.cpp" />
+		<Unit filename="../Source/Mapper.cpp" />
+		<Unit filename="../Source/Mapper.h" />
 		<Unit filename="../Source/MsgFiles.cpp" />
 		<Unit filename="../Source/MsgFiles.h" />
 		<Unit filename="../Source/MsgStr.h" />
-		<Unit filename="../Source/Mutex.h" />
-		<Unit filename="../Source/NetProtocol.h" />
 		<Unit filename="../Source/PlatformSpecific.h" />
 		<Unit filename="../Source/ProtoMap.cpp" />
 		<Unit filename="../Source/ProtoMap.h" />
 		<Unit filename="../Source/Randomizer.h" />
+		<Unit filename="../Source/ResourceManager.cpp" />
+		<Unit filename="../Source/ResourceManager.h" />
+		<Unit filename="../Source/ResourceMapper.h" />
 		<Unit filename="../Source/SHA2/sha2.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -254,22 +228,15 @@
 		<Unit filename="../Source/ScriptBind.h" />
 		<Unit filename="../Source/ScriptPragmas.cpp" />
 		<Unit filename="../Source/ScriptPragmas.h" />
-		<Unit filename="../Source/Server.cpp" />
-		<Unit filename="../Source/Server.h" />
-		<Unit filename="../Source/ServerClient.cpp" />
-		<Unit filename="../Source/ServerItem.cpp" />
-		<Unit filename="../Source/ServerNpc.cpp" />
-		<Unit filename="../Source/ServerScript.cpp" />
+		<Unit filename="../Source/SpriteManager.cpp" />
+		<Unit filename="../Source/SpriteManager.h" />
 		<Unit filename="../Source/StdAfx.cpp" />
 		<Unit filename="../Source/StdAfx.h" />
 		<Unit filename="../Source/Text.cpp" />
 		<Unit filename="../Source/Text.h" />
-		<Unit filename="../Source/ThreadSync.cpp" />
-		<Unit filename="../Source/ThreadSync.h" />
 		<Unit filename="../Source/Timer.cpp" />
 		<Unit filename="../Source/Timer.h" />
-		<Unit filename="../Source/Vars.cpp" />
-		<Unit filename="../Source/Vars.h" />
+		<Unit filename="../Source/Types.h" />
 		<Unit filename="../Source/Version.h" />
 		<Unit filename="../Source/Zlib/adler32.c">
 			<Option compilerVar="CC" />
@@ -285,6 +252,19 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/Zlib/deflate.h" />
+		<Unit filename="../Source/Zlib/gzclose.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../Source/Zlib/gzguts.h" />
+		<Unit filename="../Source/Zlib/gzlib.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../Source/Zlib/gzread.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../Source/Zlib/gzwrite.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../Source/Zlib/infback.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -327,8 +307,9 @@
 		<Unit filename="../Source/datfile/unlzss.cpp" />
 		<Unit filename="../Source/datfile/unlzss.h" />
 		<Extensions>
-			<code_completion />
 			<envvars />
+			<code_completion />
+			<lib_finder disable_auto="1" />
 			<debugger />
 		</Extensions>
 	</Project>
