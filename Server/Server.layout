@@ -61,17 +61,17 @@
 	<File name="../Source/Dialogs.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="266" topLine="0" />
 	</File>
-	<File name="../Source/Exception.cpp" open="1" top="0" tabpos="2">
-		<Cursor position="20606" topLine="504" />
+	<File name="../Source/Exception.cpp" open="0" top="0" tabpos="2">
+		<Cursor position="22764" topLine="546" />
 	</File>
 	<File name="../Source/Exception.h" open="0" top="0" tabpos="0">
 		<Cursor position="152" topLine="0" />
 	</File>
-	<File name="../Source/FileManager.cpp" open="1" top="1" tabpos="1">
-		<Cursor position="16899" topLine="652" />
+	<File name="../Source/FileManager.cpp" open="0" top="0" tabpos="1">
+		<Cursor position="19533" topLine="753" />
 	</File>
 	<File name="../Source/FileManager.h" open="0" top="0" tabpos="0">
-		<Cursor position="3909" topLine="84" />
+		<Cursor position="3826" topLine="84" />
 	</File>
 	<File name="../Source/FileSystem.cpp" open="0" top="0" tabpos="3">
 		<Cursor position="5580" topLine="199" />
@@ -92,7 +92,7 @@
 		<Cursor position="336" topLine="0" />
 	</File>
 	<File name="../Source/MainServer.cpp" open="0" top="0" tabpos="1">
-		<Cursor position="3911" topLine="99" />
+		<Cursor position="2211" topLine="46" />
 	</File>
 	<File name="../Source/MapManager.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="19874" topLine="619" />
@@ -104,7 +104,7 @@
 		<Cursor position="2799" topLine="46" />
 	</File>
 	<File name="../Source/PlatformSpecific.h" open="0" top="0" tabpos="5">
-		<Cursor position="368" topLine="0" />
+		<Cursor position="575" topLine="15" />
 	</File>
 	<File name="../Source/ProtoMap.cpp" open="0" top="0" tabpos="0">
 		<Cursor position="65203" topLine="1574" />
@@ -122,7 +122,7 @@
 		<Cursor position="12032" topLine="389" />
 	</File>
 	<File name="../Source/Server.cpp" open="0" top="0" tabpos="2">
-		<Cursor position="28442" topLine="822" />
+		<Cursor position="119612" topLine="3436" />
 	</File>
 	<File name="../Source/Server.h" open="0" top="0" tabpos="6">
 		<Cursor position="540" topLine="2" />

@@ -486,10 +486,16 @@ void CreateDump( const char* appendix )
 
 # include <signal.h>
 # include <execinfo.h>
+# include <cxxabi.h>
+# include <sys/utsname.h>
+# include <string.h>
 
 # define BACKTRACE_BUFFSER_COUNT    ( 100 )
 
-void TerminationHandler( int signum );
+void TerminationHandler( int signum, siginfo_t* siginfo, void* context );
+bool sigactionsSetted = false;
+struct sigaction oldSIGSEGV;
+struct sigaction oldSIGFPE;
 
 void CatchExceptions( const char* app_name, unsigned int app_ver )
 {
@@ -497,56 +503,113 @@ void CatchExceptions( const char* app_name, unsigned int app_ver )
         Str::Copy( AppName, app_name );
     sprintf( AppVer, "%04X", app_ver );
 
-    /* struct sigaction new_action, old_action;
+    if( app_name && !sigactionsSetted )
+    {
+        // SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTERM
+        // CTRL-C - sends SIGINT which default action is to terminate the application.
+        // CTRL-\ - sends SIGQUIT which default action is to terminate the application dumping core.
+        // CTRL-Z - sends SIGSTOP that suspends the program.
 
-       new_action.sa_handler = TerminationHandler;
-       sigemptyset (&new_action.sa_mask);
-       new_action.sa_flags = 0;
+        struct sigaction act;
 
-       sigaction (SIGINT, NULL, &old_action);
+        /*
+           SIGSEGV
+           Description     Invalid memory reference
+           Default action  Abnormal termination of the process
+         */
+        memset( &act, 0, sizeof( act ) );
+        act.sa_sigaction = &TerminationHandler;
+        act.sa_flags = SA_SIGINFO;
+        sigaction( SIGSEGV, &act, &oldSIGSEGV );
 
-       if (old_action.sa_handler != SIG_IGN)
-         sigaction (SIGINT, &new_action, NULL);
-       sigaction (SIGHUP, NULL, &old_action);
+        /*
+           SIGFPE
+           Description     Erroneous arithmetic operation
+           Default action  bnormal termination of the process
+         */
+        memset( &act, 0, sizeof( act ) );
+        act.sa_sigaction = &TerminationHandler;
+        act.sa_flags = SA_SIGINFO;
+        sigaction( SIGFPE, &act, &oldSIGFPE );
 
-       if (old_action.sa_handler != SIG_IGN)
-         sigaction (SIGHUP, &new_action, NULL);
-       sigaction (SIGTERM, NULL, &old_action);
+        sigactionsSetted = true;
+    }
+    else if( !app_name && sigactionsSetted )
+    {
+        sigaction( SIGSEGV, &oldSIGSEGV, NULL );
+        sigaction( SIGFPE, &oldSIGFPE, NULL );
 
-
-         if (old_action.sa_handler != SIG_IGN)
-             sigaction (SIGTERM, &new_action, NULL);
-       ...*/
-
-    if( app_name )
-        ;
-    else
-        ;
+        sigactionsSetted = false;
+    }
 }
 
 void CreateDump( const char* appendix )
 {
     Str::Copy( ManualDumpAppendix, appendix );
-    TerminationHandler( -1 );
+    TerminationHandler( 0, NULL, NULL );
 }
 
-void TerminationHandler( int signum )
+void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 {
     char        mess[ MAX_FOTEXT ];
     char        dump_path[ MAX_FOPATH ];
 
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
-    const char* dump_str = signum != -1 ? "CrashDump" : ManualDumpAppendix;
+    const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     sprintf( dump_path, "./%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
 
     FILE* f = fopen( dump_path, "wt" );
     if( f )
     {
+        // Generic info
+        fprintf( f, "Application\n" );
+        fprintf( f, "\tName        %s\n", AppName );
+        fprintf( f, "\tVersion     %s\n",  AppVer );
+        struct utsname ver;
+        uname( &ver );
+        fprintf( f, "\tOS          %s / %s / %s\n", ver.sysname, ver.release, ver.version );
+        fprintf( f, "\tTimestamp   %02d.%02d.%04d %02d:%02d:%02d\n", dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+        fprintf( f, "\n" );
+
+        // Exception information
+        if( siginfo )
+        {
+            const char* str = NULL;
+            static const char* str_SIGSEGV[] =
+            {
+                "Address not mapped to object, SEGV_MAPERR",
+                "Invalid permissions for mapped object, SEGV_ACCERR",
+            };
+            if( siginfo->si_signo == SIGSEGV && siginfo->si_code >= 0 && siginfo->si_code < 2 )
+                str = str_SIGSEGV[ siginfo->si_code ];
+            static const char* str_SIGFPE[] =
+            {
+                "Integer divide by zero, FPE_INTDIV",
+                "Integer overflow, FPE_INTOVF",
+                "Floating-point divide by zero, FPE_FLTDIV",
+                "Floating-point overflow, FPE_FLTOVF",
+                "Floating-point underflow, FPE_FLTUND",
+                "Floating-point inexact result, FPE_FLTRES",
+                "Invalid floating-point operation, FPE_FLTINV",
+                "Subscript out of range, FPE_FLTSUB",
+            };
+            if( siginfo->si_signo == SIGFPE && siginfo->si_code >= 0 && siginfo->si_code < 8 )
+                str = str_SIGFPE[ siginfo->si_code ];
+
+            fprintf( f, "Exception\n" );
+            fprintf( f, "\tSigno   %s (%d)\n", strsignal( siginfo->si_signo ), siginfo->si_signo );
+            fprintf( f, "\tCode    %s (%d)\n", str ? str : "No description", siginfo->si_code );
+            fprintf( f, "\tErrno   %s (%d)\n", strerror( siginfo->si_errno ), siginfo->si_errno );
+            fprintf( f, "\n" );
+        }
+
+        // Stack
         void* array[ BACKTRACE_BUFFSER_COUNT ];
         int size = backtrace( array, BACKTRACE_BUFFSER_COUNT );
         char** symbols = backtrace_symbols( array, size );
 
+        fprintf( f, "Thread %d%s\n", GetCurThreadId(), " (current)" );
         for( int i = 0; i < size; i++ )
             fprintf( f, "\t%s\n", symbols[ i ] );
 
@@ -560,8 +623,11 @@ void TerminationHandler( int signum )
         sprintf( mess, "Error while create dump file - Error create file, path<%s>.", dump_path );
     }
 
-    // if( except )
+    // if( siginfo )
     //    MessageBox( NULL, mess, "FOnline Error", MB_OK );
+
+    if( siginfo )
+        _exit( 1 );
 }
 
 #endif

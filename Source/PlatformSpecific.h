@@ -39,6 +39,7 @@
 //  -levent_extra
 //  Linux
 //  ../LibLinux
+//  -rdynamic
 //  -lpthread
 //  -ldl
 //  -lrt
