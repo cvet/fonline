@@ -3,10 +3,22 @@
 
 #include "Common.h"
 
+#if defined ( FO_WINDOWS )
+# define DIR_SLASH_C      '\\'
+# define DIR_SLASH_S      "\\"
+# define DIR_SLASH_SD     ".\\"
+# define DIR_SLASH_SDD    "..\\"
+#else
+# define DIR_SLASH_C      '/'
+# define DIR_SLASH_S      "/"
+# define DIR_SLASH_SD     "./"
+# define DIR_SLASH_SDD    "../"
+#endif
+
 #ifndef SEEK_SET
-# define SEEK_SET    ( 0 ) // Seek from beginning of file
-# define SEEK_CUR    ( 1 ) // Seek from current position
-# define SEEK_END    ( 2 ) // Set file pointer to EOF plus "offset"
+# define SEEK_SET         ( 0 ) // Seek from beginning of file
+# define SEEK_CUR         ( 1 ) // Seek from current position
+# define SEEK_END         ( 2 ) // Set file pointer to EOF plus "offset"
 #endif
 
 void* FileOpen( const char* fname, bool write );

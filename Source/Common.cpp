@@ -21,6 +21,13 @@
 /*                                                                      */
 /************************************************************************/
 
+#if defined ( FO_LINUX )
+// Mutex static stuff
+bool                Mutex::attrInitialized = false;
+pthread_mutexattr_t Mutex::mutexAttr;
+#endif
+
+// Command line
 char   CommandLine[ MAX_FOTEXT ] = { 0 };
 char** CommandLineArgValues = NULL;
 uint   CommandLineArgCount = 0;
@@ -36,12 +43,14 @@ void SetCommandLine( uint argc, char** argv )
     }
 }
 
+// Default randomizer
 Randomizer DefaultRandomizer;
 int Random( int minimum, int maximum )
 {
     return DefaultRandomizer.Random( minimum, maximum );
 }
 
+// Math stuff
 int Procent( int full, int peace )
 {
     if( !full )

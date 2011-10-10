@@ -49,12 +49,13 @@
 				</Linker>
 			</Target>
 			<Target title="Release_Linux">
-				<Option output="Release_Linux/FOnlineServer" prefix_auto="1" extension_auto="1" />
+				<Option output="../../sf_sdk/Server/FOnlineServerLinux" prefix_auto="1" extension_auto="1" />
 				<Option object_output="Release_Linux" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add option="-g" />
 					<Add option="-std=gnu++0x" />
 					<Add option="-W" />
 					<Add option="-Wno-invalid-offsetof" />

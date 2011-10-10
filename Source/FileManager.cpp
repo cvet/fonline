@@ -63,20 +63,21 @@ const char* PathList[ PATH_LIST_COUNT ] =
 };
 
 DataFileVec FileManager::dataFiles;
-char        FileManager::dataPath[ MAX_FOPATH ] = { ".\\" };
+char        FileManager::dataPath[ MAX_FOPATH ] = { DIR_SLASH_SD };
 
 void FileManager::SetDataPath( const char* path )
 {
     Str::Copy( dataPath, path );
-    if( dataPath[ Str::Length( path ) - 1 ] != '\\' )
-        Str::Append( dataPath, "\\" );
+    FormatPath( dataPath );
+    if( dataPath[ Str::Length( path ) - 1 ] != DIR_SLASH_C )
+        Str::Append( dataPath, DIR_SLASH_S );
     MakeDirectory( GetFullPath( "", PT_DATA ) );
 }
 
 void FileManager::SetCacheName( const char* name )
 {
     char cache_path[ MAX_FOPATH ];
-    Str::Format( cache_path, "cache\\%s\\", name && name[ 0 ] ? name : "dummy" );
+    Str::Format( cache_path, "cache%s%s%s", DIR_SLASH_S, name && name[ 0 ] ? name : "dummy", DIR_SLASH_S );
     PathList[ PT_CACHE ] = Str::Duplicate( cache_path );
     MakeDirectory( GetFullPath( "", PT_CACHE ) );
 }
@@ -181,6 +182,7 @@ bool FileManager::LoadDataFile( const char* path )
     // Extract full path
     char path_[ MAX_FOPATH ];
     Str::Copy( path_, path );
+    FormatPath( path_ );
     if( !ResolvePath( path_ ) )
     {
         WriteLogF( _FUNC_, " - Extract full path file<%s> fail.\n", path );
@@ -254,9 +256,14 @@ bool FileManager::LoadFile( const char* fname, int path_type )
         Str::Append( folder_path, dat_path );
 
         // Check for full path
+        #if defined ( FO_WINDOWS )
         if( dat_path[ 1 ] == ':' )
             only_folder = true;                        // C:/folder/file.ext
-        if( dat_path[ 0 ] == '.' && dat_path[ 1 ] == '.' && dat_path[ 2 ] == '\\' )
+        #else // FO_LINUX
+        if( dat_path[ 0 ] == DIR_SLASH_C )
+            only_folder = true;                        // /folder/file.ext
+        #endif
+        if( dat_path[ 0 ] == '.' && dat_path[ 1 ] == '.' && dat_path[ 2 ] == DIR_SLASH_C )
             only_folder = true;                        // ../folder/file.ext
 
         // Check for empty
@@ -266,6 +273,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     else if( path_type == -1 )
     {
         Str::Copy( folder_path, fname );
+        FormatPath( folder_path );
         only_folder = true;
     }
     else
@@ -299,7 +307,18 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     if( only_folder )
         return false;
 
+    // Filenames in dats in lower case
     Str::Lower( dat_path );
+
+    // Change slashes back to slash, because dat tree use '\'
+    #if !defined ( FO_WINDOWS )
+    for( char* str = dat_path; *str; str++ )
+    {
+        if( *str == '/' )
+            *str = '\\';
+    }
+    #endif
+
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* dat = *it;
@@ -508,43 +527,6 @@ float FileManager::GetLEFloat()
     return res;
 }
 
-int FileManager::GetNum()
-{
-    // Todo: rework
-    while( curPos < fileSize )
-    {
-        if( fileBuf[ curPos ] >= '0' && fileBuf[ curPos ] <= '9' )
-            break;
-        else
-            curPos++;
-    }
-
-    if( curPos >= fileSize )
-        return 0;
-    int res = atoi( (const char*) &fileBuf[ curPos ] );
-    if( res / 1000000000 )
-        curPos += 10;
-    else if( res / 100000000 )
-        curPos += 9;
-    else if( res / 10000000 )
-        curPos += 8;
-    else if( res / 1000000 )
-        curPos += 7;
-    else if( res / 100000 )
-        curPos += 6;
-    else if( res / 10000 )
-        curPos += 5;
-    else if( res / 1000 )
-        curPos += 4;
-    else if( res / 100 )
-        curPos += 3;
-    else if( res / 10 )
-        curPos += 2;
-    else
-        curPos++;
-    return res;
-}
-
 void FileManager::SwitchToRead()
 {
     fileBuf = dataOutBuf;
@@ -630,6 +612,7 @@ bool FileManager::SaveOutBufToFile( const char* fname, int path_type )
         WriteLogF( _FUNC_, " - Invalid path<%d>.\n", path_type );
         return false;
     }
+    FormatPath( fpath );
 
     void* file = FileOpen( fpath, true );
     if( !file )
@@ -771,7 +754,7 @@ const char* FileManager::GetPath( int path_type )
 
 const char* FileManager::GetDataPath( int path_type )
 {
-    static const char root_path[] = ".\\";
+    static const char root_path[] = DIR_SLASH_SD;
 
     #if defined ( FONLINE_SERVER )
     if( path_type == PT_SERVER_ROOT )
@@ -787,26 +770,39 @@ const char* FileManager::GetDataPath( int path_type )
     return dataPath;
 }
 
-void FileManager::FormatPath( char* path )
+void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
 {
-    // Change '/' to '\'
+    // Change to valid slash
     for( char* str = path; *str; str++ )
+    {
+        #if defined ( FO_WINDOWS )
         if( *str == '/' )
             *str = '\\';
+        #else
+        if( *str == '\\' )
+            *str = '/';
+        #endif
+    }
 
-    // Skip first '..\'
-    while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == '\\' )
-        path += 3;
+    // Skip first '../'
+    if( !first_skipped )
+    {
+        while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == DIR_SLASH_C )
+        {
+            path += 3;
+            first_skipped = true;
+        }
+    }
 
-    // Erase 'folder\..\'
-    char* str = strstr( path, "..\\" );
+    // Erase 'folder/../'
+    char* str = strstr( path, DIR_SLASH_SDD );
     if( str )
     {
         // Erase interval
         char* str_ = str + 3;
         str -= 2;
         for( ; str >= path; str-- )
-            if( *str == '\\' )
+            if( *str == DIR_SLASH_C )
                 break;
         if( str < path )
             str = path;
@@ -817,12 +813,12 @@ void FileManager::FormatPath( char* path )
         *str = 0;
 
         // Recursive look
-        FormatPath( path );
+        FormatPath( path, first_skipped );
         return;
     }
 
-    // Erase '.\'
-    str = strstr( path, ".\\" );
+    // Erase './'
+    str = strstr( path, DIR_SLASH_SD );
     if( str )
     {
         // Erase interval
@@ -832,70 +828,59 @@ void FileManager::FormatPath( char* path )
         *str = 0;
 
         // Recursive look
-        FormatPath( path );
+        FormatPath( path, first_skipped );
         return;
     }
+
+    // Extra dot+slash in beginning
+    #if defined ( FO_LINUX )
+    if( !first_skipped && path[ 0 ] != DIR_SLASH_C )
+        Str::Insert( path, DIR_SLASH_SD );
+    #endif
 }
 
 void FileManager::ExtractPath( const char* fname, char* path )
 {
-    bool dup = false;
-    if( fname == path )
-    {
-        fname = Str::Duplicate( fname );
-        dup = true;
-    }
+    char buf[ MAX_FOPATH ];
+    Str::Copy( buf, fname );
+    FormatPath( buf );
 
-    const char* str = strstr( fname, "\\" );
-    if( !str )
-        str = strstr( fname, "/" );
+    const char* str = strstr( buf, DIR_SLASH_S );
     if( str )
     {
         str++;
         while( true )
         {
-            const char* str_ = strstr( str, "\\" );
-            if( !str_ )
-                str_ = strstr( fname, "/" );
+            const char* str_ = strstr( str, DIR_SLASH_S );
             if( str_ )
                 str = str_ + 1;
             else
                 break;
         }
-        size_t len = str - fname;
+        size_t len = str - buf;
         if( len )
-            memcpy( path, fname, len );
+            memcpy( path, buf, len );
         path[ len ] = 0;
     }
     else
     {
         path[ 0 ] = 0;
     }
-
-    if( dup )
-        delete[] fname;
 }
 
 void FileManager::ExtractFileName( const char* fname, char* name )
 {
-    bool dup = false;
-    if( fname == name )
-    {
-        fname = Str::Duplicate( fname );
-        dup = true;
-    }
+    char buf[ MAX_FOPATH ];
+    Str::Copy( buf, fname );
+    FormatPath( buf );
 
-    const char* str = strstr( fname, "\\" );
-    if( !str )
-        str = strstr( fname, "/" );
+    const char* str = strstr( fname, DIR_SLASH_S );
     if( str )
     {
         str++;
         while( true )
         {
-            const char* str_ = strstr( str, "\\" );
-            if( !str_ )
-                str_ = strstr( fname, "/" );
+            const char* str_ = strstr( str, DIR_SLASH_S );
             if( str_ )
                 str = str_ + 1;
             else
@@ -910,24 +895,32 @@ void FileManager::ExtractFileName( const char* fname, char* name )
     {
         name[ 0 ] = 0;
     }
-
-    if( dup )
-        delete[] fname;
 }
 
 void FileManager::MakeFilePath( const char* name, const char* path, char* result )
 {
-    if( ( strstr( name, "\\" ) || strstr( name, "/" ) ) && name[ 0 ] != '.' )
+    char name_[ MAX_FOPATH ];
+    Str::Copy( name_, name );
+    FormatPath( name_ );
+
+    char path_[ MAX_FOPATH ];
+    if( path )
+    {
+        Str::Copy( path_, path );
+        FormatPath( path_ );
+    }
+
+    if( strstr( name_, DIR_SLASH_S ) && name_[ 0 ] != '.' )
     {
         // Direct
-        Str::Copy( result, MAX_FOPATH, name );
+        Str::Copy( result, MAX_FOPATH, name_ );
     }
     else
     {
         // Relative
         if( path )
-            Str::Copy( result, MAX_FOPATH, path );
-        Str::Append( result, MAX_FOPATH, name );
+            Str::Copy( result, MAX_FOPATH, path_ );
+        Str::Append( result, MAX_FOPATH, name_ );
         FormatPath( result );
     }
 }
@@ -940,11 +933,11 @@ void FileManager::CreateDirectoryTree( const char* path )
 
     for( char* ptr = work; *ptr; ++ptr )
     {
-        if( *ptr == '\\' )
+        if( *ptr == DIR_SLASH_C )
         {
             *ptr = 0;
             MakeDirectory( work );
-            *ptr = '\\';
+            *ptr = DIR_SLASH_C;
         }
     }
 
@@ -1012,7 +1005,7 @@ void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, 
         {
             if( include_subdirs )
             {
-                Str::Format( query, "%s%s\\", init_dir, fd.FileName );
+                Str::Format( query, "%s%s%s", init_dir, fd.FileName, DIR_SLASH_S );
                 RecursiveDirLook( query, include_subdirs, ext, result );
             }
         }

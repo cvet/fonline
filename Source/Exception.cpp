@@ -22,6 +22,10 @@ void SetExceptionsRussianText()
     DumpMess = DumpMessRus;
 }
 
+char AppName[ 128 ] = { 0 };
+char AppVer[ 128 ] = { 0 };
+char ManualDumpAppendix[ 128 ] = { 0 };
+
 #ifdef FO_WINDOWS
 
 # include <windows.h>
@@ -33,10 +37,6 @@ void SetExceptionsRussianText()
 # include <tlhelp32.h>
 # include "Timer.h"
 # include "FileManager.h"
-
-char AppName[ 128 ] = { 0 };
-char AppVer[ 128 ] = { 0 };
-char ManualDumpAppendix[ 128 ] = { 0 };
 
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except );
@@ -63,8 +63,8 @@ void CatchExceptions( const char* app_name, unsigned int app_ver )
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
     LONG        retval = EXCEPTION_CONTINUE_SEARCH;
-    char        mess[ 1024 ];
-    char        dump_path[ 512 ];
+    char        mess[ MAX_FOTEXT ];
+    char        dump_path[ MAX_FOPATH ];
 
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
@@ -432,8 +432,8 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
 {
     LONG       retval = EXCEPTION_CONTINUE_SEARCH;
-    char       mess[ 1024 ];
-    char       dump_path[ 512 ];
+    char       mess[ MAX_FOTEXT ];
+    char       dump_path[ MAX_FOPATH ];
 
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
@@ -484,12 +484,84 @@ void CreateDump( const char* appendix )
 
 #else // FO_LINUX
 
-// Todo:
+# include <signal.h>
+# include <execinfo.h>
+
+# define BACKTRACE_BUFFSER_COUNT    ( 100 )
+
+void TerminationHandler( int signum );
 
 void CatchExceptions( const char* app_name, unsigned int app_ver )
-{}
+{
+    if( app_name )
+        Str::Copy( AppName, app_name );
+    sprintf( AppVer, "%04X", app_ver );
+
+    /* struct sigaction new_action, old_action;
+
+       new_action.sa_handler = TerminationHandler;
+       sigemptyset (&new_action.sa_mask);
+       new_action.sa_flags = 0;
+
+       sigaction (SIGINT, NULL, &old_action);
+
+       if (old_action.sa_handler != SIG_IGN)
+         sigaction (SIGINT, &new_action, NULL);
+       sigaction (SIGHUP, NULL, &old_action);
+
+       if (old_action.sa_handler != SIG_IGN)
+         sigaction (SIGHUP, &new_action, NULL);
+       sigaction (SIGTERM, NULL, &old_action);
+
+
+         if (old_action.sa_handler != SIG_IGN)
+             sigaction (SIGTERM, &new_action, NULL);
+       ...*/
+
+    if( app_name )
+        ;
+    else
+        ;
+}
 
 void CreateDump( const char* appendix )
-{}
+{
+    Str::Copy( ManualDumpAppendix, appendix );
+    TerminationHandler( -1 );
+}
+
+void TerminationHandler( int signum )
+{
+    char        mess[ MAX_FOTEXT ];
+    char        dump_path[ MAX_FOPATH ];
+
+    DateTime    dt;
+    Timer::GetCurrentDateTime( dt );
+    const char* dump_str = signum != -1 ? "CrashDump" : ManualDumpAppendix;
+    sprintf( dump_path, "./%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+
+    FILE* f = fopen( dump_path, "wt" );
+    if( f )
+    {
+        void* array[ BACKTRACE_BUFFSER_COUNT ];
+        int size = backtrace( array, BACKTRACE_BUFFSER_COUNT );
+        char** symbols = backtrace_symbols( array, size );
+
+        for( int i = 0; i < size; i++ )
+            fprintf( f, "\t%s\n", symbols[ i ] );
+
+        free( symbols );
+        fclose( f );
+
+        sprintf( mess, DumpMess, dump_path );
+    }
+    else
+    {
+        sprintf( mess, "Error while create dump file - Error create file, path<%s>.", dump_path );
+    }
+
+    // if( except )
+    //    MessageBox( NULL, mess, "FOnline Error", MB_OK );
+}
 
 #endif

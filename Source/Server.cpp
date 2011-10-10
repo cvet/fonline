@@ -137,6 +137,7 @@ void FOServer::Finish()
     ConnectedClientsLocker.Unlock();
 
     // Listen
+    shutdown( ListenSock, SD_BOTH );
     closesocket( ListenSock );
     ListenSock = INVALID_SOCKET;
     ListenThread.Wait();
@@ -844,7 +845,7 @@ void* FOServer::Net_Listen( void* )
             if( error == WSAEINTR || error == WSAENOTSOCK )
                 break;
             #else // FO_LINUX
-            if( errno == EBADF )
+            if( errno == EINVAL )
                 break;
             #endif
 
@@ -3781,6 +3782,7 @@ bool FOServer::Init()
     if( !NetIOCompletionPort )
     {
         WriteLogF( NULL, "Can't create IO Completion Port, error<%u>.\n", GetLastError() );
+        shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;
     }
@@ -3800,6 +3802,7 @@ bool FOServer::Init()
     if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
     {
         WriteLogF( _FUNC_, " - Start script fail.\n" );
+        shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;
     }
@@ -3861,6 +3864,7 @@ bool FOServer::Init()
     {
         if( !SingleplayerData.Lock() )
         {
+            shutdown( ListenSock, SD_BOTH );
             closesocket( ListenSock );
             return false;
         }

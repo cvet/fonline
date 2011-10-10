@@ -2751,7 +2751,7 @@
 	"Crypt.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/CritterManager.cpp
+1318243799 source:/media/sf_code/Source/CritterManager.cpp
 	"StdAfx.h"
 	"CritterManager.h"
 	"ConstantsManager.h"
@@ -2759,10 +2759,10 @@
 	"IniParser.h"
 	"MapManager.h"
 
-1318054103 /media/sf_code/Source/StdAfx.h
+1318243798 /media/sf_code/Source/StdAfx.h
 	"Common.h"
 
-1318054102 /media/sf_code/Source/Common.h
+1318243797 /media/sf_code/Source/Common.h
 	"PlatformSpecific.h"
 	<stdio.h>
 	<stdarg.h>
@@ -2804,7 +2804,7 @@
 	"PthreadWnd/pthread.h"
 	<pthread.h>
 
-1318054103 /media/sf_code/Source/PlatformSpecific.h
+1318243798 /media/sf_code/Source/PlatformSpecific.h
 	<unistd.h>
 
 1316230531 /media/sf_code/Source/StlPort/stdio.h
@@ -3587,7 +3587,7 @@
 1228903011 /media/sf_code/Source/StlPort/stl/_tempbuf.c
 	<stl/_tempbuf.h>
 
-1318054103 /media/sf_code/Source/Types.h
+1318243798 /media/sf_code/Source/Types.h
 	"PlatformSpecific.h"
 	<map>
 	<string>
@@ -3731,27 +3731,27 @@
 1316230528 /media/sf_code/Source/StlPort/stl/debug/_deque.h
 	<stl/debug/_iterator.h>
 
-1318054103 /media/sf_code/Source/Defines.h
+1318243797 /media/sf_code/Source/Defines.h
 
-1318054103 /media/sf_code/Source/Log.h
+1318243798 /media/sf_code/Source/Log.h
 	<string>
 
-1318054103 /media/sf_code/Source/Timer.h
+1318243798 /media/sf_code/Source/Timer.h
 
-1318054103 /media/sf_code/Source/Debugger.h
+1318243797 /media/sf_code/Source/Debugger.h
 
-1318054103 /media/sf_code/Source/Exception.h
+1318243797 /media/sf_code/Source/Exception.h
 
-1318054103 /media/sf_code/Source/FlexRect.h
+1318243797 /media/sf_code/Source/FlexRect.h
 
-1318054103 /media/sf_code/Source/Randomizer.h
+1318243798 /media/sf_code/Source/Randomizer.h
 	<time.h>
 
-1318054103 /media/sf_code/Source/Mutex.h
+1318243798 /media/sf_code/Source/Mutex.h
 	"Common.h"
 	<intrin.h>
 
-1318054103 /media/sf_code/Source/Text.h
+1318243798 /media/sf_code/Source/Text.h
 	"Common.h"
 	<strstream>
 
@@ -3768,11 +3768,11 @@
 	<stl/_istream.h>
 	<stl/_string.h>
 
-1318054103 /media/sf_code/Source/ResourceClient.h
+1318243798 /media/sf_code/Source/ResourceClient.h
 
-1318054103 /media/sf_code/Source/ResourceMapper.h
+1318243798 /media/sf_code/Source/ResourceMapper.h
 
-1318054103 /media/sf_code/Source/Script.h
+1318243798 /media/sf_code/Source/Script.h
 	"Common.h"
 	"AngelScript/angelscript.h"
 	"AngelScript/scriptarray.h"
@@ -3794,10 +3794,10 @@
 1316230525 /media/sf_code/Source/AngelScript/Preprocessor/pragma.h
 	<string>
 
-1318054103 /media/sf_code/Source/ThreadSync.h
+1318243798 /media/sf_code/Source/ThreadSync.h
 	"Common.h"
 
-1318054103 /media/sf_code/Source/Jobs.h
+1318243798 /media/sf_code/Source/Jobs.h
 
 1228903011 /media/sf_code/Source/StlPort/fstream
 	<stl/_prolog.h>
@@ -3846,39 +3846,39 @@
 	<sys/types.h>
 	<time.h>
 
-1318054102 /media/sf_code/Source/CritterManager.h
+1318243797 /media/sf_code/Source/CritterManager.h
 	"Common.h"
 	"CritterData.h"
 	"Critter.h"
 
-1318054102 /media/sf_code/Source/CritterData.h
+1318243797 /media/sf_code/Source/CritterData.h
 	"Item.h"
 	"FileManager.h"
 	"AI.h"
 	"Defines.h"
 
-1318054103 /media/sf_code/Source/Item.h
+1318243798 /media/sf_code/Source/Item.h
 	"Common.h"
 	"FileManager.h"
 	"Text.h"
 	"Crypt.h"
 
-1318054103 /media/sf_code/Source/FileManager.h
+1318243797 /media/sf_code/Source/FileManager.h
 	"Defines.h"
 	"FileSystem.h"
 	"Log.h"
 	"DataFile.h"
 
-1318054103 /media/sf_code/Source/DataFile.h
+1318243797 /media/sf_code/Source/DataFile.h
 	"Defines.h"
 
-1318054103 /media/sf_code/Source/Crypt.h
+1318243797 /media/sf_code/Source/Crypt.h
 	"Log.h"
 
-1318054102 /media/sf_code/Source/AI.h
+1318243797 /media/sf_code/Source/AI.h
 	"Common.h"
 
-1318054102 /media/sf_code/Source/Critter.h
+1318243797 /media/sf_code/Source/Critter.h
 	"Common.h"
 	"zlib/zlib.h"
 	"BufferManager.h"
@@ -3902,27 +3902,27 @@
 	<unistd.h>
 	<unixio.h>
 
-1318054102 /media/sf_code/Source/BufferManager.h
+1318243797 /media/sf_code/Source/BufferManager.h
 	"Common.h"
 
-1318054103 /media/sf_code/Source/Dialogs.h
+1318243797 /media/sf_code/Source/Dialogs.h
 	"Common.h"
 	"Vars.h"
 	"Text.h"
 	"MsgFiles.h"
 
-1318054103 /media/sf_code/Source/Vars.h
+1318243798 /media/sf_code/Source/Vars.h
 	"Common.h"
 
-1318054103 /media/sf_code/Source/MsgFiles.h
+1318243798 /media/sf_code/Source/MsgFiles.h
 	"Common.h"
 	"MsgStr.h"
 
-1318054103 /media/sf_code/Source/MsgStr.h
+1318243798 /media/sf_code/Source/MsgStr.h
 
-1318054103 /media/sf_code/Source/DataMask.h
+1318243797 /media/sf_code/Source/DataMask.h
 
-1318054103 /media/sf_code/Source/NetProtocol.h
+1318243798 /media/sf_code/Source/NetProtocol.h
 	"Defines.h"
 
 1317984819 /media/sf_code/Source/Event2/event.h
@@ -3967,38 +3967,38 @@
 	<sys/uio.h>
 	<event2/util.h>
 
-1318054102 /media/sf_code/Source/ConstantsManager.h
+1318243797 /media/sf_code/Source/ConstantsManager.h
 
-1318054103 /media/sf_code/Source/ItemManager.h
+1318243798 /media/sf_code/Source/ItemManager.h
 	"Defines.h"
 	"Item.h"
 
-1318054103 /media/sf_code/Source/IniParser.h
+1318243798 /media/sf_code/Source/IniParser.h
 	"Common.h"
 
-1318054103 /media/sf_code/Source/MapManager.h
+1318243798 /media/sf_code/Source/MapManager.h
 	"Common.h"
 	"Map.h"
 	"IniParser.h"
 
-1318054103 /media/sf_code/Source/Map.h
+1318243798 /media/sf_code/Source/Map.h
 	"Common.h"
 	"ProtoMap.h"
 	"Item.h"
 	"Critter.h"
 
-1318054103 /media/sf_code/Source/ProtoMap.h
+1318243798 /media/sf_code/Source/ProtoMap.h
 	"Common.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/ConstantsManager.cpp
+1318243798 source:/media/sf_code/Source/ConstantsManager.cpp
 	"StdAfx.h"
 	"ConstantsManager.h"
 	"Log.h"
 	"Text.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/CraftManager.cpp
+1318243798 source:/media/sf_code/Source/CraftManager.cpp
 	"StdAfx.h"
 	"CraftManager.h"
 	"ConstantsManager.h"
@@ -4008,11 +4008,11 @@
 	"ItemManager.h"
 	"CritterCl.h"
 
-1318054102 /media/sf_code/Source/CraftManager.h
+1318243797 /media/sf_code/Source/CraftManager.h
 	"Common.h"
 	"MsgFiles.h"
 
-1318054102 /media/sf_code/Source/CritterCl.h
+1318243797 /media/sf_code/Source/CritterCl.h
 	"NetProtocol.h"
 	"Common.h"
 	"SpriteManager.h"
@@ -4021,34 +4021,34 @@
 	"ItemManager.h"
 	"3dAnimation.h"
 
-1318054103 /media/sf_code/Source/SpriteManager.h
+1318243798 /media/sf_code/Source/SpriteManager.h
 	"Common.h"
 	"FileManager.h"
 	"Text.h"
 	"3dAnimation.h"
 	"3dLoader.h"
 
-1318054102 /media/sf_code/Source/3dAnimation.h
+1318243797 /media/sf_code/Source/3dAnimation.h
 	<Timer.h>
 	<Defines.h>
 	<3dMeshStructures.h>
 	<FlexRect.h>
 	<common.h>
 
-1318054102 /media/sf_code/Source/3dMeshStructures.h
+1318243797 /media/sf_code/Source/3dMeshStructures.h
 	"Defines.h"
 
-1318054102 /media/sf_code/Source/3dLoader.h
+1318243797 /media/sf_code/Source/3dLoader.h
 	"Common.h"
 	"Defines.h"
 	"FileManager.h"
 	"3dMeshHierarchy.h"
 	"3dMeshStructures.h"
 
-1318054102 /media/sf_code/Source/3dMeshHierarchy.h
+1318243797 /media/sf_code/Source/3dMeshHierarchy.h
 	"3dMeshStructures.h"
 
-1318054104 source:/media/sf_code/Source/Critter.cpp
+1318243799 source:/media/sf_code/Source/Critter.cpp
 	"StdAfx.h"
 	"Critter.h"
 	"MapManager.h"
@@ -4057,12 +4057,12 @@
 	"Access.h"
 	"CritterManager.h"
 
-1318054103 /media/sf_code/Source/CritterType.h
+1318243797 /media/sf_code/Source/CritterType.h
 	"Defines.h"
 
-1318054102 /media/sf_code/Source/Access.h
+1318243797 /media/sf_code/Source/Access.h
 
-1318054104 source:/media/sf_code/Source/Crypt.cpp
+1318243799 source:/media/sf_code/Source/Crypt.cpp
 	"StdAfx.h"
 	"Crypt.h"
 	"Zlib/zlib.h"
@@ -4079,7 +4079,7 @@
 
 1316230528 /media/sf_code/Source/SHA2/sha2.h
 
-1318054103 source:/media/sf_code/Source/AI.cpp
+1318243798 source:/media/sf_code/Source/AI.cpp
 	"StdAfx.h"
 	"AI.h"
 	"Text.h"
@@ -4088,7 +4088,7 @@
 	"Item.h"
 	"IniParser.h"
 
-1318054103 /media/sf_code/Source/FileSystem.h
+1318243797 /media/sf_code/Source/FileSystem.h
 	"Common.h"
 
 1316230525 source:/media/sf_code/Source/AngelScript/Preprocessor/lex.cpp
@@ -4605,19 +4605,21 @@
 	<string>
 	<map>
 
-1318036061 source:/media/sf_code/Source/AngelScript/scriptfile.cpp
+1318115757 source:/media/sf_code/Source/AngelScript/scriptfile.cpp
 	"scriptfile.h"
 	<new>
 	<assert.h>
-	<stdio.h>
 	<string>
 	<string.h>
+	<stdio.h>
 	<windows.h>
 
-1318008866 /media/sf_code/Source/AngelScript/scriptfile.h
+1318115723 /media/sf_code/Source/AngelScript/scriptfile.h
+	<string>
+	<stdio.h>
 	"AngelScript/angelscript.h"
-	"scriptarray.h"
 	"scriptstring.h"
+	"scriptarray.h"
 
 1316230525 source:/media/sf_code/Source/AngelScript/scriptmath.cpp
 	<assert.h>
@@ -4652,13 +4654,13 @@
 	"scriptarray.h"
 	<string.h>
 
-1318054103 source:/media/sf_code/Source/BufferManager.cpp
+1318243798 source:/media/sf_code/Source/BufferManager.cpp
 	"StdAfx.h"
 	"BufferManager.h"
 	"NetProtocol.h"
 	"Randomizer.h"
 
-1318054104 source:/media/sf_code/Source/Common.cpp
+1318243798 source:/media/sf_code/Source/Common.cpp
 	"StdAfx.h"
 	"Common.h"
 	"Exception.h"
@@ -4675,16 +4677,16 @@
 	<Text.h>
 	<Item.h>
 
-1318054103 /media/sf_code/Source/Version.h
+1318243798 /media/sf_code/Source/Version.h
 
-1318054104 source:/media/sf_code/Source/CritterType.cpp
+1318243799 source:/media/sf_code/Source/CritterType.cpp
 	"StdAfx.h"
 	"CritterType.h"
 	"Text.h"
 	"FileManager.h"
 	"MsgFiles.h"
 
-1318054104 source:/media/sf_code/Source/DataFile.cpp
+1318243799 source:/media/sf_code/Source/DataFile.cpp
 	"StdAfx.h"
 	"DataFile.h"
 	"DatFile/cfile.h"
@@ -4710,14 +4712,14 @@
 	"mz64conf.h"
 	"stdint.h"
 
-1318054104 source:/media/sf_code/Source/Dialogs.cpp
+1318243799 source:/media/sf_code/Source/Dialogs.cpp
 	"StdAfx.h"
 	"Dialogs.h"
 	"ConstantsManager.h"
 	"FileManager.h"
 	"IniParser.h"
 
-1318054104 source:/media/sf_code/Source/Exception.cpp
+1318243799 source:/media/sf_code/Source/Exception.cpp
 	"StdAfx.h"
 	"Exception.h"
 	<windows.h>
@@ -4727,28 +4729,30 @@
 	<tlhelp32.h>
 	"Timer.h"
 	"FileManager.h"
+	<signal.h>
+	<execinfo.h>
 
-1318054104 source:/media/sf_code/Source/FileManager.cpp
+1318236308 source:/media/sf_code/Source/FileManager.cpp
 	"StdAfx.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/Debugger.cpp
+1318243799 source:/media/sf_code/Source/Debugger.cpp
 	"StdAfx.h"
 	"Debugger.h"
 	"Mutex.h"
 
-1318054104 source:/media/sf_code/Source/FileSystem.cpp
+1318243799 source:/media/sf_code/Source/FileSystem.cpp
 	"StdAfx.h"
 	<dirent.h>
 	<sys/stat.h>
 
-1318054104 source:/media/sf_code/Source/IniParser.cpp
+1318243799 source:/media/sf_code/Source/IniParser.cpp
 	"StdAfx.h"
 	"IniParser.h"
 	"Crypt.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/Item.cpp
+1318243799 source:/media/sf_code/Source/Item.cpp
 	"StdAfx.h"
 	"Item.h"
 	"ItemManager.h"
@@ -4758,12 +4762,12 @@
 	"ResourceManager.h"
 	"SpriteManager.h"
 
-1318054103 /media/sf_code/Source/ResourceManager.h
+1318243798 /media/sf_code/Source/ResourceManager.h
 	"Defines.h"
 	"SpriteManager.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/ItemManager.cpp
+1318243799 source:/media/sf_code/Source/ItemManager.cpp
 	"StdAfx.h"
 	"ItemManager.h"
 	"ConstantsManager.h"
@@ -4775,7 +4779,7 @@
 	"Script.h"
 	"Script.h"
 
-1318054104 source:/media/sf_code/Source/Jobs.cpp
+1318243799 source:/media/sf_code/Source/Jobs.cpp
 	"StdAfx.h"
 	"Jobs.h"
 	"Mutex.h"
@@ -4784,7 +4788,7 @@
 	"Item.h"
 	"Vars.h"
 
-1318054104 source:/media/sf_code/Source/Log.cpp
+1318243799 source:/media/sf_code/Source/Log.cpp
 	"StdAfx.h"
 	"Log.h"
 	"Timer.h"
@@ -4888,7 +4892,7 @@
 	<assert.h>
 	"Fl_Export.H"
 
-1318054104 source:/media/sf_code/Source/MainServer.cpp
+1318243799 source:/media/sf_code/Source/MainServer.cpp
 	"StdAfx.h"
 	"Server.h"
 	"Exception.h"
@@ -4902,7 +4906,7 @@
 	"FL/Fl_Check_Button.H"
 	"FL/Fl_File_Icon.H"
 
-1318054103 /media/sf_code/Source/Server.h
+1318243798 /media/sf_code/Source/Server.h
 	"StdAfx.h"
 	"Common.h"
 	"Item.h"
@@ -4971,14 +4975,14 @@
 1311050970 /media/sf_code/Source/FL/Fl_File_Icon.H
 	"Fl.H"
 
-1318054104 source:/media/sf_code/Source/Map.cpp
+1318243799 source:/media/sf_code/Source/Map.cpp
 	"StdAfx.h"
 	"Map.h"
 	"CritterManager.h"
 	"ItemManager.h"
 	"MapManager.h"
 
-1318054104 source:/media/sf_code/Source/MapManager.cpp
+1318243799 source:/media/sf_code/Source/MapManager.cpp
 	"StdAfx.h"
 	"MapManager.h"
 	"Log.h"
@@ -4987,16 +4991,16 @@
 	"Script.h"
 	"LineTracer.h"
 
-1318054103 /media/sf_code/Source/LineTracer.h
+1318243798 /media/sf_code/Source/LineTracer.h
 	"Common.h"
 
-1318054104 source:/media/sf_code/Source/MsgFiles.cpp
+1318243799 source:/media/sf_code/Source/MsgFiles.cpp
 	"StdAfx.h"
 	"MsgFiles.h"
 	"Crypt.h"
 	"FileManager.h"
 
-1318054104 source:/media/sf_code/Source/ProtoMap.cpp
+1318243799 source:/media/sf_code/Source/ProtoMap.cpp
 	"StdAfx.h"
 	"ProtoMap.h"
 	"ItemManager.h"
@@ -5007,7 +5011,7 @@
 	"IniParser.h"
 	"ResourceManager.h"
 
-1318054104 source:/media/sf_code/Source/Script.cpp
+1318243799 source:/media/sf_code/Source/Script.cpp
 	"StdAfx.h"
 	"Script.h"
 	"Text.h"
@@ -5023,7 +5027,7 @@
 	"AngelScript/Preprocessor/preprocess.h"
 	<strstream>
 
-1318054104 source:/media/sf_code/Source/ScriptPragmas.cpp
+1318243799 source:/media/sf_code/Source/ScriptPragmas.cpp
 	"ScriptPragmas.h"
 	"AngelScript/angelscript.h"
 	<Windows.h>
@@ -5037,30 +5041,30 @@
 	"CritterCl.h"
 	"Item.h"
 
-1318054103 /media/sf_code/Source/ScriptPragmas.h
+1318243798 /media/sf_code/Source/ScriptPragmas.h
 	"AngelScript/angelscript.h"
 	"AngelScript/Preprocessor/pragma.h"
 	<set>
 	<string>
 
-1318054104 source:/media/sf_code/Source/Server.cpp
+1318243799 source:/media/sf_code/Source/Server.cpp
 	"StdAfx.h"
 	"Server.h"
 	"FL/Fl.H"
 
-1318054105 source:/media/sf_code/Source/ServerClient.cpp
+1318243799 source:/media/sf_code/Source/ServerClient.cpp
 	"StdAfx.h"
 	"Server.h"
 
-1318054105 source:/media/sf_code/Source/ServerItem.cpp
+1318243799 source:/media/sf_code/Source/ServerItem.cpp
 	"StdAfx.h"
 	"Server.h"
 
-1318054105 source:/media/sf_code/Source/ServerNpc.cpp
+1318243799 source:/media/sf_code/Source/ServerNpc.cpp
 	"StdAfx.h"
 	"Server.h"
 
-1318054105 source:/media/sf_code/Source/ServerScript.cpp
+1318243799 source:/media/sf_code/Source/ServerScript.cpp
 	"StdAfx.h"
 	"Server.h"
 	"AngelScript/Preprocessor/preprocess.h"
@@ -5074,24 +5078,24 @@
 1311050970 /media/sf_code/Source/FL/Fl_PNG_Image.H
 	"Fl_Image.H"
 
-1318054103 /media/sf_code/Source/ScriptBind.h
+1318243798 /media/sf_code/Source/ScriptBind.h
 
-1318054103 /media/sf_code/Source/DummyData.h
+1318243797 /media/sf_code/Source/DummyData.h
 
-1318054105 source:/media/sf_code/Source/StdAfx.cpp
+1318243800 source:/media/sf_code/Source/StdAfx.cpp
 	"StdAfx.h"
 
-1318054105 source:/media/sf_code/Source/Text.cpp
+1318243800 source:/media/sf_code/Source/Text.cpp
 	"StdAfx.h"
 	"Text.h"
 	"Crypt.h"
 
-1318054105 source:/media/sf_code/Source/ThreadSync.cpp
+1318243800 source:/media/sf_code/Source/ThreadSync.cpp
 	"StdAfx.h"
 	"ThreadSync.h"
 	"Mutex.h"
 
-1318054105 source:/media/sf_code/Source/Timer.cpp
+1318243800 source:/media/sf_code/Source/Timer.cpp
 	"StdAfx.h"
 	"Timer.h"
 	<Mmsystem.h>
@@ -5230,7 +5234,7 @@
 	<string.h>
 	"unlzss.h"
 
-1318054105 source:/media/sf_code/Source/Vars.cpp
+1318243800 source:/media/sf_code/Source/Vars.cpp
 	"StdAfx.h"
 	"Vars.h"
 	"Text.h"

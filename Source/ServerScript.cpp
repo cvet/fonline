@@ -118,7 +118,7 @@ bool FOServer::InitScriptSystem()
     scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
     if( !scripts_cfg.IsLoaded() )
     {
-        WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
+        WriteLog( "Config file<%s> not found.\n", FileManager::GetFullPath( SCRIPTS_LST, PT_SERVER_SCRIPTS ) );
         return false;
     }
 

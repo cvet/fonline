@@ -62,8 +62,24 @@ private:
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
 
+    static bool                attrInitialized;
+    static pthread_mutexattr_t mutexAttr;
+    static void InitAttributes()
+    {
+        if( !attrInitialized )
+        {
+            pthread_mutexattr_init( &mutexAttr );
+            pthread_mutexattr_settype( &mutexAttr, PTHREAD_MUTEX_RECURSIVE );
+            attrInitialized = true;
+        }
+    }
+
 public:
-    Mutex() { pthread_mutex_init( &mutexCS, NULL ); }
+    Mutex()
+    {
+        InitAttributes();
+        pthread_mutex_init( &mutexCS, &mutexAttr );
+    }
     ~Mutex() { pthread_mutex_destroy( &mutexCS ); }
     void SetSpinCount( int count ) { /*Todo: linux*/ }
     void Lock()                    { pthread_mutex_lock( &mutexCS ); }

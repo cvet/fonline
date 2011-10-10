@@ -61,7 +61,7 @@ double Timer::AccurateTick()
     #else // FO_LINUX
     struct timeval tv;
     gettimeofday( &tv, NULL );
-    return (double) ( tv.tv_sec * 1000000 + tv.tv_usec );
+    return (double) ( tv.tv_sec * 1000000 + tv.tv_usec ) / 1000.0;
     #endif
 }
 
