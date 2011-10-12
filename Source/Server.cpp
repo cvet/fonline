@@ -869,9 +869,9 @@ void* FOServer::Net_Listen( void* )
             if( setsockopt( sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
                 WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n", GetLastSocketError() );
             #else
-            socklen_t optval = 1;
-            if( setsockopt( sock, IPPROTO_TCP, 1, &optval, sizeof( optval ) ) )
-                WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n", GetLastSocketError() );
+            // socklen_t optval = 1;
+            // if( setsockopt( sock, IPPROTO_TCP, 1, &optval, sizeof( optval ) ) )
+            //    WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n", GetLastSocketError() );
             #endif
         }
 
@@ -935,11 +935,13 @@ void* FOServer::Net_Listen( void* )
 
         #if defined ( USE_LIBEVENT )
         // Setup timeouts
-        timeval tv = { 0, 5 * 1000 };  // Check Output data every 5ms
+        # if !defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+        timeval tv = { 0, 5 * 1000 };  // Check output data every 5ms
         bufferevent_set_timeouts( bev, NULL, &tv );
+        # endif
 
         // Setup bandwidth
-        const uint                  rate = 50000; // 50kb per second
+        const uint                  rate = 100000; // 100kb per second
         static ev_token_bucket_cfg* rate_cfg = NULL;
         if( !rate_cfg )
             rate_cfg = ev_token_bucket_cfg_new( rate, rate, rate, rate, NULL );
@@ -949,6 +951,9 @@ void* FOServer::Net_Listen( void* )
         // Setup callbacks
         Client::NetIOArg* arg = new Client::NetIOArg();
         arg->PClient = cl;
+        # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+        arg->BEV = bev;
+        # endif
         cl->NetIOArgPtr = arg;
         cl->AddRef();         // Released in Shutdown
         bufferevent_setcb( bev, NetIO_Input, NetIO_Output, NetIO_Event, cl->NetIOArgPtr );
@@ -1007,6 +1012,7 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
     SCOPE_LOCK( arg_->Locker );
     Client*           cl = arg_->PClient;
 
+    # if !defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
     if( ( what & ( BEV_EVENT_TIMEOUT | BEV_EVENT_WRITING ) ) == ( BEV_EVENT_TIMEOUT | BEV_EVENT_WRITING ) )
     {
         // Process offline
@@ -1037,6 +1043,9 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
         NetIO_Output( bev, arg );
     }
     else if( what & ( BEV_EVENT_ERROR | BEV_EVENT_EOF ) )
+    # else
+    if( what & ( BEV_EVENT_ERROR | BEV_EVENT_EOF ) )
+    # endif
     {
         // Shutdown on errors
         cl->Shutdown( bev );
@@ -3753,15 +3762,18 @@ bool FOServer::Init()
     event_set_log_callback( ELCB::Callback );
     event_set_fatal_callback( EFCB::Callback );
 
+    evthread_enable_lock_debuging();
+
     # ifdef FO_WINDOWS
     evthread_use_windows_threads();
     # else // FO_LINUX
-    #  pragma MESSAGE( "Linux link evthread_use_pthreads" )
-    // evthread_use_pthreads();
+    evthread_use_pthreads();
     # endif
 
     event_config* event_cfg = event_config_new();
+    # ifdef FO_WINDOWS
     event_config_set_flag( event_cfg, EVENT_BASE_FLAG_STARTUP_IOCP );
+    # endif
     event_config_set_num_cpus_hint( event_cfg, NetIOThreadsCount );
     NetIOEventHandler = event_base_new_with_config( event_cfg );
     event_config_free( event_cfg );
@@ -3777,6 +3789,10 @@ bool FOServer::Init()
     // Listen
     ListenThread.Start( Net_Listen );
     WriteLog( "Network listen thread started.\n" );
+
+    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+    Client::SendData = &NetIO_Output;
+    # endif
     #else // IOCP
     NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, NULL, NULL, NetIOThreadsCount );
     if( !NetIOCompletionPort )
@@ -4211,20 +4227,21 @@ bool FOServer::LoadClientsData()
 
     LastClientId = 0;
     ClientsData.reserve( 10000 );
+
+    char save_path[ MAX_FOPATH ];
+    Str::Format( save_path, ".%csave%cclients%c", DIR_SLASH_C, DIR_SLASH_C, DIR_SLASH_C );
+
     FIND_DATA fd;
-    void*     h = FileFindFirst( ".\\save\\clients\\*.client", fd );
+    void*     h = FileFindFirst( save_path, "client", fd );
     if( !h )
     {
         WriteLog( "Clients data not found.\n" );
-        return true;
+        return false;
     }
 
     UIntSet id_already;
     do
     {
-        if( fd.IsDirectory )
-            continue;
-
         // Take name from file title
         char name[ MAX_FOPATH ];
         Str::Copy( name, fd.FileName );

@@ -125,7 +125,7 @@ void Keyb::InitKeyb()
     }
 }
 
-void Keyb::ClearKeyb()
+void Keyb::Finish()
 {
     Data.clear();
 }

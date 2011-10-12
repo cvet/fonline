@@ -35,7 +35,7 @@ struct FIND_DATA
     char FileName[ MAX_FOPATH ];
     bool IsDirectory;
 };
-void* FileFindFirst( const char* query, FIND_DATA& fd );
+void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd );
 bool  FileFindNext( void* descriptor, FIND_DATA& fd );
 void  FileFindClose( void* descriptor );
 

@@ -338,7 +338,7 @@ bool FOClient::Init( HWND hwnd )
     }
 
     // Sound manager
-    SndMngr.Init( Wnd );
+    SndMngr.Init();
     SndMngr.SetSoundVolume( cfg.GetInt( CLIENT_CONFIG_APP, "SoundVolume", 100 ) );
     SndMngr.SetMusicVolume( cfg.GetInt( CLIENT_CONFIG_APP, "MusicVolume", 100 ) );
 
@@ -625,13 +625,13 @@ void FOClient::Finish()
 
     SAFEREL( SaveLoadDraft );
 
-    Keyb::ClearKeyb();
+    Keyb::Finish();
     NetDisconnect();
     ResMngr.Finish();
-    HexMngr.Clear();
-    SprMngr.Clear();
-    SndMngr.Clear();
-    QuestMngr.Clear();
+    HexMngr.Finish();
+    SprMngr.Finish();
+    SndMngr.Finish();
+    QuestMngr.Finish();
     MrFixit.Finish();
     Script::Finish();
 
@@ -3032,7 +3032,7 @@ void FOClient::NetDisconnect()
     SetCurMode( CUR_DEFAULT );
     HexMngr.UnloadMap();
     ClearCritters();
-    QuestMngr.Clear();
+    QuestMngr.Finish();
     Bin.Reset();
     Bout.Reset();
     Bin.SetEncryptKey( 0 );
@@ -7832,7 +7832,7 @@ void FOClient::Net_OnQuest( bool many )
         Bin >> msg_len;
         Bin >> q_count;
 
-        QuestMngr.Clear();
+        QuestMngr.Finish();
         if( q_count )
         {
             UIntVec quests;
@@ -8760,7 +8760,7 @@ label_EndMove:
                 break;
             if( !Chosen->IsRawParam( MODE_UNLIMITED_AMMO ) && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty() )
             {
-                SndMngr.PlaySoundType( 'W', SOUND_WEAPON_EMPTY, item->Proto->Weapon_SoundId[ use ], '1' );
+                SndMngr.PlaySoundType( 'W', 'O', item->Proto->Weapon_SoundId[ use ], '1' );
                 break;
             }
             if( item->IsTwoHands() && Chosen->IsDmgArm() )
@@ -9940,9 +9940,6 @@ bool FOClient::SaveScreenshot()
 
 void FOClient::SoundProcess()
 {
-    // Manager
-    SndMngr.Process();
-
     // Ambient
     static uint next_ambient = 0;
     if( Timer::GameTick() > next_ambient )

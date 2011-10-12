@@ -31,7 +31,7 @@
 #endif
 #pragma warning(disable : 4995) // sprintf in DShow.h
 #undef PlaySound                // PlaySoundA in DShow.h
-#pragma comment(lib,"amstrmid.lib")
+#pragma comment(lib,"strmiids.lib")
 
 class FOClient
 {
@@ -2115,5 +2115,18 @@ public:
 #define ACCELERATE_DLG_TEXT_DOWN       ( 35 )
 #define ACCELERATE_SAVE_LOAD_SCR_UP    ( 36 )
 #define ACCELERATE_SAVE_LOAD_SCR_DN    ( 37 )
+
+// Sounds
+#define SND_BUTTON1_IN                 "BUTIN1"
+#define SND_BUTTON2_IN                 "BUTIN2"
+#define SND_BUTTON3_IN                 "BUTIN3"
+#define SND_BUTTON4_IN                 "BUTIN4"
+#define SND_BUTTON1_OUT                "BUTOUT1"
+#define SND_BUTTON2_OUT                "BUTOUT2"
+#define SND_BUTTON3_OUT                "BUTOUT3"
+#define SND_BUTTON4_OUT                "BUTOUT4"
+#define SND_LMENU                      "IACCUXX1"
+#define SND_COMBAT_MODE_ON             "ICIBOXX1"
+#define SND_COMBAT_MODE_OFF            "ICIBCXX1"
 
 #endif // __CLIENT__

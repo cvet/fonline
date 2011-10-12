@@ -995,18 +995,18 @@ void FileManager::GetTime( uint64* create, uint64* access, uint64* write )
 
 void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, const char* ext, StrVec& result )
 {
-    char      query[ MAX_FOPATH ];
-    Str::Format( query, "%s%s*", dataPath, init_dir );
+    char      path[ MAX_FOPATH ];
+    Str::Format( path, "%s%s", dataPath, init_dir );
     FIND_DATA fd;
-    void*     h = FileFindFirst( query, fd );
+    void*     h = FileFindFirst( path, NULL, fd );
     while( h )
     {
         if( fd.IsDirectory )
         {
             if( include_subdirs )
             {
-                Str::Format( query, "%s%s%s", init_dir, fd.FileName, DIR_SLASH_S );
-                RecursiveDirLook( query, include_subdirs, ext, result );
+                Str::Format( path, "%s%s%s", init_dir, fd.FileName, DIR_SLASH_S );
+                RecursiveDirLook( path, include_subdirs, ext, result );
             }
         }
         else
@@ -1016,16 +1016,16 @@ void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, 
                 const char* ext_ = GetExtension( fd.FileName );
                 if( ext_ && Str::CompareCase( ext, ext_ ) )
                 {
-                    Str::Copy( query, init_dir );
-                    Str::Append( query, fd.FileName );
-                    result.push_back( query );
+                    Str::Copy( path, init_dir );
+                    Str::Append( path, fd.FileName );
+                    result.push_back( path );
                 }
             }
             else
             {
-                Str::Copy( query, init_dir );
-                Str::Append( query, fd.FileName );
-                result.push_back( query );
+                Str::Copy( path, init_dir );
+                Str::Append( path, fd.FileName );
+                result.push_back( path );
             }
         }
 

@@ -575,13 +575,33 @@ public:
     #if defined ( USE_LIBEVENT )
     struct NetIOArg
     {
-        Mutex   Locker;
-        Client* PClient;
-    }* NetIOArgPtr;
+        Mutex         Locker;
+        Client*       PClient;
+        bufferevent*  BEV;
+        # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+        MutexSpinlock BEVLocker;
+        # endif
+    }* volatile NetIOArgPtr;
     # define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
     # define BIN_END( cl_ )       cl_->Bin.Unlock()
     # define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
-    # define BOUT_END( cl_ )      cl_->Bout.Unlock()
+    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+    typedef void ( *SendCallback )( bufferevent*, void* );
+    static SendCallback SendData;
+    #  define BOUT_END( cl_ )                                                     \
+        cl_->Bout.Unlock();                                                       \
+        {                                                                         \
+            SCOPE_LOCK( cl_->NetIOArgPtr->BEVLocker );                            \
+            if( cl_->NetIOArgPtr->BEV )                                           \
+            {                                                                     \
+                bufferevent_lock( cl_->NetIOArgPtr->BEV );                        \
+                ( *Client::SendData )( cl_->NetIOArgPtr->BEV, cl_->NetIOArgPtr ); \
+                bufferevent_unlock( cl_->NetIOArgPtr->BEV );                      \
+            }                                                                     \
+        }
+    # else
+    #  define BOUT_END( cl_ )     cl_->Bout.Unlock();
+    # endif
     void Shutdown( bufferevent* bev );
     #else // IOCP
     struct NetIOArg

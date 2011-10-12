@@ -3,69 +3,73 @@
 #include "Common.h"
 #include "ResourceManager.h"
 #include "Text.h"
+#include "FileManager.h"
 
+// Manager instance
 SoundManager SndMngr;
 
-/************************************************************************/
-/* LIBS                                                                 */
-/************************************************************************/
+// PortAudio
+#include "PortAudio/portaudio.h"
+#pragma comment( lib, "portaudio.lib" )
 
-// For ACM
+// ACM
 #include "Acm/acmstrm.h"
 
-// For OGG
+// OGG
 #include "Ogg/codec.h"
 #include "Ogg/vorbisfile.h"
-#pragma comment (lib, "libogg_static.lib")
-#pragma comment (lib, "libvorbis_static.lib")
-#pragma comment (lib, "libvorbisfile_static.lib")
+#pragma comment ( lib, "libogg_static.lib" )
+#pragma comment ( lib, "libvorbis_static.lib" )
+#pragma comment ( lib, "libvorbisfile_static.lib" )
 
-/************************************************************************/
-/* Volume correction                                                    */
-/************************************************************************/
-// From gd.net http://www.gamedev.net/community/forums/viewreply.asp?ID=1975621
-// The first function converts the default DirectSound range (0 - -10000) to a floating
-// point value between 0.0f and 1.0f. The second converts back. The third converts the
-// converted value to decibels. Enjoy.
-
-int VolumeToDb( int vol_level )
+// Sound structure
+class Sound
 {
-    double level = double(vol_level) / 100.0;
-    if( level <= 0.0 )
-        return DSBVOLUME_MIN;
-    else if( level >= 1.0 )
-        return DSBVOLUME_MAX;
-    return (int) ( -2000.0 * log10( 1.0 / level ) );
-}
+public:
+    PaStream* Stream;
 
-uint DbToVolume( int vol_db )
-{
-    if( vol_db <= -9600 )
-        return 0;
-    else if( vol_db >= 0 )
-        return 100;
-    return (uint) ( pow( 10, double(vol_db + 2000) / 2000.0 ) * 10.0 );
-}
+    uchar*    Buf;
+    uint      BufSize;
+    uint      BufCur;
 
-/************************************************************************/
-/* Initialization / Deinitialization / Process                          */
-/************************************************************************/
+    uint      SampleSize;
+    uint      Channels;
+    uint      SampleRate;
 
-bool SoundManager::Init( HWND wnd )
+    bool      IsMusic;
+    uint      NextPlay;
+    uint      RepeatTime;
+
+    bool      Streamable;
+    enum { WAV, ACM, OGG } MediaType;
+
+    OggVorbis_File OggDescriptor;
+
+    Sound(): Buf( NULL ), BufSize( 0 ), BufCur( 0 ), IsMusic( false ),
+             SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
+             NextPlay( 0 ), RepeatTime( 0 ), Streamable( false ),
+             MediaType( WAV ) {}
+    ~Sound()
+    {
+        Pa_CloseStream( Stream );
+        SAFEDELA( Buf );
+        if( Streamable && MediaType == OGG )
+            ov_clear( &OggDescriptor );
+    }
+};
+
+// SoundManager
+bool SoundManager::Init()
 {
     if( isActive )
         return true;
 
     WriteLog( "Sound manager initialization...\n" );
-    if( DirectSoundCreate8( 0, &soundDevice, 0 ) != DS_OK )
-    {
-        WriteLog( "Create DirectSound fail!\n" );
-        return false;
-    }
 
-    if( soundDevice->SetCooperativeLevel( wnd, DSSCL_NORMAL ) != DS_OK )
+    PaError err = Pa_Initialize();
+    if( err != paNoError )
     {
-        WriteLog( "SetCooperativeLevel fail.\n" );
+        WriteLog( "PortAudio initialization error<%s,%d>.\n", Pa_GetErrorText( err ), err );
         return false;
     }
 
@@ -74,11 +78,11 @@ bool SoundManager::Init( HWND wnd )
     return true;
 }
 
-void SoundManager::Clear()
+void SoundManager::Finish()
 {
     WriteLog( "Sound manager finish.\n" );
     ClearSounds();
-    SAFEREL( soundDevice );
+    Pa_Terminate();
     isActive = false;
     WriteLog( "Sound manager finish complete.\n" );
 }
@@ -90,138 +94,114 @@ void SoundManager::ClearSounds()
     soundsActive.clear();
 }
 
-void SoundManager::Process()
+int SoundManager::GetSoundVolume()
 {
-    if( !isActive )
-        return;
+    return soundVolume;
+}
 
-    uint        tick = Timer::FastTick();
-    static uint call_tick = 0;
-    if( tick < call_tick )
-        return;
-    call_tick = tick + MUSIC_PROCESS_TIME;
+int SoundManager::GetMusicVolume()
+{
+    return musicVolume;
+}
 
-    for( auto it = soundsActive.begin(); it != soundsActive.end();)
+void SoundManager::SetSoundVolume( int volume )
+{
+    soundVolume = CLAMP( volume, 0, 100 );
+}
+
+void SoundManager::SetMusicVolume( int volume )
+{
+    musicVolume = CLAMP( volume, 0, 100 );
+}
+
+void SoundManager::Play( Sound* sound, int volume )
+{
+    Pa_StartStream( sound->Stream );
+}
+
+bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples )
+{
+    // Playing
+    if( sound->BufCur < sound->BufSize )
     {
-        Sound* sound = *it;
-        bool   erase = false;
-        DWORD  status;
-        if( sound->SndBuf->GetStatus( &status ) != DS_OK || status & DSBSTATUS_BUFFERLOST ) // Restore buffer
+        uint whole = outputSamples * sound->SampleSize * sound->Channels;
+        if( whole > sound->BufSize - sound->BufCur )
         {
-            erase = true;
-        }
-        else if( !( status & DSBSTATUS_PLAYING ) )   // End of play
-        {
-            if( sound->NextPlay )
-            {
-                if( tick >= sound->NextPlay )
-                {
-                    if( sound->IsNeedStreaming )
-                    {
-                        sound->Decoded = 0;
-                        sound->BufOffs = 0;
-                        if( sound->MediaType == SOUND_FILE_OGG && ( ov_raw_seek( &sound->OggDescriptor, 0 ) || !Streaming( sound ) ) )
-                            erase = true;
-                    }
-                    if( !erase )
-                        Play( sound, sound->IsMusic ? musicVolDb : soundVolDb, 0 );
-                    sound->NextPlay = 0;
-                }
-            }
-            else if( sound->RepeatTime )
-                sound->NextPlay = tick + sound->RepeatTime;
-            else
-                erase = true;
-        }
-        else if( sound->IsNeedStreaming )       // Streaming
-        {
-            DWORD play_cur;
-            if( sound->SndBuf->GetCurrentPosition( &play_cur, NULL ) == DS_OK )
-            {
-                uint free_buf = 0;
-                if( sound->BufOffs >= play_cur )
-                    free_buf = sound->BufSize - sound->BufOffs + play_cur;
-                else
-                    free_buf = play_cur - sound->BufOffs;
-                if( free_buf >= sound->BufSize * 75 / 100 && !Streaming( sound ) )
-                {
-                    DWORD status_;
-                    if( sound->SndBuf->GetStatus( &status_ ) != DS_OK || status_ & DSBSTATUS_PLAYING )
-                        erase = true;
-                }
-            }
-            else
-                erase = true;
-        }
+            // Flush last part of buffer
+            uint offset = sound->BufSize - sound->BufCur;
+            memcpy( output, sound->Buf + sound->BufCur, offset );
+            sound->BufCur += offset;
 
-        if( erase )
-        {
-            delete sound;
-            it = soundsActive.erase( it );
+            // Stream new parts
+            while( offset < whole && sound->Streamable && Streaming( sound ) )
+            {
+                uint write = sound->BufSize - sound->BufCur;
+                if( offset + write > whole )
+                    write = whole - offset;
+                memcpy( output + offset, sound->Buf + sound->BufCur, write );
+                sound->BufCur += write;
+                offset += write;
+            }
+
+            // Cut off end
+            if( offset < whole )
+                memzero( output + offset, whole - offset );
         }
         else
-            ++it;
+        {
+            // Copy
+            memcpy( output, sound->Buf + sound->BufCur, whole );
+            sound->BufCur += whole;
+        }
+
+        // Stream empty buffer
+        if( sound->BufCur == sound->BufSize && sound->Streamable )
+            Streaming( sound );
+
+        // Volume
+        int volume = ( sound->IsMusic ? musicVolume : soundVolume );
+        if( volume < 100 )
+        {
+            for( uint i = 0, j = outputSamples * sound->Channels; i < j; i++ )
+            {
+                short& s = *( (short*) output + i );
+                s = (int) s * volume / 100;
+            }
+        }
+
+        return true;
     }
-}
 
-uint SoundManager::GetSoundVolume()
-{
-    return DbToVolume( soundVolDb );
-}
-
-uint SoundManager::GetMusicVolume()
-{
-    return DbToVolume( musicVolDb );
-}
-
-uint SoundManager::GetSoundVolumeDb()
-{
-    return soundVolDb;
-}
-
-uint SoundManager::GetMusicVolumeDb()
-{
-    return musicVolDb;
-}
-
-void SoundManager::SetSoundVolume( int vol_proc )
-{
-    soundVolDb = VolumeToDb( vol_proc );
-
-    for( auto it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
+    // Repeat
+    if( sound->RepeatTime )
     {
-        Sound* sound = *it;
-        if( !sound->IsMusic )
-            sound->SndBuf->SetVolume( soundVolDb );
+        if( !sound->NextPlay )
+        {
+            // Set next playing time
+            sound->NextPlay = Timer::GameTick() + sound->RepeatTime;
+        }
+        else if( Timer::GameTick() >= sound->NextPlay )
+        {
+            // Set buffer to beginning
+            if( sound->Streamable && sound->MediaType == Sound::OGG )
+                ov_raw_seek( &sound->OggDescriptor, 0 );
+            sound->BufCur = 0;
+
+            // Stream
+            if( sound->Streamable )
+                Streaming( sound );
+
+            // Drop timer
+            sound->NextPlay = 0;
+        }
+
+        // Give silent
+        memzero( output, outputSamples * sound->SampleSize * sound->Channels );
+
+        return true;
     }
-}
 
-void SoundManager::SetMusicVolume( int vol_proc )
-{
-    musicVolDb = VolumeToDb( vol_proc );
-
-    for( auto it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
-    {
-        Sound* sound = *it;
-        if( sound->IsMusic )
-            sound->SndBuf->SetVolume( musicVolDb );
-    }
-}
-
-/************************************************************************/
-/* Loader                                                               */
-/************************************************************************/
-
-void SoundManager::Play( Sound* sound, int vol_db, uint flags )
-{
-    if( !sound )
-        return;
-    if( sound->IsNeedStreaming )
-        flags |= DSBPLAY_LOOPING;
-    sound->SndBuf->Stop();
-    sound->SndBuf->SetCurrentPosition( 0 );
-    sound->SndBuf->SetVolume( vol_db );
-    sound->SndBuf->Play( 0, 0, flags );
+    return false;
 }
 
 Sound* SoundManager::Load( const char* fname, int path_type )
@@ -251,58 +231,45 @@ Sound* SoundManager::Load( const char* fname, int path_type )
         return NULL;
     }
 
-    sound->FileName = fname_;
-    sound->PathType = path_type;
-
-    WAVEFORMATEX   fmt;
-    ZeroMemory( &fmt, sizeof( WAVEFORMATEX ) );
-    unsigned char* sample_data = NULL;
-
-    if( !( ( !_stricmp( ext, ".wav" ) && LoadWAV( sound, fmt, sample_data ) ) ||
-           ( !_stricmp( ext, ".acm" ) && LoadACM( sound, fmt, sample_data, path_type == PT_SND_MUSIC ? false : true ) ) ||
-           ( !_stricmp( ext, ".ogg" ) && LoadOGG( sound, fmt, sample_data ) ) ) )
+    if( !( ( Str::CompareCase( ext, ".wav" ) && LoadWAV( sound, fname_, path_type ) ) ||
+           ( Str::CompareCase( ext, ".acm" ) && LoadACM( sound, fname_, path_type ) ) ||
+           ( Str::CompareCase( ext, ".ogg" ) && LoadOGG( sound, fname_, path_type ) ) ) )
     {
         delete sound;
         return NULL;
     }
 
-    DSBUFFERDESC dsbd;
-    ZeroMemory( &dsbd, sizeof( DSBUFFERDESC ) );
-    dsbd.dwBufferBytes = sound->BufSize;
-    dsbd.dwFlags = ( DSBCAPS_CTRLVOLUME | DSBCAPS_GETCURRENTPOSITION2 | ( GameOpt.GlobalSound ? DSBCAPS_GLOBALFOCUS : 0 ) | ( sound->IsNeedStreaming ? 0 : DSBCAPS_STATIC ) );
-    dsbd.dwSize = sizeof( DSBUFFERDESC );
-    dsbd.lpwfxFormat = &fmt;
-    dsbd.dwReserved = 0;
-
-    if( soundDevice->CreateSoundBuffer( &dsbd, &sound->SndBuf, NULL ) != DS_OK )
+    struct PaStreamProcessor
     {
-        WriteLogF( _FUNC_, " - CreateSoundBuffer error.\n" );
-        delete sound;
-        delete[] sample_data;
-        return NULL;
-    }
+        static int Do( const void* input, void* output,
+                       unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo,
+                       PaStreamCallbackFlags statusFlags, void* userData )
+        {
+            if( SndMngr.ProcessSound( (Sound*) userData, (uchar*) output, frameCount ) )
+                return paContinue;
+            return paComplete;
+        }
+    };
 
-    void* dst = NULL;
-    DWORD size = 0;
-    if( sound->SndBuf->Lock( 0, sound->Decoded, &dst, &size, NULL, NULL, sound->IsNeedStreaming ? 0 : DSBLOCK_ENTIREBUFFER ) != DS_OK )
+    PaStream* stream;
+    PaError   err = Pa_OpenDefaultStream( &stream, 0, sound->Channels, paInt16,
+                                          sound->SampleRate, paFramesPerBufferUnspecified, PaStreamProcessor::Do, sound );
+    if( err != paNoError )
     {
-        WriteLogF( _FUNC_, " - Lock error.\n" );
+        WriteLog( "Pa_OpenDefaultStream error<%s,%d>\n", fname_, Pa_GetErrorText( err ), err );
         delete sound;
-        delete[] sample_data;
-        return NULL;
+        return false;
     }
+    sound->Stream = stream;
 
-    memcpy( dst, sample_data, size );
-    sound->SndBuf->Unlock( dst, size, 0, 0 );
-    delete[] sample_data;
     soundsActive.push_back( sound );
     return sound;
 }
 
-bool SoundManager::LoadWAV( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data )
+bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
 {
     FileManager fm;
-    if( !fm.LoadFile( sound->FileName.c_str(), sound->PathType ) )
+    if( !fm.LoadFile( fname, path_type ) )
         return NULL;
 
     uint dw_buf = fm.GetLEUInt();
@@ -335,10 +302,23 @@ bool SoundManager::LoadWAV( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_
         return false;
     }
 
-    fm.CopyMem( &fformat, 16 );
-    fformat.cbSize = 0;
+    struct                      // WAVEFORMATEX
+    {
+        ushort wFormatTag;      // Integer identifier of the format
+        ushort nChannels;       // Number of audio channels
+        uint   nSamplesPerSec;  // Audio sample rate
+        uint   nAvgBytesPerSec; // Bytes per second (possibly approximate)
+        ushort nBlockAlign;     // Size in bytes of a sample block (all channels)
+        ushort wBitsPerSample;  // Size in bits of a single per-channel sample
+        ushort cbSize;          // Bytes of extra data appended to this struct
+    } waveformatex;
 
-    if( fformat.wFormatTag != 1 )
+    fm.CopyMem( &waveformatex, 16 );
+    sound->Channels = waveformatex.nChannels;
+    sound->SampleRate = waveformatex.nSamplesPerSec;
+    sound->SampleSize = waveformatex.wBitsPerSample / 8;
+
+    if( waveformatex.wFormatTag != 1 )
     {
         WriteLogF( _FUNC_, " - Compressed files not supported.\n" );
         return false;
@@ -362,28 +342,26 @@ bool SoundManager::LoadWAV( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_
 
     dw_buf = fm.GetLEUInt();
     sound->BufSize = dw_buf;
-    sample_data = new ( nothrow ) unsigned char[ dw_buf ];
+    sound->Buf = new ( nothrow ) unsigned char[ dw_buf ];
 
-    if( !fm.CopyMem( sample_data, dw_buf ) )
+    if( !fm.CopyMem( sound->Buf, dw_buf ) )
     {
         WriteLogF( _FUNC_, " - File truncated.\n" );
-        delete[] sample_data;
         return false;
     }
 
     return true;
 }
 
-bool SoundManager::LoadACM( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data, bool mono )
+bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
 {
     FileManager fm;
-    if( !fm.LoadFile( sound->FileName.c_str(), sound->PathType ) )
+    if( !fm.LoadFile( fname, path_type ) )
         return NULL;
 
     int                     channels = 0;
     int                     freq = 0;
     int                     samples = 0;
-
     AutoPtr< CACMUnpacker > acm( new (nothrow) CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples ) );
     samples *= 2;
 
@@ -393,37 +371,16 @@ bool SoundManager::LoadACM( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_
         return false;
     }
 
-    // Mono
-    // nChannels			2
-    // nSamplesPerSec	22050
-    // nAvgBytesPerSec	22050*4
-    // nBlockAlign		4
-    // wBitsPerSample	16
-
-    // Stereo
-    // nChannels			1
-    // nSamplesPerSec	22050
-    // nAvgBytesPerSec	22050*2
-    // nBlockAlign		2
-    // wBitsPerSample	16
-
-    // mono=(channels==1?TRUE:FALSE);
-
-    fformat.wFormatTag = WAVE_FORMAT_PCM;
-    fformat.nChannels = mono ? 1 : 2;
-    fformat.nSamplesPerSec = 22050;                     // freq;
-    fformat.nBlockAlign = mono ? 2 : 4;
-    fformat.nAvgBytesPerSec = ( mono ? 2 : 4 ) * 22050; // freq*4;
-    fformat.wBitsPerSample = 16;
-    fformat.cbSize = 0;
+    sound->Channels = ( path_type == PT_SND_MUSIC ? 2 : 1 );
+    sound->SampleRate = 22050;
+    sound->SampleSize = 2;
 
     sound->BufSize = samples;
-    sample_data = new ( nothrow ) unsigned char[ samples ];
-    int dec_data = acm->readAndDecompress( (ushort*) sample_data, samples );
+    sound->Buf = new ( nothrow ) unsigned char[ samples ];
+    int dec_data = acm->readAndDecompress( (ushort*) sound->Buf, samples );
     if( dec_data != samples )
     {
         WriteLogF( _FUNC_, " - Decode Acm error.\n" );
-        delete[] sample_data;
         return false;
     }
 
@@ -469,10 +426,10 @@ long Ogg_tell_func( void* datasource )
     return fm->GetCurPos();
 }
 
-bool SoundManager::LoadOGG( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data )
+bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
 {
     FileManager* fm = new (nothrow) FileManager();
-    if( !fm || !fm->LoadFile( sound->FileName.c_str(), sound->PathType ) )
+    if( !fm || !fm->LoadFile( fname, path_type ) )
     {
         SAFEDEL( fm );
         return NULL;
@@ -520,142 +477,84 @@ bool SoundManager::LoadOGG( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_
         return false;
     }
 
-    fformat.wFormatTag = WAVE_FORMAT_PCM;
-    fformat.nChannels = vi->channels;
-    fformat.nSamplesPerSec = vi->rate;
-    fformat.wBitsPerSample = 16;
-    fformat.nBlockAlign = vi->channels * fformat.wBitsPerSample / 8;
-    fformat.nAvgBytesPerSec = fformat.nBlockAlign * vi->rate;
-    fformat.cbSize = 0;
+    sound->Channels = vi->channels;
+    sound->SampleRate = vi->rate;
+    sound->SampleSize = 2;
 
-    sample_data = new ( nothrow ) unsigned char[ STREAMING_PORTION ];
-    if( !sample_data )
-    {
-        ov_clear( &sound->OggDescriptor );
-        delete[] sample_data;
-        return false;
-    }
-
-    int result = 0;
-    while( true )
-    {
-        result = ov_read( &sound->OggDescriptor, (char*) ( sample_data ) + sound->Decoded, 4096, 0, 2, 1, NULL );
-        if( result <= 0 )
-            break;
-        sound->Decoded += result;
-        if( sound->Decoded >= STREAMING_PORTION * 75 / 100 )
-            break;
-    }
-
-    if( result <= 0 ) // No need streaming
-    {
-        sound->IsNeedStreaming = false;
-        sound->BufSize = sound->Decoded;
-        ov_clear( &sound->OggDescriptor );
-    }
-    else
-    {
-        sound->IsNeedStreaming = true;
-        sound->BufSize = STREAMING_PORTION * 2;
-        sound->BufOffs = sound->Decoded;
-        sound->MediaType = SOUND_FILE_OGG;       // Allow ov_clear on Sound destructor
-    }
-    return true;
-}
-
-bool SoundManager::Streaming( Sound* sound )
-{
-    unsigned char* smpl_data = NULL;
-    uint           size_data = 0;
-    uint           decoded = 0;
-
-    if( !( ( sound->MediaType == SOUND_FILE_WAV && StreamingWAV( sound, smpl_data, size_data ) ) ||
-           ( sound->MediaType == SOUND_FILE_ACM && StreamingACM( sound, smpl_data, size_data ) ) ||
-           ( sound->MediaType == SOUND_FILE_OGG && StreamingOGG( sound, smpl_data, size_data ) ) ) )
-    {
-        WriteLogF( _FUNC_, " - Unable to stream sound.\n" );
-        SAFEDELA( smpl_data );
-        return false;
-    }
-
-    void*   dst = NULL;
-    void*   dst_ = NULL;
-    DWORD   size = 0;
-    DWORD   size_ = 0;
-    HRESULT hr;
-    if( ( hr = sound->SndBuf->Lock( sound->BufOffs, size_data, &dst, &size, &dst_, &size_, 0 ) ) != DS_OK )
-    {
-        WriteLogF( _FUNC_, " - Lock error<%u>.\n", hr );
-        delete[] smpl_data;
-        return false;
-    }
-
-    memcpy( dst, smpl_data, size );
-    if( dst_ )
-        memcpy( dst_, smpl_data + size, size_ );
-    if( ( hr = sound->SndBuf->Unlock( dst, size, dst_, size_ ) ) != DS_OK )
-    {
-        WriteLogF( _FUNC_, " - Unlock error<%u>.\n", hr );
-        delete[] smpl_data;
-        return false;
-    }
-    sound->BufOffs += size + size_;
-    if( sound->BufOffs >= sound->BufSize )
-        sound->BufOffs -= sound->BufSize;
-    SAFEDELA( smpl_data );
-    return true;
-}
-
-bool SoundManager::StreamingWAV( Sound* sound, uchar*& sample_data, uint& size_data )
-{
-    return false;
-}
-
-bool SoundManager::StreamingACM( Sound* sound, uchar*& sample_data, uint& size_data )
-{
-    return false;
-}
-
-bool SoundManager::StreamingOGG( Sound* sound, uchar*& sample_data, uint& size_data )
-{
-    sample_data = new ( nothrow ) unsigned char[ sound->BufSize ];
-    if( !sample_data )
+    sound->Buf = new ( nothrow ) unsigned char[ STREAMING_PORTION ];
+    if( !sound->Buf )
         return false;
 
     int  result = 0;
     uint decoded = 0;
     while( true )
     {
-        result = ov_read( &sound->OggDescriptor, (char*) ( sample_data ) + decoded, 4096, 0, 2, 1, NULL );
+        int portion = min( 4096, STREAMING_PORTION - decoded );
+        result = ov_read( &sound->OggDescriptor, (char*) sound->Buf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
         decoded += result;
-        sound->Decoded += result;
-        if( decoded >= sound->BufSize * 75 / 100 )
+        if( decoded >= STREAMING_PORTION )
             break;
     }
+    if( result < 0 )
+        return false;
 
-    if( result <= 0 )
+    sound->BufSize = decoded;
+
+    if( !result )
     {
-        // No need streaming
-        if( decoded <= 0 )     // Erase
-        {
-            sound->SndBuf->Stop();
-            return false;
-        }
-        else         // Fill silence
-        {
-            if( decoded < sound->BufSize * 75 / 100 )
-                ZeroMemory( sample_data + decoded, sound->BufSize * 75 / 100 - decoded );
-        }
+        sound->Streamable = false;
+        ov_clear( &sound->OggDescriptor );
     }
-    size_data = decoded;
+    else
+    {
+        sound->Streamable = true;
+        sound->MediaType = Sound::OGG;
+    }
     return true;
 }
 
-/************************************************************************/
-/* FOnline API                                                          */
-/************************************************************************/
+bool SoundManager::Streaming( Sound* sound )
+{
+    if( !( ( sound->MediaType == Sound::WAV && StreamingWAV( sound ) ) ||
+           ( sound->MediaType == Sound::ACM && StreamingACM( sound ) ) ||
+           ( sound->MediaType == Sound::OGG && StreamingOGG( sound ) ) ) )
+        return false;
+    return true;
+}
+
+bool SoundManager::StreamingWAV( Sound* sound )
+{
+    return false;
+}
+
+bool SoundManager::StreamingACM( Sound* sound )
+{
+    return false;
+}
+
+bool SoundManager::StreamingOGG( Sound* sound )
+{
+    int  result = 0;
+    uint decoded = 0;
+    while( true )
+    {
+        int portion = min( 4096, STREAMING_PORTION - decoded );
+        result = ov_read( &sound->OggDescriptor, (char*) sound->Buf + decoded, portion, 0, 2, 1, NULL );
+        if( result <= 0 )
+            break;
+        decoded += result;
+        if( decoded >= STREAMING_PORTION )
+            break;
+    }
+    if( result < 0 || !decoded )
+        return false;
+
+    sound->BufCur = 0;
+    sound->BufSize = decoded;
+    return true;
+}
 
 bool SoundManager::PlaySound( const char* name )
 {
@@ -664,7 +563,7 @@ bool SoundManager::PlaySound( const char* name )
     Sound* sound = Load( name, PT_SND_SFX );
     if( !sound )
         return false;
-    Play( sound, soundVolDb, 0 );
+    Play( sound, soundVolume );
     return true;
 }
 
@@ -745,7 +644,7 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 
     sound->IsMusic = true;
     sound->RepeatTime = repeat;
-    Play( sound, musicVolDb, 0 );
+    Play( sound, musicVolume );
     return true;
 }
 
@@ -796,10 +695,10 @@ void SoundManager::PlayAmbient( const char* str )
             num[ j ] = '\0';
 
             // Check
-            int k = atoi( num );
+            int k = Str::AtoI( num );
             if( rnd <= k )
             {
-                if( _stricmp( name, "blank" ) )
+                if( !Str::CompareCase( name, "blank" ) )
                     PlaySound( name );
                 return;
             }
@@ -817,7 +716,3 @@ void SoundManager::PlayAmbient( const char* str )
         }
     }
 }
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/

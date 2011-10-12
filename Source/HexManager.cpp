@@ -203,7 +203,7 @@ bool HexManager::Init()
     return true;
 }
 
-void HexManager::Clear()
+void HexManager::Finish()
 {
     WriteLog( "Hex field finish...\n" );
 

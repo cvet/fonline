@@ -665,7 +665,7 @@ bool SpriteManager::InitRenderStates()
     return true;
 }
 
-void SpriteManager::Clear()
+void SpriteManager::Finish()
 {
     WriteLog( "Sprite manager finish...\n" );
 

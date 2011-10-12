@@ -304,7 +304,7 @@ public:
     bool             InitBuffers();
     bool             InitRenderStates();
     bool             IsInit() { return isInit; }
-    void             Clear();
+    void             Finish();
     LPDIRECT3DDEVICE GetDevice()           { return d3dDevice; }
     bool             IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
     bool             BeginScene( uint clear_color );

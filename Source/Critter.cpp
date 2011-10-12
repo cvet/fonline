@@ -3476,7 +3476,7 @@ void Critter::Delete()
 /* Client                                                               */
 /************************************************************************/
 
-#if !defined ( USE_LIBEVENT )
+#if !defined ( USE_LIBEVENT ) || defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
 Client::SendCallback Client::SendData = NULL;
 #endif
 
@@ -3569,7 +3569,15 @@ void Client::Shutdown()
     Sock = INVALID_SOCKET;
 
     #if defined ( USE_LIBEVENT )
+    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+    {
+        SCOPE_LOCK( NetIOArgPtr->BEVLocker );
+        bufferevent_free( bev );
+        NetIOArgPtr->BEV = NULL;
+    }
+    # else
     bufferevent_free( bev );
+    # endif
     #endif
 
     Disconnect();

@@ -87,7 +87,7 @@ public:
         msg = quest_msg;
     }
 
-    void Clear()
+    void Finish()
     {
         tabs.clear();
     }

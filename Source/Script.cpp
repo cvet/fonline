@@ -213,14 +213,17 @@ public:
         Str::Append( dll_path, ".so" );
         #endif
 
+        // Client path fixes
         #if defined ( FONLINE_CLIENT )
-        // Fix slashes for client
+        Str::Insert( dll_path, FileManager::GetPath( PT_SERVER_SCRIPTS ) );
         Str::Replacement( dll_path, '\\', '.' );
         Str::Replacement( dll_path, '/', '.' );
         #endif
 
-        // Load dynamic library
+        // Insert base path
         Str::Insert( dll_path, FileManager::GetFullPath( "", ScriptsPath ) );
+
+        // Load dynamic library
         void* dll = DLL_Load( dll_path );
         if( !dll )
             return NULL;
@@ -1614,7 +1617,7 @@ public:
 
         if( bind_id <= 0 || bind_id >= (int) BindedFunctions.size() )
         {
-            WriteLogF( _FUNC_, " - Invalid bind id<%d>.\n", bind_id );
+            WriteLogF( _FUNC_, " - Invalid bind id<%d>. Context info<%s>.\n", bind_id, ctx_info );
             #ifdef SCRIPT_MULTITHREADING
             if( LogicMT )
                 BindedFunctionsLocker.Unlock();

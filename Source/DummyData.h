@@ -1040,6 +1040,7 @@ struct BindClass
     static void Global_GetCritterTypeName()             {}
     static void Global_GetCritterSoundName()            {}
     static void Global_GetGlobalMapRelief()             {}
+    static void Global_GetCraftItem()                   {}
     #endif
 
     #ifdef BIND_MAPPER

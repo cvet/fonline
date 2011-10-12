@@ -2,124 +2,51 @@
 #define __SOUND_MANAGER__
 
 #include "Common.h"
-#include "FileManager.h"
-#include "Ogg/vorbisfile.h"
 
-/************************************************************************/
-/* MANAGER                                                              */
-/************************************************************************/
+#define SOUND_DEFAULT_EXT    ".acm"
+#define MUSIC_REPEAT_TIME    ( Random( 240, 360 ) * 1000 )   // 4-6 minutes
+#define STREAMING_PORTION    ( 0x10000 )
 
-#define SOUND_DEFAULT_EXT      ".acm"
-#define MUSIC_PROCESS_TIME     ( 200 )
-#define MUSIC_PLAY_PAUSE       ( Random( 240, 360 ) * 1000 ) // 4-6 minutes
-#define STREAMING_PORTION      ( 0x40000 )
-#define SOUND_FILE_NONE        ( 0 )
-#define SOUND_FILE_WAV         ( 1 )
-#define SOUND_FILE_ACM         ( 2 )
-#define SOUND_FILE_OGG         ( 3 )
-
-/************************************************************************/
-/* SOUND TYPE WEAPON                                                    */
-/************************************************************************/
-
-#define SOUND_WEAPON_USE       'A'
-#define SOUND_WEAPON_FLY       'F'
-#define SOUND_WEAPON_MISS      'H'
-#define SOUND_WEAPON_EMPTY     'O'
-#define SOUND_WEAPON_RELOAD    'R'
-
-/************************************************************************/
-/* SOUNDS                                                               */
-/************************************************************************/
-
-#define SND_BUTTON1_IN         "BUTIN1"
-#define SND_BUTTON2_IN         "BUTIN2"
-#define SND_BUTTON3_IN         "BUTIN3"
-#define SND_BUTTON4_IN         "BUTIN4"
-#define SND_BUTTON1_OUT        "BUTOUT1"
-#define SND_BUTTON2_OUT        "BUTOUT2"
-#define SND_BUTTON3_OUT        "BUTOUT3"
-#define SND_BUTTON4_OUT        "BUTOUT4"
-#define SND_LMENU              "IACCUXX1"
-#define SND_COMBAT_MODE_ON     "ICIBOXX1"
-#define SND_COMBAT_MODE_OFF    "ICIBCXX1"
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-#define MUSIC_PIECE            ( 10000 )
-
-struct Sound
-{
-    IDirectSoundBuffer* SndBuf;
-    uint                BufSize;
-    bool                IsMusic;
-    uint                NextPlay;
-    uint                RepeatTime;
-
-    // Streaming data
-    bool                IsNeedStreaming;
-    uint                BufOffs;
-    uint                Decoded;
-    int                 MediaType;
-    OggVorbis_File      OggDescriptor;
-
-    // Restore buffer
-    int                 PathType;
-    string              FileName;
-
-    Sound(): SndBuf( NULL ), BufSize( 0 ), IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ), IsNeedStreaming( false ), BufOffs( 0 ), Decoded( 0 ),
-             MediaType( SOUND_FILE_NONE ), PathType( 0 ) {}
-    ~Sound()
-    {
-        SAFEREL( SndBuf );
-        if( MediaType == SOUND_FILE_OGG ) ov_clear( &OggDescriptor );
-    }
-};
+class Sound;
 typedef vector< Sound* > SoundVec;
 
 class SoundManager
 {
 public:
-    SoundManager(): soundDevice( NULL ), isActive( false ), soundVolDb( DSBVOLUME_MAX ), musicVolDb( DSBVOLUME_MAX ) {}
+    SoundManager(): isActive( false ), soundVolume( 100 ), musicVolume( 100 ) {}
 
-    bool IsActive() { return isActive; }
-    bool Init( HWND wnd );
-    void Clear();
+    bool Init();
+    void Finish();
     void ClearSounds();
-    void Process();
 
-    uint GetSoundVolume();
-    uint GetMusicVolume();
-    uint GetSoundVolumeDb();
-    uint GetMusicVolumeDb();
-    void SetSoundVolume( int vol_proc );
-    void SetMusicVolume( int vol_proc );
+    int GetSoundVolume();
+    int GetMusicVolume();
+    void SetSoundVolume( int volume );
+    void SetMusicVolume( int volume );
 
     bool PlaySound( const char* name );
     bool PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
-    bool PlayMusic( const char* fname, uint pos = 0, uint repeat = MUSIC_PLAY_PAUSE );
+    bool PlayMusic( const char* fname, uint pos = 0, uint repeat = MUSIC_REPEAT_TIME );
     void StopMusic();
     void PlayAmbient( const char* str );
 
 private:
-    void   Play( Sound* sound, int vol_db, uint flags );
+    void   Play( Sound* sound, int volume );
+    void   Stop( Sound* sound );
+    bool   ProcessSound( Sound* sound, uchar* output, uint outputSamples );
     Sound* Load( const char* fname, int path_type );
-    bool   LoadWAV( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data );
-    bool   LoadACM( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data, bool mono );
-    bool   LoadOGG( Sound* sound, WAVEFORMATEX& fformat, uchar*& sample_data );
+    bool   LoadWAV( Sound* sound, const char* fname, int path_type );
+    bool   LoadACM( Sound* sound, const char* fname, int path_type );
+    bool   LoadOGG( Sound* sound, const char* fname, int path_type );
     bool   Streaming( Sound* sound );
-    bool   StreamingWAV( Sound* sound, uchar*& sample_data, uint& size_data );
-    bool   StreamingACM( Sound* sound, uchar*& sample_data, uint& size_data );
-    bool   StreamingOGG( Sound* sound, uchar*& sample_data, uint& size_data );
+    bool   StreamingWAV( Sound* sound );
+    bool   StreamingACM( Sound* sound );
+    bool   StreamingOGG( Sound* sound );
 
-    bool           isActive;
-    int            soundVolDb;
-    int            musicVolDb;
-    IDirectSound8* soundDevice;
-
-    SoundVec       soundsActive;
+    bool     isActive;
+    int      soundVolume;
+    int      musicVolume;
+    SoundVec soundsActive;
 };
 
 extern SoundManager SndMngr;

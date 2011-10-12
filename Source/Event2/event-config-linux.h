@@ -363,7 +363,7 @@
 /* #undef _EVENT_NO_MINUS_C_MINUS_O */
 
 /* Numeric representation of the version */
-#define _EVENT_NUMERIC_VERSION 0x02000e00
+#define _EVENT_NUMERIC_VERSION 0x02000f00
 
 /* Name of package */
 #define _EVENT_PACKAGE "libevent"
@@ -418,7 +418,7 @@
 #define _EVENT_TIME_WITH_SYS_TIME 1
 
 /* Version number of package */
-#define _EVENT_VERSION "2.0.14-stable"
+#define _EVENT_VERSION "2.0.15-stable"
 
 /* Define to appropriate substitue if compiler doesnt have __func__ */
 /* #undef _EVENT___func__ */

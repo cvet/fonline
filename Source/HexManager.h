@@ -213,7 +213,7 @@ public:
 
     HexManager();
     bool Init();
-    void Clear();
+    void Finish();
     void ReloadSprites();
 
     void PreRestore();

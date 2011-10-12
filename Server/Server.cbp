@@ -24,8 +24,6 @@
 					<Add directory="../Source/StlPort" />
 					<Add directory="../Source" />
 				</Compiler>
-				<ResourceCompiler>
-				</ResourceCompiler>
 				<Linker>
 					<Add option="-rdynamic" />
 					<Add option="-lpthread" />
@@ -45,7 +43,7 @@
 					<Add option="-levent" />
 					<Add option="-levent_core" />
 					<Add option="-levent_extra" />
-					<Add option="-event_pthreads" />
+					<Add option="-levent_pthreads" />
 					<Add directory="../Lib/Linux" />
 				</Linker>
 			</Target>
@@ -73,8 +71,6 @@
 					<Add directory="../Source/StlPort" />
 					<Add directory="../Source" />
 				</Compiler>
-				<ResourceCompiler>
-				</ResourceCompiler>
 				<Linker>
 					<Add option="-lws2_32" />
 					<Add option="-lwinmm" />

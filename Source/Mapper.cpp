@@ -545,10 +545,10 @@ int FOMapper::InitIface()
 void FOMapper::Finish()
 {
     WriteLog( "Mapper finish...\n" );
-    Keyb::ClearKeyb();
+    Keyb::Finish();
     ResMngr.Finish();
-    HexMngr.Clear();
-    SprMngr.Clear();
+    HexMngr.Finish();
+    SprMngr.Finish();
     CrMngr.Finish();
     FileManager::EndOfWork();
     FinishScriptSystem();

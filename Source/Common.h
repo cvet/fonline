@@ -192,13 +192,6 @@ const uchar SELECT_ALPHA    = 100;
 # define PATH_LOG_FILE          ".\\"
 # define PATH_SCREENS_FILE      ".\\"
 
-# ifdef FONLINE_CLIENT
-// Sound
-#  include <audiodefs.h>
-#  include <dsound.h>
-#  pragma comment(lib,"dsound.lib")
-# endif
-
 # define DIRECTINPUT_VERSION    0x0800
 # include <dinput.h>
 # include <dxerr.h>

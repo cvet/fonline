@@ -64,17 +64,25 @@ bool FileDelete( const char* fname )
     return DeleteFile( fname ) != FALSE;
 }
 
-void* FileFindFirst( const char* query, FIND_DATA& fd )
+void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
 {
+    char query[ MAX_FOPATH ];
+    if( extension )
+        Str::Format( query, "%s*.%s", path, extension );
+    else
+        Str::Format( query, "%s*", path );
+
     WIN32_FIND_DATA wfd;
     HANDLE          h = FindFirstFile( query, &wfd );
     if( h == INVALID_HANDLE_VALUE )
         return NULL;
+
     Str::Copy( fd.FileName, wfd.cFileName );
     fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
     if( fd.IsDirectory && ( Str::Compare( fd.FileName, "." ) || Str::Compare( fd.FileName, ".." ) ) )
         if( !FileFindNext( h, fd ) )
             return false;
+
     return h;
 }
 
@@ -83,10 +91,12 @@ bool FileFindNext( void* descriptor, FIND_DATA& fd )
     WIN32_FIND_DATA wfd;
     if( !FindNextFile( (HANDLE) descriptor, &wfd ) )
         return false;
+
     Str::Copy( fd.FileName, wfd.cFileName );
     fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
     if( fd.IsDirectory && ( Str::Compare( fd.FileName, "." ) || Str::Compare( fd.FileName, ".." ) ) )
         return FileFindNext( (HANDLE) descriptor, fd );
+
     return true;
 }
 
@@ -179,35 +189,100 @@ bool FileDelete( const char* fname )
     return std::remove( fname );
 }
 
-void* FileFindFirst( const char* query, FIND_DATA& fd )
+struct FileFind
 {
-    DIR* h = opendir( query );
+    DIR* d;
+    char path[ MAX_FOPATH ];
+    char ext[ 32 ];
+};
+
+void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
+{
+    // Open dir
+    DIR* h = opendir( path );
     if( !h )
         return NULL;
-    if( !FileFindNext( h, fd ) )
+
+    // Create own descriptor
+    FileFind* ff = new FileFind;
+    memzero( ff, sizeof( FileFind ) );
+    ff->d = h;
+    Str::Copy( ff->path, path );
+    if( ff->path[ Str::Length( ff->path ) - 1 ] != DIR_SLASH_C )
+        Str::Append( ff->path, DIR_SLASH_S );
+    if( extension )
+        Str::Copy( ff->ext, extension );
+
+    // Find first entire
+    if( !FileFindNext( ff, fd ) )
     {
-        closedir( h );
+        FileFindClose( ff );
         return NULL;
     }
-    return h;
+    return ff;
 }
 
 bool FileFindNext( void* descriptor, FIND_DATA& fd )
 {
-    struct dirent* ent = readdir( (DIR*) descriptor );
+    // Cast descriptor
+    FileFind* ff = (FileFind*) descriptor;
+
+    // Read entire
+    struct dirent* ent = readdir( ff->d );
     if( !ent )
         return false;
-    Str::Copy( fd.FileName, ent->d_name );
-    fd.IsDirectory = ent->d_type == 0x8;
-    if( ent->d_type != 0x4 && ent->d_type != 0x8 )
+
+    // Skip '.' and '..'
+    if( Str::Compare( ent->d_name, "." ) || Str::Compare( ent->d_name, ".." ) )
         return FileFindNext( descriptor, fd );
+
+    // Read entire information
+    bool        valid = false;
+    bool        dir = false;
+    char        fname[ MAX_FOPATH ];
+    Str::Format( fname, "%s%s", ff->path, ent->d_name );
+    struct stat st;
+    if( !stat( fname, &st ) )
+    {
+        dir = S_ISDIR( st.st_mode );
+        if( dir || S_ISREG( st.st_mode ) )
+            valid = true;
+    }
+
+    // Skip not dirs and regular files
+    if( !valid )
+        return FileFindNext( descriptor, fd );
+
+    // Find by extensions
+    if( ff->ext )
+    {
+        // Skip dirs
+        if( dir )
+            return FileFindNext( descriptor, fd );
+
+        // Compare extension
+        const char* ext = NULL;
+        for( const char* name = ent->d_name; *name; name++ )
+            if( *name == '.' )
+                ext = name;
+        if( !ext || !*( ++ext ) || !Str::CompareCase( ext, ff->ext ) )
+            return FileFindNext( descriptor, fd );
+    }
+
+    // Fill find data
+    Str::Copy( fd.FileName, ent->d_name );
+    fd.IsDirectory = dir;
     return true;
 }
 
 void FileFindClose( void* descriptor )
 {
     if( descriptor )
-        closedir( (DIR*) descriptor );
+    {
+        FileFind* ff = (FileFind*) descriptor;
+        closedir( ff->d );
+        delete ff;
+    }
 }
 
 bool MakeDirectory( const char* path )

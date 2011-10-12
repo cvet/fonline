@@ -20,7 +20,7 @@ namespace Keyb
     extern int  KeysMap[ 0x100 ];
 
     void InitKeyb();
-    void ClearKeyb();
+    void Finish();
     void Lost();
     void GetChar( uchar dik, string& str, int* position, int max, int flags );
     void GetChar( uchar dik, char* str, int* position, int max, int flags );

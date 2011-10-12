@@ -5,14 +5,19 @@
 // Operating system
 // FO_WINDOWS
 // FO_LINUX
+// FO_MACOSX - todo
 //
 // CPU
 // FO_X86
-// FO_X64
+// FO_X64 - todo
 //
 // Compiler
 // FO_GCC
 // FO_MSVC
+//
+// Render
+// FO_D3D - later fully replace on ogl render
+// FO_OGL
 //
 
 //
@@ -57,7 +62,7 @@
 //  -levent
 //  -levent_core
 //  -levent_extra
-//  -event_pthreadsz
+//  -levent_pthreads
 // Warnings
 //  -W
 //  -Wno-invalid-offsetof
@@ -69,8 +74,10 @@
 // Detect operating system
 #if defined ( _WIN32 ) || defined ( _WIN64 )
 # define FO_WINDOWS
+# define FO_D3D
 #elif defined ( __linux__ )
 # define FO_LINUX
+# define FO_OGL
 #else
 # error "Unknown operating system."
 #endif
@@ -118,10 +125,12 @@
 # define Sleep( ms )    usleep( ( ms ) * 1000 )
 #endif
 
-// Libevent
-// For now bugged for Windows IOCP, use own variant
+// Libevent workarounds
+// Was bugged for Windows, need retest
 #if !defined ( FO_WINDOWS )
 # define USE_LIBEVENT
+// Linux don't want call write timeouts, need to know why and fix
+# define LIBEVENT_TIMEOUTS_WORKAROUND
 #endif
 
 #endif // ___PLATFORM_SPECIFIC___

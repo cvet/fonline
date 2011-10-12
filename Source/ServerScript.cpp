@@ -400,29 +400,47 @@ bool FOServer::ReloadClientScripts()
     {
         const string& dll_name = ( *it ).first;
         const string& dll_path = ( *it ).second.first;
-        const void*   dll_handle = ( *it ).second.second;
 
-        // Load dll
-        FileManager dll;
-        if( !dll.LoadFile( dll_path.c_str(), -1 ) )
+        // Load libraries for all platforms
+        // Windows, Linux
+        for( int d = 0; d < 2; d++ )
         {
-            WriteLogF( _FUNC_, " - Can't load dll<%s>.\n", dll_name.c_str() );
-            errors++;
-            continue;
-        }
+            // Make file name
+            const char* extensions[] = { ".dll", ".so" };
+            char        fname[ MAX_FOPATH ];
+            Str::Copy( fname, dll_path.c_str() );
+            FileManager::EraseExtension( fname );
+            Str::Append( fname, extensions[ d ] );
 
-        // Add dll name and binary
-        for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
-        {
-            LanguagePack& lang = *it;
-            FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
+            // Erase first './'
+            if( Str::CompareCount( fname, DIR_SLASH_SD, Str::Length( DIR_SLASH_SD ) ) )
+                Str::EraseInterval( fname, Str::Length( DIR_SLASH_SD ) );
 
-            for( int i = 0; i < 10; i++ )
-                msg_script.EraseStr( dll_num + i );
-            msg_script.AddStr( dll_num, dll_name.c_str() );
-            msg_script.AddBinary( dll_num + 1, dll.GetBuf(), dll.GetFsize() );
+            // Load dll
+            FileManager dll;
+            if( !dll.LoadFile( fname, -1 ) )
+            {
+                if( !d )
+                {
+                    WriteLogF( _FUNC_, " - Can't load dll<%s>.\n", dll_name.c_str() );
+                    errors++;
+                }
+                continue;
+            }
+
+            // Add dll name and binary
+            for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
+            {
+                LanguagePack& lang = *it;
+                FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
+
+                for( int i = 0; i < 10; i++ )
+                    msg_script.EraseStr( dll_num + i );
+                msg_script.AddStr( dll_num, fname );
+                msg_script.AddBinary( dll_num + 1, dll.GetBuf(), dll.GetFsize() );
+            }
+            dll_num += 2;
         }
-        dll_num += 2;
     }
 
     // Finish
