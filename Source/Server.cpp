@@ -4236,7 +4236,7 @@ bool FOServer::LoadClientsData()
     if( !h )
     {
         WriteLog( "Clients data not found.\n" );
-        return false;
+        return true;
     }
 
     UIntSet id_already;
