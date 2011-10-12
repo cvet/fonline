@@ -581,28 +581,30 @@ public:
         # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
         MutexSpinlock BEVLocker;
         # endif
-    }* volatile NetIOArgPtr;
+    }* NetIOArgPtr;
     # define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
     # define BIN_END( cl_ )       cl_->Bin.Unlock()
     # define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
     # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
     typedef void ( *SendCallback )( bufferevent*, void* );
     static SendCallback SendData;
-    #  define BOUT_END( cl_ )                                                     \
-        cl_->Bout.Unlock();                                                       \
-        {                                                                         \
-            SCOPE_LOCK( cl_->NetIOArgPtr->BEVLocker );                            \
-            if( cl_->NetIOArgPtr->BEV )                                           \
-            {                                                                     \
-                bufferevent_lock( cl_->NetIOArgPtr->BEV );                        \
-                ( *Client::SendData )( cl_->NetIOArgPtr->BEV, cl_->NetIOArgPtr ); \
-                bufferevent_unlock( cl_->NetIOArgPtr->BEV );                      \
-            }                                                                     \
+    #  define BOUT_END( cl_ )                                                 \
+        cl_->Bout.Unlock();                                                   \
+        cl_->NetIOArgPtr->BEVLocker.Lock();                                   \
+        if( cl_->NetIOArgPtr->BEV )                                           \
+        {                                                                     \
+            bufferevent_lock( cl_->NetIOArgPtr->BEV );                        \
+            cl_->NetIOArgPtr->BEVLocker.Unlock();                             \
+            ( *Client::SendData )( cl_->NetIOArgPtr->BEV, cl_->NetIOArgPtr ); \
+            bufferevent_unlock( cl_->NetIOArgPtr->BEV );                      \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            cl_->NetIOArgPtr->BEVLocker.Unlock();                             \
         }
     # else
     #  define BOUT_END( cl_ )     cl_->Bout.Unlock();
     # endif
-    void Shutdown( bufferevent* bev );
     #else // IOCP
     struct NetIOArg
     {
@@ -627,8 +629,8 @@ public:
     # define BOUT_END( cl_ )                                                                                  \
         cl_->Bout.Unlock(); if( InterlockedCompareExchange( &cl_->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE ) \
             ( *Client::SendData )( cl_->NetIOOut )
-    void Shutdown();
     #endif
+    void Shutdown();
 
 public:
     uint        GetIp();

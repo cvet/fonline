@@ -3555,30 +3555,25 @@ Client::~Client()
     #endif
 }
 
-#if defined ( USE_LIBEVENT )
-void Client::Shutdown( bufferevent* bev )
-#else // IOCP
 void Client::Shutdown()
-#endif
 {
     if( Sock == INVALID_SOCKET )
         return;
 
+    #if defined ( USE_LIBEVENT )
+    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
+    NetIOArgPtr->BEVLocker.Lock();
+    bufferevent_free( NetIOArgPtr->BEV );
+    NetIOArgPtr->BEV = NULL;
+    NetIOArgPtr->BEVLocker.Unlock();
+    # else
+    bufferevent_free( NetIOArgPtr->BEV );
+    # endif
+    #endif
+
     shutdown( Sock, SD_BOTH );
     closesocket( Sock );
     Sock = INVALID_SOCKET;
-
-    #if defined ( USE_LIBEVENT )
-    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-    {
-        SCOPE_LOCK( NetIOArgPtr->BEVLocker );
-        bufferevent_free( bev );
-        NetIOArgPtr->BEV = NULL;
-    }
-    # else
-    bufferevent_free( bev );
-    # endif
-    #endif
 
     Disconnect();
 

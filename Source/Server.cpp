@@ -578,21 +578,28 @@ void* FOServer::Logic_Work( void* data )
             SYNC_LOCK( cl );
 
             // Disconnect
-            #if !defined ( USE_LIBEVENT )
             if( cl->IsOffline() )
             {
+                #if defined ( USE_LIBEVENT )
+                cl->Bout.Lock();
+                bool empty = cl->Bout.IsEmpty();
+                cl->Bout.Unlock();
+                if( empty )
+                    cl->Shutdown();
+                #else
                 if( InterlockedCompareExchange( &cl->NetIOOut->Operation, WSAOP_END, WSAOP_FREE ) == WSAOP_FREE )
                 {
                     InterlockedExchange( &cl->NetIOIn->Operation, WSAOP_END );
                     cl->Shutdown();
                 }
-                else if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
+                #endif
+
+                if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
                 {
                     WriteLogF( _FUNC_, " - Offline connection timeout, force shutdown. Ip<%s>, name<%s>.\n", cl->GetIpStr(), cl->GetName() );
                     cl->Shutdown();
                 }
             }
-            #endif
 
             // Check for removing
             if( cl->Sock == INVALID_SOCKET )
@@ -951,9 +958,7 @@ void* FOServer::Net_Listen( void* )
         // Setup callbacks
         Client::NetIOArg* arg = new Client::NetIOArg();
         arg->PClient = cl;
-        # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
         arg->BEV = bev;
-        # endif
         cl->NetIOArgPtr = arg;
         cl->AddRef();         // Released in Shutdown
         bufferevent_setcb( bev, NetIO_Input, NetIO_Output, NetIO_Event, cl->NetIOArgPtr );
@@ -1026,12 +1031,12 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
             cl->Bout.Unlock();
             if( is_empty )
             {
-                cl->Shutdown( bev );
+                cl->Shutdown();
                 return;
             }
 
             // Disable reading
-            if( bufferevent_get_enabled( bev ) & EV_READ )
+            if( bufferevent_get_enabled() & EV_READ )
                 bufferevent_disable( bev, EV_READ );
 
             // Disable timeout
@@ -1048,7 +1053,7 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
     # endif
     {
         // Shutdown on errors
-        cl->Shutdown( bev );
+        cl->Shutdown();
     }
 }
 
@@ -1079,7 +1084,7 @@ void FOServer::NetIO_Input( bufferevent* bev, void* arg )
             cl->Disconnect();
             cl->Bin.Reset();
             cl->Bin.Unlock();
-            cl->Shutdown( bev );
+            cl->Shutdown();
             return;
         }
 
@@ -1092,7 +1097,7 @@ void FOServer::NetIO_Input( bufferevent* bev, void* arg )
         {
             WriteLogF( _FUNC_, " - Receive fail.\n" );
             cl->Bin.Unlock();
-            cl->Shutdown( bev );
+            cl->Shutdown();
         }
         else
         {
@@ -1113,7 +1118,7 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
     {
         cl->Bout.Unlock();
         if( cl->IsOffline() )
-            cl->Shutdown( bev );
+            cl->Shutdown();
         return;
     }
 
@@ -1138,7 +1143,7 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
             cl->Disconnect();
             cl->Bout.Reset();
             cl->Bout.Unlock();
-            cl->Shutdown( bev );
+            cl->Shutdown();
             return;
         }
 
@@ -1169,7 +1174,7 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
     if( bufferevent_write( bev, output_buffer, write_len ) )
     {
         WriteLogF( _FUNC_, " - Send fail.\n" );
-        cl->Shutdown( bev );
+        cl->Shutdown();
     }
     else
     {
@@ -3614,7 +3619,7 @@ bool FOServer::Init()
     }
 
     FileManager::SetDataPath( ".\\" );   // File manager
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_BANS ) );
+    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_SAVE ) );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_CLIENTS ) );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_BANS ) );
 
@@ -4228,11 +4233,11 @@ bool FOServer::LoadClientsData()
     LastClientId = 0;
     ClientsData.reserve( 10000 );
 
-    char save_path[ MAX_FOPATH ];
-    Str::Format( save_path, ".%csave%cclients%c", DIR_SLASH_C, DIR_SLASH_C, DIR_SLASH_C );
+    char clients_path[ MAX_FOPATH ];
+    FileManager::GetFullPath( "", PT_SERVER_CLIENTS, clients_path );
 
     FIND_DATA fd;
-    void*     h = FileFindFirst( save_path, "client", fd );
+    void*     h = FileFindFirst( clients_path, "client", fd );
     if( !h )
     {
         WriteLog( "Clients data not found.\n" );
@@ -4249,7 +4254,7 @@ bool FOServer::LoadClientsData()
 
         // Take id and password from file
         char  fname_[ MAX_FOPATH ];
-        sprintf( fname_, ".\\save\\clients\\%s", fd.FileName );
+        Str::Format( fname_, "%s%s", clients_path, fd.FileName );
         void* f = FileOpen( fname_, false );
         if( !f )
         {
@@ -4336,8 +4341,9 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
     }
     else
     {
-        char  fname[ MAX_FOPATH ];
-        sprintf( fname, ".\\save\\clients\\%s.client", cl->Name );
+        char fname[ MAX_FOPATH ];
+        FileManager::GetFullPath( cl->Name, PT_SERVER_CLIENTS, fname );
+        Str::Append( fname, ".client" );
         void* f = FileOpen( fname, true );
         if( !f )
         {
@@ -4372,8 +4378,9 @@ bool FOServer::LoadClient( Client* cl )
         return false;
     }
 
-    char  fname[ MAX_FOPATH ];
-    sprintf( fname, ".\\save\\clients\\%s.client", cl->Name );
+    char fname[ MAX_FOPATH ];
+    FileManager::GetFullPath( cl->Name, PT_SERVER_CLIENTS, fname );
+    Str::Append( fname, ".client" );
     void* f = FileOpen( fname, false );
     if( !f )
     {
@@ -4726,11 +4733,15 @@ void* FOServer::Dump_Work( void* data )
 
     while( true )
     {
+        // Locks
         DumpBeginEvent.Wait();
         DumpBeginEvent.Disallow();
 
+        // Paths
         char save_path[ MAX_FOPATH ];
         FileManager::GetFullPath( NULL, PT_SERVER_SAVE, save_path );
+        char clients_path[ MAX_FOPATH ];
+        FileManager::GetFullPath( NULL, PT_SERVER_CLIENTS, clients_path );
 
         // Save world data
         void* fworld = FileOpen( Str::Format( fname, "%sworld%04d.fo", save_path, SaveWorldIndex + 1 ), true );
@@ -4760,7 +4771,9 @@ void* FOServer::Dump_Work( void* data )
         {
             ClientSaveData& csd = ClientsSaveData[ i ];
 
-            void*           fc = FileOpen( Str::Format( fname, "%sclients\\%s.client", save_path, csd.Name ), true );
+            char            fname[ MAX_FOPATH ];
+            Str::Format( fname, "%s%s.client", clients_path, csd.Name );
+            void*           fc = FileOpen( fname, true );
             if( !fc )
             {
                 WriteLogF( _FUNC_, " - Unable to open client save file<%s>.\n", fname );

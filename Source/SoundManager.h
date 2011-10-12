@@ -19,8 +19,8 @@ public:
     void Finish();
     void ClearSounds();
 
-    int GetSoundVolume();
-    int GetMusicVolume();
+    int  GetSoundVolume();
+    int  GetMusicVolume();
     void SetSoundVolume( int volume );
     void SetMusicVolume( int volume );
 
