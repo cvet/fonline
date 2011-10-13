@@ -42,7 +42,7 @@ struct AnimParams
     int*                TextureSubsets;
     int*                TextureNum;
     uint                TextureNamesCount;
-    D3DXEFFECTINSTANCE* EffectInst;
+    EffectInstanceType* EffectInst;
     int*                EffectInstSubsets;
     uint                EffectInstSubsetsCount;
 };
@@ -74,8 +74,8 @@ private:
     uint                      currentTrack;
     uint                      lastTick;
     uint                      endTick;
-    D3DXMATRIX                matRot, matScale;
-    D3DXMATRIX                matScaleBase, matRotBase, matTransBase;
+    MatrixType                matRot, matScale;
+    MatrixType                matScaleBase, matRotBase, matTransBase;
     float                     speedAdjustBase, speedAdjustCur, speedAdjustLink;
     bool                      shadowDisabled;
     float                     dirAngle;
@@ -96,16 +96,16 @@ private:
     Animation3dVec childAnimations;
     Animation3d*   parentAnimation;
     FrameEx*       parentFrame;
-    D3DXMATRIX     parentMatrix;
+    MatrixType     parentMatrix;
     FrameVec       linkFrames;
     MatrixVec      linkMatricles;
     AnimParams     animLink;
     bool           childChecker;
 
     bool         FrameMove( double elapsed, int x, int y, float scale, bool software_skinning );
-    void         UpdateFrameMatrices( const D3DXFRAME* frame_base, const D3DXMATRIX* parent_matrix );
+    void         UpdateFrameMatrices( const D3DXFRAME* frame_base, const MatrixType* parent_matrix );
     bool         DrawFrame( LPD3DXFRAME frame, bool with_shadow );
-    bool         DrawMeshEffect( ID3DXMesh* mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, D3DXHANDLE technique );
+    bool         DrawMeshEffect( MeshType mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, EffectValueType technique );
     bool         IsIntersectFrame( LPD3DXFRAME frame, const D3DXVECTOR3& ray_origin, const D3DXVECTOR3& ray_dir );
     bool         SetupBordersFrame( LPD3DXFRAME frame, FLTRECT& borders );
     void         ProcessBorders();
@@ -221,7 +221,7 @@ private:
     static void              SetupAnimationOutput( D3DXFRAME* frame, ID3DXAnimationController* anim_controller );
 
     TextureEx* GetTexture( const char* tex_name );
-    EffectEx*  GetEffect( D3DXEFFECTINSTANCE* effect_inst );
+    EffectEx*  GetEffect( EffectInstanceType* effect_inst );
 
 public:
     Animation3dXFile();

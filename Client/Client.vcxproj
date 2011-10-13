@@ -351,6 +351,7 @@
   <ItemGroup>
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\ResourceClient.h" />
+    <ClInclude Include="..\Source\Sprites.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
     <ClInclude Include="..\Source\Zlib\inffast.h" />
@@ -504,6 +505,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\FileSystem.cpp" />
+    <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
+    <ClCompile Include="..\Source\Sprites.cpp" />
     <ClCompile Include="..\Source\Zlib\adler32.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>

@@ -10,7 +10,7 @@ HRESULT MeshHierarchy::CreateFrame( LPCSTR Name, LPD3DXFRAME* retNewFrame )
 
     // Create a new frame using the derived version of the structure
     FrameEx* newFrame = new FrameEx;
-    ZeroMemory( newFrame, sizeof( FrameEx ) );
+    memzero( newFrame, sizeof( FrameEx ) );
 
     // Now initialize other data members of the frame to defaults
     D3DXMatrixIdentity( &newFrame->TransformationMatrix );
@@ -34,7 +34,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     LPCSTR Name,
     CONST D3DXMESHDATA* meshData,
     CONST D3DXMATERIAL* materials,
-    CONST D3DXEFFECTINSTANCE* effectInstances,
+    CONST EffectInstanceType* effectInstances,
     DWORD numMaterials,
     CONST DWORD* adjacency,
     LPD3DXSKININFO pSkinInfo,
@@ -43,7 +43,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     // Create a mesh container structure to fill and initilaise to zero values
     // Note: I use my extended version of the structure (D3DXMESHCONTAINER_EXTENDED) defined in MeshStructures.h
     D3DXMESHCONTAINER_EXTENDED* newMeshContainer = new D3DXMESHCONTAINER_EXTENDED;
-    ZeroMemory( newMeshContainer, sizeof( D3DXMESHCONTAINER_EXTENDED ) );
+    memzero( newMeshContainer, sizeof( D3DXMESHCONTAINER_EXTENDED ) );
 
     // Always a good idea to initialise return pointer before proceeding
     *retNewMeshContainer = 0;
@@ -81,9 +81,9 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 
     // Create material and texture arrays. Note that I always want to have at least one
     newMeshContainer->NumMaterials = max( numMaterials, 1 );
-    newMeshContainer->exMaterials = new D3DMATERIAL9[ newMeshContainer->NumMaterials ];
+    newMeshContainer->exMaterials = new MaterialType[ newMeshContainer->NumMaterials ];
     newMeshContainer->exTexturesNames = new char*[ newMeshContainer->NumMaterials ];
-    newMeshContainer->exEffects = new D3DXEFFECTINSTANCE[ newMeshContainer->NumMaterials ];
+    newMeshContainer->exEffects = new EffectInstanceType[ newMeshContainer->NumMaterials ];
 
     if( numMaterials > 0 )
     {
@@ -97,7 +97,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
             newMeshContainer->exMaterials[ i ] = materials[ i ].MatD3D;
 
             // The mesh may contain a reference to an effect file
-            ZeroMemory( &newMeshContainer->exEffects[ i ], sizeof( D3DXEFFECTINSTANCE ) );
+            memzero( &newMeshContainer->exEffects[ i ], sizeof( EffectInstanceType ) );
             if( effectInstances && effectInstances[ i ].pEffectFilename && effectInstances[ i ].pEffectFilename[ 0 ] )
             {
                 newMeshContainer->exEffects[ i ].pEffectFilename = Str::Duplicate( effectInstances[ i ].pEffectFilename );
@@ -123,14 +123,14 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     else
     {
         // Make a default material in the case where the mesh did not provide one
-        ZeroMemory( &newMeshContainer->exMaterials[ 0 ], sizeof( D3DMATERIAL9 ) );
+        memzero( &newMeshContainer->exMaterials[ 0 ], sizeof( MaterialType ) );
         newMeshContainer->exMaterials[ 0 ].Diffuse.a = 1.0f;
         newMeshContainer->exMaterials[ 0 ].Diffuse.r = 0.5f;
         newMeshContainer->exMaterials[ 0 ].Diffuse.g = 0.5f;
         newMeshContainer->exMaterials[ 0 ].Diffuse.b = 0.5f;
         newMeshContainer->exMaterials[ 0 ].Specular = newMeshContainer->exMaterials[ 0 ].Diffuse;
         newMeshContainer->exTexturesNames[ 0 ] = NULL;
-        ZeroMemory( &newMeshContainer->exEffects[ 0 ], sizeof( D3DXEFFECTINSTANCE ) );
+        memzero( &newMeshContainer->exEffects[ 0 ], sizeof( EffectInstanceType ) );
     }
 
     // If there is skin data associated with the mesh copy it over
@@ -142,11 +142,11 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 
         // Need an array of offset matrices to move the vertices from the figure space to the bone's space
         UINT numBones = pSkinInfo->GetNumBones();
-        newMeshContainer->exBoneOffsets = new D3DXMATRIX[ numBones ];
+        newMeshContainer->exBoneOffsets = new MatrixType[ numBones ];
 
         // Create the arrays for the bones and the frame matrices
-        newMeshContainer->exFrameCombinedMatrixPointer = new D3DXMATRIX*[ numBones ];
-        ZeroMemory( newMeshContainer->exFrameCombinedMatrixPointer, sizeof( D3DXMATRIX* ) * numBones );
+        newMeshContainer->exFrameCombinedMatrixPointer = new MatrixType*[ numBones ];
+        memzero( newMeshContainer->exFrameCombinedMatrixPointer, sizeof( MatrixType* ) * numBones );
 
         // get each of the bone offset matrices so that we don't need to get them later
         for( UINT i = 0; i < numBones; i++ )

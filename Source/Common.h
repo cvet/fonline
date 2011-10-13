@@ -170,13 +170,51 @@ struct ScoreType
 /************************************************************************/
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
+# ifdef FO_D3D
+#  include <dxerr.h>
+#  include <d3dx9.h>
+#  ifndef D3D_DEBUG_INFO
+#   pragma comment(lib,"d3dx9.lib")
+#  else
+#   pragma comment(lib,"d3dx9d.lib")
+#  endif
+#  pragma comment(lib,"d3d9.lib")
+#  pragma comment(lib,"dinput8.lib")
+#  pragma comment(lib,"dxguid.lib")
+#  pragma comment(lib,"dxerr.lib")
+#  pragma comment(lib,"d3dxof.lib")
+# else
+#  include <gl/GL.h>
+#  include <gl/GLU.h>
+# endif
+
+# ifdef FO_D3D
+#  define TextureType           LPDIRECT3DTEXTURE9
+#  define EffectInstanceType    D3DXEFFECTINSTANCE
+#  define EffectType            LPD3DXEFFECT
+#  define EffectDefaultsType    LPD3DXEFFECTDEFAULT
+#  define EffectValueType       D3DXHANDLE
+#  define MaterialType          D3DMATERIAL9
+#  define MeshType              LPD3DXMESH
+#  define MatrixType            D3DXMATRIX
+# else
+#  define TextureType           GLuint
+#  define EffectInstanceType    GLuint
+#  define EffectType            GLuint
+#  define EffectDefaultsType    GLuint
+#  define EffectValueType       GLuint
+#  define MaterialType          GLuint
+#  define MeshType              GLuint
+#  define MatrixType            GLuint
+# endif
+
 # define MODE_WIDTH             ( GameOpt.ScreenWidth )
 # define MODE_HEIGHT            ( GameOpt.ScreenHeight )
 # define WM_FLASH_WINDOW        ( WM_USER + 1 )     // Chat notification
 # define DI_BUF_SIZE            ( 64 )
-# define DI_ONDOWN( a, b )             if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONUP( a, b )               if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONMOUSE( a, b )            if( didod[ i ].dwOfs == a ) { b; }
+# define DI_ONDOWN( a, b )     if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
+# define DI_ONUP( a, b )       if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
+# define DI_ONMOUSE( a, b )    if( didod[ i ].dwOfs == a ) { b; }
 
 # ifdef FONLINE_CLIENT
 #  include "ResourceClient.h"
@@ -194,27 +232,6 @@ const uchar SELECT_ALPHA    = 100;
 
 # define DIRECTINPUT_VERSION    0x0800
 # include <dinput.h>
-# include <dxerr.h>
-# include <d3dx9.h>
-
-# ifndef D3D_DEBUG_INFO
-#  pragma comment(lib,"d3dx9.lib")
-# else
-#  pragma comment(lib,"d3dx9d.lib")
-# endif
-# pragma comment(lib,"d3d9.lib")
-# pragma comment(lib,"dinput8.lib")
-# pragma comment(lib,"dxguid.lib")
-# pragma comment(lib,"dxerr.lib")
-# pragma comment(lib,"d3dxof.lib")
-typedef LPDIRECT3D9             LPDIRECT3D;
-typedef LPDIRECT3DDEVICE9       LPDIRECT3DDEVICE;
-typedef LPDIRECT3DTEXTURE9      LPDIRECT3DTEXTURE;
-typedef LPDIRECT3DSURFACE9      LPDIRECT3DSURFACE;
-typedef LPDIRECT3DVERTEXBUFFER9 LPDIRECT3DVERTEXBUFFER;
-typedef LPDIRECT3DINDEXBUFFER9  LPDIRECT3DINDEXBUFFER;
-typedef D3DMATERIAL9            D3DMATERIAL;
-# define Direct3DCreate         Direct3DCreate9
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();

@@ -33,7 +33,7 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
     Name = "";
     NameOnHead = "";
     Str::Copy( Pass, "" );
-    ZeroMemory( Params, sizeof( Params ) );
+    memzero( Params, sizeof( Params ) );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item();
     ItemSlotArmor = DefItemSlotArmor = new Item();
     ItemSlotMain->Init( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
@@ -41,9 +41,9 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     for( int i = 0; i < MAX_PARAMETERS_ARRAYS; i++ )
         ThisPtr[ i ] = this;
-    ZeroMemory( ParamsIsChanged, sizeof( ParamsIsChanged ) );
+    memzero( ParamsIsChanged, sizeof( ParamsIsChanged ) );
     ParamLocked = -1;
-    ZeroMemory( &stayAnim, sizeof( stayAnim ) );
+    memzero( &stayAnim, sizeof( stayAnim ) );
 }
 
 CritterCl::~CritterCl()
@@ -82,8 +82,8 @@ void CritterCl::InitForRegistration()
     Str::Copy( Pass, "" );
     BaseType = 0;
 
-    ZeroMemory( Params, sizeof( Params ) );
-    ZeroMemory( ParamsReg, sizeof( ParamsReg ) );
+    memzero( Params, sizeof( Params ) );
+    memzero( ParamsReg, sizeof( ParamsReg ) );
     ParamsReg[ 0 ] = ParamsReg[ 1 ] = ParamsReg[ 2 ] = ParamsReg[ 3 ] =
                                                            ParamsReg[ 4 ] = ParamsReg[ 5 ] = ParamsReg[ 6 ] = 5;
     ParamsReg[ ST_AGE ] = Random( AGE_MIN, AGE_MAX );
@@ -1437,11 +1437,11 @@ void CritterCl::SetBaseType( uint type )
             Layers3d = Script::CreateArray( "int[]" );
             ( (CScriptArray*) Layers3d )->Resize( LAYERS3D_COUNT );
         }
-        ZeroMemory( ( (CScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
+        memzero( ( (CScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
         #else
         if( !Layers3d )
             Layers3d = new int[ LAYERS3D_COUNT ];
-        ZeroMemory( Layers3d, LAYERS3D_COUNT * sizeof( int ) );
+        memzero( Layers3d, LAYERS3D_COUNT * sizeof( int ) );
         #endif
 
         Anim3d->SetAnimation( ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0 );

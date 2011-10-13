@@ -40,7 +40,7 @@ private:
     // Effects
 public:
     static EffectEx* LoadEffect( IDirect3DDevice9* device, const char* effect_name );
-    static EffectEx* LoadEffect( IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path );
+    static EffectEx* LoadEffect( IDirect3DDevice9* device, EffectInstanceType* effect_inst, const char* model_path );
     static void      EffectProcessVariables( EffectEx* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, TextureEx** textures = NULL );
     static bool      EffectsPreRestore();
     static bool      EffectsPostRestore();

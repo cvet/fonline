@@ -5,75 +5,79 @@
 
 struct TextureEx
 {
-    const char*        Name;
-    IDirect3DTexture9* Texture;
+    const char* Name;
+    TextureType Texture;
 };
 
 struct EffectEx
 {
-    const char*         Name;
-    ID3DXEffect*        Effect;
-    uint                EffectFlags;
-    LPD3DXEFFECTDEFAULT Defaults;
-    D3DXHANDLE          EffectParams;
-    D3DXHANDLE          TechniqueSkinned;
-    D3DXHANDLE          TechniqueSkinnedWithShadow;
-    D3DXHANDLE          TechniqueSimple;
-    D3DXHANDLE          TechniqueSimpleWithShadow;
-    D3DXHANDLE          BonesInfluences;
-    D3DXHANDLE          GroundPosition;
-    D3DXHANDLE          LightDir;
-    D3DXHANDLE          LightDiffuse;
-    D3DXHANDLE          MaterialAmbient;
-    D3DXHANDLE          MaterialDiffuse;
-    D3DXHANDLE          WorldMatrices;
-    D3DXHANDLE          ViewProjMatrix;
+    const char*        Name;
+    EffectType         Effect;
+    uint               EffectFlags;
+    EffectDefaultsType Defaults;
+    EffectValueType    EffectParams;
+    EffectValueType    TechniqueSkinned;
+    EffectValueType    TechniqueSkinnedWithShadow;
+    EffectValueType    TechniqueSimple;
+    EffectValueType    TechniqueSimpleWithShadow;
+    EffectValueType    BonesInfluences;
+    EffectValueType    GroundPosition;
+    EffectValueType    LightDir;
+    EffectValueType    LightDiffuse;
+    EffectValueType    MaterialAmbient;
+    EffectValueType    MaterialDiffuse;
+    EffectValueType    WorldMatrices;
+    EffectValueType    ViewProjMatrix;
 
     // Automatic variables
-    bool                IsNeedProcess;
-    D3DXHANDLE          PassIndex;
-    bool                IsTime;
-    D3DXHANDLE          Time;
-    float               TimeCurrent;
-    double              TimeLastTick;
-    D3DXHANDLE          TimeGame;
-    float               TimeGameCurrent;
-    double              TimeGameLastTick;
-    bool                IsRandomPass;
-    D3DXHANDLE          Random1Pass;
-    D3DXHANDLE          Random2Pass;
-    D3DXHANDLE          Random3Pass;
-    D3DXHANDLE          Random4Pass;
-    bool                IsRandomEffect;
-    D3DXHANDLE          Random1Effect;
-    D3DXHANDLE          Random2Effect;
-    D3DXHANDLE          Random3Effect;
-    D3DXHANDLE          Random4Effect;
-    bool                IsTextures;
-    D3DXHANDLE          Textures[ EFFECT_TEXTURES ];
-    bool                IsScriptValues;
-    D3DXHANDLE          ScriptValues[ EFFECT_SCRIPT_VALUES ];
-    bool                IsAnimPos;
-    D3DXHANDLE          AnimPosProc;
-    D3DXHANDLE          AnimPosTime;
+    bool               IsNeedProcess;
+    EffectValueType    PassIndex;
+    bool               IsTime;
+    EffectValueType    Time;
+    float              TimeCurrent;
+    double             TimeLastTick;
+    EffectValueType    TimeGame;
+    float              TimeGameCurrent;
+    double             TimeGameLastTick;
+    bool               IsRandomPass;
+    EffectValueType    Random1Pass;
+    EffectValueType    Random2Pass;
+    EffectValueType    Random3Pass;
+    EffectValueType    Random4Pass;
+    bool               IsRandomEffect;
+    EffectValueType    Random1Effect;
+    EffectValueType    Random2Effect;
+    EffectValueType    Random3Effect;
+    EffectValueType    Random4Effect;
+    bool               IsTextures;
+    EffectValueType    Textures[ EFFECT_TEXTURES ];
+    bool               IsScriptValues;
+    EffectValueType    ScriptValues[ EFFECT_SCRIPT_VALUES ];
+    bool               IsAnimPos;
+    EffectValueType    AnimPosProc;
+    EffectValueType    AnimPosTime;
 };
 
+#ifdef FO_D3D
 struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER
+#else
+struct D3DXMESHCONTAINER_EXTENDED
+#endif
 {
     // Material
     char**              exTexturesNames;
-    D3DMATERIAL9*       exMaterials;                      // Array of materials
+    MaterialType*       exMaterials;                      // Array of materials
 
     // Effect
-    D3DXEFFECTINSTANCE* exEffects;
+    EffectInstanceType* exEffects;
 
     // Skinned mesh variables
-    ID3DXMesh*          exSkinMesh;                       // The skin mesh
-    D3DXMATRIX*         exBoneOffsets;                    // The bone matrix Offsets, one per bone
-    D3DXMATRIX**        exFrameCombinedMatrixPointer;     // Array of frame matrix pointers
+    MeshType            exSkinMesh;                     // The skin mesh
+    MatrixType*         exBoneOffsets;                  // The bone matrix Offsets, one per bone
+    MatrixType**        exFrameCombinedMatrixPointer;   // Array of frame matrix pointers
 
     // Used for indexed shader skinning
-    ID3DXMesh*          exSkinMeshBlended;                // The blended skin mesh
+    MeshType            exSkinMeshBlended;              // The blended skin mesh
     ID3DXBuffer*        exBoneCombinationBuf;
     DWORD               exNumAttributeGroups;
     DWORD               exNumPaletteEntries;
@@ -83,13 +87,13 @@ struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER
 struct FrameEx: public D3DXFRAME
 {
     const char* exFileName;
-    D3DXMATRIX  exCombinedTransformationMatrix;
+    MatrixType  exCombinedTransformationMatrix;
 };
 
 typedef vector< D3DXMESHCONTAINER_EXTENDED* > MeshContainerVec;
 typedef vector< FrameEx* >                    FrameVec;
 typedef vector< D3DXVECTOR3 >                 Vector3Vec;
-typedef vector< D3DXMATRIX >                  MatrixVec;
+typedef vector< MatrixType >                  MatrixVec;
 
 typedef vector< TextureEx* >                  TextureExVec;
 typedef vector< EffectEx* >                   EffectExVec;

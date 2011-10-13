@@ -95,9 +95,9 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
 
         // Process attributes
         PROCESS_INFORMATION server;
-        ZeroMemory( &server, sizeof( server ) );
+        memzero( &server, sizeof( server ) );
         STARTUPINFOA        sui;
-        ZeroMemory( &sui, sizeof( sui ) );
+        memzero( &sui, sizeof( sui ) );
         sui.cb = sizeof( sui );
         HANDLE client_process = OpenProcess( SYNCHRONIZE, TRUE, GetCurrentProcessId() );
         char   command_line[ 2048 ];

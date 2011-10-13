@@ -17,11 +17,11 @@ D3DCAPS9          D3DCaps;
 int               ModeWidth = 0, ModeHeight = 0;
 float             FixedZ = 0.0f;
 D3DLIGHT9         GlobalLight;
-D3DXMATRIX        MatrixProj, MatrixView, MatrixViewInv, MatrixEmpty, MatrixViewProj;
+MatrixType        MatrixProj, MatrixView, MatrixViewInv, MatrixEmpty, MatrixViewProj;
 double            MoveTransitionTime = 0.25;
 float             GlobalSpeedAdjust = 1.0f;
 D3DVIEWPORT9      ViewPort;
-D3DXMATRIX*       BoneMatrices = NULL;
+MatrixType*       BoneMatrices = NULL;
 uint              MaxBones = 0;
 int               SkinningMethod = SKINNING_SOFTWARE;
 EffectEx*         EffectMain = NULL;
@@ -39,7 +39,7 @@ Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), numAnima
                             drawScale( 0.0f ), bordersDisabled( false ), calcBordersTick( 0 ), noDraw( true ), parentAnimation( NULL ), parentFrame( NULL ),
                             childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f )
 {
-    ZeroMemory( currentLayers, sizeof( currentLayers ) );
+    memzero( currentLayers, sizeof( currentLayers ) );
     groundPos.w = 1.0f;
     D3DXMatrixRotationX( &matRot, -GameOpt.MapCameraAngle * D3DX_PI / 180.0f );
     D3DXMatrixIdentity( &matScale );
@@ -431,7 +431,7 @@ bool Animation3d::IsIntersectFrame( LPD3DXFRAME frame, const D3DXVECTOR3& ray_or
         LPD3DXMESH                  mesh = ( mesh_container_ex->pSkinInfo ? mesh_container_ex->exSkinMesh : mesh_container_ex->MeshData.pMesh );
 
         // Use inverse of matrix
-        D3DXMATRIX mat_inverse;
+        MatrixType mat_inverse;
         D3DXMatrixInverse( &mat_inverse, NULL, !mesh_container_ex->pSkinInfo ? &frame_ex->exCombinedTransformationMatrix : &MatrixEmpty );
         // Transform ray origin and direction by inv matrix
         D3DXVECTOR3 ray_obj_origin, ray_obj_direction;
@@ -511,8 +511,8 @@ bool Animation3d::SetupBordersFrame( LPD3DXFRAME frame, FLTRECT& borders )
         if( bordersResult.size() < count )
             bordersResult.resize( count );
 
-        LPDIRECT3DVERTEXBUFFER v;
-        uchar*                 data;
+        LPDIRECT3DVERTEXBUFFER9 v;
+        uchar*                  data;
         D3D_HR( mesh->GetVertexBuffer( &v ) );
         D3D_HR( v->Lock( 0, 0, (void**) &data, D3DLOCK_READONLY ) );
         D3DXVec3ProjectArray( &bordersResult[ 0 ], sizeof( D3DXVECTOR3 ), (D3DXVECTOR3*) data, v_size,
@@ -637,7 +637,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
         D3DXMatrixIdentity( &anim3d->matRotBase );
         D3DXMatrixIdentity( &anim3d->matTransBase );
     }
-    D3DXMATRIX mat_tmp;
+    MatrixType mat_tmp;
     if( data.ScaleX != 0.0f )
         anim3d->matScaleBase = *D3DXMatrixScaling( &mat_tmp, data.ScaleX, 1.0f, 1.0f ) * anim3d->matScaleBase;
     if( data.ScaleY != 0.0f )
@@ -935,7 +935,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
     if( !parentFrame )
     {
         FLTPOINT   p3d = Convert2dTo3d( x, y );
-        D3DXMATRIX mat_rot_y, mat_scale, mat_trans;
+        MatrixType mat_rot_y, mat_scale, mat_trans;
         D3DXMatrixScaling( &mat_scale, scale, scale, scale );
         D3DXMatrixRotationY( &mat_rot_y, -dirAngle * D3DX_PI / 180.0f );
         D3DXMatrixTranslation( &mat_trans, p3d.X, p3d.Y, 0.0f );
@@ -1030,7 +1030,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
 }
 
 // Called to update the frame_base matrices in the hierarchy to reflect current animation stage
-void Animation3d::UpdateFrameMatrices( const D3DXFRAME* frame_base, const D3DXMATRIX* parent_matrix )
+void Animation3d::UpdateFrameMatrices( const D3DXFRAME* frame_base, const MatrixType* parent_matrix )
 {
     FrameEx* cur_frame = (FrameEx*) frame_base;
 
@@ -1092,7 +1092,7 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
                     D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, BoneMatrices, mesh_container_ex->exNumPaletteEntries ) );
 
                 // Sum of all ambient and emissive contribution
-                D3DMATERIAL9& material = mesh_container_ex->exMaterials[ attr_id ];
+                MaterialType& material = mesh_container_ex->exMaterials[ attr_id ];
                 // D3DXCOLOR amb_emm;
                 // D3DXColorModulate(&amb_emm,&D3DXCOLOR(material.Ambient),&D3DXCOLOR(0.25f,0.25f,0.25f,1.0f));
                 // amb_emm+=D3DXCOLOR(material.Emissive);
@@ -1129,7 +1129,7 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
                         D3D_HR( effect->Effect->SetMatrix( effect->ViewProjMatrix, &MatrixViewProj ) );
                     if( effect->GroundPosition )
                         D3D_HR( effect->Effect->SetVector( effect->GroundPosition, &groundPos ) );
-                    D3DXMATRIX wmatrix = ( !mesh_container_ex->pSkinInfo ? frame_ex->exCombinedTransformationMatrix : MatrixEmpty );
+                    MatrixType wmatrix = ( !mesh_container_ex->pSkinInfo ? frame_ex->exCombinedTransformationMatrix : MatrixEmpty );
                     if( effect->WorldMatrices )
                         D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, &wmatrix, 1 ) );
                     if( effect->LightDiffuse )
@@ -1137,7 +1137,7 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
                 }
                 else
                 {
-                    D3DXMATRIX& wmatrix = ( !mesh_container_ex->pSkinInfo ? frame_ex->exCombinedTransformationMatrix : MatrixEmpty );
+                    MatrixType& wmatrix = ( !mesh_container_ex->pSkinInfo ? frame_ex->exCombinedTransformationMatrix : MatrixEmpty );
                     D3D_HR( D3DDevice->SetTransform( D3DTS_WORLD, &wmatrix ) );
                     D3D_HR( D3DDevice->SetLight( 0, &GlobalLight ) );
                 }
@@ -1171,11 +1171,11 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
     return true;
 }
 
-bool Animation3d::DrawMeshEffect( ID3DXMesh* mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, D3DXHANDLE technique )
+bool Animation3d::DrawMeshEffect( MeshType mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, EffectValueType technique )
 {
     D3D_HR( D3DDevice->SetTexture( 0, textures && textures[ 0 ] ? textures[ 0 ]->Texture : NULL ) );
 
-    ID3DXEffect* effect = effect_ex->Effect;
+    EffectType effect = effect_ex->Effect;
     D3D_HR( effect->SetTechnique( technique ) );
     if( effect_ex->IsNeedProcess )
         Loader3d::EffectProcessVariables( effect_ex, -1, animPosProc, animPosTime, textures );
@@ -1200,12 +1200,12 @@ bool Animation3d::StartUp( LPDIRECT3DDEVICE9 device, bool software_skinning )
     D3DDevice = device;
 
     // Get caps
-    ZeroMemory( &D3DCaps, sizeof( D3DCaps ) );
+    memzero( &D3DCaps, sizeof( D3DCaps ) );
     D3D_HR( D3DDevice->GetDeviceCaps( &D3DCaps ) );
 
     // Get size of draw area
-    LPDIRECT3DSURFACE backbuf;
-    D3DSURFACE_DESC   backbuf_desc;
+    LPDIRECT3DSURFACE9 backbuf;
+    D3DSURFACE_DESC    backbuf_desc;
     D3D_HR( D3DDevice->GetRenderTarget( 0, &backbuf ) );
     D3D_HR( backbuf->GetDesc( &backbuf_desc ) );
     SAFEREL( backbuf );
@@ -1221,7 +1221,7 @@ bool Animation3d::StartUp( LPDIRECT3DDEVICE9 device, bool software_skinning )
     D3DXMatrixIdentity( &MatrixEmpty );
 
     // Create a directional light
-    ZeroMemory( &GlobalLight, sizeof( D3DLIGHT9 ) );
+    memzero( &GlobalLight, sizeof( D3DLIGHT9 ) );
     GlobalLight.Type = D3DLIGHT_DIRECTIONAL;
     GlobalLight.Diffuse.a = 1.0f;
     // Direction for our light - it must be normalized - pointing down and along z
@@ -1343,11 +1343,11 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         mopt.DefaultTexSubsets = new (nothrow) TextureEx*[ mesh->NumMaterials * EFFECT_TEXTURES ];
         mopt.EffectSubsets = new (nothrow) EffectEx*[ mesh->NumMaterials ];
         mopt.DefaultEffectSubsets = new (nothrow) EffectEx*[ mesh->NumMaterials ];
-        ZeroMemory( mopt.DisabledSubsets, mesh->NumMaterials * sizeof( bool ) );
-        ZeroMemory( mopt.TexSubsets, mesh->NumMaterials * sizeof( TextureEx* ) * EFFECT_TEXTURES );
-        ZeroMemory( mopt.DefaultTexSubsets, mesh->NumMaterials * sizeof( TextureEx* ) * EFFECT_TEXTURES );
-        ZeroMemory( mopt.EffectSubsets, mesh->NumMaterials * sizeof( EffectEx* ) );
-        ZeroMemory( mopt.DefaultEffectSubsets, mesh->NumMaterials * sizeof( EffectEx* ) );
+        memzero( mopt.DisabledSubsets, mesh->NumMaterials * sizeof( bool ) );
+        memzero( mopt.TexSubsets, mesh->NumMaterials * sizeof( TextureEx* ) * EFFECT_TEXTURES );
+        memzero( mopt.DefaultTexSubsets, mesh->NumMaterials * sizeof( TextureEx* ) * EFFECT_TEXTURES );
+        memzero( mopt.EffectSubsets, mesh->NumMaterials * sizeof( EffectEx* ) );
+        memzero( mopt.DefaultEffectSubsets, mesh->NumMaterials * sizeof( EffectEx* ) );
 
         // Set default textures and effects
         for( uint k = 0; k < mopt.SubsetsCount; k++ )
@@ -1415,13 +1415,13 @@ Animation3dEntity::Animation3dEntity(): xFile( NULL ), animController( NULL ),
                                         renderAnim( 0 ), renderAnimProcFrom( 0 ), renderAnimProcTo( 100 ),
                                         shadowDisabled( false ), calcualteTangetSpace( false )
 {
-    ZeroMemory( &animDataDefault, sizeof( animDataDefault ) );
+    memzero( &animDataDefault, sizeof( animDataDefault ) );
 }
 
 Animation3dEntity::~Animation3dEntity()
 {
     animData.push_back( animDataDefault );
-    ZeroMemory( &animDataDefault, sizeof( animDataDefault ) );
+    memzero( &animDataDefault, sizeof( animDataDefault ) );
     for( auto it = animData.begin(), end = animData.end(); it != end; ++it )
     {
         AnimParams& link = *it;
@@ -1480,7 +1480,7 @@ bool Animation3dEntity::Load( const char* name )
         int                 subset = -1;
         int                 layer = -1;
         int                 layer_val = 0;
-        D3DXEFFECTINSTANCE* cur_effect = NULL;
+        EffectInstanceType* cur_effect = NULL;
 
         AnimParams          dummy_link;
         memzero( &dummy_link, sizeof( dummy_link ) );
@@ -1601,7 +1601,7 @@ bool Animation3dEntity::Load( const char* name )
                 {
                     animData.push_back( AnimParams() );
                     link = &animData.back();
-                    ZeroMemory( link, sizeof( AnimParams ) );
+                    memzero( link, sizeof( AnimParams ) );
                     link->Id = ++link_id;
                     link->Layer = layer;
                     link->LayerValue = layer_val;
@@ -1640,7 +1640,7 @@ bool Animation3dEntity::Load( const char* name )
 
                 animData.push_back( AnimParams() );
                 link = &animData.back();
-                ZeroMemory( link, sizeof( AnimParams ) );
+                memzero( link, sizeof( AnimParams ) );
                 link->Id = ++link_id;
                 link->Layer = layer;
                 link->LayerValue = layer_val;
@@ -1874,13 +1874,13 @@ bool Animation3dEntity::Load( const char* name )
             else if( !_stricmp( token, "Effect" ) )
             {
                 ( *istr ) >> buf;
-                D3DXEFFECTINSTANCE* effect_inst = new D3DXEFFECTINSTANCE;
-                ZeroMemory( effect_inst, sizeof( D3DXEFFECTINSTANCE ) );
+                EffectInstanceType* effect_inst = new EffectInstanceType;
+                memzero( effect_inst, sizeof( EffectInstanceType ) );
                 effect_inst->pEffectFilename = Str::Duplicate( buf );
 
-                D3DXEFFECTINSTANCE* tmp1 = link->EffectInst;
+                EffectInstanceType* tmp1 = link->EffectInst;
                 int*                tmp2 = link->EffectInstSubsets;
-                link->EffectInst = new D3DXEFFECTINSTANCE[ link->EffectInstSubsetsCount + 1 ];
+                link->EffectInst = new EffectInstanceType[ link->EffectInstSubsetsCount + 1 ];
                 link->EffectInstSubsets = new int[ link->EffectInstSubsetsCount + 1 ];
                 for( uint h = 0; h < link->EffectInstSubsetsCount; h++ )
                 {
@@ -1940,7 +1940,7 @@ bool Animation3dEntity::Load( const char* name )
                 else
                     continue;
 
-                LPD3DXEFFECTDEFAULT tmp = cur_effect->pDefaults;
+                EffectDefaultsType tmp = cur_effect->pDefaults;
                 cur_effect->pDefaults = new D3DXEFFECTDEFAULT[ cur_effect->NumDefaults + 1 ];
                 for( uint h = 0; h < cur_effect->NumDefaults; h++ )
                     cur_effect->pDefaults[ h ] = tmp[ h ];
@@ -2462,10 +2462,10 @@ bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, FrameEx* frame, F
 
                 // Allocate space for blend matrices
                 SAFEDELA( BoneMatrices );
-                BoneMatrices = new (nothrow) D3DXMATRIX[ MaxBones ];
+                BoneMatrices = new (nothrow) MatrixType[ MaxBones ];
                 if( !BoneMatrices )
                     return false;
-                ZeroMemory( BoneMatrices, sizeof( D3DXMATRIX ) * MaxBones );
+                memzero( BoneMatrices, sizeof( MatrixType ) * MaxBones );
             }
         }
 
@@ -2581,7 +2581,7 @@ TextureEx* Animation3dXFile::GetTexture( const char* tex_name )
     return texture;
 }
 
-EffectEx* Animation3dXFile::GetEffect( D3DXEFFECTINSTANCE* effect_inst )
+EffectEx* Animation3dXFile::GetEffect( EffectInstanceType* effect_inst )
 {
     EffectEx* effect = Loader3d::LoadEffect( D3DDevice, effect_inst, fileName.c_str() );
     if( !effect )

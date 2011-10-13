@@ -2,6 +2,7 @@
 #define __SPRITE_MANAGER__
 
 #include "Common.h"
+#include "Sprites.h"
 #include "FileManager.h"
 #include "Text.h"
 #include "3dAnimation.h"
@@ -109,11 +110,11 @@
 
 struct Surface
 {
-    int               Type;
-    LPDIRECT3DTEXTURE Texture;
-    uint              Width, Height; // Texture size
-    uint              BusyH;         // Height point position
-    uint              FreeX, FreeY;  // Busy positions on current surface
+    int                Type;
+    LPDIRECT3DTEXTURE9 Texture;
+    uint               Width, Height; // Texture size
+    uint               BusyH;         // Height point position
+    uint               FreeX, FreeY;  // Busy positions on current surface
 
     Surface(): Type( 0 ), Texture( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
     ~Surface() { SAFEREL( Texture ); }
@@ -156,82 +157,12 @@ typedef vector< SpriteInfo* > SprInfoVec;
 
 struct DipData
 {
-    LPDIRECT3DTEXTURE Texture;
-    EffectEx*         Effect;
-    uint              SprCount;
-    DipData( LPDIRECT3DTEXTURE tex, EffectEx* effect ): Texture( tex ), Effect( effect ), SprCount( 1 ) {};
+    LPDIRECT3DTEXTURE9 Texture;
+    EffectEx*          Effect;
+    uint               SprCount;
+    DipData( LPDIRECT3DTEXTURE9 tex, EffectEx* effect ): Texture( tex ), Effect( effect ), SprCount( 1 ) {};
 };
 typedef vector< DipData > DipDataVec;
-
-class Sprite
-{
-public:
-    int     DrawOrderType;
-    uint    DrawOrderPos;
-    uint    TreeIndex;
-    uint    SprId;
-    uint*   PSprId;
-    int     HexX, HexY;
-    int     ScrX, ScrY;
-    short*  OffsX, * OffsY;
-    int     CutType;
-    Sprite* Parent, * Child;
-    float   CutX, CutW, CutTexL, CutTexR;
-    uchar*  Alpha;
-    uchar*  Light;
-    int     EggType;
-    int     ContourType;
-    uint    ContourColor;
-    uint    Color;
-    uint    FlashMask;
-    bool*   ValidCallback;
-    bool    Valid;
-
-    #ifdef FONLINE_MAPPER
-    int CutOyL, CutOyR;
-    #endif
-
-    Sprite() { ZeroMemory( this, sizeof( Sprite ) ); }
-    void    Unvalidate();
-    Sprite* GetIntersected( int ox, int oy );
-
-    void SetEgg( int egg );
-    void SetContour( int contour );
-    void SetContour( int contour, uint color );
-    void SetColor( uint color );
-    void SetAlpha( uchar* alpha );
-    void SetFlash( uint mask );
-    void SetLight( uchar* light, int maxhx, int maxhy );
-};
-typedef vector< Sprite* > SpriteVec;
-
-class Sprites
-{
-private:
-    // Pool
-    static SpriteVec spritesPool;
-    static void GrowPool( uint size );
-    static void ClearPool();
-
-    // Data
-    SpriteVec spritesTree;
-    uint      spritesTreeSize;
-    Sprite&   PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
-
-public:
-    Sprites(): spritesTreeSize( 0 ) {}
-    ~Sprites() { Resize( 0 ); }
-    auto Begin()->SpriteVec::iterator { return spritesTree.begin(); }
-    auto End()->SpriteVec::iterator { return spritesTree.begin() + spritesTreeSize; }
-    uint    Size() { return spritesTreeSize; }
-    Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
-    Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
-    void    Resize( uint size );
-    void    Clear() { Resize( 0 ); }
-    void    Unvalidate();
-    void    SortBySurfaces();
-    void    SortByMapPos();
-};
 
 struct AnyFrames
 {
@@ -288,8 +219,8 @@ private:
     bool                  isInit;
     SpriteMngrParams      mngrParams;
     HWND                  hWnd;
-    LPDIRECT3D            direct3D;
-    LPDIRECT3DDEVICE      d3dDevice;
+    LPDIRECT3D9           direct3D;
+    LPDIRECT3DDEVICE9     d3dDevice;
     // D3DDISPLAYMODE displayMode;
     D3DPRESENT_PARAMETERS presentParams;
     D3DCAPS9              deviceCaps;
@@ -300,21 +231,21 @@ public:
     static AnyFrames* DummyAnimation;
 
     SpriteManager();
-    bool             Init( SpriteMngrParams& params );
-    bool             InitBuffers();
-    bool             InitRenderStates();
-    bool             IsInit() { return isInit; }
-    void             Finish();
-    LPDIRECT3DDEVICE GetDevice()           { return d3dDevice; }
-    bool             IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
-    bool             BeginScene( uint clear_color );
-    void             EndScene();
-    bool             Restore();
+    bool              Init( SpriteMngrParams& params );
+    bool              InitBuffers();
+    bool              InitRenderStates();
+    bool              IsInit() { return isInit; }
+    void              Finish();
+    LPDIRECT3DDEVICE9 GetDevice()           { return d3dDevice; }
+    bool              IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
+    bool              BeginScene( uint clear_color );
+    void              EndScene();
+    bool              Restore();
+    bool              CreateRenderTarget( LPDIRECT3DSURFACE9& surf, int w, int h );
+    bool              ClearRenderTarget( LPDIRECT3DSURFACE9& surf, uint color );
+    bool              ClearCurRenderTarget( uint color );
     void ( * PreRestore )();
     void ( * PostRestore )();
-    bool CreateRenderTarget( LPDIRECT3DSURFACE& surf, int w, int h );
-    bool ClearRenderTarget( LPDIRECT3DSURFACE& surf, uint color );
-    bool ClearCurRenderTarget( uint color );
 
     // Surfaces
 public:
@@ -339,9 +270,9 @@ public:
     void         FreePure3dAnimation( Animation3d* anim3d );
 
 private:
-    SprInfoVec        sprData;
-    LPDIRECT3DSURFACE spr3dRT, spr3dRTEx, spr3dDS, spr3dRTData;
-    int               spr3dSurfWidth, spr3dSurfHeight;
+    SprInfoVec         sprData;
+    LPDIRECT3DSURFACE9 spr3dRT, spr3dRTEx, spr3dDS, spr3dRTData;
+    int                spr3dSurfWidth, spr3dSurfHeight;
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
     AnyFrames* LoadAnimationFrm( const char* fname, int path_type, int dir, bool anim_pix );
@@ -359,27 +290,26 @@ private:
 
     // Draw
 public:
-    static uint            GetColor( int r, int g, int b );
-    void                   SetSpritesColor( uint c ) { baseColor = c; }
-    uint                   GetSpritesColor()         { return baseColor; }
-    SpriteInfo*            GetSpriteInfo( uint id )  { return sprData[ id ]; }
-    LPDIRECT3DVERTEXBUFFER GetVB()                   { return pVB; }
-    LPDIRECT3DINDEXBUFFER  GetIB()                   { return pIB; }
-    void                   GetDrawCntrRect( Sprite* prep, INTRECT* prect );
-    uint                   GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
-    bool                   IsPixNoTransp( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
-    bool                   IsEggTransp( int pix_x, int pix_y );
+    static uint GetColor( int r, int g, int b );
+    void        SetSpritesColor( uint c ) { baseColor = c; }
+    uint        GetSpritesColor()         { return baseColor; }
+    SprInfoVec& GetSpritesInfo()          { return sprData; }
+    SpriteInfo* GetSpriteInfo( uint id )  { return sprData[ id ]; }
+    void        GetDrawCntrRect( Sprite* prep, INTRECT* prect );
+    uint        GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
+    bool        IsPixNoTransp( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
+    bool        IsEggTransp( int pix_x, int pix_y );
 
     void PrepareSquare( PointVec& points, FLTRECT& r, uint color );
     void PrepareSquare( PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, uint color );
-    bool PrepareBuffer( Sprites& dtree, LPDIRECT3DSURFACE surf, int ox, int oy, uchar alpha );
+    bool PrepareBuffer( Sprites& dtree, LPDIRECT3DSURFACE9 surf, int ox, int oy, uchar alpha );
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
     bool DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
-    bool DrawPrepared( LPDIRECT3DSURFACE& surf, int ox, int oy );
-    bool DrawSurface( LPDIRECT3DSURFACE& surf, RECT& dst );
+    bool DrawPrepared( LPDIRECT3DSURFACE9& surf, int ox, int oy );
+    bool DrawSurface( LPDIRECT3DSURFACE9& surf, RECT& dst );
     bool DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* zoom = NULL, FLTRECT* stencil = NULL, FLTPOINT* offset = NULL );
     bool Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color );
     bool Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
@@ -399,17 +329,17 @@ public:
     void SetCurEffect2D( uint index )                       { curDefaultEffect = sprDefaultEffect[ index ]; }
 
 private:
-    LPDIRECT3DVERTEXBUFFER pVB;
-    LPDIRECT3DINDEXBUFFER  pIB;
-    MYVERTEX*              waitBuf;
-    DipDataVec             dipQueue;
-    uint                   baseColor;
-    int                    flushSprCnt; // Max sprites to flush
-    int                    curSprCnt;   // Current sprites to flush
-    LPDIRECT3DVERTEXBUFFER vbPoints;
-    int                    vbPointsSize;
-    EffectEx*              sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
-    EffectEx*              curDefaultEffect;
+    LPDIRECT3DVERTEXBUFFER9 pVB;
+    LPDIRECT3DINDEXBUFFER9  pIB;
+    MYVERTEX*               waitBuf;
+    DipDataVec              dipQueue;
+    uint                    baseColor;
+    int                     flushSprCnt; // Max sprites to flush
+    int                     curSprCnt;   // Current sprites to flush
+    LPDIRECT3DVERTEXBUFFER9 vbPoints;
+    int                     vbPointsSize;
+    EffectEx*               sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
+    EffectEx*               curDefaultEffect;
 
     void FlushDIP();
 
@@ -419,14 +349,14 @@ public:
     void ClearSpriteContours() { createdSpriteContours.clear(); }
 
 private:
-    LPDIRECT3DTEXTURE      contoursTexture;
-    LPDIRECT3DSURFACE      contoursTextureSurf;
-    LPDIRECT3DTEXTURE      contoursMidTexture;
-    LPDIRECT3DSURFACE      contoursMidTextureSurf;
-    LPDIRECT3DSURFACE      contours3dRT;
+    LPDIRECT3DTEXTURE9     contoursTexture;
+    LPDIRECT3DSURFACE9     contoursTextureSurf;
+    LPDIRECT3DTEXTURE9     contoursMidTexture;
+    LPDIRECT3DSURFACE9     contoursMidTextureSurf;
+    LPDIRECT3DSURFACE9     contours3dRT;
     IDirect3DPixelShader9* contoursPS;
     ID3DXConstantTable*    contoursCT;
-    D3DXHANDLE             contoursConstWidthStep, contoursConstHeightStep,
+    EffectValueType        contoursConstWidthStep, contoursConstHeightStep,
                            contoursConstSpriteBorders, contoursConstSpriteBordersHeight,
                            contoursConstContourColor, contoursConstContourColorOffs;
     bool    contoursAdded;

@@ -135,8 +135,8 @@ public:
     char&  GetHexTrack( ushort hx, ushort hy )  { return hexTrack[ hy * maxHexX + hx ]; }
     ushort GetMaxHexX()                         { return maxHexX; }
     ushort GetMaxHexY()                         { return maxHexY; }
-    void   ClearHexToDraw()                     { ZeroMemory( hexToDraw, maxHexX * maxHexY * sizeof( bool ) ); }
-    void   ClearHexTrack()                      { ZeroMemory( hexTrack, maxHexX * maxHexY * sizeof( char ) ); }
+    void   ClearHexToDraw()                     { memzero( hexToDraw, maxHexX * maxHexY * sizeof( bool ) ); }
+    void   ClearHexTrack()                      { memzero( hexTrack, maxHexX * maxHexY * sizeof( char ) ); }
     void   SwitchShowTrack();
     bool   IsShowTrack() { return isShowTrack; };
 
@@ -321,19 +321,19 @@ private:
     void CollectLightSources();
 
 public:
-    void            ClearHexLight()                     { ZeroMemory( hexLight, maxHexX * maxHexY * sizeof( uchar ) * 3 ); }
+    void            ClearHexLight()                     { memzero( hexLight, maxHexX * maxHexY * sizeof( uchar ) * 3 ); }
     uchar*          GetLightHex( ushort hx, ushort hy ) { return &hexLight[ hy * maxHexX * 3 + hx * 3 ]; }
     void            RebuildLight()                      { requestRebuildLight = true; }
     LightSourceVec& GetLights()                         { return lightSources; }
 
     // Tiles, roof
 private:
-    bool              reprepareTiles;
-    Sprites           tilesTree;
-    LPDIRECT3DSURFACE tileSurf;
-    int               tileSurfWidth, tileSurfHeight;
-    int               roofSkip;
-    Sprites           roofTree;
+    bool               reprepareTiles;
+    Sprites            tilesTree;
+    LPDIRECT3DSURFACE9 tileSurf;
+    int                tileSurfWidth, tileSurfHeight;
+    int                roofSkip;
+    Sprites            roofTree;
 
     bool CheckTilesBorder( Field::Tile& tile, bool is_roof );
 

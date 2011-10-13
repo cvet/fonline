@@ -175,9 +175,9 @@ FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool 
     return frame_root;
 }
 
-D3DXMATRIX ConvertMatrix( const aiMatrix4x4& mat )
+MatrixType ConvertMatrix( const aiMatrix4x4& mat )
 {
-    D3DXMATRIX m;
+    MatrixType m;
     m._11 = mat.a1;
     m._21 = mat.a2;
     m._31 = mat.a3;
@@ -240,7 +240,7 @@ FrameEx* Loader3d::FillNode( IDirect3DDevice9* device, const aiNode* node, const
 
             // Material
             D3DXMATERIAL material;
-            ZeroMemory( &material, sizeof( material ) );
+            memzero( &material, sizeof( material ) );
             aiMaterial*  mtrl = scene->mMaterials[ mesh->mMaterialIndex ];
 
             aiString     path;
@@ -315,7 +315,7 @@ FrameEx* Loader3d::FillNode( IDirect3DDevice9* device, const aiNode* node, const
             {
                 Vertex& v = *vb;
                 vb = (Vertex*) ( ( (char*) vb ) + vsize );
-                ZeroMemory( &v, vsize );
+                memzero( &v, vsize );
 
                 // Vertices data
                 v.x = mesh->mVertices[ i ].x;
@@ -558,7 +558,7 @@ TextureEx* Loader3d::LoadTexture( IDirect3DDevice9* device, const char* texture_
     }
 
     // Create texture
-    IDirect3DTexture9* texture = NULL;
+    TextureType texture = NULL;
     if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &texture ) ) )
         return NULL;
 
@@ -631,13 +631,13 @@ IncludeParser includeParser;
 
 EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, const char* effect_name )
 {
-    D3DXEFFECTINSTANCE effect_inst;
-    ZeroMemory( &effect_inst, sizeof( effect_inst ) );
+    EffectInstanceType effect_inst;
+    memzero( &effect_inst, sizeof( effect_inst ) );
     effect_inst.pEffectFilename = (char*) effect_name;
     return LoadEffect( device, &effect_inst, NULL );
 }
 
-EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, D3DXEFFECTINSTANCE* effect_inst, const char* model_path )
+EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, EffectInstanceType* effect_inst, const char* model_path )
 {
     if( !effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[ 0 ] )
         return NULL;
@@ -724,7 +724,7 @@ EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, D3DXEFFECTINSTANCE* ef
     }
 
     // Create effect
-    ID3DXEffect* effect = NULL;
+    EffectType   effect = NULL;
     LPD3DXBUFFER errors = NULL;
     if( FAILED( D3DXCreateEffect( device, fm_cache.GetBuf(), fm_cache.GetFsize(), NULL, NULL, /*D3DXSHADER_SKIPVALIDATION|*/ D3DXFX_NOT_CLONEABLE, NULL, &effect, &errors ) ) )
     {
@@ -818,7 +818,7 @@ EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, D3DXEFFECTINSTANCE* ef
         for( uint d = 0; d < effect_inst->NumDefaults; d++ )
         {
             D3DXEFFECTDEFAULT& def = effect_inst->pDefaults[ d ];
-            D3DXHANDLE         param = effect->GetParameterByName( NULL, def.pParamName );
+            EffectValueType    param = effect->GetParameterByName( NULL, def.pParamName );
             if( !param )
                 continue;
             switch( def.Type )

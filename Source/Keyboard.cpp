@@ -135,7 +135,7 @@ void Keyb::Lost()
     CtrlDwn = false;
     AltDwn = false;
     ShiftDwn = false;
-    ZeroMemory( KeyPressed, sizeof( KeyPressed ) );
+    memzero( KeyPressed, sizeof( KeyPressed ) );
 }
 
 void Keyb::GetChar( uchar dik, string& str, int* position, int max, int flags )

@@ -62,7 +62,7 @@ uint UIDDUMMY10 = -1;
 
 #define GET_UID0( result )                                                   \
     SYSTEM_INFO d_sysinfo;                                                   \
-    ZeroMemory( &d_sysinfo, sizeof( d_sysinfo ) );                           \
+    memzero( &d_sysinfo, sizeof( d_sysinfo ) );                              \
     UID_DUMMY_CALCS0;                                                        \
     GetSystemInfo( &d_sysinfo );                                             \
     result = new uint();                                                     \

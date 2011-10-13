@@ -500,6 +500,9 @@
     <ClInclude Include="..\Source\FileSystem.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\Sprites.h">
+      <Filter>Client</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -779,6 +782,12 @@
       <Filter>SHA2</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Sprites.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\SpriteManagerFont.cpp">
       <Filter>Client</Filter>
     </ClCompile>
   </ItemGroup>

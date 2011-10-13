@@ -365,6 +365,9 @@
     <ClInclude Include="..\Source\FileSystem.h">
       <Filter>Mapper</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\Sprites.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\3dAnimation.cpp">
@@ -635,6 +638,12 @@
       <Filter>AngelScript\Preprocessor</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp">
+      <Filter>Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\SpriteManagerFont.cpp">
+      <Filter>Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Sprites.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
   </ItemGroup>

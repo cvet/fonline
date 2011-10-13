@@ -422,6 +422,7 @@
     <ClInclude Include="..\Source\ScriptBind.h" />
     <ClInclude Include="..\Source\ScriptPragmas.h" />
     <ClInclude Include="..\Source\SpriteManager.h" />
+    <ClInclude Include="..\Source\Sprites.h" />
     <ClInclude Include="..\Source\StdAfx.h" />
     <ClInclude Include="..\Source\Text.h" />
     <ClInclude Include="..\Source\Timer.h" />
@@ -532,6 +533,8 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\SpriteManager.cpp" />
+    <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
+    <ClCompile Include="..\Source\Sprites.cpp" />
     <ClCompile Include="..\Source\StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

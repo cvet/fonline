@@ -4653,7 +4653,7 @@ void FOClient::Net_SendPlayersBarter( uchar barter, uint param, uint param_ext )
 void FOClient::Net_SendScreenAnswer( uint answer_i, const char* answer_s )
 {
     char answer_s_buf[ MAX_SAY_NPC_TEXT + 1 ];
-    ZeroMemory( answer_s_buf, sizeof( answer_s_buf ) );
+    memzero( answer_s_buf, sizeof( answer_s_buf ) );
     Str::Copy( answer_s_buf, MAX_SAY_NPC_TEXT + 1, answer_s );
 
     Bout << NETMSG_SEND_SCREEN_ANSWER;
@@ -4815,7 +4815,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
     // Parameters
     int    params[ MAX_PARAMS ];
-    ZeroMemory( params, sizeof( params ) );
+    memzero( params, sizeof( params ) );
     ushort count, index;
     Bin >> count;
     for( int i = 0, j = min( count, MAX_PARAMS ); i < j; i++ )
@@ -5599,7 +5599,7 @@ void FOClient::Net_OnCritterItemData()
     uint           crid;
     uchar          slot;
     Item::ItemData data;
-    ZeroMemory( &data, sizeof( data ) );
+    memzero( &data, sizeof( data ) );
     Bin >> crid;
     Bin >> slot;
     Bin.Pop( (char*) &data, sizeof( data ) );
@@ -7016,7 +7016,7 @@ void FOClient::Net_OnGlobalEntrances()
     uint  loc_id;
     uchar count;
     bool  entrances[ 0x100 ];
-    ZeroMemory( entrances, sizeof( entrances ) );
+    memzero( entrances, sizeof( entrances ) );
     Bin >> msg_len;
     Bin >> loc_id;
     Bin >> count;
@@ -7076,7 +7076,7 @@ void FOClient::Net_OnContainerInfo()
         if( item_id && proto_item )
         {
             Item item;
-            ZeroMemory( &item, sizeof( item ) );
+            memzero( &item, sizeof( item ) );
             item.Init( proto_item );
             item.Id = item_id;
             item.Data = data;
@@ -7430,7 +7430,7 @@ void FOClient::Net_OnPlayersBarterSetHide()
     if( !citem )
     {
         Item item;
-        ZeroMemory( &item, sizeof( item ) );
+        memzero( &item, sizeof( item ) );
         item.Init( proto_item );
         item.Id = id;
         item.Count_Set( count );
@@ -7869,7 +7869,7 @@ void FOClient::Net_OnHoloInfo()
     Bin >> count;
 
     if( clear )
-        ZeroMemory( HoloInfo, sizeof( HoloInfo ) );
+        memzero( HoloInfo, sizeof( HoloInfo ) );
     if( count )
         Bin.Pop( (char*) &HoloInfo[ offset ], count * sizeof( uint ) );
 }
@@ -9890,7 +9890,7 @@ bool FOClient::SaveScreenshot()
     if( !SprMngr.IsInit() )
         return false;
 
-    LPDIRECT3DSURFACE surf = NULL;
+    LPDIRECT3DSURFACE9 surf = NULL;
     if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
         return false;
 
@@ -12332,7 +12332,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
             float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
             float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
 
-            ZeroMemory( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
+            memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
             for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
                 DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 

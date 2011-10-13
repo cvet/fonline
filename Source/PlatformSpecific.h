@@ -15,10 +15,6 @@
 // FO_GCC
 // FO_MSVC
 //
-// Render
-// FO_D3D - later fully replace on ogl render
-// FO_OGL
-//
 
 //
 // GCC options
@@ -74,10 +70,8 @@
 // Detect operating system
 #if defined ( _WIN32 ) || defined ( _WIN64 )
 # define FO_WINDOWS
-# define FO_D3D
 #elif defined ( __linux__ )
 # define FO_LINUX
-# define FO_OGL
 #else
 # error "Unknown operating system."
 #endif
@@ -132,5 +126,9 @@
 // Linux don't want call write timeouts, need to know why and fix
 # define LIBEVENT_TIMEOUTS_WORKAROUND
 #endif
+
+// OGL / D3D render WIP
+// Need replace all d3d stuff on ogl
+#define FO_D3D
 
 #endif // ___PLATFORM_SPECIFIC___

@@ -481,7 +481,7 @@ int FOClient::InitIface()
     IfaceLoadRect( ChaBSwitchScrUp, "ChaSwitchScrUp" );
     IfaceLoadRect( ChaBSwitchScrDn, "ChaSwitchScrDn" );
     ChaCurSwitch = CHA_SWITCH_PERKS;
-    ZeroMemory( ChaSwitchScroll, sizeof( ChaSwitchScroll ) );
+    memzero( ChaSwitchScroll, sizeof( ChaSwitchScroll ) );
     // Special
     IfaceLoadRect( ChaWSpecialText, "ChaSpecialText" );
     IfaceLoadRect( ChaWSpecialValue, "ChaSpecialValue" );
@@ -497,7 +497,7 @@ int FOClient::InitIface()
     IfaceLoadRect( ChaWUnspentSPText, "ChaUnspentSPText" );
     ChaWSkillNextX = IfaceIni.GetInt( "ChaSkillNextX", 1 );
     ChaWSkillNextY = IfaceIni.GetInt( "ChaSkillNextY", 1 );
-    ZeroMemory( ChaSkillUp, sizeof( ChaSkillUp ) );
+    memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
     ChaUnspentSkillPoints = 0;
     // Slider
     IfaceLoadRect( ChaBSliderMinus, "ChaSliderMinus" );
@@ -523,8 +523,8 @@ int FOClient::InitIface()
     IfaceLoadRect( ChaWName, "ChaParamName" );
     IfaceLoadRect( ChaWDesc, "ChaParamDesc" );
     IfaceLoadRect( ChaWPic, "ChaParamPic" );
-    ZeroMemory( ChaName, sizeof( ChaName ) );
-    ZeroMemory( ChaDesc, sizeof( ChaDesc ) );
+    memzero( ChaName, sizeof( ChaName ) );
+    memzero( ChaDesc, sizeof( ChaDesc ) );
     ChaSkilldexPic = -1;
     // Buttons
     IfaceLoadRect( ChaBName, "ChaName" );
@@ -662,7 +662,7 @@ int FOClient::InitIface()
     SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.B, (float) MODE_WIDTH, (float) MODE_HEIGHT ), D3DCOLOR_XRGB( 0, 0, 0 ) );
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
-    ZeroMemory( GmapShowEntrances, sizeof( GmapShowEntrances ) );
+    memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
     GmapPTownInOffsX = IfaceIni.GetInt( "GmapTownInOffsX", 0 );
     GmapPTownInOffsY = IfaceIni.GetInt( "GmapTownInOffsY", 0 );
     GmapPTownViewOffsX = IfaceIni.GetInt( "GmapTownViewOffsX", 0 );
@@ -713,11 +713,11 @@ int FOClient::InitIface()
     PipVectX = 0;
     PipVectY = 0;
     PipMode = PIP__NONE;
-    ZeroMemory( PipScroll, sizeof( PipScroll ) );
+    memzero( PipScroll, sizeof( PipScroll ) );
     PipInfoNum = 0;
-    ZeroMemory( HoloInfo, sizeof( HoloInfo ) );
+    memzero( HoloInfo, sizeof( HoloInfo ) );
     ScoresNextUploadTick = 0;
-    ZeroMemory( BestScores, sizeof( BestScores ) );
+    memzero( BestScores, sizeof( BestScores ) );
     Automaps.clear();
     AutomapWaitPids.clear();
     AutomapReceivedPids.clear();
@@ -770,7 +770,7 @@ int FOClient::InitIface()
     DlgboxType = DIALOGBOX_NONE;
     FollowMap = 0;
     DlgboxWait = 0;
-    ZeroMemory( DlgboxText, sizeof( DlgboxText ) );
+    memzero( DlgboxText, sizeof( DlgboxText ) );
     FollowType = 0;
     DlgboxButtonsCount = 0;
     DlgboxSelectedButton = 0;
@@ -811,7 +811,7 @@ int FOClient::InitIface()
     SayVectX = 0;
     SayVectY = 0;
     SayType = DIALOGSAY_NONE;
-    ZeroMemory( SayText, sizeof( SayText ) );
+    memzero( SayText, sizeof( SayText ) );
 
     // Split
     IfaceLoadRect( SplitWMain, "SplitMain" );
@@ -5274,7 +5274,7 @@ void FOClient::ShowMainScreen( int new_screen )
             RegNewCr = new CritterCl();
             RegNewCr->InitForRegistration();
         }
-        ZeroMemory( ChaSkillUp, sizeof( ChaSkillUp ) );
+        memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
         ChaUnspentSkillPoints = RegNewCr->Params[ ST_UNSPENT_SKILL_POINTS ];
         ChaX = ( MODE_WIDTH - RegWMain.W() ) / 2;
         ChaY = ( MODE_HEIGHT - RegWMain.H() ) / 2;
@@ -5407,10 +5407,10 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         break;
     case SCREEN__CHARACTER:
         SetCurMode( CUR_DEFAULT );
-        ZeroMemory( ChaSkillUp, sizeof( ChaSkillUp ) );
+        memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
         if( Chosen )
             ChaUnspentSkillPoints = Chosen->Params[ ST_UNSPENT_SKILL_POINTS ];
-        ZeroMemory( ChaSwitchScroll, sizeof( ChaSwitchScroll ) );
+        memzero( ChaSwitchScroll, sizeof( ChaSwitchScroll ) );
         if( !Chosen || ( ChaSkilldexPic >= (int) SKILLDEX_PARAM( PERK_BEGIN ) && ChaSkilldexPic <= (int) SKILLDEX_PARAM( PERK_END ) && !Chosen->IsRawParam( ChaSkilldexPic ) ) )
         {
             ChaSkilldexPic = -1;
@@ -11497,8 +11497,8 @@ void FOClient::SaveLoadSaveGame( const char* name )
 void FOClient::SaveLoadFillDraft()
 {
     // Fill game preview draft
-    LPDIRECT3DDEVICE device = SprMngr.GetDevice();
-    LPDIRECT3DSURFACE rt = NULL;
+    LPDIRECT3DDEVICE9 device = SprMngr.GetDevice();
+    LPDIRECT3DSURFACE9 rt = NULL;
     SaveLoadDraftValid = ( SUCCEEDED( device->GetRenderTarget( 0, &rt ) ) &&
                            SUCCEEDED( device->StretchRect( rt, NULL, SaveLoadDraft, NULL, D3DTEXF_LINEAR ) ) );
     SAFEREL( rt );

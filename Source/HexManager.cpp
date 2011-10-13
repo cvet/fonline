@@ -145,7 +145,7 @@ HexManager::HexManager()
     cursorXPic = NULL;
     cursorX = 0;
     cursorY = 0;
-    ZeroMemory( (void*) &AutoScroll, sizeof( AutoScroll ) );
+    memzero( (void*) &AutoScroll, sizeof( AutoScroll ) );
     requestRebuildLight = false;
     lightPointsCount = 0;
     SpritesCanDrawMap = false;
@@ -166,7 +166,7 @@ HexManager::HexManager()
     dayColor[ 10 ] = 86;
     dayColor[ 11 ] = 29;
     picRainDrop = NULL;
-    ZeroMemory( picRainDropA, sizeof( picRainDropA ) );
+    memzero( picRainDropA, sizeof( picRainDropA ) );
     picTrack1 = picTrack2 = picHexMask = NULL;
 }
 
@@ -190,7 +190,7 @@ bool HexManager::Init()
     cursorX = 0;
     cursorY = 0;
     chosenId = 0;
-    ZeroMemory( (void*) &AutoScroll, sizeof( AutoScroll ) );
+    memzero( (void*) &AutoScroll, sizeof( AutoScroll ) );
     maxHexX = 0;
     maxHexY = 0;
 
@@ -1711,15 +1711,15 @@ bool HexManager::ResizeField( ushort w, ushort h )
     hexToDraw = new bool[ w * h ];
     if( !hexToDraw )
         return false;
-    ZeroMemory( hexToDraw, w * h * sizeof( bool ) );
+    memzero( hexToDraw, w * h * sizeof( bool ) );
     hexTrack = new char[ w * h ];
     if( !hexTrack )
         return false;
-    ZeroMemory( hexTrack, w * h * sizeof( char ) );
+    memzero( hexTrack, w * h * sizeof( char ) );
     hexLight = new uchar[ w * h * 3 ];
     if( !hexLight )
         return false;
-    ZeroMemory( hexLight, w * h * 3 * sizeof( uchar ) );
+    memzero( hexLight, w * h * 3 * sizeof( uchar ) );
 
     GameOpt.ClientMap = hexField;
     GameOpt.ClientMapWidth = w;
@@ -1955,7 +1955,7 @@ void HexManager::DrawMap()
     // Roof
     if( GameOpt.ShowRoof )
     {
-        LPDIRECT3DDEVICE device = SprMngr.GetDevice();
+        LPDIRECT3DDEVICE9 device = SprMngr.GetDevice();
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
         SprMngr.SetCurEffect2D( DEFAULT_EFFECT_ROOF );
@@ -2783,7 +2783,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
         return true;
 
     short numindex = 1;
-    ZeroMemory( grid, ( MAX_FIND_PATH * 2 + 2 ) * ( MAX_FIND_PATH * 2 + 2 ) * sizeof( short ) );
+    memzero( grid, ( MAX_FIND_PATH * 2 + 2 ) * ( MAX_FIND_PATH * 2 + 2 ) * sizeof( short ) );
     grid_ox = start_x;
     grid_oy = start_y;
     GRID( start_x, start_y ) = numindex;
@@ -3588,7 +3588,7 @@ bool HexManager::LoadMap( ushort map_pid )
     for( uint i = 0; i < walls_count; i++ )
     {
         SceneryCl cur_wall;
-        ZeroMemory( &cur_wall, sizeof( cur_wall ) );
+        memzero( &cur_wall, sizeof( cur_wall ) );
 
         if( !fm.CopyMem( &cur_wall, sizeof( cur_wall ) ) )
         {
@@ -3611,7 +3611,7 @@ bool HexManager::LoadMap( ushort map_pid )
     for( uint i = 0; i < scen_count; i++ )
     {
         SceneryCl cur_scen;
-        ZeroMemory( &cur_scen, sizeof( cur_scen ) );
+        memzero( &cur_scen, sizeof( cur_scen ) );
 
         if( !fm.CopyMem( &cur_scen, sizeof( cur_scen ) ) )
         {
@@ -4052,7 +4052,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
             SceneryCl s;
-            ZeroMemory( &s, sizeof( s ) );
+            memzero( &s, sizeof( s ) );
             s.ProtoId = o->ProtoId;
             s.MapX = o->MapX;
             s.MapY = o->MapY;

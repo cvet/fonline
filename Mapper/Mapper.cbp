@@ -24,8 +24,6 @@
 					<Add directory="../Source/StlPort" />
 					<Add directory="../Source" />
 				</Compiler>
-				<ResourceCompiler>
-				</ResourceCompiler>
 				<Linker>
 					<Add directory="../Lib" />
 				</Linker>
@@ -52,8 +50,6 @@
 					<Add directory="../Source" />
 					<Add directory="../Source/Dx9" />
 				</Compiler>
-				<ResourceCompiler>
-				</ResourceCompiler>
 				<Linker>
 					<Add directory="../Lib" />
 					<Add directory="../Lib/Dx9/x86" />
@@ -230,6 +226,9 @@
 		<Unit filename="../Source/ScriptPragmas.h" />
 		<Unit filename="../Source/SpriteManager.cpp" />
 		<Unit filename="../Source/SpriteManager.h" />
+		<Unit filename="../Source/SpriteManagerFont.cpp" />
+		<Unit filename="../Source/Sprites.cpp" />
+		<Unit filename="../Source/Sprites.h" />
 		<Unit filename="../Source/StdAfx.cpp" />
 		<Unit filename="../Source/StdAfx.h" />
 		<Unit filename="../Source/Text.cpp" />
