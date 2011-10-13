@@ -11497,8 +11497,8 @@ void FOClient::SaveLoadSaveGame( const char* name )
 void FOClient::SaveLoadFillDraft()
 {
     // Fill game preview draft
-    LPDIRECT3DDEVICE9 device = SprMngr.GetDevice();
-    LPDIRECT3DSURFACE9 rt = NULL;
+    Device_ device = SprMngr.GetDevice();
+    Surface_ rt = NULL;
     SaveLoadDraftValid = ( SUCCEEDED( device->GetRenderTarget( 0, &rt ) ) &&
                            SUCCEEDED( device->StretchRect( rt, NULL, SaveLoadDraft, NULL, D3DTEXF_LINEAR ) ) );
     SAFEREL( rt );

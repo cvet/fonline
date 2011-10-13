@@ -3,25 +3,26 @@
 #include "3dLoader.h"
 #include "FileManager.h"
 
+#ifdef FO_D3D
 HRESULT MeshHierarchy::CreateFrame( LPCSTR Name, LPD3DXFRAME* retNewFrame )
 {
     // Always a good idea to initialise a return pointer before proceeding
     *retNewFrame = 0;
 
     // Create a new frame using the derived version of the structure
-    FrameEx* newFrame = new FrameEx;
-    memzero( newFrame, sizeof( FrameEx ) );
+    Frame* newFrame = new Frame;
+    memzero( newFrame, sizeof( Frame ) );
 
     // Now initialize other data members of the frame to defaults
     D3DXMatrixIdentity( &newFrame->TransformationMatrix );
-    D3DXMatrixIdentity( &newFrame->exCombinedTransformationMatrix );
+    D3DXMatrixIdentity( &newFrame->CombinedTransformationMatrix );
 
-    newFrame->pMeshContainer = 0;
-    newFrame->pFrameSibling = 0;
-    newFrame->pFrameFirstChild = 0;
+    newFrame->Meshes = 0;
+    newFrame->Sibling = 0;
+    newFrame->FirstChild = 0;
 
     // Assign the return pointer to our newly created frame
-    *retNewFrame = newFrame;
+    *retNewFrame = (LPD3DXFRAME) newFrame;
 
     // The frame name (note: may be 0 or zero length)
     if( Name && Str::Length( Name ) )
@@ -34,16 +35,16 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     LPCSTR Name,
     CONST D3DXMESHDATA* meshData,
     CONST D3DXMATERIAL* materials,
-    CONST EffectInstanceType* effectInstances,
+    CONST EffectInstance_* effectInstances,
     DWORD numMaterials,
     CONST DWORD* adjacency,
-    LPD3DXSKININFO pSkinInfo,
+    SkinInfo_ SkinInfo,
     LPD3DXMESHCONTAINER* retNewMeshContainer )
 {
     // Create a mesh container structure to fill and initilaise to zero values
-    // Note: I use my extended version of the structure (D3DXMESHCONTAINER_EXTENDED) defined in MeshStructures.h
-    D3DXMESHCONTAINER_EXTENDED* newMeshContainer = new D3DXMESHCONTAINER_EXTENDED;
-    memzero( newMeshContainer, sizeof( D3DXMESHCONTAINER_EXTENDED ) );
+    // Note: I use my extended version of the structure (MeshContainer) defined in MeshStructures.h
+    MeshContainer* newMeshContainer = new MeshContainer;
+    memzero( newMeshContainer, sizeof( MeshContainer ) );
 
     // Always a good idea to initialise return pointer before proceeding
     *retNewMeshContainer = 0;
@@ -57,7 +58,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     {
         // This demo does not handle mesh types other than the standard
         // Other types are D3DXMESHTYPE_PMESH (progressive mesh) and D3DXMESHTYPE_PATCHMESH (patch mesh)
-        DestroyMeshContainer( newMeshContainer );
+        DestroyMeshContainer( (LPD3DXMESHCONTAINER) newMeshContainer );
         return E_FAIL;
     }
 
@@ -65,25 +66,25 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 
     // Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
     uint dwFaces = meshData->pMesh->GetNumFaces();
-    newMeshContainer->pAdjacency = new DWORD[ dwFaces * 3 ];
+    newMeshContainer->Adjacency = new uint[ dwFaces * 3 ];
     if( adjacency )
-        memcpy( newMeshContainer->pAdjacency, adjacency, sizeof( uint ) * dwFaces * 3 );
+        memcpy( newMeshContainer->Adjacency, adjacency, sizeof( uint ) * dwFaces * 3 );
     else
-        meshData->pMesh->GenerateAdjacency( 0.0000125f, newMeshContainer->pAdjacency );
+        meshData->pMesh->GenerateAdjacency( 0.0000125f, (DWORD*) newMeshContainer->Adjacency );
 
     // Get the Direct3D device, luckily this is held in the mesh itself (Note: must release it when done with it)
-    LPDIRECT3DDEVICE9 pd3dDevice = NULL;
+    Device_ pd3dDevice = NULL;
     meshData->pMesh->GetDevice( &pd3dDevice );
 
     // Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
-    newMeshContainer->MeshData.pMesh = meshData->pMesh;
-    newMeshContainer->MeshData.pMesh->AddRef();
+    newMeshContainer->MeshData.Mesh = meshData->pMesh;
+    newMeshContainer->MeshData.Mesh->AddRef();
 
     // Create material and texture arrays. Note that I always want to have at least one
     newMeshContainer->NumMaterials = max( numMaterials, 1 );
-    newMeshContainer->exMaterials = new MaterialType[ newMeshContainer->NumMaterials ];
-    newMeshContainer->exTexturesNames = new char*[ newMeshContainer->NumMaterials ];
-    newMeshContainer->exEffects = new EffectInstanceType[ newMeshContainer->NumMaterials ];
+    newMeshContainer->Materials = new Material_[ newMeshContainer->NumMaterials ];
+    newMeshContainer->TextureNames = new char*[ newMeshContainer->NumMaterials ];
+    newMeshContainer->Effects = new EffectInstance_[ newMeshContainer->NumMaterials ];
 
     if( numMaterials > 0 )
     {
@@ -91,30 +92,30 @@ HRESULT MeshHierarchy::CreateMeshContainer(
         for( uint i = 0; i < numMaterials; i++ )
         {
             if( materials[ i ].pTextureFilename )
-                newMeshContainer->exTexturesNames[ i ] = Str::Duplicate( materials[ i ].pTextureFilename );
+                newMeshContainer->TextureNames[ i ] = Str::Duplicate( materials[ i ].pTextureFilename );
             else
-                newMeshContainer->exTexturesNames[ i ] = NULL;
-            newMeshContainer->exMaterials[ i ] = materials[ i ].MatD3D;
+                newMeshContainer->TextureNames[ i ] = NULL;
+            newMeshContainer->Materials[ i ] = materials[ i ].MatD3D;
 
             // The mesh may contain a reference to an effect file
-            memzero( &newMeshContainer->exEffects[ i ], sizeof( EffectInstanceType ) );
+            memzero( &newMeshContainer->Effects[ i ], sizeof( EffectInstance_ ) );
             if( effectInstances && effectInstances[ i ].pEffectFilename && effectInstances[ i ].pEffectFilename[ 0 ] )
             {
-                newMeshContainer->exEffects[ i ].pEffectFilename = Str::Duplicate( effectInstances[ i ].pEffectFilename );
-                newMeshContainer->exEffects[ i ].NumDefaults = effectInstances[ i ].NumDefaults;
-                newMeshContainer->exEffects[ i ].pDefaults = NULL;
+                newMeshContainer->Effects[ i ].pEffectFilename = Str::Duplicate( effectInstances[ i ].pEffectFilename );
+                newMeshContainer->Effects[ i ].NumDefaults = effectInstances[ i ].NumDefaults;
+                newMeshContainer->Effects[ i ].pDefaults = NULL;
 
-                uint defaults = newMeshContainer->exEffects[ i ].NumDefaults;
+                uint defaults = newMeshContainer->Effects[ i ].NumDefaults;
                 if( defaults )
                 {
-                    newMeshContainer->exEffects[ i ].pDefaults = new D3DXEFFECTDEFAULT[ defaults ];
+                    newMeshContainer->Effects[ i ].pDefaults = new D3DXEFFECTDEFAULT[ defaults ];
                     for( uint j = 0; j < defaults; j++ )
                     {
-                        newMeshContainer->exEffects[ i ].pDefaults[ j ].pParamName = Str::Duplicate( effectInstances[ i ].pDefaults[ j ].pParamName );
-                        newMeshContainer->exEffects[ i ].pDefaults[ j ].Type = effectInstances[ i ].pDefaults[ j ].Type;
-                        newMeshContainer->exEffects[ i ].pDefaults[ j ].NumBytes = effectInstances[ i ].pDefaults[ j ].NumBytes;
-                        newMeshContainer->exEffects[ i ].pDefaults[ j ].pValue = new char[ newMeshContainer->exEffects[ i ].pDefaults[ j ].NumBytes ];
-                        memcpy( newMeshContainer->exEffects[ i ].pDefaults[ j ].pValue, effectInstances[ i ].pDefaults[ j ].pValue, newMeshContainer->exEffects[ i ].pDefaults[ j ].NumBytes );
+                        newMeshContainer->Effects[ i ].pDefaults[ j ].pParamName = Str::Duplicate( effectInstances[ i ].pDefaults[ j ].pParamName );
+                        newMeshContainer->Effects[ i ].pDefaults[ j ].Type = effectInstances[ i ].pDefaults[ j ].Type;
+                        newMeshContainer->Effects[ i ].pDefaults[ j ].NumBytes = effectInstances[ i ].pDefaults[ j ].NumBytes;
+                        newMeshContainer->Effects[ i ].pDefaults[ j ].pValue = new char[ newMeshContainer->Effects[ i ].pDefaults[ j ].NumBytes ];
+                        memcpy( newMeshContainer->Effects[ i ].pDefaults[ j ].pValue, effectInstances[ i ].pDefaults[ j ].pValue, newMeshContainer->Effects[ i ].pDefaults[ j ].NumBytes );
                     }
                 }
             }
@@ -123,42 +124,42 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     else
     {
         // Make a default material in the case where the mesh did not provide one
-        memzero( &newMeshContainer->exMaterials[ 0 ], sizeof( MaterialType ) );
-        newMeshContainer->exMaterials[ 0 ].Diffuse.a = 1.0f;
-        newMeshContainer->exMaterials[ 0 ].Diffuse.r = 0.5f;
-        newMeshContainer->exMaterials[ 0 ].Diffuse.g = 0.5f;
-        newMeshContainer->exMaterials[ 0 ].Diffuse.b = 0.5f;
-        newMeshContainer->exMaterials[ 0 ].Specular = newMeshContainer->exMaterials[ 0 ].Diffuse;
-        newMeshContainer->exTexturesNames[ 0 ] = NULL;
-        memzero( &newMeshContainer->exEffects[ 0 ], sizeof( EffectInstanceType ) );
+        memzero( &newMeshContainer->Materials[ 0 ], sizeof( Material_ ) );
+        newMeshContainer->Materials[ 0 ].Diffuse.a = 1.0f;
+        newMeshContainer->Materials[ 0 ].Diffuse.r = 0.5f;
+        newMeshContainer->Materials[ 0 ].Diffuse.g = 0.5f;
+        newMeshContainer->Materials[ 0 ].Diffuse.b = 0.5f;
+        newMeshContainer->Materials[ 0 ].Specular = newMeshContainer->Materials[ 0 ].Diffuse;
+        newMeshContainer->TextureNames[ 0 ] = NULL;
+        memzero( &newMeshContainer->Effects[ 0 ], sizeof( EffectInstance_ ) );
     }
 
     // If there is skin data associated with the mesh copy it over
-    if( pSkinInfo )
+    if( SkinInfo )
     {
         // Save off the SkinInfo
-        newMeshContainer->pSkinInfo = pSkinInfo;
-        pSkinInfo->AddRef();
+        newMeshContainer->SkinInfo = SkinInfo;
+        SkinInfo->AddRef();
 
         // Need an array of offset matrices to move the vertices from the figure space to the bone's space
-        UINT numBones = pSkinInfo->GetNumBones();
-        newMeshContainer->exBoneOffsets = new MatrixType[ numBones ];
+        UINT numBones = SkinInfo->GetNumBones();
+        newMeshContainer->BoneOffsets = new Matrix_[ numBones ];
 
         // Create the arrays for the bones and the frame matrices
-        newMeshContainer->exFrameCombinedMatrixPointer = new MatrixType*[ numBones ];
-        memzero( newMeshContainer->exFrameCombinedMatrixPointer, sizeof( MatrixType* ) * numBones );
+        newMeshContainer->FrameCombinedMatrixPointer = new Matrix_*[ numBones ];
+        memzero( newMeshContainer->FrameCombinedMatrixPointer, sizeof( Matrix_* ) * numBones );
 
         // get each of the bone offset matrices so that we don't need to get them later
         for( UINT i = 0; i < numBones; i++ )
-            newMeshContainer->exBoneOffsets[ i ] = *( newMeshContainer->pSkinInfo->GetBoneOffsetMatrix( i ) );
+            newMeshContainer->BoneOffsets[ i ] = *( newMeshContainer->SkinInfo->GetBoneOffsetMatrix( i ) );
     }
     else
     {
         // No skin info so NULL all the pointers
-        newMeshContainer->pSkinInfo = NULL;
-        newMeshContainer->exBoneOffsets = NULL;
-        newMeshContainer->exSkinMesh = NULL;
-        newMeshContainer->exFrameCombinedMatrixPointer = NULL;
+        newMeshContainer->SkinInfo = NULL;
+        newMeshContainer->BoneOffsets = NULL;
+        newMeshContainer->SkinMesh = NULL;
+        newMeshContainer->FrameCombinedMatrixPointer = NULL;
     }
 
     // When we got the device we caused an internal reference count to be incremented
@@ -166,7 +167,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     pd3dDevice->Release();
 
     // Set the output mesh container pointer to our newly created one
-    *retNewMeshContainer = newMeshContainer;
+    *retNewMeshContainer = (LPD3DXMESHCONTAINER) newMeshContainer;
 
     return S_OK;
 }
@@ -174,7 +175,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
 HRESULT MeshHierarchy::DestroyFrame( LPD3DXFRAME frameToFree )
 {
     // Convert to our extended type. OK to do this as we know for sure it is:
-    FrameEx* frame = (FrameEx*) frameToFree;
+    Frame* frame = (Frame*) frameToFree;
 
     SAFEDELA( frame->Name );
     delete frame;
@@ -185,47 +186,48 @@ HRESULT MeshHierarchy::DestroyFrame( LPD3DXFRAME frameToFree )
 HRESULT MeshHierarchy::DestroyMeshContainer( LPD3DXMESHCONTAINER meshContainerBase )
 {
     // Convert to our extended type. OK as we know for sure it is:
-    D3DXMESHCONTAINER_EXTENDED* mesh_container = (D3DXMESHCONTAINER_EXTENDED*) meshContainerBase;
+    MeshContainer* mesh_container = (MeshContainer*) meshContainerBase;
     if( !mesh_container )
         return S_OK;
 
     // Name
     SAFEDELA( mesh_container->Name );
     // Materials array
-    SAFEDELA( mesh_container->exMaterials );
+    SAFEDELA( mesh_container->Materials );
     // Release the textures before deleting the array
-    if( mesh_container->exTexturesNames )
+    if( mesh_container->TextureNames )
     {
         for( uint i = 0; i < mesh_container->NumMaterials; i++ )
-            SAFEDELA( mesh_container->exTexturesNames[ i ] );
+            SAFEDELA( mesh_container->TextureNames[ i ] );
     }
-    SAFEDELA( mesh_container->exTexturesNames );
+    SAFEDELA( mesh_container->TextureNames );
     // Delete effect
-    if( mesh_container->exEffects )
+    if( mesh_container->Effects )
     {
         for( uint i = 0; i < mesh_container->NumMaterials; i++ )
         {
-            for( uint j = 0; j < mesh_container->exEffects[ i ].NumDefaults; j++ )
-                SAFEDELA( mesh_container->exEffects[ i ].pDefaults[ j ].pValue );
-            SAFEDELA( mesh_container->exEffects[ i ].pDefaults );
+            for( uint j = 0; j < mesh_container->Effects[ i ].NumDefaults; j++ )
+                SAFEDELA( mesh_container->Effects[ i ].pDefaults[ j ].pValue );
+            SAFEDELA( mesh_container->Effects[ i ].pDefaults );
         }
     }
-    SAFEDEL( mesh_container->exEffects );
+    SAFEDEL( mesh_container->Effects );
     // Adjacency data
-    SAFEDELA( mesh_container->pAdjacency );
+    SAFEDELA( mesh_container->Adjacency );
     // Bone parts
-    SAFEDELA( mesh_container->exBoneOffsets );
+    SAFEDELA( mesh_container->BoneOffsets );
     // Frame matrices
-    SAFEDELA( mesh_container->exFrameCombinedMatrixPointer );
+    SAFEDELA( mesh_container->FrameCombinedMatrixPointer );
     // Release skin mesh
-    SAFEREL( mesh_container->exSkinMesh );
+    SAFEREL( mesh_container->SkinMesh );
     // Release the main mesh
-    SAFEREL( mesh_container->MeshData.pMesh );
+    SAFEREL( mesh_container->MeshData.Mesh );
     // Release skin information
-    SAFEREL( mesh_container->pSkinInfo );
+    SAFEREL( mesh_container->SkinInfo );
     // Release blend mesh
-    SAFEREL( mesh_container->exSkinMeshBlended );
+    SAFEREL( mesh_container->SkinMeshBlended );
     // Finally delete the mesh container itself
     SAFEDEL( mesh_container );
     return S_OK;
 }
+#endif

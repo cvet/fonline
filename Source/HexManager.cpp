@@ -1955,7 +1955,7 @@ void HexManager::DrawMap()
     // Roof
     if( GameOpt.ShowRoof )
     {
-        LPDIRECT3DDEVICE9 device = SprMngr.GetDevice();
+        Device_ device = SprMngr.GetDevice();
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
         SprMngr.SetCurEffect2D( DEFAULT_EFFECT_ROOF );

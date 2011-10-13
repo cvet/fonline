@@ -328,12 +328,12 @@ public:
 
     // Tiles, roof
 private:
-    bool               reprepareTiles;
-    Sprites            tilesTree;
-    LPDIRECT3DSURFACE9 tileSurf;
-    int                tileSurfWidth, tileSurfHeight;
-    int                roofSkip;
-    Sprites            roofTree;
+    bool     reprepareTiles;
+    Sprites  tilesTree;
+    Surface_ tileSurf;
+    int      tileSurfWidth, tileSurfHeight;
+    int      roofSkip;
+    Sprites  roofTree;
 
     bool CheckTilesBorder( Field::Tile& tile, bool is_roof );
 

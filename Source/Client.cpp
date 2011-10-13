@@ -9890,7 +9890,7 @@ bool FOClient::SaveScreenshot()
     if( !SprMngr.IsInit() )
         return false;
 
-    LPDIRECT3DSURFACE9 surf = NULL;
+    Surface_ surf = NULL;
     if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
         return false;
 
@@ -12336,7 +12336,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
             for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
                 DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 
-            anim->SetRotation( rx * D3DX_PI / 180.0f, ry * D3DX_PI / 180.0f, rz * D3DX_PI / 180.0f );
+            anim->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
             anim->SetScale( sx, sy, sz );
             anim->SetSpeed( speed );
             anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );

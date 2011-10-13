@@ -3,6 +3,7 @@
 
 #include "3dMeshStructures.h"
 
+#ifdef FO_D3D
 class MeshHierarchy: public ID3DXAllocateHierarchy
 {
 public:
@@ -11,8 +12,8 @@ public:
 
     // Callback to create a D3DXMESHCONTAINER extended object and initialize it
     STDMETHOD( CreateMeshContainer ) ( LPCSTR Name, CONST D3DXMESHDATA * meshData,
-                                       CONST D3DXMATERIAL * materials, CONST EffectInstanceType * effectInstances,
-                                       DWORD numMaterials, CONST DWORD * adjacency, LPD3DXSKININFO skinInfo,
+                                       CONST D3DXMATERIAL * materials, CONST EffectInstance_ * effectInstances,
+                                       DWORD numMaterials, CONST DWORD * adjacency, SkinInfo_ skinInfo,
                                        LPD3DXMESHCONTAINER * retNewMeshContainer );
 
     // Callback to release a D3DXFRAME extended object
@@ -21,5 +22,6 @@ public:
     // Callback to release a D3DXMESHCONTAINER extended object
     STDMETHOD( DestroyMeshContainer ) ( LPD3DXMESHCONTAINER meshContainerToFree );
 };
+#endif
 
 #endif // __MESH_HIERARHY__

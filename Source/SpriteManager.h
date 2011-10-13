@@ -110,16 +110,16 @@
 
 struct Surface
 {
-    int                Type;
-    LPDIRECT3DTEXTURE9 Texture;
-    uint               Width, Height; // Texture size
-    uint               BusyH;         // Height point position
-    uint               FreeX, FreeY;  // Busy positions on current surface
+    int      Type;
+    Texture_ Texture;
+    uint     Width, Height;           // Texture size
+    uint     BusyH;                   // Height point position
+    uint     FreeX, FreeY;            // Busy positions on current surface
 
     Surface(): Type( 0 ), Texture( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
     ~Surface() { SAFEREL( Texture ); }
 };
-typedef vector< Surface* > SurfVec;
+typedef vector< Surface* > SurfaceVec;
 
 struct MYVERTEX
 {
@@ -157,10 +157,10 @@ typedef vector< SpriteInfo* > SprInfoVec;
 
 struct DipData
 {
-    LPDIRECT3DTEXTURE9 Texture;
-    EffectEx*          Effect;
-    uint               SprCount;
-    DipData( LPDIRECT3DTEXTURE9 tex, EffectEx* effect ): Texture( tex ), Effect( effect ), SprCount( 1 ) {};
+    Texture_  Texture;
+    EffectEx* Effect;
+    uint      SprCount;
+    DipData( Texture_ tex, EffectEx* effect ): Texture( tex ), Effect( effect ), SprCount( 1 ) {};
 };
 typedef vector< DipData > DipDataVec;
 
@@ -216,34 +216,33 @@ struct SpriteMngrParams
 class SpriteManager
 {
 private:
-    bool                  isInit;
-    SpriteMngrParams      mngrParams;
-    HWND                  hWnd;
-    LPDIRECT3D9           direct3D;
-    LPDIRECT3DDEVICE9     d3dDevice;
-    // D3DDISPLAYMODE displayMode;
-    D3DPRESENT_PARAMETERS presentParams;
-    D3DCAPS9              deviceCaps;
-    int                   modeWidth, modeHeight;
-    bool                  sceneBeginned;
+    bool             isInit;
+    SpriteMngrParams mngrParams;
+    HWND             hWnd;
+    LPDIRECT3D9      direct3D;
+    Device_          d3dDevice;
+    PresentParams_   presentParams;
+    Caps_            deviceCaps;
+    int              modeWidth, modeHeight;
+    bool             sceneBeginned;
 
 public:
     static AnyFrames* DummyAnimation;
 
     SpriteManager();
-    bool              Init( SpriteMngrParams& params );
-    bool              InitBuffers();
-    bool              InitRenderStates();
-    bool              IsInit() { return isInit; }
-    void              Finish();
-    LPDIRECT3DDEVICE9 GetDevice()           { return d3dDevice; }
-    bool              IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
-    bool              BeginScene( uint clear_color );
-    void              EndScene();
-    bool              Restore();
-    bool              CreateRenderTarget( LPDIRECT3DSURFACE9& surf, int w, int h );
-    bool              ClearRenderTarget( LPDIRECT3DSURFACE9& surf, uint color );
-    bool              ClearCurRenderTarget( uint color );
+    bool    Init( SpriteMngrParams& params );
+    bool    InitBuffers();
+    bool    InitRenderStates();
+    bool    IsInit() { return isInit; }
+    void    Finish();
+    Device_ GetDevice()           { return d3dDevice; }
+    bool    IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
+    bool    BeginScene( uint clear_color );
+    void    EndScene();
+    bool    Restore();
+    bool    CreateRenderTarget( Surface_& surf, int w, int h );
+    bool    ClearRenderTarget( Surface_& surf, uint color );
+    bool    ClearCurRenderTarget( uint color );
     void ( * PreRestore )();
     void ( * PostRestore )();
 
@@ -255,8 +254,8 @@ public:
     void SaveSufaces();
 
 private:
-    int     baseTexture;
-    SurfVec surfList;
+    int        baseTextureSize;
+    SurfaceVec surfList;
 
     Surface* CreateNewSurface( int w, int h );
     Surface* FindSurfacePlace( SpriteInfo* si, int& x, int& y );
@@ -270,9 +269,9 @@ public:
     void         FreePure3dAnimation( Animation3d* anim3d );
 
 private:
-    SprInfoVec         sprData;
-    LPDIRECT3DSURFACE9 spr3dRT, spr3dRTEx, spr3dDS, spr3dRTData;
-    int                spr3dSurfWidth, spr3dSurfHeight;
+    SprInfoVec sprData;
+    Surface_   spr3dRT, spr3dRTEx, spr3dDS, spr3dRTData;
+    int        spr3dSurfWidth, spr3dSurfHeight;
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
     AnyFrames* LoadAnimationFrm( const char* fname, int path_type, int dir, bool anim_pix );
@@ -302,14 +301,14 @@ public:
 
     void PrepareSquare( PointVec& points, FLTRECT& r, uint color );
     void PrepareSquare( PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, uint color );
-    bool PrepareBuffer( Sprites& dtree, LPDIRECT3DSURFACE9 surf, int ox, int oy, uchar alpha );
+    bool PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy, uchar alpha );
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
     bool DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
-    bool DrawPrepared( LPDIRECT3DSURFACE9& surf, int ox, int oy );
-    bool DrawSurface( LPDIRECT3DSURFACE9& surf, RECT& dst );
+    bool DrawPrepared( Surface_& surf, int ox, int oy );
+    bool DrawSurface( Surface_& surf, RECT& dst );
     bool DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* zoom = NULL, FLTRECT* stencil = NULL, FLTPOINT* offset = NULL );
     bool Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color );
     bool Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
@@ -329,17 +328,17 @@ public:
     void SetCurEffect2D( uint index )                       { curDefaultEffect = sprDefaultEffect[ index ]; }
 
 private:
-    LPDIRECT3DVERTEXBUFFER9 pVB;
-    LPDIRECT3DINDEXBUFFER9  pIB;
-    MYVERTEX*               waitBuf;
-    DipDataVec              dipQueue;
-    uint                    baseColor;
-    int                     flushSprCnt; // Max sprites to flush
-    int                     curSprCnt;   // Current sprites to flush
-    LPDIRECT3DVERTEXBUFFER9 vbPoints;
-    int                     vbPointsSize;
-    EffectEx*               sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
-    EffectEx*               curDefaultEffect;
+    VertexBuffer_ pVB;
+    IndexBuffer_  pIB;
+    MYVERTEX*     waitBuf;
+    DipDataVec    dipQueue;
+    uint          baseColor;
+    int           flushSprCnt;           // Max sprites to flush
+    int           curSprCnt;             // Current sprites to flush
+    VertexBuffer_ vbPoints;
+    int           vbPointsSize;
+    EffectEx*     sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
+    EffectEx*     curDefaultEffect;
 
     void FlushDIP();
 
@@ -349,16 +348,16 @@ public:
     void ClearSpriteContours() { createdSpriteContours.clear(); }
 
 private:
-    LPDIRECT3DTEXTURE9     contoursTexture;
-    LPDIRECT3DSURFACE9     contoursTextureSurf;
-    LPDIRECT3DTEXTURE9     contoursMidTexture;
-    LPDIRECT3DSURFACE9     contoursMidTextureSurf;
-    LPDIRECT3DSURFACE9     contours3dRT;
-    IDirect3DPixelShader9* contoursPS;
-    ID3DXConstantTable*    contoursCT;
-    EffectValueType        contoursConstWidthStep, contoursConstHeightStep,
-                           contoursConstSpriteBorders, contoursConstSpriteBordersHeight,
-                           contoursConstContourColor, contoursConstContourColorOffs;
+    Texture_        contoursTexture;
+    Surface_        contoursTextureSurf;
+    Texture_        contoursMidTexture;
+    Surface_        contoursMidTextureSurf;
+    Surface_        contours3dRT;
+    PixelShader_*   contoursPS;
+    ConstantTable_* contoursCT;
+    EffectValue_    contoursConstWidthStep, contoursConstHeightStep,
+                    contoursConstSpriteBorders, contoursConstSpriteBordersHeight,
+                    contoursConstContourColor, contoursConstContourColorOffs;
     bool    contoursAdded;
     UIntMap createdSpriteContours;
     Sprites spriteContours;

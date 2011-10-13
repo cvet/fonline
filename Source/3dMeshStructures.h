@@ -6,102 +6,110 @@
 struct TextureEx
 {
     const char* Name;
-    TextureType Texture;
+    Texture_    Texture;
 };
 
 struct EffectEx
 {
-    const char*        Name;
-    EffectType         Effect;
-    uint               EffectFlags;
-    EffectDefaultsType Defaults;
-    EffectValueType    EffectParams;
-    EffectValueType    TechniqueSkinned;
-    EffectValueType    TechniqueSkinnedWithShadow;
-    EffectValueType    TechniqueSimple;
-    EffectValueType    TechniqueSimpleWithShadow;
-    EffectValueType    BonesInfluences;
-    EffectValueType    GroundPosition;
-    EffectValueType    LightDir;
-    EffectValueType    LightDiffuse;
-    EffectValueType    MaterialAmbient;
-    EffectValueType    MaterialDiffuse;
-    EffectValueType    WorldMatrices;
-    EffectValueType    ViewProjMatrix;
+    const char*     Name;
+    Effect_         Effect;
+    uint            EffectFlags;
+    EffectDefaults_ Defaults;
+    EffectValue_    EffectParams;
+    EffectValue_    TechniqueSkinned;
+    EffectValue_    TechniqueSkinnedWithShadow;
+    EffectValue_    TechniqueSimple;
+    EffectValue_    TechniqueSimpleWithShadow;
+    EffectValue_    BonesInfluences;
+    EffectValue_    GroundPosition;
+    EffectValue_    LightDir;
+    EffectValue_    LightDiffuse;
+    EffectValue_    MaterialAmbient;
+    EffectValue_    MaterialDiffuse;
+    EffectValue_    WorldMatrices;
+    EffectValue_    ViewProjMatrix;
 
     // Automatic variables
-    bool               IsNeedProcess;
-    EffectValueType    PassIndex;
-    bool               IsTime;
-    EffectValueType    Time;
-    float              TimeCurrent;
-    double             TimeLastTick;
-    EffectValueType    TimeGame;
-    float              TimeGameCurrent;
-    double             TimeGameLastTick;
-    bool               IsRandomPass;
-    EffectValueType    Random1Pass;
-    EffectValueType    Random2Pass;
-    EffectValueType    Random3Pass;
-    EffectValueType    Random4Pass;
-    bool               IsRandomEffect;
-    EffectValueType    Random1Effect;
-    EffectValueType    Random2Effect;
-    EffectValueType    Random3Effect;
-    EffectValueType    Random4Effect;
-    bool               IsTextures;
-    EffectValueType    Textures[ EFFECT_TEXTURES ];
-    bool               IsScriptValues;
-    EffectValueType    ScriptValues[ EFFECT_SCRIPT_VALUES ];
-    bool               IsAnimPos;
-    EffectValueType    AnimPosProc;
-    EffectValueType    AnimPosTime;
+    bool            IsNeedProcess;
+    EffectValue_    PassIndex;
+    bool            IsTime;
+    EffectValue_    Time;
+    float           TimeCurrent;
+    double          TimeLastTick;
+    EffectValue_    TimeGame;
+    float           TimeGameCurrent;
+    double          TimeGameLastTick;
+    bool            IsRandomPass;
+    EffectValue_    Random1Pass;
+    EffectValue_    Random2Pass;
+    EffectValue_    Random3Pass;
+    EffectValue_    Random4Pass;
+    bool            IsRandomEffect;
+    EffectValue_    Random1Effect;
+    EffectValue_    Random2Effect;
+    EffectValue_    Random3Effect;
+    EffectValue_    Random4Effect;
+    bool            IsTextures;
+    EffectValue_    Textures[ EFFECT_TEXTURES ];
+    bool            IsScriptValues;
+    EffectValue_    ScriptValues[ EFFECT_SCRIPT_VALUES ];
+    bool            IsAnimPos;
+    EffectValue_    AnimPosProc;
+    EffectValue_    AnimPosTime;
 };
 
-#ifdef FO_D3D
-struct D3DXMESHCONTAINER_EXTENDED: public D3DXMESHCONTAINER
-#else
-struct D3DXMESHCONTAINER_EXTENDED
-#endif
+struct SkinInfo
 {
-    // Material
-    char**              exTexturesNames;
-    MaterialType*       exMaterials;                      // Array of materials
+    uint Dummy;
+};
 
-    // Effect
-    EffectInstanceType* exEffects;
+struct MeshContainer
+{
+    char* Name;
+    struct
+    {
+        int   Type; // Exclude
+        Mesh_ Mesh;
+    } MeshData;
+    Material_*       Materials;
+    EffectInstance_* Effects;
+    uint             NumMaterials;
+    uint*            Adjacency;
+    SkinInfo_        SkinInfo;
+    MeshContainer*   NextMeshContainer;
+
+    // Material
+    char**           TextureNames;
 
     // Skinned mesh variables
-    MeshType            exSkinMesh;                     // The skin mesh
-    MatrixType*         exBoneOffsets;                  // The bone matrix Offsets, one per bone
-    MatrixType**        exFrameCombinedMatrixPointer;   // Array of frame matrix pointers
+    Mesh_            SkinMesh;                     // The skin mesh
+    Matrix_*         BoneOffsets;                  // The bone matrix Offsets, one per bone
+    Matrix_**        FrameCombinedMatrixPointer;   // Array of frame matrix pointers
 
     // Used for indexed shader skinning
-    MeshType            exSkinMeshBlended;              // The blended skin mesh
-    ID3DXBuffer*        exBoneCombinationBuf;
-    DWORD               exNumAttributeGroups;
-    DWORD               exNumPaletteEntries;
-    DWORD               exNumInfl;
+    Mesh_            SkinMeshBlended;              // The blended skin mesh
+    Buffer_*         BoneCombinationBuf;
+    uint             NumAttributeGroups;
+    uint             NumPaletteEntries;
+    uint             NumInfluences;
 };
 
-struct FrameEx: public D3DXFRAME
+struct Frame
 {
-    const char* exFileName;
-    MatrixType  exCombinedTransformationMatrix;
+    char*          Name;
+    Matrix_        TransformationMatrix;
+    MeshContainer* Meshes;
+    Frame*         Sibling;
+    Frame*         FirstChild;
+    Matrix_        CombinedTransformationMatrix;
 };
 
-typedef vector< D3DXMESHCONTAINER_EXTENDED* > MeshContainerVec;
-typedef vector< FrameEx* >                    FrameVec;
-typedef vector< D3DXVECTOR3 >                 Vector3Vec;
-typedef vector< MatrixType >                  MatrixVec;
-
-typedef vector< TextureEx* >                  TextureExVec;
-typedef vector< EffectEx* >                   EffectExVec;
-
-typedef D3DXFRAME                             Frame;
-typedef FrameEx                               FrameEx;
-
-typedef ID3DXAnimationSet                     AnimSet;
-typedef vector< AnimSet* >                    AnimSetVec;
+typedef vector< MeshContainer* > MeshContainerVec;
+typedef vector< Frame* >         FrameVec;
+typedef vector< Vector3_ >       Vector3Vec;
+typedef vector< Matrix_ >        MatrixVec;
+typedef vector< TextureEx* >     TextureExVec;
+typedef vector< EffectEx* >      EffectExVec;
+typedef vector< AnimSet_* >      AnimSetVec;
 
 #endif // __MESH_STRUCTURES__

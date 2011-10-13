@@ -12,20 +12,20 @@
 #define SKINNING_SOFTWARE       ( 0 )
 #define SKINNING_HLSL_SHADER    ( 1 )
 
-LPDIRECT3DDEVICE9 D3DDevice = NULL;
-D3DCAPS9          D3DCaps;
-int               ModeWidth = 0, ModeHeight = 0;
-float             FixedZ = 0.0f;
-D3DLIGHT9         GlobalLight;
-MatrixType        MatrixProj, MatrixView, MatrixViewInv, MatrixEmpty, MatrixViewProj;
-double            MoveTransitionTime = 0.25;
-float             GlobalSpeedAdjust = 1.0f;
-D3DVIEWPORT9      ViewPort;
-MatrixType*       BoneMatrices = NULL;
-uint              MaxBones = 0;
-int               SkinningMethod = SKINNING_SOFTWARE;
-EffectEx*         EffectMain = NULL;
-uint              AnimDelay = 0;
+Device_   D3DDevice = NULL;
+Caps_     D3DCaps;
+int       ModeWidth = 0, ModeHeight = 0;
+float     FixedZ = 0.0f;
+Light_    GlobalLight;
+Matrix_   MatrixProj, MatrixView, MatrixViewInv, MatrixEmpty, MatrixViewProj;
+double    MoveTransitionTime = 0.25;
+float     GlobalSpeedAdjust = 1.0f;
+ViewPort_ ViewPort;
+Matrix_*  BoneMatrices = NULL;
+uint      MaxBones = 0;
+int       SkinningMethod = SKINNING_SOFTWARE;
+EffectEx* EffectMain = NULL;
+uint      AnimDelay = 0;
 
 /************************************************************************/
 /* Animation3d                                                          */
@@ -41,7 +41,7 @@ Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), numAnima
 {
     memzero( currentLayers, sizeof( currentLayers ) );
     groundPos.w = 1.0f;
-    D3DXMatrixRotationX( &matRot, -GameOpt.MapCameraAngle * D3DX_PI / 180.0f );
+    D3DXMatrixRotationX( &matRot, -GameOpt.MapCameraAngle * PI_VALUE / 180.0f );
     D3DXMatrixIdentity( &matScale );
     D3DXMatrixIdentity( &matScaleBase );
     D3DXMatrixIdentity( &matRotBase );
@@ -212,7 +212,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                         // Link to main frame
                         if( link.LinkBone )
                         {
-                            FrameEx* to_frame = (FrameEx*) D3DXFrameFind( animEntity->xFile->frameRoot, link.LinkBone );
+                            Frame* to_frame = (Frame*) D3DXFrameFind( (LPD3DXFRAME) animEntity->xFile->frameRoot, link.LinkBone );
                             if( to_frame )
                             {
                                 anim3d = Animation3d::GetAnimation( link.ChildFName, true );
@@ -234,8 +234,8 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                             {
                                 for( auto it = anim3d->animEntity->xFile->framesSkinned.begin(), end = anim3d->animEntity->xFile->framesSkinned.end(); it != end; ++it )
                                 {
-                                    FrameEx* child_frame = *it;
-                                    FrameEx* root_frame = (FrameEx*) D3DXFrameFind( animEntity->xFile->frameRoot, child_frame->Name );
+                                    Frame* child_frame = *it;
+                                    Frame* root_frame = (Frame*) D3DXFrameFind( (LPD3DXFRAME) animEntity->xFile->frameRoot, child_frame->Name );
                                     if( root_frame )
                                     {
                                         anim3d->linkFrames.push_back( root_frame );
@@ -244,7 +244,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                                 }
 
                                 anim3d->parentAnimation = this;
-                                anim3d->parentFrame = (FrameEx*) animEntity->xFile->frameRoot;
+                                anim3d->parentFrame = (Frame*) animEntity->xFile->frameRoot;
                                 anim3d->animLink = link;
                                 SetAnimData( anim3d, link, false );
                                 childAnimations.push_back( anim3d );
@@ -272,7 +272,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
     if( animController && index >= 0 )
     {
         // Get the animation set from the controller
-        ID3DXAnimationSet* set;
+        AnimSet_* set;
         animController->GetAnimationSet( index, &set );
 
         // Alternate tracks
@@ -401,9 +401,9 @@ bool Animation3d::IsIntersect( int x, int y )
     if( x < borders.L || x > borders.R || y < borders.T || y > borders.B )
         return false;
 
-    D3DXVECTOR3 ray_origin, ray_dir;
-    D3DXVec3Unproject( &ray_origin, &D3DXVECTOR3( (float) x, (float) y, 0.0f ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
-    D3DXVec3Unproject( &ray_dir, &D3DXVECTOR3( (float) x, (float) y, FixedZ ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
+    Vector3_ ray_origin, ray_dir;
+    D3DXVec3Unproject( &ray_origin, &Vector3_( (float) x, (float) y, 0.0f ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
+    D3DXVec3Unproject( &ray_dir, &Vector3_( (float) x, (float) y, FixedZ ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
 
     // Main
     FrameMove( 0.0, drawXY.X, drawXY.Y, drawScale, true );
@@ -420,21 +420,19 @@ bool Animation3d::IsIntersect( int x, int y )
     return false;
 }
 
-bool Animation3d::IsIntersectFrame( LPD3DXFRAME frame, const D3DXVECTOR3& ray_origin, const D3DXVECTOR3& ray_dir )
+bool Animation3d::IsIntersectFrame( Frame* frame, const Vector3_& ray_origin, const Vector3_& ray_dir )
 {
     // Draw all mesh containers in this frame
-    LPD3DXMESHCONTAINER mesh_container = frame->pMeshContainer;
+    MeshContainer* mesh_container = frame->Meshes;
     while( mesh_container )
     {
-        FrameEx*                    frame_ex = (FrameEx*) frame;
-        D3DXMESHCONTAINER_EXTENDED* mesh_container_ex = (D3DXMESHCONTAINER_EXTENDED*) mesh_container;
-        LPD3DXMESH                  mesh = ( mesh_container_ex->pSkinInfo ? mesh_container_ex->exSkinMesh : mesh_container_ex->MeshData.pMesh );
+        LPD3DXMESH mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
 
         // Use inverse of matrix
-        MatrixType mat_inverse;
-        D3DXMatrixInverse( &mat_inverse, NULL, !mesh_container_ex->pSkinInfo ? &frame_ex->exCombinedTransformationMatrix : &MatrixEmpty );
+        Matrix_ mat_inverse;
+        D3DXMatrixInverse( &mat_inverse, NULL, !mesh_container->SkinInfo ? &frame->CombinedTransformationMatrix : &MatrixEmpty );
         // Transform ray origin and direction by inv matrix
-        D3DXVECTOR3 ray_obj_origin, ray_obj_direction;
+        Vector3_ ray_obj_origin, ray_obj_direction;
         D3DXVec3TransformCoord( &ray_obj_origin, &ray_origin, &mat_inverse );
         D3DXVec3TransformNormal( &ray_obj_direction, &ray_dir, &mat_inverse );
         D3DXVec3Normalize( &ray_obj_direction, &ray_obj_direction );
@@ -444,13 +442,13 @@ bool Animation3d::IsIntersectFrame( LPD3DXFRAME frame, const D3DXVECTOR3& ray_or
         if( hit )
             return true;
 
-        mesh_container = mesh_container->pNextMeshContainer;
+        mesh_container = mesh_container->NextMeshContainer;
     }
 
     // Recurse for siblings
-    if( frame->pFrameSibling && IsIntersectFrame( frame->pFrameSibling, ray_origin, ray_dir ) )
+    if( frame->Sibling && IsIntersectFrame( frame->Sibling, ray_origin, ray_dir ) )
         return true;
-    if( frame->pFrameFirstChild && IsIntersectFrame( frame->pFrameFirstChild, ray_origin, ray_dir ) )
+    if( frame->FirstChild && IsIntersectFrame( frame->FirstChild, ray_origin, ray_dir ) )
         return true;
     return false;
 }
@@ -496,32 +494,29 @@ void Animation3d::SetupBorders()
     fullBorders.B += 2;
 }
 
-bool Animation3d::SetupBordersFrame( LPD3DXFRAME frame, FLTRECT& borders )
+bool Animation3d::SetupBordersFrame( Frame* frame, FLTRECT& borders )
 {
     // Draw all mesh containers in this frame
-    LPD3DXMESHCONTAINER mesh_container = frame->pMeshContainer;
+    MeshContainer* mesh_container = frame->Meshes;
     while( mesh_container )
     {
-        FrameEx*                    frame_ex = (FrameEx*) frame;
-        D3DXMESHCONTAINER_EXTENDED* mesh_container_ex = (D3DXMESHCONTAINER_EXTENDED*) mesh_container;
-        LPD3DXMESH                  mesh = ( mesh_container_ex->pSkinInfo ? mesh_container_ex->exSkinMesh : mesh_container_ex->MeshData.pMesh );
-
-        uint                        v_size = mesh->GetNumBytesPerVertex();
-        uint                        count = mesh->GetNumVertices();
+        LPD3DXMESH mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
+        uint       v_size = mesh->GetNumBytesPerVertex();
+        uint       count = mesh->GetNumVertices();
         if( bordersResult.size() < count )
             bordersResult.resize( count );
 
-        LPDIRECT3DVERTEXBUFFER9 v;
-        uchar*                  data;
+        VertexBuffer_ v;
+        uchar*        data;
         D3D_HR( mesh->GetVertexBuffer( &v ) );
         D3D_HR( v->Lock( 0, 0, (void**) &data, D3DLOCK_READONLY ) );
-        D3DXVec3ProjectArray( &bordersResult[ 0 ], sizeof( D3DXVECTOR3 ), (D3DXVECTOR3*) data, v_size,
-                              &ViewPort, &MatrixProj, &MatrixView, mesh_container_ex->pSkinInfo ? &MatrixEmpty : &frame_ex->exCombinedTransformationMatrix, count );
+        D3DXVec3ProjectArray( &bordersResult[ 0 ], sizeof( Vector3_ ), (Vector3_*) data, v_size,
+                              &ViewPort, &MatrixProj, &MatrixView, mesh_container->SkinInfo ? &MatrixEmpty : &frame->CombinedTransformationMatrix, count );
         D3D_HR( v->Unlock() );
 
         for( uint i = 0; i < count; i++ )
         {
-            D3DXVECTOR3& vec = bordersResult[ i ];
+            Vector3_& vec = bordersResult[ i ];
             if( vec.x < borders.L )
                 borders.L = vec.x;
             if( vec.x > borders.R )
@@ -533,14 +528,14 @@ bool Animation3d::SetupBordersFrame( LPD3DXFRAME frame, FLTRECT& borders )
         }
 
         // Go to next mesh
-        mesh_container = mesh_container->pNextMeshContainer;
+        mesh_container = mesh_container->NextMeshContainer;
     }
 
     // Recurse for siblings
-    if( frame->pFrameSibling )
-        SetupBordersFrame( frame->pFrameSibling, borders );
-    if( frame->pFrameFirstChild )
-        SetupBordersFrame( frame->pFrameFirstChild, borders );
+    if( frame->Sibling )
+        SetupBordersFrame( frame->Sibling, borders );
+    if( frame->FirstChild )
+        SetupBordersFrame( frame->FirstChild, borders );
     return true;
 }
 
@@ -596,7 +591,7 @@ void Animation3d::GetRenderFramesData( float& period, int& proc_from, int& proc_
 
     if( animController )
     {
-        ID3DXAnimationSet* set;
+        AnimSet_* set;
         if( SUCCEEDED( animController->GetAnimationSet( animEntity->renderAnim, &set ) ) )
         {
             period = (float) set->GetPeriod();
@@ -617,7 +612,7 @@ uint Animation3d::GetTick()
     return Timer::FastTick();
 }
 
-MeshOptions* Animation3d::GetMeshOptions( D3DXMESHCONTAINER_EXTENDED* mesh )
+MeshOptions* Animation3d::GetMeshOptions( MeshContainer* mesh )
 {
     for( auto it = meshOpt.begin(), end = meshOpt.end(); it != end; ++it )
     {
@@ -637,7 +632,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
         D3DXMatrixIdentity( &anim3d->matRotBase );
         D3DXMatrixIdentity( &anim3d->matTransBase );
     }
-    MatrixType mat_tmp;
+    Matrix_ mat_tmp;
     if( data.ScaleX != 0.0f )
         anim3d->matScaleBase = *D3DXMatrixScaling( &mat_tmp, data.ScaleX, 1.0f, 1.0f ) * anim3d->matScaleBase;
     if( data.ScaleY != 0.0f )
@@ -645,11 +640,11 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
     if( data.ScaleZ != 0.0f )
         anim3d->matScaleBase = *D3DXMatrixScaling( &mat_tmp, 1.0f, 1.0f, data.ScaleZ ) * anim3d->matScaleBase;
     if( data.RotX != 0.0f )
-        anim3d->matRotBase = *D3DXMatrixRotationX( &mat_tmp, data.RotX * D3DX_PI / 180.0f ) * anim3d->matRotBase;
+        anim3d->matRotBase = *D3DXMatrixRotationX( &mat_tmp, data.RotX * PI_VALUE / 180.0f ) * anim3d->matRotBase;
     if( data.RotY != 0.0f )
-        anim3d->matRotBase = *D3DXMatrixRotationY( &mat_tmp, data.RotY * D3DX_PI / 180.0f ) * anim3d->matRotBase;
+        anim3d->matRotBase = *D3DXMatrixRotationY( &mat_tmp, data.RotY * PI_VALUE / 180.0f ) * anim3d->matRotBase;
     if( data.RotZ != 0.0f )
-        anim3d->matRotBase = *D3DXMatrixRotationZ( &mat_tmp, data.RotZ * D3DX_PI / 180.0f ) * anim3d->matRotBase;
+        anim3d->matRotBase = *D3DXMatrixRotationZ( &mat_tmp, data.RotZ * PI_VALUE / 180.0f ) * anim3d->matRotBase;
     if( data.MoveX != 0.0f )
         anim3d->matTransBase = *D3DXMatrixTranslation( &mat_tmp, data.MoveX, 0.0f, 0.0f ) * anim3d->matTransBase;
     if( data.MoveY != 0.0f )
@@ -934,10 +929,10 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
     // Update world matrix, only for root
     if( !parentFrame )
     {
-        FLTPOINT   p3d = Convert2dTo3d( x, y );
-        MatrixType mat_rot_y, mat_scale, mat_trans;
+        FLTPOINT p3d = Convert2dTo3d( x, y );
+        Matrix_  mat_rot_y, mat_scale, mat_trans;
         D3DXMatrixScaling( &mat_scale, scale, scale, scale );
-        D3DXMatrixRotationY( &mat_rot_y, -dirAngle * D3DX_PI / 180.0f );
+        D3DXMatrixRotationY( &mat_rot_y, -dirAngle * PI_VALUE / 180.0f );
         D3DXMatrixTranslation( &mat_trans, p3d.X, p3d.Y, 0.0f );
         parentMatrix = matScaleBase * matScale * mat_scale * matRotBase * mat_rot_y * matRot * matTransBase * mat_trans;
         groundPos.x = parentMatrix( 3, 0 );
@@ -974,25 +969,25 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
         for( uint i = 0, j = (uint) linkFrames.size() / 2; i < j; i++ )
             // UpdateFrameMatrices(linkFrames[i*2+1],&linkMatricles[i]);
             // linkFrames[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
-            linkFrames[ i * 2 + 1 ]->exCombinedTransformationMatrix = linkFrames[ i * 2 ]->exCombinedTransformationMatrix;
+            linkFrames[ i * 2 + 1 ]->CombinedTransformationMatrix = linkFrames[ i * 2 ]->CombinedTransformationMatrix;
     }
 
     // If the model contains a skinned mesh update the vertices
     for( auto it = animEntity->xFile->allMeshes.begin(), end = animEntity->xFile->allMeshes.end(); it != end; ++it )
     {
-        D3DXMESHCONTAINER_EXTENDED* mesh_container = *it;
-        if( !mesh_container->pSkinInfo )
+        MeshContainer* mesh_container = *it;
+        if( !mesh_container->SkinInfo )
             continue;
 
-        if( !mesh_container->exSkinMeshBlended || software_skinning )
+        if( !mesh_container->SkinMeshBlended || software_skinning )
         {
             // Create the bone matrices that transform each bone from bone space into character space
             // (via exFrameCombinedMatrixPointer) and also wraps the mesh around the bones using the bone offsets
             // in exBoneOffsetsArray
-            for( uint i = 0, j = mesh_container->pSkinInfo->GetNumBones(); i < j; i++ )
+            for( uint i = 0, j = mesh_container->SkinInfo->GetNumBones(); i < j; i++ )
             {
-                if( mesh_container->exFrameCombinedMatrixPointer[ i ] )
-                    D3DXMatrixMultiply( &BoneMatrices[ i ], &mesh_container->exBoneOffsets[ i ], mesh_container->exFrameCombinedMatrixPointer[ i ] );
+                if( mesh_container->FrameCombinedMatrixPointer[ i ] )
+                    D3DXMatrixMultiply( &BoneMatrices[ i ], &mesh_container->BoneOffsets[ i ], mesh_container->FrameCombinedMatrixPointer[ i ] );
             }
 
             // We need to modify the vertex positions based on the new bone matrices. This is achieved
@@ -1005,16 +1000,16 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
             // Other methods exist that use hardware to do this skinning - see the notes and the
             // DirectX SDK skinned mesh sample for more details
             void* src = 0;
-            D3D_HR( mesh_container->MeshData.pMesh->LockVertexBuffer( D3DLOCK_READONLY, (void**) &src ) );
+            D3D_HR( mesh_container->MeshData.Mesh->LockVertexBuffer( D3DLOCK_READONLY, (void**) &src ) );
             void* dest = 0;
-            D3D_HR( mesh_container->exSkinMesh->LockVertexBuffer( 0, (void**) &dest ) );
+            D3D_HR( mesh_container->SkinMesh->LockVertexBuffer( 0, (void**) &dest ) );
 
             // Update the skinned mesh
-            D3D_HR( mesh_container->pSkinInfo->UpdateSkinnedMesh( BoneMatrices, NULL, src, dest ) );
+            D3D_HR( mesh_container->SkinInfo->UpdateSkinnedMesh( BoneMatrices, NULL, src, dest ) );
 
             // Unlock the meshes vertex buffers
-            D3D_HR( mesh_container->exSkinMesh->UnlockVertexBuffer() );
-            D3D_HR( mesh_container->MeshData.pMesh->UnlockVertexBuffer() );
+            D3D_HR( mesh_container->SkinMesh->UnlockVertexBuffer() );
+            D3D_HR( mesh_container->MeshData.Mesh->UnlockVertexBuffer() );
         }
     }
 
@@ -1023,59 +1018,55 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
     {
         Animation3d* child = *it;
         child->groundPos = groundPos;
-        child->parentMatrix = child->parentFrame->exCombinedTransformationMatrix;
+        child->parentMatrix = child->parentFrame->CombinedTransformationMatrix;
         child->parentMatrix = child->matScaleBase * child->matRotBase * child->matTransBase * child->parentMatrix;
     }
     return true;
 }
 
 // Called to update the frame_base matrices in the hierarchy to reflect current animation stage
-void Animation3d::UpdateFrameMatrices( const D3DXFRAME* frame_base, const MatrixType* parent_matrix )
+void Animation3d::UpdateFrameMatrices( const Frame* frame_base, const Matrix_* parent_matrix )
 {
-    FrameEx* cur_frame = (FrameEx*) frame_base;
+    Frame* cur_frame = (Frame*) frame_base;
 
     // If parent matrix exists multiply our frame matrix by it
-    D3DXMatrixMultiply( &cur_frame->exCombinedTransformationMatrix, &cur_frame->TransformationMatrix, parent_matrix );
+    D3DXMatrixMultiply( &cur_frame->CombinedTransformationMatrix, &cur_frame->TransformationMatrix, parent_matrix );
 
     // If we have a sibling recurse
-    if( cur_frame->pFrameSibling )
-        UpdateFrameMatrices( cur_frame->pFrameSibling, parent_matrix );
+    if( cur_frame->Sibling )
+        UpdateFrameMatrices( cur_frame->Sibling, parent_matrix );
 
     // If we have a child recurse
-    if( cur_frame->pFrameFirstChild )
-        UpdateFrameMatrices( cur_frame->pFrameFirstChild, &cur_frame->exCombinedTransformationMatrix );
+    if( cur_frame->FirstChild )
+        UpdateFrameMatrices( cur_frame->FirstChild, &cur_frame->CombinedTransformationMatrix );
 }
 
 // Called to render a frame in the hierarchy
-bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
+bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
 {
     // Draw all mesh containers in this frame
-    LPD3DXMESHCONTAINER mesh_container = frame->pMeshContainer;
-    while( mesh_container && mesh_container->MeshData.pMesh )
+    MeshContainer* mesh_container = frame->Meshes;
+    while( mesh_container && mesh_container->MeshData.Mesh )
     {
-        // Cast to our extended frame type
-        FrameEx*                    frame_ex = (FrameEx*) frame;
-        // Cast to our extended mesh container
-        D3DXMESHCONTAINER_EXTENDED* mesh_container_ex = (D3DXMESHCONTAINER_EXTENDED*) mesh_container;
         // Get mesh options for this animation instance
-        MeshOptions*                mopt = GetMeshOptions( mesh_container_ex );
+        MeshOptions* mopt = GetMeshOptions( mesh_container );
 
-        if( mesh_container_ex->exSkinMeshBlended )
+        if( mesh_container->SkinMeshBlended )
         {
-            LPD3DXBONECOMBINATION bone_comb = (LPD3DXBONECOMBINATION) mesh_container_ex->exBoneCombinationBuf->GetBufferPointer();
+            LPD3DXBONECOMBINATION bone_comb = (LPD3DXBONECOMBINATION) mesh_container->BoneCombinationBuf->GetBufferPointer();
 
-            for( uint i = 0, j = mesh_container_ex->exNumAttributeGroups; i < j; i++ )
+            for( uint i = 0, j = mesh_container->NumAttributeGroups; i < j; i++ )
             {
                 uint attr_id = bone_comb[ i ].AttribId;
                 if( mopt->DisabledSubsets[ attr_id ] )
                     continue;
 
                 // First calculate all the world matrices
-                for( uint k = 0, l = mesh_container_ex->exNumPaletteEntries; k < l; k++ )
+                for( uint k = 0, l = mesh_container->NumPaletteEntries; k < l; k++ )
                 {
                     uint matrix_index = bone_comb[ i ].BoneId[ k ];
                     if( matrix_index != UINT_MAX )
-                        D3DXMatrixMultiply( &BoneMatrices[ k ], &mesh_container_ex->exBoneOffsets[ matrix_index ], mesh_container_ex->exFrameCombinedMatrixPointer[ matrix_index ] );
+                        D3DXMatrixMultiply( &BoneMatrices[ k ], &mesh_container->BoneOffsets[ matrix_index ], mesh_container->FrameCombinedMatrixPointer[ matrix_index ] );
                 }
 
                 EffectEx* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : EffectMain );
@@ -1087,34 +1078,34 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
                 if( effect->GroundPosition )
                     D3D_HR( effect->Effect->SetVector( effect->GroundPosition, &groundPos ) );
                 if( effect->LightDiffuse )
-                    D3D_HR( effect->Effect->SetVector( effect->LightDiffuse, &D3DXVECTOR4( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
+                    D3D_HR( effect->Effect->SetVector( effect->LightDiffuse, &Vector4_( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
                 if( effect->WorldMatrices )
-                    D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, BoneMatrices, mesh_container_ex->exNumPaletteEntries ) );
+                    D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, BoneMatrices, mesh_container->NumPaletteEntries ) );
 
                 // Sum of all ambient and emissive contribution
-                MaterialType& material = mesh_container_ex->exMaterials[ attr_id ];
+                Material_& material = mesh_container->Materials[ attr_id ];
                 // D3DXCOLOR amb_emm;
                 // D3DXColorModulate(&amb_emm,&D3DXCOLOR(material.Ambient),&D3DXCOLOR(0.25f,0.25f,0.25f,1.0f));
                 // amb_emm+=D3DXCOLOR(material.Emissive);
                 // D3D_HR(effect->SetVector("MaterialAmbient",(D3DXVECTOR4*)&amb_emm));
                 if( effect->MaterialDiffuse )
-                    D3D_HR( effect->Effect->SetVector( effect->MaterialDiffuse, (D3DXVECTOR4*) &material.Diffuse ) );
+                    D3D_HR( effect->Effect->SetVector( effect->MaterialDiffuse, (Vector4_*) &material.Diffuse ) );
 
                 // Set NumBones to select the correct vertex shader for the number of bones
                 if( effect->BonesInfluences )
-                    D3D_HR( effect->Effect->SetInt( effect->BonesInfluences, mesh_container_ex->exNumInfl - 1 ) );
+                    D3D_HR( effect->Effect->SetInt( effect->BonesInfluences, mesh_container->NumInfluences - 1 ) );
 
                 // Start the effect now all parameters have been updated
-                DrawMeshEffect( mesh_container_ex->exSkinMeshBlended, i, effect, &mopt->TexSubsets[ attr_id * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSkinnedWithShadow : effect->TechniqueSkinned );
+                DrawMeshEffect( mesh_container->SkinMeshBlended, i, effect, &mopt->TexSubsets[ attr_id * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSkinnedWithShadow : effect->TechniqueSkinned );
             }
         }
         else
         {
             // Select the mesh to draw, if there is skin then use the skinned mesh else the normal one
-            LPD3DXMESH draw_mesh = ( mesh_container_ex->pSkinInfo ? mesh_container_ex->exSkinMesh : mesh_container_ex->MeshData.pMesh );
+            LPD3DXMESH draw_mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
 
             // Loop through all the materials in the mesh rendering each subset
-            for( uint i = 0; i < mesh_container_ex->NumMaterials; i++ )
+            for( uint i = 0; i < mesh_container->NumMaterials; i++ )
             {
                 if( mopt->DisabledSubsets[ i ] )
                     continue;
@@ -1129,15 +1120,15 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
                         D3D_HR( effect->Effect->SetMatrix( effect->ViewProjMatrix, &MatrixViewProj ) );
                     if( effect->GroundPosition )
                         D3D_HR( effect->Effect->SetVector( effect->GroundPosition, &groundPos ) );
-                    MatrixType wmatrix = ( !mesh_container_ex->pSkinInfo ? frame_ex->exCombinedTransformationMatrix : MatrixEmpty );
+                    Matrix_ wmatrix = ( !mesh_container->SkinInfo ? frame->CombinedTransformationMatrix : MatrixEmpty );
                     if( effect->WorldMatrices )
                         D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, &wmatrix, 1 ) );
                     if( effect->LightDiffuse )
-                        D3D_HR( effect->Effect->SetVector( effect->LightDiffuse, &D3DXVECTOR4( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
+                        D3D_HR( effect->Effect->SetVector( effect->LightDiffuse, &Vector4_( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
                 }
                 else
                 {
-                    MatrixType& wmatrix = ( !mesh_container_ex->pSkinInfo ? frame_ex->exCombinedTransformationMatrix : MatrixEmpty );
+                    Matrix_& wmatrix = ( !mesh_container->SkinInfo ? frame->CombinedTransformationMatrix : MatrixEmpty );
                     D3D_HR( D3DDevice->SetTransform( D3DTS_WORLD, &wmatrix ) );
                     D3D_HR( D3DDevice->SetLight( 0, &GlobalLight ) );
                 }
@@ -1145,12 +1136,12 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
                 if( effect )
                 {
                     if( effect->MaterialDiffuse )
-                        D3D_HR( effect->Effect->SetVector( effect->MaterialDiffuse, (D3DXVECTOR4*) &mesh_container_ex->exMaterials[ i ].Diffuse ) );
+                        D3D_HR( effect->Effect->SetVector( effect->MaterialDiffuse, (Vector4_*) &mesh_container->Materials[ i ].Diffuse ) );
                     DrawMeshEffect( draw_mesh, i, effect, &mopt->TexSubsets[ i * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSimpleWithShadow : effect->TechniqueSimple );
                 }
                 else
                 {
-                    D3D_HR( D3DDevice->SetMaterial( &mesh_container_ex->exMaterials[ i ] ) );
+                    D3D_HR( D3DDevice->SetMaterial( &mesh_container->Materials[ i ] ) );
                     D3D_HR( D3DDevice->SetTexture( 0, mopt->TexSubsets[ i * EFFECT_TEXTURES ] ? mopt->TexSubsets[ i * EFFECT_TEXTURES ]->Texture : NULL ) );
                     D3D_HR( D3DDevice->SetVertexShader( NULL ) );
                     D3D_HR( D3DDevice->SetPixelShader( NULL ) );
@@ -1159,23 +1150,23 @@ bool Animation3d::DrawFrame( LPD3DXFRAME frame, bool with_shadow )
             }
         }
 
-        mesh_container = mesh_container->pNextMeshContainer;
+        mesh_container = mesh_container->NextMeshContainer;
     }
 
     // Recurse for siblings
-    if( frame->pFrameSibling )
-        DrawFrame( frame->pFrameSibling, with_shadow );
+    if( frame->Sibling )
+        DrawFrame( frame->Sibling, with_shadow );
     // Recurse for children
-    if( frame->pFrameFirstChild )
-        DrawFrame( frame->pFrameFirstChild, with_shadow );
+    if( frame->FirstChild )
+        DrawFrame( frame->FirstChild, with_shadow );
     return true;
 }
 
-bool Animation3d::DrawMeshEffect( MeshType mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, EffectValueType technique )
+bool Animation3d::DrawMeshEffect( Mesh_ mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, EffectValue_ technique )
 {
     D3D_HR( D3DDevice->SetTexture( 0, textures && textures[ 0 ] ? textures[ 0 ]->Texture : NULL ) );
 
-    EffectType effect = effect_ex->Effect;
+    Effect_ effect = effect_ex->Effect;
     D3D_HR( effect->SetTechnique( technique ) );
     if( effect_ex->IsNeedProcess )
         Loader3d::EffectProcessVariables( effect_ex, -1, animPosProc, animPosTime, textures );
@@ -1195,7 +1186,7 @@ bool Animation3d::DrawMeshEffect( MeshType mesh, uint subset, EffectEx* effect_e
     return true;
 }
 
-bool Animation3d::StartUp( LPDIRECT3DDEVICE9 device, bool software_skinning )
+bool Animation3d::StartUp( Device_ device, bool software_skinning )
 {
     D3DDevice = device;
 
@@ -1204,8 +1195,8 @@ bool Animation3d::StartUp( LPDIRECT3DDEVICE9 device, bool software_skinning )
     D3D_HR( D3DDevice->GetDeviceCaps( &D3DCaps ) );
 
     // Get size of draw area
-    LPDIRECT3DSURFACE9 backbuf;
-    D3DSURFACE_DESC    backbuf_desc;
+    Surface_        backbuf;
+    D3DSURFACE_DESC backbuf_desc;
     D3D_HR( D3DDevice->GetRenderTarget( 0, &backbuf ) );
     D3D_HR( backbuf->GetDesc( &backbuf_desc ) );
     SAFEREL( backbuf );
@@ -1221,11 +1212,11 @@ bool Animation3d::StartUp( LPDIRECT3DDEVICE9 device, bool software_skinning )
     D3DXMatrixIdentity( &MatrixEmpty );
 
     // Create a directional light
-    memzero( &GlobalLight, sizeof( D3DLIGHT9 ) );
+    memzero( &GlobalLight, sizeof( Light_ ) );
     GlobalLight.Type = D3DLIGHT_DIRECTIONAL;
     GlobalLight.Diffuse.a = 1.0f;
     // Direction for our light - it must be normalized - pointing down and along z
-    D3DXVec3Normalize( (D3DXVECTOR3*) &GlobalLight.Direction, &D3DXVECTOR3( 0.0f, 0.0f, 1.0f ) );
+    D3DXVec3Normalize( (Vector3_*) &GlobalLight.Direction, &Vector3_( 0.0f, 0.0f, 1.0f ) );
     // GlobalLight.Position=D3DXVECTOR3(0.0f,sinf(25.7f)*FixedZ,-cosf(25.7f)*FixedZ);
     D3D_HR( D3DDevice->LightEnable( 0, TRUE ) );
     // Plus some non directional ambient lighting
@@ -1274,13 +1265,13 @@ bool Animation3d::SetScreenSize( int width, int height )
     D3D_HR( D3DDevice->SetTransform( D3DTS_PROJECTION, &MatrixProj ) );
 
     // View
-    D3DXMatrixLookAtLH( &MatrixView, &D3DXVECTOR3( 0.0f, 0.0f, -FixedZ ), &D3DXVECTOR3( 0.0f, 0.0f, 0.0f ), &D3DXVECTOR3( 0.0f, 1.0f, 0.0f ) );
+    D3DXMatrixLookAtLH( &MatrixView, &Vector3_( 0.0f, 0.0f, -FixedZ ), &Vector3_( 0.0f, 0.0f, 0.0f ), &Vector3_( 0.0f, 1.0f, 0.0f ) );
     D3D_HR( D3DDevice->SetTransform( D3DTS_VIEW, &MatrixView ) );
     D3DXMatrixInverse( &MatrixViewInv, NULL, &MatrixView );
     MatrixViewProj = MatrixView * MatrixProj;
 
     // View port
-    D3DVIEWPORT9 vp = { 0, 0, ModeWidth, ModeHeight, 0.0f, 1.0f };
+    ViewPort_ vp = { 0, 0, ModeWidth, ModeHeight, 0.0f, 1.0f };
     D3D_HR( D3DDevice->SetViewport( &vp ) );
     ViewPort = vp;
 
@@ -1334,8 +1325,8 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
     anim3d->meshOpt.resize( entity->xFile->allMeshes.size() );
     for( uint i = 0, j = (uint) entity->xFile->allMeshes.size(); i < j; i++ )
     {
-        D3DXMESHCONTAINER_EXTENDED* mesh = entity->xFile->allMeshes[ i ];
-        MeshOptions&                mopt = anim3d->meshOpt[ i ];
+        MeshContainer* mesh = entity->xFile->allMeshes[ i ];
+        MeshOptions&   mopt = anim3d->meshOpt[ i ];
         mopt.MeshPtr = mesh;
         mopt.SubsetsCount = mesh->NumMaterials;
         mopt.DisabledSubsets = new ( nothrow ) bool[ mesh->NumMaterials ];
@@ -1353,11 +1344,11 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         for( uint k = 0; k < mopt.SubsetsCount; k++ )
         {
             uint        tex_num = k * EFFECT_TEXTURES;
-            const char* tex_name = mesh->exTexturesNames[ k ];
+            const char* tex_name = mesh->TextureNames[ k ];
             mopt.DefaultTexSubsets[ tex_num ] = ( tex_name ? entity->xFile->GetTexture( tex_name ) : NULL );
             mopt.TexSubsets[ tex_num ] = mopt.DefaultTexSubsets[ tex_num ];
 
-            mopt.DefaultEffectSubsets[ k ] = ( mesh->exEffects[ k ].pEffectFilename ? entity->xFile->GetEffect( &mesh->exEffects[ k ] ) : NULL );
+            mopt.DefaultEffectSubsets[ k ] = ( mesh->Effects[ k ].pEffectFilename ? entity->xFile->GetEffect( &mesh->Effects[ k ] ) : NULL );
             mopt.EffectSubsets[ k ] = mopt.DefaultEffectSubsets[ k ];
         }
     }
@@ -1383,15 +1374,15 @@ void Animation3d::AnimateFaster()
 
 FLTPOINT Animation3d::Convert2dTo3d( int x, int y )
 {
-    D3DXVECTOR3 coords;
-    D3DXVec3Unproject( &coords, &D3DXVECTOR3( (float) x, (float) y, FixedZ ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
+    Vector3_ coords;
+    D3DXVec3Unproject( &coords, &Vector3_( (float) x, (float) y, FixedZ ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
     return FLTPOINT( coords.x, coords.y );
 }
 
 INTPOINT Animation3d::Convert3dTo2d( float x, float y )
 {
-    D3DXVECTOR3 coords;
-    D3DXVec3Project( &coords, &D3DXVECTOR3( x, y, FixedZ ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
+    Vector3_ coords;
+    D3DXVec3Project( &coords, &Vector3_( x, y, FixedZ ), &ViewPort, &MatrixProj, &MatrixView, &MatrixEmpty );
     return INTPOINT( (int) coords.x, (int) coords.y );
 }
 
@@ -1471,29 +1462,29 @@ bool Animation3dEntity::Load( const char* name )
         FileManager::ExtractPath( name, path );
 
         // Parse
-        char                model[ MAX_FOPATH ] = { 0 };
-        char                render_fname[ MAX_FOPATH ] = { 0 };
-        char                render_anim[ MAX_FOPATH ] = { 0 };
-        vector< size_t >    anim_indexes;
+        char             model[ MAX_FOPATH ] = { 0 };
+        char             render_fname[ MAX_FOPATH ] = { 0 };
+        char             render_anim[ MAX_FOPATH ] = { 0 };
+        vector< size_t > anim_indexes;
 
-        int                 mesh = 0;
-        int                 subset = -1;
-        int                 layer = -1;
-        int                 layer_val = 0;
-        EffectInstanceType* cur_effect = NULL;
+        int              mesh = 0;
+        int              subset = -1;
+        int              layer = -1;
+        int              layer_val = 0;
+        EffectInstance_* cur_effect = NULL;
 
-        AnimParams          dummy_link;
+        AnimParams       dummy_link;
         memzero( &dummy_link, sizeof( dummy_link ) );
-        AnimParams*         link = &animDataDefault;
-        static uint         link_id = 0;
+        AnimParams*      link = &animDataDefault;
+        static uint      link_id = 0;
 
-        istrstream*         istr = new istrstream( big_buf );
-        bool                closed = false;
-        char                token[ MAX_FOTEXT ];
-        char                line[ MAX_FOTEXT ];
-        char                buf[ MAX_FOTEXT ];
-        float               valuei = 0;
-        float               valuef = 0.0f;
+        istrstream*      istr = new istrstream( big_buf );
+        bool             closed = false;
+        char             token[ MAX_FOTEXT ];
+        char             line[ MAX_FOTEXT ];
+        char             buf[ MAX_FOTEXT ];
+        float            valuei = 0;
+        float            valuef = 0.0f;
         while( !( *istr ).eof() )
         {
             ( *istr ) >> token;
@@ -1874,13 +1865,13 @@ bool Animation3dEntity::Load( const char* name )
             else if( !_stricmp( token, "Effect" ) )
             {
                 ( *istr ) >> buf;
-                EffectInstanceType* effect_inst = new EffectInstanceType;
-                memzero( effect_inst, sizeof( EffectInstanceType ) );
+                EffectInstance_* effect_inst = new EffectInstance_;
+                memzero( effect_inst, sizeof( EffectInstance_ ) );
                 effect_inst->pEffectFilename = Str::Duplicate( buf );
 
-                EffectInstanceType* tmp1 = link->EffectInst;
-                int*                tmp2 = link->EffectInstSubsets;
-                link->EffectInst = new EffectInstanceType[ link->EffectInstSubsetsCount + 1 ];
+                EffectInstance_* tmp1 = link->EffectInst;
+                int*             tmp2 = link->EffectInstSubsets;
+                link->EffectInst = new EffectInstance_[ link->EffectInstSubsetsCount + 1 ];
                 link->EffectInstSubsets = new int[ link->EffectInstSubsetsCount + 1 ];
                 for( uint h = 0; h < link->EffectInstSubsetsCount; h++ )
                 {
@@ -1940,7 +1931,7 @@ bool Animation3dEntity::Load( const char* name )
                 else
                     continue;
 
-                EffectDefaultsType tmp = cur_effect->pDefaults;
+                EffectDefaults_ tmp = cur_effect->pDefaults;
                 cur_effect->pDefaults = new D3DXEFFECTDEFAULT[ cur_effect->NumDefaults + 1 ];
                 for( uint h = 0; h < cur_effect->NumDefaults; h++ )
                     cur_effect->pDefaults[ h ] = tmp[ h ];
@@ -2056,7 +2047,7 @@ bool Animation3dEntity::Load( const char* name )
             else
                 FileManager::MakeFilePath( anim_fname, path, anim_path );
 
-            AnimSet* set = Loader3d::LoadAnimation( D3DDevice, anim_path, anim_name );
+            AnimSet_* set = Loader3d::LoadAnimation( D3DDevice, anim_path, anim_name );
             if( set )
             {
                 animations.push_back( set );
@@ -2148,14 +2139,14 @@ int Animation3dEntity::GetAnimationIndex( const char* anim_name )
     if( !animController )
         return -1;
 
-    ID3DXAnimationSet* set;
+    AnimSet_* set;
     if( animController->GetAnimationSetByName( anim_name, &set ) != S_OK )
         return -1;
 
     int result = 0;
     for( uint i = 0; i < numAnimationSets; i++ )
     {
-        ID3DXAnimationSet* set_;
+        AnimSet_* set_;
         animController->GetAnimationSet( i, &set_ );
         if( !strcmp( set->GetName(), set_->GetName() ) )
         {
@@ -2321,7 +2312,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname, bool calc_tange
 
             if( calc_tangent && !x->tangentsCalculated )
             {
-                xfile->CalculateNormalTangent( (FrameEx*) xfile->frameRoot );
+                xfile->CalculateNormalTangent( (Frame*) xfile->frameRoot );
                 xfile->tangentsCalculated = true;
             }
             break;
@@ -2331,7 +2322,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname, bool calc_tange
     if( !xfile )
     {
         // Load
-        D3DXFRAME* frame_root = Loader3d::LoadModel( D3DDevice, xname, calc_tangent );
+        Frame* frame_root = Loader3d::LoadModel( D3DDevice, xname, calc_tangent );
         if( !frame_root )
         {
             WriteLogF( _FUNC_, " - Unable to load 3d file<%s>.\n", xname );
@@ -2350,18 +2341,18 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname, bool calc_tange
         xfile->tangentsCalculated = calc_tangent;
 
         // Skinning
-        xfile->SetupSkinning( xfile, (FrameEx*) xfile->frameRoot, (FrameEx*) xfile->frameRoot );
+        xfile->SetupSkinning( xfile, (Frame*) xfile->frameRoot, (Frame*) xfile->frameRoot );
 
         // Setup normals and tangent space
         if( calc_tangent )
         {
             const char* ext = FileManager::GetExtension( xname );
             if( ext && !_stricmp( ext, "x" ) )
-                xfile->CalculateNormalTangent( (FrameEx*) xfile->frameRoot );
+                xfile->CalculateNormalTangent( (Frame*) xfile->frameRoot );
         }
 
         // Faces count
-        xfile->SetupFacesCount( (FrameEx*) xfile->frameRoot, xfile->facesCount );
+        xfile->SetupFacesCount( (Frame*) xfile->frameRoot, xfile->facesCount );
 
         xFiles.push_back( xfile );
     }
@@ -2370,56 +2361,56 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname, bool calc_tange
 }
 
 // Need to go through the hierarchy and set the combined matrices calls itself recursively as it tareverses the hierarchy
-bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, FrameEx* frame, FrameEx* frame_root )
+bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, Frame* frame, Frame* frame_root )
 {
     // Cast to our extended structure first
-    D3DXMESHCONTAINER_EXTENDED* mesh_container = (D3DXMESHCONTAINER_EXTENDED*) frame->pMeshContainer;
+    MeshContainer* mesh_container = (MeshContainer*) frame->Meshes;
 
     // If this frame has a mesh
     while( mesh_container )
     {
-        if( mesh_container->MeshData.pMesh )
+        if( mesh_container->MeshData.Mesh )
             xfile->allMeshes.push_back( mesh_container );
 
         // Skinned data
-        if( mesh_container->MeshData.pMesh && mesh_container->pSkinInfo )
+        if( mesh_container->MeshData.Mesh && mesh_container->SkinInfo )
         {
             if( SkinningMethod == SKINNING_HLSL_SHADER )
             {
                 // Get palette size
-                mesh_container->exNumPaletteEntries = mesh_container->pSkinInfo->GetNumBones();
+                mesh_container->NumPaletteEntries = mesh_container->SkinInfo->GetNumBones();
 
-                DWORD* new_adjency = new (nothrow) DWORD[ mesh_container->MeshData.pMesh->GetNumFaces() * 3 ];
+                uint* new_adjency = new (nothrow) uint[ mesh_container->MeshData.Mesh->GetNumFaces() * 3 ];
                 if( !new_adjency )
                     return false;
 
-                D3D_HR( mesh_container->pSkinInfo->ConvertToIndexedBlendedMesh(
-                            mesh_container->MeshData.pMesh,
+                D3D_HR( mesh_container->SkinInfo->ConvertToIndexedBlendedMesh(
+                            mesh_container->MeshData.Mesh,
                             D3DXMESHOPT_VERTEXCACHE | D3DXMESH_MANAGED,
-                            mesh_container->exNumPaletteEntries,
-                            mesh_container->pAdjacency, new_adjency,
+                            mesh_container->NumPaletteEntries,
+                            (DWORD*) mesh_container->Adjacency, (DWORD*) new_adjency,
                             NULL, NULL,
-                            &mesh_container->exNumInfl,
-                            &mesh_container->exNumAttributeGroups,
-                            &mesh_container->exBoneCombinationBuf,
-                            &mesh_container->exSkinMeshBlended ) );
+                            (DWORD*) &mesh_container->NumInfluences,
+                            (DWORD*) &mesh_container->NumAttributeGroups,
+                            &mesh_container->BoneCombinationBuf,
+                            &mesh_container->SkinMeshBlended ) );
 
-                delete[] mesh_container->pAdjacency;
-                mesh_container->pAdjacency = new_adjency;
+                delete[] mesh_container->Adjacency;
+                mesh_container->Adjacency = new_adjency;
 
                 // FVF has to match our declarator. Vertex shaders are not as forgiving as FF pipeline
-                uint fvf = ( mesh_container->exSkinMeshBlended->GetFVF() & D3DFVF_POSITION_MASK ) | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_LASTBETA_UBYTE4;
-                if( fvf != mesh_container->exSkinMeshBlended->GetFVF() )
+                uint fvf = ( mesh_container->SkinMeshBlended->GetFVF() & D3DFVF_POSITION_MASK ) | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_LASTBETA_UBYTE4;
+                if( fvf != mesh_container->SkinMeshBlended->GetFVF() )
                 {
                     LPD3DXMESH mesh;
-                    D3D_HR( mesh_container->exSkinMeshBlended->CloneMeshFVF( mesh_container->exSkinMeshBlended->GetOptions(), fvf, D3DDevice, &mesh ) );
-                    mesh_container->exSkinMeshBlended->Release();
-                    mesh_container->exSkinMeshBlended = mesh;
+                    D3D_HR( mesh_container->SkinMeshBlended->CloneMeshFVF( mesh_container->SkinMeshBlended->GetOptions(), fvf, D3DDevice, &mesh ) );
+                    mesh_container->SkinMeshBlended->Release();
+                    mesh_container->SkinMeshBlended = mesh;
                 }
 
                 D3DVERTEXELEMENT9   declaration[ MAX_FVF_DECL_SIZE ];
                 LPD3DVERTEXELEMENT9 declaration_ptr = declaration;
-                D3D_HR( mesh_container->exSkinMeshBlended->GetDeclaration( declaration ) );
+                D3D_HR( mesh_container->SkinMeshBlended->GetDeclaration( declaration ) );
 
                 // The vertex shader is expecting to interpret the UBYTE4 as a D3DCOLOR, so update the type
                 // NOTE: this cannot be done with CloneMesh, that would convert the UBYTE4 data to float and then to D3DCOLOR
@@ -2431,19 +2422,19 @@ bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, FrameEx* frame, F
                     declaration_ptr++;
                 }
 
-                D3D_HR( mesh_container->exSkinMeshBlended->UpdateSemantics( declaration ) );
+                D3D_HR( mesh_container->SkinMeshBlended->UpdateSemantics( declaration ) );
             }
 
             // For each bone work out its matrix
-            for( uint i = 0, j = mesh_container->pSkinInfo->GetNumBones(); i < j; i++ )
+            for( uint i = 0, j = mesh_container->SkinInfo->GetNumBones(); i < j; i++ )
             {
                 // Find the frame containing the bone
-                FrameEx* tmp_frame = (FrameEx*) D3DXFrameFind( frame_root, mesh_container->pSkinInfo->GetBoneName( i ) );
+                Frame* tmp_frame = (Frame*) D3DXFrameFind( (LPD3DXFRAME) frame_root, mesh_container->SkinInfo->GetBoneName( i ) );
 
                 // Set the bone part - point it at the transformation matrix
                 if( tmp_frame )
                 {
-                    mesh_container->exFrameCombinedMatrixPointer[ i ] = &tmp_frame->exCombinedTransformationMatrix;
+                    mesh_container->FrameCombinedMatrixPointer[ i ] = &tmp_frame->CombinedTransformationMatrix;
                     FrameVec& frames = xfile->framesSkinned;
                     if( std::find( frames.begin(), frames.end(), tmp_frame ) == frames.end() )
                         frames.push_back( tmp_frame );
@@ -2452,41 +2443,41 @@ bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, FrameEx* frame, F
 
             // Create a copy of the mesh to skin into later
             D3DVERTEXELEMENT9 declaration[ MAX_FVF_DECL_SIZE ];
-            D3D_HR( mesh_container->MeshData.pMesh->GetDeclaration( declaration ) );
-            D3D_HR( mesh_container->MeshData.pMesh->CloneMesh( D3DXMESH_MANAGED, declaration, D3DDevice, &mesh_container->exSkinMesh ) );
+            D3D_HR( mesh_container->MeshData.Mesh->GetDeclaration( declaration ) );
+            D3D_HR( mesh_container->MeshData.Mesh->CloneMesh( D3DXMESH_MANAGED, declaration, D3DDevice, &mesh_container->SkinMesh ) );
 
             // Allocate a buffer for bone matrices, but only if another mesh has not allocated one of the same size or larger
-            if( MaxBones < mesh_container->pSkinInfo->GetNumBones() )
+            if( MaxBones < mesh_container->SkinInfo->GetNumBones() )
             {
-                MaxBones = mesh_container->pSkinInfo->GetNumBones();
+                MaxBones = mesh_container->SkinInfo->GetNumBones();
 
                 // Allocate space for blend matrices
                 SAFEDELA( BoneMatrices );
-                BoneMatrices = new (nothrow) MatrixType[ MaxBones ];
+                BoneMatrices = new (nothrow) Matrix_[ MaxBones ];
                 if( !BoneMatrices )
                     return false;
-                memzero( BoneMatrices, sizeof( MatrixType ) * MaxBones );
+                memzero( BoneMatrices, sizeof( Matrix_ ) * MaxBones );
             }
         }
 
-        mesh_container = (D3DXMESHCONTAINER_EXTENDED*) mesh_container->pNextMeshContainer;
+        mesh_container = (MeshContainer*) mesh_container->NextMeshContainer;
     }
 
-    if( frame->pFrameSibling )
-        SetupSkinning( xfile, (FrameEx*) frame->pFrameSibling, frame_root );
-    if( frame->pFrameFirstChild )
-        SetupSkinning( xfile, (FrameEx*) frame->pFrameFirstChild, frame_root );
+    if( frame->Sibling )
+        SetupSkinning( xfile, (Frame*) frame->Sibling, frame_root );
+    if( frame->FirstChild )
+        SetupSkinning( xfile, (Frame*) frame->FirstChild, frame_root );
     return true;
 }
 
-bool Animation3dXFile::CalculateNormalTangent( FrameEx* frame )
+bool Animation3dXFile::CalculateNormalTangent( Frame* frame )
 {
-    D3DXMESHCONTAINER_EXTENDED* mesh_container = (D3DXMESHCONTAINER_EXTENDED*) frame->pMeshContainer;
+    MeshContainer* mesh_container = (MeshContainer*) frame->Meshes;
     while( mesh_container )
     {
-        if( mesh_container->MeshData.pMesh && ( !mesh_container->pSkinInfo || mesh_container->exSkinMeshBlended ) )
+        if( mesh_container->MeshData.Mesh && ( !mesh_container->SkinInfo || mesh_container->SkinMeshBlended ) )
         {
-            LPD3DXMESH&         mesh = ( mesh_container->exSkinMeshBlended ? mesh_container->exSkinMeshBlended : mesh_container->MeshData.pMesh );
+            LPD3DXMESH&         mesh = ( mesh_container->SkinMeshBlended ? mesh_container->SkinMeshBlended : mesh_container->MeshData.Mesh );
 
             D3DVERTEXELEMENT9   declaration[ MAX_FVF_DECL_SIZE ];
             LPD3DVERTEXELEMENT9 declaration_ptr = declaration;
@@ -2531,46 +2522,46 @@ bool Animation3dXFile::CalculateNormalTangent( FrameEx* frame )
                                                    is_texcoord && !is_binormal ? D3DDECLUSAGE_BINORMAL : D3DX_DEFAULT, 0,
                                                    !is_normal ? D3DDECLUSAGE_NORMAL : D3DX_DEFAULT, 0,
                                                    ( !is_normal ? D3DXTANGENT_CALCULATE_NORMALS : 0 ),
-                                                   mesh_container->pAdjacency, 0.01f, 0.25f, 0.01f, &tmp_mesh, NULL ) );
+                                                   (DWORD*) mesh_container->Adjacency, 0.01f, 0.25f, 0.01f, &tmp_mesh, NULL ) );
                 mesh->Release();
                 mesh = tmp_mesh;
             }
         }
 
-        mesh_container = (D3DXMESHCONTAINER_EXTENDED*) mesh_container->pNextMeshContainer;
+        mesh_container = (MeshContainer*) mesh_container->NextMeshContainer;
     }
 
-    if( frame->pFrameSibling )
-        CalculateNormalTangent( (FrameEx*) frame->pFrameSibling );
-    if( frame->pFrameFirstChild )
-        CalculateNormalTangent( (FrameEx*) frame->pFrameFirstChild );
+    if( frame->Sibling )
+        CalculateNormalTangent( (Frame*) frame->Sibling );
+    if( frame->FirstChild )
+        CalculateNormalTangent( (Frame*) frame->FirstChild );
     return true;
 }
 
-void Animation3dXFile::SetupFacesCount( FrameEx* frame, uint& count )
+void Animation3dXFile::SetupFacesCount( Frame* frame, uint& count )
 {
-    D3DXMESHCONTAINER_EXTENDED* mesh_container = (D3DXMESHCONTAINER_EXTENDED*) frame->pMeshContainer;
+    MeshContainer* mesh_container = (MeshContainer*) frame->Meshes;
     while( mesh_container )
     {
-        LPD3DXMESH mesh = ( mesh_container->pSkinInfo ? mesh_container->exSkinMesh : mesh_container->MeshData.pMesh );
+        LPD3DXMESH mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
         count += mesh->GetNumFaces();
-        mesh_container = (D3DXMESHCONTAINER_EXTENDED*) mesh_container->pNextMeshContainer;
+        mesh_container = (MeshContainer*) mesh_container->NextMeshContainer;
     }
 
-    if( frame->pFrameSibling )
-        SetupFacesCount( (FrameEx*) frame->pFrameSibling, count );
-    if( frame->pFrameFirstChild )
-        SetupFacesCount( (FrameEx*) frame->pFrameFirstChild, count );
+    if( frame->Sibling )
+        SetupFacesCount( (Frame*) frame->Sibling, count );
+    if( frame->FirstChild )
+        SetupFacesCount( (Frame*) frame->FirstChild, count );
 }
 
-void Animation3dXFile::SetupAnimationOutput( D3DXFRAME* frame, ID3DXAnimationController* anim_controller )
+void Animation3dXFile::SetupAnimationOutput( Frame* frame, AnimController_* anim_controller )
 {
     if( frame->Name && frame->Name[ 0 ] )
         anim_controller->RegisterAnimationOutput( frame->Name, &frame->TransformationMatrix, NULL, NULL, NULL );
-    if( frame->pFrameSibling )
-        SetupAnimationOutput( frame->pFrameSibling, anim_controller );
-    if( frame->pFrameFirstChild )
-        SetupAnimationOutput( frame->pFrameFirstChild, anim_controller );
+    if( frame->Sibling )
+        SetupAnimationOutput( frame->Sibling, anim_controller );
+    if( frame->FirstChild )
+        SetupAnimationOutput( frame->FirstChild, anim_controller );
 }
 
 TextureEx* Animation3dXFile::GetTexture( const char* tex_name )
@@ -2581,7 +2572,7 @@ TextureEx* Animation3dXFile::GetTexture( const char* tex_name )
     return texture;
 }
 
-EffectEx* Animation3dXFile::GetEffect( EffectInstanceType* effect_inst )
+EffectEx* Animation3dXFile::GetEffect( EffectInstance_* effect_inst )
 {
     EffectEx* effect = Loader3d::LoadEffect( D3DDevice, effect_inst, fileName.c_str() );
     if( !effect )

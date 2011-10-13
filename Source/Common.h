@@ -188,24 +188,58 @@ struct ScoreType
 #  include <gl/GLU.h>
 # endif
 
+# define PI_VALUE               ( 3.141592654f )
+
 # ifdef FO_D3D
-#  define TextureType           LPDIRECT3DTEXTURE9
-#  define EffectInstanceType    D3DXEFFECTINSTANCE
-#  define EffectType            LPD3DXEFFECT
-#  define EffectDefaultsType    LPD3DXEFFECTDEFAULT
-#  define EffectValueType       D3DXHANDLE
-#  define MaterialType          D3DMATERIAL9
-#  define MeshType              LPD3DXMESH
-#  define MatrixType            D3DXMATRIX
+#  define Device_               LPDIRECT3DDEVICE9
+#  define Texture_              LPDIRECT3DTEXTURE9
+#  define Surface_              LPDIRECT3DSURFACE9
+#  define EffectInstance_       D3DXEFFECTINSTANCE
+#  define Effect_               LPD3DXEFFECT
+#  define EffectDefaults_       LPD3DXEFFECTDEFAULT
+#  define EffectValue_          D3DXHANDLE
+#  define Material_             D3DMATERIAL9
+#  define Mesh_                 LPD3DXMESH
+#  define Matrix_               D3DXMATRIX
+#  define Buffer_               ID3DXBuffer
+#  define Vector3_              D3DXVECTOR3
+#  define Vector4_              D3DXVECTOR4
+#  define AnimSet_              ID3DXAnimationSet
+#  define AnimController_       ID3DXAnimationController
+#  define PresentParams_        D3DPRESENT_PARAMETERS
+#  define Caps_                 D3DCAPS9
+#  define VertexBuffer_         LPDIRECT3DVERTEXBUFFER9
+#  define IndexBuffer_          LPDIRECT3DINDEXBUFFER9
+#  define PixelShader_          IDirect3DPixelShader9
+#  define ConstantTable_        ID3DXConstantTable
+#  define SkinInfo_             LPD3DXSKININFO
+#  define Light_                D3DLIGHT9
+#  define ViewPort_             D3DVIEWPORT9
 # else
-#  define TextureType           GLuint
-#  define EffectInstanceType    GLuint
-#  define EffectType            GLuint
-#  define EffectDefaultsType    GLuint
-#  define EffectValueType       GLuint
-#  define MaterialType          GLuint
-#  define MeshType              GLuint
-#  define MatrixType            GLuint
+#  define Device_               GLuint
+#  define Texture_              GLuint
+#  define Surface_              GLuint
+#  define EffectInstance_       GLuint
+#  define Effect_               GLuint
+#  define EffectDefaults_       GLuint
+#  define EffectValue_          GLuint
+#  define Material_             GLuint
+#  define Mesh_                 GLuint
+#  define Matrix_               GLuint
+#  define Buffer_               GLuint
+#  define Vector3_              GLuint
+#  define Vector4_              GLuint
+#  define AnimSet_              GLuint
+#  define AnimController_       GLuint
+#  define PresentParams_        GLuint
+#  define Caps_                 GLuint
+#  define VertexBuffer_         GLuint
+#  define IndexBuffer_          GLuint
+#  define PixelShader_          GLuint
+#  define ConstantTable_        GLuint
+#  define SkinInfo_             GLuint
+#  define Light_                GLuint
+#  define ViewPort_             GLuint
 # endif
 
 # define MODE_WIDTH             ( GameOpt.ScreenWidth )

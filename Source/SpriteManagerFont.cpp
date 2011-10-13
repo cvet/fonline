@@ -22,15 +22,15 @@ struct Letter
 
 struct Font
 {
-    LPDIRECT3DTEXTURE9 FontTex;
-    LPDIRECT3DTEXTURE9 FontTexBordered;
+    Texture_  FontTex;
+    Texture_  FontTexBordered;
 
-    Letter             Letters[ 256 ];
-    int                SpaceWidth;
-    int                MaxLettHeight;
-    int                EmptyVer;
-    FLOAT              ArrXY[ 256 ][ 4 ];
-    EffectEx*          Effect;
+    Letter    Letters[ 256 ];
+    int       SpaceWidth;
+    int       MaxLettHeight;
+    int       EmptyVer;
+    FLOAT     ArrXY[ 256 ][ 4 ];
+    EffectEx* Effect;
 
     Font()
     {
@@ -166,7 +166,7 @@ bool SpriteManager::LoadFontOld( int index, const char* font_name, int size_mod 
         return false;
     }
 
-    LPDIRECT3DTEXTURE9 image = NULL;
+    Texture_ image = NULL;
     D3D_HR( D3DXCreateTextureFromFileInMemoryEx( d3dDevice, fm.GetBuf(), fm.GetFsize(), D3DX_DEFAULT, D3DX_DEFAULT, 1, 0,
                                                  D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, D3DCOLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &image ) );
 

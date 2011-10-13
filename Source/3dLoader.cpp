@@ -13,18 +13,20 @@
 /* Models                                                               */
 /************************************************************************/
 
-MeshHierarchy Loader3d::memAllocator;
-PCharVec      Loader3d::processedFiles;
-FrameVec      Loader3d::loadedModels;
-PCharVec      Loader3d::loadedAnimationsFNames;
-AnimSetVec    Loader3d::loadedAnimations;
+#ifdef FO_D3D
+static MeshHierarchy memAllocator;
+#endif
+PCharVec             Loader3d::processedFiles;
+FrameVec             Loader3d::loadedModels;
+PCharVec             Loader3d::loadedAnimationsFNames;
+AnimSetVec           Loader3d::loadedAnimations;
 
-FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool calc_tangent )
+Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent )
 {
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
-        FrameEx* frame = *it;
-        if( !_stricmp( frame->exFileName, fname ) )
+        Frame* frame = *it;
+        if( !_stricmp( frame->Name, fname ) )
             return frame;
     }
 
@@ -44,10 +46,10 @@ FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool 
     const char* ext = FileManager::GetExtension( fname );
     if( ext && !_stricmp( ext, "x" ) )
     {
-        FrameEx* frame_root = LoadX( device, fm, fname );
+        Frame* frame_root = LoadX( device, fm, fname );
         if( frame_root )
         {
-            frame_root->exFileName = Str::Duplicate( fname );
+            frame_root->Name = Str::Duplicate( fname );
             loadedModels.push_back( frame_root );
         }
         else
@@ -95,14 +97,14 @@ FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool 
     }
 
     // Extract frames
-    FrameEx* frame_root = FillNode( device, scene->mRootNode, scene, calc_tangent );
+    Frame* frame_root = FillNode( device, scene->mRootNode, scene, calc_tangent );
     if( !frame_root )
     {
         WriteLogF( _FUNC_, " - Conversion fail, name<%s>.\n", fname );
         importer->FreeScene();
         return NULL;
     }
-    frame_root->exFileName = Str::Duplicate( fname );
+    frame_root->Name = Str::Duplicate( fname );
     loadedModels.push_back( frame_root );
 
     // Extract animations
@@ -158,7 +160,7 @@ FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool 
                                            na->mNumScalingKeys ? &scale[ 0 ] : NULL, na->mNumRotationKeys ? &rot[ 0 ] : NULL, na->mNumPositionKeys ? &pos[ 0 ] : NULL, &index );
         }
 
-        ID3DXBuffer*                 buf;
+        Buffer_*                     buf;
         ID3DXCompressedAnimationSet* cset;
         if( FAILED( set->Compress( D3DXCOMPRESS_DEFAULT, 0.0f, NULL, &buf ) ) )
             continue;
@@ -175,9 +177,9 @@ FrameEx* Loader3d::LoadModel( IDirect3DDevice9* device, const char* fname, bool 
     return frame_root;
 }
 
-MatrixType ConvertMatrix( const aiMatrix4x4& mat )
+Matrix_ ConvertMatrix( const aiMatrix4x4& mat )
 {
-    MatrixType m;
+    Matrix_ m;
     m._11 = mat.a1;
     m._21 = mat.a2;
     m._31 = mat.a3;
@@ -197,11 +199,13 @@ MatrixType ConvertMatrix( const aiMatrix4x4& mat )
     return m;
 }
 
-FrameEx* Loader3d::FillNode( IDirect3DDevice9* device, const aiNode* node, const aiScene* scene, bool with_tangent )
+Frame* Loader3d::FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent )
 {
     // Create frame
-    FrameEx* frame;
-    D3D_HR( memAllocator.CreateFrame( node->mName.data, (D3DXFRAME**) &frame ) );
+    Frame* frame;
+    #ifdef FO_D3D
+    D3D_HR( memAllocator.CreateFrame( node->mName.data, (LPD3DXFRAME*) &frame ) );
+    #endif
 
     frame->TransformationMatrix = ConvertMatrix( node->mTransformation );
 
@@ -436,26 +440,26 @@ FrameEx* Loader3d::FillNode( IDirect3DDevice9* device, const aiNode* node, const
         if( skin_info )
             skin_info->Release();
 
-        frame->pMeshContainer = mesh_container;
+        frame->Meshes = (MeshContainer*) mesh_container;
     }
 
     // Childs
-    FrameEx* frame_last = NULL;
+    Frame* frame_last = NULL;
     for( unsigned int i = 0; i < node->mNumChildren; i++ )
     {
-        aiNode*  node_child = node->mChildren[ i ];
-        FrameEx* frame_child = FillNode( device, node_child, scene, with_tangent );
+        aiNode* node_child = node->mChildren[ i ];
+        Frame*  frame_child = FillNode( device, node_child, scene, with_tangent );
         if( !i )
-            frame->pFrameFirstChild = frame_child;
+            frame->FirstChild = frame_child;
         else
-            frame_last->pFrameSibling = frame_child;
+            frame_last->Sibling = frame_child;
         frame_last = frame_child;
     }
 
     return frame;
 }
 
-AnimSet* Loader3d::LoadAnimation( IDirect3DDevice9* device, const char* anim_fname, const char* anim_name )
+AnimSet_* Loader3d::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
@@ -477,20 +481,25 @@ AnimSet* Loader3d::LoadAnimation( IDirect3DDevice9* device, const char* anim_fna
     return NULL;
 }
 
-void Loader3d::Free( D3DXFRAME* frame )
+void Loader3d::Free( Frame* frame )
 {
     // Free frame
+    #ifdef FO_D3D
     if( frame )
-        D3DXFrameDestroy( frame, &memAllocator );
+        D3DXFrameDestroy( (LPD3DXFRAME) frame, &memAllocator );
+    #endif
 }
 
-FrameEx* Loader3d::LoadX( IDirect3DDevice9* device, FileManager& fm, const char* fname )
+Frame* Loader3d::LoadX( Device_ device, FileManager& fm, const char* fname )
 {
     // Load model
-    ID3DXAnimationController* anim = NULL;
-    FrameEx*                  frame_root = NULL;
-    HRESULT                   hr = D3DXLoadMeshHierarchyFromXInMemory( fm.GetBuf(), fm.GetFsize(), D3DXMESH_MANAGED, device, &memAllocator, NULL,
-                                                                       (D3DXFRAME**) &frame_root, &anim );
+    AnimController_* anim = NULL;
+    Frame*           frame_root = NULL;
+    #ifdef FO_D3D
+    HRESULT          hr = D3DXLoadMeshHierarchyFromXInMemory( fm.GetBuf(), fm.GetFsize(), D3DXMESH_MANAGED, device, &memAllocator, NULL,
+                                                              (LPD3DXFRAME*) &frame_root, &anim );
+    #endif
+
     if( hr != D3D_OK )
     {
         WriteLogF( _FUNC_, " - Can't load X file hierarchy, error<%s>.\n", DXGetErrorString( hr ) );
@@ -502,7 +511,7 @@ FrameEx* Loader3d::LoadX( IDirect3DDevice9* device, FileManager& fm, const char*
     {
         for( uint i = 0, j = anim->GetNumAnimationSets(); i < j; i++ )
         {
-            AnimSet* set;
+            AnimSet_* set;
             anim->GetAnimationSet( i, &set );          // AddRef
             loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
             loadedAnimations.push_back( set );
@@ -533,7 +542,7 @@ bool Loader3d::IsExtensionSupported( const char* ext )
 /************************************************************************/
 TextureExVec Loader3d::loadedTextures;
 
-TextureEx* Loader3d::LoadTexture( IDirect3DDevice9* device, const char* texture_name, const char* model_path )
+TextureEx* Loader3d::LoadTexture( Device_ device, const char* texture_name, const char* model_path )
 {
     if( !texture_name || !texture_name[ 0 ] )
         return NULL;
@@ -558,7 +567,7 @@ TextureEx* Loader3d::LoadTexture( IDirect3DDevice9* device, const char* texture_
     }
 
     // Create texture
-    TextureType texture = NULL;
+    Texture_ texture = NULL;
     if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &texture ) ) )
         return NULL;
 
@@ -629,15 +638,15 @@ public:
 EffectExVec   Loader3d::loadedEffects;
 IncludeParser includeParser;
 
-EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, const char* effect_name )
+EffectEx* Loader3d::LoadEffect( Device_ device, const char* effect_name )
 {
-    EffectInstanceType effect_inst;
+    EffectInstance_ effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
     effect_inst.pEffectFilename = (char*) effect_name;
     return LoadEffect( device, &effect_inst, NULL );
 }
 
-EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, EffectInstanceType* effect_inst, const char* model_path )
+EffectEx* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path )
 {
     if( !effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[ 0 ] )
         return NULL;
@@ -724,7 +733,7 @@ EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, EffectInstanceType* ef
     }
 
     // Create effect
-    EffectType   effect = NULL;
+    Effect_      effect = NULL;
     LPD3DXBUFFER errors = NULL;
     if( FAILED( D3DXCreateEffect( device, fm_cache.GetBuf(), fm_cache.GetFsize(), NULL, NULL, /*D3DXSHADER_SKIPVALIDATION|*/ D3DXFX_NOT_CLONEABLE, NULL, &effect, &errors ) ) )
     {
@@ -818,7 +827,7 @@ EffectEx* Loader3d::LoadEffect( IDirect3DDevice9* device, EffectInstanceType* ef
         for( uint d = 0; d < effect_inst->NumDefaults; d++ )
         {
             D3DXEFFECTDEFAULT& def = effect_inst->pDefaults[ d ];
-            EffectValueType    param = effect->GetParameterByName( NULL, def.pParamName );
+            EffectValue_       param = effect->GetParameterByName( NULL, def.pParamName );
             if( !param )
                 continue;
             switch( def.Type )

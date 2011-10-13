@@ -446,16 +446,16 @@ public:
     typedef vector< ScreenEffect > ScreenEffectVec;
 
     // Fading
-    ScreenEffectVec    ScreenEffects;
+    ScreenEffectVec ScreenEffects;
     // Quake
-    int                ScreenOffsX, ScreenOffsY;
-    float              ScreenOffsXf, ScreenOffsYf, ScreenOffsStep;
-    uint               ScreenOffsNextTick;
+    int             ScreenOffsX, ScreenOffsY;
+    float           ScreenOffsXf, ScreenOffsYf, ScreenOffsStep;
+    uint            ScreenOffsNextTick;
     // Mirror
-    LPDIRECT3DTEXTURE9 ScreenMirrorTexture;
-    int                ScreenMirrorX, ScreenMirrorY;
-    uint               ScreenMirrorEndTick;
-    bool               ScreenMirrorStart;
+    Texture_        ScreenMirrorTexture;
+    int             ScreenMirrorX, ScreenMirrorY;
+    uint            ScreenMirrorEndTick;
+    bool            ScreenMirrorStart;
 
     void ScreenFadeIn()  { ScreenFade( 1000, D3DCOLOR_ARGB( 0, 0, 0, 0 ), D3DCOLOR_ARGB( 255, 0, 0, 0 ), false ); }
     void ScreenFadeOut() { ScreenFade( 1000, D3DCOLOR_ARGB( 255, 0, 0, 0 ), D3DCOLOR_ARGB( 0, 0, 0, 0 ), false ); }
@@ -1635,14 +1635,14 @@ public:
     #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
     #define SAVE_LOAD_IMAGE_HEIGHT     ( 300 )
 
-    AnyFrames*         SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
+    AnyFrames* SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
     * SaveLoadDonePicDown, * SaveLoadBackPicDown;
-    INTRECT            SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
-                       SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
-    int                SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
-    bool               SaveLoadLoginScreen, SaveLoadSave;
-    LPDIRECT3DSURFACE9 SaveLoadDraft;
-    bool               SaveLoadProcessDraft, SaveLoadDraftValid;
+    INTRECT    SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
+               SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
+    int        SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
+    bool       SaveLoadLoginScreen, SaveLoadSave;
+    Surface_   SaveLoadDraft;
+    bool       SaveLoadProcessDraft, SaveLoadDraftValid;
 
     struct SaveLoadDataSlot
     {
