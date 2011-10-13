@@ -866,14 +866,14 @@ public:
         // Get script names
         char fname_real[ MAX_FOPATH ] = { 0 };
         Str::Append( fname_real, module_name );
-        Str::Replacement( fname_real, '.', '\\' );
+        Str::Replacement( fname_real, '.', DIR_SLASH_C );
         Str::Append( fname_real, ".fos" );
 
         char fname_script[ MAX_FOPATH ] = { 0 };
         if( file_pefix )
             Str::Copy( fname_script, file_pefix );
         Str::Append( fname_script, module_name );
-        Str::Replacement( fname_script, '.', '\\' );
+        Str::Replacement( fname_script, '.', DIR_SLASH_C );
         Str::Append( fname_script, ".fos" );
 
         // Set current pragmas
@@ -1972,7 +1972,7 @@ endcopy:
     {
         if( EngineLogFile )
             return true;
-        EngineLogFile = FileOpen( ".\\FOscript.log", true );
+        EngineLogFile = FileOpen( DIR_SLASH_SD "FOscript.log", true );
         if( !EngineLogFile )
             return false;
         LogA( "Start logging script system.\n" );

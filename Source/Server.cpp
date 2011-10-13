@@ -3479,7 +3479,7 @@ bool FOServer::Init()
         return true;
     Active = 0;
 
-    FileManager::InitDataFiles( ".\\" );
+    FileManager::InitDataFiles( DIR_SLASH_SD );
 
     IniParser cfg;
     cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
@@ -3618,7 +3618,7 @@ bool FOServer::Init()
         SaveClients.reserve( MAX_CLIENTS_IN_GAME );
     }
 
-    FileManager::SetDataPath( ".\\" );   // File manager
+    FileManager::SetDataPath( DIR_SLASH_SD );   // File manager
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_SAVE ) );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_CLIENTS ) );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_BANS ) );
@@ -4447,7 +4447,7 @@ void FOServer::SaveWorld( const char* name )
         // Save directly to file
         tick = Timer::AccurateTick();
         char fname[ 64 ];
-        sprintf( fname, ".\\save\\world%04d.fo", SaveWorldIndex + 1 );
+        Str::Format( fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), SaveWorldIndex + 1 );
         DumpFile = FileOpen( name ? name : fname, true );
         if( !DumpFile )
         {
@@ -4550,8 +4550,7 @@ bool FOServer::LoadWorld( const char* name )
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
             char fname[ 64 ];
-            sprintf( fname, ".\\save\\world%04d.fo", i );
-
+            Str::Format( fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), i );
             f = FileOpen( fname, false );
             if( f )
             {

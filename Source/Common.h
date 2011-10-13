@@ -187,10 +187,10 @@ const uchar SELECT_ALPHA    = 100;
 #  define CFG_DEF_INT_FILE      "mapper_default.ini"
 # endif
 
-# define PATH_MAP_FLAGS         ".\\Data\\maps\\"
-# define PATH_TEXT_FILES        ".\\Data\\text\\"
-# define PATH_LOG_FILE          ".\\"
-# define PATH_SCREENS_FILE      ".\\"
+# define PATH_MAP_FLAGS         DIR_SLASH_SD "Data" DIR_SLASH_S "maps" DIR_SLASH_S ""
+# define PATH_TEXT_FILES        DIR_SLASH_SD "Data" DIR_SLASH_S "text" DIR_SLASH_S ""
+# define PATH_LOG_FILE          DIR_SLASH_SD
+# define PATH_SCREENS_FILE      DIR_SLASH_SD
 
 # define DIRECTINPUT_VERSION    0x0800
 # include <dinput.h>

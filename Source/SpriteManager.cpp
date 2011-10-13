@@ -1680,6 +1680,8 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
     bool transparent = false;
     bool mirror_hor = false;
     bool mirror_ver = false;
+    uint frm_from = 0;
+    uint frm_to = 100000;
     Str::Copy( file_name, fname );
 
     char* delim = strstr( file_name, "$" );
@@ -1715,6 +1717,15 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
             case 'V':
             case 'v':
                 mirror_ver = true;
+                break;
+            case 'F':
+            case 'f':
+                // name$1vf5-7.art
+                uint a, b;
+                if( sscanf( &delim[ i + 1 ], "%u-%u", &a, &b ) == 2 )
+                    frm_from = a, frm_to = b, i += 3;
+                else if( sscanf( &delim[ i + 1 ], "%u", &a ) == 1 )
+                    frm_from = a, frm_to = a, i += 1;
                 break;
             default:
                 break;
@@ -1788,10 +1799,16 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
     uint frm_fps = header.frameRate;
     if( !frm_fps )
         frm_fps = 10;
-    uint       frm_count = header.frameCount;
-    uint       dir_count = header.rotationCount;
+    uint frm_count = header.frameCount;
+    uint dir_count = header.rotationCount;
 
-    AnyFrames* anim = CreateAnimation( frm_count, 1000 / frm_fps * frm_count );
+    if( frm_from >= frm_count )
+        frm_from = frm_count - 1;
+    if( frm_to >= frm_count )
+        frm_to = frm_count - 1;
+    uint       frm_count_anim = max( frm_from, frm_to ) - min( frm_from, frm_to ) + 1;
+
+    AnyFrames* anim = CreateAnimation( frm_count_anim, 1000 / frm_fps * frm_count_anim );
     if( !anim )
         return NULL;
 
@@ -1808,8 +1825,21 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
     }
 
     // Read data
-    for( uint frm = 0; frm < frm_count; frm++ )
+    uint max_w = 0;
+    uint max_h = 0;
+    uint frm = frm_from;
+    uint frm_cur = 0;
+    while( true )
     {
+        uint data_offset_cur = data_offset;
+        for( uint i = 0; i < frm; i++ )
+        {
+            fm.SetCurPos( sizeof( ArtHeader ) + sizeof( ArtPalette ) * palette_count +
+                          sizeof( ArtFrameInfo ) * dir * frm_count + sizeof( ArtFrameInfo ) * i + sizeof( uint ) * 2 );
+            uint frame_size = fm.GetLEUInt();
+            data_offset_cur += frame_size;
+        }
+
         fm.SetCurPos( sizeof( ArtHeader ) + sizeof( ArtPalette ) * palette_count +
                       sizeof( ArtFrameInfo ) * dir * frm_count + sizeof( ArtFrameInfo ) * frm );
 
@@ -1827,10 +1857,15 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
             return NULL;
         }
 
-        si->OffsX = -frame_info.offsetX + frame_info.frameWidth / 2;
-        si->OffsY = -frame_info.offsetY + frame_info.frameHeight;
-        anim->NextX[ frm ] = 0;    // frame_info.deltaX;
-        anim->NextY[ frm ] = 0;    // frame_info.deltaY;
+        si->OffsX = ( mirror_hor ? -frame_info.offsetX - frame_info.frameWidth / 2 : -frame_info.offsetX + frame_info.frameWidth / 2 );
+        si->OffsY = ( mirror_ver ? frame_info.offsetY : -frame_info.offsetY + frame_info.frameHeight );
+        anim->NextX[ frm_cur ] = 0;    // frame_info.deltaX;
+        anim->NextY[ frm_cur ] = 0;    // frame_info.deltaY;
+
+        if( max_w < frame_info.frameWidth )
+            max_w = frame_info.frameWidth;
+        if( max_h < frame_info.frameHeight )
+            max_h = frame_info.frameHeight;
 
         // Create FOnline fast format
         uint   w = frame_info.frameWidth;
@@ -1848,8 +1883,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
         *( (uint*) data + 2 ) = h;
         uint* ptr = (uint*) data + 3;
 
-        fm.SetCurPos( data_offset );
-        data_offset += frame_info.frameSize;
+        fm.SetCurPos( data_offset_cur );
 
         // Decode
 // =======================================================================
@@ -1922,7 +1956,28 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
             delete anim;
             return NULL;
         }
-        anim->Ind[ frm ] = result;
+        anim->Ind[ frm_cur ] = result;
+
+        // Next index
+        if( frm == frm_to )
+            break;
+        if( frm_to > frm_from )
+            frm++;
+        else
+            frm--;
+        frm_cur++;
+    }
+
+    // Fix mirrored offsets
+    if( mirror_hor )
+    {
+        for( uint i = 0; i < frm_count_anim; i++ )
+            GetSpriteInfo( anim->Ind[ i ] )->OffsX += max_w;
+    }
+    if( mirror_ver )
+    {
+        for( uint i = 0; i < frm_count_anim; i++ )
+            GetSpriteInfo( anim->Ind[ i ] )->OffsY -= max_h;
     }
 
     return anim;

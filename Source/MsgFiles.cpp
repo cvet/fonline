@@ -483,7 +483,7 @@ int LanguagePack::LoadAll()
     int count_fail = 0;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
     {
-        if( Msg[ i ].LoadMsgFile( Str::FormatBuf( "%s\\%s", NameStr, TextMsgFileName[ i ] ), PathType ) < 0 )
+        if( Msg[ i ].LoadMsgFile( Str::FormatBuf( "%s" DIR_SLASH_S "%s", NameStr, TextMsgFileName[ i ] ), PathType ) < 0 )
         {
             count_fail++;
             WriteLogF( _FUNC_, " - Unable to load MSG<%s>.\n", TextMsgFileName[ i ] );

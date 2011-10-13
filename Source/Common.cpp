@@ -425,7 +425,7 @@ void RestoreMainDirectory()
     // Cut off executable name
     int last = 0;
     for( int i = 0; path[ i ]; i++ )
-        if( path[ i ] == '\\' )
+        if( path[ i ] == DIR_SLASH_C )
             last = i;
     path[ last + 1 ] = 0;
 
@@ -664,8 +664,8 @@ const char* GetConfigFileName()
 
         // Get file name
         const char* name = NULL;
-        for( size_t i = 0, j = strlen( module_name ); i < j; i++ )
-            if( module_name[ i ] == '\\' || module_name[ i ] == '/' )
+        for( size_t i = 0, j = Str::Length( module_name ); i < j; i++ )
+            if( module_name[ i ] == DIR_SLASH_C )
                 name = &module_name[ i + 1 ];
         if( !name )
             return config_name;
@@ -826,13 +826,13 @@ void GetClientOptions()
     cfg_mapper.GetStr( "ClientPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
     GameOpt.ClientPath = buf;
-    if( GameOpt.ClientPath.length() && GameOpt.ClientPath[ GameOpt.ClientPath.length() - 1 ] != '\\' )
-        GameOpt.ClientPath += "\\";
+    if( GameOpt.ClientPath.length() && GameOpt.ClientPath[ GameOpt.ClientPath.length() - 1 ] != DIR_SLASH_C )
+        GameOpt.ClientPath += DIR_SLASH_S;
     cfg_mapper.GetStr( "ServerPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ServerPath" );
     GameOpt.ServerPath = buf;
-    if( GameOpt.ServerPath.length() && GameOpt.ServerPath[ GameOpt.ServerPath.length() - 1 ] != '\\' )
-        GameOpt.ServerPath += "\\";
+    if( GameOpt.ServerPath.length() && GameOpt.ServerPath[ GameOpt.ServerPath.length() - 1 ] != DIR_SLASH_C )
+        GameOpt.ServerPath += DIR_SLASH_S;
 
     FileManager::SetDataPath( GameOpt.ClientPath.c_str() );
 
@@ -947,7 +947,7 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugSprites, "-DebugSprites" );
 
     // Str
-    cfg.GetStr( CLIENT_CONFIG_APP, "FonlineDataPath", ".\\data", buf );
+    cfg.GetStr( CLIENT_CONFIG_APP, "FonlineDataPath", DIR_SLASH_SD "data", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-FonlineDataPath" );
     GameOpt.FoDataPath = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
@@ -1401,9 +1401,9 @@ GameOptions::GameOptions()
     Anim2CombatEnd = 0;
 
     // Mapper
-    ClientPath = ".\\";
+    ClientPath = DIR_SLASH_SD;
     ClientPathRefCounter = 1;
-    ServerPath = ".\\";
+    ServerPath = DIR_SLASH_SD;
     ServerPathRefCounter = 1;
     ShowCorners = false;
     ShowSpriteCuts = false;
@@ -1646,13 +1646,13 @@ string Deprecated_GetPicName( int pid, int type, ushort pic_num )
 {
     if( !ListsLoaded )
     {
-        LoadList( "data\\deprecated_lists\\tiles.lst", PT_ART_TILES );
-        LoadList( "data\\deprecated_lists\\items.lst", PT_ART_ITEMS );
-        LoadList( "data\\deprecated_lists\\scenery.lst", PT_ART_SCENERY );
-        LoadList( "data\\deprecated_lists\\walls.lst", PT_ART_WALLS );
-        LoadList( "data\\deprecated_lists\\misc.lst", PT_ART_MISC );
-        LoadList( "data\\deprecated_lists\\intrface.lst", PT_ART_INTRFACE );
-        LoadList( "data\\deprecated_lists\\inven.lst", PT_ART_INVEN );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "tiles.lst", PT_ART_TILES );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "items.lst", PT_ART_ITEMS );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "scenery.lst", PT_ART_SCENERY );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "walls.lst", PT_ART_WALLS );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "misc.lst", PT_ART_MISC );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "intrface.lst", PT_ART_INTRFACE );
+        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "inven.lst", PT_ART_INVEN );
         ListsLoaded = true;
     }
 

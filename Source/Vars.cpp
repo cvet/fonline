@@ -16,7 +16,7 @@ bool VarManager::Init( const char* fpath )
     WriteLog( "Var manager initialization.\n" );
 
     if( !fpath )
-        varsPath = ".\\";
+        varsPath = DIR_SLASH_SD;
     else
         varsPath = string( fpath );
     varsPath += VAR_FNAME_VARS;

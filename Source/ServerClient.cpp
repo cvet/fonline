@@ -1928,9 +1928,9 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         for( int i = 0; i < 5; i++ )
             if( !uid[ i ] )
                 uid_zero++;
-        if( uid_zero > 1 )
+        if( uid_zero > 2 )
         {
-            WriteLogF( _FUNC_, " - Received more than one zeros UIDs, client<%s>.\n", cl->Name );
+            WriteLogF( _FUNC_, " - Received more than two zero UIDs, client<%s>.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
