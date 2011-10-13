@@ -22,15 +22,15 @@ struct Letter
 
 struct Font
 {
-    Texture_  FontTex;
-    Texture_  FontTexBordered;
+    Texture_ FontTex;
+    Texture_ FontTexBordered;
 
-    Letter    Letters[ 256 ];
-    int       SpaceWidth;
-    int       MaxLettHeight;
-    int       EmptyVer;
-    FLOAT     ArrXY[ 256 ][ 4 ];
-    EffectEx* Effect;
+    Letter   Letters[ 256 ];
+    int      SpaceWidth;
+    int      MaxLettHeight;
+    int      EmptyVer;
+    FLOAT    ArrXY[ 256 ][ 4 ];
+    Effect*  DrawEffect;
 
     Font()
     {
@@ -46,7 +46,7 @@ struct Font
             ArrXY[ i ][ 2 ] = 0.0f;
             ArrXY[ i ][ 3 ] = 0.0f;
         }
-        Effect = NULL;
+        DrawEffect = NULL;
     }
 };
 typedef vector< Font* > FontVec;
@@ -131,11 +131,11 @@ void SpriteManager::SetDefaultFont( int index, uint color )
     DefFontColor = color;
 }
 
-void SpriteManager::SetFontEffect( int index, EffectEx* effect )
+void SpriteManager::SetFontEffect( int index, Effect* effect )
 {
     Font* font = GetFont( index );
     if( font )
-        font->Effect = effect;
+        font->DrawEffect = effect;
 }
 
 bool SpriteManager::LoadFontOld( int index, const char* font_name, int size_mod )
@@ -1030,8 +1030,8 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
 
             if( ++curSprCnt == flushSprCnt )
             {
-                dipQueue.push_back( DipData( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex, font->Effect ) );
-                dipQueue.back().SprCount = curSprCnt;
+                dipQueue.push_back( DipData( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex, font->DrawEffect ) );
+                dipQueue.back().SpritesCount = curSprCnt;
                 Flush();
             }
 
@@ -1042,8 +1042,8 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
 
     if( curSprCnt )
     {
-        dipQueue.push_back( DipData( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex, font->Effect ) );
-        dipQueue.back().SprCount = curSprCnt;
+        dipQueue.push_back( DipData( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex, font->DrawEffect ) );
+        dipQueue.back().SpritesCount = curSprCnt;
         Flush();
     }
 

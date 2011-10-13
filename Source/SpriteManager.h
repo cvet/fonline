@@ -111,13 +111,13 @@
 struct Surface
 {
     int      Type;
-    Texture_ Texture;
+    Texture_ TextureOwner;
     uint     Width, Height;           // Texture size
     uint     BusyH;                   // Height point position
     uint     FreeX, FreeY;            // Busy positions on current surface
 
-    Surface(): Type( 0 ), Texture( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
-    ~Surface() { SAFEREL( Texture ); }
+    Surface(): Type( 0 ), TextureOwner( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
+    ~Surface() { SAFEREL( TextureOwner ); }
 };
 typedef vector< Surface* > SurfaceVec;
 
@@ -128,7 +128,7 @@ struct MYVERTEX
     FLOAT tu, tv;
     FLOAT tu2, tv2;
 
-    MYVERTEX(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ), Diffuse( 0 ) {};
+    MYVERTEX(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ), Diffuse( 0 ) {}
 };
 #define D3DFVF_MYVERTEX              ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2 )
 
@@ -137,7 +137,7 @@ struct MYVERTEX_PRIMITIVE
     FLOAT x, y, z, rhw;
     uint  Diffuse;
 
-    MYVERTEX_PRIMITIVE(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), Diffuse( 0 ) {};
+    MYVERTEX_PRIMITIVE(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), Diffuse( 0 ) {}
 };
 #define D3DFVF_MYVERTEX_PRIMITIVE    ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE )
 
@@ -149,18 +149,18 @@ struct SpriteInfo
     short        Height;
     short        OffsX;
     short        OffsY;
-    EffectEx*    Effect;
+    Effect*      DrawEffect;
     Animation3d* Anim3d;
-    SpriteInfo(): Surf( NULL ), Width( 0 ), Height( 0 ), OffsX( 0 ), OffsY( 0 ), Effect( NULL ), Anim3d( NULL ) {};
+    SpriteInfo(): Surf( NULL ), Width( 0 ), Height( 0 ), OffsX( 0 ), OffsY( 0 ), DrawEffect( NULL ), Anim3d( NULL ) {}
 };
 typedef vector< SpriteInfo* > SprInfoVec;
 
 struct DipData
 {
-    Texture_  Texture;
-    EffectEx* Effect;
-    uint      SprCount;
-    DipData( Texture_ tex, EffectEx* effect ): Texture( tex ), Effect( effect ), SprCount( 1 ) {};
+    Texture_ SourceTexture;
+    Effect*  SourceEffect;
+    uint     SpritesCount;
+    DipData( Texture_ tex, Effect* effect ): SourceTexture( tex ), SourceEffect( effect ), SpritesCount( 1 ) {}
 };
 typedef vector< DipData > DipDataVec;
 
@@ -324,8 +324,8 @@ public:
         return false;
     }
 
-    void SetDefaultEffect2D( uint index, EffectEx* effect ) { sprDefaultEffect[ index ] = effect; }
-    void SetCurEffect2D( uint index )                       { curDefaultEffect = sprDefaultEffect[ index ]; }
+    void SetDefaultEffect2D( uint index, Effect* effect ) { sprDefaultEffect[ index ] = effect; }
+    void SetCurEffect2D( uint index )                     { curDefaultEffect = sprDefaultEffect[ index ]; }
 
 private:
     VertexBuffer_ pVB;
@@ -337,8 +337,8 @@ private:
     int           curSprCnt;             // Current sprites to flush
     VertexBuffer_ vbPoints;
     int           vbPointsSize;
-    EffectEx*     sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
-    EffectEx*     curDefaultEffect;
+    Effect*       sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
+    Effect*       curDefaultEffect;
 
     void FlushDIP();
 
@@ -385,7 +385,7 @@ public:
     // Fonts
 public:
     void SetDefaultFont( int index, uint color );
-    void SetFontEffect( int index, EffectEx* effect );
+    void SetFontEffect( int index, Effect* effect );
     bool LoadFontOld( int index, const char* font_name, int size_mod );
     bool LoadFontAAF( int index, const char* font_name, int size_mod );
     bool LoadFontBMF( int index, const char* font_name );

@@ -30,19 +30,19 @@ private:
 
     // Textures
 public:
-    static TextureEx* LoadTexture( Device_ device, const char* texture_name, const char* model_path );
-    static void       FreeTexture( TextureEx* texture ); // If texture is NULL than free all textures
+    static Texture* LoadTexture( Device_ device, const char* texture_name, const char* model_path );
+    static void     FreeTexture( Texture* texture );   // If texture is NULL than free all textures
 
 private:
-    static TextureExVec loadedTextures;
+    static TextureVec loadedTextures;
 
     // Effects
 public:
-    static EffectEx* LoadEffect( Device_ device, const char* effect_name );
-    static EffectEx* LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path );
-    static void      EffectProcessVariables( EffectEx* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, TextureEx** textures = NULL );
-    static bool      EffectsPreRestore();
-    static bool      EffectsPostRestore();
+    static Effect* LoadEffect( Device_ device, const char* effect_name );
+    static Effect* LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path );
+    static void    EffectProcessVariables( Effect* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, Texture** textures = NULL );
+    static bool    EffectsPreRestore();
+    static bool    EffectsPostRestore();
 
 private:
     static EffectExVec loadedEffects;

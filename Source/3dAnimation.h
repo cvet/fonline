@@ -52,10 +52,10 @@ struct MeshOptions
     MeshContainer* MeshPtr;
     uint           SubsetsCount;
     bool*          DisabledSubsets;
-    TextureEx**    TexSubsets;
-    TextureEx**    DefaultTexSubsets;
-    EffectEx**     EffectSubsets;
-    EffectEx**     DefaultEffectSubsets;
+    Texture**      TexSubsets;
+    Texture**      DefaultTexSubsets;
+    Effect**       EffectSubsets;
+    Effect**       DefaultEffectSubsets;
 };
 typedef vector< MeshOptions > MeshOptionsVec;
 
@@ -104,7 +104,7 @@ private:
     bool         FrameMove( double elapsed, int x, int y, float scale, bool software_skinning );
     void         UpdateFrameMatrices( const Frame* frame_base, const Matrix_* parent_matrix );
     bool         DrawFrame( Frame* frame, bool with_shadow );
-    bool         DrawMeshEffect( Mesh_ mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, EffectValue_ technique );
+    bool         DrawMeshEffect( Mesh_ mesh, uint subset, Effect* effect_ex, Texture** textures, EffectValue_ technique );
     bool         IsIntersectFrame( Frame* frame, const Vector3_& ray_origin, const Vector3_& ray_dir );
     bool         SetupBordersFrame( Frame* frame, FLTRECT& borders );
     void         ProcessBorders();
@@ -159,7 +159,7 @@ public:
     static void         AnimateSlower();
     static FLTPOINT     Convert2dTo3d( int x, int y );
     static INTPOINT     Convert3dTo2d( float x, float y );
-    static void         SetDefaultEffect( EffectEx* effect );
+    static void         SetDefaultEffect( Effect* effect );
     static bool         Is2dEmulation();
 };
 
@@ -219,8 +219,8 @@ private:
     static void              SetupFacesCount( Frame* frame, uint& count );
     static void              SetupAnimationOutput( Frame* frame, AnimController_* anim_controller );
 
-    TextureEx* GetTexture( const char* tex_name );
-    EffectEx*  GetEffect( EffectInstance_* effect_inst );
+    Texture* GetTexture( const char* tex_name );
+    Effect*  GetEffect( EffectInstance_* effect_inst );
 
 public:
     Animation3dXFile();

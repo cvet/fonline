@@ -323,7 +323,7 @@ bool FOClient::Init( HWND hwnd )
     if( !SprMngr.LoadFontAAF( FONT_BIG, "Big", 1 ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    EffectEx* font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
+    Effect* font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
     if( font_effect )
     {
         SprMngr.SetFontEffect( FONT_FO, font_effect );
@@ -11766,7 +11766,7 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 
 void FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, CScriptString* effect_name )
 {
-    EffectEx* font_effect = NULL;
+    Effect* font_effect = NULL;
     if( effect_name && effect_name->length() )
     {
         font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), effect_name->c_str() );

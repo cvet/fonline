@@ -24,7 +24,7 @@ ViewPort_ ViewPort;
 Matrix_*  BoneMatrices = NULL;
 uint      MaxBones = 0;
 int       SkinningMethod = SKINNING_SOFTWARE;
-EffectEx* EffectMain = NULL;
+Effect*   EffectMain = NULL;
 uint      AnimDelay = 0;
 
 /************************************************************************/
@@ -667,7 +667,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
             MeshOptions& mopt = *it;
             if( mopt.SubsetsCount )
             {
-                memcpy( mopt.TexSubsets, mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( TextureEx* ) * EFFECT_TEXTURES );
+                memcpy( mopt.TexSubsets, mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( Texture* ) * EFFECT_TEXTURES );
                 memset( mopt.DisabledSubsets, 0, mopt.SubsetsCount * sizeof( bool ) );
             }
         }
@@ -677,9 +677,9 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
     {
         for( uint i = 0; i < data.TextureNamesCount; i++ )
         {
-            uint       mesh_num = data.TextureSubsets[ i ] / 100;
-            uint       mesh_ss = data.TextureSubsets[ i ] % 100;
-            TextureEx* texture = NULL;
+            uint     mesh_num = data.TextureSubsets[ i ] / 100;
+            uint     mesh_ss = data.TextureSubsets[ i ] % 100;
+            Texture* texture = NULL;
 
             if( !_strnicmp( data.TextureNames[ i ], "Parent", 6 ) )     // ParentX-Y, X mesh number, Y mesh subset, optional
             {
@@ -730,7 +730,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
         for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
         {
             MeshOptions& mopt = *it;
-            memcpy( mopt.EffectSubsets, mopt.DefaultEffectSubsets, mopt.SubsetsCount * sizeof( EffectEx* ) );
+            memcpy( mopt.EffectSubsets, mopt.DefaultEffectSubsets, mopt.SubsetsCount * sizeof( Effect* ) );
         }
     }
 
@@ -738,9 +738,9 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
     {
         for( uint i = 0; i < data.EffectInstSubsetsCount; i++ )
         {
-            uint      mesh_ss = data.EffectInstSubsets[ i ] % 100;
-            uint      mesh_num = data.EffectInstSubsets[ i ] / 100;
-            EffectEx* effect = NULL;
+            uint    mesh_ss = data.EffectInstSubsets[ i ] % 100;
+            uint    mesh_num = data.EffectInstSubsets[ i ] / 100;
+            Effect* effect = NULL;
 
             if( !_stricmp( data.EffectInst[ i ].pEffectFilename, "Parent" ) )
             {
@@ -1069,18 +1069,18 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                         D3DXMatrixMultiply( &BoneMatrices[ k ], &mesh_container->BoneOffsets[ matrix_index ], mesh_container->FrameCombinedMatrixPointer[ matrix_index ] );
                 }
 
-                EffectEx* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : EffectMain );
+                Effect* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : EffectMain );
 
                 if( effect->EffectParams )
-                    D3D_HR( effect->Effect->ApplyParameterBlock( effect->EffectParams ) );
+                    D3D_HR( effect->EffectInstance->ApplyParameterBlock( effect->EffectParams ) );
                 if( effect->ViewProjMatrix )
-                    D3D_HR( effect->Effect->SetMatrix( effect->ViewProjMatrix, &MatrixViewProj ) );
+                    D3D_HR( effect->EffectInstance->SetMatrix( effect->ViewProjMatrix, &MatrixViewProj ) );
                 if( effect->GroundPosition )
-                    D3D_HR( effect->Effect->SetVector( effect->GroundPosition, &groundPos ) );
+                    D3D_HR( effect->EffectInstance->SetVector( effect->GroundPosition, &groundPos ) );
                 if( effect->LightDiffuse )
-                    D3D_HR( effect->Effect->SetVector( effect->LightDiffuse, &Vector4_( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
+                    D3D_HR( effect->EffectInstance->SetVector( effect->LightDiffuse, &Vector4_( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
                 if( effect->WorldMatrices )
-                    D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, BoneMatrices, mesh_container->NumPaletteEntries ) );
+                    D3D_HR( effect->EffectInstance->SetMatrixArray( effect->WorldMatrices, BoneMatrices, mesh_container->NumPaletteEntries ) );
 
                 // Sum of all ambient and emissive contribution
                 Material_& material = mesh_container->Materials[ attr_id ];
@@ -1089,11 +1089,11 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                 // amb_emm+=D3DXCOLOR(material.Emissive);
                 // D3D_HR(effect->SetVector("MaterialAmbient",(D3DXVECTOR4*)&amb_emm));
                 if( effect->MaterialDiffuse )
-                    D3D_HR( effect->Effect->SetVector( effect->MaterialDiffuse, (Vector4_*) &material.Diffuse ) );
+                    D3D_HR( effect->EffectInstance->SetVector( effect->MaterialDiffuse, (Vector4_*) &material.Diffuse ) );
 
                 // Set NumBones to select the correct vertex shader for the number of bones
                 if( effect->BonesInfluences )
-                    D3D_HR( effect->Effect->SetInt( effect->BonesInfluences, mesh_container->NumInfluences - 1 ) );
+                    D3D_HR( effect->EffectInstance->SetInt( effect->BonesInfluences, mesh_container->NumInfluences - 1 ) );
 
                 // Start the effect now all parameters have been updated
                 DrawMeshEffect( mesh_container->SkinMeshBlended, i, effect, &mopt->TexSubsets[ attr_id * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSkinnedWithShadow : effect->TechniqueSkinned );
@@ -1110,21 +1110,21 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                 if( mopt->DisabledSubsets[ i ] )
                     continue;
 
-                EffectEx* effect = ( mopt->EffectSubsets[ i ] ? mopt->EffectSubsets[ i ] : EffectMain );
+                Effect* effect = ( mopt->EffectSubsets[ i ] ? mopt->EffectSubsets[ i ] : EffectMain );
 
                 if( effect )
                 {
                     if( effect->EffectParams )
-                        D3D_HR( effect->Effect->ApplyParameterBlock( effect->EffectParams ) );
+                        D3D_HR( effect->EffectInstance->ApplyParameterBlock( effect->EffectParams ) );
                     if( effect->ViewProjMatrix )
-                        D3D_HR( effect->Effect->SetMatrix( effect->ViewProjMatrix, &MatrixViewProj ) );
+                        D3D_HR( effect->EffectInstance->SetMatrix( effect->ViewProjMatrix, &MatrixViewProj ) );
                     if( effect->GroundPosition )
-                        D3D_HR( effect->Effect->SetVector( effect->GroundPosition, &groundPos ) );
+                        D3D_HR( effect->EffectInstance->SetVector( effect->GroundPosition, &groundPos ) );
                     Matrix_ wmatrix = ( !mesh_container->SkinInfo ? frame->CombinedTransformationMatrix : MatrixEmpty );
                     if( effect->WorldMatrices )
-                        D3D_HR( effect->Effect->SetMatrixArray( effect->WorldMatrices, &wmatrix, 1 ) );
+                        D3D_HR( effect->EffectInstance->SetMatrixArray( effect->WorldMatrices, &wmatrix, 1 ) );
                     if( effect->LightDiffuse )
-                        D3D_HR( effect->Effect->SetVector( effect->LightDiffuse, &Vector4_( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
+                        D3D_HR( effect->EffectInstance->SetVector( effect->LightDiffuse, &Vector4_( GlobalLight.Diffuse.r, GlobalLight.Diffuse.g, GlobalLight.Diffuse.b, GlobalLight.Diffuse.a ) ) );
                 }
                 else
                 {
@@ -1136,13 +1136,13 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                 if( effect )
                 {
                     if( effect->MaterialDiffuse )
-                        D3D_HR( effect->Effect->SetVector( effect->MaterialDiffuse, (Vector4_*) &mesh_container->Materials[ i ].Diffuse ) );
+                        D3D_HR( effect->EffectInstance->SetVector( effect->MaterialDiffuse, (Vector4_*) &mesh_container->Materials[ i ].Diffuse ) );
                     DrawMeshEffect( draw_mesh, i, effect, &mopt->TexSubsets[ i * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSimpleWithShadow : effect->TechniqueSimple );
                 }
                 else
                 {
                     D3D_HR( D3DDevice->SetMaterial( &mesh_container->Materials[ i ] ) );
-                    D3D_HR( D3DDevice->SetTexture( 0, mopt->TexSubsets[ i * EFFECT_TEXTURES ] ? mopt->TexSubsets[ i * EFFECT_TEXTURES ]->Texture : NULL ) );
+                    D3D_HR( D3DDevice->SetTexture( 0, mopt->TexSubsets[ i * EFFECT_TEXTURES ] ? mopt->TexSubsets[ i * EFFECT_TEXTURES ]->TextureInstance : NULL ) );
                     D3D_HR( D3DDevice->SetVertexShader( NULL ) );
                     D3D_HR( D3DDevice->SetPixelShader( NULL ) );
                     D3D_HR( draw_mesh->DrawSubset( i ) );
@@ -1162,11 +1162,11 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
     return true;
 }
 
-bool Animation3d::DrawMeshEffect( Mesh_ mesh, uint subset, EffectEx* effect_ex, TextureEx** textures, EffectValue_ technique )
+bool Animation3d::DrawMeshEffect( Mesh_ mesh, uint subset, Effect* effect_ex, Texture** textures, EffectValue_ technique )
 {
-    D3D_HR( D3DDevice->SetTexture( 0, textures && textures[ 0 ] ? textures[ 0 ]->Texture : NULL ) );
+    D3D_HR( D3DDevice->SetTexture( 0, textures && textures[ 0 ] ? textures[ 0 ]->TextureInstance : NULL ) );
 
-    Effect_ effect = effect_ex->Effect;
+    Effect_ effect = effect_ex->EffectInstance;
     D3D_HR( effect->SetTechnique( technique ) );
     if( effect_ex->IsNeedProcess )
         Loader3d::EffectProcessVariables( effect_ex, -1, animPosProc, animPosTime, textures );
@@ -1330,15 +1330,15 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         mopt.MeshPtr = mesh;
         mopt.SubsetsCount = mesh->NumMaterials;
         mopt.DisabledSubsets = new ( nothrow ) bool[ mesh->NumMaterials ];
-        mopt.TexSubsets = new (nothrow) TextureEx*[ mesh->NumMaterials * EFFECT_TEXTURES ];
-        mopt.DefaultTexSubsets = new (nothrow) TextureEx*[ mesh->NumMaterials * EFFECT_TEXTURES ];
-        mopt.EffectSubsets = new (nothrow) EffectEx*[ mesh->NumMaterials ];
-        mopt.DefaultEffectSubsets = new (nothrow) EffectEx*[ mesh->NumMaterials ];
+        mopt.TexSubsets = new (nothrow) Texture*[ mesh->NumMaterials * EFFECT_TEXTURES ];
+        mopt.DefaultTexSubsets = new (nothrow) Texture*[ mesh->NumMaterials * EFFECT_TEXTURES ];
+        mopt.EffectSubsets = new (nothrow) Effect*[ mesh->NumMaterials ];
+        mopt.DefaultEffectSubsets = new (nothrow) Effect*[ mesh->NumMaterials ];
         memzero( mopt.DisabledSubsets, mesh->NumMaterials * sizeof( bool ) );
-        memzero( mopt.TexSubsets, mesh->NumMaterials * sizeof( TextureEx* ) * EFFECT_TEXTURES );
-        memzero( mopt.DefaultTexSubsets, mesh->NumMaterials * sizeof( TextureEx* ) * EFFECT_TEXTURES );
-        memzero( mopt.EffectSubsets, mesh->NumMaterials * sizeof( EffectEx* ) );
-        memzero( mopt.DefaultEffectSubsets, mesh->NumMaterials * sizeof( EffectEx* ) );
+        memzero( mopt.TexSubsets, mesh->NumMaterials * sizeof( Texture* ) * EFFECT_TEXTURES );
+        memzero( mopt.DefaultTexSubsets, mesh->NumMaterials * sizeof( Texture* ) * EFFECT_TEXTURES );
+        memzero( mopt.EffectSubsets, mesh->NumMaterials * sizeof( Effect* ) );
+        memzero( mopt.DefaultEffectSubsets, mesh->NumMaterials * sizeof( Effect* ) );
 
         // Set default textures and effects
         for( uint k = 0; k < mopt.SubsetsCount; k++ )
@@ -1386,7 +1386,7 @@ INTPOINT Animation3d::Convert3dTo2d( float x, float y )
     return INTPOINT( (int) coords.x, (int) coords.y );
 }
 
-void Animation3d::SetDefaultEffect( EffectEx* effect )
+void Animation3d::SetDefaultEffect( Effect* effect )
 {
     EffectMain = effect;
 }
@@ -2564,17 +2564,17 @@ void Animation3dXFile::SetupAnimationOutput( Frame* frame, AnimController_* anim
         SetupAnimationOutput( frame->FirstChild, anim_controller );
 }
 
-TextureEx* Animation3dXFile::GetTexture( const char* tex_name )
+Texture* Animation3dXFile::GetTexture( const char* tex_name )
 {
-    TextureEx* texture = Loader3d::LoadTexture( D3DDevice, tex_name, fileName.c_str() );
+    Texture* texture = Loader3d::LoadTexture( D3DDevice, tex_name, fileName.c_str() );
     if( !texture )
         WriteLogF( _FUNC_, " - Can't load texture<%s>.\n", tex_name ? tex_name : "nullptr" );
     return texture;
 }
 
-EffectEx* Animation3dXFile::GetEffect( EffectInstance_* effect_inst )
+Effect* Animation3dXFile::GetEffect( EffectInstance_* effect_inst )
 {
-    EffectEx* effect = Loader3d::LoadEffect( D3DDevice, effect_inst, fileName.c_str() );
+    Effect* effect = Loader3d::LoadEffect( D3DDevice, effect_inst, fileName.c_str() );
     if( !effect )
         WriteLogF( _FUNC_, " - Can't load effect<%s>.\n", effect_inst && effect_inst->pEffectFilename ? effect_inst->pEffectFilename : "nullptr" );
     return effect;

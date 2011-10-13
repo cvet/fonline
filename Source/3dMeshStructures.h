@@ -3,16 +3,16 @@
 
 #include "Defines.h"
 
-struct TextureEx
+struct Texture
 {
     const char* Name;
-    Texture_    Texture;
+    Texture_    TextureInstance;
 };
 
-struct EffectEx
+struct Effect
 {
     const char*     Name;
-    Effect_         Effect;
+    Effect_         EffectInstance;
     uint            EffectFlags;
     EffectDefaults_ Defaults;
     EffectValue_    EffectParams;
@@ -108,8 +108,8 @@ typedef vector< MeshContainer* > MeshContainerVec;
 typedef vector< Frame* >         FrameVec;
 typedef vector< Vector3_ >       Vector3Vec;
 typedef vector< Matrix_ >        MatrixVec;
-typedef vector< TextureEx* >     TextureExVec;
-typedef vector< EffectEx* >      EffectExVec;
+typedef vector< Texture* >       TextureVec;
+typedef vector< Effect* >        EffectExVec;
 typedef vector< AnimSet_* >      AnimSetVec;
 
 #endif // __MESH_STRUCTURES__

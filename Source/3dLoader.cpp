@@ -540,9 +540,9 @@ bool Loader3d::IsExtensionSupported( const char* ext )
 /************************************************************************/
 /* Textures                                                             */
 /************************************************************************/
-TextureExVec Loader3d::loadedTextures;
+TextureVec Loader3d::loadedTextures;
 
-TextureEx* Loader3d::LoadTexture( Device_ device, const char* texture_name, const char* model_path )
+Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const char* model_path )
 {
     if( !texture_name || !texture_name[ 0 ] )
         return NULL;
@@ -550,7 +550,7 @@ TextureEx* Loader3d::LoadTexture( Device_ device, const char* texture_name, cons
     // Try find already loaded texture
     for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
     {
-        TextureEx* texture = *it;
+        Texture* texture = *it;
         if( !_stricmp( texture->Name, texture_name ) )
             return texture;
     }
@@ -571,20 +571,20 @@ TextureEx* Loader3d::LoadTexture( Device_ device, const char* texture_name, cons
     if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &texture ) ) )
         return NULL;
 
-    TextureEx* texture_ex = new TextureEx();
+    Texture* texture_ex = new Texture();
     texture_ex->Name = Str::Duplicate( texture_name );
-    texture_ex->Texture = texture;
+    texture_ex->TextureInstance = texture;
     loadedTextures.push_back( texture_ex );
     return loadedTextures.back();
 }
 
-void Loader3d::FreeTexture( TextureEx* texture )
+void Loader3d::FreeTexture( Texture* texture )
 {
     if( texture )
     {
         for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
         {
-            TextureEx* texture_ = *it;
+            Texture* texture_ = *it;
             if( texture_ == texture )
             {
                 loadedTextures.erase( it );
@@ -593,12 +593,12 @@ void Loader3d::FreeTexture( TextureEx* texture )
         }
 
         SAFEDELA( texture->Name );
-        SAFEREL( texture->Texture );
+        SAFEREL( texture->TextureInstance );
         SAFEDEL( texture );
     }
     else
     {
-        TextureExVec textures = loadedTextures;
+        TextureVec textures = loadedTextures;
         for( auto it = textures.begin(), end = textures.end(); it != end; ++it )
             FreeTexture( *it );
     }
@@ -638,7 +638,7 @@ public:
 EffectExVec   Loader3d::loadedEffects;
 IncludeParser includeParser;
 
-EffectEx* Loader3d::LoadEffect( Device_ device, const char* effect_name )
+Effect* Loader3d::LoadEffect( Device_ device, const char* effect_name )
 {
     EffectInstance_ effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
@@ -646,7 +646,7 @@ EffectEx* Loader3d::LoadEffect( Device_ device, const char* effect_name )
     return LoadEffect( device, &effect_inst, NULL );
 }
 
-EffectEx* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path )
+Effect* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path )
 {
     if( !effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[ 0 ] )
         return NULL;
@@ -655,7 +655,7 @@ EffectEx* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, co
     // Try find already loaded texture
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
-        EffectEx* effect_ex = *it;
+        Effect* effect_ex = *it;
         if( !_stricmp( effect_ex->Name, effect_name ) && effect_ex->Defaults == effect_inst->pDefaults )
             return effect_ex;
     }
@@ -744,9 +744,9 @@ EffectEx* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, co
     }
     SAFEREL( errors );
 
-    EffectEx* effect_ex = new EffectEx();
+    Effect* effect_ex = new Effect();
     effect_ex->Name = Str::Duplicate( effect_name );
-    effect_ex->Effect = effect;
+    effect_ex->EffectInstance = effect;
     effect_ex->EffectFlags = D3DXFX_DONOTSAVESTATE;
     effect_ex->Defaults = NULL;
     effect_ex->EffectParams = NULL;
@@ -853,7 +853,7 @@ EffectEx* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, co
     return loadedEffects.back();
 }
 
-void Loader3d::EffectProcessVariables( EffectEx* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, TextureEx** textures /* = NULL */ )
+void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
 {
     // Process effect
     if( pass == -1 )
@@ -868,7 +868,7 @@ void Loader3d::EffectProcessVariables( EffectEx* effect_ex, int pass,  float ani
                 if( effect_ex->TimeCurrent >= 120.0f )
                     effect_ex->TimeCurrent = fmod( effect_ex->TimeCurrent, 120.0f );
 
-                effect_ex->Effect->SetFloat( effect_ex->Time, effect_ex->TimeCurrent );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Time, effect_ex->TimeCurrent );
             }
             if( effect_ex->TimeGame )
             {
@@ -884,60 +884,60 @@ void Loader3d::EffectProcessVariables( EffectEx* effect_ex, int pass,  float ani
                     effect_ex->TimeGameLastTick = tick;
                 }
 
-                effect_ex->Effect->SetFloat( effect_ex->TimeGame, effect_ex->TimeGameCurrent );
+                effect_ex->EffectInstance->SetFloat( effect_ex->TimeGame, effect_ex->TimeGameCurrent );
             }
         }
 
         if( effect_ex->IsRandomEffect )
         {
             if( effect_ex->Random1Effect )
-                effect_ex->Effect->SetFloat( effect_ex->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random2Effect )
-                effect_ex->Effect->SetFloat( effect_ex->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random3Effect )
-                effect_ex->Effect->SetFloat( effect_ex->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random4Effect )
-                effect_ex->Effect->SetFloat( effect_ex->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
 
         if( effect_ex->IsTextures )
         {
             for( int i = 0; i < EFFECT_TEXTURES; i++ )
                 if( effect_ex->Textures[ i ] )
-                    effect_ex->Effect->SetTexture( effect_ex->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Texture : NULL );
+                    effect_ex->EffectInstance->SetTexture( effect_ex->Textures[ i ], textures && textures[ i ] ? textures[ i ]->TextureInstance : NULL );
         }
 
         if( effect_ex->IsScriptValues )
         {
             for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
                 if( effect_ex->ScriptValues[ i ] )
-                    effect_ex->Effect->SetFloat( effect_ex->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
+                    effect_ex->EffectInstance->SetFloat( effect_ex->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
         }
 
         if( effect_ex->IsAnimPos )
         {
             if( effect_ex->AnimPosProc )
-                effect_ex->Effect->SetFloat( effect_ex->AnimPosProc, anim_proc );
+                effect_ex->EffectInstance->SetFloat( effect_ex->AnimPosProc, anim_proc );
             if( effect_ex->AnimPosTime )
-                effect_ex->Effect->SetFloat( effect_ex->AnimPosTime, anim_time );
+                effect_ex->EffectInstance->SetFloat( effect_ex->AnimPosTime, anim_time );
         }
     }
     // Process pass
     else
     {
         if( effect_ex->PassIndex )
-            effect_ex->Effect->SetFloat( effect_ex->Random1Pass, (float) pass );
+            effect_ex->EffectInstance->SetFloat( effect_ex->Random1Pass, (float) pass );
 
         if( effect_ex->IsRandomPass )
         {
             if( effect_ex->Random1Pass )
-                effect_ex->Effect->SetFloat( effect_ex->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random2Pass )
-                effect_ex->Effect->SetFloat( effect_ex->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random3Pass )
-                effect_ex->Effect->SetFloat( effect_ex->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random4Pass )
-                effect_ex->Effect->SetFloat( effect_ex->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->EffectInstance->SetFloat( effect_ex->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
     }
 }
@@ -946,8 +946,8 @@ bool Loader3d::EffectsPreRestore()
 {
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
-        EffectEx* effect_ex = *it;
-        D3D_HR( effect_ex->Effect->OnLostDevice() );
+        Effect* effect_ex = *it;
+        D3D_HR( effect_ex->EffectInstance->OnLostDevice() );
     }
     return true;
 }
@@ -956,8 +956,8 @@ bool Loader3d::EffectsPostRestore()
 {
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
-        EffectEx* effect_ex = *it;
-        D3D_HR( effect_ex->Effect->OnResetDevice() );
+        Effect* effect_ex = *it;
+        D3D_HR( effect_ex->EffectInstance->OnResetDevice() );
     }
     return true;
 }

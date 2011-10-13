@@ -472,7 +472,7 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
 
     Surface* surf = new Surface();
     surf->Type = SurfType;
-    surf->Texture = tex;
+    surf->TextureOwner = tex;
     surf->Width = w;
     surf->Height = h;
     surf->BusyH = SURF_SPRITES_OFFS;
@@ -565,7 +565,7 @@ void SpriteManager::SaveSufaces()
     {
         Surface* surf = *it;
         Surface_ s;
-        surf->Texture->GetSurfaceLevel( 0, &s );
+        surf->TextureOwner->GetSurfaceLevel( 0, &s );
         sprintf( name, "%s%d_%d_%ux%u.", path, surf->Type, cnt, surf->Width, surf->Height );
         Str::Append( name, "png" );
         D3DXSaveSurfaceToFile( name, D3DXIFF_PNG, s, NULL, NULL );
@@ -610,7 +610,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
 
     Surface_       dst_surf;
     D3DLOCKED_RECT rdst;
-    D3D_HR( surf->Texture->GetSurfaceLevel( 0, &dst_surf ) );
+    D3D_HR( surf->TextureOwner->GetSurfaceLevel( 0, &dst_surf ) );
 
     // Copy
     // FOnline fast format
@@ -1137,10 +1137,10 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type, 
     if( !frm_num )
         frm_num = 1;
 
-    int       ox = fofrm.GetInt( "offs_x", 0 );
-    int       oy = fofrm.GetInt( "offs_y", 0 );
+    int     ox = fofrm.GetInt( "offs_x", 0 );
+    int     oy = fofrm.GetInt( "offs_y", 0 );
 
-    EffectEx* effect = NULL;
+    Effect* effect = NULL;
     if( fofrm.IsKey( "effect" ) )
     {
         char effect_name[ MAX_FOPATH ];
@@ -1202,7 +1202,7 @@ label_Fail:
         SpriteInfo* si = GetSpriteInfo( anim->Ind[ 0 ] );
         si->OffsX += ox;
         si->OffsY += oy;
-        si->Effect = effect;
+        si->DrawEffect = effect;
 
         return anim;
     }
@@ -1226,7 +1226,7 @@ label_Fail:
             SpriteInfo* si = GetSpriteInfo( anim->Ind[ frm ] );
             si->OffsX += ox;
             si->OffsY += oy;
-            si->Effect = effect;
+            si->DrawEffect = effect;
         }
 
         delete part;
@@ -2830,14 +2830,14 @@ bool SpriteManager::Flush()
         uint rpos = 0;
         for( auto it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it )
         {
-            DipData&  dip = *it;
-            EffectEx* effect_ex = ( dip.Effect ? dip.Effect : curDefaultEffect );
+            DipData& dip = *it;
+            Effect*  effect_ex = ( dip.SourceEffect ? dip.SourceEffect : curDefaultEffect );
 
-            D3D_HR( d3dDevice->SetTexture( 0, dip.Texture ) );
+            D3D_HR( d3dDevice->SetTexture( 0, dip.SourceTexture ) );
 
             if( effect_ex )
             {
-                Effect_ effect = effect_ex->Effect;
+                Effect_ effect = effect_ex->EffectInstance;
 
                 if( effect_ex->EffectParams )
                     D3D_HR( effect->ApplyParameterBlock( effect_ex->EffectParams ) );
@@ -2853,7 +2853,7 @@ bool SpriteManager::Flush()
                         Loader3d::EffectProcessVariables( effect_ex, pass );
 
                     D3D_HR( effect->BeginPass( pass ) );
-                    D3D_HR( d3dDevice->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SprCount ) );
+                    D3D_HR( d3dDevice->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
                     D3D_HR( effect->EndPass() );
                 }
                 D3D_HR( effect->End() );
@@ -2862,10 +2862,10 @@ bool SpriteManager::Flush()
             {
                 D3D_HR( d3dDevice->SetVertexShader( NULL ) );
                 D3D_HR( d3dDevice->SetPixelShader( NULL ) );
-                D3D_HR( d3dDevice->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SprCount ) );
+                D3D_HR( d3dDevice->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
             }
 
-            rpos += 6 * dip.SprCount;
+            rpos += 6 * dip.SpritesCount;
         }
 
         dipQueue.clear();
@@ -2891,11 +2891,11 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
         return true;
     }
 
-    EffectEx* effect = ( si->Effect ? si->Effect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
-    if( dipQueue.empty() || dipQueue.back().Texture != si->Surf->Texture || dipQueue.back().Effect != effect )
-        dipQueue.push_back( DipData( si->Surf->Texture, effect ) );
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != effect )
+        dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
     else
-        dipQueue.back().SprCount++;
+        dipQueue.back().SpritesCount++;
 
     int mulpos = curSprCnt * 4;
 
@@ -2974,11 +2974,11 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
         return true;
     }
 
-    EffectEx* effect = ( si->Effect ? si->Effect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
-    if( dipQueue.empty() || dipQueue.back().Texture != si->Surf->Texture || dipQueue.back().Effect != effect )
-        dipQueue.push_back( DipData( si->Surf->Texture, effect ) );
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != effect )
+        dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
     else
-        dipQueue.back().SprCount++;
+        dipQueue.back().SpritesCount++;
 
     int mulpos = curSprCnt * 4;
 
@@ -3069,10 +3069,10 @@ bool SpriteManager::PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy
         if( spr->OffsY )
             y += *spr->OffsY;
 
-        if( dipQueue.empty() || dipQueue.back().Texture != si->Surf->Texture || dipQueue.back().Effect != si->Effect )
-            dipQueue.push_back( DipData( si->Surf->Texture, si->Effect ) );
+        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != si->DrawEffect )
+            dipQueue.push_back( DipData( si->Surf->TextureOwner, si->DrawEffect ) );
         else
-            dipQueue.back().SprCount++;
+            dipQueue.back().SpritesCount++;
 
         uint color = baseColor;
         if( spr->Alpha )
@@ -3438,7 +3438,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 {
                     Flush();
                     D3D_HR( d3dDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_SELECTARG2 ) );
-                    D3D_HR( d3dDevice->SetTexture( 1, sprEgg->Surf->Texture ) );
+                    D3D_HR( d3dDevice->SetTexture( 1, sprEgg->Surf->TextureOwner ) );
                     egg_trans = true;
                 }
 
@@ -3475,10 +3475,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         }
 
         // Choose surface
-        if( dipQueue.empty() || dipQueue.back().Texture != si->Surf->Texture || dipQueue.back().Effect != si->Effect )
-            dipQueue.push_back( DipData( si->Surf->Texture, si->Effect ) );
+        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != si->DrawEffect )
+            dipQueue.push_back( DipData( si->Surf->TextureOwner, si->DrawEffect ) );
         else
-            dipQueue.back().SprCount++;
+            dipQueue.back().SpritesCount++;
 
         // Process contour effect
         if( collect_contours && spr->ContourType )
@@ -3696,12 +3696,12 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
     }
 
     D3DSURFACE_DESC sDesc;
-    D3D_HR( si->Surf->Texture->GetLevelDesc( 0, &sDesc ) );
+    D3D_HR( si->Surf->TextureOwner->GetLevelDesc( 0, &sDesc ) );
     int             width = sDesc.Width;
     int             height = sDesc.Height;
 
     D3DLOCKED_RECT  desc;
-    D3D_HR( si->Surf->Texture->LockRect( 0, &desc, NULL, D3DLOCK_READONLY ) );
+    D3D_HR( si->Surf->TextureOwner->LockRect( 0, &desc, NULL, D3DLOCK_READONLY ) );
     uchar*          ptr = (uchar*) desc.pBits;
     int             pitch = desc.Pitch;
 
@@ -3711,11 +3711,11 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
     if( offset < pitch * height )
     {
         uint color = *(uint*) ( ptr + offset );
-        D3D_HR( si->Surf->Texture->UnlockRect( 0 ) );
+        D3D_HR( si->Surf->TextureOwner->UnlockRect( 0 ) );
         return color;
     }
 
-    D3D_HR( si->Surf->Texture->UnlockRect( 0 ) );
+    D3D_HR( si->Surf->TextureOwner->UnlockRect( 0 ) );
     return 0;
 }
 
@@ -3736,23 +3736,23 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     oy = (int) ( oy * GameOpt.SpritesZoom );
 
     D3DSURFACE_DESC sDesc;
-    D3D_HR( sprEgg->Surf->Texture->GetLevelDesc( 0, &sDesc ) );
+    D3D_HR( sprEgg->Surf->TextureOwner->GetLevelDesc( 0, &sDesc ) );
 
     int            sWidth = sDesc.Width;
     int            sHeight = sDesc.Height;
 
     D3DLOCKED_RECT lrDst;
-    D3D_HR( sprEgg->Surf->Texture->LockRect( 0, &lrDst, NULL, D3DLOCK_READONLY ) );
+    D3D_HR( sprEgg->Surf->TextureOwner->LockRect( 0, &lrDst, NULL, D3DLOCK_READONLY ) );
 
     uchar* pDst = (uchar*) lrDst.pBits;
 
     if( pDst[ oy * sHeight * 4 + ox * 4 + 3 ] < 170 )
     {
-        D3D_HR( sprEgg->Surf->Texture->UnlockRect( 0 ) );
+        D3D_HR( sprEgg->Surf->TextureOwner->UnlockRect( 0 ) );
         return true;
     }
 
-    D3D_HR( sprEgg->Surf->Texture->UnlockRect( 0 ) );
+    D3D_HR( sprEgg->Surf->TextureOwner->UnlockRect( 0 ) );
     return false;
 }
 
@@ -3869,8 +3869,8 @@ bool SpriteManager::DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* 
     if( sprDefaultEffect[ DEFAULT_EFFECT_POINT ] )
     {
         // Draw with effect
-        EffectEx* effect_ex = sprDefaultEffect[ DEFAULT_EFFECT_POINT ];
-        Effect_   effect = effect_ex->Effect;
+        Effect* effect_ex = sprDefaultEffect[ DEFAULT_EFFECT_POINT ];
+        Effect_ effect = effect_ex->EffectInstance;
 
         if( effect_ex->EffectParams )
             D3D_HR( effect->ApplyParameterBlock( effect_ex->EffectParams ) );
@@ -4021,7 +4021,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     // Shader contour
     Animation3d* anim3d = si->Anim3d;
     INTRECT      borders = ( anim3d ? anim3d->GetExtraBorders() : INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
-    Texture_     texture = ( anim3d ? contoursMidTexture : si->Surf->Texture );
+    Texture_     texture = ( anim3d ? contoursMidTexture : si->Surf->TextureOwner );
     float        ws, hs;
     FLTRECT      tuv, tuvh;
 
@@ -4069,7 +4069,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
             D3D_HR( d3dDevice->SetPixelShader( NULL ) );
             D3D_HR( d3dDevice->SetFVF( D3DFVF_XYZRHW | D3DFVF_TEX1 ) );
             D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 ) );
-            D3D_HR( d3dDevice->SetTexture( 0, si->Surf->Texture ) );
+            D3D_HR( d3dDevice->SetTexture( 0, si->Surf->TextureOwner ) );
 
             D3DRECT clear_r = { borders.L - 1, borders.T - 1, borders.R + 1, borders.B + 1 };
             D3D_HR( d3dDevice->Clear( 1, &clear_r, D3DCLEAR_TARGET, 0, 1.0f, 0 ) );
@@ -4249,7 +4249,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
 
     // Create new
     Surface_        surf;
-    D3D_HR( si->Surf->Texture->GetSurfaceLevel( 0, &surf ) );
+    D3D_HR( si->Surf->TextureOwner->GetSurfaceLevel( 0, &surf ) );
     D3DSURFACE_DESC desc;
     D3D_HR( surf->GetDesc( &desc ) );
     RECT            r =
