@@ -31,9 +31,8 @@ public:
     void PlayAmbient( const char* str );
 
 private:
-    void   Play( Sound* sound, int volume );
-    void   Stop( Sound* sound );
     bool   ProcessSound( Sound* sound, uchar* output, uint outputSamples );
+    void   FinishSound( Sound* sound );
     Sound* Load( const char* fname, int path_type );
     bool   LoadWAV( Sound* sound, const char* fname, int path_type );
     bool   LoadACM( Sound* sound, const char* fname, int path_type );
@@ -47,6 +46,7 @@ private:
     int      soundVolume;
     int      musicVolume;
     SoundVec soundsActive;
+    Mutex    soundsActiveLocker;
 };
 
 extern SoundManager SndMngr;

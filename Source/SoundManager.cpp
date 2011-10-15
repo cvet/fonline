@@ -41,20 +41,21 @@ public:
     uint      RepeatTime;
 
     bool      Streamable;
-    enum { WAV, ACM, OGG } MediaType;
+    enum { WAV, ACM, OGG } StreamType;
 
     OggVorbis_File OggDescriptor;
 
-    Sound(): Buf( NULL ), BufSize( 0 ), BufCur( 0 ), IsMusic( false ),
-             SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
+    Sound(): Stream( NULL ), Buf( NULL ), BufSize( 0 ), BufCur( 0 ),
+             IsMusic( false ), SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
              NextPlay( 0 ), RepeatTime( 0 ), Streamable( false ),
-             MediaType( WAV ) {}
+             StreamType( WAV ) {}
     ~Sound()
     {
-        Pa_CloseStream( Stream );
         SAFEDELA( Buf );
-        if( Streamable && MediaType == OGG )
+        if( Streamable && StreamType == OGG )
             ov_clear( &OggDescriptor );
+        if( Stream )
+            Pa_CloseStream( Stream );
     }
 };
 
@@ -89,9 +90,14 @@ void SoundManager::Finish()
 
 void SoundManager::ClearSounds()
 {
-    for( auto it = soundsActive.begin(), end = soundsActive.end(); it != end; ++it )
-        delete *it;
-    soundsActive.clear();
+    soundsActiveLocker.Lock();
+    auto sounds = soundsActive;
+    soundsActiveLocker.Unlock();
+    for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
+    {
+        Sound* sound = *it;
+        Pa_AbortStream( sound->Stream );
+    }
 }
 
 int SoundManager::GetSoundVolume()
@@ -112,11 +118,6 @@ void SoundManager::SetSoundVolume( int volume )
 void SoundManager::SetMusicVolume( int volume )
 {
     musicVolume = CLAMP( volume, 0, 100 );
-}
-
-void SoundManager::Play( Sound* sound, int volume )
-{
-    Pa_StartStream( sound->Stream );
 }
 
 bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples )
@@ -183,7 +184,7 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
         else if( Timer::GameTick() >= sound->NextPlay )
         {
             // Set buffer to beginning
-            if( sound->Streamable && sound->MediaType == Sound::OGG )
+            if( sound->Streamable && sound->StreamType == Sound::OGG )
                 ov_raw_seek( &sound->OggDescriptor, 0 );
             sound->BufCur = 0;
 
@@ -202,6 +203,22 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
     }
 
     return false;
+}
+
+void SoundManager::FinishSound( Sound* sound )
+{
+    soundsActiveLocker.Lock();
+    for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
+    {
+        Sound* sound_ = *it;
+        if( sound_ == sound )
+        {
+            soundsActive.erase( it );
+            break;
+        }
+    }
+    soundsActiveLocker.Unlock();
+    delete sound;
 }
 
 Sound* SoundManager::Load( const char* fname, int path_type )
@@ -241,7 +258,7 @@ Sound* SoundManager::Load( const char* fname, int path_type )
 
     struct PaStreamProcessor
     {
-        static int Do( const void* input, void* output,
+        static int Process( const void* input, void* output,
                        unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo,
                        PaStreamCallbackFlags statusFlags, void* userData )
         {
@@ -249,20 +266,27 @@ Sound* SoundManager::Load( const char* fname, int path_type )
                 return paContinue;
             return paComplete;
         }
+        static void Finish( void *userData )
+        {
+            SndMngr.FinishSound( (Sound*) userData );
+        }
     };
 
     PaStream* stream;
     PaError   err = Pa_OpenDefaultStream( &stream, 0, sound->Channels, paInt16,
-                                          sound->SampleRate, paFramesPerBufferUnspecified, PaStreamProcessor::Do, sound );
+                                          sound->SampleRate, paFramesPerBufferUnspecified, PaStreamProcessor::Process, sound );
     if( err != paNoError )
     {
-        WriteLog( "Pa_OpenDefaultStream error<%s,%d>\n", fname_, Pa_GetErrorText( err ), err );
+        WriteLog( "Pa_OpenDefaultStream error<%s,%d>, file name<%s>.\n", Pa_GetErrorText( err ), err, fname_ );
         delete sound;
         return false;
     }
+    Pa_SetStreamFinishedCallback( stream, PaStreamProcessor::Finish );
     sound->Stream = stream;
 
+    soundsActiveLocker.Lock();
     soundsActive.push_back( sound );
+    soundsActiveLocker.Unlock();
     return sound;
 }
 
@@ -363,8 +387,6 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
     int                     freq = 0;
     int                     samples = 0;
     AutoPtr< CACMUnpacker > acm( new (nothrow) CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples ) );
-    samples *= 2;
-
     if( !acm.IsValid() )
     {
         WriteLogF( _FUNC_, " - ACMUnpacker init fail.\n" );
@@ -375,10 +397,10 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
     sound->SampleRate = 22050;
     sound->SampleSize = 2;
 
-    sound->BufSize = samples;
-    sound->Buf = new ( nothrow ) unsigned char[ samples ];
-    int dec_data = acm->readAndDecompress( (ushort*) sound->Buf, samples );
-    if( dec_data != samples )
+    sound->BufSize = samples * sound->SampleSize;
+    sound->Buf = new ( nothrow ) unsigned char[ sound->BufSize ];
+    int dec_data = acm->readAndDecompress( (ushort*) sound->Buf, sound->BufSize );
+    if( dec_data != sound->BufSize )
     {
         WriteLogF( _FUNC_, " - Decode Acm error.\n" );
         return false;
@@ -510,16 +532,16 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     else
     {
         sound->Streamable = true;
-        sound->MediaType = Sound::OGG;
+        sound->StreamType = Sound::OGG;
     }
     return true;
 }
 
 bool SoundManager::Streaming( Sound* sound )
 {
-    if( !( ( sound->MediaType == Sound::WAV && StreamingWAV( sound ) ) ||
-           ( sound->MediaType == Sound::ACM && StreamingACM( sound ) ) ||
-           ( sound->MediaType == Sound::OGG && StreamingOGG( sound ) ) ) )
+    if( !( ( sound->StreamType == Sound::WAV && StreamingWAV( sound ) ) ||
+           ( sound->StreamType == Sound::ACM && StreamingACM( sound ) ) ||
+           ( sound->StreamType == Sound::OGG && StreamingOGG( sound ) ) ) )
         return false;
     return true;
 }
@@ -563,7 +585,7 @@ bool SoundManager::PlaySound( const char* name )
     Sound* sound = Load( name, PT_SND_SFX );
     if( !sound )
         return false;
-    Play( sound, soundVolume );
+    Pa_StartStream( sound->Stream );
     return true;
 }
 
@@ -644,23 +666,21 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 
     sound->IsMusic = true;
     sound->RepeatTime = repeat;
-    Play( sound, musicVolume );
+    Pa_StartStream( sound->Stream );
     return true;
 }
 
 void SoundManager::StopMusic()
 {
     // Find and erase old music
-    for( auto it = soundsActive.begin(); it != soundsActive.end();)
+    soundsActiveLocker.Lock();
+    auto sounds = soundsActive;
+    soundsActiveLocker.Unlock();
+    for( auto it = sounds.begin(); it != sounds.end(); ++it )
     {
         Sound* sound = *it;
         if( sound->IsMusic )
-        {
-            delete sound;
-            it = soundsActive.erase( it );
-        }
-        else
-            ++it;
+            Pa_AbortStream( sound->Stream );
     }
 }
 

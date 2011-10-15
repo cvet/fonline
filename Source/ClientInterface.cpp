@@ -1685,7 +1685,9 @@ void FOClient::InvLMouseDown()
             IfaceHold = IFACE_INV_SCRDW;
         }
         else if( IsCurInRect( InvBOk, InvX, InvY ) )
+        {
             IfaceHold = IFACE_INV_OK;
+        }
         else
         {
             // Try find extended slot
