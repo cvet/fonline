@@ -27,6 +27,7 @@ class Sound
 {
 public:
     PaStream* Stream;
+    bool      Aborted;
 
     uchar*    Buf;
     uint      BufSize;
@@ -45,10 +46,11 @@ public:
 
     OggVorbis_File OggDescriptor;
 
-    Sound(): Stream( NULL ), Buf( NULL ), BufSize( 0 ), BufCur( 0 ),
-             IsMusic( false ), SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
-             NextPlay( 0 ), RepeatTime( 0 ), Streamable( false ),
-             StreamType( WAV ) {}
+    Sound(): Stream( NULL ), Aborted( false ),
+             Buf( NULL ), BufSize( 0 ), BufCur( 0 ),
+             SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
+             IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
+             Streamable( false ), StreamType( WAV ) {}
     ~Sound()
     {
         SAFEDELA( Buf );
@@ -91,13 +93,15 @@ void SoundManager::Finish()
 void SoundManager::ClearSounds()
 {
     soundsActiveLocker.Lock();
-    auto sounds = soundsActive;
-    soundsActiveLocker.Unlock();
-    for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
+    for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
     {
         Sound* sound = *it;
+        sound->Aborted = true;
         Pa_AbortStream( sound->Stream );
+        delete sound;
     }
+    soundsActive.clear();
+    soundsActiveLocker.Unlock();
 }
 
 int SoundManager::GetSoundVolume()
@@ -198,27 +202,38 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
 
         // Give silent
         memzero( output, outputSamples * sound->SampleSize * sound->Channels );
-
         return true;
     }
 
+    // Give silent
+    memzero( output, outputSamples * sound->SampleSize * sound->Channels );
     return false;
 }
 
 void SoundManager::FinishSound( Sound* sound )
 {
-    soundsActiveLocker.Lock();
-    for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
+    if( !sound->Aborted )
     {
-        Sound* sound_ = *it;
-        if( sound_ == sound )
+        PaStream* stream = NULL; // Close stream not in critical section
+
+        soundsActiveLocker.Lock();
+        for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
         {
-            soundsActive.erase( it );
-            break;
+            Sound* sound_ = *it;
+            if( sound_ == sound )
+            {
+                stream = sound->Stream;
+                sound->Stream = NULL;
+                delete sound;
+                soundsActive.erase( it );
+                break;
+            }
         }
+        soundsActiveLocker.Unlock();
+
+        if( stream )
+            Pa_CloseStream( stream );
     }
-    soundsActiveLocker.Unlock();
-    delete sound;
 }
 
 Sound* SoundManager::Load( const char* fname, int path_type )
@@ -259,14 +274,14 @@ Sound* SoundManager::Load( const char* fname, int path_type )
     struct PaStreamProcessor
     {
         static int Process( const void* input, void* output,
-                       unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo,
-                       PaStreamCallbackFlags statusFlags, void* userData )
+                            unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo,
+                            PaStreamCallbackFlags statusFlags, void* userData )
         {
             if( SndMngr.ProcessSound( (Sound*) userData, (uchar*) output, frameCount ) )
                 return paContinue;
             return paComplete;
         }
-        static void Finish( void *userData )
+        static void Finish( void* userData )
         {
             SndMngr.FinishSound( (Sound*) userData );
         }
@@ -674,14 +689,22 @@ void SoundManager::StopMusic()
 {
     // Find and erase old music
     soundsActiveLocker.Lock();
-    auto sounds = soundsActive;
-    soundsActiveLocker.Unlock();
-    for( auto it = sounds.begin(); it != sounds.end(); ++it )
+    for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
         if( sound->IsMusic )
+        {
+            sound->Aborted = true;
             Pa_AbortStream( sound->Stream );
+            delete sound;
+            it = soundsActive.erase( it );
+        }
+        else
+        {
+            ++it;
+        }
     }
+    soundsActiveLocker.Unlock();
 }
 
 void SoundManager::PlayAmbient( const char* str )
