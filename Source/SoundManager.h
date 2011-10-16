@@ -17,6 +17,7 @@ public:
 
     bool Init();
     void Finish();
+    void Process();
     void ClearSounds();
 
     int  GetSoundVolume();
@@ -32,7 +33,6 @@ public:
 
 private:
     bool   ProcessSound( Sound* sound, uchar* output, uint outputSamples );
-    void   FinishSound( Sound* sound );
     Sound* Load( const char* fname, int path_type );
     bool   LoadWAV( Sound* sound, const char* fname, int path_type );
     bool   LoadACM( Sound* sound, const char* fname, int path_type );
@@ -46,7 +46,6 @@ private:
     int      soundVolume;
     int      musicVolume;
     SoundVec soundsActive;
-    Mutex    soundsActiveLocker;
 };
 
 extern SoundManager SndMngr;

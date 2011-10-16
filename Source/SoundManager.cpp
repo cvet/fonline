@@ -27,7 +27,6 @@ class Sound
 {
 public:
     PaStream* Stream;
-    bool      Aborted;
 
     uchar*    Buf;
     uint      BufSize;
@@ -46,7 +45,7 @@ public:
 
     OggVorbis_File OggDescriptor;
 
-    Sound(): Stream( NULL ), Aborted( false ),
+    Sound(): Stream( NULL ),
              Buf( NULL ), BufSize( 0 ), BufCur( 0 ),
              SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
@@ -90,18 +89,32 @@ void SoundManager::Finish()
     WriteLog( "Sound manager finish complete.\n" );
 }
 
+void SoundManager::Process()
+{
+    for( auto it = soundsActive.begin(); it != soundsActive.end();)
+    {
+        Sound* sound = *it;
+        if( !Pa_IsStreamActive( sound->Stream ) )
+        {
+            delete sound;
+            it = soundsActive.erase( it );
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
 void SoundManager::ClearSounds()
 {
-    soundsActiveLocker.Lock();
     for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
     {
         Sound* sound = *it;
-        sound->Aborted = true;
         Pa_AbortStream( sound->Stream );
         delete sound;
     }
     soundsActive.clear();
-    soundsActiveLocker.Unlock();
 }
 
 int SoundManager::GetSoundVolume()
@@ -210,32 +223,6 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
     return false;
 }
 
-void SoundManager::FinishSound( Sound* sound )
-{
-    if( !sound->Aborted )
-    {
-        PaStream* stream = NULL; // Close stream not in critical section
-
-        soundsActiveLocker.Lock();
-        for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
-        {
-            Sound* sound_ = *it;
-            if( sound_ == sound )
-            {
-                stream = sound->Stream;
-                sound->Stream = NULL;
-                delete sound;
-                soundsActive.erase( it );
-                break;
-            }
-        }
-        soundsActiveLocker.Unlock();
-
-        if( stream )
-            Pa_CloseStream( stream );
-    }
-}
-
 Sound* SoundManager::Load( const char* fname, int path_type )
 {
     char fname_[ MAX_FOPATH ];
@@ -281,10 +268,6 @@ Sound* SoundManager::Load( const char* fname, int path_type )
                 return paContinue;
             return paComplete;
         }
-        static void Finish( void* userData )
-        {
-            SndMngr.FinishSound( (Sound*) userData );
-        }
     };
 
     PaStream* stream;
@@ -296,12 +279,9 @@ Sound* SoundManager::Load( const char* fname, int path_type )
         delete sound;
         return false;
     }
-    Pa_SetStreamFinishedCallback( stream, PaStreamProcessor::Finish );
     sound->Stream = stream;
 
-    soundsActiveLocker.Lock();
     soundsActive.push_back( sound );
-    soundsActiveLocker.Unlock();
     return sound;
 }
 
@@ -688,13 +668,11 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 void SoundManager::StopMusic()
 {
     // Find and erase old music
-    soundsActiveLocker.Lock();
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
         if( sound->IsMusic )
         {
-            sound->Aborted = true;
             Pa_AbortStream( sound->Stream );
             delete sound;
             it = soundsActive.erase( it );
@@ -704,7 +682,6 @@ void SoundManager::StopMusic()
             ++it;
         }
     }
-    soundsActiveLocker.Unlock();
 }
 
 void SoundManager::PlayAmbient( const char* str )

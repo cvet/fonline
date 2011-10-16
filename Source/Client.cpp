@@ -9940,6 +9940,9 @@ bool FOClient::SaveScreenshot()
 
 void FOClient::SoundProcess()
 {
+    // Manager
+    SndMngr.Process();
+
     // Ambient
     static uint next_ambient = 0;
     if( Timer::GameTick() > next_ambient )
