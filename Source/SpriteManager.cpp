@@ -1483,8 +1483,6 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
     }
 
     // Read data
-    uint max_w = 0;
-    uint max_h = 0;
     uint frm = frm_from;
     uint frm_cur = 0;
     while( true )
@@ -1515,15 +1513,10 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
             return NULL;
         }
 
-        si->OffsX = ( mirror_hor ? -frame_info.offsetX - frame_info.frameWidth / 2 : -frame_info.offsetX + frame_info.frameWidth / 2 );
-        si->OffsY = ( mirror_ver ? frame_info.offsetY : -frame_info.offsetY + frame_info.frameHeight );
+        si->OffsX = ( -frame_info.offsetX + frame_info.frameWidth / 2 ) * ( mirror_hor ? -1 : 1 );
+        si->OffsY = ( -frame_info.offsetY + frame_info.frameHeight ) * ( mirror_ver ? -1 : 1 );
         anim->NextX[ frm_cur ] = 0;    // frame_info.deltaX;
         anim->NextY[ frm_cur ] = 0;    // frame_info.deltaY;
-
-        if( max_w < frame_info.frameWidth )
-            max_w = frame_info.frameWidth;
-        if( max_h < frame_info.frameHeight )
-            max_h = frame_info.frameHeight;
 
         // Create FOnline fast format
         uint   w = frame_info.frameWidth;
@@ -1624,18 +1617,6 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
         else
             frm--;
         frm_cur++;
-    }
-
-    // Fix mirrored offsets
-    if( mirror_hor )
-    {
-        for( uint i = 0; i < frm_count_anim; i++ )
-            GetSpriteInfo( anim->Ind[ i ] )->OffsX += max_w;
-    }
-    if( mirror_ver )
-    {
-        for( uint i = 0; i < frm_count_anim; i++ )
-            GetSpriteInfo( anim->Ind[ i ] )->OffsY -= max_h;
     }
 
     return anim;

@@ -146,7 +146,7 @@ bool FOMapper::Init( HWND wnd )
     if( !SprMngr.LoadFontAAF( FONT_BIG, "Big", 1 ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    EffectEx* font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
+    Effect* font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
     if( font_effect )
     {
         SprMngr.SetFontEffect( FONT_FO, font_effect );

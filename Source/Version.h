@@ -3,9 +3,9 @@
 
 #define SERVER_VERSION                  0x00000463
 #define CLIENT_VERSION                  0x00000363
-#define MAPPER_VERSION                  0x00000209
+#define MAPPER_VERSION                  0x00000210
 
-#define MAPPER_VERSION_STR              "v.1.25.36"
+#define MAPPER_VERSION_STR              "v.1.25.37"
 #define DIALOG_EDITOR_VERSION_STR       "v.2.18.3"
 #define OBJECT_EDITOR_VERSION_STR       "v.2.14.3"
 
