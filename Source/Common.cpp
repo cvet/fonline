@@ -445,6 +445,15 @@ uint GetCurThreadId()
     #endif
 }
 
+void ShowMessage( const char* message )
+{
+    #ifdef FO_WINDOWS
+    MessageBox( NULL, message, "FOnline", MB_OK );
+    #else // FO_LINUX
+    // Todo: Linux
+    #endif
+}
+
 /************************************************************************/
 /* Hex offsets                                                          */
 /************************************************************************/

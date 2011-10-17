@@ -108,6 +108,7 @@ Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent
     loadedModels.push_back( frame_root );
 
     // Extract animations
+    #ifdef FO_D3D
     vector< D3DXKEY_VECTOR3 >    scale;
     vector< D3DXKEY_QUATERNION > rot;
     vector< D3DXKEY_VECTOR3 >    pos;
@@ -172,6 +173,7 @@ Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent
         loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
         loadedAnimations.push_back( cset );
     }
+    #endif
 
     importer->FreeScene();
     return frame_root;
@@ -180,6 +182,7 @@ Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent
 Matrix_ ConvertMatrix( const aiMatrix4x4& mat )
 {
     Matrix_ m;
+    #ifdef FO_D3D
     m._11 = mat.a1;
     m._21 = mat.a2;
     m._31 = mat.a3;
@@ -196,16 +199,16 @@ Matrix_ ConvertMatrix( const aiMatrix4x4& mat )
     m._24 = mat.d2;
     m._34 = mat.d3;
     m._44 = mat.d4;
+    #endif
     return m;
 }
 
 Frame* Loader3d::FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent )
 {
+    #ifdef FO_D3D
     // Create frame
     Frame* frame;
-    #ifdef FO_D3D
     D3D_HR( memAllocator.CreateFrame( node->mName.data, (LPD3DXFRAME*) &frame ) );
-    #endif
 
     frame->TransformationMatrix = ConvertMatrix( node->mTransformation );
 
@@ -457,21 +460,26 @@ Frame* Loader3d::FillNode( Device_ device, const aiNode* node, const aiScene* sc
     }
 
     return frame;
+    #else
+    return NULL;
+    #endif
 }
 
 AnimSet_* Loader3d::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
+    #ifdef FO_D3D
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
     {
         if( !_stricmp( loadedAnimationsFNames[ i ], anim_fname ) &&
             !_stricmp( loadedAnimations[ i ]->GetName(), anim_name ) )
             return loadedAnimations[ i ];
     }
+    #endif
 
     // Check maybe file already processed and nothing founded
     for( uint i = 0, j = (uint) processedFiles.size(); i < j; i++ )
-        if( !_stricmp( processedFiles[ i ], anim_fname ) )
+        if( Str::CompareCase( processedFiles[ i ], anim_fname ) )
             return NULL;
 
     // File not processed, load and recheck animations
@@ -498,8 +506,6 @@ Frame* Loader3d::LoadX( Device_ device, FileManager& fm, const char* fname )
     #ifdef FO_D3D
     HRESULT          hr = D3DXLoadMeshHierarchyFromXInMemory( fm.GetBuf(), fm.GetFsize(), D3DXMESH_MANAGED, device, &memAllocator, NULL,
                                                               (LPD3DXFRAME*) &frame_root, &anim );
-    #endif
-
     if( hr != D3D_OK )
     {
         WriteLogF( _FUNC_, " - Can't load X file hierarchy, error<%s>.\n", DXGetErrorString( hr ) );
@@ -518,6 +524,7 @@ Frame* Loader3d::LoadX( Device_ device, FileManager& fm, const char* fname )
         }
         anim->Release();
     }
+    #endif
 
     return frame_root;
 }
@@ -568,8 +575,10 @@ Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const 
 
     // Create texture
     Texture_ texture = NULL;
+    #ifdef FO_D3D
     if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &texture ) ) )
         return NULL;
+    #endif
 
     Texture* texture_ex = new Texture();
     texture_ex->Name = Str::Duplicate( texture_name );
@@ -580,6 +589,7 @@ Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const 
 
 void Loader3d::FreeTexture( Texture* texture )
 {
+    #ifdef FO_D3D
     if( texture )
     {
         for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
@@ -602,11 +612,13 @@ void Loader3d::FreeTexture( Texture* texture )
         for( auto it = textures.begin(), end = textures.end(); it != end; ++it )
             FreeTexture( *it );
     }
+    #endif
 }
 
 /************************************************************************/
 /* Effects                                                              */
 /************************************************************************/
+#ifdef FO_D3D
 class IncludeParser: public ID3DXInclude
 {
 public:
@@ -633,21 +645,26 @@ public:
         if( pData ) delete[] pData;
         return S_OK;
     }
-};
+} includeParser;
+#endif
 
-EffectExVec   Loader3d::loadedEffects;
-IncludeParser includeParser;
+EffectExVec Loader3d::loadedEffects;
 
 Effect* Loader3d::LoadEffect( Device_ device, const char* effect_name )
 {
+    #ifdef FO_D3D
     EffectInstance_ effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
     effect_inst.pEffectFilename = (char*) effect_name;
     return LoadEffect( device, &effect_inst, NULL );
+    #else
+    return NULL;
+    #endif
 }
 
 Effect* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path )
 {
+    #ifdef FO_D3D
     if( !effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[ 0 ] )
         return NULL;
     const char* effect_name = effect_inst->pEffectFilename;
@@ -851,10 +868,14 @@ Effect* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, cons
 
     loadedEffects.push_back( effect_ex );
     return loadedEffects.back();
+    #else
+    return NULL;
+    #endif
 }
 
 void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
 {
+    #ifdef FO_D3D
     // Process effect
     if( pass == -1 )
     {
@@ -940,25 +961,30 @@ void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_
                 effect_ex->EffectInstance->SetFloat( effect_ex->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
     }
+    #endif
 }
 
 bool Loader3d::EffectsPreRestore()
 {
+    #ifdef FO_D3D
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect_ex = *it;
         D3D_HR( effect_ex->EffectInstance->OnLostDevice() );
     }
+    #endif
     return true;
 }
 
 bool Loader3d::EffectsPostRestore()
 {
+    #ifdef FO_D3D
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect_ex = *it;
         D3D_HR( effect_ex->EffectInstance->OnResetDevice() );
     }
+    #endif
     return true;
 }
 

@@ -71,7 +71,9 @@ void _PreRestore()
     // Save/load surface
     if( Singleplayer )
     {
+        #ifdef FO_D3D
         SAFEREL( FOClient::Self->SaveLoadDraft );
+        #endif
         FOClient::Self->SaveLoadDraftValid = false;
     }
 }
@@ -84,10 +86,12 @@ void _PostRestore()
     // Save/load surface
     if( Singleplayer )
     {
+        #ifdef FO_D3D
         SAFEREL( FOClient::Self->SaveLoadDraft );
         if( FAILED( SprMngr.GetDevice()->CreateRenderTarget( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT,
                                                              D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &FOClient::Self->SaveLoadDraft, NULL ) ) )
             WriteLog( "Create save/load draft surface fail.\n" );
+        #endif
         FOClient::Self->SaveLoadDraftValid = false;
     }
 }
@@ -384,7 +388,7 @@ bool FOClient::Init( HWND hwnd )
     ScreenModeMain = SCREEN_WAIT;
     CurMode = CUR_WAIT;
     WaitPic = ResMngr.GetRandomSplash();
-    if( SprMngr.BeginScene( D3DCOLOR_XRGB( 0, 0, 0 ) ) )
+    if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
     {
         WaitDraw();
         SprMngr.EndScene();
@@ -623,7 +627,9 @@ void FOClient::Finish()
 {
     WriteLog( "Engine finish...\n" );
 
+    #ifdef FO_D3D
     SAFEREL( SaveLoadDraft );
+    #endif
 
     Keyb::Finish();
     NetDisconnect();
@@ -773,8 +779,8 @@ void FOClient::LookBordersPrepare()
                 int x, y, x_, y_;
                 HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
                 HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
-                LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, D3DCOLOR_ARGB( 80, 0, 255, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
-                ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, D3DCOLOR_ARGB( 80, 255, 0, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_ARGB( 80, 0, 255, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_ARGB( 80, 255, 0, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
             }
         }
 
@@ -797,9 +803,9 @@ void FOClient::LookBordersDraw()
         RebuildLookBorders = false;
     }
     if( DrawLookBorders )
-        SprMngr.DrawPoints( LookBorders, D3DPT_LINESTRIP, &GameOpt.SpritesZoom );
+        SprMngr.DrawPoints( LookBorders, PRIMITIVE_LINESTRIP, &GameOpt.SpritesZoom );
     if( DrawShootBorders )
-        SprMngr.DrawPoints( ShootBorders, D3DPT_LINESTRIP, &GameOpt.SpritesZoom );
+        SprMngr.DrawPoints( ShootBorders, PRIMITIVE_LINESTRIP, &GameOpt.SpritesZoom );
 }
 
 int FOClient::MainLoop()
@@ -955,7 +961,7 @@ int FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS3;
 
     // Render
-    if( !SprMngr.BeginScene( IsMainScreen( SCREEN_GAME ) ? ( GameOpt.ScreenClear ? D3DCOLOR_XRGB( 100, 100, 100 ) : 0 ) : D3DCOLOR_XRGB( 0, 0, 0 ) ) )
+    if( !SprMngr.BeginScene( IsMainScreen( SCREEN_GAME ) ? ( GameOpt.ScreenClear ? COLOR_XRGB( 100, 100, 100 ) : 0 ) : COLOR_XRGB( 0, 0, 0 ) ) )
         return 0;
 
     ProcessScreenEffectQuake();
@@ -1112,11 +1118,11 @@ void FOClient::ProcessScreenEffectFading()
                 res[ i ] = sc + dc * proc / 100;
             }
 
-            uint color = D3DCOLOR_ARGB( res[ 3 ], res[ 2 ], res[ 1 ], res[ 0 ] );
+            uint color = COLOR_ARGB( res[ 3 ], res[ 2 ], res[ 1 ], res[ 0 ] );
             for( int i = 0; i < 6; i++ )
                 six_points[ i ].PointColor = color;
 
-            SprMngr.DrawPoints( six_points, D3DPT_TRIANGLELIST );
+            SprMngr.DrawPoints( six_points, PRIMITIVE_TRIANGLELIST );
         }
         it++;
     }
@@ -1220,7 +1226,7 @@ void FOClient::ProcessScreenEffectMirror()
                         vb->Unlock();
                         SprMngr.GetDevice()->SetStreamSource(0,vb,sizeof(MYVERTEX));
                         SprMngr.GetDevice()->SetVertexShader(D3DFVF_MYVERTEX);
-                        SprMngr.GetDevice()->DrawPrimitive(D3DPT_TRIANGLELIST,0,2);
+                        SprMngr.GetDevice()->DrawPrimitive(PRIMITIVE_TRIANGLELIST,0,2);
                         SAFEREL(vb);
                         SprMngr.GetDevice()->SetStreamSource(0,SprMngr.GetVB(),sizeof(MYVERTEX));
                         SprMngr.GetDevice()->SetVertexShader(D3DFVF_MYVERTEX);
@@ -9890,9 +9896,11 @@ bool FOClient::SaveScreenshot()
     if( !SprMngr.IsInit() )
         return false;
 
+    #ifdef FO_D3D
     Surface_ surf = NULL;
     if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
         return false;
+    #endif
 
     SYSTEMTIME sys_time;
     GetLocalTime( &sys_time );
@@ -9918,7 +9926,9 @@ bool FOClient::SaveScreenshot()
 
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
 
-    char*                extension = Str::Lower( (char*) FileManager::GetExtension( screen_path ) );
+    char* extension = Str::Lower( (char*) FileManager::GetExtension( screen_path ) );
+
+    #ifdef FO_D3D
     D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
 
     if( Str::Compare( extension, "jpg" ) )
@@ -9933,8 +9943,9 @@ bool FOClient::SaveScreenshot()
         surf->Release();
         return false;
     }
-
     surf->Release();
+    #endif
+
     return true;
 }
 
@@ -12165,26 +12176,26 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
     if( !SpritesCanDraw )
         return;
 
-    D3DPRIMITIVETYPE prim;
+    int prim;
     switch( primitive_type )
     {
     case 0:
-        prim = D3DPT_POINTLIST;
+        prim = PRIMITIVE_POINTLIST;
         break;
     case 1:
-        prim = D3DPT_LINELIST;
+        prim = PRIMITIVE_LINELIST;
         break;
     case 2:
-        prim = D3DPT_LINESTRIP;
+        prim = PRIMITIVE_LINESTRIP;
         break;
     case 3:
-        prim = D3DPT_TRIANGLELIST;
+        prim = PRIMITIVE_TRIANGLELIST;
         break;
     case 4:
-        prim = D3DPT_TRIANGLESTRIP;
+        prim = PRIMITIVE_TRIANGLESTRIP;
         break;
     case 5:
-        prim = D3DPT_TRIANGLEFAN;
+        prim = PRIMITIVE_TRIANGLEFAN;
         break;
     default:
         return;

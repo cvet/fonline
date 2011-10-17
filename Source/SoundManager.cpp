@@ -292,7 +292,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
         return NULL;
 
     uint dw_buf = fm.GetLEUInt();
-    if( dw_buf != MAKEFOURCC( 'R', 'I', 'F', 'F' ) )
+    if( dw_buf != MAKEUINT( 'R', 'I', 'F', 'F' ) )
     {
         WriteLogF( _FUNC_, " - <RIFF> not found.\n" );
         return false;
@@ -301,14 +301,14 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     fm.GoForward( 4 );
 
     dw_buf = fm.GetLEUInt();
-    if( dw_buf != MAKEFOURCC( 'W', 'A', 'V', 'E' ) )
+    if( dw_buf != MAKEUINT( 'W', 'A', 'V', 'E' ) )
     {
         WriteLogF( _FUNC_, " - <WAVE> not found.\n" );
         return false;
     }
 
     dw_buf = fm.GetLEUInt();
-    if( dw_buf != MAKEFOURCC( 'f', 'm', 't', ' ' ) )
+    if( dw_buf != MAKEUINT( 'f', 'm', 't', ' ' ) )
     {
         WriteLogF( _FUNC_, " - <fmt > not found.\n" );
         return false;
@@ -346,14 +346,14 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     fm.GoForward( dw_buf - 16 );
 
     dw_buf = fm.GetLEUInt();
-    if( dw_buf == MAKEFOURCC( 'f', 'a', 'c', 't' ) )
+    if( dw_buf == MAKEUINT( 'f', 'a', 'c', 't' ) )
     {
         dw_buf = fm.GetLEUInt();
         fm.GoForward( dw_buf );
         dw_buf = fm.GetLEUInt();
     }
 
-    if( dw_buf != MAKEFOURCC( 'd', 'a', 't', 'a' ) )
+    if( dw_buf != MAKEUINT( 'd', 'a', 't', 'a' ) )
     {
         WriteLogF( _FUNC_, " - Unknown format2.\n" );
         return false;

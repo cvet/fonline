@@ -457,8 +457,8 @@ public:
     uint            ScreenMirrorEndTick;
     bool            ScreenMirrorStart;
 
-    void ScreenFadeIn()  { ScreenFade( 1000, D3DCOLOR_ARGB( 0, 0, 0, 0 ), D3DCOLOR_ARGB( 255, 0, 0, 0 ), false ); }
-    void ScreenFadeOut() { ScreenFade( 1000, D3DCOLOR_ARGB( 255, 0, 0, 0 ), D3DCOLOR_ARGB( 0, 0, 0, 0 ), false ); }
+    void ScreenFadeIn()  { ScreenFade( 1000, COLOR_ARGB( 0, 0, 0, 0 ), COLOR_ARGB( 255, 0, 0, 0 ), false ); }
+    void ScreenFadeOut() { ScreenFade( 1000, COLOR_ARGB( 255, 0, 0, 0 ), COLOR_ARGB( 0, 0, 0, 0 ), false ); }
     void ScreenFade( uint time, uint from_color, uint to_color, bool push_back );
     void ScreenQuake( int noise, uint time );
     void ScreenMirror();

@@ -656,10 +656,10 @@ int FOClient::InitIface()
     GmapVectX = 0;
     GmapVectY = 0;
     GmapMapCutOff.clear();
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, 0, (float) MODE_WIDTH, (float) GmapWMap.T ), D3DCOLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.T, (float) GmapWMap.L, (float) GmapWMap.B ), D3DCOLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( (float) GmapWMap.R, (float) GmapWMap.T, (float) MODE_WIDTH, (float) GmapWMap.B ), D3DCOLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.B, (float) MODE_WIDTH, (float) MODE_HEIGHT ), D3DCOLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, 0, (float) MODE_WIDTH, (float) GmapWMap.T ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.T, (float) GmapWMap.L, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( (float) GmapWMap.R, (float) GmapWMap.T, (float) MODE_WIDTH, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.B, (float) MODE_WIDTH, (float) MODE_HEIGHT ), COLOR_XRGB( 0, 0, 0 ) );
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
     memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
@@ -924,9 +924,11 @@ int FOClient::InitIface()
     // Save/load surface creating
     if( !SaveLoadDraft && Singleplayer )
     {
+        #ifdef FO_D3D
         if( FAILED( SprMngr.GetDevice()->CreateRenderTarget( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT,
                                                              D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &SaveLoadDraft, NULL ) ) )
             WriteLog( "Create save/load draft surface fail.\n" );
+        #endif
     }
     SaveLoadProcessDraft = false;
     SaveLoadDraftValid = false;
@@ -1363,7 +1365,7 @@ void FOClient::DrawIndicator( INTRECT& rect, PointVec& points, uint color, int p
         tick = Timer::GameTick() + INDICATOR_CHANGE_TICK;
     }
     if( points.size() > 0 )
-        SprMngr.DrawPoints( points, D3DPT_POINTLIST );
+        SprMngr.DrawPoints( points, PRIMITIVE_POINTLIST );
 }
 
 uint FOClient::GetCurContainerItemId( INTRECT& pos, int height, int scroll, ItemVec& cont )
@@ -2076,18 +2078,18 @@ void FOClient::ConsoleDraw()
                                  "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
                                  Chosen->HexX, Chosen->HexY, TargetX, TargetY, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
                                  GetFarDir( Chosen->HexX, Chosen->HexY, TargetX, TargetY ), p.X, p.Y
-                                 ), FT_CENTERX, D3DCOLOR_XRGB( 255, 240, 0 ) );
+                                 ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( INTRECT( 450, 5, 650, 300 ), Str::FormatBuf(
                                  "Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
                                  Chosen->SprId, Chosen->SprOx, Chosen->SprOy, HexMngr.GetField( TargetX, TargetY ).ScrX, HexMngr.GetField( TargetX, TargetY ).ScrY
-                                 ), FT_CENTERX, D3DCOLOR_XRGB( 255, 240, 0 ) );
+                                 ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( INTRECT( 650, 5, 800, 300 ), Str::FormatBuf(
                                  "Time:%02d:%02d %02d:%02d:%04d x%02d\nSleep:%d\nSound:%d\nMusic:%d",
                                  GameOpt.Hour, GameOpt.Minute, GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.TimeMultiplier,
                                  GameOpt.Sleep, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
-                                 ), FT_CENTERX, D3DCOLOR_XRGB( 255, 240, 0 ) );
+                                 ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
         }
 
         SprMngr.DrawStr( INTRECT( 10, 10, MODE_WIDTH, MODE_HEIGHT ), Str::FormatBuf(
@@ -2112,7 +2114,7 @@ void FOClient::ConsoleDraw()
                              CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF,
                              BytesSend, BytesReceive, BytesReceive + BytesSend, /*BytesRealReceive,*/
                              FPS, PingTime, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume(), GameOpt.Sleep
-                             ), 0, D3DCOLOR_XRGB( 255, 248, 0 ), FONT_BIG );
+                             ), 0, COLOR_XRGB( 255, 248, 0 ), FONT_BIG );
 
         SprMngr.DrawStr( INTRECT( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );
     }
@@ -5752,7 +5754,7 @@ void FOClient::LmapDraw()
         LmapPrepareMap();
 
     SprMngr.DrawSprite( LmapPMain, LmapMain[ 0 ] + LmapX, LmapMain[ 1 ] + LmapY );
-    SprMngr.DrawPoints( LmapPrepPix, D3DPT_LINELIST );
+    SprMngr.DrawPoints( LmapPrepPix, PRIMITIVE_LINELIST );
     SprMngr.DrawStr( INTRECT( LmapWMap[ 0 ] + LmapX, LmapWMap[ 1 ] + LmapY, LmapWMap[ 0 ] + LmapX + 100, LmapWMap[ 1 ] + LmapY + 15 ), Str::FormatBuf( "Zoom: %d", LmapZoom - 1 ), 0 );
     if( IfaceHold == IFACE_LMAP_OK )
         SprMngr.DrawSprite( LmapPBOkDw, LmapBOk[ 0 ] + LmapX, LmapBOk[ 1 ] + LmapY );
@@ -6032,17 +6034,17 @@ void FOClient::GmapDraw()
             int val = GmapFog.Get2Bit( zx, zy );
             if( val == GM_FOG_NONE )
                 continue;
-            uint color = D3DCOLOR_ARGB( 0xFF, 0, 0, 0 );      // GM_FOG_FULL
+            uint color = COLOR_ARGB( 0xFF, 0, 0, 0 );      // GM_FOG_FULL
             if( val == GM_FOG_HALF )
-                color = D3DCOLOR_ARGB( 0x7F, 0, 0, 0 );
+                color = COLOR_ARGB( 0x7F, 0, 0, 0 );
             else if( val == GM_FOG_HALF_EX )
-                color = D3DCOLOR_ARGB( 0x3F, 0, 0, 0 );
+                color = COLOR_ARGB( 0x3F, 0, 0, 0 );
             float x = float(zx * GM_ZONE_LEN) / GmapZoom + GmapOffsetX;
             float y = float(zy * GM_ZONE_LEN) / GmapZoom + GmapOffsetY;
             SprMngr.PrepareSquare( GmapFogPix, FLTRECT( x, y, x + GM_ZONE_LEN / GmapZoom, y + GM_ZONE_LEN / GmapZoom ), color );
         }
     }
-    SprMngr.DrawPoints( GmapFogPix, D3DPT_TRIANGLELIST );
+    SprMngr.DrawPoints( GmapFogPix, PRIMITIVE_TRIANGLELIST );
 
     // Locations on map
     for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
@@ -6059,7 +6061,7 @@ void FOClient::GmapDraw()
         {
             SprMngr.DrawSpriteSize( GmapLocPic, loc_pic_x1, loc_pic_y1,
                                     (float) ( loc_pic_x2 - loc_pic_x1 ), (float) ( loc_pic_y2 - loc_pic_y1 ),
-                                    true, false, loc.Color ? loc.Color : D3DCOLOR_ARGB( GMAP_LOC_ALPHA, 0, 255, 0 ) );
+                                    true, false, loc.Color ? loc.Color : COLOR_ARGB( GMAP_LOC_ALPHA, 0, 255, 0 ) );
         }
     }
 
@@ -6102,13 +6104,13 @@ void FOClient::GmapDraw()
     gt.clear();
     for( auto it = GmapTrace.begin(), end = GmapTrace.end(); it != end; ++it )
         gt.push_back( PrepPoint( (int) ( ( *it ).first / GmapZoom ) + GmapOffsetX, (int) ( ( *it ).second / GmapZoom ) + GmapOffsetY, 0xFFFF0000 ) );
-    SprMngr.DrawPoints( gt, D3DPT_POINTLIST );
+    SprMngr.DrawPoints( gt, PRIMITIVE_POINTLIST );
 
     // Script draw
     DrawIfaceLayer( 100 );
 
     // Cut off map
-    SprMngr.DrawPoints( GmapMapCutOff, D3DPT_TRIANGLELIST );
+    SprMngr.DrawPoints( GmapMapCutOff, PRIMITIVE_TRIANGLELIST );
 
     // Tabs pics
     int cur_tabx = GmapWTabs[ 0 ] - GmapTabsScrX;
@@ -8562,7 +8564,7 @@ void FOClient::PipDraw()
         {
             FLTRECT stencil( (float) ( PipWMonitor.L + PipX ), (float) ( PipWMonitor.T + PipY ), (float) ( PipWMonitor.R + PipX ), (float) ( PipWMonitor.B + PipY ) );
             FLTPOINT offset( AutomapScrX, AutomapScrY );
-            SprMngr.DrawPoints( AutomapPoints, D3DPT_LINELIST, &AutomapZoom, &stencil, &offset );
+            SprMngr.DrawPoints( AutomapPoints, PRIMITIVE_LINELIST, &AutomapZoom, &stencil, &offset );
             break;
         }
 
@@ -11480,6 +11482,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
     UCharVec pic_data;
     if( SaveLoadDraftValid )
     {
+        #ifdef FO_D3D
         LPD3DXBUFFER img = NULL;
         if( SUCCEEDED( D3DXSaveSurfaceToFileInMemory( &img, D3DXIFF_BMP, SaveLoadDraft, NULL, NULL ) ) )
         {
@@ -11487,6 +11490,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
             memcpy( &pic_data[ 0 ], img->GetBufferPointer(), img->GetBufferSize() );
         }
         SAFEREL( img );
+        #endif
     }
 
     // Send request
@@ -11498,6 +11502,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
 
 void FOClient::SaveLoadFillDraft()
 {
+    #ifdef FO_D3D
     // Fill game preview draft
     Device_ device = SprMngr.GetDevice();
     Surface_ rt = NULL;
@@ -11505,6 +11510,7 @@ void FOClient::SaveLoadFillDraft()
                            SUCCEEDED( device->StretchRect( rt, NULL, SaveLoadDraft, NULL, D3DTEXF_LINEAR ) ) );
     SAFEREL( rt );
     SaveLoadProcessDraft = false;
+    #endif
 }
 
 void FOClient::SaveLoadShowDraft()
@@ -11514,8 +11520,10 @@ void FOClient::SaveLoadShowDraft()
     {
         // Get surface from image data
         SaveLoadDataSlot& slot = SaveLoadDataSlots[ SaveLoadSlotIndex ];
+        #ifdef FO_D3D
         SaveLoadDraftValid = ( slot.PicData.size() && SUCCEEDED( D3DXLoadSurfaceFromFileInMemory( SaveLoadDraft, NULL, NULL,
                                                                                                   &slot.PicData[ 0 ], (uint) slot.PicData.size(), NULL, D3DX_FILTER_LINEAR, 0, NULL ) ) );
+        #endif
     }
     else if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )
     {

@@ -63,6 +63,12 @@ struct SkinInfo
     uint Dummy;
 };
 
+struct AnimController
+{
+    uint Dummy;
+    void Release() {}
+};
+
 struct MeshContainer
 {
     char* Name;

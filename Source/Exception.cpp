@@ -310,7 +310,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 
                 if( stack.AddrPC.Offset == stack.AddrReturn.Offset )
                 {
-                    fprintf( f, "\tStackWalk64-Endless-Callstack!", 0, stack.AddrPC.Offset );
+                    fprintf( f, "\tStackWalk64-Endless-Callstack!\n", 0, stack.AddrPC.Offset );
                     break;
                 }
 
@@ -424,7 +424,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     }
 
     if( except )
-        MessageBox( NULL, mess, "FOnline Error", MB_OK );
+        ShowMessage( mess );
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -466,7 +466,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     }
 
     if( except )
-        MessageBox( NULL, mess, "FOnline Error", MB_OK );
+        ShowMessage( mess );
 
     return retval;
 }

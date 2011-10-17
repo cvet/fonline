@@ -131,11 +131,7 @@ void FileManager::InitDataFiles( const char* path )
                 {
                     char errmsg[ MAX_FOTEXT ];
                     Str::Format( errmsg, "Data file '%s' not found. Run Updater.exe.", fpath );
-                    #ifdef FO_WINDOWS
-                    HWND wnd = GetActiveWindow();
-                    if( wnd )
-                        MessageBox( wnd, errmsg, "FOnline", MB_OK );
-                    #endif
+                    ShowMessage( errmsg );
                     WriteLogF( _FUNC_, " - %s\n", errmsg );
                     delete mgr;
                     continue;
@@ -156,11 +152,7 @@ void FileManager::InitDataFiles( const char* path )
             {
                 char errmsg[ MAX_FOTEXT ];
                 Str::Format( errmsg, "Data file '%s' not found. Run Updater.exe.", fpath );
-                #ifdef FO_WINDOWS
-                HWND wnd = GetActiveWindow();
-                if( wnd )
-                    MessageBox( wnd, errmsg, "FOnline", MB_OK );
-                #endif
+                ShowMessage( errmsg );
                 WriteLogF( _FUNC_, " - %s\n", errmsg );
             }
         }

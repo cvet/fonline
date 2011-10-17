@@ -15,7 +15,7 @@
 # include <Windows.h>
 #else // FO_LINUX
 # include <errno.h>
-# define ExitProcess( code )           exit( code )
+# define ExitProcess( code )              exit( code )
 #endif
 
 // Network
@@ -46,16 +46,16 @@ const char* GetLastSocketError();
 
 // DLL
 #if defined ( FO_WINDOWS )
-# define DLL_Load( name )              (void*) LoadLibrary( name )
-# define DLL_Free( h )                 FreeLibrary( (HMODULE) h )
-# define DLL_GetAddress( h, pname )    (size_t*) GetProcAddress( (HMODULE) h, pname )
-# define DLL_Error()                   Str::ItoA( GetLastError() )
+# define DLL_Load( name )                 (void*) LoadLibrary( name )
+# define DLL_Free( h )                    FreeLibrary( (HMODULE) h )
+# define DLL_GetAddress( h, pname )       (size_t*) GetProcAddress( (HMODULE) h, pname )
+# define DLL_Error()                      Str::ItoA( GetLastError() )
 #else // FO_LINUX
 # include <dlfcn.h>
-# define DLL_Load( name )              (void*) dlopen( name, RTLD_LAZY )
-# define DLL_Free( h )                 dlclose( h )
-# define DLL_GetAddress( h, pname )    (size_t*) dlsym( h, pname )
-# define DLL_Error()                   dlerror()
+# define DLL_Load( name )                 (void*) dlopen( name, RTLD_LAZY )
+# define DLL_Free( h )                    dlclose( h )
+# define DLL_GetAddress( h, pname )       (size_t*) dlsym( h, pname )
+# define DLL_Error()                      dlerror()
 #endif
 
 // Memory debug
@@ -78,9 +78,9 @@ const char* GetLastSocketError();
 #include "Text.h"
 #include "FileSystem.h"
 
-#define ___MSG1( x )                   # x
-#define ___MSG0( x )                   ___MSG1( x )
-#define MESSAGE( desc )                message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
+#define ___MSG1( x )                      # x
+#define ___MSG0( x )                      ___MSG1( x )
+#define MESSAGE( desc )                   message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
 
 #define SAFEREL( x ) \
     { if( x )        \
@@ -92,8 +92,7 @@ const char* GetLastSocketError();
     { if( x )         \
           delete[] ( x ); ( x ) = NULL; }
 
-#define STATIC_ASSERT( a )             { static int static_assert_array__[ ( a ) ? 1 : -1 ]; }
-#define D3D_HR( expr )                 { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
+#define STATIC_ASSERT( a )                { static int static_assert_array__[ ( a ) ? 1 : -1 ]; }
 
 #define PI_FLOAT                ( 3.14159265f )
 #define PIBY2_FLOAT             ( 1.5707963f )
@@ -102,12 +101,13 @@ const char* GetLastSocketError();
 #define BIAS_FLOAT              ( 0.02f )
 #define RAD2DEG                 ( 57.29577951f )
 
-#define MAX( a, b )                    ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
-#define MIN( a, b )                    ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#define MAX( a, b )                       ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+#define MIN( a, b )                       ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 
-#define OFFSETOF( type, member )       ( (int) offsetof( type, member ) )
-#define memzero( ptr, size )           memset( ptr, 0, size )
-#define PACKUINT64( u32hi, u32lo )     ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
+#define OFFSETOF( type, member )          ( (int) offsetof( type, member ) )
+#define memzero( ptr, size )              memset( ptr, 0, size )
+#define PACKUINT64( u32hi, u32lo )        ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
+#define MAKEUINT( ch0, ch1, ch2, ch3 )    ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
 
 typedef vector< INTRECT > IntRectVec;
 typedef vector< FLTRECT > FltRectVec;
@@ -136,6 +136,7 @@ void MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
 bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
 void RestoreMainDirectory();
 uint GetCurThreadId();
+void ShowMessage( const char* message );
 
 // Containers comparator template
 template< class T >
@@ -170,6 +171,9 @@ struct ScoreType
 /************************************************************************/
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
+# define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
+# define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
+
 # ifdef FO_D3D
 #  include <dxerr.h>
 #  include <d3dx9.h>
@@ -183,9 +187,12 @@ struct ScoreType
 #  pragma comment(lib,"dxguid.lib")
 #  pragma comment(lib,"dxerr.lib")
 #  pragma comment(lib,"d3dxof.lib")
+#  define D3D_HR( expr )                  { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
 # else
 #  include <gl/GL.h>
 #  include <gl/GLU.h>
+#  include "GLUT/GL/glut.h"
+#  include "Assimp/aiTypes.h"
 # endif
 
 # define PI_VALUE               ( 3.141592654f )
@@ -215,6 +222,7 @@ struct ScoreType
 #  define SkinInfo_             LPD3DXSKININFO
 #  define Light_                D3DLIGHT9
 #  define ViewPort_             D3DVIEWPORT9
+#  define LockRect_             D3DLOCKED_RECT
 # else
 #  define Device_               GLuint
 #  define Texture_              GLuint
@@ -225,12 +233,12 @@ struct ScoreType
 #  define EffectValue_          GLuint
 #  define Material_             GLuint
 #  define Mesh_                 GLuint
-#  define Matrix_               GLuint
+#  define Matrix_               aiMatrix4x4
 #  define Buffer_               GLuint
-#  define Vector3_              GLuint
-#  define Vector4_              GLuint
+#  define Vector3_              aiVector3D
+#  define Vector4_              aiQuaternion
 #  define AnimSet_              GLuint
-#  define AnimController_       GLuint
+#  define AnimController_       AnimController
 #  define PresentParams_        GLuint
 #  define Caps_                 GLuint
 #  define VertexBuffer_         GLuint
@@ -240,15 +248,16 @@ struct ScoreType
 #  define SkinInfo_             GLuint
 #  define Light_                GLuint
 #  define ViewPort_             GLuint
+#  define LockRect_             GLuint
 # endif
 
 # define MODE_WIDTH             ( GameOpt.ScreenWidth )
 # define MODE_HEIGHT            ( GameOpt.ScreenHeight )
 # define WM_FLASH_WINDOW        ( WM_USER + 1 )     // Chat notification
 # define DI_BUF_SIZE            ( 64 )
-# define DI_ONDOWN( a, b )     if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONUP( a, b )       if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONMOUSE( a, b )    if( didod[ i ].dwOfs == a ) { b; }
+# define DI_ONDOWN( a, b )                if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
+# define DI_ONUP( a, b )                  if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
+# define DI_ONMOUSE( a, b )               if( didod[ i ].dwOfs == a ) { b; }
 
 # ifdef FONLINE_CLIENT
 #  include "ResourceClient.h"

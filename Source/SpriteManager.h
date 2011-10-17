@@ -29,32 +29,32 @@
 
 // Colors
 #define COLOR_CHANGE_ALPHA( v, a )    ( ( ( ( v ) | 0xFF000000 ) ^ 0xFF000000 ) | ( (uint) ( a ) & 0xFF ) << 24 )
-#define COLOR_IFACE_FIX              D3DCOLOR_XRGB( 103, 95, 86 )
+#define COLOR_IFACE_FIX              COLOR_XRGB( 103, 95, 86 )
 #define COLOR_IFACE                  SpriteManager::GetColor( ( ( COLOR_IFACE_FIX >> 16 ) & 0xFF ) + GameOpt.Light, ( ( COLOR_IFACE_FIX >> 8 ) & 0xFF ) + GameOpt.Light, ( COLOR_IFACE_FIX & 0xFF ) + GameOpt.Light )
 #define COLOR_IFACE_A( a )            ( ( COLOR_IFACE ^ 0xFF000000 ) | ( ( a ) << 24 ) )
 #define COLOR_GAME_RGB( r, g, b )     SpriteManager::GetColor( ( r ) + GameOpt.Light, ( g ) + GameOpt.Light, ( b ) + GameOpt.Light )
 #define COLOR_IFACE_RED              ( COLOR_IFACE | ( 0xFF << 16 ) )
 #define COLOR_IFACE_GREEN            ( COLOR_IFACE | ( 0xFF << 8 ) )
-#define COLOR_CRITTER_NAME           D3DCOLOR_XRGB( 0xAD, 0xAD, 0xB9 )
-#define COLOR_TEXT                   D3DCOLOR_XRGB( 60, 248, 0 )
-#define COLOR_TEXT_WHITE             D3DCOLOR_XRGB( 0xFF, 0xFF, 0xFF )
-#define COLOR_TEXT_DWHITE            D3DCOLOR_XRGB( 0xBF, 0xBF, 0xBF )
-#define COLOR_TEXT_RED               D3DCOLOR_XRGB( 0xC8, 0, 0 )
-#define COLOR_TEXT_DRED              D3DCOLOR_XRGB( 0xAA, 0, 0 )
-#define COLOR_TEXT_DDRED             D3DCOLOR_XRGB( 0x66, 0, 0 )
-#define COLOR_TEXT_LRED              D3DCOLOR_XRGB( 0xFF, 0, 0 )
-#define COLOR_TEXT_BLUE              D3DCOLOR_XRGB( 0, 0, 0xC8 )
-#define COLOR_TEXT_DBLUE             D3DCOLOR_XRGB( 0, 0, 0xAA )
-#define COLOR_TEXT_LBLUE             D3DCOLOR_XRGB( 0, 0, 0xFF )
-#define COLOR_TEXT_GREEN             D3DCOLOR_XRGB( 0, 0xC8, 0 )
-#define COLOR_TEXT_DGREEN            D3DCOLOR_XRGB( 0, 0xAA, 0 )
-#define COLOR_TEXT_DDGREEN           D3DCOLOR_XRGB( 0, 0x66, 0 )
-#define COLOR_TEXT_LGREEN            D3DCOLOR_XRGB( 0, 0xFF, 0 )
-#define COLOR_TEXT_BLACK             D3DCOLOR_XRGB( 0, 0, 0 )
-#define COLOR_TEXT_SBLACK            D3DCOLOR_XRGB( 0x10, 0x10, 0x10 )
-#define COLOR_TEXT_DARK              D3DCOLOR_XRGB( 0x30, 0x30, 0x30 )
-#define COLOR_TEXT_GREEN_RED         D3DCOLOR_XRGB( 0, 0xC8, 0xC8 )
-#define COLOR_TEXT_SAND              D3DCOLOR_XRGB( 0x8F, 0x6F, 0 )
+#define COLOR_CRITTER_NAME           COLOR_XRGB( 0xAD, 0xAD, 0xB9 )
+#define COLOR_TEXT                   COLOR_XRGB( 60, 248, 0 )
+#define COLOR_TEXT_WHITE             COLOR_XRGB( 0xFF, 0xFF, 0xFF )
+#define COLOR_TEXT_DWHITE            COLOR_XRGB( 0xBF, 0xBF, 0xBF )
+#define COLOR_TEXT_RED               COLOR_XRGB( 0xC8, 0, 0 )
+#define COLOR_TEXT_DRED              COLOR_XRGB( 0xAA, 0, 0 )
+#define COLOR_TEXT_DDRED             COLOR_XRGB( 0x66, 0, 0 )
+#define COLOR_TEXT_LRED              COLOR_XRGB( 0xFF, 0, 0 )
+#define COLOR_TEXT_BLUE              COLOR_XRGB( 0, 0, 0xC8 )
+#define COLOR_TEXT_DBLUE             COLOR_XRGB( 0, 0, 0xAA )
+#define COLOR_TEXT_LBLUE             COLOR_XRGB( 0, 0, 0xFF )
+#define COLOR_TEXT_GREEN             COLOR_XRGB( 0, 0xC8, 0 )
+#define COLOR_TEXT_DGREEN            COLOR_XRGB( 0, 0xAA, 0 )
+#define COLOR_TEXT_DDGREEN           COLOR_XRGB( 0, 0x66, 0 )
+#define COLOR_TEXT_LGREEN            COLOR_XRGB( 0, 0xFF, 0 )
+#define COLOR_TEXT_BLACK             COLOR_XRGB( 0, 0, 0 )
+#define COLOR_TEXT_SBLACK            COLOR_XRGB( 0x10, 0x10, 0x10 )
+#define COLOR_TEXT_DARK              COLOR_XRGB( 0x30, 0x30, 0x30 )
+#define COLOR_TEXT_GREEN_RED         COLOR_XRGB( 0, 0xC8, 0xC8 )
+#define COLOR_TEXT_SAND              COLOR_XRGB( 0x8F, 0x6F, 0 )
 
 // Default effects
 #define DEFAULT_EFFECT_NONE          ( 0 )
@@ -108,6 +108,14 @@
 #define CONTOUR_YELLOW               ( 2 )
 #define CONTOUR_CUSTOM               ( 3 )
 
+// Primitives
+#define  PRIMITIVE_POINTLIST         ( 1 )
+#define  PRIMITIVE_LINELIST          ( 2 )
+#define  PRIMITIVE_LINESTRIP         ( 3 )
+#define  PRIMITIVE_TRIANGLELIST      ( 4 )
+#define  PRIMITIVE_TRIANGLESTRIP     ( 5 )
+#define  PRIMITIVE_TRIANGLEFAN       ( 6 )
+
 struct Surface
 {
     int      Type;
@@ -117,7 +125,9 @@ struct Surface
     uint     FreeX, FreeY;            // Busy positions on current surface
 
     Surface(): Type( 0 ), TextureOwner( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
+    #ifdef FO_D3D
     ~Surface() { SAFEREL( TextureOwner ); }
+    #endif
 };
 typedef vector< Surface* > SurfaceVec;
 
@@ -219,7 +229,9 @@ private:
     bool             isInit;
     SpriteMngrParams mngrParams;
     HWND             hWnd;
+    #ifdef FO_D3D
     LPDIRECT3D9      direct3D;
+    #endif
     Device_          d3dDevice;
     PresentParams_   presentParams;
     Caps_            deviceCaps;
@@ -235,14 +247,14 @@ public:
     bool    InitRenderStates();
     bool    IsInit() { return isInit; }
     void    Finish();
-    Device_ GetDevice()           { return d3dDevice; }
-    bool    IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
-    bool    BeginScene( uint clear_color );
-    void    EndScene();
-    bool    Restore();
-    bool    CreateRenderTarget( Surface_& surf, int w, int h );
-    bool    ClearRenderTarget( Surface_& surf, uint color );
-    bool    ClearCurRenderTarget( uint color );
+    Device_ GetDevice() { return d3dDevice; }
+    // bool    IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
+    bool BeginScene( uint clear_color );
+    void EndScene();
+    bool Restore();
+    bool CreateRenderTarget( Surface_& surf, int w, int h );
+    bool ClearRenderTarget( Surface_& surf, uint color );
+    bool ClearCurRenderTarget( uint color );
     void ( * PreRestore )();
     void ( * PostRestore )();
 
@@ -309,7 +321,7 @@ public:
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
     bool DrawPrepared( Surface_& surf, int ox, int oy );
     bool DrawSurface( Surface_& surf, RECT& dst );
-    bool DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* zoom = NULL, FLTRECT* stencil = NULL, FLTPOINT* offset = NULL );
+    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, FLTRECT* stencil = NULL, FLTPOINT* offset = NULL );
     bool Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color );
     bool Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
 
@@ -364,8 +376,8 @@ private:
 
     bool CollectContour( int x, int y, SpriteInfo* si, Sprite* spr ); // Must called after Draw3d!
     uint GetSpriteContour( SpriteInfo* si, Sprite* spr );
-    void WriteContour4( uint* buf, uint buf_w, D3DLOCKED_RECT& r, uint w, uint h, uint color );
-    void WriteContour8( uint* buf, uint buf_w, D3DLOCKED_RECT& r, uint w, uint h, uint color );
+    void WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color );
+    void WriteContour8( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color );
 
     // Transparent egg
 private:

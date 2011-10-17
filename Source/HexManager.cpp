@@ -223,7 +223,9 @@ void HexManager::Finish()
         for( int hy = 0; hy < maxHexY; hy++ )
             GetField( hx, hy ).Clear();
 
+    #ifdef FO_D3D
     SAFEREL( tileSurf );
+    #endif
     SAFEDELA( viewField );
     ResizeField( 0, 0 );
 
@@ -1268,7 +1270,7 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
     if( color == 0 )
         color = 0xFFFFFF;
     int alpha = MAX_LIGHT_ALPHA * LightCapacity / 100 * inten / MAX_LIGHT_VALUE;
-    color = D3DCOLOR_ARGB( alpha, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+    color = COLOR_ARGB( alpha, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
     LightProcentR = ( ( color >> 16 ) & 0xFF ) * 100 / 0xFF;
     LightProcentG = ( ( color >> 8 ) & 0xFF ) * 100 / 0xFF;
     LightProcentB = ( color & 0xFF ) * 100 / 0xFF;
@@ -1287,7 +1289,7 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
     points.clear();
     points.reserve( 3 + dist * DIRS_COUNT );
     points.push_back( PrepPoint( base_x, base_y, color, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) ); // Center of light
-    color = D3DCOLOR_ARGB( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+    color = COLOR_ARGB( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
 
     int    hx_far = hx, hy_far = hy;
     bool   seek_start = true;
@@ -1331,10 +1333,10 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
                 {
                     int a = alpha - DistGame( hx, hy, hx_, hy_ ) * alpha / dist;
                     a = CLAMP( a, 0, alpha );
-                    color = D3DCOLOR_ARGB( a, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+                    color = COLOR_ARGB( a, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
                 }
                 else
-                    color = D3DCOLOR_ARGB( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+                    color = COLOR_ARGB( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
                 int x, y;
                 GetHexInterval( hx, hy, hx_, hy_, x, y );
                 points.push_back( PrepPoint( base_x + x, base_y + y, color, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
@@ -1471,7 +1473,9 @@ bool HexManager::InitTilesSurf()
     if( tileSurf && tileSurfWidth == w && tileSurfHeight == h )
         return true;
 
+    #ifdef FO_D3D
     SAFEREL( tileSurf );
+    #endif
     tileSurfWidth = 0;
     tileSurfHeight = 0;
 
@@ -1923,7 +1927,7 @@ void HexManager::DrawMap()
         {
             // Clear
             if( GameOpt.ScreenClear )
-                SprMngr.ClearRenderTarget( tileSurf, D3DCOLOR_XRGB( 100, 100, 100 ) );
+                SprMngr.ClearRenderTarget( tileSurf, COLOR_XRGB( 100, 100, 100 ) );
 
             // Draw simple tiles
             SprMngr.SetCurEffect2D( DEFAULT_EFFECT_TILE );
@@ -1942,8 +1946,8 @@ void HexManager::DrawMap()
 
     // Light
     for( uint i = 0; i < lightPointsCount; i++ )
-        SprMngr.DrawPoints( lightPoints[ i ], D3DPT_TRIANGLEFAN, &GameOpt.SpritesZoom );
-    SprMngr.DrawPoints( lightSoftPoints, D3DPT_TRIANGLELIST, &GameOpt.SpritesZoom );
+        SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom );
+    SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom );
 
     // Cursor flat
     DrawCursor( cursorPrePic->GetCurSprId() );
@@ -1955,6 +1959,7 @@ void HexManager::DrawMap()
     // Roof
     if( GameOpt.ShowRoof )
     {
+        #ifdef FO_D3D
         Device_ device = SprMngr.GetDevice();
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
@@ -1962,6 +1967,7 @@ void HexManager::DrawMap()
         SprMngr.DrawSprites( roofTree, false, true, 0, 0 );
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
+        #endif
 
         SprMngr.SetCurEffect2D( DEFAULT_EFFECT_GENERIC );
         if( rainCapacity )
@@ -2288,7 +2294,9 @@ void HexManager::ScrollToHex( int hx, int hy, double speed, bool can_stop )
 
 void HexManager::PreRestore()
 {
+    #ifdef FO_D3D
     SAFEREL( tileSurf );
+    #endif
 }
 
 void HexManager::PostRestore()

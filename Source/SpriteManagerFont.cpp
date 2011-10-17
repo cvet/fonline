@@ -167,10 +167,11 @@ bool SpriteManager::LoadFontOld( int index, const char* font_name, int size_mod 
     }
 
     Texture_ image = NULL;
+    #ifdef FO_D3D
     D3D_HR( D3DXCreateTextureFromFileInMemoryEx( d3dDevice, fm.GetBuf(), fm.GetFsize(), D3DX_DEFAULT, D3DX_DEFAULT, 1, 0,
-                                                 D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, D3DCOLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &image ) );
+                                                 D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, COLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &image ) );
 
-    D3DLOCKED_RECT lr;
+    LockRect_ lr;
     D3D_HR( image->LockRect( 0, &lr, NULL, D3DLOCK_READONLY ) );
 
     if( !fm.LoadFile( Str::FormatBuf( "%s.fnt0", font_name ), PT_FONTS ) )
@@ -254,7 +255,7 @@ bool SpriteManager::LoadFontOld( int index, const char* font_name, int size_mod 
     D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTex ) );
     D3D_HR( font.FontTex->LockRect( 0, &lr, NULL, 0 ) );
     memcpy( lr.pBits, data, tex_w * tex_h * 4 );
-    WriteContour8( (uint*) data, tex_w, lr, tex_w, tex_h, D3DCOLOR_ARGB( 0xFF, 0, 0, 0 ) ); // Create border
+    WriteContour8( (uint*) data, tex_w, lr, tex_w, tex_h, COLOR_ARGB( 0xFF, 0, 0, 0 ) ); // Create border
     D3D_HR( font.FontTex->UnlockRect( 0 ) );
 
     // Create bordered texture
@@ -269,6 +270,7 @@ bool SpriteManager::LoadFontOld( int index, const char* font_name, int size_mod 
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
     Fonts[ index ] = new Font( font );
+    #endif
     return true;
 }
 
@@ -295,7 +297,7 @@ bool SpriteManager::LoadFontAAF( int index, const char* font_name, int size_mod 
 
     // Check signature
     uint sign = fm.GetBEUInt();
-    if( sign != MAKEFOURCC( 'F', 'F', 'A', 'A' ) )
+    if( sign != MAKEUINT( 'F', 'F', 'A', 'A' ) )
     {
         WriteLogF( _FUNC_, " - Signature AAFF not found.\n" );
         return false;
@@ -374,12 +376,13 @@ bool SpriteManager::LoadFontAAF( int index, const char* font_name, int size_mod 
         cur_x += l.W + 2;
     }
 
+    #ifdef FO_D3D
     // Create texture
     D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTex ) );
-    D3DLOCKED_RECT lr;
+    LockRect_ lr;
     D3D_HR( font.FontTex->LockRect( 0, &lr, NULL, 0 ) );
     memcpy( lr.pBits, data, tex_w * tex_h * 4 );
-    WriteContour8( (uint*) data, tex_w, lr, tex_w, tex_h, D3DCOLOR_ARGB( 0xFF, 0, 0, 0 ) ); // Create border
+    WriteContour8( (uint*) data, tex_w, lr, tex_w, tex_h, COLOR_ARGB( 0xFF, 0, 0, 0 ) ); // Create border
     D3D_HR( font.FontTex->UnlockRect( 0 ) );
 
     // Create bordered texture
@@ -394,6 +397,7 @@ bool SpriteManager::LoadFontAAF( int index, const char* font_name, int size_mod 
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
     Fonts[ index ] = new Font( font );
+    #endif
     return true;
 }
 
@@ -416,7 +420,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     }
 
     uint signature = fm.GetLEUInt();
-    if( signature != MAKEFOURCC( 'B', 'M', 'F', 3 ) )
+    if( signature != MAKEUINT( 'B', 'M', 'F', 3 ) )
     {
         WriteLogF( _FUNC_, " - Invalid signature of font<%s>.\n", font_name );
         return false;
@@ -504,14 +508,15 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     font.EmptyVer = 1;
     font.SpaceWidth = font.Letters[ ' ' ].XAdvance;
 
+    #ifdef FO_D3D
     // Create texture
     D3D_HR( D3DXCreateTextureFromFileInMemoryEx( d3dDevice, fm_tex.GetBuf(), fm_tex.GetFsize(), D3DX_DEFAULT, D3DX_DEFAULT, 1, 0,
-                                                 D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, D3DCOLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &font.FontTex ) );
+                                                 D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, COLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &font.FontTex ) );
 
     // Create bordered texture
     D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTexBordered ) );
 
-    D3DLOCKED_RECT lr, lrb;
+    LockRect_ lr, lrb;
     D3D_HR( font.FontTex->LockRect( 0, &lr, NULL, 0 ) );
     D3D_HR( font.FontTexBordered->LockRect( 0, &lrb, NULL, 0 ) );
 
@@ -540,6 +545,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
     Fonts[ index ] = new Font( font );
+    #endif
     return true;
 }
 

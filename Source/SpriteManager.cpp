@@ -12,7 +12,7 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 #define SURF_SPRITES_OFFS    ( 2 )
 #define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
 
-SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), hWnd( NULL ), direct3D( NULL ), SurfType( 0 ),
+SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), hWnd( NULL ), SurfType( 0 ),
                                 spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ), sceneBeginned( false ),
                                 d3dDevice( NULL ), pVB( NULL ), pIB( NULL ), waitBuf( NULL ), vbPoints( NULL ), vbPointsSize( 0 ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
                                 eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ), sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
@@ -23,7 +23,7 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), h
     memzero( &presentParams, sizeof( presentParams ) );
     memzero( &mngrParams, sizeof( mngrParams ) );
     memzero( &deviceCaps, sizeof( deviceCaps ) );
-    baseColor = D3DCOLOR_ARGB( 255, 128, 128, 128 );
+    baseColor = COLOR_ARGB( 255, 128, 128, 128 );
     surfList.reserve( 100 );
     dipQueue.reserve( 1000 );
     contoursConstWidthStep = NULL;
@@ -34,6 +34,10 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), h
     contoursConstContourColorOffs = NULL;
     memzero( sprDefaultEffect, sizeof( sprDefaultEffect ) );
     curDefaultEffect = NULL;
+
+    #ifdef FO_D3D
+    direct3D = NULL;
+    #endif
 }
 
 bool SpriteManager::Init( SpriteMngrParams& params )
@@ -51,12 +55,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     modeHeight = GameOpt.ScreenHeight;
     curSprCnt = 0;
 
-    #ifndef FO_D3D
-    auxInitDisplayMode( AUX_RGB );
-    auxInitPosition( 0, 0, 500, 500 );
-    auxInitWindow( "Step1" );
-    #endif
-
+    #ifdef FO_D3D
     direct3D = Direct3DCreate9( D3D_SDK_VERSION );
     if( !direct3D )
     {
@@ -152,6 +151,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
             contoursConstContourColorOffs = contoursCT->GetConstantByName( NULL, "ContourColorOffs" );
         }
     }
+    #endif
 
     if( !Animation3d::StartUp( d3dDevice, GameOpt.SoftwareSkinning ) )
         return false;
@@ -195,7 +195,9 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = Loader3d::LoadEffect( d3dDevice, "Primitive_Default.fx" );
 
     // Clear scene
-    D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 ) );
+    #ifdef FO_D3D
+    D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, COLOR_XRGB( 0, 0, 0 ), 1.0f, 0 ) );
+    #endif
 
     // Generate dummy animation
     if( !DummyAnimation )
@@ -214,6 +216,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
 bool SpriteManager::InitBuffers()
 {
+    #ifdef FO_D3D
     SAFEREL( spr3dRT );
     SAFEREL( spr3dRTEx );
     SAFEREL( spr3dDS );
@@ -274,12 +277,14 @@ bool SpriteManager::InitBuffers()
         D3D_HR( d3dDevice->CreateRenderTarget( spr3dSurfWidth, spr3dSurfHeight, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &spr3dRTEx, NULL ) );
     D3D_HR( d3dDevice->CreateDepthStencilSurface( spr3dSurfWidth, spr3dSurfHeight, D3DFMT_D24S8, presentParams.MultiSampleType, presentParams.MultiSampleQuality, TRUE, &spr3dDS, NULL ) );
     D3D_HR( d3dDevice->CreateOffscreenPlainSurface( spr3dSurfWidth, spr3dSurfHeight, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &spr3dRTData, NULL ) );
+    #endif
 
     return true;
 }
 
 bool SpriteManager::InitRenderStates()
 {
+    #ifdef FO_D3D
     D3D_HR( d3dDevice->SetRenderState( D3DRS_LIGHTING, FALSE ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_ZENABLE, FALSE ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_ZFUNC, D3DCMP_LESS ) );
@@ -317,8 +322,9 @@ bool SpriteManager::InitRenderStates()
     D3D_HR( d3dDevice->SetRenderState( D3DRS_DITHERENABLE, TRUE ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_SPECULARENABLE, FALSE ) );
     // D3D_HR(d3dDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_CCW));
-    D3D_HR( d3dDevice->SetRenderState( D3DRS_AMBIENT, D3DCOLOR_XRGB( 80, 80, 80 ) ) );
+    D3D_HR( d3dDevice->SetRenderState( D3DRS_AMBIENT, COLOR_XRGB( 80, 80, 80 ) ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_NORMALIZENORMALS, TRUE ) );
+    #endif
 
     return true;
 }
@@ -336,6 +342,8 @@ void SpriteManager::Finish()
     dipQueue.clear();
 
     Animation3d::Finish();
+
+    #ifdef FO_D3D
     SAFEREL( spr3dRT );
     SAFEREL( spr3dRTEx );
     SAFEREL( spr3dDS );
@@ -353,6 +361,7 @@ void SpriteManager::Finish()
     SAFEREL( contoursCT );
     SAFEREL( contoursPS );
     SAFEREL( direct3D );
+    #endif
 
     isInit = false;
     WriteLog( "Sprite manager finish complete.\n" );
@@ -360,6 +369,7 @@ void SpriteManager::Finish()
 
 bool SpriteManager::BeginScene( uint clear_color )
 {
+    #ifdef FO_D3D
     HRESULT hr = d3dDevice->TestCooperativeLevel();
     if( hr != D3D_OK && ( hr != D3DERR_DEVICENOTRESET || !Restore() ) )
         return false;
@@ -368,6 +378,8 @@ bool SpriteManager::BeginScene( uint clear_color )
         D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, clear_color, 1.0f, 0 ) );
     D3D_HR( d3dDevice->BeginScene() );
     sceneBeginned = true;
+    #endif
+
     Animation3d::BeginScene();
     return true;
 }
@@ -375,9 +387,11 @@ bool SpriteManager::BeginScene( uint clear_color )
 void SpriteManager::EndScene()
 {
     Flush();
+    #ifdef FO_D3D
     d3dDevice->EndScene();
     sceneBeginned = false;
     d3dDevice->Present( NULL, NULL, NULL, NULL );
+    #endif
 }
 
 bool SpriteManager::Restore()
@@ -386,6 +400,7 @@ bool SpriteManager::Restore()
         return false;
 
     // Release resources
+    #ifdef FO_D3D
     SAFEREL( spr3dRT );
     SAFEREL( spr3dRTEx );
     SAFEREL( spr3dDS );
@@ -398,14 +413,17 @@ bool SpriteManager::Restore()
     SAFEREL( contoursMidTexture );
     SAFEREL( contoursMidTextureSurf );
     SAFEREL( contours3dRT );
+    #endif
     Animation3d::PreRestore();
     if( PreRestore )
         ( *PreRestore )( );
     Loader3d::EffectsPreRestore();
 
     // Reset device
+    #ifdef FO_D3D
     D3D_HR( d3dDevice->Reset( &presentParams ) );
-    D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 ) );
+    D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, COLOR_XRGB( 0, 0, 0 ), 1.0f, 0 ) );
+    #endif
 
     // Create resources
     Loader3d::EffectsPostRestore();
@@ -423,8 +441,10 @@ bool SpriteManager::Restore()
 
 bool SpriteManager::CreateRenderTarget( Surface_& surf, int w, int h )
 {
+    #ifdef FO_D3D
     SAFEREL( surf );
     D3D_HR( d3dDevice->CreateRenderTarget( w, h, D3DFMT_X8R8G8B8, presentParams.MultiSampleType, presentParams.MultiSampleQuality, FALSE, &surf, NULL ) );
+    #endif
     return true;
 }
 
@@ -433,6 +453,7 @@ bool SpriteManager::ClearRenderTarget( Surface_& surf, uint color )
     if( !surf )
         return true;
 
+    #ifdef FO_D3D
     Surface_ old_rt = NULL, old_ds = NULL;
     D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
     D3D_HR( d3dDevice->GetDepthStencilSurface( &old_ds ) );
@@ -443,12 +464,15 @@ bool SpriteManager::ClearRenderTarget( Surface_& surf, uint color )
     D3D_HR( d3dDevice->SetDepthStencilSurface( old_ds ) );
     old_rt->Release();
     old_ds->Release();
+    #endif
     return true;
 }
 
 bool SpriteManager::ClearCurRenderTarget( uint color )
 {
+    #ifdef FO_D3D
     D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, color, 1.0f, 0 ) );
+    #endif
     return true;
 }
 
@@ -468,7 +492,9 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
         h *= 2;
 
     Texture_ tex = NULL;
+    #ifdef FO_D3D
     D3D_HR( d3dDevice->CreateTexture( w, h, 1, 0, TEX_FRMT, D3DPOOL_MANAGED, &tex, NULL ) );
+    #endif
 
     Surface* surf = new Surface();
     surf->Type = SurfType;
@@ -555,10 +581,11 @@ void SpriteManager::SaveSufaces()
         surf_size += surf->Width * surf->Height * 4;
     }
 
-    char path[ 256 ];
-    sprintf( path, ".\\%d_%03d_%d.%03dmb\\", rnd_num, folder_cnt, surf_size / 1000000, surf_size % 1000000 / 1000 );
-    CreateDirectory( path, NULL );
+    char path[ MAX_FOPATH ];
+    Str::Format( path, ".\\%d_%03d_%d.%03dmb\\", rnd_num, folder_cnt, surf_size / 1000000, surf_size % 1000000 / 1000 );
+    FileManager::CreateDirectoryTree( path );
 
+    #ifdef FO_D3D
     int  cnt = 0;
     char name[ 256 ];
     for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
@@ -572,6 +599,7 @@ void SpriteManager::SaveSufaces()
         s->Release();
         cnt++;
     }
+    #endif
 
     folder_cnt++;
 }
@@ -580,7 +608,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
 {
     // Parameters
     uint w, h;
-    bool fast = ( *(uint*) data == MAKEFOURCC( 'F', '0', 'F', 'A' ) );
+    bool fast = ( *(uint*) data == MAKEUINT( 'F', '0', 'F', 'A' ) );
     if( !si )
         si = new (nothrow) SpriteInfo();
 
@@ -594,10 +622,12 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
     // From file in memory
     else
     {
+        #ifdef FO_D3D
         D3DXIMAGE_INFO img;
         D3D_HR( D3DXGetImageInfoFromFileInMemory( data, size, &img ) );
         w = img.Width;
         h = img.Height;
+        #endif
     }
 
     // Find place on surface
@@ -608,8 +638,9 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
     if( !surf )
         return 0;
 
-    Surface_       dst_surf;
-    D3DLOCKED_RECT rdst;
+    #ifdef FO_D3D
+    Surface_  dst_surf;
+    LockRect_ rdst;
     D3D_HR( surf->TextureOwner->GetSurfaceLevel( 0, &dst_surf ) );
 
     // Copy
@@ -628,10 +659,10 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
         // Try load image
         Surface_ src_surf;
         D3D_HR( d3dDevice->CreateOffscreenPlainSurface( w, h, TEX_FRMT, D3DPOOL_SCRATCH, &src_surf, NULL ) );
-        D3D_HR( D3DXLoadSurfaceFromFileInMemory( src_surf, NULL, NULL, data, size, NULL, D3DX_FILTER_NONE, D3DCOLOR_XRGB( 0, 0, 0xFF ), NULL ) );
+        D3D_HR( D3DXLoadSurfaceFromFileInMemory( src_surf, NULL, NULL, data, size, NULL, D3DX_FILTER_NONE, COLOR_XRGB( 0, 0, 0xFF ), NULL ) );
 
-        D3DLOCKED_RECT rsrc;
-        RECT           src_r = { 0, 0, w, h };
+        LockRect_ rsrc;
+        RECT      src_r = { 0, 0, w, h };
         D3D_HR( src_surf->LockRect( &rsrc, &src_r, D3DLOCK_READONLY ) );
 
         RECT dest_r = { x - 1, y - 1, x + w + 1, y + h + 1 };
@@ -646,7 +677,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
 
     if( GameOpt.DebugSprites )
     {
-        uint rnd_color = D3DCOLOR_XRGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) );
+        uint rnd_color = COLOR_XRGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) );
         for( uint yy = 1; yy < h + 1; yy++ )
         {
             for( uint xx = 1; xx < w + 1; xx++ )
@@ -671,6 +702,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
 
     D3D_HR( dst_surf->UnlockRect() );
     dst_surf->Release();
+    #endif
 
     // Set parameters
     si->Surf = surf;
@@ -878,7 +910,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
             uchar r = fm_palette.GetUChar() * 4;
             uchar g = fm_palette.GetUChar() * 4;
             uchar b = fm_palette.GetUChar() * 4;
-            palette_entry[ i ] = D3DCOLOR_XRGB( r, g, b );
+            palette_entry[ i ] = COLOR_XRGB( r, g, b );
         }
         palette = palette_entry;
     }
@@ -919,7 +951,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
             delete anim;
             return NULL;
         }
-        *( (uint*) data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+        *( (uint*) data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
         *( (uint*) data + 1 ) = w;
         *( (uint*) data + 2 ) = h;
         uint* ptr = (uint*) data + 3;
@@ -969,7 +1001,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
                     }
                     else
                     {
-                        *( ptr + i ) = D3DCOLOR_XRGB( blinking_red_vals[ frm % 10 ], 0, 0 );
+                        *( ptr + i ) = COLOR_XRGB( blinking_red_vals[ frm % 10 ], 0, 0 );
                         continue;
                     }
                 }
@@ -1095,7 +1127,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
     // Create FOnline fast format
     uint   size = 12 + h * w * 4;
     uchar* data = new (nothrow) uchar[ size ];
-    *( (uint*) data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+    *( (uint*) data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
     *( (uint*) data + 1 ) = w;
     *( (uint*) data + 2 ) = h;
     uint*  ptr = (uint*) data + 3;
@@ -1108,7 +1140,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
         uint r = *( palette + index * 3 + 0 ) * 4;
         uint g = *( palette + index * 3 + 1 ) * 4;
         uint b = *( palette + index * 3 + 2 ) * 4;
-        *( ptr + i ) = D3DCOLOR_XRGB( r, g, b );
+        *( ptr + i ) = COLOR_XRGB( r, g, b );
     }
 
     uint result = FillSurfaceFromMemory( si, data, size );
@@ -1529,7 +1561,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
             delete anim;
             return NULL;
         }
-        *( (uint*) data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+        *( (uint*) data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
         *( (uint*) data + 1 ) = w;
         *( (uint*) data + 2 ) = h;
         uint* ptr = (uint*) data + 3;
@@ -2017,7 +2049,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
         if( !img_data )
             return NULL;
         memzero( img_data, img_size );
-        *( (uint*) img_data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+        *( (uint*) img_data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
         *( (uint*) img_data + 1 ) = whole_w;
         *( (uint*) img_data + 2 ) = whole_h;
 
@@ -2174,7 +2206,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     if( !img_data )
         return NULL;
     memzero( img_data, img_size );
-    *( (uint*) img_data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+    *( (uint*) img_data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
     *( (uint*) img_data + 1 ) = w;
     *( (uint*) img_data + 2 ) = h;
     uint* ptr = (uint*) img_data + 3;
@@ -2302,7 +2334,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         if( !img_data )
             return NULL;
         memzero( img_data, img_size );
-        *( (uint*) img_data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+        *( (uint*) img_data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
         *( (uint*) img_data + 1 ) = w;
         *( (uint*) img_data + 2 ) = h;
         uint* ptr = (uint*) img_data + 3;
@@ -2412,7 +2444,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
     if( !img_data )
         return NULL;
     memzero( img_data, img_size );
-    *( (uint*) img_data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+    *( (uint*) img_data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
     *( (uint*) img_data + 1 ) = w;
     *( (uint*) img_data + 2 ) = h;
     uint* ptr = (uint*) img_data + 3;
@@ -2594,7 +2626,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
         if( !img_data )
             return NULL;
         memzero( img_data, img_size );
-        *( (uint*) img_data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+        *( (uint*) img_data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
         *( (uint*) img_data + 1 ) = w;
         *( (uint*) img_data + 2 ) = h;
         uint* ptr = (uint*) img_data + 3;
@@ -2663,6 +2695,7 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
 
 uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc )
 {
+    #ifdef FO_D3D
     // Render
     if( !sceneBeginned )
         D3D_HR( d3dDevice->BeginScene() );
@@ -2732,13 +2765,13 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     }
 
     // Copy to system memory
-    D3DLOCKED_RECT lr;
+    LockRect_ lr;
     D3D_HR( spr3dRTData->LockRect( &lr, &r_, D3DLOCK_READONLY ) );
-    uint           w = fb.W();
-    uint           h = fb.H();
-    uint           size = 12 + h * w * 4;
-    uchar*         data = new (nothrow) uchar[ size ];
-    *( (uint*) data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+    uint      w = fb.W();
+    uint      h = fb.H();
+    uint      size = 12 + h * w * 4;
+    uchar*    data = new (nothrow) uchar[ size ];
+    *( (uint*) data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
     *( (uint*) data + 1 ) = w;
     *( (uint*) data + 2 ) = h;
     for( uint i = 0; i < h; i++ )
@@ -2753,6 +2786,9 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     uint result = FillSurfaceFromMemory( si, data, size );
     delete[] data;
     return result;
+    #else
+    return 0;
+    #endif
 }
 
 Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type )
@@ -2796,6 +2832,7 @@ bool SpriteManager::Flush()
     if( !curSprCnt )
         return true;
 
+    #ifdef FO_D3D
     void* ptr;
     int   mulpos = 4 * curSprCnt;
     D3D_HR( pVB->Lock( 0, sizeof( MYVERTEX ) * mulpos, (void**) &ptr, D3DLOCK_DISCARD ) );
@@ -2834,7 +2871,7 @@ bool SpriteManager::Flush()
                         Loader3d::EffectProcessVariables( effect_ex, pass );
 
                     D3D_HR( effect->BeginPass( pass ) );
-                    D3D_HR( d3dDevice->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
+                    D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
                     D3D_HR( effect->EndPass() );
                 }
                 D3D_HR( effect->End() );
@@ -2843,7 +2880,7 @@ bool SpriteManager::Flush()
             {
                 D3D_HR( d3dDevice->SetVertexShader( NULL ) );
                 D3D_HR( d3dDevice->SetPixelShader( NULL ) );
-                D3D_HR( d3dDevice->DrawIndexedPrimitive( D3DPT_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
+                D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
             }
 
             rpos += 6 * dip.SpritesCount;
@@ -2851,6 +2888,7 @@ bool SpriteManager::Flush()
 
         dipQueue.clear();
     }
+    #endif
 
     curSprCnt = 0;
     return true;
@@ -3023,6 +3061,7 @@ bool SpriteManager::PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy
         return false;
     Flush();
 
+    #ifdef FO_D3D
     // Set new render target
     Surface_ old_rt = NULL, old_ds = NULL;
     D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
@@ -3114,6 +3153,7 @@ bool SpriteManager::PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy
     D3D_HR( d3dDevice->SetDepthStencilSurface( old_ds ) );
     old_rt->Release();
     old_ds->Release();
+    #endif
     return true;
 }
 
@@ -3123,14 +3163,16 @@ bool SpriteManager::DrawPrepared( Surface_& surf, int ox, int oy )
         return true;
     Flush();
 
-    int      ox_ = (int) ( (float) ( ox - GameOpt.ScrOx ) / GameOpt.SpritesZoom );
-    int      oy_ = (int) ( (float) ( oy - GameOpt.ScrOy ) / GameOpt.SpritesZoom );
-    RECT     src = { ox_, oy_, ox_ + modeWidth, oy_ + modeHeight };
+    int  ox_ = (int) ( (float) ( ox - GameOpt.ScrOx ) / GameOpt.SpritesZoom );
+    int  oy_ = (int) ( (float) ( oy - GameOpt.ScrOy ) / GameOpt.SpritesZoom );
+    RECT src = { ox_, oy_, ox_ + modeWidth, oy_ + modeHeight };
 
+    #ifdef FO_D3D
     Surface_ backbuf = NULL;
     D3D_HR( d3dDevice->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuf ) );
     D3D_HR( d3dDevice->StretchRect( surf, &src, backbuf, NULL, D3DTEXF_NONE ) );
     backbuf->Release();
+    #endif
     return true;
 }
 
@@ -3140,10 +3182,12 @@ bool SpriteManager::DrawSurface( Surface_& surf, RECT& dst )
         return true;
     Flush();
 
+    #ifdef FO_D3D
     Surface_ backbuf = NULL;
     D3D_HR( d3dDevice->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuf ) );
     D3D_HR( d3dDevice->StretchRect( surf, NULL, backbuf, &dst, D3DTEXF_LINEAR ) );
     backbuf->Release();
+    #endif
     return true;
 }
 
@@ -3152,7 +3196,7 @@ uint SpriteManager::GetColor( int r, int g, int b )
     r = CLAMP( r, 0, 255 );
     g = CLAMP( g, 0, 255 );
     b = CLAMP( b, 0, 255 );
-    return D3DCOLOR_XRGB( r, g, b );
+    return COLOR_XRGB( r, g, b );
 }
 
 void SpriteManager::GetDrawCntrRect( Sprite* prep, INTRECT* prect )
@@ -3373,8 +3417,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             Flush();
             if( egg_trans )
             {
+                #ifdef FO_D3D
                 D3D_HR( d3dDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_DISABLE ) );
                 D3D_HR( d3dDevice->SetTexture( 1, NULL ) );
+                #endif
                 egg_trans = false;
             }
 
@@ -3418,8 +3464,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 if( !egg_trans )
                 {
                     Flush();
+                    #ifdef FO_D3D
                     D3D_HR( d3dDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_SELECTARG2 ) );
                     D3D_HR( d3dDevice->SetTexture( 1, sprEgg->Surf->TextureOwner ) );
+                    #endif
                     egg_trans = true;
                 }
 
@@ -3450,8 +3498,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         if( !egg_added && egg_trans )
         {
             Flush();
+            #ifdef FO_D3D
             D3D_HR( d3dDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_DISABLE ) );
             D3D_HR( d3dDevice->SetTexture( 1, NULL ) );
+            #endif
             egg_trans = false;
         }
 
@@ -3559,7 +3609,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 break;
             }
 
-            DrawPoints( corner, D3DPT_TRIANGLELIST );
+            DrawPoints( corner, PRIMITIVE_TRIANGLELIST );
         }
 
         // Cuts
@@ -3575,7 +3625,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             PrepareSquare( cut, FLTPOINT( x1, y1 - 80.0f / z + oy ), FLTPOINT( x2, y2 - 80.0f / z - oy ), FLTPOINT( x1, y1 + oy ), FLTPOINT( x2, y2 - oy ), 0x4FFFFF00 );
             PrepareSquare( cut, FLTRECT( xf, yf, xf + 1.0f, yf + hf ), 0x4F000000 );
             PrepareSquare( cut, FLTRECT( xf + wf, yf, xf + wf + 1.0f, yf + hf ), 0x4F000000 );
-            DrawPoints( cut, D3DPT_TRIANGLELIST );
+            DrawPoints( cut, PRIMITIVE_TRIANGLELIST );
         }
 
         // Draw order
@@ -3600,7 +3650,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 y1 -= (int) ( 40.0f / z );
 
             char str[ 32 ];
-            sprintf( str, "%u", spr->TreeIndex );
+            Str::Format( str, "%u", spr->TreeIndex );
             DrawStr( INTRECT( x1, y1, x1 + 100, y1 + 100 ), str, 0 );
         }
         #endif
@@ -3609,12 +3659,14 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
     Flush();
     if( egg_trans )
     {
+        #ifdef FO_D3D
         D3D_HR( d3dDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_DISABLE ) );
         D3D_HR( d3dDevice->SetTexture( 1, NULL ) );
+        #endif
     }
 
     if( GameOpt.DebugInfo )
-        DrawPoints( borders, D3DPT_TRIANGLELIST );
+        DrawPoints( borders, PRIMITIVE_TRIANGLELIST );
     return true;
 }
 
@@ -3676,12 +3728,13 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
         offs_y = (int) ( offs_y * GameOpt.SpritesZoom );
     }
 
+    #ifdef FO_D3D
     D3DSURFACE_DESC sDesc;
     D3D_HR( si->Surf->TextureOwner->GetLevelDesc( 0, &sDesc ) );
     int             width = sDesc.Width;
     int             height = sDesc.Height;
 
-    D3DLOCKED_RECT  desc;
+    LockRect_       desc;
     D3D_HR( si->Surf->TextureOwner->LockRect( 0, &desc, NULL, D3DLOCK_READONLY ) );
     uchar*          ptr = (uchar*) desc.pBits;
     int             pitch = desc.Pitch;
@@ -3697,6 +3750,7 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
     }
 
     D3D_HR( si->Surf->TextureOwner->UnlockRect( 0 ) );
+    #endif
     return 0;
 }
 
@@ -3716,13 +3770,14 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     ox = (int) ( ox * GameOpt.SpritesZoom );
     oy = (int) ( oy * GameOpt.SpritesZoom );
 
+    #ifdef FO_D3D
     D3DSURFACE_DESC sDesc;
     D3D_HR( sprEgg->Surf->TextureOwner->GetLevelDesc( 0, &sDesc ) );
 
-    int            sWidth = sDesc.Width;
-    int            sHeight = sDesc.Height;
+    int       sWidth = sDesc.Width;
+    int       sHeight = sDesc.Height;
 
-    D3DLOCKED_RECT lrDst;
+    LockRect_ lrDst;
     D3D_HR( sprEgg->Surf->TextureOwner->LockRect( 0, &lrDst, NULL, D3DLOCK_READONLY ) );
 
     uchar* pDst = (uchar*) lrDst.pBits;
@@ -3734,15 +3789,17 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     }
 
     D3D_HR( sprEgg->Surf->TextureOwner->UnlockRect( 0 ) );
+    #endif
     return false;
 }
 
-bool SpriteManager::DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* zoom /* = NULL */, FLTRECT* stencil /* = NULL */, FLTPOINT* offset /* = NULL */ )
+bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, FLTRECT* stencil /* = NULL */, FLTPOINT* offset /* = NULL */ )
 {
     if( points.empty() )
         return true;
     Flush();
 
+    #ifdef FO_D3D
     int count = (int) points.size();
 
     // Draw stencil quad
@@ -3773,7 +3830,7 @@ bool SpriteManager::DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* 
         D3D_HR( d3dDevice->SetFVF( D3DFVF_XYZRHW | D3DFVF_DIFFUSE ) );
 
         D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_STENCIL, 0, 1.0f, 0 ) );
-        D3D_HR( d3dDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
 
         D3D_HR( d3dDevice->SetRenderState( D3DRS_STENCILFUNC, D3DCMP_NOTEQUAL ) );
         D3D_HR( d3dDevice->SetRenderState( D3DRS_STENCILREF, 0 ) );
@@ -3821,21 +3878,21 @@ bool SpriteManager::DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* 
     // Calculate primitive count
     switch( prim )
     {
-    case D3DPT_POINTLIST:
+    case PRIMITIVE_POINTLIST:
         break;
-    case D3DPT_LINELIST:
+    case PRIMITIVE_LINELIST:
         count /= 2;
         break;
-    case D3DPT_LINESTRIP:
+    case PRIMITIVE_LINESTRIP:
         count -= 1;
         break;
-    case D3DPT_TRIANGLELIST:
+    case PRIMITIVE_TRIANGLELIST:
         count /= 3;
         break;
-    case D3DPT_TRIANGLESTRIP:
+    case PRIMITIVE_TRIANGLESTRIP:
         count -= 2;
         break;
-    case D3DPT_TRIANGLEFAN:
+    case PRIMITIVE_TRIANGLEFAN:
         count -= 2;
         break;
     default:
@@ -3867,7 +3924,7 @@ bool SpriteManager::DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* 
                 Loader3d::EffectProcessVariables( effect_ex, pass );
 
             D3D_HR( effect->BeginPass( pass ) );
-            D3D_HR( d3dDevice->DrawPrimitive( prim, 0, count ) );
+            D3D_HR( d3dDevice->DrawPrimitive( (D3DPRIMITIVETYPE) prim, 0, count ) );
             D3D_HR( effect->EndPass() );
         }
         D3D_HR( effect->End() );
@@ -3878,13 +3935,14 @@ bool SpriteManager::DrawPoints( PointVec& points, D3DPRIMITIVETYPE prim, float* 
         D3D_HR( d3dDevice->SetPixelShader( NULL ) );
         D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_DISABLE ) );
 
-        D3D_HR( d3dDevice->DrawPrimitive( prim, 0, count ) );
+        D3D_HR( d3dDevice->DrawPrimitive( (D3DPRIMITIVETYPE) prim, 0, count ) );
 
         D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
     }
 
     if( stencil )
         D3D_HR( d3dDevice->SetRenderState( D3DRS_STENCILENABLE, FALSE ) );
+    #endif
     return true;
 }
 
@@ -3896,9 +3954,11 @@ bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTR
     // Draw 3d
     anim3d->Draw( x, y, scale, stencil, color );
 
+    #ifdef FO_D3D
     // Restore 2d stream
     D3D_HR( d3dDevice->SetIndices( pIB ) );
     D3D_HR( d3dDevice->SetStreamSource( 0, pVB, 0, sizeof( MYVERTEX ) ) );
+    #endif
     return true;
 }
 
@@ -3921,14 +3981,17 @@ bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Anim
 
     anim3d->Draw( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, stencil, color );
 
+    #ifdef FO_D3D
     // Restore 2d stream
     D3D_HR( d3dDevice->SetIndices( pIB ) );
     D3D_HR( d3dDevice->SetStreamSource( 0, pVB, 0, sizeof( MYVERTEX ) ) );
+    #endif
     return true;
 }
 
 bool SpriteManager::DrawContours()
 {
+    #ifdef FO_D3D
     if( contoursPS && contoursAdded )
     {
         struct Vertex
@@ -3951,7 +4014,7 @@ bool SpriteManager::DrawContours()
         D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 ) );
         D3D_HR( d3dDevice->SetTexture( 0, contoursTexture ) );
 
-        D3D_HR( d3dDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
 
         D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
         contoursAdded = false;
@@ -3964,6 +4027,7 @@ bool SpriteManager::DrawContours()
         D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR ) );  // Zoom In
         spriteContours.Unvalidate();
     }
+    #endif
     return true;
 }
 
@@ -3999,6 +4063,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         return false;
     }
 
+    #ifdef FO_D3D
     // Shader contour
     Animation3d* anim3d = si->Anim3d;
     INTRECT      borders = ( anim3d ? anim3d->GetExtraBorders() : INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
@@ -4054,7 +4119,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
             D3DRECT clear_r = { borders.L - 1, borders.T - 1, borders.R + 1, borders.B + 1 };
             D3D_HR( d3dDevice->Clear( 1, &clear_r, D3DCLEAR_TARGET, 0, 1.0f, 0 ) );
-            D3D_HR( d3dDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+            D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
 
             D3D_HR( d3dDevice->SetRenderTarget( 0, old_rt ) );
             D3D_HR( d3dDevice->SetDepthStencilSurface( old_ds ) );
@@ -4125,7 +4190,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
         D3DRECT clear_r = { borders.L - 2, borders.T - 2, borders.R + 2, borders.B + 2 };
         D3D_HR( d3dDevice->Clear( 1, &clear_r, D3DCLEAR_TARGET, 0, 1.0f, 0 ) );
-        D3D_HR( d3dDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
 
         D3D_HR( d3dDevice->SetRenderState( D3DRS_ZENABLE, FALSE ) );
         D3D_HR( d3dDevice->SetRenderState( D3DRS_ZFUNC, D3DCMP_LESS ) );
@@ -4208,7 +4273,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
     if( !contoursAdded )
         D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, 0, 0.9f, 0 ) );
-    D3D_HR( d3dDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+    D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
 
     // Restore 2d stream
     D3D_HR( d3dDevice->SetDepthStencilSurface( ds ) );
@@ -4217,6 +4282,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     old_rt->Release();
     D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
     contoursAdded = true;
+    #endif
     return true;
 }
 
@@ -4228,6 +4294,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     if( it != createdSpriteContours.end() )
         return ( *it ).second;
 
+    #ifdef FO_D3D
     // Create new
     Surface_        surf;
     D3D_HR( si->Surf->TextureOwner->GetSurfaceLevel( 0, &surf ) );
@@ -4238,7 +4305,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
         (uint) ( desc.Width * si->SprRect.L ), (uint) ( desc.Height * si->SprRect.T ),
         (uint) ( desc.Width * si->SprRect.R ), (uint) ( desc.Height * si->SprRect.B )
     };
-    D3DLOCKED_RECT  lr;
+    LockRect_       lr;
     D3D_HR( surf->LockRect( &lr, &r, D3DLOCK_READONLY ) );
 
     uint sw = si->Width;
@@ -4250,13 +4317,13 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     uint   size = 12 + ih * iw * 4;
     uchar* data = new (nothrow) uchar[ size ];
     memset( data, 0, size );
-    *( (uint*) data ) = MAKEFOURCC( 'F', '0', 'F', 'A' ); // FOnline FAst
+    *( (uint*) data ) = MAKEUINT( 'F', '0', 'F', 'A' ); // FOnline FAst
     *( (uint*) data + 1 ) = iw;
     *( (uint*) data + 2 ) = ih;
     uint* ptr = (uint*) data + 3 + iw + 1;
 
     // Write contour
-    WriteContour4( ptr, iw, lr, sw, sh, D3DCOLOR_XRGB( 0x7F, 0x7F, 0x7F ) );
+    WriteContour4( ptr, iw, lr, sw, sh, COLOR_XRGB( 0x7F, 0x7F, 0x7F ) );
     D3D_HR( surf->UnlockRect() );
     surf->Release();
 
@@ -4271,11 +4338,15 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     delete[] data;
     createdSpriteContours.insert( PAIR( spr_id, result ) );
     return result;
+    #else
+    return 0;
+    #endif
 }
 
 #define SET_IMAGE_POINT( x, y )    *( buf + ( y ) * buf_w + ( x ) ) = color
-void SpriteManager::WriteContour4( uint* buf, uint buf_w, D3DLOCKED_RECT& r, uint w, uint h, uint color )
+void SpriteManager::WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color )
 {
+    #ifdef FO_D3D
     for( uint y = 0; y < h; y++ )
     {
         for( uint x = 0; x < w; x++ )
@@ -4293,10 +4364,12 @@ void SpriteManager::WriteContour4( uint* buf, uint buf_w, D3DLOCKED_RECT& r, uin
                 SET_IMAGE_POINT( x, y + 1 );
         }
     }
+    #endif
 }
 
-void SpriteManager::WriteContour8( uint* buf, uint buf_w, D3DLOCKED_RECT& r, uint w, uint h, uint color )
+void SpriteManager::WriteContour8( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color )
 {
+    #ifdef FO_D3D
     for( uint y = 0; y < h; y++ )
     {
         for( uint x = 0; x < w; x++ )
@@ -4322,4 +4395,5 @@ void SpriteManager::WriteContour8( uint* buf, uint buf_w, D3DLOCKED_RECT& r, uin
                 SET_IMAGE_POINT( x - 1, y + 1 );
         }
     }
+    #endif
 }
