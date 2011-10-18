@@ -5624,8 +5624,6 @@ void FOClient::RunScreenScript( bool show, int screen, int p0, int p1, int p2 )
 
 void FOClient::SetCurMode( int new_cur )
 {
-//	AddMess(0,Str::FormatBuf("SetCurMode Cur %u",CurMode));
-//	AddMess(0,Str::FormatBuf("SetCurMode New %u",new_cur));
     if( CurModeLast != CurMode )
         CurModeLast = CurMode;
     CurMode = new_cur;
@@ -5666,10 +5664,12 @@ void FOClient::SetCurPos( int x, int y )
     GameOpt.MouseY = y;
     if( !GameOpt.FullScreen )
     {
+        #ifdef FO_D3D
         WINDOWINFO wi;
         wi.cbSize = sizeof( wi );
-        GetWindowInfo( Wnd, &wi );
+        GetWindowInfo( fl_xid( MainWindow ), &wi );
         SetCursorPos( wi.rcClient.left + GameOpt.MouseX, wi.rcClient.top + GameOpt.MouseY );
+        #endif
 
         // POINT pp;
         // GetCursorPos(&pp);
@@ -10321,7 +10321,7 @@ void FOClient::SplitKeyDown( uchar dik )
     case DIK_ESCAPE:
         SplitClose( false );
         return;
-    case DIK_BACKSPACE:
+    case DIK_BACK:
         add = -1;
         break;
     case DIK_DELETE:

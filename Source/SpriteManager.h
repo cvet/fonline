@@ -218,7 +218,6 @@ typedef vector< PointVec >  PointVecVec;
 
 struct SpriteMngrParams
 {
-    HWND WndHeader;
     void ( * PreRestoreFunc )();
     void ( * PostRestoreFunc )();
 };
@@ -228,7 +227,6 @@ class SpriteManager
 private:
     bool             isInit;
     SpriteMngrParams mngrParams;
-    HWND             hWnd;
     #ifdef FO_D3D
     LPDIRECT3D9      direct3D;
     #endif

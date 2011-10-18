@@ -1389,8 +1389,6 @@ struct GameOptions
     int ScrollDelay;
     int ScrollStep;
     int ScrollCheck;
-    int MouseSpeed;
-    int GlobalSound;
     int MasterPath;
     int MasterPathRefCount;
     int CritterPath;

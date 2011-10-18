@@ -1,6 +1,13 @@
 #include "StdAfx.h"
-#include "Keyboard.h"
 #include <strstream>
+
+static uchar KeysMap[ 0x10000 ] = { 0 };
+static uchar KeysMapUser[ 0x100 ] = { 0 };
+#define MAKE_KEY_CODE( name, index, code ) \
+    const uchar name = index;              \
+    struct name ## _INIT { name ## _INIT() { KeysMap[ code ] = index; } } name ## _INIT_;
+
+#include "Keyboard.h"
 
 namespace Keyb
 {
@@ -34,7 +41,6 @@ namespace Keyb
     bool        CtrlDwn = false;
     bool        AltDwn = false;
     bool        KeyPressed[ 0x100 ] = { 0 };
-    int         KeysMap[ 0x100 ] = { 0 };
 }
 
 void Keyb::InitKeyb()
@@ -73,8 +79,8 @@ void Keyb::InitKeyb()
     Data[ DIK_J ] =                    KeybData( 'î', 'Î', 'j', 'J' );
     Data[ DIK_K ] =                    KeybData( 'ë', 'Ë', 'k', 'K' );
     Data[ DIK_L ] =                    KeybData( 'ä', 'Ä', 'l', 'L' );
-    Data[ DIK_SEMICOLON ] =    KeybData( 'æ', 'Æ', ';', ':' );
-    Data[ DIK_APOSTROPHE ] =   KeybData( 'ý', 'Ý', '\'', '\"' );
+    Data[ DIK_SEMICOLON ] =            KeybData( 'æ', 'Æ', ';', ':' );
+    Data[ DIK_APOSTROPHE ] =           KeybData( 'ý', 'Ý', '\'', '\"' );
     Data[ DIK_Z ] =                    KeybData( 'ÿ', 'ß', 'z', 'Z' );
     Data[ DIK_X ] =                    KeybData( '÷', '×', 'x', 'X' );
     Data[ DIK_C ] =                    KeybData( 'ñ', 'Ñ', 'c', 'C' );
@@ -101,17 +107,15 @@ void Keyb::InitKeyb()
     Data[ DIK_SUBTRACT ] =             KeybData( '-', '-', '-', '-' );
     Data[ DIK_ADD ] =                  KeybData( '+', '+', '+', '+' );
     Data[ DIK_DECIMAL ] =              KeybData( '.', '.', '.', '.' );
-    Data[ DIK_NUMPADEQUALS ] = KeybData( '=', '=', '=', '=' );
-    Data[ DIK_NUMPADCOMMA ] =  KeybData( ',', ',', ',', ',' );
     Data[ DIK_DIVIDE ] =               KeybData( '/', '/', '/', '/' );
     Data[ DIK_RETURN ] =               KeybData( '\n', '\n', '\n', '\n' );
-    Data[ DIK_NUMPADENTER ] =  KeybData( '\n', '\n', '\n', '\n' );
+    Data[ DIK_NUMPADENTER ] =          KeybData( '\n', '\n', '\n', '\n' );
     Data[ DIK_TAB ] =                  KeybData( '\t', '\t', '\t', '\t' );
-    Data[ DIK_BACKSLASH ] =    KeybData( '\\', '\\', '\\', '\\' );
+    Data[ DIK_BACKSLASH ] =            KeybData( '\\', '\\', '\\', '\\' );
 
-    // Keys remapping
-    for( int i = 0; i < 0x100; i++ )
-        KeysMap[ i ] = i;
+    // User keys mapping
+    for( uint i = 0; i < 0x100; i++ )
+        KeysMapUser[ i ] = i;
     istrstream str( GameOpt.KeyboardRemap.c_str() );
     while( !str.eof() )
     {
@@ -121,7 +125,7 @@ void Keyb::InitKeyb()
             break;
         from &= 0xFF;
         to &= 0xFF;
-        KeysMap[ from ] = to;
+        KeysMapUser[ from ] = to;
     }
 }
 
@@ -354,4 +358,10 @@ bool Keyb::IsInvalidSymbol( char c, uint flags )
         }
     }
     return std::find( Data.begin(), Data.end(), c ) == Data.end();
+}
+
+uchar Keyb::MapKey( ushort code )
+{
+    // Double mapping
+    return KeysMapUser[ KeysMap[ code ] ];
 }

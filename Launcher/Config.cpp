@@ -61,7 +61,6 @@ void TConfigForm::Serialize(bool save)
 	SE_INT(SeSleep->Value,"Sleep",-1,100,0);
 	SE_INT(SeScrollDelay->Value,"ScrollDelay",1,32,4);
 	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,32);
-	SE_INT(SeMouseSpeed->Value,"MouseSpeed",10,1000,100);
 	SE_INT(SeTextDelay->Value,"TextDelay",1000,30000,3000);
 	SE_RBTN(RbCtrlShift,"LangChange",0,0);
 	SE_RBTN(RbAltShift,"LangChange",1,0);
@@ -90,7 +89,6 @@ void TConfigForm::Serialize(bool save)
 	SE_INT(SeAnimation3dSmoothTime->Value,"Animation3dSmoothTime",0,10000,250);
 	SE_INT(TbMusicVolume->Position,"MusicVolume",0,100,100);
 	SE_INT(TbSoundVolume->Position,"SoundVolume",0,100,100);
-	SE_INT(CbGlobalSound->State,"GlobalSound",0,1,1);
 	SE_RBTN(RbDefCmbtModeBoth,"DefaultCombatMode",0,0);
 	SE_RBTN(RbDefCmbtModeRt,"DefaultCombatMode",1,0);
 	SE_RBTN(RbDefCmbtModeTb,"DefaultCombatMode",2,0);
@@ -132,7 +130,6 @@ void TConfigForm::Translate()
 	TR_(GbGame,"Игра","Game");
 	TR_(LabelScrollDelay,"Задержка скроллинга","Scroll delay");
 	TR_(LabelScrollStep,"Шаг скроллинга","Scroll step");
-	TR_(LabelMouseSpeed,"Скорость мышки (%)","Mouse speed (%)");
 	TR_(LabelTextDelay,"Время задержки текста (мс)","Text delay (ms)");
 	TR_(CbAlwaysRun,"Постоянный бег","Always run");
 	TR_(GbLangSwitch,"Переключение раскладки","Keyboard language switch");
@@ -170,8 +167,6 @@ void TConfigForm::Translate()
 	TR_(GbSoundVolume,"Громкость","Volume");
 	TR_(LabelMusicVolume,"Музыка","Music");
 	TR_(LabelSoundVolume,"Звуки","Sound");
-	TR_(GbSoundOther,"","");
-	TR_(CbGlobalSound,"Постоянный звук","Global sound");
 	TR_(TabCombat,"Боевка","Combat");
 	TR_(GbDefCmbtMode,"Режим боя по-умолчанию","Default combat mode");
 	TR_(RbDefCmbtModeBoth,"Оба режима","Both modes");

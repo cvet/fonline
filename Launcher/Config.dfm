@@ -92,10 +92,6 @@ object ConfigForm: TConfigForm
     TabOrder = 2
     object TabOther: TTabSheet
       Caption = 'TabOther'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GbLanguage: TGroupBox
         Left = 3
         Top = 0
@@ -223,30 +219,19 @@ object ConfigForm: TConfigForm
     object TabGame: TTabSheet
       Caption = 'TabGame'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GbGame: TGroupBox
         Left = 3
         Top = 3
         Width = 256
-        Height = 138
+        Height = 118
         Caption = 'GbGame'
         TabOrder = 0
         object LabelTextDelay: TLabel
           Left = 13
-          Top = 93
+          Top = 68
           Width = 74
           Height = 13
           Caption = 'LabelTextDelay'
-        end
-        object LabelMouseSpeed: TLabel
-          Left = 13
-          Top = 67
-          Width = 86
-          Height = 13
-          Caption = 'LabelMouseSpeed'
         end
         object LabelScrollStep: TLabel
           Left = 13
@@ -283,39 +268,29 @@ object ConfigForm: TConfigForm
           TabOrder = 1
           Value = 4
         end
-        object SeMouseSpeed: TCSpinEdit
-          Left = 160
-          Top = 64
-          Width = 83
-          Height = 22
-          MaxValue = 1000
-          MinValue = 10
-          TabOrder = 2
-          Value = 100
-        end
         object SeTextDelay: TCSpinEdit
           Left = 160
-          Top = 90
+          Top = 65
           Width = 83
           Height = 22
           Increment = 100
           MaxValue = 30000
           MinValue = 1000
-          TabOrder = 3
+          TabOrder = 2
           Value = 1000
         end
         object CbAlwaysRun: TCheckBox
           Left = 13
-          Top = 112
+          Top = 87
           Width = 97
           Height = 21
           Caption = 'CbAlwaysRun'
-          TabOrder = 4
+          TabOrder = 3
         end
       end
       object GbLangSwitch: TGroupBox
         Left = 3
-        Top = 147
+        Top = 127
         Width = 256
         Height = 43
         Caption = 'GbLangSwitch'
@@ -341,10 +316,6 @@ object ConfigForm: TConfigForm
     object TabCombat: TTabSheet
       Caption = 'TabCombat'
       ImageIndex = 5
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GbDefCmbtMode: TGroupBox
         Left = 3
         Top = 3
@@ -615,10 +586,6 @@ object ConfigForm: TConfigForm
     object TabVideo: TTabSheet
       Caption = 'TabVideo'
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GbScreenSize: TGroupBox
         Left = 0
         Top = 3
@@ -823,10 +790,6 @@ object ConfigForm: TConfigForm
     object TabSound: TTabSheet
       Caption = 'TabSound'
       ImageIndex = 4
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GbSoundVolume: TGroupBox
         Left = 3
         Top = 3
@@ -865,22 +828,6 @@ object ConfigForm: TConfigForm
           Max = 100
           Frequency = 10
           TabOrder = 1
-        end
-      end
-      object GbSoundOther: TGroupBox
-        Left = 3
-        Top = 143
-        Width = 256
-        Height = 42
-        Caption = 'GbSoundOther'
-        TabOrder = 1
-        object CbGlobalSound: TCheckBox
-          Left = 8
-          Top = 16
-          Width = 235
-          Height = 17
-          Caption = 'CbGlobalSound'
-          TabOrder = 0
         end
       end
     end

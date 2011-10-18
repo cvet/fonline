@@ -12,7 +12,7 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 #define SURF_SPRITES_OFFS    ( 2 )
 #define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
 
-SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), hWnd( NULL ), SurfType( 0 ),
+SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), SurfType( 0 ),
                                 spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ), sceneBeginned( false ),
                                 d3dDevice( NULL ), pVB( NULL ), pIB( NULL ), waitBuf( NULL ), vbPoints( NULL ), vbPointsSize( 0 ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
                                 eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ), sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
@@ -72,7 +72,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     presentParams.SwapEffect = D3DSWAPEFFECT_DISCARD;
     presentParams.EnableAutoDepthStencil = TRUE;
     presentParams.AutoDepthStencilFormat = D3DFMT_D24S8;
-    presentParams.hDeviceWindow = params.WndHeader;
+    presentParams.hDeviceWindow = fl_xid( MainWindow );
     presentParams.BackBufferWidth = modeWidth;
     presentParams.BackBufferHeight = modeHeight;
     presentParams.BackBufferFormat = D3DFMT_X8R8G8B8;
@@ -112,7 +112,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
         deviceCaps.VertexShaderVersion >= D3DPS_VERSION( 2, 0 ) && deviceCaps.MaxVertexBlendMatrices >= 2 )
         vproc = D3DCREATE_HARDWARE_VERTEXPROCESSING;
 
-    D3D_HR( direct3D->CreateDevice( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, params.WndHeader, vproc, &presentParams, &d3dDevice ) );
+    D3D_HR( direct3D->CreateDevice( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, fl_xid( MainWindow ), vproc, &presentParams, &d3dDevice ) );
 
     // Contours
     if( deviceCaps.PixelShaderVersion >= D3DPS_VERSION( 2, 0 ) )

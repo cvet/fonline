@@ -46,11 +46,11 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 	Translate();
 }
 //---------------------------------------------------------------------------
-#define SE_STR(comp,key,def_val) if(!save) comp=GetString(key,def_val); else SetString(key,comp.c_str())
+#define SE_STR(comp,key,def_val) if(!save) comp=GetString(key,def_val); else SetString(key,AnsiString(comp).c_str())
 #define SE_INT(comp,key,min_,max_,def_) if(!save){int i=GetInt(key,def_); if(i<min_ || i>max_) i=def_; comp=i;} else SetInt(key,comp)
-#define SE_INTSTR(comp,key,min_,max_,def_) if(!save){int i=GetInt(key,def_); if(i<min_ || i>max_) i=def_; comp=i;} else SetInt(key,atoi(comp.c_str()))
+#define SE_INTSTR(comp,key,min_,max_,def_) if(!save){int i=GetInt(key,def_); if(i<min_ || i>max_) i=def_; comp=i;} else SetInt(key,atoi(AnsiString(comp).c_str()))
 #define SE_RBTN(comp,key,val,def_val) if(!save){int i=GetInt(key,def_val);comp->Checked=(i==val?true:false);} else if(comp->Checked) SetInt(key,val)
-#define SE_COMBO(comp,key,def_val) do{\
+#define SE_COMBO(comp,key,def_val) do{                                        \
 	AnsiString buf;                                                           \
 	if(!save)                                                                 \
 	{                                                                         \
@@ -66,11 +66,12 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 	}                                                                         \
 	else                                                                      \
 	{                                                                         \
-		SetString(key,comp->Text.c_str());                                    \
+		SetString(key,AnsiString(comp->Text).c_str());                        \
 		for(int i=0,j=0;i<comp->Items->Count;i++)                             \
 		{                                                                     \
 			if(comp->Text==(*comp->Items)[i]) continue;                       \
-			SetString(buf.sprintf(key"_%d",j).c_str(),(*comp->Items)[i].c_str());\
+			SetString(buf.sprintf(key"_%d",j).c_str(),                        \
+				AnsiString((*comp->Items)[i]).c_str());                       \
 			j++;                                                              \
 		}                                                                     \
 	}                                                                         \
@@ -87,7 +88,6 @@ void TMainForm::Serialize(bool save)
 	SE_INT(SeSleep->Value,"Sleep",-1,100,0);
 	SE_INT(SeScrollDelay->Value,"ScrollDelay",1,32,4);
 	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,32);
-	SE_INT(SeMouseSpeed->Value,"MouseSpeed",10,1000,100);
 	SE_INT(SeTextDelay->Value,"TextDelay",1000,30000,3000);
 	SE_RBTN(RbCtrlShift,"LangChange",0,0);
 	SE_RBTN(RbAltShift,"LangChange",1,0);
@@ -116,7 +116,6 @@ void TMainForm::Serialize(bool save)
 	SE_INT(SeAnimation3dSmoothTime->Value,"Animation3dSmoothTime",0,10000,250);
 	SE_INT(TbMusicVolume->Position,"MusicVolume",0,100,100);
 	SE_INT(TbSoundVolume->Position,"SoundVolume",0,100,100);
-	SE_INT(CbGlobalSound->State,"GlobalSound",0,1,1);
 	SE_RBTN(RbDefCmbtModeBoth,"DefaultCombatMode",0,0);
 	SE_RBTN(RbDefCmbtModeRt,"DefaultCombatMode",1,0);
 	SE_RBTN(RbDefCmbtModeTb,"DefaultCombatMode",2,0);
@@ -157,7 +156,6 @@ void TMainForm::Translate()
 	TR_(GbGame,"Игра","Game");
 	TR_(LabelScrollDelay,"Задержка скроллинга","Scroll delay");
 	TR_(LabelScrollStep,"Шаг скроллинга","Scroll step");
-	TR_(LabelMouseSpeed,"Скорость мышки (%)","Mouse speed (%)");
 	TR_(LabelTextDelay,"Время задержки текста (мс)","Text delay (ms)");
 	TR_(CbAlwaysRun,"Постоянный бег","Always run");
 	TR_(GbLangSwitch,"Переключение раскладки","Keyboard language switch");
@@ -195,8 +193,6 @@ void TMainForm::Translate()
 	TR_(GbSoundVolume,"Громкость","Volume");
 	TR_(LabelMusicVolume,"Музыка","Music");
 	TR_(LabelSoundVolume,"Звуки","Sound");
-	TR_(GbSoundOther,"","");
-	TR_(CbGlobalSound,"Постоянный звук","Global sound");
 	TR_(TabCombat,"Боевка","Combat");
 	TR_(GbDefCmbtMode,"Режим боя по-умолчанию","Default combat mode");
 	TR_(RbDefCmbtModeBoth,"Оба режима","Both modes");

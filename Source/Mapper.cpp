@@ -14,7 +14,7 @@ void _PostRestore()
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = NULL;
-FOMapper::FOMapper(): Wnd( NULL ), DInput( NULL ), Keyboard( NULL ), Mouse( NULL )
+FOMapper::FOMapper()
 {
     Self = this;
     FPS = 0;
@@ -22,16 +22,14 @@ FOMapper::FOMapper(): Wnd( NULL ), DInput( NULL ), Keyboard( NULL ), Mouse( NULL
     IsMapperStarted = false;
 }
 
-bool FOMapper::Init( HWND wnd )
+bool FOMapper::Init()
 {
     WriteLog( "Mapper initialization...\n" );
-
-    Wnd = wnd;
 
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1148 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1140 );
     #endif
 
     // Register dll script data
@@ -120,7 +118,6 @@ bool FOMapper::Init( HWND wnd )
 
     // Sprite manager
     SpriteMngrParams params;
-    params.WndHeader = wnd;
     params.PreRestoreFunc = &_PreRestore;
     params.PostRestoreFunc = &_PostRestore;
     if( !SprMngr.Init( params ) )
@@ -165,10 +162,6 @@ bool FOMapper::Init( HWND wnd )
     FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
     ConstantsManager::Initialize( PT_SERVER_DATA );
     FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
-
-    // Input
-    if( !InitDI() )
-        return false;
 
     // Resource manager
     ResMngr.Refresh();
@@ -305,7 +298,6 @@ bool FOMapper::Init( HWND wnd )
         GameOpt.MouseX = MODE_WIDTH / 2;
         GameOpt.MouseY = MODE_HEIGHT / 2;
     }
-    ShowCursor( FALSE );
 
     if( strstr( GetCommandLine(), "-Map" ) )
     {
@@ -552,105 +544,7 @@ void FOMapper::Finish()
     CrMngr.Finish();
     FileManager::EndOfWork();
     FinishScriptSystem();
-
-    if( Keyboard )
-        Keyboard->Unacquire();
-    SAFEREL( Keyboard );
-    if( Mouse )
-        Mouse->Unacquire();
-    SAFEREL( Mouse );
-    SAFEREL( DInput );
     WriteLog( "Mapper finish complete.\n" );
-}
-
-bool FOMapper::InitDI()
-{
-    WriteLog( "DirectInput initialization...\n" );
-
-    HRESULT hr = DirectInput8Create( GetModuleHandle( NULL ), DIRECTINPUT_VERSION, IID_IDirectInput8, (void**) &DInput, NULL );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Can't create DirectInput.\n" );
-        return false;
-    }
-
-    // Obtain an interface to the system keyboard device.
-    hr = DInput->CreateDevice( GUID_SysKeyboard, &Keyboard, NULL );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Can't create GUID_SysKeyboard.\n" );
-        return false;
-    }
-
-    hr = DInput->CreateDevice( GUID_SysMouse, &Mouse, NULL );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Can't create GUID_SysMouse.\n" );
-        return false;
-    }
-    // Set the data format to "keyboard format" - a predefined data format
-    // This tells DirectInput that we will be passing an array
-    // of 256 bytes to IDirectInputDevice::GetDeviceState.
-    hr = Keyboard->SetDataFormat( &c_dfDIKeyboard );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Unable to set data format for keyboard.\n" );
-        return false;
-    }
-
-    hr = Mouse->SetDataFormat( &c_dfDIMouse2 );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Unable to set data format for mouse.\n" );
-        return false;
-    }
-
-
-    hr = Keyboard->SetCooperativeLevel( Wnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Unable to set cooperative level for keyboard.\n" );
-        return false;
-    }
-
-    hr = Mouse->SetCooperativeLevel( Wnd, DISCL_FOREGROUND | ( GameOpt.FullScreen ? DISCL_EXCLUSIVE : DISCL_NONEXCLUSIVE ) );
-    //	hr=Mouse->SetCooperativeLevel( Wnd,DISCL_FOREGROUND | DISCL_EXCLUSIVE);
-    if( hr != DI_OK )
-    {
-        WriteLog( "Unable to set cooperative level for mouse.\n" );
-        return false;
-    }
-
-    // Important step to use buffered device data!
-    DIPROPDWORD dipdw;
-    dipdw.diph.dwSize       = sizeof( DIPROPDWORD );
-    dipdw.diph.dwHeaderSize = sizeof( DIPROPHEADER );
-    dipdw.diph.dwObj        = 0;
-    dipdw.diph.dwHow        = DIPH_DEVICE;
-    dipdw.dwData            = DI_BUF_SIZE;     // Arbitrary buffer size
-
-    hr = Keyboard->SetProperty( DIPROP_BUFFERSIZE, &dipdw.diph );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Unable to set property for keyboard.\n" );
-        return false;
-    }
-
-    hr = Mouse->SetProperty( DIPROP_BUFFERSIZE, &dipdw.diph );
-    if( hr != DI_OK )
-    {
-        WriteLog( "Unable to set property for mouse.\n" );
-        return false;
-    }
-
-    // Acquire the newly created device
-    if( Keyboard->Acquire() != DI_OK )
-        WriteLog( "Can't acquire keyboard.\n" );
-    if( Mouse->Acquire() != DI_OK )
-        WriteLog( "Can't acquire mouse.\n" );
-
-    WriteLog( "DirectInput initialization complete.\n" );
-    return true;
 }
 
 void FOMapper::ChangeGameTime()
@@ -819,12 +713,13 @@ void FOMapper::AnimFree( int res_type )
 
 void FOMapper::ParseKeyboard()
 {
-    DWORD              elements = DI_BUF_SIZE;
-    DIDEVICEOBJECTDATA didod[ DI_BUF_SIZE ];   // Receives buffered data
-    if( Keyboard->GetDeviceData( sizeof( DIDEVICEOBJECTDATA ), didod, &elements, 0 ) != DI_OK )
+    // Stop processing if window not active
+    if( !MainWindow->active() )
     {
-        Keyboard->Acquire();
-        Keyboard->GetDeviceData( sizeof( DIDEVICEOBJECTDATA ), didod, &elements, 0 );  // Clear buffer
+        KeyboardEventsLocker.Lock();
+        KeyboardEvents.clear();
+        KeyboardEventsLocker.Unlock();
+
         Keyb::Lost();
         IntHold = INT_NONE;
         if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
@@ -832,12 +727,31 @@ void FOMapper::ParseKeyboard()
         return;
     }
 
-    for( uint i = 0; i < elements; i++ )
+    // Get buffered data
+    KeyboardEventsLocker.Lock();
+    if( KeyboardEvents.empty() )
     {
-        uchar dikdw = Keyb::KeysMap[ ( didod[ i ].dwData & 0x80 ? didod[ i ].dwOfs : 0 ) & 0xFF ];
-        uchar dikup = Keyb::KeysMap[ ( !( didod[ i ].dwData & 0x80 ) ? didod[ i ].dwOfs : 0 ) & 0xFF ];
+        KeyboardEventsLocker.Unlock();
+        return;
+    }
+    IntVec events = KeyboardEvents;
+    KeyboardEvents.clear();
+    KeyboardEventsLocker.Unlock();
 
-        bool  script_result = false;
+    // Process events
+    for( uint i = 0; i < events.size(); i += 2 )
+    {
+        int   event = events[ i ];
+        int   event_key = events[ i + 1 ];
+
+        uchar dikdw = 0;
+        uchar dikup = 0;
+        if( event == FL_KEYDOWN )
+            dikdw = Keyb::MapKey( event_key );
+        else if( event == FL_KEYUP )
+            dikup = Keyb::MapKey( event_key );
+
+        bool script_result = false;
         if( dikdw && MapperFunctions.KeyDown && Script::PrepareContext( MapperFunctions.KeyDown, _FUNC_, "Mapper" ) )
         {
             Script::SetArgUChar( dikdw );
@@ -966,7 +880,7 @@ label_TryChangeLang:
                 SprMngr.SaveSufaces();
                 break;
             case DIK_ESCAPE:
-                DestroyWindow( Wnd );
+                ExitProcess( 0 );
                 break;
             case DIK_ADD:
                 if( !ConsoleEdit && SelectedObj.empty() )
@@ -1118,34 +1032,21 @@ label_TryChangeLang:
 #define MOUSE_CLICK_EXT4          ( 9 )
 void FOMapper::ParseMouse()
 {
-    // Windows move cursor in windowed mode
-    if( !GameOpt.FullScreen )
-    {
-        WINDOWINFO wi;
-        wi.cbSize = sizeof( wi );
-        GetWindowInfo( Wnd, &wi );
-        POINT p;
-        GetCursorPos( &p );
-        GameOpt.MouseX = p.x - wi.rcClient.left;
-        GameOpt.MouseY = p.y - wi.rcClient.top;
+    // Mouse position
+    int mx = 0, my = 0;
+    Fl::get_mouse( mx, my );
+    GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
+    GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
+    GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, MODE_WIDTH - 1 );
+    GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
 
-        if( GameOpt.MouseX >= MODE_WIDTH )
-            GameOpt.MouseX = MODE_WIDTH - 1;
-        if( GameOpt.MouseX < 0 )
-            GameOpt.MouseX = 0;
-        if( GameOpt.MouseY >= MODE_HEIGHT )
-            GameOpt.MouseY = MODE_HEIGHT - 1;
-        if( GameOpt.MouseY < 0 )
-            GameOpt.MouseY = 0;
-    }
-
-    // DirectInput mouse
-    DWORD              elements = DI_BUF_SIZE;
-    DIDEVICEOBJECTDATA didod[ DI_BUF_SIZE ];   // Receives buffered data
-    if( Mouse->GetDeviceData( sizeof( DIDEVICEOBJECTDATA ), didod, &elements, 0 ) != DI_OK )
+    // Stop processing if window not active
+    if( !MainWindow->active() )
     {
-        Mouse->Acquire();
-        Mouse->GetDeviceData( sizeof( DIDEVICEOBJECTDATA ), didod, &elements, 0 );  // Clear buffer
+        MouseEventsLocker.Lock();
+        MouseEvents.clear();
+        MouseEventsLocker.Unlock();
+
         Keyb::Lost();
         IntHold = INT_NONE;
         if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
@@ -1153,319 +1054,14 @@ void FOMapper::ParseMouse()
         return;
     }
 
-    // Windows move cursor in windowed mode
-    if( !GameOpt.FullScreen )
+    // Mouse move
+    static int old_cur_x = GameOpt.MouseX;
+    static int old_cur_y = GameOpt.MouseY;
+
+    if( old_cur_x != GameOpt.MouseX || old_cur_y != GameOpt.MouseY )
     {
-        static int old_cur_x = GameOpt.MouseX;
-        static int old_cur_y = GameOpt.MouseY;
-
-        if( old_cur_x != GameOpt.MouseX || old_cur_y != GameOpt.MouseY )
-        {
-            old_cur_x = GameOpt.MouseX;
-            old_cur_y = GameOpt.MouseY;
-
-            IntMouseMove();
-
-            if( MapperFunctions.MouseMove && Script::PrepareContext( MapperFunctions.MouseMove, _FUNC_, "Mapper" ) )
-            {
-                Script::SetArgUInt( GameOpt.MouseX );
-                Script::SetArgUInt( GameOpt.MouseY );
-                Script::RunPrepared();
-            }
-        }
-    }
-
-    static float ox = 0.0f, oy = 0.0f;
-    float        speed = (float) GameOpt.MouseSpeed / 100.0f;
-    for( uint i = 0; i < elements; i++ )
-    {
-        // Mouse Move
-        // Direct input move cursor in full screen mode
-        if( GameOpt.FullScreen )
-        {
-            DI_ONMOUSE( DIMOFS_X, ox += (float) (int) didod[ i ].dwData * speed;
-                        continue;
-                        );
-            DI_ONMOUSE( DIMOFS_Y, oy += (float) (int) didod[ i ].dwData * speed;
-                        continue;
-                        );
-        }
-
-        // Scripts
-        bool script_result = false;
-        DI_ONMOUSE( DIMOFS_Z,
-                    if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                    {
-                        Script::SetArgUInt( int(didod[ i ].dwData) > 0 ? MOUSE_CLICK_WHEEL_UP : MOUSE_CLICK_WHEEL_DOWN );
-                        if( Script::RunPrepared() )
-                            script_result = Script::GetReturnedBool();
-                    }
-                    );
-        DI_ONDOWN( DIMOFS_BUTTON0,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_LEFT );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON0,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_LEFT );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON1,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_RIGHT );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON1,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_RIGHT );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON2,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON2,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON3,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_EXT0 );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON3,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_EXT0 );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON4,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_EXT1 );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON4,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_EXT1 );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON5,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_EXT2 );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON5,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_EXT2 );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON6,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_EXT3 );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON6,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_EXT3 );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        DI_ONDOWN( DIMOFS_BUTTON7,
-                   if( MapperFunctions.MouseDown && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Mapper" ) )
-                   {
-                       Script::SetArgUInt( MOUSE_CLICK_EXT4 );
-                       if( Script::RunPrepared() )
-                           script_result = Script::GetReturnedBool();
-                   }
-                   );
-        DI_ONUP( DIMOFS_BUTTON7,
-                 if( MapperFunctions.MouseUp && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Mapper" ) )
-                 {
-                     Script::SetArgUInt( MOUSE_CLICK_EXT4 );
-                     if( Script::RunPrepared() )
-                         script_result = Script::GetReturnedBool();
-                 }
-                 );
-        if( script_result || GameOpt.DisableMouseEvents )
-            continue;
-
-        // Wheel
-        DI_ONMOUSE( DIMOFS_Z,
-                    if( IntVisible && SubTabsActive && IsCurInRect( SubTabsRect, SubTabsX, SubTabsY ) )
-                    {
-                        int step = 4;
-                        if( Keyb::ShiftDwn )
-                            step = 8;
-                        else if( Keyb::CtrlDwn )
-                            step = 20;
-                        else if( Keyb::AltDwn )
-                            step = 50;
-
-                        int data = didod[ i ].dwData;
-                        if( data > 0 )
-                            TabsScroll[ SubTabsActiveTab ] += step;
-                        else
-                            TabsScroll[ SubTabsActiveTab ] -= step;
-                        if( TabsScroll[ SubTabsActiveTab ] < 0 )
-                            TabsScroll[ SubTabsActiveTab ] = 0;
-                    }
-                    else if( IntVisible && IsCurInRect( IntWWork, IntX, IntY ) && ( IsObjectMode() || IsTileMode() || IsCritMode() ) )
-                    {
-                        int step = 1;
-                        if( Keyb::ShiftDwn )
-                            step = ProtosOnScreen;
-                        else if( Keyb::CtrlDwn )
-                            step = 100;
-                        else if( Keyb::AltDwn )
-                            step = 1000;
-
-                        int data = didod[ i ].dwData;
-                        if( data > 0 )
-                        {
-                            if( IsObjectMode() || IsTileMode() || IsCritMode() )
-                            {
-                                ( *CurProtoScroll ) -= step;
-                                if( *CurProtoScroll < 0 )
-                                    *CurProtoScroll = 0;
-                            }
-                            else if( IntMode == INT_MODE_INCONT )
-                            {
-                                InContScroll -= step;
-                                if( InContScroll < 0 )
-                                    InContScroll = 0;
-                            }
-                            else if( IntMode == INT_MODE_LIST )
-                            {
-                                ListScroll -= step;
-                                if( ListScroll < 0 )
-                                    ListScroll = 0;
-                            }
-                        }
-                        else
-                        {
-                            if( IsObjectMode() && ( *CurItemProtos ).size() )
-                            {
-                                ( *CurProtoScroll ) += step;
-                                if( *CurProtoScroll >= (int) ( *CurItemProtos ).size() )
-                                    *CurProtoScroll = (int) ( *CurItemProtos ).size() - 1;
-                            }
-                            else if( IsTileMode() && CurTileHashes->size() )
-                            {
-                                ( *CurProtoScroll ) += step;
-                                if( *CurProtoScroll >= (int) CurTileHashes->size() )
-                                    *CurProtoScroll = (int) CurTileHashes->size() - 1;
-                            }
-                            else if( IsCritMode() && CurNpcProtos->size() )
-                            {
-                                ( *CurProtoScroll ) += step;
-                                if( *CurProtoScroll >= (int) CurNpcProtos->size() )
-                                    *CurProtoScroll = (int) CurNpcProtos->size() - 1;
-                            }
-                            else if( IntMode == INT_MODE_INCONT )
-                                InContScroll += step;
-                            else if( IntMode == INT_MODE_LIST )
-                                ListScroll += step;
-                        }
-                    }
-                    else
-                    {
-                        if( didod[ i ].dwData )
-                            HexMngr.ChangeZoom( (int) didod[ i ].dwData > 0 ? -1 : 1 );
-                    }
-                    continue;
-                    );
-
-        // Middle down
-        DI_ONDOWN( DIMOFS_BUTTON2,
-                   CurMMouseDown();
-                   continue;
-                   );
-
-        // Left Button Down
-        DI_ONDOWN( DIMOFS_BUTTON0,
-                   IntLMouseDown();
-                   continue;
-                   );
-
-        // Left Button Up
-        DI_ONUP( DIMOFS_BUTTON0,
-                 IntLMouseUp();
-                 continue;
-                 );
-
-        // Right Button Down
-        DI_ONDOWN( DIMOFS_BUTTON1,
-                   continue;
-                   );
-
-        // Right Button Up
-        DI_ONUP( DIMOFS_BUTTON1,
-                 CurRMouseUp();
-                 continue;
-                 );
-    }
-
-    // Direct input move cursor in full screen mode
-    if( GameOpt.FullScreen && ( fabs( ox ) >= 1.0f || fabs( oy ) >= 1.0f ) )
-    {
-        int oxi = (int) ox;
-        int oyi = (int) oy;
-        GameOpt.MouseX += oxi;
-        GameOpt.MouseY += oyi;
-        ox -= (float) oxi;
-        oy -= (float) oyi;
-
-        if( GameOpt.MouseX >= MODE_WIDTH )
-            GameOpt.MouseX = MODE_WIDTH;
-        if( GameOpt.MouseX < 0 )
-            GameOpt.MouseX = 0;
-        if( GameOpt.MouseY >= MODE_HEIGHT )
-            GameOpt.MouseY = MODE_HEIGHT;
-        if( GameOpt.MouseY < 0 )
-            GameOpt.MouseY = 0;
+        old_cur_x = GameOpt.MouseX;
+        old_cur_y = GameOpt.MouseY;
 
         IntMouseMove();
 
@@ -1474,6 +1070,248 @@ void FOMapper::ParseMouse()
             Script::SetArgUInt( GameOpt.MouseX );
             Script::SetArgUInt( GameOpt.MouseY );
             Script::RunPrepared();
+        }
+    }
+
+    // Get buffered data
+    MouseEventsLocker.Lock();
+    if( MouseEvents.empty() )
+    {
+        MouseEventsLocker.Unlock();
+        return;
+    }
+    IntVec events = MouseEvents;
+    MouseEvents.clear();
+    MouseEventsLocker.Unlock();
+
+    // Process events
+    for( uint i = 0; i < events.size(); i += 3 )
+    {
+        int event = events[ i ];
+        int event_button = events[ i + 1 ];
+        int event_dy = -events[ i + 2 ];
+
+        // Scripts
+        bool script_result = false;
+        if( event == FL_MOUSEWHEEL && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( event_dy > 0 ? MOUSE_CLICK_WHEEL_UP : MOUSE_CLICK_WHEEL_DOWN );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_LEFT_MOUSE && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_LEFT );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_LEFT_MOUSE && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_LEFT );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_RIGHT_MOUSE && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_RIGHT );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_RIGHT_MOUSE && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_RIGHT );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_MIDDLE_MOUSE && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_MIDDLE_MOUSE && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_BUTTON( 1 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT0 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_BUTTON( 1 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT0 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_BUTTON( 2 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT1 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_BUTTON( 2 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT1 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_BUTTON( 3 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT2 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_BUTTON( 3 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT2 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_BUTTON( 4 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT3 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_BUTTON( 4 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT3 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_PUSH && event_button == FL_BUTTON( 5 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT4 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+        if( event == FL_RELEASE && event_button == FL_BUTTON( 5 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
+        {
+            Script::SetArgUInt( MOUSE_CLICK_EXT4 );
+            if( Script::RunPrepared() )
+                script_result = Script::GetReturnedBool();
+        }
+
+        if( script_result || GameOpt.DisableMouseEvents )
+            continue;
+
+        // Wheel
+        if( event == FL_MOUSEWHEEL )
+        {
+            if( IntVisible && SubTabsActive && IsCurInRect( SubTabsRect, SubTabsX, SubTabsY ) )
+            {
+                int step = 4;
+                if( Keyb::ShiftDwn )
+                    step = 8;
+                else if( Keyb::CtrlDwn )
+                    step = 20;
+                else if( Keyb::AltDwn )
+                    step = 50;
+
+                int data = event_dy;
+                if( data > 0 )
+                    TabsScroll[ SubTabsActiveTab ] += step;
+                else
+                    TabsScroll[ SubTabsActiveTab ] -= step;
+                if( TabsScroll[ SubTabsActiveTab ] < 0 )
+                    TabsScroll[ SubTabsActiveTab ] = 0;
+            }
+            else if( IntVisible && IsCurInRect( IntWWork, IntX, IntY ) && ( IsObjectMode() || IsTileMode() || IsCritMode() ) )
+            {
+                int step = 1;
+                if( Keyb::ShiftDwn )
+                    step = ProtosOnScreen;
+                else if( Keyb::CtrlDwn )
+                    step = 100;
+                else if( Keyb::AltDwn )
+                    step = 1000;
+
+                int data = event_dy;
+                if( data > 0 )
+                {
+                    if( IsObjectMode() || IsTileMode() || IsCritMode() )
+                    {
+                        ( *CurProtoScroll ) -= step;
+                        if( *CurProtoScroll < 0 )
+                            *CurProtoScroll = 0;
+                    }
+                    else if( IntMode == INT_MODE_INCONT )
+                    {
+                        InContScroll -= step;
+                        if( InContScroll < 0 )
+                            InContScroll = 0;
+                    }
+                    else if( IntMode == INT_MODE_LIST )
+                    {
+                        ListScroll -= step;
+                        if( ListScroll < 0 )
+                            ListScroll = 0;
+                    }
+                }
+                else
+                {
+                    if( IsObjectMode() && ( *CurItemProtos ).size() )
+                    {
+                        ( *CurProtoScroll ) += step;
+                        if( *CurProtoScroll >= (int) ( *CurItemProtos ).size() )
+                            *CurProtoScroll = (int) ( *CurItemProtos ).size() - 1;
+                    }
+                    else if( IsTileMode() && CurTileHashes->size() )
+                    {
+                        ( *CurProtoScroll ) += step;
+                        if( *CurProtoScroll >= (int) CurTileHashes->size() )
+                            *CurProtoScroll = (int) CurTileHashes->size() - 1;
+                    }
+                    else if( IsCritMode() && CurNpcProtos->size() )
+                    {
+                        ( *CurProtoScroll ) += step;
+                        if( *CurProtoScroll >= (int) CurNpcProtos->size() )
+                            *CurProtoScroll = (int) CurNpcProtos->size() - 1;
+                    }
+                    else if( IntMode == INT_MODE_INCONT )
+                        InContScroll += step;
+                    else if( IntMode == INT_MODE_LIST )
+                        ListScroll += step;
+                }
+            }
+            else
+            {
+                if( event_dy )
+                    HexMngr.ChangeZoom( event_dy > 0 ? -1 : 1 );
+            }
+            continue;
+        }
+
+        // Middle down
+        if( event == FL_PUSH && event_button == FL_MIDDLE_MOUSE )
+        {
+            CurMMouseDown();
+            continue;
+        }
+
+        // Left Button Down
+        if( event == FL_PUSH && event_button == FL_LEFT_MOUSE )
+        {
+            IntLMouseDown();
+            continue;
+        }
+
+        // Left Button Up
+        if( event == FL_RELEASE && event_button == FL_LEFT_MOUSE )
+        {
+            IntLMouseUp();
+            continue;
+        }
+
+        // Right Button Up
+        if( event == FL_RELEASE && event_button == FL_RIGHT_MOUSE )
+        {
+            CurRMouseUp();
+            continue;
         }
     }
 
@@ -2653,7 +2491,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik )
         add = 9;
         break;
 //	case DIK_DELETE:
-    case DIK_BACKSPACE:
+    case DIK_BACK:
         if( val_c )
             *val_c = *val_c / 10;
         if( val_b )

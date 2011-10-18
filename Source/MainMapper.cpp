@@ -4,10 +4,10 @@
 #include "Version.h"
 #include <locale.h>
 
-LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam );
-HINSTANCE Instance = NULL;
-HWND      Wnd = NULL;
+FOWindow* MainWindow = NULL;
 FOMapper* Mapper = NULL;
+Thread    Game;
+void* GameThread( void* );
 
 int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show )
 {
@@ -15,7 +15,7 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     RestoreMainDirectory();
 
     // Pthreads
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     #endif
 
@@ -32,104 +32,109 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     // Timer
     Timer::Init();
 
-    // Register window
-    WNDCLASS wndClass;
-    MSG      msg;
-    wndClass.style = CS_HREDRAW | CS_VREDRAW;
-    wndClass.lpfnWndProc = WndProc;
-    wndClass.cbClsExtra = 0;
-    wndClass.cbWndExtra = 0;
-    wndClass.hInstance = cur_instance;
-    wndClass.hIcon = LoadIcon( cur_instance, MAKEINTRESOURCE( IDI_ICON ) );
-    wndClass.hCursor = LoadCursor( NULL, IDC_ARROW );
-    wndClass.hbrBackground = (HBRUSH) GetStockObject( LTGRAY_BRUSH );
-    wndClass.lpszMenuName = NULL;
-    wndClass.lpszClassName = GetWindowName();
-    RegisterClass( &wndClass );
-    Instance = cur_instance;
-
     LogToFile( "FOMapper.log" );
 
     GetClientOptions();
 
-    Wnd = CreateWindow(
-        GetWindowName(),
-        GetWindowName(),
-        WS_OVERLAPPEDWINDOW & ( ~WS_MAXIMIZEBOX ) & ( ~WS_SIZEBOX ) & ( ~WS_SYSMENU ), // (~WS_SYSMENU)
-        CW_USEDEFAULT, CW_USEDEFAULT, 100, 100,
-        NULL,
-        NULL,
-        cur_instance,
-        NULL );
+    WriteLog( "Starting Mapper (%s)...\n", MAPPER_VERSION_STR );
 
-    HDC dcscreen = GetDC( NULL );
-    int sw = GetDeviceCaps( dcscreen, HORZRES );
-    int sh = GetDeviceCaps( dcscreen, VERTRES );
-    ReleaseDC( NULL, dcscreen );
+    // Hide cursor
+    #ifdef FO_WINDOWS
+    ShowCursor( FALSE );
+    #else
+    // Todo: Linux
+    #endif
 
-    WINDOWINFO wi;
-    wi.cbSize = sizeof( wi );
-    GetWindowInfo( Wnd, &wi );
-    INTRECT wborders( wi.rcClient.left - wi.rcWindow.left, wi.rcClient.top - wi.rcWindow.top, wi.rcWindow.right - wi.rcClient.right, wi.rcWindow.bottom - wi.rcClient.bottom );
-    SetWindowPos( Wnd, NULL, ( sw - MODE_WIDTH - wborders.L - wborders.R ) / 2, ( sh - MODE_HEIGHT - wborders.T - wborders.B ) / 2, MODE_WIDTH + wborders.L + wborders.R, MODE_HEIGHT + wborders.T + wborders.B, 0 );
+    // Create window
+    Fl::lock();
+    MainWindow = new FOWindow();
+    MainWindow->label( GetWindowName() );
+    MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
+    MainWindow->size( MODE_WIDTH, MODE_HEIGHT );
+    MainWindow->set_modal();
 
-    ShowWindow( Wnd, SW_SHOWNORMAL );
-    UpdateWindow( Wnd );
+    // Icon
+    #ifdef FO_WINDOWS
+    MainWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
+    #else // FO_LINUX
+    fl_open_display();
+    // Todo: Linux
+    #endif
 
-    WriteLog( "Starting Mapper %s...\n", MAPPER_VERSION_STR );
+    // Show window
+    char  dummy_argv0[ 2 ] = "";
+    char* dummy_argv[] = { dummy_argv0 };
+    int   dummy_argc = 1;
+    MainWindow->show( dummy_argc, dummy_argv );
 
-    Mapper = new FOMapper();
-    if( !Mapper->Init( Wnd ) )
-    {
-        WriteLog( "Mapper initialization fail.\n" );
-        DestroyWindow( Wnd );
-        return 0;
-    }
+    // Start
+    WriteLog( "Starting FOnline (version %04X-%02X)...\n\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    Game.Start( GameThread );
 
+    // Loop
     while( !GameOpt.Quit )
-    {
-        if( PeekMessage( &msg, NULL, NULL, NULL, PM_REMOVE ) )
-        {
-            TranslateMessage( &msg );
-            DispatchMessage( &msg );
-        }
-        else
-        {
-            // Main Loop
-            Mapper->MainLoop();
+        Fl::wait();
+    Game.Wait();
 
-            // Sleep
-            if( GameOpt.Sleep >= 0 )
-                Sleep( GameOpt.Sleep );
-        }
-    }
-
-    Mapper->Finish();
-
-    WriteLog( "Mapper closed.\n" );
+    // Finish
+    if( Singleplayer )
+        SingleplayerData.Finish();
+    WriteLog( "FOnline finished.\n" );
     LogFinish( -1 );
 
-    delete Mapper;
     return 0;
 }
 
-LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
+void* GameThread( void* )
 {
-    switch( message )
+    // Start
+    Mapper = new (nothrow) FOMapper();
+    if( !Mapper || !Mapper->Init() )
     {
-    case WM_DESTROY:
-        GameOpt.Quit = true;
+        WriteLog( "FOnline engine initialization fail.\n" );
         return 0;
-    case WM_KEYDOWN:
-        if( wparam == VK_F12 )
-            ShowWindow( wnd, SW_MINIMIZE );
-        return 0;
-    case WM_ACTIVATE:
-        break;
-    case WM_FLASH_WINDOW:
-        if( wnd != GetActiveWindow() )
-            FlashWindow( wnd, true );
-        break;
     }
-    return DefWindowProc( wnd, message, wparam, lparam );
+
+    // Loop
+    while( !GameOpt.Quit )
+    {
+        Mapper->MainLoop();
+        if( GameOpt.Sleep >= 0 )
+            Sleep( GameOpt.Sleep );
+    }
+
+    // Finish
+    Mapper->Finish();
+    delete Mapper;
+    return NULL;
+}
+
+int FOWindow::handle( int event )
+{
+    if( !Mapper || GameOpt.Quit )
+        return 0;
+
+    // Keyboard
+    if( event == FL_KEYDOWN || event == FL_KEYUP )
+    {
+        int event_key = Fl::event_key();
+        Mapper->KeyboardEventsLocker.Lock();
+        Mapper->KeyboardEvents.push_back( event );
+        Mapper->KeyboardEvents.push_back( event_key );
+        Mapper->KeyboardEventsLocker.Unlock();
+        return 1;
+    }
+    // Mouse
+    else if( event == FL_PUSH || event == FL_RELEASE || ( event == FL_MOUSEWHEEL && Fl::event_dy() != 0 ) )
+    {
+        int event_button = Fl::event_button();
+        int event_dy = Fl::event_dy();
+        Mapper->MouseEventsLocker.Lock();
+        Mapper->MouseEvents.push_back( event );
+        Mapper->MouseEvents.push_back( event_button );
+        Mapper->MouseEvents.push_back( event_dy );
+        Mapper->MouseEventsLocker.Unlock();
+        return 1;
+    }
+    return 0;
 }

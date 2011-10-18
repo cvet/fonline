@@ -35,7 +35,6 @@ __published:	// IDE-managed Components
 	TTabSheet *TabSound;
 	TGroupBox *GbGame;
 	TLabel *LabelTextDelay;
-	TLabel *LabelMouseSpeed;
 	TLabel *LabelScrollStep;
 	TLabel *LabelScrollDelay;
 	TGroupBox *GbSoundVolume;
@@ -43,8 +42,6 @@ __published:	// IDE-managed Components
 	TTrackBar *TbSoundVolume;
 	TLabel *LabelMusicVolume;
 	TLabel *LabelSoundVolume;
-	TGroupBox *GbSoundOther;
-	TCheckBox *CbGlobalSound;
 	TGroupBox *GbServer;
 	TGroupBox *GbProxy;
 	TComboBox *CbServerHost;
@@ -56,7 +53,6 @@ __published:	// IDE-managed Components
 	TRadioButton *RbProxyHttp;
 	TCSpinEdit *SeScrollDelay;
 	TCSpinEdit *SeScrollStep;
-	TCSpinEdit *SeMouseSpeed;
 	TCSpinEdit *SeTextDelay;
 	TCSpinEdit *SeServerPort;
 	TLabel *LabelProxyHost;

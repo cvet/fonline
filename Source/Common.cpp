@@ -878,9 +878,6 @@ void GetClientOptions()
     GameOpt.ScrollStep = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollStep", 32 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollStep, "-ScrollStep" );
     GETOPTIONS_CHECK( GameOpt.ScrollStep, 4, 32, 32 );
-    GameOpt.MouseSpeed = cfg.GetInt( CLIENT_CONFIG_APP, "MouseSpeed", 100 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.MouseSpeed, "-MouseSpeed" );
-    GETOPTIONS_CHECK( GameOpt.MouseSpeed, 10, 1000, 100 );
     GameOpt.TextDelay = cfg.GetInt( CLIENT_CONFIG_APP, "TextDelay", 3000 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.TextDelay, "-TextDelay" );
     GETOPTIONS_CHECK( GameOpt.TextDelay, 1000, 3000, 30000 );
@@ -927,8 +924,6 @@ void GetClientOptions()
     GameOpt.ProxyPort = cfg.GetInt( CLIENT_CONFIG_APP, "ProxyPort", 8080 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyPort, "-ProxyPort" );
     GETOPTIONS_CHECK( GameOpt.ProxyPort, 0, 0xFFFF, 1080 );
-    GameOpt.GlobalSound = cfg.GetInt( CLIENT_CONFIG_APP, "GlobalSound", true ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.GlobalSound, "-GlobalSound" );
     GameOpt.AlwaysRun = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysRun", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "-AlwaysRun" );
     GameOpt.DefaultCombatMode = cfg.GetInt( CLIENT_CONFIG_APP, "DefaultCombatMode", COMBAT_MODE_ANY );
@@ -1360,8 +1355,6 @@ GameOptions::GameOptions()
     ScrollDelay = 0;
     ScrollStep = 1;
     ScrollCheck = true;
-    MouseSpeed = 100;
-    GlobalSound = true;
     FoDataPath = "";
     FoDataPathRefCounter = 1;
     Sleep = 0;

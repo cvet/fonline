@@ -39,6 +39,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -62,6 +63,7 @@ namespace {
 	bool ProcessPragmas;
 	std::vector<std::string> FileDependencies;
 	std::vector<std::string> Pragmas;
+    std::set<std::string> PragmasAdded;
 
 	void PrintErrorMessage(const std::string& errmsg)
 	{
@@ -436,16 +438,22 @@ static void parsePragma(LexemList& args)
 	}
 	if (!args.empty()) PrintErrorMessage("Too many parameters to pragma.");
 
-	Pragmas.push_back(p_name);
-	Pragmas.push_back(p_args);
+    std::string pragma_line = p_name + p_args;
+    if( !PragmasAdded.count( pragma_line ) )
+    {
+        PragmasAdded.insert( pragma_line );
 
-	Preprocessor::PragmaInstance PI;
-	PI.text = p_args;
-	PI.current_file = current_file;
-	PI.current_file_line = lines_this_file;
-	PI.root_file = root_file;
-	PI.global_line = current_line;
-	if(pragma_callback) CallPragma(p_name,PI);
+	    Pragmas.push_back(p_name);
+	    Pragmas.push_back(p_args);
+
+	    Preprocessor::PragmaInstance PI;
+	    PI.text = p_args;
+	    PI.current_file = current_file;
+	    PI.current_file_line = lines_this_file;
+	    PI.root_file = root_file;
+	    PI.global_line = current_line;
+	    if(pragma_callback) CallPragma(p_name,PI);
+    }
 }
 
 static void setLineMacro(DefineTable& define_table, unsigned int line)
@@ -638,6 +646,7 @@ int Preprocessor::Preprocess(
 	ProcessPragmas = process_pragmas;
 	FileDependencies.clear();
 	Pragmas.clear();
+    PragmasAdded.clear();
 
 	recursivePreprocess(source_file,file_source,lexems,define_table);
 	printLexemList(lexems,destination);

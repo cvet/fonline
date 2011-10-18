@@ -194,22 +194,15 @@ object MainForm: TMainForm
         Left = 3
         Top = 3
         Width = 246
-        Height = 138
+        Height = 115
         Caption = 'GbGame'
         TabOrder = 0
         object LabelTextDelay: TLabel
           Left = 13
-          Top = 93
+          Top = 67
           Width = 74
           Height = 13
           Caption = 'LabelTextDelay'
-        end
-        object LabelMouseSpeed: TLabel
-          Left = 13
-          Top = 67
-          Width = 86
-          Height = 13
-          Caption = 'LabelMouseSpeed'
         end
         object LabelScrollStep: TLabel
           Left = 13
@@ -246,39 +239,29 @@ object MainForm: TMainForm
           TabOrder = 1
           Value = 4
         end
-        object SeMouseSpeed: TCSpinEdit
-          Left = 160
-          Top = 64
-          Width = 83
-          Height = 22
-          MaxValue = 1000
-          MinValue = 10
-          TabOrder = 2
-          Value = 100
-        end
         object SeTextDelay: TCSpinEdit
           Left = 160
-          Top = 90
+          Top = 64
           Width = 83
           Height = 22
           Increment = 100
           MaxValue = 30000
           MinValue = 1000
-          TabOrder = 3
+          TabOrder = 2
           Value = 1000
         end
         object CbAlwaysRun: TCheckBox
           Left = 13
-          Top = 112
+          Top = 86
           Width = 97
           Height = 21
           Caption = 'CbAlwaysRun'
-          TabOrder = 4
+          TabOrder = 3
         end
       end
       object GbLangSwitch: TGroupBox
         Left = 3
-        Top = 147
+        Top = 124
         Width = 246
         Height = 43
         Caption = 'GbLangSwitch'
@@ -451,7 +434,6 @@ object MainForm: TMainForm
           Top = 32
           Width = 185
           Height = 21
-          ItemHeight = 13
           TabOrder = 0
           Text = 'CbServerHost'
         end
@@ -551,7 +533,6 @@ object MainForm: TMainForm
           Top = 54
           Width = 185
           Height = 21
-          ItemHeight = 13
           TabOrder = 4
           Text = 'CbProxyHost'
         end
@@ -588,7 +569,6 @@ object MainForm: TMainForm
           Top = 16
           Width = 118
           Height = 21
-          ItemHeight = 13
           TabOrder = 0
           Text = 'CbScreenWidth'
           OnCloseUp = CbScreenWidthChange
@@ -603,7 +583,6 @@ object MainForm: TMainForm
           Top = 16
           Width = 118
           Height = 21
-          ItemHeight = 13
           TabOrder = 1
           Text = 'CbScreenHeight'
           OnCloseUp = CbScreenHeightChange
@@ -740,7 +719,6 @@ object MainForm: TMainForm
           Width = 111
           Height = 21
           Style = csDropDownList
-          ItemHeight = 13
           TabOrder = 8
           Items.Strings = (
             'Auto'
@@ -821,22 +799,6 @@ object MainForm: TMainForm
           Max = 100
           Frequency = 10
           TabOrder = 1
-        end
-      end
-      object GbSoundOther: TGroupBox
-        Left = 3
-        Top = 143
-        Width = 246
-        Height = 42
-        Caption = 'GbSoundOther'
-        TabOrder = 1
-        object CbGlobalSound: TCheckBox
-          Left = 8
-          Top = 16
-          Width = 235
-          Height = 17
-          Caption = 'CbGlobalSound'
-          TabOrder = 0
         end
       end
     end

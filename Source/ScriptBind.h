@@ -2679,10 +2679,6 @@ if( engine->RegisterGlobalProperty( "bool __MouseScroll", &GameOpt.MouseScroll )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "bool __ScrollCheck", &GameOpt.ScrollCheck ) )
     BIND_ERROR;
-if( engine->RegisterGlobalProperty( "int __MouseSpeed", &GameOpt.MouseSpeed ) )
-    BIND_ERROR;
-if( engine->RegisterGlobalProperty( "bool __GlobalSound", &GameOpt.GlobalSound ) )
-    BIND_ERROR;
 if( engine->RegisterGlobalProperty( "string __FoDataPath", &GameOpt.FoDataPath ) )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "string __Host", &GameOpt.Host ) )

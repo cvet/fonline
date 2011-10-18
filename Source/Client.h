@@ -38,37 +38,29 @@ class FOClient
 public:
     static FOClient* Self;
     FOClient();
-    bool Init( HWND hwnd );
+    bool Init();
     void Finish();
     void TryExit();
     bool IsScroll() { return GameOpt.ScrollMouseUp || GameOpt.ScrollMouseRight || GameOpt.ScrollMouseDown || GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybUp || GameOpt.ScrollKeybRight || GameOpt.ScrollKeybDown || GameOpt.ScrollKeybLeft; }
     void ProcessMouseScroll();
     void ProcessKeybScroll( bool down, uchar dik );
-    void DropScroll()
-    {
-        GameOpt.ScrollMouseUp = false;
-        GameOpt.ScrollMouseRight = false;
-        GameOpt.ScrollMouseDown = false;
-        GameOpt.ScrollMouseLeft = false;
-        GameOpt.ScrollKeybUp = false;
-        GameOpt.ScrollKeybRight = false;
-        GameOpt.ScrollKeybDown = false;
-        GameOpt.ScrollKeybLeft = false;
-    }
+    void DropScroll();
     bool IsCurInWindow();
+    void FlashGameWindow();
     int  MainLoop();
     void NetDisconnect();
 
-    ushort NetState;
-    bool   Active;
-    uint*  UID1;
-    string Password;
+    ushort     NetState;
+    bool       Active;
+    uint*      UID1;
+    string     Password;
+    HexManager HexMngr;
 
-    int    ShowScreenType;
-    uint   ShowScreenParam;
-    bool   ShowScreenNeedAnswer;
+    int        ShowScreenType;
+    uint       ShowScreenParam;
+    bool       ShowScreenNeedAnswer;
 
-    int    ScreenModeMain;
+    int        ScreenModeMain;
     void ShowMainScreen( int new_screen );
     int  GetMainScreen()                  { return ScreenModeMain; }
     bool IsMainScreen( int check_screen ) { return check_screen == ScreenModeMain; }
@@ -87,14 +79,10 @@ public:
     bool IsCurMode( int check_cur ) { return ( check_cur == CurMode ); }
     void SetCurPos( int x, int y );
 
-    HWND                 Wnd;
-    INTRECT              WndBorders;
-    LPDIRECTINPUT8       DInput;
-    LPDIRECTINPUTDEVICE8 Keyboard;
-    LPDIRECTINPUTDEVICE8 Mouse;
-    HexManager           HexMngr;
-
-    int  InitDInput();
+    IntVec KeyboardEvents;
+    Mutex  KeyboardEventsLocker;
+    IntVec MouseEvents;
+    Mutex  MouseEventsLocker;
     void ParseKeyboard();
     void ParseMouse();
 

@@ -4,16 +4,10 @@
 #include "Version.h"
 #include <locale.h>
 
-// #define GAME_THREAD
-
-LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam );
-HWND      Wnd = NULL;
+FOWindow* MainWindow = NULL;
 FOClient* FOEngine = NULL;
-
-#ifdef GAME_THREAD
-uint WINAPI GameLoopThread( void* );
-HANDLE GameLoopThreadHandle = NULL;
-#endif
+Thread    Game;
+void* GameThread( void* );
 
 int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show )
 {
@@ -21,27 +15,12 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     RestoreMainDirectory();
 
     // Pthreads
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     #endif
 
     // Exception
     CatchExceptions( "FOnline", CLIENT_VERSION );
-
-    // Register window
-    WNDCLASS wnd_class;
-    MSG      msg;
-    wnd_class.style = CS_HREDRAW | CS_VREDRAW;
-    wnd_class.lpfnWndProc = WndProc;
-    wnd_class.cbClsExtra = 0;
-    wnd_class.cbWndExtra = 0;
-    wnd_class.hInstance = cur_instance;
-    wnd_class.hIcon = LoadIcon( cur_instance, MAKEINTRESOURCE( IDI_ICON ) );
-    wnd_class.hCursor = LoadCursor( NULL, IDC_ARROW );
-    wnd_class.hbrBackground = (HBRUSH) GetStockObject( LTGRAY_BRUSH );
-    wnd_class.lpszMenuName = NULL;
-    wnd_class.lpszClassName = GetWindowName();
-    RegisterClass( &wnd_class );
 
     // Stuff
     Timer::Init();
@@ -125,76 +104,65 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     // Options
     GetClientOptions();
 
-    Wnd = CreateWindow( GetWindowName(), GetWindowName(), WS_OVERLAPPEDWINDOW & ( ~WS_MAXIMIZEBOX ) & ( ~WS_SIZEBOX ) & ( ~WS_SYSMENU ), -101, -101, 100, 100, NULL, NULL, cur_instance, NULL );
+    // Hide cursor
+    #ifdef FO_WINDOWS
+    ShowCursor( FALSE );
+    #else
+    // Todo: Linux
+    #endif
 
-    HDC dcscreen = GetDC( NULL );
-    int sw = GetDeviceCaps( dcscreen, HORZRES );
-    int sh = GetDeviceCaps( dcscreen, VERTRES );
-    ReleaseDC( NULL, dcscreen );
+    // Create window
+    Fl::lock();
+    MainWindow = new FOWindow();
+    MainWindow->label( GetWindowName() );
+    MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
+    MainWindow->size( MODE_WIDTH, MODE_HEIGHT );
+    MainWindow->set_modal();
+    // MainWindow->size_range( 100, 100 );
 
-    WINDOWINFO wi;
-    wi.cbSize = sizeof( wi );
-    GetWindowInfo( Wnd, &wi );
-    INTRECT wborders( wi.rcClient.left - wi.rcWindow.left, wi.rcClient.top - wi.rcWindow.top, wi.rcWindow.right - wi.rcClient.right, wi.rcWindow.bottom - wi.rcClient.bottom );
-    SetWindowPos( Wnd, NULL, ( sw - MODE_WIDTH - wborders.L - wborders.R ) / 2, ( sh - MODE_HEIGHT - wborders.T - wborders.B ) / 2,
-                  MODE_WIDTH + wborders.L + wborders.R, MODE_HEIGHT + wborders.T + wborders.B, 0 );
+    // Icon
+    #ifdef FO_WINDOWS
+    MainWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
+    #else // FO_LINUX
+    fl_open_display();
+    // Todo: Linux
+    #endif
 
-    ShowWindow( Wnd, SW_SHOWNORMAL );
-    UpdateWindow( Wnd );
+    // Show window
+    char  dummy_argv0[ 2 ] = "";
+    char* dummy_argv[] = { dummy_argv0 };
+    int   dummy_argc = 1;
+    MainWindow->show( dummy_argc, dummy_argv );
 
-    // Start FOnline
+    // Start
     WriteLog( "Starting FOnline (version %04X-%02X)...\n\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    Game.Start( GameThread );
 
-    FOEngine = new FOClient();
-    if( !FOEngine || !FOEngine->Init( Wnd ) )
-    {
-        WriteLog( "FOnline engine initialization fail.\n" );
-        return 0;
-    }
-
-    #ifdef GAME_THREAD
-    GameLoopThreadHandle = CreateThread( NULL, 0, GameLoopThread, NULL, 0, NULL );
-    #endif
-
-    // Windows messages
+    // Loop
     while( !GameOpt.Quit )
-    {
-        if( PeekMessage( &msg, NULL, NULL, NULL, PM_REMOVE ) )
-        {
-            TranslateMessage( &msg );
-            DispatchMessage( &msg );
-        }
-        else
-        {
-            #ifdef GAME_THREAD
-            Sleep( 100 );
-            #else
-            if( !FOEngine->MainLoop() )
-                Sleep( 100 );
-            else if( GameOpt.Sleep >= 0 )
-                Sleep( GameOpt.Sleep );
-            #endif
-        }
-    }
+        Fl::wait();
+    Game.Wait();
 
-    // Finishing FOnline
-    #ifdef GAME_THREAD
-    WaitForSingleObject( GameLoopThreadHandle, INFINITE );
-    #endif
-    FOEngine->Finish();
-    delete FOEngine;
+    // Finish
     if( Singleplayer )
         SingleplayerData.Finish();
     WriteLog( "FOnline finished.\n" );
     LogFinish( -1 );
 
-    // _CrtDumpMemoryLeaks();
     return 0;
 }
 
-#ifdef GAME_THREAD
-uint WINAPI GameLoopThread( void* )
+void* GameThread( void* )
 {
+    // Start
+    FOEngine = new (nothrow) FOClient();
+    if( !FOEngine || !FOEngine->Init() )
+    {
+        WriteLog( "FOnline engine initialization fail.\n" );
+        return 0;
+    }
+
+    // Loop
     while( !GameOpt.Quit )
     {
         if( !FOEngine->MainLoop() )
@@ -203,15 +171,45 @@ uint WINAPI GameLoopThread( void* )
             Sleep( GameOpt.Sleep );
     }
 
-    CloseHandle( GameLoopThreadHandle );
-    GameLoopThreadHandle = NULL;
-    ExitThread( 0 );
+    // Finish
+    FOEngine->Finish();
+    delete FOEngine;
+    return NULL;
+}
+
+int FOWindow::handle( int event )
+{
+    if( !FOEngine || GameOpt.Quit )
+        return 0;
+
+    // Keyboard
+    if( event == FL_KEYDOWN || event == FL_KEYUP )
+    {
+        int event_key = Fl::event_key();
+        FOEngine->KeyboardEventsLocker.Lock();
+        FOEngine->KeyboardEvents.push_back( event );
+        FOEngine->KeyboardEvents.push_back( event_key );
+        FOEngine->KeyboardEventsLocker.Unlock();
+        return 1;
+    }
+    // Mouse
+    else if( event == FL_PUSH || event == FL_RELEASE || ( event == FL_MOUSEWHEEL && Fl::event_dy() != 0 ) )
+    {
+        int event_button = Fl::event_button();
+        int event_dy = Fl::event_dy();
+        FOEngine->MouseEventsLocker.Lock();
+        FOEngine->MouseEvents.push_back( event );
+        FOEngine->MouseEvents.push_back( event_button );
+        FOEngine->MouseEvents.push_back( event_dy );
+        FOEngine->MouseEventsLocker.Unlock();
+        return 1;
+    }
     return 0;
 }
-#endif
 
-LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
-{
+/*
+   LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
+   {
     switch( message )
     {
     case WM_DESTROY:
@@ -220,13 +218,17 @@ LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
     case WM_KEYDOWN:
         if( wparam == VK_F12 )
         {
+   #ifdef FO_D3D
             ShowWindow( Wnd, SW_MINIMIZE );
+   #endif
             return 0;
         }
         break;
     case WM_SHOWWINDOW:
+   #ifdef FO_D3D
         if( GameOpt.AlwaysOnTop )
             SetWindowPos( Wnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE );
+   #endif
         break;
     case WM_SIZE:
         if( !GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio )
@@ -249,15 +251,17 @@ LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
     case WM_FLASH_WINDOW:
         if( wnd != GetActiveWindow() )
         {
+   #ifdef FO_D3D
             if( GameOpt.MessNotify )
                 FlashWindow( Wnd, true );
             if( GameOpt.SoundNotify )
                 Beep( 100, 200 );
+   #endif
         }
         return 0;
-//      case WM_ERASEBKGND:
-//              return 0;
-        #ifndef GAME_THREAD
+   //      case WM_ERASEBKGND:
+   //              return 0;
+   #ifndef GAME_THREAD
     case WM_DISPLAYCHANGE:
         if( FOEngine && FOEngine->WindowLess )
             FOEngine->WindowLess->DisplayModeChanged();
@@ -269,16 +273,18 @@ LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
     case WM_PAINT:
         if( FOEngine )
         {
+   #ifdef FO_D3D
             PAINTSTRUCT ps;
             HDC         hdc = BeginPaint( Wnd, &ps );
             FOEngine->MainLoop();
             if( FOEngine->WindowLess )
                 FOEngine->WindowLess->RepaintVideo( wnd, hdc );
             EndPaint( Wnd, &ps );
+   #endif
             return 0;
         }
 
-        /*if(FOEngine && FOEngine->WindowLess)
+        / *if(FOEngine && FOEngine->WindowLess)
            {
                 PAINTSTRUCT ps;
                 HDC         hdc;
@@ -300,19 +306,20 @@ LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
                 // Request the VMR to paint the video.
                 HRESULT hr = FOEngine->WindowLess->RepaintVideo(wnd, hdc);
                 EndPaint(wnd, &ps);
-           }*/
+           }* /
         break;
     case WM_WINDOWPOSCHANGING:
         // Allow size greather than monitor resolution
         // Used in video playing workaround
         return 0;
-        #endif
-/*	case WM_SETCURSOR:
+   #endif
+   / *	case WM_SETCURSOR:
                 // Turn off window cursor
             SetCursor( NULL );
             return TRUE; // prevent Windows from setting cursor to window class cursor
-        break;*/
+        break;* /
     }
 
     return DefWindowProc( wnd, message, wparam, lparam );
-}
+   }
+ */

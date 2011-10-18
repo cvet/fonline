@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <math.h>
 #if defined ( FO_WINDOWS )
-# define WINVER                 0x0501 // Windows XP
+# define WINVER               0x0501   // Windows XP
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 #else // FO_LINUX
@@ -22,7 +22,7 @@
 const char* GetLastSocketError();
 #if defined ( FO_WINDOWS )
 # include <winsock2.h>
-# define socklen_t              int
+# define socklen_t            int
 # if defined ( FO_MSVC )
 #  pragma comment(lib,"Ws2_32.lib")
 # elif defined ( FO_GCC )
@@ -35,13 +35,34 @@ const char* GetLastSocketError();
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>
-# define SOCKET                 int
-# define INVALID_SOCKET         ( -1 )
-# define SOCKET_ERROR           ( -1 )
-# define closesocket            close
-# define SD_RECEIVE             SHUT_RD
-# define SD_SEND                SHUT_WR
-# define SD_BOTH                SHUT_RDWR
+# define SOCKET               int
+# define INVALID_SOCKET       ( -1 )
+# define SOCKET_ERROR         ( -1 )
+# define closesocket          close
+# define SD_RECEIVE           SHUT_RD
+# define SD_SEND              SHUT_WR
+# define SD_BOTH              SHUT_RDWR
+#endif
+
+// FLTK
+#if defined ( FO_MSVC )
+# pragma comment(lib,"fltk.lib")
+# pragma comment(lib,"fltkforms.lib")
+# pragma comment(lib,"fltkgl.lib")
+# pragma comment(lib,"fltkimages.lib")
+# pragma comment(lib,"fltkjpeg.lib")
+# pragma comment(lib,"fltkpng.lib")
+# pragma comment(lib,"fltkzlib.lib")
+#else // FO_GCC
+      // Linker options:.
+      //  Windows / Linux
+      //  -lfltk
+      //  -lfltk_forms
+      //  -lfltk_gl
+      //  -lfltk_images
+      //  -lfltk_jpeg
+      //  -lfltk_png
+      //  -lfltk_z
 #endif
 
 // DLL
@@ -94,12 +115,12 @@ const char* GetLastSocketError();
 
 #define STATIC_ASSERT( a )                { static int static_assert_array__[ ( a ) ? 1 : -1 ]; }
 
-#define PI_FLOAT                ( 3.14159265f )
-#define PIBY2_FLOAT             ( 1.5707963f )
-#define SQRT3T2_FLOAT           ( 3.4641016151f )
-#define SQRT3_FLOAT             ( 1.732050807568877f )
-#define BIAS_FLOAT              ( 0.02f )
-#define RAD2DEG                 ( 57.29577951f )
+#define PI_FLOAT              ( 3.14159265f )
+#define PIBY2_FLOAT           ( 1.5707963f )
+#define SQRT3T2_FLOAT         ( 3.4641016151f )
+#define SQRT3_FLOAT           ( 1.732050807568877f )
+#define BIAS_FLOAT            ( 0.02f )
+#define RAD2DEG               ( 57.29577951f )
 
 #define MAX( a, b )                       ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #define MIN( a, b )                       ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
@@ -143,7 +164,7 @@ template< class T >
 inline bool CompareContainers( const T& a, const T& b ) { return a.size() == b.size() && ( a.empty() || !memcmp( &a[ 0 ], &b[ 0 ], a.size() * sizeof( a[ 0 ] ) ) ); }
 
 // Hex offsets
-#define MAX_HEX_OFFSET          ( 50 ) // Must be not odd
+#define MAX_HEX_OFFSET        ( 50 )   // Must be not odd
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
@@ -152,7 +173,7 @@ bool CheckUserName( const char* str );
 bool CheckUserPass( const char* str );
 
 // Config file
-#define CLIENT_CONFIG_APP       "Game Options"
+#define CLIENT_CONFIG_APP     "Game Options"
 const char* GetConfigFileName();
 
 // Window name
@@ -174,6 +195,19 @@ struct ScoreType
 # define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
 # define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
 
+# include "FL/Fl.H"
+# include "FL/Fl_Window.H"
+# include "FL/x.H"
+
+class FOWindow: public Fl_Window
+{
+public:
+    FOWindow(): Fl_Window( 0, 0, "" ) {}
+    virtual ~FOWindow() {}
+    virtual int handle( int event );
+};
+extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / MainMapper.cpp
+
 # ifdef FO_D3D
 #  include <dxerr.h>
 #  include <d3dx9.h>
@@ -183,7 +217,6 @@ struct ScoreType
 #   pragma comment(lib,"d3dx9d.lib")
 #  endif
 #  pragma comment(lib,"d3d9.lib")
-#  pragma comment(lib,"dinput8.lib")
 #  pragma comment(lib,"dxguid.lib")
 #  pragma comment(lib,"dxerr.lib")
 #  pragma comment(lib,"d3dxof.lib")
@@ -191,90 +224,81 @@ struct ScoreType
 # else
 #  include <gl/GL.h>
 #  include <gl/GLU.h>
-#  include "GLUT/GL/glut.h"
 #  include "Assimp/aiTypes.h"
 # endif
 
-# define PI_VALUE               ( 3.141592654f )
+# define PI_VALUE             ( 3.141592654f )
 
 # ifdef FO_D3D
-#  define Device_               LPDIRECT3DDEVICE9
-#  define Texture_              LPDIRECT3DTEXTURE9
-#  define Surface_              LPDIRECT3DSURFACE9
-#  define EffectInstance_       D3DXEFFECTINSTANCE
-#  define Effect_               LPD3DXEFFECT
-#  define EffectDefaults_       LPD3DXEFFECTDEFAULT
-#  define EffectValue_          D3DXHANDLE
-#  define Material_             D3DMATERIAL9
-#  define Mesh_                 LPD3DXMESH
-#  define Matrix_               D3DXMATRIX
-#  define Buffer_               ID3DXBuffer
-#  define Vector3_              D3DXVECTOR3
-#  define Vector4_              D3DXVECTOR4
-#  define AnimSet_              ID3DXAnimationSet
-#  define AnimController_       ID3DXAnimationController
-#  define PresentParams_        D3DPRESENT_PARAMETERS
-#  define Caps_                 D3DCAPS9
-#  define VertexBuffer_         LPDIRECT3DVERTEXBUFFER9
-#  define IndexBuffer_          LPDIRECT3DINDEXBUFFER9
-#  define PixelShader_          IDirect3DPixelShader9
-#  define ConstantTable_        ID3DXConstantTable
-#  define SkinInfo_             LPD3DXSKININFO
-#  define Light_                D3DLIGHT9
-#  define ViewPort_             D3DVIEWPORT9
-#  define LockRect_             D3DLOCKED_RECT
+#  define Device_             LPDIRECT3DDEVICE9
+#  define Texture_            LPDIRECT3DTEXTURE9
+#  define Surface_            LPDIRECT3DSURFACE9
+#  define EffectInstance_     D3DXEFFECTINSTANCE
+#  define Effect_             LPD3DXEFFECT
+#  define EffectDefaults_     LPD3DXEFFECTDEFAULT
+#  define EffectValue_        D3DXHANDLE
+#  define Material_           D3DMATERIAL9
+#  define Mesh_               LPD3DXMESH
+#  define Matrix_             D3DXMATRIX
+#  define Buffer_             ID3DXBuffer
+#  define Vector3_            D3DXVECTOR3
+#  define Vector4_            D3DXVECTOR4
+#  define AnimSet_            ID3DXAnimationSet
+#  define AnimController_     ID3DXAnimationController
+#  define PresentParams_      D3DPRESENT_PARAMETERS
+#  define Caps_               D3DCAPS9
+#  define VertexBuffer_       LPDIRECT3DVERTEXBUFFER9
+#  define IndexBuffer_        LPDIRECT3DINDEXBUFFER9
+#  define PixelShader_        IDirect3DPixelShader9
+#  define ConstantTable_      ID3DXConstantTable
+#  define SkinInfo_           LPD3DXSKININFO
+#  define Light_              D3DLIGHT9
+#  define ViewPort_           D3DVIEWPORT9
+#  define LockRect_           D3DLOCKED_RECT
 # else
-#  define Device_               GLuint
-#  define Texture_              GLuint
-#  define Surface_              GLuint
-#  define EffectInstance_       GLuint
-#  define Effect_               GLuint
-#  define EffectDefaults_       GLuint
-#  define EffectValue_          GLuint
-#  define Material_             GLuint
-#  define Mesh_                 GLuint
-#  define Matrix_               aiMatrix4x4
-#  define Buffer_               GLuint
-#  define Vector3_              aiVector3D
-#  define Vector4_              aiQuaternion
-#  define AnimSet_              GLuint
-#  define AnimController_       AnimController
-#  define PresentParams_        GLuint
-#  define Caps_                 GLuint
-#  define VertexBuffer_         GLuint
-#  define IndexBuffer_          GLuint
-#  define PixelShader_          GLuint
-#  define ConstantTable_        GLuint
-#  define SkinInfo_             GLuint
-#  define Light_                GLuint
-#  define ViewPort_             GLuint
-#  define LockRect_             GLuint
+#  define Device_             GLuint
+#  define Texture_            GLuint
+#  define Surface_            GLuint
+#  define EffectInstance_     GLuint
+#  define Effect_             GLuint
+#  define EffectDefaults_     GLuint
+#  define EffectValue_        GLuint
+#  define Material_           GLuint
+#  define Mesh_               GLuint
+#  define Matrix_             aiMatrix4x4
+#  define Buffer_             GLuint
+#  define Vector3_            aiVector3D
+#  define Vector4_            aiQuaternion
+#  define AnimSet_            GLuint
+#  define AnimController_     AnimController
+#  define PresentParams_      GLuint
+#  define Caps_               GLuint
+#  define VertexBuffer_       GLuint
+#  define IndexBuffer_        GLuint
+#  define PixelShader_        GLuint
+#  define ConstantTable_      GLuint
+#  define SkinInfo_           GLuint
+#  define Light_              GLuint
+#  define ViewPort_           GLuint
+#  define LockRect_           GLuint
 # endif
 
-# define MODE_WIDTH             ( GameOpt.ScreenWidth )
-# define MODE_HEIGHT            ( GameOpt.ScreenHeight )
-# define WM_FLASH_WINDOW        ( WM_USER + 1 )     // Chat notification
-# define DI_BUF_SIZE            ( 64 )
-# define DI_ONDOWN( a, b )                if( ( didod[ i ].dwOfs == a ) && ( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONUP( a, b )                  if( ( didod[ i ].dwOfs == a ) && !( didod[ i ].dwData & 0x80 ) ) { b; }
-# define DI_ONMOUSE( a, b )               if( didod[ i ].dwOfs == a ) { b; }
+# define MODE_WIDTH           ( GameOpt.ScreenWidth )
+# define MODE_HEIGHT          ( GameOpt.ScreenHeight )
 
 # ifdef FONLINE_CLIENT
 #  include "ResourceClient.h"
-#  define CFG_DEF_INT_FILE      "default800x600.ini"
+#  define CFG_DEF_INT_FILE    "default800x600.ini"
 # else // FONLINE_MAPPER
 #  include "ResourceMapper.h"
 const uchar SELECT_ALPHA    = 100;
-#  define CFG_DEF_INT_FILE      "mapper_default.ini"
+#  define CFG_DEF_INT_FILE    "mapper_default.ini"
 # endif
 
-# define PATH_MAP_FLAGS         DIR_SLASH_SD "Data" DIR_SLASH_S "maps" DIR_SLASH_S ""
-# define PATH_TEXT_FILES        DIR_SLASH_SD "Data" DIR_SLASH_S "text" DIR_SLASH_S ""
-# define PATH_LOG_FILE          DIR_SLASH_SD
-# define PATH_SCREENS_FILE      DIR_SLASH_SD
-
-# define DIRECTINPUT_VERSION    0x0800
-# include <dinput.h>
+# define PATH_MAP_FLAGS       DIR_SLASH_SD "Data" DIR_SLASH_S "maps" DIR_SLASH_S ""
+# define PATH_TEXT_FILES      DIR_SLASH_SD "Data" DIR_SLASH_S "text" DIR_SLASH_S ""
+# define PATH_LOG_FILE        DIR_SLASH_SD
+# define PATH_SCREENS_FILE    DIR_SLASH_SD
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();
@@ -419,27 +443,6 @@ struct ServerScriptFunctions
               //  -levent_extras
               //  -levent_pthreads
 #  endif
-# endif
-
-// FLTK libs
-# if defined ( FO_MSVC )
-#  pragma comment(lib,"fltk.lib")
-#  pragma comment(lib,"fltkforms.lib")
-#  pragma comment(lib,"fltkgl.lib")
-#  pragma comment(lib,"fltkimages.lib")
-#  pragma comment(lib,"fltkjpeg.lib")
-#  pragma comment(lib,"fltkpng.lib")
-#  pragma comment(lib,"fltkzlib.lib")
-# else // FO_GCC
-       // Linker options:.
-       //  Windows / Linux
-       //  -lfltk
-       //  -lfltk_forms
-       //  -lfltk_gl
-       //  -lfltk_images
-       //  -lfltk_jpeg
-       //  -lfltk_png
-       //  -lfltk_z
 # endif
 
 #endif
@@ -649,8 +652,6 @@ struct GameOptions
     int         ScrollDelay;
     int         ScrollStep;
     bool        ScrollCheck;
-    int         MouseSpeed;
-    bool        GlobalSound;
     string      FoDataPath;
     int         FoDataPathRefCounter;
     int         Sleep;

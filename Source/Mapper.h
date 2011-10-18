@@ -35,26 +35,26 @@ typedef vector< CritData* > CritDataVec;
 class FOMapper
 {
 public:
-    static FOMapper*     Self;
-    int                  FPS;
-    HWND                 Wnd;
-    LPDIRECTINPUT8       DInput;
-    LPDIRECTINPUTDEVICE8 Keyboard;
-    LPDIRECTINPUTDEVICE8 Mouse;
-    HexManager           HexMngr;
-    IniParser            IfaceIni;
-    bool                 IsMapperStarted;
+    static FOMapper* Self;
+    int              FPS;
+    HexManager       HexMngr;
+    IniParser        IfaceIni;
+    bool             IsMapperStarted;
 
     FOMapper();
-    bool Init( HWND wnd );
+    bool Init();
     int  InitIface();
     bool IfaceLoadRect( INTRECT& comp, const char* name );
     void Finish();
-    bool InitDI();
-    void ParseKeyboard();
-    void ParseMouse();
     void MainLoop();
     void RefreshTiles( int tab );
+
+    IntVec KeyboardEvents;
+    Mutex  KeyboardEventsLocker;
+    IntVec MouseEvents;
+    Mutex  MouseEventsLocker;
+    void ParseKeyboard();
+    void ParseMouse();
 
     #define DRAW_CR_INFO_MAX    ( 3 )
     int DrawCrExtInfo;
