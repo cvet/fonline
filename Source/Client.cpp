@@ -1731,8 +1731,6 @@ void FOClient::ParseMouse()
         int event_button = events[ i + 1 ];
         int event_dy = -events[ i + 2 ];
 
-        WriteLog( "%d %d %d\n", event, event_button, event_dy );
-
         // Stop video
         if( IsVideoPlayed() )
         {
