@@ -143,7 +143,7 @@ bool FOMapper::Init()
     if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    Effect* font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
+    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
     if( font_effect )
     {
         SprMngr.SetFontEffect( FONT_FO, font_effect );
@@ -1578,7 +1578,7 @@ void FOMapper::RefreshTiles( int tab )
                 }
             }
             if( !format_aviable )
-                format_aviable = Loader3d::IsExtensionSupported( ext );
+                format_aviable = GraphicLoader::IsExtensionSupported( ext );
 
             if( format_aviable )
             {

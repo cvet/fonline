@@ -6,7 +6,7 @@
 #include "FileManager.h"
 #include "Text.h"
 #include "3dAnimation.h"
-#include "3dLoader.h"
+#include "GraphicLoader.h"
 
 // Font flags
 #define FT_NOBREAK                   ( 0x0001 )

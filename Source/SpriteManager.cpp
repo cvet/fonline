@@ -219,12 +219,12 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
 
     // Default effects
-    curDefaultEffect = Loader3d::LoadEffect( d3dDevice, "2D_Default.fx" );
+    curDefaultEffect = GraphicLoader::LoadEffect( d3dDevice, "2D_Default.fx" );
     sprDefaultEffect[ DEFAULT_EFFECT_GENERIC ] = curDefaultEffect;
     sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = curDefaultEffect;
     sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = curDefaultEffect;
-    sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = Loader3d::LoadEffect( d3dDevice, "Interface_Default.fx" );
-    sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = Loader3d::LoadEffect( d3dDevice, "Primitive_Default.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx" );
 
     // Clear scene
     #ifdef FO_D3D
@@ -536,7 +536,7 @@ bool SpriteManager::Restore()
     Animation3d::PreRestore();
     if( PreRestore )
         ( *PreRestore )( );
-    Loader3d::EffectsPreRestore();
+    GraphicLoader::EffectsPreRestore();
 
     // Reset device
     #ifdef FO_D3D
@@ -545,7 +545,7 @@ bool SpriteManager::Restore()
     #endif
 
     // Create resources
-    Loader3d::EffectsPostRestore();
+    GraphicLoader::EffectsPostRestore();
     if( !InitRenderStates() )
         return false;
     if( !InitBuffers() )
@@ -890,7 +890,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, int f
         result = LoadAnimationMos( fname, path_type );
     else if( Str::CompareCase( ext, "bam" ) )
         result = LoadAnimationBam( fname, path_type );
-    else if( Loader3d::IsExtensionSupported( ext ) )
+    else if( GraphicLoader::IsExtensionSupported( ext ) )
         result = LoadAnimation3d( fname, path_type, dir );
     else
         result = LoadAnimationOther( fname, path_type );
@@ -1301,7 +1301,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type, 
     {
         char effect_name[ MAX_FOPATH ];
         if( fofrm.GetStr( "effect", "", effect_name ) )
-            effect = Loader3d::LoadEffect( d3dDevice, effect_name );
+            effect = GraphicLoader::LoadEffect( d3dDevice, effect_name );
     }
 
     char dir_str[ 16 ];
@@ -3031,14 +3031,14 @@ bool SpriteManager::Flush()
                 D3D_HR( dxeffect->ApplyParameterBlock( effect->EffectParams ) );
             D3D_HR( dxeffect->SetTechnique( effect->TechniqueSimple ) );
             if( effect->IsNeedProcess )
-                Loader3d::EffectProcessVariables( effect, -1 );
+                GraphicLoader::EffectProcessVariables( effect, -1 );
 
             UINT passes;
             D3D_HR( dxeffect->Begin( &passes, effect->EffectFlags ) );
             for( UINT pass = 0; pass < passes; pass++ )
             {
                 if( effect->IsNeedProcess )
-                    Loader3d::EffectProcessVariables( effect, pass );
+                    GraphicLoader::EffectProcessVariables( effect, pass );
 
                 D3D_HR( dxeffect->BeginPass( pass ) );
                 D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, 4 * dip.SpritesCount, rpos, 2 * dip.SpritesCount ) );
@@ -3075,11 +3075,11 @@ bool SpriteManager::Flush()
             GLsizei count = 6 * dip.SpritesCount;
 
             if( effect->IsNeedProcess )
-                Loader3d::EffectProcessVariables( effect, -1 );
+                GraphicLoader::EffectProcessVariables( effect, -1 );
             for( uint pass = 0; pass < effect->Passes; pass++ )
             {
                 if( effect->IsNeedProcess )
-                    Loader3d::EffectProcessVariables( effect, pass );
+                    GraphicLoader::EffectProcessVariables( effect, pass );
 
                 GL( glDrawRangeElements( GL_TRIANGLES, min_index, max_index, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
             }
@@ -4138,14 +4138,14 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
             D3D_HR( dxeffect->ApplyParameterBlock( effect->EffectParams ) );
         D3D_HR( dxeffect->SetTechnique( effect->TechniqueSimple ) );
         if( effect->IsNeedProcess )
-            Loader3d::EffectProcessVariables( effect, -1 );
+            GraphicLoader::EffectProcessVariables( effect, -1 );
 
         UINT passes;
         D3D_HR( dxeffect->Begin( &passes, effect->EffectFlags ) );
         for( UINT pass = 0; pass < passes; pass++ )
         {
             if( effect->IsNeedProcess )
-                Loader3d::EffectProcessVariables( effect, pass );
+                GraphicLoader::EffectProcessVariables( effect, pass );
 
             D3D_HR( dxeffect->BeginPass( pass ) );
             D3D_HR( d3dDevice->DrawPrimitive( (D3DPRIMITIVETYPE) prim, 0, count ) );

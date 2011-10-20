@@ -3,7 +3,7 @@
 
 #include <Timer.h>
 #include <Defines.h>
-#include <3dMeshStructures.h>
+#include <GraphicStructures.h>
 #include <FlexRect.h>
 #include <common.h>
 

@@ -1,16 +1,15 @@
-#ifndef __3D_LOADER__
-#define __3D_LOADER__
+#ifndef __GRAPHIC_LOADER__
+#define __GRAPHIC_LOADER__
 
 #include "Common.h"
 #include "Defines.h"
 #include "FileManager.h"
-#include "3dMeshHierarchy.h"
-#include "3dMeshStructures.h"
+#include "GraphicStructures.h"
 
 struct aiNode;
 struct aiScene;
 
-class Loader3d
+class GraphicLoader
 {
     // Models
 public:
@@ -26,7 +25,6 @@ private:
     static AnimSetVec loadedAnimations;
 
     static Frame* FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent );
-    static Frame* LoadX( Device_ device, FileManager& fm, const char* fname );
 
     // Textures
 public:
@@ -48,4 +46,4 @@ private:
     static EffectVec loadedEffects;
 };
 
-#endif // __3D_LOADER__
+#endif // __GRAPHIC_LOADER__

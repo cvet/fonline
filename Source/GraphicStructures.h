@@ -1,5 +1,5 @@
-#ifndef __MESH_STRUCTURES__
-#define __MESH_STRUCTURES__
+#ifndef __GRAPHIC_STRUCTURES__
+#define __GRAPHIC_STRUCTURES__
 
 #include "Defines.h"
 
@@ -128,12 +128,9 @@ struct AnimController
 
 struct MeshContainer
 {
-    char* Name;
-    struct
-    {
-        int   Type; // Exclude
-        Mesh_ Mesh;
-    } MeshData;
+    // Base data
+    char*           Name;
+    Mesh_           Mesh;
     Material_*      Materials;
     EffectInstance* Effects;
     uint            NumMaterials;
@@ -175,4 +172,4 @@ typedef vector< Texture* >       TextureVec;
 typedef vector< Effect* >        EffectVec;
 typedef vector< AnimSet_* >      AnimSetVec;
 
-#endif // __MESH_STRUCTURES__
+#endif // __GRAPHIC_STRUCTURES__

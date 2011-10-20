@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "3dAnimation.h"
-#include "3dLoader.h"
+#include "GraphicLoader.h"
 #include "Common.h"
 #include "Text.h"
 #include "ConstantsManager.h"
@@ -443,7 +443,7 @@ bool Animation3d::IsIntersectFrame( Frame* frame, const Vector3_& ray_origin, co
     MeshContainer* mesh_container = frame->Meshes;
     while( mesh_container )
     {
-        Mesh_ mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
+        Mesh_ mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->Mesh );
 
         // Use inverse of matrix
         Matrix_ mat_inverse;
@@ -519,7 +519,7 @@ bool Animation3d::SetupBordersFrame( Frame* frame, FLTRECT& borders )
     MeshContainer* mesh_container = frame->Meshes;
     while( mesh_container )
     {
-        Mesh_ mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
+        Mesh_ mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->Mesh );
         uint  v_size = mesh->GetNumBytesPerVertex();
         uint  count = mesh->GetNumVertices();
         if( bordersResult.size() < count )
@@ -1025,7 +1025,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
 
             // We need to modify the vertex positions based on the new bone matrices. This is achieved
             // by locking the vertex buffers and then calling UpdateSkinnedMesh. UpdateSkinnedMesh takes the
-            // original vertex data (in mesh->MeshData.mesh), applies the matrices and writes the new vertices
+            // original vertex data (in mesh->Mesh), applies the matrices and writes the new vertices
             // out to skin mesh (mesh->exSkinMesh).
 
             // UpdateSkinnedMesh uses software skinning which is the slowest way of carrying out skinning
@@ -1033,7 +1033,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
             // Other methods exist that use hardware to do this skinning - see the notes and the
             // DirectX SDK skinned mesh sample for more details
             void* src = 0;
-            D3D_HR( mesh_container->MeshData.Mesh->LockVertexBuffer( D3DLOCK_READONLY, (void**) &src ) );
+            D3D_HR( mesh_container->Mesh->LockVertexBuffer( D3DLOCK_READONLY, (void**) &src ) );
             void* dest = 0;
             D3D_HR( mesh_container->SkinMesh->LockVertexBuffer( 0, (void**) &dest ) );
 
@@ -1042,7 +1042,7 @@ bool Animation3d::FrameMove( double elapsed, int x, int y, float scale, bool sof
 
             // Unlock the meshes vertex buffers
             D3D_HR( mesh_container->SkinMesh->UnlockVertexBuffer() );
-            D3D_HR( mesh_container->MeshData.Mesh->UnlockVertexBuffer() );
+            D3D_HR( mesh_container->Mesh->UnlockVertexBuffer() );
         }
     }
 
@@ -1085,7 +1085,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
     #ifdef FO_D3D
     // Draw all mesh containers in this frame
     MeshContainer* mesh_container = frame->Meshes;
-    while( mesh_container && mesh_container->MeshData.Mesh )
+    while( mesh_container && mesh_container->Mesh )
     {
         // Get mesh options for this animation instance
         MeshOptions* mopt = GetMeshOptions( mesh_container );
@@ -1141,7 +1141,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
         else
         {
             // Select the mesh to draw, if there is skin then use the skinned mesh else the normal one
-            Mesh_ draw_mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
+            Mesh_ draw_mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->Mesh );
 
             // Loop through all the materials in the mesh rendering each subset
             for( uint i = 0; i < mesh_container->NumMaterials; i++ )
@@ -1210,14 +1210,14 @@ bool Animation3d::DrawMeshEffect( Mesh_ mesh, uint subset, Effect* effect_ex, Te
     LPD3DXEFFECT effect = effect_ex->DXInstance;
     D3D_HR( effect->SetTechnique( technique ) );
     if( effect_ex->IsNeedProcess )
-        Loader3d::EffectProcessVariables( effect_ex, -1, animPosProc, animPosTime, textures );
+        GraphicLoader::EffectProcessVariables( effect_ex, -1, animPosProc, animPosTime, textures );
 
     UINT passes;
     D3D_HR( effect->Begin( &passes, effect_ex->EffectFlags ) );
     for( UINT pass = 0; pass < passes; pass++ )
     {
         if( effect_ex->IsNeedProcess )
-            Loader3d::EffectProcessVariables( effect_ex, pass );
+            GraphicLoader::EffectProcessVariables( effect_ex, pass );
 
         D3D_HR( effect->BeginPass( pass ) );
         D3D_HR( mesh->DrawSubset( subset ) );
@@ -1268,7 +1268,7 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
     // Create skinning effect
     if( SkinningMethod == SKINNING_HLSL_SHADER )
     {
-        EffectMain = Loader3d::LoadEffect( D3DDevice, "3D_Default.fx" );
+        EffectMain = GraphicLoader::LoadEffect( D3DDevice, "3D_Default.fx" );
         if( !EffectMain )
         {
             SkinningMethod = SKINNING_SOFTWARE;
@@ -1337,7 +1337,7 @@ void Animation3d::Finish()
     SAFEDELA( BoneMatrices );
     MaxBones = 0;
 
-    Loader3d::FreeTexture( NULL );
+    GraphicLoader::FreeTexture( NULL );
 }
 
 void Animation3d::BeginScene()
@@ -2103,7 +2103,7 @@ bool Animation3dEntity::Load( const char* name )
             else
                 FileManager::MakeFilePath( anim_fname, path, anim_path );
 
-            AnimSet_* set = Loader3d::LoadAnimation( D3DDevice, anim_path, anim_name );
+            AnimSet_* set = GraphicLoader::LoadAnimation( D3DDevice, anim_path, anim_name );
             if( set )
             {
                 animations.push_back( set );
@@ -2361,7 +2361,7 @@ Animation3dXFile::Animation3dXFile(): frameRoot( NULL ),
 
 Animation3dXFile::~Animation3dXFile()
 {
-    Loader3d::Free( frameRoot );
+    GraphicLoader::Free( frameRoot );
     frameRoot = NULL;
 }
 
@@ -2388,7 +2388,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname, bool calc_tange
     if( !xfile )
     {
         // Load
-        Frame* frame_root = Loader3d::LoadModel( D3DDevice, xname, calc_tangent );
+        Frame* frame_root = GraphicLoader::LoadModel( D3DDevice, xname, calc_tangent );
         if( !frame_root )
         {
             WriteLogF( _FUNC_, " - Unable to load 3d file<%s>.\n", xname );
@@ -2435,24 +2435,24 @@ bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, Frame* frame, Fra
     // If this frame has a mesh
     while( mesh_container )
     {
-        if( mesh_container->MeshData.Mesh )
+        if( mesh_container->Mesh )
             xfile->allMeshes.push_back( mesh_container );
 
         #ifdef FO_D3D
         // Skinned data
-        if( mesh_container->MeshData.Mesh && mesh_container->SkinInfo )
+        if( mesh_container->Mesh && mesh_container->SkinInfo )
         {
             if( SkinningMethod == SKINNING_HLSL_SHADER )
             {
                 // Get palette size
                 mesh_container->NumPaletteEntries = mesh_container->SkinInfo->GetNumBones();
 
-                uint* new_adjency = new (nothrow) uint[ mesh_container->MeshData.Mesh->GetNumFaces() * 3 ];
+                uint* new_adjency = new (nothrow) uint[ mesh_container->Mesh->GetNumFaces() * 3 ];
                 if( !new_adjency )
                     return false;
 
                 D3D_HR( mesh_container->SkinInfo->ConvertToIndexedBlendedMesh(
-                            mesh_container->MeshData.Mesh,
+                            mesh_container->Mesh,
                             D3DXMESHOPT_VERTEXCACHE | D3DXMESH_MANAGED,
                             mesh_container->NumPaletteEntries,
                             (DWORD*) mesh_container->Adjacency, (DWORD*) new_adjency,
@@ -2510,8 +2510,8 @@ bool Animation3dXFile::SetupSkinning( Animation3dXFile* xfile, Frame* frame, Fra
 
             // Create a copy of the mesh to skin into later
             D3DVERTEXELEMENT9 declaration[ MAX_FVF_DECL_SIZE ];
-            D3D_HR( mesh_container->MeshData.Mesh->GetDeclaration( declaration ) );
-            D3D_HR( mesh_container->MeshData.Mesh->CloneMesh( D3DXMESH_MANAGED, declaration, D3DDevice, &mesh_container->SkinMesh ) );
+            D3D_HR( mesh_container->Mesh->GetDeclaration( declaration ) );
+            D3D_HR( mesh_container->Mesh->CloneMesh( D3DXMESH_MANAGED, declaration, D3DDevice, &mesh_container->SkinMesh ) );
 
             // Allocate a buffer for bone matrices, but only if another mesh has not allocated one of the same size or larger
             if( MaxBones < mesh_container->SkinInfo->GetNumBones() )
@@ -2544,9 +2544,9 @@ bool Animation3dXFile::CalculateNormalTangent( Frame* frame )
     MeshContainer* mesh_container = (MeshContainer*) frame->Meshes;
     while( mesh_container )
     {
-        if( mesh_container->MeshData.Mesh && ( !mesh_container->SkinInfo || mesh_container->SkinMeshBlended ) )
+        if( mesh_container->Mesh && ( !mesh_container->SkinInfo || mesh_container->SkinMeshBlended ) )
         {
-            Mesh_&              mesh = ( mesh_container->SkinMeshBlended ? mesh_container->SkinMeshBlended : mesh_container->MeshData.Mesh );
+            Mesh_&              mesh = ( mesh_container->SkinMeshBlended ? mesh_container->SkinMeshBlended : mesh_container->Mesh );
 
             D3DVERTEXELEMENT9   declaration[ MAX_FVF_DECL_SIZE ];
             LPD3DVERTEXELEMENT9 declaration_ptr = declaration;
@@ -2614,7 +2614,7 @@ void Animation3dXFile::SetupFacesCount( Frame* frame, uint& count )
     MeshContainer* mesh_container = (MeshContainer*) frame->Meshes;
     while( mesh_container )
     {
-        Mesh_ mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->MeshData.Mesh );
+        Mesh_ mesh = ( mesh_container->SkinInfo ? mesh_container->SkinMesh : mesh_container->Mesh );
         count += mesh->GetNumFaces();
         mesh_container = (MeshContainer*) mesh_container->NextMeshContainer;
     }
@@ -2641,7 +2641,7 @@ void Animation3dXFile::SetupAnimationOutput( Frame* frame, AnimController_* anim
 
 Texture* Animation3dXFile::GetTexture( const char* tex_name )
 {
-    Texture* texture = Loader3d::LoadTexture( D3DDevice, tex_name, fileName.c_str() );
+    Texture* texture = GraphicLoader::LoadTexture( D3DDevice, tex_name, fileName.c_str() );
     if( !texture )
         WriteLogF( _FUNC_, " - Can't load texture<%s>.\n", tex_name ? tex_name : "nullptr" );
     return texture;
@@ -2649,7 +2649,7 @@ Texture* Animation3dXFile::GetTexture( const char* tex_name )
 
 Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
-    Effect* effect = Loader3d::LoadEffect( D3DDevice, effect_inst, fileName.c_str() );
+    Effect* effect = GraphicLoader::LoadEffect( D3DDevice, effect_inst, fileName.c_str() );
     #ifdef FO_D3D
     if( !effect )
         WriteLogF( _FUNC_, " - Can't load effect<%s>.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );

@@ -1,5 +1,5 @@
 #include "StdAfx.h"
-#include "3dLoader.h"
+#include "GraphicLoader.h"
 #include "Text.h"
 #include "Timer.h"
 
@@ -13,15 +13,12 @@
 /* Models                                                               */
 /************************************************************************/
 
-#ifdef FO_D3D
-static MeshHierarchy memAllocator;
-#endif
-PCharVec             Loader3d::processedFiles;
-FrameVec             Loader3d::loadedModels;
-PCharVec             Loader3d::loadedAnimationsFNames;
-AnimSetVec           Loader3d::loadedAnimations;
+PCharVec   GraphicLoader::processedFiles;
+FrameVec   GraphicLoader::loadedModels;
+PCharVec   GraphicLoader::loadedAnimationsFNames;
+AnimSetVec GraphicLoader::loadedAnimations;
 
-Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent )
+Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_tangent )
 {
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
@@ -40,23 +37,6 @@ Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent
     {
         WriteLogF( _FUNC_, " - 3d file not found, name<%s>.\n", fname );
         return NULL;
-    }
-
-    // Standart direct x loader
-    const char* ext = FileManager::GetExtension( fname );
-    if( ext && Str::CompareCase( ext, "x" ) )
-    {
-        Frame* frame_root = LoadX( device, fm, fname );
-        if( frame_root )
-        {
-            frame_root->Name = Str::Duplicate( fname );
-            loadedModels.push_back( frame_root );
-        }
-        else
-        {
-            WriteLogF( _FUNC_, " - Can't load 3d X file, name<%s>.\n", fname );
-        }
-        return frame_root;
     }
 
     // Assimp loader
@@ -203,12 +183,18 @@ Matrix_ ConvertMatrix( const aiMatrix4x4& mat )
     return m;
 }
 
-Frame* Loader3d::FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent )
+Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent )
 {
     #ifdef FO_D3D
     // Create frame
-    Frame* frame;
-    D3D_HR( memAllocator.CreateFrame( node->mName.data, (LPD3DXFRAME*) &frame ) );
+    Frame* frame = new Frame();
+    memzero( frame, sizeof( Frame ) );
+    frame->Name = Str::Duplicate( node->mName.data );
+    frame->Meshes = NULL;
+    frame->Sibling = NULL;
+    frame->FirstChild = NULL;
+    D3DXMatrixIdentity( &frame->TransformationMatrix );
+    D3DXMatrixIdentity( &frame->CombinedTransformationMatrix );
 
     frame->TransformationMatrix = ConvertMatrix( node->mTransformation );
 
@@ -436,9 +422,78 @@ Frame* Loader3d::FillNode( Device_ device, const aiNode* node, const aiScene* sc
         D3D_HR( dxmesh.pMesh->UnlockIndexBuffer() );
         D3D_HR( dxmesh.pMesh->UnlockAttributeBuffer() );
 
-        // Create container
-        D3DXMESHCONTAINER* mesh_container;
-        D3D_HR( memAllocator.CreateMeshContainer( node->mName.data, &dxmesh, &materials[ 0 ], NULL, (uint) materials.size(), NULL, skin_info, &mesh_container ) );
+        MeshContainer* mesh_container = new MeshContainer();
+        memzero( mesh_container, sizeof( MeshContainer ) );
+        mesh_container->Name = Str::Duplicate( node->mName.data );
+
+        // Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
+        uint dwFaces = dxmesh.pMesh->GetNumFaces();
+        mesh_container->Adjacency = new uint[ dwFaces * 3 ];
+        dxmesh.pMesh->GenerateAdjacency( 0.0000125f, (DWORD*) mesh_container->Adjacency );
+
+        // Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
+        mesh_container->Mesh = dxmesh.pMesh;
+        mesh_container->Mesh->AddRef();
+
+        // Create material and texture arrays. Note that I always want to have at least one
+        mesh_container->NumMaterials = max( materials.size(), 1 );
+        mesh_container->Materials = new Material_[ mesh_container->NumMaterials ];
+        mesh_container->TextureNames = new char*[ mesh_container->NumMaterials ];
+        mesh_container->Effects = new EffectInstance[ mesh_container->NumMaterials ];
+
+        if( materials.size() > 0 )
+        {
+            // Load all the textures and copy the materials over
+            for( uint i = 0; i < materials.size(); i++ )
+            {
+                if( materials[ i ].pTextureFilename )
+                    mesh_container->TextureNames[ i ] = Str::Duplicate( materials[ i ].pTextureFilename );
+                else
+                    mesh_container->TextureNames[ i ] = NULL;
+                mesh_container->Materials[ i ] = materials[ i ].MatD3D;
+            }
+        }
+        else
+        {
+            // Make a default material in the case where the mesh did not provide one
+            memzero( &mesh_container->Materials[ 0 ], sizeof( Material_ ) );
+            mesh_container->Materials[ 0 ].Diffuse.a = 1.0f;
+            mesh_container->Materials[ 0 ].Diffuse.r = 0.5f;
+            mesh_container->Materials[ 0 ].Diffuse.g = 0.5f;
+            mesh_container->Materials[ 0 ].Diffuse.b = 0.5f;
+            mesh_container->Materials[ 0 ].Specular = mesh_container->Materials[ 0 ].Diffuse;
+            mesh_container->TextureNames[ 0 ] = NULL;
+            memzero( &mesh_container->Effects[ 0 ], sizeof( EffectInstance ) );
+        }
+
+        // If there is skin data associated with the mesh copy it over
+        if( skin_info )
+        {
+            // Save off the SkinInfo
+            mesh_container->SkinInfo = skin_info;
+            skin_info->AddRef();
+
+            // Need an array of offset matrices to move the vertices from the figure space to the bone's space
+            UINT numBones = skin_info->GetNumBones();
+            mesh_container->BoneOffsets = new Matrix_[ numBones ];
+
+            // Create the arrays for the bones and the frame matrices
+            mesh_container->FrameCombinedMatrixPointer = new Matrix_*[ numBones ];
+            memzero( mesh_container->FrameCombinedMatrixPointer, sizeof( Matrix_* ) * numBones );
+
+            // get each of the bone offset matrices so that we don't need to get them later
+            for( UINT i = 0; i < numBones; i++ )
+                mesh_container->BoneOffsets[ i ] = *( mesh_container->SkinInfo->GetBoneOffsetMatrix( i ) );
+        }
+        else
+        {
+            // No skin info so NULL all the pointers
+            mesh_container->SkinInfo = NULL;
+            mesh_container->BoneOffsets = NULL;
+            mesh_container->SkinMesh = NULL;
+            mesh_container->FrameCombinedMatrixPointer = NULL;
+        }
+
         dxmesh.pMesh->Release();
         if( skin_info )
             skin_info->Release();
@@ -465,7 +520,7 @@ Frame* Loader3d::FillNode( Device_ device, const aiNode* node, const aiScene* sc
     #endif
 }
 
-AnimSet_* Loader3d::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
+AnimSet_* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
     #ifdef FO_D3D
@@ -489,47 +544,65 @@ AnimSet_* Loader3d::LoadAnimation( Device_ device, const char* anim_fname, const
     return NULL;
 }
 
-void Loader3d::Free( Frame* frame )
+void GraphicLoader::Free( Frame* frame )
 {
     // Free frame
-    #ifdef FO_D3D
     if( frame )
-        D3DXFrameDestroy( (LPD3DXFRAME) frame, &memAllocator );
-    #endif
-}
-
-Frame* Loader3d::LoadX( Device_ device, FileManager& fm, const char* fname )
-{
-    // Load model
-    AnimController_* anim = NULL;
-    Frame*           frame_root = NULL;
-    #ifdef FO_D3D
-    HRESULT          hr = D3DXLoadMeshHierarchyFromXInMemory( fm.GetBuf(), fm.GetFsize(), D3DXMESH_MANAGED, device, &memAllocator, NULL,
-                                                              (LPD3DXFRAME*) &frame_root, &anim );
-    if( hr != D3D_OK )
     {
-        WriteLogF( _FUNC_, " - Can't load X file hierarchy, error<%s>.\n", DXGetErrorString( hr ) );
-        return NULL;
-    }
-
-    // If animation aviable than store it
-    if( anim )
-    {
-        for( uint i = 0, j = anim->GetNumAnimationSets(); i < j; i++ )
+        SAFEDELA( frame->Name );
+        MeshContainer* mesh_container = frame->Meshes;
+        while( mesh_container )
         {
-            AnimSet_* set;
-            anim->GetAnimationSet( i, &set );          // AddRef
-            loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
-            loadedAnimations.push_back( set );
+            // Name
+            SAFEDELA( mesh_container->Name );
+            // Materials array
+            SAFEDELA( mesh_container->Materials );
+            // Release the textures before deleting the array
+            if( mesh_container->TextureNames )
+            {
+                for( uint i = 0; i < mesh_container->NumMaterials; i++ )
+                    SAFEDELA( mesh_container->TextureNames[ i ] );
+            }
+            SAFEDELA( mesh_container->TextureNames );
+            // Delete effect
+            if( mesh_container->Effects )
+            {
+                for( uint i = 0; i < mesh_container->NumMaterials; i++ )
+                {
+                    for( uint j = 0; j < mesh_container->Effects[ i ].DefaultsCount; j++ )
+                        SAFEDELA( mesh_container->Effects[ i ].Defaults[ j ].Data );
+                    SAFEDELA( mesh_container->Effects[ i ].Defaults );
+                }
+            }
+            SAFEDEL( mesh_container->Effects );
+            // Adjacency data
+            SAFEDELA( mesh_container->Adjacency );
+            // Bone parts
+            SAFEDELA( mesh_container->BoneOffsets );
+            // Frame matrices
+            SAFEDELA( mesh_container->FrameCombinedMatrixPointer );
+            // Release skin mesh
+            SAFEREL( mesh_container->SkinMesh );
+            // Release the main mesh
+            SAFEREL( mesh_container->Mesh );
+            // Release skin information
+            SAFEREL( mesh_container->SkinInfo );
+            // Release blend mesh
+            SAFEREL( mesh_container->SkinMeshBlended );
+            // Finally delete the mesh container itself
+            MeshContainer* next_container = mesh_container->NextMeshContainer;
+            delete mesh_container;
+            mesh_container = next_container;
         }
-        anim->Release();
+        if( frame->Sibling )
+            Free( frame->Sibling );
+        if( frame->FirstChild )
+            Free( frame->FirstChild );
+        delete frame;
     }
-    #endif
-
-    return frame_root;
 }
 
-bool Loader3d::IsExtensionSupported( const char* ext )
+bool GraphicLoader::IsExtensionSupported( const char* ext )
 {
     static const char* arr[] =
     {
@@ -547,9 +620,9 @@ bool Loader3d::IsExtensionSupported( const char* ext )
 /************************************************************************/
 /* Textures                                                             */
 /************************************************************************/
-TextureVec Loader3d::loadedTextures;
+TextureVec GraphicLoader::loadedTextures;
 
-Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const char* model_path )
+Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, const char* model_path )
 {
     if( !texture_name || !texture_name[ 0 ] )
         return NULL;
@@ -586,7 +659,7 @@ Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const 
     return loadedTextures.back();
 }
 
-void Loader3d::FreeTexture( Texture* texture )
+void GraphicLoader::FreeTexture( Texture* texture )
 {
     #ifdef FO_D3D
     if( texture )
@@ -647,9 +720,9 @@ public:
 } includeParser;
 #endif
 
-EffectVec Loader3d::loadedEffects;
+EffectVec GraphicLoader::loadedEffects;
 
-Effect* Loader3d::LoadEffect( Device_ device, const char* effect_name )
+Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name )
 {
     EffectInstance effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
@@ -657,7 +730,7 @@ Effect* Loader3d::LoadEffect( Device_ device, const char* effect_name )
     return LoadEffect( device, &effect_inst, NULL );
 }
 
-Effect* Loader3d::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path )
+Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path )
 {
     if( !effect_inst || !effect_inst->EffectFilename || !effect_inst->EffectFilename[ 0 ] )
         return NULL;
@@ -997,7 +1070,7 @@ Effect* Loader3d::LoadEffect( Device_ device, EffectInstance* effect_inst, const
     #endif
 }
 
-void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
+void GraphicLoader::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
 {
     #ifdef FO_D3D
     // Process effect
@@ -1088,7 +1161,7 @@ void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_
     #endif
 }
 
-bool Loader3d::EffectsPreRestore()
+bool GraphicLoader::EffectsPreRestore()
 {
     #ifdef FO_D3D
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
@@ -1100,7 +1173,7 @@ bool Loader3d::EffectsPreRestore()
     return true;
 }
 
-bool Loader3d::EffectsPostRestore()
+bool GraphicLoader::EffectsPostRestore()
 {
     #ifdef FO_D3D
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
