@@ -12,7 +12,7 @@ public:
 
     // Callback to create a D3DXMESHCONTAINER extended object and initialize it
     STDMETHOD( CreateMeshContainer ) ( LPCSTR Name, CONST D3DXMESHDATA * meshData,
-                                       CONST D3DXMATERIAL * materials, CONST EffectInstance_ * effectInstances,
+                                       CONST D3DXMATERIAL * materials, CONST D3DXEFFECTINSTANCE * effectInstances,
                                        DWORD numMaterials, CONST DWORD * adjacency, SkinInfo_ skinInfo,
                                        LPD3DXMESHCONTAINER * retNewMeshContainer );
 

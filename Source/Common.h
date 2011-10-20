@@ -192,6 +192,7 @@ struct ScoreType
 /************************************************************************/
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
+# define PI_VALUE             ( 3.141592654f )
 # define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
 # define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
 
@@ -222,20 +223,25 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  pragma comment(lib,"d3dxof.lib")
 #  define D3D_HR( expr )                  { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
 # else
-#  include <gl/GL.h>
-#  include <gl/GLU.h>
+#  include "GL/GLee.h"
+#  include "GL/GLU.h"
+#  ifdef FO_WINDOWS
+#   pragma comment( lib, "GLee.lib" )
+#   pragma comment( lib, "opengl32.lib" )
+#   pragma comment( lib, "glu32.lib" )
+#  endif
+#  define GL( expr )                      { expr; GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } }
 #  include "Assimp/aiTypes.h"
 # endif
 
-# define PI_VALUE             ( 3.141592654f )
+# define IL_STATIC_LIB
+# include "IL/il.h"
+# pragma comment( lib, "IL.lib" )
+# pragma comment( lib, "jpeg.lib" )
 
 # ifdef FO_D3D
 #  define Device_             LPDIRECT3DDEVICE9
-#  define Texture_            LPDIRECT3DTEXTURE9
 #  define Surface_            LPDIRECT3DSURFACE9
-#  define EffectInstance_     D3DXEFFECTINSTANCE
-#  define Effect_             LPD3DXEFFECT
-#  define EffectDefaults_     LPD3DXEFFECTDEFAULT
 #  define EffectValue_        D3DXHANDLE
 #  define Material_           D3DMATERIAL9
 #  define Mesh_               LPD3DXMESH
@@ -257,11 +263,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define LockRect_           D3DLOCKED_RECT
 # else
 #  define Device_             GLuint
-#  define Texture_            GLuint
 #  define Surface_            GLuint
-#  define EffectInstance_     GLuint
-#  define Effect_             GLuint
-#  define EffectDefaults_     GLuint
 #  define EffectValue_        GLuint
 #  define Material_           GLuint
 #  define Mesh_               GLuint

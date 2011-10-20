@@ -47,7 +47,7 @@ bool FOMapper::Init()
             Sprites& tree = Self->HexMngr.GetDrawTree();
             count = tree.Size();
             if( !count ) return NULL;
-            return *tree.Begin();
+            return &( *tree.Begin() );
         }
     };
     GameOpt.GetDrawingSprites = &GetDrawingSprites_::GetDrawingSprites;
@@ -124,23 +124,23 @@ bool FOMapper::Init()
         return false;
 
     // Fonts
-    if( !SprMngr.LoadFontOld( FONT_FO, "OldDefault", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault" ) )
         return false;
-    if( !SprMngr.LoadFontOld( FONT_NUM, "Numbers", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers" ) )
         return false;
-    if( !SprMngr.LoadFontOld( FONT_BIG_NUM, "BigNumbers", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers" ) )
         return false;
-    if( !SprMngr.LoadFontOld( FONT_SAND_NUM, "SandNumbers", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers" ) )
         return false;
-    if( !SprMngr.LoadFontAAF( FONT_SPECIAL, "Special", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_SPECIAL, "Special" ) )
         return false;
-    if( !SprMngr.LoadFontAAF( FONT_DEFAULT, "Default", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default" ) )
         return false;
-    if( !SprMngr.LoadFontAAF( FONT_THIN, "Thin", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_THIN, "Thin" ) )
         return false;
-    if( !SprMngr.LoadFontAAF( FONT_FAT, "Fat", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_FAT, "Fat" ) )
         return false;
-    if( !SprMngr.LoadFontAAF( FONT_BIG, "Big", 1 ) )
+    if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
     Effect* font_effect = Loader3d::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
@@ -166,7 +166,7 @@ bool FOMapper::Init()
     // Resource manager
     ResMngr.Refresh();
 
-    if( SprMngr.BeginScene( D3DCOLOR_XRGB( 100, 100, 100 ) ) )
+    if( SprMngr.BeginScene( COLOR_XRGB( 100, 100, 100 ) ) )
         SprMngr.EndScene();
 
     int res = InitIface();
@@ -1426,7 +1426,7 @@ void FOMapper::MainLoop()
     }
 
     // Render
-    if( !SprMngr.BeginScene( D3DCOLOR_XRGB( 100, 100, 100 ) ) )
+    if( !SprMngr.BeginScene( COLOR_XRGB( 100, 100, 100 ) ) )
     {
         Sleep( 100 );
         return;
@@ -6625,26 +6625,26 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
     if( !SpritesCanDraw )
         return;
 
-    D3DPRIMITIVETYPE prim;
+    int prim;
     switch( primitive_type )
     {
     case 0:
-        prim = D3DPT_POINTLIST;
+        prim = PRIMITIVE_POINTLIST;
         break;
     case 1:
-        prim = D3DPT_LINELIST;
+        prim = PRIMITIVE_LINELIST;
         break;
     case 2:
-        prim = D3DPT_LINESTRIP;
+        prim = PRIMITIVE_LINESTRIP;
         break;
     case 3:
-        prim = D3DPT_TRIANGLELIST;
+        prim = PRIMITIVE_TRIANGLELIST;
         break;
     case 4:
-        prim = D3DPT_TRIANGLESTRIP;
+        prim = PRIMITIVE_TRIANGLESTRIP;
         break;
     case 5:
-        prim = D3DPT_TRIANGLEFAN;
+        prim = PRIMITIVE_TRIANGLEFAN;
         break;
     default:
         return;
@@ -6798,7 +6798,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
             for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
                 DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 
-            anim->SetRotation( rx * D3DX_PI / 180.0f, ry * D3DX_PI / 180.0f, rz * D3DX_PI / 180.0f );
+            anim->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
             anim->SetScale( sx, sy, sz );
             anim->SetSpeed( speed );
             anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );

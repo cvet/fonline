@@ -26,11 +26,11 @@ struct FlexRect
         R = 0;
         B = 0;
     }
-    bool IsZero() { return !L && !T && !R && !B; }
-    Ty   W()      { return R - L + 1; }
-    Ty   H()      { return B - T + 1; }
-    Ty   CX()     { return L + W() / 2; }
-    Ty   CY()     { return T + H() / 2; }
+    bool IsZero() const { return !L && !T && !R && !B; }
+    Ty   W()      const { return R - L + 1; }
+    Ty   H()      const { return B - T + 1; }
+    Ty   CX()     const { return L + W() / 2; }
+    Ty   CY()     const { return T + H() / 2; }
 
     Ty& operator[]( int index )
     {

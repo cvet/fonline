@@ -24,26 +24,26 @@ typedef vector< Animation3dXFile* >  Animation3dXFileVec;
 
 struct AnimParams
 {
-    uint             Id;
-    int              Layer;
-    int              LayerValue;
-    char*            LinkBone;
-    char*            ChildFName;
-    float            RotX, RotY, RotZ;
-    float            MoveX, MoveY, MoveZ;
-    float            ScaleX, ScaleY, ScaleZ;
-    float            SpeedAjust;
-    int*             DisabledLayers;
-    uint             DisabledLayersCount;
-    int*             DisabledSubsets;
-    uint             DisabledSubsetsCount;
-    char**           TextureNames;
-    int*             TextureSubsets;
-    int*             TextureNum;
-    uint             TextureNamesCount;
-    EffectInstance_* EffectInst;
-    int*             EffectInstSubsets;
-    uint             EffectInstSubsetsCount;
+    uint            Id;
+    int             Layer;
+    int             LayerValue;
+    char*           LinkBone;
+    char*           ChildFName;
+    float           RotX, RotY, RotZ;
+    float           MoveX, MoveY, MoveZ;
+    float           ScaleX, ScaleY, ScaleZ;
+    float           SpeedAjust;
+    int*            DisabledLayers;
+    uint            DisabledLayersCount;
+    int*            DisabledSubsets;
+    uint            DisabledSubsetsCount;
+    char**          TextureNames;
+    int*            TextureSubsets;
+    int*            TextureNum;
+    uint            TextureNamesCount;
+    EffectInstance* EffectInst;
+    int*            EffectInstSubsets;
+    uint            EffectInstSubsetsCount;
 };
 typedef vector< AnimParams > AnimParamsVec;
 
@@ -220,7 +220,7 @@ private:
     static void              SetupAnimationOutput( Frame* frame, AnimController_* anim_controller );
 
     Texture* GetTexture( const char* tex_name );
-    Effect*  GetEffect( EffectInstance_* effect_inst );
+    Effect*  GetEffect( EffectInstance* effect_inst );
 
 public:
     Animation3dXFile();

@@ -39,13 +39,13 @@ private:
     // Effects
 public:
     static Effect* LoadEffect( Device_ device, const char* effect_name );
-    static Effect* LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path );
+    static Effect* LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path );
     static void    EffectProcessVariables( Effect* effect_ex, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, Texture** textures = NULL );
     static bool    EffectsPreRestore();
     static bool    EffectsPostRestore();
 
 private:
-    static EffectExVec loadedEffects;
+    static EffectVec loadedEffects;
 };
 
 #endif // __3D_LOADER__

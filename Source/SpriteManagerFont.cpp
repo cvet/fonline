@@ -1,7 +1,9 @@
 #include "StdAfx.h"
 #include "SpriteManager.h"
 
-#define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
+#ifdef FO_D3D
+# define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
+#endif
 
 #define FONT_BUF_LEN          ( 0x5000 )
 #define FONT_MAX_LINES        ( 1000 )
@@ -11,25 +13,28 @@
 
 struct Letter
 {
+    short PosX;
+    short PosY;
     short W;
     short H;
-    short OffsW;
-    short OffsH;
+    short OffsX;
+    short OffsY;
     short XAdvance;
 
-    Letter(): W( 0 ), H( 0 ), OffsW( 0 ), OffsH( 0 ), XAdvance( 0 ) {};
+    Letter(): PosX( 0 ), PosY( 0 ), W( 0 ), H( 0 ), OffsX( 0 ), OffsY( 0 ), XAdvance( 0 ) {};
 };
 
 struct Font
 {
-    Texture_ FontTex;
-    Texture_ FontTexBordered;
+    Texture* FontTex;
+    Texture* FontTexBordered;
 
     Letter   Letters[ 256 ];
     int      SpaceWidth;
-    int      MaxLettHeight;
-    int      EmptyVer;
-    FLOAT    ArrXY[ 256 ][ 4 ];
+    int      MaxLetterHeight;
+    int      YAdvance;
+    FLTRECT  TexUV[ 256 ];
+    FLTRECT  TexBorderedUV[ 256 ];
     Effect*  DrawEffect;
 
     Font()
@@ -37,14 +42,14 @@ struct Font
         FontTex = NULL;
         FontTexBordered = NULL;
         SpaceWidth = 0;
-        MaxLettHeight = 0;
-        EmptyVer = 0;
+        MaxLetterHeight = 0;
+        YAdvance = 0;
         for( int i = 0; i < 256; i++ )
         {
-            ArrXY[ i ][ 0 ] = 0.0f;
-            ArrXY[ i ][ 1 ] = 0.0f;
-            ArrXY[ i ][ 2 ] = 0.0f;
-            ArrXY[ i ][ 3 ] = 0.0f;
+            TexUV[ i ][ 0 ] = 0.0f;
+            TexUV[ i ][ 1 ] = 0.0f;
+            TexUV[ i ][ 2 ] = 0.0f;
+            TexUV[ i ][ 3 ] = 0.0f;
         }
         DrawEffect = NULL;
     }
@@ -138,266 +143,162 @@ void SpriteManager::SetFontEffect( int index, Effect* effect )
         font->DrawEffect = effect;
 }
 
-bool SpriteManager::LoadFontOld( int index, const char* font_name, int size_mod )
+bool SpriteManager::LoadFontFO( int index, const char* font_name )
 {
-    if( index < 0 )
-    {
-        WriteLogF( _FUNC_, " - Invalid index.\n" );
-        return false;
-    }
-
-    Font   font;
-    int    tex_w = 256 * size_mod;
-    int    tex_h = 256 * size_mod;
-
-    uchar* data = new uchar[ tex_w * tex_h * 4 ]; // TODO: Leak
-    if( !data )
-    {
-        WriteLogF( _FUNC_, " - Data allocation fail.\n" );
-        return false;
-    }
-    memzero( data, tex_w * tex_h * 4 );
-
+    // Load font data
+    char        fname[ MAX_FOPATH ];
+    Str::Format( fname, "%s.fofnt", font_name );
     FileManager fm;
-    if( !fm.LoadFile( Str::FormatBuf( "%s.bmp", font_name ), PT_FONTS ) )
+    if( !fm.LoadFile( fname, PT_FONTS ) )
     {
-        WriteLogF( _FUNC_, " - File<%s> not found.\n", Str::FormatBuf( "%s.bmp", font_name ) );
-        delete[] data;
+        WriteLogF( _FUNC_, " - File<%s> not found.\n", fname );
         return false;
     }
 
-    Texture_ image = NULL;
-    #ifdef FO_D3D
-    D3D_HR( D3DXCreateTextureFromFileInMemoryEx( d3dDevice, fm.GetBuf(), fm.GetFsize(), D3DX_DEFAULT, D3DX_DEFAULT, 1, 0,
-                                                 D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, COLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &image ) );
-
-    LockRect_ lr;
-    D3D_HR( image->LockRect( 0, &lr, NULL, D3DLOCK_READONLY ) );
-
-    if( !fm.LoadFile( Str::FormatBuf( "%s.fnt0", font_name ), PT_FONTS ) )
+    // Parse data
+    istrstream str( (char*) fm.GetBuf() );
+    char       key[ MAX_FOTEXT ];
+    Font       font;
+    char       image_name[ MAX_FOPATH ] = { 0 };
+    int        cur_letter = 0;
+    while( !str.eof() && !str.fail() )
     {
-        WriteLogF( _FUNC_, " - File<%s> not found.\n", Str::FormatBuf( "%s.fnt0", font_name ) );
-        delete[] data;
-        SAFEREL( image );
+        // Get key
+        str >> key;
+
+        // Cut off comments
+        char* comment = Str::Substring( key, "#" );
+        if( comment )
+            *comment = 0;
+        comment = Str::Substring( key, ";" );
+        if( comment )
+            *comment = 0;
+
+        // Get value
+        if( Str::CompareCase( key, "Image" ) )
+            str >> image_name;
+        else if( Str::CompareCase( key, "YAdvance" ) )
+            str >> font.YAdvance;
+        else if( Str::CompareCase( key, "Letter" ) )
+            str >> cur_letter, cur_letter = CLAMP( cur_letter, 0, 255 );
+        else if( Str::CompareCase( key, "PositionX" ) )
+            str >> font.Letters[ cur_letter ].PosX;
+        else if( Str::CompareCase( key, "PositionY" ) )
+            str >> font.Letters[ cur_letter ].PosY;
+        else if( Str::CompareCase( key, "Width" ) )
+            str >> font.Letters[ cur_letter ].W;
+        else if( Str::CompareCase( key, "Height" ) )
+            str >> font.Letters[ cur_letter ].H;
+        else if( Str::CompareCase( key, "OffsetX" ) )
+            str >> font.Letters[ cur_letter ].OffsX;
+        else if( Str::CompareCase( key, "OffsetY" ) )
+            str >> font.Letters[ cur_letter ].OffsY;
+        else if( Str::CompareCase( key, "XAdvance" ) )
+            str >> font.Letters[ cur_letter ].XAdvance;
+    }
+
+    // Load image
+    AnyFrames* image = LoadAnimation( image_name, PT_FONTS );
+    if( !image )
+    {
+        WriteLogF( _FUNC_, " - File<%s> not found.\n", image_name );
         return false;
     }
 
-    int empty_hor = fm.GetBEUInt();
-    font.EmptyVer = fm.GetBEUInt();
-    font.MaxLettHeight = fm.GetBEUInt();
-    font.SpaceWidth = fm.GetBEUInt();
-
-    struct LetterOldFont
-    {
-        ushort Dx;
-        ushort Dy;
-        uchar  W;
-        uchar  H;
-        short  OffsH;
-    } letters[ 256 ];
-
-    if( !fm.CopyMem( letters, sizeof( LetterOldFont ) * 256 ) )
-    {
-        WriteLogF( _FUNC_, " - Incorrect size in file<%s>.\n", Str::FormatBuf( "%s.fnt0", font_name ) );
-        delete[] data;
-        SAFEREL( image );
-        return false;
-    }
-
-    D3DSURFACE_DESC sd;
-    D3D_HR( image->GetLevelDesc( 0, &sd ) );
-    uint            wd = sd.Width;
-
-    int             cur_x = 0;
-    int             cur_y = 0;
-    for( int i = 0; i < 256; i++ )
-    {
-        LetterOldFont& letter_old = letters[ i ];
-        Letter&        letter = font.Letters[ i ];
-
-        int            w = letter_old.W;
-        int            h = letter_old.H;
-        if( !w || !h )
-            continue;
-
-        letter.W = letter_old.W;
-        letter.H = letter_old.H;
-        letter.OffsH = letter.OffsH;
-        letter.XAdvance = w + empty_hor;
-
-        if( cur_x + w + 2 >= tex_w )
-        {
-            cur_x = 0;
-            cur_y += font.MaxLettHeight + 2;
-            if( cur_y + font.MaxLettHeight + 2 >= tex_h )
-            {
-                delete[] data;
-                SAFEREL( image );
-                // WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
-                return LoadFontOld( index, font_name, size_mod * 2 );
-            }
-        }
-
-        for( int j = 0; j < h; j++ )
-            memcpy( data + ( cur_y + j + 1 ) * tex_w * 4 + ( cur_x + 1 ) * 4, (uchar*) lr.pBits + ( letter_old.Dy + j ) * sd.Width * 4 + letter_old.Dx * 4, w * 4 );
-
-        font.ArrXY[ i ][ 0 ] = (FLOAT) cur_x / tex_w;
-        font.ArrXY[ i ][ 1 ] = (FLOAT) cur_y / tex_h;
-        font.ArrXY[ i ][ 2 ] = (FLOAT) ( cur_x + w + 2 ) / tex_w;
-        font.ArrXY[ i ][ 3 ] = (FLOAT) ( cur_y + h + 2 ) / tex_h;
-        cur_x += w + 2;
-    }
-
-    D3D_HR( image->UnlockRect( 0 ) );
-    SAFEREL( image );
-
-    // Create texture
-    D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTex ) );
-    D3D_HR( font.FontTex->LockRect( 0, &lr, NULL, 0 ) );
-    memcpy( lr.pBits, data, tex_w * tex_h * 4 );
-    WriteContour8( (uint*) data, tex_w, lr, tex_w, tex_h, COLOR_ARGB( 0xFF, 0, 0, 0 ) ); // Create border
-    D3D_HR( font.FontTex->UnlockRect( 0 ) );
-
-    // Create bordered texture
-    D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTexBordered ) );
-    D3D_HR( font.FontTexBordered->LockRect( 0, &lr, NULL, 0 ) );
-    memcpy( lr.pBits, data, tex_w * tex_h * 4 );
-    D3D_HR( font.FontTexBordered->UnlockRect( 0 ) );
-    delete[] data;
-
-    // Register
-    if( index >= (int) Fonts.size() )
-        Fonts.resize( index + 1 );
-    SAFEDEL( Fonts[ index ] );
-    Fonts[ index ] = new Font( font );
-    #endif
-    return true;
-}
-
-bool SpriteManager::LoadFontAAF( int index, const char* font_name, int size_mod )
-{
-    int tex_w = 256 * size_mod;
-    int tex_h = 256 * size_mod;
-
-    // Read file in buffer
-    if( index < 0 )
-    {
-        WriteLogF( _FUNC_, " - Invalid index.\n" );
-        return false;
-    }
-
-    Font        font;
-    FileManager fm;
-
-    if( !fm.LoadFile( Str::FormatBuf( "%s.aaf", font_name ), PT_FONTS ) )
-    {
-        WriteLogF( _FUNC_, " - File<%s> not found.\n", Str::FormatBuf( "%s.aaf", font_name ) );
-        return false;
-    }
-
-    // Check signature
-    uint sign = fm.GetBEUInt();
-    if( sign != MAKEUINT( 'F', 'F', 'A', 'A' ) )
-    {
-        WriteLogF( _FUNC_, " - Signature AAFF not found.\n" );
-        return false;
-    }
-
-    // Read params
-    // Максимальная высота изображения символа, включая надстрочные и подстрочные элементы.
-    font.MaxLettHeight = fm.GetBEUShort();
-    // Горизонтальный зазор.
-    // Зазор (в пикселах) между соседними изображениями символов.
-    int empty_hor = fm.GetBEUShort();
-    // Ширина пробела.
-    // Ширина символа 'Пробел'.
-    font.SpaceWidth = fm.GetBEUShort();
-    // Вертикальный зазор.
-    // Зазор (в пикселах) между двумя строками символов.
-    font.EmptyVer = fm.GetBEUShort();
-
-    // Write font image
-    const uint pix_light[ 9 ] = { 0x22808080, 0x44808080, 0x66808080, 0x88808080, 0xAA808080, 0xDD808080, 0xFF808080, 0xFF808080, 0xFF808080 };
-    uchar*     data = new uchar[ tex_w * tex_h * 4 ];
-    if( !data )
-    {
-        WriteLogF( _FUNC_, " - Data allocation fail.\n" );
-        return false;
-    }
-    memzero( data, tex_w * tex_h * 4 );
-    uchar* begin_buf = fm.GetBuf();
-    int    cur_x = 0;
-    int    cur_y = 0;
-
-    for( int i = 0; i < 256; i++ )
+    // Fix texture coordinates
+    SpriteInfo* si = SprMngr.GetSpriteInfo( image->GetSprId( 0 ) );
+    float       tex_w = (float) si->Surf->Width;
+    float       tex_h = (float) si->Surf->Height;
+    float       image_x = tex_w * si->SprRect.L;
+    float       image_y = tex_h * si->SprRect.T;
+    int         max_h = 0;
+    for( uint i = 0; i < 256; i++ )
     {
         Letter& l = font.Letters[ i ];
-
-        l.W = fm.GetBEUShort();
-        l.H = fm.GetBEUShort();
-        uint offs = fm.GetBEUInt();
-        l.OffsH = -( font.MaxLettHeight - l.H );
-
-        if( cur_x + l.W + 2 >= tex_w )
-        {
-            cur_x = 0;
-            cur_y += font.MaxLettHeight + 2;
-            if( cur_y + font.MaxLettHeight + 2 >= tex_h )
-            {
-                delete[] data;
-                // WriteLog("<%s> growed to %d\n",font_name,size_mod*2);
-                return LoadFontAAF( index, font_name, size_mod * 2 );
-            }
-        }
-
-        uchar* pix = &begin_buf[ offs + 0x080C ];
-
-        for( int h = 0; h < l.H; h++ )
-        {
-            uint* cur_data = (uint*) ( data + ( cur_y + h + 1 ) * tex_w * 4 + ( cur_x + 1 ) * 4 );
-
-            for( int w = 0; w < l.W; w++, pix++, cur_data++ )
-            {
-                int val = *pix;
-                if( val > 9 )
-                    val = 0;
-                if( !val )
-                    continue;
-                *cur_data = pix_light[ val - 1 ];
-            }
-        }
-
-        l.XAdvance = l.W + empty_hor;
-
-        font.ArrXY[ i ][ 0 ] = (FLOAT) cur_x / tex_w;
-        font.ArrXY[ i ][ 1 ] = (FLOAT) cur_y / tex_h;
-        font.ArrXY[ i ][ 2 ] = (FLOAT) ( cur_x + int(l.W) + 2 ) / tex_w;
-        font.ArrXY[ i ][ 3 ] = (FLOAT) ( cur_y + int(l.H) + 2 ) / tex_h;
-        cur_x += l.W + 2;
+        float   x = (float) l.PosX;
+        float   y = (float) l.PosY;
+        float   w = (float) l.W;
+        float   h = (float) l.H;
+        font.TexUV[ i ][ 0 ] = ( image_x + x - 1.f ) / tex_w;
+        font.TexUV[ i ][ 1 ] = ( image_y + y - 1.f ) / tex_h;
+        font.TexUV[ i ][ 2 ] = ( image_x + x + w + 1.f ) / tex_w;
+        font.TexUV[ i ][ 3 ] = ( image_y + y + h + 1.f ) / tex_h;
+        if( l.H > max_h )
+            max_h = l.H;
     }
 
-    #ifdef FO_D3D
-    // Create texture
-    D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTex ) );
-    LockRect_ lr;
-    D3D_HR( font.FontTex->LockRect( 0, &lr, NULL, 0 ) );
-    memcpy( lr.pBits, data, tex_w * tex_h * 4 );
-    WriteContour8( (uint*) data, tex_w, lr, tex_w, tex_h, COLOR_ARGB( 0xFF, 0, 0, 0 ) ); // Create border
-    D3D_HR( font.FontTex->UnlockRect( 0 ) );
+    // Fill new font
+    font.FontTex = si->Surf->TextureOwner;
+    font.MaxLetterHeight = max_h;
+    font.SpaceWidth = font.Letters[ ' ' ].XAdvance;
 
-    // Create bordered texture
-    D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTexBordered ) );
-    D3D_HR( font.FontTexBordered->LockRect( 0, &lr, NULL, 0 ) );
-    memcpy( lr.pBits, data, tex_w * tex_h * 4 );
-    D3D_HR( font.FontTexBordered->UnlockRect( 0 ) );
-    delete[] data;
+    // Create bordered instance
+    AnyFrames* image_bordered = LoadAnimation( image_name, PT_FONTS );
+    if( !image_bordered )
+    {
+        WriteLogF( _FUNC_, " - Can't load twice file<%s>.\n", image_name );
+        return false;
+    }
+    SpriteInfo* si_bordered = SprMngr.GetSpriteInfo( image_bordered->GetSprId( 0 ) );
+    font.FontTexBordered = si_bordered->Surf->TextureOwner;
+
+    // Fill border
+    #ifdef FO_D3D
+    int                x1 = (int) ( (float) si->Surf->Width * si->SprRect.L );
+    int                y1 = (int) ( (float) si->Surf->Height * si->SprRect.T );
+    int                x2 = (int) ( (float) si_bordered->Surf->Width * si_bordered->SprRect.L );
+    int                y2 = (int) ( (float) si_bordered->Surf->Height * si_bordered->SprRect.T );
+    RECT               to_lock1 = { x1, y1, x1 + si->Width, y1 + si->Height };
+    RECT               to_lock2 = { x2, y2, x2 + si_bordered->Width, y2 + si_bordered->Height };
+    LPDIRECT3DTEXTURE9 tex;
+    uint               bw = si_bordered->Width;
+    uint               bh = si_bordered->Height;
+    D3D_HR( D3DXCreateTexture( d3dDevice, bw, bh, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex ) );
+    LockRect_          lr, lrb;
+    D3D_HR( font.FontTex->Instance->LockRect( 0, &lr, &to_lock1, 0 ) );
+    D3D_HR( tex->LockRect( 0, &lrb, NULL, 0 ) );
+    for( uint i = 0; i < bh; i++ )
+        memcpy( (uchar*) lrb.pBits + lrb.Pitch * i, (uchar*) lr.pBits + lr.Pitch * i, bw * 4 );
+    for( uint y = 0; y < bh; y++ )
+        for( uint x = 0; x < bw; x++ )
+            if( SURF_POINT( lr, x, y ) )
+                for( int xx = -1; xx <= 1; xx++ )
+                    for( int yy = -1; yy <= 1; yy++ )
+                        if( !SURF_POINT( lrb, x + xx, y + yy ) )
+                            SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
+    D3D_HR( font.FontTex->Instance->UnlockRect( 0 ) );
+    D3D_HR( font.FontTexBordered->Instance->LockRect( 0, &lr, &to_lock2, 0 ) );
+    for( uint i = 0; i < bh; i++ )
+        memcpy( (uchar*) lr.pBits + lr.Pitch * i, (uchar*) lrb.pBits + lrb.Pitch * i, bw * 4 );
+    D3D_HR( font.FontTexBordered->Instance->UnlockRect( 0 ) );
+    D3D_HR( tex->UnlockRect( 0 ) );
+    tex->Release();
+    #endif
+
+    // Fix texture coordinates on bordered texture
+    tex_w = (float) si_bordered->Surf->Width;
+    tex_h = (float) si_bordered->Surf->Height;
+    image_x = tex_w * si_bordered->SprRect.L;
+    image_y = tex_h * si_bordered->SprRect.T;
+    for( uint i = 0; i < 256; i++ )
+    {
+        Letter& l = font.Letters[ i ];
+        float   x = (float) l.PosX;
+        float   y = (float) l.PosY;
+        float   w = (float) l.W;
+        float   h = (float) l.H;
+        font.TexBorderedUV[ i ][ 0 ] = ( image_x + x - 1.f ) / tex_w;
+        font.TexBorderedUV[ i ][ 1 ] = ( image_y + y - 1.f ) / tex_h;
+        font.TexBorderedUV[ i ][ 2 ] = ( image_x + x + w + 1.f ) / tex_w;
+        font.TexBorderedUV[ i ][ 3 ] = ( image_y + y + h + 1.f ) / tex_h;
+    }
 
     // Register
     if( index >= (int) Fonts.size() )
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
     Fonts[ index ] = new Font( font );
-    #endif
+
     return true;
 }
 
@@ -445,10 +346,8 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
 
     int line_height = fm.GetLEUShort();
     int base_height = fm.GetLEUShort();
-    font.MaxLettHeight = base_height;
-
-    uint tex_w = fm.GetLEUShort();
-    uint tex_h = fm.GetLEUShort();
+    fm.GetLEUShort(); // Texture width
+    fm.GetLEUShort(); // Texture height
 
     if( fm.GetLEUShort() != 1 )
     {
@@ -461,18 +360,12 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     block_len = fm.GetLEUInt();
     next_block = block_len + fm.GetCurPos() + 1;
 
-    char texture_name[ MAX_FOPATH ] = { 0 };
-    fm.GetStr( texture_name );
-
-    if( !fm_tex.LoadFile( texture_name, PT_FONTS ) )
-    {
-        WriteLogF( _FUNC_, " - Texture file<%s> not found.\n", texture_name );
-        return false;
-    }
+    // Image name
+    char image_name[ MAX_FOPATH ] = { 0 };
+    fm.GetStr( image_name );
 
     // Chars
     fm.SetCurPos( next_block );
-
     int count = fm.GetLEUInt() / 20;
     for( int i = 0; i < count; i++ )
     {
@@ -492,60 +385,120 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
 
         // Fill data
         Letter& let = font.Letters[ id ];
+        let.PosX = x;
+        let.PosY = y;
         let.W = w - 2;
         let.H = h - 2;
-        let.OffsW = -ox;
-        let.OffsH = -oy + ( line_height - base_height );
+        let.OffsX = -ox;
+        let.OffsY = -oy + ( line_height - base_height );
         let.XAdvance = xa + 1;
-
-        // Texture coordinates
-        font.ArrXY[ id ][ 0 ] = (FLOAT) x / tex_w;
-        font.ArrXY[ id ][ 1 ] = (FLOAT) y / tex_h;
-        font.ArrXY[ id ][ 2 ] = (FLOAT) ( x + w ) / tex_w;
-        font.ArrXY[ id ][ 3 ] = (FLOAT) ( y + h ) / tex_h;
     }
 
-    font.EmptyVer = 1;
+    font.YAdvance = 1;
     font.SpaceWidth = font.Letters[ ' ' ].XAdvance;
+    font.MaxLetterHeight = base_height;
 
+    // Load image
+    AnyFrames* image = LoadAnimation( image_name, PT_FONTS );
+    if( !image )
+    {
+        WriteLogF( _FUNC_, " - File<%s> not found.\n", image_name );
+        return false;
+    }
+
+    // Fix texture coordinates
+    SpriteInfo* si = SprMngr.GetSpriteInfo( image->GetSprId( 0 ) );
+    font.FontTex = si->Surf->TextureOwner;
+    float       tex_w = (float) si->Surf->Width;
+    float       tex_h = (float) si->Surf->Height;
+    float       image_x = tex_w * si->SprRect.L;
+    float       image_y = tex_h * si->SprRect.T;
+    for( uint i = 0; i < 256; i++ )
+    {
+        Letter& l = font.Letters[ i ];
+        float   x = (float) l.PosX;
+        float   y = (float) l.PosY;
+        float   w = (float) l.W;
+        float   h = (float) l.H;
+        font.TexUV[ i ][ 0 ] = ( image_x + x - 0.f ) / tex_w;
+        font.TexUV[ i ][ 1 ] = ( image_y + y - 0.f ) / tex_h;
+        font.TexUV[ i ][ 2 ] = ( image_x + x + w + 2.f ) / tex_w;
+        font.TexUV[ i ][ 3 ] = ( image_y + y + h + 2.f ) / tex_h;
+    }
+
+    // Create bordered instance
+    AnyFrames* image_bordered = LoadAnimation( image_name, PT_FONTS );
+    if( !image_bordered )
+    {
+        WriteLogF( _FUNC_, " - Can't load twice file<%s>.\n", image_name );
+        return false;
+    }
+    SpriteInfo* si_bordered = SprMngr.GetSpriteInfo( image_bordered->GetSprId( 0 ) );
+    font.FontTexBordered = si_bordered->Surf->TextureOwner;
+
+    // Fill border
     #ifdef FO_D3D
-    // Create texture
-    D3D_HR( D3DXCreateTextureFromFileInMemoryEx( d3dDevice, fm_tex.GetBuf(), fm_tex.GetFsize(), D3DX_DEFAULT, D3DX_DEFAULT, 1, 0,
-                                                 D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, COLOR_ARGB( 255, 0, 0, 0 ), NULL, NULL, &font.FontTex ) );
-
-    // Create bordered texture
-    D3D_HR( D3DXCreateTexture( d3dDevice, tex_w, tex_h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &font.FontTexBordered ) );
-
-    LockRect_ lr, lrb;
-    D3D_HR( font.FontTex->LockRect( 0, &lr, NULL, 0 ) );
-    D3D_HR( font.FontTexBordered->LockRect( 0, &lrb, NULL, 0 ) );
-
-    for( uint y = 0; y < tex_h; y++ )
-        for( uint x = 0; x < tex_w; x++ )
+    int                x1 = (int) ( (float) si->Surf->Width * si->SprRect.L );
+    int                y1 = (int) ( (float) si->Surf->Height * si->SprRect.T );
+    int                x2 = (int) ( (float) si_bordered->Surf->Width * si_bordered->SprRect.L );
+    int                y2 = (int) ( (float) si_bordered->Surf->Height * si_bordered->SprRect.T );
+    RECT               to_lock1 = { x1, y1, x1 + si->Width, y1 + si->Height };
+    RECT               to_lock2 = { x2, y2, x2 + si_bordered->Width, y2 + si_bordered->Height };
+    LPDIRECT3DTEXTURE9 tex;
+    uint               bw = si_bordered->Width;
+    uint               bh = si_bordered->Height;
+    D3D_HR( D3DXCreateTexture( d3dDevice, bw, bh, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex ) );
+    LockRect_          lr, lrb;
+    D3D_HR( font.FontTex->Instance->LockRect( 0, &lr, &to_lock1, 0 ) );
+    D3D_HR( tex->LockRect( 0, &lrb, NULL, 0 ) );
+    for( uint y = 0; y < bh; y++ )
+        for( uint x = 0; x < bw; x++ )
             if( SURF_POINT( lr, x, y ) & 0xFF000000 )
                 SURF_POINT( lr, x, y ) = ( SURF_POINT( lr, x, y ) & 0xFF000000 ) | ( 0x7F7F7F );
             else
                 SURF_POINT( lr, x, y ) = 0;
-
-    memcpy( lrb.pBits, lr.pBits, lr.Pitch * tex_h );
-
-    for( uint y = 0; y < tex_h; y++ )
-        for( uint x = 0; x < tex_w; x++ )
+    for( uint i = 0; i < bh; i++ )
+        memcpy( (uchar*) lrb.pBits + lrb.Pitch * i, (uchar*) lr.pBits + lr.Pitch * i, bw * 4 );
+    for( uint y = 0; y < bh; y++ )
+        for( uint x = 0; x < bw; x++ )
             if( SURF_POINT( lr, x, y ) )
                 for( int xx = -1; xx <= 1; xx++ )
                     for( int yy = -1; yy <= 1; yy++ )
                         if( !SURF_POINT( lrb, x + xx, y + yy ) )
                             SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
+    D3D_HR( font.FontTex->Instance->UnlockRect( 0 ) );
+    D3D_HR( font.FontTexBordered->Instance->LockRect( 0, &lr, &to_lock2, 0 ) );
+    for( uint i = 0; i < bh; i++ )
+        memcpy( (uchar*) lr.pBits + lr.Pitch * i, (uchar*) lrb.pBits + lrb.Pitch * i, bw * 4 );
+    D3D_HR( font.FontTexBordered->Instance->UnlockRect( 0 ) );
+    D3D_HR( tex->UnlockRect( 0 ) );
+    tex->Release();
+    #endif
 
-    D3D_HR( font.FontTexBordered->UnlockRect( 0 ) );
-    D3D_HR( font.FontTex->UnlockRect( 0 ) );
+    // Fix texture coordinates on bordered texture
+    tex_w = (float) si_bordered->Surf->Width;
+    tex_h = (float) si_bordered->Surf->Height;
+    image_x = tex_w * si_bordered->SprRect.L;
+    image_y = tex_h * si_bordered->SprRect.T;
+    for( uint i = 0; i < 256; i++ )
+    {
+        Letter& l = font.Letters[ i ];
+        float   x = (float) l.PosX;
+        float   y = (float) l.PosY;
+        float   w = (float) l.W;
+        float   h = (float) l.H;
+        font.TexBorderedUV[ i ][ 0 ] = ( image_x + x - 0.f ) / tex_w;
+        font.TexBorderedUV[ i ][ 1 ] = ( image_y + y - 0.f ) / tex_h;
+        font.TexBorderedUV[ i ][ 2 ] = ( image_x + x + w + 2.f ) / tex_w;
+        font.TexBorderedUV[ i ][ 3 ] = ( image_y + y + h + 2.f ) / tex_h;
+    }
 
     // Register
     if( index >= (int) Fonts.size() )
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
     Fonts[ index ] = new Font( font );
-    #endif
+
     return true;
 }
 
@@ -706,8 +659,8 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         case '\n':
             if( !skip_line )
             {
-                cury += font->MaxLettHeight + font->EmptyVer;
-                if( cury + font->MaxLettHeight > r.B && !fi.LinesInRect )
+                cury += font->MaxLetterHeight + font->YAdvance;
+                if( cury + font->MaxLetterHeight > r.B && !fi.LinesInRect )
                     fi.LinesInRect = fi.LinesAll;
 
                 if( fmt_type == FORMAT_TYPE_DRAW )
@@ -861,7 +814,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         case '\0':
         case '\n':
             fi.LineWidth[ curstr ] = curx;
-            cury += font->MaxLettHeight + font->EmptyVer;
+            cury += font->MaxLetterHeight + font->YAdvance;
             curx = r.L;
 
             // Erase last spaces
@@ -911,9 +864,9 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         curx += r.R - fi.LineWidth[ 0 ];
     // Align Y
     if( FLAG( flags, FT_CENTERY ) )
-        cury = r.T + ( r.H() - fi.LinesAll * font->MaxLettHeight - ( fi.LinesAll - 1 ) * font->EmptyVer ) / 2 + 1;
+        cury = r.T + ( r.H() - fi.LinesAll * font->MaxLetterHeight - ( fi.LinesAll - 1 ) * font->YAdvance ) / 2 + 1;
     else if( FLAG( flags, FT_BOTTOM ) )
-        cury = r.B - ( fi.LinesAll * font->MaxLettHeight + ( fi.LinesAll - 1 ) * font->EmptyVer );
+        cury = r.B - ( fi.LinesAll * font->MaxLetterHeight + ( fi.LinesAll - 1 ) * font->YAdvance );
 }
 
 bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /* = 0 */, int num_font /* = -1 */ )
@@ -938,11 +891,13 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
     if( fi.IsError )
         return false;
 
-    char* str_ = fi.PStr;
-    uint  offs_col = fi.OffsColDots;
-    int   curx = fi.CurX;
-    int   cury = fi.CurY;
-    int   curstr = 0;
+    char*    str_ = fi.PStr;
+    uint     offs_col = fi.OffsColDots;
+    int      curx = fi.CurX;
+    int      cury = fi.CurY;
+    int      curstr = 0;
+    Texture* texture = ( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex );
+    FLTRECT* textture_uv = ( FLAG( flags, FT_BORDERED ) ? font->TexBorderedUV : font->TexUV );
 
     if( curSprCnt )
         Flush();
@@ -986,7 +941,7 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
             curx += font->SpaceWidth * 4;
             continue;
         case '\n':
-            cury += font->MaxLettHeight + font->EmptyVer;
+            cury += font->MaxLetterHeight + font->YAdvance;
             curx = r.L;
             curstr++;
             variable_space = false;
@@ -1000,43 +955,43 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
         default:
             Letter& l = font->Letters[ (uchar) str_[ i ] ];
             int   mulpos = curSprCnt * 4;
-            int   x = curx - l.OffsW - 1;
-            int   y = cury - l.OffsH - 1;
+            int   x = curx - l.OffsX - 1;
+            int   y = cury - l.OffsY - 1;
             int   w = l.W + 2;
             int   h = l.H + 2;
 
-            FLOAT x1 = font->ArrXY[ (uchar) str_[ i ] ][ 0 ];
-            FLOAT y1 = font->ArrXY[ (uchar) str_[ i ] ][ 1 ];
-            FLOAT x2 = font->ArrXY[ (uchar) str_[ i ] ][ 2 ];
-            FLOAT y2 = font->ArrXY[ (uchar) str_[ i ] ][ 3 ];
+            float x1 = textture_uv[ (uchar) str_[ i ] ][ 0 ];
+            float y1 = textture_uv[ (uchar) str_[ i ] ][ 1 ];
+            float x2 = textture_uv[ (uchar) str_[ i ] ][ 2 ];
+            float y2 = textture_uv[ (uchar) str_[ i ] ][ 3 ];
 
-            waitBuf[ mulpos ].x = x - 0.5f;
-            waitBuf[ mulpos ].y = y + h - 0.5f;
+            waitBuf[ mulpos ].x = (float) x;
+            waitBuf[ mulpos ].y = (float) y + h;
             waitBuf[ mulpos ].tu = x1;
             waitBuf[ mulpos ].tv = y2;
-            waitBuf[ mulpos++ ].Diffuse = col;
+            waitBuf[ mulpos++ ].diffuse = col;
 
-            waitBuf[ mulpos ].x = x - 0.5f;
-            waitBuf[ mulpos ].y = y - 0.5f;
+            waitBuf[ mulpos ].x = (float) x;
+            waitBuf[ mulpos ].y = (float) y;
             waitBuf[ mulpos ].tu = x1;
             waitBuf[ mulpos ].tv = y1;
-            waitBuf[ mulpos++ ].Diffuse = col;
+            waitBuf[ mulpos++ ].diffuse = col;
 
-            waitBuf[ mulpos ].x = x + w - 0.5f;
-            waitBuf[ mulpos ].y = y - 0.5f;
+            waitBuf[ mulpos ].x = (float) x + w;
+            waitBuf[ mulpos ].y = (float) y;
             waitBuf[ mulpos ].tu = x2;
             waitBuf[ mulpos ].tv = y1;
-            waitBuf[ mulpos++ ].Diffuse = col;
+            waitBuf[ mulpos++ ].diffuse = col;
 
-            waitBuf[ mulpos ].x = x + w - 0.5f;
-            waitBuf[ mulpos ].y = y + h - 0.5f;
+            waitBuf[ mulpos ].x = (float) x + w;
+            waitBuf[ mulpos ].y = (float) y + h;
             waitBuf[ mulpos ].tu = x2;
             waitBuf[ mulpos ].tv = y2;
-            waitBuf[ mulpos ].Diffuse = col;
+            waitBuf[ mulpos ].diffuse = col;
 
             if( ++curSprCnt == flushSprCnt )
             {
-                dipQueue.push_back( DipData( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex, font->DrawEffect ) );
+                dipQueue.push_back( DipData( texture, font->DrawEffect ) );
                 dipQueue.back().SpritesCount = curSprCnt;
                 Flush();
             }
@@ -1048,7 +1003,7 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
 
     if( curSprCnt )
     {
-        dipQueue.push_back( DipData( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex, font->DrawEffect ) );
+        dipQueue.push_back( DipData( texture, font->DrawEffect ) );
         dipQueue.back().SpritesCount = curSprCnt;
         Flush();
     }
@@ -1063,7 +1018,7 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
         return 0;
 
     if( !str )
-        return height / ( font->MaxLettHeight + font->EmptyVer );
+        return height / ( font->MaxLetterHeight + font->YAdvance );
 
     static FontFormatInfo fi;
     fi.Init( font, 0, INTRECT( 0, 0, width ? width : modeWidth, height ? height : modeHeight ), str );
@@ -1081,7 +1036,7 @@ int SpriteManager::GetLinesHeight( int width, int height, const char* str, int n
     int cnt = GetLinesCount( width, height, str, num_font );
     if( cnt <= 0 )
         return 0;
-    return cnt * font->MaxLettHeight + ( cnt - 1 ) * font->EmptyVer;
+    return cnt * font->MaxLetterHeight + ( cnt - 1 ) * font->YAdvance;
 }
 
 int SpriteManager::GetLineHeight( int num_font /* = -1 */ )
@@ -1089,7 +1044,7 @@ int SpriteManager::GetLineHeight( int num_font /* = -1 */ )
     Font* font = GetFont( num_font );
     if( !font )
         return 0;
-    return font->MaxLettHeight;
+    return font->MaxLetterHeight;
 }
 
 void SpriteManager::GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines )
@@ -1111,7 +1066,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
         return;
 
     lines = fi.LinesInRect;
-    th = fi.LinesInRect * font->MaxLettHeight + ( fi.LinesInRect - 1 ) * font->EmptyVer;
+    th = fi.LinesInRect * font->MaxLetterHeight + ( fi.LinesInRect - 1 ) * font->YAdvance;
     tw = fi.MaxCurX;
 }
 

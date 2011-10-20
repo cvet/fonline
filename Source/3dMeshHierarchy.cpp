@@ -35,7 +35,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     LPCSTR Name,
     CONST D3DXMESHDATA* meshData,
     CONST D3DXMATERIAL* materials,
-    CONST EffectInstance_* effectInstances,
+    CONST D3DXEFFECTINSTANCE* effectInstances,
     DWORD numMaterials,
     CONST DWORD* adjacency,
     SkinInfo_ SkinInfo,
@@ -84,7 +84,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
     newMeshContainer->NumMaterials = max( numMaterials, 1 );
     newMeshContainer->Materials = new Material_[ newMeshContainer->NumMaterials ];
     newMeshContainer->TextureNames = new char*[ newMeshContainer->NumMaterials ];
-    newMeshContainer->Effects = new EffectInstance_[ newMeshContainer->NumMaterials ];
+    newMeshContainer->Effects = new EffectInstance[ newMeshContainer->NumMaterials ];
 
     if( numMaterials > 0 )
     {
@@ -98,24 +98,29 @@ HRESULT MeshHierarchy::CreateMeshContainer(
             newMeshContainer->Materials[ i ] = materials[ i ].MatD3D;
 
             // The mesh may contain a reference to an effect file
-            memzero( &newMeshContainer->Effects[ i ], sizeof( EffectInstance_ ) );
+            memzero( &newMeshContainer->Effects[ i ], sizeof( EffectInstance ) );
             if( effectInstances && effectInstances[ i ].pEffectFilename && effectInstances[ i ].pEffectFilename[ 0 ] )
             {
-                newMeshContainer->Effects[ i ].pEffectFilename = Str::Duplicate( effectInstances[ i ].pEffectFilename );
-                newMeshContainer->Effects[ i ].NumDefaults = effectInstances[ i ].NumDefaults;
-                newMeshContainer->Effects[ i ].pDefaults = NULL;
+                newMeshContainer->Effects[ i ].EffectFilename = Str::Duplicate( effectInstances[ i ].pEffectFilename );
+                newMeshContainer->Effects[ i ].DefaultsCount = effectInstances[ i ].NumDefaults;
+                newMeshContainer->Effects[ i ].Defaults = NULL;
 
-                uint defaults = newMeshContainer->Effects[ i ].NumDefaults;
+                uint defaults = newMeshContainer->Effects[ i ].DefaultsCount;
                 if( defaults )
                 {
-                    newMeshContainer->Effects[ i ].pDefaults = new D3DXEFFECTDEFAULT[ defaults ];
+                    newMeshContainer->Effects[ i ].Defaults = new EffectDefault[ defaults ];
                     for( uint j = 0; j < defaults; j++ )
                     {
-                        newMeshContainer->Effects[ i ].pDefaults[ j ].pParamName = Str::Duplicate( effectInstances[ i ].pDefaults[ j ].pParamName );
-                        newMeshContainer->Effects[ i ].pDefaults[ j ].Type = effectInstances[ i ].pDefaults[ j ].Type;
-                        newMeshContainer->Effects[ i ].pDefaults[ j ].NumBytes = effectInstances[ i ].pDefaults[ j ].NumBytes;
-                        newMeshContainer->Effects[ i ].pDefaults[ j ].pValue = new char[ newMeshContainer->Effects[ i ].pDefaults[ j ].NumBytes ];
-                        memcpy( newMeshContainer->Effects[ i ].pDefaults[ j ].pValue, effectInstances[ i ].pDefaults[ j ].pValue, newMeshContainer->Effects[ i ].pDefaults[ j ].NumBytes );
+                        newMeshContainer->Effects[ i ].Defaults[ j ].Name = Str::Duplicate( effectInstances[ i ].pDefaults[ j ].pParamName );
+                        if( effectInstances[ i ].pDefaults[ j ].Type == D3DXEDT_STRING )
+                            newMeshContainer->Effects[ i ].Defaults[ j ].Type = EffectDefault::String;
+                        else if( effectInstances[ i ].pDefaults[ j ].Type == D3DXEDT_FLOATS )
+                            newMeshContainer->Effects[ i ].Defaults[ j ].Type = EffectDefault::Floats;
+                        else if( effectInstances[ i ].pDefaults[ j ].Type == D3DXEDT_DWORD )
+                            newMeshContainer->Effects[ i ].Defaults[ j ].Type = EffectDefault::Dword;
+                        newMeshContainer->Effects[ i ].Defaults[ j ].Size = effectInstances[ i ].pDefaults[ j ].NumBytes;
+                        newMeshContainer->Effects[ i ].Defaults[ j ].Data = new char[ newMeshContainer->Effects[ i ].Defaults[ j ].Size ];
+                        memcpy( newMeshContainer->Effects[ i ].Defaults[ j ].Data, effectInstances[ i ].pDefaults[ j ].pValue, newMeshContainer->Effects[ i ].Defaults[ j ].Size );
                     }
                 }
             }
@@ -131,7 +136,7 @@ HRESULT MeshHierarchy::CreateMeshContainer(
         newMeshContainer->Materials[ 0 ].Diffuse.b = 0.5f;
         newMeshContainer->Materials[ 0 ].Specular = newMeshContainer->Materials[ 0 ].Diffuse;
         newMeshContainer->TextureNames[ 0 ] = NULL;
-        memzero( &newMeshContainer->Effects[ 0 ], sizeof( EffectInstance_ ) );
+        memzero( &newMeshContainer->Effects[ 0 ], sizeof( EffectInstance ) );
     }
 
     // If there is skin data associated with the mesh copy it over
@@ -206,9 +211,9 @@ HRESULT MeshHierarchy::DestroyMeshContainer( LPD3DXMESHCONTAINER meshContainerBa
     {
         for( uint i = 0; i < mesh_container->NumMaterials; i++ )
         {
-            for( uint j = 0; j < mesh_container->Effects[ i ].NumDefaults; j++ )
-                SAFEDELA( mesh_container->Effects[ i ].pDefaults[ j ].pValue );
-            SAFEDELA( mesh_container->Effects[ i ].pDefaults );
+            for( uint j = 0; j < mesh_container->Effects[ i ].DefaultsCount; j++ )
+                SAFEDELA( mesh_container->Effects[ i ].Defaults[ j ].Data );
+            SAFEDELA( mesh_container->Effects[ i ].Defaults );
         }
     }
     SAFEDEL( mesh_container->Effects );

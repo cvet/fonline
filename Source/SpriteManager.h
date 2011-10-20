@@ -109,36 +109,42 @@
 #define CONTOUR_CUSTOM               ( 3 )
 
 // Primitives
-#define  PRIMITIVE_POINTLIST         ( 1 )
-#define  PRIMITIVE_LINELIST          ( 2 )
-#define  PRIMITIVE_LINESTRIP         ( 3 )
-#define  PRIMITIVE_TRIANGLELIST      ( 4 )
-#define  PRIMITIVE_TRIANGLESTRIP     ( 5 )
-#define  PRIMITIVE_TRIANGLEFAN       ( 6 )
+#define PRIMITIVE_POINTLIST          ( 1 )
+#define PRIMITIVE_LINELIST           ( 2 )
+#define PRIMITIVE_LINESTRIP          ( 3 )
+#define PRIMITIVE_TRIANGLELIST       ( 4 )
+#define PRIMITIVE_TRIANGLESTRIP      ( 5 )
+#define PRIMITIVE_TRIANGLEFAN        ( 6 )
 
 struct Surface
 {
     int      Type;
-    Texture_ TextureOwner;
+    Texture* TextureOwner;
     uint     Width, Height;           // Texture size
     uint     BusyH;                   // Height point position
     uint     FreeX, FreeY;            // Busy positions on current surface
 
     Surface(): Type( 0 ), TextureOwner( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
-    #ifdef FO_D3D
-    ~Surface() { SAFEREL( TextureOwner ); }
-    #endif
+    ~Surface() { SAFEDEL( TextureOwner ); }
 };
 typedef vector< Surface* > SurfaceVec;
 
 struct MYVERTEX
 {
+    #ifdef FO_D3D
     FLOAT x, y, z, rhw;
-    uint  Diffuse;
+    uint  diffuse;
     FLOAT tu, tv;
     FLOAT tu2, tv2;
-
-    MYVERTEX(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ), Diffuse( 0 ) {}
+    MYVERTEX(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ), diffuse( 0 ) {}
+    #else
+    float x, y;
+    uint  diffuse;
+    float tu, tv;
+    float tu2, tv2;
+    float padding;
+    MYVERTEX(): x( 0 ), y( 0 ), diffuse( 0 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ) {}
+    #endif
 };
 #define D3DFVF_MYVERTEX              ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2 )
 
@@ -167,10 +173,10 @@ typedef vector< SpriteInfo* > SprInfoVec;
 
 struct DipData
 {
-    Texture_ SourceTexture;
+    Texture* SourceTexture;
     Effect*  SourceEffect;
     uint     SpritesCount;
-    DipData( Texture_ tex, Effect* effect ): SourceTexture( tex ), SourceEffect( effect ), SpritesCount( 1 ) {}
+    DipData( Texture* tex, Effect* effect ): SourceTexture( tex ), SourceEffect( effect ), SpritesCount( 1 ) {}
 };
 typedef vector< DipData > DipDataVec;
 
@@ -246,13 +252,12 @@ public:
     bool    IsInit() { return isInit; }
     void    Finish();
     Device_ GetDevice() { return d3dDevice; }
-    // bool    IsMultiSamplingUsed() { return presentParams.MultiSampleType != D3DMULTISAMPLE_NONE; }
-    bool BeginScene( uint clear_color );
-    void EndScene();
-    bool Restore();
-    bool CreateRenderTarget( Surface_& surf, int w, int h );
-    bool ClearRenderTarget( Surface_& surf, uint color );
-    bool ClearCurRenderTarget( uint color );
+    bool    BeginScene( uint clear_color );
+    void    EndScene();
+    bool    Restore();
+    bool    CreateRenderTarget( Surface_& surf, int w, int h );
+    bool    ClearRenderTarget( Surface_& surf, uint color );
+    bool    ClearCurRenderTarget( uint color );
     void ( * PreRestore )();
     void ( * PostRestore )();
 
@@ -338,8 +343,12 @@ public:
     void SetCurEffect2D( uint index )                     { curDefaultEffect = sprDefaultEffect[ index ]; }
 
 private:
-    VertexBuffer_ pVB;
-    IndexBuffer_  pIB;
+    VertexBuffer_ vbMain;
+    #ifndef FO_D3D
+    GLuint        vaMain;
+    // GLuint        vaPrimitive; todo
+    #endif
+    IndexBuffer_  ibMain;
     MYVERTEX*     waitBuf;
     DipDataVec    dipQueue;
     uint          baseColor;
@@ -350,17 +359,15 @@ private:
     Effect*       sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
     Effect*       curDefaultEffect;
 
-    void FlushDIP();
-
     // Contours
 public:
     bool DrawContours();
     void ClearSpriteContours() { createdSpriteContours.clear(); }
 
 private:
-    Texture_        contoursTexture;
+    Texture*        contoursTexture;
     Surface_        contoursTextureSurf;
-    Texture_        contoursMidTexture;
+    Texture*        contoursMidTexture;
     Surface_        contoursMidTextureSurf;
     Surface_        contours3dRT;
     PixelShader_*   contoursPS;
@@ -396,8 +403,7 @@ public:
 public:
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
-    bool LoadFontOld( int index, const char* font_name, int size_mod );
-    bool LoadFontAAF( int index, const char* font_name, int size_mod );
+    bool LoadFontFO( int index, const char* font_name );
     bool LoadFontBMF( int index, const char* font_name );
     bool DrawStr( INTRECT& r, const char* str, uint flags, uint col = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );

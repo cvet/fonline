@@ -26,12 +26,12 @@ Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
         Frame* frame = *it;
-        if( !_stricmp( frame->Name, fname ) )
+        if( Str::CompareCase( frame->Name, fname ) )
             return frame;
     }
 
     for( uint i = 0, j = (uint) processedFiles.size(); i < j; i++ )
-        if( !_stricmp( processedFiles[ i ], fname ) )
+        if( Str::CompareCase( processedFiles[ i ], fname ) )
             return NULL;
     processedFiles.push_back( Str::Duplicate( fname ) );
 
@@ -44,7 +44,7 @@ Frame* Loader3d::LoadModel( Device_ device, const char* fname, bool calc_tangent
 
     // Standart direct x loader
     const char* ext = FileManager::GetExtension( fname );
-    if( ext && !_stricmp( ext, "x" ) )
+    if( ext && Str::CompareCase( ext, "x" ) )
     {
         Frame* frame_root = LoadX( device, fm, fname );
         if( frame_root )
@@ -471,8 +471,8 @@ AnimSet_* Loader3d::LoadAnimation( Device_ device, const char* anim_fname, const
     #ifdef FO_D3D
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
     {
-        if( !_stricmp( loadedAnimationsFNames[ i ], anim_fname ) &&
-            !_stricmp( loadedAnimations[ i ]->GetName(), anim_name ) )
+        if( Str::CompareCase( loadedAnimationsFNames[ i ], anim_fname ) &&
+            Str::CompareCase( loadedAnimations[ i ]->GetName(), anim_name ) )
             return loadedAnimations[ i ];
     }
     #endif
@@ -539,7 +539,7 @@ bool Loader3d::IsExtensionSupported( const char* ext )
     };
 
     for( int i = 0, j = sizeof( arr ) / sizeof( arr[ 0 ] ); i < j; i++ )
-        if( !_stricmp( ext, arr[ i ] ) )
+        if( Str::CompareCase( ext, arr[ i ] ) )
             return true;
     return false;
 }
@@ -558,7 +558,7 @@ Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const 
     for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
     {
         Texture* texture = *it;
-        if( !_stricmp( texture->Name, texture_name ) )
+        if( Str::CompareCase( texture->Name, texture_name ) )
             return texture;
     }
 
@@ -574,15 +574,14 @@ Texture* Loader3d::LoadTexture( Device_ device, const char* texture_name, const 
     }
 
     // Create texture
-    Texture_ texture = NULL;
+    Texture*           texture_ex = new Texture();
     #ifdef FO_D3D
-    if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &texture ) ) )
+    LPDIRECT3DTEXTURE9 dxtex = NULL;
+    if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &dxtex ) ) )
         return NULL;
+    texture_ex->Instance = dxtex;
     #endif
-
-    Texture* texture_ex = new Texture();
     texture_ex->Name = Str::Duplicate( texture_name );
-    texture_ex->TextureInstance = texture;
     loadedTextures.push_back( texture_ex );
     return loadedTextures.back();
 }
@@ -603,7 +602,7 @@ void Loader3d::FreeTexture( Texture* texture )
         }
 
         SAFEDELA( texture->Name );
-        SAFEREL( texture->TextureInstance );
+        SAFEREL( texture->Instance );
         SAFEDEL( texture );
     }
     else
@@ -648,35 +647,31 @@ public:
 } includeParser;
 #endif
 
-EffectExVec Loader3d::loadedEffects;
+EffectVec Loader3d::loadedEffects;
 
 Effect* Loader3d::LoadEffect( Device_ device, const char* effect_name )
 {
-    #ifdef FO_D3D
-    EffectInstance_ effect_inst;
+    EffectInstance effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
-    effect_inst.pEffectFilename = (char*) effect_name;
+    effect_inst.EffectFilename = (char*) effect_name;
     return LoadEffect( device, &effect_inst, NULL );
-    #else
-    return NULL;
-    #endif
 }
 
-Effect* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, const char* model_path )
+Effect* Loader3d::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path )
 {
-    #ifdef FO_D3D
-    if( !effect_inst || !effect_inst->pEffectFilename || !effect_inst->pEffectFilename[ 0 ] )
+    if( !effect_inst || !effect_inst->EffectFilename || !effect_inst->EffectFilename[ 0 ] )
         return NULL;
-    const char* effect_name = effect_inst->pEffectFilename;
+    const char* effect_name = effect_inst->EffectFilename;
 
     // Try find already loaded texture
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect_ex = *it;
-        if( !_stricmp( effect_ex->Name, effect_name ) && effect_ex->Defaults == effect_inst->pDefaults )
+        if( Str::CompareCase( effect_ex->Name, effect_name ) && effect_ex->Defaults == effect_inst->Defaults )
             return effect_ex;
     }
 
+    #ifdef FO_D3D
     // First try load from effects folder
     FileManager fm;
     if( !fm.LoadFile( effect_name, PT_EFFECTS ) && model_path )
@@ -750,126 +745,255 @@ Effect* Loader3d::LoadEffect( Device_ device, EffectInstance_* effect_inst, cons
     }
 
     // Create effect
-    Effect_      effect = NULL;
+    LPD3DXEFFECT dxeffect = NULL;
     LPD3DXBUFFER errors = NULL;
-    if( FAILED( D3DXCreateEffect( device, fm_cache.GetBuf(), fm_cache.GetFsize(), NULL, NULL, /*D3DXSHADER_SKIPVALIDATION|*/ D3DXFX_NOT_CLONEABLE, NULL, &effect, &errors ) ) )
+    if( FAILED( D3DXCreateEffect( device, fm_cache.GetBuf(), fm_cache.GetFsize(), NULL, NULL, /*D3DXSHADER_SKIPVALIDATION|*/ D3DXFX_NOT_CLONEABLE, NULL, &dxeffect, &errors ) ) )
     {
         WriteLogF( _FUNC_, " - Unable to create effect, effect<%s>, errors<\n%s>.\n", effect_name, errors ? errors->GetBufferPointer() : "nullptr" );
-        SAFEREL( effect );
+        SAFEREL( dxeffect );
         SAFEREL( errors );
         return NULL;
     }
     SAFEREL( errors );
 
-    Effect* effect_ex = new Effect();
-    effect_ex->Name = Str::Duplicate( effect_name );
-    effect_ex->EffectInstance = effect;
-    effect_ex->EffectFlags = D3DXFX_DONOTSAVESTATE;
-    effect_ex->Defaults = NULL;
-    effect_ex->EffectParams = NULL;
+    Effect* effect = new Effect();
+    effect->Name = Str::Duplicate( effect_name );
+    effect->DXInstance = dxeffect;
+    effect->EffectFlags = D3DXFX_DONOTSAVESTATE;
+    effect->Defaults = NULL;
+    effect->EffectParams = NULL;
 
-    effect_ex->TechniqueSkinned = effect->GetTechniqueByName( "Skinned" );
-    effect_ex->TechniqueSkinnedWithShadow = effect->GetTechniqueByName( "SkinnedWithShadow" );
-    effect_ex->TechniqueSimple = effect->GetTechniqueByName( "Simple" );
-    effect_ex->TechniqueSimpleWithShadow = effect->GetTechniqueByName( "SimpleWithShadow" );
-    effect_ex->BonesInfluences = effect->GetParameterByName( NULL, "BonesInfluences" );
-    effect_ex->GroundPosition = effect->GetParameterByName( NULL, "GroundPosition" );
-    effect_ex->LightDir = effect->GetParameterByName( NULL, "LightDir" );
-    effect_ex->LightDiffuse = effect->GetParameterByName( NULL, "LightDiffuse" );
-    effect_ex->MaterialAmbient = effect->GetParameterByName( NULL, "MaterialAmbient" );
-    effect_ex->MaterialDiffuse = effect->GetParameterByName( NULL, "MaterialDiffuse" );
-    effect_ex->WorldMatrices = effect->GetParameterByName( NULL, "WorldMatrices" );
-    effect_ex->ViewProjMatrix = effect->GetParameterByName( NULL, "ViewProjMatrix" );
+    effect->TechniqueSkinned = dxeffect->GetTechniqueByName( "Skinned" );
+    effect->TechniqueSkinnedWithShadow = dxeffect->GetTechniqueByName( "SkinnedWithShadow" );
+    effect->TechniqueSimple = dxeffect->GetTechniqueByName( "Simple" );
+    effect->TechniqueSimpleWithShadow = dxeffect->GetTechniqueByName( "SimpleWithShadow" );
+    effect->BonesInfluences = dxeffect->GetParameterByName( NULL, "BonesInfluences" );
+    effect->GroundPosition = dxeffect->GetParameterByName( NULL, "GroundPosition" );
+    effect->LightDir = dxeffect->GetParameterByName( NULL, "LightDir" );
+    effect->LightDiffuse = dxeffect->GetParameterByName( NULL, "LightDiffuse" );
+    effect->MaterialAmbient = dxeffect->GetParameterByName( NULL, "MaterialAmbient" );
+    effect->MaterialDiffuse = dxeffect->GetParameterByName( NULL, "MaterialDiffuse" );
+    effect->WorldMatrices = dxeffect->GetParameterByName( NULL, "WorldMatrices" );
+    effect->ViewProjMatrix = dxeffect->GetParameterByName( NULL, "ViewProjMatrix" );
 
-    if( !effect_ex->TechniqueSimple )
+    if( !effect->TechniqueSimple )
     {
         WriteLogF( _FUNC_, " - Technique 'Simple' not founded, effect<%s>.\n", effect_name );
-        delete effect_ex;
-        SAFEREL( effect );
+        delete effect;
+        SAFEREL( dxeffect );
         return NULL;
     }
 
-    if( !effect_ex->TechniqueSimpleWithShadow )
-        effect_ex->TechniqueSimpleWithShadow = effect_ex->TechniqueSimple;
-    if( !effect_ex->TechniqueSkinned )
-        effect_ex->TechniqueSkinned = effect_ex->TechniqueSimple;
-    if( !effect_ex->TechniqueSkinnedWithShadow )
-        effect_ex->TechniqueSkinnedWithShadow = effect_ex->TechniqueSkinned;
+    if( !effect->TechniqueSimpleWithShadow )
+        effect->TechniqueSimpleWithShadow = effect->TechniqueSimple;
+    if( !effect->TechniqueSkinned )
+        effect->TechniqueSkinned = effect->TechniqueSimple;
+    if( !effect->TechniqueSkinnedWithShadow )
+        effect->TechniqueSkinnedWithShadow = effect->TechniqueSkinned;
 
-    effect_ex->PassIndex = effect->GetParameterByName( NULL, "PassIndex" );
-    effect_ex->Time = effect->GetParameterByName( NULL, "Time" );
-    effect_ex->TimeCurrent = 0.0f;
-    effect_ex->TimeLastTick = Timer::AccurateTick();
-    effect_ex->TimeGame = effect->GetParameterByName( NULL, "TimeGame" );
-    effect_ex->TimeGameCurrent = 0.0f;
-    effect_ex->TimeGameLastTick = Timer::AccurateTick();
-    effect_ex->IsTime = ( effect_ex->Time || effect_ex->TimeGame );
-    effect_ex->Random1Pass = effect->GetParameterByName( NULL, "Random1Pass" );
-    effect_ex->Random2Pass = effect->GetParameterByName( NULL, "Random2Pass" );
-    effect_ex->Random3Pass = effect->GetParameterByName( NULL, "Random3Pass" );
-    effect_ex->Random4Pass = effect->GetParameterByName( NULL, "Random4Pass" );
-    effect_ex->IsRandomPass = ( effect_ex->Random1Pass || effect_ex->Random2Pass || effect_ex->Random3Pass || effect_ex->Random4Pass );
-    effect_ex->Random1Effect = effect->GetParameterByName( NULL, "Random1Effect" );
-    effect_ex->Random2Effect = effect->GetParameterByName( NULL, "Random2Effect" );
-    effect_ex->Random3Effect = effect->GetParameterByName( NULL, "Random3Effect" );
-    effect_ex->Random4Effect = effect->GetParameterByName( NULL, "Random4Effect" );
-    effect_ex->IsRandomEffect = ( effect_ex->Random1Effect || effect_ex->Random2Effect || effect_ex->Random3Effect || effect_ex->Random4Effect );
-    effect_ex->IsTextures = false;
+    effect->PassIndex = dxeffect->GetParameterByName( NULL, "PassIndex" );
+    effect->Time = dxeffect->GetParameterByName( NULL, "Time" );
+    effect->TimeCurrent = 0.0f;
+    effect->TimeLastTick = Timer::AccurateTick();
+    effect->TimeGame = dxeffect->GetParameterByName( NULL, "TimeGame" );
+    effect->TimeGameCurrent = 0.0f;
+    effect->TimeGameLastTick = Timer::AccurateTick();
+    effect->IsTime = ( effect->Time || effect->TimeGame );
+    effect->Random1Pass = dxeffect->GetParameterByName( NULL, "Random1Pass" );
+    effect->Random2Pass = dxeffect->GetParameterByName( NULL, "Random2Pass" );
+    effect->Random3Pass = dxeffect->GetParameterByName( NULL, "Random3Pass" );
+    effect->Random4Pass = dxeffect->GetParameterByName( NULL, "Random4Pass" );
+    effect->IsRandomPass = ( effect->Random1Pass || effect->Random2Pass || effect->Random3Pass || effect->Random4Pass );
+    effect->Random1Effect = dxeffect->GetParameterByName( NULL, "Random1Effect" );
+    effect->Random2Effect = dxeffect->GetParameterByName( NULL, "Random2Effect" );
+    effect->Random3Effect = dxeffect->GetParameterByName( NULL, "Random3Effect" );
+    effect->Random4Effect = dxeffect->GetParameterByName( NULL, "Random4Effect" );
+    effect->IsRandomEffect = ( effect->Random1Effect || effect->Random2Effect || effect->Random3Effect || effect->Random4Effect );
+    effect->IsTextures = false;
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
     {
         char tex_name[ 32 ];
         sprintf( tex_name, "Texture%d", i );
-        effect_ex->Textures[ i ] = effect->GetParameterByName( NULL, tex_name );
-        if( effect_ex->Textures[ i ] )
-            effect_ex->IsTextures = true;
+        effect->Textures[ i ] = dxeffect->GetParameterByName( NULL, tex_name );
+        if( effect->Textures[ i ] )
+            effect->IsTextures = true;
     }
-    effect_ex->IsScriptValues = false;
+    effect->IsScriptValues = false;
     for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
     {
         char val_name[ 32 ];
         sprintf( val_name, "EffectValue%d", i );
-        effect_ex->ScriptValues[ i ] = effect->GetParameterByName( NULL, val_name );
-        if( effect_ex->ScriptValues[ i ] )
-            effect_ex->IsScriptValues = true;
+        effect->ScriptValues[ i ] = dxeffect->GetParameterByName( NULL, val_name );
+        if( effect->ScriptValues[ i ] )
+            effect->IsScriptValues = true;
     }
-    effect_ex->AnimPosProc = effect->GetParameterByName( NULL, "AnimPosProc" );
-    effect_ex->AnimPosTime = effect->GetParameterByName( NULL, "AnimPosTime" );
-    effect_ex->IsAnimPos = ( effect_ex->AnimPosProc || effect_ex->AnimPosTime );
-    effect_ex->IsNeedProcess = ( effect_ex->PassIndex || effect_ex->IsTime || effect_ex->IsRandomPass || effect_ex->IsRandomEffect ||
-                                 effect_ex->IsTextures || effect_ex->IsScriptValues || effect_ex->IsAnimPos );
+    effect->AnimPosProc = dxeffect->GetParameterByName( NULL, "AnimPosProc" );
+    effect->AnimPosTime = dxeffect->GetParameterByName( NULL, "AnimPosTime" );
+    effect->IsAnimPos = ( effect->AnimPosProc || effect->AnimPosTime );
+    effect->IsNeedProcess = ( effect->PassIndex || effect->IsTime || effect->IsRandomPass || effect->IsRandomEffect ||
+                              effect->IsTextures || effect->IsScriptValues || effect->IsAnimPos );
 
-    if( effect_inst->NumDefaults )
+    if( effect_inst->DefaultsCount )
     {
-        effect->BeginParameterBlock();
-        for( uint d = 0; d < effect_inst->NumDefaults; d++ )
+        dxeffect->BeginParameterBlock();
+        for( uint d = 0; d < effect_inst->DefaultsCount; d++ )
         {
-            D3DXEFFECTDEFAULT& def = effect_inst->pDefaults[ d ];
-            EffectValue_       param = effect->GetParameterByName( NULL, def.pParamName );
+            EffectDefault& def = effect_inst->Defaults[ d ];
+            EffectValue_   param = dxeffect->GetParameterByName( NULL, def.Name );
             if( !param )
                 continue;
             switch( def.Type )
             {
             case D3DXEDT_STRING:             // pValue points to a null terminated ASCII string
-                effect->SetString( param, (LPCSTR) def.pValue );
+                dxeffect->SetString( param, (LPCSTR) def.Data );
                 break;
             case D3DXEDT_FLOATS:             // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
-                effect->SetFloatArray( param, (FLOAT*) def.pValue, def.NumBytes / sizeof( FLOAT ) );
+                dxeffect->SetFloatArray( param, (FLOAT*) def.Data, def.Size / sizeof( FLOAT ) );
                 break;
             case D3DXEDT_DWORD:              // pValue points to a uint
-                effect->SetInt( param, *(uint*) def.pValue );
+                dxeffect->SetInt( param, *(uint*) def.Data );
                 break;
             default:
                 break;
             }
         }
-        effect_ex->EffectParams = effect->EndParameterBlock();
-        effect_ex->Defaults = effect_inst->pDefaults;
+        effect->EffectParams = dxeffect->EndParameterBlock();
+        effect->Defaults = effect_inst->Defaults;
     }
 
-    loadedEffects.push_back( effect_ex );
+    loadedEffects.push_back( effect );
     return loadedEffects.back();
     #else
-    return NULL;
+    // Make names
+    char vs_fname[ MAX_FOPATH ];
+    Str::Copy( vs_fname, effect_name );
+    FileManager::EraseExtension( vs_fname );
+    Str::Append( vs_fname, ".vert" );
+    char fs_fname[ MAX_FOPATH ];
+    Str::Copy( fs_fname, effect_name );
+    FileManager::EraseExtension( fs_fname );
+    Str::Append( fs_fname, ".frag" );
+
+    // Load files
+    FileManager vs_file;
+    if( !vs_file.LoadFile( vs_fname, PT_EFFECTS ) )
+    {
+        WriteLogF( _FUNC_, " - Vertex shader file<%s> not found.\n", vs_fname );
+        return NULL;
+    }
+    FileManager fs_file;
+    if( !fs_file.LoadFile( fs_fname, PT_EFFECTS ) )
+    {
+        WriteLogF( _FUNC_, " - Fragment shader file<%s> not found.\n", fs_fname );
+        return NULL;
+    }
+    const char* vs_str = (char*) vs_file.GetBuf();
+    const char* fs_str = (char*) fs_file.GetBuf();
+
+    // Create shaders
+    GLuint vs, fs;
+    GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
+    GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
+    GL( glShaderSource( vs, 1, (const GLchar**) &vs_str, NULL ) );
+    GL( glShaderSource( fs, 1, (const GLchar**) &fs_str, NULL ) );
+
+    // Info parser
+    struct ShaderInfo
+    {
+        static void Log( const char* shader_name, GLint shader )
+        {
+            int len = 0;
+            GL( glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &len ) );
+            if( len > 0 )
+            {
+                GLchar* str = new GLchar[ len ];
+                int     chars = 0;
+                glGetShaderInfoLog( shader, len, &chars, str );
+                WriteLog( "Shader<%s> info output:\n%s", shader_name, str );
+                delete[] str;
+            }
+        }
+        static void LogProgram( GLint program )
+        {
+            int len = 0;
+            GL( glGetProgramiv( program, GL_INFO_LOG_LENGTH, &len ) );
+            if( len > 0 )
+            {
+                GLchar* str = new GLchar[ len ];
+                int     chars = 0;
+                glGetProgramInfoLog( program, len, &chars, str );
+                WriteLog( "Program info output:\n%s", str );
+                delete[] str;
+            }
+        }
+    };
+
+    // Compile vs
+    GLint compiled;
+    GL( glCompileShader( vs ) );
+    GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
+    if( !compiled )
+    {
+        WriteLogF( _FUNC_, " - Vertex shader<%s> not compiled.\n", vs_fname );
+        ShaderInfo::Log( vs_fname, vs );
+        GL( glDeleteShader( vs ) );
+        GL( glDeleteShader( fs ) );
+        return NULL;
+    }
+
+    // Compile fs
+    GL( glCompileShader( fs ) );
+    GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
+    if( !compiled )
+    {
+        WriteLogF( _FUNC_, " - Fragment shader<%s> not compiled.\n", fs_fname );
+        ShaderInfo::Log( fs_fname, fs );
+        GL( glDeleteShader( vs ) );
+        GL( glDeleteShader( fs ) );
+        return NULL;
+    }
+
+    // Make program
+    GLuint program;
+    GL( program = glCreateProgram() );
+    GL( glAttachShader( program, vs ) );
+    GL( glAttachShader( program, fs ) );
+
+    GL( glBindAttribLocation( program, 0, "InPosition" ) );
+    GL( glBindAttribLocation( program, 1, "InColor" ) );
+    GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
+    GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
+
+    GL( glLinkProgram( program ) );
+    GLint linked;
+    GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
+    if( !linked )
+    {
+        WriteLogF( _FUNC_, " - Failed to link shader program, vs<%s>, fs<%s>.\n", vs_fname, fs_fname );
+        ShaderInfo::LogProgram( program );
+        GL( glDetachShader( program, vs ) );
+        GL( glDetachShader( program, fs ) );
+        GL( glDeleteShader( vs ) );
+        GL( glDeleteShader( fs ) );
+        GL( glDeleteProgram( program ) );
+        return NULL;
+    }
+
+    // Create effect instance
+    Effect* effect = new Effect();
+    memzero( effect, sizeof( Effect ) );
+    effect->Name = Str::Duplicate( effect_name );
+    effect->Program = program;
+    effect->VertexShader = vs;
+    effect->FragmentShader = fs;
+    effect->Defaults = NULL;
+    effect->Passes = 1;
+
+    // Bind data
+    GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
+    GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
+
+    return effect;
     #endif
 }
 
@@ -889,7 +1013,7 @@ void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_
                 if( effect_ex->TimeCurrent >= 120.0f )
                     effect_ex->TimeCurrent = fmod( effect_ex->TimeCurrent, 120.0f );
 
-                effect_ex->EffectInstance->SetFloat( effect_ex->Time, effect_ex->TimeCurrent );
+                effect_ex->DXInstance->SetFloat( effect_ex->Time, effect_ex->TimeCurrent );
             }
             if( effect_ex->TimeGame )
             {
@@ -905,60 +1029,60 @@ void Loader3d::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_
                     effect_ex->TimeGameLastTick = tick;
                 }
 
-                effect_ex->EffectInstance->SetFloat( effect_ex->TimeGame, effect_ex->TimeGameCurrent );
+                effect_ex->DXInstance->SetFloat( effect_ex->TimeGame, effect_ex->TimeGameCurrent );
             }
         }
 
         if( effect_ex->IsRandomEffect )
         {
             if( effect_ex->Random1Effect )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random2Effect )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random3Effect )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random4Effect )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
 
         if( effect_ex->IsTextures )
         {
             for( int i = 0; i < EFFECT_TEXTURES; i++ )
                 if( effect_ex->Textures[ i ] )
-                    effect_ex->EffectInstance->SetTexture( effect_ex->Textures[ i ], textures && textures[ i ] ? textures[ i ]->TextureInstance : NULL );
+                    effect_ex->DXInstance->SetTexture( effect_ex->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Instance : NULL );
         }
 
         if( effect_ex->IsScriptValues )
         {
             for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
                 if( effect_ex->ScriptValues[ i ] )
-                    effect_ex->EffectInstance->SetFloat( effect_ex->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
+                    effect_ex->DXInstance->SetFloat( effect_ex->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
         }
 
         if( effect_ex->IsAnimPos )
         {
             if( effect_ex->AnimPosProc )
-                effect_ex->EffectInstance->SetFloat( effect_ex->AnimPosProc, anim_proc );
+                effect_ex->DXInstance->SetFloat( effect_ex->AnimPosProc, anim_proc );
             if( effect_ex->AnimPosTime )
-                effect_ex->EffectInstance->SetFloat( effect_ex->AnimPosTime, anim_time );
+                effect_ex->DXInstance->SetFloat( effect_ex->AnimPosTime, anim_time );
         }
     }
     // Process pass
     else
     {
         if( effect_ex->PassIndex )
-            effect_ex->EffectInstance->SetFloat( effect_ex->Random1Pass, (float) pass );
+            effect_ex->DXInstance->SetFloat( effect_ex->Random1Pass, (float) pass );
 
         if( effect_ex->IsRandomPass )
         {
             if( effect_ex->Random1Pass )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random2Pass )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random3Pass )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
             if( effect_ex->Random4Pass )
-                effect_ex->EffectInstance->SetFloat( effect_ex->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+                effect_ex->DXInstance->SetFloat( effect_ex->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
     }
     #endif
@@ -970,7 +1094,7 @@ bool Loader3d::EffectsPreRestore()
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect_ex = *it;
-        D3D_HR( effect_ex->EffectInstance->OnLostDevice() );
+        D3D_HR( effect_ex->DXInstance->OnLostDevice() );
     }
     #endif
     return true;
@@ -982,7 +1106,7 @@ bool Loader3d::EffectsPostRestore()
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect_ex = *it;
-        D3D_HR( effect_ex->EffectInstance->OnResetDevice() );
+        D3D_HR( effect_ex->DXInstance->OnResetDevice() );
     }
     #endif
     return true;

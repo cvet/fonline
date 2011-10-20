@@ -159,7 +159,8 @@ void* GameThread( void* )
     if( !FOEngine || !FOEngine->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
-        return 0;
+        GameOpt.Quit = true;
+        return NULL;
     }
 
     // Loop

@@ -440,7 +440,7 @@ public:
     float           ScreenOffsXf, ScreenOffsYf, ScreenOffsStep;
     uint            ScreenOffsNextTick;
     // Mirror
-    Texture_        ScreenMirrorTexture;
+    Texture*        ScreenMirrorTexture;
     int             ScreenMirrorX, ScreenMirrorY;
     uint            ScreenMirrorEndTick;
     bool            ScreenMirrorStart;

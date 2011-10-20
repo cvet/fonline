@@ -5664,16 +5664,12 @@ void FOClient::SetCurPos( int x, int y )
     GameOpt.MouseY = y;
     if( !GameOpt.FullScreen )
     {
-        #ifdef FO_D3D
+        #ifdef FO_WINDOWS
         WINDOWINFO wi;
         wi.cbSize = sizeof( wi );
         GetWindowInfo( fl_xid( MainWindow ), &wi );
         SetCursorPos( wi.rcClient.left + GameOpt.MouseX, wi.rcClient.top + GameOpt.MouseY );
         #endif
-
-        // POINT pp;
-        // GetCursorPos(&pp);
-        // WriteLog("%d + %d = %d, %d + %d = %d; real %d, %d\n",wi.rcClient.left,CurX,wi.rcClient.left+CurX,wi.rcClient.top,CurY,wi.rcClient.top+CurY,pp.x,pp.y);
     }
 }
 
