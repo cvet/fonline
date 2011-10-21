@@ -166,30 +166,6 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
     return frame_root;
 }
 
-Matrix_ ConvertMatrix( const aiMatrix4x4& mat )
-{
-    Matrix_ m;
-    #ifdef FO_D3D
-    m._11 = mat.a1;
-    m._21 = mat.a2;
-    m._31 = mat.a3;
-    m._41 = mat.a4;
-    m._12 = mat.b1;
-    m._22 = mat.b2;
-    m._32 = mat.b3;
-    m._42 = mat.b4;
-    m._13 = mat.c1;
-    m._23 = mat.c2;
-    m._33 = mat.c3;
-    m._43 = mat.c4;
-    m._14 = mat.d1;
-    m._24 = mat.d2;
-    m._34 = mat.d3;
-    m._44 = mat.d4;
-    #endif
-    return m;
-}
-
 Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent )
 {
     #ifdef FO_D3D
@@ -200,10 +176,9 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
     frame->Meshes = NULL;
     frame->Sibling = NULL;
     frame->FirstChild = NULL;
-    D3DXMatrixIdentity( &frame->TransformationMatrix );
-    D3DXMatrixIdentity( &frame->CombinedTransformationMatrix );
-
-    frame->TransformationMatrix = ConvertMatrix( node->mTransformation );
+    frame->TransformationMatrix = node->mTransformation;
+    frame->TransformationMatrix.Transpose();
+    frame->CombinedTransformationMatrix = Matrix();
 
     // Merge meshes, because Assimp split subsets
     if( node->mNumMeshes )
@@ -228,7 +203,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
                 bool    bone_aviable = false;
                 for( uint b = 0, bb = (uint) all_bones.size(); b < bb; b++ )
                 {
-                    if( !strcmp( all_bones[ b ]->mName.data, bone->mName.data ) )
+                    if( Str::Compare( all_bones[ b ]->mName.data, bone->mName.data ) )
                     {
                         bone_aviable = true;
                         break;
@@ -242,7 +217,6 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
             D3DXMATERIAL material;
             memzero( &material, sizeof( material ) );
             aiMaterial*  mtrl = scene->mMaterials[ mesh->mMaterialIndex ];
-
             aiString     path;
             if( mtrl->GetTextureCount( aiTextureType_DIFFUSE ) )
             {
@@ -375,7 +349,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
 
                 // Bone options
                 skin_info->SetBoneName( b, bone->mName.data );
-                skin_info->SetBoneOffsetMatrix( b, &ConvertMatrix( bone->mOffsetMatrix ) );
+                skin_info->SetBoneOffsetMatrix( b, (D3DXMATRIX*) &bone->mOffsetMatrix );
 
                 // Reserve memory
                 vertices.reserve( vertices_count );
@@ -395,7 +369,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
                     uint bone_id = 0;
                     for( uint b = 0, bb = (uint) all_bones.size(); b < bb; b++ )
                     {
-                        if( !strcmp( all_bones[ b ]->mName.data, bone->mName.data ) )
+                        if( Str::Compare( all_bones[ b ]->mName.data, bone->mName.data ) )
                         {
                             bone_id = b;
                             break;
@@ -483,15 +457,15 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
 
             // Need an array of offset matrices to move the vertices from the figure space to the bone's space
             UINT numBones = skin_info->GetNumBones();
-            mesh_container->BoneOffsets = new Matrix_[ numBones ];
+            mesh_container->BoneOffsets = new Matrix[ numBones ];
 
             // Create the arrays for the bones and the frame matrices
-            mesh_container->FrameCombinedMatrixPointer = new Matrix_*[ numBones ];
-            memzero( mesh_container->FrameCombinedMatrixPointer, sizeof( Matrix_* ) * numBones );
+            mesh_container->FrameCombinedMatrixPointer = new Matrix*[ numBones ];
+            memzero( mesh_container->FrameCombinedMatrixPointer, sizeof( Matrix* ) * numBones );
 
             // get each of the bone offset matrices so that we don't need to get them later
             for( UINT i = 0; i < numBones; i++ )
-                mesh_container->BoneOffsets[ i ] = *( mesh_container->SkinInfo->GetBoneOffsetMatrix( i ) );
+                mesh_container->BoneOffsets[ i ] = *( (Matrix*) mesh_container->SkinInfo->GetBoneOffsetMatrix( i ) );
         }
         else
         {
@@ -589,6 +563,7 @@ void GraphicLoader::Free( Frame* frame )
             SAFEDELA( mesh_container->BoneOffsets );
             // Frame matrices
             SAFEDELA( mesh_container->FrameCombinedMatrixPointer );
+            #ifdef FO_D3D
             // Release skin mesh
             SAFEREL( mesh_container->SkinMesh );
             // Release the main mesh
@@ -597,6 +572,7 @@ void GraphicLoader::Free( Frame* frame )
             SAFEREL( mesh_container->SkinInfo );
             // Release blend mesh
             SAFEREL( mesh_container->SkinMeshBlended );
+            #endif
             // Finally delete the mesh container itself
             MeshContainer* next_container = mesh_container->NextMeshContainer;
             delete mesh_container;

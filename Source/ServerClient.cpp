@@ -2439,7 +2439,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     cl->SetBreakTime( GameOpt.Breaktime );
 
     #ifdef DEV_VESRION
-    cl->Access = ACCESS_IMPLEMENTOR;
+    cl->Access = ACCESS_ADMIN;
     #endif
 
     cl->GameState = STATE_PLAYING;

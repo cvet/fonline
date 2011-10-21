@@ -2,6 +2,11 @@
 #define __GRAPHIC_STRUCTURES__
 
 #include "Defines.h"
+#include "Assimp/aiTypes.h"
+
+typedef aiMatrix4x4  Matrix;
+typedef aiVector3D   Vector;
+typedef aiQuaternion Quaternion;
 
 struct Texture
 {
@@ -142,12 +147,12 @@ struct MeshContainer
     char**          TextureNames;
 
     // Skinned mesh variables
-    Mesh_           SkinMesh;                      // The skin mesh
-    Matrix_*        BoneOffsets;                   // The bone matrix Offsets, one per bone
-    Matrix_**       FrameCombinedMatrixPointer;    // Array of frame matrix pointers
+    Mesh_           SkinMesh;                   // The skin mesh
+    Matrix*         BoneOffsets;                // The bone matrix Offsets, one per bone
+    Matrix**        FrameCombinedMatrixPointer; // Array of frame matrix pointers
 
     // Used for indexed shader skinning
-    Mesh_           SkinMeshBlended;               // The blended skin mesh
+    Mesh_           SkinMeshBlended;            // The blended skin mesh
     Buffer_*        BoneCombinationBuf;
     uint            NumAttributeGroups;
     uint            NumPaletteEntries;
@@ -157,11 +162,12 @@ struct MeshContainer
 struct Frame
 {
     char*          Name;
-    Matrix_        TransformationMatrix;
+    Matrix         TransformationMatrix;
+    bool           TransformationMatrixOutput;
     MeshContainer* Meshes;
     Frame*         Sibling;
     Frame*         FirstChild;
-    Matrix_        CombinedTransformationMatrix;
+    Matrix         CombinedTransformationMatrix;
 
     Frame*         Find( const char* name )
     {
@@ -178,8 +184,8 @@ struct Frame
 
 typedef vector< MeshContainer* > MeshContainerVec;
 typedef vector< Frame* >         FrameVec;
-typedef vector< Vector3_ >       Vector3Vec;
-typedef vector< Matrix_ >        MatrixVec;
+typedef vector< Vector >         Vector3Vec;
+typedef vector< Matrix >         MatrixVec;
 typedef vector< Texture* >       TextureVec;
 typedef vector< Effect* >        EffectVec;
 typedef vector< AnimSet_* >      AnimSetVec;

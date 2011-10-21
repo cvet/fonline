@@ -1,6 +1,9 @@
 #ifndef __COMMON__
 #define __COMMON__
 
+// For debugging
+// #define DEV_VESRION
+
 // Some platform specific definitions
 #include "PlatformSpecific.h"
 
@@ -245,10 +248,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define EffectValue_        D3DXHANDLE
 #  define Material_           D3DMATERIAL9
 #  define Mesh_               LPD3DXMESH
-#  define Matrix_             D3DXMATRIX
 #  define Buffer_             ID3DXBuffer
-#  define Vector3_            D3DXVECTOR3
-#  define Vector4_            D3DXVECTOR4
 #  define AnimSet_            ID3DXAnimationSet
 #  define AnimController_     ID3DXAnimationController
 #  define PresentParams_      D3DPRESENT_PARAMETERS
@@ -267,10 +267,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define EffectValue_        GLuint
 #  define Material_           GLuint
 #  define Mesh_               GLuint
-#  define Matrix_             aiMatrix4x4
 #  define Buffer_             GLuint
-#  define Vector3_            aiVector3D
-#  define Vector4_            aiQuaternion
 #  define AnimSet_            GLuint
 #  define AnimController_     AnimController
 #  define PresentParams_      GLuint
