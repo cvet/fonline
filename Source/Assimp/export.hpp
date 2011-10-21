@@ -52,6 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Assimp	{
 	class ExporterPimpl;
 
+
 // ----------------------------------------------------------------------------------
 /** CPP-API: The Exporter class forms an C++ interface to the export functionality 
  * of the Open Asset Import Library. Note that the export interface is available
@@ -78,6 +79,37 @@ class ASSIMP_API Exporter
 {
 public:
 
+	/** Function pointer type of a Export worker function */
+	typedef void (*fpExportFunc)(const char*,IOSystem*,const aiScene*);
+
+	/** Internal description of an Assimp export format option */
+	struct ExportFormatEntry
+	{
+		/// Public description structure to be returned by aiGetExportFormatDescription()
+		aiExportFormatDesc mDescription;
+
+		// Worker function to do the actual exporting
+		fpExportFunc mExportFunction;
+
+		// Postprocessing steps to be executed PRIOR to invoking mExportFunction
+		unsigned int mEnforcePP;
+
+		// Constructor to fill all entries
+		ExportFormatEntry( const char* pId, const char* pDesc, const char* pExtension, fpExportFunc pFunction, unsigned int pEnforcePP = 0u)
+		{
+			mDescription.id = pId;
+			mDescription.description = pDesc;
+			mDescription.fileExtension = pExtension;
+			mExportFunction = pFunction;
+			mEnforcePP = pEnforcePP;
+		}
+
+		ExportFormatEntry() : mExportFunction(), mEnforcePP() {}
+	};
+
+
+public:
+
 	
 	Exporter();
 	~Exporter();
@@ -99,8 +131,7 @@ public:
 	 * to use its default implementation, which uses plain file IO.
 	 *
 	 * @param pIOHandler The IO handler to be used in all file accesses 
-	 *   of the Importer. 
-	 */
+	 *   of the Importer. */
 	void SetIOHandler( IOSystem* pIOHandler);
 
 	// -------------------------------------------------------------------
@@ -109,16 +140,14 @@ public:
 	 * interface is the default IO handler provided by ASSIMP. The default
 	 * handler is active as long the application doesn't supply its own
 	 * custom IO handler via #SetIOHandler().
-	 * @return A valid IOSystem interface, never NULL.
-	 */
+	 * @return A valid IOSystem interface, never NULL. */
 	IOSystem* GetIOHandler() const;
 
 	// -------------------------------------------------------------------
 	/** Checks whether a default IO handler is active 
 	 * A default handler is active as long the application doesn't 
 	 * supply its own custom IO handler via #SetIOHandler().
-	 * @return true by default
-	 */
+	 * @return true by default */
 	bool IsDefaultIOHandler() const;
 
 
@@ -134,12 +163,13 @@ public:
 	*   export to. Use 
 	* #GetExportFormatCount / #GetExportFormatDescription to learn which 
 	*   export formats are available.
+	* @param pPreprocessing See the documentation for #Export
 	* @return the exported data or NULL in case of error.
 	* @note If the Exporter instance did already hold a blob from
 	*   a previous call to #ExportToBlob, it will be disposed. 
 	*   Any IO handlers set via #SetIOHandler are ignored here.*/
-	const aiExportDataBlob* ExportToBlob(  const aiScene* pScene, const char* pFormatId );
-	inline const aiExportDataBlob* ExportToBlob(  const aiScene* pScene, const std::string& pFormatId );
+	const aiExportDataBlob* ExportToBlob(  const aiScene* pScene, const char* pFormatId, unsigned int pPreprocessing = 0u );
+	inline const aiExportDataBlob* ExportToBlob(  const aiScene* pScene, const std::string& pFormatId, unsigned int pPreprocessing = 0u );
 
 
 	// -------------------------------------------------------------------
@@ -148,10 +178,40 @@ public:
 	 *  about the output data flow of the export process.
 	 * @param pBlob A data blob obtained from a previous call to #aiExportScene. Must not be NULL.
 	 * @param pPath Full target file name. Target must be accessible.
+	 * @param pPreprocessing Accepts any choice of the #aiPostProcessing enumerated
+	 *   flags, but in reality only a subset of them makes sense here. Specifying
+	 *   'preprocessing' flags is useful if the input scene does not conform to 
+	 *   Assimp's default conventions as specified in the @link data Data Structures Page @endlink. 
+	 *   In short, this means the geometry data should use a right-handed coordinate systems, face 
+	 *   winding should be counter-clockwise and the UV coordinate origin is assumed to be in
+	 *   the upper left. The #aiProcess_MakeLeftHanded, #aiProcess_FlipUVs and 
+	 *   #aiProcess_FlipWindingOrder flags are used in the import side to allow users
+	 *   to have those defaults automatically adapted to their conventions. Specifying those flags
+	 *   for exporting has the opposite effect, respectively. Some other of the
+	 *   #aiPostProcessSteps enumerated values may be useful as well, but you'll need
+	 *   to try out what their effect on the exported file is. Many formats impose
+	 *   their own restrictions on the structure of the geometry stored therein,
+	 *   so some preprocessing may have little or no effect at all, or may be
+	 *   redundant as exporters would apply them anyhow. A good example 
+	 *   is triangulation - whilst you can enforce it by specifying
+	 *   the #aiProcess_Triangulate flag, most export formats support only
+	 *  triangulate data so they would run the step even if it wasn't requested.
 	 * @return AI_SUCCESS if everything was fine. */
-	aiReturn Export( const aiScene* pScene, const char* pFormatId, const char* pPath );
-	inline aiReturn Export( const aiScene* pScene, const std::string& pFormatId, const std::string& pPath );
+	aiReturn Export( const aiScene* pScene, const char* pFormatId, const char* pPath, unsigned int pPreprocessing = 0u);
+	inline aiReturn Export( const aiScene* pScene, const std::string& pFormatId, const std::string& pPath,  unsigned int pPreprocessing = 0u);
 
+
+	// -------------------------------------------------------------------
+	/** Returns an error description of an error that occurred in #Export
+	 *    or #ExportToBlob
+	 *
+	 * Returns an empty string if no error occurred.
+	 * @return A description of the last error, an empty string if no 
+	 *   error occurred. The string is never NULL.
+	 *
+	 * @note The returned function remains valid until one of the 
+	 * following methods is called: #Export, #ExportToBlob, #FreeBlob */
+	const char* GetErrorString() const;
 
 
 	// -------------------------------------------------------------------
@@ -162,8 +222,19 @@ public:
 	// -------------------------------------------------------------------
 	/** Orphan the blob from the last call to #ExportToBlob. This means
 	 *  the caller takes ownership and is thus responsible for calling
-	 *  #aiReleaseExportData to free the data again. */
+	 *  the C API function #aiReleaseExportBlob to release it. */
 	const aiExportDataBlob* GetOrphanedBlob() const;
+
+
+	// -------------------------------------------------------------------
+	/** Frees the current blob.
+	 *
+	 *  The function does nothing if no blob has previously been 
+	 *  previously produced via #ExportToBlob. #FreeBlob is called
+	 *  automatically by the destructor. The only reason to call
+	 *  it manually would be to reclain as much storage as possible
+	 *  without giving up the #Exporter instance yet. */
+	void FreeBlob( );
 
 
 	// -------------------------------------------------------------------
@@ -184,6 +255,30 @@ public:
 	const aiExportFormatDesc* GetExportFormatDescription( size_t pIndex ) const;
 
 
+	// -------------------------------------------------------------------
+	/** Register a custom exporter. Custom export formats are limited to
+	 *    to the current #Exporter instance and do not affect the
+	 *    library globally.
+	 *  @param desc Exporter description.
+	 *  @return aiReturn_SUCCESS if the export format was successfully
+	 *    registered. A common cause that would prevent an exporter
+	 *    from being registered is that its format id is already
+	 *    occupied by another format. */
+	aiReturn RegisterExporter(const ExportFormatEntry& desc);
+
+
+	// -------------------------------------------------------------------
+	/** Remove an export format previously registered with #RegisterExporter
+	 *  from the #Exporter instance (this can also be used to drop
+	 *  builtin exporters because those are implicitly registered
+	 *  using #RegisterExporter).
+	 *  @param id Format id to be unregistered, this refers to the
+	 *    'id' field of #aiExportFormatDesc. 
+	 *  @note Calling this method on a format description not yet registered
+	 *    has no effect.*/
+	void UnregisterExporter(const char* id);
+
+
 protected:
 
 	// Just because we don't want you to know how we're hacking around.
@@ -192,15 +287,15 @@ protected:
 
 
 // ----------------------------------------------------------------------------------
-inline const aiExportDataBlob* Exporter :: ExportToBlob(  const aiScene* pScene, const std::string& pFormatId ) 
+inline const aiExportDataBlob* Exporter :: ExportToBlob(  const aiScene* pScene, const std::string& pFormatId,unsigned int pPreprocessing ) 
 {
-	return ExportToBlob(pScene,pFormatId.c_str());
+	return ExportToBlob(pScene,pFormatId.c_str(),pPreprocessing);
 }
 
 // ----------------------------------------------------------------------------------
-inline aiReturn Exporter :: Export( const aiScene* pScene, const std::string& pFormatId, const std::string& pPath )
+inline aiReturn Exporter :: Export( const aiScene* pScene, const std::string& pFormatId, const std::string& pPath, unsigned int pPreprocessing )
 {
-	return Export(pScene,pFormatId.c_str(),pPath.c_str());
+	return Export(pScene,pFormatId.c_str(),pPath.c_str(),pPreprocessing);
 }
 
 } // namespace Assimp

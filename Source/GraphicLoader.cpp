@@ -7,6 +7,9 @@
 #include "Assimp/aiAnim.h"
 #include "Assimp/aiPostProcess.h"
 #include "Assimp/assimp.hpp"
+#include "Assimp/Logger.h"
+#include "Assimp/LogStream.h"
+#include "Assimp/DefaultLogger.h"
 #pragma comment (lib, "assimp.lib")
 
 /************************************************************************/
@@ -61,6 +64,10 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
         importer = new ( nothrow ) Assimp::Importer();
         if( !importer )
             return NULL;
+
+        // Logging
+        if( false )
+            Assimp::DefaultLogger::create( ASSIMP_DEFAULT_LOG_NAME, Assimp::Logger::VERBOSE );
     }
 
     const aiScene* scene = importer->ReadFileFromMemory( fm.GetBuf(), fm.GetFsize(),
@@ -427,8 +434,8 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
         mesh_container->Name = Str::Duplicate( node->mName.data );
 
         // Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
-        uint dwFaces = dxmesh.pMesh->GetNumFaces();
-        mesh_container->Adjacency = new uint[ dwFaces * 3 ];
+        uint faces = dxmesh.pMesh->GetNumFaces();
+        mesh_container->Adjacency = new uint[ faces * 3 ];
         dxmesh.pMesh->GenerateAdjacency( 0.0000125f, (DWORD*) mesh_container->Adjacency );
 
         // Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
@@ -451,6 +458,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
                 else
                     mesh_container->TextureNames[ i ] = NULL;
                 mesh_container->Materials[ i ] = materials[ i ].MatD3D;
+                memzero( &mesh_container->Effects[ i ], sizeof( EffectInstance ) );
             }
         }
         else

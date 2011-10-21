@@ -221,7 +221,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                         if( link.LinkBone )
                         {
                             #ifdef FO_D3D
-                            Frame* to_frame = (Frame*) D3DXFrameFind( (LPD3DXFRAME) animEntity->xFile->frameRoot, link.LinkBone );
+                            Frame* to_frame = animEntity->xFile->frameRoot->Find( link.LinkBone );
                             if( to_frame )
                             {
                                 anim3d = Animation3d::GetAnimation( link.ChildFName, true );
@@ -246,7 +246,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                                 {
                                     Frame* child_frame = *it;
                                     #ifdef FO_D3D
-                                    Frame* root_frame = (Frame*) D3DXFrameFind( (LPD3DXFRAME) animEntity->xFile->frameRoot, child_frame->Name );
+                                    Frame* root_frame = animEntity->xFile->frameRoot->Find( child_frame->Name );
                                     if( root_frame )
                                     {
                                         anim3d->linkFrames.push_back( root_frame );

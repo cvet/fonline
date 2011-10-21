@@ -162,6 +162,18 @@ struct Frame
     Frame*         Sibling;
     Frame*         FirstChild;
     Matrix_        CombinedTransformationMatrix;
+
+    Frame*         Find( const char* name )
+    {
+        if( Name && Str::Compare( Name, name ) )
+            return this;
+        Frame* frame = NULL;
+        if( Sibling )
+            frame = Sibling->Find( name );
+        if( !frame && FirstChild )
+            frame = FirstChild->Find( name );
+        return frame;
+    }
 };
 
 typedef vector< MeshContainer* > MeshContainerVec;

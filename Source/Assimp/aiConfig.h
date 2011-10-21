@@ -102,6 +102,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Various stuff to fine-tune the behavior of a specific post processing step.
 // ###########################################################################
 
+
 // ---------------------------------------------------------------------------
 /** @brief Maximum bone count per mesh for the SplitbyBoneCount step.
  *
@@ -123,15 +124,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---------------------------------------------------------------------------
 /** @brief  Specifies the maximum angle that may be between two vertex tangents
- *         that their tangents and bitangents are smoothed.
+ *         that their tangents and bi-tangents are smoothed.
  *
  * This applies to the CalcTangentSpace-Step. The angle is specified
- * in degrees, so 180 is PI. The default value is
- * 45 degrees. The maximum value is 175.
- * Property type: float. 
+ * in degrees. The maximum value is 175.
+ * Property type: float. Default value: 45 degrees
  */
 #define AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE \
 	"PP_CT_MAX_SMOOTHING_ANGLE"
+
+// ---------------------------------------------------------------------------
+/** @brief Source UV channel for tangent space computation.
+ *
+ * The specified channel must exist or an error will be raised. 
+ * Property type: integer. Default value: 0
+ */
+// ---------------------------------------------------------------------------
+#define AI_CONFIG_PP_CT_TEXTURE_CHANNEL_INDEX \
+	"PP_CT_TEXTURE_CHANNEL_INDEX"
 
 // ---------------------------------------------------------------------------
 /** @brief  Specifies the maximum angle that may be between two face normals
@@ -289,7 +299,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif // !! AI_LMW_MAX_WEIGHTS
 
 // ---------------------------------------------------------------------------
-/** @brief Set the deboning threshold higher to remove more bones
+/** @brief Lower the deboning threshold in order to remove more bones.
  *
  * This is used by the #aiProcess_Debone PostProcess-Step.
  * @note The default value is AI_DEBONE_THRESHOLD
@@ -665,12 +675,51 @@ enum aiComponent
 
 
 // ---------------------------------------------------------------------------
-/** Ogre Importer will try to load this Materialfile
- * Ogre Mehs contain only the MaterialName, not the MaterialFile. If there 
+/** @brief Ogre Importer will try to load this Materialfile.
+ *
+ * Ogre Meshes contain only the MaterialName, not the MaterialFile. If there 
  * is no material file with the same name as the material, Ogre Importer will 
  * try to load this file and search the material in it.
+ * <br>
+ * Property type: String. Default value: guessed.
  */
 #define AI_CONFIG_IMPORT_OGRE_MATERIAL_FILE "IMPORT_OGRE_MATERIAL_FILE"
 
+
+// ---------------------------------------------------------------------------
+/** @brief Specifies whether the IFC loader skips over IfcSpace elements.
+ *
+ * IfcSpace elements (and their geometric representations) are used to
+ * represent, well, free space in a building storey.<br>
+ * Property type: Bool. Default value: true.
+ */
+#define AI_CONFIG_IMPORT_IFC_SKIP_SPACE_REPRESENTATIONS "IMPORT_IFC_SKIP_SPACE_REPRESENTATIONS"
+
+
+// ---------------------------------------------------------------------------
+/** @brief Specifies whether the IFC loader skips over 
+ *    shape representations of type 'Curve2D'.
+ *
+ * A lot of files contain both a faceted mesh representation and a outline
+ * with a presentation type of 'Curve2D'. Currently Assimp doesn't convert those,
+ * so turning this option off just clutters the log with errors.<br>
+ * Property type: Bool. Default value: true.
+ */
+#define AI_CONFIG_IMPORT_IFC_SKIP_CURVE_REPRESENTATIONS "IMPORT_IFC_SKIP_CURVE_REPRESENTATIONS"
+
+// ---------------------------------------------------------------------------
+/** @brief Specifies whether the IFC loader will use its own, custom triangulation
+ *   algorithm to triangulate wall and floor meshes.
+ *
+ * If this property is set to false, walls will be either triangulated by
+ * #aiProcess_Triangulate or will be passed through as huge polygons with 
+ * faked holes (i.e. holes that are connected with the outer boundary using
+ * a dummy edge). It is highly recommended to set this property to true
+ * if you want triangulated data because #aiProcess_Triangulate is known to
+ * have problems with the kind of polygons that the IFC loader spits out for
+ * complicated meshes.
+ * Property type: Bool. Default value: true.
+ */
+#define AI_CONFIG_IMPORT_IFC_CUSTOM_TRIANGULATION "IMPORT_IFC_CUSTOM_TRIANGULATION"
 
 #endif // !! AI_CONFIG_H_INC

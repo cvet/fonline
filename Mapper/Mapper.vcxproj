@@ -123,6 +123,7 @@
       <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -262,6 +263,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <AssemblerOutput>All</AssemblerOutput>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -383,11 +385,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\FileSystem.h" />
+    <ClInclude Include="..\Source\GraphicLoader.h" />
+    <ClInclude Include="..\Source\GraphicStructures.h" />
     <ClInclude Include="..\Source\ResourceMapper.h" />
     <ClInclude Include="..\Source\3dAnimation.h" />
-    <ClInclude Include="..\Source\3dLoader.h" />
-    <ClInclude Include="..\Source\3dMeshHierarchy.h" />
-    <ClInclude Include="..\Source\3dMeshStructures.h" />
     <ClInclude Include="..\Source\Common.h" />
     <ClInclude Include="..\Source\ConstantsManager.h" />
     <ClInclude Include="..\Source\CritterCl.h" />
@@ -496,8 +497,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\3dAnimation.cpp" />
-    <ClCompile Include="..\Source\3dLoader.cpp" />
-    <ClCompile Include="..\Source\3dMeshHierarchy.cpp" />
     <ClCompile Include="..\Source\Common.cpp" />
     <ClCompile Include="..\Source\ConstantsManager.cpp" />
     <ClCompile Include="..\Source\CritterCl.cpp" />
@@ -509,6 +508,7 @@
     <ClCompile Include="..\Source\Exception.cpp" />
     <ClCompile Include="..\Source\FileManager.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />
+    <ClCompile Include="..\Source\GraphicLoader.cpp" />
     <ClCompile Include="..\Source\HexManager.cpp" />
     <ClCompile Include="..\Source\IniParser.cpp" />
     <ClCompile Include="..\Source\Item.cpp" />

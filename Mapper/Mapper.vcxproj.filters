@@ -41,15 +41,6 @@
     <ClInclude Include="..\Source\3dAnimation.h">
       <Filter>Mapper</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\3dLoader.h">
-      <Filter>Mapper</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\3dMeshHierarchy.h">
-      <Filter>Mapper</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\3dMeshStructures.h">
-      <Filter>Mapper</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Common.h">
       <Filter>Mapper</Filter>
     </ClInclude>
@@ -368,15 +359,15 @@
     <ClInclude Include="..\Source\Sprites.h">
       <Filter>Mapper</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\GraphicLoader.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\GraphicStructures.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\3dAnimation.cpp">
-      <Filter>Mapper</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\3dLoader.cpp">
-      <Filter>Mapper</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\3dMeshHierarchy.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Common.cpp">
@@ -644,6 +635,9 @@
       <Filter>Mapper</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Sprites.cpp">
+      <Filter>Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\GraphicLoader.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
   </ItemGroup>
