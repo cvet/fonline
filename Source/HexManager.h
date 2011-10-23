@@ -328,17 +328,13 @@ public:
 
     // Tiles, roof
 private:
-    bool     reprepareTiles;
-    Sprites  tilesTree;
-    Surface_ tileSurf;
-    int      tileSurfWidth, tileSurfHeight;
-    int      roofSkip;
-    Sprites  roofTree;
+    Sprites tilesTree;
+    int     roofSkip;
+    Sprites roofTree;
 
     bool CheckTilesBorder( Field::Tile& tile, bool is_roof );
 
 public:
-    bool InitTilesSurf();
     void RebuildTiles();
     void RebuildRoof();
     void SetSkipRoof( int hx, int hy );

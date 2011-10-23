@@ -1269,8 +1269,8 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
     D3D_HR( D3DDevice->GetDeviceCaps( &D3DCaps ) );
 
     // Get size of draw area
-    Surface_        backbuf;
-    D3DSURFACE_DESC backbuf_desc;
+    LPDIRECT3DSURFACE9 backbuf;
+    D3DSURFACE_DESC    backbuf_desc;
     D3D_HR( D3DDevice->GetRenderTarget( 0, &backbuf ) );
     D3D_HR( backbuf->GetDesc( &backbuf_desc ) );
     SAFEREL( backbuf );

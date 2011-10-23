@@ -1048,7 +1048,10 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
     // Bind data
     GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
+    GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
+    GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
+    GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
 
     return effect;
     #endif

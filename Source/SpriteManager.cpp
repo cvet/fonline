@@ -15,7 +15,7 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 # define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
 #endif
 
-SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), SurfType( 0 ),
+SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), SurfType( 0 ), SurfFilterNearest( false ),
                                 spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ), sceneBeginned( false ),
                                 d3dDevice( NULL ), vbMain( NULL ), ibMain( NULL ), waitBuf( NULL ), vbPoints( NULL ), vbPointsSize( 0 ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
                                 eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ), sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
@@ -225,6 +225,10 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = curDefaultEffect;
     sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx" );
     sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx" );
+    #ifndef FO_D3D
+    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx" );
+    #endif
 
     // Clear scene
     #ifdef FO_D3D
@@ -558,43 +562,6 @@ bool SpriteManager::Restore()
     return true;
 }
 
-bool SpriteManager::CreateRenderTarget( Surface_& surf, int w, int h )
-{
-    #ifdef FO_D3D
-    SAFEREL( surf );
-    D3D_HR( d3dDevice->CreateRenderTarget( w, h, D3DFMT_X8R8G8B8, presentParams.MultiSampleType, presentParams.MultiSampleQuality, FALSE, &surf, NULL ) );
-    #endif
-    return true;
-}
-
-bool SpriteManager::ClearRenderTarget( Surface_& surf, uint color )
-{
-    if( !surf )
-        return true;
-
-    #ifdef FO_D3D
-    Surface_ old_rt = NULL, old_ds = NULL;
-    D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
-    D3D_HR( d3dDevice->GetDepthStencilSurface( &old_ds ) );
-    D3D_HR( d3dDevice->SetDepthStencilSurface( NULL ) );
-    D3D_HR( d3dDevice->SetRenderTarget( 0, surf ) );
-    D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, color, 1.0f, 0 ) );
-    D3D_HR( d3dDevice->SetRenderTarget( 0, old_rt ) );
-    D3D_HR( d3dDevice->SetDepthStencilSurface( old_ds ) );
-    old_rt->Release();
-    old_ds->Release();
-    #endif
-    return true;
-}
-
-bool SpriteManager::ClearCurRenderTarget( uint color )
-{
-    #ifdef FO_D3D
-    D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, color, 1.0f, 0 ) );
-    #endif
-    return true;
-}
-
 Surface* SpriteManager::CreateNewSurface( int w, int h )
 {
     if( !isInit )
@@ -622,10 +589,10 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
     GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
-    // GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
-    // GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
     GL( glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE ) );
     #endif
 
@@ -723,8 +690,8 @@ void SpriteManager::SaveSufaces()
     char name[ MAX_FOPATH ];
     for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
     {
-        Surface* surf = *it;
-        Surface_ s;
+        Surface*           surf = *it;
+        LPDIRECT3DSURFACE9 s;
         surf->TextureOwner->Instance->GetSurfaceLevel( 0, &s );
         Str::Format( name, "%s%d_%d_%ux%u.png", path, surf->Type, cnt, surf->Width, surf->Height );
         D3DXSaveSurfaceToFile( name, D3DXIFF_PNG, s, NULL, NULL );
@@ -781,8 +748,8 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
     }
 
     #ifdef FO_D3D
-    Surface_  dst_surf;
-    LockRect_ rdst;
+    LPDIRECT3DSURFACE9 dst_surf;
+    LockRect_          rdst;
     D3D_HR( surf->TextureOwner->Instance->GetSurfaceLevel( 0, &dst_surf ) );
 
     // Copy
@@ -821,12 +788,42 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
     dst_surf->Release();
     #else
     Texture* tex = surf->TextureOwner;
-    INTRECT  r( x - 1, y - 1, x + w + 1, y + h + 1 );
+
     uint*    ptr_from = (uint*) data + 3;
     uint*    ptr_to = (uint*) tex->Data + ( y - 1 ) * tex->Width + x - 1;
     for( uint i = 0; i < h; i++ )
         memcpy( ptr_to + tex->Width * ( i + 1 ) + 1, ptr_from + w * i, w * 4 );
-    tex->Update( r );
+
+    if( GameOpt.DebugSprites )
+    {
+        uint rnd_color = COLOR_XRGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) );
+        for( uint yy = 1; yy < h + 1; yy++ )
+        {
+            for( uint xx = 1; xx < w + 1; xx++ )
+            {
+                uint  xxx = x + xx - 1;
+                uint  yyy = y + yy - 1;
+                uint& p = tex->Pixel( xxx, yyy );
+                if( p && ( !tex->Pixel( xxx - 1, yyy - 1 ) || !tex->Pixel( xxx, yyy - 1 ) || !tex->Pixel( xxx + 1, yyy - 1 ) ||
+                           !tex->Pixel( xxx - 1, yyy ) || !tex->Pixel( xxx + 1, yyy ) || !tex->Pixel( xxx - 1, yyy + 1 ) ||
+                           !tex->Pixel( xxx, yyy + 1 ) || !tex->Pixel( xxx + 1, yyy + 1 ) ) )
+                    p = rnd_color;
+            }
+        }
+    }
+
+    // 1px border for correct linear interpolation
+    for( uint i = 0; i < h + 2; i++ )
+        tex->Pixel( x + 0 - 1, y + i - 1 ) = tex->Pixel( x + 1 - 1, y + i - 1 );               // Left
+    for( uint i = 0; i < h + 2; i++ )
+        tex->Pixel( x + w + 1 - 1, y + i - 1 ) = tex->Pixel( x + w - 1, y + i - 1 );           // Right
+    for( uint i = 0; i < w + 2; i++ )
+        tex->Pixel( x + i - 1, y + 0 - 1 ) = tex->Pixel( x + i - 1, y + 1 - 1 );               // Top
+    for( uint i = 0; i < w + 2; i++ )
+        tex->Pixel( x + i - 1, y + h + 1 - 1 ) = tex->Pixel( x + i - 1, y + h - 1 );           // Bottom
+
+    // Refresh texture
+    tex->Update( INTRECT( x - 1, y - 1, x + w + 1, y + h + 1 ) );
     #endif
 
     // Delete data
@@ -2862,7 +2859,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     // Render
     if( !sceneBeginned )
         D3D_HR( d3dDevice->BeginScene() );
-    Surface_ old_rt = NULL, old_ds = NULL;
+    LPDIRECT3DSURFACE9 old_rt = NULL, old_ds = NULL;
     D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
     D3D_HR( d3dDevice->GetDepthStencilSurface( &old_ds ) );
     D3D_HR( d3dDevice->SetDepthStencilSurface( spr3dDS ) );
@@ -3020,9 +3017,6 @@ bool SpriteManager::Flush()
 
         #ifdef FO_D3D
         D3D_HR( d3dDevice->SetTexture( 0, dip.SourceTexture->Instance ) );
-        #endif
-
-        #ifdef FO_D3D
         if( effect )
         {
             LPD3DXEFFECT dxeffect = effect->DXInstance;
@@ -3062,13 +3056,19 @@ bool SpriteManager::Flush()
                 GL( glActiveTexture( GL_TEXTURE0 ) );
                 GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
                 GL( glUniform1i( effect->ColorMap, 0 ) );
+                if( effect->ColorMapSize != -1 )
+                    GL( glUniform1f( effect->ColorMapSize, (float) dip.SourceTexture->Width ) );
             }
             if( effect->EggMap != -1 )
             {
                 GL( glActiveTexture( GL_TEXTURE1 ) );
                 GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Surf->TextureOwner->Id ) );
                 GL( glUniform1i( effect->EggMap, 1 ) );
+                if( effect->EggMap != -1 )
+                    GL( glUniform1f( effect->ColorMapSize, (float) sprEgg->Surf->TextureOwner->Width ) );
             }
+            if( effect->ZoomFactor != -1 )
+                GL( glUniform1f( effect->ZoomFactor, GameOpt.SpritesZoom ) );
 
             GLuint  min_index = rpos * 4;
             GLuint  max_index = min_index + dip.SpritesCount * 4 - 1;
@@ -3259,144 +3259,6 @@ void SpriteManager::PrepareSquare( PointVec& points, FLTPOINT& lt, FLTPOINT& rt,
     points.push_back( PrepPoint( (short) lt.X, (short) lt.Y, color, NULL, NULL ) );
     points.push_back( PrepPoint( (short) rt.X, (short) rt.Y, color, NULL, NULL ) );
     points.push_back( PrepPoint( (short) rb.X, (short) rb.Y, color, NULL, NULL ) );
-}
-
-bool SpriteManager::PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy, uchar alpha )
-{
-    if( !dtree.Size() )
-        return true;
-    if( !surf )
-        return false;
-    Flush();
-
-    #ifdef FO_D3D
-    // Set new render target
-    Surface_ old_rt = NULL, old_ds = NULL;
-    D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
-    D3D_HR( d3dDevice->GetDepthStencilSurface( &old_ds ) );
-    D3D_HR( d3dDevice->SetDepthStencilSurface( NULL ) );
-    D3D_HR( d3dDevice->SetRenderTarget( 0, surf ) );
-    D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT ) );
-    D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT ) );
-
-    // Draw
-    for( auto it = dtree.Begin(), end = dtree.End(); it != end; ++it )
-    {
-        Sprite* spr = *it;
-        if( !spr->Valid )
-            continue;
-
-        SpriteInfo* si = sprData[ spr->SprId ];
-        if( !si )
-            continue;
-
-        int x = spr->ScrX - si->Width / 2 + si->OffsX + ox;
-        int y = spr->ScrY - si->Height + si->OffsY + oy;
-        if( spr->OffsX )
-            x += *spr->OffsX;
-        if( spr->OffsY )
-            y += *spr->OffsY;
-
-        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != si->DrawEffect )
-            dipQueue.push_back( DipData( si->Surf->TextureOwner, si->DrawEffect ) );
-        else
-            dipQueue.back().SpritesCount++;
-
-        uint color = baseColor;
-        if( spr->Alpha )
-            ( (uchar*) &color )[ 3 ] = *spr->Alpha;
-        else if( alpha )
-            ( (uchar*) &color )[ 3 ] = alpha;
-
-        // Casts
-        float xf = (float) x / GameOpt.SpritesZoom;
-        float yf = (float) y / GameOpt.SpritesZoom;
-        float wf = (float) si->Width / GameOpt.SpritesZoom;
-        float hf = (float) si->Height / GameOpt.SpritesZoom;
-
-        // Fill buffer
-        int mulpos = curSprCnt * 4;
-
-        waitBuf[ mulpos ].x = xf;
-        waitBuf[ mulpos ].y = yf + hf;
-        waitBuf[ mulpos ].tu = si->SprRect.L;
-        waitBuf[ mulpos ].tv = si->SprRect.B;
-        waitBuf[ mulpos ].tu2 = 0.0f;
-        waitBuf[ mulpos ].tv2 = 0.0f;
-        waitBuf[ mulpos++ ].diffuse = color;
-
-        waitBuf[ mulpos ].x = xf;
-        waitBuf[ mulpos ].y = yf;
-        waitBuf[ mulpos ].tu = si->SprRect.L;
-        waitBuf[ mulpos ].tv = si->SprRect.T;
-        waitBuf[ mulpos ].tu2 = 0.0f;
-        waitBuf[ mulpos ].tv2 = 0.0f;
-        waitBuf[ mulpos++ ].diffuse = color;
-
-        waitBuf[ mulpos ].x = xf + wf;
-        waitBuf[ mulpos ].y = yf;
-        waitBuf[ mulpos ].tu = si->SprRect.R;
-        waitBuf[ mulpos ].tv = si->SprRect.T;
-        waitBuf[ mulpos ].tu2 = 0.0f;
-        waitBuf[ mulpos ].tv2 = 0.0f;
-        waitBuf[ mulpos++ ].diffuse = color;
-
-        waitBuf[ mulpos ].x = xf + wf;
-        waitBuf[ mulpos ].y = yf + hf;
-        waitBuf[ mulpos ].tu = si->SprRect.R;
-        waitBuf[ mulpos ].tv = si->SprRect.B;
-        waitBuf[ mulpos ].tu2 = 0.0f;
-        waitBuf[ mulpos ].tv2 = 0.0f;
-        waitBuf[ mulpos ].diffuse = color;
-
-        if( ++curSprCnt == flushSprCnt )
-            Flush();
-    }
-    Flush();
-
-    // Restore render target
-    D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR ) );
-    D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR ) );
-    D3D_HR( d3dDevice->SetRenderTarget( 0, old_rt ) );
-    D3D_HR( d3dDevice->SetDepthStencilSurface( old_ds ) );
-    old_rt->Release();
-    old_ds->Release();
-    #endif
-    return true;
-}
-
-bool SpriteManager::DrawPrepared( Surface_& surf, int ox, int oy )
-{
-    if( !surf )
-        return true;
-    Flush();
-
-    int  ox_ = (int) ( (float) ( ox - GameOpt.ScrOx ) / GameOpt.SpritesZoom );
-    int  oy_ = (int) ( (float) ( oy - GameOpt.ScrOy ) / GameOpt.SpritesZoom );
-    RECT src = { ox_, oy_, ox_ + modeWidth, oy_ + modeHeight };
-
-    #ifdef FO_D3D
-    Surface_ backbuf = NULL;
-    D3D_HR( d3dDevice->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuf ) );
-    D3D_HR( d3dDevice->StretchRect( surf, &src, backbuf, NULL, D3DTEXF_NONE ) );
-    backbuf->Release();
-    #endif
-    return true;
-}
-
-bool SpriteManager::DrawSurface( Surface_& surf, RECT& dst )
-{
-    if( !surf )
-        return true;
-    Flush();
-
-    #ifdef FO_D3D
-    Surface_ backbuf = NULL;
-    D3D_HR( d3dDevice->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuf ) );
-    D3D_HR( d3dDevice->StretchRect( surf, NULL, backbuf, &dst, D3DTEXF_LINEAR ) );
-    backbuf->Release();
-    #endif
-    return true;
 }
 
 uint SpriteManager::GetColor( int r, int g, int b )
@@ -4339,7 +4201,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
             borders.R++;
             borders.B++;
 
-            Surface_ old_rt, old_ds;
+            LPDIRECT3DSURFACE9 old_rt, old_ds;
             D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
             D3D_HR( d3dDevice->GetDepthStencilSurface( &old_ds ) );
             D3D_HR( d3dDevice->SetDepthStencilSurface( NULL ) );
@@ -4419,7 +4281,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
             # endif
         };
 
-        Surface_ old_rt;
+        LPDIRECT3DSURFACE9 old_rt;
         D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
         D3D_HR( d3dDevice->SetRenderTarget( 0, contours3dRT ) );
 
@@ -4494,10 +4356,10 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         # endif
     };
 
-    Surface_ ds;
+    LPDIRECT3DSURFACE9 ds;
     D3D_HR( d3dDevice->GetDepthStencilSurface( &ds ) );
     D3D_HR( d3dDevice->SetDepthStencilSurface( NULL ) );
-    Surface_ old_rt;
+    LPDIRECT3DSURFACE9 old_rt;
     D3D_HR( d3dDevice->GetRenderTarget( 0, &old_rt ) );
     D3D_HR( d3dDevice->SetRenderTarget( 0, contoursTextureSurf ) );
     D3D_HR( d3dDevice->SetTexture( 0, texture->Instance ) );
@@ -4547,16 +4409,16 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
 
     #ifdef FO_D3D
     // Create new
-    Surface_        surf;
+    LPDIRECT3DSURFACE9 surf;
     D3D_HR( si->Surf->TextureOwner->Instance->GetSurfaceLevel( 0, &surf ) );
-    D3DSURFACE_DESC desc;
+    D3DSURFACE_DESC    desc;
     D3D_HR( surf->GetDesc( &desc ) );
-    RECT            r =
+    RECT               r =
     {
         (uint) ( desc.Width * si->SprRect.L ), (uint) ( desc.Height * si->SprRect.T ),
         (uint) ( desc.Width * si->SprRect.R ), (uint) ( desc.Height * si->SprRect.B )
     };
-    LockRect_       lr;
+    LockRect_          lr;
     D3D_HR( surf->LockRect( &lr, &r, D3DLOCK_READONLY ) );
 
     uint sw = si->Width;
@@ -4591,10 +4453,10 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     #endif
 }
 
-#define SET_IMAGE_POINT( x, y )    *( buf + ( y ) * buf_w + ( x ) ) = color
+#ifdef FO_D3D
+# define SET_IMAGE_POINT( x, y )    *( buf + ( y ) * buf_w + ( x ) ) = color
 void SpriteManager::WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color )
 {
-    #ifdef FO_D3D
     for( uint y = 0; y < h; y++ )
     {
         for( uint x = 0; x < w; x++ )
@@ -4612,12 +4474,10 @@ void SpriteManager::WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, 
                 SET_IMAGE_POINT( x, y + 1 );
         }
     }
-    #endif
 }
 
 void SpriteManager::WriteContour8( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color )
 {
-    #ifdef FO_D3D
     for( uint y = 0; y < h; y++ )
     {
         for( uint x = 0; x < w; x++ )
@@ -4643,5 +4503,5 @@ void SpriteManager::WriteContour8( uint* buf, uint buf_w, LockRect_& r, uint w, 
                 SET_IMAGE_POINT( x - 1, y + 1 );
         }
     }
-    #endif
 }
+#endif

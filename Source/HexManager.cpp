@@ -118,9 +118,6 @@ void Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_r
 HexManager::HexManager()
 {
     viewField = NULL;
-    reprepareTiles = false;
-    tileSurf = NULL;
-    tileSurfWidth = tileSurfHeight = 0;
     isShowHex = false;
     roofSkip = 0;
     rainCapacity = 0;
@@ -223,9 +220,6 @@ void HexManager::Finish()
         for( int hy = 0; hy < maxHexY; hy++ )
             GetField( hx, hy ).Clear();
 
-    #ifdef FO_D3D
-    SAFEREL( tileSurf );
-    #endif
     SAFEDELA( viewField );
     ResizeField( 0, 0 );
 
@@ -1465,31 +1459,6 @@ bool HexManager::CheckTilesBorder( Field::Tile& tile, bool is_roof )
     return ProcessHexBorders( tile.Anim->GetSprId( 0 ), ox, oy );
 }
 
-bool HexManager::InitTilesSurf()
-{
-    int w = MODE_WIDTH + (int) ( ( SCROLL_OX * 2 ) / MIN_ZOOM + 1.0f );
-    int h = MODE_HEIGHT + (int) ( ( SCROLL_OY * 2 ) / MIN_ZOOM + 1.0f );
-
-    if( tileSurf && tileSurfWidth == w && tileSurfHeight == h )
-        return true;
-
-    #ifdef FO_D3D
-    SAFEREL( tileSurf );
-    #endif
-    tileSurfWidth = 0;
-    tileSurfHeight = 0;
-
-    if( !SprMngr.CreateRenderTarget( tileSurf, w, h ) )
-    {
-        WriteLog( "Can't create tiles surface, width<%d>, height<%d>.\n", w, h );
-        return false;
-    }
-
-    tileSurfWidth = w;
-    tileSurfHeight = h;
-    return true;
-}
-
 void HexManager::RebuildTiles()
 {
     if( !GameOpt.ShowTile )
@@ -1540,7 +1509,6 @@ void HexManager::RebuildTiles()
     // Sort
     tilesTree.SortBySurfaces();
     tilesTree.SortByMapPos();
-    reprepareTiles = true;
 }
 
 void HexManager::RebuildRoof()
@@ -1923,21 +1891,17 @@ void HexManager::DrawMap()
     // Tiles
     if( GameOpt.ShowTile )
     {
-        if( reprepareTiles )
-        {
-            // Clear
-            if( GameOpt.ScreenClear )
-                SprMngr.ClearRenderTarget( tileSurf, COLOR_XRGB( 100, 100, 100 ) );
-
-            // Draw simple tiles
-            SprMngr.SetCurEffect2D( DEFAULT_EFFECT_TILE );
-            SprMngr.PrepareBuffer( tilesTree, tileSurf, SCROLL_OX, SCROLL_OY, TILE_ALPHA );
-
-            // Done
-            reprepareTiles = false;
-        }
-
-        SprMngr.DrawPrepared( tileSurf, SCROLL_OX, SCROLL_OY );
+        SprMngr.SetCurEffect2D( DEFAULT_EFFECT_TILE );
+        #ifdef FO_D3D
+        Device_ device = SprMngr.GetDevice();
+        device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
+        device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
+        #endif
+        SprMngr.DrawSprites( tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
+        #ifdef FO_D3D
+        device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
+        device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
+        #endif
     }
 
     // Flat sprites
@@ -1963,8 +1927,10 @@ void HexManager::DrawMap()
         Device_ device = SprMngr.GetDevice();
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
+        #endif
         SprMngr.SetCurEffect2D( DEFAULT_EFFECT_ROOF );
         SprMngr.DrawSprites( roofTree, false, true, 0, 0 );
+        #ifdef FO_D3D
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
         #endif
@@ -2293,15 +2259,10 @@ void HexManager::ScrollToHex( int hx, int hy, double speed, bool can_stop )
 }
 
 void HexManager::PreRestore()
-{
-    #ifdef FO_D3D
-    SAFEREL( tileSurf );
-    #endif
-}
+{}
 
 void HexManager::PostRestore()
 {
-    InitTilesSurf();
     RefreshMap();
 }
 
@@ -3453,9 +3414,6 @@ bool HexManager::LoadMap( ushort map_pid )
     if( curDataPrefix != GameOpt.MapDataPrefix )
         ReloadSprites();
 
-    // Tiles surface
-    InitTilesSurf();
-
     // Make name
     char map_name[ 256 ];
     sprintf( map_name, "map%u", map_pid );
@@ -3550,6 +3508,7 @@ bool HexManager::LoadMap( ushort map_pid )
     curHashTiles = maxhx * maxhy;
     Crypt.Crc32( fm.GetCurBuf(), tiles_len, curHashTiles );
 
+    SprMngr.SurfFilterNearest = true;
     for( uint i = 0; i < tiles_count; i++ )
     {
         ProtoMap::Tile tile;
@@ -3573,6 +3532,7 @@ bool HexManager::LoadMap( ushort map_pid )
             CheckTilesBorder( tile.IsRoof ? f.Roofs.back() : f.Tiles.back(), tile.IsRoof );
         }
     }
+    SprMngr.SurfFilterNearest = false;
 
     // Roof indexes
     int roof_num = 1;
@@ -3995,8 +3955,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     if( curDataPrefix != GameOpt.MapDataPrefix )
         ReloadSprites();
 
-    InitTilesSurf();
-
     if( !ResizeField( pmap.Header.MaxHexX, pmap.Header.MaxHexY ) )
     {
         WriteLog( "Buffer allocation fail.\n" );
@@ -4230,9 +4188,11 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
 {
     if( hx >= maxHexX || hy >= maxHexY )
         return;
-    Field&     f = GetField( hx, hy );
+    Field& f = GetField( hx, hy );
 
+    SprMngr.SurfFilterNearest = true;
     AnyFrames* anim = ResMngr.GetItemAnim( name_hash );
+    SprMngr.SurfFilterNearest = false;
     if( !anim )
         return;
 

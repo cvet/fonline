@@ -263,7 +263,8 @@ public:
 
     // Surfaces
 public:
-    int SurfType;
+    int  SurfType;
+    bool SurfFilterNearest;
 
     void FreeSurfaces( int surf_type );
     void SaveSufaces();
@@ -381,8 +382,11 @@ private:
 
     bool CollectContour( int x, int y, SpriteInfo* si, Sprite* spr ); // Must called after Draw3d!
     uint GetSpriteContour( SpriteInfo* si, Sprite* spr );
+
+    #ifdef FO_D3D
     void WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color );
     void WriteContour8( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color );
+    #endif
 
     // Transparent egg
 private:

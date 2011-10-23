@@ -9668,7 +9668,7 @@ bool FOClient::SaveScreenshot()
         return false;
 
     #ifdef FO_D3D
-    Surface_ surf = NULL;
+    LPDIRECT3DSURFACE9 surf = NULL;
     if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
         return false;
     #endif

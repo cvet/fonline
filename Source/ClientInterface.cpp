@@ -11501,7 +11501,7 @@ void FOClient::SaveLoadFillDraft()
     #ifdef FO_D3D
     // Fill game preview draft
     Device_ device = SprMngr.GetDevice();
-    Surface_ rt = NULL;
+    LPDIRECT3DSURFACE9 rt = NULL;
     SaveLoadDraftValid = ( SUCCEEDED( device->GetRenderTarget( 0, &rt ) ) &&
                            SUCCEEDED( device->StretchRect( rt, NULL, SaveLoadDraft, NULL, D3DTEXF_LINEAR ) ) );
     SAFEREL( rt );
@@ -11569,7 +11569,13 @@ void FOClient::SaveLoadDraw()
     int oy = ( SaveLoadLoginScreen ? SaveLoadCY : SaveLoadY );
 
     if( SaveLoadLoginScreen )
-        SprMngr.ClearCurRenderTarget( 0xFF000000 );                       // Black background
+    {
+        #ifdef FO_D3D
+        SprMngr.GetDevice()->Clear( 0, NULL, D3DCLEAR_TARGET, 0xFF000000, 1.0f, 0 );
+        #else
+        GL( glClear( GL_COLOR_BUFFER_BIT ) );
+        #endif
+    }
     SprMngr.DrawSprite( SaveLoadMainPic, SaveLoadMain[ 0 ] + ox, SaveLoadMain[ 1 ] + oy );
 
     if( IfaceHold == IFACE_SAVELOAD_SCR_UP )
@@ -11616,8 +11622,14 @@ void FOClient::SaveLoadDraw()
     // Draw preview draft
     if( SaveLoadDraftValid )
     {
+        #ifdef FO_D3D
         RECT dst = { SaveLoadPic.L + ox, SaveLoadPic.T + oy, SaveLoadPic.R + ox, SaveLoadPic.B + oy };
-        SprMngr.DrawSurface( SaveLoadDraft, dst );
+        SprMngr.Flush();
+        LPDIRECT3DSURFACE9 backbuf = NULL;
+        SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuf );
+        SprMngr.GetDevice()->StretchRect( SaveLoadDraft, NULL, backbuf, &dst, D3DTEXF_LINEAR );
+        backbuf->Release();
+        #endif
     }
 }
 

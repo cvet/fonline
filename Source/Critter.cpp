@@ -4028,12 +4028,6 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
 
-    if( items.size() >= 100 )
-    {
-        Map* map = MapMngr.GetMap( item_cont->ACC_HEX.MapId );
-        WriteLogF( _FUNC_, " - Sending too much items<%u>, container pid<%u>, map pid<%u>, hx<%u>, hy<%u>.\n", items.size(), item_cont->GetProtoId(), map ? map->GetPid() : 0, item_cont->ACC_HEX.HexX, item_cont->ACC_HEX.HexY );
-    }
-
     BOUT_BEGIN( this );
     Bout << NETMSG_CONTAINER_INFO;
     Bout << msg_len;
@@ -4083,9 +4077,6 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
     msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( ushort ) + sizeof( Item::ItemData ) );
-
-    if( items.size() >= 1000 )
-        WriteLogF( _FUNC_, " - Sending too much items<%u>, from critter<%s>, to critter<%s>.\n", items.size(), cr_cont->GetInfo(), GetInfo() );
 
     BOUT_BEGIN( this );
     Bout << NETMSG_CONTAINER_INFO;

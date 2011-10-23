@@ -33,7 +33,7 @@ struct Texture
     bool         Update()
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Data ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGBA, GL_UNSIGNED_BYTE, Data ) );
         return true;
     }
     bool Update( const INTRECT& r )
@@ -79,7 +79,10 @@ struct Effect
     GLuint         FragmentShader;
     uint           Passes;
     GLint          ColorMap;
+    GLint          ColorMapSize;
     GLint          EggMap;
+    GLint          EggMapSize;
+    GLint          ZoomFactor;
     #endif
 
     EffectDefault* Defaults;
