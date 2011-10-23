@@ -136,7 +136,7 @@ char* Str::Format( char* buf, const char* format, ... )
     va_list list;
     va_start( list, format );
     #if defined ( FO_MSVC )
-    vsprintf_s( buf, MAX_FOTEXT, format, list );
+    vsprintf( buf, format, list );
     #else
     vsprintf( buf, format, list );
     #endif
@@ -149,11 +149,7 @@ const char* Str::FormatBuf( const char* format, ... )
     static THREAD char buf[ 0x4000 ];
     va_list            list;
     va_start( list, format );
-    #if defined ( FO_MSVC )
-    vsprintf_s( buf, MAX_FOTEXT, format, list );
-    #else
     vsprintf( buf, format, list );
-    #endif
     va_end( list );
     return buf;
 }

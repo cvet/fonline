@@ -413,8 +413,8 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
         dxmesh.pMesh->GenerateAdjacency( 0.0000125f, (DWORD*) mesh_container->Adjacency );
 
         // Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
-        mesh_container->Mesh = dxmesh.pMesh;
-        mesh_container->Mesh->AddRef();
+        mesh_container->InitMesh = dxmesh.pMesh;
+        mesh_container->InitMesh->AddRef();
 
         // Create material and texture arrays. Note that I always want to have at least one
         mesh_container->NumMaterials = max( materials.size(), 1 );
@@ -452,7 +452,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
         if( skin_info )
         {
             // Save off the SkinInfo
-            mesh_container->SkinInfo = skin_info;
+            mesh_container->Skin = skin_info;
             skin_info->AddRef();
 
             // Need an array of offset matrices to move the vertices from the figure space to the bone's space
@@ -465,15 +465,15 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
 
             // get each of the bone offset matrices so that we don't need to get them later
             for( UINT i = 0; i < numBones; i++ )
-                mesh_container->BoneOffsets[ i ] = *( (Matrix*) mesh_container->SkinInfo->GetBoneOffsetMatrix( i ) );
+                mesh_container->BoneOffsets[ i ] = *( (Matrix*) mesh_container->Skin->GetBoneOffsetMatrix( i ) );
         }
         else
         {
             // No skin info so NULL all the pointers
-            mesh_container->SkinInfo = NULL;
+            mesh_container->Skin = NULL;
             mesh_container->BoneOffsets = NULL;
-            mesh_container->SkinMesh = NULL;
             mesh_container->FrameCombinedMatrixPointer = NULL;
+            mesh_container->SkinMesh = NULL;
         }
 
         dxmesh.pMesh->Release();
@@ -565,13 +565,13 @@ void GraphicLoader::Free( Frame* frame )
             SAFEDELA( mesh_container->FrameCombinedMatrixPointer );
             #ifdef FO_D3D
             // Release skin mesh
-            SAFEREL( mesh_container->SkinMesh );
+            SAFEREL( mesh_container->InitMesh );
             // Release the main mesh
-            SAFEREL( mesh_container->Mesh );
-            // Release skin information
-            SAFEREL( mesh_container->SkinInfo );
+            SAFEREL( mesh_container->SkinMesh );
             // Release blend mesh
             SAFEREL( mesh_container->SkinMeshBlended );
+            // Release skin information
+            SAFEREL( mesh_container->Skin );
             #endif
             // Finally delete the mesh container itself
             MeshContainer* next_container = mesh_container->NextMeshContainer;

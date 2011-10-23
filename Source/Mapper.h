@@ -508,6 +508,8 @@ public:
         static void           Global_AddConstant( int const_collection, CScriptString* name, int value );
         static bool           Global_LoadConstants( int const_collection, CScriptString* file_name, int path_type );
         static int            Global_GetKeybLang() { return Keyb::Lang; }
+        static bool           Global_LoadFont( int font, CScriptString& font_fname );
+        static void           Global_SetDefaultFont( int font, uint color );
 
         static CScriptString* Global_GetLastError();
         static void           Global_Log( CScriptString& text );

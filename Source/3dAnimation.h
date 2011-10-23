@@ -104,7 +104,7 @@ private:
     bool         FrameMove( double elapsed, int x, int y, float scale, bool software_skinning );
     void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
     bool         DrawFrame( Frame* frame, bool with_shadow );
-    bool         DrawMeshEffect( Mesh_ mesh, uint subset, Effect* effect_ex, Texture** textures, EffectValue_ technique );
+    bool         DrawMeshEffect( Mesh* mesh, uint subset, Effect* effect_ex, Texture** textures, EffectValue_ technique );
     bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir );
     bool         SetupBordersFrame( Frame* frame, FLTRECT& borders );
     void         ProcessBorders();

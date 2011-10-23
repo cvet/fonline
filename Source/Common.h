@@ -7,7 +7,7 @@
 // Some platform specific definitions
 #include "PlatformSpecific.h"
 
-// Standart API
+// Standard API
 #include <stdio.h>
 #include <stdarg.h>
 #include <algorithm>
@@ -247,7 +247,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define Surface_            LPDIRECT3DSURFACE9
 #  define EffectValue_        D3DXHANDLE
 #  define Material_           D3DMATERIAL9
-#  define Mesh_               LPD3DXMESH
 #  define Buffer_             ID3DXBuffer
 #  define AnimSet_            ID3DXAnimationSet
 #  define AnimController_     ID3DXAnimationController
@@ -266,7 +265,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define Surface_            GLuint
 #  define EffectValue_        GLuint
 #  define Material_           GLuint
-#  define Mesh_               GLuint
 #  define Buffer_             GLuint
 #  define AnimSet_            GLuint
 #  define AnimController_     AnimController

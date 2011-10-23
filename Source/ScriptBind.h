@@ -2846,6 +2846,11 @@ if( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hex
     BIND_ERROR;
 if( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) < 0 )
     BIND_ERROR;
+
+if( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) < 0 )
+    BIND_ERROR;
+if( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) < 0 )
+    BIND_ERROR;
 #endif
 
 if( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) )

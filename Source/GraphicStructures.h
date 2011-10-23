@@ -3,6 +3,7 @@
 
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
+#include "Assimp/aiMesh.h"
 
 typedef aiMatrix4x4  Matrix;
 typedef aiVector3D   Vector;
@@ -131,28 +132,34 @@ struct AnimController
     void Release() {}
 };
 
+#ifdef FO_D3D
+typedef ID3DXMesh Mesh;
+#else
+typedef aiMesh    Mesh;
+#endif
+
 struct MeshContainer
 {
     // Base data
     char*           Name;
-    Mesh_           Mesh;
+    Mesh*           InitMesh;
+    Mesh*           SkinMesh;
+    Mesh*           SkinMeshBlended;
     Material_*      Materials;
     EffectInstance* Effects;
     uint            NumMaterials;
     uint*           Adjacency;
-    SkinInfo_       SkinInfo;
+    SkinInfo_       Skin;
     MeshContainer*  NextMeshContainer;
 
     // Material
     char**          TextureNames;
 
     // Skinned mesh variables
-    Mesh_           SkinMesh;                   // The skin mesh
     Matrix*         BoneOffsets;                // The bone matrix Offsets, one per bone
     Matrix**        FrameCombinedMatrixPointer; // Array of frame matrix pointers
 
     // Used for indexed shader skinning
-    Mesh_           SkinMeshBlended;            // The blended skin mesh
     Buffer_*        BoneCombinationBuf;
     uint            NumAttributeGroups;
     uint            NumPaletteEntries;

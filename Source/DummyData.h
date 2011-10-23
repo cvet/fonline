@@ -1008,8 +1008,6 @@ struct BindClass
     static void Global_GetLastCursor()          {}
     static void Global_ChangeCursor()           {}
     static void Global_WaitPing()               {}
-    static void Global_LoadFont()               {}
-    static void Global_SetDefaultFont()         {}
     static void Global_SetEffect()              {}
     static void Global_RefreshMap()             {}
 
@@ -1157,6 +1155,8 @@ struct BindClass
     static void Global_GetKeybLang()        {}
     static void Global_GetHexPos()          {}
     static void Global_GetMonitorHex()      {}
+    static void Global_LoadFont()           {}
+    static void Global_SetDefaultFont()     {}
     #endif
 
     static void Global_GetLastError()           {}

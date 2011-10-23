@@ -1073,6 +1073,30 @@ void FOMapper::ParseMouse()
         }
     }
 
+    // Mouse Scroll
+    if( GameOpt.MouseScroll )
+    {
+        if( GameOpt.MouseX >= MODE_WIDTH - 1 )
+            GameOpt.ScrollMouseRight = true;
+        else
+            GameOpt.ScrollMouseRight = false;
+
+        if( GameOpt.MouseX <= 0 )
+            GameOpt.ScrollMouseLeft = true;
+        else
+            GameOpt.ScrollMouseLeft = false;
+
+        if( GameOpt.MouseY >= MODE_HEIGHT - 1 )
+            GameOpt.ScrollMouseDown = true;
+        else
+            GameOpt.ScrollMouseDown = false;
+
+        if( GameOpt.MouseY <= 0 )
+            GameOpt.ScrollMouseUp = true;
+        else
+            GameOpt.ScrollMouseUp = false;
+    }
+
     // Get buffered data
     MouseEventsLocker.Lock();
     if( MouseEvents.empty() )
@@ -1314,30 +1338,6 @@ void FOMapper::ParseMouse()
             continue;
         }
     }
-
-    // Scroll
-    if( GameOpt.MouseScroll == false )
-        return;
-
-    if( GameOpt.MouseX >= MODE_WIDTH - 1 )
-        GameOpt.ScrollMouseRight = true;
-    else
-        GameOpt.ScrollMouseRight = false;
-
-    if( GameOpt.MouseX <= 0 )
-        GameOpt.ScrollMouseLeft = true;
-    else
-        GameOpt.ScrollMouseLeft = false;
-
-    if( GameOpt.MouseY >= MODE_HEIGHT - 1 )
-        GameOpt.ScrollMouseDown = true;
-    else
-        GameOpt.ScrollMouseDown = false;
-
-    if( GameOpt.MouseY <= 0 )
-        GameOpt.ScrollMouseUp = true;
-    else
-        GameOpt.ScrollMouseUp = false;
 }
 
 void FOMapper::MainLoop()
@@ -6504,6 +6504,18 @@ bool FOMapper::SScriptFunc::Global_LoadConstants( int const_collection, CScriptS
     if( !file_name || !file_name->length() )
         SCRIPT_ERROR_R0( "Invalid fileName arg." );
     return ConstantsManager::AddCollection( const_collection, file_name->c_str(), path_type );
+}
+
+bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, CScriptString& font_fname )
+{
+    if( font_fname.c_str()[ 0 ] == '*' )
+        return SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1 );
+    return SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
+}
+
+void FOMapper::SScriptFunc::Global_SetDefaultFont( int font, uint color )
+{
+    SprMngr.SetDefaultFont( font, color );
 }
 
 uint FOMapper::SScriptFunc::Global_LoadSprite( CScriptString& spr_name, int path_index )

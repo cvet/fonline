@@ -643,11 +643,7 @@ void FileManager::SetStr( const char* fmt, ... )
 
     va_list list;
     va_start( list, fmt );
-    #ifdef FO_MSVC
-    vsprintf_s( str, fmt, list );
-    #else
     vsprintf( str, fmt, list );
-    #endif
     va_end( list );
 
     SetData( str, Str::Length( str ) );

@@ -162,11 +162,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         Str::Append( str, func );
 
     size_t len = Str::Length( str );
-    #ifdef FO_MSVC
-    vsprintf_s( &str[ len ], MAX_LOGTEXT - len, frmt, list );
-    #else
     vsprintf( &str[ len ], frmt, list );
-    #endif
 
     if( LoggingType & LOG_FILE )
     {

@@ -3041,7 +3041,7 @@ bool SpriteManager::Flush()
                     GraphicLoader::EffectProcessVariables( effect, pass );
 
                 D3D_HR( dxeffect->BeginPass( pass ) );
-                D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, 4 * dip.SpritesCount, rpos, 2 * dip.SpritesCount ) );
+                D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
                 D3D_HR( dxeffect->EndPass() );
             }
             D3D_HR( dxeffect->End() );
@@ -3050,7 +3050,7 @@ bool SpriteManager::Flush()
         {
             D3D_HR( d3dDevice->SetVertexShader( NULL ) );
             D3D_HR( d3dDevice->SetPixelShader( NULL ) );
-            D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, 4 * dip.SpritesCount, rpos, 2 * dip.SpritesCount ) );
+            D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
         }
         #else
         if( effect )

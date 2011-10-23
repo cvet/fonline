@@ -231,7 +231,7 @@
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\Source\StlPort;..\Source;..\Source\Dx9;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO;AS_NO_THREADS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO;AS_NO_THREADS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -265,7 +265,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AssemblyDebug>
       </AssemblyDebug>
-      <ProgramDatabaseFile>$(IntDir)FOnlineDbg.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)FOnlineDbg.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)FOnlineDbg.map</MapFileName>
       <SubSystem>Windows</SubSystem>
@@ -273,7 +273,8 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
-      <StripPrivateSymbols>$(OutDir)FOnlineDbg.pdb</StripPrivateSymbols>
+      <StripPrivateSymbols>
+      </StripPrivateSymbols>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
