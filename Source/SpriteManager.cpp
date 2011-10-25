@@ -17,7 +17,7 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 
 SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), SurfType( 0 ), SurfFilterNearest( false ),
                                 spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ), sceneBeginned( false ),
-                                d3dDevice( NULL ), vbMain( NULL ), ibMain( NULL ), waitBuf( NULL ), vbPoints( NULL ), vbPointsSize( 0 ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
+                                d3dDevice( NULL ), vbMain( NULL ), ibMain( NULL ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
                                 eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ), sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
                                 contoursTexture( NULL ), contoursTextureSurf( NULL ), contoursMidTexture( NULL ), contoursMidTextureSurf( NULL ), contours3dRT( NULL ),
                                 contoursPS( NULL ), contoursCT( NULL ), contoursAdded( false ),
@@ -40,8 +40,14 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
 
     #ifdef FO_D3D
     direct3D = NULL;
+    vbPoints = NULL;
+    vbPointsSize = 0;
     #else
     vaMain = 0;
+    vbMain = 0;
+    ibMain = 0;
+    ibDirect = 0;
+    memzero( projectionMatrix, sizeof( projectionMatrix ) );
     #endif
 }
 
@@ -120,29 +126,31 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
     D3D_HR( direct3D->CreateDevice( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, fl_xid( MainWindow ), vproc, &presentParams, &d3dDevice ) );
     #else
+    # ifdef FO_WINDOWS
     PIXELFORMATDESCRIPTOR pfd;
     memzero( &pfd, sizeof( PIXELFORMATDESCRIPTOR ) );
-    pfd.nSize      = sizeof( PIXELFORMATDESCRIPTOR );
-    pfd.nVersion   = 1;
-    pfd.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.nSize = sizeof( PIXELFORMATDESCRIPTOR );
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
     pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 16;
+    pfd.cColorBits = 24;
     pfd.cDepthBits = 16;
-    HDC                   hdc = GetDC( fl_xid( MainWindow ) );
-    GLuint                iPixelFormat = ChoosePixelFormat( hdc, &pfd );
-    PIXELFORMATDESCRIPTOR bestMatch_pfd;
-    DescribePixelFormat( hdc, iPixelFormat, sizeof( pfd ), &bestMatch_pfd );
-    SetPixelFormat( hdc, iPixelFormat, &pfd );
-    HGLRC rc = wglCreateContext( hdc );
-    wglMakeCurrent( hdc, rc );
+    dcScreen = GetDC( fl_xid( MainWindow ) );
+    GLuint pixel_format = ChoosePixelFormat( dcScreen, &pfd );
+    SetPixelFormat( dcScreen, pixel_format, &pfd );
+    HGLRC  rc = wglCreateContext( dcScreen );
+    wglMakeCurrent( dcScreen, rc );
+    # endif
 
-    GL( glViewport( 0, 0, MODE_WIDTH, MODE_HEIGHT ) );
+    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glMatrixMode( GL_PROJECTION ) );
     GL( glLoadIdentity() );
-    GL( gluOrtho2D( 0, MODE_WIDTH, MODE_HEIGHT, 0 ) );
+    GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
+    GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
     GL( glMatrixMode( GL_MODELVIEW ) );
+    GL( glLoadIdentity() );
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    // wglSwapIntervalEXT( 0 );
+    wglSwapIntervalEXT( 0 );
     #endif
 
     #ifdef FO_D3D
@@ -226,8 +234,29 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx" );
     sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx" );
     #ifndef FO_D3D
+    sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] = GraphicLoader::LoadEffect( d3dDevice, "Contour_Default.fx" );
     sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx" );
     sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Texture.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Color.fx" );
+    for( uint i = 0; i < DEFAULT_EFFECT_COUNT; i++ )
+    {
+        if( !sprDefaultEffect[ i ] )
+        {
+            WriteLog( "Default effects not loaded.\n" );
+            return false;
+        }
+    }
+
+    // Render targets
+    if( !CreateRenderTarget( rtMain, true ) ||
+        !CreateRenderTarget( rtContours, false ) ||
+        !CreateRenderTarget( rtContoursMid, false ) )
+    {
+        WriteLog( "Can't create render targets.\n" );
+        return false;
+    }
+    PushRenderTarget( rtMain );
     #endif
 
     // Clear scene
@@ -235,7 +264,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, COLOR_XRGB( 0, 0, 0 ), 1.0f, 0 ) );
     #else
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    SwapBuffers( GetDC( fl_xid( MainWindow ) ) );
+    SwapBuffers( dcScreen );
     #endif
 
     // Generate dummy animation
@@ -256,12 +285,11 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 bool SpriteManager::InitBuffers()
 {
     #ifdef FO_D3D
-    SAFEDELA( waitBuf );
     SAFEREL( vbMain );
     SAFEREL( ibMain );
 
     // Vertex buffer
-    D3D_HR( d3dDevice->CreateVertexBuffer( flushSprCnt * 4 * sizeof( MYVERTEX ), D3DUSAGE_WRITEONLY | D3DUSAGE_DYNAMIC, D3DFVF_MYVERTEX, D3DPOOL_DEFAULT, &vbMain, NULL ) );
+    D3D_HR( d3dDevice->CreateVertexBuffer( flushSprCnt * 4 * sizeof( Vertex ), D3DUSAGE_WRITEONLY | D3DUSAGE_DYNAMIC, D3DFVF_MYVERTEX, D3DPOOL_DEFAULT, &vbMain, NULL ) );
 
     // Index buffer
     D3D_HR( d3dDevice->CreateIndexBuffer( flushSprCnt * 6 * sizeof( ushort ), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_DEFAULT, &ibMain, NULL ) );
@@ -285,28 +313,28 @@ bool SpriteManager::InitBuffers()
     D3D_HR( ibMain->Unlock() );
     delete[] ind;
 
-    waitBuf = new MYVERTEX[ flushSprCnt * 4 ];
-    if( !waitBuf )
-        return false;
+    vBuffer.resize( flushSprCnt * 4 );
     #else
-    SAFEDELA( waitBuf );
-    if( vbMain )
-        GL( glDeleteBuffers( 1, &vbMain ) );
-    vbMain = 0;
     if( vaMain )
         GL( glDeleteVertexArrays( 1, &vaMain ) );
     vaMain = 0;
+    if( vbMain )
+        GL( glDeleteBuffers( 1, &vbMain ) );
+    vbMain = 0;
     if( ibMain )
         GL( glDeleteBuffers( 1, &ibMain ) );
     ibMain = 0;
+    if( ibDirect )
+        GL( glDeleteBuffers( 1, &ibDirect ) );
+    ibDirect = 0;
 
     // Vertex buffer
-    waitBuf = new MYVERTEX[ flushSprCnt * 4 ];
+    vBuffer.resize( flushSprCnt * 4 );
     GL( glGenBuffers( 1, &vbMain ) );
     GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-    GL( glBufferData( GL_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( MYVERTEX ), NULL, GL_DYNAMIC_DRAW ) );
+    GL( glBufferData( GL_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
 
-    // Index buffer
+    // Index buffers
     ushort* ind = new ushort[ 6 * flushSprCnt ];
     for( int i = 0; i < flushSprCnt; i++ )
     {
@@ -320,17 +348,22 @@ bool SpriteManager::InitBuffers()
     GL( glGenBuffers( 1, &ibMain ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
     GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 6 * sizeof( ushort ), ind, GL_DYNAMIC_DRAW ) );
+    for( int i = 0; i < flushSprCnt * 4; i++ )
+        ind[ i ] = i;
+    GL( glGenBuffers( 1, &ibDirect ) );
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( ushort ), ind, GL_DYNAMIC_DRAW ) );
     delete[] ind;
 
     // Vertex array
     GL( glGenVertexArrays( 1, &vaMain ) );
     GL( glBindVertexArray( vaMain ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, vaMain ) );
+    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( MYVERTEX ), (void*) OFFSETOF( MYVERTEX, x ) ) );
-    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( MYVERTEX ), (void*) OFFSETOF( MYVERTEX, diffuse ) ) );
-    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( MYVERTEX ), (void*) OFFSETOF( MYVERTEX, tu ) ) );
-    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( MYVERTEX ), (void*) OFFSETOF( MYVERTEX, tu2 ) ) );
+    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, x ) ) );
+    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, diffuse ) ) );
+    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu ) ) );
+    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu2 ) ) );
     GL( glEnableVertexAttribArray( 0 ) );
     GL( glEnableVertexAttribArray( 1 ) );
     GL( glEnableVertexAttribArray( 2 ) );
@@ -420,9 +453,11 @@ bool SpriteManager::InitRenderStates()
     GL( glEnable( GL_BLEND ) );
     GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
     GL( glEnable( GL_ALPHA_TEST ) );
-    GL( glAlphaFunc( GL_LEQUAL, 1 ) );
+    GL( glAlphaFunc( GL_GEQUAL, 1.0f / 255.0f ) );
 
     GL( glShadeModel( GL_SMOOTH ) );
+    GL( glEnable( GL_POINT_SMOOTH ) );
+    GL( glEnable( GL_LINE_SMOOTH ) );
     // GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
     // GL( glReadBuffer( GL_BACK ) );
     // GL( glDrawBuffer( GL_BACK ) );
@@ -469,7 +504,6 @@ void SpriteManager::Finish()
     SAFEREL( spr3dRTData );
     SAFEREL( vbMain );
     SAFEREL( ibMain );
-    SAFEDELA( waitBuf );
     SAFEREL( vbPoints );
     SAFEREL( d3dDevice );
     SAFEREL( contoursTextureSurf );
@@ -497,7 +531,8 @@ bool SpriteManager::BeginScene( uint clear_color )
         D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, clear_color, 1.0f, 0 ) );
     D3D_HR( d3dDevice->BeginScene() );
     #else
-    GL( glClear( GL_COLOR_BUFFER_BIT ) );
+    if( clear_color )
+        ClearRenderTarget( rtMain, clear_color );
     #endif
 
     Animation3d::BeginScene();
@@ -512,7 +547,10 @@ void SpriteManager::EndScene()
     d3dDevice->EndScene();
     d3dDevice->Present( NULL, NULL, NULL, NULL );
     #else
-    SwapBuffers( GetDC( fl_xid( MainWindow ) ) );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    DrawRenderTarget( rtMain );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
+    SwapBuffers( dcScreen );
     #endif
     sceneBeginned = false;
 }
@@ -562,6 +600,137 @@ bool SpriteManager::Restore()
     return true;
 }
 
+#ifndef FO_D3D
+bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil )
+{
+    memzero( &rt, sizeof( rt ) );
+    GL( glGenFramebuffers( 1, &rt.FBO ) );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+
+    uint     w = modeWidth;
+    uint     h = modeHeight;
+    Texture* tex = new Texture();
+    tex->Data = new uchar[ w * h * 4 ];
+    tex->Size = w * h * 4;
+    tex->Width = w;
+    tex->Height = h;
+    tex->SizeData[ 0 ] = (float) w;
+    tex->SizeData[ 1 ] = (float) h;
+    tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
+    tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
+    GL( glGenTextures( 1, &tex->Id ) );
+    GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
+    GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
+    GL( glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE ) );
+    rt.TargetTexture = tex;
+
+    GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
+
+    if( depth_stencil )
+    {
+        GL( glGenRenderbuffers( 1, &rt.DepthStencilBuffer ) );
+        GL( glBindRenderbuffer( GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
+        GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h ) );
+        GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
+    }
+
+    rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ];
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+
+    ClearRenderTarget( rt, 0 );
+    if( depth_stencil )
+        ClearRenderTargetDS( rt, true, true );
+    return true;
+}
+
+void SpriteManager::ClearRenderTarget( RenderTarget& rt, uint color )
+{
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    float a = (float) ( ( color >> 24 ) & 0xFF ) / 255.0f;
+    float r = (float) ( ( color >> 16 ) & 0xFF ) / 255.0f;
+    float g = (float) ( ( color >>  8 ) & 0xFF ) / 255.0f;
+    float b = (float) ( ( color >>  0 ) & 0xFF ) / 255.0f;
+    GL( glClearColor( r, g, b, a ) );
+    int   depth_stencil_bit = ( rt.DepthStencilBuffer ? GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT : 0 );
+    if( depth_stencil_bit )
+    {
+        GL( glClearDepth( 1.0 ) );
+        GL( glClearStencil( 0 ) );
+    }
+    GL( glClear( GL_COLOR_BUFFER_BIT ) );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+}
+
+void SpriteManager::ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil )
+{
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    int depth_stencil_bit = 0;
+    depth_stencil_bit |= ( depth ? GL_DEPTH_BUFFER_BIT : 0 );
+    depth_stencil_bit |= ( stencil ? GL_STENCIL_BUFFER_BIT : 0 );
+    if( depth )
+    {
+        depth_stencil_bit |= GL_DEPTH_BUFFER_BIT;
+        GL( glClearDepth( 1.0 ) );
+    }
+    if( stencil )
+    {
+        depth_stencil_bit |= GL_STENCIL_BUFFER_BIT;
+        GL( glClearStencil( 0 ) );
+    }
+    GL( glClear( depth_stencil_bit ) );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+}
+
+void SpriteManager::PushRenderTarget( RenderTarget& rt )
+{
+    Flush();
+    rtStack.push_back( &rt );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+}
+
+void SpriteManager::PopRenderTarget()
+{
+    Flush();
+    rtStack.pop_back();
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+}
+
+void SpriteManager::DrawRenderTarget( RenderTarget& rt )
+{
+    Flush();
+
+    uint  mulpos = 0;
+    float w = (float) rt.TargetTexture->Width;
+    float h = (float) rt.TargetTexture->Height;
+
+    vBuffer[ mulpos ].x = 0.0f;
+    vBuffer[ mulpos ].y = h;
+    vBuffer[ mulpos ].tu = 0.0f;
+    vBuffer[ mulpos++ ].tv = 0.0f;
+    vBuffer[ mulpos ].x = 0.0f;
+    vBuffer[ mulpos ].y = 0.0f;
+    vBuffer[ mulpos ].tu = 0.0f;
+    vBuffer[ mulpos++ ].tv = 1.0f;
+    vBuffer[ mulpos ].x = w;
+    vBuffer[ mulpos ].y = 0.0f;
+    vBuffer[ mulpos ].tu = 1.0f;
+    vBuffer[ mulpos++ ].tv = 1.0f;
+    vBuffer[ mulpos ].x = w;
+    vBuffer[ mulpos ].y = h;
+    vBuffer[ mulpos ].tu = 1.0f;
+    vBuffer[ mulpos++ ].tv = 0.0f;
+
+    curSprCnt = 1;
+    dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
+    Flush();
+}
+#endif
+
 Surface* SpriteManager::CreateNewSurface( int w, int h )
 {
     if( !isInit )
@@ -585,6 +754,10 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     tex->Size = w * h * 4;
     tex->Width = w;
     tex->Height = h;
+    tex->SizeData[ 0 ] = (float) w;
+    tex->SizeData[ 1 ] = (float) h;
+    tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
+    tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
     GL( glGenTextures( 1, &tex->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
@@ -2993,20 +3166,19 @@ bool SpriteManager::Flush()
     #ifdef FO_D3D
     for( int i = 0; i < mulpos; i++ )
     {
-        MYVERTEX& v = waitBuf[ i ];
+        Vertex& v = vBuffer[ i ];
         v.x -= 0.5f;
         v.y -= 0.5f;
     }
     void* ptr;
-    D3D_HR( vbMain->Lock( 0, sizeof( MYVERTEX ) * mulpos, (void**) &ptr, D3DLOCK_DISCARD ) );
-    memcpy( ptr, waitBuf, sizeof( MYVERTEX ) * mulpos );
+    D3D_HR( vbMain->Lock( 0, sizeof( Vertex ) * mulpos, (void**) &ptr, D3DLOCK_DISCARD ) );
+    memcpy( ptr, &vBuffer[ 0 ], sizeof( Vertex ) * mulpos );
     D3D_HR( vbMain->Unlock() );
     D3D_HR( d3dDevice->SetIndices( ibMain ) );
-    D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( MYVERTEX ) ) );
+    D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( Vertex ) ) );
     D3D_HR( d3dDevice->SetFVF( D3DFVF_MYVERTEX ) );
     #else
-    GL( glBindVertexArray( vaMain ) );
-    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( MYVERTEX ) * mulpos, waitBuf ) );
+    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * mulpos, &vBuffer[ 0 ] ) );
     #endif
 
     uint rpos = 0;
@@ -3047,46 +3219,41 @@ bool SpriteManager::Flush()
             D3D_HR( d3dDevice->DrawIndexedPrimitive( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 0, 0, mulpos, rpos, 2 * dip.SpritesCount ) );
         }
         #else
-        if( effect )
+        GL( glUseProgram( effect->Program ) );
+
+        if( effect->ZoomFactor != -1 )
+            GL( glUniform1f( effect->ZoomFactor, GameOpt.SpritesZoom ) );
+        if( effect->ProjectionMatrix != -1 )
+            GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, projectionMatrix ) );
+        if( effect->ColorMap != -1 && dip.SourceTexture )
         {
-            GL( glUseProgram( effect->Program ) );
-
-            if( effect->ColorMap != -1 )
-            {
-                GL( glActiveTexture( GL_TEXTURE0 ) );
-                GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
-                GL( glUniform1i( effect->ColorMap, 0 ) );
-                if( effect->ColorMapSize != -1 )
-                    GL( glUniform1f( effect->ColorMapSize, (float) dip.SourceTexture->Width ) );
-            }
-            if( effect->EggMap != -1 )
-            {
-                GL( glActiveTexture( GL_TEXTURE1 ) );
-                GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Surf->TextureOwner->Id ) );
-                GL( glUniform1i( effect->EggMap, 1 ) );
-                if( effect->EggMap != -1 )
-                    GL( glUniform1f( effect->ColorMapSize, (float) sprEgg->Surf->TextureOwner->Width ) );
-            }
-            if( effect->ZoomFactor != -1 )
-                GL( glUniform1f( effect->ZoomFactor, GameOpt.SpritesZoom ) );
-
-            GLuint  min_index = rpos * 4;
-            GLuint  max_index = min_index + dip.SpritesCount * 4 - 1;
-            GLsizei count = 6 * dip.SpritesCount;
-
-            if( effect->IsNeedProcess )
-                GraphicLoader::EffectProcessVariables( effect, -1 );
-            for( uint pass = 0; pass < effect->Passes; pass++ )
-            {
-                if( effect->IsNeedProcess )
-                    GraphicLoader::EffectProcessVariables( effect, pass );
-
-                GL( glDrawRangeElements( GL_TRIANGLES, min_index, max_index, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
-            }
+            GL( glActiveTexture( GL_TEXTURE0 ) );
+            GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
+            GL( glUniform1i( effect->ColorMap, 0 ) );
+            if( effect->ColorMapSize != -1 )
+                GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
         }
-        else
+        if( effect->EggMap != -1 )
         {
-            ExitProcess( 0 );
+            GL( glActiveTexture( GL_TEXTURE1 ) );
+            GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Surf->TextureOwner->Id ) );
+            GL( glUniform1i( effect->EggMap, 1 ) );
+            if( effect->EggMapSize != -1 )
+                GL( glUniform4fv( effect->EggMapSize, 1, sprEgg->Surf->TextureOwner->SizeData ) );
+        }
+        if( effect->SpriteBorder != -1 )
+            GL( glUniform4f( effect->SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R, dip.SpriteBorder.B ) );
+
+        GLuint  min_index = rpos * 4;
+        GLuint  max_index = min_index + dip.SpritesCount * 4 - 1;
+        GLsizei count = 6 * dip.SpritesCount;
+        if( effect->IsNeedProcess )
+            GraphicLoader::EffectProcessVariables( effect, -1 );
+        for( uint pass = 0; pass < effect->Passes; pass++ )
+        {
+            if( effect->IsNeedProcess )
+                GraphicLoader::EffectProcessVariables( effect, pass );
+            GL( glDrawRangeElements( GL_TRIANGLES, min_index, max_index, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
         }
         #endif
 
@@ -3129,29 +3296,29 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
     if( !color )
         color = COLOR_IFACE;
 
-    waitBuf[ mulpos ].x = (float) x;
-    waitBuf[ mulpos ].y = (float) y + si->Height;
-    waitBuf[ mulpos ].tu = si->SprRect.L;
-    waitBuf[ mulpos ].tv = si->SprRect.B;
-    waitBuf[ mulpos++ ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x;
+    vBuffer[ mulpos ].y = (float) y + si->Height;
+    vBuffer[ mulpos ].tu = si->SprRect.L;
+    vBuffer[ mulpos ].tv = si->SprRect.B;
+    vBuffer[ mulpos++ ].diffuse = color;
 
-    waitBuf[ mulpos ].x = (float) x;
-    waitBuf[ mulpos ].y = (float) y;
-    waitBuf[ mulpos ].tu = si->SprRect.L;
-    waitBuf[ mulpos ].tv = si->SprRect.T;
-    waitBuf[ mulpos++ ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x;
+    vBuffer[ mulpos ].y = (float) y;
+    vBuffer[ mulpos ].tu = si->SprRect.L;
+    vBuffer[ mulpos ].tv = si->SprRect.T;
+    vBuffer[ mulpos++ ].diffuse = color;
 
-    waitBuf[ mulpos ].x = (float) x + si->Width;
-    waitBuf[ mulpos ].y = (float) y;
-    waitBuf[ mulpos ].tu = si->SprRect.R;
-    waitBuf[ mulpos ].tv = si->SprRect.T;
-    waitBuf[ mulpos++ ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x + si->Width;
+    vBuffer[ mulpos ].y = (float) y;
+    vBuffer[ mulpos ].tu = si->SprRect.R;
+    vBuffer[ mulpos ].tv = si->SprRect.T;
+    vBuffer[ mulpos++ ].diffuse = color;
 
-    waitBuf[ mulpos ].x = (float) x + si->Width;
-    waitBuf[ mulpos ].y = (float) y + si->Height;
-    waitBuf[ mulpos ].tu = si->SprRect.R;
-    waitBuf[ mulpos ].tv = si->SprRect.B;
-    waitBuf[ mulpos ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x + si->Width;
+    vBuffer[ mulpos ].y = (float) y + si->Height;
+    vBuffer[ mulpos ].tu = si->SprRect.R;
+    vBuffer[ mulpos ].tv = si->SprRect.B;
+    vBuffer[ mulpos ].diffuse = color;
 
     if( ++curSprCnt == flushSprCnt )
         Flush();
@@ -3212,29 +3379,29 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
     if( !color )
         color = COLOR_IFACE;
 
-    waitBuf[ mulpos ].x = (float) x;
-    waitBuf[ mulpos ].y = (float) y + hf;
-    waitBuf[ mulpos ].tu = si->SprRect.L;
-    waitBuf[ mulpos ].tv = si->SprRect.B;
-    waitBuf[ mulpos++ ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x;
+    vBuffer[ mulpos ].y = (float) y + hf;
+    vBuffer[ mulpos ].tu = si->SprRect.L;
+    vBuffer[ mulpos ].tv = si->SprRect.B;
+    vBuffer[ mulpos++ ].diffuse = color;
 
-    waitBuf[ mulpos ].x = (float) x;
-    waitBuf[ mulpos ].y = (float) y;
-    waitBuf[ mulpos ].tu = si->SprRect.L;
-    waitBuf[ mulpos ].tv = si->SprRect.T;
-    waitBuf[ mulpos++ ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x;
+    vBuffer[ mulpos ].y = (float) y;
+    vBuffer[ mulpos ].tu = si->SprRect.L;
+    vBuffer[ mulpos ].tv = si->SprRect.T;
+    vBuffer[ mulpos++ ].diffuse = color;
 
-    waitBuf[ mulpos ].x = (float) x + wf;
-    waitBuf[ mulpos ].y = (float) y;
-    waitBuf[ mulpos ].tu = si->SprRect.R;
-    waitBuf[ mulpos ].tv = si->SprRect.T;
-    waitBuf[ mulpos++ ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x + wf;
+    vBuffer[ mulpos ].y = (float) y;
+    vBuffer[ mulpos ].tu = si->SprRect.R;
+    vBuffer[ mulpos ].tv = si->SprRect.T;
+    vBuffer[ mulpos++ ].diffuse = color;
 
-    waitBuf[ mulpos ].x = (float) x + wf;
-    waitBuf[ mulpos ].y = (float) y + hf;
-    waitBuf[ mulpos ].tu = si->SprRect.R;
-    waitBuf[ mulpos ].tv = si->SprRect.B;
-    waitBuf[ mulpos ].diffuse = color;
+    vBuffer[ mulpos ].x = (float) x + wf;
+    vBuffer[ mulpos ].y = (float) y + hf;
+    vBuffer[ mulpos ].tu = si->SprRect.R;
+    vBuffer[ mulpos ].tv = si->SprRect.B;
+    vBuffer[ mulpos ].diffuse = color;
 
     if( ++curSprCnt == flushSprCnt )
         Flush();
@@ -3261,7 +3428,7 @@ void SpriteManager::PrepareSquare( PointVec& points, FLTPOINT& lt, FLTPOINT& rt,
     points.push_back( PrepPoint( (short) rb.X, (short) rb.Y, color, NULL, NULL ) );
 }
 
-uint SpriteManager::GetColor( int r, int g, int b )
+uint SpriteManager::PackColor( int r, int g, int b )
 {
     r = CLAMP( r, 0, 255 );
     g = CLAMP( g, 0, 255 );
@@ -3552,14 +3719,14 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 float y2f = (float) ( y2 + SURF_SPRITES_OFFS );
 
                 int   mulpos = curSprCnt * 4;
-                waitBuf[ mulpos ].tu2 = x1f / eggSurfWidth;
-                waitBuf[ mulpos ].tv2 = y2f / eggSurfHeight;
-                waitBuf[ mulpos + 1 ].tu2 = x1f / eggSurfWidth;
-                waitBuf[ mulpos + 1 ].tv2 = y1f / eggSurfHeight;
-                waitBuf[ mulpos + 2 ].tu2 = x2f / eggSurfWidth;
-                waitBuf[ mulpos + 2 ].tv2 = y1f / eggSurfHeight;
-                waitBuf[ mulpos + 3 ].tu2 = x2f / eggSurfWidth;
-                waitBuf[ mulpos + 3 ].tv2 = y2f / eggSurfHeight;
+                vBuffer[ mulpos ].tu2 = x1f / eggSurfWidth;
+                vBuffer[ mulpos ].tv2 = y2f / eggSurfHeight;
+                vBuffer[ mulpos + 1 ].tu2 = x1f / eggSurfWidth;
+                vBuffer[ mulpos + 1 ].tv2 = y1f / eggSurfHeight;
+                vBuffer[ mulpos + 2 ].tu2 = x2f / eggSurfWidth;
+                vBuffer[ mulpos + 2 ].tv2 = y1f / eggSurfHeight;
+                vBuffer[ mulpos + 3 ].tu2 = x2f / eggSurfWidth;
+                vBuffer[ mulpos + 3 ].tv2 = y2f / eggSurfHeight;
 
                 egg_added = true;
             }
@@ -3581,10 +3748,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         else
             dipQueue.back().SpritesCount++;
 
-        // Process contour effect
-        if( collect_contours && spr->ContourType )
-            CollectContour( x, y, si, spr );
-
         // Casts
         float xf = (float) x / GameOpt.SpritesZoom;
         float yf = (float) y / GameOpt.SpritesZoom;
@@ -3594,56 +3757,56 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Fill buffer
         int mulpos = curSprCnt * 4;
 
-        waitBuf[ mulpos ].x = xf;
-        waitBuf[ mulpos ].y = yf + hf;
-        waitBuf[ mulpos ].tu = si->SprRect.L;
-        waitBuf[ mulpos ].tv = si->SprRect.B;
-        waitBuf[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ mulpos ].x = xf;
+        vBuffer[ mulpos ].y = yf + hf;
+        vBuffer[ mulpos ].tu = si->SprRect.L;
+        vBuffer[ mulpos ].tv = si->SprRect.B;
+        vBuffer[ mulpos++ ].diffuse = cur_color;
 
-        waitBuf[ mulpos ].x = xf;
-        waitBuf[ mulpos ].y = yf;
-        waitBuf[ mulpos ].tu = si->SprRect.L;
-        waitBuf[ mulpos ].tv = si->SprRect.T;
-        waitBuf[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ mulpos ].x = xf;
+        vBuffer[ mulpos ].y = yf;
+        vBuffer[ mulpos ].tu = si->SprRect.L;
+        vBuffer[ mulpos ].tv = si->SprRect.T;
+        vBuffer[ mulpos++ ].diffuse = cur_color;
 
-        waitBuf[ mulpos ].x = xf + wf;
-        waitBuf[ mulpos ].y = yf;
-        waitBuf[ mulpos ].tu = si->SprRect.R;
-        waitBuf[ mulpos ].tv = si->SprRect.T;
-        waitBuf[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ mulpos ].x = xf + wf;
+        vBuffer[ mulpos ].y = yf;
+        vBuffer[ mulpos ].tu = si->SprRect.R;
+        vBuffer[ mulpos ].tv = si->SprRect.T;
+        vBuffer[ mulpos++ ].diffuse = cur_color;
 
-        waitBuf[ mulpos ].x = xf + wf;
-        waitBuf[ mulpos ].y = yf + hf;
-        waitBuf[ mulpos ].tu = si->SprRect.R;
-        waitBuf[ mulpos ].tv = si->SprRect.B;
-        waitBuf[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ mulpos ].x = xf + wf;
+        vBuffer[ mulpos ].y = yf + hf;
+        vBuffer[ mulpos ].tu = si->SprRect.R;
+        vBuffer[ mulpos ].tv = si->SprRect.B;
+        vBuffer[ mulpos++ ].diffuse = cur_color;
 
         // Cutted sprite
         if( spr->CutType )
         {
             xf = (float) ( x + spr->CutX ) / GameOpt.SpritesZoom;
             wf = spr->CutW / GameOpt.SpritesZoom;
-            waitBuf[ mulpos - 4 ].x = xf;
-            waitBuf[ mulpos - 4 ].tu = spr->CutTexL;
-            waitBuf[ mulpos - 3 ].x = xf;
-            waitBuf[ mulpos - 3 ].tu = spr->CutTexL;
-            waitBuf[ mulpos - 2 ].x = xf + wf;
-            waitBuf[ mulpos - 2 ].tu = spr->CutTexR;
-            waitBuf[ mulpos - 1 ].x = xf + wf;
-            waitBuf[ mulpos - 1 ].tu = spr->CutTexR;
+            vBuffer[ mulpos - 4 ].x = xf;
+            vBuffer[ mulpos - 4 ].tu = spr->CutTexL;
+            vBuffer[ mulpos - 3 ].x = xf;
+            vBuffer[ mulpos - 3 ].tu = spr->CutTexL;
+            vBuffer[ mulpos - 2 ].x = xf + wf;
+            vBuffer[ mulpos - 2 ].tu = spr->CutTexR;
+            vBuffer[ mulpos - 1 ].x = xf + wf;
+            vBuffer[ mulpos - 1 ].tu = spr->CutTexR;
         }
 
         // Set default texture coordinates for egg texture
         if( !egg_added )
         {
-            waitBuf[ mulpos - 1 ].tu2 = 0.0f;
-            waitBuf[ mulpos - 1 ].tv2 = 0.0f;
-            waitBuf[ mulpos - 2 ].tu2 = 0.0f;
-            waitBuf[ mulpos - 2 ].tv2 = 0.0f;
-            waitBuf[ mulpos - 3 ].tu2 = 0.0f;
-            waitBuf[ mulpos - 3 ].tv2 = 0.0f;
-            waitBuf[ mulpos - 4 ].tu2 = 0.0f;
-            waitBuf[ mulpos - 4 ].tv2 = 0.0f;
+            vBuffer[ mulpos - 1 ].tu2 = 0.0f;
+            vBuffer[ mulpos - 1 ].tv2 = 0.0f;
+            vBuffer[ mulpos - 2 ].tu2 = 0.0f;
+            vBuffer[ mulpos - 2 ].tv2 = 0.0f;
+            vBuffer[ mulpos - 3 ].tu2 = 0.0f;
+            vBuffer[ mulpos - 3 ].tv2 = 0.0f;
+            vBuffer[ mulpos - 4 ].tu2 = 0.0f;
+            vBuffer[ mulpos - 4 ].tv2 = 0.0f;
         }
 
         // Draw
@@ -3731,6 +3894,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             DrawStr( INTRECT( x1, y1, x1 + 100, y1 + 100 ), str, 0 );
         }
         #endif
+
+        // Process contour effect
+        if( collect_contours && spr->ContourType )
+            CollectContour( x, y, si, spr );
     }
 
     Flush();
@@ -3827,6 +3994,10 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
     }
 
     D3D_HR( si->Surf->TextureOwner->Instance->UnlockRect( 0 ) );
+    #else
+    offs_x += (int) ( si->Surf->TextureOwner->SizeData[ 0 ] * si->SprRect.L );
+    offs_y += (int) ( si->Surf->TextureOwner->SizeData[ 1 ] * si->SprRect.T );
+    return si->Surf->TextureOwner->Pixel( offs_x, offs_y );
     #endif
     return 0;
 }
@@ -3866,6 +4037,8 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     }
 
     D3D_HR( sprEgg->Surf->TextureOwner->Instance->UnlockRect( 0 ) );
+    #else
+    return sprEgg->Surf->TextureOwner->Pixel( ox, oy ) < 170;
     #endif
     return false;
 }
@@ -3882,7 +4055,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     // Draw stencil quad
     if( stencil )
     {
-        struct Vertex
+        struct VertexUP
         {
             FLOAT x, y, z, rhw;
             uint  diffuse;
@@ -3916,7 +4089,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         D3D_HR( d3dDevice->SetFVF( D3DFVF_XYZRHW | D3DFVF_DIFFUSE ) );
 
         D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_STENCIL, 0, 1.0f, 0 ) );
-        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( VertexUP ) ) );
 
         D3D_HR( d3dDevice->SetRenderState( D3DRS_STENCILFUNC, D3DCMP_NOTEQUAL ) );
         D3D_HR( d3dDevice->SetRenderState( D3DRS_STENCILREF, 0 ) );
@@ -4028,6 +4201,137 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     if( stencil )
         D3D_HR( d3dDevice->SetRenderState( D3DRS_STENCILENABLE, FALSE ) );
+
+    #else
+    // Check primitives
+    uint   count = points.size();
+    int    prim_count = (int) count;
+    GLenum prim_type;
+    switch( prim )
+    {
+    case PRIMITIVE_POINTLIST:
+        prim_type = GL_POINTS;
+        break;
+    case PRIMITIVE_LINELIST:
+        prim_type = GL_LINES;
+        prim_count /= 2;
+        break;
+    case PRIMITIVE_LINESTRIP:
+        prim_type = GL_LINE_STRIP;
+        prim_count -= 1;
+        break;
+    case PRIMITIVE_TRIANGLELIST:
+        prim_type = GL_TRIANGLES;
+        prim_count /= 3;
+        break;
+    case PRIMITIVE_TRIANGLESTRIP:
+        prim_type = GL_TRIANGLE_STRIP;
+        prim_count -= 2;
+        break;
+    case PRIMITIVE_TRIANGLEFAN:
+        prim_type = GL_TRIANGLE_FAN;
+        prim_count -= 2;
+        break;
+    default:
+        return false;
+    }
+    if( prim_count <= 0 )
+        return false;
+
+    // Draw stencil
+    if( stencil )
+    {
+        uint mulpos = 0;
+        vBuffer[ mulpos ].x = stencil->L;
+        vBuffer[ mulpos ].y = stencil->B;
+        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+        vBuffer[ mulpos ].x = stencil->L;
+        vBuffer[ mulpos ].y = stencil->T;
+        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+        vBuffer[ mulpos ].x = stencil->R;
+        vBuffer[ mulpos ].y = stencil->T;
+        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+        vBuffer[ mulpos ].x = stencil->R;
+        vBuffer[ mulpos ].y = stencil->B;
+        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+
+        GL( glEnable( GL_STENCIL_TEST ) );
+        GL( glStencilFunc( GL_NEVER, 1, 0xFF ) );
+        GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
+
+        curSprCnt = 1;
+        dipQueue.push_back( DipData( NULL, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] ) );
+        Flush();
+
+        GL( glStencilFunc( GL_NOTEQUAL, 0, 0xFF ) );
+        GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
+    }
+
+    // Resize buffers
+    if( vBuffer.size() < count )
+    {
+        // Vertex buffer
+        vBuffer.resize( count );
+        GL( glBufferData( GL_ARRAY_BUFFER, count * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
+
+        // Index buffers
+        ushort* ind = new ushort[ count ];
+        for( uint i = 0; i < count; i++ )
+            ind[ i ] = i;
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, count * sizeof( ushort ), ind, GL_DYNAMIC_DRAW ) );
+        delete[] ind;
+    }
+
+    // Collect data
+    for( uint i = 0; i < count; i++ )
+    {
+        PrepPoint& point = points[ i ];
+        float      x = (float) point.PointX;
+        float      y = (float) point.PointY;
+        if( point.PointOffsX )
+            x += (float) *point.PointOffsX;
+        if( point.PointOffsY )
+            y += (float) *point.PointOffsY;
+        if( zoom )
+            x /= *zoom, y /= *zoom;
+        if( offset )
+            x += offset->X, y += offset->Y;
+
+        vBuffer[ i ].x = x;
+        vBuffer[ i ].y = y;
+        vBuffer[ i ].diffuse = point.PointColor;
+    }
+
+    // Draw
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
+    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, count * sizeof( Vertex ), &vBuffer[ 0 ] ) );
+
+    Effect* effect = sprDefaultEffect[ DEFAULT_EFFECT_POINT ];
+    GL( glUseProgram( effect->Program ) );
+
+    if( effect->ProjectionMatrix != -1 )
+        GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, projectionMatrix ) );
+
+    if( effect->IsNeedProcess )
+        GraphicLoader::EffectProcessVariables( effect, -1 );
+    for( uint pass = 0; pass < effect->Passes; pass++ )
+    {
+        if( effect->IsNeedProcess )
+            GraphicLoader::EffectProcessVariables( effect, pass );
+        GL( glDrawElements( prim_type, count, GL_UNSIGNED_SHORT, (void*) 0 ) );
+    }
+
+    GL( glUseProgram( 0 ) );
+
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
+
+    // Finish
+    if( stencil )
+    {
+        ClearRenderTargetDS( rtMain, false, true );
+        GL( glDisable( GL_STENCIL_TEST ) );
+    }
     #endif
     return true;
 }
@@ -4043,7 +4347,7 @@ bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTR
     // Restore 2d stream
     #ifdef FO_D3D
     D3D_HR( d3dDevice->SetIndices( ibMain ) );
-    D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( MYVERTEX ) ) );
+    D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( Vertex ) ) );
     #endif
     return true;
 }
@@ -4070,7 +4374,7 @@ bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Anim
     // Restore 2d stream
     #ifdef FO_D3D
     D3D_HR( d3dDevice->SetIndices( ibMain ) );
-    D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( MYVERTEX ) ) );
+    D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( Vertex ) ) );
     #endif
     return true;
 }
@@ -4080,7 +4384,7 @@ bool SpriteManager::DrawContours()
     #ifdef FO_D3D
     if( contoursPS && contoursAdded )
     {
-        struct Vertex
+        struct VertexUP
         {
             FLOAT x, y, z, rhw;
             float tu, tv;
@@ -4109,7 +4413,7 @@ bool SpriteManager::DrawContours()
         D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 ) );
         D3D_HR( d3dDevice->SetTexture( 0, contoursTexture->Instance ) );
 
-        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( VertexUP ) ) );
 
         D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
         contoursAdded = false;
@@ -4122,12 +4426,21 @@ bool SpriteManager::DrawContours()
         D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR ) );  // Zoom In
         spriteContours.Unvalidate();
     }
+    #else
+    if( contoursAdded )
+    {
+        DrawRenderTarget( rtContours );
+        ClearRenderTarget( rtContours, 0 );
+        ClearRenderTarget( rtContoursMid, 0 );
+        contoursAdded = false;
+    }
     #endif
     return true;
 }
 
 bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 {
+    #ifdef FO_D3D
     if( !contoursPS )
     {
         if( !si->Anim3d )
@@ -4158,7 +4471,6 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         return false;
     }
 
-    #ifdef FO_D3D
     // Shader contour
     Animation3d* anim3d = si->Anim3d;
     INTRECT      borders = ( anim3d ? anim3d->GetExtraBorders() : INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
@@ -4182,7 +4494,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         {
             borders( (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
                      (int) ( ( x + si->Width ) / GameOpt.SpritesZoom ), (int) ( ( y + si->Height ) / GameOpt.SpritesZoom ) );
-            struct Vertex
+            struct VertexUP
             {
                 FLOAT x, y, z, rhw;
                 FLOAT tu, tv;
@@ -4214,7 +4526,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
             D3DRECT clear_r = { borders.L - 1, borders.T - 1, borders.R + 1, borders.B + 1 };
             D3D_HR( d3dDevice->Clear( 1, &clear_r, D3DCLEAR_TARGET, 0, 1.0f, 0 ) );
-            D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+            D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( VertexUP ) ) );
 
             D3D_HR( d3dDevice->SetRenderTarget( 0, old_rt ) );
             D3D_HR( d3dDevice->SetDepthStencilSurface( old_ds ) );
@@ -4258,7 +4570,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         hs = 0.1f / modeHeight;
 
         // Render to contours texture
-        struct Vertex
+        struct VertexUP
         {
             FLOAT x, y, z, rhw;
             uint  diffuse;
@@ -4294,7 +4606,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
         D3DRECT clear_r = { borders.L - 2, borders.T - 2, borders.R + 2, borders.B + 2 };
         D3D_HR( d3dDevice->Clear( 1, &clear_r, D3DCLEAR_TARGET, 0, 1.0f, 0 ) );
-        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( VertexUP ) ) );
 
         D3D_HR( d3dDevice->SetRenderState( D3DRS_ZENABLE, FALSE ) );
         D3D_HR( d3dDevice->SetRenderState( D3DRS_ZFUNC, D3DCMP_LESS ) );
@@ -4333,7 +4645,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     }
 
     // Draw contour
-    struct Vertex
+    struct VertexUP
     {
         FLOAT x, y, z, rhw;
         float tu, tv;
@@ -4386,7 +4698,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
     if( !contoursAdded )
         D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, 0, 0.9f, 0 ) );
-    D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+    D3D_HR( d3dDevice->DrawPrimitiveUP( (D3DPRIMITIVETYPE) PRIMITIVE_TRIANGLELIST, 2, (void*) vb, sizeof( VertexUP ) ) );
 
     // Restore 2d stream
     D3D_HR( d3dDevice->SetDepthStencilSurface( ds ) );
@@ -4395,10 +4707,119 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     old_rt->Release();
     D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
     contoursAdded = true;
+    #else
+    Animation3d* anim3d = si->Anim3d;
+    INTRECT      borders = ( anim3d ? anim3d->GetExtraBorders() : INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
+    Texture*     texture = ( anim3d ? NULL : si->Surf->TextureOwner );
+    FLTRECT      textureuv;
+
+    if( !anim3d )
+    {
+        if( borders.L >= modeWidth * GameOpt.SpritesZoom || borders.R < 0 || borders.T >= modeHeight * GameOpt.SpritesZoom || borders.B < 0 )
+            return true;
+
+        if( GameOpt.SpritesZoom == 1.0f )
+        {
+            FLTRECT& sr = si->SprRect;
+            float    txw = texture->SizeData[ 2 ];
+            float    txh = texture->SizeData[ 3 ];
+            textureuv( sr.L - txw, sr.T - txh, sr.R + txw, sr.B + txh );
+        }
+        else
+        {
+            FLTRECT& sr = si->SprRect;
+            float    zoom = GameOpt.SpritesZoom;
+            borders( (int) ( x / zoom ), (int) ( y / zoom ),
+                     (int) ( ( x + si->Width ) / zoom ), (int) ( ( y + si->Height ) / zoom ) );
+            FLTRECT bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
+            float   mid_height = rtContoursMid.TargetTexture->SizeData[ 1 ];
+
+            PushRenderTarget( rtContoursMid );
+
+            uint mulpos = 0;
+            vBuffer[ mulpos ].x = bordersf.L;
+            vBuffer[ mulpos ].y = mid_height - bordersf.B;
+            vBuffer[ mulpos ].tu = sr.L;
+            vBuffer[ mulpos++ ].tv = sr.B;
+            vBuffer[ mulpos ].x = bordersf.L;
+            vBuffer[ mulpos ].y = mid_height - bordersf.T;
+            vBuffer[ mulpos ].tu = sr.L;
+            vBuffer[ mulpos++ ].tv = sr.T;
+            vBuffer[ mulpos ].x = bordersf.R;
+            vBuffer[ mulpos ].y = mid_height - bordersf.T;
+            vBuffer[ mulpos ].tu = sr.R;
+            vBuffer[ mulpos++ ].tv = sr.T;
+            vBuffer[ mulpos ].x = bordersf.R;
+            vBuffer[ mulpos ].y = mid_height - bordersf.B;
+            vBuffer[ mulpos ].tu = sr.R;
+            vBuffer[ mulpos++ ].tv = sr.B;
+
+            curSprCnt = 1;
+            dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] ) );
+            Flush();
+
+            PopRenderTarget();
+
+            texture = rtContoursMid.TargetTexture;
+            float tw = texture->SizeData[ 0 ];
+            float th = texture->SizeData[ 1 ];
+            borders.L--, borders.T--, borders.R++, borders.B++;
+            textureuv( (float) borders.L / tw, (float) borders.T / th, (float) borders.R / tw, (float) borders.B / th );
+        }
+    }
+    else
+    {
+        ExitProcess( 0 );
+    }
+
+    uint contour_color = 0;
+    if( spr->ContourType == CONTOUR_RED )
+        contour_color = 0xFFAF0000;
+    else if( spr->ContourType == CONTOUR_YELLOW )
+        contour_color = 0x00AFAF00;  // Disable flashing by passing alpha == 0.0
+    else if( spr->ContourType == CONTOUR_CUSTOM )
+        contour_color = spr->ContourColor;
+    else
+        contour_color = 0xFFAFAFAF;
+
+    FLTRECT pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
+
+    PushRenderTarget( rtContours );
+
+    uint mulpos = 0;
+    vBuffer[ mulpos ].x = pos.L;
+    vBuffer[ mulpos ].y = pos.B;
+    vBuffer[ mulpos ].tu = textureuv.L;
+    vBuffer[ mulpos ].tv = textureuv.B;
+    vBuffer[ mulpos++ ].diffuse = contour_color;
+    vBuffer[ mulpos ].x = pos.L;
+    vBuffer[ mulpos ].y = pos.T;
+    vBuffer[ mulpos ].tu = textureuv.L;
+    vBuffer[ mulpos ].tv = textureuv.T;
+    vBuffer[ mulpos++ ].diffuse = contour_color;
+    vBuffer[ mulpos ].x = pos.R;
+    vBuffer[ mulpos ].y = pos.T;
+    vBuffer[ mulpos ].tu = textureuv.R;
+    vBuffer[ mulpos ].tv = textureuv.T;
+    vBuffer[ mulpos++ ].diffuse = contour_color;
+    vBuffer[ mulpos ].x = pos.R;
+    vBuffer[ mulpos ].y = pos.B;
+    vBuffer[ mulpos ].tu = textureuv.R;
+    vBuffer[ mulpos ].tv = textureuv.B;
+    vBuffer[ mulpos++ ].diffuse = contour_color;
+
+    curSprCnt = 1;
+    dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] ) );
+    dipQueue.back().SpriteBorder = textureuv;
+    Flush();
+
+    PopRenderTarget();
+    contoursAdded = true;
     #endif
     return true;
 }
 
+#ifdef FO_D3D
 uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
 {
     // Find created
@@ -4407,7 +4828,6 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     if( it != createdSpriteContours.end() )
         return ( *it ).second;
 
-    #ifdef FO_D3D
     // Create new
     LPDIRECT3DSURFACE9 surf;
     D3D_HR( si->Surf->TextureOwner->Instance->GetSurfaceLevel( 0, &surf ) );
@@ -4448,12 +4868,8 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     SurfType = st;
     createdSpriteContours.insert( PAIR( spr_id, result ) );
     return result;
-    #else
-    return 0;
-    #endif
 }
 
-#ifdef FO_D3D
 # define SET_IMAGE_POINT( x, y )    *( buf + ( y ) * buf_w + ( x ) ) = color
 void SpriteManager::WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color )
 {

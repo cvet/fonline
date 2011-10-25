@@ -23,6 +23,7 @@ struct Texture
     uint               Size;
     uint               Width;
     uint               Height;
+    float              SizeData[ 4 ]; // Width, Height, TexelWidth, TexelHeight
     Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ) {}
     ~Texture()
     {
@@ -78,11 +79,13 @@ struct Effect
     GLuint         VertexShader;
     GLuint         FragmentShader;
     uint           Passes;
+    GLint          ProjectionMatrix;
+    GLint          ZoomFactor;
     GLint          ColorMap;
     GLint          ColorMapSize;
     GLint          EggMap;
     GLint          EggMapSize;
-    GLint          ZoomFactor;
+    GLint          SpriteBorder;
     #endif
 
     EffectDefault* Defaults;
@@ -123,6 +126,13 @@ struct Effect
     EffectValue_   AnimPosProc;
     EffectValue_   AnimPosTime;
 };
+#ifdef FO_D3D
+# define IS_EFFECT_VALUE( pos )                 ( ( pos ) != NULL )
+# define SET_EFFECT_VALUE( eff, pos, value )    eff->DXInstance->SetFloat( pos, value )
+#else
+# define IS_EFFECT_VALUE( pos )                 ( ( pos ) != -1 )
+# define SET_EFFECT_VALUE( eff, pos, value )    GL( glUniform1f( pos, value ) )
+#endif
 
 struct SkinInfo
 {

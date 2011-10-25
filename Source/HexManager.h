@@ -128,6 +128,18 @@ typedef vector< Drop* > DropVec;
 class HexManager
 {
     // Hexes
+private:
+    ushort     maxHexX, maxHexY;
+    Field*     hexField;
+    bool*      hexToDraw;
+    char*      hexTrack;
+    AnyFrames* picTrack1, * picTrack2;
+    AnyFrames* picHexMask;
+    bool       isShowTrack;
+    bool       isShowHex;
+    AnyFrames* picHex[ 3 ];
+    string     curDataPrefix;
+
 public:
     bool   ResizeField( ushort w, ushort h );
     Field& GetField( ushort hx, ushort hy )     { return hexField[ hy * maxHexX + hx ]; }
@@ -143,18 +155,6 @@ public:
     bool FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut );
     bool CutPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut );
     bool TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed );
-
-private:
-    ushort     maxHexX, maxHexY;
-    Field*     hexField;
-    bool*      hexToDraw;
-    char*      hexTrack;
-    AnyFrames* picTrack1, * picTrack2;
-    AnyFrames* picHexMask;
-    bool       isShowTrack;
-    bool       isShowHex;
-    AnyFrames* picHex[ 3 ];
-    string     curDataPrefix;
 
     // Center
 public:
@@ -188,7 +188,10 @@ public:
 
     // Init, finish, restore
 private:
-    Sprites    mainTree;
+    #ifndef FO_D3D
+    RenderTarget rtMap;
+    #endif
+    Sprites      mainTree;
     ViewField* viewField;
 
     int        screenHexX, screenHexY;

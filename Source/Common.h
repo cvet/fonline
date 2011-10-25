@@ -263,7 +263,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # else
 #  define Device_             GLuint
 #  define Surface_            GLuint
-#  define EffectValue_        GLuint
+#  define EffectValue_        GLint
 #  define Material_           GLuint
 #  define Buffer_             GLuint
 #  define AnimSet_            GLuint

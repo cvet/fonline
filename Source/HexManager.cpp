@@ -177,6 +177,14 @@ bool HexManager::Init()
         return false;
     }
 
+    #ifndef FO_D3D
+    if( !SprMngr.CreateRenderTarget( rtMap, false ) )
+    {
+        WriteLog( "Can't create render target.\n" );
+        return false;
+    }
+    #endif
+
     isShowTrack = false;
     curPidMap = 0;
     curMapTime = -1;
@@ -1881,6 +1889,11 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 
 void HexManager::DrawMap()
 {
+    #ifndef FO_D3D
+    // Separate render target
+    SprMngr.PushRenderTarget( rtMap );
+    #endif
+
     // Rebuild light
     if( requestRebuildLight )
     {
@@ -1950,7 +1963,11 @@ void HexManager::DrawMap()
     else if( drawCursorX > 0 )
         DrawCursor( Str::FormatBuf( "%u", drawCursorX ) );
 
-    SprMngr.Flush();
+    #ifndef FO_D3D
+    // Return render target
+    SprMngr.PopRenderTarget();
+    SprMngr.DrawRenderTarget( rtMap );
+    #endif
 }
 
 bool HexManager::Scroll()

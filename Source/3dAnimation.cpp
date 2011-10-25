@@ -871,7 +871,7 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
     #ifdef FO_D3D
     if( stencil )
     {
-        struct Vertex
+        struct VertexUP
         {
             FLOAT x, y, z, rhw;
             uint  diffuse;
@@ -896,7 +896,7 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
         D3D_HR( D3DDevice->SetFVF( D3DFVF_XYZRHW | D3DFVF_DIFFUSE ) );
 
         D3D_HR( D3DDevice->Clear( 0, NULL, D3DCLEAR_STENCIL, 0, 1.0f, 0 ) );
-        D3D_HR( D3DDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( Vertex ) ) );
+        D3D_HR( D3DDevice->DrawPrimitiveUP( D3DPT_TRIANGLELIST, 2, (void*) vb, sizeof( VertexUP ) ) );
 
         D3D_HR( D3DDevice->SetRenderState( D3DRS_STENCILFUNC, D3DCMP_NOTEQUAL ) );
         D3D_HR( D3DDevice->SetRenderState( D3DRS_STENCILREF, 0 ) );

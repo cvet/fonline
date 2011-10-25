@@ -723,9 +723,9 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     // Try find already loaded texture
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
-        Effect* effect_ex = *it;
-        if( Str::CompareCase( effect_ex->Name, effect_name ) && effect_ex->Defaults == effect_inst->Defaults )
-            return effect_ex;
+        Effect* effect = *it;
+        if( Str::CompareCase( effect->Name, effect_name ) && effect->Defaults == effect_inst->Defaults )
+            return effect;
     }
 
     #ifdef FO_D3D
@@ -744,7 +744,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
     // Find already compiled effect in cache
     char        cache_name[ MAX_FOPATH ];
-    sprintf( cache_name, "%s.fxc", effect_name );
+    Str::Format( cache_name, "%s.fxc", effect_name );
     FileManager fm_cache;
     if( fm_cache.LoadFile( cache_name, PT_CACHE ) )
     {
@@ -870,7 +870,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
     {
         char tex_name[ 32 ];
-        sprintf( tex_name, "Texture%d", i );
+        Str::Format( tex_name, "Texture%d", i );
         effect->Textures[ i ] = dxeffect->GetParameterByName( NULL, tex_name );
         if( effect->Textures[ i ] )
             effect->IsTextures = true;
@@ -879,7 +879,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
     {
         char val_name[ 32 ];
-        sprintf( val_name, "EffectValue%d", i );
+        Str::Format( val_name, "EffectValue%d", i );
         effect->ScriptValues[ i ] = dxeffect->GetParameterByName( NULL, val_name );
         if( effect->ScriptValues[ i ] )
             effect->IsScriptValues = true;
@@ -917,9 +917,6 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         effect->EffectParams = dxeffect->EndParameterBlock();
         effect->Defaults = effect_inst->Defaults;
     }
-
-    loadedEffects.push_back( effect );
-    return loadedEffects.back();
     #else
     // Make names
     char vs_fname[ MAX_FOPATH ];
@@ -1047,105 +1044,158 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     effect->Passes = 1;
 
     // Bind data
+    GL( effect->ProjectionMatrix = glGetUniformLocation( program, "ProjectionMatrix" ) );
+    GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
     GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
     GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
-    GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
+    GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
 
-    return effect;
+    GL( effect->PassIndex = glGetUniformLocation( program, "PassIndex" ) );
+    GL( effect->Time = glGetUniformLocation( program, "Time" ) );
+    effect->TimeCurrent = 0.0f;
+    effect->TimeLastTick = Timer::AccurateTick();
+    GL( effect->TimeGame = glGetUniformLocation( program, "TimeGame" ) );
+    effect->TimeGameCurrent = 0.0f;
+    effect->TimeGameLastTick = Timer::AccurateTick();
+    effect->IsTime = ( effect->Time != -1 || effect->TimeGame != -1 );
+    GL( effect->Random1Pass = glGetUniformLocation( program, "Random1Pass" ) );
+    GL( effect->Random2Pass = glGetUniformLocation( program, "Random2Pass" ) );
+    GL( effect->Random3Pass = glGetUniformLocation( program, "Random3Pass" ) );
+    GL( effect->Random4Pass = glGetUniformLocation( program, "Random4Pass" ) );
+    effect->IsRandomPass = ( effect->Random1Pass != -1 || effect->Random2Pass != -1 || effect->Random3Pass != -1 || effect->Random4Pass != -1 );
+    GL( effect->Random1Effect = glGetUniformLocation( program, "Random1Effect" ) );
+    GL( effect->Random2Effect = glGetUniformLocation( program, "Random2Effect" ) );
+    GL( effect->Random3Effect = glGetUniformLocation( program, "Random3Effect" ) );
+    GL( effect->Random4Effect = glGetUniformLocation( program, "Random4Effect" ) );
+    effect->IsRandomEffect = ( effect->Random1Effect != -1 || effect->Random2Effect != -1 || effect->Random3Effect != -1 || effect->Random4Effect != -1 );
+    effect->IsTextures = false;
+    for( int i = 0; i < EFFECT_TEXTURES; i++ )
+    {
+        char tex_name[ 32 ];
+        Str::Format( tex_name, "Texture%d", i );
+        GL( effect->Textures[ i ] = glGetUniformLocation( program, tex_name ) );
+        if( effect->Textures[ i ] != -1 )
+            effect->IsTextures = true;
+    }
+    effect->IsScriptValues = false;
+    for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
+    {
+        char val_name[ 32 ];
+        Str::Format( val_name, "EffectValue%d", i );
+        GL( effect->ScriptValues[ i ] = glGetUniformLocation( program, val_name ) );
+        if( effect->ScriptValues[ i ] != -1 )
+            effect->IsScriptValues = true;
+    }
+    GL( effect->AnimPosProc = glGetUniformLocation( program, "AnimPosProc" ) );
+    GL( effect->AnimPosTime = glGetUniformLocation( program, "AnimPosTime" ) );
+    effect->IsAnimPos = ( effect->AnimPosProc != -1 || effect->AnimPosTime != -1 );
+    effect->IsNeedProcess = ( effect->PassIndex != -1 || effect->IsTime || effect->IsRandomPass || effect->IsRandomEffect ||
+                              effect->IsTextures || effect->IsScriptValues || effect->IsAnimPos );
     #endif
+
+    loadedEffects.push_back( effect );
+    return loadedEffects.back();
 }
 
-void GraphicLoader::EffectProcessVariables( Effect* effect_ex, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
+void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
 {
-    #ifdef FO_D3D
     // Process effect
     if( pass == -1 )
     {
-        if( effect_ex->IsTime )
+        if( effect->IsTime )
         {
             double tick = Timer::AccurateTick();
-            if( effect_ex->Time )
+            if( IS_EFFECT_VALUE( effect->Time ) )
             {
-                effect_ex->TimeCurrent += (float) ( tick - effect_ex->TimeLastTick );
-                effect_ex->TimeLastTick = tick;
-                if( effect_ex->TimeCurrent >= 120.0f )
-                    effect_ex->TimeCurrent = fmod( effect_ex->TimeCurrent, 120.0f );
+                effect->TimeCurrent += (float) ( tick - effect->TimeLastTick );
+                effect->TimeLastTick = tick;
+                if( effect->TimeCurrent >= 120.0f )
+                    effect->TimeCurrent = fmod( effect->TimeCurrent, 120.0f );
 
-                effect_ex->DXInstance->SetFloat( effect_ex->Time, effect_ex->TimeCurrent );
+                SET_EFFECT_VALUE( effect, effect->Time, effect->TimeCurrent );
             }
-            if( effect_ex->TimeGame )
+            if( IS_EFFECT_VALUE( effect->TimeGame ) )
             {
                 if( !Timer::IsGamePaused() )
                 {
-                    effect_ex->TimeGameCurrent += (float) ( tick - effect_ex->TimeGameLastTick );
-                    effect_ex->TimeGameLastTick = tick;
-                    if( effect_ex->TimeGameCurrent >= 120.0f )
-                        effect_ex->TimeGameCurrent = fmod( effect_ex->TimeGameCurrent, 120.0f );
+                    effect->TimeGameCurrent += (float) ( tick - effect->TimeGameLastTick ) / 1000.0f;
+                    effect->TimeGameLastTick = tick;
+                    if( effect->TimeGameCurrent >= 120.0f )
+                        effect->TimeGameCurrent = fmod( effect->TimeGameCurrent, 120.0f );
                 }
                 else
                 {
-                    effect_ex->TimeGameLastTick = tick;
+                    effect->TimeGameLastTick = tick;
                 }
 
-                effect_ex->DXInstance->SetFloat( effect_ex->TimeGame, effect_ex->TimeGameCurrent );
+                SET_EFFECT_VALUE( effect, effect->TimeGame, effect->TimeGameCurrent );
             }
         }
 
-        if( effect_ex->IsRandomEffect )
+        if( effect->IsRandomEffect )
         {
-            if( effect_ex->Random1Effect )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( effect_ex->Random2Effect )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( effect_ex->Random3Effect )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( effect_ex->Random4Effect )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random1Effect ) )
+                SET_EFFECT_VALUE( effect, effect->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random2Effect ) )
+                SET_EFFECT_VALUE( effect, effect->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random3Effect ) )
+                SET_EFFECT_VALUE( effect, effect->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random4Effect ) )
+                SET_EFFECT_VALUE( effect, effect->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
 
-        if( effect_ex->IsTextures )
+        if( effect->IsTextures )
         {
             for( int i = 0; i < EFFECT_TEXTURES; i++ )
-                if( effect_ex->Textures[ i ] )
-                    effect_ex->DXInstance->SetTexture( effect_ex->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Instance : NULL );
+                if( IS_EFFECT_VALUE( effect->Textures[ i ] ) )
+                {
+                    #ifdef FO_D3D
+                    effect->DXInstance->SetTexture( effect->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Instance : NULL );
+                    #else
+                    GLuint id = ( textures && textures[ i ] ? textures[ i ]->Id : 0 );
+                    GL( glActiveTexture( GL_TEXTURE2 + i ) );
+                    GL( glBindTexture( GL_TEXTURE_2D, id ) );
+                    GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
+                    #endif
+
+                }
         }
 
-        if( effect_ex->IsScriptValues )
+        if( effect->IsScriptValues )
         {
             for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
-                if( effect_ex->ScriptValues[ i ] )
-                    effect_ex->DXInstance->SetFloat( effect_ex->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
+                if( IS_EFFECT_VALUE( effect->ScriptValues[ i ] ) )
+                    SET_EFFECT_VALUE( effect, effect->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
         }
 
-        if( effect_ex->IsAnimPos )
+        if( effect->IsAnimPos )
         {
-            if( effect_ex->AnimPosProc )
-                effect_ex->DXInstance->SetFloat( effect_ex->AnimPosProc, anim_proc );
-            if( effect_ex->AnimPosTime )
-                effect_ex->DXInstance->SetFloat( effect_ex->AnimPosTime, anim_time );
+            if( IS_EFFECT_VALUE( effect->AnimPosProc ) )
+                SET_EFFECT_VALUE( effect, effect->AnimPosProc, anim_proc );
+            if( IS_EFFECT_VALUE( effect->AnimPosTime ) )
+                SET_EFFECT_VALUE( effect, effect->AnimPosTime, anim_time );
         }
     }
     // Process pass
     else
     {
-        if( effect_ex->PassIndex )
-            effect_ex->DXInstance->SetFloat( effect_ex->Random1Pass, (float) pass );
+        if( IS_EFFECT_VALUE( effect->PassIndex ) )
+            SET_EFFECT_VALUE( effect, effect->Random1Pass, (float) pass );
 
-        if( effect_ex->IsRandomPass )
+        if( effect->IsRandomPass )
         {
-            if( effect_ex->Random1Pass )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( effect_ex->Random2Pass )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( effect_ex->Random3Pass )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( effect_ex->Random4Pass )
-                effect_ex->DXInstance->SetFloat( effect_ex->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random1Pass ) )
+                SET_EFFECT_VALUE( effect, effect->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random2Pass ) )
+                SET_EFFECT_VALUE( effect, effect->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random3Pass ) )
+                SET_EFFECT_VALUE( effect, effect->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect->Random4Pass ) )
+                SET_EFFECT_VALUE( effect, effect->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
     }
-    #endif
 }
 
 bool GraphicLoader::EffectsPreRestore()
@@ -1153,8 +1203,8 @@ bool GraphicLoader::EffectsPreRestore()
     #ifdef FO_D3D
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
-        Effect* effect_ex = *it;
-        D3D_HR( effect_ex->DXInstance->OnLostDevice() );
+        Effect* effect = *it;
+        D3D_HR( effect->DXInstance->OnLostDevice() );
     }
     #endif
     return true;
@@ -1165,8 +1215,8 @@ bool GraphicLoader::EffectsPostRestore()
     #ifdef FO_D3D
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
-        Effect* effect_ex = *it;
-        D3D_HR( effect_ex->DXInstance->OnResetDevice() );
+        Effect* effect = *it;
+        D3D_HR( effect->DXInstance->OnResetDevice() );
     }
     #endif
     return true;

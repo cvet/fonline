@@ -11976,8 +11976,8 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
         return;
     }
 
-    int      size = data.GetSize() / 3;
-    PointVec points;
+    static PointVec points;
+    int             size = data.GetSize() / 3;
     points.resize( size );
 
     for( int i = 0; i < size; i++ )
@@ -11986,8 +11986,8 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
         pp.PointX = *(int*) data.At( i * 3 );
         pp.PointY = *(int*) data.At( i * 3 + 1 );
         pp.PointColor = *(int*) data.At( i * 3 + 2 );
-        // pp.PointOffsX=NULL;
-        // pp.PointOffsY=NULL;
+        pp.PointOffsX = NULL;
+        pp.PointOffsY = NULL;
     }
 
     SprMngr.DrawPoints( points, prim );

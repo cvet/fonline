@@ -965,29 +965,29 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
             float x2 = textture_uv[ (uchar) str_[ i ] ][ 2 ];
             float y2 = textture_uv[ (uchar) str_[ i ] ][ 3 ];
 
-            waitBuf[ mulpos ].x = (float) x;
-            waitBuf[ mulpos ].y = (float) y + h;
-            waitBuf[ mulpos ].tu = x1;
-            waitBuf[ mulpos ].tv = y2;
-            waitBuf[ mulpos++ ].diffuse = col;
+            vBuffer[ mulpos ].x = (float) x;
+            vBuffer[ mulpos ].y = (float) y + h;
+            vBuffer[ mulpos ].tu = x1;
+            vBuffer[ mulpos ].tv = y2;
+            vBuffer[ mulpos++ ].diffuse = col;
 
-            waitBuf[ mulpos ].x = (float) x;
-            waitBuf[ mulpos ].y = (float) y;
-            waitBuf[ mulpos ].tu = x1;
-            waitBuf[ mulpos ].tv = y1;
-            waitBuf[ mulpos++ ].diffuse = col;
+            vBuffer[ mulpos ].x = (float) x;
+            vBuffer[ mulpos ].y = (float) y;
+            vBuffer[ mulpos ].tu = x1;
+            vBuffer[ mulpos ].tv = y1;
+            vBuffer[ mulpos++ ].diffuse = col;
 
-            waitBuf[ mulpos ].x = (float) x + w;
-            waitBuf[ mulpos ].y = (float) y;
-            waitBuf[ mulpos ].tu = x2;
-            waitBuf[ mulpos ].tv = y1;
-            waitBuf[ mulpos++ ].diffuse = col;
+            vBuffer[ mulpos ].x = (float) x + w;
+            vBuffer[ mulpos ].y = (float) y;
+            vBuffer[ mulpos ].tu = x2;
+            vBuffer[ mulpos ].tv = y1;
+            vBuffer[ mulpos++ ].diffuse = col;
 
-            waitBuf[ mulpos ].x = (float) x + w;
-            waitBuf[ mulpos ].y = (float) y + h;
-            waitBuf[ mulpos ].tu = x2;
-            waitBuf[ mulpos ].tv = y2;
-            waitBuf[ mulpos ].diffuse = col;
+            vBuffer[ mulpos ].x = (float) x + w;
+            vBuffer[ mulpos ].y = (float) y + h;
+            vBuffer[ mulpos ].tu = x2;
+            vBuffer[ mulpos ].tv = y2;
+            vBuffer[ mulpos ].diffuse = col;
 
             if( ++curSprCnt == flushSprCnt )
             {
