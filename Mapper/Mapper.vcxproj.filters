@@ -38,9 +38,6 @@
     <ClInclude Include="..\Source\ResourceMapper.h">
       <Filter>Resource</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\3dAnimation.h">
-      <Filter>Mapper</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Common.h">
       <Filter>Mapper</Filter>
     </ClInclude>
@@ -365,11 +362,14 @@
     <ClInclude Include="..\Source\GraphicStructures.h">
       <Filter>Mapper</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\3dAnimation.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\3dStuff.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Source\3dAnimation.cpp">
-      <Filter>Mapper</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\Common.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
@@ -638,6 +638,9 @@
       <Filter>Mapper</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp">
+      <Filter>Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\3dStuff.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
   </ItemGroup>

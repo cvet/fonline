@@ -139,12 +139,6 @@ struct SkinInfo
     uint Dummy;
 };
 
-struct AnimController
-{
-    uint Dummy;
-    void Release() {}
-};
-
 #ifdef FO_D3D
 typedef ID3DXMesh Mesh;
 #else
@@ -208,6 +202,5 @@ typedef vector< Vector >         Vector3Vec;
 typedef vector< Matrix >         MatrixVec;
 typedef vector< Texture* >       TextureVec;
 typedef vector< Effect* >        EffectVec;
-typedef vector< AnimSet_* >      AnimSetVec;
 
 #endif // __GRAPHIC_STRUCTURES__

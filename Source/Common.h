@@ -248,8 +248,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define EffectValue_        D3DXHANDLE
 #  define Material_           D3DMATERIAL9
 #  define Buffer_             ID3DXBuffer
-#  define AnimSet_            ID3DXAnimationSet
-#  define AnimController_     ID3DXAnimationController
 #  define PresentParams_      D3DPRESENT_PARAMETERS
 #  define Caps_               D3DCAPS9
 #  define VertexBuffer_       LPDIRECT3DVERTEXBUFFER9
@@ -266,8 +264,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define EffectValue_        GLint
 #  define Material_           GLuint
 #  define Buffer_             GLuint
-#  define AnimSet_            GLuint
-#  define AnimController_     AnimController
 #  define PresentParams_      GLuint
 #  define Caps_               GLuint
 #  define VertexBuffer_       GLuint

@@ -384,11 +384,12 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\3dAnimation.h" />
+    <ClInclude Include="..\Source\3dStuff.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\GraphicLoader.h" />
     <ClInclude Include="..\Source\GraphicStructures.h" />
     <ClInclude Include="..\Source\ResourceMapper.h" />
-    <ClInclude Include="..\Source\3dAnimation.h" />
     <ClInclude Include="..\Source\Common.h" />
     <ClInclude Include="..\Source\ConstantsManager.h" />
     <ClInclude Include="..\Source\CritterCl.h" />
@@ -496,7 +497,7 @@
     <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Source\3dAnimation.cpp" />
+    <ClCompile Include="..\Source\3dStuff.cpp" />
     <ClCompile Include="..\Source\Common.cpp" />
     <ClCompile Include="..\Source\ConstantsManager.cpp" />
     <ClCompile Include="..\Source\CritterCl.cpp" />

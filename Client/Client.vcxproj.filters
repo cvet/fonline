@@ -101,9 +101,6 @@
     <ClInclude Include="..\Source\ogg\vorbisfile.h">
       <Filter>Ogg</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\3dAnimation.h">
-      <Filter>Client</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Access.h">
       <Filter>Client</Filter>
     </ClInclude>
@@ -500,6 +497,12 @@
     <ClInclude Include="..\Source\GraphicStructures.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\3dAnimation.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\3dStuff.h">
+      <Filter>Client</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -543,9 +546,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\Acm\acmstrm.cpp">
       <Filter>Acm</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\3dAnimation.cpp">
-      <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\BufferManager.cpp">
       <Filter>Client</Filter>
@@ -782,6 +782,9 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\3dStuff.cpp">
       <Filter>Client</Filter>
     </ClCompile>
   </ItemGroup>

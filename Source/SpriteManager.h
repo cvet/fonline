@@ -5,7 +5,7 @@
 #include "Sprites.h"
 #include "FileManager.h"
 #include "Text.h"
-#include "3dAnimation.h"
+#include "3dStuff.h"
 #include "GraphicLoader.h"
 
 // Font flags

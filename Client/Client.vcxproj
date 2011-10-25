@@ -352,6 +352,8 @@
     <ResourceCompile Include="Client.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\3dAnimation.h" />
+    <ClInclude Include="..\Source\3dStuff.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\GraphicLoader.h" />
     <ClInclude Include="..\Source\GraphicStructures.h" />
@@ -375,7 +377,6 @@
     <ClInclude Include="..\Source\ogg\os_types.h" />
     <ClInclude Include="..\Source\ogg\vorbisenc.h" />
     <ClInclude Include="..\Source\ogg\vorbisfile.h" />
-    <ClInclude Include="..\Source\3dAnimation.h" />
     <ClInclude Include="..\Source\Access.h" />
     <ClInclude Include="..\Source\BufferManager.h" />
     <ClInclude Include="..\Source\Client.h" />
@@ -506,6 +507,7 @@
     <ClInclude Include="..\Source\SHA2\sha2.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\3dStuff.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\GraphicLoader.cpp" />
     <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
@@ -652,7 +654,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Source\3dAnimation.cpp" />
     <ClCompile Include="..\Source\BufferManager.cpp" />
     <ClCompile Include="..\Source\Client.cpp" />
     <ClCompile Include="..\Source\ClientInterface.cpp" />

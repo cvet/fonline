@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "GraphicLoader.h"
+#include "3dAnimation.h"
 #include "Text.h"
 #include "Timer.h"
 
@@ -16,10 +17,10 @@
 /* Models                                                               */
 /************************************************************************/
 
-PCharVec   GraphicLoader::processedFiles;
-FrameVec   GraphicLoader::loadedModels;
-PCharVec   GraphicLoader::loadedAnimationsFNames;
-AnimSetVec GraphicLoader::loadedAnimations;
+PCharVec GraphicLoader::processedFiles;
+FrameVec GraphicLoader::loadedModels;
+PCharVec GraphicLoader::loadedAnimationsFNames;
+PtrVec   GraphicLoader::loadedAnimations;
 
 Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_tangent )
 {
@@ -158,7 +159,10 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
         set->Release();
 
         loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
-        loadedAnimations.push_back( cset );
+        AnimSet* a = new AnimSet();
+        a->DXSet = cset;
+        a->Name = Str::Duplicate( cset->GetName() );
+        loadedAnimations.push_back( a );
     }
     #endif
 
@@ -502,15 +506,16 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
     #endif
 }
 
-AnimSet_* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
+AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
     #ifdef FO_D3D
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
     {
+        AnimSet* anim = (AnimSet*) loadedAnimations[ i ];
         if( Str::CompareCase( loadedAnimationsFNames[ i ], anim_fname ) &&
-            Str::CompareCase( loadedAnimations[ i ]->GetName(), anim_name ) )
-            return loadedAnimations[ i ];
+            Str::CompareCase( anim->Name, anim_name ) )
+            return anim;
     }
     #endif
 
