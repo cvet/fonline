@@ -5881,6 +5881,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
 {
     FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
     string dir_ = FileManager::GetFullPath( NULL, PT_SERVER_MAPS );
+    uint   n = 0;
     if( dir )
         dir_ = dir->c_std_str();
 
@@ -5908,6 +5909,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
                 names->Resize( names->GetSize() + 1 );
                 CScriptString** ptr = (CScriptString**) names->At( len );
                 *ptr = new CScriptString( fname );
+                n++;
             }
         }
 
@@ -5917,7 +5919,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
     FindClose( h );
 
     FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
-    return names->GetSize();
+    return n;
 }
 
 void FOMapper::SScriptFunc::Global_DeleteObject( MapObject* mobj )
