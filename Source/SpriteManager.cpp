@@ -158,8 +158,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     if( deviceCaps.PixelShaderVersion >= D3DPS_VERSION( 2, 0 ) )
     {
         // Contours shader
-        Buffer_* shader = NULL, * errors = NULL, * errors31 = NULL;
-        HRESULT  hr = 0, hr31 = 0;
+        ID3DXBuffer* shader = NULL, * errors = NULL, * errors31 = NULL;
+        HRESULT      hr = 0, hr31 = 0;
         hr = D3DXCompileShaderFromResource( NULL, MAKEINTRESOURCE( IDR_PS_CONTOUR ), NULL, NULL, "Main", "ps_2_0", D3DXSHADER_SKIPVALIDATION, &shader, &errors, &contoursCT );
         if( FAILED( hr ) )
             hr31 = D3DXCompileShaderFromResource( NULL, MAKEINTRESOURCE( IDR_PS_CONTOUR ), NULL, NULL, "Main", "ps_2_0", D3DXSHADER_SKIPVALIDATION | D3DXSHADER_USE_LEGACY_D3DX9_31_DLL, &shader, &errors31, &contoursCT );

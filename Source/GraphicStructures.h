@@ -167,7 +167,9 @@ struct MeshContainer
     Matrix**        FrameCombinedMatrixPointer; // Array of frame matrix pointers
 
     // Used for indexed shader skinning
-    Buffer_*        BoneCombinationBuf;
+    #ifdef FO_D3D
+    ID3DXBuffer*    BoneCombinationBuf;
+    #endif
     uint            NumAttributeGroups;
     uint            NumPaletteEntries;
     uint            NumInfluences;
@@ -198,7 +200,8 @@ struct Frame
 
 typedef vector< MeshContainer* > MeshContainerVec;
 typedef vector< Frame* >         FrameVec;
-typedef vector< Vector >         Vector3Vec;
+typedef vector< Vector >         VectorVec;
+typedef vector< Quaternion >     QuaternionVec;
 typedef vector< Matrix >         MatrixVec;
 typedef vector< Texture* >       TextureVec;
 typedef vector< Effect* >        EffectVec;

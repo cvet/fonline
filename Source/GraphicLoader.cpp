@@ -96,75 +96,50 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
     loadedModels.push_back( frame_root );
 
     // Extract animations
-    #ifdef FO_D3D
-    vector< D3DXKEY_VECTOR3 >    scale;
-    vector< D3DXKEY_QUATERNION > rot;
-    vector< D3DXKEY_VECTOR3 >    pos;
+    FloatVec      st;
+    VectorVec     sv;
+    FloatVec      rt;
+    QuaternionVec rv;
+    FloatVec      tt;
+    VectorVec     tv;
     for( unsigned int i = 0; i < scene->mNumAnimations; i++ )
     {
-        aiAnimation*                anim = scene->mAnimations[ i ];
-
-        ID3DXKeyframedAnimationSet* set;
-        if( FAILED( D3DXCreateKeyframedAnimationSet( anim->mName.data, anim->mTicksPerSecond, D3DXPLAY_LOOP, anim->mNumChannels, 0, NULL, &set ) ) )
-        {
-            WriteLogF( _FUNC_, " - Can't extract animation<%s> from file<%s>.\n", anim->mName.data, fname );
-            continue;
-        }
+        aiAnimation* anim = scene->mAnimations[ i ];
+        AnimSet*     anim_set = new AnimSet();
 
         for( unsigned int j = 0; j < anim->mNumChannels; j++ )
         {
             aiNodeAnim* na = anim->mChannels[ j ];
 
-            if( scale.size() < na->mNumScalingKeys )
-                scale.resize( na->mNumScalingKeys );
+            st.resize( na->mNumScalingKeys );
+            sv.resize( na->mNumScalingKeys );
             for( unsigned int k = 0; k < na->mNumScalingKeys; k++ )
             {
-                scale[ k ].Time = (float) na->mScalingKeys[ k ].mTime;
-                scale[ k ].Value.x = (float) na->mScalingKeys[ k ].mValue.x;
-                scale[ k ].Value.y = (float) na->mScalingKeys[ k ].mValue.y;
-                scale[ k ].Value.z = (float) na->mScalingKeys[ k ].mValue.z;
+                st[ k ] = (float) na->mScalingKeys[ k ].mTime;
+                sv[ k ] = na->mScalingKeys[ k ].mValue;
             }
-            if( rot.size() < na->mNumRotationKeys )
-                rot.resize( na->mNumRotationKeys );
+            rt.resize( na->mNumRotationKeys );
+            rv.resize( na->mNumRotationKeys );
             for( unsigned int k = 0; k < na->mNumRotationKeys; k++ )
             {
-                rot[ k ].Time = (float) na->mRotationKeys[ k ].mTime;
-                rot[ k ].Value.x = (float) na->mRotationKeys[ k ].mValue.x;
-                rot[ k ].Value.y = (float) na->mRotationKeys[ k ].mValue.y;
-                rot[ k ].Value.z = (float) na->mRotationKeys[ k ].mValue.z;
-                rot[ k ].Value.w = -(float) na->mRotationKeys[ k ].mValue.w;
+                rt[ k ] = (float) na->mRotationKeys[ k ].mTime;
+                rv[ k ] = na->mRotationKeys[ k ].mValue;
             }
-            if( pos.size() < na->mNumPositionKeys )
-                pos.resize( na->mNumPositionKeys );
+            tt.resize( na->mNumPositionKeys );
+            tv.resize( na->mNumPositionKeys );
             for( unsigned int k = 0; k < na->mNumPositionKeys; k++ )
             {
-                pos[ k ].Time = (float) na->mPositionKeys[ k ].mTime;
-                pos[ k ].Value.x = (float) na->mPositionKeys[ k ].mValue.x;
-                pos[ k ].Value.y = (float) na->mPositionKeys[ k ].mValue.y;
-                pos[ k ].Value.z = (float) na->mPositionKeys[ k ].mValue.z;
+                tt[ k ] = (float) na->mPositionKeys[ k ].mTime;
+                tv[ k ] = na->mPositionKeys[ k ].mValue;
             }
 
-            DWORD index;
-            set->RegisterAnimationSRTKeys( na->mNodeName.data, na->mNumScalingKeys, na->mNumRotationKeys, na->mNumPositionKeys,
-                                           na->mNumScalingKeys ? &scale[ 0 ] : NULL, na->mNumRotationKeys ? &rot[ 0 ] : NULL, na->mNumPositionKeys ? &pos[ 0 ] : NULL, &index );
+            anim_set->AddOutput( na->mNodeName.data, st, sv, rt, rv, tt, tv );
         }
 
-        Buffer_*                     buf;
-        ID3DXCompressedAnimationSet* cset;
-        if( FAILED( set->Compress( D3DXCOMPRESS_DEFAULT, 0.0f, NULL, &buf ) ) )
-            continue;
-        if( FAILED( D3DXCreateCompressedAnimationSet( anim->mName.data, anim->mTicksPerSecond, D3DXPLAY_LOOP, buf, 0, NULL, &cset ) ) )
-            continue;
-        buf->Release();
-        set->Release();
-
+        anim_set->SetData( anim->mName.data, (float) anim->mDuration, (float) anim->mTicksPerSecond );
+        loadedAnimations.push_back( anim_set );
         loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
-        AnimSet* a = new AnimSet();
-        a->DXSet = cset;
-        a->Name = Str::Duplicate( cset->GetName() );
-        loadedAnimations.push_back( a );
     }
-    #endif
 
     importer->FreeScene();
     return frame_root;
@@ -509,15 +484,13 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
 AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
-    #ifdef FO_D3D
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
     {
         AnimSet* anim = (AnimSet*) loadedAnimations[ i ];
         if( Str::CompareCase( loadedAnimationsFNames[ i ], anim_fname ) &&
-            Str::CompareCase( anim->Name, anim_name ) )
+            Str::CompareCase( anim->GetName(), anim_name ) )
             return anim;
     }
-    #endif
 
     // Check maybe file already processed and nothing founded
     for( uint i = 0, j = (uint) processedFiles.size(); i < j; i++ )

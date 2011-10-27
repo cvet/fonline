@@ -247,7 +247,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define Surface_            LPDIRECT3DSURFACE9
 #  define EffectValue_        D3DXHANDLE
 #  define Material_           D3DMATERIAL9
-#  define Buffer_             ID3DXBuffer
 #  define PresentParams_      D3DPRESENT_PARAMETERS
 #  define Caps_               D3DCAPS9
 #  define VertexBuffer_       LPDIRECT3DVERTEXBUFFER9
@@ -263,7 +262,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define Surface_            GLuint
 #  define EffectValue_        GLint
 #  define Material_           GLuint
-#  define Buffer_             GLuint
 #  define PresentParams_      GLuint
 #  define Caps_               GLuint
 #  define VertexBuffer_       GLuint
