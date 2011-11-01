@@ -285,7 +285,9 @@ public:
                             value = e.valueFrom - ( e.valueFrom - e.valueTo ) / e.smoothTime * ( curTime - e.startTime );
                     }
                     else
+                    {
                         erase = true;
+                    }
 
                     if( e.type == Track::Event::Enable )
                         track.enabled = ( value > 0.0f ? true : false );
@@ -353,7 +355,7 @@ public:
                 mr = Matrix( o.rotation[ 0 ].GetMatrix() );
                 Matrix::Translation( o.translation[ 0 ], mt );
                 Matrix m = mt * mr * ms;
-                m.Transpose();
+                MATRIX_TRANSPOSE( m );
                 *o.matrix = m;
             }
             else
@@ -367,7 +369,7 @@ public:
                         mr = Matrix( o.rotation[ k ].GetMatrix() );
                         Matrix::Translation( o.translation[ k ], mt );
                         Matrix m = mt * mr * ms;
-                        m.Transpose();
+                        MATRIX_TRANSPOSE( m );
                         *o.matrix = m;
                         break;
                     }

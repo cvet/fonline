@@ -3,11 +3,22 @@
 
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
-#include "Assimp/aiMesh.h"
+#include "Assimp/aiScene.h"
 
-typedef aiMatrix4x4  Matrix;
-typedef aiVector3D   Vector;
-typedef aiQuaternion Quaternion;
+typedef aiMatrix4x4          Matrix;
+typedef aiVector3D           Vector;
+typedef aiQuaternion         Quaternion;
+typedef aiColor4D            Color;
+typedef vector< Vector >     VectorVec;
+typedef vector< Quaternion > QuaternionVec;
+typedef vector< Matrix >     MatrixVec;
+typedef vector< Matrix* >    MatrixPtrVec;
+
+#ifdef FO_D3D
+# define MATRIX_TRANSPOSE( m )    m.Transpose()
+#else
+# define MATRIX_TRANSPOSE( m )
+#endif
 
 struct Texture
 {
@@ -34,13 +45,13 @@ struct Texture
     bool         Update()
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGBA, GL_UNSIGNED_BYTE, Data ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_BGRA, GL_UNSIGNED_BYTE, Data ) );
         return true;
     }
     bool Update( const INTRECT& r )
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_RGBA, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_BGRA, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
         return true;
     }
     #endif
@@ -74,12 +85,13 @@ struct Effect
     EffectValue_   TechniqueSkinnedWithShadow;
     EffectValue_   TechniqueSimple;
     EffectValue_   TechniqueSimpleWithShadow;
+    EffectValue_   LightDir;
+    EffectValue_   LightDiffuse;
     #else
     GLuint         Program;
     GLuint         VertexShader;
     GLuint         FragmentShader;
     uint           Passes;
-    GLint          ProjectionMatrix;
     GLint          ZoomFactor;
     GLint          ColorMap;
     GLint          ColorMapSize;
@@ -89,14 +101,13 @@ struct Effect
     #endif
 
     EffectDefault* Defaults;
-    EffectValue_   BonesInfluences;
+    EffectValue_   ProjectionMatrix;
+    EffectValue_   BoneInfluences;
     EffectValue_   GroundPosition;
-    EffectValue_   LightDir;
-    EffectValue_   LightDiffuse;
+    EffectValue_   LightColor;
     EffectValue_   MaterialAmbient;
     EffectValue_   MaterialDiffuse;
     EffectValue_   WorldMatrices;
-    EffectValue_   ViewProjMatrix;
 
     // Automatic variables
     bool           IsNeedProcess;
@@ -120,6 +131,9 @@ struct Effect
     EffectValue_   Random4Effect;
     bool           IsTextures;
     EffectValue_   Textures[ EFFECT_TEXTURES ];
+    #ifndef FO_D3D
+    EffectValue_   TexturesSize[ EFFECT_TEXTURES ];
+    #endif
     bool           IsScriptValues;
     EffectValue_   ScriptValues[ EFFECT_SCRIPT_VALUES ];
     bool           IsAnimPos;
@@ -134,58 +148,43 @@ struct Effect
 # define SET_EFFECT_VALUE( eff, pos, value )    GL( glUniform1f( pos, value ) )
 #endif
 
-struct SkinInfo
-{
-    uint Dummy;
-};
-
 #ifdef FO_D3D
-typedef ID3DXMesh Mesh;
-#else
-typedef aiMesh    Mesh;
-#endif
-
 struct MeshContainer
 {
-    // Base data
-    char*           Name;
-    Mesh*           InitMesh;
-    Mesh*           SkinMesh;
-    Mesh*           SkinMeshBlended;
+
+    ID3DXMesh*      InitMesh;
+    ID3DXMesh*      SkinMesh;
+    ID3DXMesh*      SkinMeshBlended;
     Material_*      Materials;
     EffectInstance* Effects;
     uint            NumMaterials;
     uint*           Adjacency;
     SkinInfo_       Skin;
-    MeshContainer*  NextMeshContainer;
-
-    // Material
     char**          TextureNames;
-
-    // Skinned mesh variables
-    Matrix*         BoneOffsets;                // The bone matrix Offsets, one per bone
-    Matrix**        FrameCombinedMatrixPointer; // Array of frame matrix pointers
-
-    // Used for indexed shader skinning
-    #ifdef FO_D3D
+    Matrix*         BoneOffsets;
+    Matrix**        FrameCombinedMatrixPointer;
     ID3DXBuffer*    BoneCombinationBuf;
-    #endif
     uint            NumAttributeGroups;
     uint            NumPaletteEntries;
     uint            NumInfluences;
 };
+typedef vector< MeshContainer* > MeshContainerVec;
 
 struct Frame
 {
     char*          Name;
     Matrix         TransformationMatrix;
-    bool           TransformationMatrixOutput;
-    MeshContainer* Meshes;
+    Matrix         CombinedTransformationMatrix;
+    MeshContainer* DrawMesh;
     Frame*         Sibling;
     Frame*         FirstChild;
-    Matrix         CombinedTransformationMatrix;
 
-    Frame*         Find( const char* name )
+    const char*    GetName()
+    {
+        return Name;
+    }
+
+    Frame* Find( const char* name )
     {
         if( Name && Str::Compare( Name, name ) )
             return this;
@@ -197,13 +196,78 @@ struct Frame
         return frame;
     }
 };
+typedef vector< Frame* > FrameVec;
+typedef ID3DXMesh        MeshSubset;
+#else
+struct Vertex3D
+{
+    Vector Position;
+    float  PositionW;
+    Vector Normal;
+    float  Color[ 4 ];
+    float  TexCoord[ 2 ];
+    float  TexCoord2[ 2 ];
+    float  TexCoord3[ 2 ];
+    Vector Tangent;
+    Vector Bitangent;
+    float  BlendWeights[ 4 ];
+    float  BlendIndices[ 4 ];
+    float  Padding[ 1 ];
+};
+static_assert( sizeof( Vertex3D ) == 128, "Wrong Vertex3D size." );
+typedef vector< Vertex3D >    Vertex3DVec;
+typedef vector< Vertex3DVec > Vertex3DVecVec;
 
-typedef vector< MeshContainer* > MeshContainerVec;
-typedef vector< Frame* >         FrameVec;
-typedef vector< Vector >         VectorVec;
-typedef vector< Quaternion >     QuaternionVec;
-typedef vector< Matrix >         MatrixVec;
-typedef vector< Texture* >       TextureVec;
-typedef vector< Effect* >        EffectVec;
+struct MeshSubset
+{
+    Vertex3DVec    Vertices;
+    Vertex3DVec    VerticesInit;
+    uint           FacesCount;
+    UShortVec      Indicies;
+    string         DiffuseTexture;
+    float          DiffuseColor[ 4 ];
+    float          AmbientColor[ 4 ];
+    float          SpecularColor[ 4 ];
+    float          EmissiveColor[ 4 ];
+    uint           BoneInfluences;
+    MatrixVec      BoneOffsets;
+    MatrixPtrVec   FrameCombinedMatrixPointer;
+    EffectInstance DrawEffect;
+};
+typedef vector< MeshSubset > MeshSubsetVec;
+
+struct Frame;
+typedef vector< Frame* >     FrameVec;
+struct Frame
+{
+    string        Name;
+    Matrix        TransformationMatrix;
+    Matrix        CombinedTransformationMatrix;
+    MeshSubsetVec Mesh;
+    FrameVec      Children;
+
+    const char*   GetName()
+    {
+        return Name.c_str();
+    }
+
+    Frame* Find( const char* name )
+    {
+        const char* frame_name = Name.c_str();
+        if( Str::Compare( frame_name, name ) )
+            return this;
+        for( uint i = 0; i < Children.size(); i++ )
+        {
+            Frame* frame = Children[ i ]->Find( name );
+            if( frame )
+                return frame;
+        }
+        return NULL;
+    }
+};
+#endif
+
+typedef vector< Texture* > TextureVec;
+typedef vector< Effect* >  EffectVec;
 
 #endif // __GRAPHIC_STRUCTURES__

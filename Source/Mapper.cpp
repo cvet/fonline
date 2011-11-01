@@ -5909,8 +5909,8 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
                 names->Resize( names->GetSize() + 1 );
                 CScriptString** ptr = (CScriptString**) names->At( len );
                 *ptr = new CScriptString( fname );
-                n++;
             }
+            n++;
         }
 
         if( !FindNextFile( h, &fdata ) )

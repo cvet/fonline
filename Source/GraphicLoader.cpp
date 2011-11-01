@@ -22,12 +22,12 @@ FrameVec GraphicLoader::loadedModels;
 PCharVec GraphicLoader::loadedAnimationsFNames;
 PtrVec   GraphicLoader::loadedAnimations;
 
-Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_tangent )
+Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
 {
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
         Frame* frame = *it;
-        if( Str::CompareCase( frame->Name, fname ) )
+        if( Str::CompareCase( frame->GetName(), fname ) )
             return frame;
     }
 
@@ -71,11 +71,15 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
             Assimp::DefaultLogger::create( ASSIMP_DEFAULT_LOG_NAME, Assimp::Logger::VERBOSE );
     }
 
-    const aiScene* scene = importer->ReadFileFromMemory( fm.GetBuf(), fm.GetFsize(),
-                                                         ( calc_tangent ? aiProcess_CalcTangentSpace : 0 ) | aiProcess_GenNormals | aiProcess_GenUVCoords |
-                                                         aiProcess_ConvertToLeftHanded | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-                                                         aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
-                                                         aiProcess_ImproveCacheLocality );
+    aiScene* scene = (aiScene*) importer->ReadFileFromMemory( fm.GetBuf(), fm.GetFsize(),
+                                                              aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
+                                                              aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
+                                                              aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
+                                                              aiProcess_ImproveCacheLocality
+                                                              #ifdef FO_D3D
+                                                              | aiProcess_ConvertToLeftHanded
+                                                              #endif
+                                                              );
     // Todo: optional aiProcess_ValidateDataStructure|aiProcess_FindInvalidData
 
     if( !scene )
@@ -85,13 +89,18 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
     }
 
     // Extract frames
-    Frame* frame_root = FillNode( device, scene->mRootNode, scene, calc_tangent );
+    #ifdef FO_D3D
+    Frame* frame_root = FillNode( device, scene->mRootNode, scene );
     if( !frame_root )
     {
         WriteLogF( _FUNC_, " - Conversion fail, name<%s>.\n", fname );
         importer->FreeScene();
         return NULL;
     }
+    #else
+    Frame* frame_root = FillNode( scene, scene->mRootNode );
+    FixFrame( frame_root, frame_root, scene, scene->mRootNode );
+    #endif
     frame_root->Name = Str::Duplicate( fname );
     loadedModels.push_back( frame_root );
 
@@ -145,18 +154,18 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname, bool calc_ta
     return frame_root;
 }
 
-Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScene* scene, bool with_tangent )
+#ifdef FO_D3D
+Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScene* scene )
 {
-    #ifdef FO_D3D
     // Create frame
     Frame* frame = new Frame();
     memzero( frame, sizeof( Frame ) );
     frame->Name = Str::Duplicate( node->mName.data );
-    frame->Meshes = NULL;
+    frame->DrawMesh = NULL;
     frame->Sibling = NULL;
     frame->FirstChild = NULL;
     frame->TransformationMatrix = node->mTransformation;
-    frame->TransformationMatrix.Transpose();
+    MATRIX_TRANSPOSE( frame->TransformationMatrix );
     frame->CombinedTransformationMatrix = Matrix();
 
     // Merge meshes, because Assimp split subsets
@@ -216,14 +225,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
         }
 
         // Mesh declarations
-        D3DVERTEXELEMENT9  delc_simple[] =
-        {
-            { 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
-            { 0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0 },
-            { 0, 24, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 },
-            D3DDECL_END()
-        };
-        D3DVERTEXELEMENT9  delc_tangent[] =
+        D3DVERTEXELEMENT9 declaration[] =
         {
             { 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
             { 0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0 },
@@ -232,7 +234,6 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
             { 0, 44, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BINORMAL, 0 },
             D3DDECL_END()
         };
-        D3DVERTEXELEMENT9* declaration = ( with_tangent ? delc_tangent : delc_simple );
 
         // Create mesh
         D3DXMESHDATA dxmesh;
@@ -251,7 +252,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
             float tx, ty, tz;
             float bx, by, bz;
         }* vb;
-        int    vsize = ( with_tangent ? 56 : 32 );
+        int    vsize = 56;
         WORD*  ib;
         DWORD* att;
         D3D_HR( dxmesh.pMesh->LockVertexBuffer( 0, (void**) &vb ) );
@@ -286,7 +287,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
                     v.ny = mesh->mNormals[ i ].y;
                     v.nz = mesh->mNormals[ i ].z;
                 }
-                if( with_tangent && mesh->mTangents )
+                if( false && mesh->mTangents )
                 {
                     v.tx = mesh->mTangents[ i ].x;
                     v.ty = mesh->mTangents[ i ].y;
@@ -384,7 +385,6 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
 
         MeshContainer* mesh_container = new MeshContainer();
         memzero( mesh_container, sizeof( MeshContainer ) );
-        mesh_container->Name = Str::Duplicate( node->mName.data );
 
         // Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
         uint faces = dxmesh.pMesh->GetNumFaces();
@@ -459,7 +459,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
         if( skin_info )
             skin_info->Release();
 
-        frame->Meshes = (MeshContainer*) mesh_container;
+        frame->DrawMesh = mesh_container;
     }
 
     // Childs
@@ -467,7 +467,7 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
     for( unsigned int i = 0; i < node->mNumChildren; i++ )
     {
         aiNode* node_child = node->mChildren[ i ];
-        Frame*  frame_child = FillNode( device, node_child, scene, with_tangent );
+        Frame*  frame_child = FillNode( device, node_child, scene );
         if( !i )
             frame->FirstChild = frame_child;
         else
@@ -476,10 +476,177 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
     }
 
     return frame;
-    #else
-    return NULL;
-    #endif
 }
+#else
+Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
+{
+    Frame* frame = new Frame();
+    frame->Name = node->mName.data;
+    frame->TransformationMatrix = node->mTransformation;
+    frame->CombinedTransformationMatrix = Matrix();
+    frame->Children.resize( node->mNumChildren );
+    frame->Mesh.resize( node->mNumMeshes );
+
+    for( uint m = 0; m < node->mNumMeshes; m++ )
+    {
+        aiMesh*     aimesh = scene->mMeshes[ node->mMeshes[ m ] ];
+        MeshSubset& mesh = frame->Mesh[ m ];
+
+        // Vertices
+        mesh.Vertices.resize( aimesh->mNumVertices );
+        mesh.VerticesInit.resize( aimesh->mNumVertices );
+        bool has_color0 = aimesh->HasVertexColors( 0 );
+        // bool has_color1 = aimesh->HasVertexColors( 1 );
+        bool has_tex_coords0 = aimesh->HasTextureCoords( 0 );
+        bool has_tex_coords1 = aimesh->HasTextureCoords( 1 );
+        bool has_tex_coords2 = aimesh->HasTextureCoords( 2 );
+        for( uint i = 0; i < aimesh->mNumVertices; i++ )
+        {
+            Vertex3D& v = mesh.Vertices[ i ];
+            memzero( &v, sizeof( v ) );
+            v.Position = aimesh->mVertices[ i ];
+            v.PositionW = 1.0f;
+            v.Normal = aimesh->mNormals[ i ];
+            v.Tangent = aimesh->mTangents[ i ];
+            v.Bitangent = aimesh->mBitangents[ i ];
+            if( has_color0 )
+            {
+                v.Color[ 2 ] = aimesh->mColors[ 0 ][ i ].r;
+                v.Color[ 1 ] = aimesh->mColors[ 0 ][ i ].g;
+                v.Color[ 0 ] = aimesh->mColors[ 0 ][ i ].b;
+                v.Color[ 3 ] = aimesh->mColors[ 0 ][ i ].a;
+            }
+            /*if( has_color1 )
+               {
+                v.Color2[ 2 ] = aimesh->mColors[ 1 ][ i ].r;
+                v.Color2[ 1 ] = aimesh->mColors[ 1 ][ i ].g;
+                v.Color2[ 0 ] = aimesh->mColors[ 1 ][ i ].b;
+                v.Color2[ 3 ] = aimesh->mColors[ 1 ][ i ].a;
+               }*/
+            if( has_tex_coords0 )
+            {
+                v.TexCoord[ 0 ] = aimesh->mTextureCoords[ 0 ][ i ].x;
+                v.TexCoord[ 1 ] = aimesh->mTextureCoords[ 0 ][ i ].y;
+            }
+            if( has_tex_coords1 )
+            {
+                v.TexCoord2[ 0 ] = aimesh->mTextureCoords[ 1 ][ i ].x;
+                v.TexCoord2[ 1 ] = aimesh->mTextureCoords[ 1 ][ i ].y;
+            }
+            if( has_tex_coords2 )
+            {
+                v.TexCoord3[ 0 ] = aimesh->mTextureCoords[ 2 ][ i ].x;
+                v.TexCoord3[ 1 ] = aimesh->mTextureCoords[ 2 ][ i ].y;
+            }
+            v.BlendIndices[ 0 ] = -1.0f;
+            v.BlendIndices[ 1 ] = -1.0f;
+            v.BlendIndices[ 2 ] = -1.0f;
+            v.BlendIndices[ 3 ] = -1.0f;
+        }
+
+        // Faces
+        mesh.FacesCount = aimesh->mNumFaces;
+        mesh.Indicies.resize( mesh.FacesCount * 3 );
+        for( uint i = 0; i < aimesh->mNumFaces; i++ )
+        {
+            aiFace& face = aimesh->mFaces[ i ];
+            mesh.Indicies[ i * 3 + 0 ] = face.mIndices[ 0 ];
+            mesh.Indicies[ i * 3 + 1 ] = face.mIndices[ 1 ];
+            mesh.Indicies[ i * 3 + 2 ] = face.mIndices[ 2 ];
+        }
+
+        // Material
+        aiMaterial* material = scene->mMaterials[ aimesh->mMaterialIndex ];
+        aiString    path;
+        if( material->GetTextureCount( aiTextureType_DIFFUSE ) )
+        {
+            material->GetTexture( aiTextureType_DIFFUSE, 0, &path );
+            mesh.DiffuseTexture = path.data;
+        }
+        material->Get< float >( AI_MATKEY_COLOR_DIFFUSE, mesh.DiffuseColor, NULL );
+        material->Get< float >( AI_MATKEY_COLOR_AMBIENT, mesh.AmbientColor, NULL );
+        material->Get< float >( AI_MATKEY_COLOR_SPECULAR, mesh.SpecularColor, NULL );
+        material->Get< float >( AI_MATKEY_COLOR_EMISSIVE, mesh.EmissiveColor, NULL );
+        mesh.DiffuseColor[ 3 ] = 1.0f;
+        mesh.AmbientColor[ 3 ] = 1.0f;
+        mesh.SpecularColor[ 3 ] = 1.0f;
+        mesh.EmissiveColor[ 3 ] = 1.0f;
+
+        // Effect
+        mesh.DrawEffect.EffectFilename = NULL;
+
+        // Initial vertices position
+        mesh.VerticesInit = mesh.Vertices;
+    }
+
+    for( uint i = 0; i < node->mNumChildren; i++ )
+        frame->Children[ i ] = FillNode( scene, node->mChildren[ i ] );
+    return frame;
+}
+
+void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
+{
+    for( uint m = 0; m < node->mNumMeshes; m++ )
+    {
+        aiMesh*     aimesh = scene->mMeshes[ node->mMeshes[ m ] ];
+        MeshSubset& mesh = frame->Mesh[ m ];
+
+        // Bones
+        mesh.BoneInfluences = 0;
+        mesh.BoneOffsets.resize( aimesh->mNumBones );
+        mesh.FrameCombinedMatrixPointer.resize( aimesh->mNumBones );
+        for( uint i = 0; i < aimesh->mNumBones; i++ )
+        {
+            aiBone* bone = aimesh->mBones[ i ];
+
+            // Matrices
+            mesh.BoneOffsets[ i ] = bone->mOffsetMatrix;
+            Frame* bone_frame = root_frame->Find( bone->mName.data );
+            if( bone_frame )
+                mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
+            else
+                mesh.FrameCombinedMatrixPointer[ i ] = NULL;
+
+            // Blend data
+            for( uint j = 0; j < bone->mNumWeights; j++ )
+            {
+                aiVertexWeight& vw = bone->mWeights[ j ];
+                Vertex3D&       v = mesh.Vertices[ vw.mVertexId ];
+                uint            index;
+                if( v.BlendIndices[ 0 ] < 0.0f )
+                    index = 0;
+                else if( v.BlendIndices[ 1 ] < 0.0f )
+                    index = 1;
+                else if( v.BlendIndices[ 2 ] < 0.0f )
+                    index = 2;
+                else
+                    index = 3;
+                v.BlendWeights[ index ] = vw.mWeight;
+                v.BlendIndices[ index ] = (float) i;
+                if( mesh.BoneInfluences <= index )
+                    mesh.BoneInfluences = index + 1;
+            }
+        }
+
+        // Drop not filled indices
+        for( uint i = 0; i < aimesh->mNumVertices; i++ )
+        {
+            Vertex3D& v = mesh.Vertices[ i ];
+            if( v.BlendIndices[ 0 ] < 0.0f )
+                v.BlendIndices[ 0 ] = 0.0f;
+            if( v.BlendIndices[ 1 ] < 0.0f )
+                v.BlendIndices[ 1 ] = 0.0f;
+            if( v.BlendIndices[ 2 ] < 0.0f )
+                v.BlendIndices[ 2 ] = 0.0f;
+            if( v.BlendIndices[ 3 ] < 0.0f )
+                v.BlendIndices[ 3 ] = 0.0f;
+        }
+    }
+
+    for( uint i = 0; i < node->mNumChildren; i++ )
+        FixFrame( root_frame, frame->Children[ i ], scene, node->mChildren[ i ] );
+}
+#endif
 
 AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
 {
@@ -498,7 +665,7 @@ AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, c
             return NULL;
 
     // File not processed, load and recheck animations
-    if( LoadModel( device, anim_fname, false ) )
+    if( LoadModel( device, anim_fname ) )
         return LoadAnimation( device, anim_fname, anim_name );
 
     return NULL;
@@ -506,15 +673,14 @@ AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, c
 
 void GraphicLoader::Free( Frame* frame )
 {
+    #ifdef FO_D3D
     // Free frame
     if( frame )
     {
         SAFEDELA( frame->Name );
-        MeshContainer* mesh_container = frame->Meshes;
-        while( mesh_container )
+        MeshContainer* mesh_container = frame->DrawMesh;
+        if( mesh_container )
         {
-            // Name
-            SAFEDELA( mesh_container->Name );
             // Materials array
             SAFEDELA( mesh_container->Materials );
             // Release the textures before deleting the array
@@ -541,7 +707,6 @@ void GraphicLoader::Free( Frame* frame )
             SAFEDELA( mesh_container->BoneOffsets );
             // Frame matrices
             SAFEDELA( mesh_container->FrameCombinedMatrixPointer );
-            #ifdef FO_D3D
             // Release skin mesh
             SAFEREL( mesh_container->InitMesh );
             // Release the main mesh
@@ -550,11 +715,8 @@ void GraphicLoader::Free( Frame* frame )
             SAFEREL( mesh_container->SkinMeshBlended );
             // Release skin information
             SAFEREL( mesh_container->Skin );
-            #endif
             // Finally delete the mesh container itself
-            MeshContainer* next_container = mesh_container->NextMeshContainer;
             delete mesh_container;
-            mesh_container = next_container;
         }
         if( frame->Sibling )
             Free( frame->Sibling );
@@ -562,6 +724,9 @@ void GraphicLoader::Free( Frame* frame )
             Free( frame->FirstChild );
         delete frame;
     }
+    #else
+    // delete frame->Scene;
+    #endif
 }
 
 bool GraphicLoader::IsExtensionSupported( const char* ext )
@@ -597,6 +762,7 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
             return texture;
     }
 
+
     // First try load from textures folder
     FileManager fm;
     if( !fm.LoadFile( texture_name, PT_TEXTURES ) && model_path )
@@ -608,16 +774,75 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
         fm.LoadFile( path, PT_DATA );
     }
 
-    // Create texture
-    Texture*           texture_ex = new Texture();
     #ifdef FO_D3D
+    // Create texture
     LPDIRECT3DTEXTURE9 dxtex = NULL;
     if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &dxtex ) ) )
         return NULL;
-    texture_ex->Instance = dxtex;
+    Texture* texture = new Texture();
+    texture->Instance = dxtex;
+    #else
+    // Detect type
+    ILenum file_type = ilTypeFromExt( texture_name );
+    if( file_type == IL_TYPE_UNKNOWN )
+        return NULL;
+
+    // Load image from memory
+    ILuint img = 0;
+    ilGenImages( 1, &img );
+    ilBindImage( img );
+    if( !ilLoadL( file_type, fm.GetBuf(), fm.GetFsize() ) )
+    {
+        ilDeleteImage( img );
+        return NULL;
+    }
+
+    // Get image data
+    uint w = ilGetInteger( IL_IMAGE_WIDTH );
+    uint h = ilGetInteger( IL_IMAGE_HEIGHT );
+    int  format = ilGetInteger( IL_IMAGE_FORMAT );
+    int  type = ilGetInteger( IL_IMAGE_TYPE );
+
+    // Convert data
+    if( format != IL_BGRA || type != IL_UNSIGNED_BYTE )
+    {
+        if( !ilConvertImage( IL_BGRA, IL_UNSIGNED_BYTE ) )
+        {
+            ilDeleteImage( img );
+            return NULL;
+        }
+    }
+
+    // Copy data
+    uint   size = ilGetInteger( IL_IMAGE_SIZE_OF_DATA );
+    uchar* data = new uchar[ size ];
+    memcpy( data, ilGetData(), size );
+
+    // Delete image
+    ilDeleteImage( img );
+
+    // Create texture
+    Texture* texture = new Texture();
+    texture->Data = data;
+    texture->Size = size;
+    texture->Width = w;
+    texture->Height = h;
+    texture->SizeData[ 0 ] = (float) w;
+    texture->SizeData[ 1 ] = (float) h;
+    texture->SizeData[ 2 ] = 1.0f / texture->SizeData[ 0 ];
+    texture->SizeData[ 3 ] = 1.0f / texture->SizeData[ 1 ];
+    GL( glGenTextures( 1, &texture->Id ) );
+    GL( glBindTexture( GL_TEXTURE_2D, texture->Id ) );
+    GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
+    GL( glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE ) );
     #endif
-    texture_ex->Name = Str::Duplicate( texture_name );
-    loadedTextures.push_back( texture_ex );
+    texture->Name = Str::Duplicate( texture_name );
+    loadedTextures.push_back( texture );
     return loadedTextures.back();
 }
 
@@ -684,15 +909,15 @@ public:
 
 EffectVec GraphicLoader::loadedEffects;
 
-Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name )
+Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool use_in_2d )
 {
     EffectInstance effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
     effect_inst.EffectFilename = (char*) effect_name;
-    return LoadEffect( device, &effect_inst, NULL );
+    return LoadEffect( device, &effect_inst, NULL, use_in_2d );
 }
 
-Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path )
+Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path, bool use_in_2d )
 {
     if( !effect_inst || !effect_inst->EffectFilename || !effect_inst->EffectFilename[ 0 ] )
         return NULL;
@@ -802,14 +1027,14 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     effect->TechniqueSkinnedWithShadow = dxeffect->GetTechniqueByName( "SkinnedWithShadow" );
     effect->TechniqueSimple = dxeffect->GetTechniqueByName( "Simple" );
     effect->TechniqueSimpleWithShadow = dxeffect->GetTechniqueByName( "SimpleWithShadow" );
-    effect->BonesInfluences = dxeffect->GetParameterByName( NULL, "BonesInfluences" );
+    effect->BoneInfluences = dxeffect->GetParameterByName( NULL, "BonesInfluences" );
     effect->GroundPosition = dxeffect->GetParameterByName( NULL, "GroundPosition" );
     effect->LightDir = dxeffect->GetParameterByName( NULL, "LightDir" );
     effect->LightDiffuse = dxeffect->GetParameterByName( NULL, "LightDiffuse" );
     effect->MaterialAmbient = dxeffect->GetParameterByName( NULL, "MaterialAmbient" );
     effect->MaterialDiffuse = dxeffect->GetParameterByName( NULL, "MaterialDiffuse" );
     effect->WorldMatrices = dxeffect->GetParameterByName( NULL, "WorldMatrices" );
-    effect->ViewProjMatrix = dxeffect->GetParameterByName( NULL, "ViewProjMatrix" );
+    effect->ProjectionMatrix = dxeffect->GetParameterByName( NULL, "ViewProjMatrix" );
 
     if( !effect->TechniqueSimple )
     {
@@ -991,10 +1216,26 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( glAttachShader( program, vs ) );
     GL( glAttachShader( program, fs ) );
 
-    GL( glBindAttribLocation( program, 0, "InPosition" ) );
-    GL( glBindAttribLocation( program, 1, "InColor" ) );
-    GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
-    GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
+    if( use_in_2d )
+    {
+        GL( glBindAttribLocation( program, 0, "InPosition" ) );
+        GL( glBindAttribLocation( program, 1, "InColor" ) );
+        GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
+        GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
+    }
+    else
+    {
+        GL( glBindAttribLocation( program, 0, "InPosition" ) );
+        GL( glBindAttribLocation( program, 1, "InNormal" ) );
+        GL( glBindAttribLocation( program, 2, "InColor" ) );
+        GL( glBindAttribLocation( program, 3, "InTexCoord" ) );
+        GL( glBindAttribLocation( program, 4, "InTexCoord2" ) );
+        GL( glBindAttribLocation( program, 5, "InTexCoord3" ) );
+        GL( glBindAttribLocation( program, 6, "InTangent" ) );
+        GL( glBindAttribLocation( program, 7, "InBitangent" ) );
+        GL( glBindAttribLocation( program, 8, "InBlendWeights" ) );
+        GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
+    }
 
     GL( glLinkProgram( program ) );
     GLint linked;
@@ -1021,6 +1262,12 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     effect->Defaults = NULL;
     effect->Passes = 1;
 
+    // Get data
+    GLint passes;
+    GL( passes = effect->SpriteBorder = glGetUniformLocation( program, "Passes" ) );
+    if( passes != -1 )
+        glGetUniformiv( program, passes, (GLint*) &effect->Passes );
+
     // Bind data
     GL( effect->ProjectionMatrix = glGetUniformLocation( program, "ProjectionMatrix" ) );
     GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
@@ -1029,6 +1276,13 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
     GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
+
+    GL( effect->BoneInfluences = glGetUniformLocation( program, "BoneInfluences" ) );
+    GL( effect->GroundPosition = glGetUniformLocation( program, "GroundPosition" ) );
+    GL( effect->LightColor = glGetUniformLocation( program, "LightColor" ) );
+    GL( effect->MaterialAmbient = glGetUniformLocation( program, "MaterialAmbient" ) );
+    GL( effect->MaterialDiffuse = glGetUniformLocation( program, "MaterialDiffuse" ) );
+    GL( effect->WorldMatrices = glGetUniformLocation( program, "WorldMatrices" ) );
 
     GL( effect->PassIndex = glGetUniformLocation( program, "PassIndex" ) );
     GL( effect->Time = glGetUniformLocation( program, "Time" ) );
@@ -1055,7 +1309,11 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         Str::Format( tex_name, "Texture%d", i );
         GL( effect->Textures[ i ] = glGetUniformLocation( program, tex_name ) );
         if( effect->Textures[ i ] != -1 )
+        {
             effect->IsTextures = true;
+            Str::Format( tex_name, "Texture%dSize", i );
+            GL( effect->TexturesSize[ i ] = glGetUniformLocation( program, tex_name ) );
+        }
     }
     effect->IsScriptValues = false;
     for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
@@ -1127,18 +1385,21 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
         if( effect->IsTextures )
         {
             for( int i = 0; i < EFFECT_TEXTURES; i++ )
+            {
                 if( IS_EFFECT_VALUE( effect->Textures[ i ] ) )
                 {
                     #ifdef FO_D3D
                     effect->DXInstance->SetTexture( effect->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Instance : NULL );
                     #else
                     GLuint id = ( textures && textures[ i ] ? textures[ i ]->Id : 0 );
-                    GL( glActiveTexture( GL_TEXTURE2 + i ) );
+                    GL( glActiveTexture( GL_TEXTURE1 + i ) );
                     GL( glBindTexture( GL_TEXTURE_2D, id ) );
-                    GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
+                    GL( glUniform1i( effect->Textures[ i ], 1 + i ) );
+                    if( effect->TexturesSize[ i ] != -1 && textures && textures[ i ] )
+                        GL( glUniform4fv( effect->TexturesSize[ i ], 1, textures[ i ]->SizeData ) );
                     #endif
-
                 }
+            }
         }
 
         if( effect->IsScriptValues )

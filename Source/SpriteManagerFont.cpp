@@ -869,7 +869,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         cury = r.B - ( fi.LinesAll * font->MaxLetterHeight + ( fi.LinesAll - 1 ) * font->YAdvance );
 }
 
-bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /* = 0 */, int num_font /* = -1 */ )
+bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint color /* = 0 */, int num_font /* = -1 */ )
 {
     // Check
     if( !str || !str[ 0 ] )
@@ -881,12 +881,12 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
         return false;
 
     // FormatBuf
-    if( !col && DefFontColor )
-        col = DefFontColor;
+    if( !color && DefFontColor )
+        color = DefFontColor;
 
     static FontFormatInfo fi;
     fi.Init( font, flags, r, str );
-    fi.DefColor = col;
+    fi.DefColor = color;
     FormatText( fi, FORMAT_TYPE_DRAW );
     if( fi.IsError )
         return false;
@@ -909,9 +909,9 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
             if( fi.ColorDots[ i ] )
             {
                 if( fi.ColorDots[ i ] & 0xFF000000 )
-                    col = fi.ColorDots[ i ];                                          // With alpha
+                    color = fi.ColorDots[ i ];                                            // With alpha
                 else
-                    col = ( col & 0xFF000000 ) | ( fi.ColorDots[ i ] & 0x00FFFFFF );  // Still old alpha
+                    color = ( color & 0xFF000000 ) | ( fi.ColorDots[ i ] & 0x00FFFFFF );  // Still old alpha
                 break;
             }
         }
@@ -926,9 +926,9 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
             if( new_color )
             {
                 if( new_color & 0xFF000000 )
-                    col = new_color;                                          // With alpha
+                    color = new_color;                                            // With alpha
                 else
-                    col = ( col & 0xFF000000 ) | ( new_color & 0x00FFFFFF );  // Still old alpha
+                    color = ( color & 0xFF000000 ) | ( new_color & 0x00FFFFFF );  // Still old alpha
             }
         }
 
@@ -969,25 +969,25 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint col /
             vBuffer[ mulpos ].y = (float) y + h;
             vBuffer[ mulpos ].tu = x1;
             vBuffer[ mulpos ].tv = y2;
-            vBuffer[ mulpos++ ].diffuse = col;
+            vBuffer[ mulpos++ ].diffuse = color;
 
             vBuffer[ mulpos ].x = (float) x;
             vBuffer[ mulpos ].y = (float) y;
             vBuffer[ mulpos ].tu = x1;
             vBuffer[ mulpos ].tv = y1;
-            vBuffer[ mulpos++ ].diffuse = col;
+            vBuffer[ mulpos++ ].diffuse = color;
 
             vBuffer[ mulpos ].x = (float) x + w;
             vBuffer[ mulpos ].y = (float) y;
             vBuffer[ mulpos ].tu = x2;
             vBuffer[ mulpos ].tv = y1;
-            vBuffer[ mulpos++ ].diffuse = col;
+            vBuffer[ mulpos++ ].diffuse = color;
 
             vBuffer[ mulpos ].x = (float) x + w;
             vBuffer[ mulpos ].y = (float) y + h;
             vBuffer[ mulpos ].tu = x2;
             vBuffer[ mulpos ].tv = y2;
-            vBuffer[ mulpos ].diffuse = col;
+            vBuffer[ mulpos ].diffuse = color;
 
             if( ++curSprCnt == flushSprCnt )
             {

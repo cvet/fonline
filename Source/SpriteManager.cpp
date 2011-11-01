@@ -133,7 +133,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     pfd.nVersion = 1;
     pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
     pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 24;
+    pfd.cColorBits = 32;
     pfd.cDepthBits = 16;
     dcScreen = GetDC( fl_xid( MainWindow ) );
     GLuint pixel_format = ChoosePixelFormat( dcScreen, &pfd );
@@ -141,7 +141,6 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     HGLRC  rc = wglCreateContext( dcScreen );
     wglMakeCurrent( dcScreen, rc );
     # endif
-
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glMatrixMode( GL_PROJECTION ) );
     GL( glLoadIdentity() );
@@ -227,18 +226,19 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
 
     // Default effects
-    curDefaultEffect = GraphicLoader::LoadEffect( d3dDevice, "2D_Default.fx" );
+    curDefaultEffect = GraphicLoader::LoadEffect( d3dDevice, "2D_Default.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_GENERIC ] = curDefaultEffect;
     sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = curDefaultEffect;
     sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = curDefaultEffect;
-    sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx" );
-    sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx", true );
     #ifndef FO_D3D
-    sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] = GraphicLoader::LoadEffect( d3dDevice, "Contour_Default.fx" );
-    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx" );
-    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx" );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Texture.fx" );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Color.fx" );
+    sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] = GraphicLoader::LoadEffect( d3dDevice, "Contour_Default.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Texture.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Color.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_FINAL ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Final.fx", true );
     for( uint i = 0; i < DEFAULT_EFFECT_COUNT; i++ )
     {
         if( !sprDefaultEffect[ i ] )
@@ -251,11 +251,13 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     // Render targets
     if( !CreateRenderTarget( rtMain, true ) ||
         !CreateRenderTarget( rtContours, false ) ||
-        !CreateRenderTarget( rtContoursMid, false ) )
+        !CreateRenderTarget( rtContoursMid, false ) ||
+        !CreateRenderTarget( rt3D, true ) )
     {
         WriteLog( "Can't create render targets.\n" );
         return false;
     }
+    rtMain.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_FINAL ];
     PushRenderTarget( rtMain );
     #endif
 
@@ -458,6 +460,9 @@ bool SpriteManager::InitRenderStates()
     GL( glShadeModel( GL_SMOOTH ) );
     GL( glEnable( GL_POINT_SMOOTH ) );
     GL( glEnable( GL_LINE_SMOOTH ) );
+    GL( glCullFace( GL_FRONT ) );
+    GL( glFrontFace( GL_CW ) );
+    GL( glDisable( GL_CULL_FACE ) );
     // GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
     // GL( glReadBuffer( GL_BACK ) );
     // GL( glDrawBuffer( GL_BACK ) );
@@ -469,8 +474,7 @@ bool SpriteManager::InitRenderStates()
     // glStencilFunc(GL_EQUAL, 0x00000000, 0x00000001);
     // glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     // glFrontFace(GL_CCW);
-    // glCullFace(GL_BACK);
-    // glEnable(GL_CULL_FACE);
+
     // glClearColor(1.0, 0.0, 0.0, 0.0);
     // glClearDepth(1.0);
     // glClearStencil(0);
@@ -601,7 +605,7 @@ bool SpriteManager::Restore()
 }
 
 #ifndef FO_D3D
-bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil )
+bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */ )
 {
     memzero( &rt, sizeof( rt ) );
     GL( glGenFramebuffers( 1, &rt.FBO ) );
@@ -621,7 +625,14 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil )
     GL( glGenTextures( 1, &tex->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
+    if( !multisampling )
+    {
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
+    }
+    else
+    {
+        // GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, 4, GL_BGRA, w, h, TRUE ) );
+    }
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
@@ -761,7 +772,7 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     GL( glGenTextures( 1, &tex->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
@@ -842,12 +853,7 @@ void SpriteManager::FreeSurfaces( int surf_type )
 
 void SpriteManager::SaveSufaces()
 {
-    static int folder_cnt = 0;
-    static int rnd_num = 0;
-    if( !rnd_num )
-        rnd_num = Random( 1000, 9999 );
-
-    int surf_size = 0;
+    uint surf_size = 0;
     for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
     {
         Surface* surf = *it;
@@ -855,7 +861,7 @@ void SpriteManager::SaveSufaces()
     }
 
     char path[ MAX_FOPATH ];
-    Str::Format( path, ".\\%d_%03d_%d.%03dmb\\", rnd_num, folder_cnt, surf_size / 1000000, surf_size % 1000000 / 1000 );
+    Str::Format( path, DIR_SLASH_SD "%u_%u.%03umb" DIR_SLASH_S, (uint) time( NULL ), surf_size / 1000000, surf_size % 1000000 / 1000 );
     FileManager::CreateDirectoryTree( path );
 
     #ifdef FO_D3D
@@ -894,8 +900,6 @@ void SpriteManager::SaveSufaces()
         cnt++;
     }
     #endif
-
-    folder_cnt++;
 }
 
 uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size )
@@ -1471,7 +1475,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type, 
     {
         char effect_name[ MAX_FOPATH ];
         if( fofrm.GetStr( "effect", "", effect_name ) )
-            effect = GraphicLoader::LoadEffect( d3dDevice, effect_name );
+            effect = GraphicLoader::LoadEffect( d3dDevice, effect_name, true );
     }
 
     char dir_str[ 16 ];
@@ -2980,22 +2984,21 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
     int  format = ilGetInteger( IL_IMAGE_FORMAT );
     int  type = ilGetInteger( IL_IMAGE_TYPE );
 
-    // Data for FillSurfaceFromMemory
-    uint   size = 12 + h * w * 4;
-    uchar* data = new uchar[ size ];
-    *( (uint*) data + 1 ) = w;
-    *( (uint*) data + 2 ) = h;
-
     // Convert data
     if( format != IL_BGRA || type != IL_UNSIGNED_BYTE )
     {
         if( !ilConvertImage( IL_BGRA, IL_UNSIGNED_BYTE ) )
         {
             ilDeleteImage( img );
-            delete[] data;
             return NULL;
         }
     }
+
+    // Data for FillSurfaceFromMemory
+    uint   size = 12 + h * w * 4;
+    uchar* data = new uchar[ size ];
+    *( (uint*) data + 1 ) = w;
+    *( (uint*) data + 2 ) = h;
 
     // Copy data, also swap blue color to transparent
     uint* from = (uint*) ilGetData();
@@ -3169,6 +3172,7 @@ bool SpriteManager::Flush()
         Vertex& v = vBuffer[ i ];
         v.x -= 0.5f;
         v.y -= 0.5f;
+        v.diffuse = COLOR_FIX( v.diffuse );
     }
     void* ptr;
     D3D_HR( vbMain->Lock( 0, sizeof( Vertex ) * mulpos, (void**) &ptr, D3DLOCK_DISCARD ) );
@@ -3178,6 +3182,14 @@ bool SpriteManager::Flush()
     D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( Vertex ) ) );
     D3D_HR( d3dDevice->SetFVF( D3DFVF_MYVERTEX ) );
     #else
+    for( int i = 0; i < mulpos; i++ )
+    {
+        Vertex& v = vBuffer[ i ];
+        v.diffuse = COLOR_FIX( v.diffuse );
+    }
+    GL( glBindVertexArray( vaMain ) );
+    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
     GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * mulpos, &vBuffer[ 0 ] ) );
     #endif
 
@@ -4128,7 +4140,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
             vertex->x += offset->X;
             vertex->y += offset->Y;
         }
-        vertex->Diffuse = point.PointColor;
+        vertex->Diffuse = COLOR_FIX( point.PointColor );
         vertex->z = 0.0f;
         vertex->rhw = 1.0f;
     }
@@ -4272,6 +4284,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     {
         // Vertex buffer
         vBuffer.resize( count );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
         GL( glBufferData( GL_ARRAY_BUFFER, count * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
 
         // Index buffers
@@ -4300,10 +4313,11 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
         vBuffer[ i ].x = x;
         vBuffer[ i ].y = y;
-        vBuffer[ i ].diffuse = point.PointColor;
+        vBuffer[ i ].diffuse = COLOR_FIX( point.PointColor );
     }
 
     // Draw
+    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
     GL( glBufferSubData( GL_ARRAY_BUFFER, 0, count * sizeof( Vertex ), &vBuffer[ 0 ] ) );
 
@@ -4338,11 +4352,18 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
 bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color )
 {
-    // Draw previous sprites
+    // Draw model in another render target
+    #ifdef FO_D3D
     Flush();
-
-    // Draw 3d
     anim3d->Draw( x, y, scale, stencil, color );
+    #else
+    PushRenderTarget( rt3D );
+    anim3d->Draw( x, y, scale, stencil, color );
+    PopRenderTarget();
+    DrawRenderTarget( rt3D );
+    ClearRenderTarget( rt3D, 0 );
+    ClearRenderTargetDS( rt3D, true, false );
+    #endif
 
     // Restore 2d stream
     #ifdef FO_D3D
@@ -4354,8 +4375,7 @@ bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTR
 
 bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color )
 {
-    Flush();
-
+    // Data
     INTPOINT xy = anim3d->GetBaseBordersPivot();
     INTRECT  borders = anim3d->GetBaseBorders();
     float    w_real = (float) borders.W();
@@ -4369,7 +4389,18 @@ bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Anim
         xy.Y += (int) ( ( rect.H() - h_real * scale ) / 2.0f );
     }
 
+    // Draw model in another render target
+    #ifdef FO_D3D
+    Flush();
     anim3d->Draw( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, stencil, color );
+    #else
+    PushRenderTarget( rt3D );
+    anim3d->Draw( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, stencil, color );
+    PopRenderTarget();
+    DrawRenderTarget( rt3D );
+    ClearRenderTarget( rt3D, 0 );
+    ClearRenderTargetDS( rt3D, true, true );
+    #endif
 
     // Restore 2d stream
     #ifdef FO_D3D

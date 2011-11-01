@@ -65,7 +65,8 @@
 #define DEFAULT_EFFECT_POINT            ( 5 )
 #define DEFAULT_EFFECT_FLUSH_TEXTURE    ( 6 )
 #define DEFAULT_EFFECT_FLUSH_COLOR      ( 7 )
-#define DEFAULT_EFFECT_COUNT            ( 8 )
+#define DEFAULT_EFFECT_FLUSH_FINAL      ( 8 )
+#define DEFAULT_EFFECT_COUNT            ( 9 )
 
 // Sprite layers
 #define DRAW_ORDER_FLAT                 ( 0 )
@@ -268,6 +269,7 @@ private:
     RenderTarget    rtContours;
     RenderTarget    rtContoursMid;
     RenderTarget    rtPrimitive;
+    RenderTarget    rt3D;
     RenderTargetVec rtStack;
     #endif
 
@@ -287,7 +289,7 @@ public:
     void ( * PreRestore )();
     void ( * PostRestore )();
     #ifndef FO_D3D
-    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil );
+    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false );
     void ClearRenderTarget( RenderTarget& rt, uint color );
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
@@ -447,7 +449,7 @@ public:
     void SetFontEffect( int index, Effect* effect );
     bool LoadFontFO( int index, const char* font_name );
     bool LoadFontBMF( int index, const char* font_name );
-    bool DrawStr( INTRECT& r, const char* str, uint flags, uint col = 0, int num_font = -1 );
+    bool DrawStr( INTRECT& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
     int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );
     int  GetLineHeight( int num_font = -1 );

@@ -307,7 +307,7 @@ bool FOClient::Init()
     if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx" );
+    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx", true );
     if( font_effect )
     {
         SprMngr.SetFontEffect( FONT_FO, font_effect );
@@ -11555,14 +11555,6 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 
 void FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, CScriptString* effect_name )
 {
-    Effect* font_effect = NULL;
-    if( effect_name && effect_name->length() )
-    {
-        font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str() );
-        if( !font_effect )
-            SCRIPT_ERROR_R( "Effect not found." );
-    }
-
     #define EFFECT_2D            ( 0 )     // 2D_Default.fx
     #define EFFECT_2D_GENERIC    ( 1 )
     #define EFFECT_2D_TILE       ( 2 )
@@ -11571,6 +11563,15 @@ void FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_INTERFACE     ( 2 )     // Interface_Default.fx
     #define EFFECT_FONT          ( 3 )     // Interface_Default.fx
     #define EFFECT_PRIMITIVE     ( 4 )     // Primitive_Default.fx
+
+    Effect* font_effect = NULL;
+    if( effect_name && effect_name->length() )
+    {
+        bool use_in_2d = ( effect_type != EFFECT_3D );
+        font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d );
+        if( !font_effect )
+            SCRIPT_ERROR_R( "Effect not found." );
+    }
 
     if( effect_type == EFFECT_2D )
     {

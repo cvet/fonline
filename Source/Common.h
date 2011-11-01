@@ -225,17 +225,16 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  pragma comment(lib,"dxerr.lib")
 #  pragma comment(lib,"d3dxof.lib")
 #  define D3D_HR( expr )                  { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
-# else
-#  include "GL/GLee.h"
-#  include "GL/GLU.h"
-#  ifdef FO_WINDOWS
-#   pragma comment( lib, "GLee.lib" )
-#   pragma comment( lib, "opengl32.lib" )
-#   pragma comment( lib, "glu32.lib" )
-#  endif
-#  define GL( expr )                      { expr; GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } }
-#  include "Assimp/aiTypes.h"
 # endif
+# include "GL/GLee.h"
+# include "GL/GLU.h"
+# ifdef FO_WINDOWS
+#  pragma comment( lib, "GLee.lib" )
+#  pragma comment( lib, "opengl32.lib" )
+#  pragma comment( lib, "glu32.lib" )
+# endif
+# define GL( expr )                       { expr; GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } }
+# include "Assimp/aiTypes.h"
 
 # define IL_STATIC_LIB
 # include "IL/il.h"
@@ -243,6 +242,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # pragma comment( lib, "jpeg.lib" )
 
 # ifdef FO_D3D
+#  define COLOR_FIX( c )                  ( c )
 #  define Device_             LPDIRECT3DDEVICE9
 #  define Surface_            LPDIRECT3DSURFACE9
 #  define EffectValue_        D3DXHANDLE
@@ -258,6 +258,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define ViewPort_           D3DVIEWPORT9
 #  define LockRect_           D3DLOCKED_RECT
 # else
+#  define COLOR_FIX( c )                  COLOR_ARGB( ( (uchar*) &( c ) )[ 3 ], ( (uchar*) &( c ) )[ 0 ], ( (uchar*) &( c ) )[ 1 ], ( (uchar*) &( c ) )[ 2 ] )
 #  define Device_             GLuint
 #  define Surface_            GLuint
 #  define EffectValue_        GLint

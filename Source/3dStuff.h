@@ -48,13 +48,13 @@ typedef vector< AnimParams > AnimParamsVec;
 
 struct MeshOptions
 {
-    MeshContainer* MeshPtr;
-    uint           SubsetsCount;
-    bool*          DisabledSubsets;
-    Texture**      TexSubsets;
-    Texture**      DefaultTexSubsets;
-    Effect**       EffectSubsets;
-    Effect**       DefaultEffectSubsets;
+    Frame*    FramePtr;
+    uint      SubsetsCount;
+    bool*     DisabledSubsets;
+    Texture** TexSubsets;
+    Texture** DefaultTexSubsets;
+    Effect**  EffectSubsets;
+    Effect**  DefaultEffectSubsets;
 };
 typedef vector< MeshOptions > MeshOptionsVec;
 
@@ -103,13 +103,13 @@ private:
     bool         FrameMove( float elapsed, int x, int y, float scale, bool software_skinning );
     void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
     bool         DrawFrame( Frame* frame, bool with_shadow );
-    bool         DrawMeshEffect( Mesh* mesh, uint subset, Effect* effect_ex, Texture** textures, EffectValue_ technique );
+    bool         DrawMeshEffect( MeshSubset* mesh, uint subset, Effect* effect, Texture** textures, EffectValue_ technique );
     bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir );
     bool         SetupBordersFrame( Frame* frame, FLTRECT& borders );
     void         ProcessBorders();
     float        GetSpeed();
     uint         GetTick();
-    MeshOptions* GetMeshOptions( MeshContainer* mesh );
+    MeshOptions* GetMeshOptions( Frame* frame );
     static void  SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear );
 
 public:
@@ -207,15 +207,11 @@ private:
 
     string                     fileName;
     Frame*                     frameRoot;
-    FrameVec                   framesSkinned;
-    MeshContainerVec           allMeshes;
-    uint                       facesCount;
-    bool                       tangentsCalculated;
+    FrameVec                   allFrames;
+    FrameVec                   allDrawFrames;
 
-    static Animation3dXFile* GetXFile( const char* xname, bool calc_tangent );
-    static bool              CalculateNormalTangent( Frame* frame );
-    static bool              SetupSkinning( Animation3dXFile* xfile, Frame* frame, Frame* frame_root );
-    static void              SetupFacesCount( Frame* frame, uint& count );
+    static Animation3dXFile* GetXFile( const char* xname );
+    static bool              SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root );
     static void              SetupAnimationOutput( Frame* frame, AnimController* anim_controller );
 
     Texture* GetTexture( const char* tex_name );
