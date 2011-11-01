@@ -226,12 +226,14 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  pragma comment(lib,"d3dxof.lib")
 #  define D3D_HR( expr )                  { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
 # endif
-# include "GL/GLee.h"
-# include "GL/GLU.h"
+# include "GL/glew.h"
 # ifdef FO_WINDOWS
-#  pragma comment( lib, "GLee.lib" )
+#  include "GL/wglew.h"
+#  pragma comment( lib, "glew32s.lib" )
 #  pragma comment( lib, "opengl32.lib" )
 #  pragma comment( lib, "glu32.lib" )
+# else
+#  include "GL/glxew.h"
 # endif
 # define GL( expr )                       { expr; GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } }
 # include "Assimp/aiTypes.h"

@@ -35,7 +35,8 @@ struct Texture
     uint               Width;
     uint               Height;
     float              SizeData[ 4 ]; // Width, Height, TexelWidth, TexelHeight
-    Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ) {}
+    float              Samples;
+    Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f ) {}
     ~Texture()
     {
         GL( glDeleteTextures( 1, &Id ) );
@@ -95,6 +96,7 @@ struct Effect
     GLint          ZoomFactor;
     GLint          ColorMap;
     GLint          ColorMapSize;
+    GLint          ColorMapSamples;
     GLint          EggMap;
     GLint          EggMapSize;
     GLint          SpriteBorder;

@@ -839,7 +839,6 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
-    GL( glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE ) );
     #endif
     texture->Name = Str::Duplicate( texture_name );
     loadedTextures.push_back( texture );
@@ -1273,6 +1272,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
     GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
     GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
+    GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
     GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );

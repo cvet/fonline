@@ -141,13 +141,26 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     HGLRC  rc = wglCreateContext( dcScreen );
     wglMakeCurrent( dcScreen, rc );
     # endif
+
+    // OpenGL extensions
+    glewInit();
+    # define CHECK_EXTENSION( ext )                                       \
+        if( !GLEW_ARB_ ## ext )                                           \
+        {                                                                 \
+            WriteLog( " OpenGL extension '" # ext "' not supported.\n" ); \
+            return false;                                                 \
+        }
+    CHECK_EXTENSION( vertex_buffer_object );
+    CHECK_EXTENSION( vertex_array_object );
+    CHECK_EXTENSION( framebuffer_object );
+    # undef CHECK_EXTENSION
+
+    // States
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glMatrixMode( GL_PROJECTION ) );
     GL( glLoadIdentity() );
     GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
     GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
-    GL( glMatrixMode( GL_MODELVIEW ) );
-    GL( glLoadIdentity() );
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
     wglSwapIntervalEXT( 0 );
     #endif
@@ -237,11 +250,12 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Texture.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] = NULL;
     sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Color.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_FINAL ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Final.fx", true );
     for( uint i = 0; i < DEFAULT_EFFECT_COUNT; i++ )
     {
-        if( !sprDefaultEffect[ i ] )
+        if( !sprDefaultEffect[ i ] && i != DEFAULT_EFFECT_FLUSH_TEXTURE_MS )
         {
             WriteLog( "Default effects not loaded.\n" );
             return false;
@@ -252,7 +266,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     if( !CreateRenderTarget( rtMain, true ) ||
         !CreateRenderTarget( rtContours, false ) ||
         !CreateRenderTarget( rtContoursMid, false ) ||
-        !CreateRenderTarget( rt3D, true ) )
+        !CreateRenderTarget( rt3D, true, true ) )
     {
         WriteLog( "Can't create render targets.\n" );
         return false;
@@ -607,6 +621,33 @@ bool SpriteManager::Restore()
 #ifndef FO_D3D
 bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */ )
 {
+    // Multisampling
+    static int samples = -1;
+    if( multisampling && samples == -1 )
+    {
+        if( GLEW_ARB_texture_multisample && GameOpt.MultiSampling != 0 )
+        {
+            // Samples count
+            GLint max_samples = 0;
+            GL( glGetIntegerv( GL_MAX_SAMPLES, &max_samples ) );
+            if( GameOpt.MultiSampling < 0 )
+                GameOpt.MultiSampling = 4;
+            samples = min( GameOpt.MultiSampling, max_samples );
+
+            // Flush effect
+            sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_TextureMS.fx", true );
+            if( !sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] )
+                samples = 0;
+        }
+        else
+        {
+            samples = 0;
+        }
+    }
+    if( multisampling && samples <= 1 )
+        multisampling = false;
+
+    // Framebuffer
     memzero( &rt, sizeof( rt ) );
     GL( glGenFramebuffers( 1, &rt.FBO ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
@@ -614,7 +655,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     uint     w = modeWidth;
     uint     h = modeHeight;
     Texture* tex = new Texture();
-    tex->Data = new uchar[ w * h * 4 ];
+    tex->Data = NULL;
     tex->Size = w * h * 4;
     tex->Width = w;
     tex->Height = h;
@@ -623,36 +664,47 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
     tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
     GL( glGenTextures( 1, &tex->Id ) );
-    GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-    GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
     if( !multisampling )
     {
+        GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
+        GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
         GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
+        GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
     }
     else
     {
-        // GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, 4, GL_BGRA, w, h, TRUE ) );
+        tex->Samples = (float) samples;
+        GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex->Id ) );
+        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGBA, w, h, TRUE ) );
+        GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
     }
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-    GL( glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE ) );
     rt.TargetTexture = tex;
-
-    GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
 
     if( depth_stencil )
     {
         GL( glGenRenderbuffers( 1, &rt.DepthStencilBuffer ) );
-        GL( glBindRenderbuffer( GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
-        GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h ) );
+        GL( glBindRenderbuffer( GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
+        if( !multisampling )
+        {
+            GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h ) );
+        }
+        else
+        {
+            GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, w, h ) );
+        }
         GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
     }
 
-    rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ];
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    if( !multisampling )
+        rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ];
+    else
+        rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ];
 
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
     ClearRenderTarget( rt, 0 );
     if( depth_stencil )
         ClearRenderTargetDS( rt, true, true );
@@ -777,7 +829,6 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-    GL( glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE ) );
     #endif
 
     Surface* surf = new Surface();
@@ -3240,7 +3291,16 @@ bool SpriteManager::Flush()
         if( effect->ColorMap != -1 && dip.SourceTexture )
         {
             GL( glActiveTexture( GL_TEXTURE0 ) );
-            GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
+            if( dip.SourceTexture->Samples == 0.0f )
+            {
+                GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
+            }
+            else
+            {
+                GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, dip.SourceTexture->Id ) );
+                if( effect->ColorMapSamples != -1 )
+                    GL( glUniform1f( effect->ColorMapSamples, dip.SourceTexture->Samples ) );
+            }
             GL( glUniform1i( effect->ColorMap, 0 ) );
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
