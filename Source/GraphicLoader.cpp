@@ -1152,37 +1152,28 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     }
     #else
     // Make names
-    char vs_fname[ MAX_FOPATH ];
-    Str::Copy( vs_fname, effect_name );
-    FileManager::EraseExtension( vs_fname );
-    Str::Append( vs_fname, ".vert" );
-    char fs_fname[ MAX_FOPATH ];
-    Str::Copy( fs_fname, effect_name );
-    FileManager::EraseExtension( fs_fname );
-    Str::Append( fs_fname, ".frag" );
+    char fname[ MAX_FOPATH ];
+    Str::Copy( fname, effect_name );
+    FileManager::EraseExtension( fname );
+    Str::Append( fname, ".glsl" );
 
     // Load files
-    FileManager vs_file;
-    if( !vs_file.LoadFile( vs_fname, PT_EFFECTS ) )
+    FileManager file;
+    if( !file.LoadFile( fname, PT_EFFECTS ) )
     {
-        WriteLogF( _FUNC_, " - Vertex shader file<%s> not found.\n", vs_fname );
+        WriteLogF( _FUNC_, " - Effect file<%s> not found.\n", fname );
         return NULL;
     }
-    FileManager fs_file;
-    if( !fs_file.LoadFile( fs_fname, PT_EFFECTS ) )
-    {
-        WriteLogF( _FUNC_, " - Fragment shader file<%s> not found.\n", fs_fname );
-        return NULL;
-    }
-    const char* vs_str = (char*) vs_file.GetBuf();
-    const char* fs_str = (char*) fs_file.GetBuf();
+    const char* str = (char*) file.GetBuf();
 
     // Create shaders
     GLuint vs, fs;
     GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
     GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-    GL( glShaderSource( vs, 1, (const GLchar**) &vs_str, NULL ) );
-    GL( glShaderSource( fs, 1, (const GLchar**) &fs_str, NULL ) );
+    const char* vs_str[] = { "#define VERTEX_SHADER", str };
+    GL( glShaderSource( vs, 2, (const GLchar**) vs_str, NULL ) );
+    const char* fs_str[] = { "#define FRAGMENT_SHADER", str };
+    GL( glShaderSource( fs, 2, (const GLchar**) fs_str, NULL ) );
 
     // Info parser
     struct ShaderInfo
@@ -1196,7 +1187,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
                 GLchar* str = new GLchar[ len ];
                 int     chars = 0;
                 glGetShaderInfoLog( shader, len, &chars, str );
-                WriteLog( "Shader<%s> info output:\n%s", shader_name, str );
+                WriteLog( "%s output:\n%s", shader_name, str );
                 delete[] str;
             }
         }
@@ -1221,8 +1212,8 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
     if( !compiled )
     {
-        WriteLogF( _FUNC_, " - Vertex shader<%s> not compiled.\n", vs_fname );
-        ShaderInfo::Log( vs_fname, vs );
+        WriteLogF( _FUNC_, " - Vertex shader not compiled, effect<%s>.\n", fname );
+        ShaderInfo::Log( "Vertex shader", vs );
         GL( glDeleteShader( vs ) );
         GL( glDeleteShader( fs ) );
         return NULL;
@@ -1233,8 +1224,8 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
     if( !compiled )
     {
-        WriteLogF( _FUNC_, " - Fragment shader<%s> not compiled.\n", fs_fname );
-        ShaderInfo::Log( fs_fname, fs );
+        WriteLogF( _FUNC_, " - Fragment shader not compiled, effect<%s>.\n", fname );
+        ShaderInfo::Log( "Fragment shader", fs );
         GL( glDeleteShader( vs ) );
         GL( glDeleteShader( fs ) );
         return NULL;
@@ -1272,7 +1263,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
     if( !linked )
     {
-        WriteLogF( _FUNC_, " - Failed to link shader program, vs<%s>, fs<%s>.\n", vs_fname, fs_fname );
+        WriteLogF( _FUNC_, " - Failed to link shader program, effect<%s>.\n", fname );
         ShaderInfo::LogProgram( program );
         GL( glDetachShader( program, vs ) );
         GL( glDetachShader( program, fs ) );
