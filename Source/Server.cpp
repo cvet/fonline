@@ -1935,24 +1935,21 @@ void FOServer::Process_Command( Client* cl )
             allow_command = true;
     }
 
-    if( !allow_command )
-        return;
-
     switch( cmd )
     {
-/************************************************************************/
-/* EXIT                                                                 */
-/************************************************************************/
     case CMD_EXIT:
     {
+        if( !allow_command )
+            return;
+
         cl->Disconnect();
     }
     break;
-/************************************************************************/
-/* MYINFO                                                               */
-/************************************************************************/
     case CMD_MYINFO:
     {
+        if( !allow_command )
+            return;
+
         char istr[ 1024 ];
         sprintf( istr, "|0xFF00FF00 Name: |0xFFFF0000 %s"
                        "|0xFF00FF00 , Id: |0xFFFF0000 %u"
@@ -1980,13 +1977,13 @@ void FOServer::Process_Command( Client* cl )
         cl->Send_Text( cl, istr, SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* GAMEINFO                                                             */
-/************************************************************************/
     case CMD_GAMEINFO:
     {
         int info;
         cl->Bin >> info;
+
+        if( !allow_command )
+            return;
 
         string result;
         switch( info )
@@ -2036,14 +2033,14 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* CRITID                                                               */
-/************************************************************************/
     case CMD_CRITID:
     {
         char name[ MAX_NAME + 1 ];
         cl->Bin.Pop( name, MAX_NAME );
         name[ MAX_NAME ] = 0;
+
+        if( !allow_command )
+            return;
 
         SaveClientsLocker.Lock();
 
@@ -2056,9 +2053,6 @@ void FOServer::Process_Command( Client* cl )
         SaveClientsLocker.Unlock();
     }
     break;
-/************************************************************************/
-/* MOVECRIT                                                             */
-/************************************************************************/
     case CMD_MOVECRIT:
     {
         uint   crid;
@@ -2067,6 +2061,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> crid;
         cl->Bin >> hex_x;
         cl->Bin >> hex_y;
+
+        if( !allow_command )
+            return;
 
         Critter* cr = CrMngr.GetCritter( crid, true );
         if( !cr )
@@ -2094,13 +2091,13 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "Critter move fail.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* KILLCRIT                                                             */
-/************************************************************************/
     case CMD_KILLCRIT:
     {
         uint crid;
         cl->Bin >> crid;
+
+        if( !allow_command )
+            return;
 
         Critter* cr = CrMngr.GetCritter( crid, true );
         if( !cr )
@@ -2113,13 +2110,13 @@ void FOServer::Process_Command( Client* cl )
         cl->Send_Text( cl, "Critter is dead.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* DISCONNCRIT                                                          */
-/************************************************************************/
     case CMD_DISCONCRIT:
     {
         uint crid;
         cl->Bin >> crid;
+
+        if( !allow_command )
+            return;
 
         if( cl->GetId() == crid )
         {
@@ -2154,11 +2151,11 @@ void FOServer::Process_Command( Client* cl )
         cl->Send_Text( cl, "Player disconnected.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* TOGLOBAL                                                             */
-/************************************************************************/
     case CMD_TOGLOBAL:
     {
+        if( !allow_command )
+            return;
+
         if( !cl->IsLife() )
         {
             cl->Send_Text( cl, "To global fail, only life none.", SAY_NETMSG );
@@ -2171,13 +2168,13 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "To global fail.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* RESPAWN                                                              */
-/************************************************************************/
     case CMD_RESPAWN:
     {
         uint crid;
         cl->Bin >> crid;
+
+        if( !allow_command )
+            return;
 
         Critter* cr = ( !crid ? cl : CrMngr.GetCritter( crid, true ) );
         if( !cr )
@@ -2191,9 +2188,6 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* PARAM                                                                */
-/************************************************************************/
     case CMD_PARAM:
     {
         ushort param_type;
@@ -2202,6 +2196,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> param_type;
         cl->Bin >> param_num;
         cl->Bin >> param_val;
+
+        if( !allow_command )
+            return;
 
         if( FLAG( cl->Access, ACCESS_TESTER ) )            // Free XP
         {
@@ -2430,9 +2427,6 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* GETACCESS                                                            */
-/************************************************************************/
     case CMD_GETACCESS:
     {
         char name_access[ MAX_NAME + 1 ];
@@ -2441,6 +2435,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( pasw_access, 128 );
         name_access[ MAX_NAME ] = 0;
         pasw_access[ 127 ] = 0;
+
+        if( !allow_command )
+            return;
 
         int wanted_access = -1;
         if( Str::Compare( name_access, "client" ) && std::find( AccessClient.begin(), AccessClient.end(), pasw_access ) != AccessClient.end() )
@@ -2477,9 +2474,6 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "Welcome Master.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* ADDITEM                                                              */
-/************************************************************************/
     case CMD_ADDITEM:
     {
         ushort hex_x;
@@ -2490,6 +2484,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> hex_y;
         cl->Bin >> pid;
         cl->Bin >> count;
+
+        if( !allow_command )
+            return;
 
         Map* map = MapMngr.GetMap( cl->GetMap() );
         if( !map || hex_x >= map->GetMaxHexX() || hex_y >= map->GetMaxHexY() )
@@ -2508,9 +2505,6 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* ADDITEM_SELF                                                         */
-/************************************************************************/
     case CMD_ADDITEM_SELF:
     {
         ushort pid;
@@ -2518,15 +2512,15 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> pid;
         cl->Bin >> count;
 
+        if( !allow_command )
+            return;
+
         if( ItemMngr.AddItemCritter( cl, pid, count ) != NULL )
             cl->Send_Text( cl, "Item(s) added.", SAY_NETMSG );
         else
             cl->Send_Text( cl, "Item(s) added fail.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* ADDNPC                                                               */
-/************************************************************************/
     case CMD_ADDNPC:
     {
         ushort hex_x;
@@ -2538,6 +2532,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> dir;
         cl->Bin >> pid;
 
+        if( !allow_command )
+            return;
+
         Npc* npc = CrMngr.CreateNpc( pid, 0, NULL, 0, NULL, NULL, MapMngr.GetMap( cl->GetMap() ), hex_x, hex_y, dir, true );
         if( !npc )
             cl->Send_Text( cl, "Npc not created.", SAY_NETMSG );
@@ -2545,9 +2542,6 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "Npc created.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* ADDLOCATION                                                          */
-/************************************************************************/
     case CMD_ADDLOCATION:
     {
         ushort wx;
@@ -2557,6 +2551,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> wy;
         cl->Bin >> pid;
 
+        if( !allow_command )
+            return;
+
         Location* loc = MapMngr.CreateLocation( pid, wx, wy, 0 );
         if( !loc )
             cl->Send_Text( cl, "Location not created.", SAY_NETMSG );
@@ -2564,11 +2561,11 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "Location created.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* RELOADSCRIPTS                                                        */
-/************************************************************************/
     case CMD_RELOADSCRIPTS:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         // Get config file
@@ -2591,14 +2588,14 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/* LOADSCRIPT                                                           */
-/************************************************************************/
     case CMD_LOADSCRIPT:
     {
         char module_name[ MAX_SCRIPT_NAME + 1 ];
         cl->Bin.Pop( module_name, MAX_SCRIPT_NAME );
         module_name[ MAX_SCRIPT_NAME ] = 0;
+
+        if( !allow_command )
+            return;
 
         if( !Str::Length( module_name ) )
         {
@@ -2624,11 +2621,11 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/* LOADSCRIPT                                                           */
-/************************************************************************/
     case CMD_RELOAD_CLIENT_SCRIPTS:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         if( ReloadClientScripts() )
@@ -2639,9 +2636,6 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/* RUNSCRIPT                                                            */
-/************************************************************************/
     case CMD_RUNSCRIPT:
     {
         char module_name[ MAX_SCRIPT_NAME + 1 ];
@@ -2654,6 +2648,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> param0;
         cl->Bin >> param1;
         cl->Bin >> param2;
+
+        if( !allow_command )
+            return;
 
         if( !Str::Length( module_name ) || !Str::Length( func_name ) )
         {
@@ -2685,11 +2682,11 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "Run script fail.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_RELOADLOCATIONS:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         if( MapMngr.LoadLocationsProtos() )
@@ -2700,13 +2697,13 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_LOADLOCATION:
     {
         ushort loc_pid;
         cl->Bin >> loc_pid;
+
+        if( !allow_command )
+            return;
 
         if( !loc_pid || loc_pid >= MAX_PROTO_LOCATIONS )
         {
@@ -2737,11 +2734,11 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_RELOADMAPS:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         int fails = 0;
@@ -2771,13 +2768,13 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_LOADMAP:
     {
         ushort map_pid;
         cl->Bin >> map_pid;
+
+        if( !allow_command )
+            return;
 
         SynchronizeLogicThreads();
 
@@ -2805,11 +2802,11 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/* REGENMAP                                                             */
-/************************************************************************/
     case CMD_REGENMAP:
     {
+        if( !allow_command )
+            return;
+
         // Check global
         if( !cl->GetMap() )
         {
@@ -2839,11 +2836,11 @@ void FOServer::Process_Command( Client* cl )
             cl->Send_Text( cl, "Regenerate map fail.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_RELOADDIALOGS:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         DlgMngr.DialogsPacks.clear();
@@ -2857,9 +2854,6 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_LOADDIALOG:
     {
         char dlg_name[ 128 ];
@@ -2867,6 +2861,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( dlg_name, 128 );
         cl->Bin >> dlg_id;
         dlg_name[ 127 ] = 0;
+
+        if( !allow_command )
+            return;
 
         SynchronizeLogicThreads();
 
@@ -2906,11 +2903,11 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_RELOADTEXTS:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         LangPackVec lang_packs;
@@ -2928,11 +2925,11 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     case CMD_RELOADAI:
     {
+        if( !allow_command )
+            return;
+
         SynchronizeLogicThreads();
 
         NpcAIMngr ai_mngr;
@@ -2949,9 +2946,6 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/* CHECKVAR                                                             */
-/************************************************************************/
     case CMD_CHECKVAR:
     {
         ushort tid_var;
@@ -2964,6 +2958,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> master_id;
         cl->Bin >> slave_id;
         cl->Bin >> full_info;
+
+        if( !allow_command )
+            return;
 
         if( master_is_npc )
             master_id += NPC_START_ID - 1;
@@ -2986,9 +2983,6 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* SETVAR                                                               */
-/************************************************************************/
     case CMD_SETVAR:
     {
         ushort tid_var;
@@ -3001,6 +2995,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> master_id;
         cl->Bin >> slave_id;
         cl->Bin >> value;
+
+        if( !allow_command )
+            return;
 
         if( master_is_npc )
             master_id += NPC_START_ID - 1;
@@ -3023,9 +3020,6 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* SETTIME                                                              */
-/************************************************************************/
     case CMD_SETTIME:
     {
         int multiplier;
@@ -3042,6 +3036,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> hour;
         cl->Bin >> minute;
         cl->Bin >> second;
+
+        if( !allow_command )
+            return;
 
         SynchronizeLogicThreads();
 
@@ -3077,9 +3074,6 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/* BAN                                                                  */
-/************************************************************************/
     case CMD_BAN:
     {
         char name[ MAX_NAME + 1 ];
@@ -3093,6 +3087,9 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin >> ban_hours;
         cl->Bin.Pop( info, 128 );
         info[ MAX_NAME ] = 0;
+
+        if( !allow_command )
+            return;
 
         SCOPE_LOCK( BannedLocker );
 
@@ -3203,16 +3200,18 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* DELETE_ACCOUNT                                                       */
-/************************************************************************/
     case CMD_DELETE_ACCOUNT:
     {
         char pass_hash[ PASS_HASH_SIZE ];
         cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
 
+        if( !allow_command )
+            return;
+
         if( memcmp( cl->PassHash, pass_hash, PASS_HASH_SIZE ) )
+        {
             cl->Send_Text( cl, "Invalid password.", SAY_NETMSG );
+        }
         else
         {
             if( !cl->Data.ClientToDelete )
@@ -3228,9 +3227,6 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* CHANGE_PASSWORD                                                      */
-/************************************************************************/
     case CMD_CHANGE_PASSWORD:
     {
         char pass_hash[ PASS_HASH_SIZE ];
@@ -3238,8 +3234,13 @@ void FOServer::Process_Command( Client* cl )
         cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
         cl->Bin.Pop( new_pass_hash, PASS_HASH_SIZE );
 
+        if( !allow_command )
+            return;
+
         if( memcmp( cl->PassHash, pass_hash, PASS_HASH_SIZE ) )
+        {
             cl->Send_Text( cl, "Invalid current password.", SAY_NETMSG );
+        }
         else
         {
             SCOPE_LOCK( SaveClientsLocker );
@@ -3254,11 +3255,11 @@ void FOServer::Process_Command( Client* cl )
         }
     }
     break;
-/************************************************************************/
-/* DROP_UID                                                             */
-/************************************************************************/
     case CMD_DROP_UID:
     {
+        if( !allow_command )
+            return;
+
         ClientData* data = GetClientData( cl->GetId() );
         if( data )
         {
@@ -3269,13 +3270,13 @@ void FOServer::Process_Command( Client* cl )
         cl->Send_Text( cl, "UID dropped, you can relogin on another account without timeout.", SAY_NETMSG );
     }
     break;
-/************************************************************************/
-/* LOG                                                                  */
-/************************************************************************/
     case CMD_LOG:
     {
         char flags[ 16 ];
         cl->Bin.Pop( flags, 16 );
+
+        if( !allow_command )
+            return;
 
         int action = -1;
         if( flags[ 0 ] == '-' && flags[ 1 ] == '-' )
@@ -3316,12 +3317,8 @@ void FOServer::Process_Command( Client* cl )
         ResynchronizeLogicThreads();
     }
     break;
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
     default:
-        cl->Send_Text( cl, "Unknown Command.", SAY_NETMSG );
-        return;
+        break;
     }
 }
 
