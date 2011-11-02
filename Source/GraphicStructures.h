@@ -110,6 +110,7 @@ struct Effect
     EffectValue_   MaterialAmbient;
     EffectValue_   MaterialDiffuse;
     EffectValue_   WorldMatrices;
+    EffectValue_   WorldMatrix;
 
     // Automatic variables
     bool           IsNeedProcess;
@@ -223,7 +224,8 @@ typedef vector< Vertex3DVec > Vertex3DVecVec;
 struct MeshSubset
 {
     Vertex3DVec    Vertices;
-    Vertex3DVec    VerticesInit;
+    Vertex3DVec    VerticesTransformed;
+    bool           VerticesTransformedValid;
     uint           FacesCount;
     UShortVec      Indicies;
     string         DiffuseTexture;
@@ -235,6 +237,7 @@ struct MeshSubset
     MatrixVec      BoneOffsets;
     MatrixPtrVec   FrameCombinedMatrixPointer;
     EffectInstance DrawEffect;
+    GLuint         VAO, VBO, IBO;
 };
 typedef vector< MeshSubset > MeshSubsetVec;
 

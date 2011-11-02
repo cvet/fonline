@@ -490,11 +490,11 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
     for( uint m = 0; m < node->mNumMeshes; m++ )
     {
         aiMesh*     aimesh = scene->mMeshes[ node->mMeshes[ m ] ];
-        MeshSubset& mesh = frame->Mesh[ m ];
+        MeshSubset& ms = frame->Mesh[ m ];
 
         // Vertices
-        mesh.Vertices.resize( aimesh->mNumVertices );
-        mesh.VerticesInit.resize( aimesh->mNumVertices );
+        ms.Vertices.resize( aimesh->mNumVertices );
+        ms.VerticesTransformed.resize( aimesh->mNumVertices );
         bool has_color0 = aimesh->HasVertexColors( 0 );
         // bool has_color1 = aimesh->HasVertexColors( 1 );
         bool has_tex_coords0 = aimesh->HasTextureCoords( 0 );
@@ -502,7 +502,7 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
         bool has_tex_coords2 = aimesh->HasTextureCoords( 2 );
         for( uint i = 0; i < aimesh->mNumVertices; i++ )
         {
-            Vertex3D& v = mesh.Vertices[ i ];
+            Vertex3D& v = ms.Vertices[ i ];
             memzero( &v, sizeof( v ) );
             v.Position = aimesh->mVertices[ i ];
             v.PositionW = 1.0f;
@@ -545,14 +545,14 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
         }
 
         // Faces
-        mesh.FacesCount = aimesh->mNumFaces;
-        mesh.Indicies.resize( mesh.FacesCount * 3 );
+        ms.FacesCount = aimesh->mNumFaces;
+        ms.Indicies.resize( ms.FacesCount * 3 );
         for( uint i = 0; i < aimesh->mNumFaces; i++ )
         {
             aiFace& face = aimesh->mFaces[ i ];
-            mesh.Indicies[ i * 3 + 0 ] = face.mIndices[ 0 ];
-            mesh.Indicies[ i * 3 + 1 ] = face.mIndices[ 1 ];
-            mesh.Indicies[ i * 3 + 2 ] = face.mIndices[ 2 ];
+            ms.Indicies[ i * 3 + 0 ] = face.mIndices[ 0 ];
+            ms.Indicies[ i * 3 + 1 ] = face.mIndices[ 1 ];
+            ms.Indicies[ i * 3 + 2 ] = face.mIndices[ 2 ];
         }
 
         // Material
@@ -561,22 +561,23 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
         if( material->GetTextureCount( aiTextureType_DIFFUSE ) )
         {
             material->GetTexture( aiTextureType_DIFFUSE, 0, &path );
-            mesh.DiffuseTexture = path.data;
+            ms.DiffuseTexture = path.data;
         }
-        material->Get< float >( AI_MATKEY_COLOR_DIFFUSE, mesh.DiffuseColor, NULL );
-        material->Get< float >( AI_MATKEY_COLOR_AMBIENT, mesh.AmbientColor, NULL );
-        material->Get< float >( AI_MATKEY_COLOR_SPECULAR, mesh.SpecularColor, NULL );
-        material->Get< float >( AI_MATKEY_COLOR_EMISSIVE, mesh.EmissiveColor, NULL );
-        mesh.DiffuseColor[ 3 ] = 1.0f;
-        mesh.AmbientColor[ 3 ] = 1.0f;
-        mesh.SpecularColor[ 3 ] = 1.0f;
-        mesh.EmissiveColor[ 3 ] = 1.0f;
+        material->Get< float >( AI_MATKEY_COLOR_DIFFUSE, ms.DiffuseColor, NULL );
+        material->Get< float >( AI_MATKEY_COLOR_AMBIENT, ms.AmbientColor, NULL );
+        material->Get< float >( AI_MATKEY_COLOR_SPECULAR, ms.SpecularColor, NULL );
+        material->Get< float >( AI_MATKEY_COLOR_EMISSIVE, ms.EmissiveColor, NULL );
+        ms.DiffuseColor[ 3 ] = 1.0f;
+        ms.AmbientColor[ 3 ] = 1.0f;
+        ms.SpecularColor[ 3 ] = 1.0f;
+        ms.EmissiveColor[ 3 ] = 1.0f;
 
         // Effect
-        mesh.DrawEffect.EffectFilename = NULL;
+        ms.DrawEffect.EffectFilename = NULL;
 
-        // Initial vertices position
-        mesh.VerticesInit = mesh.Vertices;
+        // Transformed vertices position
+        ms.VerticesTransformed = ms.Vertices;
+        ms.VerticesTransformedValid = false;
     }
 
     for( uint i = 0; i < node->mNumChildren; i++ )
@@ -641,6 +642,28 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
             if( v.BlendIndices[ 3 ] < 0.0f )
                 v.BlendIndices[ 3 ] = 0.0f;
         }
+
+        // OGL buffers
+        GL( glGenBuffers( 1, &mesh.VBO ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, mesh.VBO ) );
+        GL( glBufferData( GL_ARRAY_BUFFER, mesh.Vertices.size() * sizeof( Vertex3D ), &mesh.Vertices[ 0 ], GL_DYNAMIC_DRAW ) );
+        GL( glGenBuffers( 1, &mesh.IBO ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mesh.IBO ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, mesh.Indicies.size() * sizeof( short ), &mesh.Indicies[ 0 ], GL_DYNAMIC_DRAW ) );
+        GL( glGenVertexArrays( 1, &mesh.VAO ) );
+        GL( glBindVertexArray( mesh.VAO ) );
+        GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
+        GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
+        GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
+        GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+        GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+        GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
+        GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
+        GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
+        GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
+        for( uint i = 0; i <= 9; i++ )
+            GL( glEnableVertexAttribArray( i ) );
     }
 
     for( uint i = 0; i < node->mNumChildren; i++ )
@@ -725,7 +748,15 @@ void GraphicLoader::Free( Frame* frame )
         delete frame;
     }
     #else
-    // delete frame->Scene;
+    for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
+    {
+        MeshSubset& ms = *it;
+        GL( glDeleteVertexArrays( 1, &ms.VAO ) );
+        GL( glDeleteBuffers( 1, &ms.VBO ) );
+        GL( glDeleteBuffers( 1, &ms.IBO ) );
+    }
+    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
+        Free( *it );
     #endif
 }
 
@@ -1283,6 +1314,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( effect->MaterialAmbient = glGetUniformLocation( program, "MaterialAmbient" ) );
     GL( effect->MaterialDiffuse = glGetUniformLocation( program, "MaterialDiffuse" ) );
     GL( effect->WorldMatrices = glGetUniformLocation( program, "WorldMatrices" ) );
+    GL( effect->WorldMatrix = glGetUniformLocation( program, "WorldMatrix" ) );
 
     GL( effect->PassIndex = glGetUniformLocation( program, "PassIndex" ) );
     GL( effect->Time = glGetUniformLocation( program, "Time" ) );

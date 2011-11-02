@@ -679,7 +679,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     {
         tex->Samples = (float) samples;
         GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex->Id ) );
-        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGBA, w, h, TRUE ) );
+        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, 4, w, h, TRUE ) );
         GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
     }
     rt.TargetTexture = tex;

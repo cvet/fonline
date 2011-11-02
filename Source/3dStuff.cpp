@@ -21,20 +21,15 @@ float     GlobalSpeedAdjust = 1.0f;
 ViewPort_ ViewPort;
 MatrixVec BoneMatrices;
 bool      SoftwareSkinning = false;
-Effect*   EffectMain = NULL;
+Effect*   EffectSimple = NULL;
+Effect*   EffectSkinned = NULL;
 uint      AnimDelay = 0;
 
 #ifndef FO_D3D
-GLuint VAO = 0;
-GLuint VBO = 0;
-uint   VBOSize = 5;
-GLuint IBO = 0;
-uint   IBOSize = 5;
-
-float  LightColor[ 4 ];
+float LightColor[ 4 ];
 #endif
 
-void Vec3Project( const Vector& v, Matrix& world, Vector& out )
+void VecProject( const Vector& v, Matrix& world, Vector& out )
 {
     double modelview[ 16 ];
     for( uint i = 0; i < 16; i++ )
@@ -52,7 +47,7 @@ void Vec3Project( const Vector& v, Matrix& world, Vector& out )
     out.z = (float) z;
 }
 
-void Vec3Unproject( const Vector& v, Vector& out )
+void VecUnproject( const Vector& v, Vector& out )
 {
     double modelview[ 16 ];
     for( uint i = 0; i < 16; i++ )
@@ -403,7 +398,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         }
     }
 
-    // Set animation for childs
+    // Set animation for children
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
@@ -456,25 +451,25 @@ bool Animation3d::IsIntersect( int x, int y )
         return false;
 
     Vector ray_origin, ray_dir;
-    Vec3Unproject( Vector( (float) x, (float) y, 0.0f ), ray_origin );
-    Vec3Unproject( Vector( (float) x, (float) y, FixedZ ), ray_dir );
+    VecUnproject( Vector( (float) x, (float) y, 0.0f ), ray_origin );
+    VecUnproject( Vector( (float) x, (float) y, FixedZ ), ray_dir );
 
     // Main
     FrameMove( 0.0, drawXY.X, drawXY.Y, drawScale, true );
-    if( IsIntersectFrame( animEntity->xFile->frameRoot, ray_origin, ray_dir ) )
+    if( IsIntersectFrame( animEntity->xFile->frameRoot, ray_origin, ray_dir, (float) x, (float) y ) )
         return true;
-    // Childs
+    // Children
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
         child->FrameMove( 0.0, drawXY.X, drawXY.Y, 1.0f, true );
-        if( IsIntersectFrame( child->animEntity->xFile->frameRoot, ray_origin, ray_dir ) )
+        if( IsIntersectFrame( child->animEntity->xFile->frameRoot, ray_origin, ray_dir, (float) x, (float) y ) )
             return true;
     }
     return false;
 }
 
-bool Animation3d::IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir )
+bool Animation3d::IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y )
 {
     #ifdef FO_D3D
     MeshContainer* mesh_container = frame->DrawMesh;
@@ -495,18 +490,35 @@ bool Animation3d::IsIntersectFrame( Frame* frame, const Vector& ray_origin, cons
     }
 
     // Recurse for siblings
-    if( frame->Sibling && IsIntersectFrame( frame->Sibling, ray_origin, ray_dir ) )
+    if( frame->Sibling && IsIntersectFrame( frame->Sibling, ray_origin, ray_dir, x, y ) )
         return true;
-    if( frame->FirstChild && IsIntersectFrame( frame->FirstChild, ray_origin, ray_dir ) )
+    if( frame->FirstChild && IsIntersectFrame( frame->FirstChild, ray_origin, ray_dir, x, y ) )
         return true;
     #else
     for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
     {
-        MeshSubset& mesh = *it;
+        MeshSubset& ms = *it;
+        if( !ms.VerticesTransformedValid )
+            continue;
+
+        for( size_t i = 0, j = ms.Indicies.size(); i < j; i += 3 )
+        {
+            Vector& c1 = ms.VerticesTransformed[ ms.Indicies[ i + 0 ] ].Position;
+            Vector& c2 = ms.VerticesTransformed[ ms.Indicies[ i + 1 ] ].Position;
+            Vector& c3 = ms.VerticesTransformed[ ms.Indicies[ i + 2 ] ].Position;
+            # define SQUARE( x1, y1, x2, y2, x3, y3 )    fabs( x2 * y3 - x3 * y2 - x1 * y3 + x3 * y1 + x1 * y2 - x2 * y1 )
+            float s = 0.0f;
+            s += SQUARE( x, y, c2.x, c2.y, c3.x, c3.y );
+            s += SQUARE( c1.x, c1.y, x, y, c3.x, c3.y );
+            s += SQUARE( c1.x, c1.y, c2.x, c2.y, x, y );
+            if( s <= SQUARE( c1.x, c1.y, c2.x, c2.y, c3.x, c3.y ) )
+                return true;
+            # undef SQUARE
+        }
     }
 
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        if( IsIntersectFrame( *it, ray_origin, ray_dir ) )
+        if( IsIntersectFrame( *it, ray_origin, ray_dir, x, y ) )
             return true;
     #endif
     return false;
@@ -527,7 +539,7 @@ void Animation3d::SetupBorders()
     baseBorders.T = (int) borders.T;
     baseBorders.B = (int) borders.B;
 
-    // Childs
+    // Children
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
@@ -572,7 +584,7 @@ bool Animation3d::SetupBordersFrame( Frame* frame, FLTRECT& borders )
         D3D_HR( v->Lock( 0, 0, (void**) &data, D3DLOCK_READONLY ) );
         Matrix mworld = ( mesh_container->Skin ? MatrixEmpty : frame->CombinedTransformationMatrix );
         for( uint i = 0; i < count; i++ )
-            Vec3Project( *( (Vector*) data + i ), mworld, bordersResult[ i ] );
+            VecProject( *( (Vector*) data + i ), mworld, bordersResult[ i ] );
         D3D_HR( v->Unlock() );
 
         for( uint i = 0; i < count; i++ )
@@ -597,25 +609,20 @@ bool Animation3d::SetupBordersFrame( Frame* frame, FLTRECT& borders )
     for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
+        if( !ms.VerticesTransformedValid )
+            continue;
 
-        size_t      count = ms.Vertices.size();
-        if( bordersResult.size() < count )
-            bordersResult.resize( count );
-
-        for( size_t i = 0; i < count; i++ )
-            Vec3Project( ms.Vertices[ i ].Position, MatrixEmpty, bordersResult[ i ] );
-
-        for( size_t i = 0; i < count; i++ )
+        for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
         {
-            Vector& vec = bordersResult[ i ];
-            if( vec.x < borders.L )
-                borders.L = vec.x;
-            if( vec.x > borders.R )
-                borders.R = vec.x;
-            if( vec.y < borders.T )
-                borders.T = vec.y;
-            if( vec.y > borders.B )
-                borders.B = vec.y;
+            Vector& pos = ms.VerticesTransformed[ i ].Position;
+            if( pos.x < borders.L )
+                borders.L = pos.x;
+            if( pos.x > borders.R )
+                borders.R = pos.x;
+            if( pos.y < borders.T )
+                borders.T = pos.y;
+            if( pos.y > borders.B )
+                borders.B = pos.y;
         }
     }
 
@@ -1039,8 +1046,13 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
     return true;
 }
 
-// Called each frame_base update with the time and the current world matrix
-bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool software_skinning )
+void Animation3d::SetDrawPos( int x, int y )
+{
+    drawXY.X = x;
+    drawXY.Y = y;
+}
+
+bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool transform )
 {
     // Update world matrix, only for root
     if( !parentFrame )
@@ -1060,7 +1072,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool soft
         groundPos.z = parentMatrix.c4;
     }
 
-    // Advance the time and set in the controller
+    // Advance animation time
     if( animController )
     {
         elapsed *= GetSpeed();
@@ -1078,7 +1090,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool soft
         }
     }
 
-    // Now update the model matrices in the hierarchy
+    // Update matrices
     UpdateFrameMatrices( animEntity->xFile->frameRoot, &parentMatrix );
 
     // Update linked matrices
@@ -1099,7 +1111,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool soft
         if( !mesh_container->Skin )
             continue;
 
-        if( !mesh_container->SkinMeshBlended || software_skinning )
+        if( !mesh_container->SkinMeshBlended || transform )
         {
             // Create the bone matrices that transform each bone from bone space into character space
             // (via exFrameCombinedMatrixPointer) and also wraps the mesh around the bones using the bone offsets
@@ -1134,6 +1146,70 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool soft
             // Unlock the meshes vertex buffers
             D3D_HR( mesh_container->SkinMesh->UnlockVertexBuffer() );
             D3D_HR( mesh_container->InitMesh->UnlockVertexBuffer() );
+        }
+    }
+    #else
+    if( transform )
+    {
+        float wf = (float) ModeWidth;
+        float hf = (float) ModeHeight;
+        for( auto it = animEntity->xFile->allDrawFrames.begin(), end = animEntity->xFile->allDrawFrames.end(); it != end; ++it )
+        {
+            Frame* frame = *it;
+
+            MeshOptions* mopt = GetMeshOptions( frame );
+            for( uint k = 0, l = (uint) frame->Mesh.size(); k < l; k++ )
+            {
+                MeshSubset& ms = frame->Mesh[ k ];
+                if( mopt->DisabledSubsets[ k ] )
+                {
+                    ms.VerticesTransformedValid = false;
+                    continue;
+                }
+                ms.VerticesTransformedValid = true;
+
+                // Simple
+                size_t mcount = ms.FrameCombinedMatrixPointer.size();
+                if( !ms.BoneInfluences || !mcount )
+                {
+                    for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
+                    {
+                        Vertex3D& v = ms.Vertices[ i ];
+                        Vertex3D& vt = ms.VerticesTransformed[ i ];
+                        vt.Position = MatrixProj * frame->CombinedTransformationMatrix * v.Position;
+                        vt.Position.x = ( ( vt.Position.x - 1.0f ) * 0.5f + 0.5f ) * wf;
+                        vt.Position.y = ( ( 1.0f - vt.Position.y ) * 0.5f + 0.5f ) * hf;
+                    }
+                }
+                // Skinned
+                else
+                {
+                    for( size_t i = 0; i < mcount; i++ )
+                    {
+                        Matrix* m = ms.FrameCombinedMatrixPointer[ i ];
+                        if( m )
+                            BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
+                    }
+
+                    for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
+                    {
+                        Vertex3D& v = ms.Vertices[ i ];
+                        Vertex3D& vt = ms.VerticesTransformed[ i ];
+                        vt.Position = MatrixProj * v.Position;
+
+                        Vector position = Vector();
+                        for( int b = 0; b < int(ms.BoneInfluences); b++ )
+                        {
+                            Matrix& m = BoneMatrices[ int(v.BlendIndices[ b ]) ];
+                            position += m * v.Position * v.BlendWeights[ b ];
+                        }
+
+                        vt.Position = MatrixProj * position;
+                        vt.Position.x = ( ( vt.Position.x - 1.0f ) * 0.5f + 0.5f ) * wf;
+                        vt.Position.y = ( ( 1.0f - vt.Position.y ) * 0.5f + 0.5f ) * hf;
+                    }
+                }
+            }
         }
     }
     #endif
@@ -1196,7 +1272,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                         BoneMatrices[ k ] = ( *mesh_container->FrameCombinedMatrixPointer[ matrix_index ] ) * mesh_container->BoneOffsets[ matrix_index ];
                 }
 
-                Effect* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : EffectMain );
+                Effect* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : EffectSkinned );
 
                 if( effect->EffectParams )
                     D3D_HR( effect->DXInstance->ApplyParameterBlock( effect->EffectParams ) );
@@ -1247,7 +1323,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                 if( mopt->DisabledSubsets[ i ] )
                     continue;
 
-                Effect* effect = ( mopt->EffectSubsets[ i ] ? mopt->EffectSubsets[ i ] : EffectMain );
+                Effect* effect = ( mopt->EffectSubsets[ i ] ? mopt->EffectSubsets[ i ] : EffectSkinned );
 
                 if( effect )
                 {
@@ -1306,21 +1382,19 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
         DrawFrame( frame->FirstChild, with_shadow );
     #else
     MeshOptions* mopt = GetMeshOptions( frame );
-    for( uint n = 0, m = frame->Mesh.size(); n < m; n++ )
+    for( uint k = 0, l = (uint) frame->Mesh.size(); k < l; k++ )
     {
-        if( mopt->DisabledSubsets[ n ] )
+        if( mopt->DisabledSubsets[ k ] )
             continue;
 
-        MeshSubset& ms = frame->Mesh[ n ];
-        Texture**   textures = &mopt->TexSubsets[ n * EFFECT_TEXTURES ];
+        MeshSubset& ms = frame->Mesh[ k ];
+        Texture**   textures = &mopt->TexSubsets[ k * EFFECT_TEXTURES ];
 
-        GL( glBindVertexArray( VAO ) );
-        GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
-        GL( glBufferSubData( GL_ARRAY_BUFFER, 0, ms.Vertices.size() * sizeof( Vertex3D ), &ms.Vertices[ 0 ] ) );
-        GL( glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, ms.Indicies.size() * sizeof( short ), &ms.Indicies[ 0 ] ) );
+        GL( glBindVertexArray( ms.VAO ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
 
-        Effect* effect = EffectMain;
+        Effect* effect = ( ms.BoneInfluences > 0 ? EffectSkinned : EffectSimple );
         GL( glUseProgram( effect->Program ) );
 
         if( effect->ZoomFactor != -1 )
@@ -1345,23 +1419,25 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
             GL( glUniform1f( effect->BoneInfluences, (float) ms.BoneInfluences ) );
         if( effect->WorldMatrices != -1 )
         {
-            uint count = ms.FrameCombinedMatrixPointer.size();
-            if( count )
+            size_t mcount = ms.FrameCombinedMatrixPointer.size();
+            if( mcount )
             {
-                if( BoneMatrices.size() < count )
-                    BoneMatrices.resize( count );
-                for( uint i = 0; i < count; i++ )
+                for( size_t i = 0; i < mcount; i++ )
                 {
                     Matrix* m = ms.FrameCombinedMatrixPointer[ i ];
                     if( m )
                         BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
                 }
-                GL( glUniformMatrix4fv( effect->WorldMatrices, count, GL_TRUE, (float*) &BoneMatrices[ 0 ] ) );
+                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_TRUE, (float*) &BoneMatrices[ 0 ] ) );
             }
             else
             {
-                GL( glUniformMatrix4fv( effect->WorldMatrices, count, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
+                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
             }
+        }
+        if( effect->WorldMatrix != -1 )
+        {
+            GL( glUniformMatrix4fv( effect->WorldMatrices, 1, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
         }
 
         if( effect->IsNeedProcess )
@@ -1441,8 +1517,8 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
     // Create skinning effect
     if( !SoftwareSkinning )
     {
-        EffectMain = GraphicLoader::LoadEffect( D3DDevice, "3D_Default.fx", false );
-        if( !EffectMain )
+        EffectSkinned = GraphicLoader::LoadEffect( D3DDevice, "3D_Default.fx", false );
+        if( !EffectSkinned )
         {
             WriteLogF( _FUNC_, " - Fail to create effect, skinning switched to software.\n" );
             SoftwareSkinning = true;
@@ -1454,10 +1530,10 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
         return false;
 
     // Create skinning effect
-    EffectMain = GraphicLoader::LoadEffect( D3DDevice, "3D_Default.fx", false );
-    if( !EffectMain )
+    if( !( EffectSimple = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false ) ) ||
+        !( EffectSkinned = GraphicLoader::LoadEffect( D3DDevice, "3D_Skinned.fx", false ) ) )
     {
-        WriteLogF( _FUNC_, " - Fail to create effect.\n" );
+        WriteLogF( _FUNC_, " - Fail to create 3d effects.\n" );
         return false;
     }
 
@@ -1466,34 +1542,6 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
     LightColor[ 1 ] = 0.0f;
     LightColor[ 2 ] = 0.0f;
     LightColor[ 3 ] = 1.0f;
-
-    // Vertex buffer
-    GL( glGenBuffers( 1, &VBO ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
-    GL( glBufferData( GL_ARRAY_BUFFER, VBOSize * sizeof( Vertex3D ), NULL, GL_DYNAMIC_DRAW ) );
-
-    // Index buffer
-    GL( glGenBuffers( 1, &IBO ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, IBOSize * sizeof( ushort ), NULL, GL_DYNAMIC_DRAW ) );
-
-    // Vertex array
-    GL( glGenVertexArrays( 1, &VAO ) );
-    GL( glBindVertexArray( VAO ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
-    GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
-    GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
-    GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
-    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
-    GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
-    GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
-    GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
-    GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
-    GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
-    GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
-    for( uint i = 0; i <= 9; i++ )
-        GL( glEnableVertexAttribArray( i ) );
     #endif
 
     // Identity matrix
@@ -1571,7 +1619,8 @@ void Animation3d::Finish()
         delete *it;
     Animation3dXFile::xFiles.clear();
 
-    SAFEDEL( EffectMain );
+    SAFEDEL( EffectSimple );
+    SAFEDEL( EffectSkinned );
 
     GraphicLoader::FreeTexture( NULL );
 }
@@ -1670,9 +1719,9 @@ FLTPOINT Animation3d::Convert2dTo3d( int x, int y )
 {
     Vector coords;
     #ifdef FO_D3D
-    Vec3Unproject( Vector( (float) x, (float) y, FixedZ ), coords );
+    VecUnproject( Vector( (float) x, (float) y, FixedZ ), coords );
     #else
-    Vec3Unproject( Vector( (float) x, (float) y, 0.0f ), coords );
+    VecUnproject( Vector( (float) x, (float) y, 0.0f ), coords );
     #endif
     return FLTPOINT( coords.x, coords.y );
 }
@@ -1680,13 +1729,13 @@ FLTPOINT Animation3d::Convert2dTo3d( int x, int y )
 INTPOINT Animation3d::Convert3dTo2d( float x, float y )
 {
     Vector coords;
-    Vec3Project( Vector( x, y, FixedZ ), MatrixEmpty, coords );
+    VecProject( Vector( x, y, FixedZ ), MatrixEmpty, coords );
     return INTPOINT( (int) coords.x, (int) coords.y );
 }
 
 void Animation3d::SetDefaultEffect( Effect* effect )
 {
-    EffectMain = effect;
+    EffectSkinned = effect;
 }
 
 bool Animation3d::Is2dEmulation()
@@ -2713,18 +2762,8 @@ bool Animation3dXFile::SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame
     for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
-        if( ms.Vertices.size() > VBOSize )
-        {
-            VBOSize = ms.Vertices.size();
-            GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
-            GL( glBufferData( GL_ARRAY_BUFFER, VBOSize * sizeof( Vertex3D ), NULL, GL_DYNAMIC_DRAW ) );
-        }
-        if( ms.Indicies.size() > IBOSize )
-        {
-            IBOSize = ms.Indicies.size();
-            GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
-            GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, IBOSize * sizeof( ushort ), NULL, GL_DYNAMIC_DRAW ) );
-        }
+        if( BoneMatrices.size() < ms.FrameCombinedMatrixPointer.size() )
+            BoneMatrices.resize( ms.FrameCombinedMatrixPointer.size() );
     }
 
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )

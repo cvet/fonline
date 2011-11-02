@@ -100,11 +100,11 @@ private:
     AnimParams     animLink;
     bool           childChecker;
 
-    bool         FrameMove( float elapsed, int x, int y, float scale, bool software_skinning );
+    bool         FrameMove( float elapsed, int x, int y, float scale, bool transform );
     void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
     bool         DrawFrame( Frame* frame, bool with_shadow );
     bool         DrawMeshEffect( MeshSubset* mesh, uint subset, Effect* effect, Texture** textures, EffectValue_ technique );
-    bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir );
+    bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
     bool         SetupBordersFrame( Frame* frame, FLTRECT& borders );
     void         ProcessBorders();
     float        GetSpeed();
@@ -116,24 +116,20 @@ public:
     Animation3d();
     ~Animation3d();
 
-    void SetAnimation( uint anim1, uint anim2, int* layers, int flags );
-    bool IsAnimation( uint anim1, uint anim2 );
-    bool CheckAnimation( uint& anim1, uint& anim2 );
-    int  GetAnim1();
-    int  GetAnim2();
-    void SetDir( int dir );
-    void SetDirAngle( int dir_angle );
-    void SetRotation( float rx, float ry, float rz );
-    void SetScale( float sx, float sy, float sz );
-    void SetSpeed( float speed );
-    void SetTimer( bool use_game_timer );
-    void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool Draw( int x, int y, float scale, FLTRECT* stencil, uint color );
-    void SetDrawPos( int x, int y )
-    {
-        drawXY.X = x;
-        drawXY.Y = y;
-    }
+    void     SetAnimation( uint anim1, uint anim2, int* layers, int flags );
+    bool     IsAnimation( uint anim1, uint anim2 );
+    bool     CheckAnimation( uint& anim1, uint& anim2 );
+    int      GetAnim1();
+    int      GetAnim2();
+    void     SetDir( int dir );
+    void     SetDirAngle( int dir_angle );
+    void     SetRotation( float rx, float ry, float rz );
+    void     SetScale( float sx, float sy, float sz );
+    void     SetSpeed( float speed );
+    void     SetTimer( bool use_game_timer );
+    void     EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
+    bool     Draw( int x, int y, float scale, FLTRECT* stencil, uint color );
+    void     SetDrawPos( int x, int y );
     bool     IsAnimationPlaying();
     bool     IsIntersect( int x, int y );
     void     SetSprId( uint value )             { sprId = value; }
