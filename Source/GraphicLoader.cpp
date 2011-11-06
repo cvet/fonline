@@ -939,15 +939,15 @@ public:
 
 EffectVec GraphicLoader::loadedEffects;
 
-Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool use_in_2d )
+Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool use_in_2d, const char* defines /* = NULL */ )
 {
     EffectInstance effect_inst;
     memzero( &effect_inst, sizeof( effect_inst ) );
     effect_inst.EffectFilename = (char*) effect_name;
-    return LoadEffect( device, &effect_inst, NULL, use_in_2d );
+    return LoadEffect( device, &effect_inst, NULL, use_in_2d, defines );
 }
 
-Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path, bool use_in_2d )
+Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path, bool use_in_2d, const char* defines /* = NULL */ )
 {
     if( !effect_inst || !effect_inst->EffectFilename || !effect_inst->EffectFilename[ 0 ] )
         return NULL;
@@ -957,8 +957,11 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name, effect_name ) && effect->Defaults == effect_inst->Defaults )
+        if( Str::CompareCase( effect->Name, effect_name ) && effect->Defaults == effect_inst->Defaults &&
+            Str::Compare( effect->Defines, defines ? defines : "" ) )
+        {
             return effect;
+        }
     }
 
     #ifdef FO_D3D
@@ -1048,6 +1051,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
     Effect* effect = new Effect();
     effect->Name = Str::Duplicate( effect_name );
+    effect->Defines = Str::Duplicate( "" );
     effect->DXInstance = dxeffect;
     effect->EffectFlags = D3DXFX_DONOTSAVESTATE;
     effect->Defaults = NULL;
@@ -1170,10 +1174,10 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GLuint vs, fs;
     GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
     GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-    const char* vs_str[] = { "#define VERTEX_SHADER", str };
-    GL( glShaderSource( vs, 2, (const GLchar**) vs_str, NULL ) );
-    const char* fs_str[] = { "#define FRAGMENT_SHADER", str };
-    GL( glShaderSource( fs, 2, (const GLchar**) fs_str, NULL ) );
+    const char* vs_str[] = { "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str };
+    GL( glShaderSource( vs, 4, (const GLchar**) vs_str, NULL ) );
+    const char* fs_str[] = { "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str };
+    GL( glShaderSource( fs, 4, (const GLchar**) fs_str, NULL ) );
 
     // Info parser
     struct ShaderInfo
@@ -1277,6 +1281,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     Effect* effect = new Effect();
     memzero( effect, sizeof( Effect ) );
     effect->Name = Str::Duplicate( effect_name );
+    effect->Defines = Str::Duplicate( defines ? defines : "" );
     effect->Program = program;
     effect->VertexShader = vs;
     effect->FragmentShader = fs;
@@ -1297,11 +1302,16 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
+    # ifdef SHADOW_MAP
+    GL( effect->ShadowMap = glGetUniformLocation( program, "ShadowMap" ) );
+    GL( effect->ShadowMapSize = glGetUniformLocation( program, "ShadowMapSize" ) );
+    GL( effect->ShadowMapSamples = glGetUniformLocation( program, "ShadowMapSamples" ) );
+    GL( effect->ShadowMapMatrix = glGetUniformLocation( program, "ShadowMapMatrix" ) );
+    # endif
     GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
 
     GL( effect->BoneInfluences = glGetUniformLocation( program, "BoneInfluences" ) );
     GL( effect->GroundPosition = glGetUniformLocation( program, "GroundPosition" ) );
-    GL( effect->LightColor = glGetUniformLocation( program, "LightColor" ) );
     GL( effect->MaterialAmbient = glGetUniformLocation( program, "MaterialAmbient" ) );
     GL( effect->MaterialDiffuse = glGetUniformLocation( program, "MaterialDiffuse" ) );
     GL( effect->WorldMatrices = glGetUniformLocation( program, "WorldMatrices" ) );
@@ -1415,9 +1425,9 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
                     effect->DXInstance->SetTexture( effect->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Instance : NULL );
                     #else
                     GLuint id = ( textures && textures[ i ] ? textures[ i ]->Id : 0 );
-                    GL( glActiveTexture( GL_TEXTURE1 + i ) );
+                    GL( glActiveTexture( GL_TEXTURE2 + i ) );
                     GL( glBindTexture( GL_TEXTURE_2D, id ) );
-                    GL( glUniform1i( effect->Textures[ i ], 1 + i ) );
+                    GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
                     if( effect->TexturesSize[ i ] != -1 && textures && textures[ i ] )
                         GL( glUniform4fv( effect->TexturesSize[ i ], 1, textures[ i ]->SizeData ) );
                     #endif

@@ -77,6 +77,7 @@ struct EffectInstance
 struct Effect
 {
     const char*    Name;
+    const char*    Defines;
 
     #ifdef FO_D3D
     LPD3DXEFFECT   DXInstance;
@@ -99,6 +100,12 @@ struct Effect
     GLint          ColorMapSamples;
     GLint          EggMap;
     GLint          EggMapSize;
+    # ifdef SHADOW_MAP
+    GLint          ShadowMap;
+    GLint          ShadowMapSize;
+    GLint          ShadowMapSamples;
+    GLint          ShadowMapMatrix;
+    # endif
     GLint          SpriteBorder;
     #endif
 
@@ -106,7 +113,6 @@ struct Effect
     EffectValue_   ProjectionMatrix;
     EffectValue_   BoneInfluences;
     EffectValue_   GroundPosition;
-    EffectValue_   LightColor;
     EffectValue_   MaterialAmbient;
     EffectValue_   MaterialDiffuse;
     EffectValue_   WorldMatrices;

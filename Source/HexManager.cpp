@@ -1892,6 +1892,7 @@ void HexManager::DrawMap()
     #ifndef FO_D3D
     // Separate render target
     SprMngr.PushRenderTarget( rtMap );
+    SprMngr.ClearRenderTarget( rtMap, 0 );
     #endif
 
     // Rebuild light

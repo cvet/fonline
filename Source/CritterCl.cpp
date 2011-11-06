@@ -1603,7 +1603,7 @@ void CritterCl::SetOffs( short set_ox, short set_oy, bool move_text )
     {
         if( !Anim3d )
         {
-            SprMngr.GetDrawCntrRect( SprDraw, &DRect );
+            SprMngr.GetDrawRect( SprDraw, DRect );
             if( move_text )
                 textRect = DRect;
         }
@@ -1621,7 +1621,7 @@ void CritterCl::SetSprRect()
         if( !Anim3d )
         {
             INTRECT old = DRect;
-            SprMngr.GetDrawCntrRect( SprDraw, &DRect );
+            SprMngr.GetDrawRect( SprDraw, DRect );
             textRect.L += DRect.L - old.L;
             textRect.R += DRect.L - old.L;
             textRect.T += DRect.T - old.T;
@@ -1642,7 +1642,7 @@ INTRECT CritterCl::GetTextRect()
     {
         if( Anim3d )
         {
-            SprMngr.GetDrawCntrRect( SprDraw, &textRect );
+            SprMngr.GetDrawRect( SprDraw, textRect );
             textRect( -GameOpt.ScrOx, -GameOpt.ScrOy - 3 );
         }
         return textRect;

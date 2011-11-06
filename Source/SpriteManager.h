@@ -270,7 +270,7 @@ private:
     RenderTarget    rtContours;
     RenderTarget    rtContoursMid;
     RenderTarget    rtPrimitive;
-    RenderTarget    rt3D;
+    RenderTarget    rt3D, rt3DMS;
     RenderTargetVec rtStack;
     #endif
 
@@ -295,7 +295,7 @@ public:
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();
-    void DrawRenderTarget( RenderTarget& rt );
+    void DrawRenderTarget( RenderTarget& rt, INTRECT* region = NULL );
     #endif
 
     // Surfaces
@@ -338,6 +338,8 @@ private:
     AnyFrames* LoadAnimationMos( const char* fname, int path_type );
     AnyFrames* LoadAnimationBam( const char* fname, int path_type );
     AnyFrames* LoadAnimationOther( const char* fname, int path_type );
+    bool       Render3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color );
+    bool       Render3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
     uint       Render3dSprite( Animation3d* anim3d, int dir, int time_proc );
 
     // Draw
@@ -347,7 +349,7 @@ public:
     uint        GetSpritesColor()         { return baseColor; }
     SprInfoVec& GetSpritesInfo()          { return sprData; }
     SpriteInfo* GetSpriteInfo( uint id )  { return sprData[ id ]; }
-    void        GetDrawCntrRect( Sprite* prep, INTRECT* prect );
+    void        GetDrawRect( Sprite* prep, INTRECT& rect );
     uint        GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
     bool        IsPixNoTransp( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
     bool        IsEggTransp( int pix_x, int pix_y );

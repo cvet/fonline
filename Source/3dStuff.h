@@ -102,7 +102,7 @@ private:
 
     bool         FrameMove( float elapsed, int x, int y, float scale, bool transform );
     void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
-    bool         DrawFrame( Frame* frame, bool with_shadow );
+    bool         DrawFrame( Frame* frame, bool shadow );
     bool         DrawMeshEffect( MeshSubset* mesh, uint subset, Effect* effect, Texture** textures, EffectValue_ technique );
     bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
     bool         SetupBordersFrame( Frame* frame, FLTRECT& borders );
@@ -116,32 +116,33 @@ public:
     Animation3d();
     ~Animation3d();
 
-    void     SetAnimation( uint anim1, uint anim2, int* layers, int flags );
-    bool     IsAnimation( uint anim1, uint anim2 );
-    bool     CheckAnimation( uint& anim1, uint& anim2 );
-    int      GetAnim1();
-    int      GetAnim2();
-    void     SetDir( int dir );
-    void     SetDirAngle( int dir_angle );
-    void     SetRotation( float rx, float ry, float rz );
-    void     SetScale( float sx, float sy, float sz );
-    void     SetSpeed( float speed );
-    void     SetTimer( bool use_game_timer );
-    void     EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool     Draw( int x, int y, float scale, FLTRECT* stencil, uint color );
-    void     SetDrawPos( int x, int y );
-    bool     IsAnimationPlaying();
-    bool     IsIntersect( int x, int y );
-    void     SetSprId( uint value )             { sprId = value; }
-    uint     GetSprId()                         { return sprId; }
-    void     EnableSetupBorders( bool enabled ) { bordersDisabled = !enabled; }
-    void     SetupBorders();
-    INTPOINT GetBaseBordersPivot();
-    INTPOINT GetFullBordersPivot();
-    INTRECT  GetBaseBorders();
-    INTRECT  GetFullBorders();
-    INTRECT  GetExtraBorders();
-    void     GetRenderFramesData( float& period, int& proc_from, int& proc_to );
+    void SetAnimation( uint anim1, uint anim2, int* layers, int flags );
+    bool IsAnimation( uint anim1, uint anim2 );
+    bool CheckAnimation( uint& anim1, uint& anim2 );
+    int  GetAnim1();
+    int  GetAnim2();
+    void SetDir( int dir );
+    void SetDirAngle( int dir_angle );
+    void SetRotation( float rx, float ry, float rz );
+    #ifdef SHADOW_MAP
+    void SetPitch( float angle );
+    #endif
+    void    SetScale( float sx, float sy, float sz );
+    void    SetSpeed( float speed );
+    void    SetTimer( bool use_game_timer );
+    void    EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
+    bool    Draw( int x, int y, float scale, FLTRECT* stencil, uint color );
+    void    SetDrawPos( int x, int y );
+    bool    IsAnimationPlaying();
+    bool    IsIntersect( int x, int y );
+    void    SetSprId( uint value )             { sprId = value; }
+    uint    GetSprId()                         { return sprId; }
+    void    EnableSetupBorders( bool enabled ) { bordersDisabled = !enabled; }
+    void    SetupBorders();
+    INTRECT GetBaseBorders( INTPOINT* pivot = NULL );
+    INTRECT GetFullBorders( INTPOINT* pivot = NULL );
+    INTRECT GetExtraBorders( INTPOINT* pivot = NULL );
+    void    GetRenderFramesData( float& period, int& proc_from, int& proc_to );
 
     static bool         StartUp( Device_ device, bool software_skinning );
     static bool         SetScreenSize( int width, int height );

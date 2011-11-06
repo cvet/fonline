@@ -266,11 +266,12 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     if( !CreateRenderTarget( rtMain, true ) ||
         !CreateRenderTarget( rtContours, false ) ||
         !CreateRenderTarget( rtContoursMid, false ) ||
-        !CreateRenderTarget( rt3D, true, true ) )
+        !CreateRenderTarget( rt3D, true ) )
     {
         WriteLog( "Can't create render targets.\n" );
         return false;
     }
+    CreateRenderTarget( rt3DMS, true, true );
     rtMain.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_FINAL ];
     PushRenderTarget( rtMain );
     #endif
@@ -474,8 +475,8 @@ bool SpriteManager::InitRenderStates()
     GL( glShadeModel( GL_SMOOTH ) );
     GL( glEnable( GL_POINT_SMOOTH ) );
     GL( glEnable( GL_LINE_SMOOTH ) );
-    GL( glCullFace( GL_FRONT ) );
-    GL( glFrontFace( GL_CW ) );
+    // GL( glCullFace( GL_FRONT ) );
+    // GL( glFrontFace( GL_CW ) );
     GL( glDisable( GL_CULL_FACE ) );
     // GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
     // GL( glReadBuffer( GL_BACK ) );
@@ -621,6 +622,9 @@ bool SpriteManager::Restore()
 #ifndef FO_D3D
 bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */ )
 {
+    // Zero data
+    memzero( &rt, sizeof( rt ) );
+
     // Multisampling
     static int samples = -1;
     if( multisampling && samples == -1 )
@@ -645,10 +649,9 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         }
     }
     if( multisampling && samples <= 1 )
-        multisampling = false;
+        return false;
 
     // Framebuffer
-    memzero( &rt, sizeof( rt ) );
     GL( glGenFramebuffers( 1, &rt.FBO ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
 
@@ -667,7 +670,6 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     if( !multisampling )
     {
         GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-        GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
         GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
@@ -699,6 +701,11 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
     }
 
+    GLenum status;
+    GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
+    if( status != GL_FRAMEBUFFER_COMPLETE )
+        WriteLogF( _FUNC_, "Framebuffer not created.\n" );
+
     if( !multisampling )
         rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ];
     else
@@ -719,12 +726,6 @@ void SpriteManager::ClearRenderTarget( RenderTarget& rt, uint color )
     float g = (float) ( ( color >>  8 ) & 0xFF ) / 255.0f;
     float b = (float) ( ( color >>  0 ) & 0xFF ) / 255.0f;
     GL( glClearColor( r, g, b, a ) );
-    int   depth_stencil_bit = ( rt.DepthStencilBuffer ? GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT : 0 );
-    if( depth_stencil_bit )
-    {
-        GL( glClearDepth( 1.0 ) );
-        GL( glClearStencil( 0 ) );
-    }
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
 }
@@ -763,30 +764,61 @@ void SpriteManager::PopRenderTarget()
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget& rt )
+void SpriteManager::DrawRenderTarget( RenderTarget& rt, INTRECT* region /* = NULL */ )
 {
     Flush();
 
-    uint  mulpos = 0;
-    float w = (float) rt.TargetTexture->Width;
-    float h = (float) rt.TargetTexture->Height;
+    if( !region )
+    {
+        uint  mulpos = 0;
+        float w = (float) rt.TargetTexture->Width;
+        float h = (float) rt.TargetTexture->Height;
 
-    vBuffer[ mulpos ].x = 0.0f;
-    vBuffer[ mulpos ].y = h;
-    vBuffer[ mulpos ].tu = 0.0f;
-    vBuffer[ mulpos++ ].tv = 0.0f;
-    vBuffer[ mulpos ].x = 0.0f;
-    vBuffer[ mulpos ].y = 0.0f;
-    vBuffer[ mulpos ].tu = 0.0f;
-    vBuffer[ mulpos++ ].tv = 1.0f;
-    vBuffer[ mulpos ].x = w;
-    vBuffer[ mulpos ].y = 0.0f;
-    vBuffer[ mulpos ].tu = 1.0f;
-    vBuffer[ mulpos++ ].tv = 1.0f;
-    vBuffer[ mulpos ].x = w;
-    vBuffer[ mulpos ].y = h;
-    vBuffer[ mulpos ].tu = 1.0f;
-    vBuffer[ mulpos++ ].tv = 0.0f;
+        vBuffer[ mulpos ].x = 0.0f;
+        vBuffer[ mulpos ].y = h;
+        vBuffer[ mulpos ].tu = 0.0f;
+        vBuffer[ mulpos++ ].tv = 0.0f;
+        vBuffer[ mulpos ].x = 0.0f;
+        vBuffer[ mulpos ].y = 0.0f;
+        vBuffer[ mulpos ].tu = 0.0f;
+        vBuffer[ mulpos++ ].tv = 1.0f;
+        vBuffer[ mulpos ].x = w;
+        vBuffer[ mulpos ].y = 0.0f;
+        vBuffer[ mulpos ].tu = 1.0f;
+        vBuffer[ mulpos++ ].tv = 1.0f;
+        vBuffer[ mulpos ].x = w;
+        vBuffer[ mulpos ].y = h;
+        vBuffer[ mulpos ].tu = 1.0f;
+        vBuffer[ mulpos++ ].tv = 0.0f;
+    }
+    else
+    {
+        uint    mulpos = 0;
+        FLTRECT regionf;
+        regionf.L = (float) region->L;
+        regionf.T = (float) region->T;
+        regionf.R = (float) region->R;
+        regionf.B = (float) region->B;
+        float w = (float) rt.TargetTexture->Width;
+        float h = (float) rt.TargetTexture->Height;
+
+        vBuffer[ mulpos ].x = regionf.L;
+        vBuffer[ mulpos ].y = regionf.B;
+        vBuffer[ mulpos ].tu = regionf.L / w;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / h;
+        vBuffer[ mulpos ].x = regionf.L;
+        vBuffer[ mulpos ].y = regionf.T;
+        vBuffer[ mulpos ].tu = regionf.L / w;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / h;
+        vBuffer[ mulpos ].x = regionf.R;
+        vBuffer[ mulpos ].y = regionf.T;
+        vBuffer[ mulpos ].tu = regionf.R / w;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / h;
+        vBuffer[ mulpos ].x = regionf.R;
+        vBuffer[ mulpos ].y = regionf.B;
+        vBuffer[ mulpos ].tu = regionf.R / w;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / h;
+    }
 
     curSprCnt = 1;
     dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
@@ -3100,7 +3132,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     else
         anim3d->SetDir( dir );
     anim3d->SetAnimation( 0, time_proc, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
-    Draw3d( spr3dSurfWidth / 2, spr3dSurfHeight - spr3dSurfHeight / 4, 1.0f, anim3d, NULL, 0xFFFFFFFF );
+    Render3d( spr3dSurfWidth / 2, spr3dSurfHeight - spr3dSurfHeight / 4, 1.0f, anim3d, NULL, 0xFFFFFFFF );
     anim3d->EnableSetupBorders( true );
     anim3d->SetupBorders();
     Animation3d::SetScreenSize( modeWidth, modeHeight );
@@ -3166,7 +3198,8 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
 
     // Fill from memory
     SpriteInfo* si = new (nothrow) SpriteInfo();
-    INTPOINT    p = anim3d->GetFullBordersPivot();
+    INTPOINT    p;
+    anim3d->GetFullBorders( &p );
     si->OffsX = fb.W() / 2 - p.X;
     si->OffsY = fb.H() - p.Y;
     return FillSurfaceFromMemory( si, data, size );
@@ -3182,6 +3215,7 @@ Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_typ
     if( !anim3d )
         return NULL;
 
+    // Add sprite information
     SpriteInfo* si = new (nothrow) SpriteInfo();
     uint        index = 1;
     for( uint j = (uint) sprData.size(); index < j; index++ )
@@ -3191,6 +3225,9 @@ Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_typ
         sprData[ index ] = si;
     else
         sprData.push_back( si );
+
+    // Fake surface, filled after rendering
+    si->Surf = new Surface();
 
     // Cross links
     anim3d->SetSprId( index );
@@ -3204,7 +3241,11 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
     {
         uint spr_id = anim3d->GetSprId();
         if( spr_id )
+        {
+            sprData[ spr_id ]->Surf->TextureOwner = NULL;
+            SAFEDEL( sprData[ spr_id ]->Surf );
             SAFEDEL( sprData[ spr_id ] );
+        }
         SAFEDEL( anim3d );
     }
 }
@@ -3352,9 +3393,12 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
 
     if( si->Anim3d )
     {
-        Flush();
-        Draw3d( x, y, 1.0f, si->Anim3d, NULL, color );
+        #ifdef FO_D3D
+        Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
         return true;
+        #else
+        Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
+        #endif
     }
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
@@ -3435,9 +3479,12 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
 
     if( si->Anim3d )
     {
-        Flush();
-        Draw3d( x, y, 1.0f, si->Anim3d, NULL, color );
+        #ifdef FO_D3D
+        Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
         return true;
+        #else
+        Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
+        #endif
     }
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
@@ -3508,7 +3555,7 @@ uint SpriteManager::PackColor( int r, int g, int b )
     return COLOR_XRGB( r, g, b );
 }
 
-void SpriteManager::GetDrawCntrRect( Sprite* prep, INTRECT* prect )
+void SpriteManager::GetDrawRect( Sprite* prep, INTRECT& rect )
 {
     uint id = ( prep->PSprId ? *prep->PSprId : prep->SprId );
     if( id >= sprData.size() )
@@ -3525,19 +3572,18 @@ void SpriteManager::GetDrawCntrRect( Sprite* prep, INTRECT* prect )
             x += *prep->OffsX;
         if( prep->OffsY )
             y += *prep->OffsY;
-        prect->L = x;
-        prect->T = y;
-        prect->R = x + si->Width;
-        prect->B = y + si->Height;
+        rect.L = x;
+        rect.T = y;
+        rect.R = x + si->Width;
+        rect.B = y + si->Height;
     }
     else
     {
-        *prect = si->Anim3d->GetBaseBorders();
-        INTRECT& r = *prect;
-        r.L *= (int) ( r.L * GameOpt.SpritesZoom );
-        r.T *= (int) ( r.T * GameOpt.SpritesZoom );
-        r.R *= (int) ( r.R * GameOpt.SpritesZoom );
-        r.B *= (int) ( r.B * GameOpt.SpritesZoom );
+        rect = si->Anim3d->GetBaseBorders();
+        rect.L = (int) ( (float) rect.L * GameOpt.SpritesZoom );
+        rect.T = (int) ( (float) rect.T * GameOpt.SpritesZoom );
+        rect.R = (int) ( (float) rect.R * GameOpt.SpritesZoom );
+        rect.B = (int) ( (float) rect.B * GameOpt.SpritesZoom );
     }
 }
 
@@ -3583,16 +3629,24 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
 
     if( !si->Anim3d )
     {
-        eggX = spr->ScrX - si->Width / 2 + si->OffsX + si->Width / 2 - sprEgg->Width / 2 + *spr->OffsX;
-        eggY = spr->ScrY - si->Height + si->OffsY + si->Height / 2 - sprEgg->Height / 2 + *spr->OffsY;
+        eggX = spr->ScrX + si->OffsX - sprEgg->Width / 2 + *spr->OffsX;
+        eggY = spr->ScrY - si->Height / 2 + si->OffsY - sprEgg->Height / 2 + *spr->OffsY;
     }
     else
     {
+        #ifdef FO_D3D
         INTRECT bb = si->Anim3d->GetBaseBorders();
         int     w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
         int     h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
         eggX = spr->ScrX - w / 2 + si->OffsX + w / 2 - sprEgg->Width / 2 + *spr->OffsX;
         eggY = spr->ScrY - h + si->OffsY + h / 2 - sprEgg->Height / 2 + *spr->OffsY;
+        #else
+        INTRECT bb = si->Anim3d->GetFullBorders();
+        int     w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
+        int     h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
+        eggX = spr->ScrX - sprEgg->Width / 2 + *spr->OffsX;
+        eggY = spr->ScrY - h / 2 - sprEgg->Height / 2 + *spr->OffsY;
+        #endif
     }
 
     eggHx = hx;
@@ -3628,6 +3682,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         if( !si )
             continue;
 
+        // Coords
         int x = spr->ScrX - si->Width / 2 + si->OffsX;
         int y = spr->ScrY - si->Height + si->OffsY;
         x += GameOpt.ScrOx;
@@ -3636,19 +3691,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             x += *spr->OffsX;
         if( spr->OffsY )
             y += *spr->OffsY;
-
-        // Check borders
-        if( !si->Anim3d )
-        {
-            if( x / GameOpt.SpritesZoom > modeWidth || ( x + si->Width ) / GameOpt.SpritesZoom < 0 || y / GameOpt.SpritesZoom > modeHeight || ( y + si->Height ) / GameOpt.SpritesZoom < 0 )
-                continue;
-        }
-        else
-        {
-            // Todo: check 3d borders
-//			INTRECT fb=si->Anim3d->GetExtraBorders();
-//			if(x/GameOpt.SpritesZoom>modeWidth || (x+si->Width)/GameOpt.SpritesZoom<0 || y/GameOpt.SpritesZoom>modeHeight || (y+si->Height)/GameOpt.SpritesZoom<0) continue;
-        }
+        float zoom = GameOpt.SpritesZoom;
 
         // Base color
         uint cur_color;
@@ -3719,6 +3762,14 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             cur_color &= spr->FlashMask;
         }
 
+        #ifdef FO_D3D
+        // Check borders
+        if( !si->Anim3d )
+        {
+            if( x / zoom > modeWidth || ( x + si->Width ) / zoom < 0 || y / zoom > modeHeight || ( y + si->Height ) / zoom < 0 )
+                continue;
+        }
+
         // 3d model
         if( si->Anim3d )
         {
@@ -3726,15 +3777,15 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             Flush();
             if( egg_trans )
             {
-                #ifdef FO_D3D
+                # ifdef FO_D3D
                 D3D_HR( d3dDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_DISABLE ) );
                 D3D_HR( d3dDevice->SetTexture( 1, NULL ) );
-                #endif
+                # endif
                 egg_trans = false;
             }
 
             // Draw 3d animation
-            Draw3d( (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ), 1.0f / GameOpt.SpritesZoom, si->Anim3d, NULL, cur_color );
+            Render3d( (int) ( x / zoom ), (int) ( y / zoom ), 1.0f / zoom, si->Anim3d, NULL, cur_color );
 
             // Process contour effect
             if( collect_contours && spr->ContourType )
@@ -3751,6 +3802,24 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
             continue;
         }
+        #else
+        // Render 3d
+        if( si->Anim3d )
+        {
+            x += si->Width / 2 - si->OffsX;
+            y += si->Height - si->OffsY;
+            x = (int) ( (float) x / zoom );
+            y = (int) ( (float) y / zoom );
+            Render3d( x, y, 1.0f / zoom, si->Anim3d, NULL, 0  );
+            x -= si->Width / 2 - si->OffsX;
+            y -= si->Height - si->OffsY;
+            zoom = 1.0f;
+        }
+
+        // Check borders
+        if( x / zoom > modeWidth || ( x + si->Width ) / zoom < 0 || y / zoom > modeHeight || ( y + si->Height ) / zoom < 0 )
+            continue;
+        #endif
 
         // 2d sprite
         // Egg process
@@ -3791,8 +3860,8 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 float y2f = (float) ( y2 + SURF_SPRITES_OFFS );
 
                 int   mulpos = curSprCnt * 4;
-                vBuffer[ mulpos ].tu2 = x1f / eggSurfWidth;
-                vBuffer[ mulpos ].tv2 = y2f / eggSurfHeight;
+                vBuffer[ mulpos + 0 ].tu2 = x1f / eggSurfWidth;
+                vBuffer[ mulpos + 0 ].tv2 = y2f / eggSurfHeight;
                 vBuffer[ mulpos + 1 ].tu2 = x1f / eggSurfWidth;
                 vBuffer[ mulpos + 1 ].tv2 = y1f / eggSurfHeight;
                 vBuffer[ mulpos + 2 ].tu2 = x2f / eggSurfWidth;
@@ -3821,10 +3890,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             dipQueue.back().SpritesCount++;
 
         // Casts
-        float xf = (float) x / GameOpt.SpritesZoom;
-        float yf = (float) y / GameOpt.SpritesZoom;
-        float wf = (float) si->Width / GameOpt.SpritesZoom;
-        float hf = (float) si->Height / GameOpt.SpritesZoom;
+        float xf = (float) x / zoom;
+        float yf = (float) y / zoom;
+        float wf = (float) si->Width / zoom;
+        float hf = (float) si->Height / zoom;
 
         // Fill buffer
         int mulpos = curSprCnt * 4;
@@ -3856,8 +3925,8 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Cutted sprite
         if( spr->CutType )
         {
-            xf = (float) ( x + spr->CutX ) / GameOpt.SpritesZoom;
-            wf = spr->CutW / GameOpt.SpritesZoom;
+            xf = (float) ( x + spr->CutX ) / zoom;
+            wf = spr->CutW / zoom;
             vBuffer[ mulpos - 4 ].x = xf;
             vBuffer[ mulpos - 4 ].tu = spr->CutTexL;
             vBuffer[ mulpos - 3 ].x = xf;
@@ -3882,7 +3951,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         }
 
         // Draw
-        if( ++curSprCnt == flushSprCnt )
+        if( ++curSprCnt == flushSprCnt || si->Anim3d )
             Flush();
 
         #ifdef FONLINE_MAPPER
@@ -3921,7 +3990,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         if( GameOpt.ShowSpriteCuts && spr->CutType )
         {
             PointVec cut;
-            float    z = GameOpt.SpritesZoom;
+            float    z = zoom;
             float    oy = ( spr->CutType == SPRITE_CUT_HORIZONTAL ? 3.0f : -5.2f ) / z;
             # ifdef FO_D3D
             float    x1 = (float) ( spr->ScrX - si->Width / 2 + spr->CutX + GameOpt.ScrOx + 1.0f ) / z - 0.5f;
@@ -3943,7 +4012,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Draw order
         if( GameOpt.ShowDrawOrder )
         {
-            float z = GameOpt.SpritesZoom;
+            float z = zoom;
             int   x1, y1;
 
             if( !spr->CutType )
@@ -4410,34 +4479,85 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     return true;
 }
 
-bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color )
+bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color )
 {
     // Draw model in another render target
     #ifdef FO_D3D
     Flush();
     anim3d->Draw( x, y, scale, stencil, color );
     #else
-    PushRenderTarget( rt3D );
-    anim3d->Draw( x, y, scale, stencil, color );
+    // Render states
+    GL( glDisable( GL_BLEND ) );
+
+    // Set render target
+    if( rt3DMS.FBO )
+    {
+        PushRenderTarget( rt3DMS );
+        ClearRenderTarget( rt3DMS, 0 );
+        ClearRenderTargetDS( rt3DMS, true, stencil ? true : false );
+    }
+    else
+    {
+        PushRenderTarget( rt3D );
+        ClearRenderTarget( rt3D, 0 );
+        ClearRenderTargetDS( rt3D, true, stencil ? true : false );
+    }
+
+    // Draw model
+    anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
+
+    // Restore render target
     PopRenderTarget();
-    DrawRenderTarget( rt3D );
-    ClearRenderTarget( rt3D, 0 );
-    ClearRenderTargetDS( rt3D, true, false );
+
+    // Copy from multisampled texture to default
+    INTPOINT pivot;
+    INTRECT  borders = anim3d->GetExtraBorders( &pivot );
+    if( rt3DMS.FBO )
+    {
+        PushRenderTarget( rt3D );
+        ClearRenderTarget( rt3D, 0 );
+        DrawRenderTarget( rt3DMS, &borders );
+        PopRenderTarget();
+    }
+
+    // Return render states
+    GL( glEnable( GL_BLEND ) );
+
+    // Fill sprite info
+    SpriteInfo* si = GetSpriteInfo( anim3d->GetSprId() );
+    si->Surf->TextureOwner = rt3D.TargetTexture;
+    si->Surf->Width = rt3D.TargetTexture->Width;
+    si->Surf->Height = rt3D.TargetTexture->Height;
+    int pivx = ( borders.L < 0 ? -borders.L : 0 );
+    int pivy = ( borders.T < 0 ? -borders.T : 0 );
+    borders.L = CLAMP( borders.L, 0, modeWidth );
+    borders.T = CLAMP( borders.T, 0, modeHeight );
+    borders.R = CLAMP( borders.R, 0, modeWidth );
+    borders.B = CLAMP( borders.B, 0, modeHeight );
+    si->Width = borders.W() - 1;
+    si->Height = borders.H() - 1;
+    si->SprRect(
+        (float) borders.L / rt3D.TargetTexture->SizeData[ 0 ],
+        1.0f - (float) borders.T / rt3D.TargetTexture->SizeData[ 1 ],
+        (float) borders.R / rt3D.TargetTexture->SizeData[ 0 ],
+        1.0f - (float) borders.B / rt3D.TargetTexture->SizeData[ 1 ] );
+    si->OffsX = si->Width / 2 - pivot.X + pivx;
+    si->OffsY = si->Height - pivot.Y + pivy;
     #endif
 
-    // Restore 2d stream
     #ifdef FO_D3D
+    // Restore 2d stream
     D3D_HR( d3dDevice->SetIndices( ibMain ) );
     D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( Vertex ) ) );
     #endif
     return true;
 }
 
-bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color )
+bool SpriteManager::Render3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color )
 {
     // Data
-    INTPOINT xy = anim3d->GetBaseBordersPivot();
-    INTRECT  borders = anim3d->GetBaseBorders();
+    INTPOINT xy;
+    INTRECT  borders = anim3d->GetBaseBorders( &xy );
     float    w_real = (float) borders.W();
     float    h_real = (float) borders.H();
     float    scale = min( rect.W() / w_real, rect.H() / h_real );
@@ -4449,23 +4569,36 @@ bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Anim
         xy.Y += (int) ( ( rect.H() - h_real * scale ) / 2.0f );
     }
 
-    // Draw model in another render target
+    // Draw model
     #ifdef FO_D3D
     Flush();
     anim3d->Draw( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, stencil, color );
     #else
-    PushRenderTarget( rt3D );
-    anim3d->Draw( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, stencil, color );
-    PopRenderTarget();
-    DrawRenderTarget( rt3D );
-    ClearRenderTarget( rt3D, 0 );
-    ClearRenderTargetDS( rt3D, true, true );
+    Render3d( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, anim3d, stencil, 0 );
     #endif
 
-    // Restore 2d stream
     #ifdef FO_D3D
+    // Restore 2d stream
     D3D_HR( d3dDevice->SetIndices( ibMain ) );
     D3D_HR( d3dDevice->SetStreamSource( 0, vbMain, 0, sizeof( Vertex ) ) );
+    #endif
+    return true;
+}
+
+bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color )
+{
+    Render3d( x, y, scale, anim3d, stencil, color );
+    #ifndef FO_D3D
+    DrawRenderTarget( rt3D );
+    #endif
+    return true;
+}
+
+bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color )
+{
+    Render3dSize( rect, stretch_up, center, anim3d, stencil, color );
+    #ifndef FO_D3D
+    DrawRenderTarget( rt3D );
     #endif
     return true;
 }
@@ -4799,68 +4932,79 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
     contoursAdded = true;
     #else
-    Animation3d* anim3d = si->Anim3d;
-    INTRECT      borders = ( anim3d ? anim3d->GetExtraBorders() : INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
-    Texture*     texture = ( anim3d ? NULL : si->Surf->TextureOwner );
-    FLTRECT      textureuv;
+    INTRECT  borders = INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 );
+    Texture* texture = si->Surf->TextureOwner;
+    FLTRECT  textureuv, sprite_border;
+    float    zoom = ( si->Anim3d ? 1.0f : GameOpt.SpritesZoom );
 
-    if( !anim3d )
+    if( borders.L >= modeWidth * zoom || borders.R < 0 || borders.T >= modeHeight * zoom || borders.B < 0 )
+        return true;
+
+    if( zoom == 1.0f )
     {
-        if( borders.L >= modeWidth * GameOpt.SpritesZoom || borders.R < 0 || borders.T >= modeHeight * GameOpt.SpritesZoom || borders.B < 0 )
-            return true;
-
-        if( GameOpt.SpritesZoom == 1.0f )
+        FLTRECT& sr = si->SprRect;
+        float    txw = texture->SizeData[ 2 ];
+        float    txh = texture->SizeData[ 3 ];
+        textureuv( sr.L - txw, sr.T - txh, sr.R + txw, sr.B + txh );
+        if( !si->Anim3d )
         {
-            FLTRECT& sr = si->SprRect;
-            float    txw = texture->SizeData[ 2 ];
-            float    txh = texture->SizeData[ 3 ];
-            textureuv( sr.L - txw, sr.T - txh, sr.R + txw, sr.B + txh );
+            sprite_border = textureuv;
         }
         else
         {
-            FLTRECT& sr = si->SprRect;
-            float    zoom = GameOpt.SpritesZoom;
-            borders( (int) ( x / zoom ), (int) ( y / zoom ),
-                     (int) ( ( x + si->Width ) / zoom ), (int) ( ( y + si->Height ) / zoom ) );
-            FLTRECT bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
-            float   mid_height = rtContoursMid.TargetTexture->SizeData[ 1 ];
-
-            PushRenderTarget( rtContoursMid );
-
-            uint mulpos = 0;
-            vBuffer[ mulpos ].x = bordersf.L;
-            vBuffer[ mulpos ].y = mid_height - bordersf.B;
-            vBuffer[ mulpos ].tu = sr.L;
-            vBuffer[ mulpos++ ].tv = sr.B;
-            vBuffer[ mulpos ].x = bordersf.L;
-            vBuffer[ mulpos ].y = mid_height - bordersf.T;
-            vBuffer[ mulpos ].tu = sr.L;
-            vBuffer[ mulpos++ ].tv = sr.T;
-            vBuffer[ mulpos ].x = bordersf.R;
-            vBuffer[ mulpos ].y = mid_height - bordersf.T;
-            vBuffer[ mulpos ].tu = sr.R;
-            vBuffer[ mulpos++ ].tv = sr.T;
-            vBuffer[ mulpos ].x = bordersf.R;
-            vBuffer[ mulpos ].y = mid_height - bordersf.B;
-            vBuffer[ mulpos ].tu = sr.R;
-            vBuffer[ mulpos++ ].tv = sr.B;
-
-            curSprCnt = 1;
-            dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] ) );
-            Flush();
-
-            PopRenderTarget();
-
-            texture = rtContoursMid.TargetTexture;
-            float tw = texture->SizeData[ 0 ];
-            float th = texture->SizeData[ 1 ];
-            borders.L--, borders.T--, borders.R++, borders.B++;
-            textureuv( (float) borders.L / tw, (float) borders.T / th, (float) borders.R / tw, (float) borders.B / th );
+            INTRECT r = si->Anim3d->GetFullBorders();
+            r.L -= 5, r.T -= 5, r.R += 5, r.B += 5;
+            r.L = CLAMP( r.L, -1, modeWidth + 1 );
+            r.T = CLAMP( r.T, -1, modeHeight + 1 );
+            r.R = CLAMP( r.R, -1, modeWidth + 1 );
+            r.B = CLAMP( r.B, -1, modeHeight + 1 );
+            sprite_border(
+                (float) r.L / texture->SizeData[ 0 ],
+                1.0f - (float) r.T / texture->SizeData[ 1 ],
+                (float) r.R / texture->SizeData[ 0 ],
+                1.0f - (float) r.B / texture->SizeData[ 1 ] );
         }
     }
     else
     {
-        ExitProcess( 0 );
+        FLTRECT& sr = si->SprRect;
+        borders( (int) ( x / zoom ), (int) ( y / zoom ),
+                 (int) ( ( x + si->Width ) / zoom ), (int) ( ( y + si->Height ) / zoom ) );
+        FLTRECT bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
+        float   mid_height = rtContoursMid.TargetTexture->SizeData[ 1 ];
+
+        PushRenderTarget( rtContoursMid );
+
+        uint mulpos = 0;
+        vBuffer[ mulpos ].x = bordersf.L;
+        vBuffer[ mulpos ].y = mid_height - bordersf.B;
+        vBuffer[ mulpos ].tu = sr.L;
+        vBuffer[ mulpos++ ].tv = sr.B;
+        vBuffer[ mulpos ].x = bordersf.L;
+        vBuffer[ mulpos ].y = mid_height - bordersf.T;
+        vBuffer[ mulpos ].tu = sr.L;
+        vBuffer[ mulpos++ ].tv = sr.T;
+        vBuffer[ mulpos ].x = bordersf.R;
+        vBuffer[ mulpos ].y = mid_height - bordersf.T;
+        vBuffer[ mulpos ].tu = sr.R;
+        vBuffer[ mulpos++ ].tv = sr.T;
+        vBuffer[ mulpos ].x = bordersf.R;
+        vBuffer[ mulpos ].y = mid_height - bordersf.B;
+        vBuffer[ mulpos ].tu = sr.R;
+        vBuffer[ mulpos++ ].tv = sr.B;
+
+        curSprCnt = 1;
+        dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] ) );
+        Flush();
+
+        PopRenderTarget();
+
+        texture = rtContoursMid.TargetTexture;
+        float tw = texture->SizeData[ 0 ];
+        float th = texture->SizeData[ 1 ];
+        borders.L--, borders.T--, borders.R++, borders.B++;
+        textureuv( (float) borders.L / tw, (float) borders.T / th, (float) borders.R / tw, (float) borders.B / th );
+        sprite_border = textureuv;
     }
 
     uint contour_color = 0;
@@ -4901,7 +5045,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
     curSprCnt = 1;
     dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] ) );
-    dipQueue.back().SpriteBorder = textureuv;
+    dipQueue.back().SpriteBorder = sprite_border;
     Flush();
 
     PopRenderTarget();

@@ -21,12 +21,13 @@ float     GlobalSpeedAdjust = 1.0f;
 ViewPort_ ViewPort;
 MatrixVec BoneMatrices;
 bool      SoftwareSkinning = false;
-Effect*   EffectSimple = NULL;
-Effect*   EffectSkinned = NULL;
+Effect*   EffectSimple, * EffectSimpleShadow = NULL;
+Effect*   EffectSkinned, * EffectSkinnedShadow  = NULL;
 uint      AnimDelay = 0;
 
-#ifndef FO_D3D
-float LightColor[ 4 ];
+#ifdef SHADOW_MAP
+GLuint FBODepth = 0;
+GLuint DepthTexId = 0;
 #endif
 
 void VecProject( const Vector& v, Matrix& world, Vector& out )
@@ -87,14 +88,14 @@ Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), numAnima
 {
     memzero( currentLayers, sizeof( currentLayers ) );
     #ifdef FO_D3D
-    aiMatrix4x4::RotationX( -GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );
+    Matrix::RotationX( -GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );
     #else
-    aiMatrix4x4::RotationX( GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );
+    Matrix::RotationX( GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );
     #endif
-    matScale = aiMatrix4x4();
-    matScaleBase = aiMatrix4x4();
-    matRotBase = aiMatrix4x4();
-    matTransBase = aiMatrix4x4();
+    matScale = Matrix();
+    matScaleBase = Matrix();
+    matRotBase = Matrix();
+    matTransBase = Matrix();
 }
 
 Animation3d::~Animation3d()
@@ -641,33 +642,31 @@ void Animation3d::ProcessBorders()
     }
 }
 
-INTPOINT Animation3d::GetBaseBordersPivot()
+INTRECT Animation3d::GetBaseBorders( INTPOINT* pivot /* = NULL */ )
 {
     ProcessBorders();
-    return INTPOINT( bordersXY.X - baseBorders.L, bordersXY.Y - baseBorders.T );
-}
-
-INTPOINT Animation3d::GetFullBordersPivot()
-{
-    ProcessBorders();
-    return INTPOINT( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
-}
-
-INTRECT Animation3d::GetBaseBorders()
-{
-    ProcessBorders();
+    if( pivot )
+        *pivot = INTPOINT( bordersXY.X - baseBorders.L, bordersXY.Y - baseBorders.T );
     return INTRECT( baseBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
 }
 
-INTRECT Animation3d::GetFullBorders()
+INTRECT Animation3d::GetFullBorders( INTPOINT* pivot /* = NULL */ )
 {
     ProcessBorders();
+    if( pivot )
+        *pivot = INTPOINT( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
     return INTRECT( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
 }
 
-INTRECT Animation3d::GetExtraBorders()
+INTRECT Animation3d::GetExtraBorders( INTPOINT* pivot /* = NULL */ )
 {
     ProcessBorders();
+    if( pivot )
+    {
+        *pivot = INTPOINT( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
+        pivot->X += (int) ( CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
+        pivot->Y += (int) ( CONTOURS_EXTRA_SIZE * 4.0f * drawScale );
+    }
     INTRECT result( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
     result.L -= (int) ( (float) CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
     result.T -= (int) ( (float) CONTOURS_EXTRA_SIZE * 4.0f * drawScale );
@@ -913,6 +912,13 @@ void Animation3d::SetRotation( float rx, float ry, float rz )
     matRot = my * mx * mz;
 }
 
+#ifdef SHADOW_MAP
+void Animation3d::SetPitch( float angle )
+{
+    Matrix::RotationX( angle * PI_VALUE / 180.0f, matRot );
+}
+#endif
+
 void Animation3d::SetScale( float sx, float sy, float sz )
 {
     Matrix::Scaling( Vector( sx, sy, sz ), matScale );
@@ -975,14 +981,6 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
     GlobalLight.Diffuse.g = CLAMP( GlobalLight.Diffuse.g, 0.0f, 1.0f );
     GlobalLight.Diffuse.b = 0.3f + ( ( color ) & 0xFF ) / 255.0f;
     GlobalLight.Diffuse.b = CLAMP( GlobalLight.Diffuse.b, 0.0f, 1.0f );
-    #else
-    // Create a directional light
-    LightColor[ 0 ] = 0.3f + ( ( color >> 16 ) & 0xFF ) / 255.0f;
-    LightColor[ 0 ] = CLAMP( LightColor[ 0 ], 0.0f, 1.0f );
-    LightColor[ 1 ] = 0.3f + ( ( color >> 8 ) & 0xFF ) / 255.0f;
-    LightColor[ 1 ] = CLAMP( LightColor[ 1 ], 0.0f, 1.0f );
-    LightColor[ 2 ] = 0.3f + ( ( color ) & 0xFF ) / 255.0f;
-    LightColor[ 3 ] = CLAMP( LightColor[ 2 ], 0.0f, 1.0f );
     #endif
 
     // Move & Draw
@@ -1015,6 +1013,7 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
 
     bool shadow_disabled = ( shadowDisabled || animEntity->shadowDisabled );
 
+    #ifdef FO_D3D
     FrameMove( elapsed, x, y, scale, false );
     DrawFrame( animEntity->xFile->frameRoot, !shadow_disabled );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
@@ -1023,6 +1022,59 @@ bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color 
         child->FrameMove( elapsed, x, y, 1.0f, false );
         child->DrawFrame( child->animEntity->xFile->frameRoot, !shadow_disabled );
     }
+    #else
+    # ifdef SHADOW_MAP
+    drawXY.X = x;
+    drawXY.Y = y;
+
+    SetPitch( 75.7f );
+    FrameMove( elapsed, x, y, scale, false );
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->FrameMove( elapsed, x, y, 1.0f, false );
+
+    // glViewport(0,0,ModeWidth*8,ModeWidth*8);
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, FBODepth ) );
+    GL( glClearDepth( 1.0 ) );
+    GL( glClear( GL_DEPTH_BUFFER_BIT ) );
+    GL( glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE ) );
+    GL( glCullFace( GL_FRONT ) );
+    glEnable( GL_POLYGON_OFFSET_FILL );
+    glPolygonOffset( 2.0, 500.0 );
+    DrawFrame( animEntity->xFile->frameRoot, true );
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, true );
+    GL( glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE ) );
+    GL( glCullFace( GL_BACK ) );
+    glDisable( GL_POLYGON_OFFSET_FILL );
+    // glViewport(0,0, ModeWidth,ModeHeight);
+    GLuint cur_fbo = (GLuint) color;
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, cur_fbo ) );
+
+    SetPitch( GameOpt.MapCameraAngle );
+    FrameMove( -1.0f, x, y, scale, false );
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->FrameMove( -1.0f, x, y, 1.0f, false );
+    DrawFrame( animEntity->xFile->frameRoot, false );
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, false );
+    # else
+    FrameMove( elapsed, x, y, scale, true );
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->FrameMove( elapsed, x, y, 1.0f, true );
+    if( !shadow_disabled )
+    {
+        GL( glDisable( GL_DEPTH_TEST ) );
+        DrawFrame( animEntity->xFile->frameRoot, true );
+        for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+            ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, true );
+        GL( glEnable( GL_DEPTH_TEST ) );
+    }
+    DrawFrame( animEntity->xFile->frameRoot, false );
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, false );
+    # endif
+    #endif
+
 
     #ifdef FO_D3D
     if( stencil )
@@ -1073,7 +1125,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
     }
 
     // Advance animation time
-    if( animController )
+    if( animController && elapsed >= 0.0f )
     {
         elapsed *= GetSpeed();
         animController->AdvanceTime( elapsed );
@@ -1224,7 +1276,6 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
     return true;
 }
 
-// Called to update the frame_base matrices in the hierarchy to reflect current animation stage
 void Animation3d::UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix )
 {
     // If parent matrix exists multiply our frame matrix by it
@@ -1243,8 +1294,7 @@ void Animation3d::UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix
     #endif
 }
 
-// Called to render a frame in the hierarchy
-bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
+bool Animation3d::DrawFrame( Frame* frame, bool shadow )
 {
     #ifdef FO_D3D
     // Draw all mesh containers in this frame
@@ -1309,7 +1359,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                     D3D_HR( effect->DXInstance->SetInt( effect->BoneInfluences, mesh_container->NumInfluences - 1 ) );
 
                 // Start the effect now all parameters have been updated
-                DrawMeshEffect( mesh_container->SkinMeshBlended, i, effect, &mopt->TexSubsets[ attr_id * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSkinnedWithShadow : effect->TechniqueSkinned );
+                DrawMeshEffect( mesh_container->SkinMeshBlended, i, effect, &mopt->TexSubsets[ attr_id * EFFECT_TEXTURES ], shadow ? effect->TechniqueSkinnedWithShadow : effect->TechniqueSkinned );
             }
         }
         else
@@ -1360,7 +1410,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
                 {
                     if( effect->MaterialDiffuse )
                         D3D_HR( effect->DXInstance->SetVector( effect->MaterialDiffuse, (D3DXVECTOR4*) &mesh_container->Materials[ i ].Diffuse ) );
-                    DrawMeshEffect( draw_mesh, i, effect, &mopt->TexSubsets[ i * EFFECT_TEXTURES ], with_shadow ? effect->TechniqueSimpleWithShadow : effect->TechniqueSimple );
+                    DrawMeshEffect( draw_mesh, i, effect, &mopt->TexSubsets[ i * EFFECT_TEXTURES ], shadow ? effect->TechniqueSimpleWithShadow : effect->TechniqueSimple );
                 }
                 else
                 {
@@ -1376,10 +1426,10 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
 
     // Recurse for siblings
     if( frame->Sibling )
-        DrawFrame( frame->Sibling, with_shadow );
+        DrawFrame( frame->Sibling, shadow );
     // Recurse for children
     if( frame->FirstChild )
-        DrawFrame( frame->FirstChild, with_shadow );
+        DrawFrame( frame->FirstChild, shadow );
     #else
     MeshOptions* mopt = GetMeshOptions( frame );
     for( uint k = 0, l = (uint) frame->Mesh.size(); k < l; k++ )
@@ -1394,7 +1444,12 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
         GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
 
-        Effect* effect = ( ms.BoneInfluences > 0 ? EffectSkinned : EffectSimple );
+        Effect* effect;
+        if( !shadow )
+            effect = ( ms.BoneInfluences > 0 ? EffectSkinned : EffectSimple );
+        else
+            effect = ( ms.BoneInfluences > 0 ? EffectSkinnedShadow : EffectSimpleShadow );
+
         GL( glUseProgram( effect->Program ) );
 
         if( effect->ZoomFactor != -1 )
@@ -1409,8 +1464,40 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, textures[ 0 ]->SizeData ) );
         }
-        if( effect->LightColor != -1 )
-            GL( glUniform4fv( effect->LightColor, 1, LightColor ) );
+        # ifdef SHADOW_MAP
+        if( effect->ShadowMap != -1 )
+        {
+            GL( glActiveTexture( GL_TEXTURE1 ) );
+            GL( glBindTexture( GL_TEXTURE_2D, DepthTexId ) );
+            GL( glUniform1i( effect->ShadowMap, 1 ) );
+            // if( effect->ShadowMapSize != -1 )
+            //    GL( glUniform4fv( effect->ColorMapSize, 1, rt3DSM.TargetTexture->SizeData ) );
+            if( effect->ShadowMapMatrix != -1 )
+            {
+                Matrix mback;
+                {
+                    FLTPOINT p3d = Convert2dTo3d( drawXY.X, drawXY.Y );
+                    Matrix mat_trans, mat_trans2, mat_rot;
+                    Matrix::Translation( Vector( -p3d.X, -p3d.Y, 0.0f ), mat_trans );
+                    Matrix::Translation( Vector( p3d.X, p3d.Y, 0.0f ), mat_trans2 );
+                    Matrix::RotationX( -25.7f * PI_VALUE / 180.0f, mat_rot );
+                    Matrix mr;
+                    Matrix::RotationX( 75.7f * PI_VALUE / 180.0f, mr );
+                    mback = mat_trans2 * mr * mat_rot * mat_trans;
+                }
+
+                Matrix ms, mt;
+                Matrix::Scaling( Vector( 0.5f, 0.5f, 0.5f ), ms );
+                Matrix::Translation( Vector( 0.5f, 0.5f, 0.5f ), mt );
+                MatrixProj.Transpose();
+                Matrix m = mt * ms * MatrixProj * mback;
+                MatrixProj.Transpose();
+                GL( glUniformMatrix4fv( effect->ShadowMapMatrix, 1, GL_TRUE, m[ 0 ] ) );
+            }
+            GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE ) );
+            GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL ) );
+        }
+        # endif
         if( effect->MaterialDiffuse != -1 )
             GL( glUniform4fv( effect->MaterialDiffuse, 1, ms.DiffuseColor ) );
         if( effect->MaterialAmbient != -1 )
@@ -1436,9 +1523,9 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
             }
         }
         if( effect->WorldMatrix != -1 )
-        {
             GL( glUniformMatrix4fv( effect->WorldMatrices, 1, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
-        }
+        if( effect->GroundPosition != -1 )
+            GL( glUniform3fv( effect->GroundPosition, 1, (float*) &groundPos ) );
 
         if( effect->IsNeedProcess )
             GraphicLoader::EffectProcessVariables( effect, -1 );
@@ -1449,11 +1536,18 @@ bool Animation3d::DrawFrame( Frame* frame, bool with_shadow )
             GL( glDrawElements( GL_TRIANGLES, ms.Indicies.size(), GL_UNSIGNED_SHORT, (void*) 0 ) );
         }
 
+        # ifdef SHADOW_MAP
+        if( effect->ShadowMap != -1 )
+        {
+            GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE ) );
+        }
+        # endif
+
         GL( glUseProgram( 0 ) );
     }
 
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        DrawFrame( *it, with_shadow );
+        DrawFrame( *it, shadow );
     #endif
     return true;
 }
@@ -1531,17 +1625,41 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
 
     // Create skinning effect
     if( !( EffectSimple = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false ) ) ||
-        !( EffectSkinned = GraphicLoader::LoadEffect( D3DDevice, "3D_Skinned.fx", false ) ) )
+        !( EffectSimpleShadow = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false, "#define SHADOW" ) ) ||
+        !( EffectSkinned = GraphicLoader::LoadEffect( D3DDevice, "3D_Skinned.fx", false ) ) ||
+        !( EffectSkinnedShadow = GraphicLoader::LoadEffect( D3DDevice, "3D_Skinned.fx", false, "#define SHADOW" ) ) )
     {
         WriteLogF( _FUNC_, " - Fail to create 3d effects.\n" );
         return false;
     }
 
-    // Lighting
-    LightColor[ 0 ] = 0.0f;
-    LightColor[ 1 ] = 0.0f;
-    LightColor[ 2 ] = 0.0f;
-    LightColor[ 3 ] = 1.0f;
+    # ifdef SHADOW_MAP
+    GL( glHint( GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST ) );
+
+    // Depth FBO
+    GL( glGenFramebuffers( 1, &FBODepth ) );
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, FBODepth ) );
+    GL( glDrawBuffer( GL_NONE ) );
+    GL( glReadBuffer( GL_NONE ) );
+    GL( glGenTextures( 1, &DepthTexId ) );
+    GL( glBindTexture( GL_TEXTURE_2D, DepthTexId ) );
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
+    GL( glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
+    GL( glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, MODE_WIDTH, MODE_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL ) );
+    GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, DepthTexId, 0 ) );
+    GLenum status;
+    GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
+    if( status != GL_FRAMEBUFFER_COMPLETE )
+    {
+        WriteLogF( _FUNC_, " - Fail to create depth render target.\n" );
+        return false;
+    }
+    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    # endif
     #endif
 
     // Identity matrix
@@ -1583,7 +1701,7 @@ bool Animation3d::SetScreenSize( int width, int height )
     float k = (float) ModeHeight / 768.0f;
     GL( glMatrixMode( GL_PROJECTION ) );
     GL( glLoadIdentity() );
-    GL( glOrtho( 0, 18.65 * k * (float) ModeWidth / ModeHeight, 0, 18.65 * k, -FixedZ, FixedZ ) );
+    GL( glOrtho( 0, 18.65 * k * (float) ModeWidth / ModeHeight, 0, 18.65 * k, -20.0, 20.0 ) );
     GL( glGetFloatv( GL_PROJECTION_MATRIX, MatrixProj[ 0 ] ) );
     #endif
 

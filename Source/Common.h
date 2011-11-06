@@ -277,6 +277,9 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  define LockRect_           GLuint
 # endif
 
+// Todo: Complete shadow maps
+// # define SHADOW_MAP
+
 # define MODE_WIDTH           ( GameOpt.ScreenWidth )
 # define MODE_HEIGHT          ( GameOpt.ScreenHeight )
 
