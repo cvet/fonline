@@ -561,10 +561,10 @@ void HexManager::GetItems( ushort hx, ushort hy, ItemHexVec& items )
     }
 }
 
-INTRECT HexManager::GetRectForText( ushort hx, ushort hy )
+Rect HexManager::GetRectForText( ushort hx, ushort hy )
 {
     if( !IsMapLoaded() )
-        return INTRECT();
+        return Rect();
     Field& f = GetField( hx, hy );
 
     // Critters first
@@ -574,7 +574,7 @@ INTRECT HexManager::GetRectForText( ushort hx, ushort hy )
         return f.DeadCrits[ 0 ]->GetTextRect();
 
     // Items
-    INTRECT r( 0, 0, 0, 0 );
+    Rect r( 0, 0, 0, 0 );
     for( uint i = 0, j = (uint) f.Items.size(); i < j; i++ )
     {
         SpriteInfo* si = SprMngr.GetSpriteInfo( f.Items[ i ]->SprId );
@@ -764,8 +764,8 @@ void HexManager::DrawCursor( const char* text )
         return;
     int x = (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom );
     int y = (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom );
-    SprMngr.DrawStr( INTRECT( x, y, (int) ( (float) ( x + HEX_W ) / GameOpt.SpritesZoom ),
-                              (int) ( (float) ( y + HEX_REAL_H ) / GameOpt.SpritesZoom ) ), text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
+    SprMngr.DrawStr( Rect( x, y, (int) ( (float) ( x + HEX_W ) / GameOpt.SpritesZoom ),
+                           (int) ( (float) ( y + HEX_REAL_H ) / GameOpt.SpritesZoom ) ), text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
 }
 
 void HexManager::RebuildMap( int rx, int ry )
@@ -4284,7 +4284,7 @@ void HexManager::ClearIgnorePids()
     ignorePids.clear();
 }
 
-void HexManager::GetHexesRect( INTRECT& rect, UShortPairVec& hexes )
+void HexManager::GetHexesRect( Rect& rect, UShortPairVec& hexes )
 {
     hexes.clear();
 

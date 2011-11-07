@@ -300,7 +300,7 @@ public:
     ItemHex*    GetItemById( uint id );
     void        GetItems( ushort hx, ushort hy, ItemHexVec& items );
     ItemHexVec& GetItems() { return hexItems; }
-    INTRECT     GetRectForText( ushort hx, ushort hy );
+    Rect        GetRectForText( ushort hx, ushort hy );
     void        ProcessItems();
 
     // Light
@@ -408,7 +408,7 @@ public:
     bool IsIgnorePid( ushort pid );
     void ClearIgnorePids();
 
-    void GetHexesRect( INTRECT& rect, UShortPairVec& hexes );
+    void GetHexesRect( Rect& rect, UShortPairVec& hexes );
     void MarkPassedHexes();
     void AffectItem( MapObject* mobj, ItemHex* item );
     void AffectCritter( MapObject* mobj, CritterCl* cr );

@@ -49,7 +49,7 @@ struct Texture
         GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_BGRA, GL_UNSIGNED_BYTE, Data ) );
         return true;
     }
-    bool Update( const INTRECT& r )
+    bool Update( const Rect& r )
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
         GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_BGRA, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );

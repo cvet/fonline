@@ -6,7 +6,7 @@
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-bool FOClient::IfaceLoadRect( INTRECT& comp, const char* name )
+bool FOClient::IfaceLoadRect( Rect& comp, const char* name )
 {
     char res[ MAX_FOTEXT ];
     if( !IfaceIni.GetStr( name, "", res ) )
@@ -25,10 +25,10 @@ bool FOClient::IfaceLoadRect( INTRECT& comp, const char* name )
     return true;
 }
 
-void FOClient::IfaceLoadRect2( INTRECT& comp, const char* name, int ox, int oy )
+void FOClient::IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy )
 {
     if( IfaceLoadRect( comp, name ) )
-        comp = INTRECT( comp, ox, oy );
+        comp = Rect( comp, ox, oy );
 }
 
 void FOClient::IfaceLoadSpr( AnyFrames*& comp, const char* name )
@@ -256,8 +256,8 @@ int FOClient::InitIface()
     IfaceLoadRect2( IntWApCost, "IntApCost", IntX, IntY );
     IfaceLoadRect2( IntWAmmoCount, "IntAmmoCount", IntX, IntY );
     IfaceLoadRect2( IntWWearProcent, "IntWearProcent", IntX, IntY );
-    IntWAmmoCountStr = INTRECT( IntBItem, 7, 8 );
-    IntWWearProcentStr = INTRECT( IntBItem, 7, 19 );
+    IntWAmmoCountStr = Rect( IntBItem, 7, 8 );
+    IntWWearProcentStr = Rect( IntBItem, 7, 19 );
     IfaceLoadRect2( IntWAmmoCountStr, "IntAmmoCountText", IntX, IntY );
     IfaceLoadRect2( IntWWearProcentStr, "IntWearProcentText", IntX, IntY );
     IntVisible = true;
@@ -656,10 +656,10 @@ int FOClient::InitIface()
     GmapVectX = 0;
     GmapVectY = 0;
     GmapMapCutOff.clear();
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, 0, (float) MODE_WIDTH, (float) GmapWMap.T ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.T, (float) GmapWMap.L, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( (float) GmapWMap.R, (float) GmapWMap.T, (float) MODE_WIDTH, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, FLTRECT( 0, (float) GmapWMap.B, (float) MODE_WIDTH, (float) MODE_HEIGHT ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, RectF( 0, 0, (float) MODE_WIDTH, (float) GmapWMap.T ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, RectF( 0, (float) GmapWMap.T, (float) GmapWMap.L, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, RectF( (float) GmapWMap.R, (float) GmapWMap.T, (float) MODE_WIDTH, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, RectF( 0, (float) GmapWMap.B, (float) MODE_WIDTH, (float) MODE_HEIGHT ), COLOR_XRGB( 0, 0, 0 ) );
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
     memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
@@ -1330,7 +1330,7 @@ int FOClient::InitIface()
 }
 
 #define INDICATOR_CHANGE_TICK    ( 35 )
-void FOClient::DrawIndicator( INTRECT& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left )
+void FOClient::DrawIndicator( Rect& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left )
 {
     if( Timer::GameTick() >= tick )
     {
@@ -1368,7 +1368,7 @@ void FOClient::DrawIndicator( INTRECT& rect, PointVec& points, uint color, int p
         SprMngr.DrawPoints( points, PRIMITIVE_POINTLIST );
 }
 
-uint FOClient::GetCurContainerItemId( INTRECT& pos, int height, int scroll, ItemVec& cont )
+uint FOClient::GetCurContainerItemId( Rect& pos, int height, int scroll, ItemVec& cont )
 {
     if( !IsCurInRect( pos ) )
         return 0;
@@ -1383,7 +1383,7 @@ uint FOClient::GetCurContainerItemId( INTRECT& pos, int height, int scroll, Item
     return 0;
 }
 
-void FOClient::ContainerDraw( INTRECT& pos, int height, int scroll, ItemVec& cont, uint skip_id )
+void FOClient::ContainerDraw( Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id )
 {
     int i = 0, i2 = 0;
     for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
@@ -1412,7 +1412,7 @@ void FOClient::ContainerDraw( INTRECT& pos, int height, int scroll, ItemVec& con
         if( i >= scroll && i < scroll + pos.H() / height )
         {
             if( item.GetCount() > 1 )
-                SprMngr.DrawStr( INTRECT( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item.GetCount() ), 0, COLOR_TEXT_WHITE );
+                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item.GetCount() ), 0, COLOR_TEXT_WHITE );
             i2++;
         }
         i++;
@@ -1574,7 +1574,7 @@ void FOClient::InvDraw()
         SprMngr.DrawSprite( InvPBOkUp, InvBOk[ 0 ] + InvX, InvBOk[ 1 ] + InvY );
 
     // Chosen
-    Chosen->DrawStay( INTRECT( InvWChosen, InvX, InvY ) );
+    Chosen->DrawStay( Rect( InvWChosen, InvX, InvY ) );
 
     // Slot Main
     if( Chosen->ItemSlotMain->GetId() && ( IsCurMode( CUR_DEFAULT ) || IfaceHold != IFACE_INV_SLOT1 ) )
@@ -1619,7 +1619,7 @@ void FOClient::InvDraw()
     uint skip_id = 0;
     if( IsCurMode( CUR_HAND ) && IfaceHold == IFACE_INV_INV && InvHoldId )
         skip_id = InvHoldId;
-    ContainerDraw( INTRECT( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont, skip_id );
+    ContainerDraw( Rect( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont, skip_id );
 
     if( InvItemInfo.empty() )
     {
@@ -1627,21 +1627,21 @@ void FOClient::InvDraw()
         int         ox, oy;
         const char* result = FmtGenericDesc( DESC_INVENTORY_MAIN, ox, oy );
         if( result )
-            SprMngr.DrawStr( INTRECT( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
+            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
         result = FmtGenericDesc( DESC_INVENTORY_SPECIAL, ox, oy );
         if( result )
-            SprMngr.DrawStr( INTRECT( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
+            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
         result = FmtGenericDesc( DESC_INVENTORY_STATS, ox, oy );
         if( result )
-            SprMngr.DrawStr( INTRECT( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
+            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
         result = FmtGenericDesc( DESC_INVENTORY_RESIST, ox, oy );
         if( result )
-            SprMngr.DrawStr( INTRECT( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
+            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
     }
     else
     {
         // Item info
-        SprMngr.DrawStr( INTRECT( InvWText, InvX, InvY ), InvItemInfo.c_str(), FT_SKIPLINES( InvItemInfoScroll ) );
+        SprMngr.DrawStr( Rect( InvWText, InvX, InvY ), InvItemInfo.c_str(), FT_SKIPLINES( InvItemInfoScroll ) );
     }
 }
 
@@ -1657,7 +1657,7 @@ void FOClient::InvLMouseDown()
     {
         if( IsCurInRect( InvWInv, InvX, InvY ) )
         {
-            InvHoldId = GetCurContainerItemId( INTRECT( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont );
+            InvHoldId = GetCurContainerItemId( Rect( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont );
             if( InvHoldId )
                 IfaceHold = IFACE_INV_INV;
         }
@@ -1918,10 +1918,10 @@ void FOClient::UseDraw()
         SprMngr.DrawSprite( UseBCancelPicDown, UseBCancel[ 0 ] + UseX, UseBCancel[ 1 ] + UseY );
 
     // Chosen
-    Chosen->DrawStay( INTRECT( UseWChosen, UseX, UseY ) );
+    Chosen->DrawStay( Rect( UseWChosen, UseX, UseY ) );
 
     // Items
-    ContainerDraw( INTRECT( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont, 0 );
+    ContainerDraw( Rect( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont, 0 );
 }
 
 void FOClient::UseLMouseDown()
@@ -1933,7 +1933,7 @@ void FOClient::UseLMouseDown()
 
     if( IsCurInRect( UseWInv, UseX, UseY ) )
     {
-        UseHoldId = GetCurContainerItemId( INTRECT( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont );
+        UseHoldId = GetCurContainerItemId( Rect( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont );
         if( UseHoldId && IsCurMode( CUR_HAND ) )
             IfaceHold = IFACE_USE_INV;
         if( UseHoldId && IsCurMode( CUR_DEFAULT ) )
@@ -2045,7 +2045,7 @@ void FOClient::ConsoleDraw()
 
     // Pause indicator
     if( Timer::IsGamePaused() && is_game_screen && !IsScreenPresent( SCREEN__MENU_OPTION ) )
-        SprMngr.DrawStr( INTRECT( 0, 20, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_PAUSED ), FT_CENTERX, COLOR_TEXT_DRED, FONT_BIG );
+        SprMngr.DrawStr( Rect( 0, 20, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_PAUSED ), FT_CENTERX, COLOR_TEXT_DRED, FONT_BIG );
 
     // Console
     if( ConsoleActive && is_game_screen )
@@ -2053,7 +2053,7 @@ void FOClient::ConsoleDraw()
         if( IsMainScreen( SCREEN_GAME ) )
             SprMngr.DrawSprite( ConsolePic, IntX + ConsolePicX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : MODE_HEIGHT ) + ConsolePicY );
 
-        INTRECT rect( IntX + ConsoleTextX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : MODE_HEIGHT ) + ConsoleTextY, MODE_WIDTH, MODE_HEIGHT );
+        Rect rect( IntX + ConsoleTextX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : MODE_HEIGHT ) + ConsoleTextY, MODE_WIDTH, MODE_HEIGHT );
         if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
             rect = GmapWPanel;
 
@@ -2073,26 +2073,26 @@ void FOClient::ConsoleDraw()
         if( GameOpt.DebugInfo )
         {
             GetMouseHex();
-            FLTPOINT p = Animation3d::Convert2dTo3d( GameOpt.MouseX, GameOpt.MouseY );
-            SprMngr.DrawStr( INTRECT( 250, 5, 450, 300 ), Str::FormatBuf(
+            PointF p = Animation3d::Convert2dTo3d( GameOpt.MouseX, GameOpt.MouseY );
+            SprMngr.DrawStr( Rect( 250, 5, 450, 300 ), Str::FormatBuf(
                                  "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
                                  Chosen->HexX, Chosen->HexY, TargetX, TargetY, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
                                  GetFarDir( Chosen->HexX, Chosen->HexY, TargetX, TargetY ), p.X, p.Y
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
-            SprMngr.DrawStr( INTRECT( 450, 5, 650, 300 ), Str::FormatBuf(
+            SprMngr.DrawStr( Rect( 450, 5, 650, 300 ), Str::FormatBuf(
                                  "Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
                                  Chosen->SprId, Chosen->SprOx, Chosen->SprOy, HexMngr.GetField( TargetX, TargetY ).ScrX, HexMngr.GetField( TargetX, TargetY ).ScrY
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
-            SprMngr.DrawStr( INTRECT( 650, 5, 800, 300 ), Str::FormatBuf(
+            SprMngr.DrawStr( Rect( 650, 5, 800, 300 ), Str::FormatBuf(
                                  "Time:%02d:%02d %02d:%02d:%04d x%02d\nSleep:%d\nSound:%d\nMusic:%d",
                                  GameOpt.Hour, GameOpt.Minute, GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.TimeMultiplier,
                                  GameOpt.Sleep, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
         }
 
-        SprMngr.DrawStr( INTRECT( 10, 10, MODE_WIDTH, MODE_HEIGHT ), Str::FormatBuf(
+        SprMngr.DrawStr( Rect( 10, 10, MODE_WIDTH, MODE_HEIGHT ), Str::FormatBuf(
                              "|0xFFBBBBBB FOnline %s\n"
                              "by Gamers for Gamers\n"
                              "version %04X-%02X beta\n\n"
@@ -2116,7 +2116,7 @@ void FOClient::ConsoleDraw()
                              FPS, PingTime, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume(), GameOpt.Sleep
                              ), 0, COLOR_XRGB( 255, 248, 0 ), FONT_BIG );
 
-        SprMngr.DrawStr( INTRECT( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );
+        SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );
     }
 }
 
@@ -2246,7 +2246,7 @@ void FOClient::GameDraw()
             if( cr->GetId() == (uint) Chosen->Params[ ST_FOLLOW_CRIT ] )
             {
                 SpriteInfo* si = SprMngr.GetSpriteInfo( GmapPFollowCrit->GetCurSprId() );
-                INTRECT     tr = cr->GetTextRect();
+                Rect        tr = cr->GetTextRect();
                 int         x = (int) ( ( tr.L + ( ( tr.R - tr.L ) / 2 ) + GameOpt.ScrOx ) / GameOpt.SpritesZoom - (float) ( si ? si->Width / 2 : 0 ) );
                 int         y = (int) ( ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - (float) ( si ? si->Height : 0 ) );
                 uint        col = ( CheckDist( cr->GetHexX(), cr->GetHexY(), Chosen->GetHexX(), Chosen->GetHexY(), FOLLOW_DIST ) /* && Chosen->IsFree()*/ ) ? COLOR_IFACE : COLOR_IFACE_RED;
@@ -2255,7 +2255,7 @@ void FOClient::GameDraw()
             if( Chosen->GetId() == (uint) cr->Params[ ST_FOLLOW_CRIT ] )
             {
                 SpriteInfo* si = SprMngr.GetSpriteInfo( GmapPFollowCritSelf->GetCurSprId() );
-                INTRECT     tr = cr->GetTextRect();
+                Rect        tr = cr->GetTextRect();
                 int         x = (int) ( ( tr.L + ( ( tr.R - tr.L ) / 2 ) + GameOpt.ScrOx ) / GameOpt.SpritesZoom - (float) ( si ? si->Width / 2 : 0 ) );
                 int         y = (int) ( ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - (float) ( si ? si->Height : 0 ) );
                 uint        col = ( CheckDist( cr->GetHexX(), cr->GetHexY(), Chosen->GetHexX(), Chosen->GetHexY(), FOLLOW_DIST ) /* && Chosen->IsFree()*/ ) ? COLOR_IFACE : COLOR_IFACE_RED;
@@ -2276,14 +2276,14 @@ void FOClient::GameDraw()
             it = GameMapTexts.erase( it );
         else
         {
-            uint    dt = tick - mt.StartTick;
-            int     procent = Procent( mt.Tick, dt );
-            INTRECT r = AverageFlexRect( mt.Rect, mt.EndRect, procent );
-            Field&  f = HexMngr.GetField( mt.HexX, mt.HexY );
-            int     x = (int) ( ( f.ScrX + HEX_OX + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f - (float) ( mt.Rect.L - r.L ) );
-            int     y = (int) ( ( f.ScrY + HEX_OY - mt.Rect.H() - ( mt.Rect.T - r.T ) + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
+            uint   dt = tick - mt.StartTick;
+            int    procent = Procent( mt.Tick, dt );
+            Rect   r = mt.Pos.Interpolate( mt.EndPos, procent );
+            Field& f = HexMngr.GetField( mt.HexX, mt.HexY );
+            int    x = (int) ( ( f.ScrX + HEX_OX + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f - (float) ( mt.Pos.L - r.L ) );
+            int    y = (int) ( ( f.ScrY + HEX_OY - mt.Pos.H() - ( mt.Pos.T - r.T ) + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
 
-            uint    color = mt.Color;
+            uint   color = mt.Color;
             if( mt.Fade )
                 color = ( color ^ 0xFF000000 ) | ( ( 0xFF * ( 100 - procent ) / 100 ) << 24 );
             else if( mt.Tick > 500 )
@@ -2296,7 +2296,7 @@ void FOClient::GameDraw()
                 }
             }
 
-            SprMngr.DrawStr( INTRECT( x, y, x + 200, y + 70 ), mt.Text.c_str(), FT_CENTERX | FT_BOTTOM | FT_BORDERED, color );
+            SprMngr.DrawStr( Rect( x, y, x + 200, y + 70 ), mt.Text.c_str(), FT_CENTERX | FT_BOTTOM | FT_BORDERED, color );
             it++;
         }
     }
@@ -2701,7 +2701,7 @@ void FOClient::IntDraw()
         int screen = GetActiveScreen();
         if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
         {
-            SprMngr.DrawStr( INTRECT( 0, 0, MODE_WIDTH, MODE_HEIGHT ),
+            SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ),
                              FmtGameText( STR_ZOOM, (int) ( 1.0f / GameOpt.SpritesZoom * 100.0f ) ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_BIG );
         }
     }
@@ -2812,7 +2812,7 @@ void FOClient::IntDraw()
     if( ap_cost )
     {
         SprMngr.DrawSprite( IntWApCostPicNone, IntWApCost[ 0 ] + item_offsx, IntWApCost[ 1 ] + item_offsy );
-        SprMngr.DrawStr( INTRECT( IntWApCost, item_offsx + 20, item_offsy ), Str::FormatBuf( "%u", ap_cost ), 0, COLOR_IFACE_FIX, FONT_SAND_NUM );
+        SprMngr.DrawStr( Rect( IntWApCost, item_offsx + 20, item_offsy ), Str::FormatBuf( "%u", ap_cost ), 0, COLOR_IFACE_FIX, FONT_SAND_NUM );
     }
 
     // Ap
@@ -2870,7 +2870,7 @@ void FOClient::IntDraw()
         if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
             DrawIndicator( IntWAmmoCount, IntAmmoPoints, COLOR_TEXT_GREEN, Procent( indicator_max, indicator_cur ), IntAmmoTick, true, false );
         if( GameOpt.IndicatorType == INDICATOR_NUMBERS || GameOpt.IndicatorType == INDICATOR_BOTH )
-            SprMngr.DrawStr( INTRECT( IntWAmmoCountStr, item_offsx, item_offsy ), Str::FormatBuf( "%03d", indicator_cur ), 0, IfaceHold == IFACE_INT_ITEM ? COLOR_TEXT_DGREEN : COLOR_TEXT, FONT_SPECIAL );
+            SprMngr.DrawStr( Rect( IntWAmmoCountStr, item_offsx, item_offsy ), Str::FormatBuf( "%03d", indicator_cur ), 0, IfaceHold == IFACE_INT_ITEM ? COLOR_TEXT_DGREEN : COLOR_TEXT, FONT_SPECIAL );
     }
     else if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
     {
@@ -2883,7 +2883,7 @@ void FOClient::IntDraw()
         if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
             DrawIndicator( IntWWearProcent, IntWearPoints, COLOR_TEXT_RED, item->GetDeteriorationProc(), IntWearTick, true, false );
         if( GameOpt.IndicatorType == INDICATOR_NUMBERS || GameOpt.IndicatorType == INDICATOR_BOTH )
-            SprMngr.DrawStr( INTRECT( IntWWearProcentStr, item_offsx, item_offsy ), Str::FormatBuf( "%d%%", item->GetDeteriorationProc() ), 0, IfaceHold == IFACE_INT_ITEM ? COLOR_TEXT_DRED : COLOR_TEXT_RED, FONT_SPECIAL );
+            SprMngr.DrawStr( Rect( IntWWearProcentStr, item_offsx, item_offsy ), Str::FormatBuf( "%d%%", item->GetDeteriorationProc() ), 0, IfaceHold == IFACE_INT_ITEM ? COLOR_TEXT_DRED : COLOR_TEXT_RED, FONT_SPECIAL );
     }
     else if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
     {
@@ -3113,7 +3113,7 @@ void FOClient::MessBoxGenerate()
     if( MessBox.empty() )
         return;
 
-    INTRECT ir = MessBoxCurRectDraw();
+    Rect ir = MessBoxCurRectDraw();
     int max_lines = SprMngr.GetLinesCount( 0, ir.H(), NULL );
 
     if( ir.IsZero() || max_lines <= 0 )
@@ -3170,16 +3170,16 @@ void FOClient::MessBoxDraw()
     if( !GameOpt.MsgboxInvert )
         flags |= FT_UPPER | FT_BOTTOM;
 
-    INTRECT ir = MessBoxCurRectDraw();
+    Rect ir = MessBoxCurRectDraw();
     if( ir.IsZero() )
         return;
 
     SprMngr.DrawStr( ir, MessBoxCurText.c_str(), flags | ( GameOpt.MsgboxInvert ? FT_SKIPLINES( MessBoxScrollLines ) : FT_SKIPLINES_END( MessBoxScrollLines ) ) );
 }
 
-INTRECT FOClient::MessBoxCurRectDraw()
+Rect FOClient::MessBoxCurRectDraw()
 {
-    static INTRECT r( 0, 0, 0, 0 );
+    static Rect r( 0, 0, 0, 0 );
 
     if( IsMainScreen( SCREEN_LOGIN ) )
         return LogWChat;
@@ -3198,17 +3198,17 @@ INTRECT FOClient::MessBoxCurRectDraw()
     return r( 0, 0, 0, 0 );
 }
 
-INTRECT FOClient::MessBoxCurRectScroll()
+Rect FOClient::MessBoxCurRectScroll()
 {
     if( IsCurMode( CUR_WAIT ) || IsLMenu() )
-        return INTRECT( 0, 0, 0, 0 );
+        return Rect( 0, 0, 0, 0 );
 
     if( GetActiveScreen() == SCREEN_NONE )
     {
         if( IsMainScreen( SCREEN_LOGIN ) )
             return LogWChat;
         else if( IsMainScreen( SCREEN_REGISTRATION ) )
-            return INTRECT( 0, 0, MODE_WIDTH, 60 );
+            return Rect( 0, 0, MODE_WIDTH, 60 );
         else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
             return GmapWChat;
         else if( IsMainScreen( SCREEN_GAME ) && IntVisible && !IsScreenPresent( SCREEN__TOWN_VIEW ) )
@@ -3220,15 +3220,15 @@ INTRECT FOClient::MessBoxCurRectScroll()
         }
     }
 
-    return INTRECT( 0, 0, 0, 0 );
+    return Rect( 0, 0, 0, 0 );
 }
 
 bool FOClient::MessBoxLMouseDown()
 {
-    INTRECT rmb = MessBoxCurRectScroll();
+    Rect rmb = MessBoxCurRectScroll();
     if( !rmb.IsZero() && IsCurInRect( rmb ) )
     {
-        if( IsCurInRect( INTRECT( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
+        if( IsCurInRect( Rect( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
         {
             if( GameOpt.MsgboxInvert && MessBoxScroll > 0 )
                 MessBoxScroll--;
@@ -3451,9 +3451,9 @@ void FOClient::DlgDraw( bool is_dialog )
     const char scr_up[] = { (char) TEXT_SYMBOL_UP, 0 };
     const char scr_down[] = { (char) TEXT_SYMBOL_DOWN, 0 };
     if( DlgMainTextCur )
-        SprMngr.DrawStr( INTRECT( DlgBScrUp, DlgX, DlgY ), scr_up, 0, IfaceHold == IFACE_DLG_SCR_UP ? COLOR_TEXT_DGREEN : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( DlgBScrUp, DlgX, DlgY ), scr_up, 0, IfaceHold == IFACE_DLG_SCR_UP ? COLOR_TEXT_DGREEN : COLOR_TEXT );
     if( DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
-        SprMngr.DrawStr( INTRECT( DlgBScrDn, DlgX, DlgY ), scr_down, 0, IfaceHold == IFACE_DLG_SCR_DN ? COLOR_TEXT_DGREEN : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( DlgBScrDn, DlgX, DlgY ), scr_down, 0, IfaceHold == IFACE_DLG_SCR_DN ? COLOR_TEXT_DGREEN : COLOR_TEXT );
 
     // Dialog
     if( is_dialog )
@@ -3471,25 +3471,25 @@ void FOClient::DlgDraw( bool is_dialog )
         }
 
         // Texts
-        SprMngr.DrawStr( INTRECT( DlgBBarterText, DlgX, DlgY ), MsgGame->GetStr( STR_DIALOG_BARTER ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( INTRECT( DlgBSayText, DlgX, DlgY ), MsgGame->GetStr( STR_DIALOG_SAY ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( DlgBBarterText, DlgX, DlgY ), MsgGame->GetStr( STR_DIALOG_BARTER ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( DlgBSayText, DlgX, DlgY ), MsgGame->GetStr( STR_DIALOG_SAY ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
         // Npc text
-        SprMngr.DrawStr( INTRECT( DlgWText, DlgX, DlgY ), DlgMainText.c_str(), FT_SKIPLINES( DlgMainTextCur ), COLOR_TEXT );
+        SprMngr.DrawStr( Rect( DlgWText, DlgX, DlgY ), DlgMainText.c_str(), FT_SKIPLINES( DlgMainTextCur ), COLOR_TEXT );
 
         // Answers
         for( uint i = 0; i < DlgAnswers.size(); i++ )
         {
             Answer& a = DlgAnswers[ i ];
             if( i == DlgCurAnsw )
-                SprMngr.DrawStr( INTRECT( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, IfaceHold == IFACE_DLG_ANSWER && DlgCurAnsw == DlgHoldAnsw ? COLOR_TEXT_DDGREEN : ( IfaceHold != IFACE_DLG_ANSWER ? COLOR_TEXT_DGREEN : COLOR_TEXT ) );
+                SprMngr.DrawStr( Rect( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, IfaceHold == IFACE_DLG_ANSWER && DlgCurAnsw == DlgHoldAnsw ? COLOR_TEXT_DDGREEN : ( IfaceHold != IFACE_DLG_ANSWER ? COLOR_TEXT_DGREEN : COLOR_TEXT ) );
             else
-                SprMngr.DrawStr( INTRECT( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, COLOR_TEXT );
+                SprMngr.DrawStr( Rect( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, COLOR_TEXT );
         }
 
         // Chosen money
         if( Chosen )
-            SprMngr.DrawStr( INTRECT( DlgWMoney, DlgX, DlgY ), Chosen->GetMoneyStr(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
+            SprMngr.DrawStr( Rect( DlgWMoney, DlgX, DlgY ), Chosen->GetMoneyStr(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
     }
     // Barter
     else
@@ -3533,30 +3533,30 @@ void FOClient::DlgDraw( bool is_dialog )
             break;
         }
 
-        Chosen->DrawStay( INTRECT( BarterWChosen, DlgX, DlgY ) );
+        Chosen->DrawStay( Rect( BarterWChosen, DlgX, DlgY ) );
         CritterCl* cr = GetCritter( BarterIsPlayers ? BarterOpponentId : DlgNpcId );
         if( cr )
-            cr->DrawStay( INTRECT( BarterWCritter, DlgX, DlgY ) );
+            cr->DrawStay( Rect( BarterWCritter, DlgX, DlgY ) );
 
         SprMngr.Flush();
 
         // Items
-        ContainerDraw( INTRECT( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1, IfaceHold == IFACE_BARTER_CONT1 ? BarterHoldId : 0 );
-        ContainerDraw( INTRECT( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2, IfaceHold == IFACE_BARTER_CONT2 ? BarterHoldId : 0 );
-        ContainerDraw( INTRECT( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o, IfaceHold == IFACE_BARTER_CONT1O ? BarterHoldId : 0 );
-        ContainerDraw( INTRECT( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o, IfaceHold == IFACE_BARTER_CONT2O ? BarterHoldId : 0 );
+        ContainerDraw( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1, IfaceHold == IFACE_BARTER_CONT1 ? BarterHoldId : 0 );
+        ContainerDraw( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2, IfaceHold == IFACE_BARTER_CONT2 ? BarterHoldId : 0 );
+        ContainerDraw( Rect( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o, IfaceHold == IFACE_BARTER_CONT1O ? BarterHoldId : 0 );
+        ContainerDraw( Rect( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o, IfaceHold == IFACE_BARTER_CONT2O ? BarterHoldId : 0 );
 
         // Info
-        SprMngr.DrawStr( INTRECT( BarterBOfferText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_OFFER ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( BarterBOfferText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_OFFER ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
         if( BarterIsPlayers )
         {
-            SprMngr.DrawStr( INTRECT( BarterBTalkText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_END ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-            SprMngr.DrawStr( INTRECT( DlgWText, DlgX, DlgY ), BarterText.c_str(), FT_UPPER );
+            SprMngr.DrawStr( Rect( BarterBTalkText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_END ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+            SprMngr.DrawStr( Rect( DlgWText, DlgX, DlgY ), BarterText.c_str(), FT_UPPER );
         }
         else
         {
-            SprMngr.DrawStr( INTRECT( BarterBTalkText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_TALK ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-            SprMngr.DrawStr( INTRECT( DlgWText, DlgX, DlgY ), BarterText.c_str(), 0 );
+            SprMngr.DrawStr( Rect( BarterBTalkText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_TALK ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+            SprMngr.DrawStr( Rect( DlgWText, DlgX, DlgY ), BarterText.c_str(), 0 );
         }
 
         // Cost
@@ -3565,24 +3565,24 @@ void FOClient::DlgDraw( bool is_dialog )
         ContainerCalcInfo( BarterCont2o, c2, w2, v2, Chosen->IsRawParam( PE_MASTER_TRADER ) ? 0 : BarterK, false );
         if( !BarterIsPlayers && BarterK )
         {
-            SprMngr.DrawStr( INTRECT( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "$%u", c1 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-            SprMngr.DrawStr( INTRECT( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "$%u", c2 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+            SprMngr.DrawStr( Rect( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "$%u", c1 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+            SprMngr.DrawStr( Rect( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "$%u", c2 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
         }
         else
         {
-            SprMngr.DrawStr( INTRECT( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "%u", w1 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-            SprMngr.DrawStr( INTRECT( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "%u", w2 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+            SprMngr.DrawStr( Rect( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "%u", w1 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
+            SprMngr.DrawStr( Rect( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "%u", w2 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
         }
         // Overweight, oversize indicate
         if( Chosen->GetFreeWeight() + w1 < (int) w2 )
-            SprMngr.DrawStr( INTRECT( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERWEIGHT_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
+            SprMngr.DrawStr( Rect( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERWEIGHT_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
         else if( Chosen->GetFreeVolume() + v1 < (int) v2 )
-            SprMngr.DrawStr( INTRECT( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERVOLUME_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
+            SprMngr.DrawStr( Rect( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERVOLUME_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
     }
 
     // Timer
     if( !BarterIsPlayers && DlgEndTick && DlgEndTick > Timer::GameTick() )
-        SprMngr.DrawStr( INTRECT( DlgWTimer, DlgX, DlgY ), Str::FormatBuf( "%u", ( DlgEndTick - Timer::GameTick() ) / 1000 ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_DGREEN );
+        SprMngr.DrawStr( Rect( DlgWTimer, DlgX, DlgY ), Str::FormatBuf( "%u", ( DlgEndTick - Timer::GameTick() ) / 1000 ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_DGREEN );
 }
 
 void FOClient::DlgLMouseDown( bool is_dialog )
@@ -3628,7 +3628,7 @@ void FOClient::DlgLMouseDown( bool is_dialog )
     {
         if( IsCurInRect( BarterWCont1, DlgX, DlgY ) )
         {
-            BarterHoldId = GetCurContainerItemId( INTRECT( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
+            BarterHoldId = GetCurContainerItemId( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
             if( !BarterHoldId )
                 return;
             IfaceHold = IFACE_BARTER_CONT1;
@@ -3637,7 +3637,7 @@ void FOClient::DlgLMouseDown( bool is_dialog )
         {
             if( !( BarterIsPlayers && BarterOpponentHide ) )
             {
-                BarterHoldId = GetCurContainerItemId( INTRECT( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
+                BarterHoldId = GetCurContainerItemId( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
                 if( !BarterHoldId )
                     return;
                 IfaceHold = IFACE_BARTER_CONT2;
@@ -3645,7 +3645,7 @@ void FOClient::DlgLMouseDown( bool is_dialog )
         }
         else if( IsCurInRect( BarterWCont1o, DlgX, DlgY ) )
         {
-            BarterHoldId = GetCurContainerItemId( INTRECT( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o );
+            BarterHoldId = GetCurContainerItemId( Rect( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o );
             if( !BarterHoldId )
                 return;
             IfaceHold = IFACE_BARTER_CONT1O;
@@ -3654,7 +3654,7 @@ void FOClient::DlgLMouseDown( bool is_dialog )
         {
             if( !( BarterIsPlayers && BarterOpponentHide ) )
             {
-                BarterHoldId = GetCurContainerItemId( INTRECT( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o );
+                BarterHoldId = GetCurContainerItemId( Rect( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o );
                 if( !BarterHoldId )
                     return;
                 IfaceHold = IFACE_BARTER_CONT2O;
@@ -4540,7 +4540,7 @@ void FOClient::LMenuCollect()
         {
         case SCREEN__USE:
         {
-            uint item_id = GetCurContainerItemId( INTRECT( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont );
+            uint item_id = GetCurContainerItemId( Rect( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont );
             if( item_id )
             {
                 TargetSmth.SetContItem( item_id, 0 );
@@ -4552,7 +4552,7 @@ void FOClient::LMenuCollect()
         {
             if( !Chosen )
                 break;
-            uint item_id = GetCurContainerItemId( INTRECT( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont );
+            uint item_id = GetCurContainerItemId( Rect( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont );
             if( !item_id && IsCurInRect( InvWSlot1, InvX, InvY ) )
                 item_id = Chosen->ItemSlotMain->GetId();
             if( !item_id && IsCurInRect( InvWSlot2, InvX, InvY ) )
@@ -4586,15 +4586,15 @@ void FOClient::LMenuCollect()
         case SCREEN__BARTER:
         {
             int cont_type = 0;
-            uint item_id = GetCurContainerItemId( INTRECT( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
+            uint item_id = GetCurContainerItemId( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
             if( !item_id )
-                item_id = GetCurContainerItemId( INTRECT( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
+                item_id = GetCurContainerItemId( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
             if( !item_id )
             {
                 cont_type = 1;
-                item_id = GetCurContainerItemId( INTRECT( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o );
+                item_id = GetCurContainerItemId( Rect( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o );
                 if( !item_id )
-                    item_id = GetCurContainerItemId( INTRECT( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o );
+                    item_id = GetCurContainerItemId( Rect( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o );
             }
             if( !item_id )
                 break;
@@ -4605,9 +4605,9 @@ void FOClient::LMenuCollect()
         break;
         case SCREEN__PICKUP:
         {
-            uint item_id = GetCurContainerItemId( INTRECT( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1 );
+            uint item_id = GetCurContainerItemId( Rect( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1 );
             if( !item_id )
-                item_id = GetCurContainerItemId( INTRECT( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2 );
+                item_id = GetCurContainerItemId( Rect( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2 );
             if( !item_id )
                 break;
 
@@ -4658,7 +4658,7 @@ void FOClient::LMenuCollect()
             for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
             {
                 CritterCl* cr = ( *it ).second;
-                if( !IsCurInRect( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
+                if( !IsCurInRect( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
                     continue;
                 TargetSmth.SetCritter( cr->GetId() );
                 LMenuSet( LMENU_GMAP_CRIT );
@@ -5550,7 +5550,7 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
             int x = MsgGM->GetInt( STR_GM_ENTRANCE_PICX_( loc_pid, i ) ) + pic_offsx;
             int y = MsgGM->GetInt( STR_GM_ENTRANCE_PICY_( loc_pid, i ) ) + pic_offsy;
 
-            GmapTownTextPos.push_back( INTRECT( x, y, MODE_WIDTH, MODE_HEIGHT ) );
+            GmapTownTextPos.push_back( Rect( x, y, MODE_WIDTH, MODE_HEIGHT ) );
             GmapTownText.push_back( string( MsgGM->GetStr( STR_GM_ENTRANCE_NAME_( loc_pid, i ) ) ) );
         }
 
@@ -5751,7 +5751,7 @@ void FOClient::LmapDraw()
 
     SprMngr.DrawSprite( LmapPMain, LmapMain[ 0 ] + LmapX, LmapMain[ 1 ] + LmapY );
     SprMngr.DrawPoints( LmapPrepPix, PRIMITIVE_LINELIST );
-    SprMngr.DrawStr( INTRECT( LmapWMap[ 0 ] + LmapX, LmapWMap[ 1 ] + LmapY, LmapWMap[ 0 ] + LmapX + 100, LmapWMap[ 1 ] + LmapY + 15 ), Str::FormatBuf( "Zoom: %d", LmapZoom - 1 ), 0 );
+    SprMngr.DrawStr( Rect( LmapWMap[ 0 ] + LmapX, LmapWMap[ 1 ] + LmapY, LmapWMap[ 0 ] + LmapX + 100, LmapWMap[ 1 ] + LmapY + 15 ), Str::FormatBuf( "Zoom: %d", LmapZoom - 1 ), 0 );
     if( IfaceHold == IFACE_LMAP_OK )
         SprMngr.DrawSprite( LmapPBOkDw, LmapBOk[ 0 ] + LmapX, LmapBOk[ 1 ] + LmapY );
     if( IfaceHold == IFACE_LMAP_SCAN )
@@ -6037,7 +6037,7 @@ void FOClient::GmapDraw()
                 color = COLOR_ARGB( 0x3F, 0, 0, 0 );
             float x = float(zx * GM_ZONE_LEN) / GmapZoom + GmapOffsetX;
             float y = float(zy * GM_ZONE_LEN) / GmapZoom + GmapOffsetY;
-            SprMngr.PrepareSquare( GmapFogPix, FLTRECT( x, y, x + GM_ZONE_LEN / GmapZoom, y + GM_ZONE_LEN / GmapZoom ), color );
+            SprMngr.PrepareSquare( GmapFogPix, RectF( x, y, x + GM_ZONE_LEN / GmapZoom, y + GM_ZONE_LEN / GmapZoom ), color );
         }
     }
     SprMngr.DrawPoints( GmapFogPix, PRIMITIVE_TRIANGLELIST );
@@ -6202,8 +6202,8 @@ void FOClient::GmapDraw()
     for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
     {
         CritterCl* cr = ( *it ).second;
-        SprMngr.DrawStr( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->GetName(), FT_NOBREAK | FT_CENTERY, cr->IsGmapRule() ? COLOR_TEXT_DGREEN : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->IsOffline() ? "offline" : "online", FT_NOBREAK | FT_CENTERR, cr->IsOffline() ? COLOR_TEXT_DDRED : COLOR_TEXT_DDGREEN, FONT_SPECIAL );
+        SprMngr.DrawStr( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->GetName(), FT_NOBREAK | FT_CENTERY, cr->IsGmapRule() ? COLOR_TEXT_DGREEN : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->IsOffline() ? "offline" : "online", FT_NOBREAK | FT_CENTERR, cr->IsOffline() ? COLOR_TEXT_DDRED : COLOR_TEXT_DDGREEN, FONT_SPECIAL );
     }
 
     // Map coord
@@ -6230,24 +6230,24 @@ void FOClient::GmapDraw()
             SpriteInfo* si = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
             if( Chosen )
             {
-                SprMngr.DrawStr( INTRECT( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ), cur_loc ?
+                SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ), cur_loc ?
                                  FmtGameText( STR_GMAP_CUR_LOC_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ), MsgGM->GetStr( STR_GM_NAME_( cur_loc->LocPid ) ), MsgGM->GetStr( STR_GM_INFO_( cur_loc->LocPid ) ) ) :
                                  FmtGameText( STR_GMAP_CUR_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ) ), 0 );
             }
             else if( cur_loc )
             {
-                SprMngr.DrawStr( INTRECT( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ),
+                SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ),
                                  FmtGameText( STR_GMAP_LOC_INFO, MsgGM->GetStr( STR_GM_NAME_( cur_loc->LocPid ) ), MsgGM->GetStr( STR_GM_INFO_( cur_loc->LocPid ) ) ), 0 );
             }
         }
     }
 
     // Time
-    SprMngr.DrawStr( INTRECT( GmapWTime ), Str::FormatBuf( "%02d", GameOpt.Day ), 0, COLOR_IFACE, FONT_NUM );                              // Day
-    char mval = '0' + GameOpt.Month - 1 + 0x30;                                                                                            // Month
-    SprMngr.DrawStr( INTRECT( GmapWTime, 26, 1 ), Str::FormatBuf( "%c", mval ), 0, COLOR_IFACE, FONT_NUM );                                // Month
-    SprMngr.DrawStr( INTRECT( GmapWTime, 62, 0 ), Str::FormatBuf( "%04d", GameOpt.Year ), 0, COLOR_IFACE, FONT_NUM );                      // Year
-    SprMngr.DrawStr( INTRECT( GmapWTime, 107, 0 ), Str::FormatBuf( "%02d%02d", GameOpt.Hour, GameOpt.Minute ), 0, COLOR_IFACE, FONT_NUM ); // Hour,Minute
+    SprMngr.DrawStr( Rect( GmapWTime ), Str::FormatBuf( "%02d", GameOpt.Day ), 0, COLOR_IFACE, FONT_NUM );                              // Day
+    char mval = '0' + GameOpt.Month - 1 + 0x30;                                                                                         // Month
+    SprMngr.DrawStr( Rect( GmapWTime, 26, 1 ), Str::FormatBuf( "%c", mval ), 0, COLOR_IFACE, FONT_NUM );                                // Month
+    SprMngr.DrawStr( Rect( GmapWTime, 62, 0 ), Str::FormatBuf( "%04d", GameOpt.Year ), 0, COLOR_IFACE, FONT_NUM );                      // Year
+    SprMngr.DrawStr( Rect( GmapWTime, 107, 0 ), Str::FormatBuf( "%02d%02d", GameOpt.Hour, GameOpt.Minute ), 0, COLOR_IFACE, FONT_NUM ); // Hour,Minute
 }
 
 void FOClient::GmapTownDraw()
@@ -6313,7 +6313,7 @@ void FOClient::GmapLMouseDown()
         {
             if( GmapTownLoc.LocId != GmapShowEntrancesLocId || !GmapShowEntrances[ i ] )
                 continue;
-            INTRECT& r = GmapTownTextPos[ i ];
+            Rect& r = GmapTownTextPos[ i ];
 
             // Enter to entrance
             if( Chosen && Chosen->IsGmapRule() && IsCurInRect( r, GmapPTownInOffsX, GmapPTownInOffsY ) &&
@@ -6364,7 +6364,7 @@ void FOClient::GmapLMouseDown()
         for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
         {
             CritterCl* cr = ( *it ).second;
-            if( !IsCurInRect( INTRECT( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
+            if( !IsCurInRect( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
                 continue;
             LMenuTryActivate();
             return;
@@ -6701,16 +6701,16 @@ void FOClient::SboxDraw()
     SprMngr.Flush();
 
     // Cancel, title
-    SprMngr.DrawStr( INTRECT( SboxWMainText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_NAME ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SboxBCancelText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_CANCEL ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SboxWMainText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_NAME ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SboxBCancelText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_CANCEL ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
 
     // Skills
-    #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                                   \
-        do { SprMngr.DrawStr( INTRECT( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
-             int sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                                                                                    \
-                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; sprintf( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                              \
-                 Str::ChangeValue( str, 0x10 );                                                                                                                                                                              \
-             SprMngr.DrawStr( INTRECT( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
+    #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                                \
+        do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
+             int sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                                                                                 \
+                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; sprintf( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                           \
+                 Str::ChangeValue( str, 0x10 );                                                                                                                                                                           \
+             SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
 
     SBOX_DRAW_SKILL( Sneak, SK_SNEAK );
     SBOX_DRAW_SKILL( Lockpick, SK_LOCKPICK );
@@ -6875,8 +6875,8 @@ void FOClient::MoptDraw()
             SprMngr.DrawSprite( MoptSaveGamePicDown, MoptSaveGame[ 0 ], MoptSaveGame[ 1 ] );
         else if( IfaceHold == IFACE_MOPT_LOADGAME )
             SprMngr.DrawSprite( MoptLoadGamePicDown, MoptLoadGame[ 0 ], MoptLoadGame[ 1 ] );
-        SprMngr.DrawStr( INTRECT( MoptSaveGame, 0, IfaceHold == IFACE_MOPT_SAVEGAME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_SAVEGAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( INTRECT( MoptLoadGame, 0, IfaceHold == IFACE_MOPT_LOADGAME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_LOADGAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( MoptSaveGame, 0, IfaceHold == IFACE_MOPT_SAVEGAME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_SAVEGAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( MoptLoadGame, 0, IfaceHold == IFACE_MOPT_LOADGAME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_LOADGAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     }
 
     if( IfaceHold == IFACE_MOPT_OPTIONS )
@@ -6885,9 +6885,9 @@ void FOClient::MoptDraw()
         SprMngr.DrawSprite( MoptExitPicDown, MoptExit[ 0 ], MoptExit[ 1 ] );
     else if( IfaceHold == IFACE_MOPT_RESUME )
         SprMngr.DrawSprite( MoptResumePicDown, MoptResume[ 0 ], MoptResume[ 1 ] );
-    SprMngr.DrawStr( INTRECT( MoptOptions, 0, IfaceHold == IFACE_MOPT_OPTIONS ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_OPTIONS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( MoptResume, 0, IfaceHold == IFACE_MOPT_RESUME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_RESUME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( MoptExit, 0, IfaceHold == IFACE_MOPT_EXIT ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_EXIT ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( MoptOptions, 0, IfaceHold == IFACE_MOPT_OPTIONS ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_OPTIONS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( MoptResume, 0, IfaceHold == IFACE_MOPT_RESUME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_RESUME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( MoptExit, 0, IfaceHold == IFACE_MOPT_EXIT ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_EXIT ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 }
 
 void FOClient::MoptLMouseDown()
@@ -6936,7 +6936,7 @@ void FOClient::MoptLMouseUp()
 
 void FOClient::CreditsDraw()
 {
-    SprMngr.DrawStr( INTRECT( 0, CreditsYPos, MODE_WIDTH, MODE_HEIGHT + 50 ),
+    SprMngr.DrawStr( Rect( 0, CreditsYPos, MODE_WIDTH, MODE_HEIGHT + 50 ),
                      MsgGame->GetStr( CreaditsExt ? STR_GAME_CREDITS_EXT : STR_GAME_CREDITS ), FT_CENTERX, COLOR_TEXT, FONT_BIG );
 
     if( Timer::FastTick() >= CreditsNextTick )
@@ -7164,18 +7164,18 @@ void FOClient::ChaDraw( bool is_reg )
     }
 
     // Print, Ok, Cancel button texts
-    SprMngr.DrawStr( INTRECT( ChaBPrintText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_PRINT ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( ChaBOkText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_OK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( ChaBCancelText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_CANCEL ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaBPrintText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_PRINT ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaBOkText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_OK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaBCancelText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_CANCEL ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Switch
     if( !is_reg )
     {
         int sw = ( ChaBSwitch[ 2 ] - ChaBSwitch[ 0 ] ) / 3;
         int sh = ChaBSwitch[ 3 ] - ChaBSwitch[ 1 ];
-        SprMngr.DrawStr( INTRECT( INTRECT( ChaBSwitch[ 0 ], ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_PERKS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_PERKS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( INTRECT( INTRECT( ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KARMA ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KARMA_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( INTRECT( INTRECT( ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 2 ], ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KILLS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KILLS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ], ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_PERKS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_PERKS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KARMA ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KARMA_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 2 ], ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KILLS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KILLS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
         SwitchElementVec& text = ChaSwitchText[ ChaCurSwitch ];
         int scroll = ChaSwitchScroll[ ChaCurSwitch ];
@@ -7191,7 +7191,7 @@ void FOClient::ChaDraw( bool is_reg )
                 if( i < scroll )
                     continue;
                 SwitchElement& e = text[ i ];
-                SprMngr.DrawStr( INTRECT( ChaTSwitch, ChaX, ChaY + ( i - scroll ) * 11 ), Str::FormatBuf( "%s%s", MsgGame->GetStr( e.NameStrNum ), e.Addon ), e.DrawFlags );
+                SprMngr.DrawStr( Rect( ChaTSwitch, ChaX, ChaY + ( i - scroll ) * 11 ), Str::FormatBuf( "%s%s", MsgGame->GetStr( e.NameStrNum ), e.Addon ), e.DrawFlags );
             }
         }
         // Kills
@@ -7205,8 +7205,8 @@ void FOClient::ChaDraw( bool is_reg )
                     continue;
 
                 SwitchElement& e = text[ i ];
-                SprMngr.DrawStr( INTRECT( ChaTSwitch, ChaX, ChaY + ( i - scroll ) * 11 ), MsgGame->GetStr( e.NameStrNum ), e.DrawFlags );
-                SprMngr.DrawStr( INTRECT( INTRECT( ChaTSwitch[ 2 ] - 35, ChaTSwitch[ 1 ], ChaTSwitch[ 2 ], ChaTSwitch[ 3 ] ), ChaX, ChaY + ( i - scroll ) * 11 ), e.Addon, 0 );
+                SprMngr.DrawStr( Rect( ChaTSwitch, ChaX, ChaY + ( i - scroll ) * 11 ), MsgGame->GetStr( e.NameStrNum ), e.DrawFlags );
+                SprMngr.DrawStr( Rect( Rect( ChaTSwitch[ 2 ] - 35, ChaTSwitch[ 1 ], ChaTSwitch[ 2 ], ChaTSwitch[ 3 ] ), ChaX, ChaY + ( i - scroll ) * 11 ), e.Addon, 0 );
             }
         }
     }
@@ -7217,7 +7217,7 @@ void FOClient::ChaDraw( bool is_reg )
         int param = ChaSpecialParams[ i ];
 
         // Text
-        SprMngr.DrawStr( INTRECT( ChaWSpecialText, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_INV_SHORT_SPECIAL_( param ) ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_SAND, FONT_BIG );
+        SprMngr.DrawStr( Rect( ChaWSpecialText, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_INV_SHORT_SPECIAL_( param ) ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_SAND, FONT_BIG );
 
         // Value
         int val = CHA_PARAM( param );
@@ -7226,13 +7226,13 @@ void FOClient::ChaDraw( bool is_reg )
         Str::Format( str, "%02d", val );
         if( val < 1 || val > 10 )
             Str::ChangeValue( str, 0x10 );
-        SprMngr.DrawStr( INTRECT( ChaWSpecialValue, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+        SprMngr.DrawStr( Rect( ChaWSpecialValue, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 
         // Str level
         if( is_reg )
-            SprMngr.DrawStr( INTRECT( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_ABB_( val ) ), FT_NOBREAK | FT_CENTERY );
+            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_ABB_( val ) ), FT_NOBREAK | FT_CENTERY );
         else
-            SprMngr.DrawStr( INTRECT( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_( val ) ), FT_NOBREAK | FT_CENTERY );
+            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_( val ) ), FT_NOBREAK | FT_CENTERY );
     }
 
     // Unspent
@@ -7241,64 +7241,64 @@ void FOClient::ChaDraw( bool is_reg )
         int unspent = GameOpt.StartSpecialPoints;
         for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
             unspent -= cr->ParamsReg[ ChaSpecialParams[ i ] ];
-        SprMngr.DrawStr( INTRECT( RegWUnspentSpecial, ChaX, ChaY ), Str::FormatBuf( "%02d", unspent ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-        SprMngr.DrawStr( INTRECT( RegWUnspentSpecialText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_SPECIAL_SUM ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( RegWUnspentSpecial, ChaX, ChaY ), Str::FormatBuf( "%02d", unspent ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+        SprMngr.DrawStr( Rect( RegWUnspentSpecialText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_SPECIAL_SUM ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     }
 
     // Skill
-    SprMngr.DrawStr( INTRECT( ChaWSkillText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_SKILLS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaWSkillText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_SKILLS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
     {
         int offs = i - SKILL_BEGIN;
         // Name
-        SprMngr.DrawStr( INTRECT( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
         // Value
-        SprMngr.DrawStr( INTRECT( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), Str::FormatBuf( "%d%%", CLAMP( CHA_PARAM( i ) + ( is_reg ? 0 : ChaSkillUp[ offs ] ), -MAX_SKILL_VAL, MAX_SKILL_VAL ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), Str::FormatBuf( "%d%%", CLAMP( CHA_PARAM( i ) + ( is_reg ? 0 : ChaSkillUp[ offs ] ), -MAX_SKILL_VAL, MAX_SKILL_VAL ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
     }
 
     if( is_reg )
     {
-        SprMngr.DrawStr( INTRECT( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_UNSPENT_TAGS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_UNSPENT_TAGS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
         int free_tag_skill = GameOpt.StartTagSkillPoints - ( cr->Params[ TAG_SKILL1 ] ? 1 : 0 ) - ( cr->Params[ TAG_SKILL2 ] ? 1 : 0 ) - ( cr->Params[ TAG_SKILL3 ] ? 1 : 0 ) - ( cr->Params[ TAG_SKILL4 ] ? 1 : 0 );
-        SprMngr.DrawStr( INTRECT( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", free_tag_skill ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+        SprMngr.DrawStr( Rect( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", free_tag_skill ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
     }
     else
     {
-        SprMngr.DrawStr( INTRECT( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_UNSPENT_SP ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( INTRECT( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", ChaUnspentSkillPoints ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+        SprMngr.DrawStr( Rect( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_UNSPENT_SP ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", ChaUnspentSkillPoints ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
     }
 
     // Tips
-    SprMngr.DrawStr( INTRECT( ChaWName, ChaX, ChaY ), ChaName, 0, COLOR_TEXT_BLACK, FONT_THIN );
-    SprMngr.DrawStr( INTRECT( ChaWDesc, ChaX, ChaY ), ChaDesc, 0, COLOR_TEXT_BLACK );
+    SprMngr.DrawStr( Rect( ChaWName, ChaX, ChaY ), ChaName, 0, COLOR_TEXT_BLACK, FONT_THIN );
+    SprMngr.DrawStr( Rect( ChaWDesc, ChaX, ChaY ), ChaDesc, 0, COLOR_TEXT_BLACK );
 
     // Level
     if( !is_reg )
     {
-        SprMngr.DrawStr( INTRECT( ChaWLevel, ChaX, ChaY ), FmtGameText( STR_CHA_LEVEL, cr->GetParam( ST_LEVEL ) ), 0 );
-        SprMngr.DrawStr( INTRECT( ChaWExp, ChaX, ChaY ), FmtGameText( STR_CHA_EXPERIENCE, cr->GetParam( ST_EXPERIENCE ) ), 0 );
-        SprMngr.DrawStr( INTRECT( ChaWNextLevel, ChaX, ChaY ), FmtGameText( STR_CHA_NEXT_LEVEL, NumericalNumber( cr->GetParam( ST_LEVEL ) ) * 1000 ), 0 );
+        SprMngr.DrawStr( Rect( ChaWLevel, ChaX, ChaY ), FmtGameText( STR_CHA_LEVEL, cr->GetParam( ST_LEVEL ) ), 0 );
+        SprMngr.DrawStr( Rect( ChaWExp, ChaX, ChaY ), FmtGameText( STR_CHA_EXPERIENCE, cr->GetParam( ST_EXPERIENCE ) ), 0 );
+        SprMngr.DrawStr( Rect( ChaWNextLevel, ChaX, ChaY ), FmtGameText( STR_CHA_NEXT_LEVEL, NumericalNumber( cr->GetParam( ST_LEVEL ) ) * 1000 ), 0 );
     }
 
     // Name
-    SprMngr.DrawStr( INTRECT( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), cr->GetName(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), cr->GetName(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Age
-    SprMngr.DrawStr( INTRECT( ChaBAge, ChaX, ChaY - ( IfaceHold == IFACE_CHA_AGE ? 1 : 0 ) ), Str::FormatBuf( "%02d", ( is_reg ? cr->ParamsReg[ ST_AGE ] : cr->GetParam( ST_AGE ) ) ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaBAge, ChaX, ChaY - ( IfaceHold == IFACE_CHA_AGE ? 1 : 0 ) ), Str::FormatBuf( "%02d", ( is_reg ? cr->ParamsReg[ ST_AGE ] : cr->GetParam( ST_AGE ) ) ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Sex
     if( ( is_reg ? cr->ParamsReg[ ST_GENDER ] : cr->GetParam( ST_GENDER ) ) == GENDER_MALE )
-        SprMngr.DrawStr( INTRECT( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_MALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_MALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     else
-        SprMngr.DrawStr( INTRECT( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_FEMALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_FEMALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Damage
     // Life
     if( is_reg )
-        SprMngr.DrawStr( INTRECT( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, cr->Params[ ST_MAX_LIFE ], cr->Params[ ST_MAX_LIFE ] ), FT_NOBREAK );
+        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, cr->Params[ ST_MAX_LIFE ], cr->Params[ ST_MAX_LIFE ] ), FT_NOBREAK );
     else
-        SprMngr.DrawStr( INTRECT( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, cr->GetParam( ST_CURRENT_HP ), cr->GetParam( ST_MAX_LIFE ) ), FT_NOBREAK );
+        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, cr->GetParam( ST_CURRENT_HP ), cr->GetParam( ST_MAX_LIFE ) ), FT_NOBREAK );
 
     // Body damages
     for( uint i = DAMAGE_BEGIN; i <= DAMAGE_END; ++i )
@@ -7311,14 +7311,14 @@ void FOClient::ChaDraw( bool is_reg )
             color = ( CHA_PARAM( ST_POISONING_LEVEL ) ? COLOR_TEXT : COLOR_TEXT_DARK );
         else
             color = ( CHA_PARAM( i ) ? COLOR_TEXT : COLOR_TEXT_DARK );
-        SprMngr.DrawStr( INTRECT( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, color );
+        SprMngr.DrawStr( Rect( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, color );
     }
 
     // Secondary stats
     for( int i = 0; i < ShowStatsCnt; ++i )
     {
         // Name
-        SprMngr.DrawStr( INTRECT( ChaWStatsName, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( ShowStats[ i ] ) ), FT_NOBREAK, COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWStatsName, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( ShowStats[ i ] ) ), FT_NOBREAK, COLOR_TEXT );
         // Value
         int val = CHA_PARAM( ShowStats[ i ] );
         const char* str;
@@ -7335,7 +7335,7 @@ void FOClient::ChaDraw( bool is_reg )
             str = Str::FormatBuf( "%d", val );
             break;
         }
-        SprMngr.DrawStr( INTRECT( ChaWStatsValue, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), str, FT_NOBREAK, COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWStatsValue, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), str, FT_NOBREAK, COLOR_TEXT );
     }
 
     // Traits text
@@ -7343,11 +7343,11 @@ void FOClient::ChaDraw( bool is_reg )
     {
         // Left
         for( uint i = TRAIT_BEGIN, k = 0; i < TRAIT_BEGIN + TRAIT_COUNT / 2; ++i, ++k )
-            SprMngr.DrawStr( INTRECT( RegWTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( RegWTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
 
         // Right
         for( uint i = TRAIT_BEGIN + TRAIT_COUNT / 2, k = 0; i <= TRAIT_END; ++i, ++k )
-            SprMngr.DrawStr( INTRECT( RegWTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( RegWTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
     }
 
     // Slider
@@ -7900,13 +7900,13 @@ void FOClient::ChaNameDraw()
 
     SprMngr.DrawSprite( Singleplayer ? ChaNameSingleplayerMainPic : ChaNameMainPic, ChaNameX, ChaNameY );
 
-    SprMngr.DrawStr( INTRECT( ChaNameWNameText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_NAME ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( ChaNameWName, ChaNameX, ChaNameY ), cr->GetName(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+    SprMngr.DrawStr( Rect( ChaNameWNameText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_NAME ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaNameWName, ChaNameX, ChaNameY ), cr->GetName(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
 
     if( !Singleplayer )
     {
-        SprMngr.DrawStr( INTRECT( ChaNameWPassText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_PASS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( INTRECT( ChaNameWPass, ChaNameX, ChaNameY ), cr->GetPass(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+        SprMngr.DrawStr( Rect( ChaNameWPassText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_PASS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( ChaNameWPass, ChaNameX, ChaNameY ), cr->GetPass(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
     }
 }
 
@@ -7994,7 +7994,7 @@ void FOClient::ChaAgeDraw()
         return;
     char str[ 16 ];
     sprintf( str, "%02d", RegNewCr->ParamsReg[ ST_AGE ] );
-    SprMngr.DrawStr( INTRECT( ChaAgeWAge, ChaAgeX, ChaAgeY ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+    SprMngr.DrawStr( Rect( ChaAgeWAge, ChaAgeX, ChaAgeY ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
 void FOClient::ChaAgeLMouseDown()
@@ -8165,8 +8165,8 @@ void FOClient::PerkDraw()
         }
     }
 
-    SprMngr.DrawStr( INTRECT( PerkBOkText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_TAKE ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( PerkBCancelText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( PerkBOkText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_TAKE ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( PerkBCancelText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     for( int i = PerkScroll, j = (int) PerkCollection.size(), k = 0; i < j; i++, k++ )
     {
@@ -8178,11 +8178,11 @@ void FOClient::PerkDraw()
         uint col = COLOR_TEXT;
         if( PerkCollection[ i ] == PerkCurPerk )
             col = COLOR_TEXT_DGREEN;
-        SprMngr.DrawStr( INTRECT( PerkWPerks, PerkX + PerkNextX * k, PerkY + PerkNextY * k ), MsgGame->GetStr( STR_PARAM_NAME_( PerkCollection[ i ] ) ), 0, col );
+        SprMngr.DrawStr( Rect( PerkWPerks, PerkX + PerkNextX * k, PerkY + PerkNextY * k ), MsgGame->GetStr( STR_PARAM_NAME_( PerkCollection[ i ] ) ), 0, col );
     }
 
     if( PerkCurPerk >= 0 )
-        SprMngr.DrawStr( INTRECT( PerkWText, PerkX, PerkY ), MsgGame->GetStr( STR_PARAM_DESC_( PerkCurPerk ) ), 0, COLOR_TEXT_BLACK );
+        SprMngr.DrawStr( Rect( PerkWText, PerkX, PerkY ), MsgGame->GetStr( STR_PARAM_DESC_( PerkCurPerk ) ), 0, COLOR_TEXT_BLACK );
 }
 
 void FOClient::PerkLMouseDown()
@@ -8296,9 +8296,9 @@ void FOClient::TViewDraw()
     if( IfaceHold == IFACE_TOWN_VIEW_CONTOUR || TViewShowCountours )
         SprMngr.DrawSprite( TViewBContoursPicDn, TViewBContours[ 0 ] + TViewX, TViewBContours[ 1 ] + TViewY );
 
-    SprMngr.DrawStr( INTRECT( TViewBBack, TViewX, IfaceHold == IFACE_TOWN_VIEW_BACK ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_BACK ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( TViewBEnter, TViewX, IfaceHold == IFACE_TOWN_VIEW_ENTER ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_ENTER ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( TViewBContours, TViewX, IfaceHold == IFACE_TOWN_VIEW_CONTOUR || TViewShowCountours ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_CONTOURS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( TViewBBack, TViewX, IfaceHold == IFACE_TOWN_VIEW_BACK ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_BACK ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( TViewBEnter, TViewX, IfaceHold == IFACE_TOWN_VIEW_ENTER ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_ENTER ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( TViewBContours, TViewX, IfaceHold == IFACE_TOWN_VIEW_CONTOUR || TViewShowCountours ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_CONTOURS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 }
 
 void FOClient::TViewLMouseDown()
@@ -8398,15 +8398,15 @@ void FOClient::PipDraw()
     }
 
     int scr = -(int) PipScroll[ PipMode ];
-    INTRECT& r = PipWMonitor;
+    Rect& r = PipWMonitor;
     int ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
     int h = r.H() / ml;
     #define PIP_DRAW_TEXT( text, flags, color ) \
         do { if( scr >= 0 && scr < ml )         \
-                 SprMngr.DrawStr( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
+                 SprMngr.DrawStr( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
     #define PIP_DRAW_TEXTR( text, flags, color ) \
         do { if( scr >= 0 && scr < ml )          \
-                 SprMngr.DrawStr( INTRECT( r[ 2 ] - r.W() / 3, r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
+                 SprMngr.DrawStr( Rect( r[ 2 ] - r.W() / 3, r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
 
     switch( PipMode )
     {
@@ -8471,7 +8471,7 @@ void FOClient::PipDraw()
         // Quests
         scr++;
         if( scr >= 0 && scr < ml )
-            SprMngr.DrawStr( INTRECT( PipWMonitor[ 0 ], PipWMonitor[ 1 ] + scr * h, PipWMonitor[ 2 ], PipWMonitor[ 1 ] + scr * h + h, PipX, PipY ), FmtGameText( STR_PIP_QUESTS ), FT_CENTERX, COLOR_TEXT_DGREEN );
+            SprMngr.DrawStr( Rect( PipWMonitor[ 0 ], PipWMonitor[ 1 ] + scr * h, PipWMonitor[ 2 ], PipWMonitor[ 1 ] + scr * h + h, PipX, PipY ), FmtGameText( STR_PIP_QUESTS ), FT_CENTERX, COLOR_TEXT_DGREEN );
         scr++;
         QuestTabMap* tabs = QuestMngr.GetTabs();
         for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
@@ -8490,7 +8490,7 @@ void FOClient::PipDraw()
         QuestTab* tab = QuestMngr.GetTab( QuestNumTab );
         if( !tab )
             break;
-        SprMngr.DrawStr( INTRECT( PipWMonitor, PipX, PipY ), tab->GetText(), FT_SKIPLINES( PipScroll[ PipMode ] ) );
+        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), tab->GetText(), FT_SKIPLINES( PipScroll[ PipMode ] ) );
     }
     break;
     case PIP__STATUS_SCORES:
@@ -8543,7 +8543,7 @@ void FOClient::PipDraw()
     break;
     case PIP__AUTOMAPS_LOC:
     {
-        SprMngr.DrawStr( INTRECT( PipWMonitor, PipX, PipY ), MsgGM->GetStr( STR_GM_INFO_( AutomapSelected.LocPid ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
+        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), MsgGM->GetStr( STR_GM_INFO_( AutomapSelected.LocPid ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
     }
     break;
     case PIP__AUTOMAPS_MAP:
@@ -8558,8 +8558,8 @@ void FOClient::PipDraw()
         // Draw already builded minimap
         if( map_pid == AutomapCurMapPid )
         {
-            FLTRECT stencil( (float) ( PipWMonitor.L + PipX ), (float) ( PipWMonitor.T + PipY ), (float) ( PipWMonitor.R + PipX ), (float) ( PipWMonitor.B + PipY ) );
-            FLTPOINT offset( AutomapScrX, AutomapScrY );
+            RectF stencil( (float) ( PipWMonitor.L + PipX ), (float) ( PipWMonitor.T + PipY ), (float) ( PipWMonitor.R + PipX ), (float) ( PipWMonitor.B + PipY ) );
+            PointF offset( AutomapScrX, AutomapScrY );
             SprMngr.DrawPoints( AutomapPoints, PRIMITIVE_LINELIST, &AutomapZoom, &stencil, &offset );
             break;
         }
@@ -8640,7 +8640,7 @@ void FOClient::PipDraw()
     break;
     case PIP__ARCHIVES_INFO:
     {
-        SprMngr.DrawStr( INTRECT( PipWMonitor, PipX, PipY ), GetHoloText( STR_HOLO_INFO_DESC_( PipInfoNum ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
+        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), GetHoloText( STR_HOLO_INFO_DESC_( PipInfoNum ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
     }
     break;
     default:
@@ -8648,11 +8648,11 @@ void FOClient::PipDraw()
     }
 
     // Time
-    SprMngr.DrawStr( INTRECT( PipWTime, PipX, PipY ), Str::FormatBuf( "%02d", GameOpt.Day ), 0, COLOR_IFACE, FONT_NUM );                            // Day
-    char mval = '0' + GameOpt.Month - 1 + 0x30;                                                                                                     // Month
-    SprMngr.DrawStr( INTRECT( PipWTime, PipX + 26, PipY + 1 ), Str::FormatBuf( "%c", mval ), 0, COLOR_IFACE, FONT_NUM );                            // Month
-    SprMngr.DrawStr( INTRECT( PipWTime, PipX + 63, PipY ), Str::FormatBuf( "%04d", GameOpt.Year ), 0, COLOR_IFACE, FONT_NUM );                      // Year
-    SprMngr.DrawStr( INTRECT( PipWTime, PipX + 135, PipY ), Str::FormatBuf( "%02d%02d", GameOpt.Hour, GameOpt.Minute ), 0, COLOR_IFACE, FONT_NUM ); // Hour,Minute
+    SprMngr.DrawStr( Rect( PipWTime, PipX, PipY ), Str::FormatBuf( "%02d", GameOpt.Day ), 0, COLOR_IFACE, FONT_NUM );                            // Day
+    char mval = '0' + GameOpt.Month - 1 + 0x30;                                                                                                  // Month
+    SprMngr.DrawStr( Rect( PipWTime, PipX + 26, PipY + 1 ), Str::FormatBuf( "%c", mval ), 0, COLOR_IFACE, FONT_NUM );                            // Month
+    SprMngr.DrawStr( Rect( PipWTime, PipX + 63, PipY ), Str::FormatBuf( "%04d", GameOpt.Year ), 0, COLOR_IFACE, FONT_NUM );                      // Year
+    SprMngr.DrawStr( Rect( PipWTime, PipX + 135, PipY ), Str::FormatBuf( "%02d%02d", GameOpt.Hour, GameOpt.Minute ), 0, COLOR_IFACE, FONT_NUM ); // Hour,Minute
 }
 
 void FOClient::PipLMouseDown()
@@ -8661,7 +8661,7 @@ void FOClient::PipLMouseDown()
     if( !Chosen )
         return;
 
-    INTRECT& r = PipWMonitor;
+    Rect& r = PipWMonitor;
     int ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
     int h = r.H() / ml;
     int scr = -(int) PipScroll[ PipMode ];
@@ -8690,7 +8690,7 @@ void FOClient::PipLMouseDown()
             QuestTabMap* tabs = QuestMngr.GetTabs();
             for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
             {
-                if( scr >= 0 && scr < ml && IsCurInRect( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
+                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
                 {
                     QuestNumTab = scr - scr_ + PipScroll[ PipMode ];
                     PipMode = PIP__STATUS_QUESTS;
@@ -8702,7 +8702,7 @@ void FOClient::PipLMouseDown()
             if( PipMode == PIP__STATUS )
             {
                 scr++;
-                if( scr >= 0 && scr < ml && IsCurInRect( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
+                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
                 {
                     PipMode = PIP__STATUS_SCORES;
                     PipScroll[ PipMode ] = 0;
@@ -8726,7 +8726,7 @@ void FOClient::PipLMouseDown()
             {
                 Automap& amap = Automaps[ i ];
 
-                if( scr >= 0 && scr < ml && IsCurInRect( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
+                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
                 {
                     PipMode = PIP__AUTOMAPS_LOC;
                     AutomapSelected = amap;
@@ -8737,7 +8737,7 @@ void FOClient::PipLMouseDown()
 
                 for( uint k = 0, l = (uint) amap.MapNames.size(); k < l; k++ )
                 {
-                    if( scr >= 0 && scr < ml && IsCurInRect( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
+                    if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
                     {
                         PipMode = PIP__AUTOMAPS_MAP;
                         AutomapSelected = amap;
@@ -8765,7 +8765,7 @@ void FOClient::PipLMouseDown()
             scr += 1;
             for( int i = 0; i < MAX_HOLO_INFO; i++ )
             {
-                if( scr >= 0 && scr < ml && IsCurInRect( INTRECT( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
+                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
                 {
                     PipInfoNum = HoloInfo[ scr - 1 + PipScroll[ PipMode ] ];
                     if( !PipInfoNum )
@@ -8900,36 +8900,36 @@ void FOClient::AimDraw()
 
     if( GameOpt.ApCostAimArms == GameOpt.ApCostAimTorso && GameOpt.ApCostAimTorso == GameOpt.ApCostAimLegs && GameOpt.ApCostAimLegs == GameOpt.ApCostAimGroin && GameOpt.ApCostAimGroin == GameOpt.ApCostAimEyes && GameOpt.ApCostAimEyes == GameOpt.ApCostAimHead )
     {
-        SprMngr.DrawStr( INTRECT( AimWHeadT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_HEAD - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_HEAD ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWLArmT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_ARM - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWRArmT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_ARM - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_RARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWTorsoT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_TORSO - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_TORSO ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWRLegT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_LEG - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_RLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWLLegT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_LEG - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWEyesT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_EYES - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_EYES ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWGroinT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWHeadT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_HEAD - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_HEAD ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWLArmT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_ARM - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LARM ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWRArmT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_ARM - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_RARM ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWTorsoT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_TORSO - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_TORSO ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWRLegT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_LEG - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_RLEG ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWLLegT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_LEG - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LLEG ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWEyesT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_EYES - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_EYES ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWGroinT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
     }
     else
     {
-        SprMngr.DrawStr( INTRECT( AimWHeadT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_HEAD - 1 ), GameOpt.ApCostAimHead ), FT_NOBREAK, IfaceHold == IFACE_AIM_HEAD ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWLArmT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimArms, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_ARM - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWRArmT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_ARM - 1 ), GameOpt.ApCostAimArms ), FT_NOBREAK, IfaceHold == IFACE_AIM_RARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWTorsoT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimTorso, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_TORSO - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_TORSO ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWRLegT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_LEG - 1 ), GameOpt.ApCostAimLegs ), FT_NOBREAK, IfaceHold == IFACE_AIM_RLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWLLegT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimLegs, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_LEG - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWEyesT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_EYES - 1 ), GameOpt.ApCostAimEyes ), FT_NOBREAK, IfaceHold == IFACE_AIM_EYES ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( INTRECT( AimWGroinT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimGroin, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWHeadT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_HEAD - 1 ), GameOpt.ApCostAimHead ), FT_NOBREAK, IfaceHold == IFACE_AIM_HEAD ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWLArmT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimArms, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_ARM - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LARM ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWRArmT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_ARM - 1 ), GameOpt.ApCostAimArms ), FT_NOBREAK, IfaceHold == IFACE_AIM_RARM ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWTorsoT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimTorso, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_TORSO - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_TORSO ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWRLegT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_LEG - 1 ), GameOpt.ApCostAimLegs ), FT_NOBREAK, IfaceHold == IFACE_AIM_RLEG ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWLLegT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimLegs, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_LEG - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LLEG ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWEyesT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_EYES - 1 ), GameOpt.ApCostAimEyes ), FT_NOBREAK, IfaceHold == IFACE_AIM_EYES ? COLOR_TEXT_RED : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( AimWGroinT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimGroin, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
     }
 
     bool zero = !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), Chosen->GetAttackDist(), 0.0f, cr, false, NULL, 0, NULL, NULL, NULL, true );
-    SprMngr.DrawStr( INTRECT( AimWHeadP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_HEAD ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWLArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_ARM ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWRArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_ARM ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWTorsoP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_TORSO ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWRLegP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_LEG ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWLLegP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_LEG ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWEyesP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_EYES ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( INTRECT( AimWGroinP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_GROIN ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWHeadP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_HEAD ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWLArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_ARM ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWRArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_ARM ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWTorsoP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_TORSO ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWRLegP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_LEG ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWLLegP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_LEG ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWEyesP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_EYES ) ), FT_NOBREAK | FT_CENTERX );
+    SprMngr.DrawStr( Rect( AimWGroinP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_GROIN ) ), FT_NOBREAK | FT_CENTERX );
 }
 
 void FOClient::AimLMouseDown()
@@ -9101,7 +9101,7 @@ void FOClient::PupDraw()
     {
         CritterCl* cr = HexMngr.GetCritter( PupContId );
         if( cr )
-            cr->DrawStay( INTRECT( PupWInfo, PupX, PupY ) );
+            cr->DrawStay( Rect( PupWInfo, PupX, PupY ) );
     }
 
     // Button Ok
@@ -9151,8 +9151,8 @@ void FOClient::PupDraw()
     }
 
     // Items
-    ContainerDraw( INTRECT( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1, IfaceHold == IFACE_PUP_CONT1 ? PupHoldId : 0 );
-    ContainerDraw( INTRECT( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2, IfaceHold == IFACE_PUP_CONT2 ? PupHoldId : 0 );
+    ContainerDraw( Rect( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1, IfaceHold == IFACE_PUP_CONT1 ? PupHoldId : 0 );
+    ContainerDraw( Rect( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2, IfaceHold == IFACE_PUP_CONT2 ? PupHoldId : 0 );
 }
 
 void FOClient::PupLMouseDown()
@@ -9164,13 +9164,13 @@ void FOClient::PupLMouseDown()
 
     if( IsCurInRect( PupWCont1, PupX, PupY ) )
     {
-        PupHoldId = GetCurContainerItemId( INTRECT( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1 );
+        PupHoldId = GetCurContainerItemId( Rect( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1 );
         if( PupHoldId )
             IfaceHold = IFACE_PUP_CONT1;
     }
     else if( IsCurInRect( PupWCont2, PupX, PupY ) )
     {
-        PupHoldId = GetCurContainerItemId( INTRECT( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2 );
+        PupHoldId = GetCurContainerItemId( Rect( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2 );
         if( PupHoldId )
             IfaceHold = IFACE_PUP_CONT2;
     }
@@ -9534,11 +9534,11 @@ void FOClient::CurDraw()
     }
 
     // Messboxes scroll
-    INTRECT rmb = MessBoxCurRectScroll();
+    Rect rmb = MessBoxCurRectScroll();
     if( !rmb.IsZero() && IsCurInRect( rmb ) )
     {
         AnyFrames* anim = IntPBScrDnDn;
-        if( IsCurInRect( INTRECT( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
+        if( IsCurInRect( Rect( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
             anim = IntPBScrUpDn;
         if( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) )
             SprMngr.DrawSprite( anim, GameOpt.MouseX - si->Width / 2, GameOpt.MouseY - si->Height / 2 );
@@ -9571,7 +9571,7 @@ void FOClient::CurDraw()
         sprintf( str, "%d%%", hit );
 
         SprMngr.Flush();
-        SprMngr.DrawStr( INTRECT( GameOpt.MouseX + 6, GameOpt.MouseY + 6, x + 500, y + 500 ), str, 0, COLOR_TEXT_RED );
+        SprMngr.DrawStr( Rect( GameOpt.MouseX + 6, GameOpt.MouseY + 6, x + 500, y + 500 ), str, 0, COLOR_TEXT_RED );
     }
     break;
     case CUR_USE_ITEM:
@@ -9725,14 +9725,14 @@ void FOClient::DlgboxDraw()
     }
 
     SprMngr.DrawSprite( DlgboxWTopPicNone, DlgboxWTop[ 0 ] + DlgboxX, DlgboxWTop[ 1 ] + DlgboxY );
-    SprMngr.DrawStr( INTRECT( DlgboxWText, DlgboxX, DlgboxY ), DlgboxText, 0 );
+    SprMngr.DrawStr( Rect( DlgboxWText, DlgboxX, DlgboxY ), DlgboxText, 0 );
     uint y_offs = DlgboxWTop.H();
     for( uint i = 0; i < DlgboxButtonsCount; i++ )
     {
         SprMngr.DrawSprite( DlgboxWMiddlePicNone, DlgboxWMiddle[ 0 ] + DlgboxX, DlgboxWMiddle[ 1 ] + DlgboxY + y_offs );
         if( IfaceHold == IFACE_DIALOG_BTN && i == DlgboxSelectedButton )
             SprMngr.DrawSprite( DlgboxBButtonPicDown, DlgboxBButton[ 0 ] + DlgboxX, DlgboxBButton[ 1 ] + DlgboxY + y_offs );
-        SprMngr.DrawStr( INTRECT( DlgboxBButtonText, DlgboxX, DlgboxY + y_offs ), DlgboxButtonText[ i ].c_str(), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( DlgboxBButtonText, DlgboxX, DlgboxY + y_offs ), DlgboxButtonText[ i ].c_str(), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
         y_offs += DlgboxWMiddle.H();
     }
     SprMngr.DrawSprite( DlgboxWBottomPicNone, DlgboxWTop[ 0 ] + DlgboxX, DlgboxWTop[ 1 ] + DlgboxY + y_offs );
@@ -9867,7 +9867,7 @@ void FOClient::ElevatorDraw()
     {
         for( uint i = 0; i < ElevatorButtonsCount; i++ )
         {
-            INTRECT& r = ElevatorButtons[ i ];
+            Rect& r = ElevatorButtons[ i ];
             if( i == ElevatorSelectedButton && ElevatorButtonPicDown )
                 SprMngr.DrawSprite( ElevatorButtonPicDown, r[ 0 ] + ElevatorX, r[ 1 ] + ElevatorY );
         }
@@ -10096,10 +10096,10 @@ void FOClient::SayDraw()
         break;
     }
 
-    SprMngr.DrawStr( INTRECT( SayWMainText, SayX, SayY ), SayTitle.c_str(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SayBOkText, SayX, SayY ), MsgGame->GetStr( STR_SAY_OK ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SayBCancelText, SayX, SayY ), MsgGame->GetStr( STR_SAY_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SayWSay, SayX, SayY ), SayText, FT_NOBREAK | FT_CENTERY );
+    SprMngr.DrawStr( Rect( SayWMainText, SayX, SayY ), SayTitle.c_str(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SayBOkText, SayX, SayY ), MsgGame->GetStr( STR_SAY_OK ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SayBCancelText, SayX, SayY ), MsgGame->GetStr( STR_SAY_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SayWSay, SayX, SayY ), SayText, FT_NOBREAK | FT_CENTERY );
 }
 
 void FOClient::SayLMouseDown()
@@ -10299,9 +10299,9 @@ void FOClient::SplitDraw()
     if( SplitItemPic )
         SprMngr.DrawSpriteSize( SplitItemPic, SplitWItem[ 0 ] + SplitX, SplitWItem[ 1 ] + SplitY, (float) SplitWItem.W(), (float) SplitWItem.H(), false, true, SplitItemColor );
 
-    SprMngr.DrawStr( INTRECT( SplitWTitle, SplitX, SplitY ), MsgGame->GetStr( STR_SPLIT_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SplitBAll, SplitX, SplitY - ( IfaceHold == IFACE_SPLIT_ALL ? 1 : 0 ) ), MsgGame->GetStr( STR_SPLIT_ALL ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SplitWValue, SplitX, SplitY ), Str::FormatBuf( "%05d", SplitValue ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+    SprMngr.DrawStr( Rect( SplitWTitle, SplitX, SplitY ), MsgGame->GetStr( STR_SPLIT_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SplitBAll, SplitX, SplitY - ( IfaceHold == IFACE_SPLIT_ALL ? 1 : 0 ) ), MsgGame->GetStr( STR_SPLIT_ALL ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SplitWValue, SplitX, SplitY ), Str::FormatBuf( "%05d", SplitValue ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
 void FOClient::SplitKeyDown( uchar dik )
@@ -10525,8 +10525,8 @@ void FOClient::TimerDraw()
         SprMngr.DrawSpriteSize( TimerItemPic, TimerWItem[ 0 ] + TimerX, TimerWItem[ 1 ] + TimerY, (float) TimerWItem.W(), (float) TimerWItem.H(), false, true, TimerItemColor );
     SprMngr.Flush();
 
-    SprMngr.DrawStr( INTRECT( TimerWTitle, TimerX, TimerY ), MsgGame->GetStr( STR_TIMER_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( TimerWValue, TimerX, TimerY ), Str::FormatBuf( "%d%c%02d", TimerValue / 60, '9' + 3, TimerValue % 60 ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
+    SprMngr.DrawStr( Rect( TimerWTitle, TimerX, TimerY ), MsgGame->GetStr( STR_TIMER_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( TimerWValue, TimerX, TimerY ), Str::FormatBuf( "%d%c%02d", TimerValue / 60, '9' + 3, TimerValue % 60 ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
 void FOClient::TimerKeyDown( uchar dik )
@@ -10697,7 +10697,7 @@ void FOClient::FixGenerate( int fix_mode )
                     continue;
             }
 
-            INTRECT pos( FixWWin[ 0 ], FixWWin[ 1 ] + cur_height, FixWWin[ 2 ], FixWWin[ 1 ] + cur_height + 100 );
+            Rect pos( FixWWin[ 0 ], FixWWin[ 1 ] + cur_height, FixWWin[ 2 ], FixWWin[ 1 ] + cur_height + 100 );
             int line_height = SprMngr.GetLinesHeight( FixWWin.W(), 0, craft->Name.c_str() );
 
             cur_height += line_height;
@@ -10743,7 +10743,7 @@ void FOClient::FixGenerate( int fix_mode )
             return;
         }
 
-        INTRECT r( FixWWin[ 0 ], FixWWin[ 1 ], FixWWin[ 2 ], FixWWin[ 1 ] );
+        Rect r( FixWWin[ 0 ], FixWWin[ 1 ], FixWWin[ 2 ], FixWWin[ 1 ] );
         string str;
         int x;
 
@@ -10843,14 +10843,14 @@ void FOClient::FixGenerate( int fix_mode )
     }
 }
 
-void FOClient::FixGenerateStrLine( string& str, INTRECT& r )
+void FOClient::FixGenerateStrLine( string& str, Rect& r )
 {
     r.B += SprMngr.GetLinesHeight( FixWWin.W(), 0, str.c_str() );
     FixDrawComp.push_back( new FixDrawComponent( r, str ) );
     r.T = r.B;
 }
 
-void FOClient::FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, INTRECT& r, int& x )
+void FOClient::FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x )
 {
     str = "";
     for( uint i = 0, j = (uint) items_vec.size(); i < j; i++ )
@@ -10901,7 +10901,7 @@ void FOClient::FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVe
         if( !anim )
             continue;
 
-        INTRECT r2 = r;
+        Rect r2 = r;
         r2.L = x;
         r2.R = x + FIX_DRAW_PIC_WIDTH;
         r2.B += FIX_DRAW_PIC_HEIGHT;
@@ -10974,7 +10974,7 @@ void FOClient::FixDraw()
         {
             FixDrawComponent* c = FixDrawComp[ i ];
             if( !c->IsText )
-                SprMngr.DrawSpriteSize( c->Anim, c->Rect.L + FixX, c->Rect.T + FixY, (float) c->Rect.W(), (float) c->Rect.H(), false, true );
+                SprMngr.DrawSpriteSize( c->Anim, c->Place.L + FixX, c->Place.T + FixY, (float) c->Place.W(), (float) c->Place.H(), false, true );
         }
     }
 
@@ -11003,13 +11003,13 @@ void FOClient::FixDraw()
                     col = COLOR_TEXT_DGREEN;
             }
 
-            SprMngr.DrawStr( INTRECT( scraft->Pos, FixX, FixY ), scraft->Name.c_str(), 0, col );
+            SprMngr.DrawStr( Rect( scraft->Pos, FixX, FixY ), scraft->Name.c_str(), 0, col );
         }
 
         // Number of page
         char str[ 64 ];
         sprintf( str, "%u/%u", FixScrollLst + 1, FixCraftLst.size() );
-        SprMngr.DrawStr( INTRECT( FixWWin[ 2 ] - 30 + FixX, FixWWin[ 3 ] - 15 + FixY, FixWWin[ 2 ] + FixX, FixWWin[ 3 ] + FixY ), str, FT_NOBREAK );
+        SprMngr.DrawStr( Rect( FixWWin[ 2 ] - 30 + FixX, FixWWin[ 3 ] - 15 + FixY, FixWWin[ 2 ] + FixX, FixWWin[ 3 ] + FixY ), str, FT_NOBREAK );
     }
     break;
     case FIX_MODE_FIXIT:
@@ -11018,13 +11018,13 @@ void FOClient::FixDraw()
         {
             FixDrawComponent* c = FixDrawComp[ i ];
             if( c->IsText )
-                SprMngr.DrawStr( INTRECT( c->Rect, FixX, FixY ), c->Text.c_str(), FT_CENTERX );
+                SprMngr.DrawStr( Rect( c->Place, FixX, FixY ), c->Text.c_str(), FT_CENTERX );
         }
     }
     break;
     case FIX_MODE_RESULT:
     {
-        SprMngr.DrawStr( INTRECT( FixWWin, FixX, FixY ), FixResultStr.c_str(), FT_CENTERX );
+        SprMngr.DrawStr( Rect( FixWWin, FixX, FixY ), FixResultStr.c_str(), FT_CENTERX );
     }
     break;
     default:
@@ -11201,14 +11201,14 @@ void FOClient::IboxDraw()
     char* buf = (char*) Str::FormatBuf( "%s", IboxTitle.c_str() );
     if( IfaceHold == IFACE_IBOX_TITLE )
         Str::Insert( &buf[ IboxTitleCur ], Timer::FastTick() % 798 < 399 ? "!" : "." );
-    SprMngr.DrawStr( INTRECT( IboxWTitle, IboxX, IboxY ), buf, FT_NOBREAK | FT_CENTERY );
+    SprMngr.DrawStr( Rect( IboxWTitle, IboxX, IboxY ), buf, FT_NOBREAK | FT_CENTERY );
     buf = (char*) Str::FormatBuf( "%s", IboxText.c_str() );
     if( IfaceHold == IFACE_IBOX_TEXT )
         Str::Insert( &buf[ IboxTextCur ], Timer::FastTick() % 798 < 399 ? "." : "!" );
-    SprMngr.DrawStr( INTRECT( IboxWText, IboxX, IboxY ), buf, 0 );
+    SprMngr.DrawStr( Rect( IboxWText, IboxX, IboxY ), buf, 0 );
 
-    SprMngr.DrawStr( INTRECT( IboxBDoneText, IboxX, IboxY ), MsgGame->GetStr( STR_INPUT_BOX_WRITE ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( IboxBCancelText, IboxX, IboxY ), MsgGame->GetStr( STR_INPUT_BOX_BACK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( IboxBDoneText, IboxX, IboxY ), MsgGame->GetStr( STR_INPUT_BOX_WRITE ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( IboxBCancelText, IboxX, IboxY ), MsgGame->GetStr( STR_INPUT_BOX_BACK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 }
 
 void FOClient::IboxLMouseDown()
@@ -11587,9 +11587,9 @@ void FOClient::SaveLoadDraw()
     else if( IfaceHold == IFACE_SAVELOAD_BACK )
         SprMngr.DrawSprite( SaveLoadBackPicDown, SaveLoadBack[ 0 ] + ox, SaveLoadBack[ 1 ] + oy );
 
-    SprMngr.DrawStr( INTRECT( SaveLoadText, ox, oy ), MsgGame->GetStr( SaveLoadSave ? STR_SAVE_LOAD_SAVE : STR_SAVE_LOAD_LOAD ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SaveLoadDoneText, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_DONE ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( INTRECT( SaveLoadBackText, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_BACK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SaveLoadText, ox, oy ), MsgGame->GetStr( SaveLoadSave ? STR_SAVE_LOAD_SAVE : STR_SAVE_LOAD_LOAD ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SaveLoadDoneText, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_DONE ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( SaveLoadBackText, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_BACK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Slots
     int line_height = SprMngr.GetLinesHeight( 0, 0, "" );
@@ -11597,14 +11597,14 @@ void FOClient::SaveLoadDraw()
     for( int i = SaveLoadSlotScroll, j = (int) SaveLoadDataSlots.size(); i < j; i++ )
     {
         SaveLoadDataSlot& slot = SaveLoadDataSlots[ i ];
-        SprMngr.DrawStr( INTRECT( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
+        SprMngr.DrawStr( Rect( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
                          slot.Info.c_str(), FT_NOBREAK_LINE, i == SaveLoadSlotIndex ? COLOR_TEXT_DDGREEN : COLOR_TEXT );
         if( ++cur >= SaveLoadSlotsMax )
             break;
     }
     if( SaveLoadSave && SaveLoadSlotScroll <= (int) SaveLoadDataSlots.size() && cur <= SaveLoadSlotsMax - 1 )
     {
-        SprMngr.DrawStr( INTRECT( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
+        SprMngr.DrawStr( Rect( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
                          MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_NOBREAK_LINE, SaveLoadSlotIndex == SaveLoadDataSlots.size() ? COLOR_TEXT_DDGREEN : COLOR_TEXT );
     }
 
@@ -11612,11 +11612,11 @@ void FOClient::SaveLoadDraw()
     if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
     {
         SaveLoadDataSlot& slot = SaveLoadDataSlots[ SaveLoadSlotIndex ];
-        SprMngr.DrawStr( INTRECT( SaveLoadInfo, ox, oy ), slot.InfoExt.c_str(), FT_CENTERY | FT_NOBREAK_LINE );
+        SprMngr.DrawStr( Rect( SaveLoadInfo, ox, oy ), slot.InfoExt.c_str(), FT_CENTERY | FT_NOBREAK_LINE );
     }
     if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )
     {
-        SprMngr.DrawStr( INTRECT( SaveLoadInfo, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_CENTERY | FT_NOBREAK_LINE );
+        SprMngr.DrawStr( Rect( SaveLoadInfo, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_CENTERY | FT_NOBREAK_LINE );
     }
 
     // Draw preview draft

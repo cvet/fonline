@@ -88,7 +88,7 @@ public:
     void Process();
 
     int         GetCond() { return Cond; }
-    void        DrawStay( INTRECT r );
+    void        DrawStay( Rect r );
     const char* GetName() { return Name.c_str(); }
     const char* GetPass() { return Pass; }
 
@@ -262,7 +262,7 @@ public:
     Animation3d* Anim3dStay;
     bool         Visible;
     uchar        Alpha;
-    INTRECT      DRect;
+    Rect         DRect;
     bool         SprDrawValid;
     Sprite*      SprDraw;
     uint         SprId;
@@ -312,17 +312,17 @@ public:
 
     // Text
 public:
-    INTRECT GetTextRect();
-    void    SetText( const char* str, uint color, uint text_delay );
-    void    DrawTextOnHead();
+    Rect GetTextRect();
+    void SetText( const char* str, uint color, uint text_delay );
+    void DrawTextOnHead();
 
 private:
-    INTRECT textRect;
-    uint    tickFidget;
-    string  strTextOnHead;
-    uint    tickStartText;
-    uint    tickTextDelay;
-    uint    textOnHeadColor;
+    Rect   textRect;
+    uint   tickFidget;
+    string strTextOnHead;
+    uint   tickStartText;
+    uint   tickTextDelay;
+    uint   textOnHeadColor;
 
     // Ap cost
 public:

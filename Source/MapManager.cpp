@@ -857,9 +857,9 @@ Location* MapManager::GetLocationByPid( ushort loc_pid, uint skip_count )
 
 bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones )
 {
-    int     zl = GM_ZONE_LEN;
-    INTRECT r1( ( wx1 - w1_radius ) / zl - zones, ( wy1 - w1_radius ) / zl - zones, ( wx1 + w1_radius ) / zl + zones, ( wy1 + w1_radius ) / zl + zones );
-    INTRECT r2( ( wx2 - w2_radius ) / zl, ( wy2 - w2_radius ) / zl, ( wx2 + w2_radius ) / zl, ( wy2 + w2_radius ) / zl );
+    int  zl = GM_ZONE_LEN;
+    Rect r1( ( wx1 - w1_radius ) / zl - zones, ( wy1 - w1_radius ) / zl - zones, ( wx1 + w1_radius ) / zl + zones, ( wy1 + w1_radius ) / zl + zones );
+    Rect r2( ( wx2 - w2_radius ) / zl, ( wy2 - w2_radius ) / zl, ( wx2 + w2_radius ) / zl, ( wy2 + w2_radius ) / zl );
     return r1.L <= r2.R && r2.L <= r1.R && r1.T <= r2.B && r2.T <= r1.B;
 }
 

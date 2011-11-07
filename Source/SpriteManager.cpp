@@ -764,7 +764,7 @@ void SpriteManager::PopRenderTarget()
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget& rt, INTRECT* region /* = NULL */ )
+void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region /* = NULL */ )
 {
     Flush();
 
@@ -793,8 +793,8 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, INTRECT* region /* = NUL
     }
     else
     {
-        uint    mulpos = 0;
-        FLTRECT regionf;
+        uint  mulpos = 0;
+        RectF regionf;
         regionf.L = (float) region->L;
         regionf.T = (float) region->T;
         regionf.R = (float) region->R;
@@ -1083,7 +1083,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size
         tex->Pixel( x + i - 1, y + h + 1 - 1 ) = tex->Pixel( x + i - 1, y + h - 1 );           // Bottom
 
     // Refresh texture
-    tex->Update( INTRECT( x - 1, y - 1, x + w + 1, y + h + 1 ) );
+    tex->Update( Rect( x - 1, y - 1, x + w + 1, y + h + 1 ) );
     #endif
 
     // Delete data
@@ -3145,8 +3145,8 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
         D3D_HR( d3dDevice->EndScene() );
 
     // Calculate sprite borders
-    INTRECT fb = anim3d->GetFullBorders();
-    RECT    r_ = { fb.L, fb.T, fb.R + 1, fb.B + 1 };
+    Rect fb = anim3d->GetFullBorders();
+    RECT r_ = { fb.L, fb.T, fb.R + 1, fb.B + 1 };
 
     // Grow surfaces while sprite not fitted in it
     if( fb.L < 0 || fb.R >= spr3dSurfWidth || fb.T < 0 || fb.B >= spr3dSurfHeight )
@@ -3198,7 +3198,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
 
     // Fill from memory
     SpriteInfo* si = new (nothrow) SpriteInfo();
-    INTPOINT    p;
+    Point       p;
     anim3d->GetFullBorders( &p );
     si->OffsX = fb.W() / 2 - p.X;
     si->OffsY = fb.H() - p.Y;
@@ -3527,7 +3527,7 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
     return true;
 }
 
-void SpriteManager::PrepareSquare( PointVec& points, FLTRECT& r, uint color )
+void SpriteManager::PrepareSquare( PointVec& points, RectF& r, uint color )
 {
     points.push_back( PrepPoint( (short) r.L, (short) r.B, color, NULL, NULL ) );
     points.push_back( PrepPoint( (short) r.L, (short) r.T, color, NULL, NULL ) );
@@ -3537,7 +3537,7 @@ void SpriteManager::PrepareSquare( PointVec& points, FLTRECT& r, uint color )
     points.push_back( PrepPoint( (short) r.R, (short) r.B, color, NULL, NULL ) );
 }
 
-void SpriteManager::PrepareSquare( PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, uint color )
+void SpriteManager::PrepareSquare( PointVec& points, PointF& lt, PointF& rt, PointF& lb, PointF& rb, uint color )
 {
     points.push_back( PrepPoint( (short) lb.X, (short) lb.Y, color, NULL, NULL ) );
     points.push_back( PrepPoint( (short) lt.X, (short) lt.Y, color, NULL, NULL ) );
@@ -3555,7 +3555,7 @@ uint SpriteManager::PackColor( int r, int g, int b )
     return COLOR_XRGB( r, g, b );
 }
 
-void SpriteManager::GetDrawRect( Sprite* prep, INTRECT& rect )
+void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
 {
     uint id = ( prep->PSprId ? *prep->PSprId : prep->SprId );
     if( id >= sprData.size() )
@@ -3635,15 +3635,15 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
     else
     {
         #ifdef FO_D3D
-        INTRECT bb = si->Anim3d->GetBaseBorders();
-        int     w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
-        int     h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
+        Rect bb = si->Anim3d->GetBaseBorders();
+        int  w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
+        int  h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
         eggX = spr->ScrX - w / 2 + si->OffsX + w / 2 - sprEgg->Width / 2 + *spr->OffsX;
         eggY = spr->ScrY - h + si->OffsY + h / 2 - sprEgg->Height / 2 + *spr->OffsY;
         #else
-        INTRECT bb = si->Anim3d->GetFullBorders();
-        int     w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
-        int     h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
+        Rect bb = si->Anim3d->GetFullBorders();
+        int  w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
+        int  h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
         eggX = spr->ScrX - sprEgg->Width / 2 + *spr->OffsX;
         eggY = spr->ScrY - h / 2 - sprEgg->Height / 2 + *spr->OffsY;
         #endif
@@ -3794,10 +3794,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             // Debug borders
             if( GameOpt.DebugInfo )
             {
-                INTRECT eb = si->Anim3d->GetExtraBorders();
-                INTRECT bb = si->Anim3d->GetBaseBorders();
-                PrepareSquare( borders, FLTRECT( (float) eb.L, (float) eb.T, (float) eb.R, (float) eb.B ), 0x5f750075 );
-                PrepareSquare( borders, FLTRECT( (float) bb.L, (float) bb.T, (float) bb.R, (float) bb.B ), 0x5f757575 );
+                Rect eb = si->Anim3d->GetExtraBorders();
+                Rect bb = si->Anim3d->GetBaseBorders();
+                PrepareSquare( borders, RectF( (float) eb.L, (float) eb.T, (float) eb.R, (float) eb.B ), 0x5f750075 );
+                PrepareSquare( borders, RectF( (float) bb.L, (float) bb.T, (float) bb.R, (float) bb.B ), 0x5f757575 );
             }
 
             continue;
@@ -3964,21 +3964,21 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             switch( spr->EggType )
             {
             case EGG_ALWAYS:
-                PrepareSquare( corner, FLTRECT( xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf ), 0x5FFFFF00 );
+                PrepareSquare( corner, RectF( xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf ), 0x5FFFFF00 );
                 break;
             case EGG_X:
-                PrepareSquare( corner, FLTPOINT( xf + cx - 5.0f, yf + hf - 55.0f ), FLTPOINT( xf + cx + 5.0f, yf + hf - 45.0f ), FLTPOINT( xf + cx - 5.0f, yf + hf - 5.0f ), FLTPOINT( xf + cx + 5.0f, yf + hf + 5.0f ), 0x5F00AF00 );
+                PrepareSquare( corner, PointF( xf + cx - 5.0f, yf + hf - 55.0f ), PointF( xf + cx + 5.0f, yf + hf - 45.0f ), PointF( xf + cx - 5.0f, yf + hf - 5.0f ), PointF( xf + cx + 5.0f, yf + hf + 5.0f ), 0x5F00AF00 );
                 break;
             case EGG_Y:
-                PrepareSquare( corner, FLTPOINT( xf + cx - 5.0f, yf + hf - 49.0f ), FLTPOINT( xf + cx + 5.0f, yf + hf - 52.0f ), FLTPOINT( xf + cx - 5.0f, yf + hf + 1.0f ), FLTPOINT( xf + cx + 5.0f, yf + hf - 2.0f ), 0x5F00FF00 );
+                PrepareSquare( corner, PointF( xf + cx - 5.0f, yf + hf - 49.0f ), PointF( xf + cx + 5.0f, yf + hf - 52.0f ), PointF( xf + cx - 5.0f, yf + hf + 1.0f ), PointF( xf + cx + 5.0f, yf + hf - 2.0f ), 0x5F00FF00 );
                 break;
             case EGG_X_AND_Y:
-                PrepareSquare( corner, FLTPOINT( xf + cx - 10.0f, yf + hf - 49.0f ), FLTPOINT( xf + cx, yf + hf - 52.0f ), FLTPOINT( xf + cx - 10.0f, yf + hf + 1.0f ), FLTPOINT( xf + cx, yf + hf - 2.0f ), 0x5FFF0000 );
-                PrepareSquare( corner, FLTPOINT( xf + cx, yf + hf - 55.0f ), FLTPOINT( xf + cx + 10.0f, yf + hf - 45.0f ), FLTPOINT( xf + cx, yf + hf - 5.0f ), FLTPOINT( xf + cx + 10.0f, yf + hf + 5.0f ), 0x5FFF0000 );
+                PrepareSquare( corner, PointF( xf + cx - 10.0f, yf + hf - 49.0f ), PointF( xf + cx, yf + hf - 52.0f ), PointF( xf + cx - 10.0f, yf + hf + 1.0f ), PointF( xf + cx, yf + hf - 2.0f ), 0x5FFF0000 );
+                PrepareSquare( corner, PointF( xf + cx, yf + hf - 55.0f ), PointF( xf + cx + 10.0f, yf + hf - 45.0f ), PointF( xf + cx, yf + hf - 5.0f ), PointF( xf + cx + 10.0f, yf + hf + 5.0f ), 0x5FFF0000 );
                 break;
             case EGG_X_OR_Y:
-                PrepareSquare( corner, FLTPOINT( xf + cx, yf + hf - 49.0f ), FLTPOINT( xf + cx + 10.0f, yf + hf - 52.0f ), FLTPOINT( xf + cx, yf + hf + 1.0f ), FLTPOINT( xf + cx + 10.0f, yf + hf - 2.0f ), 0x5FAF0000 );
-                PrepareSquare( corner, FLTPOINT( xf + cx - 10.0f, yf + hf - 55.0f ), FLTPOINT( xf + cx, yf + hf - 45.0f ), FLTPOINT( xf + cx - 10.0f, yf + hf - 5.0f ), FLTPOINT( xf + cx, yf + hf + 5.0f ), 0x5FAF0000 );
+                PrepareSquare( corner, PointF( xf + cx, yf + hf - 49.0f ), PointF( xf + cx + 10.0f, yf + hf - 52.0f ), PointF( xf + cx, yf + hf + 1.0f ), PointF( xf + cx + 10.0f, yf + hf - 2.0f ), 0x5FAF0000 );
+                PrepareSquare( corner, PointF( xf + cx - 10.0f, yf + hf - 55.0f ), PointF( xf + cx, yf + hf - 45.0f ), PointF( xf + cx - 10.0f, yf + hf - 5.0f ), PointF( xf + cx, yf + hf + 5.0f ), 0x5FAF0000 );
             default:
                 break;
             }
@@ -4003,9 +4003,9 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             float    x2 = (float) ( spr->ScrX - si->Width / 2 + spr->CutX + spr->CutW + GameOpt.ScrOx - 1.0f ) / z;
             float    y2 = (float) ( spr->ScrY + spr->CutOyR + GameOpt.ScrOy ) / z;
             # endif
-            PrepareSquare( cut, FLTPOINT( x1, y1 - 80.0f / z + oy ), FLTPOINT( x2, y2 - 80.0f / z - oy ), FLTPOINT( x1, y1 + oy ), FLTPOINT( x2, y2 - oy ), 0x4FFFFF00 );
-            PrepareSquare( cut, FLTRECT( xf, yf, xf + 1.0f, yf + hf ), 0x4F000000 );
-            PrepareSquare( cut, FLTRECT( xf + wf, yf, xf + wf + 1.0f, yf + hf ), 0x4F000000 );
+            PrepareSquare( cut, PointF( x1, y1 - 80.0f / z + oy ), PointF( x2, y2 - 80.0f / z - oy ), PointF( x1, y1 + oy ), PointF( x2, y2 - oy ), 0x4FFFFF00 );
+            PrepareSquare( cut, RectF( xf, yf, xf + 1.0f, yf + hf ), 0x4F000000 );
+            PrepareSquare( cut, RectF( xf + wf, yf, xf + wf + 1.0f, yf + hf ), 0x4F000000 );
             DrawPoints( cut, PRIMITIVE_TRIANGLELIST );
         }
 
@@ -4032,7 +4032,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
             char str[ 32 ];
             Str::Format( str, "%u", spr->TreeIndex );
-            DrawStr( INTRECT( x1, y1, x1 + 100, y1 + 100 ), str, 0 );
+            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), str, 0 );
         }
         #endif
 
@@ -4184,7 +4184,7 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     return false;
 }
 
-bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, FLTRECT* stencil /* = NULL */, FLTPOINT* offset /* = NULL */ )
+bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */ )
 {
     if( points.empty() )
         return true;
@@ -4479,7 +4479,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     return true;
 }
 
-bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color )
+bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
 {
     // Draw model in another render target
     #ifdef FO_D3D
@@ -4510,8 +4510,8 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, FL
     PopRenderTarget();
 
     // Copy from multisampled texture to default
-    INTPOINT pivot;
-    INTRECT  borders = anim3d->GetExtraBorders( &pivot );
+    Point pivot;
+    Rect  borders = anim3d->GetExtraBorders( &pivot );
     if( rt3DMS.FBO )
     {
         PushRenderTarget( rt3D );
@@ -4553,14 +4553,14 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, FL
     return true;
 }
 
-bool SpriteManager::Render3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color )
+bool SpriteManager::Render3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
 {
     // Data
-    INTPOINT xy;
-    INTRECT  borders = anim3d->GetBaseBorders( &xy );
-    float    w_real = (float) borders.W();
-    float    h_real = (float) borders.H();
-    float    scale = min( rect.W() / w_real, rect.H() / h_real );
+    Point xy;
+    Rect  borders = anim3d->GetBaseBorders( &xy );
+    float w_real = (float) borders.W();
+    float h_real = (float) borders.H();
+    float scale = min( rect.W() / w_real, rect.H() / h_real );
     if( scale > 1.0f && !stretch_up )
         scale = 1.0f;
     if( center )
@@ -4585,7 +4585,7 @@ bool SpriteManager::Render3dSize( FLTRECT rect, bool stretch_up, bool center, An
     return true;
 }
 
-bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color )
+bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
 {
     Render3d( x, y, scale, anim3d, stencil, color );
     #ifndef FO_D3D
@@ -4594,7 +4594,7 @@ bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTR
     return true;
 }
 
-bool SpriteManager::Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color )
+bool SpriteManager::Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
 {
     Render3dSize( rect, stretch_up, center, anim3d, stencil, color );
     #ifndef FO_D3D
@@ -4697,10 +4697,10 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
     // Shader contour
     Animation3d* anim3d = si->Anim3d;
-    INTRECT      borders = ( anim3d ? anim3d->GetExtraBorders() : INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
+    Rect         borders = ( anim3d ? anim3d->GetExtraBorders() : Rect( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 ) );
     Texture*     texture = ( anim3d ? contoursMidTexture : si->Surf->TextureOwner );
     float        ws, hs;
-    FLTRECT      tuv, tuvh;
+    RectF        tuv, tuvh;
 
     if( !anim3d )
     {
@@ -4711,7 +4711,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         {
             ws = 1.0f / (float) si->Surf->Width;
             hs = 1.0f / (float) si->Surf->Height;
-            tuv = FLTRECT( si->SprRect.L - ws, si->SprRect.T - hs, si->SprRect.R + ws, si->SprRect.B + hs );
+            tuv = RectF( si->SprRect.L - ws, si->SprRect.T - hs, si->SprRect.R + ws, si->SprRect.B + hs );
             tuvh = tuv;
         }
         else
@@ -4761,7 +4761,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
             float h = (float) modeHeight;
             ws = 1.0f / modeWidth;
             hs = 1.0f / modeHeight;
-            tuv = FLTRECT( (float) borders.L / w, (float) borders.T / h, (float) borders.R / w, (float) borders.B / h );
+            tuv = RectF( (float) borders.L / w, (float) borders.T / h, (float) borders.R / w, (float) borders.B / h );
             tuvh = tuv;
             texture = contoursMidTexture;
         }
@@ -4771,7 +4771,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         if( borders.L >= modeWidth || borders.R < 0 || borders.T >= modeHeight || borders.B < 0 )
             return true;
 
-        INTRECT init_borders = borders;
+        Rect init_borders = borders;
         if( borders.L <= 0 )
             borders.L = 1;
         if( borders.T <= 0 )
@@ -4932,9 +4932,9 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     D3D_HR( d3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE2X ) );
     contoursAdded = true;
     #else
-    INTRECT  borders = INTRECT( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 );
+    Rect     borders = Rect( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 );
     Texture* texture = si->Surf->TextureOwner;
-    FLTRECT  textureuv, sprite_border;
+    RectF    textureuv, sprite_border;
     float    zoom = ( si->Anim3d ? 1.0f : GameOpt.SpritesZoom );
 
     if( borders.L >= modeWidth * zoom || borders.R < 0 || borders.T >= modeHeight * zoom || borders.B < 0 )
@@ -4942,9 +4942,9 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 
     if( zoom == 1.0f )
     {
-        FLTRECT& sr = si->SprRect;
-        float    txw = texture->SizeData[ 2 ];
-        float    txh = texture->SizeData[ 3 ];
+        RectF& sr = si->SprRect;
+        float  txw = texture->SizeData[ 2 ];
+        float  txh = texture->SizeData[ 3 ];
         textureuv( sr.L - txw, sr.T - txh, sr.R + txw, sr.B + txh );
         if( !si->Anim3d )
         {
@@ -4952,7 +4952,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         }
         else
         {
-            INTRECT r = si->Anim3d->GetFullBorders();
+            Rect r = si->Anim3d->GetFullBorders();
             r.L -= 5, r.T -= 5, r.R += 5, r.B += 5;
             r.L = CLAMP( r.L, -1, modeWidth + 1 );
             r.T = CLAMP( r.T, -1, modeHeight + 1 );
@@ -4967,11 +4967,11 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     }
     else
     {
-        FLTRECT& sr = si->SprRect;
+        RectF& sr = si->SprRect;
         borders( (int) ( x / zoom ), (int) ( y / zoom ),
                  (int) ( ( x + si->Width ) / zoom ), (int) ( ( y + si->Height ) / zoom ) );
-        FLTRECT bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
-        float   mid_height = rtContoursMid.TargetTexture->SizeData[ 1 ];
+        RectF bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
+        float mid_height = rtContoursMid.TargetTexture->SizeData[ 1 ];
 
         PushRenderTarget( rtContoursMid );
 
@@ -5017,7 +5017,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     else
         contour_color = 0xFFAFAFAF;
 
-    FLTRECT pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
+    RectF pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
 
     PushRenderTarget( rtContours );
 

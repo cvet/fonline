@@ -78,11 +78,11 @@ private:
     bool                  shadowDisabled;
     float                 dirAngle;
     uint                  sprId;
-    INTPOINT              drawXY, bordersXY;
+    Point                 drawXY, bordersXY;
     float                 drawScale;
     Vector                groundPos;
     bool                  bordersDisabled;
-    INTRECT               baseBorders, fullBorders;
+    Rect                  baseBorders, fullBorders;
     uint                  calcBordersTick;
     VectorVec             bordersResult;
     bool                  noDraw;
@@ -105,7 +105,7 @@ private:
     bool         DrawFrame( Frame* frame, bool shadow );
     bool         DrawMeshEffect( MeshSubset* mesh, uint subset, Effect* effect, Texture** textures, EffectValue_ technique );
     bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
-    bool         SetupBordersFrame( Frame* frame, FLTRECT& borders );
+    bool         SetupBordersFrame( Frame* frame, RectF& borders );
     void         ProcessBorders();
     float        GetSpeed();
     uint         GetTick();
@@ -127,22 +127,22 @@ public:
     #ifdef SHADOW_MAP
     void SetPitch( float angle );
     #endif
-    void    SetScale( float sx, float sy, float sz );
-    void    SetSpeed( float speed );
-    void    SetTimer( bool use_game_timer );
-    void    EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool    Draw( int x, int y, float scale, FLTRECT* stencil, uint color );
-    void    SetDrawPos( int x, int y );
-    bool    IsAnimationPlaying();
-    bool    IsIntersect( int x, int y );
-    void    SetSprId( uint value )             { sprId = value; }
-    uint    GetSprId()                         { return sprId; }
-    void    EnableSetupBorders( bool enabled ) { bordersDisabled = !enabled; }
-    void    SetupBorders();
-    INTRECT GetBaseBorders( INTPOINT* pivot = NULL );
-    INTRECT GetFullBorders( INTPOINT* pivot = NULL );
-    INTRECT GetExtraBorders( INTPOINT* pivot = NULL );
-    void    GetRenderFramesData( float& period, int& proc_from, int& proc_to );
+    void SetScale( float sx, float sy, float sz );
+    void SetSpeed( float speed );
+    void SetTimer( bool use_game_timer );
+    void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
+    bool Draw( int x, int y, float scale, RectF* stencil, uint color );
+    void SetDrawPos( int x, int y );
+    bool IsAnimationPlaying();
+    bool IsIntersect( int x, int y );
+    void SetSprId( uint value )             { sprId = value; }
+    uint GetSprId()                         { return sprId; }
+    void EnableSetupBorders( bool enabled ) { bordersDisabled = !enabled; }
+    void SetupBorders();
+    Rect GetBaseBorders( Point* pivot = NULL );
+    Rect GetFullBorders( Point* pivot = NULL );
+    Rect GetExtraBorders( Point* pivot = NULL );
+    void GetRenderFramesData( float& period, int& proc_from, int& proc_to );
 
     static bool         StartUp( Device_ device, bool software_skinning );
     static bool         SetScreenSize( int width, int height );
@@ -153,8 +153,8 @@ public:
     static Animation3d* GetAnimation( const char* name, bool is_child );
     static void         AnimateFaster();
     static void         AnimateSlower();
-    static FLTPOINT     Convert2dTo3d( int x, int y );
-    static INTPOINT     Convert3dTo2d( float x, float y );
+    static PointF       Convert2dTo3d( int x, int y );
+    static Point        Convert3dTo2d( float x, float y );
     static void         SetDefaultEffect( Effect* effect );
     static bool         Is2dEmulation();
 };

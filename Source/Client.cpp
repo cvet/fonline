@@ -980,7 +980,7 @@ void FOClient::ProcessScreenEffectFading()
 {
     static PointVec six_points;
     if( six_points.empty() )
-        SprMngr.PrepareSquare( six_points, FLTRECT( 0, 0, (float) MODE_WIDTH, (float) MODE_HEIGHT ), 0 );
+        SprMngr.PrepareSquare( six_points, RectF( 0, 0, (float) MODE_WIDTH, (float) MODE_HEIGHT ), 0 );
 
     for( auto it = ScreenEffects.begin(); it != ScreenEffects.end();)
     {
@@ -2232,7 +2232,7 @@ void FOClient::ProcessMouseWheel( int data )
 /************************************************************************/
     else if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
     {
-        INTRECT r = MessBoxCurRectDraw();
+        Rect r = MessBoxCurRectDraw();
         if( !r.IsZero() && IsCurInRect( r ) )
         {
             if( data > 0 )
@@ -4991,8 +4991,8 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ush
     t.StartTick = Timer::GameTick();
     t.Tick = text_delay;
     t.Text = fstr;
-    t.Rect = HexMngr.GetRectForText( hx, hy );
-    t.EndRect = t.Rect;
+    t.Pos = HexMngr.GetRectForText( hx, hy );
+    t.EndPos = t.Pos;
     auto it = std::find( GameMapTexts.begin(), GameMapTexts.end(), t );
     if( it != GameMapTexts.end() )
         GameMapTexts.erase( it );
@@ -6218,7 +6218,7 @@ void FOClient::Net_OnChosenTalk()
     int        line = 0, height = 0, page = 0, answ = 0;
     while( true )
     {
-        INTRECT pos(
+        Rect pos(
             DlgAnswText.L + DlgNextAnswX * line,
             DlgAnswText.T + DlgNextAnswY * line + height,
             DlgAnswText.R + DlgNextAnswX * line,
@@ -11015,8 +11015,8 @@ void FOClient::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, u
     t.StartTick = Timer::GameTick();
     t.Tick = ms;
     t.Text = text.c_std_str();
-    t.Rect = Self->HexMngr.GetRectForText( hx, hy );
-    t.EndRect = INTRECT( t.Rect, ox, oy );
+    t.Pos = Self->HexMngr.GetRectForText( hx, hy );
+    t.EndPos = Rect( t.Pos, ox, oy );
     auto it = std::find( Self->GameMapTexts.begin(), Self->GameMapTexts.end(), t );
     if( it != Self->GameMapTexts.end() )
         Self->GameMapTexts.erase( it );
@@ -11944,7 +11944,7 @@ void FOClient::SScriptFunc::Global_DrawText( CScriptString& text, int x, int y, 
         w = GameOpt.ScreenWidth - x;
     if( !h && y < GameOpt.ScreenHeight )
         h = GameOpt.ScreenHeight - y;
-    SprMngr.DrawStr( INTRECT( x, y, x + w, y + h ), text.c_str(), flags, color, font );
+    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), text.c_str(), flags, color, font );
 }
 
 void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray& data )
@@ -12130,7 +12130,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
             anim->SetScale( sx, sy, sz );
             anim->SetSpeed( speed );
             anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
-            SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &FLTRECT( stl, stt, str, stb ) : NULL, color ? color : COLOR_IFACE );
+            SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &RectF( stl, stt, str, stb ) : NULL, color ? color : COLOR_IFACE );
         }
     }
 }

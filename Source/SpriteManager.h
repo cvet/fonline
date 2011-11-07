@@ -165,7 +165,7 @@ struct MYVERTEX_PRIMITIVE
 struct SpriteInfo
 {
     Surface*     Surf;
-    FLTRECT      SprRect;
+    RectF        SprRect;
     short        Width;
     short        Height;
     short        OffsX;
@@ -182,7 +182,7 @@ struct DipData
     Effect*  SourceEffect;
     uint     SpritesCount;
     #ifndef FO_D3D
-    FLTRECT  SpriteBorder;
+    RectF    SpriteBorder;
     #endif
     DipData( Texture* tex, Effect* effect ): SourceTexture( tex ), SourceEffect( effect ), SpritesCount( 1 ) {}
 };
@@ -295,7 +295,7 @@ public:
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();
-    void DrawRenderTarget( RenderTarget& rt, INTRECT* region = NULL );
+    void DrawRenderTarget( RenderTarget& rt, Rect* region = NULL );
     #endif
 
     // Surfaces
@@ -338,8 +338,8 @@ private:
     AnyFrames* LoadAnimationMos( const char* fname, int path_type );
     AnyFrames* LoadAnimationBam( const char* fname, int path_type );
     AnyFrames* LoadAnimationOther( const char* fname, int path_type );
-    bool       Render3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color );
-    bool       Render3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
+    bool       Render3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color );
+    bool       Render3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color );
     uint       Render3dSprite( Animation3d* anim3d, int dir, int time_proc );
 
     // Draw
@@ -349,13 +349,13 @@ public:
     uint        GetSpritesColor()         { return baseColor; }
     SprInfoVec& GetSpritesInfo()          { return sprData; }
     SpriteInfo* GetSpriteInfo( uint id )  { return sprData[ id ]; }
-    void        GetDrawRect( Sprite* prep, INTRECT& rect );
+    void        GetDrawRect( Sprite* prep, Rect& rect );
     uint        GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
     bool        IsPixNoTransp( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
     bool        IsEggTransp( int pix_x, int pix_y );
 
-    void PrepareSquare( PointVec& points, FLTRECT& r, uint color );
-    void PrepareSquare( PointVec& points, FLTPOINT& lt, FLTPOINT& rt, FLTPOINT& lb, FLTPOINT& rb, uint color );
+    void PrepareSquare( PointVec& points, RectF& r, uint color );
+    void PrepareSquare( PointVec& points, PointF& lt, PointF& rt, PointF& lb, PointF& rb, uint color );
     bool PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy, uchar alpha );
     bool Flush();
 
@@ -364,9 +364,9 @@ public:
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
     bool DrawPrepared( Surface_& surf, int ox, int oy );
     bool DrawSurface( Surface_& surf, RECT& dst );
-    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, FLTRECT* stencil = NULL, FLTPOINT* offset = NULL );
-    bool Draw3d( int x, int y, float scale, Animation3d* anim3d, FLTRECT* stencil, uint color );
-    bool Draw3dSize( FLTRECT rect, bool stretch_up, bool center, Animation3d* anim3d, FLTRECT* stencil, uint color );
+    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* stencil = NULL, PointF* offset = NULL );
+    bool Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color );
+    bool Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color );
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )
     {
@@ -452,12 +452,12 @@ public:
     void SetFontEffect( int index, Effect* effect );
     bool LoadFontFO( int index, const char* font_name );
     bool LoadFontBMF( int index, const char* font_name );
-    bool DrawStr( INTRECT& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
+    bool DrawStr( Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
     int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );
     int  GetLineHeight( int num_font = -1 );
     void GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines );
-    int  SplitLines( INTRECT& r, const char* cstr, int num_font, StrVec& str_vec );
+    int  SplitLines( Rect& r, const char* cstr, int num_font, StrVec& str_vec );
 };
 
 extern SpriteManager SprMngr;

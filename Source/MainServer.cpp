@@ -18,7 +18,7 @@ void  UpdateLog();
 void  CheckTextBoxSize( bool force );
 void* GameLoopThread( void* );
 void* GUIUpdate( void* );
-INTRECT    MainInitRect, LogInitRect, InfoInitRect;
+Rect       MainInitRect, LogInitRect, InfoInitRect;
 int        SplitProcent = 90;
 Thread     LoopThread;
 MutexEvent GameInitEvent;
@@ -605,25 +605,25 @@ void UpdateLog()
 
 void CheckTextBoxSize( bool force )
 {
-    static INTRECT last_rmain;
+    static Rect last_rmain;
     if( force || GuiWindow->x() != last_rmain[ 0 ] || GuiWindow->y() != last_rmain[ 1 ] ||
         GuiWindow->x() + GuiWindow->w() != last_rmain[ 2 ] || GuiWindow->y() + GuiWindow->h() != last_rmain[ 3 ] )
     {
-        INTRECT rmain( GuiWindow->x(), GuiWindow->y(), GuiWindow->x() + GuiWindow->w(), GuiWindow->y() + GuiWindow->h() );
+        Rect rmain( GuiWindow->x(), GuiWindow->y(), GuiWindow->x() + GuiWindow->w(), GuiWindow->y() + GuiWindow->h() );
         if( rmain.W() > 0 && rmain.H() > 0 )
         {
-            int     wdiff = rmain.W() - MainInitRect.W();
-            int     hdiff = rmain.H() - MainInitRect.H();
+            int  wdiff = rmain.W() - MainInitRect.W();
+            int  hdiff = rmain.H() - MainInitRect.H();
 
-            INTRECT rlog( GuiLog->x(), GuiLog->y(), GuiLog->x() + GuiLog->w(), GuiLog->y() + GuiLog->h() );
-            INTRECT rinfo( GuiInfo->x(), GuiInfo->y(), GuiInfo->x() + GuiInfo->w(), GuiInfo->y() + GuiInfo->h() );
+            Rect rlog( GuiLog->x(), GuiLog->y(), GuiLog->x() + GuiLog->w(), GuiLog->y() + GuiLog->h() );
+            Rect rinfo( GuiInfo->x(), GuiInfo->y(), GuiInfo->x() + GuiInfo->w(), GuiInfo->y() + GuiInfo->h() );
 
-            int     hall = LogInitRect.H() + InfoInitRect.H() + hdiff;
-            int     wlog = LogInitRect.W() + wdiff;
-            int     hlog = hall * SplitProcent / 100;
-            int     winfo = InfoInitRect.W() + wdiff;
-            int     hinfo = hall * ( 100 - SplitProcent ) / 100;
-            int     yinfo = hlog - LogInitRect.H();
+            int  hall = LogInitRect.H() + InfoInitRect.H() + hdiff;
+            int  wlog = LogInitRect.W() + wdiff;
+            int  hlog = hall * SplitProcent / 100;
+            int  winfo = InfoInitRect.W() + wdiff;
+            int  hinfo = hall * ( 100 - SplitProcent ) / 100;
+            int  yinfo = hlog - LogInitRect.H();
 
             GuiLog->position( LogInitRect.L, LogInitRect.T );
             GuiLog->size( wlog, hlog );

@@ -447,7 +447,7 @@ bool Animation3d::IsIntersect( int x, int y )
 {
     if( noDraw )
         return false;
-    INTRECT borders = GetExtraBorders();
+    Rect borders = GetExtraBorders();
     if( x < borders.L || x > borders.R || y < borders.T || y > borders.B )
         return false;
 
@@ -530,7 +530,7 @@ void Animation3d::SetupBorders()
     if( bordersDisabled )
         return;
 
-    FLTRECT borders( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
+    RectF borders( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
 
     // Root
     FrameMove( 0.0, drawXY.X, drawXY.Y, drawScale, true );
@@ -566,7 +566,7 @@ void Animation3d::SetupBorders()
     fullBorders.B += 2;
 }
 
-bool Animation3d::SetupBordersFrame( Frame* frame, FLTRECT& borders )
+bool Animation3d::SetupBordersFrame( Frame* frame, RectF& borders )
 {
     #ifdef FO_D3D
     // Draw all mesh containers in this frame
@@ -642,32 +642,32 @@ void Animation3d::ProcessBorders()
     }
 }
 
-INTRECT Animation3d::GetBaseBorders( INTPOINT* pivot /* = NULL */ )
+Rect Animation3d::GetBaseBorders( Point* pivot /* = NULL */ )
 {
     ProcessBorders();
     if( pivot )
-        *pivot = INTPOINT( bordersXY.X - baseBorders.L, bordersXY.Y - baseBorders.T );
-    return INTRECT( baseBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
+        *pivot = Point( bordersXY.X - baseBorders.L, bordersXY.Y - baseBorders.T );
+    return Rect( baseBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
 }
 
-INTRECT Animation3d::GetFullBorders( INTPOINT* pivot /* = NULL */ )
+Rect Animation3d::GetFullBorders( Point* pivot /* = NULL */ )
 {
     ProcessBorders();
     if( pivot )
-        *pivot = INTPOINT( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
-    return INTRECT( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
+        *pivot = Point( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
+    return Rect( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
 }
 
-INTRECT Animation3d::GetExtraBorders( INTPOINT* pivot /* = NULL */ )
+Rect Animation3d::GetExtraBorders( Point* pivot /* = NULL */ )
 {
     ProcessBorders();
     if( pivot )
     {
-        *pivot = INTPOINT( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
+        *pivot = Point( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
         pivot->X += (int) ( CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
         pivot->Y += (int) ( CONTOURS_EXTRA_SIZE * 4.0f * drawScale );
     }
-    INTRECT result( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
+    Rect result( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
     result.L -= (int) ( (float) CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
     result.T -= (int) ( (float) CONTOURS_EXTRA_SIZE * 4.0f * drawScale );
     result.R += (int) ( (float) CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
@@ -934,7 +934,7 @@ void Animation3d::SetTimer( bool use_game_timer )
     useGameTimer = use_game_timer;
 }
 
-bool Animation3d::Draw( int x, int y, float scale, FLTRECT* stencil, uint color )
+bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
 {
     // Apply stencil
     #ifdef FO_D3D
@@ -1109,7 +1109,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
     // Update world matrix, only for root
     if( !parentFrame )
     {
-        FLTPOINT p3d = Convert2dTo3d( x, y );
+        PointF p3d = Convert2dTo3d( x, y );
         Matrix   mat_rot_y, mat_scale, mat_trans;
         Matrix::Scaling( Vector( scale, scale, scale ), mat_scale );
         #ifdef FO_D3D
@@ -1476,7 +1476,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             {
                 Matrix mback;
                 {
-                    FLTPOINT p3d = Convert2dTo3d( drawXY.X, drawXY.Y );
+                    PointF p3d = Convert2dTo3d( drawXY.X, drawXY.Y );
                     Matrix mat_trans, mat_trans2, mat_rot;
                     Matrix::Translation( Vector( -p3d.X, -p3d.Y, 0.0f ), mat_trans );
                     Matrix::Translation( Vector( p3d.X, p3d.Y, 0.0f ), mat_trans2 );
@@ -1833,7 +1833,7 @@ void Animation3d::AnimateFaster()
     GlobalSpeedAdjust += 0.1f;
 }
 
-FLTPOINT Animation3d::Convert2dTo3d( int x, int y )
+PointF Animation3d::Convert2dTo3d( int x, int y )
 {
     Vector coords;
     #ifdef FO_D3D
@@ -1841,14 +1841,14 @@ FLTPOINT Animation3d::Convert2dTo3d( int x, int y )
     #else
     VecUnproject( Vector( (float) x, (float) y, 0.0f ), coords );
     #endif
-    return FLTPOINT( coords.x, coords.y );
+    return PointF( coords.x, coords.y );
 }
 
-INTPOINT Animation3d::Convert3dTo2d( float x, float y )
+Point Animation3d::Convert3dTo2d( float x, float y )
 {
     Vector coords;
     VecProject( Vector( x, y, FixedZ ), MatrixEmpty, coords );
-    return INTPOINT( (int) coords.x, (int) coords.y );
+    return Point( (int) coords.x, (int) coords.y );
 }
 
 void Animation3d::SetDefaultEffect( Effect* effect )

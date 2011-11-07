@@ -11,12 +11,13 @@ struct FlexRect
     FlexRect( Ty l, Ty t, Ty r, Ty b ): L( l ), T( t ), R( r ), B( b ) {}
     FlexRect( Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy ): L( l + ox ), T( t + oy ), R( r + ox ), B( b + oy ) {}
     FlexRect( const FlexRect& fr, Ty ox, Ty oy ): L( fr.L + ox ), T( fr.T + oy ), R( fr.R + ox ), B( fr.B + oy ) {}
-    FlexRect& operator=( const FlexRect& fr )
+    template< typename Ty2 >
+    FlexRect& operator=( const FlexRect< Ty2 >& fr )
     {
-        L = fr.L;
-        T = fr.T;
-        R = fr.R;
-        B = fr.B;
+        L = (Ty) fr.L;
+        T = (Ty) fr.T;
+        R = (Ty) fr.R;
+        B = (Ty) fr.B;
         return *this;
     }
     void Clear()
@@ -31,8 +32,7 @@ struct FlexRect
     Ty   H()      const { return B - T + 1; }
     Ty   CX()     const { return L + W() / 2; }
     Ty   CY()     const { return T + H() / 2; }
-
-    Ty& operator[]( int index )
+    Ty&  operator[]( int index )
     {
         switch( index )
         {
@@ -49,7 +49,6 @@ struct FlexRect
         }
         return L;
     }
-
     FlexRect& operator()( Ty l, Ty t, Ty r, Ty b )
     {
         L = l;
@@ -66,10 +65,19 @@ struct FlexRect
         B += oy;
         return *this;
     }
+    FlexRect< Ty > Interpolate( const FlexRect< Ty >& to, int procent )
+    {
+        FlexRect< Ty > result( L, T, R, B );
+        result.L += (Ty) ( (int) ( to.L - L ) * procent / 100 );
+        result.T += (Ty) ( (int) ( to.T - T ) * procent / 100 );
+        result.R += (Ty) ( (int) ( to.R - R ) * procent / 100 );
+        result.B += (Ty) ( (int) ( to.B - B ) * procent / 100 );
+        return result;
+    }
 };
 
-typedef FlexRect< int >   INTRECT;
-typedef FlexRect< float > FLTRECT;
+typedef FlexRect< int >   Rect;
+typedef FlexRect< float > RectF;
 
 template< typename Ty >
 struct FlexPoint
@@ -80,10 +88,11 @@ struct FlexPoint
     FlexPoint( const FlexPoint& r ): X( r.X ), Y( r.Y ) {}
     FlexPoint( Ty x, Ty y ): X( x ), Y( y ) {}
     FlexPoint( const FlexPoint& fp, Ty ox, Ty oy ): X( fp.X + ox ), Y( fp.Y + oy ) {}
-    FlexPoint& operator=( const FlexPoint& fp )
+    template< typename Ty2 >
+    FlexPoint& operator=( const FlexPoint< Ty2 >& fp )
     {
-        X = fp.X;
-        Y = fp.Y;
+        X = (Ty) fp.X;
+        Y = (Ty) fp.Y;
         return *this;
     }
     void Clear()
@@ -92,8 +101,7 @@ struct FlexPoint
         Y = 0;
     }
     bool IsZero() { return !X && !Y; }
-
-    Ty& operator[]( int index )
+    Ty&  operator[]( int index )
     {
         switch( index )
         {
@@ -106,7 +114,6 @@ struct FlexPoint
         }
         return X;
     }
-
     FlexPoint& operator()( Ty x, Ty y )
     {
         X = x;
@@ -115,18 +122,7 @@ struct FlexPoint
     }
 };
 
-typedef FlexPoint< int >   INTPOINT;
-typedef FlexPoint< float > FLTPOINT;
-
-template< typename Ty >
-FlexRect< Ty > AverageFlexRect( const FlexRect< Ty >& r1, const FlexRect< Ty > r2, int procent )
-{
-    FlexRect< Ty > result = r1;
-    result.L += ( r2.L - r1.L ) * procent / 100;
-    result.T += ( r2.T - r1.T ) * procent / 100;
-    result.R += ( r2.R - r1.R ) * procent / 100;
-    result.B += ( r2.B - r1.B ) * procent / 100;
-    return result;
-}
+typedef FlexPoint< int >   Point;
+typedef FlexPoint< float > PointF;
 
 #endif // __FLEX_RECT__

@@ -133,8 +133,8 @@ const char* GetLastSocketError();
 #define PACKUINT64( u32hi, u32lo )        ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
 #define MAKEUINT( ch0, ch1, ch2, ch3 )    ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
 
-typedef vector< INTRECT > IntRectVec;
-typedef vector< FLTRECT > FltRectVec;
+typedef vector< Rect >  IntRectVec;
+typedef vector< RectF > FltRectVec;
 
 extern char   CommandLine[ MAX_FOTEXT ];
 extern char** CommandLineArgValues;

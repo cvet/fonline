@@ -668,7 +668,7 @@ void CritterCl::ProcessChangedParams()
     }
 }
 
-void CritterCl::DrawStay( INTRECT r )
+void CritterCl::DrawStay( Rect r )
 {
     if( Timer::FastTick() - staySprTick > 500 )
     {
@@ -696,7 +696,7 @@ void CritterCl::DrawStay( INTRECT r )
     {
         Anim3dStay->SetDir( dir );
         Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), IsLife() ? 0 : ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
-        SprMngr.Draw3dSize( FLTRECT( (float) r.L, (float) r.T, (float) r.R, (float) r.B ), false, true, Anim3dStay, &FLTRECT( (float) r.L, (float) r.T, (float) r.R, (float) r.B ), COLOR_IFACE );
+        SprMngr.Draw3dSize( RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B ), false, true, Anim3dStay, &RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B ), COLOR_IFACE );
     }
 }
 
@@ -1620,7 +1620,7 @@ void CritterCl::SetSprRect()
     {
         if( !Anim3d )
         {
-            INTRECT old = DRect;
+            Rect old = DRect;
             SprMngr.GetDrawRect( SprDraw, DRect );
             textRect.L += DRect.L - old.L;
             textRect.R += DRect.L - old.L;
@@ -1636,7 +1636,7 @@ void CritterCl::SetSprRect()
     }
 }
 
-INTRECT CritterCl::GetTextRect()
+Rect CritterCl::GetTextRect()
 {
     if( SprDrawValid )
     {
@@ -1647,7 +1647,7 @@ INTRECT CritterCl::GetTextRect()
         }
         return textRect;
     }
-    return INTRECT();
+    return Rect();
 }
 
 /*
@@ -1726,13 +1726,13 @@ void CritterCl::DrawTextOnHead()
 
     if( SprDrawValid )
     {
-        INTRECT tr = GetTextRect();
-        int     x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
-        int     y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
-        INTRECT r( x, y, x + 200, y + 70 );
+        Rect tr = GetTextRect();
+        int  x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
+        int  y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
+        Rect r( x, y, x + 200, y + 70 );
 
-        char    str[ MAX_FOTEXT ];
-        uint    color;
+        char str[ MAX_FOTEXT ];
+        uint color;
         if( strTextOnHead.empty() )
         {
             if( NameOnHead.length() )

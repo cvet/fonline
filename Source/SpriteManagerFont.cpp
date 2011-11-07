@@ -33,8 +33,8 @@ struct Font
     int      SpaceWidth;
     int      MaxLetterHeight;
     int      YAdvance;
-    FLTRECT  TexUV[ 256 ];
-    FLTRECT  TexBorderedUV[ 256 ];
+    RectF    TexUV[ 256 ];
+    RectF    TexBorderedUV[ 256 ];
     Effect*  DrawEffect;
 
     Font()
@@ -74,7 +74,7 @@ struct FontFormatInfo
 {
     Font*   CurFont;
     uint    Flags;
-    INTRECT Rect;
+    Rect    Region;
     char    Str[ FONT_BUF_LEN ];
     char*   PStr;
     uint    LinesAll;
@@ -88,7 +88,7 @@ struct FontFormatInfo
     StrVec* StrLines;
     bool    IsError;
 
-    void    Init( Font* font, uint flags, INTRECT& rect, const char* str_in )
+    void    Init( Font* font, uint flags, Rect& region, const char* str_in )
     {
         CurFont = font;
         Flags = flags;
@@ -96,7 +96,7 @@ struct FontFormatInfo
         LinesInRect = 0;
         IsError = false;
         CurX = CurY = MaxCurX = 0;
-        Rect = rect;
+        Region = region;
         memzero( ColorDots, sizeof( ColorDots ) );
         memzero( LineWidth, sizeof( LineWidth ) );
         memzero( LineSpaceWidth, sizeof( LineSpaceWidth ) );
@@ -117,7 +117,7 @@ struct FontFormatInfo
         CurX = _fi.CurX;
         CurY = _fi.CurY;
         MaxCurX = _fi.MaxCurX;
-        Rect = _fi.Rect;
+        Region = _fi.Region;
         memcpy( Str, _fi.Str, sizeof( Str ) );
         memcpy( ColorDots, _fi.ColorDots, sizeof( ColorDots ) );
         memcpy( LineWidth, _fi.LineWidth, sizeof( LineWidth ) );
@@ -504,13 +504,13 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
 
 void FormatText( FontFormatInfo& fi, int fmt_type )
 {
-    char*    str = fi.PStr;
-    uint     flags = fi.Flags;
-    Font*    font = fi.CurFont;
-    INTRECT& r = fi.Rect;
-    int&     curx = fi.CurX;
-    int&     cury = fi.CurY;
-    uint&    offs_col = fi.OffsColDots;
+    char* str = fi.PStr;
+    uint  flags = fi.Flags;
+    Font* font = fi.CurFont;
+    Rect& r = fi.Region;
+    int&  curx = fi.CurX;
+    int&  cury = fi.CurY;
+    uint& offs_col = fi.OffsColDots;
 
     if( fmt_type != FORMAT_TYPE_DRAW && fmt_type != FORMAT_TYPE_LCOUNT && fmt_type != FORMAT_TYPE_SPLIT )
     {
@@ -869,7 +869,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         cury = r.B - ( fi.LinesAll * font->MaxLetterHeight + ( fi.LinesAll - 1 ) * font->YAdvance );
 }
 
-bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint color /* = 0 */, int num_font /* = -1 */ )
+bool SpriteManager::DrawStr( Rect& r, const char* str, uint flags, uint color /* = 0 */, int num_font /* = -1 */ )
 {
     // Check
     if( !str || !str[ 0 ] )
@@ -897,7 +897,7 @@ bool SpriteManager::DrawStr( INTRECT& r, const char* str, uint flags, uint color
     int      cury = fi.CurY;
     int      curstr = 0;
     Texture* texture = ( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex );
-    FLTRECT* textture_uv = ( FLAG( flags, FT_BORDERED ) ? font->TexBorderedUV : font->TexUV );
+    RectF*   textture_uv = ( FLAG( flags, FT_BORDERED ) ? font->TexBorderedUV : font->TexUV );
 
     if( curSprCnt )
         Flush();
@@ -1021,7 +1021,7 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
         return height / ( font->MaxLetterHeight + font->YAdvance );
 
     static FontFormatInfo fi;
-    fi.Init( font, 0, INTRECT( 0, 0, width ? width : modeWidth, height ? height : modeHeight ), str );
+    fi.Init( font, 0, Rect( 0, 0, width ? width : modeWidth, height ? height : modeHeight ), str );
     FormatText( fi, FORMAT_TYPE_LCOUNT );
     if( fi.IsError )
         return 0;
@@ -1060,7 +1060,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
         return;
 
     static FontFormatInfo fi;
-    fi.Init( font, flags, INTRECT( 0, 0, width, height ), str );
+    fi.Init( font, flags, Rect( 0, 0, width, height ), str );
     FormatText( fi, FORMAT_TYPE_LCOUNT );
     if( fi.IsError )
         return;
@@ -1070,7 +1070,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
     tw = fi.MaxCurX;
 }
 
-int SpriteManager::SplitLines( INTRECT& r, const char* cstr, int num_font, StrVec& str_vec )
+int SpriteManager::SplitLines( Rect& r, const char* cstr, int num_font, StrVec& str_vec )
 {
     // Check & Prepare
     str_vec.clear();

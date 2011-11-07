@@ -44,7 +44,7 @@ public:
     FOMapper();
     bool Init();
     int  InitIface();
-    bool IfaceLoadRect( INTRECT& comp, const char* name );
+    bool IfaceLoadRect( Rect& comp, const char* name );
     void Finish();
     void MainLoop();
     void RefreshTiles( int tab );
@@ -70,13 +70,13 @@ public:
     // Map text
     struct MapText
     {
-        ushort  HexX, HexY;
-        uint    StartTick, Tick;
-        string  Text;
-        uint    Color;
-        bool    Fade;
-        INTRECT Rect;
-        INTRECT EndRect;
+        ushort HexX, HexY;
+        uint   StartTick, Tick;
+        string Text;
+        uint   Color;
+        bool   Fade;
+        Rect   Pos;
+        Rect   EndPos;
         bool operator==( const MapText& r ) { return HexX == r.HexX && HexY == r.HexY; }
     };
     typedef vector< MapText > MapTextVec;
@@ -127,9 +127,9 @@ public:
     void CurMMouseDown();
 
     bool GetMouseHex( ushort& hx, ushort& hy );
-    bool IsCurInRect( INTRECT& rect, int ax, int ay )                      { return ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
-    bool IsCurInRect( INTRECT& rect )                                      { return ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
-    bool IsCurInRectNoTransp( uint spr_id, INTRECT& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
+    bool IsCurInRect( Rect& rect, int ax, int ay )                      { return ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
+    bool IsCurInRect( Rect& rect )                                      { return ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
+    bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
 
     int IntMode;
     #define INT_MODE_CUSTOM0    ( 0 )
@@ -169,17 +169,17 @@ public:
 
     #define SELECT_TYPE_OLD     ( 0 )
     #define SELECT_TYPE_NEW     ( 1 )
-    int     SelectType;
+    int  SelectType;
 
-    bool    IntVisible, IntFix;
+    bool IntVisible, IntFix;
 
-    INTRECT IntWMain;
-    INTRECT IntWWork, IntWHint;
+    Rect IntWMain;
+    Rect IntWWork, IntWHint;
 
-    INTRECT IntBCust[ 10 ], IntBItem, IntBTile, IntBCrit, IntBFast, IntBIgnore, IntBInCont, IntBMess, IntBList,
-            IntBScrBack, IntBScrBackFst, IntBScrFront, IntBScrFrontFst;
+    Rect IntBCust[ 10 ], IntBItem, IntBTile, IntBCrit, IntBFast, IntBIgnore, IntBInCont, IntBMess, IntBList,
+         IntBScrBack, IntBScrBackFst, IntBScrFront, IntBScrFrontFst;
 
-    INTRECT IntBShowItem, IntBShowScen, IntBShowWall, IntBShowCrit, IntBShowTile, IntBShowRoof, IntBShowFast;
+    Rect IntBShowItem, IntBShowScen, IntBShowWall, IntBShowCrit, IntBShowTile, IntBShowRoof, IntBShowFast;
 
     void IntDraw();
     void IntLMouseDown();
@@ -219,7 +219,7 @@ public:
     bool       SubTabsActive;
     int        SubTabsActiveTab;
     AnyFrames* SubTabsPic;
-    INTRECT    SubTabsRect;
+    Rect       SubTabsRect;
     int        SubTabsX, SubTabsY;
 
     // Prototypes
@@ -246,8 +246,8 @@ public:
     bool IsCritMode()   { return CurNpcProtos && CurProtoScroll; }
 
     // Select
-    INTRECT IntBSelectItem, IntBSelectScen, IntBSelectWall, IntBSelectCrit, IntBSelectTile, IntBSelectRoof;
-    bool    IsSelectItem, IsSelectScen, IsSelectWall, IsSelectCrit, IsSelectTile, IsSelectRoof;
+    Rect IntBSelectItem, IntBSelectScen, IntBSelectWall, IntBSelectCrit, IntBSelectTile, IntBSelectRoof;
+    bool IsSelectItem, IsSelectScen, IsSelectWall, IsSelectCrit, IsSelectTile, IsSelectRoof;
 
     // Select Map Object
     struct SelMapObj
@@ -347,7 +347,7 @@ public:
     #define DRAW_NEXT_HEIGHT          ( 12 )
 
     AnyFrames* ObjWMainPic, * ObjPBToAllDn;
-    INTRECT    ObjWMain, ObjWWork, ObjBToAll;
+    Rect       ObjWMain, ObjWWork, ObjBToAll;
     int        ObjX, ObjY;
     int        ItemVectX, ItemVectY;
     int        ObjCurLine;

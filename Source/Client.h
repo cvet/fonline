@@ -654,16 +654,16 @@ public:
     bool AppendIfaceIni( const char* ini_name );
     void AppendIfaceIni( uchar* data, uint len );
     int  InitIface();
-    bool IfaceLoadRect( INTRECT& comp, const char* name );
-    void IfaceLoadRect2( INTRECT& comp, const char* name, int ox, int oy );
+    bool IfaceLoadRect( Rect& comp, const char* name );
+    void IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy );
     void IfaceLoadSpr( AnyFrames*& comp, const char* name );
     void IfaceLoadAnim( uint& comp, const char* name );
     void IfaceLoadArray( IntVec& arr, const char* name );
     void IfaceFreeResources();
 
-    bool IsCurInRect( INTRECT& rect, int ax, int ay )                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
-    bool IsCurInRect( INTRECT& rect )                                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
-    bool IsCurInRectNoTransp( uint spr_id, INTRECT& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
+    bool IsCurInRect( Rect& rect, int ax, int ay )                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
+    bool IsCurInRect( Rect& rect )                                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
+    bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
     int  GetSprCX( uint spr_id )
     {
         SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
@@ -675,7 +675,7 @@ public:
         return si ? ( si->Height / 2 ) + si->OffsY : 0;
     };
 
-    void DrawIndicator( INTRECT& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left );
+    void DrawIndicator( Rect& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left );
 
     // Initial state
     ItemVec InvContInit;
@@ -686,8 +686,8 @@ public:
     ItemVec BarterCont1o, BarterCont2, BarterCont2o;
     ItemVec PupCont2;
 
-    uint  GetCurContainerItemId( INTRECT& pos, int height, int scroll, ItemVec& cont );
-    void  ContainerDraw( INTRECT& pos, int height, int scroll, ItemVec& cont, uint skip_id );
+    uint  GetCurContainerItemId( Rect& pos, int height, int scroll, ItemVec& cont );
+    void  ContainerDraw( Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id );
     Item* GetContainerItem( ItemVec& cont, uint id );
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
@@ -724,18 +724,18 @@ public:
     int        InvItemInfoScroll, InvItemInfoMaxScroll;
     int        InvScroll;
     int        InvX, InvY;
-    INTRECT    InvWMain, InvWChosen;
+    Rect       InvWMain, InvWChosen;
     int        InvHeightItem;
-    INTRECT    InvWInv, InvWSlot1, InvWSlot2, InvWArmor;
-    INTRECT    InvBScrUp, InvBScrDn, InvBOk;
-    INTRECT    InvWText;
+    Rect       InvWInv, InvWSlot1, InvWSlot2, InvWArmor;
+    Rect       InvBScrUp, InvBScrDn, InvBOk;
+    Rect       InvWText;
     int        InvVectX, InvVectY;
     // Extended slots
     struct SlotExt
     {
-        int     Index;
-        char*   IniName;
-        INTRECT Rect;
+        int   Index;
+        char* IniName;
+        Rect  Rect;
     };
     typedef vector< SlotExt > SlotExtVec;
     SlotExtVec SlotsExt;
@@ -753,7 +753,7 @@ public:
     * UseBScrUpPicUp, * UseBScrDownPicUp, * UseBScrUpPicOff, * UseBScrDownPicOff;
     int          UseX, UseY, UseVectX, UseVectY;
     int          UseScroll, UseHeightItem;
-    INTRECT      UseWMain, UseWChosen, UseWInv, UseBScrUp, UseBScrDown, UseBCancel;
+    Rect         UseWMain, UseWChosen, UseWInv, UseBScrUp, UseBScrDown, UseBCancel;
     uint         UseHoldId;
     SmthSelected UseSelect;
 
@@ -768,13 +768,13 @@ public:
 /************************************************************************/
     struct MapText
     {
-        ushort  HexX, HexY;
-        uint    StartTick, Tick;
-        string  Text;
-        uint    Color;
-        bool    Fade;
-        INTRECT Rect;
-        INTRECT EndRect;
+        ushort HexX, HexY;
+        uint   StartTick, Tick;
+        string Text;
+        uint   Color;
+        bool   Fade;
+        Rect   Pos;
+        Rect   EndPos;
         bool operator==( const MapText& r ) { return HexX == r.HexX && HexY == r.HexY; }
     };
     typedef vector< MapText > MapTextVec;
@@ -799,11 +799,11 @@ public:
 
     int        IntX, IntY;
     bool       IntVisible, IntAddMess;
-    INTRECT    IntWMain, IntWAddMess, IntBAddMess, IntBMessFilter1, IntBMessFilter2, IntBMessFilter3;
-    INTRECT    IntBItem, IntWApCost;
-    INTRECT    IntBChangeSlot, IntBInv, IntBMenu, IntBSkill, IntBMap, IntBChar, IntBPip, IntBFix;
-    INTRECT    IntWMess, IntWMessLarge;
-    INTRECT    IntAP, IntHP, IntAC, IntBreakTime; // 15 зеленых(200мс) 3 желтых(1000мс) 2 красных(10000мс)
+    Rect       IntWMain, IntWAddMess, IntBAddMess, IntBMessFilter1, IntBMessFilter2, IntBMessFilter3;
+    Rect       IntBItem, IntWApCost;
+    Rect       IntBChangeSlot, IntBInv, IntBMenu, IntBSkill, IntBMap, IntBChar, IntBPip, IntBFix;
+    Rect       IntWMess, IntWMessLarge;
+    Rect       IntAP, IntHP, IntAC, IntBreakTime; // 15 зеленых(200мс) 3 желтых(1000мс) 2 красных(10000мс)
     int        IntAPstepX, IntAPstepY, IntAPMax;
     AnyFrames* IntBItemPicDn;
     int        IntBItemOffsX, IntBItemOffsY;
@@ -812,9 +812,9 @@ public:
     int        IntUseX, IntUseY;
     AnyFrames* IntBCombatTurnPicDown, * IntBCombatEndPicDown;
     uint       IntWCombatAnim;
-    INTRECT    IntWCombat, IntBCombatTurn, IntBCombatEnd;
+    Rect       IntWCombat, IntBCombatTurn, IntBCombatEnd;
 
-    INTRECT    IntWAmmoCount, IntWWearProcent, IntWAmmoCountStr, IntWWearProcentStr;
+    Rect       IntWAmmoCount, IntWWearProcent, IntWAmmoCountStr, IntWWearProcentStr;
     PointVec   IntAmmoPoints, IntWearPoints;
     uint       IntAmmoTick, IntWearTick;
 
@@ -864,7 +864,7 @@ public:
     int        LogFocus;
 
     int        LogX, LogY;
-    INTRECT    LogMain, LogWName, LogWPass, LogBOk, LogBOkText, LogBOptions, LogBOptionsText, LogBCredits, LogBCreditsText,
+    Rect       LogMain, LogWName, LogWPass, LogBOk, LogBOkText, LogBOptions, LogBOptionsText, LogBCredits, LogBCreditsText,
                LogBReg, LogBRegText, LogBExit, LogBExitText, LogWChat, LogWVersion;
 
     void LogDraw();
@@ -887,30 +887,30 @@ public:
 
     struct Answer
     {
-        uint    Page;
-        INTRECT Position;
-        string  Text;
-        int     AnswerNum;     // -1 prev page, -2 next page
+        uint   Page;
+        Rect   Position;
+        string Text;
+        int    AnswerNum;      // -1 prev page, -2 next page
 
-        Answer( uint page, INTRECT pos, string text, uint answer_num ): Page( page ), Position( pos ), Text( text ), AnswerNum( answer_num ) {}
+        Answer( uint page, Rect pos, string text, uint answer_num ): Page( page ), Position( pos ), Text( text ), AnswerNum( answer_num ) {}
     };
     vector< Answer > DlgAllAnswers, DlgAnswers;
 
     string           DlgMainText;
     int              DlgMainTextCur, DlgMainTextLinesReal, DlgMainTextLinesRect;
     int              DlgX, DlgY;
-    INTRECT          DlgWMain, DlgWText, DlgBScrUp, DlgBScrDn, DlgAnsw, DlgAnswText, DlgWMoney, DlgBBarter,
+    Rect             DlgWMain, DlgWText, DlgBScrUp, DlgBScrDn, DlgAnsw, DlgAnswText, DlgWMoney, DlgBBarter,
                      DlgBBarterText, DlgBSay, DlgBSayText, DlgWAvatar, DlgWTimer;
 
     // Barter
     AnyFrames* BarterPMain, * BarterPBOfferDn, * BarterPBTalkDn,
     * BarterPBC1ScrUpDn, * BarterPBC2ScrUpDn, * BarterPBC1oScrUpDn, * BarterPBC2oScrUpDn,
     * BarterPBC1ScrDnDn, * BarterPBC2ScrDnDn, * BarterPBC1oScrDnDn, * BarterPBC2oScrDnDn;
-    INTRECT BarterWMain, BarterBOffer, BarterBOfferText, BarterBTalk, BarterBTalkText, BarterWCont1Pic, BarterWCont2Pic,
-            BarterWCont1, BarterWCont2, BarterWCont1o, BarterWCont2o,
-            BarterBCont1ScrUp, BarterBCont2ScrUp, BarterBCont1oScrUp, BarterBCont2oScrUp,
-            BarterBCont1ScrDn, BarterBCont2ScrDn, BarterBCont1oScrDn, BarterBCont2oScrDn,
-            BarterWCost1, BarterWCost2, BarterWChosen, BarterWCritter;
+    Rect BarterWMain, BarterBOffer, BarterBOfferText, BarterBTalk, BarterBTalkText, BarterWCont1Pic, BarterWCont2Pic,
+         BarterWCont1, BarterWCont2, BarterWCont1o, BarterWCont2o,
+         BarterBCont1ScrUp, BarterBCont2ScrUp, BarterBCont1oScrUp, BarterBCont2oScrUp,
+         BarterBCont1ScrDn, BarterBCont2ScrDn, BarterBCont1oScrDn, BarterBCont2oScrDn,
+         BarterWCost1, BarterWCost2, BarterWChosen, BarterWCritter;
     uint   BarterPlayerId;
     int    BarterCont1HeightItem, BarterCont2HeightItem,
            BarterCont1oHeightItem, BarterCont2oHeightItem;
@@ -943,7 +943,7 @@ public:
     #define MINIMAP_PREPARE_TICK    ( 1000 )
     AnyFrames* LmapPMain, * LmapPBOkDw, * LmapPBScanDw, * LmapPBLoHiDw, * LmapPPix;
     PointVec   LmapPrepPix;
-    INTRECT    LmapMain, LmapWMap, LmapBOk, LmapBScan, LmapBLoHi;
+    Rect       LmapMain, LmapWMap, LmapBOk, LmapBScan, LmapBLoHi;
     short      LmapX, LmapY;
     int        LmapVectX, LmapVectY;
     int        LmapZoom;
@@ -972,8 +972,8 @@ public:
     AnyFrames*   GmapBInvPicDown, * GmapBMenuPicDown, * GmapBChaPicDown, * GmapBPipPicDown, * GmapBFixPicDown;
     AnyFrames*   GmapPLightPic0, * GmapPLightPic1;
     int          GmapX, GmapY, GmapVectX, GmapVectY, GmapWNameStepX, GmapWNameStepY;
-    INTRECT      GmapWMain, GmapWMap, GmapBTown, GmapWName, GmapWChat, GmapWPanel, GmapWCar, GmapWLock, GmapWTime, GmapWDayTime;
-    INTRECT      GmapBInv, GmapBMenu, GmapBCha, GmapBPip, GmapBFix;
+    Rect         GmapWMain, GmapWMap, GmapBTown, GmapWName, GmapWChat, GmapWPanel, GmapWCar, GmapWLock, GmapWTime, GmapWDayTime;
+    Rect         GmapBInv, GmapBMenu, GmapBCha, GmapBPip, GmapBFix;
     PointVec     GmapMapCutOff;
     static bool  GmapActive;
     static float GmapZoom;
@@ -984,7 +984,7 @@ public:
 
     // Town
     AnyFrames* GmapTownPic;
-    INTRECT    GmapTownPicPos;
+    Rect       GmapTownPicPos;
     IntRectVec GmapTownButtonPos;
     IntRectVec GmapTownTextPos;
     StrVec     GmapTownText;
@@ -1030,9 +1030,9 @@ public:
     } GmapCar;
 
     // Tabs
-    INTRECT GmapWTabs, GmapWTab, GmapWTabLoc, GmapBTabLoc, GmapBTabsScrUp, GmapBTabsScrDn;
-    int     GmapTabNextX, GmapTabNextY, GmapCurHoldBLoc, GmapTabsScrX, GmapTabsScrY;
-    uint    GmapTabsLastScr;
+    Rect GmapWTabs, GmapWTab, GmapWTabLoc, GmapBTabLoc, GmapBTabsScrUp, GmapBTabsScrDn;
+    int  GmapTabNextX, GmapTabNextY, GmapCurHoldBLoc, GmapTabsScrX, GmapTabsScrY;
+    uint GmapTabsLastScr;
 
     void  GmapDraw();
     void  GmapTownDraw();
@@ -1063,9 +1063,9 @@ public:
 /************************************************************************/
     AnyFrames*   SboxPMain, * SboxPBCancelDn, * SboxPBSneakDn, * SboxPBLockPickDn, * SboxPBStealDn,
     * SboxPBTrapsDn, * SboxPBFirstaidDn, * SboxPBDoctorDn, * SboxPBScienceDn, * SboxPBRepairDn;
-    INTRECT      SboxWMain, SboxWMainText, SboxBCancel, SboxBCancelText, SboxBSneak, SboxBLockpick, SboxBSteal,
+    Rect         SboxWMain, SboxWMainText, SboxBCancel, SboxBCancelText, SboxBSneak, SboxBLockpick, SboxBSteal,
                  SboxBTrap, SboxBFirstAid, SboxBDoctor, SboxBScience, SboxBRepair;
-    INTRECT      SboxTSneak, SboxTLockpick, SboxTSteal, SboxTTrap, SboxTFirstAid,
+    Rect         SboxTSneak, SboxTLockpick, SboxTSteal, SboxTTrap, SboxTFirstAid,
                  SboxTDoctor, SboxTScience, SboxTRepair;
     int          SboxX, SboxY;
     int          SboxVectX, SboxVectY;
@@ -1083,7 +1083,7 @@ public:
 /************************************************************************/
     AnyFrames* MoptMainPic, * MoptSingleplayerMainPic, * MoptSaveGamePicDown, * MoptLoadGamePicDown,
     * MoptOptionsPicDown, * MoptExitPicDown, * MoptResumePicDown;
-    INTRECT    MoptMain, MoptSaveGame, MoptLoadGame, MoptOptions, MoptExit, MoptResume;
+    Rect       MoptMain, MoptSaveGame, MoptLoadGame, MoptOptions, MoptExit, MoptResume;
     int        MoptX, MoptY;
 
     void MoptDraw();
@@ -1110,7 +1110,7 @@ public:
 
     AnyFrames* ChaPBSwitchPerks, * ChaPBSwitchKarma, * ChaPBSwitchKills, * ChaPBSwitchMask,
     * ChaPBSwitchScrUpUp, * ChaPBSwitchScrUpDn, * ChaPBSwitchScrDnUp, * ChaPBSwitchScrDnDn;
-    INTRECT    ChaBSwitch, ChaTSwitch, ChaBSwitchScrUp, ChaBSwitchScrDn;
+    Rect       ChaBSwitch, ChaTSwitch, ChaBSwitchScrUp, ChaBSwitchScrDn;
 
     struct SwitchElement
     {
@@ -1133,57 +1133,57 @@ public:
     AnyFrames* ChaPMain, * ChaPBPrintDn, * ChaPBOkDn, * ChaPBCancelDn;
     int        ChaX, ChaY;
     int        ChaVectX, ChaVectY;
-    INTRECT    ChaWMain, ChaBPrint, ChaBPrintText, ChaBOk, ChaBOkText, ChaBCancel, ChaBCancelText;
+    Rect       ChaWMain, ChaBPrint, ChaBPrintText, ChaBOk, ChaBOkText, ChaBCancel, ChaBCancelText;
 
     // Special
-    INTRECT ChaWSpecialText, ChaWSpecialValue, ChaWSpecialLevel;
-    int     ChaWSpecialNextX, ChaWSpecialNextY;
-    IntVec  ChaSpecialParams;
+    Rect   ChaWSpecialText, ChaWSpecialValue, ChaWSpecialLevel;
+    int    ChaWSpecialNextX, ChaWSpecialNextY;
+    IntVec ChaSpecialParams;
 
     // Skills
-    INTRECT ChaWSkillText, ChaWSkillName, ChaWSkillValue;
-    int     ChaWSkillNextX, ChaWSkillNextY;
-    ushort  ChaSkillUp[ MAX_PARAMS ];
-    INTRECT ChaWUnspentSP, ChaWUnspentSPText;
-    int     ChaUnspentSkillPoints;
+    Rect   ChaWSkillText, ChaWSkillName, ChaWSkillValue;
+    int    ChaWSkillNextX, ChaWSkillNextY;
+    ushort ChaSkillUp[ MAX_PARAMS ];
+    Rect   ChaWUnspentSP, ChaWUnspentSPText;
+    int    ChaUnspentSkillPoints;
 
     // Slider
     AnyFrames* ChaPWSlider, * ChaPBSliderPlusDn, * ChaPBSliderMinusDn;
-    INTRECT    ChaBSliderPlus, ChaBSliderMinus;
+    Rect       ChaBSliderPlus, ChaBSliderMinus;
     int        ChaWSliderX, ChaWSliderY;
     int        ChaCurSkill;
 
     // Level
-    INTRECT ChaWLevel, ChaWExp, ChaWNextLevel;
+    Rect ChaWLevel, ChaWExp, ChaWNextLevel;
 
     // Damage
-    INTRECT ChaWDmgLife, ChaWDmg;
-    int     ChaWDmgNextX, ChaWDmgNextY;
+    Rect ChaWDmgLife, ChaWDmg;
+    int  ChaWDmgNextX, ChaWDmgNextY;
 
     // Stats
-    INTRECT ChaWStatsName, ChaWStatsValue;
-    int     ChaWStatsNextX, ChaWStatsNextY;
+    Rect ChaWStatsName, ChaWStatsValue;
+    int  ChaWStatsNextX, ChaWStatsNextY;
 
     // Tip
-    INTRECT ChaWName, ChaWDesc, ChaWPic;
-    char    ChaName[ MAX_FOTEXT ];
-    char    ChaDesc[ MAX_FOTEXT ];
-    int     ChaSkilldexPic;
+    Rect ChaWName, ChaWDesc, ChaWPic;
+    char ChaName[ MAX_FOTEXT ];
+    char ChaDesc[ MAX_FOTEXT ];
+    int  ChaSkilldexPic;
 
     // Buttons
     AnyFrames* ChaPBNameDn, * ChaPBAgeDn, * ChaPBSexDn, * RegPBAccDn;
-    INTRECT    ChaBName, ChaBAge, ChaBSex;
+    Rect       ChaBName, ChaBAge, ChaBSex;
 
     // Registration
     AnyFrames* RegPMain, * RegPBSpecialPlusDn, * RegPBSpecialMinusDn, * RegPBTagSkillDn;
-    INTRECT    RegWMain, RegBSpecialPlus, RegBSpecialMinus, RegBTagSkill, RegWUnspentSpecial, RegWUnspentSpecialText;
+    Rect       RegWMain, RegBSpecialPlus, RegBSpecialMinus, RegBTagSkill, RegWUnspentSpecial, RegWUnspentSpecialText;
     int        RegBSpecialNextX, RegBSpecialNextY, RegBTagSkillNextX, RegBTagSkillNextY;
     int        RegCurSpecial, RegCurTagSkill;
     CritterCl* RegNewCr;
 
     // Trait
     AnyFrames* RegPBTraitDn;
-    INTRECT    RegBTraitL, RegBTraitR, RegWTraitL, RegWTraitR;
+    Rect       RegBTraitL, RegBTraitR, RegWTraitL, RegWTraitR;
     int        RegTraitNextX, RegTraitNextY;
     int        RegTraitNum;
 
@@ -1198,7 +1198,7 @@ public:
 /* Character name                                                       */
 /************************************************************************/
     AnyFrames* ChaNameMainPic, * ChaNameSingleplayerMainPic;
-    INTRECT    ChaNameWMain, ChaNameWName, ChaNameWNameText, ChaNameWPass, ChaNameWPassText;
+    Rect       ChaNameWMain, ChaNameWName, ChaNameWNameText, ChaNameWPass, ChaNameWPassText;
     int        ChaNameX, ChaNameY;
 
     void ChaNameDraw();
@@ -1209,7 +1209,7 @@ public:
 /* Character age                                                        */
 /************************************************************************/
     AnyFrames* ChaAgePic, * ChaAgeBUpDn, * ChaAgeBDownDn;
-    INTRECT    ChaAgeWMain, ChaAgeBUp, ChaAgeBDown, ChaAgeWAge;
+    Rect       ChaAgeWMain, ChaAgeBUp, ChaAgeBDown, ChaAgeWAge;
     int        ChaAgeX, ChaAgeY;
 
     void ChaAgeDraw();
@@ -1220,7 +1220,7 @@ public:
 /* Character sex                                                        */
 /************************************************************************/
     AnyFrames* ChaSexPic, * ChaSexBMaleDn, * ChaSexBFemaleDn;
-    INTRECT    ChaSexWMain, ChaSexBMale, ChaSexBFemale;
+    Rect       ChaSexWMain, ChaSexBMale, ChaSexBFemale;
     int        ChaSexX, ChaSexY;
 
     void ChaSexDraw();
@@ -1231,7 +1231,7 @@ public:
 /* Perk                                                                 */
 /************************************************************************/
     AnyFrames* PerkPMain, * PerkPBScrUpDn, * PerkPBScrDnDn, * PerkPBOkDn, * PerkPBCancelDn;
-    INTRECT    PerkWMain, PerkWText, PerkWPerks, PerkWPic, PerkBScrUp, PerkBScrDn, PerkBOk, PerkBCancel, PerkBOkText, PerkBCancelText;
+    Rect       PerkWMain, PerkWText, PerkWPerks, PerkWPic, PerkBScrUp, PerkBScrDn, PerkBOk, PerkBCancel, PerkBOkText, PerkBCancelText;
     int        PerkX, PerkY;
     int        PerkVectX, PerkVectY;
     int        PerkNextX, PerkNextY;
@@ -1249,7 +1249,7 @@ public:
 /* Town view                                                            */
 /************************************************************************/
     AnyFrames* TViewWMainPic, * TViewBBackPicDn, * TViewBEnterPicDn, * TViewBContoursPicDn;
-    INTRECT    TViewWMain, TViewBBack, TViewBEnter, TViewBContours;
+    Rect       TViewWMain, TViewBBack, TViewBEnter, TViewBContours;
     int        TViewX, TViewY, TViewVectX, TViewVectY;
     bool       TViewShowCountours;
 
@@ -1281,7 +1281,7 @@ public:
     AnyFrames* PipPMain, * PipPBStatusDn /*,*PipPBGamesDn*/, * PipPBAutomapsDn, * PipPBArchivesDn, * PipPBCloseDn, * PipPWMonitor;
     int        PipX, PipY;
     int        PipVectX, PipVectY;
-    INTRECT    PipWMain, PipWMonitor, PipBStatus /*,PipBGames*/, PipBAutomaps, PipBArchives, PipBClose, PipWTime;
+    Rect       PipWMain, PipWMonitor, PipBStatus /*,PipBGames*/, PipBAutomaps, PipBArchives, PipBClose, PipWTime;
     int        PipScroll[ PIP__ARCHIVES_INFO + 1 ];
 
     void PipDraw();
@@ -1330,7 +1330,7 @@ public:
     int        AimX, AimY;
     int        AimVectX, AimVectY;
     int        AimPicX, AimPicY;
-    INTRECT    AimWMain, AimBCancel,
+    Rect       AimWMain, AimBCancel,
                AimWHeadT, AimWLArmT, AimWRArmT, AimWTorsoT, AimWRLegT, AimWLLegT, AimWEyesT, AimWGroinT,
                AimWHeadP, AimWLArmP, AimWRArmP, AimWTorsoP, AimWRLegP, AimWLLegP, AimWEyesP, AimWGroinP;
     int  AimHeadP, AimLArmP, AimRArmP, AimTorsoP, AimRLegP, AimLLegP, AimEyesP, AimGroinP;
@@ -1350,19 +1350,19 @@ public:
     * PupPBScrUpOn2, * PupPBScrUpOff2, * PupPBScrDwOn2, * PupPBScrDwOff2,
     * PupBNextCritLeftPicUp, * PupBNextCritLeftPicDown,
     * PupBNextCritRightPicUp, * PupBNextCritRightPicDown;
-    uint    PupHoldId;
-    int     PupScroll1, PupScroll2, PupScrollCrit;
-    int     PupX, PupY;
-    int     PupVectX, PupVectY;
-    INTRECT PupWMain, PupWInfo, PupWCont1, PupWCont2, PupBTakeAll, PupBOk,
-            PupBScrUp1, PupBScrDw1, PupBScrUp2, PupBScrDw2, PupBNextCritLeft, PupBNextCritRight;
-    int     PupHeightItem1, PupHeightItem2;
-    uchar   PupTransferType;
-    uint    PupContId, PupClosedContId, PupLastPutId;
-    ushort  PupContPid;
-    uint    PupCount;
-    ushort  PupSize;
-    uint    PupWeight;
+    uint   PupHoldId;
+    int    PupScroll1, PupScroll2, PupScrollCrit;
+    int    PupX, PupY;
+    int    PupVectX, PupVectY;
+    Rect   PupWMain, PupWInfo, PupWCont1, PupWCont2, PupBTakeAll, PupBOk,
+           PupBScrUp1, PupBScrDw1, PupBScrUp2, PupBScrDw2, PupBNextCritLeft, PupBNextCritRight;
+    int    PupHeightItem1, PupHeightItem2;
+    uchar  PupTransferType;
+    uint   PupContId, PupClosedContId, PupLastPutId;
+    ushort PupContPid;
+    uint   PupCount;
+    ushort PupSize;
+    uint   PupWeight;
 
     void       PupDraw();
     void       PupMouseMove();
@@ -1377,7 +1377,7 @@ public:
 /* Dialog box                                                           */
 /************************************************************************/
     AnyFrames* DlgboxWTopPicNone, * DlgboxWMiddlePicNone, * DlgboxWBottomPicNone, * DlgboxBButtonPicDown;
-    INTRECT    DlgboxWTop, DlgboxWMiddle, DlgboxWBottom, DlgboxWText, DlgboxBButton, DlgboxBButtonText;
+    Rect       DlgboxWTop, DlgboxWMiddle, DlgboxWBottom, DlgboxWText, DlgboxBButton, DlgboxBButtonText;
     int        DlgboxX, DlgboxY;
     int        DlgboxVectX, DlgboxVectY;
     uchar      DlgboxType;
@@ -1411,9 +1411,9 @@ public:
 /************************************************************************/
     AnyFrames* ElevatorMainPic, * ElevatorExtPic, * ElevatorButtonPicDown;
     uint       ElevatorIndicatorAnim;
-    INTRECT    ElevatorMain, ElevatorExt, ElevatorIndicator;
+    Rect       ElevatorMain, ElevatorExt, ElevatorIndicator;
     uint       ElevatorButtonsCount;
-    INTRECT    ElevatorButtons[ MAX_DLGBOX_BUTTONS ];
+    Rect       ElevatorButtons[ MAX_DLGBOX_BUTTONS ];
     uint       ElevatorType, ElevatorLevelsCount, ElevatorStartLevel, ElevatorCurrentLevel;
     int        ElevatorX, ElevatorY, ElevatorVectX, ElevatorVectY;
     int        ElevatorSelectedButton;
@@ -1434,7 +1434,7 @@ public:
     AnyFrames* SayWMainPicNone, * SayBOkPicDown, * SayBCancelPicDown;
     int        SayX, SayY;
     int        SayVectX, SayVectY;
-    INTRECT    SayWMain, SayWMainText, SayWSay, SayBOk, SayBOkText, SayBCancel, SayBCancelText;
+    Rect       SayWMain, SayWMainText, SayWSay, SayBOk, SayBOkText, SayBCancel, SayBCancelText;
     uchar      SayType;
     bool       SayOnlyNumbers;
     #define DIALOGSAY_NONE             ( 0 )
@@ -1466,7 +1466,7 @@ public:
     uint       SplitItemColor;
     int        SplitX, SplitY;
     int        SplitVectX, SplitVectY;
-    INTRECT    SplitWMain, SplitWTitle, SplitWItem, SplitBUp, SplitBDown, SplitBAll,
+    Rect       SplitWMain, SplitWTitle, SplitWItem, SplitBUp, SplitBDown, SplitBAll,
                SplitWValue, SplitBDone, SplitBCancel;
     uint       SplitItemId, SplitCont;
     int        SplitValue, SplitMinValue, SplitMaxValue;
@@ -1492,7 +1492,7 @@ public:
     uint       TimerItemColor;
     int        TimerX, TimerY;
     int        TimerVectX, TimerVectY;
-    INTRECT    TimerWMain, TimerWTitle, TimerWItem, TimerBUp, TimerBDown, TimerWValue,
+    Rect       TimerWMain, TimerWTitle, TimerWItem, TimerBUp, TimerBDown, TimerWValue,
                TimerBDone, TimerBCancel;
     int        TimerValue;
     uint       TimerItemId;
@@ -1514,18 +1514,18 @@ public:
     #define FIX_MODE_RESULT            ( 2 )
 
     AnyFrames* FixMainPic, * FixPBDoneDn, * FixPBScrUpDn, * FixPBScrDnDn, * FixPBFixDn;
-    INTRECT    FixWMain, FixBDone, FixBScrUp, FixBScrDn, FixWWin, FixBFix;
+    Rect       FixWMain, FixBDone, FixBScrUp, FixBScrDn, FixWWin, FixBFix;
     int        FixX, FixY, FixVectX, FixVectY;
     int        FixCurCraft;
 
     struct SCraft
     {
-        INTRECT Pos;
-        string  Name;
-        uint    Num;
-        bool    IsTrue;
+        Rect   Pos;
+        string Name;
+        uint   Num;
+        bool   IsTrue;
 
-        SCraft( INTRECT& pos, string& name, uint num, bool is_true )
+        SCraft( Rect& pos, string& name, uint num, bool is_true )
         {
             Pos = pos;
             Name = name;
@@ -1560,17 +1560,17 @@ public:
     struct FixDrawComponent
     {
         bool       IsText;
-        INTRECT    Rect;
+        Rect       Place;
 
         string     Text;
         AnyFrames* Anim;
 
-        FixDrawComponent( INTRECT& r, string& text ): IsText( true ), Anim( NULL )
+        FixDrawComponent( Rect& r, string& text ): IsText( true ), Anim( NULL )
         {
-            Rect = r;
+            Place = r;
             Text = text;
         }
-        FixDrawComponent( INTRECT& r, AnyFrames* anim ): IsText( false ), Anim( anim ) { Rect = r; }
+        FixDrawComponent( Rect& r, AnyFrames* anim ): IsText( false ), Anim( anim ) { Place = r; }
     };
     typedef vector< FixDrawComponent* > FixDrawComponentVec;
     #define FIX_DRAW_PIC_WIDTH         ( 40 )
@@ -1582,8 +1582,8 @@ public:
     uint                FixNextShowCraftTick;
 
     void       FixGenerate( int fix_mode );
-    void       FixGenerateStrLine( string& str, INTRECT& r );
-    void       FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, INTRECT& r, int& x );
+    void       FixGenerateStrLine( string& str, Rect& r );
+    void       FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x );
     int        GetMouseCraft();
     SCraftVec* GetCurSCrafts();
 
@@ -1600,7 +1600,7 @@ public:
     #define IBOX_MODE_HOLO             ( 1 )
 
     AnyFrames* IboxWMainPicNone, * IboxBDonePicDown, * IboxBCancelPicDown;
-    INTRECT    IboxWMain, IboxWTitle, IboxWText, IboxBDone, IboxBDoneText, IboxBCancel, IboxBCancelText;
+    Rect       IboxWMain, IboxWTitle, IboxWText, IboxBDone, IboxBDoneText, IboxBCancel, IboxBCancelText;
     int        IboxX, IboxY, IboxVectX, IboxVectY;
     string     IboxTitle, IboxText;
     int        IboxTitleCur, IboxTextCur;
@@ -1625,7 +1625,7 @@ public:
 
     AnyFrames* SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
     * SaveLoadDonePicDown, * SaveLoadBackPicDown;
-    INTRECT    SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
+    Rect       SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
                SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
     int        SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
     bool       SaveLoadLoginScreen, SaveLoadSave;
@@ -1734,12 +1734,12 @@ public:
     int               MessBoxScroll, MessBoxMaxScroll, MessBoxScrollLines;
     IntVec            MessBoxFilters;
 
-    void    MessBoxGenerate();
-    void    AddMess( int mess_type, const char* msg );
-    void    MessBoxDraw();
-    INTRECT MessBoxCurRectDraw();
-    INTRECT MessBoxCurRectScroll();
-    bool    MessBoxLMouseDown();
+    void MessBoxGenerate();
+    void AddMess( int mess_type, const char* msg );
+    void MessBoxDraw();
+    Rect MessBoxCurRectDraw();
+    Rect MessBoxCurRectScroll();
+    bool MessBoxLMouseDown();
 
     uchar GetCmdNum( char*& str );
 
