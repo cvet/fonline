@@ -699,12 +699,20 @@ void Preprocessor::UndefAll()
 	application_specified.clear();
 }
 
-std::vector<std::string>& Preprocessor::GetFileDependencies()
+const std::vector<std::string>& Preprocessor::GetFileDependencies()
 {
 	return FileDependencies;
 }
 
-std::vector<std::string>& Preprocessor::GetParsedPragmas()
+const std::vector<std::string>& Preprocessor::GetParsedPragmas()
 {
 	return Pragmas;
+}
+
+void Preprocessor::SetParsedPragmas( std::vector<std::string>& pragmas )
+{
+	PragmasAdded.clear();
+	for( size_t i = 0, j = pragmas.size(); i < j; i += 2 )
+		PragmasAdded.insert( pragmas[ i ] + pragmas[ i + 1 ] );
+	Pragmas = pragmas;
 }

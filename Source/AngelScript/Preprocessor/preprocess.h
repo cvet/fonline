@@ -101,8 +101,9 @@ namespace Preprocessor
 	void UndefAll();
 	void SetPragmaCallback(PragmaCallback* callback);
 	void CallPragma(const std::string& name, const PragmaInstance& instance);
-	std::vector<std::string>& GetFileDependencies();
-	std::vector<std::string>& GetParsedPragmas();
+	const std::vector<std::string>& GetFileDependencies();
+	const std::vector<std::string>& GetParsedPragmas();
+	void SetParsedPragmas( std::vector<std::string>& pragmas );
 };
 
 #endif

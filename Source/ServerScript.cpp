@@ -358,8 +358,25 @@ bool FOServer::ReloadClientScripts()
             }
             std::vector< asBYTE >& buf = binary.GetBuf();
 
-            StrVec&                pr = Preprocessor::GetParsedPragmas();
-            pragmas.insert( pragmas.end(), pr.begin(), pr.end() );
+            // Pragmas
+            const StrVec& pr = Preprocessor::GetParsedPragmas();
+            for( size_t i = 0, j = pr.size(); i < j; i += 2 )
+            {
+                bool found = false;
+                for( size_t k = 0, l = pragmas.size(); k < l; k += 2 )
+                {
+                    if( pragmas[ k ] == pr[ i ] && pragmas[ k + 1 ] == pr[ j + 1 ] )
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if( !found )
+                {
+                    pragmas.push_back( pr[ i ] );
+                    pragmas.push_back( pr[ i + 1 ] );
+                }
+            }
 
             // Add module name and bytecode
             for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )

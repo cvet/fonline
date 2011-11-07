@@ -965,8 +965,7 @@ public:
 
                         if( module->LoadByteCode( &binary ) >= 0 )
                         {
-                            StrVec& pragmas_ = Preprocessor::GetParsedPragmas();
-                            pragmas_ = pragmas;
+                            Preprocessor::SetParsedPragmas( pragmas );
                             modules.push_back( module );
                             return true;
                         }
@@ -1120,8 +1119,8 @@ public:
             if( module->SaveByteCode( &binary ) >= 0 )
             {
                 std::vector< asBYTE >& data = binary.GetBuf();
-                StrVec&                dependencies = Preprocessor::GetFileDependencies();
-                StrVec&                pragmas = Preprocessor::GetParsedPragmas();
+                const StrVec&          dependencies = Preprocessor::GetFileDependencies();
+                const StrVec&          pragmas = Preprocessor::GetParsedPragmas();
 
                 file_bin.SetBEUInt( version );
                 file_bin.SetBEUInt( (uint) dependencies.size() );
