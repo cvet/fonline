@@ -164,6 +164,15 @@ bool Timer::DateTimeToFullTime( DateTime& dt, uint64& ft )
     return true;
 }
 
+ushort Timer::CountLeapYears(ushort from_year, ushort to_year)
+{
+	from_year--;
+	to_year--;
+	ushort leap_before_from = from_year/4 - from_year/100 + from_year/400;
+	ushort leap_before_to = to_year/4 - to_year/100 + to_year/400;
+	return leap_before_to-leap_before_from;
+}
+
 bool Timer::FullTimeToDateTime( uint64& ft, DateTime& dt )
 {
     // Base
@@ -181,25 +190,28 @@ bool Timer::FullTimeToDateTime( uint64& ft, DateTime& dt )
     dt.Year = 1601;
     while( ft >= 366 )
     {
-        uint years = (uint) ft / 366;
+        ushort years = (uint) ft / 366;
         ft %= 366;
-        ft += years - ( years / 4 + years / 400 - years / 100 );
+        ft += years-CountLeapYears(dt.Year,dt.Year+years);
         dt.Year += years;
     }
+
+	if(ft==365 && !( dt.Year % 400 == 0 || ( dt.Year % 4 == 0 && dt.Year % 100 != 0 ) )) // full year in non-leap year
+	{
+		dt.Year++;
+		ft=0;
+	}
 
     // Month
     static const uint count1[ 12 ] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
     static const uint count2[ 12 ] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 }; // Leap
     const uint*       count = ( ( dt.Year % 400 == 0 || ( dt.Year % 4 == 0 && dt.Year % 100 != 0 ) ) ? count2 : count1 );
-    for( int i = 0; i < 11; i++ )
-    {
-        if( (uint) ft >= count[ i ] && (uint) ft < count[ i + 1 ] )
-        {
-            ft -= count[ i ];
-            dt.Month = i + 1;
-            break;
-        }
-    }
+	int i = 0;
+    for( ; i < 11; i++ )
+		if( (uint) ft >= count[ i ] && (uint) ft < count[ i + 1 ] ) break;
+
+    ft -= count[ i ];
+    dt.Month = i + 1;
 
     // Day
     dt.Day = (ushort) ft + 1;

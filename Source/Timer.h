@@ -30,6 +30,7 @@ namespace Timer
 
     void GetCurrentDateTime( DateTime& dt );
     bool DateTimeToFullTime( DateTime& dt, uint64& ft );
+	ushort CountLeapYears(ushort from_year, ushort to_year);
     bool FullTimeToDateTime( uint64& ft, DateTime& dt );
     int  GetTimeDifference( DateTime& dt1, DateTime& dt2 );
     bool ContinueTime( DateTime& dt, int seconds );
