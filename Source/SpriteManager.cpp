@@ -16,8 +16,10 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 #endif
 
 SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), SurfType( 0 ), SurfFilterNearest( false ),
-                                spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ), sceneBeginned( false ),
-                                d3dDevice( NULL ), vbMain( NULL ), ibMain( NULL ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
+#ifdef FO_D3D
+                                spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ),
+#endif
+                                sceneBeginned( false ), d3dDevice( NULL ), vbMain( NULL ), ibMain( NULL ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
                                 eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ), sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
                                 contoursTexture( NULL ), contoursTextureSurf( NULL ), contoursMidTexture( NULL ), contoursMidTextureSurf( NULL ), contours3dRT( NULL ),
                                 contoursPS( NULL ), contoursCT( NULL ), contoursAdded( false ),
@@ -620,10 +622,12 @@ bool SpriteManager::Restore()
 }
 
 #ifndef FO_D3D
-bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */ )
+bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */, uint width /* = 0 */, uint height /* = 0 */ )
 {
     // Zero data
     memzero( &rt, sizeof( rt ) );
+    width = ( width ? width : modeWidth );
+    height = ( height ? height : modeHeight );
 
     // Multisampling
     static int samples = -1;
@@ -655,22 +659,20 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     GL( glGenFramebuffers( 1, &rt.FBO ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
 
-    uint     w = modeWidth;
-    uint     h = modeHeight;
     Texture* tex = new Texture();
     tex->Data = NULL;
-    tex->Size = w * h * 4;
-    tex->Width = w;
-    tex->Height = h;
-    tex->SizeData[ 0 ] = (float) w;
-    tex->SizeData[ 1 ] = (float) h;
+    tex->Size = width * height * 4;
+    tex->Width = width;
+    tex->Height = height;
+    tex->SizeData[ 0 ] = (float) width;
+    tex->SizeData[ 1 ] = (float) height;
     tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
     tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
     GL( glGenTextures( 1, &tex->Id ) );
     if( !multisampling )
     {
         GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
@@ -681,7 +683,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     {
         tex->Samples = (float) samples;
         GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex->Id ) );
-        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, 4, w, h, TRUE ) );
+        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, 4, width, height, TRUE ) );
         GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
     }
     rt.TargetTexture = tex;
@@ -692,11 +694,11 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glBindRenderbuffer( GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
         if( !multisampling )
         {
-            GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h ) );
+            GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height ) );
         }
         else
         {
-            GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, w, h ) );
+            GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height ) );
         }
         GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
     }
@@ -716,6 +718,15 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     if( depth_stencil )
         ClearRenderTargetDS( rt, true, true );
     return true;
+}
+
+void SpriteManager::DeleteRenderTarget( RenderTarget& rt )
+{
+    if( rt.DepthStencilBuffer )
+        GL( glDeleteRenderbuffers( 1, &rt.DepthStencilBuffer ) );
+    GL( glDeleteFramebuffers( 1, &rt.FBO ) );
+    SAFEDEL( rt.TargetTexture );
+    memzero( &rt, sizeof( rt ) );
 }
 
 void SpriteManager::ClearRenderTarget( RenderTarget& rt, uint color )
@@ -795,10 +806,7 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region /* = NULL *
     {
         uint  mulpos = 0;
         RectF regionf;
-        regionf.L = (float) region->L;
-        regionf.T = (float) region->T;
-        regionf.R = (float) region->R;
-        regionf.B = (float) region->B;
+        regionf = *region;
         float w = (float) rt.TargetTexture->Width;
         float h = (float) rt.TargetTexture->Height;
 
@@ -3204,7 +3212,118 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     si->OffsY = fb.H() - p.Y;
     return FillSurfaceFromMemory( si, data, size );
     #else
-    return 0;
+    // Create render targets
+    if( !rt3DSprite.FBO )
+    {
+        static const uint init_size = 512;
+        if( !CreateRenderTarget( rt3DSprite, true, false, 512, 512 ) )
+            return 0;
+        CreateRenderTarget( rt3DMSSprite, true, true, 512, 512 );
+    }
+
+    // Prepare and render
+    int rt_width = rt3DSprite.TargetTexture->Width;
+    int rt_height = rt3DSprite.TargetTexture->Height;
+    Animation3d::SetScreenSize( rt_width, rt_height );
+    anim3d->EnableSetupBorders( false );
+    if( dir < 0 || dir >= DIRS_COUNT )
+        anim3d->SetDirAngle( dir );
+    else
+        anim3d->SetDir( dir );
+    anim3d->SetAnimation( 0, time_proc, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
+
+    PushRenderTarget( rt3DSprite );
+    ClearRenderTarget( rt3DSprite, 0 );
+    ClearRenderTargetDS( rt3DSprite, true, false );
+    GL( glDisable( GL_BLEND ) );
+    anim3d->Draw( rt_width / 2, rt_height - rt_height / 4, 1.0f, NULL, 0 );
+    GL( glEnable( GL_BLEND ) );
+    PopRenderTarget();
+
+    anim3d->EnableSetupBorders( true );
+    anim3d->SetupBorders();
+    Animation3d::SetScreenSize( modeWidth, modeHeight );
+    Rect fb = anim3d->GetFullBorders();
+
+    // Copy from multisampled to default rt
+    if( rt3DMSSprite.FBO )
+    {
+        GL( glDisable( GL_BLEND ) );
+        GL( glMatrixMode( GL_PROJECTION ) );
+        GL( glLoadIdentity() );
+        GL( gluOrtho2D( 0, rt_width, rt_height, 0 ) );
+        GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
+        GL( glViewport( 0, 0, rt_width, rt_height ) );
+
+        PushRenderTarget( rt3DMS );
+        DrawRenderTarget( rt3DMS, &fb );
+        PopRenderTarget();
+
+        GL( glEnable( GL_BLEND ) );
+        GL( glMatrixMode( GL_PROJECTION ) );
+        GL( glLoadIdentity() );
+        GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
+        GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
+        GL( glViewport( 0, 0, modeWidth, modeHeight ) );
+    }
+
+    // Grow surfaces while sprite not fitted in it
+    if( fb.L < 0 || fb.R >= rt_width || fb.T < 0 || fb.B >= rt_height )
+    {
+        // Grow x2
+        if( fb.L < 0 || fb.R >= rt_width )
+            rt_width *= 2;
+        if( fb.T < 0 || fb.B >= rt_height )
+            rt_height *= 2;
+
+        // Recreate
+        RenderTarget old_rt = rt3DSprite;
+        RenderTarget old_rtms = rt3DMSSprite;
+        bool         result;
+        if( rt3DMSSprite.FBO )
+            result = CreateRenderTarget( rt3DSprite, true, false, rt_width, rt_height ) &&
+                     CreateRenderTarget( rt3DMSSprite, true, true, rt_width, rt_height );
+        else
+            result = CreateRenderTarget( rt3DSprite, true, false, rt_width, rt_height );
+        if( !result )
+        {
+            WriteLogF( _FUNC_, " - Size of model is too big.\n" );
+            rt3DSprite = old_rt;
+            rt3DMSSprite = old_rtms;
+            return 0;
+        }
+        DeleteRenderTarget( old_rt );
+        if( old_rtms.FBO )
+            DeleteRenderTarget( old_rtms );
+
+        // Try load again
+        return Render3dSprite( anim3d, dir, time_proc );
+    }
+
+    // Copy to system memory
+    uint   w = fb.W();
+    uint   h = fb.H();
+    uint   size = 12 + h * w * 4;
+    uchar* data = new (nothrow) uchar[ size ];
+    *( (uint*) data + 1 ) = w;
+    *( (uint*) data + 2 ) = h;
+    PushRenderTarget( rt3DSprite );
+    GL( glReadPixels( fb.L, rt_height - fb.B, w, h, GL_BGRA, GL_UNSIGNED_BYTE, data + 12 ) );
+    PopRenderTarget();
+
+    // Flip
+    uint* data4 = (uint*) ( data + 12 );
+    for( uint y = 0; y < h / 2; y++ )
+        for( uint x = 0; x < w; x++ )
+            std::swap( data4[ y * w + x ], data4[ ( h - y - 1 ) * w + x ] );
+
+    // Fill from memory
+    SpriteInfo* si = new (nothrow) SpriteInfo();
+    Point       p;
+    anim3d->GetFullBorders( &p );
+    si->OffsX = fb.W() / 2 - p.X;
+    si->OffsY = fb.H() - p.Y;
+    return FillSurfaceFromMemory( si, data, size );
     #endif
 }
 
@@ -4486,9 +4605,6 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     Flush();
     anim3d->Draw( x, y, scale, stencil, color );
     #else
-    // Render states
-    GL( glDisable( GL_BLEND ) );
-
     // Set render target
     if( rt3DMS.FBO )
     {
@@ -4504,7 +4620,9 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     }
 
     // Draw model
+    GL( glDisable( GL_BLEND ) );
     anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
+    GL( glEnable( GL_BLEND ) );
 
     // Restore render target
     PopRenderTarget();
@@ -4516,15 +4634,14 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     {
         PushRenderTarget( rt3D );
         ClearRenderTarget( rt3D, 0 );
+        GL( glDisable( GL_BLEND ) );
         DrawRenderTarget( rt3DMS, &borders );
+        GL( glEnable( GL_BLEND ) );
         PopRenderTarget();
     }
 
-    // Return render states
-    GL( glEnable( GL_BLEND ) );
-
     // Fill sprite info
-    SpriteInfo* si = GetSpriteInfo( anim3d->GetSprId() );
+    SpriteInfo* si = sprData[ anim3d->GetSprId() ];
     si->Surf->TextureOwner = rt3D.TargetTexture;
     si->Surf->Width = rt3D.TargetTexture->Width;
     si->Surf->Height = rt3D.TargetTexture->Height;

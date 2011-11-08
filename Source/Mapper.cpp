@@ -143,7 +143,7 @@ bool FOMapper::Init()
     if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx", NULL );
+    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx", true );
     if( font_effect )
     {
         SprMngr.SetFontEffect( FONT_FO, font_effect );

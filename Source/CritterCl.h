@@ -148,6 +148,8 @@ public:
     void        EraseAllItems();
     Item*       GetItem( uint item_id );
     Item*       GetItemByPid( ushort item_pid );
+    Item*       GetItemByPidInvPriority( ushort item_pid );
+    Item*       GetItemByPidSlot( ushort item_pid, int slot );
     Item*       GetAmmo( uint caliber );
     Item*       GetItemSlot( int slot );
     void        GetItemsSlot( int slot, ItemPtrVec& items );

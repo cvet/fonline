@@ -218,6 +218,7 @@ public:
     void        GetInvItems( ItemPtrVec& items, int transfer_type, bool lock );
     Item*       GetItemByPid( ushort item_pid );
     Item*       GetItemByPidInvPriority( ushort item_pid );
+    Item*       GetItemByPidSlot( ushort item_pid, int slot );
     Item*       GetAmmoForWeapon( Item* weap );
     Item*       GetAmmo( int caliber );
     Item*       GetItemCar();

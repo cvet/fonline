@@ -228,6 +228,50 @@ Item* CritterCl::GetItemByPid( ushort item_pid )
     return NULL;
 }
 
+Item* CritterCl::GetItemByPidInvPriority( ushort item_pid )
+{
+    ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
+    if( !proto_item )
+        return NULL;
+
+    if( proto_item->Stackable )
+    {
+        for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+        {
+            Item* item = *it;
+            if( item->GetProtoId() == item_pid )
+                return item;
+        }
+    }
+    else
+    {
+        Item* another_slot = NULL;
+        for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+        {
+            Item* item = *it;
+            if( item->GetProtoId() == item_pid )
+            {
+                if( item->ACC_CRITTER.Slot == SLOT_INV )
+                    return item;
+                another_slot = item;
+            }
+        }
+        return another_slot;
+    }
+    return NULL;
+}
+
+Item* CritterCl::GetItemByPidSlot( ushort item_pid, int slot )
+{
+    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
+    {
+        Item* item = *it;
+        if( item->GetProtoId() == item_pid && item->ACC_CRITTER.Slot == slot )
+            return item;
+    }
+    return NULL;
+}
+
 Item* CritterCl::GetAmmo( uint caliber )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )

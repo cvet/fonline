@@ -10517,9 +10517,13 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, ushort proto_id, int s
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    if( proto_id )
-        return cr->GetItemByPid( proto_id );
-    return cr->GetItemSlot( slot );
+    if( proto_id && slot >= 0 && slot < SLOT_GROUND )
+        cr->GetItemByPidSlot( proto_id, slot );
+    else if( proto_id )
+        return cr->GetItemByPidInvPriority( proto_id );
+    else if( slot >= 0 && slot < SLOT_GROUND )
+        return cr->GetItemSlot( slot );
+    return NULL;
 }
 
 uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, CScriptArray* items )

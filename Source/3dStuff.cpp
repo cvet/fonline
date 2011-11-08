@@ -1523,7 +1523,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             }
         }
         if( effect->WorldMatrix != -1 )
-            GL( glUniformMatrix4fv( effect->WorldMatrices, 1, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
+            GL( glUniformMatrix4fv( effect->WorldMatrix, 1, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
         if( effect->GroundPosition != -1 )
             GL( glUniform3fv( effect->GroundPosition, 1, (float*) &groundPos ) );
 
@@ -1649,7 +1649,7 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
     GL( glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
     GL( glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, MODE_WIDTH, MODE_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, ModeWidth, ModeHeight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL ) );
     GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, DepthTexId, 0 ) );
     GLenum status;
     GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
@@ -1723,6 +1723,8 @@ bool Animation3d::SetScreenSize( int width, int height )
     ViewPort_ vp = { 0, 0, ModeWidth, ModeHeight, 0.0f, 1.0f };
     D3D_HR( D3DDevice->SetViewport( &vp ) );
     ViewPort = vp;
+    #else
+    GL( glViewport( 0, 0, ModeWidth, ModeHeight ) );
     #endif
 
     return true;

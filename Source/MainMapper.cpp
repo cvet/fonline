@@ -68,7 +68,6 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     MainWindow->show( dummy_argc, dummy_argv );
 
     // Start
-    WriteLog( "Starting FOnline (version %04X-%02X)...\n\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
     Game.Start( GameThread );
 
     // Loop

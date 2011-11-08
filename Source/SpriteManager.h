@@ -271,6 +271,7 @@ private:
     RenderTarget    rtContoursMid;
     RenderTarget    rtPrimitive;
     RenderTarget    rt3D, rt3DMS;
+    RenderTarget    rt3DSprite, rt3DMSSprite;
     RenderTargetVec rtStack;
     #endif
 
@@ -290,7 +291,8 @@ public:
     void ( * PreRestore )();
     void ( * PostRestore )();
     #ifndef FO_D3D
-    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false );
+    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0 );
+    void DeleteRenderTarget( RenderTarget& rt );
     void ClearRenderTarget( RenderTarget& rt, uint color );
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
@@ -323,8 +325,10 @@ public:
 
 private:
     SprInfoVec sprData;
+    #ifdef FO_D3D
     Surface_   spr3dRT, spr3dRTEx, spr3dDS, spr3dRTData;
     int        spr3dSurfWidth, spr3dSurfHeight;
+    #endif
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
     AnyFrames* LoadAnimationFrm( const char* fname, int path_type, int dir, bool anim_pix );

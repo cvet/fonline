@@ -1301,6 +1301,20 @@ Item* Critter::GetItemByPid( ushort item_pid )
     return NULL;
 }
 
+Item* Critter::GetItemByPidSlot( ushort item_pid, int slot )
+{
+    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
+    {
+        Item* item = *it;
+        if( item->GetProtoId() == item_pid && item->ACC_CRITTER.Slot == slot )
+        {
+            SYNC_LOCK( item );
+            return item;
+        }
+    }
+    return NULL;
+}
+
 Item* Critter::GetItemByPidInvPriority( ushort item_pid )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
