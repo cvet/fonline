@@ -206,9 +206,10 @@ struct ScoreType
 class FOWindow: public Fl_Window
 {
 public:
-    FOWindow(): Fl_Window( 0, 0, "" ) {}
+    FOWindow(): Fl_Window( 0, 0, "" ), focused( true ) {}
     virtual ~FOWindow() {}
     virtual int handle( int event );
+    bool focused;
 };
 extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / MainMapper.cpp
 

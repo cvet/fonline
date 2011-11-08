@@ -136,5 +136,11 @@ int FOWindow::handle( int event )
         Mapper->MouseEventsLocker.Unlock();
         return 1;
     }
+
+    if( event == FL_FOCUS )
+        MainWindow->focused = true;
+    if( event == FL_UNFOCUS )
+        MainWindow->focused = false;
+
     return 0;
 }

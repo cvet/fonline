@@ -113,7 +113,6 @@ int Timer::GetAcceleratorNum()
     return AcceleratorNum;
 }
 
-#include <time.h>
 void Timer::GetCurrentDateTime( DateTime& dt )
 {
     #if defined ( FO_WINDOWS )

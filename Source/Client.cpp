@@ -1123,7 +1123,7 @@ void FOClient::ProcessScreenEffectMirror()
 void FOClient::ParseKeyboard()
 {
     // Stop processing if window not active
-    if( !MainWindow->active() )
+    if( !MainWindow->focused )
     {
         KeyboardEventsLocker.Lock();
         KeyboardEvents.clear();
@@ -1528,7 +1528,7 @@ void FOClient::ParseMouse()
     GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
 
     // Stop processing if window not active
-    if( !MainWindow->active() )
+    if( !MainWindow->focused )
     {
         MouseEventsLocker.Lock();
         MouseEvents.clear();
@@ -9290,7 +9290,7 @@ void FOClient::DropScroll()
 
 bool FOClient::IsCurInWindow()
 {
-    if( !MainWindow->active() )
+    if( !MainWindow->focused )
         return false;
 
     if( !GameOpt.FullScreen )
