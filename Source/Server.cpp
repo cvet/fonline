@@ -3451,9 +3451,8 @@ void FOServer::InitGameTime()
     }
 
     DateTime dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    uint64   start_ft = PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo );
-    if( !Timer::DateTimeToFullTime( dt, start_ft ) )
-        WriteLogF( _FUNC_, " - DateTimeToFullTime fail.\n" );
+    uint64   start_ft;
+    Timer::DateTimeToFullTime( dt, start_ft );
     GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
     GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
 

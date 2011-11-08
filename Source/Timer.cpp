@@ -135,7 +135,7 @@ void Timer::GetCurrentDateTime( DateTime& dt )
     #endif
 }
 
-bool Timer::DateTimeToFullTime( DateTime& dt, uint64& ft )
+void Timer::DateTimeToFullTime( const DateTime& dt, uint64& ft )
 {
     // Minor year
     ft = (uint64) ( dt.Year - 1601 ) * 365 * 24 * 60 * 60 * 1000 * 1000;
@@ -160,20 +160,9 @@ bool Timer::DateTimeToFullTime( DateTime& dt, uint64& ft )
     ft += (uint64) dt.Second * 1000 * 1000;
     ft += (uint64) dt.Milliseconds * 1000;
     ft *= (uint64) 10;
-
-    return true;
 }
 
-ushort Timer::CountLeapYears( ushort from_year, ushort to_year )
-{
-    from_year--;
-    to_year--;
-    ushort leap_before_from = from_year / 4 - from_year / 100 + from_year / 400;
-    ushort leap_before_to = to_year / 4 - to_year / 100 + to_year / 400;
-    return leap_before_to - leap_before_from;
-}
-
-bool Timer::FullTimeToDateTime( uint64& ft, DateTime& dt )
+void Timer::FullTimeToDateTime( uint64 ft, DateTime& dt )
 {
     // Base
     ft /= 10000;
@@ -187,33 +176,33 @@ bool Timer::FullTimeToDateTime( uint64& ft, DateTime& dt )
     ft /= 24;
 
     // Year
-    dt.Year = 1601;
-    while( ft >= 366 )
+    int year = (int) ft / 365;
+    int days = (int) ft % 365;
+    days -= year / 4 + year / 400 - year / 100;
+    while( days < 0 )
     {
-        ushort years = (uint) ft / 366;
-        ft %= 366;
-        ft += years - CountLeapYears( dt.Year, dt.Year + years );
-        dt.Year += years;
+        if( year % 400 == 0 || ( year % 4 == 0 && year % 100 != 0 ) )
+            days += 366;
+        else
+            days += 365;
+        year--;
     }
-
-    // Full year in non-leap year
-    if( ft == 365 && !( dt.Year % 400 == 0 || ( dt.Year % 4 == 0 && dt.Year % 100 != 0 ) ) )
-    {
-        dt.Year++;
-        ft = 0;
-    }
+    dt.Year = 1601 + year;
+    ft = days;
 
     // Month
-    static const uint count1[ 12 ] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
-    static const uint count2[ 12 ] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 }; // Leap
+    static const uint count1[ 13 ] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
+    static const uint count2[ 13 ] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 }; // Leap
     const uint*       count = ( ( dt.Year % 400 == 0 || ( dt.Year % 4 == 0 && dt.Year % 100 != 0 ) ) ? count2 : count1 );
-    int               i = 0;
-    for( ; i < 11; i++ )
+    for( int i = 0; i < 12; i++ )
+    {
         if( (uint) ft >= count[ i ] && (uint) ft < count[ i + 1 ] )
+        {
+            ft -= count[ i ];
+            dt.Month = i + 1;
             break;
-
-    ft -= count[ i ];
-    dt.Month = i + 1;
+        }
+    }
 
     // Day
     dt.Day = (ushort) ft + 1;
@@ -223,35 +212,29 @@ bool Timer::FullTimeToDateTime( uint64& ft, DateTime& dt )
     int y = dt.Year - a;
     int m = dt.Month + 12 * a - 2;
     dt.DayOfWeek = ( 7000 + ( dt.Day + y + y / 4 - y / 100 + y / 400 + ( 31 * m ) / 12 ) ) % 7;
-
-    return true;
 }
 
-int Timer::GetTimeDifference( DateTime& dt1, DateTime& dt2 )
+int Timer::GetTimeDifference( const DateTime& dt1, const DateTime& dt2 )
 {
     uint64 ft1 = 0, ft2 = 0;
-    if( !DateTimeToFullTime( dt1, ft1 ) || !DateTimeToFullTime( dt2, ft2 ) )
-        return 0;
+    DateTimeToFullTime( dt1, ft1 );
+    DateTimeToFullTime( dt2, ft2 );
     return (int) ( ( ft1 - ft2 ) / 10000000 );
 }
 
-bool Timer::ContinueTime( DateTime& td, int seconds )
+void Timer::ContinueTime( DateTime& td, int seconds )
 {
     uint64 ft;
-    if( !DateTimeToFullTime( td, ft ) )
-        return false;
+    DateTimeToFullTime( td, ft );
     ft += (uint64) seconds * 10000000;
-    if( !FullTimeToDateTime( ft, td ) )
-        return false;
-    return true;
+    FullTimeToDateTime( ft, td );
 }
 
 uint Timer::GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
     DateTime dt = { year, month, 0, day, hour, minute, second, 0 };
     uint64   ft = 0;
-    if( !Timer::DateTimeToFullTime( dt, ft ) )
-        WriteLogF( _FUNC_, " - Args<%u,%u,%u,%u,%u,%u>.\n", year, month, day, hour, minute, second );
+    Timer::DateTimeToFullTime( dt, ft );
     ft -= PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo );
     return (uint) ( ft / 10000000 );
 }
@@ -260,8 +243,7 @@ DateTime Timer::GetGameTime( uint full_second )
 {
     uint64   ft = PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo ) + uint64( full_second ) * 10000000;
     DateTime dt;
-    if( !Timer::FullTimeToDateTime( ft, dt ) )
-        WriteLogF( _FUNC_, " - Full second<%u>.\n", full_second );
+    Timer::FullTimeToDateTime( ft, dt );
     return dt;
 }
 

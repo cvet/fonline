@@ -28,12 +28,11 @@ namespace Timer
     bool ProcessAccelerator( int num );
     int  GetAcceleratorNum();
 
-    void   GetCurrentDateTime( DateTime& dt );
-    bool   DateTimeToFullTime( DateTime& dt, uint64& ft );
-    ushort CountLeapYears( ushort from_year, ushort to_year );
-    bool   FullTimeToDateTime( uint64& ft, DateTime& dt );
-    int    GetTimeDifference( DateTime& dt1, DateTime& dt2 );
-    bool   ContinueTime( DateTime& dt, int seconds );
+    void GetCurrentDateTime( DateTime& dt );
+    void DateTimeToFullTime( const DateTime& dt, uint64& ft );
+    void FullTimeToDateTime( uint64 ft, DateTime& dt );
+    int  GetTimeDifference( const DateTime& dt1, const DateTime& dt2 );
+    void ContinueTime( DateTime& dt, int seconds );
 
     // Game time
     uint     GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
