@@ -9308,6 +9308,9 @@ bool FOClient::IsCurInWindow()
 
 void FOClient::FlashGameWindow()
 {
+    if( MainWindow->focused )
+        return;
+
     #ifdef FO_WINDOWS
     if( GameOpt.MessNotify )
         FlashWindow( fl_xid( MainWindow ), true );
