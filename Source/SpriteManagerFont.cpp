@@ -273,6 +273,32 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
     D3D_HR( font.FontTexBordered->Instance->UnlockRect( 0 ) );
     D3D_HR( tex->UnlockRect( 0 ) );
     tex->Release();
+    #else
+    uint normal_ox = (uint) ( tex_w * si->SprRect.L );
+    uint normal_oy = (uint) ( tex_h * si->SprRect.T );
+    uint bordered_ox = (uint) ( tex_w * si_bordered->SprRect.L );
+    uint bordered_oy = (uint) ( tex_h * si_bordered->SprRect.T );
+    for( uint y = 0; y < (uint) si_bordered->Height; y++ )
+    {
+        for( uint x = 0; x < (uint) si_bordered->Width; x++ )
+        {
+            if( si->Surf->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )
+            {
+                for( int xx = -1; xx <= 1; xx++ )
+                {
+                    for( int yy = -1; yy <= 1; yy++ )
+                    {
+                        uint ox = bordered_ox + x + xx;
+                        uint oy = bordered_oy + y + yy;
+                        if( !si_bordered->Surf->TextureOwner->Pixel( ox, oy ) )
+                            si_bordered->Surf->TextureOwner->Pixel( ox, oy ) = COLOR_XRGB( 0, 0, 0 );
+                    }
+                }
+            }
+        }
+    }
+    Rect r = Rect( bordered_ox, bordered_oy, bordered_ox + si->Width - 1, bordered_oy + si->Height - 1 );
+    si_bordered->Surf->TextureOwner->Update( r );
     #endif
 
     // Fix texture coordinates on bordered texture
