@@ -7,7 +7,7 @@ struct FlexRect
     Ty L, T, R, B;
 
     FlexRect(): L( 0 ), T( 0 ), R( 0 ), B( 0 ) {}
-    FlexRect( const FlexRect& fr ): L( fr.L ), T( fr.T ), R( fr.R ), B( fr.B ) {}
+    template< typename Ty2 > FlexRect( const FlexRect< Ty2 >& fr ): L( ( Ty )fr.L ), T( ( Ty )fr.T ), R( ( Ty )fr.R ), B( ( Ty )fr.B ) {}
     FlexRect( Ty l, Ty t, Ty r, Ty b ): L( l ), T( t ), R( r ), B( b ) {}
     FlexRect( Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy ): L( l + ox ), T( t + oy ), R( r + ox ), B( b + oy ) {}
     FlexRect( const FlexRect& fr, Ty ox, Ty oy ): L( fr.L + ox ), T( fr.T + oy ), R( fr.R + ox ), B( fr.B + oy ) {}
@@ -85,7 +85,7 @@ struct FlexPoint
     Ty X, Y;
 
     FlexPoint(): X( 0 ), Y( 0 ) {}
-    FlexPoint( const FlexPoint& r ): X( r.X ), Y( r.Y ) {}
+    template< typename Ty2 > FlexPoint( const FlexPoint< Ty2 >& r ): X( ( Ty )r.X ), Y( ( Ty )r.Y ) {}
     FlexPoint( Ty x, Ty y ): X( x ), Y( y ) {}
     FlexPoint( const FlexPoint& fp, Ty ox, Ty oy ): X( fp.X + ox ), Y( fp.Y + oy ) {}
     template< typename Ty2 >

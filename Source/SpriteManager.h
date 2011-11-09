@@ -358,8 +358,8 @@ public:
     bool        IsPixNoTransp( uint spr_id, int offs_x, int offs_y, bool with_zoom = true );
     bool        IsEggTransp( int pix_x, int pix_y );
 
-    void PrepareSquare( PointVec& points, RectF& r, uint color );
-    void PrepareSquare( PointVec& points, PointF& lt, PointF& rt, PointF& lb, PointF& rb, uint color );
+    void PrepareSquare( PointVec& points, Rect r, uint color );
+    void PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color );
     bool PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy, uchar alpha );
     bool Flush();
 

@@ -656,10 +656,10 @@ int FOClient::InitIface()
     GmapVectX = 0;
     GmapVectY = 0;
     GmapMapCutOff.clear();
-    SprMngr.PrepareSquare( GmapMapCutOff, RectF( 0, 0, (float) MODE_WIDTH, (float) GmapWMap.T ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, RectF( 0, (float) GmapWMap.T, (float) GmapWMap.L, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, RectF( (float) GmapWMap.R, (float) GmapWMap.T, (float) MODE_WIDTH, (float) GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, RectF( 0, (float) GmapWMap.B, (float) MODE_WIDTH, (float) MODE_HEIGHT ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, 0, MODE_WIDTH, GmapWMap.T ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.T, GmapWMap.L, GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( GmapWMap.R, GmapWMap.T, MODE_WIDTH, GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.B, MODE_WIDTH, MODE_HEIGHT ), COLOR_XRGB( 0, 0, 0 ) );
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
     memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
@@ -6037,9 +6037,11 @@ void FOClient::GmapDraw()
                 color = COLOR_ARGB( 0x7F, 0, 0, 0 );
             else if( val == GM_FOG_HALF_EX )
                 color = COLOR_ARGB( 0x3F, 0, 0, 0 );
-            float x = float(zx * GM_ZONE_LEN) / GmapZoom + GmapOffsetX;
-            float y = float(zy * GM_ZONE_LEN) / GmapZoom + GmapOffsetY;
-            SprMngr.PrepareSquare( GmapFogPix, RectF( x, y, x + GM_ZONE_LEN / GmapZoom, y + GM_ZONE_LEN / GmapZoom ), color );
+            float l = float(zx * GM_ZONE_LEN) / GmapZoom + GmapOffsetX;
+            float t = float(zy * GM_ZONE_LEN) / GmapZoom + GmapOffsetY;
+            float r = l + GM_ZONE_LEN / GmapZoom;
+            float b = t + GM_ZONE_LEN / GmapZoom;
+            SprMngr.PrepareSquare( GmapFogPix, RectF( l, t, r, b ), color );
         }
     }
     SprMngr.DrawPoints( GmapFogPix, PRIMITIVE_TRIANGLELIST );

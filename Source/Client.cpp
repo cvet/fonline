@@ -982,7 +982,7 @@ void FOClient::ProcessScreenEffectFading()
 {
     static PointVec six_points;
     if( six_points.empty() )
-        SprMngr.PrepareSquare( six_points, RectF( 0, 0, (float) MODE_WIDTH, (float) MODE_HEIGHT ), 0 );
+        SprMngr.PrepareSquare( six_points, Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), 0 );
 
     for( auto it = ScreenEffects.begin(); it != ScreenEffects.end();)
     {

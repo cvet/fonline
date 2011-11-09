@@ -810,8 +810,7 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region /* = NULL *
     else
     {
         uint  mulpos = 0;
-        RectF regionf;
-        regionf = *region;
+        RectF regionf = *region;
         float w = (float) rt.TargetTexture->Width;
         float h = (float) rt.TargetTexture->Height;
 
@@ -3651,24 +3650,24 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
     return true;
 }
 
-void SpriteManager::PrepareSquare( PointVec& points, RectF& r, uint color )
+void SpriteManager::PrepareSquare( PointVec& points, Rect r, uint color )
 {
-    points.push_back( PrepPoint( (short) r.L, (short) r.B, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) r.L, (short) r.T, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) r.R, (short) r.B, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) r.L, (short) r.T, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) r.R, (short) r.T, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) r.R, (short) r.B, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.L, r.B, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.L, r.T, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.R, r.B, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.L, r.T, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.R, r.T, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.R, r.B, color, NULL, NULL ) );
 }
 
-void SpriteManager::PrepareSquare( PointVec& points, PointF& lt, PointF& rt, PointF& lb, PointF& rb, uint color )
+void SpriteManager::PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color )
 {
-    points.push_back( PrepPoint( (short) lb.X, (short) lb.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) lt.X, (short) lt.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) rb.X, (short) rb.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) lt.X, (short) lt.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) rt.X, (short) rt.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( (short) rb.X, (short) rb.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( lb.X, lb.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( lt.X, lt.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( rb.X, rb.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( lt.X, lt.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( rt.X, rt.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( rb.X, rb.Y, color, NULL, NULL ) );
 }
 
 uint SpriteManager::PackColor( int r, int g, int b )
@@ -3920,8 +3919,8 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             {
                 Rect eb = si->Anim3d->GetExtraBorders();
                 Rect bb = si->Anim3d->GetBaseBorders();
-                PrepareSquare( borders, RectF( (float) eb.L, (float) eb.T, (float) eb.R, (float) eb.B ), 0x5f750075 );
-                PrepareSquare( borders, RectF( (float) bb.L, (float) bb.T, (float) bb.R, (float) bb.B ), 0x5f757575 );
+                PrepareSquare( borders, Rect( eb.L, eb.T, eb.R, eb.B ), 0x5f750075 );
+                PrepareSquare( borders, Rect( bb.L, bb.T, bb.R, bb.B ), 0x5f757575 );
             }
 
             continue;
