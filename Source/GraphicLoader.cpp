@@ -1168,16 +1168,28 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         WriteLogF( _FUNC_, " - Effect file<%s> not found.\n", fname );
         return NULL;
     }
-    const char* str = (char*) file.GetBuf();
+    char* str = (char*) file.GetBuf();
+
+    // Get version
+    char* ver = Str::Substring( str, "#version" );
+    if( ver )
+    {
+        char* ver_end = Str::Substring( ver, "\n" );
+        if( ver_end )
+        {
+            str = ver_end + 1;
+            *ver_end = 0;
+        }
+    }
 
     // Create shaders
     GLuint vs, fs;
     GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
     GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-    const char* vs_str[] = { "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str };
-    GL( glShaderSource( vs, 4, (const GLchar**) vs_str, NULL ) );
-    const char* fs_str[] = { "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str };
-    GL( glShaderSource( fs, 4, (const GLchar**) fs_str, NULL ) );
+    const char* vs_str[] = { ver ? ver : "", "\n", "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str };
+    GL( glShaderSource( vs, 6, (const GLchar**) vs_str, NULL ) );
+    const char* fs_str[] = { ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str };
+    GL( glShaderSource( fs, 6, (const GLchar**) fs_str, NULL ) );
 
     // Info parser
     struct ShaderInfo
