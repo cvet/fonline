@@ -2273,7 +2273,7 @@ void FOClient::ProcessMouseWheel( int data )
         }
         else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
         {
-            GmapChangeZoom( -data / 2000.0f );
+            GmapChangeZoom( (float) -data / 20.0f );
             if( IsCurInRect( GmapWTabs ) )
             {
                 if( data > 0 )
