@@ -5662,7 +5662,9 @@ void FOClient::SetCurPos( int x, int y )
 {
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
+    #ifdef FO_D3D
     if( !GameOpt.FullScreen )
+    #endif
     {
         #ifdef FO_WINDOWS
         WINDOWINFO wi;

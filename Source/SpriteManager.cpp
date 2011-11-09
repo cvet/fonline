@@ -210,6 +210,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
     if( !Animation3d::StartUp( d3dDevice, GameOpt.SoftwareSkinning ) )
         return false;
+    if( !Animation3d::SetScreenSize( modeWidth, modeHeight ) )
+        return false;
     if( !InitRenderStates() )
         return false;
     if( !InitBuffers() )
@@ -570,7 +572,9 @@ void SpriteManager::EndScene()
     d3dDevice->Present( NULL, NULL, NULL, NULL );
     #else
     GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
     DrawRenderTarget( rtMain );
+    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
     SwapBuffers( dcScreen );
     #endif

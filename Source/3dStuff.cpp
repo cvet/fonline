@@ -1587,15 +1587,6 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
     memzero( &D3DCaps, sizeof( D3DCaps ) );
     D3D_HR( D3DDevice->GetDeviceCaps( &D3DCaps ) );
 
-    // Get size of draw area
-    LPDIRECT3DSURFACE9 backbuf;
-    D3DSURFACE_DESC    backbuf_desc;
-    D3D_HR( D3DDevice->GetRenderTarget( 0, &backbuf ) );
-    D3D_HR( backbuf->GetDesc( &backbuf_desc ) );
-    SAFEREL( backbuf );
-    if( !SetScreenSize( backbuf_desc.Width, backbuf_desc.Height ) )
-        return false;
-
     // Get skinning method
     SoftwareSkinning = true;
     if( !software_skinning && D3DCaps.VertexShaderVersion >= D3DVS_VERSION( 2, 0 ) && D3DCaps.MaxVertexBlendMatrices >= 2 )
@@ -1619,10 +1610,6 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
         }
     }
     #else
-    // Screen size
-    if( !SetScreenSize( MODE_WIDTH, MODE_HEIGHT ) )
-        return false;
-
     // Create skinning effect
     if( !( EffectSimple = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false ) ) ||
         !( EffectSimpleShadow = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false, "#define SHADOW" ) ) ||

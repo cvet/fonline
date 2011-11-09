@@ -292,13 +292,6 @@ bool FOMapper::Init()
     ChangeGameTime();
     AnyId = 0x7FFFFFFF;
 
-    if( GameOpt.FullScreen )
-    {
-        SetCursorPos( MODE_WIDTH / 2, MODE_HEIGHT / 2 );
-        GameOpt.MouseX = MODE_WIDTH / 2;
-        GameOpt.MouseY = MODE_HEIGHT / 2;
-    }
-
     if( strstr( GetCommandLine(), "-Map" ) )
     {
         char map_name[ 256 ];
@@ -841,6 +834,11 @@ label_TryChangeLang:
             case DIK_F11:
                 HexMngr.SwitchShowRain();
                 break;
+            case DIK_F12:
+                #ifdef FO_WINDOWS
+                ShowWindow( fl_xid( MainWindow ), SW_MINIMIZE );
+                #endif
+                break;
             case DIK_DELETE:
                 SelectDelete();
                 break;
@@ -965,6 +963,49 @@ label_TryChangeLang:
             }
         }
 
+        // Switch fullscreen
+        if( Keyb::AltDwn && dikdw == DIK_RETURN )
+        {
+            #ifndef FO_D3D
+            static int x, y, w, h, valid = 0;
+            if( !GameOpt.FullScreen )
+            {
+                # ifdef FO_WINDOWS
+                HDC dcscreen = GetDC( NULL );
+                int sw = GetDeviceCaps( dcscreen, HORZRES );
+                int sh = GetDeviceCaps( dcscreen, VERTRES );
+                ReleaseDC( NULL, dcscreen );
+                # endif
+                x = MainWindow->x();
+                y = MainWindow->y();
+                w = MainWindow->w();
+                h = MainWindow->h();
+                valid = 1;
+                MainWindow->border( 0 );
+                MainWindow->size( sw, sh );
+                MainWindow->position( 0, 0 );
+                GameOpt.FullScreen = true;
+            }
+            else
+            {
+                MainWindow->border( 1 );
+                if( valid )
+                {
+                    MainWindow->size( w, h );
+                    MainWindow->position( x, y );
+                }
+                else
+                {
+                    MainWindow->size( MODE_WIDTH, MODE_HEIGHT );
+                    MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
+                }
+                // MainWindow->size_range( 100, 100 );
+                GameOpt.FullScreen = false;
+            }
+            #endif
+            continue;
+        }
+
         // Key down
         if( dikdw )
         {
@@ -1035,8 +1076,13 @@ void FOMapper::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     Fl::get_mouse( mx, my );
+    #ifdef FO_D3D
     GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
     GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
+    #else
+    GameOpt.MouseX = mx - MainWindow->x();
+    GameOpt.MouseY = my - MainWindow->y();
+    #endif
     GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, MODE_WIDTH - 1 );
     GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
 

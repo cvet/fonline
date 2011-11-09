@@ -445,8 +445,10 @@ bool FOClient::Init()
 
     // Other
     SetGameColor( COLOR_IFACE );
+    #ifdef FO_D3D
     if( GameOpt.FullScreen )
         SetCurPos( MODE_WIDTH / 2, MODE_HEIGHT / 2 );
+    #endif
     ScreenOffsX = 0;
     ScreenOffsY = 0;
     ScreenOffsXf = 0.0f;
@@ -1284,6 +1286,16 @@ label_TryChangeLang:
                     HexMngr.SwitchShowHex();
                 break;
 
+            case DIK_F11:
+                if( GameOpt.DebugInfo )
+                    SprMngr.SaveSufaces();
+                break;
+            case DIK_F12:
+                #ifdef FO_WINDOWS
+                ShowWindow( fl_xid( MainWindow ), SW_MINIMIZE );
+                #endif
+                break;
+
             // Exit buttons
             case DIK_TAB:
                 if( GetActiveScreen() == SCREEN__MINI_MAP )
@@ -1301,12 +1313,6 @@ label_TryChangeLang:
                 ProcessMouseWheel( -1 );
                 Timer::StartAccelerator( ACCELERATE_PAGE_DOWN );
                 break;
-
-            case DIK_F11:
-                if( GameOpt.DebugInfo )
-                    SprMngr.SaveSufaces();
-                break;
-            // case DIK_F11: HexMngr.SwitchShowRain(); break;
 
             case DIK_ESCAPE:
                 TryExit();
@@ -1417,6 +1423,50 @@ label_TryChangeLang:
                 if( Keyb::ShiftDwn )
                     GameOpt.Quit = true;
                 break;
+            // Switch fullscreen
+            case DIK_RETURN:
+                if( Keyb::AltDwn )
+                {
+                    #ifndef FO_D3D
+                    static int x, y, w, h, valid = 0;
+                    if( !GameOpt.FullScreen )
+                    {
+                        # ifdef FO_WINDOWS
+                        HDC dcscreen = GetDC( NULL );
+                        int sw = GetDeviceCaps( dcscreen, HORZRES );
+                        int sh = GetDeviceCaps( dcscreen, VERTRES );
+                        ReleaseDC( NULL, dcscreen );
+                        # endif
+                        x = MainWindow->x();
+                        y = MainWindow->y();
+                        w = MainWindow->w();
+                        h = MainWindow->h();
+                        valid = 1;
+                        MainWindow->border( 0 );
+                        MainWindow->size( sw, sh );
+                        MainWindow->position( 0, 0 );
+                        GameOpt.FullScreen = true;
+                    }
+                    else
+                    {
+                        MainWindow->border( 1 );
+                        if( valid )
+                        {
+                            MainWindow->size( w, h );
+                            MainWindow->position( x, y );
+                        }
+                        else
+                        {
+                            MainWindow->size( MODE_WIDTH, MODE_HEIGHT );
+                            MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
+                        }
+                        // MainWindow->size_range( 100, 100 );
+                        GameOpt.FullScreen = false;
+                    }
+                    #endif
+                    continue;
+                }
+                break;
             default:
                 break;
             }
@@ -1522,8 +1572,15 @@ void FOClient::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     Fl::get_mouse( mx, my );
+    #ifdef FO_D3D
     GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
     GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
+    #else
+    GameOpt.MouseX = mx - MainWindow->x();
+    GameOpt.MouseY = my - MainWindow->y();
+    #endif
+    GameOpt.MouseX = GameOpt.MouseX * MODE_WIDTH / MainWindow->w();
+    GameOpt.MouseY = GameOpt.MouseY * MODE_HEIGHT / MainWindow->h();
     GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, MODE_WIDTH - 1 );
     GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
 

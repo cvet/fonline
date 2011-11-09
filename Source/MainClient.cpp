@@ -117,7 +117,6 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     MainWindow->label( GetWindowName() );
     MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
     MainWindow->size( MODE_WIDTH, MODE_HEIGHT );
-    MainWindow->set_modal();
     // MainWindow->size_range( 100, 100 );
 
     // Icon
@@ -134,13 +133,41 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     int   dummy_argc = 1;
     MainWindow->show( dummy_argc, dummy_argv );
 
+    // Fullscreen
+    #ifndef FO_D3D
+    if( GameOpt.FullScreen )
+    {
+        # ifdef FO_WINDOWS
+        HDC dcscreen = GetDC( NULL );
+        int sw = GetDeviceCaps( dcscreen, HORZRES );
+        int sh = GetDeviceCaps( dcscreen, VERTRES );
+        ReleaseDC( NULL, dcscreen );
+        # endif
+        MainWindow->border( 0 );
+        MainWindow->size( sw, sh );
+        MainWindow->position( 0, 0 );
+    }
+    #endif
+
+    // Hide menu
+    #ifdef FO_WINDOWS
+    SetWindowLong( fl_xid( MainWindow ), GWL_STYLE, GetWindowLong( fl_xid( MainWindow ), GWL_STYLE ) & ( ~WS_SYSMENU ) );
+    #endif
+
+    // Place on top
+    #ifdef FO_WINDOWS
+    if( GameOpt.AlwaysOnTop )
+        SetWindowPos( fl_xid( MainWindow ), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
+    #endif
+
     // Start
     WriteLog( "Starting FOnline (version %04X-%02X)...\n\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
     Game.Start( GameThread );
 
     // Loop
-    while( !GameOpt.Quit )
-        Fl::wait();
+    while( !GameOpt.Quit && Fl::wait() )
+        ;
+    GameOpt.Quit = true;
     Game.Wait();
 
     // Finish
