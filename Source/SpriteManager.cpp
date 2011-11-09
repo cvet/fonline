@@ -164,7 +164,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
     GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    wglSwapIntervalEXT( 0 );
+    if( !GameOpt.VSync )
+        wglSwapIntervalEXT( 0 );
     #endif
 
     #ifdef FO_D3D
